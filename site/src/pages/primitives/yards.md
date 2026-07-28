@@ -1,49 +1,57 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Yards
-description: "The Yard is an advanced HoBo primitive: one provider's camps under one roof — cross-camp policy, identity, reconciliation, and the control plane itself."
+description: "The Yard is the provider selection point: one provider, zero or more Camps, shared policy and control-plane scope."
 ---
 
 # Yards
 
 > *The rail yard is where a line's traffic gets sorted. One company's yard, one company's rules.*
 
-The **Yard** is an advanced primitive — you'll know you need one when a single [Camp](/HoBo/primitives/camps/) stops being enough but you're still on one provider. A yard composes **one provider's camps** and carries everything shared across them: cross-camp policy, identity, reconciliation, and provider-global networking. It is also, not coincidentally, where HoBo's control plane lives.
+The **Yard** is where **provider selection** lives. It composes **one provider** with zero or more [Camps](/HoBo/primitives/camps/) and carries what is shared across those camps: policy defaults, identity scope, reconciliation, and provider-global networking. It is also, not coincidentally, where HoBo's control-plane scope shows up for that provider.
 
-**Day one? You don't need this page.** A bindle and a camp are the whole entry fee — go read [Getting started](/HoBo/guide/getting-started/). Come back when multi-region calls.
+**Day one? You may not need this page.** A Bindle plus the default local lane is enough — [Getting started](/HoBo/guide/getting-started/). Come back when you pin a real provider or multi-region topology.
 
 ## Building a yard
 
 ```ts
-import { yard } from "@hobo/yards";
+import { camp } from "hobo/camps";
+import { yard } from "hobo/yards";
 
-import prodEast from "./camps/prod-east";
-import prodWest from "./camps/prod-west";
-import staging from "./camps/staging";
+const prod = camp("prod", { envType: "prod" });
+const staging = camp("staging", { envType: "staging" });
 
-export default yard("aws", { camps: [prodEast, prodWest, staging] });
+// Provider is required on the Yard — never on the Camp.
+export default yard("aws-east", {
+  provider: "aws",
+  regions: ["us-east-1"],
+  camps: [prod, staging],
+});
 ```
 
-That's the entire authoring surface: a name and the member camps. Cross-camp concerns — promotion policy between staging and prod camps, shared identity, provider-global DNS — attach at the yard scope.
+That's the authoring shape: a name, a **provider**, optional regions/labels/requirements, and member camps (may be empty for a requested shape before live camps exist).
 
 ## Rules yards enforce
 
-- **One provider, strictly.** A yard cannot mix providers; the constructor rejects it. Multi-region within a provider = several camps under one yard. Multi-cloud = several yards under a [Junction](/HoBo/primitives/junctions/).
-- **At least one camp.** An empty yard isn't a yard; it's a vacant lot.
-- **Provider-specific on purpose.** The yard is where provider-native control-plane behavior is allowed to live, so that camps and bindles don't have to know about it.
+- **One provider, strictly.** A yard cannot mix providers. Multi-region within a provider = several camps under one yard. Multi-cloud = several yards under a [Junction](/HoBo/primitives/junctions/).
+- **Provider is required.** Camps do not carry `defaultProvider`; the yard is the only direct selection point.
+- **Camps are shapes, not Bindle owners.** Attach env camps; place Bindles via deploy/converge, not by nesting `bindle:` inside `camp(...)`.
+- **Provider-native properties are refs only** — no credentials in yard properties.
 
 ## When to reach for a yard
 
+- **Pin a provider** for prod/staging fleets.
 - **Multi-region:** `prod-east` and `prod-west` camps behind one policy scope.
-- **Environment fleets:** prod, staging, and a herd of ephemeral `pr-*` camps that share identity and promotion rules.
-- **Governance:** one place to say "no bindle in this yard may use a non-conformant provider build" and have it enforced across every camp.
-- **A bigger map for migrations:** within a yard, the Dispatcher can rebalance bindles *between camps* — chasing regional pricing and reliability without ever crossing a cloud boundary.
+- **Environment fleets:** prod, staging, and ephemeral `pr-*` camps that share identity and promotion rules.
+- **Governance:** one place to enforce conformant provider builds across camps.
+- **Self-host control:** run a local/bare-metal yard (`hobo yard …`) when you own the control plane substrate.
 
 ## The yard is itself a bindle
 
-HoBo's control plane — Gateway, Planner, Dispatcher, Orchestrator, the whole [architecture](/HoBo/architecture/) — ships *as a bindle*. Self-hosting HoBo is `hobo up ./platform --seed` into a camp you own; the only difference between hosted and self-hosted is who runs the yard. No enterprise-edition fork, no second product. Even the landlord lives in a tent.
+HoBo's control plane ships *as a bindle*. Self-hosting is converging that bindle into a yard you operate — same tooling app teams use. No enterprise-edition fork, no second product.
 
 ## Where yards go next
 
 - Crossing clouds: [Junctions](/HoBo/primitives/junctions/).
-- What the yard's machinery does all day: [Architecture](/HoBo/architecture/).
+- Environment shapes: [Camps](/HoBo/primitives/camps/).
+- Machinery: [Architecture](/HoBo/architecture/).

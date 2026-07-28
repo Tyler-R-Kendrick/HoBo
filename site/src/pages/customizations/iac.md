@@ -12,16 +12,16 @@ Executors apply infrastructure through **IaC adapters** behind ports — sandbox
 
 | Adapter family | Role | Status |
 |---|---|---|
-| **Pulumi** (`@hobo/iac-pulumi`) | Automation API — primary path | Live gated by `HOBO_PULUMI_LIVE=1` |
+| **Pulumi** (Pulumi IaC engine) | Automation API — primary path | Live gated by `provider live credentials` |
 | **Crossplane** | Kubernetes-shaped control | Design / stage-gated |
 | **Terraform / OpenTofu / CDKTF** | Familiar plan/apply | Design / adapter scaffolds |
 
 ## Rules
 
-- Executors run in Firecracker-class isolation when available  
-- Identity brokers **scoped tokens per resource + action**  
-- Drift remediation is gated the same as deploy  
-- Never hand long-lived provider keys to the app or the executor ambient env  
+- Executors run in Firecracker-class isolation when available 
+- Identity brokers **scoped tokens per resource + action** 
+- Drift remediation is gated the same as deploy 
+- Never hand long-lived provider keys to the app or the executor ambient env 
 
 ## Related
 

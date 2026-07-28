@@ -6,9 +6,9 @@ description: "Secretless-first resolution ladder, config schema, fromBinding, re
 
 # Config & secrets
 
-HoBo is **secretless-first** (ADR-0027). Long-lived static secrets are a **residual** Nitric-parity path, not the default architecture.
+HoBo is **secretless-first**. Long-lived static secrets are a **residual** legacy-compatible path, not the default architecture.
 
-## Authoring (`@hobo/bindles`)
+## Authoring (`hobo/bindles`)
 
 | Surface | Role |
 |---|---|
@@ -18,18 +18,18 @@ HoBo is **secretless-first** (ADR-0027). Long-lived static secrets are a **resid
 | `secretRef` / `fromBinding` | References, not values |
 | `secret(name)` resource | Catalog secret resource (residual) |
 
-Codegen: `generateCtxConfigSource`. Gate: `evaluateSecretlessConfigGate` (Gatekeeper dimension `secretlessConfig`).
+Code generation materializes a typed config view for your handlers. Gatekeeper can require a **secretless-config** check so residual secrets stay intentional and time-boxed.
 
-## Resolution ladder (`@hobo/identity`)
+## Resolution ladder
 
-`resolveConfigSchema` ranks sources:
+Config resolution ranks sources in this order:
 
-1. **bound-resource** — capability from bound infrastructure  
-2. **provider-federation** — OIDC/workload identity exchange  
-3. **camp-value** — Camp-provided non-secret or brokered material  
+1. **bound-resource** — capability from bound infrastructure
+2. **provider-federation** — OIDC/workload identity exchange
+3. **camp-value** — Camp-provided non-secret or brokered material
 4. **static-escape** — time-boxed residual (≤7d class constraints)
 
-Camp adapters (Vault JWT/OIDC, AWS SM, Azure KV, …) fetch through **brokered** paths — workloads do not hold master keys.
+Camp adapters (Vault JWT/OIDC, AWS Secrets Manager, Azure Key Vault, …) fetch through **brokered** paths — workloads do not hold master keys.
 
 ## Events
 
@@ -38,19 +38,19 @@ Camp adapters (Vault JWT/OIDC, AWS SM, Azure KV, …) fetch through **brokered**
 | `config.Resolved` | Refs and ranks only |
 | `secret.Accessed` | Refs only — **never** material |
 
-CredentialAudit streams are never-compact.
+Credential audit streams are never-compact.
 
 ## Local overrides
 
-`encryptLocalOverrides` / `decryptLocalOverrides` for non-sensitive local DX. Agents and `hobo dev` use **schemaOnlyView** + contract-asserted fixtures — **no plaintext** in agent context, events, or IaC.
+Local non-sensitive overrides can be encrypted at rest for developer machines. Agents and `hobo dev` see a **schema-only view** plus contract-asserted fixtures — **no plaintext** in agent context, events, or IaC.
 
 ## Conformance
 
-`requireNoPlaintextConformance` fails closed on plaintext leakage patterns in the residual path.
+Conformance fails closed on plaintext leakage patterns in the residual path.
 
 ## WIT
 
-Experimental `hobo:secrets@0.1.0` under `@hobo/wit`; bridge with `asHoboSecretsStore` when hosting components.
+Experimental `hobo:secrets` WIT capability for component hosts that need a residual secrets store bridge.
 
 ## Related
 

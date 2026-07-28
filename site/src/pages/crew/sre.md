@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Docs.astro
-title: "SRE (moved) (moved)"
+title: "SRE (moved)"
 description: "This page moved to /HoBo/operations/sre/."
 ---
 

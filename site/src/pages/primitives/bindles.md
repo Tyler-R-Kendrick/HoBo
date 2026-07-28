@@ -12,28 +12,28 @@ The **Bindle** is HoBo's first primitive and the only thing HoBo ships. It's you
 
 ## Declaring a bindle
 
-A bindle is plain code, and this surface ships today in `@hobo/bindles`: the default export of your project's `src/bindle.ts` is exactly what `hobo collect`, `hobo plan`, `hobo up`, and `hobo dev` load (a committed `hobo.bindle.json` manifest artifact wins when present). `bindle(name, build)` hands your build function a resource builder; the object you return *is* the manifest:
+A bindle is plain code, and this surface ships today in `hobo/bindles`: the default export of your project's `src/bindle.ts` is exactly what `hobo collect`, `hobo plan`, `hobo up`, and `hobo dev` load (a committed `hobo.bindle.json` manifest artifact wins when present). `bindle(name, build)` hands your build function a resource builder; the object you return *is* the manifest:
 
 ```ts
-import { bindle } from "@hobo/bindles";
+import { bindle } from "hobo/bindles";
 
 import { app as api } from "./api";
 import { app as web } from "./webapp";
 
 export default bindle("my-app", (b) => {
-  const db = b.data().allow("read", "write");
-  const jobs = b.queue().allow("enqueue");
-  const cache = b.kv().allow("get", "set");
-  const uploads = b.bucket();
-  const apiKey = b.secret().allow("access");
+ const db = b.data().allow("read", "write");
+ const jobs = b.queue().allow("enqueue");
+ const cache = b.kv().allow("get", "set");
+ const uploads = b.bucket();
+ const apiKey = b.secret().allow("access");
 
-  const apiSvc = b
-    .api(() => api.fetch)
-    .dependsOn(db, jobs, cache, apiKey);
+ const apiSvc = b
+.api(() => api.fetch)
+.dependsOn(db, jobs, cache, apiKey);
 
-  const webSvc = b.web(() => web.fetch).dependsOn(apiSvc);
+ const webSvc = b.web(() => web.fetch).dependsOn(apiSvc);
 
-  return { db, jobs, cache, uploads, apiKey, api: apiSvc, web: webSvc };
+ return { db, jobs, cache, uploads, apiKey, api: apiSvc, web: webSvc };
 });
 ```
 
@@ -46,7 +46,7 @@ Resources fall into two authoring families:
 | **[App Kits](/HoBo/primitives/app-kits/)** | `api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component` | **Default-on** (privacy-first) |
 | **Infra Kits** | `data`, `kv`, `bucket`, `queue`, `topic`, `secret`, … | Off unless explicitly annotated |
 
-WIT/WASM (ADR-0069) is how ports and providers link at runtime; App Kits are the Bindle-facing surfaces you declare.
+WIT/WASM is how ports and providers link at runtime; App Kits are the Bindle-facing surfaces you declare.
 
 ## The builder surface
 
@@ -75,7 +75,7 @@ Every resource supports three chainable refinements:
 Every App Kit is annotated with platform option `session-replay` by default — **api, web, service, ui, websocket, job, wasm-component**, not only `web`. Local `hobo dev` wraps HTTP App Kits: HTML gets a privacy-first bootstrap; `/__hobo/replay/*` serves ingest/list — **no app tracker code required**.
 
 ```ts
-import { sessionReplay } from "@hobo/bindles";
+import { sessionReplay } from "hobo/bindles";
 
 // opt out one Kit
 b.api(() => handler).with(sessionReplay({ enabled: false }));
@@ -88,48 +88,48 @@ Details: [Session Replay](/HoBo/reference/session-replay/) · [App Kits](/HoBo/p
 Packing an existing app — the brownfield path above — is only half the story. A component can also be **declared**: a `@component` class whose `@operation` methods carry the groundings HoBo generates code from — an **intent** (what it's for, in prose), a **contract declaring the shape** (typed input and output, plus invariants and forbidden outputs — the boundary generated code may never cross; the shape is never optional), and an optional **rubric** (named scorers with promotion thresholds, enforced as policy at the gate — omit it and the gate defaults to exact-match over your contract's examples). An operation with a `stub()` body is **code to be generated**; a hand-written body is a baseline the optimizer improves.
 
 ```ts
-import { bindle } from "@hobo/bindles";
-import { component, operation, param, stub } from "@hobo/runtime";
+import { bindle } from "hobo/bindles";
+import { component, operation, param, stub } from "hobo/runtime";
 import { z } from "zod";
 import { Cart, Order, Photo, RankInput, submitOrder } from "./domain";
 
 @component({ intent: "Public storefront API: ranked feed, cart, checkout." })
 class Storefront {
-  @operation({
-    intent: "Order photos to maximize dwell without burying brand-new sellers.",
-    contract: {
-      input: RankInput,               // the shape — required
-      output: z.array(Photo),
-      forbiddenOutputs: ["output[0] is nsfw"],
-    },
-    params: { input: param("Candidate photos with engagement signals") },
-    rubric: { dwellLift: 0.8, newSellerShare: 0.75 }, // optional — sharpens the gate
-  })
-  rankFeed = stub<RankInput, Photo[]>(); // no implementation: generate it
+ @operation({
+ intent: "Order photos to maximize dwell without burying brand-new sellers.",
+ contract: {
+ input: RankInput, // the shape — required
+ output: z.array(Photo),
+ forbiddenOutputs: ["output[0] is nsfw"],
+ },
+ params: { input: param("Candidate photos with engagement signals") },
+ rubric: { dwellLift: 0.8, newSellerShare: 0.75 }, // optional — sharpens the gate
+ })
+ rankFeed = stub<RankInput, Photo[]>(); // no implementation: generate it
 
-  @operation({
-    intent: "Turn a priced cart into an order exactly once.",
-    contract: { input: Cart, output: Order },
-  })
-  async checkout(cart: Cart): Promise<Order> {
-    "use training"; // hand-written baseline the optimizer keeps improving
-    return submitOrder(cart);
-  }
+ @operation({
+ intent: "Turn a priced cart into an order exactly once.",
+ contract: { input: Cart, output: Order },
+ })
+ async checkout(cart: Cart): Promise<Order> {
+ "use training"; // hand-written baseline the optimizer keeps improving
+ return submitOrder(cart);
+ }
 }
 
 /** The bindle hands the declared component straight to the builder. */
 export default bindle("snapshop", (b) => {
-  const photos = b.bucket();
-  const catalog = b.data().allow("read", "write");
-  const api = b.api(Storefront).dependsOn(catalog, photos);
-  return { photos, catalog, api };
+ const photos = b.bucket();
+ const catalog = b.data().allow("read", "write");
+ const api = b.api(Storefront).dependsOn(catalog, photos);
+ return { photos, catalog, api };
 });
 ```
 
 `rankFeed` has zero implementation, and the loop from declaration to running code is the same convergence loop as everything else in HoBo:
 
 1. **Declare.** The bindle above is a complete, plannable manifest — `hobo plan` and `hobo up` work on it unchanged. Under the hood each `@operation` lowers to a **trainable** bound to its resource — signature-only for stubbed operations. That's the same machinery as `"use training"`, but you never touch it directly.
-2. **Stub.** `hobo stub` emits the generated registrations and a typed client into `src/_generated/`. Every declared operation is servable from day one by a **contract-derived stub**, so the whole app runs end-to-end before any implementation exists — and every stub call is recorded as a **specification-by-example** trace.
+2. **Stub.** `hobo stub` emits the generated registrations and a typed client into your project's generated output. Every declared operation is servable from day one by a **contract-derived stub**, so the whole app runs end-to-end before any implementation exists — and every stub call is recorded as a **specification-by-example** trace.
 3. **Generate.** The same **generation pipeline** that writes [provider adapters](/HoBo/customizations/providers/) synthesizes each operation's implementation from its interface + contract + recorded traces, in a capability-scoped sandbox with no egress.
 4. **Gate.** Promotion needs all three lenses: **conformance green** (the contract must never break), **eval thresholds met** (the rubric — scorer by scorer), and **policy allows** (prod promotions can require human approval).
 5. **Promote.** A passing candidate is written back into the operation's generated region as an AST-aware edit with signed provenance — auto-applied when low-risk, raised as a PR when not. Prior candidates live in the event log, so promotion is reversible.
@@ -139,12 +139,12 @@ Prefer declaring one grounding at a time? Every decorator is optional and the op
 ```ts
 @trainable
 export declare class Program {
-  @intent("Produce a simple hello-world program")
-  @returns("Hello World! or Hello, <name>! when supplied")
-  trainableMethod(
-    @description("Optional person to greet")
-    name?: string,
-  ): string;
+ @intent("Produce a simple hello-world program")
+ @returns("Hello World! or Hello, <name>! when supplied")
+ trainableMethod(
+ @description("Optional person to greet")
+ name?: string,
+ ): string;
 }
 ```
 

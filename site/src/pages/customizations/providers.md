@@ -23,10 +23,10 @@ If it's not behind one of these ports, HoBo doesn't call it. That constraint is 
 
 ## Writing an adapter
 
-1. **Pick the port.** Each port is a WIT interface published in `@hobo/wit`, with typed bindings and an event vocabulary in `@hobo/core`. Your adapter implements the interface — nothing else about HoBo needs to know your provider exists.
+1. **Pick the port.** Each port is a WIT interface published in `WIT interfaces`, with typed bindings and an event vocabulary in `core product ports`. Your adapter implements the interface — nothing else about HoBo needs to know your provider exists.
 2. **Implement against the contract, not the console.** Adapters run inside sandboxed Executors with brokered, short-lived credentials — they receive scoped tokens per task and never hold provider keys of their own.
 3. **Emit the port's events.** Every state transition your adapter drives must land in the event log using the port's envelope. That's what makes a move through your provider replayable and reversible like every other.
-4. **Run the conformance suite.** Each port ships a contract test corpus in `@hobo/conformance`. Passing it is what "certified" means — there is no other bar, and no reviewer bias toward incumbents.
+4. **Run conformance.** Each port ships a contract test corpus in conformance suite. Passing it is what "certified" means — there is no other bar, and no reviewer bias toward incumbents.
 5. **Publish.** A certified adapter shows up as a candidate home. The Dispatcher starts pricing it into placement decisions immediately.
 
 ## Or let an agent write it

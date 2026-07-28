@@ -19,18 +19,17 @@ A lease (conceptual shape):
 | `fenceToken` | Monotonic **bigint** epoch for this key |
 | Expiry | Optional lease deadline |
 
-`createInMemoryActorHost` exists for tests; production Camps use durable hosts that persist epoch across restarts (`@hobo/data` durable actor host paths + journal).
+In-memory hosts exist for tests; production Camps use durable hosts that persist epoch across restarts, backed by the journal.
 
 ## Dual placement (native · dapr)
 
-The same `defineActor` / `activateActor` definitions run under either host:
+The same actor definitions run under either host:
 
-| Mode | When | Package |
+| Mode | When | Notes |
 |---|---|---|
-| **native** (default) | No Camp dapr requirement | lease + fence on local / wasm hosts |
-| **dapr** | Camp `runtimeRequirements` includes `dapr` (or explicit placement) | `@hobo/runtime-dapr` ActorHost |
+| **native** (default) | No Camp dapr requirement | Lease + fence on local / wasm hosts |
 
-`resolveActorPlacement` in `@hobo/runtime` selects the host. Prefer native unless you need the sidecar path. See [Messaging, Kafka & Dapr](/HoBo/reference/messaging/) (ADR-0138).
+Prefer native unless you need the sidecar path. See [Messaging, Kafka & Dapr](/HoBo/reference/messaging/).
 
 ## Append algorithm coupling
 
@@ -40,9 +39,9 @@ When an aggregate is fenced:
 2. `decide` pure business rules in memory.
 3. `append` / `commit` with `expectedSeq` **and** `fenceToken`.
 4. Store compares token to stream head `owner_epoch`:
-   - equal → accept (and may bump epoch per engine rules)
-   - lower → `STALE_FENCE`
-   - missing on fenced stream → `MISSING_FENCE`
+ - equal → accept (and may bump epoch per engine rules)
+ - lower → `STALE_FENCE`
+ - missing on fenced stream → `MISSING_FENCE`
 
 Legacy streams start with `owner_epoch = 0` (unfenced). First fenced append enters fenced mode permanently.
 

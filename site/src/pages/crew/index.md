@@ -29,10 +29,10 @@ description: "Bring your own agents over ACP/A2A connectors: policy-gated, audit
 
 ## Rules for custom agents
 
-1. Authenticate as first-class principals — never ambient org-admin  
-2. Every tool call and token grant is an auditable fact  
-3. High-risk writes pass Gatekeeper / policy obligations  
-4. Prefer connector protocols HoBo owns (ACP/A2A) over inventing a private agent SDK  
+1. Authenticate as first-class principals — never ambient org-admin 
+2. Every tool call and token grant is an auditable fact 
+3. High-risk writes pass Gatekeeper / policy obligations 
+4. Prefer connector protocols HoBo owns (ACP/A2A) over inventing a private agent SDK 
 
 ## Related
 

@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Docs.astro
-title: "SWE (moved) (moved)"
+title: "SWE (moved)"
 description: "This page moved to /HoBo/operations/swe/."
 ---
 

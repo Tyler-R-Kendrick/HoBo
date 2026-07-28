@@ -20,9 +20,9 @@ HoBo’s primary observability substrate is the **event log** plus rebuildable p
 
 ## Principles
 
-1. “Why did the system do X?” → **replay**, not SSH folklore.  
-2. Crew and agent actions are facts.  
-3. Sandbox lanes are labeled so experiments do not pollute baseline views.  
+1. “Why did the system do X?” → **replay**, not SSH folklore. 
+2. Crew and agent actions are facts. 
+3. Sandbox lanes are labeled so experiments do not pollute baseline views. 
 
 ## Related
 

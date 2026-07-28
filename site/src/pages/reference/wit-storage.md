@@ -6,13 +6,13 @@ description: "hobo:storage@0.1.0 host capability, component isolation, no SQL ac
 
 # WIT & storage
 
-HoBo’s programmable surface is **WIT/WASM** (Component Model). TypeScript packages are the first reference implementation, not the only runtime. Storage for components is a **host-supplied capability**, not “open a file path from guest code.”
+HoBo’s programmable surface is **WIT/WASM** (Component Model). TypeScript is the first reference language, not the only runtime. Storage for components is a **host-supplied capability**, not “open a file path from guest code.”
 
 ## `hobo:storage@0.1.0`
 
 | Rule | Detail |
 |---|---|
-| Package | Generated bindings via `@hobo/wit` |
+| Surface | WIT capability bound by the host |
 | Guest sees | Engine-neutral storage operations aligned with EventStore semantics |
 | Guest must not see | SQL dialects, filesystem paths, driver pragmas |
 | Host implements | SQLite partition, future remote adapters, in-memory test fakes |
@@ -30,19 +30,19 @@ Conformance tests prove guests behave identically across hosts that implement th
 | Interface | Role |
 |---|---|
 | `hobo:storage` | Event/journal durability |
-| `hobo:secrets` | Residual secrets store bridge (`asHoboSecretsStore`) |
+| `hobo:secrets` | Residual secrets store bridge |
 | Runtime WIT ports | Broader Camp capabilities as they stabilize |
 
-Stability tags on `PortDescriptor` (`stable` | `preview` | `experimental`) apply — do not treat experimental WIT as frozen.
+Stability tags on port descriptors (`stable` | `preview` | `experimental`) apply — do not treat experimental WIT as frozen.
 
-## Coupling to ADR-0135
+## Coupling to engines
 
-SQLite is the **default host engine**, not the public portability boundary. Apps and components depend on ports/WIT; operators choose engines that pass `@hobo/conformance`.
+SQLite is the **default host engine**, not the public portability boundary. Apps and components depend on ports/WIT; operators choose engines that pass the conformance suite.
 
 ## Build path
 
-`hobo build` compiles services to wasm components with OCI fallback. Generated drift fails closed (`codegen --check` / build guards).
+`hobo build` compiles services to wasm components with OCI fallback. Drift between declared contracts and generated artifacts fails closed.
 
 ## Related
 
-[Package map](/HoBo/reference/packages/) · [EventStore](/HoBo/reference/eventstore/) · [Architecture](/HoBo/architecture/) · [WASM guide](/HoBo/architecture/wasm/)
+[Capability map](/HoBo/reference/packages/) · [EventStore](/HoBo/reference/eventstore/) · [Architecture](/HoBo/architecture/) · [WASM guide](/HoBo/architecture/wasm/)

@@ -6,7 +6,7 @@ description: "DurableEventStore port, stream heads, fencing, positions, transact
 
 # EventStore & journal
 
-## Ports (`@hobo/core`)
+## Ports
 
 | API | Role |
 |---|---|
@@ -16,7 +16,7 @@ description: "DurableEventStore port, stream heads, fencing, positions, transact
 ### Positioned events
 
 ```ts
-type EventPosition = bigint; // branded/parsed in core
+type EventPosition = bigint; // branded / parse-don't-validate
 interface PositionedEvent {
   position: EventPosition;
   event: EventEnvelope;
@@ -69,9 +69,9 @@ Legacy streams migrate with `owner_epoch = 0` (unfenced); first fenced append en
 | At-least-once subscriptions/outbox | Yes |
 | Exactly-once external delivery | **No** |
 
-## Packages
+## Engines
 
-`@hobo/storage-sqlite` · `@hobo/runtime-local` · `@hobo/runtime-browser` · WIT `hobo:storage@0.1.0`
+SQLite storage engine · local runtime · browser runtime · WIT `hobo:storage@0.1.0`
 
 ## Related testing
 

@@ -35,7 +35,7 @@ Both fold the **same append-only event log**. Snapshots are **caches**, never so
 5. Optional **`stageEffect`** stages queue/timer/outbox work for the same durable transaction.
 6. After commit, live subscribers wake; network dispatch of staged work is at-least-once.
 
-## Default durable store (ADR-0135)
+## Default durable store
 
 Camp EventStore defaults to a **single-owner SQLite partition** behind ports:
 
@@ -67,7 +67,7 @@ Event bodies evolve via forward-only upcasters. Poison events produce `*.Quarant
 
 ## Multi-aggregate work
 
-Cross-aggregate operations are **eventually consistent** by design. Use sagas/choreography (`@hobo/events`) and correlation ids — do not invent a distributed transaction across aggregate streams.
+Cross-aggregate operations are **eventually consistent** by design. Use sagas/choreography (events library) and correlation ids — do not invent a distributed transaction across aggregate streams.
 
 ## Related
 

@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Architecture
-description: "HoBo's reference architecture: the Yard control plane, the data plane, event-sourced components, the Dispatcher behind continuous migration, and the @hobo/* package layout."
+description: "HoBo reference architecture: Yard control plane, data plane, event-sourced components, and continuous migration."
 ---
 # Architecture
 
@@ -13,7 +13,6 @@ description: "HoBo's reference architecture: the Yard control plane, the data pl
 | [Control plane](/HoBo/architecture/control-plane/) | Yard: plan → gate → converge |
 | [WASM & WIT surface](/HoBo/architecture/wasm/) | Component Model ports & hosts |
 | [Air-gapped & sovereign](/HoBo/architecture/air-gapped/) | Zero-egress profiles |
-
 
 A condensed tour of the machinery that packs, places, and — crucially — *keeps re-placing* your app.
 
@@ -49,16 +48,16 @@ Two runtime/IfC additions: the **wasm host** (runs components; holds the link ta
 
 ```text
 hobo up
-  → Gateway authenticates the principal   → DeployRequested
-  → Planner solves the plan               → Planned
-  → Orchestrator spawns ResourceActors    → Provisioning … Provisioned
-  → (failure? sagas compensate)           → Failed → Compensating
-  → DAG completes                         → Deployed
+ → Gateway authenticates the principal → DeployRequested
+ → Planner solves the plan → Planned
+ → Orchestrator spawns ResourceActors → Provisioning … Provisioned
+ → (failure? sagas compensate) → Failed → Compensating
+ → DAG completes → Deployed
 
 …and later, unprompted:
-  Dispatcher spots a cheaper valid camp   → MigrationPlanned
-  → policy gate approves (or a human does)
-  → the exact same convergence loop       → Migrated
+ Dispatcher spots a cheaper valid camp → MigrationPlanned
+ → policy gate approves (or a human does)
+ → the exact same convergence loop → Migrated
 ```
 
 A crash anywhere is recovered by replaying the deployment's event stream. Inspection (`hobo inspect run <id>`) reads projections and never touches providers. There is deliberately no separate "migration engine" to trust — if you trust `hobo up`, you already trust a move.
@@ -71,26 +70,25 @@ A crash anywhere is recovered by replaying the deployment's event stream. Inspec
 4. **Same code, many Camps.** Swapping a Camp's runtime backend changes durability backing, never app logic — that's what keeps moves cheap.
 5. **Deny-by-default linking.** A deployed component reaches a backend only via a link the manifest declared.
 
-## Package layout
+## Capability layers
 
-> **Design-stage layout:** this table is the *target* package map — not everything in it ships yet. Shipping today (among others): `@hobo/bindles`, `@hobo/camps`, `@hobo/yards`, `@hobo/core`, `@hobo/cli`, `@hobo/mcp` (served by the `hobo-mcp` binary), `@hobo/broker` (the [Conductor](/HoBo/primitives/stations/#the-conductor) decision authority), `@hobo/contracts` (Contract IR + Gatekeeper + EffectSpec/ResilienceProfile), `@hobo/storage-sqlite` + `@hobo/runtime-local` (default durable SQLite EventStore), `@hobo/runtime-browser` (browser SQLite/OPFS policy), the Cloudflare/ax/agentv provider adapters, and the Pulumi IaC engine. `@hobo/junctions` is deliberately deferred to the multi-cloud build stage (S4); the aws/azure/gcp/fly/kubernetes providers and the postgres/temporal/restate runtime backends are designed, **not installable packages**.
+Public surfaces stack like this — adapters plug in without rewriting apps:
 
-The `@hobo/*` packages are layered; dependencies point inward only (`apps → adapters → sdk/runtime → core`), keeping adapters swappable and the agnostic core clean:
-
-| Layer | Packages |
+| Layer | What you work with |
 |---|---|
-| Authoring | `@hobo/bindles` (IfC resources + `.allow()`), `@hobo/camps`, `@hobo/yards`, `@hobo/junctions` |
-| Contracts | `@hobo/core` (ports, event envelope, EventStore/DurableEventStore), `@hobo/wit` (WIT + `hobo:storage`), `@hobo/conformance`, `@hobo/contracts` (IR + Gatekeeper + **EffectSpec** + **ResilienceProfile**), `@hobo/policy`, `@hobo/contract-harness` |
-| Runtime | `@hobo/runtime` (actors, workflow/step, agents), `@hobo/data`, `@hobo/events`, `@hobo/storage-sqlite` (default journal semantics), `runtimes/*` (**local** SQLite, **browser** OPFS policy, postgres, temporal, restate, cloudflare) |
-| Adapters | `providers/*` (aws, azure, gcp, cloudflare, fly, kubernetes), `iac/*` (pulumi primary; cdktf, crossplane, opentofu), `build/*` (wasm, dagger, packer) |
-| Surfaces | `@hobo/cli`, `@hobo/sdk` (operator SDK), `@hobo/mcp`, `@hobo/registry`, `@hobo/identity`, `@hobo/componentize` |
+| **Authoring** | Bindles, App Kits, Camps, Yards, Junctions |
+| **Contracts & policy** | Boundary contracts, Gatekeeper, policy packs, effects/resiliency intent |
+| **Runtime ports** | EventStore, Queue, Messaging, Streamer, ActorHost, Clock |
+| **Hosts & engines** | Local/browser journals, Wasmtime, OCI/Kubernetes, optional cloud-native hosts |
+| **Control** | Stations, Conductor, Trails, progressive delivery (Harness) |
+| **Surfaces** | `hobo` CLI, MCP, identity, connectivity |
 
-### Durable event log default (SQLite behind ports)
+See the [capability map](/HoBo/reference/packages/) for the product-facing overview and the [trail map](/HoBo/guide/status/) for what ships today.
 
-The Camp durable EventStore defaults to **SQLite** as the engine, with one database file (**partition**) owned by one active writer. Scale by partitions — not by multi-writer access to one WAL over shared network storage. SQLite is **not** the public portability boundary: the same `EventStore` / `DurableEventStore` ports, WIT `hobo:storage`, and journal semantics can be implemented by managed stores later. Stream revision uses a stream-head row (not a full scan), actor **fencing tokens** reach storage, and domain events can commit atomically with staged queue/timer/outbox effects. Database-local **positions** support catch-up projections without becoming domain event identity.
+### Durable event log default
+
+The Camp durable EventStore defaults to **SQLite**, with one database file (**partition**) owned by one active writer. Scale by partitions — not multi-writer access over shared network storage. SQLite is an **engine**, not the portability boundary: the same EventStore ports and storage capability can be implemented by other stores later. Stream revision uses a stream head (not a full scan), actor **fencing tokens** reach storage, and domain events can commit atomically with staged queue/timer/outbox work. Store-local **positions** support catch-up without becoming domain identity.
 
 ### Contract effects + visible resiliency
 
-Boundary contracts may declare optional **effects** (what the boundary can do: pure vs network/storage/…) and optional **resiliency profiles** (deterministic retry, timeouts, circuit-breakers — as metadata + thin fact-emitting application). Effect widening can break can-deploy compatibility when consumers assumed purity. Resiliency stays **secondary**: it never becomes a top-level primitive like Policy or the Gatekeeper, and `policy.Decided` denials / terminal failures **never** enter a retry schedule.
-
-Structural rules are enforced mechanically: every package pairs `src/`, `test/`, `contracts/`, and `data-models/`, and architecture guards keep the layering honest.
+Boundary contracts may declare optional **effects** (pure vs network/storage/…) and optional **resiliency profiles** (deterministic retry, timeouts, circuit-breakers). Effect widening can break can-deploy when consumers assumed purity. Resiliency stays **secondary** — it is not a top-level control-plane noun — and policy denials / terminal failures **never** enter a retry schedule.

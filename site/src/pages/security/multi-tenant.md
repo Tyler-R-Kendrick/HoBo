@@ -38,7 +38,7 @@ AI operators and generation paths run under enforced guardrails (PII, jailbreak,
 
 ## Network isolation
 
-Hard environment isolation and optional Privileged Access Gateway bound who can reach what. Overlay (Tailscale/Netbird-class) and hierarchical DNS names live in `@hobo/connectivity` — never bare `.hobo` TLD. Details: [Connectivity](/HoBo/reference/connectivity/) · [Naming](/HoBo/reference/naming/).
+Hard environment isolation and optional Privileged Access Gateway bound who can reach what. Overlay (Tailscale/Netbird-class) and hierarchical DNS names live in connectivity — never bare `.hobo` TLD. Details: [Connectivity](/HoBo/reference/connectivity/) · [Naming](/HoBo/reference/naming/).
 
 ## Supply chain
 

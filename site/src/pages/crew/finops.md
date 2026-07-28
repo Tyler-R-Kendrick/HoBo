@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Docs.astro
-title: "FinOps (moved) (moved)"
+title: "FinOps (moved)"
 description: "This page moved to /HoBo/operations/finops/."
 ---
 

@@ -6,7 +6,7 @@ description: "How to test the default SQLite EventStore: stream-head CAS, fencin
 
 # Durable EventStore testing
 
-The Camp **EventStore** defaults to SQLite behind ports (ADR-0135). Tests should exercise the **real semantics**, not an idealized in-memory fake, whenever durability is the claim under test.
+The Camp **EventStore** defaults to SQLite behind ports. Tests should exercise the **real semantics**, not an idealized in-memory fake, whenever durability is the claim under test.
 
 ## What “default SQLite” means
 
@@ -19,20 +19,10 @@ The Camp **EventStore** defaults to SQLite behind ports (ADR-0135). Tests should
 | Atomic **commit** of events + effects | Rollback leaves neither events nor queue/timer/outbox |
 | Snapshots are **caches** | Cannot write snapshot ahead of stream head |
 
-## Packages under test
+## Where it lives
 
-| Package | Focus |
-|---|---|
-| `@hobo/storage-sqlite` | Schema v2, migration v1→v2, journal algorithm, codecs |
-| `@hobo/runtime-local` | Node adapter, storage worker protocol, fold/quarantine |
-| `@hobo/runtime-browser` | OPFS policy; fail-closed without durable open |
-| `@hobo/data` | Aggregate passes `fenceToken`; effect staging |
+Exercise durability through the Camp EventStore and your package tests — not a toy fake of the journal.
 
-```bash
-pnpm --filter @hobo/storage-sqlite test
-pnpm --filter @hobo/runtime-local exec vitest run test/eventstore
-pnpm --filter @hobo/runtime-browser test
-```
 
 ## Minimum durability matrix
 

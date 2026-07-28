@@ -6,7 +6,7 @@ description: "OpenFeature flags, OpenDelivery, OpenExperiment, gateway weights, 
 
 # Harness & progressive delivery
 
-**Harness** is the flags / progressive delivery / experiments plane realized in **`@hobo/identity`**. It is **not** a second infrastructure control plane — it routes **traffic and contract observation** safely.
+**Harness** is the flags / progressive delivery / experiments plane. It is **not** a second infrastructure control plane — it routes **traffic and contract observation** safely.
 
 ## Standards-shaped cores
 
@@ -26,9 +26,9 @@ description: "OpenFeature flags, OpenDelivery, OpenExperiment, gateway weights, 
 | Feature flags | Ranked evaluation with audit facts |
 | Experiments | Bounded exposure |
 | Gateway weights | Shift traffic across revisions/camps |
-| Sandbox lanes | Isolate experimental contract observations (ADR-0076) |
+| Sandbox lanes | Isolate experimental contract observations |
 | Delivery composition | Safe rollout steps shared with Trails |
-| Continuous delivery plane | Workload-attested apply of Gatekeeper-approved sets (`@hobo/cloud` CD) composes Harness |
+| Continuous delivery plane | Workload-attested apply of Gatekeeper-approved sets (cloud control plane CD) composes Harness |
 
 ## Rules
 

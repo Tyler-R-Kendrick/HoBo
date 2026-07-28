@@ -21,9 +21,9 @@ If an agent acted, the log can explain it. “The model said so” is not an aud
 
 ## Replay questions
 
-- What tools ran between T0 and T1?  
-- Which policy version allowed the destroy proposal?  
-- What was the fence/deployment correlation id?  
+- What tools ran between T0 and T1? 
+- Which policy version allowed the destroy proposal? 
+- What was the fence/deployment correlation id? 
 
 Use `hobo inspect`, event exports, and `hobo attest` for external GRC — not screenshots of secrets.
 

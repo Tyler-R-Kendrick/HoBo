@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Docs.astro
-title: "GitOps (moved) (moved)"
+title: "GitOps (moved)"
 description: "This page moved to /HoBo/operations/gitops/."
 ---
 

@@ -6,7 +6,7 @@ description: "App-owned continuous migration recipes: steps, can-trail, dual fix
 
 # Trails
 
-**Trails** are app-owned, versioned continuous migration recipes (`@hobo/trails`). They compose platform capabilities — schema duals, junction rebinds, progressive cutover, `identity.continuous` — without forcing Trail authoring for pure identity continuous.
+**Trails** are app-owned, versioned continuous migration recipes (Trails package). They compose platform capabilities — schema duals, junction rebinds, progressive cutover, `identity.continuous` — without forcing Trail authoring for pure identity continuous.
 
 ## Step kinds (conceptual)
 

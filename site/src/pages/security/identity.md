@@ -26,13 +26,13 @@ HoBo is **secretless-first**. Long-lived static cloud keys are the residual path
 
 Confused-deputy and runaway spend are mitigated by scoped SVIDs, policy gates, spend caps, and full replay.
 
-## Continuous identity migration (ADR-0132)
+## Continuous identity migration
 
 When identity providers or principal shapes change:
 
 - Dual-path continuity is Matching/policy-driven.
 - **Zero required Bindle config** for pure identity continuous.
-- Dual fixtures extend offline proofs.
+- Dual fixtures extend offline fixtures.
 - Observe with `hobo identity status` / `hobo doctor`.
 - Do not invent a parallel IdP DSL or Bindle-only migration product.
 
@@ -40,7 +40,7 @@ Trails may *compose* `identity.continuous`; pure identity continuous needs no Tr
 
 ## Secrets residual path
 
-`secret(name)` / `hobo:secrets` remain for Nitric-parity and residual classical credentials. Prefer `fromBinding`, bound resources, and federation. Config resolution ranks secretless sources first — [Config & secrets](/HoBo/reference/config-secrets/).
+`secret(name)` / `hobo:secrets` remain for legacy-compatible and residual classical credentials. Prefer `fromBinding`, bound resources, and federation. Config resolution ranks secretless sources first — [Config & secrets](/HoBo/reference/config-secrets/).
 
 ## Multi-tenant context
 

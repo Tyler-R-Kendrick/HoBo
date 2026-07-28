@@ -28,9 +28,9 @@ Progressive delivery is how HoBo shifts **traffic, flags, and contract observati
 
 ## CLI
 
-- `hobo feature …` — flags / progressive ops  
-- `hobo trails plan|status|inspect` — recipe observation  
-- `hobo inspect` — projections and time-travel  
+- `hobo feature …` — flags / progressive ops 
+- `hobo trails plan|status|inspect` — recipe observation 
+- `hobo inspect` — projections and time-travel 
 
 ## Testing
 

@@ -25,13 +25,13 @@ Guests use `hobo:storage@0.1.0` — **not** filesystem paths. Hosts bind SQLite 
 
 ## Messaging capability
 
-Publish/subscribe is **`wasi:messaging`** (`topic()`). Hosts may bind:
+Publish/subscribe is **the messaging port** (`topic()`). Hosts may bind:
 
-- Kafka / Redpanda / MSK via `@hobo/provider-kafka`
-- Dapr pub/sub via optional `@hobo/runtime-dapr` (Camp opt-in)
+- Kafka / Redpanda / MSK via Kafka provider
+- Dapr pub/sub via optional optional Dapr runtime (Camp opt-in)
 - Local in-memory for offline tests
 
-App code never imports Kafka or Dapr clients. See [Messaging, Kafka & Dapr](/HoBo/reference/messaging/) (ADR-0138).
+App code never imports Kafka or Dapr clients. See [Messaging, Kafka & Dapr](/HoBo/reference/messaging/).
 
 ## Build
 
@@ -43,4 +43,4 @@ WASM capability security sits beside data / compute / credentials / network isol
 
 ## Related
 
-[Architecture](/HoBo/architecture/) · [Messaging, Kafka & Dapr](/HoBo/reference/messaging/) · [Package map](/HoBo/reference/packages/) · [Security](/HoBo/security/)
+[Architecture](/HoBo/architecture/) · [Messaging, Kafka & Dapr](/HoBo/reference/messaging/) · [Capability map](/HoBo/reference/packages/) · [Security](/HoBo/security/)

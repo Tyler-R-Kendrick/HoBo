@@ -1,12 +1,12 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Naming & endpoints
-description: "Hierarchical DNS-valid names, .hobo.localhost / .hobo.test zones, getNamedEndpoint, portless local endpoints, and multi-tenant labels."
+description: "Hierarchical DNS-valid names, .hobo.localhost / .hobo.test zones, named endpoints, portless local endpoints, and multi-tenant labels."
 ---
 
 # Naming & endpoints
 
-HoBo names are **pure functions** of tenant/project/env/service labels — never free-form strings that invent a private TLD. Implementation lives in `@hobo/core` (`getNamedEndpoint`, `getNamedEndpointHost`, `sanitizeDnsLabel`) and is consumed by `@hobo/connectivity` for registration, DNS, and overlay.
+HoBo names are **pure functions** of tenant/project/env/service labels — never free-form strings that invent a private TLD. The naming helpers produce DNS-valid hosts; connectivity services use them for registration, DNS, and overlay.
 
 ## Hard rules
 
@@ -15,7 +15,7 @@ HoBo names are **pure functions** of tenant/project/env/service labels — never
 | **Never emit bare `.hobo`** | Not a public TLD; code that does is a bug |
 | **Local zone** | `*.hobo.localhost` (default local TLD `localhost`) |
 | **Overlay zone** | `*.hobo.test` (default overlay TLD `test`) |
-| **DNS-valid labels** | `sanitizeDnsLabel` — lowercase, length-capped, no illegal chars |
+| **DNS-valid labels** | Lowercase, length-capped, no illegal chars |
 | **Hierarchical** | Tenant → project → env → service (and optional branch) compose the host |
 | **Prod env omission** | Default omitted env is `prod` so production hosts stay short |
 
@@ -41,7 +41,7 @@ Soft multi-tenancy labels (also used by policy and metering):
 | `HOBO_BRANCH` | Branch / preview lane |
 | `HOBO_ENV` | Environment (`prod` often omitted in host) |
 
-When `requireTenant` is set on `NamedEndpointParams`, empty tenant fails closed.
+When tenant is required for a named endpoint, empty tenant fails closed.
 
 ## Who registers names
 

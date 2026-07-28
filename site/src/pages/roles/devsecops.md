@@ -36,9 +36,9 @@ one reviewable document, `hobo.broker.json`, and it is where budgets, cloud
 connectors, and your policy engine of choice all meet:
 
 ```bash
-hobo broker config --init   # scaffold hobo.broker.json
-hobo broker config          # validate it and print the policy hash
-hobo broker up              # realize placements under it
+hobo broker config --init # scaffold hobo.broker.json
+hobo broker config # validate it and print the policy hash
+hobo broker up # realize placements under it
 ```
 
 A production-shaped config:
@@ -54,7 +54,7 @@ A production-shaped config:
 			"scopeKind": "junction",
 			"objective": "min-cost",
 			"allowedRegions": ["eu-west-1", "eu-central-1"],
-			"deniedProviders": ["@hobo/provider-experimental"],
+			"deniedProviders": ["legacy-vendor"],
 			"requireExplicitCamps": true
 		}
 	],
@@ -94,23 +94,23 @@ A production-shaped config:
 What each block buys you:
 
 - **Placement policies** layer junction → yard → camp → bindle; your
-  restrictions (denied providers, region allowlists, the explicit-camp
-  lockdown) *accumulate* — no narrower policy can undo them.
+ restrictions (denied providers, region allowlists, the explicit-camp
+ lockdown) *accumulate* — no narrower policy can undo them.
 - **Billing** is enforcement, not reporting: quotas, a per-resolution spend
-  cap, and a budget the broker refuses to exceed — with a metered mode that
-  folds real usage facts into what's left.
+ cap, and a budget the broker refuses to exceed — with a metered mode that
+ folds real usage facts into what's left.
 - **Connectors** name the cloud accounts the Conductor may act through
-  (GitHub App, Pulumi, Azure, Vercel, Cloudflare, custom). `credentialRef`
-  points into the token broker — this file never contains a secret, so it
-  belongs in review like any other code.
+ (GitHub App, Pulumi, Azure, Vercel, Cloudflare, custom). `credentialRef`
+ points into the token broker — this file never contains a secret, so it
+ belongs in review like any other code.
 - **`policyEngine`** swaps the decision engine: keep the built-in typed
-  policy packs, or point at your **OPA/Rego** decision
-  (`hobo/broker/decision`) or **Cedar** authorizer. Either way the broker
-  *fails closed* — an unreachable policy engine denies, it never waves
-  things through. Every evaluation records a `policy.Decided` fact, allows
-  included.
+ policy packs, or point at your **OPA/Rego** decision
+ (`hobo/broker/decision`) or **Cedar** authorizer. Either way the broker
+ *fails closed* — an unreachable policy engine denies, it never waves
+ things through. Every evaluation records a `policy.Decided` fact, allows
+ included.
 - **Delivery** hands accepted receipts to your GitOps rollout (Argo CD) or
-  the in-proc executor.
+ the in-proc executor.
 
 And for trying policy changes safely: run `hobo broker up` with **no** cloud
 config, and the running machine registers itself as a zero-cost local HoBo

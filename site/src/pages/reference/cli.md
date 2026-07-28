@@ -1,12 +1,12 @@
 ---
 layout: ../../layouts/Docs.astro
 title: CLI surface
-description: "Canonical hobo verbs by role: lifecycle, diagnosis, authoring, identity, progressive delivery, broker/station, and distribution."
+description: "Canonical hobo verbs by role: lifecycle, diagnosis, authoring, identity, progressive delivery, broker/station, and distribution (38 verbs)."
 ---
 
 # CLI surface
 
-The `hobo` CLI is deliberately **small and stable**. The same verbs appear as MCP tools. Docs examples are linted against the canonical verb list.
+The `hobo` CLI is deliberately **small and stable**. The same **38** verbs appear as MCP tools. Docs examples use only this list.
 
 ## Lifecycle
 
@@ -15,26 +15,28 @@ The `hobo` CLI is deliberately **small and stable**. The same verbs appear as MC
 | `up` | Realize the object graph (build, plan, gate, provision, deploy) |
 | `down` | Reverse |
 | `dev` | Offline local Camp / inner loop |
-| `deploy` | Deploy-oriented delivery entry |
 | `plan` | Dry-run the up decision (approvable diff) |
 | `verify` | Unified Gatekeeper preflight (read-only) |
 | `can-deploy` | Producer/consumer compatibility diagnosis |
 
-`up` still runs the same gate as `verify` automatically before mutation.
+`up` still runs the same gate as `verify` automatically before mutation. Continuous delivery *observation* uses `deploy` (below), not a second ship verb.
 
 ## Identity, access, progressive
 
 | Verb | Role |
 |---|---|
-| `login` | Authenticate |
+| `login` | Authenticate / associate default broker |
 | `claim` | Bind anonymous deployment to an account |
-| `identity` | Continuous identity status / ops |
-| `access` | Access / RBAC operations |
+| `identity` | Continuous identity status / inspect |
+| `access` | Elevated / cross-env access or break-glass |
 | `connection` | Connection management (Station-bound) |
 | `feature` | Flags / progressive delivery (Harness) |
-| `trails` | Continuous migration recipes (`status|plan|inspect`) |
+| `deploy` | CD status / logs / rollback (attested apply plane) |
+| `incident` | CD failure disposition / A2H |
+| `trails` | Continuous migration recipes (`status` \| `plan` \| `inspect`) |
 | `station` | Station **ops/setup** (not app lifecycle) |
-| `yard` | Yard ops surfaces |
+| `yard` | Bare-metal Yard install / inspect |
+| `broker` | Conductor config + resolve + matrix |
 
 ## Authoring
 
@@ -42,7 +44,7 @@ The `hobo` CLI is deliberately **small and stable**. The same verbs appear as MC
 |---|---|
 | `new` | Scaffold |
 | `collect` | Resource collection → manifest IR |
-| `codegen` | Regenerate `_generated/` (`--check` fails on drift) |
+| `codegen` | Regenerate project bindings (`--check` fails on drift) |
 | `build` | Compile to wasm components (OCI fallback) |
 | `stub` | Contract-backed stub behind a WIT port |
 | `generate` | Generation pipeline entry |
@@ -55,11 +57,9 @@ The `hobo` CLI is deliberately **small and stable**. The same verbs appear as MC
 |---|---|
 | `inspect` | Projections / time-travel (`run`, `deploy`, `topology`, …) |
 | `logs` | Live-tail Camp Streamer |
-| `replay` | **Session Replay** (every App Kit) — `list|get|open|summarize|retention|doctor` (not event-log replay) |
-| `doctor` | Environment / credential / portability hazards (incl. Kafka + Dapr readiness) |
-| `messaging` | Messaging plane status, Kafka realize, dry-run secretless Dapr component YAML (ADR-0138) |
+| `replay` | **Session Replay** — `list` \| `get` \| `open` \| `summarize` \| `retention` \| `doctor` |
+| `doctor` | Environment / credential / portability hazards (incl. messaging readiness) |
 | `drift` | Drift + governed remediation |
-| `incident` | Incident disposition / A2H |
 | `runbook` | Execute runbooks (writes still policy-gated) |
 | `attest` | Signed evidence exports from audit facts |
 | `erase` | Crypto-shred subject + projection rebuild |
@@ -73,13 +73,16 @@ The `hobo` CLI is deliberately **small and stable**. The same verbs appear as MC
 | `registry` | Registry admin; signed offline bundle import |
 | `import` | Adopt estate in place — never destroy/recreate on import |
 
-## Broker (Conductor)
+## Station context
 
-| Verb | Role |
-|---|---|
-| `broker` | Conductor config + ops; requires Station context when available |
+For `station`, `broker`, `connection`, and station-aware `up` / `login`:
 
-Station context resolution: profile / `HOBO_STATION` / `--station`. Receipts pin `stationId` + `railHash`.
+1. `--station` / `--station-uri`
+2. `HOBO_STATION` / `HOBO_STATION_URI`
+3. `profile.defaultStation`
+4. Fail closed with remediation `hobo station init`
+
+Receipts pin `stationId` + `railHash`.
 
 ## Policy mapping
 
@@ -87,4 +90,4 @@ Control-plane verbs map to `hobo:<resource>:<verb>` policy actions (**deny-by-de
 
 ## Related
 
-[The hobo CLI](/HoBo/guide/cli/) · [MCP](/HoBo/agents/mcp/) · [Stations](/HoBo/primitives/stations/) · [Troubleshooting](/HoBo/troubleshooting/)
+[The hobo CLI](/HoBo/guide/cli/) · [MCP](/HoBo/agents/mcp/) · [Stations](/HoBo/primitives/stations/) · [Trail map](/HoBo/guide/status/)

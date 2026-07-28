@@ -12,32 +12,32 @@ description: "Developers write Bindles — the app, its resources, wiring, and p
 
 ```ts
 // src/bindle.ts — this is the only infrastructure you author
-import { bindle } from "@hobo/bindles";
+import { bindle } from "hobo/bindles";
 
 import { app as api } from "./api";
 import { app as web } from "./webapp";
 
 export default bindle("my-app", (b) => {
-  const db = b.data();
-  const jobs = b.queue();
+ const db = b.data();
+ const jobs = b.queue();
 
-  const apiSvc = b
-    .api(() => api.fetch)
-    .dependsOn(db, jobs)                          // wiring = typed runtime bindings
-    .allow("db:read", "db:write", "queue:send");  // least privilege, in the diff
+ const apiSvc = b
+.api(() => api.fetch)
+.dependsOn(db, jobs) // wiring = typed runtime bindings
+.allow("db:read", "db:write", "queue:send"); // least privilege, in the diff
 
-  const webSvc = b.web(() => web.fetch).dependsOn(apiSvc);
-  return { db, jobs, api: apiSvc, web: webSvc };
+ const webSvc = b.web(() => web.fetch).dependsOn(apiSvc);
+ return { db, jobs, api: apiSvc, web: webSvc };
 });
 ```
 
 ## Your loop
 
 ```sh
-hobo dev      # offline local camp, hot reload, replay
-hobo up       # deploy: plan, gate, provision, converge
-hobo logs     # live-tail through the camp runtime
-hobo inspect  # time-travel projections of any run
+hobo dev # offline local camp, hot reload, replay
+hobo up # deploy: plan, gate, provision, converge
+hobo logs # live-tail through the camp runtime
+hobo inspect # time-travel projections of any run
 ```
 
 ## What you never do

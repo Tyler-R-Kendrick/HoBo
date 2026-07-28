@@ -24,10 +24,10 @@ Start with **read-only diagnosis**, then gated mutate. Prefer CLI verbs that emi
 
 ## Gatekeeper denied
 
-1. Read `gatekeeper.Decided` reasons (`gate` field).  
-2. Contracts → fix producer/consumer skew (`can-deploy`).  
-3. Policy → change pack or satisfy obligation — **do not retry** denials.  
-4. Cost → quota/budget.  
+1. Read `gatekeeper.Decided` reasons (`gate` field). 
+2. Contracts → fix producer/consumer skew (`can-deploy`). 
+3. Policy → change pack or satisfy obligation — **do not retry** denials. 
+4. Cost → quota/budget. 
 5. Effects/resilience → visibility only unless configured as hard gate.
 
 ## Durability failures
@@ -46,9 +46,9 @@ Missing Station fails closed. `hobo station init` then set `defaultStation` / `a
 
 ## Still stuck
 
-- Replay the stream with `inspect`  
-- Check Crew handoffs for open obligations  
-- File evidence with `attest` exports — not screenshots of secrets  
+- Replay the stream with `inspect` 
+- Check Crew handoffs for open obligations 
+- File evidence with `attest` exports — not screenshots of secrets 
 
 ## Related
 

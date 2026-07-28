@@ -20,10 +20,10 @@ HoBo is ports-and-adapters all the way down. Customize by **registering** confor
 
 ## Rules
 
-1. Every adapter ships `@hobo/conformance` for the ports it claims.  
-2. Secrets stay refs — connectors use `credentialRef`, not ambient keys.  
-3. Custom **ACP agents** live under [The Crew](/HoBo/crew/) — not here.  
+1. Every adapter ships conformance suite for the ports it claims. 
+2. Secrets stay refs — connectors use `credentialRef`, not ambient keys. 
+3. Custom **ACP agents** live under [The Crew](/HoBo/crew/) — not here. 
 
 ## Related
 
-[Architecture](/HoBo/architecture/) · [Package map](/HoBo/reference/packages/) · [Trail map](/HoBo/guide/status/)
+[Architecture](/HoBo/architecture/) · [Capability map](/HoBo/reference/packages/) · [Trail map](/HoBo/guide/status/)

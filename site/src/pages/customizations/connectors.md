@@ -10,9 +10,9 @@ The Conductor acts on the outside world through a **connector registry** (GitHub
 
 ## Rules
 
-1. Register → sign/provenance/conformance when required  
-2. Broker short-lived access via Station connections + identity  
-3. Fail closed when the connector or policy engine is unavailable  
+1. Register → sign/provenance/conformance when required 
+2. Broker short-lived access via Station connections + identity 
+3. Fail closed when the connector or policy engine is unavailable 
 
 ## Related
 

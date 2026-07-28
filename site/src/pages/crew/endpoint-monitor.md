@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Docs.astro
-title: "Endpoint Monitor (moved) (moved)"
+title: "Endpoint Monitor (moved)"
 description: "This page moved to /HoBo/operations/endpoint-monitor/."
 ---
 

@@ -12,7 +12,7 @@ Behavior specs document **journeys** as executable evidence. HoBo does **not** u
 
 | Pattern | Detail |
 |---|---|
-| Gherkin / Cucumber | Features under draft proofs and selected packages |
+| Gherkin / Cucumber | Features under behavior specs |
 | Playwright as **driver** | Browser UI with **mocked** service boundaries |
 | Contract-derived mocks | From Pact / EffectSpec / fixtures |
 | Local Camp lane | `hobo dev` / sandbox against in-memory or SQLite |
@@ -23,9 +23,9 @@ Behavior specs document **journeys** as executable evidence. HoBo does **not** u
 - “E2E” that requires live provider credentials
 - Hand-written mocks that drift from contracts
 
-## Draft proofs
+## Behavior evidence
 
-Epic proofs require executable `features/` (`pnpm run test:behavior`). Technical proofs use examples/notebooks/benches per layer rules.
+Behavior specs use executable features with contract-derived mocks.
 
 ## Related
 

@@ -12,12 +12,12 @@ The **Junction** is HoBo's most advanced primitive: the federation layer that co
 
 **This is graduate-level wandering.** Most apps live happily in one camp for a long time; many never need a second yard. If you're just arriving, start with [Getting started](/HoBo/guide/getting-started/).
 
-> **Early-stage:** the `@hobo/junctions` package now ships the authoring and inference surface — `junction()`, connectivity-tier selection, the federated DNS plan, per-yard plan extraction, and the trust/policy/registry federation records. It's a local derivation engine: each yard still realizes its own half, and the realization machinery lands with the multi-cloud build stage (S4 on [the trail map](/HoBo/guide/status/)).
+> **Early-stage:** Junction authoring now ships the authoring and inference surface — `junction()`, connectivity-tier selection, the federated DNS plan, per-yard plan extraction, and the trust/policy/registry federation records. It's a local derivation engine: each yard still realizes its own half, and the realization machinery lands with the multi-cloud stage (see [the trail map](/HoBo/guide/status/)).
 
 ## Wiring a junction
 
 ```ts
-import { junction } from "@hobo/junctions";
+import { junction } from "hobo/junctions";
 
 import awsYard from "./yards/aws";
 import azureYard from "./yards/azure";

@@ -149,7 +149,7 @@ export const nav: NavGroup[] = [
 		slug: "/reference/",
 		items: [
 			{ label: "Reference overview", slug: "/reference/" },
-			{ label: "Package map", slug: "/reference/packages/" },
+			{ label: "Capability map", slug: "/reference/packages/" },
 			{ label: "Component hosts", slug: "/reference/component-hosts/" },
 			{ label: "EventStore & journal", slug: "/reference/eventstore/" },
 			{ label: "Schema & migrations", slug: "/reference/schema/" },

@@ -1,18 +1,18 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Connectivity
-description: "Overlay mesh, pluggable DNS, named endpoints, secretless connectors, isolation tiers, PAM, and metering sinks in @hobo/connectivity."
+description: "Overlay mesh, pluggable DNS, named endpoints, secretless connectors, isolation tiers, PAM, and metering sinks."
 ---
 
 # Connectivity
 
-Package **`@hobo/connectivity`** is the multi-tenant connectivity foundation: hierarchical naming consumers, overlay (Tailscale/Netbird-class), pluggable DNS, policy-aware isolation, secretless connector plugins, and metering sink hooks.
+**Connectivity** is the multi-tenant networking foundation: hierarchical naming consumers, overlay (Tailscale/Netbird-class), pluggable DNS, policy-aware isolation, secretless connector plugins, and metering sink hooks.
 
 ## Subsystems
 
 | Area | Role |
 |---|---|
-| **Naming** | Builds on `@hobo/core` pure naming functions; registers local/overlay endpoints |
+| **Naming** | Builds on pure naming helpers; registers local/overlay endpoints |
 | **Overlay** | Mesh membership for `.hobo.test` style reachability |
 | **DNS** | Memory, public managers (Route53/Cloudflare adapters), Junction dynamic DNS |
 | **Secretless connectors** | postgres/tcp/mysql/redis (+ registry) — workloads dial **names**, not material |
@@ -27,7 +27,7 @@ Package **`@hobo/connectivity`** is the multi-tenant connectivity foundation: hi
 |---|---|
 | Workload dials | Named endpoint only |
 | Material | Brokered by identity/connectivity — never ambient long-lived keys in app |
-| Protocols | Plugin registry (`SecretlessProtocolId`) |
+| Protocols | Plugin registry (postgres, tcp, mysql, redis, …) |
 | Residual | Classical URL+password only via explicit residual path + audit |
 
 ## Isolation

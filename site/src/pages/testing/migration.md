@@ -33,7 +33,7 @@ While dual is open, both old and new projections must answer consistently for in
 
 ## Trail golden
 
-`@hobo/trails` golden oracles pin plan/run verdicts for recipe shapes — treat like contract tests for migration recipes.
+Trails package golden oracles pin plan/run verdicts for recipe shapes — treat like contract tests for migration recipes.
 
 ## Related
 

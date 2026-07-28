@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Docs.astro
-title: "Platform Engineer (moved) (moved)"
+title: "Platform Engineer (moved)"
 description: "This page moved to /HoBo/operations/platform-engineer/."
 ---
 

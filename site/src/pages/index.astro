@@ -10,16 +10,16 @@ import Steamboat from "../components/scenes/Steamboat.astro";
 import Train from "../components/scenes/Train.astro";
 import { href } from "../lib/url";
 
-const bindleSnippet = `import { bindle } from "@hobo/bindles";
+const bindleSnippet = `import { bindle } from "hobo/bindles";
 
 import { app as helloApi } from "./api";
 import { app as helloWeb } from "./webapp";
 
 // Pack once — provider-agnostic by construction.
 export default bindle("hello-bindle", (b) => {
-  const api = b.api(() => helloApi.fetch);
-  const web = b.web(() => helloWeb.fetch).dependsOn(api);
-  return { api, web };
+ const api = b.api(() => helloApi.fetch);
+ const web = b.web(() => helloWeb.fetch).dependsOn(api);
+ return { api, web };
 });`;
 
 const shikiThemes = {
@@ -144,9 +144,10 @@ const shikiThemes = {
 					<p class="step-num">02 · SETTLE</p>
 					<h3>Pitch a Camp</h3>
 					<p>
-						A Camp is where the bindle lives right now: one provider, one
-						durable runtime. Pitch one to pin placement — or write none and
-						the Dispatcher infers the cheapest camp your policies allow.
+						A Camp is the environment shape your app occupies (prod,
+						staging, …) and the durable runtime substrate. Pitch one to pin
+						env semantics — or write none and HoBo infers a camp. Provider
+						selection lives on the Yard.
 					</p>
 				</div>
 				<div class="card">
@@ -173,7 +174,6 @@ const shikiThemes = {
 			</p>
 		</div>
 	</section>
-
 
 	<!-- ===================== Primitives bento ===================== -->
 	<section class="section" style="padding-top: 0;">
@@ -202,18 +202,18 @@ const shikiThemes = {
 				<a class="card" href={href("/primitives/camps/")}>
 					<h3><span class="term">Camp</span> <span class="sticker meadow">then here</span></h3>
 					<p>
-						Where the bindle lives right now: one provider target plus the
-						durable runtime. Pitch one to pin placement — or skip it and
-						HoBo infers a camp from the code you've configured.
+						Environment shape and runtime requirements — not the cloud
+						account. Pitch one to pin prod/staging semantics, or skip it
+						and HoBo infers a camp on the local lane.
 					</p>
 					<p class="card-cta">Pitch a camp (optional) →</p>
 				</a>
 				<a class="card" href={href("/primitives/yards/")}>
 					<h3><span class="term">Yard</span> <span class="sticker sky">advanced</span></h3>
 					<p>
-						One provider's camps under one roof: cross-camp policy,
-						identity, and reconciliation. Self-hostable — the Yard is
-						itself a bindle.
+						Provider selection point: one provider, zero or more camps,
+						shared policy and identity. Self-hostable — the Yard is itself
+						a bindle.
 					</p>
 					<p class="card-cta">Run a yard →</p>
 				</a>

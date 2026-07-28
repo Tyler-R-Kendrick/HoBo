@@ -1,70 +1,56 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Component hosts
-description: "Camp componentHost backends: runtime-local/browser EventStore engines vs wasm, oci, and cloud-native hosts."
+description: "Camp component hosts vs EventStore engines: local journal, browser journal, Wasmtime, OCI/Kubernetes, and optional cloud-native hosts."
 ---
 
 # Component hosts
 
-Camps separate two concerns that both live under `packages/runtimes/`:
+Camps separate two concerns:
 
-| Concern | Packages | Role |
+| Concern | Role |
+|---|---|
+| **Durable EventStore engines** | Single-owner journal, fencing, staged effects |
+| **Component hosts** | How Bindle components actually run |
+
+App authors pick ports and Bindles; operators choose engines. Conformance certifies claims.
+
+## EventStore engines (default path)
+
+| Engine | Host | Notes |
 |---|---|---|
-| **Durable EventStore engines** | `@hobo/runtime-local`, `@hobo/runtime-browser` (+ `@hobo/storage-sqlite`) | Single-owner journal, fencing, staged effects (ADR-0135) |
-| **Component hosts** | `@hobo/runtime-wasm`, `@hobo/runtime-oci`, `@hobo/runtime-cloud-native` | How bindle components actually run |
-| **Optional sidecar runtime** | `@hobo/runtime-dapr` | Dapr-backed ActorHost + pubsub when Camp opts in (ADR-0138; **not** default — ADR-0031) |
-
-App authors pick ports and Bindles; operators/hosts choose engines. Conformance certifies claims.
-
-## EventStore engines (shipped default path)
-
-| Package | Host | Notes |
-|---|---|---|
-| `@hobo/runtime-local` | Node | `node:sqlite` + storage worker |
-| `@hobo/runtime-browser` | Browser | SQLite WASM + OPFS; fail-closed if durable required without OPFS |
+| Local SQLite | Node / server | Storage worker; crash-safe defaults |
+| Browser SQLite | Browser | WASM + OPFS; fail-closed if durable required without OPFS |
 
 See [EventStore](/HoBo/reference/eventstore/) · [Runtime ports](/HoBo/reference/runtime-ports/).
 
 ## Component host kinds
 
-### `componentHost=wasm` — `@hobo/runtime-wasm`
+### Wasm (Wasmtime)
 
-- Private components componentized to **wasi:http** and run in **Wasmtime OS-process sandboxes**
-- Public web may stay process-local (wired by the app host)
-- Structural capability deny-by-default (only linked WIT imports are invokable)
+- Private components as **wasi:http** processes in sandboxes 
+- Public web may stay process-local 
+- Deny-by-default: only linked WIT imports are invokable 
 
-### `componentHost=oci` — `@hobo/runtime-oci`
+### OCI / Kubernetes
 
-1. Accept prebuilt wasi:http `.wasm` (composition often via `runtime-wasm`)
-2. Pack local **OCI** layout under `$HOBO_HOME/oci`
-3. Schedule on **Kubernetes** through a PACT-shaped **`KubectlTransport`** (`version`, `cluster-info`, `namespace/ensure`, `apply`, `rollout-status`)
+1. Accept prebuilt wasi:http components 
+2. Pack local OCI layout under the HoBo home directory 
+3. Schedule on Kubernetes through a typed transport (version, apply, rollout) 
 
-No ambient kubeconfig privileges outside the transport port.
+### Cloud-native registry
 
-### `componentHost=cloud-native` — `@hobo/runtime-cloud-native`
+- Multi-cloud host registry with a **mock** path for parity tests 
+- Cloud providers appear as they pass conformance 
 
-- Registry of multi-cloud host providers
-- **`mock`** provider for setup/parity tests
-- `aws` / `gcp` / `azure` / `vercel` / `cloudflare` entries are **stubs** until certified adapters land
+## Optional sidecar runtime
 
-### Optional `kind=dapr` — `@hobo/runtime-dapr`
+Some Camps may opt into a **sidecar-style** runtime (for example Dapr-backed actors and pub/sub). It is never the default local path.
 
-- Camp `runtimeRequirements: ["dapr"]` (or explicit placement) selects Dapr
-- Realizes **ActorHost** (single-writer mapped to Dapr concurrency) and **Messaging** over pub/sub (including generated `pubsub.kafka` YAML)
-- Inject `createInMemoryDaprClient()` for live harness fidelity; real `daprd` implements the same client interface
-- Default path remains in-process wasm — see [Messaging, Kafka & Dapr](/HoBo/reference/messaging/)
+## Later engines
 
-```ts
-import { createCloudNativeRuntimeHost } from "@hobo/runtime-cloud-native";
-
-const host = createCloudNativeRuntimeHost({ defaultProvider: "mock" });
-await host.ensure({ hoboHome });
-```
-
-## Design / later engines
-
-`runtime-postgres`, `runtime-temporal`, `runtime-restate`, `runtime-cloudflare` (Durable Objects) remain design-stage EventStore/workflow backends — not substitutes for the component-host table above.
+Postgres journals, Temporal, Restate, and similar remain future adapters behind the same ports.
 
 ## Related
 
-[Package map](/HoBo/reference/packages/) · [WASM guide](/HoBo/architecture/wasm/) · [Trail map](/HoBo/guide/status/) · [Conformance](/HoBo/testing/conformance/)
+[Capability map](/HoBo/reference/packages/) · [WASM guide](/HoBo/architecture/wasm/) · [Trail map](/HoBo/guide/status/) · [Conformance](/HoBo/testing/conformance/)

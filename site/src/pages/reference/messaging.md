@@ -1,41 +1,41 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Messaging, Kafka & Dapr
-description: "Unified wasi:messaging / topic() plane (ADR-0138): delivery guarantees, Kafka provider, optional Dapr Camp runtime, honest fidelity, and CLI surfaces."
+description: "Unified the messaging port / topic() plane: delivery guarantees, Kafka provider, optional Dapr Camp runtime, honest fidelity, and CLI surfaces."
 ---
 
 # Messaging, Kafka & Dapr
 
-**ADR-0138** unifies app messaging behind **ports**, not vendor SDKs. Bindles declare `topic()` / queue / actor `signal`; Camps select backends. **In-process wasm stays the default** (ADR-0031). Dapr is **opt-in**.
+HoBo unifies app messaging behind **ports**, not vendor SDKs. Bindles declare `topic()` / queue / actor `signal`; Camps select backends. **In-process wasm stays the default**. Dapr is **opt-in**.
 
 ## Authoring (ports only)
 
 ```ts
-import { topic } from "@hobo/bindles";
+import { topic } from "hobo/bindles";
 // Backend is Matching / Camp runtime selection — never import Kafka or Dapr clients here.
 const events = topic("user-created").allow("publish");
 ```
 
-Actors use the same `defineActor` / `activateActor` surface under **native** or **dapr** placement (`resolveActorPlacement`).
+Actors use the same definition surface under **native** or **dapr** placement.
 
-## Packages
+## Capability map
 
-| Package | Role |
+| Capability | Role |
 |---|---|
-| `@hobo/core` | `Messaging` port, delivery guarantees, tenant scoping, in-memory adapter |
-| `@hobo/provider-kafka` | Kafka / Redpanda / MSK / Confluent capability provider + Resource Definitions |
-| `@hobo/runtime-dapr` | Optional Camp runtime: ActorHost + pubsub + secretless component YAML |
-| `@hobo/runtime` | `resolveActorPlacement`, `signalActor` |
-| `@hobo/junctions` | Cross-Yard topic / actor-signal **federation plan** (control plane + identity) |
-| `@hobo/policy` | `hobo.policy.messaging/v1` (exactly-once, deny-Dapr, tenant quotas) |
-| `@hobo/conformance` | `runMessagingConformance` against Kafka and Dapr adapters |
+| Messaging port | Delivery guarantees, tenant scoping, in-memory adapter |
+| Kafka provider | Kafka / Redpanda / MSK / Confluent capability + resource definitions |
+| Optional Dapr runtime | Optional Camp runtime: ActorHost + pubsub + secretless component YAML |
+| Runtime placement | Native or Dapr actor placement and signal routing |
+| Junction federation | Cross-Yard topic / actor-signal **federation plan** (control plane + identity) |
+| Messaging policy | Exactly-once, deny-Dapr, tenant quotas |
+| Conformance suite | Messaging conformance against Kafka and Dapr adapters |
 
 ## Fidelity honesty
 
 | Mode | How | Label |
 |---|---|---|
 | Simulated | No transport / no Dapr client | `simulated` |
-| Live harness | `createInMemoryKafkaTransport()` / `createInMemoryDaprClient()` | `live` |
+| Live harness | In-memory Kafka / Dapr test doubles | `live` |
 | Live process | Real broker or daprd client implementing the same interfaces | `live` |
 | Forbidden | `live: true` without transport/client | **throws** |
 
@@ -57,10 +57,10 @@ Never treat a boolean flag as live while still on the pure emulator.
 
 | Command | Role |
 |---|---|
-| `hobo doctor` | Reports Kafka + Dapr readiness (`data.messaging`) |
-| `hobo messaging status` | Plane summary + fidelity notes |
-| `hobo messaging realize [topic]` | Plan-time Kafka Resource Definitions |
-| `hobo messaging component-yaml [binding]` | Dry-run secretless `pubsub.kafka` YAML |
+| `hobo doctor` | Reports Kafka + Dapr readiness and messaging hazards |
+| Authoring | Declare `topic()` in the Bindle; backends are Camp/Matching choices |
+
+Messaging plane diagnostics surface through `doctor` and contract/conformance suites — apps never import Kafka or Dapr clients.
 
 ## Permanent non-goals
 
@@ -71,4 +71,4 @@ Never treat a boolean flag as live while still on the pure emulator.
 
 ## Related
 
-[ActorHost](/HoBo/reference/actor-host/) · [Queue](/HoBo/reference/queue/) · [Component hosts](/HoBo/reference/component-hosts/) · [Package map](/HoBo/reference/packages/) · [CLI](/HoBo/reference/cli/) · [WASM & WIT](/HoBo/architecture/wasm/)
+[ActorHost](/HoBo/reference/actor-host/) · [Queue](/HoBo/reference/queue/) · [Component hosts](/HoBo/reference/component-hosts/) · [Capability map](/HoBo/reference/packages/) · [CLI](/HoBo/reference/cli/) · [WASM & WIT](/HoBo/architecture/wasm/)

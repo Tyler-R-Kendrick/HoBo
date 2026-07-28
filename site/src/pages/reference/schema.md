@@ -6,7 +6,7 @@ description: "SQLite user_version, streams/events/effects tables, codecs, legacy
 
 # Schema & migrations
 
-Default durable journal schema lives in **`@hobo/storage-sqlite`**. Engines may differ physically; **semantics** (stream heads, positions, fencing, staged effects) must pass conformance.
+Default durable journal schema lives in **SQLite storage engine**. Engines may differ physically; **semantics** (stream heads, positions, fencing, staged effects) must pass conformance.
 
 ## Versioning
 
@@ -27,7 +27,7 @@ Default durable journal schema lives in **`@hobo/storage-sqlite`**. Engines may 
 | `subscriptions` / checkpoints | Durable consumer positions |
 | `snapshots` | Optional fold caches (never source of truth) |
 
-Exact SQL is owned by the package; do not re-implement in apps.
+Exact SQL is owned by the storage engine; do not re-implement in apps.
 
 ## Native pragmas
 
@@ -35,7 +35,7 @@ Native single-owner partitions use WAL-friendly settings with **`synchronous=FUL
 
 ## Codecs
 
-Event payloads encode via versioned codecs. Unknown codec → `UNSUPPORTED_CODEC`. Upcasters live in the data plane (`@hobo/data`), not as silent rewrite of historical bytes without policy.
+Event payloads encode via versioned codecs. Unknown codec → `UNSUPPORTED_CODEC`. Upcasters live in the data plane, not as silent rewrite of historical bytes without policy.
 
 ## Migration rules
 

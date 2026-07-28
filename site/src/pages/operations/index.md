@@ -24,11 +24,11 @@ Also: [Shared model](/HoBo/operations/shared-model/) · [Handoffs & A2H](/HoBo/o
 
 ## Guarantees
 
-- Org RBAC — cannot exceed role  
-- Event-sourced observations and tool calls  
-- MCP tools where applicable  
-- Engine behind a port (swappable)  
-- Writes policy-gated (often require-approval in prod)  
+- Org RBAC — cannot exceed role 
+- Event-sourced observations and tool calls 
+- MCP tools where applicable 
+- Engine behind a port (swappable) 
+- Writes policy-gated (often require-approval in prod) 
 
 ## Related
 

@@ -1,85 +1,89 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Camps
-description: "The Camp is where your bindle lives right now — one provider, one durable runtime. Write one to pin placement, or let HoBo infer it from your configured code."
+description: "A Camp is an environment shape — where an app may live. Provider selection belongs on the Yard; Bindles stay provider-agnostic."
 ---
 
 # Camps
 
 > *A camp is where you stay, not who you are. Good campsites are worth appreciating — and leaving, when the rent goes up.*
 
-The **Camp** is HoBo's second foundational primitive: the answer to the question the [Bindle](/HoBo/primitives/bindles/) deliberately refuses to answer — *where does this app live right now?* A camp binds a bindle to **exactly one provider** and supplies the **durable runtime** the app's actors, workflows, queues, and clocks run on. Every running app lives in a camp — but **writing one is optional**: leave it out and HoBo infers a camp from the code you've configured. You write one to pin the choice yourself, or because your junction's broker admin requires explicit camps.
+The **Camp** is HoBo's second foundational primitive: the answer to *what kind of home is this?* — environment type, requirements, and preferences — **not** which cloud account or which Bindle owns the slot.
 
-## Pitching a camp
+Every running app occupies a camp, but **writing one is optional**: leave it out and HoBo infers a camp from policy and approved providers. You write one to pin environment semantics yourself, or because placement is locked down to explicit camps.
 
-> **Design-stage:** Camp authoring ships (`camp()`, default provider / tiers / bindings, env-type inference). Some provider and runtime examples below (for example Fly or managed Postgres) show the **designed** surface and may not be live yet. Shipped today: the Cloudflare provider path and the local runtime; the default `hobo up` lane is local/in-memory, with live lanes credential-gated.
+## What a camp is (and is not)
+
+| Camps **do** | Camps **do not** |
+|---|---|
+| Name an environment (`prod`, `staging`, `pr-123`, …) | Own a Bindle |
+| Carry `envType`, labels, require/prefer constraints | Select a cloud provider |
+| Declare runtime **requirements** (substrate needs) | Embed long-lived credentials |
+| Attach under a [Yard](/HoBo/primitives/yards/) | Mix providers in one camp |
+
+**Provider selection belongs on the Yard.** **Bindles stay provider-agnostic** and are placed by deployment request — not nested inside `camp(...)`.
+
+## Authoring
 
 ```ts
 import { camp } from "hobo/camps";
-import { aws } from "hobo/providers/aws";
-import { postgresRuntime } from "hobo/runtimes/postgres";
 
-import app from "./bindle";
+// Environment shape only — no bindle, no provider.
+export const prod = camp("prod", {
+  envType: "prod",
+  require: ["durable-storage"],
+  prefer: ["low-latency"],
+  runtimeRequirements: ["runtime-local"],
+  labels: { tier: "gold" },
+});
 
-export default camp("prod", {
- bindle: app,
- runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
- defaultProvider: aws({ region: "us-east-1" }),
+export const staging = camp("staging", {
+  envType: "staging",
 });
 ```
 
-A camp needs only `{ bindle, runtime, defaultProvider }` — the provider's built-in resource definitions match every port in the bindle's manifest automatically. Then:
-
-```sh
-hobo plan --camp prod # dry run: placement, cost, warnings
-hobo up --camp prod # converge
-```
-
-## Three levels of placement control
-
-All three mapping styles are **overrides** — each narrower one wins over the broader one. Resolution order per resource: **bindings → tiers → defaultProvider**.
+Attach camps when you author a yard:
 
 ```ts
-export default camp("prod", {
- bindle: app,
- runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
+import { yard } from "hobo/yards";
+import { prod, staging } from "./camps";
 
- // (a) whole-app: "host everything here, figure out the best way"
- defaultProvider: aws({ region: "us-east-1" }),
-
- // (b) per-tier: route classes of resource differently
- tiers: {
- saas: aws, // managed data services
- edge: cloudflare.workers(), // edge compute tier
- },
-
- // (c) per-boundary pin: a named resource → specific options
- bindings: {
- "my-app.api": aws.fargate({ cpu: 512, memory: 1024 }),
- },
+export default yard("aws-east", {
+  provider: "aws",
+  regions: ["us-east-1"],
+  camps: [prod, staging],
 });
 ```
+
+Then converge with the CLI:
+
+```sh
+hobo plan --camp prod   # dry run: placement, cost, warnings
+hobo up --camp prod     # converge
+```
+
+> **Day-one path:** you often never write a camp file. `hobo up` / `hobo dev` against the default **local lane** infers a local camp and durable SQLite journal with no cloud account. Explicit camps matter when you pin multi-env topology or platform policy requires them.
 
 ## Rules camps enforce
 
-- **One provider per camp.** Mixing providers in one camp is a hard error — that's what [Yards](/HoBo/primitives/yards/) (regions) and [Junctions](/HoBo/primitives/junctions/) (clouds) are for. The constraint is what keeps a camp cheap to reason about, price, and leave.
-- **The runtime is part of the address.** A camp's durable runtime (event store, queues, streams, actor host, clock) is a swappable backend — the local runtime ships today; postgres, temporal, restate, and cloudflare backends are designed. Swapping it changes durability backing, never app logic.
-- **Environment comes from the name.** `prod`, `staging`, `preview`/`pr-*`, and `dev` camps get sensible environment semantics inferred (and you can override `envType` when your naming is more creative).
+- **One home at a time.** Mixing providers in one camp is invalid — that's what [Yards](/HoBo/primitives/yards/) (one provider) and [Junctions](/HoBo/primitives/junctions/) (many providers) are for.
+- **Runtime is a requirement, not a vendor SDK.** Camps declare substrate needs (`runtimeRequirements`); engines that satisfy them plug in behind Camp ports (EventStore, Queue, ActorHost, Clock). The **local runtime** ships today; alternate engines (Postgres-backed, Temporal, Restate, …) are on the roadmap.
+- **Environment comes from the name.** `prod`, `staging`, `preview`/`pr-*`, and `dev` get sensible `envType` inference; override when your naming is more creative.
+- **Rejected at parse:** `bindle`, `defaultProvider`, `tiers`, and `bindings` on `camp(...)` — those belonged to an older model. Prefer Yard provider + Bindle deploy.
 
 ## Writing a camp is optional
 
-Every app lives in a camp — but *pitching* one isn't always your job:
-
-- **Inferred camps (the default).** With no camp declared, the Dispatcher infers one from the code you've configured and your platform's approved providers, optimizing for price under policy. An inferred camp is approved by policy, not automatically.
-- **Locked-down placement.** A [junction](/HoBo/primitives/junctions/) broker admin can turn inference off and require explicit, approved camps — governance decides how much choice stays with the app team.
-- **Local camp.** `hobo dev` runs your bindle against the local runtime — a full offline camp on your laptop, with honest fidelity labels where local behavior differs from cloud.
+- **Inferred camps (the default).** With no camp declared, the Dispatcher infers one from configured code and approved providers, optimizing for price under policy.
+- **Locked-down placement.** A junction broker admin can require explicit, approved camps.
+- **Local camp.** `hobo dev` runs your bindle against the local runtime — offline on your laptop, with honest fidelity labels where local behavior differs from cloud.
 
 ## Camps and continuous migration
 
-Here's the point of the whole design: **the camp is your app's current address, not its identity.** Because the bindle is provider-agnostic and every camp exposes the same runtime contract, the Dispatcher can propose a cheaper camp at any time — and the move is the same plan → gate → converge loop as `hobo up`. Appreciate every campsite. Commit to none.
+**The camp is your app's current address, not its identity.** Because the bindle is provider-agnostic and every camp exposes the same runtime contract, the Dispatcher can propose a cheaper camp at any time — and the move is the same plan → gate → converge loop as `hobo up`.
 
 ## Where camps go next
 
-- Several camps, one provider: [Yards](/HoBo/primitives/yards/).
-- Several providers: [Junctions](/HoBo/primitives/junctions/).
-- The machinery underneath: [Architecture](/HoBo/architecture/).
+- Provider scope and multi-region: [Yards](/HoBo/primitives/yards/).
+- Multi-cloud federation: [Junctions](/HoBo/primitives/junctions/).
+- Bindle authoring: [Bindles](/HoBo/primitives/bindles/).
+- Trail map: [Status](/HoBo/guide/status/).

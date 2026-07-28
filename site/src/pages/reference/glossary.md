@@ -9,8 +9,8 @@ description: "Site-facing definitions for HoBo primitives, ports, contracts, eff
 | Term | Definition |
 |---|---|
 | **Bindle** | Provider-agnostic packed app: services, resources, wiring, policy intent |
-| **Camp** | Current home: one provider + durable runtime substrate |
-| **Yard** | Provider control-plane scope over camps (policy, identity, reconciliation) |
+| **Camp** | Environment shape + runtime requirements; current home address (not provider selection) |
+| **Yard** | Provider selection point + camps; control-plane scope (policy, identity, reconciliation) |
 | **Junction** | Cross-yard federation; peer yards, no shared mutable state |
 | **Conductor / Broker** | Policy-governed placement authority (Conductor) |
 | **Station** | Hard control-plane isolation boundary a Conductor occupies |

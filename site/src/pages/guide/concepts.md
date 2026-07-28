@@ -15,8 +15,8 @@ Scopes nest by breadth: **`Bindle ⊂ Camp ⊂ Yard ⊂ Junction`**. The bindle 
 | Scope | What it is |
 |---|---|
 | **[Bindle](/HoBo/primitives/bindles/)** | The app, packed: services, resources, wiring, policies, and deployment intent. Provider-agnostic by construction — which is what makes it cheap to move. |
-| **[Camp](/HoBo/primitives/camps/)** | Where the bindle lives *right now*: a **provider-specific** runtime target (≈ a stack in one region) that hosts workloads and **provides the durable runtime** — event store, queues, streams, actor host, clock. |
-| **[Yard](/HoBo/primitives/yards/)** | One provider's camps under one roof: cross-camp policy, identity, reconciliation, and provider-global networking. One yard per provider. |
+| **[Camp](/HoBo/primitives/camps/)** | Environment shape (prod/staging/…) and runtime **requirements**. Does **not** own the Bindle or select the cloud provider. Durable runtime ports (EventStore, Queue, ActorHost, Clock) are provided by the Camp substrate. |
+| **[Yard](/HoBo/primitives/yards/)** | **Provider selection point** plus zero or more camps: cross-camp policy, identity, reconciliation, provider-global networking. One yard per provider. |
 | **[Junction](/HoBo/primitives/junctions/)** | Where yards meet: cross-yard **federation** for hybrid/multi-cloud. Peer yards, no shared mutable state — the final edge is federation, not containment. |
 
 Multi-region within a provider = several camps under one yard. Multi-cloud = several yards federated into a junction.

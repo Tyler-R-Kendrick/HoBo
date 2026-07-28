@@ -27,9 +27,10 @@ Where is HoBo on the road? Here's the honest itinerary.
 - **Component hosts.** Wasmtime, OCI/Kubernetes, and multi-cloud host options behind the same Camp ports.
 - **Messaging.** Unified `topic()` / messaging plane with Kafka and optional Dapr adapters; default remains the local in-process path.
 - **Session Replay on every App Kit.** Privacy-first capture; local dual fixtures default-on; production flag/sample gated; `hobo replay *`.
-- **MCP control surface.** Canonical CLI verbs as MCP tools over stdio, deny-by-default auth, audited decisions.
+- **MCP control surface.** All **38** canonical CLI verbs as MCP tools over stdio (1:1 parity), deny-by-default auth, audited decisions.
 - **Credential-gated live lanes.** Cloudflare, Vercel, and live IaC unlock with your own provider credentials.
-- **Not yet shipped:** full multi-cloud provider depth, Junction maturity, and alternate journal engines (Postgres, Temporal, Restate, …).
+- **Topology authoring.** `camp()` (env shape), `yard({ provider, camps })` (provider selection), `junction()` plan derivation — realization depth varies by stage.
+- **Not yet shipped:** full multi-cloud provider depth, Junction realization maturity, and alternate journal engines (Postgres, Temporal, Restate, …).
 
 ## How the build is staged
 

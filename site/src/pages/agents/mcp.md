@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: The MCP surface
-description: "HoBo's shipping MCP control surface: the hobo-mcp stdio binary serves all 28 canonical CLI verbs as tools, with verb/tool parity contract-tested, deny-by-default auth, and every decision audited."
+description: "HoBo's shipping MCP control surface: the hobo-mcp stdio binary serves all 38 canonical CLI verbs as tools, with verb/tool parity contract-tested, deny-by-default auth, and every decision audited."
 ---
 
 # The MCP surface
@@ -14,17 +14,17 @@ HoBo exposes its control plane over **MCP (Model Context Protocol)** — and thi
 
 ```json
 {
- "mcpServers": {
- "hobo": { "command": "hobo-mcp" }
- }
+  "mcpServers": {
+    "hobo": { "command": "hobo-mcp" }
+  }
 }
 ```
 
-Like the CLI, it defaults to the **local, in-memory lane**: `plan`, `up`, and `down` converge against an offline Yard runtime — no cloud account, no network. Live deploy lanes are **credential-gated by environment**: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or the real pinned Pulumi CLI engine (`provider live credentials`).
+Like the CLI, it defaults to the **local lane**: `plan`, `up`, and `down` converge against an offline Yard runtime with a durable SQLite journal — no cloud account required. Live deploy lanes are **credential-gated by environment**: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or live IaC credentials.
 
 ## Tools = the canonical verbs
 
-The tool surface is **derived from the CLI's 28 canonical verbs**, one tool per verb — `up`, `down`, `plan`, `dev`, `inspect`, `logs`, `drift`, `attest`, and the rest. Parity is a contract, not a convention: a structural parity check fails whenever the tool set diverges from the verb set, so there is no MCP-only subset and no MCP-only side door in either direction. A tool call becomes `hobo <verb> --json` over the shared dispatch path, and the result is the same JSON envelope the CLI emits, returned as inert data.
+The tool surface is **derived from the CLI's 38 canonical verbs**, one tool per verb — `up`, `down`, `plan`, `dev`, `station`, `trails`, `replay`, and the rest (see [the hobo CLI](/HoBo/guide/cli/)). Parity is a contract, not a convention: a structural parity check fails whenever the tool set diverges from the verb set, so there is no MCP-only subset and no MCP-only side door in either direction. A tool call becomes `hobo <verb> --json` over the shared dispatch path, and the result is the same JSON envelope the CLI emits, returned as inert data.
 
 Tool inputs accept `cwd` (resolve the project directory), `camp` (target camp), and `args` (extra verb arguments).
 

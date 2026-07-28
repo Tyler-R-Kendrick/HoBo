@@ -14,7 +14,7 @@ HoBo is an **AI-native meta-cloud** built on one guiding principle: **every app 
 
 *"Write your app once. HoBo finds it the cheapest home that meets your standards — and moves it when somewhere better opens up. Built for humans and the agents that work for them."*
 
-A developer (or an agent) packs the app into a [**Bindle**](/HoBo/primitives/bindles/), runs `hobo up`, and the app lands in a [**Camp**](/HoBo/primitives/camps/) — chosen by you, or by the Dispatcher optimizing over price, policy, and reliability. From then on, placement is a *standing decision*, not a historical one.
+A developer (or an agent) packs the app into a [**Bindle**](/HoBo/primitives/bindles/), runs `hobo up`, and the app lands in a [**Camp**](/HoBo/primitives/camps/) — inferred on the local lane by default, or pinned by topology you author. [**Yards**](/HoBo/primitives/yards/) select providers; camps describe environments. From then on, placement is a *standing decision*, not a historical one.
 
 ## Why "HoBo"?
 

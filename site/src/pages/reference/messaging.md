@@ -57,10 +57,10 @@ Never treat a boolean flag as live while still on the pure emulator.
 
 | Command | Role |
 |---|---|
-| `hobo doctor` | Reports Kafka + Dapr readiness (`data.messaging`) |
-| `hobo messaging status` | Plane summary + fidelity notes |
-| `hobo messaging realize [topic]` | Plan-time Kafka Resource Definitions |
-| `hobo messaging component-yaml [binding]` | Dry-run secretless `pubsub.kafka` YAML |
+| `hobo doctor` | Reports Kafka + Dapr readiness and messaging hazards |
+| Authoring | Declare `topic()` in the Bindle; backends are Camp/Matching choices |
+
+Messaging plane diagnostics surface through `doctor` and contract/conformance suites — apps never import Kafka or Dapr clients.
 
 ## Permanent non-goals
 

@@ -1,12 +1,12 @@
 ---
 layout: ../../layouts/Docs.astro
 title: The hobo CLI
-description: "The canonical hobo command surface: two lifecycle verbs (up, down), read-only diagnostics, authoring, governance, and generation commands."
+description: "The canonical hobo command surface: lifecycle up/down, local loop, identity, delivery, authoring, governance, and ops verbs — 38 verbs with MCP parity."
 ---
 
 # The `hobo` CLI
 
-The CLI is deliberately small — a hobo carries one stick, not a toolbox. **`up` and `down` are the only lifecycle verbs**: deploy, promotion, rollback, migration, and even self-host bootstrap are all flags on the same convergence loop, not separate commands. Every documented example on this site sticks to this canonical surface.
+The CLI is deliberately small — a hobo carries one stick, not a toolbox. **`up` and `down` are the only lifecycle verbs**: ship, promote, roll back, migrate, and even self-host bootstrap are flags on the same convergence loop, not separate commands. Every documented example on this site sticks to this canonical surface.
 
 ## Lifecycle
 
@@ -15,40 +15,55 @@ hobo up
 hobo up --camp prod
 hobo up --camp prod --to <revision>
 hobo up --rollback
-hobo up./platform --seed
+hobo up ./platform --seed
 hobo down --camp pr-123
 ```
 
-`up` realizes the current object graph: build, plan, gate, provision, deploy. `down` tears it back in reverse dependency order. `up` always reruns the applicable gate before mutation — a stale preflight can never authorize a deploy. Continuous migrations run this same loop; there is no separate `migrate` verb to learn, because a move is not a special event.
+`up` realizes the current object graph: build, plan, gate, provision, deploy. `down` tears it back in reverse dependency order. `up` always reruns the applicable gate before mutation — a stale preflight can never authorize a deploy. Continuous migrations run this same loop; there is no separate `migrate` verb.
 
-## The full verb surface
+## The full verb surface (38)
 
 | Verb | Role | Semantics |
 |---|---|---|
 | `up` / `down` | lifecycle | Realize / tear down the object graph. |
-| `dev` | local loop | Boot an offline local-runtime camp and serve your bindle's own api/web entrypoint handler in-process. |
+| `dev` | local loop | Offline local-runtime camp; serve api/web handlers in-process. |
 | `new` | local loop | Scaffold a runnable SDK program. |
-| `login` / `claim` | identity | OIDC dev identity; bind an anonymous deployment to an account. |
-| `plan` | read-only | Dry-run the `up` decision: plan, matching choices, cost, warnings. |
-| `verify` | read-only | Optional preflight of the unified gate decision. |
-| `can-deploy` | read-only | Compatibility-matrix diagnostic for producer/consumer skew. |
-| `inspect` | read-only | Projections and time-travel views (`run`, `deploy`, `topology`). |
-| `logs` | read-only | Live-tail logs/streams through the Camp runtime. |
+| `login` / `claim` | identity | Dev identity (OIDC/SVID path); bind an anonymous deployment to an account. |
+| `connection` | identity | Durable Connections (create / authorize / list / get / revoke / rotate). |
+| `identity` | identity | Continuous identity migration status / inspect (zero Bindle config). |
+| `access` | identity | Elevated / cross-env access or break-glass (short-lived, audited). |
+| `feature` | delivery | OpenFeature flags / canary / experiment (`list` \| `eval` \| `set` \| `kill` …). |
+| `deploy` | delivery | Attested continuous-delivery **status / logs / rollback** (not a second lifecycle). |
+| `incident` | delivery | CD failure disposition: A2H handoff or sandboxed self-heal. |
+| `plan` | read-only | Dry-run the `up` decision: plan, matching, cost, warnings. |
+| `verify` | read-only | Unified Gatekeeper preflight. |
+| `can-deploy` | read-only | Producer/consumer compatibility matrix. |
+| `inspect` | read-only | Projections and time-travel views (`run`, `deploy`, `topology`, …). |
+| `logs` | read-only | Live-tail Camp streams. |
 | `doctor` | diagnostics | Environment, credential, connectivity, and portability hazards. |
-| `codegen` / `build` / `collect` / `stub` | authoring | Regenerate generated bindings; compile to wasm components; produce the manifest IR; run contract-backed stubs. |
-| `drift` | diagnostics | Report drift; route governed remediation. |
-| `add` / `registry` | distribution | Install providers after signature/provenance/conformance checks; registry administration. |
-| `import` | migration | Adopt an existing estate in place — never destroy/recreate on import. HoBo meets your app where it currently lives. |
-| `generate` | generation | Request the provider-generation loop for a missing backend/capability — more homes on the map. |
-| `sandbox` / `test` | test loop | Isolated lanes with out-of-scope boundaries served from contracts. |
-| `attest` / `erase` | governance | Signed audit evidence exports; crypto-shred erasure with projection rebuild. |
-| `derivative` | extensibility | Manage derived HoBo implementations (fork + upgrade with conformance). |
-| `runbook` | SRE | Execute/replay declarative incident runbooks under policy obligations. |
+| `codegen` / `build` / `collect` / `stub` | authoring | Bindings, wasm components, manifest IR, contract-backed stubs. |
+| `drift` | diagnostics | Drift report + governed remediation paths. |
+| `add` / `registry` | distribution | Install providers after sig/provenance/conformance; registry admin. |
+| `import` | migration | Adopt an existing estate in place — never destroy/recreate on import. |
+| `generate` | generation | Request the provider-generation loop for a missing backend. |
+| `sandbox` / `test` | test loop | Isolated lanes; out-of-scope boundaries served from contracts. |
+| `attest` / `erase` | governance | Signed evidence exports; crypto-shred with projection rebuild. |
+| `broker` | governance | Conductor resolve / config / matrix (placement plane). |
+| `yard` | control plane | Install and inspect the default bare-metal Yard. |
+| `station` | control plane | Station ops/setup (`init` \| `up` \| `down` \| `status` \| `rails *`) — not lifecycle. |
+| `replay` | observability | Session Replay list/get/open/summarize/retention/doctor. |
+| `derivative` | extensibility | Manage derived HoBo implementations. |
+| `runbook` | SRE | Execute or replay incident runbooks under policy. |
 
-## Retired verbs
+## Not lifecycle (and not missing)
 
-Where you'd expect a verb from other tools, HoBo folds it into the model instead: `deploy`, `destroy`, `teardown`, `rollback`, and `promote` are all retired in favor of `up`/`down` and flags; `train`, `crew`, and `fleet` are SDK code and projections, not commands. If a verb would have described a one-time ceremony, it probably shouldn't exist — ceremonies are how platforms make moving expensive.
+Where other tools invent ceremony commands, HoBo folds them into the model:
+
+- **Lifecycle shipping** is only `up` / `down` (plus flags). A separate “deploy command” as *lifecycle* is rejected.
+- **`deploy` as a verb still exists** — it is the continuous-delivery *observe* surface (`status` / `logs` / `rollback`), not a second ship path.
+- `destroy`, `teardown`, `rollback`, and `promote` as standalone commands are rejected; use `down` or `up --rollback` / promotion via convergence.
+- `train`, `crew`, and `fleet` are SDK code and projections, not CLI verbs.
 
 ## Status
 
-All **27 canonical verbs ship today** in the composed `hobo` binary — running against the default **local, in-memory lane**, with live deploy lanes credential-gated by environment (Cloudflare/Vercel tokens, or `provider live credentials` for the real pinned Pulumi engine). The same 27 verbs are served as MCP tools by the [`hobo-mcp` binary](/HoBo/agents/mcp/), with verb/tool parity contract-tested. Some flags shown above (`--to`, `--rollback`, `--seed`) are contract-pinned design not yet wired; the global flags (`--json`, `--camp`, `--cwd`, `--verbose`, `-q`, `--help`) work everywhere. Track progress on [the trail map](/HoBo/guide/status/).
+All **38 canonical verbs** are on the composed `hobo` surface today and map **1:1** to [`hobo-mcp`](/HoBo/agents/mcp/) tools (parity is contract-tested). The default path is the **local lane**: offline Yard runtime, durable SQLite journal, no cloud account. Live deploy lanes are credential-gated (Cloudflare, Vercel, or live IaC credentials). Some advanced flags (`--to`, `--rollback`, `--seed`) and deeper multi-cloud depth are still maturing — see [the trail map](/HoBo/guide/status/). Global flags that work everywhere: `--json`, `--camp`, `--cwd`, `--verbose`, `-q`, `--help`.

@@ -10,12 +10,12 @@ Beyond the Camp **Queue** port, HoBo has a **messaging** surface for brokered to
 
 ## Entry points
 
-| Piece | Package / page |
+| Piece | Surface |
 |---|---|
-| Messaging port | `core product ports` · [Messaging reference](/HoBo/reference/messaging/) |
-| Kafka provider | Kafka provider |
-| Dapr runtime | optional Dapr runtime |
-| CLI | `hobo messaging …` / doctor integration |
+| Messaging port | [Messaging reference](/HoBo/reference/messaging/) · Bindle `topic()` |
+| Kafka provider | Kafka-compatible capability provider |
+| Dapr runtime | Optional Camp runtime for pubsub / actors |
+| CLI | `hobo doctor` reports messaging readiness; plane details in the messaging reference |
 
 ## Related
 

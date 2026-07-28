@@ -32,11 +32,28 @@ Aesthetic: **Steamboat Willie / Cuphead / rubberhose** (thick ink, sticker shado
 film grain, Chewy title cards, B&W day/night inversion). Runtime CSS remains
 `src/styles/global.css`; keep the two aligned.
 
+### Repo-wide gate (pre-commit)
+
+Every **web UI** package must ship a root `DESIGN.md`. Discovery:
+
+| Signal | Meaning |
+|---|---|
+| Path is `site/` | Always a web UI root |
+| `"hobo": { "webUi": true }` in package.json | Explicit web UI |
+| Depends on `astro` / `next` / `nuxt` / … | Framework-hosted web app |
+| Already has `DESIGN.md` | Opt-in visual contract |
+
+Lint all of them with the same CLI:
+
 ```sh
-pnpm --filter hobo-site run design:lint         # structure + WCAG (0 errors)
+pnpm run design:lint                            # all web UI DESIGN.md files (pre-commit)
+pnpm --filter hobo-site run design:lint         # this package only
 pnpm --filter hobo-site run design:export:css   # Tailwind v4 @theme export
 pnpm --filter hobo-site run design:export:dtcg  # W3C design tokens
 ```
+
+`pnpm run check:relevant:staged` (the pre-commit path) selects `design:lint` when
+`DESIGN.md`, `site/` UI sources, or `scripts/check-design-md.mts` change.
 
 Agent skill mirrors: `.agents/skills/design-md` and `.claude/skills/design-md`.
 

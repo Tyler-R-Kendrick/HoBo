@@ -346,6 +346,12 @@ export {
 	type SandboxCommandDeps,
 } from "./sandbox-command.js";
 export {
+	featurePortFromStore,
+	resolveCodeFeatures,
+	type CodeCommandDeps,
+} from "./code-command.js";
+export { describeCodeHarnessHealth } from "./code-health.js";
+export {
 	type CreateDeploymentInput,
 	createVercelClient,
 	type VercelClient,

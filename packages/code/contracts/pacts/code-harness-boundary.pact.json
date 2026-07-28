@@ -1,0 +1,73 @@
+{
+	"consumer": {
+		"name": "@hobo/code"
+	},
+	"provider": {
+		"name": "hobo-code-isolation-runtime"
+	},
+	"interactions": [
+		{
+			"description": "create isolation context with worktree fallback when rift unavailable",
+			"request": {
+				"method": "POST",
+				"path": "/code/isolation",
+				"body": {
+					"runId": "run-1",
+					"branch": "code/run-1",
+					"preferRift": true
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"schemaVersion": "hobo.code.isolation/v1",
+					"status": "open",
+					"backend": {
+						"kind": "worktree"
+					}
+				}
+			}
+		},
+		{
+			"description": "cleanup leaves zero orphans and primary worktree clean",
+			"request": {
+				"method": "POST",
+				"path": "/code/isolation/cleanup",
+				"body": {
+					"runId": "run-1"
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"status": "cleaned",
+					"orphans": []
+				}
+			}
+		},
+		{
+			"description": "promotion is gated and squash-only",
+			"request": {
+				"method": "POST",
+				"path": "/code/promote",
+				"body": {
+					"runId": "run-1",
+					"squashOnly": true
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"ok": true,
+					"code": "HOBO_CODE_PROMOTED",
+					"cleaned": true
+				}
+			}
+		}
+	],
+	"metadata": {
+		"pactSpecification": {
+			"version": "3.0.0"
+		}
+	}
+}

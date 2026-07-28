@@ -38,6 +38,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`security-networking.md`](./security-networking.md#plan-12) | Security, networking & multi-tenant applications | 12, 50 |
 | [`developer-experience.md`](./developer-experience.md#plan-07) | Developer experience: dashboards, CLI, status pages & availability | 07, 49 |
 | [`cli-spec.md`](./cli-spec.md) | Canonical CLI verb surface + lifecycle semantics | — |
+| [`hobo-code-isolation-runbook.md`](./hobo-code-isolation-runbook.md) | HoBo Code isolation platform matrix, promotion, and mandatory cleanup runbook (`hobo-code` binary / `@hobo/code`, ADR-0139) | — |
 | [`deployment-dashboard-topology-explorer.md`](./deployment-dashboard-topology-explorer.md) | Productization M0 scope and acceptance for Deployment Dashboard & Topology Explorer | — |
 | [`plan-diff-viewer.md`](./plan-diff-viewer.md) | Productization M0 scope and acceptance for Plan/Diff Viewer | — |
 | [`security-verification.md`](./security-verification.md) | V1 vulnerability disclosure and security launch-blocker process | — |

@@ -618,3 +618,77 @@ Operators and coding agents need OpenReplay-class session reconstruction for web
 - **(+)** Agents and humans get a first-class session evidence surface that dogfoods Stations, privacy defaults, and progressive delivery without a second event bus or secret store.
 - **(+)** Naming split (`replay.*` vs event-log "replay" vs auth `session.*`) prevents contract and doc collisions.
 - **(−)** Three "replay/session" concepts must stay documented in glossary and CLI help; authors must not emit full DOM streams into the control-plane log.
+## ADR-0139
+**HoBo Code: coding harness and harness multiplexer (`hobo-code` / `@hobo/code`).**
+
+### Context
+Agents and humans need an opinionated path to write complete HoBo apps/Bindles end-to-end with extreme templates + ts-autocode, while protecting the canonical project tree. Existing surfaces already cover pieces — `hobo codegen` (HOBO-152), hobo-code-dsl (HOBO-394), `hobo sandbox`, stations (ADR-0131), trails (ADR-0134), OpenFeature/Harness (ADR-0044/0083), FinOps, SWE connectors, connectivity named endpoints (ADR-0130) — but there was no elevated **coding harness + multiplexer** that composes them under one product CLI with isolation purity, evidence triples, and durable learning outside ephemeral sandboxes.
+
+External foundations inform the design (rift CoW isolation, Flue/Pi harness base, Herdr multiplexer UX, Grok Build visual patterns, OpenUI lock-in, Playwright evidence, Vercel Worlds durability, mozilla-ai/cq; distributed-hive shape inspired by [block/buzz](https://github.com/block/buzz)) without vendoring those tools into the monorepo and **without** introducing a user-facing `buzz` verb.
+
+### Decision
+
+#### Open questions resolved
+
+1. **Package / CLI surface.** Standalone binary **`hobo-code`** (dash permitted; package `@hobo/code`, composition-root bin from `@hobo/hobo`). **Not** a `hobo <verb>` and **not** nested under `buzz`. Flat verbs with **`dispatch` as the default** (`hobo-code <prompt…>` ≡ `hobo-code dispatch <prompt…>`). MCP/harness tools remain available from the harness core. Rationale: coding harness is a product surface, not another lifecycle verb on the canonical `hobo` CLI.
+
+2. **Mediated project access.** Pure agent-codegen / agent mode is **always mediated** (rift or worktree + fixtures + templates). Interactive human authoring outside agent mode retains normal project writes. Agents (and the user while in pure codegen mode) never receive unrestricted write access to the canonical tree. **Promotion is the sole audited mutation path** and is gated (`architecture:guard`, `standards:check`, scoped `agent:check`, `docs:freshness`, plus `promotions:check` when elevating drafts).
+
+3. **Primary local durability backend.** **Local World** under `HOBO_HOME/worlds/<runId>` (outside ephemeral isolation). Composes cleanly with Station occupancy: long-running privileged sessions pin `stationId` + rail context; durable checkpoints survive rift/worktree cleanup. Vercel Worlds / Workflow SDK remain the production adapter shape (ADR-0123); Local World is the offline/dev default.
+
+4. **Rift vs worktree aggressiveness.** **Rift preferred when CoW probe succeeds** (`HOBO_RIFT=1` + platform CoW); **git worktree is first-class fallback** and the **CI default**. Windows and non-CoW filesystems always use worktrees. Platform matrix is executable in `@hobo/code` (`ISOLATION_PLATFORM_MATRIX`). Rift is never vendored into the repo.
+
+5. **Monetization default.** Product default **ON** via OpenFeature `code.monetization.surface`. Disable deliberately with `HOBO_CODE_MONETIZATION=0` or `hobo feature set code.monetization.surface --percent 0`. Sponsored wait/status surfaces never inspect prompts or code. FinOps policy owns spend caps and provider routing; monetization cannot override budget gates.
+
+6. **Relationship to the canonical `hobo` CLI / cli-spec.** Coding harness is **not** a `hobo` verb. Canonical `hobo` verbs stay at 37 (`CANONICAL_VERBS`); `hobo-code` is a separate binary documented in cli-spec under its own section. It does not replace `codegen`, `sandbox`, `new`, `stub`, or `generate` — it elevates and orchestrates them for agent harness workflows.
+
+#### Architecture decisions
+
+1. Package `@hobo/code` owns isolation, harness core (Flue-style composition boundaries), scaffolding, evidence, visual lock-in, TUI status, FinOps budget hooks, remote registration, distributed hive, and dogfood helpers.
+2. Isolation root: `HOBO_HOME/sandboxes/<runId>`. Durable learning: `HOBO_HOME/durable/code/<runId>` + `HOBO_HOME/worlds/`. Cleanup never erases durable learning.
+3. Exclusive **squash-merge** only for agent contributions.
+4. High-value template `openui-astryx-bindle` ships Gherkin linked to OpenFeature; passing scenarios emit the evidence triple (Playwright script + mp4 + screenshots).
+5. Token/context tools (caveman, ponytail, RTK, tgrep, mgrep, headroom, serena) remain global/MCP — never vendored into project workspace.
+6. Continuous improvement of templates/autocode is expressible as Trails (`code.templates.improve`, `code.autocode.heuristics`); cq `/cq:reflect` is the session-end knowledge hook.
+7. Herdr-like status surface is the primary UX; Grok Build supplies visual/clickable patterns by reference (no full Rust port inside the TS monorepo).
+8. Remote: deterministic named endpoint via ADR-0130 (`code` resource). mosh is documented exploratory resilience, not a hard dependency.
+9. Distributed hive verbs are **flat** on `hobo-code` (`dispatch`, `join`, `agent`, `nodes`, `rooms`) — never nested under a `buzz` subcommand. OpenFeature key is `code.distributed` (default ON).
+
+### Consequences
+- **(+)** One dogfooding harness that consumes stations, trails, OpenFeature/Harness, FinOps, connectivity, and training/cq without parallel control planes.
+- **(+)** Sandbox purity and cleanup guarantees are unit-tested; promotion fails closed without gates.
+- **(+)** Elevates HOBO-152 / HOBO-394 rather than forking a second codegen stack.
+- **(+)** Product CLI is unambiguous: `hobo-code` binary, flat verbs, `dispatch` default — no buzz nesting.
+- **(−)** Full Flue/Pi dependency, real Rhai WASM, live Playwright video encoding, and Herdr PTY multiplexer polish remain residual productization — Local World + Rhai-subset + evidence structure close the one-shot gates.
+- **(−)** Rift remains experimental; CI always exercises the worktree path.
+
+### Amendment (defaults + distributed hive)
+
+1. **All progressive `code.*` OpenFeature flags default ON** — `code.harness.enabled`, `code.evidence.visual`, `code.monetization.surface`, `code.isolation.rift`, `code.distributed`. Disable deliberately via OpenFeature / env (`HOBO_CODE_MONETIZATION=0` for monetization surface). Monetization remains privacy-first (never inspects prompts or code).
+2. **CLI binary is `hobo-code`** (not a `hobo code` / nested `buzz` verb). Flat verbs with **`dispatch` as the default**. Distributed compute is a core shipped surface (internal hive module inspired by [block/buzz](https://github.com/block/buzz)): rooms, first-class agent identities, multi-node dispatch (local-process, worktree, rift, named-endpoint, MxC, OpenShell). OpenFeature key `code.distributed` (default ON). Not a vendored fork of Buzz; **not** a user-facing verb name.
+
+### Amendment (Eve subagents · DeepAgents+OpenShell+MxC · Workflow Worlds)
+
+hobo-code pins three external foundations as **composition contracts** (not vendored monorepo deps):
+
+1. **Subagent definition = Vercel Eve shape.** Agents are filesystem-first directories (`agent.ts`, `instructions.md`, `tools/`, `skills/`, nested `subagents/`). The parent delegates to subagents the same way it calls tools; children start with a clean context and only the tools granted. In-repo contract: `@hobo/code` `defineEveAgent` / `defineEveSubagent` / `defaultHoboCodeEveAgents` (`packages/code/src/eve.ts`). Inspiration: [vercel/eve](https://github.com/vercel/eve) · [vercel.com/eve](https://vercel.com/eve). Eve runtime remains an optional production adapter; the **directory contract** is normative for hobo-code specialists (investigator / implementer / reviewer).
+
+2. **Secure sandboxing = DeepAgents + OpenShell + MxC (as a stack).**  
+   - **DeepAgents** orchestrates long-horizon coding agents (plan, tools, subagent spawn).  
+   - **OpenShell** is the kernel-enforced secure runtime (deny-by-default network, policy-governed FS, credentials outside the sandbox).  
+   - **MxC** is the stronger process/micro-VM isolation class for high-risk work (e.g. independent review of untrusted diffs).  
+   Offline/CI still use mediated worktree/rift; production secure path prefers DeepAgents-orchestrated work inside OpenShell, with MxC when the Eve `sandboxClass` demands it. In-repo contract: `describeSecureSandboxStack` / `planSecureSandbox` (`packages/code/src/sandbox-stack.ts`). Hive node classes `openshell` and `mxc` stay first-class on the distributed matrix.
+
+3. **Portable durable agent runtimes = Vercel Workflows + Worlds.** Durable steps, retries, and resume-after-restart ride the Workflow model; **Worlds** adapt event log + compute + queue (Local World offline under `HOBO_HOME/worlds/<runId>`; Vercel World for managed production). Aligns with ADR-0123 (workflow/step wrappers) and ADR-0135 Local World default. In-repo contract: `describeCodeWorlds` / `localWorld` / `vercelWorkflowWorld` / `planDurableWorkflowRun` (`packages/code/src/worlds.ts`). Harness `checkpoint`/`restore` remain Local World; production adapter shape is Vercel Workflow World.
+
+**Non-goals of this amendment:** vendoring Eve, LangChain Deep Agents, OpenShell, or the Workflow SDK into the monorepo; inventing a parallel subagent CLI verb; weakening mediated-only isolation or promotion gates.
+
+### References
+- Package: `packages/code` (`@hobo/code`)
+- CLI: `hobo-code` section in `docs/design/cli-spec.md`
+- Runbook: `docs/design/hobo-code-isolation-runbook.md`
+- Experience proof: `src/draft/exp-proofs/dx/hobo-code-harness-experience`
+- Eve / subagents: `packages/code/src/eve.ts`
+- Secure stack: `packages/code/src/sandbox-stack.ts`
+- Worlds: `packages/code/src/worlds.ts`
+- Related: ADR-0130, ADR-0131, ADR-0134, ADR-0044, ADR-0083, ADR-0123, ADR-0128, HOBO-152, HOBO-394

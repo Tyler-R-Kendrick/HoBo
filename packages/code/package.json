@@ -1,0 +1,43 @@
+{
+	"name": "@hobo/code",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "HoBo Code: opinionated coding harness and distributed compute. Binary hobo-code (dispatch default; flat verbs; Herdr-style status chrome with column headers; OpenUI step rail + lock seal).",
+	"type": "module",
+	"bin": {
+		"hobo-code": "./dist/bin/hobo-code.js"
+	},
+	"files": [
+		"LICENSE",
+		"dist",
+		"templates",
+		"assets"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@hobo/core": "workspace:*",
+		"@hobo/stations": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.29",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.9"
+	},
+	"scripts": {
+		"prebuild": "pnpm --filter @hobo/core build && pnpm --filter @hobo/stations build",
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run",
+		"gen:bo-idle-tui": "node --import tsx scripts/gen-bo-idle-tui.mts"
+	}
+}

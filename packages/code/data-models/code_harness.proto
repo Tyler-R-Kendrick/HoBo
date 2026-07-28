@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package hobo.code.v1;
+
+// Isolation backend chosen for an agent task (ADR-0139).
+message IsolationBackend {
+  // "rift" | "worktree"
+  string kind = 1;
+  string platform = 2;
+  bool cow_capable = 3;
+  string reason = 4;
+}
+
+// Agent task isolation handle. Ephemeral; cleaned on every exit path.
+message IsolationContext {
+  string schema_version = 1;
+  string run_id = 2;
+  string branch = 3;
+  string root_path = 4;
+  IsolationBackend backend = 5;
+  string station_id = 6;
+  // Durable learning root lives OUTSIDE the ephemeral isolation root.
+  string durable_root = 7;
+  string created_at = 8;
+  string status = 9; // open | cleaned | failed
+}
+
+// Promotion is the sole audited mutation path into the canonical tree.
+message PromotionRequest {
+  string run_id = 1;
+  string isolation_root = 2;
+  string target_project = 3;
+  repeated string gate_results = 4;
+  bool squash_only = 5;
+}
+
+message PromotionResult {
+  bool ok = 1;
+  string code = 2;
+  string message = 3;
+  string merged_branch = 4;
+  bool cleaned = 5;
+}
+
+// Evidence triple for a passing Gherkin + OpenFeature scenario.
+message EvidenceTriple {
+  string flag_key = 1;
+  string scenario = 2;
+  string playwright_script_path = 3;
+  string recording_mp4_path = 4;
+  repeated string screenshot_paths = 5;
+  string durable_root = 6;
+}
+
+// Agent semantic state for the Herdr-like multiplexer.
+message AgentPaneState {
+  string agent_id = 1;
+  // blocked | working | done | idle
+  string semantic_state = 2;
+  string summary = 3;
+  string highlight_buffer = 4;
+}
+
+// Budget / FinOps snapshot for inference spend (dogfoods existing FinOps).
+message InferenceBudgetSnapshot {
+  string provider = 1;
+  double spend_usd = 2;
+  double cap_usd = 3;
+  bool monetization_enabled = 4;
+  string routing_policy = 5;
+}

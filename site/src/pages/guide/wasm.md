@@ -23,6 +23,16 @@ Do not confuse the membrane with **[App Kits](/HoBo/primitives/app-kits/)** (Bin
 
 Guests use `hobo:storage@0.1.0` — **not** filesystem paths. Hosts bind SQLite partitions or other engines. See [WIT & storage](/HoBo/reference/wit-storage/).
 
+## Messaging capability
+
+Publish/subscribe is **`wasi:messaging`** (`topic()`). Hosts may bind:
+
+- Kafka / Redpanda / MSK via `@hobo/provider-kafka`
+- Dapr pub/sub via optional `@hobo/runtime-dapr` (Camp opt-in)
+- Local in-memory for offline tests
+
+App code never imports Kafka or Dapr clients. See [Messaging, Kafka & Dapr](/HoBo/reference/messaging/) (ADR-0138).
+
 ## Build
 
 `hobo build` compiles services to components; generated drift fails closed. `hobo stub` keeps contract-backed stand-ins while implementation is generated.
@@ -33,4 +43,4 @@ WASM capability security sits beside data / compute / credentials / network isol
 
 ## Related
 
-[Architecture](/HoBo/guide/architecture/) · [Package map](/HoBo/reference/packages/) · [Security](/HoBo/guide/security/)
+[Architecture](/HoBo/guide/architecture/) · [Messaging, Kafka & Dapr](/HoBo/reference/messaging/) · [Package map](/HoBo/reference/packages/) · [Security](/HoBo/guide/security/)

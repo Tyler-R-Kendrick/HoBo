@@ -46,4 +46,4 @@ Workers hold leases. Completing work after a stolen lease must fail closed (stal
 
 ## Related
 
-[EventStore](/HoBo/reference/eventstore/) · [ActorHost](/HoBo/reference/actor-host/) · [Runtime ports](/HoBo/reference/runtime-ports/)
+[Messaging, Kafka & Dapr](/HoBo/reference/messaging/) · [EventStore](/HoBo/reference/eventstore/) · [ActorHost](/HoBo/reference/actor-host/) · [Runtime ports](/HoBo/reference/runtime-ports/)

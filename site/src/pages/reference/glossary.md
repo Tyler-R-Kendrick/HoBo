@@ -53,6 +53,9 @@ description: "Site-facing definitions for HoBo primitives, ports, contracts, eff
 | **App Kit (Kit)** | Bindle-declared application surface (`api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component`). Prefer over "membrane type" at authoring. Session Replay default-on. |
 | **Infra Kit** | Bindle port/infra resource (`kv`, `bucket`, `queue`, …) — not an entrypoint host; no default Session Replay |
 | **Session Replay** | Privacy-first DOM/session reconstruction on every App Kit (`@hobo/replay`, ADR-0137); `replay.*` — not event-log replay |
+| **Messaging** | Backend-agnostic publish/subscribe over `wasi:messaging` / `topic()` with delivery guarantees, consumer groups, DLQ (ADR-0138) |
+| **Kafka capability provider** | `@hobo/provider-kafka` exporting `wasi:messaging` for Kafka-compatible brokers; secretless bindings |
+| **Dapr runtime adapter** | Optional `@hobo/runtime-dapr` Camp runtime realizing ActorHost + pubsub; never the default (ADR-0031, ADR-0138) |
 | **Event-log replay** | Folding durable EventStore facts for projections/audit — different from Session Replay |
 
 Longer design glossary lives in the repo design suite; this page is the **site-facing** subset for humans and agents reading Pages.

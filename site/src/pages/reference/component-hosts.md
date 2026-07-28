@@ -12,6 +12,7 @@ Camps separate two concerns that both live under `packages/runtimes/`:
 |---|---|---|
 | **Durable EventStore engines** | `@hobo/runtime-local`, `@hobo/runtime-browser` (+ `@hobo/storage-sqlite`) | Single-owner journal, fencing, staged effects (ADR-0135) |
 | **Component hosts** | `@hobo/runtime-wasm`, `@hobo/runtime-oci`, `@hobo/runtime-cloud-native` | How bindle components actually run |
+| **Optional sidecar runtime** | `@hobo/runtime-dapr` | Dapr-backed ActorHost + pubsub when Camp opts in (ADR-0138; **not** default — ADR-0031) |
 
 App authors pick ports and Bindles; operators/hosts choose engines. Conformance certifies claims.
 
@@ -45,6 +46,13 @@ No ambient kubeconfig privileges outside the transport port.
 - Registry of multi-cloud host providers
 - **`mock`** provider for setup/parity tests
 - `aws` / `gcp` / `azure` / `vercel` / `cloudflare` entries are **stubs** until certified adapters land
+
+### Optional `kind=dapr` — `@hobo/runtime-dapr`
+
+- Camp `runtimeRequirements: ["dapr"]` (or explicit placement) selects Dapr
+- Realizes **ActorHost** (single-writer mapped to Dapr concurrency) and **Messaging** over pub/sub (including generated `pubsub.kafka` YAML)
+- Inject `createInMemoryDaprClient()` for live harness fidelity; real `daprd` implements the same client interface
+- Default path remains in-process wasm — see [Messaging, Kafka & Dapr](/HoBo/reference/messaging/)
 
 ```ts
 import { createCloudNativeRuntimeHost } from "@hobo/runtime-cloud-native";

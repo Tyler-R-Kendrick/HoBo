@@ -21,6 +21,17 @@ A lease (conceptual shape):
 
 `createInMemoryActorHost` exists for tests; production Camps use durable hosts that persist epoch across restarts (`@hobo/data` durable actor host paths + journal).
 
+## Dual placement (native · dapr)
+
+The same `defineActor` / `activateActor` definitions run under either host:
+
+| Mode | When | Package |
+|---|---|---|
+| **native** (default) | No Camp dapr requirement | lease + fence on local / wasm hosts |
+| **dapr** | Camp `runtimeRequirements` includes `dapr` (or explicit placement) | `@hobo/runtime-dapr` ActorHost |
+
+`resolveActorPlacement` in `@hobo/runtime` selects the host. Prefer native unless you need the sidecar path. See [Messaging, Kafka & Dapr](/HoBo/reference/messaging/) (ADR-0138).
+
 ## Append algorithm coupling
 
 When an aggregate is fenced:
@@ -51,4 +62,4 @@ Legacy streams start with `owner_epoch = 0` (unfenced). First fenced append ente
 
 ## Related
 
-[EventStore](/HoBo/reference/eventstore/) · [Aggregates testing](/HoBo/testing/aggregates/) · [Durability testing](/HoBo/testing/durability/)
+[EventStore](/HoBo/reference/eventstore/) · [Messaging, Kafka & Dapr](/HoBo/reference/messaging/) · [Aggregates testing](/HoBo/testing/aggregates/) · [Durability testing](/HoBo/testing/durability/)

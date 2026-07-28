@@ -79,6 +79,7 @@ export const nav: NavGroup[] = [
 			{ label: "EventStore & journal", slug: "/reference/eventstore/" },
 			{ label: "Schema & migrations", slug: "/reference/schema/" },
 			{ label: "Queue port", slug: "/reference/queue/" },
+			{ label: "Messaging, Kafka & Dapr", slug: "/reference/messaging/" },
 			{ label: "Streamer port", slug: "/reference/streamer/" },
 			{ label: "ActorHost & fencing", slug: "/reference/actor-host/" },
 			{ label: "Clock port", slug: "/reference/clock/" },

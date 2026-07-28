@@ -3,15 +3,25 @@
  * hobo-code — standalone coding harness CLI (ADR-0139).
  * Default verb: dispatch.
  *
- * Bare `hobo-code` on a TTY opens the animated title screen first (Chewy
- * wordmark + Bo idle, alternate screen, press any key) and then runs the
- * default dispatch. Any argument, piped stdout, or --json skips it.
+ * Bare `hobo-code` (or `hobo-code chat`) on a TTY opens the animated title
+ * screen (Chewy wordmark + Bo idle, press any key) and then drops into the
+ * **pi interactive coding harness** customized with the HoBo extension
+ * (pi/extensions/hobo.ts) and HoBo system instructions — the same agent
+ * harness the Flue surface (agents/hobo-code.ts) runs programmatically.
+ * Piped stdout, --json, or any other verb stays one-shot.
  */
+import { spawn } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
+import { HOBO_AGENT_INSTRUCTIONS } from "../harness-customization.js";
 import { BO_IDLE_TICK_MS, renderTitleScreen } from "../splash.js";
 
 const argv = process.argv.slice(2);
 const json = argv.includes("--json");
+const interactive = process.stdout.isTTY === true && process.stdin.isTTY === true;
+const chatVerb = argv[0] === "chat";
+const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
  * Animated title screen on the alternate buffer. Fixed-geometry repaints
@@ -53,10 +63,36 @@ function showTitleScreen(): Promise<void> {
 	});
 }
 
-if (argv.length === 0 && !json && process.stdout.isTTY === true) {
-	await showTitleScreen();
+/**
+ * Launch the pi interactive harness with HoBo customization.
+ * Forwards pi's exit code; never resolves before pi exits (persistent).
+ */
+function launchPiHarness(): Promise<number> {
+	const piEntry = fileURLToPath(import.meta.resolve("@mariozechner/pi-coding-agent"));
+	const piBin = join(dirname(piEntry), "cli.js");
+	const args = [
+		piBin,
+		"--no-extensions", // ignore ambient ~/.pi extensions; load only ours
+		"-e",
+		join(pkgRoot, "pi", "extensions", "hobo.ts"),
+		"--append-system-prompt",
+		HOBO_AGENT_INSTRUCTIONS,
+	];
+	return new Promise((resolve, reject) => {
+		const child = spawn(process.execPath, args, { stdio: "inherit" });
+		child.on("error", reject);
+		child.on("exit", (code, signal) => {
+			if (signal === "SIGINT") resolve(130);
+			else resolve(code ?? 1);
+		});
+	});
 }
 
-const result = await runHoboCodeCli(argv, { json });
-process.stdout.write(formatHoboCodeResult(result, json));
-process.exitCode = result.exitCode;
+if (interactive && !json && (argv.length === 0 || chatVerb)) {
+	if (argv.length === 0) await showTitleScreen();
+	process.exitCode = await launchPiHarness();
+} else {
+	const result = await runHoboCodeCli(argv, { json });
+	process.stdout.write(formatHoboCodeResult(result, json));
+	process.exitCode = result.exitCode;
+}

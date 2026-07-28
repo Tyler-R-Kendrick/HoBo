@@ -659,7 +659,7 @@ External foundations inform the design (rift CoW isolation, Flue/Pi harness base
 - **(+)** Sandbox purity and cleanup guarantees are unit-tested; promotion fails closed without gates.
 - **(+)** Elevates HOBO-152 / HOBO-394 rather than forking a second codegen stack.
 - **(+)** Product CLI is unambiguous: `hobo-code` binary, flat verbs, `dispatch` default — no buzz nesting.
-- **(−)** Full Flue/Pi dependency, real Rhai WASM, live Playwright video encoding, and Herdr PTY multiplexer polish remain residual productization — Local World + Rhai-subset + evidence structure close the one-shot gates.
+- **(−)** Real Rhai WASM, live Playwright video encoding, and Herdr PTY multiplexer polish remain residual productization — Local World + Rhai-subset + evidence structure close the one-shot gates. (Flue/Pi are real dependencies as of the Pi/Flue harness amendment: `@flue/runtime` powers the durable/programmatic agent in `packages/code/agents/hobo-code.ts`; `@mariozechner/pi-coding-agent` is the persistent interactive chat terminal, customized by `packages/code/pi/extensions/hobo.ts` with shared instructions/tools in `src/harness-customization.ts` / `src/harness-tools.ts`.)
 - **(−)** Rift remains experimental; CI always exercises the worktree path.
 
 ### Amendment (defaults + distributed hive)

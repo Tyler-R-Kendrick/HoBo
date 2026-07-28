@@ -3,18 +3,22 @@
  * up/down remain the only lifecycle verbs for app graphs.
  *
  * Subcommands: init | up | down | status | rails list|publish|approve|activate|status
+ *
+ * Pure ops delegated to `@hobo/management` (shared with control API + MCP).
  */
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import type { CommandModule } from "@hobo/cli";
 import {
-	createStationClient,
-	initStation,
-	persistStationEvents,
-	StationService,
-	type StationClient,
-} from "@hobo/stations";
+	createManagementContext,
+	stationDown,
+	stationInit,
+	stationRailsActivate,
+	stationRailsApprove,
+	stationRailsList,
+	stationRailsPublish,
+	stationStatus,
+	stationUp,
+} from "@hobo/management";
+import { createStationClient } from "@hobo/stations";
 
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { loadHoboProfile, setDefaultStation } from "./hobo-profile.js";
@@ -68,152 +72,70 @@ export function createStationCommand(deps: StationCommandDeps = {}): CommandModu
 			const log = deps.log ?? ((line: string) => console.error(line));
 			const sub = args[0] ?? "status";
 
+			const ctx = createManagementContext({ hoboHome: home });
+
 			if (sub === "init") {
 				const name = flagString(flagBag, "name") ?? "local";
 				const id = flagString(flagBag, "id") ?? `station:${name}`;
 				const tenant = flagString(flagBag, "tenant") ?? name;
-				const railDoc = join(home, "hobo.broker.json");
-				const result = initStation({
-					hoboHome: home,
-					id,
-					name,
-					tenant,
-					...(existsSync(railDoc) ? { importRailDocPath: railDoc } : {}),
-				});
-				setDefaultStation(
-					home,
-					{ id: result.stationId, dataDir: result.dataDir },
-					result.occupancy.activeRailHash,
-				);
-				return {
-					ok: true,
-					message: result.created
-						? `hobo station init: created ${result.stationId}`
-						: `hobo station init: already exists ${result.stationId}`,
-					data: {
-						stationId: result.stationId,
-						dataDir: result.dataDir,
-						created: result.created,
-						bootstrapRailHash: result.bootstrap.contentHash,
-						bootstrapActive: result.occupancy.bootstrapActive,
-						activeRailHash: result.occupancy.activeRailHash,
-						...(result.activatedRailHash !== undefined
-							? { activatedRailHash: result.activatedRailHash }
-							: {}),
-						remediation: result.created
-							? "hobo station status"
-							: undefined,
-					},
-				};
+				const result = stationInit(ctx, { name, id, tenant });
+				if (result.ok && result.data) {
+					const data = result.data as {
+						stationId: string;
+						dataDir: string;
+						activeRailHash?: `sha256:${string}`;
+					};
+					setDefaultStation(
+						home,
+						{ id: data.stationId, dataDir: data.dataDir },
+						data.activeRailHash,
+					);
+				}
+				return result;
 			}
 
 			if (sub === "status" || sub === "up" || sub === "down") {
 				const stationId = resolveStationId(deps, flagBag, home);
-				let client: StationClient;
-				try {
-					client = createStationClient({ hoboHome: home, stationId });
-					client.load();
-				} catch (err) {
-					return {
-						ok: false,
-						message: err instanceof Error ? err.message : String(err),
-						data: { code: "station-missing", remediation: "hobo station init" },
-					};
-				}
-				const occ = client.occupancy();
-				const rail = client.activeRail();
 				if (sub === "up") {
-					log(
-						`hobo station up: occupancy ready ${stationId} rail=${occ.activeRailHash ?? "none"}`,
-					);
-					return {
-						ok: true,
-						message: `hobo station up: ${stationId}`,
-						data: {
-							stationId,
-							status: "occupying",
-							activeRailHash: occ.activeRailHash,
-							bootstrapActive: occ.bootstrapActive,
-							pins: client.pins(),
-						},
-					};
+					const result = stationUp(ctx, stationId);
+					if (result.ok) {
+						log(
+							`hobo station up: occupancy ready ${stationId} rail=${(result.data as { activeRailHash?: string })?.activeRailHash ?? "none"}`,
+						);
+						try {
+							const client = createStationClient({
+								hoboHome: home,
+								stationId,
+							});
+							client.load();
+							return {
+								...result,
+								data: {
+									...(result.data as Record<string, unknown>),
+									pins: client.pins(),
+								},
+							};
+						} catch {
+							return result;
+						}
+					}
+					return result;
 				}
 				if (sub === "down") {
 					log(
 						`hobo station down: stopped occupancy for ${stationId} (data retained)`,
 					);
-					return {
-						ok: true,
-						message: `hobo station down: ${stationId}`,
-						data: {
-							stationId,
-							status: "idle",
-							dataRetained: true,
-						},
-					};
+					return stationDown(ctx, stationId);
 				}
-				return {
-					ok: true,
-					message: `hobo station status: ${stationId}`,
-					data: {
-						stationId,
-						isolation: occ.isolation,
-						status: occ.status,
-						activeRailHash: occ.activeRailHash,
-						bootstrapRailHash: occ.bootstrapRailHash,
-						bootstrapActive: occ.bootstrapActive,
-						connectionCount: occ.connectionCount,
-						activeRail: rail
-							? {
-									id: rail.id,
-									name: rail.name,
-									contentHash: rail.contentHash,
-									isBootstrap: rail.isBootstrap,
-								}
-							: null,
-						doctor: {
-							bootstrapActive: occ.bootstrapActive,
-							hint: occ.bootstrapActive
-								? "bootstrap Rail active — activate a non-bootstrap Rail for production posture"
-								: undefined,
-						},
-					},
-				};
+				return stationStatus(ctx, stationId);
 			}
 
 			if (sub === "rails") {
 				const railSub = args[1] ?? "list";
 				const stationId = resolveStationId(deps, flagBag, home);
-				let state;
-				try {
-					const client = createStationClient({ hoboHome: home, stationId });
-					state = client.load();
-				} catch (err) {
-					return {
-						ok: false,
-						message: err instanceof Error ? err.message : String(err),
-						data: { remediation: "hobo station init" },
-					};
-				}
-				const svc = StationService.fromEvents(state.events, { stationId });
 
 				if (railSub === "list" || railSub === "status") {
-					const rails = Object.values(state.rails).map((r) => ({
-						id: r.id,
-						name: r.name,
-						contentHash: r.contentHash,
-						activationStatus: r.activationStatus,
-						isBootstrap: r.isBootstrap,
-					}));
-					return {
-						ok: true,
-						message: `hobo station rails ${railSub}: ${rails.length} rail(s)`,
-						data: {
-							stationId,
-							activeRailHash: state.occupancy.activeRailHash,
-							rails,
-						},
-					};
+					return stationRailsList(ctx, stationId);
 				}
 
 				if (railSub === "publish") {
@@ -221,26 +143,11 @@ export function createStationCommand(deps: StationCommandDeps = {}): CommandModu
 					if (!docPath) {
 						return {
 							ok: false,
+							code: "HOBO_ERR",
 							message: "usage: hobo station rails publish <rail-doc.json>",
 						};
 					}
-					const raw = JSON.parse(readFileSync(docPath, "utf8")) as Record<
-						string,
-						unknown
-					>;
-					const rail = svc.publishRail({
-						id: String(raw.id ?? `rail-${Date.now()}`),
-						name: String(raw.name ?? "rail"),
-						version: String(raw.version ?? "1.0.0"),
-						stationId,
-						activationStatus: "draft",
-					});
-					persistStationEvents(home, stationId, svc.events);
-					return {
-						ok: true,
-						message: `hobo station rails publish: ${rail.contentHash}`,
-						data: { railId: rail.id, contentHash: rail.contentHash },
-					};
+					return stationRailsPublish(ctx, { stationId, docPath });
 				}
 
 				if (railSub === "approve" || railSub === "activate") {
@@ -248,39 +155,44 @@ export function createStationCommand(deps: StationCommandDeps = {}): CommandModu
 					if (!hash) {
 						return {
 							ok: false,
+							code: "HOBO_ERR",
 							message: `usage: hobo station rails ${railSub} <railId|hash>`,
 						};
 					}
-					const resolved =
-						state.rails[hash] ??
-						Object.values(state.rails).find((r) => r.id === hash);
-					if (!resolved) {
-						return { ok: false, message: `rail not found: ${hash}` };
+					const result =
+						railSub === "approve"
+							? stationRailsApprove(ctx, { stationId, hashOrId: hash })
+							: stationRailsActivate(ctx, { stationId, hashOrId: hash });
+					if (result.ok && railSub === "activate") {
+						try {
+							const stationClient = createStationClient({
+								hoboHome: home,
+								stationId,
+							});
+							stationClient.load();
+							const pins = stationClient.pins();
+							setDefaultStation(
+								home,
+								{ id: stationId, dataDir: stationClient.dataDir },
+								pins.railHash,
+							);
+							return {
+								...result,
+								data: {
+									...(result.data as Record<string, unknown>),
+									pins,
+								},
+							};
+						} catch {
+							return result;
+						}
 					}
-					if (railSub === "approve") svc.approveRail(resolved.contentHash);
-					else svc.activateRail(resolved.contentHash);
-					persistStationEvents(home, stationId, svc.events);
-					const stationClient = createStationClient({
-						hoboHome: home,
-						stationId,
-					});
-					const pins = stationClient.pins();
-					if (railSub === "activate") {
-						setDefaultStation(
-							home,
-							{ id: stationId, dataDir: stationClient.dataDir },
-							pins.railHash,
-						);
-					}
-					return {
-						ok: true,
-						message: `hobo station rails ${railSub}: ${resolved.contentHash}`,
-						data: { contentHash: resolved.contentHash, pins },
-					};
+					return result;
 				}
 
 				return {
 					ok: false,
+					code: "HOBO_ERR",
 					message: `unknown rails subcommand: ${railSub}`,
 				};
 			}

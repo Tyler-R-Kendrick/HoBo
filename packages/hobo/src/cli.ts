@@ -59,6 +59,7 @@ import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
 import { createBrokerAwareUpCommand } from "./broker-up-command.js";
 import { createBrokerAwareLoginCommand } from "./login-command.js";
+import { createServeControlCommand } from "./serve-control-command.js";
 import { createStationCommand } from "./station-command.js";
 import { createYardCommand } from "./yard-command.js";
 
@@ -216,6 +217,8 @@ export function createComposedHoboCli(
 			station: createStationCommand(),
 			// Session Replay (DOM/session reconstruction; distinct from event-log replay).
 			replay: createReplayCommand(),
+			// Local control-plane HTTP+SSE for Yard game UI (ADR-0135).
+			serve: createServeControlCommand(),
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),

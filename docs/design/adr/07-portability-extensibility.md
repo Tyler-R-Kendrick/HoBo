@@ -519,6 +519,27 @@ Local port-based `hobo dev`, cross-cloud Junction connectivity, and public DNS w
 - **(+)** Follow-on closed robustness: Tailscale API MagicDNS, Netbird management HTTP, built-in Route53 SigV4, real ES256 DPoP + JWT-SVID, rego-lite policy docs, durable billing ledger + Stripe PaymentIntent REST.
 - **(−)** Multi-cluster hard isolation sharding, SPIRE Workload API fetch, and WebAuthn claim step-up remain operational/product follow-ons (interfaces ready).
 
+
+
+## ADR-0135
+**HoBo Yard: game-first control-plane UI over the shared management surface (not a second lifecycle).**
+
+### Context
+Station occupancy ([ADR-0131](01-architecture-core.md#adr-0131)), Rails, Connections, and broker status already have pure event-sourced handlers and CLI/MCP parity. Operators still lacked a **playable, generative** surface for observing and configuring a single Station. A conventional multi-page admin SPA would invent a second lifecycle and diverge from CLI verbs. Local dashboard spirit ([ADR-0111](#adr-0111)) already co-launches a read surface over local event stores without Yard/Gateway auth.
+
+### Decision
+1. **Game-first primary surface.** `@hobo/control-yard` renders a 1930s cartoon rail yard (Phaser 3) with Bo as Conductor. Zones map to occupancy, rails, connections, metering, and doctor hazards. Layout lives in one `layout.ts`; clip metadata lives only in `assets/assets_index.json`.
+2. **Shared management lib.** `@hobo/management` exports pure Station/Connection/broker/projection functions used by CLI, MCP, and `@hobo/control-api`. No second event store; no invented events outside Station/Connection families.
+3. **Thin local control API.** `@hobo/control-api` is HTTP + SSE over management (default `127.0.0.1:8790`). `hobo serve control` co-launches it. PACT pins the UI ↔ API boundary.
+4. **Generative overlays.** Config/inspect sheets are schema-derived OpenUI-style streams (connection create/authorize, rail lifecycle, cost booth, doctor). Confirm calls the same management functions as the CLI.
+5. **Bo art bible is law.** Locked identity from `site/public/parallax/README.md`. West walk sheet is never a horizontal mirror. Measure spritesheets before load.
+6. **Tests stay offline.** Pact-derived mocks and `HOBO_HOME` fixtures only — no live providers in default gates.
+
+### Consequences
+- **(+)** One management surface for CLI / MCP / game UI; Yard feels alive while remaining a pure client of the real control plane.
+- **(+)** Experience proof under `src/draft/exp-proofs/ux/control-yard/` pins the UX contract.
+- **(−)** Phaser browser host is optional at v0; pure yard-engine + asset validation carry CI. Full visual browser harness remains a follow-on.
+
 ## Open / proposed decisions (ADR-Pn)
 
 > **Status (2026-07-03):** the last six open ADR-Pn are now resolved (P3/P4 were already); this list is retained as the decision trail.

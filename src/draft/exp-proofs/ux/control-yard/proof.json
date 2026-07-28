@@ -1,0 +1,32 @@
+{
+  "layer": "exp",
+  "slug": "control-yard",
+  "experienceType": "ux",
+  "title": "Control-Plane Yard Game UI",
+  "linear": "HOBO-000",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": [
+      "docs/design/adr/07-portability-extensibility.md#adr-0135",
+      "docs/design/cli-spec.md"
+    ]
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "diagrams": [
+      "assets/yard-zones.svg",
+      "README.md",
+      "assets/evidence/01-boot-live.png",
+      "assets/evidence/anim-bo-walk-east.png",
+      "assets/evidence/anim-bo-walk-west.png",
+      "assets/evidence/recordings/01-yard-loop.mp4",
+      "assets/evidence/recordings/03-bo-walk-east-west.mp4",
+      "assets/evidence/evidence-manifest.json",
+      "AGENTS.md"
+    ]
+  },
+  "waivers": []
+}

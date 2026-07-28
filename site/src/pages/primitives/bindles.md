@@ -42,7 +42,7 @@ export default bindle("my-app", (b) => {
 | Builder | Resource kind | What it declares |
 |---|---|---|
 | `b.api(handler?)` | `api` | An HTTP API entrypoint. The handler rides along as an app-host entrypoint, never in the manifest. |
-| `b.web(handler?)` | `web` | A web app entrypoint. |
+| `b.web(handler?)` | `web` | A web app entrypoint. **Session Replay default-on** (privacy-first); opt out with `.with(sessionReplay({ enabled: false }))`. |
 | `b.service()` | `service` | A long-running internal service. |
 | `b.data()` | `data` | A SQL-ish managed data port. |
 | `b.kv()` | `kv` | Key-value storage. |
@@ -57,7 +57,11 @@ Every resource supports three chainable refinements:
 |---|---|
 | `.dependsOn(...resources)` | Declares wiring edges **and** injects typed bindings at runtime. Deny-by-default: no declared edge, no access. |
 | `.allow(...verbs)` | Inline least privilege, with verbs typed per resource kind (`"read"`/`"write"`/`"query"` on `data`, `"enqueue"`/`"dequeue"` on `queue`, `"get"`/`"set"` on `kv`, …). Permissions travel in the bindle. |
-| `.with(...annotations)` | Typed provider-specific options — the escape hatch. Optimization, never a requirement. |
+| `.with(...annotations)` | Typed provider-specific options — the escape hatch. Optimization, never a requirement. Includes `sessionReplay(...)` for Session Replay opt-out/sample rate. |
+
+## Session Replay on `web`
+
+Every `b.web(...)` resource is annotated with platform option `session-replay` by default. Local `hobo dev` injects a privacy-first bootstrap into HTML and serves `/__hobo/replay/*` for ingest — **no app tracker code required**. Details: [Session Replay](/HoBo/reference/session-replay/).
 
 ## Greenfield: declare the bindle, generate the code
 

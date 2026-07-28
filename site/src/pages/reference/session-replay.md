@@ -26,6 +26,32 @@ Heavy rrweb streams **never** enter the control-plane event log — only content
 | Production / staging | **Off** unless OpenFeature `hobo.session-replay` or sample rate |
 | Kill switch | `HOBO_REPLAY=0` (or flag false) |
 
+## Deep Bindle web integration
+
+Every Bindle **`web`** resource receives a default platform annotation `session-replay` at construction (ADR-0137 §10). App authors do **not** need to wire a tracker for local DX.
+
+| Piece | Package / surface |
+|---|---|
+| Annotation helper | `sessionReplay({ enabled?, sampleRate? })` from `@hobo/bindles` |
+| Runtime plan + wrap | `@hobo/replay` bindle integration |
+| Local host | `hobo dev` / Yard entrypoints inject privacy-first HTML bootstrap |
+| Ingest path | `/__hobo/replay/*` served by the host (list/open/ingest) |
+| Response marker | `x-hobo-session-replay: 1` when wrap applied |
+
+```ts
+import { bindle, sessionReplay } from "@hobo/bindles";
+
+export default bindle("app", (b) => {
+  // web is Session-Replay capable by default
+  const web = b.web(() => handler);
+  // opt out a surface:
+  // const web = b.web(() => handler).with(sessionReplay({ enabled: false }));
+  return { web };
+});
+```
+
+API / non-web resources are **not** auto-annotated.
+
 ## Privacy (client-side before send/persist)
 
 - Mask password / email / tel inputs

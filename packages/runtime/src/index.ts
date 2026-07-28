@@ -134,3 +134,9 @@ export {
 	type WorkflowRunHandle,
 	workflow,
 } from "./workflow.js";
+export {
+	type PlacementResolved,
+	type ResolveActorPlacementInput,
+	resolveActorPlacement,
+	signalActor,
+} from "./placement.js";

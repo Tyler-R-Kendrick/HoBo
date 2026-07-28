@@ -10,6 +10,8 @@ export const HOBO_RUNTIME_HOST_KINDS = [
 	"wasm",
 	"oci",
 	"cloud-native",
+	/** Optional Camp runtime / sidecar adapter (ADR-0138). Not default. */
+	"dapr",
 ] as const;
 
 export type HoboRuntimeHostKind = (typeof HOBO_RUNTIME_HOST_KINDS)[number];

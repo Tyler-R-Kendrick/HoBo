@@ -39,7 +39,7 @@ Permissions are **deny-by-default**: a verb your code never calls is never grant
 | **Cache** (ephemeral) | `cache(name)` | `hobo:cache` | `get`,`set`,`delete`,`invalidate` | Redis/Valkey / ElastiCache · Memorystore · Azure Cache · Momento · CF Cache — **ephemeral, TTL-first, evictable, never a source of truth** ([ADR-0118](./adr/03-data-plane.md#adr-0118)) |
 | **Bucket** | `bucket(name)` | `wasi:blobstore` (+ `hobo:blob-events`) | `read`,`write`,`delete` | S3 / Blob / GCS / R2 |
 | **Queue** (pull) | `queue(name)` | `hobo:queue` | `enqueue`,`dequeue` | SQS / Service Bus / Tasks / Queues |
-| **Topic** (push) | `topic(name)` | `wasi:messaging` | `publish`,`subscribe` | SNS / Event Grid / Pub/Sub / — |
+| **Topic** (push) | `topic(name)` | `wasi:messaging` | `publish`,`subscribe` | SNS / Event Grid / Pub/Sub / **Kafka** (`@hobo/provider-kafka`) / Dapr pubsub (`@hobo/runtime-dapr`) / local — [ADR-0138](./adr/01-architecture-core.md#adr-0138) |
 | **Secret** | `secret(name)` | `wasi:config/store` + `hobo:secrets` (versioned, [ADR-0113](./adr/02-identity-security.md#adr-0113)) | `put`,`access` *(access = latest or pinned version)* | Secrets Mgr / Key Vault / Secret Mgr |
 | **Data** | `data(name)` | `hobo:data` (sub-interfaces `relational · document · graph · vector · key-value`, [ADR-0112](./adr/03-data-plane.md#adr-0112)) | `read`,`write`,`query`,`admin` | one abstract dep, paradigm-specific providers: relational/SQL · document/NoSQL · graph · vector · key/value ([ADR-0052](./adr/03-data-plane.md#adr-0052)) |
 | **Schedule** | `schedule(name)` | `hobo:scheduler` | n/a | EventBridge / Timer / Cloud Scheduler |

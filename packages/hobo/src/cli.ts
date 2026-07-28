@@ -37,6 +37,7 @@ import {
 import { createDerivativeCommand } from "./derivative-command.js";
 import { createDoctorCommand } from "./doctor-command.js";
 import { createDriftCommand } from "./drift-command.js";
+import { createMessagingCommand } from "./messaging-command.js";
 import { createEraseCommand } from "./erase-command.js";
 import { createGenerateCommand } from "./generate-command.js";
 import { createIdentityCommand } from "./identity-command.js";
@@ -203,6 +204,7 @@ export function createComposedHoboCli(
 			incident: createIncidentCommand(),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
+			messaging: createMessagingCommand(),
 			verify: createVerifyCommand(),
 			"can-deploy": createCanDeployCommand(),
 			// The broker (the Conductor) resolves against the same live,

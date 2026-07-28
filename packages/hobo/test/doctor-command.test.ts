@@ -44,6 +44,11 @@ describe("createDoctorCommand", () => {
 				},
 				canTrailDimension: "can-trail",
 			},
+			messaging: {
+				daprOptional: true,
+				defaultRuntime: "in-process-wasm",
+				adr: "ADR-0138",
+			},
 		});
 		expect(progress).toEqual([result.message]);
 	});

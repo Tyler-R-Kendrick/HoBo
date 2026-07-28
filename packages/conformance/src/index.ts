@@ -38,6 +38,14 @@ export {
 export * from "./registry.js";
 export * from "./report.js";
 export * from "./runner.js";
+export { MESSAGING_CONFORMANCE_SUITE } from "./suites/messaging.js";
+export {
+	MESSAGING_CONFORMANCE_CONTRACT,
+	type CreateMessagingFn,
+	type MessagingAssertionName,
+	type MessagingConformanceReport,
+	runMessagingConformance,
+} from "./messaging-conformance.js";
 export * from "./sdk-parity.js";
 export * from "./seed.js";
 export type {

@@ -27,4 +27,12 @@ export {
 	toWitDecisionRecord,
 } from "./policy-ir.js";
 
+export {
+	DEFAULT_MESSAGING_POLICY_PACK,
+	evaluateMessagingPolicy,
+	type MessagingPolicyEvaluation,
+	type MessagingPolicyPack,
+	MESSAGING_POLICY_PACK_ID,
+} from "./messaging-policy-pack.js";
+
 export const HOBO_POLICY_PACKAGE = "@hobo/policy";

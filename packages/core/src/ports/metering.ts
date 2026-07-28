@@ -24,7 +24,11 @@ export type UsageEventType =
 	| "overlay.magicdns"
 	| "overlay.funnel"
 	| "billing.invoice_line"
-	| "billing.period_close";
+	| "billing.period_close"
+	| "messaging.publish"
+	| "messaging.consume"
+	| "messaging.actor.activate"
+	| "messaging.dapr.sidecar_lifetime";
 
 export interface UsageEvent {
 	readonly tenantId: TenantId;

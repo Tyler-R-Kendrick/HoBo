@@ -70,6 +70,9 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Mapping Contract | Broker artifact that constrains provider/catalog/resource mapping inputs without giving providers unilateral selection authority. |
 | Manifest IR | Deployment intermediate representation produced by authoring and consumed by the Planner. |
 | Matching Criteria | Deterministic selector for Resource Definitions, ranked by hard requirements, specificity, priority, objective, and stable tiebreak. |
+| Messaging | Unified backend-agnostic publish/subscribe surface over `wasi:messaging` / `topic()` with declared delivery guarantees, consumer groups, dead-letter, and audit events ([ADR-0138](./adr/01-architecture-core.md#adr-0138)). |
+| Kafka capability provider | First-class `@hobo/provider-kafka` exporting `wasi:messaging` for durable log backends (Kafka / Redpanda / MSK / Confluent / Event Hubs Kafka protocol), secretless credentials, local Redpanda path ([ADR-0138](./adr/01-architecture-core.md#adr-0138)). |
+| Dapr runtime adapter | Optional Camp runtime `@hobo/runtime-dapr` realizing ActorHost + messaging (+ partial workflows) over Dapr sidecars; never the default ([ADR-0031](./adr/01-architecture-core.md#adr-0031), [ADR-0138](./adr/01-architecture-core.md#adr-0138)). |
 | Meta-cloud Broker | Hosted authority that validates Contract Manifests against approved Broker Environments and emits Resolution Receipts or Resolution Rejections for Yard consumption. |
 | Metric contract | Governed definition (`MetricContract`) of a routing metric's semantics, units, source, normalization, and version under the three-tier model: Tier 0 immutable system metrics, Tier 1 derived metrics via approved transforms, Tier 2 composition-only approved user metrics. |
 | MetricVector | Per-candidate vector of metric-contract values (cost, reliability, latency, risk, approved custom metrics) evaluated after constraint filtering and used to build the Pareto frontier. |

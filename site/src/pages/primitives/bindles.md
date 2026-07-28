@@ -37,19 +37,30 @@ export default bindle("my-app", (b) => {
 });
 ```
 
+## App Kits vs Infra Kits
+
+Resources fall into two authoring families (prefer this language over "membrane types"):
+
+| Family | Kinds | Session Replay |
+|---|---|---|
+| **[App Kits](/HoBo/primitives/app-kits/)** | `api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component` | **Default-on** (privacy-first) |
+| **Infra Kits** | `data`, `kv`, `bucket`, `queue`, `topic`, `secret`, … | Off unless explicitly annotated |
+
+The WIT/WASM **membrane** (ADR-0069) is the low-level portability contract — not a synonym for App Kit.
+
 ## The builder surface
 
-| Builder | Resource kind | What it declares |
-|---|---|---|
-| `b.api(handler?)` | `api` | An HTTP API entrypoint. The handler rides along as an app-host entrypoint, never in the manifest. |
-| `b.web(handler?)` | `web` | A web app entrypoint. **Session Replay default-on** (privacy-first); opt out with `.with(sessionReplay({ enabled: false }))`. |
-| `b.service()` | `service` | A long-running internal service. |
-| `b.data()` | `data` | A SQL-ish managed data port. |
-| `b.kv()` | `kv` | Key-value storage. |
-| `b.bucket()` | `bucket` | Object storage. |
-| `b.queue()` | `queue` | Point-to-point work queue. |
-| `b.topic()` | `topic` | Pub/sub topic. |
-| `b.secret()` | `secret` | A secret reference — never a secret value. |
+| Builder | Kind | Family | What it declares |
+|---|---|---|---|
+| `b.api(handler?)` | `api` | App Kit | HTTP API entrypoint. **Session Replay default-on.** |
+| `b.web(handler?)` | `web` | App Kit | Web app entrypoint. **Session Replay default-on.** |
+| `b.service(handler?)` | `service` | App Kit | Long-running service. **Session Replay default-on.** |
+| `b.data()` | `data` | Infra Kit | A SQL-ish managed data port. |
+| `b.kv()` | `kv` | Infra Kit | Key-value storage. |
+| `b.bucket()` | `bucket` | Infra Kit | Object storage. |
+| `b.queue()` | `queue` | Infra Kit | Point-to-point work queue. |
+| `b.topic()` | `topic` | Infra Kit | Pub/sub topic. |
+| `b.secret()` | `secret` | Infra Kit | A secret reference — never a secret value. |
 
 Every resource supports three chainable refinements:
 
@@ -57,11 +68,20 @@ Every resource supports three chainable refinements:
 |---|---|
 | `.dependsOn(...resources)` | Declares wiring edges **and** injects typed bindings at runtime. Deny-by-default: no declared edge, no access. |
 | `.allow(...verbs)` | Inline least privilege, with verbs typed per resource kind (`"read"`/`"write"`/`"query"` on `data`, `"enqueue"`/`"dequeue"` on `queue`, `"get"`/`"set"` on `kv`, …). Permissions travel in the bindle. |
-| `.with(...annotations)` | Typed provider-specific options — the escape hatch. Optimization, never a requirement. Includes `sessionReplay(...)` for Session Replay opt-out/sample rate. |
+| `.with(...annotations)` | Typed provider-specific options — the escape hatch. Includes `sessionReplay(...)` to opt a Kit out of Session Replay or set sample rate. |
 
-## Session Replay on `web`
+## Session Replay on every App Kit
 
-Every `b.web(...)` resource is annotated with platform option `session-replay` by default. Local `hobo dev` injects a privacy-first bootstrap into HTML and serves `/__hobo/replay/*` for ingest — **no app tracker code required**. Details: [Session Replay](/HoBo/reference/session-replay/).
+Every App Kit is annotated with platform option `session-replay` by default — **api, web, service, ui, websocket, job, wasm-component**, not only `web`. Local `hobo dev` wraps HTTP App Kits: HTML gets a privacy-first bootstrap; `/__hobo/replay/*` serves ingest/list — **no app tracker code required**.
+
+```ts
+import { sessionReplay } from "@hobo/bindles";
+
+// opt out one Kit
+b.api(() => handler).with(sessionReplay({ enabled: false }));
+```
+
+Details: [Session Replay](/HoBo/reference/session-replay/) · [App Kits](/HoBo/primitives/app-kits/).
 
 ## Greenfield: declare the bindle, generate the code
 

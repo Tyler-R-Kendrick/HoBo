@@ -142,4 +142,4 @@
 | 0134 | HoBo Trails: app-owned continuous migration recipes that compose continuous identity | [identity-security](02-identity-security.md#adr-0134) |
 | 0135 | SQLite is the default embedded EventStore/runtime journal behind HoBo ports; single-owner partitions; not the public portability boundary | [data-plane sqlite default](03-data-plane-sqlite-default.md) |
 | 0136 | Effects on Contracts (Verse-inspired EffectSpec) + visible secondary ResilienceProfile; no Effect-TS/Polly/XState public deps | [data-plane effects+resiliency](03-data-plane-effects-resiliency.md) |
-| 0137 | Session Replay: privacy-first default-supplied capability (`@hobo/replay`); `replay.*` family; rrweb foundation; dual fixtures; distinct from event-log replay | [data-plane](03-data-plane.md#adr-0137) |
+| 0137 | Session Replay on every App Kit (`@hobo/replay`); Kit ≠ WIT membrane; `replay.*`; dual fixtures; distinct from event-log replay | [data-plane](03-data-plane.md#adr-0137) |

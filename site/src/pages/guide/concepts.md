@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Core concepts
-description: "The HoBo vocabulary: Bindle, Camp, Yard, Junction, continuous migration, the WIT/WASM membrane, the replayable event log, and agent-native identity."
+description: "The HoBo vocabulary: Bindle, App Kits, Camp, Yard, Junction, continuous migration, the WIT/WASM membrane, the replayable event log, and agent-native identity."
 ---
 
 # Core concepts
@@ -21,6 +21,17 @@ Scopes nest by breadth: **`Bindle ⊂ Camp ⊂ Yard ⊂ Junction`**. The bindle 
 
 Multi-region within a provider = several camps under one yard. Multi-cloud = several yards federated into a junction.
 
+## App Kits (inside a Bindle)
+
+Inside a Bindle, resources split into two families:
+
+| Family | What it is | Examples |
+|---|---|---|
+| **[App Kit](/HoBo/primitives/app-kits/)** | Application surface that hosts entrypoints or interactive runtime behavior | `api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component` |
+| **Infra Kit** | Port / infrastructure dependency — not an entrypoint host | `kv`, `bucket`, `queue`, `topic`, `secret`, `data`, … |
+
+Prefer **Kit** / **App Kit** at the Bindle authoring layer. Do **not** call these "membrane types." **[Session Replay](/HoBo/reference/session-replay/)** is default-supplied on every App Kit (not only `web`).
+
 ## Continuous migration
 
 The guiding principle behind everything above: **placement is a standing decision, not a historical one.** Because the bindle is provider-agnostic and the camp is just its current address, HoBo's Dispatcher can keep re-planning placement for as long as the app lives — watching price, credits, reliability, and policy. When a better home clears the gates, the move runs through the same plan → gate → converge loop as any deploy. Migration isn't an emergency procedure in HoBo; it's a lifestyle.
@@ -31,14 +42,14 @@ The guiding principle behind everything above: **placement is a standing decisio
 
 ## The WIT/WASM membrane
 
-The portable contract between app code, runtime ports, and provider adapters is **WIT** (the WebAssembly Component Model's interface language, hosted on wasmCloud by default):
+The portable contract between app code, runtime ports, and provider adapters is **WIT** (the WebAssembly Component Model's interface language, hosted on wasmCloud by default). This is the **membrane** — the low-level portability boundary. It is **not** the same idea as an App Kit:
 
-- **Ports are WIT interfaces** — `api`, `kv`, `bucket`, `queue`, `topic`, `secret`, `sql`, schedules, websockets, jobs, and more.
+- **Ports are WIT interfaces** — storage, messaging, HTTP, identity, and more.
 - **Apps are wasm components** (with an OCI-container fallback for anything wasm can't host yet).
 - **Providers are capability providers** linked to component imports — deny-by-default: a component reaches a backend only via a link the manifest declared.
 - **Any Component-Model language** can author against the same interfaces. TypeScript is the first reference implementation, not a requirement.
 
-This thin, typed membrane is what makes continuous migration economical: moving homes means re-linking ports to a new provider's adapters, not rewriting the app.
+This thin, typed membrane is what makes continuous migration economical: moving homes means re-linking ports to a new provider's adapters, not rewriting the app. App Kits *compose* those ports into Bindle-declared surfaces you author day to day.
 
 ## Ports and adapters, everywhere
 
@@ -76,6 +87,7 @@ AI agents are **first-class principals**, not scripts holding a human's API key:
 
 ## Where the details live
 
-- [Bindles](/HoBo/primitives/bindles/) · [Camps](/HoBo/primitives/camps/) · [Yards](/HoBo/primitives/yards/) · [Junctions](/HoBo/primitives/junctions/) — the primitive references.
+- [Bindles](/HoBo/primitives/bindles/) · [App Kits](/HoBo/primitives/app-kits/) · [Camps](/HoBo/primitives/camps/) · [Yards](/HoBo/primitives/yards/) · [Junctions](/HoBo/primitives/junctions/) — the primitive references.
+- [Session Replay](/HoBo/reference/session-replay/) — default on every App Kit.
 - [Architecture](/HoBo/guide/architecture/) — the machinery that does the describing, placing, and moving.
 - [HoBo for agents](/HoBo/agents/) — the agent identity model and MCP surface.

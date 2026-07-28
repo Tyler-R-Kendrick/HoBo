@@ -1,25 +1,38 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Resource catalog
-description: "Bindle resource factories: api, web, kv, bucket, queue, topic, secret, data, schedule, wiring with allow/with/connector/config."
+description: "Bindle resource factories grouped as App Kits vs Infra Kits: api, web, service, kv, bucket, queue, and more."
 ---
 
 # Resource catalog
 
 App resources are declared in **`@hobo/bindles`** — **not** in `@hobo/core`. Names come from record keys the builder returns; explicit Bindle v1 methods do not take resource name arguments.
 
-## Common factories
+Prefer **App Kit** / **Infra Kit** over calling resource kinds "membrane types." The WIT/WASM **membrane** is the low-level portability contract ([WASM & WIT](/HoBo/guide/wasm/)).
+
+## App Kits
+
+Entrypoint-bearing surfaces — [App Kits](/HoBo/primitives/app-kits/). **Session Replay default-on** for each.
 
 | Factory | Role |
 |---|---|
-| `api` / `web` / `service` | HTTP and service surfaces |
+| `api` / `web` / `service` / `ui` | HTTP App Kits |
+| `websocket` | Realtime Kit |
+| `job` | Job Kit |
+| `wasm-component` | Component Kit |
+
+## Infra Kits
+
+Port / infrastructure resources — no default Session Replay.
+
+| Factory | Role |
+|---|---|
 | `kv` / `bucket` | Key-value and object storage |
 | `queue` / `topic` | Messaging |
 | `secret` | Managed secret resource (residual; prefer secretless) |
 | `data` | Portable data dependency (paradigm chosen by Matching) |
-| `schedule` / `job` | Time and batch work |
-| `websocket` | Realtime |
-| `flag` / `auth` / `crypto` / `notify` / `guardrail` / `ui` / … | Cross-cutting catalog |
+| `schedule` | Time-based work |
+| `flag` / `auth` / `crypto` / `notify` / `guardrail` / `golden` / `experiment` / … | Cross-cutting catalog |
 
 ## Wiring
 

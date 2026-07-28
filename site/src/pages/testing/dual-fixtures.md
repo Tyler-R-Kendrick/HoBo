@@ -31,7 +31,7 @@ Schema/data dual windows: produce fixtures that assert both old and new folds du
 
 ## Session Replay duals (ADR-0137)
 
-Local Session Replay stores heavy blobs via **dual-fixture** adapters (memory/fixture engines) so privacy + tracker/player contracts stay offline-green without multi-cloud object storage. Production binds object-storage ports; dual fixtures remain the proof path.
+Local Session Replay (default on every **App Kit**) stores heavy blobs via **dual-fixture** adapters (memory/fixture engines) so privacy + tracker/player contracts stay offline-green without multi-cloud object storage. Production binds object-storage ports; dual fixtures remain the proof path. See [Session Replay](/HoBo/reference/session-replay/) · [App Kits](/HoBo/primitives/app-kits/).
 
 ## Rules
 

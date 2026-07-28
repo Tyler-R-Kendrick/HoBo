@@ -67,6 +67,18 @@ type TrackedBindleResource<K extends ResourceKind> = BindleResource<K> & {
 	readonly __bindleInternal: InternalBindleResource<K>;
 };
 
+/**
+ * Default Session Replay annotation for every Bindle `web` resource (ADR-0137).
+ * Hosts (`hobo dev` / local Yard) wrap web entrypoints so HTML pages are
+ * recorded without per-app wiring. Opt out with:
+ *   `.with({ provider: "hobo", option: "session-replay", config: { enabled: false } })`
+ */
+const DEFAULT_WEB_SESSION_REPLAY_ANNOTATION: ProviderAnnotation = Object.freeze({
+	provider: "hobo",
+	option: "session-replay",
+	config: Object.freeze({ enabled: true, defaultSupply: "local-on" }),
+});
+
 function createBindleResource<K extends ResourceKind>(
 	kind: K,
 	handler?: () => unknown,
@@ -74,7 +86,9 @@ function createBindleResource<K extends ResourceKind>(
 	const internal: InternalBindleResource<K> = {
 		kind,
 		declaredAllow: [],
-		annotations: [],
+		// Web surfaces are Session-Replay capable by default — zero Bindle config.
+		annotations:
+			kind === "web" ? [DEFAULT_WEB_SESSION_REPLAY_ANNOTATION] : [],
 		dependencies: new Set(),
 		handler,
 	};
@@ -103,7 +117,15 @@ function createBindleResource<K extends ResourceKind>(
 			return resource;
 		},
 		with(...annotations: ProviderAnnotation[]): BindleResource<K> {
-			internal.annotations.push(...annotations);
+			for (const annotation of annotations) {
+				// Later session-replay annotations replace the default web one.
+				if (annotation.option === "session-replay") {
+					internal.annotations = internal.annotations.filter(
+						(a) => a.option !== "session-replay",
+					);
+				}
+				internal.annotations.push(annotation);
+			}
 			return resource;
 		},
 	};

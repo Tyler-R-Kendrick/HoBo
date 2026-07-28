@@ -14,6 +14,30 @@ Harness/OpenFeature, continuous identity, and the control-plane event log.
 
 ## Default local path
 
+### Every Bindle `web` app is Session-Replay capable (no app code required)
+
+`bindle("app", b => ({ web: b.web(handler) }))` auto-attaches a
+`session-replay` platform annotation. Local Yard hosts (`hobo dev`) wrap web
+entrypoints so that:
+
+1. HTML responses get a privacy-first bootstrap (`data-hobo-replay`)
+2. Batches POST to `/__hobo/replay/ingest` on the same origin
+3. Agents/CLI can list via `hobo replay list` / `/__hobo/replay/sessions`
+
+Opt out per resource:
+
+```ts
+import { bindle, sessionReplay } from "@hobo/bindles";
+
+bindle("app", (b) => ({
+  web: b.web(handler).with(sessionReplay({ enabled: false })),
+}));
+```
+
+Kill switch: `HOBO_REPLAY=0`.
+
+### Programmatic dual fixtures
+
 ```ts
 import {
   createReplayService,

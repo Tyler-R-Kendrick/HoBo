@@ -9,6 +9,31 @@ export {
 	type ReplayAutowireSnippet,
 } from "./autowire.js";
 export {
+	applySessionReplayToEntrypoints,
+	defaultWebSessionReplayAnnotation,
+	deriveBindleSessionReplayPlan,
+	isResourceReplayable,
+	listReplayableResources,
+	readSessionReplayAnnotation,
+	sessionReplayAnnotation,
+	wrapBindleWebHandler,
+	SESSION_REPLAY_OPTION,
+	SESSION_REPLAY_PATH_PREFIX,
+	type BindleAnnotationLike,
+	type BindleDefinitionLike,
+	type BindleResourceLike,
+	type BindleSessionReplayPlan,
+	type FetchHandler as SessionReplayFetchHandler,
+	type SessionReplayAnnotationConfig,
+	type SessionReplayHostSurface,
+	type WrapBindleWebHandlerOptions,
+} from "./bindle-integration.js";
+export {
+	injectSessionReplayBootstrap,
+	renderSessionReplayBootstrapScript,
+	type BrowserBootstrapConfig,
+} from "./browser-bootstrap.js";
+export {
 	buildCorrelation,
 	withErrorLink,
 	withHarnessExposures,

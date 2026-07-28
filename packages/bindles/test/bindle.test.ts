@@ -104,7 +104,42 @@ describe("bindle()", () => {
 			config: { GREETING_PREFIX: "howdy", APP_TITLE: "howdy" },
 		});
 		expect(definition.resources.api.annotations).toEqual([campEnv]);
-		expect(definition.resources.web.annotations).toEqual([campEnv]);
+		// Web carries default Session Replay annotation (ADR-0137) plus env.
+		expect(definition.resources.web.annotations).toEqual([
+			{
+				provider: "hobo",
+				option: "session-replay",
+				config: { enabled: true, defaultSupply: "local-on" },
+			},
+			campEnv,
+		]);
+	});
+
+	it("web resources auto-enable session-replay; explicit false opts out", () => {
+		const definition = bindle("replay-demo", (b) => {
+			const on = b.web();
+			const off = b.web().with({
+				provider: "hobo",
+				option: "session-replay",
+				config: { enabled: false },
+			});
+			return { on, off };
+		});
+		expect(
+			definition.resources.on.annotations.some(
+				(a) => a.option === "session-replay" && a.config.enabled === true,
+			),
+		).toBe(true);
+		expect(
+			definition.resources.off.annotations.some(
+				(a) => a.option === "session-replay" && a.config.enabled === false,
+			),
+		).toBe(true);
+		expect(
+			definition.resources.off.annotations.filter(
+				(a) => a.option === "session-replay",
+			),
+		).toHaveLength(1);
 	});
 
 	it("external / container / wasmComponent declare deps with required runtimes", async () => {

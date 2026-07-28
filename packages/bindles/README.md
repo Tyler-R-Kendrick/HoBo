@@ -6,7 +6,11 @@ provider-agnostic manifest objects only — no runtime semantics (ADR-0072).
 ## Features · experiments · rollouts (Harness IfC)
 
 ```ts
-import { features, declareExperiment, rollout } from "@hobo/bindles";
+import { features, declareExperiment, rollout, sessionReplay } from "@hobo/bindles";
+
+// Session Replay (ADR-0137): every `b.web(...)` is annotated for local capture by default.
+// Opt out: b.web(handler).with(sessionReplay({ enabled: false }))
+void sessionReplay;
 
 export const appFeatures = features({
   "new-checkout-flow": {

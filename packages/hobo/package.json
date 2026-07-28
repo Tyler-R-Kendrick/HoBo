@@ -39,6 +39,8 @@
 		"@hobo/trails": "workspace:*",
 		"@hobo/stations": "workspace:*",
 		"@hobo/replay": "workspace:*",
+		"@hobo/management": "workspace:*",
+		"@hobo/control-api": "workspace:*",
 		"@hobo/mcp": "workspace:*",
 		"@hobo/provider-aws": "workspace:*",
 		"@hobo/provider-azure": "workspace:*",

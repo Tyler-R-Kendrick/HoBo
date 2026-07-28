@@ -7,7 +7,7 @@ Experience proofs live under a type folder: `src/draft/exp-proofs/<type>/<slug>`
 | Type | Audience | Required artifacts (gate-enforced by `pnpm run draft:artifacts`) |
 |---|---|---|
 | `dx` | developers/operators | pseudo-code, protobuf + CUE contracts, mermaid diagrams |
-| `ux` | end users | `assets/` with **real visuals** (SVG/PNG wireframes, mockups, screenshots) |
+| `ux` | end users | `assets/` with **real visuals** (SVG/PNG wireframes, mockups, screenshots). Interactive/game proofs also require Playwright **screenshots + MP4 recordings** + `evidence-manifest.json` (see `ux/AGENTS.md`) |
 | `cx` | customers/publishers | journey maps/scripts, comms fixtures (`assets/*.md` or `journeys/`) |
 | `ax` | agents | MCP transcripts, tool schemas, llms.txt fixtures (`assets/` or `transcripts/`) |
 | `api` | API/SDK consumers | interface declarations, type tests (`type-tests/`), example consumers |

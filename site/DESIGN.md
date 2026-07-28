@@ -82,17 +82,18 @@ components:
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
-    rounded: "{rounded.md}"
-    padding: 12px
-    typography: "{typography.body-md}"
+    rounded: "{rounded.sm}"
+    padding: 14px
+    typography: "{typography.h3}"
   button-primary-hover:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.on-primary}"
+    backgroundColor: "{colors.spark}"
+    textColor: "{colors.on-tertiary}"
   button-ghost:
     backgroundColor: "{colors.neutral}"
     textColor: "{colors.primary}"
-    rounded: "{rounded.md}"
-    padding: 12px
+    rounded: "{rounded.sm}"
+    padding: 14px
+    typography: "{typography.h3}"
   card:
     backgroundColor: "{colors.neutral-raised}"
     textColor: "{colors.ink}"
@@ -229,11 +230,17 @@ Not Material elevation. Use **sticker depth**:
 
 ## Components
 
-### Buttons
+### Buttons (cartoon signage — not pills)
 
-- **Primary:** ink fill, paper text, thick outline optional, sticker shadow on hover.
-- **Ghost:** paper fill, ink text, strong border.
-- Hover may shift to spark **only** for links/secondary emphasis — primary stays ink.
+Buttons are **roadside / tavern sign boards**, not soft ellipses or Material CTAs:
+
+- **Silhouette:** chamfered wooden-plank `clip-path` (cut corners), never `border-radius: 999px`.
+- **Ink rim:** hard outer stroke + painted inner rail + top rivet/nail heads.
+- **Type:** Chewy title-card lettering (`h3` scale), slightly tracked.
+- **Primary:** solid ink (or night cream) fill, paper text; hover can flash **spark** vermillion like a painted warning sign.
+- **Ghost:** paper/board fill, ink rim, reads as an unpainted plank.
+- **Motion:** hang-and-bounce on hover (`translate` + slight `rotate`); press flattens the sticker shadow.
+- **Shadow:** hard offset sticker depth only — no soft blur elevation.
 
 ### Cards
 

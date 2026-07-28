@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Session Replay
-description: "Privacy-first Session Replay (@hobo/replay, ADR-0137): default on every App Kit, dual fixtures, replay.* events, CLI, and naming split from event-log replay and the WIT membrane."
+description: "Privacy-first Session Replay (@hobo/replay, ADR-0137): default on every App Kit, dual fixtures, replay.* events, CLI, and naming split from event-log replay."
 ---
 
 # Session Replay
@@ -16,7 +16,6 @@ description: "Privacy-first Session Replay (@hobo/replay, ADR-0137): default on 
 | **Auth session** | Login/refresh/revoke | `session.Started` / `Refreshed` / `Revoked` |
 | **Session Replay** | DOM/session reconstruction | `replay.*` + `@hobo/replay` |
 | **App Kit** | Bindle-declared app surface (`api`, `web`, `service`, …) | `@hobo/bindles` `APP_KIT_KINDS` |
-| **Membrane** | WIT/WASM portability contract (wRPC) | ADR-0069 — **not** a Kit synonym |
 
 Heavy rrweb streams **never** enter the control-plane event log — only content-addressed blob refs.
 

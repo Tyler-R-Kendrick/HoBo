@@ -13,7 +13,7 @@ HoBo’s vocabulary is small on purpose. Learn these nouns once; every guide and
 | Primitive | One-liner | Page |
 |---|---|---|
 | **Bindle** | Provider-agnostic packed app | [Bindles](/HoBo/primitives/bindles/) |
-| **App Kit** | Bindle-declared app surface (`api`/`web`/…) — not a "membrane type" | [App Kits](/HoBo/primitives/app-kits/) |
+| **App Kit** | Bindle-declared app surface (`api`/`web`/…) | [App Kits](/HoBo/primitives/app-kits/) |
 | **Camp** | Current home + durable runtime | [Camps](/HoBo/primitives/camps/) |
 | **Yard** | Provider control-plane scope | [Yards](/HoBo/primitives/yards/) |
 | **Junction** | Cross-yard federation | [Junctions](/HoBo/primitives/junctions/) |

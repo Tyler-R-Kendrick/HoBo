@@ -39,14 +39,14 @@ export default bindle("my-app", (b) => {
 
 ## App Kits vs Infra Kits
 
-Resources fall into two authoring families (prefer this language over "membrane types"):
+Resources fall into two authoring families:
 
 | Family | Kinds | Session Replay |
 |---|---|---|
 | **[App Kits](/HoBo/primitives/app-kits/)** | `api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component` | **Default-on** (privacy-first) |
 | **Infra Kits** | `data`, `kv`, `bucket`, `queue`, `topic`, `secret`, … | Off unless explicitly annotated |
 
-The WIT/WASM **membrane** (ADR-0069) is the low-level portability contract — not a synonym for App Kit.
+WIT/WASM (ADR-0069) is how ports and providers link at runtime; App Kits are the Bindle-facing surfaces you declare.
 
 ## The builder surface
 

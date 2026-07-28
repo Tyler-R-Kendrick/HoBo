@@ -11,7 +11,7 @@ description: "HoBo's reference architecture: the Yard control plane, the data pl
 |---|---|
 | [Data plane](/HoBo/architecture/data-plane/) | Event log, aggregates, projections, SQLite default |
 | [Control plane](/HoBo/architecture/control-plane/) | Yard: plan → gate → converge |
-| [WASM & WIT surface](/HoBo/architecture/wasm/) | Component Model membrane |
+| [WASM & WIT surface](/HoBo/architecture/wasm/) | Component Model ports & hosts |
 | [Air-gapped & sovereign](/HoBo/architecture/air-gapped/) | Zero-egress profiles |
 
 

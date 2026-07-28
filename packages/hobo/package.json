@@ -6,7 +6,8 @@
 	"type": "module",
 	"bin": {
 		"hobo": "./dist/bin/hobo.js",
-		"hobo-mcp": "./dist/bin/hobo-mcp.js"
+		"hobo-mcp": "./dist/bin/hobo-mcp.js",
+		"hobo-code": "./dist/bin/hobo-code.js"
 	},
 	"files": [
 		"LICENSE",
@@ -29,6 +30,7 @@
 		"@hobo/broker": "workspace:*",
 		"@hobo/camps": "workspace:*",
 		"@hobo/cli": "workspace:*",
+		"@hobo/code": "workspace:*",
 		"@hobo/cloud": "workspace:*",
 		"@hobo/connectivity": "workspace:*",
 		"@hobo/contracts": "workspace:*",

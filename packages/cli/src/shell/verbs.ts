@@ -310,6 +310,7 @@ asserts freshness against.
 `;
 	}
 
+
 	const statusLine =
 		options.implemented === undefined
 			? ""

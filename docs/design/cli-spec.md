@@ -46,6 +46,7 @@ surfaces.
 | `generate` | generation | Request the provider-generation loop for a backend/capability; certification still passes through conformance and Registry. | HOBO-207, HOBO-348 |
 | `sandbox` | test loop | Run a system-under-test in an isolated lane with out-of-scope boundaries served from contracts. | HOBO-190, HOBO-392 |
 | `test` | test loop | Alias for the contract-backed sandbox test lane; not a replacement for project test runners. | HOBO-190, HOBO-392 |
+
 | `attest` | governance | Produce signed OCSF, control, or model-card evidence exports from replayable audit facts for external GRC tools. | HOBO-175, HOBO-196, HOBO-282 |
 | `erase` | governance | Request crypto-shred erasure and projection rebuild for a data subject without rewriting historical events. | HOBO-295 |
 | `broker` | governance | The broker (the Conductor) on the CLI. Requires Station context when available (profile / `HOBO_STATION` / `--station`); receipts pin `stationId` + `railHash`. `broker config [--init]` scaffolds/validates `hobo.broker.json` (importable as a Rail under a Station); `broker up [--config --request]` assembles the Conductor against Station + active Rail + local-host catalog when no cloud config; `broker resolve --policies --request` runs one resolution; `broker matrix` prints the closed rejection-code catalog. App lifecycle stays `up`/`down`. | HOBO-521, HOBO-525, HOBO-528, HOBO-529 |
@@ -54,6 +55,18 @@ surfaces.
 | `replay` | observability | **Session Replay** (DOM/session reconstruction on every **App Kit**) — `list` \| `get` \| `open` \| `summarize` \| `retention` \| `doctor`. Distinct from control-plane event-log replay and auth `session.*`. Local dual fixtures default-on for all App Kits (not only `web`); production flag/sample gated; `HOBO_REPLAY=0` kill switch. MCP parity via CANONICAL_VERBS. | ADR-0137 |
 | `derivative` | extensibility | Manage derived HoBo implementations; `derivative upgrade` checks descriptors, runs upcasters, and reruns conformance. | HOBO-36, HOBO-336, HOBO-386 |
 | `runbook` | SRE | Execute or replay declarative incident runbooks; write actions still pass through policy obligations. | HOBO-260, HOBO-285 |
+
+
+## Coding harness binary (`hobo-code`)
+
+The coding harness is **not** a `hobo <verb>` entry. It ships as a separate binary:
+
+```bash
+hobo-code [flags] [<verb>] [args]
+hobo-code [flags] <prompt...>   # default verb: dispatch
+```
+
+Package: `@hobo/code` / composition-root bin from `@hobo/hobo`. Flat verbs: `dispatch` (default), `status`, `session`, `scaffold`, `isolate`, `promote`, `budget`, `remote`, `platform`, `join`, `agent`, `nodes`, `rooms`, `help`. Distributed compute (block/buzz-inspired hive) is folded into those verbs — there is **no** nested `buzz` verb. See [ADR-0139](./adr/03-data-plane.md#adr-0139) and [hobo-code-isolation-runbook.md](./hobo-code-isolation-runbook.md).
 
 ## Station context resolution
 

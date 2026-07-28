@@ -1,0 +1,2 @@
+hobo-code-harness-experience: ok
+template=true visual=true evidence=true isolationClean=true

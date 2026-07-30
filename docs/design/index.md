@@ -31,7 +31,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0130) | **ADR-0130** — Hierarchical DNS-valid naming (`.hobo.localhost` / `.hobo.test`; never bare `.hobo`) | — |
 | [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0140) | **ADR-0140** — Launch ship targets A/B/C (OSS public · local-first npm · hosted beta/GA); default order A→B→C | — |
 | [`launch-ship-targets.md`](./launch-ship-targets.md) | Human-facing summary of ADR-0140 ship targets, S-stage interim cutlines, and claim rules | — |
-| [`instances/`](./instances/README.md) | Populated readiness dashboard, go/no-go, accepted-risk **instances** (dated snapshots; contracts stay in sibling docs) | — |
+| [`instances/`](./instances/README.md) | Populated readiness dashboard, go/no-go, accepted-risk, and residual human-blocker **instances** (dated snapshots; contracts stay in sibling docs) | — |
 | [`ai-native-agent-auth.md`](./ai-native-agent-auth.md#plan-06) | AI-native platform, agent auth & end-user auth | 06 |
 | [`stage-3-agent-autonomy-acceptance.md`](./stage-3-agent-autonomy-acceptance.md) | Stage-3 (Agent Autonomy) acceptance record: scope in/out, promoted epic proofs, resolved stage-3 hooks, runnable stage gate | 06 |
 | [`data-plane.md`](./data-plane.md#plan-32) | Event model & the data plane: sourcing/replay, reactivity, projections, migrations, search | 11, 32 |
@@ -80,6 +80,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`release-artifact-provenance-retention.md`](./release-artifact-provenance-retention.md) | Productization M0 handoff for release artifact provenance, retention, invalidation/yank, offline bundles, and support/debug access | — |
 | [`artifact-store.md`](./artifact-store.md) | Productization M0 scope and acceptance for artifact classes, custody states, access evidence, retention handoffs, yanks, and support-safe artifact evidence | — |
 | [`package-cache.md`](./package-cache.md) | Productization M0 scope and acceptance for package cache subjects, digest evidence, invalidation, offline availability, and support handoffs | — |
+| [`npm-publish-allowlist.md`](./npm-publish-allowlist.md) | First-publish npm allowlist, `0.1.0-alpha.x` prerelease policy, dual-bin (`@hobo/hobo` only), manual `workflow_dispatch` publish dry-run | — |
 | [`marketplace-publisher-trust-evidence.md`](./marketplace-publisher-trust-evidence.md) | Productization M0 evidence contract for marketplace publisher trust tiers, review evidence, and launch limitations | — |
 | [`marketplace-payout-hooks.md`](./marketplace-payout-hooks.md) | Productization M0 scope and acceptance for publisher payout-readiness states, tax/identity handoffs, billing reconciliation, and payout launch limitations | — |
 | [`marketplace-ux.md`](./marketplace-ux.md) | Productization M0 scope and acceptance for marketplace browse, trust warnings, installability outcomes, org-catalog visibility, accessibility, and support handoffs | — |

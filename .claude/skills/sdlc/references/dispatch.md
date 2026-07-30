@@ -135,9 +135,12 @@ opened (`stacked-prs.md` § Bottom-up closeout):
 
 1. Bottom PR first: rubber-duck + adversarial review + independent reviewer.
 2. Address **all** PR comments and review threads.
-3. Fix required status checks (exception only for documented billing/budget/quota failures).
-4. Squash-merge that PR (`gh stack merge <pr> --yes --squash`), then `gh stack sync`.
+3. Fix required status checks that actually ran and failed for code reasons. If checks are red
+   only for **billing/budget/quota** (jobs never started / spending limit), document on the PR
+   and **still squash-merge** — do not wait for green CI.
+4. Squash-merge that PR (`gh stack merge <pr> --yes --squash` or `gh pr merge <pr> --squash`;
+   `--admin` if protection blocks on billing-red checks), then `gh stack sync`.
 5. Repeat upward until the stack is fully merged.
 
 Never mark the initiative Done while open PRs remain with unresolved comments, failing
-non-budget checks, or missing squash-merge.
+**non-billing** checks, or missing squash-merge. Billing-red CI alone is not a Done blocker.

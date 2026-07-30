@@ -1,0 +1,168 @@
+/**
+ * Ship-readiness gap closure guard (plans 0011/0012).
+ *
+ * Asserts every residual human ID remains on the residual ledger, that key
+ * agent remediations exist on disk, and that honesty markers forbid false
+ * "CI green" / "npm published" claims in the residual ledger itself.
+ *
+ * Exit 0 when the inventory is complete; exit 1 with a list of failures.
+ */
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import process from "node:process";
+
+const repoRoot = path.resolve(import.meta.dirname, "..");
+
+const REQUIRED_RESIDUAL_IDS = [
+	"H-V1",
+	"H-O2",
+	"H-O3",
+	"H-O4",
+	"H-E1b",
+	"H-E3b",
+	"H-E5",
+	"H-E6",
+	"H-T1",
+] as const;
+
+const REQUIRED_PATHS = [
+	"docs/plans/0011-ship-readiness-gap-review.md",
+	"docs/plans/0012-ship-remediation-plan.md",
+	"docs/design/launch-ship-targets.md",
+	"docs/design/npm-publish-allowlist.md",
+	"docs/design/instances/README.md",
+	"docs/design/instances/v1-readiness-dashboard-2026-07-30.md",
+	"docs/design/instances/go-no-go-repo-public-2026-07-30.md",
+	"docs/design/instances/go-no-go-developer-tooling-2026-07-30.md",
+	"docs/design/instances/accepted-risks-2026-07-30.md",
+	"docs/design/instances/residual-human-blockers-2026-07-30.md",
+	"docs/design/pre-public-secret-scan.md",
+	".github/workflows/publish.yml",
+	"packages/componentize/src/componentize.ts",
+] as const;
+
+function read(rel: string): string {
+	return readFileSync(path.join(repoRoot, rel), "utf8");
+}
+
+const failures: string[] = [];
+
+for (const rel of REQUIRED_PATHS) {
+	if (!existsSync(path.join(repoRoot, rel))) {
+		failures.push(`missing required path: ${rel}`);
+	}
+}
+
+const residualPath = "docs/design/instances/residual-human-blockers-2026-07-30.md";
+if (existsSync(path.join(repoRoot, residualPath))) {
+	const residual = read(residualPath);
+	for (const id of REQUIRED_RESIDUAL_IDS) {
+		if (!residual.includes(id)) {
+			failures.push(`residual ledger missing ${id}`);
+		}
+	}
+	// Residual ledger must not claim these closed
+	const falseClosed =
+		/\bH-V1\b[^\n]{0,80}\b(fixed|closed|resolved|green)\b/iu.test(residual) &&
+		!/does \*\*not\*\* claim H-V1 fixed/iu.test(residual);
+	if (falseClosed) {
+		failures.push("residual ledger appears to claim H-V1 fixed");
+	}
+	if (!/Agents must not mark these fixed/iu.test(residual)) {
+		failures.push("residual ledger missing agents-must-not-mark-fixed guard");
+	}
+}
+
+// ADR-0140 present
+const adrTheme = "docs/design/adr/07-portability-extensibility.md";
+if (existsSync(path.join(repoRoot, adrTheme))) {
+	const adr = read(adrTheme);
+	if (!/## ADR-0140\b/u.test(adr)) {
+		failures.push("ADR-0140 section missing from 07-portability-extensibility.md");
+	}
+}
+
+// Dual-bin: product bin on @hobo/hobo, not @hobo/cli
+const cliPkg = JSON.parse(read("packages/cli/package.json")) as {
+	bin?: unknown;
+};
+const hoboPkg = JSON.parse(read("packages/hobo/package.json")) as {
+	bin?: Record<string, string>;
+};
+if (cliPkg.bin) {
+	failures.push("@hobo/cli must not ship a public bin (dual-bin conflict)");
+}
+if (!hoboPkg.bin?.hobo) {
+	failures.push("@hobo/hobo must expose bin.hobo as product CLI");
+}
+
+// Workflow integrity markers
+const s0 = existsSync(path.join(repoRoot, ".github/workflows/stage-gate-s0.yml"))
+	? read(".github/workflows/stage-gate-s0.yml")
+	: "";
+if (s0 && !/stage-gate-s0-record-linux/u.test(s0)) {
+	failures.push("stage-gate-s0.yml missing stable linux artifact name");
+}
+if (s0 && /stage-gate-s0-record-ubuntu-latest/u.test(s0)) {
+	failures.push("stage-gate-s0.yml still hardcodes ubuntu-latest artifact path");
+}
+
+const hoboCi = existsSync(path.join(repoRoot, ".github/workflows/hobo-ci.yml"))
+	? read(".github/workflows/hobo-ci.yml")
+	: "";
+if (hoboCi) {
+	// Require push trigger targeting main (inline list form used in this repo).
+	const hasPushMain =
+		/^  push:\s*$/m.test(hoboCi) &&
+		/branches:\s*\[\s*main\s*\]/u.test(hoboCi);
+	if (!hasPushMain) {
+		failures.push("hobo-ci.yml missing push: branches including main");
+	}
+}
+
+// Immature packages private
+const mustPrivate = [
+	"packages/camps/package.json",
+	"packages/yards/package.json",
+	"packages/junctions/package.json",
+	"packages/componentize/package.json",
+	"packages/stage-gate/package.json",
+];
+for (const rel of mustPrivate) {
+	if (!existsSync(path.join(repoRoot, rel))) continue;
+	const pkg = JSON.parse(read(rel)) as { private?: boolean; name?: string };
+	if (pkg.private !== true) {
+		failures.push(`${pkg.name ?? rel} must be private: true`);
+	}
+}
+
+// Componentize honesty
+const componentize = existsSync(
+	path.join(repoRoot, "packages/componentize/src/componentize.ts"),
+)
+	? read("packages/componentize/src/componentize.ts")
+	: "";
+if (
+	componentize &&
+	!/buildWasmContractBytes/u.test(componentize) &&
+	!/contract-shaped|HONEST SCOPE|synthetic/iu.test(componentize)
+) {
+	failures.push("componentize.ts missing contract-bytes / HONEST SCOPE markers");
+}
+if (
+	componentize &&
+	!/HONEST SCOPE|contract-shaped|buildWasmContractBytes/u.test(componentize)
+) {
+	failures.push("componentize.ts honesty markers incomplete");
+}
+
+if (failures.length > 0) {
+	console.error(`ship-gap-closure: FAIL (${failures.length})`);
+	for (const f of failures) console.error(`  - ${f}`);
+	process.exit(1);
+}
+
+console.log(
+	`ship-gap-closure: OK — ${REQUIRED_RESIDUAL_IDS.length} residual IDs present, remediations on disk, dual-bin + CI markers hold`,
+);
+process.exit(0);

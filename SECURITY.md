@@ -16,11 +16,17 @@ Please report:
 - Draft contract code that contradicts documented deny-by-default, secretless, tenant-isolation, provenance, or no-egress claims.
 - Dependency or script behavior that materially changes the trust boundary documented in `docs/agent-tooling.md`.
 
-## How to report
+## How to report (public repository)
 
-If private vulnerability reporting is enabled for this repository, use GitHub's private vulnerability reporting flow. Otherwise, contact the maintainers through the repository owner channel before opening a public issue.
+Prefer **private** disclosure. Do not open a public GitHub issue for an active vulnerability if a private channel exists.
 
-Do not include live secrets, exploitable credentials, or private tenant data in public issues, pull requests, commit messages, logs, or screenshots.
+1. **GitHub private vulnerability reporting** (preferred when enabled on this repo): use the repository **Security** tab → **Report a vulnerability** (or `https://github.com/<owner>/<repo>/security/advisories/new` for the canonical remote). This keeps the report confidential until maintainers publish or dismiss it.
+2. **If private reporting is unavailable:** contact the repository owner / maintainers through the GitHub account that owns the repo (or the contact listed in the GitHub org profile) **before** filing a public issue. Ask for a secure channel; do not paste exploit details into public issues, discussions, or PRs.
+3. **Public issues** are only for already-fixed, non-exploitable hygiene (for example docs that misstate a deny-by-default rule) after maintainers agree the issue is safe to discuss openly.
+
+Do not include live secrets, exploitable credentials, private tenant data, or full exploit chains in public issues, pull requests, commit messages, logs, or screenshots. Redact tokens and rotate anything that may have leaked.
+
+This policy does **not** publish maintainer email addresses or API tokens. Residual ship/security process blockers that require humans (counsel, production OIDC, staffed support) are tracked in [`docs/design/instances/residual-human-blockers-2026-07-30.md`](./docs/design/instances/residual-human-blockers-2026-07-30.md) — that ledger is not a vulnerability inbox.
 
 ## Disclosure expectations
 

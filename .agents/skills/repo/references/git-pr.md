@@ -47,6 +47,14 @@ git config --local remote.pushDefault origin
 ## Merge Discipline
 
 Do not claim completion, mark a PR ready, or merge while required checks are failing or pending
-(unless a documented **billing/budget/quota** exception applies to that check and the user is
-notified). Address all review comments before squash-merge. If another merge worker owns the
-final merge, report the exact remaining state instead of pretending it shipped.
+**for real code reasons** (tests, lint, architecture, secret findings that executed).
+
+**Billing / spending-limit / quota failures do not block squash-merge.** When jobs never start
+(no runner, empty steps, "payments have failed", "spending limit needs to be increased"):
+document the exception on the PR, then **squash-merge immediately** (`gh pr merge --squash` /
+`gh stack merge --yes --squash`; `--admin` if protection still requires green checks). Tell the
+user billing needs repair asynchronously — do not leave reviewed PRs open waiting on CI that
+cannot run.
+
+Address all review comments before squash-merge. If another merge worker owns the final merge,
+report the exact remaining state instead of pretending it shipped.

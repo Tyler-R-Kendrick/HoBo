@@ -57,8 +57,8 @@ append to `docs/plans/dispatch-log.md`. Record stack id / branch chain / PR numb
    cascades.
 6. **Close the stack (mandatory)** — `references/stacked-prs.md` § Bottom-up closeout. When
    implementation is done, the **parent** reviews and merges **each PR from the bottom up**.
-   Do not mark the initiative complete until every opened PR is reviewed, repaired, and
-   squash-merged (or an explicit billing-budget exception is recorded).
+   Do not mark the initiative complete until every opened PR is reviewed, repaired (when
+   repairable), and **squash-merged**. Billing/budget-only CI failures do **not** block merge.
 
 ## Role split
 
@@ -128,16 +128,31 @@ For **each** open PR in bottom-up order:
 4. **Comments & review feedback** — list every unresolved PR comment and review thread
    (`gh api` / `gh pr view` / review comments). Address **all** of them: fix code, or reply with
    a reasoned non-action and resolve the thread. Leave no actionable thread open.
-5. **Status checks** — wait for and repair failing required checks. Re-run narrow gates after
-   fixes; `gh stack sync` / rebase as needed so CI sees the fix.
-   - **Exception:** if a check fails solely because a **billing/budget/quota** limit is exceeded
-     (CI minutes, paid runner, model budget), record the exception in `sdlc-state.md` and the PR,
-     notify the user, and do **not** silently ignore other failures.
-6. **Squash-merge that PR** when review is clean and checks are green (or budget-excepted as above):
+5. **Status checks** — wait for required checks when they can run. Repair real failures
+   (tests, lint, architecture). Re-run narrow gates after fixes; `gh stack sync` / rebase so CI
+   sees the fix.
+   - **Billing / budget / quota does not block squash-merge.** If a check fails solely because
+     jobs never started or aborted for spending limit, payment failure, exhausted CI minutes,
+     runner quota, or similar **non-code** billing signals (empty steps, no runner assigned,
+     annotation like "spending limit" / "payments have failed"):
+     1. Record the exception on the PR comment + `sdlc-state.md` (which checks, exact message).
+     2. **Squash-merge immediately** — do **not** wait for green CI, do **not** stall for user
+        approval of the merge itself (user already authorized the workstream; tell them billing
+        is broken so they can fix account settings later).
+     3. Use `gh pr merge <n> --squash` (or `gh stack merge <n> --yes --squash`). If branch
+        protection still requires green checks, retry with `--admin` when the token has that
+        permission. If merge is impossible without elevated rights, say so — still do not
+        leave the PR as "waiting on CI" when CI cannot run.
+     4. Never use this exception for real test/lint/type failures.
+6. **Squash-merge that PR** when review is clean and either checks are green **or** only
+   billing-budget failures remain (after documenting them):
    ```bash
+   # Stack-aware (preferred when in a stack):
    gh stack merge <pr-number> --yes --squash
-   # or, for a single bottom PR ready alone:
-   # gh stack merge <pr-number> --yes --squash
+   # Single PR / non-stack:
+   gh pr merge <pr-number> --squash --delete-branch
+   # If protection blocks on billing-red checks and you have admin:
+   gh pr merge <pr-number> --squash --delete-branch --admin
    gh stack sync --prune   # after merge; realign remaining layers
    ```
 7. Only then move to the next PR up the stack. Repeat until the stack is fully merged.
@@ -155,9 +170,10 @@ is honest against its final base.
   handback schema (`.sdlc/report.json` locally, a fenced `sdlc-report` block on cloud PRs); you
   apply them serially.
 - An issue/layer is Done only when (a) GitHub reports the PR checks green — queried by you, not
-  taken from the implementation agent — (or a recorded billing-budget exception applies),
-  (b) the independent review pass succeeds, (c) all PR comments/threads are addressed, and
-  (d) the PR is squash-merged.
+  taken from the implementation agent — **or** only billing/budget failures remain and are
+  documented on the PR + state file, (b) the independent review pass succeeds, (c) all PR
+  comments/threads are addressed, and (d) the PR is **squash-merged**. Billing-red CI is not a
+  reason to leave a reviewed PR open.
 - Perf, contract (PACT), and feature (cucumber) tests are first-class: acceptance criteria become
   failing tests before implementation starts.
 - Use this repo's performance-first loop: search before validate; narrow `agent:check` before

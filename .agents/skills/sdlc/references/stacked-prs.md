@@ -189,15 +189,30 @@ For PR at index `i` (bottom first):
    - Re-request review if human reviewers are in the loop.
 
 6. **Status checks**
-   - Wait for required checks.
-   - On failure: fix on this layer, commit, `gh stack push` / `gh stack sync`, re-check.
-   - **Billing budget exception only:** if failure is clearly quota/billing/minutes exhausted,
-     document in PR + `sdlc-state.md`, notify user, and continue only for that check class.
-     All other failures still block merge.
+   - Wait for required checks **when runners can start**.
+   - On real (code) failure: fix on this layer, commit, `gh stack push` / `gh stack sync`, re-check.
+   - **Billing / budget / quota — do not block merge:**
+     Signals: jobs fail in seconds with **no runner**, empty steps, annotations like
+     "spending limit needs to be increased", "recent account payments have failed",
+     exhausted minutes/quota, CodeRabbit/plan rate limits (review tooling only — not a merge gate).
+     Actions:
+     1. Comment the exact billing message + check names on the PR.
+     2. Record `billing-budget` in `sdlc-state.md` / dispatch-log.
+     3. **Proceed to squash-merge now.** Do not wait for green CI. Do not treat this as a
+        "user decision" gate for the merge — the agent **is still expected to squash-merge**
+        when review + comments are clean and the only red checks are billing.
+     4. Prefer `gh stack merge <n> --yes --squash` or `gh pr merge <n> --squash`. Use
+        `--admin` only if branch protection still demands green checks and the token can
+        override. If even admin merge is denied, report the protection block; never leave the
+        PR indefinitely open "waiting on CI that cannot run."
+     5. This exception **never** covers failing tests, lint, architecture, secret-scan content
+        findings, or any check that actually executed and found a defect.
 
 7. **Squash-merge this PR**
    ```bash
    gh stack merge <pr-number> --yes --squash
+   # single PR: gh pr merge <pr-number> --squash --delete-branch
+   # billing-red + protection: gh pr merge <pr-number> --squash --delete-branch --admin
    gh stack sync --prune
    ```
    Prefer merging **one PR at a time** after its review so the next layer rebases onto real trunk
@@ -219,8 +234,8 @@ A layer is Done only when **all** hold:
 
 1. Independent review pass succeeds (rubber-duck + adversarial + reviewer).
 2. All PR review comments/threads addressed.
-3. Required status checks green **or** a written billing-budget exception for a specific check.
-4. PR squash-merged via stack-aware merge.
+3. Required status checks green **or** only billing/budget failures remain, documented on the PR.
+4. PR **squash-merged** (stack-aware merge when in a stack). Billing-red CI is not a leave-open state.
 5. Cascade deltas applied by the coordinator.
 6. Issue tracker moved to Done by the coordinator (never by the implementer).
 
@@ -232,7 +247,7 @@ A layer is Done only when **all** hold:
 | `rebase-conflict` | exit 3 | Parent resolves; re-dispatch only if logic conflict needs implementer |
 | `review-fail` | adversarial/rubber-duck/reviewer found defects | Re-dispatch fix on same layer |
 | `checks-fail` | CI red (non-billing) | Fix on layer, push, re-wait |
-| `billing-budget` | quota/minutes/paid limit | Record exception; user decision |
+| `billing-budget` | quota/minutes/spending limit; jobs never ran | Document on PR + state; **squash-merge now**; notify user that account billing needs repair (async) |
 | `comments-open` | unresolved threads | Address before merge |
 | `handback-missing` | no `sdlc-report` / report.json | Demand report; do not Done |
 

@@ -4,6 +4,7 @@
 	"license": "MIT",
 	"description": "Optional Camp runtime / component-host adapter realizing ActorHost + wasi:messaging over Dapr sidecars (ADR-0138). In-process wasm remains default (ADR-0031).",
 	"type": "module",
+	"private": true,
 	"files": [
 		"LICENSE",
 		"dist"

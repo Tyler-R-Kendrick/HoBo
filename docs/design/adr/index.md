@@ -145,3 +145,4 @@
 | 0137 | Session Replay on every App Kit (`@hobo/replay`); Kit ≠ WIT membrane; `replay.*`; dual fixtures; distinct from event-log replay | [data-plane](03-data-plane.md#adr-0137) |
 | 0138 | Messaging plane unification; Kafka first-class capability provider; Dapr optional Camp runtime / ActorHost dual realization | [architecture-core](01-architecture-core.md#adr-0138) |
 | 0139 | HoBo Code: coding harness and harness multiplexer (`hobo-code` / `@hobo/code`) | [data-plane](03-data-plane.md#adr-0139) |
+| 0140 | Launch ship targets: OSS public (A), local-first developer tooling (B), hosted beta/GA (C); default order A→B→C; public claims must name target | [portability-extensibility](07-portability-extensibility.md#adr-0140) |

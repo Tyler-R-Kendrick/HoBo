@@ -16,16 +16,20 @@ Branch evidence is summarized in
 
 ## M0 Acceptance Record
 
-HoBo v1 release decisions need a durable record so beta, release-candidate, and GA decisions do not
-hide the evidence, blocker changes, accepted-risk owner, or revisit date behind chat history. This
-record consumes the [launch-blocker taxonomy](./launch-blocker-taxonomy.md) and defines the process
-for risk acceptance. It does not approve any current risk.
+HoBo v1 release decisions need a durable record so repo-public, developer-tooling, beta,
+release-candidate, and GA decisions do not hide the evidence, blocker changes, accepted-risk owner,
+or revisit date behind chat history. This record consumes the
+[launch-blocker taxonomy](./launch-blocker-taxonomy.md) and defines the process for risk acceptance.
+It does not approve any current risk. Ship-target vocabulary for which gate applies is
+[ADR-0140](./adr/07-portability-extensibility.md#adr-0140) /
+[`launch-ship-targets.md`](./launch-ship-targets.md); populated instances live under
+[`instances/`](./instances/README.md).
 
 ## Decision Record Template
 
 | Field | Required | Rule |
 |---|---:|---|
-| Gate | Yes | One of beta, release-candidate, or GA. |
+| Gate | Yes | One of `repo-public`, `developer-tooling`, `beta`, `release-candidate`, or `GA`. |
 | Decision | Yes | One of go, conditional-go, or no-go. |
 | Approver role | Yes | Release owner, security owner, legal/privacy owner, support owner, or business owner. |
 | Evidence links | Yes | Links to accepted proof, gate results, support/legal/security evidence, or limitation text. |
@@ -33,13 +37,18 @@ for risk acceptance. It does not approve any current risk.
 | Accepted risks | Yes | High-risk non-blockers, launch notes, or post-GA follow-ups accepted for this decision. |
 | Expiry or revisit date | Yes | Date when the decision or exception must be revisited. |
 
+`repo-public` and `developer-tooling` are interim gates for [ADR-0140](./adr/07-portability-extensibility.md#adr-0140)
+Targets A and B. They do not replace beta / release-candidate / GA for hosted Target C.
+
 ## Gate Workflow
 
-| Gate | Decision inputs | Allowed outcomes |
-|---|---|---|
-| Beta | Pilot cohort, known limitations, support route, blocker delta, and evidence links. | Go, conditional go, or no-go. |
-| Release-candidate | Release notes, upgrade guidance, compatibility evidence, blocker delta, and evidence links. | Go, conditional go, or no-go. |
-| GA | Signed launch checklist, support handoff, legal/privacy posture, blocker delta, and evidence links. | Go, conditional go, or no-go. |
+| Gate | Ship target | Decision inputs | Allowed outcomes |
+|---|---|---|---|
+| Repo-public | A — OSS public | Launch definition, truth-in-advertising posture, secret-scan evidence, SECURITY contact, known limitations for pre-release source, blocker delta. | Go, conditional go, or no-go. |
+| Developer-tooling | B — local-first npm | Target A posture + publish allowlist/prerelease, install story, offline golden path, HONEST SCOPE package docs, support boundary, blocker delta. | Go, conditional go, or no-go. |
+| Beta | C — hosted public beta | Pilot cohort, known limitations, support route, blocker delta, and evidence links. | Go, conditional go, or no-go. |
+| Release-candidate | C — hosted RC | Release notes, upgrade guidance, compatibility evidence, blocker delta, and evidence links. | Go, conditional go, or no-go. |
+| GA | C — hosted GA | Signed launch checklist, support handoff, legal/privacy posture, blocker delta, and evidence links. | Go, conditional go, or no-go. |
 
 ## M3 Release Candidate Evidence Gate
 

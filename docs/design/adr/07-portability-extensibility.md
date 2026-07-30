@@ -519,8 +519,6 @@ Local port-based `hobo dev`, cross-cloud Junction connectivity, and public DNS w
 - **(+)** Follow-on closed robustness: Tailscale API MagicDNS, Netbird management HTTP, built-in Route53 SigV4, real ES256 DPoP + JWT-SVID, rego-lite policy docs, durable billing ledger + Stripe PaymentIntent REST.
 - **(−)** Multi-cluster hard isolation sharding, SPIRE Workload API fetch, and WebAuthn claim step-up remain operational/product follow-ons (interfaces ready).
 
-
-
 ## ADR-0135
 **HoBo Yard: game-first control-plane UI over the shared management surface (not a second lifecycle).**
 
@@ -539,6 +537,44 @@ Station occupancy ([ADR-0131](01-architecture-core.md#adr-0131)), Rails, Connect
 - **(+)** One management surface for CLI / MCP / game UI; Yard feels alive while remaining a pure client of the real control plane.
 - **(+)** Experience proof under `src/draft/exp-proofs/ux/control-yard/` pins the UX contract.
 - **(−)** Phaser browser host is optional at v0; pure yard-engine + asset validation carry CI. Full visual browser harness remains a follow-on.
+
+## ADR-0140
+**Launch ship targets: OSS public (A), local-first developer tooling (B), and hosted beta/GA (C) — ordered, named, and cutlined in S-stage terms.**
+
+### Context
+Ship-readiness work conflated three different “ship” meanings: make the monorepo public, publish local-first npm tooling, and run a hosted multi-cloud product. The [ship-readiness gap review](../../plans/0011-ship-readiness-gap-review.md) (2026-07-30) found launch definition missing (**L0**), no populated readiness/go-no-go instances (**O1**), and public claims that could overstate in-memory defaults, synthetic componentize wasm, or CI status. Productization still uses M0–M4 evidence gates ([ADR-0116](#adr-0116)) and beta/RC/GA records ([go-no-go-decision-record.md](../go-no-go-decision-record.md)); those remain for **hosted** release program work. They do not define interim OSS or npm cutlines. Production-build stages **S0–S6** remain the engineering maturity vocabulary for interim cutlines ([build-s0](../build-s0-stage-gate-acceptance.md), [build-s1](../build-s1-stage-gate-acceptance.md), [stage-2](../stage-2-first-cloud-yard-acceptance.md) and later stage records).
+
+### Decision
+1. **Three named ship targets** (stable labels for claims, go/no-go gates, and messaging):
+
+| Target | Label | Meaning |
+|---|---|---|
+| **A** | OSS public | Source + design + site as a **pre-release** monorepo. Not a hosted product claim. |
+| **B** | Local-first developer tooling | Installable npm/`npx` CLI + SDK for the **offline/local** lane. Not multi-cloud GA. |
+| **C** | Hosted beta / GA | Tenants, real cloud apply, staffed support, legal terms — public beta then GA. |
+
+2. **Default ship order is A → B → C.** Do not advance a later target’s public claims while an earlier target’s must-list is open, unless a written exception names the skipped target and residual risk.
+
+3. **Interim cutlines in S-stage terms** (engineering maturity, not M0–M4 productization alone):
+
+| Target | Interim cutline (S-stage) | Must not claim |
+|---|---|---|
+| **A** | **S0/S1 hygiene cutline:** design suite + local packages may be public as **pre-release**; truth-in-advertising; secret history scan; working `SECURITY` contact. S0/S1 **CI green is preferred, not a hard gate for “repo public”** — missing runners are an accepted residual risk until restored. | Hosted multi-cloud product, paid SaaS, production SSO, or “CI proven on main” without live runner evidence. |
+| **B** | **S1 offline golden-path cutline:** Target A met + publish allowlist/prerelease + single install story + offline `hobo` path documented with HONEST SCOPE (in-memory default IaC, synthetic componentize if still present) + support boundary for CLI-only. **S2 live cloud is not required** for Target B. | Live multi-provider apply as the default, portable WASM membrane if wasm is synthetic, production OIDC/SPIRE as default login. |
+| **C** | **S2+ product cutline for beta; S3+ depth and M3/M4 evidence for GA claims:** public-beta cutline + populated dashboard/go-no-go + counsel ToS/privacy/DPA/subprocessors + staffed support + dogfood Yard on a **real** provider + at least one non-fixture Bindle→cloud **apply** path. GA adds DR/paid-stack evidence when claimed, plus ratified cutline. | Any Target C public claim while legal, dogfood, or real-apply blockers remain open. |
+
+4. **Public claims must name the target.** README, site status, release notes, and marketing must state **Target A**, **Target B**, or **Target C** (or the long labels above). Unscoped “HoBo is shipping” language is invalid.
+
+5. **Hosted Target C is blocked** until **legal** (counsel-approved terms/privacy/DPA/subprocessor list), **dogfood** (Yard on real cloud + pilot path), and **real apply** (non-fixture provider apply, not in-memory-only success) are closed. Agents may document process instances and placeholders; they do not invent counsel-approved legal text or green CI/npm evidence.
+
+6. **Go/no-go gates** for A/B use gate values `repo-public` and `developer-tooling` on the [go/no-go decision record](../go-no-go-decision-record.md); beta / release-candidate / GA remain for Target C productization. Populated instances live under [`docs/design/instances/`](../instances/README.md). Human-facing summary: [`launch-ship-targets.md`](../launch-ship-targets.md). Remediation packages: [`0012-ship-remediation-plan.md`](../../plans/0012-ship-remediation-plan.md).
+
+### Consequences
+- **(+)** Separates OSS hygiene, npm DX, and hosted product so agents and humans cannot greenwash Target C with Target A evidence.
+- **(+)** S-stage cutlines give engineering an interim yardstick without rewriting ADR-0063’s undivided capability scope or ADR-0116’s M0–M4 evidence ladder.
+- **(+)** Forces every public claim to name A/B/C; residual risks (single maintainer, CI runner outage, synthetic wasm, in-memory default IaC) can be accepted per target instead of hidden.
+- **(−)** Three cutlines and two gate families (S-stage interim + M3/M4 hosted) require discipline in docs and go/no-go instances.
+- **(−)** Target C remains multi-quarter human/product work; this ADR does not schedule or complete it.
 
 ## Open / proposed decisions (ADR-Pn)
 

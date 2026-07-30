@@ -10,27 +10,30 @@ Where is HoBo on the road? Here's the honest itinerary.
 
 | Area | State |
 |---|---|
-| **Product** | Pre-release. Not yet accepting paying tenants — or freeloading ones. |
-| **Developer surface** | The SDK primitives, `hobo` CLI verbs, and MCP surface on this site are **contract-pinned**: specified, validated, and stable to learn against. |
-| **Implementation** | Progressing through staged build gates (below). See “What runs today” for the shipped slice. |
+| **Product** | **Pre-release.** Not accepting tenants; `@hobo/*` packages are **not published to npm** yet. |
+| **Developer surface** | SDK primitives, **38** canonical `hobo` CLI verbs, and the MCP surface documented here are **contract-pinned**: specified, validated, and stable to learn against. Product binary: `@hobo/hobo`; shell/factories: `@hobo/cli`. |
+| **Implementation** | Progressing through staged build gates (below). Default deploy is an **in-memory Pulumi stand-in**, not live multi-cloud apply. See "What runs today" and ship targets. |
 | **This site** | The canonical public developer documentation — for humans and agents. |
+
+Ship targets (OSS public / local-first npm / hosted beta-GA), readiness findings, and remediation are recorded in the design suite: [launch ship targets](https://github.com/tyler-r-kendrick/HoBo/blob/main/docs/design/launch-ship-targets.md), [ADR-0140](https://github.com/tyler-r-kendrick/HoBo/blob/main/docs/design/adr/07-portability-extensibility.md#adr-0140), [0011 gap review](https://github.com/tyler-r-kendrick/HoBo/blob/main/docs/plans/0011-ship-readiness-gap-review.md), [0012 remediation](https://github.com/tyler-r-kendrick/HoBo/blob/main/docs/plans/0012-ship-remediation-plan.md), and the [known limitations register](https://github.com/tyler-r-kendrick/HoBo/blob/main/docs/design/known-limitations-register.md).
 
 ## What runs today
 
-- **The TypeScript Bindle flow.** A project with `src/bindle.ts` runs `hobo collect`, `hobo plan`, `hobo up`, `hobo down`, and `hobo dev` end to end against the default **local lane** — no cloud account. `hobo dev` serves your api/web handlers in-process; a committed `hobo.bindle.json` wins when present.
-- **Durable local EventStore.** Camps default to a **single-owner SQLite** journal: stream-head concurrency control, actor fencing, positioned catch-up, durable checkpoints, and atomic events with staged queue/timer/outbox work. Browser hosts use SQLite WASM with OPFS when available (fail-closed if durable storage is required but unavailable).
-- **Contract effects + resiliency.** Boundary contracts may declare side-effect intent and resiliency profiles; can-deploy treats unsafe effect widening as breaking; Gatekeeper surfaces summaries; pure contracts isolate without infra.
-- **Stations & Conductor.** Control-plane isolation, Rails, and placement receipts pinned to station and rail.
-- **Trails + continuous identity.** Migration recipes when you need them; pure identity continuous needs no Trail authoring.
-- **Progressive delivery.** Flag evaluation, experiments, and delivery composition under policy.
-- **Connectivity.** Hierarchical naming (never bare `.hobo`), overlay/DNS, secretless connectors, environment isolation.
-- **Component hosts.** Wasmtime, OCI/Kubernetes, and multi-cloud host options behind the same Camp ports.
+- **The TypeScript bindle flow.** A project whose `src/bindle.ts` default-exports a `bindle()` runs `hobo collect`, `hobo plan`, `hobo up`, `hobo down`, and `hobo dev` end to end against the default **local lane** — no cloud account. Default IaC is an **in-memory Pulumi stand-in** (`HONEST SCOPE` in `@hobo/hobo` compose); a successful `up` does **not** imply real infrastructure was provisioned. `hobo dev` serves the project's own api/web entrypoint handler in-process; a committed `hobo.bindle.json` manifest artifact wins when present.
+- **Durable local EventStore.** The Camp EventStore defaults to a **single-owner SQLite partition** (`@hobo/storage-sqlite` + `@hobo/runtime-local`): stream-head CAS, actor fencing, positioned catch-up, durable subscription checkpoints, and atomic domain events with staged queue/timer/outbox effects. Browser hosts use `@hobo/runtime-browser` with OPFS when available (fail-closed when durable is required but OPFS is not).
+- **Contract effects + visible resiliency.** `@hobo/contracts` BoundaryContracts may declare **EffectSpec** and **ResilienceProfile**; can-deploy treats effect widening as breaking when declared; Gatekeeper surfaces effect summaries; `@hobo/contract-harness` isolates pure contracts and runs never-retry fault injection. No Effect-TS/Polly/XState public dependency.
+- **Station + pure Conductor.** `@hobo/stations` + `@hobo/broker` — control-plane isolation, Rails, receipts pin `stationId` + `railHash`.
+- **Trails + continuous identity.** `@hobo/trails` recipes and hands-off dual-path identity continuous (`@hobo/identity`); pure identity continuous needs zero Trail authoring. **`hobo login` defaults to fixture/local session material**, not production OIDC/SPIRE.
+- **Harness progressive delivery.** OpenFeature-shaped flag evaluation, delivery, and experiments in `@hobo/identity`; CD apply plane in `@hobo/cloud`.
+- **Connectivity foundations.** `@hobo/connectivity` — hierarchical naming (never bare `.hobo`), overlay/DNS, secretless connectors, env isolation, PAM hooks.
 - **Messaging.** Unified `topic()` / messaging plane with Kafka and optional Dapr adapters; default remains the local in-process path.
-- **Session Replay on every App Kit.** Privacy-first capture; local dual fixtures default-on; production flag/sample gated; `hobo replay *`.
-- **MCP control surface.** All **38** canonical CLI verbs as MCP tools over stdio (1:1 parity), deny-by-default auth, audited decisions.
-- **Credential-gated live lanes.** Cloudflare, Vercel, and live IaC unlock with your own provider credentials.
-- **Topology authoring.** `camp()` (env shape), `yard({ provider, camps })` (provider selection), `junction()` plan derivation — realization depth varies by stage.
-- **Not yet shipped:** full multi-cloud provider depth, Junction realization maturity, and alternate journal engines (Postgres, Temporal, Restate, …).
+- **Component host scaffolds.** `@hobo/runtime-wasm` (Wasmtime), `@hobo/runtime-oci` (kubectl transport), `@hobo/runtime-cloud-native` (mock + provider stubs). See [Component hosts](/HoBo/reference/component-hosts/).
+- **Componentize honesty.** `@hobo/componentize` emits **synthetic wasm contract bytes** (`buildWasmContractBytes`), not a real jco/`componentize-js` guest pipeline. Use it for digest/boundary proofs; do not treat output as production portable membrane yet.
+- **Session Replay on every App Kit.** `@hobo/replay` + default annotation on all App Kits (`api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component`) — not only `web` (ADR-0137). Prefer **App Kit** over "membrane type" at Bindle authoring; WIT membrane stays ADR-0069. Local dual fixtures default-on; `hobo dev` wraps HTTP Kits with bootstrap + `/__hobo/replay/*`; production flag/sample gated; `hobo replay *`. See [Session Replay](/HoBo/reference/session-replay/) · [App Kits](/HoBo/primitives/app-kits/).
+- **The MCP control surface.** The `hobo-mcp` binary (`@hobo/hobo`) serves all **38** canonical verbs as MCP tools over stdio, dispatching through the same command registry as the CLI, with verb/tool parity contract-tested, deny-by-default auth, and audited decisions. See [the MCP surface](/HoBo/agents/mcp/).
+- **Credential-gated live lanes.** Cloudflare and Vercel deploys unlock via env tokens; the real pinned Pulumi engine unlocks via `HOBO_PULUMI_LIVE=1`. These are opt-in; they are not the default offline path.
+- **Examples in the repo:** `examples/hello-bindle`, `examples/multi-cloud-shop`, `examples/durable-agent`, and `examples/self-host-yard` (operate your own Yard: the control-plane event log on your disk).
+- **Not yet shipped / design-stage:** npm registry publish, full certified multi-cloud provider adapters (fly/aws/azure/gcp production apply paths), real jco componentize, Junction package maturity toward S4, production OIDC/SPIRE defaults, and alternate EventStore engines (`runtime-postgres` / Temporal / Restate / Cloudflare DO).
 
 ## How the build is staged
 

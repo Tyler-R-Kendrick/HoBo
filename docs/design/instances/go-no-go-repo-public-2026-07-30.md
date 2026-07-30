@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: "Go/no-go — repo-public (Target A) — 2026-07-30"
-description: "Conditional-go practice instance for ADR-0140 Target A (OSS public). Pending secret scan and CI runner restoration notes."
+description: "Conditional-go practice instance for ADR-0140 Target A (OSS public). History secret scan Met (2026-07-30); CI runner restoration (H-V1) remains open accepted residual; visibility flip is human."
 tags: [hobo, design, ship, instances, go-no-go]
 ---
 
@@ -19,18 +19,18 @@ tags: [hobo, design, ship, instances, go-no-go]
 | **Gate** | `repo-public` |
 | **Decision** | **conditional-go** |
 | **Approver role** | Release owner (single maintainer: **Tyler Kendrick** — all other roles unbound) |
-| **Evidence links** | ADR-0140; launch-ship-targets; 0011 §7 Target A must-list; SECURITY.md (contact path exists as design-repo process); OSS hygiene largely done per 0011 O5; **no** green Actions URL claimed |
-| **Blocker deltas** | **New since prior (none existed):** recorded V1 runner outage, missing secret-scan completion, unratified product cutline (not required for A). **Resolved:** launch definition L0 addressed by ADR-0140 + this instance set. |
+| **Evidence links** | ADR-0140; launch-ship-targets; 0011 §7 Target A must-list; SECURITY.md; WP-B honesty; **history gitleaks clean 2026-07-30** ([pre-public-secret-scan.md](../pre-public-secret-scan.md)); **no** green Actions URL claimed |
+| **Blocker deltas** | **Resolved by agents (2026-07-30):** launch definition L0 (ADR-0140); truth-in-advertising (WP-B); full-history secret scan clean (condition 3 Met). **Still open:** Actions runner assignment (**H-V1** — accepted residual for A, not hard-fail); unratified hosted product cutline (not required for A); **human org action** to flip visibility. |
 | **Accepted risks** | See [`accepted-risks-2026-07-30.md`](./accepted-risks-2026-07-30.md): single maintainer; CI outage; synthetic wasm (launch note for A); in-memory default (launch note for A — not a product claim). |
-| **Expiry / revisit** | **2026-08-30** or immediately after secret scan + runner restoration, whichever first |
+| **Expiry / revisit** | **2026-08-30** or immediately before visibility flip (re-run gitleaks) / after runner restoration, whichever first |
 
 ## Conditions for full go (Target A)
 
 | # | Condition | Status at instance date |
 |---|---|---|
-| 1 | Launch definition published (ADR-0140 + human summary) | Met by WP-A docs |
+| 1 | Launch definition published (ADR-0140 + human summary) | **Met** — WP-A docs |
 | 2 | Truth-in-advertising pass (package/verb counts, no full-product overclaim) | **Met** — WP-B (README, site status, package READMEs, known-limitations) |
-| 3 | Full git-history **secret scan** with clean or remediated findings | **Met (2026-07-30)** — `gitleaks detect --source . --redact` over 1215 commits: **no leaks found** (exit 0). Runbook: [`pre-public-secret-scan.md`](../pre-public-secret-scan.md). Re-run before the actual visibility flip. |
+| 3 | Full git-history **secret scan** with clean or remediated findings | **Met (2026-07-30)** — `gitleaks detect --source . --redact` over 1215 commits: **no leaks found** (exit 0). Runbook: [`pre-public-secret-scan.md`](../pre-public-secret-scan.md). **Re-run immediately before the actual visibility flip.** |
 | 4 | Working SECURITY contact path | **Met** in docs — SECURITY.md updated; confirm contact works before public flip |
 | 5 | Actions runners restored (preferred) | **Open** — human H-V1; **not** hard-fail for conditional-go under ADR-0140 S0/S1 hygiene cutline |
 
@@ -40,6 +40,7 @@ tags: [hobo, design, ship, instances, go-no-go]
 - Not hosted beta/GA (Target C).
 - Not a claim that CI is green.
 - Not counsel approval of customer ToS (not required for A).
+- Not a claim that repository visibility has been flipped (human org setting).
 
 ## Outcome summary
 

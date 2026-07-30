@@ -1,9 +1,9 @@
 # @hobo/hobo — composition-root architecture
 
-`@hobo/hobo` is HoBo's composition root (apps layer, layer 3). It wires the
-default runtimes so the composed `hobo` binary runs the cloud verbs end to end in
-the LOCAL/MOCKED lane, instead of falling back to the shell stubs that
-adapter-free `@hobo/cli` returns when its command factories are un-injected.
+`@hobo/hobo` is HoBo's **product composition root** (apps layer, layer 3) and the
+package that ships the end-user `hobo` / `hobo-mcp` binaries. `@hobo/cli` remains
+the shell, factories, and un-injected stubs; this package injects default
+runtimes so cloud and local-loop verbs run end to end.
 
 ## Layering (apps -> adapters -> sdk/runtime -> core)
 
@@ -23,20 +23,28 @@ That is precisely why the default wiring lives at this root: adapter-free
 `@hobo/cli` must not import an infra adapter, so it accepts an injected runtime
 and the composition root supplies the concrete one.
 
-## The composed default runtime (LOCAL/MOCKED lane)
+## The composed default runtime (local / offline-default lane)
 
 `createDefaultYardRuntime()` assembles the `YardRuntime` the deploy verbs drive.
 Every field is reused from an existing constructor — no runtime is reimplemented:
 
-- **event store** — `@hobo/runtime-local`'s file-backed in-memory **event store**
-  with a manual clock. All deploy verbs share ONE store, so `up` then `down` fold
-  the same durable log.
+- **event store** — `@hobo/runtime-local`'s file-backed **event store** with a
+  manual clock. All deploy verbs share ONE store, so `up` then `down` fold the
+  same durable log.
 - **actor host** — `@hobo/data`'s in-memory host. Each resource is a
   choreographed **actor** whose state is folded from the **event** stream.
-- **executor** — `@hobo/cloud`'s in-process executor over a mock in-memory
-  IaC backend (synthetic endpoints, no-op destroy) — no real cloud calls.
+- **executor / IaC** — `@hobo/cloud`'s in-process executor over
+  `selectIacProvider` (`src/compose.ts`). **HONEST SCOPE:** the **default**
+  backend is the real `@hobo/iac-pulumi` adapter with an **in-memory Automation-API
+  stand-in** (offline, deterministic). There is **no** separate mock `IacProvider`
+  on the default path. Live paths are opt-in:
+  - `HOBO_PULUMI_LIVE=1` → real Pulumi Automation/CLI engines (binary- and
+    credential-gated)
+  - Cloudflare / Vercel env tokens → credential-gated live deploy providers
 - **credential broker + registry** — `@hobo/cloud`'s in-process broker plus a
-  provider registry built from the real `@hobo/provider-cloudflare` provider.
+  provider registry built from the real `@hobo/provider-cloudflare` provider
+  (capability negotiation / `realize()`; live apply still follows the IaC
+  selection above).
 
 `createDefaultDevRuntime()` and `createDefaultCollectionTarget()` do the same for
 `hobo dev` (runtime-local component host + Streamer, offline) and `hobo collect`.
@@ -60,16 +68,18 @@ the repo rule, boundary payloads are turned into **parse, don't validate**
 already-parsed runtime objects. The `data-models/` proto + CUE here describe the
 composed runtime manifest purely as architecture-guard evidence.
 
-## Why @hobo/iac-pulumi is not wired
+## How @hobo/iac-pulumi is wired (and what “default” means)
 
-The executor's `IacProvider` port (from `@hobo/cloud`) speaks the kernel
-`IacProgram` dialect that the orchestrator's `iacProgramFor` emits. The
-`@hobo/iac-pulumi` in-memory adapter validates a different `hobo.iac-program/v1`
-dialect (`validateIacProgram`) that the cloud kernel never produces, so it cannot
-apply the executor's programs. The default runtime therefore injects the same
-in-memory `IacProvider` the `@hobo/cloud` + `@hobo/cli` tests use — the one that
-actually applies the executor's programs — and does not depend on
-`@hobo/iac-pulumi`.
+The default runtime **does** depend on `@hobo/iac-pulumi`. The kernel executor
+still speaks its shape-A `IacProgram` execution descriptor; `createPulumiBackedIacProvider`
+bridges that shape: it resolves each resource’s real `ResourcePlan` from the durable
+`deployment.Planned` fact, lowers it with `provider.realize()` to a
+`hobo.iac-program/v1` program, and applies it through the real Pulumi adapter.
+
+**Default backend = in-memory stand-in** inside that adapter (offline).
+`HOBO_PULUMI_LIVE=1` swaps the real Pulumi Automation API or pinned CLI engine.
+See the `HONEST SCOPE` block at the top of `src/compose.ts` and the product
+summary in [README.md](./README.md).
 
 ## HTTP frameworks are L2 packages under `packages/adapters/`
 

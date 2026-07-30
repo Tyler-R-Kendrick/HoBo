@@ -19,17 +19,20 @@ concurrency:
 
 jobs:
   stage-gate:
-    name: S0 stage gate (${{ matrix.os }})
+    name: S0 stage gate (${{ matrix.artifact }} / ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        # Linux leg follows the routed runner variable (last-resort capable);
-        # the Windows leg has no routed pool and stays GitHub-hosted.
-        os:
-          - ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
-          - windows-latest
+        # runs-on follows the routed runner variable (Linux) or GitHub-hosted
+        # Windows; artifact labels stay stable (linux/windows) so digest-parity
+        # never hardcodes a runner label like ubuntu-latest.
+        include:
+          - os: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+            artifact: linux
+          - os: windows-latest
+            artifact: windows
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,7 +76,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: stage-gate-s0-record-${{ matrix.os }}
+          name: stage-gate-s0-record-${{ matrix.artifact }}
           path: artifacts/stage-gate-s0.record.json
           if-no-files-found: warn
 
@@ -91,10 +94,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ubuntu_record="stage-gate-s0-record-ubuntu-latest/stage-gate-s0.record.json"
-          windows_record="stage-gate-s0-record-windows-latest/stage-gate-s0.record.json"
-          ubuntu_digest="$(node -e "const r=require('./${ubuntu_record}'); console.log(r.artifact.digest_sha256)")"
+          # Artifact names are stable labels (linux/windows), independent of
+          # vars.HOBO_RUNNER_LINUX_SMALL or the windows-latest runner label.
+          linux_record="stage-gate-s0-record-linux/stage-gate-s0.record.json"
+          windows_record="stage-gate-s0-record-windows/stage-gate-s0.record.json"
+          linux_digest="$(node -e "const r=require('./${linux_record}'); console.log(r.artifact.digest_sha256)")"
           windows_digest="$(node -e "const r=require('./${windows_record}'); console.log(r.artifact.digest_sha256)")"
-          echo "ubuntu digest: ${ubuntu_digest}"
+          echo "linux digest: ${linux_digest}"
           echo "windows digest: ${windows_digest}"
-          test "${ubuntu_digest}" = "${windows_digest}"
+          test "${linux_digest}" = "${windows_digest}"

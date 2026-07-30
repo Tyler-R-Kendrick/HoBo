@@ -1,5 +1,10 @@
 # Self-host Station (main setup path)
 
+> **Maturity:** this example is a **docs + CLI happy-path** reference. Unlike
+> [`self-host-yard`](../self-host-yard/README.md), it does not yet ship a local
+> TypeScript composition under `src/` — run the `hobo station *` verbs against a
+> built monorepo CLI. Track as thin example surface until a full composition lands.
+
 Station is the hard control-plane isolation boundary a Conductor occupies.
 App topology remains Bindle ⊂ Camp ⊂ Yard ⊂ Junction — Station does **not**
 contain Yards.

@@ -1,3 +1,14 @@
+/**
+ * @hobo/componentize HONEST SCOPE
+ *
+ * `buildWasmContractBytes` emits **contract-shaped** wasm: the standard wasm magic
+ * header (`\0asm` + version) plus a custom section carrying contract metadata.
+ * That is enough for digest, determinism, and boundary/PACT checks.
+ *
+ * It is **not** production output from `jco` / `componentize-js` / wasm-tools.
+ * Real Component Model tooling remains residual human work (H-E3b). Do not treat
+ * digests from this path as evidence of a portable WASM production pipeline.
+ */
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
@@ -262,6 +273,14 @@ function buildOciDescriptor(component: WasmComponentArtifact) {
 	};
 }
 
+/**
+ * Build contract-shaped wasm bytes (magic header + custom section only).
+ *
+ * HONEST: not jco/componentize-js production component output. Produces a
+ * valid-looking wasm module envelope so consumers can hash, store, and re-parse
+ * `hobo.componentize.contract` metadata. See package HONEST SCOPE above and
+ * residual blocker H-E3b for a real toolchain path.
+ */
 function buildWasmContractBytes(metadata: string) {
 	const header = Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
 	const sectionName = Buffer.from(CUSTOM_SECTION_NAME, "utf8");

@@ -26,6 +26,19 @@ try {
 	} else {
 		console.log("install-hooks: could not set core.hooksPath; skipping.");
 	}
+
+	// Stacked-PR agent defaults (github/gh-stack): remember conflict resolutions
+	// and skip remote pickers in multi-remote clones. Fail-open if git rejects.
+	const stackDefaults: Array<[string, string]> = [
+		["rerere.enabled", "true"],
+		["remote.pushDefault", "origin"],
+	];
+	for (const [key, value] of stackDefaults) {
+		const set = spawnSync("git", ["config", key, value], { stdio: "pipe" });
+		if (set.status === 0) {
+			console.log(`install-hooks: ${key}=${value}`);
+		}
+	}
 } catch (error) {
 	const message = error instanceof Error ? error.message : "git unavailable";
 	console.log(`install-hooks: skipped (${message}).`);

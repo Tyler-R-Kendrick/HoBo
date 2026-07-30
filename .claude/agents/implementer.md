@@ -29,6 +29,20 @@ claimed it in Linear — you have **zero Linear access** and must not attempt an
 4. Inner loop per package: `pnpm exec turbo run test --filter ./src/draft/<kind>/<slug>`
    (experience proofs use `./src/draft/exp-proofs/<type>/<slug>`).
 
+## Incremental checkins (non-negotiable)
+
+Commit often. Do **not** accumulate the whole issue as one final commit.
+
+1. After each red→green unit (or coherent micro-step), stage deliberately and commit.
+2. `pnpm agent:check -- --staged` must be green before **every** commit.
+3. Conventional, scoped commit messages describing the step.
+4. Multiple commits per issue/layer are expected and preferred.
+5. Leave the branch pushable at any time so the coordinator can recover if you die mid-task.
+6. Do **not** restructure stacks (`gh stack unstack` / reorder) or merge PRs — coordinator only.
+7. If the coordinator placed you on a stack layer branch, stay on that branch; put changes that
+   belong on a lower layer into the handback as `requirementChanges` / ask via report, do not
+   smuggle them onto the wrong layer.
+
 ## Repo rules that bind you
 
 - New/changed proof material goes through the **draft** skill: proof.json manifest, gate-executed

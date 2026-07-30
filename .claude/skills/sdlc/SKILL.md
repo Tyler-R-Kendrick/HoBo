@@ -1,22 +1,41 @@
 ---
 name: sdlc
-description: Coordinate iterative feature/capability development end to end - brainstorm with adversarial and rubber-duck hardening, plan through the draft-proof cascade, capture delivery in Linear as one-shot issues, then (with user permission) dispatch implementation agents through the harness-appropriate backend (cloud coding agents preferred for isolated issues; local subagent worktrees otherwise) with red/green TDD/BDD/ATDD. Use when the user wants to develop a feature, capability, or improvement through the full loop, or says "sdlc", "run the loop", or "take this from idea to issues".
+description: Coordinate iterative feature/capability development end to end in this repo — brainstorm with adversarial and rubber-duck hardening, plan through the draft-proof cascade, capture one-shot issues, dispatch subagents with incremental checkins, manage multi-phase work as GitHub stacked PRs (gh stack), then bottom-up rubber-duck/adversarial review, comment resolution, status-check repair, and squash-merge of every opened PR. Use when the user wants to develop a feature through the full loop, says "sdlc", "run the loop", "stacked PRs", or "take this from idea to merge".
 ---
 
 # SDLC coordinator
 
-Drive a feature or capability through the full development loop. You are the **coordinator**: you
-own the conversation with the user, the plan, all Linear state, and all shared-file mutations.
-Implementation agents — cloud coding agents or local subagents, chosen per issue via the backend
-matrix in `references/dispatch.md` — own exactly one issue each, in their own isolation (cloud VM
-or worktree), and never touch Linear or shared files.
+Drive a feature or capability through the full development loop **in this repo**. You are the
+**parent/coordinator**: you own the conversation with the user, the plan, Linear (or issue tracker)
+state, shared-file mutations, **stack topology**, and the final review→merge gate for every PR.
+
+Implementation work is delegated to **subagents** (or cloud coding agents) whenever possible.
+Subagents own exactly one issue/layer each, commit incrementally, and never touch Linear or shared
+coordinator files. For multi-step / multi-phase / multi-task work, the parent opens a **stack of
+PRs** with GitHub's official `gh stack` extension — not one giant PR.
+
+## Install / probe (once per machine or session)
+
+```bash
+# Extension (also installed by scripts/setup-agent-tools.sh common layer)
+gh extension install github/gh-stack   # or: gh extension upgrade stack
+gh stack --help
+
+# Agent-safe git defaults (also set by scripts/install-hooks.mts / setup script)
+git config --local rerere.enabled true
+git config --local remote.pushDefault origin
+```
+
+If `gh stack` is missing, install it before dispatching multi-layer work. CLI detail lives in the
+companion **`gh-stack`** skill (mirrored under `.agents/skills/gh-stack` and `.claude/skills/gh-stack`)
+and in `references/stacked-prs.md`. Official docs: https://gh.io/stacks
 
 ## Durable state (read this FIRST, every session)
 
 State lives in `docs/plans/<initiative-slug>/sdlc-state.md` (phase, decisions, dispatched issues →
-worktree/branch/PR). On entry: read it; if it exists, **reconcile before anything else** (see
-`references/dispatch.md` § Resume). Write it at every phase boundary. Dispatch outcomes append to
-`docs/plans/dispatch-log.md`.
+worktree/branch/PR/**stack layer**). On entry: read it; if it exists, **reconcile before anything
+else** (see `references/dispatch.md` § Resume). Write it at every phase boundary. Dispatch outcomes
+append to `docs/plans/dispatch-log.md`. Record stack id / branch chain / PR numbers in the state file.
 
 ## Phases (details in references/)
 
@@ -25,18 +44,107 @@ worktree/branch/PR). On entry: read it; if it exists, **reconcile before anythin
 2. **Plan** — `references/planning.md`. Enter plan mode; map the work onto the draft cascade
    (technical proofs → epic proofs; experience proofs in parallel; project proofs aggregate);
    every proof change follows plan → improve → ADR-beside-the-proof; new tech/screens/features go
-   through the **draft** skill.
-3. **Linear capture** — `references/linear-planning.md`. Initiative/projects/milestones/issues,
+   through the **draft** skill. **Slice multi-phase work into stack layers** (dependency order:
+   foundations at the bottom, dependents above).
+3. **Issue capture** — `references/linear-planning.md`. Initiative/projects/milestones/issues,
    each issue a self-contained one-shot contract with verifiable outputs and required draft
-   artifacts named explicitly.
-4. **Dispatch** — `references/dispatch.md`. ONLY after explicit user permission. Detect the
-   harness's delegation backends, claim the issue in Linear, then dispatch via the backend
-   matrix (cloud coding agent for isolated issues; `implementer` subagent worktree otherwise;
-   sequential fallback when nothing probes true). An independent review pass plus
-   GitHub-reported checks decide Done — never the implementation agent's word.
+   artifacts named explicitly. Prefer **one issue per stack layer**.
+4. **Dispatch + stack** — `references/dispatch.md` + `references/stacked-prs.md`. ONLY after
+   explicit user permission for offloading. Detect harness backends; claim issues; spawn
+   subagents with incremental-checkin rules; parent owns `gh stack init|add|submit|sync`.
 5. **Loops & cascade** — `references/loops-and-gates.md` + `references/cascade.md`. Red/green
    inner loop, narrow-then-wide outer loop, and machine-checked upward/downward requirement
    cascades.
+6. **Close the stack (mandatory)** — `references/stacked-prs.md` § Bottom-up closeout. When
+   implementation is done, the **parent** reviews and merges **each PR from the bottom up**.
+   Do not mark the initiative complete until every opened PR is reviewed, repaired, and
+   squash-merged (or an explicit billing-budget exception is recorded).
+
+## Role split
+
+| Actor | Owns | Does not own |
+|---|---|---|
+| **Parent (this skill)** | User dialogue, plan, Linear, shared files, **stack topology**, PR submit/sync, bottom-up review, comments, CI repair, squash-merge | Implementing every layer itself when a subagent is available |
+| **Subagent / implementer** | One issue/layer, red/green work, **incremental commits**, local gates, handback report | Linear, shared registries, stack restructure, merging PRs |
+| **Reviewer subagent** | Independent re-run of gates + acceptance checklist (read-only) | Edits, merges, Linear |
+
+**Leverage subagents hard.** Prefer spawning implementers over doing layer work inline. Cap
+concurrency so no two agents share a package. Cloud backends for isolated layers; local worktrees
+for shared-file-adjacent layers. Sequential fallback only when no backend probes true.
+
+## Subagent incremental checkins (required)
+
+Every implementer instruction must require **small, frequent commits** — not one dump at the end:
+
+1. After each red→green unit (test + minimal implementation), stage deliberately and commit.
+2. Run `pnpm agent:check -- --staged` before **every** commit; never bypass hooks.
+3. Conventional, scoped commit messages that describe the step (why if non-obvious).
+4. Push / hand back often enough that progress is recoverable if the subagent dies mid-task.
+5. Multiple commits per layer are expected and good. Do **not** squash locally before handback
+   unless the issue contract says otherwise — squash happens at **merge** time.
+
+The parent may also require the subagent to open or update its layer branch via the branch the
+parent created in the stack; the parent alone runs `gh stack submit|sync|merge`.
+
+## Stacked PRs for multi-step work (parent)
+
+For any work with 2+ dependent phases/tasks:
+
+```bash
+# Non-interactive only — never hang on prompts/TUIs
+gh stack init sdlc/<initiative>-01-<slug>
+# ... subagent works + incremental commits on that branch ...
+gh stack add sdlc/<initiative>-02-<slug>
+# ... next layer ...
+gh stack submit --auto --open     # create/update linked PRs
+gh stack view --json              # always --json for agents
+gh stack sync                     # after trunk moves or lower-layer changes
+```
+
+Hard agent rules for `gh stack` (summary — full set in `references/stacked-prs.md` + `gh-stack` skill):
+
+- Always pass branch names to `init` / `add` / `checkout` (no bare interactive forms).
+- Always `gh stack submit --auto` (add `--open` when ready for review).
+- Always `gh stack view --json` (never interactive TUI).
+- Mid-stack fixes: navigate to the correct lower branch, commit there, `gh stack rebase --upstack`, push.
+- **Merge stacked PRs with `gh stack merge`**, not bare `gh pr merge`, when merging a stack range.
+  Prefer **`--squash`**. For sequential bottom-up closeout, merge one PR at a time (see closeout).
+
+Single-layer / single-issue work may use a normal PR; multi-step work **must** stack.
+
+## Bottom-up closeout (required for every PR the parent opened)
+
+When the parent is done dispatching implementation, it **must** process the stack from the
+**bottom (closest to trunk) to the top**:
+
+For **each** open PR in bottom-up order:
+
+1. **Rubber-duck the diff** — explain the layer step-by-step as if to a new contributor: problem,
+   approach, files, tests, risks, rollback. Anything you cannot justify plainly is a defect.
+2. **Adversarial pass** — red-team the layer: failure modes, security/tenancy, broken contracts,
+   cascade/reg misses, over-engineering, missing gates, silent shared-file edits by subagents.
+3. **Independent review** — spawn the `reviewer` (or re-run the acceptance checklist yourself on
+   a clean checkout). Do not trust the implementer's self-report.
+4. **Comments & review feedback** — list every unresolved PR comment and review thread
+   (`gh api` / `gh pr view` / review comments). Address **all** of them: fix code, or reply with
+   a reasoned non-action and resolve the thread. Leave no actionable thread open.
+5. **Status checks** — wait for and repair failing required checks. Re-run narrow gates after
+   fixes; `gh stack sync` / rebase as needed so CI sees the fix.
+   - **Exception:** if a check fails solely because a **billing/budget/quota** limit is exceeded
+     (CI minutes, paid runner, model budget), record the exception in `sdlc-state.md` and the PR,
+     notify the user, and do **not** silently ignore other failures.
+6. **Squash-merge that PR** when review is clean and checks are green (or budget-excepted as above):
+   ```bash
+   gh stack merge <pr-number> --yes --squash
+   # or, for a single bottom PR ready alone:
+   # gh stack merge <pr-number> --yes --squash
+   gh stack sync --prune   # after merge; realign remaining layers
+   ```
+7. Only then move to the next PR up the stack. Repeat until the stack is fully merged.
+
+Do **not** batch-merge the whole stack until every lower layer has passed rubber-duck + adversarial
+review and comment/check cleanup. Prefer one-PR-at-a-time bottom-up merges so each layer's review
+is honest against its final base.
 
 ## Hard rules
 
@@ -46,7 +154,22 @@ worktree/branch/PR). On entry: read it; if it exists, **reconcile before anythin
   registers, and the state file are coordinator-only. Implementation agents report deltas via the
   handback schema (`.sdlc/report.json` locally, a fenced `sdlc-report` block on cloud PRs); you
   apply them serially.
-- An issue is Done only when (a) GitHub reports the PR checks green — queried by you, not taken
-  from the implementation agent — and (b) the independent review pass succeeds.
+- An issue/layer is Done only when (a) GitHub reports the PR checks green — queried by you, not
+  taken from the implementation agent — (or a recorded billing-budget exception applies),
+  (b) the independent review pass succeeds, (c) all PR comments/threads are addressed, and
+  (d) the PR is squash-merged.
 - Perf, contract (PACT), and feature (cucumber) tests are first-class: acceptance criteria become
   failing tests before implementation starts.
+- Use this repo's performance-first loop: search before validate; narrow `agent:check` before
+  package/repo scope; no broad test sweeps as diagnostics.
+- Cross-agent availability: this skill is **mirrored** in `.agents/skills/sdlc` (Cursor, Codex,
+  Grok, and other agents that load `.agents/skills`) and `.claude/skills/sdlc` (Claude Code).
+  Keep both trees byte-identical (`pnpm run skills:mirror-check`).
+
+## Reference routing
+
+- Stack create/sync/merge + bottom-up closeout: `references/stacked-prs.md`
+- Dispatch backends, handback, Done rule: `references/dispatch.md`
+- Brainstorm / plan / Linear / loops / cascade: remaining files under `references/`
+- Raw `gh stack` CLI for agents: companion skill `gh-stack`
+- Repo git/PR hygiene: `repo` skill → `references/git-pr.md`

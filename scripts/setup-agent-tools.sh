@@ -104,6 +104,29 @@ if have pnpm; then
 else echo "  SKIP: pnpm missing for ast-grep verification"; fi
 
 
+say "GitHub Stacked PRs (github/gh-stack) -> gh CLI extension"
+if have gh; then
+  if gh extension list 2>/dev/null | grep -qE '[[:space:]]stack[[:space:]]|gh stack|github/gh-stack'; then
+    gh extension upgrade stack 2>/dev/null \
+      && echo "  gh-stack present/upgraded ($(gh stack --version 2>/dev/null || echo '?'))" \
+      || echo "  gh-stack present (upgrade skipped)"
+  else
+    gh extension install github/gh-stack \
+      && echo "  installed github/gh-stack" \
+      || echo "  gh-stack install FAILED"
+  fi
+  # Agent-safe local git defaults when run inside a checkout (fail-open outside a repo).
+  if [ -e .git ] || git rev-parse --git-dir >/dev/null 2>&1; then
+    git config --local rerere.enabled true 2>/dev/null \
+      && echo "  local rerere.enabled=true" || true
+    git config --local remote.pushDefault origin 2>/dev/null \
+      && echo "  local remote.pushDefault=origin" || true
+  fi
+  echo "  Docs: https://gh.io/stacks  | agent skill: .agents/skills/gh-stack + sdlc stacked-prs"
+else
+  echo "  SKIP: gh missing — install GitHub CLI then re-run"
+fi
+
 say "RTK (rtk-ai/rtk) -> token-compressing command proxy"
 if have rtk; then
   echo "  rtk present ($(rtk --version 2>/dev/null || echo '?'))"

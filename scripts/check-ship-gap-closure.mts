@@ -156,6 +156,50 @@ if (
 	failures.push("componentize.ts honesty markers incomplete");
 }
 
+// Instance reconciliation: Target A secret scan Met must not be contradicted
+const goA = "docs/design/instances/go-no-go-repo-public-2026-07-30.md";
+if (existsSync(path.join(repoRoot, goA))) {
+	const text = read(goA);
+	if (!/secret scan.*\*\*Met \(2026-07-30\)\*\*|Met \(2026-07-30\).*secret|history secret scan \(condition 3\) is \*\*clean/iu.test(text) &&
+		!/\*\*Met \(2026-07-30\)\*\*.*gitleaks/iu.test(text)) {
+		// Require explicit Met marker for condition 3
+		if (!/\*\*Met \(2026-07-30\)\*\*/u.test(text) || !/gitleaks/iu.test(text)) {
+			failures.push(`${goA}: Target A secret scan must record Met (2026-07-30) with gitleaks evidence`);
+		}
+	}
+	if (/Pending secret scan/iu.test(text) || /missing secret-scan completion/iu.test(text)) {
+		failures.push(`${goA}: frontmatter/blocker deltas still claim secret scan pending/missing`);
+	}
+}
+
+const goB = "docs/design/instances/go-no-go-developer-tooling-2026-07-30.md";
+if (existsSync(path.join(repoRoot, goB))) {
+	const text = read(goB);
+	if (/secret scan\*\* still open|secret scan still open|Target A secret scan\./iu.test(text)) {
+		failures.push(`${goB}: still claims Target A secret scan open after Met`);
+	}
+	if (!/secret scan Met/iu.test(text) && !/secret scan \*\*Met/iu.test(text)) {
+		failures.push(`${goB}: must acknowledge Target A secret scan Met`);
+	}
+}
+
+const dash = "docs/design/instances/v1-readiness-dashboard-2026-07-30.md";
+if (existsSync(path.join(repoRoot, dash))) {
+	const text = read(dash);
+	if (/S0 CI columns `TODO`|bare TODO/iu.test(text) && !/pending runner restoration/iu.test(text)) {
+		failures.push(`${dash}: S0 still described as bare TODO without pending-runner honesty`);
+	}
+	if (/dual-bin and immature `publishConfig` risk/iu.test(text)) {
+		failures.push(`${dash}: still lists dual-bin/publishConfig as open B blockers after WP-D`);
+	}
+	if (/Secret history scan still required before Target A go/iu.test(text)) {
+		failures.push(`${dash}: still claims secret scan required before Target A after Met`);
+	}
+	if (!/secret scan.*Met|Secret scan.*Met/iu.test(text)) {
+		failures.push(`${dash}: must note secret scan Met for Target A`);
+	}
+}
+
 if (failures.length > 0) {
 	console.error(`ship-gap-closure: FAIL (${failures.length})`);
 	for (const f of failures) console.error(`  - ${f}`);

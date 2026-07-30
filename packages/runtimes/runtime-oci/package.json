@@ -3,6 +3,7 @@
 	"version": "0.0.1",
 	"description": "Camp component host: WASM-on-OCI scheduled on Kubernetes (kind: oci).",
 	"type": "module",
+	"private": true,
 	"files": [
 		"LICENSE",
 		"dist"

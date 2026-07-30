@@ -3,6 +3,7 @@
 	"version": "0.0.1",
 	"description": "Camp component host registry for multi-cloud implementations (kind: cloud-native).",
 	"type": "module",
+	"private": true,
 	"files": [
 		"LICENSE",
 		"dist"

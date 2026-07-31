@@ -117,3 +117,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | `billing-budget` (empty-step CI) |
 | Notes | Doctor gbrain zero-key remediation; product-* schema v2; run 20260731-all-eq pareto-equilibrium. Local agent:check staged green. |
 
+
+## 2026-07-31 — yard-first provider docs + devenv/Nix note
+
+| Field | Value |
+|---|---|
+| Initiative | Yard-owned provider selection + optional Nix / devenv-first DevX (`/sdlc finish`) |
+| Backend | sequential-fallback (parent; design suite docs) |
+| Branch | `docs/yard-first-provider-devenv` |
+| PRs | [#980](https://github.com/Tyler-R-Kendrick/HoBo/pull/980) (squash-merged `0c57c62b`) |
+| Result | **success** |
+| Failure class | `billing-budget` / checks still queued at merge (finish exception) |
+| Notes | Design suite Camp→Yard-first language; `docs/design/devx-devenv-nix.md`; index + ADR-0006 links; camps package docs. Local `agent:check -- --staged` green. |
+

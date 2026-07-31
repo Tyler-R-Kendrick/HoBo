@@ -63,33 +63,6 @@ test("refuses a challenger below the metric floor", () => {
 	assert.deepEqual(promotionEventNames(decision), ["eval.GateFailed"]);
 });
 
-test("refuses OpenUI artifact when semantic BEq missing/false (default-on)", () => {
-	const decision = evaluatePromotionGate({
-		candidateId: "openui-bad",
-		conformance: true,
-		policy: true,
-		evalResult: evalResult(0.95),
-		thresholds,
-		openUiArtifact: true,
-		openUiSemanticOk: false,
-	});
-	assert.equal(decision.outcome, PromotionOutcome.REFUSE);
-	assert.ok(decision.failures.some((f) => f.includes("semantic")));
-});
-
-test("promotes OpenUI artifact when semantic BEq ok", () => {
-	const decision = evaluatePromotionGate({
-		candidateId: "openui-good",
-		conformance: true,
-		policy: true,
-		evalResult: evalResult(0.95),
-		thresholds,
-		openUiArtifact: true,
-		openUiSemanticOk: true,
-	});
-	assert.equal(decision.outcome, PromotionOutcome.PROMOTE);
-});
-
 test("refuses when the sample count is below the minimum floor", () => {
 	const decision = evaluatePromotionGate({
 		candidateId: "candidate-3",

@@ -34,13 +34,11 @@ hobo-code help
 | status | Multiplexer box: folded panes + focus ▸ + chip |
 | session | Isolation session + handback folded into mux title |
 | scaffold | OpenUI+Astryx template + first paint + step rail |
-| isolate / promote | Mediated isolation + gate checklist promote; OpenUI path default-on semantic BEq (`openUi` option / `openUiSemanticPromotionGate` via `@hobo/formal-interop`) |
+| isolate / promote | Mediated isolation + gate checklist promote |
 | budget / remote / platform | Spend meter · reach · flag LED strip |
 | join / agent / nodes / rooms | Hive participants + load bars |
 
 Human output uses structured panels: one-scan happy paths are 3 lines (title · body · rule); multi-row keeps soft band. Status paints a Herdr-style box (quiet + busy ≤4 panes fold to 4 lines); OpenUI drafts ship a dark branded shell + step rail (`1 · generate → 2 · edit → 3 · lock`) with `data-testid="primary"`.
-
-**OpenUI semantic gate (H4):** promotion of OpenUI artifacts can pass generated vs gold tree IR through `beqOpenUi` (structural + role/binder/meaning — not string equality). Syntax-perfect meaning-zero and hierarchy/binder breaks fail closed (`HOBO_CODE_PROMOTE_SEMANTIC_BEQ_FAILED`). See `@hobo/formal-interop` and plan [`docs/plans/0015-formal-interop-hypotheses.md`](../../docs/plans/0015-formal-interop-hypotheses.md).
 
 **Default / empty TUI** is a console loading screen: HoBo logo + **Bo idle converted from the real sprite sheet** (`assets/bo-idle.png` → half-block TUI via `sprite-tui.ts`). Rest · bounce · blink; fixed canvas so frame advances never reflow.
 

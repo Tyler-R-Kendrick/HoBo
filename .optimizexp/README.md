@@ -25,14 +25,17 @@ harness-clis · model-routing · token-optimization · agents-md · agents-confi
 /optimizexp                        # needs-init? → init if needed → review+reduce ALL ux+dx+ax
 /optimizexp --init                 # bootstrap only
 /optimizexp --init --dry-run
-/optimizexp --dx                   # measure→reduce→verify until true plateau
+/optimizexp --dx                   # passes=infinite → until metrics=0 or irreducible
+/optimizexp --ax --passes 3        # optional cap: at most 3 completion cycles
 /optimizexp --dx --report-only     # measure only, no code experiments
 /optimizexp --personas product-app-developer --features narrow-local-validation
 ```
 
-**Default behavior:** each persona review pass **applies a reduce experiment** (smallest safe fix for the top finding), then re-captures evidence and re-scores. Opt out with `--report-only` / `--no-reduce`.
+**Default behavior:** each review iteration **applies a reduce experiment** (smallest safe fix for the top finding), then re-captures evidence and re-scores. Opt out with `--report-only` / `--no-reduce`.
 
-**Anti-stall:** if the agent can name a concrete fix, it must implement it and continue — not stop on “needs install,” “env,” or flat scores with an open S/M backlog. True plateau = flat scores **and** zero implementable findings. **There is no iterations flag.**
+**`--passes` (default `infinite`):** outer completion cycles until **all metrics are 0** or **irreducible** (true plateau after re-survey with no new S/M findings). Optional finite `--passes N` caps outer cycles. Not a max-iteration early-stop.
+
+**Anti-stall:** if the agent can name a concrete fix, it must implement it and continue — not stop on “needs install,” “env,” or flat scores with an open S/M backlog. True plateau = flat scores **and** zero implementable findings. **There is no review-iteration budget.**
 
 ### Seeds vs selection
 

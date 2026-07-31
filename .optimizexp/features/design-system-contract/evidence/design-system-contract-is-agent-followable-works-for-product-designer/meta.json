@@ -1,0 +1,39 @@
+{
+  "featureId": "design-system-contract",
+  "scenarioSlug": "design-system-contract-is-agent-followable-works-for-product-designer",
+  "personaIds": [
+    "product-app-developer",
+    "product-agent-operator",
+    "product-platform-engineer",
+    "product-coding-agent",
+    "product-end-user",
+    "product-designer",
+    "role-developers",
+    "role-devsecops",
+    "role-finops",
+    "role-platform-engineers",
+    "role-sre"
+  ],
+  "interface": "cli",
+  "driver": "cli",
+  "capturedAt": "2026-07-31T15:00:35.153Z",
+  "runId": "",
+  "screen": {
+    "cols": null,
+    "rows": null
+  },
+  "primary": {
+    "file": "primary.txt",
+    "kind": "transcript",
+    "bytes": 612,
+    "sha256": "82695e33e71666bae11fc785e8bc42b705e3ad194bd143dfce248adafb67b407"
+  },
+  "frames": [],
+  "repro": {
+    "command": "pnpm run design:lint",
+    "cwd": "."
+  },
+  "exitCode": 0,
+  "degraded": false,
+  "notes": []
+}

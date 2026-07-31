@@ -26,6 +26,7 @@
   ],
   "driver": "cli",
   "surfaces": [
+    "pnpm run design:lint",
     "pnpm run docs:design-lint"
   ],
   "tags": [
@@ -42,5 +43,5 @@
     "tests": "test/design-system-contract.bindings.test.ts"
   },
   "implementationStatus": "wired",
-  "primaryCommand": "pnpm run docs:design-lint"
+  "primaryCommand": "pnpm run design:lint"
 }

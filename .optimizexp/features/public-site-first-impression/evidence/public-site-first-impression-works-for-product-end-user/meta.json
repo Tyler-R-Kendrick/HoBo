@@ -1,0 +1,33 @@
+{
+  "featureId": "public-site-first-impression",
+  "scenarioSlug": "public-site-first-impression-works-for-product-end-user",
+  "personaIds": [
+    "product-end-user",
+    "product-designer",
+    "role-finops",
+    "role-platform-engineers",
+    "role-sre"
+  ],
+  "interface": "cli",
+  "driver": "cli",
+  "capturedAt": "2026-07-31T15:00:35.673Z",
+  "runId": "",
+  "screen": {
+    "cols": null,
+    "rows": null
+  },
+  "primary": {
+    "file": "primary.txt",
+    "kind": "transcript",
+    "bytes": 469,
+    "sha256": "0f07a97669ffe6b63dba34c12c7f37bf8b07881bad7742581d89a97b214a23b2"
+  },
+  "frames": [],
+  "repro": {
+    "command": "pnpm run docs:site-nav",
+    "cwd": "."
+  },
+  "exitCode": 0,
+  "degraded": false,
+  "notes": []
+}

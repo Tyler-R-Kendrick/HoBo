@@ -1,6 +1,6 @@
 ---
 name: optimizexp
-description: Optimize human-centered experiences (UX, DX, AX) via persona-driven review workflows, Gherkin feature folders with evidence capture, a write-ahead agent bus, and iterative metric reduction of harms, friction, and uncertainty. Supports --init to traverse the repo and seed product-aligned personas and features. Use when the user says "optimizexp", "optimize experience", "experience review", "reduce friction", "agent experience audit", "UX/DX/AX pass", "optimizexp init", or wants a scored experience review loop against repo personas.
+description: Optimize human-centered experiences (UX, DX, AX) via persona-driven review workflows, Gherkin feature folders with evidence capture, a write-ahead agent bus, and iterative metric reduction of harms, friction, and uncertainty. Default --passes infinite: completion cycles until metrics are 0 or irreducible; optional finite --passes N. Supports --init to seed personas/features. Use when the user says "optimizexp", "optimize experience", "experience review", "reduce friction", "agent experience audit", "UX/DX/AX pass", "optimizexp init", or wants a scored experience review loop against repo personas.
 ---
 
 # OptimizeXP
@@ -13,8 +13,9 @@ Uses:
 - Persona **feature folders** with Gherkin (`.optimizexp/features/<slug>/`)
 - **Evidence** of what personas see (video preferred; screenshots/transcripts fallback)
 - Write-ahead **agent bus** + persona scenario reviews until **true plateau**
-- **Mandatory reduce experiments** each pass (unless `--report-only`)
-- After pass 1, agents **read the bus** to correct wrong predictions
+- **Mandatory reduce experiments** each review iteration (unless `--report-only`)
+- **`--passes`** (default **infinite**): outer completion cycles until metrics are **0** or **irreducible**; optional finite `N` caps cycles
+- After the first review iteration, agents **read the bus** to correct wrong predictions
 - Optional **PR delivery** (incremental commits, stacked PRs, post evidence)
 
 ## First moves
@@ -34,10 +35,11 @@ Uses:
    - all personas intersecting experiences.
 6. If **`--feature` …** present: rewrite each journey seed → `.optimizexp/features/<id>/` with **one Gherkin file per resolved persona**, plus bindings/tests/implementations when code exists (`references/features.md`).
 7. Read `.optimizexp/README.md` and selected personas / features.
-8. Load progressive-disclosure references below (only what you need).
-9. Open/create a run under `.optimizexp/runs/<run-id>/`; append bus entries under `.optimizexp/bus/entries/`.
-10. Execute the **review loop** (`references/review-loop.md`) with harness evidence capture.
-11. When opening PRs: incremental commits + stacked PR per iteration if available (`references/pr-delivery.md`).
+8. Resolve **`--passes`** / `passes` (default **infinite**). See `references/flags.md` § Passes (outer cycles).
+9. Load progressive-disclosure references below (only what you need).
+10. Open/create a run under `.optimizexp/runs/<run-id>/`; append bus entries under `.optimizexp/bus/entries/`.
+11. Execute the **review loop** (`references/review-loop.md`): each outer cycle runs to **true plateau** (all implementable findings addressed). Default **infinite** outer cycles until **metrics all 0** or **irreducible** (re-survey finds no new S/M fixes). Finite `--passes N` caps outer cycles. Also stop on user/safety/true external block.
+12. When opening PRs: incremental commits + stacked PR per iteration if available (`references/pr-delivery.md`).
 
 ## Flags
 
@@ -59,11 +61,13 @@ Full grammar: `references/flags.md`.
 | **`--feature "seed"`** | Journey seed → feature folder + **per-persona** `.feature` files |
 | `--feature-id` / `--feature-file` / `--driver` | Feature id, seed file, capture driver |
 | `--features id1,id2` | Select existing feature folders for the run |
+| **`--passes infinite`** / `passes: infinite` | Default. Outer cycles until **metrics = 0** or **irreducible** (true plateau after re-survey; no new S/M findings). |
+| **`--passes N`** / `passes: N` | Finite cap: at most N outer completion cycles (each still to true plateau). |
 | **`--report-only`** / **`--no-reduce`** | Opt out of applying experiments; document findings only |
 
 **Feature × persona:** no persona flags → generate Gherkin for **all** personas in the resolved set. With `--personas` / `--persona` → only those. Echo `generatedPersonas` + `generatedFeatures` before reviewing.
 
-**Stop policy:** keep measure→reduce→verify until **true plateau** (flat scores **and** zero implementable findings), user stop, safety, or true external blocks. There is **no** `--iterations` flag and **no** pass budget.
+**Stop policy (per cycle):** measure→reduce→verify until **true plateau** (flat scores **and** zero implementable findings), user stop, safety, or true external blocks. **Outer (default infinite):** continue cycles until **metrics all 0** or **irreducible**; optional finite `--passes N` caps cycles. There is **no** `--iterations` flag and **no** review-iteration budget.
 
 ## Progressive disclosure
 
@@ -104,8 +108,8 @@ Full grammar: `references/flags.md`.
 1. **Apply experiments by default.** Each persona review pass must pick the top leveraged finding and land the **smallest safe change** that can lower friction/uncertainty/harms, then **re-capture evidence and re-score**. Report-only only with **`--report-only`** / **`--no-reduce`** (or `OPTIMIZEXP_REPORT_ONLY=1`). Never game scores without changing the experience.
 2. **Derive → implement → continue.** If you can name a concrete reduction (file, message, preflight, offline path, install, docs, harness), you **must apply it** in this run (or the current pass) — not park it under “residual / next owners / blocked by env.” Knowing the fix is not a stopping condition; leaving known fixes unapplied is a skill violation.
 3. **Do not fake “blocked.”** Missing `node_modules`, missing tools, unclear docs, noisy errors, and “needs install” are **findings to fix or satisfy**, not excuses to stop. Prefer, in order: (a) implement product/script/docs so the persona path works cold, (b) run safe local setup the persona would run (`pnpm install`, setup scripts) when the workspace allows, (c) only then mark **truly** external blocks (no credentials, no network policy, user forbade installs). See `references/review-loop.md` § Anti-stall.
-4. **Plateau is empty backlog, not flat scores.** Scores flat while `findings.md` still lists implementable S/M reductions = **not** plateau — keep reducing. Stop only when scores are flat **and** no implementable experiment remains (or user / safety / true external block).
-5. **No pass budget.** There is no iterations flag. Do not invent one. Keep reducing until true plateau.
+4. **Plateau is empty backlog, not flat scores.** Scores flat while `findings.md` still lists implementable S/M reductions = **not** plateau — keep reducing. A cycle stops only when scores are flat **and** no implementable experiment remains (or user / safety / true external block).
+5. **`--passes` outer cycles (default infinite); no review-iteration budget.** There is no `--iterations` flag. Within each cycle, reduce until true plateau. Default infinite: after plateau, re-survey; continue if new S/M findings exist; stop when **metrics = 0** or **irreducible**. Finite `N` only caps max outer cycles.
 6. **Write-ahead bus is mandatory:** expect → act → outcome (+ verify after reduce). Formal **metric scorecards** on every phase.
 7. **Read the bus before re-predicting.** After pass 1, `read-bus` (and `--mismatches-only` when needed). Wrong → `correctedFrom` + `lessons` + tighter scores.
 8. **Personas judge**; scores are persona × surface. Metrics need evidence paths.
@@ -155,22 +159,27 @@ Drivers: **cli** (transcript + screen size), **tui** (asciinema if present), **w
 
 ### Orchestration
 
-1. **Scope** — flags, personas, features (generation if requested)  
-2. **Baseline** — optional  
-3. **Persona scenario reviews** — until true plateau  
-4. **PR / summary** as configured  
+1. **Scope** — flags (incl. `passes`, default **infinite**), personas, features  
+2. **Outer cycles** until complete:  
+   a. **Baseline** (re-baseline each cycle after the first)  
+   b. **Persona scenario reviews** — until **true plateau** for this cycle  
+   c. Record `cyclesCompleted`  
+   d. **Stop outer** if metrics all 0, or irreducible after re-survey, or finite `passes` cap hit, or user/safety/blocked  
+3. **PR / summary**  
 
-### Persona scenario reviews (until true plateau)
+### Persona scenario reviews (one cycle → true plateau)
 
-For `pass = 1, 2, …` until stop (each pass = review **and** reduce experiment):
+For `reviewIteration = 1, 2, …` until plateau (each iteration = review **and** reduce experiment):
 
-1. **Read bus** if `pass > 1` (or always when correcting)  
+1. **Read bus** if `reviewIteration > 1` (or always when correcting)  
 2. **Expect** → **Act + capture** → **Outcome** (scorecards + comparison)  
 3. **Rescore** — write `iterations/<nnn>/scores.json` + `findings.md` (every finding must include **Smallest reduction** that is implementable **now** or explicitly external-blocked with why)  
-4. **Reduce (default on)** — **implement** the top finding’s reduction (and any other independent S-effort fixes in the same pass when cheap). Do not only document.  
+4. **Reduce (default on)** — **implement** the top finding’s reduction (and any other independent S-effort fixes in the same iteration when cheap). Do not only document.  
 5. **Verify** — expect → act + capture → outcome on changed surface(s)  
 6. **should-stop** — true plateau only (flat scores **and** implementableFindingsRemaining=0). Flat scores + open S/M backlog ⇒ continue.  
-7. Incremental commit when on a delivery branch
+7. Incremental commit when on a delivery branch  
+
+After plateau: if metrics all 0 → done; else re-survey; if new S/M findings and (infinite or under finite cap) → next cycle; else done (irreducible or cap).
 
 ## Deliverables
 
@@ -183,13 +192,14 @@ For `pass = 1, 2, …` until stop (each pass = review **and** reduce experiment)
 ## Invocation examples
 
 ```text
-/optimizexp                                   # needs-init? → init if needed → review ALL experiences + ALL projects
+/optimizexp                                   # passes=infinite → until metrics=0 or irreducible
 /optimizexp --init                            # bootstrap only (all projects)
 /optimizexp --init --projects site            # bootstrap site-scoped journeys only
 /optimizexp --projects site,cli               # review features tagged site or cli
 /optimizexp --project root --dx
 /optimizexp --feature "…" --personas product-app-developer --projects root
-/optimizexp --dx                              # reduce until true plateau
+/optimizexp --dx                              # infinite outer cycles until 0 or irreducible
+/optimizexp --ax --passes 3                   # optional cap: at most 3 completion cycles
 /optimizexp --dx --report-only                # measure only, no code changes
 ```
 

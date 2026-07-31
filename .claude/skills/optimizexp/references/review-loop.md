@@ -8,21 +8,29 @@ timestamp: 2026-07-30T00:00:00Z
 
 # Review loop
 
-Goal: **drive metric scores down** by measuring, applying a **reduce experiment**, and re-scoring each persona review pass until **true plateau**. Orchestration phases run as designed. **There is no iterations flag and no pass budget.**
+Goal: **drive metric scores down** by measuring, applying a **reduce experiment**, and re-scoring each review iteration until **true plateau**. Orchestration phases run as designed.
+
+**`--passes` (default `infinite`)** controls **outer completion cycles**. Each cycle must reach true plateau (all implementable findings addressed). There is **no** `--iterations` flag and **no** review-iteration budget inside a cycle.
 
 ```text
   # Orchestration
-  Scope → persona/feature gen → Baseline → Persona reviews → PR? → summary
-
-  # Persona scenario reviews (until true plateau)
-  for pass in 1, 2, …:
-    Read bus → Expect → Act+evidence → Outcome → Rescore
-    → Reduce experiment (default ON; --report-only to skip)
-    → Verify expect/act/outcome on changed surface
-    stop if true_plateau OR user OR safety OR blocked
+  Scope (passes: infinite | N)
+  loop cycle = 1, 2, …:
+    Baseline (re-baseline if cycle > 1)
+    for reviewIteration in 1, 2, …:
+      Read bus → Expect → Act+evidence → Outcome → Rescore
+      → Reduce experiment (default ON; --report-only to skip)
+      → Verify
+      stop cycle if true_plateau OR user OR safety OR blocked
+    cyclesCompleted = cycle
+    if infinite:
+      stop all if metrics all 0 OR (re-survey finds no new implementable findings)
+    if finite N and cycle >= N:
+      stop all
+  summary
 ```
 
-**Flags** (`references/flags.md`): `--report-only` only for measure-without-fixes.
+**Flags** (`references/flags.md`): `--passes infinite|N`, `--report-only`.
 
 ## 0. Create the run
 
@@ -52,8 +60,8 @@ Host workflow (if any): load from `workflows/<host>/` after reading `references/
 6. **Select features for review:** `--features` list if set; else features whose `projects` tag intersects project selection (missing tag ≈ `root`).
 7. List surfaces; prefer smallest set covering critical paths within selected projects.
 8. Load experience references only for selected experiences.
-9. Stop policy is always true-plateau-only (no pass budget).
-10. Write `scope.json` with `projects`, personas, features, `stopPolicy`, generated seeds, `autoInitRan` if bare path ran init.
+9. Resolve `passes` (default **infinite**). Per-cycle stop = true plateau; outer stop = metrics 0 or irreducible (or finite cap).
+10. Write `scope.json` with `passes`, `passesLabel`, `cyclesCompleted`, `stopPolicy`, projects, personas, features, seeds, `autoInitRan`.
 
 ## 2. Baseline
 
@@ -256,32 +264,52 @@ When the user wants PRs (or already asked for optimizexp PR delivery):
 
 ## 9. Stop conditions
 
-After each pass, stop when **any** is true:
+### Within a cycle (after each review iteration)
 
-1. **True plateau** (§ 7b): scores flat **and** zero implementable findings remaining
-2. User says stop
-3. **Only** true external blocks remain — list under `summary.md` → Blocked (with `blockedBecause`)
-4. Safety boundary hit
+Stop the **cycle** when **any** is true:
 
-**Forbidden stops:**
+1. **True plateau** (§ 7b): scores flat **and** zero implementable findings remaining  
+2. User says stop  
+3. **Only** true external blocks remain — list under `summary.md` → Blocked (with `blockedBecause`)  
+4. Safety boundary hit  
 
-- Any pass budget / iterations flag / “we did N passes”
-- “Good enough after N experiments”
-- Flat scores while implementable S/M findings remain
+**Forbidden stops (within a cycle):**
+
+- Invented max review-iteration budget / “we did N review iterations so done”  
+- Misusing **`--passes`** as “only N reduce steps”  
+- “Good enough after N experiments” while S/M findings remain  
+- Flat scores while implementable S/M findings remain  
 
 **Do not stop** because you ran out of ideas while residual still names a file-level fix. If stuck, take the next surface/persona cell with the worst `metric_max` and reduce that.
 
+### Across outer cycles (`passes`)
+
+After a cycle ends in **true plateau**:
+
+1. Record final cell scores for the cycle (`metric_total`, `metric_max`).  
+2. **If metrics all zero** (`metric_total === 0` and `metric_max === 0`) → **invocation complete** (`stopReason: metrics-zero`).  
+3. Else **re-baseline / re-survey** for new implementable S/M findings after prior reductions.  
+4. **If none** → **invocation complete** (`stopReason: irreducible` — impossible to reduce further).  
+5. **If some** and `passes` is **infinite** → start next cycle.  
+6. **If some** and `passes` is finite **N** and `cyclesCompleted < N` → start next cycle; if `cyclesCompleted === N` → complete even if metrics > 0 (`stopReason: passes-cap`).  
+
+If a cycle ends in user/safety/blocked, stop the invocation and document.
+
 Use `--report-only` only when the user wants measure-only.
 
-Update `scope.json` → `passesCompleted` each pass.
+Update `scope.json`:
+
+- `passesCompleted` each **review iteration** (bookkeeping; not a cap)  
+- `cyclesCompleted` each finished outer cycle  
+- `stopReason` when the invocation ends  
 
 Write `summary.md`:
 
-- Final scores vs baseline
-- Passes completed / why stopped (`plateau` | `blocked` | `user` | `safety`)
-- Experiments applied (every pass must list landed files if not report-only)
-- Bus corrections applied (count of `correctedFrom` expects)
-- Top remaining debt — **only** true external blocks or L-effort items after S/M exhausted
+- Final scores vs baseline (and per-cycle when multiple cycles ran)  
+- `passes` / `passesLabel` / `cyclesCompleted` / review iterations / why stopped (`metrics-zero` | `irreducible` | `passes-cap` | `blocked` | `user` | `safety`)  
+- Experiments applied (every review iteration must list landed files if not report-only)  
+- Bus corrections applied (count of `correctedFrom` expects)  
+- Top remaining debt — **only** true external blocks or L-effort after S/M exhausted  
 - Recommended next owners only for items this run could not legally touch
 
 ## Host workflows vs cross-agent

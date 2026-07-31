@@ -213,11 +213,40 @@ When omitted, the run may use features listed in scope or discovered under `.opt
 
 ---
 
-## Stop policy (no iterations flag)
+## Passes (outer completion cycles)
+
+```text
+--passes infinite     # default
+--passes 3            # optional finite cap
+passes: infinite      # machine/config form
+passes: 3
+```
+
+| Field / form | Default | Meaning |
+|---|---|---|
+| **`--passes infinite`** / `passes: "infinite"` | **infinite** | Keep running **completion cycles** until stop rule below. |
+| **`--passes N`** / `passes: N` (integer ≥ 1) | — | Cap at **N** outer cycles (each cycle still to true plateau). |
+
+Accepts `infinite` / `inf` / `∞` / `-1` / `0` / omitted → **infinite**. Positive integers → finite cap.
+
+### Semantics
+
+1. **One cycle** = full review loop until **true plateau** (flat scores **and** implementableFindingsRemaining = 0), or user/safety/true external block.  
+2. **Within a cycle** there is **no** max review-iteration budget (no `--iterations`). Keep reducing until findings are gone.  
+3. After a cycle plateaus, **re-baseline / re-survey** (prior fixes may reveal new findings).  
+4. **Default infinite** — the invocation keeps starting new cycles until **either**:  
+   - **Metrics at zero:** `metric_total === 0` and `metric_max === 0` (harms, friction, uncertainty all 0 on measured cells), **or**  
+   - **Irreducible:** after re-survey, true plateau again with **no new implementable S/M findings** (impossible to reduce further; residual only L/external/blocked).  
+5. **Finite `passes: N`:** stop after at most N completion cycles (even if metrics > 0), provided each cycle addressed findings to plateau (or terminal stop).  
+6. **`--passes` is not a review-iteration early-stop.** Never treat it as “run N reduce steps then stop.”  
+
+Env alias: `OPTIMIZEXP_PASSES=infinite|N` (optional; CLI/flag wins when both set).
+
+## Stop policy (per cycle; no review-iteration budget)
 
 There is **no** `--iterations` / `--max-iterations` / `--min-iterations` flag.
 
-The review loop **applies reduce experiments** and continues until:
+Within each outer cycle the review loop **applies reduce experiments** and continues until:
 
 1. **True plateau** — scores flat **and** implementableFindingsRemaining = 0  
 2. User stop  
@@ -230,7 +259,8 @@ The review loop **applies reduce experiments** and continues until:
 | `OPTIMIZEXP_REPORT_ONLY=1` | Same as `--report-only`. |
 
 ```text
-/optimizexp --dx                         # until true plateau
+/optimizexp --dx                         # passes=infinite → until metrics=0 or irreducible
+/optimizexp --ax --passes 3              # at most three full completion cycles
 /optimizexp --dx --report-only           # measure only
 ```
 
@@ -239,10 +269,19 @@ The review loop **applies reduce experiments** and continues until:
 ```json
 {
   "reportOnly": false,
+  "passes": null,
+  "passesLabel": "infinite",
+  "cyclesCompleted": 0,
   "passesCompleted": 0,
-  "stopPolicy": "true-plateau-only"
+  "stopPolicy": "infinite-until-zero-or-irreducible",
+  "outerCycles": "passes"
 }
 ```
+
+- `passes` — `null` = infinite; positive int = finite outer-cycle cap  
+- `passesLabel` — `"infinite"` or `"N"` for humans  
+- `cyclesCompleted` — outer cycles finished to plateau (or terminal stop)  
+- `passesCompleted` — **review iterations** completed (historical field name; bookkeeping only, not a cap)
 
 ---
 
@@ -265,8 +304,9 @@ The review loop **applies reduce experiments** and continues until:
    4. Write `feature.json` with `personas`, `projects`, seed digest.
    5. **Never delete** `evidence/` when regenerating Gherkin.
 7. **Feature selection for review** — if `--features` set, those ids; else features under `.optimizexp/features/` whose `projects` intersects project selection (untagged ≈ `root`).
-8. **Stop policy** — true plateau only (plus user/safety/blocked); no iterations budget; `--report-only` disables reduce experiments.
-9. Echo resolved set (experiences, projects, personas, features, reportOnly).
+8. **Passes** — default `passes = infinite`; parse `--passes infinite|N` / `OPTIMIZEXP_PASSES`.  
+9. **Stop policy** — per cycle: true plateau; outer infinite until metrics=0 or irreducible (or finite N cap); no review-iteration budget; `--report-only` disables reduce experiments.  
+10. Echo resolved set (experiences, projects, personas, features, passes, reportOnly).
 
 Harness:
 
@@ -328,8 +368,12 @@ node --import tsx .agents/skills/optimizexp/harness/generate-feature.mts \
   ],
   "surfaces": [],
   "reportOnly": false,
+  "passes": null,
+  "passesLabel": "infinite",
+  "cyclesCompleted": 0,
   "passesCompleted": 0,
-  "stopPolicy": "true-plateau-only",
+  "stopPolicy": "infinite-until-zero-or-irreducible",
+  "outerCycles": "passes",
   "hostAgent": "claude-code"
 }
 ```

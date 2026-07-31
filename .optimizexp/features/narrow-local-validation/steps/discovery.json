@@ -54,8 +54,8 @@
       "id": "script:gate:s1",
       "scriptName": "gate:s1",
       "command": "pnpm run gate:s1",
-      "confidence": "high",
-      "reason": "script \"gate:s1\" matched seed keywords (score 9)",
+      "confidence": "low",
+      "reason": "script \"gate:s1\" matched seed keywords (score 9) [demoted: not narrow-local validation; S1 stage gate is wrong surface]",
       "implementsSteps": [
         "I exercise the surface as this persona would"
       ]

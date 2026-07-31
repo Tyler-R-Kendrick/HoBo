@@ -1,0 +1,41 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T15:01:20Z-9002-expect",
+  "runId": "20260731-all-exp",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "featureId": "agent-tooling-setup",
+  "scenarioSlug": "agent-tooling-progressive-setup-works-for-product-coding-agent",
+  "surface": {
+    "type": "cli",
+    "name": "bash scripts/setup-agent-tools.sh --help",
+    "interface": "cli"
+  },
+  "predicted": {
+    "behavior": "zero-key flags, AUTH.md pointer, doctor verify; exit 0 no install",
+    "exitCode": 0
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-coding-agent",
+    "surface": "setup-agent-tools --help",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "scoredAt": "2026-07-31T15:01:20.000Z",
+    "rationale": {
+      "harms": "None.",
+      "friction": "Low/none.",
+      "uncertainty": "Clear surface."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/agent-tooling-setup/"
+    ]
+  }
+}

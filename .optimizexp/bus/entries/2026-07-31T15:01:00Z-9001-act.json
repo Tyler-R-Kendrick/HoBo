@@ -1,0 +1,54 @@
+{
+  "kind": "act",
+  "id": "2026-07-31T15:01:00Z-9001-act",
+  "expects": "2026-07-31T15:01:00Z-9001-expect",
+  "runId": "20260731-all-exp",
+  "persona": "product-designer",
+  "experience": "ux",
+  "action": {
+    "driver": "cli",
+    "command": "pnpm run design:lint",
+    "cwd": ".",
+    "startedAt": "2026-07-31T15:01:05.000Z",
+    "endedAt": "2026-07-31T15:01:08.000Z",
+    "exitCode": 0
+  },
+  "observed": {
+    "projects": [
+      "packages/control-yard",
+      "site"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "evidence": {
+    "featureId": "design-system-contract",
+    "scenarioSlug": "design-system-contract-is-agent-followable-works-for-product-designer",
+    "path": ".optimizexp/features/design-system-contract/evidence/design-system-contract-is-agent-followable-works-for-product-designer/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "act",
+    "role": "observed",
+    "persona": "product-designer",
+    "surface": "pnpm run design:lint",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "scoredAt": "2026-07-31T15:01:08.000Z",
+    "rationale": {
+      "harms": "None.",
+      "friction": "Low/none.",
+      "uncertainty": "Clear surface."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/design-system-contract/evidence/design-system-contract-is-agent-followable-works-for-product-designer/"
+    ]
+  }
+}

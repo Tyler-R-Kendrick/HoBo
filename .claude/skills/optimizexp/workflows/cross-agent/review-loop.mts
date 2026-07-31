@@ -67,6 +67,7 @@ function parseArgs(argv: string[]) {
 		else if (a === "--run-id") out.run = argv[++i] ?? "";
 		else if (a === "--report-only" || a === "--no-reduce")
 			out.reportOnly = "1";
+		else if (a === "--passes") out.passes = argv[++i] ?? "1";
 		else if (a === "--iteration") out.iteration = argv[++i] ?? "0";
 		else if (
 			a === "--implementable-findings" ||
@@ -84,7 +85,7 @@ function help() {
 	console.log(`optimizexp review-loop
 
 Usage:
-  review-loop.mts --mode init --run <id> [--experiences ux,dx,ax] [--personas a,b]
+  review-loop.mts --mode init --run <id> [--experiences ux,dx,ax] [--personas a,b] [--passes N]
   review-loop.mts --mode validate-bus
   review-loop.mts --mode read-bus [--run <runId>] [--limit N] [--mismatches-only]
       [--persona id] [--feature id]
@@ -94,16 +95,46 @@ Usage:
   review-loop.mts --mode should-stop --run <id> --iteration N --scores c.json --prev-scores p.json
       [--implementable-findings N]
 
-Stop only on true plateau: scores flat AND implementableFindings=0.
-There is no --iterations flag and no pass cap.
+Stop a cycle only on true plateau: scores flat AND implementableFindings=0.
+--passes infinite (default) = outer cycles until metrics all 0 OR irreducible (true plateau after re-survey).
+--passes N (finite) = at most N outer completion cycles (each cycle to full plateau).
+There is no --iterations flag and no review-iteration cap inside a cycle.
 --report-only / --no-reduce = measure only (no experiments).
 --implementable-findings N = open S/M findings still unapplied (omit defaults to 1 = continue).
---iteration N on should-stop is the current pass index (bookkeeping only).
+--iteration N on should-stop is the current review-iteration index (bookkeeping only).
 
 Modes are deterministic file/JSON helpers. Persona judgment stays in the agent.
 Every expect/act/outcome bus entry must include a formal metric scorecard.
 Agents MUST apply a reduce experiment each pass unless report-only.
 `);
+}
+
+/**
+ * Outer completion cycles. Default infinite.
+ * Finite N (>=1) caps max outer cycles. Infinite: null.
+ * Accepts: infinite|inf|∞|-1|0|null|undefined|"" → null
+ */
+function parsePasses(raw: unknown): number | null {
+	if (raw === undefined || raw === null || raw === "") return null;
+	if (typeof raw === "boolean") return null;
+	const s = String(raw).trim().toLowerCase();
+	if (
+		s === "infinite" ||
+		s === "inf" ||
+		s === "infinity" ||
+		s === "∞" ||
+		s === "-1" ||
+		s === "0"
+	) {
+		return null;
+	}
+	const n = Number(s);
+	if (!Number.isFinite(n) || n < 1) return null;
+	return Math.floor(n);
+}
+
+function passesLabel(passes: number | null): string {
+	return passes === null ? "infinite" : String(passes);
 }
 
 function initRun(
@@ -113,6 +144,7 @@ function initRun(
 	personas: string[],
 	opts: {
 		reportOnly: boolean;
+		passes?: number | null | string;
 	},
 ) {
 	const runDir = path.join(root, ".optimizexp", "runs", runId);
@@ -121,14 +153,23 @@ function initRun(
 	mkdirSync(path.join(root, ".optimizexp", "bus", "entries"), {
 		recursive: true,
 	});
+	const passes = parsePasses(opts.passes);
 	const scope = {
 		runId,
 		experiences,
 		personas,
 		surfaces: [] as string[],
 		reportOnly: opts.reportOnly,
+		/** Outer completion cycles: null = infinite until metrics=0 or irreducible. */
+		passes,
+		passesLabel: passesLabel(passes),
+		cyclesCompleted: 0,
 		passesCompleted: 0,
-		stopPolicy: "true-plateau-only",
+		stopPolicy:
+			passes === null
+				? "infinite-until-zero-or-irreducible"
+				: "finite-outer-cycles-to-plateau",
+		outerCycles: "passes",
 		hostAgent: "cross-agent",
 		createdAt: new Date().toISOString(),
 	};
@@ -577,8 +618,12 @@ function main() {
 			args.reportOnly === "1" ||
 			args.reportOnly === true ||
 			process.env.OPTIMIZEXP_REPORT_ONLY === "1";
+		const passes = parsePasses(
+			args.passes ?? process.env.OPTIMIZEXP_PASSES ?? "infinite",
+		);
 		initRun(root, run, experiences, personas, {
 			reportOnly,
+			passes,
 		});
 		return;
 	}

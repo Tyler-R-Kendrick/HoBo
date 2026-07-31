@@ -1,0 +1,41 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T15:01:40Z-9003-expect",
+  "runId": "20260731-all-exp",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "featureId": "cli-help-and-doctor",
+  "scenarioSlug": "cli-help-and-doctor-path-works-for-product-app-developer",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run doctor",
+    "interface": "cli"
+  },
+  "predicted": {
+    "behavior": "offline doctor + agent-tooling section; exit 0; optional gbrain warn only",
+    "exitCode": 0
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-app-developer",
+    "surface": "pnpm run doctor",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "scoredAt": "2026-07-31T15:01:40.000Z",
+    "rationale": {
+      "harms": "None.",
+      "friction": "Low/none.",
+      "uncertainty": "Clear surface."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/cli-help-and-doctor/"
+    ]
+  }
+}

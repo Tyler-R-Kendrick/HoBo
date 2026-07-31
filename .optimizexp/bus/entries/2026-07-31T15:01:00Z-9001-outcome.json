@@ -1,0 +1,61 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-31T15:01:00Z-9001-outcome",
+  "expects": "2026-07-31T15:01:00Z-9001-expect",
+  "actId": "2026-07-31T15:01:00Z-9001-act",
+  "runId": "20260731-all-exp",
+  "persona": "product-designer",
+  "experience": "ux",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run design:lint",
+    "interface": "cli"
+  },
+  "actual": {
+    "exitCode": 0,
+    "message": "design-md check ok"
+  },
+  "feelings": {
+    "summary": "Contract gate is the DESIGN.md lint I expected, not a design-doc prose check.",
+    "valence": "positive",
+    "arousal": "low",
+    "trust": "high"
+  },
+  "desirability": {
+    "rating": "desired",
+    "degree": 0.9,
+    "why": "Fail-closed design system path matches seed."
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "outcome",
+    "role": "judged",
+    "persona": "product-designer",
+    "surface": "pnpm run design:lint",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "One command; clear ok.",
+      "uncertainty": "Projects and DESIGN.md status explicit."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/design-system-contract/evidence/design-system-contract-is-agent-followable-works-for-product-designer/"
+    ],
+    "scoredAt": "2026-07-31T15:01:10.000Z"
+  },
+  "comparison": {
+    "expectId": "2026-07-31T15:01:00Z-9001-expect",
+    "actId": "2026-07-31T15:01:00Z-9001-act",
+    "deltaFromExpect": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "deltaFromAct": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "matchedExpectation": true,
+    "expectationMatch": { "behavior": true, "scoresWithinTol": true, "tolerance": 0 }
+  },
+  "evidence": {
+    "featureId": "design-system-contract",
+    "scenarioSlug": "design-system-contract-is-agent-followable-works-for-product-designer",
+    "path": ".optimizexp/features/design-system-contract/evidence/design-system-contract-is-agent-followable-works-for-product-designer/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  }
+}

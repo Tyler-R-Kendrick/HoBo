@@ -1,0 +1,78 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-31T15:01:40Z-9003-outcome",
+  "expects": "2026-07-31T15:01:40Z-9003-expect",
+  "actId": "2026-07-31T15:01:40Z-9003-act",
+  "runId": "20260731-all-exp",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "actual": {
+    "exitCode": 0,
+    "notes": "gbrain not on PATH warn (zero-key expected)"
+  },
+  "feelings": {
+    "summary": "Doctor covers AUTH WorkOS wording and agent-tooling without live egress.",
+    "valence": "positive",
+    "arousal": "low",
+    "trust": "high"
+  },
+  "desirability": {
+    "rating": "desired",
+    "degree": 0.85,
+    "why": "Offline happy path for help/doctor."
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "outcome",
+    "role": "judged",
+    "persona": "product-app-developer",
+    "surface": "pnpm run doctor",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "scoredAt": "2026-07-31T15:01:52.000Z",
+    "rationale": {
+      "harms": "None.",
+      "friction": "Low/none.",
+      "uncertainty": "Clear surface."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-app-developer/"
+    ]
+  },
+  "comparison": {
+    "expectId": "2026-07-31T15:01:40Z-9003-expect",
+    "actId": "2026-07-31T15:01:40Z-9003-act",
+    "deltaFromExpect": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "matchedExpectation": true,
+    "expectationMatch": {
+      "behavior": true,
+      "scoresWithinTol": true,
+      "tolerance": 0
+    },
+    "deltaFromAct": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    }
+  },
+  "evidence": {
+    "featureId": "cli-help-and-doctor",
+    "scenarioSlug": "cli-help-and-doctor-path-works-for-product-app-developer",
+    "path": ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-app-developer/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  }
+}

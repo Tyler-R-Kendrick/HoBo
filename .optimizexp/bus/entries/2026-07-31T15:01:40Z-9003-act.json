@@ -1,0 +1,43 @@
+{
+  "kind": "act",
+  "id": "2026-07-31T15:01:40Z-9003-act",
+  "expects": "2026-07-31T15:01:40Z-9003-expect",
+  "runId": "20260731-all-exp",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "action": {
+    "driver": "cli",
+    "command": "pnpm run doctor",
+    "exitCode": 0
+  },
+  "evidence": {
+    "featureId": "cli-help-and-doctor",
+    "scenarioSlug": "cli-help-and-doctor-path-works-for-product-app-developer",
+    "path": ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-app-developer/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "act",
+    "role": "observed",
+    "persona": "product-app-developer",
+    "surface": "pnpm run doctor",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "scoredAt": "2026-07-31T15:01:50.000Z",
+    "rationale": {
+      "harms": "None.",
+      "friction": "Low/none.",
+      "uncertainty": "Clear surface."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-app-developer/"
+    ]
+  }
+}

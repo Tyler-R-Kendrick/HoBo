@@ -5,7 +5,7 @@ Follow the same contract as Claude Code `workflows/claude-code/review.md` (bus f
 Host specifics:
 
 1. Skills live under `.agents/skills/optimizexp/`.
-2. **No iterations flag.** Continue until **true** plateau (flat scores **and** empty implementable backlog). Use **`read-bus`** before re-expect when pass > 1.
+2. **No review-iteration budget.** Continue each cycle until **true** plateau. Outer **`--passes`** default **infinite** until metrics=0 or irreducible; optional finite N. Use **`read-bus`** before re-expect when review iteration > 1.
 3. **Apply reduce experiments by default**; `--report-only` to measure only.
 4. **Derive → implement → continue.** Known reductions must land this run.
 5. Prefer `review-loop.mts` for `init` / `read-bus` / `aggregate-bus` / `should-stop` / `plateau`. Pass `--implementable-findings N` to `should-stop` (plateau requires N=0).

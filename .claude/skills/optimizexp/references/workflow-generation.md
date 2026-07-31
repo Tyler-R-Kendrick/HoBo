@@ -38,10 +38,10 @@ Every review workflow MUST:
 2. Load persona prompts per `references/personas.md`.
 3. Enforce write-ahead bus entries before actions.
 4. Score metrics per `references/metrics.md`.
-5. Loop per `references/review-loop.md` until plateau.
+5. Loop per `references/review-loop.md` until plateau each outer cycle (`passes` default infinite → metrics=0 or irreducible).
 6. Write `summary.md` under the run directory.
 7. **Apply reduce experiments by default** each persona review pass; only skip with `--report-only` / `--no-reduce` / `OPTIMIZEXP_REPORT_ONLY=1`.
-8. **Derive → implement → continue:** known concrete fixes must land in-run; plateau requires empty implementable backlog (`--implementable-findings 0` on `should-stop`), not merely flat scores.
+8. **Derive → implement → continue:** known concrete fixes must land in-run; plateau requires empty implementable backlog (`--implementable-findings 0` on `should-stop`), not merely flat scores. Default **`--passes infinite`** until metrics=0 or irreducible; finite N only caps outer cycles.
 
 ## Generation steps (agent)
 

@@ -10,8 +10,8 @@
 
 ## Primary binding
 
-- **package-script** `pnpm run skills:mirror-check` (high)
-- package.json scripts["skills:mirror-check"] exists; mentioned in feature/seed
+- **shell** `bash scripts/setup-agent-tools.sh --help` (high)
+- zero-key progressive setup usage + AUTH pointers; secondary surfaces: doctor, MCP launchers, skills:mirror-check
 
 ## Run
 

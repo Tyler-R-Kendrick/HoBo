@@ -9,7 +9,7 @@ Progressive-disclosure bundle for the optimizexp skill. Route by need; do not lo
 - [metrics.md](metrics.md) — harms, friction, uncertainty + HCD scoring
 - [metric-scorecard.md](metric-scorecard.md) — formal `scores` on expect / act / outcome
 - [agent-bus.md](agent-bus.md) — write-ahead expect / act / outcome log
-- [review-loop.md](review-loop.md) — iterative reduction until plateau
+- [review-loop.md](review-loop.md) — iterative reduction until plateau; outer `--passes` (default infinite until metrics=0 or irreducible)
 - [personas.md](personas.md) — `.optimizexp/personas/*.md` → review prompts
 - [features.md](features.md) — feature folders + persona Gherkin
 - [evidence.md](evidence.md) — what personas see; overwrite + media policy

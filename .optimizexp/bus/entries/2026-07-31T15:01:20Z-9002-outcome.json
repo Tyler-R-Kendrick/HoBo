@@ -1,0 +1,77 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-31T15:01:20Z-9002-outcome",
+  "expects": "2026-07-31T15:01:20Z-9002-expect",
+  "actId": "2026-07-31T15:01:20Z-9002-act",
+  "runId": "20260731-all-exp",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "actual": {
+    "exitCode": 0
+  },
+  "feelings": {
+    "summary": "Help lists --no-gbrain and AUTH without installing anything.",
+    "valence": "positive",
+    "arousal": "low",
+    "trust": "high"
+  },
+  "desirability": {
+    "rating": "desired",
+    "degree": 0.9,
+    "why": "Zero-key progressive path discoverable."
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "outcome",
+    "role": "judged",
+    "persona": "product-coding-agent",
+    "surface": "setup-agent-tools --help",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "scoredAt": "2026-07-31T15:01:23.000Z",
+    "rationale": {
+      "harms": "None.",
+      "friction": "Low/none.",
+      "uncertainty": "Clear surface."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/agent-tooling-setup/evidence/agent-tooling-progressive-setup-works-for-product-coding-agent/"
+    ]
+  },
+  "comparison": {
+    "expectId": "2026-07-31T15:01:20Z-9002-expect",
+    "actId": "2026-07-31T15:01:20Z-9002-act",
+    "deltaFromExpect": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "matchedExpectation": true,
+    "expectationMatch": {
+      "behavior": true,
+      "scoresWithinTol": true,
+      "tolerance": 0
+    },
+    "deltaFromAct": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    }
+  },
+  "evidence": {
+    "featureId": "agent-tooling-setup",
+    "scenarioSlug": "agent-tooling-progressive-setup-works-for-product-coding-agent",
+    "path": ".optimizexp/features/agent-tooling-setup/evidence/agent-tooling-progressive-setup-works-for-product-coding-agent/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  }
+}

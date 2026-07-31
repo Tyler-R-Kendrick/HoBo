@@ -10,7 +10,7 @@
 | `SURFACES` | flags / discovery | inferred |
 | `REPORT_ONLY` | `--report-only` / `OPTIMIZEXP_REPORT_ONLY` | `false` |
 
-**Stop policy:** true plateau only (flat scores **and** empty implementable backlog). No iterations flag. No pass budget.
+**Stop policy:** per cycle, true plateau only (flat scores **and** empty implementable backlog). No review-iteration budget. Outer **`--passes`** default **infinite** until metrics=0 or irreducible; optional finite N.
 
 ## System preamble (every persona step)
 

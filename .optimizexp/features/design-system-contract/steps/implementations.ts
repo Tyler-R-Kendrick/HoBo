@@ -10,9 +10,10 @@ import type { OptimizexpWorld } from "./world.ts";
 
 /** Discovery snapshot — see discovery.json for full report. */
 export const DISCOVERY_PRIMARY = {
-  command: "pnpm run docs:design-lint" as string | null,
+  command: "pnpm run design:lint" as string | null,
   confidence: "high",
-  reason: "package.json scripts[\"docs:design-lint\"] exists; mentioned in feature/seed",
+  reason:
+    "seed requires DESIGN.md contract fail-closed (designmd); design:lint not docs:design-lint",
 };
 
 export const IMPLEMENTATION_STATUS = {

@@ -120,9 +120,9 @@ This instance is the durable residual ledger for work that **requires a human, a
 | Field | Value |
 |---|---|
 | **ID** | H-T1 |
-| **Title** | Full proof-hardening waves W3–W6 |
-| **Why agent cannot close** | Hundreds of grandfathered proofs are advisory-only. Backfill is a multi-wave program with product prioritization — not a single agent PR. |
-| **Unblock condition** | Waves W3–W6 remove or harden grandfathered proofs per draft skill gates; `src/draft/_grandfathered.json` shrinks on a tracked schedule with ADR waivers only where intentional. |
+| **Title** | Full proof-hardening waves W3–W6 (artifact allowlist cleared 2026-07-31) |
+| **Why agent cannot close** | ~~Hundreds grandfathered~~ **Artifact allowlist is empty (618 bulk-hardened 2026-07-31).** Remaining quality depth (richer examples, real benches, UX wireframe fidelity) is ongoing product work, not the advisory gate. |
+| **Unblock condition** | ~~Allowlist empty as of 2026-07-31~~ (done via `scripts/bulk-harden-proofs.mts`). Optional follow-up: replace identity scaffolds with package-specific rich examples/benches/UX fidelity where product value warrants. |
 | **Owner role** | Engineering program / proof hardening owner |
 | **Ship target impact** | High-risk non-blocker for A/B if honesty holds; residual risk for “proof complete” claims |
 
@@ -138,7 +138,7 @@ This instance is the durable residual ledger for work that **requires a human, a
 | H-E3b | Real jco | **deferred L** | Platform/WASM | Honesty labels + contract-bytes path |
 | H-E5 | Live multi-cloud apply | **deferred** | Cloud platform | IR/realize honesty; no fake apply green |
 | H-E6 | Production OIDC | **deferred** | Identity/security | Fixture honesty; no production IdP |
-| H-T1 | Proof waves W3–W6 | **deferred** | Eng program | Per-wave packages only; no mass claim |
+| H-T1 | Proof waves W3–W6 | **artifact gate cleared** (depth optional) | Eng program | Optional richer fixtures; no grandfather allowlist |
 
 ## Explicit non-claims
 

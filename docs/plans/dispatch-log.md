@@ -143,3 +143,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | `billing-budget` / checks may still be queued at merge |
 | Notes | ADR-0031 + platform-engineering + worked-example; expanded `devx-devenv-nix.md` (risks, hobo-code auto-detect, NixOS/Station, dendritic); camps residual documented; SCRATCH verification captures; camps tests 7/7; agent:check staged green. |
 
+
+## 2026-07-31 — yard-first sdk-api/control-plane/wasm skeptic close
+
+| Field | Value |
+|---|---|
+| Initiative | Yard-first + Nix goal — skeptic re-verify gaps on Plan-02 / Planner / wasm host |
+| Backend | sequential-fallback (parent) |
+| Branch | `docs/yard-first-sdk-api-fix` |
+| PRs | [#984](https://github.com/Tyler-R-Kendrick/HoBo/pull/984) (squash-merged `446d4280`) |
+| Result | **success** |
+| Failure class | billing-budget / local main worktree cannot checkout |
+| Notes | sdk-api resourceMappings + reject labels; control-plane Planner rewrite; wasm-runtime-wit Yard-owned infra; walkthrough bindings removed. provider-ownership-rg unlabeled hits empty. camps 7/7; agent:check staged green. |
+

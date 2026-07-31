@@ -16,7 +16,8 @@ Progressive-disclosure bundle for the optimizexp skill. Route by need; do not lo
 - [metric-scorecard.md](metric-scorecard.md) — formal `scores` (+ optional `positive`, `cognitive`)
 - [agent-bus.md](agent-bus.md) — write-ahead expect / act / outcome log
 - [review-loop.md](review-loop.md) — dual regime until pareto-equilibrium
-- [personas.md](personas.md) — `.optimizexp/personas/*.md` → review prompts (schema v2)
+- [personas.md](personas.md) — `.optimizexp/personas/*.md` → review prompts (schema v2; formal `experiences:` binding)
+- [config.md](config.md) — global + project `config.json` (defaults, surfaces, safety, prefer lists)
 - [features.md](features.md) — feature folders + persona Gherkin
 - [evidence.md](evidence.md) — what personas see; overwrite + media policy
 - [harness.md](harness.md) — capture drivers and CLI

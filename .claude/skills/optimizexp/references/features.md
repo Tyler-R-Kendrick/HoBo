@@ -8,26 +8,37 @@ timestamp: 2026-07-30T00:00:00Z
 
 # Features
 
-Persona-driven behavior specs live under **`.optimizexp/features/`**. Each **feature is a folder**, not a lone `.feature` file. Generation via **`--feature "seed"`** produces **one Gherkin file per targeted persona**, sharing one evidence tree.
+Persona-driven behavior specs live under **scoped** feature trees:
+
+| Scope | Path |
+|---|---|
+| **Global** | **`.optimizexp/features/<slug>/`** — cross-project journeys |
+| **Project** | **`<project>/.optimizexp/features/<slug>/`** — journeys for that product only |
+
+Each **feature is a folder**, not a lone `.feature` file. Generation via **`--feature "seed"`** produces **one Gherkin file per targeted persona**, sharing one evidence tree in that same folder.
+
+**Write scope:** single non-root `--project site` → `site/.optimizexp/features/`; `--projects all` / multi / root → global. **Read scope:** merge global + selected projects; project-local id **shadows** global.
 
 ## Layout
 
 ```text
+# global
 .optimizexp/features/<feature-slug>/
+# or project-local
+site/.optimizexp/features/<feature-slug>/
   README.md
   SEED.md                   # verbatim journey seed when generated
-  feature.json              # machine metadata (schemaVersion: 1)
+  feature.json              # machine metadata (schemaVersion: 1; scope + projects)
   <feature-slug>-<persona>.feature   # REQUIRED per targeted persona
   steps/
-    world.ts                # shared world state
-    bindings.steps.ts       # Cucumber Given/When/Then → implementations
-    implementations.ts      # real command when discovered, else stub
-    discovery.json          # code discovery report
-    README.md
+    world.ts
+    bindings.steps.ts
+    implementations.ts
+    discovery.json
   test/
-    <feature-slug>.bindings.test.ts   # Vitest smoke for bindings
+    <feature-slug>.bindings.test.ts
   evidence/
-    <scenario-slug>/        # ONE primary recording per scenario (global to feature)
+    <scenario-slug>/        # ONE primary recording per scenario
 ```
 
 Scenario slugs must be unique **across** persona files in the same feature (include persona in the scenario title when needed).
@@ -41,6 +52,7 @@ Scenario slugs must be unique **across** persona files in the same feature (incl
   "title": "Staged agent check feedback",
   "experiences": ["dx", "ax"],
   "projects": ["root"],
+  "scope": "global",
   "personas": ["developer", "coding-agent"],
   "interfaces": ["cli", "mcp"],
   "driver": "cli",
@@ -52,7 +64,8 @@ Scenario slugs must be unique **across** persona files in the same feature (incl
 }
 ```
 
-`projects` tags which multi-project unit(s) the journey belongs to (`root`, `site`, `cli`, example ids, …). Default when omitted: treat as **`root`**. Review with `--projects site` only runs features whose tags intersect.
+`scope` is `global` or a project id (matches the folder that owns the feature).  
+`projects` tags which multi-project unit(s) the journey belongs to (`root`, `site`, `cli`, example ids, …). Default when omitted: treat as **`root`**. Review with `--projects site` loads **global + `site/.optimizexp`** features/personas.
 
 ## Generate from `--feature` seed
 

@@ -3,7 +3,7 @@
  *
  * Flat verbs (no nested buzz):
  *   dispatch (default) | status | session | scaffold | isolate | promote |
- *   budget | remote | platform | join | agent | nodes | rooms | help
+ *   budget | remote | platform | env | join | agent | nodes | rooms | help
  *
  * Binary name: hobo-code (dash permitted).
  */
@@ -50,6 +50,10 @@ import { dogfoodSummary } from "./dogfood.js";
 import { describeEveSubagentSurface } from "./eve.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { describeCodeWorlds } from "./worlds.js";
+import {
+	hermeticEnvSummary,
+	inspectHermeticEnv,
+} from "./hermetic-env.js";
 
 export const HOBO_CODE_VERBS = [
 	"dispatch",
@@ -61,6 +65,7 @@ export const HOBO_CODE_VERBS = [
 	"budget",
 	"remote",
 	"platform",
+	"env",
 	"join",
 	"agent",
 	"nodes",
@@ -194,17 +199,11 @@ function helpText(): string {
 	// 3-line help: title+OF · verb row A · verb row B.
 	// ◆ bare prompt; ★ default dispatch. Flag key legend lives in data/docs.
 	// Verb tails: d=dispatch st=status se=session sc=scaffold i=isolate
-	// pr=promote b=budget re=remote pl=platform n=nodes rm=rooms j=join a=agent
-	// Split verb strip so no line > ~20 (was one 34-col wall).
-	// Title denser: product★ + OF (no middot twins).
-	// Glue OF to product★. Letter strip implies count (●hemrd).
-	// Three balanced rows ≤17.
-	// Drop middot between ★ and OF — still scannable.
+	// pr=promote b=budget re=remote pl=platform ev=env n=nodes rm=rooms j=join a=agent
 	// ★d = default dispatch (◆ bare lives on empty prompt panel, not help).
-	// Two verb rows ≤15.
 	return `hobo-code★●${ofShort}
 ★d·st·se·sc·i·pr
-b·re·pl·n·rm·j·a`;
+b·re·pl·ev·n·rm·j·a`;
 }
 
 /**
@@ -272,6 +271,12 @@ export async function runHoboCodeCli(
 
 	void json; // caller formats stdout
 
+	const hermetic = inspectHermeticEnv({
+		projectRoot: projectDir,
+		hoboHome,
+		env,
+	});
+
 	if (verb === "help") {
 		// Architecture pins (data payload; human chrome stays dense).
 		return ok("HOBO_CODE_HELP", helpText(), {
@@ -283,6 +288,10 @@ export async function runHoboCodeCli(
 			subagents: describeEveSubagentSurface(),
 			secureSandbox: describeSecureSandboxStack(),
 			worlds: describeCodeWorlds(hoboHome),
+			hermetic,
+			// Nix/devenv is optional hermetic shell for this CLI only — never monorepo-wide IaC.
+			hermeticPolicy:
+				"Optional devenv/nix for hobo-code hermetic toolchains; not required; durable state stays under HOBO_HOME outside sandboxes.",
 		});
 	}
 
@@ -375,7 +384,40 @@ export async function runHoboCodeCli(
 			platform,
 			dogfood: dogfoodSummary(platform.station.stationId),
 			distributed: describeBuzzDistributedCompute(),
+			hermetic,
 			text,
+		});
+	}
+
+	if (verb === "env") {
+		// Nix-terminal parity: inspect hermetic shell + durable layout without activating Nix.
+		const summary = hermeticEnvSummary(hermetic);
+		const markerBit =
+			hermetic.markers.length > 0
+				? hermetic.markers.slice(0, 3).join("+")
+				: "none";
+		const homeDisplay = displayPath(hoboHome, { hoboHome, cwd: projectDir });
+		const durableDisplay = displayPath(hermetic.layout.durable, {
+			hoboHome,
+			cwd: projectDir,
+		});
+		// Always surface durable path (nix purity analog): declared shells need it too.
+		const envText = panel("▣ ev", [
+			summary,
+			`markers · ${markerBit}`,
+			`home · ${homeDisplay}`,
+			`durable · ${durableDisplay}`,
+			...(hermetic.hermeticActive
+				? []
+				: hermetic.hermeticDeclared
+					? ["enter · devenv shell|direnv allow|nix develop"]
+					: ["optional · devenv.nix (never required)"]),
+		]);
+		return ok("HOBO_CODE_ENV", envText, {
+			hermetic,
+			text: envText,
+			policy:
+				"Optional hermetic shell for hobo-code only; durable state under HOBO_HOME outside sandboxes; Nix not monorepo IaC.",
 		});
 	}
 
@@ -591,6 +633,11 @@ export async function runHoboCodeCli(
 			rootDisplay.endsWith(`/sandboxes/${ctx.runId}`);
 		// run-<ms> → short tail; keep explicit ids.
 		const runBit = shortId(ctx.runId, 14);
+		const durableDisplay = displayPath(ctx.durableRoot, {
+			hoboHome,
+			cwd: projectDir,
+		});
+		// Nix-terminal parity: human chrome must show pure sandbox≠durable split.
 		const isolateText = panel("▣ i", [
 			// Omit worktree happy-path noise.
 			...(ctx.backend.kind === "worktree"
@@ -612,12 +659,20 @@ export async function runHoboCodeCli(
 				"●",
 				"pr",
 			].join("·"),
+			`durable · ${durableDisplay}`,
 			...(isoStation === "local" ? [] : [`station · ${isoStation}`]),
 		]);
 		return ok("HOBO_CODE_ISOLATE", isolateText, {
 			isolation: ctx,
 			platform,
 			orphans: orphanCount,
+			hermetic,
+			durableRoot: ctx.durableRoot,
+			layout: {
+				sandbox: ctx.rootPath,
+				durable: ctx.durableRoot,
+				pureSeparation: true as const,
+			},
 			text: isolateText,
 		});
 	}

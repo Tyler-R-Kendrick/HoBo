@@ -155,13 +155,26 @@ Two consecutive past-peak failures → prefer `stopReason: inverted-u-peak` if n
 ## Harness
 
 ```bash
-# Aggregate constraint check between two score snapshots
+# Candidate equilibrium (not invocation complete)
 node --import tsx .agents/skills/optimizexp/workflows/cross-agent/review-loop.mts \
-  --mode equilibrium \
+  --mode equilibrium --run <runId> \
   --scores curr.json --prev-scores prev.json \
   --implementable-harm 0 --implementable-uplift 0 \
-  --harm-regressed false --cognitive-breach false
+  --harm-regressed false --cognitive-breach false \
+  --regime delight_maximize
+
+# Legal completion certificate (required before claiming done)
+node --import tsx .agents/skills/optimizexp/workflows/cross-agent/review-loop.mts \
+  --mode assert-complete --run <runId>
+node --import tsx .agents/skills/optimizexp/workflows/cross-agent/review-loop.mts \
+  --mode mark-complete --run <runId> --stop-reason pareto-equilibrium
 ```
+
+**Rules:**
+
+- Omitted `--implementable-harm` / `--implementable-uplift` ⇒ **undeclared** ⇒ cannot equilibrium-stop (must pass explicit `0` when S/M backlog empty).
+- `should-stop` plateau is **never** an invocation `stopReason` under infinite Pareto policy.
+- `assert-complete` fails closed if delight never entered (unless `noDelight`), bus triples missing, no iterations, no survey/backlog (unless `--no-survey`), or summary lacks a valid terminal reason.
 
 ## Related
 

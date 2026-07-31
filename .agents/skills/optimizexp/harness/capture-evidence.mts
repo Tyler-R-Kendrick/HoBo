@@ -28,10 +28,17 @@ import {
 } from "./lib/media.mts";
 import {
 	evidenceDir,
+	evidenceDirInScope,
 	featureDir,
 	featuresRoot,
+	findFeature,
+	listFeatures,
+	relFromRepo,
 	repoRoot,
+	writeScopeFromSelection,
+	type FeatureLocation,
 } from "./lib/paths.mts";
+import { resolveProjects } from "./lib/projects.mts";
 import { scenarioSlug } from "./lib/slug.mts";
 
 type FeatureMeta = {
@@ -61,7 +68,10 @@ function parseArgs(argv: string[]) {
 		else if (a === "--personas") out.personas = argv[++i] ?? "";
 		else if (a === "--experiences") out.experiences = argv[++i] ?? "";
 		else if (a === "--title") out.title = argv[++i] ?? "";
-		else if (a === "--strict") out.strict = "1";
+		else if (a === "--project" || a === "--projects") {
+			const v = argv[++i] ?? "";
+			out.projects = out.projects ? `${out.projects},${v}` : v;
+		} else if (a === "--strict") out.strict = "1";
 		else if (!a.startsWith("-") && out.mode === "help") out.mode = a;
 	}
 	return out;
@@ -79,15 +89,31 @@ Modes:
   validate       [--feature <id>] [--strict]
 
 Evidence is written to:
-  .optimizexp/features/<feature>/evidence/<scenario-slug>/
+  .optimizexp/features/<feature>/evidence/<scenario-slug>/   (global)
+  or <project>/.optimizexp/features/<feature>/evidence/…    (project-local)
 and overwrites the previous primary artifact for that scenario.
 `);
 }
 
+function resolveFeatureLoc(
+	featureId: string,
+	root: string,
+	preferredProject?: string,
+): FeatureLocation {
+	const loc = findFeature(featureId, root, {
+		preferredProjectId: preferredProject,
+	});
+	if (!loc || !existsSync(loc.featureJsonPath)) {
+		throw new Error(
+			`missing feature.json for ${featureId} (searched global + project .optimizexp/features/)`,
+		);
+	}
+	return loc;
+}
+
 function loadFeature(featureId: string, root: string): FeatureMeta {
-	const p = path.join(featureDir(featureId, root), "feature.json");
-	if (!existsSync(p)) throw new Error(`missing feature.json for ${featureId}`);
-	return JSON.parse(readFileSync(p, "utf8")) as FeatureMeta;
+	const loc = resolveFeatureLoc(featureId, root);
+	return JSON.parse(readFileSync(loc.featureJsonPath, "utf8")) as FeatureMeta;
 }
 
 function initFeature(args: Record<string, string>) {
@@ -97,7 +123,9 @@ function initFeature(args: Record<string, string>) {
 		console.error("--id required");
 		process.exit(2);
 	}
-	const dir = featureDir(id, root);
+	const selection = resolveProjects(args.projects ?? args.project, root);
+	const scope = writeScopeFromSelection(selection, root);
+	const dir = path.join(scope.optimizexpDir, "features", id);
 	mkdirSync(path.join(dir, "evidence"), { recursive: true });
 	mkdirSync(path.join(dir, "steps"), { recursive: true });
 	const personas = (args.personas || "developer")
@@ -149,7 +177,9 @@ Feature: ${title}
 }
 
 function parseScenarios(featureId: string, root: string) {
-	const dir = featureDir(featureId, root);
+	const loc = findFeature(featureId, root);
+	const dir = loc?.dir ?? featureDir(featureId, root);
+	if (!existsSync(dir)) return [];
 	const files = readdirSync(dir).filter((f) => f.endsWith(".feature"));
 	const scenarios: { name: string; slug: string; file: string }[] = [];
 	for (const f of files) {
@@ -189,13 +219,16 @@ function capture(args: Record<string, string>) {
 		console.error("--feature required");
 		process.exit(2);
 	}
-	const meta = loadFeature(featureId, root);
+	const loc = resolveFeatureLoc(featureId, root, args.projects?.split(/[,\s]+/)[0]);
+	const meta = JSON.parse(
+		readFileSync(loc.featureJsonPath, "utf8"),
+	) as FeatureMeta;
 	const scenario = resolveScenarioSlug(
 		featureId,
 		args.scenario || "default",
 		root,
 	);
-	const outDir = evidenceDir(featureId, scenario, root);
+	const outDir = evidenceDirInScope(featureId, scenario, loc.scope);
 	mkdirSync(outDir, { recursive: true });
 	const hadPrevious = clearPrimaryArtifacts(outDir);
 	// clear stale handoff scripts
@@ -346,7 +379,10 @@ function stitch(args: Record<string, string>) {
 		console.error("--feature and --scenario required");
 		process.exit(2);
 	}
-	const outDir = evidenceDir(featureId, scenario, root);
+	const loc = findFeature(featureId, root);
+	const outDir = loc
+		? evidenceDirInScope(featureId, scenario, loc.scope)
+		: evidenceDir(featureId, scenario, root);
 	const framesDir = path.join(outDir, "frames");
 	const result = tryStitchFrames(framesDir, path.join(outDir, "_stitch"));
 	if (!result) {
@@ -391,28 +427,32 @@ function stitch(args: Record<string, string>) {
 
 function validate(args: Record<string, string>) {
 	const root = repoRoot();
-	const base = featuresRoot(root);
+	const selection = resolveProjects(args.projects ?? "all", root);
 	const strict = args.strict === "1" || args.strict === "true";
-	if (!existsSync(base)) {
+	const locations = args.feature
+		? (() => {
+				const hit = findFeature(args.feature, root, { selection });
+				return hit ? [hit] : [];
+			})()
+		: listFeatures(root, selection);
+	if (locations.length === 0) {
 		console.log(JSON.stringify({ ok: true, features: 0, problems: [], missing: [] }));
 		return;
 	}
-	const features = args.feature
-		? [args.feature]
-		: readdirSync(base).filter((d) =>
-				existsSync(path.join(base, d, "feature.json")),
-			);
 	const problems: string[] = [];
 	const missing: string[] = [];
-	for (const id of features) {
+	for (const loc of locations) {
+		const id = loc.id;
 		const scenarios = parseScenarios(id, root);
 		for (const s of scenarios) {
-			const dir = evidenceDir(id, s.slug, root);
+			const dir = evidenceDirInScope(id, s.slug, loc.scope);
 			const man = path.join(dir, "manifest.json");
 			if (!existsSync(man)) {
-				missing.push(`${id}/${s.slug}`);
+				missing.push(`${loc.scope.id}:${id}/${s.slug}`);
 				if (strict) {
-					problems.push(`${id}/${s.slug}: missing evidence/manifest.json`);
+					problems.push(
+						`${loc.scope.id}:${id}/${s.slug}: missing evidence/manifest.json`,
+					);
 				}
 				continue;
 			}
@@ -420,25 +460,27 @@ function validate(args: Record<string, string>) {
 				primaryPath?: string;
 			};
 			if (!m.primaryPath || !existsSync(path.join(dir, m.primaryPath))) {
-				problems.push(`${id}/${s.slug}: primary missing`);
+				problems.push(`${loc.scope.id}:${id}/${s.slug}: primary missing`);
 			}
 			const primaries = existsSync(dir)
 				? readdirSync(dir).filter((f) => f.startsWith("primary."))
 				: [];
 			if (primaries.length > 1) {
 				problems.push(
-					`${id}/${s.slug}: multiple primary.* files: ${primaries.join(",")}`,
+					`${loc.scope.id}:${id}/${s.slug}: multiple primary.* files: ${primaries.join(",")}`,
 				);
 			}
 		}
 		// also validate any evidence dirs that exist without scenarios
-		const eRoot = path.join(featureDir(id, root), "evidence");
+		const eRoot = path.join(loc.dir, "evidence");
 		if (existsSync(eRoot)) {
 			for (const slug of readdirSync(eRoot)) {
 				const dir = path.join(eRoot, slug);
 				const man = path.join(dir, "manifest.json");
 				if (!existsSync(man)) {
-					problems.push(`${id}/${slug}: evidence dir without manifest.json`);
+					problems.push(
+						`${loc.scope.id}:${id}/${slug}: evidence dir without manifest.json`,
+					);
 				}
 			}
 		}
@@ -446,7 +488,14 @@ function validate(args: Record<string, string>) {
 	const ok = problems.length === 0;
 	console.log(
 		JSON.stringify(
-			{ ok, features: features.length, problems, missing, strict },
+			{
+				ok,
+				features: locations.length,
+				scopes: [...new Set(locations.map((l) => l.scope.id))],
+				problems,
+				missing,
+				strict,
+			},
 			null,
 			2,
 		),

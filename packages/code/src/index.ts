@@ -139,6 +139,14 @@ export {
 } from "./cli.js";
 
 export {
+	HERMETIC_ENV_SCHEMA,
+	hermeticEnvSummary,
+	inspectHermeticEnv,
+	type HermeticEnvReport,
+	type HermeticMarker,
+} from "./hermetic-env.js";
+
+export {
 	BO_CELL_HEIGHT,
 	BO_CELL_WIDTH,
 	BO_IDLE_BLINK,

@@ -8,7 +8,9 @@ node --import tsx .agents/skills/optimizexp/workflows/cross-agent/review-loop.mt
 node --experimental-strip-types .agents/skills/optimizexp/workflows/cross-agent/review-loop.mts --help
 ```
 
-Modes: `init` | `validate-bus` | `score` | `plateau`.
+Modes: `init` | `status` | `should-stop` | `equilibrium` | `assert-complete` | `mark-complete` | `validate-bus` | `read-bus` | `aggregate-bus` | `score` | `plateau`.
+
+**Completion:** only `assert-complete` exit 0 + `mark-complete` ends an invocation. `should-stop` plateau is cycleStop only.
 
 Optional WDK notes: `../../references/cross-agent/vercel-wdk.md`.
 Plain runner has **zero** extra dependencies beyond repo `tsx`.

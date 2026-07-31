@@ -33,7 +33,7 @@ Persona frontmatter **`schemaVersion: 2`** adds formal models below.
 ---
 id: product-app-developer
 schemaVersion: 2
-experiences: [dx, ax]
+experiences: [dx, ax]   # REQUIRED formal binding — see below
 priority: 10
 interfaces: [cli, docs, mcp, config]
 generatedFromSeed: false
@@ -45,8 +45,22 @@ marketPriority: 1
 
 | Field | Required (v2) | Meaning |
 |---|---|---|
+| **`experiences`** | **yes** | **Experience-type binding** — non-empty subset of `ux` \| `dx` \| `ax` (multi ok). Alias: `experienceTypes`. |
 | `segmentIds` | yes | One or more market segment tags this persona represents |
 | `marketPriority` | no | Lower = more important for coverage when time-boxing |
+
+### Experience-type binding (`experiences`)
+
+Closed enum: **`ux`**, **`dx`**, **`ax`**. One or more values. Harness code: `harness/lib/experience-types.mts`.
+
+| Run flag | Selects personas with |
+|---|---|
+| `--ux` | `ux` ∈ experiences |
+| `--dx` | `dx` ∈ experiences |
+| `--ax` | `ax` ∈ experiences |
+| (default all) | any of ux/dx/ax |
+
+Intersection is **strict** — no silent fall-through to all personas. See `personas.md` § Formal field.
 
 ## Required body models (v2)
 

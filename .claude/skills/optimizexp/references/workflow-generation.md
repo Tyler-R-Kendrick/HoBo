@@ -38,10 +38,10 @@ Every review workflow MUST:
 2. Load persona prompts per `references/personas.md`.
 3. Enforce write-ahead bus entries before actions.
 4. Score metrics per `references/metrics.md`.
-5. Loop per `references/review-loop.md` + `equilibrium.md` until **pareto-equilibrium** (harm floor then delight; default infinite).
+5. Loop per `references/review-loop.md` + `equilibrium.md` until **pareto-equilibrium** (harm floor then delight; default infinite). Host workflow final steps **must** call `assert-complete` then `mark-complete`; product-green alone is not a terminal.
 6. Write `summary.md` under the run directory.
 7. **Apply reduce experiments by default** each persona review pass; only skip with `--report-only` / `--no-reduce` / `OPTIMIZEXP_REPORT_ONLY=1`.
-8. **Derive → implement → continue:** known concrete fixes must land in-run; plateau requires empty implementable backlog (`--implementable-findings 0` on `should-stop`), not merely flat scores. Default **`--passes infinite`** until metrics=0 or irreducible; finite N only caps outer cycles.
+8. **Derive → implement → continue:** known concrete fixes must land in-run; harm plateau requires empty implementable backlog (`--implementable-findings 0` on `should-stop`), not merely flat scores. Default **`--passes infinite`** until **pareto-equilibrium** (harm then delight); finite N only caps harm cycles. Invocation complete only via `assert-complete` + `mark-complete`.
 
 ## Generation steps (agent)
 

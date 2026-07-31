@@ -31,9 +31,9 @@ node --import tsx .agents/skills/optimizexp/harness/init.mts --mode needs-init
 
 | Condition | Why |
 |---|---|
-| Zero personas under `.optimizexp/personas/` | Nothing to judge with |
-| Zero `feature.json` feature folders | No scenarios to exercise |
-| No `product-*` / `role-*` personas **and** no `init-report.json` **and** fewer than 2 features | Never product-bootstrapped |
+| Zero personas under global **or** project `.optimizexp/personas/` | Nothing to judge with |
+| Zero `feature.json` feature folders in any scope | No scenarios to exercise |
+| No `product-*` / `role-*` personas **and** no global `init-report.json` **and** fewer than 2 features | Never product-bootstrapped |
 
 Hand-authored personas alone with ≥2 features → **no** auto-init (review proceeds).  
 Explicit `--init` always runs bootstrap. Explicit `--dx` / `--persona` / etc. do not auto-init unless both personas and features are empty.
@@ -59,7 +59,9 @@ node --import tsx .agents/skills/optimizexp/harness/init.mts --experiences ux,dx
 |---|---|
 | `--init` | Skill-level entry; agent runs `harness/init.mts` |
 | `--mode needs-init` | Probe whether bare optimizexp should bootstrap first |
-| `--mode list-projects` | List discovered multi-project ids |
+| `--mode list-projects` | List discovered multi-project ids (+ config paths) |
+| `--mode ensure-config` | Write missing global/project `config.json` templates |
+| `--mode validate-config` | Validate config JSON + merge |
 | `--projects all\|a,b` / `--project <id>` / `--all-projects` | Scope init to project(s); **default all-projects** |
 | `--dry-run` | Discovery + plans only |
 | `--force` | Overwrite existing personas/features with same ids |
@@ -83,12 +85,21 @@ Product name/summary come from README `#` title + lead paragraph (fallback: root
 ## Outputs
 
 ```text
-.optimizexp/
-  personas/product-*.md       # created (unless skip/exists)
-  features/<journey-id>/      # Gherkin + steps + test
-  init-report.json            # machine report + full discovery
-  INIT.md                     # human summary + next steps
+.optimizexp/                          # GLOBAL (always)
+  config.json                         # formal monorepo defaults
+  personas/…                          # cross-cutting / multi-project plans
+  features/…
+  init-report.json
+  INIT.md
+  bus/ runs/ backlog/                 # orchestration only here
+
+site/.optimizexp/                     # PROJECT (when plan tags a single non-root project)
+  config.json                         # formal project defaults (UX/web for site)
+  personas/product-*.md
+  features/<journey-id>/
 ```
+
+Single-project plans (e.g. `--init --projects site`) write personas/features into **`site/.optimizexp/`**. Multi-project or root plans write to **global**. Init also ensures **config.json** templates (see `config.md`).
 
 Default persona ids (when signals present):
 

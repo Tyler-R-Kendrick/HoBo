@@ -465,7 +465,7 @@ describe("hobo-code look/feel surfaces", () => {
 		// ◆ bare lives on empty dispatch panel, not help strip
 		expect(out).toMatch(/^★d·st·se·sc·i·pr$/m);
 		expect(out).not.toContain("◆★d");
-		expect(out).toMatch(/^b·re·pl·n·rm·j·a$/m);
+		expect(out).toMatch(/^b·re·pl·ev·n·rm·j·a$/m);
 		expect(out).toContain("b·re");
 		expect(out).toContain("·sc·");
 		expect(out).not.toContain("✦scaf");

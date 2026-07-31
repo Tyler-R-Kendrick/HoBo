@@ -16,7 +16,16 @@ import {
 import path from "node:path";
 import process from "node:process";
 import { writeJson } from "./lib/media.mts";
-import { optimizexpRoot, repoRoot } from "./lib/paths.mts";
+import {
+	findFeature,
+	globalOptimizexpRoot,
+	optimizexpRoot,
+	relFromRepo,
+	repoRoot,
+	scopeForProject,
+	writeScopeFromSelection,
+} from "./lib/paths.mts";
+import { findPersona, listPersonaMetas } from "./lib/persona-resolve.mts";
 import {
 	discoverProduct,
 	filterDiscovery,
@@ -24,7 +33,25 @@ import {
 	type ProductDiscovery,
 } from "./lib/repo-discover.mts";
 import { assessNeedsInit } from "./lib/needs-init.mts";
-import { listProjects, resolveProjects } from "./lib/projects.mts";
+import {
+	listProjects,
+	resolveProjects,
+	type ProjectRef,
+} from "./lib/projects.mts";
+import {
+	defaultProjectConfigDocument,
+	ensureGlobalConfig,
+	ensureProjectConfig,
+	loadConfigFile,
+	resolveConfig,
+	globalConfigPath,
+	projectConfigPath,
+	CONFIG_FILENAME,
+} from "./lib/config.mts";
+import {
+	ensureGlobalGitignore,
+	ensureProjectGitignore,
+} from "./lib/gitignore.mts";
 
 function parseArgs(argv: string[]) {
 	const out: Record<string, string> = { mode: "init" };
@@ -50,6 +77,10 @@ function parseArgs(argv: string[]) {
 		} else if (a === "needs-init" || a === "--needs-init") out.mode = "needs-init";
 		else if (a === "list-projects" || a === "--list-projects")
 			out.mode = "list-projects";
+		else if (a === "validate-config" || a === "--validate-config")
+			out.mode = "validate-config";
+		else if (a === "ensure-config" || a === "--ensure-config")
+			out.mode = "ensure-config";
 	}
 	if (projectTokens.length) out.projects = projectTokens.join(",");
 	return out;
@@ -69,8 +100,12 @@ Usage:
            [--report .optimizexp/init-report.json]
   init.mts --mode needs-init     # exit 0 if init recommended, 1 if ready to review
   init.mts --mode list-projects  # list discovered multi-project ids
+  init.mts --mode validate-config  # validate global + project config.json files
+  init.mts --mode ensure-config    # write missing config.json + refresh managed .gitignore
 
 --projects defaults to all-projects when omitted.
+Config: .optimizexp/config.json (global) and <project>/.optimizexp/config.json
+Gitignore: managed .optimizexp/.gitignore from config.gitignore (runs, bus entries, large media)
 
 Maps to skill flags: /optimizexp --init [--projects site,cli]
 Bare /optimizexp (no flags) runs needs-init first; if needed, init (all projects) then full ux+dx+ax review.
@@ -104,13 +139,20 @@ function runNodeScript(
 }
 
 function personaExists(root: string, id: string): boolean {
-	return existsSync(path.join(optimizexpRoot(root), "personas", `${id}.md`));
+	return findPersona(id, root) != null;
 }
 
 function featureExists(root: string, id: string): boolean {
-	return existsSync(
-		path.join(optimizexpRoot(root), "features", id, "feature.json"),
-	);
+	const loc = findFeature(id, root);
+	return !!(loc && existsSync(loc.featureJsonPath));
+}
+
+/** Primary project id for a plan's projects[] → write scope flag. */
+function writeProjectFlag(projects: string[] | undefined): string {
+	if (!projects || projects.length === 0) return "root";
+	if (projects.length === 1) return projects[0]!;
+	// multi-tagged plans land in global
+	return "root";
 }
 
 function main() {
@@ -143,7 +185,118 @@ function main() {
 						kind: p.kind,
 						label: p.label,
 						packageName: p.packageName ?? null,
+						configPath:
+							p.kind === "root" || !p.path
+								? relFromRepo(globalConfigPath(root), root)
+								: relFromRepo(projectConfigPath(p, root), root),
 					})),
+				},
+				null,
+				2,
+			),
+		);
+		return;
+	}
+
+	if (args.mode === "validate-config") {
+		const selection = resolveProjects(args.projects ?? "all", root);
+		const files: { path: string; problems: string[]; exists: boolean }[] = [];
+		const g = loadConfigFile(globalConfigPath(root));
+		files.push({
+			path: relFromRepo(g.path, root),
+			problems: g.problems,
+			exists: g.exists,
+		});
+		for (const p of selection.projects) {
+			if (p.kind === "root" || !p.path) continue;
+			const c = loadConfigFile(projectConfigPath(p, root));
+			files.push({
+				path: relFromRepo(c.path, root),
+				problems: c.problems,
+				exists: c.exists,
+			});
+		}
+		const { resolved, problems: mergeProblems } = resolveConfig({
+			root,
+			focusProject:
+				!selection.allProjects && selection.projects.length === 1
+					? selection.projects[0]!
+					: null,
+		});
+		const ok =
+			files.every((f) => f.problems.length === 0) && mergeProblems.length === 0;
+		console.log(
+			JSON.stringify(
+				{
+					ok,
+					files,
+					mergeProblems,
+					resolved: {
+						kind: resolved.kind,
+						projectId: resolved.projectId,
+						defaults: resolved.defaults,
+						sources: resolved.sources,
+					},
+				},
+				null,
+				2,
+			),
+		);
+		if (!ok) process.exitCode = 1;
+		return;
+	}
+
+	if (args.mode === "ensure-config") {
+		const selection = resolveProjects(args.projects ?? "all", root);
+		const created: string[] = [];
+		const gitignores: {
+			path: string;
+			written: boolean;
+			reason: string;
+		}[] = [];
+		const g = ensureGlobalConfig(root, { force: args.force === "1" });
+		if (g.created) created.push(relFromRepo(g.path, root));
+		const { resolved: globalResolved } = resolveConfig({ root });
+		const gGi = ensureGlobalGitignore(globalResolved.gitignore, root);
+		gitignores.push({
+			path: relFromRepo(gGi.path, root),
+			written: gGi.written,
+			reason: gGi.reason,
+		});
+		for (const p of selection.projects) {
+			if (p.kind === "root" || !p.path) continue;
+			const experiences =
+				p.kind === "site" || p.id === "site"
+					? (["ux"] as const)
+					: p.kind === "package" && (p.id === "cli" || p.id === "hobo")
+						? (["dx", "ax"] as const)
+						: undefined;
+			const driver =
+				p.kind === "site" || p.id === "site" ? ("web" as const) : undefined;
+			const r = ensureProjectConfig(p, root, {
+				force: args.force === "1",
+				experiences: experiences ? [...experiences] : undefined,
+				driver,
+			});
+			if (r.created) created.push(relFromRepo(r.path, root));
+			const { resolved: projResolved } = resolveConfig({
+				root,
+				focusProject: p,
+			});
+			const pGi = ensureProjectGitignore(p, projResolved.gitignore, root);
+			gitignores.push({
+				path: relFromRepo(pGi.path, root),
+				written: pGi.written,
+				reason: pGi.reason,
+			});
+		}
+		console.log(
+			JSON.stringify(
+				{
+					ok: true,
+					created,
+					gitignores,
+					note: "Existing configs left untouched unless --force; gitignore managed blocks refreshed from config",
 				},
 				null,
 				2,
@@ -231,16 +384,50 @@ function main() {
 		return;
 	}
 
-	mkdirSync(path.join(optimizexpRoot(root), "personas"), { recursive: true });
-	mkdirSync(path.join(optimizexpRoot(root), "features"), { recursive: true });
+	// Ensure global tree exists (bus/runs/backlog live only here)
+	mkdirSync(path.join(globalOptimizexpRoot(root), "personas"), {
+		recursive: true,
+	});
+	mkdirSync(path.join(globalOptimizexpRoot(root), "features"), {
+		recursive: true,
+	});
+	const cfgEnsure = ensureGlobalConfig(root, {
+		productName: discovery.productName,
+		productSummary: discovery.productSummary,
+	});
+	const { resolved: globalResolved } = resolveConfig({ root });
+	ensureGlobalGitignore(globalResolved.gitignore, root);
+	// Ensure selected non-root project .optimizexp dirs + config templates
+	for (const p of projectSelection.projects) {
+		const s = scopeForProject(p, root);
+		if (s.global) continue;
+		mkdirSync(path.join(s.optimizexpDir, "personas"), { recursive: true });
+		mkdirSync(path.join(s.optimizexpDir, "features"), { recursive: true });
+		const experiences =
+			p.kind === "site" || p.id === "site"
+				? (["ux"] as ("ux" | "dx" | "ax")[])
+				: p.id === "cli" || p.id === "hobo" || p.id === "mcp"
+					? (["dx", "ax"] as ("ux" | "dx" | "ax")[])
+					: undefined;
+		ensureProjectConfig(p, root, {
+			experiences,
+			driver: p.kind === "site" || p.id === "site" ? "web" : "cli",
+		});
+		const { resolved: projResolved } = resolveConfig({
+			root,
+			focusProject: p,
+		});
+		ensureProjectGitignore(p, projResolved.gitignore, root);
+	}
 
-	// 1) Personas
+	// 1) Personas — write to project scope when plan tags a single non-root project
 	if (args.skipPersonas !== "1") {
 		for (const plan of discovery.personaPlans) {
 			if (personaExists(root, plan.id) && !force) {
 				report.skippedPersonas.push(plan.id);
 				continue;
 			}
+			const projFlag = writeProjectFlag(plan.projects);
 			const r = runNodeScript(root, "generate-persona.mts", [
 				"--seed",
 				plan.seed,
@@ -250,11 +437,12 @@ function main() {
 				plan.experiences.join(","),
 				"--priority",
 				String(plan.priority),
+				"--project",
+				projFlag,
 				...(force ? ["--force"] : []),
 			]);
 			if (r.status === 0) {
 				report.createdPersonas.push(plan.id);
-				// Enrich with product name in a small note file? persona scaffold is enough.
 			} else {
 				report.errors.push(
 					`persona ${plan.id}: ${r.stderr || r.stdout || "failed"}`.slice(0, 400),
@@ -289,6 +477,7 @@ function main() {
 						? personaIdsForFeatures
 						: ["product-app-developer"];
 
+			const projFlag = writeProjectFlag(plan.projects);
 			const genArgs = [
 				"--seed",
 				plan.seed,
@@ -303,7 +492,7 @@ function main() {
 				"--driver",
 				plan.driver,
 				"--projects",
-				(plan.projects?.length ? plan.projects : ["root"]).join(","),
+				projFlag,
 			];
 			const r = runNodeScript(root, "generate-feature.mts", genArgs);
 			if (r.status === 0) {
@@ -332,9 +521,15 @@ function main() {
 
 	const reportPath =
 		args.report ||
-		path.join(optimizexpRoot(root), "init-report.json");
+		path.join(globalOptimizexpRoot(root), "init-report.json");
 	writeJson(reportPath, {
 		...report,
+		scopes: {
+			global: relFromRepo(globalOptimizexpRoot(root), root),
+			config: relFromRepo(globalConfigPath(root), root),
+			configCreated: cfgEnsure.created,
+			note: "Project-local content + config.json under <project>/.optimizexp/; bus/runs/backlog stay global.",
+		},
 		// discovery is large; keep full for agent rewrite
 	});
 

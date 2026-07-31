@@ -15,7 +15,13 @@ import {
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
-import { evidenceDir, featureDir, repoRoot } from "./lib/paths.mts";
+import {
+	evidenceDir,
+	evidenceDirInScope,
+	featureDir,
+	findFeature,
+	repoRoot,
+} from "./lib/paths.mts";
 import { which, fileBytes } from "./lib/media.mts";
 
 const IMAGE_MAX = 1_000_000;
@@ -56,13 +62,16 @@ function stackHint(): string {
 }
 
 function loadScenarios(featureId: string, root: string) {
-	const dir = featureDir(featureId, root);
+	const loc = findFeature(featureId, root);
+	const dir = loc?.dir ?? featureDir(featureId, root);
 	const evidenceRoot = path.join(dir, "evidence");
 	if (!existsSync(evidenceRoot)) return [];
 	return readdirSync(evidenceRoot)
 		.filter((d) => existsSync(path.join(evidenceRoot, d, "manifest.json")))
 		.map((slug) => {
-			const eDir = evidenceDir(featureId, slug, root);
+			const eDir = loc
+				? evidenceDirInScope(featureId, slug, loc.scope)
+				: evidenceDir(featureId, slug, root);
 			const man = JSON.parse(
 				readFileSync(path.join(eDir, "manifest.json"), "utf8"),
 			) as { primaryPath: string; kind: string; updatedAt?: string };

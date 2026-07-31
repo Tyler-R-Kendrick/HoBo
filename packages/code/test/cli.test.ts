@@ -93,5 +93,63 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			(help.data as { defaultVerb: string }).defaultVerb,
 		).toBe("dispatch");
 		expect(CODE_FEATURE_FLAGS.distributed).toBe("code.distributed");
+		expect(HOBO_CODE_VERBS).toContain("env");
+		expect(help.message).toContain("ev");
+		expect(
+			(help.data as { hermetic: { schema: string } }).hermetic.schema,
+		).toBe("hobo.code.hermetic-env/v1");
+	});
+
+	it("env reports hermetic shell markers and durable layout without requiring Nix", async () => {
+		const home = temp("hc-env-home-");
+		const project = temp("hc-env-proj-");
+		const { writeFileSync } = await import("node:fs");
+		writeFileSync(
+			join(project, "devenv.nix"),
+			"{ pkgs, ... }: { packages = [ pkgs.nodejs ]; }\n",
+			"utf8",
+		);
+		const env = await runHoboCodeCli(["env", "--json"], {
+			hoboHome: home,
+			cwd: project,
+		});
+		expect(env.ok).toBe(true);
+		expect(env.code).toBe("HOBO_CODE_ENV");
+		const data = env.data as {
+			hermetic: {
+				hermeticDeclared: boolean;
+				markers: string[];
+				layout: { pureSeparation: boolean; durable: string };
+				fidelity: string;
+			};
+		};
+		expect(data.hermetic.hermeticDeclared).toBe(true);
+		expect(data.hermetic.markers).toContain("devenv.nix");
+		expect(data.hermetic.layout.pureSeparation).toBe(true);
+		expect(data.hermetic.fidelity).toBe("hermetic-declared");
+		expect(env.message).toMatch(/hermetic/);
+		// Human chrome always surfaces durable layout (nix purity analog).
+		expect(env.message).toMatch(/durable/);
+	});
+
+	it("isolate data exposes durable root separate from sandbox", async () => {
+		const home = temp("hc-iso-home-");
+		const project = temp("hc-iso-proj-");
+		const iso = await runHoboCodeCli(["isolate", "run-hermetic-1"], {
+			hoboHome: home,
+			cwd: project,
+		});
+		expect(iso.ok).toBe(true);
+		const data = iso.data as {
+			isolation: { rootPath: string; durableRoot: string };
+			layout: { pureSeparation: boolean };
+			hermetic: { schema: string };
+		};
+		expect(data.isolation.durableRoot).toContain("durable");
+		expect(data.isolation.rootPath).not.toBe(data.isolation.durableRoot);
+		expect(data.layout.pureSeparation).toBe(true);
+		expect(data.hermetic.schema).toBe("hobo.code.hermetic-env/v1");
+		// Human chrome must not hide pure separation from nix-terminal persona.
+		expect(iso.message).toMatch(/durable/);
 	});
 });

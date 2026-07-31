@@ -8,7 +8,16 @@ timestamp: 2026-07-30T00:00:00Z
 
 # Personas
 
-Repo-specific personas live in **`.optimizexp/personas/*.md`**. They are the instruction prompts that drive review workflows, agent-bus feelings, and formal metric scorecards. The skill does not hard-code product audiences; the repo does.
+Personas live under **scoped** `.optimizexp` trees:
+
+| Scope | Path | Use for |
+|---|---|---|
+| **Global** | **`.optimizexp/personas/*.md`** (repo root) | Cross-cutting roles (e.g. monorepo developer, coding-agent) |
+| **Project** | **`<project>/.optimizexp/personas/*.md`** (e.g. `site/.optimizexp/personas/`) | Product-specific audiences for that project only |
+
+They are the instruction prompts that drive review workflows, agent-bus feelings, and formal metric scorecards. The skill does not hard-code product audiences; the repo does.
+
+**Resolution:** when selecting personas for a run, the harness merges **global + every selected project’s** persona dir. If the same `id` exists in both, the **project-local** file wins for that run. Write destination for `--persona` seeds: single non-root `--project <id>` → project tree; otherwise global.
 
 ## File contract (schema-formalized)
 
@@ -18,6 +27,8 @@ Each persona file **must** match this shape:
 ---
 id: developer
 schemaVersion: 2
+# Formal experience-type binding (required). Multi allowed.
+# Persona is selected only when this intersects the run's --ux/--dx/--ax set.
 experiences: [dx, ax]
 priority: 1
 interfaces: [cli, docs, mcp, config]
@@ -80,13 +91,47 @@ Full field enums and diversity rules: **`persona-models.md`**. Cognitive channel
 |---|---|---|
 | `id` | yes | DNS-ish slug `[a-z0-9-]+`; filename must be `<id>.md` |
 | `schemaVersion` | yes | `1` (grandfathered) or **`2`** (new/rewritten — required for generation) |
-| `experiences` | yes | Non-empty subset of `ux` / `dx` / `ax` |
+| **`experiences`** | **yes** | **Formal experience-type binding** — non-empty list of `ux` and/or `dx` and/or `ax` (see below) |
 | `priority` | no | Lower runs first when time-boxing (default `100`) |
 | `interfaces` | no | Preferred surface types (`cli`, `tui`, `web`, `native`, `docs`, `mcp`, …) |
 | `segmentIds` | v2 yes | Market segment tags this persona covers |
 | `marketPriority` | no | Coverage ranking when time-boxing |
 | `generatedFromSeed` | yes | `true` if created/updated via `--persona` seed rewrite |
 | `seedDigest` | when generated | Short hash of seed (not secrets) |
+
+### Formal field: `experiences` (experience-type binding)
+
+This frontmatter field is **the** contract that binds a persona to OptimizeXP experience tracks.
+
+| Rule | Detail |
+|---|---|
+| **Key** | Canonical: **`experiences:`**. Alias: **`experienceTypes:`** (same semantics; generators write `experiences:`) |
+| **Type** | YAML list of **1–3** tokens from the closed enum `{ ux, dx, ax }` |
+| **Multi** | Yes — e.g. `[dx, ax]` for a developer who also judges agent tooling |
+| **Order** | Free in files; harness normalizes to **`ux`, then `dx`, then `ax`** |
+| **Required** | Non-empty. Missing/empty/invalid → persona is **invalid** and **not selected** for runs |
+| **Selection** | Persona is included iff `persona.experiences ∩ runExperiences ≠ ∅` where run experiences come from `--ux` / `--dx` / `--ax` / `--only` (default all three) |
+| **No fallback** | Empty intersection means **zero personas**, not “use everyone” |
+
+Examples:
+
+```yaml
+experiences: [ux]           # end-user / designer only
+experiences: [dx]           # pure developer DX judge
+experiences: [ax]           # agent-operator focused
+experiences: [dx, ax]       # app developer + agent tooling (common)
+experiences: [ux, dx, ax]   # rare — only if the persona truly judges all three
+```
+
+Infer when authoring:
+
+| Seed / role language | Typical binding |
+|---|---|
+| UI, design, visual, a11y, brand, site | `ux` |
+| CLI, monorepo, tests, gates, packages, doctor | `dx` |
+| agent, MCP, skill, LLM, coding agent | `ax` |
+
+**Anti-patterns:** marking all three “just in case”; omitting the field; using free-text like `developer` instead of `dx`.
 
 ### Body sections (required)
 
@@ -96,7 +141,7 @@ Full field enums and diversity rules: **`persona-models.md`**. Cognitive channel
 
 When `generatedFromSeed: true`, also **Source seed** (verbatim user seed for auditability).
 
-Extra sections allowed after the required ones.
+Extra sections allowed after the required ones. Optional narrative section **Experience involvement** may explain *why* those tracks were chosen (frontmatter remains authoritative).
 
 ## Generate from product init
 
@@ -128,9 +173,12 @@ See `references/flags.md` for composition with `--personas` (select existing ids
    - Observable failure modes (what they do/say when angry)
    - Vocabulary they use
    - Review instructions that bind them to harms / friction / uncertainty scorecards and write-ahead bus discipline
-4. **Infer `experiences`** from seed language (UI/visual → ux; build/test/cli → dx; agents/MCP/skills → ax). Prefer the resolved run experiences when the seed is ambiguous.
+4. **Set formal `experiences:`** (non-empty `ux`/`dx`/`ax` multi-list) from seed language (UI/visual → ux; build/test/cli → dx; agents/MCP/skills → ax). Prefer the resolved run experiences when the seed is ambiguous. Never omit this field.
 5. **Infer `interfaces`** similarly.
-6. **Write** `.optimizexp/personas/<id>.md` with valid frontmatter + all required sections + `## Source seed` quoting the original seed.
+6. **Write** the formal file under the correct scope:
+   - global: `.optimizexp/personas/<id>.md`
+   - project: `<project>/.optimizexp/personas/<id>.md` when `--project` is a single non-root project
+   Include valid frontmatter + all required sections + `## Source seed` quoting the original seed.
 7. **Validate** with the harness (below). Fix until valid.
 8. **Record** generation in `runs/<runId>/scope.json` → `generatedPersonas[]`.
 9. **Use** the new persona in the review loop (default: generated personas only, unless `--personas` also lists others).
@@ -140,9 +188,15 @@ See `references/flags.md` for composition with `--personas` (select existing ids
 Scaffold + schema check (agent still responsible for quality rewrite before/after):
 
 ```bash
+# global (default)
 node --import tsx .agents/skills/optimizexp/harness/generate-persona.mts \
   --seed "A junior frontend engineer who panics at monorepo gates" \
   --id junior-frontend
+
+# project-local
+node --import tsx .agents/skills/optimizexp/harness/generate-persona.mts \
+  --seed "A marketer reviewing the public site hero" \
+  --id site-marketer --project site --experiences ux
 
 node --import tsx .agents/skills/optimizexp/harness/generate-persona.mts \
   --mode validate --id junior-frontend
@@ -187,9 +241,10 @@ Concatenate with the persona markdown body. That composite string is the **perso
 ## Selection rules
 
 1. Generated ids from this invocation’s `--persona` seeds (after rewrite).
-2. Plus / instead: `--personas` / `--use-personas` id lists (must exist on disk).
-3. Else all personas whose `experiences` intersect the resolved experience set.
-4. Time-box: sort by `priority`, then id; apply `--max-personas N`.
+2. Plus / instead: `--personas` / `--use-personas` id lists (must exist on disk; still filtered by valid `experiences` when running experience-scoped reviews if the skill also applies intersection — explicit ids win for “I named them”).
+3. Else all personas whose formal frontmatter **`experiences` ∩ run experiences ≠ ∅**.
+4. Personas with missing/invalid `experiences` are **never** auto-selected.
+5. Time-box: sort by `priority`, then id; apply `--max-personas N`.
 
 ## Authoring new personas (manual)
 

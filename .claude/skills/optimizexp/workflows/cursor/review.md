@@ -1,16 +1,15 @@
 # OptimizeXP review (Cursor)
 
-Same steps as `../claude-code/review.md` (bus feedback, features, evidence, PR).
+Same dual-regime contract as `../claude-code/review.md`.
 
-Cursor notes:
+## Hard stop rules
 
-- **No review-iteration budget.** Continue each cycle until true plateau. Outer **`--passes`** default **infinite** until metrics=0 or irreducible; optional finite N.
-- Before each re-expect after pass 1: `read-bus` / `@.optimizexp/bus/entries`; on mismatches set `correctedFrom` + `lessons`.
-- Open persona files as `@.optimizexp/personas/<id>.md`.
-- Feature evidence: `@.optimizexp/features/<slug>/evidence/…`.
-- **Apply reduce experiments by default**; use `--report-only` for measure-only.
+- **No review-iteration budget.** Continue each cycle until true plateau. Outer **`--passes`** default **infinite** through harm → delight until **pareto-equilibrium**.
 - **Derive → implement → continue.** Do not plateau while findings still list S/M reductions. Pass `--implementable-findings N` to `should-stop`.
-
-## Phase 2 + survey closeout
-
-After harm metrics hit 0: score excitement / ease / optimality (`positive-metrics.md`). End of run: persona survey → experiment backlog (`persona-survey.md`, `experiment-backlog.md`; `harness/survey.mts`). Flags: `--no-delight`, `--no-survey`, `--delight-passes`.
+- `should-stop` **cycleStop** is not invocation complete — enter `delight_maximize` unless `--no-delight`.
+- Finish only with:
+  1. `summary.md` including `stopReason`
+  2. `review-loop.mts --mode assert-complete --run <id>` exit 0
+  3. `mark-complete --stop-reason <legal>`
+- Paste assert-complete JSON when reporting optimizexp done.
+- Product tests / one evidence capture / feature wired are **invalid** completion signals.

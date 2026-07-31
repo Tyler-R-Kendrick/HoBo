@@ -27,9 +27,10 @@ HoBo's goal is a third path: **cloud portability without hiding the cloud**.
 | Idea | Meaning |
 |---|---|
 | **Bindle** | Application package/topology: services, resources, wiring, policies, and deployment intent. |
-| **Camp** | Provider-specific runtime target that hosts workloads and provides durable runtime ports. |
-| **Yard** | Provider-specific control scope spanning Camps, policy, identity, and reconciliation. |
+| **Camp** | Deployment target that hosts workloads and durable runtime ports. **Provider-neutral until attached to a Yard**; provider is inferred from the Yard. Camps can move between Yards via **Trails**. |
+| **Yard** | Provider-specific control scope spanning Camps, policy, identity, and reconciliation. **Owns provider selection.** |
 | **Junction** | Cross-Yard federation layer for hybrid or multi-cloud operation. |
+| **Trail** | App-owned continuous migration recipe; owns how Camps re-home across Yards/clouds (not Camp-local provider pins). |
 | **WIT/WASM membrane** | Portable contract between app code, runtime ports, and provider adapters. Latest stable TypeScript is the first implementation language; Protobuf, CUE, and PACT pin data contracts and boundary compatibility. |
 | **Ports and adapters** | Cloud providers, IaC engines, build tools, identity systems, and AI optimizers sit behind replaceable ports. |
 | **Replayable event log** | Control-plane state, projections, SRE workflows, and audit trails derive from events. |

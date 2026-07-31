@@ -13,6 +13,9 @@
 - [`03-data-plane.md`](./03-data-plane.md) — Data plane, AI generation, agents & operators
 - [`07-portability-extensibility.md`](./07-portability-extensibility.md) — Portability, extensibility, deployment topology & scope
 
+## Standalone placement ADRs
+- [`yard-first-placement.md`](./yard-first-placement.md) — Yard owns provider selection; Camp provider-neutral until attached; Camps movable via Trails (implemented)
+
 ## Index
 
 | ID | Title | Theme doc |
@@ -22,7 +25,7 @@
 | 0003 | Event sourcing + CQRS (command store, actor-produced events, cached materializations) | [architecture-core](01-architecture-core.md#adr-0003) |
 | 0004 | Choreography sagas + virtual actors for orchestration | [architecture-core](01-architecture-core.md#adr-0004) |
 | 0005 | One ports/adapters shape for cloud, IaC & build (dagger-adjacent, wasm-on-OCI) | [architecture-core](01-architecture-core.md#adr-0005) |
-| 0006 | IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); per-resource stacks | [architecture-core](01-architecture-core.md#adr-0006) |
+| 0006 | IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); Nix optional not default; per-resource stacks | [architecture-core](01-architecture-core.md#adr-0006) · [devx-devenv-nix](../devx-devenv-nix.md) |
 | 0007 | Provider-specific options via an idiomatic typed-options builder (`.with(...)`) | [architecture-core](01-architecture-core.md#adr-0007) |
 | 0008 | Keyless agent identity (SVID/OIDC federation) + token broker | [identity-security](02-identity-security.md#adr-0008) |
 | 0009 | Capability Manifest capability/auth standard + Registry | [identity-security](02-identity-security.md#adr-0009) |

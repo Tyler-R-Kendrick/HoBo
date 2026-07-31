@@ -165,9 +165,9 @@ camp<const Name extends string>(
 ): CampBuilder<Name>;
 ```
 
-**Semantics.** `camp(...)` constructs a provider-specific deployment target object. It can import Bindles, pin provider/runtime/IaC choices, and carry environment type or residency constraints. It lowers to manifest IR; the object is topology data, not an executable control-plane action by itself.
+**Semantics.** `camp(...)` constructs a **provider-neutral** deployment target object. It can import Bindles, declare runtime-backend preference, environment type, residency constraints, and optional resource-mapping overrides. **It does not author cloud-provider selection** — the **Yard owns provider selection**; the Camp **infers** provider from Yard attachment or Yard placement policy ([yard-first-placement ADR](./adr/yard-first-placement.md)). Camps can **move between Yards via Trails**. It lowers to manifest IR; the object is topology data, not an executable control-plane action by itself.
 
-**Default.** Options may be omitted while constructing a draft graph, but a deployable Camp must resolve provider, runtime, and IaC from explicit options or Yard placement policy before `hobo up` may apply it.
+**Default.** Options may be omitted while constructing a draft graph, but a deployable Camp must resolve runtime (and any mapping overrides) and be **attached to (or inferred under) a Yard** so provider/IaC resolve before `hobo up` may apply it.
 
 **Implementation issue.** HOBO-62 implements first-class topology objects.
 
@@ -184,7 +184,7 @@ yard<const Name extends string>(
 ): YardBuilder<Name>;
 ```
 
-**Semantics.** `yard(...)` constructs the provider-specific cross-Camp control-plane scope. It composes Camps, registered providers, cross-Camp policy, gateways, placement policy, and policy packs for inferred-Camp approval. A Yard is provider-specific; a Junction composes across Yards. Approval shortcuts such as `approveDefaults(...)` and `autoApprove(...)` are intentionally not part of this interface; they are policy-pack concerns.
+**Semantics.** `yard(...)` constructs the provider-specific cross-Camp control-plane scope and **owns provider selection** (`yard(name, { provider, camps? })`). It composes Camps, registered providers, cross-Camp policy, gateways, placement policy, and policy packs for inferred-Camp approval. A Yard is provider-specific; Camps attached to it **infer** that provider; a Junction composes across Yards. Approval shortcuts such as `approveDefaults(...)` and `autoApprove(...)` are intentionally not part of this interface; they are policy-pack concerns.
 
 **Default.** Empty Yard graph: no Camps, no provider candidate policy, no no-human approval rule, and no registered providers. Nothing is approved by default.
 

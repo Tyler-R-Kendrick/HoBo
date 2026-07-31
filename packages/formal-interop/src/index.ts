@@ -100,3 +100,61 @@ export {
 	type FormalInteropTrainRequest,
 	type FormalInteropTrainResult,
 } from "./training.js";
+
+export {
+	evaluateClaimClassGate,
+	NON_PROMOTABLE_COLD_CLAIM_CLASSES,
+	type ClaimClass,
+	type ClaimClassGateInput,
+	type ClaimClassGateResult,
+} from "./claim-class.js";
+
+export {
+	REQUIRED_ANTI_E237_ARMS,
+	REQUIRED_KILL_CRITERIA,
+	parseAntiE237Card,
+	validateAntiE237Card,
+	type AntiE237Card,
+	type AntiE237Validation,
+} from "./anti-e237.js";
+
+export {
+	candidateMultiset,
+	enumerateExecutor,
+	enumerateReference,
+	forcedClosureDynamic,
+	forcedClosureStatic,
+	kernelFixtureCorpus,
+	multisetsEqual,
+	type CandidateStatus,
+	type GammaState,
+	type ResidualCandidate,
+	type ResidualEnumerateResult,
+	type ResidualPrefix,
+	type StopReason,
+} from "./residual-kernel.js";
+
+export {
+	appendExperimentRow,
+	buildResidualArtifact,
+	checkResidualArtifact,
+	defaultExperimentLedgerPath,
+	readExperimentLedger,
+	runAntiE237Validation,
+	runE1Parity,
+	runE2Cold,
+	runE3LoadCheck,
+	runE4StaticMacros,
+	runE8ZeroForward,
+	runE9ClaimHygiene,
+	runExperimentSuite,
+	type E1ParityReport,
+	type E2ColdReport,
+	type E3LoadReport,
+	type E4MacroReport,
+	type E8ZeroForwardReport,
+	type E9HygieneReport,
+	type ExperimentId,
+	type ExperimentRow,
+	type ExperimentSuiteResult,
+} from "./experiments.js";

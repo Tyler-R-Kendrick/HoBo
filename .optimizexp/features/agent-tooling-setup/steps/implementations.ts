@@ -10,9 +10,10 @@ import type { OptimizexpWorld } from "./world.ts";
 
 /** Discovery snapshot — see discovery.json for full report. */
 export const DISCOVERY_PRIMARY = {
-  command: "pnpm run skills:mirror-check" as string | null,
+  command: "bash scripts/setup-agent-tools.sh --help" as string | null,
   confidence: "high",
-  reason: "package.json scripts[\"skills:mirror-check\"] exists; mentioned in feature/seed",
+  reason:
+    "zero-key progressive setup usage is the operator critical path (AUTH.md + --no-gbrain); skills:mirror-check is a secondary gate",
 };
 
 export const IMPLEMENTATION_STATUS = {

@@ -60,8 +60,8 @@ A **Rust Token Killer command proxy** that compresses noisy shell-command output
 A **token-compression MCP server** (also a CLI/proxy) that shrinks the **context fed to the model** — tool outputs, logs, file dumps — reversibly (`headroom_retrieve` fetches originals). Local-first, **no API keys**. MCP tools surface as `mcp__headroom__headroom_compress|retrieve|stats`. Launch: `headroom mcp serve` (wired in `.mcp.json` / `.cursor/mcp.json` / `.codex/config.toml`). For automatic compression of *all* traffic you can also run the proxy: `headroom proxy --port 8787` then `ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude` (optional; see `headroom mcp --help`).
 
 ### gbrain — `garrytan/gbrain` (MIT)
-A **knowledge-graph memory MCP server** (+ CLI) on the **Bun** runtime: `gbrain capture` ingests notes, `gbrain search`/`query` does hybrid retrieval + synthesis. Launch: `gbrain serve` (stdio MCP). **Requires `gbrain init` once and an embedding key.**
-- ⚠️ **Keys + data egress + cost:** set exactly one of `OPENAI_API_KEY` / `ZEROENTROPY_API_KEY` / `VOYAGE_API_KEY` (in `.env`). gbrain **sends the text it embeds and your queries to that provider** — recurring API cost and data leaving your machine. It is **inert until initialized with a key**; don't point it at content you don't want shared. The local store (PGLite) is gitignored.
+A **knowledge-graph memory MCP server** (+ CLI) on the **Bun** runtime: `gbrain capture` ingests notes, `gbrain search`/`query` does hybrid retrieval + synthesis. Repo MCP configs launch via the shared fail-closed wrapper [`../scripts/agent-mcp-gbrain.sh`](../scripts/agent-mcp-gbrain.sh) (not bare `gbrain serve`) so a missing binary or embedding key prints remediation pointing at [`../AUTH.md`](../AUTH.md) instead of a host "command not found". **Requires `gbrain init` once and an embedding key** before the launcher will start the server.
+- ⚠️ **Keys + data egress + cost:** set exactly one of `OPENAI_API_KEY` / `ZEROENTROPY_API_KEY` / `VOYAGE_API_KEY` (in `.env`). gbrain **sends the text it embeds and your queries to that provider** — recurring API cost and data leaving your machine. Don't point it at content you don't want shared. The local store (PGLite) is gitignored. Zero-key path: decline the gbrain MCP server or run setup with `--no-gbrain`.
 
 
 ### SkillOpt — `microsoft/SkillOpt` (MIT)
@@ -84,6 +84,7 @@ Repo-local skills keep Codex-valid `SKILL.md` frontmatter. Bundled `references/`
 Start with the common layer, then add one supported agent shim only when you need it:
 
 ```bash
+bash scripts/setup-agent-tools.sh --help                 # flags only (no install)
 bash scripts/setup-agent-tools.sh --common-only --no-gbrain
 # later, choose one supported client:
 bash scripts/setup-agent-tools.sh --agent claude-code --no-gbrain
@@ -106,6 +107,7 @@ Committed so a clone is wired up: `.mcp.json`, `.cursor/`, `.codex/config.toml`,
 
 ## Install
 ```bash
+bash scripts/setup-agent-tools.sh --help        # flags only (no install)
 bash scripts/setup-agent-tools.sh --common-only --no-gbrain # common/devcontainer-safe layer
 bash scripts/setup-agent-tools.sh --agent codex --no-gbrain # add one supported agent shim
 bash scripts/setup-agent-tools.sh              # common + all supported shims

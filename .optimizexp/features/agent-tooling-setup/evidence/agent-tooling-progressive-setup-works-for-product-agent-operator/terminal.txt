@@ -1,0 +1,48 @@
+# OptimizeXP CLI evidence
+command: bash scripts/setup-agent-tools.sh --help && echo --- && bash scripts/agent-mcp-gbrain.sh; echo gbrain_exit:$?; echo ---; pnpm run skills:mirror-check
+cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
+exitCode: 0
+spawnStatus: 0
+durationMs: 485
+screen: ?x? (cols x rows)
+capturedAt: 2026-07-31T13:32:27.083Z
+
+## stdout
+Usage: bash scripts/setup-agent-tools.sh [options]
+
+Install/configure coding-agent tools for this repo (progressive layers).
+
+Options:
+  --common-only          Common/devcontainer-safe layer only (no agent CLI shims)
+  --agent NAME           One agent: claude-code | cursor | codex | copilot
+  --agents a,b           Comma-separated agent list
+  --no-gbrain            Skip gbrain (zero-key path; recommended first run)
+  --no-skillopt          Skip microsoft/SkillOpt install
+  -h, --help             Show this help and exit 0 (no install)
+
+Examples:
+  bash scripts/setup-agent-tools.sh --common-only --no-gbrain
+  bash scripts/setup-agent-tools.sh --agent codex --no-gbrain
+
+Keys / egress: AUTH.md
+Narrative:     docs/agent-tooling.md
+At-a-glance:   AGENTS.md
+---
+gbrain_exit:1
+---
+
+> hobo-design@ skills:mirror-check /home/codex/.herdr/worktrees/hobo/hobo-devx
+> node --import tsx scripts/check-skill-mirrors.ts
+
+skill mirrors OK: 60 skills checked (required: draft, repo, sdlc).
+
+
+## stderr
+gbrain MCP: binary not on PATH.
+
+Zero-key default (recommended): decline the gbrain MCP server in your agent UI, or never enable it.
+  bash scripts/setup-agent-tools.sh --common-only --no-gbrain
+
+To enable later: install Bun, re-run setup without --no-gbrain, then `gbrain init`.
+Keys + data egress: AUTH.md  |  .env.example  |  docs/agent-tooling.md
+

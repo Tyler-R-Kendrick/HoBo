@@ -10,8 +10,33 @@
 #   bash scripts/setup-agent-tools.sh --agents codex,cursor # common + selected shims
 #   bash scripts/setup-agent-tools.sh --no-gbrain           # skip key/egress memory tool
 #   bash scripts/setup-agent-tools.sh --no-skillopt         # skip microsoft/SkillOpt install
+#   bash scripts/setup-agent-tools.sh --help                # usage (no install)
 set -uo pipefail
 cd "$(dirname "$0")/.."
+
+usage() {
+  cat <<'EOF'
+Usage: bash scripts/setup-agent-tools.sh [options]
+
+Install/configure coding-agent tools for this repo (progressive layers).
+
+Options:
+  --common-only          Common/devcontainer-safe layer only (no agent CLI shims)
+  --agent NAME           One agent: claude-code | cursor | codex | copilot
+  --agents a,b           Comma-separated agent list
+  --no-gbrain            Skip gbrain (zero-key path; recommended first run)
+  --no-skillopt          Skip microsoft/SkillOpt install
+  -h, --help             Show this help and exit 0 (no install)
+
+Examples:
+  bash scripts/setup-agent-tools.sh --common-only --no-gbrain
+  bash scripts/setup-agent-tools.sh --agent codex --no-gbrain
+
+Keys / egress: AUTH.md
+Narrative:     docs/agent-tooling.md
+At-a-glance:   AGENTS.md
+EOF
+}
 
 WANT_GBRAIN=1
 WANT_SKILLOPT=1
@@ -19,15 +44,24 @@ COMMON_ONLY=0
 AGENT_FILTER="claude-code,cursor,codex,copilot"
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
     --no-gbrain) WANT_GBRAIN=0 ;;
     --no-skillopt) WANT_SKILLOPT=0 ;;
     --common-only) COMMON_ONLY=1; AGENT_FILTER="" ;;
     --agent|--agents)
+      opt="$1"
       shift
-      [ "$#" -gt 0 ] || { echo "missing value for $1" >&2; exit 2; }
+      [ "$#" -gt 0 ] || { echo "missing value for $opt" >&2; usage >&2; exit 2; }
       AGENT_FILTER="$1"
       ;;
-    *) echo "unknown option: $1" >&2; exit 2 ;;
+    *)
+      echo "unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
   esac
   shift
 done
@@ -198,6 +232,7 @@ if [ "$COMMON_ONLY" = "1" ]; then
   echo "  Next: rerun with --agent claude-code|cursor|codex|copilot when you know which client to configure."
   say "Done"
   echo "Ensure these are on PATH: $HOME/.local/bin (rtk/headroom/uv/serena/skillopt), $HOME/.bun/bin (gbrain)."
+  echo "Keys / egress: AUTH.md  |  narrative: docs/agent-tooling.md  |  table: AGENTS.md"
   exit 0
 fi
 
@@ -231,13 +266,13 @@ say "Register MCP servers in selected CLIs when present"
 if want_agent claude-code && have claude; then
   claude mcp add serena -- bash scripts/agent-mcp-serena.sh 2>/dev/null && echo "  claude: added serena" || echo "  claude: serena already present / skipped"
   claude mcp add headroom -- headroom mcp serve 2>/dev/null && echo "  claude: added headroom" || echo "  claude: headroom already present / skipped"
-  [ "$WANT_GBRAIN" = "1" ] && { claude mcp add gbrain -- gbrain serve 2>/dev/null && echo "  claude: added gbrain" || echo "  claude: gbrain already present / skipped"; }
+  [ "$WANT_GBRAIN" = "1" ] && { claude mcp add gbrain -- bash scripts/agent-mcp-gbrain.sh 2>/dev/null && echo "  claude: added gbrain" || echo "  claude: gbrain already present / skipped"; }
 fi
 if want_agent codex; then
   if have codex; then
     codex mcp add serena -- bash scripts/agent-mcp-serena.sh 2>/dev/null && echo "  codex: added serena" || echo "  codex: serena skipped"
     codex mcp add headroom -- headroom mcp serve 2>/dev/null && echo "  codex: added headroom" || echo "  codex: skipped"
-    [ "$WANT_GBRAIN" = "1" ] && { codex mcp add gbrain -- gbrain serve 2>/dev/null && echo "  codex: added gbrain" || echo "  codex: skipped"; }
+    [ "$WANT_GBRAIN" = "1" ] && { codex mcp add gbrain -- bash scripts/agent-mcp-gbrain.sh 2>/dev/null && echo "  codex: added gbrain" || echo "  codex: skipped"; }
   else
     echo "  Codex: CLI not found — use .codex/config.toml as the progressive setup reference."
   fi
@@ -267,4 +302,5 @@ echo "  NOTE: superpowers skills load at SESSION START — open a fresh session 
 
 say "Done"
 echo "Ensure these are on PATH: $HOME/.local/bin (rtk/headroom/uv/serena/skillopt), $HOME/.bun/bin (gbrain)."
-echo "See AGENTS.md and docs/agent-tooling.md. Keys for gbrain/SkillOpt live runs go in .env (see .env.example)."
+echo "Keys / egress: AUTH.md  |  narrative: docs/agent-tooling.md  |  table: AGENTS.md"
+echo "Optional gbrain MCP uses scripts/agent-mcp-gbrain.sh (fails closed with remediation when binary/key missing)."

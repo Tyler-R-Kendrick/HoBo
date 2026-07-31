@@ -1,0 +1,32 @@
+{
+  "featureId": "agent-tooling-setup",
+  "scenarioSlug": "agent-tooling-progressive-setup-works-for-product-agent-operator",
+  "personaIds": [
+    "product-app-developer",
+    "product-agent-operator",
+    "product-platform-engineer",
+    "product-coding-agent"
+  ],
+  "interface": "cli",
+  "driver": "cli",
+  "capturedAt": "2026-07-31T13:32:27.084Z",
+  "runId": "",
+  "screen": {
+    "cols": null,
+    "rows": null
+  },
+  "primary": {
+    "file": "primary.txt",
+    "kind": "transcript",
+    "bytes": 1698,
+    "sha256": "60785d2090face2f256d4e95e902f67929e36d646dd3cb0904c0bdbced3f9f3a"
+  },
+  "frames": [],
+  "repro": {
+    "command": "bash scripts/setup-agent-tools.sh --help && echo --- && bash scripts/agent-mcp-gbrain.sh; echo gbrain_exit:$?; echo ---; pnpm run skills:mirror-check",
+    "cwd": "."
+  },
+  "exitCode": 0,
+  "degraded": false,
+  "notes": []
+}

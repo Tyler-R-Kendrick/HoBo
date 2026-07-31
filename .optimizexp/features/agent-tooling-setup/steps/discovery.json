@@ -4,12 +4,33 @@
   "scannedAt": "2026-07-31T03:31:24.396Z",
   "bindings": [
     {
+      "kind": "shell",
+      "id": "setup-agent-tools-help",
+      "command": "bash scripts/setup-agent-tools.sh --help",
+      "confidence": "high",
+      "reason": "operator critical path: zero-key progressive setup usage + AUTH pointers (optimizexp ax 20260731)",
+      "implementsSteps": [
+        "I exercise the surface as this persona would",
+        "I observe the failure as this persona"
+      ]
+    },
+    {
+      "kind": "shell",
+      "id": "agent-mcp-gbrain-fail-closed",
+      "command": "bash scripts/agent-mcp-gbrain.sh",
+      "confidence": "high",
+      "reason": "optional key tool must fail closed with AUTH remediation",
+      "implementsSteps": [
+        "I observe the failure as this persona"
+      ]
+    },
+    {
       "kind": "package-script",
       "id": "script:skills:mirror-check",
       "scriptName": "skills:mirror-check",
       "command": "pnpm run skills:mirror-check",
       "confidence": "high",
-      "reason": "package.json scripts[\"skills:mirror-check\"] exists; mentioned in feature/seed",
+      "reason": "package.json scripts[\"skills:mirror-check\"] exists; skill mirror gate for multi-host agents",
       "implementsSteps": [
         "I exercise the surface as this persona would",
         "I observe the failure as this persona"

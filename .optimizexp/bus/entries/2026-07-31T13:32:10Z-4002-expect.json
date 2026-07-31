@@ -1,0 +1,34 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T13:32:10Z-4002-expect",
+  "runId": "20260731-ax-review",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "bash scripts/setup-agent-tools.sh --help",
+    "interface": "cli"
+  },
+  "context": "Coding agent needs parseable progressive-setup surface and progressive disclosure into AUTH.",
+  "expectation": {
+    "result": { "exitCode": 0 },
+    "actions": ["Run setup --help as agent cold start"]
+  },
+  "featureId": "agent-tooling-setup",
+  "scenarioSlug": "agent-tooling-progressive-setup-works-for-product-coding-agent",
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-coding-agent",
+    "surface": "bash scripts/setup-agent-tools.sh --help",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "Help is the agent critical path now.",
+      "uncertainty": "AUTH named."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T13:32:10.000Z"
+  }
+}

@@ -1,27 +1,28 @@
-@optimizexp @dx @persona:role-sre @interface:web
-Feature: CLI help and doctor path (role sre)
+@optimizexp @dx @ax @persona:role-sre @interface:cli
+Feature: cli-help-and-doctor (role sre)
   As role sre
-  I want A developer or agent runs the HoBo CLI help/doctor (or equivalent) and gets actionable status without live cloud credentials.
-  So that harms, friction, and uncertainty stay low on my critical path
-
-  # Generated for persona "role-sre". Agent should refine steps to match
-  # .optimizexp/personas/role-sre.md vocabulary and failure modes.
-  # Scenario names are stable evidence keys (slugified).
+  I want a real product path I can exercise and capture
+  So that review scores come from evidence, not template vibes
 
   Background:
     Given persona "role-sre" is active
     And feature "cli-help-and-doctor" is under optimizexp review
 
-  Scenario: CLI help and doctor path works for role-sre
+  Scenario: Primary path works for role-sre
     Given I am on the critical path described by the feature seed
-    When I exercise the surface as this persona would
-    Then I receive clear status about what happened
+    When I run `pnpm run doctor`
+    Then I see product chrome or structured status for this surface
     And the next action is obvious without tribal knowledge
     And evidence is capturable for this scenario
 
-  Scenario: CLI help and doctor path failure is understandable for role-sre
+  Scenario: Help or status remains usable for role-sre
+    Given I am on the critical path described by the feature seed
+    When I run `pnpm --help`
+    Then help lists verbs or usage or the surface documents next steps
+    And evidence is capturable for this scenario
+
+  Scenario: Failure is actionable for role-sre
     Given something goes wrong on this journey
-    When I observe the failure as this persona
+    When I run `pnpm run not-a-real-script-zz`
     Then the error is non-blaming and actionable
-    And I am not forced into repeated artificial hurdles
     And evidence of what I saw is stored under evidence/

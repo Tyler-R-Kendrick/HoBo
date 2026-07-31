@@ -1198,6 +1198,95 @@ function modeAssertComplete(
 		}
 	}
 
+	// ── Feature-quality / exploration gates (critical path) ──
+	const featureIds = Array.isArray(scope.features)
+		? (scope.features as string[])
+		: [];
+	const projectIds = Array.isArray(scope.projects)
+		? (scope.projects as string[])
+		: [];
+
+	// Surface map required for non-root product projects when features are set
+	for (const pid of projectIds) {
+		if (pid === "root" || pid === "global") continue;
+		const mapPath = path.join(root, "packages", pid, ".optimizexp", "surface-map.json");
+		const mapPathAlt = path.join(root, pid, ".optimizexp", "surface-map.json");
+		if (!existsSync(mapPath) && !existsSync(mapPathAlt)) {
+			// also allow project path as packages/code style only once
+			const guess = path.join(root, "packages", pid, ".optimizexp", "surface-map.json");
+			if (!existsSync(guess)) {
+				missing.push(`surface_map_missing:${pid}`);
+			}
+		}
+	}
+
+	// feature-coverage.json when present must be clean; if missing but features listed, soft-require after skill upgrade
+	const coveragePath = path.join(runDir, "feature-coverage.json");
+	if (existsSync(coveragePath)) {
+		try {
+			const cov = JSON.parse(readFileSync(coveragePath, "utf8")) as {
+				requiredP0Uncovered?: string[];
+				quality?: {
+					featuresWithoutRubberduck?: string[];
+					featuresWithTemplateOnlySteps?: string[];
+				};
+			};
+			for (const g of cov.requiredP0Uncovered ?? []) {
+				missing.push(`p0_uncovered:${g}`);
+			}
+			for (const g of cov.quality?.featuresWithoutRubberduck ?? []) {
+				missing.push(`rubberduck_missing:${g}`);
+			}
+			for (const g of cov.quality?.featuresWithTemplateOnlySteps ?? []) {
+				missing.push(`template_only_feature:${g}`);
+			}
+		} catch {
+			missing.push("feature_coverage_invalid_json");
+		}
+	}
+
+	// Bus outcomes must point at existing evidence with harness stamp when path set
+	const busDir = path.join(root, ".optimizexp", "bus", "entries");
+	if (existsSync(busDir) && featureIds.length > 0) {
+		const outcomes = readdirSync(busDir).filter(
+			(f) => f.includes(runId) && f.endsWith("-outcome.json"),
+		);
+		let stamped = 0;
+		for (const f of outcomes) {
+			try {
+				const body = JSON.parse(
+					readFileSync(path.join(busDir, f), "utf8"),
+				) as {
+					evidence?: { path?: string; primary?: string };
+				};
+				const evPath = body.evidence?.path;
+				if (!evPath) continue;
+				const abs = path.isAbsolute(evPath)
+					? evPath
+					: path.join(root, evPath);
+				const primary = body.evidence?.primary
+					? path.join(abs, body.evidence.primary)
+					: path.join(abs, "primary.txt");
+				if (!existsSync(primary) && !existsSync(path.join(abs, "primary.cast"))) {
+					missing.push(`evidence_missing:${path.relative(root, abs)}`);
+					continue;
+				}
+				const metaP = path.join(abs, "meta.json");
+				if (existsSync(metaP)) {
+					const meta = JSON.parse(readFileSync(metaP, "utf8")) as {
+						repro?: { via?: string };
+					};
+					if (meta.repro?.via === "capture-evidence") stamped += 1;
+				}
+			} catch {
+				/* ignore single bad entry */
+			}
+		}
+		if (outcomes.length > 0 && stamped === 0) {
+			missing.push("evidence_not_from_harness");
+		}
+	}
+
 	// Prefer mark-complete to set status complete; assert can pass while still running
 	// if all artifacts present (ready-to-mark). status complete is not required for ok.
 	const ready = missing.length === 0;

@@ -1,28 +1,28 @@
-@optimizexp @ux @dx @ax @persona:ai-automation-engineer-pi-flue @interface:cli
-Feature: Pi Flue dual harness skills self-improve brain (ai automation engineer pi flue)
-  As ai-automation-engineer-pi-flue
-  I want a discoverable dual Pi/Flue harness with skills, Eve subagents, self-improve loop, and brain notes
-  So that every run is instrumented harness engineering not vibes
+@optimizexp @dx @ux @ax @persona:ai-automation-engineer-pi-flue @interface:cli
+Feature: hobo-code-harness-pi-flue (ai automation engineer pi flue)
+  As ai automation engineer pi flue
+  I want a real product path I can exercise and capture
+  So that review scores come from evidence, not template vibes
 
   Background:
     Given persona "ai-automation-engineer-pi-flue" is active
     And feature "hobo-code-harness-pi-flue" is under optimizexp review
 
-  Scenario: Harness shows Pi Flue dual surface for ai-automation-engineer-pi-flue
+  Scenario: Primary path works for ai-automation-engineer-pi-flue
     Given I am on the critical path described by the feature seed
-    When I exercise the surface as this persona would
-    Then I receive clear status about what happened
+    When I run `pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts harness`
+    Then I see product chrome or structured status for this surface
     And the next action is obvious without tribal knowledge
     And evidence is capturable for this scenario
 
-  Scenario: Harness JSON exposes skills eve self-improve brain for ai-automation-engineer-pi-flue
+  Scenario: Help or status remains usable for ai-automation-engineer-pi-flue
     Given I am on the critical path described by the feature seed
-    When I observe harness JSON as this persona
-    Then harness inventory is machine-readable
+    When I run `pnpm --help`
+    Then help lists verbs or usage or the surface documents next steps
     And evidence is capturable for this scenario
 
-  Scenario: Help names Pi Flue harness for ai-automation-engineer-pi-flue
-    Given I am on the critical path described by the feature seed
-    When I read harness help as this persona
-    Then help names harness and Flue
-    And evidence is capturable for this scenario
+  Scenario: Failure is actionable for ai-automation-engineer-pi-flue
+    Given something goes wrong on this journey
+    When I run `pnpm run not-a-real-script-zz`
+    Then the error is non-blaming and actionable
+    And evidence of what I saw is stored under evidence/

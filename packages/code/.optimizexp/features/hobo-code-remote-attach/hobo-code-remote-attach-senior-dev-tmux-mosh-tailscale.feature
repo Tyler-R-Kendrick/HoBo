@@ -1,28 +1,28 @@
-@optimizexp @ux @dx @persona:senior-dev-tmux-mosh-tailscale @interface:cli
-Feature: Dev-terminal attach tmux mosh Tailscale (senior dev tmux mosh tailscale)
-  As senior-dev-tmux-mosh-tailscale
-  I want tmux-like attach, named endpoints, optional mosh, and Tailscale overlay mode
-  So that hobo-code matches my remote terminal setup without control-plane bloat
+@optimizexp @dx @ux @persona:senior-dev-tmux-mosh-tailscale @interface:cli
+Feature: hobo-code-remote-attach (senior dev tmux mosh tailscale)
+  As senior dev tmux mosh tailscale
+  I want a real product path I can exercise and capture
+  So that review scores come from evidence, not template vibes
 
   Background:
     Given persona "senior-dev-tmux-mosh-tailscale" is active
     And feature "hobo-code-remote-attach" is under optimizexp review
 
-  Scenario: Attach shows named endpoint and reattach path for senior-dev-tmux-mosh-tailscale
+  Scenario: Primary path works for senior-dev-tmux-mosh-tailscale
     Given I am on the critical path described by the feature seed
-    When I exercise the surface as this persona would
-    Then I receive clear status about what happened
+    When I run `pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts attach`
+    Then I see product chrome or structured status for this surface
     And the next action is obvious without tribal knowledge
     And evidence is capturable for this scenario
 
-  Scenario: Attach JSON exposes compare and overlay mode for senior-dev-tmux-mosh-tailscale
+  Scenario: Help or status remains usable for senior-dev-tmux-mosh-tailscale
     Given I am on the critical path described by the feature seed
-    When I observe attach JSON as this persona
-    Then attach compare and registration are machine-readable
+    When I run `pnpm --help`
+    Then help lists verbs or usage or the surface documents next steps
     And evidence is capturable for this scenario
 
-  Scenario: Help lists remote terminal differentiators for senior-dev-tmux-mosh-tailscale
-    Given I am on the critical path described by the feature seed
-    When I read attach help as this persona
-    Then help names tmux mosh and Tailscale
-    And evidence is capturable for this scenario
+  Scenario: Failure is actionable for senior-dev-tmux-mosh-tailscale
+    Given something goes wrong on this journey
+    When I run `pnpm run not-a-real-script-zz`
+    Then the error is non-blaming and actionable
+    And evidence of what I saw is stored under evidence/

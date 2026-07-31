@@ -1,0 +1,30 @@
+{
+  "featureId": "hobo-code-tui-craft",
+  "scenarioSlug": "help-hierarchy-is-plain-and-scannable-for-sota-frontier-ai-native-tui-designer",
+  "personaIds": [
+    "sota-frontier-ai-native-tui-designer"
+  ],
+  "interface": "cli",
+  "driver": "cli",
+  "capturedAt": "2026-07-31T20:19:55.576Z",
+  "runId": "",
+  "screen": {
+    "cols": null,
+    "rows": null
+  },
+  "primary": {
+    "file": "primary.txt",
+    "kind": "transcript",
+    "bytes": 3965,
+    "sha256": "14b20c1a7d57260735e96f1f5ce267e732b77a77b4a2f91543fa467787627ea1"
+  },
+  "frames": [],
+  "repro": {
+    "command": "node --import tsx packages/code/src/bin/hobo-code.ts help",
+    "cwd": ".",
+    "via": "capture-evidence"
+  },
+  "exitCode": 0,
+  "degraded": false,
+  "notes": []
+}

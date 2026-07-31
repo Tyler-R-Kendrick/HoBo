@@ -36,6 +36,17 @@ import { scenarioSlug } from "./lib/slug.mts";
 import { writeJson } from "./lib/media.mts";
 import { discoverCode } from "./lib/code-discovery.mts";
 import { buildImplementationsFromDiscovery } from "./lib/bindings-gen.mts";
+import {
+	checkGherkinQuality,
+	checkRubberduckFile,
+	experienceMdSkeleton,
+	gherkinTemplate,
+} from "./lib/feature-quality.mts";
+import {
+	readExperienceCatalog,
+	type ExperienceRow,
+} from "./lib/experience-catalog.mts";
+import { listProjects } from "./lib/projects.mts";
 
 function parseArgs(argv: string[]) {
 	const out: Record<string, string> = { mode: "scaffold" };
@@ -52,6 +63,10 @@ function parseArgs(argv: string[]) {
 		else if (a === "--max-personas") out.maxPersonas = argv[++i] ?? "";
 		else if (a === "--driver") out.driver = argv[++i] ?? "";
 		else if (a === "--title") out.title = argv[++i] ?? "";
+		else if (a === "--experience-id") out.experienceId = argv[++i] ?? "";
+		else if (a === "--from-catalog") out.fromCatalog = "1";
+		else if (a === "--force-low-quality") out.forceLowQuality = "1";
+		else if (a === "--skip-rubberduck") out.skipRubberduck = "1";
 		else if (a === "--projects" || a === "--project") {
 			const v = argv[++i] ?? "";
 			out.projects = out.projects
@@ -67,15 +82,22 @@ function parseArgs(argv: string[]) {
 function help() {
 	console.log(`optimizexp generate-feature
 
+  CRITICAL PATH (feature quality):
+  --mode plan              Write EXPERIENCE.md skeleton (rubber-duck + adversarial); no .feature yet
+  --mode rubberduck-check  Fail if EXPERIENCE.md incomplete / unchecked adversarial boxes
+  --mode from-catalog      Plan+scaffold features from experience-catalog.json
   --mode scaffold          Feature folder + per-persona Gherkin + bindings/tests (default)
   --mode implement         Re-run code discovery; rewrite implementations/bindings/tests
-  --mode validate          Validate feature folder, Gherkin, bindings, tests
+  --mode validate          Validate folder + Gherkin quality bar + rubberduck
   --mode rewrite-prompt    Print agent rewrite instructions for quality Gherkin + impls
   --mode resolve-personas  Show which personas would be targeted (no write)
 
   --seed "journey text" | --seed-file path
   --id <feature-slug>      optional; derived from seed if omitted
   --title "…"              optional display title
+  --experience-id <id>     catalog experience for --mode plan
+  --from-catalog           with scaffold/from-catalog: use catalog rows
+  --force-low-quality      allow scaffold without rubberduck (blocks assert-complete)
   --experiences ux,dx,ax   experience set for persona intersection (default all)
   --personas a,b           explicit persona ids (same as skill --personas)
   --generated-ids a,b      ids just created via --persona this run
@@ -86,12 +108,7 @@ function help() {
                             all / multi / root → global .optimizexp/features/
   --dry-run
 
-Maps to: /optimizexp --feature "seed" [--personas …] [--projects …]
-
-Also generates:
-  steps/world.ts, bindings.steps.ts, implementations.ts, discovery.json
-  test/<id>.bindings.test.ts
-  and wires implementations when package.json scripts / commands exist.
+See references/feature-quality.md — feature generation is the quality bottleneck.
 `);
 }
 
@@ -191,6 +208,22 @@ function interfaceForPersona(
 	return driver === "mixed" ? "cli" : driver;
 }
 
+function inferTemplateKind(
+	seed: string,
+	driver: string,
+): Parameters<typeof gherkinTemplate>[0]["kind"] {
+	if (/cold-start|default.entry|bare tty|interactive|chat|pi /i.test(seed) && driver === "tui") {
+		return "default-entry-tui";
+	}
+	if (/cold-start|default.entry/i.test(seed)) return "default-entry-cli";
+	if (/help|discoverability|verb list/i.test(seed)) return "help-discoverability";
+	if (/failure|unknown verb|actionable/i.test(seed)) return "failure-actionable";
+	if (/config|agent|cost|harness|status|edit|guide|attach|tasks|models|auth/i.test(seed)) {
+		return "inventory-verb";
+	}
+	return "generic";
+}
+
 function gherkinForPersona(input: {
 	featureId: string;
 	title: string;
@@ -199,38 +232,28 @@ function gherkinForPersona(input: {
 	personaName: string;
 	iface: string;
 	experiences: string[];
+	driver?: string;
+	entryCommand?: string;
 }): string {
-	const expTags = input.experiences.map((e) => `@${e}`).join(" ");
-	const happy = `${input.title} works for ${input.personaId}`;
-	const failure = `${input.title} failure is understandable for ${input.personaId}`;
-	return `@optimizexp ${expTags} @persona:${input.personaId} @interface:${input.iface}
-Feature: ${input.title} (${input.personaName})
-  As ${input.personaName}
-  I want ${input.seed.trim().replace(/\s+/g, " ").slice(0, 200)}
-  So that harms, friction, and uncertainty stay low on my critical path
-
-  # Generated for persona "${input.personaId}". Agent should refine steps to match
-  # .optimizexp/personas/${input.personaId}.md vocabulary and failure modes.
-  # Scenario names are stable evidence keys (slugified).
-
-  Background:
-    Given persona "${input.personaId}" is active
-    And feature "${input.featureId}" is under optimizexp review
-
-  Scenario: ${happy}
-    Given I am on the critical path described by the feature seed
-    When I exercise the surface as this persona would
-    Then I receive clear status about what happened
-    And the next action is obvious without tribal knowledge
-    And evidence is capturable for this scenario
-
-  Scenario: ${failure}
-    Given something goes wrong on this journey
-    When I observe the failure as this persona
-    Then the error is non-blaming and actionable
-    And I am not forced into repeated artificial hurdles
-    And evidence of what I saw is stored under evidence/
-`;
+	const driver = input.driver ?? (input.iface === "tui" ? "tui" : "cli");
+	const kind = inferTemplateKind(input.seed, driver);
+	const entry =
+		input.entryCommand ||
+		input.seed.match(/`([^`]+)`/)?.[1] ||
+		"hobo-code help";
+	const bin = entry.split(/\s+/)[0] ?? "hobo-code";
+	return gherkinTemplate({
+		kind,
+		featureId: input.featureId,
+		title: input.title,
+		personaId: input.personaId,
+		personaName: input.personaName,
+		iface: input.iface === "tui" ? "tui" : input.iface,
+		experiences: input.experiences,
+		bin,
+		entryCommand: entry,
+		verb: entry,
+	});
 }
 
 function rewritePrompt(input: {
@@ -427,19 +450,32 @@ Re-discover / rewire: \`generate-feature.mts --mode implement --id ${id}\`
 	// Optional: keep a short seed file for audit
 	writeFileSync(path.join(dir, "SEED.md"), `# Feature seed\n\n${seed.trim()}\n`, "utf8");
 
+	const expMdPath = path.join(dir, "EXPERIENCE.md");
+	const expMd = existsSync(expMdPath) ? readFileSync(expMdPath, "utf8") : "";
+	const entryFromExp =
+		expMd.match(/entryCommand:\s*`([^`]+)`/)?.[1] ||
+		expMd.match(/primaryCommand:\s*`([^`]+)`/)?.[1] ||
+		seed.match(/`([^`]+)`/)?.[1] ||
+		seed;
+
 	for (const m of resolved.metas) {
-		const iface = interfaceForPersona(m.interfaces, driver);
+		const iface = interfaceForPersona(
+			driver === "tui" ? ["tui", ...m.interfaces] : m.interfaces,
+			driver,
+		);
 		const body = gherkinForPersona({
 			featureId: id,
 			title,
 			seed,
 			personaId: m.id,
 			personaName: m.id.replace(/-/g, " "),
-			iface,
+			iface: driver === "tui" ? "tui" : iface,
 			experiences:
 				m.experiences.filter((e) => experiences.includes(e)).length > 0
 					? m.experiences.filter((e) => experiences.includes(e))
 					: experiences,
+			driver,
+			entryCommand: entryFromExp,
 		});
 		const fname = `${id}-${m.id}.feature`;
 		writeFileSync(path.join(dir, fname), body, "utf8");
@@ -453,8 +489,8 @@ Re-discover / rewire: \`generate-feature.mts --mode implement --id ${id}\`
 		root,
 		dir,
 		id,
-		seed,
-		surfaces,
+		seed: `${seed}\n${entryFromExp}`,
+		surfaces: [entryFromExp, ...surfaces],
 	});
 	if (binding.primaryCommand) {
 		surfaces.push(binding.primaryCommand);
@@ -628,6 +664,21 @@ function validate(args: Record<string, string>) {
 			if (!/@persona:/.test(text)) problems.push(`${f}: missing @persona: tag`);
 			if (!/@optimizexp/.test(text)) problems.push(`${f}: missing @optimizexp tag`);
 		}
+		// Critical path: Gherkin quality bar (template-only ban)
+		const gq = checkGherkinQuality(dir);
+		if (!gq.ok) {
+			problems.push(...gq.problems.map((p) => `quality: ${p}`));
+		}
+		// Rubber-duck / adversarial EXPERIENCE.md
+		const forceLow = args.forceLowQuality === "1";
+		const rd = checkRubberduckFile(dir);
+		if (!rd.ok && !forceLow) {
+			problems.push(...rd.problems.map((p) => `rubberduck: ${p}`));
+		} else if (!rd.ok && forceLow) {
+			problems.push(
+				"rubberduck: incomplete (allowed by --force-low-quality; assert-complete will fail)",
+			);
+		}
 		const stepsDir = path.join(dir, "steps");
 		for (const req of [
 			"bindings.steps.ts",
@@ -643,6 +694,27 @@ function validate(args: Record<string, string>) {
 		if (!existsSync(testFile)) {
 			problems.push(`missing test/${id}.bindings.test.ts`);
 		}
+		// Demote wrong monorepo primary for product features
+		const discPath = path.join(stepsDir, "discovery.json");
+		if (existsSync(discPath)) {
+			try {
+				const disc = JSON.parse(readFileSync(discPath, "utf8")) as {
+					bindings?: { command?: string; scriptName?: string }[];
+				};
+				const primary = disc.bindings?.[0];
+				if (
+					primary?.scriptName?.startsWith("eval:agent") ||
+					(primary?.scriptName === "agent:check" &&
+						!/agent.?check|staged/i.test(id))
+				) {
+					problems.push(
+						`discovery primary looks like monorepo keyword trap: ${primary.scriptName} (prefer product bin)`,
+					);
+				}
+			} catch {
+				/* ignore */
+			}
+		}
 		report.push({
 			id,
 			scope: loc.scope.id,
@@ -653,6 +725,211 @@ function validate(args: Record<string, string>) {
 	const ok = report.every((r) => r.problems.length === 0);
 	console.log(JSON.stringify({ ok, features: report }, null, 2));
 	if (!ok) process.exitCode = 1;
+}
+
+function planExperience(args: Record<string, string>) {
+	const root = repoRoot();
+	const selection = resolveProjects(args.projects ?? "all", root);
+	const writeScope = writeScopeFromSelection(selection, root);
+	const projects = listProjects(root);
+	const project =
+		selection.projects[0] ??
+		projects.find((p) => p.id === "code") ??
+		projects[0];
+	if (!project) {
+		console.error("No project for plan");
+		process.exit(2);
+	}
+	const catalog = readExperienceCatalog(project, root);
+	const experienceId = args.experienceId || "";
+	const personaId =
+		(args.personas || "").split(/[,\s]+/).filter(Boolean)[0] ||
+		catalog?.experiences[0]?.personaId ||
+		"developer";
+	let row: ExperienceRow | undefined = catalog?.experiences.find(
+		(e) =>
+			e.personaId === personaId &&
+			(!experienceId || e.experienceId === experienceId),
+	);
+	if (!row && experienceId) {
+		row = catalog?.experiences.find((e) => e.experienceId === experienceId);
+	}
+	const featureId =
+		args.id ||
+		row?.featureId ||
+		deriveId(args.seed || experienceId || "experience", args.id);
+	const dir = featureDirInScope(featureId, writeScope);
+	mkdirSync(dir, { recursive: true });
+	const md = experienceMdSkeleton({
+		featureId,
+		experienceId: row?.experienceId || experienceId || featureId,
+		personaId: row?.personaId || personaId,
+		entryCommand: row?.entryCommand || args.seed || "hobo-code help",
+		driver: row?.driver || args.driver || "cli",
+		intent: row?.intent || args.seed || "TODO intent",
+	});
+	const out = path.join(dir, "EXPERIENCE.md");
+	if (args.dryRun === "1") {
+		console.log(JSON.stringify({ ok: true, dryRun: true, path: out, featureId }, null, 2));
+		return;
+	}
+	// Don't overwrite filled EXPERIENCE.md unless --force
+	if (existsSync(out) && args.force !== "1") {
+		const existing = readFileSync(out, "utf8");
+		if (!/TODO/.test(existing) && checkRubberduckFile(dir).ok) {
+			console.log(
+				JSON.stringify(
+					{ ok: true, skipped: true, reason: "EXPERIENCE.md already complete", path: out },
+					null,
+					2,
+				),
+			);
+			return;
+		}
+	}
+	writeFileSync(out, md, "utf8");
+	console.log(
+		JSON.stringify(
+			{
+				ok: true,
+				mode: "plan",
+				featureId,
+				path: relFromRepo(out, root),
+				next: [
+					"Fill rubber-duck answers + check adversarial boxes + set Verdict accept",
+					`generate-feature.mts --mode rubberduck-check --id ${featureId} --projects ${project.id}`,
+					`generate-feature.mts --mode scaffold --id ${featureId} --seed "…" --projects ${project.id}`,
+				],
+			},
+			null,
+			2,
+		),
+	);
+}
+
+function rubberduckCheck(args: Record<string, string>) {
+	const root = repoRoot();
+	const id = args.id;
+	if (!id) {
+		console.error("--id required");
+		process.exit(2);
+	}
+	const selection = resolveProjects(args.projects ?? "all", root);
+	const hit = findFeature(id, root, { selection });
+	if (!hit) {
+		console.log(JSON.stringify({ ok: false, id, problems: ["feature folder not found"] }, null, 2));
+		process.exitCode = 1;
+		return;
+	}
+	const result = checkRubberduckFile(hit.dir);
+	console.log(
+		JSON.stringify(
+			{
+				ok: result.ok,
+				id,
+				path: relFromRepo(path.join(hit.dir, "EXPERIENCE.md"), root),
+				problems: result.problems,
+			},
+			null,
+			2,
+		),
+	);
+	if (!result.ok) process.exitCode = 1;
+}
+
+function fromCatalog(args: Record<string, string>) {
+	const root = repoRoot();
+	const selection = resolveProjects(args.projects ?? "all", root);
+	const projects = listProjects(root);
+	const project =
+		selection.projects.find((p) => p.id !== "root") ??
+		projects.find((p) => p.id === "code") ??
+		selection.projects[0];
+	if (!project) {
+		console.error("No project; pass --project code");
+		process.exit(2);
+	}
+	const catalog = readExperienceCatalog(project, root);
+	if (!catalog) {
+		console.error(
+			`No experience-catalog.json for ${project.id}. Run explore-app.mts --project ${project.id} first.`,
+		);
+		process.exit(2);
+	}
+	const personaFilter = (args.personas || "").split(/[,\s]+/).filter(Boolean);
+	const rows = catalog.experiences.filter(
+		(e) =>
+			e.priority === "P0" &&
+			(!personaFilter.length || personaFilter.includes(e.personaId)),
+	);
+	// Group by featureId
+	const byFeature = new Map<string, ExperienceRow[]>();
+	for (const r of rows) {
+		const list = byFeature.get(r.featureId) ?? [];
+		list.push(r);
+		byFeature.set(r.featureId, list);
+	}
+	const created: string[] = [];
+	for (const [featureId, featureRows] of byFeature) {
+		const primary = featureRows[0]!;
+		const personas = [...new Set(featureRows.map((r) => r.personaId))];
+		// Plan EXPERIENCE.md
+		planExperience({
+			...args,
+			id: featureId,
+			experienceId: primary.experienceId,
+			personas: personas.join(","),
+			projects: project.id,
+			seed: primary.entryCommand,
+			driver: primary.driver,
+		});
+		// Auto-accept skeleton for scaffold only if force-low-quality; else leave for agent fill
+		const writeScope = writeScopeFromSelection(
+			resolveProjects(project.id, root),
+			root,
+		);
+		const dir = featureDirInScope(featureId, writeScope);
+		// If EXPERIENCE still TODO, fill a minimal accept for automation smoke when --force-low-quality
+		const expPath = path.join(dir, "EXPERIENCE.md");
+		if (args.forceLowQuality === "1" && existsSync(expPath)) {
+			let md = readFileSync(expPath, "utf8");
+			md = md
+				.replace(/- \[ \]/g, "- [x]")
+				.replace(/- accept \| revise \| reject/, "- accept")
+				.replace(/TODO/g, `(auto) ${primary.intent}`);
+			writeFileSync(expPath, md, "utf8");
+		}
+		// Scaffold with seed = entry command
+		scaffold({
+			...args,
+			id: featureId,
+			seed: `${primary.intent}: \`${primary.entryCommand}\``,
+			personas: personas.join(","),
+			projects: project.id,
+			driver: primary.driver,
+			title: featureId,
+			skipRubberduck:
+				args.forceLowQuality === "1" ? "1" : args.skipRubberduck,
+			forceLowQuality: args.forceLowQuality,
+		});
+		created.push(featureId);
+	}
+	console.log(
+		JSON.stringify(
+			{
+				ok: true,
+				mode: "from-catalog",
+				projectId: project.id,
+				features: created,
+				note:
+					args.forceLowQuality === "1"
+						? "force-low-quality used — fill real rubber-duck before assert-complete"
+						: "Fill EXPERIENCE.md accept + rubberduck-check before relying on validate",
+			},
+			null,
+			2,
+		),
+	);
 }
 
 function resolveOnly(args: Record<string, string>) {
@@ -693,6 +970,9 @@ function resolveOnly(args: Record<string, string>) {
 function main() {
 	const args = parseArgs(process.argv.slice(2));
 	if (args.mode === "help") return help();
+	if (args.mode === "plan") return planExperience(args);
+	if (args.mode === "rubberduck-check") return rubberduckCheck(args);
+	if (args.mode === "from-catalog") return fromCatalog(args);
 	if (args.mode === "scaffold") return scaffold(args);
 	if (args.mode === "implement") return implement(args);
 	if (args.mode === "validate") return validate(args);

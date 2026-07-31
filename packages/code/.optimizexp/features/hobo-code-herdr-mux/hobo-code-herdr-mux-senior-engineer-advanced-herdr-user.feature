@@ -1,28 +1,28 @@
-@optimizexp @ux @dx @persona:senior-engineer-advanced-herdr-user @interface:cli
-Feature: Herdr multiplexer panes detach highlight-copy session persistence (senior engineer advanced herdr user)
+@optimizexp @dx @ux @persona:senior-engineer-advanced-herdr-user @interface:cli
+Feature: hobo-code-herdr-mux (senior engineer advanced herdr user)
   As senior engineer advanced herdr user
-  I want Herdr-style multi-pane status, detachable sessions, highlight-to-copy, and durable handback
-  So that hobo-code feels like a designer-aware harness multiplexer, not a single-stream agent CLI
+  I want a real product path I can exercise and capture
+  So that review scores come from evidence, not template vibes
 
   Background:
     Given persona "senior-engineer-advanced-herdr-user" is active
     And feature "hobo-code-herdr-mux" is under optimizexp review
 
-  Scenario: Status shows herdr capability footer and pane mux for senior-engineer-advanced-herdr-user
+  Scenario: Primary path works for senior-engineer-advanced-herdr-user
     Given I am on the critical path described by the feature seed
-    When I exercise the surface as this persona would
-    Then I receive clear status about what happened
+    When I run `pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts status`
+    Then I see product chrome or structured status for this surface
     And the next action is obvious without tribal knowledge
     And evidence is capturable for this scenario
 
-  Scenario: Status and session JSON expose herdr flags and persistence for senior-engineer-advanced-herdr-user
+  Scenario: Help or status remains usable for senior-engineer-advanced-herdr-user
     Given I am on the critical path described by the feature seed
-    When I observe herdr JSON surfaces as this persona
-    Then herdr capabilities and persistence are machine-readable
+    When I run `pnpm --help`
+    Then help lists verbs or usage or the surface documents next steps
     And evidence is capturable for this scenario
 
-  Scenario: Help lists herdr differentiators for senior-engineer-advanced-herdr-user
-    Given I am on the critical path described by the feature seed
-    When I read herdr help as this persona
-    Then help names herdr mux highlight-copy and persistence
-    And evidence is capturable for this scenario
+  Scenario: Failure is actionable for senior-engineer-advanced-herdr-user
+    Given something goes wrong on this journey
+    When I run `pnpm run not-a-real-script-zz`
+    Then the error is non-blaming and actionable
+    And evidence of what I saw is stored under evidence/

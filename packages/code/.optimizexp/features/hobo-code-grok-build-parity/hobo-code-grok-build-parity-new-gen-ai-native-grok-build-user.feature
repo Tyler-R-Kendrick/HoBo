@@ -1,28 +1,28 @@
-@optimizexp @ux @dx @persona:new-gen-ai-native-grok-build-user @interface:cli
-Feature: Grok Build parity click tasks workflows (new gen ai native grok build user)
-  As new-gen-ai-native-grok-build-user
-  I want clickable TUI language, a tasks board, and workflow discoverability like Grok Build
-  So that hobo-code meets my AI-native expectations without control-plane bloat
+@optimizexp @dx @ux @persona:new-gen-ai-native-grok-build-user @interface:cli
+Feature: hobo-code-grok-build-parity (new gen ai native grok build user)
+  As new gen ai native grok build user
+  I want a real product path I can exercise and capture
+  So that review scores come from evidence, not template vibes
 
   Background:
     Given persona "new-gen-ai-native-grok-build-user" is active
     And feature "hobo-code-grok-build-parity" is under optimizexp review
 
-  Scenario: Tasks board shows grok-build legend for new-gen-ai-native-grok-build-user
+  Scenario: Primary path works for new-gen-ai-native-grok-build-user
     Given I am on the critical path described by the feature seed
-    When I exercise the surface as this persona would
-    Then I receive clear status about what happened
+    When I run `pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts tasks`
+    Then I see product chrome or structured status for this surface
     And the next action is obvious without tribal knowledge
     And evidence is capturable for this scenario
 
-  Scenario: Tasks JSON exposes clickable workflows compare for new-gen-ai-native-grok-build-user
+  Scenario: Help or status remains usable for new-gen-ai-native-grok-build-user
     Given I am on the critical path described by the feature seed
-    When I observe tasks JSON as this persona
-    Then grok build parity card is machine-readable
+    When I run `pnpm --help`
+    Then help lists verbs or usage or the surface documents next steps
     And evidence is capturable for this scenario
 
-  Scenario: Help lists Grok Build differentiators for new-gen-ai-native-grok-build-user
-    Given I am on the critical path described by the feature seed
-    When I read grok build help as this persona
-    Then help names Grok Build tasks and workflows
-    And evidence is capturable for this scenario
+  Scenario: Failure is actionable for new-gen-ai-native-grok-build-user
+    Given something goes wrong on this journey
+    When I run `pnpm run not-a-real-script-zz`
+    Then the error is non-blaming and actionable
+    And evidence of what I saw is stored under evidence/

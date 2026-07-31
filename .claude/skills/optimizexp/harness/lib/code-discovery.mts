@@ -51,6 +51,12 @@ export function extractCommandHints(text: string): string[] {
 	)) {
 		hints.add(`pnpm run ${m[1]}`);
 	}
+	// Match product CLI only — not feature ids like hobo-code-default-entry
+	for (const m of text.matchAll(
+		/\bhobo-code(?![a-z0-9-])(?:\s+[a-z][a-z0-9:./_-]*)*/gi,
+	)) {
+		hints.add(m[0]!.trim());
+	}
 	for (const m of text.matchAll(/\bhobo\s+[a-z][a-z0-9:-]*/gi)) {
 		hints.add(m[0]!);
 	}
@@ -133,9 +139,19 @@ export function discoverCode(input: {
 	featureDir: string;
 	surfaces?: string[];
 	root?: string;
+	/** Prefer this package directory for bin/scripts (product scope). */
+	packageDir?: string;
 }): DiscoveryReport {
 	const root = input.root ?? repoRoot();
-	const scripts = readPackageScripts(root);
+	const packageDir = input.packageDir
+		? path.isAbsolute(input.packageDir)
+			? input.packageDir
+			: path.join(root, input.packageDir)
+		: root;
+	const scripts = {
+		...readPackageScripts(root),
+		...readPackageScripts(packageDir),
+	};
 	const scriptNames = Object.keys(scripts);
 	const text = [
 		input.seed,
@@ -143,12 +159,72 @@ export function discoverCode(input: {
 		collectFeatureText(input.featureDir),
 	].join("\n");
 	const hints = extractCommandHints(text);
+	// Also pull hobo-code / product bin verbs from EXPERIENCE.md
+	const expPath = path.join(input.featureDir, "EXPERIENCE.md");
+	if (existsSync(expPath)) {
+		hints.push(...extractCommandHints(readFileSync(expPath, "utf8")));
+	}
 	const keywords = keywordsFromSeed(input.seed);
 	const notes: string[] = [];
 	const bindings: DiscoveredBinding[] = [];
 
 	const allowLive =
 		/\blive\b/i.test(input.seed) && !/without live|no live|offline|no cloud/i.test(input.seed);
+
+	// Product binary commands (hobo-code …) beat monorepo scripts.
+	// Reject feature ids (hobo-code-default-entry) and English prose false matches.
+	const glue = new Set([
+		"or",
+		"and",
+		"then",
+		"the",
+		"a",
+		"to",
+		"for",
+		"with",
+		"not",
+		"only",
+		"see",
+		"stock",
+		"chat",
+		"strip",
+		"product",
+		"discoverability",
+	]);
+	const isPlausibleProductCli = (raw: string): string | null => {
+		const cmd = raw.split("\n")[0]!.trim().slice(0, 120);
+		if (!/^hobo-code(?![\w-])/i.test(cmd) && !/^hobo(?![\w-])\s+[a-z]/i.test(cmd)) {
+			return null;
+		}
+		const parts = cmd.split(/\s+/);
+		const bin = parts[0]!.toLowerCase();
+		if (bin !== "hobo-code" && bin !== "hobo") return null;
+		for (const p of parts.slice(1)) {
+			const t = p.toLowerCase();
+			if (glue.has(t)) return null;
+			if (t.endsWith(":")) return null;
+			if (p.length > 48) return null;
+		}
+		return cmd;
+	};
+	const seenCmds = new Set<string>();
+	for (const hint of hints) {
+		const cmd = isPlausibleProductCli(hint);
+		if (!cmd || seenCmds.has(cmd)) continue;
+		seenCmds.add(cmd);
+		bindings.push({
+			kind: "shell-command",
+			id: `shell:${cmd.slice(0, 48)}`,
+			command: cmd,
+			confidence: "high",
+			reason: "product CLI command from feature/EXPERIENCE/seed",
+			implementsSteps: [
+				"I exercise the surface as this persona would",
+				"I observe the failure as this persona",
+				"I start bare TTY",
+			],
+		});
+	}
 
 	// Explicit command hints win
 	for (const hint of hints) {
@@ -344,24 +420,51 @@ export function pickPrimaryCommand(
 		Boolean(b.command) &&
 		!(b.scriptName && isLiveEgressScript(b.scriptName));
 	const high = report.bindings.filter((b) => b.confidence === "high" && runnable(b));
+	// Product CLI (hobo-code …) always beats monorepo keyword scripts
+	const productCli = high.find(
+		(b) =>
+			b.kind === "shell-command" &&
+			b.command &&
+			/^(hobo-code|hobo)\b/i.test(b.command),
+	);
+	if (productCli) return productCli;
 	// Prefer journey-specific offline surfaces when present
 	const preferredIds = [
 		"shell:exp-proofs-classification",
 		"script:doctor",
-		"script:agent:check",
 	];
 	for (const id of preferredIds) {
 		const hit = high.find((b) => b.id === id);
 		if (hit) return hit;
 	}
-	const preferredNames = ["doctor", "agent:check", "check:relevant:staged", "test:file"];
+	// agent:check only when seed explicitly about agent-check gates — not keyword "agent"
+	const preferredNames = ["doctor", "check:relevant:staged", "test:file"];
 	for (const name of preferredNames) {
 		const hit = high.find((b) => b.scriptName === name);
 		if (hit) return hit;
 	}
+	if (
+		/agent.?check|staged check|staged gate/i.test(report.seed) &&
+		high.find((b) => b.scriptName === "agent:check")
+	) {
+		return high.find((b) => b.scriptName === "agent:check")!;
+	}
+	// Demote eval:agent:* and generic agent:check for product features
+	const demoted = high.filter(
+		(b) =>
+			!(
+				b.scriptName &&
+				(b.scriptName.startsWith("eval:agent") ||
+					b.scriptName === "agent:check")
+			),
+	);
+	if (demoted[0]) return demoted[0]!;
 	if (high[0]) return high[0]!;
 	const med = report.bindings.filter((b) => b.confidence === "medium" && runnable(b));
-	return med[0] ?? null;
+	const medProduct = med.find(
+		(b) => b.command && /^(hobo-code|hobo)\b/i.test(b.command),
+	);
+	return medProduct ?? med[0] ?? null;
 }
 
 export function fileExistsUnderRoot(rel: string, root = repoRoot()): boolean {

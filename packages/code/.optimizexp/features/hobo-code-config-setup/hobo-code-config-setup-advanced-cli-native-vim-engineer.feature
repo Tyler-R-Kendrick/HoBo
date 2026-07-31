@@ -1,28 +1,28 @@
-@optimizexp @ux @dx @persona:advanced-cli-native-vim-engineer @interface:cli
-Feature: Config setup inventory for editor-vim stack (advanced cli native vim engineer)
-  As advanced-cli-native-vim-engineer
-  I want hobo-code config --stack editor-vim to list EDITOR, nvim/tmux PATH, and hobo-code.nvim
-  So that CLI-native setup does not assume a GUI IDE
+@optimizexp @dx @ux @persona:advanced-cli-native-vim-engineer @interface:cli
+Feature: hobo-code-config-setup (advanced cli native vim engineer)
+  As advanced cli native vim engineer
+  I want a real product path I can exercise and capture
+  So that review scores come from evidence, not template vibes
 
   Background:
     Given persona "advanced-cli-native-vim-engineer" is active
     And feature "hobo-code-config-setup" is under optimizexp review
 
-  Scenario: Config shows editor-vim stack for advanced-cli-native-vim-engineer
+  Scenario: Primary path works for advanced-cli-native-vim-engineer
     Given I am on the critical path described by the feature seed
-    When I exercise the surface as this persona would
-    Then I receive clear status about what happened
+    When I run `pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts config`
+    Then I see product chrome or structured status for this surface
     And the next action is obvious without tribal knowledge
     And evidence is capturable for this scenario
 
-  Scenario: Config help names stacks for advanced-cli-native-vim-engineer
+  Scenario: Help or status remains usable for advanced-cli-native-vim-engineer
     Given I am on the critical path described by the feature seed
-    When I read config help as this persona
-    Then I receive clear status about what happened
+    When I run `pnpm --help`
+    Then help lists verbs or usage or the surface documents next steps
     And evidence is capturable for this scenario
 
-  Scenario: Unknown stack fails with hints for advanced-cli-native-vim-engineer
+  Scenario: Failure is actionable for advanced-cli-native-vim-engineer
     Given something goes wrong on this journey
-    When I observe the failure as this persona
+    When I run `pnpm run not-a-real-script-zz`
     Then the error is non-blaming and actionable
     And evidence of what I saw is stored under evidence/

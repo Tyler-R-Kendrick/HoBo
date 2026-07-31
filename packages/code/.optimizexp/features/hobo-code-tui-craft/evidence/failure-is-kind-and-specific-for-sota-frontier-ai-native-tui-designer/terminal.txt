@@ -1,0 +1,22 @@
+# OptimizeXP CLI evidence
+command: node --import tsx packages/code/src/bin/hobo-code.ts not-a-real-verb-zz
+cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
+exitCode: 1
+spawnStatus: 1
+durationMs: 209
+screen: ?x? (cols x rows)
+capturedAt: 2026-07-31T20:19:56.544Z
+
+## stdout
+? cmd
+····················
+ not a verb · not-a-real-verb-zz
+ try · hobo-code help
+ prompt · hobo-code "not-a-real-verb-zz"
+ or · hobo-code guide
+FIX  → hobo-code help · → hobo-code "not-a-real-verb-zz"  # send as build prompt · → hobo-code guide · → hobo-code "add a settings page" · ✕ HOBO_CODE_UNKNOWN_VERB
+────────────────────
+
+
+## stderr
+(empty)

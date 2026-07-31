@@ -20,7 +20,9 @@
     "config"
   ],
   "driver": "cli",
-  "surfaces": [],
+  "surfaces": [
+    "hobo-code help"
+  ],
   "tags": [
     "@optimizexp",
     "@dx",
@@ -34,5 +36,6 @@
     "implementations": "steps/implementations.ts",
     "tests": "test/hobo-code-hermetic-durable.bindings.test.ts"
   },
-  "implementationStatus": "wired"
+  "implementationStatus": "wired",
+  "primaryCommand": "hobo-code help"
 }

@@ -17,6 +17,7 @@
     "requireSchemaVersion": 2,
     "defaultPriority": 30,
     "prefer": [
+      "sota-frontier-ai-native-tui-designer",
       "protocol-native-coding-agent",
       "advanced-cli-native-vim-engineer",
       "ai-automation-engineer-pi-flue",
@@ -85,6 +86,7 @@
     }
   },
   "notes": [
+    "Prefer sota-frontier-ai-native-tui-designer for bare TTY/chat chrome, motion, Bo character, GUI-native first 10s.",
     "Prefer protocol-native-coding-agent + hobo-code-agent-native for MCP/ACP, human-free auth, unattended iterate.",
     "Prefer hobo-code-config-setup for multi-persona configuration/setup stack critique (config --stack).",
     "Prefer advanced-cli-native-vim-engineer for edit/nvim managed pane bridge.",

@@ -78,3 +78,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | (billing-budget if empty-step CI) |
 | Notes | AX section map; WorkOS auth.md; rewire draft-exp-nav; discovery live demotion |
 
+
+## 2026-07-31 — optimizexp all-exp + infinite passes
+
+| Field | Value |
+|---|---|
+| Initiative | bare `/optimizexp` all-exp land via `/sdlc finish` |
+| Backend | sequential-fallback (parent) |
+| Branch | `feat/optimizexp-all-exp-finish` |
+| PRs | [#974](https://github.com/Tyler-R-Kendrick/HoBo/pull/974) (squash-merged `10c57458`) |
+| Result | **success** |
+| Failure class | `billing-budget` on checks only (empty steps; jobs did not start) |
+| Notes | Default `--passes` infinite; design-system → design:lint; demote gate:s1/docs:design-lint; run `20260731-all-exp` irreducible residual multi-gate agent:check F=1 L. Local agent:check staged + mirrors green. |
+

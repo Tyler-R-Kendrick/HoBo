@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "public-site-first-impression",
+  "title": "Public site first impression",
+  "experiences": [
+    "ux"
+  ],
+  "personas": [
+    "product-end-user",
+    "product-designer",
+    "role-finops",
+    "role-platform-engineers",
+    "role-sre"
+  ],
+  "interfaces": [
+    "mcp",
+    "web"
+  ],
+  "driver": "web",
+  "surfaces": [
+    "pnpm run docs:site-nav"
+  ],
+  "tags": [
+    "@optimizexp",
+    "@ux"
+  ],
+  "generatedFromSeed": true,
+  "seedDigest": "31cefaea75366af0",
+  "personaResolution": "explicit --personas",
+  "bindings": {
+    "steps": "steps/bindings.steps.ts",
+    "implementations": "steps/implementations.ts",
+    "tests": "test/public-site-first-impression.bindings.test.ts"
+  },
+  "implementationStatus": "wired",
+  "primaryCommand": "pnpm run docs:site-nav"
+}

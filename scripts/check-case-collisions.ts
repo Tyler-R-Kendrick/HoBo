@@ -24,10 +24,14 @@ function main() {
 	const result = spawnSync("git", ["ls-files"], {
 		encoding: "utf8",
 		shell: false,
+		// monorepo tracked-file list exceeds Node's default 1 MiB maxBuffer
+		maxBuffer: 32 * 1024 * 1024,
 	});
-	if (result.status !== 0) {
+	if (result.error || result.status !== 0) {
 		process.stderr.write(
-			result.stderr || "Unable to read tracked files with git ls-files.\n",
+			result.stderr ||
+				result.error?.message ||
+				"Unable to read tracked files with git ls-files.\n",
 		);
 		process.exit(result.status ?? 1);
 	}

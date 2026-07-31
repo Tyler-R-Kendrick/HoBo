@@ -1,6 +1,6 @@
 # Agent tooling for this repo
 
-This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub Copilot CLI** for Superpowers) with the installable agent tools listed in the [`docs/agent-tooling.md`](docs/agent-tooling.md) table plus repo-local `repo` and `draft` skills. Full reference + risks: [`docs/agent-tooling.md`](docs/agent-tooling.md). One-time binary install: [`scripts/setup-agent-tools.sh`](scripts/setup-agent-tools.sh). In devcontainers, start with the common layer before agent-specific shims.
+This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub Copilot CLI** for Superpowers) with the installable agent tools listed in the [`docs/agent-tooling.md`](docs/agent-tooling.md) table plus repo-local `repo`, `draft`, `sdlc`, and `optimizexp` skills. Full reference + risks: [`docs/agent-tooling.md`](docs/agent-tooling.md). Auth/keys summary: [`AUTH.md`](AUTH.md). One-time binary install: [`scripts/setup-agent-tools.sh`](scripts/setup-agent-tools.sh). In devcontainers, start with the common layer before agent-specific shims.
 
 | Tool | Type | What it does | Invoke |
 |---|---|---|---|
@@ -55,7 +55,11 @@ The repo-local **draft** skill lives in both `.agents/skills/draft` and `.claude
 - `src/draft/epic-proofs/<slug>` for isolated epic rollups that reuse technical and experience proofs.
 - `src/draft/projects/<slug>` for project MVP rollups that integrate epic proofs.
 
-Both repo-local skills keep Codex-valid `SKILL.md` frontmatter and store Open Knowledge Format concept metadata in their `references/` bundles. `pnpm.cmd run docs:okf` validates the docs OKF bundle plus the `repo` and `draft` skill reference bundles in both agent mirrors. `pnpm run skills:mirror-check` asserts the `.claude`/`.agents` skill mirrors stay byte-identical (runs automatically via `agent:check` when skill files change).
+Repo-local skills keep Codex-valid `SKILL.md` frontmatter and store Open Knowledge Format concept metadata in their `references/` bundles. `pnpm.cmd run docs:okf` validates the docs OKF bundle plus the `repo`, `draft`, `sdlc`, and `optimizexp` skill reference bundles in both agent mirrors. `pnpm run skills:mirror-check` asserts the `.claude`/`.agents` skill mirrors stay byte-identical (runs automatically via `agent:check` when skill files change).
+
+## Repo-local optimizexp skill
+
+The repo-local **optimizexp** skill (mirrored in `.agents/skills/optimizexp` and `.claude/skills/optimizexp`) optimizes **experiences** — UX, DX, and AX — using repo personas under [`.optimizexp/personas/`](.optimizexp/personas/), persona Gherkin **feature folders** under [`.optimizexp/features/`](.optimizexp/features/), **evidence** capture via `harness/capture-evidence.mts`, a write-ahead agent bus under [`.optimizexp/bus/`](.optimizexp/bus/), and iterative **measure → reduce experiment → verify** cycles that lower **harms**, **friction**, and **uncertainty** until **true** plateau (scores flat **and** no implementable S/M findings left; **no iterations flag / pass budget**; **`--report-only`** to measure without edits). Derived fixes must be **implemented in-run**, not parked as residual. PR delivery uses incremental commits and posts evidence (`harness/post-pr-evidence.mts`). Host workflows live under the skill's `workflows/` tree. See [`.optimizexp/README.md`](.optimizexp/README.md).
 
 ### Draft-proof hardening
 

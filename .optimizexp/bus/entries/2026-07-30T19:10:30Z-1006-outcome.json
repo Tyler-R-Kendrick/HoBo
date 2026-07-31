@@ -1,0 +1,47 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-30T19:10:30Z-1006",
+  "expects": "2026-07-30T19:10:20Z-1004",
+  "actId": "2026-07-30T19:10:25Z-1005",
+  "runId": "20260730-dx-fix",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "surface": { "type": "cli", "name": "pnpm run doctor", "interface": "cli" },
+  "actual": {
+    "gherkin": ["Doctor ran offline; fail node_modules + next/hint"],
+    "exitCode": 1,
+    "observed": { "oks": ["Node", "pnpm", "lockfiles", "AGENTS.md"], "errors": ["node_modules missing"] }
+  },
+  "feelings": {
+    "summary": "Doctor is useful cold-clone now. I got real checks and a clear install next step — not a tsx stack.",
+    "valence": "positive", "arousal": "low", "trust": "high"
+  },
+  "desirability": { "rating": "desired", "degree": 0.7, "why": "Offline doctor works; residual is install requirement only." },
+  "scores": {
+    "schemaVersion": 1, "phase": "outcome", "role": "judged",
+    "persona": "product-app-developer", "surface": "pnpm run doctor",
+    "primary": { "harms": 0, "friction": 2, "uncertainty": 1, "total": 3, "max": 2 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "Must install for full tool chain; doctor itself works.",
+      "uncertainty": "next/hint clear."
+    },
+    "evidenceRefs": [".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-app-developer/"],
+    "scoredAt": "2026-07-30T19:10:30.000Z",
+    "hcd": { "visibilityOfSystemStatus": 0, "errorRecovery": 1, "helpAndDocumentation": 1 },
+    "hcdTotal": 2, "hcdMax": 1
+  },
+  "comparison": {
+    "expectId": "2026-07-30T19:10:20Z-1004", "actId": "2026-07-30T19:10:25Z-1005",
+    "deltaFromExpect": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "deltaFromAct": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "matchedExpectation": true,
+    "expectationMatch": { "behavior": true, "scoresWithinTol": true, "tolerance": 0 }
+  },
+  "evidence": {
+    "featureId": "cli-help-and-doctor",
+    "scenarioSlug": "cli-help-and-doctor-path-works-for-product-app-developer",
+    "path": ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-app-developer/",
+    "primary": "primary.txt", "kind": "transcript"
+  }
+}

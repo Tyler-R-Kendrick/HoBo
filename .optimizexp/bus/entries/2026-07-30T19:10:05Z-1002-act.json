@@ -1,0 +1,36 @@
+{
+  "kind": "act",
+  "id": "2026-07-30T19:10:05Z-1002",
+  "expects": "2026-07-30T19:10:00Z-1001",
+  "runId": "20260730-dx-fix",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "surface": { "type": "cli", "name": "pnpm run agent:check -- --staged", "interface": "cli" },
+  "featureId": "narrow-local-validation",
+  "scenarioSlug": "narrow-local-validation-after-a-small-change-works-for-product-app-developer",
+  "action": {
+    "driver": "cli",
+    "command": "pnpm run agent:check -- --staged 2>&1 | head -40",
+    "exitCode": 1,
+    "startedAt": "2026-07-31T04:14:39.000Z",
+    "endedAt": "2026-07-31T04:14:39.377Z"
+  },
+  "evidence": {
+    "featureId": "narrow-local-validation",
+    "scenarioSlug": "narrow-local-validation-after-a-small-change-works-for-product-app-developer",
+    "path": ".optimizexp/features/narrow-local-validation/evidence/narrow-local-validation-after-a-small-change-works-for-product-app-developer/",
+    "primary": "primary.txt", "kind": "transcript"
+  },
+  "scores": {
+    "schemaVersion": 1, "phase": "act", "role": "observed",
+    "persona": "product-app-developer", "surface": "pnpm run agent:check -- --staged",
+    "primary": { "harms": 0, "friction": 2, "uncertainty": 1, "total": 3, "max": 2 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "Clear fail + next install; still blocked.",
+      "uncertainty": "exitCode 1; no stack dump."
+    },
+    "evidenceRefs": [".optimizexp/features/narrow-local-validation/evidence/narrow-local-validation-after-a-small-change-works-for-product-app-developer/primary.txt"],
+    "scoredAt": "2026-07-30T19:10:05.000Z"
+  }
+}

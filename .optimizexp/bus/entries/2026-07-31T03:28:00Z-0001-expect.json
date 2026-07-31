@@ -1,0 +1,51 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T03:28:00Z-0001",
+  "runId": "20260731-jts-dev",
+  "persona": "junior-typescript-developer",
+  "experience": "dx",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run agent:check -- --staged",
+    "interface": "cli"
+  },
+  "context": "Junior TS developer wants narrow staged agent:check after a skill/TS edit.",
+  "featureId": "agent-check-staged",
+  "scenarioSlug": "staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer",
+  "scoreTolerance": 0,
+  "expectation": {
+    "gherkin": [
+      "Scenario: staged check works for junior-typescript-developer",
+      "  When I run staged agent:check",
+      "  Then I get a clear gate list or a one-line install/fix hint"
+    ],
+    "actions": [
+      "Run pnpm agent:check -- --staged (or help)"
+    ],
+    "result": {
+      "exitCode": 0,
+      "durationClass": "seconds"
+    }
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "junior-typescript-developer",
+    "surface": "pnpm run agent:check -- --staged",
+    "primary": {
+      "harms": 0,
+      "friction": 2,
+      "uncertainty": 1,
+      "total": 3,
+      "max": 2
+    },
+    "rationale": {
+      "harms": "Gate command should not emit secrets.",
+      "friction": "Expect some monorepo cold-start friction if deps missing.",
+      "uncertainty": "Expect clear install hint or gate list on failure."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T03:28:00.000Z"
+  }
+}

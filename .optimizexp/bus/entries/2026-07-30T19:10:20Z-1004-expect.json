@@ -1,0 +1,31 @@
+{
+  "kind": "expect",
+  "id": "2026-07-30T19:10:20Z-1004",
+  "runId": "20260730-dx-fix",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "surface": { "type": "cli", "name": "pnpm run doctor", "interface": "cli" },
+  "context": "Doctor offline path without tsx; node_modules check with next/hint",
+  "featureId": "cli-help-and-doctor",
+  "scenarioSlug": "cli-help-and-doctor-path-works-for-product-app-developer",
+  "correctedFrom": "2026-07-30T18:01:15Z-0007",
+  "lessons": ["Doctor used to share tsx crash; now strip-types + install guidance."],
+  "expectation": {
+    "gherkin": [
+      "When I run doctor without node_modules",
+      "Then health checks run and fail clearly on missing node_modules with next/hint"
+    ],
+    "result": { "exitCode": 1 }
+  },
+  "scores": {
+    "schemaVersion": 1, "phase": "expect", "role": "predicted",
+    "persona": "product-app-developer", "surface": "pnpm run doctor",
+    "primary": { "harms": 0, "friction": 2, "uncertainty": 1, "total": 3, "max": 2 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "Doctor runs offline; fails only on missing install with clear next.",
+      "uncertainty": "next/hint lines present."
+    },
+    "evidenceRefs": [], "scoredAt": "2026-07-30T19:10:20.000Z"
+  }
+}

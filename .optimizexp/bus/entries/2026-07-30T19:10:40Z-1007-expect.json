@@ -1,0 +1,27 @@
+{
+  "kind": "expect",
+  "id": "2026-07-30T19:10:40Z-1007",
+  "runId": "20260730-dx-fix",
+  "persona": "junior-typescript-developer",
+  "experience": "dx",
+  "surface": { "type": "cli", "name": "pnpm run agent:check -- --staged", "interface": "cli" },
+  "featureId": "agent-check-staged",
+  "scenarioSlug": "staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer",
+  "correctedFrom": "2026-07-30T18:01:25Z-0009",
+  "lessons": ["Juniors need next/hint not Node stacks."],
+  "expectation": {
+    "gherkin": ["When cold agent:check", "Then fail + next install, no stack"],
+    "result": { "exitCode": 1 }
+  },
+  "scores": {
+    "schemaVersion": 1, "phase": "expect", "role": "predicted",
+    "persona": "junior-typescript-developer", "surface": "pnpm run agent:check -- --staged",
+    "primary": { "harms": 0, "friction": 2, "uncertainty": 1, "total": 3, "max": 2 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "Still need install before gates.",
+      "uncertainty": "Plain English recovery."
+    },
+    "evidenceRefs": [], "scoredAt": "2026-07-30T19:10:40.000Z"
+  }
+}

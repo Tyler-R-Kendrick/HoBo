@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "agent-tooling-setup",
+  "title": "Agent tooling progressive setup",
+  "experiences": [
+    "ax",
+    "dx"
+  ],
+  "personas": [
+    "product-app-developer",
+    "product-agent-operator",
+    "product-platform-engineer",
+    "product-coding-agent"
+  ],
+  "interfaces": [
+    "cli",
+    "mcp"
+  ],
+  "driver": "cli",
+  "surfaces": [
+    "pnpm run skills:mirror-check"
+  ],
+  "tags": [
+    "@optimizexp",
+    "@ax",
+    "@dx"
+  ],
+  "generatedFromSeed": true,
+  "seedDigest": "a585bf495ce73c26",
+  "personaResolution": "explicit --personas",
+  "bindings": {
+    "steps": "steps/bindings.steps.ts",
+    "implementations": "steps/implementations.ts",
+    "tests": "test/agent-tooling-setup.bindings.test.ts"
+  },
+  "implementationStatus": "wired",
+  "primaryCommand": "pnpm run skills:mirror-check"
+}

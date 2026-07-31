@@ -230,7 +230,9 @@ function cleanCell(value: string) {
 }
 
 function extractIssues(value: string) {
-	return [...value.matchAll(/HOBO-\d+/g)].map((match) => match[0]);
+	return [...value.matchAll(/HOBO-\d+/g), ...value.matchAll(/ADR-\d+/g)].map(
+		(match) => match[0],
+	);
 }
 
 async function main() {

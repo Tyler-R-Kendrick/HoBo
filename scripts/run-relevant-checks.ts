@@ -116,8 +116,9 @@ function capture(command: string, commandArgs: string[]) {
 	const result = spawnSync(platformCommand.command, platformCommand.args, {
 		encoding: "utf8",
 		shell: false,
+		maxBuffer: 32 * 1024 * 1024,
 	});
-	if (result.status !== 0) return "";
+	if (result.error || result.status !== 0) return "";
 	return result.stdout.trim();
 }
 
@@ -180,8 +181,12 @@ function stableJson(value: unknown): string {
 }
 
 function rootPackageJsonScriptsOnlyChanged() {
-	if (staged || all) return false;
-	const beforeRaw = capture("git", ["show", `${diffBase}:package.json`]);
+	if (all) return false;
+	// Compare against index (staged) or HEAD when unstaged — scripts-only edits
+	// should not be treated like dependency/task-graph changes.
+	const beforeRaw = staged
+		? capture("git", ["show", "HEAD:package.json"])
+		: capture("git", ["show", `${diffBase}:package.json`]);
 	if (!beforeRaw || !fs.existsSync("package.json")) return false;
 
 	try {
@@ -203,6 +208,7 @@ const records = changedFileRecords();
 const files = records.map((record) => record.path);
 if (files.length === 0) {
 	console.log("No changed files; skipping relevant checks.");
+	console.log("ok  agent:check — nothing to validate for this scope.");
 	process.exit(0);
 }
 
@@ -240,3 +246,9 @@ if (parallelChecks.length > 0) {
 const statuses = await runBounded(parallelChecks, parallelLimit);
 const failed = statuses.find((status) => status !== 0);
 if (failed) process.exit(failed);
+
+console.log(
+	`\nok  agent:check — ${checks.length} relevant check(s) passed` +
+		(staged ? " (staged scope)" : ""),
+);
+process.exit(0);

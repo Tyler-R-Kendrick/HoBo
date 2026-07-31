@@ -1,0 +1,81 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-30T18:01:05Z-0005",
+  "expects": "2026-07-30T18:00:00Z-0001",
+  "actId": "2026-07-30T18:01:00Z-0004",
+  "runId": "20260730-dx-review",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run agent:check -- --staged",
+    "interface": "cli"
+  },
+  "actual": {
+    "gherkin": [
+      "When I ran pnpm run agent:check -- --staged without node_modules",
+      "Then ERR_MODULE_NOT_FOUND for tsx appeared before any gate plan",
+      "And pnpm WARN said node_modules missing"
+    ],
+    "exitCode": 0,
+    "bodyExitCode": 1,
+    "observed": {
+      "errors": ["ERR_MODULE_NOT_FOUND tsx", "ELIFECYCLE 1", "node_modules missing"]
+    }
+  },
+  "feelings": {
+    "summary": "Expected this now — still rough. Staged check never starts; stack dump first, then install WARN. Trust low until bootstrap is honest about missing deps.",
+    "valence": "negative",
+    "arousal": "medium",
+    "trust": "low"
+  },
+  "desirability": {
+    "rating": "undesired",
+    "degree": 0.85,
+    "why": "Primary DX happy path blocked offline; corrected prediction held but experience still high friction."
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "outcome",
+    "role": "judged",
+    "persona": "product-app-developer",
+    "surface": "pnpm run agent:check -- --staged",
+    "primary": { "harms": 0, "friction": 4, "uncertainty": 3, "total": 7, "max": 4 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "Cannot complete narrow validation without install; blocks happy path.",
+      "uncertainty": "Exit masking + stack-first error; install hint only clear recovery."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/narrow-local-validation/evidence/narrow-local-validation-after-a-small-change-works-for-product-app-developer/"
+    ],
+    "scoredAt": "2026-07-30T18:01:05.000Z",
+    "hcd": {
+      "visibilityOfSystemStatus": 3,
+      "errorRecovery": 3,
+      "helpAndDocumentation": 2,
+      "recognitionOverRecall": 2
+    },
+    "hcdTotal": 10,
+    "hcdMax": 3
+  },
+  "comparison": {
+    "expectId": "2026-07-30T18:00:00Z-0001",
+    "actId": "2026-07-30T18:01:00Z-0004",
+    "deltaFromExpect": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "deltaFromAct": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "matchedExpectation": true,
+    "expectationMatch": {
+      "behavior": true,
+      "scoresWithinTol": true,
+      "tolerance": 0
+    }
+  },
+  "evidence": {
+    "featureId": "narrow-local-validation",
+    "scenarioSlug": "narrow-local-validation-after-a-small-change-works-for-product-app-developer",
+    "path": ".optimizexp/features/narrow-local-validation/evidence/narrow-local-validation-after-a-small-change-works-for-product-app-developer/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  }
+}

@@ -24,7 +24,8 @@
   ],
   "driver": "cli",
   "surfaces": [
-    "pnpm run eval:agent:live"
+    "pnpm run doctor",
+    "bash scripts/setup-agent-tools.sh --help"
   ],
   "tags": [
     "@optimizexp",
@@ -40,5 +41,5 @@
     "tests": "test/cli-help-and-doctor.bindings.test.ts"
   },
   "implementationStatus": "wired",
-  "primaryCommand": "pnpm run eval:agent:live"
+  "primaryCommand": "pnpm run doctor"
 }

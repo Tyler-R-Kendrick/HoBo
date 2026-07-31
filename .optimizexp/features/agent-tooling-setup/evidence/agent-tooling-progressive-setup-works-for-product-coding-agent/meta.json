@@ -9,7 +9,7 @@
   ],
   "interface": "cli",
   "driver": "cli",
-  "capturedAt": "2026-07-31T13:32:26.492Z",
+  "capturedAt": "2026-07-31T13:53:22.106Z",
   "runId": "",
   "screen": {
     "cols": null,
@@ -18,12 +18,12 @@
   "primary": {
     "file": "primary.txt",
     "kind": "transcript",
-    "bytes": 1023,
-    "sha256": "2c2087be9e2435861787346b3613c2620958ab4f83712f9fc255c9e239e6f561"
+    "bytes": 1236,
+    "sha256": "8a4bc1e8ed80f0397b95cb048dbec17dc18a9c83a649fbda5b7ff7d7c03eb31a"
   },
   "frames": [],
   "repro": {
-    "command": "bash scripts/setup-agent-tools.sh --help",
+    "command": "pnpm run doctor 2>&1 | tail -20; echo ---; bash scripts/setup-agent-tools.sh --help 2>&1 | tail -6",
     "cwd": "."
   },
   "exitCode": 0,

@@ -10,9 +10,10 @@ import type { OptimizexpWorld } from "./world.ts";
 
 /** Discovery snapshot — see discovery.json for full report. */
 export const DISCOVERY_PRIMARY = {
-  command: "pnpm run eval:agent:live" as string | null,
+  command: "pnpm run doctor" as string | null,
   confidence: "high",
-  reason: "package.json scripts[\"eval:agent:live\"] exists; mentioned in feature/seed",
+  reason:
+    "seed wants help/doctor without live cloud; pnpm run doctor is offline + agent-tooling (not eval:agent:live)",
 };
 
 export const IMPLEMENTATION_STATUS = {

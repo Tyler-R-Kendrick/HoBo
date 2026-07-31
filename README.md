@@ -101,7 +101,7 @@ pnpm run ci:preflight
 Then confirm the workspace:
 
 ```sh
-pnpm run doctor          # works offline; fails with next/hint until install
+pnpm run doctor          # works offline; fails with next/hint until install; includes agent-tooling (AUTH/MCP/setup)
 pnpm run agent:check -- --staged   # narrow staged gates after install
 ```
 

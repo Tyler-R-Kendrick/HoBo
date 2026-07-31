@@ -18,6 +18,7 @@ Recommended first setup:
 ```bash
 bash scripts/setup-agent-tools.sh --help                 # usage (no install)
 bash scripts/setup-agent-tools.sh --common-only --no-gbrain
+pnpm run doctor                                          # includes agent-tooling checks
 ```
 
 ## Tools that need keys (opt-in)

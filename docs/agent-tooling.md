@@ -86,6 +86,7 @@ Start with the common layer, then add one supported agent shim only when you nee
 ```bash
 bash scripts/setup-agent-tools.sh --help                 # flags only (no install)
 bash scripts/setup-agent-tools.sh --common-only --no-gbrain
+pnpm run doctor                                          # Node/pnpm + agent-tooling (AUTH/MCP/setup/PATH)
 # later, choose one supported client:
 bash scripts/setup-agent-tools.sh --agent claude-code --no-gbrain
 bash scripts/setup-agent-tools.sh --agent cursor --no-gbrain

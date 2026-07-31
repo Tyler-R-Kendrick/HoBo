@@ -1,0 +1,34 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T14:00:00Z-6001-expect",
+  "runId": "20260731-ax-doctor",
+  "persona": "product-agent-operator",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run doctor",
+    "interface": "cli"
+  },
+  "context": "After E-1, doctor reports AUTH/MCP/setup and optional PATH tools.",
+  "expectation": {
+    "result": { "exitCode": 0 },
+    "actions": ["Run pnpm run doctor"]
+  },
+  "featureId": "agent-tooling-setup",
+  "scenarioSlug": "agent-tooling-progressive-setup-works-for-product-agent-operator",
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-agent-operator",
+    "surface": "pnpm run doctor",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "One command.",
+      "uncertainty": "Agent-tooling lines name AUTH and setup next steps."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T14:00:00.000Z"
+  }
+}

@@ -190,3 +190,9 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - Finish: `/sdlc finish` — single PR squash-merge
 - Package tests: @hobo/code vitest 104 passed
 - Note: root turbo workspace cycle (@hobo/contracts↔core↔contract-harness) pre-existing; package filter tests green
+
+## 2026-07-31 — hobo-code optimizexp surfaces MERGED
+
+- PR: https://github.com/Tyler-R-Kendrick/HoBo/pull/990
+- Merge: `5e88a064`
+- CI: billing-red empty-step failures; package tests green locally

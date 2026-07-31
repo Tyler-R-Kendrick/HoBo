@@ -1,8 +1,9 @@
 # SDLC state — hobo-code optimizexp surfaces
 
-**phase:** closed (finish in progress)
-**branch:** feat/hobo-code-optimizexp-surfaces
-**scope:** packages/code persona-driven optimizexp product surfaces
+**phase:** closed
+**branch:** feat/hobo-code-optimizexp-surfaces (merged)
+**PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/990
+**merge:** `5e88a06446e9424cdddd3ddf7a4bd417a6977c84` (2026-07-31)
 
 ## Delivered
 
@@ -10,6 +11,11 @@
 - Verbs: auth, models, attach, tasks, guide, cost, harness, edit, config, agent
 - Optimizexp features under packages/code/.optimizexp/
 - Dual-regime runs closed at pareto-equilibrium for major surfaces including config-setup and agent-native
+
+## Finish notes
+
+- Local: `@hobo/code` vitest 104 passed; build green
+- CI: checks failed with empty steps (billing/budget class) — documented on PR, squash-merged per sdlc finish protocol
 
 ## Residual (L)
 

@@ -1,0 +1,58 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-31T14:05:00Z-7001-outcome",
+  "expects": "2026-07-31T14:05:00Z-7001-expect",
+  "actId": "2026-07-31T14:05:00Z-7001-act",
+  "runId": "20260731-ax-cli-wire",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run doctor",
+    "interface": "cli"
+  },
+  "actual": { "exitCode": 0, "primaryCommand": "pnpm run doctor" },
+  "feelings": {
+    "summary": "Feature binding no longer drags me into live agent evals. Doctor matches the seed: actionable offline status including agent-tooling.",
+    "valence": "positive",
+    "arousal": "low",
+    "trust": "high"
+  },
+  "desirability": {
+    "rating": "desired",
+    "degree": 0.92,
+    "why": "Harms and friction removed by dropping live path."
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "outcome",
+    "role": "judged",
+    "persona": "product-coding-agent",
+    "surface": "pnpm run doctor",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "No live credentials.",
+      "friction": "Correct offline surface.",
+      "uncertainty": "Bindings match seed."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-coding-agent/"
+    ],
+    "scoredAt": "2026-07-31T14:05:15.000Z"
+  },
+  "comparison": {
+    "expectId": "2026-07-31T14:05:00Z-7001-expect",
+    "actId": "2026-07-31T14:05:00Z-7001-act",
+    "deltaFromExpect": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "deltaFromAct": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "matchedExpectation": true,
+    "expectationMatch": { "behavior": true, "scoresWithinTol": true, "tolerance": 0 }
+  },
+  "evidence": {
+    "featureId": "cli-help-and-doctor",
+    "scenarioSlug": "cli-help-and-doctor-path-works-for-product-coding-agent",
+    "path": ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-coding-agent/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  }
+}

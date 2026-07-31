@@ -1,63 +1,41 @@
 # OptimizeXP CLI evidence
-command: bash scripts/setup-agent-tools.sh --help && echo --- && bash scripts/setup-agent-tools.sh --common-only --no-gbrain --no-skillopt 2>&1 | tail -20 && echo --- && bash scripts/agent-mcp-gbrain.sh; echo gbrain_exit:$?
+command: pnpm run doctor
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 0
 spawnStatus: 0
-durationMs: 1542
+durationMs: 875
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T13:43:04.617Z
+capturedAt: 2026-07-31T13:53:21.052Z
 
 ## stdout
-Usage: bash scripts/setup-agent-tools.sh [options]
 
-Install/configure coding-agent tools for this repo (progressive layers).
+> hobo-design@ doctor /home/codex/.herdr/worktrees/hobo/hobo-devx
+> node --experimental-strip-types scripts/dx-preflight.mts doctor
 
-Options:
-  --common-only          Common/devcontainer-safe layer only (no agent CLI shims)
-  --agent NAME           One agent: claude-code | cursor | codex | copilot
-  --agents a,b           Comma-separated agent list
-  --no-gbrain            Skip gbrain (zero-key path; recommended first run)
-  --no-skillopt          Skip microsoft/SkillOpt install
-  -h, --help             Show this help and exit 0 (no install)
-
-Examples:
-  bash scripts/setup-agent-tools.sh --common-only --no-gbrain
-  bash scripts/setup-agent-tools.sh --agent codex --no-gbrain
-
-Keys / egress: AUTH.md
-Narrative:     docs/agent-tooling.md
-At-a-glance:   AGENTS.md
----
-  serena present (Serena 1.6.1) — skip reinstall/init
-
-[1m== headroom (chopratejas/headroom) -> pip + MCP server[0m
-  headroom present (headroom, version 0.33.0) — skip reinstall
-
-[1m== SkillOpt — skipped (--no-skillopt)[0m
-
-[1m== gbrain — skipped (--no-gbrain)[0m
-
-[1m== Shared MCP config[0m
-  Claude Code: ./.mcp.json (auto-discovered).
-  Cursor:      ./.cursor/mcp.json.
-  Codex:       copy ./.codex/config.toml into ~/.codex/config.toml or use codex mcp add.
-
-[1m== Agent-specific setup skipped (--common-only)[0m
-  Next: rerun with --agent claude-code|cursor|codex|copilot when you know which client to configure.
-
-[1m== Done[0m
-Ensure these are on PATH: /home/codex/.local/bin (rtk/headroom/uv/serena/skillopt), /home/codex/.bun/bin (gbrain).
-Keys / egress: AUTH.md  |  narrative: docs/agent-tooling.md  |  table: AGENTS.md
----
-gbrain_exit:1
+ok  Node 26.5.0
+ok  pnpm 10.33.4
+ok  Corepack available
+ok  pnpm-lock.yaml present
+ok  pnpm-workspace.yaml present
+ok  turbo.json present
+ok  no central data-model catalog present
+ok  root AGENTS.md present
+ok  node_modules present
+ok  tsx resolvable
+ok  AUTH.md present (keys/egress)
+ok  setup-agent-tools.sh --help (zero-key flags)
+ok  .mcp.json present (Claude Code MCP)
+ok  .cursor/mcp.json present (Cursor MCP)
+ok  .codex/config.toml present (Codex MCP template)
+ok  scripts/agent-mcp-serena.sh present
+ok  scripts/agent-mcp-headroom.sh present
+ok  scripts/agent-mcp-gbrain.sh present
+ok  serena on PATH
+ok  headroom on PATH
+ok  rtk on PATH
+ok  tgrep on PATH
 
 
 ## stderr
-gbrain MCP: binary not on PATH.
-
-Zero-key default (recommended): decline the gbrain MCP server in your agent UI, or never enable it.
-  bash scripts/setup-agent-tools.sh --common-only --no-gbrain
-
-To enable later: install Bun, re-run setup without --no-gbrain, then `gbrain init`.
-Keys + data egress: AUTH.md  |  .env.example  |  docs/agent-tooling.md
+warn gbrain not on PATH (ok for zero-key; decline gbrain MCP or install later)
 

@@ -9,7 +9,7 @@
   ],
   "interface": "cli",
   "driver": "cli",
-  "capturedAt": "2026-07-31T13:43:04.618Z",
+  "capturedAt": "2026-07-31T13:53:21.052Z",
   "runId": "",
   "screen": {
     "cols": null,
@@ -18,12 +18,12 @@
   "primary": {
     "file": "primary.txt",
     "kind": "transcript",
-    "bytes": 2415,
-    "sha256": "6166bd792fb969b70430460e97e299651ca86f0ccc82fa5f8cd6a8a494ca6909"
+    "bytes": 1107,
+    "sha256": "06ca91e6d4518d916acb97507611f71afb4e7f560059da61b5799b74b413a056"
   },
   "frames": [],
   "repro": {
-    "command": "bash scripts/setup-agent-tools.sh --help && echo --- && bash scripts/setup-agent-tools.sh --common-only --no-gbrain --no-skillopt 2>&1 | tail -20 && echo --- && bash scripts/agent-mcp-gbrain.sh; echo gbrain_exit:$?",
+    "command": "pnpm run doctor",
     "cwd": "."
   },
   "exitCode": 0,

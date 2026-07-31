@@ -1,0 +1,31 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T14:05:00Z-7001-expect",
+  "runId": "20260731-ax-cli-wire",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run doctor",
+    "interface": "cli"
+  },
+  "context": "Feature cli-help-and-doctor rewired to offline doctor with agent-tooling.",
+  "expectation": { "result": { "exitCode": 0 } },
+  "featureId": "cli-help-and-doctor",
+  "scenarioSlug": "cli-help-and-doctor-path-works-for-product-coding-agent",
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-coding-agent",
+    "surface": "pnpm run doctor",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "No live egress.",
+      "friction": "One offline command.",
+      "uncertainty": "AUTH/MCP lines present."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T14:05:00.000Z"
+  }
+}

@@ -35,6 +35,8 @@ Examples:
 Keys / egress: AUTH.md
 Narrative:     docs/agent-tooling.md
 At-a-glance:   AGENTS.md
+MCP launchers (fail-closed): scripts/agent-mcp-{serena,headroom,gbrain}.sh
+Verify:        pnpm run doctor  (includes agent-tooling checks)
 EOF
 }
 

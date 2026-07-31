@@ -1,0 +1,44 @@
+{
+  "kind": "act",
+  "id": "2026-07-31T14:05:00Z-7001-act",
+  "expects": "2026-07-31T14:05:00Z-7001-expect",
+  "runId": "20260731-ax-cli-wire",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run doctor",
+    "interface": "cli"
+  },
+  "featureId": "cli-help-and-doctor",
+  "scenarioSlug": "cli-help-and-doctor-path-works-for-product-coding-agent",
+  "action": {
+    "driver": "cli",
+    "command": "pnpm run doctor",
+    "exitCode": 0
+  },
+  "evidence": {
+    "featureId": "cli-help-and-doctor",
+    "scenarioSlug": "cli-help-and-doctor-path-works-for-product-coding-agent",
+    "path": ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-coding-agent/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "act",
+    "role": "observed",
+    "persona": "product-coding-agent",
+    "surface": "pnpm run doctor",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "Offline doctor.",
+      "friction": "Exit 0, clear ok/warn.",
+      "uncertainty": "AUTH and launchers listed."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-coding-agent/primary.txt"
+    ],
+    "scoredAt": "2026-07-31T14:05:10.000Z"
+  }
+}

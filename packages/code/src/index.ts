@@ -211,6 +211,25 @@ export {
 } from "./splash.js";
 
 export {
+	PRODUCT_NOT_PI,
+	DEFAULT_SLASH_ITEMS,
+	appendAssistant,
+	appendProduct,
+	createInitialShellState,
+	reduceShellKey,
+	renderShellFrame,
+	runInteractiveShell,
+	shellFrameIdentity,
+	type InteractiveShellState,
+	type ShellFocus,
+	type ShellHost,
+	type ShellMessage,
+	type ShellSlashItem,
+} from "./interactive-shell.js";
+
+export { createDefaultShellHost } from "./shell-host.js";
+
+export {
 	decodeGrayAlphaPng,
 	extractSpriteFrame,
 	measureTuiSprite,

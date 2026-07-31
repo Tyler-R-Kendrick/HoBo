@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "hobo-code-interactive-shell",
+  "title": "HoBo-owned interactive shell (not stock Pi)",
+  "experiences": ["ux", "dx"],
+  "personas": [
+    "sota-frontier-ai-native-tui-designer",
+    "claude-code-advanced-app-builder",
+    "new-gen-ai-native-grok-build-user",
+    "advanced-nix-devenv-developer"
+  ],
+  "projects": ["code"],
+  "scope": "code",
+  "interfaces": ["tui", "cli"],
+  "driver": "tui",
+  "surfaces": ["hobo-code bare TTY InteractiveShell"],
+  "tags": ["@optimizexp", "@ux", "@dx", "@interactive-shell"],
+  "implementationStatus": "in-progress",
+  "primaryCommand": "hobo-code",
+  "hardFailIfStockPiChrome": true
+}

@@ -1,30 +1,78 @@
 ---
 id: developer
-schemaVersion: 1
+schemaVersion: 2
 generatedFromSeed: false
 seedDigest: null
-experiences: [dx, ax]
+experiences: [dx, ax, ux]
 priority: 1
 interfaces: [cli, docs, config, mcp]
+segmentIds: [app-developer, monorepo-dx]
+marketPriority: 5
 ---
 
 # Developer
 
 ## Who I am
 
-Application developer shipping Bindles and packages in this monorepo. Comfortable with TypeScript, git, and CLIs. Not a platform engineer; I want the happy path without memorizing every gate.
+Application developer shipping Bindles and packages in this monorepo. Comfortable with TypeScript, git, and CLIs. Not a platform engineer; I want the happy path without memorizing every gate. I expect standard CLI conventions on product binaries (including **`hobo-code`**): `<cmd> --help` documents that command.
+
+Demographic/psychographic models below are synthetic segment attributes, not a real person.
+
+## Market segment
+
+- segmentIds: app-developer, monorepo-dx
+- primary job: ship package changes with narrow local gates
+- secondary jobs: use product CLIs (`hobo-code`, package scripts) with predictable help/errors
+- non-jobs: memorizing glyph idioms; inventing monorepo-wide Nix IaC
+
+## Demographic model
+
+- roleFamily: application-developer
+- seniority: mid
+- orgArchetype: startup
+- domainFamiliarity: intermediate
+- localeContext: en-primary
+- deviceContext: desktop-first
+- timeBudget: minutes
+- accessibilityProfile: text-first
+
+## Psychographic model
+
+- values: [clarity, speed, predictability]
+- riskTolerance: medium
+- noveltySeeking: medium
+- trustInAutomation: medium
+- documentationPreference: examples-first
+- errorEmotion: frustrated-when-opaque
+- socialProofNeed: low
+- aestheticSensitivity: low
+- controlNeed: medium
+
+## Cognitive thresholds
+
+- featureSprawl: 3
+- visualClutter: 3
+- interactiveClutter: 3
+- choiceOverload: 3
+- informationDensity: 3
+- noveltyTax: 3
+- contextSwitchTax: 2
+- workingMemoryLoad: 2
+- interruptionFragility: 2
 
 ## Goals
 
 - Change one package and get a green signal in seconds–minutes, not a full CI simulation.
 - Know the next command when something fails.
 - Trust that local checks match what PR CI will enforce.
+- **CLI convention:** `hobo-code <verb> --help` and `hobo-code help <verb>` show **verb-scoped** help (not top-level only).
 
 ## Constraints
 
 - Limited patience for re-running full monorepo suites.
 - May work offline; cloud keys are optional friction.
 - Context window / attention is scarce when using coding agents.
+- Will not read a dense glyph legend before first CLI use.
 
 ## Accessibility & inclusion needs
 
@@ -36,17 +84,20 @@ Application developer shipping Bindles and packages in this monorepo. Comfortabl
 - `pnpm agent:check -- --staged` after a focused edit selects a small gate set and exits with clear errors.
 - Docs name the same commands as `package.json` scripts.
 - Generated files are never a surprise; regen path is one command.
+- `hobo-code platform --help` documents platform flags/examples only.
 
 ## Failure modes I hate
 
 - Silent skip of tests that later fail in CI.
 - Architecture/guard failures without a fix hint.
 - Being told to `pnpm install` as the first diagnostic.
+- Subcommand `--help` dumping global help (forces hunting for verb-specific flags).
 
 ## Vocabulary I use
 
-package, filter, staged check, typeerror, contract test, draft proof, gate
+package, filter, staged check, typeerror, contract test, draft proof, gate, subcommand, --help, usage
 
 ## Review instructions
 
-Judge DX and AX surfaces for **friction** (extra steps, broad defaults) and **uncertainty** (docs vs tools mismatch). Flag **harms** if tools dump secrets or hostile language. Prefer findings that shrink the inner loop.
+Judge DX and AX (and CLI UX) for **friction** (extra steps, broad defaults) and **uncertainty** (docs vs tools mismatch). Flag **harms** if tools dump secrets or hostile language. Prefer findings that shrink the inner loop.
+For product CLIs, require evidence that `<verb> --help` is topic-scoped. Dense glyph chrome may exist only as opt-in.

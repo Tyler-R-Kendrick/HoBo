@@ -1,11 +1,42 @@
 {
-  "updatedAt": "2026-07-31T18:05:00.000Z",
+  "schemaVersion": 1,
+  "updatedAt": "2026-07-31T19:36:42.367Z",
+  "itemCount": 4,
   "items": [
     {
-      "id": "fr-direnv-hook-docs",
-      "runId": "20260731-code-nix-devenv",
-      "status": "deferred",
-      "reason": "README already covers optional devenv; extra snippet risks docs sprawl for persona threshold featureSprawl=2"
+      "id": "hobo-code-agent-native",
+      "title": "Protocol-native coding agent (MCP/ACP, human-free auth)",
+      "status": "shipped",
+      "effort": "M",
+      "runId": "20260731-code-agent-native",
+      "stopReason": "pareto-equilibrium"
+    },
+    {
+      "id": "hobo-code-config-setup",
+      "title": "Multi-persona config/setup inventory (hobo-code config)",
+      "status": "shipped",
+      "effort": "M",
+      "runId": "20260731-code-config-setup",
+      "stopReason": "pareto-equilibrium"
+    },
+    {
+      "id": "fr-sso",
+      "status": "deferred"
+    },
+    {
+      "id": "fr-live-mouse-tui",
+      "effort": "L",
+      "status": "deferred"
+    },
+    {
+      "id": "fr-live-mosh-dial",
+      "effort": "L",
+      "status": "deferred"
+    },
+    {
+      "id": "fr-chrome-evidence-loop",
+      "effort": "L",
+      "status": "deferred"
     }
   ]
 }

@@ -88,6 +88,46 @@ export function buildMultiplexerStatus(
 	};
 }
 
+/**
+ * Discoverable Herdr multiplexer differentiators (JSON + help + status footer).
+ * Dense pane chrome stays quiet; this is the explicit capability surface.
+ */
+export interface HerdrMuxCapabilities {
+	readonly theme: "herdr" | "grok-build";
+	readonly copyOnHighlight: true;
+	readonly detachable: true;
+	readonly panes: true;
+	readonly sessionPersistence: true;
+	/** Ultra-short human legend (status footer / docs). */
+	readonly legend: string;
+	/** One-line accessibility narrative (non-mouse). */
+	readonly highlightNarrative: string;
+}
+
+/** Product-default Herdr capability card for status/session --json and help. */
+export function herdrMuxCapabilities(
+	theme: "herdr" | "grok-build" = "herdr",
+): HerdrMuxCapabilities {
+	return {
+		theme,
+		copyOnHighlight: true,
+		detachable: true,
+		panes: true,
+		sessionPersistence: true,
+		// Compact; avoid long "detach · click panes · copy-on-highlight" chrome noise.
+		legend: "herdr · panes · detach · highlight→copy",
+		highlightNarrative:
+			"Highlight text in a pane to copy (highlightBuffer / ↳ clip on status fold). Detachable sessions persist handback under $HOBO_HOME.",
+	};
+}
+
+/** Status footer under the dense box — names Herdr differentiators without bloating panes. */
+export function renderHerdrCapabilityFooter(
+	caps: HerdrMuxCapabilities = herdrMuxCapabilities(),
+): string {
+	return ` ${caps.legend}`;
+}
+
 function pad(s: string, n: number): string {
 	if (s.length === n) return s;
 	if (s.length > n) {

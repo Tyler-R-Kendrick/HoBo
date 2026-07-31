@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "hobo-code-ghcp-parity",
+  "title": "GHCP parity: animated title, enterprise auth, BYOK open models, built-in sandbox",
+  "experiences": [
+    "dx",
+    "ux"
+  ],
+  "personas": [
+    "github-copilot-cli-advanced-user"
+  ],
+  "projects": [
+    "code"
+  ],
+  "scope": "code",
+  "interfaces": [
+    "cli",
+    "tui",
+    "docs",
+    "config"
+  ],
+  "driver": "cli",
+  "surfaces": [
+    "pnpm run docs:cli-lint"
+  ],
+  "tags": [
+    "@optimizexp",
+    "@dx",
+    "@ux"
+  ],
+  "generatedFromSeed": true,
+  "seedDigest": "e2df1540800967e5",
+  "personaResolution": "explicit --personas; config prefer/exclude (.optimizexp/config.json + packages/code/.optimizexp/config.json)",
+  "bindings": {
+    "steps": "steps/bindings.steps.ts",
+    "implementations": "steps/implementations.ts",
+    "tests": "test/hobo-code-ghcp-parity.bindings.test.ts"
+  },
+  "implementationStatus": "wired",
+  "primaryCommand": "pnpm run docs:cli-lint"
+}

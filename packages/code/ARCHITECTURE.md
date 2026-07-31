@@ -31,7 +31,9 @@ raw DTOs. Invalid values throw at the boundary (parse-don't-validate).
 
 ## Event architecture
 
-- **Command** — `hobo-code isolate|session|promote|scaffold|dispatch|…` (flat verbs; dispatch default).
+- **Command** — `hobo-code isolate|session|promote|scaffold|dispatch|config|agent|…` (flat verbs; dispatch default).
+- **Config inventory** — `inspectConfigSurface` / `hobo-code config [--stack …]` lists env/flags by persona stack (secrets presence-only; soft `missingCritical` gaps).
+- **Agent-native** — `inspectAgentSurface` / `hobo-code agent` inventories human-free auth, MCP/ACP protocols, no-elicitation unattended contract, and self-improve loop (SOTA: MCP Auth 2025-11, ACP stdio JSON-RPC).
 - **Event** — `code.IsolationCreated` / `IsolationCleaned` / `PromotionAudited` /
   `EvidenceEmitted` / `VisualLocked` / `BudgetRecorded` (durable under
   `HOBO_HOME/durable/code/<runId>/`).
@@ -53,6 +55,14 @@ Presentation helpers stay pure and unit-tested:
 
 - **Default loading** — `renderDefaultLoadingScreen` (`splash.ts`): console **HoBo logo** + **Bo idle** from real `assets/bo-idle.png` via deterministic `sprite-tui.ts` half-block conversion (12 frames rest·bounce·blink). Generated frames in `_generated/bo-idle-tui-frames.ts`. **Fixed canvas** so frame advance never reflows. Empty standalone mux paints this instead of empty→★.
 - `renderStatusText` / `renderStatusChip` — Herdr-style adaptive box: panes fold ≤4-wide; health glyphs; focus ▸; quiet omits default ★ next; chip omits herdr
+- `herdrMuxCapabilities` / `renderHerdrCapabilityFooter` — discoverable Herdr card (status footer + JSON); dense box stays quiet
+- `describeDevTerminalAttach` / `hobo-code attach` — tmux-like reattach + named endpoint; mosh optional; `--mode overlay` Tailscale-shaped (not control-plane admin)
+- `grokBuildParity` / `hobo-code tasks` — Grok Build–shaped tasks board + clickable/workflows/subagents compare card (not a Grok Build clone)
+- `claudeCodeGuide` / `hobo-code guide` — plain-English Claude Code → hobo-code map for non-dev app builders
+- `cursorGuide` / `hobo-code guide --cursor` — Cursor Agent/Composer/Background/BugBot → hobo-code map
+- `inspectCost` / `hobo-code cost` — $0 path, budget bar, savings vs frontier, free/local routing, token-tool stack
+- `inspectHarnessSurface` / `hobo-code harness` — Pi TUI + Flue run dual surface, skill roots, Eve subagents, self-improve loop, brain notes
+- `inspectEditorBridge` / `hobo-code edit` — vim/neovim managed pane bridge (tmux-send, stdio-jsonrpc, ACP-shaped) + `editor/hobo-code.nvim`
 - session uses `title` override — 4-line box: brand · run · handback LED · next (LED implies live/final)
 - `renderOpenUiHtml` — dark shell + `1 · generate` rail + seal; lede `→edit|→lock|→codegen`; foot `Edit→lock|Lock→codegen|seal`
 - `formatHoboCodeResult` — closed panels: one-scan happy path is 3 lines (title · body · rule, soft omitted); FIX + code inline on fails

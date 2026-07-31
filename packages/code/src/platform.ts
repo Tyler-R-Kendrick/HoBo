@@ -26,7 +26,7 @@ export const CODE_FEATURE_FLAGS = {
 	visualEvidence: "code.evidence.visual",
 	monetizationSurface: "code.monetization.surface",
 	riftPreferred: "code.isolation.rift",
-	/** Distributed compute hive (block/buzz-inspired; not a CLI verb). */
+	/** Multi-node compute dispatch (capacity + isolation classes; not a chat hive). */
 	distributed: "code.distributed",
 } as const;
 

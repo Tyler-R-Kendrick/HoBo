@@ -80,6 +80,16 @@ export function promoteIsolation(
 		};
 	}
 
+	// Fail closed when there is nothing to promote (missing sandbox isolation).
+	if (!existsSync(resolve(request.isolationRoot))) {
+		return {
+			ok: false,
+			code: "HOBO_CODE_PROMOTE_MISSING_RUN",
+			message: `no isolation sandbox for run "${request.runId}" under ${request.isolationRoot}`,
+			cleaned: false,
+		};
+	}
+
 	const gateCheck = runPromotionGates(options.gates);
 	if (!gateCheck.ok) {
 		return {

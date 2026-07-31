@@ -84,6 +84,9 @@ I deliberately **do not** expand Nix into the rest of the HoBo monorepo. My worl
 
 ## Success looks like
 
+- `hobo-code config` (and `--stack …`) inventories setup knobs for my stack without secret leakage
+
+
 - `hobo-code env --json` reports markers (`devenv.nix`, etc.), active shell env, durable layout, recommendations
 - `hobo-code isolate` data exposes `durableRoot` ≠ sandbox `rootPath` with `pureSeparation: true`
 - Help/platform payloads include hermetic report without bloating human chrome
@@ -101,6 +104,23 @@ I deliberately **do not** expand Nix into the rest of the HoBo monorepo. My worl
 ## Vocabulary I use
 
 hermetic, pure, devenv, direnv, flake, shell.nix, IN_NIX_SHELL, DEVENV_ROOT, HOBO_HOME, sandbox, durable, isolate, promote, fidelity, host-default, hermetic-declared, hermetic-active, offline, Station, worktree, rift
+
+## Configuration & setup critique
+
+Preferred stack: **devenv / nix develop / direnv + HOBO_HOME outside store**.
+
+### What I need configured
+- `HOBO_HOME` writable **outside** `/nix/store` when hermetic
+- Markers: `devenv.nix` / `flake.nix` optional; env `DEVENV_ROOT` / `IN_NIX_SHELL` / `DIRENV_DIR`
+- `--cwd` / `--home` flags for pure shells
+
+### Critique
+- Prior personas ignored setup: I need **env inventory** of hermetic knobs
+- `hobo-code env` is runtime; `config --stack hermetic-nix` is the setup checklist
+- Failure if durable paths land in the Nix store without warning
+
+### Setup success
+`config --stack hermetic-nix` + `env --json` agree on markers and HOBO_HOME advice.
 
 ## Review instructions
 

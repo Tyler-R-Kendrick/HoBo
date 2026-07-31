@@ -12,6 +12,8 @@ import {
 	cleanupIsolation,
 	copyOnHighlight,
 	createBudgetTracker,
+	herdrMuxCapabilities,
+	renderHerdrCapabilityFooter,
 	createHarnessCore,
 	createIsolationContext,
 	createOpenUiSession,
@@ -28,6 +30,7 @@ import {
 	parseIsolationContext,
 	parsePromotionRequest,
 	promoteIsolation,
+	describeDevTerminalAttach,
 	registerCodeNamedEndpoint,
 	renderStatusText,
 	resetIsolationRegistry,
@@ -288,6 +291,10 @@ step "done"
 			theme: "herdr",
 		});
 		expect(status.copyOnHighlight).toBe(true);
+		const caps = herdrMuxCapabilities("herdr");
+		expect(caps.copyOnHighlight).toBe(true);
+		expect(caps.detachable).toBe(true);
+		expect(renderHerdrCapabilityFooter(caps)).toMatch(/highlight→copy/);
 		expect(status.clickableRegions).toContain("agent-state-badge");
 		expect(status.panes[0]?.semanticState).toBe("working");
 		const text = renderStatusText(status);
@@ -310,6 +317,10 @@ step "done"
 		expect(reg.host.endsWith(".hobo")).toBe(false);
 		expect(reg.url.includes("://")).toBe(true);
 		expect(reg.mosh.explored).toBe(true);
+		const surface = describeDevTerminalAttach({ mode: "local" });
+		expect(surface.attach.detachable).toBe(true);
+		expect(surface.compare.tmux).toMatch(/tmux/i);
+		expect(surface.legend).toMatch(/attach/);
 	});
 
 	it("budget is visible; monetization ON by default and never inspects code", () => {

@@ -1,0 +1,11 @@
+◈ agent
+····················
+ agent · mode on · agent · auth · protocols · unattended
+ auth · human-free ● · local · session ●
+ unattended · no-elicit ● · json-first ●
+ safe · isolate→work→promote · handback durable
+ learn · isolate (sandbox purity) → agent work + skills → evidence / gates…
+ mcp · wired · 14 tools · acp · partial
+ try · hobo-code auth login --agent · isolate --json · agent --json
+ full · hobo-code agent --json
+────────────────────

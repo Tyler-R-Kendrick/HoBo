@@ -126,42 +126,48 @@ export const fulfillment = saga("fulfillment")
 `hobo dev` runs this against `@hobo/runtime-local`: Postgres in a container, a local object store, an in-memory queue. The developer drives a checkout; `hobo inspect run <id>` shows the workflow/step timeline; killing and restarting `hobo dev` **replays** the run to the same state (durability proven before any cloud).
 
 ### 2. Map to one provider ("just host it on Azure")
-A provider-specific **`camp()`** object — the *where/how* (no separate config file, [ADR-0011](./adr/01-architecture-core.md#adr-0011)):
+A **Yard** owns provider selection; a **Camp** is provider-neutral until attached (no separate config file, [ADR-0011](./adr/01-architecture-core.md#adr-0011), [yard-first-placement](./adr/yard-first-placement.md)):
 ```ts
 import { camp } from "@hobo/camps";
+import { yard } from "@hobo/yards";
 import { azure } from "@hobo/provider-azure";
+import { pulumi } from "@hobo/iac-pulumi";
 import { postgresRuntime } from "@hobo/runtime-postgres";
 import shop from "./bindle";   // the provider-agnostic Bindle above
 
-export const prod = camp("prod-azure", {
+export const prod = camp("prod", {
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
-  defaultProvider: azure({ region: "eastus" }),   // figure out the best hosting
-}).import(shop);                                   // map the Bindle onto this provider
+});
+export const azureYard = yard("azure", {
+  provider: azure({ region: "eastus" }),   // Yard owns cloud selection
+  iac: pulumi(),
+  camps: [prod],
+});
+// Deploy Bindle → Yard/Camp (Camp does not own the Bindle)
+// e.g. deploy(shop, { yard: azureYard, camp: prod })
 ```
 ```bash
 hobo login            # dev obtains an SVID (OIDC); no cloud keys pasted
-hobo plan --camp prod # dry run
+hobo plan --camp prod # dry run (provider inferred from Yard)
 ```
 `hobo plan` output (illustrative): resolves `db→Azure Flexible Server (managed ✓)`, `images→Blob`, `orders→Service Bus`, `api→Container Apps`, `site→edge`; **estimated cost $X/mo**; all colocated in `eastus` (no cross-cloud egress). Then:
 ```bash
 hobo up --camp prod --strategy canary
 ```
-Under the hood ([Plan 4](./control-plane.md#plan-04), [Plan 11](./data-plane.md#plan-11)): Gateway emits `deployment.Requested` → Planner `deployment.Planned` → ResourceActors provision in DAG order (`db`, `images`, `orders` in parallel → then `api` → then `site`), each via Pulumi Automation API inside a Firecracker Executor holding a **short-lived Azure token brokered from the dev's SVID** — no static secret anywhere. Outputs (conn strings) wire into `api` as secret refs. Canary shifts traffic with a health gate before going 100%. Every step is an event; the dashboard shows the live timeline and the credential audit.
+Under the hood ([Plan 4](./control-plane.md#plan-04), [Plan 11](./data-plane.md#plan-11)): Gateway emits `deployment.Requested` → Planner `deployment.Planned` under the Yard provider → ResourceActors provision in DAG order (`db`, `images`, `orders` in parallel → then `api` → then `site`), each via Pulumi Automation API inside a Firecracker Executor holding a **short-lived Azure token brokered from the dev's SVID** — no static secret anywhere. Outputs (conn strings) wire into `api` as secret refs. Canary shifts traffic with a health gate before going 100%. Every step is an event; the dashboard shows the live timeline and the credential audit.
 
-### 3. Optimize a boundary (split providers, no app edits)
-Marketing wants the storefront on the edge and the team has a Cosmos commitment. Change **only** the `camp()` mapping:
+### 3. Optimize a boundary (mapping overrides under the Yard, no app edits)
+Marketing wants the storefront on the edge and the team has a Cosmos commitment. Change **only** mapping overrides under the Yard provider (not Camp-owned cloud pins):
 ```ts
-export const prod = camp("prod-azure", {
+export const prod = camp("prod", {
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
-  defaultProvider: azure({ region: "eastus" }),
-  tiers: { edge: cloudflare.workers() },                       // storefront → edge
-  bindings: {
-    "snapshop.db": azure.cosmos({ consistency: "session" })    // pin db to Cosmos
-      // app's ctx.bindings.db is still the same typed client
-  },
-}).import(shop);
+  // resourceMappings / defineResource overrides under the Azure Yard —
+  // e.g. pin snapshop.db → azure.cosmos; edge tier → cloudflare.workers
+});
+// Cross-cloud edge split is a second Yard + Junction (or Trail re-home),
+// not camp({ defaultProvider, tiers: { edge: cloudflare } }).
 ```
-The `bindle()` (provider-agnostic) and all of `src/` are untouched. `hobo plan` now shows `site→Cloudflare`, `db→Cosmos`, flags a **cross-cloud egress edge** `site↔api` with its estimated cost ([Plan 12](./security-networking.md#plan-12), [Plan 5](./reliability-observability-cost.md#plan-05)), and connects them over mTLS keyed by workload SVIDs. `hobo up` reconciles: only the changed resources are re-provisioned; the rest are diff-empty no-ops.
+The `bindle()` (provider-agnostic) and all of `src/` are untouched. `hobo plan` now shows `site→Cloudflare` (via the edge Yard/Junction path), `db→Cosmos`, flags a **cross-cloud egress edge** `site↔api` with its estimated cost ([Plan 12](./security-networking.md#plan-12), [Plan 5](./reliability-observability-cost.md#plan-05)), and connects them over mTLS keyed by workload SVIDs. `hobo up` reconciles: only the changed resources are re-provisioned; the rest are diff-empty no-ops. **Camps re-home across Yards via Trails**, not by editing Camp-local provider fields.
 
 ### 4. Provider-specific tuning (the escape hatch)
 Black-Friday prep — tune just the API tier, still cloud-portable:

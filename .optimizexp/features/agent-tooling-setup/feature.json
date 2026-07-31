@@ -19,7 +19,10 @@
   "driver": "cli",
   "surfaces": [
     "bash scripts/setup-agent-tools.sh --help",
+    "bash scripts/setup-agent-tools.sh --common-only --no-gbrain --no-skillopt",
     "bash scripts/agent-mcp-gbrain.sh",
+    "bash scripts/agent-mcp-serena.sh",
+    "bash scripts/agent-mcp-headroom.sh",
     "pnpm run skills:mirror-check"
   ],
   "tags": [

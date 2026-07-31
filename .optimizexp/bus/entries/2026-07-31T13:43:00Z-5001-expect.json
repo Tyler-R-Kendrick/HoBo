@@ -1,0 +1,34 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T13:43:00Z-5001-expect",
+  "runId": "20260731-ax-continue",
+  "persona": "product-agent-operator",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "bash scripts/setup-agent-tools.sh --common-only --no-gbrain --no-skillopt",
+    "interface": "cli"
+  },
+  "context": "Tools already installed; re-run should skip reinstall and stay quiet.",
+  "expectation": {
+    "result": { "exitCode": 0, "durationClass": "seconds" },
+    "actions": ["Re-run common setup with tools present"]
+  },
+  "featureId": "agent-tooling-setup",
+  "scenarioSlug": "agent-tooling-progressive-setup-works-for-product-agent-operator",
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-agent-operator",
+    "surface": "setup common-only re-run",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "After E-1 skip reinstall, expect short quiet run.",
+      "uncertainty": "Done footer names AUTH."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T13:43:00.000Z"
+  }
+}

@@ -175,23 +175,26 @@ elif have curl; then
 else echo "  SKIP: brew, cargo, or curl missing for rtk"; fi
 
 say "Serena (oraios/serena) -> uv tool + shared MCP wrapper"
-SERENA_BIN="$(command -v serena || true)"
-if have uv; then
+if have serena; then
+  echo "  serena present ($(serena --version 2>/dev/null || echo '?')) — skip reinstall/init"
+elif have uv; then
   uv tool install -p 3.13 serena-agent \
-    && echo "  installed ($(${SERENA_BIN:-$HOME/.local/bin/serena} --version 2>/dev/null || echo '?'))" || echo "  FAILED"
+    && echo "  installed ($(command -v serena >/dev/null && serena --version 2>/dev/null || echo '?'))" || echo "  FAILED"
   SERENA_BIN="$(command -v serena || printf '%s/.local/bin/serena' "$HOME")"
   "$SERENA_BIN" init 2>/dev/null && echo "  initialized" || echo "  init skipped / already initialized"
 elif have python3; then
   python3 -m pip install --user uv 2>/dev/null \
     || python3 -m pip install --user --break-system-packages uv
   "$HOME/.local/bin/uv" tool install -p 3.13 serena-agent \
-    && echo "  installed ($(${SERENA_BIN:-$HOME/.local/bin/serena} --version 2>/dev/null || echo '?'))" || echo "  FAILED"
+    && echo "  installed ($(command -v serena >/dev/null && serena --version 2>/dev/null || echo '?'))" || echo "  FAILED"
   SERENA_BIN="$(command -v serena || printf '%s/.local/bin/serena' "$HOME")"
   "$SERENA_BIN" init 2>/dev/null && echo "  initialized" || echo "  init skipped / already initialized"
 else echo "  SKIP: uv/python3 missing"; fi
 
 say "headroom (chopratejas/headroom) -> pip + MCP server"
-if have python3; then
+if have headroom; then
+  echo "  headroom present ($(headroom --version 2>/dev/null || echo '?')) — skip reinstall"
+elif have python3; then
   python3 -m pip install --user "headroom-ai[mcp]" 2>/dev/null \
     || python3 -m pip install --user --break-system-packages "headroom-ai[mcp]" \
     && echo "  installed ($(headroom --version 2>/dev/null || echo '?'))" || echo "  FAILED"
@@ -265,13 +268,13 @@ else echo "  SKIP: npx missing"; fi
 say "Register MCP servers in selected CLIs when present"
 if want_agent claude-code && have claude; then
   claude mcp add serena -- bash scripts/agent-mcp-serena.sh 2>/dev/null && echo "  claude: added serena" || echo "  claude: serena already present / skipped"
-  claude mcp add headroom -- headroom mcp serve 2>/dev/null && echo "  claude: added headroom" || echo "  claude: headroom already present / skipped"
+  claude mcp add headroom -- bash scripts/agent-mcp-headroom.sh 2>/dev/null && echo "  claude: added headroom" || echo "  claude: headroom already present / skipped"
   [ "$WANT_GBRAIN" = "1" ] && { claude mcp add gbrain -- bash scripts/agent-mcp-gbrain.sh 2>/dev/null && echo "  claude: added gbrain" || echo "  claude: gbrain already present / skipped"; }
 fi
 if want_agent codex; then
   if have codex; then
     codex mcp add serena -- bash scripts/agent-mcp-serena.sh 2>/dev/null && echo "  codex: added serena" || echo "  codex: serena skipped"
-    codex mcp add headroom -- headroom mcp serve 2>/dev/null && echo "  codex: added headroom" || echo "  codex: skipped"
+    codex mcp add headroom -- bash scripts/agent-mcp-headroom.sh 2>/dev/null && echo "  codex: added headroom" || echo "  codex: skipped"
     [ "$WANT_GBRAIN" = "1" ] && { codex mcp add gbrain -- bash scripts/agent-mcp-gbrain.sh 2>/dev/null && echo "  codex: added gbrain" || echo "  codex: skipped"; }
   else
     echo "  Codex: CLI not found — use .codex/config.toml as the progressive setup reference."

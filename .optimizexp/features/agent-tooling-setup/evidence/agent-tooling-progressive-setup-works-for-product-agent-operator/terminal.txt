@@ -1,11 +1,11 @@
 # OptimizeXP CLI evidence
-command: bash scripts/setup-agent-tools.sh --help && echo --- && bash scripts/agent-mcp-gbrain.sh; echo gbrain_exit:$?; echo ---; pnpm run skills:mirror-check
+command: bash scripts/setup-agent-tools.sh --help && echo --- && bash scripts/setup-agent-tools.sh --common-only --no-gbrain --no-skillopt 2>&1 | tail -20 && echo --- && bash scripts/agent-mcp-gbrain.sh; echo gbrain_exit:$?
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 0
 spawnStatus: 0
-durationMs: 485
+durationMs: 1542
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T13:32:27.083Z
+capturedAt: 2026-07-31T13:43:04.617Z
 
 ## stdout
 Usage: bash scripts/setup-agent-tools.sh [options]
@@ -28,13 +28,28 @@ Keys / egress: AUTH.md
 Narrative:     docs/agent-tooling.md
 At-a-glance:   AGENTS.md
 ---
-gbrain_exit:1
+  serena present (Serena 1.6.1) — skip reinstall/init
+
+[1m== headroom (chopratejas/headroom) -> pip + MCP server[0m
+  headroom present (headroom, version 0.33.0) — skip reinstall
+
+[1m== SkillOpt — skipped (--no-skillopt)[0m
+
+[1m== gbrain — skipped (--no-gbrain)[0m
+
+[1m== Shared MCP config[0m
+  Claude Code: ./.mcp.json (auto-discovered).
+  Cursor:      ./.cursor/mcp.json.
+  Codex:       copy ./.codex/config.toml into ~/.codex/config.toml or use codex mcp add.
+
+[1m== Agent-specific setup skipped (--common-only)[0m
+  Next: rerun with --agent claude-code|cursor|codex|copilot when you know which client to configure.
+
+[1m== Done[0m
+Ensure these are on PATH: /home/codex/.local/bin (rtk/headroom/uv/serena/skillopt), /home/codex/.bun/bin (gbrain).
+Keys / egress: AUTH.md  |  narrative: docs/agent-tooling.md  |  table: AGENTS.md
 ---
-
-> hobo-design@ skills:mirror-check /home/codex/.herdr/worktrees/hobo/hobo-devx
-> node --import tsx scripts/check-skill-mirrors.ts
-
-skill mirrors OK: 60 skills checked (required: draft, repo, sdlc).
+gbrain_exit:1
 
 
 ## stderr

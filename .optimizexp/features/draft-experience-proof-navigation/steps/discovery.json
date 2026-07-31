@@ -1,18 +1,18 @@
 {
   "featureId": "draft-experience-proof-navigation",
-  "seed": "A platform engineer or agent locates experience proofs under src/draft/exp-proofs/ for HoBo and understands classification (ux/dx/ax/…) without guessing.",
-  "scannedAt": "2026-07-31T03:31:24.622Z",
+  "seed": "A platform engineer or agent locates experience proofs under src/draft/exp-proofs/ for HoBo and understands classification (ux/dx/ax/\u2026) without guessing.",
+  "scannedAt": "2026-07-31T14:20:00.000Z",
   "bindings": [
     {
-      "kind": "package-script",
-      "id": "script:gate:s1",
-      "scriptName": "gate:s1",
-      "command": "pnpm run gate:s1",
+      "kind": "shell",
+      "id": "shell:exp-proofs-classification",
+      "command": "bash -lc 'test -f src/draft/exp-proofs/_classification.md && ls src/draft/exp-proofs && head -n 40 src/draft/exp-proofs/_classification.md'",
       "confidence": "high",
-      "reason": "package.json scripts[\"gate:s1\"] exists; mentioned in feature/seed",
+      "reason": "seed targets exp-proofs navigation; _classification.md is the type map (optimizexp ax 20260731)",
       "implementsSteps": [
         "I exercise the surface as this persona would",
-        "I observe the failure as this persona"
+        "I observe the failure as this persona",
+        "I am on the critical path described by the feature seed"
       ]
     },
     {

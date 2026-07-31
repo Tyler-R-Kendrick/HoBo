@@ -10,9 +10,13 @@ import type { OptimizexpWorld } from "./world.ts";
 
 /** Discovery snapshot — see discovery.json for full report. */
 export const DISCOVERY_PRIMARY = {
-  command: "pnpm run gate:s1" as string | null,
+  command:
+    "bash -lc 'test -f src/draft/exp-proofs/_classification.md && ls src/draft/exp-proofs && head -n 40 src/draft/exp-proofs/_classification.md'" as
+      | string
+      | null,
   confidence: "high",
-  reason: "package.json scripts[\"gate:s1\"] exists; mentioned in feature/seed",
+  reason:
+    "seed: locate exp-proofs + classification (dx/ux/cx/ax/api); not gate:s1 technical stage proof",
 };
 
 export const IMPLEMENTATION_STATUS = {

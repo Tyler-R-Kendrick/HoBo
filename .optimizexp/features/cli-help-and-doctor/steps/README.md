@@ -10,8 +10,8 @@
 
 ## Primary binding
 
-- **package-script** `pnpm run eval:agent:live` (high)
-- package.json scripts["eval:agent:live"] exists; mentioned in feature/seed
+- **package-script** `pnpm run doctor` (high)
+- seed wants help/doctor without live cloud; doctor is offline + agent-tooling (not `eval:agent:live`)
 
 ## Run
 

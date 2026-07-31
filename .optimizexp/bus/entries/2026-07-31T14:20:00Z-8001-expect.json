@@ -1,0 +1,30 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T14:20:00Z-8001-expect",
+  "runId": "20260731-ax-exp-nav",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "exp-proofs classification head",
+    "interface": "cli"
+  },
+  "expectation": { "result": { "exitCode": 0 } },
+  "featureId": "draft-experience-proof-navigation",
+  "scenarioSlug": "draft-experience-proofs-are-navigable-works-for-product-coding-agent",
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-coding-agent",
+    "surface": "exp-proofs classification",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "One offline command.",
+      "uncertainty": "Type folders + classification rules visible."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T14:20:00.000Z"
+  }
+}

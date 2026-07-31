@@ -66,8 +66,12 @@ if (existsSync("node_modules")) {
 
 // Agent experience (AX): zero-key setup surface + fail-closed MCP wiring.
 // Missing optional binaries are warnings (common on cold clones before setup).
-if (existsSync("AUTH.md")) ok("AUTH.md present (keys/egress)");
-else fail("AUTH.md missing — keys/egress standing surface for agents");
+if (existsSync("AUTH.md"))
+	ok("AUTH.md present (WorkOS auth.md protocol + residual local tooling keys)");
+else
+	fail(
+		"AUTH.md missing — WorkOS auth.md standing auth surface for agents (https://workos.com/auth-md)",
+	);
 if (existsSync("scripts/setup-agent-tools.sh")) {
 	const help = spawnSync("bash", ["scripts/setup-agent-tools.sh", "--help"], {
 		encoding: "utf8",

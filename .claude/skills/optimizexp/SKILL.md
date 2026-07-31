@@ -87,7 +87,7 @@ Full grammar: `references/flags.md`.
 |---|---|
 | **UX** | `references/ux/design-systems.md`, `references/ux/design-md.md` |
 | **DX** | `references/dx/*.md` (build, lint, test, tools, hierarchy, cache, git-hooks) |
-| **AX** | `references/ax/*.md` (mcp, skills, agents-md, agents-config, hooks-plugins, auth) |
+| **AX** | Start at `references/ax/index.md`, then only needed sections: **specs**, **mcp**, **agent-skills**, **harness-clis**, **model-routing**, **token-optimization**, **agents-md**, **agents-config**, **hooks-plugins**, **auth** |
 
 ### Workflows
 

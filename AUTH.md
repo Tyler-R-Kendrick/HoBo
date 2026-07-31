@@ -1,8 +1,24 @@
-# AUTH — keys, egress, and agent credentials
+# AUTH.md
 
-Standing auth surface for humans and coding agents. Prefer this file for “what needs a key?”; full tooling narrative lives in [`docs/agent-tooling.md`](docs/agent-tooling.md). Copy [`.env.example`](.env.example) to `.env` (gitignored) only for tools you enable.
+**auth.md** is an [open protocol authored by WorkOS](https://workos.com/auth-md) for **agent
+registration** with applications (discover flows, scopes, and how agents obtain scoped user
+credentials). It is not a WorkOS product lock-in and not a HoBo-only invention — see the
+[protocol / reference implementation](https://github.com/workos/auth.md).
 
-## Default: zero keys
+This repository’s root `AUTH.md` currently documents **residual local coding-agent tooling**
+keys and egress for humans and agents working **on the HoBo design/codebase** (gbrain, SkillOpt
+backends, zero-key setup). That residual content does **not** redefine the WorkOS protocol.
+Product agent-auth design for HoBo as a runtime lives in
+[`docs/design/ai-native-agent-auth.md`](docs/design/ai-native-agent-auth.md) and the `hobo:auth`
+ADR family; when public origins ship agent registration, they should publish auth.md per the
+WorkOS format.
+
+Full tooling narrative: [`docs/agent-tooling.md`](docs/agent-tooling.md). Copy
+[`.env.example`](.env.example) to `.env` (gitignored) only for tools you enable.
+
+## Residual: local coding-agent keys & egress
+
+### Default: zero keys
 
 These need **no API keys** and stay local-first:
 
@@ -21,7 +37,7 @@ bash scripts/setup-agent-tools.sh --common-only --no-gbrain
 pnpm run doctor                                          # includes agent-tooling checks
 ```
 
-## Tools that need keys (opt-in)
+### Tools that need keys (opt-in)
 
 | Tool | Env vars | Data egress | Cost |
 |---|---|---|---|
@@ -31,7 +47,7 @@ pnpm run doctor                                          # includes agent-toolin
 
 gbrain MCP is launched via [`scripts/agent-mcp-gbrain.sh`](scripts/agent-mcp-gbrain.sh), which **fails closed** when the binary or an embedding key is missing (prints remediation here). The binary itself stays **inert** until `gbrain init` **and** a key is set. Do not point it at secrets or content you will not send to a third party.
 
-## Agent rules
+### Agent rules (local residual)
 
 1. Never commit `.env`, tokens, or private keys.
 2. Never paste secret values into issues, bus entries, or skill files — reference `file:line` / env var **names** only.
@@ -39,7 +55,7 @@ gbrain MCP is launched via [`scripts/agent-mcp-gbrain.sh`](scripts/agent-mcp-gbr
 4. Decline optional MCP servers (gbrain) when you do not want egress.
 5. OptimizeXP bus transcripts under `.optimizexp/` must redact secret-shaped strings.
 
-## Per-agent config locations
+### Per-agent config locations (local residual)
 
 | Host | MCP | Skills |
 |---|---|---|
@@ -49,6 +65,8 @@ gbrain MCP is launched via [`scripts/agent-mcp-gbrain.sh`](scripts/agent-mcp-gbr
 
 ## Related
 
+- WorkOS auth.md protocol: https://workos.com/auth-md · https://github.com/workos/auth.md
 - [`.env.example`](.env.example)
 - [`docs/agent-tooling.md`](docs/agent-tooling.md) § Keys & risks
+- Product agent-auth design: [`docs/design/ai-native-agent-auth.md`](docs/design/ai-native-agent-auth.md)
 - OptimizeXP AX auth reference: `.agents/skills/optimizexp/references/ax/auth.md`

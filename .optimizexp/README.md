@@ -16,6 +16,9 @@ Skill (progressive disclosure + harness + host workflows):
 - `.agents/skills/optimizexp/` (Cursor / Codex / shared)
 - `.claude/skills/optimizexp/` (Claude Code mirror — byte-identical)
 
+**AX (`--ax`) sectioned refs** (load `references/ax/index.md` first): specs · MCP · agent-skills ·
+harness-clis · model-routing · token-optimization · agents-md · agents-config · hooks-plugins · auth.
+
 ## Quick start
 
 ```text

@@ -34,12 +34,20 @@ Progressive-disclosure bundle for the optimizexp skill. Route by need; do not lo
 
 ## AX (agent experience)
 
-- [ax/mcp.md](ax/mcp.md) — MCP servers, wiring, fail-closed posture
-- [ax/agent-skills.md](ax/agent-skills.md) — skills, progressive disclosure, mirrors
-- [ax/agents-md.md](ax/agents-md.md) — AGENTS.md / CLAUDE.md instruction surfaces
-- [ax/agents-config.md](ax/agents-config.md) — specific agents, subagents, CLIs
-- [ax/hooks-plugins.md](ax/hooks-plugins.md) — hooks, plugins, session start behavior
-- [ax/auth.md](ax/auth.md) — AUTH.md, keys, egress risk, secret hygiene
+Load [**ax/index.md**](ax/index.md) first (section map + load order), then only the surfaces under review:
+
+| Section | File |
+|---|---|
+| Specs & standing contracts | [ax/specs.md](ax/specs.md) — AGENTS, WorkOS AUTH.md/auth.md, DESIGN.md, llms.txt, env examples |
+| MCP | [ax/mcp.md](ax/mcp.md) — servers, shared fail-closed launchers |
+| Agent skills | [ax/agent-skills.md](ax/agent-skills.md) — progressive disclosure, mirrors |
+| Harness CLIs | [ax/harness-clis.md](ax/harness-clis.md) — setup, doctor, agent:check, host CLIs, sdlc --finish |
+| Model routing | [ax/model-routing.md](ax/model-routing.md) — model/backend choice, cost, live vs local |
+| Token optimization | [ax/token-optimization.md](ax/token-optimization.md) — caveman, headroom, RTK, skill size |
+| Instruction files | [ax/agents-md.md](ax/agents-md.md) — AGENTS.md / CLAUDE.md structure |
+| Host agents & config | [ax/agents-config.md](ax/agents-config.md) — Claude/Cursor/Codex/Grok, subagents |
+| Hooks & plugins | [ax/hooks-plugins.md](ax/hooks-plugins.md) — SessionStart, Superpowers, always-on rules |
+| Auth (WorkOS auth.md) | [ax/auth.md](ax/auth.md) — agent registration protocol + residual local tooling keys |
 
 ## Cross-agent (hosts without native workflows)
 

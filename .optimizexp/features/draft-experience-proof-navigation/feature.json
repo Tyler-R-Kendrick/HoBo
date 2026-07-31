@@ -24,7 +24,7 @@
   ],
   "driver": "cli",
   "surfaces": [
-    "pnpm run gate:s1"
+    "bash -lc 'test -f src/draft/exp-proofs/_classification.md && ls src/draft/exp-proofs && head -n 40 src/draft/exp-proofs/_classification.md'"
   ],
   "tags": [
     "@optimizexp",
@@ -40,5 +40,5 @@
     "tests": "test/draft-experience-proof-navigation.bindings.test.ts"
   },
   "implementationStatus": "wired",
-  "primaryCommand": "pnpm run gate:s1"
+  "primaryCommand": "bash -lc 'test -f src/draft/exp-proofs/_classification.md && ls src/draft/exp-proofs && head -n 40 src/draft/exp-proofs/_classification.md'"
 }

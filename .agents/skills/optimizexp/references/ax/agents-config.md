@@ -1,12 +1,12 @@
 ---
 type: Agent Skill Reference
-title: "OptimizeXP AX — agents and CLIs"
-description: "Configuring and using coding agents, subagents, and their CLIs consistently."
-tags: [hobo, optimizexp, ax, agents, cli]
-timestamp: 2026-07-30T00:00:00Z
+title: "OptimizeXP AX — host agents and config"
+description: "Configuring coding agents, subagents, and host-specific CLIs consistently."
+tags: [hobo, optimizexp, ax, agents, cli, subagents]
+timestamp: 2026-07-31T00:00:00Z
 ---
 
-# AX — specific agents & CLIs
+# AX — host agents & config
 
 ## Host matrix (HoBo)
 
@@ -18,26 +18,42 @@ timestamp: 2026-07-30T00:00:00Z
 | Grok Build | skill discovery + workflows | MCP via product | workflows | subagent tool |
 | Copilot CLI | limited | — | marketplace | — |
 
+CLI ergonomics and repo scripts: [harness-clis.md](harness-clis.md).  
+MCP detail: [mcp.md](mcp.md).
+
 ## Subagents (Claude Code backend for sdlc)
 
-- `implementer` — one issue, worktree, TDD, handback `.sdlc/report.json`
-- `reviewer` — read-only re-run gates
+| Agent | Role |
+|---|---|
+| `implementer` | One issue, worktree, TDD, incremental commits, `.sdlc/report.json` |
+| `reviewer` | Read-only re-run gates + acceptance checklist |
+
+Same one-shot issue contract for cloud coding agents (handback `sdlc-report` fence).
 
 ## CLI ergonomics to score
 
-- Help text discoverable (`--help`, consistent verbs)
-- Non-zero exit on failure; machine-readable modes when claimed
-- Auth errors distinguish "not logged in" vs "forbidden"
-- Setup script documents exact install commands per host
+- Help text discoverable (`--help`, consistent verbs)  
+- Non-zero exit on failure; machine-readable modes when claimed  
+- Auth errors distinguish “not logged in” vs “forbidden”  
+- Setup script documents exact install commands per host  
+- Codex global paste documented; project `.codex/config.toml` is the template  
 
 ## Friction smells
 
-- Per-machine plugin install required with no script path
-- Agent-specific features undocumented for other hosts
-- Subagent prompts omit hard rules (secrets, no shared files)
+- Per-machine plugin install with no script path  
+- Agent-specific features undocumented for other hosts  
+- Subagent prompts omit hard rules (secrets, no shared files, staged agent:check)  
+- Opening the repo auto-starts keyful MCP without decline guidance  
 
 ## Optimization moves
 
-- Shared setup: `scripts/setup-agent-tools.sh --agent <name>`
-- Same one-shot issue contract across backends (`sdlc` dispatch)
-- Document resume/reconcile paths
+1. Shared setup: `scripts/setup-agent-tools.sh --agent <name> --no-gbrain`  
+2. Shared MCP launchers referenced from every host config  
+3. Document resume/reconcile (sdlc dispatch)  
+4. Superpowers: note skills load at **session start**  
+5. Keep host matrix in AGENTS + this file aligned  
+
+## Related
+
+- [hooks-plugins.md](hooks-plugins.md)  
+- [model-routing.md](model-routing.md) — cloud vs local implementers  

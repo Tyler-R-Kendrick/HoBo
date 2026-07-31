@@ -1,6 +1,6 @@
 ---
 name: sdlc
-description: Coordinate iterative feature/capability development end to end in this repo — brainstorm with adversarial and rubber-duck hardening, plan through the draft-proof cascade, capture one-shot issues, dispatch subagents with incremental checkins, manage multi-phase work as GitHub stacked PRs (gh stack), then bottom-up rubber-duck/adversarial review, comment resolution, status-check repair, and squash-merge of every opened PR. Use when the user wants to develop a feature through the full loop, says "sdlc", "run the loop", "stacked PRs", or "take this from idea to merge".
+description: Coordinate iterative feature/capability development end to end in this repo — brainstorm with adversarial and rubber-duck hardening, plan through the draft-proof cascade, capture one-shot issues, dispatch subagents with incremental checkins, manage multi-phase work as GitHub stacked PRs (gh stack), then bottom-up rubber-duck/adversarial review, comment resolution, status-check repair, and squash-merge of every opened PR. Supports --finish to land the current session (commit, rebase on latest main, resolve conflicts, open/update PRs, push, bottom-up closeout, squash-merge all session PRs). Use when the user wants to develop a feature through the full loop, says "sdlc", "run the loop", "stacked PRs", "take this from idea to merge", "sdlc --finish", or "finish the session".
 ---
 
 # SDLC coordinator
@@ -13,6 +13,24 @@ Implementation work is delegated to **subagents** (or cloud coding agents) whene
 Subagents own exactly one issue/layer each, commit incrementally, and never touch Linear or shared
 coordinator files. For multi-step / multi-phase / multi-task work, the parent opens a **stack of
 PRs** with GitHub's official `gh stack` extension — not one giant PR.
+
+## Flags
+
+| Form | Meaning |
+|---|---|
+| **(none)** / bare `sdlc` | Full loop: reconcile state → brainstorm (or resume) → plan → issues → dispatch → closeout |
+| **`--finish`** / `finish` | **Land the current working session** — no new product brainstorm unless required to ship. Commit remaining work, fetch/rebase on latest trunk, resolve conflicts, open/update PRs, push, bottom-up review, **squash-merge every PR from this session**. Full protocol: `references/finish.md` |
+
+`--finish` is **explicit authorization** to push, open/update PRs, and squash-merge session work
+(billing-red CI does not block merge). Safety still applies: no secrets, no force-push, no deleting
+user work, fix real CI failures before merge.
+
+## First moves
+
+1. Parse flags. If **`--finish`** (or user clearly wants session land / “commit push PR merge”
+   under sdlc): load `references/finish.md` and **run that protocol to completion**. Skip opening
+   new brainstorm/plan/dispatch unless finish itself needs a tiny state/docs follow-up PR.
+2. Otherwise: durable state first (below), then phases 1–6 as usual.
 
 ## Install / probe (once per machine or session)
 
@@ -39,6 +57,10 @@ append to `docs/plans/dispatch-log.md`. Record stack id / branch chain / PR numb
 
 ## Phases (details in references/)
 
+0. **`--finish` (session land)** — `references/finish.md`. When the flag is present, run the
+   finish protocol instead of starting a new initiative: commit → latest trunk → conflicts →
+   PR(s) → bottom-up closeout → squash-merge **all session PRs**. Then stop (or only open a
+   tiny state/docs follow-up if still needed).
 1. **Brainstorm & harden** — `references/brainstorm.md`. Always start here for new
    features/capabilities. Ideas must survive adversarial + rubber-duck passes before planning.
 2. **Plan** — `references/planning.md`. Enter plan mode; map the work onto the draft cascade
@@ -55,10 +77,11 @@ append to `docs/plans/dispatch-log.md`. Record stack id / branch chain / PR numb
 5. **Loops & cascade** — `references/loops-and-gates.md` + `references/cascade.md`. Red/green
    inner loop, narrow-then-wide outer loop, and machine-checked upward/downward requirement
    cascades.
-6. **Close the stack (mandatory)** — `references/stacked-prs.md` § Bottom-up closeout. When
-   implementation is done, the **parent** reviews and merges **each PR from the bottom up**.
-   Do not mark the initiative complete until every opened PR is reviewed, repaired (when
-   repairable), and **squash-merged**. Billing/budget-only CI failures do **not** block merge.
+6. **Close the stack (mandatory)** — `references/stacked-prs.md` § Bottom-up closeout (same
+   merge steps as `--finish`, scoped to the initiative stack). When implementation is done, the
+   **parent** reviews and merges **each PR from the bottom up**. Do not mark the initiative
+   complete until every opened PR is reviewed, repaired (when repairable), and **squash-merged**.
+   Billing/budget-only CI failures do **not** block merge.
 
 ## Role split
 
@@ -184,8 +207,17 @@ is honest against its final base.
 
 ## Reference routing
 
+- **Session land / `--finish`:** `references/finish.md`
 - Stack create/sync/merge + bottom-up closeout: `references/stacked-prs.md`
 - Dispatch backends, handback, Done rule: `references/dispatch.md`
 - Brainstorm / plan / Linear / loops / cascade: remaining files under `references/`
 - Raw `gh stack` CLI for agents: companion skill `gh-stack`
 - Repo git/PR hygiene: `repo` skill → `references/git-pr.md`
+
+## Invocation examples
+
+```text
+/sdlc                         # full loop (or resume sdlc-state)
+/sdlc --finish                # commit, rebase, PR, squash-merge all session work
+/sdlc finish                  # same as --finish
+```

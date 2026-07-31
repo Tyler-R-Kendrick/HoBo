@@ -18,19 +18,19 @@ async function runJson(argv: readonly string[]): Promise<JsonValue> {
 	} as JsonValue;
 }
 
-/** Inspect hive/station/agent state (read-only). */
+/** Inspect station / compute status (read-only). */
 export const hoboHiveStatusTool = defineTool({
-	name: "hobo_hive_status",
+	name: "hobo_compute_status",
 	description:
-		"Inspect the hobo-code hive: station presence, agent panes and their semantic state, nodes, and rooms. Read-only.",
+		"Inspect hobo-code status: station presence, agent panes, and multi-node compute readiness. Read-only.",
 	run: async () => runJson(["status"]),
 });
 
-/** Dispatch a coding task into the hive. */
+/** Dispatch a coding task onto multi-node compute. */
 export const hoboDispatchTool = defineTool({
 	name: "hobo_dispatch",
 	description:
-		"Dispatch a coding task prompt through the hobo-code hive (station-scoped, isolation-checked). Returns the dispatch receipt.",
+		"Dispatch a coding task prompt through hobo-code multi-node compute (station-scoped, isolation-checked). Returns the dispatch receipt.",
 	input: v.object({
 		prompt: v.string(),
 	}),

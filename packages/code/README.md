@@ -1,91 +1,217 @@
 # `@hobo/code` · binary **`hobo-code`**
 
-Opinionated HoBo-native coding harness and distributed compute.
+**App-building agent / helper** for HoBo — not a control-plane management CLI.
 
-CLI name is **`hobo-code`** (dash is fine). There is **no** `hobo code` verb and **no** nested `buzz` verb.
+CLI name is **`hobo-code`** (dash is fine). There is **no** `hobo code` nested verb.
+
+## Quick start (Copilot-CLI-like)
+
+```bash
+# 0) Optional map if you know Claude Code more than git
+hobo-code guide
+
+# 1) Login to a Station
+hobo-code auth login
+# Local Station is auto-resolved (station:local / only local station; auto-init).
+
+# Remote Station (tenant + domain required)
+hobo-code auth login --tenant acme --domain stations.acme.example
+# → one-time device code + verification URL
+hobo-code auth login --complete ABCD-EF
+
+hobo-code auth status
+hobo-code auth whoami
+hobo-code auth logout
+
+# Models / BYOK (open models — secret values never printed)
+hobo-code models
+export HOBO_CODE_MODEL=openai/gpt-4.1
+# export OPENAI_API_KEY=…  # BYOK; hobo-code models only shows the env *name*
+
+# Interactive brand moment (GHCP-style): bare TTY
+# hobo-code
+
+# 2) Build
+hobo-code "add a settings page to the bindle"
+hobo-code scaffold --name demo
+hobo-code status                 # Herdr mux + Grok Build footers
+hobo-code tasks                  # background task board
+hobo-code session
+hobo-code attach                 # tmux-like reattach + named endpoint
+hobo-code attach --mode overlay  # Tailscale/overlay host
+hobo-code isolate my-run
+hobo-code promote my-run
+```
 
 ## Usage
 
 ```bash
-# Default verb is dispatch — prompt is the args
-hobo-code "refine the openui bindle"
-hobo-code dispatch "refine the openui bindle"
-
+hobo-code "refine the openui bindle"   # default = dispatch
+hobo-code dispatch "…"
+hobo-code auth login
+hobo-code auth status
 hobo-code status
 hobo-code session --json
 hobo-code scaffold --name demo
 hobo-code isolate --json
 hobo-code promote --run <id>
-hobo-code budget
-hobo-code remote
-hobo-code platform --json
-hobo-code env --json          # hermetic shell + durable layout (nix/devenv optional)
-hobo-code join tyler
-hobo-code agent worker-codex
-hobo-code nodes
-hobo-code rooms
+hobo-code env --json
 hobo-code help
+hobo-code auth --help                  # verb-scoped help
+hobo-code help --dense                 # power-user glyph strip (opt-in)
 ```
 
-## Flat verbs
+## Verbs (app-building)
 
 | Verb | Role |
 |---|---|
-| **dispatch** (default) | Dispatch work into the hive (pipeline chrome) |
-| status | Multiplexer box: folded panes + focus ▸ + chip |
-| session | Isolation session + handback folded into mux title |
-| scaffold | OpenUI+Astryx template + first paint + step rail |
-| isolate / promote | Mediated isolation + gate checklist promote |
-| budget / remote / platform | Spend meter · reach · flag LED strip |
-| **env** | Hermetic shell detection (devenv/nix/direnv) + durable vs sandbox layout |
-| join / agent / nodes / rooms | Hive participants + load bars |
+| **dispatch** (default) | App-building agent dispatch |
+| **auth** | Station login / status / logout (local auto, remote tenant+domain) |
+| **models** | Active model + BYOK env presence (open models; no secret values) |
+| status | Session / agent multiplexer chrome |
+| session | Isolation session + handback |
+| **attach** | Dev-terminal attach (tmux reattach · mosh? · Tailscale overlay named endpoint) |
+| **tasks** | Background task board (Grok Build–shaped: click · tasks · workflows) |
+| **guide** | Claude Code → hobo-code map (plain English for non-dev app builders) |
+| **cost** | Budget, $0 free/local path, savings scoreboard, cheapest-capable routing |
+| **harness** | Pi/Flue dual surface, skills, Eve subagents, self-improve, brain notes |
+| **edit** | Open [neo]vim in managed harness pane (tmux/stdio bridge + hobo-code.nvim) |
+| **config** | Env/flags inventory by stack (setup critique; secrets presence-only) |
+| **agent** | Agent-native readiness: human-free auth, MCP/ACP, unattended/no-elicitation |
+| scaffold | OpenUI/Astryx scaffold template |
+| isolate / promote | Built-in mediated sandbox + gated promote |
+| env | Optional hermetic shell + durable layout |
+| help | Plain help (or `--dense` glyph idioms) |
 
-### Hermetic / durable (optional Nix · devenv)
+**GHCP-adjacent differentiators:** animated title on bare TTY, enterprise-style Station auth, BYOK/open models via `models`, mediated sandbox (`isolate`/`session`).
 
-`hobo-code` supports **optional** hermetic developer shells without making Nix monorepo IaC:
+**Herdr multiplexer differentiators** (vs single-stream agent CLIs):
 
-| Concern | Behavior |
+| Capability | Where |
 |---|---|
-| **Detect** | `devenv.nix` / `devenv.yaml` / `flake.nix` / `shell.nix` / `.envrc` + process env (`IN_NIX_SHELL`, `DEVENV_ROOT`, `DIRENV_DIR`) |
-| **Activate** | You enter the shell (`devenv shell`, `direnv allow`, `nix develop`) — hobo-code does **not** require or spawn Nix |
-| **Durable vs sandbox** | Ephemeral: `$HOBO_HOME/sandboxes/<runId>`; durable learning: `$HOBO_HOME/durable/code/` (never inside the sandbox root) |
-| **HOBO_HOME** | Prefer a writable path **outside** the Nix store (e.g. `$XDG_STATE_HOME/hobo` or project `.hobo-home`) |
+| Multi-pane agent mux + semantic state glyphs | `hobo-code status` / `session` |
+| Detachable session model | `session` + durable handback |
+| Highlight-to-copy | status footer `highlight→copy`; JSON `copyOnHighlight` / pane `highlightBuffer` |
+| Session persistence | `$HOBO_HOME` durable root + `session-end.json` (`session --json` → `persistence`) |
+| Capability legend | status human footer · `status --help` · `session --help` |
 
-`hobo-code env --json` and `help` / `platform` / `isolate` data payloads include a `hermetic` report. Fidelity labels: `host-default` · `hermetic-declared` · `hermetic-active`. Human chrome always shows `durable · …` so sandbox purity is scannable without scraping JSON.
+Dense pane chrome stays quiet; discoverability lives in the status footer, verb help, and `--json` (`herdr` / `capabilities`).
 
-Optional direnv pairing (still never required for HoBo monorepo IaC):
+**Remote dev terminal (tmux · mosh · Tailscale mental model):**
+
+| Preferred tool | hobo-code analogue |
+|---|---|
+| tmux attach | `hobo-code attach` + durable session under `$HOBO_HOME` |
+| cmux / multi-pane | `status` / `session` Herdr panes |
+| mosh | optional; `attach --json` → `registration.mosh` when lossy |
+| Tailscale | `attach --mode overlay` named endpoint (ADR-0130) |
+
+`attach` is a **dev-terminal** surface, not a control-plane admin verb. Local mode works offline without Tailscale.
+
+**Grok Build–shaped TUI (AI-native expectations):**
+
+| Grok Build | hobo-code |
+|---|---|
+| Fullscreen mouse TUI / click targets | `status`/`tasks` JSON `clickableRegions` + task-row story |
+| Tasks pane / still-running | `hobo-code tasks` board + working panes |
+| Workflows + multi-agent progress | Local World + `planDurableWorkflowRun` on `tasks --json` |
+| Headless `-p` | `--json` envelopes |
+| Subagents | Multi-pane status/session + Eve surface |
+
+Honest parity language only — hobo-code is HoBo app-building, not a Grok Build reimplementation.
+
+**Coming from Claude Code (app builder, not a traditional developer)?**
 
 ```bash
-# in project .envrc (after devenv/flake setup)
-use devenv   # or: use flake
-export HOBO_HOME="${HOBO_HOME:-$XDG_STATE_HOME/hobo}"
-# then: direnv allow && hobo-code env --json
+hobo-code guide          # plain-English feature map
+hobo-code guide --json   # structured map + residual gaps
 ```
 
-Human output uses structured panels: one-scan happy paths are 3 lines (title · body · rule); multi-row keeps soft band. Status paints a Herdr-style box (quiet + busy ≤4 panes fold to 4 lines); OpenUI drafts ship a dark branded shell + step rail (`1 · generate → 2 · edit → 3 · lock`) with `data-testid="primary"`.
+Maps workflows, remote connect, channels, routines, reviews, Chrome browser, deep-research, fork, btw → hobo-code verbs with honest **supported / partial / residual** status.
 
-**Default / empty TUI** is a console loading screen: HoBo logo + **Bo idle converted from the real sprite sheet** (`assets/bo-idle.png` → half-block TUI via `sprite-tui.ts`). Rest · bounce · blink; fixed canvas so frame advances never reflow.
+**Coming from Cursor (Agent / Composer / Background Agent / BugBot)?**
 
-Regenerate after sprite edits: `pnpm --filter @hobo/code run gen:bo-idle-tui`.
-
-```text
-█  █ ▄▀▀▄ ▄▀▀▄ ▄▀▀▄     
-… logo + half-block Bo frames from sprite …
-  hobo-code·idle·★
-
-┌───────────────┐
-│ hobo-code·○2✓1│
-│ ○co·✓sn·○hv   │
-└───────────────┘
-
-✓ ★
- ship th…·st
-────────────
-
-hobo-code★●hemrd
-★d·st·se·sc·i·pr
-b·re·pl·ev·n·rm·j·a
+```bash
+hobo-code guide --cursor
+hobo-code guide --cursor --json
 ```
+
+Maps Agent mode, Composer, Background Agent, BugBot, MCP, Rules, Hooks, multi-model, headless CLI → isolate/promote/tasks/models with honest residual (Tab UI, BugBot SaaS, Slack Automations).
+
+**Cost-conscious / $0 open-source path:**
+
+```bash
+export HOBO_CODE_MONETIZATION=0
+export HOBO_CODE_MODEL=ollama/qwen2.5-coder:7b   # or OPENAI_BASE_URL=http://127.0.0.1:…
+export HOBO_CODE_BUDGET_USD=0                    # hard cap
+export HOBO_CODE_ROUTING=cheapest-capable
+hobo-code cost                                   # spend · savings · free/local recipes
+hobo-code models                                 # active model + free-local hints
+```
+
+Stack that multiplies savings (repo agent tooling): **RTK** (shell noise) · **headroom** (context-in) · **caveman** (agent-out) · **Serena** (semantic retrieval) · **ponytail** (less churn).
+
+**Pi / Flue harness engineers (self-improving agents, skills, brains):**
+
+```bash
+hobo-code harness              # dual surface inventory
+hobo-code harness --json       # skills · Eve · self-improve · brain
+# Interactive Pi path shares instructions with:
+#   flue run hobo-code --input '{"message":"…"}'
+```
+
+**CLI-native / vim·neovim (managed pane):**
+
+```bash
+hobo-code edit src/cli.ts                    # prefer nvim; tmux split when available
+hobo-code edit --bridge tmux-send --print-cmd path | sh
+hobo-code edit --json path                   # bridge contract for plugins
+# Neovim extension: packages/code/editor/hobo-code.nvim
+#   :HoboOpen  :HoboStatus  :HoboIsolation
+```
+
+**Setup / configuration inventory (persona stacks):**
+
+```bash
+hobo-code config                         # multi-stack ●/○ inventory + setup tips
+hobo-code config --stack cost-budget     # mon=0, budget, free-local models
+hobo-code config --stack editor-vim      # $EDITOR, nvim/tmux, hobo-code.nvim
+hobo-code config --stack hermetic-nix    # optional devenv/flake markers
+hobo-code config --stack harness-pi-flue # MCP, AGENTS.md, skills
+hobo-code config --stack agent-native    # agent auth + no-elicitation knobs
+hobo-code config --json                  # full knobs (API keys = presence only)
+```
+
+**Protocol-native coding agents (unattended / MCP / ACP):**
+
+```bash
+export HOBO_CODE_AGENT=1
+hobo-code auth login --agent             # human-free local Station (no device-code)
+hobo-code agent --json                   # MCP tools · ACP status · unattended contract
+hobo-code isolate --json                 # safe iterate
+# hobo-code promote --run <id> --json    # gated merge
+```
+
+Keyboard-first navigation stays CLI: `status` · `tasks` · `isolate` · `edit` · `config` · `agent` · `promote` · `attach`.
+
+Control-plane style verbs (`platform`, hive join/rooms) are **not** part of this surface. Token **cost** is app-building FinOps visibility, not platform budget admin.
+
+## Auth model
+
+| Mode | How |
+|---|---|
+| **Local** | `hobo-code auth login` — finds/init `station:local` (or sole local Station). No browser. |
+| **Remote** | `--tenant` + `--domain` — device-code flow (copy code, open URL, `--complete <code>`). |
+
+Session stored under `$HOBO_HOME/durable/code/auth/session.json`. Later `session` / `dispatch` prefer the logged-in Station.
+
+## Hermetic / durable (optional Nix · devenv)
+
+Optional hermetic shells for the coding agent only — never monorepo-wide Nix IaC. See `hobo-code env --help`.
+
+## Multi-node compute (internal)
+
+Dispatch may use capacity-aware multi-node scheduling under the hood (`code.distributed`). That is **worker scheduling**, not a buzz/hive chat product and not exposed as management verbs.
 
 ## Progressive flags (all **ON** by default)
 
@@ -93,23 +219,9 @@ b·re·pl·ev·n·rm·j·a
 |---|---|
 | `code.harness.enabled` | Master switch |
 | `code.evidence.visual` | Evidence triple |
-| `code.monetization.surface` | Privacy-first sponsored wait (never inspects code) |
+| `code.monetization.surface` | Privacy-first sponsored wait |
 | `code.isolation.rift` | Prefer CoW rift when available |
-| `code.distributed` | Distributed compute hive |
-
-Disable: `hobo feature set <key> --percent 0` or `HOBO_CODE_MONETIZATION=0`.
-
-## Runtime foundations
-
-| Concern | Pin | Notes |
-|---|---|---|
-| **Subagents** | [Vercel Eve](https://vercel.com/eve) shape | Filesystem-first `agent/` + nested `subagents/`; `defineEveAgent` / `defineEveSubagent` |
-| **Secure sandbox** | DeepAgents + OpenShell + MxC | Orchestration + kernel sandbox + strong isolation class; credentials never in-sandbox |
-| **Durable runtime** | Vercel Workflows + Worlds | Local World offline (`HOBO_HOME/worlds/`); Vercel World production adapter |
-
-## Distributed compute
-
-Internal hive model (inspired by [block/buzz](https://github.com/block/buzz), **not** a CLI name): rooms, first-class agent identities, multi-node dispatch (local, named-endpoint, MxC, OpenShell). Secure path = DeepAgents inside OpenShell (+ MxC when stronger). Station-bound; durable under `HOBO_HOME/durable/code/buzz/`.
+| `code.distributed` | Multi-node compute dispatch |
 
 ## Package layout
 

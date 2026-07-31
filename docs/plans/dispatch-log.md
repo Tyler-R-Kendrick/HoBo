@@ -182,3 +182,11 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | `billing-budget` (S0 stage gate linux/windows empty steps ~3s; no runner work) |
 | Notes | hobo-code `env` + hermetic-env + durable chrome; project persona/feature; assert-complete/mark-complete stop gate + tests; package 80/80; stop-gate 6/6; optimizexp run pareto-equilibrium. Turbo graph cycle pre-existing on main for `turbo --filter packages/code` (pnpm filter vitest green). |
 
+
+## 2026-07-31 — hobo-code optimizexp surfaces session land
+
+- Branch: `feat/hobo-code-optimizexp-surfaces`
+- Work: persona + product surfaces for hobo-code optimizexp (agent, config, edit, harness, cost, guides, …)
+- Finish: `/sdlc finish` — single PR squash-merge
+- Package tests: @hobo/code vitest 104 passed
+- Note: root turbo workspace cycle (@hobo/contracts↔core↔contract-harness) pre-existing; package filter tests green

@@ -38,6 +38,7 @@
 	"scripts": {
 		"prebuild": "pnpm --filter @hobo/core build && pnpm --filter @hobo/stations build",
 		"build": "tsc -p tsconfig.json",
+		"postbuild": "node -e \"require('node:fs').chmodSync('dist/bin/hobo-code.js', 0o755)\"",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "pnpm run build",

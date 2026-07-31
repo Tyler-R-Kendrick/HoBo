@@ -19,6 +19,11 @@ import { BO_IDLE_TICK_MS, renderTitleScreen } from "../splash.js";
 
 const argv = process.argv.slice(2);
 const json = argv.includes("--json");
+const dense =
+	argv.includes("--dense") ||
+	argv.includes("-D") ||
+	process.env.HOBO_CODE_DENSE === "1" ||
+	process.env.HOBO_CODE_DENSE === "true";
 const interactive = process.stdout.isTTY === true && process.stdin.isTTY === true;
 const chatVerb = argv[0] === "chat";
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -92,7 +97,7 @@ if (interactive && !json && (argv.length === 0 || chatVerb)) {
 	if (argv.length === 0) await showTitleScreen();
 	process.exitCode = await launchPiHarness();
 } else {
-	const result = await runHoboCodeCli(argv, { json });
-	process.stdout.write(formatHoboCodeResult(result, json));
+	const result = await runHoboCodeCli(argv, { json, dense });
+	process.stdout.write(formatHoboCodeResult(result, { json, dense }));
 	process.exitCode = result.exitCode;
 }

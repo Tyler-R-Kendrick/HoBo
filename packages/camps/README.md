@@ -8,6 +8,12 @@ Yard (or from Yard placement policy). Camps do not own Bindles and do not select
 cloud providers. Camps can move between Yards via Trails. See [`ADR.md`](./ADR.md)
 and the [yard-first-placement ADR](../../docs/design/adr/yard-first-placement.md).
 
+**API residual:** `defaultProvider` / `tiers` / `bindings` on `camp()` are
+**rejected at parse** (`Camp must not select a cloud provider`).
+`providerSelection(...)` is a descriptor helper for within-provider mapping /
+tests — not a Yard substitute. Deprecated type fields document migration only
+([design residual note](../../docs/design/devx-devenv-nix.md#design--code-residual-hobocamps)).
+
 ## Honest scope
 
 Implemented: parsing/normalizing camp configs into frozen `Camp` and

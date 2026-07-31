@@ -1,11 +1,11 @@
 # OptimizeXP CLI evidence
-command: node --import tsx packages/code/src/bin/hobo-code.ts help
+command: node packages/code/bin/hobo-code.mjs help
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 0
 spawnStatus: 0
-durationMs: 337
+durationMs: 185
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T20:19:55.575Z
+capturedAt: 2026-07-31T20:50:35.575Z
 
 ## stdout
 hobo-code — HoBo coding harness CLI

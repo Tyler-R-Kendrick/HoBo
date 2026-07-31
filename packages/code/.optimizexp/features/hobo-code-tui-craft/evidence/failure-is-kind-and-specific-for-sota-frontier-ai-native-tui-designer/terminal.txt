@@ -1,11 +1,11 @@
 # OptimizeXP CLI evidence
-command: node --import tsx packages/code/src/bin/hobo-code.ts not-a-real-verb-zz
+command: node packages/code/bin/hobo-code.mjs not-a-real-verb-zz
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 1
 spawnStatus: 1
-durationMs: 209
+durationMs: 183
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T20:19:56.544Z
+capturedAt: 2026-07-31T20:50:36.263Z
 
 ## stdout
 ? cmd

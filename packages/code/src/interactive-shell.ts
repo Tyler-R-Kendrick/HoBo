@@ -181,11 +181,13 @@ export function createInitialShellState(
 	const statusPlain = renderStatusText(mux, { plain: true });
 	const tasks = buildTasksSurface({ hoboHome, panes: mux.panes });
 	const tasksPlain = [
-		"Tasks (keyboard: Tab → Tasks · mouse later)",
+		"Tasks · keyboard-first (Tab → Tasks) · clickable mouse residual later",
 		...tasks.rows.map(
-			(r) => `  · ${r.kind.padEnd(8)} ${r.state.padEnd(8)} ${r.summary || r.id}`,
+			(r) =>
+				`  [${r.state}] ${r.kind}/${r.id}${r.summary ? ` — ${r.summary}` : ""}`,
 		),
-		`  ${tasks.legend}`,
+		"  Regions: task-row · still-working · status-chip (keyboard focus now)",
+		"  Honest residual: fullscreen mouse TUI is not claimed complete yet",
 	].join("\n");
 
 	const welcome: ShellMessage[] =
@@ -200,9 +202,9 @@ export function createInitialShellState(
 					{
 						role: "product",
 						text: [
-							"Bo is with you. Type a build prompt, or press / for the palette.",
-							"Start: /guide · /auth · /config · /cost · /tasks",
-							"Keys: Tab focus · ? help · Ctrl+C quit · Esc close slash",
+							"Bo is with you — this is HoBo product chrome, not stock Pi Agent.",
+							"Start: type a build prompt · or /guide (Claude map) · /config · /cost · /tasks",
+							"Hermetic/nix: /env · Budget: footer chip · Keys: Tab · / · ? · Ctrl+C",
 						].join("\n"),
 						at: Date.now(),
 					},

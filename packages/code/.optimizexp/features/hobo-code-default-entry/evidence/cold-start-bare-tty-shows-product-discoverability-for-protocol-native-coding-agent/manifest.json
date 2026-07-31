@@ -1,7 +1,5 @@
 {
-  "scenarioSlug": "cold-start-bare-tty-shows-product-discoverability-for-protocol-native-coding-agent",
-  "primaryPath": "primary.txt",
+  "schemaVersion": 1,
   "kind": "transcript",
-  "updatedAt": "2026-07-31T20:13:08.149Z",
-  "overridesPrevious": false
+  "primary": "primary.txt"
 }

@@ -28,7 +28,7 @@ describe("hobo-code InteractiveShell (product chrome, not Pi)", () => {
 		expect(frame).toContain("❯");
 		// Must not look like we handed the session to Pi product UI
 		expect(frame.toLowerCase()).not.toMatch(/welcome to pi/);
-		expect(frame).toMatch(/Bo is with you|press \/ for the palette/i);
+		expect(frame).toMatch(/Bo is with you|not stock Pi|InteractiveShell|\/guide/i);
 	});
 
 	it("slash palette lists product journeys", () => {

@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "projectId": "code",
-  "scannedAt": "2026-07-31T20:15:36.232Z",
+  "scannedAt": "2026-07-31T20:50:15.362Z",
   "productName": "hobo-code",
   "packageDir": "packages/code",
   "binaries": [
     {
       "name": "hobo-code",
-      "binPath": "/home/codex/.herdr/worktrees/hobo/hobo-devx/packages/code/dist/bin/hobo-code.js",
+      "binPath": "/home/codex/.herdr/worktrees/hobo/hobo-devx/packages/code/bin/hobo-code.mjs",
       "packageName": "@hobo/code"
     }
   ],
@@ -169,5 +169,12 @@
     "failure-actionable",
     "in-session-discoverability"
   ],
-  "probes": []
+  "probes": [
+    {
+      "command": "pnpm --filter @hobo/code exec hobo-code help 2>/dev/null || hobo-code help",
+      "exitCode": 0,
+      "stdoutDigest": "96cd862300a63007",
+      "capturedAt": "2026-07-31T20:50:14.777Z"
+    }
+  ]
 }

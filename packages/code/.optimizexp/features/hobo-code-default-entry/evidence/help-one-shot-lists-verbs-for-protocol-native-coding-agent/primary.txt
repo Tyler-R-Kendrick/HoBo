@@ -1,14 +1,15 @@
 # OptimizeXP CLI evidence
-command: pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts help
+command: node packages/code/bin/hobo-code.mjs help
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 0
 spawnStatus: 0
-durationMs: 685
+durationMs: 156
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T20:13:08.945Z
+capturedAt: 2026-07-31T20:50:36.553Z
 
 ## stdout
 hobo-code — HoBo coding harness CLI
+You are in HoBo’s world · plain by default · --dense is opt-in power chrome
 
 Usage:
   hobo-code <prompt>                 dispatch (default)
@@ -18,25 +19,31 @@ Usage:
   hobo-code help <verb>              same as <verb> --help
   hobo-code help --dense             power-user glyph strip + legend
 
-Verbs:
-  dispatch   Build / refine the app (default when given a prompt)
+Start here:
+  guide      Claude Code / Cursor → hobo-code maps (plain English)
   auth       Login to a Station (local auto, or tenant+domain)
-  status     Session / agent multiplexer chrome
+  dispatch   Build / refine the app (default when given a prompt)
+  help       This message
+
+Session & status:
+  status     Session / agent panes in plain words (dense glyphs with --dense)
   session    Isolation session + handback
   attach     Dev-terminal attach (tmux/mosh/Tailscale-shaped)
   tasks      Background task board (Grok Build–shaped)
-  guide      Claude Code / Cursor → hobo-code maps (plain English)
+
+Craft & cost:
   scaffold   OpenUI/Astryx scaffold template
   isolate    Mediated sandbox for agent work
   promote    Promote a run through gate checklist
-  env        Hermetic shell + durable vs sandbox layout
-  models     Active model + BYOK / open-model env (no secrets)
-  cost       Budget, $0 path, savings, free/local routing
-  harness    Pi/Flue dual surface, skills, self-improve, brain
   edit       Open [neo]vim in managed harness pane (CLI-native)
+  cost       Budget, $0 path, savings, free/local routing
+  models     Active model + BYOK / open-model env (no secrets)
   config     Env/flags inventory by stack (setup critique)
+
+Agent & harness:
   agent      Agent-native: human-free auth, MCP/ACP, unattended
-  help       This message
+  harness    Pi/Flue dual surface, skills, self-improve, brain
+  env        Hermetic shell + durable vs sandbox layout
 
 Flags:
   --json              Machine-readable envelope (stdout)
@@ -74,6 +81,7 @@ Examples:
 
 Notes:
   · Binary is hobo-code (not `hobo code`). Plain help default; --dense opt-in.
+  · Bare TTY opens title (Bo) + discoverability strip — not stock Pi alone.
   · Setup: hobo-code config (stacks: agent-native, cost-budget, editor-vim, …).
   · Agents: hobo-code agent (MCP/ACP, human-free auth, no-elicitation).
   · Maps: guide · edit (nvim) · tasks · attach · status · cost · harness · models.

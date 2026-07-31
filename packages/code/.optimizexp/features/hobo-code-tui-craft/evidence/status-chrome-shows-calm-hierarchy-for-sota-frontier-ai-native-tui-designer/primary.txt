@@ -1,11 +1,11 @@
 # OptimizeXP CLI evidence
-command: node --import tsx packages/code/src/bin/hobo-code.ts status
+command: node packages/code/bin/hobo-code.mjs status
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 0
 spawnStatus: 0
-durationMs: 210
+durationMs: 204
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T20:19:55.897Z
+capturedAt: 2026-07-31T20:50:35.927Z
 
 ## stdout
 hobo-code · session status

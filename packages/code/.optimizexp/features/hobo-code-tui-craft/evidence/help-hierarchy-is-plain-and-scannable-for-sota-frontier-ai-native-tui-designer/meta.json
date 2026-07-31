@@ -6,7 +6,7 @@
   ],
   "interface": "cli",
   "driver": "cli",
-  "capturedAt": "2026-07-31T20:19:55.576Z",
+  "capturedAt": "2026-07-31T20:50:35.576Z",
   "runId": "",
   "screen": {
     "cols": null,
@@ -15,12 +15,12 @@
   "primary": {
     "file": "primary.txt",
     "kind": "transcript",
-    "bytes": 3965,
-    "sha256": "14b20c1a7d57260735e96f1f5ce267e732b77a77b4a2f91543fa467787627ea1"
+    "bytes": 3949,
+    "sha256": "a31c75220b1ef7e993f96b4d5d7333220c294c61e43bc4e44a2f7cdc1d9e24c0"
   },
   "frames": [],
   "repro": {
-    "command": "node --import tsx packages/code/src/bin/hobo-code.ts help",
+    "command": "node packages/code/bin/hobo-code.mjs help",
     "cwd": ".",
     "via": "capture-evidence"
   },

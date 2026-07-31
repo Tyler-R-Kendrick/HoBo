@@ -104,3 +104,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | `billing-budget` (empty-step CI; no code execution) |
 | Notes | Dual regime until pareto-equilibrium; cognitive thresholds; persona schema v2; survey.mts + backlog; local gates green. |
 
+
+## 2026-07-31 — optimizexp all-eq delight (doctor + personas v2)
+
+| Field | Value |
+|---|---|
+| Initiative | bare `/optimizexp` all-eq land via `/sdlc finish` |
+| Backend | sequential-fallback (parent) |
+| Branch | `feat/optimizexp-all-eq-delight` |
+| PRs | [#978](https://github.com/Tyler-R-Kendrick/HoBo/pull/978) (squash-merged `a2c875c2`) |
+| Result | **success** |
+| Failure class | `billing-budget` (empty-step CI) |
+| Notes | Doctor gbrain zero-key remediation; product-* schema v2; run 20260731-all-eq pareto-equilibrium. Local agent:check staged green. |
+

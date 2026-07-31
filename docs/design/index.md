@@ -25,6 +25,8 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`adr/03-data-plane.md`](./adr/03-data-plane.md#adr-0137) | **ADR-0137** — Session Replay on every App Kit (`@hobo/replay`); privacy-first; `replay.*`; Kit ≠ WIT membrane | — |
 | [`adr/01-architecture-core.md`](./adr/01-architecture-core.md#adr-0138) | **ADR-0138** — Messaging plane unification; Kafka first-class capability provider; Dapr optional Camp runtime / ActorHost dual realization | 20, 21, 02 |
 | [`messaging-dapr-kafka-note.md`](./messaging-dapr-kafka-note.md) | Maintenance note for Messaging + Kafka + Dapr surfaces, fidelity honesty, permanent non-goals | — |
+| [`adr/yard-first-placement.md`](./adr/yard-first-placement.md) | Yard-first placement: Yard owns provider selection; Camp provider-neutral until attached; Camps movable via Trails | — |
+| [`devx-devenv-nix.md`](./devx-devenv-nix.md) | DevX: devenv-first local shells; Nix optional IaC only — never default multi-cloud path ([ADR-0006](./adr/01-architecture-core.md#adr-0006)) | — |
 | [`adr/01-architecture-core.md`](./adr/01-architecture-core.md#adr-0131) | **ADR-0131** — Station occupancy (hard control-plane isolation; Rails; pure Conductor) | — |
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0132) | **ADR-0132** — Continuous identity migration (dual-path; zero Bindle config) | — |
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0134) | **ADR-0134** — HoBo Trails (app-owned continuous migration recipes; composes `identity.continuous`) | — |

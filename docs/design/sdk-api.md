@@ -51,7 +51,7 @@ export interface ActorHost {
   state<S>(key: string): DurableState<S>;          // backed by the actor's event stream
 }
 ```
-**Provided by the Camp** (the provider-specific layer); **the same app code runs regardless of the runtime backend** (`HOBO_RUNTIME` env or Camp config). Built-in `@hobo/runtime-local` (SQLite/filesystem) for dev; production backends: `runtime-postgres`, `runtime-temporal`, `runtime-restate`, `runtime-cloudflare`; optional **`@hobo/runtime-dapr`** for Dapr-backed ActorHost + pub/sub when a Camp opts in ([ADR-0138](./adr/01-architecture-core.md#adr-0138)) — default remains in-process wasm ([ADR-0031](./adr/01-architecture-core.md#adr-0031)). Durable messaging backends include **`@hobo/provider-kafka`** (native Kafka / Redpanda / MSK / Confluent) exporting `wasi:messaging`. This seam is what makes durability portable and gives replay everywhere ([Plan 11](./data-plane.md#plan-11)).
+**Provided by the Camp** after the Camp is attached to (or inferred under) a **Yard** — the Yard owns the provider; the Camp supplies the durable runtime backend under that Yard. **The same app code runs regardless of the runtime backend** (`HOBO_RUNTIME` env or Camp config). Built-in `@hobo/runtime-local` (SQLite/filesystem) for dev; production backends: `runtime-postgres`, `runtime-temporal`, `runtime-restate`, `runtime-cloudflare`; optional **`@hobo/runtime-dapr`** for Dapr-backed ActorHost + pub/sub when a Camp opts in ([ADR-0138](./adr/01-architecture-core.md#adr-0138)) — default remains in-process wasm ([ADR-0031](./adr/01-architecture-core.md#adr-0031)). Durable messaging backends include **`@hobo/provider-kafka`** (native Kafka / Redpanda / MSK / Confluent) exporting `wasi:messaging`. This seam is what makes durability portable and gives replay everywhere ([Plan 11](./data-plane.md#plan-11)).
 
 > **Runtime vs Providers** (a key distinction): the **Camp runtime** backs the *data-plane runtime* of your app (durable state, queues, timers). A **Provider** ([Layer 2](#layer-2--providers-infra-capability-ports)) provisions *infrastructure* (databases, compute, buckets). A Camp **supplies both, chosen independently** — its runtime backend **and** its provider can be different vendors (e.g. `provider-aws` for infra + a Temporal runtime). *"Runtime" has three senses — the `@hobo/runtime` SDK-primitives package, the `Runtime` interface, and the `runtime-*` backends; see the [glossary](./index.md#glossary--naming-thematic-all-tunable).*
 
@@ -75,7 +75,7 @@ A **Provider** binds these ports to a backend and declares *how* it realizes the
 
 > **S1-15 production (HOBO-605):** `@hobo/bindles/wiring`, `@hobo/bindles/topology`, `@hobo/camps`, `@hobo/yards`, and `@hobo/runtime-local` binding resolver implement offline local Camp dev. Draft POC: [`s1-15-bind-wiring-topology-contract`](../../src/draft/technical-proofs/s1-15-bind-wiring-topology-contract/README.md).
 
-**Topology is optional.** Given the platform team's **approved default providers** ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)), the cloud **infers** a Camp and auto-places/**rebalances** the Bindle (the Dispatcher, [ADR-0071](./adr/01-architecture-core.md#adr-0071)); an inferred Camp is **approved by policy, not automatically** — an admin enables auto-approval or sets a passing policy ([ADR-0074](./adr/02-identity-security.md#adr-0074)). You build a Camp/Yard/Junction only to **pin** placement, residency, or cross-cloud wiring (or to reach a provider outside the approved set). When you do, the topology scopes are **first-class SDK objects, constructed and composed programmatically** ([ADR-0011](./adr/01-architecture-core.md#adr-0011)) — not `*.config.ts` files. A **`bindle()`** is the provider-agnostic app (resources + bindings); a **`camp()`** maps it to **one provider** (runtime backend + provider mapping, the "where/how"); a **`yard()`** is **provider-specific** and composes the Camps under that one provider (its cross-Camp policy + control plane); a **`junction()`** connects Yards **across clouds** for the multi-cloud / hybrid case, **inferring the cross-cloud connectivity plane** (tier/peering + `hobo:dns`) from the member Yards' manifests so each Yard realizes its own half. You build them in code and wire them together — the same values flow into deploy. By default a Camp needs only a **provider + IaC**: the Provider's built-in (default) Resource Definitions match every port in the Bindle's manifest automatically. The three mapping styles below are **overrides** for when you want explicit control:
+**Topology is optional.** Given the platform team's **approved default providers** ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)), the cloud **infers** a Camp under a selected/inferred **Yard** and auto-places/**rebalances** the Bindle (the Dispatcher, [ADR-0071](./adr/01-architecture-core.md#adr-0071)); an inferred Camp is **approved by policy, not automatically** — an admin enables auto-approval or sets a passing policy ([ADR-0074](./adr/02-identity-security.md#adr-0074)). You build a Camp/Yard/Junction only to **pin** placement, residency, or cross-cloud wiring (or to reach a provider outside the approved set). When you do, the topology scopes are **first-class SDK objects, constructed and composed programmatically** ([ADR-0011](./adr/01-architecture-core.md#adr-0011)) — not `*.config.ts` files. A **`bindle()`** is the provider-agnostic app (resources + bindings); a **`camp()`** is a **provider-neutral** deployment target (runtime-backend preference + camp-local constraints) until attached; a **`yard()`** is **provider-specific**, **owns provider selection**, and composes Camps under that one provider (its cross-Camp policy + control plane); a **`junction()`** connects Yards **across clouds** for the multi-cloud / hybrid case, **inferring the cross-cloud connectivity plane** (tier/peering + `hobo:dns`) from the member Yards' manifests so each Yard realizes its own half. **Camps can move between Yards via Trails** — Trails own the cross-cloud re-home recipe, not Camp-local provider pins ([yard-first-placement ADR](./adr/yard-first-placement.md), [ADR-0134](./adr/02-identity-security.md#adr-0134)). You build them in code and wire them together — the same values flow into deploy. By default a Camp needs only a **runtime preference** (and optional resource-mapping overrides); the **Yard's provider** supplies the Provider's built-in (default) Resource Definitions that match every port in the Bindle's manifest automatically. The mapping styles below are **overrides under the selected Yard provider** for when you want explicit control:
 
 ```ts
 import { camp } from "@hobo/camps";
@@ -86,30 +86,24 @@ import { aws } from "@hobo/provider-aws";
 import { cloudflare } from "@hobo/provider-cloudflare";
 import { postgresRuntime } from "@hobo/runtime-postgres";
 
-// A Camp needs only { provider, iac }: the Provider's built-in (default) Resource Definitions
-// match every port automatically. defaultProvider/tiers/bindings below are OVERRIDES.
-const prodAzure = camp("prod-azure", {
-  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),   // the Camp's durable runtime backend
+// Camp is provider-neutral: runtime preference + optional resource-mapping overrides.
+// Provider is authored on the Yard; Camp infers it on attach.
+const prod = camp("prod", {
+  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),   // durable runtime backend preference
 
-  // (a) whole-app: "just host everything on Azure, figure out the best way"
-  defaultProvider: azure({ region: "eastus" }),
-
+  // Optional mapping overrides under the Yard's provider (not Camp-owned provider selection):
+  // (a) whole-app default realization hints
   // (b) per-tier overrides (PaaS/SaaS/CaaS/IaaS routed differently)
-  tiers: {
-    saas: azure,            // managed data services on Azure
-    paas: aws.appRunner(),  // app/sidecar tier on AWS
-    edge: cloudflare.workers(),
-  },
-
-  // (c) per-boundary pin (named resources → specific provider + options)
+  // (c) per-boundary pin (named resources → specific realization + options)
+  // These compile to Resource Definitions matched under the Yard provider.
   bindings: {
-    "shop.db":   azure.cosmos({ consistency: "session" }),
-    "shop.api":  aws.fargate({ cpu: 512, memory: 1024 }),
+    "shop.db":   { consistency: "session" },
+    "shop.api":  { cpu: 512, memory: 1024 },
   },
 });
 
-// a Yard is provider-specific: it composes the Camps under ONE provider + that provider's cross-Camp policy
-const azureYard = yard("azure", { camps: [prodAzure /*, more Azure-region Camps */] });
+// Yard owns provider selection: it composes Camps under ONE provider + that provider's cross-Camp policy
+const azureYard = yard("azure", { provider: azure({ region: "eastus" }), camps: [prod /*, more Azure-region Camps */] });
 
 // a Junction connects provider-specific Yards across clouds (multi-cloud / hybrid)
 export default junction("shop", { yards: [azureYard /*, awsYard, … */] });

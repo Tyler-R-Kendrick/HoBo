@@ -143,11 +143,12 @@ const awsYard = yard("y-aws", aws); awsYard.setup(camp("c2").import(app));
 const j = junction("j1"); j.add(azureYard, awsYard);
 ```
 - **Bindle** — provider-agnostic app: resources + bindings + runtime primitives. Names no provider; reviewing it is reviewing the app.
-- **Camp** — maps a Bindle to **one** provider's resources (≈ a Pulumi stack); `camp.import(app)`.
-- **Yard** — provider-specific, **cross-Camp**: groups Camps under one provider and holds cross-Camp policy/gateways; `yard.setup(...)`.
+- **Camp** — **provider-neutral** deployment target until attached to a Yard; `camp.import(app)`. Provider/runtime/IaC are **inferred from the Yard** (or Yard placement policy), not authored as Camp-owned provider selection ([yard-first-placement ADR](./adr/yard-first-placement.md)).
+- **Yard** — provider-specific, **cross-Camp**: **owns provider selection**; groups Camps under one provider and holds cross-Camp policy/gateways; `yard(name, { provider, camps? })` / `yard.setup(...)`.
 - **Junction** — connects **Yards across clouds**; `junction.add(...)`.
+- **Trail** — app-owned continuous migration recipe that defines **how** a Camp **moves between Yards** (cross-cloud re-home), composing duals/rebind — not a Camp-local provider pin ([ADR-0134](./adr/02-identity-security.md#adr-0134)).
 
-The objects *are* the topology; provider choice and cross-cloud wiring live on Camp/Yard/Junction, so swapping clouds touches those objects, not the Bindle.
+The objects *are* the topology; **provider choice lives on the Yard**, Camps **infer** it on attach, and **Trails** define cross-Yard/cross-cloud moves — so swapping clouds re-homes Camps via Trails/Yard attachment, not Bindle edits or Camp-owned provider pins.
 
 #### The inner loop (`hobo dev`)
 1. Resources resolve to **local equivalents** (containerized Postgres, in-memory queue, local object store) via the dev provider layer.

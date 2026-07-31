@@ -66,7 +66,7 @@ import { pulumi } from "@hobo/iac-pulumi";                                      
 | Part | Role | Your loop | Your files | Your command |
 |---|---|---|---|---|
 | **1** | **App developer** | write code → see it run | `app.ts`, `feed.ts`, `cart.ts` | `hobo dev` → `hobo up` |
-| **2** | **Platform engineer** | map each Camp to a cloud + IaC; override only when needed | `platform/yard.ts`, `platform/resources.ts` | `hobo up ./platform` |
+| **2** | **Platform engineer** | author Yard provider selection; attach Camps (provider inferred); override only when needed | `platform/yard.ts`, `platform/resources.ts` | `hobo up ./platform` |
 | **3** | **GitOps** | declare delivery + PR previews; git is the trigger | `delivery/pipelines.ts`, flags/experiments | `git push` (CI runs `hobo up`) |
 | **4** | **SecOps** | policy + identity as code | `security/policy.ts`, `.allow()` scopes | gates enforce on every `up` |
 | **5** | **DevOps** | run the control plane + CI fabric | `platform/yard.ts`, `platform/runners.ts` | `hobo up ./platform` |
@@ -319,11 +319,11 @@ That is the entire app-developer surface: **write code, `hobo up`.** Everything 
 
 ---
 
-# Part 2 — Platform engineer: map a Camp to a cloud; Matching does the rest
+# Part 2 — Platform engineer: author a Yard (provider selection); Camps attach and infer
 
-**You go first.** On your own infrastructure this Part is the prerequisite for all of Part 1: until this Yard exists, **you've approved default providers, and you've enabled inferred-Camp approval** (a toggle or a passing policy), there's no happy path for an app dev to `hobo up` through (the hosted HoBo cloud is the only alternative — see Part 0). Those choices are what let the cloud **infer a Camp** per Bindle and approve it without a human.
+**You go first.** On your own infrastructure this Part is the prerequisite for all of Part 1: until this Yard exists, **you've approved default providers, and you've enabled inferred-Camp approval** (a toggle or a passing policy), there's no happy path for an app dev to `hobo up` through (the hosted HoBo cloud is the only alternative — see Part 0). Those choices are what let the cloud **infer a Camp** under a Yard per Bindle and approve it without a human.
 
-**Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the Yard) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **built-in mappings** — a *default Resource Definition* per capability (its `equivalence` map + `realize()`) that the package already ships — so a Camp only needs to declare *which cloud* and *which IaC*. The generated manifest from Part 1 is matched automatically; you write per-resource config **only to override a default.** And **placement itself is automatic**: with no Camp, the cloud auto-places and **rebalances** the Bindle across your registered providers (the Dispatcher, [Plan 25](./platform-engineering.md#plan-25)/[ADR-0071](./adr/01-architecture-core.md#adr-0071)). You build a **Camp / Yard / Junction only to *pin*** a cloud, region, residency, or topology auto-placement shouldn't decide — topology is an override, not a prerequisite.
+**Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the **Yard**, which **owns provider selection**) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **built-in mappings** — a *default Resource Definition* per capability (its `equivalence` map + `realize()`) that the package already ships — so a Camp only needs to declare runtime preference and optional mapping overrides; **provider is authored on the Yard**, and Camps **infer** it on attach ([yard-first-placement ADR](./adr/yard-first-placement.md)). The generated manifest from Part 1 is matched automatically under the Yard provider; you write per-resource config **only to override a default.** And **placement itself is automatic**: with no Camp, the cloud auto-places and **rebalances** the Bindle across your registered providers (the Dispatcher, [Plan 25](./platform-engineering.md#plan-25)/[ADR-0071](./adr/01-architecture-core.md#adr-0071)). You build a **Camp / Yard / Junction only to *pin*** region, residency, runtime, or topology auto-placement shouldn't decide — topology is an override, not a prerequisite. **Camps can move between Yards via Trails.**
 
 ## 2.1 — The operator SDK: build a Yard and register providers
 
@@ -355,8 +355,8 @@ export default yard("acme", {
     allowWithoutHuman: { envType: { not: "production" } }
   }))
   .setup(                                   // OPTIONAL explicit Camps — pins/overrides, not required
-    camp("prod-azure",   { provider: "azure",      runtime: postgresRuntime() }),
-    camp("staging-cf",   { provider: "cloudflare", runtime: postgresRuntime() }),
+    camp("prod",    { runtime: postgresRuntime() }),  // provider inferred from Yard
+    camp("staging", { runtime: postgresRuntime() }),
   );
 ```
 
@@ -364,7 +364,7 @@ export default yard("acme", {
 hobo up ./platform       # brings the Yard up; placement policy makes the happy path live (Camps inferred, approved by policy)
 ```
 
-`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, an `equivalence` map, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. Registration brings **two** things: the provider's keyless **auth**, and its **built-in Resource Definitions** — the mappings (`equivalence` + `realize()`, [Plan 4](./control-plane.md#plan-04)) that turn an abstract capability into that cloud's concrete resource and IaC program. From here, a Camp bound to Azure can realize the whole manifest **with no further config** — the app dev never sees the wiring, and neither do you. Registering a provider makes it **available**; Yard placement policy decides which providers an inferred Camp may use and when an inferred Camp can proceed without a human — off by default, opt-in by an explicit policy rule that passes ([ADR-0074](./adr/02-identity-security.md#adr-0074)), with production typically still gated. Those choices together turn the lights on for app devs (the cloud infers a Camp per Bindle and approves it by policy). The explicit `camp(...)` calls above are optional **pins**.
+`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, an `equivalence` map, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. Registration brings **two** things: the provider's keyless **auth**, and its **built-in Resource Definitions** — the mappings (`equivalence` + `realize()`, [Plan 4](./control-plane.md#plan-04)) that turn an abstract capability into that cloud's concrete resource and IaC program. From here, a Camp **attached to an Azure Yard** can realize the whole manifest **with no further config** — the app dev never sees the wiring, and neither do you. Registering a provider makes it **available**; Yard placement policy decides which providers an inferred Camp may use and when an inferred Camp can proceed without a human — off by default, opt-in by an explicit policy rule that passes ([ADR-0074](./adr/02-identity-security.md#adr-0074)), with production typically still gated. Those choices together turn the lights on for app devs (the cloud infers a Camp under a Yard per Bindle and approves it by policy). The explicit `camp(...)` calls above are optional **pins**; **provider stays on the Yard**.
 
 > **A provider that doesn't exist yet?** Generate one, then register it the same way:
 > ```ts
@@ -374,20 +374,23 @@ hobo up ./platform       # brings the Yard up; placement policy makes the happy 
 > ```
 > Air-gapped? `registry.import(signedBundle)` mirrors a signed offline bundle in-boundary — same trust checks, zero egress ([Plan 25](./platform-engineering.md#plan-25)).
 
-## 2.2 — A Camp is just (cloud + IaC); Matching infers the rest
+## 2.2 — A Camp is provider-neutral; the Yard owns provider; Matching infers the rest
 
-This is the whole baseline Camp. It names a cloud and an IaC engine — and says nothing about `catalog`, `images`, or the api:
+This is the whole baseline Camp. It names a runtime preference — and says nothing about cloud provider selection (that belongs on the Yard):
 
 ```ts
 // platform/camps.ts
 import { camp } from "@hobo/camps";
+import { yard } from "@hobo/yards";
 import { azure } from "@hobo/provider-azure";
 import { pulumi } from "@hobo/iac-pulumi";
+import { postgresRuntime } from "@hobo/runtime-postgres";
 
-export const prod = camp("prod", { provider: azure(), iac: pulumi() });   // that's the entire mapping
+export const prod = camp("prod", { runtime: postgresRuntime() }); // provider-neutral
+export const azureYard = yard("azure", { provider: azure(), iac: pulumi(), camps: [prod] });
 ```
 
-`hobo up ./platform` walks the generated manifest from Part 1, and for each abstract capability **Matching selects the provider's built-in default Resource Definition** and emits concrete config, which `@hobo/iac-pulumi` realizes. You configured nothing per-resource:
+`hobo up ./platform` walks the generated manifest from Part 1, and for each abstract capability **Matching selects the Yard provider's built-in default Resource Definition** and emits concrete config, which `@hobo/iac-pulumi` realizes. You configured nothing per-resource:
 
 ```bash
 hobo plan --camp prod
@@ -455,10 +458,13 @@ defineResource({ type: "database", engine: "postgres", class: "ha",
 ```
 
 ```ts
-// inline, per-Camp overrides — pin one boundary, split one tier; the rest is untouched.
-camp("prod", { provider: azure(), iac: pulumi(),
+// inline, per-Camp overrides under a Yard — pin one boundary, split one tier; the rest is untouched.
+// Provider + IaC stay on the Yard; the Camp only carries runtime preference + mapping overrides.
+camp("prod", {
+  runtime: postgresRuntime(),
   bindings: { "catalog": azure.cosmos({ consistency: "session" }) },   // pin: this kv → Cosmos, not Table Storage
   tiers:    { edge: cloudflare.workers() } });                          // split: the storefront tier to the edge
+// attach: yard("azure", { provider: azure(), iac: pulumi(), camps: [prod] })
 ```
 
 ```bash

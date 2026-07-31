@@ -18,7 +18,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Infra Kit | Bindle-declared infrastructure/port resources that are not entrypoint hosts (`kv`, `bucket`, `queue`, `topic`, `secret`, `data`, …). No default Session Replay unless explicitly annotated. |
 | Broker Catalog Snapshot | Versioned provider/catalog evidence set consumed by the Meta-cloud Broker when validating a Contract Manifest. |
 | Broker Environment | Optional additional approved provider/catalog ceiling applied **in addition to** the active Rail. Not a setup path — Station + Rail are required. See Station / Rail rows. |
-| Camp | Provider-specific deployment target such as `prod-aws`; it selects runtime backend, Provider, and IaC engine for a Bindle placement. |
+| Camp | Deployment target for a Bindle placement (for example `prod` or a Yard-attached name such as `prod-aws`). **Provider-neutral until attached to a Yard**; the **Yard owns provider selection**, and a Camp **infers** provider/runtime/IaC from its attached Yard (or from Yard placement policy when inferred). Camps do not own Bindles. A Camp can **move between Yards** via **Trails** (cross-cloud/cross-Yard re-home recipes). See [yard-first-placement ADR](./adr/yard-first-placement.md). |
 | Capability Manifest | Machine-readable provider manifest describing capabilities, auth flows, cost facts, and how an agent obtains scoped tokens. |
 | Capability provider | A Provider acting as a wasm capability adapter that implements a WIT interface. |
 | Component | WASM/WASI component, the default deployable unit for a HoBo service, with an OCI-container fallback. |

@@ -1,35 +1,25 @@
 # SDLC state — hobo-code InteractiveShell
 
-**phase:** closed (shell v1 landed; residual phases open as product backlog)
-**branch:** feat/hobo-code-interactive-shell (merged)
-**PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/995
-**merge:** `8d9a7b89a4f49b7ce2f85ee5b30019d8baf56b4d` (2026-07-31)
+**phase:** closed (shell v1 + optimizexp polish landed)
+**branch:** optimizexp/hobo-code-shell (merged)
+**PRs:**
+- https://github.com/Tyler-R-Kendrick/HoBo/pull/995 — InteractiveShell default TTY (`8d9a7b89`)
+- https://github.com/Tyler-R-Kendrick/HoBo/pull/994 — stale dist launcher (`704a5063`)
+- https://github.com/Tyler-R-Kendrick/HoBo/pull/997 — optimizexp shell polish + evidence (`b2fe524f`)
 
-## Delivered (Phase 0–1)
+## Delivered
 
-- Default bare TTY is **HoBo InteractiveShell** (not stock Pi chrome)
-- Bo + logo header, chat, slash palette, Tab Chat→Tasks→Status, product footer
-- Pi only via escape hatch: `HOBO_CODE_TUI=pi` / `hobo-code --pi`
-- Identity hard-fail tests; optimizexp feature `hobo-code-interactive-shell`
-- Stale-dist launcher (`bin/hobo-code.mjs`) from #994
-
-## Session PRs this initiative wave
-
-| PR | Merge | Notes |
-|---|---|---|
-| #994 | `704a5063` | Auto-rebuild stale dist |
-| #995 | `8d9a7b89` | InteractiveShell default TTY |
-| #992–#993 | earlier | TUI craft / persona optimizexp (one-shot) + closeout |
+- Default bare TTY: HoBo InteractiveShell (not stock Pi)
+- optimizexp run `20260731-code-shell-optimizexp` → pareto-equilibrium (assert-complete ok)
+- Help/welcome/tasks honesty; multi-persona interactive-shell feature evidence
 
 ## Finish notes
 
-- Local: `@hobo/code` vitest 115 passed for shell PR
-- CI: billing-budget empty-step class when red — squash-merged per sdlc finish
+- Local package vitest green for shell/cli
+- CI: billing-budget empty-step class; squash-merged per sdlc finish
 
-## Residual (product backlog — not claimed done)
+## Residual (backlog)
 
-- Streaming agent runtime (Pi/Flue as engine only)
-- Real mouse hit regions / live Grok-class tasks
-- Claude-feel craft + warning budget
-- Richer in-session nix/hermetic UX
-- Optimizexp assert-complete hard-gate requiring interactive PTY evidence
+- Streaming agent engine under shell
+- SGR mouse hit regions
+- Warning budget filter

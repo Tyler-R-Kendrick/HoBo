@@ -169,3 +169,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | billing-budget / main worktree checkout local only |
 | Notes | REWRITE=0 under broad patterns; sdk-api Runtime vs Providers; control-plane authoring provider; ADR-0090; secrets authoring + ADR-0027. SCRATCH inventory + rg. agent:check staged green. |
 
+
+## 2026-07-31 — optimizexp hobo-code hermetic + stop-gate
+
+| Field | Value |
+|---|---|
+| Initiative | Session land: optimizexp dual-regime closeout + hobo-code hermetic/durable for advanced-nix-devenv-developer |
+| Backend | sequential-fallback (parent) |
+| Branch | `feat/optimizexp-hobo-code-hermetic` |
+| PRs | [#988](https://github.com/Tyler-R-Kendrick/HoBo/pull/988) (squash-merged `5f9c3199`) |
+| Result | **success** |
+| Failure class | `billing-budget` (S0 stage gate linux/windows empty steps ~3s; no runner work) |
+| Notes | hobo-code `env` + hermetic-env + durable chrome; project persona/feature; assert-complete/mark-complete stop gate + tests; package 80/80; stop-gate 6/6; optimizexp run pareto-equilibrium. Turbo graph cycle pre-existing on main for `turbo --filter packages/code` (pnpm filter vitest green). |
+

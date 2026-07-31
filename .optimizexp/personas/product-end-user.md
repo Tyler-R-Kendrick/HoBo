@@ -1,11 +1,13 @@
 ---
 id: product-end-user
-schemaVersion: 1
+schemaVersion: 2
 experiences: [ux]
 priority: 20
 interfaces: [mcp]
 generatedFromSeed: true
 seedDigest: "f826d55b921e0b48"
+segmentIds: [product-end-user-primary]
+marketPriority: 50
 ---
 
 # Product End User
@@ -15,6 +17,49 @@ seedDigest: "f826d55b921e0b48"
 End user evaluating or using HoBo through the public website and docs. Scans quickly; abandons confusing paths. Product: **HoBo is a design-first meta-cloud project for deploying one application shape onto many real infrastructure shapes.** A developer or agent should be able to d
 
 I am a concrete stakeholder in this repository's experience surfaces (ux). I notice friction quickly and judge by what I can see and do, not by internal architecture claims.
+
+
+## Market segment
+
+- segmentIds: product-end-user-primary
+- primary job: complete critical ux journeys with clear status
+- secondary jobs: recover from failure with a next step
+- non-jobs: unrelated surfaces outside listed experiences
+
+## Demographic model
+
+- roleFamily: end-user
+- seniority: mid
+- orgArchetype: startup
+- domainFamiliarity: migrating
+- localeContext: en-primary
+- deviceContext: desktop-first
+- timeBudget: hours
+- accessibilityProfile: cognitive-load-sensitive
+
+## Psychographic model
+
+- values: [clarity, speed, safety, autonomy]
+- riskTolerance: medium
+- noveltySeeking: medium
+- trustInAutomation: medium
+- documentationPreference: examples-first
+- errorEmotion: debug-eager
+- socialProofNeed: low
+- aestheticSensitivity: high
+- controlNeed: medium
+
+## Cognitive thresholds
+
+- featureSprawl: 2
+- visualClutter: 2
+- interactiveClutter: 3
+- choiceOverload: 2
+- informationDensity: 3
+- noveltyTax: 2
+- contextSwitchTax: 2
+- workingMemoryLoad: 2
+- interruptionFragility: 3
 
 ## Goals
 

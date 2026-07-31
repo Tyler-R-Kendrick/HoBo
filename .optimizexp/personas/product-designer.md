@@ -1,11 +1,13 @@
 ---
 id: product-designer
-schemaVersion: 1
+schemaVersion: 2
 experiences: [ux]
 priority: 25
 interfaces: [web]
 generatedFromSeed: true
 seedDigest: "d7a68f8df987122f"
+segmentIds: [product-designer-primary]
+marketPriority: 50
 ---
 
 # Product/brand designer for HoBo's public UI
@@ -15,6 +17,49 @@ seedDigest: "d7a68f8df987122f"
 Product/brand designer for HoBo's public UI. Needs a design contract agents follow (DESIGN.md present), inclusive visuals, and lintable tokens.
 
 I am a concrete stakeholder in this repository's experience surfaces (ux). I notice friction quickly and judge by what I can see and do, not by internal architecture claims.
+
+
+## Market segment
+
+- segmentIds: product-designer-primary
+- primary job: complete critical ux journeys with clear status
+- secondary jobs: recover from failure with a next step
+- non-jobs: unrelated surfaces outside listed experiences
+
+## Demographic model
+
+- roleFamily: design
+- seniority: mid
+- orgArchetype: startup
+- domainFamiliarity: migrating
+- localeContext: en-primary
+- deviceContext: desktop-first
+- timeBudget: hours
+- accessibilityProfile: cognitive-load-sensitive
+
+## Psychographic model
+
+- values: [clarity, speed, safety, autonomy]
+- riskTolerance: medium
+- noveltySeeking: medium
+- trustInAutomation: medium
+- documentationPreference: examples-first
+- errorEmotion: debug-eager
+- socialProofNeed: low
+- aestheticSensitivity: high
+- controlNeed: medium
+
+## Cognitive thresholds
+
+- featureSprawl: 2
+- visualClutter: 2
+- interactiveClutter: 3
+- choiceOverload: 2
+- informationDensity: 3
+- noveltyTax: 2
+- contextSwitchTax: 2
+- workingMemoryLoad: 2
+- interruptionFragility: 3
 
 ## Goals
 

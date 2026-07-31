@@ -37,6 +37,10 @@ bash scripts/setup-agent-tools.sh --common-only --no-gbrain
 pnpm run doctor                                          # includes agent-tooling checks
 ```
 
+`pnpm run doctor` treats missing **gbrain** as a **warn** (exit 0 for zero-key): it prints a copy-pasteable
+`bash scripts/setup-agent-tools.sh --common-only --no-gbrain` line plus this file. Decline the gbrain MCP
+in your agent UI unless you intentionally opt in.
+
 ### Tools that need keys (opt-in)
 
 | Tool | Env vars | Data egress | Cost |

@@ -1,0 +1,89 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-31T15:40:00Z-9101-outcome",
+  "expects": "2026-07-31T15:40:00Z-9101-expect",
+  "actId": "2026-07-31T15:40:00Z-9101-act",
+  "runId": "20260731-all-eq",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "actual": {
+    "exitCode": 0
+  },
+  "feelings": {
+    "summary": "Gbrain warn now tells me the zero-key command to paste.",
+    "valence": "positive",
+    "arousal": "low",
+    "trust": "high"
+  },
+  "desirability": {
+    "rating": "desired",
+    "degree": 0.85,
+    "why": "Remediation is explicit."
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "outcome",
+    "role": "judged",
+    "persona": "product-app-developer",
+    "surface": "pnpm run doctor",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "positive": {
+      "excitement": 3,
+      "easeOfUse": 5,
+      "perceivedOptimality": 4,
+      "total": 12,
+      "min": 3,
+      "gapTotal": 3,
+      "gapMax": 2
+    },
+    "rationale": {
+      "harms": "None.",
+      "friction": "None.",
+      "uncertainty": "None.",
+      "excitement": "Useful offline path.",
+      "easeOfUse": "Pasteable next step.",
+      "perceivedOptimality": "Good enough for zero-key."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-app-developer/"
+    ],
+    "scoredAt": "2026-07-31T15:40:15.000Z"
+  },
+  "comparison": {
+    "expectId": "2026-07-31T15:40:00Z-9101-expect",
+    "deltaFromExpect": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "matchedExpectation": true,
+    "expectationMatch": {
+      "behavior": true,
+      "scoresWithinTol": true,
+      "tolerance": 0
+    },
+    "actId": "2026-07-31T15:40:00Z-9101-act",
+    "deltaFromAct": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    }
+  },
+  "evidence": {
+    "featureId": "cli-help-and-doctor",
+    "scenarioSlug": "cli-help-and-doctor-path-works-for-product-app-developer",
+    "path": ".optimizexp/features/cli-help-and-doctor/evidence/cli-help-and-doctor-path-works-for-product-app-developer/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  }
+}

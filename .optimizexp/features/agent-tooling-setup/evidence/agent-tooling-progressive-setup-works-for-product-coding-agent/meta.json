@@ -9,7 +9,7 @@
   ],
   "interface": "cli",
   "driver": "cli",
-  "capturedAt": "2026-07-31T15:00:35.797Z",
+  "capturedAt": "2026-07-31T15:39:21.915Z",
   "runId": "",
   "screen": {
     "cols": null,
@@ -19,7 +19,7 @@
     "file": "primary.txt",
     "kind": "transcript",
     "bytes": 1162,
-    "sha256": "e22eb9d3c323eadc8babcfd08b1183c700602af85dd723900173fcf583e1112b"
+    "sha256": "3dc6ddc26bf323b4309a4072b9e20deb4f0801e17f92f0069192c3368ad6053f"
   },
   "frames": [],
   "repro": {

@@ -110,7 +110,7 @@ if (have("gbrain"))
 	ok("gbrain on PATH (opt-in; needs embedding key — AUTH.md)");
 else
 	warn(
-		"gbrain not on PATH (ok for zero-key; decline gbrain MCP or install later)",
+		"gbrain not on PATH (ok for zero-key) — decline gbrain MCP, or stay zero-key: bash scripts/setup-agent-tools.sh --common-only --no-gbrain  (see AUTH.md; enable later: Bun + setup without --no-gbrain, then gbrain init)",
 	);
 
 process.exit(failed ? 1 : 0);

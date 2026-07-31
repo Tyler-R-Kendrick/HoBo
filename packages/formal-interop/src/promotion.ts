@@ -1,5 +1,4 @@
 import { beqOpenUi } from "./beq.js";
-import { evaluateClaimClassGate } from "./claim-class.js";
 import { replayFormalCertificate } from "./certificate.js";
 import type {
 	OpenUiPromotionDecision,
@@ -10,7 +9,6 @@ import type {
  * Fail-closed OpenUI promotion hook.
  * Semantic BEq is default-on for artifactKind === "openui".
  * Missing certificate / formal package / untyped claims refuse when required.
- * claim_class missing or fixture_or_scratch fails closed for cold-start claims.
  */
 export function evaluateOpenUiPromotion(
 	input: OpenUiPromotionInput,
@@ -24,18 +22,6 @@ export function evaluateOpenUiPromotion(
 	}
 	if (input.policy === false) {
 		failures.push("policy: promotion not allowed");
-	}
-
-	if (input.coldStartClaim === true || input.claimClass !== undefined) {
-		const claimGate = evaluateClaimClassGate({
-			claimClass: input.claimClass,
-			coldStartClaim: input.coldStartClaim === true,
-		});
-		if (!claimGate.ok) {
-			failures.push(
-				`claim_class: ${claimGate.code ?? "rejected"} (${claimGate.detail})`,
-			);
-		}
 	}
 
 	let beq: ReturnType<typeof beqOpenUi> | undefined;

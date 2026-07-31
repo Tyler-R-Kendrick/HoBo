@@ -20,19 +20,6 @@ Private package implementing formal-interop hypotheses **H1–H7** (plan
 - Controlled Lean path has **no Mathlib** imports; Mathlib contrast is fixture-only.
 - Pure zero-shot is a measurement baseline, not the production promotion path.
 
-## Related design law
-
-- [ADR-0141](../../docs/design/adr/03-data-plane-constrained-legality.md) — executor residual control + Γ first; weighted multi-hole circuit later; model-facing topology heads frozen until anti-E237.
-- [Plan 0016](../../docs/plans/0016-constrained-diffusion-e1-parity.md) — E1–E9 experiment ladder + anti-E237.
-
-## Experiments (plan 0016)
-
-```bash
-pnpm --filter @hobo/formal-interop test
-```
-
-Shipped runners: `runE1Parity`, `runE2Cold`, `runE3LoadCheck`, `runE4StaticMacros`, `runE8ZeroForward`, `runE9ClaimHygiene`, `runExperimentSuite`, `evaluateClaimClassGate`, `validateAntiE237Card`. Ledger: `docs/plans/formal-interop-runs/experiments-e1-e9.jsonl`.
-
 ## Test
 
 ```bash

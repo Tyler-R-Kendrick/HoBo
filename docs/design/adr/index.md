@@ -146,4 +146,3 @@
 | 0138 | Messaging plane unification; Kafka first-class capability provider; Dapr optional Camp runtime / ActorHost dual realization | [architecture-core](01-architecture-core.md#adr-0138) |
 | 0139 | HoBo Code: coding harness and harness multiplexer (`hobo-code` / `@hobo/code`) | [data-plane](03-data-plane.md#adr-0139) |
 | 0140 | Launch ship targets: OSS public (A), local-first developer tooling (B), hosted beta/GA (C); default order A→B→C; public claims must name target | [portability-extensibility](07-portability-extensibility.md#adr-0140) |
-| 0141 | Constrained generation legality: executable residual control (P1) + Γ overlay (P2) vs gated weighted circuit (P3); freeze model-facing topology heads; SAE never authorizes legality | [data-plane constrained legality](03-data-plane-constrained-legality.md) |

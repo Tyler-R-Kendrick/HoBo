@@ -87,13 +87,6 @@ export interface OpenUiPromotionInput {
 	readonly formalPackagePresent?: boolean;
 	readonly conformance?: boolean;
 	readonly policy?: boolean;
-	/**
-	 * Evidence claim_class (ADR-0141). Cold-start claims fail closed when
-	 * missing or fixture_or_scratch / request_local_memo_reuse.
-	 */
-	readonly claimClass?: string;
-	/** When true, claimClass is evaluated under cold-start promotion rules. */
-	readonly coldStartClaim?: boolean;
 }
 
 export interface OpenUiPromotionDecision {

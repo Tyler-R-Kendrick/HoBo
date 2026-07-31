@@ -228,4 +228,3 @@ Avoid shared root churn (`package.json` workspace adds only when package lands).
 | 2026-07-30 | Captured H1–H7; ordered by ecosystem-mismatch leverage + repo strengths; pure zero-shot demoted as production path. |
 | 2026-07-30 | Wave 0 = H4 semantic gate first (repo-native, fail-closed). |
 | 2026-07-30 | Shipped `@hobo/formal-interop` private package covering W0–W3; ledger + fail-closed tests green; controlled Lean `lake build` live. |
-| 2026-07-30 | Swarm topology×diffusion verdict → [ADR-0141](../design/adr/03-data-plane-constrained-legality.md) + [plan 0016](./0016-constrained-diffusion-e1-parity.md): executor before circuit; freeze model-facing topology; formal-interop remains meaning/BEq layer. |

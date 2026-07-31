@@ -53,7 +53,8 @@ for (const rel of REQUIRED_PATHS) {
 	}
 }
 
-const residualPath = "docs/design/instances/residual-human-blockers-2026-07-30.md";
+const residualPath =
+	"docs/design/instances/residual-human-blockers-2026-07-30.md";
 if (existsSync(path.join(repoRoot, residualPath))) {
 	const residual = read(residualPath);
 	for (const id of REQUIRED_RESIDUAL_IDS) {
@@ -78,7 +79,9 @@ const adrTheme = "docs/design/adr/07-portability-extensibility.md";
 if (existsSync(path.join(repoRoot, adrTheme))) {
 	const adr = read(adrTheme);
 	if (!/## ADR-0140\b/u.test(adr)) {
-		failures.push("ADR-0140 section missing from 07-portability-extensibility.md");
+		failures.push(
+			"ADR-0140 section missing from 07-portability-extensibility.md",
+		);
 	}
 }
 
@@ -97,14 +100,18 @@ if (!hoboPkg.bin?.hobo) {
 }
 
 // Workflow integrity markers
-const s0 = existsSync(path.join(repoRoot, ".github/workflows/stage-gate-s0.yml"))
+const s0 = existsSync(
+	path.join(repoRoot, ".github/workflows/stage-gate-s0.yml"),
+)
 	? read(".github/workflows/stage-gate-s0.yml")
 	: "";
 if (s0 && !/stage-gate-s0-record-linux/u.test(s0)) {
 	failures.push("stage-gate-s0.yml missing stable linux artifact name");
 }
 if (s0 && /stage-gate-s0-record-ubuntu-latest/u.test(s0)) {
-	failures.push("stage-gate-s0.yml still hardcodes ubuntu-latest artifact path");
+	failures.push(
+		"stage-gate-s0.yml still hardcodes ubuntu-latest artifact path",
+	);
 }
 
 const hoboCi = existsSync(path.join(repoRoot, ".github/workflows/hobo-ci.yml"))
@@ -113,8 +120,7 @@ const hoboCi = existsSync(path.join(repoRoot, ".github/workflows/hobo-ci.yml"))
 if (hoboCi) {
 	// Require push trigger targeting main (inline list form used in this repo).
 	const hasPushMain =
-		/^  push:\s*$/m.test(hoboCi) &&
-		/branches:\s*\[\s*main\s*\]/u.test(hoboCi);
+		/^  push:\s*$/m.test(hoboCi) && /branches:\s*\[\s*main\s*\]/u.test(hoboCi);
 	if (!hasPushMain) {
 		failures.push("hobo-ci.yml missing push: branches including main");
 	}
@@ -147,7 +153,9 @@ if (
 	!/buildWasmContractBytes/u.test(componentize) &&
 	!/contract-shaped|HONEST SCOPE|synthetic/iu.test(componentize)
 ) {
-	failures.push("componentize.ts missing contract-bytes / HONEST SCOPE markers");
+	failures.push(
+		"componentize.ts missing contract-bytes / HONEST SCOPE markers",
+	);
 }
 if (
 	componentize &&
@@ -160,22 +168,37 @@ if (
 const goA = "docs/design/instances/go-no-go-repo-public-2026-07-30.md";
 if (existsSync(path.join(repoRoot, goA))) {
 	const text = read(goA);
-	if (!/secret scan.*\*\*Met \(2026-07-30\)\*\*|Met \(2026-07-30\).*secret|history secret scan \(condition 3\) is \*\*clean/iu.test(text) &&
-		!/\*\*Met \(2026-07-30\)\*\*.*gitleaks/iu.test(text)) {
+	if (
+		!/secret scan.*\*\*Met \(2026-07-30\)\*\*|Met \(2026-07-30\).*secret|history secret scan \(condition 3\) is \*\*clean/iu.test(
+			text,
+		) &&
+		!/\*\*Met \(2026-07-30\)\*\*.*gitleaks/iu.test(text)
+	) {
 		// Require explicit Met marker for condition 3
 		if (!/\*\*Met \(2026-07-30\)\*\*/u.test(text) || !/gitleaks/iu.test(text)) {
-			failures.push(`${goA}: Target A secret scan must record Met (2026-07-30) with gitleaks evidence`);
+			failures.push(
+				`${goA}: Target A secret scan must record Met (2026-07-30) with gitleaks evidence`,
+			);
 		}
 	}
-	if (/Pending secret scan/iu.test(text) || /missing secret-scan completion/iu.test(text)) {
-		failures.push(`${goA}: frontmatter/blocker deltas still claim secret scan pending/missing`);
+	if (
+		/Pending secret scan/iu.test(text) ||
+		/missing secret-scan completion/iu.test(text)
+	) {
+		failures.push(
+			`${goA}: frontmatter/blocker deltas still claim secret scan pending/missing`,
+		);
 	}
 }
 
 const goB = "docs/design/instances/go-no-go-developer-tooling-2026-07-30.md";
 if (existsSync(path.join(repoRoot, goB))) {
 	const text = read(goB);
-	if (/secret scan\*\* still open|secret scan still open|Target A secret scan\./iu.test(text)) {
+	if (
+		/secret scan\*\* still open|secret scan still open|Target A secret scan\./iu.test(
+			text,
+		)
+	) {
 		failures.push(`${goB}: still claims Target A secret scan open after Met`);
 	}
 	if (!/secret scan Met/iu.test(text) && !/secret scan \*\*Met/iu.test(text)) {
@@ -186,14 +209,23 @@ if (existsSync(path.join(repoRoot, goB))) {
 const dash = "docs/design/instances/v1-readiness-dashboard-2026-07-30.md";
 if (existsSync(path.join(repoRoot, dash))) {
 	const text = read(dash);
-	if (/S0 CI columns `TODO`|bare TODO/iu.test(text) && !/pending runner restoration/iu.test(text)) {
-		failures.push(`${dash}: S0 still described as bare TODO without pending-runner honesty`);
+	if (
+		/S0 CI columns `TODO`|bare TODO/iu.test(text) &&
+		!/pending runner restoration/iu.test(text)
+	) {
+		failures.push(
+			`${dash}: S0 still described as bare TODO without pending-runner honesty`,
+		);
 	}
 	if (/dual-bin and immature `publishConfig` risk/iu.test(text)) {
-		failures.push(`${dash}: still lists dual-bin/publishConfig as open B blockers after WP-D`);
+		failures.push(
+			`${dash}: still lists dual-bin/publishConfig as open B blockers after WP-D`,
+		);
 	}
 	if (/Secret history scan still required before Target A go/iu.test(text)) {
-		failures.push(`${dash}: still claims secret scan required before Target A after Met`);
+		failures.push(
+			`${dash}: still claims secret scan required before Target A after Met`,
+		);
 	}
 	if (!/secret scan.*Met|Secret scan.*Met/iu.test(text)) {
 		failures.push(`${dash}: must note secret scan Met for Target A`);

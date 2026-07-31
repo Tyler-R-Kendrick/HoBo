@@ -12,11 +12,10 @@ describe("check-ship-gap-closure", () => {
 		const script = join(root, "scripts/check-ship-gap-closure.mts");
 		assert.ok(existsSync(script), "ship-gap-closure script must exist");
 
-		const result = spawnSync(
-			process.execPath,
-			["--import", "tsx", script],
-			{ cwd: root, encoding: "utf8" },
-		);
+		const result = spawnSync(process.execPath, ["--import", "tsx", script], {
+			cwd: root,
+			encoding: "utf8",
+		});
 		assert.equal(result.status, 0, result.stdout + result.stderr);
 		assert.match(result.stdout, /ship-gap-closure: OK/);
 		assert.match(result.stdout, /residual IDs present/);

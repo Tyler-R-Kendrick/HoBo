@@ -8,6 +8,17 @@ timestamp: 2026-07-31T00:00:00Z
 
 # App exploration
 
+## Product binaries vs source (critical)
+
+When the project ships a **compiled CLI** (e.g. `@hobo/code` → `hobo-code` → `dist/`):
+
+1. **Build before capture** — `pnpm --filter @hobo/code build` (or the package's `pnpm run build`).
+2. **Exercise the installed binary** — `hobo-code help`, not only `node --import tsx packages/code/src/bin/…`.
+3. **Link the package bin launcher** — `@hobo/code` uses `bin/hobo-code.mjs`, which auto-rebuilds when `src/` is newer than `dist/`. Prefer that over a symlink straight at `dist/bin/*.js`.
+
+Scoring `tsx src` while the user runs stale `dist` is a false green. Evidence commands should match the persona's real entrypoint.
+
+
 Exploration produces a machine-readable **surface map** that **feeds** the experience catalog and feature generation. It is not a substitute for high-quality features.
 
 ## When

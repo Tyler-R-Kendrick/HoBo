@@ -19,8 +19,19 @@ import {
 } from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { featureDir, featuresRoot, repoRoot } from "./lib/paths.mts";
+import {
+	featureDir,
+	featureDirInScope,
+	featuresRoot,
+	findFeature,
+	listFeatures,
+	relFromRepo,
+	repoRoot,
+	writeScopeFromSelection,
+	type OptimizexpScope,
+} from "./lib/paths.mts";
 import { resolvePersonaIds, listPersonaMetas } from "./lib/persona-resolve.mts";
+import { resolveProjects } from "./lib/projects.mts";
 import { scenarioSlug } from "./lib/slug.mts";
 import { writeJson } from "./lib/media.mts";
 import { discoverCode } from "./lib/code-discovery.mts";
@@ -70,7 +81,9 @@ function help() {
   --generated-ids a,b      ids just created via --persona this run
   --max-personas N
   --driver cli|tui|web|native|mixed
-  --projects site,cli|all   tag feature with project ids (default root if omitted)
+  --projects site,cli|all   tag feature + choose write scope:
+                            single non-root project → <project>/.optimizexp/features/
+                            all / multi / root → global .optimizexp/features/
   --dry-run
 
 Maps to: /optimizexp --feature "seed" [--personas …] [--projects …]
@@ -271,6 +284,9 @@ function scaffold(args: Record<string, string>) {
 		.filter(Boolean);
 	const maxPersonas = args.maxPersonas ? Number(args.maxPersonas) : undefined;
 
+	const projectSelection = resolveProjects(args.projects, root);
+	const writeScope = writeScopeFromSelection(projectSelection, root);
+
 	let resolved;
 	try {
 		resolved = resolvePersonaIds({
@@ -279,6 +295,7 @@ function scaffold(args: Record<string, string>) {
 			experiences,
 			maxPersonas,
 			root,
+			selection: projectSelection,
 		});
 	} catch (e) {
 		console.error(String(e));
@@ -287,7 +304,7 @@ function scaffold(args: Record<string, string>) {
 
 	if (resolved.ids.length === 0) {
 		console.error(
-			"No personas resolved. Add .optimizexp/personas/*.md or pass --personas / --persona first.",
+			"No personas resolved. Add global .optimizexp/personas/*.md or <project>/.optimizexp/personas/*.md, or pass --personas / --persona first.",
 		);
 		process.exit(2);
 	}
@@ -304,10 +321,10 @@ function scaffold(args: Record<string, string>) {
 		seed.split(/[.\n]/)[0]!.trim().slice(0, 80) ||
 		id;
 
-	const dir = featureDir(id, root);
+	const dir = featureDirInScope(id, writeScope);
 	const files: { personaId: string; rel: string }[] = [];
 	const surfaces: string[] = [];
-	const projects = (args.projects || "root")
+	const projects = (args.projects || (writeScope.global ? "root" : writeScope.id))
 		.split(/[,\s]+/)
 		.filter(Boolean);
 	const featureJson: Record<string, unknown> = {
@@ -317,6 +334,7 @@ function scaffold(args: Record<string, string>) {
 		experiences,
 		personas: resolved.ids,
 		projects,
+		scope: writeScope.id,
 		interfaces: [...allIfaces],
 		driver,
 		surfaces,
@@ -331,9 +349,17 @@ function scaffold(args: Record<string, string>) {
 		},
 	};
 
+	const personaLines = resolved.metas
+		.map(
+			(m) =>
+				`- \`${id}-${m.id}.feature\` ← \`${m.relPath}\` (scope: ${m.scopeId})`,
+		)
+		.join("\n");
+
 	const readme = `# ${title}
 
 Feature id: \`${id}\`
+Scope: \`${writeScope.id}\` (\`${relFromRepo(writeScope.optimizexpDir, root)}\`)
 
 ## Seed
 
@@ -343,7 +369,7 @@ ${seed.trim()}
 
 Generated one Gherkin file per persona (${resolved.reason}):
 
-${resolved.ids.map((p) => `- \`${id}-${p}.feature\` ← \`.optimizexp/personas/${p}.md\``).join("\n")}
+${personaLines}
 
 ## Bindings & tests
 
@@ -417,7 +443,10 @@ Re-discover / rewire: \`generate-feature.mts --mode implement --id ${id}\`
 		});
 		const fname = `${id}-${m.id}.feature`;
 		writeFileSync(path.join(dir, fname), body, "utf8");
-		files.push({ personaId: m.id, rel: path.join(".optimizexp/features", id, fname) });
+		files.push({
+			personaId: m.id,
+			rel: relFromRepo(path.join(dir, fname), root),
+		});
 	}
 
 	const binding = writeBindingsAndTests({
@@ -443,7 +472,9 @@ Re-discover / rewire: \`generate-feature.mts --mode implement --id ${id}\`
 			{
 				ok: true,
 				id,
-				path: path.relative(root, dir),
+				path: relFromRepo(dir, root),
+				scope: writeScope.id,
+				scopeDir: relFromRepo(writeScope.optimizexpDir, root),
 				personas: resolved.ids,
 				personaResolution: resolved.reason,
 				files,
@@ -469,9 +500,14 @@ function implement(args: Record<string, string>) {
 		console.error("--id required for implement");
 		process.exit(2);
 	}
-	const dir = featureDir(id, root);
+	const loc = findFeature(id, root, {
+		preferredProjectId: args.projects?.split(/[,\s]+/)[0],
+	});
+	const dir = loc?.dir ?? featureDir(id, root);
 	if (!existsSync(path.join(dir, "feature.json"))) {
-		console.error(`missing feature ${id}`);
+		console.error(
+			`missing feature ${id} (searched global + project .optimizexp/features/)`,
+		);
 		process.exit(2);
 	}
 	const meta = JSON.parse(
@@ -520,22 +556,36 @@ function implement(args: Record<string, string>) {
 
 function validate(args: Record<string, string>) {
 	const root = repoRoot();
-	const base = featuresRoot(root);
-	const ids = args.id
-		? [args.id]
-		: existsSync(base)
-			? readdirSync(base).filter((d) =>
-					existsSync(path.join(base, d, "feature.json")),
-				)
-			: [];
-	const report: { id: string; problems: string[] }[] = [];
-	for (const id of ids) {
+	const selection = resolveProjects(args.projects ?? "all", root);
+	const locations = args.id
+		? (() => {
+				const hit = findFeature(args.id, root, { selection });
+				return hit ? [hit] : [];
+			})()
+		: listFeatures(root, selection);
+	const report: { id: string; scope?: string; path?: string; problems: string[] }[] =
+		[];
+	if (args.id && locations.length === 0) {
+		report.push({
+			id: args.id,
+			problems: [
+				"missing feature.json under global or project .optimizexp/features/",
+			],
+		});
+	}
+	for (const loc of locations) {
+		const id = loc.id;
 		const problems: string[] = [];
-		const dir = featureDir(id, root);
+		const dir = loc.dir;
 		const fj = path.join(dir, "feature.json");
 		if (!existsSync(fj)) {
 			problems.push("missing feature.json");
-			report.push({ id, problems });
+			report.push({
+				id,
+				scope: loc.scope.id,
+				path: relFromRepo(dir, root),
+				problems,
+			});
 			continue;
 		}
 		let meta: {
@@ -593,7 +643,12 @@ function validate(args: Record<string, string>) {
 		if (!existsSync(testFile)) {
 			problems.push(`missing test/${id}.bindings.test.ts`);
 		}
-		report.push({ id, problems });
+		report.push({
+			id,
+			scope: loc.scope.id,
+			path: relFromRepo(dir, root),
+			problems,
+		});
 	}
 	const ok = report.every((r) => r.problems.length === 0);
 	console.log(JSON.stringify({ ok, features: report }, null, 2));
@@ -601,6 +656,8 @@ function validate(args: Record<string, string>) {
 }
 
 function resolveOnly(args: Record<string, string>) {
+	const root = repoRoot();
+	const selection = resolveProjects(args.projects ?? "all", root);
 	const experiences = (args.experiences || "ux,dx,ax")
 		.split(/[,\s]+/)
 		.filter((e) => ["ux", "dx", "ax"].includes(e));
@@ -611,6 +668,8 @@ function resolveOnly(args: Record<string, string>) {
 		generatedIds: generatedIds.length ? generatedIds : undefined,
 		experiences,
 		maxPersonas: args.maxPersonas ? Number(args.maxPersonas) : undefined,
+		root,
+		selection,
 	});
 	console.log(
 		JSON.stringify(
@@ -619,7 +678,11 @@ function resolveOnly(args: Record<string, string>) {
 				experiences,
 				personas: r.ids,
 				reason: r.reason,
-				available: listPersonaMetas().map((m) => m.id),
+				available: listPersonaMetas(root, selection).map((m) => ({
+					id: m.id,
+					scope: m.scopeId,
+					path: m.relPath,
+				})),
 			},
 			null,
 			2,

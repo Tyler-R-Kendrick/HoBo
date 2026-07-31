@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "kind": "project",
+  "projectId": "code",
+  "label": "hobo-code CLI (@hobo/code)",
+  "defaults": {
+    "experiences": ["dx", "ux"],
+    "driver": "cli",
+    "maxPersonas": 4,
+    "maxFeatures": 6,
+    "passes": "infinite",
+    "delight": true,
+    "survey": true,
+    "reportOnly": false
+  },
+  "personas": {
+    "requireSchemaVersion": 2,
+    "defaultPriority": 30,
+    "prefer": ["advanced-nix-devenv-developer"],
+    "exclude": []
+  },
+  "features": {
+    "defaultDriver": "cli",
+    "includeProjectFeatureGlobs": true,
+    "prefer": ["hobo-code-hermetic-durable"],
+    "exclude": []
+  },
+  "evidence": {
+    "preferVideo": false,
+    "overwritePrimary": true,
+    "nativeCaptureEnv": "OPTIMIZEXP_NATIVE_CAPTURE"
+  },
+  "surfaces": {
+    "commands": {
+      "help": "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts help",
+      "env": "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts env --json",
+      "isolate": "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts isolate",
+      "platform": "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts platform --json",
+      "test": "pnpm --filter @hobo/code test"
+    }
+  },
+  "gitignore": {
+    "enabled": true,
+    "managed": true,
+    "ignore": {
+      "evidenceMedia": true,
+      "osJunk": true
+    }
+  },
+  "notes": [
+    "Scoped to hobo-code hermetic/durable DX+UX — not monorepo-wide Nix IaC.",
+    "Primary persona: advanced-nix-devenv-developer (experiences: dx, ux)."
+  ]
+}

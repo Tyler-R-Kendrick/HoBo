@@ -48,13 +48,13 @@ Host workflow (if any): load from `workflows/<host>/` after reading `references/
 
 1. **Bare (no flags):** run `init.mts --mode needs-init`; if true, `init.mts` for all experiences + **all projects**, then review with **ux+dx+ax** and **all-projects**. If false, review all experiences + all-projects immediately (`references/init.md` § Auto-init).
 2. Resolve **projects** (default `all-projects`) and **experiences** (default all three) (`references/flags.md`).
-3. **Persona seeds** (`--persona` …): rewrite each seed → `.optimizexp/personas/<id>.md` (`references/personas.md`). Harness: `generate-persona.mts`. Never use the raw seed as the review system prompt.
+3. **Persona seeds** (`--persona` …): rewrite each seed → write-scope `personas/<id>.md` — global `.optimizexp/` or `<project>/.optimizexp/` when a single non-root `--project` is set (`references/personas.md`). Harness: `generate-persona.mts`. Never use the raw seed as the review system prompt.
 4. **Persona selection** (single set for the whole run — review **and** feature fan-out):
    1. `--personas` if set → exactly those ids
    2. Else if any personas generated this run → exactly those ids
    3. Else → all on-disk personas intersecting experiences (fallback: all on-disk)
    4. Apply `--max-personas`
-5. **Feature seeds** (`--feature` …): for each seed, create `.optimizexp/features/<id>/` with **one** `<id>-<persona>.feature` **per selected persona**, plus `steps/` bindings, Vitest stubs, and discovery-wired implementations when code exists (`references/features.md`). Tag `feature.json.projects` from project selection. Harness: `generate-feature.mts`. Do not delete `evidence/` on regenerate.
+5. **Feature seeds** (`--feature` …): for each seed, create write-scope `features/<id>/` (global or project-local) with **one** `<id>-<persona>.feature` **per selected persona**, plus `steps/` bindings, Vitest stubs, and discovery-wired implementations when code exists (`references/features.md`). Tag `feature.json.projects` + `scope` from project selection. Resolve personas from **global + selected project** trees. Harness: `generate-feature.mts`. Do not delete `evidence/` on regenerate.
 6. **Select features for review:** `--features` list if set; else features whose `projects` tag intersects project selection (missing tag ≈ `root`).
 7. List surfaces; prefer smallest set covering critical paths within selected projects.
 8. Load experience references only for selected experiences.
@@ -220,7 +220,7 @@ Document the finding and a concrete fix plan in `reduction.md` only — **no cod
 
 ## 7b. Anti-stall (do not stop early)
 
-These are **invalid** stop reasons:
+These are **invalid** stop reasons / false completion signals:
 
 | Invalid excuse | Do this instead |
 |---|---|
@@ -230,6 +230,11 @@ These are **invalid** stop reasons:
 | “Scores flat so plateau” while findings have S/M reductions | **Not plateau** — keep reducing |
 | “Messaging fixed; friction 2 is good enough” | Keep going if happy-path still fails for the persona or uncertainty remains |
 | “Report-only vibe” without `--report-only` | Apply experiments |
+| “Package tests green / feature wired” | Product experiment only — continue bus + scores + regimes |
+| “One evidence capture done” | Capture is act, not closeout — keep cycling |
+| “should-stop exit 0 / plateau” | **cycleStop only** — enter delight (unless `--no-delight`); never claim invocation complete |
+| “Todo list empty / compaction said done” | Re-run `--mode status` / `assert-complete`; resume if `status: running` |
+| “Implemented the hermetic/env/product fix” | That was a reduce pass — rescore and continue |
 
 **True external block** (allowed in `summary.md` → Blocked only): missing secrets the user did not provide, network forbidden by policy, user explicitly forbade installs/mutations, safety rule. Every blocked item needs `blockedBecause` + what would unblock it.
 
@@ -262,6 +267,15 @@ When the user wants PRs (or already asked for optimizexp PR delivery):
 
 ## 9. Stop conditions
 
+### Two layers (do not conflate)
+
+| Layer | Meaning | Harness |
+|---|---|---|
+| **cycleStop** | End of harm cycle (true plateau) | `should-stop` → `cycleStop: true`, `invocationStop: false` |
+| **invocation complete** | Skill finished for this run | `assert-complete` exit 0 **and** `mark-complete` |
+
+`should-stop` **`stop` is a deprecated alias of `cycleStop`**. Never treat exit 0 on should-stop as “optimizexp done.”
+
 ### Within a cycle (after each review iteration)
 
 Stop the **cycle** when **any** is true:
@@ -277,6 +291,7 @@ Stop the **cycle** when **any** is true:
 - Misusing **`--passes`** as “only N reduce steps”  
 - “Good enough after N experiments” while S/M findings remain  
 - Flat scores while implementable S/M findings remain  
+- Product tests green / feature wired / one evidence capture  
 
 **Do not stop** because you ran out of ideas while residual still names a file-level fix. If stuck, take the next surface/persona cell with the worst `metric_max` and reduce that.
 
@@ -285,38 +300,48 @@ Stop the **cycle** when **any** is true:
 Canonical policy: **`equilibrium.md`**.
 
 1. Record harm + delight + cognitive cells each pass.  
-2. On harm true plateau → **do not stop** → `regime: delight_maximize` (unless `--no-delight`).  
+2. On harm true plateau → **do not invoke complete** → `regime: delight_maximize` (unless `--no-delight`).  
 3. Survey + rank backlog; apply Pareto-admissible uplifts.  
 4. Harm regression during delight → return to `harm_reduce`.  
-5. **Invocation complete** when `stopReason: pareto-equilibrium` (or `inverted-u-peak` / `delight-ceiling` / caps / user / safety / blocked).  
-
-Harness:
+5. Candidate terminal: `equilibrium` mode `stop: true` with reason `pareto-equilibrium` (etc.).  
+6. **Invocation complete only when:**
 
 ```bash
-node --import tsx …/review-loop.mts --mode equilibrium \
-  --scores curr.json --prev-scores prev.json \
-  --implementable-harm 0 --implementable-uplift 0 \
-  --regime delight_maximize
+node --import tsx …/review-loop.mts --mode assert-complete --run <id>   # exit 0
+node --import tsx …/review-loop.mts --mode mark-complete --run <id> \
+  --stop-reason pareto-equilibrium
 ```
 
-`metrics-zero` and `irreducible` are **harm-floor markers**, not infinite-loop terminals.
+`metrics-zero` and `irreducible` are **harm-floor markers**, not infinite-loop terminals. Forbidden invocation `stopReason`s: `plateau`, `metrics-zero`, `irreducible`, `tests-pass`, `wired`.
 
 Use `--report-only` only when the user wants measure-only (still survey/score; no apply).
 
 Update `scope.json`:
 
+- `status`: `running` | `complete`  
 - `regime`: `harm_reduce` | `delight_maximize`  
+- `regimesEntered`: array (must include `delight_maximize` unless `noDelight`)  
+- `stopPolicy`: `infinite-until-pareto-equilibrium` (default infinite)  
 - `passesCompleted` / `cyclesCompleted` / `delightCyclesCompleted`  
 - `surveyCompleted`, `equilibrium` object  
 - `stopReason`: `pareto-equilibrium` | `inverted-u-peak` | `delight-ceiling` | `delight-passes-cap` | `passes-cap` | `harm-only-floor` | `blocked` | `user` | `safety`  
 
-Write `summary.md`:
+Write `summary.md` **before** mark-complete:
 
 - Harm floor + final delight + cognitive breaches  
-- Why equilibrium (or cap)  
+- Why equilibrium (or cap) — include `stopReason`  
 - Experiments (harm + uplift) + rejected past-peak / constraint failures  
 - Persona survey + top backlog  
 - Segment coverage (which KYC personas judged)
+
+### Resume after compaction / handoff
+
+```bash
+node --import tsx …/review-loop.mts --mode status --run <id>
+node --import tsx …/review-loop.mts --mode assert-complete --run <id>
+```
+
+If `status: running` or `INCOMPLETE.md` exists → continue the loop. Never claim done from a prior narrative alone.
 
 ## Host workflows vs cross-agent
 

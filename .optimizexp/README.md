@@ -2,17 +2,33 @@
 
 Repo-local configuration for the **optimizexp** agent skill.
 
-| Path | Role |
+## Global vs project scopes
+
+| Location | Role |
 |---|---|
-| `personas/*.md` | Persona instruction prompts for review workflows |
-| `features/<slug>/` | Feature folders: per-persona Gherkin, `feature.json`, `evidence/` |
+| **`.optimizexp/`** (this directory, repo root) | **Global** — `config.json`, cross-cutting personas/features, **and** all bus/runs/backlog orchestration |
+| **`<project>/.optimizexp/`** (e.g. `site/.optimizexp/`) | **Project-local** — `config.json`, personas/features/evidence for that product only |
+
+Reviews **merge** global + selected project trees. Same persona/feature id: **project-local shadows global**. Write with a single non-root `--project <id>` lands under that project's tree; multi/all/root → global.
+
+**Config** (`config.json`, schemaVersion 1): formal defaults (experiences, passes, delight, survey), persona/feature prefer+exclude, evidence policy, safety (offline-first), project surfaces, **gitignore policy**. Optional — skill works without it. Merge: builtins → global → project → **CLI wins**. See skill `references/config.md`.
+
+**`.gitignore`:** managed block (runs/, bus entries, large evidence media). Customize via `config.json` → `gitignore.extra` / `gitignore.negate` / category toggles; user rules outside the managed markers are preserved. Refresh: `init.mts --mode ensure-config`.
+
+| Path (global) | Role |
+|---|---|
+| `config.json` | Formal monorepo OptimizeXP config |
+| `.gitignore` | Managed ignores for ephemeral/large artifacts |
+| `personas/*.md` | Cross-cutting persona prompts (`experiences: [ux\|dx\|ax,…]`) |
+| `features/<slug>/` | Cross-cutting feature folders (Gherkin, `feature.json`, `evidence/`) |
 | `features/<slug>/<slug>-<persona>.feature` | One Gherkin file per targeted persona |
 | `features/<slug>/evidence/<scenario>/` | **One** primary recording per scenario (overwritten on re-run) |
-| `bus/entries/` | Append-only bus: **expect / act / outcome** (+ optional `survey`) with formal metric scorecards |
+| `bus/entries/` | Append-only bus: **expect / act / outcome** (+ optional `survey`) |
 | `runs/<run-id>/` | Per-run scope, scores, iterations, summary |
-| `runs/<run-id>/survey/` | End-of-run persona survey responses (pseudo feature requests) |
+| `runs/<run-id>/survey/` | End-of-run persona survey responses |
 | `runs/<run-id>/backlog.json` | Ranked uplift experiments for this run |
 | `backlog/experiments.json` | Global merge of survey-driven experiment backlog |
+| `cucumber.yaml` | Cucumber profile for experience features |
 
 Skill (progressive disclosure + harness + host workflows):
 

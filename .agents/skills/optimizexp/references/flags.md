@@ -77,15 +77,19 @@ node --import tsx .agents/skills/optimizexp/harness/init.mts --mode list-project
 
 | Phase | Effect of `--projects` |
 |---|---|
-| **init** | Only seed personas/features tagged for selected projects |
-| **feature generate** | Writes `feature.json` → `projects: [...]` |
-| **review** | Only exercise features whose `projects` intersects selection (untagged ≈ `root`) |
-| **personas** | Prefer personas whose experiences match; project tags on personas are advisory |
+| **init** | Seed plans for selected projects; **write** single non-root project content to `<project>/.optimizexp/`; multi/root → global; ensure **config.json** |
+| **persona / feature generate** | Single non-root project → write under that project's `.optimizexp/`; all/multi/root → **global** `.optimizexp/` |
+| **read / resolve** | Always merge **global + selected project** trees; project-local **id shadows** global; apply **config prefer/exclude** |
+| **review** | Personas/features from merged scopes; config defaults for experiences/caps when flags omit; CLI wins |
+| **bus / runs / backlog** | Always **global** `.optimizexp/` (orchestration is monorepo-wide) |
+
+Repo defaults live in **`.optimizexp/config.json`** and **`<project>/.optimizexp/config.json`** (`references/config.md`).
 
 ```text
-/optimizexp --init --projects site          # UX-heavy bootstrap for site only
-/optimizexp --projects site,cli             # review features for site + cli
-/optimizexp --project root --dx             # monorepo DX only
+/optimizexp --init --projects site          # site-tagged content → site/.optimizexp/
+/optimizexp --projects site,cli             # read global + site + cli scopes
+/optimizexp --project root --dx             # monorepo DX only (global tree)
+/optimizexp --persona "…" --project site   # write site/.optimizexp/personas/
 /optimizexp                                 # all-projects + all experiences (after auto-init)
 ```
 
@@ -136,9 +140,10 @@ Exclude wins over include.
 
 | Form | Meaning |
 |---|---|
-| `--persona "<seed>"` | Free-text seed → rewrite → formal `.optimizexp/personas/<id>.md` |
+| `--persona "<seed>"` | Free-text seed → rewrite → formal persona under **write scope** (global or `<project>/.optimizexp/personas/`) |
 | `--persona-seed` / `--persona-file` | Same seed input |
 | `--persona-id <slug>` | Optional id for **the next** `--persona` seed (pair order: id then seed, or seed then id in same invocation) |
+| `--project <id>` with `--persona` | Single non-root project → write to that project's `.optimizexp/personas/` |
 
 **Repeatable.** Seed is never the raw review system prompt. See `references/personas.md`.
 
@@ -173,10 +178,11 @@ Ids only. Not free text.
 
 | Form | Meaning |
 |---|---|
-| `--feature "<seed>"` | Free-text **journey seed**. Rewrite into `.optimizexp/features/<id>/` with formal `feature.json` + **one Gherkin file per targeted persona**. |
+| `--feature "<seed>"` | Free-text **journey seed**. Rewrite into **write-scope** `features/<id>/` (global or project-local) with formal `feature.json` + **one Gherkin file per targeted persona**. |
 | `--feature-seed` / `--feature-file` | Same seed input |
 | `--feature-id <slug>` | Optional folder/id; else derived from seed |
 | `--driver cli\|tui\|web\|native\|mixed` | Preferred capture driver for `feature.json` |
+| `--project <id>` with `--feature` | Single non-root → `<project>/.optimizexp/features/<id>/` |
 
 **Repeatable:** multiple `--feature` seeds → multiple feature folders.
 
@@ -196,9 +202,11 @@ Per targeted persona, write:
 
 ```text
 .optimizexp/features/<feature-id>/<feature-id>-<persona-id>.feature
+# or
+<project>/.optimizexp/features/<feature-id>/<feature-id>-<persona-id>.feature
 ```
 
-Shared: `feature.json`, `README.md`, `SEED.md`, `evidence/` (one tree for all persona files).
+Shared per feature folder: `feature.json`, `README.md`, `SEED.md`, `evidence/` (one tree for all persona files).
 
 Do **not** collapse multi-persona generation into a single untagged `.feature` file. Scenarios stay persona-specific so evidence and scorecards stay attributable.
 
@@ -291,9 +299,10 @@ Within each outer cycle the review loop **applies reduce experiments** and conti
 | `OPTIMIZEXP_REPORT_ONLY=1` | Same as `--report-only`. |
 
 ```text
-/optimizexp --dx                         # passes=infinite → until metrics=0 or irreducible
-/optimizexp --ax --passes 3              # at most three full completion cycles
+/optimizexp --dx                         # passes=infinite → harm then delight → pareto-equilibrium
+/optimizexp --ax --passes 3              # at most three harm cycles; still delight after
 /optimizexp --dx --report-only           # measure only
+/optimizexp --dx --no-delight            # stop after harm floor (opt-out)
 ```
 
 `scope.json` records:
@@ -305,7 +314,9 @@ Within each outer cycle the review loop **applies reduce experiments** and conti
   "passesLabel": "infinite",
   "cyclesCompleted": 0,
   "passesCompleted": 0,
-  "stopPolicy": "infinite-until-zero-or-irreducible",
+  "status": "running",
+  "regime": "harm_reduce",
+  "stopPolicy": "infinite-until-pareto-equilibrium",
   "outerCycles": "passes"
 }
 ```
@@ -313,7 +324,9 @@ Within each outer cycle the review loop **applies reduce experiments** and conti
 - `passes` — `null` = infinite; positive int = finite outer-cycle cap  
 - `passesLabel` — `"infinite"` or `"N"` for humans  
 - `cyclesCompleted` — outer cycles finished to plateau (or terminal stop)  
-- `passesCompleted` — **review iterations** completed (historical field name; bookkeeping only, not a cap)
+- `passesCompleted` — **review iterations** completed (historical field name; bookkeeping only, not a cap)  
+- `status` — `running` until `mark-complete`; never claim done while `running`  
+- Invocation complete requires `assert-complete` ok + `mark-complete` (not should-stop plateau)
 
 ---
 
@@ -323,22 +336,22 @@ Within each outer cycle the review loop **applies reduce experiments** and conti
 1. **If `--init` only:** run `harness/init.mts` with optional `--projects`; write `.optimizexp/INIT.md` + `init-report.json`; **stop** (unless user also requested review).
 2. **Projects** — default `all-projects`; if `--project(s)` set, resolve ids via `list-projects` (unknown ids → error).
 3. **Experiences** — default `{ux,dx,ax}`; apply include-only; apply excludes; empty → stop and ask.
-4. **Persona generation** — for each `--persona` / seed file, rewrite → `personas/<id>.md`; collect `generatedPersonaIds`.
-5. **Persona selection** for the rest of the run (review **and** feature generation):
+4. **Persona generation** — for each `--persona` / seed file, rewrite → write-scope `personas/<id>.md` (global or project); collect `generatedPersonaIds`.
+5. **Persona selection** for the rest of the run (review **and** feature generation) — scan **global + selected project** `.optimizexp/personas/` (project shadows global on id):
    1. If `--personas` / `--use-personas` → **exactly those ids** (must exist after step 4).
    2. Else if `generatedPersonaIds` non-empty → **exactly those ids**.
-   3. Else → **all** on-disk personas whose `experiences` intersect step 3 (if none intersect, fall back to all on-disk personas).
+   3. Else → **all** merged-scope personas whose formal frontmatter **`experiences` ∩ step-3 experiences ≠ ∅** (no fall-back to all personas; invalid/empty `experiences` excluded).
    4. Apply `--max-personas` (priority then id).
-6. **Feature generation** — for each `--feature` / seed file (tag with selected projects):
+6. **Feature generation** — for each `--feature` / seed file:
    1. Derive `feature-id` (`--feature-id` or from seed).
-   2. Create/update `.optimizexp/features/<id>/`.
+   2. Create/update write-scope `features/<id>/` (global vs `<project>/.optimizexp/`).
    3. For **each id in the persona selection**, write/overwrite `<id>-<persona>.feature`.
-   4. Write `feature.json` with `personas`, `projects`, seed digest.
+   4. Write `feature.json` with `personas`, `projects`, `scope`, seed digest.
    5. **Never delete** `evidence/` when regenerating Gherkin.
-7. **Feature selection for review** — if `--features` set, those ids; else features under `.optimizexp/features/` whose `projects` intersects project selection (untagged ≈ `root`).
+7. **Feature selection for review** — if `--features` set, those ids (resolved via global+project search); else features under merged scopes whose `projects` intersects selection (untagged ≈ `root`).
 8. **Passes** — default `passes = infinite`; parse `--passes infinite|N` / `OPTIMIZEXP_PASSES`.  
 9. **Delight / survey** — parse `--delight-passes`, `--no-delight`, `--no-survey` (and env aliases).  
-10. **Stop policy** — per cycle: true plateau; outer infinite until metrics=0 or irreducible (or finite N cap); then delight (if metrics-zero) + survey/backlog closeout; no review-iteration budget; `--report-only` disables reduce/uplift apply.  
+10. **Stop policy** — per cycle: true plateau = cycleStop only; outer infinite until **pareto-equilibrium** via delight (or finite N / `--no-delight`); survey/backlog default on; no review-iteration budget; `--report-only` disables reduce/uplift apply; **assert-complete** required before claiming done.  
 11. Echo resolved set (experiences, projects, personas, features, passes, delight, survey, reportOnly).
 
 Harness:
@@ -406,7 +419,9 @@ node --import tsx .agents/skills/optimizexp/harness/generate-feature.mts \
   "cyclesCompleted": 0,
   "passesCompleted": 0,
   "stopPolicy": "infinite-until-pareto-equilibrium",
+  "status": "running",
   "regime": "harm_reduce",
+  "regimesEntered": ["harm_reduce"],
   "outerCycles": "passes",
   "hostAgent": "claude-code"
 }

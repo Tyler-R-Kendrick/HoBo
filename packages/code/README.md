@@ -19,6 +19,7 @@ hobo-code promote --run <id>
 hobo-code budget
 hobo-code remote
 hobo-code platform --json
+hobo-code env --json          # hermetic shell + durable layout (nix/devenv optional)
 hobo-code join tyler
 hobo-code agent worker-codex
 hobo-code nodes
@@ -36,7 +37,30 @@ hobo-code help
 | scaffold | OpenUI+Astryx template + first paint + step rail |
 | isolate / promote | Mediated isolation + gate checklist promote |
 | budget / remote / platform | Spend meter · reach · flag LED strip |
+| **env** | Hermetic shell detection (devenv/nix/direnv) + durable vs sandbox layout |
 | join / agent / nodes / rooms | Hive participants + load bars |
+
+### Hermetic / durable (optional Nix · devenv)
+
+`hobo-code` supports **optional** hermetic developer shells without making Nix monorepo IaC:
+
+| Concern | Behavior |
+|---|---|
+| **Detect** | `devenv.nix` / `devenv.yaml` / `flake.nix` / `shell.nix` / `.envrc` + process env (`IN_NIX_SHELL`, `DEVENV_ROOT`, `DIRENV_DIR`) |
+| **Activate** | You enter the shell (`devenv shell`, `direnv allow`, `nix develop`) — hobo-code does **not** require or spawn Nix |
+| **Durable vs sandbox** | Ephemeral: `$HOBO_HOME/sandboxes/<runId>`; durable learning: `$HOBO_HOME/durable/code/` (never inside the sandbox root) |
+| **HOBO_HOME** | Prefer a writable path **outside** the Nix store (e.g. `$XDG_STATE_HOME/hobo` or project `.hobo-home`) |
+
+`hobo-code env --json` and `help` / `platform` / `isolate` data payloads include a `hermetic` report. Fidelity labels: `host-default` · `hermetic-declared` · `hermetic-active`. Human chrome always shows `durable · …` so sandbox purity is scannable without scraping JSON.
+
+Optional direnv pairing (still never required for HoBo monorepo IaC):
+
+```bash
+# in project .envrc (after devenv/flake setup)
+use devenv   # or: use flake
+export HOBO_HOME="${HOBO_HOME:-$XDG_STATE_HOME/hobo}"
+# then: direnv allow && hobo-code env --json
+```
 
 Human output uses structured panels: one-scan happy paths are 3 lines (title · body · rule); multi-row keeps soft band. Status paints a Herdr-style box (quiet + busy ≤4 panes fold to 4 lines); OpenUI drafts ship a dark branded shell + step rail (`1 · generate → 2 · edit → 3 · lock`) with `data-testid="primary"`.
 
@@ -60,7 +84,7 @@ Regenerate after sprite edits: `pnpm --filter @hobo/code run gen:bo-idle-tui`.
 
 hobo-code★●hemrd
 ★d·st·se·sc·i·pr
-b·re·pl·n·rm·j·a
+b·re·pl·ev·n·rm·j·a
 ```
 
 ## Progressive flags (all **ON** by default)

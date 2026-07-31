@@ -1,0 +1,58 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-31T14:20:00Z-8001-outcome",
+  "expects": "2026-07-31T14:20:00Z-8001-expect",
+  "actId": "2026-07-31T14:20:00Z-8001-act",
+  "runId": "20260731-ax-exp-nav",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "exp-proofs classification head",
+    "interface": "cli"
+  },
+  "actual": { "exitCode": 0, "types": ["dx", "ux", "cx", "ax", "api"] },
+  "feelings": {
+    "summary": "I can list exp-proof type folders and read classification rules without a broken stage-gate script.",
+    "valence": "positive",
+    "arousal": "low",
+    "trust": "high"
+  },
+  "desirability": {
+    "rating": "desired",
+    "degree": 0.9,
+    "why": "Seed path matches offline classification surface."
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "outcome",
+    "role": "judged",
+    "persona": "product-coding-agent",
+    "surface": "exp-proofs classification",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "No failing gate:s1.",
+      "uncertainty": "Types and rules clear."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/draft-experience-proof-navigation/evidence/draft-experience-proofs-are-navigable-works-for-product-coding-agent/"
+    ],
+    "scoredAt": "2026-07-31T14:20:15.000Z"
+  },
+  "comparison": {
+    "expectId": "2026-07-31T14:20:00Z-8001-expect",
+    "actId": "2026-07-31T14:20:00Z-8001-act",
+    "deltaFromExpect": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "deltaFromAct": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "matchedExpectation": true,
+    "expectationMatch": { "behavior": true, "scoresWithinTol": true, "tolerance": 0 }
+  },
+  "evidence": {
+    "featureId": "draft-experience-proof-navigation",
+    "scenarioSlug": "draft-experience-proofs-are-navigable-works-for-product-coding-agent",
+    "path": ".optimizexp/features/draft-experience-proof-navigation/evidence/draft-experience-proofs-are-navigable-works-for-product-coding-agent/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  }
+}

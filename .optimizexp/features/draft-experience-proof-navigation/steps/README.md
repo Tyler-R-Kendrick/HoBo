@@ -10,8 +10,8 @@
 
 ## Primary binding
 
-- **package-script** `pnpm run gate:s1` (high)
-- package.json scripts["gate:s1"] exists; mentioned in feature/seed
+- **shell** `bash -lc 'test -f src/draft/exp-proofs/_classification.md && ls src/draft/exp-proofs && head -n 40 src/draft/exp-proofs/_classification.md'` (high)
+- seed targets exp-proofs navigation; `_classification.md` is the type map (dx/ux/cx/ax/api) — **not** `gate:s1`
 
 ## Run
 
@@ -21,10 +21,6 @@ pnpm run test:file .optimizexp/features/draft-experience-proof-navigation/test/d
 
 # cucumber (optimizexp profile, if configured)
 pnpm run test:behavior:optimizexp -- --name "draft-experience-proof-navigation"
-# or:
-node --import tsx node_modules/@cucumber/cucumber/bin/cucumber.js \
-  --config .optimizexp/cucumber.yaml \
-  --name "draft-experience-proof-navigation"
 ```
 
 ## Agent rules

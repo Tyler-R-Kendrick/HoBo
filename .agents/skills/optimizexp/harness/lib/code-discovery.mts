@@ -57,6 +57,17 @@ export function extractCommandHints(text: string): string[] {
 	return [...hints];
 }
 
+/** Live / egress package scripts must never be default feature primary for offline AX/DX. */
+export function isLiveEgressScript(name: string): boolean {
+	const n = name.toLowerCase();
+	return (
+		n === "eval:agent:live" ||
+		n.endsWith(":live") ||
+		n.includes("eval:agent:live") ||
+		/^eval:agent$/.test(n)
+	);
+}
+
 function scoreScript(
 	name: string,
 	body: string,
@@ -69,6 +80,8 @@ function scoreScript(
 		if (hay.includes(k.toLowerCase())) score += 2;
 		if (name.toLowerCase().includes(k.toLowerCase())) score += 3;
 	}
+	// Demote live/egress scripts so keyword "agent" cannot promote eval:agent:live.
+	if (isLiveEgressScript(name)) score = Math.min(score, 1);
 	return score;
 }
 
@@ -134,12 +147,21 @@ export function discoverCode(input: {
 	const notes: string[] = [];
 	const bindings: DiscoveredBinding[] = [];
 
+	const allowLive =
+		/\blive\b/i.test(input.seed) && !/without live|no live|offline|no cloud/i.test(input.seed);
+
 	// Explicit command hints win
 	for (const hint of hints) {
 		const runMatch = hint.match(/^(?:pnpm|npm|yarn)(?:\s+run)?\s+(\S+)/);
 		if (runMatch) {
 			const name = runMatch[1]!;
 			if (scripts[name]) {
+				if (isLiveEgressScript(name) && !allowLive) {
+					notes.push(
+						`skipped live/egress script "${name}" (offline default; seed did not opt into live)`,
+					);
+					continue;
+				}
 				bindings.push({
 					kind: "package-script",
 					id: `script:${name}`,
@@ -157,6 +179,12 @@ export function discoverCode(input: {
 		}
 		// bare script name
 		if (scripts[hint]) {
+			if (isLiveEgressScript(hint) && !allowLive) {
+				notes.push(
+					`skipped live/egress script "${hint}" (offline default; seed did not opt into live)`,
+				);
+				continue;
+			}
 			bindings.push({
 				kind: "package-script",
 				id: `script:${hint}`,
@@ -189,7 +217,7 @@ export function discoverCode(input: {
 			body: scripts[name]!,
 			score: scoreScript(name, scripts[name]!, keywords),
 		}))
-		.filter((x) => x.score >= 4)
+		.filter((x) => x.score >= 4 && (allowLive || !isLiveEgressScript(x.name)))
 		.sort((a, b) => b.score - a.score)
 		.slice(0, 5);
 
@@ -205,6 +233,36 @@ export function discoverCode(input: {
 			reason: `script "${r.name}" matched seed keywords (score ${r.score})`,
 			implementsSteps: ["I exercise the surface as this persona would"],
 		});
+	}
+
+	// Experience-proof navigation: classification manifest is the critical path (not gate:s1).
+	if (/exp-proofs|experience proof|experience-proof/i.test(text)) {
+		const classification = "src/draft/exp-proofs/_classification.md";
+		const abs = path.join(root, classification);
+		if (existsSync(abs)) {
+			const cmd =
+				"bash -lc 'test -f src/draft/exp-proofs/_classification.md && ls src/draft/exp-proofs && head -n 40 src/draft/exp-proofs/_classification.md'";
+			bindings.unshift({
+				kind: "shell-command",
+				id: "shell:exp-proofs-classification",
+				command: cmd,
+				confidence: "high",
+				reason:
+					"seed targets exp-proofs navigation; _classification.md is the type map (dx/ux/cx/ax/api)",
+				implementsSteps: [
+					"I exercise the surface as this persona would",
+					"I am on the critical path described by the feature seed",
+				],
+			});
+			bindings.push({
+				kind: "file",
+				id: `file:${classification}`,
+				path: classification,
+				confidence: "high",
+				reason: "classification manifest exists for experience-type folders",
+				implementsSteps: ["I am on the critical path described by the feature seed"],
+			});
+		}
 	}
 
 	// Known HoBo agent-check surface
@@ -282,10 +340,21 @@ export function pickPrimaryCommand(
 	report: DiscoveryReport,
 ): DiscoveredBinding | null {
 	const runnable = (b: DiscoveredBinding) =>
-		(b.kind === "package-script" || b.kind === "shell-command") && Boolean(b.command);
+		(b.kind === "package-script" || b.kind === "shell-command") &&
+		Boolean(b.command) &&
+		!(b.scriptName && isLiveEgressScript(b.scriptName));
 	const high = report.bindings.filter((b) => b.confidence === "high" && runnable(b));
-	// Prefer the most journey-specific known gate when present
-	const preferredNames = ["agent:check", "check:relevant:staged", "test:file", "doctor"];
+	// Prefer journey-specific offline surfaces when present
+	const preferredIds = [
+		"shell:exp-proofs-classification",
+		"script:doctor",
+		"script:agent:check",
+	];
+	for (const id of preferredIds) {
+		const hit = high.find((b) => b.id === id);
+		if (hit) return hit;
+	}
+	const preferredNames = ["doctor", "agent:check", "check:relevant:staged", "test:file"];
 	for (const name of preferredNames) {
 		const hit = high.find((b) => b.scriptName === name);
 		if (hit) return hit;

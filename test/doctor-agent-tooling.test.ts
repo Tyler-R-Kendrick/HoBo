@@ -24,6 +24,7 @@ describe("doctor agent-tooling (AX)", () => {
 		const out = `${r.stdout ?? ""}\n${r.stderr ?? ""}`;
 		expect(r.status, out).toBe(0);
 		expect(out).toMatch(/AUTH\.md present/);
+		expect(out).toMatch(/WorkOS auth\.md|auth\.md protocol/i);
 		expect(out).toMatch(/setup-agent-tools\.sh --help/);
 		expect(out).toMatch(/agent-mcp-serena\.sh present/);
 		expect(out).toMatch(/agent-mcp-headroom\.sh present/);

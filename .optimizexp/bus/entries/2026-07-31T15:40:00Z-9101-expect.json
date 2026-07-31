@@ -1,0 +1,49 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T15:40:00Z-9101-expect",
+  "runId": "20260731-all-eq",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "featureId": "cli-help-and-doctor",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run doctor",
+    "interface": "cli"
+  },
+  "predicted": {
+    "exitCode": 0
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-app-developer",
+    "surface": "pnpm run doctor",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "positive": {
+      "excitement": 3,
+      "easeOfUse": 5,
+      "perceivedOptimality": 4,
+      "total": 12,
+      "min": 3,
+      "gapTotal": 3,
+      "gapMax": 2
+    },
+    "rationale": {
+      "harms": "None.",
+      "friction": "None.",
+      "uncertainty": "None.",
+      "excitement": "Solid offline doctor.",
+      "easeOfUse": "One command.",
+      "perceivedOptimality": "Warn should name next step."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T15:40:00.000Z"
+  }
+}

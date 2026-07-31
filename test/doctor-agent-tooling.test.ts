@@ -29,5 +29,10 @@ describe("doctor agent-tooling (AX)", () => {
 		expect(out).toMatch(/agent-mcp-serena\.sh present/);
 		expect(out).toMatch(/agent-mcp-headroom\.sh present/);
 		expect(out).toMatch(/agent-mcp-gbrain\.sh present/);
+		// Zero-key path: missing gbrain must still print a copy-pasteable next step
+		if (/gbrain not on PATH/.test(out)) {
+			expect(out).toMatch(/setup-agent-tools\.sh --common-only --no-gbrain/);
+			expect(out).toMatch(/AUTH\.md/);
+		}
 	});
 });

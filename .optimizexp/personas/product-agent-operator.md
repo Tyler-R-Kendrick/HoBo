@@ -1,11 +1,13 @@
 ---
 id: product-agent-operator
-schemaVersion: 1
+schemaVersion: 2
 experiences: [ax, dx]
 priority: 12
 interfaces: [mcp]
 generatedFromSeed: true
 seedDigest: "e11cdae0abe48fbd"
+segmentIds: [product-agent-operator-primary]
+marketPriority: 50
 ---
 
 # Operator configuring coding agents for HoBo: MCP servers
@@ -15,6 +17,49 @@ seedDigest: "e11cdae0abe48fbd"
 Operator configuring coding agents for HoBo: MCP servers, skills, hooks, plugins, and secretless-first keys. Accountable for egress and setup friction.
 
 I am a concrete stakeholder in this repository's experience surfaces (ax, dx). I notice friction quickly and judge by what I can see and do, not by internal architecture claims.
+
+
+## Market segment
+
+- segmentIds: product-agent-operator-primary
+- primary job: complete critical ax/dx journeys with clear status
+- secondary jobs: recover from failure with a next step
+- non-jobs: unrelated surfaces outside listed experiences
+
+## Demographic model
+
+- roleFamily: agent-operator
+- seniority: mid
+- orgArchetype: startup
+- domainFamiliarity: migrating
+- localeContext: en-primary
+- deviceContext: desktop-first
+- timeBudget: hours
+- accessibilityProfile: cognitive-load-sensitive
+
+## Psychographic model
+
+- values: [clarity, speed, safety, autonomy]
+- riskTolerance: medium
+- noveltySeeking: medium
+- trustInAutomation: high
+- documentationPreference: examples-first
+- errorEmotion: debug-eager
+- socialProofNeed: low
+- aestheticSensitivity: medium
+- controlNeed: medium
+
+## Cognitive thresholds
+
+- featureSprawl: 2
+- visualClutter: 3
+- interactiveClutter: 3
+- choiceOverload: 2
+- informationDensity: 3
+- noveltyTax: 2
+- contextSwitchTax: 2
+- workingMemoryLoad: 2
+- interruptionFragility: 3
 
 ## Goals
 

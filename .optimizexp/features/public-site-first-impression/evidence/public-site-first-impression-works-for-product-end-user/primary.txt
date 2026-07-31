@@ -3,9 +3,9 @@ command: pnpm run docs:site-nav
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 0
 spawnStatus: 0
-durationMs: 412
+durationMs: 358
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T15:00:35.672Z
+capturedAt: 2026-07-31T15:39:22.371Z
 
 ## stdout
 

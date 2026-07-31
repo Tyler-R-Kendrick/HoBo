@@ -3,9 +3,9 @@ command: pnpm run design:lint
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 0
 spawnStatus: 0
-durationMs: -1959
+durationMs: 915
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T15:00:35.152Z
+capturedAt: 2026-07-31T15:39:21.790Z
 
 ## stdout
 

@@ -3,9 +3,9 @@ command: pnpm run doctor
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 0
 spawnStatus: 0
-durationMs: 851
+durationMs: 828
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T15:00:36.754Z
+capturedAt: 2026-07-31T15:39:20.771Z
 
 ## stdout
 
@@ -34,7 +34,7 @@ ok  serena on PATH
 ok  headroom on PATH
 ok  rtk on PATH
 ok  tgrep on PATH
-warn gbrain not on PATH (ok for zero-key; decline gbrain MCP or install later)
+warn gbrain not on PATH (ok for zero-key) — decline gbrain MCP, or stay zero-key: bash scripts/setup-agent-tools.sh --common-only --no-gbrain  (see AUTH.md; enable later: Bun + setup without --no-gbrain, then gbrain init)
 
 
 ## stderr

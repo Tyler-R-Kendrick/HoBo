@@ -3,9 +3,9 @@ command: bash scripts/setup-agent-tools.sh --help
 cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
 exitCode: 0
 spawnStatus: 0
-durationMs: 22
+durationMs: 18
 screen: ?x? (cols x rows)
-capturedAt: 2026-07-31T15:00:35.797Z
+capturedAt: 2026-07-31T15:39:21.914Z
 
 ## stdout
 Usage: bash scripts/setup-agent-tools.sh [options]

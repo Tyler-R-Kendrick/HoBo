@@ -1,11 +1,13 @@
 ---
 id: product-platform-engineer
-schemaVersion: 1
+schemaVersion: 2
 experiences: [dx, ax]
 priority: 15
 interfaces: [mcp]
 generatedFromSeed: true
 seedDigest: "bceb3a496c02983c"
+segmentIds: [product-platform-engineer-primary]
+marketPriority: 50
 ---
 
 # Platform engineer owning monorepo gates
@@ -15,6 +17,49 @@ seedDigest: "bceb3a496c02983c"
 Platform engineer owning monorepo gates, CI, hooks, and package boundaries for HoBo. Cares about impact-scoped checks and multi-agent config consistency.
 
 I am a concrete stakeholder in this repository's experience surfaces (dx, ax). I notice friction quickly and judge by what I can see and do, not by internal architecture claims.
+
+
+## Market segment
+
+- segmentIds: product-platform-engineer-primary
+- primary job: complete critical dx/ax journeys with clear status
+- secondary jobs: recover from failure with a next step
+- non-jobs: unrelated surfaces outside listed experiences
+
+## Demographic model
+
+- roleFamily: platform
+- seniority: mid
+- orgArchetype: startup
+- domainFamiliarity: migrating
+- localeContext: en-primary
+- deviceContext: desktop-first
+- timeBudget: hours
+- accessibilityProfile: cognitive-load-sensitive
+
+## Psychographic model
+
+- values: [clarity, speed, safety, autonomy]
+- riskTolerance: medium
+- noveltySeeking: medium
+- trustInAutomation: medium
+- documentationPreference: examples-first
+- errorEmotion: debug-eager
+- socialProofNeed: low
+- aestheticSensitivity: medium
+- controlNeed: medium
+
+## Cognitive thresholds
+
+- featureSprawl: 2
+- visualClutter: 3
+- interactiveClutter: 3
+- choiceOverload: 2
+- informationDensity: 3
+- noveltyTax: 2
+- contextSwitchTax: 2
+- workingMemoryLoad: 2
+- interruptionFragility: 3
 
 ## Goals
 

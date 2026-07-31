@@ -61,6 +61,21 @@ experience type so one implementer holds one artifact discipline.
 issue deletes its batch's entries. When the file's `packages` array is empty, the advisory tier
 disappears and the full gate applies repo-wide — that event closes the backfill epic.
 
+
+### Snapshot (2026-07-31 — bulk harden)
+
+| Wave | Status |
+|---|---|
+| **W1 proof.json** | **Done** — all packages had manifests. |
+| **W2 epic features** | **Presence satisfied** for remaining epics via hardened `features/*.feature` + steps (where missing). |
+| **W3 examples+notebooks** | **Done for allowlist** — every former grandfathered package has executed `examples/proof-identity.ts` + notebook. |
+| **W4 ux visual** | **Minimum assets** present (`assets/wireframe.svg`) for all ux proofs. |
+| **W5 per-type exp** | **Minimum per-type artifacts** (proto+CUE / journeys / tool schemas / type-tests). |
+| **W6 technical benches** | **Presence benches** (`bench/identity.bench.ts`) for all technical proofs. |
+
+**Burn-down: `src/draft/_grandfathered.json` packages = []** (618 un-grandfathered in one bulk pass via `scripts/bulk-harden-proofs.mts`).
+Gate `pnpm run draft:artifacts` is now strict for the whole draft tree.
+
 ### Snapshot (2026-07-30)
 
 | Wave | Status |

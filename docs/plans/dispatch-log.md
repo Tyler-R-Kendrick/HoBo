@@ -37,3 +37,17 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | `billing-budget` on checks only (empty steps; spending limit annotation) |
 | Notes | Local gates green (setup --help, gbrain launcher exit 1, bindings, mirrors, agent:check staged). Closeout rubber-duck + adversarial on PR comment. |
 
+
+## 2026-07-31 — sdlc --finish skill
+
+| Field | Value |
+|---|---|
+| Initiative | session land: `/sdlc --finish` skill flag |
+| Backend | sequential-fallback (parent; skill/docs only) |
+| Issue | n/a (agent tooling) |
+| Branch | `feat/sdlc-finish-flag` |
+| PRs | #971 |
+| Result | **in progress → merge** |
+| Failure class | (CI: expect billing-budget if empty steps) |
+| Notes | Adds references/finish.md; dual-mirror skill; AGENTS/CLAUDE/docs pointers. |
+

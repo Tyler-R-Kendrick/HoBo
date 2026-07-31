@@ -7,9 +7,10 @@ tags: [hobo, plans, sdlc, optimizexp, ax]
 
 # Initiative: land optimizexp AX reductions
 
-**Phase:** planned → dispatching  
+**Phase:** closed  
 **Slug:** `ax-optimizexp-land`  
 **Opened:** 2026-07-31  
+**Closed:** 2026-07-31  
 **Host:** grok  
 
 ## Goal
@@ -32,41 +33,24 @@ and run artifacts. Single-layer PR; squash-merge (billing-red CI does not block)
 - Kill: removing gbrain from MCP configs entirely — hosts still need opt-in surface; fail-closed is safer.
 - Survive: shared launcher pattern (mirrors serena).
 
-## Plan (approved via user choice A)
+## Delivered PRs
 
-| Layer | Branch | Deliverable | Gates |
+| PR | Title | Result | Notes |
 |---|---|---|---|
-| 01 (only) | `sdlc/ax-optimizexp-land-01-setup-help-gbrain` | scripts + MCP + docs + optimizexp AX artifacts | `bash scripts/setup-agent-tools.sh --help`; `bash scripts/agent-mcp-gbrain.sh` exit 1 without key; `pnpm run skills:mirror-check`; `pnpm run test:file .optimizexp/features/agent-tooling-setup/test/agent-tooling-setup.bindings.test.ts`; `pnpm agent:check -- --staged` |
-
-## One-shot issue contract
-
-### Issue: AX-01 land setup help + gbrain fail-closed
-
-**Why:** Agent operators and coding agents need a zero-key progressive setup path with fail-closed optional key tools.
-
-**Scope in:**
-- `scripts/setup-agent-tools.sh`, `scripts/agent-mcp-gbrain.sh`
-- `.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml`
-- `AUTH.md`, `AGENTS.md`, `docs/agent-tooling.md`, `.env.example`
-- `.optimizexp/features/agent-tooling-setup/**`, `.optimizexp/runs/20260731-ax-review/**`, bus entries `*400*`
-
-**Scope out:** quiet/idempotent full install (residual L); new draft proofs; Linear wiring.
-
-**Acceptance:**
-1. `bash scripts/setup-agent-tools.sh --help` → exit 0, prints `--no-gbrain` and `AUTH.md`
-2. `bash scripts/agent-mcp-gbrain.sh` without binary/key → exit 1, mentions AUTH.md
-3. MCP configs reference `scripts/agent-mcp-gbrain.sh`
-4. Bindings test green; skills mirror OK
-5. Run summary documents plateau
-
-**DoD:** PR reviewed (rubber-duck + adversarial), comments cleared, squash-merged (or billing exception documented).
+| [#968](https://github.com/Tyler-R-Kendrick/HoBo/pull/968) | feat(agents): AX setup help + gbrain fail-closed launcher | squash-merged `c37cf984` | CI jobs empty-step billing failure; documented + merged |
 
 ## Stack topology
 
-Single-layer (normal PR acceptable; not multi-phase product stack).
+Single-layer (normal PR). Branch: `sdlc/ax-optimizexp-land-01-setup-help-gbrain`.
 
 ## Dispatch
 
 | Issue | Backend | Branch | PR | Status |
 |---|---|---|---|---|
-| AX-01 | sequential-fallback | `sdlc/ax-optimizexp-land-01-setup-help-gbrain` | TBD | in progress |
+| AX-01 | sequential-fallback | `sdlc/ax-optimizexp-land-01-setup-help-gbrain` | #968 | **Done** (merged) |
+
+## Billing-budget exceptions
+
+- **2026-07-31 PR #968:** jobs failed with empty steps; annotation  
+  "The job was not started because recent account payments have failed or your spending limit
+  needs to be increased." Local acceptance green. Squash-merged under exception.

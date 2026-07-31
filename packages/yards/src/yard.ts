@@ -144,9 +144,7 @@ export function yardToShape(yardObject: Yard): {
 	});
 }
 
-function normalizeProvider(
-	provider: string | { readonly id: string },
-): string {
+function normalizeProvider(provider: string | { readonly id: string }): string {
 	if (typeof provider === "string" && provider.length > 0) return provider;
 	if (
 		provider &&

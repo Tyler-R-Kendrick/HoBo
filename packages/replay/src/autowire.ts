@@ -62,7 +62,9 @@ export function webReplayAutowire(): ReplayAutowireSnippet {
 /**
  * componentize / extreme-template marker: feature is progressive.
  */
-export function isReplayAutoWired(env: Readonly<Record<string, string | undefined>>): boolean {
+export function isReplayAutoWired(
+	env: Readonly<Record<string, string | undefined>>,
+): boolean {
 	const kill = env[REPLAY_ENV_KILL];
 	if (kill === "0" || kill === "false" || kill === "off") return false;
 	return true;

@@ -264,9 +264,7 @@ export interface ContainerDependencyOptions {
 export interface WasmComponentDependencyOptions {
 	readonly source: string;
 	readonly witWorld?: string;
-	readonly endpoints?: Readonly<
-		Record<string, { readonly port?: number }>
-	>;
+	readonly endpoints?: Readonly<Record<string, { readonly port?: number }>>;
 }
 
 export interface BindleBuilder {
@@ -280,13 +278,9 @@ export interface BindleBuilder {
 	data(): BindleResource<"data">;
 	service(binding?: ComponentBinding): BindleResource<"service">;
 	/** BYO external service (connection string / URL). No host runtime required. */
-	external(
-		options?: ExternalDependencyOptions,
-	): BindleResource<"external">;
+	external(options?: ExternalDependencyOptions): BindleResource<"external">;
 	/** Container image dependency — requires `hobo add runtime-oci`. */
-	container(
-		options: ContainerDependencyOptions,
-	): BindleResource<"container">;
+	container(options: ContainerDependencyOptions): BindleResource<"container">;
 	/** Wasm component dependency — requires `hobo add runtime-wasm`. */
 	wasmComponent(
 		options: WasmComponentDependencyOptions,

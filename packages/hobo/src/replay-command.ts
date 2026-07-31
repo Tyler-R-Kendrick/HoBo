@@ -75,7 +75,12 @@ function resolveService(
 	if (env.HOBO_REPLAY_FIXTURES === "1" || env.HOBO_REPLAY_MEMORY === "1") {
 		return createContractAssertedReplayFixtures({ stationId }).service;
 	}
-	const rootDir = join(home, "stations", stationId.replace(/[:/]/g, "_"), "replay");
+	const rootDir = join(
+		home,
+		"stations",
+		stationId.replace(/[:/]/g, "_"),
+		"replay",
+	);
 	return createReplayService({ stationId, rootDir });
 }
 
@@ -173,9 +178,7 @@ export function createReplayCommand(
 
 			const sessionId = args[1];
 			if (
-				(sub === "get" ||
-					sub === "open" ||
-					sub === "summarize") &&
+				(sub === "get" || sub === "open" || sub === "summarize") &&
 				(typeof sessionId !== "string" || sessionId.length === 0)
 			) {
 				return {

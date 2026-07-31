@@ -78,9 +78,7 @@ export interface OverlayNetwork {
 		readonly overlayNetworkId?: string;
 	}): readonly string[];
 	/** Optional: configure MagicDNS / split DNS for hierarchical names. */
-	configureMagicDns?(
-		config: MagicDnsSplitConfig,
-	): Promise<MagicDnsSplitResult>;
+	configureMagicDns?(config: MagicDnsSplitConfig): Promise<MagicDnsSplitResult>;
 	/** Optional: publish an authenticated public gateway (Funnel / reverse proxy). */
 	publishFunnel?(options: FunnelPublishOptions): Promise<FunnelPublishResult>;
 }

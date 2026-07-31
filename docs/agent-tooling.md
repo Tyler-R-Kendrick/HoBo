@@ -1,13 +1,13 @@
 ---
 type: Agent Tooling Reference
 title: "Agent tooling"
-description: "Twelve third-party AI-coding tools plus repo-local repo and draft skills are wired into this repo for Claude Code, Cursor, Codex, and GitHub Copilot CLI."
+description: "Twelve third-party AI-coding tools plus repo-local repo, draft, sdlc, and optimizexp skills are wired into this repo for Claude Code, Cursor, Codex, and GitHub Copilot CLI."
 tags: [hobo, agent-tooling.md]
 ---
 
 # Agent tooling
 
-Twelve third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh). The repo-local `repo`, `draft`, `sdlc`, and `gh-stack` skills are mirrored in `.agents/skills/` and `.claude/skills/` (all configured agents: Claude Code, Cursor, Codex, Grok, etc.); use `repo` for lifecycle work, `draft` for draft taxonomy and gate-enforced proof artifacts, `sdlc` to coordinate the full development loop (brainstorm → plan → one-shot issues → subagents with incremental checkins → parent-owned GitHub stacked PRs → bottom-up rubber-duck/adversarial review → comment/check repair → per-PR squash-merge), and `gh-stack` for non-interactive `gh stack` CLI rules.
+Twelve third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh). The repo-local `repo`, `draft`, `sdlc`, `gh-stack`, and `optimizexp` skills are mirrored in `.agents/skills/` and `.claude/skills/` (all configured agents: Claude Code, Cursor, Codex, Grok, etc.); use `repo` for lifecycle work, `draft` for draft taxonomy and gate-enforced proof artifacts, `sdlc` to coordinate the full development loop (brainstorm → plan → one-shot issues → subagents with incremental checkins → parent-owned GitHub stacked PRs → bottom-up rubber-duck/adversarial review → comment/check repair → per-PR squash-merge), `gh-stack` for non-interactive `gh stack` CLI rules, and `optimizexp` for persona-driven UX/DX/AX experience optimization (write-ahead agent bus + **review→reduce experiment→verify** each pass by default; derived fixes must ship in-run; no iterations/pass budget; true plateau = flat scores **and** empty implementable backlog; `--report-only` to measure without edits; config under [`.optimizexp/`](../.optimizexp/README.md)).
 
 > **Note:** this is *tooling* config, not part of the HoBo product design (`docs/design/`). It was added on request to make the agents productive in this repo.
 

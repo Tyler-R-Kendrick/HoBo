@@ -36,9 +36,7 @@ export function evaluateMessagingCanDeploy(
 		assertDeliverySupported(req.backendCapabilities, req.requiredDelivery);
 	} catch (err) {
 		const message =
-			err instanceof MessagingCapabilityError
-				? err.message
-				: String(err);
+			err instanceof MessagingCapabilityError ? err.message : String(err);
 		reasons.push({
 			code: "MESSAGING_DELIVERY_UNSUPPORTED",
 			message,
@@ -60,8 +58,7 @@ export function evaluateMessagingCanDeploy(
 	const env = req.environment ?? "dev";
 	if (
 		runtime === "dapr" &&
-		(req.allowDapr === false ||
-			(req.denyDaprEnvironments ?? []).includes(env))
+		(req.allowDapr === false || (req.denyDaprEnvironments ?? []).includes(env))
 	) {
 		reasons.push({
 			code: "MESSAGING_DAPR_DENIED",

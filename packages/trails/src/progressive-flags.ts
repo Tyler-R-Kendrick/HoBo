@@ -19,7 +19,9 @@ export type ProgressiveFlagPort = {
  * Create an internal progressive flag store backed by Harness FeatureFlagStore.
  * Return type is Trails-owned so declarations stay sealed.
  */
-export function createProgressiveFlagPort(now: () => string): ProgressiveFlagPort {
+export function createProgressiveFlagPort(
+	now: () => string,
+): ProgressiveFlagPort {
 	const store = new FeatureFlagStore({ now });
 	return {
 		define(input) {
@@ -29,9 +31,7 @@ export function createProgressiveFlagPort(now: () => string): ProgressiveFlagPor
 				enabled: input.enabled !== false,
 				state: "ENABLED",
 				defaultValue: input.defaultValue ?? false,
-				...(input.metadata !== undefined
-					? { metadata: input.metadata }
-					: {}),
+				...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
 			});
 		},
 	};

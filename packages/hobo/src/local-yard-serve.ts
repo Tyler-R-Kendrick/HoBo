@@ -343,9 +343,7 @@ export async function serveBindleOnLocalYard(options: {
 	emit(
 		`hobo dev: Camp injected discovery [${Object.keys(serviceDiscovery).join(", ")}] ` +
 			`bindle-env [${Object.keys(bindleEnv).join(", ")}]` +
-			(named.primaryNamedUrl
-				? ` named=${named.primaryNamedUrl}`
-				: ""),
+			(named.primaryNamedUrl ? ` named=${named.primaryNamedUrl}` : ""),
 	);
 
 	const exposedEndpoints = endpoints.filter((e) => e.external);

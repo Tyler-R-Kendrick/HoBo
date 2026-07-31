@@ -85,9 +85,7 @@ export class Harness {
 		this.experiment = new OpenExperimentEngine({
 			store: options.store,
 			...(options.now !== undefined ? { now: options.now } : {}),
-			...(options.emitOtel !== undefined
-				? { emitOtel: options.emitOtel }
-				: {}),
+			...(options.emitOtel !== undefined ? { emitOtel: options.emitOtel } : {}),
 		});
 		this.deliveryAdapter =
 			options.deliveryAdapter ?? createBuiltinDeliveryAdapter();
@@ -163,7 +161,11 @@ export class Harness {
 	): ExperimentAnalysisResult | null {
 		const analysis = this.analyzeExperiment(experimentName);
 		const v = verdict ?? analysis?.verdict ?? "inconclusive";
-		this.experiment.conclude(experimentName, v, analysis?.exportPayload.contentHash);
+		this.experiment.conclude(
+			experimentName,
+			v,
+			analysis?.exportPayload.contentHash,
+		);
 		return analysis;
 	}
 

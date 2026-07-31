@@ -43,9 +43,7 @@ export function createNetbirdOverlay(options?: {
 			...(accessToken !== undefined && accessToken.length > 0
 				? { accessToken }
 				: {}),
-			...(setupKey !== undefined && setupKey.length > 0
-				? { setupKey }
-				: {}),
+			...(setupKey !== undefined && setupKey.length > 0 ? { setupKey } : {}),
 			...(options?.fetchImpl !== undefined
 				? { fetchImpl: options.fetchImpl }
 				: {}),
@@ -87,8 +85,7 @@ export function createNetbirdOverlay(options?: {
 					try {
 						const peers = await api.listPeers();
 						const hit = peers.find(
-							(p) =>
-								p.name === join.hostname || p.id === join.hostname,
+							(p) => p.name === join.hostname || p.id === join.hostname,
 						);
 						if (hit) {
 							nodeId = hit.id;

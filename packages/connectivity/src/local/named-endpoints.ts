@@ -104,8 +104,9 @@ export async function attachNamedEndpoints(options: {
 
 	for (const endpoint of options.endpoints) {
 		// Private mesh endpoints keep mesh URLs; still publish hierarchical overlay names for discovery.
-		const endpointMode: "local" | "overlay" =
-			endpoint.external ? mode : "overlay";
+		const endpointMode: "local" | "overlay" = endpoint.external
+			? mode
+			: "overlay";
 
 		// Local-dev air-gap: never bind local mode to remote/prod backends.
 		if (endpointMode === "local") {

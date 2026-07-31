@@ -72,7 +72,10 @@ describe("kubectl-cluster consumer contract (PACT mock)", () => {
 			namespace: "hobo-dev",
 			transport: mock,
 		});
-		const host = createOciRuntimeHost({ kubernetes: k8s, namespace: "hobo-dev" });
+		const host = createOciRuntimeHost({
+			kubernetes: k8s,
+			namespace: "hobo-dev",
+		});
 
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-oci-pact-"));
 		try {

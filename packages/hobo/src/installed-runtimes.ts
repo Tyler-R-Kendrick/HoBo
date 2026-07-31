@@ -39,7 +39,9 @@ export function loadInstalledRuntimes(
 		};
 	}
 	try {
-		const raw = JSON.parse(readFileSync(path, "utf8")) as InstalledRuntimesState;
+		const raw = JSON.parse(
+			readFileSync(path, "utf8"),
+		) as InstalledRuntimesState;
 		if (raw.schemaVersion !== INSTALLED_RUNTIMES_SCHEMA) {
 			return {
 				schemaVersion: INSTALLED_RUNTIMES_SCHEMA,

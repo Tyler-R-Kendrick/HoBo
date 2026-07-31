@@ -25,15 +25,9 @@ export type SecretsAccessResult =
 export interface SecretsPort {
 	readonly id: string;
 	readonly kind: "vault-jwt" | "aws-sm" | "azure-kv" | "memory-fixture";
-	put(
-		name: string,
-		value: string,
-	): Promise<{ versionId: string }>;
+	put(name: string, value: string): Promise<{ versionId: string }>;
 	access(name: string): Promise<SecretsAccessResult>;
-	accessVersion(
-		name: string,
-		versionId: string,
-	): Promise<SecretsAccessResult>;
+	accessVersion(name: string, versionId: string): Promise<SecretsAccessResult>;
 	listVersions(name: string): Promise<readonly string[]>;
 }
 
@@ -158,9 +152,9 @@ export function createVaultJwtSecretsPort(options: {
 			const seed =
 				idx >= 0 && entry
 					? entry.seeds[idx]!
-					: createHmac("sha256", root).update(`${name}:${versionId}`).digest(
-							"hex",
-						);
+					: createHmac("sha256", root)
+							.update(`${name}:${versionId}`)
+							.digest("hex");
 			const material = createHmac("sha256", root)
 				.update(`${name}:${versionId}:${seed}`)
 				.digest("base64url");
@@ -331,8 +325,7 @@ export function createAzureKeyVaultPort(options?: {
 	readonly id?: string;
 }): SecretsPort {
 	const vaultName = options?.vaultName ?? "default";
-	const vaultUrl =
-		options?.vaultUrl ?? `https://${vaultName}.vault.azure.net`;
+	const vaultUrl = options?.vaultUrl ?? `https://${vaultName}.vault.azure.net`;
 	const memory = createMemorySecretsPort({
 		id: options?.id ?? `secrets:azure-kv:${vaultName}`,
 	});
@@ -369,9 +362,7 @@ export function createAzureKeyVaultPort(options?: {
 			value?: string;
 			attributes?: { exp?: number };
 		};
-		const vid =
-			versionId ??
-			(data.id?.split("/").pop() || "current");
+		const vid = versionId ?? (data.id?.split("/").pop() || "current");
 		return {
 			status: "ok",
 			valueRef: `azure-kv://${vaultName}/${name}@${vid}`,
@@ -493,9 +484,7 @@ export function createCampSecretsPort(input: {
  */
 export function asHoboSecretsStore(port: SecretsPort): {
 	put: (name: string, value: Uint8Array) => Promise<string>;
-	access: (
-		name: string,
-	) => Promise<{ versionId: string; value: Uint8Array }>;
+	access: (name: string) => Promise<{ versionId: string; value: Uint8Array }>;
 	accessVersion: (name: string, versionId: string) => Promise<Uint8Array>;
 	listVersions: (name: string) => Promise<readonly string[]>;
 } {

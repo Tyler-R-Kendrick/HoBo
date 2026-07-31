@@ -61,8 +61,8 @@ export interface KafkaRealizeResult {
 	readonly secretless: true;
 }
 
-export const KAFKA_MESSAGING_CAPABILITIES: MessagingCapabilities = Object.freeze(
-	{
+export const KAFKA_MESSAGING_CAPABILITIES: MessagingCapabilities =
+	Object.freeze({
 		deliveryGuarantees: [
 			"at-least-once",
 			"exactly-once",
@@ -75,5 +75,4 @@ export const KAFKA_MESSAGING_CAPABILITIES: MessagingCapabilities = Object.freeze
 		deadLetter: true,
 		partitionAware: true,
 		crossYardFederation: true,
-	},
-);
+	});

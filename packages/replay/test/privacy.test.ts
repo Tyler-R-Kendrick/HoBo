@@ -31,9 +31,7 @@ describe("privacy defaults", () => {
 		});
 		const blob = JSON.stringify(event);
 		expect(blob).not.toContain("hunter2");
-		expect(() =>
-			assertNoSensitivePlaintext(blob, ["hunter2"]),
-		).not.toThrow();
+		expect(() => assertNoSensitivePlaintext(blob, ["hunter2"])).not.toThrow();
 	});
 
 	it("redacts Authorization headers in network capture", () => {

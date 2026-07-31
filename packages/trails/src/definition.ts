@@ -99,15 +99,12 @@ export function defineTrail(input: TrailDefinitionInput): TrailDefinition {
 			code: "trail-definition-invalid",
 		});
 	}
-	const steps = Object.freeze(
-		(input.steps ?? []).map((s) => parseStep(s)),
-	);
+	const steps = Object.freeze((input.steps ?? []).map((s) => parseStep(s)));
 	const recipeList = Object.freeze([...(input.recipeList ?? [])]);
 	if (steps.length === 0 && recipeList.length === 0) {
-		throw Object.assign(
-			new TypeError("trail requires steps or recipeList"),
-			{ code: "trail-definition-empty" },
-		);
+		throw Object.assign(new TypeError("trail requires steps or recipeList"), {
+			code: "trail-definition-empty",
+		});
 	}
 	// Validate dependsOn within steps.
 	const ids = new Set(steps.map((s) => s.id));
@@ -244,8 +241,7 @@ export function wireTrailPhaseDependencies(
 				});
 			}
 			if (s.kind === "cutover") {
-				const gate =
-					validationIds.length > 0 ? validationIds : workIds;
+				const gate = validationIds.length > 0 ? validationIds : workIds;
 				if (gate.length === 0) return s;
 				const deps = new Set([...(s.dependsOn ?? []), ...gate]);
 				deps.delete(s.id);

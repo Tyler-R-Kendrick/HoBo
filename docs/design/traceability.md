@@ -422,11 +422,21 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0126 | [architecture-core](./adr/01-architecture-core.md#adr-0126) | Committed platform entry files under `examples/*/deploy/` are the sanctioned JS-family exception: platforms ingest them verbatim; example sources stay TypeScript-first. | — (2026-07-25 unimplemented-features remediation, docs/plans/0006 item 4-5) |
 | ADR-0127 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0127) | Lakebed accepted as a deploy-target adapter (honest-partial capabilities, lakebed-deploy driver realization, opt-in approval) and rejected as a Yard substrate. | HOBO-714 |
 | ADR-0128 | [architecture-core](./adr/01-architecture-core.md#adr-0128) | ts-autocode vendored as a git submodule at `external/ts-autocode` linked into the pnpm workspace; HoBo trainable scanning/emission delegates to ts-autocode; reusable grounding decorators/text helpers upstreamed. | — (2026-07-26 hobo↔ts-autocode integration) |
+| ADR-0129 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0129) | Provider-terms compliance: registered providers are the operator's own accounts; free-tier headroom is never pooled or resold; no account multiplication; adapters carry dated `terms` references. | — (legal/compliance; Linear import pending) |
+| ADR-0130 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0130) | DNS-valid hierarchical naming, optional portless local named endpoints, Tailscale-first managed overlay in `@hobo/connectivity`, pluggable public DNS, multi-tenant PolicyEngine + metering foundations. | — (connectivity foundations; Linear import pending) |
+| ADR-0131 | [architecture-core](./adr/01-architecture-core.md#adr-0131) | Station as control-plane occupancy primitive; Broker pure Conductor; Rails as versioned profiles. | — (station occupancy; Linear import pending) |
+| ADR-0132 | [identity-security](./adr/02-identity-security.md#adr-0132) | Continuous Identity Migration Plane: dual-path PrincipalRef continuity, Matching/policy-triggered, zero Bindle config. | — (continuous identity; Linear import pending) |
+| ADR-0133 | [identity-security](./adr/02-identity-security.md#adr-0133) | Hard environment network isolation + optional Privileged Access Gateway. | — (env isolation; Linear import pending) |
+| ADR-0134 | [identity-security](./adr/02-identity-security.md#adr-0134) | HoBo Trails: app-owned continuous migration recipes that compose continuous identity. | — (trails; Linear import pending) |
+| ADR-0135 | [data-plane sqlite default](./adr/03-data-plane-sqlite-default.md) | SQLite is the default embedded EventStore/runtime journal behind HoBo ports; single-owner partitions; not the public portability boundary. | — (sqlite default; Linear import pending) |
+| ADR-0136 | [data-plane effects+resiliency](./adr/03-data-plane-effects-resiliency.md) | Effects on Contracts (Verse-inspired EffectSpec) + visible secondary ResilienceProfile; no Effect-TS/Polly/XState public deps. | — (contract effects; Linear import pending) |
+| ADR-0137 | [data-plane](./adr/03-data-plane.md#adr-0137) | Session Replay on every App Kit (`@hobo/replay`); Kit ≠ WIT membrane; `replay.*`; dual fixtures; distinct from event-log replay. | — (session replay; Linear import pending) |
+| ADR-0138 | [architecture-core](./adr/01-architecture-core.md#adr-0138) | Messaging plane unification; Kafka first-class capability provider; Dapr optional Camp runtime / ActorHost dual realization. | — (messaging plane; Linear import pending) |
 | ADR-0139 | [data-plane](./adr/03-data-plane.md#adr-0139) | HoBo Code coding harness (`hobo-code` binary, dispatch default): mediated isolation, distributed hive, extreme templates + evidence, FinOps dogfood, gated squash-only promotion. | — (2026-07-27 hobo-code elevation) |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 124 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 125 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.

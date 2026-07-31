@@ -297,9 +297,7 @@ export {
 	upsertLoginProfile,
 	type HoboProfile,
 } from "./hobo-profile.js";
-export {
-	createClaimCommandWithMock,
-} from "./claim-command.js";
+export { createClaimCommandWithMock } from "./claim-command.js";
 export {
 	collectExplicitProviderPins,
 	createYardBrokerCatalog,

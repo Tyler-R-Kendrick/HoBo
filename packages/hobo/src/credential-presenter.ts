@@ -143,8 +143,7 @@ export function createCredentialPresenter(options?: {
 					scheme: "dpop-bound",
 					principal: { kind: "agent", id: agent.id },
 					...(human !== null ? { humanPrincipal: human } : {}),
-					tenant:
-						env.HOBO_TENANT ?? profile?.session?.tenant ?? "hobo-dev",
+					tenant: env.HOBO_TENANT ?? profile?.session?.tenant ?? "hobo-dev",
 					accessToken: svid.token,
 					audience: input.audience,
 					expiresAt: new Date(svid.claims.exp * 1000).toISOString(),
@@ -163,10 +162,7 @@ export function createCredentialPresenter(options?: {
 				const session = profile.session;
 				const keyPair =
 					session.proofKeyId !== undefined
-						? loadOrCreateDpopKeyPair(
-								input.hoboHome,
-								session.principal.id,
-							)
+						? loadOrCreateDpopKeyPair(input.hoboHome, session.principal.id)
 						: null;
 				if (keyPair) {
 					const dpopProof = mintDpopProof({

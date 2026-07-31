@@ -18,7 +18,10 @@ import {
 	createLedgerBillingProvider,
 	exportInvoiceStripeLines,
 } from "../../src/metering/billing-provider.js";
-import { createOpaPolicyEngine, SAMPLE_HOBO_AUTHZ_REGO } from "../../src/policy/opa-engine.js";
+import {
+	createOpaPolicyEngine,
+	SAMPLE_HOBO_AUTHZ_REGO,
+} from "../../src/policy/opa-engine.js";
 import {
 	evaluateRegoLite,
 	HOBO_DEFAULT_POLICY_DOCUMENT,

@@ -273,11 +273,16 @@ export function createDaprMessaging(
 			for (const message of batch) {
 				try {
 					await handler(message);
-					await doAck(client, pending, message.messageId, message.leaseId, emit);
+					await doAck(
+						client,
+						pending,
+						message.messageId,
+						message.leaseId,
+						emit,
+					);
 					handled += 1;
 				} catch (err) {
-					const reason =
-						err instanceof Error ? err.message : String(err);
+					const reason = err instanceof Error ? err.message : String(err);
 					if (message.deliveryAttempt >= maxAttempts) {
 						// Permanent: ack under the real consumer group (do not nack first).
 						await doAck(
@@ -356,7 +361,8 @@ async function doAck(
 ): Promise<void> {
 	const key = `${messageId}::${leaseId}`;
 	const meta = pending.get(key);
-	if (!meta) throw new MessagingDeliveryError(`no inflight dapr message ${messageId}`);
+	if (!meta)
+		throw new MessagingDeliveryError(`no inflight dapr message ${messageId}`);
 	await client.ack(String(messageId), meta.group);
 	pending.delete(key);
 	emit({
@@ -376,7 +382,8 @@ async function doNack(
 ): Promise<void> {
 	const key = `${messageId}::${leaseId}`;
 	const meta = pending.get(key);
-	if (!meta) throw new MessagingDeliveryError(`no inflight dapr message ${messageId}`);
+	if (!meta)
+		throw new MessagingDeliveryError(`no inflight dapr message ${messageId}`);
 	await client.nack(String(messageId), meta.group);
 	pending.delete(key);
 	emit({

@@ -75,7 +75,9 @@ export function createOciRuntimeHost(
 		kind: "oci",
 		async ensure(ctx: RuntimeEnsureContext): Promise<RuntimeEnsureResult> {
 			const emit = ctx.emitProgress ?? (() => {});
-			emit(`hobo: ensuring oci kubernetes host (kubectl transport) namespace=${namespace}`);
+			emit(
+				`hobo: ensuring oci kubernetes host (kubectl transport) namespace=${namespace}`,
+			);
 			// Equip kubectl client offline under HOBO_HOME when using process transport.
 			// Injected Kubernetes clients (PACT mocks) skip download.
 			let kubectlNote = "kubectl client equip skipped (injected transport)";
@@ -107,7 +109,9 @@ export function createOciRuntimeHost(
 			const probe = await k8s.probe();
 			// ready = client available (equippable offline); clusterReachable is separate.
 			const ready =
-				probe.ready || equippedBin !== undefined || options.kubernetes !== undefined;
+				probe.ready ||
+				equippedBin !== undefined ||
+				options.kubernetes !== undefined;
 			const notes = [
 				...probe.notes,
 				kubectlNote,

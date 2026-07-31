@@ -434,7 +434,8 @@ export function createAttestedApplyWorker(
 				deploymentId,
 				setId: set.setId,
 				principal,
-				status: mode === "simulate" ? ("simulated" as const) : ("succeeded" as const),
+				status:
+					mode === "simulate" ? ("simulated" as const) : ("succeeded" as const),
 				mode,
 				steps: Object.freeze(steps),
 				events: Object.freeze(events),

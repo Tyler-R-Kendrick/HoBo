@@ -1,0 +1,34 @@
+{
+  "kind": "act",
+  "id": "2026-07-30T19:10:45Z-1008",
+  "expects": "2026-07-30T19:10:40Z-1007",
+  "runId": "20260730-dx-fix",
+  "persona": "junior-typescript-developer",
+  "experience": "dx",
+  "surface": { "type": "cli", "name": "pnpm run agent:check -- --staged", "interface": "cli" },
+  "featureId": "agent-check-staged",
+  "scenarioSlug": "staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer",
+  "action": {
+    "driver": "cli",
+    "command": "pnpm run agent:check -- --staged 2>&1 | head -40",
+    "exitCode": 1
+  },
+  "evidence": {
+    "featureId": "agent-check-staged",
+    "scenarioSlug": "staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer",
+    "path": ".optimizexp/features/agent-check-staged/evidence/staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer/",
+    "primary": "primary.txt", "kind": "transcript"
+  },
+  "scores": {
+    "schemaVersion": 1, "phase": "act", "role": "observed",
+    "persona": "junior-typescript-developer", "surface": "pnpm run agent:check -- --staged",
+    "primary": { "harms": 0, "friction": 2, "uncertainty": 1, "total": 3, "max": 2 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "Preflight blocks cleanly.",
+      "uncertainty": "next/hint readable."
+    },
+    "evidenceRefs": [".optimizexp/features/agent-check-staged/evidence/staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer/primary.txt"],
+    "scoredAt": "2026-07-30T19:10:45.000Z"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-31T03:10:10Z-0003",
+  "expects": "2026-07-31T03:10:00Z-0001",
+  "actId": "2026-07-31T03:10:05Z-0002",
+  "runId": "20260730-evidence-smoke",
+  "persona": "developer",
+  "experience": "dx",
+  "surface": {
+    "type": "cli",
+    "name": "node -v",
+    "interface": "cli"
+  },
+  "actual": {
+    "gherkin": [
+      "Then the command exits successfully"
+    ],
+    "exitCode": 0
+  },
+  "feelings": {
+    "summary": "Clear version output; low friction probe.",
+    "valence": "positive",
+    "arousal": "low",
+    "trust": "high"
+  },
+  "desirability": {
+    "rating": "desired",
+    "degree": 0.9,
+    "why": "Judged scores match predicted zeros."
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "outcome",
+    "role": "judged",
+    "persona": "developer",
+    "surface": "node -v",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "rationale": {
+      "harms": "None.",
+      "friction": "None.",
+      "uncertainty": "None."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/agent-check-staged/evidence/probe-command-reports-version-for-evidence-harness/"
+    ],
+    "scoredAt": "2026-07-31T03:10:10.000Z"
+  },
+  "comparison": {
+    "expectId": "2026-07-31T03:10:00Z-0001",
+    "deltaFromExpect": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "matchedExpectation": true,
+    "expectationMatch": {
+      "behavior": true,
+      "scoresWithinTol": true,
+      "tolerance": 0
+    },
+    "actId": "2026-07-31T03:10:05Z-0002",
+    "deltaFromAct": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    }
+  },
+  "evidence": {
+    "featureId": "agent-check-staged",
+    "scenarioSlug": "probe-command-reports-version-for-evidence-harness",
+    "path": ".optimizexp/features/agent-check-staged/evidence/probe-command-reports-version-for-evidence-harness/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  }
+}

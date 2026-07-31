@@ -449,8 +449,7 @@ export function createBindlesPublicApiSnapshot(
 			{
 				name: "defaultAppKitSessionReplayAnnotation",
 				kind: "session-replay-helper",
-				signature:
-					"defaultAppKitSessionReplayAnnotation(): ProviderAnnotation",
+				signature: "defaultAppKitSessionReplayAnnotation(): ProviderAnnotation",
 			},
 			{
 				name: "APP_KIT_KINDS",

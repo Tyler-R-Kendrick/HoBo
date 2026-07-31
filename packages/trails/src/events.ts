@@ -17,8 +17,7 @@ export const TRAIL_EVENTS = Object.freeze({
 	HistoryRecorded: "trail.HistoryRecorded",
 } as const);
 
-export type TrailEventType =
-	(typeof TRAIL_EVENTS)[keyof typeof TRAIL_EVENTS];
+export type TrailEventType = (typeof TRAIL_EVENTS)[keyof typeof TRAIL_EVENTS];
 
 export type TrailEvent = Readonly<{
 	id: string;

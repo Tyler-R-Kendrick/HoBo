@@ -127,10 +127,7 @@ function evaluateCandidate(
 		}
 	}
 	for (const req of shape.require) {
-		if (
-			!yard.capabilities.includes(req) &&
-			!yard.shape.require.includes(req)
-		) {
+		if (!yard.capabilities.includes(req) && !yard.shape.require.includes(req)) {
 			hardFailures.push(`capability-missing:${req}`);
 		}
 	}
@@ -182,10 +179,12 @@ function evaluateCandidate(
 		provider: shape.providerId && yard.providerId === shape.providerId ? 1 : 0,
 		runtime: shape.runtimeId && yard.runtimeId === shape.runtimeId ? 1 : 0,
 		exactLabels: countExactLabels(shape.labels, yard.labels),
-		exactProperties: countExactProperties(shape.properties, yard.shape.properties),
+		exactProperties: countExactProperties(
+			shape.properties,
+			yard.shape.properties,
+		),
 		hardCapabilities: shape.require.filter(
-			(r) =>
-				yard.capabilities.includes(r) || yard.shape.require.includes(r),
+			(r) => yard.capabilities.includes(r) || yard.shape.require.includes(r),
 		).length,
 	};
 

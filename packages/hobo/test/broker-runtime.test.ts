@@ -143,9 +143,11 @@ describe("embedded broker-runtime", () => {
 		}
 		if (envelope.data.providerId !== undefined) {
 			expect(
-				[WASM_SANDBOX_PROVIDER_ID, "@hobo/provider-local-host", "local"].includes(
-					envelope.data.providerId,
-				),
+				[
+					WASM_SANDBOX_PROVIDER_ID,
+					"@hobo/provider-local-host",
+					"local",
+				].includes(envelope.data.providerId),
 			).toBe(true);
 		}
 	}, 180_000);

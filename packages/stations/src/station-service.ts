@@ -210,13 +210,7 @@ export class StationService {
 		data: Readonly<Record<string, unknown>>,
 	): StationEvent {
 		this.seq += 1;
-		const evt = stationEvent(
-			type,
-			this.stationId,
-			this.seq,
-			data,
-			this.now(),
-		);
+		const evt = stationEvent(type, this.stationId, this.seq, data, this.now());
 		this.events.push(evt);
 		return evt;
 	}
@@ -322,10 +316,7 @@ export class StationService {
 
 	assertNotBootstrapOnlyInProd(posture: "dev" | "production"): void {
 		const state = this.snapshot();
-		if (
-			posture === "production" &&
-			state?.occupancy.bootstrapActive === true
-		) {
+		if (posture === "production" && state?.occupancy.bootstrapActive === true) {
 			throw Object.assign(
 				new Error(
 					"bootstrap Rail still active in production posture; activate a non-bootstrap Rail",

@@ -85,7 +85,10 @@ export function getNamedEndpointHost(params: NamedEndpointParams): string {
 		(params.mode === "local" ? DEFAULT_LOCAL_TLD : DEFAULT_OVERLAY_TLD);
 	const tld = requireNonEmptyLabel(tldRaw, "tld");
 
-	if (params.requireTenant === true && (params.tenant === undefined || params.tenant.trim() === "")) {
+	if (
+		params.requireTenant === true &&
+		(params.tenant === undefined || params.tenant.trim() === "")
+	) {
 		throw new TypeError("named endpoint requires tenant in multi-tenant mode");
 	}
 

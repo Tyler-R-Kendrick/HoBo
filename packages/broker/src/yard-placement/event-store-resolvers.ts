@@ -78,9 +78,7 @@ export function createYardEventStoreFoldResolver(options: {
 	readonly providerId: string;
 	readonly resolverId: string;
 	readonly version?: string;
-	readonly normalize?: (
-		signal: ProviderNativeSignal,
-	) => readonly YardEvent[];
+	readonly normalize?: (signal: ProviderNativeSignal) => readonly YardEvent[];
 	readonly afterFold?: (
 		state: YardEventStoreState,
 		event: YardEvent,
@@ -307,9 +305,15 @@ function payloadToYardInstance(
 			classes: Object.freeze({ default: 1000 }),
 			reservations: Object.freeze({}),
 		}),
-		registryCatalogHash: contentHashOf(`${providerId}-registry`) as `sha256:${string}`,
-		resolverCatalogHash: contentHashOf(`${providerId}-resolvers`) as `sha256:${string}`,
-		conformanceHash: contentHashOf(`${providerId}-conformance`) as `sha256:${string}`,
+		registryCatalogHash: contentHashOf(
+			`${providerId}-registry`,
+		) as `sha256:${string}`,
+		resolverCatalogHash: contentHashOf(
+			`${providerId}-resolvers`,
+		) as `sha256:${string}`,
+		conformanceHash: contentHashOf(
+			`${providerId}-conformance`,
+		) as `sha256:${string}`,
 		labels: Object.freeze({}),
 		registrationSeq: 1,
 	});
@@ -333,8 +337,7 @@ export function createEventStoreFoldResolverRegistry(
 	return {
 		get: (providerId) => map.get(providerId),
 		all: () => Object.freeze([...map.values()]),
-		descriptors: () =>
-			Object.freeze(resolvers.map((r) => r.descriptor)),
+		descriptors: () => Object.freeze(resolvers.map((r) => r.descriptor)),
 	};
 }
 

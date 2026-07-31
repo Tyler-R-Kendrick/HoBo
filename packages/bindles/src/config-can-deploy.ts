@@ -71,11 +71,9 @@ export function evaluateSecretlessConfigGate(
 ): SecretlessConfigGateResult {
 	const env = input.environment ?? "production";
 	const forbidStatic =
-		input.forbidStaticEscape ??
-		(env === "production" || env === "staging");
+		input.forbidStaticEscape ?? (env === "production" || env === "staging");
 	const allowed =
-		input.allowedSources ??
-		(forbidStatic ? PROD_DEFAULT : DEV_DEFAULT);
+		input.allowedSources ?? (forbidStatic ? PROD_DEFAULT : DEV_DEFAULT);
 
 	const reasons: ConfigGateReason[] = [];
 

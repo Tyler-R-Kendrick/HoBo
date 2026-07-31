@@ -90,13 +90,22 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 - Node.js 24 in CI; local Node must satisfy `package.json` (`>=20.20.0`).
 - pnpm through Corepack, using the checked-in `pnpm-lock.yaml`.
 
-Install dependencies:
+Install dependencies **first** (cold clones need this before most gates):
 
 ```sh
 corepack enable pnpm
 pnpm run install:check
 pnpm run ci:preflight
 ```
+
+Then confirm the workspace:
+
+```sh
+pnpm run doctor          # works offline; fails with next/hint until install
+pnpm run agent:check -- --staged   # narrow staged gates after install
+```
+
+Without `node_modules`, `doctor` still runs health checks and prints install next steps; `agent:check` fails fast with the same install guidance (no `tsx` stack dump).
 
 Lint workflow/package-manager wiring before pushing CI changes:
 

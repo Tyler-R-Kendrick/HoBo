@@ -30,7 +30,11 @@ function tempHome(): string {
 describe("@hobo/stations", () => {
 	it("station() is control-plane occupancy, not yard parent", () => {
 		const s = station("acme", {
-			isolation: { tenant: "acme", residency: "us", trustDomain: "acme.hobo.local" },
+			isolation: {
+				tenant: "acme",
+				residency: "us",
+				trustDomain: "acme.hobo.local",
+			},
 			rails: ["rail-prod"],
 		});
 		expect(s.kind).toBe("station");

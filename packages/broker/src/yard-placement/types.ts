@@ -407,10 +407,7 @@ export function parseCampShape(input: unknown): CampShape {
 	});
 }
 
-function list(
-	value: unknown,
-	fallback: readonly string[],
-): readonly string[] {
+function list(value: unknown, fallback: readonly string[]): readonly string[] {
 	if (!Array.isArray(value)) return Object.freeze([...fallback]);
 	return Object.freeze(
 		[

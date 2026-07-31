@@ -45,9 +45,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 	return {
 		run: async ({ context, flags, args }) => {
 			const env =
-				deps.env ??
-				(context as { env?: NodeJS.ProcessEnv }).env ??
-				process.env;
+				deps.env ?? (context as { env?: NodeJS.ProcessEnv }).env ?? process.env;
 			const accountRaw = args[0] ?? flags.to;
 			const account =
 				typeof accountRaw === "string" && accountRaw.length > 0

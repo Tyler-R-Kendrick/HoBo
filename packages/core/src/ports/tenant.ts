@@ -86,8 +86,6 @@ export function tenantContextFromEnv(
 		...(branchRaw !== undefined && branchRaw.trim() !== ""
 			? { branch: branchRaw }
 			: {}),
-		...(envName !== undefined && envName.trim() !== ""
-			? { env: envName }
-			: {}),
+		...(envName !== undefined && envName.trim() !== "" ? { env: envName } : {}),
 	};
 }

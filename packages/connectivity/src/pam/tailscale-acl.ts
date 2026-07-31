@@ -3,7 +3,10 @@
  * Apply via Tailscale API (createTailscaleApiClient) when credentials present.
  */
 import type { IsolationClass } from "../env-isolation/types.js";
-import { isolationClassTag, ISOLATION_CLASSES } from "../env-isolation/types.js";
+import {
+	isolationClassTag,
+	ISOLATION_CLASSES,
+} from "../env-isolation/types.js";
 
 // public-contract: generated ACL schema version.
 export const ENV_ISOLATION_TAILSCALE_ACL_SCHEMA =

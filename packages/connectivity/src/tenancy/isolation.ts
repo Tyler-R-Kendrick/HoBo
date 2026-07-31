@@ -92,12 +92,9 @@ export function createTenantIsolationRegistry(
 			const mode = tenant.isolationMode ?? defaultMode;
 			const overlayNetworkId =
 				tenant.overlayNetworkId ??
-				(mode === "soft"
-					? "shared"
-					: `overlay-${tenant.slug || tenant.id}`);
+				(mode === "soft" ? "shared" : `overlay-${tenant.slug || tenant.id}`);
 
-			const overlay =
-				mode === "soft" ? shared : createOverlay(tenant);
+			const overlay = mode === "soft" ? shared : createOverlay(tenant);
 
 			const plane: TenantOverlayPlane = {
 				tenantId: tenant.id,
@@ -108,8 +105,7 @@ export function createTenantIsolationRegistry(
 			planes.set(tenant.id, plane);
 
 			if (mode === "hard-control-plane") {
-				const partitionKey =
-					tenant.controlPlanePartition ?? `cp-${tenant.id}`;
+				const partitionKey = tenant.controlPlanePartition ?? `cp-${tenant.id}`;
 				controlPlanes.set(tenant.id, {
 					tenantId: tenant.id,
 					partitionKey,
@@ -147,10 +143,7 @@ export function createTenantIsolationRegistry(
 			if (pa.tenantId === pb.tenantId) {
 				return { isolated: false, reason: "same tenant" };
 			}
-			if (
-				pa.isolationMode === "soft" &&
-				pb.isolationMode === "soft"
-			) {
+			if (pa.isolationMode === "soft" && pb.isolationMode === "soft") {
 				return {
 					isolated: false,
 					reason:
@@ -171,11 +164,7 @@ export function createTenantIsolationRegistry(
 			}
 			const cpa = controlPlanes.get(String(a));
 			const cpb = controlPlanes.get(String(b));
-			if (
-				cpa &&
-				cpb &&
-				cpa.partitionKey !== cpb.partitionKey
-			) {
+			if (cpa && cpb && cpa.partitionKey !== cpb.partitionKey) {
 				return {
 					isolated: true,
 					reason: `hard control-plane partitions ${cpa.partitionKey} vs ${cpb.partitionKey}`,
@@ -200,9 +189,7 @@ export function tenantFromSlug(
 		displayName: slug,
 		createdAt: new Date().toISOString(),
 		isolationMode: mode,
-		...(mode !== "soft"
-			? { overlayNetworkId: `overlay-${slug}` }
-			: {}),
+		...(mode !== "soft" ? { overlayNetworkId: `overlay-${slug}` } : {}),
 		...(mode === "hard-control-plane"
 			? { controlPlanePartition: `cp-${slug}` }
 			: {}),

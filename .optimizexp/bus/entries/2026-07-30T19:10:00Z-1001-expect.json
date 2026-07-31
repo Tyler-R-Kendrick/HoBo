@@ -1,0 +1,32 @@
+{
+  "kind": "expect",
+  "id": "2026-07-30T19:10:00Z-1001",
+  "runId": "20260730-dx-fix",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "surface": { "type": "cli", "name": "pnpm run agent:check -- --staged", "interface": "cli" },
+  "context": "Pass 1 measure after reduce experiment: dx-preflight + pipefail capture",
+  "featureId": "narrow-local-validation",
+  "scenarioSlug": "narrow-local-validation-after-a-small-change-works-for-product-app-developer",
+  "correctedFrom": "2026-07-30T18:01:05Z-0005",
+  "lessons": ["Prior cold path: stack-trace-first. Experiment: preflight clear next/hint + capture exit 1."],
+  "expectation": {
+    "gherkin": [
+      "When I run agent:check without node_modules",
+      "Then I see fail + next install lines (no tsx stack)",
+      "And capture exitCode is non-zero"
+    ],
+    "result": { "exitCode": 1, "errors": ["node_modules missing"] }
+  },
+  "scores": {
+    "schemaVersion": 1, "phase": "expect", "role": "predicted",
+    "persona": "product-app-developer", "surface": "pnpm run agent:check -- --staged",
+    "primary": { "harms": 0, "friction": 2, "uncertainty": 1, "total": 3, "max": 2 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "Still blocked without install, but recovery is one command.",
+      "uncertainty": "exitCode and next/hint should be unambiguous."
+    },
+    "evidenceRefs": [], "scoredAt": "2026-07-30T19:10:00.000Z"
+  }
+}

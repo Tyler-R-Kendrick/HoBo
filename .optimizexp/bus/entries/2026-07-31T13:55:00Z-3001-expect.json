@@ -1,0 +1,10 @@
+{"kind":"expect","id":"2026-07-31T13:55:00Z-3001-expect","runId":"20260731-dx-plateau","persona":"product-app-developer","experience":"dx",
+"surface":{"type":"cli","name":"pnpm run doctor","interface":"cli"},
+"featureId":"cli-help-and-doctor","scenarioSlug":"cli-help-and-doctor-path-works-for-product-app-developer",
+"correctedFrom":"2026-07-31T13:10:20Z-2002-outcome",
+"lessons":["Happy path works after install; predict exit 0 with clear success line"],
+"expectation":{"result":{"exitCode":0}},
+"scores":{"schemaVersion":1,"phase":"expect","role":"predicted","persona":"product-app-developer","surface":"pnpm run doctor",
+"primary":{"harms":0,"friction":0,"uncertainty":0,"total":0,"max":0},
+"rationale":{"harms":"None.","friction":"doctor all ok","uncertainty":"clear exit and next step"},
+"evidenceRefs":[],"scoredAt":"2026-07-31T13:00:00.000Z"}}

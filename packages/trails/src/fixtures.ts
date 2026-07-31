@@ -4,9 +4,7 @@
 import { defineTrail } from "./definition.js";
 import { PLATFORM_RECIPES } from "./recipes.js";
 import { TrailRunner } from "./runner.js";
-import {
-	createContractAssertedDataDualFixtures,
-} from "./data-steps.js";
+import { createContractAssertedDataDualFixtures } from "./data-steps.js";
 import {
 	createHandsOffIdentityTrail,
 	type IdentityTrailHandle,

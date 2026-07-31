@@ -1,0 +1,49 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T03:58:00-expect",
+  "runId": "20260731-dx-review",
+  "persona": "product-app-developer",
+  "experience": "dx",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run agent:check -- --staged",
+    "interface": "cli"
+  },
+  "context": "DX review of narrow-local-validation",
+  "featureId": "narrow-local-validation",
+  "scenarioSlug": "narrow-local-validation-after-a-small-change-works-for-product-app-developer",
+  "scoreTolerance": 0,
+  "expectation": {
+    "gherkin": [
+      "When I run pnpm run agent:check -- --staged",
+      "Then I get clear success or fix-forward error"
+    ],
+    "actions": [
+      "pnpm run agent:check -- --staged 2>&1 | head -60"
+    ],
+    "result": {
+      "exitCode": 0
+    }
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-app-developer",
+    "surface": "pnpm run agent:check -- --staged",
+    "primary": {
+      "harms": 0,
+      "friction": 2,
+      "uncertainty": 1,
+      "total": 3,
+      "max": 2
+    },
+    "rationale": {
+      "harms": "CLI gates should not dump secrets.",
+      "friction": "Expect monorepo cold-start cost if deps missing.",
+      "uncertainty": "Expect install or gate-selection guidance on failure."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T03:58:00.000Z"
+  }
+}

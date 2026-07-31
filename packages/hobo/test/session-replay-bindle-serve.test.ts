@@ -10,16 +10,20 @@ import {
 describe("session replay deep bindle serve integration", () => {
 	it("wraps every web entrypoint so HTML gets bootstrap and ingest works", async () => {
 		const definition = bindle("demo-app", (b) => {
-			const api = b.api(() => async () =>
-				new Response(JSON.stringify({ ok: true }), {
-					headers: { "content-type": "application/json" },
-				}),
+			const api = b.api(
+				() => async () =>
+					new Response(JSON.stringify({ ok: true }), {
+						headers: { "content-type": "application/json" },
+					}),
 			);
-			const web = b.web(() => async () =>
-				new Response("<html><body><h1>storefront</h1></body></html>", {
-					headers: { "content-type": "text/html" },
-				}),
-			).dependsOn(api);
+			const web = b
+				.web(
+					() => async () =>
+						new Response("<html><body><h1>storefront</h1></body></html>", {
+							headers: { "content-type": "text/html" },
+						}),
+				)
+				.dependsOn(api);
 			return { api, web };
 		});
 
@@ -44,9 +48,7 @@ describe("session replay deep bindle serve integration", () => {
 		const apiEntry = entrypoints.find((e) => e.name === "api");
 		expect(webEntry).toBeDefined();
 		expect(apiEntry).toBeDefined();
-		const page = await webEntry!.handler(
-			new Request("http://127.0.0.1:4000/"),
-		);
+		const page = await webEntry!.handler(new Request("http://127.0.0.1:4000/"));
 		const html = await page.text();
 		expect(html).toContain('data-hobo-replay="1"');
 		expect(page.headers.get("x-hobo-session-replay")).toBe("1");
@@ -89,10 +91,11 @@ describe("session replay deep bindle serve integration", () => {
 
 	it("HOBO_REPLAY=0 disables HTML injection", async () => {
 		const definition = bindle("off-app", (b) => ({
-			web: b.web(() => async () =>
-				new Response("<html><body>x</body></html>", {
-					headers: { "content-type": "text/html" },
-				}),
+			web: b.web(
+				() => async () =>
+					new Response("<html><body>x</body></html>", {
+						headers: { "content-type": "text/html" },
+					}),
 			),
 		}));
 		const { entrypoints, sessionReplay } = listServableEntrypointsWithReplay(
@@ -100,9 +103,9 @@ describe("session replay deep bindle serve integration", () => {
 			{ env: { HOBO_REPLAY: "0" } },
 		);
 		expect(sessionReplay.enabled).toBe(false);
-		const html = await entrypoints[0]!.handler(new Request("http://x/")).then(
-			(r) => r.text(),
-		);
+		const html = await entrypoints[0]!
+			.handler(new Request("http://x/"))
+			.then((r) => r.text());
 		expect(html).not.toContain("data-hobo-replay");
 	});
 });

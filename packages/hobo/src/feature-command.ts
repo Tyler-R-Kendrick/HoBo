@@ -15,7 +15,15 @@ export interface FeatureCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
 }
 
-const SUBS = ["list", "eval", "set", "kill", "status", "canary", "experiment"] as const;
+const SUBS = [
+	"list",
+	"eval",
+	"set",
+	"kill",
+	"status",
+	"canary",
+	"experiment",
+] as const;
 
 export function createFeatureCommand(
 	deps: FeatureCommandDeps = {},
@@ -123,15 +131,11 @@ export function createFeatureCommand(
 
 			if (sub === "eval") {
 				const ctx = enrichEvaluationContext({
-					tenant:
-						(typeof f.tenant === "string" && f.tenant) || "local",
+					tenant: (typeof f.tenant === "string" && f.tenant) || "local",
 					principal: {
-						id:
-							(typeof f.subject === "string" && f.subject) ||
-							"user:local",
+						id: (typeof f.subject === "string" && f.subject) || "user:local",
 					},
-					environment:
-						(typeof f.env === "string" && f.env) || "local-dev",
+					environment: (typeof f.env === "string" && f.env) || "local-dev",
 				});
 				// Evaluate against the active store (injected or fixture), never a stale client.
 				const detail = store.evaluateBoolean(key, ctx, false);

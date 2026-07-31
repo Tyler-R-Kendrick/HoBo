@@ -1,0 +1,47 @@
+{
+  "kind": "act",
+  "id": "2026-07-30T18:01:20Z-0008",
+  "expects": "2026-07-30T18:00:20Z-0003",
+  "runId": "20260730-dx-review",
+  "persona": "junior-typescript-developer",
+  "experience": "dx",
+  "surface": {
+    "type": "cli",
+    "name": "pnpm run agent:check -- --staged",
+    "interface": "cli"
+  },
+  "featureId": "agent-check-staged",
+  "scenarioSlug": "staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer",
+  "action": {
+    "driver": "cli",
+    "command": "pnpm run agent:check -- --staged 2>&1 | head -80",
+    "startedAt": "2026-07-31T03:59:27.700Z",
+    "endedAt": "2026-07-31T03:59:28.030Z",
+    "exitCode": 0,
+    "notes": "Same missing-tsx failure; exit masking via pipe"
+  },
+  "evidence": {
+    "featureId": "agent-check-staged",
+    "scenarioSlug": "staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer",
+    "path": ".optimizexp/features/agent-check-staged/evidence/staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "act",
+    "role": "observed",
+    "persona": "junior-typescript-developer",
+    "surface": "pnpm run agent:check -- --staged",
+    "primary": { "harms": 0, "friction": 4, "uncertainty": 3, "total": 7, "max": 4 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "No gate list; junior blocked at bootstrap.",
+      "uncertainty": "Stack + exit 0 mask confuses remediation."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/agent-check-staged/evidence/staged-agent-check-is-narrow-and-actionable-after-a-skill-edit-works-for-junior-typescript-developer/primary.txt"
+    ],
+    "scoredAt": "2026-07-30T18:01:20.000Z"
+  }
+}

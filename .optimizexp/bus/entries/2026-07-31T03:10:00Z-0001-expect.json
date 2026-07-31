@@ -1,0 +1,48 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T03:10:00Z-0001",
+  "runId": "20260730-evidence-smoke",
+  "persona": "developer",
+  "experience": "dx",
+  "surface": {
+    "type": "cli",
+    "name": "node -v",
+    "interface": "cli"
+  },
+  "context": "Probe for evidence harness",
+  "featureId": "agent-check-staged",
+  "scenarioSlug": "probe-command-reports-version-for-evidence-harness",
+  "expectation": {
+    "gherkin": [
+      "Scenario: Probe command reports version for evidence harness"
+    ],
+    "actions": [
+      "Run node -v"
+    ],
+    "result": {
+      "exitCode": 0
+    }
+  },
+  "scoreTolerance": 0,
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "developer",
+    "surface": "node -v",
+    "primary": {
+      "harms": 0,
+      "friction": 0,
+      "uncertainty": 0,
+      "total": 0,
+      "max": 0
+    },
+    "rationale": {
+      "harms": "Version probe has no harmful content.",
+      "friction": "Single short command.",
+      "uncertainty": "Clear version string expected."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T03:10:00.000Z"
+  }
+}

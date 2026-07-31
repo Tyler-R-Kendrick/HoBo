@@ -47,9 +47,9 @@ export type ReplayService = Readonly<{
 		| { ok: false; code: string; message: string }
 	>;
 	summarize: (sessionId: string) => Promise<string | undefined>;
-	retention: (policy?: RetentionPolicy) => Promise<
-		Awaited<ReturnType<typeof applyRetention>>
-	>;
+	retention: (
+		policy?: RetentionPolicy,
+	) => Promise<Awaited<ReturnType<typeof applyRetention>>>;
 	erase: (sessionId: string) => Promise<SessionRecord | undefined>;
 	doctor: () => Readonly<{
 		package: string;

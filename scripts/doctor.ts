@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 
 let failed = false;
 function ok(message: string) {
@@ -38,4 +39,20 @@ if (existsSync("contracts/data-models"))
 else ok("no central data-model catalog present");
 if (existsSync("AGENTS.md")) ok("root AGENTS.md present");
 else fail("root AGENTS.md missing");
+if (existsSync("node_modules")) {
+	ok("node_modules present");
+	try {
+		const require = createRequire(import.meta.url);
+		require.resolve("tsx");
+		ok("tsx resolvable");
+	} catch {
+		fail("tsx not resolvable; run: pnpm install");
+	}
+} else {
+	fail("node_modules missing");
+	console.error("next  corepack enable pnpm && pnpm install");
+	console.error(
+		"hint  Install once so agent:check and other tsx scripts can run.",
+	);
+}
 process.exit(failed ? 1 : 0);

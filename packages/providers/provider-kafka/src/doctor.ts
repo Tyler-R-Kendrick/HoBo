@@ -30,9 +30,7 @@ export function diagnoseKafkaReadiness(
 		input.cluster?.bootstrapServers ??
 		(typeof redpandaEnv === "string" ? redpandaEnv.split(",") : []);
 	const brokersReachable =
-		servers.length > 0
-			? (input.probeBrokers?.(servers) ?? false)
-			: false;
+		servers.length > 0 ? (input.probeBrokers?.(servers) ?? false) : false;
 
 	if (!redpandaAvailable && !input.cluster) {
 		notes.push(
@@ -45,7 +43,9 @@ export function diagnoseKafkaReadiness(
 		notes.push(
 			`Bootstrap servers declared (${servers.join(",")}) but not confirmed reachable (fidelity=simulated).`,
 		);
-		remediation.push("Verify broker connectivity and secretless credential binding.");
+		remediation.push(
+			"Verify broker connectivity and secretless credential binding.",
+		);
 	} else if (brokersReachable) {
 		notes.push("Kafka brokers reachable — live fidelity available.");
 	} else {
@@ -53,7 +53,9 @@ export function diagnoseKafkaReadiness(
 	}
 
 	if (input.cluster && !input.cluster.credentialBindingRef) {
-		remediation.push("Provide secretless credentialBindingRef (fromBinding / federation).");
+		remediation.push(
+			"Provide secretless credentialBindingRef (fromBinding / federation).",
+		);
 	}
 
 	const fidelity: "simulated" | "live" =

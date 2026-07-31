@@ -18,7 +18,10 @@ export function createDnsControlProvider(options?: {
 	readonly plans: readonly DnsControlPlan[];
 	exportDnsConfigJs(): string;
 } {
-	const records = new Map<string, DnsRecord & { zone: string; tenantId: TenantId }>();
+	const records = new Map<
+		string,
+		DnsRecord & { zone: string; tenantId: TenantId }
+	>();
 	const plans: DnsControlPlan[] = [];
 	const onPlan = options?.onPlan;
 
@@ -88,9 +91,7 @@ export function createDnsControlProvider(options?: {
 				for (const r of list) {
 					const ttl = r.ttl ?? 300;
 					if (r.type === "CNAME") {
-						lines.push(
-							`  CNAME("${r.name}", "${r.content}.", TTL(${ttl})),`,
-						);
+						lines.push(`  CNAME("${r.name}", "${r.content}.", TTL(${ttl})),`);
 					} else if (r.type === "A") {
 						lines.push(`  A("${r.name}", "${r.content}", TTL(${ttl})),`);
 					} else if (r.type === "AAAA") {

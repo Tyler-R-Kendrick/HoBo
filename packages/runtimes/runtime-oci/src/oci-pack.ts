@@ -31,12 +31,7 @@ export function packWasmAsOci(options: {
 	const bytes = readFileSync(options.wasmPath);
 	const digest = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 	const short = digest.slice("sha256:".length, "sha256:".length + 16);
-	const layoutDir = join(
-		options.hoboHome,
-		"oci",
-		options.resourceName,
-		short,
-	);
+	const layoutDir = join(options.hoboHome, "oci", options.resourceName, short);
 	mkdirSync(layoutDir, { recursive: true });
 	const blobPath = join(layoutDir, "component.wasm");
 	writeFileSync(blobPath, bytes);
@@ -131,7 +126,9 @@ export function deploymentManifests(options: {
 			metadata: { name, namespace: options.namespace, labels },
 			spec: {
 				replicas: 1,
-				selector: { matchLabels: { "hobo.dev/resource": options.resourceName } },
+				selector: {
+					matchLabels: { "hobo.dev/resource": options.resourceName },
+				},
 				template: {
 					metadata: { labels },
 					spec: {

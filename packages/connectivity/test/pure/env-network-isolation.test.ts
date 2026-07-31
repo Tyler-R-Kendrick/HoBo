@@ -162,7 +162,10 @@ describe("Environment Network Isolation conformance", () => {
 		);
 		expect(allow.effect).toBe("allow");
 
-		const expired = bg.getActive(granted.id, new Date(Date.now() + 400_000).toISOString());
+		const expired = bg.getActive(
+			granted.id,
+			new Date(Date.now() + 400_000).toISOString(),
+		);
 		expect(expired).toBeNull();
 	});
 
@@ -218,9 +221,11 @@ describe("Environment Network Isolation conformance", () => {
 			envB: "production",
 		});
 		expect(composed.isolated).toBe(true);
-		expect(composed.axis === "tenant" || composed.axis === "both" || composed.axis === "environment").toBe(
-			true,
-		);
+		expect(
+			composed.axis === "tenant" ||
+				composed.axis === "both" ||
+				composed.axis === "environment",
+		).toBe(true);
 	});
 
 	it("agent principal cannot ambiently escalate without membership", async () => {
@@ -260,11 +265,7 @@ describe("Environment Network Isolation conformance", () => {
 		});
 		expect(rec.expiresAt).toBeTruthy();
 		expect(
-			membership.getActive(
-				"user:ci",
-				"ephemeral",
-				new Date().toISOString(),
-			),
+			membership.getActive("user:ci", "ephemeral", new Date().toISOString()),
 		).toBeNull();
 	});
 

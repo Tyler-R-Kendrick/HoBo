@@ -80,12 +80,7 @@ describe("EffectSpec lattice", () => {
 				true,
 			);
 		}
-		expect(
-			isEffectWideningBreaking(
-				prev.effects!,
-				next.effects!,
-			),
-		).toBe(true);
+		expect(isEffectWideningBreaking(prev.effects!, next.effects!)).toBe(true);
 	});
 
 	it("exports EffectManifest and captures facts without re-execution", () => {
@@ -158,9 +153,9 @@ describe("ResilienceProfile applicator", () => {
 		expect(result.ok).toBe(true);
 		expect(result.value).toBe("ok");
 		expect(result.attempts).toBe(3);
-		expect(result.facts.some((f) => f.type === "resilience.Attempt" && f.retried)).toBe(
-			true,
-		);
+		expect(
+			result.facts.some((f) => f.type === "resilience.Attempt" && f.retried),
+		).toBe(true);
 	});
 
 	it("never retries policy.Decided deny", async () => {
@@ -178,9 +173,9 @@ describe("ResilienceProfile applicator", () => {
 		});
 		expect(result.ok).toBe(false);
 		expect(result.attempts).toBe(1);
-		expect(result.facts.every((f) => f.type !== "resilience.Attempt" || !f.retried)).toBe(
-			true,
-		);
+		expect(
+			result.facts.every((f) => f.type !== "resilience.Attempt" || !f.retried),
+		).toBe(true);
 		const inspection = inspectResilienceFromFacts(result.facts);
 		expect(inspection.retried).toBe(false);
 		expect(inspection.terminal?.failureClass).toBe("policy.Decided");

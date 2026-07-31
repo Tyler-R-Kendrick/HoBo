@@ -1,9 +1,6 @@
 import type { ProviderAnnotation } from "./types.js";
 
-import {
-	envField,
-	type ConfigFieldDef,
-} from "./config-schema.js";
+import { envField, type ConfigFieldDef } from "./config-schema.js";
 
 /**
  * Dual surface (ADR-0027 + Plan 21):

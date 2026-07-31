@@ -123,9 +123,7 @@ export function createContinuousDeliveryPlane(
 	): readonly string[] => {
 		const lines: string[] = [];
 		for (const e of apply.events) {
-			lines.push(
-				`${e.time} ${e.type} ${JSON.stringify(e.data)}`.slice(0, 500),
-			);
+			lines.push(`${e.time} ${e.type} ${JSON.stringify(e.data)}`.slice(0, 500));
 		}
 		if (progressive) {
 			lines.push(
@@ -133,9 +131,7 @@ export function createContinuousDeliveryPlane(
 			);
 		}
 		if (failure) {
-			lines.push(
-				`failure kind=${failure.kind} incident=${failure.incidentId}`,
-			);
+			lines.push(`failure kind=${failure.kind} incident=${failure.incidentId}`);
 		}
 		return Object.freeze(lines);
 	};
@@ -294,14 +290,11 @@ export function createContinuousDeliveryPlane(
 
 		async rollback(set, deploymentId, reason) {
 			// Zero progressive exposure via Harness OpenDelivery (flag + gateway + kill-switch).
-			if (
-				progressiveCtx &&
-				progressiveCtx.deploymentId === deploymentId
-			) {
-				progressiveCtx.harness.delivery.rollback(
-					progressiveCtx.rolloutId,
-					{ reason, manual: true },
-				);
+			if (progressiveCtx && progressiveCtx.deploymentId === deploymentId) {
+				progressiveCtx.harness.delivery.rollback(progressiveCtx.rolloutId, {
+					reason,
+					manual: true,
+				});
 			} else if (last?.progressive?.flag) {
 				// Fallback: kill-switch + zero percent when rollout id lost.
 				store.activateKillSwitch(last.progressive.flag, "cd-plane-rollback");
@@ -315,7 +308,9 @@ export function createContinuousDeliveryPlane(
 			}
 
 			const flagKey =
-				progressiveCtx?.flag ?? last?.progressive?.flag ?? `deploy.${set.setId}`;
+				progressiveCtx?.flag ??
+				last?.progressive?.flag ??
+				`deploy.${set.setId}`;
 			const flagDef = store.get(flagKey);
 			const rollout =
 				progressiveCtx !== null

@@ -102,15 +102,13 @@ describe("Continuous Delivery plane (production path)", () => {
 			assertSecretFree(s);
 		}
 		const logs = plane.logs("dep_live_1");
-		expect(logs.some((e) => e.type === "deployment.ApplySucceeded")).toBe(
-			true,
-		);
+		expect(logs.some((e) => e.type === "deployment.ApplySucceeded")).toBe(true);
 	});
 
 	it("live mode fails closed without injected IaC", () => {
-		expect(() =>
-			createContinuousDeliveryPlane({ mode: "live" }),
-		).toThrow(/live attested apply requires injected iac or executor/);
+		expect(() => createContinuousDeliveryPlane({ mode: "live" })).toThrow(
+			/live attested apply requires injected iac or executor/,
+		);
 	});
 
 	it("progressive SLO failure auto-rolls back flag+gateway and opens A2H", async () => {
@@ -331,9 +329,7 @@ describe("Continuous Delivery plane (production path)", () => {
 		});
 		await plane.status(fx.set, delivered.apply.deploymentId);
 		const logs = plane.logs(delivered.apply.deploymentId);
-		expect(
-			logs.some((e) => e.type === "deployment.StatusObserved"),
-		).toBe(true);
+		expect(logs.some((e) => e.type === "deployment.StatusObserved")).toBe(true);
 		const observed = logs.find((e) => e.type === "deployment.StatusObserved");
 		assertSecretFree(observed?.data ?? {});
 	});

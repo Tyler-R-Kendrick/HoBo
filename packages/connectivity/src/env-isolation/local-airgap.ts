@@ -2,7 +2,11 @@
  * Local-dev air-gap: pure local path never resolves/routes to remote-dev or production.
  * hobo dev must not auto-join remote overlays.
  */
-import { createAccessEvent, ACCESS_EVENTS, type AccessEvent } from "./events.js";
+import {
+	createAccessEvent,
+	ACCESS_EVENTS,
+	type AccessEvent,
+} from "./events.js";
 import type { IsolationClass } from "./types.js";
 import { parseIsolationClass } from "./types.js";
 

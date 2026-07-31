@@ -214,69 +214,71 @@ describe("Gatekeeper composition", () => {
 	});
 });
 
-	it("DENIES when secretless-config ranking gate fails (ADR-0027)", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: goodQuota,
-			secretlessConfig: {
-				ok: false,
-				reasons: [
-					{
-						code: "static-escape-forbidden",
-						message: "field LEGACY source static-escape exceeds policy ceiling",
-						field: "LEGACY",
-					},
-				],
-			},
-		});
-		expect(result.decision).toBe("deny");
-		expect(
-			result.reasons.some((r) => r.code === "secretless-config:static-escape-forbidden"),
-		).toBe(true);
-	});
-
-	it("DENIES when can-migrate dimension fails (continuous identity migration)", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: goodQuota,
-			canMigrate: {
-				ok: false,
-				summary: "can-migrate:blocked (mapping-spec-missing)",
-				reasons: [
-					{
-						code: "mapping-spec-missing",
-						message: "MappingSpec missing",
-					},
-				],
-				evidence: {
-					continuousDefault: true,
-					dryRun: true,
-					rollbackPosture: "compensate-to-source",
+it("DENIES when secretless-config ranking gate fails (ADR-0027)", () => {
+	const result = evaluateGatekeeper({
+		request: baseRequest,
+		deployedState: { contracts: [deployedContract] },
+		candidate: { plan, contracts: [compatibleCandidate] },
+		costQuota: goodQuota,
+		secretlessConfig: {
+			ok: false,
+			reasons: [
+				{
+					code: "static-escape-forbidden",
+					message: "field LEGACY source static-escape exceeds policy ceiling",
+					field: "LEGACY",
 				},
-			},
-		});
-		expect(result.decision).toBe("deny");
-		expect(
-			result.reasons.some((r) => r.code === "can-migrate:mapping-spec-missing"),
-		).toBe(true);
+			],
+		},
 	});
+	expect(result.decision).toBe("deny");
+	expect(
+		result.reasons.some(
+			(r) => r.code === "secretless-config:static-escape-forbidden",
+		),
+	).toBe(true);
+});
 
-	it("allows when can-migrate is ok (zero Bindle config continuous path)", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: goodQuota,
-			canMigrate: {
-				ok: true,
-				summary: "can-migrate:ok continuous dual-path ready",
-				reasons: [],
-				evidence: { continuousDefault: true, dryRun: true },
+it("DENIES when can-migrate dimension fails (continuous identity migration)", () => {
+	const result = evaluateGatekeeper({
+		request: baseRequest,
+		deployedState: { contracts: [deployedContract] },
+		candidate: { plan, contracts: [compatibleCandidate] },
+		costQuota: goodQuota,
+		canMigrate: {
+			ok: false,
+			summary: "can-migrate:blocked (mapping-spec-missing)",
+			reasons: [
+				{
+					code: "mapping-spec-missing",
+					message: "MappingSpec missing",
+				},
+			],
+			evidence: {
+				continuousDefault: true,
+				dryRun: true,
+				rollbackPosture: "compensate-to-source",
 			},
-		});
-		expect(result.decision).toBe("allow");
+		},
 	});
+	expect(result.decision).toBe("deny");
+	expect(
+		result.reasons.some((r) => r.code === "can-migrate:mapping-spec-missing"),
+	).toBe(true);
+});
+
+it("allows when can-migrate is ok (zero Bindle config continuous path)", () => {
+	const result = evaluateGatekeeper({
+		request: baseRequest,
+		deployedState: { contracts: [deployedContract] },
+		candidate: { plan, contracts: [compatibleCandidate] },
+		costQuota: goodQuota,
+		canMigrate: {
+			ok: true,
+			summary: "can-migrate:ok continuous dual-path ready",
+			reasons: [],
+			evidence: { continuousDefault: true, dryRun: true },
+		},
+	});
+	expect(result.decision).toBe("allow");
+});

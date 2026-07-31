@@ -374,12 +374,8 @@ export function createTailscaleOverlay(options?: {
 					enabled = true;
 					const combined = `${result.stdout}\n${result.stderr}`;
 					const match =
-						combined.match(
-							/https?:\/\/([a-z0-9.-]+\.ts\.net)/i,
-						) ??
-						combined.match(
-							/([a-z0-9.-]+\.ts\.net)/i,
-						);
+						combined.match(/https?:\/\/([a-z0-9.-]+\.ts\.net)/i) ??
+						combined.match(/([a-z0-9.-]+\.ts\.net)/i);
 					if (match?.[1]) {
 						gatewayHostname = match[1].toLowerCase();
 					}

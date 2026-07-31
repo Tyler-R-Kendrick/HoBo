@@ -2,7 +2,11 @@
  * Platform recipe catalog (OpenRewrite-inspired composition).
  * identity.continuous is hands-off — zero Bindle config required.
  */
-import { defineTrail, type TrailDefinition, type TrailStep } from "./definition.js";
+import {
+	defineTrail,
+	type TrailDefinition,
+	type TrailStep,
+} from "./definition.js";
 
 // public-contract: platform recipe ids.
 export const PLATFORM_RECIPES = Object.freeze({
@@ -193,8 +197,6 @@ export function composeTrailWithRecipes(
 			? { dependsOnTrails: trail.dependsOnTrails }
 			: {}),
 		steps: merged,
-		...(trail.recipeList !== undefined
-			? { recipeList: trail.recipeList }
-			: {}),
+		...(trail.recipeList !== undefined ? { recipeList: trail.recipeList } : {}),
 	});
 }

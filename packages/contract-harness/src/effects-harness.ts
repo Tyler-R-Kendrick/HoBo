@@ -144,10 +144,8 @@ export async function runResilienceFaultInjection(input: {
 	attempts: number;
 	neverRetriedPolicyOrTerminal: boolean;
 }> {
-	const profile =
-		input.profile ??
-		input.contract.resilience ??
-		({
+	const profile = input.profile ??
+		input.contract.resilience ?? {
 			schemaVersion: "hobo.resilience-profile/v1" as const,
 			id: "harness-default",
 			strategies: [
@@ -161,11 +159,9 @@ export async function runResilienceFaultInjection(input: {
 				},
 			],
 			neverRetry: ["policy.Decided", "terminal", "cancellation"] as const,
-		});
+		};
 
-	const failureMap = new Map(
-		(input.failures ?? []).map((f) => [f.attempt, f]),
-	);
+	const failureMap = new Map((input.failures ?? []).map((f) => [f.attempt, f]));
 
 	const result = await applyResilienceProfile({
 		profile: profile as ResilienceProfile,

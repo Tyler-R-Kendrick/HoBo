@@ -49,8 +49,7 @@ export function createBrokerAwareLoginCommand(
 				kind: "user" as const,
 				id: "user:local-fixture",
 			};
-			const tenant =
-				typeof data.tenant === "string" ? data.tenant : "hobo-dev";
+			const tenant = typeof data.tenant === "string" ? data.tenant : "hobo-dev";
 			const token =
 				typeof data.token === "string"
 					? data.token

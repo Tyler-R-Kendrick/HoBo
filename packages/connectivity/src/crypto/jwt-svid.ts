@@ -25,10 +25,7 @@ export function resolveSvidHmacSecret(input: {
 	readonly allowDefaultSecret?: boolean;
 }): string {
 	const env = input.env ?? process.env;
-	const provided =
-		input.hmacSecret ??
-		env.HOBO_SVID_HMAC_SECRET ??
-		undefined;
+	const provided = input.hmacSecret ?? env.HOBO_SVID_HMAC_SECRET ?? undefined;
 	if (provided !== undefined && provided.length > 0) {
 		if (
 			provided === DEFAULT_SVID_HMAC_SECRET &&
@@ -53,9 +50,7 @@ function isProductionLike(env: NodeJS.ProcessEnv): boolean {
 	const nodeEnv = (env.NODE_ENV ?? "").toLowerCase();
 	const hoboEnv = (env.HOBO_ENV ?? "").toLowerCase();
 	return (
-		nodeEnv === "production" ||
-		hoboEnv === "prod" ||
-		hoboEnv === "production"
+		nodeEnv === "production" || hoboEnv === "prod" || hoboEnv === "production"
 	);
 }
 
@@ -113,9 +108,7 @@ export function mintJwtSvid(input: {
 }): MintedJwtSvid {
 	const now = input.now ?? Math.floor(Date.now() / 1000);
 	const ttl = input.ttlSeconds ?? 900;
-	const aud = Array.isArray(input.audience)
-		? input.audience
-		: [input.audience];
+	const aud = Array.isArray(input.audience) ? input.audience : [input.audience];
 	if (!input.spiffeId.startsWith("spiffe://")) {
 		throw new Error("jwt-svid: spiffeId must start with spiffe://");
 	}
@@ -193,7 +186,9 @@ export function verifyJwtSvid(input: {
 	if (!claims.sub?.startsWith("spiffe://")) {
 		throw new Error("jwt-svid: sub must be a spiffe id");
 	}
-	const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud as unknown as string];
+	const aud = Array.isArray(claims.aud)
+		? claims.aud
+		: [claims.aud as unknown as string];
 	if (!aud.includes(input.audience)) {
 		throw new Error("jwt-svid: audience mismatch");
 	}
@@ -216,8 +211,7 @@ export function verifyJwtSvid(input: {
 						key: input.publicKey as Record<string, unknown>,
 						format: "jwk",
 					});
-		const pad =
-			sB64.length % 4 === 0 ? "" : "=".repeat(4 - (sB64.length % 4));
+		const pad = sB64.length % 4 === 0 ? "" : "=".repeat(4 - (sB64.length % 4));
 		const sig = Buffer.from(
 			sB64.replace(/-/g, "+").replace(/_/g, "/") + pad,
 			"base64",
@@ -265,14 +259,14 @@ export function generateSvidIssuerKeys(): {
 		privateKey,
 		publicKey,
 		publicJwk: publicKey.export({ format: "jwk" }) as Record<string, unknown>,
-		privateJwk: privateKey.export({ format: "jwk" }) as Record<
-			string,
-			unknown
-		>,
+		privateJwk: privateKey.export({ format: "jwk" }) as Record<string, unknown>,
 	};
 }
 
-export function spiffeIdForAgent(agentId: string, trustDomain = "hobo.local"): string {
+export function spiffeIdForAgent(
+	agentId: string,
+	trustDomain = "hobo.local",
+): string {
 	const id = agentId.replace(/^agent:/, "").replace(/^spiffe:\/\//, "");
 	if (id.startsWith(`${trustDomain}/`)) {
 		return `spiffe://${id}`;

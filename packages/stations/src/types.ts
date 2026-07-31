@@ -3,14 +3,11 @@ export const STATION_SCHEMA_VERSION = "hobo.station/v1" as const;
 // public-contract: wire schema / event catalog constant.
 export const RAIL_SCHEMA_VERSION = "hobo.rail/v1" as const;
 // public-contract: wire schema / event catalog constant.
-export const STATION_CONTRACT_VERSION = "hobo.control-plane-occupancy/v1" as const;
+export const STATION_CONTRACT_VERSION =
+	"hobo.control-plane-occupancy/v1" as const;
 
 export type StationStatus = "open" | "closed";
-export type RailActivationStatus =
-	| "draft"
-	| "approved"
-	| "active"
-	| "retired";
+export type RailActivationStatus = "draft" | "approved" | "active" | "retired";
 
 export type StationIsolation = Readonly<{
 	tenant: string;

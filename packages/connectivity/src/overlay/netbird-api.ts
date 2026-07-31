@@ -25,7 +25,10 @@ export interface NetbirdDnsNameserverGroup {
 	readonly id?: string;
 	readonly name: string;
 	readonly description?: string;
-	readonly nameservers: readonly { readonly ip: string; readonly nsType?: string }[];
+	readonly nameservers: readonly {
+		readonly ip: string;
+		readonly nsType?: string;
+	}[];
 	readonly domains: readonly string[];
 	readonly enabled: boolean;
 	readonly primary?: boolean;

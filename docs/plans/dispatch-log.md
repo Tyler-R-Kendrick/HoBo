@@ -204,3 +204,11 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **scope:** TUI craft product + optimizexp doctor/explore + personas + scaffolds
 - **CI:** billing-budget empty-step failures only; local vitest 107 green
 - **protocol:** `/sdlc finish`
+
+## 2026-07-31 — hobo-code InteractiveShell (#994–#995)
+
+- **#994** fix stale dist launcher — merge `704a5063`
+- **#995** InteractiveShell replaces stock Pi default TTY — merge `8d9a7b89`
+- **CI:** billing-budget empty-step failures documented; product tests green locally
+- **protocol:** `/sdlc finish`
+- **residual:** streaming engine, mouse/tasks, warning budget, nix panes, optimizexp interactive hard-gate

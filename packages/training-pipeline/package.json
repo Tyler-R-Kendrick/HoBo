@@ -14,7 +14,7 @@
 		}
 	},
 	"scripts": {
-		"build": "pnpm --filter @hobo/core build && pnpm --filter @hobo/formal-interop build && tsc -p tsconfig.json",
+		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "pnpm run build",
@@ -22,8 +22,7 @@
 	},
 	"dependencies": {
 		"@bufbuild/protobuf": "2.12.1",
-		"@hobo/core": "workspace:*",
-		"@hobo/formal-interop": "workspace:*"
+		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.15.3",

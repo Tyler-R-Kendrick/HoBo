@@ -65,3 +65,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | (expect billing-budget if empty-step CI) |
 | Notes | doctor AUTH/MCP/setup; rewire cli-help-and-doctor off eval:agent:live; plateau runs ax-doctor + ax-cli-wire |
 
+
+## 2026-07-31 — ax docs sections + WorkOS AUTH + exp-nav
+
+| Field | Value |
+|---|---|
+| Initiative | optimizexp AX docs + AUTH attribution + exp-nav |
+| Backend | sequential-fallback (`/sdlc finish`) |
+| Branch | `feat/ax-docs-exp-nav-auth` |
+| PRs | #973 |
+| Result | **merge** |
+| Failure class | (billing-budget if empty-step CI) |
+| Notes | AX section map; WorkOS auth.md; rewire draft-exp-nav; discovery live demotion |
+

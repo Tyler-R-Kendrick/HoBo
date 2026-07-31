@@ -1,6 +1,12 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+import {
+	evaluateOpenUiPromotion,
+	type OpenUiPromotionInput,
+	type OpenUiTree,
+} from "@hobo/formal-interop";
+
 import { cleanupIsolation } from "./isolation.js";
 import type { PromotionRequest, PromotionResult } from "./types.js";
 
@@ -16,6 +22,17 @@ export interface PromoteOptions {
 	readonly gates: readonly PromotionGate[];
 	/** Whether agent may write canonical project (must be false). */
 	readonly agentMayWriteCanonical?: boolean;
+	/**
+	 * OpenUI semantic BEq gate input. When provided (or when
+	 * `openUiArtifact` is true), promotion fails closed unless BEq passes.
+	 * Semantic gate is default-on for OpenUI artifacts.
+	 */
+	readonly openUi?: {
+		readonly enabled?: boolean;
+		readonly generated?: OpenUiTree;
+		readonly goldOrIntent?: OpenUiTree;
+		readonly candidateId?: string;
+	};
 }
 
 const REQUIRED_GATES = [
@@ -90,6 +107,32 @@ export function promoteIsolation(
 		};
 	}
 
+	// OpenUI semantic BEq: default-on when openUi options present.
+	if (options.openUi !== undefined) {
+		const openUiInput: OpenUiPromotionInput = {
+			candidateId: options.openUi.candidateId ?? request.runId,
+			artifactKind: "openui",
+			semanticGateEnabled: options.openUi.enabled ?? true,
+			conformance: true,
+			policy: true,
+			...(options.openUi.generated !== undefined
+				? { generated: options.openUi.generated }
+				: {}),
+			...(options.openUi.goldOrIntent !== undefined
+				? { goldOrIntent: options.openUi.goldOrIntent }
+				: {}),
+		};
+		const semanticGate = openUiSemanticPromotionGate(openUiInput);
+		if (!semanticGate.pass) {
+			return {
+				ok: false,
+				code: "HOBO_CODE_PROMOTE_SEMANTIC_BEQ_FAILED",
+				message: `promotion refused: ${semanticGate.detail}`,
+				cleaned: false,
+			};
+		}
+	}
+
 	const auditDir = join(
 		options.hoboHome,
 		"durable",
@@ -128,6 +171,23 @@ export function promoteIsolation(
 		message: `promoted ${request.runId} via squash-only path; isolation cleaned`,
 		mergedBranch: `code/${request.runId}`,
 		cleaned: cleanup.orphans.length === 0,
+	};
+}
+
+/**
+ * Build a PromotionGate from the formal-interop OpenUI semantic BEq entry point.
+ * Default-on for OpenUI artifacts (fail closed on meaning-zero / hierarchy breaks).
+ */
+export function openUiSemanticPromotionGate(
+	input: OpenUiPromotionInput,
+): PromotionGate {
+	const decision = evaluateOpenUiPromotion(input);
+	return {
+		name: "openui:semantic-beq",
+		pass: decision.ok,
+		detail: decision.ok
+			? "OpenUI semantic BEq passed"
+			: decision.failures.join("; "),
 	};
 }
 

@@ -19,6 +19,13 @@ export {
 	parseEvalResult,
 	parsePromotionThresholds,
 } from "./gate.js";
+
+/** Re-export formal-interop OpenUI semantic entry points for training consumers. */
+export {
+	beqOpenUi,
+	evaluateOpenUiPromotion,
+	fixtures as openUiFixtures,
+} from "@hobo/formal-interop";
 export type {
 	AssembleTrajectoryOptions,
 	CapturedSpan,

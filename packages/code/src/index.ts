@@ -38,6 +38,7 @@ export {
 	assertMediatedOnly,
 	assertNoVendoredTokenTools,
 	EXTERNAL_TOKEN_TOOLS,
+	openUiSemanticPromotionGate,
 	promoteIsolation,
 	runPromotionGates,
 	type PromoteOptions,

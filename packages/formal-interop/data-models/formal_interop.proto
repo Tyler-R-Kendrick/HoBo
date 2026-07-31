@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package hobo.formal_interop.v1;
+
+// OpenUI tree IR node (structural + semantic attributes).
+message OpenUiNode {
+  string kind = 1;
+  string role = 2;
+  string binder = 3;
+  map<string, string> attrs = 4;
+  repeated OpenUiNode children = 5;
+  bool meaning_bearing = 6;
+}
+
+message OpenUiTree {
+  string id = 1;
+  OpenUiNode root = 2;
+  string library_tier = 3; // controlled | ecosystem
+}
+
+message FormalCertificate {
+  string claim_id = 1;
+  string theorem_name = 2;
+  string ir_digest = 3;
+  string proof_digest = 4;
+  string source_itp = 5;
+  bool typed = 6;
+}
+
+message MetricsLedgerRow {
+  string hypothesis = 1;
+  string tier = 2;
+  string method = 3;
+  double pass_at_1 = 4;
+  double pass_at_k = 5;
+  double beq_or_fidelity = 6;
+  map<string, double> agentv_scores = 7;
+  double preflight_reject_rate = 8;
+  double cost_usd = 9;
+  int64 latency_ms = 10;
+  string seed = 11;
+  string model = 12;
+  string prompt_digest = 13;
+}

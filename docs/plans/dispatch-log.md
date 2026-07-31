@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "SDLC dispatch log"
+description: "Append-only outcomes for sdlc coordinator runs."
+tags: [hobo, plans, sdlc]
+---
+
 # Dispatch log
 
 Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.

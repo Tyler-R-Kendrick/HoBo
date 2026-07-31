@@ -1,47 +1,53 @@
-# Self-host Station (main setup path)
+# Self-host Station (real composition)
 
-> **Maturity:** this example is a **docs + CLI happy-path** reference. Unlike
-> [`self-host-yard`](../self-host-yard/README.md), it does not yet ship a local
-> TypeScript composition under `src/` — run the `hobo station *` verbs against a
-> built monorepo CLI. Track as thin example surface until a full composition lands.
-
-Station is the hard control-plane isolation boundary a Conductor occupies.
+Station is the hard control-plane isolation boundary a Conductor occupies
+([ADR-0131](../../docs/design/adr/01-architecture-core.md#adr-0131)).
 App topology remains Bindle ⊂ Camp ⊂ Yard ⊂ Junction — Station does **not**
 contain Yards.
 
-## Offline happy path
+This example composes a **durable local Station** the same way
+[`self-host-yard`](../self-host-yard/README.md) composes a YardRuntime: the
+operator owns the data root, init is explicit, and history survives restart.
+
+## Composition API
+
+```ts
+import { openSelfHostedStation } from "./src/station.js";
+
+const station = openSelfHostedStation({
+  hoboHome: "/var/lib/my-hobo", // or process.env.HOBO_HOME
+});
+
+console.log(station.status());
+// { stationId, dataDir, pins: { stationId, railHash, bootstrapActive }, … }
+
+const pins = station.pins(); // for Broker receipts
+station.close(); // durable events stay under hoboHome/stations/
+```
+
+| File | What it is |
+|---|---|
+| `src/station.ts` | `openSelfHostedStation` / topology — initStation + StationClient on disk |
+| `test/station.test.ts` | Create, pin stability, idempotent reopen, isolation |
+
+## CLI path (same HOBO_HOME)
 
 ```bash
 export HOBO_HOME="${HOBO_HOME:-$HOME/.hobo}"
 hobo station init
 hobo station status
 hobo station up
-hobo broker matrix
-hobo connection list
 hobo doctor
-# App graph lifecycle (unchanged):
-# hobo up
 ```
 
-## Station Bindle shape
+## Honesty
 
-```ts
-import { station } from "@hobo/stations";
+- Local file-backed Station (`events.jsonl`), not multi-tenant SaaS occupancy.
+- Does not provision cloud resources; pairs with self-host-yard for app deploy.
+- Live multi-Station federation remains out of scope here.
 
-export const acme = station("acme-platform", {
-  isolation: {
-    tenant: "acme",
-    residency: "us",
-    airgap: false,
-    trustDomain: "acme.hobo.local",
-  },
-  rails: ["rail-prod"],
-});
+## Scripts
+
+```sh
+pnpm --filter @hobo/example-self-host-station test
 ```
-
-Connections and Rails are Station aggregates (not ordinary Bindle graph resources).
-`hobo.broker.json`, when present at init time, is imported as an approved Rail under the Station.
-
-## Policy document as Rail
-
-If `HOBO_HOME/hobo.broker.json` exists at init time, it is published and **activated** as the Station's non-bootstrap Rail (bootstrap is demoted). Production occupancy uses that Rail hash on every Conductor receipt.

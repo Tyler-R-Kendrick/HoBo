@@ -111,6 +111,22 @@ importers:
         specifier: ^22.15.3
         version: 22.20.0
 
+  examples/self-host-station:
+    dependencies:
+      '@hobo/stations':
+        specifier: workspace:*
+        version: link:../../packages/stations
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
   examples/self-host-yard:
     dependencies:
       '@bufbuild/protobuf':
@@ -456,6 +472,9 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+      '@hobo/swe-shared':
+        specifier: workspace:*
+        version: link:../swe-shared
 
   packages/connectors/swe-codex:
     dependencies:
@@ -465,6 +484,9 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+      '@hobo/swe-shared':
+        specifier: workspace:*
+        version: link:../swe-shared
 
   packages/connectors/swe-copilot:
     dependencies:
@@ -474,6 +496,9 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+      '@hobo/swe-shared':
+        specifier: workspace:*
+        version: link:../swe-shared
 
   packages/connectors/swe-cursor:
     dependencies:
@@ -483,6 +508,9 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+      '@hobo/swe-shared':
+        specifier: workspace:*
+        version: link:../swe-shared
 
   packages/connectors/swe-gemini:
     dependencies:
@@ -492,6 +520,9 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+      '@hobo/swe-shared':
+        specifier: workspace:*
+        version: link:../swe-shared
 
   packages/connectors/swe-grok:
     dependencies:
@@ -501,6 +532,25 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+      '@hobo/swe-shared':
+        specifier: workspace:*
+        version: link:../swe-shared
+
+  packages/connectors/swe-shared:
+    dependencies:
+      '@hobo/connector-acp':
+        specifier: workspace:*
+        version: link:../connector-acp
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/contract-harness:
     dependencies:

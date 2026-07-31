@@ -196,3 +196,11 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - PR: https://github.com/Tyler-R-Kendrick/HoBo/pull/990
 - Merge: `5e88a064`
 - CI: billing-red empty-step failures; package tests green locally
+
+## 2026-07-31 — hobo-code-tui-optimizexp-finish (#992)
+
+- **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/992
+- **merge:** `fb761534054510d2e6366b4f58a11b4cad5648fb` (squash)
+- **scope:** TUI craft product + optimizexp doctor/explore + personas + scaffolds
+- **CI:** billing-budget empty-step failures only; local vitest 107 green
+- **protocol:** `/sdlc finish`

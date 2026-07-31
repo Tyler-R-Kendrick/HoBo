@@ -113,6 +113,13 @@ export interface PromotionGateInput {
 	readonly evalResult: EvalResult;
 	readonly thresholds: PromotionThresholds;
 	readonly championId?: string;
+	/**
+	 * Optional OpenUI semantic BEq result (default-on for OpenUI candidates).
+	 * When `openUiArtifact` is true and `openUiSemanticOk` is false/missing,
+	 * promotion fails closed.
+	 */
+	readonly openUiArtifact?: boolean;
+	readonly openUiSemanticOk?: boolean;
 }
 
 /**
@@ -147,6 +154,13 @@ export function evaluatePromotionGate(
 
 	if (!input.policy) {
 		failures.push("policy: promotion not allowed by policy");
+	}
+
+	// OpenUI semantic gate: default-on when openUiArtifact is set.
+	if (input.openUiArtifact === true && input.openUiSemanticOk !== true) {
+		failures.push(
+			"semantic: OpenUI BEq failed or missing (fail closed; default-on for OpenUI)",
+		);
 	}
 
 	const evalPassed = !failures.some((failure) => failure.startsWith("eval:"));

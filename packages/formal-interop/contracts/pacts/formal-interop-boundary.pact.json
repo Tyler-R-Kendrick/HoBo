@@ -1,0 +1,45 @@
+{
+	"consumer": { "name": "hobo-formal-interop-consumer" },
+	"provider": { "name": "hobo-formal-interop" },
+	"interactions": [
+		{
+			"description": "semantic BEq gold tree passes",
+			"request": {
+				"method": "POST",
+				"path": "/openui/beq",
+				"body": { "mode": "gold" }
+			},
+			"response": {
+				"status": 200,
+				"body": { "ok": true }
+			}
+		},
+		{
+			"description": "meaning-zero tree fails closed",
+			"request": {
+				"method": "POST",
+				"path": "/openui/beq",
+				"body": { "mode": "meaning-zero" }
+			},
+			"response": {
+				"status": 422,
+				"body": { "ok": false, "code": "SEMANTIC_BEQ_FAILED" }
+			}
+		},
+		{
+			"description": "untyped free-form claim rejected by certificate replay",
+			"request": {
+				"method": "POST",
+				"path": "/certificate/replay",
+				"body": { "typed": false }
+			},
+			"response": {
+				"status": 422,
+				"body": { "ok": false, "code": "UNTYPED_CLAIM" }
+			}
+		}
+	],
+	"metadata": {
+		"pactSpecification": { "version": "2.0.0" }
+	}
+}

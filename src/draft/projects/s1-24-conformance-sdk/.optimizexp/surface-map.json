@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "projectId": "s1-24-conformance-sdk",
+  "scannedAt": "2026-07-31T20:12:04.054Z",
+  "productName": "@hobo-draft/s1-24-conformance-sdk",
+  "packageDir": "src/draft/projects/s1-24-conformance-sdk",
+  "binaries": [],
+  "defaultEntry": null,
+  "nonInteractiveHelp": null,
+  "commands": [],
+  "interactiveSurfaces": [],
+  "requiredJourneys": [
+    "help-discoverability",
+    "happy-critical-path",
+    "failure-actionable"
+  ],
+  "probes": []
+}

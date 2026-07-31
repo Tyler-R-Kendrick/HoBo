@@ -202,6 +202,19 @@ export function suggestVerbTypo(token: string): string | null {
 	return best;
 }
 
+/**
+ * CLI-shaped single tokens that are not verbs (hyphen/underscore idioms).
+ * GUI-native users often invent command names; celebrating them as dispatch
+ * is deceptive magic. One-word natural language (no separators) still dispatches.
+ */
+export function looksLikeUnknownVerbAttempt(token: string): boolean {
+	const t = token.trim().toLowerCase();
+	if (!t || t.includes(" ") || t.length < 3) return false;
+	if (!/^[a-z][a-z0-9_-]*$/i.test(t)) return false;
+	if (VERB_SET.has(t)) return false;
+	return t.includes("-") || t.includes("_");
+}
+
 export interface HoboCodeCliResult {
 	readonly ok: boolean;
 	readonly status: string;
@@ -342,6 +355,7 @@ function helpTextDense(): string {
 function helpTextPlain(): string {
 	const lines = [
 		"hobo-code — HoBo coding harness CLI",
+		"You are in HoBo’s world · plain by default · --dense is opt-in power chrome",
 		"",
 		"Usage:",
 		"  hobo-code <prompt>                 dispatch (default)",
@@ -351,25 +365,31 @@ function helpTextPlain(): string {
 		"  hobo-code help <verb>              same as <verb> --help",
 		"  hobo-code help --dense             power-user glyph strip + legend",
 		"",
-		"Verbs:",
-		"  dispatch   Build / refine the app (default when given a prompt)",
+		"Start here:",
+		"  guide      Claude Code / Cursor → hobo-code maps (plain English)",
 		"  auth       Login to a Station (local auto, or tenant+domain)",
-		"  status     Session / agent multiplexer chrome",
+		"  dispatch   Build / refine the app (default when given a prompt)",
+		"  help       This message",
+		"",
+		"Session & status:",
+		"  status     Session / agent panes in plain words (dense glyphs with --dense)",
 		"  session    Isolation session + handback",
 		"  attach     Dev-terminal attach (tmux/mosh/Tailscale-shaped)",
 		"  tasks      Background task board (Grok Build–shaped)",
-		"  guide      Claude Code / Cursor → hobo-code maps (plain English)",
+		"",
+		"Craft & cost:",
 		"  scaffold   OpenUI/Astryx scaffold template",
 		"  isolate    Mediated sandbox for agent work",
 		"  promote    Promote a run through gate checklist",
-		"  env        Hermetic shell + durable vs sandbox layout",
-		"  models     Active model + BYOK / open-model env (no secrets)",
-		"  cost       Budget, $0 path, savings, free/local routing",
-		"  harness    Pi/Flue dual surface, skills, self-improve, brain",
 		"  edit       Open [neo]vim in managed harness pane (CLI-native)",
+		"  cost       Budget, $0 path, savings, free/local routing",
+		"  models     Active model + BYOK / open-model env (no secrets)",
 		"  config     Env/flags inventory by stack (setup critique)",
+		"",
+		"Agent & harness:",
 		"  agent      Agent-native: human-free auth, MCP/ACP, unattended",
-		"  help       This message",
+		"  harness    Pi/Flue dual surface, skills, self-improve, brain",
+		"  env        Hermetic shell + durable vs sandbox layout",
 		"",
 		"Flags:",
 		"  --json              Machine-readable envelope (stdout)",
@@ -407,6 +427,7 @@ function helpTextPlain(): string {
 		"",
 		"Notes:",
 		"  · Binary is hobo-code (not `hobo code`). Plain help default; --dense opt-in.",
+		"  · Bare TTY opens title (Bo) + discoverability strip — not stock Pi alone.",
 		"  · Setup: hobo-code config (stacks: agent-native, cost-budget, editor-vim, …).",
 		"  · Agents: hobo-code agent (MCP/ACP, human-free auth, no-elicitation).",
 		"  · Maps: guide · edit (nvim) · tasks · attach · status · cost · harness · models.",
@@ -447,15 +468,20 @@ const VERB_HELP_PLAIN: Record<
 		"See also: hobo-code auth · hobo-code scaffold · hobo-code session",
 	],
 	status: [
-		"hobo-code status — Herdr-style agent multiplexer chrome",
+		"hobo-code status — session / agent multiplexer chrome",
 		"",
 		"Usage:",
-		"  hobo-code status",
+		"  hobo-code status                 # plain English hierarchy (default)",
+		"  hobo-code status --dense         # power-user glyph box chrome",
 		"  hobo-code status --json",
 		"",
-		"What you see:",
-		"  · Pane fold with semantic state glyphs (○ idle · ● work · ▲ blocked · ✓ done)",
-		"  · Focus marker ▸ on working agents; ≤4 panes per fold line",
+		"What you see (plain default):",
+		"  · Agent list with idle / working / blocked / done words",
+		"  · Summary counts, theme, and a clear Next: line",
+		"  · Dense glyph box only with --dense (○ ● ▲ ✓ · ▸ focus)",
+		"",
+		"What you see (--dense):",
+		"  · Pane fold with semantic state glyphs; ≤4 panes per fold line",
 		"  · Footer legend: herdr · panes · detach · highlight→copy",
 		"  · --json exposes copyOnHighlight, detachable, theme, panes, capabilities",
 		"",
@@ -465,6 +491,7 @@ const VERB_HELP_PLAIN: Record<
 		"  · Highlight-to-copy: select text in a pane → highlightBuffer / ↳ clip",
 		"",
 		"Flags:",
+		"  --dense, -D         Glyph box chrome (opt-in)",
 		"  --json              Machine-readable status + herdr capabilities",
 		"  --help, -h          Show this help",
 		"",
@@ -967,6 +994,7 @@ export function applyDenseChrome(message: string): string {
 		"✕ session": "✕ se",
 		"✕ distributed": "✕ dist",
 		"✕ cmd": "✕ ?",
+		"? cmd": "? ?",
 		"▣ env": "▣ ev",
 		"▣ pl": "▣ pl",
 		"◎ re": "◎ re",
@@ -1084,23 +1112,43 @@ export async function runHoboCodeCli(
 
 	// json/dense formatting is applied by formatHoboCodeResult / bin.
 
-	// Bare single-token near-miss verbs → clear error, not silent dispatch.
+	// Bare single-token near-miss / CLI-shaped unknowns → kind recovery, not ★ success.
 	if (defaultedVerb && args.length === 1) {
-		const suggestion = suggestVerbTypo(String(args[0] ?? ""));
+		const raw = String(args[0] ?? "");
+		const suggestion = suggestVerbTypo(raw);
 		if (suggestion) {
 			return fail(
 				"HOBO_CODE_UNKNOWN_VERB",
-				panel("✕ cmd", [
-					`unknown · ${args[0]}`,
+				panel("? cmd", [
+					`not a verb · ${raw}`,
 					`did you mean · ${suggestion}`,
 					"try · hobo-code help",
+					`prompt · hobo-code "${raw}"`,
 				]),
 				[
 					`hobo-code ${suggestion} …`,
 					"hobo-code help",
-					'hobo-code "<prompt>"  # default dispatch',
+					`hobo-code "${raw}"  # send as build prompt`,
 				],
-				{ unknown: args[0], suggestion, defaultVerb: "dispatch" },
+				{ unknown: raw, suggestion, defaultVerb: "dispatch" },
+			);
+		}
+		if (looksLikeUnknownVerbAttempt(raw)) {
+			return fail(
+				"HOBO_CODE_UNKNOWN_VERB",
+				panel("? cmd", [
+					`not a verb · ${raw}`,
+					"try · hobo-code help",
+					`prompt · hobo-code "${raw}"`,
+					"or · hobo-code guide",
+				]),
+				[
+					"hobo-code help",
+					`hobo-code "${raw}"  # send as build prompt`,
+					"hobo-code guide",
+					'hobo-code "add a settings page"',
+				],
+				{ unknown: raw, defaultVerb: "dispatch" },
 			);
 		}
 	}
@@ -1444,8 +1492,11 @@ export async function runHoboCodeCli(
 		});
 		const herdr = herdrMuxCapabilities(status.theme);
 		const grokBuild = grokBuildParity();
-		// Dense box stays quiet; footers name Herdr + Grok Build–shaped affordances.
-		const text = `${renderStatusText(status)}\n${renderHerdrCapabilityFooter(herdr)}\n${renderGrokBuildFooter(grokBuild)}`;
+		// Plain default: English hierarchy for GUI-native humans.
+		// Dense opt-in: glyph box + Herdr/Grok footers (power chrome).
+		const text = dense
+			? `${renderStatusText(status)}\n${renderHerdrCapabilityFooter(herdr)}\n${renderGrokBuildFooter(grokBuild)}`
+			: renderStatusText(status, { plain: true });
 		const chip = renderStatusChip(status);
 		// Human primary output is the chrome itself, not a one-line summary.
 		return ok("HOBO_CODE_STATUS", text, {
@@ -1455,6 +1506,7 @@ export async function runHoboCodeCli(
 			grokBuild,
 			text,
 			chip,
+			dense,
 			platform,
 			dogfood: dogfoodSummary(platform.station.stationId),
 		});

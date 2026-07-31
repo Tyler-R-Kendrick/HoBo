@@ -4,6 +4,23 @@
 
 CLI name is **`hobo-code`** (dash is fine). There is **no** `hobo code` nested verb.
 
+| Binary | Product |
+|---|---|
+| **`hobo-code`** | App-building coding agent (this package) |
+| **`hobo`** | Control-plane shell (`up` / `dev` / `plan` / …) — **not** the coding harness |
+
+### Interactive TTY (bare `hobo-code`)
+
+On a real TTY, bare `hobo-code` shows a short brand title, a **discoverability strip**, then opens the Pi-based chat surface with a **HoBo extension** (not stock Pi):
+
+| In the TUI | One-shot CLI |
+|---|---|
+| `/agent` `/config` `/cost` `/harness` | `hobo-code agent` · `config` · `cost` · `harness` |
+| `/status` `/guide` `/tasks` `/login` | `hobo-code status` · `guide` · `tasks` · `auth login --agent` |
+| `/verbs` | `hobo-code help` |
+
+If it “just looks like Pi Agent”, run `/verbs` or `/agent` inside the session, or exit and use `hobo-code help`.
+
 ## Quick start (Copilot-CLI-like)
 
 ```bash
@@ -34,7 +51,8 @@ export HOBO_CODE_MODEL=openai/gpt-4.1
 # 2) Build
 hobo-code "add a settings page to the bindle"
 hobo-code scaffold --name demo
-hobo-code status                 # Herdr mux + Grok Build footers
+hobo-code status                 # plain English session hierarchy (default)
+hobo-code status --dense         # power-user glyph box + Herdr/Grok footers
 hobo-code tasks                  # background task board
 hobo-code session
 hobo-code attach                 # tmux-like reattach + named endpoint
@@ -50,15 +68,17 @@ hobo-code "refine the openui bindle"   # default = dispatch
 hobo-code dispatch "…"
 hobo-code auth login
 hobo-code auth status
-hobo-code status
+hobo-code status                       # plain hierarchy; --dense for glyph box
 hobo-code session --json
 hobo-code scaffold --name demo
 hobo-code isolate --json
 hobo-code promote --run <id>
 hobo-code env --json
-hobo-code help
+hobo-code help                         # grouped Start here / Session / Craft / Agent
 hobo-code auth --help                  # verb-scoped help
 hobo-code help --dense                 # power-user glyph strip (opt-in)
+# Unknown CLI-shaped tokens fail kindly (not a fake success star):
+#   hobo-code not-a-verb → ? cmd · try help · or quote as prompt
 ```
 
 ## Verbs (app-building)

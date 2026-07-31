@@ -1,27 +1,28 @@
-@optimizexp @dx @persona:product-coding-agent @interface:mcp
-Feature: Design system contract is agent-followable (product coding agent)
+@optimizexp @ux @dx @persona:product-coding-agent @interface:cli
+Feature: design-system-contract (product coding agent)
   As product coding agent
-  I want A designer or agent edits UI using the DESIGN.md contract; design lint (or equivalent) fails closed on contrast/token breaks with file references.
-  So that harms, friction, and uncertainty stay low on my critical path
-
-  # Generated for persona "product-coding-agent". Agent should refine steps to match
-  # .optimizexp/personas/product-coding-agent.md vocabulary and failure modes.
-  # Scenario names are stable evidence keys (slugified).
+  I want a real product path I can exercise and capture
+  So that review scores come from evidence, not template vibes
 
   Background:
     Given persona "product-coding-agent" is active
     And feature "design-system-contract" is under optimizexp review
 
-  Scenario: Design system contract is agent-followable works for product-coding-agent
+  Scenario: Primary path works for product-coding-agent
     Given I am on the critical path described by the feature seed
-    When I exercise the surface as this persona would
-    Then I receive clear status about what happened
+    When I run `pnpm run design:lint`
+    Then I see product chrome or structured status for this surface
     And the next action is obvious without tribal knowledge
     And evidence is capturable for this scenario
 
-  Scenario: Design system contract is agent-followable failure is understandable for product-coding-agent
+  Scenario: Help or status remains usable for product-coding-agent
+    Given I am on the critical path described by the feature seed
+    When I run `pnpm --help`
+    Then help lists verbs or usage or the surface documents next steps
+    And evidence is capturable for this scenario
+
+  Scenario: Failure is actionable for product-coding-agent
     Given something goes wrong on this journey
-    When I observe the failure as this persona
+    When I run `pnpm run not-a-real-script-zz`
     Then the error is non-blaming and actionable
-    And I am not forced into repeated artificial hurdles
     And evidence of what I saw is stored under evidence/

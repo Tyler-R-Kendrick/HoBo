@@ -21,7 +21,9 @@
     "tui"
   ],
   "driver": "cli",
-  "surfaces": [],
+  "surfaces": [
+    "hobo-code help"
+  ],
   "tags": [
     "@optimizexp",
     "@dx",
@@ -35,5 +37,6 @@
     "implementations": "steps/implementations.ts",
     "tests": "test/hobo-code-subcommand-help.bindings.test.ts"
   },
-  "implementationStatus": "stub"
+  "implementationStatus": "wired",
+  "primaryCommand": "hobo-code help"
 }

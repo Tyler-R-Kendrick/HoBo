@@ -18,7 +18,10 @@ Progressive-disclosure bundle for the optimizexp skill. Route by need; do not lo
 - [review-loop.md](review-loop.md) — dual regime until pareto-equilibrium
 - [personas.md](personas.md) — `.optimizexp/personas/*.md` → review prompts (schema v2; formal `experiences:` binding)
 - [config.md](config.md) — global + project `config.json` (defaults, surfaces, safety, prefer lists)
-- [features.md](features.md) — feature folders + persona Gherkin
+- [features.md](features.md)
+- [feature-quality.md](feature-quality.md) — critical path: rubber-duck, adversarial, catalog
+- [app-exploration.md](app-exploration.md) — surface-map
+- [doctor.md](doctor.md) — check / repair / snapshot workspace health
 - [evidence.md](evidence.md) — what personas see; overwrite + media policy
 - [harness.md](harness.md) — capture drivers and CLI
 - [pr-delivery.md](pr-delivery.md) — incremental commits, stacked PRs, post evidence

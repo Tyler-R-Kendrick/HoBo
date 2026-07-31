@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "projectId": "multi-cloud-shop",
+  "scannedAt": "2026-07-31T20:12:04.051Z",
+  "productName": "@hobo/example-multi-cloud-shop",
+  "packageDir": "examples/multi-cloud-shop",
+  "binaries": [],
+  "defaultEntry": null,
+  "nonInteractiveHelp": null,
+  "commands": [],
+  "interactiveSurfaces": [
+    {
+      "id": "default-tty-chat",
+      "entry": "bare-tty",
+      "driver": "tui",
+      "slashCommands": [
+        "/verbs",
+        "/agent",
+        "/config",
+        "/help"
+      ]
+    }
+  ],
+  "requiredJourneys": [
+    "help-discoverability",
+    "happy-critical-path",
+    "failure-actionable",
+    "in-session-discoverability"
+  ],
+  "probes": []
+}

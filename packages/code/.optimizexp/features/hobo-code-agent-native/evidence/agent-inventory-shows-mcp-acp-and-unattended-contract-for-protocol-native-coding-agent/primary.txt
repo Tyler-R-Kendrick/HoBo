@@ -1,6 +1,16 @@
+# OptimizeXP CLI evidence
+command: pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts agent
+cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
+exitCode: 0
+spawnStatus: 0
+durationMs: 670
+screen: ?x? (cols x rows)
+capturedAt: 2026-07-31T20:13:09.737Z
+
+## stdout
 ◈ agent
 ····················
- agent · mode on · agent · auth · protocols · unattended
+ agent · mode off · agent · auth · protocols · unattended
  auth · human-free ● · local · session ●
  unattended · no-elicit ● · json-first ●
  safe · isolate→work→promote · handback durable
@@ -9,3 +19,7 @@
  try · hobo-code auth login --agent · isolate --json · agent --json
  full · hobo-code agent --json
 ────────────────────
+
+
+## stderr
+(empty)

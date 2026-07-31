@@ -4,11 +4,17 @@
  * Default verb: dispatch.
  *
  * Bare `hobo-code` (or `hobo-code chat`) on a TTY opens the animated title
- * screen (Chewy wordmark + Bo idle, press any key) and then drops into the
- * **pi interactive coding harness** customized with the HoBo extension
- * (pi/extensions/hobo.ts) and HoBo system instructions — the same agent
- * harness the Flue surface (agents/hobo-code.ts) runs programmatically.
+ * screen (Chewy wordmark + Bo idle, press any key), prints a short
+ * discoverability strip (this is HoBo, not stock Pi), and then drops into
+ * the **pi interactive coding harness** customized with the HoBo extension
+ * (pi/extensions/hobo.ts) — slash commands map to CLI surfaces (agent, config,
+ * cost, harness, …). The Flue surface (agents/hobo-code.ts) shares the same
+ * instructions/tools programmatically.
+ *
  * Piped stdout, --json, or any other verb stays one-shot.
+ *
+ * Note: the separate `hobo` binary is the control-plane shell (up/dev/plan),
+ * not this coding harness.
  */
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -93,8 +99,22 @@ function launchPiHarness(): Promise<number> {
 	});
 }
 
+/** One-shot strip so the user sees product surfaces before Pi chrome loads. */
+function printDiscoverabilityStrip(): void {
+	const lines = [
+		"",
+		"hobo-code · HoBo app-building agent (not stock Pi Agent)",
+		"  TUI slash:  /agent /config /cost /harness /status /guide /tasks /login /verbs",
+		"  one-shot:   hobo-code help | agent | config | cost | harness | auth login --agent",
+		"  note:       plain `hobo` is the control-plane CLI (up/dev/plan) — different binary",
+		"",
+	];
+	process.stdout.write(`${lines.join("\n")}\n`);
+}
+
 if (interactive && !json && (argv.length === 0 || chatVerb)) {
 	if (argv.length === 0) await showTitleScreen();
+	printDiscoverabilityStrip();
 	process.exitCode = await launchPiHarness();
 } else {
 	const result = await runHoboCodeCli(argv, { json, dense });

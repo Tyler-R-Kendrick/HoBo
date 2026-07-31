@@ -43,21 +43,40 @@ Uses:
    - `--personas` list if set, else
    - personas generated this run if any, else
    - all personas intersecting experiences.
-6. If **`--feature` …** present: rewrite each journey seed into the write scope’s `features/<id>/` (**global** for multi/all/root; **project** `.optimizexp/features/` for a single non-root project) with **one Gherkin file per resolved persona** (`references/features.md`).
-7. Read global `.optimizexp/README.md` plus each selected project’s `.optimizexp/` when present.
-8. Resolve **`--passes`** / `passes` (default **infinite**). See `references/flags.md` § Passes (outer cycles).
-9. Load progressive-disclosure references below (only what you need).
-10. **Open/create a run first** (before product edits):
+6. **Doctor (preflight):** audit structure, personas, feature quality, maps; repair safely; optional snapshot.
+   ```bash
+   node --import tsx .agents/skills/optimizexp/harness/doctor.mts check --project <id>
+   node --import tsx .agents/skills/optimizexp/harness/doctor.mts repair --project <id>
+   node --import tsx .agents/skills/optimizexp/harness/doctor.mts snapshot --project <id>
+   ```
+   See `references/doctor.md`. Doctor exit 0 ≠ optimizexp complete.
+7. **CRITICAL — Explore + feature generation (quality bottleneck):**
+   ```bash
+   # a) Surface map + experience catalog (default entry, help, interactive, persona stacks)
+   node --import tsx .agents/skills/optimizexp/harness/explore-app.mts --project <id> --personas …
+   # b) Plan EXPERIENCE.md (rubber-duck + adversarial) then scaffold — see feature-quality.md
+   node --import tsx .agents/skills/optimizexp/harness/generate-feature.mts --mode plan --id … --experience-id cold-start-tty-chat --project <id>
+   # fill EXPERIENCE.md → accept + [x] adversarial boxes
+   node --import tsx .agents/skills/optimizexp/harness/generate-feature.mts --mode rubberduck-check --id …
+   node --import tsx .agents/skills/optimizexp/harness/generate-feature.mts --mode from-catalog --project <id> --personas …
+   node --import tsx .agents/skills/optimizexp/harness/generate-feature.mts --mode validate --id …
+   ```
+   **Illegal:** score a surface without an accepted feature for that experience. **Illegal:** template-only Gherkin (`When I exercise the surface…` alone). **Illegal:** skip **default entry / chat** when surface-map says interactive.
+8. If **`--feature` …** present: still require EXPERIENCE.md rubberduck-check before treating the feature as reviewable (`references/features.md` + `feature-quality.md`).
+9. Read global `.optimizexp/README.md` plus each selected project’s `.optimizexp/` when present.
+10. Resolve **`--passes`** / `passes` (default **infinite**). See `references/flags.md` § Passes (outer cycles).
+11. Load progressive-disclosure references below (only what you need) — **always** load `feature-quality.md` when generating or validating features; load `doctor.md` for preflight.
+12. **Open/create a run first** (before product edits):
     ```bash
     node --import tsx .agents/skills/optimizexp/workflows/cross-agent/review-loop.mts \
       --mode init --run <runId> --experiences … --personas … --features … --projects …
     ```
     Confirm `status: running`, `stopPolicy: infinite-until-pareto-equilibrium` (unless `--no-delight`), and `INCOMPLETE.md`. Resume matching incomplete runs instead of starting a fake-complete story.
-11. Execute the **review loop** (`references/review-loop.md` + `equilibrium.md`): harm_reduce to floor → delight_maximize under constraints → **assert-complete** → **mark-complete**. Finite `--passes N` only caps harm cycles.
-12. Personas must be judged with **cognitive thresholds** and (for new/rewritten files) **v2 KYC models** (`persona-models.md`, `cognitive-thresholds.md`).
-13. **Survey + backlog** on harm floor entry and at closeout (`persona-survey.md`, `experiment-backlog.md`).
-14. **Closeout (required):** write `summary.md` with `stopReason` → `assert-complete` (exit 0) → `mark-complete --stop-reason …`. Paste assert JSON in the user report. Without this, the skill is incomplete even if product shipped.
-15. When opening PRs: incremental commits + stacked PR per iteration if available (`references/pr-delivery.md`).
+13. Execute the **review loop** (`references/review-loop.md` + `equilibrium.md`): every act uses **harness capture-evidence** (stamped meta); harm_reduce → delight → **assert-complete** → **mark-complete**.
+14. Personas must be judged with **cognitive thresholds** and (for new/rewritten files) **v2 KYC models** (`persona-models.md`, `cognitive-thresholds.md`).
+15. **Survey + backlog** on harm floor entry and at closeout (`persona-survey.md`, `experiment-backlog.md`).
+16. **Closeout (required):** write `summary.md` with `stopReason` → `assert-complete` (exit 0) → `mark-complete --stop-reason …`. Paste assert JSON in the user report. assert-complete now fails on missing surface-map, template-only features, unstamped evidence, P0 coverage gaps.
+17. When opening PRs: incremental commits + stacked PR + **post-pr-evidence** (`references/pr-delivery.md`).
 
 ## Flags
 
@@ -108,6 +127,9 @@ Full grammar: `references/flags.md`.
 - `references/personas.md` — persona file contract
 - `references/config.md` — **global + project `config.json`**
 - `references/features.md` — feature folder + Gherkin layout
+- **`references/feature-quality.md`** — **critical path:** catalog, rubber-duck, adversarial, quality bar
+- `references/app-exploration.md` — surface-map probes feeding the catalog
+- **`references/doctor.md`** — doctor check / repair / snapshot preflight
 - `references/evidence.md` — capture policy, overwrite, media preference
 - `references/harness.md` — test harness CLI + drivers
 - `references/workflow-generation.md` — host workflows
@@ -151,6 +173,9 @@ Full grammar: `references/flags.md`.
    | Harm `should-stop` plateau (`cycleStop`) | Regime **switch** only |
    | Todo list emptied / compaction “done” | Process bookkeeping |
    | `implementationStatus: wired` | Feature metadata |
+   | Verb inventory only (chat/default entry untested) | Missing P0 experience / surface-map |
+   | Handwritten `primary.txt` without capture stamp | Not harness evidence |
+   | Template Gherkin (“exercise the surface”) | Failed feature-quality bar |
 
    Open the run **before** product edits (`--mode init`). Resume incomplete runs (`status: running` + `INCOMPLETE.md`) — never invent a parallel “done” narrative.
 
@@ -227,6 +252,11 @@ Config merge: skill builtins → global config → project config (single-projec
 ## Harness (auto-implemented)
 
 ```bash
+# Doctor — preflight / repair / snapshot (structure, personas, features, maps)
+node --import tsx .agents/skills/optimizexp/harness/doctor.mts check --project code
+node --import tsx .agents/skills/optimizexp/harness/doctor.mts repair --project code
+node --import tsx .agents/skills/optimizexp/harness/doctor.mts snapshot --project code --json
+
 node --import tsx .agents/skills/optimizexp/harness/init.mts --mode needs-init
 node --import tsx .agents/skills/optimizexp/harness/init.mts --mode list-projects
 node --import tsx .agents/skills/optimizexp/harness/init.mts --mode ensure-config
@@ -234,6 +264,7 @@ node --import tsx .agents/skills/optimizexp/harness/init.mts --mode validate-con
 node --import tsx .agents/skills/optimizexp/harness/init.mts
 node --import tsx .agents/skills/optimizexp/harness/init.mts --projects site,cli
 node --import tsx .agents/skills/optimizexp/harness/init.mts --dry-run
+node --import tsx .agents/skills/optimizexp/harness/explore-app.mts --project code
 node --import tsx .agents/skills/optimizexp/harness/generate-persona.mts \
   --seed "A junior frontend engineer who panics at monorepo gates" --id junior-frontend
 node --import tsx .agents/skills/optimizexp/harness/generate-feature.mts \

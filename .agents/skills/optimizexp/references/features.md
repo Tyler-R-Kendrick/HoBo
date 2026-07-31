@@ -8,6 +8,10 @@ timestamp: 2026-07-30T00:00:00Z
 
 # Features
 
+> **Critical path:** Experience quality is decided at **feature generation** time.
+> Read **`feature-quality.md`** before scaffolding. Rubber-duck + adversarial
+> `EXPERIENCE.md` is required; template-only Gherkin fails validate.
+
 Persona-driven behavior specs live under **scoped** feature trees:
 
 | Scope | Path |

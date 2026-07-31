@@ -334,7 +334,11 @@ function capture(args: Record<string, string>) {
 		frames: existsSync(path.join(outDir, "frames"))
 			? readdirSync(path.join(outDir, "frames"))
 			: [],
-		repro,
+		repro: {
+			...repro,
+			// Stamp: assert-complete requires harness capture, not handwritten primary only
+			via: "capture-evidence",
+		},
 		exitCode,
 		degraded,
 		notes,

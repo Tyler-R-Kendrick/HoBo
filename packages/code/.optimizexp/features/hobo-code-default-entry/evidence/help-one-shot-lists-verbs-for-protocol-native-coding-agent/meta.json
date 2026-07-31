@@ -1,0 +1,30 @@
+{
+  "featureId": "hobo-code-default-entry",
+  "scenarioSlug": "help-one-shot-lists-verbs-for-protocol-native-coding-agent",
+  "personaIds": [
+    "protocol-native-coding-agent"
+  ],
+  "interface": "cli",
+  "driver": "cli",
+  "capturedAt": "2026-07-31T20:13:08.945Z",
+  "runId": "",
+  "screen": {
+    "cols": null,
+    "rows": null
+  },
+  "primary": {
+    "file": "primary.txt",
+    "kind": "transcript",
+    "bytes": 3735,
+    "sha256": "2b45b3d2e52c09c6d6f99de884f1f01d13f98ae48dc6601034aff6f328a85db9"
+  },
+  "frames": [],
+  "repro": {
+    "command": "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts help",
+    "cwd": ".",
+    "via": "capture-evidence"
+  },
+  "exitCode": 0,
+  "degraded": false,
+  "notes": []
+}

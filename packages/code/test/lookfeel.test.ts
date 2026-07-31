@@ -360,71 +360,34 @@ describe("hobo-code look/feel surfaces", () => {
 		const result = await runHoboCodeCli(["status"], { hoboHome: home });
 		expect(result.ok).toBe(true);
 		expect(result.code).toBe("HOBO_CODE_STATUS");
-		// Message itself is the chrome (not a one-liner).
+		// Plain default: English hierarchy (GUI-native), not glyph soup.
 		expect(result.message).toContain("hobo-code");
-		expect(result.message).not.toContain("hobo-code · multiplexer");
-		expect(result.message).toMatch(/┌─+┐/);
-		// quiet path (no work): drop STATE/AGENT headers + legend
+		expect(result.message).toMatch(/session status|Agents:/i);
+		expect(result.message).toMatch(/Next:/);
+		expect(result.message).toMatch(/idle|working|done|blocked/);
+		expect(result.message).not.toMatch(/┌─+┐/);
 		expect(result.message).not.toMatch(/STATE\s+AGENT\s+SUMMARY/);
-		expect(result.message).not.toMatch(/○ idle · ● work · ▲ wait/);
-		// one header: title · glyphs · remote
-		expect(result.message).toMatch(/hobo-code·○2✓1/);
-		expect(result.message).not.toContain("3p");
-		expect(result.message).not.toContain("3 panes");
-		// quiet: product brand + health (next ★ omitted as default)
-		expect(result.message).toMatch(/hobo-code·○/);
-		// status CLI: box only (chip in data for status bars, not twin chrome)
-		expect(result.message).not.toMatch(/┘\n·{10,}\n  hobo-code /);
-		expect(result.message).not.toMatch(/\nchip\n/);
-		// CLI status uses health-first strip (idle/done counts, not theme-first)
-		// quiet health: glyph counts only
-		expect(result.message).toMatch(/○\d+|✓\d+/);
-		expect(result.message).not.toMatch(/○\d+ idle|✓\d+ done/);
-		expect(result.message).not.toContain("⊙r");
-		expect(result.message).not.toContain("theme herdr · remote ready");
+		expect(result.message).not.toContain("hobo-code · multiplexer");
+		expect(result.message).not.toMatch(/\bbuzz\b/);
+		expect(result.message).not.toContain("hobo code ");
 		const human = formatHoboCodeResult(result, false);
-		expect(human).toMatch(/hobo-code·○2✓1/);
-		expect(human).not.toContain("3p");
-		// quiet path: panes folded into one scan line
-		// idle glyph alone = ready (no twin "ready" word)
-		// present station: glyph alone (hash lives in platform data)
-		expect(human).toMatch(/○co·✓sn·○au/);
-		expect(human).not.toContain("○co ready");
-		expect(human).not.toContain("○au ready");
-		expect(human).not.toContain("coordinator");
-		// station summary empty on present — no rail word / hash twin
-		expect(human).not.toMatch(/✓sn rail /);
-		expect(human).not.toMatch(/✓sn\S+\.\.\./);
-		// quiet: ★ dispatch is product default — omit next twin on title
-		expect(human).not.toMatch(/hobo-code·○2✓1·★/);
-		expect(human).toMatch(/hobo-code·○2✓1/);
-		expect(human).not.toContain("dcc");
-		expect(human).not.toMatch(/^│ next\s+/m);
-		expect(human).not.toContain("join · dcc");
-		expect(human).not.toContain("join <name>");
-		expect(human).not.toContain("detach·click·copy");
+		expect(human).toMatch(/Agents:/);
+		expect(human).toMatch(/coord|station|auth/);
+		// Dense opt-in restores power glyph box + Herdr/Grok footers.
+		const dense = await runHoboCodeCli(["status", "--dense"], {
+			hoboHome: home,
+			dense: true,
+		});
+		expect(dense.ok).toBe(true);
+		expect(dense.message).toMatch(/┌─+┐/);
+		expect(dense.message).toMatch(/hobo-code·○2✓1/);
+		expect(dense.message).toMatch(/○co·✓sn·○au/);
+		expect(dense.message).toMatch(/herdr · panes · detach · highlight→copy/);
+		expect(dense.message).toMatch(/grok-build · click · tasks · workflows/);
 		// chip still available in data for status-bar consumers
 		expect((result.data as { chip: string }).chip).toMatch(
 			/hobo-code·○2✓1/,
 		);
-		expect(human).not.toMatch(/┘\n·{10,}\n  hobo-code /);
-		expect(human).not.toMatch(/\nchip\n/);
-		expect(human).not.toContain("chip · status bar");
-		expect(human).not.toMatch(/\bbuzz\b/);
-		expect(human).not.toContain("hobo code ");
-		// compute pane denser than "compute pool on"
-		expect(human).toMatch(/○au|distributed off/);
-		expect(human).not.toContain("compute pool on");
-		// flue/default happy path: idle glyph alone (no ready word / · flue noise)
-		expect(human).toMatch(/○co/);
-		expect(human).toMatch(/○au/);
-		expect(human).not.toContain("ready · flue");
-		expect(human).not.toContain("ready · default");
-		expect(human).not.toMatch(/co ready/);
-		expect(human).not.toMatch(/nd ready/);
-		// Herdr + Grok Build capability footers (outside dense box)
-		expect(human).toMatch(/herdr · panes · detach · highlight→copy/);
-		expect(human).toMatch(/grok-build · click · tasks · workflows/);
 		const herdr = result.data as {
 			herdr: {
 				copyOnHighlight: boolean;
@@ -463,13 +426,15 @@ describe("hobo-code look/feel surfaces", () => {
 			defaults: expect.any(Object),
 			dense: false,
 		});
-		// Readable structure (not glyph soup) by default
+		// Readable structure (not glyph soup) by default — grouped hierarchy
 		expect(out).toMatch(/^hobo-code — /m);
 		expect(out).toMatch(/^Usage:/m);
-		expect(out).toMatch(/^Verbs:/m);
+		expect(out).toMatch(/^Start here:/m);
+		expect(out).toMatch(/^Session & status:/m);
 		expect(out).toMatch(/^Flags:/m);
 		expect(out).toMatch(/^First run:/m);
 		expect(out).toMatch(/^Examples:/m);
+		expect(out).toMatch(/plain by default/i);
 		expect(out).toContain("dispatch");
 		expect(out).toContain("auth login");
 		expect(out).toContain("guide");

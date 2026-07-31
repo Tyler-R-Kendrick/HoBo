@@ -675,6 +675,46 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.code).toBe("HOBO_CODE_UNKNOWN_VERB");
 		expect(r.message).toMatch(/did you mean · promote/);
 		expect(r.message).toMatch(/hobo-code help/);
+		expect(r.message).toMatch(/\? cmd|not a verb/);
+		// Kind recovery — no false success star for a typo.
+		expect(r.message).not.toMatch(/^✓ ★/m);
+	});
+
+	it("CLI-shaped unknown token is kind fail, not deceptive dispatch success", async () => {
+		const r = await runHoboCodeCli(["not-a-real-verb-zz"]);
+		expect(r.ok).toBe(false);
+		expect(r.code).toBe("HOBO_CODE_UNKNOWN_VERB");
+		expect(r.message).toMatch(/not a verb/);
+		expect(r.message).toMatch(/hobo-code help/);
+		expect(r.message).toMatch(/prompt ·/);
+		expect(r.message).not.toMatch(/^✓ ★/m);
+		expect(r.exitCode).toBe(1);
+	});
+
+	it("plain status uses English hierarchy; dense keeps glyph box", async () => {
+		const home = temp("hc-status-plain-");
+		const plain = await runHoboCodeCli(["status"], { hoboHome: home });
+		expect(plain.ok).toBe(true);
+		expect(plain.message).toMatch(/session status|Agents:/i);
+		expect(plain.message).toMatch(/Next:/);
+		expect(plain.message).toMatch(/idle|working|done|blocked/);
+		expect(plain.message).not.toMatch(/┌─+┐/);
+		const dense = await runHoboCodeCli(["status", "--dense"], {
+			hoboHome: home,
+			dense: true,
+		});
+		expect(dense.ok).toBe(true);
+		expect(dense.message).toMatch(/┌─+┐|hobo-code·/);
+	});
+
+	it("help groups verbs and orients HoBo world for GUI-native humans", async () => {
+		const help = await runHoboCodeCli(["help"]);
+		expect(help.ok).toBe(true);
+		expect(help.message).toMatch(/HoBo/i);
+		expect(help.message).toMatch(/plain by default/i);
+		expect(help.message).toMatch(/Start here:/);
+		expect(help.message).toMatch(/Session & status:/);
+		expect(help.message).toMatch(/not stock Pi/i);
 	});
 
 	it("multi-word bare prompt still dispatches (not a typo)", async () => {

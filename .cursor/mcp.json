@@ -1,4 +1,5 @@
 {
+  "$comment": "Project-scoped MCP for Cursor. serena/headroom = local zero-key; gbrain = scripts/agent-mcp-gbrain.sh (fails closed with AUTH.md remediation when binary or embedding key missing). See AUTH.md and docs/agent-tooling.md. Setup: bash scripts/setup-agent-tools.sh --help",
   "mcpServers": {
     "headroom": {
       "command": "headroom",
@@ -8,9 +9,9 @@
       ]
     },
     "gbrain": {
-      "command": "gbrain",
+      "command": "bash",
       "args": [
-        "serve"
+        "scripts/agent-mcp-gbrain.sh"
       ]
     },
     "serena": {

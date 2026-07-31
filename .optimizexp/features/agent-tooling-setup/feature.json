@@ -18,6 +18,8 @@
   ],
   "driver": "cli",
   "surfaces": [
+    "bash scripts/setup-agent-tools.sh --help",
+    "bash scripts/agent-mcp-gbrain.sh",
     "pnpm run skills:mirror-check"
   ],
   "tags": [
@@ -34,5 +36,5 @@
     "tests": "test/agent-tooling-setup.bindings.test.ts"
   },
   "implementationStatus": "wired",
-  "primaryCommand": "pnpm run skills:mirror-check"
+  "primaryCommand": "bash scripts/setup-agent-tools.sh --help"
 }

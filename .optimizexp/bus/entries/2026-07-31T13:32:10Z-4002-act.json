@@ -1,0 +1,46 @@
+{
+  "kind": "act",
+  "id": "2026-07-31T13:32:10Z-4002-act",
+  "expects": "2026-07-31T13:32:10Z-4002-expect",
+  "runId": "20260731-ax-review",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "bash scripts/setup-agent-tools.sh --help",
+    "interface": "cli"
+  },
+  "featureId": "agent-tooling-setup",
+  "scenarioSlug": "agent-tooling-progressive-setup-works-for-product-coding-agent",
+  "action": {
+    "driver": "cli",
+    "command": "bash scripts/setup-agent-tools.sh --help",
+    "exitCode": 0,
+    "startedAt": "2026-07-31T13:32:26.000Z",
+    "endedAt": "2026-07-31T13:32:26.500Z"
+  },
+  "evidence": {
+    "featureId": "agent-tooling-setup",
+    "scenarioSlug": "agent-tooling-progressive-setup-works-for-product-coding-agent",
+    "path": ".optimizexp/features/agent-tooling-setup/evidence/agent-tooling-progressive-setup-works-for-product-coding-agent/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "act",
+    "role": "observed",
+    "persona": "product-coding-agent",
+    "surface": "bash scripts/setup-agent-tools.sh --help",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "None.",
+      "friction": "Instant usage.",
+      "uncertainty": "Flags + AUTH + docs paths."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/agent-tooling-setup/evidence/agent-tooling-progressive-setup-works-for-product-coding-agent/primary.txt"
+    ],
+    "scoredAt": "2026-07-31T13:32:26.500Z"
+  }
+}

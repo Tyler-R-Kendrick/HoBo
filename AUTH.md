@@ -16,6 +16,7 @@ These need **no API keys** and stay local-first:
 Recommended first setup:
 
 ```bash
+bash scripts/setup-agent-tools.sh --help                 # usage (no install)
 bash scripts/setup-agent-tools.sh --common-only --no-gbrain
 ```
 
@@ -27,7 +28,7 @@ bash scripts/setup-agent-tools.sh --common-only --no-gbrain
 | **SkillOpt** live backends | Provider-specific (`ANTHROPIC_API_KEY`, Azure OpenAI, Qwen, MiniMax, …) | Prompts/code to chosen backend | Per-run |
 | Product cloud providers | Per-Camp / secretless federation (see design ADRs) | Per provider | Per provider |
 
-gbrain is **inert** until `gbrain init` **and** a key is set. Do not point it at secrets or content you will not send to a third party.
+gbrain MCP is launched via [`scripts/agent-mcp-gbrain.sh`](scripts/agent-mcp-gbrain.sh), which **fails closed** when the binary or an embedding key is missing (prints remediation here). The binary itself stays **inert** until `gbrain init` **and** a key is set. Do not point it at secrets or content you will not send to a third party.
 
 ## Agent rules
 

@@ -1,0 +1,66 @@
+{
+  "kind": "outcome",
+  "id": "2026-07-31T13:32:00Z-4001-outcome",
+  "expects": "2026-07-31T13:32:00Z-4001-expect",
+  "actId": "2026-07-31T13:32:00Z-4001-act",
+  "runId": "20260731-ax-review",
+  "persona": "product-agent-operator",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "bash scripts/setup-agent-tools.sh --help",
+    "interface": "cli"
+  },
+  "actual": {
+    "exitCode": 0,
+    "observed": {
+      "helpExit": 0,
+      "gbrainExit": 1,
+      "skillsMirror": "ok",
+      "authNamed": true
+    }
+  },
+  "feelings": {
+    "summary": "I can see flags, zero-key --no-gbrain path, and AUTH.md without opening the shell script. gbrain missing binary fails with remediation instead of a host mystery error.",
+    "valence": "positive",
+    "arousal": "low",
+    "trust": "high"
+  },
+  "desirability": {
+    "rating": "desired",
+    "degree": 0.9,
+    "why": "Judged friction and uncertainty at 0 on setup help; intentional gbrain fail-closed is clear."
+  },
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "outcome",
+    "role": "judged",
+    "persona": "product-agent-operator",
+    "surface": "bash scripts/setup-agent-tools.sh --help",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "Fail-closed reduces accidental egress risk.",
+      "friction": "Usage is immediate; no tribal script-read.",
+      "uncertainty": "AUTH.md and --no-gbrain named in help."
+    },
+    "evidenceRefs": [
+      ".optimizexp/features/agent-tooling-setup/evidence/agent-tooling-progressive-setup-works-for-product-agent-operator/"
+    ],
+    "scoredAt": "2026-07-31T13:32:28.000Z"
+  },
+  "comparison": {
+    "expectId": "2026-07-31T13:32:00Z-4001-expect",
+    "actId": "2026-07-31T13:32:00Z-4001-act",
+    "deltaFromExpect": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "deltaFromAct": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "matchedExpectation": true,
+    "expectationMatch": { "behavior": true, "scoresWithinTol": true, "tolerance": 0 }
+  },
+  "evidence": {
+    "featureId": "agent-tooling-setup",
+    "scenarioSlug": "agent-tooling-progressive-setup-works-for-product-agent-operator",
+    "path": ".optimizexp/features/agent-tooling-setup/evidence/agent-tooling-progressive-setup-works-for-product-agent-operator/",
+    "primary": "primary.txt",
+    "kind": "transcript"
+  }
+}

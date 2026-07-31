@@ -79,10 +79,7 @@ function panel(title: string, rows: readonly string[]): string {
 	const body = rows.map((row) =>
 		row.startsWith(" ") || row.startsWith("  ") ? row : ` ${row}`,
 	);
-	const widest = Math.max(
-		title.length,
-		...body.map((r) => r.length),
-	);
+	const widest = Math.max(title.length, ...body.map((r) => r.length));
 	const ruleW = Math.max(12, Math.min(20, widest));
 	const rule = "─".repeat(ruleW);
 	// Happy-path one-scan panels drop soft twin (title · body · rule).
@@ -146,7 +143,11 @@ function parseArgv(argv: readonly string[]): {
 			flags[a.slice(2, eq)] = a.slice(eq + 1);
 			continue;
 		}
-		if (a.startsWith("--") && i + 1 < argv.length && !argv[i + 1]!.startsWith("-")) {
+		if (
+			a.startsWith("--") &&
+			i + 1 < argv.length &&
+			!argv[i + 1]!.startsWith("-")
+		) {
 			flags[a.slice(2)] = argv[++i]!;
 			continue;
 		}
@@ -222,9 +223,7 @@ export async function runHoboCodeCli(
 		deps.hoboHome ||
 		defaultHoboHome(env);
 	const projectDir =
-		(typeof flags.cwd === "string" && flags.cwd) ||
-		deps.cwd ||
-		process.cwd();
+		(typeof flags.cwd === "string" && flags.cwd) || deps.cwd || process.cwd();
 	const tenant =
 		(typeof flags.tenant === "string" && flags.tenant) ||
 		(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT) ||
@@ -333,8 +332,7 @@ export async function runHoboCodeCli(
 	}
 
 	if (verb === "platform") {
-		const flagLed = (label: string, v: boolean) =>
-			`${v ? "●" : "○"}${label}`;
+		const flagLed = (label: string, v: boolean) => `${v ? "●" : "○"}${label}`;
 		const flags = platform.features;
 		// Ultra-short LED labels (match help OF tails); full ids in OpenFeature help.
 		const flagPairs: readonly [string, boolean][] = [
@@ -415,9 +413,7 @@ export async function runHoboCodeCli(
 			...(urlExtra !== null ? [`url · ${urlExtra}`] : []),
 			// Local mode is product default — keep LED only when not local.
 			...(reg.mode === "local" ? [] : [`mode · ${modeLed}`]),
-			...(remoteStation === "local"
-				? []
-				: [`station · ${remoteStation}`]),
+			...(remoteStation === "local" ? [] : [`station · ${remoteStation}`]),
 		]);
 		return ok("HOBO_CODE_REMOTE", text, {
 			registration: reg,
@@ -447,14 +443,10 @@ export async function runHoboCodeCli(
 		const budgetProvider = platform.provider.id;
 		// Happy path: spend + monetize + privacy + wait on one scan line.
 		// mon surface on = wait slot available — single LED.
-		const monetizeBit = !snap.monetizationEnabled
-			? "○off"
-			: "●mon";
+		const monetizeBit = !snap.monetizationEnabled ? "○off" : "●mon";
 		// cheapest-capable is product default routing — omit on happy path.
 		const routing =
-			snap.routingPolicy === "cheapest-capable"
-				? null
-				: snap.routingPolicy;
+			snap.routingPolicy === "cheapest-capable" ? null : snap.routingPolicy;
 		// Compact money: drop trailing .00 on whole dollars.
 		const money = (n: number) =>
 			Number.isInteger(n) || Math.abs(n - Math.round(n)) < 1e-9
@@ -467,13 +459,9 @@ export async function runHoboCodeCli(
 				: `${money(snap.spendUsd)}/${money(snap.capUsd)} · ${pct}% ${bar}`;
 		const text = panel("◈ b", [
 			// Happy path: amount + mon (st observe is product default — omit next twin).
-			[spendBit, ...(routing !== null ? [routing] : []), monetizeBit].join(
-				"·",
-			),
+			[spendBit, ...(routing !== null ? [routing] : []), monetizeBit].join("·"),
 			// Omit flue happy-path provider noise.
-			...(budgetProvider === "flue"
-				? []
-				: [`provider · ${budgetProvider}`]),
+			...(budgetProvider === "flue" ? [] : [`provider · ${budgetProvider}`]),
 		]);
 		return ok("HOBO_CODE_BUDGET", text, {
 			snapshot: snap,
@@ -486,9 +474,7 @@ export async function runHoboCodeCli(
 
 	if (verb === "scaffold") {
 		const name =
-			args[0] ||
-			(typeof flags.name === "string" && flags.name) ||
-			"app";
+			args[0] || (typeof flags.name === "string" && flags.name) || "app";
 		const out =
 			(typeof flags.out === "string" && flags.out) || join(projectDir, name);
 		const result = scaffoldHighValueTemplate({
@@ -502,9 +488,7 @@ export async function runHoboCodeCli(
 			cwd: projectDir,
 		});
 		const tmpl =
-			result.templateId === "openui-astryx-bindle"
-				? "ou"
-				: result.templateId;
+			result.templateId === "openui-astryx-bindle" ? "ou" : result.templateId;
 		// Short pin: flag key tail; omit feature twin when stem matches.
 		// visual.primary → primary (domain stem already "openui" on left).
 		const flagTail = result.openFeatureFlag
@@ -561,9 +545,7 @@ export async function runHoboCodeCli(
 				"HOBO_CODE_HARNESS_DISABLED",
 				// 3-line fail: short flag tail · FIX · short code
 				// h = harness (matches OF help tail).
-				panel("✕ i·h", [
-					`FIX h·✕HARNESS`,
-				]),
+				panel("✕ i·h", [`FIX h·✕HARNESS`]),
 			);
 		}
 		const runId = args[0] ?? `run-${Date.now()}`;
@@ -574,13 +556,15 @@ export async function runHoboCodeCli(
 			forceWorktree: !platform.features.riftPreferred,
 			stationId: platform.station.stationId,
 		});
-		const backendGlyph =
-			ctx.backend.kind === "rift" ? "◆ rift" : "◇ worktree";
+		const backendGlyph = ctx.backend.kind === "rift" ? "◆ rift" : "◇ worktree";
 		// Active run is expected under sandboxes/; only other roots are leftovers.
 		const orphanCount = listSandboxOrphans(hoboHome).filter(
 			(p) => !p.endsWith(`/${ctx.runId}`) && !p.endsWith(`\\${ctx.runId}`),
 		).length;
-		const rootDisplay = displayPath(ctx.rootPath, { hoboHome, cwd: projectDir });
+		const rootDisplay = displayPath(ctx.rootPath, {
+			hoboHome,
+			cwd: projectDir,
+		});
 		const isoStation = shortStation(
 			ctx.stationId ?? platform.station.stationId,
 		);
@@ -593,9 +577,7 @@ export async function runHoboCodeCli(
 		const runBit = shortId(ctx.runId, 14);
 		const isolateText = panel("▣ i", [
 			// Omit worktree happy-path noise.
-			...(ctx.backend.kind === "worktree"
-				? []
-				: [`backend · ${backendGlyph}`]),
+			...(ctx.backend.kind === "worktree" ? [] : [`backend · ${backendGlyph}`]),
 			// Branch only when it differs from run id (code/<run> → run is default).
 			...(branchLabel === ctx.runId ||
 			branchLabel === shortId(ctx.runId, 28) ||
@@ -696,7 +678,11 @@ export async function runHoboCodeCli(
 			status: result.ok ? "ok" : "failed",
 			code: result.code,
 			message: promoteText,
-			data: { result, stationId: platform.station.stationId, text: promoteText },
+			data: {
+				result,
+				stationId: platform.station.stationId,
+				text: promoteText,
+			},
 			exitCode: result.ok ? 0 : 1,
 		};
 	}
@@ -705,9 +691,7 @@ export async function runHoboCodeCli(
 		if (!platform.features.harnessEnabled) {
 			return fail(
 				"HOBO_CODE_HARNESS_DISABLED",
-				panel("✕ se·h", [
-					`FIX h·✕HARNESS`,
-				]),
+				panel("✕ se·h", [`FIX h·✕HARNESS`]),
 			);
 		}
 		const sessionHome =
@@ -723,11 +707,7 @@ export async function runHoboCodeCli(
 			autoInitStation: true,
 		});
 		// Simulate in-session work, then resolve handback before painting mux.
-		session.setAgentState(
-			"worker",
-			"working",
-			session.platform.provider.id,
-		);
+		session.setAgentState("worker", "working", session.platform.provider.id);
 		const keepOpen = env.HOBO_CODE_SESSION_KEEP === "1";
 		const handback = keepOpen
 			? {
@@ -748,10 +728,8 @@ export async function runHoboCodeCli(
 		if (keepOpen) {
 			// Omit flue happy-path provider noise from pane summaries.
 			const provider = session.platform.provider.id;
-			const openSummary =
-				provider === "flue" ? "" : provider;
-			const workSummary =
-				provider === "flue" ? "" : provider;
+			const openSummary = provider === "flue" ? "" : provider;
+			const workSummary = provider === "flue" ? "" : provider;
 			// working glyph alone on flue; provider only when non-default
 			session.setAgentState("coordinator", "working", openSummary);
 			session.setAgentState("worker", "working", workSummary);
@@ -770,24 +748,16 @@ export async function runHoboCodeCli(
 			});
 		}
 		// Snapshot kind only when not implied by handback LED (●open=live, ●clean=final).
-		const snapshotKind = keepOpen
-			? null
-			: handback.ok
-				? null
-				: "failed";
+		const snapshotKind = keepOpen ? null : handback.ok ? null : "failed";
 		const backendGlyph =
 			session.isolation.backend.kind === "rift" ? "◆ rift" : "◇ worktree";
 		// Strip run- prefix; short tail for title.
-		const runLabel = shortId(
-			session.isolation.runId.replace(/^run-/, ""),
-			6,
-		);
+		const runLabel = shortId(session.isolation.runId.replace(/^run-/, ""), 6);
 		const sessionStation = shortStation(session.platform.station.stationId);
 		const sessionProvider = session.platform.provider.id;
 		// Clean final: st is product default observe — omit next twin.
 		// Open/fail: ·pr promote (run already on title).
-		const sessionNext =
-			handback.ok && !keepOpen ? null : "pr";
+		const sessionNext = handback.ok && !keepOpen ? null : "pr";
 		// Handback LED: ● alone = clean final; ●o = open live; fail keeps text.
 		const handbackBit = keepOpen
 			? "●o"
@@ -804,9 +774,7 @@ export async function runHoboCodeCli(
 			.filter((x): x is string => x !== null && x.length > 0)
 			.join("·");
 		const orphanBit =
-			handback.orphans.length === 0
-				? ""
-				: `·▲${handback.orphans.length}`;
+			handback.orphans.length === 0 ? "" : `·▲${handback.orphans.length}`;
 		// LED implies snapshot kind — only emit failed explicitly.
 		const snapBit = snapshotKind !== null ? `·${snapshotKind}` : "";
 		const nextBit = sessionNext !== null ? `·${sessionNext}` : "";
@@ -891,9 +859,7 @@ export async function runHoboCodeCli(
 
 	if (verb === "join") {
 		const displayName =
-			args[0] ||
-			(typeof flags.name === "string" && flags.name) ||
-			"operator";
+			args[0] || (typeof flags.name === "string" && flags.name) || "operator";
 		openBuzzHive({
 			hoboHome,
 			stationId: platform.station.stationId,
@@ -929,12 +895,9 @@ export async function runHoboCodeCli(
 				return `${mark}${shortWho(p.displayName, whoMax)}`;
 			})
 			.join("");
-		const whoMore =
-			others.length > whoCap ? `·+${others.length - whoCap}` : "";
+		const whoMore = others.length > whoCap ? `·+${others.length - whoCap}` : "";
 		const roomBit =
-			shortRoom(room.roomId) === "main"
-				? ""
-				: `·${shortRoom(room.roomId)}`;
+			shortRoom(room.roomId) === "main" ? "" : `·${shortRoom(room.roomId)}`;
 		// alone → ◆ agent; multi with agents already live → no next twin.
 		const joinNext = alone || agents === 0 ? "·◆" : "";
 		const joinText = panel(
@@ -976,10 +939,7 @@ export async function runHoboCodeCli(
 		});
 		const providerLabel = shortProviderLabel(agent.providerHint, 28);
 		const stationLabel = shortStation(agent.stationId);
-		const agentIdLabel = shortId(
-			agent.agentId.replace(/^sha256:/, ""),
-			8,
-		);
+		const agentIdLabel = shortId(agent.agentId.replace(/^sha256:/, ""), 8);
 		const agentText = panel("◆ a", [
 			// name + digest (●ca content-address default; ★ dispatch next omitted)
 			`${agent.displayName}·${agentIdLabel}${
@@ -1130,9 +1090,7 @@ function formatProviderLine(id: string, packageHint: string, max = 28): string {
 /** Distinguishing node tail (class already shown in inventory). */
 function shortNodeTail(nodeId: string): string {
 	if (nodeId.includes("local")) {
-		const rest = nodeId
-			.replace(/^node-local-?/, "")
-			.replace(/^station-?/, "");
+		const rest = nodeId.replace(/^node-local-?/, "").replace(/^station-?/, "");
 		if (rest === "" || rest === "local" || rest === "station-local") {
 			return "station";
 		}
@@ -1175,14 +1133,10 @@ function renderDispatchSummary(input: {
 			: input.status === "failed"
 				? "queue●→claim●→run●→fail✕"
 				: "queue●→claim○→run○→done○";
-	const node =
-		input.nodeId !== undefined
-			? shortNodeLabel(input.nodeId)
-			: "—";
+	const node = input.nodeId !== undefined ? shortNodeLabel(input.nodeId) : "—";
 	// local · station is the happy path — omit when done there.
 	const omitNode =
-		input.status === "done" &&
-		(node === "local · station" || node === "—");
+		input.status === "done" && (node === "local · station" || node === "—");
 	// Title ★ already marks defaulted bare path — body ◆ only for empty seed.
 	// ◆empty = empty argv seed (ponytail default in data/docs).
 	const defaultBit =
@@ -1192,11 +1146,8 @@ function renderDispatchSummary(input: {
 				? "empty"
 				: null;
 	// Empty prompt already named by ◆empty — drop seed text twin.
-	const promptBit = input.emptyPrompt
-		? null
-		: shortId(input.prompt, 8);
-	const nextBit =
-		input.status === "failed" ? "nodes" : "st";
+	const promptBit = input.emptyPrompt ? null : shortId(input.prompt, 8);
+	const nextBit = input.status === "failed" ? "nodes" : "st";
 	// Happy-path done: one scan line (task + next). In-flight/fail keep node/hive rows.
 	// Strip task- prefix (row already says task ·).
 	const taskId = shortId(input.taskId.replace(/^task-/, ""), 6);
@@ -1218,9 +1169,7 @@ function renderDispatchSummary(input: {
 					taskRow,
 					...(omitNode ? [] : [`node · ${node}`]),
 					// Omit hive when default — less noise on the happy path.
-					...(input.hiveId === "default"
-						? []
-						: [`hive · ${input.hiveId}`]),
+					...(input.hiveId === "default" ? [] : [`hive · ${input.hiveId}`]),
 				];
 	// Defaulted bare: ★. Explicit: d (matches help tail; full word in data).
 	// Product brand lives on status/help; verb panels use glyph+tail.
@@ -1280,9 +1229,7 @@ function renderNodeInventory(
 		// Idle inventory: drop "0 busy"; all-online drops "N on".
 		const busyBit = busyTotal > 0 ? ` · ${busyTotal} busy` : "";
 		const onBit =
-			online === nodes.length && busyTotal === 0
-				? ""
-				: ` · ${online} on`;
+			online === nodes.length && busyTotal === 0 ? "" : ` · ${online} on`;
 		// Idle all-free: one summary line with class tails (no table).
 		const allIdle = busyTotal === 0 && online === nodes.length;
 		if (allIdle && nodes.length <= 4) {
@@ -1315,10 +1262,7 @@ function renderNodeInventory(
 		// ★ dispatch is product default next — omit twin on inventory.
 		// Multi-row busy tables still get no trailing ★ wall.
 	}
-	const nodesTitle =
-		hiveId === "default"
-			? "▣ n"
-			: `▣ n·hive ${hiveId}`;
+	const nodesTitle = hiveId === "default" ? "▣ n" : `▣ n·hive ${hiveId}`;
 	return panel(nodesTitle, rows);
 }
 
@@ -1353,9 +1297,7 @@ function renderRoomInventory(
 			agents > 0 ? `◆${agents}` : null,
 		].filter((x): x is string => x !== null);
 		const allEmpty = occupancyBits.length === 0;
-		const occupancy = allEmpty
-			? "empty"
-			: occupancyBits.join("·");
+		const occupancy = allEmpty ? "empty" : occupancyBits.join("·");
 		// Single-room empty: one summary row (no twin # empty row).
 		if (allEmpty && rooms.length === 1) {
 			const roomLabel = shortRoom(rooms[0]!.roomId);
@@ -1384,9 +1326,7 @@ function renderRoomInventory(
 						: `${roomLabel}·${whoBits}${whoMore}`,
 				);
 			} else {
-				rows.push(
-					`${rooms.length}${roomWord}·${occupancy}`,
-				);
+				rows.push(`${rooms.length}${roomWord}·${occupancy}`);
 				for (const r of rooms) {
 					const roomLabel = shortRoom(r.roomId);
 					const title =
@@ -1424,10 +1364,7 @@ function renderRoomInventory(
 			rows.push("◇");
 		}
 	}
-	const roomsTitle =
-		hiveId === "default"
-			? "# rm"
-			: `# rm·hive ${hiveId}`;
+	const roomsTitle = hiveId === "default" ? "# rm" : `# rm·hive ${hiveId}`;
 	return panel(roomsTitle, rows);
 }
 
@@ -1453,7 +1390,9 @@ export function formatHoboCodeResult(
 		)}\n`;
 	}
 	if (result.code === "HOBO_CODE_HELP") {
-		return result.message.endsWith("\n") ? result.message : `${result.message}\n`;
+		return result.message.endsWith("\n")
+			? result.message
+			: `${result.message}\n`;
 	}
 
 	// Prefer embedded presentation body when present (status chrome, etc.).
@@ -1484,8 +1423,7 @@ export function formatHoboCodeResult(
 		const cur = lines[0] ?? "";
 		const rule = trailingRule ?? "─".repeat(16);
 		if (trailingRule !== null && cur.endsWith(trailingRule)) {
-			lines[0] =
-				stripTrailingRule(cur) + `FIX  ${fixes}${codeBit}\n` + rule;
+			lines[0] = stripTrailingRule(cur) + `FIX  ${fixes}${codeBit}\n` + rule;
 		} else {
 			lines.push(`FIX  ${fixes}${codeBit}`);
 			lines.push(rule);

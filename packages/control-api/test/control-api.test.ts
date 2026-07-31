@@ -36,7 +36,10 @@ async function json(
 			...(init?.headers ?? {}),
 		},
 	});
-	return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+	return {
+		status: res.status,
+		body: (await res.json()) as Record<string, unknown>,
+	};
 }
 
 describe("@hobo/control-api", () => {

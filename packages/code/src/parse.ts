@@ -115,7 +115,10 @@ export function parseEvidenceTriple(input: unknown): EvidenceTriple {
 			source.playwrightScriptPath,
 			"playwrightScriptPath",
 		),
-		recordingMp4Path: requireString(source.recordingMp4Path, "recordingMp4Path"),
+		recordingMp4Path: requireString(
+			source.recordingMp4Path,
+			"recordingMp4Path",
+		),
 		screenshotPaths: Object.freeze(screenshots),
 		durableRoot: requireString(source.durableRoot, "durableRoot"),
 	});

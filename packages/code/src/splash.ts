@@ -118,12 +118,17 @@ export interface LoadingScreenOptions {
  * Without explicit frame, tickMs drives a rest→bounce→blink loop.
  */
 export function selectBoIdleFrame(
-	options: Pick<LoadingScreenOptions, "frame" | "tickMs" | "reducedMotion"> = {},
+	options: Pick<
+		LoadingScreenOptions,
+		"frame" | "tickMs" | "reducedMotion"
+	> = {},
 ): number {
 	if (options.reducedMotion === true) return BO_IDLE_REST;
 	if (typeof options.frame === "number" && Number.isFinite(options.frame)) {
 		const n = Math.trunc(options.frame);
-		return ((n % BO_IDLE_FRAME_COUNT) + BO_IDLE_FRAME_COUNT) % BO_IDLE_FRAME_COUNT;
+		return (
+			((n % BO_IDLE_FRAME_COUNT) + BO_IDLE_FRAME_COUNT) % BO_IDLE_FRAME_COUNT
+		);
 	}
 	const t = Math.max(0, Math.trunc(options.tickMs ?? 0));
 	const cycle = BO_IDLE_TICK_MS * 26;
@@ -289,8 +294,15 @@ export function renderTitleScreen(options: TitleScreenOptions = {}): string {
 		options.cue ?? "pack your bindle — press any key",
 		TITLE_CANVAS_WIDTH,
 	);
-	const rows = [...logoLines, ...boLines, cue, centerIn("", TITLE_CANVAS_WIDTH)];
-	return paintCell(rows.join("\n"), TITLE_CANVAS_WIDTH, TITLE_CANVAS_HEIGHT).join(
-		"\n",
-	);
+	const rows = [
+		...logoLines,
+		...boLines,
+		cue,
+		centerIn("", TITLE_CANVAS_WIDTH),
+	];
+	return paintCell(
+		rows.join("\n"),
+		TITLE_CANVAS_WIDTH,
+		TITLE_CANVAS_HEIGHT,
+	).join("\n");
 }

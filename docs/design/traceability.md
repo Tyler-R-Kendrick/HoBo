@@ -433,15 +433,16 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0137 | [data-plane](./adr/03-data-plane.md#adr-0137) | Session Replay on every App Kit (`@hobo/replay`); Kit ≠ WIT membrane; `replay.*`; dual fixtures; distinct from event-log replay. | — (session replay; Linear import pending) |
 | ADR-0138 | [architecture-core](./adr/01-architecture-core.md#adr-0138) | Messaging plane unification; Kafka first-class capability provider; Dapr optional Camp runtime / ActorHost dual realization. | — (messaging plane; Linear import pending) |
 | ADR-0139 | [data-plane](./adr/03-data-plane.md#adr-0139) | HoBo Code coding harness (`hobo-code` binary, dispatch default): mediated isolation, distributed hive, extreme templates + evidence, FinOps dogfood, gated squash-only promotion. | — (2026-07-27 hobo-code elevation) |
+| ADR-0140 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0140) | Launch ship targets: OSS public (A), local-first developer tooling (B), hosted beta/GA (C); default order A→B→C; public claims must name target. | — (launch ship targets) |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 125 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 126 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0139`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
-  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068. (ADR-0118–ADR-0139 are contiguous except intentional historical gaps above.)
+- Explicit numbering gaps through `ADR-0140`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068. (ADR-0118–ADR-0140 are contiguous except intentional historical gaps above.)
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.
 

@@ -23,7 +23,10 @@ import type { EveAgentDefinition } from "./eve.js";
 export const SECURE_SANDBOX_STACK_SCHEMA =
 	"hobo.code.sandbox.deepagents-openshell-mxc/v1" as const;
 
-export type SecureSandboxTier = "deepagents-openshell" | "mxc" | "mediated-local";
+export type SecureSandboxTier =
+	| "deepagents-openshell"
+	| "mxc"
+	| "mediated-local";
 
 export interface SecureSandboxStackDescriptor {
 	readonly schemaVersion: typeof SECURE_SANDBOX_STACK_SCHEMA;
@@ -63,10 +66,8 @@ export function describeSecureSandboxStack(): SecureSandboxStackDescriptor {
 		stack: ["deepagents", "openshell", "mxc"],
 		deepAgents: {
 			role: "orchestrator",
-			inspiration:
-				"https://docs.langchain.com/oss/python/deepagents/overview",
-			openshellDeepAgent:
-				"https://github.com/langchain-ai/openshell-deepagent",
+			inspiration: "https://docs.langchain.com/oss/python/deepagents/overview",
+			openshellDeepAgent: "https://github.com/langchain-ai/openshell-deepagent",
 		},
 		openShell: {
 			role: "secure-runtime",

@@ -27,7 +27,10 @@ export {
 	buildBootLoadPlan,
 	type BootSceneDeps,
 } from "./phaser/boot-scene.js";
-export { yardPhaserConfig, type YardGameConfigOptions } from "./phaser/game-config.js";
+export {
+	yardPhaserConfig,
+	type YardGameConfigOptions,
+} from "./phaser/game-config.js";
 export {
 	createTestSeam,
 	seededRandom,

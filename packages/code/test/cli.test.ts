@@ -40,9 +40,9 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			(result.data as { defaultVerb: boolean; task: { status: string } })
 				.defaultVerb,
 		).toBe(true);
-		expect(
-			(result.data as { task: { status: string } }).task.status,
-		).toBe("done");
+		expect((result.data as { task: { status: string } }).task.status).toBe(
+			"done",
+		);
 	});
 
 	it("explicit dispatch and status work as flat verbs", async () => {
@@ -86,12 +86,10 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		// ★d marks default dispatch; full word is data.defaultVerb
 		expect(help.message).toContain("★d");
 		expect(help.message).not.toMatch(/\bbuzz\b/);
-		expect(
-			(help.data as { binary: string; defaultVerb: string }).binary,
-		).toBe("hobo-code");
-		expect(
-			(help.data as { defaultVerb: string }).defaultVerb,
-		).toBe("dispatch");
+		expect((help.data as { binary: string; defaultVerb: string }).binary).toBe(
+			"hobo-code",
+		);
+		expect((help.data as { defaultVerb: string }).defaultVerb).toBe("dispatch");
 		expect(CODE_FEATURE_FLAGS.distributed).toBe("code.distributed");
 	});
 });

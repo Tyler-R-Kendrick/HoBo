@@ -3,10 +3,7 @@
  * Composition-root `hobo-code` binary: wires identity FeatureFlagStore + full
  * HOBO_HOME defaults. Core logic lives in @hobo/code (dispatch default).
  */
-import {
-	formatHoboCodeResult,
-	runHoboCodeCli,
-} from "@hobo/code";
+import { formatHoboCodeResult, runHoboCodeCli } from "@hobo/code";
 import { createContractAssertedHarnessFixtures } from "@hobo/identity";
 
 import { featurePortFromStore } from "../code-command.js";

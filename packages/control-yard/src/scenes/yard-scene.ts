@@ -66,10 +66,7 @@ export function describeYardSceneLoad(
 	assetBaseUrl = "",
 ): YardLoadManifest {
 	const base = assetBaseUrl.replace(/\/$/, "");
-	const url = (p: string) =>
-		base
-			? `${base}/${p}`
-			: joinAsset(index, p);
+	const url = (p: string) => (base ? `${base}/${p}` : joinAsset(index, p));
 
 	const sheets = Object.values(index.spritesheets).map((sheet) => ({
 		key: sheet.id,

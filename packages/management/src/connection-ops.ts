@@ -126,9 +126,7 @@ export function connectionList(
 	const service = ctx.loadConnectionService(tenant);
 	const rows = service.list({
 		...(input.provider !== undefined ? { provider: input.provider } : {}),
-		...(input.status !== undefined
-			? { status: input.status as never }
-			: {}),
+		...(input.status !== undefined ? { status: input.status as never } : {}),
 		...(input.subjectId !== undefined ? { subjectId: input.subjectId } : {}),
 	});
 	return okResult(`${rows.length} connection(s)`, {

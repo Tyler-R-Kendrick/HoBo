@@ -53,21 +53,21 @@ export default function (pi: ExtensionAPI) {
 		ctx.ui.setTitle("hobo-code");
 		ctx.ui.setStatus("hobo", "(••)/@ hobo-code · /hive · /bo");
 		ctx.ui.setHeader((tui, theme) => {
-				let lines: string[] | undefined;
-				void buildHoboHeaderLines(
-					(s) => theme.fg("accent", s),
-					(s) => theme.fg("dim", s),
-				).then((built) => {
-					lines = built;
-					tui.requestRender?.();
-				});
-				return {
-					render(_width: number): string[] {
-						return lines ?? [""];
-					},
-					invalidate() {},
-				};
+			let lines: string[] | undefined;
+			void buildHoboHeaderLines(
+				(s) => theme.fg("accent", s),
+				(s) => theme.fg("dim", s),
+			).then((built) => {
+				lines = built;
+				tui.requestRender?.();
 			});
+			return {
+				render(_width: number): string[] {
+					return lines ?? [""];
+				},
+				invalidate() {},
+			};
+		});
 		ctx.ui.notify("Bo online — bindle packed, hive ready.", "info");
 	});
 

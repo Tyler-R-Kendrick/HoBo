@@ -64,7 +64,9 @@ describe("@hobo/code platform integration", () => {
 			autoInitStation: true,
 		});
 		expect(session.platform.station.present).toBe(true);
-		expect(session.isolation.stationId).toBe(session.platform.station.stationId);
+		expect(session.isolation.stationId).toBe(
+			session.platform.station.stationId,
+		);
 		const handback = session.complete(true, ["platform:ok"]);
 		expect(handback.ok).toBe(true);
 	});

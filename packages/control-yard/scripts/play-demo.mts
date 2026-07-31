@@ -4,7 +4,11 @@
  * Produces Playwright screenshots + MP4 recordings under public/shots/.
  * Self-report without these files is rejected.
  */
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+	createServer,
+	type IncomingMessage,
+	type ServerResponse,
+} from "node:http";
 import {
 	mkdirSync,
 	readFileSync,
@@ -156,7 +160,9 @@ function imgdiff(
 		{ encoding: "utf8" },
 	);
 	if (r.status === 0) return { ok: true, detail: "match" };
-	const detail = (r.stdout || r.stderr || `exit ${r.status}`).trim().slice(0, 240);
+	const detail = (r.stdout || r.stderr || `exit ${r.status}`)
+		.trim()
+		.slice(0, 240);
 	if (/Pillow is required|ModuleNotFoundError/i.test(detail)) {
 		return { ok: true, detail: `imgdiff skipped (deps): ${detail}` };
 	}
@@ -307,115 +313,125 @@ async function withRecording(
 
 try {
 	// ========== Recording 01: full yard loop ==========
-	await withRecording("01-yard-loop", { width: 1400, height: 920 }, async (page) => {
-		const consoleErrors: string[] = [];
-		page.on("console", (msg) => {
-			if (msg.type() === "error") consoleErrors.push(msg.text());
-		});
-		page.on("pageerror", (err) => consoleErrors.push(String(err)));
+	await withRecording(
+		"01-yard-loop",
+		{ width: 1400, height: 920 },
+		async (page) => {
+			const consoleErrors: string[] = [];
+			page.on("console", (msg) => {
+				if (msg.type() === "error") consoleErrors.push(msg.text());
+			});
+			page.on("pageerror", (err) => consoleErrors.push(String(err)));
 
-		await page.goto(gameUrl, { waitUntil: "networkidle", timeout: 30000 });
-		await page.waitForFunction(
-			() =>
-				(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
-					?.ready === true,
-			null,
-			{ timeout: 20000 },
-		);
-		await page.waitForFunction(
-			() =>
-				((window as unknown as { __TEST__?: { frameCount?: number } }).__TEST__
-					?.frameCount ?? 0) >= 8,
-			null,
-			{ timeout: 10000 },
-		);
+			await page.goto(gameUrl, { waitUntil: "networkidle", timeout: 30000 });
+			await page.waitForFunction(
+				() =>
+					(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
+						?.ready === true,
+				null,
+				{ timeout: 20000 },
+			);
+			await page.waitForFunction(
+				() =>
+					((window as unknown as { __TEST__?: { frameCount?: number } })
+						.__TEST__?.frameCount ?? 0) >= 8,
+				null,
+				{ timeout: 10000 },
+			);
 
-		const st = await page.evaluate(() =>
-			(
-				window as unknown as { __TEST__: { state: () => unknown } }
-			).__TEST__.state(),
-		);
-		report.initialState = st;
-		check("test seam ready", Boolean((st as { ready: boolean }).ready));
-		check(
-			"connection authorized present",
-			(st as { connCount: number }).connCount >= 1,
-			`conn=${(st as { connCount: number }).connCount}`,
-		);
-		check(
-			"traffic rate > 0",
-			(st as { trafficRate: number }).trafficRate > 0,
-			`traffic=${(st as { trafficRate: number }).trafficRate}`,
-		);
-		check(
-			"bootstrap inactive",
-			(st as { bootstrapActive: boolean }).bootstrapActive === false,
-		);
-
-		await page.screenshot({
-			path: join(SHOTS, "01-boot-live.png"),
-			fullPage: true,
-		});
-		const d1 = imgdiff(
-			join(BASELINES, "01-boot-live.png"),
-			join(SHOTS, "01-boot-live.png"),
-			join(SHOTS, "01-boot-live.diff.png"),
-		);
-		check("imgdiff boot", d1.ok, d1.detail);
-
-		// Walk zones with real wall-clock so video has motion
-		for (const zone of [
-			"connectionBay",
-			"costBooth",
-			"policyBoard",
-			"errorBunker",
-			"platformRest",
-			"activeRailTrack",
-		] as const) {
-			await page.evaluate((z) => {
+			const st = await page.evaluate(() =>
 				(
-					window as unknown as {
-						__TEST__: { commands: { selectZone: (x: string) => void } };
-					}
-				).__TEST__.commands.selectZone(z);
-			}, zone);
-			await advance(page, 45);
-			await sleep(400);
-		}
+					window as unknown as { __TEST__: { state: () => unknown } }
+				).__TEST__.state(),
+			);
+			report.initialState = st;
+			check("test seam ready", Boolean((st as { ready: boolean }).ready));
+			check(
+				"connection authorized present",
+				(st as { connCount: number }).connCount >= 1,
+				`conn=${(st as { connCount: number }).connCount}`,
+			);
+			check(
+				"traffic rate > 0",
+				(st as { trafficRate: number }).trafficRate > 0,
+				`traffic=${(st as { trafficRate: number }).trafficRate}`,
+			);
+			check(
+				"bootstrap inactive",
+				(st as { bootstrapActive: boolean }).bootstrapActive === false,
+			);
 
-		await page.screenshot({
-			path: join(SHOTS, "07-walk.png"),
-			fullPage: true,
-		});
-		await page.locator("#yard").screenshot({ path: join(SHOTS, "canvas-only.png") });
+			await page.screenshot({
+				path: join(SHOTS, "01-boot-live.png"),
+				fullPage: true,
+			});
+			const d1 = imgdiff(
+				join(BASELINES, "01-boot-live.png"),
+				join(SHOTS, "01-boot-live.png"),
+				join(SHOTS, "01-boot-live.diff.png"),
+			);
+			check("imgdiff boot", d1.ok, d1.detail);
 
-		const pixelSample = await page.evaluate(() => {
-			const c = document.getElementById("yard") as HTMLCanvasElement;
-			const ctx = c.getContext("2d")!;
-			const st = (
-				window as unknown as {
-					__TEST__: { state: () => { bo: { x: number; y: number } } };
-				}
-			).__TEST__.state();
-			const x0 = Math.max(0, st.bo.x - 50);
-			const y0 = Math.max(0, st.bo.y - 120);
-			const data = ctx.getImageData(x0, y0, 100, 130).data;
-			let dark = 0;
-			for (let i = 0; i < data.length; i += 4) {
-				if (data[i]! + data[i + 1]! + data[i + 2]! < 90) dark++;
+			// Walk zones with real wall-clock so video has motion
+			for (const zone of [
+				"connectionBay",
+				"costBooth",
+				"policyBoard",
+				"errorBunker",
+				"platformRest",
+				"activeRailTrack",
+			] as const) {
+				await page.evaluate((z) => {
+					(
+						window as unknown as {
+							__TEST__: { commands: { selectZone: (x: string) => void } };
+						}
+					).__TEST__.commands.selectZone(z);
+				}, zone);
+				await advance(page, 45);
+				await sleep(400);
 			}
-			return { dark, bo: st.bo };
-		});
-		report.pixelSample = pixelSample;
-		check("canvas dark ink near Bo", pixelSample.dark > 20, `dark=${pixelSample.dark}`);
-		check(
-			"no console errors",
-			consoleErrors.length === 0,
-			consoleErrors.join(" | ").slice(0, 200),
-		);
-		report.consoleErrors = consoleErrors;
-		await sleep(500);
-	});
+
+			await page.screenshot({
+				path: join(SHOTS, "07-walk.png"),
+				fullPage: true,
+			});
+			await page
+				.locator("#yard")
+				.screenshot({ path: join(SHOTS, "canvas-only.png") });
+
+			const pixelSample = await page.evaluate(() => {
+				const c = document.getElementById("yard") as HTMLCanvasElement;
+				const ctx = c.getContext("2d")!;
+				const st = (
+					window as unknown as {
+						__TEST__: { state: () => { bo: { x: number; y: number } } };
+					}
+				).__TEST__.state();
+				const x0 = Math.max(0, st.bo.x - 50);
+				const y0 = Math.max(0, st.bo.y - 120);
+				const data = ctx.getImageData(x0, y0, 100, 130).data;
+				let dark = 0;
+				for (let i = 0; i < data.length; i += 4) {
+					if (data[i]! + data[i + 1]! + data[i + 2]! < 90) dark++;
+				}
+				return { dark, bo: st.bo };
+			});
+			report.pixelSample = pixelSample;
+			check(
+				"canvas dark ink near Bo",
+				pixelSample.dark > 20,
+				`dark=${pixelSample.dark}`,
+			);
+			check(
+				"no console errors",
+				consoleErrors.length === 0,
+				consoleErrors.join(" | ").slice(0, 200),
+			);
+			report.consoleErrors = consoleErrors;
+			await sleep(500);
+		},
+	);
 
 	// ========== Recording 02: connection sheet ==========
 	await withRecording(
@@ -469,7 +485,10 @@ try {
 			);
 			check("imgdiff connection bay", d2.ok, d2.detail);
 			// interact with sheet UI
-			await page.locator("#sheet-confirm").click().catch(() => {});
+			await page
+				.locator("#sheet-confirm")
+				.click()
+				.catch(() => {});
 			await sleep(600);
 			await page.evaluate(() => {
 				(
@@ -630,7 +649,9 @@ for (const rel of evidenceFiles) {
 	if (rel === "evidence-manifest.json") continue;
 	const abs = join(SHOTS, rel);
 	if (!existsSync(abs)) {
-		(report.errors as string[]).push(`missing evidence file after capture: ${rel}`);
+		(report.errors as string[]).push(
+			`missing evidence file after capture: ${rel}`,
+		);
 		continue;
 	}
 	files[rel] = { bytes: statSync(abs).size, sha256: sha256File(abs) };
@@ -647,7 +668,10 @@ const manifest = {
 };
 
 // placeholder entry filled after write
-writeFileSync(join(SHOTS, "visual-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+writeFileSync(
+	join(SHOTS, "visual-report.json"),
+	`${JSON.stringify(report, null, 2)}\n`,
+);
 files["visual-report.json"] = {
 	bytes: statSync(join(SHOTS, "visual-report.json")).size,
 	sha256: sha256File(join(SHOTS, "visual-report.json")),

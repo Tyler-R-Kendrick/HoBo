@@ -198,8 +198,7 @@ export function renderStatusText(
 	};
 	// Busy → nodes (nd). Quiet: ★ dispatch is product default — omit next twin.
 	const nextVerbs =
-		options.nextHint?.replace(/^next\s+/, "") ??
-		(busy > 0 ? "nd" : null);
+		options.nextHint?.replace(/^next\s+/, "") ?? (busy > 0 ? "nd" : null);
 	// Always fold panes into ≤4-wide groups (clipboard → ↳snippet on bit).
 	const foldPane = (pane: (typeof status.panes)[number]): string => {
 		const glyph = STATE_GLYPH[pane.semanticState];
@@ -210,11 +209,7 @@ export function renderStatusText(
 		const raw = showSummary ? pane.summary : "";
 		// Ultra-short blocked cue (full text in data/logs).
 		const summary =
-			raw.length === 0
-				? ""
-				: raw.length > 6
-					? `${raw.slice(0, 5)}…`
-					: raw;
+			raw.length === 0 ? "" : raw.length > 6 ? `${raw.slice(0, 5)}…` : raw;
 		const clip =
 			pane.highlightBuffer.length > 0
 				? `↳${
@@ -230,10 +225,7 @@ export function renderStatusText(
 	// Full title override (session) wins; else standalone folds next into title.
 	// Empty: next is dispatch — fold cue, skip "…" twin.
 	const titleBase =
-		options.title ??
-		(options.embedded
-			? subtitle
-			: `hobo-code·${subtitle}`);
+		options.title ?? (options.embedded ? subtitle : `hobo-code·${subtitle}`);
 	const emptyCue = "empty→★";
 	// dcc (detach·click·copy) is product default — omit from chrome.
 	// Next verb is last token (no "next" word) — matches panel chrome.

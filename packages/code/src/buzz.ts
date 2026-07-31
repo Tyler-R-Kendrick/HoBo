@@ -24,10 +24,7 @@ import { join } from "node:path";
 
 import { getNamedEndpoint, getNamedEndpointHost } from "@hobo/core";
 
-import {
-	cleanupIsolation,
-	createIsolationContext,
-} from "./isolation.js";
+import { cleanupIsolation, createIsolationContext } from "./isolation.js";
 import type { IsolationContext } from "./types.js";
 
 // public-contract: buzz hive schema.
@@ -421,8 +418,7 @@ export function dispatchBuzzTask(
 	const priorMeta = readJson<{ stationId: string }>(
 		join(rootProbe, "hive.json"),
 	);
-	const stationId =
-		input.stationId ?? priorMeta?.stationId ?? "station:local";
+	const stationId = input.stationId ?? priorMeta?.stationId ?? "station:local";
 	openBuzzHive({
 		hoboHome: input.hoboHome,
 		stationId,

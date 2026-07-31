@@ -34,7 +34,8 @@ export function projectYardSnapshot(
 	}
 
 	const actor = ctx.resolveActor();
-	const tenant = input.tenant ?? actor.tenant ?? state.occupancy.isolation.tenant;
+	const tenant =
+		input.tenant ?? actor.tenant ?? state.occupancy.isolation.tenant;
 	const connections = ctx
 		.loadConnectionService(tenant)
 		.list()
@@ -53,7 +54,10 @@ export function projectYardSnapshot(
 		quotaLimit: activeRail?.billingPolicy.quotaLimit ?? 0,
 		spendCapUsd: activeRail?.billingPolicy.spendCapUsd ?? 0,
 		budgetUsd: activeRail?.billingPolicy.budgetUsd ?? 0,
-		trafficRate: Math.min(1, authorized.length * 0.25 + (authorized.length > 0 ? 0.15 : 0)),
+		trafficRate: Math.min(
+			1,
+			authorized.length * 0.25 + (authorized.length > 0 ? 0.15 : 0),
+		),
 	});
 
 	const activity: ConnectorActivityView[] = connections.map((c) =>

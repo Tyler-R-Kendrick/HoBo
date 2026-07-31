@@ -65,7 +65,13 @@ export function scaffoldHighValueTemplate(
 	}
 
 	// Ensure konsistent-shaped dirs for Bindle apps that grow into packages.
-	for (const dir of ["src", "test", "contracts", "data-models", "src/_generated"]) {
+	for (const dir of [
+		"src",
+		"test",
+		"contracts",
+		"data-models",
+		"src/_generated",
+	]) {
 		mkdirSync(join(options.outputDir, dir), { recursive: true });
 	}
 	writeFileSync(

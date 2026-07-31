@@ -91,13 +91,16 @@ export async function createControlApiServer(
 	const port = options.port ?? 0;
 	const streamIntervalMs = options.streamIntervalMs ?? 500;
 	const context =
-		options.context ??
-		createManagementContext({ hoboHome: options.hoboHome });
+		options.context ?? createManagementContext({ hoboHome: options.hoboHome });
 
 	const server = createServer(async (req, res) => {
 		try {
 			if (!req.url || !req.method) {
-				sendJson(res, 400, { ok: false, code: "bad-request", message: "missing url" });
+				sendJson(res, 400, {
+					ok: false,
+					code: "bad-request",
+					message: "missing url",
+				});
 				return;
 			}
 			if (req.method === "OPTIONS") {
@@ -179,8 +182,7 @@ async function dispatch(
 	req: IncomingMessage,
 	ctx: ManagementContext,
 ): Promise<ManagementResult | null> {
-	const body =
-		method === "POST" || method === "PUT" ? await readJson(req) : {};
+	const body = method === "POST" || method === "PUT" ? await readJson(req) : {};
 
 	if (method === "POST" && path === "/v1/station/init") {
 		return stationInit(
@@ -240,7 +242,10 @@ async function dispatch(
 		const scopes = Array.isArray(scopesRaw)
 			? scopesRaw.map(String)
 			: typeof scopesRaw === "string"
-				? scopesRaw.split(",").map((s) => s.trim()).filter(Boolean)
+				? scopesRaw
+						.split(",")
+						.map((s) => s.trim())
+						.filter(Boolean)
 				: undefined;
 		return connectionCreate(
 			ctx,
@@ -358,9 +363,7 @@ function handleYardSse(
 		}
 		if (snap.data.seq !== lastSeq) {
 			lastSeq = snap.data.seq;
-			res.write(
-				`event: yard\ndata: ${JSON.stringify(snap.data)}\n\n`,
-			);
+			res.write(`event: yard\ndata: ${JSON.stringify(snap.data)}\n\n`);
 		} else {
 			res.write(
 				`event: heartbeat\ndata: ${JSON.stringify({ seq: lastSeq })}\n\n`,
@@ -379,7 +382,12 @@ function str(v: unknown): string | undefined {
 /** exactOptionalPropertyTypes-safe: drop undefined values. */
 function opt<T extends Record<string, unknown>>(
 	obj: T,
-): { [K in keyof T as T[K] extends undefined ? never : K]: Exclude<T[K], undefined> } {
+): {
+	[K in keyof T as T[K] extends undefined ? never : K]: Exclude<
+		T[K],
+		undefined
+	>;
+} {
 	const out: Record<string, unknown> = {};
 	for (const [k, v] of Object.entries(obj)) {
 		if (v !== undefined) out[k] = v;

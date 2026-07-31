@@ -262,6 +262,7 @@ When layers are implemented by cloud coding agents that open their own branches/
 
 ## Related
 
+- `finish.md` — `/sdlc --finish` session land (commit + all session PRs through squash-merge)
 - `dispatch.md` — backend matrix, claim protocol, handback schema
 - `loops-and-gates.md` — red/green and agent:check ladder
 - `repo` skill `references/git-pr.md` — single-PR hygiene (stacks supersede for multi-layer)

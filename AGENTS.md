@@ -4,7 +4,7 @@ This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub
 
 | Tool | Type | What it does | Invoke |
 |---|---|---|---|
-| **sdlc** (repo-local) | skill | Full-loop coordinator: brainstorm → plan → issues → subagents (incremental checkins) → **GitHub stacked PRs** (`gh stack`) → bottom-up rubber-duck/adversarial review → fix comments/checks → squash-merge each PR. Mirrored for all agents. | `sdlc`, stacked multi-phase work |
+| **sdlc** (repo-local) | skill | Full-loop coordinator: brainstorm → plan → issues → subagents (incremental checkins) → **GitHub stacked PRs** (`gh stack`) → bottom-up rubber-duck/adversarial review → fix comments/checks → squash-merge each PR. **`--finish`** lands the session (commit, rebase, PR, squash-merge all session PRs). Mirrored for all agents. | `sdlc`, `/sdlc --finish`, stacked multi-phase work |
 | **gh-stack** (repo-local) | skill + CLI ext | Non-interactive rules for official `github/gh-stack` (`gh extension install github/gh-stack`). | `gh stack init\|add\|submit\|sync\|merge` |
 | **improve** (`shadcn/improve`) | skill (read-only) | Audits the codebase and writes prioritized implementation **plans** to `docs/plans/` for other agents to execute. Never edits source. | `/improve`, `/improve quick`, `/improve security`, `/improve execute <plan>` |
 | **superpowers** (`obra/Superpowers`) | plugin (skills library) | A development **methodology**: structured **brainstorming**, plan-writing, TDD, systematic debugging, subagent-driven dev, and code-review workflows. No keys. | `brainstorming`, `writing-plans`, `requesting-code-review`, `subagent-driven-development`, `systematic-debugging`, … (14 skills) |

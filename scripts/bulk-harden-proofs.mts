@@ -24,7 +24,10 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	"..",
+);
 const gfPath = path.join(repoRoot, "src/draft/_grandfathered.json");
 
 const argv = process.argv.slice(2);
@@ -355,7 +358,9 @@ function verify(workspace: string): boolean {
 function main() {
 	const gf = JSON.parse(readFileSync(gfPath, "utf8")) as Gf;
 	const packages = gf.packages.slice(0, limit);
-	console.log(`hardening ${packages.length} of ${gf.packages.length} packages…`);
+	console.log(
+		`hardening ${packages.length} of ${gf.packages.length} packages…`,
+	);
 
 	let hardened = 0;
 	for (const workspace of packages) {
@@ -402,9 +407,7 @@ function main() {
 				2,
 			)}\n`,
 		);
-		console.log(
-			`ungrandfathered ${passed.length}; remaining ${remain.length}`,
-		);
+		console.log(`ungrandfathered ${passed.length}; remaining ${remain.length}`);
 	}
 }
 

@@ -15,12 +15,7 @@
  *   node --import tsx scripts/check-design-md.mts --json
  */
 import { spawnSync } from "node:child_process";
-import {
-	existsSync,
-	readdirSync,
-	readFileSync,
-	statSync,
-} from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -199,7 +194,8 @@ export function listWebUiProjects(repoRoot = root): DesignMdProject[] {
 		seen.add(rel);
 		const hasDesign = existsSync(join(dir, "DESIGN.md"));
 		let reason = "DESIGN.md present";
-		if ((WEB_UI_ROOTS as readonly string[]).includes(rel)) reason = "web-ui root";
+		if ((WEB_UI_ROOTS as readonly string[]).includes(rel))
+			reason = "web-ui root";
 		else if (pkg?.hobo?.webUi) reason = "hobo.webUi";
 		else if (pkg && hasWebFramework(pkg)) reason = "web framework dependency";
 
@@ -214,7 +210,10 @@ export function listWebUiProjects(repoRoot = root): DesignMdProject[] {
 	return projects.sort((a, b) => a.rel.localeCompare(b.rel));
 }
 
-function resolveDesignmdInvocation(): { command: string; prefixArgs: string[] } {
+function resolveDesignmdInvocation(): {
+	command: string;
+	prefixArgs: string[];
+} {
 	const bin = join(root, "node_modules", ".bin", "designmd");
 	const siteBin = join(root, "site", "node_modules", ".bin", "designmd");
 	const jsEntry = join(
@@ -343,7 +342,9 @@ function main() {
 					};
 					const s = parsed.summary;
 					if (s)
-						console.log(`  errors=${s.errors ?? 0} warnings=${s.warnings ?? 0}`);
+						console.log(
+							`  errors=${s.errors ?? 0} warnings=${s.warnings ?? 0}`,
+						);
 				} catch {
 					/* ignore */
 				}

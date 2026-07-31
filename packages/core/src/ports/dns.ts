@@ -48,7 +48,11 @@ export interface PublicDnsConfig {
 
 export interface DnsProvider {
 	readonly kind: DnsProviderKind;
-	upsert(tenantId: TenantId, zone: string, record: DnsRecord): Promise<void>;
+	upsert(
+		tenantId: TenantId,
+		zone: string,
+		record: DnsRecord,
+	): Promise<void>;
 	remove(
 		tenantId: TenantId,
 		zone: string,

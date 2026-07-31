@@ -5,8 +5,12 @@
  */
 import { randomBytes } from "node:crypto";
 
-import { DEFAULT_ENV_NETWORK_ISOLATION_POLICY_PACK } from "../env-isolation/policy-pack.js";
-import { verifyElevatedAccessCapability } from "../env-isolation/elevated-capability.js";
+import {
+	DEFAULT_ENV_NETWORK_ISOLATION_POLICY_PACK,
+} from "../env-isolation/policy-pack.js";
+import {
+	verifyElevatedAccessCapability,
+} from "../env-isolation/elevated-capability.js";
 import type { IsolationClass } from "../env-isolation/types.js";
 import { createPamAuditSink } from "./audit.js";
 import {
@@ -64,15 +68,16 @@ function parseTarget(
 	if (typeof target !== "string") {
 		return target;
 	}
-	const kind = target.startsWith("ssh:")
-		? "ssh"
-		: target.startsWith("k8s:")
-			? "k8s"
-			: target.startsWith("db:")
-				? "db"
-				: target.startsWith("web:")
-					? "web"
-					: "generic";
+	const kind =
+		target.startsWith("ssh:")
+			? "ssh"
+			: target.startsWith("k8s:")
+				? "k8s"
+				: target.startsWith("db:")
+					? "db"
+					: target.startsWith("web:")
+						? "web"
+						: "generic";
 	return Object.freeze({
 		id: target,
 		kind,
@@ -102,10 +107,7 @@ export function createPrivilegedAccessGateway(
 			},
 		});
 	const auditList = (): readonly import("./types.js").PamAuditEvent[] => {
-		if (
-			"events" in sink &&
-			Array.isArray((sink as { events: unknown }).events)
-		) {
+		if ("events" in sink && Array.isArray((sink as { events: unknown }).events)) {
 			return (sink as { events: import("./types.js").PamAuditEvent[] }).events;
 		}
 		return yardEvents;
@@ -278,13 +280,10 @@ export function createPrivilegedAccessGateway(
 					target: target.id,
 					isolationClass: options.isolationClass,
 					kind: options.kind,
-					reason:
-						"target isolation class mismatch — gateway cannot bridge envs",
+					reason: "target isolation class mismatch — gateway cannot bridge envs",
 				});
 				throw Object.assign(
-					new Error(
-						"PAM cannot bridge isolation classes without CrossEnvGrant",
-					),
+					new Error("PAM cannot bridge isolation classes without CrossEnvGrant"),
 					{ code: "cross-env-pam-denied" },
 				);
 			}
@@ -397,9 +396,7 @@ export function createPrivilegedAccessGateway(
 				keys,
 			});
 			if (!verified.ok) {
-				throw Object.assign(new Error(verified.reason), {
-					code: verified.code,
-				});
+				throw Object.assign(new Error(verified.reason), { code: verified.code });
 			}
 			const renewedMint = mintSessionToken({
 				keys,
@@ -416,9 +413,7 @@ export function createPrivilegedAccessGateway(
 			});
 			const handle: SessionHandle = Object.freeze({
 				...prev,
-				expiresAt: new Date(
-					Date.parse(now()) + ttlSeconds * 1000,
-				).toISOString(),
+				expiresAt: new Date(Date.parse(now()) + ttlSeconds * 1000).toISOString(),
 				sessionToken: renewedMint.token,
 				credentialRef: renewedMint.credentialRef,
 			});

@@ -25,9 +25,7 @@ describe("IdentityMigrationControlPlane (hands-off continuous path)", () => {
 		expect(progress.migration?.state).toBe("dual-active");
 		expect(progress.flag?.percentage).toBe(0);
 		expect(progress.flag?.key).toContain("identity-migration.");
-		expect(plane.flags.events.some((e) => e.type === "flag.Defined")).toBe(
-			true,
-		);
+		expect(plane.flags.events.some((e) => e.type === "flag.Defined")).toBe(true);
 	});
 
 	it("JIT link + ramp + OpenFeature cohort eval + cutover", () => {
@@ -48,12 +46,8 @@ describe("IdentityMigrationControlPlane (hands-off continuous path)", () => {
 		const inCohort = plane.principalInRamp(principal);
 		expect(typeof inCohort.value).toBe("boolean");
 		// flag.Evaluated is sampled (default 1%); force path still defines/changes flags.
-		expect(plane.flags.events.some((e) => e.type === "flag.Defined")).toBe(
-			true,
-		);
-		expect(plane.flags.events.some((e) => e.type === "flag.Changed")).toBe(
-			true,
-		);
+		expect(plane.flags.events.some((e) => e.type === "flag.Defined")).toBe(true);
+		expect(plane.flags.events.some((e) => e.type === "flag.Changed")).toBe(true);
 		expect(inCohort.flagKey).toContain("identity-migration.");
 
 		plane.advanceRamp(100);

@@ -57,17 +57,18 @@ export function applySchemaStep(
 	const dryRun = options?.dryRun !== false;
 	const dualSchema =
 		step.schema.mode === "expand-contract" || step.progressive === true;
-	const checksum = `sha256:${createHash("sha256")
-		.update(
-			JSON.stringify({
-				id: step.id,
-				mode: step.schema.mode,
-				version: step.schema.version,
-				sql: step.schema.sql ?? "",
-				desired: step.schema.desiredHash ?? "",
-			}),
-		)
-		.digest("hex")}` as const;
+	const checksum =
+		`sha256:${createHash("sha256")
+			.update(
+				JSON.stringify({
+					id: step.id,
+					mode: step.schema.mode,
+					version: step.schema.version,
+					sql: step.schema.sql ?? "",
+					desired: step.schema.desiredHash ?? "",
+				}),
+			)
+			.digest("hex")}` as const;
 	return Object.freeze({
 		schemaVersion: DATA_DUAL_SCHEMA,
 		stepId: step.id,
@@ -87,7 +88,10 @@ export function evaluateDataDual(
 	step: TrailStep,
 	fixture: DataDualFixture,
 ): DataDualResult {
-	if (step.kind !== "data-transform" && step.kind !== "continuous-dual-data") {
+	if (
+		step.kind !== "data-transform" &&
+		step.kind !== "continuous-dual-data"
+	) {
 		throw Object.assign(new Error("not a data dual step"), {
 			code: "trail-step-kind",
 		});
@@ -97,7 +101,8 @@ export function evaluateDataDual(
 	const consistent = sourceChecksum === targetChecksum;
 	// Zero-loss: same cardinality and consistent checksums.
 	const zeroLoss =
-		consistent && fixture.sourceRows.length === fixture.targetRows.length;
+		consistent &&
+		fixture.sourceRows.length === fixture.targetRows.length;
 	return Object.freeze({
 		schemaVersion: DATA_DUAL_SCHEMA,
 		stepId: step.id,
@@ -107,7 +112,8 @@ export function evaluateDataDual(
 		consistent,
 		zeroLoss,
 		continuous:
-			step.kind === "continuous-dual-data" || step.data?.mode === "cdc-dual",
+			step.kind === "continuous-dual-data" ||
+			step.data?.mode === "cdc-dual",
 		fidelity: fixture.fidelity,
 	});
 }

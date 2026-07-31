@@ -413,9 +413,7 @@ function canonicalizeProperties(
 
 function canonicalizeStringList(values: readonly string[]): readonly string[] {
 	return Object.freeze(
-		[
-			...new Set(values.filter((v) => typeof v === "string" && v.length > 0)),
-		].sort(),
+		[...new Set(values.filter((v) => typeof v === "string" && v.length > 0))].sort(),
 	);
 }
 
@@ -444,18 +442,14 @@ function canonicalizeLabels(
 function sanitizeCampId(env: string): string {
 	requireName("camp env", env);
 	// Strip legacy -<provider> suffix display convention when present.
-	return (
-		env
-			.replace(
-				/-(local|aws|azure|gcp|cloudflare|oci|wasm-sandbox)$/i,
-				(match, provider) => {
-					// Keep as-is if the whole name is just the provider (unlikely).
-					if (match.length === env.length) return env;
-					return "";
-				},
-			)
-			.replace(/-+$/g, "") || env
-	);
+	return env.replace(
+		/-(local|aws|azure|gcp|cloudflare|oci|wasm-sandbox)$/i,
+		(match, provider) => {
+			// Keep as-is if the whole name is just the provider (unlikely).
+			if (match.length === env.length) return env;
+			return "";
+		},
+	).replace(/-+$/g, "") || env;
 }
 
 function inferEnvType(env: string): string {

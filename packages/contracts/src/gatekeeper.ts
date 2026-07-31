@@ -4,7 +4,10 @@ import {
 	type DeployedContractState,
 	evaluateCanDeploy,
 } from "./can-deploy.js";
-import { effectiveEffects, parseBoundaryContract } from "./contract-ir.js";
+import {
+	effectiveEffects,
+	parseBoundaryContract,
+} from "./contract-ir.js";
 import {
 	isPure,
 	mayFail,
@@ -47,13 +50,7 @@ export type GatekeeperEffect =
 
 // domain-view: composed gate reason; wire form is MachineReadableReason in data-models/contracts.proto.
 export interface MachineReadableReason {
-	gate:
-		| "contracts"
-		| "policy"
-		| "obligations"
-		| "cost"
-		| "effects"
-		| "resilience";
+	gate: "contracts" | "policy" | "obligations" | "cost" | "effects" | "resilience";
 	code: string;
 	message: string;
 	details?: Record<string, unknown>;

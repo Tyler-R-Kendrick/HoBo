@@ -88,7 +88,9 @@ export function createJunctionAgent(options: {
 					tenantId,
 					dns: options.publicDns,
 					overlay: options.overlay,
-					...(options.policy !== undefined ? { policy: options.policy } : {}),
+					...(options.policy !== undefined
+						? { policy: options.policy }
+						: {}),
 					...(options.metering !== undefined
 						? { metering: options.metering }
 						: {}),

@@ -169,7 +169,9 @@ export function rollout(spec: RolloutSpec): RolloutDeclaration {
 /**
  * Convert Bindle features declaration into FeatureFlagStore.define inputs.
  */
-export function featureSpecsToStoreInputs(decl: FeaturesDeclaration): readonly {
+export function featureSpecsToStoreInputs(
+	decl: FeaturesDeclaration,
+): readonly {
 	readonly key: string;
 	readonly state?: FeatureState;
 	readonly percentage?: number;

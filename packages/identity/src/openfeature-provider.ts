@@ -105,7 +105,9 @@ export class HoboOpenFeatureProvider {
 	): OpenFeatureResolutionDetails<Readonly<Record<string, unknown>>> {
 		const d = this.evaluateAs(flagKey, defaultValue, context);
 		const value =
-			d.value !== null && typeof d.value === "object" && !Array.isArray(d.value)
+			d.value !== null &&
+			typeof d.value === "object" &&
+			!Array.isArray(d.value)
 				? (d.value as Readonly<Record<string, unknown>>)
 				: defaultValue;
 		return Object.freeze({
@@ -136,7 +138,10 @@ export class HoboOpenFeatureProvider {
 export class HoboFeatureClient {
 	readonly provider: HoboOpenFeatureProvider;
 
-	constructor(store: FeatureFlagStore, scope: HoBoScopeAttributes = {}) {
+	constructor(
+		store: FeatureFlagStore,
+		scope: HoBoScopeAttributes = {},
+	) {
 		this.provider = new HoboOpenFeatureProvider(store, scope);
 	}
 
@@ -157,8 +162,11 @@ export class HoboFeatureClient {
 		defaultValue = "",
 		context?: FlagEvalContext | HoBoScopeAttributes,
 	): string {
-		return this.provider.resolveStringEvaluation(flagKey, defaultValue, context)
-			.value;
+		return this.provider.resolveStringEvaluation(
+			flagKey,
+			defaultValue,
+			context,
+		).value;
 	}
 
 	getNumberValue(
@@ -166,8 +174,11 @@ export class HoboFeatureClient {
 		defaultValue = 0,
 		context?: FlagEvalContext | HoBoScopeAttributes,
 	): number {
-		return this.provider.resolveNumberEvaluation(flagKey, defaultValue, context)
-			.value;
+		return this.provider.resolveNumberEvaluation(
+			flagKey,
+			defaultValue,
+			context,
+		).value;
 	}
 
 	getObjectValue(
@@ -175,8 +186,11 @@ export class HoboFeatureClient {
 		defaultValue: Readonly<Record<string, unknown>> = {},
 		context?: FlagEvalContext | HoBoScopeAttributes,
 	): Readonly<Record<string, unknown>> {
-		return this.provider.resolveObjectEvaluation(flagKey, defaultValue, context)
-			.value;
+		return this.provider.resolveObjectEvaluation(
+			flagKey,
+			defaultValue,
+			context,
+		).value;
 	}
 
 	getBooleanDetails(

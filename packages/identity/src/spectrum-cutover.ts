@@ -15,8 +15,7 @@ import {
 } from "./identity-adapter-port.js";
 
 // public-contract: spectrum cutover protocol schema.
-export const SPECTRUM_CUTOVER_SCHEMA =
-	"hobo.spectrum-identity-cutover/v1" as const;
+export const SPECTRUM_CUTOVER_SCHEMA = "hobo.spectrum-identity-cutover/v1" as const;
 
 export type TenantLifecyclePhase =
 	| "idle"

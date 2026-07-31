@@ -5,8 +5,7 @@
 import { createHash } from "node:crypto";
 
 // public-contract: MappingSpec schema version.
-export const MAPPING_SPEC_SCHEMA_VERSION =
-	"hobo.identity-mapping-spec/v1" as const;
+export const MAPPING_SPEC_SCHEMA_VERSION = "hobo.identity-mapping-spec/v1" as const;
 
 export type ClaimMapping = Readonly<{
 	/** Source claim key (e.g. sub, email, tenant). */
@@ -65,16 +64,10 @@ export function parseMappingSpec(input: MappingSpecInput): MappingSpec {
 	if (typeof input.version !== "string" || input.version.length === 0) {
 		throw new TypeError("MappingSpec.version required");
 	}
-	if (
-		typeof input.sourceAdapter !== "string" ||
-		input.sourceAdapter.length === 0
-	) {
+	if (typeof input.sourceAdapter !== "string" || input.sourceAdapter.length === 0) {
 		throw new TypeError("MappingSpec.sourceAdapter required");
 	}
-	if (
-		typeof input.targetAdapter !== "string" ||
-		input.targetAdapter.length === 0
-	) {
+	if (typeof input.targetAdapter !== "string" || input.targetAdapter.length === 0) {
 		throw new TypeError("MappingSpec.targetAdapter required");
 	}
 	if (input.sourceAdapter === input.targetAdapter) {
@@ -124,24 +117,9 @@ export function defaultContinuousMappingSpec(input: {
 		sourceAdapter: input.sourceAdapter,
 		targetAdapter: input.targetAdapter,
 		claimMappings: Object.freeze([
-			Object.freeze({
-				from: "sub",
-				to: "sub",
-				critical: true,
-				transform: "principal-ref" as const,
-			}),
-			Object.freeze({
-				from: "tenant",
-				to: "tenant",
-				critical: true,
-				transform: "identity" as const,
-			}),
-			Object.freeze({
-				from: "email",
-				to: "email",
-				critical: false,
-				transform: "lowercase" as const,
-			}),
+			Object.freeze({ from: "sub", to: "sub", critical: true, transform: "principal-ref" as const }),
+			Object.freeze({ from: "tenant", to: "tenant", critical: true, transform: "identity" as const }),
+			Object.freeze({ from: "email", to: "email", critical: false, transform: "lowercase" as const }),
 		]),
 		principalSubjectClaim: "sub",
 		allowNonCriticalDrift: true,
@@ -158,10 +136,7 @@ export function applyClaimTransform(
 			return raw.toLowerCase();
 		case "principal-ref":
 			// Opaque stable ref segment — never the raw IdP subject in app code.
-			return createHash("sha256")
-				.update(`principal:${raw}`)
-				.digest("hex")
-				.slice(0, 32);
+			return createHash("sha256").update(`principal:${raw}`).digest("hex").slice(0, 32);
 		default:
 			return raw;
 	}

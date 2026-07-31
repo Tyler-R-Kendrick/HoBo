@@ -32,11 +32,7 @@ import {
 	type YardPlacementReceipt,
 } from "@hobo/broker";
 
-import {
-	initStation,
-	listStationIds,
-	resolveStationContext,
-} from "@hobo/stations";
+import { initStation, listStationIds, resolveStationContext } from "@hobo/stations";
 import { loadHoboProfile, setDefaultStation } from "./hobo-profile.js";
 
 import {
@@ -303,13 +299,11 @@ export function saveEmbeddedBrokerState(
 	return path;
 }
 
-export async function ensureEmbeddedBroker(
-	options: {
-		readonly hoboHome?: string;
-		readonly preferWasmSandbox?: boolean;
-		readonly emitProgress?: (message: string) => void;
-	} = {},
-): Promise<{
+export async function ensureEmbeddedBroker(options: {
+	readonly hoboHome?: string;
+	readonly preferWasmSandbox?: boolean;
+	readonly emitProgress?: (message: string) => void;
+} = {}): Promise<{
 	readonly state: EmbeddedBrokerState;
 	readonly broker: HoboBroker;
 	readonly catalog: BrokerCatalog;
@@ -366,7 +360,8 @@ export async function ensureEmbeddedBroker(
 
 	const preferWasm = includeWasm || legacyWasm;
 	const existing = loadEmbeddedBrokerState(hoboHome);
-	const brokerId = existing?.brokerId ?? `broker:local/${hostname()}`;
+	const brokerId =
+		existing?.brokerId ?? `broker:local/${hostname()}`;
 	const catalog = createYardBrokerCatalog({
 		includeWasmSandbox: preferWasm,
 		includeOci,
@@ -460,13 +455,15 @@ export async function resolveBindlePlacement(options: {
 }): Promise<PlacementResult> {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const emit = options.emitProgress ?? (() => {});
-	const yardConfig = options.yard ?? loadBareMetalYardConfig(hoboHome) ?? null;
+	const yardConfig =
+		options.yard ?? loadBareMetalYardConfig(hoboHome) ?? null;
 
 	// Fail fast: Bindle must not select providers.
 	try {
 		assertNoBindleProviderSelection(options.definition);
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
+		const message =
+			error instanceof Error ? error.message : String(error);
 		return {
 			outcome: "rejected",
 			brokerId: "uninitialized",
@@ -575,17 +572,14 @@ export async function resolveBindlePlacement(options: {
 	const deploymentRequest = buildDeploymentRequestFromParts({
 		bindleName: options.definition.name,
 		manifestHash: `sha256:${createHash("sha256")
-			.update(
-				JSON.stringify({
-					name: options.definition.name,
-					resources: Object.keys(options.definition.resources).sort(),
-				}),
-			)
+			.update(JSON.stringify({ name: options.definition.name, resources: Object.keys(options.definition.resources).sort() }))
 			.digest("hex")}`,
 		requirements: {
 			require: [...requirements.require],
 			prefer: [...requirements.prefer],
-			runtimes: [...new Set([...requirements.runtimes, ...requiredRuntimes])],
+			runtimes: [
+				...new Set([...requirements.runtimes, ...requiredRuntimes]),
+			],
 			labels: { ...requirements.labels },
 		},
 		yardId,

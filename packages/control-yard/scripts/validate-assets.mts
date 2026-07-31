@@ -113,9 +113,7 @@ for (const [animId, ref] of Object.entries(index.animationIds)) {
 	const sheet = index.spritesheets[ref.sheet];
 	if (!sheet) fail(`animationIds ${animId} unknown sheet ${ref.sheet}`);
 	else if (!sheet.animations[ref.animation]) {
-		fail(
-			`animationIds ${animId} missing anim ${ref.animation} on ${ref.sheet}`,
-		);
+		fail(`animationIds ${animId} missing anim ${ref.animation} on ${ref.sheet}`);
 	}
 }
 

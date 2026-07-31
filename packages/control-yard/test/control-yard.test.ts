@@ -120,7 +120,11 @@ describe("@hobo/control-yard", () => {
 
 		engine.tick(0.1);
 		// particles may emit
-		const sheet = selectZoneWithSnapshot(engine, "connectionBay", snap.data!);
+		const sheet = selectZoneWithSnapshot(
+			engine,
+			"connectionBay",
+			snap.data!,
+		);
 		expect(sheet?.kind).toMatch(/connection\./);
 
 		const createSheet = sheetForConnectionCreate(snap.data);

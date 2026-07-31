@@ -6,11 +6,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { mintJwtSvid, verifyJwtSvid } from "../crypto/jwt-svid.js";
-import {
-	createAccessEvent,
-	ACCESS_EVENTS,
-	type AccessEvent,
-} from "./events.js";
+import { createAccessEvent, ACCESS_EVENTS, type AccessEvent } from "./events.js";
 import {
 	type ElevatedAccessCapability,
 	ELEVATED_ACCESS_SCHEMA,
@@ -74,7 +70,9 @@ export function mintElevatedAccessCapability(
 		ttlSeconds: ttl,
 		issuer: "hobo:elevated-access",
 		now: Math.floor(Date.parse(t) / 1000),
-		...(input.hmacSecret !== undefined ? { hmacSecret: input.hmacSecret } : {}),
+		...(input.hmacSecret !== undefined
+			? { hmacSecret: input.hmacSecret }
+			: {}),
 		allowDefaultSecret: input.allowDefaultSecret ?? true,
 	});
 
@@ -132,7 +130,9 @@ export function verifyElevatedAccessCapability(input: {
 	readonly hmacSecret?: string;
 	readonly allowDefaultSecret?: boolean;
 	readonly now?: string;
-}): VerifiedElevatedAccess | { ok: false; code: string; reason: string } {
+}):
+	| VerifiedElevatedAccess
+	| { ok: false; code: string; reason: string } {
 	try {
 		const claims = verifyJwtSvid({
 			token: input.token,

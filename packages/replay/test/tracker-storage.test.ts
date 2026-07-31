@@ -113,7 +113,9 @@ describe("tracker + dual fixtures", () => {
 			const tracker = createDefaultLocalTracker({
 				store: fixtures.blobs,
 				index: fixtures.index,
-				seedEvents: [{ type: 2, timestamp: 1, data: { tagName: "html" } }],
+				seedEvents: [
+					{ type: 2, timestamp: 1, data: { tagName: "html" } },
+				],
 			});
 			await tracker.flush();
 			const ended = await tracker.stop();
@@ -138,14 +140,18 @@ describe("tracker + dual fixtures", () => {
 		await tracker.flush();
 		const ended = await tracker.stop();
 		expect(ended?.correlation.errorId).toBe("err-42");
-		expect(ended?.correlation.harnessFlagKeys).toContain("hobo.session-replay");
+		expect(ended?.correlation.harnessFlagKeys).toContain(
+			"hobo.session-replay",
+		);
 
 		const summary = await service.summarize(tracker.sessionId);
 		expect(summary).toContain("err-42");
 
 		const pack = buildEvidencePack({
 			session: ended!,
-			recording: [{ type: 2, timestamp: 10, data: { tagName: "div" } }],
+			recording: [
+				{ type: 2, timestamp: 10, data: { tagName: "div" } },
+			],
 			playwrightRefs: ["trace.zip"],
 			assertionLog: ["checkout failed"],
 		});

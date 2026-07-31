@@ -143,7 +143,9 @@ describe("Privileged Access Gateway (full secretless)", () => {
 									id: "sess-1",
 									authorization_token: "at_test",
 									authorization_token_id: "sess-1",
-									expiration_time: new Date(Date.now() + 600_000).toISOString(),
+									expiration_time: new Date(
+										Date.now() + 600_000,
+									).toISOString(),
 								},
 							}),
 							{

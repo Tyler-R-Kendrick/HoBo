@@ -52,11 +52,7 @@ export function probePortless(options?: {
 	let version: string | null = null;
 
 	for (const candidate of candidates) {
-		if (
-			candidate !== "portless" &&
-			!existsSync(candidate) &&
-			!candidate.includes(delimiter)
-		) {
+		if (candidate !== "portless" && !existsSync(candidate) && !candidate.includes(delimiter)) {
 			// absolute/relative path missing
 			if (candidate.includes("/") || candidate.includes("\\")) continue;
 		}
@@ -99,11 +95,9 @@ export async function registerPortlessRoute(options: {
 	readonly hostname: string;
 	readonly backendUrl: string;
 	readonly binPath?: string;
-	readonly run?: (args: readonly string[]) => {
-		ok: boolean;
-		stdout: string;
-		stderr: string;
-	};
+	readonly run?: (
+		args: readonly string[],
+	) => { ok: boolean; stdout: string; stderr: string };
 }): Promise<{ readonly registered: boolean; readonly note?: string }> {
 	const bin = options.binPath ?? "portless";
 	const run =

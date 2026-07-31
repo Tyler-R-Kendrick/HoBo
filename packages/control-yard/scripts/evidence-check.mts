@@ -11,32 +11,29 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHOTS = join(ROOT, "public", "shots");
 const MANIFEST = join(SHOTS, "evidence-manifest.json");
 
-const REQUIRED: {
-	path: string;
-	minBytes: number;
-	kind: "png" | "mp4" | "json";
-}[] = [
-	{ path: "evidence-manifest.json", minBytes: 200, kind: "json" },
-	{ path: "visual-report.json", minBytes: 100, kind: "json" },
-	{ path: "01-boot-live.png", minBytes: 2048, kind: "png" },
-	{ path: "02-connection-bay-sheet.png", minBytes: 2048, kind: "png" },
-	{ path: "03-cost-booth.png", minBytes: 2048, kind: "png" },
-	{ path: "04-policy-board.png", minBytes: 2048, kind: "png" },
-	{ path: "05-error-bunker.png", minBytes: 2048, kind: "png" },
-	{ path: "07-walk.png", minBytes: 2048, kind: "png" },
-	{ path: "canvas-only.png", minBytes: 2048, kind: "png" },
-	{ path: "anim-bo-idle.png", minBytes: 2048, kind: "png" },
-	{ path: "anim-bo-walk-east.png", minBytes: 2048, kind: "png" },
-	{ path: "anim-bo-walk-west.png", minBytes: 2048, kind: "png" },
-	{ path: "recordings/01-yard-loop.mp4", minBytes: 10_000, kind: "mp4" },
-	{ path: "recordings/02-connection-sheet.mp4", minBytes: 10_000, kind: "mp4" },
-	{
-		path: "recordings/03-bo-walk-east-west.mp4",
-		minBytes: 10_000,
-		kind: "mp4",
-	},
-	{ path: "recordings/04-rail-cost-doctor.mp4", minBytes: 10_000, kind: "mp4" },
-];
+const REQUIRED: { path: string; minBytes: number; kind: "png" | "mp4" | "json" }[] =
+	[
+		{ path: "evidence-manifest.json", minBytes: 200, kind: "json" },
+		{ path: "visual-report.json", minBytes: 100, kind: "json" },
+		{ path: "01-boot-live.png", minBytes: 2048, kind: "png" },
+		{ path: "02-connection-bay-sheet.png", minBytes: 2048, kind: "png" },
+		{ path: "03-cost-booth.png", minBytes: 2048, kind: "png" },
+		{ path: "04-policy-board.png", minBytes: 2048, kind: "png" },
+		{ path: "05-error-bunker.png", minBytes: 2048, kind: "png" },
+		{ path: "07-walk.png", minBytes: 2048, kind: "png" },
+		{ path: "canvas-only.png", minBytes: 2048, kind: "png" },
+		{ path: "anim-bo-idle.png", minBytes: 2048, kind: "png" },
+		{ path: "anim-bo-walk-east.png", minBytes: 2048, kind: "png" },
+		{ path: "anim-bo-walk-west.png", minBytes: 2048, kind: "png" },
+		{ path: "recordings/01-yard-loop.mp4", minBytes: 10_000, kind: "mp4" },
+		{ path: "recordings/02-connection-sheet.mp4", minBytes: 10_000, kind: "mp4" },
+		{
+			path: "recordings/03-bo-walk-east-west.mp4",
+			minBytes: 10_000,
+			kind: "mp4",
+		},
+		{ path: "recordings/04-rail-cost-doctor.mp4", minBytes: 10_000, kind: "mp4" },
+	];
 
 function sha256(path: string): string {
 	return createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -49,9 +46,7 @@ function fail(msg: string) {
 }
 
 if (!existsSync(MANIFEST)) {
-	fail(
-		`missing ${MANIFEST} — run: pnpm --filter @hobo/control-yard run evidence`,
-	);
+	fail(`missing ${MANIFEST} — run: pnpm --filter @hobo/control-yard run evidence`);
 	process.exit(1);
 }
 

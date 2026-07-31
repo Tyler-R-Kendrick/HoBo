@@ -79,7 +79,9 @@ export function upsertLoginProfile(input: {
 		tenant: input.tenant,
 		token: input.token,
 		issuedAt: new Date().toISOString(),
-		...(input.proofKeyId !== undefined ? { proofKeyId: input.proofKeyId } : {}),
+		...(input.proofKeyId !== undefined
+			? { proofKeyId: input.proofKeyId }
+			: {}),
 		...(input.brokerUri !== undefined
 			? { brokerUri: input.brokerUri }
 			: existing?.session?.brokerUri !== undefined
@@ -205,7 +207,10 @@ function parsePrincipal(raw: unknown): PrincipalRef {
 	}
 	const obj = raw as Record<string, unknown>;
 	const kinds: PrincipalKind[] = ["user", "agent", "service", "system"];
-	if (typeof obj.kind !== "string" || !(kinds as string[]).includes(obj.kind)) {
+	if (
+		typeof obj.kind !== "string" ||
+		!(kinds as string[]).includes(obj.kind)
+	) {
 		throw new TypeError("principal.kind invalid");
 	}
 	if (typeof obj.id !== "string" || obj.id.length === 0) {

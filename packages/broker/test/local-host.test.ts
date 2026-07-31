@@ -34,10 +34,7 @@ describe("local-host catalog — the running machine as a provider host", () => 
 	});
 
 	it("brokers ANY port through the wildcard test-lane definition", async () => {
-		const broker = createBroker({
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({ stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			policies: defaultLocalPolicySet("broker:test"),
 			catalog: createLocalHostCatalog("test-machine"),
 		});

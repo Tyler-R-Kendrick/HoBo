@@ -33,7 +33,11 @@ import {
 // Session Replay (ADR-0137): listServableEntrypoints wraps Bindle `web`
 // handlers — see servable-entrypoints.ts.
 
-export type { FetchHandler, ListServableEntrypointsResult, ServableEntrypoint };
+export type {
+	FetchHandler,
+	ListServableEntrypointsResult,
+	ServableEntrypoint,
+};
 export {
 	isExternalComponent,
 	listServableEntrypoints,

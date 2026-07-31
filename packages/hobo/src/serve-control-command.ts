@@ -46,7 +46,8 @@ export function createServeControlCommand(
 						? Number(f.port)
 						: Number(env.HOBO_CONTROL_PORT ?? 8790));
 			const host =
-				deps.host ?? (typeof f.host === "string" ? f.host : "127.0.0.1");
+				deps.host ??
+				(typeof f.host === "string" ? f.host : "127.0.0.1");
 			const log = deps.log ?? ((line: string) => console.error(line));
 
 			const server = await createControlApiServer({

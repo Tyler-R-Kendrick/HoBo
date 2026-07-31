@@ -58,7 +58,9 @@ export function createFetchFromProvider(provider: ProviderStub): typeof fetch {
 			...(body !== undefined ? { body } : {}),
 		};
 		const response = await Promise.resolve(provider.handle(request));
-		const headers = new Headers(response.headers as HeadersInit | undefined);
+		const headers = new Headers(
+			response.headers as HeadersInit | undefined,
+		);
 		if (!headers.has("content-type") && response.body !== undefined) {
 			headers.set(
 				"content-type",
@@ -88,7 +90,9 @@ function headerValue(
 	if (!headers) return undefined;
 	if (headers instanceof Headers) return headers.get(name) ?? undefined;
 	if (Array.isArray(headers)) {
-		const hit = headers.find(([k]) => k.toLowerCase() === name.toLowerCase());
+		const hit = headers.find(
+			([k]) => k.toLowerCase() === name.toLowerCase(),
+		);
 		return hit?.[1];
 	}
 	const rec = headers as Record<string, string>;

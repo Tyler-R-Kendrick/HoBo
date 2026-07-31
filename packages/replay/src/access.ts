@@ -93,7 +93,8 @@ export function evaluateReplayAccess(req: AccessRequest): AccessDecision {
 
 	if (
 		req.federationGrant &&
-		req.federationGrant.fromStationId === req.session.correlation.stationId &&
+		req.federationGrant.fromStationId ===
+			req.session.correlation.stationId &&
 		req.federationGrant.toStationId === req.viewerStationId &&
 		req.federationGrant.scope === "replay.view"
 	) {

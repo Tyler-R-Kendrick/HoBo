@@ -28,7 +28,9 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
 /** Fetch handler shape shared with Camp mesh. */
-export type FetchHandler = (input: Request) => Response | Promise<Response>;
+export type FetchHandler = (
+	input: Request,
+) => Response | Promise<Response>;
 
 // public-contract: the wasmtime version the isolated-wasm toolchain pins to.
 export const PINNED_WASMTIME_VERSION = "46.0.1";
@@ -151,15 +153,13 @@ function meetsFloor(version: string, floor = PINNED_WASMTIME_VERSION): boolean {
  * `$HOBO_HOME/tools/wasmtime` when needed. Prefer calling
  * {@link ensureIsolatedWasmToolchain} from CLI surfaces.
  */
-export async function ensureWasmtimeBinary(
-	options: {
-		readonly hoboHome?: string;
-		readonly env?: NodeJS.ProcessEnv;
-		readonly binPath?: string;
-		readonly download?: boolean;
-		readonly emitProgress?: (message: string) => void;
-	} = {},
-): Promise<WasmtimeBinary> {
+export async function ensureWasmtimeBinary(options: {
+	readonly hoboHome?: string;
+	readonly env?: NodeJS.ProcessEnv;
+	readonly binPath?: string;
+	readonly download?: boolean;
+	readonly emitProgress?: (message: string) => void;
+} = {}): Promise<WasmtimeBinary> {
 	const env = options.env ?? process.env;
 	const hoboHome = options.hoboHome ?? defaultHoboHome(env);
 	const download = options.download ?? true;
@@ -230,9 +230,7 @@ export async function ensureWasmtimeBinary(
 	mkdirSync(staging, { recursive: true });
 	const archivePath = join(staging, archiveName);
 
-	emit(
-		`hobo: downloading wasmtime ${version} (${triple}) into ${toolsDir(hoboHome)}`,
-	);
+	emit(`hobo: downloading wasmtime ${version} (${triple}) into ${toolsDir(hoboHome)}`);
 	const curl = spawnSync("curl", ["-fsSL", "-o", archivePath, url], {
 		encoding: "utf8",
 		timeout: 120_000,
@@ -251,7 +249,11 @@ export async function ensureWasmtimeBinary(
 		throw new Error(`failed to extract wasmtime archive: ${tar.stderr}`);
 	}
 
-	const extracted = join(staging, `wasmtime-v${version}-${triple}`, "wasmtime");
+	const extracted = join(
+		staging,
+		`wasmtime-v${version}-${triple}`,
+		"wasmtime",
+	);
 	if (!existsSync(extracted)) {
 		throw new Error(`wasmtime binary missing after extract: ${extracted}`);
 	}
@@ -347,14 +349,12 @@ function resolveJcoTool(): JcoTool {
  * Ensure the isolated-wasm Camp component host can run: wasmtime + jco.
  * Called from `hobo yard ensure|init|doctor` and automatically from `hobo dev`.
  */
-export async function ensureIsolatedWasmToolchain(
-	options: {
-		readonly hoboHome?: string;
-		readonly env?: NodeJS.ProcessEnv;
-		readonly download?: boolean;
-		readonly emitProgress?: (message: string) => void;
-	} = {},
-): Promise<IsolatedWasmToolchain> {
+export async function ensureIsolatedWasmToolchain(options: {
+	readonly hoboHome?: string;
+	readonly env?: NodeJS.ProcessEnv;
+	readonly download?: boolean;
+	readonly emitProgress?: (message: string) => void;
+} = {}): Promise<IsolatedWasmToolchain> {
 	const env = options.env ?? process.env;
 	const hoboHome = options.hoboHome ?? defaultHoboHome(env);
 	const emit = options.emitProgress ?? (() => {});
@@ -367,15 +367,11 @@ export async function ensureIsolatedWasmToolchain(
 		download: options.download ?? true,
 		emitProgress: emit,
 	});
-	notes.push(
-		`wasmtime ${wasmtime.version} (${wasmtime.source}) at ${wasmtime.binPath}`,
-	);
+	notes.push(`wasmtime ${wasmtime.version} (${wasmtime.source}) at ${wasmtime.binPath}`);
 
 	const jco = resolveJcoTool();
 	notes.push(`jco ${jco.version} at ${jco.binPath}`);
-	emit(
-		`hobo: isolated-wasm toolchain ready (wasmtime ${wasmtime.version}, jco ${jco.version})`,
-	);
+	emit(`hobo: isolated-wasm toolchain ready (wasmtime ${wasmtime.version}, jco ${jco.version})`);
 
 	return {
 		hoboHome,
@@ -642,7 +638,8 @@ export async function componentizePrivateGuest(options: {
 		.digest("hex")
 		.slice(0, 16);
 	const workDir =
-		options.workDir ?? join(hoboHome, "sandboxes", options.resourceName, hash);
+		options.workDir ??
+		join(hoboHome, "sandboxes", options.resourceName, hash);
 	mkdirSync(workDir, { recursive: true });
 
 	const guestSourcePath = join(workDir, "guest.mjs");
@@ -809,7 +806,9 @@ async function waitForListen(
 	const started = Date.now();
 	while (Date.now() - started < timeoutMs) {
 		if (child.exitCode !== null) {
-			throw new Error(`wasmtime exited before listen (code ${child.exitCode})`);
+			throw new Error(
+				`wasmtime exited before listen (code ${child.exitCode})`,
+			);
 		}
 		try {
 			const response = await fetch(`http://127.0.0.1:${port}/`, {
@@ -925,3 +924,4 @@ export async function bootWasmtimeSandbox(options: {
 		terminate,
 	};
 }
+

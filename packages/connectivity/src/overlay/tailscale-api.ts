@@ -66,7 +66,9 @@ export function createTailscaleApiClient(
 			headers: {
 				authorization: `Bearer ${options.apiKey}`,
 				accept: "application/json",
-				...(body !== undefined ? { "content-type": "application/json" } : {}),
+				...(body !== undefined
+					? { "content-type": "application/json" }
+					: {}),
 			},
 			...(body !== undefined ? { body: JSON.stringify(body) } : {}),
 		});
@@ -161,7 +163,9 @@ function normalizeSplit(
 	return out;
 }
 
-function asMutable(map: TailscaleSplitDnsMap): Record<string, string[]> {
+function asMutable(
+	map: TailscaleSplitDnsMap,
+): Record<string, string[]> {
 	const out: Record<string, string[]> = {};
 	for (const [k, v] of Object.entries(map)) {
 		out[k] = [...v];

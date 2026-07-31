@@ -11,8 +11,7 @@ export const ISOLATION_PLATFORM_MATRIX: readonly PlatformMatrixRow[] = [
 		fallback: "worktree",
 		cowCapable: true,
 		ciDefault: "worktree",
-		notes:
-			"Rift CoW via btrfs when available; CI uses worktree for determinism.",
+		notes: "Rift CoW via btrfs when available; CI uses worktree for determinism.",
 	},
 	{
 		platform: "linux-reflink",

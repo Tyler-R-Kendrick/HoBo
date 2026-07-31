@@ -129,7 +129,10 @@ await new Promise<void>((resolve, reject) => {
 
 // Prefer localhost for browser links
 const browserHost = HOST === "0.0.0.0" ? "127.0.0.1" : HOST;
-const apiUrl = HOST === "0.0.0.0" ? `http://127.0.0.1:${api.port}` : api.url;
+const apiUrl =
+	HOST === "0.0.0.0"
+		? `http://127.0.0.1:${api.port}`
+		: api.url;
 const gameUrl = `http://${browserHost}:${GAME_PORT}/?api=${encodeURIComponent(apiUrl)}`;
 const animUrl = `http://${browserHost}:${GAME_PORT}/anim-test.html`;
 
@@ -140,9 +143,7 @@ console.log(`  Game UI:     ${gameUrl}`);
 console.log(`  Anim test:   ${animUrl}`);
 console.log(`  Control API: ${apiUrl}`);
 console.log(`  Health:      ${apiUrl}/health`);
-console.log(
-	`  Snapshot:    ${apiUrl}/v1/yard/snapshot?stationId=station:local`,
-);
+console.log(`  Snapshot:    ${apiUrl}/v1/yard/snapshot?stationId=station:local`);
 console.log(`  HOBO_HOME:   ${hoboHome}`);
 console.log("");
 console.log("Click zones · open sheets · use top action buttons.");

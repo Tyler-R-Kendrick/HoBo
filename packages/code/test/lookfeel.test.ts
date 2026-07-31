@@ -79,7 +79,9 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(text).toContain("hobo-code");
 		expect(text).not.toContain("hobo-code · multiplexer");
 		// one header: title · glued glyphs · next
-		expect(text).toMatch(/hobo-code·●1○1✓1/);
+		expect(text).toMatch(
+			/hobo-code·●1○1✓1/,
+		);
 		expect(text).not.toContain("3 panes");
 		expect(text).not.toMatch(/●1 work/);
 		expect(text).not.toMatch(/○1 idle/);
@@ -191,9 +193,15 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(draft).toContain('data-testid="lede"');
 		expect(draft).toMatch(/@keyframes rise|prefers-reduced-motion/);
 		// draft → generate done, edit current, lock todo
-		expect(draft).toMatch(/data-testid="step-generate"[^>]*data-phase="done"/);
-		expect(draft).toMatch(/data-testid="step-edit"[^>]*data-phase="current"/);
-		expect(draft).toMatch(/data-testid="step-lock"[^>]*data-phase="todo"/);
+		expect(draft).toMatch(
+			/data-testid="step-generate"[^>]*data-phase="done"/,
+		);
+		expect(draft).toMatch(
+			/data-testid="step-edit"[^>]*data-phase="current"/,
+		);
+		expect(draft).toMatch(
+			/data-testid="step-lock"[^>]*data-phase="todo"/,
+		);
 		// lede is outcome only (steps rail owns generate/edit/lock labels)
 		expect(draft).toContain("→edit");
 		expect(draft).not.toContain("→ edit");
@@ -216,8 +224,12 @@ describe("hobo-code look/feel surfaces", () => {
 			prompt: "Checkout board",
 			status: "ready-for-codegen",
 		});
-		expect(ready).toMatch(/data-testid="step-edit"[^>]*data-phase="done"/);
-		expect(ready).toMatch(/data-testid="step-lock"[^>]*data-phase="current"/);
+		expect(ready).toMatch(
+			/data-testid="step-edit"[^>]*data-phase="done"/,
+		);
+		expect(ready).toMatch(
+			/data-testid="step-lock"[^>]*data-phase="current"/,
+		);
 		expect(ready).toContain("→lock");
 		expect(ready).not.toContain("→ lock");
 		expect(ready).not.toContain("Next: lock");
@@ -256,7 +268,9 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(html).not.toContain("Immutable");
 		expect(html).not.toContain("Source of truth");
 		expect(html).not.toContain("Locked · source of truth");
-		expect(html).toMatch(/data-testid="step-lock"[^>]*data-phase="done"/);
+		expect(html).toMatch(
+			/data-testid="step-lock"[^>]*data-phase="done"/,
+		);
 		expect(html).toContain('data-testid="seal"');
 		expect(html).toContain("◎ locked");
 		expect(html).not.toContain("◎ locked · immutable");
@@ -272,7 +286,7 @@ describe("hobo-code look/feel surfaces", () => {
 		// locked card emphasis
 		expect(html).toContain('.card[data-locked="true"]');
 		expect(html).toContain("0 0 28px rgba(61,186,122,0.12)");
-		expect(html).toContain("font-weight: 600");
+		expect(html).toContain('font-weight: 600');
 		const v = validateLockedVisual(locked);
 		expect(v.ok).toBe(true);
 		expect(v.hasPrimary).toBe(true);
@@ -390,7 +404,9 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(human).not.toContain("join <name>");
 		expect(human).not.toContain("detach·click·copy");
 		// chip still available in data for status-bar consumers
-		expect((result.data as { chip: string }).chip).toMatch(/hobo-code·○2✓1/);
+		expect((result.data as { chip: string }).chip).toMatch(
+			/hobo-code·○2✓1/,
+		);
 		expect(human).not.toMatch(/┘\n·{10,}\n  hobo-code /);
 		expect(human).not.toMatch(/\nchip\n/);
 		expect(human).not.toContain("chip · status bar");
@@ -414,10 +430,7 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(out.startsWith("hobo-code★")).toBe(true);
 		// ★d = default dispatch (full word in data.defaultVerb)
 		expect(out).toContain("★d");
-		expect(help.data).toMatchObject({
-			defaultVerb: "dispatch",
-			binary: "hobo-code",
-		});
+		expect(help.data).toMatchObject({ defaultVerb: "dispatch", binary: "hobo-code" });
 		// header denser: product★ + OF strip (flag key legend in data/docs)
 		// letter strip implies count (no ●5 twin)
 		expect(out).toMatch(/^hobo-code★●hemrd$/m);
@@ -537,7 +550,9 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(human).not.toContain("hobo-code★");
 		// done: prompt·st — title ★ owns default; task id in data only
 		// prompt shortId(8) — long text truncates in chrome
-		expect(human).toMatch(/ship th…·st/);
+		expect(human).toMatch(
+			/ship th…·st/,
+		);
 		expect(human).not.toMatch(/ · ◆ · /);
 		expect(human).not.toMatch(/\S+ · ✓ · /);
 		// task id omitted on done happy path
@@ -579,24 +594,28 @@ describe("hobo-code look/feel surfaces", () => {
 		expect((long.data as { task: { prompt: string } }).task.prompt).toBe(
 			longPrompt,
 		);
-		const explicit = await runHoboCodeCli(["dispatch", "explicit"], {
-			hoboHome: home,
-			cwd: project,
-		});
+		const explicit = await runHoboCodeCli(
+			["dispatch", "explicit"],
+			{ hoboHome: home, cwd: project },
+		);
 		const explicitOut = formatHoboCodeResult(explicit, false);
 		expect(explicit.ok).toBe(true);
 		// explicit verb uses short title d (matches help tail)
 		expect(explicitOut).toContain("✓ d");
 		expect(explicitOut).not.toContain("hobo-code d");
 		expect(explicitOut).not.toContain("hobo-code dispatch");
-		expect(explicitOut).toMatch(/explicit·st/);
+		expect(explicitOut).toMatch(
+			/explicit·st/,
+		);
 		expect(explicitOut).not.toMatch(/\S+ · ✓ · explicit/);
 		expect(explicitOut).not.toMatch(/ · ◆ · /);
 		expect(explicitOut).not.toContain("hobo-code ★");
 		expect(explicitOut).not.toContain(" · default · ");
 		expect(explicitOut).not.toMatch(/^  note\s+/m);
 		expect(explicitOut).toMatch(/·st/);
-		expect((explicit.data as { defaultVerb: boolean }).defaultVerb).toBe(false);
+		expect(
+			(explicit.data as { defaultVerb: boolean }).defaultVerb,
+		).toBe(false);
 	});
 
 	it("empty argv still dispatches with panel chrome", async () => {
@@ -612,7 +631,9 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(human).toContain("◆");
 		expect(human).toContain("empty");
 		// done: ◆empty·st (seed text twin omitted; ponytail in data)
-		expect(human).toMatch(/◆empty·st/);
+		expect(human).toMatch(
+			/◆empty·st/,
+		);
 		expect(human).not.toContain("refine scaffold");
 		expect(human).not.toContain("empty→ponytail");
 		expect(human).not.toContain("ponytail");
@@ -621,6 +642,7 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(human).not.toMatch(/^  pipeline\s+/m);
 		expect(human).not.toMatch(/^  prompt\s+/m);
 	});
+
 
 	it("nodes inventory is human-readable without buzz nesting", async () => {
 		const home = temp("look-nodes-home-");
@@ -632,7 +654,9 @@ describe("hobo-code look/feel surfaces", () => {
 		// short class labels for scan (ep=endpoint lo=local); capacity glued
 		expect(human).toMatch(/●ep\d+|●lo\d+/);
 		// idle all-free: one nodes row (no table)
-		expect(human).toMatch(/\d+·●ep\d+·●lo\d+/);
+		expect(human).toMatch(
+			/\d+·●ep\d+·●lo\d+/,
+		);
 		expect(human).not.toMatch(/· 0 busy ·/);
 		expect(human).not.toMatch(/^  summary\s+/m);
 		expect(human).not.toMatch(/CLASS\s+LOAD\s+RUN\/CAP/);
@@ -783,7 +807,9 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(human).toContain("✦ sc");
 		expect(human).not.toContain("hobo-code sc");
 		// one row: template · name · files · pin · next (title brands scaffold)
-		expect(human).toMatch(/ou·demo-ui·\d+f·p/);
+		expect(human).toMatch(
+			/ou·demo-ui·\d+f·p/,
+		);
 		expect(human).not.toMatch(/ou·demo-ui·\d+f·p·★/);
 		expect(human).not.toContain("primary");
 		expect(human).not.toContain("●paint");
@@ -858,7 +884,9 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(isoOut).not.toContain("tree read-only");
 		expect(isoOut).not.toMatch(/^  mediated\s+/m);
 		// run · id · create● · next (root/orphans defaults omitted)
-		expect(isoOut).toMatch(/look-run·●·pr/);
+		expect(isoOut).toMatch(
+			/look-run·●·pr/,
+		);
 		expect(isoOut).not.toContain("○orphans");
 		expect(isoOut).not.toMatch(/promote/);
 		expect(isoOut).not.toContain("orphans clean");
@@ -941,7 +969,9 @@ describe("hobo-code look/feel surfaces", () => {
 		const liveOut = formatHoboCodeResult(live, false);
 		expect(live.ok).toBe(true);
 		// live lives in title override (no twin band / mux prefix)
-		expect(liveOut).toMatch(/✓ se·\S+·●o·pr/);
+		expect(liveOut).toMatch(
+			/✓ se·\S+·●o·pr/,
+		);
 		expect(liveOut).not.toContain("hobo-code se");
 		expect(liveOut).not.toContain("●open");
 		expect(liveOut).not.toContain("promo");
@@ -1097,12 +1127,9 @@ describe("hobo-code look/feel surfaces", () => {
 		// 3-line closed panel; no floating blank + code trailer
 		expect(human.trimEnd().split("\n").length).toBeLessThanOrEqual(4);
 		expect(human).not.toMatch(/─{10,}\n\n✕ HOBO_CODE_USAGE\s*$/);
-		expect(
-			human
-				.trimEnd()
-				.split("\n")
-				.every((l) => l.length <= 80),
-		).toBe(true);
+		expect(human.trimEnd().split("\n").every((l) => l.length <= 80)).toBe(
+			true,
+		);
 	});
 
 	it("promote success lists gate checklist hierarchy", async () => {
@@ -1182,13 +1209,12 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(human).toContain("✕DIST");
 		// 3-line closed panel; no floating blank + code trailer
 		expect(human.trimEnd().split("\n").length).toBeLessThanOrEqual(4);
-		expect(human).not.toMatch(/─{10,}\n\n✕ HOBO_CODE_DISTRIBUTED_DISABLED\s*$/);
-		expect(
-			human
-				.trimEnd()
-				.split("\n")
-				.every((l) => l.length <= 90),
-		).toBe(true);
+		expect(human).not.toMatch(
+			/─{10,}\n\n✕ HOBO_CODE_DISTRIBUTED_DISABLED\s*$/,
+		);
+		expect(human.trimEnd().split("\n").every((l) => l.length <= 90)).toBe(
+			true,
+		);
 	});
 
 	it("harness-off fail panel densifies flag into one scan line", async () => {
@@ -1219,11 +1245,8 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(human).toContain("✕HARNESS");
 		expect(human).not.toContain("HARNESS_DISABLED");
 		expect(human.trimEnd().split("\n").length).toBeLessThanOrEqual(4);
-		expect(
-			human
-				.trimEnd()
-				.split("\n")
-				.every((l) => l.length <= 90),
-		).toBe(true);
+		expect(human.trimEnd().split("\n").every((l) => l.length <= 90)).toBe(
+			true,
+		);
 	});
 });

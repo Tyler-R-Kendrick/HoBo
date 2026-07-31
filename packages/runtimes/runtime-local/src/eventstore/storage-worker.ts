@@ -12,7 +12,10 @@ import type {
 	EventInput,
 	ReadAllOptions,
 } from "@hobo/core";
-import { createNodeSqliteDriver, SqliteJournal } from "@hobo/storage-sqlite";
+import {
+	createNodeSqliteDriver,
+	SqliteJournal,
+} from "@hobo/storage-sqlite";
 
 export type StorageWorkerRequest =
 	| {

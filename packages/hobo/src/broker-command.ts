@@ -35,9 +35,7 @@ function requireStationPins(flags: Record<string, unknown>): {
 			: defaultHoboHome();
 	const ctx = resolveStationContext({
 		hoboHome: home,
-		...(typeof flags.station === "string"
-			? { stationFlag: flags.station }
-			: {}),
+		...(typeof flags.station === "string" ? { stationFlag: flags.station } : {}),
 		...(typeof process.env.HOBO_STATION === "string"
 			? { stationEnv: process.env.HOBO_STATION }
 			: {}),

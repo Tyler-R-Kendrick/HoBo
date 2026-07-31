@@ -70,10 +70,7 @@ describe("createDoctorCommand", () => {
 		expect(result.data).toMatchObject({
 			backend: "vercel",
 			live: true,
-			identityMigration: {
-				continuousDefault: true,
-				bindleConfigRequired: false,
-			},
+			identityMigration: { continuousDefault: true, bindleConfigRequired: false },
 		});
 	});
 

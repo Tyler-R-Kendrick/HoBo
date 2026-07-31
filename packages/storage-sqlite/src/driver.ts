@@ -51,19 +51,12 @@ export function asBigInt(value: unknown, field: string): bigint {
 export function asNumber(value: unknown, field: string): number {
 	if (typeof value === "number" && Number.isFinite(value)) return value;
 	if (typeof value === "bigint") {
-		if (
-			value > BigInt(Number.MAX_SAFE_INTEGER) ||
-			value < BigInt(Number.MIN_SAFE_INTEGER)
-		) {
+		if (value > BigInt(Number.MAX_SAFE_INTEGER) || value < BigInt(Number.MIN_SAFE_INTEGER)) {
 			throw new TypeError(`${field} bigint out of safe number range`);
 		}
 		return Number(value);
 	}
-	if (
-		typeof value === "string" &&
-		value !== "" &&
-		Number.isFinite(Number(value))
-	) {
+	if (typeof value === "string" && value !== "" && Number.isFinite(Number(value))) {
 		return Number(value);
 	}
 	throw new TypeError(`${field} must be a number`);

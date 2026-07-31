@@ -30,12 +30,18 @@ function temp(prefix: string): string {
 
 describe("buzz distributed compute (block/buzz-inspired)", () => {
 	it("all code feature defaults are ON including distributed + monetization + rift", () => {
-		expect(CODE_FEATURE_DEFAULTS[CODE_FEATURE_FLAGS.harnessEnabled]).toBe(true);
-		expect(CODE_FEATURE_DEFAULTS[CODE_FEATURE_FLAGS.visualEvidence]).toBe(true);
-		expect(CODE_FEATURE_DEFAULTS[CODE_FEATURE_FLAGS.monetizationSurface]).toBe(
+		expect(CODE_FEATURE_DEFAULTS[CODE_FEATURE_FLAGS.harnessEnabled]).toBe(
 			true,
 		);
-		expect(CODE_FEATURE_DEFAULTS[CODE_FEATURE_FLAGS.riftPreferred]).toBe(true);
+		expect(CODE_FEATURE_DEFAULTS[CODE_FEATURE_FLAGS.visualEvidence]).toBe(
+			true,
+		);
+		expect(
+			CODE_FEATURE_DEFAULTS[CODE_FEATURE_FLAGS.monetizationSurface],
+		).toBe(true);
+		expect(CODE_FEATURE_DEFAULTS[CODE_FEATURE_FLAGS.riftPreferred]).toBe(
+			true,
+		);
 		expect(CODE_FEATURE_DEFAULTS[CODE_FEATURE_FLAGS.distributed]).toBe(true);
 		expect(CODE_FEATURE_FLAGS.distributed).toBe("code.distributed");
 		const port = createMemoryFeaturePort();

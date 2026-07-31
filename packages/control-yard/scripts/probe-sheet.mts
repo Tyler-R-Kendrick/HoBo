@@ -7,7 +7,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const target = process.argv[2] ?? join(ROOT, "assets/bo/bo-walk.png");
+const target =
+	process.argv[2] ?? join(ROOT, "assets/bo/bo-walk.png");
 
 const buf = readFileSync(target);
 const width = buf.readUInt32BE(16);

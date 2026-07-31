@@ -67,28 +67,30 @@ describe("host runtime packages setup", () => {
 		}
 	}, 180_000);
 
-	it.each([
-		...COMPONENT_HOST_KINDS,
-	])("yard init --host %s writes config", async (kind) => {
-		const hoboHome = await mkdtemp(join(tmpdir(), `hobo-init-${kind}-`));
-		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
-		const { config } = initBareMetalYard({
-			hoboHome,
-			componentHost: kind,
-		});
-		expect(config.componentHost).toBe(kind);
-		const host = getRuntimeHost(kind);
-		expect(host.kind).toBe(kind);
-		const ensure = await host.ensure({
-			hoboHome,
-			env: { ...process.env, HOBO_HOME: hoboHome },
-		});
-		if (kind === "oci" && !ensure.ready) {
-			expect(ensure.notes.join(" ")).toMatch(/kubectl|cluster|oci/i);
-		} else {
-			expect(ensure.ready).toBe(true);
-		}
-	}, 180_000);
+	it.each([...COMPONENT_HOST_KINDS])(
+		"yard init --host %s writes config",
+		async (kind) => {
+			const hoboHome = await mkdtemp(join(tmpdir(), `hobo-init-${kind}-`));
+			cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
+			const { config } = initBareMetalYard({
+				hoboHome,
+				componentHost: kind,
+			});
+			expect(config.componentHost).toBe(kind);
+			const host = getRuntimeHost(kind);
+			expect(host.kind).toBe(kind);
+			const ensure = await host.ensure({
+				hoboHome,
+				env: { ...process.env, HOBO_HOME: hoboHome },
+			});
+			if (kind === "oci" && !ensure.ready) {
+				expect(ensure.notes.join(" ")).toMatch(/kubectl|cluster|oci/i);
+			} else {
+				expect(ensure.ready).toBe(true);
+			}
+		},
+		180_000,
+	);
 
 	it("cloud-native host serves hello-bindle with howdy env", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-parity-cn-"));
@@ -112,49 +114,50 @@ describe("host runtime packages setup", () => {
 		expect(serve.isolation?.isolateBoundary).toMatch(/cloud_native/);
 	}, 180_000);
 
-	it("oci host mesh hop uses kubectl PACT mock (no shell shim)", async () => {
-		const { createKubectlKubernetesClient, createOciRuntimeHost } =
-			await import("@hobo/runtime-oci");
-		const pacts = await loadPactDirectory(join(ociContractsDir, "pacts"));
-		const pact = pacts.find((p) => p.provider.name === "KubernetesClusterApi");
-		expect(pact).toBeDefined();
-		const mock = createMockProviderFromPact(pact!);
-		const k8s = createKubectlKubernetesClient({
-			namespace: "hobo-dev",
-			transport: mock,
-		});
-		const host = createOciRuntimeHost({
-			kubernetes: k8s,
-			namespace: "hobo-dev",
-		});
-		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-oci-pact-parity-"));
-		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
-		const wasmPath = join(hoboHome, "guest.wasm");
-		await writeFile(wasmPath, Buffer.from("\0asm\x01\x00\x00\x00api"));
+	it(
+		"oci host mesh hop uses kubectl PACT mock (no shell shim)",
+		async () => {
+			const { createKubectlKubernetesClient, createOciRuntimeHost } =
+				await import("@hobo/runtime-oci");
+			const pacts = await loadPactDirectory(join(ociContractsDir, "pacts"));
+			const pact = pacts.find((p) => p.provider.name === "KubernetesClusterApi");
+			expect(pact).toBeDefined();
+			const mock = createMockProviderFromPact(pact!);
+			const k8s = createKubectlKubernetesClient({
+				namespace: "hobo-dev",
+				transport: mock,
+			});
+			const host = createOciRuntimeHost({ kubernetes: k8s, namespace: "hobo-dev" });
+			const hoboHome = await mkdtemp(join(tmpdir(), "hobo-oci-pact-parity-"));
+			cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
+			const wasmPath = join(hoboHome, "guest.wasm");
+			await writeFile(wasmPath, Buffer.from("\0asm\x01\x00\x00\x00api"));
 
-		const ensure = await host.ensure({ hoboHome });
-		expect(ensure.ready).toBe(true);
-		expect(ensure.details?.transport).toBe("KubernetesClusterApi");
+			const ensure = await host.ensure({ hoboHome });
+			expect(ensure.ready).toBe(true);
+			expect(ensure.details?.transport).toBe("KubernetesClusterApi");
 
-		const serve = await host.servePrivate({
-			hoboHome,
-			projectDir: hoboHome,
-			bindleEnv: { GREETING_PREFIX: "howdy" },
-			privateComponents: [
-				{ resourceName: "api", projectDir: hoboHome, wasmPath },
-			],
-		});
-		cleanups.push(() => serve.close());
-		const body = await (
-			await serve.handlers.get("api")!(
-				new Request("http://mesh/hello?name=Oci"),
-			)
-		).json();
-		expect(body).toEqual({
-			message: "howdy, Oci",
-			greetingPrefix: "howdy",
-		});
-	}, 60_000);
+			const serve = await host.servePrivate({
+				hoboHome,
+				projectDir: hoboHome,
+				bindleEnv: { GREETING_PREFIX: "howdy" },
+				privateComponents: [
+					{ resourceName: "api", projectDir: hoboHome, wasmPath },
+				],
+			});
+			cleanups.push(() => serve.close());
+			const body = await (
+				await serve.handlers.get("api")!(
+					new Request("http://mesh/hello?name=Oci"),
+				)
+			).json();
+			expect(body).toEqual({
+				message: "howdy, Oci",
+				greetingPrefix: "howdy",
+			});
+		},
+		60_000,
+	);
 
 	it("hobo yard ensure reports host matrix", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-cli-ensure-"));

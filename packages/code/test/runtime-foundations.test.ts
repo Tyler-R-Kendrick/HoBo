@@ -130,7 +130,9 @@ describe("hobo-code runtime foundations (Eve · DeepAgents+OpenShell+MxC · Worl
 	it("hive distributed descriptor names secure sandbox stack", () => {
 		const d = describeBuzzDistributedCompute();
 		expect(d.secureSandboxStack).toBe("deepagents+openshell+mxc");
-		expect(d.isolationClasses.some((c) => c.class === "openshell")).toBe(true);
+		expect(d.isolationClasses.some((c) => c.class === "openshell")).toBe(
+			true,
+		);
 		expect(d.isolationClasses.some((c) => c.class === "mxc")).toBe(true);
 	});
 

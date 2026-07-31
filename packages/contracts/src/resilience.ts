@@ -141,11 +141,7 @@ export function createResilienceProfile(
 				retryOn: "transient-only",
 			},
 		],
-		neverRetry: input.neverRetry ?? [
-			"policy.Decided",
-			"terminal",
-			"cancellation",
-		],
+		neverRetry: input.neverRetry ?? ["policy.Decided", "terminal", "cancellation"],
 	});
 }
 
@@ -247,13 +243,12 @@ export function applyResilienceProfile<T>(input: {
 				return { ok: true, value, facts, attempts };
 			} catch (err) {
 				const failure = classifyError(err);
-				const delayMs = retry ? computeDelay(retry, attempt) : 0;
+				const delayMs = retry
+					? computeDelay(retry, attempt)
+					: 0;
 				const never =
 					profile.neverRetry.includes(
-						failure.failureClass as
-							| "policy.Decided"
-							| "terminal"
-							| "cancellation",
+						failure.failureClass as "policy.Decided" | "terminal" | "cancellation",
 					) ||
 					failure.failureClass === "policy.Decided" ||
 					failure.failureClass === "terminal" ||
@@ -305,7 +300,9 @@ export function applyResilienceProfile<T>(input: {
 }
 
 /** Reconstruct terminal state from facts without re-running effects. */
-export function inspectResilienceFromFacts(facts: readonly ResilienceFact[]): {
+export function inspectResilienceFromFacts(
+	facts: readonly ResilienceFact[],
+): {
 	attempts: number;
 	terminal?: ResilienceTerminalFact;
 	retried: boolean;
@@ -415,9 +412,15 @@ function parseStrategy(input: unknown, index: number): ResilienceStrategy {
 		case "circuitBreaker":
 			return Object.freeze({
 				kind: "circuitBreaker",
-				failureThreshold: positiveInt(s.failureThreshold, "failureThreshold"),
+				failureThreshold: positiveInt(
+					s.failureThreshold,
+					"failureThreshold",
+				),
 				resetTimeoutMs: nonNegInt(s.resetTimeoutMs, "resetTimeoutMs"),
-				halfOpenMaxCalls: positiveInt(s.halfOpenMaxCalls, "halfOpenMaxCalls"),
+				halfOpenMaxCalls: positiveInt(
+					s.halfOpenMaxCalls,
+					"halfOpenMaxCalls",
+				),
 			});
 		case "timeout":
 			return Object.freeze({
@@ -482,7 +485,10 @@ function parseNeverRetry(
 	return out;
 }
 
-function expectObject(input: unknown, _label: string): Record<string, unknown> {
+function expectObject(
+	input: unknown,
+	_label: string,
+): Record<string, unknown> {
 	if (input === null || typeof input !== "object" || Array.isArray(input)) {
 		throw new ResilienceValidationError("expected-object", "expected object");
 	}

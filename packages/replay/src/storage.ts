@@ -161,9 +161,7 @@ export function createMemoryDualFixtures(seed?: {
  * Filesystem dual fixtures under a Station data dir (local / air-gap path).
  * Layout: `<root>/sessions/<id>.json` + `<root>/blobs/<hash>.json`
  */
-export function createFilesystemDualFixtures(
-	rootDir: string,
-): DualFixtureStore {
+export function createFilesystemDualFixtures(rootDir: string): DualFixtureStore {
 	const sessionsDir = join(rootDir, "sessions");
 	const blobsDir = join(rootDir, "blobs");
 	mkdirSync(sessionsDir, { recursive: true });

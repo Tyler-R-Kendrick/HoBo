@@ -35,7 +35,9 @@ describe("Harness · Feature flags · progressive delivery", () => {
 		const a = client.getBooleanDetails("new-checkout", false);
 		const b = client.getBooleanDetails("new-checkout", false);
 		expect(a.value).toBe(b.value);
-		expect(a.reason === "targeting-match" || a.reason === "default").toBe(true);
+		expect(a.reason === "targeting-match" || a.reason === "default").toBe(
+			true,
+		);
 	});
 
 	it("fractional multi-variant assignment is deterministic", () => {
@@ -48,7 +50,11 @@ describe("Harness · Feature flags · progressive delivery", () => {
 			targeting: {
 				fractional: {
 					key: ["identity.userId"],
-					variants: [{ treatment: 33 }, { holdout: 33 }, { control: 34 }],
+					variants: [
+						{ treatment: 33 },
+						{ holdout: 33 },
+						{ control: 34 },
+					],
 				},
 			},
 		});
@@ -545,9 +551,8 @@ describe("Harness · Feature flags · progressive delivery", () => {
 			defaultVariant: "control",
 		});
 		store.evaluateBoolean("s", { targetingKey: "u1" });
-		const before = store.events.filter(
-			(e) => e.type === "flag.Evaluated",
-		).length;
+		const before = store.events.filter((e) => e.type === "flag.Evaluated")
+			.length;
 		// sampleRate 0: no ordinary Evaluated
 		expect(before).toBe(0);
 		store.activateKillSwitch("s");

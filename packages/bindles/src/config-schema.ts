@@ -158,7 +158,9 @@ function assertTtlAtMost7Days(ttl: string): void {
 	}
 	const days = Number(match[1]);
 	if (days > 7) {
-		throw new Error(`static-escape ttl ${ttl} exceeds ADR-0023 ceiling of 7d`);
+		throw new Error(
+			`static-escape ttl ${ttl} exceeds ADR-0023 ceiling of 7d`,
+		);
 	}
 }
 
@@ -191,10 +193,7 @@ export function config(
 			throw new TypeError("config field names must be non-empty");
 		}
 		const def =
-			raw &&
-			typeof raw === "object" &&
-			"kind" in raw &&
-			raw.kind === "config-field"
+			raw && typeof raw === "object" && "kind" in raw && raw.kind === "config-field"
 				? (raw as ConfigFieldDef)
 				: (raw as FieldBuilder)._build();
 		// Forbid sensitive defaults (plaintext in schema).

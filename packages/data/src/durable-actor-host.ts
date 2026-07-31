@@ -41,11 +41,7 @@ export function createDurableActorHost(
 					fenceToken: lease.fenceToken,
 					expiresAt: lease.expiresAt,
 					release() {
-						journal.releaseActorLease(
-							lease.key,
-							lease.holderId,
-							lease.fenceToken,
-						);
+						journal.releaseActorLease(lease.key, lease.holderId, lease.fenceToken);
 					},
 				});
 			} catch (error) {

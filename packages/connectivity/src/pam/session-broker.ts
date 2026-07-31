@@ -58,7 +58,9 @@ export function createSessionBrokerKeys(input?: {
 }): SessionBrokerKeys {
 	const hmacSecret =
 		input?.hmacSecret ??
-		createHash("sha256").update(randomBytes(32)).digest("hex");
+		createHash("sha256")
+			.update(randomBytes(32))
+			.digest("hex");
 	if (input?.useEs256) {
 		const { privateKey } = generateKeyPairSync("ec", {
 			namedCurve: "P-256",
@@ -128,11 +130,7 @@ export function verifySessionToken(input: {
 	try {
 		const parts = input.token.split(".");
 		if (parts.length !== 3) {
-			return {
-				ok: false,
-				code: "malformed",
-				reason: "session token malformed",
-			};
+			return { ok: false, code: "malformed", reason: "session token malformed" };
 		}
 		const [hB64, pB64, sB64] = parts as [string, string, string];
 		const header = decodeB64urlJson<{ alg?: string }>(hB64);

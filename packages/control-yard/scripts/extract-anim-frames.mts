@@ -25,10 +25,7 @@ const index = JSON.parse(
 			rows: number;
 			margin: number;
 			spacing: number;
-			animations: Record<
-				string,
-				{ frames: number[] | "all"; frameCount?: number }
-			>;
+			animations: Record<string, { frames: number[] | "all"; frameCount?: number }>;
 		}
 	>;
 };

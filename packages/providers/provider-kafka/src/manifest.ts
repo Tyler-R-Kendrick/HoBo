@@ -49,8 +49,7 @@ export function publishCapabilityManifest(
 					port: "queue",
 					wit: "hobo:queue/queue@0.1.0",
 					features: ["enqueue", "dequeue", "complete"],
-					notes:
-						"aligned semantics where pull-queue maps to consumer-group poll",
+					notes: "aligned semantics where pull-queue maps to consumer-group poll",
 				},
 			],
 		}),

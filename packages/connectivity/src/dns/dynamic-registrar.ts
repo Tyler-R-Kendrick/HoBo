@@ -91,7 +91,9 @@ export function createJunctionDynamicDnsRegistrar(options: {
 					tenant: tenantId,
 					...(target.env !== undefined ? { env: target.env } : {}),
 					...(target.branch !== undefined ? { branch: target.branch } : {}),
-					...(target.project !== undefined ? { project: target.project } : {}),
+					...(target.project !== undefined
+						? { project: target.project }
+						: {}),
 					...(options.tld !== undefined ? { tld: options.tld } : {}),
 				});
 

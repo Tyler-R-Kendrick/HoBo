@@ -109,7 +109,9 @@ export class TrailRunner {
 			dualOracleReady: this.dualOracleReady,
 			junctionHealthy: this.junctionHealthy,
 		});
-		const ordered = canTrail.ok ? orderTrailSteps(composed.steps) : [];
+		const ordered = canTrail.ok
+			? orderTrailSteps(composed.steps)
+			: [];
 		return Object.freeze({
 			schemaVersion: TRAIL_RUNNER_SCHEMA,
 			canTrail,
@@ -225,7 +227,9 @@ export class TrailRunner {
 					return this.result({
 						schemaResults,
 						dataResults,
-						...(identityProgress !== undefined ? { identityProgress } : {}),
+						...(identityProgress !== undefined
+							? { identityProgress }
+							: {}),
 						rampPercent,
 						aborted: true,
 						cutover: false,
@@ -241,7 +245,9 @@ export class TrailRunner {
 					return this.result({
 						schemaResults,
 						dataResults,
-						...(identityProgress !== undefined ? { identityProgress } : {}),
+						...(identityProgress !== undefined
+							? { identityProgress }
+							: {}),
 						rampPercent,
 						aborted: true,
 						cutover: false,
@@ -253,13 +259,17 @@ export class TrailRunner {
 			} else if (step.kind === "validation") {
 				const dualOk =
 					dataResults.every((d) => d.consistent && d.zeroLoss) &&
-					(identityProgress ? identityProgress.migrationPresent : true);
+					(identityProgress
+						? identityProgress.migrationPresent
+						: true);
 				if (!dualOk) {
 					this.service.setDualHealth(false);
 					return this.result({
 						schemaResults,
 						dataResults,
-						...(identityProgress !== undefined ? { identityProgress } : {}),
+						...(identityProgress !== undefined
+							? { identityProgress }
+							: {}),
 						rampPercent,
 						aborted: true,
 						cutover: false,
@@ -291,7 +301,9 @@ export class TrailRunner {
 						return this.result({
 							schemaResults,
 							dataResults,
-							...(identityProgress !== undefined ? { identityProgress } : {}),
+							...(identityProgress !== undefined
+								? { identityProgress }
+								: {}),
 							rampPercent,
 							aborted: true,
 							cutover: false,
@@ -300,7 +312,10 @@ export class TrailRunner {
 					}
 				}
 				if (identityHandle && identityProgress?.migrationPresent) {
-					identityProgress = advanceIdentityTrailRamp(identityHandle, 100);
+					identityProgress = advanceIdentityTrailRamp(
+						identityHandle,
+						100,
+					);
 				}
 				this.service.cutover();
 				this.service.completeStep(step.id);

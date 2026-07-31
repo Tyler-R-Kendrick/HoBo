@@ -8,7 +8,10 @@ import {
 	createContractAssertedDualFixtures,
 	type DualIdentityFixtures,
 } from "./migration-dual-fixtures.js";
-import { createMemorySecretsPort, type SecretsPort } from "./secrets-port.js";
+import {
+	createMemorySecretsPort,
+	type SecretsPort,
+} from "./secrets-port.js";
 
 export type DevConfigFixture = Readonly<{
 	/** Schema hash the fixture is asserted against. */

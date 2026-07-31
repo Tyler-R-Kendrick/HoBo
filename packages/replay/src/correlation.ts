@@ -22,7 +22,9 @@ export type CorrelationInput = Readonly<{
 	harnessFlagKeys?: readonly string[];
 }>;
 
-export function buildCorrelation(input: CorrelationInput): SessionCorrelation {
+export function buildCorrelation(
+	input: CorrelationInput,
+): SessionCorrelation {
 	return parseSessionCorrelation({
 		stationId: input.stationId,
 		tenant: input.tenant ?? "local",

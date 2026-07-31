@@ -2,11 +2,7 @@
  * Cross-env grants, elevated access capabilities, and break-glass model.
  * Network membership is never sufficient alone for elevated/production access.
  */
-import {
-	createAccessEvent,
-	ACCESS_EVENTS,
-	type AccessEvent,
-} from "./events.js";
+import { createAccessEvent, ACCESS_EVENTS, type AccessEvent } from "./events.js";
 import {
 	BREAK_GLASS_TTL_SECONDS,
 	ELEVATED_CAPABILITY_TTL_SECONDS,
@@ -72,10 +68,7 @@ export class CrossEnvGrantStore {
 	private readonly now: () => string;
 	private readonly tenant: string;
 
-	constructor(options: {
-		readonly tenant: string;
-		readonly now?: () => string;
-	}) {
+	constructor(options: { readonly tenant: string; readonly now?: () => string }) {
 		this.tenant = options.tenant;
 		this.now = options.now ?? (() => new Date().toISOString());
 	}
@@ -138,7 +131,10 @@ export class CrossEnvGrantStore {
 		return grant;
 	}
 
-	getActive(id: string, now?: string): CrossEnvGrant | null {
+	getActive(
+		id: string,
+		now?: string,
+	): CrossEnvGrant | null {
 		const g = this.grants.get(id);
 		if (!g) return null;
 		if (isExpired(g.expiresAt, now ?? this.now())) {
@@ -188,10 +184,7 @@ export class BreakGlassService {
 	private readonly now: () => string;
 	private readonly tenant: string;
 
-	constructor(options: {
-		readonly tenant: string;
-		readonly now?: () => string;
-	}) {
+	constructor(options: { readonly tenant: string; readonly now?: () => string }) {
 		this.tenant = options.tenant;
 		this.now = options.now ?? (() => new Date().toISOString());
 	}

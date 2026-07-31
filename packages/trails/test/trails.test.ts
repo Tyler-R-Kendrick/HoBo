@@ -23,11 +23,7 @@ describe("HoBo Trails", () => {
 			id: "app.demo",
 			version: "1.0.0",
 			steps: [
-				{
-					id: "a",
-					kind: "schema",
-					schema: { mode: "versioned-sql", version: "1" },
-				},
+				{ id: "a", kind: "schema", schema: { mode: "versioned-sql", version: "1" } },
 				{ id: "b", kind: "validation", dependsOn: ["a"], oracleId: "x" },
 			],
 		});
@@ -144,9 +140,9 @@ describe("HoBo Trails", () => {
 				},
 			],
 		});
-		const ordered = orderTrailSteps(composeTrailWithRecipes(trail).steps).map(
-			(s) => s.id,
-		);
+		const ordered = orderTrailSteps(
+			composeTrailWithRecipes(trail).steps,
+		).map((s) => s.id);
 		// Dual work before validation/cutover regardless of id sort order.
 		const dualIdx = ordered.indexOf("z-data-dual");
 		const valIdx = ordered.indexOf("validation-oracle");
@@ -243,9 +239,9 @@ describe("HoBo Trails", () => {
 		// can-trail blocks before run
 		const plan = runner.plan(trail);
 		expect(plan.canTrail.ok).toBe(false);
-		expect(
-			plan.canTrail.reasons.some((r) => r.code === "junction-unhealthy"),
-		).toBe(true);
+		expect(plan.canTrail.reasons.some((r) => r.code === "junction-unhealthy")).toBe(
+			true,
+		);
 	});
 
 	it("local fixtures fidelity is simulated", () => {

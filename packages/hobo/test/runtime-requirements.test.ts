@@ -4,7 +4,10 @@ import { join } from "node:path";
 import { bindle, collectRequiredRuntimes } from "@hobo/bindles";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { initBareMetalYard, resolveBindlePlacement } from "../src/index.js";
+import {
+	initBareMetalYard,
+	resolveBindlePlacement,
+} from "../src/index.js";
 import { installRuntime } from "../src/installed-runtimes.js";
 
 const cleanups: Array<() => Promise<void>> = [];

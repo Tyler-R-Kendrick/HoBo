@@ -25,10 +25,7 @@ export interface GrayAlphaImage {
 
 function readU32(buf: Uint8Array, o: number): number {
 	return (
-		((buf[o]! << 24) |
-			(buf[o + 1]! << 16) |
-			(buf[o + 2]! << 8) |
-			buf[o + 3]!) >>>
+		((buf[o]! << 24) | (buf[o + 1]! << 16) | (buf[o + 2]! << 8) | buf[o + 3]!) >>>
 		0
 	);
 }
@@ -343,8 +340,7 @@ export function spriteFrameToTui(
 		sampleH,
 		options.alphaMin !== undefined ? { alphaMin: options.alphaMin } : {},
 	);
-	const raw =
-		mode === "braille" ? renderBraille(bitmap) : renderHalfBlocks(bitmap);
+	const raw = mode === "braille" ? renderBraille(bitmap) : renderHalfBlocks(bitmap);
 	// Force exact geometry.
 	const lines = raw.split("\n");
 	const out: string[] = [];

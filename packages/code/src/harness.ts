@@ -59,11 +59,7 @@ export interface HarnessCore {
 	readonly useTool: (name: string) => { name: string; mcp: boolean };
 	readonly listSkills: () => readonly LoadedSkill[];
 	readonly runRhaiWorkflow: (source: string) => RhaiWorkflowResult;
-	readonly checkpoint: (
-		runId: string,
-		step: number,
-		data: string,
-	) => DurableWorldState;
+	readonly checkpoint: (runId: string, step: number, data: string) => DurableWorldState;
 	readonly restore: (runId: string) => DurableWorldState | null;
 	readonly exposeMcp: () => {
 		readonly tools: readonly string[];
@@ -149,7 +145,10 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 	const worldRoot = options.worldRoot;
 	mkdirSync(worldRoot, { recursive: true });
 
-	const skillRoots = options.skillRoots ?? [".agents/skills", ".claude/skills"];
+	const skillRoots = options.skillRoots ?? [
+		".agents/skills",
+		".claude/skills",
+	];
 
 	function resolveSkill(name: SkillName): LoadedSkill {
 		for (const root of skillRoots) {
@@ -218,9 +217,7 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 		restore(runId: string) {
 			const path = join(worldRoot, runId, "state.json");
 			if (!existsSync(path)) return null;
-			const raw = JSON.parse(
-				readFileSync(path, "utf8"),
-			) as Partial<DurableWorldState> &
+			const raw = JSON.parse(readFileSync(path, "utf8")) as Partial<DurableWorldState> &
 				Pick<DurableWorldState, "worldId" | "runId" | "step" | "checkpoint">;
 			return {
 				worldId: raw.worldId,
@@ -229,8 +226,7 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 				checkpoint: raw.checkpoint,
 				survivingRestart: true as const,
 				updatedAt: raw.updatedAt ?? new Date().toISOString(),
-				worldKind:
-					raw.worldKind === "vercel" ? ("vercel" as const) : ("local" as const),
+				worldKind: raw.worldKind === "vercel" ? ("vercel" as const) : ("local" as const),
 			};
 		},
 		exposeMcp() {

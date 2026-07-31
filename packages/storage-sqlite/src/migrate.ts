@@ -1,4 +1,7 @@
-import { EventStoreError, UnsupportedSchemaVersionError } from "@hobo/core";
+import {
+	EventStoreError,
+	UnsupportedSchemaVersionError,
+} from "@hobo/core";
 
 import {
 	DEFAULT_METADATA_CODEC,
@@ -50,7 +53,9 @@ function setUserVersion(db: SqliteDriver, version: number): void {
 
 function tableExists(db: SqliteDriver, name: string): boolean {
 	const row = db
-		.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`)
+		.prepare(
+			`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+		)
 		.get(name);
 	return row !== undefined;
 }
@@ -64,11 +69,7 @@ function hasLegacyEvents(db: SqliteDriver): boolean {
 	// v1 events have TEXT data column and no global_position
 	const info = db.prepare(`PRAGMA table_info(events)`).all();
 	const cols = new Set(info.map((r) => asText(r.name, "name")));
-	return (
-		cols.has("data") &&
-		!cols.has("global_position") &&
-		!cols.has("payload_codec")
-	);
+	return cols.has("data") && !cols.has("global_position") && !cols.has("payload_codec");
 }
 
 /**
@@ -458,7 +459,12 @@ CREATE TABLE IF NOT EXISTS snapshots (
 			`INSERT INTO snapshots (stream_id, seq, state, saved_at) VALUES (?, ?, ?, ?)`,
 		);
 		for (const s of fixture.snapshots) {
-			snap.run(s.stream_id, s.seq, encodeLegacyJsonText(s.state), s.saved_at);
+			snap.run(
+				s.stream_id,
+				s.seq,
+				encodeLegacyJsonText(s.state),
+				s.saved_at,
+			);
 		}
 	}
 	// Legacy never set user_version (stays 0)

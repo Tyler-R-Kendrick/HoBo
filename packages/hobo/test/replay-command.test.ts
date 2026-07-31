@@ -33,7 +33,9 @@ describe("hobo replay", () => {
 			memory: true,
 		});
 		const tracker = service.startRecording({
-			seedEvents: [{ type: 2, timestamp: 1, data: { tagName: "div" } }],
+			seedEvents: [
+				{ type: 2, timestamp: 1, data: { tagName: "div" } },
+			],
 			sessionId: "sess-cli-1",
 		});
 		await tracker.linkError("err-99");

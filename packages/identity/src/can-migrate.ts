@@ -138,7 +138,9 @@ export function evaluateCanMigrate(input: CanMigrateInput): CanMigrateResult {
 		evidence: Object.freeze({
 			...(input.sourceAdapter ? { sourceAdapter: input.sourceAdapter } : {}),
 			...(input.targetAdapter ? { targetAdapter: input.targetAdapter } : {}),
-			...(input.mapping ? { mappingSpecHash: input.mapping.contentHash } : {}),
+			...(input.mapping
+				? { mappingSpecHash: input.mapping.contentHash }
+				: {}),
 			mode,
 			continuousDefault: true as const,
 			dryRun: true as const,

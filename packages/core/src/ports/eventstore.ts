@@ -262,12 +262,8 @@ export interface DurableEventStore extends EventStore {
 		subscriptionId: string;
 		partitionId: string;
 	}): Promise<SubscriptionCheckpoint | undefined>;
-	commitCheckpoint?(
-		options: CommitCheckpointOptions,
-	): Promise<SubscriptionCheckpoint>;
-	resetCheckpoint?(
-		options: ResetCheckpointOptions,
-	): Promise<SubscriptionCheckpoint>;
+	commitCheckpoint?(options: CommitCheckpointOptions): Promise<SubscriptionCheckpoint>;
+	resetCheckpoint?(options: ResetCheckpointOptions): Promise<SubscriptionCheckpoint>;
 }
 
 // ── Parse boundaries ────────────────────────────────────────────────────────
@@ -284,10 +280,7 @@ export class EventStoreParseError extends CoreParseError {
 	}
 }
 
-export function parseEventPosition(
-	value: unknown,
-	path = "position",
-): EventPosition {
+export function parseEventPosition(value: unknown, path = "position"): EventPosition {
 	if (typeof value === "bigint") {
 		if (value < 0n) {
 			throw new EventStoreParseError(path, "non-negative bigint", value);
@@ -303,10 +296,7 @@ export function parseEventPosition(
 	throw new EventStoreParseError(path, "non-negative integer/bigint", value);
 }
 
-export function parseFenceToken(
-	value: unknown,
-	path = "fenceToken",
-): FenceToken {
+export function parseFenceToken(value: unknown, path = "fenceToken"): FenceToken {
 	if (typeof value === "bigint") {
 		if (value < 0n) {
 			throw new EventStoreParseError(path, "non-negative bigint", value);

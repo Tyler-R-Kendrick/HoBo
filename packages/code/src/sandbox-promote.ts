@@ -37,10 +37,9 @@ export function assertMediatedOnly(agentMayWriteCanonical: boolean): void {
 	}
 }
 
-export function runPromotionGates(gates: readonly PromotionGate[]): {
-	ok: boolean;
-	failed: readonly PromotionGate[];
-} {
+export function runPromotionGates(
+	gates: readonly PromotionGate[],
+): { ok: boolean; failed: readonly PromotionGate[] } {
 	const byName = new Map(gates.map((g) => [g.name, g]));
 	const failed: PromotionGate[] = [];
 	for (const required of REQUIRED_GATES) {

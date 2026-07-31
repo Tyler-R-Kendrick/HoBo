@@ -247,7 +247,9 @@ export function openPostgresSecretlessLease(
 		credentialMaterial: input.credentialMaterial,
 		...(input.namedHost !== undefined ? { namedHost: input.namedHost } : {}),
 		...(input.tenantId !== undefined ? { tenantId: input.tenantId } : {}),
-		...(input.workloadId !== undefined ? { workloadId: input.workloadId } : {}),
+		...(input.workloadId !== undefined
+			? { workloadId: input.workloadId }
+			: {}),
 	});
 }
 

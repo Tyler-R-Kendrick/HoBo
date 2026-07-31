@@ -56,7 +56,8 @@ export function createTagAclPolicyEngine(
 			}
 
 			// (1) Tenant axis
-			const sameTenant = request.subject.tenantId === request.resource.tenantId;
+			const sameTenant =
+				request.subject.tenantId === request.resource.tenantId;
 			const shared =
 				request.resource.tags?.includes("shared:true") === true ||
 				request.resource.attributes?.shared === "true";

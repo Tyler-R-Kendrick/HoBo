@@ -54,8 +54,7 @@ describe("hobo identity (observe-only)", () => {
 		const cmd = createIdentityCommand({ hoboHome, env: {} });
 		const status = await cmd.run(runInput(["status"], hoboHome) as never);
 		expect(status.data?.migration).toMatchObject({ present: true });
-		const id = (status.data?.migration as { migrationId?: string })
-			?.migrationId;
+		const id = (status.data?.migration as { migrationId?: string })?.migrationId;
 		expect(id).toBeTruthy();
 		const inspect = await cmd.run(
 			runInput(["inspect", String(id)], hoboHome) as never,

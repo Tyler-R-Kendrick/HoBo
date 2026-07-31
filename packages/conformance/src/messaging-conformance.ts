@@ -49,9 +49,7 @@ export async function runMessagingConformance(
 		}
 	};
 
-	await run("publishConsumeAck", () =>
-		provesPublishConsumeAck(createMessaging),
-	);
+	await run("publishConsumeAck", () => provesPublishConsumeAck(createMessaging));
 	await run("consumerGroupIsolation", () =>
 		provesConsumerGroupIsolation(createMessaging),
 	);
@@ -120,13 +118,9 @@ async function provesDeadLetterMaxAttempts(
 	await bus.subscribe(topic, parseConsumerGroupId("dlq"), async () => {
 		throw new Error("boom");
 	});
-	const r2 = await bus.subscribe(
-		topic,
-		parseConsumerGroupId("dlq"),
-		async () => {
-			throw new Error("boom");
-		},
-	);
+	const r2 = await bus.subscribe(topic, parseConsumerGroupId("dlq"), async () => {
+		throw new Error("boom");
+	});
 	return r2.deadLettered >= 1;
 }
 
@@ -137,13 +131,9 @@ async function provesExactlyOnceCapabilityGate(
 	try {
 		assertDeliverySupported(bus.capabilities, "exactly-once");
 		// Backend that supports exactly-once must accept publish with that delivery.
-		await bus.publish(
-			parseTopicName("conf-xo"),
-			{ x: 1 },
-			{
-				delivery: "exactly-once",
-			},
-		);
+		await bus.publish(parseTopicName("conf-xo"), { x: 1 }, {
+			delivery: "exactly-once",
+		});
 		return true;
 	} catch (err) {
 		// Portable backends may reject — still a valid gate outcome when they

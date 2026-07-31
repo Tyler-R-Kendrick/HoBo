@@ -29,7 +29,7 @@ export function diagnoseDaprReadiness(
 			"Dapr runtime not detected — Camp dapr backend will use simulated fidelity.",
 		);
 		remediation.push(
-			'Install dapr CLI (`dapr init`) or set HOBO_DAPR_ENDPOINT; select Camp runtimeRequirements: ["dapr"] only when intended.',
+			"Install dapr CLI (`dapr init`) or set HOBO_DAPR_ENDPOINT; select Camp runtimeRequirements: [\"dapr\"] only when intended.",
 		);
 	} else if (!runtimeReachable) {
 		notes.push("Dapr CLI/env present but runtime endpoint not confirmed.");

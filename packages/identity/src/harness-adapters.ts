@@ -21,11 +21,7 @@ import {
 	type FeatureFlagBackendRank,
 	type RankedBackend,
 } from "./feature-flag-ranking.js";
-import type {
-	OpenDeliveryEngine,
-	RolloutPolicy,
-	RolloutState,
-} from "./harness-delivery.js";
+import type { OpenDeliveryEngine, RolloutPolicy, RolloutState } from "./harness-delivery.js";
 import type {
 	ExperimentAssignment,
 	ExperimentDefinition,
@@ -37,8 +33,7 @@ export const OFREP_RESIDUAL_SCHEMA = "hobo.ofrep-residual/v1" as const;
 // public-contract: delivery residual adapter schema version.
 export const DELIVERY_ADAPTER_SCHEMA = "hobo.delivery-adapter/v1" as const;
 // public-contract: experiment analysis/export schema version.
-export const EXPERIMENT_ANALYSIS_SCHEMA =
-	"hobo.experiment-analysis/v1" as const;
+export const EXPERIMENT_ANALYSIS_SCHEMA = "hobo.experiment-analysis/v1" as const;
 
 export type FetchLike = (
 	input: string,
@@ -81,7 +76,9 @@ export function createOfrepResidualBackend(options: {
 }): {
 	readonly id: "ofrep-internal" | "external";
 	readonly schemaVersion: typeof OFREP_RESIDUAL_SCHEMA;
-	evaluate(req: OfrepEvaluateRequest): Promise<DetailEvaluation>;
+	evaluate(
+		req: OfrepEvaluateRequest,
+	): Promise<DetailEvaluation>;
 } {
 	const fetchImpl = options.fetchImpl ?? (globalThis.fetch as FetchLike);
 	const base = options.baseUrl.replace(/\/$/, "");
@@ -90,23 +87,20 @@ export function createOfrepResidualBackend(options: {
 		schemaVersion: OFREP_RESIDUAL_SCHEMA,
 		async evaluate(req) {
 			try {
-				const res = await fetchImpl(
-					`${base}/ofrep/v1/evaluate/${encodeURIComponent(req.flagKey)}`,
-					{
-						method: "POST",
-						headers: {
-							"content-type": "application/json",
-							...(options.headers ?? {}),
-						},
-						body: JSON.stringify({
-							context: {
-								targetingKey: req.context.targetingKey,
-								tenant: req.context.tenant,
-								attributes: req.context.attributes,
-							},
-						}),
+				const res = await fetchImpl(`${base}/ofrep/v1/evaluate/${encodeURIComponent(req.flagKey)}`, {
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+						...(options.headers ?? {}),
 					},
-				);
+					body: JSON.stringify({
+						context: {
+							targetingKey: req.context.targetingKey,
+							tenant: req.context.tenant,
+							attributes: req.context.attributes,
+						},
+					}),
+				});
 				if (!res.ok) {
 					return failSafe(req);
 				}
@@ -115,8 +109,7 @@ export function createOfrepResidualBackend(options: {
 					flagKey: req.flagKey,
 					value: body.value ?? req.defaultValue,
 					variant: body.variant ?? "remote",
-					reason:
-						(body.reason as DetailEvaluation["reason"]) ?? "targeting-match",
+					reason: (body.reason as DetailEvaluation["reason"]) ?? "targeting-match",
 					rulesetSeq: 0,
 					contextDigest: digestCtx(req.context),
 				});
@@ -330,7 +323,9 @@ export function createBuiltinExperimentAnalysis(): ExperimentAnalysisPort {
 				totalAssigned,
 				totalExposed: exposedCount,
 				verdict,
-				...(winningVariant !== undefined && !tie ? { winningVariant } : {}),
+				...(winningVariant !== undefined && !tie
+					? { winningVariant }
+					: {}),
 				exportPayload: Object.freeze({
 					format: "json" as const,
 					contentHash,
@@ -376,11 +371,7 @@ export function analyzeExperimentFromEngine(
 	const def = defs.find((d) => d.name === experimentName);
 	if (!def) return null;
 	const assignments = engine.events
-		.filter(
-			(e) =>
-				e.type === "experiment.Assigned" &&
-				e.data.experiment === experimentName,
-		)
+		.filter((e) => e.type === "experiment.Assigned" && e.data.experiment === experimentName)
 		.map((e) =>
 			Object.freeze({
 				experiment: experimentName,
@@ -391,8 +382,7 @@ export function analyzeExperimentFromEngine(
 			}),
 		);
 	const exposedCount = engine.events.filter(
-		(e) =>
-			e.type === "experiment.Exposed" && e.data.experiment === experimentName,
+		(e) => e.type === "experiment.Exposed" && e.data.experiment === experimentName,
 	).length;
 	return analysis.analyze(def, assignments, exposedCount);
 }

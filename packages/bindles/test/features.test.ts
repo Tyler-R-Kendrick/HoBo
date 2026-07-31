@@ -28,7 +28,9 @@ describe("Bindle features / experiment / rollout IfC", () => {
 		expect(decl.contentHash.startsWith("sha256:")).toBe(true);
 		const inputs = featureSpecsToStoreInputs(decl);
 		expect(inputs).toHaveLength(2);
-		expect(inputs.find((i) => i.key === "simple-flag")?.state).toBe("ENABLED");
+		expect(inputs.find((i) => i.key === "simple-flag")?.state).toBe(
+			"ENABLED",
+		);
 	});
 
 	it("experiment + rollout declarations parse", () => {
@@ -54,7 +56,7 @@ describe("Bindle features / experiment / rollout IfC", () => {
 
 	it("featureSpecsToStoreInputs is consumable by FeatureFlagStore.define shape", () => {
 		const decl = features({
-			promo: {
+			"promo": {
 				state: "ENABLED",
 				percentage: 100,
 				variants: { control: false, treatment: true },

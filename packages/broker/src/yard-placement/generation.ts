@@ -53,11 +53,7 @@ export function planYardGeneration(options: {
 	readonly attemptId: string;
 	readonly brokerEnvironmentId?: string;
 }):
-	| {
-			readonly allowed: false;
-			readonly reason: string;
-			readonly policyId: string;
-	  }
+	| { readonly allowed: false; readonly reason: string; readonly policyId: string }
 	| {
 			readonly allowed: true;
 			readonly plan: YardGenerationPlan;
@@ -176,7 +172,9 @@ export function planYardGeneration(options: {
 export function createYardGenerationSaga(options: {
 	readonly connectors: ReadonlyMap<string, YardGenerationConnector>;
 }): {
-	readonly run: (plan: YardGenerationPlan) => Promise<YardGenerationResult>;
+	readonly run: (
+		plan: YardGenerationPlan,
+	) => Promise<YardGenerationResult>;
 	readonly inspect: (
 		idempotencyKey: string,
 	) => YardGenerationResult | undefined;
@@ -221,10 +219,7 @@ export function createYardGenerationSaga(options: {
 				attemptId: plan.attemptId,
 				status: "started",
 				externalRefs: Object.freeze({}),
-				outputHash: contentHashOf({
-					attemptId: plan.attemptId,
-					status: "started",
-				}),
+				outputHash: contentHashOf({ attemptId: plan.attemptId, status: "started" }),
 			});
 			attempts.set(plan.idempotencyKey, { plan, result: started });
 

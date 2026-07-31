@@ -106,9 +106,9 @@ describe("discovery parse-don't-validate", () => {
 		expect(doc.schemaVersion).toBe(BROKER_DISCOVERY_SCHEMA);
 		expect(doc.supportsAnonymous).toBe(true);
 
-		expect(() =>
-			parseBrokerDiscoveryDocument({ schemaVersion: "nope" }),
-		).toThrow(/schemaVersion/);
+		expect(() => parseBrokerDiscoveryDocument({ schemaVersion: "nope" })).toThrow(
+			/schemaVersion/,
+		);
 		expect(() => parseBrokerDiscoveryDocument(null)).toThrow(/object/);
 	});
 });

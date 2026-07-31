@@ -24,7 +24,9 @@ function canonicalize(value: unknown): string {
 export function railContentHash(
 	body: Omit<Rail, "contentHash" | "activationStatus" | "publishedAt">,
 ): `sha256:${string}` {
-	const digest = createHash("sha256").update(canonicalize(body)).digest("hex");
+	const digest = createHash("sha256")
+		.update(canonicalize(body))
+		.digest("hex");
 	return `sha256:${digest}`;
 }
 
@@ -59,7 +61,9 @@ export function createRail(input: {
 		stationId: input.stationId,
 		isBootstrap: input.isBootstrap === true,
 		policyPacks: Object.freeze([...(input.policyPacks ?? [])]),
-		policyEngine: Object.freeze(input.policyEngine ?? { kind: "ts" as const }),
+		policyEngine: Object.freeze(
+			input.policyEngine ?? { kind: "ts" as const },
+		),
 		placementDefaults: Object.freeze(
 			input.placementDefaults ?? {
 				objective: "min-cost" as const,
@@ -145,11 +149,7 @@ export function createBootstrapRail(stationId: string, now?: string): Rail {
 export function railFromBrokerConfig(
 	stationId: string,
 	brokerConfig: Readonly<Record<string, unknown>>,
-	options?: {
-		readonly id?: string;
-		readonly name?: string;
-		readonly now?: string;
-	},
+	options?: { readonly id?: string; readonly name?: string; readonly now?: string },
 ): Rail {
 	const brokerId =
 		typeof brokerConfig.brokerId === "string"
@@ -171,8 +171,7 @@ export function railFromBrokerConfig(
 			allowedRegions: Object.freeze(["local"]),
 		},
 		billingPolicy: {
-			quota:
-				typeof billing.quota === "string" ? billing.quota : "deployments/day",
+			quota: typeof billing.quota === "string" ? billing.quota : "deployments/day",
 			quotaUsed: typeof billing.quotaUsed === "number" ? billing.quotaUsed : 0,
 			quotaLimit:
 				typeof billing.quotaLimit === "number" ? billing.quotaLimit : 10_000,

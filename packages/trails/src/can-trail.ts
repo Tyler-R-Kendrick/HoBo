@@ -163,7 +163,8 @@ export function evaluateCanTrail(input: CanTrailInput): CanTrailResult {
 		// Informational evidence — not a failure.
 		reasons.push({
 			code: "identity-hands-off-ok",
-			message: "continuous identity trail requires zero Bindle/Trail authoring",
+			message:
+				"continuous identity trail requires zero Bindle/Trail authoring",
 		});
 	}
 

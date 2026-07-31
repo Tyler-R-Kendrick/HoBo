@@ -94,7 +94,10 @@ export function conservativeDefaultEffects(): EffectSpec {
 		schemaVersion: EFFECT_SPEC_SCHEMA_VERSION,
 		purity: "noRollback",
 		capabilities: Object.freeze(["decides"] as CapabilityEffect[]),
-		domains: Object.freeze(["network", "externalCall"] as DomainEffect[]),
+		domains: Object.freeze([
+			"network",
+			"externalCall",
+		] as DomainEffect[]),
 	});
 }
 
@@ -206,10 +209,7 @@ export function effectUnion(a: EffectSpec, b: EffectSpec): EffectSpec {
 		schemaVersion: EFFECT_SPEC_SCHEMA_VERSION,
 		purity: purityJoin(a.purity, b.purity),
 		capabilities: Object.freeze(
-			uniqueSorted([
-				...a.capabilities,
-				...b.capabilities,
-			]) as CapabilityEffect[],
+			uniqueSorted([...a.capabilities, ...b.capabilities]) as CapabilityEffect[],
 		),
 		domains: Object.freeze(
 			uniqueSorted([...a.domains, ...b.domains]) as DomainEffect[],
@@ -339,9 +339,7 @@ export function createInMemoryEffectSink(): EffectSink & {
 	const facts: EffectCaptureFact[] = [];
 	return {
 		record(fact) {
-			facts.push(
-				Object.freeze({ ...fact, attributes: { ...fact.attributes } }),
-			);
+			facts.push(Object.freeze({ ...fact, attributes: { ...fact.attributes } }));
 		},
 		facts: () => facts,
 	};
@@ -430,7 +428,11 @@ function expectObject(input: unknown, path: string): Record<string, unknown> {
 
 function enumValue(input: unknown, allowed: Set<string>, path: string): string {
 	if (typeof input !== "string" || !allowed.has(input)) {
-		throw new EffectValidationError("unknown-value", String(input), path);
+		throw new EffectValidationError(
+			"unknown-value",
+			String(input),
+			path,
+		);
 	}
 	return input;
 }

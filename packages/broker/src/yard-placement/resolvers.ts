@@ -137,7 +137,9 @@ export function buildExecutionUnits(options: {
 				destroyWithBindle: true,
 				claims: Object.freeze([`resource:${resourceId}`]),
 				residualDefinitions: Object.freeze(
-					options.residualDefinitionIds.filter((d) => d.includes(resourceId)),
+					options.residualDefinitionIds.filter((d) =>
+						d.includes(resourceId),
+					),
 				),
 			}),
 		);
@@ -160,7 +162,10 @@ export function buildExecutionUnits(options: {
 export function defaultProviderResolvers(
 	providerId: string,
 ): readonly PrimitiveResolverDescriptor[] {
-	const mk = (slot: string, suffix: string): PrimitiveResolverDescriptor =>
+	const mk = (
+		slot: string,
+		suffix: string,
+	): PrimitiveResolverDescriptor =>
 		Object.freeze({
 			schemaVersion: "hobo.primitive-resolver/v1",
 			id: `${providerId}.${suffix}/v1`,

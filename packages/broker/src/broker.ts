@@ -96,10 +96,7 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 			"station-missing: Conductor requires stationId (hobo station init)",
 		);
 	}
-	if (
-		typeof deps.railHash !== "string" ||
-		!deps.railHash.startsWith("sha256:")
-	) {
+	if (typeof deps.railHash !== "string" || !deps.railHash.startsWith("sha256:")) {
 		throw new BrokerParseError(
 			"rail-inactive",
 			"rail-inactive: Conductor requires active railHash (hobo station rails activate)",

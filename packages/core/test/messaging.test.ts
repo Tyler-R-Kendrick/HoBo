@@ -57,26 +57,20 @@ describe("@hobo/core messaging port", () => {
 			tenantId: "t1" as never,
 			delivery: "at-least-once",
 		});
-		const pub = await bus.publish(
-			"events" as never,
-			{ hello: "world" },
-			{
-				idempotencyKey: "k1",
-			},
-		);
+		const pub = await bus.publish("events" as never, { hello: "world" }, {
+			idempotencyKey: "k1",
+		});
 		expect(pub.deduped).toBe(false);
-		const dedup = await bus.publish(
-			"events" as never,
-			{ hello: "world" },
-			{
-				idempotencyKey: "k1",
-			},
-		);
+		const dedup = await bus.publish("events" as never, { hello: "world" }, {
+			idempotencyKey: "k1",
+		});
 		expect(dedup.deduped).toBe(true);
 
-		const consumed = await bus.consume("events" as never, "workers" as never, {
-			maxMessages: 10,
-		});
+		const consumed = await bus.consume(
+			"events" as never,
+			"workers" as never,
+			{ maxMessages: 10 },
+		);
 		expect(consumed).toHaveLength(1);
 		expect(consumed[0]?.body).toEqual({ hello: "world" });
 		bus.ack(consumed[0]!.messageId, consumed[0]!.leaseId);
@@ -110,9 +104,7 @@ describe("@hobo/core messaging port", () => {
 		});
 		expect(r2.deadLettered).toBe(1);
 		expect(
-			bus
-				.events()
-				.some((e) => e.type === "messaging.delivery.permanent_failure"),
+			bus.events().some((e) => e.type === "messaging.delivery.permanent_failure"),
 		).toBe(true);
 	});
 

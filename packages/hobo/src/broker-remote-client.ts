@@ -116,7 +116,9 @@ export function createRemoteBrokerClient(options: {
 			...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
 			...(options.mock
 				? {
-						fixed: new Map([[brokerUri, options.mock.discovery]]),
+						fixed: new Map([
+							[brokerUri, options.mock.discovery],
+						]),
 					}
 				: {}),
 		});
@@ -156,10 +158,7 @@ export function createRemoteBrokerClient(options: {
 			}
 			const res = await fetchImpl(resolveUrl(doc.anonymousSessionEndpoint), {
 				method: "POST",
-				headers: {
-					"content-type": "application/json",
-					accept: "application/json",
-				},
+				headers: { "content-type": "application/json", accept: "application/json" },
 				body: JSON.stringify({
 					bindleName: input.bindleName ?? "unknown",
 				}),
@@ -270,9 +269,10 @@ export function createMockRemoteBrokerState(options?: {
 	readonly supportsAnonymous?: boolean;
 	readonly now?: () => number;
 }): MockRemoteBrokerState {
-	const brokerUri = (
-		options?.brokerUri ?? "https://public.example.com"
-	).replace(/\/+$/, "");
+	const brokerUri = (options?.brokerUri ?? "https://public.example.com").replace(
+		/\/+$/,
+		"",
+	);
 	const supportsAnonymous = options?.supportsAnonymous !== false;
 	const now = options?.now ?? (() => Date.now());
 	const deployments = new Map<
@@ -367,7 +367,10 @@ export function createMockRemoteBrokerState(options?: {
 					claimToken: dep.claimToken,
 					claimUrl: `${brokerUri}/claim?token=${encodeURIComponent(dep.claimToken)}`,
 					expiresAt: new Date(dep.expiresAt).toISOString(),
-					ttlSeconds: Math.max(0, Math.floor((dep.expiresAt - now()) / 1000)),
+					ttlSeconds: Math.max(
+						0,
+						Math.floor((dep.expiresAt - now()) / 1000),
+					),
 					principal: request.credential.principal,
 					...(request.credential.humanPrincipal
 						? { humanPrincipal: request.credential.humanPrincipal }
@@ -418,7 +421,10 @@ export function createMockRemoteBrokerState(options?: {
 				);
 			}
 			const newOwner: PrincipalRef = { kind: "user", id: request.account };
-			if (dep.owner?.kind === newOwner.kind && dep.owner?.id === newOwner.id) {
+			if (
+				dep.owner?.kind === newOwner.kind &&
+				dep.owner?.id === newOwner.id
+			) {
 				return {
 					deploymentId: dep.deploymentId,
 					owner: newOwner,

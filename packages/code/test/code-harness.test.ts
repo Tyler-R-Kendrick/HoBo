@@ -1,10 +1,4 @@
-import {
-	mkdtempSync,
-	rmSync,
-	existsSync,
-	mkdirSync,
-	writeFileSync,
-} from "node:fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -280,9 +274,9 @@ step "done"
 		expect(validation.ok).toBe(true);
 		expect(validation.hasPrimary).toBe(true);
 		expect(validation.hasBadge).toBe(true);
-		expect(() =>
-			applyInContextEdit({ ...session, locked: true }, "nope"),
-		).toThrow(/immutable/);
+		expect(() => applyInContextEdit({ ...session, locked: true }, "nope")).toThrow(
+			/immutable/,
+		);
 	});
 
 	it("TUI status observes agent state and supports copy-on-highlight", () => {
@@ -334,11 +328,7 @@ step "done"
 				{ provider: "cheap", costUsd: 0.01, capable: true },
 				{ provider: "dear", costUsd: 1, capable: true },
 			],
-			{
-				capUsd: 5,
-				routingPolicy: "cheapest-capable",
-				monetizationOptIn: false,
-			},
+			{ capUsd: 5, routingPolicy: "cheapest-capable", monetizationOptIn: false },
 		);
 		expect(routed).toBe("cheap");
 	});

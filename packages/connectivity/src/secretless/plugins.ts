@@ -50,11 +50,7 @@ export const postgresPlugin: ProtocolPlugin = Object.freeze({
 	handshake(input) {
 		return {
 			ok: true,
-			bytesProxied: hashHandshake(
-				"postgres",
-				input.targetRef,
-				input.credentialMaterial,
-			),
+			bytesProxied: hashHandshake("postgres", input.targetRef, input.credentialMaterial),
 			protocol: "postgres",
 			credentialExposedToWorkload: false as const,
 		};
@@ -67,11 +63,7 @@ export const tcpPlugin: ProtocolPlugin = Object.freeze({
 	handshake(input) {
 		return {
 			ok: true,
-			bytesProxied: hashHandshake(
-				"tcp",
-				input.targetRef,
-				input.credentialMaterial,
-			),
+			bytesProxied: hashHandshake("tcp", input.targetRef, input.credentialMaterial),
 			protocol: "tcp",
 			credentialExposedToWorkload: false as const,
 		};
@@ -84,11 +76,7 @@ export const mysqlPlugin: ProtocolPlugin = Object.freeze({
 	handshake(input) {
 		return {
 			ok: true,
-			bytesProxied: hashHandshake(
-				"mysql",
-				input.targetRef,
-				input.credentialMaterial,
-			),
+			bytesProxied: hashHandshake("mysql", input.targetRef, input.credentialMaterial),
 			protocol: "mysql",
 			credentialExposedToWorkload: false as const,
 		};
@@ -101,11 +89,7 @@ export const redisPlugin: ProtocolPlugin = Object.freeze({
 	handshake(input) {
 		return {
 			ok: true,
-			bytesProxied: hashHandshake(
-				"redis",
-				input.targetRef,
-				input.credentialMaterial,
-			),
+			bytesProxied: hashHandshake("redis", input.targetRef, input.credentialMaterial),
 			protocol: "redis",
 			credentialExposedToWorkload: false as const,
 		};
@@ -119,7 +103,9 @@ const DEFAULT_PLUGINS: readonly ProtocolPlugin[] = Object.freeze([
 	redisPlugin,
 ]);
 
-export function createPluginRegistry(extra: readonly ProtocolPlugin[] = []): {
+export function createPluginRegistry(
+	extra: readonly ProtocolPlugin[] = [],
+): {
 	get: (id: string) => ProtocolPlugin | undefined;
 	list: () => readonly ProtocolPlugin[];
 	register: (plugin: ProtocolPlugin) => void;

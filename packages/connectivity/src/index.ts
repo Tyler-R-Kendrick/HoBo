@@ -180,7 +180,9 @@ export {
 
 // Environment network isolation + elevated access + break-glass (ADR-0133).
 export * from "./env-isolation/index.js";
-export { ENV_NETWORK_ISOLATION_REGO_DOCUMENT } from "./policy/rego-lite.js";
+export {
+	ENV_NETWORK_ISOLATION_REGO_DOCUMENT,
+} from "./policy/rego-lite.js";
 // Privileged Access Gateway (optional Station capability) — full secretless brokers.
 export * from "./pam/index.js";
 

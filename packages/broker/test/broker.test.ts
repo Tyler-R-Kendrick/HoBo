@@ -92,13 +92,7 @@ const baseRequest = {
 
 describe("createBroker.resolve — brokering across providers", () => {
 	it("places each resource on the cheapest provider that satisfies it", async () => {
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		});
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
 		const result = await broker.resolve(baseRequest);
 
 		expect(result.outcome).toBe("resolved");
@@ -114,10 +108,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 	});
 
 	it("honours denied providers accumulated from broader scope policies", async () => {
-		const broker = createBroker({
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({ stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 
 			policies: {
 				...basePolicies,
 				placementPolicies: [
@@ -144,10 +135,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 	});
 
 	it("pins placement to the pinned provider when the objective is pinned", async () => {
-		const broker = createBroker({
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({ stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 
 			policies: {
 				...basePolicies,
 				placementPolicies: [
@@ -170,10 +158,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 	});
 
 	it("rejects with explicit-camp-required when a junction policy locks placement down", async () => {
-		const broker = createBroker({
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({ stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 
 			policies: {
 				...basePolicies,
 				placementPolicies: [
@@ -208,13 +193,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 	});
 
 	it("rejects through the billing plane when the estimate exceeds the spend cap", async () => {
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		});
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
 		const result = await broker.resolve({
 			...baseRequest,
 			spendEstimateUsd: 250,
@@ -226,12 +205,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 	});
 
 	it("rejects through the gate plane when a policy rule denies the resolve action", async () => {
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			gatePlane: createGatekeeperGatePlane({
 				policyPack: {
 					id: "hobo.test/deny-prod",
@@ -260,13 +234,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 	});
 
 	it("rejects with no-eligible-provider when no provider satisfies a port", async () => {
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		});
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
 		const result = await broker.resolve({
 			...baseRequest,
 			requirements: [{ resourceId: "queue", port: "hobo:message-queue" }],
@@ -278,10 +246,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 	});
 
 	it("respects allowed regions and per-requirement region pins", async () => {
-		const broker = createBroker({
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({ stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 
 			policies: {
 				...basePolicies,
 				placementPolicies: [
@@ -314,13 +279,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 
 describe("createBroker.scale — spin resources up and down", () => {
 	it("emits broker.ScaleRequested for a valid directive", async () => {
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		});
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
 		const { directive, events } = broker.scale({
 			resourceId: "api",
 			direction: "zero",
@@ -330,13 +289,7 @@ describe("createBroker.scale — spin resources up and down", () => {
 	});
 
 	it("refuses a zero directive with non-zero replicas", async () => {
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		});
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
 		expect(() =>
 			broker.scale({ resourceId: "api", direction: "zero", replicas: 3 }),
 		).toThrow(BrokerParseError);
@@ -345,13 +298,7 @@ describe("createBroker.scale — spin resources up and down", () => {
 
 describe("createBroker.deliver — Argo-shaped delivery plane", () => {
 	it("renders an Argo CD Application for the receipt under an argo policy", async () => {
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		});
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
 		const resolved = await broker.resolve(baseRequest);
 		expect(resolved.receipt).toBeDefined();
 		const receipt = resolved.receipt;
@@ -411,13 +358,7 @@ describe("effectivePlacementPolicy — scope merge semantics", () => {
 
 describe("broker decision read model", () => {
 	it("folds decision facts into a materialized view and round-trips snapshots", async () => {
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		});
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
 		const resolved = await broker.resolve(baseRequest);
 		const rejected = await broker.resolve({
 			...baseRequest,
@@ -439,10 +380,7 @@ describe("broker decision read model", () => {
 
 describe("connector requirements gate", () => {
 	it("rejects when a required connector kind is not registered", async () => {
-		const broker = createBroker({
-			stationId: "station:test",
-			railHash:
-				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({ stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 
 			policies: {
 				...basePolicies,
 				requiredConnectorKinds: ["github-app"],

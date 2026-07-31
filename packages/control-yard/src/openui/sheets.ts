@@ -4,10 +4,7 @@
  * not free-form LLM chrome. Confirm → pure management functions.
  */
 
-import type {
-	ManagementResult,
-	YardProjectionSnapshot,
-} from "@hobo/management";
+import type { ManagementResult, YardProjectionSnapshot } from "@hobo/management";
 
 export type SheetKind =
 	| "connection.create"
@@ -46,11 +43,9 @@ function field(f: SheetField): SheetField {
 }
 
 /** OpenUI-style progressive stream of sheet definition chunks. */
-export function* streamSheet(sheet: GenerativeSheet): Generator<{
-	type: "chunk" | "done";
-	text?: string;
-	sheet?: GenerativeSheet;
-}> {
+export function* streamSheet(
+	sheet: GenerativeSheet,
+): Generator<{ type: "chunk" | "done"; text?: string; sheet?: GenerativeSheet }> {
 	for (const chunk of sheet.streamChunks) {
 		yield { type: "chunk", text: chunk };
 	}
@@ -200,7 +195,9 @@ export function sheetForCostBooth(
 	});
 }
 
-export function sheetForDoctor(snap?: YardProjectionSnapshot): GenerativeSheet {
+export function sheetForDoctor(
+	snap?: YardProjectionSnapshot,
+): GenerativeSheet {
 	const hazards = snap?.doctor.hazards ?? [];
 	return Object.freeze({
 		kind: "doctor.hazards" as const,
@@ -232,9 +229,15 @@ export type SheetConfirmHandlers = Readonly<{
 		scopes?: string[];
 		stationId?: string;
 	}) => ManagementResult;
-	connectionAuthorize: (input: { idOrAlias: string }) => ManagementResult;
-	stationRailsActivate: (input: { hashOrId: string }) => ManagementResult;
-	stationRailsApprove: (input: { hashOrId: string }) => ManagementResult;
+	connectionAuthorize: (input: {
+		idOrAlias: string;
+	}) => ManagementResult;
+	stationRailsActivate: (input: {
+		hashOrId: string;
+	}) => ManagementResult;
+	stationRailsApprove: (input: {
+		hashOrId: string;
+	}) => ManagementResult;
 	stationRailsPublish: (input: Record<string, unknown>) => ManagementResult;
 	doctorSnapshot: () => ManagementResult;
 }>;

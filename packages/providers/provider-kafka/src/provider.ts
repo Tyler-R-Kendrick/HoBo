@@ -1,6 +1,9 @@
 import { MESSAGING_WIT_INTERFACE } from "@hobo/core";
 
-import { KAFKA_PROVIDER_ID, publishCapabilityManifest } from "./manifest.js";
+import {
+	KAFKA_PROVIDER_ID,
+	publishCapabilityManifest,
+} from "./manifest.js";
 import { createKafkaMessaging } from "./messaging.js";
 import { localRedpandaCluster, realizeKafkaResources } from "./realize.js";
 import type { KafkaBrokerTransport } from "./transport.js";
@@ -34,7 +37,8 @@ export function createKafkaProvider(
 	options: KafkaProviderOptions = {},
 ): KafkaCapabilityProvider {
 	const tenantId = options.tenantId ?? "local";
-	const cluster = options.cluster ?? localRedpandaCluster(tenantId);
+	const cluster =
+		options.cluster ?? localRedpandaCluster(tenantId);
 	const defaultTransport =
 		options.transport ??
 		resolveKafkaTransportFromEnv(options.env ?? process.env);

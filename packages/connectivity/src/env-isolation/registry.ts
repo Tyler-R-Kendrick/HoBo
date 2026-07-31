@@ -134,10 +134,14 @@ export function createEnvNetworkIsolationRegistry(
 					reason: "one or both isolation classes unregistered",
 				};
 			}
-			if (pa.isolationTier === "soft" && pb.isolationTier === "soft") {
+			if (
+				pa.isolationTier === "soft" &&
+				pb.isolationTier === "soft"
+			) {
 				return {
 					isolated: false,
-					reason: "both soft-isolated; rely on PolicyEngine for cross-env deny",
+					reason:
+						"both soft-isolated; rely on PolicyEngine for cross-env deny",
 				};
 			}
 			if (pa.overlayNetworkId === pb.overlayNetworkId) {

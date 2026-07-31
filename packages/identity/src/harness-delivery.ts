@@ -130,7 +130,10 @@ export class OpenDeliveryEngine {
 	 * Advance to next stage or promote. Auto-rollback when health fails and
 	 * policy.autoRollback is true (durable obligation shape).
 	 */
-	step(rolloutId: string, health: DeliveryHealthSignal = {}): RolloutState {
+	step(
+		rolloutId: string,
+		health: DeliveryHealthSignal = {},
+	): RolloutState {
 		const prev = this.require(rolloutId);
 		if (prev.status !== "running") return prev;
 
@@ -153,9 +156,7 @@ export class OpenDeliveryEngine {
 				status: "promoted",
 				percent: 100,
 				gatewayWeightPercent:
-					prev.policy.traffic === "gateway-weighted"
-						? 100
-						: prev.gatewayWeightPercent,
+					prev.policy.traffic === "gateway-weighted" ? 100 : prev.gatewayWeightPercent,
 				updatedAt: t,
 			});
 			this.rollouts.set(rolloutId, promoted);

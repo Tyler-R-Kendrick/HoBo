@@ -348,12 +348,12 @@ describe("multi-tenant isolation + dynamic DNS (pure)", () => {
 		expect(softA.overlay).toBe(softB.overlay);
 		expect(hardA.overlay).not.toBe(hardB.overlay);
 		expect(registry.getControlPlane("hard-a")?.partitionKey).toBe("cp-hard-a");
-		expect(registry.assertNetworkIsolation("hard-a", "hard-b").isolated).toBe(
-			true,
-		);
-		expect(registry.assertNetworkIsolation("soft-a", "soft-b").isolated).toBe(
-			false,
-		);
+		expect(
+			registry.assertNetworkIsolation("hard-a", "hard-b").isolated,
+		).toBe(true);
+		expect(
+			registry.assertNetworkIsolation("soft-a", "soft-b").isolated,
+		).toBe(false);
 	});
 
 	it("registers hierarchical CNAMEs to Funnel gateways on heartbeat", async () => {

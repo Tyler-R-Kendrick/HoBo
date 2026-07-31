@@ -160,9 +160,7 @@ export function createIsolationContext(
 		branch,
 		rootPath,
 		backend,
-		...(options.stationId !== undefined
-			? { stationId: options.stationId }
-			: {}),
+		...(options.stationId !== undefined ? { stationId: options.stationId } : {}),
 		durableRoot,
 		createdAt: new Date().toISOString(),
 		status: "open",
@@ -221,10 +219,7 @@ export function cleanupIsolation(
 
 	if (options.removeBranch) {
 		options.removeBranch(branch);
-	} else if (
-		prior?.projectRoot &&
-		existsSync(join(prior.projectRoot, ".git"))
-	) {
+	} else if (prior?.projectRoot && existsSync(join(prior.projectRoot, ".git"))) {
 		spawnSync("git", ["branch", "-D", branch], {
 			cwd: prior.projectRoot,
 			encoding: "utf8",

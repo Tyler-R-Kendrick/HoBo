@@ -40,7 +40,8 @@ export function createPublicDnsManager(options: {
 	readonly metering?: MeteringBus;
 }): PublicDnsManager {
 	const config = options.config;
-	const allowed = config.allowedGatewaySuffixes ?? DEFAULT_GATEWAY_SUFFIXES;
+	const allowed =
+		config.allowedGatewaySuffixes ?? DEFAULT_GATEWAY_SUFFIXES;
 	const metering = options.metering;
 
 	async function buildRecord(input: {

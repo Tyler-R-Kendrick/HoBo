@@ -113,11 +113,7 @@ export function createYardRuntimeCatalog(): {
 		snapshot() {
 			const list = [...runtimes.values()].sort((a, b) => {
 				if (a.priority !== b.priority) return b.priority - a.priority;
-				return a.runtimeId < b.runtimeId
-					? -1
-					: a.runtimeId > b.runtimeId
-						? 1
-						: 0;
+				return a.runtimeId < b.runtimeId ? -1 : a.runtimeId > b.runtimeId ? 1 : 0;
 			});
 			const body = {
 				schemaVersion: YARD_RUNTIME_CATALOG_SCHEMA,

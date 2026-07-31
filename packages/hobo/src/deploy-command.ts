@@ -35,10 +35,12 @@ export function createDeployCommand(
 				deps.fixtures ??
 				createContractAssertedCdFixtures({
 					tenant,
-					environment: (typeof f.env === "string" && f.env) || "local-dev",
+					environment:
+						(typeof f.env === "string" && f.env) || "local-dev",
 				});
 			const plane =
-				deps.plane ?? createContinuousDeliveryPlane({ mode: "simulate" });
+				deps.plane ??
+				createContinuousDeliveryPlane({ mode: "simulate" });
 			const sub = (args[0] ?? "status") as string;
 
 			if (!(SUBS as readonly string[]).includes(sub)) {
@@ -68,7 +70,9 @@ export function createDeployCommand(
 			}
 
 			if (sub === "status") {
-				emitProgress(`deploy status deployment=${last.apply.deploymentId}`);
+				emitProgress(
+					`deploy status deployment=${last.apply.deploymentId}`,
+				);
 				const statuses = await plane.status(
 					fixtures.set,
 					last.apply.deploymentId,
@@ -98,7 +102,8 @@ export function createDeployCommand(
 							? {
 									status: last.progressive.status,
 									percent: last.progressive.percent,
-									gatewayWeightPercent: last.progressive.gatewayWeightPercent,
+									gatewayWeightPercent:
+										last.progressive.gatewayWeightPercent,
 									flagPercent: last.progressive.flagPercent,
 									flagKillSwitch: last.progressive.flagKillSwitch,
 								}
@@ -119,12 +124,20 @@ export function createDeployCommand(
 				const lines =
 					last.logLines.length > 0
 						? last.logLines
-						: events.map((e) =>
-								`${e.time} ${e.type} ${JSON.stringify(e.data)}`.slice(0, 500),
+						: events.map(
+								(e) =>
+									`${e.time} ${e.type} ${JSON.stringify(e.data)}`.slice(
+										0,
+										500,
+									),
 							);
 				for (const line of lines) {
 					// Ensure no plaintext secret patterns leak into CLI logs.
-					if (/(?:AKIA[0-9A-Z]{16}|password=|apiToken":\s*"[^s])/i.test(line)) {
+					if (
+						/(?:AKIA[0-9A-Z]{16}|password=|apiToken":\s*"[^s])/i.test(
+							line,
+						)
+					) {
 						return {
 							ok: false,
 							status: "secret_leak",

@@ -5,7 +5,11 @@
 import { randomUUID } from "node:crypto";
 
 import type { TrailDefinition } from "./definition.js";
-import { createTrailEvent, TRAIL_EVENTS, type TrailEvent } from "./events.js";
+import {
+	createTrailEvent,
+	TRAIL_EVENTS,
+	type TrailEvent,
+} from "./events.js";
 
 // public-contract: trail run state machine.
 export const TRAIL_RUN_STATES = Object.freeze([
@@ -122,13 +126,10 @@ export class TrailRunService {
 			...prev.completedSteps.filter((s) => s !== stepId),
 			stepId,
 		]);
-		return this.transition(
-			prev.state === "planned" ? "dual-active" : prev.state,
-			{
-				completedSteps: completed,
-				currentStepId: stepId,
-			},
-		);
+		return this.transition(prev.state === "planned" ? "dual-active" : prev.state, {
+			completedSteps: completed,
+			currentStepId: stepId,
+		});
 	}
 
 	markValidated(): TrailRunRecord {
@@ -205,10 +206,7 @@ export class TrailRunService {
 	): TrailRunRecord {
 		const prev = this.require();
 		// Allow compensating out of cutover (late dual/junction failure).
-		if (
-			isTerminal(prev.state) &&
-			!(prev.state === "cutover" && state === "compensated")
-		) {
+		if (isTerminal(prev.state) && !(prev.state === "cutover" && state === "compensated")) {
 			if (prev.state !== state) {
 				throw Object.assign(
 					new Error(`trail run already terminal: ${prev.state}`),

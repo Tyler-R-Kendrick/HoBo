@@ -139,9 +139,7 @@ export type FailureDecisionInput = Readonly<{
  * Unknown blast radius, non-reversible, over-spend, self-causation, or
  * exhausted attempts → fail closed to A2H.
  */
-export function decideFailurePath(
-	input: FailureDecisionInput,
-): FailureDisposition {
+export function decideFailurePath(input: FailureDecisionInput): FailureDisposition {
 	const now = input.now ?? (() => new Date().toISOString());
 	const t = now();
 	const incidentId = `inc_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
@@ -174,8 +172,11 @@ export function decideFailurePath(
 	});
 
 	const a2h = (): FailureDisposition => {
-		const deadlineMs = (input.deadlineMinutes ?? 30) * 60 * 1000;
-		const deadline = new Date(new Date(t).getTime() + deadlineMs).toISOString();
+		const deadlineMs =
+			(input.deadlineMinutes ?? 30) * 60 * 1000;
+		const deadline = new Date(
+			new Date(t).getTime() + deadlineMs,
+		).toISOString();
 		const obligationId = `obl:a2h:${incidentId}`;
 		const handoff: A2HHandoffPackage = Object.freeze({
 			schemaVersion: INCIDENT_CD_SCHEMA,

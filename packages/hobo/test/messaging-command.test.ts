@@ -14,11 +14,7 @@ function runInput(args: string[] = []) {
 
 describe("createMessagingCommand", () => {
 	it("status reports kafka + dapr readiness", async () => {
-		const cmd = createMessagingCommand({
-			env: {},
-			tenantId: "acme",
-			campId: "prod",
-		});
+		const cmd = createMessagingCommand({ env: {}, tenantId: "acme", campId: "prod" });
 		const result = await cmd.run(runInput(["status"]));
 		expect(result.ok).toBe(true);
 		expect(result.data).toMatchObject({
@@ -55,11 +51,8 @@ describe("createMessagingCommand", () => {
 		const cmd = createMessagingCommand({ env: {}, tenantId: "acme" });
 		const result = await cmd.run(runInput(["realize", "orders"]));
 		expect(result.ok).toBe(true);
-		const realized = (
-			result.data as {
-				realized: { secretless: boolean; messagingBackend: string };
-			}
-		).realized;
+		const realized = (result.data as { realized: { secretless: boolean; messagingBackend: string } })
+			.realized;
 		expect(realized.secretless).toBe(true);
 		expect(realized.messagingBackend).toBe("native-kafka");
 	});

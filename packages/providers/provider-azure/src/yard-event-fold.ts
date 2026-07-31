@@ -51,7 +51,9 @@ export function normalizeAzureYardSignal(
 						providerId: "azure",
 						status: "started",
 						externalRefs: {
-							resourceGroup: String(p.resourceGroup ?? p.name ?? ""),
+							resourceGroup: String(
+								p.resourceGroup ?? p.name ?? "",
+							),
 							subscriptionRef: String(p.subscriptionRef ?? ""),
 						},
 					},
@@ -176,7 +178,9 @@ function azureYardFromPayload(
 		runtimeId: String(p.runtimeId ?? "azure.yard-runtime/v1"),
 		shape: {
 			providerId: "azure",
-			regions: Array.isArray(p.regions) ? p.regions.map(String) : ["eastus2"],
+			regions: Array.isArray(p.regions)
+				? p.regions.map(String)
+				: ["eastus2"],
 			require: ["managed-container-substrate", "private-network"],
 			prefer: [],
 			residency: [],
@@ -189,7 +193,9 @@ function azureYardFromPayload(
 					? { "azure.subscriptionRef": p.subscriptionRef }
 					: {}),
 				...(p.tenantRef ? { "azure.tenantRef": p.tenantRef } : {}),
-				...(p.resourceGroup ? { "azure.resourceGroup": p.resourceGroup } : {}),
+				...(p.resourceGroup
+					? { "azure.resourceGroup": p.resourceGroup }
+					: {}),
 			},
 			camps: [],
 		},

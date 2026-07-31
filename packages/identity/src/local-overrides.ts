@@ -26,9 +26,7 @@ function fail(code: string, message: string): never {
 }
 
 function deriveKey(passphrase: string): Buffer {
-	return createHash("sha256")
-		.update(`hobo-local-override:${passphrase}`)
-		.digest();
+	return createHash("sha256").update(`hobo-local-override:${passphrase}`).digest();
 }
 
 /**

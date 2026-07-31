@@ -39,11 +39,9 @@ describe("resolveLocalBindings", () => {
 			resolveLocalBindings(
 				{ schemaVersion: "hobo.wiring-manifest/v1", resources: {} } as never,
 				prod,
-				{
-					async resolve() {
-						return { value: "x" };
-					},
-				} as never,
+				{ async resolve() {
+					return { value: "x" };
+				} } as never,
 			),
 		).rejects.toThrow(/requires local provider/);
 	});

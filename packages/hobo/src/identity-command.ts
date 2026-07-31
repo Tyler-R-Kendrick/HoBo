@@ -130,7 +130,8 @@ export function createIdentityCommand(
 						ok: false,
 						status: "usage",
 						code: "HOBO_IDENTITY_INSPECT_USAGE",
-						message: "hobo identity inspect requires <migrationId>",
+						message:
+							"hobo identity inspect requires <migrationId>",
 						remediation: [
 							"Run `hobo identity status` to list active migration state.",
 						],

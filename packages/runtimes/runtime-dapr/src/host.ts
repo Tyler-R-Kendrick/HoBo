@@ -12,7 +12,10 @@ import {
 	kafkaPubsubComponent,
 	scopesFromAllow,
 } from "./components.js";
-import { defaultDaprRuntimeConfig, parseDaprRuntimeConfig } from "./config.js";
+import {
+	defaultDaprRuntimeConfig,
+	parseDaprRuntimeConfig,
+} from "./config.js";
 import type { DaprSidecarClient } from "./dapr-client.js";
 import { resolveDaprClientFromEnv } from "./dapr-client.js";
 import { diagnoseDaprReadiness } from "./doctor.js";

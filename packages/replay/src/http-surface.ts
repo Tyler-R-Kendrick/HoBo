@@ -42,7 +42,10 @@ import {
 } from "./privacy.js";
 import { applyRetention } from "./retention.js";
 import { createReplayService } from "./service.js";
-import { createMemoryDualFixtures, type DualFixtureStore } from "./storage.js";
+import {
+	createMemoryDualFixtures,
+	type DualFixtureStore,
+} from "./storage.js";
 import {
 	parseSessionRecord,
 	REPLAY_SCHEMA_VERSION,
@@ -239,7 +242,8 @@ export function createReplayHttpSurface(input?: {
 
 		// Kill switch for ingest-like routes.
 		const kill =
-			headers["x-hobo-replay"] === "0" || headers["x-hobo-replay"] === "false";
+			headers["x-hobo-replay"] === "0" ||
+			headers["x-hobo-replay"] === "false";
 
 		if (request.method === "POST" && matchChunks(path)) {
 			if (kill) {
@@ -732,3 +736,4 @@ function json(status: number, body: unknown): ReplayHttpResponse {
 		body,
 	});
 }
+

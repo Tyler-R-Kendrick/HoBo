@@ -24,9 +24,7 @@ export type TrailGoldenVerdict = Readonly<{
 	evidence: Readonly<Record<string, unknown>>;
 }>;
 
-export function goldenDualConsistency(
-	result: TrailRunResult,
-): TrailGoldenVerdict {
+export function goldenDualConsistency(result: TrailRunResult): TrailGoldenVerdict {
 	const dataOk = result.dataResults.every((d) => d.consistent);
 	const identityOk =
 		!result.run.identityLinked ||
@@ -174,9 +172,7 @@ export function goldenIdentityHandsOff(input: {
 	});
 }
 
-export function goldenJunctionIntegrity(
-	result: TrailRunResult,
-): TrailGoldenVerdict {
+export function goldenJunctionIntegrity(result: TrailRunResult): TrailGoldenVerdict {
 	const ok = result.run.junctionOk || result.compensated;
 	return Object.freeze({
 		schemaVersion: TRAIL_GOLDEN_SCHEMA,

@@ -30,10 +30,7 @@ function deepFreeze<T>(value: T): T {
  * Declare a Station Bindle shape. Full dogfood parallel to yard()/junction().
  * Connections and Rails remain Station aggregates (not Bindle graph resources).
  */
-export function station(
-	name: string,
-	config: StationConfig = { isolation: {} },
-): Station {
+export function station(name: string, config: StationConfig = { isolation: {} }): Station {
 	requireName("station name", name);
 	if (!config || typeof config !== "object") {
 		throw new TypeError("station config must be an object");

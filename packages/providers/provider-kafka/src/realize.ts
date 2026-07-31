@@ -25,8 +25,7 @@ export function realizeKafkaResources(
 		parseKafkaTopicResource({
 			...(t as object),
 			cluster: (t as { cluster?: string }).cluster ?? cluster.name,
-			tenantId:
-				(t as { tenantId?: string; tenant_id?: string }).tenantId ??
+			tenantId: (t as { tenantId?: string; tenant_id?: string }).tenantId ??
 				(t as { tenant_id?: string }).tenant_id ??
 				cluster.tenantId,
 		}),

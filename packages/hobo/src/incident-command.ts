@@ -31,9 +31,11 @@ export function createIncidentCommand(
 				deps.env?.HOBO_TENANT ||
 				"local";
 			const fixtures =
-				deps.fixtures ?? createContractAssertedCdFixtures({ tenant });
+				deps.fixtures ??
+				createContractAssertedCdFixtures({ tenant });
 			const plane =
-				deps.plane ?? createContinuousDeliveryPlane({ mode: "simulate" });
+				deps.plane ??
+				createContinuousDeliveryPlane({ mode: "simulate" });
 			const sub = (args[0] ?? "status") as string;
 
 			if (!(SUBS as readonly string[]).includes(sub)) {
@@ -82,7 +84,8 @@ export function createIncidentCommand(
 				};
 			}
 
-			const signal = (typeof f.signal === "string" && f.signal) || "slo-burn";
+			const signal =
+				(typeof f.signal === "string" && f.signal) || "slo-burn";
 			const withSelfHeal =
 				f["self-heal"] === true ||
 				f.selfHeal === true ||
@@ -149,7 +152,8 @@ export function createIncidentCommand(
 								handoff: {
 									obligationId: result.failure.handoff.obligationId,
 									deadline: result.failure.handoff.deadline,
-									decisionRequired: result.failure.handoff.decisionRequired,
+									decisionRequired:
+										result.failure.handoff.decisionRequired,
 								},
 							}
 						: {}),
@@ -157,7 +161,8 @@ export function createIncidentCommand(
 						? {
 								laneId: result.failure.lane.laneId,
 								baselineMutation: result.failure.lane.baselineMutation,
-								proposedDelta: result.failure.attempt.proposedDelta?.deltaId,
+								proposedDelta:
+									result.failure.attempt.proposedDelta?.deltaId,
 								promotionPath:
 									result.failure.attempt.proposedDelta?.promotionPath,
 							}

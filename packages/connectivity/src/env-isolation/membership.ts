@@ -2,11 +2,7 @@
  * High-integrity control-plane env membership.
  * Isolation-critical env: tags cannot be self-assigned by clients.
  */
-import {
-	createAccessEvent,
-	ACCESS_EVENTS,
-	type AccessEvent,
-} from "./events.js";
+import { createAccessEvent, ACCESS_EVENTS, type AccessEvent } from "./events.js";
 import {
 	type IsolationClass,
 	isExpired,
@@ -114,10 +110,7 @@ export class EnvMembershipService {
 				: Object.freeze([] as string[]),
 			controlPlaneGated: true as const,
 		});
-		this.members.set(
-			membershipKey(input.principalId, input.isolationClass),
-			record,
-		);
+		this.members.set(membershipKey(input.principalId, input.isolationClass), record);
 		this.events.push(
 			createAccessEvent({
 				type: ACCESS_EVENTS.MembershipAssigned,
@@ -181,7 +174,10 @@ export class EnvMembershipService {
 	 * Resolve principal's active isolation class from control-plane records.
 	 * Prefer production > staging > development > … for multi-membership (rare).
 	 */
-	resolveClass(principalId: string, now?: string): IsolationClass | null {
+	resolveClass(
+		principalId: string,
+		now?: string,
+	): IsolationClass | null {
 		const priority: IsolationClass[] = [
 			"production",
 			"staging",

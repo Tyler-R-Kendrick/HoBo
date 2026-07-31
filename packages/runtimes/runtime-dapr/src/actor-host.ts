@@ -8,7 +8,11 @@
  * native ActorHost conformance assertions.
  */
 
-import { createUsageEvent, type MeteringBus, type TenantId } from "@hobo/core";
+import {
+	createUsageEvent,
+	type MeteringBus,
+	type TenantId,
+} from "@hobo/core";
 
 import type { DaprSidecarClient } from "./dapr-client.js";
 import type { DaprRuntimeConfig } from "./types.js";
@@ -116,16 +120,15 @@ export function createDaprActorHost(
 		string,
 		{
 			initial: unknown;
-			fold: (
-				s: unknown,
-				e: { type: string; [key: string]: unknown },
-			) => unknown;
+			fold: (s: unknown, e: { type: string; [key: string]: unknown }) => unknown;
 		}
 	>();
 	const lifecycle: DaprActorLifecycleEvent[] = [];
 	let reminderSeq = 0;
 
-	const emit = (e: Omit<DaprActorLifecycleEvent, "at" | "placement">) => {
+	const emit = (
+		e: Omit<DaprActorLifecycleEvent, "at" | "placement">,
+	) => {
 		lifecycle.push(
 			Object.freeze({
 				...e,

@@ -53,7 +53,9 @@ export type AssetIndex = Readonly<{
 	backgrounds?: Readonly<Record<string, ImageDef>>;
 	images?: Readonly<Record<string, ImageDef>>;
 	spritesheets: Readonly<Record<string, SpritesheetDef>>;
-	animationIds: Readonly<Record<string, { sheet: string; animation: string }>>;
+	animationIds: Readonly<
+		Record<string, { sheet: string; animation: string }>
+	>;
 	zoneAssetKeys?: Readonly<Record<string, string>>;
 }>;
 
@@ -82,7 +84,9 @@ export function resolveAnimation(
 	}
 	const animation = sheet.animations[ref.animation];
 	if (!animation) {
-		throw new Error(`unknown animation ${ref.animation} on sheet ${ref.sheet}`);
+		throw new Error(
+			`unknown animation ${ref.animation} on sheet ${ref.sheet}`,
+		);
 	}
 	return { sheet, animation };
 }

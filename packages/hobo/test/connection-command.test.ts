@@ -18,11 +18,7 @@ describe("hobo connection command", () => {
 
 		const created = await cmd.run({
 			context: { cwd: hoboHome },
-			flags: {
-				alias: "work",
-				scopes: "tasks:read,tasks:write",
-				home: hoboHome,
-			},
+			flags: { alias: "work", scopes: "tasks:read,tasks:write", home: hoboHome },
 			args: ["create", "asana"],
 			emitProgress: () => {},
 		});
@@ -37,7 +33,8 @@ describe("hobo connection command", () => {
 		});
 		expect(authorized.ok).toBe(true);
 		expect(
-			(authorized.data as { connection: { status: string } }).connection.status,
+			(authorized.data as { connection: { status: string } }).connection
+				.status,
 		).toBe("active");
 
 		const listed = await cmd.run({

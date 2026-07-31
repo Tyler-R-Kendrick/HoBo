@@ -3,7 +3,10 @@
  * Matching/policy decisions auto-start dual path; Harness flags ramp; dual oracle
  * health auto-aborts. Zero Bindle configuration required.
  */
-import { dualVerifyClaims, type AdapterClaims } from "./dual-adapter.js";
+import {
+	dualVerifyClaims,
+	type AdapterClaims,
+} from "./dual-adapter.js";
 import {
 	FeatureFlagStore,
 	migrationCohortFlagKey,
@@ -105,7 +108,9 @@ export class IdentityMigrationControlPlane {
 	 * Matching / policy / yard-move entrypoint.
 	 * Continuous dual path starts automatically when decision says so.
 	 */
-	onMatchingDecision(input: MatchingMigrationInput): ControlPlaneProgress {
+	onMatchingDecision(
+		input: MatchingMigrationInput,
+	): ControlPlaneProgress {
 		const decision = decideIdentityMigration({
 			...input,
 			tenant: input.tenant || this.tenant,

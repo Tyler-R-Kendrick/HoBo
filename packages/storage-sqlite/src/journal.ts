@@ -170,10 +170,7 @@ export class SqliteJournal {
 		// Pre-txn idempotency lookup for already-committed keys (also re-checked in txn)
 		for (const input of inputs) {
 			if (input.idempotencyKey) {
-				const existing = this.findByIdempotencyKey(
-					streamId,
-					input.idempotencyKey,
-				);
+				const existing = this.findByIdempotencyKey(streamId, input.idempotencyKey);
 				if (existing) {
 					deduped.push(existing);
 					continue;
@@ -353,7 +350,9 @@ export class SqliteJournal {
 			const effectReceipts: DurableEffectReceipt[] = [];
 			const createdPosition = lastPosition ?? 0n;
 			for (const effect of effects) {
-				effectReceipts.push(this.stageEffect(effect, now, createdPosition));
+				effectReceipts.push(
+					this.stageEffect(effect, now, createdPosition),
+				);
 			}
 
 			// In-batch duplicate keys → deduped as the just-appended event
@@ -395,7 +394,10 @@ export class SqliteJournal {
 		}
 	}
 
-	async *read(streamId: string, fromSeq = 1): AsyncIterable<EventEnvelope> {
+	async *read(
+		streamId: string,
+		fromSeq = 1,
+	): AsyncIterable<EventEnvelope> {
 		const id = requireNonEmpty(streamId, "streamId");
 		const start = requireNonNegInt(fromSeq, "fromSeq");
 		const rows = this.db
@@ -413,7 +415,9 @@ export class SqliteJournal {
 		}
 	}
 
-	async *readAll(options: ReadAllOptions = {}): AsyncIterable<PositionedEvent> {
+	async *readAll(
+		options: ReadAllOptions = {},
+	): AsyncIterable<PositionedEvent> {
 		const after =
 			options.after !== undefined
 				? parseEventPosition(options.after, "after")
@@ -520,9 +524,7 @@ export class SqliteJournal {
 		});
 	}
 
-	async loadSnapshot<S>(
-		streamId: string,
-	): Promise<SnapshotRecord<S> | undefined> {
+	async loadSnapshot<S>(streamId: string): Promise<SnapshotRecord<S> | undefined> {
 		const id = requireNonEmpty(streamId, "streamId");
 		const row = this.db
 			.prepare(
@@ -646,7 +648,13 @@ export class SqliteJournal {
              SET holder_id = ?, fence_token = ?, expires_at = ?
              WHERE subscription_id = ? AND partition_id = ?`,
 					)
-					.run(holderId, fenceToken, expiresAt, subscriptionId, partitionId);
+					.run(
+						holderId,
+						fenceToken,
+						expiresAt,
+						subscriptionId,
+						partitionId,
+					);
 			} else {
 				fenceToken = 1n;
 				this.db
@@ -655,7 +663,13 @@ export class SqliteJournal {
              (subscription_id, partition_id, holder_id, fence_token, expires_at)
              VALUES (?, ?, ?, ?, ?)`,
 					)
-					.run(subscriptionId, partitionId, holderId, fenceToken, expiresAt);
+					.run(
+						subscriptionId,
+						partitionId,
+						holderId,
+						fenceToken,
+						expiresAt,
+					);
 			}
 			this.db.commit();
 			return Object.freeze({
@@ -690,10 +704,7 @@ export class SqliteJournal {
 			.get(subscriptionId, partitionId);
 		if (!row) return undefined;
 		return Object.freeze({
-			subscriptionId: asText(
-				row.subscription_id,
-				"subscription_id",
-			) as SubscriptionId,
+			subscriptionId: asText(row.subscription_id, "subscription_id") as SubscriptionId,
 			partitionId: asText(row.partition_id, "partition_id") as PartitionId,
 			position: asBigInt(row.position, "position") as EventPosition,
 			fenceToken: asBigInt(row.fence_token, "fence_token") as FenceToken,
@@ -829,7 +840,10 @@ export class SqliteJournal {
 		const now = this.clock.now();
 		const messageId =
 			input.messageId ??
-			createDeterministicId("msg", [input.queueName, input.idempotencyKey]);
+			createDeterministicId("msg", [
+				input.queueName,
+				input.idempotencyKey,
+			]);
 		const existing = this.db
 			.prepare(
 				`SELECT message_id FROM queue_messages
@@ -923,7 +937,13 @@ export class SqliteJournal {
                  delivery_attempt = ?
              WHERE message_id = ? AND state = 'pending'`,
 					)
-					.run(input.leaseId, input.leaseFence, expiresAt, attempt, messageId);
+					.run(
+						input.leaseId,
+						input.leaseFence,
+						expiresAt,
+						attempt,
+						messageId,
+					);
 				const codec = asText(row.body_codec, "body_codec");
 				leased.push({
 					messageId,
@@ -1067,7 +1087,10 @@ export class SqliteJournal {
 
 	// ── Timers ──────────────────────────────────────────────────────────────
 
-	claimDueTimers(input: { limit: number; now?: string }): Array<{
+	claimDueTimers(input: {
+		limit: number;
+		now?: string;
+	}): Array<{
 		timerId: string;
 		timerKind: string;
 		subjectId: string;
@@ -1286,9 +1309,7 @@ export class SqliteJournal {
 			}
 			case "cron": {
 				const existing = this.db
-					.prepare(
-						`SELECT schedule_id FROM cron_schedules WHERE schedule_id = ?`,
-					)
+					.prepare(`SELECT schedule_id FROM cron_schedules WHERE schedule_id = ?`)
 					.get(effect.scheduleId);
 				if (existing) {
 					this.db
@@ -1379,9 +1400,7 @@ export class SqliteJournal {
 			}
 			default: {
 				const _exhaustive: never = effect;
-				throw new TypeError(
-					`unknown effect kind: ${JSON.stringify(_exhaustive)}`,
-				);
+				throw new TypeError(`unknown effect kind: ${JSON.stringify(_exhaustive)}`);
 			}
 		}
 	}

@@ -17,7 +17,11 @@
 // public-contract: world adapter schema.
 export const CODE_WORLD_SCHEMA = "hobo.code.world/v1" as const;
 
-export type CodeWorldKind = "local" | "vercel" | "postgres" | "embedded";
+export type CodeWorldKind =
+	| "local"
+	| "vercel"
+	| "postgres"
+	| "embedded";
 
 /**
  * World supplies the three durable-runtime primitives Workflows need.

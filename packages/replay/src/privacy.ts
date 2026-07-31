@@ -37,28 +37,22 @@ export function shouldMaskNode(
 	const attrs = ctx.attributes ?? {};
 	for (const sel of policy.maskSelectors) {
 		if (sel.startsWith("[") && sel.endsWith("]")) {
-			const attr = sel
-				.slice(1, -1)
-				.split("=")[0]
-				?.replace(/^data-/, "data-");
+			const attr = sel.slice(1, -1).split("=")[0]?.replace(/^data-/, "data-");
 			// Attribute presence selectors like [data-hobo-mask]
 			const bare = sel.slice(1, -1);
 			if (!bare.includes("=") && bare in attrs) return true;
-			if (
-				bare.startsWith("type=") &&
-				type === bare.slice(5).replace(/['"]/g, "")
-			) {
+			if (bare.startsWith("type=") && type === bare.slice(5).replace(/['"]/g, "")) {
 				return true;
 			}
 			if (attr && attr in attrs) return true;
 		}
-		if (
-			sel.startsWith(".") &&
-			ctx.selectorHints?.some((h) => h.includes(sel.slice(1)))
-		) {
+		if (sel.startsWith(".") && ctx.selectorHints?.some((h) => h.includes(sel.slice(1)))) {
 			return true;
 		}
-		if (sel.includes("input[type=") && SENSITIVE_INPUT_TYPES.has(type)) {
+		if (
+			sel.includes("input[type=") &&
+			SENSITIVE_INPUT_TYPES.has(type)
+		) {
 			return true;
 		}
 	}
@@ -126,8 +120,7 @@ function deepMask(
 	}
 	const obj = value as Record<string, unknown>;
 	const out: Record<string, unknown> = {};
-	const tag =
-		typeof obj.tagName === "string" ? obj.tagName.toLowerCase() : undefined;
+	const tag = typeof obj.tagName === "string" ? obj.tagName.toLowerCase() : undefined;
 	const attrs =
 		obj.attributes && typeof obj.attributes === "object"
 			? (obj.attributes as Record<string, string>)
@@ -163,7 +156,12 @@ function deepMask(
 			continue;
 		}
 		// Network plugin redaction: strip Authorization and cookie headers.
-		if (k === "headers" && v && typeof v === "object" && !Array.isArray(v)) {
+		if (
+			k === "headers" &&
+			v &&
+			typeof v === "object" &&
+			!Array.isArray(v)
+		) {
 			const headers = { ...(v as Record<string, unknown>) };
 			for (const h of Object.keys(headers)) {
 				if (/^(authorization|cookie|set-cookie|x-api-key)$/i.test(h)) {

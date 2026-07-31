@@ -37,10 +37,7 @@ import {
 } from "@hobo/core";
 
 import type { KafkaBrokerTransport } from "./transport.js";
-import {
-	KAFKA_MESSAGING_CAPABILITIES,
-	type KafkaClusterSpec,
-} from "./types.js";
+import { KAFKA_MESSAGING_CAPABILITIES, type KafkaClusterSpec } from "./types.js";
 
 export interface KafkaMessagingOptions {
 	readonly cluster: KafkaClusterSpec;
@@ -348,7 +345,8 @@ export function createKafkaMessaging(
 					);
 					handled += 1;
 				} catch (err) {
-					const reason = err instanceof Error ? err.message : String(err);
+					const reason =
+						err instanceof Error ? err.message : String(err);
 					if (message.deliveryAttempt >= maxAttempts) {
 						// Permanent: commit under the still-held lease (do not nack first —
 						// release drops inflight and makes commit fail with lease mismatch).
@@ -412,7 +410,14 @@ export function createKafkaMessaging(
 				throw new MessagingDeliveryError(`no inflight kafka message ${id}`);
 			}
 			pendingOps.push(
-				nackAsync(transport, pendingCommits, id, lease, reason, emitLocal),
+				nackAsync(
+					transport,
+					pendingCommits,
+					id,
+					lease,
+					reason,
+					emitLocal,
+				),
 			);
 		},
 

@@ -11,7 +11,11 @@ function nonEmpty(value: unknown, field: string): string {
 
 export function parseDaprDeployMode(value: unknown): DaprDeployMode {
 	if (value === "self-hosted" || value === "kubernetes") return value;
-	throw new MessagingParseError("mode", "self-hosted|kubernetes", value);
+	throw new MessagingParseError(
+		"mode",
+		"self-hosted|kubernetes",
+		value,
+	);
 }
 
 /**

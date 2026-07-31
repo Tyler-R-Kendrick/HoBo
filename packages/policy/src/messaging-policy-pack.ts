@@ -15,15 +15,13 @@ export interface MessagingPolicyPack {
 	readonly denyCrossTenantMessaging: true;
 }
 
-export const DEFAULT_MESSAGING_POLICY_PACK: MessagingPolicyPack = Object.freeze(
-	{
-		id: MESSAGING_POLICY_PACK_ID,
-		requireExactlyOnceIn: ["prod", "production"],
-		denyDaprIn: ["prod-regulated", "air-gap"],
-		maxTopicsPerTenant: 100,
-		denyCrossTenantMessaging: true,
-	},
-);
+export const DEFAULT_MESSAGING_POLICY_PACK: MessagingPolicyPack = Object.freeze({
+	id: MESSAGING_POLICY_PACK_ID,
+	requireExactlyOnceIn: ["prod", "production"],
+	denyDaprIn: ["prod-regulated", "air-gap"],
+	maxTopicsPerTenant: 100,
+	denyCrossTenantMessaging: true,
+});
 
 export interface MessagingPolicyEvaluation {
 	readonly allowed: boolean;

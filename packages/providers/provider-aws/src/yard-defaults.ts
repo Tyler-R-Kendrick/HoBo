@@ -49,7 +49,10 @@ export function awsYardRuntimeRegistration(options?: {
 		generatorKind: "aws",
 		default: true,
 		priority: options?.priority ?? 100,
-		requiredPermissions: Object.freeze(["ecs:CreateCluster", "ec2:CreateVpc"]),
+		requiredPermissions: Object.freeze([
+			"ecs:CreateCluster",
+			"ec2:CreateVpc",
+		]),
 		conformanceRef: "hobo://conformance/aws-yard/v1",
 		conformanceHash: "sha256:aws-yard-conformance-v1",
 		status: options?.status ?? "approved",

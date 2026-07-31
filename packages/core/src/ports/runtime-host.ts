@@ -16,7 +16,9 @@ export const HOBO_RUNTIME_HOST_KINDS = [
 
 export type HoboRuntimeHostKind = (typeof HOBO_RUNTIME_HOST_KINDS)[number];
 
-export type FetchHandler = (input: Request) => Response | Promise<Response>;
+export type FetchHandler = (
+	input: Request,
+) => Response | Promise<Response>;
 
 export interface RuntimeEnsureContext {
 	readonly hoboHome: string;
@@ -76,9 +78,7 @@ export interface HoboRuntimeHost {
 	servePrivate(ctx: ServePrivateContext): Promise<PrivateServeResult>;
 }
 
-export function isHoboRuntimeHostKind(
-	value: unknown,
-): value is HoboRuntimeHostKind {
+export function isHoboRuntimeHostKind(value: unknown): value is HoboRuntimeHostKind {
 	return (
 		typeof value === "string" &&
 		(HOBO_RUNTIME_HOST_KINDS as readonly string[]).includes(value)

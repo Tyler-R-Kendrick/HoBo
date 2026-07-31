@@ -10,7 +10,10 @@
  * - Tracker surface code kept < ~15KB gzipped beyond rrweb core
  */
 import { createReplayEvent, REPLAY_EVENTS } from "./events.js";
-import { assertNoSensitivePlaintext, maskRrwebEvents } from "./privacy.js";
+import {
+	assertNoSensitivePlaintext,
+	maskRrwebEvents,
+} from "./privacy.js";
 import {
 	evaluateRecordingPolicy,
 	type RecordingDecision,
@@ -245,15 +248,21 @@ export function createTracker(options: TrackerOptions): TrackerHandle {
 			correlation = Object.freeze({
 				...correlation,
 				errorId,
-				...(controlPlaneEventId !== undefined ? { controlPlaneEventId } : {}),
+				...(controlPlaneEventId !== undefined
+					? { controlPlaneEventId }
+					: {}),
 			});
 			const cur = await options.index.get(sessionId);
 			if (cur) {
-				await options.index.upsert(Object.freeze({ ...cur, correlation }));
+				await options.index.upsert(
+					Object.freeze({ ...cur, correlation }),
+				);
 			}
 			emitMeta(REPLAY_EVENTS.ErrorLinked, {
 				errorId,
-				...(controlPlaneEventId !== undefined ? { controlPlaneEventId } : {}),
+				...(controlPlaneEventId !== undefined
+					? { controlPlaneEventId }
+					: {}),
 			});
 		},
 		async stop() {

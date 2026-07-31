@@ -103,9 +103,7 @@ export function createDoctorCommand(
 
 			const remediation = remediationFor(target);
 			if (!stationReport.present) {
-				remediation.push(
-					"Run `hobo station init` for Station occupancy setup.",
-				);
+				remediation.push("Run `hobo station init` for Station occupancy setup.");
 			} else if (stationReport.bootstrapActive === true) {
 				remediation.push(
 					"Bootstrap Rail still active — publish/activate a non-bootstrap Rail for production posture.",

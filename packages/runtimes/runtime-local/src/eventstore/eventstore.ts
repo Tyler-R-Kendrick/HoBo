@@ -27,7 +27,10 @@ import {
 	parseEventEnvelope,
 	SnapshotAheadError,
 } from "@hobo/core";
-import { createNodeSqliteDriver, SqliteJournal } from "@hobo/storage-sqlite";
+import {
+	createNodeSqliteDriver,
+	SqliteJournal,
+} from "@hobo/storage-sqlite";
 
 import {
 	type ParsedAppendContext,

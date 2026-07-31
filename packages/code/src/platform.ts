@@ -15,10 +15,7 @@ import { codeImprovementTrails, cqReflectHook } from "./dogfood.js";
 export interface CodeFeaturePort {
 	readonly evaluateBoolean: (
 		key: string,
-		context: {
-			targetingKey: string;
-			attributes?: Readonly<Record<string, string>>;
-		},
+		context: { targetingKey: string; attributes?: Readonly<Record<string, string>> },
 	) => { value: boolean; reason: string; variant: string };
 	readonly listKeys: () => readonly string[];
 }
@@ -161,11 +158,7 @@ export function bindCodeStation(options: {
 
 	const tryOccupancy = (
 		id: string,
-	): {
-		stationId: string;
-		railHash?: string;
-		bootstrapActive: boolean;
-	} | null => {
+	): { stationId: string; railHash?: string; bootstrapActive: boolean } | null => {
 		try {
 			const client: StationClient = createStationClient({
 				hoboHome: options.hoboHome,
@@ -247,9 +240,7 @@ export function composeCodePlatform(options: {
 }): CodePlatformSnapshot {
 	const station = bindCodeStation({
 		hoboHome: options.hoboHome,
-		...(options.stationId !== undefined
-			? { stationId: options.stationId }
-			: {}),
+		...(options.stationId !== undefined ? { stationId: options.stationId } : {}),
 		autoInit: options.autoInitStation !== false,
 		...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
 	});
@@ -319,7 +310,9 @@ export function createMemoryFeaturePort(
 		evaluateBoolean(key) {
 			const value =
 				flags[key] ??
-				CODE_FEATURE_DEFAULTS[key as keyof typeof CODE_FEATURE_DEFAULTS] ??
+				CODE_FEATURE_DEFAULTS[
+					key as keyof typeof CODE_FEATURE_DEFAULTS
+				] ??
 				true;
 			return {
 				value,

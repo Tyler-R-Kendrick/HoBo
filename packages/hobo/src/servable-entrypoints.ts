@@ -31,7 +31,10 @@ export type ListServableEntrypointsResult = {
 /** HTTP App Kits that host fetch handlers on local Yard / Camp. */
 function isHttpAppKit(kind: string): boolean {
 	return (
-		kind === "api" || kind === "web" || kind === "service" || kind === "ui"
+		kind === "api" ||
+		kind === "web" ||
+		kind === "service" ||
+		kind === "ui"
 	);
 }
 

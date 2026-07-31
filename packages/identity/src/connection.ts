@@ -60,12 +60,7 @@ export type ConnectionPolicyDecision =
 
 export type ConnectionPolicyGate = (input: {
 	subject: ConnectionPrincipalRef;
-	action:
-		| "connection.use"
-		| "connection.authorize"
-		| "connection.revoke"
-		| "connection.rotate"
-		| "connection.create";
+	action: "connection.use" | "connection.authorize" | "connection.revoke" | "connection.rotate" | "connection.create";
 	connectionId?: string;
 	tenant: string;
 	scopes?: readonly string[];
@@ -337,10 +332,10 @@ export class ConnectionService {
 		};
 	}
 
-	rotate(input: { idOrAlias: string; actor: ConnectionPrincipalRef }): {
-		connection: ConnectionView;
-		events: readonly ConnectionEvent[];
-	} {
+	rotate(input: {
+		idOrAlias: string;
+		actor: ConnectionPrincipalRef;
+	}): { connection: ConnectionView; events: readonly ConnectionEvent[] } {
 		const existing = this.require(input.idOrAlias);
 		const decision = this.policyGate({
 			subject: input.actor,
@@ -385,10 +380,10 @@ export class ConnectionService {
 		};
 	}
 
-	markNeedsReauth(input: { idOrAlias: string; reason: string }): {
-		connection: ConnectionView;
-		events: readonly ConnectionEvent[];
-	} {
+	markNeedsReauth(input: {
+		idOrAlias: string;
+		reason: string;
+	}): { connection: ConnectionView; events: readonly ConnectionEvent[] } {
 		const existing = this.require(input.idOrAlias);
 		const event = createConnectionHealthChangedEvent({
 			connectionId: existing.id,
@@ -417,12 +412,7 @@ export class ConnectionService {
 		scopes: readonly string[];
 	}):
 		| { status: "ok"; connection: ConnectionView }
-		| {
-				status: "denied";
-				code: string;
-				reason: string;
-				remediation: string[];
-		  } {
+		| { status: "denied"; code: string; reason: string; remediation: string[] } {
 		let connection: ConnectionView | undefined;
 		if (input.idOrAlias) {
 			connection = this.get(input.idOrAlias);
@@ -443,10 +433,7 @@ export class ConnectionService {
 				provider: input.provider,
 				subjectId: input.subject.id,
 			}).filter((c) =>
-				scopesWithinCeiling(
-					input.scopes,
-					c.grantedScopes.length ? c.grantedScopes : c.requestedScopes,
-				),
+				scopesWithinCeiling(input.scopes, c.grantedScopes.length ? c.grantedScopes : c.requestedScopes),
 			);
 			connection =
 				candidates.find((c) => c.status === "active") ??
@@ -536,9 +523,7 @@ export class ConnectionService {
 				status: "denied",
 				code: decision.code,
 				reason: decision.reason,
-				remediation: [
-					"Request connection.use policy grant for this principal.",
-				],
+				remediation: ["Request connection.use policy grant for this principal."],
 			};
 		}
 		// Subject binding: Connection is bound to subject unless policy shares it.
@@ -597,9 +582,10 @@ export class ConnectionService {
 				typeof event.data.alias === "string" ? event.data.alias : undefined;
 			const stationId = event.data.stationId;
 			if (typeof stationId !== "string" || stationId.length === 0) {
-				throw Object.assign(new Error("connection.Created missing stationId"), {
-					code: "connection-station-required",
-				});
+				throw Object.assign(
+					new Error("connection.Created missing stationId"),
+					{ code: "connection-station-required" },
+				);
 			}
 			const record: ConnectionRecord = Object.freeze({
 				schemaVersion: CONNECTION_SCHEMA_VERSION,
@@ -648,8 +634,7 @@ export class ConnectionService {
 				grantedScopes,
 				...(installationId !== undefined ? { installationId } : {}),
 				...(credentialRef !== undefined ? { credentialRef } : {}),
-				subject:
-					(event.data.subject as ConnectionPrincipalRef) ?? existing.subject,
+				subject: (event.data.subject as ConnectionPrincipalRef) ?? existing.subject,
 				updatedAt: time,
 				seq: event.seq,
 			});
@@ -669,10 +654,7 @@ export class ConnectionService {
 					status,
 					metadata: Object.freeze({
 						...existing.metadata,
-						health:
-							typeof event.data.reason === "string"
-								? event.data.reason
-								: status,
+						health: typeof event.data.reason === "string" ? event.data.reason : status,
 					}),
 					updatedAt: time,
 					seq: event.seq,
@@ -771,10 +753,7 @@ function assertSubjectMayManage(
 	actor: ConnectionPrincipalRef,
 ): void {
 	if (actor.kind === "system") return;
-	if (
-		connection.subject.id !== actor.id &&
-		connection.metadata.createdBy.id !== actor.id
-	) {
+	if (connection.subject.id !== actor.id && connection.metadata.createdBy.id !== actor.id) {
 		throw Object.assign(
 			new Error("only the connection subject or creator may manage it"),
 			{ code: "connection-forbidden" },

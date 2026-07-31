@@ -166,21 +166,21 @@ describe("yard event-store folds + provider resolvers", () => {
 		});
 
 		expect(result.outcome).toBe("resolved");
-		expect(
-			result.events.some((e) => e.type === YARD_EVENTS.PlacementRequested),
-		).toBe(true);
+		expect(result.events.some((e) => e.type === YARD_EVENTS.PlacementRequested)).toBe(
+			true,
+		);
 		expect(result.events.some((e) => e.type === YARD_EVENTS.MatchDecided)).toBe(
 			true,
 		);
-		expect(
-			result.events.some((e) => e.type === YARD_EVENTS.PlacementResolved),
-		).toBe(true);
+		expect(result.events.some((e) => e.type === YARD_EVENTS.PlacementResolved)).toBe(
+			true,
+		);
 		expect(result.foldState.placements[request.requestId]?.outcome).toBe(
 			"resolved",
 		);
-		expect(
-			result.receipt?.resolverPins.some((p) => p.slot === "event-store"),
-		).toBe(true);
+		expect(result.receipt?.resolverPins.some((p) => p.slot === "event-store")).toBe(
+			true,
+		);
 	});
 
 	it("Azure generation connector + fold path when policy allows", async () => {

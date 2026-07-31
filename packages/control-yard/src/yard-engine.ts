@@ -5,7 +5,11 @@
 
 import type { YardProjectionSnapshot } from "@hobo/management";
 
-import { YARD_LAYOUT, zoneAnchor, type ZoneId } from "./layout.js";
+import {
+	YARD_LAYOUT,
+	zoneAnchor,
+	type ZoneId,
+} from "./layout.js";
 import {
 	deriveYardVisualState,
 	stepToward,
@@ -61,7 +65,9 @@ export function createYardEngine(): YardEngine {
 		particles,
 		applySnapshot(snap) {
 			const visual = deriveYardVisualState(snap, {
-				...(engine.selectedZone ? { selectedZone: engine.selectedZone } : {}),
+				...(engine.selectedZone
+					? { selectedZone: engine.selectedZone }
+					: {}),
 			});
 			engine.visual = visual;
 			return visual;
@@ -118,10 +124,7 @@ export function sheetForZone(
 		case "connectionBay": {
 			const pending = snap?.connections.find((c) => c.status === "pending");
 			if (pending) {
-				return sheetForConnectionAuthorize(
-					pending.alias ?? pending.id,
-					snap ?? undefined,
-				);
+				return sheetForConnectionAuthorize(pending.alias ?? pending.id, snap ?? undefined);
 			}
 			return sheetForConnectionCreate(snap ?? undefined);
 		}

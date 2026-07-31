@@ -55,16 +55,18 @@ describe("yard-first placement", () => {
 		).toBe(true);
 		// Bindle destroy must not destroy yard/camp/shared units.
 		const units = result.receipt?.executionUnits ?? [];
-		expect(units.find((u) => u.kind === "yard")?.destroyWithBindle).toBe(false);
+		expect(units.find((u) => u.kind === "yard")?.destroyWithBindle).toBe(
+			false,
+		);
 		expect(units.find((u) => u.kind === "shared")?.destroyWithBindle).toBe(
 			false,
 		);
 		expect(units.find((u) => u.kind === "bindle")?.destroyWithBindle).toBe(
 			true,
 		);
-		expect(
-			result.events.some((e) => e.type === YARD_EVENTS.PlacementResolved),
-		).toBe(true);
+		expect(result.events.some((e) => e.type === YARD_EVENTS.PlacementResolved)).toBe(
+			true,
+		);
 	});
 
 	it("denies generation by default", () => {

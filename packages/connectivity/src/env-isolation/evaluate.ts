@@ -64,9 +64,7 @@ export function evaluateEnvIsolation(
 		if (ctx.engineUnavailable === true) {
 			return {
 				allow: false,
-				reasons: [
-					"policy engine / overlay control plane unavailable — fail closed",
-				],
+				reasons: ["policy engine / overlay control plane unavailable — fail closed"],
 				subjectClass: null,
 				resourceClass: null,
 				code: "engine-unavailable",

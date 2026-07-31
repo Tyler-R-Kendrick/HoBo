@@ -29,10 +29,11 @@ describe("storage-sqlite journal consumer boundary", () => {
 		expect(first.firstPosition).toBe(1n);
 
 		await expect(
-			journal.append("order:1", [{ type: "order.Raced", data: {} }], {
-				...opts,
-				expectedSeq: 0,
-			}),
+			journal.append(
+				"order:1",
+				[{ type: "order.Raced", data: {} }],
+				{ ...opts, expectedSeq: 0 },
+			),
 		).rejects.toMatchObject({ code: "OPTIMISTIC_SEQUENCE_CONFLICT" });
 
 		journal.close();
@@ -43,27 +44,39 @@ describe("storage-sqlite journal consumer boundary", () => {
 			nativePragmas: false,
 			clock: { now: () => "2026-07-27T00:00:00.000Z" },
 		});
-		await journal.append("actor:a", [{ type: "actor.Opened", data: {} }], {
-			expectedSeq: 0,
-			actor: { kind: "system", id: "test" },
-			tenant: "t1",
-			fenceToken: 5n,
-		});
-		await expect(
-			journal.append("actor:a", [{ type: "actor.Stale", data: {} }], {
-				expectedSeq: 1,
+		await journal.append(
+			"actor:a",
+			[{ type: "actor.Opened", data: {} }],
+			{
+				expectedSeq: 0,
 				actor: { kind: "system", id: "test" },
 				tenant: "t1",
-				fenceToken: 3n,
-			}),
+				fenceToken: 5n,
+			},
+		);
+		await expect(
+			journal.append(
+				"actor:a",
+				[{ type: "actor.Stale", data: {} }],
+				{
+					expectedSeq: 1,
+					actor: { kind: "system", id: "test" },
+					tenant: "t1",
+					fenceToken: 3n,
+				},
+			),
 		).rejects.toMatchObject({ code: "STALE_FENCE" });
 
 		await expect(
-			journal.append("actor:a", [{ type: "actor.Unfenced", data: {} }], {
-				expectedSeq: 1,
-				actor: { kind: "system", id: "test" },
-				tenant: "t1",
-			}),
+			journal.append(
+				"actor:a",
+				[{ type: "actor.Unfenced", data: {} }],
+				{
+					expectedSeq: 1,
+					actor: { kind: "system", id: "test" },
+					tenant: "t1",
+				},
+			),
 		).rejects.toMatchObject({ code: "MISSING_FENCE" });
 
 		journal.close();

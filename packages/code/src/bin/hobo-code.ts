@@ -19,8 +19,7 @@ import { BO_IDLE_TICK_MS, renderTitleScreen } from "../splash.js";
 
 const argv = process.argv.slice(2);
 const json = argv.includes("--json");
-const interactive =
-	process.stdout.isTTY === true && process.stdin.isTTY === true;
+const interactive = process.stdout.isTTY === true && process.stdin.isTTY === true;
 const chatVerb = argv[0] === "chat";
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -69,9 +68,7 @@ function showTitleScreen(): Promise<void> {
  * Forwards pi's exit code; never resolves before pi exits (persistent).
  */
 function launchPiHarness(): Promise<number> {
-	const piEntry = fileURLToPath(
-		import.meta.resolve("@mariozechner/pi-coding-agent"),
-	);
+	const piEntry = fileURLToPath(import.meta.resolve("@mariozechner/pi-coding-agent"));
 	const piBin = join(dirname(piEntry), "cli.js");
 	const args = [
 		piBin,

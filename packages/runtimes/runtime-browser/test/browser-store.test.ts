@@ -51,3 +51,4 @@ describe("runtime-browser persistence policy", () => {
 		).rejects.toMatchObject({ code: "PERSISTENCE_UNAVAILABLE" });
 	});
 });
+

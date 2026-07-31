@@ -121,7 +121,9 @@ export function deriveYardVisualState(
 	const guests = snap.activity.map((a) =>
 		Object.freeze({
 			connectorKind: a.connectorKind,
-			...(a.connectionId !== undefined ? { connectionId: a.connectionId } : {}),
+			...(a.connectionId !== undefined
+				? { connectionId: a.connectionId }
+				: {}),
 			visual: a.status,
 			animationId: GUEST_ANIM[a.status] ?? GUEST_ANIM.idle,
 		}),
@@ -173,7 +175,10 @@ export function deriveYardVisualState(
 	});
 }
 
-function pickBoZone(snap: YardProjectionSnapshot, selected?: ZoneId): ZoneId {
+function pickBoZone(
+	snap: YardProjectionSnapshot,
+	selected?: ZoneId,
+): ZoneId {
 	if (selected) return selected;
 	if (snap.doctor.hazards.length > 2) return "errorBunker";
 	if (snap.occupancy.bootstrapActive) return "bootstrapDesk";
@@ -186,7 +191,10 @@ function pickBoZone(snap: YardProjectionSnapshot, selected?: ZoneId): ZoneId {
 	return "platformRest";
 }
 
-function pickBoState(snap: YardProjectionSnapshot, zone: ZoneId): BoAnimState {
+function pickBoState(
+	snap: YardProjectionSnapshot,
+	zone: ZoneId,
+): BoAnimState {
 	if (snap.doctor.hazards.some((h) => h.startsWith("connection-revoked"))) {
 		return "error";
 	}

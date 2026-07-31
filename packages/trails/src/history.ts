@@ -85,16 +85,12 @@ export class TrailHistoryStore {
 	}
 
 	/** Mark existing state as applied without re-running (Sqitch/Flyway baseline). */
-	baseline(
-		entry: Omit<TrailHistoryEntry, "schemaVersion" | "status">,
-	): TrailHistoryEntry {
+	baseline(entry: Omit<TrailHistoryEntry, "schemaVersion" | "status">): TrailHistoryEntry {
 		return this.record({ ...entry, status: "baseline" });
 	}
 
 	/** Repair a history row (new checksum after intentional fix). */
-	repair(
-		entry: Omit<TrailHistoryEntry, "schemaVersion" | "status">,
-	): TrailHistoryEntry {
+	repair(entry: Omit<TrailHistoryEntry, "schemaVersion" | "status">): TrailHistoryEntry {
 		const idx = this.entries.findIndex(
 			(e) =>
 				e.trailId === entry.trailId &&

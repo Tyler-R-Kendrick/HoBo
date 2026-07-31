@@ -22,9 +22,7 @@ export interface CqReflectHook {
 	readonly proposesKnowledgeUnits: true;
 }
 
-export function dogfoodStationOccupancy(
-	stationId: string,
-): StationOccupancyRef {
+export function dogfoodStationOccupancy(stationId: string): StationOccupancyRef {
 	return {
 		stationId,
 		isolationBoundary: "station",

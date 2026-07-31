@@ -31,12 +31,8 @@ export type ConsumerGroupId = string & { readonly __brand: "ConsumerGroupId" };
 export type MessagingMessageId = string & {
 	readonly __brand: "MessagingMessageId";
 };
-export type MessagingLeaseId = string & {
-	readonly __brand: "MessagingLeaseId";
-};
-export type SubscriptionName = string & {
-	readonly __brand: "SubscriptionName";
-};
+export type MessagingLeaseId = string & { readonly __brand: "MessagingLeaseId" };
+export type SubscriptionName = string & { readonly __brand: "SubscriptionName" };
 
 // domain-view: parse-don't-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface TopicSpec {
@@ -264,10 +260,7 @@ export function parseSubscriptionName(value: string): SubscriptionName {
 }
 
 export function parseDeliveryGuarantee(value: unknown): DeliveryGuarantee {
-	if (
-		typeof value !== "string" ||
-		!DELIVERY_SET.has(value as DeliveryGuarantee)
-	) {
+	if (typeof value !== "string" || !DELIVERY_SET.has(value as DeliveryGuarantee)) {
 		throw new MessagingParseError(
 			"delivery",
 			"at-least-once|exactly-once|at-most-once",
@@ -713,7 +706,9 @@ export function createInMemoryMessaging(
 				const inflight = cursor.inflight.get(messageId);
 				if (!inflight) continue;
 				if (inflight.leaseId !== leaseId) {
-					throw new MessagingDeliveryError(`lease mismatch for ${messageId}`);
+					throw new MessagingDeliveryError(
+						`lease mismatch for ${messageId}`,
+					);
 				}
 				cursor.acked.add(messageId);
 				cursor.inflight.delete(messageId);
@@ -729,7 +724,9 @@ export function createInMemoryMessaging(
 				const inflight = cursor.inflight.get(messageId);
 				if (!inflight) continue;
 				if (inflight.leaseId !== leaseId) {
-					throw new MessagingDeliveryError(`lease mismatch for ${messageId}`);
+					throw new MessagingDeliveryError(
+						`lease mismatch for ${messageId}`,
+					);
 				}
 				cursor.inflight.delete(messageId);
 				const topic = parseTopicName(key.split("::")[0] ?? "unknown");

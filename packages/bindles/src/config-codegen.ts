@@ -54,9 +54,7 @@ export function generateCtxConfigSource(
 			: "";
 		const sourceNote = `  // source=${field.source} sensitive=${field.sensitive}`;
 		lines.push(sourceNote);
-		lines.push(
-			`${docs}  readonly ${name}${optional}: ${tsTypeForField(field)};`,
-		);
+		lines.push(`${docs}  readonly ${name}${optional}: ${tsTypeForField(field)};`);
 	}
 	lines.push("}");
 	lines.push("");

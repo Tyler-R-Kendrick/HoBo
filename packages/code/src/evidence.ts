@@ -54,36 +54,16 @@ export function emitEvidenceTriple(input: EmitEvidenceInput): EvidenceTriple {
 	// Minimal deterministic "mp4" artifact marker (not a full encoder).
 	// Production lanes attach real Playwright video; structure is gated here.
 	const mp4Marker = Buffer.from([
-		0x00,
-		0x00,
-		0x00,
-		0x18,
-		0x66,
-		0x74,
-		0x79,
-		0x70, // ftyp box header-ish
-		0x68,
-		0x6f,
-		0x62,
-		0x6f, // 'hobo'
-		0x00,
-		0x00,
-		0x00,
-		0x01,
+		0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, // ftyp box header-ish
+		0x68, 0x6f, 0x62, 0x6f, // 'hobo'
+		0x00, 0x00, 0x00, 0x01,
 		...Buffer.from(`evidence:${input.flagKey}:${input.scenario}`),
 	]);
 	writeFileSync(recordingMp4Path, mp4Marker);
 
 	// Deterministic PNG-like placeholder for key screenshot assertions.
 	const pngStub = Buffer.from([
-		0x89,
-		0x50,
-		0x4e,
-		0x47,
-		0x0d,
-		0x0a,
-		0x1a,
-		0x0a, // PNG signature
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // PNG signature
 		...Buffer.from(`hobo-evidence:${input.scenario}`),
 	]);
 	writeFileSync(screenshotPath, pngStub);

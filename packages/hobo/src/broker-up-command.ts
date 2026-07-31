@@ -99,7 +99,9 @@ export function createBrokerAwareUpCommand(
 		run: async (input) => {
 			const { context, flags, emitProgress } = input;
 			const env =
-				deps.env ?? (context as { env?: NodeJS.ProcessEnv }).env ?? process.env;
+				deps.env ??
+				(context as { env?: NodeJS.ProcessEnv }).env ??
+				process.env;
 			const projectDir =
 				(context as { projectDir?: string }).projectDir ??
 				(typeof flags.cwd === "string" ? flags.cwd : context.cwd);
@@ -130,7 +132,8 @@ export function createBrokerAwareUpCommand(
 						// Only fall through when the Yard path is a pure stub (no manifest).
 						const isStub =
 							yardResult.code === "HOBO_CLI_STUB" ||
-							(yardResult.ok === false && yardResult.status === "stub");
+							(yardResult.ok === false &&
+								yardResult.status === "stub");
 						if (!isStub) {
 							return {
 								...yardResult,

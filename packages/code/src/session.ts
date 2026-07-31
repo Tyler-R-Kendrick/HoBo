@@ -68,9 +68,7 @@ export function startCodeSession(options: CodeSessionOptions): CodeSession {
 	const features = options.features ?? createMemoryFeaturePort();
 	const platform = composeCodePlatform({
 		hoboHome: options.hoboHome,
-		...(options.stationId !== undefined
-			? { stationId: options.stationId }
-			: {}),
+		...(options.stationId !== undefined ? { stationId: options.stationId } : {}),
 		autoInitStation: options.autoInitStation !== false,
 		...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
 		features,
@@ -119,14 +117,15 @@ export function startCodeSession(options: CodeSessionOptions): CodeSession {
 	const panes = new Map([
 		[
 			"coordinator",
-			createPane("coordinator", "working", `open · ${platform.provider.id}`),
+			createPane(
+				"coordinator",
+				"working",
+				`open · ${platform.provider.id}`,
+			),
 		],
 	]);
 
-	const finish = (
-		ok: boolean,
-		gates: readonly string[] = [],
-	): HandbackReport => {
+	const finish = (ok: boolean, gates: readonly string[] = []): HandbackReport => {
 		const result = cleanupIsolation(isolation.runId, {
 			hoboHome: options.hoboHome,
 			ok,

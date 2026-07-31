@@ -4,7 +4,10 @@
  */
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
-import { applyClaimTransform, type MappingSpec } from "./mapping-spec.js";
+import {
+	applyClaimTransform,
+	type MappingSpec,
+} from "./mapping-spec.js";
 
 export type AdapterClaims = Readonly<Record<string, string>>;
 

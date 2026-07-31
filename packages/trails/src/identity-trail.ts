@@ -227,7 +227,9 @@ export function activateIdentityContinuousFromMatching(input: {
 		migrationId: migration?.id ?? null,
 		state: migration?.state ?? null,
 		rampPercent: migration?.rampPercent ?? 0,
-		dualOk: progress.status.present ? progress.status.failedChecks === 0 : true,
+		dualOk: progress.status.present
+			? progress.status.failedChecks === 0
+			: true,
 	});
 }
 
@@ -246,7 +248,9 @@ export function advanceIdentityTrailRamp(
 		migrationId: migration?.id ?? null,
 		state: migration?.state ?? null,
 		rampPercent: migration?.rampPercent ?? targetPercent,
-		dualOk: progress.status.present ? progress.status.failedChecks === 0 : true,
+		dualOk: progress.status.present
+			? progress.status.failedChecks === 0
+			: true,
 	});
 }
 

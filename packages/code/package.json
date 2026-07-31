@@ -5,11 +5,12 @@
 	"description": "HoBo Code: opinionated coding harness and distributed compute. Binary hobo-code (dispatch default; flat verbs; Herdr-style status chrome with column headers; OpenUI step rail + lock seal).",
 	"type": "module",
 	"bin": {
-		"hobo-code": "./dist/bin/hobo-code.js"
+		"hobo-code": "./bin/hobo-code.mjs"
 	},
 	"files": [
 		"LICENSE",
 		"dist",
+		"bin",
 		"templates",
 		"assets"
 	],
@@ -38,11 +39,12 @@
 	"scripts": {
 		"prebuild": "pnpm --filter @hobo/core build && pnpm --filter @hobo/stations build",
 		"build": "tsc -p tsconfig.json",
-		"postbuild": "node -e \"require('node:fs').chmodSync('dist/bin/hobo-code.js', 0o755)\"",
+		"postbuild": "node -e \"require('node:fs').chmodSync('dist/bin/hobo-code.js', 0o755); require('node:fs').chmodSync('bin/hobo-code.mjs', 0o755)\"",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "pnpm run build",
 		"test": "vitest run",
-		"gen:bo-idle-tui": "node --import tsx scripts/gen-bo-idle-tui.mts"
+		"gen:bo-idle-tui": "node --import tsx scripts/gen-bo-idle-tui.mts",
+		"hobo-code": "node ./bin/hobo-code.mjs"
 	}
 }

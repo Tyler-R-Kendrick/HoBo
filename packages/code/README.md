@@ -4,6 +4,18 @@
 
 CLI name is **`hobo-code`** (dash is fine). There is **no** `hobo code` nested verb.
 
+### Build vs install (read this)
+
+The installed binary is **compiled** (`dist/`). Source lives in `src/`.
+
+| Do this | Not this |
+|---|---|
+| `pnpm --filter @hobo/code build` then `hobo-code …` | Only edit `src/` and assume `~/.local/bin/hobo-code` updated |
+| Link bin: `pnpm --filter @hobo/code link --global` (uses `bin/hobo-code.mjs`) | Symlink straight at `dist/bin/hobo-code.js` and forget rebuilds |
+| Evidence / optimizexp: exercise the **installed** `hobo-code` after build | Capture only via `node --import tsx src/bin/…` (can pass while dist is stale) |
+
+`bin/hobo-code.mjs` **auto-rebuilds** when `src/` is newer than `dist/` (skip with `HOBO_CODE_SKIP_STALE_REBUILD=1`).
+
 | Binary | Product |
 |---|---|
 | **`hobo-code`** | App-building coding agent (this package) |

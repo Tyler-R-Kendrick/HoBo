@@ -22,6 +22,67 @@ Key takeaways to apply when building/managing an asset index:
 - Use **stable, sanitized keys**; keep `path` as the on-disk truth (case + spaces preserved).
 - Always run a **coverage check** after asset changes so the manifest stays trustworthy.
 
+## Animation Normalization Learnings
+
+When importing AI-generated sprite strips or extracted video frames into game-sized animation frames:
+
+- Use one **approved in-game frame** as the target size reference.
+- Use one **shared runtime anchor** from metadata for placement.
+- Use one **shared scale** for the whole sequence. Do not scale each frame independently unless the source is genuinely inconsistent.
+- Choose the shared-scale reference deliberately:
+  - use a **baseline / median-lower** pose height for states like attack or hurt, where some frames are taller but the character should not be rescaled per pose
+  - use the **first frame** for crouch-like states, where frame `01` should match idle height and later frames should remain visibly shorter
+- For video-frame imports, compute one **union crop** across the full frame set and crop every frame with that same box.
+- Align frames with a stable rule such as **fixed center + fixed bottom** or your known runtime anchor. Do not re-center each frame from its own local silhouette unless the source frames were hand-authored as isolated cells.
+
+Why this matters:
+
+- per-frame cropping/alignment often creates fake sideways drift or "skateboarding"
+- per-frame scaling often shrinks tall poses like raised weapons or hurt reactions
+- many apparent animation problems are actually registration problems introduced during import
+- keeping every extracted frame from a source video often gives you repeated cycles rather than one usable game loop
+
+Practical rule:
+
+- preserve sequence framing first
+- normalize second
+- derive collision/body bounds only after the normalized export exists
+
+For strip importers that support explicit scaling modes, prefer:
+
+- `median-lower` for attack, hurt, or other states with upward pose variation
+- `first-frame` for crouch or other enter-and-lower states that begin from an idle-like standing pose
+
+For video-derived animation specifically:
+
+1. Use a dense extraction first if you need to inspect the motion clearly.
+2. Normalize that dense sequence with one shared crop, one shared scale, and one shared anchor.
+3. Treat that result as analysis material.
+4. Curate one clean loop cycle for the runtime asset.
+
+This repo's run-animation experiments established an important distinction:
+
+- dense import is good for diagnosis
+- curated single-cycle export is better for the actual game asset
+
+If an animation looks like it is "skating" or sliding sideways, check these in order:
+
+1. whether frames were cropped independently
+2. whether frames were centered independently
+3. whether tall poses were scaled differently from short poses
+4. whether the source motion itself contains true root-motion drift
+
+If a character looks like it is **floating above its shadow** or standing at different heights by direction, check the visible alpha bounds:
+
+1. measure the lowest non-transparent pixel for each frame
+2. compare the bottom baseline across directions and states
+3. normalize the PNG frames so feet land on a shared baseline, commonly `bottomY = frameHeight - 1`
+4. only then tune engine-side sprite origin or shadow offsets
+
+Do not use the asset manifest as the first fix for bad foot placement. Manifests can describe frame size, atlas size, frame count, fps, and sometimes engine pivots, but they do not repair transparent padding inside the PNG. Prefer fixing the runtime spritesheet unless the engine has deliberate per-animation pivot metadata and the team has standardized on using it.
+
+Nearest-neighbor import preserves pixels. If the in-between poses still look soft after correct normalization, the softness is usually already present in the source frames.
+
 ## Asset Index Theory
 
 An asset index (manifest) is a structured metadata file that serves as the single source of truth for all game art. It enables:
@@ -118,6 +179,10 @@ uv run .codex/skills/gamedev-assets/scripts/asset_sizes.py --root assets --json 
 
 # 3) Probe sprite sheet for non-empty frames
 uv run .codex/skills/gamedev-assets/scripts/asset_sheet_probe.py path/to/sheet.png --frame 32x32 --list --json tmp/probe.json
+
+# 3b) Audit/fix visible foot baselines inside sprite frames
+uv run .codex/skills/gamedev-assets/scripts/asset_sprite_baseline.py assets/characters --frame 256x256 --json tmp/baselines.json
+uv run .codex/skills/gamedev-assets/scripts/asset_sprite_baseline.py assets/characters --frame 256x256 --target-bottom 255 --out-dir tmp/baseline-fixed
 
 # 4) Debug tilesets / tilemaps with a manifest-driven GUI editor
 uv run .codex/skills/gamedev-assets/scripts/asset_tilemap_editor.py --manifest path/to/assets_index.json
@@ -358,6 +423,29 @@ Find non-empty cells in a sprite sheet grid. Essential for building `frames` arr
 uv run .codex/skills/gamedev-assets/scripts/asset_sheet_probe.py image.png --frame 32x32
 uv run .codex/skills/gamedev-assets/scripts/asset_sheet_probe.py folder/ --frame 16x16 --list --json tmp/probe.json
 ```
+
+### 2b) Sprite Baseline Audit/Fix (`asset_sprite_baseline.py`)
+
+Audit visible alpha bounds inside a spritesheet grid and optionally write baseline-corrected copies.
+
+Use this when:
+- a character floats above its shadow in one direction but not another
+- a directional idle was made from an attack frame
+- AI-generated sheets have inconsistent transparent padding under the feet
+- engine origins are correct, but visual foot placement still differs
+
+```bash
+# Report per-frame alpha bounds, visible bottom pixel, and required shift.
+uv run .codex/skills/gamedev-assets/scripts/asset_sprite_baseline.py public/assets/kaede --frame 256x256 --json tmp/kaede-baselines.json
+
+# Write fixed copies whose visible feet land on y=255.
+uv run .codex/skills/gamedev-assets/scripts/asset_sprite_baseline.py public/assets/kaede --frame 256x256 --target-bottom 255 --out-dir tmp/kaede-baseline-fixed
+
+# Optionally normalize horizontal center too, when the source is meant to be idle/standing.
+uv run .codex/skills/gamedev-assets/scripts/asset_sprite_baseline.py public/assets/kaede/idle-n.png --frame 256x256 --target-bottom 255 --target-center-x 128 --out tmp/idle-n-fixed.png
+```
+
+Treat the script as a runtime export guardrail. It does not decide animation quality; it verifies that final PNG frames agree with the engine's sprite-origin and shadow assumptions.
 
 ### 3) PNG Dimension Listing (`asset_sizes.py`)
 

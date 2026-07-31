@@ -51,3 +51,17 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | (CI: expect billing-budget if empty steps) |
 | Notes | Adds references/finish.md; dual-mirror skill; AGENTS/CLAUDE/docs pointers. |
 
+
+## 2026-07-31 — ax doctor + cli-help rewire
+
+| Field | Value |
+|---|---|
+| Initiative | optimizexp AX continue (doctor agent-tooling + cli-help rewire) |
+| Backend | sequential-fallback (`/sdlc finish`) |
+| Issue | n/a |
+| Branch | `feat/ax-doctor-cli-wire` |
+| PRs | #972 |
+| Result | **merge** |
+| Failure class | (expect billing-budget if empty-step CI) |
+| Notes | doctor AUTH/MCP/setup; rewire cli-help-and-doctor off eval:agent:live; plateau runs ax-doctor + ax-cli-wire |
+

@@ -91,17 +91,34 @@ export function exerciseSurface(world: OptimizexpWorld): void {
 }
 
 export function observeFailure(world: OptimizexpWorld): void {
-  // Re-use exercise; failure scenarios may intentionally accept non-zero.
-  exerciseSurface(world);
-  if (world.lastExitCode === 0) {
+  // Optional-key MCP fail-closed path is the intentional failure surface for this feature.
+  const failureCommand = "bash scripts/agent-mcp-gbrain.sh";
+  world.lastCommand = failureCommand;
+  const r = spawnSync("bash", ["-lc", failureCommand], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    timeout: 30_000,
+    maxBuffer: 1024 * 1024,
+    env: { ...process.env },
+  });
+  world.lastExitCode = r.status;
+  world.lastStdout = r.stdout ?? "";
+  world.lastStderr = r.stderr ?? "";
+  const out = `${world.lastStdout}\n${world.lastStderr}`;
+  world.notes.push(
+    `observeFailure: ran ${failureCommand} → exit ${r.status}`,
+  );
+  world.statusClear = out.trim().length > 0;
+  world.nextActionObvious =
+    /AUTH\.md|setup-agent-tools|Zero-key|--no-gbrain|decline/i.test(out);
+  world.errorActionable =
+    r.status !== 0 &&
+    /AUTH\.md|PATH|key|gbrain|Zero-key|setup-agent-tools/i.test(out);
+  if (r.status === 0) {
     world.notes.push(
-      "observeFailure: command succeeded; treat as soft fail for UX path or refine step",
+      "observeFailure: gbrain launcher unexpectedly succeeded; refine env isolation",
     );
   }
-  world.errorActionable =
-    world.errorActionable ||
-    (world.lastExitCode !== 0 &&
-      `${world.lastStdout}\n${world.lastStderr}`.trim().length > 0);
 }
 
 export function assertClearStatus(world: OptimizexpWorld): void {

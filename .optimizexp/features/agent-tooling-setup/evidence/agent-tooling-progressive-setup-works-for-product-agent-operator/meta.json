@@ -9,7 +9,7 @@
   ],
   "interface": "cli",
   "driver": "cli",
-  "capturedAt": "2026-07-31T13:32:27.084Z",
+  "capturedAt": "2026-07-31T13:43:04.618Z",
   "runId": "",
   "screen": {
     "cols": null,
@@ -18,12 +18,12 @@
   "primary": {
     "file": "primary.txt",
     "kind": "transcript",
-    "bytes": 1698,
-    "sha256": "60785d2090face2f256d4e95e902f67929e36d646dd3cb0904c0bdbced3f9f3a"
+    "bytes": 2415,
+    "sha256": "6166bd792fb969b70430460e97e299651ca86f0ccc82fa5f8cd6a8a494ca6909"
   },
   "frames": [],
   "repro": {
-    "command": "bash scripts/setup-agent-tools.sh --help && echo --- && bash scripts/agent-mcp-gbrain.sh; echo gbrain_exit:$?; echo ---; pnpm run skills:mirror-check",
+    "command": "bash scripts/setup-agent-tools.sh --help && echo --- && bash scripts/setup-agent-tools.sh --common-only --no-gbrain --no-skillopt 2>&1 | tail -20 && echo --- && bash scripts/agent-mcp-gbrain.sh; echo gbrain_exit:$?",
     "cwd": "."
   },
   "exitCode": 0,

@@ -1,0 +1,31 @@
+{
+  "kind": "expect",
+  "id": "2026-07-31T13:43:10Z-5002-expect",
+  "runId": "20260731-ax-continue",
+  "persona": "product-coding-agent",
+  "experience": "ax",
+  "surface": {
+    "type": "cli",
+    "name": "bash scripts/agent-mcp-gbrain.sh",
+    "interface": "cli"
+  },
+  "context": "Failure path for optional key MCP must stay fail-closed with AUTH.",
+  "expectation": { "result": { "exitCode": 1 } },
+  "featureId": "agent-tooling-setup",
+  "scenarioSlug": "agent-tooling-progressive-setup-failure-is-understandable-for-product-coding-agent",
+  "scores": {
+    "schemaVersion": 1,
+    "phase": "expect",
+    "role": "predicted",
+    "persona": "product-coding-agent",
+    "surface": "agent-mcp-gbrain fail-closed",
+    "primary": { "harms": 0, "friction": 0, "uncertainty": 0, "total": 0, "max": 0 },
+    "rationale": {
+      "harms": "Fail-closed reduces egress risk.",
+      "friction": "Clear next action.",
+      "uncertainty": "AUTH named."
+    },
+    "evidenceRefs": [],
+    "scoredAt": "2026-07-31T13:43:10.000Z"
+  }
+}

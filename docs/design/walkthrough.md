@@ -458,22 +458,25 @@ defineResource({ type: "database", engine: "postgres", class: "ha",
 ```
 
 ```ts
-// inline, per-Camp overrides under a Yard — pin one boundary, split one tier; the rest is untouched.
-// Provider + IaC stay on the Yard; the Camp only carries runtime preference + mapping overrides.
+// Per-Camp overrides under a Yard — provider-neutral resourceMappings (no cloud pin on camp()).
+// Provider + IaC stay on the Yard. Prefer defineResource for classed golden paths (above).
 camp("prod", {
   runtime: postgresRuntime(),
-  bindings: { "catalog": azure.cosmos({ consistency: "session" }) },   // pin: this kv → Cosmos, not Table Storage
-  tiers:    { edge: cloudflare.workers() } });                          // split: the storefront tier to the edge
+  resourceMappings: [
+    { selector: { resourceName: "catalog" }, definitionId: "azure.cosmos", properties: { consistency: "session" }, require: [], prefer: [] },
+  ],
+});
 // attach: yard("azure", { provider: azure(), iac: pulumi(), camps: [prod] })
+// Cross-cloud edge split → second Yard + Junction (or Trail re-home), not camp({ tiers: { edge: cloudflare } }).
 ```
 
 ```bash
 hobo plan --camp prod
 #   match.Decided  database (postgres) → azure.flexiblePostgres(ha)  [definition envType=production; beats provider default]
-#   match.Decided  catalog  (kv)       → azure.cosmos                [binding pins it; provider default rejected]
+#   match.Decided  catalog  (kv)       → azure.cosmos                [resourceMappings / defineResource; provider default outscored]
 ```
 
-Under the hood these are the same Resource Definitions the provider supplies by default — an explicit one simply outscores the `{}` default ([Plan 25](./platform-engineering.md#plan-25)). Bundle a set of overrides + policy + dashboards into a signed **Resource Pack** to ship a whole golden path to other teams. Baseline is **zero** resource config; an override is a deliberate, audited exception — never a prerequisite. **Junction connectivity overrides the same way** — pin a hub-and-spoke topology, a specific interconnect SKU, or explicit DNS/routing, and the explicit choice wins by specificity over the inferred default.
+Under the hood these are the same Resource Definitions the Yard provider supplies by default — an explicit definition or Camp `resourceMappings` entry simply outscores the `{}` default ([Plan 25](./platform-engineering.md#plan-25)). Legacy `defaultProvider`/`tiers`/`bindings` on `camp()` are **rejected at parse**. Bundle a set of overrides + policy + dashboards into a signed **Resource Pack** to ship a whole golden path to other teams. Baseline is **zero** resource config; an override is a deliberate, audited exception — never a prerequisite. **Junction connectivity overrides the same way** — pin a hub-and-spoke topology, a specific interconnect SKU, or explicit DNS/routing, and the explicit choice wins by specificity over the inferred default.
 
 ## 2.5 — Share it: distribute and import golden topology
 

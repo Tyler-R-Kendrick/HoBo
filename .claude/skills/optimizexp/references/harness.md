@@ -17,12 +17,13 @@ Skill-local harness under:
   generate-persona.mts     # --persona seed → formal persona.md
   generate-feature.mts     # --feature seed → per-persona Gherkin folder
   scorecard.mts            # formal metric scorecards
+  survey.mts               # persona survey + experiment backlog
   lib/
     paths.mts
     slug.mts
     redaction.mts
     media.mts
-    scorecard.mts
+    scorecard.mts          # primary + positive metrics
     persona-resolve.mts    # shared persona selection
     repo-discover.mts      # product signals for init
     code-discovery.mts
@@ -142,6 +143,23 @@ Harness normalization: lowercase, non-alnum → `-`, collapse dashes, trim.
 5. Iteration cells come from judged outcomes (`aggregate-bus`)
 
 Scorecard CLI: `harness/scorecard.mts` (`validate` | `build` | `compare`).
+
+### survey.mts
+
+| Mode | Purpose |
+|---|---|
+| `template` | Scaffold `runs/<id>/survey/<persona>.json` + `_instrument.json` |
+| `validate` | Check one survey response against schema |
+| `aggregate` | Roll up positive metrics + featureRequests → `survey/aggregate.json` |
+| `rank-backlog` | Rank experiments → `runs/<id>/backlog.json`; `--global` merges `.optimizexp/backlog/experiments.json` |
+
+```bash
+node --import tsx .agents/skills/optimizexp/harness/survey.mts --mode template --run <runId>
+node --import tsx .agents/skills/optimizexp/harness/survey.mts --mode aggregate --run <runId>
+node --import tsx .agents/skills/optimizexp/harness/survey.mts --mode rank-backlog --run <runId> --global
+```
+
+See `persona-survey.md`, `experiment-backlog.md`, `positive-metrics.md`.
 
 ## Not a replacement for product cucumber
 

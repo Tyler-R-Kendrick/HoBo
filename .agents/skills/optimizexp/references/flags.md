@@ -234,13 +234,45 @@ Accepts `infinite` / `inf` / `∞` / `-1` / `0` / omitted → **infinite**. Posi
 1. **One cycle** = full review loop until **true plateau** (flat scores **and** implementableFindingsRemaining = 0), or user/safety/true external block.  
 2. **Within a cycle** there is **no** max review-iteration budget (no `--iterations`). Keep reducing until findings are gone.  
 3. After a cycle plateaus, **re-baseline / re-survey** (prior fixes may reveal new findings).  
-4. **Default infinite** — the invocation keeps starting new cycles until **either**:  
-   - **Metrics at zero:** `metric_total === 0` and `metric_max === 0` (harms, friction, uncertainty all 0 on measured cells), **or**  
-   - **Irreducible:** after re-survey, true plateau again with **no new implementable S/M findings** (impossible to reduce further; residual only L/external/blocked).  
-5. **Finite `passes: N`:** stop after at most N completion cycles (even if metrics > 0), provided each cycle addressed findings to plateau (or terminal stop).  
-6. **`--passes` is not a review-iteration early-stop.** Never treat it as “run N reduce steps then stop.”  
+4. **Default infinite** — the invocation continues through **harm_reduce → delight_maximize** until **`pareto-equilibrium`** (see `equilibrium.md`): no admissible S/M experiment improves delight without increasing harm or breaching cognitive thresholds, and no S/M harm reductions remain.  
+5. Harm **metrics-zero** or **irreducible** only **switch regime** to delight — they are **not** invocation terminals.  
+6. **Finite `passes: N`:** cap **harm_reduce** cycles; still enter delight unless `--no-delight`.  
+7. **`--passes` is not a review-iteration early-stop.** Never treat it as “run N reduce steps then stop.”  
 
 Env alias: `OPTIMIZEXP_PASSES=infinite|N` (optional; CLI/flag wins when both set).
+
+## Delight regime + survey (after harm floor)
+
+```text
+--delight-passes infinite   # default in delight regime
+--delight-passes 2
+--no-delight
+--harm-only                 # alias of --no-delight
+--no-survey
+```
+
+| Form | Default | Meaning |
+|---|---|---|
+| **`--delight-passes infinite\|N`** | **infinite** | Cap delight-maximize cycles; default until Pareto equilibrium |
+| **`--no-delight`** / **`--harm-only`** | off | Stop after harm floor (legacy early exit — opt out of equilibrium) |
+| **`--no-survey`** | off | Skip persona survey + survey-driven backlog |
+
+Env: `OPTIMIZEXP_DELIGHT_PASSES`, `OPTIMIZEXP_NO_DELIGHT=1`, `OPTIMIZEXP_NO_SURVEY=1`.
+
+`scope.json` should record:
+
+```json
+{
+  "stopPolicy": "infinite-until-pareto-equilibrium",
+  "regime": "delight_maximize",
+  "delightPasses": null,
+  "delightPassesLabel": "infinite",
+  "delightCyclesCompleted": 0,
+  "noDelight": false,
+  "noSurvey": false,
+  "surveyCompleted": false
+}
+```
 
 ## Stop policy (per cycle; no review-iteration budget)
 
@@ -305,8 +337,9 @@ Within each outer cycle the review loop **applies reduce experiments** and conti
    5. **Never delete** `evidence/` when regenerating Gherkin.
 7. **Feature selection for review** — if `--features` set, those ids; else features under `.optimizexp/features/` whose `projects` intersects project selection (untagged ≈ `root`).
 8. **Passes** — default `passes = infinite`; parse `--passes infinite|N` / `OPTIMIZEXP_PASSES`.  
-9. **Stop policy** — per cycle: true plateau; outer infinite until metrics=0 or irreducible (or finite N cap); no review-iteration budget; `--report-only` disables reduce experiments.  
-10. Echo resolved set (experiences, projects, personas, features, passes, reportOnly).
+9. **Delight / survey** — parse `--delight-passes`, `--no-delight`, `--no-survey` (and env aliases).  
+10. **Stop policy** — per cycle: true plateau; outer infinite until metrics=0 or irreducible (or finite N cap); then delight (if metrics-zero) + survey/backlog closeout; no review-iteration budget; `--report-only` disables reduce/uplift apply.  
+11. Echo resolved set (experiences, projects, personas, features, passes, delight, survey, reportOnly).
 
 Harness:
 
@@ -372,7 +405,8 @@ node --import tsx .agents/skills/optimizexp/harness/generate-feature.mts \
   "passesLabel": "infinite",
   "cyclesCompleted": 0,
   "passesCompleted": 0,
-  "stopPolicy": "infinite-until-zero-or-irreducible",
+  "stopPolicy": "infinite-until-pareto-equilibrium",
+  "regime": "harm_reduce",
   "outerCycles": "passes",
   "hostAgent": "claude-code"
 }

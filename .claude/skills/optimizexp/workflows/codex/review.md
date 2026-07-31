@@ -13,3 +13,7 @@ Host specifics:
 7. Single-writer bus + evidence overwrite: this agent session only.
 
 Stop on **true** plateau, blocked, user, or safety; write `.optimizexp/runs/<id>/summary.md`.
+
+## Phase 2 + survey closeout
+
+After harm metrics hit 0: score excitement / ease / optimality (`positive-metrics.md`). End of run: persona survey → experiment backlog (`persona-survey.md`, `experiment-backlog.md`; `harness/survey.mts`). Flags: `--no-delight`, `--no-survey`, `--delight-passes`.

@@ -8,29 +8,27 @@ timestamp: 2026-07-30T00:00:00Z
 
 # Review loop
 
-Goal: **drive metric scores down** by measuring, applying a **reduce experiment**, and re-scoring each review iteration until **true plateau**. Orchestration phases run as designed.
+Goal: reach **Pareto equilibrium** — minimize harm, then maximize delight under harm non-regression and persona **cognitive thresholds**, until no admissible S/M experiment remains (`equilibrium.md`).
 
-**`--passes` (default `infinite`)** controls **outer completion cycles**. Each cycle must reach true plateau (all implementable findings addressed). There is **no** `--iterations` flag and **no** review-iteration budget inside a cycle.
+**Default infinite does not stop at the harm floor.** Harm floor only **switches regime** to `delight_maximize`.
 
 ```text
-  # Orchestration
-  Scope (passes: infinite | N)
-  loop cycle = 1, 2, …:
-    Baseline (re-baseline if cycle > 1)
-    for reviewIteration in 1, 2, …:
-      Read bus → Expect → Act+evidence → Outcome → Rescore
-      → Reduce experiment (default ON; --report-only to skip)
-      → Verify
-      stop cycle if true_plateau OR user OR safety OR blocked
-    cyclesCompleted = cycle
-    if infinite:
-      stop all if metrics all 0 OR (re-survey finds no new implementable findings)
-    if finite N and cycle >= N:
-      stop all
-  summary
+  Scope (passes, delight-passes, survey, harm-only flags)
+  regime = harm_reduce
+  loop (until pareto-equilibrium | caps | user | safety | blocked):
+    measure: primary harm + positive + cognitive (persona thresholds)
+    if regime == harm_reduce:
+      apply S/M harm reductions until true plateau (flat + implementableHarm=0)
+      → regime = delight_maximize  (unless --no-delight)
+      survey + rank backlog
+    if regime == delight_maximize:
+      apply Pareto-admissible S/M uplifts (delight↑, harm not↑, no cognitive breach)
+      if harm regressed → regime = harm_reduce
+      if no admissible uplift + harm floor holds → STOP pareto-equilibrium
+  summary + survey themes + backlog
 ```
 
-**Flags** (`references/flags.md`): `--passes infinite|N`, `--report-only`.
+**Flags** (`references/flags.md`): `--passes`, `--delight-passes`, `--no-delight`/`--harm-only`, `--no-survey`, `--report-only`.
 
 ## 0. Create the run
 
@@ -60,8 +58,8 @@ Host workflow (if any): load from `workflows/<host>/` after reading `references/
 6. **Select features for review:** `--features` list if set; else features whose `projects` tag intersects project selection (missing tag ≈ `root`).
 7. List surfaces; prefer smallest set covering critical paths within selected projects.
 8. Load experience references only for selected experiences.
-9. Resolve `passes` (default **infinite**). Per-cycle stop = true plateau; outer stop = metrics 0 or irreducible (or finite cap).
-10. Write `scope.json` with `passes`, `passesLabel`, `cyclesCompleted`, `stopPolicy`, projects, personas, features, seeds, `autoInitRan`.
+9. Resolve `passes` (default **infinite** until **pareto-equilibrium**). Harm floor switches to delight; `--no-delight` is the only early exit at harm floor.
+10. Write `scope.json` with `passes`, `regime`, `stopPolicy: infinite-until-pareto-equilibrium`, projects, personas, features, seeds, `autoInitRan`.
 
 ## 2. Baseline
 
@@ -282,35 +280,43 @@ Stop the **cycle** when **any** is true:
 
 **Do not stop** because you ran out of ideas while residual still names a file-level fix. If stuck, take the next surface/persona cell with the worst `metric_max` and reduce that.
 
-### Across outer cycles (`passes`)
+### Across regimes (default infinite → Pareto equilibrium)
 
-After a cycle ends in **true plateau**:
+Canonical policy: **`equilibrium.md`**.
 
-1. Record final cell scores for the cycle (`metric_total`, `metric_max`).  
-2. **If metrics all zero** (`metric_total === 0` and `metric_max === 0`) → **invocation complete** (`stopReason: metrics-zero`).  
-3. Else **re-baseline / re-survey** for new implementable S/M findings after prior reductions.  
-4. **If none** → **invocation complete** (`stopReason: irreducible` — impossible to reduce further).  
-5. **If some** and `passes` is **infinite** → start next cycle.  
-6. **If some** and `passes` is finite **N** and `cyclesCompleted < N` → start next cycle; if `cyclesCompleted === N` → complete even if metrics > 0 (`stopReason: passes-cap`).  
+1. Record harm + delight + cognitive cells each pass.  
+2. On harm true plateau → **do not stop** → `regime: delight_maximize` (unless `--no-delight`).  
+3. Survey + rank backlog; apply Pareto-admissible uplifts.  
+4. Harm regression during delight → return to `harm_reduce`.  
+5. **Invocation complete** when `stopReason: pareto-equilibrium` (or `inverted-u-peak` / `delight-ceiling` / caps / user / safety / blocked).  
 
-If a cycle ends in user/safety/blocked, stop the invocation and document.
+Harness:
 
-Use `--report-only` only when the user wants measure-only.
+```bash
+node --import tsx …/review-loop.mts --mode equilibrium \
+  --scores curr.json --prev-scores prev.json \
+  --implementable-harm 0 --implementable-uplift 0 \
+  --regime delight_maximize
+```
+
+`metrics-zero` and `irreducible` are **harm-floor markers**, not infinite-loop terminals.
+
+Use `--report-only` only when the user wants measure-only (still survey/score; no apply).
 
 Update `scope.json`:
 
-- `passesCompleted` each **review iteration** (bookkeeping; not a cap)  
-- `cyclesCompleted` each finished outer cycle  
-- `stopReason` when the invocation ends  
+- `regime`: `harm_reduce` | `delight_maximize`  
+- `passesCompleted` / `cyclesCompleted` / `delightCyclesCompleted`  
+- `surveyCompleted`, `equilibrium` object  
+- `stopReason`: `pareto-equilibrium` | `inverted-u-peak` | `delight-ceiling` | `delight-passes-cap` | `passes-cap` | `harm-only-floor` | `blocked` | `user` | `safety`  
 
 Write `summary.md`:
 
-- Final scores vs baseline (and per-cycle when multiple cycles ran)  
-- `passes` / `passesLabel` / `cyclesCompleted` / review iterations / why stopped (`metrics-zero` | `irreducible` | `passes-cap` | `blocked` | `user` | `safety`)  
-- Experiments applied (every review iteration must list landed files if not report-only)  
-- Bus corrections applied (count of `correctedFrom` expects)  
-- Top remaining debt — **only** true external blocks or L-effort after S/M exhausted  
-- Recommended next owners only for items this run could not legally touch
+- Harm floor + final delight + cognitive breaches  
+- Why equilibrium (or cap)  
+- Experiments (harm + uplift) + rejected past-peak / constraint failures  
+- Persona survey + top backlog  
+- Segment coverage (which KYC personas judged)
 
 ## Host workflows vs cross-agent
 

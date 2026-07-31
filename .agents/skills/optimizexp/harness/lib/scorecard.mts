@@ -8,6 +8,58 @@ export type PrimaryScores = {
 	max: number;
 };
 
+/** Higher-is-better delight metrics (Phase 2 / survey). */
+export type PositiveScores = {
+	excitement: number;
+	easeOfUse: number;
+	perceivedOptimality: number;
+	total: number;
+	min: number;
+	gapTotal: number;
+	gapMax: number;
+};
+
+/** Lower-is-better cognitive load channels (see cognitive-thresholds.md). */
+export type CognitiveKey =
+	| "featureSprawl"
+	| "visualClutter"
+	| "interactiveClutter"
+	| "choiceOverload"
+	| "informationDensity"
+	| "noveltyTax"
+	| "contextSwitchTax"
+	| "workingMemoryLoad"
+	| "interruptionFragility";
+
+export const COGNITIVE_KEYS: CognitiveKey[] = [
+	"featureSprawl",
+	"visualClutter",
+	"interactiveClutter",
+	"choiceOverload",
+	"informationDensity",
+	"noveltyTax",
+	"contextSwitchTax",
+	"workingMemoryLoad",
+	"interruptionFragility",
+];
+
+export type CognitiveScores = {
+	featureSprawl: number;
+	visualClutter: number;
+	interactiveClutter: number;
+	choiceOverload: number;
+	informationDensity: number;
+	noveltyTax: number;
+	contextSwitchTax: number;
+	workingMemoryLoad: number;
+	interruptionFragility: number;
+	total: number;
+	max: number;
+	breaches: CognitiveKey[];
+};
+
+export type CognitiveThresholds = Partial<Record<CognitiveKey, number>>;
+
 export type HcdKey =
 	| "visibilityOfSystemStatus"
 	| "matchWithMentalModel"
@@ -44,6 +96,10 @@ export type MetricScorecard = {
 	persona: string;
 	surface: string;
 	primary: PrimaryScores;
+	/** Phase 2 / survey — optional on Phase 1 harm-only cards. */
+	positive?: PositiveScores;
+	/** Cognitive load channels — required in delight regime when judging uplift. */
+	cognitive?: CognitiveScores;
 	hcd?: Partial<Record<HcdKey, number>>;
 	hcdTotal?: number;
 	hcdMax?: number;
@@ -51,6 +107,9 @@ export type MetricScorecard = {
 		harms?: string;
 		friction?: string;
 		uncertainty?: string;
+		excitement?: string;
+		easeOfUse?: string;
+		perceivedOptimality?: string;
 	};
 	evidenceRefs: string[];
 	scoredAt: string;
@@ -93,6 +152,160 @@ export function buildPrimary(
 		total: harms + friction + uncertainty,
 		max: Math.max(harms, friction, uncertainty),
 	};
+}
+
+export function buildPositive(
+	excitement: number,
+	easeOfUse: number,
+	perceivedOptimality: number,
+): PositiveScores {
+	const total = excitement + easeOfUse + perceivedOptimality;
+	const min = Math.min(excitement, easeOfUse, perceivedOptimality);
+	const gapExcitement = 5 - excitement;
+	const gapEase = 5 - easeOfUse;
+	const gapOptimal = 5 - perceivedOptimality;
+	return {
+		excitement,
+		easeOfUse,
+		perceivedOptimality,
+		total,
+		min,
+		gapTotal: gapExcitement + gapEase + gapOptimal,
+		gapMax: Math.max(gapExcitement, gapEase, gapOptimal),
+	};
+}
+
+export function validatePositive(raw: unknown, prefix = "scores.positive"): string[] {
+	const problems: string[] = [];
+	if (!raw || typeof raw !== "object") {
+		return [`${prefix}: missing or not an object`];
+	}
+	const p = raw as Partial<PositiveScores>;
+	for (const k of ["excitement", "easeOfUse", "perceivedOptimality"] as const) {
+		if (!isInt0to5(p[k])) problems.push(`${prefix}.${k} must be int 0-5`);
+	}
+	if (
+		isInt0to5(p.excitement) &&
+		isInt0to5(p.easeOfUse) &&
+		isInt0to5(p.perceivedOptimality)
+	) {
+		const expected = buildPositive(p.excitement, p.easeOfUse, p.perceivedOptimality);
+		if (p.total !== expected.total) {
+			problems.push(`${prefix}.total must be ${expected.total}`);
+		}
+		if (p.min !== expected.min) {
+			problems.push(`${prefix}.min must be ${expected.min}`);
+		}
+		if (p.gapTotal !== expected.gapTotal) {
+			problems.push(`${prefix}.gapTotal must be ${expected.gapTotal}`);
+		}
+		if (p.gapMax !== expected.gapMax) {
+			problems.push(`${prefix}.gapMax must be ${expected.gapMax}`);
+		}
+	}
+	return problems;
+}
+
+export function cognitiveBreaches(
+	measured: Partial<Record<CognitiveKey, number>>,
+	thresholds: CognitiveThresholds = {},
+): CognitiveKey[] {
+	const breaches: CognitiveKey[] = [];
+	for (const k of COGNITIVE_KEYS) {
+		const m = measured[k];
+		if (!isInt0to5(m)) continue;
+		const t = thresholds[k];
+		const limit = typeof t === "number" ? t : 3;
+		if (m > limit) breaches.push(k);
+	}
+	return breaches;
+}
+
+export function buildCognitive(
+	channels: Partial<Record<CognitiveKey, number>>,
+	thresholds: CognitiveThresholds = {},
+): CognitiveScores {
+	const full = {} as Record<CognitiveKey, number>;
+	let total = 0;
+	let max = 0;
+	for (const k of COGNITIVE_KEYS) {
+		const v = channels[k];
+		const n = isInt0to5(v) ? v : 0;
+		full[k] = n;
+		total += n;
+		max = Math.max(max, n);
+	}
+	return {
+		...full,
+		total,
+		max,
+		breaches: cognitiveBreaches(full, thresholds),
+	};
+}
+
+export function validateCognitive(
+	raw: unknown,
+	prefix = "scores.cognitive",
+): string[] {
+	const problems: string[] = [];
+	if (!raw || typeof raw !== "object") {
+		return [`${prefix}: missing or not an object`];
+	}
+	const c = raw as Partial<CognitiveScores>;
+	for (const k of COGNITIVE_KEYS) {
+		if (!isInt0to5(c[k])) problems.push(`${prefix}.${k} must be int 0-5`);
+	}
+	if (COGNITIVE_KEYS.every((k) => isInt0to5(c[k]))) {
+		const expected = buildCognitive(
+			Object.fromEntries(COGNITIVE_KEYS.map((k) => [k, c[k]!])) as Record<
+				CognitiveKey,
+				number
+			>,
+		);
+		// rebuild without thresholds for total/max check
+		let total = 0;
+		let max = 0;
+		for (const k of COGNITIVE_KEYS) {
+			total += c[k] as number;
+			max = Math.max(max, c[k] as number);
+		}
+		if (c.total !== total) problems.push(`${prefix}.total must be ${total}`);
+		if (c.max !== max) problems.push(`${prefix}.max must be ${max}`);
+		if (!Array.isArray(c.breaches)) {
+			problems.push(`${prefix}.breaches must be an array`);
+		}
+		void expected;
+	}
+	return problems;
+}
+
+/** Pareto admissibility: delight improved, harm not worse, no new cognitive breach. */
+export function isParetoAdmissible(input: {
+	prevHarm: PrimaryScores;
+	currHarm: PrimaryScores;
+	prevPositive?: PositiveScores;
+	currPositive?: PositiveScores;
+	cognitiveBreaches?: string[];
+}): { ok: boolean; reasons: string[] } {
+	const reasons: string[] = [];
+	if (input.currHarm.total > input.prevHarm.total) {
+		reasons.push("harm total increased");
+	}
+	if (input.currHarm.max > input.prevHarm.max) {
+		reasons.push("harm max increased");
+	}
+	if (input.cognitiveBreaches && input.cognitiveBreaches.length > 0) {
+		reasons.push(`cognitive breaches: ${input.cognitiveBreaches.join(",")}`);
+	}
+	if (input.prevPositive && input.currPositive) {
+		const delightUp =
+			input.currPositive.min > input.prevPositive.min ||
+			input.currPositive.total > input.prevPositive.total ||
+			input.currPositive.gapMax < input.prevPositive.gapMax ||
+			input.currPositive.gapTotal < input.prevPositive.gapTotal;
+		if (!delightUp) reasons.push("delight did not improve");
+	}
+	return { ok: reasons.length === 0, reasons };
 }
 
 export function deltaPrimary(from: PrimaryScores, to: PrimaryScores): ScoreDelta {
@@ -205,6 +418,22 @@ export function validateScorecard(
 			problems.push(`scores.hcdMax must be ${hcdMax}`);
 		}
 	}
+	if (s.positive !== undefined) {
+		problems.push(...validatePositive(s.positive));
+		if (s.rationale && typeof s.rationale === "object" && s.positive) {
+			const pos = s.positive as PositiveScores;
+			for (const k of ["excitement", "easeOfUse", "perceivedOptimality"] as const) {
+				if (isInt0to5(pos[k]) && pos[k]! <= 3 && !s.rationale[k]) {
+					problems.push(
+						`scores.rationale.${k} required when positive.${k} <= 3`,
+					);
+				}
+			}
+		}
+	}
+	if (s.cognitive !== undefined) {
+		problems.push(...validateCognitive(s.cognitive));
+	}
 	return problems;
 }
 
@@ -288,6 +517,9 @@ export function makeScorecard(input: {
 	harms: number;
 	friction: number;
 	uncertainty: number;
+	excitement?: number;
+	easeOfUse?: number;
+	perceivedOptimality?: number;
 	rationale?: MetricScorecard["rationale"];
 	evidenceRefs?: string[];
 	hcd?: MetricScorecard["hcd"];
@@ -311,6 +543,17 @@ export function makeScorecard(input: {
 		evidenceRefs: input.evidenceRefs ?? [],
 		scoredAt: input.scoredAt ?? new Date().toISOString(),
 	};
+	if (
+		input.excitement !== undefined &&
+		input.easeOfUse !== undefined &&
+		input.perceivedOptimality !== undefined
+	) {
+		card.positive = buildPositive(
+			input.excitement,
+			input.easeOfUse,
+			input.perceivedOptimality,
+		);
+	}
 	if (input.hcd) {
 		card.hcd = input.hcd;
 		let total = 0;

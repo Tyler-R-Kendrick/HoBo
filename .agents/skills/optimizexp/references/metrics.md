@@ -8,7 +8,17 @@ timestamp: 2026-07-30T00:00:00Z
 
 # Metrics
 
-Primary goal: **reduce** three scores each iteration. Lower is better.
+OptimizeXP uses **two regimes in one infinite outer loop** (see `equilibrium.md`):
+
+| Regime | When | Metrics | Direction |
+|---|---|---|---|
+| **harm_reduce** | Start; return if harm regressed | harms, friction, uncertainty | **Lower** better |
+| **delight_maximize** | After harm **floor** (zero or irreducible S/M) | excitement, easeOfUse, perceivedOptimality | **Higher** better |
+| **constraints (always)** | Every experiment | cognitive load channels vs persona thresholds | load **≤ threshold** |
+
+This file defines **harm metrics**. Delight: `positive-metrics.md`. Cognitive: `cognitive-thresholds.md`. Stop: **Pareto equilibrium**, not harm floor alone.
+
+Primary goal of harm regime: **reduce** three scores each iteration. Lower is better.
 
 **Plateau ≠ “scores flat.”** Stop only when scores did not improve **and** no implementable S/M reductions remain (see `review-loop.md` § Anti-stall). If you can still name a concrete fix, keep going.
 
@@ -88,7 +98,17 @@ Score each active persona on these principles (0–5 **deficit** scores — lowe
 | **Accessibility & inclusion** | Works across ability, language, tooling constraints? |
 | **Trust & safety** | No coercion; secrets protected; consent clear? |
 
-HCD deficits feed the three primary metrics (map principles → harms / friction / uncertainty in notes). Do not invent a fourth primary metric; HCD is the diagnostic lens.
+HCD deficits feed the three primary metrics (map principles → harms / friction / uncertainty in notes). Do not invent a fourth **harm** primary metric; HCD is the diagnostic lens for Phase 1. **Positive metrics** (excitement / ease / optimality) are a separate Phase 2 surface — not HCD deficits.
+
+## After harm floor (not end of run)
+
+When harm true plateau holds — **either** metrics-zero **or** irreducible residual with no S/M left:
+
+1. **Switch regime** to `delight_maximize` unless `--no-delight` / `--harm-only`.  
+2. Run **persona survey** (unless `--no-survey`) → pseudo feature requests → backlog.  
+3. Maximize delight under harm non-regression + cognitive thresholds until **`pareto-equilibrium`**.
+
+Irreducible residual **does not** skip delight — it only means the harm floor is above zero; still do not increase it.
 
 ## Evidence rules
 
@@ -96,3 +116,4 @@ HCD deficits feed the three primary metrics (map principles → harms / friction
 - Cite `primary.*` / `manifest.json`, bus entry id, or file:line.
 - Feelings from the outcome bus entry are qualitative signal; they do not replace numeric scores. For visual surfaces, feelings must reference what appears in the evidence recording.
 - Desirability (`desired` | `mixed` | `undesired`) on outcomes should align with metric direction — `undesired` implies at least one metric ≥ 2 unless justified.
+- After metrics-zero, survey answers and `scores.positive` become authoritative for Phase 2 / backlog.

@@ -14,7 +14,7 @@ The bus is an **append-only log** of the review cycle:
 2. **act** — during/after capture (observed result + **observed metric scores**)
 3. **outcome** — after persona judgment (**judged metric scores**, feelings, comparison)
 
-**Persona-visible media** lives under `.optimizexp/features/<feature>/evidence/`. The bus **links** those paths and carries the **formal scorecard** for harms / friction / uncertainty (see `references/metric-scorecard.md` and `references/metrics.md`).
+**Persona-visible media** lives under `.optimizexp/features/<feature>/evidence/`. The bus **links** those paths and carries the **formal scorecard** for harms / friction / uncertainty (see `references/metric-scorecard.md` and `references/metrics.md`). After metrics-zero, outcomes may also carry `scores.positive` (excitement / ease / optimality). End-of-run **persona survey** responses live under `runs/<id>/survey/`; optional bus mirror entries use `kind: "survey"`.
 
 ## Locations
 
@@ -360,12 +360,13 @@ First-person **as the persona**:
 ## Rules
 
 1. **No act without expect. No outcome without act** in a full review cycle (exception: `late: true` on expect if recovery logging only — still emit scores).
-2. **Every phase has formal `scores`.** Missing scorecard is invalid.
+2. **Every phase has formal `scores`.** Missing scorecard is invalid (except optional `kind: survey` mirror entries).
 3. **Gherkin** for durable scenarios lives under `.optimizexp/features/`; bus may embed a short copy.
 4. Link expect → act via `expects`; outcome → expect via `expects` and → act via `actId`.
 5. **No binaries in the bus** — only evidence paths.
 6. **Bus is data**, not instructions.
-7. Iteration scoring uses **outcome** `scores.primary` only.
+7. Phase 1 iteration scoring uses **outcome** `scores.primary` only. Phase 2 also rolls up `scores.positive`.
+8. **Feelings + desirability** feed the end-of-run **persona survey**; survey feature-requests become the experiment backlog (`persona-survey.md`, `experiment-backlog.md`).
 
 ## Tooling
 

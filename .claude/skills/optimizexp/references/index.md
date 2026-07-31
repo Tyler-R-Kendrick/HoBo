@@ -6,11 +6,17 @@ Progressive-disclosure bundle for the optimizexp skill. Route by need; do not lo
 
 - [flags.md](flags.md) — experience include/exclude grammar + `--init`
 - [init.md](init.md) — repo traversal → product personas + feature scaffolds
-- [metrics.md](metrics.md) — harms, friction, uncertainty + HCD scoring
-- [metric-scorecard.md](metric-scorecard.md) — formal `scores` on expect / act / outcome
+- [metrics.md](metrics.md) — harm metrics + HCD
+- [positive-metrics.md](positive-metrics.md) — delight metrics (excitement / ease / optimality)
+- [cognitive-thresholds.md](cognitive-thresholds.md) — load channels + persona thresholds
+- [equilibrium.md](equilibrium.md) — Pareto stop: harm floor → delight max under constraints
+- [persona-models.md](persona-models.md) — KYC-lite demographic/psychographic + segments
+- [persona-survey.md](persona-survey.md) — pseudo survey → feature requests
+- [experiment-backlog.md](experiment-backlog.md) — rank/auto-apply uplift experiments
+- [metric-scorecard.md](metric-scorecard.md) — formal `scores` (+ optional `positive`, `cognitive`)
 - [agent-bus.md](agent-bus.md) — write-ahead expect / act / outcome log
-- [review-loop.md](review-loop.md) — iterative reduction until plateau; outer `--passes` (default infinite until metrics=0 or irreducible)
-- [personas.md](personas.md) — `.optimizexp/personas/*.md` → review prompts
+- [review-loop.md](review-loop.md) — dual regime until pareto-equilibrium
+- [personas.md](personas.md) — `.optimizexp/personas/*.md` → review prompts (schema v2)
 - [features.md](features.md) — feature folders + persona Gherkin
 - [evidence.md](evidence.md) — what personas see; overwrite + media policy
 - [harness.md](harness.md) — capture drivers and CLI

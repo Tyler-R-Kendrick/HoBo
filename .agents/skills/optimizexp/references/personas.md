@@ -17,10 +17,12 @@ Each persona file **must** match this shape:
 ```markdown
 ---
 id: developer
-schemaVersion: 1
+schemaVersion: 2
 experiences: [dx, ax]
 priority: 1
 interfaces: [cli, docs, mcp, config]
+segmentIds: [indie-fullstack]
+marketPriority: 1
 generatedFromSeed: false
 seedDigest: null
 ---
@@ -30,49 +32,67 @@ seedDigest: null
 ## Who I am
 …
 
+## Market segment
+…
+
+## Demographic model
+…
+
+## Psychographic model
+…
+
+## Cognitive thresholds
+…
+
 ## Goals
-- …
+…
 
 ## Constraints
-- …
+…
 
 ## Accessibility & inclusion needs
-- …
+…
 
 ## Success looks like
-- …
+…
 
 ## Failure modes I hate
-- …
+…
 
 ## Vocabulary I use
-- …
+…
 
 ## Review instructions
 When reviewing, I judge surfaces by…
-I score harms, friction, and uncertainty as…
-I write expect/act/outcome scorecards as…
+I score harms, friction, uncertainty, positive metrics, and cognitive load…
+I reject uplifts that breach my thresholds or raise harm…
 
 ## Source seed
 <!-- optional; required when generatedFromSeed: true -->
 …
 ```
 
+Full field enums and diversity rules: **`persona-models.md`**. Cognitive channel definitions: **`cognitive-thresholds.md`**.
+
 ### Frontmatter (required fields)
 
 | Field | Required | Meaning |
 |---|---|---|
 | `id` | yes | DNS-ish slug `[a-z0-9-]+`; filename must be `<id>.md` |
-| `schemaVersion` | yes | Currently `1` |
+| `schemaVersion` | yes | `1` (grandfathered) or **`2`** (new/rewritten — required for generation) |
 | `experiences` | yes | Non-empty subset of `ux` / `dx` / `ax` |
 | `priority` | no | Lower runs first when time-boxing (default `100`) |
 | `interfaces` | no | Preferred surface types (`cli`, `tui`, `web`, `native`, `docs`, `mcp`, …) |
+| `segmentIds` | v2 yes | Market segment tags this persona covers |
+| `marketPriority` | no | Coverage ranking when time-boxing |
 | `generatedFromSeed` | yes | `true` if created/updated via `--persona` seed rewrite |
-| `seedDigest` | when generated | Short hash or first 80 chars of seed (not secrets) |
+| `seedDigest` | when generated | Short hash of seed (not secrets) |
 
 ### Body sections (required)
 
-All of: Who I am · Goals · Constraints · Accessibility & inclusion needs · Success looks like · Failure modes I hate · Vocabulary I use · Review instructions.
+**v1:** Who I am · Goals · Constraints · Accessibility & inclusion needs · Success looks like · Failure modes I hate · Vocabulary I use · Review instructions.
+
+**v2 adds:** Market segment · Demographic model · Psychographic model · Cognitive thresholds.
 
 When `generatedFromSeed: true`, also **Source seed** (verbatim user seed for auditability).
 
@@ -152,12 +172,13 @@ For each selected persona, the host workflow constructs:
 
 ```text
 You are reviewing as persona `<id>`.
-Follow the persona document at `.optimizexp/personas/<id>.md` verbatim as your judgment criteria.
-Primary metrics to reduce: harms, friction, uncertainty (formal scorecards on expect/act/outcome).
-Before any interaction, write a write-ahead expect entry with scores.predicted.
-After capture, write act with scores.observed; then outcome with scores.judged + comparison.
-Write feelings in the first person as this persona.
-Score HCD principles from references/metrics.md for your surfaces only.
+Follow `.optimizexp/personas/<id>.md` (including demographic/psychographic models and cognitive thresholds) as judgment criteria.
+Harm metrics (lower better): harms, friction, uncertainty.
+Delight metrics (higher better): excitement, easeOfUse, perceivedOptimality — only under harm non-regression.
+Cognitive load must stay ≤ my Cognitive thresholds; breaches invalidate uplift experiments.
+Write expect/act/outcome scorecards (positive + cognitive in delight regime).
+Feelings and survey answers are first person as this persona.
+Pseudo feature requests feed the experiment backlog; stop only at Pareto equilibrium unless flags say otherwise.
 Do not optimize for other personas in this pass.
 ```
 

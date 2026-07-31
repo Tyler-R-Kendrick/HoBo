@@ -58,3 +58,7 @@ Continue until true plateau — never invent a pass count stop.
 
 - Persona Explore agents **read-only** may receive bus lesson JSON in the prompt.
 - Coordinator is sole bus writer + harness invoker.
+
+## Phase 2 + survey closeout
+
+After harm metrics hit 0: score excitement / ease / optimality (`positive-metrics.md`). End of run: persona survey → experiment backlog (`persona-survey.md`, `experiment-backlog.md`; `harness/survey.mts`). Flags: `--no-delight`, `--no-survey`, `--delight-passes`.

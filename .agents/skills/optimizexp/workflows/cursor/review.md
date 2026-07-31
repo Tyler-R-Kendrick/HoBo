@@ -10,3 +10,7 @@ Cursor notes:
 - Feature evidence: `@.optimizexp/features/<slug>/evidence/…`.
 - **Apply reduce experiments by default**; use `--report-only` for measure-only.
 - **Derive → implement → continue.** Do not plateau while findings still list S/M reductions. Pass `--implementable-findings N` to `should-stop`.
+
+## Phase 2 + survey closeout
+
+After harm metrics hit 0: score excitement / ease / optimality (`positive-metrics.md`). End of run: persona survey → experiment backlog (`persona-survey.md`, `experiment-backlog.md`; `harness/survey.mts`). Flags: `--no-delight`, `--no-survey`, `--delight-passes`.

@@ -8,9 +8,9 @@ timestamp: 2026-07-30T00:00:00Z
 
 # Metric scorecard (formal output)
 
-Every bus phase — **expect**, **act**, **outcome** — MUST emit a formal **`scores`** object that scores against the primary metrics (and optional HCD deficits). Feelings and desirability are complementary; they do **not** replace numeric scores.
+Every bus phase — **expect**, **act**, **outcome** — MUST emit a formal **`scores`** object that scores against the primary **harm** metrics (and optional HCD deficits). In **Phase 2** / survey, also emit optional **`scores.positive`** (excitement / easeOfUse / perceivedOptimality — higher better). Feelings and desirability are complementary; they do **not** replace numeric scores.
 
-Scale and metric definitions: `references/metrics.md` (integers **0–5**, lower better).
+Scale and metric definitions: `references/metrics.md` (harm: lower better) and `references/positive-metrics.md` (delight: higher better).
 
 ## Scorecard schema
 
@@ -27,6 +27,15 @@ Scale and metric definitions: `references/metrics.md` (integers **0–5**, lower
     "uncertainty": 1,
     "total": 3,
     "max": 2
+  },
+  "positive": {
+    "excitement": 3,
+    "easeOfUse": 4,
+    "perceivedOptimality": 3,
+    "total": 10,
+    "min": 3,
+    "gapTotal": 5,
+    "gapMax": 2
   },
   "hcd": {
     "visibilityOfSystemStatus": 1,
@@ -63,9 +72,12 @@ Scale and metric definitions: `references/metrics.md` (integers **0–5**, lower
 | `role` | yes | `predicted` (expect) · `observed` (act) · `judged` (outcome) |
 | `persona` | yes | Persona id judging this scorecard |
 | `surface` | yes | Stable surface name |
-| `primary.harms/friction/uncertainty` | yes | Integers 0–5 |
+| `primary.harms/friction/uncertainty` | yes | Integers 0–5 (lower better) |
 | `primary.total` | yes | Must equal sum of the three |
 | `primary.max` | yes | Must equal max of the three |
+| `positive.excitement/easeOfUse/perceivedOptimality` | delight regime / survey | Integers 0–5 (**higher** better) |
+| `positive.total/min/gapTotal/gapMax` | if `positive` | See `positive-metrics.md` / `buildPositive` |
+| `cognitive.*` | delight regime / load-sensitive reviews | 0–5 load channels + `breaches[]` — `cognitive-thresholds.md` |
 | `hcd.*` | recommended | Each 0–5 deficit; omit only if phase is pure CLI probe and documented |
 | `hcdTotal` / `hcdMax` | if `hcd` present | Sum and max of HCD fields |
 | `rationale` | yes | At least one of the three primary keys explained in one sentence each when score ≥ 1; score 0 may use a short all-clear |

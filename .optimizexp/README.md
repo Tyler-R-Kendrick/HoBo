@@ -8,8 +8,11 @@ Repo-local configuration for the **optimizexp** agent skill.
 | `features/<slug>/` | Feature folders: per-persona Gherkin, `feature.json`, `evidence/` |
 | `features/<slug>/<slug>-<persona>.feature` | One Gherkin file per targeted persona |
 | `features/<slug>/evidence/<scenario>/` | **One** primary recording per scenario (overwritten on re-run) |
-| `bus/entries/` | Append-only bus: **expect / act / outcome** JSON with formal metric scorecards |
+| `bus/entries/` | Append-only bus: **expect / act / outcome** (+ optional `survey`) with formal metric scorecards |
 | `runs/<run-id>/` | Per-run scope, scores, iterations, summary |
+| `runs/<run-id>/survey/` | End-of-run persona survey responses (pseudo feature requests) |
+| `runs/<run-id>/backlog.json` | Ranked uplift experiments for this run |
+| `backlog/experiments.json` | Global merge of survey-driven experiment backlog |
 
 Skill (progressive disclosure + harness + host workflows):
 
@@ -33,7 +36,13 @@ harness-clis · model-routing · token-optimization · agents-md · agents-confi
 
 **Default behavior:** each review iteration **applies a reduce experiment** (smallest safe fix for the top finding), then re-captures evidence and re-scores. Opt out with `--report-only` / `--no-reduce`.
 
-**`--passes` (default `infinite`):** outer completion cycles until **all metrics are 0** or **irreducible** (true plateau after re-survey with no new S/M findings). Optional finite `--passes N` caps outer cycles. Not a max-iteration early-stop.
+**`--passes` (default `infinite`):** dual regime until **Pareto equilibrium** — harm floor **switches** to delight maximize under harm non-regression + **cognitive thresholds**. Optional finite `--passes N` caps harm cycles only. `--no-delight` / `--harm-only` opts into early exit at the harm floor.
+
+**Delight regime:** excitement / ease / optimality (higher better). Reject experiments that raise harm or breach persona cognitive budgets (sprawl, clutter, choice overload, …).
+
+**Personas (schema v2):** synthetic demographic + psychographic models + cognitive thresholds for segment-aware scoring.
+
+**Survey + backlog:** default on → `runs/<id>/survey/`, `backlog.json`, `.optimizexp/backlog/experiments.json`.
 
 **Anti-stall:** if the agent can name a concrete fix, it must implement it and continue — not stop on “needs install,” “env,” or flat scores with an open S/M backlog. True plateau = flat scores **and** zero implementable findings. **There is no review-iteration budget.**
 

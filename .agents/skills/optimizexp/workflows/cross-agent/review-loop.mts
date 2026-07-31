@@ -19,8 +19,10 @@ import process from "node:process";
 import {
 	validateComparison,
 	validateScorecard,
+	isParetoAdmissible,
 	type MetricScorecard,
 	type PrimaryScores,
+	type PositiveScores,
 } from "../../harness/lib/scorecard.mts";
 
 type Experiences = "ux" | "dx" | "ax";
@@ -74,6 +76,13 @@ function parseArgs(argv: string[]) {
 			a === "--implementable-findings-remaining"
 		)
 			out.implementableFindings = argv[++i] ?? "0";
+		else if (a === "--implementable-harm") out.implementableHarm = argv[++i] ?? "0";
+		else if (a === "--implementable-uplift")
+			out.implementableUplift = argv[++i] ?? "0";
+		else if (a === "--harm-regressed") out.harmRegressed = argv[++i] ?? "false";
+		else if (a === "--cognitive-breach")
+			out.cognitiveBreach = argv[++i] ?? "false";
+		else if (a === "--regime") out.regime = argv[++i] ?? "";
 		else if (a === "--limit") out.limit = argv[++i] ?? "20";
 		else if (a === "--mismatches-only") out.mismatchesOnly = "1";
 		else if (!a.startsWith("-") && out.mode === "help") out.mode = a;
@@ -95,9 +104,15 @@ Usage:
   review-loop.mts --mode should-stop --run <id> --iteration N --scores c.json --prev-scores p.json
       [--implementable-findings N]
 
-Stop a cycle only on true plateau: scores flat AND implementableFindings=0.
---passes infinite (default) = outer cycles until metrics all 0 OR irreducible (true plateau after re-survey).
---passes N (finite) = at most N outer completion cycles (each cycle to full plateau).
+Stop a harm cycle only on true plateau: scores flat AND implementableFindings=0.
+Default infinite loop does NOT stop at harm floor — switches to delight_maximize under
+harm non-regression + cognitive thresholds until pareto-equilibrium (see equilibrium.md).
+  review-loop.mts --mode equilibrium --scores c.json --prev-scores p.json \\
+      --implementable-harm 0 --implementable-uplift 0 \\
+      [--harm-regressed false] [--cognitive-breach false] [--regime delight_maximize]
+--passes infinite (default) = continue both regimes until Pareto equilibrium.
+--passes N = cap harm_reduce cycles; still enter delight unless --no-delight.
+--delight-passes / --no-delight / --no-survey as documented in flags.md.
 There is no --iterations flag and no review-iteration cap inside a cycle.
 --report-only / --no-reduce = measure only (no experiments).
 --implementable-findings N = open S/M findings still unapplied (omit defaults to 1 = continue).
@@ -106,6 +121,7 @@ There is no --iterations flag and no review-iteration cap inside a cycle.
 Modes are deterministic file/JSON helpers. Persona judgment stays in the agent.
 Every expect/act/outcome bus entry must include a formal metric scorecard.
 Agents MUST apply a reduce experiment each pass unless report-only.
+Survey/backlog: harness/survey.mts (template|validate|aggregate|rank-backlog).
 `);
 }
 
@@ -486,8 +502,13 @@ function modeValidateBus(root: string) {
 		}
 		if (!body.id) problems.push(`${f}: missing id`);
 		const kind = body.kind;
+		// Optional end-of-run survey bus mirror (no expect/act scorecard required).
+		if (kind === "survey") {
+			if (!body.runId) problems.push(`${f}: survey missing runId`);
+			continue;
+		}
 		if (kind !== "expect" && kind !== "act" && kind !== "outcome") {
-			problems.push(`${f}: kind must be expect|act|outcome`);
+			problems.push(`${f}: kind must be expect|act|outcome|survey`);
 			continue;
 		}
 		problems.push(
@@ -564,6 +585,162 @@ function modeValidateBus(root: string) {
 	if (!ok) process.exitCode = 1;
 }
 
+/**
+ * Pareto equilibrium helper for the infinite dual-regime loop.
+ * Does not replace should-stop for harm-only cycles.
+ */
+function modeEquilibrium(args: Record<string, string | boolean>) {
+	const scoresPath = String(args.scores || "");
+	const prevPath = String(args.prevScores || "");
+	if (!scoresPath || !prevPath) {
+		console.error("--scores and --prev-scores required for equilibrium");
+		process.exit(2);
+	}
+	const curr = JSON.parse(readFileSync(scoresPath, "utf8")) as ScoresFile & {
+		delight_total?: number;
+		delight_min?: number;
+		gap_max?: number;
+		positive?: PositiveScores;
+		primary?: PrimaryScores;
+		cells?: ScoreCell[];
+	};
+	const prev = JSON.parse(readFileSync(prevPath, "utf8")) as typeof curr;
+
+	const harmN =
+		args.implementableHarm === undefined || args.implementableHarm === ""
+			? 1
+			: Math.max(0, Number(args.implementableHarm));
+	const upliftN =
+		args.implementableUplift === undefined || args.implementableUplift === ""
+			? 1
+			: Math.max(0, Number(args.implementableUplift));
+	const harmRegressed =
+		String(args.harmRegressed || "false").toLowerCase() === "true";
+	const cognitiveBreach =
+		String(args.cognitiveBreach || "false").toLowerCase() === "true";
+	const regime = String(args.regime || "delight_maximize");
+
+	const currHarm = {
+		harms: 0,
+		friction: 0,
+		uncertainty: 0,
+		total: curr.metric_total,
+		max: curr.metric_max,
+	};
+	const prevHarm = {
+		harms: 0,
+		friction: 0,
+		uncertainty: 0,
+		total: prev.metric_total,
+		max: prev.metric_max,
+	};
+
+	const scoresFlat =
+		curr.metric_total >= prev.metric_total &&
+		curr.metric_max >= prev.metric_max;
+
+	const delightFlat =
+		(curr.gap_max ?? 0) >= (prev.gap_max ?? 0) &&
+		(curr.delight_total ?? 0) <= (prev.delight_total ?? 0);
+
+	// If agent provides full positive objects, use formal Pareto check.
+	let pareto: { ok: boolean; reasons: string[] } | null = null;
+	if (curr.positive && prev.positive && curr.primary && prev.primary) {
+		pareto = isParetoAdmissible({
+			prevHarm: prev.primary,
+			currHarm: curr.primary,
+			prevPositive: prev.positive,
+			currPositive: curr.positive,
+			cognitiveBreaches: cognitiveBreach ? ["breach"] : [],
+		});
+	}
+
+	const atHarmFloor = harmN === 0;
+	const noUplift = upliftN === 0;
+	const equilibrium =
+		atHarmFloor &&
+		noUplift &&
+		!harmRegressed &&
+		!cognitiveBreach &&
+		scoresFlat &&
+		(regime === "harm_reduce" || delightFlat || pareto?.ok === false);
+
+	let stop = false;
+	let reason = "continue";
+	let nextRegime = regime;
+
+	if (regime === "harm_reduce" || regime === "") {
+		if (atHarmFloor && scoresFlat) {
+			nextRegime = "delight_maximize";
+			reason = "switch-to-delight";
+			stop = false;
+		} else {
+			reason = harmN > 0 ? "continue-harm-reduce" : "continue-harm-not-flat";
+			stop = false;
+		}
+	} else if (regime === "delight_maximize") {
+		if (harmRegressed || (curr.metric_total > prev.metric_total)) {
+			nextRegime = "harm_reduce";
+			reason = "harm-regressed-return";
+			stop = false;
+		} else if (equilibrium) {
+			stop = true;
+			reason = "pareto-equilibrium";
+		} else if (upliftN > 0) {
+			reason = "continue-delight-uplift";
+			stop = false;
+		} else {
+			reason = delightFlat ? "continue-re-survey-uplift" : "continue-delight-scores";
+			stop = false;
+		}
+	}
+
+	console.log(
+		JSON.stringify(
+			{
+				ok: true,
+				stop,
+				reason,
+				regime,
+				nextRegime,
+				equilibrium,
+				implementableHarm: harmN,
+				implementableUplift: upliftN,
+				harmRegressed,
+				cognitiveBreach,
+				scoresFlat,
+				delightFlat,
+				pareto,
+				curr: {
+					metric_total: curr.metric_total,
+					metric_max: curr.metric_max,
+					delight_total: curr.delight_total ?? null,
+					gap_max: curr.gap_max ?? null,
+				},
+				prev: {
+					metric_total: prev.metric_total,
+					metric_max: prev.metric_max,
+					delight_total: prev.delight_total ?? null,
+					gap_max: prev.gap_max ?? null,
+				},
+				guidance:
+					stop
+						? "Pareto equilibrium — no admissible S/M harm reduce or delight uplift left under constraints."
+						: nextRegime === "delight_maximize" && regime !== "delight_maximize"
+							? "Harm floor reached — switch regime to delight_maximize; keep measuring harm/cognitive."
+							: nextRegime === "harm_reduce" && regime === "delight_maximize"
+								? "Harm regressed during delight — return to harm_reduce."
+								: "Continue regime; apply next admissible experiment.",
+			},
+			null,
+			2,
+		),
+	);
+	process.exitCode = stop ? 0 : 1;
+	void currHarm;
+	void prevHarm;
+}
+
 /** Aggregate judged outcome scorecards into run cells. */
 function modeAggregateBus(root: string, runId: string) {
 	const dir = path.join(root, ".optimizexp", "bus", "entries");
@@ -637,6 +814,10 @@ function main() {
 	}
 	if (mode === "should-stop") {
 		modeShouldStop(args as Record<string, string | boolean>, root);
+		return;
+	}
+	if (mode === "equilibrium") {
+		modeEquilibrium(args as Record<string, string | boolean>);
 		return;
 	}
 	if (mode === "aggregate-bus") {

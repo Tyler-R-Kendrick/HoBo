@@ -23,3 +23,17 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Result | **success** |
 | Failure class | `billing-budget` on #958 checks only (did not block merge) |
 | Notes | Installed `github/gh-stack`; expanded `sdlc` + `gh-stack` skills mirrored to all agents; bottom-up closeout + incremental checkins; clarified squash-merge still required when CI is billing-red. User confirmed agent can still squash-merge under billing failures. |
+
+## 2026-07-31 — ax-optimizexp-land
+
+| Field | Value |
+|---|---|
+| Initiative | `docs/plans/ax-optimizexp-land/sdlc-state.md` |
+| Backend | sequential-fallback (parent; AX work already measured under optimizexp) |
+| Issue | AX-01 land setup help + gbrain fail-closed |
+| Branch | `sdlc/ax-optimizexp-land-01-setup-help-gbrain` |
+| PRs | #968 (squash-merged `c37cf984`) |
+| Result | **success** |
+| Failure class | `billing-budget` on checks only (empty steps; spending limit annotation) |
+| Notes | Local gates green (setup --help, gbrain launcher exit 1, bindings, mirrors, agent:check staged). Closeout rubber-duck + adversarial on PR comment. |
+

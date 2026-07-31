@@ -30,6 +30,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0134) | **ADR-0134** — HoBo Trails (app-owned continuous migration recipes; composes `identity.continuous`) | — |
 | [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0130) | **ADR-0130** — Hierarchical DNS-valid naming (`.hobo.localhost` / `.hobo.test`; never bare `.hobo`) | — |
 | [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0140) | **ADR-0140** — Launch ship targets A/B/C (OSS public · local-first npm · hosted beta/GA); default order A→B→C | — |
+| [`adr/03-data-plane-constrained-legality.md`](./adr/03-data-plane-constrained-legality.md) | **ADR-0141** — Constrained generation legality: executor residual control + Γ vs gated diffusion circuit; freeze model-facing topology heads | — |
 | [`launch-ship-targets.md`](./launch-ship-targets.md) | Human-facing summary of ADR-0140 ship targets, S-stage interim cutlines, and claim rules | — |
 | [`instances/`](./instances/README.md) | Populated readiness dashboard, go/no-go, accepted-risk, and residual human-blocker **instances** (dated snapshots; contracts stay in sibling docs) | — |
 | [`pre-public-secret-scan.md`](./pre-public-secret-scan.md) | Target A runbook: full-history gitleaks before repo-public flip; evidence rules | — |

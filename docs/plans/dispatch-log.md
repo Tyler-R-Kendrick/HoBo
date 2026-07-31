@@ -130,3 +130,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | `billing-budget` / checks still queued at merge (finish exception) |
 | Notes | Design suite Camp→Yard-first language; `docs/design/devx-devenv-nix.md`; index + ADR-0006 links; camps package docs. Local `agent:check -- --staged` green. |
 
+
+## 2026-07-31 — yard-first skeptic gaps + Nix posture expand
+
+| Field | Value |
+|---|---|
+| Initiative | Yard-first + Nix/devenv goal — adversarial verification gap close |
+| Backend | sequential-fallback (parent; design suite) |
+| Branch | `docs/yard-first-skeptic-gaps` |
+| PRs | [#982](https://github.com/Tyler-R-Kendrick/HoBo/pull/982) (squash-merged `1f0f8575`) |
+| Result | **success** |
+| Failure class | `billing-budget` / checks may still be queued at merge |
+| Notes | ADR-0031 + platform-engineering + worked-example; expanded `devx-devenv-nix.md` (risks, hobo-code auto-detect, NixOS/Station, dendritic); camps residual documented; SCRATCH verification captures; camps tests 7/7; agent:check staged green. |
+

@@ -60,3 +60,14 @@ experience type so one implementer holds one artifact discipline.
 `src/draft/_grandfathered.json` IS the burn-down: 647 → 0. No entry may be added; every wave
 issue deletes its batch's entries. When the file's `packages` array is empty, the advisory tier
 disappears and the full gate applies repo-wide — that event closes the backfill epic.
+
+### Snapshot (2026-07-30)
+
+| Wave | Status |
+|---|---|
+| **W1 proof.json** | **Done for remaining grandfathered set** — every entry in `_grandfathered.json` carries a schema-valid `proof.json` (619 → 618 after first W3 un-grandfather). |
+| **W2 epic features** | Partial historically (28 `.feature` files); not closed. |
+| **W3 examples+notebooks** | **Started** — first package fully hardened & removed from allowlist: `dispatcher-reservation-hardening-contract` (executed example + notebook + bench). |
+| **W4–W6** | Not started at scale. |
+
+Burn-down: **618** grandfathered packages remain.

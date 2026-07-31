@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "sdlc-gh-stack initiative state"
+description: "Durable loop state for the sdlc + GitHub stacked PR initiative."
+tags: [hobo, plans, sdlc]
+---
+
 # Initiative: sdlc + official GitHub stacked PRs
 
 **Phase:** closed  

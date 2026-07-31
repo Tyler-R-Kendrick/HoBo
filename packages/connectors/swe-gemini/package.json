@@ -14,7 +14,7 @@
 		}
 	},
 	"scripts": {
-		"build": "pnpm --filter @hobo/connector-acp build && tsc -p tsconfig.json",
+		"build": "pnpm --filter @hobo/connector-acp build && pnpm --filter @hobo/swe-shared build && tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "pnpm run build",
@@ -22,7 +22,8 @@
 	},
 	"dependencies": {
 		"@hobo/connector-acp": "workspace:*",
-		"@hobo/core": "workspace:*"
+		"@hobo/core": "workspace:*",
+		"@hobo/swe-shared": "workspace:*"
 	},
 	"description": "HoBo SWE agent adapter for Gemini over stock ACP (no protocol shim): governed SWE-task sessions with brokered vendor auth, golden-transcript replay lane and cred-gated live lane (HOBO-723)."
 }

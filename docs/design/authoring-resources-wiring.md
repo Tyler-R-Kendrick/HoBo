@@ -396,17 +396,19 @@ flowchart TD
 3. **Non-secret config** → typed value from the Camp's Deployment Set (no broker needed).
 4. **Static-secret escape hatch** → only when a provider offers no federation/secret-store path. **Bounded, concretely:** max TTL **≤ 7 days** (default; per-Camp tunable down), **rotation enforced** (a key past TTL fails closed with a typed `SecretExpiredError`, it does not hang), **every fetch audited** (not just grant/revoke), and **in-process cache bounded** (short TTL; each cache miss re-audits) — explicit opt-in ([ADR-0023](./adr/02-identity-security.md#adr-0023)). `hobo doctor` warns when this path is used where federation exists ([Plan 7](./developer-experience.md#plan-07), FR-014).
 
-**Per-Camp binding (where values actually come from).** The Bindle declares *needs*; each Camp supplies the *source* (provider-specific), e.g.:
+**Per-Camp binding under a Yard (where values actually come from).** The Bindle declares *needs*; after a Camp **attaches to (or is inferred under) a Yard**, resolution uses that **Yard's provider** adapters for *where* sources live, e.g.:
 ```ts
-// camp("prod-aws") — provider mapping (no separate config file)
-camp("prod-aws").config({
-  STRIPE: fromSecretStore("aws:secretsmanager", "prod/stripe"),   // resolved via brokered token
+// Camp is provider-neutral; Yard owns cloud. Config sources resolve via Yard provider adapters.
+const prod = camp("prod").config({
+  STRIPE: fromSecretStore("secretsmanager", "prod/stripe"),   // store kind; cloud from Yard
   LOG_LEVEL: "warn",
 });
+// yard("aws", { provider: aws(), camps: [prod] })  → AWS Secrets Manager
+// re-home via Trail to yard("azure", …)           → Key Vault (same Bindle; no app edit)
 ```
-The same Bindle on `prod-azure` resolves `STRIPE` from Key Vault — **no app-code change** (the portability promise, [ADR-0024](./adr/07-portability-extensibility.md#adr-0024)). Resolution decisions are recorded as `config.Resolved` (ref → source **+ Camp**, never the value).
+The same Bindle under an Azure Yard resolves `STRIPE` from Key Vault — **no app-code change** (the portability promise, [ADR-0024](./adr/07-portability-extensibility.md#adr-0024), [yard-first-placement](./adr/yard-first-placement.md)). Resolution decisions are recorded as `config.Resolved` (ref → source **+ Camp + Yard provider**, never the value).
 
-**Multi-Camp drift.** Because each Camp sources secrets independently, the *same logical secret* can diverge across Camps (rotated in AWS, stale in Azure). HoBo does **not** sync secret values (it never holds them), but `hobo doctor` / `hobo verify` compare resolved **refs across an environment group** and warn on a key that is missing or maps inconsistently; `config.Resolved` (ref + Camp) makes drift inspectable in the audit log. Value correctness remains the secret-store owner's responsibility.
+**Multi-Camp / multi-Yard drift.** Because each Yard's secret store is independent, the *same logical secret* can diverge across Camps on different Yards (rotated in AWS, stale in Azure). HoBo does **not** sync secret values (it never holds them), but `hobo doctor` / `hobo verify` compare resolved **refs across an environment group** and warn on a key that is missing or maps inconsistently; `config.Resolved` (ref + Camp) makes drift inspectable in the audit log. Value correctness remains the secret-store owner's responsibility.
 
 **Events & audit.**
 - `config.Resolved` — a declared key bound to a source (binding / secret-store path / federation trust); carries the *ref* + Camp, never the value.
@@ -422,7 +424,7 @@ The same Bindle on `prod-azure` resolves `STRIPE` from Key Vault — **no app-co
 **Why this is safe.**
 - **Nothing to steal by default** — the common case (bound resources) uses brokered tokens, so there is no secret at rest ([ADR-0008](./adr/index.md)).
 - **Blast radius is bounded** — tokens are short-lived + resource-scoped; the static fallback is TTL'd, rotated, and audited ([ADR-0023](./adr/02-identity-security.md#adr-0023)).
-- **Portable** — the Bindle declares needs, the Camp supplies sources; swapping clouds is a Camp change, never an app edit.
+- **Portable** — the Bindle declares needs; sources resolve under the **Yard provider** at the attached Camp; **swapping clouds re-homes Camps via Trails / Yard attachment**, never an app edit or Camp-owned provider pin.
 
 Config notes: fetched secrets are held in a short, bounded in-process cache (TTL above) and each cache miss re-audits; non-secret config supports live reload, pushed from the Camp's Deployment Set; each provider's `secrets` port adapter resolves per-Camp sourcing, and providers without a native secrets port use a shim adapter behind the same port.
 

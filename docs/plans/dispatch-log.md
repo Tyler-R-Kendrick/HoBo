@@ -212,3 +212,11 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **CI:** billing-budget empty-step failures documented; product tests green locally
 - **protocol:** `/sdlc finish`
 - **residual:** streaming engine, mouse/tasks, warning budget, nix panes, optimizexp interactive hard-gate
+
+## 2026-07-31 — optimizexp hobo-code shell polish (#997)
+
+- **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/997
+- **merge:** `b2fe524fdc1504847094d3decbb9959ef9ae25b9` (squash)
+- **optimizexp run:** `20260731-code-shell-optimizexp` stopReason pareto-equilibrium
+- **CI:** billing-budget empty-step; local vitest green
+- **protocol:** `/sdlc finish`

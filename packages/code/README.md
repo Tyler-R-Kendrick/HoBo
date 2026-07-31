@@ -23,15 +23,23 @@ The installed binary is **compiled** (`dist/`). Source lives in `src/`.
 
 ### Interactive TTY (bare `hobo-code`)
 
-On a real TTY, bare `hobo-code` shows a short brand title, a **discoverability strip**, then opens the Pi-based chat surface with a **HoBo extension** (not stock Pi):
+On a real TTY, bare `hobo-code` opens the **HoBo InteractiveShell** (product chrome):
 
-| In the TUI | One-shot CLI |
+| In the shell | What it is |
+|---|---|
+| Header | HoBo logo + animated **Bo** mascot |
+| Chat | Transcript · type a build prompt · Enter |
+| `/` slash | `guide` `config` `cost` `tasks` `status` `agent` `env` `auth` … |
+| Tab | Cycle **Chat → Tasks → Status** |
+| Footer | model · budget · hermetic env cue |
+
+This is **not** stock Pi Agent UI. Escape hatch only: `HOBO_CODE_TUI=pi` or `hobo-code --pi`.
+
+| Shell slash | One-shot CLI |
 |---|---|
 | `/agent` `/config` `/cost` `/harness` | `hobo-code agent` · `config` · `cost` · `harness` |
 | `/status` `/guide` `/tasks` `/login` | `hobo-code status` · `guide` · `tasks` · `auth login --agent` |
-| `/verbs` | `hobo-code help` |
-
-If it “just looks like Pi Agent”, run `/verbs` or `/agent` inside the session, or exit and use `hobo-code help`.
+| `/help` | keys + map · outside: `hobo-code help` |
 
 ## Quick start (Copilot-CLI-like)
 

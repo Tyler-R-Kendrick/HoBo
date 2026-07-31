@@ -1,8 +1,25 @@
 # `@hobo/code` architecture
 
+## Product UI ownership (hard rule)
+
+**Bare interactive `hobo-code` owns its chrome.** The default TTY path is
+`InteractiveShell` (`src/interactive-shell.ts`): HoBo logo + Bo, chat transcript,
+slash palette, tasks/status focus — **not** stock Pi Agent TUI.
+
+| Mode | When |
+|---|---|
+| **HoBo shell (default)** | TTY + bare / `chat` |
+| **Pi TUI escape hatch** | `HOBO_CODE_TUI=pi` or `hobo-code --pi` only |
+| **One-shot verbs** | `help`, `status`, `dispatch`, … |
+
+Pi may still be used as a **completion engine** later; it must not be the
+product frame. Optimizexp / persona reviews that only score one-shot verbs
+while bare TTY is stock Pi are **invalid**.
+
 ```
 hobo-code (standalone binary; dispatch default)
     │
+    ├─ InteractiveShell (default TTY)  Bo + chat + slash + tasks/status
     ├─ Eve subagents            defineEveAgent / defineEveSubagent (filesystem-first)
     ├─ Secure sandbox stack     DeepAgents + OpenShell + MxC (planSecureSandbox)
     ├─ Workflow Worlds          Local World offline · Vercel World prod (worlds.ts)

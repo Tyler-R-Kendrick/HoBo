@@ -156,3 +156,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Failure class | billing-budget / local main worktree cannot checkout |
 | Notes | sdk-api resourceMappings + reject labels; control-plane Planner rewrite; wasm-runtime-wit Yard-owned infra; walkthrough bindings removed. provider-ownership-rg unlabeled hits empty. camps 7/7; agent:check staged green. |
 
+
+## 2026-07-31 — yard-first inventory sweep (Camp-owns-provider)
+
+| Field | Value |
+|---|---|
+| Initiative | Yard-first AC1 / provider-ownership gate — broad inventory one-pass |
+| Backend | sequential-fallback (parent) |
+| Branch | `docs/yard-first-inventory-sweep` |
+| PRs | [#986](https://github.com/Tyler-R-Kendrick/HoBo/pull/986) (squash-merged `6a85628a`) |
+| Result | **success** |
+| Failure class | billing-budget / main worktree checkout local only |
+| Notes | REWRITE=0 under broad patterns; sdk-api Runtime vs Providers; control-plane authoring provider; ADR-0090; secrets authoring + ADR-0027. SCRATCH inventory + rg. agent:check staged green. |
+

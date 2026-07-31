@@ -159,9 +159,10 @@ function gitLsFiles(globPatterns: string[]): string[] {
 	const result = spawnSync("git", ["ls-files", ...globPatterns], {
 		encoding: "utf8",
 		shell: false,
+		maxBuffer: 32 * 1024 * 1024,
 	});
-	if (result.status !== 0) {
-		process.stderr.write(result.stderr);
+	if (result.error || result.status !== 0) {
+		process.stderr.write(result.stderr || result.error?.message || "");
 		process.exit(result.status ?? 1);
 	}
 	return result.stdout

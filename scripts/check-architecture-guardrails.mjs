@@ -437,7 +437,11 @@ function changedFiles(args) {
 }
 
 function git(args) {
-	return execFileSync("git", args, { encoding: "utf8" }).trim();
+	return execFileSync("git", args, {
+		encoding: "utf8",
+		// monorepo `git ls-files` exceeds Node's default 1 MiB maxBuffer
+		maxBuffer: 32 * 1024 * 1024,
+	}).trim();
 }
 
 function implementationPackageRoot(file) {

@@ -116,8 +116,9 @@ function capture(command: string, commandArgs: string[]) {
 	const result = spawnSync(platformCommand.command, platformCommand.args, {
 		encoding: "utf8",
 		shell: false,
+		maxBuffer: 32 * 1024 * 1024,
 	});
-	if (result.status !== 0) return "";
+	if (result.error || result.status !== 0) return "";
 	return result.stdout.trim();
 }
 

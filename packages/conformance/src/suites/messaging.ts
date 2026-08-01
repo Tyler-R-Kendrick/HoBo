@@ -18,35 +18,35 @@ export const MESSAGING_CONFORMANCE_SUITE = createConformanceSuite({
 		{
 			id: "messaging.publish-consume-ack",
 			tier: "local",
-			call: { function: "publish", args: { topic: "t", body: { x: 1 } } },
-			expect: { consumed: 1, acked: true },
+			call: { function: "publish", input: { topic: "t", body: { x: 1 } } },
+			expect: { output: { consumed: 1, acked: true } },
 		},
 		{
 			id: "messaging.consumer-group-isolation",
 			tier: "local",
 			call: {
 				function: "consume",
-				args: { topic: "t", groups: ["g1", "g2"] },
+				input: { topic: "t", groups: ["g1", "g2"] },
 			},
-			expect: { eachGroupSeesMessage: true },
+			expect: { output: { eachGroupSeesMessage: true } },
 		},
 		{
 			id: "messaging.dead-letter-max-attempts",
 			tier: "local",
 			call: {
 				function: "subscribe",
-				args: { fail: true, maxAttempts: 2 },
+				input: { fail: true, maxAttempts: 2 },
 			},
-			expect: { deadLettered: true },
+			expect: { output: { deadLettered: true } },
 		},
 		{
 			id: "messaging.exactly-once-capability-gate",
 			tier: "local",
 			call: {
 				function: "publish",
-				args: { delivery: "exactly-once" },
+				input: { delivery: "exactly-once" },
 			},
-			expect: { capabilityChecked: true },
+			expect: { output: { capabilityChecked: true } },
 		},
 	],
 });

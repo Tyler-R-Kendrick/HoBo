@@ -1,6 +1,8 @@
 /**
- * Identity FeatureFlagStore bridge for the composition-root `hobo-code` binary.
- * CLI surface itself is `runHoboCodeCli` in `@hobo/code` (flat verbs; dispatch default).
+ * Identity FeatureFlagStore bridge for `hobo-code` composition (doctor/health
+ * checks). The `hobo-code` binary itself is owned by `@hobo/code`
+ * (bin/hobo-code.mjs); CLI surface is `runHoboCodeCli` in `@hobo/code`
+ * (flat verbs; dispatch default).
  */
 import {
 	CODE_FEATURE_DEFAULTS,
@@ -51,7 +53,9 @@ export function featurePortFromStore(store: FeatureFlagStore): CodeFeaturePort {
 				key,
 				{
 					targetingKey: context.targetingKey,
-					attributes: context.attributes,
+					...(context.attributes !== undefined
+						? { attributes: context.attributes }
+						: {}),
 				},
 				fallback,
 			);

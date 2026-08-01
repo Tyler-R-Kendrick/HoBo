@@ -24,3 +24,10 @@ time. Scale by partitions, not multi-writer WAL over shared network filesystems.
 | Native Node | `node:sqlite` | WAL + `synchronous=FULL` | Storage worker serializes access |
 | Browser OPFS | `@sqlite.org/sqlite-wasm` | VFS-specific (not blind WAL) | Worker + `opfs-sahpool` default |
 | Component host | WIT import | Host-supplied | No SQLite handles cross the membrane |
+
+## Architecture rules
+
+Parse, don't validate: journal inputs cross one parser boundary (stream ids,
+expected revisions, fence tokens) and become derived types — branded positions
+and fenced append requests — so `SqliteJournal` internals operate on parsed
+values, not raw DTOs.

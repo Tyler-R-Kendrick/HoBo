@@ -71,7 +71,13 @@ describe("hobo new scaffold", () => {
 			expect(envelope.data.name).toBe("snapshop");
 			expect(envelope.data.template).toBe("api");
 			expect(envelope.data.offline).toBe(true);
-			expect(envelope.data.nextSteps).toEqual(["cd snapshop", "hobo dev"]);
+			expect(envelope.data.nextSteps).toEqual([
+				"cd snapshop",
+				"npm install",
+				"npm run typecheck",
+				"npm test",
+				"hobo dev",
+			]);
 			expect(envelope.data.createdFiles).toEqual(expectedCreatedFiles);
 
 			const projectDir = path.join(cwd, "snapshop");
@@ -117,7 +123,9 @@ describe("hobo new scaffold", () => {
 			expect(result.exitCode).toBe(0);
 			expect(result.stderr).toBe("");
 			expect(result.stdout).toMatch(/Created HoBo project snapshop/);
-			expect(result.stdout).toMatch(/cd snapshop\nhobo dev/);
+			expect(result.stdout).toMatch(
+			/cd snapshop\nnpm install\nnpm run typecheck\nnpm test\nhobo dev/,
+		);
 		});
 	});
 

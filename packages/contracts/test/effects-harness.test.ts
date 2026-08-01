@@ -4,7 +4,7 @@ import {
 	createBoundaryContract,
 	createResilienceProfile,
 	pureEffects,
-} from "@hobo/contracts";
+} from "../src/index.js";
 
 import {
 	captureContractEffects,

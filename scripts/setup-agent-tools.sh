@@ -178,7 +178,8 @@ else echo "  SKIP: brew, cargo, or curl missing for rtk"; fi
 
 say "Serena (oraios/serena) -> uv tool + shared MCP wrapper"
 if have serena; then
-  echo "  serena present ($(serena --version 2>/dev/null || echo '?')) — skip reinstall/init"
+  echo "  serena present ($(serena --version 2>/dev/null || echo '?')) — skip reinstall"
+  serena init >/dev/null 2>&1 && echo "  initialized / already initialized" || echo "  init FAILED"
 elif have uv; then
   uv tool install -p 3.13 serena-agent \
     && echo "  installed ($(command -v serena >/dev/null && serena --version 2>/dev/null || echo '?'))" || echo "  FAILED"
@@ -220,8 +221,8 @@ if [ "$WANT_GBRAIN" = "1" ]; then
   say "gbrain (garrytan/gbrain) -> bun install"
   if have bun; then
     bun install -g github:garrytan/gbrain && echo "  installed ($(gbrain --version 2>/dev/null || echo '?'))" || echo "  FAILED"
-    echo "  NEXT (manual): set OPENAI_API_KEY|ZEROENTROPY_API_KEY|VOYAGE_API_KEY, then 'gbrain init --pglite'."
-    echo "  NOTE: gbrain sends embedding/query text to that provider (cost + egress)."
+    echo "  NEXT (manual): run 'gbrain init --pglite'; choose local Ollama or an API-key provider."
+    echo "  NOTE: API-key providers receive embedding/query text (cost + egress); local Ollama does not."
   else echo "  SKIP: bun missing — install Bun first or rerun with --no-gbrain"; fi
 else
   say "gbrain — skipped (--no-gbrain)"

@@ -31,7 +31,7 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 - roleFamily: application-developer
 - seniority: senior
-- orgArchetype: scaleup
+- orgArchetype: smb
 - domainFamiliarity: power-user
 - localeContext: en-primary
 - deviceContext: desktop-first
@@ -42,7 +42,7 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 - values: [craft, multiplex, persistence, convenience, clarity, safety]
 - riskTolerance: medium
-- noveltySeeking: medium-high
+- noveltySeeking: medium
 - trustInAutomation: medium
 - documentationPreference: examples-first
 - errorEmotion: debug-eager

@@ -28,10 +28,13 @@ Status progresses `consumer_tested` → `provider_verified`.
 - `createMockProviderFromPact` — consumer-side in-process mock
 - `verifyPact` — provider verification (exact provider identity/status/headers; response body recursive-subset)
 - `checkPactInventory` — pact file ↔ inventory drift gate
-- **Effects (ADR-0136):** `createEffectIsolation`, `mocksForEffects`, `filterPureContracts`,
-  `dualFixturesForEffects`, `runResilienceFaultInjection`, `captureContractEffects` —
-  pure contracts isolate with zero infra; domain effects drive automatic mocks;
-  ResilienceProfile guides fault injection that never retries `policy.Decided` / terminal.
+
+The effect-aware isolation/mocks/fault-injection helpers (ADR-0136:
+`createEffectIsolation`, `mocksForEffects`, `filterPureContracts`,
+`dualFixturesForEffects`, `runResilienceFaultInjection`, `captureContractEffects`)
+live in `@hobo/contracts` so this package stays dependency-free (a
+`@hobo/contract-harness → @hobo/contracts → @hobo/core` chain would close a
+package-graph cycle with `@hobo/core`'s dev-time PACT usage of this harness).
 
 ## Commands
 

@@ -20,3 +20,17 @@ await runSweTask({
   principal: { id: "agent" /* … */ },
 });
 ```
+
+## Architecture rules
+
+Parse, don't validate: `parseAgentGuardrailPolicy` is the single parser
+boundary; guardrail policy, task, and report values become derived types
+(`SweTask`, `SweTaskReport`, `SandboxAccessReport`) that vendor adapters
+consume without re-validating raw fields.
+
+Event architecture: `runSweTask` treats each agent action as a command,
+records session facts as events emitted by the governed-session actor, and
+builds the SWE-task and sandbox reports as projections over those facts — a
+materialized view of the session. Session state is checkpointed as snapshots
+in the connector's read store so reports replay deterministically from the
+event store rather than from live agent state.

@@ -95,6 +95,11 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 		summary: "Report environment and portability hazards",
 	},
 	{
+		name: "messaging",
+		role: "diagnostics",
+		summary: "Inspect messaging capability and delivery-guarantee readiness",
+	},
+	{
 		name: "codegen",
 		role: "authoring",
 		summary: "Regenerate checked-in generated clients",
@@ -174,6 +179,11 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 		role: "control plane",
 		summary:
 			"Station occupancy setup/ops (init/up/status/rails); not a lifecycle verb",
+	},
+	{
+		name: "serve",
+		role: "control plane",
+		summary: "Local control-plane HTTP+SSE for the Yard game UI",
 	},
 	{
 		name: "replay",
@@ -268,6 +278,13 @@ export function verbHelpText(
 		throw new Error(`verbHelpText called with unknown verb: ${verbName}`);
 	}
 
+	const statusLine =
+		options.implemented === undefined
+			? ""
+			: options.implemented
+				? "Status: implemented in this composition\n"
+				: "Status: not yet implemented in this composition\n";
+
 	if (verb.name === "new") {
 		return `HoBo new
 
@@ -275,8 +292,11 @@ Usage:
   hobo new <name> [global flags] [-t todo|api|agent|fullstack] [--force]
 
 Role: ${verb.role}
-
+${statusLine}
 Scaffold an offline SDK program with checked-in generated bindings.
+
+Example:
+  hobo new my-app -t api
 `;
 	}
 
@@ -287,11 +307,14 @@ Usage:
   hobo stub [global flags] [--check]
 
 Role: ${verb.role}
-
+${statusLine}
 Materialize the contract-backed trainable stubs codegen emits for the
 project's bindle steps (src/_generated/trainables.ts) — one training.define()
 per step, served from its contract example until a training artifact is
 promoted. Pass --check to validate the generated tree without writing.
+
+Example:
+  hobo stub --check
 `;
 	}
 
@@ -302,25 +325,140 @@ Usage:
   hobo codegen [global flags] [--check]
 
 Role: ${verb.role}
-
+${statusLine}
 Regenerate the project's checked-in src/_generated/ tree from its
 WIT/Zod/allow/bindle sources. Pass --check to report drift without writing
 (exits non-zero when the tree is stale) — the same generator hobo build
 asserts freshness against.
+
+Example:
+  hobo codegen --check
 `;
 	}
 
+	if (verb.name === "build") {
+		return `HoBo build
 
-	const statusLine =
-		options.implemented === undefined
-			? ""
-			: options.implemented
-				? "Status: implemented in this composition\n"
-				: "Status: not yet implemented in this composition\n";
+Usage:
+  hobo build [global flags]
+
+Role: ${verb.role}
+${statusLine}
+Compile the project's services to wasm components, asserting the checked-in
+generated tree is fresh first (same generator as hobo codegen --check).
+
+Example:
+  hobo build
+`;
+	}
+
+	if (verb.name === "collect") {
+		return `HoBo collect
+
+Usage:
+  hobo collect [global flags] [--check]
+
+Role: ${verb.role}
+${statusLine}
+Run resource collection over the project Bindle and print the manifest IR.
+Pass --check to enforce the golden manifest instead of printing.
+
+Example:
+  hobo collect --json
+`;
+	}
+
+	if (verb.name === "dev") {
+		return `HoBo dev
+
+Usage:
+  hobo dev [global flags] [--once] [--port <port>] [--host <host>] [--home <path>]
+
+Role: ${verb.role}
+${statusLine}
+Serve the project on the local Yard (bare-metal runtime-local). Long-lived
+on an interactive terminal; --once (or a non-TTY / --json run) probes and
+exits for tests and CI.
+
+Example:
+  hobo dev --once
+`;
+	}
+
+	if (verb.name === "login") {
+		return `HoBo login
+
+Usage:
+  hobo login [global flags] [--home <path>] [--broker <uri>]
+
+Role: ${verb.role}
+${statusLine}
+Obtain a dev session/identity context and persist it to .hobo/session.json
+so hobo up / hobo down run under it. --broker targets a remote Conductor
+endpoint (--broker-uri is an accepted alias).
+
+Example:
+  hobo login
+`;
+	}
+
+	if (verb.name === "plan") {
+		return `HoBo plan
+
+Usage:
+  hobo plan [global flags]
+
+Role: ${verb.role}
+${statusLine}
+Dry-run the up decision (read-only): parse the project Bindle, run the
+Planner against the provider registry, and render the content-addressed
+DeploymentPlan. An unsatisfiable manifest exits non-zero with remediation.
+
+Example:
+  hobo plan --json
+`;
+	}
+
+	if (verb.name === "up") {
+		return `HoBo up
+
+Usage:
+  hobo up [global flags] [--to <revision> | --rollback] [--anonymous]
+          [--broker <uri>] [--home <path>] [--hold]
+
+Role: ${verb.role}
+${statusLine}
+Realize the current object graph: plan, then drive provisioning through the
+Conductor with progress on stderr. --to pins a revision, --rollback selects
+the previous one (mutually exclusive), --anonymous (alias --temporary)
+deploys without an account, --broker targets a remote Conductor
+(--broker-uri alias), --hold stages without applying.
+
+Example:
+  hobo up --anonymous
+`;
+	}
+
+	if (verb.name === "down") {
+		return `HoBo down
+
+Usage:
+  hobo down [global flags] [--force]
+
+Role: ${verb.role}
+${statusLine}
+Tear down what up realized: reverse-dependency destroy of every provisioned
+resource, with progress on stderr.
+
+Example:
+  hobo down
+`;
+	}
+
 	const body =
 		options.implemented === true
 			? `This shell dispatches ${verb.name} to the handler wired by the composition root.`
-			: `This shell dispatches ${verb.name} through the shared command registry. Un-wired compositions serve the intentional stub envelope until the owning slice injects a handler.`;
+			: `${verb.name} is not yet implemented: this shell dispatches through the shared command registry, and un-wired compositions serve the intentional stub envelope (exit non-zero) until the owning slice injects a handler.`;
 
 	return `HoBo ${verb.name}
 

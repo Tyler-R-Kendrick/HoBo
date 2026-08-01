@@ -366,7 +366,9 @@ function nearestVerb(input: string): string | null {
 			best = { candidate, distance };
 		}
 	}
-	return best && best.distance <= Math.max(2, Math.floor(input.length / 2))
+	// Short verbs are cheap to fat-finger into another valid word: only suggest
+	// on distance ≤1 for inputs up to 4 chars, ≤2 for longer ones.
+	return best && best.distance <= (input.length <= 4 ? 1 : 2)
 		? best.candidate
 		: null;
 }

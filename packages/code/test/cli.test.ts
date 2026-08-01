@@ -43,6 +43,37 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(HOBO_CODE_VERBS[0]).toBe("dispatch");
 	});
 
+	it("rejects unknown flags instead of silently accepting them", async () => {
+		const home = temp("hobo-code-flags-");
+		const env = { ...process.env, HOBO_HOME: home };
+
+		const unknown = await runHoboCodeCli(["status", "--wat"], { env, hoboHome: home });
+		expect(unknown.ok).toBe(false);
+		expect(unknown.exitCode).toBe(1);
+		expect(unknown.code).toBe("HOBO_CODE_UNKNOWN_FLAG");
+		expect(unknown.message).toMatch(/Unknown flag "--wat"/);
+		expect(unknown.message).toMatch(/hobo-code help/);
+
+		// Unknown --flag=value form is rejected too.
+		const assigned = await runHoboCodeCli(["status", "--wat=1"], {
+			env,
+			hoboHome: home,
+		});
+		expect(assigned.ok).toBe(false);
+		expect(assigned.code).toBe("HOBO_CODE_UNKNOWN_FLAG");
+
+		// Boolean flags must not swallow the next token as a value.
+		const help = await runHoboCodeCli(["--json", "help"], { env, hoboHome: home });
+		expect(help.ok).toBe(true);
+		expect(help.code).toBe("HOBO_CODE_HELP");
+
+		// Known value-taking flags still consume the next token.
+		const cwdMiss = await runHoboCodeCli(["env", "--cwd"], { env, hoboHome: home });
+		expect(cwdMiss.ok).toBe(false);
+		expect(cwdMiss.code).toBe("HOBO_CODE_UNKNOWN_FLAG");
+		expect(cwdMiss.message).toMatch(/requires a value/);
+	});
+
 	it("agent inventories human-free auth, MCP/ACP, unattended contract", async () => {
 		const home = temp("hobo-code-agent-");
 		const login = await runHoboCodeCli(["auth", "login", "--agent"], {

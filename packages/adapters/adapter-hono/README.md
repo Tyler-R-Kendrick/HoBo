@@ -47,3 +47,15 @@ No separate guest file is required — Hono routes compile through esbuild + jco
 - Depends on `@hobo/core` + `hono` only
 - Must not be imported by `@hobo/core`
 - Lives under `packages/adapters/` — not under `examples/`
+
+## Architecture rules
+
+Parse, don't validate: incoming Hono requests cross one parser boundary at the
+entrypoint adapter and become derived types (parsed endpoint, principal, and
+tenant values); downstream handlers never re-check raw DTO fields.
+
+Event architecture: HTTP commands are translated into domain commands emitted
+as events through the runtime's actors; durable state lives in the event
+store, queries read from projections over materialized views with cached
+snapshots, and historical snapshots persist in the read store behind the
+adapter rather than in the adapter itself.

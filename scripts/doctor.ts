@@ -31,6 +31,8 @@ if (nodeMajor >= 20) ok(`Node ${process.versions.node}`);
 else fail(`Node ${process.versions.node}; expected >=20`);
 const pnpm = version("pnpm");
 if (pnpm) ok(`pnpm ${pnpm}`);
+else if (process.env.npm_config_user_agent?.startsWith("pnpm/"))
+	ok(`pnpm available (${process.env.npm_config_user_agent.split(" ")[0]})`);
 else fail("pnpm not available; run corepack enable pnpm");
 if (version("corepack")) ok("Corepack available");
 else warn("Corepack not available in PATH");
@@ -107,7 +109,9 @@ for (const bin of ["serena", "headroom", "rtk", "tgrep"] as const) {
 		);
 }
 if (have("gbrain"))
-	ok("gbrain on PATH (opt-in; needs embedding key — AUTH.md)");
+	ok(
+		"gbrain on PATH (opt-in; needs an initialized embedding provider — AUTH.md)",
+	);
 else
 	warn(
 		"gbrain not on PATH (ok for zero-key) — decline gbrain MCP, or stay zero-key: bash scripts/setup-agent-tools.sh --common-only --no-gbrain  (see AUTH.md; enable later: Bun + setup without --no-gbrain, then gbrain init)",

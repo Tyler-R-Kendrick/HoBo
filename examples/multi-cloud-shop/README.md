@@ -10,20 +10,14 @@ bindle deployable to two providers.
 |---|---|
 | `src/api.ts` | The shop API — a plain fetch handler exposing `GET /products` and `POST /orders`. |
 | `src/webapp.ts` | The storefront (plain fetch handler) that is bound to the API. |
-| `src/bindle.ts` | The bindle config that does the wiring, with per-provider `.with(...)` annotations. |
+| `src/bindle.ts` | The bindle config that does the wiring — strictly provider-neutral (provider pins are forbidden on a Bindle). |
 | `test/bindle.test.ts` | Proves the graph, the handlers, the pact pin, and manifest determinism. |
 
 ```ts
 export default bindle("multi-cloud-shop", (b) => {
 	const products = b.kv().allow("get", "set");
 	const orders = b.queue().allow("enqueue");
-	const api = b
-		.api(() => shopApi)
-		.dependsOn(products, orders)
-		.with(
-			{ provider: "aws", option: "lambda", config: { memoryMb: 256 } },
-			{ provider: "azure", option: "container-apps", config: { cpu: 0.5 } },
-		);
+	const api = b.api(() => shopApi).dependsOn(products, orders);
 	const web = b.web(() => storefront).dependsOn(api);
 	return { products, orders, api, web };
 });
@@ -31,12 +25,16 @@ export default bindle("multi-cloud-shop", (b) => {
 
 ## Two providers, one bindle
 
-The bindle is provider-agnostic: `targetFromBindleDefinition` (from `@hobo/cli`)
-plus `collectBindleManifest` (from `@hobo/bindles`) compile it to the same
-manifest IR with the same canonical hash on every run — the test asserts this.
-Provider-specific tuning (`aws`/`azure` above) rides along as `.with(...)`
-annotations on the definition and never enters the manifest graph, so deploying
-to a second provider changes zero bindle bytes. The cost-gated CI lanes in
+The bindle is provider-agnostic by rule: `assertNoBindleProviderSelection`
+(`@hobo/bindles`) throws `bindle-provider-selection-forbidden` on any cloud
+provider pin. Provider selection belongs on a **Yard** — attach this same
+definition to a provider-specific Camp/Yard (for example
+`camp("prod", { defaultProvider: providerSelection("aws") })`, see
+`examples/self-host-yard`) per target cloud. `targetFromBindleDefinition`
+(from `@hobo/cli`) plus `collectBindleManifest` (from `@hobo/bindles`) compile
+it to the same manifest IR with the same canonical hash on every run — the
+test asserts this — so deploying to a second provider changes zero bindle
+bytes. The cost-gated CI lanes in
 `.github/workflows/fixtures.yml` point at this package via
 `HOBO_E2E_FIXTURE=examples/multi-cloud-shop` with `HOBO_E2E_PROVIDERS=aws,azure`.
 

@@ -3,6 +3,7 @@
  * (AUTH, setup --help, MCP launchers) without live cloud credentials.
  */
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -34,5 +35,10 @@ describe("doctor agent-tooling (AX)", () => {
 			expect(out).toMatch(/setup-agent-tools\.sh --common-only --no-gbrain/);
 			expect(out).toMatch(/AUTH\.md/);
 		}
+	});
+
+	it("allows slow local MCP servers to initialize", () => {
+		const config = readFileSync(path.join(root, ".codex/config.toml"), "utf8");
+		expect(config.match(/startup_timeout_sec = 30/g)).toHaveLength(3);
 	});
 });

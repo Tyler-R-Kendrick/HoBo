@@ -18,15 +18,10 @@
 		"access": "public"
 	},
 	"scripts": {
-		"prebuild": "pnpm --filter @hobo/contracts build",
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm run build",
 		"test": "vitest run"
-	},
-	"dependencies": {
-		"@hobo/contracts": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.15.29",

@@ -30,6 +30,7 @@ const canonicalVerbNames = [
 	"inspect",
 	"logs",
 	"doctor",
+	"messaging",
 	"codegen",
 	"build",
 	"collect",
@@ -46,6 +47,8 @@ const canonicalVerbNames = [
 	"broker",
 	"yard",
 	"station",
+	"serve",
+	"replay",
 	"derivative",
 	"runbook",
 ];
@@ -94,6 +97,7 @@ Canonical verbs:
   inspect     read-only     Render projections and time-travel views
   logs        read-only     Live-tail Camp runtime streams
   doctor      diagnostics   Report environment and portability hazards
+  messaging   diagnostics   Inspect messaging capability and delivery-guarantee readiness
   codegen     authoring     Regenerate checked-in generated clients
   build       authoring     Compile services to wasm components
   collect     authoring     Run resource collection and print manifest IR
@@ -110,6 +114,8 @@ Canonical verbs:
   broker      governance    Resolve placements through the broker (the Conductor)
   yard        control plane Install and inspect the default bare-metal Yard
   station     control plane Station occupancy setup/ops (init/up/status/rails); not a lifecycle verb
+  serve       control plane Local control-plane HTTP+SSE for the Yard game UI
+  replay      observability Session Replay list/get/open/summarize/retention/doctor (privacy-first; distinct from event-log replay)
   derivative  extensibility Manage derived HoBo implementations
   runbook     SRE           Execute or replay incident runbooks
 `;
@@ -151,10 +157,15 @@ describe("HoBo CLI shell", () => {
 
 		const verbHelp = await runHobo(["plan", "--help"], { cwd: process.cwd() });
 		expect(verbHelp.exitCode).toBe(0);
-		expect(verbHelp.stdout).toMatch(
-			/Usage:\n {2}hobo plan \[global flags\] \[args\]/,
-		);
+		expect(verbHelp.stdout).toMatch(/Usage:\n {2}hobo plan \[global flags\]/);
 		expect(verbHelp.stdout).toMatch(/Status: not yet implemented/);
+		expect(verbHelp.stdout).toMatch(/Example:\n {2}hobo plan --json/);
+
+		const upHelp = await runHobo(["up", "--help"], { cwd: process.cwd() });
+		for (const flag of ["--to", "--rollback", "--anonymous", "--broker"]) {
+			expect(upHelp.stdout).toContain(flag);
+		}
+		expect(upHelp.stdout).toMatch(/Example:/);
 
 		for (const flag of globalFlags) {
 			expect(result.stdout).toMatch(new RegExp(flag.replace(/[<>]/g, "\\$&")));
@@ -174,22 +185,37 @@ describe("HoBo CLI shell", () => {
 		}
 	});
 
-	it("emits a well-formed JSON stub envelope for hobo plan --json", async () => {
+	it("emits a failing JSON stub envelope for hobo plan --json", async () => {
 		await withBindle(async (cwd) => {
 			const result = await runHobo(["plan", "--json"], { cwd });
 
-			expect(result.exitCode).toBe(0);
+			expect(result.exitCode).toBe(1);
 			expect(result.stderr).toBe("");
 			expect(result.stdout).not.toMatch(/not yet implemented\nUsage:/);
 
 			const envelope = JSON.parse(result.stdout) as Record<string, unknown>;
-			expect(envelope.ok).toBe(true);
+			expect(envelope.ok).toBe(false);
 			expect(envelope.verb).toBe("plan");
 			expect(envelope.status).toBe("not_implemented");
 			expect(envelope.code).toBe("HOBO_CLI_STUB");
 			expect(envelope.message).toBe("plan is not yet implemented");
 			expect((envelope.context as { cwd: string }).cwd).toBe(cwd);
 			expect((envelope.context as { projectDir: string }).projectDir).toBe(cwd);
+		});
+	});
+
+	it("keeps the legacy ok stub envelope behind HOBO_STUB_OK=1", async () => {
+		await withBindle(async (cwd) => {
+			process.env.HOBO_STUB_OK = "1";
+			try {
+				const result = await runHobo(["plan", "--json"], { cwd });
+				expect(result.exitCode).toBe(0);
+				const envelope = JSON.parse(result.stdout) as Record<string, unknown>;
+				expect(envelope.ok).toBe(true);
+				expect(envelope.code).toBe("HOBO_CLI_STUB");
+			} finally {
+				delete process.env.HOBO_STUB_OK;
+			}
 		});
 	});
 
@@ -206,6 +232,80 @@ describe("HoBo CLI shell", () => {
 			expect(flag.stdout).toBe("");
 			expect(flag.stderr).toMatch(/Unknown option "--wat"/);
 			expect(flag.stderr).toMatch(/Run "hobo plan --help"/);
+		});
+	});
+
+	it("does not suggest verbs for short inputs more than one edit away", async () => {
+		await withBindle(async (cwd) => {
+			// "qeq" is 2 edits from "new" — under the old len/2 threshold this
+			// misfired a suggestion; short verbs now require distance ≤1.
+			const result = await runHobo(["qeq"], { cwd });
+			expect(result.exitCode).toBe(2);
+			expect(result.stderr).toMatch(/Unknown verb "qeq"/);
+			expect(result.stderr).not.toMatch(/Did you mean/);
+		});
+	});
+
+	it("prints stack diagnostics on internal errors only with --verbose", async () => {
+		await withBindle(async (cwd) => {
+			const cli = createHoboCli({
+				commands: {
+					plan: {
+						run: async () => {
+							throw new Error("boom-internal");
+						},
+					},
+				},
+			});
+
+			const quiet_ = await cli.run(["plan"], { cwd });
+			expect(quiet_.exitCode).toBe(1);
+			expect(quiet_.stderr).toMatch(/Re-run with --verbose/);
+			expect(quiet_.stderr).not.toMatch(/boom-internal/);
+
+			const verbose = await cli.run(["plan", "--verbose"], { cwd });
+			expect(verbose.exitCode).toBe(1);
+			expect(verbose.stderr).toMatch(/boom-internal/);
+			expect(verbose.stderr).not.toMatch(/Re-run with --verbose/);
+		});
+	});
+
+	it("routes command progress to the onProgress sink unless -q/--json", async () => {
+		await withBindle(async (cwd) => {
+			const cli = createHoboCli({
+				commands: {
+					plan: {
+						run: async ({ emitProgress }) => {
+							emitProgress("plan: step one");
+							return {
+								ok: true,
+								status: "ok",
+								code: "HOBO_OK",
+								message: "done",
+								data: {},
+							};
+						},
+					},
+				},
+			});
+
+			const seen: string[] = [];
+			await cli.run(["plan"], { cwd, onProgress: (m) => seen.push(m) });
+			expect(seen).toEqual(["plan: step one"]);
+
+			const quietSeen: string[] = [];
+			await cli.run(["plan", "-q"], {
+				cwd,
+				onProgress: (m) => quietSeen.push(m),
+			});
+			expect(quietSeen).toEqual([]);
+
+			const jsonSeen: string[] = [];
+			await cli.run(["plan", "--json"], {
+				cwd,
+				onProgress: (m) => jsonSeen.push(m),
+			});
+			expect(jsonSeen).toEqual([]);
 		});
 	});
 
@@ -234,10 +334,19 @@ describe("HoBo CLI shell", () => {
 			expect(json.stdout).not.toMatch(/^Command\s+Status/m);
 
 			const human = await runHobo(["plan"], { cwd });
-			expect(human.exitCode).toBe(0);
+			expect(human.exitCode).toBe(1);
 			expect(human.stderr).toBe("");
 			expect(human.stdout).toMatch(/^Command\s+Status/m);
 			expect(() => JSON.parse(human.stdout)).toThrow();
+		});
+	});
+
+	it("still prints failures to stderr in quiet mode", async () => {
+		await withBindle(async (cwd) => {
+			const quiet = await runHobo(["plan", "-q"], { cwd });
+			expect(quiet.exitCode).toBe(1);
+			expect(quiet.stdout).toBe("");
+			expect(quiet.stderr).toMatch(/plan is not yet implemented/);
 		});
 	});
 

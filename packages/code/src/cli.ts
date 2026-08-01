@@ -2,8 +2,9 @@
  * `hobo-code` CLI — coding harness + multi-node compute (ADR-0139).
  *
  * App-building agent CLI (not a control-plane management tool).
- *   dispatch (default) | status | session | scaffold | isolate | promote |
- *   env | auth | help
+ *   dispatch (default) | status | session | attach | tasks | guide |
+ *   scaffold | isolate | promote | env | auth | models | cost | harness |
+ *   edit | config | agent | help
  *
  * Binary name: hobo-code (dash permitted).
  */
@@ -251,6 +252,52 @@ function defaultHoboHome(env: NodeJS.ProcessEnv): string {
 	return join(env.HOME ?? tmpdir(), ".hobo");
 }
 
+/** Flags that consume the next token as their value (strict parsing). */
+const VALUE_FLAGS = new Set([
+	"home",
+	"cwd",
+	"tenant",
+	"domain",
+	"station",
+	"pool",
+	"hive", // legacy alias of --pool
+	"stack",
+	"path",
+	"bridge",
+	"layout",
+	"editor",
+	"e", // alias of --editor
+	"complete",
+	"run",
+	"from",
+	"name",
+	"out",
+	"mode",
+]);
+
+/** Boolean flags (never consume the next token). */
+const BOOL_FLAGS = new Set([
+	"json",
+	"dense",
+	"help",
+	"agent",
+	"force",
+	"mock",
+	"complete-remote",
+	"print-cmd",
+	"printcmd",
+	"cursor",
+]);
+
+export class UnknownFlagError extends Error {
+	constructor(readonly flag: string) {
+		super(
+			`Unknown flag "--${flag}". Run "hobo-code help" to see supported flags.`,
+		);
+		this.name = "UnknownFlagError";
+	}
+}
+
 function parseArgv(argv: readonly string[]): {
 	readonly verb: HoboCodeVerb;
 	readonly args: readonly string[];
@@ -276,16 +323,31 @@ function parseArgv(argv: readonly string[]): {
 		}
 		if (a.startsWith("--") && a.includes("=")) {
 			const eq = a.indexOf("=");
-			flags[a.slice(2, eq)] = a.slice(eq + 1);
-			continue;
-		}
-		if (a.startsWith("--") && i + 1 < argv.length && !argv[i + 1]!.startsWith("-")) {
-			flags[a.slice(2)] = argv[++i]!;
+			const name = a.slice(2, eq);
+			if (!VALUE_FLAGS.has(name) && !BOOL_FLAGS.has(name)) {
+				throw new UnknownFlagError(name);
+			}
+			flags[name] = a.slice(eq + 1);
 			continue;
 		}
 		if (a.startsWith("--")) {
-			flags[a.slice(2)] = true;
-			continue;
+			const name = a.slice(2);
+			if (VALUE_FLAGS.has(name)) {
+				const value = argv[i + 1];
+				if (value === undefined || value.startsWith("-")) {
+					throw new Error(
+						`Flag "--${name}" requires a value. Run "hobo-code help" to see supported flags.`,
+					);
+				}
+				flags[name] = value;
+				i += 1;
+				continue;
+			}
+			if (BOOL_FLAGS.has(name)) {
+				flags[name] = true;
+				continue;
+			}
+			throw new UnknownFlagError(name);
 		}
 		positional.push(a);
 	}
@@ -1032,7 +1094,22 @@ export async function runHoboCodeCli(
 	deps: HoboCodeCliDeps = {},
 ): Promise<HoboCodeCliResult> {
 	const env = deps.env ?? process.env;
-	const { verb, args, flags, defaultedVerb } = parseArgv(argv);
+	let parsed: ReturnType<typeof parseArgv>;
+	try {
+		parsed = parseArgv(argv);
+	} catch (error) {
+		// Strict flag parsing: unknown/malformed flags fail with a help pointer.
+		const message = error instanceof Error ? error.message : String(error);
+		return {
+			ok: false,
+			status: "failed",
+			code: "HOBO_CODE_UNKNOWN_FLAG",
+			message: panel("✕ flags", [message, "try · hobo-code help"]),
+			remediation: ["hobo-code help", "hobo-code <verb> --help"],
+			exitCode: 1,
+		};
+	}
+	const { verb, args, flags, defaultedVerb } = parsed;
 	const json = deps.json === true || flags.json === true;
 	const dense =
 		deps.dense === true ||

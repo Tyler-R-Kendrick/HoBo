@@ -209,6 +209,7 @@ export type {
 	ResetCheckpointOptions,
 	SnapshotRecord,
 	StreamFilter,
+	StreamHead,
 	Subscription,
 	SubscriptionCheckpoint,
 	SubscriptionId,

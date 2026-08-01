@@ -61,26 +61,26 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 ## Demographic model
 
-- roleFamily: open-source-application-developer
-- seniority: mid-to-senior-on-tools · budget-constrained · multi-harness shopper
-- orgArchetype: indie-or-hobby-or-bootstrapped
-- domainFamiliarity: power-user-on-tooling · local-llm-literate · peer-agent-fluent (Pi / OpenCode / T3 Code)
+- roleFamily: application-developer
+- seniority: mid
+- orgArchetype: solo
+- domainFamiliarity: power-user
 - localeContext: en-primary
 - deviceContext: modest-laptop-local-gpu-or-cpu · optional shared GPU farm
-- timeBudget: hours (accepts slower local inference if free; trades idle GPU for credits when it pays)
+- timeBudget: hours
 - accessibilityProfile: text-first-cli
 
 ## Psychographic model
 
 - values: [frugality, open-source, local-first, transparency, savings-visibility, autonomy, **payback**, multi-harness-shopping]
-- riskTolerance: medium-low on spend · medium on experimental free models · medium on crypto/farm rails when opt-in and transparent
-- noveltySeeking: high for cost-saving *and* payback techniques
-- trustInAutomation: medium (trusts free/local more than metered cloud; trusts payback only with clear numbers)
+- riskTolerance: medium
+- noveltySeeking: high
+- trustInAutomation: medium
 - documentationPreference: numbers-and-env-examples-first · peer-tool comparisons
 - errorEmotion: thrifty-debug (find free path) · then “where’s my credit?”
-- socialProofNeed: low-medium (follows LocalLLaMA / free-router / GPU-farm / kickback tips)
-- aestheticSensitivity: low-medium
-- controlNeed: high (must force $0 path; must opt *into* any payback, never trap)
+- socialProofNeed: low
+- aestheticSensitivity: low
+- controlNeed: high
 - **emotional peak:** genuine joy when **I get paid** — credits, kickbacks, farm yield, crypto settlement that shows up as real value
 
 ## Cognitive thresholds

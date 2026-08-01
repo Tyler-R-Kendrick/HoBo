@@ -4,20 +4,22 @@
  * ResilienceProfile guides fault-injection vectors.
  */
 
-import type {
-	BoundaryContract,
-	DomainEffect,
-	EffectSpec,
-	ResilienceProfile,
-} from "@hobo/contracts";
+import {
+	type BoundaryContract,
+	effectiveEffects,
+} from "./contract-ir.js";
+import {
+	createEffectTracer,
+	createInMemoryEffectSink,
+	type DomainEffect,
+	type EffectSpec,
+	isPure,
+} from "./effects.js";
 import {
 	applyResilienceProfile,
-	createInMemoryEffectSink,
-	createEffectTracer,
-	effectiveEffects,
-	isPure,
 	type ResilienceFact,
-} from "@hobo/contracts";
+	type ResilienceProfile,
+} from "./resilience.js";
 
 export interface DomainMock {
 	readonly domain: DomainEffect;

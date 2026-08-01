@@ -108,7 +108,7 @@ Prefer changes inside one package, app, feature folder, or test folder.
 - **EffectSpec** (Verse-inspired): purity lattice `pure` ⊂ `varies` ⊂ `transacts` ⊂ `noRollback`; capabilities (`decides`, `suspends`, …); domain I/O (`network`, `storage`, …). Effect **widening** is a breaking compatibility reason (`effect-widened`) when effects are declared.
 - **ResilienceProfile** is a **secondary** visible layer (retry / circuitBreaker / timeout / bulkhead / fallback / hedging). Thin `applyResilienceProfile` applicator emits facts; **never** retries `policy.Decided` deny, terminal, or cancellation — aligned with [`docs/design/dx-sdk-resilience-semantics.md`](docs/design/dx-sdk-resilience-semantics.md). Not a primary control-plane noun.
 - Capture/export: `EffectManifest`, `EffectTracer` (`contract.EffectDeclared` / `contract.EffectInvoked`); Gatekeeper `effectSummaries` + `gate: "effects" | "resilience"`.
-- Harness: `@hobo/contract-harness` `createEffectIsolation`, `mocksForEffects`, `runResilienceFaultInjection` — pure contracts isolate with zero infra.
+- Harness: `@hobo/contracts` `createEffectIsolation`, `mocksForEffects`, `runResilienceFaultInjection` — pure contracts isolate with zero infra (`@hobo/contract-harness` itself stays dependency-free PACT infra).
 - No public Effect-TS, Polly, or XState dependency. Design: [`docs/design/adr/03-data-plane-effects-resiliency.md`](docs/design/adr/03-data-plane-effects-resiliency.md).
 
 ### Secretless-first config & secrets (ADR-0027)
@@ -257,7 +257,7 @@ These are cheap to honor and expensive to unwind. See
 - **No unsupported compliance claims.** SOC 2, ISO 27001, GDPR, HIPAA, PCI, and similar certifications stay unclaimed until an owning evidence surface accepts them.
 
 ## Keys & risks (read before enabling gbrain)
-- **gbrain needs an embedding key** (`OPENAI_API_KEY` *or* `ZEROENTROPY_API_KEY` *or* `VOYAGE_API_KEY`) and **sends the text it embeds + your queries to that provider** — recurring cost + data egress. It is **inert until you run `gbrain init` and set a key**. Don't point it at sensitive content you don't want leaving your machine. Configure via `.env` (see `.env.example`).
+- **gbrain needs an initialized embedding provider.** `gbrain init --pglite` can use local Ollama with no key or egress. Remote `OPENAI_API_KEY` / `ZEROENTROPY_API_KEY` / `VOYAGE_API_KEY` providers receive embedding/query text and may cost money; don't send them sensitive content. Configure remote keys via `.env` (see `.env.example`).
 - **Serena / headroom / RTK / improve / caveman / ponytail / superpowers** need **no keys** and run locally; superpowers has optional telemetry (set `SUPERPOWERS_DISABLE_TELEMETRY=1` to disable).
 - **SkillOpt** is installed from `microsoft/SkillOpt`; its default sleep mock backend is no-spend, but real `codex`, `claude`, OpenAI, Azure OpenAI, Qwen, or MiniMax backends use the credentials/budget you configure.
 - **caveman** was installed via a `curl … | bash` shim (forwarding to `npx github:JuliusBrussee/caveman`); the pinned installer is handled in `scripts/setup-agent-tools.sh`.
@@ -266,7 +266,7 @@ These are cheap to honor and expensive to unwind. See
 ## MCP wiring (per agent)
 - **Claude Code** — `.mcp.json` (auto-discovered) defines `serena` + `headroom` + `gbrain`.
 - **Cursor** — `.cursor/mcp.json` (same three servers).
-- **Codex** — copy `.codex/config.toml`'s `[mcp_servers.*]` into `~/.codex/config.toml`, or run `codex mcp add …` (see the setup script). Codex reads MCP config globally, not per-project.
+- **Codex** — trusted projects load `.codex/config.toml`; copy its `[mcp_servers.*]` tables into `~/.codex/config.toml`, or run `codex mcp add …`, only for a global fallback (see the setup script).
 
 Progressive setup: run `bash scripts/setup-agent-tools.sh --common-only --no-gbrain` first (this is also the devcontainer default), then run `bash scripts/setup-agent-tools.sh --agent claude-code|cursor|codex|copilot --no-gbrain` only for the client you actually use. Shared MCP launchers should live in `scripts/` first (for example `scripts/agent-mcp-serena.sh`) and then be referenced by `.mcp.json`, `.cursor/mcp.json`, and `.codex/config.toml`. When one agent-specific config changes, update the other supported configs in the same commit or document why it does not apply. Skills (`repo`, `draft`, `improve`, `caveman`, `ponytail`) live in `.claude/skills/` (Claude Code) and `.agents/skills/` (Cursor + Codex). ponytail is invocation-based here (`/ponytail …`), not always-on — run `/ponytail` to activate it for a session (it can be made always-on via `/plugin install ponytail@ponytail` in Claude Code if you want that).
 

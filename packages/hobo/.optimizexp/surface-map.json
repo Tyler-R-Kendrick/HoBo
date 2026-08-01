@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "projectId": "hobo",
-  "scannedAt": "2026-07-31T20:12:33.089Z",
+  "scannedAt": "2026-07-31T23:42:24.533Z",
   "productName": "hobo",
   "packageDir": "packages/hobo",
   "binaries": [
@@ -13,11 +13,6 @@
     {
       "name": "hobo-mcp",
       "binPath": "/home/codex/.herdr/worktrees/hobo/hobo-devx/packages/hobo/dist/bin/hobo-mcp.js",
-      "packageName": "@hobo/hobo"
-    },
-    {
-      "name": "hobo-code",
-      "binPath": "/home/codex/.herdr/worktrees/hobo/hobo-devx/packages/hobo/dist/bin/hobo-code.js",
       "packageName": "@hobo/hobo"
     }
   ],
@@ -88,5 +83,12 @@
     "failure-actionable",
     "in-session-discoverability"
   ],
-  "probes": []
+  "probes": [
+    {
+      "command": "node \"/home/codex/.herdr/worktrees/hobo/hobo-devx/packages/hobo/dist/bin/hobo.js\" help",
+      "exitCode": 2,
+      "stdoutDigest": "9501e02d51745995",
+      "capturedAt": "2026-07-31T23:42:23.562Z"
+    }
+  ]
 }

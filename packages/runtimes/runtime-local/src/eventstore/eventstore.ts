@@ -163,6 +163,10 @@ export function createRuntimeLocalEventStore(
 			return storage.loadSnapshot<S>(parseStreamId(streamId));
 		},
 
+		getStreamHead(streamId: string) {
+			return storage.getStreamHead(parseStreamId(streamId));
+		},
+
 		async claimSubscription(
 			options: ClaimSubscriptionOptions,
 		): Promise<SubscriptionLease> {

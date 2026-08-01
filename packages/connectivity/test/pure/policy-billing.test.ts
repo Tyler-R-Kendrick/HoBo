@@ -150,7 +150,7 @@ describe("billing aggregator + durable ledger (pure)", () => {
 			resource: "j1",
 			quantity: 3,
 			unit: "tick",
-			timestamp: new Date().toISOString(),
+			timestamp: "2026-07-15T00:00:00.000Z",
 		});
 		await bus.emit({
 			tenantId: parseTenantId("acme"),
@@ -158,7 +158,7 @@ describe("billing aggregator + durable ledger (pure)", () => {
 			resource: "web",
 			quantity: 2,
 			unit: "count",
-			timestamp: new Date().toISOString(),
+			timestamp: "2026-07-15T00:00:00.000Z",
 		});
 		const invoice = billing.closePeriod({
 			tenantId: parseTenantId("acme"),
@@ -188,7 +188,7 @@ describe("billing aggregator + durable ledger (pure)", () => {
 			resource: "j1",
 			quantity: 10,
 			unit: "tick",
-			timestamp: new Date().toISOString(),
+			timestamp: "2026-07-15T00:00:00.000Z",
 		});
 		const { invoice, charge } = await billing.closeAndCharge({
 			tenantId: parseTenantId("acme"),

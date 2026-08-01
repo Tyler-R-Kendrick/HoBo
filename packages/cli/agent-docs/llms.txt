@@ -22,6 +22,7 @@
 - inspect (read-only): Render projections and time-travel views — CLI `hobo inspect`; MCP tool `inspect`
 - logs (read-only): Live-tail Camp runtime streams — CLI `hobo logs`; MCP tool `logs`
 - doctor (diagnostics): Report environment and portability hazards — CLI `hobo doctor`; MCP tool `doctor`
+- messaging (diagnostics): Inspect messaging capability and delivery-guarantee readiness — CLI `hobo messaging`; MCP tool `messaging`
 - codegen (authoring): Regenerate checked-in generated clients — CLI `hobo codegen`; MCP tool `codegen`
 - build (authoring): Compile services to wasm components — CLI `hobo build`; MCP tool `build`
 - collect (authoring): Run resource collection and print manifest IR — CLI `hobo collect`; MCP tool `collect`
@@ -38,6 +39,7 @@
 - broker (governance): Resolve placements through the broker (the Conductor) — CLI `hobo broker`; MCP tool `broker`
 - yard (control plane): Install and inspect the default bare-metal Yard — CLI `hobo yard`; MCP tool `yard`
 - station (control plane): Station occupancy setup/ops (init/up/status/rails); not a lifecycle verb — CLI `hobo station`; MCP tool `station`
+- serve (control plane): Local control-plane HTTP+SSE for the Yard game UI — CLI `hobo serve`; MCP tool `serve`
 - replay (observability): Session Replay list/get/open/summarize/retention/doctor (privacy-first; distinct from event-log replay) — CLI `hobo replay`; MCP tool `replay`
 - derivative (extensibility): Manage derived HoBo implementations — CLI `hobo derivative`; MCP tool `derivative`
 - runbook (SRE): Execute or replay incident runbooks — CLI `hobo runbook`; MCP tool `runbook`

@@ -17,3 +17,19 @@ export async function collectStream(
 	for await (const event of store.read(streamId, fromSeq)) events.push(event);
 	return events;
 }
+
+// Fencing token for a choreography write to a possibly-fenced stream. The
+// deployment stream becomes fenced (owner_epoch > 0) once an aggregate or
+// leased actor writes to it; subsequent choreography fan-out by the SAME
+// logical writer must carry the current owner epoch rather than bypass or
+// rotate the fence (same rule as runtime-local's quarantine path). Returns
+// undefined for unfenced streams or stores without fencing metadata.
+export function currentFenceToken(
+	store: Pick<EventStore, "getStreamHead">,
+	streamId: string,
+): bigint | undefined {
+	const head = store.getStreamHead?.(streamId);
+	return head !== undefined && head.ownerEpoch > 0n
+		? head.ownerEpoch
+		: undefined;
+}

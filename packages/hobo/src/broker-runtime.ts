@@ -308,6 +308,11 @@ export async function ensureEmbeddedBroker(options: {
 	readonly broker: HoboBroker;
 	readonly catalog: BrokerCatalog;
 	readonly wasmAvailable: boolean;
+	readonly pins: Readonly<{
+		stationId: string;
+		railHash: string;
+		bootstrapActive: boolean;
+	}>;
 }> {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const emit = options.emitProgress ?? (() => {});
@@ -427,7 +432,7 @@ export async function ensureEmbeddedBroker(options: {
 	emit(
 		`hobo broker-runtime: ready ${brokerId} (prefer ${state.preferredComponentHost})`,
 	);
-	return { state, broker, catalog, wasmAvailable: preferWasm };
+	return { state, broker, catalog, wasmAvailable: preferWasm, pins };
 }
 
 function componentHostForProvider(
@@ -478,6 +483,9 @@ export async function resolveBindlePlacement(options: {
 					requestId: "bindle-provider-check",
 					brokerId: "uninitialized",
 					policyHash: "sha256:none" as never,
+					// Pre-station fail-fast: no Station occupancy exists yet.
+					stationId: "uninitialized",
+					railHash: "sha256:none",
 					reasons: [
 						{
 							plane: "placement",
@@ -519,6 +527,9 @@ export async function resolveBindlePlacement(options: {
 					requestId: "runtime-check",
 					brokerId: "uninitialized",
 					policyHash: "sha256:none" as never,
+					// Pre-station fail-fast: no Station occupancy exists yet.
+					stationId: "uninitialized",
+					railHash: "sha256:none",
 					reasons: missingRuntimes.map((runtime) => ({
 						plane: "placement" as const,
 						code: "required-runtime-unavailable",
@@ -538,7 +549,7 @@ export async function resolveBindlePlacement(options: {
 		};
 	}
 
-	const { state, broker, catalog } = await ensureEmbeddedBroker({
+	const { state, broker, catalog, pins } = await ensureEmbeddedBroker({
 		hoboHome,
 		emitProgress: emit,
 	});
@@ -620,6 +631,8 @@ export async function resolveBindlePlacement(options: {
 					requestId: deploymentRequest.requestId,
 					brokerId: state.brokerId,
 					policyHash: broker.policyHash,
+					stationId: pins.stationId,
+					railHash: pins.railHash,
 					reasons: (yardFirst.reasons ?? []).map((r) => ({
 						plane: r.plane as "placement",
 						code: r.code,
@@ -660,6 +673,8 @@ export async function resolveBindlePlacement(options: {
 			catalogHash: catalog.catalogHash,
 			policyHash: broker.policyHash,
 			placementPolicyId: "yard-first",
+			stationId: pins.stationId,
+			railHash: pins.railHash,
 			placements: [...yardFirst.placements],
 		},
 		events: [],

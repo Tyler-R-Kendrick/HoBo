@@ -9,7 +9,7 @@ import {
 } from "../events.js";
 import type { CredentialBroker, Executor } from "../executor/executor.js";
 import type { DeploymentPlan } from "../plan-types.js";
-import { collectStream } from "../store/index.js";
+import { collectStream, currentFenceToken } from "../store/index.js";
 import {
 	destroyResource,
 	foldResourceActor,
@@ -111,10 +111,13 @@ export async function runCompensation(
 
 	let events = await collectStream(deps.store, stream);
 
-	// Emit deployment.RolledBack once (idempotent — resume-safe).
+	// Emit deployment.RolledBack once (idempotent — resume-safe). The stream is
+	// fenced by the leased writes that came before; continue under the current
+	// owner epoch.
 	if (!events.some((e) => e.type === CLOUD_EVENTS.DeploymentRolledBack)) {
 		const lastSeq =
 			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
+		const fenceToken = currentFenceToken(deps.store, stream);
 		await emit(
 			deps.store,
 			stream,
@@ -125,7 +128,11 @@ export async function runCompensation(
 					reason: `resource ${triggeringFailure.resourceId} crossed no-go threshold: ${triggeringFailure.reason}`,
 				}),
 			],
-			{ expectedSeq: lastSeq, ...appendOpts },
+			{
+				expectedSeq: lastSeq,
+				...(fenceToken !== undefined ? { fenceToken } : {}),
+				...appendOpts,
+			},
 		);
 		events = await collectStream(deps.store, stream);
 	}
@@ -174,6 +181,7 @@ export async function runCompensation(
 				beforeEvents.length > 0
 					? (beforeEvents[beforeEvents.length - 1] as EventEnvelope).seq
 					: 0;
+			const fenceToken = currentFenceToken(deps.store, stream);
 			await emit(
 				deps.store,
 				stream,
@@ -184,7 +192,11 @@ export async function runCompensation(
 						reason: "rollback-compensation",
 					}),
 				],
-				{ expectedSeq: lastSeq, ...appendOpts },
+				{
+					expectedSeq: lastSeq,
+					...(fenceToken !== undefined ? { fenceToken } : {}),
+					...appendOpts,
+				},
 			);
 
 			const outcome = await destroyResource(

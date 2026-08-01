@@ -238,3 +238,9 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **local:** check:all exit 0 (test:unit 4585, behavior 98), turbo 769/769, contracts 604+200
 - **protocol:** `/sdlc finish`
 - **residual:** storage-sqlite provider-verification lane (tracked in packages/storage-sqlite/contracts/provider/README.md); globalSetup wasmtime warmup scope; backlog-malformed warn; user asked to disable CI workflows to save runner minutes
+
+## 2026-08-01 — sdlc finish (identity OpenBao + integrity membrane)
+- PR: https://github.com/Tyler-R-Kendrick/HoBo/pull/1003
+- Merge: `769b68a6` (squash)
+- Branch: `feat/identity-openbao-secrets`
+- Outcome: merged; CodeRabbit rate-limit only (not code CI red)

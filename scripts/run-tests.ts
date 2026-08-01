@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { sanitizeNodeOptions } from "./lib/env.ts";
 
@@ -137,9 +138,12 @@ if (testFiles.length === 0) {
 // limit (the reason the old runner batched files by character budget).
 const configDir = mkdtempSync(join(tmpdir(), "hobo-vitest-"));
 const configPath = join(configDir, "vitest.config.mjs");
+const baseConfigUrl = pathToFileURL(
+	resolve(process.cwd(), "vitest.config.ts"),
+).href;
 writeFileSync(
 	configPath,
-	`export default { test: { include: ${JSON.stringify(testFiles)}, watch: false } };\n`,
+	`import baseConfig from ${JSON.stringify(baseConfigUrl)};\nexport default { ...baseConfig, test: { ...baseConfig.test, include: ${JSON.stringify(testFiles)}, watch: false } };\n`,
 );
 
 try {

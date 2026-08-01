@@ -15,5 +15,11 @@
   "generatedFromSeed": false,
   "seedDigest": null,
   "personaResolution": "explicit acceptance lenses",
+  "bindings": {
+    "steps": "steps/bindings.steps.ts",
+    "implementations": "steps/implementations.ts",
+    "tests": "test/designer-council-consensus.bindings.test.ts"
+  },
+  "implementationStatus": "wired",
   "primaryCommand": "node --import tsx .agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts --mode validate"
 }

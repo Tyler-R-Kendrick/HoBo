@@ -1,0 +1,428 @@
+import assert from "node:assert/strict";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { afterEach, describe, test } from "vitest";
+import {
+	COUNCIL_PERSONAS,
+	advanceInvestment,
+	type CouncilPersona,
+	type CouncilState,
+} from "../.agents/skills/optimizexp/harness/lib/design-council.mts";
+import { runConsensusCommand } from "../.agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts";
+
+const REVIEW_LOOP = path.resolve(
+	".agents/skills/optimizexp/workflows/cross-agent/review-loop.mts",
+);
+const roots: string[] = [];
+const sha = (character: string) => character.repeat(64);
+let reviewLoopImport = 0;
+
+afterEach(() => {
+	for (const root of roots.splice(0)) {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+function seedRepo(): string {
+	const root = mkdtempSync(path.join(tmpdir(), "council-review-loop-"));
+	mkdirSync(path.join(root, ".git"));
+	mkdirSync(path.join(root, ".optimizexp/bus/entries"), { recursive: true });
+	roots.push(root);
+	return root;
+}
+
+function proposal(root: string): string {
+	const file = path.join(root, "proposal.json");
+	writeFileSync(
+		file,
+		`${JSON.stringify(
+			{
+				schemaVersion: 1,
+				subject: { kind: "surface", surface: "review-loop fixture" },
+				changedPaths: ["src/internal/cache.ts"],
+				normalizedDiffHash: sha("d"),
+				acceptanceDigest: sha("a"),
+				evidenceDigest: sha("e"),
+				relevanceSignals: {
+					categories: [],
+					acceptanceTags: [],
+					featureTags: [],
+					keywords: [],
+				},
+				evidenceSignals: {
+					evidenceTypes: [],
+					currentHead: true,
+					acceptanceMapped: true,
+				},
+			},
+			null,
+			2,
+		)}\n`,
+	);
+	return file;
+}
+
+function council(root: string, ...args: string[]) {
+	const result = runConsensusCommand(["--root", root, ...args]);
+	assert.equal(result.exitCode, 0, JSON.stringify(result.output, null, 2));
+	return result.output;
+}
+
+function initCouncil(root: string, proposalPath: string): CouncilState {
+	return council(
+		root,
+		"--mode",
+		"init",
+		"--run",
+		"run-1",
+		"--review",
+		"review-1",
+		"--base-sha",
+		sha("a"),
+		"--head-sha",
+		sha("b"),
+		"--proposal",
+		proposalPath,
+	).state as CouncilState;
+}
+
+function appendPersona(
+	root: string,
+	state: CouncilState,
+	persona: CouncilPersona,
+	stage: "position" | "submitted",
+	options: { blocker?: boolean; vote?: "yay" | "nay" } = {},
+): CouncilState {
+	const current = state.personas[persona];
+	const consumesTurn = stage === "position";
+	const decay = consumesTurn ? current.decayPerTurn : 0;
+	const after = consumesTurn
+		? advanceInvestment(current.currentInvestment, decay)
+		: current.currentInvestment;
+	const turn = state.turn + 1;
+	const evidenceRef = "test/designer-council-review-loop.test.ts";
+	const blocker = options.blocker
+		? {
+				id: `HB-${persona}-001`,
+				claim: "Current-head acceptance evidence is missing.",
+				rule: "required current-head acceptance evidence",
+				evidenceRefs: [evidenceRef],
+				requestedResolution: "Capture and attach current-head evidence.",
+				status: "open",
+			}
+		: null;
+	const entryPath = path.join(root, `${persona}-${stage}-${turn}.json`);
+	writeFileSync(
+		entryPath,
+		`${JSON.stringify(
+			{
+				kind: "council",
+				schemaVersion: 1,
+				id: `${persona}-${stage}-${turn}`,
+				runId: state.runId,
+				reviewId: state.reviewId,
+				cycle: state.cycle,
+				turn,
+				stage,
+				subject: {
+					headSha: state.subject.headSha,
+					proposalDigest: state.subject.proposalDigest,
+				},
+				createdAt: `2026-08-01T12:00:${String(turn).padStart(2, "0")}.000Z`,
+				persona,
+				respondsTo: [],
+				investment: {
+					relevance: current.relevance,
+					evidenceStrength: current.evidenceStrength,
+					before: current.currentInvestment,
+					decay,
+					after,
+					submitted: stage === "submitted",
+				},
+				stance: stage === "submitted" ? (options.vote ?? "yay") : null,
+				arguments: blocker
+					? [
+							{
+								id: `A-${persona}-001`,
+								claim: blocker.claim,
+								kind: "hard-blocker",
+								respondsTo: [],
+								evidenceRefs: [evidenceRef],
+								requestedChange: blocker.requestedResolution,
+							},
+						]
+					: [],
+				hardBlockers: blocker ? [blocker] : [],
+				preferences: [],
+				evidenceRefs: blocker ? [evidenceRef] : [],
+				requestedChanges: blocker ? [blocker.requestedResolution] : [],
+				blindSpotCheck:
+					stage === "submitted"
+						? "Repository evidence outranks this synthetic review lens."
+						: undefined,
+			},
+			null,
+			2,
+		)}\n`,
+	);
+	return council(
+		root,
+		"--mode",
+		"append",
+		"--run",
+		state.runId,
+		"--review",
+		state.reviewId,
+		"--entry",
+		entryPath,
+	).state as CouncilState;
+}
+
+function approve(root: string, proposalPath: string): CouncilState {
+	let state = initCouncil(root, proposalPath);
+	for (const persona of COUNCIL_PERSONAS) {
+		state = appendPersona(root, state, persona, "submitted");
+	}
+	return council(
+		root,
+		"--mode",
+		"decide",
+		"--run",
+		state.runId,
+		"--review",
+		state.reviewId,
+	).state as CouncilState;
+}
+
+function blockWithJony(
+	root: string,
+	proposalPath: string,
+	options: { decide: boolean },
+): CouncilState {
+	let state = initCouncil(root, proposalPath);
+	state = appendPersona(root, state, "steve-jobs", "submitted");
+	state = appendPersona(root, state, "jony-ive", "position", {
+		blocker: true,
+	});
+	for (const persona of COUNCIL_PERSONAS.slice(2)) {
+		state = appendPersona(root, state, persona, "submitted");
+	}
+	state = appendPersona(root, state, "jony-ive", "submitted", {
+		vote: "nay",
+	});
+	if (!options.decide) return state;
+	return council(
+		root,
+		"--mode",
+		"decide",
+		"--run",
+		state.runId,
+		"--review",
+		state.reviewId,
+	).state as CouncilState;
+}
+
+async function runReviewLoop(
+	root: string,
+	mode: "validate-bus" | "assert-complete",
+) {
+	const tail = ["--mode", mode];
+	if (mode === "assert-complete") tail.push("--run", "run-1");
+	return runReviewLoopCommand(root, tail);
+}
+
+async function runReviewLoopCommand(root: string, tail: string[]) {
+	const priorArgv = process.argv;
+	const priorExitCode = process.exitCode;
+	const priorLog = console.log;
+	const priorError = console.error;
+	const stdout: string[] = [];
+	const stderr: string[] = [];
+	let output: Record<string, unknown> = {};
+	try {
+		process.argv = [process.execPath, REVIEW_LOOP, "--root", root, ...tail];
+		process.exitCode = undefined;
+		console.log = (...items: unknown[]) =>
+			stdout.push(items.map(String).join(" "));
+		console.error = (...items: unknown[]) =>
+			stderr.push(items.map(String).join(" "));
+		await import(
+			`${pathToFileURL(REVIEW_LOOP).href}?designer-council-test=${reviewLoopImport++}`
+		);
+		try {
+			output = JSON.parse(stdout.at(-1) ?? "{}");
+		} catch {
+			// Assertions include captured output when it is unexpectedly non-JSON.
+		}
+		return {
+			code: typeof process.exitCode === "number" ? process.exitCode : 0,
+			output,
+			text: `${stdout.join("\n")}${stderr.length ? `\n${stderr.join("\n")}` : ""}`,
+		};
+	} finally {
+		process.argv = priorArgv;
+		process.exitCode = priorExitCode;
+		console.log = priorLog;
+		console.error = priorError;
+	}
+}
+
+function configureRequiredCouncil(
+	root: string,
+	proposalPath: string,
+	headSha = sha("b"),
+): void {
+	const scopePath = path.join(root, ".optimizexp/runs/run-1/scope.json");
+	const scope = JSON.parse(readFileSync(scopePath, "utf8"));
+	scope.designerConsensus = {
+		required: true,
+		reviewId: "review-1",
+		headSha,
+		proposalPath: path.relative(root, proposalPath),
+	};
+	writeFileSync(scopePath, `${JSON.stringify(scope, null, 2)}\n`);
+}
+
+async function initRun(root: string): Promise<void> {
+	const result = await runReviewLoopCommand(root, [
+		"--mode",
+		"init",
+		"--run",
+		"run-1",
+		"--experiences",
+		"dx",
+	]);
+	assert.equal(result.code, 0, result.text);
+}
+
+function councilMissing(
+	result: Awaited<ReturnType<typeof runReviewLoop>>,
+): string[] {
+	return ((result.output.missing as string[] | undefined) ?? []).filter(
+		(item) => /council|consensus|blocker|voter|stale|state-bus/.test(item),
+	);
+}
+
+describe("OptimizeXP review-loop designer council integration", () => {
+	test("validate-bus accepts persisted council history and rejects malformed council entries", async () => {
+		const validRoot = seedRepo();
+		initCouncil(validRoot, proposal(validRoot));
+		const valid = await runReviewLoop(validRoot, "validate-bus");
+		assert.equal(valid.code, 0, valid.text);
+
+		const invalidRoot = seedRepo();
+		initCouncil(invalidRoot, proposal(invalidRoot));
+		const busDir = path.join(invalidRoot, ".optimizexp/bus/entries");
+		const openFile = readdirSync(busDir).find((file) =>
+			file.includes("-open-"),
+		);
+		assert.ok(openFile);
+		const openPath = path.join(busDir, openFile);
+		const open = JSON.parse(readFileSync(openPath, "utf8"));
+		open.council.push("unknown-seventh-designer");
+		writeFileSync(openPath, `${JSON.stringify(open, null, 2)}\n`);
+		const invalid = await runReviewLoop(invalidRoot, "validate-bus");
+		assert.notEqual(invalid.code, 0, invalid.text);
+		assert.match(
+			invalid.text,
+			/exact-six-membership|unknown persona|exactly 6/,
+		);
+	});
+
+	test("assert-complete requires a configured council review", async () => {
+		const root = seedRepo();
+		const proposalPath = proposal(root);
+		await initRun(root);
+		configureRequiredCouncil(root, proposalPath);
+		const result = await runReviewLoop(root, "assert-complete");
+		assert.notEqual(result.code, 0, result.text);
+		assert.match(councilMissing(result).join("\n"), /missing/);
+	});
+
+	test("assert-complete rejects nay, missing-voter, and open-blocker reviews", async () => {
+		const nayRoot = seedRepo();
+		const nayProposal = proposal(nayRoot);
+		await initRun(nayRoot);
+		blockWithJony(nayRoot, nayProposal, { decide: true });
+		configureRequiredCouncil(nayRoot, nayProposal);
+		const nay = await runReviewLoop(nayRoot, "assert-complete");
+		assert.notEqual(nay.code, 0, nay.text);
+		assert.match(councilMissing(nay).join("\n"), /nay|unanimous|not-approved/);
+
+		const missingRoot = seedRepo();
+		const missingProposal = proposal(missingRoot);
+		await initRun(missingRoot);
+		let state = initCouncil(missingRoot, missingProposal);
+		for (const persona of COUNCIL_PERSONAS.slice(0, 5)) {
+			state = appendPersona(missingRoot, state, persona, "submitted");
+		}
+		configureRequiredCouncil(missingRoot, missingProposal);
+		const missing = await runReviewLoop(missingRoot, "assert-complete");
+		assert.notEqual(missing.code, 0, missing.text);
+		assert.match(
+			councilMissing(missing).join("\n"),
+			/missing.*vot|not-approved/,
+		);
+
+		const blockerRoot = seedRepo();
+		const blockerProposal = proposal(blockerRoot);
+		await initRun(blockerRoot);
+		blockWithJony(blockerRoot, blockerProposal, { decide: false });
+		configureRequiredCouncil(blockerRoot, blockerProposal);
+		const blocker = await runReviewLoop(blockerRoot, "assert-complete");
+		assert.notEqual(blocker.code, 0, blocker.text);
+		assert.match(
+			councilMissing(blocker).join("\n"),
+			/open.*blocker|not-approved/,
+		);
+	});
+
+	test("assert-complete rejects stale approval and state-bus disagreement", async () => {
+		const staleRoot = seedRepo();
+		const staleProposal = proposal(staleRoot);
+		await initRun(staleRoot);
+		approve(staleRoot, staleProposal);
+		configureRequiredCouncil(staleRoot, staleProposal, sha("c"));
+		const stale = await runReviewLoop(staleRoot, "assert-complete");
+		assert.notEqual(stale.code, 0, stale.text);
+		assert.match(councilMissing(stale).join("\n"), /stale.*head/);
+
+		const mismatchRoot = seedRepo();
+		const mismatchProposal = proposal(mismatchRoot);
+		await initRun(mismatchRoot);
+		approve(mismatchRoot, mismatchProposal);
+		configureRequiredCouncil(mismatchRoot, mismatchProposal);
+		const statePath = path.join(
+			mismatchRoot,
+			".optimizexp/runs/run-1/consensus/review-1/state.json",
+		);
+		const state = JSON.parse(readFileSync(statePath, "utf8"));
+		state.blockedReason = "tampered after consensus";
+		writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+		const mismatch = await runReviewLoop(mismatchRoot, "assert-complete");
+		assert.notEqual(mismatch.code, 0, mismatch.text);
+		assert.match(
+			councilMissing(mismatch).join("\n"),
+			/state-bus|digest.*mismatch/,
+		);
+	});
+
+	test("current-subject exact-six unanimous yay clears council-specific blockers", async () => {
+		const root = seedRepo();
+		const proposalPath = proposal(root);
+		await initRun(root);
+		approve(root, proposalPath);
+		configureRequiredCouncil(root, proposalPath);
+		const result = await runReviewLoop(root, "assert-complete");
+		assert.deepEqual(councilMissing(result), [], result.text);
+	});
+});

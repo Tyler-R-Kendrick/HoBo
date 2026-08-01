@@ -207,7 +207,7 @@ Lines **outside** that block are preserved (user rules). Regenerating (`ensure-c
 |---|---|---|---|
 | `runs` | ignore `runs/**` (keep `.gitkeep`) | n/a | Session artifacts regenerate every run |
 | `busEntries` | ignore `bus/entries/**` (keep `.gitkeep`) | n/a | Local write-ahead agent state; noisy |
-| `evidenceMedia` | ignore mp4/webm/gif/cast/frames | same | Large media; keep `primary.txt` + manifest/meta |
+| `evidenceMedia` | ignore mp4/webm/gif/cast/frames | same | Large media; keep `terminal.txt` + manifest/meta |
 | `evidenceAll` | off | off | Opt-in aggressive: ignore all evidence blobs |
 | `initReport` | off | n/a | Often useful to commit once; set true if noisy |
 | `osJunk` | on | on | `.DS_Store`, etc. |

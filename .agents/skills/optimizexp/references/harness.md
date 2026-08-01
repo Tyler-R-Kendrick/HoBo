@@ -100,7 +100,7 @@ From `feature.json` `driver` or CLI `--driver`:
 
 | Driver | Behavior |
 |---|---|
-| `cli` | Spawn command; capture stdout/stderr/exit; write `primary.txt` + meta with terminal size when available |
+| `cli` | Spawn command; capture stdout/stderr/exit; write replayable `primary.cast` + supporting `terminal.txt` and meta with terminal size |
 | `tui` | Like cli plus richer terminal recording: prefer `asciinema` if installed; always store cols/rows for repro |
 | `web` | Prefer Playwright (`playwright` / `@playwright/test` if present); else browser MCP tools if the host exposes them; capture video if context allows, else screenshots |
 | `native` | Computer-use style: invoke configured screenshot/recorder command (`OPTIMIZEXP_NATIVE_CAPTURE` or `--native-cmd`); prefer video |

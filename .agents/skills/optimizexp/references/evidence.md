@@ -32,6 +32,7 @@ Rules:
 | **native** | Computer-use / OS recorder video | Screenshots at key moments → stitch → GIF |
 | **tui** | Terminal recording (asciinema cast / script) + screen size | Full terminal transcript + cols×rows + optional PNG of terminal if available |
 | **cli** (non-TUI) | Replayable asciicast (`primary.cast`) + HTML player + transcript | Transcript only when recording is impossible; mark degraded |
+| **api** | Replayable Playwright/API script plus sanitized HAR or structured request/response trace | A raw log is supporting evidence only; preserve status, headers, payload, timing, and correlation id |
 | **docs** | Rendered page screenshot or HTML snapshot | Markdown excerpt + path |
 
 **Visual artifacts prefer video.** If video cannot be produced or attached:
@@ -40,6 +41,13 @@ Rules:
 2. Stitch to **mp4/webm** if `ffmpeg` exists
 3. Else stitch to **GIF** (markdown/PR friendly)
 4. Else keep ordered PNGs + `frames/index.md`
+
+GUI evidence is graphical by definition: a DOM dump, accessibility tree, event
+log, or screenshot of JSON cannot stand in for the rendered web/mobile/desktop
+journey. TUI evidence may be text-native (`.cast`) because the terminal state is
+the interface; graphical terminal capture is preferred when available. API
+evidence is an exchange history, not a visual artifact, and must be replayable
+from a sanitized script/HAR/trace.
 
 ## meta.json (required)
 
@@ -79,6 +87,23 @@ Rules:
   "overridesPrevious": true
 }
 ```
+
+## Independent review (required before scoring)
+
+Capture writes `review.json` with `status: "pending"`. Playback must be
+reviewed by a human or independent agent:
+
+```bash
+node --import tsx .agents/skills/optimizexp/harness/capture-evidence.mts \
+  --mode review --feature <id> --scenario <slug> --reviewer <agent-or-human> \
+  --relevant yes --complete yes --covered-claims all \
+  --notes "Playback covered entry, each action, and the visible outcome."
+```
+
+The reviewer must confirm identity, relevance, and full-journey coverage. The
+review stores the primary SHA-256; recapture invalidates the prior review.
+Strict validation and `assert-complete` reject pending/partial/degraded,
+hash-mismatched, or claim-incomplete evidence.
 
 ## Bus linkage
 

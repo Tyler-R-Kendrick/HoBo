@@ -418,6 +418,7 @@ function helpTextPlain(): string {
 	const lines = [
 		"hobo-code — HoBo coding harness CLI",
 		"You are in HoBo’s world · plain by default · --dense is opt-in power chrome",
+		"Entry contract: bare hobo-code needs a TTY; pipes/non-TTY must provide a prompt or use help.",
 		"",
 		"Usage:",
 		"  hobo-code <prompt>                 dispatch (default)",
@@ -2141,8 +2142,22 @@ export async function runHoboCodeCli(
 		);
 	}
 
-		// dispatch (default)
+	// dispatch (default)
 	const emptyPrompt = args.length === 0;
+	if (emptyPrompt && !process.stdin.isTTY) {
+		return fail(
+			"HOBO_CODE_INTERACTIVE_REQUIRED",
+			panel("✕ input", [
+				"bare hobo-code needs a TTY; no prompt was provided",
+				"use hobo-code help or provide a prompt",
+			]),
+			[
+				"hobo-code help",
+				"hobo-code \"describe the change\"",
+			],
+			{ interactiveRequired: true },
+		);
+	}
 	const prompt = emptyPrompt
 		? "refine scaffold under ponytail pressure"
 		: args.join(" ");

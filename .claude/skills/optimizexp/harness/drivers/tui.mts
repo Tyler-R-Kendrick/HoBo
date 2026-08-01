@@ -65,7 +65,6 @@ export function captureTui(
 				``,
 			].join("\n");
 			writeFileSync(path.join(outDir, "terminal.txt"), summary, "utf8");
-			writeFileSync(path.join(outDir, "primary.txt"), summary, "utf8");
 			notes.push("asciinema cast stored as primary.cast");
 			return {
 				exitCode: r.status,

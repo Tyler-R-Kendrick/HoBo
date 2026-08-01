@@ -39,6 +39,7 @@ pre-existing failure / real bug / debt item discovered along the way.
 | PR | Title | Result | Notes |
 |---|---|---|---|
 | [#999](https://github.com/Tyler-R-Kendrick/HoBo/pull/999) | feat(optimizexp): CLI experience overhaul + boyscout sweep | open → closeout | 2 commits: optimizexp initiative, boyscout sweep |
+| [#1000](https://github.com/Tyler-R-Kendrick/HoBo/pull/1000) | feat(optimizexp): certify replayable experience optimization | open → closeout | Replayable evidence, experiment certificates, interface standards, and hobo-code entry reduction |
 
 ## Validation ledger
 

@@ -53,4 +53,5 @@ pre-existing failure / real bug / debt item discovered along the way.
   pass locally. Timeouts raised (120s / 900s) with comments in
   `test/design-docs.test.ts`, `test/design-md-check.test.ts`,
   `test/doctor-agent-tooling.test.ts`, and the componentize determinism
-  suite.
+  suite. Same class in `packages/cli/test/new.test.ts` (scaffold tests spawn
+  tsc/node subprocesses, 10s default) — raised to 120s.

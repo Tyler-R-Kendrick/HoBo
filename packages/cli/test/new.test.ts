@@ -46,7 +46,9 @@ async function assertFile(root: string, relativePath: string) {
 }
 
 describe("hobo new scaffold", () => {
-	it("scaffolds an api project through the CLI shell and stays offline", async () => {
+	// Runs the scaffolded project's own tests/typecheck as subprocesses;
+	// cold CI runners exceed the 10s default.
+	it("scaffolds an api project through the CLI shell and stays offline", { timeout: 120_000 }, async () => {
 		await withScratch(async (cwd) => {
 			const result = await runHobo(["new", "snapshop", "-t", "api", "--json"], {
 				cwd,
@@ -92,7 +94,8 @@ describe("hobo new scaffold", () => {
 		});
 	});
 
-	it("creates all four templates as runnable SDK project stubs", async () => {
+	// Spawns tsc + node --test for all four templates; slow on cold CI runners.
+	it("creates all four templates as runnable SDK project stubs", { timeout: 120_000 }, async () => {
 		await withScratch(async (cwd) => {
 			expect(VALID_TEMPLATES).toEqual(["todo", "api", "agent", "fullstack"]);
 

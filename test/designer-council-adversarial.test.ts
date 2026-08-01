@@ -395,6 +395,7 @@ describe("designer council adversarial protocol", () => {
 						proposalDigest: state.subject.proposalDigest,
 					},
 					createdAt: state.updatedAt,
+					author: "coordinator",
 					votes,
 					result: "yay",
 					stateDigest: stateDigest(state),
@@ -422,7 +423,7 @@ describe("designer council adversarial protocol", () => {
 			state.subject.proposalDigest,
 		);
 		assert.notEqual(assertion.exitCode, 0);
-		assert.match(assertion.text, /exact-six-membership/);
+		assert.match(assertion.text, /exact-six-membership|illegal-transition/);
 	});
 
 	test("a blocker cannot disappear from mutable state without a bus resolution", () => {

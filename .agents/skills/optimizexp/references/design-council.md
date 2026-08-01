@@ -38,11 +38,13 @@ Every review binds to `runId`, `reviewId`, reviewed surface or PR, `baseSha`,
 `headSha`, and a deterministic SHA-256 proposal digest. Canonical digest input
 contains:
 
+- the reviewed PR number or surface;
 - base and head SHA;
 - sorted changed paths;
 - normalized diff hash;
 - acceptance-contract hash;
 - evidence-manifest hash;
+- normalized relevance and evidence signals;
 - the exact ordered council IDs; and
 - consensus protocol schema version.
 
@@ -204,11 +206,17 @@ node --import tsx .agents/skills/optimizexp/workflows/cross-agent/consensus-loop
   --mode validate [--run <runId>] [--review <reviewId>]
 node --import tsx .agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts \
   --mode assert-yay --run <runId> --review <reviewId> \
+  --base-sha "$(git merge-base origin/main HEAD)" \
   --head-sha "$(git rev-parse HEAD)" --proposal <manifest.json>
+
+# record a genuinely unresolved evidence-backed blocker before closing blocked
+node --import tsx .agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts \
+  --mode block --run <runId> --review <reviewId> --reason <reason>
 
 # close after a final current-head assertion (or close an honest blocked/user/safety result)
 node --import tsx .agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts \
   --mode close --run <runId> --review <reviewId> --result approved \
+  --base-sha "$(git merge-base origin/main HEAD)" \
   --head-sha "$(git rev-parse HEAD)" --proposal <manifest.json>
 ```
 
@@ -216,11 +224,15 @@ All non-help output is JSON. Invalid transitions and state/bus disagreement fail
 closed with deterministic nonzero exits and an actionable invariant name.
 `status`, `validate`, and `assert-yay` are read-only.
 
-When an OptimizeXP run itself requires the council, `scope.json` records
-`designerConsensus.required`, `reviewId`, `headSha`, and the current
-`proposalPath`. Run `assert-complete` recomputes that manifest and fails on a
-missing, nay, stale, short, blocked, or state/bus-mismatched review. Runs that
-do not declare the council are unchanged.
+Policy-aware SDLC review runs set
+`designerConsensusPolicy: "required-when-design-relevant"`. Their `scope.json`
+records `designerConsensus.required`, `reviewId`, `baseSha`, `headSha`, and the
+current `proposalPath`. A `required: false` decision must instead provide
+changed paths, acceptance tags, and a deterministic
+`internal-no-public-behavior` exemption. Run `assert-complete` replays persona
+votes, recomputes the manifest, and fails on a missing decision, rejected
+exemption, nay, stale base/head/proposal, short vote history, blocker, or
+state/bus mismatch. Legacy non-SDLC runs remain unchanged.
 
 ## SDLC gate
 

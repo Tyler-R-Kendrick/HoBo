@@ -370,13 +370,16 @@ The run scope declares the authoritative review inputs explicitly:
   "designerConsensus": {
     "required": true,
     "reviewId": "run-pr-123-a1b2c3d",
+    "baseSha": "base-sha...",
     "headSha": "a1b2c3d...",
     "proposalPath": ".optimizexp/runs/run/consensus/run-pr-123-a1b2c3d/proposal-cycle-0.json"
   }
 }
 ```
 
-`assert-complete` validates council state against bus history, recomputes the
-proposal digest from `proposalPath`, and asserts unanimous approval for
-`headSha`. Runs without `designerConsensus.required: true` keep their existing
-completion contract.
+Policy-aware SDLC runs also set
+`designerConsensusPolicy: "required-when-design-relevant"`.
+`assert-complete` replays council history, recomputes the proposal digest from
+`proposalPath`, and asserts unanimous approval for the effective `baseSha` and
+`headSha`. A `required: false` policy decision needs a deterministic internal
+exemption; legacy non-SDLC runs keep their existing completion contract.

@@ -8,12 +8,15 @@ export type SecretSourceRank =
 	| "camp-value"
 	| "static-escape";
 
+export type ConfigSensitivity = "public" | "internal" | "sensitive";
+
 export type ConfigFieldDef = Readonly<{
 	kind: "config-field";
 	name?: string;
 	type: "string" | "boolean" | "int" | "json";
 	required: boolean;
 	sensitive: boolean;
+	sensitivity?: ConfigSensitivity;
 	defaultValue?: unknown;
 	enumValues?: readonly string[];
 	min?: number;

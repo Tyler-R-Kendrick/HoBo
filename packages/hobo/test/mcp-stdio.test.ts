@@ -120,6 +120,10 @@ describe("hobo-mcp stdio surface (3-3)", () => {
 	it("serves newline-delimited JSON-RPC over streams end to end", async () => {
 		const input = new PassThrough();
 		const output = new PassThrough();
+		const chunks: Buffer[] = [];
+		output.on("data", (chunk: Buffer | string) => {
+			chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+		});
 		const done = serveMcpStdio({
 			server: createServer(),
 			auth: localOperatorAuth({}),
@@ -138,11 +142,11 @@ describe("hobo-mcp stdio surface (3-3)", () => {
 		input.end();
 		await done;
 
-		const lines = output
-			.read()
+		const lines = Buffer.concat(chunks)
 			.toString()
 			.trim()
 			.split("\n")
+			.filter((line) => line.length > 0)
 			.map((line: string) => JSON.parse(line) as { id: number | null });
 		// The notification produced no response: exactly two replies.
 		expect(lines.map((line) => line.id)).toEqual([1, 2]);

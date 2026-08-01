@@ -19,6 +19,7 @@ import {
 	describeDeployTarget,
 } from "./deploy-preflight.js";
 import { loadHoboProfile } from "./hobo-profile.js";
+import { buildBindingDeliveryDoctorSection } from "./binding-delivery-doctor.js";
 import { buildMessagingDoctorSection } from "./messaging-doctor.js";
 
 export interface DoctorCommandDeps {
@@ -192,6 +193,10 @@ export function createDoctorCommand(
 				);
 			}
 
+			// Binding delivery + 12-factor integrity (ADR-0141/0142).
+			const bindingDelivery = buildBindingDeliveryDoctorSection(env);
+			remediation.push(...bindingDelivery.remediation);
+
 			// Messaging plane readiness (ADR-0138): Kafka + optional Dapr.
 			const messaging = buildMessagingDoctorSection(env);
 			remediation.push(...messaging.remediation);
@@ -231,6 +236,7 @@ export function createDoctorCommand(
 					station: stationReport,
 					identityMigration: identityMigrationReport,
 					trails: trailsReport,
+					bindingDelivery: bindingDelivery.report,
 					messaging: messaging.report,
 					codeHarness,
 				},

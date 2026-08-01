@@ -590,6 +590,8 @@ export function asHoboSecretsStore(port: SecretsPort): {
 	};
 }
 
+export type ConfigSensitivity = "public" | "internal" | "sensitive";
+
 export type ResolvedConfigEntry = Readonly<{
 	name: string;
 	source: SecretSourceRank;
@@ -598,9 +600,15 @@ export type ResolvedConfigEntry = Readonly<{
 	valueRef?: string;
 	versionId?: string;
 	sensitive: boolean;
+	/** ADR-0142 classification. */
+	sensitivity: ConfigSensitivity;
 	/** Agent-safe placeholder when sensitive. */
 	placeholder: string;
 }>;
+
+function sensitivityOf(sensitive: boolean): ConfigSensitivity {
+	return sensitive ? "sensitive" : "public";
+}
 
 export type ResolutionLadderInput = Readonly<{
 	name: string;
@@ -652,6 +660,7 @@ export async function resolveConfigEntry(
 						name: input.name,
 						source,
 						sensitive: input.sensitive,
+						sensitivity: sensitivityOf(input.sensitive),
 						valueRef: `tokenref://bound/${input.name}`,
 						placeholder: input.sensitive
 							? `[REDACTED:bound-resource:${input.name}]`
@@ -670,6 +679,7 @@ export async function resolveConfigEntry(
 						name: input.name,
 						source,
 						sensitive: true,
+						sensitivity: "sensitive",
 						valueRef: accessed.valueRef,
 						versionId: accessed.versionId,
 						placeholder: `[REDACTED:provider-federation:${input.name}]`,
@@ -689,7 +699,9 @@ export async function resolveConfigEntry(
 					name: input.name,
 					source,
 					sensitive: false,
+					sensitivity: "public",
 					value: input.campValue,
+					valueRef: `camp://${input.name}`,
 					placeholder: String(input.campValue),
 				},
 			};
@@ -706,6 +718,7 @@ export async function resolveConfigEntry(
 					name: input.name,
 					source,
 					sensitive: true,
+					sensitivity: "sensitive",
 					valueRef: `staticref://${input.name}/${versionId}`,
 					versionId,
 					placeholder: `[REDACTED:static-escape:${input.name}]`,

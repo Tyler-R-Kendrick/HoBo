@@ -107,6 +107,7 @@ export {
 	createMemorySecretsPort,
 	createVaultJwtSecretsPort,
 	resolveConfigEntry,
+	type ConfigSensitivity,
 	type FetchLike,
 	type ResolvedConfigEntry,
 	type ResolutionLadderInput,

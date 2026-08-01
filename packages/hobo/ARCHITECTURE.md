@@ -102,7 +102,7 @@ Bindle authoring (`@hobo/bindles`):
 
 | Factory | Runtime required | Discovery |
 |---------|------------------|-----------|
-| `b.external({ connectionString, endpoints })` | none (BYO) | `ConnectionStrings__*` / `services__*` |
+| `b.external({ connectionString, endpoints })` | none (BYO) | links / public `services__*` endpoints only — **no** `ConnectionStrings__*` (ADR-0141) |
 | `b.container({ image })` | **oci** | mesh + K8s Deployment |
 | `b.wasmComponent({ source })` | **wasm** | wasmtime sandbox |
 | `.withReference(...)` | — | alias of `dependsOn` |

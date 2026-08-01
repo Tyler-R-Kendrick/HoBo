@@ -13,6 +13,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 |---|---|
 | Agent-to-human handoff | A typed escalation package over `hobo:notify` that asks a human to apply a fix, re-bless output, or abort work before a deadline. |
 | Aggregate | The write-model consistency boundary, realized as an actor over the event log. |
+| Binding membrane | The only supported binding delivery path: WIT import → lattice/host **link** → provider export → generated `ctx.bindings.*` / capability call ([ADR-0141](./adr/02-identity-security.md#adr-0141)). Secret-shaped process env is not a binding document. |
 | Bindle | App-level topology and bindings, provider-agnostic, deployed into one or more Camps. |
 | App Kit (Kit) | Bindle-declared application surface kinds that host entrypoints or interactive runtime behavior: `api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component`. Prefer **Kit** / **App Kit** over calling these "membrane types" at the Bindle authoring layer. Session Replay is default-supplied on every Kit ([ADR-0137](./adr/03-data-plane.md#adr-0137)). Distinct from the low-level WIT/WASM **membrane** (wRPC portability boundary, [ADR-0069](./adr/01-architecture-core.md#adr-0069)). |
 | Infra Kit | Bindle-declared infrastructure/port resources that are not entrypoint hosts (`kv`, `bucket`, `queue`, `topic`, `secret`, `data`, …). No default Session Replay unless explicitly annotated. |
@@ -25,6 +26,9 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Component host | Camp capability that executes components; Wasmtime locally and wasm-in-container as the v1 production floor. |
 | Conductor | Product branding for the HoBo Broker on user-facing surfaces; technical docs, code, and wire contracts keep the term "broker" ([hobo-broker.md](./hobo-broker.md)). The Conductor is a **pure runtime**: it mounts a Station client + active Rail(s), runs resolve/scale/deliver, and emits receipts that pin `stationId` + `railHash` + `catalogHash` + `policyHash`. It owns no durable Connections or policy packs. |
 | Config and secrets | Secretless-first app configuration resolved through `ctx.config` to Camp-specific references rather than plaintext values. |
+| Config capability | Linked `wasi:config/store` provider for non-secret deploy variance (value-ref + sensitivity); import-optional; not a residual vault ([ADR-0142](./adr/02-identity-security.md#adr-0142)). |
+| Config sensitivity | Classification `public` \| `internal` \| `sensitive` controlling materialization; sensitive fields use delegated refs only ([ADR-0142](./adr/02-identity-security.md#adr-0142)). |
+| Residual secrets | Optional classical secret stores (`hobo:secrets`, SecretsPort, optional OpenBao adapter) after federation/`fromBinding`; never default ambient env ([ADR-0027](./adr/02-identity-security.md#adr-0027), [ADR-0142](./adr/02-identity-security.md#adr-0142)). |
 | Connector Registry | Broker-maintained, event-sourced registry of connector configurations (HoBo GitHub App, Pulumi, Azure, Vercel, Cloudflare, custom) whose `credentialRef` entries point into the token broker; required connector kinds gate broker resolutions ([hobo-broker.md](./hobo-broker.md)). |
 | Contract | Typed expectation on a graph edge, declared, inferred, observed, or promoted, and checked by the compatibility gate. |
 | Contract Manifest | Application contract artifact presented to the Meta-cloud Broker; names requested capabilities, constraints, and declared application facts for broker validation. |

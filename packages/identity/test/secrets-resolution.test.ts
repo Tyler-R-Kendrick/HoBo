@@ -91,7 +91,7 @@ describe("secretless resolution ladder", () => {
 		}
 	});
 
-	it("resolveConfigSchema emits redacted events", async () => {
+	it("resolveConfigSchema emits redacted events with sensitivity", async () => {
 		const port = createMemorySecretsPort();
 		await port.put("API_KEY", "real-secret-value-xyz");
 		const resolved = await resolveConfigSchema({
@@ -110,9 +110,17 @@ describe("secretless resolution ladder", () => {
 		expect(JSON.stringify(resolved.agentView)).not.toContain(
 			"real-secret-value-xyz",
 		);
+		expect(resolved.entries.LOG_LEVEL?.sensitivity).toBe("public");
+		expect(resolved.entries.DB_URL?.sensitivity).toBe("sensitive");
+		expect(resolved.entries.API_KEY?.sensitivity).toBe("sensitive");
+		expect(resolved.entries.API_KEY?.value).toBeUndefined();
 		for (const e of resolved.events) {
 			assertNoPlaintextInEvent(e);
 			expect(e.data.redacted).toBe(true);
+			if (e.type === "config.Resolved") {
+				expect(e.data.sensitivity).toBeTruthy();
+				expect(JSON.stringify(e.data)).not.toContain("real-secret-value-xyz");
+			}
 		}
 		expect(resolved.events.some((e) => e.type === "config.Resolved")).toBe(
 			true,

@@ -51,11 +51,13 @@ describe("hobo.manifest/v1 loader", () => {
 		);
 	});
 
-	it("extracts Aspire fallback env keys for the golden manifest", () => {
+	it("lists public discovery env keys only (no ConnectionStrings dual-path)", () => {
 		const manifest = parseManifest(readFixture("golden/db-api-site.json"));
-		expect(aspireFallbackEnv(manifest)).toEqual({
-			api: ["ConnectionStrings__db"],
-		});
+		// ADR-0141: golden manifest has no secret-shaped ConnectionStrings__*
+		expect(aspireFallbackEnv(manifest)).toEqual({});
+		expect(JSON.stringify(manifest.value.resources.api?.env ?? {})).not.toMatch(
+			/ConnectionStrings__/,
+		);
 	});
 
 	it("parses lazy tokens and Humanitec placeholders", () => {
@@ -86,7 +88,7 @@ describe("hobo.manifest/v1 loader", () => {
 		{ file: "bad-resource-id.json", path: "resources.9bad" },
 		{
 			file: "dangling-token.json",
-			path: "resources.api.env.ConnectionStrings__missing",
+			path: "resources.api.env.SERVICE_REF",
 		},
 		{
 			file: "dangling-link-import.json",

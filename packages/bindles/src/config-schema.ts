@@ -4,6 +4,11 @@
  */
 import { createHash } from "node:crypto";
 
+import type { ConfigSensitivity } from "./config-sensitivity.js";
+import { sensitivityForField } from "./config-sensitivity.js";
+
+export type { ConfigSensitivity } from "./config-sensitivity.js";
+
 /** Preferred resolution source ranking (highest first). */
 export const SECRET_SOURCE_RANKS = [
 	"bound-resource",
@@ -22,6 +27,8 @@ export type ConfigFieldDef = Readonly<{
 	type: ConfigFieldKind;
 	required: boolean;
 	sensitive: boolean;
+	/** ADR-0142 classification; defaults from sensitive boolean. */
+	sensitivity?: ConfigSensitivity;
 	defaultValue?: unknown;
 	enumValues?: readonly string[];
 	min?: number;
@@ -229,6 +236,7 @@ export function schemaOnlyView(schema: ConfigSchema): Readonly<{
 				type: string;
 				required: boolean;
 				sensitive: boolean;
+				sensitivity: ConfigSensitivity;
 				source: string;
 				docs?: string;
 			}
@@ -241,6 +249,7 @@ export function schemaOnlyView(schema: ConfigSchema): Readonly<{
 			type: string;
 			required: boolean;
 			sensitive: boolean;
+			sensitivity: ConfigSensitivity;
 			source: string;
 			docs?: string;
 		}
@@ -250,6 +259,7 @@ export function schemaOnlyView(schema: ConfigSchema): Readonly<{
 			type: f.type,
 			required: f.required,
 			sensitive: f.sensitive,
+			sensitivity: sensitivityForField(f),
 			source: f.source,
 			...(f.docs !== undefined ? { docs: f.docs } : {}),
 		};
@@ -292,6 +302,7 @@ export function fromBinding(resourceName: string): ConfigFieldDef {
 		type: "string",
 		required: true,
 		sensitive: true,
+		sensitivity: "sensitive" as const,
 		source: "bound-resource",
 		docs: `bound to resource ${resourceName}`,
 		name: resourceName,

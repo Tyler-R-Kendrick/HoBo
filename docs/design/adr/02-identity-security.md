@@ -935,3 +935,40 @@ Schema/data migrations (Supabase/Flyway/Atlas/pgroll patterns), cross-cloud app 
 - **(+)** One continuous migration abstraction spanning identity (hands-off) and app-specific data/schema/cross-cloud without parallel control planes.
 - **(+)** Golden oracles prove dual consistency, zero-loss, fail-closed, progressive abort, compensation, history idempotency, junction integrity, identity hands-off.
 - **(−)** Full commercial CDC depth (live Debezium connectors) and multi-DB dual-schema beyond Postgres-shaped fixtures remain residual production hardening, not required for the continuous dual Trail contracts.
+
+## ADR-0141
+**Canonical binding delivery membrane: WIT import → link → provider (no env-credential channel).**
+
+### Context
+Cloud Foundry delivered bindings via `VCAP_SERVICES` and Aspire-style hosts often inject `ConnectionStrings__*` into process env. That dual path conflicts with HoBo's WIT/wRPC membrane ([ADR-0069](01-architecture-core.md#adr-0069), [ADR-0023](#adr-0023)): capability is granted by **links**, deny-by-default. Env bags of credentials also compromise agentic integrity (agents scrape env) and wasm guest isolation. Operators asked for better 12-factor conformance without reintroducing password-in-env.
+
+### Decision
+1. **The only supported binding delivery document is the Component Model membrane:** Bindle bind edges → manifest **links** → WIT **imports** late-bound to **provider exports** → generated `ctx.bindings.*` / capability calls.
+2. **Env is never a substitute for links.** Secret-shaped process env (`ConnectionStrings__*`, URI userinfo, password-like keys, ambient `{resource.connectionString}` grants as runtime secrets) is **forbidden** on default bind/manifest/serve paths and fails the **binding-delivery** can-deploy dimension.
+3. **Non-goals (explicit):** `VCAP_SERVICES` compatibility; OSBAPI as the core provider protocol; CredHub product; password-in-env as "12-factor compliance"; default OpenBao/Vault on every lattice.
+4. **Optional public discovery only:** non-credential HTTP/named endpoints may be projected when classified public; never credentials.
+5. **12-factor under HoBo:** Factor III = schema outside the release + linked `wasi:config` (refs/sensitivity); Factor IV = attached services as **linked capabilities**, not connection-string env bags.
+
+### Consequences
+- **(+)** One integrity membrane; agents and guests cannot harvest ambient secrets from env.
+- **(+)** Honest 12-factor without CF legacy delivery shapes.
+- **(−)** Aspire demos that relied on `ConnectionStrings__*` must migrate to `ctx.bindings` / `fromBinding` / links.
+
+## ADR-0142
+**Config as linked capability vs residual secrets; delegated refs and classification.**
+
+### Context
+[ADR-0027](#adr-0027) ranks secretless resolution; [ADR-0113](#adr-0113) defines residual `hobo:secrets` over `wasi:config/store`. Teams still conflate (a) a Spring/CF "config server" that stores passwords, (b) deploy variance (log level, feature labels), and (c) residual classical vaults. Federation does not obsolete non-secret config, but a credential warehouse on every lattice is wrong for agentic defaults.
+
+### Decision
+1. **`wasi:config/store` is a normal capability** (import → link → provider). HoBo's pin returns `{ key, value-ref, sensitivity }` — refs first, not ambient values.
+2. **Config provider is import-optional:** if a component does not import config, no always-on config/vault service is required. Offline default is memory; durable Camp backends are optional profile choices — never OpenBao-as-config-provider.
+3. **Classification:** `public` | `internal` | `sensitive`. Sensitive config uses the ADR-0027 ladder (`fromBinding` / federation / ref); materialization is **host-mediated** only. Agents receive `schemaOnlyView` / placeholders; events carry refs + sensitivity, never plaintext.
+4. **Residual secrets** (`hobo:secrets`, SecretsPort, optional `@hobo/adapter-openbao`) stay residual. Memory is the default local residual; optional vault adapters are not default `@hobo/identity` dependencies.
+5. **No Config Server product** that doubles as CredHub. Non-secret camp-value may flow through the linked config provider; credentials do not.
+
+### Consequences
+- **(+)** Clear split: capability config vs residual vaults vs identity federation.
+- **(+)** Aligns with agent schema-only and never-compact credential audit.
+- **(−)** Operators must not expect always-on secret-config microservices on every Camp.
+

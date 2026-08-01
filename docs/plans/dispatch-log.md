@@ -252,3 +252,10 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **run:** `20260801-ux-dx-ax-bare-resume`; Pareto equilibrium; harm `5/3 → 1/1`
 - **local:** staged and PR-base `agent:check` passed 12 relevant gates
 - **status:** closeout in progress
+
+## 2026-08-01 — OptimizeXP bare UX/DX/AX resume merged (#1005)
+
+- **merge:** `9d728e752cec0239c69aa195f70ddaa2ec6da1ed` (squash)
+- **result:** success; independent review blocker fixed by committing and hash-verifying `primary.cast`
+- **checks:** 12 local PR-base gates green; GitHub clean/mergeable; no review threads
+- **failure class:** `billing-budget` for CodeRabbit line-review quota only; its status context passed

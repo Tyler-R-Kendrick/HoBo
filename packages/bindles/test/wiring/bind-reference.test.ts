@@ -9,7 +9,7 @@ import {
 } from "../../src/wiring/index.js";
 
 describe("bind reference wiring", () => {
-	it("records bind edges, capability links, and Aspire env references", () => {
+	it("records bind edges and capability links without ConnectionStrings env", () => {
 		const db = data("db", { paradigm: "relational" });
 		const api = service("api", {
 			image: "oci://registry.example.com/api@sha256:abc123",
@@ -21,8 +21,10 @@ describe("bind reference wiring", () => {
 		expect(manifest.resources.api?.links).toEqual([
 			{ import: "hobo:data", to: "db" },
 		]);
-		expect(manifest.resources.api?.env?.ConnectionStrings__db).toBe(
-			"{db.connectionString}",
+		// ADR-0141: binding delivery is links only — no ambient ConnectionStrings__*
+		expect(manifest.resources.api?.env?.ConnectionStrings__db).toBeUndefined();
+		expect(JSON.stringify(manifest.resources.api?.env ?? {})).not.toMatch(
+			/ConnectionStrings__/,
 		);
 		expect(manifest.resources.api?.bindings).toEqual({
 			db: {

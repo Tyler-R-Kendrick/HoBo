@@ -16,6 +16,19 @@ promotes the near-production draft proof
 - `TokenBroker` — holds one vaulted root credential and mints per-deploy,
   scope-bound, TTL'd tokens for an SVID, emitting `token.Granted` / `token.Used`
   / `token.Revoked`.
+- **Residual secrets backends** ([ADR-0027](../../docs/design/adr/02-identity-security.md#adr-0027) /
+  [ADR-0113](../../docs/design/adr/02-identity-security.md#adr-0113)) — secretless-first
+  ladder is bound-resource → provider-federation → camp-value → static-escape.
+  Built-in residual adapters in `@hobo/identity` (never primary identity):
+  - **`createMemorySecretsPort`** — default in-memory residual (local Station / fixtures)
+  - `createVaultJwtSecretsPort` — Vault via short-lived SVID JWT (no static Vault token)
+  - `createAwsSecretsManagerPort` / `createAzureKeyVaultPort` — brokered live + offline
+  - `createCampSecretsPort({ backend: "memory" | "vault-jwt" | "aws-sm" | "azure-kv" })`
+  - **`createLocalStationSecretsPort`** — local Station residual; **defaults to memory**
+    (`HOBO_LOCAL_SECRETS_BACKEND=memory|vault-jwt`). Wasm guests never see material.
+  - `asHoboSecretsStore` — WIT-shaped residual view over any port
+  - **Optional OpenBao:** install **`@hobo/adapter-openbao`** (not a default dependency)
+    for residual OpenBao JWT + KV v2. Not included in default installs.
 - Every identity and token event carries the never-compact
   `CREDENTIAL_AUDIT_RETENTION` descriptor.
 - **Continuous Identity Migration Plane** ([ADR-0132](../../docs/design/adr/02-identity-security.md#adr-0132))

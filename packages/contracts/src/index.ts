@@ -121,6 +121,7 @@ export {
 	type MachineReadableReason,
 	type ObligationRecord,
 	type SecretlessConfigGateVerdict,
+	type BindingDeliveryGateVerdict,
 	type CanMigrateGateVerdict,
 } from "./gatekeeper.js";
 export {

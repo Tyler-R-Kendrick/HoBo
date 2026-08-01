@@ -12,6 +12,7 @@ export {
 	dependencyAnnotation,
 	dependencyRuntimeOf,
 	discoveryEnvForDependency,
+	discoveryEndpointsForDependency,
 	externalDependencyAnnotation,
 	isDependencyAnnotation,
 	readDependencyConfig,
@@ -61,6 +62,18 @@ export {
 	type SecretlessConfigGateInput,
 	type SecretlessConfigGateResult,
 } from "./config-can-deploy.js";
+export {
+	evaluateBindingDeliveryGate,
+	isForbiddenSecretEnvKey,
+	looksLikeSecretEnvValue,
+	type BindingDeliveryGateResult,
+	type BindingDeliveryReason,
+} from "./binding-delivery.js";
+export {
+	CONFIG_SENSITIVITY,
+	type ConfigSensitivity,
+	sensitivityForField,
+} from "./config-sensitivity.js";
 export { secret } from "./secret-surface.js";
 export {
 	BINDLE_FEATURES_SCHEMA,

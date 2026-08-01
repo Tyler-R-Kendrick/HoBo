@@ -72,6 +72,10 @@ export {
 	type MessagingDoctorSection,
 } from "./messaging-doctor.js";
 export {
+	buildBindingDeliveryDoctorSection,
+	type BindingDeliveryDoctorSection,
+} from "./binding-delivery-doctor.js";
+export {
 	evaluateMessagingCanDeploy,
 	type MessagingCanDeployReason,
 	type MessagingCanDeployRequest,

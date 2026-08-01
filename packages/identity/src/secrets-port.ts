@@ -21,10 +21,17 @@ export type SecretsAccessResult =
 
 /**
  * Residual managed-secrets store (ADR-0113). Prefer identity federation.
+ * `openbao` kind is reserved for the optional `@hobo/adapter-openbao` package
+ * (not shipped with default identity installs).
  */
 export interface SecretsPort {
 	readonly id: string;
-	readonly kind: "vault-jwt" | "aws-sm" | "azure-kv" | "memory-fixture";
+	readonly kind:
+		| "vault-jwt"
+		| "openbao"
+		| "aws-sm"
+		| "azure-kv"
+		| "memory-fixture";
 	put(
 		name: string,
 		value: string,
@@ -443,7 +450,60 @@ export function createAzureKeyVaultPort(options?: {
 export const createAzureKeyVaultStub = createAzureKeyVaultPort;
 
 /**
+ * Local Station residual secrets (wasm / local Camp host).
+ *
+ * **Default backend is memory** — no optional OpenBao dependency in default
+ * installs. For residual OpenBao, install `@hobo/adapter-openbao` and use
+ * `createOpenBaoSecretsPort` / `createLocalStationOpenBaoSecretsPort`.
+ *
+ * `HOBO_LOCAL_SECRETS_BACKEND=memory` (default) | `vault-jwt`
+ */
+export function createLocalStationSecretsPort(options?: {
+	readonly stationId?: string;
+	readonly env?: NodeJS.ProcessEnv;
+	readonly fetch?: FetchLike;
+	readonly id?: string;
+	/** Unused; retained for API stability. OpenBao lives in @hobo/adapter-openbao. */
+	readonly offline?: boolean;
+}): SecretsPort {
+	const env = options?.env ?? process.env;
+	const backend = (
+		env.HOBO_LOCAL_SECRETS_BACKEND ?? "memory"
+	).toLowerCase();
+	const stationId = options?.stationId ?? env.HOBO_STATION_ID ?? "local";
+	const svidJwt =
+		(typeof env.HOBO_SVID_JWT === "string" && env.HOBO_SVID_JWT) ||
+		`eyJhbGciOiJFUzI1NiJ9.station.${stationId}.fixture`;
+
+	if (backend === "vault-jwt") {
+		return createVaultJwtSecretsPort({
+			vaultAddr:
+				(typeof env.HOBO_VAULT_ADDR === "string" && env.HOBO_VAULT_ADDR) ||
+				"https://vault.local",
+			role:
+				(typeof env.HOBO_VAULT_ROLE === "string" && env.HOBO_VAULT_ROLE) ||
+				`hobo-station-${stationId}`,
+			svidJwt,
+			id: options?.id ?? `secrets:station-vault:${stationId}`,
+		});
+	}
+	if (backend === "openbao") {
+		throw new Error(
+			"OpenBao residual secrets require optional package @hobo/adapter-openbao " +
+				"(not included in default installs). " +
+				"import { createLocalStationOpenBaoSecretsPort } from \"@hobo/adapter-openbao\" " +
+				"or set HOBO_LOCAL_SECRETS_BACKEND=memory|vault-jwt",
+		);
+	}
+	// default memory
+	return createMemorySecretsPort({
+		id: options?.id ?? `secrets:station-memory:${stationId}`,
+	});
+}
+
+/**
  * Camp-scoped secrets port factory — Bindle declares need; Camp selects backend.
+ * OpenBao is not a built-in case — use `@hobo/adapter-openbao` explicitly.
  */
 export function createCampSecretsPort(input: {
 	readonly backend: "memory" | "vault-jwt" | "aws-sm" | "azure-kv";
@@ -530,6 +590,8 @@ export function asHoboSecretsStore(port: SecretsPort): {
 	};
 }
 
+export type ConfigSensitivity = "public" | "internal" | "sensitive";
+
 export type ResolvedConfigEntry = Readonly<{
 	name: string;
 	source: SecretSourceRank;
@@ -538,9 +600,15 @@ export type ResolvedConfigEntry = Readonly<{
 	valueRef?: string;
 	versionId?: string;
 	sensitive: boolean;
+	/** ADR-0142 classification. */
+	sensitivity: ConfigSensitivity;
 	/** Agent-safe placeholder when sensitive. */
 	placeholder: string;
 }>;
+
+function sensitivityOf(sensitive: boolean): ConfigSensitivity {
+	return sensitive ? "sensitive" : "public";
+}
 
 export type ResolutionLadderInput = Readonly<{
 	name: string;
@@ -592,6 +660,7 @@ export async function resolveConfigEntry(
 						name: input.name,
 						source,
 						sensitive: input.sensitive,
+						sensitivity: sensitivityOf(input.sensitive),
 						valueRef: `tokenref://bound/${input.name}`,
 						placeholder: input.sensitive
 							? `[REDACTED:bound-resource:${input.name}]`
@@ -610,6 +679,7 @@ export async function resolveConfigEntry(
 						name: input.name,
 						source,
 						sensitive: true,
+						sensitivity: "sensitive",
 						valueRef: accessed.valueRef,
 						versionId: accessed.versionId,
 						placeholder: `[REDACTED:provider-federation:${input.name}]`,
@@ -629,7 +699,9 @@ export async function resolveConfigEntry(
 					name: input.name,
 					source,
 					sensitive: false,
+					sensitivity: "public",
 					value: input.campValue,
+					valueRef: `camp://${input.name}`,
 					placeholder: String(input.campValue),
 				},
 			};
@@ -646,6 +718,7 @@ export async function resolveConfigEntry(
 					name: input.name,
 					source,
 					sensitive: true,
+					sensitivity: "sensitive",
 					valueRef: `staticref://${input.name}/${versionId}`,
 					versionId,
 					placeholder: `[REDACTED:static-escape:${input.name}]`,

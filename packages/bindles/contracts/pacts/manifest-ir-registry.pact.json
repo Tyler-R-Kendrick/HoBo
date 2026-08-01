@@ -39,8 +39,8 @@
                   }
                 },
                 "env": {
-                  "ConnectionStrings__db": "{db.connectionString}",
-                  "SERVICE_REF": "${resources.data.postgres#db.outputs.connectionString}"
+                  "LOG_LEVEL": "info",
+                  "SERVICE_REF": "${resources.data.postgres#db.outputs.url}"
                 },
                 "exports": [
                   "wasi:http/incoming-handler"
@@ -59,7 +59,6 @@
                 "allow": [
                   "query"
                 ],
-                "connectionString": "{db.connectionString}",
                 "paradigm": "relational",
                 "port": "hobo:data",
                 "type": "data.v1"
@@ -79,7 +78,7 @@
         "status": 201,
         "body": {
           "schema": "hobo.manifest/v1",
-          "hash": "sha256:4b89a88799d0c712a022acf5a11307cae910501527cdcb1be67fc7d3bd756b4a"
+          "hash": "sha256:bbf75754c8871cc4f3892cd17c94b80253cfb08c2f664db6427f5eb619ffef0e"
         }
       }
     }

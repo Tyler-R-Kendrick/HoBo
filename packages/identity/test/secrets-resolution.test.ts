@@ -8,6 +8,7 @@ import {
 	createAzureKeyVaultPort,
 	createCampSecretsPort,
 	createContractAssertedConfigFixtures,
+	createLocalStationSecretsPort,
 	createMemorySecretsPort,
 	createVaultJwtSecretsPort,
 	decryptLocalOverrides,
@@ -90,7 +91,7 @@ describe("secretless resolution ladder", () => {
 		}
 	});
 
-	it("resolveConfigSchema emits redacted events", async () => {
+	it("resolveConfigSchema emits redacted events with sensitivity", async () => {
 		const port = createMemorySecretsPort();
 		await port.put("API_KEY", "real-secret-value-xyz");
 		const resolved = await resolveConfigSchema({
@@ -109,9 +110,17 @@ describe("secretless resolution ladder", () => {
 		expect(JSON.stringify(resolved.agentView)).not.toContain(
 			"real-secret-value-xyz",
 		);
+		expect(resolved.entries.LOG_LEVEL?.sensitivity).toBe("public");
+		expect(resolved.entries.DB_URL?.sensitivity).toBe("sensitive");
+		expect(resolved.entries.API_KEY?.sensitivity).toBe("sensitive");
+		expect(resolved.entries.API_KEY?.value).toBeUndefined();
 		for (const e of resolved.events) {
 			assertNoPlaintextInEvent(e);
 			expect(e.data.redacted).toBe(true);
+			if (e.type === "config.Resolved") {
+				expect(e.data.sensitivity).toBeTruthy();
+				expect(JSON.stringify(e.data)).not.toContain("real-secret-value-xyz");
+			}
 		}
 		expect(resolved.events.some((e) => e.type === "config.Resolved")).toBe(
 			true,
@@ -134,6 +143,32 @@ describe("secretless resolution ladder", () => {
 			expect(accessed.valueRef).toMatch(/^vault:\/\//);
 			expect(accessed.expiresAt).toBeTruthy();
 		}
+	});
+
+	it("local station residual defaults to memory (no OpenBao in default install)", async () => {
+		const port = createLocalStationSecretsPort({ stationId: "local" });
+		expect(port.kind).toBe("memory-fixture");
+		await port.put("API_KEY", "broker-only");
+		const result = await resolveConfigEntry({
+			name: "API_KEY",
+			sensitive: true,
+			preferredSource: "provider-federation",
+			allowedSources: ["provider-federation"],
+			secretsPort: port,
+		});
+		expect(result.status).toBe("resolved");
+		if (result.status === "resolved") {
+			expect(result.entry.placeholder).toMatch(/REDACTED/);
+			expect(JSON.stringify(result.entry)).not.toContain("broker-only");
+		}
+	});
+
+	it("requesting OpenBao residual without optional package fails closed", () => {
+		expect(() =>
+			createLocalStationSecretsPort({
+				env: { HOBO_LOCAL_SECRETS_BACKEND: "openbao" },
+			}),
+		).toThrow(/@hobo\/adapter-openbao/);
 	});
 
 	it("static-escape forbidden when policy forbids", async () => {

@@ -13,7 +13,7 @@
       "type": "component.v1",
       "runtime": "wasm",
       "env": {
-        "ConnectionStrings__missing": "{missing.connectionString}"
+        "SERVICE_REF": "{missing.connectionString}"
       }
     }
   }

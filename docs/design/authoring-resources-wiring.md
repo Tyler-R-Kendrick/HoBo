@@ -268,12 +268,12 @@ DNS and custom domains are **not** in the app-level catalog ([ADR-0035](./adr/07
 `bind` is a **reference**: lazy, convention-based, adopting Aspire `.WithReference()` semantics.
 - Declaring `bind: { db }` (or referencing a resource inside a handler) records a **dependency edge** (drives the DAG + link), and **injects connection info/endpoints** into the consumer.
 - **Lazy resolution** (Aspire's `ReferenceExpression`): references resolve at deploy/runtime, so the *same component* runs locally and on any provider with no code change.
-- **Convention:** endpoints/connection info are injected with predictable keys (Aspire uses `services__<name>__<endpoint>__<i>` and `ConnectionStrings__<name>`); HoBo exposes them as a typed `ctx.bindings.<name>` client generated from the resource's WIT port, with the raw env convention available underneath for non-wasm/container fallback.
+- **Convention (ADR-0141):** binding delivery is the **WIT membrane** — bind edges → manifest **links** → provider exports → typed `ctx.bindings.<name>`. **Secret-shaped process env is forbidden** (`ConnectionStrings__*`, credential URIs). Optional **public** HTTP discovery keys (`services__<name>__http__0`) may be projected for non-credential endpoints only.
 
 ```ts
 const db  = data("db");                          // abstract data dep; paradigm + backend resolved by Matching
 const api = service("api", { bind: { db } });    // api gets a typed db client; edge + link recorded
-// container/component fallback receives ConnectionStrings__db / services__db__... env vars
+// links only — no ConnectionStrings__* ambient grants (ADR-0141)
 ```
 
 **Config for any component *or* container is uniform.** Adopt Aspire's `addContainer(...)` surface, applied identically to wasm components and OCI containers (wasm-on-OCI is just another image). **`addContainer(...)` both wires *and* builds** ([ADR-0005](./adr/01-architecture-core.md#adr-0005)): it records the dependency edge/link *and* drives the build of the workload through the dagger-adjacent programmable **BuildProvider**, which **defaults to wasm-on-OCI** (and is swappable to plain OCI). One call covers wiring and the build step:
@@ -291,7 +291,7 @@ addContainer("cuda-job", "ghcr.io/acme/cuda-job:1.2")    // wires + builds via B
 ```
 The BuildProvider is the programmable build seam: a prebuilt image short-circuits the build; a source dir is compiled (wasm-on-OCI by default) before the edge/link is finalized.
 
-**Local dev (`hobo dev`):** an `addContainer` workload runs on the local container engine with the same env-injection convention as deploy (`ConnectionStrings__<name>` / `services__<name>__<endpoint>__<i>`); wasm-on-OCI images run on `runtime-local` with no container engine. Fidelity is labeled per the [ADR-0042](./adr/07-portability-extensibility.md#adr-0042) matrix — simulate with an engine present, labeled camp-only without one.
+**Local dev (`hobo dev`):** workloads run with the same **link/capability** membrane as deploy. Optional public endpoint discovery may inject non-credential `services__*` keys; **never** credential `ConnectionStrings__*`. Wasm-on-OCI images run on `runtime-local`. Fidelity is labeled per the [ADR-0042](./adr/07-portability-extensibility.md#adr-0042) matrix.
 
 **Annotations are typed extensibility (`.with(...)`).** Aspire attaches behavior via resource **annotations** consumed by deploy tools. HoBo's existing provider-specific options pattern **is** this: `.with(provider.options())` adds typed annotations that the resolved Provider/IaC adapter consumes; non-resolved providers' annotations are inert ([Plan 2](./sdk-api.md#plan-02)). First-party annotations (health, lifetime, replicas, scaling, residency) are typed and provider-neutral. `scaling {min,max}` is consumed by the Camp's `component-host` scheduler ([ADR-0108](./adr/01-architecture-core.md#adr-0108)).
 
@@ -306,13 +306,13 @@ The BuildProvider is the programmable build seam: a prebuilt image short-circuit
              "exports": ["wasi:http/incoming-handler"],
              "links": [ { "import": "hobo:data", "to": "db" } ],
              "endpoints": { "http": { "scheme": "http", "targetPort": 8080, "external": true } },
-             "env": { "ConnectionStrings__db": "{db.connectionString}" },
+             "links": [{ "import": "hobo:data", "to": "db" }],
              "annotations": { "scaling": { "min": 1, "max": 10 }, "with": { "aws.fargate": { "cpu": 512 } } } },
     "site":{ "type": "website.v1", "bind": ["api"] }
   }
 }
 ```
-- **Tokens** like `{db.connectionString}` are lazy references resolved at deploy (Aspire pattern).
+- **Lazy tokens** may appear in non-secret placeholders only; **connection-string ambient env grants are forbidden** (ADR-0141). Prefer links + `fromBinding`.
 - **`links`** are the wasm capability bindings ([Plan 20](./wasm-runtime-wit.md#plan-20)); **`allow`** mirrors the permission model above.
 - **FinOps plan-time bridge.** During **`hobo plan`**, the Planner lowers each manifest resource node to provider-neutral **`ResourceIntent`** before FinOps routing ([Plan 04](./control-plane.md#plan-04), [finops-budget-routing-control-plane.md](./finops-budget-routing-control-plane.md#ifc-and-hobo-plan-spine)); provider-specific `.with(...)` annotations stay in the manifest until after `RoutingDecision`.
 - The manifest is **content-addressed and event-sourced** (`deployment.Planned` carries it), so it's auditable/replayable ([Plan 11](./data-plane.md#plan-11)).
@@ -330,7 +330,7 @@ The BuildProvider is the programmable build seam: a prebuilt image short-circuit
 - **Per-resource provider-equivalence-class** — the class chosen + **why other members were rejected** (reuses the rejected-candidate reasons in `match.Decided`, [ADR-0033](./adr/01-architecture-core.md#adr-0033)).
 - **Upgrade readiness** — the pinned **`component-host` + `wasi:*` versions** ([ADR-0031](./adr/01-architecture-core.md#adr-0031)) and whether a host upgrade path/upcaster is available, so portability and upgradability read off one report.
 
-Manifest interop notes: the schema (`hobo.manifest/v1`) stays interop-close to Aspire's `aspire-manifest.json`, and HoBo imports an Aspire manifest as one input format; the container/wasm-host fallback injects endpoints/connection info on the Aspire `services__<name>__<endpoint>__<i>` / `ConnectionStrings__<name>` convention.
+Manifest interop notes: the schema (`hobo.manifest/v1`) stays interop-close to Aspire's structure for resource graphs, but **HoBo rejects Aspire credential-env delivery** (ADR-0141). Public endpoint discovery only; credentials never as process env.
 
 ### Configuration & secretless secrets
 

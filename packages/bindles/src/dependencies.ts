@@ -146,9 +146,24 @@ export function readDependencyConfig(
 }
 
 /**
- * Aspire-compatible discovery env keys for a dependency resource name.
+ * Public endpoint discovery only (ADR-0141).
+ * Never emits ConnectionStrings__* or credential-bearing values.
+ * Resource access is via WIT links / ctx.bindings — not process env secrets.
  */
 export function discoveryEnvForDependency(
+	resourceName: string,
+	config: Readonly<Record<string, unknown>> | null,
+	resolved: {
+		readonly httpUrl?: string;
+		/** Ignored — connection strings must not enter process env (ADR-0141). */
+		readonly connectionString?: string;
+	},
+): Record<string, string> {
+	return discoveryEndpointsForDependency(resourceName, config, resolved);
+}
+
+/** Alias: public HTTP/named endpoints only. */
+export function discoveryEndpointsForDependency(
 	resourceName: string,
 	config: Readonly<Record<string, unknown>> | null,
 	resolved: {
@@ -157,11 +172,9 @@ export function discoveryEnvForDependency(
 	},
 ): Record<string, string> {
 	const env: Record<string, string> = {};
-	if (resolved.connectionString !== undefined) {
-		env[`ConnectionStrings__${resourceName}`] = resolved.connectionString;
-	} else if (typeof config?.connectionString === "string") {
-		env[`ConnectionStrings__${resourceName}`] = config.connectionString;
-	}
+	// Intentionally ignore connectionString — dual-path credential env is banned.
+	void resolved.connectionString;
+	void config?.connectionString;
 	if (resolved.httpUrl !== undefined) {
 		env[`services__${resourceName}__http__0`] = resolved.httpUrl;
 	} else if (

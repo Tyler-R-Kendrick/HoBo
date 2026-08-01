@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	mkdirSync,
 	mkdtempSync,
@@ -40,7 +42,10 @@ function seedRepo(): string {
 	return root;
 }
 
-function proposal(root: string): string {
+function proposal(
+	root: string,
+	overrides: Record<string, unknown> = {},
+): string {
 	const file = path.join(root, "proposal.json");
 	writeFileSync(
 		file,
@@ -63,6 +68,7 @@ function proposal(root: string): string {
 					currentHead: true,
 					acceptanceMapped: true,
 				},
+				...overrides,
 			},
 			null,
 			2,
@@ -77,7 +83,12 @@ function council(root: string, ...args: string[]) {
 	return result.output;
 }
 
-function initCouncil(root: string, proposalPath: string): CouncilState {
+function initCouncil(
+	root: string,
+	proposalPath: string,
+	baseSha = sha("a"),
+	headSha = sha("b"),
+): CouncilState {
 	return council(
 		root,
 		"--mode",
@@ -87,9 +98,9 @@ function initCouncil(root: string, proposalPath: string): CouncilState {
 		"--review",
 		"review-1",
 		"--base-sha",
-		sha("a"),
+		baseSha,
 		"--head-sha",
-		sha("b"),
+		headSha,
 		"--proposal",
 		proposalPath,
 	).state as CouncilState;
@@ -187,8 +198,13 @@ function appendPersona(
 	).state as CouncilState;
 }
 
-function approve(root: string, proposalPath: string): CouncilState {
-	let state = initCouncil(root, proposalPath);
+function approve(
+	root: string,
+	proposalPath: string,
+	baseSha = sha("a"),
+	headSha = sha("b"),
+): CouncilState {
+	let state = initCouncil(root, proposalPath, baseSha, headSha);
 	for (const persona of COUNCIL_PERSONAS) {
 		state = appendPersona(root, state, persona, "submitted");
 	}
@@ -280,15 +296,64 @@ function configureRequiredCouncil(
 	root: string,
 	proposalPath: string,
 	headSha = sha("b"),
+	baseSha = sha("a"),
 ): void {
 	const scopePath = path.join(root, ".optimizexp/runs/run-1/scope.json");
 	const scope = JSON.parse(readFileSync(scopePath, "utf8"));
 	scope.designerConsensus = {
 		required: true,
 		reviewId: "review-1",
-		baseSha: sha("a"),
+		baseSha,
 		headSha,
 		proposalPath: path.relative(root, proposalPath),
+	};
+	writeFileSync(scopePath, `${JSON.stringify(scope, null, 2)}\n`);
+}
+
+function gitProcess(root: string, ...args: string[]) {
+	const env = { ...process.env };
+	for (const key of [
+		"GIT_DIR",
+		"GIT_WORK_TREE",
+		"GIT_COMMON_DIR",
+		"GIT_INDEX_FILE",
+		"GIT_OBJECT_DIRECTORY",
+		"GIT_ALTERNATE_OBJECT_DIRECTORIES",
+		"GIT_PREFIX",
+	])
+		delete env[key];
+	const result = spawnSync("git", ["-C", root, ...args], {
+		encoding: "utf8",
+		env,
+	});
+	assert.equal(result.status, 0, result.stderr);
+	return result;
+}
+
+function git(root: string, ...args: string[]): string {
+	const result = gitProcess(root, ...args);
+	return result.stdout.trim();
+}
+
+function configureExemptCouncil(
+	root: string,
+	overrides: Record<string, unknown> = {},
+): void {
+	const scopePath = path.join(root, ".optimizexp/runs/run-1/scope.json");
+	const scope = JSON.parse(readFileSync(scopePath, "utf8"));
+	scope.designerConsensusPolicy = "required-when-design-relevant";
+	scope.designerConsensus = {
+		required: false,
+		changedPaths: ["src/internal/cache.ts"],
+		acceptanceTags: [],
+		explicitlyRequested: false,
+		priorCouncilCycle: false,
+		exemption: {
+			code: "internal-no-public-behavior",
+			justification:
+				"Private cache rename; exported behavior and errors unchanged.",
+		},
+		...overrides,
 	};
 	writeFileSync(scopePath, `${JSON.stringify(scope, null, 2)}\n`);
 }
@@ -347,6 +412,27 @@ describe("OptimizeXP review-loop designer council integration", () => {
 		const result = await runReviewLoop(root, "assert-complete");
 		assert.notEqual(result.code, 0, result.text);
 		assert.match(councilMissing(result).join("\n"), /missing/);
+	});
+
+	test("assert-complete rejects exemptions after an explicit request or prior council cycle", async () => {
+		const requestedRoot = seedRepo();
+		await initRun(requestedRoot);
+		configureExemptCouncil(requestedRoot, { explicitlyRequested: true });
+		const requested = await runReviewLoop(requestedRoot, "assert-complete");
+		assert.match(
+			councilMissing(requested).join("\n"),
+			/designer_consensus_exemption_rejected/,
+		);
+
+		const priorRoot = seedRepo();
+		await initRun(priorRoot);
+		initCouncil(priorRoot, proposal(priorRoot));
+		configureExemptCouncil(priorRoot);
+		const prior = await runReviewLoop(priorRoot, "assert-complete");
+		assert.match(
+			councilMissing(prior).join("\n"),
+			/designer_consensus_exemption_rejected/,
+		);
 	});
 
 	test("assert-complete rejects nay, missing-voter, and open-blocker reviews", async () => {
@@ -415,6 +501,113 @@ describe("OptimizeXP review-loop designer council integration", () => {
 			councilMissing(mismatch).join("\n"),
 			/state-bus|digest.*mismatch/,
 		);
+	});
+
+	test("assert-complete compares approval with the checkout's actual head", async () => {
+		const root = seedRepo();
+		git(root, "init");
+		git(root, "config", "user.name", "Council Test");
+		git(root, "config", "user.email", "council@example.invalid");
+		writeFileSync(path.join(root, "base.txt"), "base\n");
+		git(root, "add", "base.txt");
+		git(root, "commit", "-m", "base");
+		const baseSha = git(root, "rev-parse", "HEAD");
+		writeFileSync(path.join(root, "feature.txt"), "feature\n");
+		git(root, "add", "feature.txt");
+		git(root, "commit", "-m", "feature");
+		const approvedHead = git(root, "rev-parse", "HEAD");
+		const proposalPath = proposal(root);
+		await initRun(root);
+		approve(root, proposalPath, baseSha, approvedHead);
+		configureRequiredCouncil(root, proposalPath, approvedHead, baseSha);
+
+		writeFileSync(path.join(root, "later.txt"), "later\n");
+		git(root, "add", "later.txt");
+		git(root, "commit", "-m", "later");
+		const inheritedGitDir = process.env.GIT_DIR;
+		process.env.GIT_DIR = path.resolve(".git");
+		const stale = await runReviewLoop(root, "assert-complete").finally(() => {
+			if (inheritedGitDir === undefined) delete process.env.GIT_DIR;
+			else process.env.GIT_DIR = inheritedGitDir;
+		});
+		assert.match(councilMissing(stale).join("\n"), /stale.*head/);
+	});
+
+	test("assert-complete binds exemptions and proposals to the effective Git diff", async () => {
+		const root = seedRepo();
+		git(root, "init");
+		git(root, "config", "user.name", "Council Test");
+		git(root, "config", "user.email", "council@example.invalid");
+		writeFileSync(path.join(root, "base.txt"), "base\n");
+		git(root, "add", "base.txt");
+		git(root, "commit", "-m", "base");
+		const baseSha = git(root, "rev-parse", "HEAD");
+		git(root, "update-ref", "refs/remotes/origin/main", baseSha);
+		mkdirSync(path.join(root, "packages/cli/src"), { recursive: true });
+		writeFileSync(
+			path.join(root, "packages/cli/src/help.ts"),
+			"export const help = 'help';\n",
+		);
+		git(root, "add", "packages/cli/src/help.ts");
+		git(root, "commit", "-m", "feature");
+		const headSha = git(root, "rev-parse", "HEAD");
+		await initRun(root);
+		configureExemptCouncil(root, {
+			baseSha,
+			headSha,
+			changedPaths: ["src/internal/cache.ts"],
+		});
+		const exempt = await runReviewLoop(root, "assert-complete");
+		assert.match(councilMissing(exempt).join("\n"), /exemption_paths_mismatch/);
+
+		const requiredRoot = seedRepo();
+		git(requiredRoot, "init");
+		git(requiredRoot, "config", "user.name", "Council Test");
+		git(requiredRoot, "config", "user.email", "council@example.invalid");
+		writeFileSync(path.join(requiredRoot, "base.txt"), "base\n");
+		git(requiredRoot, "add", "base.txt");
+		git(requiredRoot, "commit", "-m", "base");
+		const requiredBaseSha = git(requiredRoot, "rev-parse", "HEAD");
+		git(
+			requiredRoot,
+			"update-ref",
+			"refs/remotes/origin/main",
+			requiredBaseSha,
+		);
+		mkdirSync(path.join(requiredRoot, "src/internal"), { recursive: true });
+		writeFileSync(
+			path.join(requiredRoot, "src/internal/cache.ts"),
+			"export const cache = true;\n",
+		);
+		git(requiredRoot, "add", "src/internal/cache.ts");
+		git(requiredRoot, "commit", "-m", "feature");
+		const requiredHeadSha = git(requiredRoot, "rev-parse", "HEAD");
+		await initRun(requiredRoot);
+		const diff = gitProcess(
+			requiredRoot,
+			"diff",
+			"--no-ext-diff",
+			"--binary",
+			"--full-index",
+			requiredBaseSha,
+			requiredHeadSha,
+			"--",
+		).stdout.replaceAll("\r\n", "\n");
+		const proposalPath = proposal(requiredRoot, {
+			changedPaths: ["src/internal/cache.ts"],
+			normalizedDiffHash: createHash("sha256")
+				.update(`${diff}tampered`)
+				.digest("hex"),
+		});
+		approve(requiredRoot, proposalPath, requiredBaseSha, requiredHeadSha);
+		configureRequiredCouncil(
+			requiredRoot,
+			proposalPath,
+			requiredHeadSha,
+			requiredBaseSha,
+		);
+		const required = await runReviewLoop(requiredRoot, "assert-complete");
+		assert.match(councilMissing(required).join("\n"), /proposal_diff_mismatch/);
 	});
 
 	test("current-subject exact-six unanimous yay clears council-specific blockers", async () => {

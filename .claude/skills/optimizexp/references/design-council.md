@@ -164,11 +164,16 @@ when the complete entry digest matches.
    no blockers produce `result: "yay"`.
 6. Rework refreshes implementation, acceptance evidence, effective diff, and
    subject; carries investment without recharge; and reconvenes the same six in
-   the next cycle.
+   the next cycle. The opening must link the single replay-validated rework
+   packet from the prior nay; omission or substitution fails closed.
 
 There is no majority, quorum, abstention, chair, tie-breaker, weighted vote, or
 timeout approval. A diagnostic turn cap terminates `blocked` with unresolved
 arguments; it can never approve.
+
+`approved`, `blocked`, and `closed` are terminal for persona entries. A user or
+safety close cannot be reopened into approval; changed work starts a legal new
+cycle or review instead.
 
 ## State and commands
 
@@ -233,6 +238,11 @@ changed paths, acceptance tags, and a deterministic
 votes, recomputes the manifest, and fails on a missing decision, rejected
 exemption, nay, stale base/head/proposal, short vote history, blocker, or
 state/bus mismatch. Legacy non-SDLC runs remain unchanged.
+Current-head Git checks discard inherited hook-local repository variables, so
+linked-worktree and fixture validation always resolves the configured checkout.
+Required reviews compare the proposal's sorted paths and SHA-256 of the
+full-index binary Git diff with the effective base-to-head diff. Exemptions are
+also base/head-bound and must list that exact diff; self-attested paths fail.
 
 ## SDLC gate
 

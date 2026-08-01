@@ -19,7 +19,9 @@ Do not edit historical entries. Redact secrets before linking transcripts.
 
 Council entries are also immutable. Their mutable state snapshot must
 cross-check against bus history; blockers leave only through an appended
-`blocker-resolution` entry.
+`blocker-resolution` entry. A rework cycle must retain its single linked rework
+packet, and closeout compares its proposal paths and normalized diff hash with
+the effective Git base-to-head diff before accepting unanimous approval.
 
 ```bash
 node --import tsx .agents/skills/optimizexp/workflows/cross-agent/review-loop.mts --mode validate-bus

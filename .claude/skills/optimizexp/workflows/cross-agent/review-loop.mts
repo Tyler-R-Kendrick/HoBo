@@ -30,7 +30,7 @@ import { evaluateScorecardEvidence } from "../../harness/lib/evidence-checks.mts
 import { validateEvidenceReview } from "../../harness/lib/evidence-review.mts";
 import { listProjects } from "../../harness/lib/projects.mts";
 import { evaluateDesignRelevance } from "../../harness/lib/design-council.mts";
-import { runConsensusCommand } from "./consensus-loop.mts";
+import { inspectGitReviewSubject, runConsensusCommand } from "./consensus-loop.mts";
 
 /** Invocation terminals only — never "plateau" / "metrics-zero" alone. */
 const INVOCATION_STOP_REASONS = new Set([
@@ -1222,19 +1222,34 @@ function validateRequiredDesignerConsensus(
 	if (raw === undefined) return policyAware ? ["designer_consensus_decision_missing"] : [];
 	if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return ["designer_consensus_config_invalid"];
 	const config = raw as Record<string, unknown>;
+	const configuredBaseRef = config.baseRef;
+	if (configuredBaseRef !== undefined && (typeof configuredBaseRef !== "string" || configuredBaseRef.trim() === "")) return ["designer_consensus_base_ref_invalid"];
+	const baseRef = typeof configuredBaseRef === "string" ? configuredBaseRef.trim() : "origin/main";
 	if (config.required === false) {
 		const changedPaths = Array.isArray(config.changedPaths) && config.changedPaths.every((item) => typeof item === "string") ? config.changedPaths as string[] : null;
 		const acceptanceTags = config.acceptanceTags === undefined
 			? []
 			: Array.isArray(config.acceptanceTags) && config.acceptanceTags.every((item) => typeof item === "string") ? config.acceptanceTags as string[] : null;
+		const explicitlyRequested = config.explicitlyRequested ?? false;
+		const configuredPriorCycle = config.priorCouncilCycle ?? false;
 		const exemption = config.exemption;
-		if (!changedPaths || !acceptanceTags || exemption === null || typeof exemption !== "object" || Array.isArray(exemption)) return ["designer_consensus_exemption_invalid"];
+		if (!changedPaths || !acceptanceTags || typeof explicitlyRequested !== "boolean" || typeof configuredPriorCycle !== "boolean" || exemption === null || typeof exemption !== "object" || Array.isArray(exemption)) return ["designer_consensus_exemption_invalid"];
+		const consensusDir = path.join(root, ".optimizexp", "runs", runId, "consensus");
+		const priorCouncilCycle = configuredPriorCycle || (existsSync(consensusDir) && readdirSync(consensusDir, { withFileTypes: true }).some((entry) => entry.isDirectory() && existsSync(path.join(consensusDir, entry.name, "state.json"))));
 		const decision = evaluateDesignRelevance({
 			changedPaths,
 			acceptanceTags,
+			explicitlyRequested,
+			priorCouncilCycle,
 			exemption: exemption as { code: "internal-no-public-behavior"; justification: string },
 		});
 		if (decision.required || !decision.exemptionAccepted) return ["designer_consensus_exemption_rejected"];
+		const baseSha = typeof config.baseSha === "string" ? config.baseSha.trim() : "";
+		const headSha = typeof config.headSha === "string" ? config.headSha.trim() : "";
+		if (!baseSha || !headSha) return ["designer_consensus_exemption_subject_missing"];
+		const gitSubject = inspectGitReviewSubject(root, baseSha, headSha, baseRef);
+		if (gitSubject.problems.length) return gitSubject.problems.map((problem) => `designer_consensus_${problem}`);
+		if (gitSubject.available && JSON.stringify(gitSubject.changedPaths) !== JSON.stringify([...new Set(changedPaths)].sort())) return ["designer_consensus_exemption_paths_mismatch"];
 		return [];
 	}
 	if (config.required !== true) return ["designer_consensus_required_invalid"];
@@ -1253,7 +1268,7 @@ function validateRequiredDesignerConsensus(
 	}
 	const assertion = runConsensusCommand([
 		"--mode", "assert-yay", "--root", root, "--run", runId, "--review", reviewId,
-		"--base-sha", baseSha, "--head-sha", headSha, "--proposal", proposal,
+		"--base-sha", baseSha, "--head-sha", headSha, "--proposal", proposal, "--base-ref", baseRef,
 	]);
 	if (assertion.exitCode !== 0) return [`designer_consensus_assert:${String(assertion.output.invariant ?? assertion.output.error ?? "not-approved")}`];
 	return [];

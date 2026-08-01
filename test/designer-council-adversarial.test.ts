@@ -3,6 +3,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -305,6 +306,57 @@ describe("designer council adversarial protocol", () => {
 		assert.match(assertion.text, /not-approved/);
 	});
 
+	test("approved, blocked, and closed reviews reject further persona entries", () => {
+		const approvedRoot = seedRepo();
+		const approved = approve(approvedRoot, init(approvedRoot));
+		const afterApproved = append(
+			approvedRoot,
+			approved,
+			"steve-jobs",
+			"submitted",
+		);
+		assert.notEqual(afterApproved.exitCode, 0);
+		assert.match(afterApproved.text, /terminal-state/);
+
+		const blockedRoot = seedRepo();
+		let blocked = init(blockedRoot, { maxTurns: 1 });
+		blocked = append(blockedRoot, blocked, "steve-jobs", "position").output
+			.state as CouncilState;
+		const capped = append(blockedRoot, blocked, "jony-ive", "position");
+		assert.equal((capped.output.state as CouncilState).status, "blocked");
+		const afterBlocked = append(
+			blockedRoot,
+			capped.output.state as CouncilState,
+			"jony-ive",
+			"position",
+		);
+		assert.notEqual(afterBlocked.exitCode, 0);
+		assert.match(afterBlocked.text, /terminal-state/);
+
+		const closedRoot = seedRepo();
+		const open = init(closedRoot);
+		const closed = run(
+			closedRoot,
+			"--mode",
+			"close",
+			"--run",
+			open.runId,
+			"--review",
+			open.reviewId,
+			"--result",
+			"user",
+		);
+		assert.equal((closed.output.state as CouncilState).status, "closed");
+		const afterClosed = append(
+			closedRoot,
+			closed.output.state as CouncilState,
+			"steve-jobs",
+			"submitted",
+		);
+		assert.notEqual(afterClosed.exitCode, 0);
+		assert.match(afterClosed.text, /terminal-state/);
+	});
+
 	test("refreshed evidence invalidates an otherwise unanimous approval", () => {
 		const root = seedRepo();
 		const approved = approve(root, init(root));
@@ -475,5 +527,106 @@ describe("designer council adversarial protocol", () => {
 		assert.notEqual(validation.exitCode, 0);
 		assert.match(validation.text, /blocker-silently-deleted:HB-jony-ive-001/);
 		assert.match(validation.text, /state-bus-digest-mismatch/);
+	});
+
+	test("rework replay rejects dropped preference obligations", () => {
+		const root = seedRepo();
+		let state = init(root, {
+			proposal: proposal(root, sha("e"), false, true, true),
+		});
+		let result = append(root, state, "steve-jobs", "position", {
+			arguments: [
+				{
+					id: "P-steve-1",
+					claim: "The public flow has one avoidable seam.",
+					kind: "preference",
+					respondsTo: [],
+					evidenceRefs: ["test/designer-council-adversarial.test.ts"],
+					requestedChange: "Remove the avoidable seam.",
+				},
+			],
+		});
+		state = result.output.state as CouncilState;
+		for (const persona of COUNCIL_PERSONAS.slice(1)) {
+			result = append(root, state, persona, "position");
+			state = result.output.state as CouncilState;
+		}
+		result = append(root, state, "steve-jobs", "vote", {
+			stance: "nay",
+			respondsTo: ["P-steve-1"],
+		});
+		state = result.output.state as CouncilState;
+		for (const persona of COUNCIL_PERSONAS.slice(1)) {
+			result = append(root, state, persona, "vote");
+			state = result.output.state as CouncilState;
+		}
+		const decided = run(
+			root,
+			"--mode",
+			"decide",
+			"--run",
+			state.runId,
+			"--review",
+			state.reviewId,
+		);
+		assert.equal(
+			(decided.output.decision as Record<string, unknown>).result,
+			"nay",
+		);
+
+		const busDir = path.join(root, ".optimizexp/bus/entries");
+		const reworkFile = readdirSync(busDir).find((file) =>
+			file.includes("-rework-"),
+		);
+		assert.ok(reworkFile);
+		const reworkPath = path.join(busDir, reworkFile);
+		const originalRework = readFileSync(reworkPath, "utf8");
+		const rework = JSON.parse(originalRework);
+		rework.blockingFeedback = [];
+		rework.requestedChanges = [];
+		rework.implementationWorkItems = [];
+		writeFileSync(reworkPath, `${JSON.stringify(rework, null, 2)}\n`);
+		const validation = run(
+			root,
+			"--mode",
+			"validate",
+			"--run",
+			state.runId,
+			"--review",
+			state.reviewId,
+		);
+		assert.notEqual(validation.exitCode, 0);
+		assert.match(validation.text, /rework-packet/);
+
+		writeFileSync(reworkPath, originalRework);
+		const refreshedProposal = proposal(root, sha("f"), false, true, true);
+		const reopened = run(
+			root,
+			"--mode",
+			"init",
+			"--run",
+			state.runId,
+			"--review",
+			state.reviewId,
+			"--base-sha",
+			state.subject.baseSha,
+			"--head-sha",
+			state.subject.headSha,
+			"--proposal",
+			refreshedProposal,
+		);
+		assert.equal(reopened.exitCode, 0, reopened.text);
+		rmSync(reworkPath);
+		const missingRework = run(
+			root,
+			"--mode",
+			"validate",
+			"--run",
+			state.runId,
+			"--review",
+			state.reviewId,
+		);
+		assert.notEqual(missingRework.exitCode, 0);
+		assert.match(missingRework.text, /rework-packet/);
 	});
 });

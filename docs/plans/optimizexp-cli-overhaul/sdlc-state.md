@@ -7,9 +7,10 @@ tags: [hobo, plans, sdlc, optimizexp, cli, dx, ax]
 
 # Initiative: optimizexp CLI-experience overhaul + boyscout sweep
 
-**Phase:** closeout  
+**Phase:** closed  
 **Slug:** `optimizexp-cli-overhaul`  
 **Opened:** 2026-07-31  
+**Closed:** 2026-08-01  
 **Host:** kimi  
 
 ## Goal

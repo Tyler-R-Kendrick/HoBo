@@ -220,3 +220,13 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **optimizexp run:** `20260731-code-shell-optimizexp` stopReason pareto-equilibrium
 - **CI:** billing-budget empty-step; local vitest green
 - **protocol:** `/sdlc finish`
+
+## 2026-08-01 — optimizexp CLI-experience overhaul + boyscout sweep (#999)
+
+- **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/999
+- **scope:** optimizexp falsifiable scoring + v2 personas + product-CLI features + drift gate; 10 CLI UX defects; ULID/fence/conformance/runtime-wasm real bugs; turbo dep cycle; architecture-guard debt on main; swe-shared buf codegen; example API drift
+- **review:** independent reviewer approve-with-comments, no blockers
+- **CI:** billing-budget empty-step failures (conformance, rehearsal, agent-e2e, S0 ×2, offline-hello-bindle, adversarial, replay-equals-live) — same red set as #965/#997/#968; PR impact gate ran real steps; cold-runner timeouts fixed (de6d4c0a, 00a860f2); DCO satisfied via squash-commit sign-off
+- **local:** check:all exit 0 (test:unit 4585, behavior 98), turbo 769/769, contracts 604+200
+- **protocol:** `/sdlc finish`
+- **residual:** storage-sqlite provider-verification lane (tracked in packages/storage-sqlite/contracts/provider/README.md); globalSetup wasmtime warmup scope; backlog-malformed warn; user asked to disable CI workflows to save runner minutes

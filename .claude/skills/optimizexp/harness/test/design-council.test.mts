@@ -51,11 +51,14 @@ describe("designer council pure protocol", () => {
 
 	it("canonicalizes proposal inputs before hashing", () => {
 		const common = {
+			subject: { kind: "surface" as const, surface: "digest test" },
 			baseSha: digest("a"),
 			headSha: digest("b"),
 			normalizedDiffHash: digest("c"),
 			acceptanceDigest: digest("d"),
 			evidenceDigest: digest("e"),
+			relevanceSignals: { categories: [], acceptanceTags: [], featureTags: [], keywords: [] },
+			evidenceSignals: { evidenceTypes: [], currentHead: true, acceptanceMapped: true },
 			council: [...COUNCIL_PERSONAS],
 			protocolSchemaVersion: 1,
 		};
@@ -85,6 +88,7 @@ describe("designer council pure protocol", () => {
 
 	it("detects design relevance and accepts only justified internal exemptions", () => {
 		assert.equal(evaluateDesignRelevance({ changedPaths: ["packages/cli/src/help.ts"] }).required, true);
+		assert.equal(evaluateDesignRelevance({ changedPaths: ["packages/contracts/data-models/boundary.proto"], exemption: { code: "internal-no-public-behavior", justification: "This cannot exempt a public contract boundary." } }).required, true);
 		assert.equal(evaluateDesignRelevance({ changedPaths: ["src/internal/cache.ts"], acceptanceTags: ["ux"] }).required, true);
 		assert.equal(evaluateDesignRelevance({ changedPaths: ["src/internal/cache.ts"], explicitlyRequested: true }).required, true);
 		assert.equal(evaluateDesignRelevance({ changedPaths: ["src/internal/cache.ts"], priorCouncilCycle: true }).required, true);

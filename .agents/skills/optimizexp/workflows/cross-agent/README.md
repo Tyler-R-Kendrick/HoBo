@@ -21,5 +21,26 @@ Its deterministic modes are `init`, `append`, `advance`, `status`, `decide`,
 
 **Completion:** only `assert-complete` exit 0 + `mark-complete` ends an invocation. `should-stop` plateau is cycleStop only.
 
+## Designer council protocol
+
+`consensus-loop.mts` persists exact-six council state and append-only council bus entries. Approval is reconstructed from the six persona-authored final vote entries; a coordinator-authored `consensus` payload is never authority by itself. Current approval assertions bind the effective base, head, canonical proposal subject, diff, acceptance/evidence digests, and normalized relevance/evidence signals:
+
+```bash
+node --import tsx .agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts \
+  --mode assert-yay --run <run> --review <review> \
+  --base-sha <effective-base> --head-sha <current-head> --proposal <manifest.json>
+```
+
+An honestly unresolvable evidence-backed hard blocker transitions to `blocked` before close; it never becomes approval:
+
+```bash
+node --import tsx .agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts \
+  --mode block --run <run> --review <review> --reason "<external impediment and evidence context>"
+node --import tsx .agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts \
+  --mode close --run <run> --review <review> --result blocked
+```
+
+Policy-aware SDLC design-review runs set `designerConsensusPolicy: "required-when-design-relevant"` in `scope.json` and persist a `designerConsensus` decision. A required decision supplies `reviewId`, `baseSha`, `headSha`, and `proposalPath`. A `required: false` decision is accepted only with `changedPaths`, optional `acceptanceTags`, and a machine-validated `internal-no-public-behavior` exemption; legacy non-SDLC runs remain unchanged.
+
 Optional WDK notes: `../../references/cross-agent/vercel-wdk.md`.
 Plain runner has **zero** extra dependencies beyond repo `tsx`.

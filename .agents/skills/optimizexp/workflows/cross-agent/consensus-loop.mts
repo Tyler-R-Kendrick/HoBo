@@ -64,6 +64,7 @@ const ENTRY_KEYS = [
 	"nextAction", "priorConsensusEntryId", "priorReworkEntryId", "nextCycle", "acceptanceToRerun", "evidenceToRefresh",
 	"implementationWorkItems", "blockerId", "originatingPersona", "resolutionType", "implementationEvidenceRefs", "resolver",
 	"originAcknowledged", "resultingStatus", "reason", "maxTurns", "author",
+	"authorizationRef",
 ] as const;
 
 function parseArgs(argv: string[]): Record<string, string> {
@@ -132,6 +133,7 @@ function loadState(root: string, runId: string, reviewId: string): CouncilState 
 	const file = statePath(root, runId, reviewId);
 	if (!existsSync(file)) throw new CouncilProtocolError("state-missing", `no council state for ${runId}/${reviewId}`);
 	const state = readJson(file) as CouncilState;
+	if (state.runId !== runId || state.reviewId !== reviewId) throw new CouncilProtocolError("review-binding", `state identity ${state.runId}/${state.reviewId} does not match requested ${runId}/${reviewId}`);
 	const problems = validateCouncilState(state);
 	if (problems.length) throw new CouncilProtocolError("state-invalid", problems.join("; "));
 	return state;
@@ -314,25 +316,56 @@ function validateEntryAgainstState(entry: CouncilEntry, state: CouncilState, his
 }
 
 function validateResolution(entry: CouncilEntry, state: CouncilState): void {
+	validateResolutionShape(entry);
 	const blockerId = text(entry.blockerId, "entry.blockerId");
 	const origin = text(entry.originatingPersona, "entry.originatingPersona") as CouncilPersona;
 	if (!(COUNCIL_PERSONAS as readonly string[]).includes(origin)) throw new CouncilProtocolError("exact-six-membership", `unknown originating persona ${origin}`);
 	const blocker = state.personas[origin].hardBlockers.find((item) => item.id === blockerId && item.status === "open");
 	if (!blocker) throw new CouncilProtocolError("hard-blocker-resolution", `no open blocker ${blockerId} for ${origin}`);
-	if (!(["fixed", "withdrawn", "policy-override"] as unknown[]).includes(entry.resolutionType)) throw new CouncilProtocolError("hard-blocker-resolution", "resolutionType must be fixed, withdrawn, or policy-override");
+}
+
+function validateResolutionShape(entry: CouncilEntry): void {
+	const origin = text(entry.originatingPersona, "entry.originatingPersona");
+	if (!(COUNCIL_PERSONAS as readonly string[]).includes(origin)) throw new CouncilProtocolError("exact-six-membership", `unknown originating persona ${origin}`);
+	const type = entry.resolutionType;
+	const status = entry.resultingStatus;
+	const resolver = text(entry.resolver, "entry.resolver");
 	const refs = stringArray(entry.implementationEvidenceRefs, "entry.implementationEvidenceRefs");
 	if (refs.length === 0) throw new CouncilProtocolError("hard-blocker-resolution", "resolution requires implementation/evidence refs");
-	text(entry.resolver, "entry.resolver");
 	if (typeof entry.originAcknowledged !== "boolean") throw new CouncilProtocolError("hard-blocker-resolution", "originAcknowledged must be boolean");
-	if (!(["resolved", "withdrawn", "overridden"] as unknown[]).includes(entry.resultingStatus)) throw new CouncilProtocolError("hard-blocker-resolution", "resultingStatus invalid");
+	if (type === "fixed" && status !== "resolved") throw new CouncilProtocolError("hard-blocker-resolution", "fixed resolution must result in resolved");
+	if (type === "withdrawn" && (status !== "withdrawn" || entry.originAcknowledged !== true || resolver !== origin)) throw new CouncilProtocolError("hard-blocker-resolution", "withdrawal must be acknowledged and authored by the originating persona");
+	if (type === "policy-override") {
+		if (status !== "overridden") throw new CouncilProtocolError("hard-blocker-resolution", "policy override must result in overridden");
+		text(entry.authorizationRef, "entry.authorizationRef");
+	}
+	if (!["fixed", "withdrawn", "policy-override"].includes(String(type))) throw new CouncilProtocolError("hard-blocker-resolution", "resolutionType must be fixed, withdrawn, or policy-override");
 }
 
 function activeVotes(history: CouncilEntry[], cycle: number): { votes: Record<string, Vote>; entries: Record<string, CouncilEntry> } {
 	const entries: Record<string, CouncilEntry> = {};
 	for (const entry of history.filter((item) => item.cycle === cycle && (item.stage === "vote" || item.stage === "submitted"))) {
-		if (entry.persona && (entry.stance === "yay" || entry.stance === "nay")) entries[entry.persona] = entry;
+		if (!entry.persona || (entry.stance !== "yay" && entry.stance !== "nay")) throw new CouncilProtocolError("vote-proof", `invalid final vote entry ${entry.id}`);
+		const prior = entries[entry.persona];
+		if (prior && (entry.supersedes !== prior.id || !(entry.respondsTo ?? []).includes(prior.id))) throw new CouncilProtocolError("duplicate-vote", `${entry.id} does not legally supersede ${prior.id}`);
+		if (!prior && entry.supersedes !== undefined) throw new CouncilProtocolError("duplicate-vote", `${entry.id} supersedes no active vote`);
+		entries[entry.persona] = entry;
 	}
 	return { votes: Object.fromEntries(Object.entries(entries).map(([persona, entry]) => [persona, entry.stance])) as Record<string, Vote>, entries };
+}
+
+function proveCurrentVotes(state: CouncilState, history: CouncilEntry[], consensus: CouncilEntry): Record<string, Vote> {
+	const active = activeVotes(history, state.cycle);
+	aggregateVotes(active.votes, []); // exact-six and binary proof
+	for (const persona of COUNCIL_PERSONAS) {
+		const entry = active.entries[persona];
+		if (!entry) throw new CouncilProtocolError("vote-proof", `missing persona-authored final vote for ${persona}`);
+		if (entry.subject.headSha !== state.subject.headSha || entry.subject.proposalDigest !== state.subject.proposalDigest) throw new CouncilProtocolError("stale-vote", `${persona} vote is not bound to the current subject`);
+		if (state.personas[persona].stance !== entry.stance) throw new CouncilProtocolError("state-vote-mismatch", `${persona} state stance differs from append-only vote`);
+	}
+	const embedded = object(consensus.votes, "consensus.votes");
+	if (canonicalJson(embedded) !== canonicalJson(active.votes)) throw new CouncilProtocolError("consensus-vote-mismatch", "coordinator vote map differs from persona-authored final votes");
+	return active.votes;
 }
 
 function applyEntry(state: CouncilState, entry: CouncilEntry): CouncilState {
@@ -399,6 +432,7 @@ function modeInit(args: Record<string, string>, root: string): Json {
 			if (canonicalJson(previous.subject) === canonicalJson(candidate.subject)) return { ok: true, idempotent: true, state: previous };
 			const history = reviewEntries(root, runId, reviewId);
 			priorReworkEntryId = [...history].reverse().find((entry) => entry.stage === "rework")?.id;
+			if (previous.status === "rework-required" && candidate.subject.evidenceDigest === previous.subject.evidenceDigest) throw new CouncilProtocolError("rework-evidence-stale", "rework cycle requires a refreshed evidence digest");
 			state = nextCycleState(previous, candidate);
 		}
 		atomicWrite(path.join(reviewDir(root, runId, reviewId), `proposal-cycle-${state.cycle}.json`), proposal);
@@ -520,18 +554,23 @@ function modeDecide(args: Record<string, string>, root: string): Json {
 
 function modeAssertYay(args: Record<string, string>, root: string): Json {
 	const state = loadState(root, required(args.run, "run"), required(args.review, "review"));
+	const baseSha = required(args.baseSha, "base-sha");
 	const headSha = required(args.headSha, "head-sha");
 	const proposal = parseProposalManifest(readJson(required(args.proposal, "proposal")));
 	const proposalDigest = computeProposalDigest({
-		baseSha: state.subject.baseSha,
+		subject: proposal.subject,
+		baseSha,
 		headSha,
 		changedPaths: proposal.changedPaths,
 		normalizedDiffHash: proposal.normalizedDiffHash,
 		acceptanceDigest: proposal.acceptanceDigest,
 		evidenceDigest: proposal.evidenceDigest,
+		relevanceSignals: proposal.relevanceSignals,
+		evidenceSignals: proposal.evidenceSignals,
 		council: COUNCIL_PERSONAS,
 		protocolSchemaVersion: 1,
 	});
+	if (state.subject.baseSha !== baseSha) throw new CouncilProtocolError("stale-base", `approved ${state.subject.baseSha}, current ${baseSha}`);
 	if (args.proposalDigest && args.proposalDigest !== proposalDigest) throw new CouncilProtocolError("proposal-digest-mismatch", "caller digest does not match recomputed proposal manifest");
 	if (state.subject.headSha !== headSha) throw new CouncilProtocolError("stale-head", `approved ${state.subject.headSha}, current ${headSha}`);
 	if (state.subject.proposalDigest !== proposalDigest) throw new CouncilProtocolError("stale-proposal", `approved ${state.subject.proposalDigest}, current ${proposalDigest}`);
@@ -541,7 +580,8 @@ function modeAssertYay(args: Record<string, string>, root: string): Json {
 	const consensus = history.find((entry) => entry.id === state.latestConsensusEntryId && entry.stage === "consensus");
 	if (!consensus) throw new CouncilProtocolError("consensus-missing", "latest consensus entry missing");
 	const blockers = openBlockers(state);
-	const result = aggregateVotes(object(consensus.votes, "consensus.votes"), blockers.map((blocker) => blocker.id));
+	const personaVotes = proveCurrentVotes(state, history, consensus);
+	const result = aggregateVotes(personaVotes, blockers.map((blocker) => blocker.id));
 	if (result.result !== "yay" || consensus.result !== "yay") throw new CouncilProtocolError("not-unanimous", "exact-six unanimous yay not proven");
 	if (consensus.subject.headSha !== headSha || consensus.subject.proposalDigest !== proposalDigest) throw new CouncilProtocolError("stale-consensus-entry", "consensus subject differs from current assertion");
 	let closedEntryId: string | null = null;
@@ -554,7 +594,35 @@ function modeAssertYay(args: Record<string, string>, root: string): Json {
 	} else if (consensus.stateDigest !== stateDigest(state)) {
 		throw new CouncilProtocolError("state-bus-mismatch", "consensus digest does not match state");
 	}
-	return { ok: true, result: "yay", runId: state.runId, reviewId: state.reviewId, cycle: state.cycle, consensusEntryId: consensus.id, closedEntryId, headSha, proposalDigest };
+	return { ok: true, result: "yay", runId: state.runId, reviewId: state.reviewId, cycle: state.cycle, consensusEntryId: consensus.id, closedEntryId, baseSha, headSha, proposalDigest };
+}
+
+function modeBlock(args: Record<string, string>, root: string): Json {
+	const runId = required(args.run, "run");
+	const reviewId = required(args.review, "review");
+	const reason = required(args.reason, "reason").trim();
+	if (reason.length < 20) throw new CouncilProtocolError("blocked-evidence", "blocked reason must explain the external impediment");
+	return withLock(path.join(reviewDir(root, runId, reviewId), ".lock"), () => {
+		const state = loadState(root, runId, reviewId);
+		if (!["discussing", "voting", "rework-required"].includes(state.status)) throw new CouncilProtocolError("illegal-transition", `${state.status} cannot transition to blocked`);
+		const blockers = openBlockers(state);
+		if (blockers.length === 0 || blockers.some((blocker) => blocker.evidenceRefs.length === 0)) throw new CouncilProtocolError("blocked-evidence", "blocking requires at least one unresolved evidence-backed hard blocker");
+		const now = new Date().toISOString();
+		state.turn++;
+		state.status = "blocked";
+		state.blockedReason = reason;
+		state.updatedAt = now;
+		const entry: CouncilEntry = {
+			kind: "council", schemaVersion: 1, id: `${reviewId}-cycle-${state.cycle}-blocked`, runId, reviewId,
+			cycle: state.cycle, turn: state.turn, stage: "rework", subject: { headSha: state.subject.headSha, proposalDigest: state.subject.proposalDigest },
+			createdAt: now, result: "blocked", reason, openHardBlockers: blockers, evidenceRefs: blockers.flatMap((blocker) => blocker.evidenceRefs),
+			nextAction: "blocked", author: "coordinator",
+		};
+		entry.stateDigest = stateDigest(state);
+		appendBus(root, entry);
+		atomicWrite(statePath(root, runId, reviewId), state);
+		return { ok: true, blocked: true, entry, state };
+	});
 }
 
 function modeClose(args: Record<string, string>, root: string): Json {
@@ -625,10 +693,34 @@ function validateOne(root: string, state: CouncilState): string[] {
 		if (latest.cycle !== state.cycle || latest.turn !== state.turn) problems.push("state-bus-turn-mismatch");
 		if (latest.stateDigest !== stateDigest(state)) problems.push("state-bus-digest-mismatch");
 	}
-	const introduced = history.flatMap((entry) => (entry.hardBlockers ?? []).map((blocker) => blocker.id));
-	const resolutions = new Set(history.filter((entry) => entry.stage === "blocker-resolution").map((entry) => String(entry.blockerId)));
+	const introducedEntries = history.flatMap((entry) => (entry.hardBlockers ?? []).map((blocker) => ({ blocker, persona: entry.persona })));
+	const introduced = introducedEntries.map(({ blocker }) => blocker.id);
+	const resolutionEntries = history.filter((entry) => entry.stage === "blocker-resolution");
+	const resolutions = new Set(resolutionEntries.map((entry) => String(entry.blockerId)));
 	const persisted = new Set(COUNCIL_PERSONAS.flatMap((persona) => state.personas[persona].hardBlockers.map((blocker) => blocker.id)));
 	for (const blocker of introduced) if (!persisted.has(blocker) && !resolutions.has(blocker)) problems.push(`blocker-silently-deleted:${blocker}`);
+	for (const resolution of resolutionEntries) {
+		const original = introducedEntries.find(({ blocker }) => blocker.id === resolution.blockerId);
+		if (!original || original.persona !== resolution.originatingPersona) problems.push(`blocker-resolution-origin-mismatch:${String(resolution.blockerId)}`);
+		const persona = resolution.originatingPersona as CouncilPersona;
+		const stored = (COUNCIL_PERSONAS as readonly string[]).includes(persona)
+			? state.personas[persona].hardBlockers.find((blocker) => blocker.id === resolution.blockerId)
+			: undefined;
+		if (!stored || stored.status !== resolution.resultingStatus) problems.push(`blocker-resolution-state-mismatch:${String(resolution.blockerId)}`);
+	}
+	for (const persona of COUNCIL_PERSONAS) {
+		for (const blocker of state.personas[persona].hardBlockers) {
+			if (blocker.status !== "open" && !resolutions.has(blocker.id)) problems.push(`blocker-resolution-missing:${blocker.id}`);
+		}
+	}
+	if (state.latestConsensusEntryId) {
+		const consensus = history.find((entry) => entry.id === state.latestConsensusEntryId && entry.stage === "consensus");
+		if (!consensus) problems.push("consensus-missing");
+		else {
+			try { proveCurrentVotes(state, history, consensus); }
+			catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
+		}
+	}
 	return [...new Set(problems)];
 }
 
@@ -640,6 +732,10 @@ function modeValidate(args: Record<string, string>, root: string): Json {
 		if (!existsSync(file)) { problems.push(`state-missing:${file}`); continue; }
 		try {
 			const state = readJson(file) as CouncilState;
+			const relative = path.relative(path.join(root, ".optimizexp", "runs"), file).split(path.sep);
+			const expectedRun = relative[0];
+			const expectedReview = relative[2];
+			if (state.runId !== expectedRun || state.reviewId !== expectedReview) throw new CouncilProtocolError("review-binding", `state ${state.runId}/${state.reviewId} is stored at ${expectedRun}/${expectedReview}`);
 			stateKeys.add(`${state.runId}\0${state.reviewId}`);
 			problems.push(...validateOne(root, state).map((problem) => `${path.relative(root, file)}:${problem}`));
 		} catch (error) { problems.push(`${path.relative(root, file)}:${error instanceof Error ? error.message : String(error)}`); }
@@ -655,7 +751,10 @@ function modeValidate(args: Record<string, string>, root: string): Json {
 		if (!stateKeys.has(`${String(body.runId)}\0${String(body.reviewId)}`)) problems.push(`${file}:orphan-council-entry`);
 		try {
 			const stage = String(body.stage);
-			if (PERSONA_STAGES.has(stage) || stage === "blocker-resolution") parseExternalEntry(body);
+			if (PERSONA_STAGES.has(stage) || stage === "blocker-resolution") {
+				const parsed = parseExternalEntry(body);
+				if (stage === "blocker-resolution") validateResolutionShape(parsed);
+			}
 			else {
 				if (!COORDINATOR_STAGES.has(stage)) throw new CouncilProtocolError("stage-enum", `${stage} is invalid`);
 				if (body.author !== "coordinator" || body.persona !== undefined) throw new CouncilProtocolError("coordinator-only-stage", `${stage} must be coordinator-authored`);
@@ -691,8 +790,9 @@ function help(): Json {
 			"--mode status --run ID --review ID",
 			"--mode decide --run ID --review ID",
 			"--mode validate [--run ID --review ID]",
-			"--mode assert-yay --run ID --review ID --head-sha SHA --proposal FILE [--proposal-digest SHA256]",
-			"--mode close --run ID --review ID --result approved|blocked|user|safety [--head-sha SHA --proposal FILE] [--reason TEXT]",
+			"--mode assert-yay --run ID --review ID --base-sha SHA --head-sha SHA --proposal FILE [--proposal-digest SHA256]",
+			"--mode block --run ID --review ID --reason TEXT",
+			"--mode close --run ID --review ID --result approved|blocked|user|safety [--base-sha SHA --head-sha SHA --proposal FILE] [--reason TEXT]",
 			"--mode relevance --input FILE",
 		],
 		note: "Synthetic investment is an auditable orchestration variable, not emotion or sentience. Maximum-turn protection must terminate blocked, never approved.",
@@ -713,6 +813,7 @@ export function runConsensusCommand(argv: string[]): { exitCode: number; output:
 			case "decide": output = modeDecide(args, root); break;
 			case "validate": output = modeValidate(args, root); break;
 			case "assert-yay": output = modeAssertYay(args, root); break;
+			case "block": output = modeBlock(args, root); break;
 			case "close": output = modeClose(args, root); break;
 			case "relevance": output = modeRelevance(args); break;
 			default: throw new CouncilProtocolError("cli-mode", `unknown mode ${args.mode}`);

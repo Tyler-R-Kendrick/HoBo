@@ -134,24 +134,30 @@ export function sha256(value: unknown): string {
 }
 
 export type ProposalDigestInput = {
+	subject: ProposalManifest["subject"];
 	baseSha: string;
 	headSha: string;
 	changedPaths: string[];
 	normalizedDiffHash: string;
 	acceptanceDigest: string;
 	evidenceDigest: string;
+	relevanceSignals: RelevanceSignals;
+	evidenceSignals: EvidenceSignals;
 	council: readonly string[];
 	protocolSchemaVersion: number;
 };
 
 export function computeProposalDigest(input: ProposalDigestInput): string {
 	return sha256({
+		subject: input.subject,
 		baseSha: input.baseSha,
 		headSha: input.headSha,
 		changedPaths: [...new Set(input.changedPaths)].sort(),
 		normalizedDiffHash: input.normalizedDiffHash,
 		acceptanceDigest: input.acceptanceDigest,
 		evidenceDigest: input.evidenceDigest,
+		relevanceSignals: input.relevanceSignals,
+		evidenceSignals: input.evidenceSignals,
 		council: [...input.council],
 		protocolSchemaVersion: input.protocolSchemaVersion,
 	});
@@ -189,7 +195,7 @@ export function aggregateVotes(
 	return { result: nayPersonas.length === 0 && openHardBlockers.length === 0 ? "yay" : "nay", nayPersonas };
 }
 
-const DESIGN_PATH = /(^|\/)(site|apps?|web|ui|tui|cli|docs?|sdk|api|config|onboarding|examples?|brand|motion|components?|design-tokens)(\/|$)|(^|\/)\.optimizexp\/features\/|(^|\/)(README|DESIGN)\.md$|(^|\/)(public-api|api|errors?)\.[cm]?[jt]sx?$|\.(tsx|css|mdx)$/i;
+const DESIGN_PATH = /(^|\/)(site|apps?|web|ui|tui|cli|docs?|sdk|api|config|onboarding|examples?|brand|motion|components?|design-tokens|contracts?|data-models)(\/|$)|(^|\/)\.optimizexp\/features\/|(^|\/)(README|DESIGN)\.md$|(^|\/)(public-api|api|errors?)\.[cm]?[jt]sx?$|\.(tsx|css|mdx|proto|cue|wit)$/i;
 const DESIGN_TAGS = new Set(["ux", "dx", "design", "brand", "accessibility", "journey", "interaction"]);
 
 export type DesignRelevanceInput = {
@@ -212,6 +218,10 @@ export function evaluateDesignRelevance(input: DesignRelevanceInput): {
 	if (input.priorCouncilCycle) reasons.push("prior-council-cycle");
 	const exemptionAccepted = reasons.length === 0 && input.exemption?.code === "internal-no-public-behavior" && input.exemption.justification.trim().length >= 20;
 	return { required: reasons.length > 0 || !exemptionAccepted, reasons, exemptionAccepted };
+}
+
+export function deriveRelevanceCategories(changedPaths: readonly string[]): string[] {
+	return changedPaths.some((file) => DESIGN_PATH.test(file)) ? ["design"] : [];
 }
 
 export type MergeEligibilityInput = {
@@ -379,15 +389,17 @@ export function parseProposalManifest(value: unknown): ProposalManifest {
 	onlyKeys(evidence, ["evidenceTypes", "currentHead", "acceptanceMapped"], "proposal.evidenceSignals");
 	if (evidence.currentHead !== undefined && typeof evidence.currentHead !== "boolean") throw new CouncilProtocolError("invalid-json-shape", "evidenceSignals.currentHead must be boolean");
 	if (evidence.acceptanceMapped !== undefined && typeof evidence.acceptanceMapped !== "boolean") throw new CouncilProtocolError("invalid-json-shape", "evidenceSignals.acceptanceMapped must be boolean");
+	const changedPaths = [...new Set(strings(root.changedPaths, "proposal.changedPaths"))].sort();
+	const suppliedCategories = relevance.categories === undefined ? [] : strings(relevance.categories, "relevanceSignals.categories");
 	return {
 		schemaVersion: 1,
 		subject: parsedSubject,
-		changedPaths: [...new Set(strings(root.changedPaths, "proposal.changedPaths"))].sort(),
+		changedPaths,
 		normalizedDiffHash: sha(root.normalizedDiffHash, "proposal.normalizedDiffHash", true),
 		acceptanceDigest: sha(root.acceptanceDigest, "proposal.acceptanceDigest", true),
 		evidenceDigest: sha(root.evidenceDigest, "proposal.evidenceDigest", true),
 		relevanceSignals: {
-			categories: relevance.categories === undefined ? [] : strings(relevance.categories, "relevanceSignals.categories"),
+			categories: [...new Set([...suppliedCategories, ...deriveRelevanceCategories(changedPaths)])].sort(),
 			acceptanceTags: relevance.acceptanceTags === undefined ? [] : strings(relevance.acceptanceTags, "relevanceSignals.acceptanceTags"),
 			featureTags: relevance.featureTags === undefined ? [] : strings(relevance.featureTags, "relevanceSignals.featureTags"),
 			keywords: relevance.keywords === undefined ? [] : strings(relevance.keywords, "relevanceSignals.keywords"),
@@ -411,12 +423,15 @@ export function createCouncilState(input: {
 }): CouncilState {
 	const evidenceStrength = evidenceStrengthFromSignals(input.proposal.evidenceSignals);
 	const proposalDigest = computeProposalDigest({
+		subject: input.proposal.subject,
 		baseSha: input.baseSha,
 		headSha: input.headSha,
 		changedPaths: input.proposal.changedPaths,
 		normalizedDiffHash: input.proposal.normalizedDiffHash,
 		acceptanceDigest: input.proposal.acceptanceDigest,
 		evidenceDigest: input.proposal.evidenceDigest,
+		relevanceSignals: input.proposal.relevanceSignals,
+		evidenceSignals: input.proposal.evidenceSignals,
 		council: COUNCIL_PERSONAS,
 		protocolSchemaVersion: COUNCIL_PROTOCOL_SCHEMA_VERSION,
 	});

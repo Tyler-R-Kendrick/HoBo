@@ -146,12 +146,24 @@ test("billing-only CI never waives council approval", () => {
 
 test("a lower-layer merge that changes an upper effective diff invalidates approval", () => {
 	const proposal = {
+		subject: { kind: "pull-request" as const, number: 123 },
 		baseSha: digest("1"),
 		headSha: digest("2"),
 		changedPaths: ["packages/cli/src/help.ts"],
 		normalizedDiffHash: digest("3"),
 		acceptanceDigest: digest("4"),
 		evidenceDigest: digest("5"),
+		relevanceSignals: {
+			categories: ["cli"],
+			acceptanceTags: ["dx"],
+			featureTags: [],
+			keywords: [],
+		},
+		evidenceSignals: {
+			evidenceTypes: ["executable-test"],
+			currentHead: true,
+			acceptanceMapped: true,
+		},
 		council: COUNCIL_PERSONAS,
 		protocolSchemaVersion: 1,
 	};

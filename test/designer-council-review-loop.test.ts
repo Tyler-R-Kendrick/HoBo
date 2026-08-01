@@ -286,6 +286,7 @@ function configureRequiredCouncil(
 	scope.designerConsensus = {
 		required: true,
 		reviewId: "review-1",
+		baseSha: sha("a"),
 		headSha,
 		proposalPath: path.relative(root, proposalPath),
 	};

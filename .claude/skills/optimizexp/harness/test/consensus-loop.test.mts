@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { COUNCIL_PERSONAS, type CouncilState } from "../lib/design-council.mts";
+import { COUNCIL_PERSONAS, stateDigest, type CouncilState } from "../lib/design-council.mts";
 import { runConsensusCommand } from "../../workflows/cross-agent/consensus-loop.mts";
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../../../..");
@@ -74,6 +74,18 @@ function append(root: string, state: CouncilState, persona: string, stage: "subm
 	return run(root, ["--mode", "append", "--run", state.runId, "--review", state.reviewId, "--entry", file]);
 }
 
+function resolveBlocker(root: string, state: CouncilState, body: Record<string, unknown>) {
+	const file = path.join(root, `resolution-${state.turn + 1}.json`);
+	writeFileSync(file, `${JSON.stringify({
+		kind: "council", schemaVersion: 1, id: `resolution-${state.turn + 1}`, runId: state.runId, reviewId: state.reviewId,
+		cycle: state.cycle, turn: state.turn + 1, stage: "blocker-resolution",
+		subject: { headSha: state.subject.headSha, proposalDigest: state.subject.proposalDigest },
+		createdAt: `2026-08-01T13:00:${String(state.turn + 1).padStart(2, "0")}.000Z`,
+		...body,
+	}, null, 2)}\n`);
+	return run(root, ["--mode", "append", "--run", state.runId, "--review", state.reviewId, "--entry", file]);
+}
+
 describe("designer consensus CLI", () => {
 	it("opens, records exact-six zero-investment submissions, decides, and asserts current approval", () => {
 		const root = seedRepo();
@@ -95,13 +107,13 @@ describe("designer consensus CLI", () => {
 			assert.equal(approved.status, "approved");
 			const asserted = run(root, [
 				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
-				"--head-sha", sha("b"), "--proposal", manifest,
+				"--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", manifest,
 			]);
 			assert.equal(asserted.code, 0, asserted.output);
 			assert.equal(asserted.json.ok, true);
 			const closed = run(root, [
 				"--mode", "close", "--run", "run-1", "--review", "review-1", "--result", "approved",
-				"--head-sha", sha("b"), "--proposal", manifest,
+				"--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", manifest,
 			]);
 			assert.equal(closed.code, 0, closed.output);
 			assert.equal(closed.json.result, "yay");
@@ -109,21 +121,41 @@ describe("designer consensus CLI", () => {
 			assert.equal((closed.json.state as CouncilState).closedResult, "yay");
 			const assertedAfterClose = run(root, [
 				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
-				"--head-sha", sha("b"), "--proposal", manifest,
+				"--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", manifest,
 			]);
 			assert.equal(assertedAfterClose.code, 0, assertedAfterClose.output);
 			assert.equal(assertedAfterClose.json.result, "yay");
 			assert.equal(typeof assertedAfterClose.json.closedEntryId, "string");
+			const staleBase = run(root, [
+				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
+				"--base-sha", sha("6"), "--head-sha", sha("b"), "--proposal", manifest,
+			]);
+			assert.notEqual(staleBase.code, 0);
+			assert.match(staleBase.output, /stale-base/);
+			proposal(root, { subject: { kind: "surface", surface: "aliased subject" } });
+			const alteredSubject = run(root, [
+				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
+				"--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", manifest,
+			]);
+			assert.notEqual(alteredSubject.code, 0);
+			assert.match(alteredSubject.output, /stale-proposal/);
+			proposal(root, { relevanceSignals: { categories: ["api-naming"], acceptanceTags: [], featureTags: [], keywords: [] } });
+			const alteredSignals = run(root, [
+				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
+				"--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", manifest,
+			]);
+			assert.notEqual(alteredSignals.code, 0);
+			assert.match(alteredSignals.output, /stale-proposal/);
 			proposal(root, { evidenceDigest: sha("9") });
 			const alteredEvidence = run(root, [
 				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
-				"--head-sha", sha("b"), "--proposal", manifest,
+				"--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", manifest,
 			]);
 			assert.notEqual(alteredEvidence.code, 0);
 			assert.match(alteredEvidence.output, /stale-proposal/);
 			const stale = run(root, [
 				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
-				"--head-sha", sha("f"), "--proposal", manifest,
+				"--base-sha", sha("a"), "--head-sha", sha("f"), "--proposal", manifest,
 			]);
 			assert.notEqual(stale.code, 0);
 			assert.match(stale.output, /stale-head/);
@@ -164,6 +196,16 @@ describe("designer consensus CLI", () => {
 			state = decided.json.state as CouncilState;
 			assert.equal(state.status, "rework-required");
 			const oldInvestment = state.personas["jony-ive"].currentInvestment;
+			const staleRework = proposal(root, {
+				relevanceSignals: { categories: ["api-naming"], acceptanceTags: [], featureTags: [], keywords: [] },
+				evidenceSignals: { evidenceTypes: ["executable-test"], currentHead: true, acceptanceMapped: true },
+			});
+			const rejected = run(root, [
+				"--mode", "init", "--run", "run-1", "--review", "review-1",
+				"--base-sha", sha("6"), "--head-sha", sha("b"), "--proposal", staleRework,
+			]);
+			assert.notEqual(rejected.code, 0);
+			assert.match(rejected.output, /rework-evidence-stale/);
 
 			const refreshed = proposal(root, {
 				normalizedDiffHash: sha("9"), evidenceDigest: sha("8"),
@@ -259,6 +301,123 @@ describe("designer consensus CLI", () => {
 		} finally { rmSync(root, { recursive: true, force: true }); }
 	});
 
+	it("derives nonzero council relevance from a public boundary path", () => {
+		const root = seedRepo();
+		try {
+			const file = proposal(root, { changedPaths: ["packages/contracts/data-models/boundary.proto"] });
+			const state = init(root, file);
+			for (const persona of COUNCIL_PERSONAS) assert.ok(state.personas[persona].currentInvestment > 0, persona);
+		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+
+	it("rejects an approved snapshot with no persona-authored final votes", () => {
+		const root = seedRepo();
+		try {
+			const file = proposal(root);
+			const state = init(root, file);
+			state.status = "approved";
+			state.turn = 1;
+			state.latestConsensusEntryId = "forged-consensus";
+			const votes = Object.fromEntries(COUNCIL_PERSONAS.map((persona) => [persona, "yay"]));
+			const forged = {
+				kind: "council", schemaVersion: 1, id: "forged-consensus", runId: state.runId, reviewId: state.reviewId,
+				cycle: 0, turn: 1, stage: "consensus", subject: { headSha: state.subject.headSha, proposalDigest: state.subject.proposalDigest },
+				createdAt: "2026-08-01T12:00:01.000Z", votes, result: "yay", openHardBlockers: [], author: "coordinator", stateDigest: stateDigest(state),
+			};
+			writeFileSync(path.join(root, ".optimizexp", "runs", "run-1", "consensus", "review-1", "state.json"), `${JSON.stringify(state, null, 2)}\n`);
+			writeFileSync(path.join(root, ".optimizexp", "bus", "entries", "forged-consensus.json"), `${JSON.stringify(forged, null, 2)}\n`);
+			const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", file]);
+			assert.notEqual(assertion.code, 0);
+			assert.match(assertion.output, /exact-six-membership|vote-proof/);
+			const validation = run(root, ["--mode", "validate", "--run", "run-1", "--review", "review-1"]);
+			assert.notEqual(validation.code, 0);
+			assert.match(validation.output, /exact-six-membership|vote-proof/);
+		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+
+	it("binds persisted state identity to its requested run and review path", () => {
+		const root = seedRepo();
+		try {
+			const state = init(root);
+			const aliasDir = path.join(root, ".optimizexp", "runs", "run-1", "consensus", "review-alias");
+			mkdirSync(aliasDir, { recursive: true });
+			writeFileSync(path.join(aliasDir, "state.json"), `${JSON.stringify(state, null, 2)}\n`);
+			const status = run(root, ["--mode", "status", "--run", "run-1", "--review", "review-alias"]);
+			assert.notEqual(status.code, 0);
+			assert.match(status.output, /review-binding/);
+			const validation = run(root, ["--mode", "validate", "--run", "run-1", "--review", "review-alias"]);
+			assert.notEqual(validation.code, 0);
+			assert.match(validation.output, /review-binding/);
+		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+
+	it("enforces blocker resolution authority and permits auditable fixed and withdrawn outcomes", () => {
+		const root = seedRepo();
+		try {
+			const file = proposal(root, { relevanceSignals: { categories: ["design"], acceptanceTags: [], featureTags: [], keywords: [] } });
+			let state = init(root, file);
+			const positioned = append(root, state, "steve-jobs", "position", {
+				arguments: [
+					{ id: "A-fixed", claim: "Acceptance path fails.", kind: "hard-blocker", respondsTo: [], evidenceRefs: ["test/fixed"], requestedChange: "Fix it." },
+					{ id: "A-withdrawn", claim: "The evidence was mismatched.", kind: "hard-blocker", respondsTo: [], evidenceRefs: ["test/withdrawn"], requestedChange: "Recheck it." },
+				],
+				hardBlockers: [
+					{ id: "HB-fixed", claim: "Acceptance path fails.", rule: "acceptance:path", evidenceRefs: ["test/fixed"], requestedResolution: "Pass the acceptance test.", status: "open" },
+					{ id: "HB-withdrawn", claim: "The evidence was mismatched.", rule: "evidence:binding", evidenceRefs: ["test/withdrawn"], requestedResolution: "Correct the evidence binding.", status: "open" },
+				],
+			});
+			assert.equal(positioned.code, 0, positioned.output);
+			state = positioned.json.state as CouncilState;
+			const badWithdrawal = resolveBlocker(root, state, {
+				blockerId: "HB-withdrawn", originatingPersona: "steve-jobs", resolutionType: "withdrawn",
+				implementationEvidenceRefs: ["test/recheck"], resolver: "coordinator", originAcknowledged: false, resultingStatus: "withdrawn",
+			});
+			assert.notEqual(badWithdrawal.code, 0);
+			assert.match(badWithdrawal.output, /withdrawal must be acknowledged/);
+			const badOverride = resolveBlocker(root, state, {
+				blockerId: "HB-fixed", originatingPersona: "steve-jobs", resolutionType: "policy-override",
+				implementationEvidenceRefs: ["policy/decision"], resolver: "coordinator", originAcknowledged: true, resultingStatus: "overridden",
+			});
+			assert.notEqual(badOverride.code, 0);
+			assert.match(badOverride.output, /authorizationRef/);
+			const fixed = resolveBlocker(root, state, {
+				blockerId: "HB-fixed", originatingPersona: "steve-jobs", resolutionType: "fixed",
+				implementationEvidenceRefs: ["test/passing"], resolver: "implementer", originAcknowledged: false, resultingStatus: "resolved",
+			});
+			assert.equal(fixed.code, 0, fixed.output);
+			state = fixed.json.state as CouncilState;
+			const withdrawn = resolveBlocker(root, state, {
+				blockerId: "HB-withdrawn", originatingPersona: "steve-jobs", resolutionType: "withdrawn",
+				implementationEvidenceRefs: ["test/corrected-classification"], resolver: "steve-jobs", originAcknowledged: true, resultingStatus: "withdrawn",
+			});
+			assert.equal(withdrawn.code, 0, withdrawn.output);
+			const validation = run(root, ["--mode", "validate", "--run", "run-1", "--review", "review-1"]);
+			assert.equal(validation.code, 0, validation.output);
+		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+
+	it("records an evidence-backed blocked transition before blocked close", () => {
+		const root = seedRepo();
+		try {
+			const file = proposal(root, { relevanceSignals: { categories: ["design"], acceptanceTags: [], featureTags: [], keywords: [] } });
+			let state = init(root, file);
+			const positioned = append(root, state, "steve-jobs", "position", {
+				arguments: [{ id: "A-external", claim: "Required external evidence is unavailable.", kind: "hard-blocker", respondsTo: [], evidenceRefs: ["evidence/external-block"], requestedChange: "Restore the external authority." }],
+				hardBlockers: [{ id: "HB-external", claim: "Required external evidence is unavailable.", rule: "evidence:current-head", evidenceRefs: ["evidence/external-block"], requestedResolution: "Restore the external authority.", status: "open" }],
+			});
+			assert.equal(positioned.code, 0, positioned.output);
+			state = positioned.json.state as CouncilState;
+			const blocked = run(root, ["--mode", "block", "--run", "run-1", "--review", "review-1", "--reason", "External evidence authority is unavailable under current credentials."]);
+			assert.equal(blocked.code, 0, blocked.output);
+			assert.equal((blocked.json.state as CouncilState).status, "blocked");
+			const closed = run(root, ["--mode", "close", "--run", "run-1", "--review", "review-1", "--result", "blocked"]);
+			assert.equal(closed.code, 0, closed.output);
+			const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", file]);
+			assert.notEqual(assertion.code, 0);
+			assert.match(assertion.output, /not-approved/);
+		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+
 	it("diagnostic maximum turns blocks and never approves", () => {
 		const root = seedRepo();
 		try {
@@ -280,7 +439,7 @@ describe("designer consensus CLI", () => {
 			assert.equal(closed.json.result, "blocked");
 			assert.equal((closed.json.state as CouncilState).status, "closed");
 			assert.notEqual((closed.json.entry as Record<string, unknown>).result, "yay");
-			const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--head-sha", sha("b"), "--proposal", file]);
+			const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", file]);
 			assert.notEqual(assertion.code, 0);
 		} finally { rmSync(root, { recursive: true, force: true }); }
 	});
@@ -290,7 +449,7 @@ describe("designer consensus CLI", () => {
 		try {
 			const file = proposal(root);
 			init(root, file);
-			const approved = run(root, ["--mode", "close", "--run", "run-1", "--review", "review-1", "--result", "approved", "--head-sha", sha("b"), "--proposal", file]);
+			const approved = run(root, ["--mode", "close", "--run", "run-1", "--review", "review-1", "--result", "approved", "--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", file]);
 			assert.notEqual(approved.code, 0);
 			assert.match(approved.output, /not-approved/);
 			const blocked = run(root, ["--mode", "close", "--run", "run-1", "--review", "review-1", "--result", "blocked"]);
@@ -308,7 +467,7 @@ describe("designer consensus CLI", () => {
 				const closed = run(root, ["--mode", "close", "--run", "run-1", "--review", "review-1", "--result", result, "--reason", `${result} termination.`]);
 				assert.equal(closed.code, 0, closed.output);
 				assert.equal(closed.json.result, result);
-				const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--head-sha", sha("b"), "--proposal", file]);
+				const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", file]);
 				assert.notEqual(assertion.code, 0);
 				assert.match(assertion.output, /not-approved/);
 			} finally { rmSync(root, { recursive: true, force: true }); }

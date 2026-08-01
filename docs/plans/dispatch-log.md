@@ -11,7 +11,7 @@ tags: [hobo, plans, sdlc]
 - **scope:** replayable API/TUI/GUI evidence guidance, independent evidence review, verified experiment certificates, persona/scenario planning, and hobo-code empty non-TTY fail-closed entry
 - **local gates:** staged `agent:check` green; @hobo/code 117 passed / 4 skipped; behavior 98 scenarios / 352 steps; `optimizexp:check` green
 - **OptimizeXP:** run `20260801-hobo-code-optimizexp`; `assert-complete` and `mark-complete` green; stop `pareto-equilibrium`
-- **status:** awaiting PR checks/review, then squash-merge
+- **status:** merged via squash commit `91ea7bdd1942575b372a1a740f3faf061ec54ff6`; CodeRabbit review was rate-limited because the inherited initiative diff exceeded its free file limit
 
 # Dispatch log
 

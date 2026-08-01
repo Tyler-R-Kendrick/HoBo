@@ -244,3 +244,11 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - Merge: `769b68a6` (squash)
 - Branch: `feat/identity-openbao-secrets`
 - Outcome: merged; CodeRabbit rate-limit only (not code CI red)
+
+## 2026-08-01 — OptimizeXP bare UX/DX/AX resume (#1005)
+
+- **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/1005
+- **branch:** `feat/optimizexp-bare-resume`
+- **run:** `20260801-ux-dx-ax-bare-resume`; Pareto equilibrium; harm `5/3 → 1/1`
+- **local:** staged and PR-base `agent:check` passed 12 relevant gates
+- **status:** closeout in progress

@@ -20,7 +20,7 @@ repairs, reduce the CLI help harm floor, and land the verified result.
 ## Delivery
 
 - Branch: `feat/optimizexp-bare-resume`
-- PR: pending
+- PR: [#1005](https://github.com/Tyler-R-Kendrick/HoBo/pull/1005)
 - Run: `20260801-ux-dx-ax-bare-resume`
 - Stop reason: `pareto-equilibrium`
 - Validation: `assert-complete` returned `ok: true`; staged `agent:check` passed 12 relevant gates.

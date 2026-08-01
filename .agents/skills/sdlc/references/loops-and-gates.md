@@ -32,6 +32,10 @@ Strict red/green (compose with the `tdd` skill / Superpowers test-driven-develop
   is the arbiter the coordinator queries for the Done rule.
 - Multi-layer work: parent keeps the stack in sync (`gh stack sync` / `rebase --upstack`) after
   lower-layer commits so upper-layer gates run on realistic bases.
+- Design-relevant work: after independent review and current-head evidence,
+  run the exact-six OptimizeXP council. Nay returns to the red/green loop;
+  later commits or effective-base changes require refreshed evidence and a new
+  unanimous vote. A diagnostic turn limit may return blocked, never approved.
 - Never bypass hooks or gates; failures either get fixed or become explicit, ADR-backed waivers
   (billing-budget exceptions are recorded on the PR + state file — see `stacked-prs.md`).
 

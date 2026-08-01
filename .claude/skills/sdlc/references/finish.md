@@ -59,6 +59,9 @@ If the session PR set is empty and the tree is clean relative to `origin/main`, 
 9. Update **`sdlc-state.md`** + append **`docs/plans/dispatch-log.md`** with outcomes.
 10. Prefer **one coherent delivery branch** for uncommitted sequential-fallback work; use
     `gh stack` when 2+ dependent layers remain open.
+11. **`--finish` cannot bypass designer consensus.** Deterministically detect
+    design-relevant session PRs, run or resume the exact-six council, rework on
+    nay, and reject stale approval. Billing-only CI exceptions do not waive it.
 
 ## Algorithm (run in order)
 
@@ -144,11 +147,20 @@ For **each** PR:
 1. Rubber-duck the diff (problem, approach, files, tests, risks, rollback).
 2. Adversarial pass (security/tenancy, contracts, cascade, over-engineering, shared-file leaks).
 3. Independent review (spawn `reviewer` or re-run acceptance + gates yourself).
-4. Resolve **all** PR comments/threads.
-5. Status checks:
+4. Determine design relevance from paths/acceptance tags, explicit requests,
+   or prior council state. A purely internal exemption must be machine-readable
+   and justified. For relevant work, refresh current-head evidence and run or
+   resume the exact-six council; nay routes to rework and then repeats review,
+   evidence, and council.
+5. Resolve **all** PR comments/threads.
+6. Status checks:
    - Fix real failures; push; re-check.
    - Billing/budget empty-step failures → document on PR + state → **still merge**.
-6. Squash-merge:
+7. For relevant work, run `consensus-loop.mts --mode assert-yay` against
+   current HEAD and the current proposal manifest immediately before merge.
+   Any post-consensus commit, rebase, effective-diff change, acceptance change,
+   or evidence refresh makes approval stale and requires reconvening.
+8. Squash-merge:
    ```bash
    # stack layer:
    gh stack merge <pr> --yes --squash
@@ -157,8 +169,9 @@ For **each** PR:
    # protection + billing-red:
    gh pr merge <pr> --squash --delete-branch --admin
    ```
-7. After each merge: `git fetch origin`; for stacks `gh stack sync --prune`; rebase remaining
-   session branches onto new trunk before merging the next.
+9. After each merge: `git fetch origin`; for stacks `gh stack sync --prune`; rebase remaining
+   session branches onto new trunk before merging the next. Recompute affected
+   upper-layer proposal digests and rerun council approval when they changed.
 
 Repeat until **every** PR in the session set is MERGED (or explicitly closed with a recorded
 reason the user accepted).

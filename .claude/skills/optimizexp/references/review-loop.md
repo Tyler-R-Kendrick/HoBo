@@ -351,3 +351,32 @@ If `status: running` or `INCOMPLETE.md` exists → continue the loop. Never clai
 | No / unknown | `workflows/cross-agent/` deterministic runner template |
 
 Both paths **must** still write the agent bus **and** feature evidence; workflows orchestrate the loop, they do not replace either.
+
+## SDLC designer consensus
+
+Ordinary OptimizeXP score/reduce/equilibrium review remains independent. For a
+design-relevant SDLC layer, its current-head outcomes and captured acceptance
+evidence feed the exact-six council described in `design-council.md`. Any nay
+returns a machine-readable rework packet to implementation; evidence is
+refreshed and the same six reconvene without investment recharge. OptimizeXP
+run completion fails when `scope.json` marks designer consensus required and
+the latest council decision is missing, nay, stale, short of six voters, or has
+an unresolved blocker.
+
+The run scope declares the authoritative review inputs explicitly:
+
+```json
+{
+  "designerConsensus": {
+    "required": true,
+    "reviewId": "run-pr-123-a1b2c3d",
+    "headSha": "a1b2c3d...",
+    "proposalPath": ".optimizexp/runs/run/consensus/run-pr-123-a1b2c3d/proposal-cycle-0.json"
+  }
+}
+```
+
+`assert-complete` validates council state against bus history, recomputes the
+proposal digest from `proposalPath`, and asserts unanimous approval for
+`headSha`. Runs without `designerConsensus.required: true` keep their existing
+completion contract.

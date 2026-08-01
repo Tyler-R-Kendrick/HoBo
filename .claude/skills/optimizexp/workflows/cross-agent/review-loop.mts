@@ -29,6 +29,7 @@ import {
 import { evaluateScorecardEvidence } from "../../harness/lib/evidence-checks.mts";
 import { validateEvidenceReview } from "../../harness/lib/evidence-review.mts";
 import { listProjects } from "../../harness/lib/projects.mts";
+import { runConsensusCommand } from "./consensus-loop.mts";
 
 /** Invocation terminals only — never "plateau" / "metrics-zero" alone. */
 const INVOCATION_STOP_REASONS = new Set([
@@ -752,6 +753,9 @@ function modeValidateBus(root: string) {
 		}
 		if (!body.id) problems.push(`${f}: missing id`);
 		const kind = body.kind;
+		// Council entries have their own fail-closed schema and state/history
+		// cross-check. Legacy scorecard requirements remain unchanged.
+		if (kind === "council") continue;
 		// Optional end-of-run survey bus mirror (no expect/act scorecard required).
 		if (kind === "survey") {
 			if (!body.runId) problems.push(`${f}: survey missing runId`);
@@ -809,7 +813,22 @@ function modeValidateBus(root: string) {
 			).map((msg) => `${f}: ${msg}`),
 		);
 	}
-	const allProblems = [...problems, ...comparisonProblems];
+	const council = runConsensusCommand([
+		"--mode",
+		"validate",
+		"--root",
+		root,
+	]);
+	const councilProblems = Array.isArray(council.output.problems)
+		? council.output.problems.map((problem) => `council: ${String(problem)}`)
+		: council.exitCode === 0
+			? []
+			: [`council: ${String(council.output.error ?? "validation failed")}`];
+	const allProblems = [
+		...problems,
+		...comparisonProblems,
+		...councilProblems,
+	];
 
 	for (const [id, act] of acts) {
 		if (act.expects && !expects.has(act.expects)) {
@@ -830,6 +849,8 @@ function modeValidateBus(root: string) {
 				expects: expects.size,
 				acts: acts.size,
 				outcomes: outcomes.length,
+				councilStates: council.output.states ?? 0,
+				councilEntries: council.output.councilEntries ?? 0,
 				openExpects: open,
 				problems: allProblems,
 			},
@@ -1158,6 +1179,7 @@ function validateBusForRun(root: string, runId: string): string[] {
 		catch { problems.push(`${f}: invalid_json`); continue; }
 		if (body.runId !== runId) continue;
 		if (!body.id) problems.push(`${f}: missing_id`);
+		if (body.kind === "council") continue;
 		if (body.kind === "survey") continue;
 		if (body.kind !== "expect" && body.kind !== "act" && body.kind !== "outcome") {
 			problems.push(`${f}: invalid_kind`);
@@ -1198,6 +1220,82 @@ function validateBusForRun(root: string, runId: string): string[] {
 	for (const [id, act] of acts) if (act.expects && !expects.has(act.expects)) problems.push(`act ${id}: unknown_expect`);
 	for (const id of expects.keys()) if (!matched.has(id)) problems.push(`open_expect:${id}`);
 	return [...new Set(problems)];
+}
+
+function validateRequiredDesignerConsensus(
+	root: string,
+	runId: string,
+	scope: Record<string, unknown>,
+): string[] {
+	const raw = scope.designerConsensus;
+	if (raw === undefined) return [];
+	if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+		return ["designer_consensus_config_invalid"];
+	}
+	const config = raw as Record<string, unknown>;
+	if (config.required !== true) return [];
+	const reviewId =
+		typeof config.reviewId === "string" ? config.reviewId.trim() : "";
+	const headSha =
+		typeof config.headSha === "string" ? config.headSha.trim() : "";
+	const proposalPath =
+		typeof config.proposalPath === "string"
+			? config.proposalPath.trim()
+			: "";
+	const missing = [
+		!reviewId && "reviewId",
+		!headSha && "headSha",
+		!proposalPath && "proposalPath",
+	].filter(Boolean);
+	if (missing.length > 0) {
+		return missing.map((field) => `designer_consensus_${field}_missing`);
+	}
+	const proposal = path.isAbsolute(proposalPath)
+		? proposalPath
+		: path.join(root, proposalPath);
+	if (!existsSync(proposal)) return ["designer_consensus_proposal_missing"];
+
+	const validation = runConsensusCommand([
+		"--mode",
+		"validate",
+		"--root",
+		root,
+		"--run",
+		runId,
+		"--review",
+		reviewId,
+	]);
+	if (validation.exitCode !== 0) {
+		const problems = Array.isArray(validation.output.problems)
+			? validation.output.problems
+			: [validation.output.invariant ?? validation.output.error ?? "invalid"];
+		return problems.map((problem) =>
+			`designer_consensus_validation:${String(problem)}`,
+		);
+	}
+
+	const assertion = runConsensusCommand([
+		"--mode",
+		"assert-yay",
+		"--root",
+		root,
+		"--run",
+		runId,
+		"--review",
+		reviewId,
+		"--head-sha",
+		headSha,
+		"--proposal",
+		proposal,
+	]);
+	if (assertion.exitCode !== 0) {
+		return [
+			`designer_consensus_assert:${String(
+				assertion.output.invariant ?? assertion.output.error ?? "not-approved",
+			)}`,
+		];
+	}
+	return [];
 }
 
 function modeStatus(args: Record<string, string | boolean>, root: string) {
@@ -1326,6 +1424,7 @@ function modeAssertComplete(
 	// Completion is run-scoped. Missing runId entries must never count for this run.
 	const busValidation = validateBusForRun(root, runId);
 	missing.push(...busValidation);
+	missing.push(...validateRequiredDesignerConsensus(root, runId, scope));
 	missing.push(...validateExperimentCertificates(root, runId, Boolean(scope.reportOnly)));
 
 	if (!scope.lastShouldStop) {

@@ -105,7 +105,6 @@ export {
 	createCampSecretsPort,
 	createLocalStationSecretsPort,
 	createMemorySecretsPort,
-	createOpenBaoSecretsPort,
 	createVaultJwtSecretsPort,
 	resolveConfigEntry,
 	type FetchLike,

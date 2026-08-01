@@ -19,25 +19,16 @@ promotes the near-production draft proof
 - **Residual secrets backends** ([ADR-0027](../../docs/design/adr/02-identity-security.md#adr-0027) /
   [ADR-0113](../../docs/design/adr/02-identity-security.md#adr-0113)) — secretless-first
   ladder is bound-resource → provider-federation → camp-value → static-escape.
-  `SecretsPort` residual adapters (never primary identity):
-  - `createMemorySecretsPort` — in-memory fixture
+  Built-in residual adapters in `@hobo/identity` (never primary identity):
+  - **`createMemorySecretsPort`** — default in-memory residual (local Station / fixtures)
   - `createVaultJwtSecretsPort` — Vault via short-lived SVID JWT (no static Vault token)
-  - **`createOpenBaoSecretsPort`** — [OpenBao](https://openbao.org) (OpenSSF Vault fork)
-    via **SVID JWT → auth/jwt**, KV v2, optional free namespace (`X-Vault-Namespace`),
-    lease → `expiresAt`. Offline/default is deterministic HMAC (network-free for
-    `hobo dev` / tests). Live path uses injected `fetch` only. Value refs look like
-    `openbao://<addr>/<ns?><mount>/<name>@<versionId>` — never embed material.
   - `createAwsSecretsManagerPort` / `createAzureKeyVaultPort` — brokered live + offline
-  - `createCampSecretsPort({ backend: "openbao" | "vault-jwt" | … })` selects the Camp adapter
-  - **`createLocalStationSecretsPort`** — default residual for **local Station + wasm Camp host**:
-    OpenBao offline (network-free). Live residual OpenBao:
-    `HOBO_OPENBAO_LIVE=1`, `HOBO_OPENBAO_ADDR`, `HOBO_SVID_JWT`, optional
-    `HOBO_OPENBAO_ROLE` / `HOBO_OPENBAO_NAMESPACE`. Override backend with
-    `HOBO_LOCAL_SECRETS_BACKEND=memory|vault-jwt|openbao`. Wasm guests never see
-    material — only redacted mesh/`agentView` placeholders (`x-hobo-env-*`).
+  - `createCampSecretsPort({ backend: "memory" | "vault-jwt" | "aws-sm" | "azure-kv" })`
+  - **`createLocalStationSecretsPort`** — local Station residual; **defaults to memory**
+    (`HOBO_LOCAL_SECRETS_BACKEND=memory|vault-jwt`). Wasm guests never see material.
   - `asHoboSecretsStore` — WIT-shaped residual view over any port
-  - `createContractAssertedConfigFixtures` defaults residual backend to OpenBao offline
-    for local Station / `hobo dev` parity
+  - **Optional OpenBao:** install **`@hobo/adapter-openbao`** (not a default dependency)
+    for residual OpenBao JWT + KV v2. Not included in default installs.
 - Every identity and token event carries the never-compact
   `CREDENTIAL_AUDIT_RETENTION` descriptor.
 - **Continuous Identity Migration Plane** ([ADR-0132](../../docs/design/adr/02-identity-security.md#adr-0132))

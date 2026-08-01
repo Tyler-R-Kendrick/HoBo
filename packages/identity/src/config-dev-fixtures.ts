@@ -2,6 +2,9 @@
  * Contract-asserted config fixtures for `hobo dev` (ADR-0027 + ADR-0070).
  * Same schema contracts as can-deploy; agents only ever see schemaOnlyView.
  * Dual identity fixtures (ADR-0132) are composed in for continuous migration parity.
+ *
+ * Residual secrets default to **memory** (no optional OpenBao dependency).
+ * Install `@hobo/adapter-openbao` when residual OpenBao is required.
  */
 import type { ConfigSchema, SecretSourceRank } from "./config-types.js";
 import {
@@ -20,9 +23,7 @@ export type DevConfigFixture = Readonly<{
 	campValues: Readonly<Record<string, unknown>>;
 	/**
 	 * Residual secrets port for provider-federation paths.
-	 * Default: local Station OpenBao offline (`createLocalStationSecretsPort`)
-	 * so wasm/local Camp hosts exercise the OpenBao residual path without a
-	 * live OpenBao process. Guests only ever see placeholders.
+	 * Default: memory (built-in). OpenBao is optional via @hobo/adapter-openbao.
 	 */
 	secretsPort: SecretsPort;
 	/** Bound-resource token factories (short-lived fixtures). */
@@ -56,15 +57,15 @@ export async function createContractAssertedConfigFixtures(
 		tenant?: string;
 		/**
 		 * Residual secrets backend for local Station / hobo dev.
-		 * Default `openbao` (offline) for wasm Station parity.
-		 * Use `memory` only for pure unit fixtures that must not depend on OpenBao.
+		 * Default **memory** (included). Use vault-jwt for Vault residual.
+		 * OpenBao is not built-in — use `@hobo/adapter-openbao`.
 		 */
-		residualBackend?: "openbao" | "memory" | "vault-jwt";
-		/** Station id for OpenBao role / valueRef scoping. */
+		residualBackend?: "memory" | "vault-jwt";
+		/** Station id for residual port scoping. */
 		stationId?: string;
 	},
 ): Promise<DevConfigFixture> {
-	const residual = options?.residualBackend ?? "openbao";
+	const residual = options?.residualBackend ?? "memory";
 	const stationId = options?.stationId ?? "local";
 	const secretsPort: SecretsPort =
 		residual === "memory"
@@ -75,10 +76,7 @@ export async function createContractAssertedConfigFixtures(
 					stationId,
 					env: {
 						HOBO_LOCAL_SECRETS_BACKEND: residual,
-						// Force offline residual for contract fixtures (no network).
-						HOBO_OPENBAO_LIVE: "0",
 					},
-					offline: true,
 					id: `secrets:dev-fixture:${residual}:${schema.schemaHash.slice(0, 12)}`,
 				});
 	const seed = options?.seedSecrets ?? {};

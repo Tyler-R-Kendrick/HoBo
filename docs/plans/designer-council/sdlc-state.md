@@ -7,7 +7,7 @@ tags: [hobo, sdlc, optimizexp, design-council, consensus]
 
 # Initiative: Designer council
 
-**Phase:** implementation  
+**Phase:** review  
 **Slug:** `designer-council`  
 **Opened:** 2026-08-01  
 **Host:** Codex
@@ -31,7 +31,9 @@ design-relevant work.
 
 - Base: `origin/main` at `eb01285b4b68bc67b40ae81a5de061e17085561d`
 - Branch: `feat/designer-council`
-- PR: pending
+- PR: [#1007](https://github.com/Tyler-R-Kendrick/HoBo/pull/1007)
+- Reviewed branch head before council: `5ec1537c5f4da0ba1f7999051f95ef87fe0a702a`
+- Local final validation: 743 files passed; 4,629 tests passed; one skipped.
 - OptimizeXP preflight policy: safe, in-scope doctor repairs have standing approval;
   destructive, networked, secret-bearing, and unrelated actions remain excluded.
 

@@ -100,7 +100,9 @@ Policy may set **deny-ceilings** (`allowedSources`, `forbidStaticEscape`) so pro
 | Package | Responsibility |
 |---------|----------------|
 | `@hobo/bindles` | `config` / `env` / `secret` / `fromBinding` / `secretRef` schema surface + validation |
-| `@hobo/identity` | Resolution ladder orchestration (`resolveConfigSchema` / `resolveConfigEntry`), residual `SecretsPort` adapters (memory fixture, Vault JWT/OIDC, AWS SM stub, Azure KV stub), redacted `config.Resolved` / `secret.Accessed` events, contract-asserted dev fixtures |
+| `@hobo/identity` | Resolution ladder orchestration (`resolveConfigSchema` / `resolveConfigEntry`), residual `SecretsPort` adapters (memory fixture, Vault JWT/OIDC, **OpenBao JWT/OIDC residual**, AWS SM, Azure KV), redacted `config.Resolved` / `secret.Accessed` events, contract-asserted dev fixtures |
+
+OpenBao (OpenSSF / Linux Foundation fork of Vault; MPL 2.0) is a **residual** managed-store backend only (`createOpenBaoSecretsPort`, `SecretsPort.kind: "openbao"`). Auth is **SVID JWT → auth/jwt login** (never a long-lived OpenBao/Vault token in the adapter). KV v2 maps versions and lease duration → `expiresAt`. Free namespaces use `X-Vault-Namespace`. Offline/default path is deterministic HMAC (network-free for `hobo dev` and unit tests). Ranking is unchanged: bound-resource → provider-federation (OpenBao/Vault/AWS/Azure residual) → camp-value → static-escape.
 | `@hobo/connectivity` | Secretless connector (CyberArk-style mediation): plugin registry (postgres, tcp, mysql, redis + extensions); isolation tiers `shared` / `per-tenant` / `per-workload`; named local endpoints ([ADR-0130](07-portability-extensibility.md)); lease renew / drain; credential closed over — never on public lease |
 | `@hobo/cloud` CredentialAudit | Folds `config.*` / `secret.*` into never-compact security audit (joined with `token.*` / `connection.*`) |
 | `@hobo/contracts` Gatekeeper | Optional `secretlessConfig` verdict dimension composed into can-deploy |

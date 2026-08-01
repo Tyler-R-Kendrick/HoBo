@@ -9,6 +9,7 @@ import {
 	createCampSecretsPort,
 	createContractAssertedConfigFixtures,
 	createMemorySecretsPort,
+	createOpenBaoSecretsPort,
 	createVaultJwtSecretsPort,
 	decryptLocalOverrides,
 	encryptLocalOverrides,
@@ -134,6 +135,180 @@ describe("secretless resolution ladder", () => {
 			expect(accessed.valueRef).toMatch(/^vault:\/\//);
 			expect(accessed.expiresAt).toBeTruthy();
 		}
+	});
+
+	it("OpenBao offline adapter is deterministic and JWT-only (no static token)", async () => {
+		const a = createOpenBaoSecretsPort({
+			openbaoAddr: "https://openbao.example:8200",
+			role: "hobo-workload",
+			svidJwt: "eyJhbGciOiJFUzI1NiJ9.svid.fixture",
+			offline: true,
+		});
+		const b = createOpenBaoSecretsPort({
+			openbaoAddr: "https://openbao.example:8200",
+			role: "hobo-workload",
+			svidJwt: "eyJhbGciOiJFUzI1NiJ9.svid.fixture",
+			offline: true,
+		});
+		expect(a.kind).toBe("openbao");
+		const r1 = await a.access("app/db");
+		const r2 = await b.access("app/db");
+		expect(r1.status).toBe("ok");
+		expect(r2.status).toBe("ok");
+		if (r1.status === "ok" && r2.status === "ok") {
+			expect(r1.material).toBe(r2.material);
+			expect(r1.valueRef).toMatch(/^openbao:\/\//);
+			expect(r1.valueRef).toContain("@");
+			expect(r1.expiresAt).toBeTruthy();
+			// valueRef must not embed material
+			expect(r1.valueRef).not.toContain(r1.material ?? "___");
+		}
+		await a.put("app/db", "seed-v1");
+		const versions = await a.listVersions("app/db");
+		expect(versions.length).toBeGreaterThan(0);
+		const byVer = await a.accessVersion("app/db", versions[0]!);
+		expect(byVer.status).toBe("ok");
+	});
+
+	it("OpenBao live path uses JWT login + KV v2 via injected fetch", async () => {
+		const calls: { url: string; method?: string; body?: string }[] = [];
+		let loggedIn = false;
+		const fetch = async (
+			url: string,
+			init?: { method?: string; headers?: Record<string, string>; body?: string },
+		) => {
+			calls.push({ url, method: init?.method, body: init?.body });
+			if (url.includes("/auth/jwt/login")) {
+				const body = JSON.parse(init?.body ?? "{}") as {
+					role?: string;
+					jwt?: string;
+				};
+				expect(body.role).toBe("hobo-workload");
+				expect(body.jwt).toMatch(/^eyJ/);
+				// Must not accept a static vault token as the SVID field
+				expect(body.jwt).not.toMatch(/^hvs\./);
+				loggedIn = true;
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({
+						auth: { client_token: "s.short-lived", lease_duration: 600 },
+					}),
+					text: async () => "",
+				};
+			}
+			if (url.includes("/data/app%2Fkey") || url.includes("/data/app/key")) {
+				expect(loggedIn).toBe(true);
+				expect(init?.headers?.["X-Vault-Token"]).toBe("s.short-lived");
+				expect(init?.headers?.["X-Vault-Namespace"]).toBe("team-a");
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({
+						data: {
+							data: { value: "live-openbao-material" },
+							metadata: { version: 3 },
+						},
+						lease_duration: 300,
+					}),
+					text: async () => "",
+				};
+			}
+			if (url.includes("/metadata/")) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({
+						data: { versions: { "1": {}, "3": {} } },
+					}),
+					text: async () => "",
+				};
+			}
+			return {
+				ok: false,
+				status: 404,
+				json: async () => ({}),
+				text: async () => "not found",
+			};
+		};
+		const port = createOpenBaoSecretsPort({
+			openbaoAddr: "https://openbao.example:8200",
+			role: "hobo-workload",
+			svidJwt: "eyJhbGciOiJFUzI1NiJ9.svid.fixture",
+			namespace: "team-a",
+			mountPath: "secret",
+			fetch,
+			offline: false,
+		});
+		const accessed = await port.access("app/key");
+		expect(accessed.status).toBe("ok");
+		if (accessed.status === "ok") {
+			expect(accessed.material).toBe("live-openbao-material");
+			expect(accessed.valueRef).toMatch(/^openbao:\/\//);
+			expect(accessed.valueRef).toContain("team-a");
+			expect(accessed.versionId).toBe("obv3");
+			expect(accessed.expiresAt).toBeTruthy();
+		}
+		const denied = createOpenBaoSecretsPort({
+			openbaoAddr: "https://openbao.example:8200",
+			role: "hobo-workload",
+			svidJwt: "eyJhbGciOiJFUzI1NiJ9.svid.fixture",
+			fetch: async () => ({
+				ok: false,
+				status: 403,
+				json: async () => ({}),
+				text: async () => "forbidden",
+			}),
+			offline: false,
+		});
+		const d = await denied.access("nope");
+		expect(d.status).toBe("denied");
+		if (d.status === "denied") {
+			expect(d.code).toMatch(/openbao/);
+		}
+		expect(calls.some((c) => c.url.includes("/auth/jwt/login"))).toBe(true);
+	});
+
+	it("Camp factory selects openbao and ladder uses it without agent-visible material", async () => {
+		const port = createCampSecretsPort({
+			backend: "openbao",
+			openbaoAddr: "https://openbao.camp.local",
+			vaultRole: "workload",
+			svidJwt: "eyJhbGciOiJFUzI1NiJ9.svid.fixture",
+			offline: true,
+		});
+		expect(port.kind).toBe("openbao");
+		await port.put("API_KEY", "broker-only-secret");
+		const result = await resolveConfigEntry({
+			name: "API_KEY",
+			sensitive: true,
+			preferredSource: "provider-federation",
+			allowedSources: ["provider-federation"],
+			secretsPort: port,
+		});
+		expect(result.status).toBe("resolved");
+		if (result.status === "resolved") {
+			expect(result.entry.placeholder).toMatch(/REDACTED/);
+			expect(JSON.stringify(result.entry)).not.toContain("broker-only-secret");
+			expect(result.entry.valueRef).toMatch(/^openbao:\/\//);
+		}
+		const store = asHoboSecretsStore(port);
+		const latest = await store.access("API_KEY");
+		expect(latest.versionId).toBeTruthy();
+		requireNoPlaintextConformance({
+			agentContext: { API_KEY: "[REDACTED:provider-federation:API_KEY]" },
+			events: [
+				{
+					type: "secret.Accessed",
+					data: {
+						name: "API_KEY",
+						valueRef: "openbao://x/secret/API_KEY@obv1",
+						redacted: true,
+					},
+				},
+			],
+			logs: "openbao residual access",
+		});
 	});
 
 	it("static-escape forbidden when policy forbids", async () => {

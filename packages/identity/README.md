@@ -16,6 +16,20 @@ promotes the near-production draft proof
 - `TokenBroker` — holds one vaulted root credential and mints per-deploy,
   scope-bound, TTL'd tokens for an SVID, emitting `token.Granted` / `token.Used`
   / `token.Revoked`.
+- **Residual secrets backends** ([ADR-0027](../../docs/design/adr/02-identity-security.md#adr-0027) /
+  [ADR-0113](../../docs/design/adr/02-identity-security.md#adr-0113)) — secretless-first
+  ladder is bound-resource → provider-federation → camp-value → static-escape.
+  `SecretsPort` residual adapters (never primary identity):
+  - `createMemorySecretsPort` — in-memory fixture
+  - `createVaultJwtSecretsPort` — Vault via short-lived SVID JWT (no static Vault token)
+  - **`createOpenBaoSecretsPort`** — [OpenBao](https://openbao.org) (OpenSSF Vault fork)
+    via **SVID JWT → auth/jwt**, KV v2, optional free namespace (`X-Vault-Namespace`),
+    lease → `expiresAt`. Offline/default is deterministic HMAC (network-free for
+    `hobo dev` / tests). Live path uses injected `fetch` only. Value refs look like
+    `openbao://<addr>/<ns?><mount>/<name>@<versionId>` — never embed material.
+  - `createAwsSecretsManagerPort` / `createAzureKeyVaultPort` — brokered live + offline
+  - `createCampSecretsPort({ backend: "openbao" | "vault-jwt" | … })` selects the Camp adapter
+  - `asHoboSecretsStore` — WIT-shaped residual view over any port
 - Every identity and token event carries the never-compact
   `CREDENTIAL_AUDIT_RETENTION` descriptor.
 - **Continuous Identity Migration Plane** ([ADR-0132](../../docs/design/adr/02-identity-security.md#adr-0132))

@@ -104,6 +104,7 @@ export {
 	createAzureKeyVaultStub,
 	createCampSecretsPort,
 	createMemorySecretsPort,
+	createOpenBaoSecretsPort,
 	createVaultJwtSecretsPort,
 	resolveConfigEntry,
 	type FetchLike,

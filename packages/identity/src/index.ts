@@ -103,6 +103,7 @@ export {
 	createAzureKeyVaultPort,
 	createAzureKeyVaultStub,
 	createCampSecretsPort,
+	createLocalStationSecretsPort,
 	createMemorySecretsPort,
 	createOpenBaoSecretsPort,
 	createVaultJwtSecretsPort,

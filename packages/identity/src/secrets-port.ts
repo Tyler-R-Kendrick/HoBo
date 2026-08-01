@@ -808,6 +808,97 @@ export function createOpenBaoSecretsPort(options: {
 }
 
 /**
+ * Local Station residual secrets (wasm / local Camp host).
+ *
+ * Default backend is **OpenBao offline** so residual `provider-federation`
+ * paths work on a local Station + wasm component host without a live OpenBao
+ * process or network. Guests never receive material — only host-mediated
+ * redacted config / mesh env (see bare-metal / runtime-wasm `x-hobo-env-*`).
+ *
+ * Live residual OpenBao (still JWT-only):
+ *   HOBO_OPENBAO_LIVE=1
+ *   HOBO_OPENBAO_ADDR=http://127.0.0.1:8200
+ *   HOBO_SVID_JWT=<short-lived JWT>
+ *   HOBO_OPENBAO_ROLE=hobo-station-local
+ *
+ * Other residual backends: HOBO_LOCAL_SECRETS_BACKEND=memory|vault-jwt|openbao
+ */
+export function createLocalStationSecretsPort(options?: {
+	readonly stationId?: string;
+	readonly env?: NodeJS.ProcessEnv;
+	readonly fetch?: FetchLike;
+	readonly id?: string;
+	/** Force offline OpenBao even when LIVE=1 (tests). */
+	readonly offline?: boolean;
+}): SecretsPort {
+	const env = options?.env ?? process.env;
+	const backend = (
+		env.HOBO_LOCAL_SECRETS_BACKEND ?? "openbao"
+	).toLowerCase();
+	const stationId = options?.stationId ?? env.HOBO_STATION_ID ?? "local";
+	const svidJwt =
+		(typeof env.HOBO_SVID_JWT === "string" && env.HOBO_SVID_JWT) ||
+		`eyJhbGciOiJFUzI1NiJ9.station.${stationId}.fixture`;
+
+	if (backend === "memory") {
+		return createMemorySecretsPort({
+			id: options?.id ?? `secrets:station-memory:${stationId}`,
+		});
+	}
+	if (backend === "vault-jwt") {
+		return createVaultJwtSecretsPort({
+			vaultAddr:
+				(typeof env.HOBO_VAULT_ADDR === "string" && env.HOBO_VAULT_ADDR) ||
+				"https://vault.local",
+			role:
+				(typeof env.HOBO_VAULT_ROLE === "string" && env.HOBO_VAULT_ROLE) ||
+				`hobo-station-${stationId}`,
+			svidJwt,
+			id: options?.id ?? `secrets:station-vault:${stationId}`,
+		});
+	}
+
+	// Default + "openbao"
+	const live =
+		options?.offline === true
+			? false
+			: env.HOBO_OPENBAO_LIVE === "1" ||
+				env.HOBO_OPENBAO_LIVE === "true";
+	const fetchImpl =
+		options?.fetch ??
+		(live
+			? (globalThis.fetch as FetchLike | undefined)
+			: undefined);
+	const openbaoAddr =
+		(typeof env.HOBO_OPENBAO_ADDR === "string" && env.HOBO_OPENBAO_ADDR) ||
+		(typeof env.OPENBAO_ADDR === "string" && env.OPENBAO_ADDR) ||
+		"http://127.0.0.1:8200";
+	const role =
+		(typeof env.HOBO_OPENBAO_ROLE === "string" && env.HOBO_OPENBAO_ROLE) ||
+		`hobo-station-${stationId}`;
+	const namespace =
+		typeof env.HOBO_OPENBAO_NAMESPACE === "string" &&
+		env.HOBO_OPENBAO_NAMESPACE
+			? env.HOBO_OPENBAO_NAMESPACE
+			: undefined;
+	const mountPath =
+		typeof env.HOBO_OPENBAO_MOUNT === "string" && env.HOBO_OPENBAO_MOUNT
+			? env.HOBO_OPENBAO_MOUNT
+			: undefined;
+
+	return createOpenBaoSecretsPort({
+		openbaoAddr,
+		role,
+		svidJwt,
+		offline: !live || fetchImpl === undefined,
+		id: options?.id ?? `secrets:station-openbao:${stationId}`,
+		...(namespace !== undefined ? { namespace } : {}),
+		...(mountPath !== undefined ? { mountPath } : {}),
+		...(fetchImpl !== undefined ? { fetch: fetchImpl } : {}),
+	});
+}
+
+/**
  * Camp-scoped secrets port factory — Bindle declares need; Camp selects backend.
  * OpenBao is residual only (JWT/SVID); never elevates above bound-resource.
  */

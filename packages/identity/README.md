@@ -29,7 +29,15 @@ promotes the near-production draft proof
     `openbao://<addr>/<ns?><mount>/<name>@<versionId>` — never embed material.
   - `createAwsSecretsManagerPort` / `createAzureKeyVaultPort` — brokered live + offline
   - `createCampSecretsPort({ backend: "openbao" | "vault-jwt" | … })` selects the Camp adapter
+  - **`createLocalStationSecretsPort`** — default residual for **local Station + wasm Camp host**:
+    OpenBao offline (network-free). Live residual OpenBao:
+    `HOBO_OPENBAO_LIVE=1`, `HOBO_OPENBAO_ADDR`, `HOBO_SVID_JWT`, optional
+    `HOBO_OPENBAO_ROLE` / `HOBO_OPENBAO_NAMESPACE`. Override backend with
+    `HOBO_LOCAL_SECRETS_BACKEND=memory|vault-jwt|openbao`. Wasm guests never see
+    material — only redacted mesh/`agentView` placeholders (`x-hobo-env-*`).
   - `asHoboSecretsStore` — WIT-shaped residual view over any port
+  - `createContractAssertedConfigFixtures` defaults residual backend to OpenBao offline
+    for local Station / `hobo dev` parity
 - Every identity and token event carries the never-compact
   `CREDENTIAL_AUDIT_RETENTION` descriptor.
 - **Continuous Identity Migration Plane** ([ADR-0132](../../docs/design/adr/02-identity-security.md#adr-0132))

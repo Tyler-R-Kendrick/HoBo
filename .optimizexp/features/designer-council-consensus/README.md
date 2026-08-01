@@ -15,3 +15,7 @@ Cross-cutting forgery, stale-manifest, blocker-persistence, max-turn, and
 conversation-order regressions live in
 `test/designer-council-adversarial.test.ts`. Review-loop bus and completion
 integration is protected by `test/designer-council-review-loop.test.ts`.
+Canonical persona scope, relevant-check routing, and standing approval for safe
+OptimizeXP preflight repairs are pinned by the corresponding
+`test/designer-council-*.test.ts` and
+`test/optimizexp-preflight-approval.test.ts` policy regressions.

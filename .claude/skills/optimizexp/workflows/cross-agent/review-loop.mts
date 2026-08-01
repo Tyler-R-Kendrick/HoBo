@@ -28,6 +28,7 @@ import {
 } from "../../harness/lib/scorecard.mts";
 import { evaluateScorecardEvidence } from "../../harness/lib/evidence-checks.mts";
 import { validateEvidenceReview } from "../../harness/lib/evidence-review.mts";
+import { listProjects } from "../../harness/lib/projects.mts";
 
 /** Invocation terminals only — never "plateau" / "metrics-zero" alone. */
 const INVOCATION_STOP_REASONS = new Set([
@@ -1155,10 +1156,7 @@ function validateBusForRun(root: string, runId: string): string[] {
 		let body: BusBody;
 		try { body = JSON.parse(readFileSync(path.join(dir, f), "utf8")) as BusBody; }
 		catch { problems.push(`${f}: invalid_json`); continue; }
-		if (body.runId !== runId) {
-			problems.push(`${f}: runId_mismatch`);
-			continue;
-		}
+		if (body.runId !== runId) continue;
 		if (!body.id) problems.push(`${f}: missing_id`);
 		if (body.kind === "survey") continue;
 		if (body.kind !== "expect" && body.kind !== "act" && body.kind !== "outcome") {
@@ -1430,16 +1428,12 @@ function modeAssertComplete(
 		: [];
 
 	// Surface map required for non-root product projects when features are set
+	const projectPaths = new Map(listProjects(root).map((project) => [project.id, project.path]));
 	for (const pid of projectIds) {
 		if (pid === "root" || pid === "global") continue;
-		const mapPath = path.join(root, "packages", pid, ".optimizexp", "surface-map.json");
-		const mapPathAlt = path.join(root, pid, ".optimizexp", "surface-map.json");
-		if (!existsSync(mapPath) && !existsSync(mapPathAlt)) {
-			// also allow project path as packages/code style only once
-			const guess = path.join(root, "packages", pid, ".optimizexp", "surface-map.json");
-			if (!existsSync(guess)) {
-				missing.push(`surface_map_missing:${pid}`);
-			}
+		const projectPath = projectPaths.get(pid);
+		if (projectPath === undefined || !existsSync(path.join(root, projectPath, ".optimizexp", "surface-map.json"))) {
+			missing.push(`surface_map_missing:${pid}`);
 		}
 	}
 

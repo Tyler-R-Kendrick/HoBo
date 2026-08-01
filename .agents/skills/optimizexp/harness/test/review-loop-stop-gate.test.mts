@@ -284,6 +284,20 @@ describe("optimizexp stop gate", () => {
 		}
 	});
 
+	it("surface maps resolve through the project registry", () => {
+		const dir = seedRepo();
+		try {
+			mkdirSync(path.join(dir, "examples/demo/.optimizexp"), { recursive: true });
+			writeFileSync(path.join(dir, "examples/demo/package.json"), '{"name":"demo"}\n');
+			writeFileSync(path.join(dir, "examples/demo/.optimizexp/surface-map.json"), "{}\n");
+			runRl(dir, ["--mode", "init", "--run", "t-map", "--experiences", "dx", "--projects", "demo"]);
+			const result = runRl(dir, ["--mode", "assert-complete", "--run", "t-map"]);
+			assert.doesNotMatch(result.stdout, /surface_map_missing:demo/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("foreign bus entries cannot satisfy a run", () => {
 		const dir = seedRepo();
 		try {
@@ -295,6 +309,7 @@ describe("optimizexp stop gate", () => {
 			assert.notEqual(result.code, 0);
 			assert.match(result.stdout, /bus_complete_triples_lt_1/);
 			assert.match(result.stdout, /verified_experiment_missing/);
+			assert.doesNotMatch(result.stdout, /runId_mismatch/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

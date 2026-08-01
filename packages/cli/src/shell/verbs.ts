@@ -249,6 +249,11 @@ Usage:
   hobo --help
   hobo <verb> --help
 
+Start here:
+  hobo doctor             Check local readiness and next steps
+  hobo new my-app -t api  Scaffold an offline app
+  cd my-app && hobo dev --once
+
 Global flags:
   --json          Emit a machine-readable JSON envelope on stdout
   --camp <camp>   Select the target Camp

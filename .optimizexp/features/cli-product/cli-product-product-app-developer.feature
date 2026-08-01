@@ -11,6 +11,8 @@ Feature: cli-product hobo CLI help, stub envelope, and unknown-verb handling
   Scenario: hobo --help lists the canonical verbs
     When I run the hobo CLI with arguments "--help"
     Then the exit code is 0
+    And stdout contains "Start here:"
+    And stdout contains "hobo new my-app -t api"
     And stdout contains "Canonical verbs:"
     And stdout contains "doctor"
     And stdout contains "deploy"

@@ -392,8 +392,8 @@ export function parseProposalManifest(value: unknown): ProposalManifest {
 		},
 		evidenceSignals: {
 			evidenceTypes: strings(evidence.evidenceTypes, "evidenceSignals.evidenceTypes"),
-			currentHead: evidence.currentHead as boolean | undefined,
-			acceptanceMapped: evidence.acceptanceMapped as boolean | undefined,
+			...(typeof evidence.currentHead === "boolean" ? { currentHead: evidence.currentHead } : {}),
+			...(typeof evidence.acceptanceMapped === "boolean" ? { acceptanceMapped: evidence.acceptanceMapped } : {}),
 		},
 	};
 }
@@ -418,10 +418,10 @@ export function createCouncilState(input: {
 		council: COUNCIL_PERSONAS,
 		protocolSchemaVersion: COUNCIL_PROTOCOL_SCHEMA_VERSION,
 	});
-	const personas = Object.fromEntries(COUNCIL_PERSONAS.map((persona) => {
+	const buildPersona = (persona: CouncilPersona): PersonaState => {
 		const relevance = relevanceFromSignals(persona, input.proposal.relevanceSignals);
 		const initial = initialInvestment(relevance, evidenceStrength);
-		return [persona, {
+		return {
 			relevance,
 			evidenceStrength,
 			initialInvestment: initial,
@@ -433,8 +433,16 @@ export function createCouncilState(input: {
 			preferences: [],
 			lastEntryId: null,
 			submitted: false,
-		} satisfies PersonaState];
-	})) as Record<CouncilPersona, PersonaState>;
+		};
+	};
+	const personas: Record<CouncilPersona, PersonaState> = {
+		"steve-jobs": buildPersona("steve-jobs"),
+		"jony-ive": buildPersona("jony-ive"),
+		"walt-disney": buildPersona("walt-disney"),
+		"hayao-miyazaki": buildPersona("hayao-miyazaki"),
+		"naoto-fukasawa": buildPersona("naoto-fukasawa"),
+		"shigeru-miyamoto": buildPersona("shigeru-miyamoto"),
+	};
 	return {
 		schemaVersion: 1,
 		protocolSchemaVersion: 1,

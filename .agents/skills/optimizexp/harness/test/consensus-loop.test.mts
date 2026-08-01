@@ -214,6 +214,12 @@ describe("designer consensus CLI", () => {
 			});
 			assert.notEqual(disappearingBlocker.code, 0);
 			assert.match(disappearingBlocker.output, /hard-blocker-classification/);
+			const ambiguousBlockers = append(root, state, "steve-jobs", "position", {
+				arguments: ["one", "two"].map((suffix) => ({ id: `A-steve-${suffix}`, claim: `Acceptance ${suffix} failed.`, kind: "hard-blocker", respondsTo: [], evidenceRefs: ["test/shared"], requestedChange: `Fix ${suffix}.` })),
+				hardBlockers: ["one", "two"].map((suffix) => ({ id: `HB-steve-${suffix}`, claim: `Blocker ${suffix}.`, rule: `acceptance:${suffix}`, evidenceRefs: ["test/shared"], requestedResolution: `Resolve ${suffix}.`, status: "open" })),
+			});
+			assert.notEqual(ambiguousBlockers.code, 0);
+			assert.match(ambiguousBlockers.output, /hard-blocker-classification/);
 			const directVote = append(root, state, "steve-jobs", "vote");
 			assert.notEqual(directVote.code, 0);
 			assert.match(directVote.output, /opening-round-incomplete|opening-position-required/);

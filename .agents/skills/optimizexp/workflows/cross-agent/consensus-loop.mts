@@ -283,7 +283,12 @@ function validateEntryAgainstState(entry: CouncilEntry, state: CouncilState, his
 		if (priorArguments.some((prior) => prior.claim.trim().toLowerCase() === argument.claim.trim().toLowerCase())) throw new CouncilProtocolError("duplicate-argument", `claim repeats ${argument.claim}`);
 	}
 	const hardArguments = (entry.arguments ?? []).filter((argument) => argument.kind === "hard-blocker");
-	if (entry.hardBlockers!.length !== hardArguments.length || hardArguments.some((argument) => !(entry.hardBlockers ?? []).some((blocker) => blocker.evidenceRefs.some((ref) => argument.evidenceRefs.includes(ref))))) {
+	const matches = (argument: CouncilArgument, blocker: HardBlocker) => blocker.evidenceRefs.some((ref) => argument.evidenceRefs.includes(ref));
+	if (
+		entry.hardBlockers!.length !== hardArguments.length ||
+		hardArguments.some((argument) => entry.hardBlockers!.filter((blocker) => matches(argument, blocker)).length !== 1) ||
+		entry.hardBlockers!.some((blocker) => hardArguments.filter((argument) => matches(argument, blocker)).length !== 1)
+	) {
 		throw new CouncilProtocolError("hard-blocker-classification", "each hard-blocker argument requires one matching structured hardBlocker with shared evidence");
 	}
 	for (const blocker of entry.hardBlockers ?? []) {

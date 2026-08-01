@@ -72,4 +72,5 @@ test("run-tests.ts preserves the canonical Vitest execution settings", () => {
 	expect(source).toContain("pathToFileURL");
 	expect(source).toContain('"vitest.config.ts"');
 	expect(source).toContain("...baseConfig.test");
+	expect(source).toContain('pool: "forks"');
 });

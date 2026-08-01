@@ -143,7 +143,7 @@ const baseConfigUrl = pathToFileURL(
 ).href;
 writeFileSync(
 	configPath,
-	`import baseConfig from ${JSON.stringify(baseConfigUrl)};\nexport default { ...baseConfig, test: { ...baseConfig.test, include: ${JSON.stringify(testFiles)}, watch: false } };\n`,
+	`import baseConfig from ${JSON.stringify(baseConfigUrl)};\nexport default { ...baseConfig, test: { ...baseConfig.test, include: ${JSON.stringify(testFiles)}, pool: "forks", watch: false } };\n`,
 );
 
 try {

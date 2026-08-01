@@ -46,6 +46,7 @@ Uses:
    - personas generated this run if any, else
    - all personas intersecting experiences.
 6. **Doctor (preflight):** audit structure, personas, feature quality, maps; repair safely; optional snapshot.
+   **Standing approval:** invoking OptimizeXP authorizes its safe, in-scope preflight repairs; apply them without asking again. This does not authorize destructive, networked, secret-bearing, or unrelated changes.
    ```bash
    node --import tsx .agents/skills/optimizexp/harness/doctor.mts check --project <id>
    node --import tsx .agents/skills/optimizexp/harness/doctor.mts repair --project <id>

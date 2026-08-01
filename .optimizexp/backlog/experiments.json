@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-01T04:25:02.968Z",
-  "itemCount": 10,
+  "updatedAt": "2026-08-01T15:36:55.631Z",
+  "itemCount": 11,
   "items": [
     {
       "id": "hobo-code-agent-native",
@@ -165,7 +165,70 @@
       "runId": "20260801-hobo-code-optimizexp",
       "completedAt": "2026-08-01T04:25:02.968Z",
       "result": "Covered by the non-TTY fail-closed guard, JSON remediation contract, help entry contract, and exit-code documentation."
+    },
+    {
+      "id": "fr-role-aware-guided-walkthrough",
+      "title": "Optional role-aware guided walkthrough",
+      "problem": "Static help cannot tailor the next path to every UX, DX, and AX role without adding clutter.",
+      "desiredOutcome": "An opt-in walkthrough selects a role and guides one complete offline path while preserving plain help.",
+      "hypothesis": "If we deliver \"An opt-in walkthrough selects a role and guides one complete offline path while preserving plain help.\", positive metrics rise on hobo --help.",
+      "source": "survey",
+      "sourceRefs": [
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/agent-operator.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/coding-agent.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/designer.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/end-user.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/junior-frontend.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/platform-engineer.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/product-agent-operator.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/product-app-developer.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/product-coding-agent.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/product-designer.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/product-end-user.json",
+        ".optimizexp/runs/20260801-ux-dx-ax-bare-resume/survey/product-platform-engineer.json"
+      ],
+      "personas": [
+        "agent-operator",
+        "coding-agent",
+        "designer",
+        "end-user",
+        "junior-frontend",
+        "platform-engineer",
+        "product-agent-operator",
+        "product-app-developer",
+        "product-coding-agent",
+        "product-designer",
+        "product-end-user",
+        "product-platform-engineer"
+      ],
+      "featureIds": [
+        "cli-product"
+      ],
+      "surfaces": [
+        "hobo --help"
+      ],
+      "experiences": [
+        "ux",
+        "dx",
+        "ax"
+      ],
+      "impactOn": {
+        "excitement": 2,
+        "easeOfUse": 0,
+        "perceivedOptimality": 1
+      },
+      "effort": "L",
+      "priorityScore": 53,
+      "status": "ready",
+      "antiGoals": [
+        "no mandatory wizard",
+        "no network or sign-in requirement",
+        "do not hide canonical verbs"
+      ],
+      "smallestExperiment": "Design and validate an opt-in role-aware walkthrough across CLI and public-site entry points.",
+      "createdAt": "2026-08-01T15:36:55.631Z",
+      "updatedAt": "2026-08-01T15:36:55.631Z",
+      "runId": "20260801-ux-dx-ax-bare-resume"
     }
-  ],
-  "implementableUpliftRemaining": 0
+  ]
 }

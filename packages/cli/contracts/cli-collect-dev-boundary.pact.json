@@ -7,7 +7,7 @@
       "request": { "verb": "collect", "bindle": "hello-bindle" },
       "response": {
         "status": "ok",
-        "manifestHash": "sha256:379d73d495543c6bb302184defc3a6cec7c0ce71a3eb4e7be7281108641c84de",
+        "manifestHash": "sha256:36e76ae9121acab7d954bf7c243267bff14f2caf2fa2874aa42e2468e7a57157",
         "resources": ["api", "db"],
         "events": ["bindle.ResourcesCollected", "bindle.ManifestProduced"]
       }

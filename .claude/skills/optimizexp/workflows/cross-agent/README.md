@@ -23,7 +23,7 @@ Its deterministic modes are `init`, `append`, `advance`, `status`, `decide`,
 
 ## Designer council protocol
 
-`consensus-loop.mts` persists exact-six council state and append-only council bus entries. Approval is reconstructed from the six persona-authored final vote entries; a coordinator-authored `consensus` payload is never authority by itself. Current approval assertions bind the effective base, head, canonical proposal subject, diff, acceptance/evidence digests, and normalized relevance/evidence signals:
+`consensus-loop.mts` persists exact-six council state and append-only council bus entries. Approval is reconstructed from the six persona-authored final vote entries; a coordinator-authored `consensus` payload is never authority by itself. Replay does not trust a hand-written opening snapshot: cycle zero is re-derived from `proposal-cycle-0.json` plus the effective base/head, later cycles use the validated prior state and deterministic carryover reducer, and every persona/coordinator transition, intermediate state digest, and final snapshot must match. Current approval assertions bind the effective base, head, canonical proposal subject, diff, acceptance/evidence digests, and normalized relevance/evidence signals:
 
 ```bash
 node --import tsx .agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts \

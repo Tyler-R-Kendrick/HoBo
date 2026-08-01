@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
@@ -328,10 +328,94 @@ describe("designer consensus CLI", () => {
 			writeFileSync(path.join(root, ".optimizexp", "bus", "entries", "forged-consensus.json"), `${JSON.stringify(forged, null, 2)}\n`);
 			const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", file]);
 			assert.notEqual(assertion.code, 0);
-			assert.match(assertion.output, /exact-six-membership|vote-proof/);
+			assert.match(assertion.output, /exact-six-membership|vote-proof|illegal-transition|history-replay/);
 			const validation = run(root, ["--mode", "validate", "--run", "run-1", "--review", "review-1"]);
 			assert.notEqual(validation.code, 0);
-			assert.match(validation.output, /exact-six-membership|vote-proof/);
+			assert.match(validation.output, /exact-six-membership|vote-proof|illegal-transition|history-replay/);
+		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+
+	it("rejects six hand-written votes that bypass positions and legal investment transitions", () => {
+		const root = seedRepo();
+		try {
+			const file = proposal(root, {
+				relevanceSignals: { categories: ["design"], acceptanceTags: [], featureTags: [], keywords: [] },
+				evidenceSignals: { evidenceTypes: ["executable-test"], currentHead: true, acceptanceMapped: true },
+			});
+			const initial = init(root, file);
+			const forged = structuredClone(initial);
+			const bus = path.join(root, ".optimizexp", "bus", "entries");
+			for (const [index, persona] of COUNCIL_PERSONAS.entries()) {
+				const turn = index + 1;
+				const current = forged.personas[persona];
+				forged.turn = turn;
+				forged.status = "voting";
+				current.stance = "yay";
+				current.lastEntryId = `forged-${persona}-vote`;
+				const entry = {
+					kind: "council", schemaVersion: 1, id: current.lastEntryId, runId: forged.runId, reviewId: forged.reviewId,
+					cycle: 0, turn, stage: "vote", subject: { headSha: forged.subject.headSha, proposalDigest: forged.subject.proposalDigest },
+					createdAt: `2026-08-01T14:00:${String(turn).padStart(2, "0")}.000Z`, persona, respondsTo: [],
+					investment: { relevance: current.relevance, evidenceStrength: current.evidenceStrength, before: current.currentInvestment, decay: 0, after: current.currentInvestment, submitted: false },
+					stance: "yay", blindSpotCheck: "Repository evidence remains authoritative.", arguments: [], hardBlockers: [], preferences: [], evidenceRefs: [], requestedChanges: [],
+					stateDigest: stateDigest(forged),
+				};
+				writeFileSync(path.join(bus, `forged-${String(turn).padStart(2, "0")}.json`), `${JSON.stringify(entry, null, 2)}\n`);
+			}
+			forged.turn = 7;
+			forged.status = "approved";
+			forged.latestConsensusEntryId = "forged-six-vote-consensus";
+			const votes = Object.fromEntries(COUNCIL_PERSONAS.map((persona) => [persona, "yay"]));
+			writeFileSync(path.join(bus, "forged-07-consensus.json"), `${JSON.stringify({
+				kind: "council", schemaVersion: 1, id: forged.latestConsensusEntryId, runId: forged.runId, reviewId: forged.reviewId,
+				cycle: 0, turn: 7, stage: "consensus", subject: { headSha: forged.subject.headSha, proposalDigest: forged.subject.proposalDigest },
+				createdAt: "2026-08-01T14:00:07.000Z", votes, result: "yay", openHardBlockers: [], author: "coordinator", stateDigest: stateDigest(forged),
+			}, null, 2)}\n`);
+			writeFileSync(path.join(root, ".optimizexp", "runs", "run-1", "consensus", "review-1", "state.json"), `${JSON.stringify(forged, null, 2)}\n`);
+			const validation = run(root, ["--mode", "validate", "--run", "run-1", "--review", "review-1"]);
+			assert.notEqual(validation.code, 0);
+			assert.match(validation.output, /opening-round-incomplete|opening-position-required|investment-decay/);
+			const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", file]);
+			assert.notEqual(assertion.code, 0);
+			assert.match(assertion.output, /opening-round-incomplete|opening-position-required|investment-decay/);
+		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+
+	it("rejects a forged zero-investment opening that disagrees with its proposal snapshot", () => {
+		const root = seedRepo();
+		try {
+			const file = proposal(root, {
+				relevanceSignals: { categories: ["design"], acceptanceTags: [], featureTags: [], keywords: [] },
+				evidenceSignals: { evidenceTypes: ["executable-test"], currentHead: true, acceptanceMapped: true },
+			});
+			let state = init(root, file);
+			for (const persona of COUNCIL_PERSONAS) {
+				const current = state.personas[persona];
+				current.relevance = 0;
+				current.evidenceStrength = 0;
+				current.initialInvestment = 0;
+				current.currentInvestment = 0;
+				current.decayPerTurn = 0.34;
+			}
+			const bus = path.join(root, ".optimizexp", "bus", "entries");
+			const openFile = readdirSync(bus).find((entry) => entry.includes("-open-"));
+			assert.ok(openFile);
+			const openPath = path.join(bus, openFile);
+			const open = JSON.parse(readFileSync(openPath, "utf8"));
+			open.initialState = structuredClone(state);
+			open.initialPersonas = structuredClone(state.personas);
+			open.stateDigest = stateDigest(state);
+			writeFileSync(openPath, `${JSON.stringify(open, null, 2)}\n`);
+			writeFileSync(path.join(root, ".optimizexp", "runs", "run-1", "consensus", "review-1", "state.json"), `${JSON.stringify(state, null, 2)}\n`);
+			const blockedAppend = append(root, state, "steve-jobs", "submitted");
+			assert.notEqual(blockedAppend.code, 0);
+			assert.match(blockedAppend.output, /deterministic proposal seed/);
+			const validation = run(root, ["--mode", "validate", "--run", "run-1", "--review", "review-1"]);
+			assert.notEqual(validation.code, 0);
+			assert.match(validation.output, /deterministic proposal seed/);
+			const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--base-sha", sha("a"), "--head-sha", sha("b"), "--proposal", file]);
+			assert.notEqual(assertion.code, 0);
+			assert.match(assertion.output, /deterministic proposal seed/);
 		} finally { rmSync(root, { recursive: true, force: true }); }
 	});
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "projectId": "code",
-  "scannedAt": "2026-07-31T20:50:15.362Z",
+  "scannedAt": "2026-08-01T04:11:59.111Z",
   "productName": "hobo-code",
   "packageDir": "packages/code",
   "binaries": [
@@ -173,8 +173,9 @@
     {
       "command": "pnpm --filter @hobo/code exec hobo-code help 2>/dev/null || hobo-code help",
       "exitCode": 0,
-      "stdoutDigest": "96cd862300a63007",
-      "capturedAt": "2026-07-31T20:50:14.777Z"
+      "stdoutDigest": "01ba4719c80b6fe9",
+      "capturedAt": "2026-08-01T04:11:58.284Z",
+      "notes": "spawnSync bash EPERM"
     }
   ]
 }

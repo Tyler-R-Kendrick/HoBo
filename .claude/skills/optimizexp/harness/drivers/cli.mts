@@ -80,8 +80,6 @@ export function captureCli(
 		stderr || "(empty)",
 		``,
 	].join("\n");
-	const primaryFile = path.join(outDir, "primary.txt");
-	writeFileSync(primaryFile, header, "utf8");
 	writeFileSync(path.join(outDir, "terminal.txt"), header, "utf8");
 	const castFile = path.join(outDir, "primary.cast");
 	const castHeader = {

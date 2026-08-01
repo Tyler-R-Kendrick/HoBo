@@ -35,6 +35,15 @@ On a real TTY, bare `hobo-code` opens the **HoBo InteractiveShell** (product chr
 
 This is **not** stock Pi Agent UI. Escape hatch only: `HOBO_CODE_TUI=pi` or `hobo-code --pi`.
 
+When stdin is not a TTY, an empty invocation fails closed with
+`HOBO_CODE_INTERACTIVE_REQUIRED` and prints `hobo-code help` plus the prompt
+form to use. `--json` includes `interactiveRequired: true` and `remediation[]`.
+It never attempts a default dispatch or durable-state write.
+
+Fail-closed exit codes are stable: `HOBO_CODE_INTERACTIVE_REQUIRED` means the
+caller supplied no prompt without a TTY; use `hobo-code help` or provide a
+prompt. Machine callers should branch on `code` and consume `remediation[]`.
+
 | Shell slash | One-shot CLI |
 |---|---|
 | `/agent` `/config` `/cost` `/harness` | `hobo-code agent` · `config` · `cost` · `harness` |

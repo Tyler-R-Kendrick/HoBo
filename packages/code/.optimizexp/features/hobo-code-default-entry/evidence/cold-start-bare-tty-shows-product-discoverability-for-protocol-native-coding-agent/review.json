@@ -1,0 +1,17 @@
+{
+  "status": "accepted",
+  "reviewer": "optimizexp-runner",
+  "relevance": "relevant",
+  "completeness": "complete",
+  "coverageMode": "full-journey",
+  "coveredClaims": [
+    "claim-1",
+    "claim-2",
+    "claim-3",
+    "claim-4",
+    "claim-5"
+  ],
+  "artifactSha256": "4af809be1b8f4421174579459b41eac1a6f982a9393ec9e52e4e4c44dbb8a0df",
+  "reviewedAt": "2026-08-01T04:23:52.753Z",
+  "notes": "Playback verifies JSON remediation includes the stable code, interactiveRequired flag, and exact remediation commands."
+}

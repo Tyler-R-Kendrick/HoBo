@@ -40,6 +40,7 @@ import {
 } from "./lib/paths.mts";
 import { resolveProjects } from "./lib/projects.mts";
 import { scenarioSlug } from "./lib/slug.mts";
+import { type EvidenceClaim, validateEvidenceReview } from "./lib/evidence-review.mts";
 
 type FeatureMeta = {
 	id: string;
@@ -68,6 +69,11 @@ function parseArgs(argv: string[]) {
 		else if (a === "--personas") out.personas = argv[++i] ?? "";
 		else if (a === "--experiences") out.experiences = argv[++i] ?? "";
 		else if (a === "--title") out.title = argv[++i] ?? "";
+		else if (a === "--reviewer") out.reviewer = argv[++i] ?? "";
+		else if (a === "--relevant") out.relevant = argv[++i] ?? "";
+		else if (a === "--complete") out.complete = argv[++i] ?? "";
+		else if (a === "--covered-claims") out.coveredClaims = argv[++i] ?? "";
+		else if (a === "--notes") out.notes = argv[++i] ?? "";
 		else if (a === "--project" || a === "--projects") {
 			const v = argv[++i] ?? "";
 			out.projects = out.projects ? `${out.projects},${v}` : v;
@@ -85,6 +91,8 @@ Modes:
   list-scenarios --feature <id>
   capture        --feature <id> --scenario <slug|title> [--driver cli|tui|web|native]
                  [--command '…'] [--url https://…] [--native-cmd '…'] [--run-id …]
+  review         --feature <id> --scenario <slug> --reviewer <id>
+                 [--relevant yes|no] [--complete yes|no] [--covered-claims all|id,…]
   stitch         --feature <id> --scenario <slug>
   validate       [--feature <id>] [--strict]
 
@@ -195,6 +203,27 @@ function parseScenarios(featureId: string, root: string) {
 	return scenarios;
 }
 
+function scenarioClaims(featureId: string, scenario: string, root: string): EvidenceClaim[] {
+	const loc = findFeature(featureId, root);
+	if (!loc) return [];
+	const claims: EvidenceClaim[] = [];
+	let active = false;
+	for (const file of readdirSync(loc.dir).filter((f) => f.endsWith(".feature"))) {
+		const lines = readFileSync(path.join(loc.dir, file), "utf8").split(/\r?\n/);
+		for (const line of lines) {
+			const scenarioMatch = line.match(/^\s*Scenario(?: Outline)?:\s*(.+)\s*$/);
+			if (scenarioMatch) active = scenarioSlug(scenarioMatch[1]!) === scenario;
+			if (!active) continue;
+			const step = line.match(/^\s*(Given|When|Then|And|But)\s+(.+?)\s*$/);
+			if (step) {
+				const text = `${step[1]} ${step[2]}`;
+				claims.push({ id: `claim-${claims.length + 1}`, text });
+			}
+		}
+	}
+	return claims;
+}
+
 function listScenarios(featureId: string) {
 	const root = repoRoot();
 	const scenarios = parseScenarios(featureId, root);
@@ -290,6 +319,7 @@ function capture(args: Record<string, string>) {
 	const driver = (args.driver || meta.driver || "cli").toLowerCase();
 	const runId = args.runId || "";
 	const personaIds = meta.personas || [];
+	const claims = scenarioClaims(featureId, scenario, root);
 
 	let primaryFile = "";
 	let kind = "transcript";
@@ -382,6 +412,7 @@ function capture(args: Record<string, string>) {
 			bytes: fileBytes(primaryFile),
 			sha256: existsSync(primaryFile) ? sha256File(primaryFile) : null,
 		},
+		claims,
 		frames: existsSync(path.join(outDir, "frames"))
 			? readdirSync(path.join(outDir, "frames"))
 			: [],
@@ -395,6 +426,17 @@ function capture(args: Record<string, string>) {
 		notes,
 	};
 	writeJson(path.join(outDir, "meta.json"), metaOut);
+	writeJson(path.join(outDir, "review.json"), {
+		status: "pending",
+		reviewer: "",
+		relevance: "pending",
+		completeness: "pending",
+		coverageMode: "single-state",
+		coveredClaims: [],
+		artifactSha256: metaOut.primary.sha256,
+		reviewedAt: "",
+		notes: "Playback review required before this evidence can support a score.",
+	});
 	writeJson(path.join(outDir, "manifest.json"), {
 		scenarioSlug: scenario,
 		primaryPath: path.basename(primaryFile),
@@ -422,6 +464,44 @@ function capture(args: Record<string, string>) {
 			2,
 		),
 	);
+}
+
+function review(args: Record<string, string>) {
+	const root = repoRoot();
+	if (!args.feature || !args.scenario || !args.reviewer) {
+		console.error("--feature, --scenario, and --reviewer required");
+		process.exit(2);
+	}
+	const loc = resolveFeatureLoc(args.feature, root, args.projects?.split(/[,.\s]+/)[0]);
+	const scenario = resolveScenarioSlug(args.feature, args.scenario, root);
+	const dir = evidenceDirInScope(args.feature, scenario, loc.scope);
+	const metaPath = path.join(dir, "meta.json");
+	if (!existsSync(metaPath)) {
+		console.error("capture evidence before reviewing it");
+		process.exit(1);
+	}
+	const meta = JSON.parse(readFileSync(metaPath, "utf8")) as { claims?: EvidenceClaim[]; primary?: { sha256?: string } };
+	const relevant = /^(yes|true|relevant)$/i.test(args.relevant || "");
+	const complete = /^(yes|true|complete)$/i.test(args.complete || "");
+	const all = (meta.claims ?? []).map((claim) => claim.id);
+	const covered = args.coveredClaims === "all" || !args.coveredClaims
+		? all
+		: args.coveredClaims.split(/[,.\s]+/).filter(Boolean);
+	const accepted = relevant && complete && covered.length === all.length && all.every((id) => covered.includes(id));
+	writeJson(path.join(dir, "review.json"), {
+		status: accepted ? "accepted" : "rejected",
+		reviewer: args.reviewer,
+		relevance: relevant ? "relevant" : "irrelevant",
+		completeness: complete ? "complete" : "partial",
+		coverageMode: complete ? "full-journey" : "single-state",
+		coveredClaims: covered,
+		artifactSha256: meta.primary?.sha256 ?? "",
+		reviewedAt: new Date().toISOString(),
+		notes: args.notes || "",
+	});
+	const problems = validateEvidenceReview(dir);
+	console.log(JSON.stringify({ ok: problems.length === 0, accepted, problems }, null, 2));
+	if (problems.length > 0) process.exitCode = 1;
 }
 
 function stitch(args: Record<string, string>) {
@@ -519,6 +599,13 @@ function validate(args: Record<string, string>) {
 			if (!m.primaryPath || !existsSync(path.join(dir, m.primaryPath))) {
 				problems.push(`${loc.scope.id}:${id}/${s.slug}: primary missing`);
 			}
+			if (strict) {
+				problems.push(
+					...validateEvidenceReview(dir).map(
+						(p) => `${loc.scope.id}:${id}/${s.slug}: ${p}`,
+					),
+				);
+			}
 			const primaries = existsSync(dir)
 				? readdirSync(dir).filter((f) => f.startsWith("primary."))
 				: [];
@@ -573,6 +660,7 @@ function main() {
 		return listScenarios(args.feature);
 	}
 	if (mode === "capture") return capture(args);
+	if (mode === "review") return review(args);
 	if (mode === "stitch") return stitch(args);
 	if (mode === "validate") return validate(args);
 	console.error(`unknown mode: ${mode}`);

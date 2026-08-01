@@ -575,7 +575,7 @@ describe("hobo-code look/feel surfaces", () => {
 		).toBe(false);
 	});
 
-	it("empty argv still dispatches with panel chrome", async () => {
+	it("empty non-TTY argv fails closed with panel chrome", async () => {
 		const home = temp("look-empty-home-");
 		const project = temp("look-empty-proj-");
 		const result = await runHoboCodeCli([], {
@@ -583,21 +583,10 @@ describe("hobo-code look/feel surfaces", () => {
 			cwd: project,
 		});
 		const human = formatHoboCodeResult(result, false);
-		expect(result.ok).toBe(true);
-		expect(result.code).toBe("HOBO_CODE_DISPATCH");
-		expect(human).toContain("◆");
-		expect(human).toContain("empty");
-		// done: ◆empty·st (seed text twin omitted; ponytail in data)
-		expect(human).toMatch(
-			/◆empty·st/,
-		);
-		expect(human).not.toContain("refine scaffold");
-		expect(human).not.toContain("empty→ponytail");
-		expect(human).not.toContain("ponytail");
-		expect(human).not.toContain("empty argv");
-		expect(human).not.toMatch(/^  note\s+/m);
-		expect(human).not.toMatch(/^  pipeline\s+/m);
-		expect(human).not.toMatch(/^  prompt\s+/m);
+		expect(result.ok).toBe(false);
+		expect(result.code).toBe("HOBO_CODE_INTERACTIVE_REQUIRED");
+		expect(human).toContain("✕");
+		expect(human).toMatch(/needs a TTY|hobo-code help/i);
 	});
 
 

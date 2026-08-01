@@ -27,6 +27,7 @@ import {
 	type PositiveScores,
 } from "../../harness/lib/scorecard.mts";
 import { evaluateScorecardEvidence } from "../../harness/lib/evidence-checks.mts";
+import { validateEvidenceReview } from "../../harness/lib/evidence-review.mts";
 
 /** Invocation terminals only — never "plateau" / "metrics-zero" alone. */
 const INVOCATION_STOP_REASONS = new Set([
@@ -1500,6 +1501,11 @@ function modeAssertComplete(
 					missing.push(`evidence_missing:${path.relative(root, abs)}`);
 					continue;
 				}
+				missing.push(
+					...validateEvidenceReview(abs).map(
+						(p) => `evidence_review:${path.relative(root, abs)}:${p}`,
+					),
+				);
 				const metaP = path.join(abs, "meta.json");
 				if (existsSync(metaP)) {
 					const meta = JSON.parse(readFileSync(metaP, "utf8")) as {

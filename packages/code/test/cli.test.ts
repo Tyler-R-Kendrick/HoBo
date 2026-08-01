@@ -43,6 +43,19 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(HOBO_CODE_VERBS[0]).toBe("dispatch");
 	});
 
+	it("does not dispatch an empty non-TTY invocation", async () => {
+		const home = temp("hobo-code-empty-tty-");
+		const result = await runHoboCodeCli([], {
+			env: { ...process.env, HOBO_HOME: home },
+			hoboHome: home,
+		});
+		expect(result.ok).toBe(false);
+		expect(result.code).toBe("HOBO_CODE_INTERACTIVE_REQUIRED");
+		expect(result.exitCode).toBe(1);
+		expect(result.message).toMatch(/needs a TTY|hobo-code help/i);
+		expect((result.data as { interactiveRequired?: boolean }).interactiveRequired).toBe(true);
+	});
+
 	it("rejects unknown flags instead of silently accepting them", async () => {
 		const home = temp("hobo-code-flags-");
 		const env = { ...process.env, HOBO_HOME: home };

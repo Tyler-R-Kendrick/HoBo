@@ -11,7 +11,10 @@ import { describe, expect, it } from "vitest";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("doctor agent-tooling (AX)", () => {
-	it("reports AUTH, setup help, and fail-closed MCP launchers", () => {
+	// Spawns the full doctor preflight; slow on cold CI runners (>5s default).
+	it("reports AUTH, setup help, and fail-closed MCP launchers", {
+		timeout: 120_000,
+	}, () => {
 		const r = spawnSync(
 			"node",
 			["--experimental-strip-types", "scripts/dx-preflight.mts", "doctor"],

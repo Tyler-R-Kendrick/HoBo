@@ -47,3 +47,10 @@ pre-existing failure / real bug / debt item discovered along the way.
 - `optimizexp:check` OK; planted-bad-entry hard-fail proof for bus + personas.
 - `agent:check -- --staged` green before both commits.
 - cucumber cli-product: 31 scenarios / 247 steps green.
+- CI note: the impact gate's "Relevant checks only" step flaked on cold
+  runners — root doc-lint/doctor tests (default 5s timeout) and the
+  componentize determinism real-build (360s) time out in CI though they
+  pass locally. Timeouts raised (120s / 900s) with comments in
+  `test/design-docs.test.ts`, `test/design-md-check.test.ts`,
+  `test/doctor-agent-tooling.test.ts`, and the componentize determinism
+  suite.

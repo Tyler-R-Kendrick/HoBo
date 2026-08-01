@@ -517,3 +517,41 @@ test("unrelated docs edits do not trip the behavior lane", () => {
 	const { checks } = plan(["docs/design/vision.md"]);
 	assert.ok(!checks.some(isBehaviorLane));
 });
+
+function isOptimizexpLane(check: Check) {
+	return (
+		check.command === "pnpm" && check.args.join(" ") === "run optimizexp:check"
+	);
+}
+
+test("global .optimizexp changes select the optimizexp drift lane", () => {
+	const { checks, scopes } = plan([".optimizexp/personas/developer.md"]);
+	assert.ok(checks.some(isOptimizexpLane));
+	assert.ok(scopes.includes("optimizexp"));
+});
+
+test("project-local persona/feature changes select the optimizexp drift lane", () => {
+	const { checks } = plan([
+		"packages/code/.optimizexp/features/hobo-code-cost-zero/README.md",
+	]);
+	assert.ok(checks.some(isOptimizexpLane));
+});
+
+test("skill harness changes select the optimizexp drift lane", () => {
+	for (const file of [
+		".agents/skills/optimizexp/harness/generate-persona.mts",
+		".claude/skills/optimizexp/harness/generate-persona.mts",
+	]) {
+		assert.ok(plan([file]).checks.some(isOptimizexpLane), file);
+	}
+});
+
+test("gate script changes select the optimizexp drift lane", () => {
+	const { checks } = plan(["scripts/check-optimizexp.mts"]);
+	assert.ok(checks.some(isOptimizexpLane));
+});
+
+test("unrelated changes do not select the optimizexp drift lane", () => {
+	const { checks } = plan(["packages/core/src/index.ts"]);
+	assert.ok(!checks.some(isOptimizexpLane));
+});

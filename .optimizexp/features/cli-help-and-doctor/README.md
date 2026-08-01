@@ -4,7 +4,7 @@ Feature id: `cli-help-and-doctor`
 
 ## Seed
 
-A developer or agent runs the HoBo CLI help/doctor (or equivalent) and gets actionable status without live cloud credentials.
+A developer or agent runs the real HoBo CLI help/doctor and gets actionable status without live cloud credentials. Scenarios invoke the real `hobo` binaries via the shared `cli-product` step definitions: `hobo --help` against the bare `@hobo/cli` bin, and `hobo doctor --offline --json` against the composed `@hobo/hobo` bin (KD-4 fixed — `packages/hobo` builds and serves the real doctor report; see `../cli-product/KNOWN-DEFECTS.md`).
 
 ## Personas
 

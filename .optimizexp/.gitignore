@@ -27,3 +27,9 @@ Thumbs.db
 *.swp
 # END optimizexp-managed
 
+# Legacy bus archive (local history, not scanned by validate-bus)
+bus-archive/
+
+
+# Doctor snapshots (local machine state, not scanned)
+snapshots/

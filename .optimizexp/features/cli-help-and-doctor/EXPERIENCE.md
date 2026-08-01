@@ -1,25 +1,25 @@
 # EXPERIENCE: cli-help-and-doctor
 
-- entryCommand: `pnpm run doctor`
+- entryCommand: `hobo doctor` (composed `@hobo/hobo` bin; real offline report)
 - driver: cli
-- intent: Exercise product path `pnpm run doctor` with evidence-backed persona review
+- intent: Exercise product path `hobo doctor` (composed `@hobo/hobo` bin; real offline report) with evidence-backed persona review
 
 ## Rubber-duck (explain to a new teammate)
 
 1. Who is the persona and what are they trying to finish in the next 2 minutes?
-   - Stakeholder completing critical path via `pnpm run doctor` without tribal knowledge.
+   - Stakeholder completing critical path via `hobo doctor` (composed `@hobo/hobo` bin; real offline report) without tribal knowledge.
 2. What exact command / UI path do they take from a clean machine?
-   - `pnpm run doctor`
+   - `hobo doctor` (composed `@hobo/hobo` bin; real offline report)
 3. What do they see first? (quote expected chrome, not vibes)
    - Command stdout/stderr with status, usage, or structured result (not a silent hang).
 4. What would make them think they opened the wrong product?
    - Wrong binary, empty help, or monorepo gate noise unrelated to the journey.
 5. Happy path: step-by-step (Given/When/Then in prose first).
-   - Given clean workspace When I run `pnpm run doctor` Then I see clear status and next action.
+   - Given clean workspace When I run `hobo doctor` (composed `@hobo/hobo` bin; real offline report) Then I see clear status and next action.
 6. Failure path: how do they break it, what must the product say?
    - Bad args or missing deps → non-zero exit + remediation, not stack-only.
 7. What evidence will prove a human/agent actually ran this? (driver + command)
-   - driver: cli; capture-evidence with command `pnpm run doctor`
+   - driver: cli; capture-evidence with command `hobo doctor` (composed `@hobo/hobo` bin; real offline report)
 8. What is deliberately out of scope for this feature folder?
    - Full production E2E against live third-party services.
 
@@ -38,6 +38,6 @@
 ## Verdict
 
 - accept
-- primaryCommand: `pnpm run doctor`
+- primaryCommand: `hobo doctor` (composed `@hobo/hobo` bin; real offline report)
 - driver: cli
 - scenarios: happy, failure, discoverability

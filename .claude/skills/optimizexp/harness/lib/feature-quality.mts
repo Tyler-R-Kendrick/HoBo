@@ -210,6 +210,7 @@ export function gherkinTemplate(input: {
 	title: string;
 	personaId: string;
 	personaName: string;
+	personaRole?: string;
 	iface: string;
 	experiences: string[];
 	bin: string;
@@ -217,8 +218,10 @@ export function gherkinTemplate(input: {
 	entryCommand: string;
 }): string {
 	const expTags = input.experiences.map((e) => `@${e}`).join(" ");
-	const head = `@optimizexp ${expTags} @persona:${input.personaId} @interface:${input.iface}
-Feature: ${input.title} (${input.personaName})
+	const roleTag = input.personaRole ? ` @persona-role:${input.personaRole}` : "";
+	const roleLabel = input.personaRole ? ` — ${input.personaRole}` : "";
+	const head = `@optimizexp ${expTags} @persona:${input.personaId} @interface:${input.iface}${roleTag}
+Feature: ${input.title} (${input.personaName}${roleLabel})
   As ${input.personaName}
   I want a real product path I can exercise and capture
   So that review scores come from evidence, not template vibes
@@ -230,20 +233,20 @@ Feature: ${input.title} (${input.personaName})
 
 	if (input.kind === "default-entry-tui") {
 		return `${head}
-  Scenario: Cold-start bare TTY shows product discoverability for ${input.personaId}
+  Scenario: Cold-start bare TTY shows product discoverability for ${input.personaId}${roleLabel}
     Given I am on the critical path described by the feature seed
     When I start bare TTY \`${input.bin}\`
     Then stdout or session chrome mentions hobo-code or product discoverability
     And I do not only see stock third-party agent branding
     And evidence is capturable for this scenario
 
-  Scenario: In-session slash or verbs path is discoverable for ${input.personaId}
+  Scenario: In-session slash or verbs path is discoverable for ${input.personaId}${roleLabel}
     Given I am on the critical path described by the feature seed
     When I run slash command \`/verbs\` or one-shot \`${input.bin} help\`
     Then I see product verbs or slash command map
     And evidence is capturable for this scenario
 
-  Scenario: Help one-shot lists verbs for ${input.personaId}
+  Scenario: Help one-shot lists verbs for ${input.personaId}${roleLabel}
     Given I am on the critical path described by the feature seed
     When I run \`${input.bin} help\`
     Then help lists verbs or usage

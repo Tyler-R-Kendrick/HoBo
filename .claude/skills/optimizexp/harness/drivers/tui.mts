@@ -75,7 +75,7 @@ export function captureTui(
 				durationMs,
 				screen,
 				primaryFile: primaryCast,
-				kind: "transcript",
+				kind: "recording",
 				castFile: primaryCast,
 				degraded: false,
 				notes,

@@ -48,7 +48,81 @@ export type PersonaMeta = {
 	global: boolean;
 	/** Repo-relative path for display */
 	relPath: string;
+	schemaVersion: 1 | 2;
+	segmentIds: string[];
+	marketPriority: number;
+	generatedFromSeed: boolean;
+	seedDigest: string | null;
+	models: PersonaModels | null;
 };
+
+export type PersonaModels = {
+	roleFamily: string;
+	seniority: string;
+	orgArchetype: string;
+	domainFamiliarity: string;
+	localeContext: string;
+	deviceContext: string;
+	timeBudget: string;
+	accessibilityProfile: string;
+	values: string[];
+	riskTolerance: string;
+	noveltySeeking: string;
+	trustInAutomation: string;
+	documentationPreference: string;
+	errorEmotion: string;
+	socialProofNeed: string;
+	aestheticSensitivity: string;
+	controlNeed: string;
+	thresholds: Record<string, number>;
+};
+
+const COGNITIVE_CHANNELS = ["featureSprawl", "visualClutter", "interactiveClutter", "choiceOverload", "informationDensity", "noveltyTax", "contextSwitchTax", "workingMemoryLoad", "interruptionFragility"] as const;
+const MODEL_KEYS = ["roleFamily", "seniority", "orgArchetype", "domainFamiliarity", "localeContext", "deviceContext", "timeBudget", "accessibilityProfile"] as const;
+
+function section(text: string, heading: string): string {
+	const start = text.search(new RegExp(`^## ${heading}\\s*$`, "mi"));
+	if (start < 0) return "";
+	const body = text.slice(start + text.slice(start).indexOf("\n") + 1);
+	const next = body.search(/^## /mi);
+	return (next < 0 ? body : body.slice(0, next)).trim();
+}
+function field(body: string, key: string): string {
+	return body.match(new RegExp(`^- ${key}:\\s*(.+)$`, "mi"))?.[1]?.trim() ?? "";
+}
+function listField(body: string, key: string): string[] {
+	const value = field(body, key).replace(/^\\[|\\]$/g, "");
+	return value.split(",").map((v) => v.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean);
+}
+
+export function parsePersonaModels(text: string): { models: PersonaModels | null; problems: string[] } {
+	const problems: string[] = [];
+	const demo = section(text, "Demographic model");
+	const psycho = section(text, "Psychographic model");
+	const cognitive = section(text, "Cognitive thresholds");
+	if (!demo || !psycho || !cognitive) return { models: null, problems: ["schemaVersion 2 requires structured demographic, psychographic, and cognitive models"] };
+	const model = Object.fromEntries(MODEL_KEYS.map((k) => [k, field(demo, k)])) as Record<string, string>;
+	for (const key of MODEL_KEYS) if (!model[key]) problems.push(`Demographic model missing ${key}`);
+	const psychKeys = ["values", "riskTolerance", "noveltySeeking", "trustInAutomation", "documentationPreference", "errorEmotion", "socialProofNeed", "aestheticSensitivity", "controlNeed"];
+	for (const key of psychKeys) if (!field(psycho, key)) problems.push(`Psychographic model missing ${key}`);
+	const thresholds: Record<string, number> = {};
+	for (const key of COGNITIVE_CHANNELS) {
+		const n = Number(field(cognitive, key));
+		if (!Number.isInteger(n) || n < 0 || n > 5) problems.push(`Cognitive threshold ${key} must be an integer 0..5`);
+		else thresholds[key] = n;
+	}
+	const allowed = (key: string, values: string[]) => { if (field(demo, key) && !values.includes(field(demo, key))) problems.push(`${key} must be one of ${values.join(", ")}`); };
+	allowed("roleFamily", ["application-developer", "platform", "design", "end-user", "agent-operator", "finops", "sre", "other"]);
+	allowed("seniority", ["junior", "mid", "senior", "principal", "student", "hobbyist"]);
+	allowed("orgArchetype", ["solo", "startup", "smb", "enterprise", "oss-community", "agency"]);
+	allowed("domainFamiliarity", ["new-to-hobo", "migrating", "power-user"]);
+	allowed("timeBudget", ["minutes", "hours", "multi-day"]);
+	const level = (key: string) => ["low", "medium", "high"].includes(field(psycho, key));
+	for (const key of ["riskTolerance", "noveltySeeking", "trustInAutomation", "socialProofNeed", "aestheticSensitivity", "controlNeed"]) if (!level(key)) problems.push(`${key} must be low, medium, or high`);
+	if (Object.values(thresholds).every((v) => v === 5)) problems.push("cognitive thresholds cannot all be 5");
+	if (model.seniority === "junior" && thresholds.informationDensity > 4) problems.push("junior personas need an informationDensity threshold <= 4");
+	return { models: problems.length ? null : { ...model, values: listField(psycho, "values"), riskTolerance: field(psycho, "riskTolerance"), noveltySeeking: field(psycho, "noveltySeeking"), trustInAutomation: field(psycho, "trustInAutomation"), documentationPreference: field(psycho, "documentationPreference"), errorEmotion: field(psycho, "errorEmotion"), socialProofNeed: field(psycho, "socialProofNeed"), aestheticSensitivity: field(psycho, "aestheticSensitivity"), controlNeed: field(psycho, "controlNeed"), thresholds } as PersonaModels, problems };
+}
 
 export function personasDirGlobal(root = repoRoot()): string {
 	return personasDir(globalScope(root));
@@ -68,6 +142,7 @@ function parsePersonaFile(
 	const fm = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
 	if (!fm) return null;
 	const yaml = fm[1]!;
+	const schemaVersion = Number(yaml.match(/^schemaVersion:\s*(\d+)/m)?.[1] || 1) as 1 | 2;
 	const base = path.basename(filePath, ".md");
 	const id = yaml.match(/^id:\s*(\S+)/m)?.[1] || base;
 	const expParsed = parseExperienceTypesFromYaml(yaml);
@@ -77,13 +152,18 @@ function parsePersonaFile(
 		.split(",")
 		.map((s) => s.trim())
 		.filter(Boolean);
+	const segmentIds = (yaml.match(/^segmentIds:\s*\[([^\]]*)\]/m)?.[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+	const marketPriority = Number(yaml.match(/^marketPriority:\s*(\d+)/m)?.[1] ?? priority);
+	const generatedFromSeed = /^generatedFromSeed:\s*true\s*$/m.test(yaml);
+	const seedDigest = yaml.match(/^seedDigest:\s*["']?([a-f0-9]{8,64})["']?\s*$/mi)?.[1] ?? null;
+	const modelsResult = schemaVersion === 2 ? parsePersonaModels(text.slice(fm[0].length)) : { models: null, problems: [] };
 	// Optional frontmatter scope override (must match folder if set)
 	const fmScope = yaml.match(/^scope:\s*(\S+)/m)?.[1];
 	const scopeId = fmScope || scope.id;
 	return {
 		id,
 		experiences: expParsed.ok,
-		experienceProblems: expParsed.problems,
+		experienceProblems: [...expParsed.problems, ...modelsResult.problems],
 		priority,
 		interfaces,
 		path: filePath,
@@ -91,6 +171,8 @@ function parsePersonaFile(
 		scopeDir: scope.optimizexpDir,
 		global: scope.global,
 		relPath: relFromRepo(filePath, root),
+		schemaVersion, segmentIds, marketPriority, generatedFromSeed, seedDigest,
+		models: modelsResult.models,
 	};
 }
 
@@ -179,12 +261,14 @@ export function resolvePersonaIds(input: {
 				`Unknown persona id(s): ${missing.join(", ")}. Generate with --persona or add personas under global .optimizexp/personas/ or <project>/.optimizexp/personas/`,
 			);
 		}
+		const invalid = ids.filter((id) => (byId.get(id)?.experienceProblems.length ?? 0) > 0);
+		if (invalid.length) throw new Error(`Persona id(s) failed schema validation: ${invalid.join(", ")}`);
 	} else if (input.generatedIds && input.generatedIds.length > 0) {
 		ids = [...input.generatedIds];
 		reason = "generated this invocation via --persona";
 	} else {
 		// Formal binding: persona.experiences ∩ run experiences ≠ ∅.
-		const valid = all.filter((m) => m.experiences.length > 0);
+		const valid = all.filter((m) => m.experiences.length > 0 && m.experienceProblems.length === 0);
 		ids = valid
 			.filter((m) =>
 				personaMatchesExperiences(m.experiences, input.experiences),

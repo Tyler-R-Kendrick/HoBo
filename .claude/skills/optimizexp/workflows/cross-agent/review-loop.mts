@@ -15,6 +15,7 @@ import {
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import process from "node:process";
 import {
@@ -25,6 +26,7 @@ import {
 	type PrimaryScores,
 	type PositiveScores,
 } from "../../harness/lib/scorecard.mts";
+import { evaluateScorecardEvidence } from "../../harness/lib/evidence-checks.mts";
 
 /** Invocation terminals only — never "plateau" / "metrics-zero" alone. */
 const INVOCATION_STOP_REASONS = new Set([
@@ -645,8 +647,84 @@ type BusBody = {
 	scores?: MetricScorecard;
 	comparison?: unknown;
 	persona?: string;
+	correctedFrom?: string;
+	lessons?: string[];
 	surface?: { name?: string } | string;
 };
+
+type ExperimentCertificate = {
+	runId?: string;
+	iteration?: number;
+	id?: string;
+	regime?: string;
+	reportOnly?: boolean;
+	mutationKind?: string;
+	affectedPaths?: string[];
+	before?: { path?: string; sha256?: string; evidenceId?: string };
+	after?: { path?: string; sha256?: string; evidenceId?: string };
+	beforeOutcomeId?: string;
+	afterOutcomeId?: string;
+	result?: string;
+	verifiedAt?: string;
+};
+
+function sha256File(filePath: string): string {
+	return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
+/** Verify runner-captured experiment certificates; copied claims are not enough. */
+function validateExperimentCertificates(root: string, runId: string, reportOnly: boolean): string[] {
+	if (reportOnly) return [];
+	const runDir = runDirOf(root, runId);
+	const experimentRoot = path.join(runDir, "iterations");
+	if (!existsSync(experimentRoot)) return ["verified_experiment_missing"];
+	const files: string[] = [];
+	for (const iter of readdirSync(experimentRoot, { withFileTypes: true })) {
+		if (!iter.isDirectory()) continue;
+		const dir = path.join(experimentRoot, iter.name, "experiments");
+		if (existsSync(dir)) {
+			files.push(...readdirSync(dir).filter((f) => f.endsWith(".json")).map((f) => path.join(dir, f)));
+		}
+	}
+	if (files.length === 0) return ["verified_experiment_missing"];
+	const problems: string[] = [];
+	let verified = 0;
+	const outcomeIds = new Set<string>();
+	const busDir = path.join(root, ".optimizexp", "bus", "entries");
+	if (existsSync(busDir)) {
+		for (const f of readdirSync(busDir).filter((x) => x.endsWith(".json"))) {
+			try {
+				const b = JSON.parse(readFileSync(path.join(busDir, f), "utf8")) as BusBody;
+				if (b.runId === runId && b.kind === "outcome" && b.id) outcomeIds.add(b.id);
+			} catch { /* malformed bus is reported by the bus gate */ }
+		}
+	}
+	for (const file of files) {
+		const beforeProblems = problems.length;
+		let cert: ExperimentCertificate;
+		try { cert = JSON.parse(readFileSync(file, "utf8")) as ExperimentCertificate; }
+		catch { problems.push(`${path.relative(runDir, file)}: invalid_json`); continue; }
+		const label = path.relative(runDir, file);
+		if (cert.runId !== runId) problems.push(`${label}: runId_mismatch`);
+		if (!cert.id || !cert.mutationKind || !cert.verifiedAt) problems.push(`${label}: certificate_metadata_missing`);
+		if (cert.reportOnly === true) problems.push(`${label}: report_only_certificate`);
+		if (!cert.before?.path || !cert.after?.path || !cert.before.sha256 || !cert.after.sha256) {
+			problems.push(`${label}: before_after_digest_missing`);
+		} else {
+			for (const [name, state] of [["before", cert.before], ["after", cert.after]] as const) {
+				const target = path.isAbsolute(state.path!) ? state.path! : path.join(root, state.path!);
+				if (!existsSync(target)) problems.push(`${label}: ${name}_evidence_missing`);
+				else if (sha256File(target) !== state.sha256) problems.push(`${label}: ${name}_digest_mismatch`);
+			}
+			if (cert.before.sha256 === cert.after.sha256) problems.push(`${label}: no_observable_change`);
+		}
+		if (!cert.afterOutcomeId || !outcomeIds.has(cert.afterOutcomeId)) problems.push(`${label}: post_change_outcome_missing`);
+		if (!["improved", "no-improve", "regressed", "rejected"].includes(cert.result ?? "")) problems.push(`${label}: invalid_result`);
+		if (problems.length === beforeProblems) verified++;
+	}
+	if (verified === 0) problems.push("verified_experiment_missing");
+	return [...new Set(problems)];
+}
 
 function modeValidateBus(root: string) {
 	const dir = path.join(root, ".optimizexp", "bus", "entries");
@@ -683,6 +761,11 @@ function modeValidateBus(root: string) {
 		}
 		problems.push(
 			...validateScorecard(body.scores, kind).map((msg) => `${f}: ${msg}`),
+		);
+		problems.push(
+			...evaluateScorecardEvidence(body.scores, root).map(
+				(msg) => `${f}: ${msg}`,
+			),
 		);
 		if (kind === "expect") {
 			if (body.id) expects.set(body.id, body);
@@ -808,6 +891,18 @@ function modeEquilibrium(
 	const delightFlat =
 		(curr.gap_max ?? 0) >= (prev.gap_max ?? 0) &&
 		(curr.delight_total ?? 0) <= (prev.delight_total ?? 0);
+	const previousFlatIterations = Number(scope?.flatIterations ?? 0);
+	const flatIterations = scoresFlat ? previousFlatIterations + 1 : 0;
+	let readyBacklogItems = 0;
+	if (runId) {
+		const backlogPath = path.join(runDirOf(root, runId), "backlog.json");
+		if (existsSync(backlogPath)) {
+			try {
+				const backlog = JSON.parse(readFileSync(backlogPath, "utf8")) as { items?: Array<{ status?: string; effort?: string }> };
+				readyBacklogItems = (backlog.items ?? []).filter((item) => item.status === "ready" && (item.effort === "S" || item.effort === "M")).length;
+			} catch { readyBacklogItems = 1; }
+		}
+	}
 
 	let pareto: { ok: boolean; reasons: string[] } | null = null;
 	if (curr.positive && prev.positive && curr.primary && prev.primary) {
@@ -827,7 +922,8 @@ function modeEquilibrium(
 		noUplift &&
 		!harmRegressed &&
 		!cognitiveBreach &&
-		scoresFlat &&
+		flatIterations >= 2 &&
+		readyBacklogItems === 0 &&
 		(regime === "harm_reduce" || delightFlat || pareto?.ok === false);
 
 	let stop = false;
@@ -884,6 +980,8 @@ function modeEquilibrium(
 		harmRegressed,
 		cognitiveBreach,
 		scoresFlat,
+		flatIterations,
+		readyBacklogItems,
 		delightFlat,
 		pareto,
 		curr: {
@@ -910,6 +1008,7 @@ function modeEquilibrium(
 	};
 
 	if (runId && scope) {
+		scope.flatIterations = flatIterations;
 		scope.lastEquilibrium = { ...result, at: new Date().toISOString() };
 		scope.regime = nextRegime;
 		const entered = Array.isArray(scope.regimesEntered)
@@ -942,6 +1041,63 @@ function listIterationDirs(runDir: string): string[] {
 		.sort();
 }
 
+/** Value-level equality of the measured score payload (ignores provenance fields). */
+function scoresEquivalent(
+	a: ScoresFile & { justification?: string },
+	b: ScoresFile & { justification?: string },
+): boolean {
+	if (a.metric_total !== b.metric_total || a.metric_max !== b.metric_max) {
+		return false;
+	}
+	const ac = Array.isArray(a.cells) ? a.cells : [];
+	const bc = Array.isArray(b.cells) ? b.cells : [];
+	if (ac.length !== bc.length) return false;
+	const key = (c: ScoreCell) =>
+		`${c.persona}|${c.surface}|${c.harms}|${c.friction}|${c.uncertainty}`;
+	const as = ac.map(key).sort();
+	const bs = bc.map(key).sort();
+	return as.every((k, i) => k === bs[i]);
+}
+
+/**
+ * Copied-scores lint: an iteration whose scores.json is byte-identical to
+ * baseline.json — or carries the exact same score values — was copied, not
+ * re-measured, unless the scorecard carries an explicit `justification`.
+ */
+function lintCopiedScores(root: string, runId: string): string[] {
+	const runDir = runDirOf(root, runId);
+	const baselinePath = path.join(runDir, "baseline.json");
+	if (!existsSync(baselinePath)) return [];
+	const baselineRaw = readFileSync(baselinePath, "utf8");
+	let baseline: ScoresFile & { justification?: string };
+	try {
+		baseline = JSON.parse(baselineRaw) as typeof baseline;
+	} catch {
+		return [];
+	}
+	const problems: string[] = [];
+	for (const iter of listIterationDirs(runDir)) {
+		const scoresPath = path.join(runDir, "iterations", iter, "scores.json");
+		if (!existsSync(scoresPath)) continue;
+		const raw = readFileSync(scoresPath, "utf8");
+		let card: ScoresFile & { justification?: string };
+		try {
+			card = JSON.parse(raw) as typeof card;
+		} catch {
+			continue;
+		}
+		const justification =
+			typeof card.justification === "string" ? card.justification.trim() : "";
+		if (justification) continue;
+		if (raw === baselineRaw || scoresEquivalent(baseline, card)) {
+			problems.push(
+				`copied_scores_without_justification:iterations/${iter}/scores.json`,
+			);
+		}
+	}
+	return problems;
+}
+
 function countBusTriples(root: string, runId: string): {
 	expects: number;
 	acts: number;
@@ -962,7 +1118,7 @@ function countBusTriples(root: string, runId: string): {
 		} catch {
 			continue;
 		}
-		if (body.runId && body.runId !== runId) continue;
+		if (body.runId !== runId) continue;
 		if (body.kind === "expect" && body.id) expects.add(body.id);
 		if (body.kind === "act" && body.expects && body.id) {
 			actsByExpect.set(body.expects, body.id);
@@ -982,6 +1138,67 @@ function countBusTriples(root: string, runId: string): {
 		outcomes: outcomesByAct.size,
 		completeTriples,
 	};
+}
+
+/** Run-scoped semantic bus gate used by completion (not just an ID counter). */
+function validateBusForRun(root: string, runId: string): string[] {
+	const dir = path.join(root, ".optimizexp", "bus", "entries");
+	if (!existsSync(dir)) return ["bus_missing"];
+	const problems: string[] = [];
+	const expects = new Map<string, BusBody>();
+	const acts = new Map<string, BusBody>();
+	const outcomes: BusBody[] = [];
+	const pendingMismatches = new Map<string, string>();
+	const cellKey = (body: BusBody) => `${body.persona ?? ""}|${typeof body.surface === "string" ? body.surface : body.surface?.name ?? ""}`;
+	for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
+		let body: BusBody;
+		try { body = JSON.parse(readFileSync(path.join(dir, f), "utf8")) as BusBody; }
+		catch { problems.push(`${f}: invalid_json`); continue; }
+		if (body.runId !== runId) {
+			problems.push(`${f}: runId_mismatch`);
+			continue;
+		}
+		if (!body.id) problems.push(`${f}: missing_id`);
+		if (body.kind === "survey") continue;
+		if (body.kind !== "expect" && body.kind !== "act" && body.kind !== "outcome") {
+			problems.push(`${f}: invalid_kind`);
+			continue;
+		}
+		problems.push(...validateScorecard(body.scores, body.kind).map((m) => `${f}: ${m}`));
+		problems.push(...evaluateScorecardEvidence(body.scores, root).map((m) => `${f}: ${m}`));
+		if (body.kind === "expect" && body.id) expects.set(body.id, body);
+		if (body.kind === "expect") {
+			const pending = pendingMismatches.get(cellKey(body));
+			if (pending && body.correctedFrom !== pending && !(body.lessons && body.lessons.length > 0)) {
+				problems.push(`${f}: mismatch_not_corrected:${pending}`);
+			}
+			if (body.correctedFrom === pending || (body.lessons && body.lessons.length > 0)) pendingMismatches.delete(cellKey(body));
+		}
+		if (body.kind === "act") {
+			if (!body.expects) problems.push(`${f}: act_missing_expects`);
+			if (body.id) acts.set(body.id, body);
+		}
+		if (body.kind === "outcome") {
+			if (!body.expects) problems.push(`${f}: outcome_missing_expects`);
+			outcomes.push(body);
+			const mismatch = body.comparison && typeof body.comparison === "object" &&
+				((body.comparison as { matchedExpectation?: boolean }).matchedExpectation === false ||
+					Number((body.comparison as { deltaFromExpect?: { total?: number } }).deltaFromExpect?.total ?? 0) > 0);
+			if (mismatch && body.id) pendingMismatches.set(cellKey(body), body.id);
+		}
+	}
+	const matched = new Set<string>();
+	for (const outcome of outcomes) {
+		if (outcome.expects) matched.add(outcome.expects);
+		if (!outcome.expects || !expects.has(outcome.expects)) problems.push("outcome_unknown_expect");
+		if (outcome.actId && !acts.has(outcome.actId)) problems.push("outcome_unknown_act");
+		const exp = outcome.expects ? expects.get(outcome.expects)?.scores?.primary : undefined;
+		const act = outcome.actId ? acts.get(outcome.actId)?.scores?.primary : undefined;
+		problems.push(...validateComparison(outcome.comparison, exp, act, outcome.scores?.primary).map((m) => `outcome: ${m}`));
+	}
+	for (const [id, act] of acts) if (act.expects && !expects.has(act.expects)) problems.push(`act ${id}: unknown_expect`);
+	for (const id of expects.keys()) if (!matched.has(id)) problems.push(`open_expect:${id}`);
+	return [...new Set(problems)];
 }
 
 function modeStatus(args: Record<string, string | boolean>, root: string) {
@@ -1106,6 +1323,11 @@ function modeAssertComplete(
 	if (bus.completeTriples < 1) {
 		missing.push("bus_complete_triples_lt_1");
 	}
+	missing.push(...lintCopiedScores(root, runId));
+	// Completion is run-scoped. Missing runId entries must never count for this run.
+	const busValidation = validateBusForRun(root, runId);
+	missing.push(...busValidation);
+	missing.push(...validateExperimentCertificates(root, runId, Boolean(scope.reportOnly)));
 
 	if (!scope.lastShouldStop) {
 		missing.push("lastShouldStop_missing");
@@ -1220,17 +1442,24 @@ function modeAssertComplete(
 		}
 	}
 
-	// feature-coverage.json when present must be clean; if missing but features listed, soft-require after skill upgrade
+	// Coverage is mandatory for every mutating run (and for explicitly scoped features).
 	const coveragePath = path.join(runDir, "feature-coverage.json");
-	if (existsSync(coveragePath)) {
+	const coverageRequired = !Boolean(scope.reportOnly) || featureIds.length > 0;
+	if (!existsSync(coveragePath) && coverageRequired) {
+		missing.push("feature_coverage_missing");
+	} else if (existsSync(coveragePath)) {
 		try {
 			const cov = JSON.parse(readFileSync(coveragePath, "utf8")) as {
+				runId?: string;
+				ok?: boolean;
 				requiredP0Uncovered?: string[];
 				quality?: {
 					featuresWithoutRubberduck?: string[];
 					featuresWithTemplateOnlySteps?: string[];
 				};
 			};
+			if (cov.runId !== runId) missing.push("feature_coverage_runId_mismatch");
+			if (cov.ok === false) missing.push("feature_coverage_not_clean");
 			for (const g of cov.requiredP0Uncovered ?? []) {
 				missing.push(`p0_uncovered:${g}`);
 			}

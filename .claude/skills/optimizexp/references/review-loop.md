@@ -168,7 +168,7 @@ node --import tsx .agents/skills/optimizexp/workflows/cross-agent/review-loop.mt
   --mode aggregate-bus --run <runId>
 ```
 
-Write `iterations/<nnn>/scores.json` + `findings.md` ranked by leverage (impact on metric_max / effort). Cite score deltas from `comparison`.
+Write `iterations/<nnn>/scores.json` + `findings.md` ranked by leverage (impact on metric_max / effort). Cite score deltas from `comparison`. Scores must be re-measured: an iteration `scores.json` byte-identical or score-identical to `baseline.json` fails assert-complete (`copied_scores_without_justification`) unless it carries an explicit `justification` field.
 
 Finding shape:
 

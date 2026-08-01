@@ -15,6 +15,8 @@ Run **multi-objective experience optimization** across **UX**, **DX**, and **AX*
 
 Each review pass **must apply an experiment** (smallest safe change), re-score with evidence â€” not report-only by default.
 
+Scores are **falsifiable, not vibes**: `evidenceRefs` must point at files that exist, optional `evidenceChecks` rubric entries (exitCode / transcript assertions against captured `meta.json`) are programmatically enforced, and an iteration `scores.json` copied from `baseline.json` fails validation without an explicit `justification` (see `references/metric-scorecard.md`).
+
 Uses:
 
 - **Global** personas/features under repo-root **`.optimizexp/`** (cross-cutting)
@@ -281,7 +283,7 @@ node --import tsx .agents/skills/optimizexp/harness/survey.mts --mode aggregate 
 node --import tsx .agents/skills/optimizexp/harness/survey.mts --mode rank-backlog --run <runId> --global
 ```
 
-Drivers: **cli** (transcript + screen size), **tui** (asciinema if present), **web** (Playwright/browser MCP), **native** (computer-use via `OPTIMIZEXP_NATIVE_CAPTURE`).
+Drivers: **cli** (replayable `primary.cast` + generated `REPLAY.html` + transcript), **tui** (asciinema cast when present, otherwise the same local cast), **web** (Playwright/browser MCP video), **native** (computer-use via `OPTIMIZEXP_NATIVE_CAPTURE`).
 
 ## Phases
 
@@ -334,4 +336,3 @@ After harm floor: delight_maximize until equilibrium (default). `--no-delight` â
 /optimizexp --dx --no-delight                 # stop at harm floor (opt-out)
 /optimizexp --ax --no-survey                  # skip survey (not default)
 ```
-

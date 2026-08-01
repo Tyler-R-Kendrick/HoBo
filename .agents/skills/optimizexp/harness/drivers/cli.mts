@@ -18,7 +18,7 @@ export type CliCaptureResult = {
 	durationMs: number;
 	screen: { cols: number | null; rows: number | null };
 	primaryFile: string;
-	kind: "transcript";
+	kind: "recording";
 };
 
 function termSize(): { cols: number | null; rows: number | null } {
@@ -83,6 +83,20 @@ export function captureCli(
 	const primaryFile = path.join(outDir, "primary.txt");
 	writeFileSync(primaryFile, header, "utf8");
 	writeFileSync(path.join(outDir, "terminal.txt"), header, "utf8");
+	const castFile = path.join(outDir, "primary.cast");
+	const castHeader = {
+		version: 2,
+		width: screen.cols ?? 120,
+		height: screen.rows ?? 40,
+		timestamp: Math.floor(Date.now() / 1000),
+		env: { TERM: "xterm-256color", SHELL: "bash" },
+	};
+	const output = `${stdout}${stderr ? `\n${stderr}` : ""}`;
+	writeFileSync(
+		castFile,
+		`${JSON.stringify(castHeader)}\n${JSON.stringify([Math.max(durationMs / 1000, 0.01), "o", output])}\n`,
+		"utf8",
+	);
 	return {
 		exitCode,
 		stdout,
@@ -90,7 +104,7 @@ export function captureCli(
 		combined: header,
 		durationMs,
 		screen,
-		primaryFile,
-		kind: "transcript",
+		primaryFile: castFile,
+		kind: "recording",
 	};
 }

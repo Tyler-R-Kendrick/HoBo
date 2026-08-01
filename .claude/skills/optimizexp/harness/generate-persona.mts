@@ -21,7 +21,7 @@ import {
 	writeScopeFromSelection,
 	type OptimizexpScope,
 } from "./lib/paths.mts";
-import { listPersonaMetas } from "./lib/persona-resolve.mts";
+import { listPersonaMetas, parsePersonaModels } from "./lib/persona-resolve.mts";
 import { resolveProjects } from "./lib/projects.mts";
 import {
 	EXPERIENCE_TYPES,
@@ -127,14 +127,14 @@ function inferExperiences(seed: string, override?: string): ExperienceType[] {
 	const s = seed.toLowerCase();
 	const out = new Set<ExperienceType>();
 	if (
-		/\b(ui|ux|design|visual|css|brand|figma|contrast|accessibility|a11y|user|frontend|front-end)\b/.test(
+		/\b(ui|ux|design|designer|visual|css|brand|figma|contrast|accessibility|accessible|a11y|user|frontend|front-end|docs?)\b/.test(
 			s,
 		)
 	) {
 		out.add("ux");
 	}
 	if (
-		/\b(dev|developer|cli|build|test|lint|typecheck|git|monorepo|package|dx|engineer|ops|sre)\b/.test(
+		/\b(dev|developer|cli|build|test|lint|typecheck|git|monorepo|package|dx|engineer|ops|sre|docs?|documentation)\b/.test(
 			s,
 		)
 	) {
@@ -155,7 +155,7 @@ function inferInterfaces(seed: string, experiences: string[]): string[] {
 	if (/\b(web|browser|site|page|ui)\b/.test(s)) out.add("web");
 	if (/\b(native|desktop|mobile|app)\b/.test(s)) out.add("native");
 	if (/\b(mcp|agent|skill)\b/.test(s)) out.add("mcp");
-	if (/\b(doc|readme|guide)\b/.test(s)) out.add("docs");
+	if (/\b(doc|docs|documentation|readme|guide)\b/.test(s)) out.add("docs");
 	if (out.size === 0) {
 		if (experiences.includes("ux")) out.add("web");
 		if (experiences.includes("dx")) out.add("cli");
@@ -175,13 +175,25 @@ function displayName(seed: string, id: string): string {
 		.join(" ");
 }
 
+function groundedProfile(seed: string, experiences: string[]) {
+	const s = seed.toLowerCase();
+	const roleFamily = /\b(design|designer|visual|brand|a11y|accessibility|user|customer)\b/.test(s) ? "design" : /\b(agent|mcp|copilot|cursor|claude|codex)\b/.test(s) ? "agent-operator" : /\b(ops|sre|platform|infrastructure)\b/.test(s) ? "platform" : "application-developer";
+	const seniority = /\b(junior|new|beginner|student|learning)\b/.test(s) ? "junior" : /\b(principal|staff|lead|expert|senior)\b/.test(s) ? "senior" : "mid";
+	const orgArchetype = /\b(enterprise|large|regulated)\b/.test(s) ? "enterprise" : /\b(open.?source|oss|community)\b/.test(s) ? "oss-community" : /\b(solo|indie|freelance)\b/.test(s) ? "solo" : "startup";
+	const domainFamiliarity = /\b(existing|migration|migrating|legacy)\b/.test(s) ? "migrating" : /\b(power|expert|maintainer)\b/.test(s) ? "power-user" : "new-to-hobo";
+	const timeBudget = /\b(quick|urgent|minutes|interactive|immediate)\b/.test(s) ? "minutes" : /\b(long|deep|research|multi.?day)\b/.test(s) ? "multi-day" : "hours";
+	const accessibilityProfile = /\b(screen.?reader|non.?visual|blind)\b/.test(s) ? "screen-reader-possible" : /\b(reduced.?motion|motion)\b/.test(s) ? "prefers-reduced-motion" : /\b(accessib|cognitive|overwhelm|simple|clarity)\b/.test(s) ? "cognitive-load-sensitive" : "none-declared";
+	const values = [...new Set(["clarity", /\b(speed|fast|quick)\b/.test(s) ? "speed" : "safety", /\b(cost|budget|cheap)\b/.test(s) ? "cost-control" : "autonomy", roleFamily === "design" ? "craft" : "safety"])];
+	const noveltySeeking = /\b(experiment|novel|creative|explore)\b/.test(s) ? "high" : /\b(stable|predictable|safe|simple)\b/.test(s) ? "low" : "medium";
+	const trustInAutomation = /\b(verify|audit|control|manual|skeptic)\b/.test(s) ? "low" : /\b(autonomous|delegate|automation|agent)\b/.test(s) ? "high" : "medium";
+	const aestheticSensitivity = experiences.includes("ux") || roleFamily === "design" ? "high" : "medium";
+	const thresholds = { featureSprawl: seniority === "junior" ? 1 : 2, visualClutter: aestheticSensitivity === "high" ? 2 : 3, interactiveClutter: 3, choiceOverload: 2, informationDensity: seniority === "junior" ? 2 : 3, noveltyTax: noveltySeeking === "low" ? 1 : 2, contextSwitchTax: timeBudget === "minutes" ? 1 : 2, workingMemoryLoad: seniority === "junior" ? 2 : 3, interruptionFragility: timeBudget === "minutes" ? 2 : 3 };
+	return { roleFamily, seniority, orgArchetype, domainFamiliarity, timeBudget, accessibilityProfile, values, noveltySeeking, trustInAutomation, aestheticSensitivity, thresholds };
+}
+
 function scaffoldBody(seed: string, id: string, experiences: string[]): string {
 	const name = displayName(seed, id);
-	const roleFamily = experiences.includes("ux")
-		? "design"
-		: experiences.includes("ax")
-			? "agent-operator"
-			: "application-developer";
+	const profile = groundedProfile(seed, experiences);
 	return `# ${name}
 
 ## Who I am
@@ -199,38 +211,30 @@ I am a concrete stakeholder in this repository's experience surfaces (${experien
 
 ## Demographic model
 
-- roleFamily: ${roleFamily}
-- seniority: mid
-- orgArchetype: startup
-- domainFamiliarity: new-to-hobo
+- roleFamily: ${profile.roleFamily}
+- seniority: ${profile.seniority}
+- orgArchetype: ${profile.orgArchetype}
+- domainFamiliarity: ${profile.domainFamiliarity}
 - localeContext: en-primary
 - deviceContext: desktop-first
-- timeBudget: hours
-- accessibilityProfile: cognitive-load-sensitive
+- timeBudget: ${profile.timeBudget}
+- accessibilityProfile: ${profile.accessibilityProfile}
 
 ## Psychographic model
 
-- values: [clarity, speed, autonomy, safety]
-- riskTolerance: medium
-- noveltySeeking: medium
-- trustInAutomation: medium
+- values: [${profile.values.join(", ")}]
+- riskTolerance: ${profile.trustInAutomation === "low" ? "low" : "medium"}
+- noveltySeeking: ${profile.noveltySeeking}
+- trustInAutomation: ${profile.trustInAutomation}
 - documentationPreference: examples-first
 - errorEmotion: debug-eager
 - socialProofNeed: low
-- aestheticSensitivity: ${experiences.includes("ux") ? "high" : "medium"}
+- aestheticSensitivity: ${profile.aestheticSensitivity}
 - controlNeed: medium
 
 ## Cognitive thresholds
 
-- featureSprawl: 2
-- visualClutter: ${experiences.includes("ux") ? 2 : 3}
-- interactiveClutter: 3
-- choiceOverload: 2
-- informationDensity: 3
-- noveltyTax: 2
-- contextSwitchTax: 2
-- workingMemoryLoad: 2
-- interruptionFragility: 3
+${Object.entries(profile.thresholds).map(([k, v]) => `- ${k}: ${v}`).join("\n")}
 
 ## Goals
 
@@ -300,7 +304,7 @@ function frontmatter(input: {
 	priority: number;
 	seed: string;
 }): string {
-	const digest = seedDigest(input.seed);
+	const digest = seedDigest(input.seed.trim());
 	const expLine = formatExperiencesFrontmatter(
 		normalizeExperienceTokens(input.experiences, "experiences").ok,
 	);
@@ -384,6 +388,22 @@ function validatePersonaFile(filePath: string): string[] {
 		}
 		if (!/^seedDigest:\s*\S+/m.test(yaml)) {
 			problems.push("generatedFromSeed true requires seedDigest");
+		}
+	}
+	if (schemaVersion === "2") {
+		const body = text.slice(fm[0].length);
+		problems.push(...parsePersonaModels(body).problems);
+		if (!/^marketPriority:\s*\d+\s*$/m.test(yaml)) problems.push("schemaVersion 2 requires marketPriority");
+		if (!/^interfaces:\s*\[[^\]]+\]/m.test(yaml)) problems.push("schemaVersion 2 requires non-empty interfaces");
+		if (generated === "true") {
+			// Capture everything after the "## Source seed" heading line up to the
+			// next "## " section (or EOF). Note: inside a regex literal `\s` is a
+			// single backslash escape; `[\\s\\S]` would match literal "\s" text.
+			const seedBody = body.match(/^## Source seed[ \t]*\r?\n([\s\S]*)$/m)?.[1] ?? "";
+			const source = seedBody.split(/^## /m)[0]?.trim() ?? "";
+			const digest = yaml.match(/^seedDigest:\s*["']?([a-f0-9]{8,64})/mi)?.[1];
+			if (!source) problems.push("generated persona requires non-empty source seed");
+			else if (digest && seedDigest(source) !== digest) problems.push("seedDigest does not match Source seed");
 		}
 	}
 	return problems;
@@ -490,6 +510,7 @@ function validatePersonaFileContent(content: string, id: string): string[] {
 			tmpNote.push(`missing section: ## ${section}`);
 		}
 	}
+	if (schemaVersion === "2") tmpNote.push(...parsePersonaModels(content.slice(fm[0].length)).problems);
 	return tmpNote;
 }
 

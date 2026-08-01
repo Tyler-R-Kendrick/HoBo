@@ -10,10 +10,10 @@ import type { OptimizexpWorld } from "./world.ts";
 
 /** Discovery snapshot — see discovery.json for full report. */
 export const DISCOVERY_PRIMARY = {
-  command: "pnpm run doctor" as string | null,
+  command: "node packages/cli/dist/bin/hobo.js --help" as string | null,
   confidence: "high",
   reason:
-    "seed wants help/doctor without live cloud; pnpm run doctor is offline + agent-tooling (not eval:agent:live)",
+    "seed wants help/doctor without live cloud; real @hobo/cli bin is offline. `hobo doctor` runs the real composed-CLI handler (packages/hobo builds again, KD-4 fixed); cucumber scenarios exercise it via shared cli-product steps",
 };
 
 export const IMPLEMENTATION_STATUS = {

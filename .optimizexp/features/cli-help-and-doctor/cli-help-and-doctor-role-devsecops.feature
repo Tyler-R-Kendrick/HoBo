@@ -1,28 +1,26 @@
 @optimizexp @dx @ax @persona:role-devsecops @interface:cli
 Feature: cli-help-and-doctor (role devsecops)
   As role devsecops
-  I want a real product path I can exercise and capture
+  I want real hobo help/doctor output I can exercise and capture
   So that review scores come from evidence, not template vibes
 
   Background:
     Given persona "role-devsecops" is active
     And feature "cli-help-and-doctor" is under optimizexp review
 
-  Scenario: Primary path works for role-devsecops
-    Given I am on the critical path described by the feature seed
-    When I run `pnpm run doctor`
-    Then I see product chrome or structured status for this surface
-    And the next action is obvious without tribal knowledge
+  Scenario: hobo --help lists the doctor verb for role-devsecops
+    When I run the hobo CLI with arguments "--help"
+    Then the exit code is 0
+    And stdout contains "Canonical verbs:"
+    And stdout contains "doctor"
+    And stdout contains "Report environment and portability hazards"
     And evidence is capturable for this scenario
 
-  Scenario: Help or status remains usable for role-devsecops
-    Given I am on the critical path described by the feature seed
-    When I run `pnpm --help`
-    Then help lists verbs or usage or the surface documents next steps
+  # KD-4 resolved: packages/hobo builds again; the composed CLI serves the
+  # real doctor report. Asserts the hermetic offline path (no live cloud).
+  Scenario: hobo doctor returns the real report for role-devsecops
+    When I run the composed hobo CLI with arguments "doctor --offline --json"
+    Then the exit code is 0
+    And the stdout is a JSON envelope with the standard shape
+    And the JSON envelope on stdout has "verb" equal to "doctor"
     And evidence is capturable for this scenario
-
-  Scenario: Failure is actionable for role-devsecops
-    Given something goes wrong on this journey
-    When I run `pnpm run not-a-real-script-zz`
-    Then the error is non-blaming and actionable
-    And evidence of what I saw is stored under evidence/

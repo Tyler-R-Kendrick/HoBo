@@ -5,6 +5,14 @@ description: "Append-only outcomes for sdlc coordinator runs."
 tags: [hobo, plans, sdlc]
 ---
 
+## 2026-08-01 — OptimizeXP replayable evidence closeout (#1000)
+
+- **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/1000
+- **scope:** replayable API/TUI/GUI evidence guidance, independent evidence review, verified experiment certificates, persona/scenario planning, and hobo-code empty non-TTY fail-closed entry
+- **local gates:** staged `agent:check` green; @hobo/code 117 passed / 4 skipped; behavior 98 scenarios / 352 steps; `optimizexp:check` green
+- **OptimizeXP:** run `20260801-hobo-code-optimizexp`; `assert-complete` and `mark-complete` green; stop `pareto-equilibrium`
+- **status:** awaiting PR checks/review, then squash-merge
+
 # Dispatch log
 
 Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.

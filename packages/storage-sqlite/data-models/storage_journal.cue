@@ -22,3 +22,31 @@ package storage_sqlite
 	fence_token:     =~"^[1-9][0-9]*$"
 	updated_at:      string & !=""
 }
+
+#DurableEffectWire: {
+	kind:            string & !=""
+	id:              string & !=""
+	idempotency_key: string & !=""
+	deduped:         bool
+}
+
+#DurableCommitResultWire: {
+	stream_id:      string & !=""
+	appended:       [...bytes]
+	deduped:        [...bytes]
+	first_position: =~"^(0|[1-9][0-9]*)$"
+	last_position:  =~"^(0|[1-9][0-9]*)$"
+	effects:        [...#DurableEffectWire]
+}
+
+#SubscriptionLeaseWire: {
+	subscription_id: string & !=""
+	partition_id:    string & !=""
+	holder_id:       string & !=""
+	fence_token:     =~"^[1-9][0-9]*$"
+	expires_at:      string & !=""
+}
+
+// StorageErrorCode enum: optimistic-concurrency, fencing, checkpoint,
+// schema/codec, and persistence failure classes (storage_journal.proto).
+#StorageErrorCode: int & >=0 & <=11

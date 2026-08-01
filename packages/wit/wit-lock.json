@@ -300,6 +300,16 @@
       "stability": "experimental",
       "path": "wit/deps/hobo-secrets/hobo-secrets.wit",
       "sha256": "sha256:d4671767fb14a2b619d4ed1c4046832a4953c1df93d198c7e691faab7fb1f838"
+    },
+    {
+      "id": "hobo:storage/event-store@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "storage",
+      "interface_name": "event-store",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-storage/hobo-storage.wit",
+      "sha256": "sha256:bf02d3848e70b222fd22e1a9181781160c06ed3ae7e97ea783e6c659269a3df9"
     }
   ],
   "guards": [

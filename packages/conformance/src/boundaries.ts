@@ -40,6 +40,16 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/broker",
 	"packages/mcp",
 	"packages/training-pipeline",
+	"packages/code",
+	"packages/ci-guard",
+	"packages/control-api",
+	"packages/control-yard",
+	"packages/management",
+	"packages/replay",
+	"packages/schema-tools",
+	"packages/stations",
+	"packages/storage-sqlite",
+	"packages/trails",
 ]);
 
 // Documented, narrowly-scoped exceptions. The AI training/eval providers
@@ -59,17 +69,27 @@ const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	"packages/providers/runner-blacksmith->packages/providers/runner-github",
 	"packages/providers/runner-depot->packages/providers/runner-github",
 	"packages/providers/runner-depot->packages/providers/runner-blacksmith",
+	// ADR-0135: the local/browser runtimes compose @hobo/storage-sqlite as the
+	// durable engine behind HoBo-owned ports (schema v2, SqliteJournal). This is
+	// the sanctioned runtime->storage composition, not a port bypass.
+	"packages/runtimes/runtime-local->packages/storage-sqlite",
+	"packages/runtimes/runtime-browser->packages/storage-sqlite",
+	// Dev-only PACT consumer/provider tests, same shape as the accepted
+	// core->contract-harness edge in validateBoundaryImports.
+	"packages/runtimes/runtime-oci->packages/contract-harness",
 ]);
 
 // The SWE agent connectors (swe-claude, swe-codex, swe-copilot, swe-cursor,
 // swe-gemini, swe-grok, ...) all speak ACP through @hobo/connector-acp, the
-// connector-tier base library (#893-#899). A tier rule instead of exact edges
+// connector-tier base library (#893-#899), and share the SWE connector
+// vocabulary through @hobo/swe-shared. A tier rule instead of exact edges
 // because every new SWE connector adds the same edge; any other
 // connector->connector import still fails closed.
 function isConnectorTierBaseEdge(from: string, to: string): boolean {
 	return (
 		from.startsWith("packages/connectors/") &&
-		to === "packages/connectors/connector-acp"
+		(to === "packages/connectors/connector-acp" ||
+			to === "packages/connectors/swe-shared")
 	);
 }
 

@@ -31,7 +31,7 @@ Rules:
 | **web** | Browser video recording (Playwright / browser MCP) | Screenshot sequence → stitch to video → GIF |
 | **native** | Computer-use / OS recorder video | Screenshots at key moments → stitch → GIF |
 | **tui** | Terminal recording (asciinema cast / script) + screen size | Full terminal transcript + cols×rows + optional PNG of terminal if available |
-| **cli** (non-TUI) | stdout/stderr transcript + exit code + env summary | Same + timing |
+| **cli** (non-TUI) | Replayable asciicast (`primary.cast`) + HTML player + transcript | Transcript only when recording is impossible; mark degraded |
 | **docs** | Rendered page screenshot or HTML snapshot | Markdown excerpt + path |
 
 **Visual artifacts prefer video.** If video cannot be produced or attached:
@@ -54,8 +54,8 @@ Rules:
   "runId": "20260730-dx-baseline",
   "screen": { "cols": 120, "rows": 40, "widthPx": null, "heightPx": null },
   "primary": {
-    "file": "primary.txt",
-    "kind": "transcript",
+    "file": "primary.cast",
+    "kind": "recording",
     "bytes": 4096,
     "sha256": "…"
   },
@@ -73,8 +73,8 @@ Rules:
 ```json
 {
   "scenarioSlug": "staged-skill-edit-selects-skill-gates",
-  "primaryPath": "primary.txt",
-  "kind": "transcript",
+  "primaryPath": "primary.cast",
+  "kind": "recording",
   "updatedAt": "2026-07-30T21:00:00.000Z",
   "overridesPrevious": true
 }
@@ -89,12 +89,12 @@ Outcome entries MUST include:
   "featureId": "agent-check-staged",
   "scenarioSlug": "staged-skill-edit-selects-skill-gates",
   "path": ".optimizexp/features/agent-check-staged/evidence/staged-skill-edit-selects-skill-gates/",
-  "primary": "primary.txt",
-  "kind": "transcript"
+  "primary": "primary.cast",
+  "kind": "recording"
 }
 ```
 
-Metrics without an evidence path are invalid for visual/TUI/web/native surfaces. CLI-only may use transcript evidence.
+Metrics without an evidence path are invalid. CLI/TUI captures must expose a replayable cast and generated `REPLAY.html`; transcripts are supporting summaries, not the primary visual evidence.
 
 ## Secrets
 

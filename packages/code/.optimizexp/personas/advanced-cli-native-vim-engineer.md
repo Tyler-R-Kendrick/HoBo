@@ -36,9 +36,9 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 ## Demographic model
 
-- roleFamily: systems-or-application-engineer
-- seniority: senior-cli-native
-- orgArchetype: any (often remote/SSH)
+- roleFamily: application-developer
+- seniority: senior
+- orgArchetype: solo
 - domainFamiliarity: power-user
 - localeContext: en-primary
 - deviceContext: terminal-first (local or remote SSH)
@@ -49,12 +49,12 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 - values: [keyboard, speed, composability, panes, modal-edit, low-chrome]
 - riskTolerance: medium
-- noveltySeeking: medium-high (nvim plugins + agent bridges)
+- noveltySeeking: medium
 - trustInAutomation: medium
 - documentationPreference: man-page-and-examples
 - errorEmotion: debug-eager
 - socialProofNeed: low
-- aestheticSensitivity: medium (dense but scannable)
+- aestheticSensitivity: medium
 - controlNeed: high
 
 ## Cognitive thresholds

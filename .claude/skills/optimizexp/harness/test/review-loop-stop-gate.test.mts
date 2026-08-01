@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 // harness/test → harness → optimizexp → skills → .agents → repo root
 const REPO = path.resolve(
@@ -93,6 +94,20 @@ function writeScores(
 	return p;
 }
 
+function card(phase: "expect" | "act" | "outcome") {
+	return {
+		schemaVersion: 1,
+		phase,
+		role: phase === "expect" ? "predicted" : phase === "act" ? "observed" : "judged",
+		persona: "dev",
+		surface: "cli",
+		primary: { harms: 0, friction: 0, uncertainty: 0, total: 0, max: 0 },
+		rationale: {},
+		evidenceRefs: phase === "expect" ? [] : ["before.txt"],
+		scoredAt: new Date().toISOString(),
+	};
+}
+
 describe("optimizexp stop gate", () => {
 	it("init writes infinite-until-pareto-equilibrium and status running", () => {
 		const dir = seedRepo();
@@ -162,6 +177,79 @@ describe("optimizexp stop gate", () => {
 		}
 	});
 
+	it("copied scores from baseline fail without justification", () => {
+		const dir = seedRepo();
+		const run = "t-copied";
+		try {
+			runRl(dir, ["--mode", "init", "--run", run, "--experiences", "dx"]);
+			const runDir = path.join(dir, ".optimizexp/runs", run);
+			const payload = {
+				iteration: 0,
+				cells: [
+					{
+						persona: "dev",
+						surface: "cli",
+						harms: 1,
+						friction: 2,
+						uncertainty: 0,
+					},
+				],
+				metric_total: 3,
+				metric_max: 2,
+			};
+			writeFileSync(
+				path.join(runDir, "baseline.json"),
+				JSON.stringify({ runId: run, ...payload }) + "\n",
+			);
+			mkdirSync(path.join(runDir, "iterations/000"), { recursive: true });
+			writeFileSync(
+				path.join(runDir, "iterations/000/scores.json"),
+				JSON.stringify(payload) + "\n",
+			);
+			const copied = runRl(dir, ["--mode", "assert-complete", "--run", run]);
+			assert.notEqual(copied.code, 0);
+			const missing = copied.json.missing as string[];
+			assert.ok(
+				missing.some((m) =>
+					m.includes(
+						"copied_scores_without_justification:iterations/000/scores.json",
+					),
+				),
+				JSON.stringify(missing),
+			);
+
+			// explicit justification makes the carry-over legal
+			writeFileSync(
+				path.join(runDir, "iterations/000/scores.json"),
+				JSON.stringify({
+					...payload,
+					justification: "no product change since baseline; re-measure pending",
+				}) + "\n",
+			);
+			const justified = runRl(dir, ["--mode", "assert-complete", "--run", run]);
+			assert.notEqual(justified.code, 0);
+			assert.ok(
+				!(justified.json.missing as string[]).some((m) =>
+					m.includes("copied_scores_without_justification"),
+				),
+			);
+
+			// differing scores pass the lint without justification
+			writeFileSync(
+				path.join(runDir, "iterations/000/scores.json"),
+				JSON.stringify({ ...payload, metric_total: 2, metric_max: 1 }) + "\n",
+			);
+			const reMeasured = runRl(dir, ["--mode", "assert-complete", "--run", run]);
+			assert.ok(
+				!(reMeasured.json.missing as string[]).some((m) =>
+					m.includes("copied_scores_without_justification"),
+				),
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("assert-complete fails on empty / product-only run", () => {
 		const dir = seedRepo();
 		try {
@@ -178,6 +266,35 @@ describe("optimizexp stop gate", () => {
 			assert.ok(missing.includes("no_iterations"));
 			assert.ok(missing.includes("bus_complete_triples_lt_1"));
 			assert.ok(missing.includes("delight_regime_never_entered"));
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("mutating completion requires a verified experiment and feature coverage", () => {
+		const dir = seedRepo();
+		try {
+			runRl(dir, ["--mode", "init", "--run", "t-required", "--experiences", "dx"]);
+			const result = runRl(dir, ["--mode", "assert-complete", "--run", "t-required"]);
+			assert.notEqual(result.code, 0);
+			assert.match(result.stdout, /verified_experiment_missing/);
+			assert.match(result.stdout, /feature_coverage_missing/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("foreign bus entries cannot satisfy a run", () => {
+		const dir = seedRepo();
+		try {
+			runRl(dir, ["--mode", "init", "--run", "t-isolated", "--experiences", "dx"]);
+			writeFileSync(path.join(dir, ".optimizexp/bus/entries/foreign.json"), JSON.stringify({
+				kind: "expect", id: "foreign-expect", runId: "other-run",
+			}) + "\n");
+			const result = runRl(dir, ["--mode", "assert-complete", "--run", "t-isolated"]);
+			assert.notEqual(result.code, 0);
+			assert.match(result.stdout, /bus_complete_triples_lt_1/);
+			assert.match(result.stdout, /verified_experiment_missing/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -297,6 +414,11 @@ describe("optimizexp stop gate", () => {
 			);
 			writeFileSync(path.join(runDir, "survey/r.json"), "{}\n");
 			writeFileSync(path.join(runDir, "backlog.json"), '{"items":[]}\n');
+			writeFileSync(path.join(runDir, "feature-coverage.json"), JSON.stringify({ runId: run, ok: true }) + "\n");
+			writeFileSync(path.join(runDir, "before.txt"), "before\n");
+			writeFileSync(path.join(runDir, "after.txt"), "after\n");
+			// bus scorecards cite "before.txt" root-relative; evidence must exist
+			writeFileSync(path.join(dir, "before.txt"), "before\n");
 
 			const bus = path.join(dir, ".optimizexp/bus/entries");
 			writeFileSync(
@@ -306,6 +428,7 @@ describe("optimizexp stop gate", () => {
 					id: "e1",
 					runId: run,
 					persona: "dev",
+					scores: card("expect"),
 				}) + "\n",
 			);
 			writeFileSync(
@@ -314,7 +437,8 @@ describe("optimizexp stop gate", () => {
 					kind: "act",
 					id: "a1",
 					expects: "e1",
-					runId: run,
+					 runId: run,
+					scores: card("act"),
 				}) + "\n",
 			);
 			writeFileSync(
@@ -324,9 +448,18 @@ describe("optimizexp stop gate", () => {
 					id: "o1",
 					expects: "e1",
 					actId: "a1",
-					runId: run,
+					 runId: run,
+					scores: card("outcome"),
+					comparison: { expectId: "e1", matchedExpectation: true, deltaFromExpect: { harms: 0, friction: 0, uncertainty: 0, total: 0, max: 0 }, expectationMatch: { behavior: true, scoresWithinTol: true, tolerance: 0 } },
 				}) + "\n",
 			);
+			const digest = (value: string) => createHash("sha256").update(value).digest("hex");
+			mkdirSync(path.join(runDir, "iterations/001/experiments"), { recursive: true });
+			writeFileSync(path.join(runDir, "iterations/001/experiments/e1.json"), JSON.stringify({
+				runId: run, iteration: 1, id: "e1", regime: "delight_maximize", reportOnly: false,
+				mutationKind: "file", before: { path: `.optimizexp/runs/${run}/before.txt`, sha256: digest("before\n") }, after: { path: `.optimizexp/runs/${run}/after.txt`, sha256: digest("after\n") },
+				afterOutcomeId: "o1", result: "improved", verifiedAt: new Date().toISOString(),
+			}) + "\n");
 
 			const prev = writeScores(dir, "prev.json", 0, 0, {
 				delight_total: 12,
@@ -351,7 +484,7 @@ describe("optimizexp stop gate", () => {
 				"--implementable-findings",
 				"0",
 			]);
-			const eq = runRl(dir, [
+			const equilibriumArgs = [
 				"--mode",
 				"equilibrium",
 				"--run",
@@ -366,7 +499,9 @@ describe("optimizexp stop gate", () => {
 				"0",
 				"--regime",
 				"delight_maximize",
-			]);
+			];
+			runRl(dir, equilibriumArgs);
+			const eq = runRl(dir, equilibriumArgs);
 			assert.equal(eq.json.stop, true);
 
 			const ac = runRl(dir, ["--mode", "assert-complete", "--run", run]);

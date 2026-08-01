@@ -1,61 +1,26 @@
 {
   "featureId": "cli-help-and-doctor",
-  "seed": "A developer or agent runs the HoBo CLI help/doctor (or equivalent) and gets actionable status without live cloud credentials.",
+  "seed": "A developer or agent runs the real HoBo CLI help/doctor and gets actionable status without live cloud credentials.",
   "scannedAt": "2026-07-31T03:31:24.193Z",
   "bindings": [
     {
-      "kind": "package-script",
-      "id": "script:doctor",
-      "scriptName": "doctor",
-      "command": "pnpm run doctor",
+      "kind": "product-cli",
+      "id": "bin:hobo",
+      "command": "node packages/cli/dist/bin/hobo.js (fallback: pnpm exec tsx packages/cli/src/bin/hobo.ts)",
       "confidence": "high",
-      "reason": "seed wants help/doctor without live cloud; doctor is offline + agent-tooling (optimizexp ax rewire 20260731)",
+      "reason": "real @hobo/cli bin is offline; doctor runs the real composed-CLI handler (packages/hobo builds again, KD-4 fixed)",
       "implementsSteps": [
-        "I exercise the surface as this persona would",
-        "I observe the failure as this persona"
+        "I run the hobo CLI with arguments {string}"
       ]
     },
     {
-      "kind": "shell",
-      "id": "setup-agent-tools-help",
-      "command": "bash scripts/setup-agent-tools.sh --help",
+      "kind": "product-cli",
+      "id": "bin:hobo-composed",
+      "command": "node packages/hobo/dist/bin/hobo.js (fallback: pnpm exec tsx packages/hobo/src/bin/hobo.ts)",
       "confidence": "high",
-      "reason": "help/doctor path for agent tooling progressive setup",
+      "reason": "composed @hobo/hobo bin wires the real doctor handler; used by the doctor scenarios",
       "implementsSteps": [
-        "I exercise the surface as this persona would"
-      ]
-    },
-    {
-      "kind": "package-script",
-      "id": "script:docs:cli-lint",
-      "scriptName": "docs:cli-lint",
-      "command": "pnpm run docs:cli-lint",
-      "confidence": "medium",
-      "reason": "script \"docs:cli-lint\" matched seed keywords (score 5)",
-      "implementsSteps": [
-        "I exercise the surface as this persona would"
-      ]
-    },
-    {
-      "kind": "package-script",
-      "id": "script:eval:agent:mock",
-      "scriptName": "eval:agent:mock",
-      "command": "pnpm run eval:agent:mock",
-      "confidence": "medium",
-      "reason": "script \"eval:agent:mock\" matched seed keywords (score 5)",
-      "implementsSteps": [
-        "I exercise the surface as this persona would"
-      ]
-    },
-    {
-      "kind": "package-script",
-      "id": "script:agent:check",
-      "scriptName": "agent:check",
-      "command": "pnpm run agent:check",
-      "confidence": "medium",
-      "reason": "script \"agent:check\" matched seed keywords (score 5)",
-      "implementsSteps": [
-        "I exercise the surface as this persona would"
+        "I run the composed hobo CLI with arguments {string}"
       ]
     }
   ],

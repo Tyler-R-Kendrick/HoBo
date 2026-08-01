@@ -32,8 +32,8 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 ## Demographic model
 
 - roleFamily: application-developer
-- seniority: mid-to-senior-ai-ide-native
-- orgArchetype: startup-or-product-team
+- seniority: senior
+- orgArchetype: startup
 - domainFamiliarity: power-user
 - localeContext: en-primary
 - deviceContext: desktop-ide-first
@@ -44,13 +44,13 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 - values: [speed, multi-file-agent, background-parallelism, PR-quality, rules-as-code, polish]
 - riskTolerance: medium
-- noveltySeeking: high (chases Cursor changelog)
-- trustInAutomation: high-when-guardrailed
+- noveltySeeking: high
+- trustInAutomation: high
 - documentationPreference: map-and-examples-first
 - errorEmotion: retry-eager
 - socialProofNeed: medium
 - aestheticSensitivity: high
-- controlNeed: medium-high (rules, hooks, model pick)
+- controlNeed: medium
 
 ## Cognitive thresholds
 

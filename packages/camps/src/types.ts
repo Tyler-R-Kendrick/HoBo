@@ -1,3 +1,4 @@
+// public-contract: version tag for the topology object model shared across bindle/camp/yard parsing.
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1" as const;
 
 /** Provider-neutral JSON value for resolver/resource config (no secrets). */
@@ -13,6 +14,9 @@ export type JsonValue =
  * @deprecated Legacy provider selection used only by compatibility parsers.
  * Provider ownership lives on Yard; camps no longer author provider IDs.
  */
+// Deliberately richer than the wire form: retained so legacy camp files stay
+// parseable; generated topology_camp_pb.ts ProviderSelection is the wire type.
+// domain-view: legacy compatibility-parser view; permanent by design.
 export interface ProviderSelection {
 	readonly kind: "provider-selection";
 	readonly providerId: string;

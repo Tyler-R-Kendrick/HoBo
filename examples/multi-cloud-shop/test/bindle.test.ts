@@ -25,12 +25,16 @@ describe("multi-cloud-shop", () => {
 		);
 	});
 
-	it("carries per-provider annotations for two providers on one bindle", () => {
-		const api = definition.resources.api;
-		expect(api?.annotations.map((entry) => entry.provider)).toEqual([
-			"aws",
-			"azure",
-		]);
+	it("stays provider-neutral: provider selection belongs on a Yard", () => {
+		// bindle-provider-selection-forbidden: no cloud provider pins may appear
+		// in resource annotations; only platform annotations (hobo env /
+		// session-replay) are allowed. Two-cloud deployment attaches this same
+		// bindle to provider-specific Camps/Yards.
+		for (const resource of Object.values(definition.resources)) {
+			for (const annotation of resource.annotations) {
+				expect(annotation.provider).toBe("hobo");
+			}
+		}
 	});
 
 	it("serves the catalog from the bound api entrypoint, pinned by the pact", async () => {

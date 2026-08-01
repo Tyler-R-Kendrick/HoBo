@@ -29,26 +29,26 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 ## Demographic model
 
-- roleFamily: product-builder / indie / founder-operator
-- seniority: advanced-on-claude-code · novice-on-traditional-dev
-- orgArchetype: solo-or-tiny-team
-- domainFamiliarity: claude-code-expert · general-coding-novice
+- roleFamily: application-developer
+- seniority: mid
+- orgArchetype: solo
+- domainFamiliarity: new-to-hobo
 - localeContext: en-primary
 - deviceContext: laptop-plus-chrome
-- timeBudget: hours-with-short-attention-bursts
+- timeBudget: hours
 - accessibilityProfile: plain-language-first
 
 ## Psychographic model
 
 - values: [momentum, plain-english, feature-map, safety-rails, polish, ship-fast]
-- riskTolerance: medium (trusts agent; fears silent breakage)
-- noveltySeeking: high (chases Claude Code SOTA releases)
-- trustInAutomation: high-when-narrated
+- riskTolerance: medium
+- noveltySeeking: high
+- trustInAutomation: high
 - documentationPreference: cookbook-and-map-first
 - errorEmotion: anxious-then-retry
-- socialProofNeed: medium (follows Claude Code release chatter)
-- aestheticSensitivity: medium-high
-- controlNeed: medium (wants “do the right thing” defaults)
+- socialProofNeed: medium
+- aestheticSensitivity: medium
+- controlNeed: medium
 
 ## Cognitive thresholds
 

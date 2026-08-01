@@ -6,6 +6,7 @@
 .gbrain/
 *.pglite
 .headroom/
+.serena/
 .caveman/
 
 # Node / tooling
@@ -40,3 +41,6 @@ sandboxes/
 
 # CI fixture runner append-only event logs (local + CI artifacts)
 test-results/
+
+# Test-run byproducts
+test/output/

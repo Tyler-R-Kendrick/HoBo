@@ -11,26 +11,26 @@
  *   - `hobo yard ensure` / `init --host wasm` / `doctor` → toolchain under HOBO_HOME
  *   - Camp mesh injects bindle env on every hop (`x-hobo-env-*` / `x-hobo-bindle-env`)
  */
+
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import {
+	chmodSync,
 	existsSync,
 	mkdirSync,
 	readFileSync,
-	writeFileSync,
-	chmodSync,
+	renameSync,
 	rmSync,
+	writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
 
 /** Fetch handler shape shared with Camp mesh. */
-export type FetchHandler = (
-	input: Request,
-) => Response | Promise<Response>;
+export type FetchHandler = (input: Request) => Response | Promise<Response>;
 
 // public-contract: the wasmtime version the isolated-wasm toolchain pins to.
 export const PINNED_WASMTIME_VERSION = "46.0.1";
@@ -126,14 +126,21 @@ function parseVersion(output: string): string | null {
 
 function tryWasmtime(binPath: string): { version: string } | null {
 	if (!existsSync(binPath) && binPath.includes("/")) return null;
-	const result = spawnSync(binPath, ["--version"], {
-		encoding: "utf8",
-		timeout: 10_000,
-	});
-	if (result.status !== 0) return null;
-	const version = parseVersion(result.stdout || result.stderr || "");
-	if (!version) return null;
-	return { version };
+	// Parallel test sweeps load the box: the first exec of a freshly written
+	// ~40MB binary can exceed one 10s probe. Retry only on spawn timeout —
+	// real failures (missing, wrong arch, old version) fail immediately.
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		const result = spawnSync(binPath, ["--version"], {
+			encoding: "utf8",
+			timeout: 15_000,
+		});
+		if (result.error && result.signal === "SIGTERM") continue;
+		if (result.status !== 0) return null;
+		const version = parseVersion(result.stdout || result.stderr || "");
+		if (!version) return null;
+		return { version };
+	}
+	return null;
 }
 
 function meetsFloor(version: string, floor = PINNED_WASMTIME_VERSION): boolean {
@@ -153,13 +160,15 @@ function meetsFloor(version: string, floor = PINNED_WASMTIME_VERSION): boolean {
  * `$HOBO_HOME/tools/wasmtime` when needed. Prefer calling
  * {@link ensureIsolatedWasmToolchain} from CLI surfaces.
  */
-export async function ensureWasmtimeBinary(options: {
-	readonly hoboHome?: string;
-	readonly env?: NodeJS.ProcessEnv;
-	readonly binPath?: string;
-	readonly download?: boolean;
-	readonly emitProgress?: (message: string) => void;
-} = {}): Promise<WasmtimeBinary> {
+export async function ensureWasmtimeBinary(
+	options: {
+		readonly hoboHome?: string;
+		readonly env?: NodeJS.ProcessEnv;
+		readonly binPath?: string;
+		readonly download?: boolean;
+		readonly emitProgress?: (message: string) => void;
+	} = {},
+): Promise<WasmtimeBinary> {
 	const env = options.env ?? process.env;
 	const hoboHome = options.hoboHome ?? defaultHoboHome(env);
 	const download = options.download ?? true;
@@ -230,7 +239,9 @@ export async function ensureWasmtimeBinary(options: {
 	mkdirSync(staging, { recursive: true });
 	const archivePath = join(staging, archiveName);
 
-	emit(`hobo: downloading wasmtime ${version} (${triple}) into ${toolsDir(hoboHome)}`);
+	emit(
+		`hobo: downloading wasmtime ${version} (${triple}) into ${toolsDir(hoboHome)}`,
+	);
 	const curl = spawnSync("curl", ["-fsSL", "-o", archivePath, url], {
 		encoding: "utf8",
 		timeout: 120_000,
@@ -249,18 +260,22 @@ export async function ensureWasmtimeBinary(options: {
 		throw new Error(`failed to extract wasmtime archive: ${tar.stderr}`);
 	}
 
-	const extracted = join(
-		staging,
-		`wasmtime-v${version}-${triple}`,
-		"wasmtime",
-	);
+	const extracted = join(staging, `wasmtime-v${version}-${triple}`, "wasmtime");
 	if (!existsSync(extracted)) {
 		throw new Error(`wasmtime binary missing after extract: ${extracted}`);
 	}
 
 	mkdirSync(toolsDir(hoboHome), { recursive: true });
-	writeFileSync(toolsPath, readFileSync(extracted));
-	chmodSync(toolsPath, 0o755);
+	// Atomic install: concurrent ensures (parallel test sweeps, `hobo dev` +
+	// `hobo yard ensure`) must never observe a partially written binary.
+	// Write to a unique sibling temp file, then rename over the target.
+	const tmpTarget = join(
+		toolsDir(hoboHome),
+		`.wasmtime-${process.pid}-${randomUUID()}.tmp`,
+	);
+	writeFileSync(tmpTarget, readFileSync(extracted));
+	chmodSync(tmpTarget, 0o755);
+	renameSync(tmpTarget, toolsPath);
 	rmSync(staging, { recursive: true, force: true });
 
 	const verified = tryWasmtime(toolsPath);
@@ -349,12 +364,14 @@ function resolveJcoTool(): JcoTool {
  * Ensure the isolated-wasm Camp component host can run: wasmtime + jco.
  * Called from `hobo yard ensure|init|doctor` and automatically from `hobo dev`.
  */
-export async function ensureIsolatedWasmToolchain(options: {
-	readonly hoboHome?: string;
-	readonly env?: NodeJS.ProcessEnv;
-	readonly download?: boolean;
-	readonly emitProgress?: (message: string) => void;
-} = {}): Promise<IsolatedWasmToolchain> {
+export async function ensureIsolatedWasmToolchain(
+	options: {
+		readonly hoboHome?: string;
+		readonly env?: NodeJS.ProcessEnv;
+		readonly download?: boolean;
+		readonly emitProgress?: (message: string) => void;
+	} = {},
+): Promise<IsolatedWasmToolchain> {
 	const env = options.env ?? process.env;
 	const hoboHome = options.hoboHome ?? defaultHoboHome(env);
 	const emit = options.emitProgress ?? (() => {});
@@ -367,11 +384,15 @@ export async function ensureIsolatedWasmToolchain(options: {
 		download: options.download ?? true,
 		emitProgress: emit,
 	});
-	notes.push(`wasmtime ${wasmtime.version} (${wasmtime.source}) at ${wasmtime.binPath}`);
+	notes.push(
+		`wasmtime ${wasmtime.version} (${wasmtime.source}) at ${wasmtime.binPath}`,
+	);
 
 	const jco = resolveJcoTool();
 	notes.push(`jco ${jco.version} at ${jco.binPath}`);
-	emit(`hobo: isolated-wasm toolchain ready (wasmtime ${wasmtime.version}, jco ${jco.version})`);
+	emit(
+		`hobo: isolated-wasm toolchain ready (wasmtime ${wasmtime.version}, jco ${jco.version})`,
+	);
 
 	return {
 		hoboHome,
@@ -638,8 +659,7 @@ export async function componentizePrivateGuest(options: {
 		.digest("hex")
 		.slice(0, 16);
 	const workDir =
-		options.workDir ??
-		join(hoboHome, "sandboxes", options.resourceName, hash);
+		options.workDir ?? join(hoboHome, "sandboxes", options.resourceName, hash);
 	mkdirSync(workDir, { recursive: true });
 
 	const guestSourcePath = join(workDir, "guest.mjs");
@@ -806,9 +826,7 @@ async function waitForListen(
 	const started = Date.now();
 	while (Date.now() - started < timeoutMs) {
 		if (child.exitCode !== null) {
-			throw new Error(
-				`wasmtime exited before listen (code ${child.exitCode})`,
-			);
+			throw new Error(`wasmtime exited before listen (code ${child.exitCode})`);
 		}
 		try {
 			const response = await fetch(`http://127.0.0.1:${port}/`, {
@@ -924,4 +942,3 @@ export async function bootWasmtimeSandbox(options: {
 		terminate,
 	};
 }
-

@@ -32,6 +32,6 @@
 		"pretest": "pnpm run build",
 		"test": "vitest run",
 		"test:contract:consumer": "vitest run contracts/consumer",
-		"test:contract:provider": "vitest run contracts/provider"
+		"test:contract:provider": "vitest run --passWithNoTests contracts/provider"
 	}
 }

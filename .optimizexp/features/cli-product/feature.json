@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "cli-product",
+  "title": "Product CLI help and failure honesty (hobo, hobo-code)",
+  "experiences": [
+    "dx",
+    "ax"
+  ],
+  "personas": [
+    "product-app-developer",
+    "product-coding-agent"
+  ],
+  "interfaces": [
+    "cli"
+  ],
+  "driver": "cli",
+  "surfaces": [
+    "hobo --help",
+    "hobo <verb> --help",
+    "hobo deploy --json",
+    "hobo-code --help",
+    "hobo-code <verb> --help",
+    "hobo-code status --json"
+  ],
+  "tags": [
+    "@optimizexp",
+    "@dx",
+    "@ax"
+  ],
+  "generatedFromSeed": false,
+  "personaResolution": "explicit --personas",
+  "bindings": {
+    "steps": "steps/bindings.steps.ts",
+    "implementations": "steps/implementations.ts",
+    "tests": "test/cli-product.bindings.test.ts"
+  },
+  "implementationStatus": "wired",
+  "primaryCommand": "hobo --help"
+}

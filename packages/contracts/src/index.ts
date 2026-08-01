@@ -96,6 +96,16 @@ export {
 	validateResilienceAgainstEffects,
 } from "./resilience.js";
 export {
+	captureContractEffects,
+	createEffectIsolation,
+	type DomainMock,
+	dualFixturesForEffects,
+	type EffectIsolationReport,
+	filterPureContracts,
+	mocksForEffects,
+	runResilienceFaultInjection,
+} from "./effects-harness.js";
+export {
 	describeContractEffects,
 	formatContractDescribe,
 } from "./describe.js";

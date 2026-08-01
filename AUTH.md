@@ -49,7 +49,7 @@ in your agent UI unless you intentionally opt in.
 | **SkillOpt** live backends | Provider-specific (`ANTHROPIC_API_KEY`, Azure OpenAI, Qwen, MiniMax, …) | Prompts/code to chosen backend | Per-run |
 | Product cloud providers | Per-Camp / secretless federation (see design ADRs) | Per provider | Per provider |
 
-gbrain MCP is launched via [`scripts/agent-mcp-gbrain.sh`](scripts/agent-mcp-gbrain.sh), which **fails closed** when the binary or an embedding key is missing (prints remediation here). The binary itself stays **inert** until `gbrain init` **and** a key is set. Do not point it at secrets or content you will not send to a third party.
+gbrain MCP is launched via [`scripts/agent-mcp-gbrain.sh`](scripts/agent-mcp-gbrain.sh), which **fails closed** when the binary or an initialized embedding provider is missing. Run `gbrain init --pglite` and choose local Ollama for zero-key, local embeddings, or configure one remote provider key. Remote providers receive embedding/query text; do not send them secrets or content you will not share with that third party.
 
 ### Agent rules (local residual)
 

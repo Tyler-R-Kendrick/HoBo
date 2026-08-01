@@ -19,6 +19,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@bufbuild/protobuf": "2.12.1",
 		"@hobo/connector-acp": "workspace:*"
 	},
 	"devDependencies": {

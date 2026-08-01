@@ -40,10 +40,14 @@ event store opened over the same directory reads the identical log. The
 operator's disk — not a provider — is the source of truth.
 
 The deployment is also described with HoBo's topology objects: one
-`yard("home-yard", ...)` from `@hobo/yards` containing one `camp("prod", ...)`
-from `@hobo/camps`, whose single provider mapping is read from the runtime's
-own registry — and `@hobo/yards` **enforces** one-provider-per-yard (the tests
-show mixing providers throws).
+`yard("home-yard", { provider, ... })` from `@hobo/yards` containing one
+`camp("prod", ...)` from `@hobo/camps`. Provider selection lives ONLY on the
+Yard (read from the runtime's own registry) — `@hobo/yards` **enforces**
+one-provider-per-yard and `@hobo/camps` rejects Camps that own a Bindle or
+select a provider (the tests show mixing providers throws). The Camp stays
+provider-neutral; its runtime requirements record the operator's own disk as
+the event-store substrate, and the status-page Bindle attaches via the
+`deployment.Requested` the CLI issues.
 
 ## Honest scope
 

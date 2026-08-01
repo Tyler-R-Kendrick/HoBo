@@ -30,3 +30,16 @@ memory is durable. Unit tests use `allowTransient: true` for semantic coverage.
 | No OPFS, durable required | `PERSISTENCE_UNAVAILABLE` |
 | Multi-tab concurrent writers | Not default; explicit multi-tab mode only |
 | SharedArrayBuffer / COOP/COEP | Not required for default sahpool path |
+
+## Architecture rules
+
+Parse, don't validate: storage RPC frames from the OPFS worker are parsed once
+into derived types (`BrowserStorageRpcRequest`/`Response`, persistence status)
+before the event store consumes them; invalid frames are unrepresentable past
+the boundary.
+
+Event architecture: the browser event store accepts append commands, emits
+events through the storage actor, and serves reads from projections over
+materialized views; current state is cached in snapshots and historical
+snapshots persist in the OPFS read store when a real OPFS backend is
+available (the runtime fails closed otherwise).

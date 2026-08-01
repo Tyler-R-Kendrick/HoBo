@@ -38,26 +38,26 @@ Demographic/psychographic models below are **synthetic segment attributes** for 
 
 ## Demographic model
 
-- roleFamily: autonomous-coding-agent / agent-operator
-- seniority: production-agent
-- orgArchetype: agent-harness-or-ci-fleet
-- domainFamiliarity: protocol-power-user
+- roleFamily: agent-operator
+- seniority: mid
+- orgArchetype: enterprise
+- domainFamiliarity: power-user
 - localeContext: machine-locale-agnostic
 - deviceContext: headless-ci-or-editor-subprocess
-- timeBudget: seconds-to-minutes-per-step
+- timeBudget: minutes
 - accessibilityProfile: structured-json-first
 
 ## Psychographic model
 
 - values: [unattended-safety, least-privilege, protocol-interop, durable-memory, fail-closed, no-elicitation]
-- riskTolerance: low-on-side-effects · high-on-automation
-- noveltySeeking: high-on-protocol-standards
-- trustInAutomation: self (I am the automation)
+- riskTolerance: low
+- noveltySeeking: high
+- trustInAutomation: high
 - documentationPreference: machine-schemas-and-examples
 - errorEmotion: retry-with-structured-remediation
-- socialProofNeed: none
-- aestheticSensitivity: none
-- controlNeed: maximal-over-tools-and-sandbox
+- socialProofNeed: low
+- aestheticSensitivity: low
+- controlNeed: high
 
 ## Cognitive thresholds
 

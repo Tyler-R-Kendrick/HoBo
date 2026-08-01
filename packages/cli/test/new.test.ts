@@ -46,7 +46,9 @@ async function assertFile(root: string, relativePath: string) {
 }
 
 describe("hobo new scaffold", () => {
-	it("scaffolds an api project through the CLI shell and stays offline", async () => {
+	// Runs the scaffolded project's own tests/typecheck as subprocesses;
+	// cold CI runners exceed the 10s default.
+	it("scaffolds an api project through the CLI shell and stays offline", { timeout: 120_000 }, async () => {
 		await withScratch(async (cwd) => {
 			const result = await runHobo(["new", "snapshop", "-t", "api", "--json"], {
 				cwd,
@@ -71,7 +73,13 @@ describe("hobo new scaffold", () => {
 			expect(envelope.data.name).toBe("snapshop");
 			expect(envelope.data.template).toBe("api");
 			expect(envelope.data.offline).toBe(true);
-			expect(envelope.data.nextSteps).toEqual(["cd snapshop", "hobo dev"]);
+			expect(envelope.data.nextSteps).toEqual([
+				"cd snapshop",
+				"npm install",
+				"npm run typecheck",
+				"npm test",
+				"hobo dev",
+			]);
 			expect(envelope.data.createdFiles).toEqual(expectedCreatedFiles);
 
 			const projectDir = path.join(cwd, "snapshop");
@@ -86,7 +94,8 @@ describe("hobo new scaffold", () => {
 		});
 	});
 
-	it("creates all four templates as runnable SDK project stubs", async () => {
+	// Spawns tsc + node --test for all four templates; slow on cold CI runners.
+	it("creates all four templates as runnable SDK project stubs", { timeout: 120_000 }, async () => {
 		await withScratch(async (cwd) => {
 			expect(VALID_TEMPLATES).toEqual(["todo", "api", "agent", "fullstack"]);
 
@@ -117,7 +126,9 @@ describe("hobo new scaffold", () => {
 			expect(result.exitCode).toBe(0);
 			expect(result.stderr).toBe("");
 			expect(result.stdout).toMatch(/Created HoBo project snapshop/);
-			expect(result.stdout).toMatch(/cd snapshop\nhobo dev/);
+			expect(result.stdout).toMatch(
+			/cd snapshop\nnpm install\nnpm run typecheck\nnpm test\nhobo dev/,
+		);
 		});
 	});
 

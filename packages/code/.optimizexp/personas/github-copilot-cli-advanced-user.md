@@ -41,7 +41,7 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 - values: [craft, polish, enterprise-trust, model-choice, safety, speed]
 - riskTolerance: medium
 - noveltySeeking: high
-- trustInAutomation: medium-high
+- trustInAutomation: medium
 - documentationPreference: examples-first
 - errorEmotion: compare-to-copilot-immediately
 - socialProofNeed: medium

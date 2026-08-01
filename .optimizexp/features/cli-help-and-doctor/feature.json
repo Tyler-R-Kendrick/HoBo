@@ -24,8 +24,8 @@
   ],
   "driver": "cli",
   "surfaces": [
-    "pnpm run doctor",
-    "bash scripts/setup-agent-tools.sh --help"
+    "hobo --help",
+    "hobo doctor --json"
   ],
   "tags": [
     "@optimizexp",
@@ -36,10 +36,10 @@
   "seedDigest": "d3758ceb39138871",
   "personaResolution": "explicit --personas",
   "bindings": {
-    "steps": "steps/bindings.steps.ts",
+    "steps": "steps/bindings.steps.ts (delegates to ../cli-product/steps/bindings.steps.ts)",
     "implementations": "steps/implementations.ts",
     "tests": "test/cli-help-and-doctor.bindings.test.ts"
   },
   "implementationStatus": "wired",
-  "primaryCommand": "pnpm run doctor"
+  "primaryCommand": "hobo --help"
 }

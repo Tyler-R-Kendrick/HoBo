@@ -31,6 +31,11 @@ export function renderSuccess(input: {
 	}
 
 	if (input.flags.quiet) {
+		// Quiet suppresses success chrome, never failure signal: errors still
+		// print (stderr) so `-q` scripts see why the command failed.
+		if (!envelope.ok) {
+			return { exitCode, stdout: "", stderr: `${envelope.message}\n` };
+		}
 		return okText("", exitCode);
 	}
 
@@ -95,14 +100,20 @@ export function renderError(
 		};
 	}
 
+	const diagnostics = verboseDiagnostics(error, input.flags.verbose);
+
 	if (input.flags.json) {
 		const envelope: CliEnvelope = {
 			ok: false,
 			verb: input.verb ?? "",
 			status: "error",
 			code: "HOBO_CLI_INTERNAL",
-			message: "Internal CLI error. Re-run with --verbose for diagnostics.",
-			remediation: ["Re-run with --verbose and report the stderr output."],
+			message: input.flags.verbose
+				? `Internal CLI error: ${errorMessage(error)}`
+				: "Internal CLI error. Re-run with --verbose for diagnostics.",
+			remediation: input.flags.verbose
+				? ["Report the stderr diagnostics."]
+				: ["Re-run with --verbose and report the stderr output."],
 			context: publicContext(
 				input.context ?? {
 					cwd: input.flags.cwd,
@@ -116,15 +127,33 @@ export function renderError(
 		return {
 			exitCode: 1,
 			stdout: `${JSON.stringify(envelope)}\n`,
-			stderr: "",
+			stderr: diagnostics,
 		};
 	}
 
 	return {
 		exitCode: 1,
 		stdout: "",
-		stderr: "Internal CLI error. Re-run with --verbose for diagnostics.\n",
+		stderr:
+			diagnostics !== ""
+				? diagnostics
+				: "Internal CLI error. Re-run with --verbose for diagnostics.\n",
 	};
+}
+
+function errorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+function verboseDiagnostics(error: unknown, verbose: boolean): string {
+	if (!verbose) {
+		return "";
+	}
+	const stack =
+		error instanceof Error && typeof error.stack === "string"
+			? error.stack
+			: errorMessage(error);
+	return `Internal CLI error.\n${stack}\n`;
 }
 
 function okText(stdout: string, exitCode = 0): CliRunResult {

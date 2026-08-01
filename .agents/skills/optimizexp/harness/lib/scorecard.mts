@@ -89,6 +89,24 @@ export const HCD_KEYS: HcdKey[] = [
 	"trustAndSafety",
 ];
 
+/**
+ * Falsifiability rubric: one programmatic check against a captured evidence
+ * artifact (a directory containing capture-evidence `meta.json`). At least one
+ * assertion field is required per check. Evaluated by lib/evidence-checks.mts.
+ */
+export type EvidenceCheck = {
+	/** Evidence artifact dir (repo-root-relative or absolute) containing meta.json. */
+	evidence: string;
+	/** Assert meta.json exitCode equals / not-equals this integer. */
+	exitCodeEquals?: number;
+	exitCodeNotEquals?: number;
+	/** Regex asserted against the primary transcript file content. */
+	transcriptContains?: string;
+	transcriptNotContains?: string;
+	/** Optional note: what this check proves. */
+	note?: string;
+};
+
 export type MetricScorecard = {
 	schemaVersion: 1;
 	phase: "expect" | "act" | "outcome";
@@ -112,6 +130,10 @@ export type MetricScorecard = {
 		perceivedOptimality?: string;
 	};
 	evidenceRefs: string[];
+	/** Optional falsifiability rubric — every check is programmatically evaluated. */
+	evidenceChecks?: EvidenceCheck[];
+	/** Required when scores intentionally repeat a prior measurement (e.g. baseline carry-over). */
+	justification?: string;
 	scoredAt: string;
 };
 
@@ -331,6 +353,44 @@ export function scoresWithinTolerance(
 	);
 }
 
+/** Pure shape validation for the evidenceChecks rubric (no filesystem access). */
+export function validateEvidenceChecksShape(raw: unknown): string[] {
+	if (!Array.isArray(raw)) return ["scores.evidenceChecks must be an array"];
+	const problems: string[] = [];
+	raw.forEach((c, i) => {
+		const prefix = `scores.evidenceChecks[${i}]`;
+		if (!c || typeof c !== "object") {
+			problems.push(`${prefix}: must be an object`);
+			return;
+		}
+		const check = c as Partial<EvidenceCheck>;
+		if (!check.evidence || typeof check.evidence !== "string") {
+			problems.push(`${prefix}.evidence required (string path to evidence dir)`);
+		}
+		for (const k of ["exitCodeEquals", "exitCodeNotEquals"] as const) {
+			const v = check[k];
+			if (v !== undefined && (typeof v !== "number" || !Number.isInteger(v))) {
+				problems.push(`${prefix}.${k} must be an integer`);
+			}
+		}
+		for (const k of ["transcriptContains", "transcriptNotContains"] as const) {
+			const v = check[k];
+			if (v !== undefined && typeof v !== "string") {
+				problems.push(`${prefix}.${k} must be a string (regex)`);
+			}
+		}
+		if (
+			check.exitCodeEquals === undefined &&
+			check.exitCodeNotEquals === undefined &&
+			check.transcriptContains === undefined &&
+			check.transcriptNotContains === undefined
+		) {
+			problems.push(`${prefix}: at least one assertion required`);
+		}
+	});
+	return problems;
+}
+
 export function validateScorecard(
 	raw: unknown,
 	expectedPhase?: MetricScorecard["phase"],
@@ -433,6 +493,12 @@ export function validateScorecard(
 	}
 	if (s.cognitive !== undefined) {
 		problems.push(...validateCognitive(s.cognitive));
+	}
+	if (s.evidenceChecks !== undefined) {
+		problems.push(...validateEvidenceChecksShape(s.evidenceChecks));
+	}
+	if (s.justification !== undefined && typeof s.justification !== "string") {
+		problems.push("scores.justification must be a string");
 	}
 	return problems;
 }

@@ -92,7 +92,7 @@ Then(
 );
 
 Then(
-  "evidence of what I saw is stored under evidence/",
+  "evidence of what I saw is stored under evidence\\/",
   function (this: OptimizexpWorld) {
     markEvidenceCapturable(w(this));
   },

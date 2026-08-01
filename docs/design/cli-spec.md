@@ -36,6 +36,7 @@ surfaces.
 | `inspect` | read-only | Render projections and time-travel views such as `run`, `deploy`, and `topology`. | HOBO-140, HOBO-216 |
 | `logs` | read-only | Live-tail logs and streams through the Camp runtime Streamer. | HOBO-143, HOBO-216 |
 | `doctor` | diagnostics | Report environment, credential, connectivity, and portability hazards. | HOBO-147, HOBO-184, HOBO-190 |
+| `messaging` | diagnostics | Inspect messaging capability + delivery-guarantee readiness (Kafka/Redpanda, optional Dapr Camp runtime); pure readiness section also surfaces in `hobo doctor`. | ADR-0138 |
 | `codegen` | authoring | Regenerate checked-in `_generated/`; `--check` fails on drift. | HOBO-152 |
 | `build` | authoring | Compile services to wasm components with an OCI fallback; fails on generated drift. | HOBO-156 |
 | `collect` | authoring | Run resource collection and print the provider-agnostic manifest IR. | HOBO-160 |

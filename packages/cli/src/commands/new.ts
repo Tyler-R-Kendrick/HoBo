@@ -115,7 +115,13 @@ export async function scaffoldHoboProject(input: {
 		template: input.template,
 		createdFiles: [...createdFileOrder],
 		offline: true,
-		nextSteps: [`cd ${input.name}`, "hobo dev"],
+		nextSteps: [
+			`cd ${input.name}`,
+			"npm install",
+			"npm run typecheck",
+			"npm test",
+			"hobo dev",
+		],
 	};
 }
 

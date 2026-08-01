@@ -201,6 +201,57 @@ function listScenarios(featureId: string) {
 	console.log(JSON.stringify({ featureId, scenarios }, null, 2));
 }
 
+function writeReplayPage(
+	dir: string,
+	featureId: string,
+	scenario: string,
+	meta: Record<string, unknown>,
+): void {
+	const primary = (meta.primary ?? {}) as Record<string, unknown>;
+	const file = typeof primary.file === "string" ? primary.file : "";
+	const kind = typeof primary.kind === "string" ? primary.kind : "transcript";
+	const playback = kind === "video"
+		? `<video controls preload="metadata" src="${file}"></video>`
+		: /^(image|gif)$/i.test(kind)
+			? `![Captured evidence](${file})`
+			: kind === "recording"
+				? `[Open terminal replay](REPLAY.html) ([raw cast](${file}))`
+			: file
+				? `[Open captured transcript](${file})`
+				: "No primary artifact was produced.";
+	const screen = meta.screen && typeof meta.screen === "object"
+		? `\n### Parsed screen\n\n\`\`\`json\n${JSON.stringify(meta.screen, null, 2)}\n\`\`\`\n`
+		: "";
+	writeFileSync(path.join(dir, "REPLAY.md"),
+		`# Replay: ${featureId} / ${scenario}\n\n` +
+		`Captured: ${String(meta.capturedAt ?? "unknown")}  \n` +
+		`Driver: ${String(meta.driver ?? "unknown")}  \n` +
+		`Run: ${String(meta.runId || "unscoped")}  \n` +
+		`Primary SHA-256: ${String(primary.sha256 ?? "unknown")}\n\n` +
+		`## Playback\n\n${playback}\n${screen}`,
+		"utf8",
+	);
+}
+
+function writeReplayHtml(dir: string, featureId: string, scenario: string, primaryFile: string, kind: string): void {
+	const relative = path.basename(primaryFile);
+	if (kind !== "recording") return;
+	let frames: unknown[] = [];
+	try {
+		const lines = readFileSync(primaryFile, "utf8").split(/\r?\n/).filter(Boolean);
+		frames = lines.slice(1).map((line) => JSON.parse(line));
+	} catch {
+		frames = [];
+	}
+	writeFileSync(path.join(dir, "REPLAY.html"), `<!doctype html>
+<meta charset="utf-8"><title>OptimizeXP replay: ${featureId} / ${scenario}</title>
+<style>body{background:#111;color:#eee;font:14px monospace;margin:2rem}pre{background:#000;padding:1rem;min-height:12rem;white-space:pre-wrap}button{padding:.5rem 1rem}</style>
+<h1>${featureId} / ${scenario}</h1><p>Replayable terminal capture: <a href="${relative}">${relative}</a></p>
+<button id="play">Play</button> <button id="stop">Stop</button><pre id="screen"></pre>
+<script>const frames=${JSON.stringify(frames)};let timer=0,stopped=false;const screen=document.querySelector('#screen');document.querySelector('#stop').onclick=()=>{stopped=true;clearTimeout(timer)};document.querySelector('#play').onclick=()=>{stopped=false;screen.textContent='';let i=0;const next=()=>{if(stopped||i>=frames.length)return;const [delay,type,text]=frames[i++];if(type==='o')screen.textContent+=text;timer=setTimeout(next,Math.max(10,delay*1000))};next()};</script>
+`, "utf8");
+}
+
 function resolveScenarioSlug(
 	featureId: string,
 	scenarioArg: string,
@@ -351,6 +402,8 @@ function capture(args: Record<string, string>) {
 		updatedAt: metaOut.capturedAt,
 		overridesPrevious: hadPrevious,
 	});
+	writeReplayPage(outDir, featureId, scenario, metaOut);
+	writeReplayHtml(outDir, featureId, scenario, primaryFile, kind);
 
 	console.log(
 		JSON.stringify(

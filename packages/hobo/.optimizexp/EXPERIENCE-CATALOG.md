@@ -1,6 +1,6 @@
 # Experience catalog — hobo
 
-Built: 2026-07-31T20:12:33.107Z
+Built: 2026-07-31T23:42:24.557Z
 
 | experienceId | persona | P | entry | featureId |
 |---|---|---|---|---|
@@ -8,6 +8,8 @@ Built: 2026-07-31T20:12:33.107Z
 | in-session-discoverability | agent-operator | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
 | help-discoverability | agent-operator | P0 | `hobo help` | hobo-help-discoverability |
 | failure-actionable | agent-operator | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| agent-native-inventory | agent-operator | P0 | `hobo agent` | hobo-agent |
+| agent-human-free-auth | agent-operator | P0 | `hobo auth` | hobo-auth |
 | config-setup-inventory | agent-operator | P0 | `hobo config` | hobo-config |
 | guide-cursor-map | agent-operator | P0 | `hobo guide --cursor` | hobo-guide-cursor |
 | cold-start-tty-chat | designer | P0 | `hobo` | hobo-default-entry |
@@ -21,6 +23,7 @@ Built: 2026-07-31T20:12:33.107Z
 | agent-native-inventory | coding-agent | P0 | `hobo agent` | hobo-agent |
 | agent-human-free-auth | coding-agent | P0 | `hobo auth` | hobo-auth |
 | config-setup-inventory | coding-agent | P0 | `hobo config` | hobo-config |
+| tasks-board | coding-agent | P0 | `hobo tasks` | hobo-tasks |
 | cold-start-tty-chat | end-user | P0 | `hobo` | hobo-default-entry |
 | in-session-discoverability | end-user | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
 | help-discoverability | end-user | P0 | `hobo help` | hobo-help-discoverability |
@@ -29,8 +32,22 @@ Built: 2026-07-31T20:12:33.107Z
 | in-session-discoverability | platform-engineer | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
 | help-discoverability | platform-engineer | P0 | `hobo help` | hobo-help-discoverability |
 | failure-actionable | platform-engineer | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| cost-zero-path | platform-engineer | P0 | `hobo cost` | hobo-cost |
 | config-setup-inventory | platform-engineer | P0 | `hobo config` | hobo-config |
 | guide-cursor-map | platform-engineer | P0 | `hobo guide --cursor` | hobo-guide-cursor |
+| cold-start-tty-chat | junior-frontend | P0 | `hobo` | hobo-default-entry |
+| in-session-discoverability | junior-frontend | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
+| help-discoverability | junior-frontend | P0 | `hobo help` | hobo-help-discoverability |
+| failure-actionable | junior-frontend | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| config-setup-inventory | junior-frontend | P0 | `hobo config` | hobo-config |
+| cold-start-tty-chat | sota-frontier-ai-native-tui-designer | P0 | `hobo` | hobo-default-entry |
+| in-session-discoverability | sota-frontier-ai-native-tui-designer | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
+| help-discoverability | sota-frontier-ai-native-tui-designer | P0 | `hobo help` | hobo-help-discoverability |
+| failure-actionable | sota-frontier-ai-native-tui-designer | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| cost-zero-path | sota-frontier-ai-native-tui-designer | P0 | `hobo cost` | hobo-cost |
+| config-setup-inventory | sota-frontier-ai-native-tui-designer | P0 | `hobo config` | hobo-config |
+| harness-dual-surface | sota-frontier-ai-native-tui-designer | P0 | `hobo harness` | hobo-harness |
+| herdr-mux-status | sota-frontier-ai-native-tui-designer | P0 | `hobo status` | hobo-status |
 | cold-start-tty-chat | protocol-native-coding-agent | P0 | `hobo` | hobo-default-entry |
 | in-session-discoverability | protocol-native-coding-agent | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
 | help-discoverability | protocol-native-coding-agent | P0 | `hobo help` | hobo-help-discoverability |
@@ -161,36 +178,41 @@ Built: 2026-07-31T20:12:33.107Z
 | in-session-discoverability | product-designer | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
 | help-discoverability | product-designer | P0 | `hobo help` | hobo-help-discoverability |
 | failure-actionable | product-designer | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| cold-start-tty-chat | role-developers | P0 | `hobo` | hobo-default-entry |
+| in-session-discoverability | role-developers | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
+| help-discoverability | role-developers | P0 | `hobo help` | hobo-help-discoverability |
+| failure-actionable | role-developers | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| cost-zero-path | role-developers | P0 | `hobo cost` | hobo-cost |
+| cold-start-tty-chat | role-platform-engineers | P0 | `hobo` | hobo-default-entry |
+| in-session-discoverability | role-platform-engineers | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
+| help-discoverability | role-platform-engineers | P0 | `hobo help` | hobo-help-discoverability |
+| failure-actionable | role-platform-engineers | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| cost-zero-path | role-platform-engineers | P0 | `hobo cost` | hobo-cost |
+| config-setup-inventory | role-platform-engineers | P0 | `hobo config` | hobo-config |
+| cold-start-tty-chat | role-sre | P0 | `hobo` | hobo-default-entry |
+| in-session-discoverability | role-sre | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
+| help-discoverability | role-sre | P0 | `hobo help` | hobo-help-discoverability |
+| failure-actionable | role-sre | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| config-setup-inventory | role-sre | P0 | `hobo config` | hobo-config |
+| herdr-mux-status | role-sre | P0 | `hobo status` | hobo-status |
 | cold-start-tty-chat | junior-typescript-developer | P0 | `hobo` | hobo-default-entry |
 | in-session-discoverability | junior-typescript-developer | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
 | help-discoverability | junior-typescript-developer | P0 | `hobo help` | hobo-help-discoverability |
 | failure-actionable | junior-typescript-developer | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
 | config-setup-inventory | junior-typescript-developer | P0 | `hobo config` | hobo-config |
-| cold-start-tty-chat | junior-frontend | P0 | `hobo` | hobo-default-entry |
-| in-session-discoverability | junior-frontend | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
-| help-discoverability | junior-frontend | P0 | `hobo help` | hobo-help-discoverability |
-| failure-actionable | junior-frontend | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
-| cold-start-tty-chat | junior-mobile-designer | P0 | `hobo` | hobo-default-entry |
-| in-session-discoverability | junior-mobile-designer | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
-| help-discoverability | junior-mobile-designer | P0 | `hobo help` | hobo-help-discoverability |
-| failure-actionable | junior-mobile-designer | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
-| cold-start-tty-chat | role-developers | P0 | `hobo` | hobo-default-entry |
-| in-session-discoverability | role-developers | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
-| help-discoverability | role-developers | P0 | `hobo help` | hobo-help-discoverability |
-| failure-actionable | role-developers | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
 | cold-start-tty-chat | role-devsecops | P0 | `hobo` | hobo-default-entry |
 | in-session-discoverability | role-devsecops | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
 | help-discoverability | role-devsecops | P0 | `hobo help` | hobo-help-discoverability |
 | failure-actionable | role-devsecops | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| cost-zero-path | role-devsecops | P0 | `hobo cost` | hobo-cost |
+| config-setup-inventory | role-devsecops | P0 | `hobo config` | hobo-config |
 | cold-start-tty-chat | role-finops | P0 | `hobo` | hobo-default-entry |
 | in-session-discoverability | role-finops | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
 | help-discoverability | role-finops | P0 | `hobo help` | hobo-help-discoverability |
 | failure-actionable | role-finops | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
-| cold-start-tty-chat | role-platform-engineers | P0 | `hobo` | hobo-default-entry |
-| in-session-discoverability | role-platform-engineers | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
-| help-discoverability | role-platform-engineers | P0 | `hobo help` | hobo-help-discoverability |
-| failure-actionable | role-platform-engineers | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
-| cold-start-tty-chat | role-sre | P0 | `hobo` | hobo-default-entry |
-| in-session-discoverability | role-sre | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
-| help-discoverability | role-sre | P0 | `hobo help` | hobo-help-discoverability |
-| failure-actionable | role-sre | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |
+| cost-zero-path | role-finops | P0 | `hobo cost` | hobo-cost |
+| config-setup-inventory | role-finops | P0 | `hobo config` | hobo-config |
+| cold-start-tty-chat | junior-mobile-designer | P0 | `hobo` | hobo-default-entry |
+| in-session-discoverability | junior-mobile-designer | P0 | `hobo  # then /verbs or in-session help` | hobo-default-entry |
+| help-discoverability | junior-mobile-designer | P0 | `hobo help` | hobo-help-discoverability |
+| failure-actionable | junior-mobile-designer | P0 | `hobo not-a-real-verb-zz` | hobo-failure-actionable |

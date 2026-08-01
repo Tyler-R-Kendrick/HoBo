@@ -12,6 +12,7 @@ import {
 	type TenantId,
 } from "@hobo/core";
 
+// public-contract: schema version of the messaging conformance suite definition.
 export const MESSAGING_CONFORMANCE_CONTRACT = "hobo.messaging-conformance/v1";
 
 export type MessagingAssertionName =
@@ -83,8 +84,9 @@ async function provesPublishConsumeAck(
 	});
 	if (batch.length < 1) return false;
 	bus.ack(batch[0]!.messageId, batch[0]!.leaseId);
-	if (typeof (bus as { flush?: () => Promise<void> }).flush === "function") {
-		await (bus as { flush: () => Promise<void> }).flush();
+	const flushable = bus as Messaging & { flush?: () => Promise<void> };
+	if (typeof flushable.flush === "function") {
+		await flushable.flush();
 	}
 	const again = await bus.consume(topic, parseConsumerGroupId("cg"));
 	return again.length === 0;

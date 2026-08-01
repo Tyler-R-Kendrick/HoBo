@@ -30,7 +30,7 @@ Demographic/psychographic models below are synthetic segment attributes, not a r
 - roleFamily: application-developer
 - seniority: mid
 - orgArchetype: startup
-- domainFamiliarity: intermediate
+- domainFamiliarity: migrating
 - localeContext: en-primary
 - deviceContext: desktop-first
 - timeBudget: minutes

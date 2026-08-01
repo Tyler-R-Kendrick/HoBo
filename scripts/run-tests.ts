@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -87,9 +87,25 @@ if (!patterns) {
 	process.exit(1);
 }
 
-const testFiles = gitLsFiles(patterns).filter(
-	(file) => !file.endsWith(".feature"),
-);
+// Category lanes run under Vitest, which cannot load node:test-style files.
+// Files that import node:test belong to package-level `node --test` lanes
+// (their package.json test:contract:* scripts), so exclude them here; the
+// turbo part of the root lane still executes them under their owning engine.
+const nodeTestFiles = new Set<string>();
+const testFiles = gitLsFiles(patterns).filter((file) => {
+	if (file.endsWith(".feature")) return false;
+	if (isNodeTestFile(file)) {
+		nodeTestFiles.add(file);
+		return false;
+	}
+	return true;
+});
+if (nodeTestFiles.size > 0) {
+	console.log(
+		`Skipping ${nodeTestFiles.size} node:test-style file(s) covered by package lanes:`,
+	);
+	for (const file of nodeTestFiles) console.log(`  ${file}`);
+}
 
 if (isAgent && broadAgentCategories.has(category) && !finalValidation) {
 	throw new Error(
@@ -153,6 +169,13 @@ try {
 	process.exitCode = result.status ?? 1;
 } finally {
 	rmSync(configDir, { force: true, recursive: true });
+}
+
+function isNodeTestFile(file: string): boolean {
+	const source = readFileSync(file, "utf8");
+	return /from\s+["']node:test["']|require\(\s*["']node:test["']\s*\)|import\s+["']node:test["']/.test(
+		source,
+	);
 }
 
 function gitLsFiles(globPatterns: string[]): string[] {

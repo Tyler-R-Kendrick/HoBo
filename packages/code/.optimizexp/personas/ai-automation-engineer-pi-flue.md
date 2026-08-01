@@ -44,10 +44,10 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 ## Demographic model
 
-- roleFamily: automation-engineer / platform-adjacent app builder
-- seniority: senior-on-agents
-- orgArchetype: platform-team-or-advanced-indie
-- domainFamiliarity: power-user-on-harnesses
+- roleFamily: platform
+- seniority: senior
+- orgArchetype: smb
+- domainFamiliarity: power-user
 - localeContext: en-primary
 - deviceContext: desktop-terminal-first
 - timeBudget: hours
@@ -57,11 +57,11 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 - values: [harness-control, dual-surface-parity, skills-as-code, self-improve, durable-memory, open-stack]
 - riskTolerance: medium
-- noveltySeeking: high (harness engineering frontier)
-- trustInAutomation: high-when-instrumented
+- noveltySeeking: high
+- trustInAutomation: high
 - documentationPreference: contracts-and-layout-first
 - errorEmotion: debug-eager
-- socialProofNeed: low-medium
+- socialProofNeed: low
 - aestheticSensitivity: medium
 - controlNeed: high
 

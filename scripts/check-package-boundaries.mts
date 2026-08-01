@@ -151,7 +151,9 @@ function collectSourceEdges(
 					}
 
 					const to = hoboNameToPath(depName, packageMap);
-					if (!to) {
+					if (!to || to === from) {
+						// Self-matches are doc-comment/template-string mentions of a
+						// package's own name, not real cross-package imports.
 						continue;
 					}
 

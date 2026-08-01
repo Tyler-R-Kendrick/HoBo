@@ -97,6 +97,25 @@ Feature: x
 		const r = checkGherkinQuality(dir);
 		assert.equal(r.ok, true, r.problems.join("; "));
 	});
+
+	it("keeps persona-specific role context in generated scenarios", () => {
+		const base = {
+			kind: "help-discoverability" as const,
+			featureId: "help",
+			title: "help",
+			personaId: "p",
+			personaName: "p",
+			iface: "cli",
+			experiences: ["dx"],
+			bin: "hobo-code",
+			entryCommand: "hobo-code help",
+		};
+		const developer = gherkinTemplate({ ...base, personaRole: "application-developer" });
+		const operator = gherkinTemplate({ ...base, personaRole: "agent-operator" });
+		assert.notEqual(developer, operator);
+		assert.match(developer, /persona-role:application-developer/);
+		assert.match(operator, /persona-role:agent-operator/);
+	});
 });
 
 describe("pickPrimaryCommand preference", () => {

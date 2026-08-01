@@ -12,6 +12,7 @@
     "draft:cascade": "node --import tsx scripts/check-proof-cascade.ts",
     "draft:cascade:staged": "node --import tsx scripts/check-proof-cascade.ts --staged",
     "skills:mirror-check": "node --import tsx scripts/check-skill-mirrors.ts",
+    "optimizexp:check": "node --import tsx scripts/check-optimizexp.mts",
     "test": "pnpm run test:unit",
     "standards:check": "node --import tsx scripts/check-technical-standards.ts",
     "licenses:check": "node --import tsx scripts/check-licenses.ts",

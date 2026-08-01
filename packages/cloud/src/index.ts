@@ -161,7 +161,7 @@ export {
 	registerProviderFact,
 	registryCatalogProjection,
 } from "./registry/catalog.js";
-export { collectStream } from "./store/index.js";
+export { collectStream, currentFenceToken } from "./store/index.js";
 
 // Continuous Delivery plane (workload-attested apply + Harness progressive + A2H).
 export {

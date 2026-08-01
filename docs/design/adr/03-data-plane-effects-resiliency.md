@@ -92,7 +92,7 @@ resilience?: ResilienceProfile
 | EffectSpec, lattice, manifest, tracer | `@hobo/contracts` |
 | ResilienceProfile + applicator | `@hobo/contracts` |
 | IR / can-deploy / Gatekeeper | `@hobo/contracts` |
-| Effect-aware isolation/mocks/fault injection | `@hobo/contract-harness` |
+| Effect-aware isolation/mocks/fault injection | `@hobo/contracts` (kept out of `@hobo/contract-harness` to avoid a `core → harness → contracts → core` package-graph cycle) |
 | Design | this ADR + `contracts-policy-flags.md` |
 
 ## Consequences

@@ -1,9 +1,7 @@
 # Codex CLI — MCP servers for this project.
 #
-# NOTE: Codex reads MCP config from its GLOBAL config at ~/.codex/config.toml,
-# not from this project file. This file is a copy-paste reference. Either:
-#   1) paste the [mcp_servers.*] tables below into ~/.codex/config.toml, or
-#   2) run (from scripts/setup-agent-tools.sh):
+# Codex loads this file for trusted projects. For a global fallback, either
+# paste these tables into ~/.codex/config.toml or run:
 #        codex mcp add headroom -- bash scripts/agent-mcp-headroom.sh
 #        codex mcp add gbrain   -- bash scripts/agent-mcp-gbrain.sh
 #        codex mcp add serena   -- bash scripts/agent-mcp-serena.sh
@@ -13,18 +11,20 @@
 # headroom: local token compression, no API keys
 #           (scripts/agent-mcp-headroom.sh fails closed if binary missing).
 # gbrain:   knowledge-graph memory via shared launcher (fails closed without binary
-#           or embedding key). Requires `gbrain init` + one of OPENAI_API_KEY |
-#           ZEROENTROPY_API_KEY | VOYAGE_API_KEY; embedding/query text is sent to
-#           that provider (cost + egress). See AUTH.md.
+#           or initialized provider). Run `gbrain init`; local Ollama stays local,
+#           while API-key providers receive embedding/query text. See AUTH.md.
 
 [mcp_servers.headroom]
 command = "bash"
 args = ["scripts/agent-mcp-headroom.sh"]
+startup_timeout_sec = 30
 
 [mcp_servers.gbrain]
 command = "bash"
 args = ["scripts/agent-mcp-gbrain.sh"]
+startup_timeout_sec = 30
 
 [mcp_servers.serena]
 command = "bash"
 args = ["scripts/agent-mcp-serena.sh"]
+startup_timeout_sec = 30

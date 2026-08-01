@@ -43,38 +43,38 @@ I steal *discipline*, not pastiche:
 
 ## Demographic model
 
-- roleFamily: product-designer / experience-design
-- seniority: principal / staff design
-- orgArchetype: ai-native product studio
-- domainFamiliarity: expert-on-tui-and-motion; intermediate-on-unix-internals
+- roleFamily: design
+- seniority: principal
+- orgArchetype: startup
+- domainFamiliarity: power-user
 - localeContext: en-primary; designs for global readability of icons+motion
 - deviceContext: laptop TTY first; wide terminals; color-capable
-- timeBudget: seconds-to-minutes for first impression; hours for craft polish
+- timeBudget: minutes
 - accessibilityProfile: motion-sensitive-aware; color-not-only; screen-reader-adjacent plain text
 
 ## Psychographic model
 
 - values: [human-dignity, wonder, restraint, brand-truth, progressive-disclosure, emotional-clarity]
-- riskTolerance: low-on-confusing-users · high-on-tasteful-experimentation
-- noveltySeeking: very-high (frontier AI-native surfaces)
-- trustInAutomation: high-when-the-UI-honestly-shows-state
+- riskTolerance: medium
+- noveltySeeking: high
+- trustInAutomation: high
 - documentationPreference: show-dont-tell · motion demos · first-run choreography
 - errorEmotion: protective-of-users · sharp-on-team-when-we-ship-cruel-UX
-- socialProofNeed: medium (peer designers + product love)
-- aestheticSensitivity: **very high**
-- controlNeed: high-over-visual-system · low-over-user-agency (user must always feel in control)
+- socialProofNeed: medium
+- aestheticSensitivity: high
+- controlNeed: high
 
 ## Cognitive thresholds
 
-- featureSprawl: **2** (I hate equal-weight verb walls)
-- visualClutter: **1** (dense default is a defect)
-- interactiveClutter: **1** (prompts and modals without purpose hurt)
-- choiceOverload: **2**
-- informationDensity: **4** (I can read dense craft docs; users shouldn’t have to)
-- noveltyTax: **2** (novelty must teach)
-- contextSwitchTax: **1** (leaving TUI for README mid-flow is failure)
-- workingMemoryLoad: **2**
-- interruptionFragility: **2**
+- featureSprawl: 2
+- visualClutter: 1
+- interactiveClutter: 1
+- choiceOverload: 2
+- informationDensity: 4
+- noveltyTax: 2
+- contextSwitchTax: 1
+- workingMemoryLoad: 2
+- interruptionFragility: 2
 
 ## Goals
 

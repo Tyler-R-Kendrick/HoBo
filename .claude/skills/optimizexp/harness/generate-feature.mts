@@ -230,6 +230,7 @@ function gherkinForPersona(input: {
 	seed: string;
 	personaId: string;
 	personaName: string;
+	personaRole?: string;
 	iface: string;
 	experiences: string[];
 	driver?: string;
@@ -248,6 +249,7 @@ function gherkinForPersona(input: {
 		title: input.title,
 		personaId: input.personaId,
 		personaName: input.personaName,
+		personaRole: input.personaRole,
 		iface: input.iface === "tui" ? "tui" : input.iface,
 		experiences: input.experiences,
 		bin,
@@ -432,6 +434,7 @@ Re-discover / rewire: \`generate-feature.mts --mode implement --id ${id}\`
 					seed,
 					personaId: m.id,
 					personaName: m.id,
+					personaRole: m.models?.roleFamily,
 					iface,
 					experiences: m.experiences.filter((e) => experiences.includes(e)).length
 						? m.experiences.filter((e) => experiences.includes(e))
@@ -469,6 +472,7 @@ Re-discover / rewire: \`generate-feature.mts --mode implement --id ${id}\`
 			seed,
 			personaId: m.id,
 			personaName: m.id.replace(/-/g, " "),
+			personaRole: m.models?.roleFamily,
 			iface: driver === "tui" ? "tui" : iface,
 			experiences:
 				m.experiences.filter((e) => experiences.includes(e)).length > 0

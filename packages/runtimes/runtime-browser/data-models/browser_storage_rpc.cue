@@ -10,3 +10,12 @@ package runtime_browser
 	op:      string & !=""
 	payload: bytes
 }
+
+#BrowserStorageRpcResponse: {
+	id:             string & !=""
+	ok:             bool
+	result:         bytes
+	error_name?:    string
+	error_message?: string
+	error_code?:    string
+}

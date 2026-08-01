@@ -187,10 +187,14 @@ export async function deploy(
 		);
 	}
 
+	// The aggregate append fenced the stream (owner_epoch = lease fence); the
+	// choreography fan-out below is the same logical writer, so it continues
+	// under the same fencing token instead of bypassing the fence.
 	const emitted = await emit(deps.store, streamId, facts, {
 		expectedSeq: requested.seq,
 		actor: context.actor,
 		tenant: context.tenant,
+		fenceToken: requested.fenceToken,
 		...(context.correlationId !== undefined
 			? { correlationId: context.correlationId }
 			: {}),

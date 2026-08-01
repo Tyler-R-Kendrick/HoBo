@@ -76,6 +76,19 @@ export interface SnapshotRecord<S = unknown> {
 	savedAt: string;
 }
 
+/**
+ * Stream head metadata for fenced streams. Stores that enforce single-writer
+ * fencing (owner_epoch) expose it so choreography writers on the same
+ * partition can continue a fenced stream instead of bypassing the fence.
+ */
+export interface StreamHead {
+	readonly streamId: string;
+	/** Current revision (== seq of the last appended event). */
+	readonly revision: number;
+	/** Current fencing owner epoch; 0 = unfenced. */
+	readonly ownerEpoch: bigint;
+}
+
 export type FoldHandlers<S> = Record<
 	string,
 	(state: S, event: EventEnvelope) => S
@@ -112,6 +125,8 @@ export interface EventStore {
 		state: unknown,
 		seq: number,
 	): Promise<SnapshotRecord>;
+	/** Present on stores that enforce single-writer fencing. */
+	getStreamHead?(streamId: string): StreamHead | undefined;
 }
 
 // ── Durable effects (staged with domain events in one transaction) ──────────

@@ -40,7 +40,7 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 
 - roleFamily: application-developer
 - seniority: senior
-- orgArchetype: remote-first-scaleup
+- orgArchetype: smb
 - domainFamiliarity: power-user
 - localeContext: en-primary
 - deviceContext: laptop-plus-phone-ssh
@@ -52,7 +52,7 @@ Demographic/psychographic models below are **synthetic segment attributes**, not
 - values: [reliability, reattach, low-latency-enough, private-reach, craft, plain-docs]
 - riskTolerance: medium
 - noveltySeeking: medium
-- trustInAutomation: medium-low until I see endpoint + attach path
+- trustInAutomation: low
 - documentationPreference: examples-first-with-flags
 - errorEmotion: debug-eager
 - socialProofNeed: low

@@ -24,11 +24,13 @@ Reviews **merge** global + selected project trees. Same persona/feature id: **pr
 | `features/<slug>/<slug>-<persona>.feature` | One Gherkin file per targeted persona |
 | `features/<slug>/evidence/<scenario>/` | **One** primary recording per scenario (overwritten on re-run) |
 | `bus/entries/` | Append-only bus: **expect / act / outcome** (+ optional `survey`) |
+| `bus-archive/entries/` | Legacy pre-scorecard-contract bus entries (282, moved out of the live bus; **not** scanned by `validate-bus`; see `bus-archive/README.md`) |
 | `runs/<run-id>/` | Per-run scope, scores, iterations, summary |
 | `runs/<run-id>/survey/` | End-of-run persona survey responses |
 | `runs/<run-id>/backlog.json` | Ranked uplift experiments for this run |
 | `backlog/experiments.json` | Global merge of survey-driven experiment backlog |
 | `cucumber.yaml` | Cucumber profile for experience features |
+| `features/cli-product/` | Product-CLI coverage features driven from the real `hobo` / `hobo-code` surfaces |
 
 Skill (progressive disclosure + harness + host workflows):
 
@@ -124,12 +126,20 @@ Every bus phase emits formal **`scores`** against **harms**, **friction**, and *
 | act | `observed` | First-pass scores from evidence/capture |
 | outcome | `judged` | Final persona scores + `comparison` deltas |
 
-Iteration rollups use **judged** outcomes only. See skill `references/metric-scorecard.md`.
+Iteration rollups use **judged** outcomes only. Scorecards may carry **`evidenceChecks`** (named evidence assertions backing the scores) and a **`justification`** (required when a copied-forward score is not re-measured). See skill `references/metric-scorecard.md`.
 
 ```bash
 node --import tsx .agents/skills/optimizexp/workflows/cross-agent/review-loop.mts --mode validate-bus
 node --import tsx .agents/skills/optimizexp/workflows/cross-agent/review-loop.mts --mode aggregate-bus --run <runId>
 ```
+
+## Known defects (KNOWN-DEFECTS.md)
+
+A feature folder may carry a `KNOWN-DEFECTS.md` (see `features/cli-product/KNOWN-DEFECTS.md`) characterizing scenarios tagged `@known-defect`: they assert the **current, defective** product behavior so the suite stays green, and the owning fix flips the assertions and removes the tag.
+
+## Drift protection
+
+`pnpm run optimizexp:check` ([`scripts/check-optimizexp.mts`](../scripts/check-optimizexp.mts)) hard-fails on (a) persona schema-v2 validation across the global and project-local persona trees, (b) the skill's feature-quality lint (template-only Gherkin ban, `@persona:`/`@interface:` tags) over every feature folder, and (c) `validate-bus` over the live bus (`.optimizexp/bus/entries/`). The 282 legacy entries that predated the scorecard-evidence contract were archived to [`bus-archive/`](bus-archive/README.md), which the validator does not scan, so the bus lane is now a hard gate. The lane auto-selects in `agent:check` when `.optimizexp/**`, the skill mirrors, or the gate script change.
 
 ## Evidence policy
 
@@ -154,4 +164,5 @@ Prefer `/optimizexp --persona "seed"` or `generate-persona.mts`. Keep `schemaVer
 ## Git
 
 Commit **personas**, **features** (including current evidence), and skill files.  
-`bus/entries/` and ephemeral `runs/` may be committed as fixtures or left local.
+`bus/entries/` and ephemeral `runs/` may be committed as fixtures or left local.  
+`bus-archive/` is local-only legacy history (gitignored) and must not be re-committed.

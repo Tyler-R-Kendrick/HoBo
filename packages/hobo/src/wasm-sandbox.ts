@@ -5,6 +5,7 @@
 export {
 	applyHoboMeshEnvHeaders,
 	bootWasmtimeSandbox,
+	bundleAppModuleAsWasiHttpGuest,
 	componentizePrivateGuest,
 	defaultHoboHome,
 	ensureIsolatedWasmToolchain,

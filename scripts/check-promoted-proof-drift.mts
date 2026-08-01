@@ -44,6 +44,9 @@ function digest(filePath: string): string {
 function listFiles(root: string): string[] {
 	const out: string[] = [];
 	for (const entry of readdirSync(root)) {
+		// Test/build caches (e.g. vitest .vite results) are run byproducts,
+		// not proof edits — never treat them as drift.
+		if (entry === "node_modules" || entry === "dist") continue;
 		const full = path.join(root, entry);
 		if (statSync(full).isDirectory()) {
 			out.push(...listFiles(full).map((f) => path.join(entry, f)));

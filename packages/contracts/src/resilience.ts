@@ -11,6 +11,7 @@
 import type { EffectSpec } from "./effects.js";
 import { requiresNetwork } from "./effects.js";
 
+// public-contract: schema version for ResilienceProfile declarations (ADR-0136).
 export const RESILIENCE_PROFILE_SCHEMA_VERSION = "hobo.resilience-profile/v1";
 
 export const RESILIENCE_STRATEGY_KINDS = Object.freeze([
@@ -72,6 +73,9 @@ export type ResilienceStrategy =
 	| FallbackStrategy
 	| HedgingStrategy;
 
+// ADR-0136 parse-don't-validate resilience DSL surface (refined readonly
+// strategies); generated contracts_pb.ts ResilienceProfile is the wire form.
+// domain-view: deliberate refined domain type, permanent by design.
 export interface ResilienceProfile {
 	readonly schemaVersion: typeof RESILIENCE_PROFILE_SCHEMA_VERSION;
 	readonly id: string;

@@ -312,6 +312,8 @@ export type CouncilState = {
 	latestConsensusEntryId: string | null;
 	maxTurns: number | null;
 	blockedReason: string | null;
+	closedResult: "yay" | "blocked" | "user" | "safety" | null;
+	closedAt: string | null;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -466,6 +468,8 @@ export function createCouncilState(input: {
 		latestConsensusEntryId: null,
 		maxTurns: input.maxTurns ?? null,
 		blockedReason: null,
+		closedResult: null,
+		closedAt: null,
 		createdAt: input.createdAt,
 		updatedAt: input.createdAt,
 	};

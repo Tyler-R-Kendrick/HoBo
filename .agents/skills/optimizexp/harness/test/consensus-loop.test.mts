@@ -99,6 +99,14 @@ describe("designer consensus CLI", () => {
 			]);
 			assert.equal(asserted.code, 0, asserted.output);
 			assert.equal(asserted.json.ok, true);
+			const closed = run(root, [
+				"--mode", "close", "--run", "run-1", "--review", "review-1", "--result", "approved",
+				"--head-sha", sha("b"), "--proposal", manifest,
+			]);
+			assert.equal(closed.code, 0, closed.output);
+			assert.equal(closed.json.result, "yay");
+			assert.equal((closed.json.state as CouncilState).status, "closed");
+			assert.equal((closed.json.state as CouncilState).closedResult, "yay");
 			proposal(root, { evidenceDigest: sha("9") });
 			const alteredEvidence = run(root, [
 				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
@@ -260,8 +268,27 @@ describe("designer consensus CLI", () => {
 			assert.equal(result.code, 1, result.output);
 			assert.equal(result.json.blocked, true);
 			assert.equal((result.json.state as CouncilState).status, "blocked");
+			const closed = run(root, ["--mode", "close", "--run", "run-1", "--review", "review-1", "--result", "blocked", "--reason", "Diagnostic turn ceiling with unresolved discussion."]);
+			assert.equal(closed.code, 0, closed.output);
+			assert.equal(closed.json.result, "blocked");
+			assert.equal((closed.json.state as CouncilState).status, "closed");
+			assert.notEqual((closed.json.entry as Record<string, unknown>).result, "yay");
 			const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--head-sha", sha("b"), "--proposal", file]);
 			assert.notEqual(assertion.code, 0);
+		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+
+	it("rejects an illegal open to approved or blocked close", () => {
+		const root = seedRepo();
+		try {
+			const file = proposal(root);
+			init(root, file);
+			const approved = run(root, ["--mode", "close", "--run", "run-1", "--review", "review-1", "--result", "approved", "--head-sha", sha("b"), "--proposal", file]);
+			assert.notEqual(approved.code, 0);
+			assert.match(approved.output, /not-approved/);
+			const blocked = run(root, ["--mode", "close", "--run", "run-1", "--review", "review-1", "--result", "blocked"]);
+			assert.notEqual(blocked.code, 0);
+			assert.match(blocked.output, /illegal-transition/);
 		} finally { rmSync(root, { recursive: true, force: true }); }
 	});
 });

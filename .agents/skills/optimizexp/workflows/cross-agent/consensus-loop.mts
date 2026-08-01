@@ -547,6 +547,45 @@ function modeAssertYay(args: Record<string, string>, root: string): Json {
 	return { ok: true, result: "yay", runId: state.runId, reviewId: state.reviewId, cycle: state.cycle, consensusEntryId: consensus.id, headSha, proposalDigest };
 }
 
+function modeClose(args: Record<string, string>, root: string): Json {
+	const runId = required(args.run, "run");
+	const reviewId = required(args.review, "review");
+	const closeResult = required(args.result, "result");
+	if (!["approved", "blocked", "user", "safety"].includes(closeResult)) throw new CouncilProtocolError("close-result", "--result must be approved, blocked, user, or safety");
+	return withLock(path.join(reviewDir(root, runId, reviewId), ".lock"), () => {
+		let state = loadState(root, runId, reviewId);
+		if (state.status === "closed") throw new CouncilProtocolError("illegal-transition", "review is already closed");
+		let storedResult: "yay" | "blocked" | "user" | "safety";
+		let assertion: Json | null = null;
+		if (closeResult === "approved") {
+			assertion = modeAssertYay(args, root);
+			state = loadState(root, runId, reviewId);
+			storedResult = "yay";
+		} else if (closeResult === "blocked") {
+			if (state.status !== "blocked") throw new CouncilProtocolError("illegal-transition", `${state.status} cannot close as blocked`);
+			storedResult = "blocked";
+		} else {
+			storedResult = closeResult as "user" | "safety";
+		}
+		const now = new Date().toISOString();
+		state.turn++;
+		state.status = "closed";
+		state.closedResult = storedResult;
+		state.closedAt = now;
+		state.updatedAt = now;
+		const entry: CouncilEntry = {
+			kind: "council", schemaVersion: 1, id: `${reviewId}-cycle-${state.cycle}-closed-${storedResult}`, runId, reviewId,
+			cycle: state.cycle, turn: state.turn, stage: "closed", subject: { headSha: state.subject.headSha, proposalDigest: state.subject.proposalDigest },
+			createdAt: now, result: storedResult, reason: args.reason ?? (storedResult === "yay" ? "approved-current-head-yay" : storedResult),
+			openHardBlockers: openBlockers(state), author: "coordinator",
+		};
+		entry.stateDigest = stateDigest(state);
+		appendBus(root, entry);
+		atomicWrite(statePath(root, runId, reviewId), state);
+		return { ok: true, result: storedResult, assertion, entry, state };
+	});
+}
+
 function listStateFiles(root: string): string[] {
 	const runs = path.join(root, ".optimizexp", "runs");
 	if (!existsSync(runs)) return [];
@@ -643,6 +682,7 @@ function help(): Json {
 			"--mode decide --run ID --review ID",
 			"--mode validate [--run ID --review ID]",
 			"--mode assert-yay --run ID --review ID --head-sha SHA --proposal FILE [--proposal-digest SHA256]",
+			"--mode close --run ID --review ID --result approved|blocked|user|safety [--head-sha SHA --proposal FILE] [--reason TEXT]",
 			"--mode relevance --input FILE",
 		],
 		note: "Synthetic investment is an auditable orchestration variable, not emotion or sentience. Maximum-turn protection must terminate blocked, never approved.",
@@ -663,6 +703,7 @@ export function runConsensusCommand(argv: string[]): { exitCode: number; output:
 			case "decide": output = modeDecide(args, root); break;
 			case "validate": output = modeValidate(args, root); break;
 			case "assert-yay": output = modeAssertYay(args, root); break;
+			case "close": output = modeClose(args, root); break;
 			case "relevance": output = modeRelevance(args); break;
 			default: throw new CouncilProtocolError("cli-mode", `unknown mode ${args.mode}`);
 		}

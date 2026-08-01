@@ -535,7 +535,8 @@ function modeAssertYay(args: Record<string, string>, root: string): Json {
 	if (args.proposalDigest && args.proposalDigest !== proposalDigest) throw new CouncilProtocolError("proposal-digest-mismatch", "caller digest does not match recomputed proposal manifest");
 	if (state.subject.headSha !== headSha) throw new CouncilProtocolError("stale-head", `approved ${state.subject.headSha}, current ${headSha}`);
 	if (state.subject.proposalDigest !== proposalDigest) throw new CouncilProtocolError("stale-proposal", `approved ${state.subject.proposalDigest}, current ${proposalDigest}`);
-	if (state.status !== "approved") throw new CouncilProtocolError("not-approved", `state is ${state.status}`);
+	const closedYay = state.status === "closed" && state.closedResult === "yay";
+	if (state.status !== "approved" && !closedYay) throw new CouncilProtocolError("not-approved", `state is ${state.status}${state.closedResult ? ` (${state.closedResult})` : ""}`);
 	const history = reviewEntries(root, state.runId, state.reviewId);
 	const consensus = history.find((entry) => entry.id === state.latestConsensusEntryId && entry.stage === "consensus");
 	if (!consensus) throw new CouncilProtocolError("consensus-missing", "latest consensus entry missing");
@@ -543,8 +544,17 @@ function modeAssertYay(args: Record<string, string>, root: string): Json {
 	const result = aggregateVotes(object(consensus.votes, "consensus.votes"), blockers.map((blocker) => blocker.id));
 	if (result.result !== "yay" || consensus.result !== "yay") throw new CouncilProtocolError("not-unanimous", "exact-six unanimous yay not proven");
 	if (consensus.subject.headSha !== headSha || consensus.subject.proposalDigest !== proposalDigest) throw new CouncilProtocolError("stale-consensus-entry", "consensus subject differs from current assertion");
-	if (consensus.stateDigest !== stateDigest(state)) throw new CouncilProtocolError("state-bus-mismatch", "consensus digest does not match state");
-	return { ok: true, result: "yay", runId: state.runId, reviewId: state.reviewId, cycle: state.cycle, consensusEntryId: consensus.id, headSha, proposalDigest };
+	let closedEntryId: string | null = null;
+	if (closedYay) {
+		const closed = [...history].reverse().find((entry) => entry.stage === "closed" && entry.result === "yay");
+		if (!closed || closed.turn <= consensus.turn) throw new CouncilProtocolError("closed-yay-missing", "closed-yay entry after consensus is missing");
+		if (closed.subject.headSha !== headSha || closed.subject.proposalDigest !== proposalDigest) throw new CouncilProtocolError("stale-closed-entry", "closed-yay subject differs from current assertion");
+		if (closed.stateDigest !== stateDigest(state)) throw new CouncilProtocolError("state-bus-mismatch", "closed-yay digest does not match final state");
+		closedEntryId = closed.id;
+	} else if (consensus.stateDigest !== stateDigest(state)) {
+		throw new CouncilProtocolError("state-bus-mismatch", "consensus digest does not match state");
+	}
+	return { ok: true, result: "yay", runId: state.runId, reviewId: state.reviewId, cycle: state.cycle, consensusEntryId: consensus.id, closedEntryId, headSha, proposalDigest };
 }
 
 function modeClose(args: Record<string, string>, root: string): Json {

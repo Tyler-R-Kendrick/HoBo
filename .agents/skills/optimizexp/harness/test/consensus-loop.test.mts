@@ -107,6 +107,13 @@ describe("designer consensus CLI", () => {
 			assert.equal(closed.json.result, "yay");
 			assert.equal((closed.json.state as CouncilState).status, "closed");
 			assert.equal((closed.json.state as CouncilState).closedResult, "yay");
+			const assertedAfterClose = run(root, [
+				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
+				"--head-sha", sha("b"), "--proposal", manifest,
+			]);
+			assert.equal(assertedAfterClose.code, 0, assertedAfterClose.output);
+			assert.equal(assertedAfterClose.json.result, "yay");
+			assert.equal(typeof assertedAfterClose.json.closedEntryId, "string");
 			proposal(root, { evidenceDigest: sha("9") });
 			const alteredEvidence = run(root, [
 				"--mode", "assert-yay", "--run", "run-1", "--review", "review-1",
@@ -290,5 +297,21 @@ describe("designer consensus CLI", () => {
 			assert.notEqual(blocked.code, 0);
 			assert.match(blocked.output, /illegal-transition/);
 		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+
+	it("never proves yay for user or safety closed reviews", () => {
+		for (const result of ["user", "safety"] as const) {
+			const root = seedRepo();
+			try {
+				const file = proposal(root);
+				init(root, file);
+				const closed = run(root, ["--mode", "close", "--run", "run-1", "--review", "review-1", "--result", result, "--reason", `${result} termination.`]);
+				assert.equal(closed.code, 0, closed.output);
+				assert.equal(closed.json.result, result);
+				const assertion = run(root, ["--mode", "assert-yay", "--run", "run-1", "--review", "review-1", "--head-sha", sha("b"), "--proposal", file]);
+				assert.notEqual(assertion.code, 0);
+				assert.match(assertion.output, /not-approved/);
+			} finally { rmSync(root, { recursive: true, force: true }); }
+		}
 	});
 });

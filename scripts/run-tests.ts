@@ -141,9 +141,13 @@ const configPath = join(configDir, "vitest.config.mjs");
 const baseConfigUrl = pathToFileURL(
 	resolve(process.cwd(), "vitest.config.ts"),
 ).href;
+const maxWorkers = Math.max(
+	1,
+	Number.parseInt(process.env.HOBO_RELEVANT_CHECK_CONCURRENCY ?? "4", 10) || 4,
+);
 writeFileSync(
 	configPath,
-	`import baseConfig from ${JSON.stringify(baseConfigUrl)};\nexport default { ...baseConfig, test: { ...baseConfig.test, include: ${JSON.stringify(testFiles)}, pool: "forks", watch: false } };\n`,
+	`import baseConfig from ${JSON.stringify(baseConfigUrl)};\nexport default { ...baseConfig, test: { ...baseConfig.test, include: ${JSON.stringify(testFiles)}, maxWorkers: ${maxWorkers}, pool: "forks", watch: false } };\n`,
 );
 
 try {

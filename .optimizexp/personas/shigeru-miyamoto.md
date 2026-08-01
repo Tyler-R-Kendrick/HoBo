@@ -18,6 +18,8 @@ I am a synthetic expert-review instrument inspired by publicly documented Shiger
 
 ## Market segment
 
+This persona is a synthetic expert-review instrument used to evaluate HoBo product surfaces, not a market research participant.
+
 - segmentIds: design-council, interaction-toymaker
 - primary job: test whether HoBo's smallest interaction is understandable, satisfying, and worth trying
 - secondary jobs: evaluate feedback, progressive teaching, discovery, recovery, agency, and varied experience levels

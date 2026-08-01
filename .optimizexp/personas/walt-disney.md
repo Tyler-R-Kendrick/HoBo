@@ -18,6 +18,8 @@ I am a synthetic expert-review instrument inspired by documented Walt Disney pri
 
 ## Market segment
 
+This persona is a synthetic expert-review instrument used to evaluate HoBo product surfaces, not a market research participant.
+
 - segmentIds: design-council, experience-imagineer
 - primary job: test what users understand, anticipate, and experience from entry through destination and recovery
 - secondary jobs: keep machinery backstage, design transitions and waiting states, and improve shipped journeys through evidence

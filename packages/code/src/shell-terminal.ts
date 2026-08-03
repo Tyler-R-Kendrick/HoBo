@@ -146,7 +146,9 @@ export class StreamTerminal implements Terminal {
 		this.write(`\x1b]0;${title}\x07`);
 	}
 
-	setProgress(_active: boolean): void {
-		// OSC 9;4 progress is a ProcessTerminal nicety; no-op over plain streams.
+	setProgress(active: boolean): void {
+		// OSC 9;4 — indeterminate progress on (3) / off (0). Terminals that do
+		// not understand it ignore it, so this is safe over any stream.
+		this.write(active ? "\u001b]9;4;3;\u0007" : "\u001b]9;4;0;\u0007");
 	}
 }

@@ -13,11 +13,15 @@ import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterAll, describe, expect, it } from "vitest";
 import {
+	appendAssistant,
+	clearWrapCache,
+	createInitialShellState,
+	renderShellFrame,
 	runInteractiveShell,
 	type ShellHost,
 } from "../src/interactive-shell.js";
 import { createDefaultShellHost } from "../src/shell-host.js";
-import type { StreamTerminal } from "../src/shell-terminal.js";
+import { StreamTerminal } from "../src/shell-terminal.js";
 
 const WIDTH = 80;
 const HEIGHT = 24;
@@ -201,5 +205,46 @@ describe("default shell host honesty", () => {
 		// Unknown flag on a verb path fails closed with remediation.
 		const reply = await host.runVerb(["status", "--wat"]);
 		expect(reply.length).toBeGreaterThan(0);
+	});
+});
+
+describe("StreamTerminal contract", () => {
+	it("accounts every byte it writes and implements progress signalling", () => {
+		const out = collector();
+		const t = new StreamTerminal({
+			stdin: new PassThrough(),
+			stdout: out.stream,
+			columns: 80,
+			rows: 24,
+		});
+		expect(t.bytesWritten).toBe(0);
+		t.write("hello");
+		expect(t.bytesWritten).toBe(5);
+		expect(t.writeCount).toBe(1);
+		// setProgress is a real OSC 9;4 signal, not a swallowed call.
+		const before = t.bytesWritten;
+		t.setProgress(true);
+		t.setProgress(false);
+		expect(t.bytesWritten).toBeGreaterThan(before);
+		expect(t.writeCount).toBe(3);
+		// Falls back to declared geometry when the stream carries none.
+		expect(t.columns).toBe(80);
+		expect(t.rows).toBe(24);
+	});
+});
+
+describe("wrap cache invalidation", () => {
+	it("re-wraps after an explicit invalidate", () => {
+		let state = createInitialShellState({
+			width: 60,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = appendAssistant(state, "a message that will be wrapped");
+		const first = renderShellFrame(state);
+		clearWrapCache();
+		// Same state must still render identically from a cold cache.
+		expect(renderShellFrame(state)).toBe(first);
 	});
 });

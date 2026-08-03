@@ -196,7 +196,7 @@ function wrapText(text: string, width: number): string[] {
 
 /** Per-message wrap cache — messages are immutable, so re-wrapping the whole
  * transcript on every frame is pure waste. Keyed by message object. */
-const wrapCache = new WeakMap<
+let wrapCache = new WeakMap<
 	ShellMessage,
 	{ readonly width: number; readonly lines: readonly string[] }
 >();
@@ -209,6 +209,11 @@ function messagePrefix(role: ShellMessage["role"]): string {
 			: role === "product"
 				? "··· · "
 				: "sys · ";
+}
+
+/** Drop every cached wrap — used when the renderer asks for a clean slate. */
+export function clearWrapCache(): void {
+	wrapCache = new WeakMap();
 }
 
 function wrapMessage(m: ShellMessage, width: number): readonly string[] {
@@ -1198,7 +1203,12 @@ export async function runInteractiveShell(
 			}
 			return renderShellFrame(state).split("\n");
 		},
-		invalidate(): void {},
+		invalidate(): void {
+			// TUI calls this when it needs a from-scratch re-render (theme or
+			// size change). Cached wraps are keyed by (message, width), but an
+			// explicit invalidate must not be able to serve stale lines.
+			clearWrapCache();
+		},
 		handleInput(data: string): void {
 			handleKey(data);
 		},

@@ -1,0 +1,20 @@
+{
+	"schemaVersion": "hobo.try-example/v1",
+	"appPolicy": {},
+	"deploymentPolicy": {},
+	"topology": {
+		"junction": {
+			"id": "junction:hello-counter",
+			"yardIds": [
+				"yard:browser-wasm",
+				"yard:webernetes",
+				"yard:cloudflare",
+				"yard:netlify",
+				"yard:vercel",
+				"yard:lakebed",
+				"yard:kubernetes"
+			]
+		},
+		"allowedYardIds": null
+	}
+}

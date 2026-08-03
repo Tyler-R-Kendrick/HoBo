@@ -1,0 +1,10 @@
+{
+	"id": "kv-notes",
+	"title": "KV Notes",
+	"blurb": "Notes stay available through a local primary and policy-selected standby.",
+	"tags": ["kv", "redundancy"],
+	"needs": ["http", "kv"],
+	"ui": "notes",
+	"entry": "app.ts",
+	"sourcePath": "examples/try-site/apps/kv-notes/app.ts"
+}

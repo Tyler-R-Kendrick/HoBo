@@ -38,7 +38,16 @@
       </details>
     </div>
     <main>
-      <div id="yard" role="img" aria-label="HoBo Yard platform"></div>
+      <!-- The yard is operable, not decorative: focusable, arrow-key
+           navigable, Enter opens the focused prop's sheet. -->
+      <div
+        id="yard"
+        tabindex="0"
+        role="application"
+        aria-label="HoBo Yard. Use left and right arrows to move between yard props, Enter to open the selected prop's sheet, Escape to close."
+        aria-describedby="yard-help"
+      ></div>
+      <p id="yard-live" class="visually-hidden" role="status" aria-live="polite"></p>
       <aside id="sheet" hidden>
         <header>
           <h2 id="sheet-title">Sheet</h2>
@@ -58,6 +67,7 @@
         <button type="button" id="newsreel-skip">CARRY ON</button>
       </div>
     </main>
+    <p id="yard-help" hidden>Arrow keys move between yard props; Enter opens the selected prop's sheet; Escape closes it.</p>
     <p id="help">
       Hover a prop to raise the lantern (free read). Click it to send Bo:
       Platform · Waybill Desk · Active Rail · Connections · Policy Board · Cost Booth · Error Bunker.

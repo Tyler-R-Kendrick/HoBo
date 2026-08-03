@@ -81,6 +81,9 @@ export type RenderItem =
 
 export type RenderModel = Readonly<{ items: readonly RenderItem[] }>;
 
+/** Day = ink on paper; night = paper on ink (exact inversion). */
+export type YardTheme = "day" | "night";
+
 export type PresenterInput = Readonly<{
 	visual: YardVisualState | null;
 	boPos: { x: number; y: number };
@@ -198,6 +201,65 @@ export function derailHitStop(input: PresenterInput): boolean {
 		fx.elapsedMs >= 0 &&
 		fx.elapsedMs <= DERAIL_HIT_STOP_MS
 	);
+}
+
+/**
+ * Frame to pin a sprite to, or null to let the clip play.
+ *
+ * Reduced motion means *still*, not silent: sprites hold a representative
+ * frame while every ink state around them (waybills, spark, smoke, signs)
+ * still carries the information. Test mode pins frames for determinism.
+ */
+export function pinnedFrame(
+	input: PresenterInput,
+	restFrame: number,
+): number | null {
+	if (input.testMode) return restFrame;
+	if (input.reducedMotion) return restFrame;
+	return null;
+}
+
+/**
+ * Day/night is an exact ink/paper inversion (DESIGN.md): ink on paper by day,
+ * paper on ink by night. Applied as a post-pass over the finished model so
+ * every prop inverts by construction and none can be forgotten. Spark and go
+ * are accents, not ground, so they survive the swap unchanged — a hazard must
+ * read as a hazard in both themes.
+ */
+const NIGHT_SWAP: Record<string, string> = {
+	[INK]: "#f2f1ec",
+	[PAPER]: "#0a0a0a",
+	[CREAM]: "#111111",
+	[MUTE]: "#c9c8c2",
+	[FAINT]: "#9a9994",
+	[BORDER]: "#2a2a28",
+	"#111111": "#f2f1ec",
+	"#444444": "#c9c8c2",
+	"#fffdf7": "#111111",
+};
+
+export function applyTheme(model: RenderModel, theme: YardTheme): RenderModel {
+	if (theme === "day") return model;
+	const swap = (c: string | undefined) =>
+		c === undefined ? undefined : (NIGHT_SWAP[c] ?? c);
+	return Object.freeze({
+		items: model.items.map((item) => {
+			switch (item.kind) {
+				case "rect":
+					return Object.freeze({
+						...item,
+						...(item.fill ? { fill: swap(item.fill) as string } : {}),
+						...(item.stroke ? { stroke: swap(item.stroke) as string } : {}),
+					});
+				case "line":
+					return Object.freeze({ ...item, color: swap(item.color) as string });
+				case "text":
+					return Object.freeze({ ...item, color: swap(item.color) as string });
+				default:
+					return item;
+			}
+		}),
+	});
 }
 
 type Push = (item: RenderItem) => void;
@@ -452,7 +514,7 @@ export function presentYard(input: PresenterInput): RenderModel {
 	if (input.world) drawWorld(push, input);
 
 	// --- traffic particles (never in test mode: stable screenshots) ---
-	if (!input.testMode) {
+	if (!input.testMode && !input.reducedMotion) {
 		input.particles.forEach((p, i) => {
 			if (!p.alive) return;
 			rect(push, `particle-${i}`, p.x, p.y, 12, 10, {
@@ -464,18 +526,21 @@ export function presentYard(input: PresenterInput): RenderModel {
 		});
 	}
 
-	// --- guest agent near bay (only real authorized connections) ---
+	// --- guest agent near bay (one per real connector, its own clip) ---
+	// The clip comes from the derived guest state, never a hard-coded "work":
+	// an idle or errored connector must not pantomime working.
 	const bay = YARD_LAYOUT.zones.connectionBay;
-	if ((v?.connections ?? []).some((c) => c.visual === "authorized")) {
+	const guest = (v?.guests ?? []).find((g) => g.visual !== "offline");
+	if (guest && (v?.connections ?? []).some((c) => c.visual === "authorized")) {
 		push({
 			kind: "sprite",
 			id: "guest-swe-claude",
 			x: bay.x + 54,
 			y: bay.anchorY,
-			animationId: "guest.swe-claude.work",
+			animationId: guest.animationId,
 			scale: 0.75,
 			depth: D.characters,
-			testFrame: input.testMode ? 4 : null,
+			testFrame: pinnedFrame(input, 4),
 		});
 	}
 
@@ -489,7 +554,7 @@ export function presentYard(input: PresenterInput): RenderModel {
 			animationId: input.boAnimationId,
 			scale: input.boAnimationId.includes("walk") ? 0.7 : 0.55,
 			depth: D.characters + 1,
-			testFrame: input.testMode ? 0 : null,
+			testFrame: pinnedFrame(input, 0),
 		});
 		if (input.speech) {
 			const w = Math.min(220, input.speech.length * 7 + 16);
@@ -1101,8 +1166,11 @@ function drawErrorBunker(push: Push, v: YardVisualState | null): void {
 	const hazards = v?.errorBunker.hazards ?? [];
 	if (hazards.length === 0) return;
 
-	// Smoking switch: ink puffs rising from the derailed tie.
-	for (let i = 0; i < 3; i++) {
+	// Smoking switch: the column grows with the hazard count, so escalation is
+	// visible inside the prop itself. A binary "on fire / not" hides the
+	// difference between one nuisance and a yard coming apart (HYX GLA-2).
+	const severity = Math.min(hazards.length, 4);
+	for (let i = 0; i < 2 + severity; i++) {
 		puff(
 			push,
 			`bunker-smoke-${i}`,
@@ -1111,6 +1179,16 @@ function drawErrorBunker(push: Push, v: YardVisualState | null): void {
 			8 + i * 3,
 			PROP + 3,
 		);
+	}
+	// One spark tally bar per hazard, inside the bunker: countable at a glance
+	// without reading the hazard strings underneath.
+	for (let i = 0; i < severity; i++) {
+		rect(push, `bunker-tally-${i}`, z.x + 12 + i * 12, z.y + 96, 6, 26, {
+			fill: SPARK,
+			stroke: INK,
+			lineWidth: 2,
+			depth: PROP + 4,
+		});
 	}
 	// Spark-red warning triangle — the only red on a healthy board.
 	const tri = { x: z.x + 136, y: z.y + 8, w: 52, h: 48 };
@@ -1626,7 +1704,7 @@ function drawWorld(push: Push, input: PresenterInput): void {
 			scale: 0.5,
 			...(ch.state === "idle" ? { alpha: 0.6 } : {}),
 			depth: D.characters,
-			testFrame: input.testMode ? 0 : null,
+			testFrame: pinnedFrame(input, 0),
 		});
 		const headY = ch.y - 62;
 		if (ch.state === "stuck") {

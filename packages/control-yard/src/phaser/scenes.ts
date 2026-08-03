@@ -21,7 +21,7 @@ export type YardHost = {
 	onZoneClick: (zone: ZoneId) => void;
 	/** Lantern inspect: world-space pointer position (reads are zero-friction). */
 	onPointerMove: (worldX: number, worldY: number) => void;
-	onSceneReady: () => void;
+	onSceneReady: (setBackground: (color: string) => void) => void;
 	onFrame: () => void;
 };
 
@@ -107,7 +107,9 @@ export class YardScene extends Phaser.Scene {
 		this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
 			this.host.onPointerMove(pointer.worldX, pointer.worldY);
 		});
-		this.host.onSceneReady();
+		this.host.onSceneReady((color: string) =>
+			this.cameras.main.setBackgroundColor(color),
+		);
 		this.reconcile(this.host.getRenderModel());
 	}
 

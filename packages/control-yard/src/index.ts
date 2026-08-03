@@ -82,11 +82,13 @@ export {
 	yardPhaserConfig,
 } from "./phaser/game-config.js";
 export {
+	applyTheme,
 	derailHitStop,
 	type LanternLine,
 	lanternLines,
 	lanternRowText,
 	type PresenterInput,
+	pinnedFrame,
 	presentYard,
 	type RenderItem,
 	type RenderModel,

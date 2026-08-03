@@ -22,6 +22,7 @@ import { createYardClient } from "./net/yard-client.js";
 import { yardPhaserConfig } from "./phaser/game-config.js";
 import { PreloadScene, type YardHost, YardScene } from "./phaser/scenes.js";
 import {
+	applyTheme,
 	presentYard,
 	type RenderModel,
 	resolveBoTransitAnim,
@@ -83,6 +84,7 @@ let theme: YardTheme = "day";
 let waybills: readonly Waybill[] = [];
 let trains: readonly TrainView[] = [];
 let audio: YardAudio | null = null;
+let setSceneBackground: ((color: string) => void) | null = null;
 /** Transient feedback in flight (stamp slam / derail hit-stop). */
 let fx: { kind: "stamp" | "derail"; startedAt: number } | null = null;
 const REDUCED_MOTION =
@@ -358,6 +360,9 @@ function advanceToTick(n: number): void {
 function setTheme(next: YardTheme): void {
 	theme = next;
 	document.body.dataset.theme = next;
+	// The camera ground must invert with the props, or night renders as ink
+	// props on a white page.
+	setSceneBackground?.(next === "night" ? "#0a0a0a" : "#ffffff");
 }
 
 function currentEntities(): readonly YardTestEntity[] {
@@ -374,7 +379,9 @@ function currentEntities(): readonly YardTestEntity[] {
 		const bay = zoneAnchor("connectionBay");
 		entities.push({
 			id: "guest-swe-claude",
-			animationId: "guest.swe-claude.work",
+			animationId:
+				engine.visual?.guests.find((g) => g.visual !== "offline")
+					?.animationId ?? "guest.swe-claude.idle",
 			x: bay.x,
 			y: bay.y,
 		});
@@ -431,6 +438,12 @@ function selectZone(zone: ZoneId): void {
 
 function tick(dtSec: number): void {
 	engine.tick(dtSec);
+	// Reduced motion: Bo still goes where the projection sends him — his
+	// position is information — but he arrives instead of gliding there.
+	if (REDUCED_MOTION) {
+		const target = zoneAnchor(currentZone());
+		engine.boPos = { x: target.x, y: target.y };
+	}
 	if (speechRemaining > 0) speechRemaining -= dtSec;
 	if (successRemaining > 0) {
 		successRemaining -= dtSec;
@@ -440,7 +453,7 @@ function tick(dtSec: number): void {
 }
 
 function renderModel(): RenderModel {
-	return presentYard({
+	const model = presentYard({
 		visual: engine.visual,
 		boPos: engine.boPos,
 		boAnimationId: currentBoAnim(),
@@ -462,6 +475,7 @@ function renderModel(): RenderModel {
 			: null,
 		reducedMotion: REDUCED_MOTION,
 	});
+	return applyTheme(model, theme);
 }
 
 const testHost: YardTestHost = {
@@ -522,6 +536,7 @@ const testHost: YardTestHost = {
 	advanceToTick: (n) => advanceToTick(n),
 	setTheme: (next) => setTheme(next),
 	getTheme: () => theme,
+	getReducedMotion: () => REDUCED_MOTION,
 	getWaybillCount: () => waybills.length,
 	getHighball: () => highball,
 	getScenario: () => scenarioState?.id ?? null,
@@ -553,6 +568,65 @@ function wireMuteControl(): void {
 	});
 }
 
+/**
+ * Keyboard route to the yard (WCAG 2.1.1). The canvas is a control, so it is
+ * focusable and arrow-navigable: an operator must be able to *read* a waybill
+ * before approving it, which a toolbar that fires commands directly denies.
+ */
+const KEYBOARD_ZONE_ORDER: readonly ZoneId[] = [
+	"platformRest",
+	"bootstrapDesk",
+	"activeRailTrack",
+	"policyBoard",
+	"connectionBay",
+	"costBooth",
+	"errorBunker",
+];
+
+function announce(message: string): void {
+	const live = document.getElementById("yard-live");
+	if (live) live.textContent = message;
+}
+
+function wireYardKeyboard(): void {
+	const host = document.getElementById("yard");
+	if (!host) return;
+	let index = 0;
+	const focusZone = (next: number) => {
+		index = (next + KEYBOARD_ZONE_ORDER.length) % KEYBOARD_ZONE_ORDER.length;
+		const zone = KEYBOARD_ZONE_ORDER[index] as ZoneId;
+		// Reuse the lantern: keyboard focus raises the same truth card hover does.
+		setHoveredZone(zone);
+		announce(`${YARD_LAYOUT.zones[zone].label}. Press Enter to open.`);
+	};
+	host.addEventListener("focus", () => {
+		if (hoveredZone === null) focusZone(index);
+	});
+	host.addEventListener("blur", () => setHoveredZone(null));
+	host.addEventListener("keydown", (ev) => {
+		const key = (ev as KeyboardEvent).key;
+		if (key === "ArrowRight" || key === "ArrowDown") {
+			ev.preventDefault();
+			focusZone(index + 1);
+		} else if (key === "ArrowLeft" || key === "ArrowUp") {
+			ev.preventDefault();
+			focusZone(index - 1);
+		} else if (key === "Enter" || key === " ") {
+			ev.preventDefault();
+			const zone = KEYBOARD_ZONE_ORDER[index] as ZoneId;
+			selectZone(zone);
+			announce(`${YARD_LAYOUT.zones[zone].label} sheet open.`);
+			// Move focus into the sheet so the operator lands on its controls.
+			document.getElementById("sheet-confirm")?.focus();
+		} else if (key === "Escape") {
+			overlay.closeSheet();
+			engine.dismissSheet();
+			announce("Sheet closed.");
+			host.focus();
+		}
+	});
+}
+
 async function boot(): Promise<void> {
 	const res = await fetch(`${ASSET_BASE}/assets_index.json`);
 	const index = (await res.json()) as AssetIndex;
@@ -569,6 +643,7 @@ async function boot(): Promise<void> {
 		window.addEventListener(ev, () => audio?.unlock(), { once: true });
 	}
 	wireMuteControl();
+	wireYardKeyboard();
 
 	const host: YardHost = {
 		manifest,
@@ -578,7 +653,8 @@ async function boot(): Promise<void> {
 		},
 		onZoneClick: (zone) => selectZone(zone),
 		onPointerMove: (x, y) => setHoveredZone(zoneAt(x, y)),
-		onSceneReady: () => {
+		onSceneReady: (setBackground) => {
+			setSceneBackground = setBackground;
 			assetsReady = true;
 			document.body.dataset.assetsReady = "1";
 			if (SCENARIO_MODE && SCENARIO_PARAM) {

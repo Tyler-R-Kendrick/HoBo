@@ -1,6 +1,6 @@
 {
-  "gameUrl": "http://127.0.0.1:33273/?test=1&seed=42&api=http%3A%2F%2F127.0.0.1%3A46227",
-  "apiUrl": "http://127.0.0.1:46227",
+  "gameUrl": "http://127.0.0.1:41419/?test=1&seed=42&api=http%3A%2F%2F127.0.0.1%3A43863",
+  "apiUrl": "http://127.0.0.1:43863",
   "checks": [
     "PASS test seam ready",
     "PASS connection authorized present — conn=1",
@@ -55,6 +55,7 @@
     "waybillCount": 0,
     "highball": true,
     "theme": "day",
+    "reducedMotion": false,
     "scenario": null,
     "tick": 0,
     "entities": [
@@ -71,7 +72,12 @@
         "y": 580
       }
     ],
-    "recentFx": [],
+    "recentFx": [
+      {
+        "fx": "highball",
+        "atFrame": 0
+      }
+    ],
     "world": {
       "campCount": 0,
       "characterCount": 0,

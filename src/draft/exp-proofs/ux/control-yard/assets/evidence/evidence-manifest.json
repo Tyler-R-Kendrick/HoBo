@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-03T23:09:28.680Z",
+  "generatedAt": "2026-08-03T23:43:34.835Z",
   "package": "@hobo/control-yard",
   "command": "pnpm --filter @hobo/control-yard run evidence",
   "skillStack": [
@@ -28,36 +28,36 @@
   "errors": [],
   "files": {
     "visual-report.json": {
-      "bytes": 2682,
-      "sha256": "2aefaaa2acb64f022d5f787309f2b5744d633c10ce43f3ddb88363cb6e5f09aa"
+      "bytes": 2778,
+      "sha256": "3ec179608abab734bbd73c2fba921f8f87579fb51b28b52a9d8744f30b032b56"
     },
     "01-boot-live.png": {
-      "bytes": 465618,
-      "sha256": "fd4cca760d4c433f9ee99fad8c016686cf5ed58ab783f99f75e2b99ce79dd1ff"
+      "bytes": 468197,
+      "sha256": "178bb892a953c2e7d77e675abd909de8617e9534be8042198db44d8943f00fbf"
     },
     "02-connection-bay-sheet.png": {
-      "bytes": 489346,
-      "sha256": "93eef09b25860fcc1bce317b15541e093fb4fc66cc4bedea56b91a30cb893956"
+      "bytes": 491865,
+      "sha256": "4baab7f908fff135f710612ec993c82bddfb8a1acbb82dde5a0fd53d1967bc76"
     },
     "03-cost-booth.png": {
-      "bytes": 483165,
-      "sha256": "ddca390f24ee271cddc0ce69c60bb365df1613d71f0b0f1645add7d4156418c1"
+      "bytes": 485790,
+      "sha256": "ac05018bac24f986d0d4a95afda7eb4d56cb0cf6221113c5bd7ed639f24a6e12"
     },
     "04-policy-board.png": {
-      "bytes": 483653,
-      "sha256": "cae014e4bb93194bc77cbbad32e251baaa83314d25e69f07be1a592281809652"
+      "bytes": 486261,
+      "sha256": "1615a69791a29b8af669bcc7128adee3265e6fa0bc0ad24d1ff412c813a30c1b"
     },
     "05-error-bunker.png": {
-      "bytes": 485623,
-      "sha256": "af42e08793b742bf0e86bd3bec7e1c455960e14442d642f237034c49d679584f"
+      "bytes": 487877,
+      "sha256": "2b3d93cef2f65f5d69262ed6b81996e7b67e0a225cbe65d622378bc06d7848f3"
     },
     "06-after-actions.png": {
-      "bytes": 485623,
-      "sha256": "af42e08793b742bf0e86bd3bec7e1c455960e14442d642f237034c49d679584f"
+      "bytes": 487878,
+      "sha256": "2b6ce273ebe95377b8218ea3cda66ce203bba437fc3beaa5ad5a0124a8c8fb7a"
     },
     "07-walk.png": {
-      "bytes": 478798,
-      "sha256": "fb7973b928e80f86772bb82b6311ba076499728428746e1df98c6d3dac13dead"
+      "bytes": 481416,
+      "sha256": "eb629797b18301bcf46b204e230b46e4865099710074704d822998fe92c2652f"
     },
     "canvas-only.png": {
       "bytes": 330915,
@@ -72,28 +72,28 @@
       "sha256": "b072b1ea011ca57637bbb48f7745d1721a1d06c545b383b182b23b464f453d00"
     },
     "anim-bo-walk-west.png": {
-      "bytes": 27037,
-      "sha256": "7684548a620e381766538c745495e70bd0d1694510f3e8b96987c03683c8644c"
+      "bytes": 27178,
+      "sha256": "3f125c61cb9e41c8ec15642e775abf77427f7bb52de37ab537b4b623a78cef1b"
     },
     "recordings/01-yard-loop.mp4": {
-      "bytes": 786579,
-      "sha256": "bea8cd13c8a22a85d5945b5ad64f2228723a4335220da05d89a4685662cf79a1"
+      "bytes": 625375,
+      "sha256": "728771595bc801a39f520c92b36749458ef4a95616b5dfad9c9d9836c724352e"
     },
     "recordings/02-connection-sheet.mp4": {
-      "bytes": 440955,
-      "sha256": "c43c2d77745983ba57370ddabb02b919e6bf0da039f8e77717c51dae1d979356"
+      "bytes": 265581,
+      "sha256": "7a98ca497a26a8e825ee261048f1c065968b6cdc07a88b86729eea08501c25be"
     },
     "recordings/03-bo-walk-east-west.mp4": {
-      "bytes": 423563,
-      "sha256": "05ca0641071447312b93d62145ade7a036589f2082aadf071f1b65e1d422c290"
+      "bytes": 446498,
+      "sha256": "e4613cb36f4eb13ae5ab8ade85951c2f64318aef1627d5c17b18c21ce20811f9"
     },
     "recordings/04-rail-cost-doctor.mp4": {
-      "bytes": 1153378,
-      "sha256": "99e38c1f28eb535738bf1fe38bb7091499f6eb6bd79cfca109b652f86a523d7c"
+      "bytes": 469792,
+      "sha256": "48f97e3f095136ca49a32d8a0cdd7e43ea34ec53a0979003536cade3e4770377"
     },
     "evidence-manifest.json": {
-      "bytes": 3348,
-      "sha256": "0b1d226eb4fa65ac371d0a704ab52e5e54fde2cd1c0d9b377e6f269a0fa7430f"
+      "bytes": 3347,
+      "sha256": "1dc05aed87b4889e4785731f16ea057b5214b9ca5935305cc35305e0e665e3bd"
     }
   },
   "manifestNote": "evidence-manifest.json sha256 is of on-disk file after write; re-run evidence:check validates all other files strictly"

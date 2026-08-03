@@ -289,8 +289,38 @@ describe("yard presenter", () => {
 		expect(byId(items, "car-0-steam-0")).toBeUndefined();
 	});
 
-	it("guest sprite appears only with an authorized connection", () => {
-		expect(byId(presentYard(input()).items, "guest-swe-claude")).toBeDefined();
+	it("guest sprite needs real connector activity, not just an authorized connection", () => {
+		// An authorized connection alone is not an agent at work: with no
+		// activity row there is nobody to draw, and drawing one anyway would be
+		// decorative scenery masquerading as signal.
+		expect(
+			byId(presentYard(input()).items, "guest-swe-claude"),
+		).toBeUndefined();
+
+		const active = {
+			...baseSnap,
+			activity: [
+				{
+					connectorKind: "swe-claude",
+					connectionId: "conn-1",
+					status: "working",
+				},
+			],
+		} as unknown as YardProjectionSnapshot;
+		const activeVisual = deriveYardVisualState(active);
+		const withGuest = presentYard(
+			input({
+				visual: activeVisual,
+				zone: activeVisual.bo.zone,
+				boAnimationId: activeVisual.bo.animationId,
+			}),
+		);
+		const sprite = byId(withGuest.items, "guest-swe-claude");
+		expect(sprite).toBeDefined();
+		if (sprite?.kind === "sprite") {
+			expect(sprite.animationId).toBe("guest.swe-claude.work");
+		}
+
 		const noConn = {
 			...baseSnap,
 			connections: [],

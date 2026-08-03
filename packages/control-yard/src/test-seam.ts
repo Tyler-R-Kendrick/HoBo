@@ -46,6 +46,8 @@ export type YardTestState = Readonly<{
 	waybillCount: number;
 	highball: boolean;
 	theme: YardTheme;
+	/** True when the OS asks for reduced motion — the yard stills itself. */
+	reducedMotion: boolean;
 	scenario: string | null;
 	tick: number;
 	entities: readonly YardTestEntity[];
@@ -95,6 +97,7 @@ export type YardTestHost = {
 	advanceToTick: (n: number) => void;
 	setTheme: (theme: YardTheme) => void;
 	getTheme: () => YardTheme;
+	getReducedMotion: () => boolean;
 	getWaybillCount: () => number;
 	getHighball: () => boolean;
 	getScenario: () => string | null;
@@ -132,6 +135,7 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 				waybillCount: host.getWaybillCount(),
 				highball: host.getHighball(),
 				theme: host.getTheme(),
+				reducedMotion: host.getReducedMotion(),
 				scenario: host.getScenario(),
 				tick: host.getTick(),
 				entities: Object.freeze(

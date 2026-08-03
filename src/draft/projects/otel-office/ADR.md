@@ -1,5 +1,12 @@
 # ADR: OTel Office — pixel-office observability POC
 
+> **Promoted:** the engine (model, OTLP mappers, trace index, layout,
+> simulator) was promoted to [`packages/yard-world`](../../../../packages/yard-world/)
+> (`@hobo/yard-world`) with office→world vocabulary renames
+> (`OfficeState`→`WorldState`, `OfficeLayout`→`WorldLayout`). The server and
+> browser client were not promoted — serving is owned by control-api. This
+> draft remains as reference.
+
 ## Status
 Proposed (draft POC, Phase 2 slice 2)
 

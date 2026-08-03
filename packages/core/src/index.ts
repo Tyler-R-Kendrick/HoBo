@@ -173,6 +173,26 @@ export {
 	TrafficRoutingParseError,
 } from "./ports/traffic-routing.js";
 export type {
+	TrafficRoutingMatch,
+	TrafficRoutingNegotiation,
+	TrafficRoutingOffering,
+	TrafficRoutingOfferingFidelity,
+	TrafficRoutingOfferingId,
+	TrafficRoutingOfferingStability,
+	TrafficRoutingPortRequest,
+	TrafficRoutingProviderProfile,
+	TrafficRoutingResolveResult,
+} from "./ports/traffic-routing-offerings.js";
+export {
+	DEFAULT_TRAFFIC_ROUTING_FALLBACKS,
+	matchTrafficRoutingOfferings,
+	offering,
+	parseTrafficRoutingOffering,
+	parseTrafficRoutingOfferingId,
+	parseTrafficRoutingProviderProfile,
+	resolveTrafficRouting,
+} from "./ports/traffic-routing-offerings.js";
+export type {
 	ClockReplayResult,
 	ClockTraceEntry,
 	CronSchedule,

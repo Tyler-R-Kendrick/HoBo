@@ -94,7 +94,7 @@ describe("Funnel traffic routing", () => {
 		]);
 	});
 
-	it("denies multi-backend plans without publishing Funnel", async () => {
+	it("realizes multi-backend weighted selection with a single public Funnel tip", async () => {
 		const published: FunnelPublishOptions[] = [];
 		const sink = createInMemoryMeteringSink();
 		const routing = createFunnelTrafficRouting({
@@ -103,14 +103,30 @@ describe("Funnel traffic routing", () => {
 		});
 
 		await expect(routing.apply(plan(2))).resolves.toMatchObject({
+			realized: "full",
+			appliedRules: 1,
+			capabilities: ["weighted-backends"],
+		});
+		expect(published).toHaveLength(1);
+		expect(routing.select("plan:funnel:2", "user-a")).toMatchObject({
+			id: expect.stringMatching(/^backend:/),
+		});
+		expect(sink.events.map(({ eventType }) => eventType)).toEqual([
+			"routing.plan.apply",
+		]);
+	});
+
+	it("denies multi-backend when requireMultiPublic is set", async () => {
+		const published: FunnelPublishOptions[] = [];
+		const routing = createFunnelTrafficRouting({
+			overlay: overlay(published),
+			requireMultiPublic: true,
+		});
+		await expect(routing.apply(plan(2))).resolves.toMatchObject({
 			realized: "none",
-			appliedRules: 0,
-			unmet: ["multiple-backends"],
+			unmet: expect.arrayContaining(["funnel-multi-public"]),
 		});
 		expect(published).toEqual([]);
-		expect(sink.events.map(({ eventType }) => eventType)).toEqual([
-			"routing.plan.deny",
-		]);
 	});
 
 	it("reports enabled Funnel without a gateway hostname as degraded", async () => {

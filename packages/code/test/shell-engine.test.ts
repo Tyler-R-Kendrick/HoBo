@@ -447,7 +447,7 @@ describe("promotion approval gate (ADR-0139 mediated mutation)", () => {
 	it("shows the blast radius and does not promote without approval", async () => {
 		const host = approvalHost();
 		const frames = await runWithKeys(host, "go\r");
-		expect(frames).toContain("Promote run run-gate?");
+		expect(frames).toContain("promote run-gate?");
 		expect(frames).toContain("canonical tree is untouched until you say yes");
 		expect(frames).toContain("src/app.ts");
 		expect(frames).toContain("src/new.ts");
@@ -483,7 +483,7 @@ describe("promotion approval gate (ADR-0139 mediated mutation)", () => {
 	it("no gate when the turn changed nothing", async () => {
 		const host = approvalHost({ pendingApprovalFor: async () => null });
 		const frames = await runWithKeys(host, "go\r");
-		expect(frames).not.toContain("Promote run");
+		expect(frames).not.toContain("promote run-gate?");
 		expect(host.promoted).toEqual([]);
 	});
 });

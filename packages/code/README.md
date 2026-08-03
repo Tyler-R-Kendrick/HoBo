@@ -23,51 +23,70 @@ The installed binary is **compiled** (`dist/`). Source lives in `src/`.
 
 ### Interactive TTY (bare `hobo-code`)
 
-On a real TTY, bare `hobo-code` opens the **HoBo InteractiveShell** (product chrome):
+On a real TTY, bare `hobo-code` opens the **HoBo InteractiveShell**, drawn to
+the rubberhose identity in [`site/DESIGN.md`](../../site/DESIGN.md) — Steamboat
+Willie ink and Cuphead title cards, *never flat SaaS chrome*:
 
-| In the shell | What it is |
+- **Title card** on entry: the Chewy wordmark framed in ink, then it scrolls
+  into the transcript. It is a moment, not a permanent header.
+- **Ink cards** with hard sticker shadows (`┏━┓` + offset `▒`), not hairline
+  rules or soft Material elevation.
+- **The transcript is the surface** — roughly 19 content rows on an 80x24,
+  where the previous chrome left about 8.
+- **Strict black and white.** Vermillion appears only for a decision that can
+  change the real tree; green only for done. `NO_COLOR` is honoured.
+- **Bo** rides the one-line status strap and squash-stretches only while a
+  turn is in flight (reduced motion keeps him still).
+
+| Key | Does |
 |---|---|
-| Header | HoBo logo + animated **Bo** mascot (differential render — no flicker; reduced motion honored) |
-| Chat | Transcript · type a build prompt · Enter · `↑/↓` + `PgUp/PgDn` scroll |
-| `/` slash | `guide` `config` `cost` `tasks` `status` `agent` `env` `auth` `about` … (`↑/↓` pick) |
-| Tab | Cycle **Chat → Tasks → Status** |
-| Footer | engine · budget · hermetic env cue |
+| type | talk to the model |
+| `/` | commands (`↑`/`↓` to pick, Enter to run) |
+| Tab | cycle chat → tasks → status |
+| `↑`/`↓`, PgUp/PgDn | scroll the transcript |
+| Esc | cancel the turn in flight |
+| Ctrl+C | quit |
 
-Rendering rides pi-tui's differential renderer as a library — HoBo owns the
-chrome (see `ARCHITECTURE.md` for the render-economy contract).
+### The model is local by default
 
-**The agent loop is real when credentials exist** (any BYOK env, a pi
-`auth.json`, or `HOBO_CODE_ENGINE=pi`): prompts stream a live pi engine turn
-(text deltas + `tool · <name>` lines; **Esc cancels**) running inside a
-mediated isolation sandbox — the canonical tree stays read-only.
+hobo-code thinks **without a cloud account**. A locally hosted SLM is the
+default engine and BYOK is the fallback, not the price of entry:
 
-When a turn changes files, the shell asks before anything leaves the sandbox:
+```bash
+ollama pull qwen2.5-coder:1.5b   # once
+hobo-code                        # streams from your machine, $0
+```
+
+Resolution order is local → cloud → honest dispatch-only, and every failure
+prints a reason you can act on rather than pretending. Overrides:
+`HOBO_CODE_ENGINE=local|pi|none`, `HOBO_CODE_MODEL=ollama/<tag>`,
+`OLLAMA_HOST`. Token counts come from the model server and cost reads `$0`
+because local inference is free.
+
+Turns run inside a mediated isolation sandbox — the canonical tree stays
+read-only. When a turn changes files the shell asks first:
 
 ```
-Promote run <id>? — canonical tree is untouched until you say yes
-
-   M  src/app.ts
-   A  src/new.ts
-
-  y promote · n keep sandboxed  ·  squash-only, gated, audited (ADR-0139)
+┏━ promote run-1a2b3c? ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃The canonical tree is untouched until you say yes.     ┃▒
+┃                                                       ┃▒
+┃  M  src/app.ts                                        ┃▒
+┃  A  src/new.ts                                        ┃▒
+┃                                                       ┃▒
+┃  y promote · n keep sandboxed                         ┃▒
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛▒
 ```
 
 The prompt is modal — stray keys do nothing, `n`/Esc keeps the work sandboxed
-and tells you how to promote later, and only `y` runs the audited path. The
-sandbox is kept on exit so un-promoted work survives. The footer names the
-model that actually runs and, once a turn has cost something, shows real
-provider-reported usage (`1.2k in · 340 out · $0.0123`) which `/cost` also
-reports as live session spend. `HOBO_CODE_ENGINE=none` opts out.
+and tells you how to promote later, and only `y` runs the audited squash-only
+path. The sandbox survives exit so un-promoted work is never lost.
 
 Evidence capture: `HOBO_CODE_SHELL_MAX_MS` bounds a session so a recording
 ends through the normal quit path, and `HOBO_CODE_SHELL_KEYS` scripts
-interactive paths — both opt-in and unset by default.
+interactive paths — both opt-in.
 
-Without credentials the shell stays honest instead of pretending: prompts
-queue dispatch compute tasks, the footer reads `engine:none ·
-dispatch-only`, and every reply names the recorded task plus the one-shot
-command equivalent. Product identity lives in `/about` (not stock Pi Agent
-UI; escape hatch only: `HOBO_CODE_TUI=pi` or `hobo-code --pi`).
+Product identity lives in `/about`. Stock Pi TUI remains an escape hatch only
+(`HOBO_CODE_TUI=pi` or `hobo-code --pi`) and is never the product frame.
 
 When stdin is not a TTY, an empty invocation fails closed with
 `HOBO_CODE_INTERACTIVE_REQUIRED` and prints `hobo-code help` plus the prompt

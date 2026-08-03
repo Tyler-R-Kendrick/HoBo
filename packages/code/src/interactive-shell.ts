@@ -14,9 +14,18 @@
 
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
+import { HOBO_LOGO_TUI } from "./_generated/hobo-logo-tui.js";
 import { inspectCost } from "./cost.js";
 import { buildTasksSurface } from "./grok-build-parity.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
+import {
+	type AccentName,
+	fitCells,
+	INK,
+	inkCard,
+	statusStripe,
+	titleCard,
+} from "./rubberhose.js";
 import type {
 	EngineTurnEvent,
 	EngineTurnResult,
@@ -219,7 +228,11 @@ export function clearWrapCache(): void {
 function wrapMessage(m: ShellMessage, width: number): readonly string[] {
 	const hit = wrapCache.get(m);
 	if (hit && hit.width === width) return hit.lines;
-	const lines = wrapText(messagePrefix(m.role) + m.text, width);
+	// Pre-rendered art (the title card) is already fitted — wrapping it would
+	// shred the frame. Detect it by its ink and pass it through untouched.
+	const lines = m.text.includes(INK.topLeft)
+		? m.text.split("\n").map((l) => fitCells(l, width))
+		: wrapText(messagePrefix(m.role) + m.text, width);
 	wrapCache.set(m, { width, lines });
 	return lines;
 }
@@ -352,9 +365,13 @@ export function createInitialShellState(
 					{
 						role: "product",
 						text: [
-							"Bo is with you. Type a prompt to queue a build task — no completion engine is wired yet, so prompts are recorded as dispatch tasks (see /about).",
-							"Start: /guide (Claude map) · /config · /cost · /tasks · /env",
-							"Keys: Tab panes · / commands · ↑/↓ + PgUp/PgDn scroll · ? help · Ctrl+C quit",
+							titleCard(HOBO_LOGO_TUI, {
+								width: Math.min(width - 3, 70),
+								subtitle: "a coding harness that rides the rails",
+								flat: true,
+							}).join("\n"),
+							"",
+							"Type to talk to Bo. / for commands. Tab for tasks and status.",
 						].join("\n"),
 						at: Date.now(),
 					},
@@ -411,133 +428,142 @@ function boHeaderRows(state: InteractiveShellState): string[] {
  * Geometry is stable for a given (width, height, dense) — animation frames
  * only change the Bo rows' bytes, never the line count.
  */
+/**
+ * Bo, reduced to a single animated cell for the status stripe.
+ *
+ * The mascot's full sprite belongs to the entry title card — a moment, not a
+ * permanent 12-row header. Here he is a bindlebug that squashes and stretches
+ * only while a turn is in flight (Fleischer bounce, honoring reduced motion).
+ */
+const BO_MARKERS = ["(••)", "(‥)", "(••)", "(°°)"] as const;
+
+export function boMarker(state: InteractiveShellState): string {
+	if (state.agentState !== "working") return "(••)";
+	if (state.reducedMotion) return "(••)";
+	const tick = Math.floor(state.tickMs / BO_IDLE_TICK_MS);
+	return BO_MARKERS[tick % BO_MARKERS.length]!;
+}
+
+/** The one-line strap: who is thinking, on what, at what cost. */
+export function statusSegments(state: InteractiveShellState): string[] {
+	return [
+		`${boMarker(state)} hobo-code`,
+		state.modelLabel,
+		state.usageLabel || state.costLabel,
+		state.agentState,
+	];
+}
+
+/**
+ * Render one frame.
+ *
+ * Layout (site/DESIGN.md — ink and paper, never flat SaaS chrome):
+ *
+ *   ┏━ chat ━━━━━━━━━━━━━━━━━━┓     ← transcript is the surface, not a slit
+ *   ┃ …                       ┃▒       (ink outline + hard sticker shadow)
+ *   ┗━━━━━━━━━━━━━━━━━━━━━━━━━┛▒
+ *    ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+ *   ❯ prompt█
+ *   [ (••) hobo-code · model · cost · state ]   ← one inverse strap
+ *
+ * Every line is exactly `width` cells and the line count is stable for a
+ * given (width, height), so the differential renderer sees no churn.
+ */
 export function renderShellFrame(state: InteractiveShellState): string {
 	const w = state.width;
 	const lines: string[] = [];
 
-	const logo = state.dense ? HOBO_MARK_CONSOLE : HOBO_LOGO_CONSOLE;
-	for (const row of logo.split("\n")) {
-		lines.push(padLine(row, w));
-	}
-	lines.push(...boHeaderRows(state));
+	// Bottom furniture: prompt line + status stripe.
+	const bodyRows = Math.max(3, state.height - 2);
+	// Card overhead: top rule + bottom rule + shadow row.
+	const inner = Math.max(1, bodyRows - 3);
+	const innerWidth = w - 3;
 
-	lines.push(
-		padLine(
-			`${state.productTitle} · ${state.engineLabel} · agent:${state.agentState} · focus:${state.focus}${state.chatScroll > 0 ? ` · ↑${state.chatScroll}` : ""}`,
-			w,
-		),
-	);
-	lines.push(padLine("─".repeat(Math.min(w, 40)), w));
+	let cardTitle: string;
+	let accent: AccentName = "none";
+	let body: string[] = [];
 
-	// Body budget: header + separator above, separator + input + footer + hints below
-	const reserved = lines.length + 4;
-	const bodyH = Math.max(4, state.height - reserved);
-
-	let bodyLines: string[] = [];
 	if (state.pendingApproval) {
-		// Approval gate owns the body: the decision must be legible, and the
-		// blast radius must be visible before anything reaches the real tree.
-		const { runId, changes } = state.pendingApproval;
-		bodyLines.push(
-			padLine(
-				`Promote run ${runId}? — canonical tree is untouched until you say yes`,
-				w,
-			),
-			padLine("", w),
-		);
-		const shown = changes.slice(0, Math.max(1, bodyH - 4));
-		for (const change of shown) {
-			bodyLines.push(padLine(`  ${change.status.padEnd(2)} ${change.path}`, w));
+		// The gate owns the frame; vermillion is reserved for exactly this
+		// class of moment (a decision that can change the real tree).
+		cardTitle = `promote ${state.pendingApproval.runId}?`;
+		accent = "spark";
+		const { changes, sandboxRoot } = state.pendingApproval;
+		body.push("The canonical tree is untouched until you say yes.");
+		body.push("");
+		const room = Math.max(1, inner - 5);
+		for (const change of changes.slice(0, room)) {
+			body.push(`  ${change.status.padEnd(2)} ${change.path}`);
 		}
-		if (changes.length > shown.length) {
-			bodyLines.push(
-				padLine(`  … ${changes.length - shown.length} more file(s)`, w),
-			);
+		if (changes.length > room) {
+			body.push(`  … ${changes.length - room} more file(s)`);
 		}
 		if (changes.length === 0) {
-			bodyLines.push(padLine("  (no file changes detected in the sandbox)", w));
+			body.push("  (no file changes detected in the sandbox)");
 		}
-		bodyLines.push(
-			padLine("", w),
-			padLine(
-				`  ${APPROVAL_PROMPT}  ·  squash-only, gated, audited (ADR-0139)`,
-				w,
-			),
-		);
+		body.push("");
+		body.push(`  ${APPROVAL_PROMPT}`);
+		body.push(`  squash-only, gated, audited · ${sandboxRoot}`);
 	} else if (state.slashOpen) {
+		cardTitle = "commands";
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
 		if (items.length === 0) {
-			bodyLines.push(
-				padLine(`Slash palette  filter: /${state.slashFilter}`, w),
-				padLine("  (no matches)", w),
-			);
+			body.push("  (nothing matches that)");
 		} else {
-			// The palette rarely fits a standard 24-row terminal, so the window
-			// follows the selection — otherwise ▸ scrolls out of sight and you
-			// cannot tell what Enter will run.
-			const visible = Math.max(1, bodyH - 1);
+			const visible = Math.max(1, inner - 1);
 			const start = clamp(
 				state.slashIndex - Math.floor((visible - 1) / 2),
 				0,
 				Math.max(0, items.length - visible),
 			);
 			const end = Math.min(items.length, start + visible);
-			const more = items.length - end;
-			const range =
-				items.length > visible
-					? `  ${start + 1}-${end}/${items.length}${more > 0 ? ` · ↓${more} more` : ""}`
-					: "";
-			bodyLines.push(
-				padLine(`Slash palette  filter: /${state.slashFilter}${range}`, w),
-			);
 			for (let i = start; i < end; i += 1) {
 				const item = items[i]!;
 				const mark = i === state.slashIndex ? "▸" : " ";
-				bodyLines.push(
-					padLine(`${mark} /${item.name.padEnd(10)} ${item.description}`, w),
-				);
+				body.push(`${mark} /${item.name.padEnd(9)} ${item.description}`);
+			}
+			if (items.length > visible) {
+				body.push(`  ${start + 1}-${end} of ${items.length}`);
 			}
 		}
 	} else if (state.focus === "tasks") {
-		bodyLines = wrapText(state.tasksPlain, w).map((l) => padLine(l, w));
+		cardTitle = "tasks";
+		body = wrapText(state.tasksPlain, innerWidth);
 	} else if (state.focus === "status") {
-		bodyLines = wrapText(state.statusPlain, w).map((l) => padLine(l, w));
+		cardTitle = "status";
+		body = wrapText(state.statusPlain, innerWidth);
 	} else {
-		// chat transcript: cached per-message wraps, scrollable window
-		const chat: string[] = [];
+		cardTitle = "chat";
+		const transcript: string[] = [];
 		for (const m of state.messages) {
-			for (const row of wrapMessage(m, w)) {
-				chat.push(padLine(row, w));
-			}
-			chat.push(padLine("", w));
+			for (const row of wrapMessage(m, innerWidth)) transcript.push(row);
+			transcript.push("");
 		}
-		const scroll = clamp(state.chatScroll, 0, Math.max(0, chat.length - bodyH));
-		const end = chat.length - scroll;
-		bodyLines = chat.slice(Math.max(0, end - bodyH), end);
+		const scroll = clamp(
+			state.chatScroll,
+			0,
+			Math.max(0, transcript.length - inner),
+		);
+		const end = transcript.length - scroll;
+		body = transcript.slice(Math.max(0, end - inner), end);
+		if (scroll > 0) cardTitle = `chat ↑${scroll}`;
 	}
 
-	while (bodyLines.length < bodyH) bodyLines.push(padLine("", w));
-	lines.push(...bodyLines.slice(0, bodyH));
+	while (body.length < inner) body.push("");
+	lines.push(
+		...inkCard(body.slice(0, inner), {
+			width: w,
+			title: cardTitle,
+			accent,
+		}),
+	);
 
-	lines.push(padLine("─".repeat(Math.min(w, 40)), w));
 	const prompt =
 		state.slashOpen || state.input.startsWith("/")
 			? `/${state.slashFilter || state.input.replace(/^\//, "")}`
 			: state.input;
-	lines.push(padLine(`❯ ${prompt}█`, w));
-	lines.push(
-		padLine(
-			[
-				state.modelLabel,
-				// Real provider-reported usage replaces the static budget chip as
-				// soon as a turn has actually cost something.
-				state.usageLabel || state.costLabel,
-				state.hermeticLabel,
-			].join(" · "),
-			w,
-		),
-	);
-	lines.push(padLine(state.footerHints, w));
+	lines.push(fitCells(`❯ ${prompt}█`, w));
+	lines.push(statusStripe(statusSegments(state), w));
 
 	return lines.join("\n");
 }

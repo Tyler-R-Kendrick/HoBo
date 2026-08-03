@@ -1,4 +1,15 @@
 import { describe, expect, it } from "vitest";
+
+/** Visible text only — accents must never change what a test sees. */
+const plain = (frame: string): string =>
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping SGR is the point
+	frame.replace(/\u001b\[[0-9;]*m/g, "");
+/** Visible width of each rendered line. */
+const widths = (frame: string): number[] =>
+	plain(frame)
+		.split("\n")
+		.map((l) => l.length);
+
 import {
 	APPROVAL_PROMPT,
 	appendAssistant,
@@ -20,20 +31,22 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 			welcome: true,
 			reducedMotion: true,
 		});
-		const frame = renderShellFrame(state);
-		const id = shellFrameIdentity(frame);
-		expect(id.isHoboShell).toBe(true);
-		expect(id.hasPrompt).toBe(true);
-		expect(id.mentionsStockPiChrome).toBe(false);
-		// Branding lives in /about, not on every frame — the old chrome printed
-		// PRODUCT_NOT_PI on each repaint and inside every reply.
+		const frame = plain(renderShellFrame(state));
+		expect(shellFrameIdentity(frame).mentionsStockPiChrome).toBe(false);
+		// Branding lives in /about, never sprayed on frames.
 		expect(frame).not.toContain(PRODUCT_NOT_PI);
 		expect(frame).not.toMatch(/not stock pi/i);
-		expect(frame).toContain("hobo-shell");
-		expect(frame).toContain("❯");
 		expect(frame.toLowerCase()).not.toMatch(/welcome to pi/);
-		// Honest engine label until a completion engine is wired
+		// Rubberhose identity (site/DESIGN.md): ink outline + sticker shadow,
+		// never the flat hairline rules of a SaaS dashboard.
+		expect(frame).toContain("┏");
+		expect(frame).toContain("┃");
+		expect(frame).toContain("▒");
+		expect(frame).not.toContain("───");
+		// One status strap carries product, engine and state.
+		expect(frame).toContain("hobo-code");
 		expect(frame).toContain("engine:none");
+		expect(frame).toContain("❯");
 	});
 
 	it("welcome message says honestly that prompts queue dispatch tasks", () => {
@@ -43,9 +56,13 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 			welcome: true,
 			reducedMotion: true,
 		});
+		// The entry moment is a title card, not a wall of dashboard copy.
 		const welcome = state.messages.map((m) => m.text).join("\n");
-		expect(welcome).toMatch(/no completion engine/i);
-		expect(welcome).toMatch(/dispatch task/i);
+		expect(welcome).toContain("┏");
+		expect(welcome).toMatch(/rides the rails/);
+		expect(welcome).toMatch(/Type to talk to Bo/);
+		// Engine honesty now lives on the always-visible strap.
+		expect(plain(renderShellFrame(state))).toContain("engine:none");
 	});
 
 	it("slash palette lists product journeys", () => {
@@ -58,8 +75,8 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		const open = reduceShellKey(state, "/");
 		state = open.state;
 		expect(state.slashOpen).toBe(true);
-		const frame = renderShellFrame(state);
-		expect(frame).toMatch(/Slash palette/);
+		const frame = plain(renderShellFrame(state));
+		expect(frame).toMatch(/commands/);
 		expect(frame).toMatch(/\/guide/);
 		expect(frame).toMatch(/\/config/);
 		expect(frame).toMatch(/\/about/);
@@ -82,9 +99,9 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		state = reduceShellKey(state, "\x1b[A").state; // up
 		expect(state.slashIndex).toBe(1);
 		// Selection marker follows the index
-		const frame = renderShellFrame(state);
+		const frame = plain(renderShellFrame(state));
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
-		expect(frame).toContain(`▸ /${items[1]!.name.padEnd(10)}`);
+		expect(frame).toContain(`▸ /${items[1]!.name.padEnd(9)}`);
 		// Enter runs the item under the moved selection, not always the first
 		const chosen = reduceShellKey(state, "\r");
 		expect(chosen.slash?.name).toBe(items[1]!.name);
@@ -161,9 +178,9 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(sub.state.agentState).toBe("working");
 		expect(sub.state.messages.some((m) => m.role === "user")).toBe(true);
 		const after = appendAssistant(sub.state, "Bo did the thing", "idle");
-		const frame = renderShellFrame(after);
+		const frame = plain(renderShellFrame(after));
 		expect(frame).toMatch(/Bo {2}·/);
-		expect(shellFrameIdentity(frame).isHoboShell).toBe(true);
+		expect(frame).toContain("Bo did the thing");
 	});
 
 	it("up/down and PgUp/PgDn scroll the chat transcript", () => {
@@ -202,9 +219,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		const heights = frames.map((f) => f.split("\n").length);
 		expect(new Set(heights).size).toBe(1);
 		for (const f of frames) {
-			for (const line of f.split("\n")) {
-				expect(line.length).toBe(80);
-			}
+			for (const width of widths(f)) expect(width).toBe(80);
 		}
 	});
 
@@ -238,8 +253,8 @@ describe("slash palette viewport", () => {
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, "");
 		// Walk the whole palette; the marker must be on screen at every step.
 		for (let i = 0; i < items.length; i += 1) {
-			const frame = renderShellFrame(state);
-			expect(frame).toContain(`▸ /${items[i]!.name.padEnd(10)}`);
+			const frame = plain(renderShellFrame(state));
+			expect(frame).toContain(`▸ /${items[i]!.name.padEnd(9)}`);
 			state = reduceShellKey(state, "\x1b[B").state;
 		}
 	});
@@ -252,17 +267,30 @@ describe("slash palette viewport", () => {
 			reducedMotion: true,
 		});
 		tall = reduceShellKey(tall, "/").state;
-		expect(renderShellFrame(tall)).not.toMatch(/\d+-\d+\/\d+/);
+		expect(plain(renderShellFrame(tall))).not.toMatch(/\d+-\d+ of \d+/);
 
-		let short = createInitialShellState({
+		// The redesign fits the whole palette on a standard 80x24 — the old
+		// chrome showed roughly four entries there. Clipping now needs a
+		// genuinely short terminal.
+		let standard = createInitialShellState({
 			width: 80,
 			height: 24,
 			welcome: false,
 			reducedMotion: true,
 		});
+		standard = reduceShellKey(standard, "/").state;
+		const standardFrame = plain(renderShellFrame(standard));
+		expect(standardFrame).toContain("/quit");
+		expect(standardFrame).not.toMatch(/\d+-\d+ of \d+/);
+
+		let short = createInitialShellState({
+			width: 80,
+			height: 14,
+			welcome: false,
+			reducedMotion: true,
+		});
 		short = reduceShellKey(short, "/").state;
-		const frame = renderShellFrame(short);
-		expect(frame).toMatch(/1-\d+\/\d+ · ↓\d+ more/);
+		expect(plain(renderShellFrame(short))).toMatch(/1-\d+ of \d+/);
 	});
 });
 
@@ -275,7 +303,7 @@ describe("live usage surfacing", () => {
 			reducedMotion: true,
 		});
 		expect(state.usageLabel).toBe("");
-		expect(renderShellFrame(state)).toContain(state.costLabel);
+		expect(plain(renderShellFrame(state))).toContain(state.costLabel);
 	});
 
 	it("footer replaces the budget chip with provider-reported usage", () => {
@@ -302,15 +330,17 @@ describe("approval gate rendering", () => {
 			welcome: false,
 			reducedMotion: true,
 		});
-		const frame = renderShellFrame({
-			...base,
-			pendingApproval: {
-				runId: "run-42",
-				sandboxRoot: "/tmp/sandbox/run-42",
-				changes: [{ status: "M", path: "src/a.ts" }],
-			},
-		});
-		expect(frame).toContain("Promote run run-42?");
+		const frame = plain(
+			renderShellFrame({
+				...base,
+				pendingApproval: {
+					runId: "run-42",
+					sandboxRoot: "/tmp/sandbox/run-42",
+					changes: [{ status: "M", path: "src/a.ts" }],
+				},
+			}),
+		);
+		expect(frame).toContain("promote run-42?");
 		expect(frame).toContain("M  src/a.ts");
 		expect(frame).toContain(APPROVAL_PROMPT);
 		expect(frame).toContain("squash-only, gated, audited");
@@ -327,16 +357,19 @@ describe("approval gate rendering", () => {
 			status: "M",
 			path: `src/file-${i}.ts`,
 		}));
-		const frame = renderShellFrame({
-			...base,
-			pendingApproval: {
-				runId: "run-big",
-				sandboxRoot: "/tmp/sandbox/run-big",
-				changes,
-			},
-		});
+		const frame = plain(
+			renderShellFrame({
+				...base,
+				pendingApproval: {
+					runId: "run-big",
+					sandboxRoot: "/tmp/sandbox/run-big",
+					changes,
+				},
+			}),
+		);
 		expect(frame).toMatch(/\u2026 \d+ more file\(s\)/);
-		for (const line of frame.split("\n")) expect(line.length).toBe(90);
+		// Geometry must hold — the gate cannot blow the frame open.
+		for (const width of widths(frame)) expect(width).toBe(90);
 	});
 
 	it("gate keys resolve exactly once and are otherwise inert", () => {

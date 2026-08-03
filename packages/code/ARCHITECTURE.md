@@ -16,6 +16,23 @@ Pi may still be used as a **completion engine** later; it must not be the
 product frame. Optimizexp / persona reviews that only score one-shot verbs
 while bare TTY is stock Pi are **invalid**.
 
+**Chrome obeys `site/DESIGN.md` (rubberhose), enforced by tests.** The shell
+draws ink cards with hard sticker shadows, a Chewy title card on entry, one
+inverse status strap, and a transcript that owns the viewport. Strict B&W;
+vermillion is reserved for a decision that can mutate the real tree and green
+for done. `test/rubberhose.test.ts` fails the build on hairline rules, rainbow
+accents, geometry drift, or a shrinking content area — the first version of
+this shell was a flicker-free *SaaS dashboard* and nothing in the suite could
+tell, so nothing objected.
+
+**The engine is local first (`src/ollama-engine.ts`, `src/engine-resolve.ts`).**
+A locally hosted SLM is the default so the product's $0 path is real; cloud
+BYOK is the fallback. Resolution is local → cloud → honest dispatch-only, and
+every failure degrades with an actionable reason. The ollama transport speaks
+`/api/chat` NDJSON directly (no vendor SDK between shell and model), streams
+each token as it lands, supports abort, reports server-side token counts, and
+prices local inference at $0.
+
 **pi-tui is a rendering library, not a product frame.** The shell drives
 `@earendil-works/pi-tui`'s differential renderer (`TUI` + `StreamTerminal`
 adapter in `src/shell-terminal.ts`) while HoBo owns every visible line of

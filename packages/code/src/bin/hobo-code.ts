@@ -18,17 +18,14 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
+import { resolveShellEngine } from "../engine-resolve.js";
 import {
 	HOBO_AGENT_INSTRUCTIONS,
 	HOBO_AGENT_MODEL,
 } from "../harness-customization.js";
 import { runInteractiveShell } from "../interactive-shell.js";
 import { cleanupIsolation, createIsolationContext } from "../isolation.js";
-import {
-	createPiShellEngine,
-	type ShellEngine,
-	shouldAttemptEngine,
-} from "../shell-engine.js";
+import type { ShellEngine } from "../shell-engine.js";
 import { createDefaultShellHost } from "../shell-host.js";
 
 const rawArgv = process.argv.slice(2);
@@ -89,31 +86,34 @@ if (interactive && !json && (argv.length === 0 || chatVerb)) {
 			process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
 				? process.env.HOBO_HOME
 				: join(process.env.HOME ?? tmpdir(), ".hobo");
+		// Local first: a locally hosted SLM is the default engine so the shell
+		// thinks without a cloud account; BYOK is the fallback, not the price
+		// of entry. Turns run inside a mediated sandbox (ADR-0139).
 		let engine: ShellEngine | null = null;
-		if (shouldAttemptEngine(process.env)) {
-			const isolation = await createIsolationContext({
-				projectRoot: process.cwd(),
+		const isolation = await createIsolationContext({
+			projectRoot: process.cwd(),
+			hoboHome,
+		});
+		const resolved = await resolveShellEngine({
+			sandboxRoot: isolation.rootPath,
+			runId: isolation.runId,
+			modelSpec: HOBO_AGENT_MODEL,
+			instructions: HOBO_AGENT_INSTRUCTIONS,
+			env: process.env,
+		});
+		if (resolved.engine) {
+			engine = resolved.engine;
+		} else {
+			await cleanupIsolation(isolation.runId, {
 				hoboHome,
+				ok: true,
+				gates: ["engine:unavailable"],
 			});
-			const attempt = await createPiShellEngine({
-				sandboxRoot: isolation.rootPath,
-				runId: isolation.runId,
-				modelSpec: HOBO_AGENT_MODEL,
-				instructions: HOBO_AGENT_INSTRUCTIONS,
-			});
-			if (attempt.engine) {
-				engine = attempt.engine;
-			} else {
-				await cleanupIsolation(isolation.runId, {
-					hoboHome,
-					ok: true,
-					gates: ["engine:unavailable"],
-				});
-				process.stderr.write(
-					`hobo-code: engine disabled — ${attempt.reason} (dispatch-only shell)\n`,
-				);
-			}
+			process.stderr.write(
+				`hobo-code: no completion engine — ${resolved.reason} (dispatch-only shell)\n`,
+			);
 		}
+
 		// Bounded session for evidence capture: a TUI claim needs a real TTY
 		// recording, and a recording needs the session to end through the normal
 		// quit path (not a kill mid-frame). Opt-in only; unset = runs until quit.

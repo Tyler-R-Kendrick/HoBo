@@ -407,15 +407,37 @@ export function renderShellFrame(state: InteractiveShellState): string {
 	let bodyLines: string[] = [];
 	if (state.slashOpen) {
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
-		bodyLines.push(padLine(`Slash palette  filter: /${state.slashFilter}`, w));
-		items.forEach((item, i) => {
-			const mark = i === state.slashIndex ? "▸" : " ";
-			bodyLines.push(
-				padLine(`${mark} /${item.name.padEnd(10)} ${item.description}`, w),
-			);
-		});
 		if (items.length === 0) {
-			bodyLines.push(padLine("  (no matches)", w));
+			bodyLines.push(
+				padLine(`Slash palette  filter: /${state.slashFilter}`, w),
+				padLine("  (no matches)", w),
+			);
+		} else {
+			// The palette rarely fits a standard 24-row terminal, so the window
+			// follows the selection — otherwise ▸ scrolls out of sight and you
+			// cannot tell what Enter will run.
+			const visible = Math.max(1, bodyH - 1);
+			const start = clamp(
+				state.slashIndex - Math.floor((visible - 1) / 2),
+				0,
+				Math.max(0, items.length - visible),
+			);
+			const end = Math.min(items.length, start + visible);
+			const more = items.length - end;
+			const range =
+				items.length > visible
+					? `  ${start + 1}-${end}/${items.length}${more > 0 ? ` · ↓${more} more` : ""}`
+					: "";
+			bodyLines.push(
+				padLine(`Slash palette  filter: /${state.slashFilter}${range}`, w),
+			);
+			for (let i = start; i < end; i += 1) {
+				const item = items[i]!;
+				const mark = i === state.slashIndex ? "▸" : " ";
+				bodyLines.push(
+					padLine(`${mark} /${item.name.padEnd(10)} ${item.description}`, w),
+				);
+			}
 		}
 	} else if (state.focus === "tasks") {
 		bodyLines = wrapText(state.tasksPlain, w).map((l) => padLine(l, w));

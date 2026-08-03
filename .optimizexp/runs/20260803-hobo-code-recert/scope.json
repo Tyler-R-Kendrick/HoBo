@@ -1,0 +1,9 @@
+{
+	"runId": "20260803-hobo-code-recert",
+	"projectId": "code",
+	"experiences": ["ux", "dx"],
+	"features": ["hobo-code-default-entry"],
+	"mode": "evidence-recertification",
+	"supersedes": "20260801-hobo-code-optimizexp",
+	"claimsCompletion": false
+}

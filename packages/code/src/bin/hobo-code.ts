@@ -114,6 +114,19 @@ if (interactive && !json && (argv.length === 0 || chatVerb)) {
 				);
 			}
 		}
+		// Bounded session for evidence capture: a TUI claim needs a real TTY
+		// recording, and a recording needs the session to end through the normal
+		// quit path (not a kill mid-frame). Opt-in only; unset = runs until quit.
+		const maxMs = Number.parseInt(process.env.HOBO_CODE_SHELL_MAX_MS ?? "", 10);
+		// Scripted keys let interactive paths (slash palette, focus cycling) be
+		// captured as real recordings instead of being claimed without evidence.
+		// `\n`/`\t`/`\e` escapes are decoded so shells can pass them literally.
+		const scriptedKeys = process.env.HOBO_CODE_SHELL_KEYS
+			? process.env.HOBO_CODE_SHELL_KEYS.replace(/\\n/g, "\n")
+					.replace(/\\r/g, "\r")
+					.replace(/\\t/g, "\t")
+					.replace(/\\e/g, "\u001b")
+			: undefined;
 		const host = createDefaultShellHost({ dense, engine });
 		process.exitCode = await runInteractiveShell({
 			host,
@@ -121,6 +134,8 @@ if (interactive && !json && (argv.length === 0 || chatVerb)) {
 			reducedMotion:
 				process.env.HOBO_CODE_REDUCED_MOTION === "1" ||
 				process.env.HOBO_CODE_REDUCED_MOTION === "true",
+			...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : {}),
+			...(scriptedKeys !== undefined ? { scriptedKeys } : {}),
 		});
 		if (engine) {
 			await engine.dispose();

@@ -224,3 +224,43 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(splitKeySequences("\x1bOP")).toEqual(["\x1bOP"]);
 	});
 });
+
+describe("slash palette viewport", () => {
+	it("keeps the selection visible when the palette exceeds the body height", () => {
+		let state = createInitialShellState({
+			width: 80,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = reduceShellKey(state, "/").state;
+		const items = filterSlash(DEFAULT_SLASH_ITEMS, "");
+		// Walk the whole palette; the marker must be on screen at every step.
+		for (let i = 0; i < items.length; i += 1) {
+			const frame = renderShellFrame(state);
+			expect(frame).toContain(`▸ /${items[i]!.name.padEnd(10)}`);
+			state = reduceShellKey(state, "\x1b[B").state;
+		}
+	});
+
+	it("shows a range indicator only when the palette is clipped", () => {
+		let tall = createInitialShellState({
+			width: 80,
+			height: 60,
+			welcome: false,
+			reducedMotion: true,
+		});
+		tall = reduceShellKey(tall, "/").state;
+		expect(renderShellFrame(tall)).not.toMatch(/\d+-\d+\/\d+/);
+
+		let short = createInitialShellState({
+			width: 80,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		short = reduceShellKey(short, "/").state;
+		const frame = renderShellFrame(short);
+		expect(frame).toMatch(/1-\d+\/\d+ · ↓\d+ more/);
+	});
+});

@@ -65,10 +65,28 @@ optimizexp harness so the failure class that certified them cannot recur.
   audit axis (scores never committed; flagship TTY evidence captured on the
   non-TTY path) and is now explicitly superseded.
 
+## Slice 3c — re-certification on real TTY recordings (landed)
+
+- `HOBO_CODE_SHELL_MAX_MS` / `HOBO_CODE_SHELL_KEYS` make interactive paths
+  capturable: a TUI claim needs a real recording, and a recording needs the
+  session to end through the normal quit path rather than a kill mid-frame.
+- Run `20260803-hobo-code-recert` re-captured all three
+  `hobo-code-default-entry` scenarios against the rebuilt shell via the
+  installed bin entry; `capture-evidence --mode validate --strict` is clean.
+  The run deliberately does **not** claim completion (no persona scoring
+  rounds were run), so `lint-runs` classifies it as *not claiming*.
+- Measured from the real recording: first output 186 ms, max silent gap
+  1054 ms, 31 KB over 6.2 s, **zero** full-screen erases, and static chrome
+  written exactly once — the differential-rendering contract, observed.
+- **Defect found by the capture:** the slash palette rendered only the first
+  N lines, so moving the selection scrolled the `▸` marker out of view on an
+  80x24 terminal. Fixed (viewport follows the selection, `1-6/17 · ↓11 more`
+  indicator) with regression tests.
+
 ## Remaining
 
-- Re-certify hobo-code on the rebuilt shell with a real TTY recording
-  (requires asciinema on a real terminal; unavailable in this environment).
+- A full persona-scored optimizexp run against the rebuilt shell (this
+  session re-certified evidence only; no harm/delight equilibrium claimed).
 
 ## Residual (backlog)
 

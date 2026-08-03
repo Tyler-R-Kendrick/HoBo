@@ -1,23 +1,34 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync, existsSync, renameSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { analyzeCast, type CastStats } from "../lib/cast-stats.mts";
 import { which } from "../lib/media.mts";
-import { captureCli, type CliCaptureInput, type CliCaptureResult } from "./cli.mts";
+import {
+	captureCli,
+	type CaptureTiming,
+	type CliCaptureInput,
+	type CliCaptureResult,
+} from "./cli.mts";
 
-export type TuiCaptureResult = CliCaptureResult & {
+export type TuiCaptureResult = Omit<CliCaptureResult, "kind"> & {
+	kind: "recording" | "transcript";
 	castFile?: string;
+	/** Frame-level perceptual stats parsed from the real recording. */
+	frameStats?: CastStats;
 	degraded: boolean;
 	notes: string[];
 };
 
 /**
- * TUI capture: prefer asciinema; always keep transcript + terminal size for repro.
- * Does not double-run the command when asciinema succeeds — writes a size/meta transcript only.
+ * TUI capture: a real asciinema recording is the only non-degraded path — a
+ * TUI claim needs replayable frames with honest timing. The recording is
+ * analyzed into frameStats (first output, silent gaps, byte volume) so
+ * responsiveness/flicker budgets are machine-checkable.
  */
-export function captureTui(
+export async function captureTui(
 	outDir: string,
 	input: CliCaptureInput,
-): TuiCaptureResult {
+): Promise<TuiCaptureResult> {
 	mkdirSync(outDir, { recursive: true });
 	const notes: string[] = [];
 	const screen = {
@@ -50,12 +61,21 @@ export function captureTui(
 		if (r.status === 0 && existsSync(castPath)) {
 			const primaryCast = path.join(outDir, "primary.cast");
 			renameSync(castPath, primaryCast);
+			const frameStats =
+				analyzeCast(readFileSync(primaryCast, "utf8")) ?? undefined;
+			const timing: CaptureTiming = {
+				durationMs,
+				timeToFirstOutputMs: frameStats?.firstOutputMs ?? null,
+			};
 			const summary = [
 				`# OptimizeXP TUI evidence`,
 				`command: ${input.command}`,
 				`cwd: ${input.cwd}`,
 				`exitCode: ${r.status}`,
 				`durationMs: ${durationMs}`,
+				`timeToFirstOutputMs: ${timing.timeToFirstOutputMs ?? "none"}`,
+				`maxSilentGapMs: ${frameStats?.maxSilentGapMs ?? "none"}`,
+				`outputEvents: ${frameStats?.eventCount ?? "none"} · bytes: ${frameStats?.totalOutputBytes ?? "none"}`,
 				`screen: ${screen.cols ?? "?"}x${screen.rows ?? "?"} (cols x rows)`,
 				`recording: primary.cast (asciinema)`,
 				`capturedAt: ${new Date().toISOString()}`,
@@ -72,10 +92,12 @@ export function captureTui(
 				stderr: r.stderr ?? "",
 				combined: summary,
 				durationMs,
+				timing,
 				screen,
 				primaryFile: primaryCast,
 				kind: "recording",
 				castFile: primaryCast,
+				...(frameStats !== undefined ? { frameStats } : {}),
 				degraded: false,
 				notes,
 			};
@@ -84,6 +106,6 @@ export function captureTui(
 	} else {
 		notes.push("asciinema not installed; transcript + screen size only");
 	}
-	const text = captureCli(outDir, input);
+	const text = await captureCli(outDir, input);
 	return { ...text, degraded: true, notes };
 }

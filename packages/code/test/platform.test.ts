@@ -7,8 +7,8 @@ import {
 	CODE_FEATURE_FLAGS,
 	composeCodePlatform,
 	createMemoryFeaturePort,
-	selectSweProvider,
 	SWE_PROVIDER_CATALOG,
+	selectSweProvider,
 	startCodeSession,
 } from "../src/index.js";
 
@@ -55,21 +55,23 @@ describe("@hobo/code platform integration", () => {
 		expect(p.costUsdPerMTok).toBe(min);
 	});
 
-	it("session pins station and records platform in durable handback path", () => {
+	it("session pins station and records platform in durable handback path", async () => {
 		const home = temp("hobo-code-sess-plat-");
 		const project = temp("hobo-code-sess-proj-");
-		const session = startCodeSession({
+		const session = await startCodeSession({
 			projectRoot: project,
 			hoboHome: home,
 			autoInitStation: true,
 		});
 		expect(session.platform.station.present).toBe(true);
-		expect(session.isolation.stationId).toBe(session.platform.station.stationId);
-		const handback = session.complete(true, ["platform:ok"]);
+		expect(session.isolation.stationId).toBe(
+			session.platform.station.stationId,
+		);
+		const handback = await session.complete(true, ["platform:ok"]);
 		expect(handback.ok).toBe(true);
 	});
 
-	it("refuses session when harness flag is off", () => {
+	it("refuses session when harness flag is off", async () => {
 		const home = temp("hobo-code-disabled-");
 		const project = temp("hobo-code-disabled-proj-");
 		const features = createMemoryFeaturePort({
@@ -78,13 +80,13 @@ describe("@hobo/code platform integration", () => {
 			),
 			[CODE_FEATURE_FLAGS.harnessEnabled]: false,
 		});
-		expect(() =>
+		await expect(
 			startCodeSession({
 				projectRoot: project,
 				hoboHome: home,
 				features,
 				autoInitStation: true,
 			}),
-		).toThrow(/code\.harness\.enabled/);
+		).rejects.toThrow(/code\.harness\.enabled/);
 	});
 });

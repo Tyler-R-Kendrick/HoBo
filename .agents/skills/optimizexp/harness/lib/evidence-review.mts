@@ -60,8 +60,24 @@ export function validateEvidenceReview(dir: string): string[] {
 	}
 	const driver = meta.driver ?? "";
 	const kind = primary?.kind ?? "";
-	if ((driver === "cli" || driver === "tui") && kind !== "recording") {
-		problems.push(`${driver}_requires_replayable_recording`);
+	// TUI claims need a real timed recording — a buffered transcript wearing a
+	// .cast extension is how a frozen shell once got certified as replayable.
+	if (driver === "tui" && kind !== "recording") {
+		problems.push("tui_requires_replayable_recording");
+	}
+	if (driver === "tui" && kind === "recording" && primary?.file === "primary.cast") {
+		// A one-event cast is a synthetic buffer, not a recording.
+		const castPath = path.join(dir, primary.file);
+		if (existsSync(castPath)) {
+			const events = readFileSync(castPath, "utf8")
+				.split("\n")
+				.filter((l) => l.trim().startsWith("[")).length;
+			if (events < 2) problems.push("tui_recording_is_synthetic_single_event");
+		}
+	}
+	// CLI one-shot evidence is honest as a transcript (exit code + full output).
+	if (driver === "cli" && kind !== "transcript" && kind !== "recording") {
+		problems.push("cli_requires_transcript_or_recording");
 	}
 	if ((driver === "web" || driver === "native") && claims.length > 1 && !["video", "gif"].includes(kind)) {
 		problems.push(`${driver}_multi_step_scenario_requires_video_or_gif`);

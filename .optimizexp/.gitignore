@@ -25,11 +25,29 @@ features/**/evidence/**/_*.jpg
 Thumbs.db
 *~
 *.swp
+
+# config.gitignore.extra
+features/**/evidence/**/REPLAY.html
+features/**/evidence/**/REPLAY.md
+features/**/evidence/**/terminal.txt
+
+# config.gitignore.negate (force track)
+!features/**/evidence/**/primary.cast
+!runs/*/
+!runs/*/baseline.json
+!runs/*/feature-coverage.json
+!runs/*/iterations/
+!runs/*/iterations/*/
+!runs/*/iterations/*/experiments/
+!runs/*/iterations/*/experiments/*.json
+!runs/*/iterations/*/scores.json
+!runs/*/scope.json
+!runs/*/summary.md
+!runs/*/superseded.json
 # END optimizexp-managed
 
 # Legacy bus archive (local history, not scanned by validate-bus)
 bus-archive/
-
 
 # Doctor snapshots (local machine state, not scanned)
 snapshots/

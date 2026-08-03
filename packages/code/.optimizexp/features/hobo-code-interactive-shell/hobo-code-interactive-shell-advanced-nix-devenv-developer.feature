@@ -12,7 +12,7 @@ Feature: HoBo interactive shell craft (advanced-nix-devenv-developer)
     Given I am on the critical path described by the feature seed
     When I render the InteractiveShell initial frame
     Then the frame identifies engine hobo-shell
-    And the frame claims not stock Pi
+    And branding is confined to the about surface not sprayed on frames
     And the frame includes a prompt affordance
     And evidence is capturable for this scenario
 

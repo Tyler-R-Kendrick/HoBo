@@ -2,18 +2,17 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-
-import {
-	CODE_FEATURE_DEFAULTS,
-	CODE_FEATURE_FLAGS,
-	createMemoryFeaturePort,
-} from "../src/platform.js";
 import {
 	describeDistributedCompute,
 	dispatchComputeTask,
 	openComputePool,
 	registerComputeNode,
 } from "../src/distributed.js";
+import {
+	CODE_FEATURE_DEFAULTS,
+	CODE_FEATURE_FLAGS,
+	createMemoryFeaturePort,
+} from "../src/platform.js";
 
 const temps: string[] = [];
 afterEach(() => {
@@ -58,10 +57,10 @@ describe("distributed multi-node compute (no buzz/hive product)", () => {
 		expect(desc.model.toLowerCase()).not.toMatch(/\bbuzz\b/);
 	});
 
-	it("dispatches task onto a capacity-aware node with isolation handback", () => {
+	it("dispatches task onto a capacity-aware node with isolation handback", async () => {
 		const home = temp("compute-dispatch-");
 		const project = temp("compute-proj-");
-		const result = dispatchComputeTask({
+		const result = await dispatchComputeTask({
 			hoboHome: home,
 			poolId: "default",
 			prompt: "ship a unit",
@@ -79,7 +78,7 @@ describe("distributed multi-node compute (no buzz/hive product)", () => {
 		}
 	});
 
-	it("can register a GPU-labeled remote node for selection", () => {
+	it("can register a GPU-labeled remote node for selection", async () => {
 		const home = temp("compute-gpu-");
 		openComputePool({
 			hoboHome: home,
@@ -98,7 +97,7 @@ describe("distributed multi-node compute (no buzz/hive product)", () => {
 				labels: { gpu: "1", device: "cuda:0" },
 			},
 		});
-		const result = dispatchComputeTask({
+		const result = await dispatchComputeTask({
 			hoboHome: home,
 			poolId: "g",
 			prompt: "train",

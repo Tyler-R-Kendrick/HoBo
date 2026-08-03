@@ -33,3 +33,17 @@ Feature: AI-native TUI craft for GUI-native humans (sota frontier ai native tui 
     When I run `hobo-code not-a-real-verb-zz`
     Then the error is non-blaming and actionable
     And evidence of what I saw is stored under evidence/
+
+  Scenario: Idle shell writes nothing without motion for sota-frontier-ai-native-tui-designer
+    Given I am on the critical path described by the feature seed
+    When I run `HOBO_CODE_REDUCED_MOTION=1 HOBO_CODE_ENGINE=none hobo-code`
+    Then the shell paints once and idle rest spans request no repaints
+    And reduced motion renders the static rest frame not an animation
+    And evidence is capturable for this scenario
+
+  Scenario: Animation stays within the flicker budget for sota-frontier-ai-native-tui-designer
+    Given I am on the critical path described by the feature seed
+    When I run `HOBO_CODE_ENGINE=none hobo-code`
+    Then repaints happen only when the sprite frame changes with no full-screen erases
+    And a real TUI recording backs the claim with firstOutputUnderMs and maxSilentGapUnderMs budgets
+    And evidence of what I saw is stored under evidence/

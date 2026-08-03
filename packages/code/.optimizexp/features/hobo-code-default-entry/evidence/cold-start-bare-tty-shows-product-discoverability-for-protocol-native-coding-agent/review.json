@@ -1,6 +1,6 @@
 {
   "status": "accepted",
-  "reviewer": "optimizexp-runner",
+  "reviewer": "claude-fable-5 (session re-certification)",
   "relevance": "relevant",
   "completeness": "complete",
   "coverageMode": "full-journey",
@@ -11,7 +11,7 @@
     "claim-4",
     "claim-5"
   ],
-  "artifactSha256": "4af809be1b8f4421174579459b41eac1a6f982a9393ec9e52e4e4c44dbb8a0df",
-  "reviewedAt": "2026-08-01T04:23:52.753Z",
-  "notes": "Playback verifies JSON remediation includes the stable code, interactiveRequired flag, and exact remediation commands."
+  "artifactSha256": "27fd56a700fcb7d5ddb40d736df8fde3081b6f8355d10dcb7bd90a41b7c7dd0d",
+  "reviewedAt": "2026-08-03T21:00:12.809Z",
+  "notes": "Real TTY asciinema recording of the rebuilt shell via the installed bin entry (packages/code/bin/hobo-code.mjs), replacing the prior evidence that was captured on the non-TTY fail-closed path. Playback shows HoBo chrome (hobo-code · hobo-shell · agent:idle), Bo's body rows, the slash hints, the honest 'no completion engine' welcome and engine:none footer, and no stock-Pi product branding. Each static chrome string is written exactly once across 6.2s, proving differential rendering; frameStats record firstOutputMs 186, maxSilentGapMs 1054 and zero full-screen erases."
 }

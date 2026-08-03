@@ -24,10 +24,11 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@earendil-works/pi-coding-agent": "^0.83.0",
+		"@earendil-works/pi-tui": "^0.83.0",
 		"@flue/runtime": "1.0.0-beta.9",
 		"@hobo/core": "workspace:*",
 		"@hobo/stations": "workspace:*",
-		"@mariozechner/pi-coding-agent": "^0.73.1",
 		"valibot": "^1.4.2"
 	},
 	"devDependencies": {

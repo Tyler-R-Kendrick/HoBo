@@ -11,7 +11,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
+import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
 import {
 	authLogin,
 	authStatus,
@@ -21,38 +21,35 @@ import {
 	resolveAuthenticatedStationId,
 } from "./auth.js";
 import {
+	claudeCodeGuide,
+	renderClaudeCodeGuideText,
+} from "./claude-code-guide.js";
+import {
+	type ConfigStackId,
+	configHumanSummary,
+	inspectConfigSurface,
+	isConfigStackId,
+} from "./config-surface.js";
+import { costHumanSummary, inspectCost } from "./cost.js";
+import { cursorGuide, renderCursorGuideText } from "./cursor-guide.js";
+import {
 	describeDistributedCompute,
 	dispatchComputeTask,
 } from "./distributed.js";
+import { dogfoodSummary } from "./dogfood.js";
 import {
-	inspectModels,
-	modelsHumanSummary,
-} from "./models.js";
+	type BridgeMode,
+	editorBridgeHumanSummary,
+	editorBridgeOpenScript,
+	inspectEditorBridge,
+	type PaneLayout,
+} from "./editor-bridge.js";
+import { describeEveSubagentSurface } from "./eve.js";
 import {
 	createBudgetTracker,
 	DEFAULT_BUDGET_POLICY,
 	sponsoredWaitState,
 } from "./finops.js";
-import {
-	cleanupIsolation,
-	createIsolationContext,
-	listSandboxOrphans,
-} from "./isolation.js";
-import {
-	CODE_FEATURE_DEFAULTS,
-	CODE_FEATURE_FLAGS,
-	composeCodePlatform,
-	createMemoryFeaturePort,
-	type CodeFeaturePort,
-} from "./platform.js";
-import { promoteIsolation, type PromotionGate } from "./sandbox-promote.js";
-import { scaffoldHighValueTemplate } from "./scaffolding.js";
-import { startCodeSession } from "./session.js";
-import {
-	describeDevTerminalAttach,
-	shortNamedHost,
-	type CodeRemoteMode,
-} from "./remote.js";
 import {
 	buildTasksSurface,
 	grokBuildParity,
@@ -60,35 +57,33 @@ import {
 	renderTasksBoardText,
 } from "./grok-build-parity.js";
 import {
-	claudeCodeGuide,
-	renderClaudeCodeGuideText,
-} from "./claude-code-guide.js";
-import {
-	cursorGuide,
-	renderCursorGuideText,
-} from "./cursor-guide.js";
-import { costHumanSummary, inspectCost } from "./cost.js";
-import {
 	harnessHumanSummary,
 	inspectHarnessSurface,
 } from "./harness-surface.js";
+import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
 import {
-	editorBridgeHumanSummary,
-	editorBridgeOpenScript,
-	inspectEditorBridge,
-	type BridgeMode,
-	type PaneLayout,
-} from "./editor-bridge.js";
+	cleanupIsolation,
+	createIsolationContext,
+	listSandboxOrphans,
+} from "./isolation.js";
+import { inspectModels, modelsHumanSummary } from "./models.js";
 import {
-	configHumanSummary,
-	inspectConfigSurface,
-	isConfigStackId,
-	type ConfigStackId,
-} from "./config-surface.js";
+	CODE_FEATURE_DEFAULTS,
+	CODE_FEATURE_FLAGS,
+	type CodeFeaturePort,
+	composeCodePlatform,
+	createMemoryFeaturePort,
+} from "./platform.js";
+import { runProjectGates } from "./promotion-gates.js";
 import {
-	agentHumanSummary,
-	inspectAgentSurface,
-} from "./agent-surface.js";
+	type CodeRemoteMode,
+	describeDevTerminalAttach,
+	shortNamedHost,
+} from "./remote.js";
+import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
+import { describeSecureSandboxStack } from "./sandbox-stack.js";
+import { scaffoldHighValueTemplate } from "./scaffolding.js";
+import { startCodeSession } from "./session.js";
 import {
 	buildMultiplexerStatus,
 	createPane,
@@ -97,14 +92,7 @@ import {
 	renderStatusChip,
 	renderStatusText,
 } from "./tui.js";
-import { dogfoodSummary } from "./dogfood.js";
-import { describeEveSubagentSurface } from "./eve.js";
-import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { describeCodeWorlds } from "./worlds.js";
-import {
-	hermeticEnvSummary,
-	inspectHermeticEnv,
-} from "./hermetic-env.js";
 
 export const HOBO_CODE_VERBS = [
 	"dispatch",
@@ -138,10 +126,7 @@ function panel(title: string, rows: readonly string[]): string {
 	const body = rows.map((row) =>
 		row.startsWith(" ") || row.startsWith("  ") ? row : ` ${row}`,
 	);
-	const widest = Math.max(
-		title.length,
-		...body.map((r) => r.length),
-	);
+	const widest = Math.max(title.length, ...body.map((r) => r.length));
 	const ruleW = Math.max(12, Math.min(20, widest));
 	const rule = "─".repeat(ruleW);
 	// Happy-path one-scan panels drop soft twin (title · body · rule).
@@ -886,7 +871,7 @@ const VERB_HELP_PLAIN: Record<
 		"Examples:",
 		"  hobo-code harness",
 		"  hobo-code harness --json",
-		"  flue run hobo-code --input '{\"message\":\"status\"}'",
+		'  flue run hobo-code --input \'{"message":"status"}\'',
 		"",
 		"See also: hobo-code session · hobo-code tasks · hobo-code isolate · hobo-code cost",
 	],
@@ -1040,9 +1025,7 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 }
 
 function isTopicVerb(token: string): token is Exclude<HoboCodeVerb, "help"> {
-	return (
-		VERB_SET.has(token) && token !== "help"
-	);
+	return VERB_SET.has(token) && token !== "help";
 }
 
 /**
@@ -1122,9 +1105,7 @@ export async function runHoboCodeCli(
 		deps.hoboHome ||
 		defaultHoboHome(env);
 	const projectDir =
-		(typeof flags.cwd === "string" && flags.cwd) ||
-		deps.cwd ||
-		process.cwd();
+		(typeof flags.cwd === "string" && flags.cwd) || deps.cwd || process.cwd();
 	const tenant =
 		(typeof flags.tenant === "string" && flags.tenant) ||
 		(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT) ||
@@ -1143,9 +1124,7 @@ export async function runHoboCodeCli(
 		authSession?.stationId ??
 		resolveAuthenticatedStationId(hoboHome);
 	const resolvedTenant =
-		tenant !== "local"
-			? tenant
-			: (authSession?.tenant ?? tenant);
+		tenant !== "local" ? tenant : (authSession?.tenant ?? tenant);
 	const platform = composeCodePlatform({
 		hoboHome,
 		...(resolvedStation !== undefined ? { stationId: resolvedStation } : {}),
@@ -1268,7 +1247,6 @@ export async function runHoboCodeCli(
 		});
 	}
 
-
 	if (verb === "models") {
 		const status = inspectModels(env);
 		const body = modelsHumanSummary(status);
@@ -1369,11 +1347,15 @@ export async function runHoboCodeCli(
 		});
 		const openCmd = editorBridgeOpenScript(status);
 		if (flags["print-cmd"] === true || flags.printcmd === true) {
-			return ok("HOBO_CODE_EDIT", openCmd.endsWith("\n") ? openCmd : `${openCmd}\n`, {
-				editor: status,
-				openCommand: openCmd,
-				text: openCmd,
-			});
+			return ok(
+				"HOBO_CODE_EDIT",
+				openCmd.endsWith("\n") ? openCmd : `${openCmd}\n`,
+				{
+					editor: status,
+					openCommand: openCmd,
+					text: openCmd,
+				},
+			);
 		}
 		const body = editorBridgeHumanSummary(status);
 		const text = panel("◈ edit", [
@@ -1420,9 +1402,7 @@ export async function runHoboCodeCli(
 				userCode: String(code),
 			});
 			if (!result.ok || result.status !== "logged-in") {
-				const codeOut = result.ok
-					? "HOBO_CODE_AUTH_PENDING"
-					: result.code;
+				const codeOut = result.ok ? "HOBO_CODE_AUTH_PENDING" : result.code;
 				const msg = result.message;
 				const rem = result.ok ? [] : result.remediation;
 				return fail(codeOut, panel("✕ auth", [msg]), rem);
@@ -1430,7 +1410,7 @@ export async function runHoboCodeCli(
 			const text = panel("✓ auth", [
 				result.message,
 				`station · ${result.session.stationId}`,
-				"next · hobo-code dispatch \"…\"",
+				'next · hobo-code dispatch "…"',
 			]);
 			return ok("HOBO_CODE_AUTH", text, { auth: result, text });
 		}
@@ -1442,7 +1422,8 @@ export async function runHoboCodeCli(
 			// Agent path refuses remote device-code as steady-state: force local.
 			if (
 				agentLogin &&
-				(typeof flags.domain === "string" || typeof flags.tenant === "string") &&
+				(typeof flags.domain === "string" ||
+					typeof flags.tenant === "string") &&
 				flags.force !== true
 			) {
 				return fail(
@@ -1472,14 +1453,19 @@ export async function runHoboCodeCli(
 				...(typeof flags.domain === "string" && !agentLogin
 					? { domain: flags.domain }
 					: {}),
-				...(typeof flags.station === "string" ? { stationId: flags.station } : {}),
+				...(typeof flags.station === "string"
+					? { stationId: flags.station }
+					: {}),
 				completeRemoteImmediately: mock,
 				autoInitLocal: true,
 			});
 			if (!result.ok) {
 				return fail(
 					result.code,
-					panel("✕ auth", [result.message, ...result.remediation.map((r) => `→ ${r}`)]),
+					panel("✕ auth", [
+						result.message,
+						...result.remediation.map((r) => `→ ${r}`),
+					]),
 					result.remediation,
 				);
 			}
@@ -1510,7 +1496,11 @@ export async function runHoboCodeCli(
 							'next · hobo-code "build something"',
 						]),
 			]);
-			return ok("HOBO_CODE_AUTH", text, { auth: result, session: result.session, text });
+			return ok("HOBO_CODE_AUTH", text, {
+				auth: result,
+				session: result.session,
+				text,
+			});
 		}
 		if (sub === "logout") {
 			const cleared = clearAuthSession(hoboHome);
@@ -1646,7 +1636,9 @@ export async function runHoboCodeCli(
 		const modeFlag =
 			typeof flags.mode === "string" ? flags.mode.toLowerCase() : "local";
 		const mode: CodeRemoteMode =
-			modeFlag === "overlay" || modeFlag === "tailscale" || modeFlag === "tailnet"
+			modeFlag === "overlay" ||
+			modeFlag === "tailscale" ||
+			modeFlag === "tailnet"
 				? "overlay"
 				: "local";
 		const surface = describeDevTerminalAttach({
@@ -1679,7 +1671,7 @@ export async function runHoboCodeCli(
 		});
 	}
 
-		if (verb === "env") {
+	if (verb === "env") {
 		// Nix-terminal parity: inspect hermetic shell + durable layout without activating Nix.
 		const summary = hermeticEnvSummary(hermetic);
 		const markerBit =
@@ -1711,11 +1703,9 @@ export async function runHoboCodeCli(
 		});
 	}
 
-			if (verb === "scaffold") {
+	if (verb === "scaffold") {
 		const name =
-			args[0] ||
-			(typeof flags.name === "string" && flags.name) ||
-			"app";
+			args[0] || (typeof flags.name === "string" && flags.name) || "app";
 		const out =
 			(typeof flags.out === "string" && flags.out) || join(projectDir, name);
 		const result = scaffoldHighValueTemplate({
@@ -1729,9 +1719,7 @@ export async function runHoboCodeCli(
 			cwd: projectDir,
 		});
 		const tmpl =
-			result.templateId === "openui-astryx-bindle"
-				? "ou"
-				: result.templateId;
+			result.templateId === "openui-astryx-bindle" ? "ou" : result.templateId;
 		// Short pin: flag key tail; omit feature twin when stem matches.
 		// visual.primary → primary (domain stem already "openui" on left).
 		const flagTail = result.openFeatureFlag
@@ -1798,20 +1786,22 @@ export async function runHoboCodeCli(
 			);
 		}
 		const runId = args[0] ?? `run-${Date.now()}`;
-		const ctx = createIsolationContext({
+		const ctx = await createIsolationContext({
 			projectRoot: projectDir,
 			hoboHome,
 			runId,
 			forceWorktree: !platform.features.riftPreferred,
 			stationId: platform.station.stationId,
 		});
-		const backendGlyph =
-			ctx.backend.kind === "rift" ? "◆ rift" : "◇ worktree";
+		const backendGlyph = ctx.backend.kind === "rift" ? "◆ rift" : "◇ worktree";
 		// Active run is expected under sandboxes/; only other roots are leftovers.
 		const orphanCount = listSandboxOrphans(hoboHome).filter(
 			(p) => !p.endsWith(`/${ctx.runId}`) && !p.endsWith(`\\${ctx.runId}`),
 		).length;
-		const rootDisplay = displayPath(ctx.rootPath, { hoboHome, cwd: projectDir });
+		const rootDisplay = displayPath(ctx.rootPath, {
+			hoboHome,
+			cwd: projectDir,
+		});
 		const isoStation = shortStation(
 			ctx.stationId ?? platform.station.stationId,
 		);
@@ -1830,9 +1820,7 @@ export async function runHoboCodeCli(
 		// Next step spelled out (DX): promote the run id after isolation.
 		const isolateText = panel("▣ isolate", [
 			// Omit worktree happy-path noise.
-			...(ctx.backend.kind === "worktree"
-				? []
-				: [`backend · ${backendGlyph}`]),
+			...(ctx.backend.kind === "worktree" ? [] : [`backend · ${backendGlyph}`]),
 			// Branch only when it differs from run id (code/<run> → run is default).
 			...(branchLabel === ctx.runId ||
 			branchLabel === shortId(ctx.runId, 28) ||
@@ -1885,14 +1873,12 @@ export async function runHoboCodeCli(
 				],
 			);
 		}
-		const gates: PromotionGate[] = [
-			{ name: "architecture:guard", pass: true, detail: "ok" },
-			{ name: "standards:check", pass: true, detail: "ok" },
-			{ name: "agent:check", pass: true, detail: "ok" },
-			{ name: "docs:freshness", pass: true, detail: "ok" },
-		];
+		// Gates must be *run*, not asserted. These were hardcoded `pass: true`,
+		// which made "gated, audited" decoration over a literal — the promote
+		// path claimed a guarantee nothing was checking.
+		const gates: PromotionGate[] = await runProjectGates(projectDir);
 		const isolationRoot = join(hoboHome, "sandboxes", runId);
-		const result = promoteIsolation(
+		const result = await promoteIsolation(
 			{
 				runId,
 				isolationRoot,
@@ -1992,7 +1978,7 @@ export async function runHoboCodeCli(
 			env.HOBO_CODE_EPHEMERAL_SESSION === "1"
 				? mkdtempSync(join(tmpdir(), "hobo-code-session-"))
 				: hoboHome;
-		const session = startCodeSession({
+		const session = await startCodeSession({
 			projectRoot: projectDir,
 			hoboHome: sessionHome,
 			stationId: platform.station.stationId,
@@ -2001,11 +1987,7 @@ export async function runHoboCodeCli(
 			autoInitStation: true,
 		});
 		// Simulate in-session work, then resolve handback before painting mux.
-		session.setAgentState(
-			"worker",
-			"working",
-			session.platform.provider.id,
-		);
+		session.setAgentState("worker", "working", session.platform.provider.id);
 		const keepOpen = env.HOBO_CODE_SESSION_KEEP === "1";
 		const handback = keepOpen
 			? {
@@ -2017,7 +1999,7 @@ export async function runHoboCodeCli(
 					orphans: [] as string[],
 					message: "session kept open",
 				}
-			: session.complete(true, [
+			: await session.complete(true, [
 					"session:demo",
 					`station:${session.platform.station.stationId}`,
 					`provider:${session.platform.provider.id}`,
@@ -2026,10 +2008,8 @@ export async function runHoboCodeCli(
 		if (keepOpen) {
 			// Omit flue happy-path provider noise from pane summaries.
 			const provider = session.platform.provider.id;
-			const openSummary =
-				provider === "flue" ? "" : provider;
-			const workSummary =
-				provider === "flue" ? "" : provider;
+			const openSummary = provider === "flue" ? "" : provider;
+			const workSummary = provider === "flue" ? "" : provider;
 			// working glyph alone on flue; provider only when non-default
 			session.setAgentState("coordinator", "working", openSummary);
 			session.setAgentState("worker", "working", workSummary);
@@ -2042,30 +2022,22 @@ export async function runHoboCodeCli(
 		}
 		const status = session.status();
 		if (env.HOBO_CODE_EPHEMERAL_SESSION === "1") {
-			cleanupIsolation(session.isolation.runId, {
+			await cleanupIsolation(session.isolation.runId, {
 				hoboHome: sessionHome,
 				ok: true,
 			});
 		}
 		// Snapshot kind only when not implied by handback LED (●open=live, ●clean=final).
-		const snapshotKind = keepOpen
-			? null
-			: handback.ok
-				? null
-				: "failed";
+		const snapshotKind = keepOpen ? null : handback.ok ? null : "failed";
 		const backendGlyph =
 			session.isolation.backend.kind === "rift" ? "◆ rift" : "◇ worktree";
 		// Strip run- prefix; short tail for title.
-		const runLabel = shortId(
-			session.isolation.runId.replace(/^run-/, ""),
-			6,
-		);
+		const runLabel = shortId(session.isolation.runId.replace(/^run-/, ""), 6);
 		const sessionStation = shortStation(session.platform.station.stationId);
 		const sessionProvider = session.platform.provider.id;
 		// Clean final: st is product default observe — omit next twin.
 		// Open/fail: ·pr promote (run already on title).
-		const sessionNext =
-			handback.ok && !keepOpen ? null : "pr";
+		const sessionNext = handback.ok && !keepOpen ? null : "pr";
 		// Handback LED: ● alone = clean final; ●o = open live; fail keeps text.
 		const handbackBit = keepOpen
 			? "●o"
@@ -2082,9 +2054,7 @@ export async function runHoboCodeCli(
 			.filter((x): x is string => x !== null && x.length > 0)
 			.join("·");
 		const orphanBit =
-			handback.orphans.length === 0
-				? ""
-				: `·▲${handback.orphans.length}`;
+			handback.orphans.length === 0 ? "" : `·▲${handback.orphans.length}`;
 		// LED implies snapshot kind — only emit failed explicitly.
 		const snapBit = snapshotKind !== null ? `·${snapshotKind}` : "";
 		const nextBit = sessionNext !== null ? `·${sessionNext}` : "";
@@ -2135,10 +2105,7 @@ export async function runHoboCodeCli(
 				"dispatch requires code.distributed",
 				"enable distributed flag, then retry",
 			]),
-			[
-				"enable code.distributed feature flag",
-				"hobo-code help",
-			],
+			["enable code.distributed feature flag", "hobo-code help"],
 		);
 	}
 
@@ -2151,17 +2118,14 @@ export async function runHoboCodeCli(
 				"bare hobo-code needs a TTY; no prompt was provided",
 				"use hobo-code help or provide a prompt",
 			]),
-			[
-				"hobo-code help",
-				"hobo-code \"describe the change\"",
-			],
+			["hobo-code help", 'hobo-code "describe the change"'],
 			{ interactiveRequired: true },
 		);
 	}
 	const prompt = emptyPrompt
 		? "refine scaffold under ponytail pressure"
 		: args.join(" ");
-	const result = dispatchComputeTask({
+	const result = await dispatchComputeTask({
 		hoboHome,
 		poolId,
 		prompt,
@@ -2278,9 +2242,7 @@ function formatProviderLine(id: string, packageHint: string, max = 28): string {
 /** Distinguishing node tail (class already shown in inventory). */
 function shortNodeTail(nodeId: string): string {
 	if (nodeId.includes("local")) {
-		const rest = nodeId
-			.replace(/^node-local-?/, "")
-			.replace(/^station-?/, "");
+		const rest = nodeId.replace(/^node-local-?/, "").replace(/^station-?/, "");
 		if (rest === "" || rest === "local" || rest === "station-local") {
 			return "station";
 		}
@@ -2323,14 +2285,10 @@ function renderDispatchSummary(input: {
 			: input.status === "failed"
 				? "queue●→claim●→run●→fail✕"
 				: "queue●→claim○→run○→done○";
-	const node =
-		input.nodeId !== undefined
-			? shortNodeLabel(input.nodeId)
-			: "—";
+	const node = input.nodeId !== undefined ? shortNodeLabel(input.nodeId) : "—";
 	// local · station is the happy path — omit when done there.
 	const omitNode =
-		input.status === "done" &&
-		(node === "local · station" || node === "—");
+		input.status === "done" && (node === "local · station" || node === "—");
 	// Title ★ already marks defaulted bare path — body ◆ only for empty seed.
 	// ◆empty = empty argv seed (ponytail default in data/docs).
 	const defaultBit =
@@ -2340,11 +2298,8 @@ function renderDispatchSummary(input: {
 				? "empty"
 				: null;
 	// Empty prompt already named by ◆empty — drop seed text twin.
-	const promptBit = input.emptyPrompt
-		? null
-		: shortId(input.prompt, 8);
-	const nextBit =
-		input.status === "failed" ? "nodes" : "st";
+	const promptBit = input.emptyPrompt ? null : shortId(input.prompt, 8);
+	const nextBit = input.status === "failed" ? "nodes" : "st";
 	// Happy-path done: one scan line (task + next). In-flight/fail keep node/hive rows.
 	// Strip task- prefix (row already says task ·).
 	const taskId = shortId(input.taskId.replace(/^task-/, ""), 6);
@@ -2366,9 +2321,7 @@ function renderDispatchSummary(input: {
 					taskRow,
 					...(omitNode ? [] : [`node · ${node}`]),
 					// Omit hive when default — less noise on the happy path.
-					...(input.poolId === "default"
-						? []
-						: [`pool · ${input.poolId}`]),
+					...(input.poolId === "default" ? [] : [`pool · ${input.poolId}`]),
 				];
 	// Defaulted bare: ★. Explicit: d (matches help tail; full word in data).
 	// Product brand lives on status/help; verb panels use glyph+tail.
@@ -2426,9 +2379,7 @@ function renderNodeInventory(
 		const nodeWord = nodes.length === 1 ? "node" : "nodes";
 		const busyBit = busyTotal > 0 ? ` · ${busyTotal} busy` : "";
 		const onBit =
-			online === nodes.length && busyTotal === 0
-				? ""
-				: ` · ${online} on`;
+			online === nodes.length && busyTotal === 0 ? "" : ` · ${online} on`;
 		const allIdle = busyTotal === 0 && online === nodes.length;
 		if (allIdle && nodes.length <= 4) {
 			const bits = nodes.map((n) => {
@@ -2455,8 +2406,7 @@ function renderNodeInventory(
 			}
 		}
 	}
-	const nodesTitle =
-		poolId === "default" ? "▣ n" : `▣ n·pool ${poolId}`;
+	const nodesTitle = poolId === "default" ? "▣ n" : `▣ n·pool ${poolId}`;
 	return panel(nodesTitle, rows);
 }
 
@@ -2491,9 +2441,7 @@ function renderRoomInventory(
 			agents > 0 ? `◆${agents}` : null,
 		].filter((x): x is string => x !== null);
 		const allEmpty = occupancyBits.length === 0;
-		const occupancy = allEmpty
-			? "empty"
-			: occupancyBits.join("·");
+		const occupancy = allEmpty ? "empty" : occupancyBits.join("·");
 		// Single-room empty: one summary row (no twin # empty row).
 		if (allEmpty && rooms.length === 1) {
 			const roomLabel = shortRoom(rooms[0]!.roomId);
@@ -2522,9 +2470,7 @@ function renderRoomInventory(
 						: `${roomLabel}·${whoBits}${whoMore}`,
 				);
 			} else {
-				rows.push(
-					`${rooms.length}${roomWord}·${occupancy}`,
-				);
+				rows.push(`${rooms.length}${roomWord}·${occupancy}`);
 				for (const r of rooms) {
 					const roomLabel = shortRoom(r.roomId);
 					const title =
@@ -2562,10 +2508,7 @@ function renderRoomInventory(
 			rows.push("◇");
 		}
 	}
-	const roomsTitle =
-		hiveId === "default"
-			? "# rm"
-			: `# rm·pool ${hiveId}`;
+	const roomsTitle = hiveId === "default" ? "# rm" : `# rm·pool ${hiveId}`;
 	return panel(roomsTitle, rows);
 }
 
@@ -2637,8 +2580,7 @@ export function formatHoboCodeResult(
 		const cur = lines[0] ?? "";
 		const rule = trailingRule ?? "─".repeat(16);
 		if (trailingRule !== null && cur.endsWith(trailingRule)) {
-			lines[0] =
-				stripTrailingRule(cur) + `FIX  ${fixes}${codeBit}\n` + rule;
+			lines[0] = stripTrailingRule(cur) + `FIX  ${fixes}${codeBit}\n` + rule;
 		} else {
 			lines.push(`FIX  ${fixes}${codeBit}`);
 			lines.push(rule);

@@ -1,31 +1,30 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-
-import { createHarnessCore, type HarnessCore } from "./harness.js";
-import {
-	cleanupIsolation,
-	createIsolationContext,
-	type CreateIsolationOptions,
-} from "./isolation.js";
-import {
-	createBudgetTracker,
-	DEFAULT_BUDGET_POLICY,
-	type BudgetPolicy,
-} from "./finops.js";
-import { registerCodeNamedEndpoint } from "./remote.js";
 import { dogfoodSummary } from "./dogfood.js";
 import {
-	composeCodePlatform,
-	createMemoryFeaturePort,
+	type BudgetPolicy,
+	createBudgetTracker,
+	DEFAULT_BUDGET_POLICY,
+} from "./finops.js";
+import { createHarnessCore, type HarnessCore } from "./harness.js";
+import {
+	type CreateIsolationOptions,
+	cleanupIsolation,
+	createIsolationContext,
+} from "./isolation.js";
+import {
 	type CodeFeaturePort,
 	type CodePlatformSnapshot,
+	composeCodePlatform,
+	createMemoryFeaturePort,
 	type SweProviderId,
 } from "./platform.js";
+import { registerCodeNamedEndpoint } from "./remote.js";
 import {
 	buildMultiplexerStatus,
 	createPane,
-	setPaneState,
 	type MultiplexerStatus,
+	setPaneState,
 } from "./tui.js";
 import type { HandbackReport, IsolationContext } from "./types.js";
 
@@ -56,19 +55,26 @@ export interface CodeSession {
 	readonly budget: ReturnType<typeof createBudgetTracker>;
 	readonly remote: ReturnType<typeof registerCodeNamedEndpoint>;
 	readonly dogfood: ReturnType<typeof dogfoodSummary>;
-	readonly complete: (ok: boolean, gates?: readonly string[]) => HandbackReport;
-	readonly cancel: () => HandbackReport;
+	readonly complete: (
+		ok: boolean,
+		gates?: readonly string[],
+	) => Promise<HandbackReport>;
+	readonly cancel: () => Promise<HandbackReport>;
 }
 
 /**
  * Full agent session: station-bound isolation + harness + TUI + FinOps +
  * OpenFeature progressive flags + SWE provider mux + dogfood.
  */
-export function startCodeSession(options: CodeSessionOptions): CodeSession {
+export async function startCodeSession(
+	options: CodeSessionOptions,
+): Promise<CodeSession> {
 	const features = options.features ?? createMemoryFeaturePort();
 	const platform = composeCodePlatform({
 		hoboHome: options.hoboHome,
-		...(options.stationId !== undefined ? { stationId: options.stationId } : {}),
+		...(options.stationId !== undefined
+			? { stationId: options.stationId }
+			: {}),
 		autoInitStation: options.autoInitStation !== false,
 		...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
 		features,
@@ -90,7 +96,7 @@ export function startCodeSession(options: CodeSessionOptions): CodeSession {
 	const forceWorktree =
 		options.isolation?.forceWorktree ?? !platform.features.riftPreferred;
 
-	const isolation = createIsolationContext({
+	const isolation = await createIsolationContext({
 		projectRoot: options.projectRoot,
 		hoboHome: options.hoboHome,
 		stationId: platform.station.stationId,
@@ -117,16 +123,15 @@ export function startCodeSession(options: CodeSessionOptions): CodeSession {
 	const panes = new Map([
 		[
 			"coordinator",
-			createPane(
-				"coordinator",
-				"working",
-				`open · ${platform.provider.id}`,
-			),
+			createPane("coordinator", "working", `open · ${platform.provider.id}`),
 		],
 	]);
 
-	const finish = (ok: boolean, gates: readonly string[] = []): HandbackReport => {
-		const result = cleanupIsolation(isolation.runId, {
+	const finish = async (
+		ok: boolean,
+		gates: readonly string[] = [],
+	): Promise<HandbackReport> => {
+		const result = await cleanupIsolation(isolation.runId, {
 			hoboHome: options.hoboHome,
 			ok,
 			gates,

@@ -4,10 +4,10 @@
   "personaIds": [
     "protocol-native-coding-agent"
   ],
-  "interface": "cli",
-  "driver": "cli",
-  "capturedAt": "2026-08-01T04:23:52.596Z",
-  "runId": "20260801-hobo-code-optimizexp",
+  "interface": "tui",
+  "driver": "tui",
+  "capturedAt": "2026-08-03T20:59:22.168Z",
+  "runId": "20260803-hobo-code-recert",
   "screen": {
     "cols": null,
     "rows": null
@@ -15,8 +15,8 @@
   "primary": {
     "file": "primary.cast",
     "kind": "recording",
-    "bytes": 826,
-    "sha256": "4af809be1b8f4421174579459b41eac1a6f982a9393ec9e52e4e4c44dbb8a0df"
+    "bytes": 38316,
+    "sha256": "27fd56a700fcb7d5ddb40d736df8fde3081b6f8355d10dcb7bd90a41b7c7dd0d"
   },
   "claims": [
     {
@@ -42,11 +42,24 @@
   ],
   "frames": [],
   "repro": {
-    "command": "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts --json",
+    "command": "HOBO_HOME=/tmp/tmp.KYACof7Fql HOBO_CODE_ENGINE=none HOBO_CODE_SHELL_MAX_MS=6000 node packages/code/bin/hobo-code.mjs",
     "cwd": ".",
     "via": "capture-evidence"
   },
-  "exitCode": 1,
+  "exitCode": 0,
+  "timing": {
+    "durationMs": 6283,
+    "timeToFirstOutputMs": 186
+  },
+  "frameStats": {
+    "eventCount": 39,
+    "totalOutputBytes": 31210,
+    "firstOutputMs": 186,
+    "maxSilentGapMs": 1054,
+    "durationMs": 6191
+  },
   "degraded": false,
-  "notes": []
+  "notes": [
+    "asciinema cast stored as primary.cast"
+  ]
 }

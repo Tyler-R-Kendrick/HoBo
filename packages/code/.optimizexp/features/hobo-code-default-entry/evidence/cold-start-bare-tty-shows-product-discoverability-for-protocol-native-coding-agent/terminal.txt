@@ -1,31 +1,14 @@
-# OptimizeXP CLI evidence
-command: pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts --json
-cwd: /home/codex/.herdr/worktrees/hobo/hobo-devx
-exitCode: 1
-spawnStatus: 1
-durationMs: 726
+# OptimizeXP TUI evidence
+command: HOBO_HOME=/tmp/tmp.KYACof7Fql HOBO_CODE_ENGINE=none HOBO_CODE_SHELL_MAX_MS=6000 node packages/code/bin/hobo-code.mjs
+cwd: /home/codex/.herdr/worktrees/hobo/worktree-silver-river-5c07
+exitCode: 0
+durationMs: 6283
+timeToFirstOutputMs: 186
+maxSilentGapMs: 1054
+outputEvents: 39 · bytes: 31210
 screen: ?x? (cols x rows)
-capturedAt: 2026-08-01T04:23:52.596Z
+recording: primary.cast (asciinema)
+capturedAt: 2026-08-03T20:59:22.168Z
 
-## stdout
-{
-  "ok": false,
-  "status": "failed",
-  "code": "HOBO_CODE_INTERACTIVE_REQUIRED",
-  "message": "✕ input\n····················\n bare hobo-code needs a TTY; no prompt was provided\n use hobo-code help or provide a prompt\n────────────────────",
-  "remediation": [
-    "hobo-code help",
-    "hobo-code \"describe the change\""
-  ],
-  "data": {
-    "dense": false,
-    "interactiveRequired": true
-  }
-}
-undefined
-/home/codex/.herdr/worktrees/hobo/hobo-devx/packages/code:
- ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: node --import tsx src/bin/hobo-code.ts --json
-
-
-## stderr
-(empty)
+## note
+Full terminal recording is primary.cast; this text is the repro summary.

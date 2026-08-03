@@ -7,7 +7,7 @@ tags: [hobo, plans, sdlc, site, examples, wit]
 
 # Initiative: Try HoBo browser WIT
 
-**Phase:** finishing  
+**Phase:** review  
 **Slug:** `try-hobo-browser-wit`  
 **Opened:** 2026-08-02  
 **Host:** Codex
@@ -21,7 +21,7 @@ provider bootstrap fail-closed on the static site.
 ## Delivery
 
 - Branch: `feat/try-hobo-browser-wit`
-- PR: pending
+- PR: [#1008](https://github.com/Tyler-R-Kendrick/HoBo/pull/1008)
 - Stack: single layer
 - Unrelated local Headroom, OptimizeXP, `.venv`, and submodule cache changes are
   preserved outside this delivery.

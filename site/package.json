@@ -9,9 +9,13 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "pnpm run examples:runtime",
     "build": "astro build",
+    "examples:runtime": "node --import tsx scripts/build-browser-wit-runtime.mts",
     "preview": "astro preview",
     "check": "astro check",
+    "test": "vitest run src/lib/examples",
+    "typecheck": "astro check",
     "design:lint": "designmd lint DESIGN.md",
     "design:export:css": "designmd export --format css-tailwind DESIGN.md",
     "design:export:dtcg": "designmd export --format dtcg DESIGN.md",
@@ -21,6 +25,7 @@
     "astro": "^5.17.0"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
     "@google/design.md": "^0.4.0"
   }
 }

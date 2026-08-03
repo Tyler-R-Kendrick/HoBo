@@ -1,0 +1,5 @@
+package hobo:try@0.1.0;
+
+world browser-station {
+  export invoke: func(request: string) -> string;
+}

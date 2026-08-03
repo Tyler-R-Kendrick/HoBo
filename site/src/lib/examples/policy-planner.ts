@@ -128,18 +128,6 @@ export function resolveDeployPlan(
 			});
 			continue;
 		}
-		if (
-			target.resourceClass === "paid-remote" &&
-			(policy.monthlySpendCapUsd === 0 ||
-				target.estimatedMonthlySpendUsd > policy.monthlySpendCapUsd)
-		) {
-			policySkipped.push({
-				target,
-				reason: "spend-cap",
-				detail: `estimated $${target.estimatedMonthlySpendUsd}/month exceeds $${policy.monthlySpendCapUsd} cap`,
-			});
-			continue;
-		}
 		if (!target.canHostNow) {
 			policySkipped.push({
 				target,
@@ -154,15 +142,30 @@ export function resolveDeployPlan(
 		eligible,
 		policy,
 	);
+	const withinSpendCap: StationTarget[] = [];
+	let estimatedSpend = 0;
+	for (const target of ranked) {
+		const nextSpend = estimatedSpend + target.estimatedMonthlySpendUsd;
+		if (target.resourceClass === "paid-remote" && nextSpend > policy.monthlySpendCapUsd) {
+			policySkipped.push({
+				target,
+				reason: "spend-cap",
+				detail: `cumulative estimate $${nextSpend}/month exceeds $${policy.monthlySpendCapUsd} cap`,
+			});
+			continue;
+		}
+		estimatedSpend = nextSpend;
+		withinSpendCap.push(target);
+	}
 	const replicaLimit = effectiveReplicaLimit(policy);
-	const provision = ranked.slice(0, replicaLimit).map((target, index) => ({
+	const provision = withinSpendCap.slice(0, replicaLimit).map((target, index) => ({
 		target,
 		role: roleFor(policy.redundancy, index),
 	}));
 	const skipped = [
 		...yardBlocked,
 		...policySkipped,
-		...ranked.slice(replicaLimit).map((target) => ({
+		...withinSpendCap.slice(replicaLimit).map((target) => ({
 			target,
 			reason: "over-replica-budget" as const,
 			detail: `over replica budget (redundancy=${policy.redundancy}, maxReplicas=${replicaLimit})`,

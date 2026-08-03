@@ -1,8 +1,8 @@
 {
 	"id": "queue-echo",
 	"title": "Queue Echo",
-	"blurb": "A mirrored queue loop constrained to three provider-specific Yards.",
-	"tags": ["queue", "mirror"],
+	"blurb": "Preview independent queue loops on three provider-specific Yards.",
+	"tags": ["queue", "placement-preview"],
 	"needs": ["http", "queue"],
 	"ui": "queue",
 	"entry": "app.ts",

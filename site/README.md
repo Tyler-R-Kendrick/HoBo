@@ -4,9 +4,11 @@ The GitHub Pages site for HoBo: landing page, developer docs, and agent docs, se
 <https://tyler-r-kendrick.github.io/HoBo/>.
 
 Built with [Astro](https://astro.build) in static output mode — no client-side framework.
-The only JavaScript shipped to browsers is a small inline theme/nav toggle in
-`src/layouts/Base.astro`. Everything else is prerendered HTML + one stylesheet
-(`src/styles/global.css`).
+Most pages are prerendered HTML plus `src/styles/global.css`; the `/examples/`
+ship console is the deliberate exception, using a small TypeScript client and
+build-generated browser Component Model assets to provision independent local
+Environment Station previews without a server. Multi-host selections show policy
+placement intent; they do not claim browser-side failover or state mirroring.
 
 ## Working on the site
 
@@ -20,6 +22,7 @@ pnpm install                        # from the repo root
 pnpm --filter hobo-site dev        # http://localhost:4321/HoBo/
 pnpm --filter hobo-site build      # writes site/dist/
 pnpm --filter hobo-site preview    # serve the built dist/
+pnpm --filter hobo-site typecheck  # check Astro templates and TypeScript scripts
 ```
 
 
@@ -62,6 +65,7 @@ Agent skill mirrors: `.agents/skills/design-md` and `.claude/skills/design-md`.
 | Path | What it is |
 |---|---|
 | `src/pages/index.astro` | The landing page. |
+| `src/pages/examples/` | Static Examples ship console and generated example catalog endpoint. |
 | `src/components/ParallaxTrail.astro` | The scrolling trail band above the hero (see below); `facing` turns it around. |
 | `src/components/BoIdle.astro` | Bo standing about — rest, bounce and blink (see below). |
 | `src/lib/trail-art.ts` | The telephone wire — the one thing the band draws for itself. |
@@ -230,6 +234,12 @@ git commit -m "deploy: site @ $(git -C ../.. rev-parse --short HEAD)"
 git push --force git@github.com:Tyler-R-Kendrick/HoBo.git gh-pages
 cd .. && rm -rf dist/.git
 ```
+
+The build generates the Examples catalog and real browser WIT component assets
+from `examples/try-site/apps/` before Astro writes `site/dist/`; do not hand-edit
+the generated output. The Pages happy path remains entirely static. Remote
+provider bootstrap is disabled unless a trusted out-of-browser executor is
+configured; provider credentials and claim material never enter the page.
 
 Notes:
 

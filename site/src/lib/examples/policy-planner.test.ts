@@ -177,6 +177,35 @@ describe("resolveDeployPlan", () => {
 		).toBe("remote bootstrap requires bridge");
 	});
 
+	it("enforces the spend cap across all selected paid hosts", () => {
+		const paid = (id: string, spend: number): StationTarget => ({
+			id,
+			yardId: `yard-${id}`,
+			providerId: id,
+			resourceClass: "paid-remote",
+			canHostNow: true,
+			estimatedMonthlySpendUsd: spend,
+		});
+		const plan = resolveDeployPlan(
+			[paid("paid-a", 6), paid("paid-b", 6)],
+			mergeBudgetPolicy({
+				resourcePool: ["paid-remote"],
+				monthlySpendCapUsd: 10,
+				redundancy: "active-active",
+				maxReplicas: 2,
+			}),
+		);
+
+		expect(plan.provision.map(({ target }) => target.id)).toEqual(["paid-a"]);
+		expect(plan.skipped).toEqual([
+			expect.objectContaining({
+				target: expect.objectContaining({ id: "paid-b" }),
+				reason: "spend-cap",
+				detail: "cumulative estimate $12/month exceeds $10 cap",
+			}),
+		]);
+	});
+
 	it("uses webernetes as standby when no remote can host and ignores maxConcurrent for live count", () => {
 		const kubernetes: StationTarget = {
 			id: "kubernetes",

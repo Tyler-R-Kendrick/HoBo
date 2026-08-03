@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { GET } from "./index.json.js";
+import { GET } from "../../pages/examples/index.json.js";
 
 describe("Examples catalog endpoint", () => {
 	it("prerenders the repository catalog as JSON", async () => {

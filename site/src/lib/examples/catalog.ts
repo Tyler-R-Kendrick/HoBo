@@ -1,81 +1,27 @@
 import { readdir, readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
+import type { RoutingPolicy } from "./policy-planner.js";
 import type {
-	RoutingPolicy,
-	SparseBudgetPolicy,
-} from "./policy-planner.js";
+	ExampleCatalogEntry,
+	ExamplePolicy,
+	ExampleRuntimeDescriptor,
+	ExampleTopology,
+	ExampleUiKind,
+	ExampleYard,
+	RuntimeAction,
+} from "./catalog-contract.js";
 
-export type ExampleUiKind = "counter" | "notes" | "todos" | "queue";
-export type ExamplePolicy = SparseBudgetPolicy;
-
-export interface ExampleYard {
-	readonly id: string;
-	readonly targetId: string;
-	readonly providerId: string;
-	readonly campId: string;
-}
-
-export type RuntimeAction =
-	| "health"
-	| "read"
-	| "increment"
-	| "reset"
-	| "list"
-	| "create"
-	| "toggle"
-	| "enqueue"
-	| "drain";
-
-export interface ExampleRuntimeDescriptor {
-	readonly schemaVersion: "hobo.try-runtime/v1";
-	readonly resources: Readonly<
-		Record<
-			string,
-			{
-				readonly kind: "kv" | "queue";
-				readonly initial: unknown;
-			}
-		>
-	>;
-	readonly routes: readonly {
-		readonly method: "GET" | "POST" | "PATCH" | "DELETE";
-		readonly path: string;
-		readonly action: RuntimeAction;
-		readonly resource?: string;
-		readonly key?: string;
-	}[];
-}
-
-export interface ExampleTopology {
-	readonly homeStation: {
-		readonly id: string;
-		readonly registeredYardIds: readonly string[];
-	};
-	readonly yards: readonly ExampleYard[];
-	readonly junction: {
-		readonly id: string;
-		readonly yardIds: readonly string[];
-	};
-	readonly allowedYardIds: readonly string[] | null;
-}
-
-export interface ExampleCatalogEntry {
-	readonly id: string;
-	readonly title: string;
-	readonly blurb: string;
-	readonly tags: readonly string[];
-	readonly needs: readonly string[];
-	readonly ui: ExampleUiKind;
-	readonly entry: string;
-	readonly sourcePath: string;
-	readonly source: string;
-	readonly appPolicy: ExamplePolicy;
-	readonly deploymentPolicy: ExamplePolicy;
-	readonly topology: ExampleTopology;
-	readonly runtime: ExampleRuntimeDescriptor;
-}
+export type {
+	ExampleCatalogEntry,
+	ExamplePolicy,
+	ExampleRuntimeDescriptor,
+	ExampleTopology,
+	ExampleUiKind,
+	ExampleYard,
+	RuntimeAction,
+} from "./catalog-contract.js";
 
 const DEFAULT_REPO_ROOT = fileURLToPath(
 	new URL("../../../../", import.meta.url),
@@ -107,10 +53,7 @@ export async function loadExamplesCatalog(
 			if (isMissingFile(error)) continue;
 			throw error;
 		}
-		const [topologyText, runtimeText] = await Promise.all([
-			readFile(path.join(exampleRoot, "yard.json"), "utf8"),
-			readFile(path.join(exampleRoot, "runtime.json"), "utf8"),
-		]);
+		const topologyText = await readFile(path.join(exampleRoot, "yard.json"), "utf8");
 
 		const meta = parseMeta(JSON.parse(metaText) as unknown, directory);
 		const descriptor = parseDescriptor(
@@ -118,8 +61,13 @@ export async function loadExamplesCatalog(
 			directory,
 			pool,
 		);
-		const runtime = parseRuntime(JSON.parse(runtimeText) as unknown);
-		const source = await readFile(path.join(exampleRoot, meta.entry), "utf8");
+		const appPath = path.join(exampleRoot, meta.entry);
+		const appSource = await readFile(appPath, "utf8");
+		const appModule = (await import(pathToFileURL(appPath).href)) as {
+			readonly runtime?: unknown;
+		};
+		const runtime = parseRuntime(appModule.runtime);
+		const source = `${appSource.trimEnd()}\n`;
 		catalog.push({ ...meta, source, runtime, ...descriptor });
 	}
 
@@ -280,13 +228,19 @@ function parseTopology(
 		pool.yardIds,
 	);
 	const allowedYardIds =
-		input.allowedYardIds === null
+		input.allowedYardIds === null || input.allowedYardIds === undefined
 			? null
 			: references(
 					input.allowedYardIds,
 					"topology.allowedYardIds",
 					pool.yardIds,
 				);
+	const junctionMembers = new Set(junctionYardIds);
+	if (allowedYardIds?.some((id) => !junctionMembers.has(id))) {
+		throw new TypeError(
+			"topology.allowedYardIds must be a subset of topology.junction.yardIds",
+		);
+	}
 	return {
 		homeStation: {
 			id: pool.homeStationId,
@@ -328,6 +282,7 @@ function parseRuntime(value: unknown): ExampleRuntimeDescriptor {
 		"reset",
 		"list",
 		"create",
+		"delete",
 		"toggle",
 		"enqueue",
 		"drain",

@@ -6,7 +6,7 @@ import { paint, THEMES, TRAIL_LAYERS } from "../../lib/trail-art";
 // same drawing has to be percent-encoded, which roughly triples it and then
 // gzips badly — and unlike the page, these can be cached forever.
 
-const tiles = new Map(
+const tiles: ReadonlyMap<string, string> = new Map(
 	TRAIL_LAYERS.flatMap((layer) =>
 		(Object.keys(THEMES) as Array<keyof typeof THEMES>).map(
 			(theme) => [`${layer.key}-${theme}`, paint(layer.svg, theme)] as const,

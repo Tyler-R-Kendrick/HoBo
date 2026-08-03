@@ -5,6 +5,11 @@ export type NavGroup = { label: string; slug: string; items: NavItem[] };
 
 export const nav: NavGroup[] = [
 	{
+		label: "Examples",
+		slug: "/examples/",
+		items: [{ label: "Try HoBo", slug: "/examples/" }],
+	},
+	{
 		label: "Guide",
 		slug: "/guide/",
 		items: [

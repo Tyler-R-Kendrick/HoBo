@@ -169,8 +169,6 @@ export function resolveDeployPlan(
 		})),
 	]
 		.sort((left, right) => compareText(left.target.id, right.target.id));
-	const hostWord = provision.length === 1 ? "host" : "hosts";
-	const primary = provision[0]?.target.id ?? "none";
 	const junction =
 		provision.length > 1
 			? {
@@ -184,7 +182,7 @@ export function resolveDeployPlan(
 		provision,
 		skipped,
 		replicas: provision.length,
-		summary: `redundancy=${policy.redundancy} → provision ${provision.length} primary ${hostWord} → ${primary}`,
+		summary: `redundancy=${policy.redundancy} → ${describeProvision(provision)}`,
 		junction,
 	};
 }
@@ -260,6 +258,17 @@ function describeRoutingParts(
 	return `${routing} · ${provision
 		.map(({ target, role }) => `${role}=${target.id}`)
 		.join(" · ")}`;
+}
+
+function describeProvision(provision: readonly ProvisionedTarget[]): string {
+	if (provision.length === 0) return "provision 0 hosts";
+	if (provision.length === 1) {
+		const { target, role } = provision[0]!;
+		return `provision 1 ${role} host → ${target.id}`;
+	}
+	return `provision ${provision.length} hosts → ${provision
+		.map(({ target, role }) => `${target.id} ${role}`)
+		.join(" + ")}`;
 }
 
 function compareText(left: string, right: string): number {

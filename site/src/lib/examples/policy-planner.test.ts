@@ -95,6 +95,9 @@ describe("resolveDeployPlan", () => {
 			routing:
 				"local-first · primary=browser-wasm · standby=cloudflare",
 		});
+		expect(plan.summary).toBe(
+			"redundancy=active-passive → provision 2 hosts → browser-wasm primary + cloudflare standby",
+		);
 	});
 
 	it("composes only yard-allowed targets into a mirror Junction", () => {

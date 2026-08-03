@@ -269,3 +269,14 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
   protobuf/CUE/generated drift gate, 139-page build, and served Playwright journey
 - **failure class:** CodeRabbit free-plan review quota only; no implementation check failed
 - **protocol:** `/sdlc --finish`
+
+## 2026-08-03 — TrafficRouting production offerings + adapters (#1011)
+
+- **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/1011
+- **branch:** `feat/traffic-routing-vercel-lakebed-prod`
+- **merge:** `8f951254ba71c2253c68f8a3f915e7ea53d99301` (squash)
+- **result:** success
+- **scope:** production Vercel/Lakebed adapters (no stubs); offerings + prefer/require fallback ladder; Cloudflare create lifecycle + observeHealth; Funnel multi-backend; Station applyRoutingObservations; provider trafficRouting profiles (lakebed/cf/aws/gcp/azure)
+- **checks:** local `agent:check --base=origin/main` 10/10 green (core/connectivity/stations + provider packages); CodeRabbit SUCCESS (rate-limited review only); no PR comment threads
+- **failure class:** none for code CI; CodeRabbit free-plan rate limit only
+- **protocol:** `/sdlc --finish`

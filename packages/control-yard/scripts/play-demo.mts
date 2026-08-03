@@ -4,24 +4,29 @@
  * Produces Playwright screenshots + MP4 recordings under public/shots/.
  * Self-report without these files is rejected.
  */
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
-	mkdirSync,
-	readFileSync,
-	statSync,
-	writeFileSync,
-	existsSync,
 	copyFileSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
 	readdirSync,
+	readFileSync,
 	renameSync,
 	rmSync,
+	statSync,
+	writeFileSync,
 } from "node:fs";
-import { createHash } from "node:crypto";
+import {
+	createServer,
+	type IncomingMessage,
+	type ServerResponse,
+} from "node:http";
+import { tmpdir } from "node:os";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { spawnSync } from "node:child_process";
 
 import { createControlApiServer } from "@hobo/control-api";
 import {
@@ -156,7 +161,9 @@ function imgdiff(
 		{ encoding: "utf8" },
 	);
 	if (r.status === 0) return { ok: true, detail: "match" };
-	const detail = (r.stdout || r.stderr || `exit ${r.status}`).trim().slice(0, 240);
+	const detail = (r.stdout || r.stderr || `exit ${r.status}`)
+		.trim()
+		.slice(0, 240);
 	if (/Pillow is required|ModuleNotFoundError/i.test(detail)) {
 		return { ok: true, detail: `imgdiff skipped (deps): ${detail}` };
 	}
@@ -172,6 +179,47 @@ function imgdiff(
 		};
 	}
 	return { ok: false, detail };
+}
+
+/**
+ * Count near-black pixels in the 100×130 logical box around Bo's feet, read
+ * from the captured canvas shot (logical 1280×720 mapped onto the image).
+ * Proves real ink actually rasterized where the seam says Bo stands.
+ */
+const DARK_PIXELS_PY = `
+import sys
+from PIL import Image
+img = Image.open(sys.argv[1]).convert("RGB")
+bx, by = float(sys.argv[2]), float(sys.argv[3])
+sx, sy = img.width / 1280.0, img.height / 720.0
+x0 = max(0, int((bx - 50) * sx)); y0 = max(0, int((by - 120) * sy))
+x1 = min(img.width, int((bx + 50) * sx)); y1 = min(img.height, int((by + 10) * sy))
+dark = sum(1 for p in img.crop((x0, y0, x1, y1)).getdata() if sum(p) < 90)
+print(dark)
+`;
+
+function darkPixelsNearBo(png: string, bo: { x: number; y: number }): number {
+	const r = spawnSync(
+		"uv",
+		[
+			"run",
+			"--with",
+			"pillow",
+			"python",
+			"-c",
+			DARK_PIXELS_PY,
+			png,
+			String(bo.x),
+			String(bo.y),
+		],
+		{ encoding: "utf8" },
+	);
+	if (r.status !== 0) {
+		throw new Error(
+			`dark-pixel probe failed: ${(r.stderr || r.stdout || "").slice(-300)}`,
+		);
+	}
+	return Number((r.stdout || "0").trim());
 }
 
 function sleep(ms: number) {
@@ -277,152 +325,163 @@ async function withRecording(
 		},
 	});
 	const page = await context.newPage();
+	// NEVER `return` from a finally here: it swallows tour failures and the run
+	// self-reports OK while writing stale screenshots.
+	let failure: unknown = null;
 	try {
 		await fn(page);
-	} finally {
-		const vid = page.video();
-		await page.close();
-		await context.close();
-		// Playwright finalizes video after context close
-		if (vid) {
-			const webmPath = await vid.path();
-			const mp4 = join(RECORDINGS, `${name}.mp4`);
-			// wait briefly if file not yet flushed
-			for (let i = 0; i < 20 && !existsSync(webmPath); i++) await sleep(100);
-			if (!existsSync(webmPath)) {
-				// fallback: pick any webm in dir
-				const found = readdirSync(videoDir).find((f) => f.endsWith(".webm"));
-				if (!found) throw new Error(`no webm for ${name} in ${videoDir}`);
-				webmToMp4(join(videoDir, found), mp4);
-			} else {
-				webmToMp4(webmPath, mp4);
-			}
-			(report.recordings as string[]).push(mp4);
-			console.log("recorded", mp4, statSync(mp4).size, "bytes");
-			return mp4;
-		}
+	} catch (err) {
+		failure = err;
 	}
-	throw new Error(`no video for ${name}`);
+	const vid = page.video();
+	await page.close();
+	await context.close();
+	// Playwright finalizes video after context close
+	if (!vid) throw failure ?? new Error(`no video for ${name}`);
+	const webmPath = await vid.path();
+	const mp4 = join(RECORDINGS, `${name}.mp4`);
+	// wait briefly if file not yet flushed
+	for (let i = 0; i < 20 && !existsSync(webmPath); i++) await sleep(100);
+	if (!existsSync(webmPath)) {
+		// fallback: pick any webm in dir
+		const found = readdirSync(videoDir).find((f) => f.endsWith(".webm"));
+		if (!found)
+			throw failure ?? new Error(`no webm for ${name} in ${videoDir}`);
+		webmToMp4(join(videoDir, found), mp4);
+	} else {
+		webmToMp4(webmPath, mp4);
+	}
+	(report.recordings as string[]).push(mp4);
+	console.log("recorded", mp4, statSync(mp4).size, "bytes");
+	if (failure) throw failure;
+	return mp4;
 }
 
 try {
 	// ========== Recording 01: full yard loop ==========
-	await withRecording("01-yard-loop", { width: 1400, height: 920 }, async (page) => {
-		const consoleErrors: string[] = [];
-		page.on("console", (msg) => {
-			if (msg.type() === "error") consoleErrors.push(msg.text());
-		});
-		page.on("pageerror", (err) => consoleErrors.push(String(err)));
+	await withRecording(
+		"01-yard-loop",
+		{ width: 1400, height: 920 },
+		async (page) => {
+			const consoleErrors: string[] = [];
+			page.on("console", (msg) => {
+				if (msg.type() === "error") consoleErrors.push(msg.text());
+			});
+			page.on("pageerror", (err) => consoleErrors.push(String(err)));
 
-		await page.goto(gameUrl, { waitUntil: "networkidle", timeout: 30000 });
-		await page.waitForFunction(
-			() =>
-				(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
-					?.ready === true,
-			null,
-			{ timeout: 20000 },
-		);
-		await page.waitForFunction(
-			() =>
-				((window as unknown as { __TEST__?: { frameCount?: number } }).__TEST__
-					?.frameCount ?? 0) >= 8,
-			null,
-			{ timeout: 10000 },
-		);
+			await page.goto(gameUrl, { waitUntil: "load", timeout: 30000 });
+			await page.waitForFunction(
+				() =>
+					(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
+						?.ready === true,
+				null,
+				{ timeout: 20000 },
+			);
+			await page.waitForFunction(
+				() =>
+					((window as unknown as { __TEST__?: { frameCount?: number } })
+						.__TEST__?.frameCount ?? 0) >= 8,
+				null,
+				{ timeout: 10000 },
+			);
 
-		const st = await page.evaluate(() =>
-			(
-				window as unknown as { __TEST__: { state: () => unknown } }
-			).__TEST__.state(),
-		);
-		report.initialState = st;
-		check("test seam ready", Boolean((st as { ready: boolean }).ready));
-		check(
-			"connection authorized present",
-			(st as { connCount: number }).connCount >= 1,
-			`conn=${(st as { connCount: number }).connCount}`,
-		);
-		check(
-			"traffic rate > 0",
-			(st as { trafficRate: number }).trafficRate > 0,
-			`traffic=${(st as { trafficRate: number }).trafficRate}`,
-		);
-		check(
-			"bootstrap inactive",
-			(st as { bootstrapActive: boolean }).bootstrapActive === false,
-		);
-
-		await page.screenshot({
-			path: join(SHOTS, "01-boot-live.png"),
-			fullPage: true,
-		});
-		const d1 = imgdiff(
-			join(BASELINES, "01-boot-live.png"),
-			join(SHOTS, "01-boot-live.png"),
-			join(SHOTS, "01-boot-live.diff.png"),
-		);
-		check("imgdiff boot", d1.ok, d1.detail);
-
-		// Walk zones with real wall-clock so video has motion
-		for (const zone of [
-			"connectionBay",
-			"costBooth",
-			"policyBoard",
-			"errorBunker",
-			"platformRest",
-			"activeRailTrack",
-		] as const) {
-			await page.evaluate((z) => {
+			const st = await page.evaluate(() =>
 				(
-					window as unknown as {
-						__TEST__: { commands: { selectZone: (x: string) => void } };
-					}
-				).__TEST__.commands.selectZone(z);
-			}, zone);
-			await advance(page, 45);
-			await sleep(400);
-		}
+					window as unknown as { __TEST__: { state: () => unknown } }
+				).__TEST__.state(),
+			);
+			report.initialState = st;
+			check("test seam ready", Boolean((st as { ready: boolean }).ready));
+			check(
+				"connection authorized present",
+				(st as { connCount: number }).connCount >= 1,
+				`conn=${(st as { connCount: number }).connCount}`,
+			);
+			check(
+				"traffic rate > 0",
+				(st as { trafficRate: number }).trafficRate > 0,
+				`traffic=${(st as { trafficRate: number }).trafficRate}`,
+			);
+			check(
+				"bootstrap inactive",
+				(st as { bootstrapActive: boolean }).bootstrapActive === false,
+			);
 
-		await page.screenshot({
-			path: join(SHOTS, "07-walk.png"),
-			fullPage: true,
-		});
-		await page.locator("#yard").screenshot({ path: join(SHOTS, "canvas-only.png") });
+			await page.screenshot({
+				path: join(SHOTS, "01-boot-live.png"),
+				fullPage: true,
+			});
+			const d1 = imgdiff(
+				join(BASELINES, "01-boot-live.png"),
+				join(SHOTS, "01-boot-live.png"),
+				join(SHOTS, "01-boot-live.diff.png"),
+			);
+			check("imgdiff boot", d1.ok, d1.detail);
 
-		const pixelSample = await page.evaluate(() => {
-			const c = document.getElementById("yard") as HTMLCanvasElement;
-			const ctx = c.getContext("2d")!;
-			const st = (
-				window as unknown as {
-					__TEST__: { state: () => { bo: { x: number; y: number } } };
-				}
-			).__TEST__.state();
-			const x0 = Math.max(0, st.bo.x - 50);
-			const y0 = Math.max(0, st.bo.y - 120);
-			const data = ctx.getImageData(x0, y0, 100, 130).data;
-			let dark = 0;
-			for (let i = 0; i < data.length; i += 4) {
-				if (data[i]! + data[i + 1]! + data[i + 2]! < 90) dark++;
+			// Walk zones with real wall-clock so video has motion
+			for (const zone of [
+				"connectionBay",
+				"costBooth",
+				"policyBoard",
+				"errorBunker",
+				"platformRest",
+				"activeRailTrack",
+			] as const) {
+				await page.evaluate((z) => {
+					(
+						window as unknown as {
+							__TEST__: { commands: { selectZone: (x: string) => void } };
+						}
+					).__TEST__.commands.selectZone(z);
+				}, zone);
+				await advance(page, 45);
+				await sleep(400);
 			}
-			return { dark, bo: st.bo };
-		});
-		report.pixelSample = pixelSample;
-		check("canvas dark ink near Bo", pixelSample.dark > 20, `dark=${pixelSample.dark}`);
-		check(
-			"no console errors",
-			consoleErrors.length === 0,
-			consoleErrors.join(" | ").slice(0, 200),
-		);
-		report.consoleErrors = consoleErrors;
-		await sleep(500);
-	});
+
+			await page.screenshot({
+				path: join(SHOTS, "07-walk.png"),
+				fullPage: true,
+			});
+			await page
+				.locator("#yard")
+				.screenshot({ path: join(SHOTS, "canvas-only.png") });
+
+			// #yard hosts a WebGL canvas — sample the captured element shot instead
+			// of getImageData (Phaser keeps no preserved drawing buffer).
+			const boPos = await page.evaluate(
+				() =>
+					(
+						window as unknown as {
+							__TEST__: { state: () => { bo: { x: number; y: number } } };
+						}
+					).__TEST__.state().bo,
+			);
+			const pixelSample = {
+				dark: darkPixelsNearBo(join(SHOTS, "canvas-only.png"), boPos),
+				bo: boPos,
+			};
+			report.pixelSample = pixelSample;
+			check(
+				"canvas dark ink near Bo",
+				pixelSample.dark > 20,
+				`dark=${pixelSample.dark}`,
+			);
+			check(
+				"no console errors",
+				consoleErrors.length === 0,
+				consoleErrors.join(" | ").slice(0, 200),
+			);
+			report.consoleErrors = consoleErrors;
+			await sleep(500);
+		},
+	);
 
 	// ========== Recording 02: connection sheet ==========
 	await withRecording(
 		"02-connection-sheet",
 		{ width: 1400, height: 920 },
 		async (page) => {
-			await page.goto(gameUrl, { waitUntil: "networkidle", timeout: 30000 });
+			await page.goto(gameUrl, { waitUntil: "load", timeout: 30000 });
 			await page.waitForFunction(
 				() =>
 					(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
@@ -469,7 +528,10 @@ try {
 			);
 			check("imgdiff connection bay", d2.ok, d2.detail);
 			// interact with sheet UI
-			await page.locator("#sheet-confirm").click().catch(() => {});
+			await page
+				.locator("#sheet-confirm")
+				.click()
+				.catch(() => {});
 			await sleep(600);
 			await page.evaluate(() => {
 				(
@@ -487,7 +549,7 @@ try {
 		"03-bo-walk-east-west",
 		{ width: 720, height: 560 },
 		async (page) => {
-			await page.goto(animUrl, { waitUntil: "networkidle", timeout: 30000 });
+			await page.goto(animUrl, { waitUntil: "load", timeout: 30000 });
 			await page.waitForFunction(
 				() =>
 					(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
@@ -541,7 +603,7 @@ try {
 		"04-rail-cost-doctor",
 		{ width: 1400, height: 920 },
 		async (page) => {
-			await page.goto(gameUrl, { waitUntil: "networkidle", timeout: 30000 });
+			await page.goto(gameUrl, { waitUntil: "load", timeout: 30000 });
 			await page.waitForFunction(
 				() =>
 					(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
@@ -630,7 +692,9 @@ for (const rel of evidenceFiles) {
 	if (rel === "evidence-manifest.json") continue;
 	const abs = join(SHOTS, rel);
 	if (!existsSync(abs)) {
-		(report.errors as string[]).push(`missing evidence file after capture: ${rel}`);
+		(report.errors as string[]).push(
+			`missing evidence file after capture: ${rel}`,
+		);
 		continue;
 	}
 	files[rel] = { bytes: statSync(abs).size, sha256: sha256File(abs) };
@@ -647,7 +711,10 @@ const manifest = {
 };
 
 // placeholder entry filled after write
-writeFileSync(join(SHOTS, "visual-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+writeFileSync(
+	join(SHOTS, "visual-report.json"),
+	`${JSON.stringify(report, null, 2)}\n`,
+);
 files["visual-report.json"] = {
 	bytes: statSync(join(SHOTS, "visual-report.json")).size,
 	sha256: sha256File(join(SHOTS, "visual-report.json")),

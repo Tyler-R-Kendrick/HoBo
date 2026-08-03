@@ -7,6 +7,7 @@ import type { YardProjectionSnapshot } from "@hobo/management";
 import { YARD_LAYOUT, type ZoneId } from "./layout.js";
 import type { ConfirmOp, YardAction, YardClient } from "./net/yard-client.js";
 import type { GenerativeSheet } from "./openui/sheets.js";
+import type { Waybill } from "./waybills.js";
 import { sheetForZone } from "./yard-engine.js";
 
 /** GenerativeSheet plus legacy info-card kinds ("bootstrap", "inspect"). */
@@ -15,6 +16,10 @@ export type DisplaySheet = Readonly<{
 	title: string;
 	description: string;
 	confirmOp: ConfirmOp;
+	/** When present, confirm runs these client actions instead of confirmOp. */
+	runActions?: readonly YardAction[];
+	/** Present when this sheet renders a waybill (STAMP / SPIKE grammar). */
+	waybill?: Readonly<{ id: string; kind: string }>;
 	fields: readonly {
 		name: string;
 		label: string;
@@ -24,6 +29,43 @@ export type DisplaySheet = Readonly<{
 	}[];
 	streamChunks: readonly string[];
 }>;
+
+/**
+ * Waybill → sheet: title prefixed WAYBILL, description carries the summary
+ * plus the blast-radius line, fields are read-only (you read, then stamp).
+ * Confirm values ride along as read-only form fields so the same
+ * confirmValues() → client.confirm path fires unchanged.
+ */
+export function displaySheetForWaybill(w: Waybill): DisplaySheet {
+	const named = new Set(w.fields.map((f) => f.name));
+	return {
+		kind: w.kind,
+		title: `WAYBILL — ${w.title}`,
+		description: `${w.summary}\nBlast radius: ${w.blastRadius}.`,
+		confirmOp: w.confirmOp === "init-up" ? "noop" : w.confirmOp,
+		...(w.confirmOp === "init-up"
+			? { runActions: ["init", "up"] as readonly YardAction[] }
+			: {}),
+		waybill: { id: w.id, kind: w.kind },
+		fields: [
+			...w.fields.map((f) => ({
+				name: f.name,
+				label: f.label,
+				type: "readonly" as const,
+				value: f.value,
+			})),
+			...Object.entries(w.values)
+				.filter(([name]) => !named.has(name))
+				.map(([name, value]) => ({
+					name,
+					label: name,
+					type: "readonly" as const,
+					value,
+				})),
+		],
+		streamChunks: ["Reading waybill…"],
+	};
+}
 
 export function displaySheetForZone(
 	zone: ZoneId,
@@ -92,6 +134,10 @@ export function createDomOverlay(opts: {
 	onDismissed: () => void;
 	onAction: (message: string) => void;
 	onActionError: (message: string) => void;
+	/** A waybill was STAMPed (approved) and its op succeeded. */
+	onStamped?: (waybill: { id: string; kind: string }) => void;
+	/** A waybill was SPIKEd (denied) — no op fires. */
+	onSpiked?: (waybillId: string) => void;
 	/** Skip stream-chunk timers for deterministic tests. */
 	instantStream?: boolean;
 }): DomOverlay {
@@ -111,6 +157,20 @@ export function createDomOverlay(opts: {
 		sheetConfirm: doc.getElementById("sheet-confirm"),
 	};
 
+	// SPIKE (deny) lives beside the STAMP in the sheet footer; created here so
+	// older index.html copies keep working.
+	let spikeBtn = doc.getElementById("sheet-spike") as HTMLButtonElement | null;
+	if (!spikeBtn && el.sheet) {
+		const footer = el.sheet.querySelector("footer");
+		if (footer) {
+			spikeBtn = doc.createElement("button");
+			spikeBtn.type = "button";
+			spikeBtn.id = "sheet-spike";
+			spikeBtn.textContent = "SPIKE";
+			footer.insertBefore(spikeBtn, footer.firstChild);
+		}
+	}
+
 	let current: DisplaySheet | null = null;
 	let streamTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -121,6 +181,13 @@ export function createDomOverlay(opts: {
 			el.sheet.hidden = false;
 			if (el.sheetTitle) el.sheetTitle.textContent = sheet.title;
 			if (el.sheetDesc) el.sheetDesc.textContent = sheet.description;
+			// Waybill sheets get the approval grammar: STAMP APPROVE / SPIKE.
+			if (el.sheetConfirm) {
+				el.sheetConfirm.textContent = sheet.waybill
+					? "STAMP APPROVE"
+					: "Confirm";
+			}
+			if (spikeBtn) spikeBtn.hidden = !sheet.waybill;
 			if (el.sheetForm) {
 				el.sheetForm.innerHTML = "";
 				for (const f of sheet.fields) {
@@ -209,18 +276,34 @@ export function createDomOverlay(opts: {
 			const sheet = current;
 			if (!sheet) return;
 			try {
-				const message = await client.confirm(
-					sheet.confirmOp,
-					overlay.confirmValues(),
-				);
+				let message: string;
+				if (sheet.runActions && sheet.runActions.length > 0) {
+					// station.open first-run special: init then up.
+					message = "";
+					for (const action of sheet.runActions) {
+						message = await client.runAction(action);
+					}
+				} else {
+					message = await client.confirm(
+						sheet.confirmOp,
+						overlay.confirmValues(),
+					);
+				}
 				overlay.closeSheet();
-				opts.onConfirmed(message);
+				if (sheet.waybill) opts.onStamped?.(sheet.waybill);
+				else opts.onConfirmed(message);
 			} catch (err) {
 				if (el.sheetStream) {
 					el.sheetStream.textContent = String((err as Error).message ?? err);
 				}
 			}
 		})();
+	});
+	spikeBtn?.addEventListener("click", () => {
+		const sheet = current;
+		if (!sheet?.waybill) return;
+		overlay.closeSheet();
+		opts.onSpiked?.(sheet.waybill.id);
 	});
 	for (const btn of doc.querySelectorAll("#actions button")) {
 		btn.addEventListener("click", () => {

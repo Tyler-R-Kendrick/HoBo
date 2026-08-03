@@ -7,6 +7,8 @@
 
 import type { YardVisualState } from "../entity-state.js";
 import { YARD_LAYOUT, type ZoneId } from "../layout.js";
+import type { Waybill } from "../waybills.js";
+import type { WorldView } from "../world-view.js";
 
 export type TextStyleId = "label" | "caption" | "mono9" | "mono11" | "mono12";
 
@@ -64,6 +66,8 @@ export type RenderItem =
 			y: number;
 			animationId: string;
 			scale: number;
+			/** 0..1 sprite alpha (idle NPCs dim to 0.6); default 1. */
+			alpha?: number;
 			depth: number;
 			/** Frozen frame index for deterministic test mode; null = play clip. */
 			testFrame: number | null;
@@ -84,6 +88,14 @@ export type PresenterInput = Readonly<{
 	ready: boolean;
 	/** Image keys actually loaded (optional plates may be absent). */
 	hasImage: (key: string) => boolean;
+	/** World model view (camps + bindlebug NPCs); null before first snapshot. */
+	world: WorldView | null;
+	/** True when scenario snapshots drive the yard (synthetic data → badge). */
+	scenarioMode: boolean;
+	/** Waybills on the desk, priority-ordered (top of stack first). */
+	waybills: readonly Waybill[];
+	/** Highball goal state: clean board derived from reality only. */
+	highball: boolean;
 }>;
 
 // DESIGN.md tokens (ink on paper; spark/go accents only).
@@ -482,6 +494,323 @@ export function presentYard(input: PresenterInput): RenderModel {
 		});
 	}
 
+	// --- waybill desk: paper stack + station bell (HIGHBALL grammar) ---
+	// Up to 3 overlapping waybill cards; index 0 is the top of the stack.
+	const stack = input.waybills.slice(0, 3);
+	stack.forEach((w, i) => {
+		const wx = desk.x + 12 + i * 9;
+		const wy = desk.y + 48 + i * 7;
+		// Top waybill (i=0) draws over lower cards.
+		const base = D.track + 3 + (stack.length - 1 - i) * 3;
+		items.push({
+			kind: "rect",
+			id: `waybill-${i}-shadow`,
+			x: wx + 2,
+			y: wy + 2,
+			w: 122,
+			h: 56,
+			fill: INK,
+			fillAlpha: 0.12,
+			depth: base,
+		});
+		items.push({
+			kind: "rect",
+			id: `waybill-${i}`,
+			x: wx,
+			y: wy,
+			w: 122,
+			h: 56,
+			fill: PAPER,
+			stroke: INK,
+			lineWidth: 2,
+			depth: base + 1,
+		});
+		items.push({
+			kind: "text",
+			id: `waybill-${i}-title`,
+			x: wx + 6,
+			y: wy + 5,
+			text: w.title.slice(0, 20),
+			style: "mono9",
+			color: INK,
+			depth: base + 2,
+		});
+	});
+	if (input.waybills.length > 3) {
+		const cx = desk.x + desk.width - 40;
+		const cy = desk.y + desk.height - 26;
+		items.push({
+			kind: "rect",
+			id: "waybill-count-bg",
+			x: cx,
+			y: cy,
+			w: 30,
+			h: 18,
+			fill: INK,
+			depth: D.track + 12,
+		});
+		items.push({
+			kind: "text",
+			id: "waybill-count",
+			x: cx + 6,
+			y: cy + 3,
+			text: `+${input.waybills.length - 3}`,
+			style: "mono11",
+			color: PAPER,
+			depth: D.track + 13,
+		});
+	}
+	// Station bell: the first-run call to the desk. Glow ring is static ink —
+	// readable from a still frame (reduced-motion-safe).
+	const bellX = desk.x + desk.width - 34;
+	const bellY = desk.y + 26;
+	if (input.waybills.some((w) => w.kind === "station.open")) {
+		items.push({
+			kind: "rect",
+			id: "station-bell-glow",
+			x: bellX - 8,
+			y: bellY - 10,
+			w: 36,
+			h: 34,
+			fill: CREAM,
+			stroke: BORDER,
+			lineWidth: 1,
+			depth: D.track + 2,
+		});
+	}
+	items.push({
+		kind: "rect",
+		id: "station-bell",
+		x: bellX,
+		y: bellY,
+		w: 20,
+		h: 12,
+		fill: INK,
+		depth: D.track + 3,
+	});
+	items.push({
+		kind: "rect",
+		id: "station-bell-knob",
+		x: bellX + 8,
+		y: bellY - 4,
+		w: 4,
+		h: 4,
+		fill: INK,
+		depth: D.track + 3,
+	});
+	items.push({
+		kind: "line",
+		id: "station-bell-base",
+		x1: bellX - 2,
+		y1: bellY + 13,
+		x2: bellX + 22,
+		y2: bellY + 13,
+		color: INK,
+		lineWidth: 2,
+		depth: D.track + 3,
+	});
+
+	// --- semaphore: the Highball signal (goal state from reality only) ---
+	const semX = 1210;
+	const semTop = 300;
+	const semBase = 418;
+	const pivotX = semX + 3;
+	const pivotY = semTop + 12;
+	items.push({
+		kind: "rect",
+		id: "semaphore-post",
+		x: semX,
+		y: semTop,
+		w: 6,
+		h: semBase - semTop,
+		fill: INK,
+		depth: D.track + 2,
+	});
+	if (input.highball) {
+		// Arm raised + go lamp: confirmed clean board only.
+		items.push({
+			kind: "line",
+			id: "semaphore-arm",
+			x1: pivotX,
+			y1: pivotY,
+			x2: pivotX + 26,
+			y2: pivotY - 26,
+			color: INK,
+			lineWidth: 5,
+			depth: D.track + 3,
+		});
+		items.push({
+			kind: "rect",
+			id: "semaphore-lamp",
+			x: pivotX + 22,
+			y: pivotY - 38,
+			w: 12,
+			h: 12,
+			fill: GO,
+			stroke: INK,
+			lineWidth: 2,
+			depth: D.track + 4,
+		});
+		items.push({
+			kind: "text",
+			id: "highball-label",
+			x: semX - 58,
+			y: semTop - 18,
+			text: "HIGHBALL",
+			style: "label",
+			color: INK,
+			depth: D.track + 4,
+		});
+	} else {
+		items.push({
+			kind: "line",
+			id: "semaphore-arm",
+			x1: pivotX,
+			y1: pivotY,
+			x2: pivotX + 24,
+			y2: pivotY + 24,
+			color: INK,
+			lineWidth: 5,
+			depth: D.track + 3,
+		});
+	}
+
+	// --- camp rooms + bindlebug NPCs (world model, CAMP_GROUNDS only) ---
+	if (input.world) {
+		for (const camp of input.world.camps) {
+			items.push({
+				kind: "rect",
+				id: `camp-${camp.id}-shadow`,
+				x: camp.x + 3,
+				y: camp.y + 3,
+				w: camp.w,
+				h: camp.h,
+				fill: INK,
+				fillAlpha: 0.12,
+				depth: D.track,
+			});
+			items.push({
+				kind: "rect",
+				id: `camp-${camp.id}`,
+				x: camp.x,
+				y: camp.y,
+				w: camp.w,
+				h: camp.h,
+				fill: PAPER,
+				stroke: INK,
+				lineWidth: 2,
+				depth: D.track + 1,
+			});
+			items.push({
+				kind: "text",
+				id: `camp-${camp.id}-label`,
+				x: camp.x + 6,
+				y: camp.y + 4,
+				text: camp.label.slice(0, 12),
+				style: "label",
+				color: INK,
+				depth: D.track + 2,
+			});
+		}
+		for (const ch of input.world.characters) {
+			// DESIGN.md scale tiers: bindlebugs visibly smaller than Bo
+			// (half-size sheets × 0.5 → roughly a quarter of Bo on screen).
+			items.push({
+				kind: "sprite",
+				id: `npc-${ch.id}`,
+				x: ch.x,
+				y: ch.y,
+				animationId: ch.animationId,
+				scale: 0.5,
+				...(ch.state === "idle" ? { alpha: 0.6 } : {}),
+				depth: D.characters,
+				testFrame: input.testMode ? 0 : null,
+			});
+			const headY = ch.y - 62;
+			if (ch.state === "stuck") {
+				// spark is reserved for real failure states (DESIGN.md).
+				items.push({
+					kind: "text",
+					id: `npc-${ch.id}-stuck`,
+					x: ch.x - 3,
+					y: headY - 14,
+					text: "!",
+					style: "mono12",
+					color: SPARK,
+					depth: D.characters + 2,
+				});
+			}
+			if (ch.state === "reading") {
+				// Ink-state book mark: readable from a still frame.
+				items.push({
+					kind: "rect",
+					id: `npc-${ch.id}-book`,
+					x: ch.x + 8,
+					y: headY + 22,
+					w: 12,
+					h: 8,
+					fill: PAPER,
+					stroke: INK,
+					lineWidth: 1,
+					depth: D.characters + 2,
+				});
+			}
+			if (ch.health < 1) {
+				items.push({
+					kind: "rect",
+					id: `npc-${ch.id}-health-bg`,
+					x: ch.x - 14,
+					y: headY - 6,
+					w: 28,
+					h: 4,
+					fill: PAPER,
+					stroke: INK,
+					lineWidth: 1,
+					depth: D.characters + 2,
+				});
+				items.push({
+					kind: "rect",
+					id: `npc-${ch.id}-health`,
+					x: ch.x - 13,
+					y: headY - 5,
+					w: Math.max(1, 26 * ch.health),
+					h: 2,
+					fill: ch.health < 0.4 ? SPARK : GO,
+					depth: D.characters + 3,
+				});
+			}
+			if (ch.bubble) {
+				const text = ch.bubble.slice(0, 24);
+				const bw = Math.min(160, text.length * 6 + 12);
+				// Never occlude the Bootstrap Desk (DESIGN.md reserved regions).
+				const desk = YARD_LAYOUT.zones.bootstrapDesk;
+				const bx = Math.max(desk.x + desk.width + 8, ch.x - bw / 2);
+				items.push({
+					kind: "rect",
+					id: `npc-${ch.id}-bubble`,
+					x: bx,
+					y: headY - 32,
+					w: bw,
+					h: 16,
+					fill: "#fffdf7",
+					stroke: "#111111",
+					lineWidth: 1,
+					depth: D.ui + 2,
+				});
+				items.push({
+					kind: "text",
+					id: `npc-${ch.id}-bubble-text`,
+					x: bx + 6,
+					y: headY - 29,
+					text,
+					style: "mono9",
+					color: "#111111",
+					depth: D.ui + 3,
+				});
+			}
+		}
+	}
+
 	// --- traffic particles (never in test mode: stable screenshots) ---
 	if (!input.testMode) {
 		input.particles.forEach((p, i) => {
@@ -601,7 +930,7 @@ export function presentYard(input: PresenterInput): RenderModel {
 		id: "hud-title",
 		x: 26,
 		y: 24,
-		text: "HoBo Yard · single Station",
+		text: "HIGHBALL! · single Station",
 		style: "label",
 		color: INK,
 		depth: D.ui + 2,
@@ -616,6 +945,36 @@ export function presentYard(input: PresenterInput): RenderModel {
 		color: MUTE,
 		depth: D.ui + 2,
 	});
+
+	// --- SIMULATED film-leader tag (DESIGN.md signal provenance / TRU-1) ---
+	// Shown whenever synthetic data drives the yard: demo world stream or
+	// scenario snapshots. Ink-bordered, label-caps; never spark/go accents.
+	if (input.world?.demo === true || input.scenarioMode) {
+		const bw = 108;
+		const bx = YARD_LAYOUT.width - bw - 14;
+		items.push({
+			kind: "rect",
+			id: "simulated-badge",
+			x: bx,
+			y: 14,
+			w: bw,
+			h: 22,
+			fill: PAPER,
+			stroke: INK,
+			lineWidth: 2,
+			depth: D.ui + 3,
+		});
+		items.push({
+			kind: "text",
+			id: "simulated-badge-text",
+			x: bx + 14,
+			y: 19,
+			text: "SIMULATED",
+			style: "label",
+			color: INK,
+			depth: D.ui + 4,
+		});
+	}
 
 	return Object.freeze({ items });
 }

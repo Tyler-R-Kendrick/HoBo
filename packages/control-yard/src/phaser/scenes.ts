@@ -194,6 +194,7 @@ export class YardScene extends Phaser.Scene {
 				// Feet baseline (assets_index origin {0.5, 1}).
 				s.setOrigin(0.5, 1);
 				s.setScale(item.scale);
+				s.setAlpha(item.alpha ?? 1);
 				s.setDepth(item.depth);
 				this.syncSprite(item, s);
 				return s;
@@ -209,6 +210,7 @@ export class YardScene extends Phaser.Scene {
 			sprite ?? (this.objects.get(item.id) as Phaser.GameObjects.Sprite);
 		if (!s) return;
 		s.setPosition(item.x, item.y);
+		s.setAlpha(item.alpha ?? 1);
 		if (item.testFrame !== null) {
 			s.anims.stop();
 			const sheetKey = this.animBySheet.get(item.animationId);
@@ -225,7 +227,7 @@ export class YardScene extends Phaser.Scene {
 function signature(item: RenderItem): string {
 	// Sprites move every frame; exclude position so we update, not rebuild.
 	if (item.kind === "sprite") {
-		return `sprite:${item.animationId}:${item.scale}:${item.depth}:${item.testFrame}`;
+		return `sprite:${item.animationId}:${item.scale}:${item.alpha ?? 1}:${item.depth}:${item.testFrame}`;
 	}
 	return JSON.stringify(item);
 }

@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>HoBo Yard — Control Plane</title>
+    <title>HIGHBALL! — HoBo Yard Control Plane</title>
     <link rel="stylesheet" href="./yard.css" />
   </head>
   <body>
     <div id="chrome">
       <header>
-        <h1>HoBo Yard</h1>
-        <p class="tag">Control-plane game UI · ADR-0135 · DESIGN.md rubberhose · site Bo sheets</p>
+        <h1>HIGHBALL!</h1>
+        <p class="tag">a HoBo Yard picture · control plane · ADR-0140</p>
       </header>
       <div id="hud">
         <span id="status">booting…</span>
@@ -40,9 +40,15 @@
         <form id="sheet-form"></form>
         <div id="sheet-stream"></div>
         <footer>
+          <button type="button" id="sheet-spike" hidden>SPIKE</button>
           <button type="button" id="sheet-confirm">Confirm</button>
         </footer>
       </aside>
+      <div id="newsreel" hidden>
+        <h2>SINCE YOUR LAST SHIFT—</h2>
+        <ul id="newsreel-list"></ul>
+        <button type="button" id="newsreel-skip">CARRY ON</button>
+      </div>
     </main>
     <p id="help">
       Click zones: Platform · Bootstrap Desk · Rail · Connection Bay · Policy Board · Cost Booth · Error Bunker.

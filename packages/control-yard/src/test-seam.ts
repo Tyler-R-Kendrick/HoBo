@@ -20,6 +20,12 @@ export type YardTestFx = Readonly<{
 	atFrame: number;
 }>;
 
+export type YardTestWorld = Readonly<{
+	campCount: number;
+	characterCount: number;
+	demo: boolean;
+}>;
+
 export type YardTestState = Readonly<{
 	scene: string;
 	ready: boolean;
@@ -35,11 +41,14 @@ export type YardTestState = Readonly<{
 	sheetKind: string | null;
 	seq: number | null;
 	hazards: readonly string[];
+	waybillCount: number;
+	highball: boolean;
 	theme: YardTheme;
 	scenario: string | null;
 	tick: number;
 	entities: readonly YardTestEntity[];
 	recentFx: readonly YardTestFx[];
+	world: YardTestWorld | null;
 }>;
 
 export type YardTestCommands = Readonly<{
@@ -80,10 +89,13 @@ export type YardTestHost = {
 	advanceToTick: (n: number) => void;
 	setTheme: (theme: YardTheme) => void;
 	getTheme: () => YardTheme;
+	getWaybillCount: () => number;
+	getHighball: () => boolean;
 	getScenario: () => string | null;
 	getTick: () => number;
 	getEntities: () => readonly YardTestEntity[];
 	getRecentFx: () => readonly YardTestFx[];
+	getWorldSummary: () => YardTestWorld | null;
 };
 
 export function createTestSeam(host: YardTestHost): YardTestSeam {
@@ -110,6 +122,8 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 				sheetKind: host.sheetKind(),
 				seq: snap?.seq ?? null,
 				hazards: Object.freeze([...(snap?.doctor.hazards ?? [])]),
+				waybillCount: host.getWaybillCount(),
+				highball: host.getHighball(),
 				theme: host.getTheme(),
 				scenario: host.getScenario(),
 				tick: host.getTick(),
@@ -118,6 +132,9 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 				),
 				recentFx: Object.freeze(
 					host.getRecentFx().map((f) => Object.freeze({ ...f })),
+				),
+				world: ((w) => (w ? Object.freeze({ ...w }) : null))(
+					host.getWorldSummary(),
 				),
 			});
 		},

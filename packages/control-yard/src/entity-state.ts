@@ -85,7 +85,7 @@ const GUEST_ANIM: Record<GuestVisualState, string> = {
 
 export function deriveYardVisualState(
 	snap: YardProjectionSnapshot,
-	opts?: { selectedZone?: ZoneId },
+	opts?: { selectedZone?: ZoneId; recentSuccess?: boolean },
 ): YardVisualState {
 	const selected = opts?.selectedZone;
 	const boZone = pickBoZone(snap, selected);
@@ -93,13 +93,7 @@ export function deriveYardVisualState(
 	const facing: "east" | "west" =
 		boZone === "connectionBay" || boZone === "costBooth" ? "east" : "west";
 
-	// Site sheets only: idle + walk E/W. Error/occupying still play idle art.
-	const animationId =
-		boState === "walking"
-			? facing === "east"
-				? "bo.walk.east"
-				: "bo.walk.west"
-			: "bo.idle";
+	const animationId = pickBoAnimation(snap, boState, facing, opts);
 
 	const rails = snap.rails.map((r) =>
 		Object.freeze({
@@ -121,9 +115,7 @@ export function deriveYardVisualState(
 	const guests = snap.activity.map((a) =>
 		Object.freeze({
 			connectorKind: a.connectorKind,
-			...(a.connectionId !== undefined
-				? { connectionId: a.connectionId }
-				: {}),
+			...(a.connectionId !== undefined ? { connectionId: a.connectionId } : {}),
 			visual: a.status,
 			animationId: GUEST_ANIM[a.status] ?? GUEST_ANIM.idle,
 		}),
@@ -175,10 +167,7 @@ export function deriveYardVisualState(
 	});
 }
 
-function pickBoZone(
-	snap: YardProjectionSnapshot,
-	selected?: ZoneId,
-): ZoneId {
+function pickBoZone(snap: YardProjectionSnapshot, selected?: ZoneId): ZoneId {
 	if (selected) return selected;
 	if (snap.doctor.hazards.length > 2) return "errorBunker";
 	if (snap.occupancy.bootstrapActive) return "bootstrapDesk";
@@ -191,10 +180,7 @@ function pickBoZone(
 	return "platformRest";
 }
 
-function pickBoState(
-	snap: YardProjectionSnapshot,
-	zone: ZoneId,
-): BoAnimState {
+function pickBoState(snap: YardProjectionSnapshot, zone: ZoneId): BoAnimState {
 	if (snap.doctor.hazards.some((h) => h.startsWith("connection-revoked"))) {
 		return "error";
 	}
@@ -204,6 +190,71 @@ function pickBoState(
 	if (snap.occupyMode === "occupying") return "occupying";
 	if (zone === "connectionBay") return "resolving";
 	return "idle";
+}
+
+/**
+ * Autonomous-foreman clip mapping (M1 phase A, priority order).
+ * All five action sheets are canonical west-facing art — never mirrored;
+ * `facing` stays a plain data field for the walk sheets only.
+ */
+function pickBoAnimation(
+	snap: YardProjectionSnapshot,
+	boState: BoAnimState,
+	facing: "east" | "west",
+	opts?: { recentSuccess?: boolean },
+): string {
+	if (snap.occupancy.status !== "open") return "bo.sleep-wake";
+	if (snap.doctor.hazards.length > 0) return "bo.hurt";
+	if (snap.occupancy.bootstrapActive) return "bo.bindle-adjust";
+	if (attentionNeeded(snap)) return "bo.wave";
+	if (opts?.recentSuccess) return "bo.jump";
+	if (boState === "walking") {
+		return facing === "east" ? "bo.walk.east" : "bo.walk.west";
+	}
+	return "bo.idle";
+}
+
+/**
+ * Pending connection or a rail published but not yet active → Bo waves.
+ * Bootstrap rails are excluded: activating a real rail demotes the bootstrap
+ * rail to "approved" as its steady state, which needs no operator action.
+ */
+function attentionNeeded(snap: YardProjectionSnapshot): boolean {
+	return (
+		snap.connections.some((c) => String(c.status) === "pending") ||
+		snap.rails.some(
+			(r) =>
+				!r.isBootstrap &&
+				(r.activationStatus === "draft" || r.activationStatus === "approved"),
+		)
+	);
+}
+
+/**
+ * Pure snapshot comparator: true when seq advanced AND a rail just became
+ * active or a connection just became authorized. The previous snapshot is
+ * tracked by the host (main.ts) — this module stays stateless.
+ */
+export function detectRecentSuccess(
+	prev: YardProjectionSnapshot | null,
+	next: YardProjectionSnapshot,
+): boolean {
+	if (!prev || next.seq <= prev.seq) return false;
+	const prevActiveRails = new Set(
+		prev.rails.filter((r) => r.activationStatus === "active").map((r) => r.id),
+	);
+	const railActivated = next.rails.some(
+		(r) => r.activationStatus === "active" && !prevActiveRails.has(r.id),
+	);
+	const prevAuthorized = new Set(
+		prev.connections
+			.filter((c) => String(c.status) === "active")
+			.map((c) => c.id),
+	);
+	const connAuthorized = next.connections.some(
+		(c) => String(c.status) === "active" && !prevAuthorized.has(c.id),
+	);
+	return railActivated || connAuthorized;
 }
 
 function mapConnectionVisual(status: string): ConnectionVisualState {

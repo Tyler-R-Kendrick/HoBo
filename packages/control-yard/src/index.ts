@@ -15,19 +15,23 @@ export {
 } from "./assets-index.js";
 export {
 	type DisplaySheet,
+	displaySheetForWaybill,
 	displaySheetForZone,
 } from "./dom-overlay.js";
 export {
 	type BoAnimState,
 	type ConnectionVisualState,
 	deriveYardVisualState,
+	detectRecentSuccess,
 	type GuestVisualState,
 	type RailVisualState,
 	stepToward,
 	type YardVisualState,
 } from "./entity-state.js";
 export {
+	CAMP_GROUNDS,
 	type Layout,
+	type PropRegion,
 	YARD_HEIGHT,
 	YARD_LAYOUT,
 	YARD_WIDTH,
@@ -36,6 +40,13 @@ export {
 	zoneAnchor,
 	zoneAt,
 } from "./layout.js";
+export {
+	createWorldClient,
+	foldWorldDelta,
+	type WorldClient,
+	type WorldDelta,
+	type WorldEnvelope,
+} from "./net/world-client.js";
 export {
 	type ConfirmOp,
 	createYardClient,
@@ -85,6 +96,10 @@ export {
 	zoneRegion,
 } from "./scenarios/index.js";
 export {
+	fixtureCharacterState,
+	scenarioWorld,
+} from "./scenarios/world-fixture.js";
+export {
 	applyLoadManifest,
 	assertSheetFitsFrames,
 	boAnimationForVisual,
@@ -103,8 +118,32 @@ export {
 	type YardTestHost,
 	type YardTestSeam,
 	type YardTestState,
+	type YardTestWorld,
 	type YardTheme,
 } from "./test-seam.js";
+export {
+	type BlastRadius,
+	createSpikeLedger,
+	deriveWaybills,
+	isHighball,
+	type SpikeLedger,
+	type Waybill,
+	type WaybillField,
+	type WaybillKind,
+	type WaybillOp,
+	waybillForZone,
+} from "./waybills.js";
+export {
+	type BindlebugVariant,
+	bindlebugVariant,
+	campRoomSlots,
+	hashCharacterId,
+	MAX_CAMP_ROOMS,
+	toWorldView,
+	type WorldCampView,
+	type WorldCharacterView,
+	type WorldView,
+} from "./world-view.js";
 export {
 	createYardEngine,
 	type Particle,

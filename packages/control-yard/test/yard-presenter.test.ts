@@ -6,6 +6,7 @@ import {
 	presentYard,
 	type RenderItem,
 	resolveBoTransitAnim,
+	type Waybill,
 	YARD_LAYOUT,
 } from "../src/index.js";
 
@@ -62,7 +63,25 @@ function input(overrides: Partial<PresenterInput> = {}): PresenterInput {
 		testMode: true,
 		ready: true,
 		hasImage: () => true,
+		world: null,
+		scenarioMode: false,
+		waybills: [],
+		highball: false,
 		...overrides,
+	};
+}
+
+function makeWaybill(patch: Partial<Waybill> = {}): Waybill {
+	return {
+		id: "waybill:rail.approve:rail-1",
+		kind: "rail.approve",
+		title: "Approve Rail",
+		summary: "Draft rail awaits approval.",
+		fields: [{ name: "hashOrId", label: "Rail", value: "sha256:abc" }],
+		confirmOp: "stationRailsApprove",
+		values: { hashOrId: "sha256:abc" },
+		blastRadius: "rail",
+		...patch,
 	};
 }
 
@@ -185,5 +204,95 @@ describe("yard presenter", () => {
 		expect(byId(items, "poles")).toBeUndefined();
 		expect(byId(items, "trail")).toBeUndefined();
 		expect(byId(items, "trail-front")).toBeUndefined();
+	});
+});
+
+describe("HIGHBALL presenter props (M1 phase B)", () => {
+	it("renders up to 3 waybill cards with the top card frontmost", () => {
+		const waybills = [0, 1].map((i) =>
+			makeWaybill({ id: `waybill:${i}`, title: `Waybill ${i}` }),
+		);
+		const { items } = presentYard(input({ waybills }));
+		const top = byId(items, "waybill-0");
+		const below = byId(items, "waybill-1");
+		expect(top?.kind).toBe("rect");
+		expect(below?.kind).toBe("rect");
+		expect(byId(items, "waybill-2")).toBeUndefined();
+		expect(byId(items, "waybill-count")).toBeUndefined();
+		if (top?.kind === "rect" && below?.kind === "rect") {
+			expect(top.depth).toBeGreaterThan(below.depth);
+			expect(top.fill).toBe("#ffffff");
+			expect(top.stroke).toBe("#101010");
+		}
+		const title = byId(items, "waybill-0-title");
+		expect(title?.kind).toBe("text");
+		if (title?.kind === "text") expect(title.text).toBe("Waybill 0");
+	});
+
+	it("caps the stack at 3 and badges the overflow count", () => {
+		const waybills = [0, 1, 2, 3, 4].map((i) =>
+			makeWaybill({ id: `waybill:${i}` }),
+		);
+		const { items } = presentYard(input({ waybills }));
+		expect(byId(items, "waybill-2")).toBeDefined();
+		expect(byId(items, "waybill-3")).toBeUndefined();
+		const count = byId(items, "waybill-count");
+		expect(count?.kind).toBe("text");
+		if (count?.kind === "text") expect(count.text).toBe("+2");
+	});
+
+	it("semaphore: arm down + no lamp/label when not highball", () => {
+		const { items } = presentYard(input());
+		expect(byId(items, "semaphore-post")).toBeDefined();
+		const arm = byId(items, "semaphore-arm");
+		expect(arm?.kind).toBe("line");
+		if (arm?.kind === "line") expect(arm.y2).toBeGreaterThan(arm.y1);
+		expect(byId(items, "semaphore-lamp")).toBeUndefined();
+		expect(byId(items, "highball-label")).toBeUndefined();
+	});
+
+	it("semaphore: arm raised + go lamp + HIGHBALL label when highball", () => {
+		const { items } = presentYard(input({ highball: true }));
+		const arm = byId(items, "semaphore-arm");
+		expect(arm?.kind).toBe("line");
+		if (arm?.kind === "line") expect(arm.y2).toBeLessThan(arm.y1);
+		const lamp = byId(items, "semaphore-lamp");
+		expect(lamp?.kind).toBe("rect");
+		// go green is reserved for confirmed success only
+		if (lamp?.kind === "rect") expect(lamp.fill).toBe("#14672c");
+		const label = byId(items, "highball-label");
+		expect(label?.kind).toBe("text");
+		if (label?.kind === "text") expect(label.text).toBe("HIGHBALL");
+	});
+
+	it("station bell always present; cream glow only with a station.open waybill", () => {
+		const calm = presentYard(input()).items;
+		expect(byId(calm, "station-bell")).toBeDefined();
+		expect(byId(calm, "station-bell-glow")).toBeUndefined();
+		const firstRun = presentYard(
+			input({
+				waybills: [
+					makeWaybill({
+						id: "waybill:station.open",
+						kind: "station.open",
+						title: "Open the Station",
+						confirmOp: "init-up",
+						blastRadius: "station",
+					}),
+				],
+			}),
+		).items;
+		const glow = byId(firstRun, "station-bell-glow");
+		expect(glow?.kind).toBe("rect");
+		// static cream ring — reduced-motion-safe onboarding signal
+		if (glow?.kind === "rect") expect(glow.fill).toBe("#f2f1ec");
+	});
+
+	it("HUD title carries the HIGHBALL! picture card", () => {
+		const title = byId(presentYard(input()).items, "hud-title");
+		expect(title?.kind).toBe("text");
+		if (title?.kind === "text") {
+			expect(title.text).toBe("HIGHBALL! · single Station");
+		}
 	});
 });

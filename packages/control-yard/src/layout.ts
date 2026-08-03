@@ -28,11 +28,25 @@ export type ZoneLayout = Readonly<{
 	anchorY: number;
 }>;
 
+/** Reserved region for dynamic world content (DESIGN.md "Reserved regions"). */
+export type PropRegion = Readonly<{
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}>;
+
 export type Layout = Readonly<{
 	width: number;
 	height: number;
 	groundY: number;
 	zones: Readonly<Record<ZoneId, ZoneLayout>>;
+	/**
+	 * Camp rooms + bindlebug NPCs render only inside this band (the
+	 * activeRailTrack-to-ground open area). Fixed zones are never moved and the
+	 * instrument panel (Bootstrap Desk, Connection Bay) is never occluded.
+	 */
+	campGrounds: PropRegion;
 	depths: Readonly<{
 		background: number;
 		track: number;
@@ -127,11 +141,20 @@ const ZONES: Record<ZoneId, ZoneLayout> = {
 	},
 };
 
+/** DESIGN.md reserved region: dynamic camp/NPC content stays inside this band. */
+export const CAMP_GROUNDS: PropRegion = Object.freeze({
+	x: 340,
+	y: 420,
+	width: 540, // 340..880 — ends before the Connection Bay at x=900
+	height: 180, // 420..600 — the activeRailTrack-to-ground band
+});
+
 export const YARD_LAYOUT: Layout = Object.freeze({
 	width: YARD_WIDTH,
 	height: YARD_HEIGHT,
 	groundY: 620,
 	zones: Object.freeze({ ...ZONES }),
+	campGrounds: CAMP_GROUNDS,
 	depths: Object.freeze({
 		background: 0,
 		track: 5,

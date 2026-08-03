@@ -5,10 +5,17 @@
  */
 
 import type { YardProjectionSnapshot } from "@hobo/management";
+import type { WorldState } from "@hobo/yard-world";
 import Phaser from "phaser";
 import type { AssetIndex } from "./assets-index-core.js";
-import { createDomOverlay, displaySheetForZone } from "./dom-overlay.js";
+import {
+	createDomOverlay,
+	displaySheetForWaybill,
+	displaySheetForZone,
+} from "./dom-overlay.js";
+import { detectRecentSuccess } from "./entity-state.js";
 import { YARD_LAYOUT, type ZoneId, zoneAnchor } from "./layout.js";
+import { createWorldClient } from "./net/world-client.js";
 import { createYardClient } from "./net/yard-client.js";
 import { yardPhaserConfig } from "./phaser/game-config.js";
 import { PreloadScene, type YardHost, YardScene } from "./phaser/scenes.js";
@@ -18,6 +25,7 @@ import {
 	resolveBoTransitAnim,
 } from "./phaser/yard-presenter.js";
 import { SCENARIOS } from "./scenarios/index.js";
+import { scenarioWorld } from "./scenarios/world-fixture.js";
 import { describeYardSceneLoad } from "./scenes/yard-scene.js";
 import {
 	createTestSeam,
@@ -26,8 +34,17 @@ import {
 	type YardTestEntity,
 	type YardTestFx,
 	type YardTestHost,
+	type YardTestWorld,
 	type YardTheme,
 } from "./test-seam.js";
+import {
+	createSpikeLedger,
+	deriveWaybills,
+	isHighball,
+	type Waybill,
+	waybillForZone,
+} from "./waybills.js";
+import { toWorldView, type WorldView } from "./world-view.js";
 import { createYardEngine, selectZoneWithSnapshot } from "./yard-engine.js";
 
 const params = new URLSearchParams(location.search);
@@ -49,6 +66,10 @@ const engine = createYardEngine();
 const client = createYardClient({ apiBase: API });
 
 let snap: YardProjectionSnapshot | null = null;
+/** Bo jumps for ~2s after a rail activates / a connection authorizes. */
+let successRemaining = 0;
+let worldView: WorldView | null = null;
+let worldDemo = false;
 let assetsReady = false;
 let speech = "";
 let speechRemaining = 0;
@@ -56,6 +77,9 @@ let lastError = "";
 let loadedImageKeys = new Set<string>();
 let scenarioState: { id: string; tick: number } | null = null;
 let theme: YardTheme = "day";
+let waybills: readonly Waybill[] = [];
+let highball = false;
+const spikes = createSpikeLedger();
 const recentFx: YardTestFx[] = [];
 const RECENT_FX_MAX = 32;
 
@@ -79,6 +103,19 @@ const overlay = createDomOverlay({
 		engine.dismissSheet();
 		void refreshSnapshot();
 	},
+	onStamped: (waybill) => {
+		recordFx(`stamp:${waybill.kind}`);
+		setSpeech("Stamped.", 2);
+		engine.dismissSheet();
+		void refreshSnapshot();
+	},
+	onSpiked: (waybillId) => {
+		recordFx(`spike:${waybillId}`);
+		spikes.spike(waybillId);
+		recomputeWaybills();
+		engine.dismissSheet();
+		if (snap) engine.applySnapshot(snap);
+	},
 	onDismissed: () => {
 		engine.dismissSheet();
 		if (snap) engine.applySnapshot(snap);
@@ -93,9 +130,34 @@ const overlay = createDomOverlay({
 	},
 });
 
+function setWorld(world: WorldState | null, demo: boolean): void {
+	worldDemo = demo;
+	worldView = toWorldView(world, demo);
+	const b = document.body.dataset;
+	b.worldChars = String(worldView?.characters.length ?? 0);
+	b.demo = demo || SCENARIO_MODE ? "1" : "0";
+}
+
+/** Re-derive the waybill desk (spike-filtered) + Highball from the snapshot. */
+function recomputeWaybills(): void {
+	if (!snap) return;
+	waybills = Object.freeze(spikes.filter(deriveWaybills(snap)));
+	highball = isHighball(snap, waybills);
+	const b = document.body.dataset;
+	b.waybills = String(waybills.length);
+	b.highball = highball ? "1" : "0";
+}
+
 function applySnapshot(next: YardProjectionSnapshot): void {
+	if (detectRecentSuccess(snap, next)) successRemaining = 2;
+	spikes.onSeq(next.seq);
 	snap = next;
-	engine.applySnapshot(next);
+	recomputeWaybills();
+	maybeShowNewsreel(next);
+	engine.applySnapshot(
+		next,
+		successRemaining > 0 ? { recentSuccess: true } : undefined,
+	);
 	overlay.updatePills(next);
 	lastError = "";
 	const b = document.body.dataset;
@@ -106,6 +168,116 @@ function applySnapshot(next: YardProjectionSnapshot): void {
 	b.traffic = String(next.metering.trafficRate);
 	b.bootstrap = String(Boolean(next.occupancy.bootstrapActive));
 }
+
+// --- shift newsreel: "SINCE YOUR LAST SHIFT—" (coarse deltas, skippable) ---
+const NEWSREEL_SEQ_KEY = "hobo-yard-last-seq";
+const NEWSREEL_SUMMARY_KEY = "hobo-yard-last-shift";
+let newsreelDone = false;
+
+type ShiftSummary = {
+	seq: number;
+	rails: number;
+	connections: number;
+	activeConnections: number;
+};
+
+function shiftSummary(s: YardProjectionSnapshot): ShiftSummary {
+	return {
+		seq: s.seq,
+		rails: s.rails.length,
+		connections: s.connections.length,
+		activeConnections: s.connections.filter(
+			(c) => String(c.status) === "active",
+		).length,
+	};
+}
+
+function storeShift(): void {
+	if (!snap) return;
+	try {
+		localStorage.setItem(NEWSREEL_SEQ_KEY, String(snap.seq));
+		localStorage.setItem(
+			NEWSREEL_SUMMARY_KEY,
+			JSON.stringify(shiftSummary(snap)),
+		);
+	} catch {
+		/* storage unavailable — the newsreel is optional chrome */
+	}
+}
+
+function newsreelLines(
+	next: YardProjectionSnapshot,
+	lastSeq: number,
+	last: Partial<ShiftSummary> | null,
+): string[] {
+	const lines: string[] = [];
+	const now = shiftSummary(next);
+	if (typeof last?.rails === "number" && now.rails !== last.rails) {
+		lines.push(`RAILS: ${last.rails} → ${now.rails}`);
+	}
+	if (
+		typeof last?.connections === "number" &&
+		now.connections !== last.connections
+	) {
+		lines.push(`CONNECTIONS: ${last.connections} → ${now.connections}`);
+	}
+	if (
+		typeof last?.activeConnections === "number" &&
+		now.activeConnections !== last.activeConnections
+	) {
+		lines.push(
+			`AUTHORIZED: ${last.activeConnections} → ${now.activeConnections}`,
+		);
+	}
+	if (next.seq > lastSeq) lines.push(`SEQ: ${lastSeq} → ${next.seq}`);
+	if (next.doctor.hazards.length > 0) {
+		lines.push(`HAZARDS NOW: ${next.doctor.hazards.join(", ")}`);
+	}
+	// Reality is the level designer: quiet only when the board really is quiet.
+	if (lines.length === 0) lines.push("ALL QUIET");
+	return lines;
+}
+
+function maybeShowNewsreel(next: YardProjectionSnapshot): void {
+	if (newsreelDone) return;
+	newsreelDone = true;
+	// Deterministic evidence: hidden in test mode unless explicitly requested.
+	if ((TEST_MODE || SCENARIO_MODE) && params.get("newsreel") !== "1") return;
+	let lastSeq: number | null = null;
+	let last: Partial<ShiftSummary> | null = null;
+	try {
+		const rawSeq = localStorage.getItem(NEWSREEL_SEQ_KEY);
+		lastSeq = rawSeq === null ? null : Number(rawSeq);
+		const rawSummary = localStorage.getItem(NEWSREEL_SUMMARY_KEY);
+		last = rawSummary
+			? (JSON.parse(rawSummary) as Partial<ShiftSummary>)
+			: null;
+	} catch {
+		return;
+	}
+	if (lastSeq === null || !Number.isFinite(lastSeq)) {
+		// First shift ever — nothing to report; just start the ledger.
+		storeShift();
+		return;
+	}
+	const reel = document.getElementById("newsreel");
+	const list = document.getElementById("newsreel-list");
+	if (!reel || !list) return;
+	list.innerHTML = "";
+	for (const line of newsreelLines(next, lastSeq, last)) {
+		const li = document.createElement("li");
+		li.textContent = line;
+		list.appendChild(li);
+	}
+	reel.hidden = false;
+}
+
+document.getElementById("newsreel-skip")?.addEventListener("click", () => {
+	const reel = document.getElementById("newsreel");
+	if (reel) reel.hidden = true;
+	storeShift();
+});
+window.addEventListener("beforeunload", () => storeShift());
 
 async function refreshSnapshot(): Promise<void> {
 	try {
@@ -125,6 +297,8 @@ function loadScenario(id: string): void {
 	scenarioState = { id, tick: 0 };
 	rng = seededRandom(scenario.seed);
 	if (TEST_MODE) Math.random = () => rng();
+	// Scenario mode: deterministic local world fixture — never contact the API.
+	setWorld(scenarioWorld(scenario.seed, 0), true);
 	applySnapshot(scenario.snapshotAt(0));
 }
 
@@ -135,6 +309,7 @@ function advanceToTick(n: number): void {
 	const target = Math.min(Math.max(0, Math.floor(n)), scenario.totalTicks);
 	while (scenarioState.tick < target) {
 		scenarioState.tick += 1;
+		setWorld(scenarioWorld(scenario.seed, scenarioState.tick), true);
 		applySnapshot(scenario.snapshotAt(scenarioState.tick));
 		tick(1 / scenario.ticksPerSecond);
 	}
@@ -164,7 +339,24 @@ function currentEntities(): readonly YardTestEntity[] {
 			y: bay.y,
 		});
 	}
+	for (const ch of worldView?.characters ?? []) {
+		entities.push({
+			id: ch.id,
+			animationId: ch.animationId,
+			x: ch.x,
+			y: ch.y,
+		});
+	}
 	return entities;
+}
+
+function currentWorldSummary(): YardTestWorld | null {
+	if (!worldView) return null;
+	return {
+		campCount: worldView.camps.length,
+		characterCount: worldView.characters.length,
+		demo: worldDemo || SCENARIO_MODE,
+	};
 }
 
 function currentZone(): ZoneId {
@@ -187,13 +379,23 @@ function selectZone(zone: ZoneId): void {
 		engine.selectZone(zone);
 	}
 	setSpeech(YARD_LAYOUT.zones[zone].label, TEST_MODE ? 0 : 1.5);
-	overlay.openSheet(displaySheetForZone(zone, snap));
+	// The gate is the game: a zone with a live waybill opens that waybill;
+	// otherwise the legacy inspect/generative sheet.
+	const waybill = waybillForZone(zone, waybills);
+	overlay.openSheet(
+		waybill ? displaySheetForWaybill(waybill) : displaySheetForZone(zone, snap),
+	);
 	document.body.dataset.lastClickZone = zone;
 }
 
 function tick(dtSec: number): void {
 	engine.tick(dtSec);
 	if (speechRemaining > 0) speechRemaining -= dtSec;
+	if (successRemaining > 0) {
+		successRemaining -= dtSec;
+		// Jump window over: fall through to the steady-state projection clip.
+		if (successRemaining <= 0 && snap) engine.applySnapshot(snap);
+	}
 }
 
 function renderModel(): RenderModel {
@@ -208,6 +410,10 @@ function renderModel(): RenderModel {
 		testMode: TEST_MODE,
 		ready: assetsReady,
 		hasImage: (key) => loadedImageKeys.has(key),
+		world: worldView,
+		scenarioMode: SCENARIO_MODE,
+		waybills,
+		highball,
 	});
 }
 
@@ -266,10 +472,13 @@ const testHost: YardTestHost = {
 	advanceToTick: (n) => advanceToTick(n),
 	setTheme: (next) => setTheme(next),
 	getTheme: () => theme,
+	getWaybillCount: () => waybills.length,
+	getHighball: () => highball,
 	getScenario: () => scenarioState?.id ?? null,
 	getTick: () => scenarioState?.tick ?? 0,
 	getEntities: () => currentEntities(),
 	getRecentFx: () => [...recentFx],
+	getWorldSummary: () => currentWorldSummary(),
 };
 
 const seam = createTestSeam(testHost);
@@ -354,6 +563,15 @@ async function boot(): Promise<void> {
 			overlay.setStatus(`api error: ${message}`);
 		},
 		{ pollMs: TEST_MODE ? 2000 : 800 },
+	);
+	// World model (camps + bindlebug NPCs) — control-api /v1/world stream.
+	const worldClient = createWorldClient({ apiBase: API });
+	worldClient.subscribe(
+		(world, demo) => setWorld(world, demo),
+		() => {
+			/* world stream is optional — the yard renders without it */
+		},
+		{ pollMs: TEST_MODE ? 2000 : 1000 },
 	);
 }
 

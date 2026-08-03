@@ -65,6 +65,7 @@ function stateAt(scenario: YardScenario, tick: number): YardTestState {
 		tick,
 		entities: entitiesFromEngine(engine),
 		recentFx: Object.freeze([]),
+		world: null,
 	});
 }
 

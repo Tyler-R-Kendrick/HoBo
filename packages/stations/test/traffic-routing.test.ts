@@ -8,6 +8,10 @@ import {
 } from "@hobo/core";
 import { test } from "vitest";
 
+import {
+	applyRoutingObservations,
+	type RoutingObservations,
+} from "../src/traffic-routing/observations.js";
 import { synthesizeRoutingPlan } from "../src/traffic-routing/synthesize.js";
 
 const tenantId = parseTenantId("tenant-a");
@@ -157,6 +161,75 @@ test("synthesizes a degraded best-effort plan when availability signals are miss
 	);
 	assert.ok(Object.isFrozen(result));
 	assert.ok(Object.isFrozen(result.plan));
+});
+
+test("applies observe.health/location then synthesizes non-degraded plan", () => {
+	const topology = {
+		service: "checkout",
+		tenantId,
+		stationId: "station:prod",
+		backends: [
+			{
+				id: "backend:primary",
+				service: "checkout",
+				endpoint: "https://checkout.example.test",
+				weight: 100,
+			},
+			{
+				id: "backend:canary",
+				service: "checkout",
+				endpoint: "https://canary.example.test",
+				weight: 20,
+			},
+		],
+	};
+	const observations: RoutingObservations = {
+		source: "cloudflare.observe.health",
+		observedAt: "2026-08-03T15:00:00.000Z",
+		backends: [
+			{
+				backendId: "backend:primary",
+				healthy: true,
+				locationHints: ["region:us-central1"],
+			},
+			{
+				backendId: "backend:canary",
+				healthy: true,
+				locationHints: ["region:us-east1"],
+			},
+		],
+	};
+	const observed = applyRoutingObservations(topology, observations);
+	assert.equal(observed.backends[0]?.healthy, true);
+	assert.deepEqual(observed.backends[0]?.locationHints, ["region:us-central1"]);
+
+	const degradedWithout = synthesizeRoutingPlan({
+		topology,
+		availability: parseMinAvailabilitySpec({
+			minHealthyBackends: 1,
+			minDistinctLocations: 1,
+		}),
+		policyDecision: policyDecision("allow"),
+		now: "2026-08-03T15:00:00.000Z",
+	});
+	assert.equal(degradedWithout.kind, "plan");
+	if (degradedWithout.kind === "plan") {
+		assert.equal(degradedWithout.plan.degraded, true);
+	}
+
+	const result = synthesizeRoutingPlan({
+		topology: observed,
+		availability: parseMinAvailabilitySpec({
+			minHealthyBackends: 1,
+			minDistinctLocations: 1,
+		}),
+		policyDecision: policyDecision("allow"),
+		now: "2026-08-03T15:00:00.000Z",
+	});
+	assert.equal(result.kind, "plan");
+	if (result.kind !== "plan") return;
+	assert.equal(result.plan.degraded, undefined);
+	assert.equal(result.plan.backends.length, 2);
 });
 
 test("synthesizes a non-degraded plan from complete healthy topology signals", () => {

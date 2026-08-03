@@ -3,6 +3,8 @@ import { describe, it } from "vitest";
 
 import {
 	AZURE_PROVIDER_ID,
+	AZURE_TRAFFIC_ROUTING_OFFERING_IDS,
+	AZURE_TRAFFIC_ROUTING_PROFILE,
 	createAzureProvider,
 	parsePublishedManifest,
 } from "../src/index.js";
@@ -121,5 +123,13 @@ describe("client: runtime binding client per port", () => {
 		assert.equal(client.providerService, "Cosmos DB (Table)");
 		assert.deepEqual(client.bindings, { tableName: "sessions" });
 		assert.throws(() => provider.client("mainframe", {}));
+	});
+});
+
+describe("TrafficRouting offerings surface", () => {
+	it("declares lb.* features with inprocess fallback floor", () => {
+		assert.ok(AZURE_TRAFFIC_ROUTING_OFFERING_IDS.includes("lb.lifecycle"));
+		assert.ok(AZURE_TRAFFIC_ROUTING_OFFERING_IDS.includes("inprocess.weighted"));
+		assert.ok(AZURE_TRAFFIC_ROUTING_PROFILE.fallbacks.includes("inprocess.weighted"));
 	});
 });

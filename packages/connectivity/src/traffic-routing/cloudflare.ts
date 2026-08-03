@@ -12,20 +12,45 @@ import {
 	type TrafficRoutingPort,
 } from "@hobo/core";
 
+export interface CloudflareBackendHealthObservation {
+	readonly backendId: string;
+	readonly healthy?: boolean;
+	readonly poolId?: string;
+	readonly notes?: readonly string[];
+}
+
 export interface CloudflareTrafficRouting extends TrafficRoutingPort {
 	readonly provider: "cloudflare";
 	readonly revoke: NonNullable<TrafficRoutingPort["revoke"]>;
+	/**
+	 * observe.health: fetch pool health for an applied plan (or explicit pool map).
+	 * Returns empty when credentials/account/pools are unavailable.
+	 */
+	observeHealth(
+		planId: RoutingPlanId,
+		poolIdsByBackend?: Readonly<Record<string, string>>,
+	): Promise<readonly CloudflareBackendHealthObservation[]>;
 }
 
 export interface CloudflareTrafficRoutingOptions {
 	/** API token with Load Balancing edit permission. Never logged or metered. */
 	readonly apiToken?: string;
 	readonly zoneId: string;
-	/** Existing Cloudflare pool IDs keyed by HoBo backend ID. */
+	/**
+	 * Account id for pool create (POST /accounts/{id}/load_balancers/pools).
+	 * Required when backends are not pre-mapped via `poolIdsByBackend`.
+	 */
+	readonly accountId?: string;
+	/** Existing Cloudflare pool IDs keyed by HoBo backend ID (brownfield). */
 	readonly poolIdsByBackend?: Readonly<Record<string, string>>;
-	/** Existing Cloudflare load-balancer IDs keyed by HoBo plan ID. */
+	/** Existing Cloudflare load-balancer IDs keyed by HoBo plan ID (brownfield). */
 	readonly loadBalancerIdsByPlan?: Readonly<Record<string, string>>;
-	/** True only when every mapped pool has an independently configured monitor. */
+	/**
+	 * Delete pools created by this adapter on revoke. Default false (retain pools).
+	 * Pre-mapped brownfield pools are never deleted.
+	 */
+	readonly deleteCreatedPoolsOnRevoke?: boolean;
+	/** True only when every mapped/created pool has an independently configured monitor. */
 	readonly healthChecksConfigured?: boolean;
 	readonly apiBase?: string;
 	readonly fetchImpl?: typeof fetch;
@@ -38,6 +63,9 @@ interface AppliedPlan {
 	readonly fingerprint: string;
 	readonly expected: ReturnType<typeof cloudflareLoadBalancer>;
 	readonly result: ApplyResult;
+	readonly createdLoadBalancer: boolean;
+	readonly createdPoolIds: readonly string[];
+	readonly poolIdsByBackend: Readonly<Record<string, string>>;
 	revoked: boolean;
 }
 
@@ -129,40 +157,56 @@ export function createCloudflareTrafficRouting(
 				await meter(options.metering, plan, "deny");
 				return result;
 			}
-			const poolMapping = resolvePoolIds(rule, options.poolIdsByBackend);
-			if (poolMapping.missing.length > 0 || poolMapping.duplicates.length > 0) {
+
+			const poolResolution = await resolveOrCreatePools(
+				rule,
+				options,
+				request,
+			);
+			if (poolResolution.ok === false) {
 				const result = resultFor(
 					plan,
 					"none",
 					0,
-					[...unmet, ...poolMapping.missing, ...poolMapping.duplicates],
-					["Cloudflare pool mappings are required for every routing backend"],
-				);
-				await meter(options.metering, plan, "deny");
-				return result;
-			}
-			const externalId = options.loadBalancerIdsByPlan?.[plan.planId]?.trim();
-			if (!externalId) {
-				const result = resultFor(
-					plan,
-					"none",
-					0,
-					[`load-balancer:${plan.planId}`],
-					["an existing Cloudflare load-balancer mapping is required"],
+					[...unmet, ...poolResolution.unmet],
+					poolResolution.notes,
 				);
 				await meter(options.metering, plan, "deny");
 				return result;
 			}
 
-			const expected = cloudflareLoadBalancer(plan, rule, poolMapping.poolIds);
-			const response = await request(
-				`/zones/${encodeURIComponent(options.zoneId)}/load_balancers/${encodeURIComponent(externalId)}`,
-				{
-					method: "PUT",
-					body: JSON.stringify(expected),
-				},
+			const expected = cloudflareLoadBalancer(
+				plan,
+				rule,
+				poolResolution.poolIds,
 			);
-			if (!response.ok || !cloudflareSuccess(response.body)) {
+			const mappedLb = options.loadBalancerIdsByPlan?.[plan.planId]?.trim();
+			let externalId = mappedLb;
+			let createdLoadBalancer = false;
+			let response: { ok: boolean; status: number; body: unknown };
+
+			if (externalId) {
+				response = await request(
+					`/zones/${encodeURIComponent(options.zoneId)}/load_balancers/${encodeURIComponent(externalId)}`,
+					{ method: "PUT", body: JSON.stringify(expected) },
+				);
+			} else {
+				response = await request(
+					`/zones/${encodeURIComponent(options.zoneId)}/load_balancers`,
+					{ method: "POST", body: JSON.stringify(expected) },
+				);
+				const createdId = cloudflareResultId(response.body);
+				if (response.ok && cloudflareSuccess(response.body) && createdId) {
+					externalId = createdId;
+					createdLoadBalancer = true;
+				}
+			}
+
+			if (
+				!externalId ||
+				!response.ok ||
+				!cloudflareSuccess(response.body)
+			) {
 				const result = resultFor(
 					plan,
 					"none",
@@ -181,16 +225,26 @@ export function createCloudflareTrafficRouting(
 				1,
 				unmet,
 				realized === "full"
-					? []
+					? createdLoadBalancer
+						? ["Cloudflare load balancer created"]
+						: []
 					: ["Cloudflare applied the provider-safe subset of the routing plan"],
 				capabilitiesFor(rule, options.healthChecksConfigured === true),
 			);
+			const poolIdsByBackend: Record<string, string> = {};
+			for (const [index, backend] of rule.backends.entries()) {
+				const poolId = poolResolution.poolIds[index];
+				if (poolId) poolIdsByBackend[backend.id] = poolId;
+			}
 			applied.set(plan.planId, {
 				externalId,
 				plan,
 				fingerprint,
 				expected,
 				result,
+				createdLoadBalancer,
+				createdPoolIds: poolResolution.createdPoolIds,
+				poolIdsByBackend,
 				revoked: false,
 			});
 			await meter(
@@ -199,6 +253,38 @@ export function createCloudflareTrafficRouting(
 				realized === "full" ? "apply" : "degraded",
 			);
 			return result;
+		},
+		async observeHealth(planId, poolIdsByBackend) {
+			const current = applied.get(planId);
+			const map =
+				poolIdsByBackend ??
+				current?.poolIdsByBackend ??
+				options.poolIdsByBackend ??
+				{};
+			const accountId = options.accountId?.trim();
+			if (!token || !accountId) return [];
+			const observations: CloudflareBackendHealthObservation[] = [];
+			for (const [backendId, poolId] of Object.entries(map)) {
+				if (!poolId?.trim()) continue;
+				const response = await request(
+					`/accounts/${encodeURIComponent(accountId)}/load_balancers/pools/${encodeURIComponent(poolId.trim())}/health`,
+				);
+				if (!response.ok || !cloudflareSuccess(response.body)) {
+					observations.push({
+						backendId,
+						poolId: poolId.trim(),
+						notes: [providerFailure("pool-health", response.status)],
+					});
+					continue;
+				}
+				const healthy = cloudflarePoolHealthy(response.body);
+				observations.push({
+					backendId,
+					poolId: poolId.trim(),
+					...(healthy === undefined ? {} : { healthy }),
+				});
+			}
+			return observations;
 		},
 		async status(planId) {
 			const current = applied.get(planId);
@@ -265,6 +351,19 @@ export function createCloudflareTrafficRouting(
 					notes: [providerFailure("revoke", response.status)],
 				});
 			}
+			const accountId = options.accountId?.trim();
+			if (
+				options.deleteCreatedPoolsOnRevoke === true &&
+				accountId &&
+				current.createdPoolIds.length > 0
+			) {
+				for (const poolId of current.createdPoolIds) {
+					await request(
+						`/accounts/${encodeURIComponent(accountId)}/load_balancers/pools/${encodeURIComponent(poolId)}`,
+						{ method: "DELETE" },
+					);
+				}
+			}
 			current.revoked = true;
 			return parseRevokeResult({ ok: true, notes: [] });
 		},
@@ -326,25 +425,146 @@ function cloudflareLoadBalancer(
 	};
 }
 
-function resolvePoolIds(
+async function resolveOrCreatePools(
 	rule: RoutingRule,
-	poolIdsByBackend: Readonly<Record<string, string>> | undefined,
-): {
-	readonly poolIds: string[];
-	readonly missing: string[];
-	readonly duplicates: string[];
-} {
+	options: CloudflareTrafficRoutingOptions,
+	request: (
+		path: string,
+		init?: RequestInit,
+	) => Promise<{ ok: boolean; status: number; body: unknown }>,
+): Promise<
+	| {
+			readonly ok: true;
+			readonly poolIds: string[];
+			readonly createdPoolIds: string[];
+	  }
+	| { readonly ok: false; readonly unmet: string[]; readonly notes: string[] }
+> {
 	const poolIds: string[] = [];
-	const missing: string[] = [];
+	const createdPoolIds: string[] = [];
+	const accountId = options.accountId?.trim();
 	for (const backend of rule.backends) {
-		const poolId = poolIdsByBackend?.[backend.id]?.trim();
-		if (poolId) poolIds.push(poolId);
-		else missing.push(`pool:${backend.id}`);
+		const mapped = options.poolIdsByBackend?.[backend.id]?.trim();
+		if (mapped) {
+			poolIds.push(mapped);
+			continue;
+		}
+		if (!backend.endpoint) {
+			return {
+				ok: false,
+				unmet: [`pool:${backend.id}`, `endpoint:${backend.id}`],
+				notes: [
+					"Cloudflare pool create requires a backend endpoint when no pool mapping is provided",
+				],
+			};
+		}
+		if (!accountId) {
+			return {
+				ok: false,
+				unmet: [`pool:${backend.id}`, "accountId"],
+				notes: [
+					"Cloudflare accountId is required to create pools (or supply poolIdsByBackend)",
+				],
+			};
+		}
+		const origin = poolOrigin(backend.endpoint);
+		if (!origin) {
+			return {
+				ok: false,
+				unmet: [`endpoint:${backend.id}`],
+				notes: ["backend endpoint must be an absolute HTTP(S) URL with host"],
+			};
+		}
+		const create = await request(
+			`/accounts/${encodeURIComponent(accountId)}/load_balancers/pools`,
+			{
+				method: "POST",
+				body: JSON.stringify({
+					name: `hobo-${sanitizeName(backend.id)}`,
+					origins: [
+						{
+							name: sanitizeName(backend.id),
+							address: origin.address,
+							enabled: true,
+							weight: backend.weight ?? 1,
+						},
+					],
+					enabled: true,
+					minimum_origins: 1,
+				}),
+			},
+		);
+		const poolId = cloudflareResultId(create.body);
+		if (!create.ok || !cloudflareSuccess(create.body) || !poolId) {
+			return {
+				ok: false,
+				unmet: ["provider-api", `pool-create:${backend.id}`],
+				notes: [providerFailure("pool-create", create.status)],
+			};
+		}
+		poolIds.push(poolId);
+		createdPoolIds.push(poolId);
 	}
 	const duplicates = poolIds
 		.filter((poolId, index) => poolIds.indexOf(poolId) !== index)
 		.map((poolId) => `duplicate-pool:${poolId}`);
-	return { poolIds, missing, duplicates: [...new Set(duplicates)] };
+	if (duplicates.length > 0) {
+		return {
+			ok: false,
+			unmet: [...new Set(duplicates)],
+			notes: ["Cloudflare pool ids must be unique across backends"],
+		};
+	}
+	return { ok: true, poolIds, createdPoolIds };
+}
+
+function poolOrigin(
+	endpoint: string,
+): { readonly address: string } | null {
+	try {
+		const url = new URL(endpoint);
+		if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+		return { address: url.hostname };
+	} catch {
+		return null;
+	}
+}
+
+function cloudflareResultId(body: unknown): string | undefined {
+	if (!cloudflareSuccess(body)) return undefined;
+	const result = body.result;
+	if (!result || typeof result !== "object") return undefined;
+	const id = (result as { id?: unknown }).id;
+	return typeof id === "string" && id.trim().length > 0 ? id.trim() : undefined;
+}
+
+function cloudflarePoolHealthy(body: unknown): boolean | undefined {
+	if (!cloudflareSuccess(body)) return undefined;
+	const result = body.result;
+	if (!result || typeof result !== "object") return undefined;
+	const pool = result as {
+		healthy?: unknown;
+		pop_health?: unknown;
+	};
+	if (typeof pool.healthy === "boolean") return pool.healthy;
+	// Some CF responses nest health under pop_health.*.healthy
+	if (pool.pop_health && typeof pool.pop_health === "object") {
+		const values = Object.values(pool.pop_health as Record<string, unknown>);
+		const flags = values
+			.map((entry) =>
+				entry && typeof entry === "object"
+					? (entry as { healthy?: unknown }).healthy
+					: undefined,
+			)
+			.filter((flag): flag is boolean => typeof flag === "boolean");
+		if (flags.length === 0) return undefined;
+		return flags.every(Boolean);
+	}
+	return undefined;
+}
+
+function sanitizeName(value: string): string {
+	return value.replace(/[^A-Za-z0-9_-]+/gu, "-").slice(0, 64);
 }
 
 function normalizedWeights(rule: RoutingRule): number[] {

@@ -10,6 +10,8 @@ Capability Manifest.
   **objectStore** (R2)
 - Equivalence-class mappings per port (`cloudflare:workers-script`,
   `cloudflare:kv-namespace`, `cloudflare:r2-bucket`)
+- `CLOUDFLARE_TRAFFIC_ROUTING_PROFILE` — declared TrafficRouting offerings
+  (`lb.lifecycle`, `lb.weighted`, `lb.health`, `observe.health`) for Matching
 - `createCloudflareProvider()` implementing the `CloudProvider` contract:
   `id`, `regions`, `capabilities`, `realize(plan)`, `capabilityManifest()`,
   `client(port, outputs)`

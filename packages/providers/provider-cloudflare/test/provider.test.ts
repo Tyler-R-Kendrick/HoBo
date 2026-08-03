@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { createCloudflareProvider } from "../src/index.js";
+import {
+	CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS,
+	CLOUDFLARE_TRAFFIC_ROUTING_PROFILE,
+	createCloudflareProvider,
+} from "../src/index.js";
 
 function capabilityFor(port: string) {
 	const provider = createCloudflareProvider();
@@ -82,5 +86,13 @@ describe("CloudProvider.client", () => {
 			() => provider.client("database", {}),
 			/no client for port database/,
 		);
+	});
+});
+
+describe("TrafficRouting offerings surface", () => {
+	it("declares lb.lifecycle and observe.health offerings", () => {
+		assert.ok(CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS.includes("lb.lifecycle"));
+		assert.ok(CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS.includes("observe.health"));
+		assert.equal(CLOUDFLARE_TRAFFIC_ROUTING_PROFILE.provider, "cloudflare");
 	});
 });

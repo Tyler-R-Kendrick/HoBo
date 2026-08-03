@@ -54,6 +54,10 @@ export type {
 	ResourcePlan,
 } from "./types.js";
 export {
+	GCP_TRAFFIC_ROUTING_OFFERING_IDS,
+	GCP_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
+export {
 	GCP_YARD_GENERATOR_CONNECTOR_ID,
 	GCP_YARD_RUNTIME_ID,
 	gcpDefaultResolverPins,

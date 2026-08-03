@@ -30,20 +30,28 @@ const result = await routing.apply(parseRoutingPlan({
 // result.realized === "full"
 ```
 
-| Adapter | V1 realization |
-|---------|----------------|
-| Simple | Offline baseline; deterministic static weighted selection |
-| Cloudflare | Credential-gated Load Balancing for a DNS-hostname service over caller-supplied existing pool and load-balancer IDs; unsupported fragments are partial |
-| Funnel | Single-backend bridge through an existing `OverlayNetwork.publishFunnel` only; full realization requires provider confirmation |
-| Vercel / Lakebed | Honest capability stubs returning structured `none` results |
+| Adapter | Offerings (declared) | V1 realization |
+|---------|----------------------|----------------|
+| Simple | `inprocess.weighted` | Offline baseline; deterministic static weighted selection |
+| Cloudflare | `lb.lifecycle`, `lb.weighted`, `lb.health`* | Create pools+LB when unmapped; update when mapped; revoke deletes LB |
+| Funnel | `overlay.funnel`, `overlay.funnel.multi` | Multi-backend weighted selection + public Funnel tip (require multi-public opt-in) |
+| Vercel | `edge.canary`, `edge.path`, `edge.header` | Rolling Releases + project routes (stage/promote); injectible `fetch`; Pact |
+| Lakebed | `inprocess.weighted`, `driver.route-bind` | Dual layer: in-process multi-backend + optional `lakebed:traffic-route` driver |
 
-No adapter requires Kubernetes. Missing credentials or platform capabilities
-return `partial`/`none` with `unmet` notes; credentials never enter plans,
-metering events, or result notes. V1 does not create Cloudflare pools: callers
-provide backend-to-pool and plan-to-load-balancer IDs, keeping provider resource
-lifecycle explicit and making apply a retry-safe update rather than a create.
-Provider effects remain authoritative if best-effort metering delivery fails;
-an active Cloudflare `planId` is idempotent and conflicting content fails closed.
+\* health when monitors/observations configured.
+
+**Offerings + fallback ladder:** see
+[`docs/traffic-routing-providers.md`](./docs/traffic-routing-providers.md).
+Profiles export as `BUILTIN_TRAFFIC_ROUTING_PROFILES`. Core APIs:
+`resolveTrafficRouting` / `matchTrafficRoutingOfferings`.
+
+No adapter requires Kubernetes. **No always-deny stubs.** Missing credentials or
+platform-unsupported fragments return `partial`/`none` with concrete `unmet`
+notes; credentials never enter plans, metering events, or result notes.
+Cloudflare brownfield maps (`poolIdsByBackend` / `loadBalancerIdsByPlan`) still
+work; lifecycle create needs `accountId`. Provider effects remain authoritative
+if best-effort metering delivery fails; active `planId` is idempotent and
+conflicting content fails closed.
 
 ## Quick starts
 
@@ -203,7 +211,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for Mermaid diagrams covering local nam
 | Route53 DNS | `createRoute53DnsProvider({ accessKeyId, secretAccessKey, signRequest?, allowUnsigned? })` |
 | OPA/Rego policy | `createOpaPolicyEngine({ opaUrl?, regoModulePath? })` + `SAMPLE_HOBO_AUTHZ_REGO` |
 | Billing aggregator | `createBillingAggregator()` as a `MeteringSink` → `closePeriod()` invoices |
-| Traffic routing | `createSimpleTrafficRouting()` offline; Cloudflare/Funnel adapters plus honest Vercel/Lakebed stubs |
+| Traffic routing | `createSimpleTrafficRouting()` offline; Cloudflare, Funnel, production Vercel (RR + routes), dual-layer Lakebed |
 | Hard multi-tenant | `createTenantIsolationRegistry()` with `soft` \| `hard-overlay` \| `hard-control-plane` |
 | Dynamic DNS heartbeats | `createJunctionDynamicDnsRegistrar` / `createJunctionAgent({ publicDns, dnsTargets })` |
 

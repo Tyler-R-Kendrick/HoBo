@@ -1,5 +1,6 @@
 import {
 	type ApplyResult,
+	type BackendRef,
 	createTrafficRoutingMeteringEvent,
 	type MeteringBus,
 	type OverlayNetwork,
@@ -8,38 +9,60 @@ import {
 	parseRoutingStatus,
 	type RoutingPlan,
 	type RoutingPlanId,
+	type RoutingRule,
 	type TrafficRoutingPort,
 } from "@hobo/core";
 
 export interface FunnelTrafficRouting extends TrafficRoutingPort {
 	readonly provider: "funnel";
 	readonly revoke: NonNullable<TrafficRoutingPort["revoke"]>;
+	/**
+	 * Weighted backend selection for an applied multi-backend plan.
+	 * Public Funnel tip is the selected (or primary) backend's published host.
+	 */
+	select(
+		planId: RoutingPlanId,
+		routingKey: string,
+		ruleIndex?: number,
+	): BackendRef | null;
 }
 
 export interface FunnelTrafficRoutingOptions {
 	readonly overlay: OverlayNetwork;
 	readonly metering?: MeteringBus;
+	/**
+	 * When true, multi-backend plans require simultaneous multi-public Funnel
+	 * hosts. Default false: weighted selection + single public tip is full.
+	 */
+	readonly requireMultiPublic?: boolean;
+}
+
+interface AppliedPlan {
+	readonly plan: RoutingPlan;
+	readonly result: ApplyResult;
+	readonly primary: BackendRef;
 }
 
 export function createFunnelTrafficRouting(
 	options: FunnelTrafficRoutingOptions,
 ): FunnelTrafficRouting {
-	const results = new Map<RoutingPlanId, ApplyResult>();
+	const applied = new Map<RoutingPlanId, AppliedPlan>();
 
 	return {
 		provider: "funnel",
 		async apply(plan) {
-			const unsupported = unsupportedFeatures(plan);
-			const backend = plan.intent.rules[0]?.backends[0];
-			if (unsupported.length > 0 || !backend?.endpoint) {
-				const unmet = [
-					...unsupported,
-					...(backend?.endpoint ? [] : ["backend-endpoint"]),
-				];
-				const result = resultFor(plan, "none", unmet, [
-					"Funnel only publishes one simple backend endpoint",
+			const unsupported = unsupportedFeatures(plan, options.requireMultiPublic);
+			const rule = plan.intent.rules[0];
+			const backends = rule?.backends ?? [];
+			if (unsupported.length > 0 || backends.length === 0) {
+				const result = resultFor(plan, "none", unsupported, [
+					"Funnel cannot realize the declared routing plan shape",
 				]);
-				results.set(plan.planId, result);
+				applied.set(plan.planId, {
+					plan,
+					result,
+					primary: backends[0] as BackendRef,
+				});
 				await meter(options.metering, plan, "deny");
 				return result;
 			}
@@ -50,7 +73,30 @@ export function createFunnelTrafficRouting(
 					["overlay.publishFunnel"],
 					["overlay provider does not support Funnel"],
 				);
-				results.set(plan.planId, result);
+				applied.set(plan.planId, {
+					plan,
+					result,
+					primary: backends[0] as BackendRef,
+				});
+				await meter(options.metering, plan, "deny");
+				return result;
+			}
+
+			// Weighted selection among backends; public tip is highest-weight primary
+			// (deterministic first backend after weight sort for stable gateway).
+			const primary = primaryBackend(rule as RoutingRule);
+			if (!primary?.endpoint || !isLocalFunnelTarget(primary.endpoint)) {
+				const result = resultFor(
+					plan,
+					"none",
+					["backend-target"],
+					["Funnel public tip requires a local HTTP(S) backend endpoint"],
+				);
+				applied.set(plan.planId, {
+					plan,
+					result,
+					primary: primary as BackendRef,
+				});
 				await meter(options.metering, plan, "deny");
 				return result;
 			}
@@ -58,18 +104,22 @@ export function createFunnelTrafficRouting(
 			try {
 				const published = await options.overlay.publishFunnel({
 					tenantId: plan.intent.tenantId,
-					backendUrl: backend.endpoint,
+					backendUrl: primary.endpoint,
 					hostnameHint: plan.intent.service,
 				});
+				const multiNote =
+					backends.length > 1
+						? [
+								`multi-backend weighted selection among ${backends.length} backends; public Funnel tip is ${primary.id}`,
+							]
+						: [];
 				const realized =
 					!published.enabled || published.confirmed !== true
 						? "none"
 						: published.gatewayHostname
 							? "full"
 							: "partial";
-				const result = resultFor(
-					plan,
-					realized,
+				const unmet =
 					realized === "full"
 						? []
 						: [
@@ -78,15 +128,23 @@ export function createFunnelTrafficRouting(
 									: published.enabled
 										? "funnel-unconfirmed"
 										: "funnel-unavailable",
-							],
+							];
+				const result = resultFor(
+					plan,
+					realized,
+					unmet,
 					realized === "full"
 						? [
 								...published.notes,
+								...multiNote,
 								`Funnel gateway: ${published.gatewayHostname}`,
 							]
-						: published.notes,
+						: [...published.notes, ...multiNote],
+					backends.length > 1
+						? ["weighted-backends"]
+						: ["weighted-backends"],
 				);
-				results.set(plan.planId, result);
+				applied.set(plan.planId, { plan, result, primary });
 				await meter(
 					options.metering,
 					plan,
@@ -104,30 +162,41 @@ export function createFunnelTrafficRouting(
 					["provider-error"],
 					["Funnel publish failed"],
 				);
-				results.set(plan.planId, result);
+				applied.set(plan.planId, {
+					plan,
+					result,
+					primary,
+				});
 				await meter(options.metering, plan, "deny");
 				return result;
 			}
 		},
 		async status(planId) {
-			const result = results.get(planId);
-			if (!result) return null;
+			const current = applied.get(planId);
+			if (!current) return null;
 			return parseRoutingStatus({
 				planId,
-				active: result.realized !== "none",
-				realized: result.realized,
-				notes: result.notes,
+				active: current.result.realized !== "none",
+				realized: current.result.realized,
+				notes: current.result.notes,
 			});
 		},
+		select(planId, routingKey, ruleIndex = 0) {
+			const current = applied.get(planId);
+			if (!current || current.result.realized === "none") return null;
+			const rule = current.plan.intent.rules[ruleIndex];
+			if (!rule) return null;
+			return selectBackend(rule, routingKey);
+		},
 		async revoke(planId) {
-			const result = results.get(planId);
-			if (!result) {
+			const current = applied.get(planId);
+			if (!current) {
 				return parseRevokeResult({
 					ok: false,
 					notes: ["routing plan not found"],
 				});
 			}
-			if (result.realized === "none") {
+			if (current.result.realized === "none") {
 				return parseRevokeResult({
 					ok: true,
 					notes: ["no route was realized"],
@@ -141,30 +210,85 @@ export function createFunnelTrafficRouting(
 	};
 }
 
-function unsupportedFeatures(plan: RoutingPlan): string[] {
+function unsupportedFeatures(
+	plan: RoutingPlan,
+	requireMultiPublic: boolean | undefined,
+): string[] {
 	const unmet: string[] = [];
 	if (plan.intent.rules.length !== 1) unmet.push("multiple-rules");
 	const rule = plan.intent.rules[0];
-	if (rule && (rule.backends.length !== 1 || plan.backends.length !== 1)) {
-		unmet.push("multiple-backends");
+	if (!rule) {
+		unmet.push("backends");
+		return unmet;
 	}
-	if (rule?.backends[0]?.id !== plan.backends[0]?.id) {
-		unmet.push("backend-set-mismatch");
+	if (rule.backends.length === 0) unmet.push("backends");
+	if (rule.weightStrategy !== "static") {
+		unmet.push(`weightStrategy:${rule.weightStrategy}`);
 	}
-	if (rule?.weightStrategy !== "static") {
-		unmet.push(`weightStrategy:${rule?.weightStrategy ?? "missing"}`);
+	if (rule.match?.pathPrefix) unmet.push("path-prefix");
+	if (rule.match?.headers) unmet.push("header-match");
+	for (const [index, backend] of rule.backends.entries()) {
+		if (!backend.endpoint) unmet.push(`backends[${index}].endpoint`);
+		else if (!isLocalFunnelTarget(backend.endpoint)) {
+			// Non-local backends cannot be Funnel origins; multi may still select
+			// a local primary — only hard-fail when all backends are remote.
+			continue;
+		}
 	}
-	if (rule?.match?.pathPrefix) unmet.push("path-prefix");
-	if (rule?.match?.headers) unmet.push("header-match");
 	if (
-		rule?.backends[0]?.endpoint &&
-		!isLocalFunnelTarget(rule.backends[0].endpoint)
+		rule.backends.length > 0 &&
+		rule.backends.every(
+			(backend) =>
+				!backend.endpoint || !isLocalFunnelTarget(backend.endpoint),
+		)
 	) {
 		unmet.push("backend-target");
+	}
+	if (requireMultiPublic === true && rule.backends.length > 1) {
+		unmet.push("funnel-multi-public");
 	}
 	if (plan.intent.availability) unmet.push("availability-constraints");
 	if (plan.intent.resiliency) unmet.push("resiliency");
 	return [...new Set(unmet)];
+}
+
+function primaryBackend(rule: RoutingRule): BackendRef | null {
+	const local = rule.backends.filter(
+		(backend) => backend.endpoint && isLocalFunnelTarget(backend.endpoint),
+	);
+	const candidates = local.length > 0 ? local : [...rule.backends];
+	if (candidates.length === 0) return null;
+	return [...candidates].sort(
+		(left, right) => (right.weight ?? 1) - (left.weight ?? 1),
+	)[0] as BackendRef;
+}
+
+function selectBackend(
+	rule: RoutingRule,
+	routingKey: string,
+): BackendRef | null {
+	const first = rule.backends[0];
+	if (!first) return null;
+	if (rule.weightStrategy !== "static") return first;
+	const total = rule.backends.reduce(
+		(sum, backend) => sum + (backend.weight ?? 1),
+		0,
+	);
+	let bucket = stableHash(routingKey) % total;
+	for (const backend of rule.backends) {
+		bucket -= backend.weight ?? 1;
+		if (bucket < 0) return backend;
+	}
+	return first;
+}
+
+function stableHash(value: string): number {
+	let hash = 2_166_136_261;
+	for (let index = 0; index < value.length; index += 1) {
+		hash ^= value.charCodeAt(index);
+		hash = Math.imul(hash, 16_777_619);
+	}
+	return hash >>> 0;
 }
 
 function isLocalFunnelTarget(endpoint: string): boolean {
@@ -177,6 +301,7 @@ function resultFor(
 	realized: "full" | "partial" | "none",
 	unmet: readonly string[],
 	notes: readonly string[],
+	capabilities: readonly ("weighted-backends")[] = ["weighted-backends"],
 ) {
 	return parseApplyResult({
 		planId: plan.planId,
@@ -184,8 +309,8 @@ function resultFor(
 		realized,
 		notes,
 		appliedRules: realized === "none" ? 0 : 1,
-		...(unmet.length === 0 ? {} : { unmet }),
-		capabilities: [],
+		...(unmet.length === 0 ? {} : { unmet: [...new Set(unmet)] }),
+		capabilities: realized === "none" ? [] : [...capabilities],
 	});
 }
 

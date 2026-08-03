@@ -135,19 +135,27 @@ Untrusted inputs at package boundaries are parse, don't validate: DNS labels, te
 ```mermaid
 flowchart LR
   ST[Station synthesis] --> PLAN[RoutingPlan]
-  PLAN --> SIMPLE[Simple offline]
-  PLAN --> CF[Cloudflare]
-  PLAN --> FUNNEL[Funnel single backend]
-  PLAN --> STUB[Vercel / Lakebed capability stubs]
+  PLAN --> RESOLVE[resolveTrafficRouting offerings]
+  RESOLVE --> SIMPLE[Simple inprocess.weighted]
+  RESOLVE --> CF[Cloudflare lb.lifecycle + weighted]
+  RESOLVE --> FUNNEL[Funnel multi + public tip]
+  RESOLVE --> VERCEL[Vercel edge canary/path]
+  RESOLVE --> LAKEBED[Lakebed inprocess + driver.route-bind]
+  RESOLVE --> FALLBACK[Fallback ladder DNS/Funnel/inprocess]
   SIMPLE --> FACTS[routing.plan.* metering facts]
   CF --> FACTS
   FUNNEL --> OV[Existing OverlayNetwork]
   FUNNEL --> FACTS
+  VERCEL --> FACTS
+  LAKEBED --> FACTS
+  LAKEBED --> DRV[lakebed-deploy driver program]
 ```
 
-TrafficRouting coordinates backend-selection intent only. `OverlayNetwork`,
-Funnel, and `PublicDnsManager` retain connectivity and exposure ownership.
-Partial realization is an explicit result, never a silent feature drop.
+TrafficRouting coordinates backend-selection intent only. Providers **declare
+offerings**; Matching/`resolveTrafficRouting` applies prefer/require + the
+fallback ladder. `OverlayNetwork`, Funnel, and `PublicDnsManager` retain
+connectivity and exposure ownership. Partial realization is explicit. Custom
+providers: see `docs/traffic-routing-providers.md`.
 
 ## Secretless connector (ADR-0027 + ADR-0130)
 

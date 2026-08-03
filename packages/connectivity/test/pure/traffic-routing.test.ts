@@ -294,6 +294,143 @@ describe("Cloudflare traffic routing", () => {
 		);
 	});
 
+	it("observe.health reads pool health for applied pool map", async () => {
+		const routing = createCloudflareTrafficRouting({
+			apiToken: "cf-token",
+			zoneId: "zone-a",
+			accountId: "account-a",
+			poolIdsByBackend: {
+				"backend:primary": "pool-primary",
+				"backend:canary": "pool-canary",
+			},
+			loadBalancerIdsByPlan: { "plan:checkout": "load-balancer-a" },
+			apiBase: "https://cloudflare.example.test/client/v4",
+			fetchImpl: async (input, init) => {
+				const url = String(input);
+				const method = init?.method ?? "GET";
+				if (url.includes("/health") && method === "GET") {
+					const healthy = url.includes("pool-primary");
+					return Response.json({
+						success: true,
+						result: { healthy },
+					});
+				}
+				return Response.json({
+					success: true,
+					result: {
+						id: "load-balancer-a",
+						enabled: true,
+						name: "checkout.example.test",
+						default_pools: ["pool-primary", "pool-canary"],
+						fallback_pool: "pool-primary",
+						steering_policy: "random",
+						random_steering: {
+							pool_weights: { "pool-primary": 0.8, "pool-canary": 0.2 },
+						},
+					},
+				});
+			},
+		});
+		await routing.apply(plan());
+		const observations = await routing.observeHealth("plan:checkout");
+		expect(observations).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					backendId: "backend:primary",
+					healthy: true,
+					poolId: "pool-primary",
+				}),
+				expect.objectContaining({
+					backendId: "backend:canary",
+					healthy: false,
+					poolId: "pool-canary",
+				}),
+			]),
+		);
+	});
+
+	it("creates pools and load balancer when mappings are absent (lifecycle)", async () => {
+		const methods: string[] = [];
+		const paths: string[] = [];
+		const routing = createCloudflareTrafficRouting({
+			apiToken: "cf-token",
+			zoneId: "zone-a",
+			accountId: "account-a",
+			apiBase: "https://cloudflare.example.test/client/v4",
+			fetchImpl: async (input, init) => {
+				const url = String(input);
+				const method = init?.method ?? "GET";
+				methods.push(method);
+				paths.push(url);
+				if (url.includes("/pools") && method === "POST") {
+					const body = JSON.parse(String(init?.body ?? "{}")) as {
+						name?: string;
+					};
+					const id = body.name?.includes("canary")
+						? "pool-created-canary"
+						: "pool-created-primary";
+					// names are hobo-backend-primary / hobo-backend-canary
+					return Response.json({ success: true, result: { id } });
+				}
+				if (url.endsWith("/load_balancers") && method === "POST") {
+					return Response.json({
+						success: true,
+						result: {
+							id: "lb-created",
+							enabled: true,
+							name: "checkout.example.test",
+							default_pools: ["pool-created-primary", "pool-created-canary"],
+							fallback_pool: "pool-created-primary",
+							steering_policy: "random",
+							random_steering: {
+								pool_weights: {
+									"pool-created-primary": 0.8,
+									"pool-created-canary": 0.2,
+								},
+							},
+						},
+					});
+				}
+				if (method === "DELETE") {
+					return Response.json({ success: true });
+				}
+				if (method === "GET") {
+					return Response.json({
+						success: true,
+						result: {
+							id: "lb-created",
+							enabled: true,
+							name: "checkout.example.test",
+							default_pools: ["pool-created-primary", "pool-created-canary"],
+							fallback_pool: "pool-created-primary",
+							steering_policy: "random",
+							random_steering: {
+								pool_weights: {
+									"pool-created-primary": 0.8,
+									"pool-created-canary": 0.2,
+								},
+							},
+						},
+					});
+				}
+				return Response.json({ success: false }, { status: 500 });
+			},
+		});
+		const routingPlan = plan();
+		await expect(routing.apply(routingPlan)).resolves.toMatchObject({
+			realized: "full",
+			appliedRules: 1,
+		});
+		expect(methods.filter((method) => method === "POST")).toHaveLength(3);
+		expect(paths.some((path) => path.includes("/accounts/account-a/"))).toBe(
+			true,
+		);
+		await expect(routing.revoke(routingPlan.planId)).resolves.toEqual({
+			ok: true,
+			notes: [],
+		});
+	});
+
 	it("does not claim health-aware routing without configured pool monitors", async () => {
 		const routing = createCloudflareTrafficRouting({
 			apiToken: "cf-token",
@@ -334,7 +471,7 @@ describe("Cloudflare traffic routing", () => {
 		});
 	});
 
-	it("refuses to post when a backend has no Cloudflare pool mapping", async () => {
+	it("refuses to post when a backend has no pool mapping and no accountId for create", async () => {
 		let fetches = 0;
 		const routing = createCloudflareTrafficRouting({
 			apiToken: "cf-token",
@@ -349,7 +486,7 @@ describe("Cloudflare traffic routing", () => {
 		await expect(routing.apply(plan())).resolves.toMatchObject({
 			realized: "none",
 			appliedRules: 0,
-			unmet: ["pool:backend:canary"],
+			unmet: expect.arrayContaining(["pool:backend:canary", "accountId"]),
 		});
 		expect(fetches).toBe(0);
 	});

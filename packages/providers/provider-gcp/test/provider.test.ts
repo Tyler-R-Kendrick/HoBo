@@ -4,6 +4,8 @@ import { describe, it } from "vitest";
 import {
 	createGcpProvider,
 	GCP_PROVIDER_ID,
+	GCP_TRAFFIC_ROUTING_OFFERING_IDS,
+	GCP_TRAFFIC_ROUTING_PROFILE,
 	parsePublishedManifest,
 } from "../src/index.js";
 
@@ -123,5 +125,13 @@ describe("client: runtime binding client per port", () => {
 		assert.equal(client.providerService, "Firestore");
 		assert.deepEqual(client.bindings, { tableName: "sessions" });
 		assert.throws(() => provider.client("mainframe", {}));
+	});
+});
+
+describe("TrafficRouting offerings surface", () => {
+	it("declares lb.* features with inprocess fallback floor", () => {
+		assert.ok(GCP_TRAFFIC_ROUTING_OFFERING_IDS.includes("lb.lifecycle"));
+		assert.ok(GCP_TRAFFIC_ROUTING_OFFERING_IDS.includes("inprocess.weighted"));
+		assert.ok(GCP_TRAFFIC_ROUTING_PROFILE.fallbacks.includes("inprocess.weighted"));
 	});
 });

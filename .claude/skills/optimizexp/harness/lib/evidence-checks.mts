@@ -15,6 +15,14 @@ function resolveRef(root: string, ref: string): string {
 type EvidenceMeta = {
 	exitCode?: number | null;
 	primary?: { file?: string };
+	timing?: {
+		durationMs?: number;
+		timeToFirstOutputMs?: number | null;
+	};
+	frameStats?: {
+		maxSilentGapMs?: number | null;
+		totalOutputBytes?: number;
+	};
 };
 
 function evaluateEvidenceCheck(
@@ -47,6 +55,39 @@ function evaluateEvidenceCheck(
 		meta.exitCode === check.exitCodeNotEquals
 	) {
 		problems.push(`${prefix}: exitCode must not equal ${check.exitCodeNotEquals}`);
+	}
+	// Perceptual budgets: falsifiable "feel" — timings captured by the drivers.
+	if (check.durationUnderMs !== undefined) {
+		const v = meta.timing?.durationMs;
+		if (typeof v !== "number") {
+			problems.push(`${prefix}: timing.durationMs missing (re-capture with current drivers)`);
+		} else if (v >= check.durationUnderMs) {
+			problems.push(`${prefix}: durationMs ${v} must be < ${check.durationUnderMs}`);
+		}
+	}
+	if (check.firstOutputUnderMs !== undefined) {
+		const v = meta.timing?.timeToFirstOutputMs;
+		if (typeof v !== "number") {
+			problems.push(`${prefix}: timing.timeToFirstOutputMs missing — no first output observed`);
+		} else if (v >= check.firstOutputUnderMs) {
+			problems.push(`${prefix}: timeToFirstOutputMs ${v} must be < ${check.firstOutputUnderMs}`);
+		}
+	}
+	if (check.maxSilentGapUnderMs !== undefined) {
+		const v = meta.frameStats?.maxSilentGapMs;
+		if (typeof v !== "number") {
+			problems.push(`${prefix}: frameStats.maxSilentGapMs missing — needs a real TUI recording`);
+		} else if (v >= check.maxSilentGapUnderMs) {
+			problems.push(`${prefix}: maxSilentGapMs ${v} must be < ${check.maxSilentGapUnderMs}`);
+		}
+	}
+	if (check.totalOutputBytesUnder !== undefined) {
+		const v = meta.frameStats?.totalOutputBytes;
+		if (typeof v !== "number") {
+			problems.push(`${prefix}: frameStats.totalOutputBytes missing — needs a real TUI recording`);
+		} else if (v >= check.totalOutputBytesUnder) {
+			problems.push(`${prefix}: totalOutputBytes ${v} must be < ${check.totalOutputBytesUnder}`);
+		}
 	}
 	for (const [field, negate] of [
 		["transcriptContains", false],

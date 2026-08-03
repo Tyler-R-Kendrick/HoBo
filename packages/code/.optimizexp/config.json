@@ -4,7 +4,10 @@
   "projectId": "code",
   "label": "hobo-code CLI (@hobo/code)",
   "defaults": {
-    "experiences": ["dx", "ux"],
+    "experiences": [
+      "dx",
+      "ux"
+    ],
     "driver": "cli",
     "maxPersonas": 4,
     "maxFeatures": 10,
@@ -31,7 +34,8 @@
       "developer",
       "advanced-nix-devenv-developer"
     ],
-    "exclude": []
+    "exclude": [],
+    "coveragePriorityMax": 10
   },
   "features": {
     "defaultDriver": "cli",
@@ -93,11 +97,12 @@
     "Prefer ai-automation-engineer-pi-flue for Pi/Flue dual harness + skills + self-improve + brain.",
     "Prefer cursor-power-user for Cursor Agent/Composer/Background/BugBot map (guide --cursor).",
     "Prefer cost-conscious-open-source-dev for $0/free-local/cost savings.",
-    "Prefer claude-code-advanced-app-builder for non-dev Claude Code → guide map.",
+    "Prefer claude-code-advanced-app-builder for non-dev Claude Code \u2192 guide map.",
     "Prefer new-gen-ai-native-grok-build-user for Grok Build TUI parity (click, tasks, workflows).",
     "Prefer senior-dev-tmux-mosh-tailscale for remote dev-terminal attach (tmux/mosh/Tailscale).",
-    "Prefer senior-engineer-advanced-herdr-user for Herdr mux (panes, detach, highlight→copy, persistence).",
+    "Prefer senior-engineer-advanced-herdr-user for Herdr mux (panes, detach, highlight\u2192copy, persistence).",
     "Prefer GHCP advanced user for agent-harness parity (auth, title, BYOK, sandbox).",
     "developer = CLI conventions; nix persona = hermetic optional shells only."
-  ]
+  ],
+  "productBinary": "hobo-code"
 }

@@ -28,7 +28,7 @@
       "intent": "From inside the interactive session, find product surfaces without leaving",
       "entryCommand": "hobo-code  # then /verbs or in-session help",
       "driver": "tui",
-      "observableSuccess": "Slash commands list product verbs (agent/config/…)",
+      "observableSuccess": "Slash commands list product verbs (agent/config/\u2026)",
       "observableFailure": "Only third-party defaults; no product map",
       "confusionRisks": [
         "no slash commands for product surfaces"
@@ -196,7 +196,7 @@
       "intent": "From inside the interactive session, find product surfaces without leaving",
       "entryCommand": "hobo-code  # then /verbs or in-session help",
       "driver": "tui",
-      "observableSuccess": "Slash commands list product verbs (agent/config/…)",
+      "observableSuccess": "Slash commands list product verbs (agent/config/\u2026)",
       "observableFailure": "Only third-party defaults; no product map",
       "confusionRisks": [
         "no slash commands for product surfaces"
@@ -305,6 +305,126 @@
       "source": [
         "persona-goals",
         "surface-map.commands.status"
+      ]
+    },
+    {
+      "experienceId": "tui-craft-first-ten-seconds",
+      "personaId": "sota-frontier-ai-native-tui-designer",
+      "intent": "Cold-start the shell and judge first-10-seconds craft: no flicker, honest motion, stable geometry",
+      "entryCommand": "hobo-code",
+      "driver": "tui",
+      "observableSuccess": "Differential renders only; reduced-motion honored; no full-screen clear thrash",
+      "observableFailure": "Erase+repaint flicker, layout jump on tick, frozen UI during a turn",
+      "confusionRisks": [],
+      "priority": "P1",
+      "featureId": "hobo-code-tui-craft",
+      "source": [
+        "persona-coverage"
+      ]
+    },
+    {
+      "experienceId": "agent-protocol-surface",
+      "personaId": "protocol-native-coding-agent",
+      "intent": "Inventory MCP/ACP + unattended contract human-free",
+      "entryCommand": "hobo-code",
+      "driver": "cli",
+      "observableSuccess": "agent --json exposes protocols and no-elicitation contract",
+      "observableFailure": "Elicitation required, device-code in agent mode",
+      "confusionRisks": [],
+      "priority": "P1",
+      "featureId": "hobo-code-agent-native",
+      "source": [
+        "persona-coverage"
+      ]
+    },
+    {
+      "experienceId": "harness-dual-surface",
+      "personaId": "ai-automation-engineer-pi-flue",
+      "intent": "Inspect Pi/Flue dual surface, skills, subagents, self-improve loop",
+      "entryCommand": "hobo-code",
+      "driver": "cli",
+      "observableSuccess": "harness lists dual surface + skill roots",
+      "observableFailure": "Divergent instructions between Pi and Flue paths",
+      "confusionRisks": [],
+      "priority": "P1",
+      "featureId": "hobo-code-harness-pi-flue",
+      "source": [
+        "persona-coverage"
+      ]
+    },
+    {
+      "experienceId": "zero-dollar-path",
+      "personaId": "cost-conscious-open-source-dev",
+      "intent": "Verify $0 free/local routing, budget cap, savings",
+      "entryCommand": "hobo-code",
+      "driver": "cli",
+      "observableSuccess": "cost shows $0 path + budget bar without monetization pressure",
+      "observableFailure": "Hidden spend, monetization nagging",
+      "confusionRisks": [],
+      "priority": "P1",
+      "featureId": "hobo-code-cost-zero",
+      "source": [
+        "persona-coverage"
+      ]
+    },
+    {
+      "experienceId": "managed-editor-pane",
+      "personaId": "advanced-cli-native-vim-engineer",
+      "intent": "Open [neo]vim through the managed pane bridge",
+      "entryCommand": "hobo-code",
+      "driver": "cli",
+      "observableSuccess": "edit resolves bridge + prints tmux/stdio contract",
+      "observableFailure": "Editor hijack, broken tmux split",
+      "confusionRisks": [],
+      "priority": "P1",
+      "featureId": "hobo-code-edit-nvim",
+      "source": [
+        "persona-coverage"
+      ]
+    },
+    {
+      "experienceId": "claude-code-map",
+      "personaId": "claude-code-advanced-app-builder",
+      "intent": "Find the Claude Code feature map in plain English",
+      "entryCommand": "hobo-code",
+      "driver": "cli",
+      "observableSuccess": "guide maps workflows/remote/reviews with honest supported/partial/residual",
+      "observableFailure": "Jargon-only help, fake parity claims",
+      "confusionRisks": [],
+      "priority": "P1",
+      "featureId": "hobo-code-claude-guide",
+      "source": [
+        "persona-coverage"
+      ]
+    },
+    {
+      "experienceId": "cursor-map",
+      "personaId": "cursor-power-user",
+      "intent": "Map Agent/Composer/Background Agent/BugBot onto hobo-code verbs",
+      "entryCommand": "hobo-code",
+      "driver": "cli",
+      "observableSuccess": "guide --cursor shows honest residuals",
+      "observableFailure": "Pretending Tab UI/BugBot exist",
+      "confusionRisks": [],
+      "priority": "P1",
+      "featureId": "hobo-code-cursor-guide",
+      "source": [
+        "persona-coverage"
+      ]
+    },
+    {
+      "experienceId": "grok-build-tasks",
+      "personaId": "new-gen-ai-native-grok-build-user",
+      "intent": "See tasks board + workflows glance Grok-Build-shaped",
+      "entryCommand": "hobo-code",
+      "driver": "cli",
+      "observableSuccess": "tasks shows board + clickableRegions in --json",
+      "observableFailure": "Fake fullscreen-mouse claims",
+      "confusionRisks": [],
+      "priority": "P1",
+      "featureId": "hobo-code-grok-build-parity",
+      "source": [
+        "persona-coverage"
       ]
     }
   ]

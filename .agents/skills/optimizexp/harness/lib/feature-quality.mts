@@ -332,3 +332,55 @@ Feature: ${input.title} (${input.personaName}${roleLabel})
     And evidence of what I saw is stored under evidence/
 `;
 }
+
+// ── Scenario ↔ product binding ───────────────────────────────────────────
+
+export type ScenarioBindingResult = {
+	ok: boolean;
+	problems: string[];
+};
+
+/**
+ * A product-scoped feature must actually exercise the product. Personas used
+ * to be filename decoration: a hobo-code feature could ship scenarios that
+ * only ran `pnpm` repo scripts and still certify. When the owning project
+ * declares its `productBinary`, every `.feature` file and the feature.json
+ * `primaryCommand` must reference it.
+ */
+export function checkScenarioBinding(
+	featureDir: string,
+	productBinary: string,
+): ScenarioBindingResult {
+	const problems: string[] = [];
+	if (!existsSync(featureDir)) {
+		return { ok: false, problems: ["feature dir missing"] };
+	}
+	const featureJsonPath = path.join(featureDir, "feature.json");
+	if (existsSync(featureJsonPath)) {
+		try {
+			const meta = JSON.parse(readFileSync(featureJsonPath, "utf8")) as {
+				primaryCommand?: string;
+			};
+			if (
+				typeof meta.primaryCommand === "string" &&
+				meta.primaryCommand.length > 0 &&
+				!meta.primaryCommand.includes(productBinary)
+			) {
+				problems.push(
+					`feature.json primaryCommand ("${meta.primaryCommand}") does not invoke ${productBinary}`,
+				);
+			}
+		} catch {
+			problems.push("feature.json unreadable");
+		}
+	}
+	for (const f of readdirSync(featureDir).filter((n) => n.endsWith(".feature"))) {
+		const text = readFileSync(path.join(featureDir, f), "utf8");
+		if (!text.includes(productBinary)) {
+			problems.push(
+				`${f}: no scenario invokes ${productBinary} — persona scenarios must exercise the product, not repo scripts`,
+			);
+		}
+	}
+	return { ok: problems.length === 0, problems };
+}

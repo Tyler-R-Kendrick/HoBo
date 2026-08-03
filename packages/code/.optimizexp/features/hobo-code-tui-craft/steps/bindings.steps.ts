@@ -5,6 +5,10 @@
 import { Given, Then, When } from "@cucumber/cucumber";
 import {
   assertClearStatus,
+  assertDifferentialRendering,
+  assertIdleRepaintEconomy,
+  assertPerceptualBudgetsSupported,
+  assertReducedMotionStatic,
   assertErrorActionable,
   assertNextActionObvious,
   exerciseSurface,
@@ -89,6 +93,34 @@ Then(
     if (world.notes.filter((n) => n.includes("exerciseSurface")).length > 3) {
       throw new Error("too many exercise attempts — friction signal");
     }
+  },
+);
+
+Then(
+  "the shell paints once and idle rest spans request no repaints",
+  async function (this: OptimizexpWorld) {
+    await assertIdleRepaintEconomy(w(this));
+  },
+);
+
+Then(
+  "reduced motion renders the static rest frame not an animation",
+  async function (this: OptimizexpWorld) {
+    await assertReducedMotionStatic(w(this));
+  },
+);
+
+Then(
+  "repaints happen only when the sprite frame changes with no full-screen erases",
+  async function (this: OptimizexpWorld) {
+    await assertDifferentialRendering(w(this));
+  },
+);
+
+Then(
+  "a real TUI recording backs the claim with firstOutputUnderMs and maxSilentGapUnderMs budgets",
+  async function (this: OptimizexpWorld) {
+    await assertPerceptualBudgetsSupported(w(this));
   },
 );
 

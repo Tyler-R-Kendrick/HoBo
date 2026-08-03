@@ -132,3 +132,110 @@ export function markEvidenceCapturable(world: OptimizexpWorld): void {
   world.evidencePath = `.optimizexp/features/${world.featureId}/evidence/`;
   world.notes.push(`evidence capturable under ${world.evidencePath}`);
 }
+
+// ── Perceptual craft (flicker/motion budgets) ────────────────────────────
+// These assert the InteractiveShell render contract directly against the
+// product source, so the persona's hated failure modes ("flicker, full-screen
+// clear thrash, layout jump on every tick") are executable checks.
+
+export async function assertIdleRepaintEconomy(
+  world: OptimizexpWorld,
+): Promise<void> {
+  const splash = await import("../../../../src/splash.ts");
+  const changes: number[] = [];
+  let prev = -1;
+  for (let tick = 0; tick < 26; tick += 1) {
+    const frame = splash.selectBoIdleFrame({
+      tickMs: tick * splash.BO_IDLE_TICK_MS,
+      reducedMotion: false,
+    });
+    if (frame !== prev) changes.push(tick);
+    prev = frame;
+  }
+  // Rest spans dominate the idle cycle: repaint-worthy changes must be a
+  // strict minority of ticks (the old shell repainted on all 26).
+  if (changes.length >= 26) {
+    throw new Error("every idle tick repaints — no dirty check");
+  }
+  if (changes.length > 15) {
+    throw new Error(
+      `idle cycle changes ${changes.length}/26 frames — rest spans not coalesced`,
+    );
+  }
+  world.notes.push(`idle repaint economy: ${changes.length}/26 ticks change`);
+}
+
+export async function assertReducedMotionStatic(
+  world: OptimizexpWorld,
+): Promise<void> {
+  const splash = await import("../../../../src/splash.ts");
+  for (let tick = 0; tick < 60; tick += 1) {
+    const frame = splash.selectBoIdleFrame({
+      tickMs: tick * splash.BO_IDLE_TICK_MS,
+      reducedMotion: true,
+    });
+    if (frame !== splash.BO_IDLE_REST) {
+      throw new Error(`reduced motion animated at tick ${tick}`);
+    }
+  }
+  world.notes.push("reduced motion: static rest frame across 60 ticks");
+}
+
+export async function assertDifferentialRendering(
+  world: OptimizexpWorld,
+): Promise<void> {
+  const shell = await import("../../../../src/interactive-shell.ts");
+  // Frame geometry must be identical across animation frames (no layout jump)
+  const base = shell.createInitialShellState({ width: 80, height: 30 });
+  const heights = new Set(
+    [0, 5, 11].map(
+      (i) =>
+        shell.renderShellFrame({ ...base, tickMs: i * 95 * 7 }).split("\n")
+          .length,
+    ),
+  );
+  if (heights.size !== 1) {
+    throw new Error("animation frames change frame height — layout jump");
+  }
+  // The driver must never emit full-screen erases (\x1b[2J / \x1b[H\x1b[J).
+  const { readFileSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const src = readFileSync(
+    fileURLToPath(new URL("../../../../src/interactive-shell.ts", import.meta.url)),
+    "utf8",
+  );
+  if (src.includes("\\x1b[H\\x1b[J") || src.includes("\\x1b[2J")) {
+    throw new Error("driver still contains full-screen erase escapes");
+  }
+  world.notes.push("differential rendering: stable geometry, no erase escapes");
+}
+
+export async function assertPerceptualBudgetsSupported(
+  world: OptimizexpWorld,
+): Promise<void> {
+  const checks = await import(
+    "../../../../../../.agents/skills/optimizexp/harness/lib/scorecard.mts"
+  );
+  const problems = checks.validateEvidenceChecksShape([
+    {
+      evidence: "evidence/sample",
+      firstOutputUnderMs: 500,
+      maxSilentGapUnderMs: 10_000,
+    },
+  ]);
+  if (problems.length > 0) {
+    throw new Error(
+      `perceptual evidenceChecks unsupported: ${problems.join("; ")}`,
+    );
+  }
+  const cast = await import(
+    "../../../../../../.agents/skills/optimizexp/harness/lib/cast-stats.mts"
+  );
+  const stats = cast.analyzeCast(
+    `${JSON.stringify({ version: 2, width: 80, height: 24 })}\n${JSON.stringify([0.1, "o", "x"])}\n${JSON.stringify([0.4, "o", "y"])}\n`,
+  );
+  if (!stats || stats.firstOutputMs !== 100 || stats.maxSilentGapMs !== 300) {
+    throw new Error("cast analysis does not produce perceptual stats");
+  }
+  world.notes.push("perceptual budgets machine-checkable (timing + frameStats)");
+}

@@ -26,16 +26,21 @@
 	},
 	"devDependencies": {
 		"@types/node": "^22.15.29",
+		"esbuild": "^0.28.1",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.9"
 	},
 	"scripts": {
 		"prebuild": "pnpm --filter @hobo/management build",
 		"build": "tsc -p tsconfig.json",
+		"bundle": "esbuild src/main.ts --bundle --format=esm --platform=browser --minify --outfile=public/dist/yard.js --log-level=warning",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "pnpm run build && pnpm run assets:validate",
 		"test": "vitest run",
+		"preplay": "pnpm run bundle",
+		"preserve": "pnpm run bundle",
+		"preevidence": "pnpm run bundle",
 		"assets:validate": "node --import tsx ./scripts/validate-assets.mts",
 		"assets:probe": "node --import tsx ./scripts/probe-sheet.mts",
 		"assets:sizes": "uv run ../../.agents/skills/gamedev-assets/scripts/asset_sizes.py --root ./assets --json ./tmp/asset_sizes.json",

@@ -2,7 +2,17 @@
    Steamboat Willie / Cuphead / Fleischer: thick ink, sticker shadows, paper ground.
    Accents spark/go only for status — never SaaS blues or generative color plates. */
 
-@import url("https://fonts.googleapis.com/css2?family=Chewy&display=swap");
+/* Chewy is vendored (Apache-2.0) at assets/fonts/Chewy-Regular.woff2 — no CDN.
+   The demo server maps /assets/* to the package assets/ dir (scripts/serve-demo.mts). */
+@font-face {
+  font-family: "Chewy";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local("Chewy"),
+    url("/assets/fonts/Chewy-Regular.woff2") format("woff2");
+}
 
 :root {
   color-scheme: light;
@@ -170,13 +180,19 @@ main {
   display: block;
   width: 100%;
   max-width: 1280px;
-  height: auto;
+  aspect-ratio: 1280 / 720;
   border: 3px solid var(--ink);
   border-radius: var(--radius-lg);
   background: var(--paper);
   image-rendering: pixelated;
   cursor: crosshair;
   box-shadow: 6px 6px 0 var(--ink);
+  overflow: hidden;
+}
+
+#yard canvas {
+  display: block;
+  image-rendering: pixelated;
 }
 
 #sheet {

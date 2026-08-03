@@ -1,23 +1,10 @@
 {
-  "gameUrl": "http://127.0.0.1:34263/?test=1&seed=42&api=http%3A%2F%2F127.0.0.1%3A40673",
-  "apiUrl": "http://127.0.0.1:40673",
+  "gameUrl": "http://127.0.0.1:39907/?test=1&seed=42&api=http%3A%2F%2F127.0.0.1%3A37281",
+  "apiUrl": "http://127.0.0.1:37281",
   "checks": [
-    "PASS test seam ready",
-    "PASS connection authorized present — conn=1",
-    "PASS traffic rate > 0 — traffic=0.4",
-    "PASS bootstrap inactive",
-    "PASS imgdiff boot — match",
-    "PASS canvas dark ink near Bo — dark=5010",
-    "PASS no console errors",
-    "PASS connection bay zone — zone=connectionBay",
-    "PASS sheet opens — kind=connection.create",
-    "PASS imgdiff connection bay — match",
     "PASS anim harness bo.idle — bo.idle",
     "PASS anim harness bo.walk.east — bo.walk.east",
-    "PASS anim harness bo.walk.west — bo.walk.west",
-    "PASS policyBoard zone — zone=policyBoard",
-    "PASS costBooth zone — zone=costBooth",
-    "PASS errorBunker zone — zone=errorBunker"
+    "PASS anim harness bo.walk.west — bo.walk.west"
   ],
   "errors": [],
   "skillStack": [
@@ -26,40 +13,9 @@
     "playwright-testing"
   ],
   "recordings": [
-    "/home/codex/.grok/worktrees/repos-hobo/2026-07-27-391c87d8/packages/control-yard/public/shots/recordings/01-yard-loop.mp4",
-    "/home/codex/.grok/worktrees/repos-hobo/2026-07-27-391c87d8/packages/control-yard/public/shots/recordings/02-connection-sheet.mp4",
-    "/home/codex/.grok/worktrees/repos-hobo/2026-07-27-391c87d8/packages/control-yard/public/shots/recordings/03-bo-walk-east-west.mp4",
-    "/home/codex/.grok/worktrees/repos-hobo/2026-07-27-391c87d8/packages/control-yard/public/shots/recordings/04-rail-cost-doctor.mp4"
-  ],
-  "initialState": {
-    "scene": "Yard",
-    "ready": true,
-    "seed": 42,
-    "frameCount": 22,
-    "zone": "activeRailTrack",
-    "bo": {
-      "x": 248,
-      "y": 569,
-      "animationId": "bo.walk.east",
-      "facing": "west"
-    },
-    "occupyMode": "occupying",
-    "connCount": 1,
-    "trafficRate": 0.4,
-    "bootstrapActive": false,
-    "sheetOpen": false,
-    "sheetKind": null,
-    "seq": 4,
-    "hazards": []
-  },
-  "pixelSample": {
-    "dark": 5010,
-    "bo": {
-      "x": 620,
-      "y": 363,
-      "animationId": "bo.walk.east",
-      "facing": "west"
-    }
-  },
-  "consoleErrors": []
+    "/home/codex/.herdr/worktrees/hobo/worktree-rapid-meadow-3f6e/packages/control-yard/public/shots/recordings/01-yard-loop.mp4",
+    "/home/codex/.herdr/worktrees/hobo/worktree-rapid-meadow-3f6e/packages/control-yard/public/shots/recordings/02-connection-sheet.mp4",
+    "/home/codex/.herdr/worktrees/hobo/worktree-rapid-meadow-3f6e/packages/control-yard/public/shots/recordings/03-bo-walk-east-west.mp4",
+    "/home/codex/.herdr/worktrees/hobo/worktree-rapid-meadow-3f6e/packages/control-yard/public/shots/recordings/04-rail-cost-doctor.mp4"
+  ]
 }

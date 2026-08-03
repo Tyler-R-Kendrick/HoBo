@@ -3,9 +3,22 @@
  * Never expose raw engine objects.
  */
 import type { YardProjectionSnapshot } from "@hobo/management";
-
-import type { ZoneId } from "./layout.js";
 import type { YardVisualState } from "./entity-state.js";
+import type { ZoneId } from "./layout.js";
+
+export type YardTheme = "day" | "night";
+
+export type YardTestEntity = Readonly<{
+	id: string;
+	animationId: string;
+	x: number;
+	y: number;
+}>;
+
+export type YardTestFx = Readonly<{
+	fx: string;
+	atFrame: number;
+}>;
 
 export type YardTestState = Readonly<{
 	scene: string;
@@ -22,6 +35,11 @@ export type YardTestState = Readonly<{
 	sheetKind: string | null;
 	seq: number | null;
 	hazards: readonly string[];
+	theme: YardTheme;
+	scenario: string | null;
+	tick: number;
+	entities: readonly YardTestEntity[];
+	recentFx: readonly YardTestFx[];
 }>;
 
 export type YardTestCommands = Readonly<{
@@ -31,6 +49,9 @@ export type YardTestCommands = Readonly<{
 	dismissSheet: () => void;
 	runAction: (action: string) => Promise<void>;
 	advanceFrame: (dtMs?: number) => void;
+	loadScenario: (id: string) => void;
+	advanceToTick: (n: number) => void;
+	setTheme: (theme: YardTheme) => void;
 }>;
 
 export type YardTestSeam = {
@@ -55,6 +76,14 @@ export type YardTestHost = {
 	reset: () => void;
 	advanceFrame: (dtMs: number) => void;
 	setSeed: (n: number) => void;
+	loadScenario: (id: string) => void;
+	advanceToTick: (n: number) => void;
+	setTheme: (theme: YardTheme) => void;
+	getTheme: () => YardTheme;
+	getScenario: () => string | null;
+	getTick: () => number;
+	getEntities: () => readonly YardTestEntity[];
+	getRecentFx: () => readonly YardTestFx[];
 };
 
 export function createTestSeam(host: YardTestHost): YardTestSeam {
@@ -66,7 +95,6 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 		state: () => {
 			const snap = host.getSnap();
 			const bo = host.getBo();
-			const visual = host.getVisual();
 			return Object.freeze({
 				scene: seam.sceneKey,
 				ready: seam.ready,
@@ -82,6 +110,15 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 				sheetKind: host.sheetKind(),
 				seq: snap?.seq ?? null,
 				hazards: Object.freeze([...(snap?.doctor.hazards ?? [])]),
+				theme: host.getTheme(),
+				scenario: host.getScenario(),
+				tick: host.getTick(),
+				entities: Object.freeze(
+					host.getEntities().map((e) => Object.freeze({ ...e })),
+				),
+				recentFx: Object.freeze(
+					host.getRecentFx().map((f) => Object.freeze({ ...f })),
+				),
 			});
 		},
 		commands: {
@@ -97,6 +134,9 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 				host.advanceFrame(dtMs);
 				seam.frameCount += 1;
 			},
+			loadScenario: (id) => host.loadScenario(id),
+			advanceToTick: (n) => host.advanceToTick(n),
+			setTheme: (theme) => host.setTheme(theme),
 		},
 	};
 	return seam;
@@ -116,11 +156,17 @@ export function seededRandom(seed: number): () => number {
 export function isTestMode(search = ""): {
 	testMode: boolean;
 	seed: number;
+	scenario: string | null;
 } {
 	const params = new URLSearchParams(
 		search.startsWith("?") ? search.slice(1) : search,
 	);
 	const testMode = params.has("test") || params.get("test") === "1";
 	const seed = Number(params.get("seed") || "42");
-	return { testMode, seed: Number.isFinite(seed) ? seed : 42 };
+	const scenario = params.get("scenario");
+	return {
+		testMode,
+		seed: Number.isFinite(seed) ? seed : 42,
+		scenario: scenario && scenario.length > 0 ? scenario : null,
+	};
 }

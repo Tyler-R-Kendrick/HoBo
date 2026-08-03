@@ -150,13 +150,14 @@ export function buildBrowserWitStationHtml(
       if (!match) return;
       controls.querySelectorAll("button").forEach((item) => { item.disabled = true; });
       try {
-        show(JSON.parse(component.invoke(JSON.stringify({
+        const response = component.invoke({
           exampleId: config.exampleId,
           stationId: config.stationId,
           method: match.method,
           path: match.path,
-          body,
-        }))));
+		  bodyJson: JSON.stringify(body ?? {}),
+		});
+		show({ status: response.status, body: JSON.parse(response.bodyJson) });
       } catch (error) {
         show({ status: 500, body: { error: error instanceof Error ? error.message : String(error) } });
 		if (required) throw error;

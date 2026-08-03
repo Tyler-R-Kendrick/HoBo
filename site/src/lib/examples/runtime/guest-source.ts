@@ -1,34 +1,18 @@
-export type BrowserRuntimeAction =
-	| "health"
-	| "read"
-	| "increment"
-	| "reset"
-	| "list"
-	| "create"
-	| "delete"
-	| "toggle"
-	| "enqueue"
-	| "drain";
+import type {
+	BrowserStationRequest,
+	BrowserStationResponse,
+} from "../../../_generated/browser_station_pb.js";
+import type { ExampleRuntimeDescriptor } from "../catalog-contract.js";
 
-export interface BrowserRuntimeDescriptor {
-	readonly schemaVersion: "hobo.try-runtime/v1";
-	readonly resources: Readonly<
-		Record<
-			string,
-			{
-				readonly kind: "kv" | "queue";
-				readonly initial: unknown;
-			}
-		>
-	>;
-	readonly routes: readonly {
-		readonly method: "GET" | "POST" | "PATCH" | "DELETE";
-		readonly path: string;
-		readonly action: BrowserRuntimeAction;
-		readonly resource?: string;
-		readonly key?: string;
-	}[];
-}
+export type BrowserRuntimeDescriptor = ExampleRuntimeDescriptor;
+export type BrowserStationInvokeRequest = Pick<
+	BrowserStationRequest,
+	"exampleId" | "stationId" | "method" | "path" | "bodyJson"
+>;
+export type BrowserStationInvokeResponse = Pick<
+	BrowserStationResponse,
+	"status" | "bodyJson"
+>;
 
 export interface BrowserRuntimeExample {
 	readonly id: string;
@@ -65,15 +49,15 @@ function stateFor(exampleId, descriptor) {
 }
 
 function response(status, body) {
-  return JSON.stringify({ status, body });
+  return { status, bodyJson: JSON.stringify(body) };
 }
 
-export function invoke(requestJson) {
-  let request;
+export function invoke(request) {
+  let body;
   try {
-    request = JSON.parse(requestJson);
+    body = JSON.parse(request.bodyJson);
   } catch {
-    return response(400, { error: "invalid JSON request" });
+    return response(400, { error: "invalid JSON body" });
   }
   const descriptor = descriptors[request.exampleId];
   if (!descriptor) return response(404, { error: "unknown example" });
@@ -86,7 +70,7 @@ export function invoke(requestJson) {
   if (route.resource && value === undefined) {
     return response(500, { error: "declared resource not found" });
   }
-  const body = request.body && typeof request.body === "object" ? request.body : {};
+  if (!body || typeof body !== "object" || Array.isArray(body)) body = {};
 
   switch (route.action) {
     case "health":

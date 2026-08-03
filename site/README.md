@@ -23,6 +23,7 @@ pnpm --filter hobo-site dev        # http://localhost:4321/HoBo/
 pnpm --filter hobo-site build      # writes site/dist/
 pnpm --filter hobo-site preview    # serve the built dist/
 pnpm --filter hobo-site typecheck  # check Astro templates and TypeScript scripts
+pnpm --filter hobo-site codegen    # regenerate protobuf TS and vet CUE
 ```
 
 

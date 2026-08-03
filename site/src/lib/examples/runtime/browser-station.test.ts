@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
+import { create } from "@bufbuild/protobuf";
+import { readFile } from "node:fs/promises";
+
+import {
+	BrowserStationRequestSchema,
+	BrowserStationResponseSchema,
+} from "../../../_generated/browser_station_pb.js";
 
 import {
 	buildBrowserWitStationHtml,
 	parseBrowserRuntimeManifest,
 } from "./browser-station.js";
-import { buildBrowserStationGuestSource } from "./guest-source.js";
+import {
+	buildBrowserStationGuestSource,
+	type BrowserStationInvokeRequest,
+	type BrowserStationInvokeResponse,
+} from "./guest-source.js";
 
 const counterRuntime = {
 	schemaVersion: "hobo.try-runtime/v1" as const,
@@ -54,20 +65,21 @@ describe("browser WIT Environment Station", () => {
 		]);
 		const guest = (await import(
 			`data:text/javascript,${encodeURIComponent(source)}`
-		)) as { invoke(request: string): string };
+		)) as {
+			invoke(request: BrowserStationInvokeRequest): BrowserStationInvokeResponse;
+		};
 
-		expect(
-			JSON.parse(
-				guest.invoke(
-					JSON.stringify({
+		const response = guest.invoke({
 						exampleId: "hello-counter",
+						stationId: "station:browser:test",
 						method: "POST",
 						path: "/api/count",
-						body: { by: 2 },
-					}),
-				),
-			),
-		).toEqual({ status: 200, body: { count: 2 } });
+						bodyJson: JSON.stringify({ by: 2 }),
+					});
+		expect({ status: response.status, body: JSON.parse(response.bodyJson) }).toEqual({
+			status: 200,
+			body: { count: 2 },
+		});
 	});
 
 	it("executes the declared notes delete route", async () => {
@@ -87,10 +99,18 @@ describe("browser WIT Environment Station", () => {
 		]);
 		const guest = (await import(
 			`data:text/javascript,${encodeURIComponent(source)}`
-		)) as { invoke(request: string): string };
+		)) as {
+			invoke(request: BrowserStationInvokeRequest): BrowserStationInvokeResponse;
+		};
 		const invoke = (method: string, path: string, body?: unknown) =>
-			JSON.parse(
-				guest.invoke(JSON.stringify({ exampleId: "kv-notes", method, path, body })),
+			((response) => ({ status: response.status, body: JSON.parse(response.bodyJson) }))(
+				guest.invoke({
+					exampleId: "kv-notes",
+					stationId: "station:browser:test",
+					method,
+					path,
+					bodyJson: JSON.stringify(body ?? {}),
+				}),
 			);
 
 		const created = invoke("POST", "/api/notes", { id: "spoofed", text: "ship it" });
@@ -103,6 +123,31 @@ describe("browser WIT Environment Station", () => {
 			status: 200,
 			body: { items: [] },
 		});
+	});
+
+	it("reconciles generated protobuf, CUE, and WIT request/response views", async () => {
+		const request = create(BrowserStationRequestSchema, {
+			exampleId: "hello-counter",
+			stationId: "station:browser:test",
+			method: "POST",
+			path: "/api/count",
+			bodyJson: JSON.stringify({ by: 1 }),
+		});
+		const response = create(BrowserStationResponseSchema, {
+			status: 200,
+			bodyJson: JSON.stringify({ count: 1 }),
+		});
+		const [wit, proto, cue] = await Promise.all([
+			readFile(new URL("../../../../../examples/browser-runtime/wit/station.wit", import.meta.url), "utf8"),
+			readFile(new URL("../../../../data-models/browser_station.proto", import.meta.url), "utf8"),
+			readFile(new URL("../../../../data-models/browser_station.cue", import.meta.url), "utf8"),
+		]);
+
+		expect(request).toMatchObject({ exampleId: "hello-counter", bodyJson: '{"by":1}' });
+		expect(response).toMatchObject({ status: 200, bodyJson: '{"count":1}' });
+		expect(wit).toContain("export invoke: func(request: invoke-request) -> invoke-response");
+		expect(proto).toContain("message BrowserStationRequest");
+		expect(cue).toContain("#BrowserStationRequest");
 	});
 
 	it("instantiates the component inside the blob host and reports lifecycle only", () => {

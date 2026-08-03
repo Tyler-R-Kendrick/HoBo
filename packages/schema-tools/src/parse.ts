@@ -32,6 +32,7 @@ export function parseCodegenArgv(
 	let check = false;
 	let json = false;
 	let filter: string | undefined;
+	let packagesRoot = defaultPackagesRoot(repoRoot);
 
 	for (let index = 0; index < argv.length; index += 1) {
 		const token = argv[index];
@@ -53,13 +54,21 @@ export function parseCodegenArgv(
 			index += 1;
 			continue;
 		}
+		if (token === "--packages-root") {
+			const value = argv[index + 1];
+			if (!value || value.startsWith("-")) {
+				throw new Error("missing value for --packages-root <dir>");
+			}
+			packagesRoot = resolve(repoRoot, value);
+			index += 1;
+			continue;
+		}
 		if (token.startsWith("-")) {
 			throw new Error(`unknown flag: ${token}`);
 		}
 		throw new Error(`unexpected argument: ${token}`);
 	}
 
-	const packagesRoot = defaultPackagesRoot(repoRoot);
 	const bufTemplate = resolve(repoRoot, "buf.gen.yaml");
 
 	return Object.freeze({

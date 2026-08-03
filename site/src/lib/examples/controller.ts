@@ -133,6 +133,14 @@ export async function bootExamplesConsole(): Promise<void> {
 		ui.source.textContent = current.source;
 		renderProviders(ui.providerList, current, selected, plan, live, (id, checked) => {
 			if (deploying) return render();
+			if (live.length > 0) {
+				clearLive();
+				resetHostFrames(ui);
+				ui.deployState.textContent = "idle";
+				ui.terminal.replaceChildren(
+					line("system", "Placement changed. Deploy the updated plan to launch new previews."),
+				);
+			}
 			if (checked) selected.add(id);
 			else selected.delete(id);
 			render();

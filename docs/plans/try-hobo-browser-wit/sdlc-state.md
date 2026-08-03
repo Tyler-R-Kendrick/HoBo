@@ -39,6 +39,11 @@ provider bootstrap fail-closed on the static site.
 - Fresh `componentize-js` build: passed outside the restricted agent sandbox in
   15 seconds; the same generated runtime then produced a verified cache hit.
 - Static site build: 139 pages generated with the verified runtime.
-- Playwright: the counter component reached ready, incremented to 1, kept a
-  script-only sandbox, exposed no raw blob link, and emitted no browser failures.
+- Playwright: the typed counter component reached ready, incremented to 1, kept
+  a script-only sandbox, exposed no raw blob link, then revoked its live host and
+  returned to idle when provider selection changed; no browser failures emitted.
 - `pnpm agent:check -- --staged`: 17 impact-selected checks passed in 19 seconds.
+- Schema reconciliation: typed WIT + protobuf + CUE + generated TypeScript;
+  `codegen:check` vets CUE and compares the generated tree on every site test.
+- Independent adversarial review: two findings fixed; focused re-review reported
+  no remaining blocker.

@@ -1,9 +1,11 @@
 /**
- * Default InteractiveShell host — bridges product CLI + dispatch.
+ * Default InteractiveShell host — bridges product CLI + dispatch + engine.
  *
  * Honesty contract (render-budget/honesty tests pin this):
- * - a chat reply states exactly what happened — a dispatch turn *records a
- *   compute task*; no completion engine runs it yet, and the reply says so;
+ * - a chat reply states exactly what happened — without an engine, a turn
+ *   *records a compute task* and the reply says so; with an engine, the turn
+ *   streams the real model and edits stay in the mediated sandbox until an
+ *   audited promote (ADR-0139);
  * - no success theater, no fixed "Next:" filler, no branding in replies;
  * - every reply teaches the equivalent one-shot command.
  */
@@ -14,6 +16,7 @@ import {
 	runHoboCodeCli,
 } from "./cli.js";
 import type { ShellHost } from "./interactive-shell.js";
+import type { ShellEngine } from "./shell-engine.js";
 
 interface DispatchedTaskShape {
 	readonly taskId?: string;
@@ -34,8 +37,44 @@ function oneShotHint(prompt: string): string {
 	return `One-shot equivalent: hobo-code "${compact.replace(/"/g, '\\"')}"`;
 }
 
-export function createDefaultShellHost(deps: HoboCodeCliDeps = {}): ShellHost {
+export interface DefaultShellHostOptions extends HoboCodeCliDeps {
+	/** Wired completion engine (Slice 2). Absent → honest dispatch-only mode. */
+	readonly engine?: ShellEngine | null;
+}
+
+export function createDefaultShellHost(
+	deps: DefaultShellHostOptions = {},
+): ShellHost {
+	const engine = deps.engine ?? null;
+	const engineExtras: Partial<ShellHost> = engine
+		? {
+				engineLabel: `${engine.id} · ${engine.modelLabel}`,
+				aboutLines: [
+					`Engine: ${engine.id} (${engine.modelLabel}) — streams real turns.`,
+					`Sandbox: ${engine.sandboxRoot} (mediated; canonical tree read-only).`,
+					`Promote (gated, squash-only, audited): hobo-code promote --run ${engine.runId}`,
+					"Pi TUI stays an opt-in escape hatch via `hobo-code --pi` — never the product UI.",
+				],
+				streamTurn: async (prompt, onEvent) => {
+					const result = await engine.turn(prompt, onEvent);
+					if (result.ok && result.toolCalls > 0) {
+						return {
+							...result,
+							text: [
+								result.text.trimEnd(),
+								"",
+								`Edits live in the mediated sandbox (run ${engine.runId}).`,
+								`Apply via the audited gate: hobo-code promote --run ${engine.runId}`,
+							].join("\n"),
+						};
+					}
+					return result;
+				},
+				cancelTurn: () => engine.abort(),
+			}
+		: {};
 	return {
+		...engineExtras,
 		async runVerb(argv) {
 			const result = await runHoboCodeCli([...argv], {
 				...deps,

@@ -14,11 +14,21 @@
  * not this coding harness.
  */
 import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
-import { HOBO_AGENT_INSTRUCTIONS } from "../harness-customization.js";
+import {
+	HOBO_AGENT_INSTRUCTIONS,
+	HOBO_AGENT_MODEL,
+} from "../harness-customization.js";
 import { runInteractiveShell } from "../interactive-shell.js";
+import { cleanupIsolation, createIsolationContext } from "../isolation.js";
+import {
+	createPiShellEngine,
+	type ShellEngine,
+	shouldAttemptEngine,
+} from "../shell-engine.js";
 import { createDefaultShellHost } from "../shell-host.js";
 
 const rawArgv = process.argv.slice(2);
@@ -73,7 +83,38 @@ if (interactive && !json && (argv.length === 0 || chatVerb)) {
 		);
 		process.exitCode = await launchPiHarness();
 	} else {
-		const host = createDefaultShellHost({ dense });
+		// Engine turns run in a mediated isolation sandbox (ADR-0139): the
+		// canonical tree stays read-only; promotion is the audited mutation path.
+		const hoboHome =
+			process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
+				? process.env.HOBO_HOME
+				: join(process.env.HOME ?? tmpdir(), ".hobo");
+		let engine: ShellEngine | null = null;
+		if (shouldAttemptEngine(process.env)) {
+			const isolation = await createIsolationContext({
+				projectRoot: process.cwd(),
+				hoboHome,
+			});
+			const attempt = await createPiShellEngine({
+				sandboxRoot: isolation.rootPath,
+				runId: isolation.runId,
+				modelSpec: HOBO_AGENT_MODEL,
+				instructions: HOBO_AGENT_INSTRUCTIONS,
+			});
+			if (attempt.engine) {
+				engine = attempt.engine;
+			} else {
+				await cleanupIsolation(isolation.runId, {
+					hoboHome,
+					ok: true,
+					gates: ["engine:unavailable"],
+				});
+				process.stderr.write(
+					`hobo-code: engine disabled — ${attempt.reason} (dispatch-only shell)\n`,
+				);
+			}
+		}
+		const host = createDefaultShellHost({ dense, engine });
 		process.exitCode = await runInteractiveShell({
 			host,
 			dense,
@@ -81,6 +122,13 @@ if (interactive && !json && (argv.length === 0 || chatVerb)) {
 				process.env.HOBO_CODE_REDUCED_MOTION === "1" ||
 				process.env.HOBO_CODE_REDUCED_MOTION === "true",
 		});
+		if (engine) {
+			await engine.dispose();
+			// Sandbox stays open so un-promoted edits survive the session.
+			process.stdout.write(
+				`sandbox kept: ${engine.sandboxRoot}\npromote (audited): hobo-code promote --run ${engine.runId}\n`,
+			);
+		}
 	}
 } else {
 	const result = await runHoboCodeCli(argv, { json, dense });

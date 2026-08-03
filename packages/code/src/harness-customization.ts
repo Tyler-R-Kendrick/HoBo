@@ -14,7 +14,7 @@ export const HOBO_AGENT_NAME = "hobo-code";
 
 /** Model specifier (<provider>/<model>) — Pi/Flue provider routing. */
 export const HOBO_AGENT_MODEL =
-	process.env.HOBO_CODE_MODEL ?? "anthropic/claude-sonnet-4-6";
+	process.env.HOBO_CODE_MODEL ?? "anthropic/claude-sonnet-5";
 
 export const HOBO_AGENT_INSTRUCTIONS = `You are Bo, the HoBo coding harness agent (hobo-code, ADR-0139).
 

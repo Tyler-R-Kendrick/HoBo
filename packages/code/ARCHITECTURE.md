@@ -26,9 +26,21 @@ chrome. Render-economy contract (pinned by `test/render-budget.test.ts`):
 - input is decoded as atomic sequences (arrows, bracketed paste, resize);
 - isolation/dispatch runs on async spawn so the loop never blocks a turn;
 - no alternate screen — the transcript survives exit;
-- replies are honest: a dispatch turn *records a compute task*; until a
-  completion engine is wired the footer says `engine:none · dispatch-only`
-  and no reply claims an agent acted.
+- replies are honest: without an engine, a turn *records a compute task*,
+  the footer says `engine:none · dispatch-only`, and no reply claims an
+  agent acted.
+
+**Completion engine (`src/shell-engine.ts`).** Pi is wired as the engine —
+never the frame: `createPiShellEngine` builds a pi `AgentSession` whose cwd
+is a **mediated isolation sandbox** (`createIsolationContext`), streams
+`text_delta` / tool events into shell turns, and supports Esc cancellation
+(`session.abort`). Engine turns never touch the canonical tree; replies that
+made edits point at the audited gate (`hobo-code promote --run <id>`), and
+the sandbox stays open on exit so un-promoted work survives. Availability is
+gated by `shouldAttemptEngine` (BYOK env / pi auth / `HOBO_CODE_ENGINE=pi`;
+`=none` opts out) and every failure degrades to the honest dispatch-only
+shell with a reason on stderr. The footer shows the model that actually runs
+(`pi · <provider>/<model>`, default `HOBO_AGENT_MODEL`).
 
 ```
 hobo-code (standalone binary; dispatch default)

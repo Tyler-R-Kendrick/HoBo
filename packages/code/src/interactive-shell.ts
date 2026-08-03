@@ -17,6 +17,7 @@ import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
 import { inspectCost } from "./cost.js";
 import { buildTasksSurface } from "./grok-build-parity.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
+import type { EngineTurnEvent, EngineTurnResult } from "./shell-engine.js";
 import { StreamTerminal } from "./shell-terminal.js";
 import {
 	BO_CELL_HEIGHT,
@@ -723,6 +724,31 @@ export function appendProduct(
 	};
 }
 
+/**
+ * Replace the trailing assistant message (streaming turns grow it in place).
+ * Appends when the last message is not an assistant message.
+ */
+export function replaceLastAssistant(
+	state: InteractiveShellState,
+	text: string,
+	agentState: ShellAgentState = "working",
+): InteractiveShellState {
+	const last = state.messages[state.messages.length - 1];
+	if (!last || last.role !== "assistant") {
+		const appended = appendAssistant(state, text, agentState);
+		return appended;
+	}
+	return {
+		...state,
+		agentState,
+		chatScroll: 0,
+		messages: [
+			...state.messages.slice(0, -1),
+			{ role: "assistant", text, at: last.at },
+		],
+	};
+}
+
 // ── TTY driver ───────────────────────────────────────────────────────────
 
 export interface ShellHost {
@@ -730,6 +756,20 @@ export interface ShellHost {
 	readonly runVerb: (argv: readonly string[]) => Promise<string>;
 	/** Handle a user chat prompt; return assistant text. */
 	readonly complete: (prompt: string) => Promise<string>;
+	/**
+	 * Streaming turn (Slice 2, engine wired): events render live; the promise
+	 * resolves with the final turn result. When absent, `complete` is used.
+	 */
+	readonly streamTurn?: (
+		prompt: string,
+		onEvent: (event: EngineTurnEvent) => void,
+	) => Promise<EngineTurnResult>;
+	/** Cancel the in-flight streaming turn (Esc). */
+	readonly cancelTurn?: () => Promise<void>;
+	/** Footer label for the wired engine, e.g. "pi · anthropic/claude-…". */
+	readonly engineLabel?: string;
+	/** Extra `/about` lines describing the live engine + sandbox. */
+	readonly aboutLines?: readonly string[];
 }
 
 export interface RunInteractiveShellOptions {
@@ -790,6 +830,9 @@ export async function runInteractiveShell(
 		...(options.hoboHome !== undefined ? { hoboHome: options.hoboHome } : {}),
 		...(options.env !== undefined ? { env: options.env } : {}),
 	});
+	if (options.host.engineLabel) {
+		state = { ...state, modelLabel: options.host.engineLabel };
+	}
 
 	const terminal = new StreamTerminal({
 		stdin,
@@ -833,14 +876,17 @@ export async function runInteractiveShell(
 			return;
 		}
 		if (item.action === "about") {
+			const engineLines = options.host.aboutLines ?? [
+				"Prompts queue dispatch tasks; no completion engine is wired",
+				"(footer shows engine:none). Pi TUI remains an opt-in escape hatch",
+				"via `hobo-code --pi` — never the product UI.",
+			];
 			state = appendProduct(
 				state,
 				[
 					PRODUCT_NOT_PI,
 					"This shell is HoBo product chrome over the hobo-code CLI.",
-					"Prompts queue dispatch tasks; no completion engine is wired yet",
-					"(footer shows engine:none until one lands). Pi remains an opt-in",
-					"engine via `hobo-code --pi` — never the product UI.",
+					...engineLines,
 				].join("\n"),
 			);
 			return;
@@ -861,7 +907,72 @@ export async function runInteractiveShell(
 		}
 	};
 
+	let turnInFlight = false;
+
 	const onSubmit = async (prompt: string) => {
+		if (options.host.streamTurn) {
+			turnInFlight = true;
+			let streamed = "";
+			const toolLines: string[] = [];
+			const renderTurn = (suffix = "") => {
+				const parts = [
+					...toolLines,
+					...(streamed.length > 0 ? [streamed] : []),
+				];
+				state = replaceLastAssistant(
+					state,
+					(parts.join("\n") || "…") + suffix,
+					"working",
+				);
+				tui.requestRender();
+			};
+			try {
+				const result = await options.host.streamTurn(prompt, (event) => {
+					if (quit) return;
+					if (event.kind === "text-delta") {
+						streamed += event.delta;
+					} else if (event.kind === "tool-start") {
+						toolLines.push(`tool · ${event.name} …`);
+					} else if (event.kind === "tool-end") {
+						let i = toolLines.length - 1;
+						while (
+							i >= 0 &&
+							!toolLines[i]!.startsWith(`tool · ${event.name}`)
+						) {
+							i -= 1;
+						}
+						const line = `tool · ${event.name} ${event.ok ? "✓" : "✗"}`;
+						if (i >= 0) toolLines[i] = line;
+						else toolLines.push(line);
+					}
+					renderTurn();
+				});
+				if (quit) return;
+				const tail = result.aborted
+					? "\n(turn cancelled)"
+					: result.ok
+						? ""
+						: `\n(turn failed: ${result.error ?? "unknown"})`;
+				const finalText =
+					[...toolLines, ...(result.text ? [result.text] : [])].join("\n") ||
+					(result.aborted ? "(turn cancelled)" : "(empty reply)");
+				state = replaceLastAssistant(
+					state,
+					(finalText + (result.text ? tail : "")).slice(0, 8000),
+					result.ok || result.aborted ? "idle" : "blocked",
+				);
+			} catch (err) {
+				if (quit) return;
+				state = replaceLastAssistant(
+					state,
+					`Could not complete: ${err instanceof Error ? err.message : String(err)}`,
+					"blocked",
+				);
+			} finally {
+				turnInFlight = false;
+			}
+			return;
+		}
 		try {
 			const text = await options.host.complete(prompt);
 			if (quit) return;
@@ -878,6 +989,16 @@ export async function runInteractiveShell(
 
 	const handleKey = (sequence: string) => {
 		if (quit) return;
+		// Esc cancels an in-flight streaming turn before normal key reduction.
+		if (
+			sequence === "\u001b" &&
+			turnInFlight &&
+			options.host.cancelTurn &&
+			!state.slashOpen
+		) {
+			void options.host.cancelTurn();
+			return;
+		}
 		const result = reduceShellKey(state, sequence);
 		state = result.state;
 		if (result.quit) {
@@ -946,7 +1067,11 @@ export async function runInteractiveShell(
 			// Let submit/slash promises and render scheduling settle per key.
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		}
-		// Allow the final coalesced render to flush before stopping.
+		// Drain any in-flight turn (bounded), then let the final render flush.
+		const drainDeadline = Date.now() + 2000;
+		while (turnInFlight && Date.now() < drainDeadline) {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		}
 		await new Promise((resolve) => setTimeout(resolve, 40));
 		requestQuit();
 	}

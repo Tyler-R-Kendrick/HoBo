@@ -34,9 +34,18 @@ On a real TTY, bare `hobo-code` opens the **HoBo InteractiveShell** (product chr
 | Footer | engine · budget · hermetic env cue |
 
 Rendering rides pi-tui's differential renderer as a library — HoBo owns the
-chrome (see `ARCHITECTURE.md` for the render-economy contract). The shell is
-honest about the agent loop: **prompts queue dispatch compute tasks; no
-completion engine acts on them yet**, the footer reads `engine:none ·
+chrome (see `ARCHITECTURE.md` for the render-economy contract).
+
+**The agent loop is real when credentials exist** (any BYOK env, a pi
+`auth.json`, or `HOBO_CODE_ENGINE=pi`): prompts stream a live pi engine turn
+(text deltas + `tool · <name>` lines; **Esc cancels**) running inside a
+mediated isolation sandbox — the canonical tree stays read-only and edits
+apply only through the audited gate `hobo-code promote --run <id>`. The
+sandbox is kept on exit so un-promoted work survives. The footer names the
+model that actually runs. `HOBO_CODE_ENGINE=none` opts out.
+
+Without credentials the shell stays honest instead of pretending: prompts
+queue dispatch compute tasks, the footer reads `engine:none ·
 dispatch-only`, and every reply names the recorded task plus the one-shot
 command equivalent. Product identity lives in `/about` (not stock Pi Agent
 UI; escape hatch only: `HOBO_CODE_TUI=pi` or `hobo-code --pi`).

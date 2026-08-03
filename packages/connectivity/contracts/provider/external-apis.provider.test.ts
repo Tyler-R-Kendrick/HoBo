@@ -31,6 +31,10 @@ const EXTERNAL_PROVIDERS = [
 		provider: "CloudflareLoadBalancingApi",
 		consumer: "HoboConnectivity",
 	},
+	{
+		provider: "VercelTrafficRoutingApi",
+		consumer: "HoboConnectivity",
+	},
 	{ provider: "Route53DnsApi", consumer: "HoboConnectivity" },
 	{ provider: "TailscaleControlApi", consumer: "HoboConnectivity" },
 	{ provider: "NetbirdManagementApi", consumer: "HoboConnectivity" },

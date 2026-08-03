@@ -12,10 +12,15 @@ with the gaps stated honestly instead of papered over.
 | `kv` | Capsule KV | `lakebed:capsule-kv` | — |
 | `objectStore` | File Store | `lakebed:file-store` | not `s3-compatible` |
 | `database` | Reactive DB | `lakebed:reactive-db` | not `postgres` |
+| TrafficRouting (ADR-0143) | Deploy-time route binding | `lakebed:traffic-route` | no multi-LB API — in-process weighted selection lives in `@hobo/connectivity`; this resource binds capsule endpoints for `lakebed-deploy` |
 
 No queue, no cache — a `require` the Capsule runtime can't satisfy surfaces
 as `partial(missing)`/rejection with remediation naming a provider that can
 (ADR-0033).
+
+`realizeTrafficRoutingPlan(plan)` emits a one-resource `hobo.driver-program/v1`
+with `lakebed:traffic-route` for dual-layer production routing (in-process
+selection in connectivity + optional deploy binding here).
 
 - **Realization is a Driver, not IaC**: `realize()` emits a
   `hobo.driver-program/v1` targeting the `lakebed-deploy` driver — one

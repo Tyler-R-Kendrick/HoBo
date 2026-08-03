@@ -41,6 +41,7 @@ export {
 	type RealizablePort,
 	realizeResourcePlan,
 	realizeResourcePlans,
+	realizeTrafficRoutingPlan,
 	resolveEquivalence,
 } from "./realize.js";
 export type {

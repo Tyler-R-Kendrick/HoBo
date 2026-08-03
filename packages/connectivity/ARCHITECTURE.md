@@ -136,18 +136,23 @@ Untrusted inputs at package boundaries are parse, don't validate: DNS labels, te
 flowchart LR
   ST[Station synthesis] --> PLAN[RoutingPlan]
   PLAN --> SIMPLE[Simple offline]
-  PLAN --> CF[Cloudflare]
+  PLAN --> CF[Cloudflare LB update]
   PLAN --> FUNNEL[Funnel single backend]
-  PLAN --> STUB[Vercel / Lakebed capability stubs]
+  PLAN --> VERCEL[Vercel RR + project routes]
+  PLAN --> LAKEBED[Lakebed in-process + traffic-route driver]
   SIMPLE --> FACTS[routing.plan.* metering facts]
   CF --> FACTS
   FUNNEL --> OV[Existing OverlayNetwork]
   FUNNEL --> FACTS
+  VERCEL --> FACTS
+  LAKEBED --> FACTS
+  LAKEBED --> DRV[lakebed-deploy driver program]
 ```
 
 TrafficRouting coordinates backend-selection intent only. `OverlayNetwork`,
 Funnel, and `PublicDnsManager` retain connectivity and exposure ownership.
-Partial realization is an explicit result, never a silent feature drop.
+Partial realization is an explicit result, never a silent feature drop. Shipped
+adapters are production-capable for documented shapes — not permanent stubs.
 
 ## Secretless connector (ADR-0027 + ADR-0130)
 

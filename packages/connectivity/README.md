@@ -35,15 +35,17 @@ const result = await routing.apply(parseRoutingPlan({
 | Simple | Offline baseline; deterministic static weighted selection |
 | Cloudflare | Credential-gated Load Balancing for a DNS-hostname service over caller-supplied existing pool and load-balancer IDs; unsupported fragments are partial |
 | Funnel | Single-backend bridge through an existing `OverlayNetwork.publishFunnel` only; full realization requires provider confirmation |
-| Vercel / Lakebed | Honest capability stubs returning structured `none` results |
+| Vercel | Production: Rolling Releases (two mapped deployments, weighted canary) **and** project routes (path-prefix / header external rewrites, stage + promote). Credential-gated; injectible `fetch`; Pact-covered |
+| Lakebed | Production dual layer: full in-process weighted multi-backend selection over capsule endpoints **and** optional deploy-time `lakebed:traffic-route` driver program (`lakebed-deploy`). No fake multi-LB HTTP |
 
-No adapter requires Kubernetes. Missing credentials or platform capabilities
-return `partial`/`none` with `unmet` notes; credentials never enter plans,
-metering events, or result notes. V1 does not create Cloudflare pools: callers
-provide backend-to-pool and plan-to-load-balancer IDs, keeping provider resource
-lifecycle explicit and making apply a retry-safe update rather than a create.
-Provider effects remain authoritative if best-effort metering delivery fails;
-an active Cloudflare `planId` is idempotent and conflicting content fails closed.
+No adapter requires Kubernetes. **No always-deny stubs.** Missing credentials or
+platform-unsupported fragments return `partial`/`none` with concrete `unmet`
+notes; credentials never enter plans, metering events, or result notes. V1 does
+not create Cloudflare pools: callers provide backend-to-pool and plan-to-load-balancer
+IDs, keeping provider resource lifecycle explicit and making apply a retry-safe
+update rather than a create. Provider effects remain authoritative if best-effort
+metering delivery fails; an active Cloudflare/Vercel `planId` is idempotent and
+conflicting content fails closed.
 
 ## Quick starts
 
@@ -203,7 +205,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for Mermaid diagrams covering local nam
 | Route53 DNS | `createRoute53DnsProvider({ accessKeyId, secretAccessKey, signRequest?, allowUnsigned? })` |
 | OPA/Rego policy | `createOpaPolicyEngine({ opaUrl?, regoModulePath? })` + `SAMPLE_HOBO_AUTHZ_REGO` |
 | Billing aggregator | `createBillingAggregator()` as a `MeteringSink` → `closePeriod()` invoices |
-| Traffic routing | `createSimpleTrafficRouting()` offline; Cloudflare/Funnel adapters plus honest Vercel/Lakebed stubs |
+| Traffic routing | `createSimpleTrafficRouting()` offline; Cloudflare, Funnel, production Vercel (RR + routes), dual-layer Lakebed |
 | Hard multi-tenant | `createTenantIsolationRegistry()` with `soft` \| `hard-overlay` \| `hard-control-plane` |
 | Dynamic DNS heartbeats | `createJunctionDynamicDnsRegistrar` / `createJunctionAgent({ publicDns, dnsTargets })` |
 

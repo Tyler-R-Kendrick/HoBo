@@ -7,7 +7,7 @@ tags: [hobo, plans, sdlc, site, examples, wit]
 
 # Initiative: Try HoBo browser WIT
 
-**Phase:** review  
+**Phase:** closed  
 **Slug:** `try-hobo-browser-wit`  
 **Opened:** 2026-08-02  
 **Host:** Codex
@@ -22,6 +22,7 @@ provider bootstrap fail-closed on the static site.
 
 - Branch: `feat/try-hobo-browser-wit`
 - PR: [#1008](https://github.com/Tyler-R-Kendrick/HoBo/pull/1008)
+- Merge: `af7fa3911b522f6d313b849acae8d1468111f800` (squash, 2026-08-03)
 - Stack: single layer
 - Unrelated local Headroom, OptimizeXP, `.venv`, and submodule cache changes are
   preserved outside this delivery.
@@ -42,7 +43,7 @@ provider bootstrap fail-closed on the static site.
 - Playwright: the typed counter component reached ready, incremented to 1, kept
   a script-only sandbox, exposed no raw blob link, then revoked its live host and
   returned to idle when provider selection changed; no browser failures emitted.
-- `pnpm agent:check -- --staged`: 17 impact-selected checks passed in 19 seconds.
+- Final staged and PR-base `agent:check`: 18 impact-selected checks passed.
 - Schema reconciliation: typed WIT + protobuf + CUE + generated TypeScript;
   `codegen:check` vets CUE and compares the generated tree on every site test.
 - Independent adversarial review: two findings fixed; focused re-review reported

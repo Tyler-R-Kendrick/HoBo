@@ -1140,6 +1140,7 @@ export async function runInteractiveShell(
 			}
 			return;
 		}
+		turnInFlight = true;
 		try {
 			const text = await options.host.complete(prompt);
 			if (quit) return;
@@ -1151,6 +1152,8 @@ export async function runInteractiveShell(
 				`Could not complete: ${err instanceof Error ? err.message : String(err)}`,
 				"blocked",
 			);
+		} finally {
+			turnInFlight = false;
 		}
 	};
 
@@ -1215,13 +1218,17 @@ export async function runInteractiveShell(
 		}
 		if (result.approve || result.decline) {
 			const approval = (result.approve ?? result.decline)!;
-			void resolveApproval(approval, Boolean(result.approve)).then(() => {
-				if (!quit) tui.requestRender();
-			});
+			void resolveApproval(approval, Boolean(result.approve))
+				.catch(() => {})
+				.then(() => {
+					if (!quit) tui.requestRender();
+				});
 		} else if (result.slash) {
-			void applySlash(result.slash).then(() => {
-				if (!quit) tui.requestRender();
-			});
+			void applySlash(result.slash)
+				.catch(() => {})
+				.then(() => {
+					if (!quit) tui.requestRender();
+				});
 		} else if (result.submit) {
 			// One turn at a time: two overlapping streams would interleave into
 			// the same transcript entry and leave cancel pointing at the wrong
@@ -1232,9 +1239,11 @@ export async function runInteractiveShell(
 					"Still working on the previous turn — Esc cancels it.",
 				);
 			} else {
-				void onSubmit(result.submit).then(() => {
-					if (!quit) tui.requestRender();
-				});
+				void onSubmit(result.submit)
+					.catch(() => {})
+					.then(() => {
+						if (!quit) tui.requestRender();
+					});
 			}
 		}
 		tui.requestRender();

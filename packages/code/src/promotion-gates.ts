@@ -23,29 +23,48 @@ function runScript(
 	script: string,
 	cwd: string,
 	timeoutMs: number,
-): Promise<{ code: number | null; out: string }> {
+): Promise<{ code: number | null; out: string; timedOut: boolean }> {
 	return new Promise((resolve) => {
+		// `detached` gives the child its own process group so a gate script that
+		// spawns a grandchild (watcher, dev server) can be reaped as a group.
 		const child = spawn("pnpm", ["run", script], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],
+			detached: true,
 		});
 		let out = "";
-		child.stdout.setEncoding("utf8");
-		child.stderr.setEncoding("utf8");
+		let settled = false;
+		let timedOut = false;
 		const collect = (c: string) => {
 			if (out.length < 8000) out += c;
 		};
+		child.stdout.setEncoding("utf8");
+		child.stderr.setEncoding("utf8");
 		child.stdout.on("data", collect);
 		child.stderr.on("data", collect);
-		const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
-		child.on("error", () => {
+
+		// Settle on `exit`, never on `close`: a grandchild inherits the stdio
+		// pipes, so `close` may never fire and the timeout would be decorative.
+		const finish = (code: number | null) => {
+			if (settled) return;
+			settled = true;
 			clearTimeout(timer);
-			resolve({ code: null, out });
-		});
-		child.on("close", (code) => {
-			clearTimeout(timer);
-			resolve({ code, out });
-		});
+			resolve({ code, out, timedOut });
+		};
+		const timer = setTimeout(() => {
+			timedOut = true;
+			try {
+				if (child.pid) process.kill(-child.pid, "SIGKILL");
+			} catch {
+				child.kill("SIGKILL");
+			}
+			// Guarantee settlement even if the group kill leaves nothing to wait on.
+			finish(null);
+		}, timeoutMs);
+		timer.unref?.();
+
+		child.on("error", () => finish(null));
+		child.on("exit", (code) => finish(code));
 	});
 }
 
@@ -68,17 +87,25 @@ export async function runProjectGates(
 	}
 	const results: PromotionGate[] = [];
 	for (const gate of PROJECT_GATES) {
-		const { code, out } = await runScript(gate.script, projectDir, timeoutMs);
+		const { code, out, timedOut } = await runScript(
+			gate.script,
+			projectDir,
+			timeoutMs,
+		);
+		const lastLine = out.trim().split("\n").slice(-1)[0] ?? "";
 		results.push({
 			name: gate.name,
 			pass: code === 0,
-			detail:
-				code === 0
+			// A timeout must not masquerade as a spawn failure — the operator
+			// needs to know the gate ran and was cut off, not that it never started.
+			detail: timedOut
+				? `timed out after ${Math.round(timeoutMs / 1000)}s: ${lastLine}`.slice(
+						0,
+						200,
+					)
+				: code === 0
 					? "ok"
-					: `exit ${code ?? "spawn-failed"}: ${out.trim().split("\n").slice(-1)[0] ?? ""}`.slice(
-							0,
-							200,
-						),
+					: `exit ${code ?? "spawn-failed"}: ${lastLine}`.slice(0, 200),
 		});
 	}
 	return results;

@@ -87,8 +87,10 @@ export function createDefaultShellHost(
 					}).trimEnd();
 					if (result.ok) {
 						return [
-							`Promoted run ${approval.runId} (squash-only, gated, audited).`,
-							`${approval.changes.length} file(s) applied to ${deps.cwd ?? "the project"}.`,
+							`Promoted run ${approval.runId} — gates ran, then the diff was applied.`,
+							// The result's own message carries the applied count; the
+							// approval snapshot can be stale by now.
+							result.message,
 							body,
 						].join("\n");
 					}

@@ -15,7 +15,11 @@ function git(
 	readonly stderr: string;
 }> {
 	return new Promise((resolvePromise) => {
-		const child = spawn("git", [...args], { cwd });
+		// stdout is captured; stderr drained so a chatty git cannot wedge us.
+		const child = spawn("git", [...args], {
+			cwd,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
 		let stdout = "";
 		let stderr = "";
 		child.stdout.setEncoding("utf8");
@@ -47,6 +51,8 @@ export async function applySandboxDiff(
 	readonly ok: boolean;
 	readonly files: number;
 	readonly detail: string;
+	/** True when the project tree may have been partially modified. */
+	readonly dirtied: boolean;
 }> {
 	// Include untracked files: a new file the agent wrote is the common case.
 	const added = await git(["add", "-AN", "."], isolationRoot);
@@ -54,7 +60,8 @@ export async function applySandboxDiff(
 		return {
 			ok: false,
 			files: 0,
-			detail: `git add -N failed: ${added.stderr.trim()}`,
+			detail: `sandbox is not a usable git worktree: ${added.stderr.trim()}`,
+			dirtied: false,
 		};
 	}
 	const diff = await git(["diff", "--binary", "HEAD"], isolationRoot);
@@ -63,22 +70,30 @@ export async function applySandboxDiff(
 			ok: false,
 			files: 0,
 			detail: `git diff failed: ${diff.stderr.trim()}`,
+			dirtied: false,
 		};
 	}
 	if (diff.stdout.trim().length === 0) {
-		return { ok: false, files: 0, detail: "sandbox has no changes to promote" };
+		return {
+			ok: false,
+			files: 0,
+			detail: "sandbox has no changes to promote",
+			dirtied: false,
+		};
 	}
 	const names = await git(["diff", "--name-only", "HEAD"], isolationRoot);
 	const files = names.stdout
 		.split("\n")
 		.filter((l) => l.trim().length > 0).length;
 
-	// One apply, with git arbitrating: a `--check` pass reading the same patch
-	// would need its own stdin write, and a forgotten one hangs forever.
-	const applied = await new Promise<{ code: number | null; stderr: string }>(
-		(resolvePromise) => {
-			const child = spawn("git", ["apply", "--3way", "--index", "-"], {
+	/** Feed a patch to a git command on stdin and report how it went. */
+	const applyPatch = (
+		args: readonly string[],
+	): Promise<{ code: number | null; stderr: string }> =>
+		new Promise((resolvePromise) => {
+			const child = spawn("git", [...args], {
 				cwd: targetProject,
+				stdio: ["pipe", "ignore", "pipe"],
 			});
 			let stderr = "";
 			child.stderr.setEncoding("utf8");
@@ -89,18 +104,69 @@ export async function applySandboxDiff(
 				resolvePromise({ code: null, stderr: String(err) }),
 			);
 			child.on("close", (code) => resolvePromise({ code, stderr }));
+			child.stdin.on("error", () => {
+				/* git may close stdin early on a bad patch; the exit code tells us */
+			});
 			child.stdin.write(diff.stdout);
 			child.stdin.end();
-		},
-	);
-	if (applied.code !== 0) {
+		});
+
+	// Precondition: `git apply --3way` is NOT atomic — it can apply some files
+	// cleanly, leave conflict markers in others, and exit non-zero, so a
+	// "failed" promotion could still wreck the tree. `--check` is too lenient
+	// to catch that, so refuse up front when the patch touches a file the user
+	// has locally modified. Predictable refusal beats a half-applied surprise.
+	const targetStatus = await git(["status", "--porcelain"], targetProject);
+	if (targetStatus.code === 0) {
+		const dirty = new Set(
+			targetStatus.stdout
+				.split("\n")
+				.filter((l) => l.trim().length > 0)
+				.map((l) => l.slice(3).trim())
+				.map((l) => (l.includes(" -> ") ? l.split(" -> ")[1]! : l)),
+		);
+		const patched = names.stdout
+			.split("\n")
+			.map((l) => l.trim())
+			.filter((l) => l.length > 0);
+		const collisions = patched.filter((f) => dirty.has(f));
+		if (collisions.length > 0) {
+			return {
+				ok: false,
+				files,
+				detail: `these files have uncommitted local changes and would collide: ${collisions.slice(0, 5).join(", ")}${collisions.length > 5 ? ` (+${collisions.length - 5} more)` : ""} — commit or stash them, then promote again`,
+				dirtied: false,
+			};
+		}
+	}
+
+	const check = await applyPatch(["apply", "--3way", "--check", "-"]);
+	if (check.code !== 0) {
 		return {
 			ok: false,
 			files,
-			detail: `git apply failed: ${applied.stderr.trim() || "conflict"}`,
+			detail: `patch does not apply cleanly to the project: ${check.stderr.trim() || "conflict"}`,
+			dirtied: false,
 		};
 	}
-	return { ok: true, files, detail: `${files} file(s) staged in the project` };
+
+	const applied = await applyPatch(["apply", "--3way", "--index", "-"]);
+	if (applied.code !== 0) {
+		// Preflight passed but the apply still failed — the tree may now be
+		// partially modified. Say so plainly rather than implying nothing moved.
+		return {
+			ok: false,
+			files,
+			detail: `apply failed after passing preflight: ${applied.stderr.trim() || "conflict"}`,
+			dirtied: true,
+		};
+	}
+	return {
+		ok: true,
+		files,
+		detail: `${files} file(s) staged in the project`,
+		dirtied: false,
+	};
 }
 
 export interface PromotionGate {
@@ -208,13 +274,15 @@ export async function promoteIsolation(
 		resolve(request.targetProject),
 	);
 	if (!applied.ok) {
+		const nothing = applied.detail === "sandbox has no changes to promote";
 		return {
 			ok: false,
-			code:
-				applied.files === 0
-					? "HOBO_CODE_PROMOTE_NOTHING_TO_APPLY"
-					: "HOBO_CODE_PROMOTE_APPLY_FAILED",
-			message: `${applied.detail} — sandbox kept at ${request.isolationRoot}`,
+			code: nothing
+				? "HOBO_CODE_PROMOTE_NOTHING_TO_APPLY"
+				: "HOBO_CODE_PROMOTE_APPLY_FAILED",
+			message: applied.dirtied
+				? `${applied.detail} — the project tree was PARTIALLY MODIFIED; inspect \`git status\` and reset before retrying. Sandbox kept at ${request.isolationRoot}`
+				: `${applied.detail} — nothing was changed in the project; sandbox kept at ${request.isolationRoot}`,
 			cleaned: false,
 		};
 	}

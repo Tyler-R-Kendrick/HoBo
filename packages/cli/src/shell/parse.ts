@@ -40,6 +40,10 @@ export interface CliFlags {
 	readonly temporary: boolean;
 	/** Claim token for remote `hobo claim --broker --token`. */
 	readonly token: string | null;
+	/** `hobo serve control --demo`: drive the world read model from the simulator. */
+	readonly demo: boolean;
+	/** Deterministic simulator seed for `--demo` (ADR-0140 demo mode). */
+	readonly demoSeed: string | null;
 }
 
 export interface CliRequest {
@@ -91,6 +95,8 @@ export function parseArgv(
 		anonymous: false,
 		temporary: false,
 		token: null as string | null,
+		demo: false,
+		demoSeed: null as string | null,
 	};
 	const args: string[] = [];
 	let verb: string | null = null;
@@ -171,6 +177,8 @@ function parseOption(
 		anonymous: boolean;
 		temporary: boolean;
 		token: string | null;
+		demo: boolean;
+		demoSeed: string | null;
 	},
 	verb: string | null,
 ): number {
@@ -259,32 +267,48 @@ function parseOption(
 			}
 			throw unknownOption(token, verb);
 		case "--once":
-			if (verb === "dev") {
+			if (verb === "dev" || verb === "serve") {
 				flags.once = true;
 				return index;
 			}
 			throw unknownOption(token, verb);
+		case "--demo":
+			// `hobo serve control --demo` (ADR-0140): seeded world simulator,
+			// always rendered with the SIMULATED badge.
+			if (verb === "serve") {
+				flags.demo = true;
+				return index;
+			}
+			throw unknownOption(token, verb);
+		case "--demo-seed":
+			if (verb === "serve") {
+				flags.demoSeed = takeValue(argv, index, token);
+				return index + 1;
+			}
+			throw unknownOption(token, verb);
 		case "--port":
-			if (verb === "dev" || verb === "yard") {
+			if (verb === "dev" || verb === "yard" || verb === "serve") {
 				flags.port = takeValue(argv, index, token);
 				return index + 1;
 			}
 			throw unknownOption(token, verb);
 		case "--home":
-			// Yard/dev install root; also `up`/`claim`/`login` for HOBO_HOME profile.
+			// Yard/dev install root; also `up`/`claim`/`login` for HOBO_HOME
+			// profile and `serve` for the control-plane store it projects from.
 			if (
 				verb === "yard" ||
 				verb === "dev" ||
 				verb === "up" ||
 				verb === "claim" ||
-				verb === "login"
+				verb === "login" ||
+				verb === "serve"
 			) {
 				flags.home = takeValue(argv, index, token);
 				return index + 1;
 			}
 			throw unknownOption(token, verb);
 		case "--host":
-			if (verb === "yard" || verb === "dev") {
+			if (verb === "yard" || verb === "dev" || verb === "serve") {
 				flags.host = takeValue(argv, index, token);
 				return index + 1;
 			}

@@ -52,12 +52,23 @@ optimizexp harness so the failure class that certified them cannot recur.
   frame, idle repaint economy, no full-screen erases) bound to real step
   implementations against the product source.
 
+## Slice 3b — run-claim audit (landed)
+
+- `pnpm run optimizexp:lint-runs` + drift-gate lane: a run claiming
+  completion must commit its minimal bundle — `summary.md`, `baseline.json`,
+  `iterations/*/scores.json` (sha256-matched via `experiments/*.json`), and
+  reviewable cited evidence — or be retired with `superseded.json`. The
+  gitignore keeps narrative artifacts (REPLAY.html/REPLAY.md/terminal.txt)
+  untracked while un-ignoring the bundle files and certified `primary.cast`
+  recordings.
+- The `20260801-hobo-code-optimizexp` pareto-equilibrium claim failed every
+  audit axis (scores never committed; flagship TTY evidence captured on the
+  non-TTY path) and is now explicitly superseded.
+
 ## Remaining
 
-- Runs linter CLI (`optimizexp:lint-runs`): verify pareto-equilibrium claims
-  against committed minimal evidence bundles (scores chain + sha-matched
-  evidence); wire as an `optimizexp:check` lane.
-- Re-certify hobo-code on the rebuilt shell with a real TTY recording.
+- Re-certify hobo-code on the rebuilt shell with a real TTY recording
+  (requires asciinema on a real terminal; unavailable in this environment).
 
 ## Residual (backlog)
 

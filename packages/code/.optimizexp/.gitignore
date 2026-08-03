@@ -19,5 +19,13 @@ features/**/evidence/**/_*.jpg
 Thumbs.db
 *~
 *.swp
+
+# config.gitignore.extra
+features/**/evidence/**/REPLAY.html
+features/**/evidence/**/REPLAY.md
+features/**/evidence/**/terminal.txt
+
+# config.gitignore.negate (force track)
+!features/**/evidence/**/primary.cast
 # END optimizexp-managed
 

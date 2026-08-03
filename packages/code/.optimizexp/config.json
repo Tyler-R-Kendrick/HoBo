@@ -87,7 +87,15 @@
     "ignore": {
       "evidenceMedia": true,
       "osJunk": true
-    }
+    },
+    "extra": [
+      "features/**/evidence/**/REPLAY.html",
+      "features/**/evidence/**/REPLAY.md",
+      "features/**/evidence/**/terminal.txt"
+    ],
+    "negate": [
+      "features/**/evidence/**/primary.cast"
+    ]
   },
   "notes": [
     "Prefer sota-frontier-ai-native-tui-designer for bare TTY/chat chrome, motion, Bo character, GUI-native first 10s.",

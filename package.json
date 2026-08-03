@@ -13,6 +13,7 @@
     "draft:cascade:staged": "node --import tsx scripts/check-proof-cascade.ts --staged",
     "skills:mirror-check": "node --import tsx scripts/check-skill-mirrors.ts",
     "optimizexp:check": "node --import tsx scripts/check-optimizexp.mts",
+    "optimizexp:lint-runs": "node --import tsx .agents/skills/optimizexp/harness/lint-runs.mts --all",
     "test": "pnpm run test:unit",
     "standards:check": "node --import tsx scripts/check-technical-standards.ts",
     "licenses:check": "node --import tsx scripts/check-licenses.ts",

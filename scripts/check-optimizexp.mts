@@ -27,6 +27,7 @@ import {
 	checkGherkinQuality,
 	checkScenarioBinding,
 } from "../.agents/skills/optimizexp/harness/lib/feature-quality.mts";
+import { lintAllRuns } from "../.agents/skills/optimizexp/harness/lib/run-lint.mts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -236,12 +237,48 @@ function checkCatalogCoverage(): string[] {
 	return problems;
 }
 
+/**
+ * Lane (f): run-claim audit. Runs claiming completion (pareto-equilibrium,
+ * plateau, …) must be backed by a committed minimal evidence bundle — scores
+ * chain with matching sha256s and reviewable cited evidence. Also exposed as
+ * `pnpm run optimizexp:lint-runs`.
+ */
+function checkRuns(): string[] {
+	const tracked = new Set(
+		(
+			spawnSync("git", ["ls-files", "-z", ".optimizexp/runs"], {
+				cwd: root,
+				encoding: "utf8",
+				maxBuffer: 32 * 1024 * 1024,
+			}).stdout ?? ""
+		)
+			.split("\0")
+			.filter((f) => f.length > 0),
+	);
+	const results = lintAllRuns({
+		runsRoot: path.join(root, ".optimizexp", "runs"),
+		repoRoot: root,
+		trackedFiles: tracked,
+	});
+	const failed = results.filter((r) => r.status === "failed");
+	if (failed.length === 0) {
+		const verified = results.filter((r) => r.status === "verified").length;
+		const superseded = results.filter((r) => r.status === "superseded").length;
+		console.log(
+			`run-claims: OK (${results.length} runs · ${verified} verified · ${superseded} superseded)`,
+		);
+		return [];
+	}
+	return failed.flatMap((r) => r.problems.map((p) => `runs/${r.runId}: ${p}`));
+}
+
 const problems = [
 	...checkPersonas(),
 	...checkFeatureQuality(),
 	...checkBus(),
 	...checkProductBinding(),
 	...checkCatalogCoverage(),
+	...checkRuns(),
 ];
 
 if (problems.length > 0) {

@@ -1798,7 +1798,7 @@ export async function runHoboCodeCli(
 			);
 		}
 		const runId = args[0] ?? `run-${Date.now()}`;
-		const ctx = createIsolationContext({
+		const ctx = await createIsolationContext({
 			projectRoot: projectDir,
 			hoboHome,
 			runId,
@@ -1892,7 +1892,7 @@ export async function runHoboCodeCli(
 			{ name: "docs:freshness", pass: true, detail: "ok" },
 		];
 		const isolationRoot = join(hoboHome, "sandboxes", runId);
-		const result = promoteIsolation(
+		const result = await promoteIsolation(
 			{
 				runId,
 				isolationRoot,
@@ -1992,7 +1992,7 @@ export async function runHoboCodeCli(
 			env.HOBO_CODE_EPHEMERAL_SESSION === "1"
 				? mkdtempSync(join(tmpdir(), "hobo-code-session-"))
 				: hoboHome;
-		const session = startCodeSession({
+		const session = await startCodeSession({
 			projectRoot: projectDir,
 			hoboHome: sessionHome,
 			stationId: platform.station.stationId,
@@ -2017,7 +2017,7 @@ export async function runHoboCodeCli(
 					orphans: [] as string[],
 					message: "session kept open",
 				}
-			: session.complete(true, [
+			: await session.complete(true, [
 					"session:demo",
 					`station:${session.platform.station.stationId}`,
 					`provider:${session.platform.provider.id}`,
@@ -2042,7 +2042,7 @@ export async function runHoboCodeCli(
 		}
 		const status = session.status();
 		if (env.HOBO_CODE_EPHEMERAL_SESSION === "1") {
-			cleanupIsolation(session.isolation.runId, {
+			await cleanupIsolation(session.isolation.runId, {
 				hoboHome: sessionHome,
 				ok: true,
 			});
@@ -2161,7 +2161,7 @@ export async function runHoboCodeCli(
 	const prompt = emptyPrompt
 		? "refine scaffold under ponytail pressure"
 		: args.join(" ");
-	const result = dispatchComputeTask({
+	const result = await dispatchComputeTask({
 		hoboHome,
 		poolId,
 		prompt,

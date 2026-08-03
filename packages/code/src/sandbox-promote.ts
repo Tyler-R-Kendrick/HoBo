@@ -37,9 +37,10 @@ export function assertMediatedOnly(agentMayWriteCanonical: boolean): void {
 	}
 }
 
-export function runPromotionGates(
-	gates: readonly PromotionGate[],
-): { ok: boolean; failed: readonly PromotionGate[] } {
+export function runPromotionGates(gates: readonly PromotionGate[]): {
+	ok: boolean;
+	failed: readonly PromotionGate[];
+} {
 	const byName = new Map(gates.map((g) => [g.name, g]));
 	const failed: PromotionGate[] = [];
 	for (const required of REQUIRED_GATES) {
@@ -65,10 +66,10 @@ export function runPromotionGates(
 /**
  * Explicit promotion: gates must pass, squash-only, then mandatory cleanup.
  */
-export function promoteIsolation(
+export async function promoteIsolation(
 	request: PromotionRequest,
 	options: PromoteOptions,
-): PromotionResult {
+): Promise<PromotionResult> {
 	assertMediatedOnly(options.agentMayWriteCanonical === true ? true : false);
 
 	if (request.squashOnly !== true) {
@@ -126,7 +127,7 @@ export function promoteIsolation(
 	);
 
 	// Cleanup ephemeral isolation after audited promote record is durable.
-	const cleanup = cleanupIsolation(request.runId, {
+	const cleanup = await cleanupIsolation(request.runId, {
 		hoboHome: options.hoboHome,
 		ok: true,
 		gates: options.gates.map((g) => `${g.name}:${g.pass ? "pass" : "fail"}`),

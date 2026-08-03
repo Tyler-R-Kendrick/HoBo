@@ -3,13 +3,23 @@
  *
  * Architecture (ADR note in ARCHITECTURE.md):
  * - **This module owns chrome** (header/Bo, chat, tasks, slash, footer).
- * - Pi is **not** the product UI. Optional engine via `HOBO_CODE_TUI=pi` only.
+ * - Rendering rides pi-tui's differential renderer (`@earendil-works/pi-tui`)
+ *   as a library — HoBo still owns every visible line; Pi is not the product UI.
+ * - Frames repaint only when state changes; idle Bo ticks that resolve to the
+ *   same sprite frame request no render at all.
  *
- * Pure frame rendering is unit-tested. The run loop is a thin TTY driver.
+ * Pure frame rendering + key reduction are unit-tested. The run loop is a
+ * thin driver over TUI + StreamTerminal.
  */
 
 import type { Readable, Writable } from "node:stream";
+import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
+import { inspectCost } from "./cost.js";
+import { buildTasksSurface } from "./grok-build-parity.js";
+import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
+import { StreamTerminal } from "./shell-terminal.js";
 import {
+	BO_CELL_HEIGHT,
 	BO_IDLE_TICK_MS,
 	HOBO_LOGO_CONSOLE,
 	HOBO_MARK_CONSOLE,
@@ -17,11 +27,7 @@ import {
 	renderBoIdleFrame,
 	selectBoIdleFrame,
 } from "./splash.js";
-import { buildTasksSurface } from "./grok-build-parity.js";
-import { createPane, buildMultiplexerStatus, renderStatusText } from "./tui.js";
-import { inspectHermeticEnv, hermeticEnvSummary } from "./hermetic-env.js";
-import { inspectCost } from "./cost.js";
-import { inspectModels } from "./models.js";
+import { buildMultiplexerStatus, createPane, renderStatusText } from "./tui.js";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -41,7 +47,7 @@ export interface ShellSlashItem {
 	/** When set, shell invokes this CLI argv via the host callback. */
 	readonly argv?: readonly string[];
 	/** Built-in action id when not a CLI verb. */
-	readonly action?: "help" | "clear" | "quit" | "guide-hint";
+	readonly action?: "help" | "about" | "clear" | "quit" | "guide-hint";
 }
 
 export interface InteractiveShellState {
@@ -57,6 +63,8 @@ export interface InteractiveShellState {
 	readonly slashOpen: boolean;
 	readonly slashFilter: string;
 	readonly slashIndex: number;
+	/** Lines scrolled up from the bottom of the chat transcript. */
+	readonly chatScroll: number;
 	readonly statusPlain: string;
 	readonly tasksPlain: string;
 	readonly footerHints: string;
@@ -74,24 +82,68 @@ export interface RenderShellOptions {
 
 export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 	{ name: "help", description: "Shell keys + product map", action: "help" },
-	{ name: "guide", description: "Claude Code → hobo-code map", argv: ["guide"] },
-	{ name: "cursor", description: "Cursor → hobo-code map", argv: ["guide", "--cursor"] },
+	{
+		name: "about",
+		description: "What this shell is (and is not)",
+		action: "about",
+	},
+	{
+		name: "guide",
+		description: "Claude Code → hobo-code map",
+		argv: ["guide"],
+	},
+	{
+		name: "cursor",
+		description: "Cursor → hobo-code map",
+		argv: ["guide", "--cursor"],
+	},
 	{ name: "agent", description: "Agent-native inventory", argv: ["agent"] },
 	{ name: "config", description: "Setup / stack inventory", argv: ["config"] },
 	{ name: "cost", description: "$0 path + budget + savings", argv: ["cost"] },
 	{ name: "status", description: "Session / agent panes", argv: ["status"] },
 	{ name: "tasks", description: "Background task board", argv: ["tasks"] },
-	{ name: "env", description: "Hermetic shell + durable layout", argv: ["env"] },
-	{ name: "auth", description: "Station auth status", argv: ["auth", "status"] },
-	{ name: "login", description: "Human-free local login", argv: ["auth", "login", "--agent"] },
-	{ name: "models", description: "Model + BYOK (no secrets)", argv: ["models"] },
-	{ name: "harness", description: "Pi engine / Flue dual surface", argv: ["harness"] },
-	{ name: "attach", description: "tmux/mosh/Tailscale-shaped attach", argv: ["attach"] },
+	{
+		name: "env",
+		description: "Hermetic shell + durable layout",
+		argv: ["env"],
+	},
+	{
+		name: "auth",
+		description: "Station auth status",
+		argv: ["auth", "status"],
+	},
+	{
+		name: "login",
+		description: "Human-free local login",
+		argv: ["auth", "login", "--agent"],
+	},
+	{
+		name: "models",
+		description: "Model + BYOK (no secrets)",
+		argv: ["models"],
+	},
+	{
+		name: "harness",
+		description: "Pi engine / Flue dual surface",
+		argv: ["harness"],
+	},
+	{
+		name: "attach",
+		description: "tmux/mosh/Tailscale-shaped attach",
+		argv: ["attach"],
+	},
 	{ name: "clear", description: "Clear chat transcript", action: "clear" },
 	{ name: "quit", description: "Exit hobo-code shell", action: "quit" },
 ] as const;
 
+/**
+ * Product identity claim. Shown in `/about` and `/help` only — never printed
+ * on frames or replies (branding in the answer channel is noise).
+ */
 export const PRODUCT_NOT_PI = "hobo-code · HoBo shell (not stock Pi Agent)";
+
+/** Footer engine label until a real completion engine is wired (Slice 2). */
+export const ENGINE_NONE_LABEL = "engine:none · dispatch-only";
 
 // ── Pure helpers ─────────────────────────────────────────────────────────
 
@@ -119,17 +171,93 @@ function wrapText(text: string, width: number): string[] {
 	return out;
 }
 
-function filterSlash(
+/** Per-message wrap cache — messages are immutable, so re-wrapping the whole
+ * transcript on every frame is pure waste. Keyed by message object. */
+const wrapCache = new WeakMap<
+	ShellMessage,
+	{ readonly width: number; readonly lines: readonly string[] }
+>();
+
+function messagePrefix(role: ShellMessage["role"]): string {
+	return role === "user"
+		? "you · "
+		: role === "assistant"
+			? "Bo  · "
+			: role === "product"
+				? "··· · "
+				: "sys · ";
+}
+
+function wrapMessage(m: ShellMessage, width: number): readonly string[] {
+	const hit = wrapCache.get(m);
+	if (hit && hit.width === width) return hit.lines;
+	const lines = wrapText(messagePrefix(m.role) + m.text, width);
+	wrapCache.set(m, { width, lines });
+	return lines;
+}
+
+export function filterSlash(
 	items: readonly ShellSlashItem[],
 	filter: string,
 ): ShellSlashItem[] {
 	const f = filter.trim().toLowerCase().replace(/^\//, "");
 	if (!f) return [...items];
 	return items.filter(
-		(i) =>
-			i.name.includes(f) ||
-			i.description.toLowerCase().includes(f),
+		(i) => i.name.includes(f) || i.description.toLowerCase().includes(f),
 	);
+}
+
+/**
+ * Split raw terminal input into atomic key sequences: escape sequences
+ * (CSI/SS3/paste blocks) stay whole, printable runs stay whole, single
+ * control characters come out alone. Mirrors StdinBuffer's contract for
+ * scripted/test input.
+ */
+export function splitKeySequences(data: string): string[] {
+	const out: string[] = [];
+	let i = 0;
+	while (i < data.length) {
+		const ch = data[i]!;
+		if (ch === "\x1b") {
+			// Bracketed paste block: keep marker + content + end marker whole
+			if (data.startsWith("\x1b[200~", i)) {
+				const end = data.indexOf("\x1b[201~", i + 6);
+				if (end >= 0) {
+					out.push(data.slice(i, end + 6));
+					i = end + 6;
+					continue;
+				}
+			}
+			// CSI: ESC [ params final-byte (0x40–0x7e)
+			if (data[i + 1] === "[") {
+				let j = i + 2;
+				while (j < data.length && !(data[j]! >= "@" && data[j]! <= "~")) j += 1;
+				out.push(data.slice(i, Math.min(j + 1, data.length)));
+				i = j + 1;
+				continue;
+			}
+			// SS3: ESC O final
+			if (data[i + 1] === "O" && i + 2 < data.length) {
+				out.push(data.slice(i, i + 3));
+				i += 3;
+				continue;
+			}
+			out.push(ch);
+			i += 1;
+			continue;
+		}
+		if (ch < " " || ch === "\u007f") {
+			out.push(ch);
+			i += 1;
+			continue;
+		}
+		// Printable run
+		let j = i;
+		while (j < data.length && data[j]! >= " " && data[j] !== "\u007f") j += 1;
+		out.push(data.slice(i, j));
+		i = j;
+	}
+	return out;
 }
 
 /**
@@ -167,7 +295,6 @@ export function createInitialShellState(
 		env,
 	});
 	const cost = inspectCost(env);
-	const models = inspectModels(env);
 
 	const panes = [
 		createPane("coord", "idle", ""),
@@ -195,16 +322,11 @@ export function createInitialShellState(
 			? []
 			: [
 					{
-						role: "system",
-						text: PRODUCT_NOT_PI,
-						at: Date.now(),
-					},
-					{
 						role: "product",
 						text: [
-							"Bo is with you — this is HoBo product chrome, not stock Pi Agent.",
-							"Start: type a build prompt · or /guide (Claude map) · /config · /cost · /tasks",
-							"Hermetic/nix: /env · Budget: footer chip · Keys: Tab · / · ? · Ctrl+C",
+							"Bo is with you. Type a prompt to queue a build task — no completion engine is wired yet, so prompts are recorded as dispatch tasks (see /about).",
+							"Start: /guide (Claude map) · /config · /cost · /tasks · /env",
+							"Keys: Tab panes · / commands · ↑/↓ + PgUp/PgDn scroll · ? help · Ctrl+C quit",
 						].join("\n"),
 						at: Date.now(),
 					},
@@ -223,10 +345,11 @@ export function createInitialShellState(
 		slashOpen: false,
 		slashFilter: "",
 		slashIndex: 0,
+		chatScroll: 0,
 		statusPlain,
 		tasksPlain,
 		footerHints: "Tab focus · / slash · ? help · Ctrl+C quit",
-		modelLabel: models.activeModel,
+		modelLabel: ENGINE_NONE_LABEL,
 		costLabel: `$${cost.budget.spendUsd.toFixed(2)}/$${cost.budget.capUsd.toFixed(2)} · ${cost.budget.routingPolicy}`,
 		hermeticLabel: hermeticEnvSummary(hermetic).split("\n")[0] ?? "env",
 		productTitle: "hobo-code",
@@ -234,41 +357,50 @@ export function createInitialShellState(
 	};
 }
 
+/** Bo header rows for the current geometry: full sprite on tall terminals,
+ * body crop (rows 6–13 — the part with Bo in it) on standard ones, none when
+ * dense or too short. The old top-crop showed rows 0–5, which are mostly
+ * empty sky — that read as noise, not a mascot. */
+function boHeaderRows(state: InteractiveShellState): string[] {
+	if (state.dense) return [];
+	if (state.height < 24) return [];
+	const frame = selectBoIdleFrame({
+		tickMs: state.tickMs,
+		reducedMotion: state.reducedMotion,
+	});
+	const rows = renderBoIdleFrame(frame).split("\n");
+	const slice = state.height >= 36 ? rows : rows.slice(6, BO_CELL_HEIGHT);
+	return slice.map((row) =>
+		padLine(row.trimEnd().slice(0, state.width), state.width),
+	);
+}
+
 /**
  * Render one full-screen frame. Fixed structure for tests:
- * header (logo+Bo) · identity line · body (chat|tasks|status|slash) · input · footer.
+ * header (logo+Bo) · status line · body (chat|tasks|status|slash) · input · footer.
+ * Geometry is stable for a given (width, height, dense) — animation frames
+ * only change the Bo rows' bytes, never the line count.
  */
 export function renderShellFrame(state: InteractiveShellState): string {
 	const w = state.width;
 	const lines: string[] = [];
 
-	// Header: compact mark + Bo (dense: mark only strip)
-	const frame = selectBoIdleFrame({
-		tickMs: state.tickMs,
-		reducedMotion: state.reducedMotion,
-	});
-	const bo = renderBoIdleFrame(frame);
 	const logo = state.dense ? HOBO_MARK_CONSOLE : HOBO_LOGO_CONSOLE;
 	for (const row of logo.split("\n")) {
 		lines.push(padLine(row, w));
 	}
-	// Bo: take up to 6 lines of sprite, pad to width
-	const boRows = bo.split("\n").slice(0, state.dense ? 0 : 6);
-	for (const row of boRows) {
-		lines.push(padLine(row.trimEnd().slice(0, w), w));
-	}
+	lines.push(...boHeaderRows(state));
 
-	lines.push(padLine(PRODUCT_NOT_PI, w));
 	lines.push(
 		padLine(
-			`${state.productTitle} · ${state.engineLabel} · agent:${state.agentState} · focus:${state.focus}`,
+			`${state.productTitle} · ${state.engineLabel} · agent:${state.agentState} · focus:${state.focus}${state.chatScroll > 0 ? ` · ↑${state.chatScroll}` : ""}`,
 			w,
 		),
 	);
 	lines.push(padLine("─".repeat(Math.min(w, 40)), w));
 
-	// Body budget
-	const reserved = lines.length + 4; // input + footer + blanks
+	// Body budget: header + separator above, separator + input + footer + hints below
+	const reserved = lines.length + 4;
 	const bodyH = Math.max(4, state.height - reserved);
 
 	let bodyLines: string[] = [];
@@ -289,23 +421,17 @@ export function renderShellFrame(state: InteractiveShellState): string {
 	} else if (state.focus === "status") {
 		bodyLines = wrapText(state.statusPlain, w).map((l) => padLine(l, w));
 	} else {
-		// chat transcript (last N lines)
+		// chat transcript: cached per-message wraps, scrollable window
 		const chat: string[] = [];
 		for (const m of state.messages) {
-			const prefix =
-				m.role === "user"
-					? "you · "
-					: m.role === "assistant"
-						? "Bo  · "
-						: m.role === "product"
-							? "··· · "
-							: "sys · ";
-			for (const row of wrapText(prefix + m.text, w)) {
+			for (const row of wrapMessage(m, w)) {
 				chat.push(padLine(row, w));
 			}
 			chat.push(padLine("", w));
 		}
-		bodyLines = chat.slice(-bodyH);
+		const scroll = clamp(state.chatScroll, 0, Math.max(0, chat.length - bodyH));
+		const end = chat.length - scroll;
+		bodyLines = chat.slice(Math.max(0, end - bodyH), end);
 	}
 
 	while (bodyLines.length < bodyH) bodyLines.push(padLine("", w));
@@ -325,7 +451,6 @@ export function renderShellFrame(state: InteractiveShellState): string {
 	);
 	lines.push(padLine(state.footerHints, w));
 
-	// Guarantee no "pi agent" product chrome tokens in owned frame
 	return lines.join("\n");
 }
 
@@ -340,7 +465,8 @@ export function shellFrameIdentity(frame: string): {
 	const lower = frame.toLowerCase();
 	return {
 		isHoboShell: frame.includes("hobo-shell") && frame.includes("hobo-code"),
-		claimsNotPi: frame.includes(PRODUCT_NOT_PI) || lower.includes("not stock pi"),
+		claimsNotPi:
+			frame.includes(PRODUCT_NOT_PI) || lower.includes("not stock pi"),
 		hasBoArt: /[▀▄█]/.test(frame) || frame.includes(HOBO_MARK_CONSOLE),
 		hasPrompt: frame.includes("❯"),
 		// Stock Pi product chrome phrases we must not show as our UI
@@ -351,13 +477,41 @@ export function shellFrameIdentity(frame: string): {
 	};
 }
 
+const PASTE_START = "\x1b[200~";
+const PASTE_END = "\x1b[201~";
+
 export function reduceShellKey(
 	state: InteractiveShellState,
 	key: string,
-): { readonly state: InteractiveShellState; readonly quit?: boolean; readonly submit?: string; readonly slash?: ShellSlashItem } {
+): {
+	readonly state: InteractiveShellState;
+	readonly quit?: boolean;
+	readonly submit?: string;
+	readonly slash?: ShellSlashItem;
+} {
 	// Ctrl+C
 	if (key === "\u0003") {
 		return { state, quit: true };
+	}
+	// Bracketed paste — insert content as one edit (newlines become spaces;
+	// control characters dropped so pasted escapes can't corrupt the input line)
+	if (key.startsWith(PASTE_START)) {
+		const content = key
+			.slice(
+				PASTE_START.length,
+				key.endsWith(PASTE_END) ? -PASTE_END.length : undefined,
+			)
+			.replace(/\r?\n/g, " ")
+			// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping controls is the point
+			.replace(/[\x00-\x1f\x7f]/g, "");
+		if (!content) return { state };
+		if (state.slashOpen) {
+			const f = state.slashFilter + content;
+			return {
+				state: { ...state, slashFilter: f, slashIndex: 0, input: `/${f}` },
+			};
+		}
+		return { state: { ...state, input: state.input + content } };
 	}
 	// Esc
 	if (key === "\u001b") {
@@ -374,6 +528,33 @@ export function reduceShellKey(
 			};
 		}
 		return { state };
+	}
+	// Arrow up/down — slash palette navigation, or chat scroll
+	if (matchesKey(key, "up") || matchesKey(key, "down")) {
+		const dirUp = matchesKey(key, "up");
+		if (state.slashOpen) {
+			const count = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter).length;
+			if (count === 0) return { state };
+			const next = clamp(state.slashIndex + (dirUp ? -1 : 1), 0, count - 1);
+			return { state: { ...state, slashIndex: next } };
+		}
+		if (state.focus === "chat" && state.input.length === 0) {
+			return {
+				state: {
+					...state,
+					chatScroll: Math.max(0, state.chatScroll + (dirUp ? 1 : -1)),
+				},
+			};
+		}
+		return { state };
+	}
+	// PgUp/PgDn — chat scroll (clamped against content at render time)
+	if (matchesKey(key, "pageUp") || matchesKey(key, "pageDown")) {
+		if (state.focus !== "chat" || state.slashOpen) return { state };
+		const delta = matchesKey(key, "pageUp") ? 5 : -5;
+		return {
+			state: { ...state, chatScroll: Math.max(0, state.chatScroll + delta) },
+		};
 	}
 	// Tab — cycle focus
 	if (key === "\t") {
@@ -395,22 +576,21 @@ export function reduceShellKey(
 			role: "product",
 			text: [
 				"hobo-code shell help",
-				"  Type a prompt to build with Bo.",
-				"  / opens slash palette (guide, config, cost, tasks, …).",
-				"  Tab cycles Chat → Tasks → Status.",
-				"  This is HoBo chrome — not stock Pi Agent UI.",
+				"  Type a prompt to queue a build task (see /about for what runs it).",
+				"  / opens the slash palette (↑/↓ to pick, Enter to run).",
+				"  Tab cycles Chat → Tasks → Status. ↑/↓ or PgUp/PgDn scroll chat.",
 			].join("\n"),
 			at: Date.now(),
 		};
 		return {
-			state: { ...state, messages: [...state.messages, help] },
+			state: { ...state, messages: [...state.messages, help], chatScroll: 0 },
 		};
 	}
 	// Enter
 	if (key === "\r" || key === "\n") {
 		if (state.slashOpen) {
 			const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
-			const item = items[state.slashIndex];
+			const item = items[state.slashIndex] ?? items[0];
 			if (!item) {
 				return {
 					state: {
@@ -429,6 +609,7 @@ export function reduceShellKey(
 					slashIndex: 0,
 					input: "",
 					focus: "chat",
+					chatScroll: 0,
 				},
 				slash: item,
 			};
@@ -440,12 +621,24 @@ export function reduceShellKey(
 			const item = DEFAULT_SLASH_ITEMS.find((i) => i.name === name);
 			if (item) {
 				return {
-					state: { ...state, input: "", slashOpen: false, slashFilter: "" },
+					state: {
+						...state,
+						input: "",
+						slashOpen: false,
+						slashFilter: "",
+						chatScroll: 0,
+					},
 					slash: item,
 				};
 			}
 			return {
-				state: { ...state, input: "", slashOpen: false, slashFilter: "" },
+				state: {
+					...state,
+					input: "",
+					slashOpen: false,
+					slashFilter: "",
+					chatScroll: 0,
+				},
 				submit: text,
 			};
 		}
@@ -453,10 +646,8 @@ export function reduceShellKey(
 			state: {
 				...state,
 				input: "",
-				messages: [
-					...state.messages,
-					{ role: "user", text, at: Date.now() },
-				],
+				chatScroll: 0,
+				messages: [...state.messages, { role: "user", text, at: Date.now() }],
 				agentState: "working",
 			},
 			submit: text,
@@ -477,9 +668,8 @@ export function reduceShellKey(
 		}
 		return { state: { ...state, input: state.input.slice(0, -1) } };
 	}
-	// Arrow up/down in slash (CSI A/B) — simplified: ignore multi-byte for v1 except we get single chars
-	// Printable
-	if (key.length === 1 && key >= " ") {
+	// Printable run (single keystroke or fallback paste) — no control chars
+	if (key.length >= 1 && !key.includes("\x1b") && key >= " ") {
 		if (key === "/" && state.input.length === 0 && !state.slashOpen) {
 			return {
 				state: {
@@ -505,6 +695,7 @@ export function reduceShellKey(
 		}
 		return { state: { ...state, input: state.input + key } };
 	}
+	// Unrecognized escape sequences must never leak into the input line
 	return { state };
 }
 
@@ -516,10 +707,8 @@ export function appendAssistant(
 	return {
 		...state,
 		agentState,
-		messages: [
-			...state.messages,
-			{ role: "assistant", text, at: Date.now() },
-		],
+		chatScroll: 0,
+		messages: [...state.messages, { role: "assistant", text, at: Date.now() }],
 	};
 }
 
@@ -529,10 +718,8 @@ export function appendProduct(
 ): InteractiveShellState {
 	return {
 		...state,
-		messages: [
-			...state.messages,
-			{ role: "product", text, at: Date.now() },
-		],
+		chatScroll: 0,
+		messages: [...state.messages, { role: "product", text, at: Date.now() }],
 	};
 }
 
@@ -559,11 +746,19 @@ export interface RunInteractiveShellOptions {
 	readonly maxMs?: number;
 	/** Inject keys for tests (skips raw mode). */
 	readonly scriptedKeys?: string;
+	/** Test hook: receives the terminal for repaint-economy assertions. */
+	readonly onTerminal?: (terminal: StreamTerminal) => void;
 }
 
 /**
- * Default host: one-shot CLI verbs + dispatch-shaped complete via runHoboCodeCli.
- * Injected from bin to avoid circular imports at module load in tests.
+ * Interactive driver: pi-tui differential renderer over StreamTerminal.
+ *
+ * Render economy contract (asserted by test/render-budget.test.ts):
+ * - a repaint happens only when state changes (key, submit result, resize,
+ *   or a Bo sprite frame that differs from the previous one);
+ * - idle rest spans request no renders at all;
+ * - unchanged lines are never rewritten (pi-tui line diff);
+ * - the transcript survives exit — no alternate screen.
  */
 export async function runInteractiveShell(
 	options: RunInteractiveShellOptions,
@@ -572,13 +767,21 @@ export async function runInteractiveShell(
 	const stdout = options.stdout ?? process.stdout;
 	const isTty =
 		"isTTY" in stdin &&
-		stdin.isTTY === true &&
+		(stdin as NodeJS.ReadStream).isTTY === true &&
 		"isTTY" in stdout &&
-		stdout.isTTY === true;
+		(stdout as NodeJS.WriteStream).isTTY === true;
 
 	let state = createInitialShellState({
-		width: "columns" in stdout && typeof stdout.columns === "number" ? stdout.columns : 80,
-		height: "rows" in stdout && typeof stdout.rows === "number" ? stdout.rows : 24,
+		width:
+			"columns" in stdout &&
+			typeof (stdout as NodeJS.WriteStream).columns === "number"
+				? (stdout as NodeJS.WriteStream).columns
+				: 80,
+		height:
+			"rows" in stdout &&
+			typeof (stdout as NodeJS.WriteStream).rows === "number"
+				? (stdout as NodeJS.WriteStream).rows
+				: 24,
 		...(options.dense !== undefined ? { dense: options.dense } : {}),
 		...(options.reducedMotion !== undefined
 			? { reducedMotion: options.reducedMotion }
@@ -588,46 +791,63 @@ export async function runInteractiveShell(
 		...(options.env !== undefined ? { env: options.env } : {}),
 	});
 
-	const write = (s: string) => {
-		stdout.write(s);
-	};
-
-	const paint = () => {
-		const frame = renderShellFrame({ ...state, tickMs: state.tickMs });
-		if (isTty) {
-			// alt screen home + paint
-			write(`\x1b[H\x1b[J${frame}`);
-		} else {
-			write(`${frame}\n`);
-		}
-	};
+	const terminal = new StreamTerminal({
+		stdin,
+		stdout,
+		columns: state.width,
+		rows: state.height,
+		rawMode: isTty && options.scriptedKeys === undefined,
+	});
+	options.onTerminal?.(terminal);
+	const tui = new TUI(terminal, false);
 
 	let quit = false;
-	const started = Date.now();
+	let resolveDone!: () => void;
+	const done = new Promise<void>((resolve) => {
+		resolveDone = resolve;
+	});
+	const requestQuit = () => {
+		if (quit) return;
+		quit = true;
+		resolveDone();
+	};
 
 	const applySlash = async (item: ShellSlashItem) => {
 		if (item.action === "quit") {
-			quit = true;
+			requestQuit();
 			return;
 		}
 		if (item.action === "clear") {
-			state = { ...state, messages: [] };
+			state = { ...state, messages: [], chatScroll: 0 };
 			return;
 		}
 		if (item.action === "help") {
 			state = appendProduct(
 				state,
 				[
-					"Slash: /guide /config /cost /tasks /status /agent /env /auth /login /quit",
-					"Chat: type a prompt and Enter — Bo dispatches app-building work.",
+					"Slash: /guide /config /cost /tasks /status /agent /env /auth /login /about /quit",
+					"Chat: type a prompt and Enter — it is queued as a dispatch task (/about).",
+					"Keys: Tab panes · ↑/↓ pick + scroll · PgUp/PgDn scroll · Ctrl+C quit",
+				].join("\n"),
+			);
+			return;
+		}
+		if (item.action === "about") {
+			state = appendProduct(
+				state,
+				[
 					PRODUCT_NOT_PI,
+					"This shell is HoBo product chrome over the hobo-code CLI.",
+					"Prompts queue dispatch tasks; no completion engine is wired yet",
+					"(footer shows engine:none until one lands). Pi remains an opt-in",
+					"engine via `hobo-code --pi` — never the product UI.",
 				].join("\n"),
 			);
 			return;
 		}
 		if (item.argv) {
 			state = { ...state, agentState: "working" };
-			paint();
+			tui.requestRender();
 			try {
 				const text = await options.host.runVerb(item.argv);
 				state = appendProduct(state, text.slice(0, 4000));
@@ -638,17 +858,16 @@ export async function runInteractiveShell(
 				);
 			}
 			state = { ...state, agentState: "idle" };
-			return;
 		}
 	};
 
 	const onSubmit = async (prompt: string) => {
-		state = { ...state, agentState: "working" };
-		paint();
 		try {
 			const text = await options.host.complete(prompt);
+			if (quit) return;
 			state = appendAssistant(state, text.slice(0, 8000), "idle");
 		} catch (err) {
+			if (quit) return;
 			state = appendAssistant(
 				state,
 				`Could not complete: ${err instanceof Error ? err.message : String(err)}`,
@@ -657,81 +876,86 @@ export async function runInteractiveShell(
 		}
 	};
 
-	if (isTty && "setRawMode" in stdin && typeof stdin.setRawMode === "function") {
-		stdin.setRawMode(true);
-	}
-	if ("resume" in stdin) stdin.resume();
-
-	if (isTty) {
-		write("\x1b[?1049h\x1b[?25l"); // alt screen, hide cursor
-	}
-
-	const tick = setInterval(() => {
+	const handleKey = (sequence: string) => {
 		if (quit) return;
-		state = { ...state, tickMs: Date.now() - started };
-		if (!state.reducedMotion) paint();
-	}, BO_IDLE_TICK_MS);
-
-	paint();
-
-	const handleChunk = async (chunk: Buffer | string) => {
-		const s = typeof chunk === "string" ? chunk : chunk.toString("utf8");
-		for (const ch of s) {
-			if (quit) return;
-			const result = reduceShellKey(state, ch);
-			state = result.state;
-			if (result.quit) {
-				quit = true;
-				return;
-			}
-			if (result.slash) {
-				await applySlash(result.slash);
-			}
-			if (result.submit && !result.slash) {
-				await onSubmit(result.submit);
-			}
-			paint();
+		const result = reduceShellKey(state, sequence);
+		state = result.state;
+		if (result.quit) {
+			requestQuit();
+			return;
 		}
+		if (result.slash) {
+			void applySlash(result.slash).then(() => {
+				if (!quit) tui.requestRender();
+			});
+		} else if (result.submit) {
+			void onSubmit(result.submit).then(() => {
+				if (!quit) tui.requestRender();
+			});
+		}
+		tui.requestRender();
 	};
 
-	if (options.scriptedKeys !== undefined) {
-		await handleChunk(options.scriptedKeys);
-		quit = true;
-	} else {
-		await new Promise<void>((resolve) => {
-			const onData = (c: Buffer) => {
-				void handleChunk(c).then(() => {
-					if (quit) cleanup();
-				});
-			};
-			const cleanup = () => {
-				stdin.removeListener("data", onData);
-				clearInterval(tick);
-				resolve();
-			};
-			stdin.on("data", onData);
-			if (options.maxMs) {
-				setTimeout(() => {
-					quit = true;
-					cleanup();
-				}, options.maxMs).unref();
+	const view: Component = {
+		render(width: number): string[] {
+			const w = clamp(width, 40, 200);
+			const h = clamp(terminal.rows, 12, 80);
+			if (w !== state.width || h !== state.height) {
+				state = { ...state, width: w, height: h };
 			}
-			// When quit set from handler
-			const watch = setInterval(() => {
-				if (quit) {
-					clearInterval(watch);
-					cleanup();
-				}
-			}, 50);
-		});
+			return renderShellFrame(state).split("\n");
+		},
+		invalidate(): void {},
+		handleInput(data: string): void {
+			handleKey(data);
+		},
+	};
+
+	tui.addChild(view);
+	tui.setFocus(view);
+	tui.start();
+
+	// Idle animation: request a repaint only when the sprite frame actually
+	// changes. Rest spans (15 of 26 ticks) request nothing.
+	const started = Date.now();
+	let lastBoFrame = selectBoIdleFrame({
+		tickMs: 0,
+		reducedMotion: state.reducedMotion,
+	});
+	const tick = setInterval(() => {
+		if (quit || state.reducedMotion) return;
+		const tickMs = Date.now() - started;
+		const frame = selectBoIdleFrame({ tickMs, reducedMotion: false });
+		if (frame === lastBoFrame) return;
+		lastBoFrame = frame;
+		state = { ...state, tickMs };
+		tui.requestRender();
+	}, BO_IDLE_TICK_MS);
+	tick.unref?.();
+
+	let maxMsTimer: NodeJS.Timeout | undefined;
+	if (options.maxMs !== undefined) {
+		maxMsTimer = setTimeout(requestQuit, options.maxMs);
+		maxMsTimer.unref?.();
 	}
 
+	if (options.scriptedKeys !== undefined) {
+		for (const sequence of splitKeySequences(options.scriptedKeys)) {
+			if (quit) break;
+			handleKey(sequence);
+			// Let submit/slash promises and render scheduling settle per key.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		}
+		// Allow the final coalesced render to flush before stopping.
+		await new Promise((resolve) => setTimeout(resolve, 40));
+		requestQuit();
+	}
+
+	await done;
 	clearInterval(tick);
-	if (isTty) {
-		write("\x1b[?25h\x1b[?1049l");
-	}
-	if (isTty && "setRawMode" in stdin && typeof stdin.setRawMode === "function") {
-		stdin.setRawMode(false);
-	}
+	if (maxMsTimer) clearTimeout(maxMsTimer);
+	// No alternate screen: TUI.stop() parks the cursor after the last frame,
+	// so the session's final view stays in the terminal scrollback.
+	tui.stop();
 	return 0;
 }

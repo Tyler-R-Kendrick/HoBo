@@ -27,13 +27,19 @@ On a real TTY, bare `hobo-code` opens the **HoBo InteractiveShell** (product chr
 
 | In the shell | What it is |
 |---|---|
-| Header | HoBo logo + animated **Bo** mascot |
-| Chat | Transcript · type a build prompt · Enter |
-| `/` slash | `guide` `config` `cost` `tasks` `status` `agent` `env` `auth` … |
+| Header | HoBo logo + animated **Bo** mascot (differential render — no flicker; reduced motion honored) |
+| Chat | Transcript · type a build prompt · Enter · `↑/↓` + `PgUp/PgDn` scroll |
+| `/` slash | `guide` `config` `cost` `tasks` `status` `agent` `env` `auth` `about` … (`↑/↓` pick) |
 | Tab | Cycle **Chat → Tasks → Status** |
-| Footer | model · budget · hermetic env cue |
+| Footer | engine · budget · hermetic env cue |
 
-This is **not** stock Pi Agent UI. Escape hatch only: `HOBO_CODE_TUI=pi` or `hobo-code --pi`.
+Rendering rides pi-tui's differential renderer as a library — HoBo owns the
+chrome (see `ARCHITECTURE.md` for the render-economy contract). The shell is
+honest about the agent loop: **prompts queue dispatch compute tasks; no
+completion engine acts on them yet**, the footer reads `engine:none ·
+dispatch-only`, and every reply names the recorded task plus the one-shot
+command equivalent. Product identity lives in `/about` (not stock Pi Agent
+UI; escape hatch only: `HOBO_CODE_TUI=pi` or `hobo-code --pi`).
 
 When stdin is not a TTY, an empty invocation fails closed with
 `HOBO_CODE_INTERACTIVE_REQUIRED` and prints `hobo-code help` plus the prompt

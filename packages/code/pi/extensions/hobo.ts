@@ -6,7 +6,7 @@
  * Loaded by the hobo-code bin via `pi --no-extensions -e <this file>`
  * (pi compiles TS extensions with jiti — no build step for this file).
  */
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 

@@ -16,6 +16,20 @@ Pi may still be used as a **completion engine** later; it must not be the
 product frame. Optimizexp / persona reviews that only score one-shot verbs
 while bare TTY is stock Pi are **invalid**.
 
+**pi-tui is a rendering library, not a product frame.** The shell drives
+`@earendil-works/pi-tui`'s differential renderer (`TUI` + `StreamTerminal`
+adapter in `src/shell-terminal.ts`) while HoBo owns every visible line of
+chrome. Render-economy contract (pinned by `test/render-budget.test.ts`):
+
+- repaint only on state change — idle Bo rest ticks request no render;
+- unchanged lines are never rewritten (line diff); no full-screen erases;
+- input is decoded as atomic sequences (arrows, bracketed paste, resize);
+- isolation/dispatch runs on async spawn so the loop never blocks a turn;
+- no alternate screen — the transcript survives exit;
+- replies are honest: a dispatch turn *records a compute task*; until a
+  completion engine is wired the footer says `engine:none · dispatch-only`
+  and no reply claims an agent acted.
+
 ```
 hobo-code (standalone binary; dispatch default)
     │

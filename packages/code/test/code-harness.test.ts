@@ -1,46 +1,52 @@
-import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-	HOBO_CODE_PACKAGE,
-	ISOLATION_PLATFORM_MATRIX,
+	applyInContextEdit,
 	assertEvidenceTripleComplete,
 	assertNoVendoredTokenTools,
 	buildMultiplexerStatus,
 	cleanupIsolation,
 	copyOnHighlight,
 	createBudgetTracker,
-	herdrMuxCapabilities,
-	renderHerdrCapabilityFooter,
 	createHarnessCore,
 	createIsolationContext,
 	createOpenUiSession,
 	createPane,
 	demonstrateDurability,
+	describeDevTerminalAttach,
 	dogfoodSummary,
 	emitEvidenceTriple,
+	HOBO_CODE_PACKAGE,
+	herdrMuxCapabilities,
+	ISOLATION_PLATFORM_MATRIX,
 	linkGherkinToOpenFeature,
 	listSandboxOrphans,
 	lockVisualArtifact,
-	applyInContextEdit,
 	measureTemplateSuccessRate,
 	parseEvidenceTriple,
 	parseIsolationContext,
 	parsePromotionRequest,
 	promoteIsolation,
-	describeDevTerminalAttach,
 	registerCodeNamedEndpoint,
+	renderHerdrCapabilityFooter,
 	renderStatusText,
 	resetIsolationRegistry,
+	routeProvider,
 	runRhaiSubset,
 	scaffoldHighValueTemplate,
 	sponsoredWaitState,
 	startCodeSession,
 	tsAutocodeConventions,
 	validateLockedVisual,
-	routeProvider,
 } from "../src/index.js";
 
 const temps: string[] = [];
@@ -69,13 +75,13 @@ describe("@hobo/code", () => {
 		expect(() => parseEvidenceTriple({ schemaVersion: "nope" })).toThrow();
 	});
 
-	it("isolation creates worktree fallback and cleans with zero orphans", () => {
+	it("isolation creates worktree fallback and cleans with zero orphans", async () => {
 		const home = tempDir("hobo-code-home-");
 		const project = tempDir("hobo-code-proj-");
 		mkdirSync(join(project, "src"), { recursive: true });
 		writeFileSync(join(project, "README.md"), "proj\n");
 
-		const ctx = createIsolationContext({
+		const ctx = await createIsolationContext({
 			projectRoot: project,
 			hoboHome: home,
 			runId: "run-clean",
@@ -88,7 +94,7 @@ describe("@hobo/code", () => {
 		expect(existsSync(ctx.rootPath)).toBe(true);
 		expect(existsSync(ctx.durableRoot)).toBe(true);
 
-		const cleaned = cleanupIsolation("run-clean", {
+		const cleaned = await cleanupIsolation("run-clean", {
 			hoboHome: home,
 			ok: true,
 			gates: ["architecture:guard:pass"],
@@ -100,17 +106,17 @@ describe("@hobo/code", () => {
 		expect(cleaned.handback.ok).toBe(true);
 	});
 
-	it("cleanup on cancel still leaves zero orphans", () => {
+	it("cleanup on cancel still leaves zero orphans", async () => {
 		const home = tempDir("hobo-code-cancel-");
 		const project = tempDir("hobo-code-proj2-");
-		const ctx = createIsolationContext({
+		const ctx = await createIsolationContext({
 			projectRoot: project,
 			hoboHome: home,
 			runId: "run-cancel",
 			forceWorktree: true,
 		});
 		expect(existsSync(ctx.rootPath)).toBe(true);
-		const cleaned = cleanupIsolation("run-cancel", {
+		const cleaned = await cleanupIsolation("run-cancel", {
 			hoboHome: home,
 			ok: false,
 			gates: ["cancelled"],
@@ -133,16 +139,16 @@ describe("@hobo/code", () => {
 		).toBe("rift");
 	});
 
-	it("promotion is gated, squash-only, and cleans isolation", () => {
+	it("promotion is gated, squash-only, and cleans isolation", async () => {
 		const home = tempDir("hobo-code-promo-");
 		const project = tempDir("hobo-code-proj3-");
-		const ctx = createIsolationContext({
+		const ctx = await createIsolationContext({
 			projectRoot: project,
 			hoboHome: home,
 			runId: "run-promo",
 			forceWorktree: true,
 		});
-		const refused = promoteIsolation(
+		const refused = await promoteIsolation(
 			{
 				runId: "run-promo",
 				isolationRoot: ctx.rootPath,
@@ -158,7 +164,7 @@ describe("@hobo/code", () => {
 		expect(refused.ok).toBe(false);
 		expect(refused.code).toBe("HOBO_CODE_PROMOTE_GATES_FAILED");
 
-		const ok = promoteIsolation(
+		const ok = await promoteIsolation(
 			{
 				runId: "run-promo",
 				isolationRoot: ctx.rootPath,
@@ -277,9 +283,9 @@ step "done"
 		expect(validation.ok).toBe(true);
 		expect(validation.hasPrimary).toBe(true);
 		expect(validation.hasBadge).toBe(true);
-		expect(() => applyInContextEdit({ ...session, locked: true }, "nope")).toThrow(
-			/immutable/,
-		);
+		expect(() =>
+			applyInContextEdit({ ...session, locked: true }, "nope"),
+		).toThrow(/immutable/);
 	});
 
 	it("TUI status observes agent state and supports copy-on-highlight", () => {
@@ -339,7 +345,11 @@ step "done"
 				{ provider: "cheap", costUsd: 0.01, capable: true },
 				{ provider: "dear", costUsd: 1, capable: true },
 			],
-			{ capUsd: 5, routingPolicy: "cheapest-capable", monetizationOptIn: false },
+			{
+				capUsd: 5,
+				routingPolicy: "cheapest-capable",
+				monetizationOptIn: false,
+			},
 		);
 		expect(routed).toBe("cheap");
 	});
@@ -362,10 +372,10 @@ step "done"
 		expect(summary.connectivity).toBe(true);
 	});
 
-	it("startCodeSession wires isolation + status + cleanup", () => {
+	it("startCodeSession wires isolation + status + cleanup", async () => {
 		const home = tempDir("hobo-code-sess-");
 		const project = tempDir("hobo-code-sess-proj-");
-		const session = startCodeSession({
+		const session = await startCodeSession({
 			projectRoot: project,
 			hoboHome: home,
 			stationId: "station:local",
@@ -375,7 +385,7 @@ step "done"
 		expect(status.panes.some((p) => p.agentId === "worker")).toBe(true);
 		expect(session.harness.listSkills().length).toBeGreaterThan(0);
 		expect(session.remote.resource).toBe("code");
-		const handback = session.complete(true, ["agent:check:pass"]);
+		const handback = await session.complete(true, ["agent:check:pass"]);
 		expect(handback.isolationStatus).toBe("cleaned");
 		expect(listSandboxOrphans(home)).toEqual([]);
 	});

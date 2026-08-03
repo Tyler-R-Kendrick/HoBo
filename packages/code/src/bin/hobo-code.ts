@@ -34,7 +34,8 @@ const wantPiTui =
 	process.env.HOBO_CODE_TUI === "pi-tui";
 // Strip shell-only flags before CLI / chat detection
 const argv = rawArgv.filter((a) => a !== "--pi");
-const interactive = process.stdout.isTTY === true && process.stdin.isTTY === true;
+const interactive =
+	process.stdout.isTTY === true && process.stdin.isTTY === true;
 const chatVerb = argv[0] === "chat";
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -44,7 +45,7 @@ const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
  */
 function launchPiHarness(): Promise<number> {
 	const piEntry = fileURLToPath(
-		import.meta.resolve("@mariozechner/pi-coding-agent"),
+		import.meta.resolve("@earendil-works/pi-coding-agent"),
 	);
 	const piBin = join(dirname(piEntry), "cli.js");
 	const args = [

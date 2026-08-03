@@ -25,13 +25,21 @@ accents, geometry drift, or a shrinking content area — the first version of
 this shell was a flicker-free *SaaS dashboard* and nothing in the suite could
 tell, so nothing objected.
 
+**Promotion applies before it cleans (`src/sandbox-promote.ts`).** The gate
+carries the sandbox diff into the canonical tree with `git apply --3way
+--index` and only then reclaims the worktree; a failed or empty apply fails
+closed with the sandbox intact. Gates are executed (`src/promotion-gates.ts`),
+not asserted — they were once hardcoded `pass: true`, which made "gated,
+audited" decoration over a literal.
+
 **The engine is local first (`src/ollama-engine.ts`, `src/engine-resolve.ts`).**
 A locally hosted SLM is the default so the product's $0 path is real; cloud
 BYOK is the fallback. Resolution is local → cloud → honest dispatch-only, and
 every failure degrades with an actionable reason. The ollama transport speaks
 `/api/chat` NDJSON directly (no vendor SDK between shell and model), streams
 each token as it lands, supports abort, reports server-side token counts, and
-prices local inference at $0.
+prices local inference at $0. The local path is conversational today: it has
+no tool-use, so it cannot reach the promotion gate on its own.
 
 **pi-tui is a rendering library, not a product frame.** The shell drives
 `@earendil-works/pi-tui`'s differential renderer (`TUI` + `StreamTerminal`

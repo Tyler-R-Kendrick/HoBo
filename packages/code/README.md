@@ -63,8 +63,16 @@ prints a reason you can act on rather than pretending. Overrides:
 `OLLAMA_HOST`. Token counts come from the model server and cost reads `$0`
 because local inference is free.
 
+> **What the local engine can and cannot do today.** The local path is
+> **conversational**: it streams answers, keeps context, and costs nothing.
+> It does **not** yet call tools, so it cannot edit files on its own — the
+> approval gate below is reached by the cloud engine path (which has tool
+> use) and by `hobo-code promote` after you edit a sandbox yourself. Local
+> tool-use is the next step, and until it lands this README will not imply
+> otherwise.
+
 Turns run inside a mediated isolation sandbox — the canonical tree stays
-read-only. When a turn changes files the shell asks first:
+read-only. When work changes files, promotion asks first:
 
 ```
 ┏━ promote run-1a2b3c? ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -78,8 +86,12 @@ read-only. When a turn changes files the shell asks first:
 ```
 
 The prompt is modal — stray keys do nothing, `n`/Esc keeps the work sandboxed
-and tells you how to promote later, and only `y` runs the audited squash-only
-path. The sandbox survives exit so un-promoted work is never lost.
+and tells you how to promote later, and only `y` promotes. Promotion runs the
+project's real gates, then copies the sandbox diff into your working tree
+**staged but not committed**, so you review before anything is permanent. If
+the gates fail, or there is nothing to apply, or the patch conflicts, it fails
+closed and the sandbox is left untouched — promotion never destroys work it
+did not manage to apply.
 
 Evidence capture: `HOBO_CODE_SHELL_MAX_MS` bounds a session so a recording
 ends through the normal quit path, and `HOBO_CODE_SHELL_KEYS` scripts

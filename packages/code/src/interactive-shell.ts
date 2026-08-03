@@ -1219,16 +1219,16 @@ export async function runInteractiveShell(
 		if (result.approve || result.decline) {
 			const approval = (result.approve ?? result.decline)!;
 			void resolveApproval(approval, Boolean(result.approve))
-				.catch(() => {})
 				.then(() => {
 					if (!quit) tui.requestRender();
-				});
+				})
+				.catch(() => {});
 		} else if (result.slash) {
 			void applySlash(result.slash)
-				.catch(() => {})
 				.then(() => {
 					if (!quit) tui.requestRender();
-				});
+				})
+				.catch(() => {});
 		} else if (result.submit) {
 			// One turn at a time: two overlapping streams would interleave into
 			// the same transcript entry and leave cancel pointing at the wrong
@@ -1240,10 +1240,10 @@ export async function runInteractiveShell(
 				);
 			} else {
 				void onSubmit(result.submit)
-					.catch(() => {})
 					.then(() => {
 						if (!quit) tui.requestRender();
-					});
+					})
+					.catch(() => {});
 			}
 		}
 		tui.requestRender();

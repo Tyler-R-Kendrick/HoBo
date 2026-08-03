@@ -116,14 +116,19 @@ export async function applySandboxDiff(
 	// "failed" promotion could still wreck the tree. `--check` is too lenient
 	// to catch that, so refuse up front when the patch touches a file the user
 	// has locally modified. Predictable refusal beats a half-applied surprise.
-	const targetStatus = await git(["status", "--porcelain"], targetProject);
+	// `-uall` so untracked directories do not collapse and hide a collision.
+	const targetStatus = await git(
+		["status", "--porcelain", "-uall"],
+		targetProject,
+	);
 	if (targetStatus.code === 0) {
 		const dirty = new Set(
 			targetStatus.stdout
 				.split("\n")
 				.filter((l) => l.trim().length > 0)
 				.map((l) => l.slice(3).trim())
-				.map((l) => (l.includes(" -> ") ? l.split(" -> ")[1]! : l)),
+				.flatMap((l) => (l.includes(" -> ") ? l.split(" -> ") : [l]))
+				.map((l) => l.trim()),
 		);
 		const patched = names.stdout
 			.split("\n")

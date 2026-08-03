@@ -11,6 +11,37 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { PromotionGate } from "./sandbox-promote.js";
 
+/**
+ * Gate children run detached so their whole tree can be killed as a group,
+ * which also means a terminal Ctrl-C no longer reaches them. We therefore own
+ * their lifetime: kill any live group if this process is going away.
+ */
+const live = new Set<number>();
+let reaperInstalled = false;
+
+function reapAll(): void {
+	for (const pid of live) {
+		try {
+			process.kill(-pid, "SIGKILL");
+		} catch {
+			/* group already gone */
+		}
+	}
+	live.clear();
+}
+
+function ensureReaper(): void {
+	if (reaperInstalled) return;
+	reaperInstalled = true;
+	process.once("exit", reapAll);
+	for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+		process.once(signal, () => {
+			reapAll();
+			process.exit(130);
+		});
+	}
+}
+
 /** The checks a promotion must satisfy, mapped to this repo's scripts. */
 export const PROJECT_GATES: readonly { name: string; script: string }[] = [
 	{ name: "architecture:guard", script: "architecture:guard" },
@@ -27,11 +58,13 @@ function runScript(
 	return new Promise((resolve) => {
 		// `detached` gives the child its own process group so a gate script that
 		// spawns a grandchild (watcher, dev server) can be reaped as a group.
+		ensureReaper();
 		const child = spawn("pnpm", ["run", script], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],
 			detached: true,
 		});
+		if (child.pid) live.add(child.pid);
 		let out = "";
 		let settled = false;
 		let timedOut = false;
@@ -49,6 +82,12 @@ function runScript(
 			if (settled) return;
 			settled = true;
 			clearTimeout(timer);
+			if (child.pid) live.delete(child.pid);
+			// Releasing the pipes is what actually lets the process exit: a
+			// grandchild inherits them, so resolving alone leaves the handles
+			// ref'd and `hobo-code promote` prints its result then hangs.
+			child.stdout?.destroy();
+			child.stderr?.destroy();
 			resolve({ code, out, timedOut });
 		};
 		const timer = setTimeout(() => {

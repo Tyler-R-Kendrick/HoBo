@@ -132,6 +132,32 @@ describe("runProjectGates", () => {
 		expect(gates[0]!.detail).toMatch(/no package\.json/);
 	});
 
+	it("releases stdio so a gate that leaves a daemon cannot hang the exit", async () => {
+		const project = tmp("promo-daemon-");
+		writeFileSync(
+			join(project, "package.json"),
+			JSON.stringify({
+				name: "daemon-demo",
+				version: "1.0.0",
+				scripts: {
+					// Exits 0 immediately but leaves a child holding the inherited
+					// pipes. Resolving without destroying them left the handles
+					// ref'd, so the CLI printed its result and then hung.
+					"architecture:guard": "sleep 20 & exit 0",
+					"standards:check": "exit 0",
+					"check:relevant": "exit 0",
+					"docs:freshness": "exit 0",
+				},
+			}),
+		);
+		const started = Date.now();
+		const gates = await runProjectGates(project, { timeoutMs: 15_000 });
+		// Settles on the script's own exit, nowhere near the 15s timeout and
+		// nowhere near the 20s daemon.
+		expect(Date.now() - started).toBeLessThan(12_000);
+		expect(gates.every((g) => g.pass)).toBe(true);
+	}, 30_000);
+
 	it("settles (and says so) when a gate spawns a grandchild and stalls", async () => {
 		const project = tmp("promo-hang-");
 		writeFileSync(

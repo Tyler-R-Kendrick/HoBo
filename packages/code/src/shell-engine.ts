@@ -156,8 +156,11 @@ export function listSandboxChanges(
 	sandboxRoot: string,
 ): Promise<readonly SandboxChange[]> {
 	return new Promise((resolvePromise) => {
+		// stderr must be ignored, not left as an undrained pipe: a chatty git
+		// could fill the buffer, block the child, and hang the approval gate.
 		const child = spawn("git", ["status", "--porcelain"], {
 			cwd: sandboxRoot,
+			stdio: ["ignore", "pipe", "ignore"],
 		});
 		let stdout = "";
 		child.stdout.setEncoding("utf8");

@@ -16,6 +16,7 @@ import {
 	appendAssistant,
 	clearWrapCache,
 	createInitialShellState,
+	peekWrapCache,
 	renderShellFrame,
 	runInteractiveShell,
 	type ShellHost,
@@ -202,9 +203,13 @@ describe("default shell host honesty", () => {
 			hoboHome: home,
 			env: { ...process.env, HOBO_HOME: home },
 		});
-		// Unknown flag on a verb path fails closed with remediation.
+		// Unknown flag on a verb path fails closed with remediation. The old
+		// assertion here was `length > 0`, which any string satisfied.
 		const reply = await host.runVerb(["status", "--wat"]);
-		expect(reply.length).toBeGreaterThan(0);
+		expect(reply).toMatch(/wat/);
+		expect(reply.toLowerCase()).toMatch(/unknown|unsupported|invalid/);
+		// A failure must tell you what to do next, not just that it failed.
+		expect(reply).toMatch(/hobo-code/);
 	});
 });
 
@@ -234,7 +239,7 @@ describe("StreamTerminal contract", () => {
 });
 
 describe("wrap cache invalidation", () => {
-	it("re-wraps after an explicit invalidate", () => {
+	it("actually drops cached wraps, not just returns the same frame", () => {
 		let state = createInitialShellState({
 			width: 60,
 			height: 24,
@@ -242,9 +247,15 @@ describe("wrap cache invalidation", () => {
 			reducedMotion: true,
 		});
 		state = appendAssistant(state, "a message that will be wrapped");
-		const first = renderShellFrame(state);
+		// Warm the cache, then observe the cache itself rather than the frame:
+		// a frame comparison passes even if invalidate() is a no-op, which is
+		// exactly how the previous version of this test proved nothing.
+		renderShellFrame(state);
+		const message = state.messages[state.messages.length - 1]!;
+		expect(peekWrapCache(message)).not.toBeUndefined();
 		clearWrapCache();
-		// Same state must still render identically from a cold cache.
-		expect(renderShellFrame(state)).toBe(first);
+		expect(peekWrapCache(message)).toBeUndefined();
+		// And the frame still renders correctly from cold.
+		expect(renderShellFrame(state)).toContain("a message that will be");
 	});
 });

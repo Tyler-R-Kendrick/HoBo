@@ -1,7 +1,9 @@
+import { spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -139,15 +141,26 @@ describe("@hobo/code", () => {
 		).toBe("rift");
 	});
 
-	it("promotion is gated, squash-only, and cleans isolation", async () => {
+	it("promotion is gated, applies the work, and only then cleans up", async () => {
 		const home = tempDir("hobo-code-promo-");
 		const project = tempDir("hobo-code-proj3-");
+		// A real git project is required: promotion carries a diff across.
+		spawnSync("git", ["init", "-q", "-b", "main"], { cwd: project });
+		spawnSync("git", ["config", "user.email", "t@example.com"], {
+			cwd: project,
+		});
+		spawnSync("git", ["config", "user.name", "t"], { cwd: project });
+		writeFileSync(join(project, "README.md"), "base\n");
+		spawnSync("git", ["add", "-A"], { cwd: project });
+		spawnSync("git", ["commit", "-qm", "base"], { cwd: project });
+
 		const ctx = await createIsolationContext({
 			projectRoot: project,
 			hoboHome: home,
 			runId: "run-promo",
 			forceWorktree: true,
 		});
+
 		const refused = await promoteIsolation(
 			{
 				runId: "run-promo",
@@ -163,6 +176,35 @@ describe("@hobo/code", () => {
 		);
 		expect(refused.ok).toBe(false);
 		expect(refused.code).toBe("HOBO_CODE_PROMOTE_GATES_FAILED");
+		// A refused promotion must never destroy the sandbox.
+		expect(existsSync(ctx.rootPath)).toBe(true);
+
+		const passing = [
+			{ name: "architecture:guard", pass: true, detail: "ok" },
+			{ name: "standards:check", pass: true, detail: "ok" },
+			{ name: "agent:check", pass: true, detail: "ok" },
+			{ name: "docs:freshness", pass: true, detail: "ok" },
+		];
+
+		// Nothing changed in the sandbox → promotion fails closed and, above
+		// all, does not delete the sandbox while claiming success.
+		const empty = await promoteIsolation(
+			{
+				runId: "run-promo",
+				isolationRoot: ctx.rootPath,
+				targetProject: project,
+				gateResults: [],
+				squashOnly: true,
+			},
+			{ hoboHome: home, gates: passing },
+		);
+		expect(empty.ok).toBe(false);
+		expect(empty.code).toBe("HOBO_CODE_PROMOTE_NOTHING_TO_APPLY");
+		expect(existsSync(ctx.rootPath)).toBe(true);
+
+		// Now do real work in the sandbox: an edit and a new file.
+		writeFileSync(join(ctx.rootPath, "README.md"), "base\nfrom the agent\n");
+		writeFileSync(join(ctx.rootPath, "added.ts"), "export const x = 1;\n");
 
 		const ok = await promoteIsolation(
 			{
@@ -172,18 +214,22 @@ describe("@hobo/code", () => {
 				gateResults: [],
 				squashOnly: true,
 			},
-			{
-				hoboHome: home,
-				gates: [
-					{ name: "architecture:guard", pass: true, detail: "ok" },
-					{ name: "standards:check", pass: true, detail: "ok" },
-					{ name: "agent:check", pass: true, detail: "ok" },
-					{ name: "docs:freshness", pass: true, detail: "ok" },
-				],
-			},
+			{ hoboHome: home, gates: passing },
 		);
 		expect(ok.ok).toBe(true);
 		expect(ok.code).toBe("HOBO_CODE_PROMOTED");
+		// The whole point: the work is actually in the project now.
+		expect(readFileSync(join(project, "README.md"), "utf8")).toContain(
+			"from the agent",
+		);
+		expect(existsSync(join(project, "added.ts"))).toBe(true);
+		// Staged for review, not committed behind the user's back.
+		const status = spawnSync("git", ["status", "--porcelain"], {
+			cwd: project,
+			encoding: "utf8",
+		});
+		expect(status.stdout).toMatch(/added\.ts/);
+		// Only after a successful apply is the sandbox reclaimed.
 		expect(ok.cleaned).toBe(true);
 		expect(listSandboxOrphans(home)).toEqual([]);
 	});

@@ -225,6 +225,13 @@ export function clearWrapCache(): void {
 	wrapCache = new WeakMap();
 }
 
+/** Test probe: is this message currently cached? Makes invalidation observable. */
+export function peekWrapCache(
+	message: ShellMessage,
+): { readonly width: number; readonly lines: readonly string[] } | undefined {
+	return wrapCache.get(message);
+}
+
 function wrapMessage(m: ShellMessage, width: number): readonly string[] {
 	const hit = wrapCache.get(m);
 	if (hit && hit.width === width) return hit.lines;
@@ -491,7 +498,7 @@ export function renderShellFrame(state: InteractiveShellState): string {
 		const { changes, sandboxRoot } = state.pendingApproval;
 		body.push("The canonical tree is untouched until you say yes.");
 		body.push("");
-		const room = Math.max(1, inner - 5);
+		const room = Math.max(1, inner - 6);
 		for (const change of changes.slice(0, room)) {
 			body.push(`  ${change.status.padEnd(2)} ${change.path}`);
 		}
@@ -1194,7 +1201,10 @@ export async function runInteractiveShell(
 			options.host.cancelTurn &&
 			!state.slashOpen
 		) {
-			void options.host.cancelTurn();
+			void options.host.cancelTurn().catch(() => {
+				// A failed cancel is not worth crashing a session over — the
+				// turn simply keeps running and Ctrl+C still exits cleanly.
+			});
 			return;
 		}
 		const result = reduceShellKey(state, sequence);
@@ -1213,9 +1223,19 @@ export async function runInteractiveShell(
 				if (!quit) tui.requestRender();
 			});
 		} else if (result.submit) {
-			void onSubmit(result.submit).then(() => {
-				if (!quit) tui.requestRender();
-			});
+			// One turn at a time: two overlapping streams would interleave into
+			// the same transcript entry and leave cancel pointing at the wrong
+			// request.
+			if (turnInFlight) {
+				state = appendProduct(
+					state,
+					"Still working on the previous turn — Esc cancels it.",
+				);
+			} else {
+				void onSubmit(result.submit).then(() => {
+					if (!quit) tui.requestRender();
+				});
+			}
 		}
 		tui.requestRender();
 	};
@@ -1284,11 +1304,24 @@ export async function runInteractiveShell(
 		requestQuit();
 	}
 
-	await done;
-	clearInterval(tick);
-	if (maxMsTimer) clearTimeout(maxMsTimer);
-	// No alternate screen: TUI.stop() parks the cursor after the last frame,
-	// so the session's final view stays in the terminal scrollback.
-	tui.stop();
+	// Signals must restore the terminal too: closing the emulator or `kill`
+	// otherwise leaves raw mode, a hidden cursor and bracketed paste enabled.
+	const onSignal = () => requestQuit();
+	process.once("SIGTERM", onSignal);
+	process.once("SIGHUP", onSignal);
+
+	try {
+		await done;
+	} finally {
+		clearInterval(tick);
+		if (maxMsTimer) clearTimeout(maxMsTimer);
+		process.removeListener("SIGTERM", onSignal);
+		process.removeListener("SIGHUP", onSignal);
+		// No alternate screen: TUI.stop() parks the cursor after the last frame,
+		// so the session's final view stays in the terminal scrollback. This
+		// runs even if the driver threw — a CLI that can strand a terminal in
+		// raw mode is not shippable.
+		tui.stop();
+	}
 	return 0;
 }

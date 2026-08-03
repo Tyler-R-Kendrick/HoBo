@@ -20,3 +20,12 @@ package control_api
 	seq:            uint
 	json_snapshot?: string
 }
+
+// Envelope only: world/event payload shapes are owned by package yardworld
+// (packages/yard-world/data-models/yard_world.cue) — referenced, not duplicated.
+#WorldStreamEvent: {
+	event:         "world-snapshot" | "world" | "heartbeat"
+	tick:          uint
+	demo:          bool
+	json_payload?: string
+}

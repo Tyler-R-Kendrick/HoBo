@@ -16,6 +16,8 @@ import {
 	connectionRotate,
 	createManagementContext,
 	doctorSnapshot,
+	type ManagementContext,
+	type ManagementResult,
 	projectYardSnapshot,
 	stationDown,
 	stationInit,
@@ -25,9 +27,22 @@ import {
 	stationRailsPublish,
 	stationStatus,
 	stationUp,
-	type ManagementContext,
-	type ManagementResult,
 } from "@hobo/management";
+import {
+	type AgentEvent,
+	applyEvent,
+	createSimulation,
+	emptyWorld,
+	mapLogsPayload,
+	mapMetricsPayload,
+	mapTracePayload,
+	type OtlpLogsRequest,
+	type OtlpMetricsRequest,
+	type OtlpTraceRequest,
+	type Simulation,
+	TraceIndex,
+	type WorldState,
+} from "@hobo/yard-world";
 
 export type ControlApiServerOptions = Readonly<{
 	hoboHome: string;
@@ -37,6 +52,19 @@ export type ControlApiServerOptions = Readonly<{
 	streamIntervalMs?: number;
 	/** Injectable context for tests. */
 	context?: ManagementContext;
+	/**
+	 * Demo mode: run the deterministic @hobo/yard-world simulator so the world
+	 * read model is alive without a real OTLP exporter. Defaults to
+	 * `HOBO_CONTROL_DEMO=1`.
+	 */
+	demo?: boolean;
+	/** Simulator seed (default 42; env HOBO_CONTROL_DEMO_SEED). */
+	demoSeed?: number;
+	/**
+	 * Demo tick interval ms (default 1000). Set 0 to disable the timer and
+	 * drive ticks via `tickDemo()` (tests).
+	 */
+	demoIntervalMs?: number;
 }>;
 
 export type ControlApiServer = Readonly<{
@@ -46,6 +74,20 @@ export type ControlApiServer = Readonly<{
 	host: string;
 	close: () => Promise<void>;
 	context: ManagementContext;
+	/** True when the world read model is fed by the simulator. */
+	demo: boolean;
+	/** Simulator seed when demo mode is on; null otherwise. */
+	demoSeed: number | null;
+	/** Advance the demo simulator one tick; returns applied event count (0 when demo off). */
+	tickDemo: () => number;
+	/** Current world read-model snapshot (JSON-serializable). */
+	worldSnapshot: () => WorldState;
+}>;
+
+type WorldDelta = Readonly<{
+	events: readonly AgentEvent[];
+	tick: number;
+	demo: boolean;
 }>;
 
 async function readJson(
@@ -91,13 +133,110 @@ export async function createControlApiServer(
 	const port = options.port ?? 0;
 	const streamIntervalMs = options.streamIntervalMs ?? 500;
 	const context =
-		options.context ??
-		createManagementContext({ hoboHome: options.hoboHome });
+		options.context ?? createManagementContext({ hoboHome: options.hoboHome });
+
+	// World read model (ADR: yard-world is the projection, control-api the host).
+	const demo = options.demo ?? process.env.HOBO_CONTROL_DEMO === "1";
+	const envSeed = Number(process.env.HOBO_CONTROL_DEMO_SEED);
+	const demoSeed = demo
+		? (options.demoSeed ?? (Number.isFinite(envSeed) ? envSeed : 42))
+		: null;
+	const demoIntervalMs = options.demoIntervalMs ?? 1000;
+	const traceIndex = new TraceIndex();
+	const worldSubscribers = new Set<(delta: WorldDelta) => void>();
+	let world: WorldState = emptyWorld();
+	let simulation: Simulation | null = null;
+	if (demo) {
+		simulation = createSimulation(demoSeed ?? 42);
+		// The simulator pre-builds its topology (stations/yards/camps/characters)
+		// in its own state; seed the read model from a clone so the reducer folds
+		// events onto known characters.
+		world = structuredClone(simulation.state);
+	}
+
+	function applyWorldEvents(events: readonly AgentEvent[]): void {
+		if (events.length === 0) return;
+		for (const event of events) world = applyEvent(world, event);
+		const delta: WorldDelta = { events, tick: world.tick, demo };
+		for (const notify of worldSubscribers) notify(delta);
+	}
+
+	function tickDemo(): number {
+		if (simulation === null) return 0;
+		const events = simulation.step();
+		applyWorldEvents(events);
+		return events.length;
+	}
+
+	const demoTimer =
+		demo && demoIntervalMs > 0 ? setInterval(tickDemo, demoIntervalMs) : null;
+	demoTimer?.unref();
+
+	function worldEnvelope(): Record<string, unknown> {
+		return { ok: true, data: { world, demo, seed: demoSeed } };
+	}
+
+	async function handleOtlpIngest(
+		signal: "traces" | "logs" | "metrics",
+		req: IncomingMessage,
+		res: ServerResponse,
+	): Promise<void> {
+		let body: Record<string, unknown>;
+		try {
+			body = await readJson(req);
+		} catch {
+			sendJson(res, 400, {
+				ok: false,
+				code: "bad-request",
+				message: `malformed OTLP/JSON ${signal} payload`,
+			});
+			return;
+		}
+		const now = Date.now();
+		const events =
+			signal === "traces"
+				? mapTracePayload(body as OtlpTraceRequest, world, now, traceIndex)
+				: signal === "logs"
+					? mapLogsPayload(body as OtlpLogsRequest, world, now)
+					: mapMetricsPayload(body as OtlpMetricsRequest, world, now);
+		applyWorldEvents(events);
+		sendJson(res, 200, { ok: true, data: { accepted: events.length, demo } });
+	}
+
+	function handleWorldSse(res: ServerResponse, intervalMs: number): void {
+		res.writeHead(200, {
+			"content-type": "text/event-stream; charset=utf-8",
+			"cache-control": "no-cache, no-transform",
+			connection: "keep-alive",
+			"access-control-allow-origin": "*",
+		});
+		res.write(": control-api world stream\n\n");
+		res.write(
+			`event: world-snapshot\ndata: ${JSON.stringify({ world, demo, seed: demoSeed })}\n\n`,
+		);
+		const notify = (delta: WorldDelta) => {
+			res.write(`event: world\ndata: ${JSON.stringify(delta)}\n\n`);
+		};
+		worldSubscribers.add(notify);
+		const heartbeat = setInterval(() => {
+			res.write(
+				`event: heartbeat\ndata: ${JSON.stringify({ tick: world.tick, demo })}\n\n`,
+			);
+		}, intervalMs);
+		res.on("close", () => {
+			worldSubscribers.delete(notify);
+			clearInterval(heartbeat);
+		});
+	}
 
 	const server = createServer(async (req, res) => {
 		try {
 			if (!req.url || !req.method) {
-				sendJson(res, 400, { ok: false, code: "bad-request", message: "missing url" });
+				sendJson(res, 400, {
+					ok: false,
+					code: "bad-request",
+					message: "missing url",
+				});
 				return;
 			}
 			if (req.method === "OPTIONS") {
@@ -129,6 +268,25 @@ export async function createControlApiServer(
 
 			if (req.method === "GET" && path === "/v1/yard/stream") {
 				handleYardSse(res, context, q, streamIntervalMs);
+				return;
+			}
+
+			// World read model (fed by OTLP ingest and/or the demo simulator).
+			if (req.method === "GET" && path === "/v1/world/snapshot") {
+				sendJson(res, 200, worldEnvelope());
+				return;
+			}
+			if (req.method === "GET" && path === "/v1/world/stream") {
+				handleWorldSse(res, streamIntervalMs);
+				return;
+			}
+			const otlp = path.match(/^\/v1\/otlp\/v1\/(traces|logs|metrics)$/);
+			if (req.method === "POST" && otlp) {
+				await handleOtlpIngest(
+					otlp[1] as "traces" | "logs" | "metrics",
+					req,
+					res,
+				);
 				return;
 			}
 
@@ -165,10 +323,16 @@ export async function createControlApiServer(
 		port: address.port,
 		url: `http://${host}:${address.port}`,
 		context,
-		close: () =>
-			new Promise((resolve, reject) => {
+		demo,
+		demoSeed,
+		tickDemo,
+		worldSnapshot: () => world,
+		close: () => {
+			if (demoTimer !== null) clearInterval(demoTimer);
+			return new Promise((resolve, reject) => {
 				server.close((err) => (err ? reject(err) : resolve()));
-			}),
+			});
+		},
 	};
 }
 
@@ -179,8 +343,7 @@ async function dispatch(
 	req: IncomingMessage,
 	ctx: ManagementContext,
 ): Promise<ManagementResult | null> {
-	const body =
-		method === "POST" || method === "PUT" ? await readJson(req) : {};
+	const body = method === "POST" || method === "PUT" ? await readJson(req) : {};
 
 	if (method === "POST" && path === "/v1/station/init") {
 		return stationInit(
@@ -240,7 +403,10 @@ async function dispatch(
 		const scopes = Array.isArray(scopesRaw)
 			? scopesRaw.map(String)
 			: typeof scopesRaw === "string"
-				? scopesRaw.split(",").map((s) => s.trim()).filter(Boolean)
+				? scopesRaw
+						.split(",")
+						.map((s) => s.trim())
+						.filter(Boolean)
 				: undefined;
 		return connectionCreate(
 			ctx,
@@ -358,9 +524,7 @@ function handleYardSse(
 		}
 		if (snap.data.seq !== lastSeq) {
 			lastSeq = snap.data.seq;
-			res.write(
-				`event: yard\ndata: ${JSON.stringify(snap.data)}\n\n`,
-			);
+			res.write(`event: yard\ndata: ${JSON.stringify(snap.data)}\n\n`);
 		} else {
 			res.write(
 				`event: heartbeat\ndata: ${JSON.stringify({ seq: lastSeq })}\n\n`,
@@ -379,7 +543,12 @@ function str(v: unknown): string | undefined {
 /** exactOptionalPropertyTypes-safe: drop undefined values. */
 function opt<T extends Record<string, unknown>>(
 	obj: T,
-): { [K in keyof T as T[K] extends undefined ? never : K]: Exclude<T[K], undefined> } {
+): {
+	[K in keyof T as T[K] extends undefined ? never : K]: Exclude<
+		T[K],
+		undefined
+	>;
+} {
 	const out: Record<string, unknown> = {};
 	for (const [k, v] of Object.entries(obj)) {
 		if (v !== undefined) out[k] = v;
@@ -412,6 +581,19 @@ function controlApiOpenApi(): Record<string, unknown> {
 			"/v1/doctor": { get: { summary: "doctor" } },
 			"/v1/yard/snapshot": { get: { summary: "yard projection snapshot" } },
 			"/v1/yard/stream": { get: { summary: "yard projection SSE" } },
+			"/v1/world/snapshot": {
+				get: { summary: "yard-world read-model snapshot (demo-labeled)" },
+			},
+			"/v1/world/stream": {
+				get: { summary: "yard-world SSE (world-snapshot, then world deltas)" },
+			},
+			"/v1/otlp/v1/traces": {
+				post: { summary: "OTLP/HTTP JSON trace ingest" },
+			},
+			"/v1/otlp/v1/logs": { post: { summary: "OTLP/HTTP JSON logs ingest" } },
+			"/v1/otlp/v1/metrics": {
+				post: { summary: "OTLP/HTTP JSON metrics ingest" },
+			},
 		},
 	};
 }

@@ -14,6 +14,8 @@ export interface ServeControlCommandDeps {
 	readonly host?: string;
 	/** When true, return immediately after bind (tests). */
 	readonly once?: boolean;
+	/** Demo mode: feed the world read model from the yard-world simulator (env: HOBO_CONTROL_DEMO=1). */
+	readonly demo?: boolean;
 	readonly log?: (line: string) => void;
 }
 
@@ -49,14 +51,18 @@ export function createServeControlCommand(
 				deps.host ??
 				(typeof f.host === "string" ? f.host : "127.0.0.1");
 			const log = deps.log ?? ((line: string) => console.error(line));
+			// The cli shell's flag whitelist has no --demo; demo mode comes from
+			// deps (tests) or HOBO_CONTROL_DEMO=1 / HOBO_CONTROL_DEMO_SEED env.
+			const demo = deps.demo ?? env.HOBO_CONTROL_DEMO === "1";
 
 			const server = await createControlApiServer({
 				hoboHome,
 				host,
 				port: Number.isFinite(port) ? port : 8790,
+				demo,
 			});
 			log(
-				`hobo serve control: ${server.url} (HOBO_HOME=${hoboHome}) yard=/v1/yard/snapshot stream=/v1/yard/stream`,
+				`hobo serve control: ${server.url} (HOBO_HOME=${hoboHome}) yard=/v1/yard/snapshot stream=/v1/yard/stream world=/v1/world/snapshot otlp=/v1/otlp${demo ? ` demo=on seed=${server.demoSeed}` : ""}`,
 			);
 
 			if (deps.once) {

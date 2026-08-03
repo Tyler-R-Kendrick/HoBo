@@ -72,6 +72,57 @@
 				"status": 200,
 				"body": { "ok": true, "data": { "ok": true } }
 			}
+		},
+		{
+			"description": "GET world snapshot returns the yard-world read model with demo provenance",
+			"request": {
+				"method": "GET",
+				"path": "/v1/world/snapshot"
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"ok": true,
+					"data": {
+						"world": {
+							"tick": 0,
+							"stations": {},
+							"layouts": {},
+							"yards": {},
+							"camps": {},
+							"junctions": {},
+							"characters": {},
+							"packets": {}
+						},
+						"demo": false,
+						"seed": null
+					}
+				}
+			}
+		},
+		{
+			"description": "GET world stream opens an SSE stream: world-snapshot event first, then world deltas",
+			"request": {
+				"method": "GET",
+				"path": "/v1/world/stream"
+			},
+			"response": {
+				"status": 200,
+				"headers": { "Content-Type": "text/event-stream; charset=utf-8" }
+			}
+		},
+		{
+			"description": "POST OTLP/JSON traces are mapped through @hobo/yard-world into the world read model",
+			"request": {
+				"method": "POST",
+				"path": "/v1/otlp/v1/traces",
+				"headers": { "Content-Type": "application/json" },
+				"body": { "resourceSpans": [] }
+			},
+			"response": {
+				"status": 200,
+				"body": { "ok": true, "data": { "accepted": 0, "demo": false } }
+			}
 		}
 	],
 	"metadata": {

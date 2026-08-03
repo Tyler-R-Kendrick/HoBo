@@ -126,4 +126,86 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 	assert.ok(r.problems.some((p) => p.includes("not committed")));
 }
 
+// A completion claim whose own evidenceChecks fail must not verify.
+{
+	const scores = JSON.stringify({
+		metric_total: 2,
+		evidenceChecks: [
+			{
+				evidence: ".optimizexp/runs/r-checks/evidence",
+				firstOutputUnderMs: 50,
+				note: "unrealistically strict budget — must fail",
+			},
+		],
+	});
+	const dir = makeRun("r-checks", {
+		"summary.md": "# run\nStop reason: `pareto-equilibrium`\n",
+		"baseline.json": JSON.stringify({ metric_total: 11 }),
+		"iterations/001/scores.json": scores,
+		"evidence/meta.json": JSON.stringify({
+			exitCode: 0,
+			primary: { file: "primary.txt" },
+			timing: { durationMs: 900, timeToFirstOutputMs: 180 },
+		}),
+		"evidence/primary.txt": "recorded output",
+	});
+	const r = lintRun({ runDir: dir, repoRoot });
+	assert.equal(r.status, "failed");
+	assert.ok(r.problems.some((p) => p.includes("timeToFirstOutputMs 180")));
+}
+
+// The same claim verifies once the budget matches reality.
+{
+	const scores = JSON.stringify({
+		metric_total: 2,
+		evidenceChecks: [
+			{
+				evidence: ".optimizexp/runs/r-checks-ok/evidence",
+				firstOutputUnderMs: 500,
+				durationUnderMs: 5000,
+			},
+		],
+	});
+	const dir = makeRun("r-checks-ok", {
+		"summary.md": "# run\nStop reason: `pareto-equilibrium`\n",
+		"baseline.json": JSON.stringify({ metric_total: 11 }),
+		"iterations/001/scores.json": scores,
+		"evidence/meta.json": JSON.stringify({
+			exitCode: 0,
+			primary: { file: "primary.txt" },
+			timing: { durationMs: 900, timeToFirstOutputMs: 180 },
+		}),
+		"evidence/primary.txt": "recorded output",
+	});
+	const r = lintRun({ runDir: dir, repoRoot });
+	assert.deepEqual(r.problems, []);
+	assert.equal(r.status, "verified");
+}
+
+
+// evidenceChecks bind even when the run makes no completion claim — declaring
+// a budget and never checking it would defeat the point.
+{
+	const dir = makeRun("r-nonclaiming-checks", {
+		"summary.md": "# run\nStop reason: `evidence-recertification`\n",
+		"iterations/001/scores.json": JSON.stringify({
+			evidenceChecks: [
+				{
+					evidence: ".optimizexp/runs/r-nonclaiming-checks/evidence",
+					maxSilentGapUnderMs: 100,
+				},
+			],
+		}),
+		"evidence/meta.json": JSON.stringify({
+			exitCode: 0,
+			primary: { file: "primary.txt" },
+			frameStats: { maxSilentGapMs: 900, totalOutputBytes: 10 },
+		}),
+		"evidence/primary.txt": "x",
+	});
+	const r = lintRun({ runDir: dir, repoRoot });
+	assert.equal(r.status, "failed");
+	assert.ok(r.problems.some((p) => p.includes("maxSilentGapMs 900")));
+}
+
 console.log("run-lint tests OK");

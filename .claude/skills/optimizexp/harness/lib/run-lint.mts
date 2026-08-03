@@ -17,6 +17,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { evaluateScorecardEvidence } from "./evidence-checks.mts";
 import { validateEvidenceReview } from "./evidence-review.mts";
 
 export type RunLintStatus =
@@ -111,18 +112,6 @@ export function lintRun(options: LintRunOptions): RunLintResult {
 		return { runId, status: "superseded", stopReason: null, problems: [] };
 	}
 
-	const summaryPath = path.join(runDir, "summary.md");
-	if (!existsSync(summaryPath)) {
-		return { runId, status: "not-claiming", stopReason: null, problems: [] };
-	}
-	const summary = readFileSync(summaryPath, "utf8");
-	const stopReason = stopReasonOf(summary);
-	if (!stopReason || !COMPLETION_REASONS.has(stopReason)) {
-		return { runId, status: "not-claiming", stopReason, problems: [] };
-	}
-
-	// 1. Numbers the claim rests on must be committed.
-	requireBundleFile(path.join(runDir, "baseline.json"), "baseline.json");
 	const iterationsDir = path.join(runDir, "iterations");
 	const scoreFiles: string[] = [];
 	if (existsSync(iterationsDir)) {
@@ -131,6 +120,41 @@ export function lintRun(options: LintRunOptions): RunLintResult {
 			if (existsSync(scores)) scoreFiles.push(scores);
 		}
 	}
+
+	// A falsifiability rubric is binding wherever it is written — a run that
+	// declares evidenceChecks must have them re-execute green even if it makes
+	// no completion claim. Otherwise "I didn't claim anything" would be a way
+	// to publish budgets nobody ever checks.
+	for (const scores of scoreFiles) {
+		const card = readJson<Record<string, unknown>>(scores);
+		if (!card) continue;
+		for (const problem of evaluateScorecardEvidence(card, repoRoot)) {
+			problems.push(`${path.relative(runDir, scores)}: ${problem}`);
+		}
+	}
+
+	const summaryPath = path.join(runDir, "summary.md");
+	if (!existsSync(summaryPath)) {
+		return {
+			runId,
+			status: problems.length === 0 ? "not-claiming" : "failed",
+			stopReason: null,
+			problems,
+		};
+	}
+	const summary = readFileSync(summaryPath, "utf8");
+	const stopReason = stopReasonOf(summary);
+	if (!stopReason || !COMPLETION_REASONS.has(stopReason)) {
+		return {
+			runId,
+			status: problems.length === 0 ? "not-claiming" : "failed",
+			stopReason,
+			problems,
+		};
+	}
+
+	// Numbers the claim rests on must be committed.
+	requireBundleFile(path.join(runDir, "baseline.json"), "baseline.json");
 	if (scoreFiles.length === 0) {
 		problems.push(
 			`no iterations/*/scores.json — "${stopReason}" is unauditable without the scored measurements`,

@@ -21,10 +21,28 @@ the installed bin entry, with real TTY recordings.
 - **Does** re-certify `hobo-code-default-entry` (all three scenarios) with
   real, reviewed, non-degraded evidence: `capture-evidence --mode validate
   --strict` reports zero problems.
-- **Does not** claim a harm/delight equilibrium. No persona scoring rounds
-  were run, so no `scores.json` exists and no completion is asserted — the
-  stop reason is deliberately not a completion reason, and `lint-runs`
-  classifies this run as *not claiming*.
+- **Does** score harm/friction against a **measured** baseline: the
+  pre-overhaul shell was rebuilt from `origin/main` and recorded under an
+  identical 100x30 pty for the same 5s window, so `baseline.json` is an
+  observation rather than a memory.
+- **Does not** claim a harm/delight equilibrium or a pareto stop. Implementable
+  findings remain (SGR mouse regions; the engine path needs provider
+  credentials to exercise end to end), so the stop reason is deliberately not
+  a completion reason and `lint-runs` classifies this run as *not claiming*.
+  Its `evidenceChecks` are still enforced on every `optimizexp:check`.
+
+## Measured before / after (same pty geometry, same 5s window)
+
+| | before (`origin/main`) | after (this branch) |
+|---|---|---|
+| Full-screen erases | **53** | **0** |
+| Terminal bytes | 182,576 | 37,944 (4.8x less) |
+| Alternate screen (destroys transcript) | yes | no |
+| Synchronized output (tear-free) | no | yes |
+
+Scores in `baseline.json` / `iterations/001/scores.json` are agent judgments;
+the claims underneath them are machine-checked by `evidenceChecks` that
+re-execute against the committed evidence.
 
 ## Evidence captured (all `via: capture-evidence`, `degraded: false`)
 

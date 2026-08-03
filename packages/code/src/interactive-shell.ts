@@ -17,7 +17,11 @@ import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
 import { inspectCost } from "./cost.js";
 import { buildTasksSurface } from "./grok-build-parity.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
-import type { EngineTurnEvent, EngineTurnResult } from "./shell-engine.js";
+import type {
+	EngineTurnEvent,
+	EngineTurnResult,
+	SandboxChange,
+} from "./shell-engine.js";
 import { StreamTerminal } from "./shell-terminal.js";
 import {
 	BO_CELL_HEIGHT,
@@ -51,6 +55,13 @@ export interface ShellSlashItem {
 	readonly action?: "help" | "about" | "clear" | "quit" | "guide-hint";
 }
 
+/** A promotion awaiting explicit approval — the sole audited mutation path. */
+export interface PendingApproval {
+	readonly runId: string;
+	readonly sandboxRoot: string;
+	readonly changes: readonly SandboxChange[];
+}
+
 export interface InteractiveShellState {
 	readonly width: number;
 	readonly height: number;
@@ -66,6 +77,14 @@ export interface InteractiveShellState {
 	readonly slashIndex: number;
 	/** Lines scrolled up from the bottom of the chat transcript. */
 	readonly chatScroll: number;
+	/**
+	 * Promotion approval gate (ADR-0139): engine edits live in a mediated
+	 * sandbox and only reach the canonical tree through an explicit human
+	 * approval. Non-null means the shell is waiting on y/n.
+	 */
+	readonly pendingApproval: PendingApproval | null;
+	/** Live session token/cost accounting shown in the footer and /cost. */
+	readonly usageLabel: string;
 	readonly statusPlain: string;
 	readonly tasksPlain: string;
 	readonly footerHints: string;
@@ -145,6 +164,9 @@ export const PRODUCT_NOT_PI = "hobo-code · HoBo shell (not stock Pi Agent)";
 
 /** Footer engine label until a real completion engine is wired (Slice 2). */
 export const ENGINE_NONE_LABEL = "engine:none · dispatch-only";
+
+/** Approval-gate affordance text — y promotes, n/Esc keeps work sandboxed. */
+export const APPROVAL_PROMPT = "y promote · n keep sandboxed";
 
 // ── Pure helpers ─────────────────────────────────────────────────────────
 
@@ -347,6 +369,8 @@ export function createInitialShellState(
 		slashFilter: "",
 		slashIndex: 0,
 		chatScroll: 0,
+		pendingApproval: null,
+		usageLabel: "",
 		statusPlain,
 		tasksPlain,
 		footerHints: "Tab focus · / slash · ? help · Ctrl+C quit",
@@ -405,7 +429,37 @@ export function renderShellFrame(state: InteractiveShellState): string {
 	const bodyH = Math.max(4, state.height - reserved);
 
 	let bodyLines: string[] = [];
-	if (state.slashOpen) {
+	if (state.pendingApproval) {
+		// Approval gate owns the body: the decision must be legible, and the
+		// blast radius must be visible before anything reaches the real tree.
+		const { runId, changes } = state.pendingApproval;
+		bodyLines.push(
+			padLine(
+				`Promote run ${runId}? — canonical tree is untouched until you say yes`,
+				w,
+			),
+			padLine("", w),
+		);
+		const shown = changes.slice(0, Math.max(1, bodyH - 4));
+		for (const change of shown) {
+			bodyLines.push(padLine(`  ${change.status.padEnd(2)} ${change.path}`, w));
+		}
+		if (changes.length > shown.length) {
+			bodyLines.push(
+				padLine(`  … ${changes.length - shown.length} more file(s)`, w),
+			);
+		}
+		if (changes.length === 0) {
+			bodyLines.push(padLine("  (no file changes detected in the sandbox)", w));
+		}
+		bodyLines.push(
+			padLine("", w),
+			padLine(
+				`  ${APPROVAL_PROMPT}  ·  squash-only, gated, audited (ADR-0139)`,
+				w,
+			),
+		);
+	} else if (state.slashOpen) {
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
 		if (items.length === 0) {
 			bodyLines.push(
@@ -468,7 +522,13 @@ export function renderShellFrame(state: InteractiveShellState): string {
 	lines.push(padLine(`❯ ${prompt}█`, w));
 	lines.push(
 		padLine(
-			`${state.modelLabel} · ${state.costLabel} · ${state.hermeticLabel}`,
+			[
+				state.modelLabel,
+				// Real provider-reported usage replaces the static budget chip as
+				// soon as a turn has actually cost something.
+				state.usageLabel || state.costLabel,
+				state.hermeticLabel,
+			].join(" · "),
 			w,
 		),
 	);
@@ -511,10 +571,32 @@ export function reduceShellKey(
 	readonly quit?: boolean;
 	readonly submit?: string;
 	readonly slash?: ShellSlashItem;
+	readonly approve?: PendingApproval;
+	readonly decline?: PendingApproval;
 } {
 	// Ctrl+C
 	if (key === "\u0003") {
 		return { state, quit: true };
+	}
+	// The approval gate is modal: while it is up, no key may reach the input
+	// line or a verb. Only an explicit y/n (Esc/Enter decline) resolves it, so
+	// a promotion can never be triggered by a stray keystroke.
+	if (state.pendingApproval) {
+		const pending = state.pendingApproval;
+		const cleared = { ...state, pendingApproval: null, chatScroll: 0 };
+		if (key === "y" || key === "Y") {
+			return { state: cleared, approve: pending };
+		}
+		if (
+			key === "n" ||
+			key === "N" ||
+			key === "\u001b" ||
+			key === "\r" ||
+			key === "\n"
+		) {
+			return { state: cleared, decline: pending };
+		}
+		return { state };
 	}
 	// Bracketed paste — insert content as one edit (newlines become spaces;
 	// control characters dropped so pasted escapes can't corrupt the input line)
@@ -790,6 +872,17 @@ export interface ShellHost {
 	readonly cancelTurn?: () => Promise<void>;
 	/** Footer label for the wired engine, e.g. "pi · anthropic/claude-…". */
 	readonly engineLabel?: string;
+	/**
+	 * Raise the promotion approval gate after an editing turn. Returning null
+	 * means nothing changed in the sandbox, so no gate is shown.
+	 */
+	readonly pendingApprovalFor?: (
+		result: EngineTurnResult,
+	) => Promise<PendingApproval | null>;
+	/** Run the audited, squash-only promote for an approved run. */
+	readonly promote?: (approval: PendingApproval) => Promise<string>;
+	/** Live session usage label for the footer / `/cost`. */
+	readonly usageLabel?: () => string;
 	/** Extra `/about` lines describing the live engine + sandbox. */
 	readonly aboutLines?: readonly string[];
 }
@@ -918,7 +1011,13 @@ export async function runInteractiveShell(
 			tui.requestRender();
 			try {
 				const text = await options.host.runVerb(item.argv);
-				state = appendProduct(state, text.slice(0, 4000));
+				// /cost must reflect what this session actually spent, not just
+				// the configured budget — otherwise it is a brochure.
+				const live =
+					item.name === "cost" && state.usageLabel
+						? `\n\nThis session (provider-reported): ${state.usageLabel}`
+						: "";
+				state = appendProduct(state, text.slice(0, 4000) + live);
 			} catch (err) {
 				state = appendProduct(
 					state,
@@ -983,6 +1082,14 @@ export async function runInteractiveShell(
 					(finalText + (result.text ? tail : "")).slice(0, 8000),
 					result.ok || result.aborted ? "idle" : "blocked",
 				);
+				refreshUsage();
+				// Edits stay sandboxed until an explicit approval (ADR-0139).
+				if (result.ok && !result.aborted && options.host.pendingApprovalFor) {
+					const approval = await options.host.pendingApprovalFor(result);
+					if (approval && !quit) {
+						state = { ...state, pendingApproval: approval, chatScroll: 0 };
+					}
+				}
 			} catch (err) {
 				if (quit) return;
 				state = replaceLastAssistant(
@@ -1009,6 +1116,44 @@ export async function runInteractiveShell(
 		}
 	};
 
+	const refreshUsage = () => {
+		const label = options.host.usageLabel?.();
+		if (label !== undefined && label !== state.usageLabel) {
+			state = { ...state, usageLabel: label };
+		}
+	};
+
+	const resolveApproval = async (
+		approval: PendingApproval,
+		approved: boolean,
+	) => {
+		if (!approved) {
+			state = appendProduct(
+				state,
+				[
+					`Kept sandboxed — run ${approval.runId} was not promoted.`,
+					`Sandbox: ${approval.sandboxRoot}`,
+					`Promote later (audited): hobo-code promote --run ${approval.runId}`,
+				].join("\n"),
+			);
+			return;
+		}
+		state = { ...state, agentState: "working" };
+		tui.requestRender();
+		try {
+			const text = options.host.promote
+				? await options.host.promote(approval)
+				: `no promote handler wired for run ${approval.runId}`;
+			state = appendProduct(state, text.slice(0, 4000));
+		} catch (err) {
+			state = appendProduct(
+				state,
+				`Promotion failed for ${approval.runId}: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+		state = { ...state, agentState: "idle" };
+	};
+
 	const handleKey = (sequence: string) => {
 		if (quit) return;
 		// Esc cancels an in-flight streaming turn before normal key reduction.
@@ -1027,7 +1172,12 @@ export async function runInteractiveShell(
 			requestQuit();
 			return;
 		}
-		if (result.slash) {
+		if (result.approve || result.decline) {
+			const approval = (result.approve ?? result.decline)!;
+			void resolveApproval(approval, Boolean(result.approve)).then(() => {
+				if (!quit) tui.requestRender();
+			});
+		} else if (result.slash) {
 			void applySlash(result.slash).then(() => {
 				if (!quit) tui.requestRender();
 			});

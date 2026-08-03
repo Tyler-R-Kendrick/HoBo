@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	APPROVAL_PROMPT,
 	appendAssistant,
 	createInitialShellState,
 	DEFAULT_SLASH_ITEMS,
@@ -262,5 +263,109 @@ describe("slash palette viewport", () => {
 		short = reduceShellKey(short, "/").state;
 		const frame = renderShellFrame(short);
 		expect(frame).toMatch(/1-\d+\/\d+ · ↓\d+ more/);
+	});
+});
+
+describe("live usage surfacing", () => {
+	it("footer shows the configured budget until real spend is reported", () => {
+		const state = createInitialShellState({
+			width: 100,
+			height: 30,
+			welcome: false,
+			reducedMotion: true,
+		});
+		expect(state.usageLabel).toBe("");
+		expect(renderShellFrame(state)).toContain(state.costLabel);
+	});
+
+	it("footer replaces the budget chip with provider-reported usage", () => {
+		const base = createInitialShellState({
+			width: 100,
+			height: 30,
+			welcome: false,
+			reducedMotion: true,
+		});
+		const frame = renderShellFrame({
+			...base,
+			usageLabel: "1.2k in \u00b7 340 out \u00b7 $0.0123",
+		});
+		expect(frame).toContain("1.2k in \u00b7 340 out \u00b7 $0.0123");
+		expect(frame).not.toContain(base.costLabel);
+	});
+});
+
+describe("approval gate rendering", () => {
+	it("renders the pending promotion instead of the transcript", () => {
+		const base = createInitialShellState({
+			width: 90,
+			height: 30,
+			welcome: false,
+			reducedMotion: true,
+		});
+		const frame = renderShellFrame({
+			...base,
+			pendingApproval: {
+				runId: "run-42",
+				sandboxRoot: "/tmp/sandbox/run-42",
+				changes: [{ status: "M", path: "src/a.ts" }],
+			},
+		});
+		expect(frame).toContain("Promote run run-42?");
+		expect(frame).toContain("M  src/a.ts");
+		expect(frame).toContain(APPROVAL_PROMPT);
+		expect(frame).toContain("squash-only, gated, audited");
+	});
+
+	it("truncates a large blast radius with a remainder count", () => {
+		const base = createInitialShellState({
+			width: 90,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		const changes = Array.from({ length: 40 }, (_, i) => ({
+			status: "M",
+			path: `src/file-${i}.ts`,
+		}));
+		const frame = renderShellFrame({
+			...base,
+			pendingApproval: {
+				runId: "run-big",
+				sandboxRoot: "/tmp/sandbox/run-big",
+				changes,
+			},
+		});
+		expect(frame).toMatch(/\u2026 \d+ more file\(s\)/);
+		for (const line of frame.split("\n")) expect(line.length).toBe(90);
+	});
+
+	it("gate keys resolve exactly once and are otherwise inert", () => {
+		const approval = {
+			runId: "run-k",
+			sandboxRoot: "/tmp/sandbox/run-k",
+			changes: [],
+		};
+		const base = {
+			...createInitialShellState({ welcome: false, reducedMotion: true }),
+			pendingApproval: approval,
+		};
+		const yes = reduceShellKey(base, "y");
+		expect(yes.approve).toBe(approval);
+		expect(yes.state.pendingApproval).toBeNull();
+
+		for (const key of ["n", "N", "\u001b", "\r"]) {
+			const no = reduceShellKey(base, key);
+			expect(no.decline).toBe(approval);
+			expect(no.state.pendingApproval).toBeNull();
+		}
+
+		for (const key of ["x", "/", "\t", "\u001b[B"]) {
+			const inert = reduceShellKey(base, key);
+			expect(inert.approve).toBeUndefined();
+			expect(inert.decline).toBeUndefined();
+			expect(inert.state.pendingApproval).toBe(approval);
+			expect(inert.state.input).toBe("");
+		}
+		expect(reduceShellKey(base, "\u0003").quit).toBe(true);
 	});
 });

@@ -34,9 +34,15 @@ chrome. Render-economy contract (pinned by `test/render-budget.test.ts`):
 never the frame: `createPiShellEngine` builds a pi `AgentSession` whose cwd
 is a **mediated isolation sandbox** (`createIsolationContext`), streams
 `text_delta` / tool events into shell turns, and supports Esc cancellation
-(`session.abort`). Engine turns never touch the canonical tree; replies that
-made edits point at the audited gate (`hobo-code promote --run <id>`), and
-the sandbox stays open on exit so un-promoted work survives. Availability is
+(`session.abort`). Engine turns never touch the canonical tree. When a turn
+actually changes files, the shell raises a **modal approval gate** showing the
+blast radius (`git status --porcelain` of the sandbox); only an explicit `y`
+runs the audited squash-only promote, `n`/Esc keeps the work sandboxed with
+the one-shot command to promote later, and every other key is inert so a
+mutation can never be triggered by a stray keystroke. The sandbox stays open
+on exit so un-promoted work survives. Provider-reported tokens and cost are
+read from the engine session (never estimated) and surface in the footer and
+`/cost` as live session spend. Availability is
 gated by `shouldAttemptEngine` (BYOK env / pi auth / `HOBO_CODE_ENGINE=pi`;
 `=none` opts out) and every failure degrades to the honest dispatch-only
 shell with a reason on stderr. The footer shows the model that actually runs

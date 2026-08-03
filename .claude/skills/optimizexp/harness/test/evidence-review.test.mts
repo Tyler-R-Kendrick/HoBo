@@ -7,7 +7,17 @@ import { validateEvidenceReview } from "../lib/evidence-review.mts";
 
 function seed(dir: string, review: Record<string, unknown>) {
 	mkdirSync(dir, { recursive: true });
-	writeFileSync(path.join(dir, "primary.cast"), "cast");
+	// A TUI recording must be a real multi-event asciicast — a single buffered
+	// frame is what the synthetic-cast guard rejects.
+	writeFileSync(
+		path.join(dir, "primary.cast"),
+		[
+			JSON.stringify({ version: 2, width: 80, height: 24 }),
+			JSON.stringify([0.12, "o", "first frame"]),
+			JSON.stringify([0.44, "o", "second frame"]),
+			"",
+		].join("\n"),
+	);
 	writeFileSync(path.join(dir, "meta.json"), JSON.stringify({
 		driver: "tui",
 		degraded: false,
@@ -45,5 +55,54 @@ describe("evidence review gate", () => {
 			assert.ok(problems.includes("review_artifact_hash_mismatch"));
 			assert.ok(problems.includes("evidence_claim_uncovered:claim-1"));
 		} finally { rmSync(root, { recursive: true, force: true }); }
+	});
+});
+
+describe("synthetic recording guard", () => {
+	it("rejects a one-event cast masquerading as a TUI recording", () => {
+		const root = mkdtempSync(path.join(tmpdir(), "oxp-synthetic-"));
+		try {
+			mkdirSync(root, { recursive: true });
+			writeFileSync(
+				path.join(root, "primary.cast"),
+				[
+					JSON.stringify({ version: 2, width: 80, height: 24 }),
+					JSON.stringify([0.9, "o", "everything at once"]),
+					"",
+				].join("\n"),
+			);
+			writeFileSync(
+				path.join(root, "meta.json"),
+				JSON.stringify({
+					driver: "tui",
+					degraded: false,
+					claims: [],
+					primary: {
+						file: "primary.cast",
+						kind: "recording",
+						sha256: "abc",
+						bytes: 4,
+					},
+				}),
+			);
+			writeFileSync(
+				path.join(root, "review.json"),
+				JSON.stringify({
+					status: "accepted",
+					reviewer: "qa",
+					relevance: "relevant",
+					completeness: "complete",
+					coverageMode: "full-journey",
+					coveredClaims: [],
+					artifactSha256: "abc",
+					notes: "playback shows the whole journey end to end",
+				}),
+			);
+			assert.deepEqual(validateEvidenceReview(root), [
+				"tui_recording_is_synthetic_single_event",
+			]);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

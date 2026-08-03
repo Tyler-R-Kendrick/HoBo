@@ -39,10 +39,29 @@ chrome (see `ARCHITECTURE.md` for the render-economy contract).
 **The agent loop is real when credentials exist** (any BYOK env, a pi
 `auth.json`, or `HOBO_CODE_ENGINE=pi`): prompts stream a live pi engine turn
 (text deltas + `tool · <name>` lines; **Esc cancels**) running inside a
-mediated isolation sandbox — the canonical tree stays read-only and edits
-apply only through the audited gate `hobo-code promote --run <id>`. The
+mediated isolation sandbox — the canonical tree stays read-only.
+
+When a turn changes files, the shell asks before anything leaves the sandbox:
+
+```
+Promote run <id>? — canonical tree is untouched until you say yes
+
+   M  src/app.ts
+   A  src/new.ts
+
+  y promote · n keep sandboxed  ·  squash-only, gated, audited (ADR-0139)
+```
+
+The prompt is modal — stray keys do nothing, `n`/Esc keeps the work sandboxed
+and tells you how to promote later, and only `y` runs the audited path. The
 sandbox is kept on exit so un-promoted work survives. The footer names the
-model that actually runs. `HOBO_CODE_ENGINE=none` opts out.
+model that actually runs and, once a turn has cost something, shows real
+provider-reported usage (`1.2k in · 340 out · $0.0123`) which `/cost` also
+reports as live session spend. `HOBO_CODE_ENGINE=none` opts out.
+
+Evidence capture: `HOBO_CODE_SHELL_MAX_MS` bounds a session so a recording
+ends through the normal quit path, and `HOBO_CODE_SHELL_KEYS` scripts
+interactive paths — both opt-in and unset by default.
 
 Without credentials the shell stays honest instead of pretending: prompts
 queue dispatch compute tasks, the footer reads `engine:none ·

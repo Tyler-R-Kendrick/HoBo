@@ -15,8 +15,8 @@ import {
 	type HoboCodeCliResult,
 	runHoboCodeCli,
 } from "./cli.js";
-import type { ShellHost } from "./interactive-shell.js";
-import type { ShellEngine } from "./shell-engine.js";
+import type { PendingApproval, ShellHost } from "./interactive-shell.js";
+import { formatUsage, type ShellEngine } from "./shell-engine.js";
 
 interface DispatchedTaskShape {
 	readonly taskId?: string;
@@ -52,25 +52,54 @@ export function createDefaultShellHost(
 				aboutLines: [
 					`Engine: ${engine.id} (${engine.modelLabel}) — streams real turns.`,
 					`Sandbox: ${engine.sandboxRoot} (mediated; canonical tree read-only).`,
-					`Promote (gated, squash-only, audited): hobo-code promote --run ${engine.runId}`,
+					"Edits never reach the canonical tree without an explicit approval;",
+					`promotion is squash-only, gated and audited (run ${engine.runId}).`,
 					"Pi TUI stays an opt-in escape hatch via `hobo-code --pi` — never the product UI.",
 				],
-				streamTurn: async (prompt, onEvent) => {
-					const result = await engine.turn(prompt, onEvent);
-					if (result.ok && result.toolCalls > 0) {
-						return {
-							...result,
-							text: [
-								result.text.trimEnd(),
-								"",
-								`Edits live in the mediated sandbox (run ${engine.runId}).`,
-								`Apply via the audited gate: hobo-code promote --run ${engine.runId}`,
-							].join("\n"),
-						};
-					}
-					return result;
+				usageLabel: () => {
+					const u = engine.usage();
+					return u.totalTokens > 0 || u.costUsd > 0 ? formatUsage(u) : "";
 				},
+				streamTurn: (prompt, onEvent) => engine.turn(prompt, onEvent),
 				cancelTurn: () => engine.abort(),
+				/**
+				 * Raise the approval gate only when the sandbox actually changed —
+				 * an answer-only turn must not nag for a promotion.
+				 */
+				pendingApprovalFor: async (result) => {
+					if (result.toolCalls === 0) return null;
+					const changes = await engine.changes();
+					if (changes.length === 0) return null;
+					return {
+						runId: engine.runId,
+						sandboxRoot: engine.sandboxRoot,
+						changes,
+					};
+				},
+				promote: async (approval: PendingApproval) => {
+					const result = await runHoboCodeCli(
+						["promote", "--run", approval.runId],
+						{ ...deps, json: false },
+					);
+					const body = formatHoboCodeResult(result, {
+						json: false,
+						dense: deps.dense === true,
+					}).trimEnd();
+					if (result.ok) {
+						return [
+							`Promoted run ${approval.runId} (squash-only, gated, audited).`,
+							`${approval.changes.length} file(s) applied to ${deps.cwd ?? "the project"}.`,
+							body,
+						].join("\n");
+					}
+					return [
+						`Promotion refused (${result.code}) — work stays in the sandbox.`,
+						body,
+						...(result.remediation?.length
+							? ["Try:", ...result.remediation.map((r) => `  ${r}`)]
+							: []),
+					].join("\n");
+				},
 			}
 		: {};
 	return {

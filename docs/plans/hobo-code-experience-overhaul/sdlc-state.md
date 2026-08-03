@@ -83,15 +83,51 @@ optimizexp harness so the failure class that certified them cannot recur.
   80x24 terminal. Fixed (viewport follows the selection, `1-6/17 · ↓11 more`
   indicator) with regression tests.
 
+## Slice 2 completion — approval gate + real cost (landed)
+
+Two Slice 2 items were still only partly built; both are now complete.
+
+- **Mediated mutation is now an actual gate, not a hint.** After a turn that
+  changes files, the shell raises a modal approval showing the blast radius
+  from `git status --porcelain` of the sandbox. `y` runs the audited
+  squash-only promote through the CLI path, `n`/Esc keeps the work sandboxed
+  and prints how to promote later, and every other key is inert — a mutation
+  cannot be triggered by a stray keystroke. No gate is raised for
+  answer-only turns or tool runs that wrote nothing.
+- **`/cost` and the footer report real spend.** Token counts and cost are
+  read from the pi session (`getSessionStats`), reported per turn as a delta
+  and per session cumulatively — never estimated. The footer keeps showing
+  the configured budget until something has actually been spent.
+
+## Measured before / after (the overhaul's headline claim, verified)
+
+The pre-overhaul shell was rebuilt from `origin/main` and recorded under an
+identical 100x30 pty for the same 5s window, so the baseline is an
+observation rather than a memory:
+
+| | before | after |
+|---|---|---|
+| Full-screen erases | **53** | **0** |
+| Terminal bytes | 182,576 | 37,944 (4.8x less) |
+| Alternate screen (destroys transcript) | yes | no |
+| Synchronized output (tear-free) | no | yes |
+
+Run `20260803-hobo-code-recert` carries these as committed scores whose
+`evidenceChecks` (time-to-first-output, silent-gap, byte and transcript
+budgets) re-execute against the committed recording on every
+`optimizexp:check`. `lint-runs` now enforces `evidenceChecks` for **every**
+run, not only completion-claiming ones — declaring a budget nobody checks
+was itself a loophole.
+
 ## Remaining
 
-- A full persona-scored optimizexp run against the rebuilt shell (this
-  session re-certified evidence only; no harm/delight equilibrium claimed).
+- A full persona-scored optimizexp *loop* (multi-round dual-regime with the
+  review bus). This session scored a measured before/after but deliberately
+  does not claim a pareto equilibrium — implementable findings remain.
 
 ## Residual (backlog)
 
 - SGR mouse hit regions; Warning budget filter (carried from
   `hobo-code-interactive-shell`).
-- Engine `/cost` per-turn token usage surfacing.
 - Independent second-agent evidence reviewer (explicitly deselected for this
   overhaul).

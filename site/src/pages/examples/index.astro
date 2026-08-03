@@ -1,0 +1,562 @@
+---
+import Base from "../../layouts/Base.astro";
+---
+
+<Base
+	title="Try HoBo — policy-driven Examples"
+	description="Plan and deploy HoBo examples from a browser-owned Home Station into policy-selected local Environment Stations."
+>
+	<section class="try-hero">
+		<div class="container">
+			<p class="try-kicker">HoBo · try · <code>Policy-driven resources · @hobo/bindles</code></p>
+			<h1>Providers stay available.<br /><em>Policy decides what goes live.</em></h1>
+			<p>
+				This browser is your Home Station: inspect a real example, preview its
+				budget and placement intent, then launch independent local previews only
+				for the provider-specific Yards that policy permits.
+			</p>
+		</div>
+	</section>
+
+	<section class="try-shell" data-examples-console data-base={import.meta.env.BASE_URL}>
+		<div class="container">
+			<nav class="example-picker" aria-label="Examples" data-example-tabs>
+				<span class="loading">Loading examples…</span>
+			</nav>
+
+			<div class="try-grid">
+				<section class="host-workspace" aria-labelledby="workspace-title">
+					<div class="panel-heading">
+						<div>
+							<p class="eyebrow">Environment Station</p>
+							<h2 id="workspace-title" data-example-title>Example</h2>
+						</div>
+						<div class="view-tabs" aria-label="Workspace view">
+							<button type="button" aria-pressed="true" data-view="host">Host</button>
+							<button type="button" aria-pressed="false" data-view="source">Source</button>
+						</div>
+					</div>
+
+					<div class="host-view" data-view-panel="host">
+						<nav class="host-tabs" aria-label="Live hosts" data-host-tabs hidden></nav>
+						<div class="host-empty" data-host-empty>
+							<span aria-hidden="true">◎</span>
+							<h3>Deploy the policy plan</h3>
+							<p data-provision-preview>The provision preview will appear here.</p>
+						</div>
+						<p class="junction-note" data-junction-note hidden></p>
+					</div>
+
+					<div class="source-view" data-view-panel="source" hidden>
+						<div class="source-path" data-source-path></div>
+						<pre tabindex="0"><code data-source></code></pre>
+					</div>
+				</section>
+
+				<aside class="deploy-sidebar" aria-label="Deploy plan">
+					<section class="console-card">
+						<div class="card-title-row">
+							<h2>Provider pool</h2>
+							<span class="station-id" data-station-id>station:browser:…</span>
+						</div>
+						<p class="hint">Checked means candidate, not live.</p>
+						<div class="provider-list" data-provider-list></div>
+					</section>
+
+					<section class="console-card policy-card">
+						<h2>Budget policy</h2>
+						<dl data-policy></dl>
+						<p class="plan-line" data-plan-line>Calculating plan…</p>
+						<button class="btn btn-primary deploy-button" type="button" data-deploy disabled>
+							<span>Deploy plan</span>
+						</button>
+					</section>
+
+					<section class="console-card terminal-card">
+						<div class="terminal-title">
+							<h2>Live deploy terminal</h2>
+							<span data-deploy-state>idle</span>
+						</div>
+						<div class="deploy-terminal" role="log" aria-live="polite" aria-label="Deploy output" data-terminal>
+							<p class="system">Home Station ready. Choose an example and inspect its plan.</p>
+						</div>
+					</section>
+
+					<section class="console-card">
+						<h2>Live hosts</h2>
+						<ul class="live-hosts" data-live-hosts><li>None provisioned</li></ul>
+						<h3>Placement</h3>
+						<ul class="placement-list" data-placement></ul>
+					</section>
+				</aside>
+			</div>
+		</div>
+	</section>
+
+	<script>
+		import { bootExamplesConsole } from "../../lib/examples/controller.ts";
+		void bootExamplesConsole().catch((error: unknown) => {
+			const message = error instanceof Error ? error.message : String(error);
+			const tabs = document.querySelector<HTMLElement>("[data-example-tabs]");
+			const terminal = document.querySelector<HTMLElement>("[data-terminal]");
+			const state = document.querySelector<HTMLElement>("[data-deploy-state]");
+			if (tabs) tabs.textContent = "Examples unavailable — reload to retry";
+			if (state) state.textContent = "error";
+			if (terminal) {
+				const line = document.createElement("p");
+				line.className = "stderr";
+				line.textContent = `Could not start Home Station: ${message}`;
+				terminal.replaceChildren(line);
+			}
+		});
+	</script>
+</Base>
+
+<style is:global>
+	.try-hero {
+		padding: clamp(2.5rem, 7vw, 4.5rem) 0 2rem;
+		border-bottom: 3px dashed var(--border-strong);
+	}
+
+	.try-hero .container {
+		max-width: 82rem;
+	}
+
+	.try-kicker,
+	.eyebrow {
+		margin: 0 0 0.65rem;
+		color: var(--text-mute);
+		font-size: 0.78rem;
+		font-weight: 750;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+	}
+
+	.try-hero h1 {
+		margin: 0;
+		font-family: var(--font-display);
+		font-size: clamp(2.2rem, 6vw, 4.6rem);
+		font-weight: 400;
+		line-height: 0.98;
+	}
+
+	.try-hero h1 em {
+		color: var(--spark);
+		font-style: normal;
+	}
+
+	.try-hero > .container > p:last-child {
+		max-width: 55rem;
+		margin: 1.2rem 0 0;
+		color: var(--text-mute);
+		font-size: 1.05rem;
+	}
+
+	.try-shell {
+		padding: 1.5rem 0 4rem;
+	}
+
+	.try-shell .container {
+		max-width: 96rem;
+	}
+
+	.example-picker,
+	.host-tabs,
+	.view-tabs {
+		display: flex;
+		gap: 0.45rem;
+		overflow-x: auto;
+		padding: 0.2rem 0.1rem 0.65rem;
+		scrollbar-width: thin;
+	}
+
+	.example-picker button,
+	.host-tabs button,
+	.view-tabs button {
+		min-height: 2.75rem;
+		padding: 0.55rem 0.85rem;
+		border: 2px solid var(--border-strong);
+		border-radius: 9px;
+		background: var(--bg-raised);
+		color: var(--text-mute);
+		font: 700 0.8rem/1.1 var(--font-mono);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	.example-picker button[aria-selected="true"],
+	.host-tabs button[aria-selected="true"],
+	.view-tabs button[aria-selected="true"],
+	.example-picker button[aria-pressed="true"],
+	.host-tabs button[aria-pressed="true"],
+	.view-tabs button[aria-pressed="true"] {
+		border-color: var(--ink);
+		background: var(--ink);
+		color: var(--accent-ink);
+		box-shadow: 0.2rem 0.2rem 0 var(--pop-soft);
+	}
+
+	.try-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1.65fr) minmax(20rem, 0.75fr);
+		gap: 1rem;
+		align-items: start;
+	}
+
+	.host-workspace,
+	.console-card {
+		border: 2.5px solid var(--ink);
+		border-radius: var(--radius-lg);
+		background: var(--bg-raised);
+		box-shadow: 0.35rem 0.35rem 0 var(--pop-soft);
+	}
+
+	.host-workspace {
+		min-width: 0;
+		overflow: hidden;
+	}
+
+	.panel-heading,
+	.card-title-row,
+	.terminal-title {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.panel-heading {
+		padding: 0.85rem 1rem;
+		border-bottom: 1px solid var(--border);
+	}
+
+	.panel-heading h2,
+	.console-card h2,
+	.console-card h3 {
+		margin: 0;
+		font-family: var(--font-display);
+		font-weight: 400;
+	}
+
+	.view-tabs {
+		padding: 0;
+	}
+
+	.view-tabs button {
+		min-height: 2.35rem;
+	}
+
+	.host-view,
+	.source-view {
+		padding: 1rem;
+	}
+
+	.host-empty {
+		display: grid;
+		min-height: 33rem;
+		place-content: center;
+		padding: 2rem;
+		text-align: center;
+		color: var(--text-mute);
+		background: var(--bg-inset);
+		border: 2px dashed var(--border-strong);
+		border-radius: var(--radius);
+	}
+
+	.host-empty[hidden] {
+		display: none;
+	}
+
+	.host-empty > span {
+		font-size: 3rem;
+		color: var(--spark);
+	}
+
+	.host-empty h3 {
+		margin: 0.4rem 0 0;
+		font-family: var(--font-display);
+		font-size: 1.8rem;
+		font-weight: 400;
+		color: var(--text);
+	}
+
+	.host-empty p {
+		max-width: 34rem;
+		margin: 0.25rem auto 0;
+	}
+
+	[data-host-frame] {
+		display: block;
+		width: 100%;
+		min-height: 33rem;
+		border: 0;
+		border-radius: var(--radius);
+		background: #0b0b0b;
+	}
+
+	[data-host-frame][hidden] {
+		display: none;
+	}
+
+	.junction-note {
+		margin: 0.8rem 0 0;
+		color: var(--text-mute);
+		font: 0.8rem/1.5 var(--font-mono);
+	}
+
+	.source-path {
+		padding: 0.55rem 0.75rem;
+		border: 1px solid var(--border);
+		border-bottom: 0;
+		border-radius: var(--radius) var(--radius) 0 0;
+		color: var(--text-mute);
+		font: 0.75rem/1.4 var(--font-mono);
+	}
+
+	.source-view pre {
+		min-height: 32rem;
+		max-height: 44rem;
+		margin: 0;
+		padding: 1rem;
+		overflow: auto;
+		border: 1px solid var(--border);
+		border-radius: 0 0 var(--radius) var(--radius);
+		background: var(--code-bg);
+		font: 0.78rem/1.6 var(--font-mono);
+		white-space: pre;
+	}
+
+	.deploy-sidebar {
+		display: grid;
+		gap: 0.85rem;
+	}
+
+	.console-card {
+		padding: 1rem;
+		box-shadow: 0.24rem 0.24rem 0 var(--pop-soft);
+	}
+
+	.station-id,
+	.terminal-title span {
+		color: var(--text-faint);
+		font: 0.68rem/1.3 var(--font-mono);
+	}
+
+	.hint {
+		margin: 0.1rem 0 0.75rem;
+		color: var(--text-mute);
+		font-size: 0.78rem;
+	}
+
+	.provider-list {
+		display: grid;
+		gap: 0.55rem;
+	}
+
+	.provider-row {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		gap: 0.65rem;
+		align-items: start;
+		min-height: 3.4rem;
+		padding: 0.65rem;
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		background: var(--bg-inset);
+	}
+
+	.provider-row input {
+		width: 1.2rem;
+		height: 1.2rem;
+		margin-top: 0.15rem;
+		accent-color: var(--spark);
+	}
+
+	.provider-name,
+	.provider-detail {
+		display: block;
+	}
+
+	.provider-name {
+		font-weight: 750;
+	}
+
+	.provider-detail {
+		color: var(--text-mute);
+		font-size: 0.72rem;
+	}
+
+	.provider-badge {
+		max-width: 9rem;
+		padding: 0.18rem 0.42rem;
+		border: 1px solid currentColor;
+		border-radius: 6px;
+		color: var(--text-mute);
+		font: 0.64rem/1.25 var(--font-mono);
+		text-align: right;
+	}
+
+	.provider-badge.live {
+		color: var(--go);
+	}
+
+	.provider-badge.blocked {
+		color: var(--spark);
+	}
+
+	.policy-card dl {
+		display: grid;
+		grid-template-columns: minmax(7.5rem, auto) 1fr;
+		gap: 0.2rem 0.75rem;
+		margin: 0.7rem 0;
+		font: 0.72rem/1.45 var(--font-mono);
+	}
+
+	.policy-card dt {
+		color: var(--text-faint);
+	}
+
+	.policy-card dd {
+		min-width: 0;
+		margin: 0;
+		overflow-wrap: anywhere;
+		text-align: right;
+	}
+
+	.plan-line {
+		margin: 0.75rem 0 1rem;
+		padding: 0.7rem;
+		border-left: 3px solid var(--spark);
+		background: var(--spark-soft);
+		font: 0.74rem/1.45 var(--font-mono);
+	}
+
+	.deploy-button {
+		width: 100%;
+		min-height: 3.15rem;
+	}
+
+	.deploy-button:disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.terminal-card {
+		padding: 0;
+		overflow: hidden;
+		background: #080808;
+		color: #f2f1ec;
+	}
+
+	.terminal-title {
+		padding: 0.7rem 0.85rem;
+		border-bottom: 1px solid #343432;
+		background: #121212;
+	}
+
+	.deploy-terminal {
+		min-height: 13rem;
+		max-height: 22rem;
+		padding: 0.75rem;
+		overflow: auto;
+		font: 0.7rem/1.55 var(--font-mono);
+	}
+
+	.deploy-terminal p {
+		margin: 0;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.deploy-terminal .command {
+		color: #ffffff;
+	}
+
+	.deploy-terminal .success {
+		color: #86e09e;
+	}
+
+	.deploy-terminal .stderr,
+	.deploy-terminal .skip {
+		color: #ff9b89;
+	}
+
+	.deploy-terminal .system {
+		color: #b9b7b0;
+	}
+
+	.live-hosts,
+	.placement-list {
+		margin: 0.65rem 0 0;
+		padding: 0;
+		list-style: none;
+		font-size: 0.78rem;
+	}
+
+	.live-hosts li,
+	.placement-list li {
+		padding: 0.45rem 0;
+		border-top: 1px solid var(--border);
+	}
+
+	.console-card > h3 {
+		margin-top: 1rem;
+		font-size: 1.05rem;
+	}
+
+	@media (max-width: 980px) {
+		.try-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.deploy-sidebar {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.terminal-card {
+			grid-column: 1 / -1;
+		}
+	}
+
+	@media (max-width: 620px) {
+		.try-shell .container,
+		.try-hero .container {
+			padding-inline: 0.75rem;
+		}
+
+		.try-hero h1 {
+			font-size: clamp(2rem, 12vw, 3.3rem);
+		}
+
+		.deploy-sidebar {
+			grid-template-columns: 1fr;
+		}
+
+		.terminal-card {
+			grid-column: auto;
+		}
+
+		.panel-heading {
+			align-items: flex-start;
+			flex-direction: column;
+		}
+
+		.view-tabs {
+			width: 100%;
+		}
+
+		.view-tabs button {
+			flex: 1;
+		}
+
+		.host-view,
+		.source-view {
+			padding: 0.65rem;
+		}
+
+		.host-empty,
+		[data-host-frame] {
+			min-height: 29rem;
+		}
+	}
+</style>

@@ -29,6 +29,7 @@ export type RelevantCheckPolicy = {
 
 export function workspaceFor(file: string) {
 	const normalized = file.replaceAll("\\", "/");
+	if (normalized.startsWith("site/")) return "site";
 	const draft = normalized.match(
 		/^src\/draft\/(technical-proofs|epic-proofs|projects)\/([^/]+)\//u,
 	);
@@ -53,7 +54,7 @@ function workspaceTestRelevant(file: string) {
 
 	const relative = normalized.slice(workspace.length + 1);
 	return (
-		/^(src|test|tests|type-tests|features|contracts|simulation|scripts|data-models)\//u.test(
+		/^(src|app|apps|test|tests|type-tests|features|contracts|simulation|scripts|data-models)\//u.test(
 			relative,
 		) ||
 		/^(package|tsconfig(?:\.[^.]+)?)\.json$/u.test(relative) ||
@@ -137,6 +138,7 @@ export function selectRelevantChecks(
 		"tests",
 		"packages",
 		"examples",
+		"site",
 	]);
 	const docsChanged =
 		touched(["docs"]) ||
@@ -300,6 +302,21 @@ export function selectRelevantChecks(
 				"--output-logs=new-only",
 			],
 			reason: `workspace tests for ${workspaces.length} changed package(s) via Turbo; strict env strips harness NODE_OPTIONS and warm runs replay from cache`,
+		});
+	}
+
+	if (workspaces.includes("site")) {
+		checks.push({
+			command: "pnpm",
+			args: [
+				"exec",
+				"turbo",
+				"run",
+				"typecheck",
+				"--filter=./site",
+				"--output-logs=new-only",
+			],
+			reason: "site browser code must stay type-clean",
 		});
 	}
 

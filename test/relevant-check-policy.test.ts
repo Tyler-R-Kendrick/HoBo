@@ -455,6 +455,37 @@ test("examples package source changes select architecture guard and workspace te
 	assert.equal(turboTestSelects(checks, "examples/hello-bindle"), true);
 });
 
+test("try-site app definitions select their workspace tests", () => {
+	const { workspaces, checks } = plan(
+		["examples/try-site/apps/kv-notes/app.ts"],
+		{
+			workspacePackageExists: () => true,
+		},
+	);
+
+	assert.deepEqual(workspaces, ["examples/try-site"]);
+	assert.equal(turboTestSelects(checks, "examples/try-site"), true);
+});
+
+test("site source changes select its workspace tests and typecheck", () => {
+	const { checks, workspaces } = plan(["site/src/lib/examples/controller.ts"], {
+		workspacePackageExists: () => true,
+	});
+
+	assert.deepEqual(workspaces, ["site"]);
+	assert.equal(checks.some(architectureGuardCheck), true);
+	assert.equal(turboTestSelects(checks, "site"), true);
+	assert.equal(
+		checks.some(
+			(check) =>
+				check.command === "pnpm" &&
+				check.args.join(" ") ===
+					"exec turbo run typecheck --filter=./site --output-logs=new-only",
+		),
+		true,
+	);
+});
+
 test("production package schema changes select workspace tests instead of root schema lane", () => {
 	const { checks, workspaces } = plan(
 		["packages/core/data-models/core.proto"],

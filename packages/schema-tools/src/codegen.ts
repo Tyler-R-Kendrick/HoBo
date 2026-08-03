@@ -11,7 +11,7 @@ import {
 	writeFile,
 } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { homedir } from "node:os";
+import { tmpdir } from "node:os";
 import { delimiter, dirname, join, relative } from "node:path";
 import {
 	ensureCueBinary,
@@ -248,7 +248,7 @@ async function generateAll(
 ): Promise<{ drift: DriftEntry[]; cueViolations: CueViolation[] }> {
 	const stagingRoot = write
 		? undefined
-		: await mkdtemp(join(homedir(), "hobo-codegen-check-"));
+		: await mkdtemp(join(tmpdir(), "hobo-codegen-check-"));
 	const drift: DriftEntry[] = [];
 
 	try {

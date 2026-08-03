@@ -9,18 +9,26 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "pnpm run examples:runtime",
     "build": "astro build",
+    "codegen": "pnpm --dir .. exec node --import tsx packages/schema-tools/src/cli.ts --packages-root . --filter site",
+    "codegen:check": "pnpm --dir .. exec node --import tsx packages/schema-tools/src/cli.ts --check --packages-root . --filter site",
+    "examples:runtime": "node --import tsx scripts/build-browser-wit-runtime.mts",
     "preview": "astro preview",
     "check": "astro check",
+    "test": "pnpm run codegen:check && vitest run src/lib/examples",
+    "typecheck": "astro check",
     "design:lint": "designmd lint DESIGN.md",
     "design:export:css": "designmd export --format css-tailwind DESIGN.md",
     "design:export:dtcg": "designmd export --format dtcg DESIGN.md",
     "design:spec": "designmd spec"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^2.12.1",
     "astro": "^5.17.0"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
     "@google/design.md": "^0.4.0"
   }
 }

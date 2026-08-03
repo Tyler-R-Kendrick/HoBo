@@ -1,47 +1,57 @@
 export {
-	createManagementContext,
-	resolveDefaultStationId,
-	type ManagementContext,
-} from "./context.js";
+	type CredentialAuditProjectionView,
+	type CredentialAuditSource,
+	type DeploymentViewProjectionView,
+	type DeploymentViewSource,
+	projectCredentialAudit,
+	projectDeploymentView,
+} from "./cloud-projections.js";
 export {
-	errResult,
-	okResult,
-	type ManagementResult,
-} from "./result.js";
-export {
-	stationInit,
-	stationStatus,
-	stationUp,
-	stationDown,
-	stationRailsList,
-	stationRailsPublish,
-	stationRailsApprove,
-	stationRailsActivate,
-	type StationInitInput,
-} from "./station-ops.js";
-export {
-	connectionCreate,
 	connectionAuthorize,
-	connectionList,
+	connectionCreate,
 	connectionGet,
+	connectionList,
 	connectionRevoke,
 	connectionRotate,
 } from "./connection-ops.js";
 export {
-	projectYardSnapshot,
+	createManagementContext,
+	type ManagementContext,
+	resolveDefaultStationId,
+} from "./context.js";
+export {
 	brokerStatus,
 	doctorSnapshot,
+	projectYardSnapshot,
 } from "./projections.js";
+export {
+	errResult,
+	type ManagementResult,
+	okResult,
+} from "./result.js";
+export {
+	type StationInitInput,
+	stationDown,
+	stationInit,
+	stationRailsActivate,
+	stationRailsApprove,
+	stationRailsList,
+	stationRailsPublish,
+	stationStatus,
+	stationUp,
+} from "./station-ops.js";
 export type {
+	BrokerStatusView,
+	ConnectorActivityView,
+	ConnectorStatusSource,
+	DoctorView,
 	ManagementActor,
 	ManagementHome,
+	MeteringView,
 	PublicConnectionView,
 	RailPublicView,
-	MeteringView,
-	ConnectorActivityView,
-	DoctorView,
+	TrafficRateSource,
 	YardProjectionSnapshot,
-	BrokerStatusView,
 } from "./types.js";
 export { toPublicConnection, toRailPublicView } from "./types.js";
 

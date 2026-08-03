@@ -18,6 +18,8 @@ import {
 	doctorSnapshot,
 	type ManagementContext,
 	type ManagementResult,
+	projectCredentialAudit,
+	projectDeploymentView,
 	projectYardSnapshot,
 	stationDown,
 	stationInit,
@@ -490,6 +492,16 @@ async function dispatch(
 			}),
 		);
 	}
+	// Deployment saga view (@hobo/cloud DeploymentView projection folded from
+	// the local yard event store; honest empty view when no source exists).
+	if (method === "GET" && path === "/v1/deployments/view") {
+		return projectDeploymentView(ctx, opt({ yard: q.yard }));
+	}
+	// Credential audit (grant -> use -> revoke per correlation, folded from the
+	// local connection store + yard event stores).
+	if (method === "GET" && path === "/v1/audit/credentials") {
+		return projectCredentialAudit(ctx, opt({ tenant: q.tenant, yard: q.yard }));
+	}
 	return null;
 }
 
@@ -581,6 +593,12 @@ function controlApiOpenApi(): Record<string, unknown> {
 			"/v1/doctor": { get: { summary: "doctor" } },
 			"/v1/yard/snapshot": { get: { summary: "yard projection snapshot" } },
 			"/v1/yard/stream": { get: { summary: "yard projection SSE" } },
+			"/v1/deployments/view": {
+				get: { summary: "deployment saga view (DeploymentView projection)" },
+			},
+			"/v1/audit/credentials": {
+				get: { summary: "credential audit projection (grant/use/revoke)" },
+			},
 			"/v1/world/snapshot": {
 				get: { summary: "yard-world read-model snapshot (demo-labeled)" },
 			},

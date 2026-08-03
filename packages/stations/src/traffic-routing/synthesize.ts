@@ -3,6 +3,7 @@ import {
 	type PolicyDecision,
 	parseRoutingPlan,
 	type RoutingPlan,
+	type RoutingWeightStrategy,
 	type TenantId,
 } from "@hobo/core";
 
@@ -42,6 +43,12 @@ export function synthesizeRoutingPlan(
 		policyDecision: PolicyDecision;
 		now?: string;
 		planId?: string;
+		/**
+		 * Default "prefer-healthy". Pass "static" when the caller has already
+		 * folded health into explicit weights (e.g. the control loop's swap
+		 * plans) so weight-only providers can realize the plan in full.
+		 */
+		weightStrategy?: RoutingWeightStrategy;
 	}>,
 ): RoutingSynthesisResult {
 	if (!input.topology.stationId) {
@@ -105,7 +112,12 @@ export function synthesizeRoutingPlan(
 			intent: {
 				service: input.topology.service,
 				tenantId: input.topology.tenantId,
-				rules: [{ backends, weightStrategy: "prefer-healthy" }],
+				rules: [
+					{
+						backends,
+						weightStrategy: input.weightStrategy ?? "prefer-healthy",
+					},
+				],
 				...(input.availability !== undefined
 					? { availability: input.availability }
 					: {}),

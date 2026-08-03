@@ -405,3 +405,38 @@ main {
 	font-size: 0.85rem;
 	color: var(--mute);
 }
+
+/* Sound toggle: plank signage, always reachable beside the title. */
+#mute-toggle {
+	position: absolute;
+	top: 18px;
+	right: 0;
+	font: 700 0.75rem/1 system-ui, sans-serif;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--ink);
+	border-radius: 0;
+	box-shadow: var(--sticker-sm, 3px 3px 0 var(--ink));
+	padding: 7px 12px;
+	cursor: pointer;
+}
+
+#mute-toggle[aria-pressed="true"] {
+	background: var(--cream, #f2f1ec);
+}
+
+#mute-toggle:hover {
+	color: var(--spark);
+	border-color: var(--spark);
+}
+
+#mute-toggle:focus-visible {
+	outline: 2.5px solid var(--spark);
+	outline-offset: 2px;
+}
+
+#chrome header {
+	position: relative;
+}

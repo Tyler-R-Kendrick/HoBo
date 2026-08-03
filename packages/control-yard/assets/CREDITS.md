@@ -48,6 +48,22 @@ covered by this repository's license.
 |---|---|---|
 | `fonts/Chewy-Regular.woff2` | Chewy Regular by Sideshow, via Google Fonts (`google/fonts` repo, `apache/chewy`) | **Apache License 2.0** — full text vendored at [`fonts/LICENSE.txt`](fonts/LICENSE.txt). Note: Chewy is Apache-2.0, not OFL, per the upstream `google/fonts` repository. |
 
+## Audio
+
+Mono 22050 Hz WAVs, generated deterministically from the Python standard
+library by [`scripts/synth-audio.py`](../scripts/synth-audio.py) — original
+in-repo works, no third-party sample packs. Regenerate with
+`uv run python scripts/synth-audio.py`.
+
+| Asset | Source | Licence / provenance |
+|---|---|---|
+| `audio/whistle.wav` | in-repo synthesis (`synth-audio.py: whistle()`) | Original work, MIT with the repo. Brass two-tone whistle for the Highball. |
+| `audio/stamp.wav` | in-repo synthesis (`synth-audio.py: stamp()`) | Original work, MIT with the repo. Waybill stamp slam. |
+| `audio/spike.wav` | in-repo synthesis (`synth-audio.py: spike()`) | Original work, MIT with the repo. Bill-spike deny. |
+| `audio/telegraph.wav` | in-repo synthesis (`synth-audio.py: telegraph()`) | Original work, MIT with the repo. Sounder click for stream liveness. |
+| `audio/steam.wav` | in-repo synthesis (`synth-audio.py: steam()`) | Original work, MIT with the repo. Steam hiss for a car needing reauth. |
+| `audio/derail.wav` | in-repo synthesis (`synth-audio.py: derail()`) | Original work, MIT with the repo. Derail crunch — the loudest cue. |
+
 ## How to add a new asset
 
 1. Measure the sheet first (gamedev-assets STOP rule) and add the entry to

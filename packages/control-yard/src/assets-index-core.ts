@@ -42,6 +42,15 @@ export type ImageDef = Readonly<{
 	id?: string;
 }>;
 
+/** A synthesized audio clip. Sound follows the same manifest-only rule as art. */
+export type AudioDef = Readonly<{
+	id: string;
+	path: string;
+	durationMs: number;
+	role: string;
+	source?: string;
+}>;
+
 export type AssetIndex = Readonly<{
 	meta?: Readonly<{
 		version?: number;
@@ -54,6 +63,7 @@ export type AssetIndex = Readonly<{
 	/** gamedev-assets v2 categories */
 	backgrounds?: Readonly<Record<string, ImageDef>>;
 	images?: Readonly<Record<string, ImageDef>>;
+	audio?: Readonly<Record<string, AudioDef>>;
 	spritesheets: Readonly<Record<string, SpritesheetDef>>;
 	animationIds: Readonly<Record<string, { sheet: string; animation: string }>>;
 	zoneAssetKeys?: Readonly<Record<string, string>>;

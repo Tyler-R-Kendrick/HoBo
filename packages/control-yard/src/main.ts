@@ -8,6 +8,7 @@ import type { YardProjectionSnapshot } from "@hobo/management";
 import type { WorldState } from "@hobo/yard-world";
 import Phaser from "phaser";
 import type { AssetIndex } from "./assets-index-core.js";
+import { createYardAudio, cueForFx, type YardAudio } from "./audio.js";
 import {
 	createDomOverlay,
 	displaySheetForWaybill,
@@ -38,7 +39,7 @@ import {
 	type YardTestWorld,
 	type YardTheme,
 } from "./test-seam.js";
-import { deriveTrains, type TrainView } from "./trains.js";
+import { anyDerailed, deriveTrains, type TrainView } from "./trains.js";
 import {
 	createSpikeLedger,
 	deriveWaybills,
@@ -81,6 +82,7 @@ let scenarioState: { id: string; tick: number } | null = null;
 let theme: YardTheme = "day";
 let waybills: readonly Waybill[] = [];
 let trains: readonly TrainView[] = [];
+let audio: YardAudio | null = null;
 let highball = false;
 /** Lantern inspect: the zone under the pointer. Reads are zero-friction. */
 let hoveredZone: ZoneId | null = null;
@@ -97,6 +99,8 @@ const RECENT_FX_MAX = 32;
 function recordFx(fx: string): void {
 	recentFx.push({ fx, atFrame: seam.frameCount });
 	if (recentFx.length > RECENT_FX_MAX) recentFx.shift();
+	const cue = cueForFx(fx);
+	if (cue) audio?.play(cue);
 }
 
 function setSpeech(text: string, seconds: number): void {
@@ -153,7 +157,14 @@ function setWorld(world: WorldState | null, demo: boolean): void {
 function recomputeWaybills(): void {
 	if (!snap) return;
 	waybills = Object.freeze(spikes.filter(deriveWaybills(snap)));
+	// A steaming car (needs-reauth) hisses, rate-limited by the audio layer.
+	if (snap.connections.some((c) => String(c.status) === "needs-reauth")) {
+		recordFx("needs-reauth");
+	}
+	const wasHighball = highball;
 	highball = isHighball(snap, waybills);
+	// The whistle marks the *transition* to a clean board, not the state.
+	if (highball && !wasHighball) recordFx("highball");
 	const b = document.body.dataset;
 	b.waybills = String(waybills.length);
 	b.highball = highball ? "1" : "0";
@@ -509,11 +520,40 @@ const seam = createTestSeam(testHost);
 seam.seed = TEST_MODE ? TEST_SEED : null;
 (window as unknown as { __TEST__: typeof seam }).__TEST__ = seam;
 
+/** Mute toggle lives in the dev drawer beside the other chrome. */
+function wireMuteControl(): void {
+	const btn = document.getElementById("mute-toggle");
+	if (!(btn instanceof HTMLButtonElement)) return;
+	const paint = () => {
+		const muted = audio?.muted() ?? true;
+		btn.textContent = muted ? "sound off" : "sound on";
+		btn.setAttribute("aria-pressed", muted ? "false" : "true");
+	};
+	paint();
+	btn.addEventListener("click", () => {
+		if (!audio) return;
+		audio.unlock();
+		audio.setMuted(!audio.muted());
+		paint();
+	});
+}
+
 async function boot(): Promise<void> {
 	const res = await fetch(`${ASSET_BASE}/assets_index.json`);
 	const index = (await res.json()) as AssetIndex;
 	const manifest = describeYardSceneLoad(index, ASSET_BASE);
 	loadedImageKeys = new Set(manifest.images.map((i) => i.key));
+	// Evidence and scenario runs stay silent so captures are deterministic.
+	audio = createYardAudio({
+		index,
+		assetBaseUrl: ASSET_BASE,
+		enabled: !TEST_MODE,
+	});
+	// Autoplay policy + courtesy: nothing sounds until a real gesture.
+	for (const ev of ["pointerdown", "keydown"] as const) {
+		window.addEventListener(ev, () => audio?.unlock(), { once: true });
+	}
+	wireMuteControl();
 
 	const host: YardHost = {
 		manifest,
@@ -591,10 +631,15 @@ async function boot(): Promise<void> {
 	);
 	// Train traffic: the deployment saga on the rail. Polled rather than
 	// streamed — sagas move on deploy timescales, not frame timescales.
+	let wasDerailed = false;
 	const refreshTrains = () => {
 		void client.deployments().then((view) => {
 			trains = Object.freeze(deriveTrains(view));
 			document.body.dataset.trains = String(trains.length);
+			// A derail is the loudest event; sound it once per occurrence.
+			const derailed = anyDerailed(trains);
+			if (derailed && !wasDerailed) recordFx("derail");
+			wasDerailed = derailed;
 		});
 	};
 	refreshTrains();

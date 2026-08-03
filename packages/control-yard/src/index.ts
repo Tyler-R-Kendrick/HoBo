@@ -14,6 +14,12 @@ export {
 	sheetAbsolutePath,
 } from "./assets-index.js";
 export {
+	type CueId,
+	createYardAudio,
+	cueForFx,
+	type YardAudio,
+} from "./audio.js";
+export {
 	type DisplaySheet,
 	displaySheetForWaybill,
 	displaySheetForZone,

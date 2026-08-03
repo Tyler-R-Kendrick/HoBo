@@ -22,6 +22,9 @@ as `partial(missing)`/rejection with remediation naming a provider that can
 with `lakebed:traffic-route` for dual-layer production routing (in-process
 selection in connectivity + optional deploy binding here).
 
+Matching surface: `LAKEBED_TRAFFIC_ROUTING_PROFILE` declares
+`inprocess.weighted` + `driver.route-bind`.
+
 - **Realization is a Driver, not IaC**: `realize()` emits a
   `hobo.driver-program/v1` targeting the `lakebed-deploy` driver — one
   Capsule deploy per deployment.

@@ -75,6 +75,12 @@ export {
 	type RoutingSynthesisResult,
 	type RoutingTopology,
 } from "./traffic-routing/synthesize.js";
+export {
+	applyRoutingObservations,
+	topologyWithObservations,
+	type RoutingBackendObservation,
+	type RoutingObservations,
+} from "./traffic-routing/observations.js";
 
 // public-contract: the package id consumers assert against.
 export const HOBO_STATIONS_PACKAGE = "@hobo/stations";

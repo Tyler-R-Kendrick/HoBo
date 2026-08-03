@@ -58,6 +58,10 @@ export type {
 	ResourcePlan,
 } from "./types.js";
 export {
+	AZURE_TRAFFIC_ROUTING_OFFERING_IDS,
+	AZURE_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
+export {
 	AZURE_YARD_GENERATOR_CONNECTOR_ID,
 	AZURE_YARD_RUNTIME_ID,
 	azureDefaultResolverPins,

@@ -54,3 +54,35 @@ test("resolve picks first non-none profile", () => {
 	assert.equal(resolved.provider, "cloudflare");
 	assert.ok(resolved.strategy.includes("inprocess.weighted"));
 });
+
+test("require mesh.optional never auto-selects when only native LB profiles exist", () => {
+	const resolved = resolveTrafficRouting([cloudflareProfile()], {
+		features: ["mesh.optional"],
+		negotiation: "require",
+	});
+	assert.equal(resolved.kind, "unresolved");
+	if (resolved.kind !== "unresolved") return;
+	assert.deepEqual(resolved.missing, ["mesh.optional"]);
+	assert.match(resolved.remediation, /mesh\.optional|lacks required/i);
+});
+
+test("prefer lb.lifecycle resolves cloudflare native strategy without mesh", () => {
+	const resolved = resolveTrafficRouting([cloudflareProfile()], {
+		features: ["lb.lifecycle", "lb.weighted"],
+		negotiation: "prefer",
+	});
+	assert.equal(resolved.kind, "resolved");
+	if (resolved.kind !== "resolved") return;
+	assert.equal(resolved.provider, "cloudflare");
+	assert.deepEqual(resolved.strategy, ["lb.lifecycle", "lb.weighted"]);
+	assert.equal(resolved.match.kind, "full");
+});
+
+test("empty profiles unresolved with remediation", () => {
+	const resolved = resolveTrafficRouting([], {
+		features: ["inprocess.weighted"],
+	});
+	assert.equal(resolved.kind, "unresolved");
+	if (resolved.kind !== "unresolved") return;
+	assert.match(resolved.remediation, /no traffic-routing provider/i);
+});

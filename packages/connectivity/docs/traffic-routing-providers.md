@@ -44,9 +44,11 @@ Negotiation: `prefer` → partial with `missing`/`fallbacks`; `require` → none
 | vercel | `edge.canary`, `edge.path`, `edge.header` | inprocess |
 | lakebed | `inprocess.weighted`, `driver.route-bind` | — |
 | funnel | `overlay.funnel`, `overlay.funnel.multi`, `inprocess.weighted` | inprocess |
-| aws/gcp/azure | declare lb.* + dns.* when adapters land | inprocess |
+| aws/gcp/azure | declare `lb.*`, `dns.*`, `observe.health` (preview) + `inprocess.weighted` floor | inprocess |
 
 \* health offerings when monitors/observations configured.
+
+Provider packages export `*_TRAFFIC_ROUTING_PROFILE` for Matching.
 
 Built-in profiles: `BUILTIN_TRAFFIC_ROUTING_PROFILES` from `@hobo/connectivity`.
 
@@ -65,7 +67,7 @@ Built-in profiles: `BUILTIN_TRAFFIC_ROUTING_PROFILES` from `@hobo/connectivity`.
 | Offering | Also implement |
 |---|---|
 | `lb.lifecycle` | Create/update/delete resources (not update-only stubs) |
-| `lb.health` / `observe.health` | Health observation source for Station synthesis |
+| `lb.health` / `observe.health` | Health observation source; feed Station via `applyRoutingObservations` |
 | `overlay.funnel.multi` | Multi-backend selection + documented public-tip policy |
 | `driver.route-bind` | Driver-program resource emission |
 

@@ -4,6 +4,8 @@ import { describe, it } from "vitest";
 import {
 	createLakebedProvider,
 	LAKEBED_PROVIDER_ID,
+	LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS,
+	LAKEBED_TRAFFIC_ROUTING_PROFILE,
 	parsePublishedManifest,
 } from "../src/index.js";
 
@@ -100,5 +102,14 @@ describe("client: runtime binding client per port", () => {
 		assert.equal(client.resourceClass, "lakebed:capsule");
 		assert.equal(client.providerService, "Capsule");
 		assert.throws(() => provider.client("queue", {}));
+	});
+});
+
+describe("TrafficRouting offerings surface", () => {
+	it("declares inprocess + driver.route-bind offerings", () => {
+		assert.ok(LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS.includes("inprocess.weighted"));
+		assert.ok(LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS.includes("driver.route-bind"));
+		assert.equal(LAKEBED_TRAFFIC_ROUTING_PROFILE.provider, "lakebed");
+		assert.ok(LAKEBED_TRAFFIC_ROUTING_PROFILE.offerings.length >= 2);
 	});
 });

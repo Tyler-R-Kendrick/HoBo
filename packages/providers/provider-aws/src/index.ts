@@ -54,6 +54,10 @@ export type {
 	ResourcePlan,
 } from "./types.js";
 export {
+	AWS_TRAFFIC_ROUTING_OFFERING_IDS,
+	AWS_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
+export {
 	AWS_YARD_GENERATOR_CONNECTOR_ID,
 	AWS_YARD_RUNTIME_ID,
 	awsDefaultResolverPins,

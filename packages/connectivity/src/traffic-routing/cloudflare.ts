@@ -12,9 +12,24 @@ import {
 	type TrafficRoutingPort,
 } from "@hobo/core";
 
+export interface CloudflareBackendHealthObservation {
+	readonly backendId: string;
+	readonly healthy?: boolean;
+	readonly poolId?: string;
+	readonly notes?: readonly string[];
+}
+
 export interface CloudflareTrafficRouting extends TrafficRoutingPort {
 	readonly provider: "cloudflare";
 	readonly revoke: NonNullable<TrafficRoutingPort["revoke"]>;
+	/**
+	 * observe.health: fetch pool health for an applied plan (or explicit pool map).
+	 * Returns empty when credentials/account/pools are unavailable.
+	 */
+	observeHealth(
+		planId: RoutingPlanId,
+		poolIdsByBackend?: Readonly<Record<string, string>>,
+	): Promise<readonly CloudflareBackendHealthObservation[]>;
 }
 
 export interface CloudflareTrafficRoutingOptions {
@@ -50,6 +65,7 @@ interface AppliedPlan {
 	readonly result: ApplyResult;
 	readonly createdLoadBalancer: boolean;
 	readonly createdPoolIds: readonly string[];
+	readonly poolIdsByBackend: Readonly<Record<string, string>>;
 	revoked: boolean;
 }
 
@@ -215,6 +231,11 @@ export function createCloudflareTrafficRouting(
 					: ["Cloudflare applied the provider-safe subset of the routing plan"],
 				capabilitiesFor(rule, options.healthChecksConfigured === true),
 			);
+			const poolIdsByBackend: Record<string, string> = {};
+			for (const [index, backend] of rule.backends.entries()) {
+				const poolId = poolResolution.poolIds[index];
+				if (poolId) poolIdsByBackend[backend.id] = poolId;
+			}
 			applied.set(plan.planId, {
 				externalId,
 				plan,
@@ -223,6 +244,7 @@ export function createCloudflareTrafficRouting(
 				result,
 				createdLoadBalancer,
 				createdPoolIds: poolResolution.createdPoolIds,
+				poolIdsByBackend,
 				revoked: false,
 			});
 			await meter(
@@ -231,6 +253,38 @@ export function createCloudflareTrafficRouting(
 				realized === "full" ? "apply" : "degraded",
 			);
 			return result;
+		},
+		async observeHealth(planId, poolIdsByBackend) {
+			const current = applied.get(planId);
+			const map =
+				poolIdsByBackend ??
+				current?.poolIdsByBackend ??
+				options.poolIdsByBackend ??
+				{};
+			const accountId = options.accountId?.trim();
+			if (!token || !accountId) return [];
+			const observations: CloudflareBackendHealthObservation[] = [];
+			for (const [backendId, poolId] of Object.entries(map)) {
+				if (!poolId?.trim()) continue;
+				const response = await request(
+					`/accounts/${encodeURIComponent(accountId)}/load_balancers/pools/${encodeURIComponent(poolId.trim())}/health`,
+				);
+				if (!response.ok || !cloudflareSuccess(response.body)) {
+					observations.push({
+						backendId,
+						poolId: poolId.trim(),
+						notes: [providerFailure("pool-health", response.status)],
+					});
+					continue;
+				}
+				const healthy = cloudflarePoolHealthy(response.body);
+				observations.push({
+					backendId,
+					poolId: poolId.trim(),
+					...(healthy === undefined ? {} : { healthy }),
+				});
+			}
+			return observations;
 		},
 		async status(planId) {
 			const current = applied.get(planId);
@@ -482,6 +536,31 @@ function cloudflareResultId(body: unknown): string | undefined {
 	if (!result || typeof result !== "object") return undefined;
 	const id = (result as { id?: unknown }).id;
 	return typeof id === "string" && id.trim().length > 0 ? id.trim() : undefined;
+}
+
+function cloudflarePoolHealthy(body: unknown): boolean | undefined {
+	if (!cloudflareSuccess(body)) return undefined;
+	const result = body.result;
+	if (!result || typeof result !== "object") return undefined;
+	const pool = result as {
+		healthy?: unknown;
+		pop_health?: unknown;
+	};
+	if (typeof pool.healthy === "boolean") return pool.healthy;
+	// Some CF responses nest health under pop_health.*.healthy
+	if (pool.pop_health && typeof pool.pop_health === "object") {
+		const values = Object.values(pool.pop_health as Record<string, unknown>);
+		const flags = values
+			.map((entry) =>
+				entry && typeof entry === "object"
+					? (entry as { healthy?: unknown }).healthy
+					: undefined,
+			)
+			.filter((flag): flag is boolean => typeof flag === "boolean");
+		if (flags.length === 0) return undefined;
+		return flags.every(Boolean);
+	}
+	return undefined;
 }
 
 function sanitizeName(value: string): string {

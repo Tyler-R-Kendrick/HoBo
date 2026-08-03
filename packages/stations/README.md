@@ -43,6 +43,10 @@ Missing Station fails closed — run `hobo station init`. See
 
 ## Traffic routing synthesis
 
+`applyRoutingObservations` merges provider `observe.health` / `observe.location`
+signals into a topology before synthesis. Missing signals stay best-effort
+(degraded notes); confirmed health/location can yield a non-degraded plan.
+
 `synthesizeRoutingPlan` is the pure Station-side bridge from a portable topology
 snapshot plus an existing `PolicyDecision` to a parsed `RoutingPlan`. Missing
 Station context, a mismatched/denied policy decision, or a confirmed minimum-

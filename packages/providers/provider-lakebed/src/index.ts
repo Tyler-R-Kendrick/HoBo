@@ -57,5 +57,10 @@ export type {
 	ResourcePlan,
 } from "./types.js";
 
+export {
+	LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS,
+	LAKEBED_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
+
 // public-contract: the package id consumers assert against.
 export const HOBO_PROVIDER_LAKEBED_PACKAGE = "@hobo/provider-lakebed";

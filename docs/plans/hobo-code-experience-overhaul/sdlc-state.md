@@ -1,6 +1,6 @@
 # SDLC state — hobo-code experience overhaul
 
-**phase:** in progress
+**phase:** closing (finish protocol)
 **branch:** feat/hobo-code-experience-overhaul
 
 Fixes the two failed experience complaints against the InteractiveShell —
@@ -119,11 +119,43 @@ budgets) re-execute against the committed recording on every
 run, not only completion-claiming ones — declaring a budget nobody checks
 was itself a loophole.
 
+## Rejected once, redesigned (the important part)
+
+The first delivery was **rejected by the user**, and the criticism was right:
+it repaired the render loop but kept the same chrome, so it "looked the same",
+and its engine required cloud credentials, so for a user without keys it did
+nothing at all. Two root causes, both mine:
+
+1. **I never read the design contract.** `site/DESIGN.md` defines the HoBo
+   Rubberhose identity — Steamboat Willie ink, Cuphead title cards, thick
+   outlines, hard sticker shadows, strict B&W with rare vermillion/green, and
+   the explicit rule *never flat SaaS chrome*. What shipped was precisely flat
+   SaaS chrome: hairline rules and dot-separated status text. Nothing in the
+   test suite could tell the difference, so nothing objected.
+2. **I verified the wrong binary.** Every check ran the shell by path inside
+   the agent worktree; the user's `hobo-code` symlink resolved to a different
+   worktree entirely, so none of the work was reachable from the command they
+   typed — which the package README itself warns about.
+
+The redesign addresses both, and encodes them so they cannot recur silently:
+
+- Chrome now follows the contract (title card, ink cards + sticker shadows,
+  transcript owns the viewport at ~19 rows on 80x24 vs ~8, Bo on a one-line
+  strap). `test/rubberhose.test.ts` fails the build on hairline rules, rainbow
+  accents, geometry drift, or a shrinking content area.
+- A **locally hosted SLM is the default engine** (ollama, streamed NDJSON,
+  server-reported tokens, $0), with cloud as fallback and an honest
+  dispatch-only mode last. The $0 path is now real rather than aspirational.
+
 ## Remaining
 
 - A full persona-scored optimizexp *loop* (multi-round dual-regime with the
   review bus). This session scored a measured before/after but deliberately
   does not claim a pareto equilibrium — implementable findings remain.
+- SGR mouse hit regions; Warning budget filter (carried backlog).
+- Tool-use for the local SLM: turns are conversational today, so the approval
+  gate is exercised by the cloud engine path and by tests, not yet by a small
+  local model driving edits.
 
 ## Residual (backlog)
 

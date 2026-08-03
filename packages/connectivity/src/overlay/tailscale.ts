@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 
 import {
+	createUsageEvent,
 	type FunnelPublishOptions,
 	type FunnelPublishResult,
 	type MagicDnsSplitConfig,
@@ -11,9 +12,8 @@ import {
 	type OverlayJoinResult,
 	type OverlayNetwork,
 	type PolicyEngine,
-	type TenantId,
-	createUsageEvent,
 	parseTenantId,
+	type TenantId,
 } from "@hobo/core";
 
 export type TailscaleRunner = (
@@ -347,23 +347,29 @@ export function createTailscaleOverlay(options?: {
 			funnel: FunnelPublishOptions,
 		): Promise<FunnelPublishResult> {
 			const notes: string[] = [];
-			const port =
-				funnel.localPort ??
-				(() => {
-					try {
-						return Number(new URL(funnel.backendUrl).port) || 80;
-					} catch {
-						return 80;
-					}
-				})();
+			let target: string | null = null;
+			try {
+				const parsed = new URL(funnel.backendUrl);
+				const local = new Set(["localhost", "127.0.0.1", "[::1]"]);
+				const effectivePort =
+					Number(parsed.port) || (parsed.protocol === "https:" ? 443 : 80);
+				if (
+					(parsed.protocol === "http:" || parsed.protocol === "https:") &&
+					local.has(parsed.hostname) &&
+					(funnel.localPort === undefined || funnel.localPort === effectivePort)
+				) {
+					target = parsed.toString();
+				} else {
+					notes.push("Funnel target must be a matching local HTTP(S) endpoint");
+				}
+			} catch {
+				notes.push("Funnel target must be an absolute local HTTP(S) URL");
+			}
 
-			// Try modern `tailscale funnel` then legacy `tailscale serve --bg --https=443`.
-			const attempts: readonly (readonly string[])[] = [
-				["funnel", "--bg", `${port}`],
-				["funnel", `${port}`],
-				["serve", "--bg", "--https=443", `${port}`],
-				["serve", "--https=443", `${port}`],
-			];
+			// Funnel is public; `tailscale serve` is tailnet-private and cannot confirm it.
+			const attempts: readonly (readonly string[])[] = target
+				? [["funnel", "--bg", target]]
+				: [];
 
 			let enabled = false;
 			let gatewayHostname: string | null = null;
@@ -374,12 +380,8 @@ export function createTailscaleOverlay(options?: {
 					enabled = true;
 					const combined = `${result.stdout}\n${result.stderr}`;
 					const match =
-						combined.match(
-							/https?:\/\/([a-z0-9.-]+\.ts\.net)/i,
-						) ??
-						combined.match(
-							/([a-z0-9.-]+\.ts\.net)/i,
-						);
+						combined.match(/https?:\/\/([a-z0-9.-]+\.ts\.net)/i) ??
+						combined.match(/([a-z0-9.-]+\.ts\.net)/i);
 					if (match?.[1]) {
 						gatewayHostname = match[1].toLowerCase();
 					}
@@ -436,22 +438,27 @@ export function createTailscaleOverlay(options?: {
 			);
 
 			const result: FunnelPublishResult = {
-				enabled: enabled || gatewayHostname !== null,
+				enabled,
+				confirmed: enabled,
 				gatewayHostname,
 				notes,
 			};
 
-			await options?.metering?.emit(
-				createUsageEvent({
-					tenantId: funnel.tenantId,
-					eventType: "overlay.funnel",
-					resource: funnel.backendUrl,
-					metadata: {
-						enabled: result.enabled,
-						gateway: gatewayHostname ?? "",
-					},
-				}),
-			);
+			try {
+				await options?.metering?.emit(
+					createUsageEvent({
+						tenantId: funnel.tenantId,
+						eventType: "overlay.funnel",
+						resource: gatewayHostname ?? "funnel",
+						metadata: {
+							enabled: result.enabled,
+							gateway: gatewayHostname ?? "",
+						},
+					}),
+				);
+			} catch {
+				// A confirmed provider side effect remains authoritative.
+			}
 
 			return result;
 		},

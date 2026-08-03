@@ -1,6 +1,7 @@
 import { EnvelopeParseError } from "./errors.js";
 import { cloneJson, deepFreeze, expectObject } from "./parse-utils.js";
 
+// public-contract: pins the serialized @hobo/core API snapshot schema.
 export const CORE_SCHEMA_VERSION = "hobo.core/v1";
 
 export const CORE_API_SNAPSHOT = deepFreeze({
@@ -38,6 +39,12 @@ export const CORE_API_SNAPSHOT = deepFreeze({
 		"inferCapabilityUsage",
 		"evaluateCapabilityGrants",
 		"parseCapabilityGrant",
+		"TrafficRoutingPort",
+		"RoutingPlan",
+		"parseRoutingPlan",
+		"parseTrafficRoutingPlanRecord",
+		"toTrafficRoutingPlanRecord",
+		"TrafficRoutingParseError",
 	],
 });
 

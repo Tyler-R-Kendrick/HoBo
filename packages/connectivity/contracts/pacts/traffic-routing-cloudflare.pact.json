@@ -1,0 +1,83 @@
+{
+	"consumer": { "name": "HoboConnectivity" },
+	"provider": { "name": "CloudflareLoadBalancingApi" },
+	"interactions": [
+		{
+			"description": "apply one weighted traffic routing rule",
+			"request": {
+				"method": "PUT",
+				"path": "/client/v4/zones/zone-a/load_balancers/load-balancer-a",
+				"headers": {
+					"Accept": "application/json",
+					"Authorization": "Bearer test-token",
+					"Content-Type": "application/json"
+				},
+				"body": {
+					"name": "checkout.example.test",
+					"default_pools": ["pool-primary"],
+					"fallback_pool": "pool-primary",
+					"steering_policy": "random",
+					"enabled": true,
+					"random_steering": {
+						"pool_weights": { "pool-primary": 1 }
+					}
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"success": true,
+					"result": {
+						"id": "load-balancer-a",
+						"enabled": true,
+						"name": "checkout.example.test",
+						"default_pools": ["pool-primary"],
+						"fallback_pool": "pool-primary",
+						"steering_policy": "random",
+						"random_steering": {
+							"pool_weights": { "pool-primary": 1 }
+						}
+					}
+				}
+			}
+		},
+		{
+			"description": "observe an applied traffic routing rule",
+			"request": {
+				"method": "GET",
+				"path": "/client/v4/zones/zone-a/load_balancers/load-balancer-a"
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"success": true,
+					"result": {
+						"id": "load-balancer-a",
+						"enabled": true,
+						"name": "checkout.example.test",
+						"default_pools": ["pool-primary"],
+						"fallback_pool": "pool-primary",
+						"steering_policy": "random",
+						"random_steering": {
+							"pool_weights": { "pool-primary": 1 }
+						}
+					}
+				}
+			}
+		},
+		{
+			"description": "revoke an applied traffic routing rule",
+			"request": {
+				"method": "DELETE",
+				"path": "/client/v4/zones/zone-a/load_balancers/load-balancer-a"
+			},
+			"response": {
+				"status": 200,
+				"body": { "success": true }
+			}
+		}
+	],
+	"metadata": {
+		"pactSpecification": { "version": "3.0.0" }
+	}
+}

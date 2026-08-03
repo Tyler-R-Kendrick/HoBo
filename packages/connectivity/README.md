@@ -2,6 +2,49 @@
 
 Multi-tenant connectivity foundations for HoBo: **DNS-valid hierarchical naming**, optional **local named HTTPS** (portless), **cross-cloud overlay** (Tailscale primary / Netbird alternative), **pluggable public DNS**, **PolicyEngine**, and **metering/usage events**.
 
+## TrafficRouting
+
+`TrafficRoutingPort` is the portable multi-backend routing-intent seam from
+[ADR-0143](../../docs/design/adr/07-portability-extensibility.md#adr-0143). It is
+adjacent to public DNS and overlay exposure: Stations coordinate plans; Junctions
+continue to own Tailscale/overlay configuration.
+
+```ts
+import { parseRoutingPlan } from "@hobo/core";
+import { createSimpleTrafficRouting } from "@hobo/connectivity";
+
+const routing = createSimpleTrafficRouting();
+const result = await routing.apply(parseRoutingPlan({
+  planId: "plan:checkout",
+  intent: {
+    service: "checkout",
+    tenantId: "local",
+    rules: [{
+      weightStrategy: "static",
+      backends: [{ id: "backend:local", service: "checkout", weight: 100 }],
+    }],
+  },
+  backends: [{ id: "backend:local", service: "checkout", weight: 100 }],
+  createdAt: new Date().toISOString(),
+}));
+// result.realized === "full"
+```
+
+| Adapter | V1 realization |
+|---------|----------------|
+| Simple | Offline baseline; deterministic static weighted selection |
+| Cloudflare | Credential-gated Load Balancing for a DNS-hostname service over caller-supplied existing pool and load-balancer IDs; unsupported fragments are partial |
+| Funnel | Single-backend bridge through an existing `OverlayNetwork.publishFunnel` only; full realization requires provider confirmation |
+| Vercel / Lakebed | Honest capability stubs returning structured `none` results |
+
+No adapter requires Kubernetes. Missing credentials or platform capabilities
+return `partial`/`none` with `unmet` notes; credentials never enter plans,
+metering events, or result notes. V1 does not create Cloudflare pools: callers
+provide backend-to-pool and plan-to-load-balancer IDs, keeping provider resource
+lifecycle explicit and making apply a retry-safe update rather than a create.
+Provider effects remain authoritative if best-effort metering delivery fails;
+an active Cloudflare `planId` is idempotent and conflicting content fails closed.
+
 ## Quick starts
 
 ### 1. Hierarchical naming (pure)
@@ -160,6 +203,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for Mermaid diagrams covering local nam
 | Route53 DNS | `createRoute53DnsProvider({ accessKeyId, secretAccessKey, signRequest?, allowUnsigned? })` |
 | OPA/Rego policy | `createOpaPolicyEngine({ opaUrl?, regoModulePath? })` + `SAMPLE_HOBO_AUTHZ_REGO` |
 | Billing aggregator | `createBillingAggregator()` as a `MeteringSink` → `closePeriod()` invoices |
+| Traffic routing | `createSimpleTrafficRouting()` offline; Cloudflare/Funnel adapters plus honest Vercel/Lakebed stubs |
 | Hard multi-tenant | `createTenantIsolationRegistry()` with `soft` \| `hard-overlay` \| `hard-control-plane` |
 | Dynamic DNS heartbeats | `createJunctionDynamicDnsRegistrar` / `createJunctionAgent({ publicDns, dnsTargets })` |
 

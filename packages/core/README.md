@@ -7,6 +7,8 @@ the capability-manifest bundle parser, a minimal port container (`createContaine
 the typed **port contracts** other packages implement: `EventStore`, `Queue`, `Streamer`,
 `VirtualClock`, `ComponentHostPort`, `WrpcLinkPort`, `BindingResolverPort`, and
 `TrainingEnginePort`.
+`TrafficRoutingPort` adds provider-neutral, tenant-scoped multi-backend routing
+intent with explicit `full | partial | none` realization and capability notes.
 
 ## Honest scope
 
@@ -38,6 +40,13 @@ Untrusted input crosses named parser boundaries and becomes frozen derived types
 functions. Failures throw typed errors (`EnvelopeParseError`, `CapabilityParseError`,
 `QueueParseError`, …) — parse, don't validate. Wire forms live in `data-models/*.proto`
 with CUE constraints alongside.
+
+Traffic routing follows the same boundary: `parseRoutingPlan` produces a deeply
+frozen `RoutingPlan` with branded plan/backend/Station identifiers, while
+`TrafficRoutingParseError` rejects malformed plans before adapters see them.
+`parseTrafficRoutingPlanRecord` and `toTrafficRoutingPlanRecord` reconcile the
+generated protobuf record/JSON enums with that frozen domain view; protobuf's
+absent scalar/list defaults normalize optional `degraded`/`notes` to `false`/`[]`.
 
 ## Position in the event architecture
 

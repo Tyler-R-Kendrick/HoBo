@@ -69,6 +69,12 @@ export {
 	type StationContext,
 	railEnablesPam,
 } from "./privileged-access-gateway.js";
+export {
+	synthesizeRoutingPlan,
+	type RoutingSynthesisDenial,
+	type RoutingSynthesisResult,
+	type RoutingTopology,
+} from "./traffic-routing/synthesize.js";
 
 // public-contract: the package id consumers assert against.
 export const HOBO_STATIONS_PACKAGE = "@hobo/stations";

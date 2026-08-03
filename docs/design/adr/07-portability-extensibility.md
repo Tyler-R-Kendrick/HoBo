@@ -576,6 +576,30 @@ Ship-readiness work conflated three different “ship” meanings: make the mono
 - **(−)** Three cutlines and two gate families (S-stage interim + M3/M4 hosted) require discipline in docs and go/no-go instances.
 - **(−)** Target C remains multi-quarter human/product work; this ADR does not schedule or complete it.
 
+## ADR-0143
+**TrafficRouting port — portable multi-backend routing intent.**
+
+### Context
+Stations need to coordinate routing across candidate backends without making Kubernetes, a service mesh, sidecars, or one provider's load-balancer API part of the application contract. Existing `OverlayNetwork`, Funnel, and `PublicDnsManager` surfaces already own private connectivity and public exposure; replacing them would merge distinct responsibilities and move provider detail into `@hobo/core`.
+
+### Decision
+1. `@hobo/core` defines a thin `TrafficRoutingPort`. Its parsed, deeply frozen `RoutingPlan` carries tenant-scoped service intent, narrow match rules, backend references, optional minimum availability and resiliency hints, and optional Station/Rail pins. The port reports explicit capabilities and `full | partial | none` realization.
+2. `@hobo/stations` owns pure plan synthesis from topology, availability observations, and an existing context-bound `PolicyDecision`. Missing Station context, a deny or mismatched decision, no usable backend, or a confirmed minimum-availability violation fails closed. Missing health or location observations produce a marked best-effort plan; synthesis performs no live provider calls.
+3. `@hobo/connectivity` owns adapters. The offline Simple adapter is the portable baseline. Cloudflare is a credential-gated primary non-Kubernetes adapter, uses caller-owned pools and load balancers, and applies through a retry-safe update keyed by `planId`. Funnel may realize only a simple single-backend public route through an existing Junction-owned `OverlayNetwork.publishFunnel`, and reports full realization only after provider confirmation. Vercel and Lakebed report honest capability gaps until real platform seams exist.
+4. Partial realization is first-class. Unsupported match, availability, health, or resiliency fragments return concrete `unmet` entries and notes rather than being silently accepted. Routing apply, degradation, and denial emit tenant-scoped metering facts without credentials or secret material.
+5. TrafficRouting is adjacent to `OverlayNetwork`, Funnel, and `PublicDnsManager`; it does not own Tailscale configuration, DNS zones, or Junction overlay state. Stations coordinate intent and preserve their isolation boundary; Junctions continue to own overlay realization.
+
+### Non-goals
+- No Kubernetes requirement and no Istio, Gateway API, Cilium, Linkerd, Envoy xDS, or Kubernetes client types in `@hobo/core`.
+- No HoBo service-mesh control plane, arbitrary-cloud live health aggregation, or ngrok dependency.
+- No claim that Funnel provides multi-backend routing, or that Vercel/Lakebed capabilities exist before their adapters can prove them.
+
+### Consequences
+- **(+)** Lakebed, Cloudflare, Vercel, self-hosted, local, and WASM runtimes share one provider-neutral intent while choosing native or in-process realization.
+- **(+)** Offline tests and local Stations always have a zero-process baseline; provider gaps remain observable rather than implicit.
+- **(+)** Kubernetes meshes remain possible secondary adapters without becoming the portability boundary.
+- **(−)** V1 health-aware synthesis is incomplete-tolerant and may remain degraded until an adapter supplies trustworthy observations.
+
 ## Open / proposed decisions (ADR-Pn)
 
 > **Status (2026-07-03):** the last six open ADR-Pn are now resolved (P3/P4 were already); this list is retained as the decision trail.

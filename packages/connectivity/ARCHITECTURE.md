@@ -130,6 +130,25 @@ Untrusted inputs at package boundaries are parse, don't validate: DNS labels, te
 - **Snapshot** — in-memory lease maps and endpoint registries are the snapshot of those projections.
 - **Read store** — `listLeases`, `getNamedEndpoint`, metering sinks serve the read store without replaying the raw event log.
 
+## Traffic routing intent
+
+```mermaid
+flowchart LR
+  ST[Station synthesis] --> PLAN[RoutingPlan]
+  PLAN --> SIMPLE[Simple offline]
+  PLAN --> CF[Cloudflare]
+  PLAN --> FUNNEL[Funnel single backend]
+  PLAN --> STUB[Vercel / Lakebed capability stubs]
+  SIMPLE --> FACTS[routing.plan.* metering facts]
+  CF --> FACTS
+  FUNNEL --> OV[Existing OverlayNetwork]
+  FUNNEL --> FACTS
+```
+
+TrafficRouting coordinates backend-selection intent only. `OverlayNetwork`,
+Funnel, and `PublicDnsManager` retain connectivity and exposure ownership.
+Partial realization is an explicit result, never a silent feature drop.
+
 ## Secretless connector (ADR-0027 + ADR-0130)
 
 Residual classical credentials (Postgres, generic TCP) are mediated: the workload dials only a stable **named endpoint**; the connector holds short-lived material closed over, performs the handshake, and shuttles bytes. Public lease objects never expose `credentialMaterial`. Preferred path remains identity federation; mediation is for protocols that cannot be pure keyless.

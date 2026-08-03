@@ -41,6 +41,16 @@ CLI (ops/setup, not lifecycle verbs): `hobo station init|up|down|status|rails *`
 Missing Station fails closed — run `hobo station init`. See
 [`examples/self-host-station`](../../examples/self-host-station/README.md).
 
+## Traffic routing synthesis
+
+`synthesizeRoutingPlan` is the pure Station-side bridge from a portable topology
+snapshot plus an existing `PolicyDecision` to a parsed `RoutingPlan`. Missing
+Station context, a mismatched/denied policy decision, or a confirmed minimum-
+availability violation returns a typed denial. Known-unhealthy backends are
+excluded; unknown health/location signals produce a degraded best-effort plan
+with explicit notes. Synthesis does not call clouds or take ownership of Junction overlay configuration. See
+[ADR-0143](../../docs/design/adr/07-portability-extensibility.md#adr-0143).
+
 ## Honesty
 
 - Control-plane isolation primitive; not a multi-tenant hosted product by itself.

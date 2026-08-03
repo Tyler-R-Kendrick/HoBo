@@ -259,3 +259,13 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **result:** success; independent review blocker fixed by committing and hash-verifying `primary.cast`
 - **checks:** 12 local PR-base gates green; GitHub clean/mergeable; no review threads
 - **failure class:** `billing-budget` for CodeRabbit line-review quota only; its status context passed
+
+## 2026-08-03 — Try HoBo browser WIT examples (#1008)
+
+- **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/1008
+- **merge:** `af7fa3911b522f6d313b849acae8d1468111f800` (squash)
+- **result:** success; independent review findings fixed and focused re-review clean
+- **checks:** 18 impact-selected staged and PR-base gates; typed WIT component,
+  protobuf/CUE/generated drift gate, 139-page build, and served Playwright journey
+- **failure class:** CodeRabbit free-plan review quota only; no implementation check failed
+- **protocol:** `/sdlc --finish`

@@ -279,3 +279,72 @@ Buttons are **roadside / tavern sign boards**, not soft ellipses or Material CTA
 - Don’t soft-blur everything into modern glass UI.
 - Don’t put free-text secrets or live credentials in examples (HoBo policy).
 - Don’t link page prose to raw `docs/design/` repo paths — restate for Pages.
+
+## Game Surface (HIGHBALL! — the control yard)
+
+The playable control-yard surface (`@hobo/control-yard`, Phaser 3) is the same
+rubberhose identity **in motion**. Everything above still applies; this section
+adds the rules that only exist once the ink starts moving. Agents building or
+editing game scenes **must** keep both copies of this file byte-identical
+(`site/DESIGN.md` ↔ `packages/control-yard/DESIGN.md`).
+
+### Canvas contract
+
+- Logical resolution is **1280×720**, always — layout math never sees another size.
+- Scale with `Phaser.Scale.FIT`; letterbox, never stretch or crop.
+- Respect `devicePixelRatio`: back the canvas at device resolution, keep logical
+  coordinates at 1280×720.
+- **Integer sprite scaling only** (1×, 2×, 3×…) — fractional scales smear the ink.
+- Pixel-art crisp rendering: nearest-neighbour filtering, `image-rendering: pixelated`
+  on the canvas; no antialiased resampling of sheet art.
+
+### Sprite scale tiers
+
+- **Bo the foreman is full-size** — the protagonist owns the largest silhouette
+  on the board.
+- **Bindlebug NPCs are visibly smaller and simpler** — fewer frames, humbler
+  silhouettes — so Bo reads distinctly at a glance from across the yard.
+- Never scale an NPC up to Bo's tier; hierarchy is the readability contract.
+
+### HUD chrome
+
+- Panels are **sticker-shadow** boards: thick ink rim, hard offset shadow — the
+  same cartoon signage rules as site buttons, never translucent game-UI glass.
+- **Chewy appears only at title-card scale** (scene titles, the HIGHBALL! card);
+  in-HUD text stays system-ui.
+- Meters and readouts use **label-caps** — small caps with tracking, ink on paper.
+
+### Gameplay motion
+
+- **Squash-and-stretch 80–220ms** — inside that window it reads as bounce;
+  longer reads as lag.
+- **Hit-stop ≤120ms, reserved for failure** — success never freezes the frame.
+- Semaphores settle with **overshoot** — swing past, spring back; rubberhose
+  never eases linearly to rest.
+- **Motion is accent, ink is the message:** every juiced moment must have a
+  static ink-state equivalent under `prefers-reduced-motion`. If the state can't
+  be read from a still frame, the animation is hiding information — fix the ink
+  first.
+
+### Signal provenance
+
+- Any synthetic or simulated value wears a **film-leader style SIMULATED tag** —
+  countdown-leader chic, unmistakable, on every render of that value.
+- **spark** (`#c5301c`) is reserved for **real failure states**; **go**
+  (`#14672c`) for **confirmed success only**. Simulated signals never borrow
+  either accent.
+
+### Reserved regions
+
+- Camp rooms and corridors render **inside designated prop regions** declared in
+  `layout.ts` — dynamic content never overlaps the fixed waybill desk or the
+  signal frame.
+- The desk and signal frame are the player's instrument panel; nothing generated
+  may occlude them.
+
+### Audio
+
+- **Mono, lo-fi era palette** — needle-drop and hand-cranked, matching the
+  film-grain visual register; no modern stereo polish.
+- Unlock audio on **first user gesture** (browser policy) — never autoplay.
+- Mute state **persists** across sessions.

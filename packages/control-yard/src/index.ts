@@ -82,6 +82,7 @@ export {
 	yardPhaserConfig,
 } from "./phaser/game-config.js";
 export {
+	derailHitStop,
 	type LanternLine,
 	lanternLines,
 	lanternRowText,
@@ -90,6 +91,7 @@ export {
 	type RenderItem,
 	type RenderModel,
 	resolveBoTransitAnim,
+	stampSquash,
 	type TextStyleId,
 } from "./phaser/yard-presenter.js";
 export {

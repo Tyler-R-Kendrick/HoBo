@@ -83,6 +83,15 @@ let theme: YardTheme = "day";
 let waybills: readonly Waybill[] = [];
 let trains: readonly TrainView[] = [];
 let audio: YardAudio | null = null;
+/** Transient feedback in flight (stamp slam / derail hit-stop). */
+let fx: { kind: "stamp" | "derail"; startedAt: number } | null = null;
+const REDUCED_MOTION =
+	typeof matchMedia === "function" &&
+	matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function startFx(kind: "stamp" | "derail"): void {
+	fx = { kind, startedAt: performance.now() };
+}
 let highball = false;
 /** Lantern inspect: the zone under the pointer. Reads are zero-friction. */
 let hoveredZone: ZoneId | null = null;
@@ -101,6 +110,8 @@ function recordFx(fx: string): void {
 	if (recentFx.length > RECENT_FX_MAX) recentFx.shift();
 	const cue = cueForFx(fx);
 	if (cue) audio?.play(cue);
+	if (fx.startsWith("stamp:")) startFx("stamp");
+	else if (fx === "derail") startFx("derail");
 }
 
 function setSpeech(text: string, seconds: number): void {
@@ -446,6 +457,10 @@ function renderModel(): RenderModel {
 		waybills,
 		trains,
 		highball,
+		fx: fx
+			? { kind: fx.kind, elapsedMs: performance.now() - fx.startedAt }
+			: null,
+		reducedMotion: REDUCED_MOTION,
 	});
 }
 

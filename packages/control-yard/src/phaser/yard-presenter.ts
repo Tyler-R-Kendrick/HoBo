@@ -106,6 +106,12 @@ export type PresenterInput = Readonly<{
 	trains?: readonly TrainView[];
 	/** Highball goal state: clean board derived from reality only. */
 	highball: boolean;
+	/**
+	 * Transient feedback in flight. Motion is accent only: under
+	 * `reducedMotion` the same beat still lands, as a static ink state.
+	 */
+	fx?: { kind: "stamp" | "derail"; elapsedMs: number } | null;
+	reducedMotion?: boolean;
 }>;
 
 // DESIGN.md tokens (ink on paper; spark/go accents only).
@@ -164,6 +170,34 @@ export function resolveBoTransitAnim(
 		return dx >= 0 ? "bo.walk.east" : "bo.walk.west";
 	}
 	return projectionAnimationId;
+}
+
+const STAMP_SQUASH_MS = 160;
+const STAMP_SQUASH_PCT = 0.2;
+const DERAIL_HIT_STOP_MS = 120;
+
+/** 0..STAMP_SQUASH_PCT — a slam that springs back, never a held deformation. */
+export function stampSquash(input: PresenterInput): number {
+	if (input.reducedMotion) return 0;
+	const fx = input.fx;
+	if (!fx || fx.kind !== "stamp") return 0;
+	const t = fx.elapsedMs / STAMP_SQUASH_MS;
+	if (t < 0 || t > 1) return 0;
+	// Down fast, back up slower: squash peaks early then eases out.
+	return STAMP_SQUASH_PCT * Math.sin(Math.PI * t) ** 2;
+}
+
+/** True while a derail hit-stop is in flight (the loudest beat on screen). */
+export function derailHitStop(input: PresenterInput): boolean {
+	if (input.reducedMotion) return false;
+	const fx = input.fx;
+	return (
+		fx !== null &&
+		fx !== undefined &&
+		fx.kind === "derail" &&
+		fx.elapsedMs >= 0 &&
+		fx.elapsedMs <= DERAIL_HIT_STOP_MS
+	);
 }
 
 type Push = (item: RenderItem) => void;
@@ -549,6 +583,23 @@ export function presentYard(input: PresenterInput): RenderModel {
 
 	// --- lantern inspect: the free read verb (instant, no animation gating) ---
 	if (input.hoveredZone) drawLantern(push, input, input.hoveredZone);
+
+	// Derail hit-stop: a single spark band across the rail. Static ink smoke
+	// already marks the derail, so reduced motion loses only the flash.
+	if (derailHitStop(input)) {
+		const t = YARD_LAYOUT.zones.activeRailTrack;
+		items.push({
+			kind: "rect",
+			id: "derail-flash",
+			x: t.x,
+			y: t.y,
+			w: t.width,
+			h: t.height,
+			fill: SPARK,
+			fillAlpha: 0.22,
+			depth: D.particles + 1,
+		});
+	}
 
 	// --- train traffic: the deployment saga as rolling stock ---
 	// Nothing is drawn when the deployments projection is unavailable — an
@@ -1196,16 +1247,23 @@ function drawWaybillDesk(push: Push, input: PresenterInput): void {
 
 	// Waybill stack: up to 3 overlapping cards; index 0 is the top of the stack.
 	const stack = input.waybills.slice(0, 3);
+	// Stamp slam: the top card squashes ~20% then springs back inside the
+	// feel budget (docs/validation/feel-budgets.json). Reduced motion keeps the
+	// card still — the stamped state is already legible without the squash.
+	const squash = stampSquash(input);
 	stack.forEach((w, i) => {
 		const wx = desk.x + 4 + i * 8;
 		const wy = 452 + i * 6;
 		const base = PROP + 2 + (stack.length - 1 - i) * 3;
-		rect(push, `waybill-${i}-shadow`, wx + 2, wy + 2, 122, 56, {
+		const sq = i === 0 ? squash : 0;
+		const h = Math.round(56 * (1 - sq));
+		const dy = 56 - h;
+		rect(push, `waybill-${i}-shadow`, wx + 2, wy + 2 + dy, 122, h, {
 			fill: INK,
 			fillAlpha: 0.12,
 			depth: base,
 		});
-		rect(push, `waybill-${i}`, wx, wy, 122, 56, {
+		rect(push, `waybill-${i}`, wx, wy + dy, 122, h, {
 			fill: PAPER,
 			stroke: INK,
 			lineWidth: 2,

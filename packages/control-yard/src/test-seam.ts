@@ -32,6 +32,8 @@ export type YardTestState = Readonly<{
 	seed: number | null;
 	frameCount: number;
 	zone: ZoneId | null;
+	/** Zone under the lantern (pointer hover); null when nothing is inspected. */
+	hoveredZone: ZoneId | null;
 	bo: { x: number; y: number; animationId: string; facing: string };
 	occupyMode: string | null;
 	connCount: number;
@@ -55,6 +57,8 @@ export type YardTestCommands = Readonly<{
 	reset: () => void;
 	seed: (n: number) => void;
 	selectZone: (zone: ZoneId) => void;
+	/** Raise/lower the lantern truth card without a real pointer. */
+	hoverZone: (zone: ZoneId | null) => void;
 	dismissSheet: () => void;
 	runAction: (action: string) => Promise<void>;
 	advanceFrame: (dtMs?: number) => void;
@@ -80,6 +84,8 @@ export type YardTestHost = {
 	isSheetOpen: () => boolean;
 	sheetKind: () => string | null;
 	selectZone: (zone: ZoneId) => void;
+	hoverZone: (zone: ZoneId | null) => void;
+	getHoveredZone: () => ZoneId | null;
 	dismissSheet: () => void;
 	runAction: (action: string) => Promise<void>;
 	reset: () => void;
@@ -113,6 +119,7 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 				seed: seam.seed,
 				frameCount: seam.frameCount,
 				zone: host.getZone(),
+				hoveredZone: host.getHoveredZone(),
 				bo: Object.freeze({ ...bo }),
 				occupyMode: snap?.occupyMode ?? null,
 				connCount: snap?.connections.length ?? 0,
@@ -145,6 +152,7 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 				seam.seed = n;
 			},
 			selectZone: (zone) => host.selectZone(zone),
+			hoverZone: (zone) => host.hoverZone(zone),
 			dismissSheet: () => host.dismissSheet(),
 			runAction: (action) => host.runAction(action),
 			advanceFrame: (dtMs = 16.67) => {

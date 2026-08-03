@@ -97,7 +97,16 @@ export function toWorldView(
 ): WorldView | null {
 	if (world === null) return null;
 	const slots = campRoomSlots();
+	// One room = one real, inhabited Camp. OTLP logs/metrics that carry no
+	// `hobo.camp` attribute auto-materialize a placeholder camp upstream; if we
+	// rendered those we would draw an empty room (decorative scenery, which the
+	// design forbids) and — worse — an alphabetically earlier placeholder could
+	// take a slot from a Camp that actually has Bindles in it.
+	const populated = new Set(
+		Object.values(world.characters).map((ch) => ch.campId),
+	);
 	const camps = Object.values(world.camps)
+		.filter((camp) => populated.has(camp.id))
 		.sort((a, b) => a.id.localeCompare(b.id))
 		.slice(0, MAX_CAMP_ROOMS)
 		.map((camp, i) => {

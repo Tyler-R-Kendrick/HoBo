@@ -19,6 +19,8 @@ export type YardHost = {
 	/** Engine tick driven by the scene clock (skipped by host in test mode). */
 	onUpdate: (dtMs: number) => void;
 	onZoneClick: (zone: ZoneId) => void;
+	/** Lantern inspect: world-space pointer position (reads are zero-friction). */
+	onPointerMove: (worldX: number, worldY: number) => void;
 	onSceneReady: () => void;
 	onFrame: () => void;
 };
@@ -101,6 +103,9 @@ export class YardScene extends Phaser.Scene {
 		this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
 			const zone = zoneAt(pointer.worldX, pointer.worldY);
 			if (zone) this.host.onZoneClick(zone);
+		});
+		this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+			this.host.onPointerMove(pointer.worldX, pointer.worldY);
 		});
 		this.host.onSceneReady();
 		this.reconcile(this.host.getRenderModel());

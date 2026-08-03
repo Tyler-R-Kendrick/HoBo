@@ -141,12 +141,20 @@ const ZONES: Record<ZoneId, ZoneLayout> = {
 	},
 };
 
-/** DESIGN.md reserved region: dynamic camp/NPC content stays inside this band. */
+/**
+ * DESIGN.md reserved region: dynamic camp/NPC content stays inside this band.
+ *
+ * The band is the genuinely free floor between the Bootstrap Desk prop (its
+ * desktop slab overhangs the zone rect to x=526) and the Connection Bay siding
+ * (x=900), below the Active Rail Track (y=380) and above the ground line. It
+ * intersects no zone rect and no static prop footprint — see
+ * test/yard-presenter.test.ts "camp rooms never collide with zones or props".
+ */
 export const CAMP_GROUNDS: PropRegion = Object.freeze({
-	x: 340,
-	y: 420,
-	width: 540, // 340..880 — ends before the Connection Bay at x=900
-	height: 180, // 420..600 — the activeRailTrack-to-ground band
+	x: 540,
+	y: 430,
+	width: 350, // 540..890 — clears the desk slab (526) and the bay siding (900)
+	height: 170, // 430..600 — below the rail track (380), above the ground (620)
 });
 
 export const YARD_LAYOUT: Layout = Object.freeze({
@@ -165,7 +173,8 @@ export const YARD_LAYOUT: Layout = Object.freeze({
 		overlay: 50,
 	}),
 	speechBubble: Object.freeze({ offsetY: -90, maxWidth: 220 }),
-	costMeter: Object.freeze({ x: 1020, y: 150, width: 160, height: 18 }),
+	/** Footprint of the Cost Booth instrument (coal tender + pressure gauge). */
+	costMeter: Object.freeze({ x: 1004, y: 140, width: 178, height: 76 }),
 	trafficEmitter: Object.freeze({ x: 140, y: 330, width: 1000 }),
 });
 

@@ -37,6 +37,12 @@ export type YardVisualState = Readonly<{
 		zone: ZoneId;
 		facing: "east" | "west";
 	};
+	/** Station occupancy facts the lantern reads back verbatim. */
+	station: {
+		id: string;
+		status: string;
+		activeRailHash: string | null;
+	};
 	rails: readonly {
 		id: string;
 		contentHash: string;
@@ -47,16 +53,22 @@ export type YardVisualState = Readonly<{
 		alias?: string;
 		provider: string;
 		visual: ConnectionVisualState;
+		/** Raw lifecycle status (needs-reauth/expired keep their own identity). */
+		status: string;
 	}[];
 	guests: readonly {
 		connectorKind: string;
 		connectionId?: string;
 		visual: GuestVisualState;
 		animationId: string;
+		/** Provenance of `visual` (ConnectorActivityView.statusSource). */
+		statusSource: "derived-static" | "otlp";
 	}[];
 	traffic: {
 		rate: number;
 		active: boolean;
+		/** Provenance of `rate` (MeteringView.trafficRateSource). */
+		source: "synthetic" | "otlp";
 	};
 	costMeter: {
 		fill: number;
@@ -64,10 +76,12 @@ export type YardVisualState = Readonly<{
 		quotaUsed: number;
 		quotaLimit: number;
 		spendCapUsd: number;
+		budgetUsd: number;
 	};
 	errorBunker: {
 		active: boolean;
 		hazards: readonly string[];
+		hint: string | null;
 	};
 	bootstrapDesk: {
 		active: boolean;
@@ -109,6 +123,7 @@ export function deriveYardVisualState(
 			...(c.alias !== undefined ? { alias: c.alias } : {}),
 			provider: c.provider,
 			visual: mapConnectionVisual(String(c.status)),
+			status: String(c.status),
 		}),
 	);
 
@@ -118,6 +133,8 @@ export function deriveYardVisualState(
 			...(a.connectionId !== undefined ? { connectionId: a.connectionId } : {}),
 			visual: a.status,
 			animationId: GUEST_ANIM[a.status] ?? GUEST_ANIM.idle,
+			// Optional in the projection contract; absent means not yet measured.
+			statusSource: a.statusSource ?? "derived-static",
 		}),
 	);
 
@@ -138,6 +155,11 @@ export function deriveYardVisualState(
 			zone: boZone,
 			facing,
 		}),
+		station: Object.freeze({
+			id: snap.occupancy.stationId,
+			status: String(snap.occupancy.status),
+			activeRailHash: snap.occupancy.activeRailHash ?? null,
+		}),
 		rails: Object.freeze(rails),
 		connections: Object.freeze(connections),
 		guests: Object.freeze(guests),
@@ -147,6 +169,9 @@ export function deriveYardVisualState(
 				snap.metering.trafficRate > 0 &&
 				Boolean(snap.occupancy.activeRailHash) &&
 				snap.occupyMode === "occupying",
+			// Optional in the projection contract; absent defaults to synthetic so
+			// an unbadged rate can never masquerade as measured traffic.
+			source: snap.metering.trafficRateSource ?? "synthetic",
 		}),
 		costMeter: Object.freeze({
 			fill,
@@ -154,10 +179,12 @@ export function deriveYardVisualState(
 			quotaUsed: snap.metering.quotaUsed,
 			quotaLimit: snap.metering.quotaLimit,
 			spendCapUsd: snap.metering.spendCapUsd,
+			budgetUsd: snap.metering.budgetUsd,
 		}),
 		errorBunker: Object.freeze({
 			active: snap.doctor.hazards.length > 0,
 			hazards: snap.doctor.hazards,
+			hint: snap.doctor.hint ?? null,
 		}),
 		bootstrapDesk: Object.freeze({
 			active: snap.occupancy.bootstrapActive,

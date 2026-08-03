@@ -12,9 +12,10 @@ import {
 	createDomOverlay,
 	displaySheetForWaybill,
 	displaySheetForZone,
+	dockForZone,
 } from "./dom-overlay.js";
 import { detectRecentSuccess } from "./entity-state.js";
-import { YARD_LAYOUT, type ZoneId, zoneAnchor } from "./layout.js";
+import { YARD_LAYOUT, type ZoneId, zoneAnchor, zoneAt } from "./layout.js";
 import { createWorldClient } from "./net/world-client.js";
 import { createYardClient } from "./net/yard-client.js";
 import { yardPhaserConfig } from "./phaser/game-config.js";
@@ -37,6 +38,7 @@ import {
 	type YardTestWorld,
 	type YardTheme,
 } from "./test-seam.js";
+import { deriveTrains, type TrainView } from "./trains.js";
 import {
 	createSpikeLedger,
 	deriveWaybills,
@@ -78,7 +80,16 @@ let loadedImageKeys = new Set<string>();
 let scenarioState: { id: string; tick: number } | null = null;
 let theme: YardTheme = "day";
 let waybills: readonly Waybill[] = [];
+let trains: readonly TrainView[] = [];
 let highball = false;
+/** Lantern inspect: the zone under the pointer. Reads are zero-friction. */
+let hoveredZone: ZoneId | null = null;
+
+function setHoveredZone(zone: ZoneId | null): void {
+	if (hoveredZone === zone) return;
+	hoveredZone = zone;
+	document.body.dataset.hoverZone = zone ?? "";
+}
 const spikes = createSpikeLedger();
 const recentFx: YardTestFx[] = [];
 const RECENT_FX_MAX = 32;
@@ -272,6 +283,13 @@ function maybeShowNewsreel(next: YardProjectionSnapshot): void {
 	reel.hidden = false;
 }
 
+// The Yard office drawer holds the CLI-duplicating chrome (status pills +
+// action strip). It ships collapsed; test/scenario runs force it open so
+// evidence tours can click `#actions button` (a closed <details> is inert).
+if (TEST_MODE || SCENARIO_MODE) {
+	document.getElementById("dev-drawer")?.setAttribute("open", "");
+}
+
 document.getElementById("newsreel-skip")?.addEventListener("click", () => {
 	const reel = document.getElementById("newsreel");
 	if (reel) reel.hidden = true;
@@ -384,6 +402,7 @@ function selectZone(zone: ZoneId): void {
 	const waybill = waybillForZone(zone, waybills);
 	overlay.openSheet(
 		waybill ? displaySheetForWaybill(waybill) : displaySheetForZone(zone, snap),
+		dockForZone(zone),
 	);
 	document.body.dataset.lastClickZone = zone;
 }
@@ -405,6 +424,7 @@ function renderModel(): RenderModel {
 		boAnimationId: currentBoAnim(),
 		zone: currentZone(),
 		selectedZone: engine.selectedZone,
+		hoveredZone,
 		speech: speechRemaining > 0 && speech ? speech : null,
 		particles: engine.particles,
 		testMode: TEST_MODE,
@@ -413,6 +433,7 @@ function renderModel(): RenderModel {
 		world: worldView,
 		scenarioMode: SCENARIO_MODE,
 		waybills,
+		trains,
 		highball,
 	});
 }
@@ -430,6 +451,8 @@ const testHost: YardTestHost = {
 	isSheetOpen: () => overlay.sheetOpen(),
 	sheetKind: () => overlay.sheetKind(),
 	selectZone: (zone) => selectZone(zone),
+	hoverZone: (zone) => setHoveredZone(zone),
+	getHoveredZone: () => hoveredZone,
 	dismissSheet: () => {
 		overlay.closeSheet();
 		engine.dismissSheet();
@@ -449,6 +472,7 @@ const testHost: YardTestHost = {
 		await refreshSnapshot();
 	},
 	reset: () => {
+		setHoveredZone(null);
 		engine.boPos = {
 			x: YARD_LAYOUT.zones.platformRest.anchorX,
 			y: YARD_LAYOUT.zones.platformRest.anchorY,
@@ -498,6 +522,7 @@ async function boot(): Promise<void> {
 			if (!TEST_MODE) tick(Math.min(0.05, dtMs / 1000));
 		},
 		onZoneClick: (zone) => selectZone(zone),
+		onPointerMove: (x, y) => setHoveredZone(zoneAt(x, y)),
 		onSceneReady: () => {
 			assetsReady = true;
 			document.body.dataset.assetsReady = "1";
@@ -564,6 +589,17 @@ async function boot(): Promise<void> {
 		},
 		{ pollMs: TEST_MODE ? 2000 : 800 },
 	);
+	// Train traffic: the deployment saga on the rail. Polled rather than
+	// streamed — sagas move on deploy timescales, not frame timescales.
+	const refreshTrains = () => {
+		void client.deployments().then((view) => {
+			trains = Object.freeze(deriveTrains(view));
+			document.body.dataset.trains = String(trains.length);
+		});
+	};
+	refreshTrains();
+	setInterval(refreshTrains, TEST_MODE ? 5000 : 3000);
+
 	// World model (camps + bindlebug NPCs) — control-api /v1/world stream.
 	const worldClient = createWorldClient({ apiBase: API });
 	worldClient.subscribe(

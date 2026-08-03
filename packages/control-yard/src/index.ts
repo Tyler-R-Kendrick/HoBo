@@ -17,6 +17,8 @@ export {
 	type DisplaySheet,
 	displaySheetForWaybill,
 	displaySheetForZone,
+	dockForZone,
+	type SheetDock,
 } from "./dom-overlay.js";
 export {
 	type BoAnimState,
@@ -74,6 +76,9 @@ export {
 	yardPhaserConfig,
 } from "./phaser/game-config.js";
 export {
+	type LanternLine,
+	lanternLines,
+	lanternRowText,
 	type PresenterInput,
 	presentYard,
 	type RenderItem,

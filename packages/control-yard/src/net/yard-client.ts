@@ -6,6 +6,8 @@
 
 import type { YardProjectionSnapshot } from "@hobo/management";
 
+import type { DeploymentsWireView } from "../trains.js";
+
 export type YardAction =
 	| "init"
 	| "up"
@@ -43,6 +45,11 @@ export type YardClient = {
 	): () => void;
 	runAction(action: YardAction): Promise<string>;
 	confirm(op: ConfirmOp, values: Record<string, string>): Promise<string>;
+	/**
+	 * Deployment saga view for Train Traffic. Resolves to an unavailable view
+	 * (never throws, never invents rows) when no durable yard store exists.
+	 */
+	deployments(): Promise<DeploymentsWireView>;
 };
 
 export function createYardClient(opts: {
@@ -195,6 +202,16 @@ export function createYardClient(opts: {
 				case "authorize-conn":
 					await client.confirm("connectionAuthorize", { idOrAlias: "work" });
 					return "Connection active.";
+			}
+		},
+		async deployments() {
+			try {
+				const body = await api<DeploymentsWireView>("/v1/deployments/view");
+				return body.data ?? { available: false };
+			} catch {
+				// A control plane without the route is simply a yard with no
+				// trains — the rail stays honestly empty.
+				return { available: false };
 			}
 		},
 		async confirm(op, values) {

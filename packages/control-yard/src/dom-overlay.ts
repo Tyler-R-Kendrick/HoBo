@@ -11,6 +11,20 @@ import type { Waybill } from "./waybills.js";
 import { sheetForZone } from "./yard-engine.js";
 
 /** GenerativeSheet plus legacy info-card kinds ("bootstrap", "inspect"). */
+/** Which side of the yard the sheet panel occupies. */
+export type SheetDock = "left" | "right";
+
+/**
+ * Dock the sheet on the side the zone is NOT on. The panel is ~360px of a
+ * 1280px stage, so a right-docked sheet blankets everything past x≈900 —
+ * which is exactly where Connection Bay and Cost Booth live.
+ */
+export function dockForZone(zone: ZoneId): SheetDock {
+	const z = YARD_LAYOUT.zones[zone];
+	const centre = z.x + z.width / 2;
+	return centre > YARD_LAYOUT.width / 2 ? "left" : "right";
+}
+
 export type DisplaySheet = Readonly<{
 	kind: string;
 	title: string;
@@ -118,7 +132,11 @@ export function displaySheetForZone(
 }
 
 export type DomOverlay = {
-	openSheet(sheet: DisplaySheet): void;
+	/**
+	 * `dock` places the panel away from the prop it describes — docking over
+	 * the clicked zone would hide the state the operator is acting on.
+	 */
+	openSheet(sheet: DisplaySheet, dock?: SheetDock): void;
 	closeSheet(): void;
 	sheetOpen(): boolean;
 	sheetKind(): string | null;
@@ -175,9 +193,10 @@ export function createDomOverlay(opts: {
 	let streamTimer: ReturnType<typeof setInterval> | null = null;
 
 	const overlay: DomOverlay = {
-		openSheet(sheet) {
+		openSheet(sheet, dock = "right") {
 			current = sheet;
 			if (!el.sheet) return;
+			el.sheet.dataset.dock = dock;
 			el.sheet.hidden = false;
 			if (el.sheetTitle) el.sheetTitle.textContent = sheet.title;
 			if (el.sheetDesc) el.sheetDesc.textContent = sheet.description;

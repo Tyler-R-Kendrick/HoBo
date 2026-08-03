@@ -10,6 +10,7 @@ import {
 	campRoomSlots,
 	deriveYardVisualState,
 	detectRecentSuccess,
+	dockForZone,
 	fixtureCharacterState,
 	foldWorldDelta,
 	makeConnection,
@@ -357,5 +358,90 @@ describe("world client folding", () => {
 		expect(folded.characters[id]?.bubble).toBe("boom");
 		// input untouched (pure fold)
 		expect(world.characters[id]?.bubble).not.toBe("boom");
+	});
+});
+
+describe("camp room selection (regression: OTLP placeholder camps)", () => {
+	// Reproduces a real defect found by posting logs/metrics without a
+	// `hobo.camp` resource attribute: yard-world materializes a placeholder
+	// camp, which used to take a room slot away from a Camp that actually
+	// has Bindles in it — and drew an empty room besides.
+	function worldWith(
+		camps: string[],
+		characters: Record<string, string>,
+	): Parameters<typeof toWorldView>[0] {
+		const base = scenarioWorld(1, 0);
+		return {
+			...base,
+			camps: Object.fromEntries(
+				camps.map((id) => [id, { id, name: id, stationId: "s", yardId: "y" }]),
+			),
+			characters: Object.fromEntries(
+				Object.entries(characters).map(([id, campId]) => [
+					id,
+					{
+						...(Object.values(base.characters)[0] as object),
+						id,
+						campId,
+					},
+				]),
+			),
+		} as Parameters<typeof toWorldView>[0];
+	}
+
+	it("omits camps with no characters", () => {
+		const view = toWorldView(
+			worldWith(["camp-orders", "default"], { "s/orders": "camp-orders" }),
+			false,
+		) as WorldView;
+		expect(view.camps.map((c) => c.id)).toEqual(["camp-orders"]);
+	});
+
+	it("never lets an empty placeholder displace an inhabited camp", () => {
+		// "aaa-empty" sorts first; without the filter it would claim a slot.
+		const view = toWorldView(
+			worldWith(["aaa-empty", "camp-a", "camp-b", "camp-c", "camp-d"], {
+				"s/1": "camp-a",
+				"s/2": "camp-b",
+				"s/3": "camp-c",
+				"s/4": "camp-d",
+			}),
+			false,
+		) as WorldView;
+		expect(view.camps.map((c) => c.id)).toEqual([
+			"camp-a",
+			"camp-b",
+			"camp-c",
+			"camp-d",
+		]);
+	});
+});
+
+describe("sheet docking", () => {
+	it("docks away from the zone it describes so the prop stays visible", () => {
+		// Connection Bay and Cost Booth sit past x=900, exactly where a
+		// right-docked 360px panel lands.
+		expect(dockForZone("connectionBay")).toBe("left");
+		expect(dockForZone("costBooth")).toBe("left");
+		expect(dockForZone("errorBunker")).toBe("right");
+		expect(dockForZone("platformRest")).toBe("right");
+		expect(dockForZone("bootstrapDesk")).toBe("right");
+	});
+
+	it("keeps the docked panel clear of every compact zone rect", () => {
+		const PANEL = 360 + 32;
+		for (const zone of Object.values(YARD_LAYOUT.zones)) {
+			// The rail track spans the whole stage, so no dock can clear it;
+			// only compact props can be guaranteed visible beside the panel.
+			if (zone.width > YARD_LAYOUT.width / 2) continue;
+			const dock = dockForZone(zone.id);
+			if (dock === "left") {
+				expect(zone.x, zone.id).toBeGreaterThanOrEqual(PANEL);
+			} else {
+				expect(zone.x + zone.width, zone.id).toBeLessThanOrEqual(
+					YARD_LAYOUT.width - PANEL,
+				);
+			}
+		}
 	});
 });

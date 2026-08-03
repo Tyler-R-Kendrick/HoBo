@@ -89,6 +89,61 @@ header h1 {
 	font-size: 0.8rem;
 }
 
+/* Yard office drawer — a plank sign nailed shut, not a rounded SaaS pill.
+   The yard is the readout; these pills/actions only duplicate the CLI. */
+#dev-drawer {
+	margin: 0 0 14px;
+	border: 2px solid var(--ink);
+	border-radius: 2px;
+	background: var(--paper);
+	box-shadow: var(--sticker-sm);
+	padding: 0;
+}
+
+#dev-drawer > summary {
+	list-style: none;
+	cursor: pointer;
+	padding: 6px 12px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--ink);
+	background: var(--cream);
+	border-bottom: 2px solid transparent;
+}
+
+#dev-drawer > summary::-webkit-details-marker {
+	display: none;
+}
+
+#dev-drawer > summary::before {
+	content: "▸ ";
+	color: var(--mute);
+}
+
+#dev-drawer[open] > summary {
+	border-bottom-color: var(--ink);
+}
+
+#dev-drawer[open] > summary::before {
+	content: "▾ ";
+}
+
+#dev-drawer > summary:focus-visible {
+	outline: 2.5px solid var(--spark);
+	outline-offset: 2px;
+}
+
+#dev-drawer > #hud,
+#dev-drawer > #actions {
+	padding: 10px 12px 0;
+}
+
+#dev-drawer > #actions {
+	padding-bottom: 12px;
+}
+
 #hud {
 	display: flex;
 	flex-wrap: wrap;
@@ -200,6 +255,11 @@ main {
 	image-rendering: pixelated;
 }
 
+/*
+ * The sheet docks opposite the prop it describes: a sheet that covers the
+ * very zone you just clicked hides the state you are acting on. main.ts sets
+ * data-dock from the selected zone's position.
+ */
 #sheet {
 	position: absolute;
 	top: 24px;
@@ -211,6 +271,11 @@ main {
 	box-shadow: 6px 6px 0 var(--ink);
 	padding: 14px 16px 16px;
 	z-index: 5;
+}
+
+#sheet[data-dock="left"] {
+	right: auto;
+	left: 32px;
 }
 
 #sheet[hidden] {

@@ -12,22 +12,27 @@
         <h1>HIGHBALL!</h1>
         <p class="tag">a HoBo Yard picture · control plane · ADR-0140</p>
       </header>
-      <div id="hud">
-        <span id="status">booting…</span>
-        <span id="seq"></span>
-        <span id="occupy"></span>
-        <span id="rail"></span>
-        <span id="conn"></span>
-      </div>
-      <div id="actions">
-        <button type="button" data-action="init">station init</button>
-        <button type="button" data-action="up">station up</button>
-        <button type="button" data-action="publish-rail">publish rail</button>
-        <button type="button" data-action="activate-rail">activate rail</button>
-        <button type="button" data-action="create-conn">create connection</button>
-        <button type="button" data-action="authorize-conn">authorize connection</button>
-        <button type="button" data-action="down">station down</button>
-      </div>
+      <!-- CLI-duplicating chrome lives behind a plank drawer: the yard itself
+           is the readout. Ids are unchanged so the seam + tours still bind. -->
+      <details id="dev-drawer">
+        <summary>Yard office (dev)</summary>
+        <div id="hud">
+          <span id="status">booting…</span>
+          <span id="seq"></span>
+          <span id="occupy"></span>
+          <span id="rail"></span>
+          <span id="conn"></span>
+        </div>
+        <div id="actions">
+          <button type="button" data-action="init">station init</button>
+          <button type="button" data-action="up">station up</button>
+          <button type="button" data-action="publish-rail">publish rail</button>
+          <button type="button" data-action="activate-rail">activate rail</button>
+          <button type="button" data-action="create-conn">create connection</button>
+          <button type="button" data-action="authorize-conn">authorize connection</button>
+          <button type="button" data-action="down">station down</button>
+        </div>
+      </details>
     </div>
     <main>
       <div id="yard" role="img" aria-label="HoBo Yard platform"></div>
@@ -51,8 +56,8 @@
       </div>
     </main>
     <p id="help">
-      Click zones: Platform · Bootstrap Desk · Rail · Connection Bay · Policy Board · Cost Booth · Error Bunker.
-      Bo walks to the zone; generative sheet opens from schema + projection.
+      Hover a prop to raise the lantern (free read). Click it to send Bo:
+      Platform · Waybill Desk · Active Rail · Connections · Policy Board · Cost Booth · Error Bunker.
     </p>
     <script type="module" src="./dist/yard.js"></script>
   </body>

@@ -355,3 +355,19 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
   staged agent:check green per commit
 - **protocol:** plan-mode brainstorm (3 Explore sweeps) → approved plan →
   single-branch delivery
+
+
+## 2026-08-04 — Remediation roadmap (0017)
+
+- **scope:** scoped solutions for the full gap inventory as
+  `docs/plans/0017-remediation-roadmap.md` — 36 items across 7 workstreams
+  (correctness, ADR-0146 loop, compliance, flagship local/WASM lane, placement
+  expressiveness/Radius deliverables, all ✱ aspirational packages, register
+  audits), each with verified seam facts, effort class, and acceptance
+  criteria; inventory→WS traceability table included
+- **decisions:** roadmap-doc-only session; WASM + local/self-host are
+  first-class live lanes (3P provider credentials are end-user-supplied —
+  fail-closed + contract-proven request formation is the 3P completion bar);
+  all ✱ packages fully scoped
+- **protocol:** plan-mode (1 seam-probe Explore sweep) → approved plan →
+  single docs PR

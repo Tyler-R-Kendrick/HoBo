@@ -603,6 +603,30 @@ Stations need to coordinate routing across candidate backends without making Kub
 - **(−)** V1 health-aware synthesis is incomplete-tolerant until `observe.health` is supplied.
 - **(−)** Vercel Rolling Releases may enable skew protection as a platform side-effect; adapters document but do not hide that.
 
+## ADR-0144
+**External-spec posture: Crossplane, OAM, and CNAB are mapped at the boundary — the core IR never depends on them — and Resource Definitions gain versioning rules.**
+
+### Context
+Crossplane (CNCF graduated) is the strongest living open standard for the "abstract request schema + explicit realization mapping + continuous reconciliation" pattern that HoBo's Resource Definitions + Matching implement; OAM anchors application-first modeling; CNAB carries packaging/signing lessons. The [Crossplane capture](../../competitors/crossplane.md#hobo-mapping) already records the concept parity, and [ADR-0108](01-architecture-core.md#adr-0108) already renders manifest IR to wadm/OAM — but no design-suite decision pins the posture, and `ResourceDefinition` has no versioning story: only Packs are versioned, and the catalog content-hash in `match.Decided` is the sole snapshot pin. History shows pure "describe once, run anywhere" specs (TOSCA, early OAM, CNAB) stall when operational reality leaks; systems that endure keep a stable high-level API plus an explicit, auditable mapping layer (Crossplane's path — and HoBo's).
+
+### Decision
+1. **Posture: inspired by / maps to — never depends on.** The concept mapping is normative for vocabulary alignment only: Crossplane **XRD** ≈ the schema side of a Resource Definition (`type`/`class`/`with` options shape); **Composition** ≈ the realization side (provider + driver + options; in code, provider capability manifests derived into definitions via `definitionsFor`); **Claim** ≈ developer consumption through Bindle resource kinds and ports; OAM **Application/Component** ≈ Bindle/resource; OAM **Trait** ≈ `.allow()` effects, policy packs, and Trails-attached operational behavior; **CNAB** contributes signed multi-artifact packaging lessons already realized by Registry listings + provenance ([ADR-0062](#adr-0062)), nothing more. The Bindle IR, WIT contracts, event-sourced audit, and Matching semantics remain independent of any external spec's evolution or continued dominance.
+2. **Resource Definition versioning.** A definition id names a stable request/realization shape. Compatible additions (new optional options, added `features`, cost updates) mutate in place and surface as `resourcedef.Updated`. **Breaking changes require a new definition id** (or an explicitly recorded conversion definition); the old id is deprecated, never silently rewritten. Every selection remains attributable because `match.Decided` records the catalog content-hash — a winner change is a catalog change, not nondeterminism ([ADR-0088](01-architecture-core.md#adr-0088)).
+3. **Realization mapping stays inside definitions/providers.** Any composition-like mapping (abstract request → concrete resources) is expressed in Resource Definitions and provider `realize()` paths — no parallel composition system, no external-spec engine on the deploy path.
+4. **AI-generated definitions stay sandboxed and conformance-gated** ([Plan 23](../generated-stack.md#plan-23)): propose → sandboxed validation against `@hobo/conformance` → certified into the Registry with signed provenance; advisory, off the deploy path.
+5. **Thin-adapter rule for SaaS backends** (Convex, and future Wasp-class targets): one-directional realization of ports via Resource Definitions; provider-specific escape hatches live only at Camp/Yard scope (`assertNoBindleProviderSelection` keeps Bindles clean) and are scored by the PortabilityReport ([ADR-0024](#adr-0024)); impedance boundaries are documented in the competitor capture so humans and agents cannot over-claim fidelity. Dual authoring is out of scope.
+
+### Non-goals
+- No Crossplane XRDs/Compositions, OAM manifests, or CNAB bundles as HoBo's resource model; OAM remains a wadm render target only ([ADR-0108](01-architecture-core.md#adr-0108)).
+- No naming dependency: HoBo's **Bindle** predates awareness of CNAB's unrelated "bindle" proposal; the collision is noted, not resolved by renaming.
+- No per-definition semver machinery beyond the id + catalog-hash rules above (Packs remain the versioned distribution unit).
+
+### Consequences
+- **(+)** Platform engineers migrating from Crossplane/KubeVela get a stable concept map with HoBo's additive differences (auditable `match.Decided`, deterministic scoring, FinOps objectives) called out.
+- **(+)** Definition evolution is now governed: breaking changes are visible catalog events, and tie flips stay attributable to catalog hashes.
+- **(+)** SaaS backends can be added as thin providers without eroding portability guarantees.
+- **(−)** New-id-per-breaking-change grows the catalog; deprecation hygiene falls on Pack maintainers.
+
 ## Open / proposed decisions (ADR-Pn)
 
 > **Status (2026-07-03):** the last six open ADR-Pn are now resolved (P3/P4 were already); this list is retained as the decision trail.

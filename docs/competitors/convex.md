@@ -489,7 +489,18 @@ Head-to-head:
 
 ### Convex-as-a-HoBo-provider (the composing relationship)
 
-The cleanest framing: **Convex is a backend HoBo could realize as a capability provider**. A Bindle that declares `database`/`vector`/`blobstore`/`auth` ports could be mapped (via a Resource Definition, [Plan 25](../design/platform-engineering.md#plan-25)) to a Convex deployment — HoBo's Planner would provision it through Convex's **Management API**, wire connection refs via the manifest ([Plan 21](../design/authoring-resources-wiring.md#plan-21)), and brokers/agents would manage it. In that framing Convex is *infrastructure HoBo orchestrates*, not a competitor.
+The cleanest framing: **Convex is a backend HoBo realizes as a capability provider** — now scaffolded as `@hobo/provider-convex` (`packages/providers/provider-convex`, thin adapter per [ADR-0144](../design/adr/07-portability-extensibility.md#adr-0144)). A Bindle that declares `data`/`bucket`/`api` resources is mapped (via Resource Definitions, [Plan 25](../design/platform-engineering.md#plan-25)) to a Convex deployment: the provider's capability manifest advertises `database/reactive` (with `search.vector` and `functions.scheduled` as capability features), `objectStore`, and `web/service`; provisioning targets Convex's **Management API** behind a credential-gated, fail-closed client (deploy keys are broker-held — `staticSecrets: false`, wired via `secretRef`, never Bindle config); connection refs flow through the manifest ([Plan 21](../design/authoring-resources-wiring.md#plan-21)). In that framing Convex is *infrastructure HoBo orchestrates*, not a competitor. Note honestly: HoBo has **no `vector` port today** — vector search rides as a feature of the reactive-database capability until one lands.
+
+### Impedance boundaries for the provider path
+
+Realizing ports on Convex is deliberately **partial-fidelity**; these boundaries are scored by the PortabilityReport ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024) — provider `.with()` blocks and paradigm mismatches are lock-in sources) so neither humans nor agents can over-claim:
+
+- **Document model + JS joins vs multi-model.** Convex is a document store with code-side joins; HoBo's `paradigm` vocabulary marks it `document` — mapping a `relational`/`graph` expectation onto it is a recorded paradigm mismatch, not a silent adaptation.
+- **Reactive consistent-snapshot queries vs event-sourced replay.** Convex's reactivity is live-query invalidation over current state; HoBo's substrate is an append-only log with full replay/time-travel ([Plan 11](../design/data-plane.md#plan-11)). Data and functions living inside Convex are **outside** HoBo's control-plane time-travel and cross-Yard Trails; only the provisioning lifecycle is event-sourced.
+- **Hard runtime limits.** 1 s query/mutation execution, 1 MiB document size, 10 min actions, transaction size caps — encoded as typed constants in `@hobo/provider-convex` so planners and reviewers see them, not discover them.
+- **OCC contention vs actor leases.** Convex mutations retry on optimistic-concurrency conflicts; HoBo actors serialize via leases/fencing. High-contention aggregates behave differently under load.
+- **TS/JS runtime vs WIT polyglot.** Convex functions are TypeScript/JavaScript only; the WIT membrane ([Plan 20](../design/wasm-runtime-wit.md#plan-20)) does not extend into Convex-hosted code.
+- **Escape hatches are Yard-scoped.** Convex-specific options ride Camp/Yard `.with(...)` annotations (Bindles reject provider annotations by construction) and are marked non-portable in the PortabilityReport.
 
 ### Where HoBo deliberately differs
 

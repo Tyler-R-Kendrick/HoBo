@@ -31,6 +31,7 @@ tags: [hobo, design, providers, honesty]
 | `@hobo/provider-azure` | Yes | No default | IR only |
 | `@hobo/provider-kafka` | Capability | N/A messaging | Not a full cloud Yard provider |
 | `@hobo/provider-lakebed` | Yes | Partial | Deploy-driver style (ADR-0127) |
+| `@hobo/provider-convex` | Yes | Cred-gated | Deploy-driver style (ADR-0144); Management API client fails closed without a broker-minted `CONVEX_DEPLOY_KEY` (presence-only check, injected fetch); typed impedance limits exported |
 | `@hobo/provider-ax` / `agentv` | Eval | N/A | AI-eval adapters |
 
 ## IaC engines (`packages/iac/`)

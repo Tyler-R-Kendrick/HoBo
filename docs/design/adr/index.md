@@ -152,3 +152,4 @@
 | 0141 | Canonical binding delivery membrane: WIT import → link → provider (no env-credential channel) | [identity-security](02-identity-security.md#adr-0141) |
 | 0142 | Config as linked capability vs residual secrets; delegated refs and classification | [identity-security](02-identity-security.md#adr-0142) |
 | 0143 | TrafficRouting port: portable multi-backend intent, explicit partial realization, Station synthesis, and optional provider adapters | [portability-extensibility](07-portability-extensibility.md#adr-0143) |
+| 0144 | External-spec posture: Crossplane/OAM/CNAB mapped at the boundary, never depended on; Resource Definition versioning rules | [portability-extensibility](07-portability-extensibility.md#adr-0144) |

@@ -18,13 +18,23 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const SITE_DIR = join(REPO_ROOT, "site");
 const DIST_DIR = join(SITE_DIR, "dist");
+const MEDIA_DIR = join(REPO_ROOT, "media");
+const MEDIA_DIST = join(MEDIA_DIR, "dist");
+/** Where the art catalogue is nested inside the published tree. */
+const MEDIA_SUBPATH = "media";
 const BRANCH = "gh-pages";
 
 const dryRun = process.argv.includes("--dry-run");
@@ -43,10 +53,10 @@ function git(args: readonly string[], cwd = REPO_ROOT): string {
 
 /** Refuse to publish a tree that does not match a recorded commit. */
 function assertClean(): string {
-	const dirty = git(["status", "--porcelain", "--", "site"]);
+	const dirty = git(["status", "--porcelain", "--", "site", "media"]);
 	if (dirty.length > 0) {
 		throw new Error(
-			`site/ has uncommitted changes; publish only what is committed so the deploy commit's "@ <sha>" is true:\n${dirty}`,
+			`site/ or media/ has uncommitted changes; publish only what is committed so the deploy commit's "@ <sha>" is true:\n${dirty}`,
 		);
 	}
 	return git(["rev-parse", "HEAD"]);
@@ -57,6 +67,16 @@ function build(): void {
 	execFileSync("pnpm", ["run", "build"], { cwd: SITE_DIR, stdio: "inherit" });
 	if (!existsSync(DIST_DIR) || readdirSync(DIST_DIR).length === 0) {
 		throw new Error(`build produced no output at ${DIST_DIR}`);
+	}
+
+	// The art catalogue publishes as a subdirectory of the same Pages origin
+	// rather than a second deploy, so one commit always describes the whole
+	// published tree. Its base is /HoBo/media/, which has to agree with
+	// MEDIA_SUBPATH or every asset 404s.
+	console.log("building media catalogue…");
+	execFileSync("pnpm", ["run", "build"], { cwd: MEDIA_DIR, stdio: "inherit" });
+	if (!existsSync(MEDIA_DIST) || readdirSync(MEDIA_DIST).length === 0) {
+		throw new Error(`media build produced no output at ${MEDIA_DIST}`);
 	}
 }
 
@@ -69,12 +89,18 @@ function publish(sha: string): void {
 		run("git", ["init", "-q", "-b", BRANCH, staging], staging);
 		run("git", ["remote", "add", "origin", remote], staging);
 		run("cp", ["-a", `${DIST_DIR}/.`, staging]);
+		// Nested, not merged: the catalogue is a second Astro build with its own
+		// hashed `_astro/` bundle, and flattening the two into one root would let
+		// them fight over that directory.
+		const mediaTarget = join(staging, MEDIA_SUBPATH);
+		mkdirSync(mediaTarget, { recursive: true });
+		run("cp", ["-a", `${MEDIA_DIST}/.`, mediaTarget]);
 		// Astro output is already built; Jekyll must not touch it, and without
 		// this file GitHub silently drops every `_astro/*` asset.
 		run("touch", [join(staging, ".nojekyll")], staging);
 
 		run("git", ["add", "-A"], staging);
-		const message = `deploy: site @ ${sha.slice(0, 9)}`;
+		const message = `deploy: site + media @ ${sha.slice(0, 9)}`;
 		run(
 			"git",
 			[

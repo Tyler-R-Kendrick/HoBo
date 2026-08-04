@@ -50,3 +50,11 @@ test/output/
 runs/
 ref/
 *:Zone.Identifier
+
+# hobo-media build output
+media/dist/
+media/.astro/
+# Per-edit design-hook cache. Regenerated constantly and merge-hostile: the
+# tracked copy at .impeccable/hook.cache.json has already blocked a branch
+# switch mid-merge. Do not track new ones.
+media/.impeccable/

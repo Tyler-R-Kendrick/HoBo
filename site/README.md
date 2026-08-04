@@ -227,6 +227,23 @@ GitHub Pages serves directly ("Deploy from a branch"). This deliberately avoids 
 GitHub Actions dependency. From the repo root:
 
 ```sh
+pnpm run site:deploy              # build, then publish
+pnpm run site:deploy -- --dry-run # build and report what would publish
+```
+
+[`scripts/deploy-site.mts`](../scripts/deploy-site.mts) automates the steps below and
+adds two guards the manual version lacked: it **refuses to publish when `site/` has
+uncommitted changes** — otherwise the deploy commit's `@ <sha>` names a commit that
+does not describe what shipped — and it stages the build in a throwaway clone, so
+`git init` on an orphan branch cannot run inside your working tree.
+
+That mattered: this was a manual procedure with nothing to run, and the live site sat
+on a stale commit long after `main` had moved.
+
+<details>
+<summary>The equivalent manual steps</summary>
+
+```sh
 pnpm --filter hobo-site run build
 cd site/dist
 git init -b gh-pages
@@ -235,6 +252,8 @@ git commit -m "deploy: site @ $(git -C ../.. rev-parse --short HEAD)"
 git push --force git@github.com:Tyler-R-Kendrick/HoBo.git gh-pages
 cd .. && rm -rf dist/.git
 ```
+
+</details>
 
 The build generates the Examples catalog and real browser WIT component assets
 from `examples/try-site/apps/` before Astro writes `site/dist/`; do not hand-edit

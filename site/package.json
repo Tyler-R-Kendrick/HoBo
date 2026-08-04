@@ -21,7 +21,8 @@
     "design:lint": "designmd lint DESIGN.md",
     "design:export:css": "designmd export --format css-tailwind DESIGN.md",
     "design:export:dtcg": "designmd export --format dtcg DESIGN.md",
-    "design:spec": "designmd spec"
+    "design:spec": "designmd spec",
+    "design:audit": "node --import tsx scripts/design-audit.mts --dist dist"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.12.1",

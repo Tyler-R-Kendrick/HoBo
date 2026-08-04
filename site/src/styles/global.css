@@ -62,13 +62,20 @@
 	   designer persona caps visualClutter and interactiveClutter at 1, so these
 	   are five ways of being quiet — none of them adds ornament, and the ones
 	   that raise density (ledger, broadsheet) pay for it by removing chrome. */
-	--measure: 1160px;        /* content width */
+	--measure: 1160px;        /* content width (incumbent --container) */
 	--rhythm: 1;              /* vertical spacing multiplier */
-	--rule: 2px;              /* border weight */
+	--rule: 2.5px;            /* incumbent card border weight */
+	--card-radius: calc(var(--radius-lg) + 6px); /* incumbent card corner */
 	--surface-fill: var(--bg-raised);
-	--surface-shadow: 3px 3px 0 var(--accent);
+	--surface-shadow: 0.32rem 0.32rem 0 var(--pop-soft); /* incumbent */
+	--head-pad: 0rem;
 	--display-size: 1;        /* display type multiplier */
-	--display-track: 0em;
+	/* Defaults to the ORIGINAL display tracking, not 0. With 0em here, the
+	   design-surfaces rule silently retracked ink's own hero and section heads
+	   — the audit caught it as a reflow ghost cascading down the whole
+	   homepage against the pre-axis baseline. The default of a design token
+	   must be the incumbent value, or the axis redesigns the default. */
+	--display-track: 0.005em;
 	--display-case: none;
 	--body-size: 1rem;
 	--leading: 1.65;
@@ -204,6 +211,7 @@
 	--measure: 880px;
 	--rhythm: 0.85;
 	--rule: 1px;
+	--card-radius: 0px;
 	--surface-fill: transparent;
 	--surface-shadow: none;
 	--radius: 0px;
@@ -213,6 +221,7 @@
 	--body-size: 1.06rem;
 	--leading: 1.62;
 	--head-rule: 1px;
+	--head-pad: 0.5rem;
 }
 
 /* TITLE CARD — a cinema card. Chewy kept, but enormous, uppercase and centred,
@@ -221,6 +230,7 @@
 	--measure: 980px;
 	--rhythm: 2.1;
 	--rule: 0px;
+	--card-radius: 0px;
 	--surface-fill: transparent;
 	--surface-shadow: none;
 	--radius: 0px;
@@ -240,6 +250,7 @@
 	--measure: 1240px;
 	--rhythm: 0.7;
 	--rule: 1px;
+	--card-radius: 0px;
 	--surface-fill: transparent;
 	--surface-shadow: none;
 	--radius: 0px;
@@ -249,6 +260,7 @@
 	--body-size: 0.9rem;
 	--leading: 1.5;
 	--head-rule: 1px;
+	--head-pad: 0.5rem;
 }
 
 /* CUTOUT — paper collage. Everything sits on a card with a hard offset shadow
@@ -261,6 +273,7 @@
 	--measure: 1160px;
 	--rhythm: 1.35;
 	--rule: 3px;
+	--card-radius: 26px;
 	--surface-shadow: 6px 6px 0 var(--accent);
 	--radius: 18px;
 	--radius-lg: 26px;
@@ -2152,25 +2165,40 @@ table.compare tr.hobo-row th {
 /* ============================================================================
    DESIGN SURFACES
 
-   Where the structural tokens land. Everything above styles one design; this
-   block is what makes the other four exist. Kept together deliberately: when a
-   design looks wrong, this is the one place to look.
+   Where the structural tokens land — and every rule here is gated behind
+   `:root[data-design]`, which is the load-bearing decision of this file.
+
+   Two attempts tried to make this block a no-op for the default design by
+   matching token defaults to incumbent values. Both failed in the pixels:
+   first a flat 2rem/4rem replaced a clamp() and shifted every section, then
+   the global .card rule put chrome on homepage cards whose incumbent look is
+   drawn by scoped pseudo-elements — a value can't match a property the
+   incumbent never set. Gating means ink (no attribute) matches the pre-axis
+   build BY CONSTRUCTION: no rule applies at all. The audit's baseline
+   pixel-diff enforces it.
    ============================================================================ */
 
-.container {
+:root[data-design] .container {
 	max-width: var(--measure);
 }
 
-/* Vertical rhythm. One multiplier drives every band, so a design is spacious
-   or tight as a whole rather than in patches. */
-.section,
-.docs {
+/* Vertical rhythm. One multiplier SCALES each surface's incumbent spacing —
+   it never replaces it with a new constant. The first version of this block
+   set `.section` to a flat 2rem/4rem, and since the incumbent was
+   clamp(3rem, 7vw, 5.5rem), ink's own homepage shifted ~56px at every section
+   boundary while the build stayed green. The audit's baseline diff caught it.
+   The rule: at every default token value, this whole block must be a no-op —
+   a design token's default IS the incumbent value. */
+:root[data-design] .section {
+	padding-block: calc(clamp(3rem, 7vw, 5.5rem) * var(--rhythm));
+}
+:root[data-design] .docs {
 	padding-block: calc(2rem * var(--rhythm)) calc(4rem * var(--rhythm));
 }
 
-.card {
+:root[data-design] .card {
 	border-width: var(--rule);
-	border-radius: var(--radius);
+	border-radius: var(--card-radius);
 	background: var(--surface-fill);
 	box-shadow: var(--surface-shadow);
 }
@@ -2203,28 +2231,36 @@ table.compare tr.hobo-row th {
    
    The multiplier has to be applied where the size is actually declared, so the
    clamp still does the responsive work and the design only scales it. */
-.hero h1,
-.section-head h2,
-.prose h1,
-.prose h2 {
+/* Display treatment applies to DISPLAY surfaces only — hero and section
+   heads. `.prose` headings were in this selector and the audit caught both
+   consequences at once: titlecard uppercased every docs content heading
+   (display treatment bleeding into Read-mode pages, 12 matrix failures), and
+   in ink the `--display-track: 0em` default silently overrode the prose
+   headings' own tracking — the only pixel drift on /guide/ vs the pre-axis
+   baseline. Content headings belong to content, not to the design's voice. */
+:root[data-design] .hero h1,
+:root[data-design] .section-head h2 {
 	letter-spacing: var(--display-track);
 	text-transform: var(--display-case);
 }
 
-.section-head {
+:root[data-design] .section-head {
 	border-bottom: var(--head-rule) solid var(--border);
-	padding-bottom: calc(0.5rem * var(--rhythm));
+	/* Incumbent has no bottom padding; a design that draws a head rule opts
+	   into the breathing room with --head-pad. The first version padded ink
+	   unconditionally — 8px of drift on every section head. */
+	padding-bottom: var(--head-pad);
 }
 
-.prose {
+:root[data-design] .prose {
 	font-size: var(--body-size);
 	line-height: var(--leading);
 }
 
-.btn {
-	border-radius: var(--radius);
-	border-width: var(--rule);
-}
+/* .btn is deliberately NOT design-tokened. Its identity is the clip-path
+   sticker — border: none, corners cut by polygon — so border-width/radius
+   were silent no-ops at best and drift at worst. If a design ever needs its
+   own button voice, that is a persona decision, not a token default. */
 
 /* Cutout tilts its planes a hair. Only the card, never text blocks — rotated
    body copy is a legibility cost with no reading benefit. */

@@ -129,6 +129,6 @@ paragraph or section (exact heading form varies across the corpus).
   pattern / standard) **and** a row here; borrow sections in captures should
   use the heading form "What HoBo borrows from X" (credit-style, per
   [aspire.md](../competitors/aspire.md)).
-- Known staleness: [`gap-analysis.md`](../competitors/gap-analysis.md) §6
-  re-scores 14 captures while the corpus now holds 35+ — a future pass should
-  re-run the full re-evaluation; this page tracks *credits*, not scoring.
+- Scoring lives elsewhere: [`gap-analysis.md`](../competitors/gap-analysis.md)
+  §6 re-scores every capture (refreshed 2026-08-04, all 35 rows); this page
+  tracks *credits*, not scoring.

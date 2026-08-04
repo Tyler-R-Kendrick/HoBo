@@ -1,7 +1,7 @@
 ---
 import SpritePlayer from "../components/SpritePlayer.astro";
 import ModelViewer from "../components/ModelViewer.astro";
-import { CHARACTERS, PLATES, SHEETS, SPRITES, TURNAROUND } from "../data/assets";
+import { BILL_SPRITES, CHARACTERS, PLATES, SHEETS, SPRITES, TURNAROUND } from "../data/assets";
 import { href } from "../lib/url";
 
 const title = "Bo — art department";
@@ -81,6 +81,36 @@ const description =
 									<div><dt>Frames</dt><dd>{s.frames}</dd></div>
 									<div><dt>Grid</dt><dd>{s.grid.cols}×{s.grid.rows}</dd></div>
 									<div><dt>Frame</dt><dd>{s.frame.w}×{s.frame.h}</dd></div>
+									<div><dt>Cadence</dt><dd>{Math.round(s.tick * 1000)}ms</dd></div>
+								</dl>
+								<p>{s.note}</p>
+								<a class="dl" href={href(s.file)} download>Download sheet</a>
+							</article>
+						))
+					}
+				</div>
+			</section>
+
+			<section>
+				<h2>HoBit Bill — animations</h2>
+				<p class="section-note">
+					Generated with the Spriterrific CLI from Bill's own turnaround.
+					Authored <strong>west</strong> and never mirrored — <code>--auto-orient</code>
+					is a flip and was turned off; the facing check returned ok/left at
+					confidence 1.0.
+				</p>
+				<div class="grid">
+					{
+						BILL_SPRITES.map((s) => (
+							<article class="card">
+								<div class="stage">
+									<SpritePlayer sheet={s} height="9rem" />
+								</div>
+								<h3>{s.title}</h3>
+								<dl class="spec">
+									<div><dt>Frames</dt><dd>{s.frames}</dd></div>
+									<div><dt>Grid</dt><dd>{s.grid.cols}×{s.grid.rows}</dd></div>
+									<div><dt>Cell</dt><dd>{s.frame.w}×{s.frame.h}</dd></div>
 									<div><dt>Cadence</dt><dd>{Math.round(s.tick * 1000)}ms</dd></div>
 								</dl>
 								<p>{s.note}</p>

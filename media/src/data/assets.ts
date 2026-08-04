@@ -67,6 +67,27 @@ export const SPRITES: Sheet[] = [
 	},
 ];
 
+/**
+ * HoBit Bill's sheets, generated with the Spriterrific CLI.
+ *
+ * Kept apart from SPRITES on purpose: those are Bo's and the site ships them,
+ * these are Bill's and ship nowhere. The grid is Spriterrific's own export
+ * shape (256x256 cells) rather than the hand-packed strips Bo uses, which is
+ * why the numbers look nothing alike.
+ */
+export const BILL_SPRITES: Sheet[] = [
+	{
+		key: "bill-walk",
+		title: "Walk, west",
+		file: "sprites/bill-walk.png",
+		frame: { w: 256, h: 256 },
+		grid: { cols: 5, rows: 2 },
+		frames: 8,
+		tick: 0.1,
+		note: "Spriterrific, from Bill's own turnaround. Authored west (screen-left) with the bundle trailing behind him — generated that way, not flipped: --auto-orient is a mirror and was turned off, and the facing check returned ok/left at confidence 1.0.",
+	},
+];
+
 export type Plate = {
 	key: string;
 	title: string;

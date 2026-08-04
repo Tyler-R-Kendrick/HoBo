@@ -353,6 +353,15 @@ export {
 	HOBO_RUNTIME_HOST_KINDS,
 	isHoboRuntimeHostKind,
 } from "./ports/runtime-host.js";
+export type { SchedulerPort } from "./ports/scheduler.js";
+export {
+	CronExpressionUnsupportedError,
+	parseIntervalCronSpec,
+	SCHEDULER_PORT,
+	SCHEDULER_PORT_DESCRIPTOR,
+	SCHEDULER_PORT_INTERFACE,
+	SchedulerParseError,
+} from "./ports/scheduler.js";
 export type {
 	RunId,
 	Seq,

@@ -1,8 +1,4 @@
 export {
-	createLocalRuntimeHost,
-	ensureLocalRuntime,
-} from "./host.js";
-export {
 	createLocalBindingResolver,
 	HELLO_BINDLE_LOCAL_ENDPOINTS,
 } from "./binding-resolver.js";
@@ -32,9 +28,9 @@ export {
 	createRuntimeLocalEventStore,
 	OptimisticSequenceConflictError,
 } from "./eventstore/eventstore.js";
-export { StorageWorkerClient } from "./eventstore/worker-client.js";
-export type { StorageWorkerClientOptions } from "./eventstore/worker-client.js";
 export { defaultDbPath } from "./eventstore/sqlite-store.js";
+export type { StorageWorkerClientOptions } from "./eventstore/worker-client.js";
+export { StorageWorkerClient } from "./eventstore/worker-client.js";
 export type {
 	AmbiguousCommitArgs,
 	DeadlineExceededArgs,
@@ -52,6 +48,10 @@ export {
 	RuntimeMembraneError,
 } from "./failure/taxonomy.js";
 export {
+	createLocalRuntimeHost,
+	ensureLocalRuntime,
+} from "./host.js";
+export {
 	isInterfaceId,
 	type ParsedLinkRequest,
 	type ParsedProviderDescriptor,
@@ -65,6 +65,8 @@ export type {
 } from "./queue-clock-store.js";
 export type { RuntimeLocalQueueClock } from "./replay.js";
 export { createRuntimeLocalQueueClock, replayClockTrace } from "./replay.js";
+export type { LocalScheduler, ScheduledJobHandler } from "./scheduler.js";
+export { createLocalScheduler } from "./scheduler.js";
 export type { FrameJournal, LifecycleEvent } from "./streamer/frame-journal.js";
 export {
 	createFrameJournal,

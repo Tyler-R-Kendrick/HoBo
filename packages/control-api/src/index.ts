@@ -1,7 +1,7 @@
 export {
-	createControlApiServer,
 	type ControlApiServer,
 	type ControlApiServerOptions,
+	createControlApiServer,
 } from "./server.js";
 
 // public-contract

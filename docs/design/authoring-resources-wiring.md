@@ -306,7 +306,6 @@ The BuildProvider is the programmable build seam: a prebuilt image short-circuit
              "exports": ["wasi:http/incoming-handler"],
              "links": [ { "import": "hobo:data", "to": "db" } ],
              "endpoints": { "http": { "scheme": "http", "targetPort": 8080, "external": true } },
-             "links": [{ "import": "hobo:data", "to": "db" }],
              "annotations": { "scaling": { "min": 1, "max": 10 }, "with": { "aws.fargate": { "cpu": 512 } } } },
     "site":{ "type": "website.v1", "bind": ["api"] }
   }

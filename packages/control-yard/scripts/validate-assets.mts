@@ -2,10 +2,11 @@
  * Asset index ↔ disk coverage + measured frame dimension check.
  * STOP rule: measure PNG before trusting load.spritesheet config.
  */
+
+import { strict as assert } from "node:assert";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { strict as assert } from "node:assert";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = join(ROOT, "assets");
@@ -82,21 +83,11 @@ for (const [id, sheet] of Object.entries(index.spritesheets)) {
 	}
 }
 
-// West sheet must not be a mirror of east — both files must exist distinctly.
-const east = index.spritesheets["bo-walk-east"];
-const west = index.spritesheets["bo-walk-west"];
-if (east && west) {
-	if (west.neverMirrorFrom !== "bo-walk-east") {
-		fail("bo-walk-west must declare neverMirrorFrom: bo-walk-east");
-	}
-	const eastBuf = readFileSync(join(ASSETS, east.path));
-	const westBuf = readFileSync(join(ASSETS, west.path));
-	if (eastBuf.equals(westBuf)) {
-		fail("west walk sheet is byte-identical to east — forbidden mirror");
-	} else {
-		console.log("OK  west walk sheet is not a byte-mirror of east");
-	}
-}
+// The Bo walk sheets are gone with the rubberhose identity (ADR-0148). The
+// mirror guard used to live here; it silently evaluated to `undefined &&
+// undefined` once the sheets were deleted, so it is removed rather than left
+// as a check that quietly stopped checking. If directional sheets return,
+// restore an explicit guard AND a test that fails when it is skipped.
 
 for (const [id, img] of Object.entries(index.images ?? {})) {
 	const abs = join(ASSETS, img.path);
@@ -109,11 +100,21 @@ for (const [id, img] of Object.entries(index.backgrounds ?? {})) {
 	else console.log(`OK  background ${id}`);
 }
 
+// Log the count so an empty map is visible rather than a silently-skipped
+// loop that still prints "passed".
+const animCount = Object.keys(index.animationIds).length;
+console.log(
+	animCount === 0
+		? "OK  animationIds is empty (village renders static tiles)"
+		: `OK  ${animCount} animation id(s) to resolve`,
+);
 for (const [animId, ref] of Object.entries(index.animationIds)) {
 	const sheet = index.spritesheets[ref.sheet];
 	if (!sheet) fail(`animationIds ${animId} unknown sheet ${ref.sheet}`);
 	else if (!sheet.animations[ref.animation]) {
-		fail(`animationIds ${animId} missing anim ${ref.animation} on ${ref.sheet}`);
+		fail(
+			`animationIds ${animId} missing anim ${ref.animation} on ${ref.sheet}`,
+		);
 	}
 }
 

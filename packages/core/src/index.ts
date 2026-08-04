@@ -205,6 +205,23 @@ export {
 	UnsupportedSchemaVersionError,
 } from "./ports/eventstore.js";
 export type {
+	DataClassification,
+	JurisdictionId,
+	JurisdictionRecord,
+	ResidencyConstraint,
+	ResidencyEvaluation,
+} from "./ports/jurisdiction.js";
+export {
+	evaluateResidency,
+	JURISDICTIONS,
+	JurisdictionParseError,
+	jurisdictionsForRegion,
+	parseDataClassification,
+	parseJurisdictionId,
+	parseResidencyConstraint,
+	REGION_JURISDICTIONS,
+} from "./ports/jurisdiction.js";
+export type {
 	ActorPlacementMode,
 	ConsumedMessage,
 	ConsumeOptions,

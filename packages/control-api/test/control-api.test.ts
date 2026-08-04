@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+	type ControlApiServer,
 	createControlApiServer,
 	HOBO_CONTROL_API_PACKAGE,
-	type ControlApiServer,
 } from "../src/index.js";
 
 const temps: string[] = [];
@@ -36,7 +36,10 @@ async function json(
 			...(init?.headers ?? {}),
 		},
 	});
-	return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+	return {
+		status: res.status,
+		body: (await res.json()) as Record<string, unknown>,
+	};
 }
 
 describe("@hobo/control-api", () => {

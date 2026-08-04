@@ -66,6 +66,54 @@
 					}
 				}
 			}
+		},
+		{
+			"description": "deployment view with no local cloud event source is an honest empty view",
+			"request": {
+				"method": "GET",
+				"path": "/management/deployments/view"
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"ok": true,
+					"code": "HOBO_OK",
+					"data": {
+						"available": false,
+						"source": "none",
+						"yards": [],
+						"deployments": [],
+						"count": 0,
+						"seq": 0
+					}
+				}
+			}
+		},
+		{
+			"description": "credential audit folds the local connection store when present",
+			"request": {
+				"method": "GET",
+				"path": "/management/audit/credentials"
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"ok": true,
+					"code": "HOBO_OK",
+					"data": {
+						"available": true,
+						"sources": ["connections-store"],
+						"rows": [
+							{
+								"correlationId": "corr-connection-conn-1",
+								"connectionIds": ["conn-1"],
+								"grantCount": 0
+							}
+						],
+						"count": 1
+					}
+				}
+			}
 		}
 	],
 	"metadata": {

@@ -14,6 +14,10 @@ export interface ServeControlCommandDeps {
 	readonly host?: string;
 	/** When true, return immediately after bind (tests). */
 	readonly once?: boolean;
+	/** Demo mode: feed the world read model from the yard-world simulator (`--demo` / HOBO_CONTROL_DEMO=1). */
+	readonly demo?: boolean;
+	/** Deterministic simulator seed (`--demo-seed` / HOBO_CONTROL_DEMO_SEED). */
+	readonly demoSeed?: number;
 	readonly log?: (line: string) => void;
 }
 
@@ -30,7 +34,10 @@ export function createServeControlCommand(
 				return {
 					ok: false,
 					message: `hobo serve: unknown target '${target}' (supported: control)`,
-					data: { usage: "hobo serve control [--port 8790]" },
+					data: {
+						usage:
+							"hobo serve control [--port 8790] [--demo] [--demo-seed 42]",
+					},
 				};
 			}
 			const hoboHome =
@@ -49,14 +56,28 @@ export function createServeControlCommand(
 				deps.host ??
 				(typeof f.host === "string" ? f.host : "127.0.0.1");
 			const log = deps.log ?? ((line: string) => console.error(line));
+			const demo =
+				deps.demo ?? (f.demo === true || env.HOBO_CONTROL_DEMO === "1");
+			const seedFlag =
+				typeof f.demoSeed === "string" ? Number(f.demoSeed) : Number.NaN;
+			const seedEnv = Number(env.HOBO_CONTROL_DEMO_SEED);
+			const demoSeed =
+				deps.demoSeed ??
+				(Number.isFinite(seedFlag)
+					? seedFlag
+					: Number.isFinite(seedEnv)
+						? seedEnv
+						: undefined);
 
 			const server = await createControlApiServer({
 				hoboHome,
 				host,
 				port: Number.isFinite(port) ? port : 8790,
+				demo,
+				...(demoSeed === undefined ? {} : { demoSeed }),
 			});
 			log(
-				`hobo serve control: ${server.url} (HOBO_HOME=${hoboHome}) yard=/v1/yard/snapshot stream=/v1/yard/stream`,
+				`hobo serve control: ${server.url} (HOBO_HOME=${hoboHome}) yard=/v1/yard/snapshot stream=/v1/yard/stream world=/v1/world/snapshot otlp=/v1/otlp${demo ? ` demo=on seed=${server.demoSeed}` : ""}`,
 			);
 
 			if (deps.once) {

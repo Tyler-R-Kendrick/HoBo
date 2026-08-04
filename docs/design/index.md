@@ -1,7 +1,7 @@
 # HoBo — Design Plan Suite
 
 > A suite of inter-related design plans for **HoBo**, a **WIT/WASM** programmable surface (Component Model / wasmCloud) + cloud control plane — TypeScript is the first reference implementation, not a requirement ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
-> This is a **design-first repository, not a shipped HoBo product**. It now includes executable draft proof/contract packages under `src/draft/<kind>/<slug>` plus validation scripts; those packages prove design claims and backlog slices before production implementation. The design is a set of capability docs plus contract records; each plan keeps a stable `#plan-NN` anchor so areas can still be cited precisely.
+> This began as a **design-first repository** and is not yet a shipped HoBo product; it now pairs the design suite with a production `packages/` workspace (60+ package manifests, ~160k lines of non-test TypeScript) plus executable draft proof/contract packages under `src/draft/<kind>/<slug>` and validation scripts. Proofs prove design claims before production implementation; honest-scope caveats live in [live-provider-matrix](./live-provider-matrix.md) and the README status summary. The design is a set of capability docs plus contract records; each plan keeps a stable `#plan-NN` anchor so areas can still be cited precisely.
 
 ## Index
 
@@ -10,6 +10,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | Doc | Covers | Plans |
 |---|---|---|
 | [`vision.md`](./vision.md#plan-00) | Vision, positioning & guiding principles | 00, 17 |
+| [`lineage.md`](./lineage.md) | The aggregate portrait & credits: every influence with posture, what's borrowed, divergence, and capture link | — |
 | [`architecture.md`](./architecture.md#plan-10) | Reference architecture + monorepo/package layout | 10 |
 | [`control-plane.md`](./control-plane.md#plan-04) | The Yard control plane; providers, IaC & build/VM adapters | 04 |
 | [`sdk-api.md`](./sdk-api.md#plan-02) | SDK / API design (the four-layer model) | 02 |
@@ -33,9 +34,15 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0130) | **ADR-0130** — Hierarchical DNS-valid naming (`.hobo.localhost` / `.hobo.test`; never bare `.hobo`) | — |
 | [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0140) | **ADR-0140** — Launch ship targets A/B/C (OSS public · local-first npm · hosted beta/GA); default order A→B→C | — |
 | [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0143) | **ADR-0143** — TrafficRouting port: portable multi-backend routing intent with explicit partial realization | — |
+| [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0144) | **ADR-0144** — External-spec posture (Crossplane/OAM/CNAB mapped at the boundary, never depended on); Resource Definition versioning; thin SaaS adapters with typed impedance | — |
+| [`adr/01-architecture-core.md`](./adr/01-architecture-core.md#adr-0145) | **ADR-0145** — Traits: declaratively attached operational behavior anchored on manifest annotations; trait-kind map over the nine existing mechanisms | — |
+| [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0146) | **ADR-0146** — Typed legal geography (JurisdictionId, DataClassification), fail-closed `evaluateResidency` + residency gate/policy pack, control→evidence packs | — |
 | [`launch-ship-targets.md`](./launch-ship-targets.md) | Human-facing summary of ADR-0140 ship targets, S-stage interim cutlines, and claim rules | — |
 | [`instances/`](./instances/README.md) | Populated readiness dashboard, go/no-go, accepted-risk, and residual human-blocker **instances** (dated snapshots; contracts stay in sibling docs) | — |
 | [`pre-public-secret-scan.md`](./pre-public-secret-scan.md) | Target A runbook: full-history gitleaks before repo-public flip; evidence rules | — |
+| [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0147) | **ADR-0147** — HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals | — |
+| [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0148) | **ADR-0148** — Pixel-RPG identity: sourced CC0 pixel art replaces the traced rubberhose surface | — |
+| [`asset-sourcing-policy.md`](./asset-sourcing-policy.md) | Asset sourcing policy for the HIGHBALL! game surface: PD trace plates, CC0 audio, OFL fonts, re-inked references, license allowlist + CREDITS.md provenance | — |
 | [`ai-native-agent-auth.md`](./ai-native-agent-auth.md#plan-06) | AI-native platform, agent auth & end-user auth | 06 |
 | [`stage-3-agent-autonomy-acceptance.md`](./stage-3-agent-autonomy-acceptance.md) | Stage-3 (Agent Autonomy) acceptance record: scope in/out, promoted epic proofs, resolved stage-3 hooks, runnable stage gate | 06 |
 | [`data-plane.md`](./data-plane.md#plan-32) | Event model & the data plane: sourcing/replay, reactivity, projections, migrations, search | 11, 32 |
@@ -140,7 +147,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`stage-6-production-hardening-acceptance.md`](./stage-6-production-hardening-acceptance.md) | Stage-6 (Production Hardening) acceptance record: ratified HA/DR/canary/FinOps hooks, promoted epic proofs, restated stage gate, and the S6-02..S6-10 follow-up gate | — |
 | [`compatibility-matrix.md`](./compatibility-matrix.md) | Productization M0 browser, device, platform, CLI bootstrap, and support-routing compatibility matrix | — |
 
-**Decisions** live as 4 thematic ADR docs in [`adr/`](./adr/index.md) (each decision is a `#adr-NNNN` section). The current ADR/Plan -> Linear coverage gate is [`traceability.md`](./traceability.md). Executable draft proofs and contract packages live under [`../../src/draft/`](../../src/draft/): technical proofs in [`../../src/draft/technical-proofs/`](../../src/draft/technical-proofs/), experience proofs in [`../../src/draft/exp-proofs/`](../../src/draft/exp-proofs/), epic rollups in [`../../src/draft/epic-proofs/`](../../src/draft/epic-proofs/) and registered in [`../../src/draft/epic-proofs/_registry.md`](../../src/draft/epic-proofs/_registry.md), and project MVP rollups in [`../../src/draft/projects/`](../../src/draft/projects/). Registry `Status` is operational metadata: `complete` means the linked rollup PR has merged, while `in_review` is reserved for an open rollup PR.
+**Decisions** live in [`adr/`](./adr/index.md) — 4 thematic decision docs plus standalone/split-out ADR files (each decision is a `#adr-NNNN` section). The current ADR/Plan -> Linear coverage gate is [`traceability.md`](./traceability.md). Executable draft proofs and contract packages live under [`../../src/draft/`](../../src/draft/): technical proofs in [`../../src/draft/technical-proofs/`](../../src/draft/technical-proofs/), experience proofs in [`../../src/draft/exp-proofs/`](../../src/draft/exp-proofs/), epic rollups in [`../../src/draft/epic-proofs/`](../../src/draft/epic-proofs/) and registered in [`../../src/draft/epic-proofs/_registry.md`](../../src/draft/epic-proofs/_registry.md), and project MVP rollups in [`../../src/draft/projects/`](../../src/draft/projects/). Registry `Status` is operational metadata: `complete` means the linked rollup PR has merged, while `in_review` is reserved for an open rollup PR.
 
 **Stage gates:** [`build-s1-stage-gate-acceptance.md`](./build-s1-stage-gate-acceptance.md) is the production S1 acceptance record (runtime-port/component-host/sdk-parity conformance, offline `hobo dev`, replay == live); [`proofs/s1-stage-gate/index.md`](./proofs/s1-stage-gate/index.md) is the originating draft-proof record it re-points from. The standing S1 CI lane is `.github/workflows/s1-stage-gate.yml`; the S2 and S3 gates are `.github/workflows/s2-stage-gate.yml` (First Cloud + Yard, evidence in [`stage-2-first-cloud-yard-acceptance.md`](./stage-2-first-cloud-yard-acceptance.md)) and `.github/workflows/s3-stage-gate.yml` (Agent Autonomy, evidence in [`stage-3-agent-autonomy-acceptance.md`](./stage-3-agent-autonomy-acceptance.md)).
 

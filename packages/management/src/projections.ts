@@ -1,12 +1,12 @@
 import type { ManagementContext } from "./context.js";
 import { resolveDefaultStationId } from "./context.js";
-import { errResult, okResult, type ManagementResult } from "./result.js";
+import { errResult, type ManagementResult, okResult } from "./result.js";
 import {
-	toPublicConnection,
-	toRailPublicView,
 	type ConnectorActivityView,
 	type DoctorView,
 	type MeteringView,
+	toPublicConnection,
+	toRailPublicView,
 	type YardProjectionSnapshot,
 } from "./types.js";
 
@@ -34,7 +34,8 @@ export function projectYardSnapshot(
 	}
 
 	const actor = ctx.resolveActor();
-	const tenant = input.tenant ?? actor.tenant ?? state.occupancy.isolation.tenant;
+	const tenant =
+		input.tenant ?? actor.tenant ?? state.occupancy.isolation.tenant;
 	const connections = ctx
 		.loadConnectionService(tenant)
 		.list()
@@ -53,7 +54,14 @@ export function projectYardSnapshot(
 		quotaLimit: activeRail?.billingPolicy.quotaLimit ?? 0,
 		spendCapUsd: activeRail?.billingPolicy.spendCapUsd ?? 0,
 		budgetUsd: activeRail?.billingPolicy.budgetUsd ?? 0,
-		trafficRate: Math.min(1, authorized.length * 0.25 + (authorized.length > 0 ? 0.15 : 0)),
+		trafficRate: Math.min(
+			1,
+			authorized.length * 0.25 + (authorized.length > 0 ? 0.15 : 0),
+		),
+		// Provenance badge (HIGHBALL "kill or badge"): this rate is synthesized
+		// from connection counts, not measured traffic. Flips to "otlp" when
+		// real metering signals feed the projection.
+		trafficRateSource: "synthetic",
 	});
 
 	const activity: ConnectorActivityView[] = connections.map((c) =>
@@ -61,6 +69,9 @@ export function projectYardSnapshot(
 			connectorKind: mapProviderToConnectorKind(c.provider),
 			status: mapConnectionStatusToActivity(String(c.status)),
 			connectionId: c.id,
+			// Provenance badge: status is statically derived from the connection
+			// lifecycle, not live agent telemetry.
+			statusSource: "derived-static",
 		}),
 	);
 

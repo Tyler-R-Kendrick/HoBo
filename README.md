@@ -4,7 +4,7 @@
 
 A developer or agent should be able to describe an app once, then let HoBo place it on a provider, mix of providers, or self-hosted yard without rewriting app code. The design uses **WIT/WASM Component Model interfaces** as the portable membrane, provider adapters as the integration boundary, and an event-sourced control plane as the operating model.
 
-> **Current state:** active design + executable contract/proof repository with a production `packages/` workspace (~58 package manifests; ~169k production TypeScript lines under `packages/`: core, wit, bindles, runtime, runtimes/*, connectivity, componentize, conformance, cli, hobo, cloud, identity, mcp, contracts, policy, data, events, camps, yards, junctions, iac/*, providers/*, schema-tools, stage-gate, ci-guard, contract-harness, training-pipeline, …). All **38** canonical `hobo` CLI verbs (`packages/cli/src/shell/verbs.ts`) dispatch against the local lane; the product binary is **`@hobo/hobo`** (composition root), while **`@hobo/cli`** provides the shell and command factories. Default deploy uses an **in-memory Pulumi stand-in** (`HONEST SCOPE` in `packages/hobo/src/compose.ts`); live Vercel/Cloudflare and `HOBO_PULUMI_LIVE=1` are credential- or engine-gated. `@hobo/componentize` emits **synthetic wasm contract bytes** (`buildWasmContractBytes`), not a real jco/`componentize-js` pipeline. Hierarchical DNS-valid naming, optional local named endpoints, overlay/DNS/policy/metering foundations live in `@hobo/connectivity` ([ADR-0130](./docs/design/adr/07-portability-extensibility.md#adr-0130)). **Pre-release:** packages are **not published to npm**. Ship targets A/B/C: [`docs/design/launch-ship-targets.md`](./docs/design/launch-ship-targets.md), [ADR-0140](./docs/design/adr/07-portability-extensibility.md#adr-0140); gap review [`docs/plans/0011-ship-readiness-gap-review.md`](./docs/plans/0011-ship-readiness-gap-review.md); remediation [`docs/plans/0012-ship-remediation-plan.md`](./docs/plans/0012-ship-remediation-plan.md).
+> **Current state:** active design + executable contract/proof repository with a production `packages/` workspace (**68** package manifests; ~159k non-test TypeScript lines under `packages/*/src`: core, wit, bindles, runtime, runtimes/*, dispatcher, trails, stations, storage-sqlite, broker, connectivity, componentize, conformance, cli, hobo, code, cloud, replay, identity, mcp, contracts, policy, data, events, camps, yards, junctions, control-api, control-yard, management, iac/*, providers/* (incl. provider-convex), connectors/*, adapters/*, schema-tools, stage-gate, ci-guard, contract-harness, training-pipeline). All **40** canonical `hobo` CLI verbs (`packages/cli/src/shell/verbs.ts`) dispatch against the local lane; the product binary is **`@hobo/hobo`** (composition root), while **`@hobo/cli`** provides the shell and command factories. Default deploy uses an **in-memory Pulumi stand-in** (`HONEST SCOPE` in `packages/hobo/src/compose.ts`); live Vercel/Cloudflare and `HOBO_PULUMI_LIVE=1` are credential- or engine-gated. `@hobo/componentize` emits **synthetic wasm contract bytes** (`buildWasmContractBytes`), not a real jco/`componentize-js` pipeline. Hierarchical DNS-valid naming, optional local named endpoints, overlay/DNS/policy/metering foundations live in `@hobo/connectivity` ([ADR-0130](./docs/design/adr/07-portability-extensibility.md#adr-0130)). **Pre-release:** packages are **not published to npm**. Ship targets A/B/C: [`docs/design/launch-ship-targets.md`](./docs/design/launch-ship-targets.md), [ADR-0140](./docs/design/adr/07-portability-extensibility.md#adr-0140); gap review [`docs/plans/0011-ship-readiness-gap-review.md`](./docs/plans/0011-ship-readiness-gap-review.md); remediation [`docs/plans/0012-ship-remediation-plan.md`](./docs/plans/0012-ship-remediation-plan.md).
 
 **Website:** the landing page, developer docs, and agent docs live at **<https://tyler-r-kendrick.github.io/HoBo/>** — source in [`site/`](./site/README.md), published by pushing the built `site/dist/` to the `gh-pages` branch (no Actions dependency; see the site README for the publish commands).
 
@@ -31,6 +31,9 @@ HoBo's goal is a third path: **cloud portability without hiding the cloud**.
 | **Yard** | Provider-specific control scope spanning Camps, policy, identity, and reconciliation. **Owns provider selection.** |
 | **Junction** | Cross-Yard federation layer for hybrid or multi-cloud operation. |
 | **Trail** | App-owned continuous migration recipe; owns how Camps re-home across Yards/clouds (not Camp-local provider pins). |
+| **Station** | Hard control-plane isolation boundary (tenant/residency/air-gap/trust domain) a Conductor occupies; Rails pin its active policy; hosts the routing control loop + progressive cutover + offering registry. |
+| **Trait** | Declaratively attached operational behavior (`.allow()`, annotations, policy packs, Workload Profiles, …) anchored on the manifest `annotations` block ([ADR-0145](./docs/design/adr/01-architecture-core.md#adr-0145)). |
+| **Jurisdiction & residency** | Typed legal geography: region→jurisdiction catalog, per-tenant residency constraints, and a fail-closed `evaluateResidency` gate ([ADR-0146](./docs/design/adr/02-identity-security.md#adr-0146)). |
 | **WIT/WASM membrane** | Portable contract between app code, runtime ports, and provider adapters. Latest stable TypeScript is the first implementation language; Protobuf, CUE, and PACT pin data contracts and boundary compatibility. |
 | **Ports and adapters** | Cloud providers, IaC engines, build tools, identity systems, and AI optimizers sit behind replaceable ports. |
 | **Replayable event log** | Control-plane state, projections, SRE workflows, and audit trails derive from events. |
@@ -44,6 +47,9 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 
 | Path | What it is |
 |---|---|
+| [`packages/`](./packages/) | The production TypeScript workspace — 68 package manifests (core/runtime/control-plane/providers/iac/runtimes/connectors/adapters); authoritative package ownership in [`docs/design/package-namespaces.md`](./docs/design/package-namespaces.md). |
+| [`examples/`](./examples/README.md) | Runnable examples (hello-bindle, multi-cloud-shop, ci-runner-balancing, durable-agent, self-host-yard, try-site). |
+| [`scripts/`](./scripts/) | Repo gates and tooling (architecture guard, standards/docs checks, staging cutover demo, codegen). |
 | [`docs/`](./docs/index.md) | OKF bundle root for HoBo docs; `index.md` files provide directory listings and concept docs carry OKF frontmatter. |
 | [`docs/design/`](./docs/design/index.md) | Current design suite: capability docs, ADRs, CLI spec, traceability, glossary, event-family catalog. |
 | [`src/draft/`](./src/draft/) | Executable draft taxonomy: `technical-proofs/`, `exp-proofs/`, `epic-proofs/`, and `projects/`. These are draft fixtures, not a production product. |
@@ -83,6 +89,7 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 - CLI surface: [`docs/design/cli-spec.md`](./docs/design/cli-spec.md)
 - SDK contracts: [`docs/design/sdk-contracts.md`](./docs/design/sdk-contracts.md)
 - Package namespaces: [`docs/design/package-namespaces.md`](./docs/design/package-namespaces.md)
+- Influence lineage & credits: [`docs/design/lineage.md`](./docs/design/lineage.md)
 
 ## How to work in this repo
 
@@ -145,7 +152,7 @@ Optional: enable the repo pre-commit hook:
 npm run prepare-hooks
 ```
 
-After that, `.githooks/pre-commit` runs the staged architecture guard, tests, the technical standards gate, docs linters, traceability, SDK/deployment validators, and staged docs freshness before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
+After that, `.githooks/pre-commit` runs the generated-files guard (`pnpm run generated:guard`) and the staged impact-routed gate (`pnpm run check:relevant:staged`), which selects the relevant subset of the architecture guard, tests, technical standards, docs linters, and docs freshness for the staged diff before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
 
 ## Technical standards
 
@@ -186,10 +193,12 @@ Important rules for agents and humans:
 
 ## Status summary
 
-- **Product implementation:** ~58 package manifests under `packages/` (~169k production TypeScript LOC). All **38** canonical `hobo` CLI verbs are registered in `@hobo/cli` and composed by `@hobo/hobo` against the local lane. Default IaC is an **in-memory Pulumi stand-in** (not live cloud apply); see `HONEST SCOPE` in `packages/hobo/src/compose.ts`. Live-cloud lanes are credential- or engine-gated (`VERCEL_TOKEN`, Cloudflare tokens, `HOBO_PULUMI_LIVE=1`).
+- **Product implementation:** **68** package manifests under `packages/` (~159k non-test TypeScript LOC under `packages/*/src`). All **40** canonical `hobo` CLI verbs are registered in `@hobo/cli` and composed by `@hobo/hobo` against the local lane. Default IaC is an **in-memory Pulumi stand-in** (not live cloud apply); see `HONEST SCOPE` in `packages/hobo/src/compose.ts`. Live-cloud lanes are credential- or engine-gated (`VERCEL_TOKEN`, Cloudflare tokens, `HOBO_PULUMI_LIVE=1`).
 - **Pre-release / distribution:** `@hobo/*` packages are **not published to npm** (workspace `0.0.1`). Prefer installing from this monorepo until a publish allowlist and CI-proven release path land.
 - **Componentize honesty:** `@hobo/componentize` builds **synthetic wasm contract bytes** (`buildWasmContractBytes`: wasm magic + custom section metadata), not a production jco/`componentize-js` pipeline.
-- **Design suite:** active and canonical under [`docs/design/`](./docs/design/index.md).
+- **Migration & upgrade engine:** live executors ship in `@hobo/trails` (upgrade preflight evidence, expand→backfill→contract over a real SQLite store, pooled→siloed zero-loss tenant move, CDC data-dual ports) with the `migration.*` event family pinned in `@hobo/events`' append-only golden-replay corpus + upcaster-totality gate. See [`docs/design/upgrade-migration-engine.md`](./docs/design/upgrade-migration-engine.md).
+- **Budget-driven routing:** `@hobo/dispatcher` (ADR-0071 deterministic credit/budget selection) + `@hobo/broker` budget signals + the `@hobo/stations` closed routing control loop and progressive cutover saga; rehearse the zero-downtime swap with `pnpm run staging:cutover` (loopback lane green with archived evidence; Vercel/Cloudflare lanes credential-gated fail-closed — [`docs/design/live-provider-matrix.md`](./docs/design/live-provider-matrix.md)).
+- **Design suite:** active and canonical under [`docs/design/`](./docs/design/index.md); influence credits in [`docs/design/lineage.md`](./docs/design/lineage.md).
 - **Ship targets:** OSS public vs local-first npm vs hosted beta/GA are distinguished in [`docs/design/launch-ship-targets.md`](./docs/design/launch-ship-targets.md) and [ADR-0140](./docs/design/adr/07-portability-extensibility.md#adr-0140). Readiness findings: [`docs/plans/0011-ship-readiness-gap-review.md`](./docs/plans/0011-ship-readiness-gap-review.md); remediation work packages: [`docs/plans/0012-ship-remediation-plan.md`](./docs/plans/0012-ship-remediation-plan.md). Known limitations: [`docs/design/known-limitations-register.md`](./docs/design/known-limitations-register.md).
 - **Backlog mirror:** [`docs/implementation-plan.md`](./docs/implementation-plan.md); Linear is live operational source.
 - **Executable proof material:** `src/draft/<kind>/<slug>` packages and repo validation scripts.

@@ -153,3 +153,7 @@
 | 0142 | Config as linked capability vs residual secrets; delegated refs and classification | [identity-security](02-identity-security.md#adr-0142) |
 | 0143 | TrafficRouting port: portable multi-backend intent, explicit partial realization, Station synthesis, and optional provider adapters | [portability-extensibility](07-portability-extensibility.md#adr-0143) |
 | 0144 | External-spec posture: Crossplane/OAM/CNAB mapped at the boundary, never depended on; Resource Definition versioning rules | [portability-extensibility](07-portability-extensibility.md#adr-0144) |
+| 0145 | Traits: declaratively attached operational behavior anchored on the manifest annotations block; trait-kind mechanism map | [architecture-core](01-architecture-core.md#adr-0145) |
+| 0146 | Jurisdiction vocabulary + fail-closed residency evaluation + control→evidence packs (OSCAL-aligned, never OSCAL-dependent) | [identity-security](02-identity-security.md#adr-0146) |
+| 0147 | HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals | [portability-extensibility](07-portability-extensibility.md#adr-0147) |
+| 0148 | Pixel-RPG identity: sourced CC0 pixel art replaces the traced rubberhose surface | [portability-extensibility](07-portability-extensibility.md#adr-0148) |

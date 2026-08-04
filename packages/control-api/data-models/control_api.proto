@@ -22,3 +22,14 @@ message YardStreamEvent {
   uint64 seq = 2;
   string json_snapshot = 3;
 }
+
+// World read-model stream envelope. World/event payload shapes are owned by
+// hobo.yard_world.v1 (packages/yard-world/data-models/yard_world.proto) —
+// referenced here, not duplicated. json_payload carries a JSON-encoded
+// WorldState snapshot ("world-snapshot") or {events, tick} delta ("world").
+message WorldStreamEvent {
+  string event = 1; // "world-snapshot" | "world" | "heartbeat"
+  uint64 tick = 2;
+  bool demo = 3; // provenance: true when fed by the deterministic simulator
+  string json_payload = 4;
+}

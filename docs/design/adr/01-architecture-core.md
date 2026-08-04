@@ -606,3 +606,28 @@ flowchart TB
 - **(−)** Permanent non-goals (not open residuals): Kafka operator UI, full Dapr workflow **engine** parity (activity-name map only), advanced schema-registry wire protocols, junction data-plane byte relay (control-plane federation is in).
 - **Preserves** ADR-0031, ports/adapters, PACT/CUE/protobuf discipline, Matching, Junctions, Trails composition points for topic/schema migrations.
 - **Fidelity honesty:** `live` only when a transport/client is actually used; `live: true` without one throws.
+
+## ADR-0145
+**Traits: declaratively attached operational behavior, anchored on the manifest `annotations` block.**
+
+### Context
+Nine mechanisms independently attach operational behavior to resources/components without changing their code — `.allow()` verbs (author-inferred least privilege), `.with()` provider annotations (author-explicit, lock-in-scored by the PortabilityReport per [ADR-0024](07-portability-extensibility.md#adr-0024)), manifest `annotations.scaling`, policy packs ([ADR-0039]/[ADR-0096](02-identity-security.md#adr-0096)), Trails recipes ([ADR-0134](02-identity-security.md#adr-0134)), Workload Profiles ([Plan 25](../platform-engineering.md#plan-25)), Resource Packs, and the session-replay default ([ADR-0137](03-data-plane.md#adr-0137)) — with no shared name, type, attach point, or lifecycle. The word "trait" appears in HoBo only as [ADR-0144](07-portability-extensibility.md#adr-0144)'s OAM vocabulary mapping. OAM proved the developer/operator role split deserves schema-level names ([`../../standards/oam.md`](../../standards/oam.md)); leaving the concept unnamed invites nine more one-off mechanisms.
+
+### Decision
+1. **Trait is a first-class HoBo term**: a declaratively attached operational behavior that modifies *how* a resource/component runs — never *what* it is. The canonical **attach point is the manifest IR `annotations` block** (already the structural home of `scaling` and `with`); trait-shaped mechanisms that ride other carriers are classified below, not relocated.
+2. **Trait kinds** (the mechanism map is normative):
+   - *Author-inferred*: `.allow()` least-privilege verbs — derived from usage, surfaced in the manifest.
+   - *Author-explicit*: manifest `annotations` — portable operational annotations (`scaling {min,max}`) and provider `.with(...)` blocks (Camp/Yard-scoped, PortabilityReport-scored, never on Bindles).
+   - *Platform-applied*: Workload Profiles (how a service is realized, incl. scheduling constraints), policy packs (deny-ceiling composed), platform defaults with opt-out (session replay), and Trails recipes at migrate-time.
+   - *Distribution*: Resource Packs / App Kits carry bundled trait defaults; they are wrappers, not traits themselves.
+3. **Non-traits, explicitly**: Resource Definition `class` (a Matching *selection* dimension), `.dependsOn`/links (structure, not behavior), and `EffectSpec`/`ResilienceProfile` (contract metadata on the *edge*, ADR-0136 — boundary-side, not component-side).
+4. **Role split preserved**: developers author Bindle-side traits (`.allow()`, portable annotations); operators/platform own Camp/Yard-side traits (provider `.with()`, profiles, packs, defaults). `assertNoBindleProviderSelection` remains the enforcement seam.
+5. **Vocabulary now, unification later**: this ADR names the concept and the map (glossary + [architecture taxonomy](../architecture.md#plan-10)). A typed `TraitDescriptor` unifying attach/lifecycle metadata is a recorded iteration hook, not built here.
+
+### Non-goals
+- No OAM TraitDefinition CRD-style registry; no new runtime machinery; no relocation of existing mechanisms.
+
+### Consequences
+- **(+)** Agents and humans get one name and one map for "attach behavior without touching code"; OAM-fluent adopters get a direct translation.
+- **(+)** New behavior-attachment proposals must classify themselves as a trait kind (or argue a new kind) instead of inventing mechanism #10 unnamed.
+- **(−)** "Trait" now means the HoBo concept; OAM's narrower CRD sense must be qualified when discussing KubeVela/wadm.

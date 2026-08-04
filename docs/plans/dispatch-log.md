@@ -338,3 +338,36 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **tests:** provider-convex 23/23; architecture guard + staged agent:check
   green per commit (ADR index + traceability gates included)
 - **protocol:** goal-hook one-shot with two Explore fact-check sweeps
+
+## 2026-08-04 — Lineage credits + Trait/Boundary + jurisdiction/compliance core (#1028)
+
+- **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/1028 — merge `1658bbf07`
+- **scope:** three-workstream brainstorm formalization: canonical
+  `docs/design/lineage.md` credits surface + nine new influence captures
+  (tailscale, cedar, temporal, argo-cd, flux-cd, service-mesh pattern, cnab,
+  oam, octopus-deploy); ADR-0145 first-class Trait + architecture component/
+  boundary taxonomy + glossary rows; ADR-0146 typed legal geography
+  (`@hobo/core` jurisdiction port, fail-closed `evaluateResidency`,
+  `Tenant.residency`, Gatekeeper `residency` gate) + `@hobo/policy` residency
+  pack (`eu-data-stays-in-eu` realized) + control→evidence packs with NIST
+  800-53 seed + `docs/standards/oscal.md`
+- **tests:** core 85 / policy 23 / contracts 36; codegen CLEAN; guard green;
+  staged agent:check green per commit
+- **protocol:** plan-mode brainstorm (3 Explore sweeps) → approved plan →
+  single-branch delivery
+
+
+## 2026-08-04 — Remediation roadmap (0017)
+
+- **scope:** scoped solutions for the full gap inventory as
+  `docs/plans/0017-remediation-roadmap.md` — 36 items across 7 workstreams
+  (correctness, ADR-0146 loop, compliance, flagship local/WASM lane, placement
+  expressiveness/Radius deliverables, all ✱ aspirational packages, register
+  audits), each with verified seam facts, effort class, and acceptance
+  criteria; inventory→WS traceability table included
+- **decisions:** roadmap-doc-only session; WASM + local/self-host are
+  first-class live lanes (3P provider credentials are end-user-supplied —
+  fail-closed + contract-proven request formation is the 3P completion bar);
+  all ✱ packages fully scoped
+- **protocol:** plan-mode (1 seam-probe Explore sweep) → approved plan →
+  single docs PR

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28T01:57:17.031Z",
+  "generatedAt": "2026-08-04T02:41:38.474Z",
   "package": "@hobo/control-yard",
   "command": "pnpm --filter @hobo/control-yard run evidence",
   "skillStack": [
@@ -12,15 +12,12 @@
     "PASS connection authorized present — conn=1",
     "PASS traffic rate > 0 — traffic=0.4",
     "PASS bootstrap inactive",
-    "PASS imgdiff boot — match",
-    "PASS canvas dark ink near Bo — dark=5010",
+    "PASS imgdiff boot — baseline created",
+    "PASS canvas renders a populated scene — colours=2925 dominant=20.4%",
     "PASS no console errors",
     "PASS connection bay zone — zone=connectionBay",
     "PASS sheet opens — kind=connection.create",
-    "PASS imgdiff connection bay — match",
-    "PASS anim harness bo.idle — bo.idle",
-    "PASS anim harness bo.walk.east — bo.walk.east",
-    "PASS anim harness bo.walk.west — bo.walk.west",
+    "PASS imgdiff connection bay — baseline created",
     "PASS policyBoard zone — zone=policyBoard",
     "PASS costBooth zone — zone=costBooth",
     "PASS errorBunker zone — zone=errorBunker"
@@ -28,72 +25,56 @@
   "errors": [],
   "files": {
     "visual-report.json": {
-      "bytes": 2145,
-      "sha256": "4c7dc54395e65dd933409bf0204686a0b8f1b1e8b8f1b80fcbf342278d779ff6"
+      "bytes": 2386,
+      "sha256": "74cdd6f70f3a56123da086bfa9925beb632a01ea70054c0b74c3c9f8f33f09a8"
     },
     "01-boot-live.png": {
-      "bytes": 457936,
-      "sha256": "3cc3c9287d472bbefa44d00d4d436e31b96adbe50b5e5994f15abb111d227233"
+      "bytes": 492339,
+      "sha256": "e7d3ee0e85e7efe4d34d7bdec53007b47aa8d99f0604123db961e19966c4b725"
     },
     "02-connection-bay-sheet.png": {
-      "bytes": 483217,
-      "sha256": "c3c825eff6939f0863d89ffc9a631a413fc5546d41be723fd9c4292272bcbc4f"
+      "bytes": 558776,
+      "sha256": "11e5ddf83f0ee85a8d0c42db2533fdb3cb5f39a99c3b4eb1d293f5a85bdc777f"
     },
     "03-cost-booth.png": {
-      "bytes": 479803,
-      "sha256": "ab68692256c56f12cdd1b688496d210dcee9d5ac4b12c164a1aacc30dfa8d4d1"
+      "bytes": 547538,
+      "sha256": "0a9150644bd0e7093f8690ce8bb034da71487bb49e7a7690f3c6e822f1ca591e"
     },
     "04-policy-board.png": {
-      "bytes": 481744,
-      "sha256": "b93417beb7d7fa73e9adcc2512409bbc908c345d8a976cca1ae948030d55878f"
+      "bytes": 560838,
+      "sha256": "4aec005c0acecc54f8d24357875b17820505997edf7414a01d195b5710a21df8"
     },
     "05-error-bunker.png": {
-      "bytes": 475475,
-      "sha256": "337fbaa86473599fd27387f99aa4e4f8966a93d842dd3310d6d1f4584b277670"
+      "bytes": 536478,
+      "sha256": "69085e98326964cf9b25b59845ab7801dec5f08289284dd9907a8bc497983e17"
     },
     "06-after-actions.png": {
-      "bytes": 475897,
-      "sha256": "71ea956cfd49ad57a709fc6a1f4f72bbc00e10d13eb5dea1760fc122d5742018"
+      "bytes": 536478,
+      "sha256": "69085e98326964cf9b25b59845ab7801dec5f08289284dd9907a8bc497983e17"
     },
     "07-walk.png": {
-      "bytes": 472506,
-      "sha256": "5000d001fcc72477a3e1edcacc2b1c1577af388624c3bd4c6fd13501a8553cae"
+      "bytes": 539087,
+      "sha256": "9f458ff32da7ccd3689a8ef9c0c99bf859ca97b870dbc095589103c1cff2b075"
     },
     "canvas-only.png": {
-      "bytes": 331975,
-      "sha256": "39188b98ae930d6678370e70e55a404f0e52a1d159fa09d0fd331337cf30d62a"
-    },
-    "anim-bo-idle.png": {
-      "bytes": 29163,
-      "sha256": "883f3e3b4c96f87771a7cc817fe85170ae7a205e7e2561faa2d5a3e68a64d68f"
-    },
-    "anim-bo-walk-east.png": {
-      "bytes": 28619,
-      "sha256": "b072b1ea011ca57637bbb48f7745d1721a1d06c545b383b182b23b464f453d00"
-    },
-    "anim-bo-walk-west.png": {
-      "bytes": 27178,
-      "sha256": "3f125c61cb9e41c8ec15642e775abf77427f7bb52de37ab537b4b623a78cef1b"
+      "bytes": 349891,
+      "sha256": "ad5d8d21e5dc8144abf087eb3632453b319c278119ce43a3a68941ff849f4fc9"
     },
     "recordings/01-yard-loop.mp4": {
-      "bytes": 527936,
-      "sha256": "88a0cde3c98b06350879c602d5a5d8577f5296c1ed4f504c08788294d4582061"
+      "bytes": 728037,
+      "sha256": "25149cdb26f570011a501e254d777fd99f9864ac695e55c0bd74654b81075dce"
     },
     "recordings/02-connection-sheet.mp4": {
-      "bytes": 354687,
-      "sha256": "5af9fe15389a170d35f0ea1c079bd1b6a4d9fd164dc6de0056ebd725e3d9ffd8"
-    },
-    "recordings/03-bo-walk-east-west.mp4": {
-      "bytes": 489476,
-      "sha256": "289d1a5620640bc90db34702401c00053c9dcd5578cb9ac723cca4ebe29d71f3"
+      "bytes": 393825,
+      "sha256": "f2fc705f6c3a93a05c34261a5c493aa8fafacdb73861cdc950198d3de6265df7"
     },
     "recordings/04-rail-cost-doctor.mp4": {
-      "bytes": 545307,
-      "sha256": "cf733544305dad63e5a0fd26b01cd5b0ab6b348eac11ae27b60bd87664f36265"
+      "bytes": 781771,
+      "sha256": "966452eddc3f3e9e5f016521a24c1716e5be8427eaae342f77bfa17b896e03d3"
     },
     "evidence-manifest.json": {
-      "bytes": 3325,
-      "sha256": "cdd422da0c1febd84dae4d54916fe1522ad342d9642507752fc44dcf5f9783c1"
+      "bytes": 2637,
+      "sha256": "4d03c5ab4ee5d3d0df5c92dac4cb63daafd4e3c7a241db64e50e9ca2f3995d99"
     }
   },
   "manifestNote": "evidence-manifest.json sha256 is of on-disk file after write; re-run evidence:check validates all other files strictly"

@@ -71,6 +71,13 @@ flowchart LR
 ```
 
 ### Component responsibilities (C4 "container" level)
+
+> **Disambiguation** ([glossary](./glossary.md)): this table uses "component"
+> in the **C4 sense** — control-plane *modules*. The glossary's canonical
+> **Component** is the WASM/WASI deployable unit (manifest `component.v1`);
+> Dapr "components" are a third, adapter-local sense confined to
+> `runtime-dapr`. The taxonomy below (§Key boundaries) lists all three.
+
 | Component | Responsibility | Key inputs | Key outputs (events) |
 |---|---|---|---|
 | **Gateway** | Authn/z; expose SDK RPC + REST + MCP; accept commands; serve read models | Commands, identity tokens | `DeployRequested`, `BindleRegistered`, … |
@@ -90,6 +97,28 @@ flowchart LR
 `hobo inspect run <id>` / dashboard → Gateway → read model projection of the run's events (workflow/step/actor/saga timeline). Never touches the providers.
 
 ### Key boundaries & invariants
+
+**Component & boundary taxonomy.** "Component" and "boundary" each carry
+several precise senses; this table is the canonical disambiguation
+([ADR-0145](./adr/01-architecture-core.md#adr-0145) covers the companion
+Trait concept):
+
+| Sense | What it bounds / names | Typed as | Enforced by |
+|---|---|---|---|
+| **Component (WASM)** | The deployable unit | `ComponentDescriptor`/`LinkRecord` (`packages/core/src/ports/component-host.ts`), manifest `component.v1` | component-host conformance suite; WIT lock |
+| **Component (C4 module)** | Control-plane responsibility areas (table above) | prose | package layering rules |
+| **Component (Dapr)** | Dapr building-block bindings | adapter-local (`runtime-dapr`) | adapter tests |
+| **BoundaryContract** | Any of 13 integration edge kinds (http, event, resource-binding, agent-tool, …) with effects + resilience | `packages/contracts/src/contract-ir.ts` (`hobo.contract-ir/v1`, content-hashed) | `can-deploy` / Gatekeeper (ADR-0136) |
+| **Membrane (WIT/wRPC)** | The polyglot call boundary between components and providers | `LinkRecord.boundaryMode`/transport; link table + wRPC layer | runtime link enforcement; manifest-declared links only |
+| **Integration boundary (PACT)** | Consumer↔provider expectations across packages | `contracts/*.pact.json` + `*-boundaries.test.ts` | standards gate + `architecture:guard` |
+| **Parse boundary** | Untrusted input → derived domain types | per-package parsers | technical-standards.md ("one parser boundary") |
+| **Consistency boundary** | The write model (Aggregate) | stream + `expectedSeq`/fencing | DurableEventStore CAS (ADR-0135) |
+| **Capability boundary** | What a component may call, from inferred usage | grants (`packages/core/src/capability/`) | capability-enforcement conformance suite |
+| **Isolation boundary (Station)** | Control-plane isolation: tenant, residency, air-gap, trust domain | `StationIsolation` proto | Station/Rail policy pins |
+| **Tenancy boundary** | Pooled = logical, siloed = physical | app-tenant stream prefix + platform filter | cross-tenant-leak conformance gate (ADR-0080) |
+| **Trust/air-gap boundary** | Zero-egress sovereign Yards; in-boundary trust roots | ADR-0036 profile | offline bundle verification; egress denial |
+
+Invariants:
 1. **Commands mutate only via events.** No component writes resource state except by appending an event (CQRS/ES). This is what makes everything replayable — and it **includes ephemeral runtime-instance patches**: an agent's in-place patch isn't promoted to *source control*, but its full diff is captured as a durable `derivative.EphemeralPatchApplied` event ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)), so replaying the log still reconstructs the patched instance. "Not in source" never means "not in the replayable log."
 2. **Executors are the only thing that touches a cloud**, always sandboxed, always with a short-lived scoped token (never a long-lived secret). See [Plan 12](./security-networking.md#plan-12).
 3. **The Yard is itself a Bindle** deployed by an earlier Yard (or bootstrapped locally) — see [Plan 4 §Bootstrapping](./control-plane.md#plan-04).
@@ -115,25 +144,29 @@ core  ←  sdk, runtime  ←  runtimes/*, providers/*, iac/*, build/*  ←  cli,
 ```
 
 #### Packages
+
+> **Target layout.** Entries marked ✱ are designed but not yet packages on disk; the authoritative on-disk list is `packages/` itself (see also [`package-namespaces.md`](./package-namespaces.md) and [`live-provider-matrix.md`](./live-provider-matrix.md)).
+
 ```
 packages/
-  core/            @hobo/core         types, port interfaces, Capability Manifest schema, event envelope, DI/container
+  core/            @hobo/core         types, port interfaces (incl. jurisdiction/residency, offering-resolution, traffic-routing + data-store offerings), Capability Manifest schema, event envelope, DI/container
   wit/             @hobo/wit          WIT interfaces (wasi:* reuse + hobo:* ports) + the canonical hobo:sdk WIT package + wit-bindgen/jco bindings (per language)  [Plan 20/ADR-0072]
   bindles/         @hobo/bindles      app idiom layer (TS) over the hobo:sdk bindings: IfC resources (api/web/kv/bucket/queue/topic/secret≈vault/sql/...) + .allow(); bindle() (advanced) — semantics-free, conformance-gated  [Plan 21/ADR-0072]
   camps/           @hobo/camps        camp() — provider-neutral deployment target; provider inferred from Yard attachment
   yards/           @hobo/yards        yard() + domain() — provider-specific control-plane scope (**owns provider selection**)
   junctions/       @hobo/junctions    junction() — cross-cloud federation + inferred connectivity  [ADR-0043]
-  bindles-rs/ bindles-py/ bindles-go/ ... per-language app idiom layers over the same hobo:sdk bindings (hand-authored or SWE-operator-generated; gated by @hobo/conformance/sdk)  [ADR-0072]
+  bindles-rs/py/go ✱ ... per-language app idiom layers over the same hobo:sdk bindings (hand-authored or SWE-operator-generated; gated by @hobo/conformance/sdk)  [ADR-0072]
   runtime/         @hobo/runtime      actors/grains, workflow/step, agent(), stubs, ctx
   data/            @hobo/data         command/view/projection CQRS authoring helpers (fenceToken on aggregate append — ADR-0135)
-  events/          @hobo/events       emit/subscribe/saga messaging and choreography helpers
+  events/          @hobo/events       emit/subscribe/saga messaging and choreography helpers + upcaster registry & golden-replay corpus gate
   contracts/       @hobo/contracts    Contract IR + can-deploy + Gatekeeper; optional EffectSpec + ResilienceProfile (ADR-0136)
   contract-harness/@hobo/contract-harness  PACT harness + effect-aware isolation/mocks/fault injection (ADR-0136)
   storage-sqlite/  @hobo/storage-sqlite  SQLite schema/migrations/journal semantics behind ports (ADR-0135; not the public boundary)
-  stations/        @hobo/stations     Station occupancy + Rails + local client + PAM hooks (ADR-0131; not app topology)
-  trails/          @hobo/trails       continuous migration recipes + can-trail (ADR-0134; composes identity.continuous)
-  connectivity/    @hobo/connectivity naming consumers, overlay, DNS, secretless connectors, env isolation, metering sinks (ADR-0130+)
-  broker/          @hobo/broker       pure Conductor: policy-governed placement receipts (mounts Station client)
+  stations/        @hobo/stations     Station occupancy + Rails + local client + PAM hooks (ADR-0131) + traffic-routing control loop, progressive cutover saga, offering registry (ADR-0143)
+  trails/          @hobo/trails       continuous migration recipes + can-trail (ADR-0134) + live migration executor, tenant-move/schema-apply/data-dual ports, upgrade preflight evidence
+  connectivity/    @hobo/connectivity naming consumers, overlay, DNS, secretless connectors, env isolation, metering sinks (ADR-0130+) + TrafficRouting adapters (cloudflare · vercel · lakebed · funnel · simple, ADR-0143)
+  broker/          @hobo/broker       pure Conductor: policy-governed placement receipts (mounts Station client) + budget signal plane (`budget.ThresholdCrossed`/`Recovered`)
+  dispatcher/      @hobo/dispatcher   ADR-0071 Dispatcher: credit/budget-aware deterministic selection (placement · runner/build-machine dispatch · traffic backends); reservation CAS + hysteresis; `dispatch.Decided`/`dispatch.Reservation*`
   cloud/           @hobo/cloud        Planner/Matching + continuous-delivery apply plane (workload-attested)
   replay/          @hobo/replay       Session Replay on every App Kit (privacy-first; `replay.*`; ADR-0137 — distinct from event-log replay; App Kit ≠ WIT membrane)
   componentize/    @hobo/componentize component build via jco + per-language toolchains -> OCI artifacts  [Plan 20]
@@ -152,31 +185,38 @@ packages/
     provider-aws       @hobo/provider-aws
     provider-azure     @hobo/provider-azure
     provider-gcp       @hobo/provider-gcp
-    provider-cloudflare/-fly/-kubernetes ...
+    provider-cloudflare  @hobo/provider-cloudflare
+    provider-convex      @hobo/provider-convex   (Convex deploy-target CloudProvider — thin SaaS adapter w/ typed impedance, ADR-0144)
+    provider-lakebed     @hobo/provider-lakebed  (deploy-driver style, ADR-0127)
+    provider-kafka / provider-ax / provider-agentv / provider-config
+    runner-github / runner-blacksmith / runner-depot   (Dispatcher runner/build-machine candidates)
+    provider-fly / provider-kubernetes ✱
   iac/
     iac-pulumi         @hobo/iac-pulumi        (Automation API — first-party adapter; not sole primary)
-    iac-cdktf / iac-crossplane / iac-opentofu
-    iac-nix            @hobo/iac-nix           (optional — Nix flakes / NixOS; never default multi-cloud IaC)
-  build/
+    iac-terraform      @hobo/iac-terraform     (terraform/tofu CLI engine)
+    iac-crossplane     @hobo/iac-crossplane
+    iac-cdktf / iac-opentofu ✱
+    iac-nix ✱          @hobo/iac-nix           (optional — Nix flakes / NixOS; never default multi-cloud IaC)
+  build/ ✱
     build-wasm         @hobo/build-wasm        (jco/cargo-component/TinyGo/... -> wasm component, OCI artifact)
     build-dagger       @hobo/build-dagger      (container fallback images)
     build-packer / build-firecracker / build-vagrant
-  sdk/               @hobo/sdk          operator SDK — configure & self-host a HoBo cloud: the Yard (control plane), itself a Bindle; defineResource + policy/waiver + dispatcher + runbooks; hosts the built-in Operator Agents (the Crew)  [Plan 40]
-  registry/          @hobo/registry     Provider/Capability Manifest catalog service
+  sdk/ ✱             @hobo/sdk          operator SDK — configure & self-host a HoBo cloud: the Yard (control plane), itself a Bindle; defineResource + policy/waiver + dispatcher + runbooks; hosts the built-in Operator Agents (the Crew)  [Plan 40]
+  registry/ ✱        @hobo/registry     Provider/Capability Manifest catalog service
   identity/          @hobo/identity     SVID issuance, OIDC provider, token broker
   mcp/               @hobo/mcp          MCP server exposing HoBo to agents
-  agent-skills/      @hobo/agent-skills skills the Operator Agents (the Crew) + external MCP agents compose          [Plan 40]
-  hobo-code/         @hobo/hobo-code    the Hobo Code DSL — token-efficient IR for codegen + platform config         [Plan 21]
+  agent-skills/ ✱    @hobo/agent-skills skills the Operator Agents (the Crew) + external MCP agents compose          [Plan 40]
+  hobo-code/ ✱       @hobo/hobo-code    the Hobo Code DSL (today: `packages/code` = the hobo-code coding harness) — token-efficient IR for codegen + platform config         [Plan 21]
   conformance/       @hobo/conformance  port contract test suites (shared by all adapters)
   contracts/         @hobo/contracts    HoBo Contract IR + compatibility/can-deploy engine (built-in)  [Plan 29]
-  policy/            @hobo/policy        policy decision model + built-in TypeScript engine            [Plan 29]
-  evals/             @hobo/evals         rubrics + promotion gates for semantic functions             [Plan 23]
-  training/          @hobo/training      training-engine port + built-in OPTO optimizer + OpenInference capture (INTERNAL; not on the SDK surface)  [Plan 23]
-    provider-pact             @hobo/provider-pact             (optional) Pact/Broker adapter behind contract-engine
-    provider-opa              @hobo/provider-opa              (optional) OPA/Rego adapter behind policy-engine
-    provider-cedar            @hobo/provider-cedar            (optional) Cedar adapter behind policy-engine
-    provider-agent-lightning  @hobo/provider-agent-lightning  (optional, INTERNAL) Microsoft Agent Lightning behind training-engine
-    provider-trace            @hobo/provider-trace            (optional, INTERNAL) Microsoft Trace (OPTO) behind training-engine
+  policy/            @hobo/policy        policy decision model + built-in TypeScript engine + residency policy pack + control→evidence packs (ADR-0146)  [Plan 29]
+  evals/ ✱           @hobo/evals         rubrics + promotion gates for semantic functions             [Plan 23]
+  training/ ✱        @hobo/training      training-engine port + built-in OPTO optimizer + OpenInference capture (INTERNAL; not on the SDK surface)  [Plan 23]
+    provider-pact ✱           @hobo/provider-pact             (optional) Pact/Broker adapter behind contract-engine
+    provider-opa ✱            @hobo/provider-opa              (optional) OPA/Rego adapter behind policy-engine
+    provider-cedar ✱          @hobo/provider-cedar            (optional) Cedar adapter behind policy-engine
+    provider-agent-lightning ✱ @hobo/provider-agent-lightning (optional, INTERNAL) Microsoft Agent Lightning behind training-engine
+    provider-trace ✱          @hobo/provider-trace            (optional, INTERNAL) Microsoft Trace (OPTO) behind training-engine
 examples/
   hello-bindle/ ci-runner-balancing/ multi-cloud-shop/ durable-agent/ self-host-yard/
 ```

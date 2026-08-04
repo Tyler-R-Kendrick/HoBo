@@ -46,12 +46,38 @@ package management
 	spend_cap_usd: number & >=0
 	budget_usd:    number & >=0
 	traffic_rate:  number & >=0
+	// Provenance badge (HIGHBALL "kill or badge"): synthetic until real
+	// metering signals flow.
+	traffic_rate_source?: "synthetic" | "otlp"
 }
 
 #ConnectorActivityView: {
 	connector_kind: string
 	status:         "offline" | "idle" | "working" | "error"
 	connection_id?: string
+	// Provenance badge: statically derived until live agent telemetry flows.
+	status_source?: "derived-static" | "otlp"
+}
+
+// Envelope only: DeploymentView row shapes are owned by package cloud
+// (packages/cloud/data-models/cloud.cue) — referenced, not duplicated.
+#DeploymentViewProjectionView: {
+	available: bool
+	source:    "yard-eventstore" | "none"
+	yards: [...string]
+	count:             uint
+	seq:               uint
+	json_deployments?: string
+}
+
+// Envelope only: CredentialAuditRecord shapes are owned by package cloud
+// (packages/cloud/data-models/cloud.cue) — referenced, not duplicated.
+#CredentialAuditProjectionView: {
+	available: bool
+	sources: [...("connections-store" | "yard-eventstore")]
+	count:      uint
+	seq:        uint
+	json_rows?: string
 }
 
 #DoctorView: {

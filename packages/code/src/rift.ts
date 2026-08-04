@@ -155,6 +155,30 @@ export function parseCreatedPath(stdout: string): string | null {
 }
 
 /**
+ * An already-registered workspace of this name, if the binary can report one.
+ *
+ * Only the sidecar speaks `list --json`; upstream rift prints a table, so this
+ * returns null there and the caller reports the original create failure.
+ */
+export async function findRiftWorkspace(
+	workspace: string,
+	name: string,
+	runner: RiftRunner,
+): Promise<RiftWorkspace | null> {
+	const listed = await runner.run(["list", "--json"], workspace);
+	if (listed.code !== 0) return null;
+	try {
+		const registry = JSON.parse(listed.stdout) as {
+			workspaces?: { name?: string; path?: string }[];
+		};
+		const match = registry.workspaces?.find((w) => w.name === name);
+		return match?.path ? { path: match.path, name } : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
  * Create a virtual worktree named for the agent. `rift init` is idempotent —
  * it registers an existing root rather than converting twice — so it is safe
  * to call before every create.
@@ -173,6 +197,12 @@ export async function createRiftWorkspace(
 	}
 	const created = await runner.run(["create", "--name", name], workspace);
 	if (created.code !== 0) {
+		// A workspace that already exists is the normal case on the second and
+		// every later `mux` in a project. Treating it as a failure made rift
+		// look broken and silently dropped every agent to a git worktree — the
+		// heavier, non-CoW path — from the second run onwards.
+		const existing = await findRiftWorkspace(workspace, name, runner);
+		if (existing) return { workspace: existing };
 		return {
 			workspace: null,
 			reason: `rift create failed: ${(created.stderr || created.stdout).trim().split("\n")[0]}`,

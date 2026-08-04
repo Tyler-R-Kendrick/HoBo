@@ -14,6 +14,7 @@ import {
 	findGitRoot,
 } from "../src/agent-workspaces.js";
 import {
+	createRiftWorkspace,
 	parseCreatedPath,
 	probeRift,
 	resolveRiftBinary,
@@ -233,5 +234,57 @@ describe("entering a namespace-mounted workspace", () => {
 		});
 		expect(plain).toContain('cd "/ws/trees/codex"');
 		expect(plain).not.toContain("hobo-rift exec");
+	});
+});
+
+describe("re-running mux in the same project", () => {
+	it("reuses an existing workspace instead of abandoning rift", async () => {
+		// The second `mux` in a project always hits "already exists". Treating
+		// that as failure dropped every agent to a git worktree — heavier, and
+		// not copy-on-write at all — from the second run onwards.
+		const runner: RiftRunner = {
+			run: async (args) => {
+				if (args[0] === "init") return { code: 0, stdout: "", stderr: "" };
+				if (args[0] === "create") {
+					return { code: 1, stdout: "", stderr: 'workspace "claude" already exists' };
+				}
+				if (args[0] === "list") {
+					return {
+						code: 0,
+						stderr: "",
+						stdout: JSON.stringify({
+							root: "/ws",
+							workspaces: [
+								{ name: "claude", path: "/ws/.hobo-rift/workspaces/claude/merged" },
+							],
+						}),
+					};
+				}
+				return { code: 1, stdout: "", stderr: "unexpected" };
+			},
+		};
+		const created = await createRiftWorkspace("/ws", "claude", runner);
+		expect(created.workspace?.path).toBe(
+			"/ws/.hobo-rift/workspaces/claude/merged",
+		);
+	});
+
+	it("still reports the failure when no such workspace exists", async () => {
+		const runner: RiftRunner = {
+			run: async (args) => {
+				if (args[0] === "init") return { code: 0, stdout: "", stderr: "" };
+				if (args[0] === "create") {
+					return { code: 1, stdout: "", stderr: "disk full" };
+				}
+				return {
+					code: 0,
+					stderr: "",
+					stdout: JSON.stringify({ root: "/ws", workspaces: [] }),
+				};
+			},
+		};
+		const created = await createRiftWorkspace("/ws", "claude", runner);
+		expect(created.workspace).toBeNull();
+		expect(created.reason).toMatch(/disk full/);
 	});
 });

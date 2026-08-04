@@ -95,6 +95,24 @@
 			"digests": {
 				"domain-cutover-saga.ts": "sha256:c9c1957ae1d06f476caeaa7d740fd2a3dcfb7422668d08750fa1946baf1ebb5a"
 			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/upgrade-rollback-dry-run-contract/src",
+			"promotedTo": "packages/trails/src/upgrade-preflight.ts",
+			"status": "frozen",
+			"note": "HOBO-499 M1 promotion: typed 11-field compatibility inputs, dry-run contract + four fixtures, rollback-evidence parser, scope-boundary register with fail-closed guard.",
+			"digests": {
+				"upgrade-rollback-dry-run.ts": "sha256:507a353f947813bf71c27bbd715fa7e7027de52605df53badfe71bf9054d3d51"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/event-body-upcaster-gate/src",
+			"promotedTo": "packages/events/src/upcaster.ts",
+			"status": "frozen",
+			"note": "M4 promotion: typed golden-replay corpus + upcaster-totality can-deploy gate (coverage, append-only baseline, total chain, purity, replay); migration.* v1 corpus pinned in packages/events/corpus.",
+			"digests": {
+				"event-body-upcaster-gate.ts": "sha256:7efc40d3e4d2b6383ebd748f9008aca5ad755c68a784ecac6b3fc719081f238e"
+			}
 		}
 	]
 }

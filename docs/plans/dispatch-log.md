@@ -301,3 +301,25 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **tests:** dispatcher 19, broker 70, core 78, stations 45, trails 17 green;
   architecture guard + staged agent:check green per commit
 - **protocol:** goal-hook continuation of the incomplete prior session
+
+## 2026-08-04 — Upgrade & Migration Engine M1-M4 ladder
+
+- **branch:** `feat/upgrade-migration-m1-m4`
+- **scope:** the design-gated ladder delivered end to end:
+  **M1** `upgrade-preflight.ts` (HOBO-499 promotion; compatibility-input matrix,
+  dry-run contract + fixtures, rollback evidence, scope-boundary register);
+  **M2** live expand→backfill→contract executor (`schema-apply-port.ts`,
+  `migration-executor.ts`) — snapshot-before-mutation, compat-gated contract,
+  snapshot-restore rollback, full `migration.*` event family;
+  **M3** pooled→siloed zero-loss tenant move (`tenant-move-port.ts` + dual-port
+  fence/backfill/reap) through the identity spectrum-cutover protocol —
+  conformance `source quiescent seq == silo head`;
+  **M4** golden-replay corpus + upcaster-totality can-deploy gate promoted to
+  `@hobo/events` with the `migration.*` v1 corpus pinned append-only
+- **docs:** M1-M4 evidence sections in `upgrade-migration-engine.md`; full
+  `migration.*` family catalogued in `event-families.md`; known-limitations
+  HOBO-430 row moved deferred → partial with explicit provider-binding caveats
+- **proofs frozen:** `upgrade-rollback-dry-run-contract`,
+  `event-body-upcaster-gate` (promotions ledger now 9 frozen)
+- **tests:** trails 31, events 11, identity 88, behavior lane 100 scenarios —
+  all green; architecture guard + staged agent:check green per commit

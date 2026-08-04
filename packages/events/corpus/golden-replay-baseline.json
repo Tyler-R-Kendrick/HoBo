@@ -1,0 +1,41 @@
+{
+	"schema": "hobo.golden-replay-corpus-baseline/v1",
+	"entries": [
+		{
+			"key": "migration.Planned@v1#migration-Planned-v1",
+			"bodyDigest": "sha256:4cf445dbbe21f2f85e69aa8bc6fbb763c701fcb5ccbd17e956446283b3c750e1"
+		},
+		{
+			"key": "migration.SnapshotTaken@v1#migration-SnapshotTaken-v1",
+			"bodyDigest": "sha256:6aa3f29a47e3e9c9ab38767a5d7328ead88d47d1435f4abe9ce80afa4163863d"
+		},
+		{
+			"key": "migration.PhaseApplied@v1#migration-PhaseApplied-v1",
+			"bodyDigest": "sha256:c2ccae2a9418999dc16f7e421808427292b809278001fca537c1d6ac7732d002"
+		},
+		{
+			"key": "migration.Verified@v1#migration-Verified-v1",
+			"bodyDigest": "sha256:ec38dff3f6991c3c503296aa97e4f64773289c1ae261c34a212bf6fae2e47e92"
+		},
+		{
+			"key": "migration.CutOver@v1#migration-CutOver-v1",
+			"bodyDigest": "sha256:93613aed7ccb685f3711ba97b4f023f23e9ed2e0d5432b2e4701a4603480904a"
+		},
+		{
+			"key": "migration.RolledBack@v1#migration-RolledBack-v1",
+			"bodyDigest": "sha256:fc9ba1b5d52b1e9485ea8297221de14b07ce0b021b640bfed73550f97bda498d"
+		},
+		{
+			"key": "migration.Failed@v1#migration-Failed-v1",
+			"bodyDigest": "sha256:aaba1c35b63b0f52b58c21a5e5f8c739d748e409d2b9f03e794f172248e7570c"
+		},
+		{
+			"key": "migration.Exported@v1#migration-Exported-v1",
+			"bodyDigest": "sha256:cf465c21d7fa0b9c230b84a4678645071658352908147e7c900e2114cc59a597"
+		},
+		{
+			"key": "migration.Imported@v1#migration-Imported-v1",
+			"bodyDigest": "sha256:bb0544b093f031bc195cd594eb2dc90c5e44e3138466942ac322d6a80641bdc9"
+		}
+	]
+}

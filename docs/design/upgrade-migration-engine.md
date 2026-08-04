@@ -163,8 +163,87 @@ restore, rollback, disaster recovery, or snapshot orchestration.
 | Release notes support handoff | Support operator | Release notes dependency | Support handoff | Release notes, upgrade guide, troubleshooting, and escalation inputs are named without publishing them in this slice. |
 | Scope boundary register | Security/compliance reviewer | Scope out and non-goals | Policy fixture | Live migration, rollback execution, backup restore, provider state mutation, UI, and support automation are routed out. |
 
+## M1 Dogfood/Alpha Evidence
+
+Accepted state: every row of the M1 evidence table above is delivered as production code in
+`@hobo/trails` (`packages/trails/src/upgrade-preflight.ts`), promoting the HOBO-499
+`upgrade-rollback-dry-run-contract` proof (frozen in the promotions ledger).
+
+1. Upgrade scope record — this document (HOBO-430, accepted).
+2. Compatibility input matrix — `COMPATIBILITY_INPUT_MATRIX`: one reference fixture per upgrade
+   path class carrying the full 11-field input set, round-tripped through
+   `parseCompatibilityInputs` (parse-don't-validate).
+3. Migration dry-run contract — `evaluateUpgradeDryRun` + the deterministic clean / blocked /
+   failed-migration / rollback-ready fixtures; reports carry preflight, backup, migration plan,
+   blocked reasons, rollback, and support facts with a stable digest and an always-empty
+   `mutationCommands`.
+4. Rollback evidence fixture — `parseRollbackEvidence` refuses `available`/`recoverable` claims
+   without a concrete immutable-Set or snapshot ref.
+5. Release notes support handoff — `SupportHandoffRecord` on every dry-run report names owner,
+   handoff, next action, and escalation without publishing anything.
+6. Scope boundary register — `UPGRADE_SCOPE_BOUNDARIES` (all six scope-out categories with owning
+   routes) + `assertUpgradeScopeBoundary` failing closed on live-execution asks.
+
+## M2 Private Beta Evidence
+
+Accepted state: the first live executor slice exists behind ports — expand → backfill → contract
+as gated saga steps over a real store (ADR-0032 §3-4), delivered as
+`packages/trails/src/{schema-apply-port,migration-executor}.ts`.
+
+1. Real DDL/DML execution per phase with a mandatory pre-migration snapshot
+   (`migration.SnapshotTaken` before any mutation).
+2. The destructive contract phase is compatibility-gated: consumers still reading the old shape
+   BLOCK the drop (`contract-blocked`), and the expand/backfill dual window stays open — blocked is
+   not failure.
+3. Verification points (`after-backfill`, `after-contract`) run violations queries; any violation
+   restores the pre-migration snapshot (`migration.RolledBack`; forward-only, no `.down` scripts).
+4. The full `migration.*` event family is emitted and catalogued in
+   [event-families.md](./event-families.md); shapes are pinned in
+   `packages/trails/data-models/migration.proto`.
+5. Carried risk: SQLite is the only live `SchemaApplyPort` binding; managed-Postgres bindings stay
+   with Data Plane per the owning-initiative table.
+
+## M3 Release Candidate Evidence
+
+Accepted state: the pooled → siloed zero-loss protocol (ADR-0080 §2) runs against real
+SQLite-backed ports (`packages/trails/src/{tenant-move-port,data-dual-port}.ts`) driven through the
+identity spectrum-cutover protocol.
+
+1. Suspend/fence refuses the moving tenant's writes at the store's single write entry point
+   (`FencedTenantError`); other tenants keep writing.
+2. Drain replicates the CDC tail to lag 0 — the quiescent seq; export cuts at that seq; import
+   verifies the silo row set; the conformance test asserts `source quiescent seq == silo head`
+   with zero lost or duplicated rows (the imported head is measured from the silo watermark, not
+   echoed).
+3. Source reap is destructive and refused unless the tenant is fenced, lag is zero, and the
+   source/silo row sets are checksum-equal.
+4. Brownfield stores are covered by `backfill()` (snapshot-then-tail).
+5. **Upgrade and rollback evidence mapping** (consumed by
+   [release-notes-upgrade-guide.md](./release-notes-upgrade-guide.md) M3): dry-run reports map to
+   release-notes inputs via `releaseNotes.requiredInputs`; rollback guidance maps to
+   `RollbackEvidence` (state, refs, restore prerequisite, escalation owner); blocked paths map to
+   `blockedReasons` + `unsupportedPath.remediation`.
+
+## M4 GA Handoff Evidence
+
+Accepted state: schema-evolution safety is a CI gate, and the evidence mapping is handed off.
+
+1. Golden-replay corpus + upcaster-totality gate promoted into `@hobo/events`
+   (`packages/events/src/upcaster.ts`, from `event-body-upcaster-gate`): every shipped
+   (type, version) pins a real encoded body; CI replays all entries through the current upcaster
+   chain; coverage, totality, purity, and append-only baseline violations fail the test lane and
+   with it can-deploy.
+2. The `migration.*` v1 wire shapes are pinned in the corpus
+   (`packages/events/corpus/golden-replay-baseline.json`, append-only): bumping any migration
+   event body requires a total upcaster plus a new corpus entry.
+3. GA handoff mapping for [release-notes-upgrade-guide.md](./release-notes-upgrade-guide.md) M4:
+   the M3 evidence mapping above plus the corpus gate as the "no unliftable stored event" claim.
+4. Carried risks (explicit, not silently closed): live Debezium-class CDC and multi-DB dual-schema
+   beyond SQLite/Postgres-shaped fixtures remain the ADR-0134 residual; production restore
+   orchestration stays with Backup & Restore.
+
 ## Follow-Up Gate
 
-M1/M2/M3/M4 design or implementation issues must wait until this M0 scope record is accepted. This
-branch records the gate and its executable guard; it does not create follow-up implementation
-issues.
+M1/M2/M3/M4 design or implementation issues must wait until this M0 scope record is accepted.
+**Status: M0 was accepted; the ladder above records the delivered M1-M4 evidence.** The executable
+guard (`canCreateUpgradeMigrationFollowUp`) remains the gate for any future phase labels.

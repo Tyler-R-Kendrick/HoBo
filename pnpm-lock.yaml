@@ -312,6 +312,12 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+      '@hobo/provider-cedar':
+        specifier: workspace:*
+        version: link:../providers/provider-cedar
+      '@hobo/provider-opa':
+        specifier: workspace:*
+        version: link:../providers/provider-opa
     devDependencies:
       '@hobo/storage-sqlite':
         specifier: workspace:*
@@ -1045,6 +1051,12 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/providers/provider-cedar:
+    dependencies:
+      '@hobo/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+
   packages/providers/provider-cloudflare:
     dependencies:
       '@hobo/core':
@@ -1094,6 +1106,12 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+
+  packages/providers/provider-opa:
+    dependencies:
+      '@hobo/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
 
   packages/providers/runner-blacksmith:
     dependencies:

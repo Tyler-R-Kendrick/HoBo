@@ -24,7 +24,9 @@
 	},
 	"dependencies": {
 		"@hobo/contracts": "workspace:*",
-		"@hobo/core": "workspace:*"
+		"@hobo/core": "workspace:*",
+		"@hobo/provider-cedar": "workspace:*",
+		"@hobo/provider-opa": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.15.29",

@@ -7,7 +7,11 @@
     "summary": "Design-first meta-cloud: one application shape onto many infrastructure shapes (WIT/WASM membrane)."
   },
   "defaults": {
-    "experiences": ["ux", "dx", "ax"],
+    "experiences": [
+      "ux",
+      "dx",
+      "ax"
+    ],
     "projects": "all",
     "passes": "infinite",
     "delight": true,
@@ -60,8 +64,25 @@
       "initReport": false,
       "osJunk": true
     },
-    "extra": [],
-    "negate": []
+    "extra": [
+      "features/**/evidence/**/REPLAY.html",
+      "features/**/evidence/**/REPLAY.md",
+      "features/**/evidence/**/terminal.txt"
+    ],
+    "negate": [
+      "features/**/evidence/**/primary.cast",
+      "runs/*/",
+      "runs/*/baseline.json",
+      "runs/*/feature-coverage.json",
+      "runs/*/iterations/",
+      "runs/*/iterations/*/",
+      "runs/*/iterations/*/experiments/",
+      "runs/*/iterations/*/experiments/*.json",
+      "runs/*/iterations/*/scores.json",
+      "runs/*/scope.json",
+      "runs/*/summary.md",
+      "runs/*/superseded.json"
+    ]
   },
   "notes": [
     "Global config: monorepo defaults. CLI flags always win.",

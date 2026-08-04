@@ -35,9 +35,12 @@ export type ModelsStatus = {
 	readonly notes: readonly string[];
 };
 
-export function inspectModels(env: NodeJS.ProcessEnv = process.env): ModelsStatus {
+export function inspectModels(
+	env: NodeJS.ProcessEnv = process.env,
+): ModelsStatus {
 	const fromEnv =
-		typeof env.HOBO_CODE_MODEL === "string" && env.HOBO_CODE_MODEL.trim().length > 0
+		typeof env.HOBO_CODE_MODEL === "string" &&
+		env.HOBO_CODE_MODEL.trim().length > 0
 			? env.HOBO_CODE_MODEL.trim()
 			: null;
 	const byok = BYOK_ENV_NAMES.map((name) => ({
@@ -53,7 +56,7 @@ export function inspectModels(env: NodeJS.ProcessEnv = process.env): ModelsStatu
 		byokAny,
 		openModelSupport: true,
 		notes: [
-			"Set HOBO_CODE_MODEL to provider/model (e.g. anthropic/claude-sonnet-4-6, openai/gpt-4.1).",
+			"Set HOBO_CODE_MODEL to provider/model (e.g. anthropic/claude-sonnet-5, openai/gpt-4.1).",
 			"BYOK: export the provider API key env (value never shown here).",
 			"$0 / free-local: ollama/<tag> or OPENAI_BASE_URL=http://127.0.0.1:… (OrnithAI-class edge ok).",
 			"Budget + savings: hobo-code cost (HOBO_CODE_BUDGET_USD, HOBO_CODE_MONETIZATION=0).",

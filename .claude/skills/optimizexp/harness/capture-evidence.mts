@@ -292,7 +292,7 @@ function resolveScenarioSlug(
 	return hit?.slug ?? slug;
 }
 
-function capture(args: Record<string, string>) {
+async function capture(args: Record<string, string>) {
 	const root = repoRoot();
 	const featureId = args.feature;
 	if (!featureId) {
@@ -328,6 +328,8 @@ function capture(args: Record<string, string>) {
 	let notes: string[] = [];
 	let exitCode: number | null = null;
 	let repro: Record<string, unknown> = {};
+	let timing: Record<string, unknown> | undefined;
+	let frameStats: Record<string, unknown> | undefined;
 
 	if (driver === "cli") {
 		const command = args.command || meta.surfaces?.[0];
@@ -335,11 +337,12 @@ function capture(args: Record<string, string>) {
 			console.error("--command required for cli driver (or feature.surfaces[0])");
 			process.exit(2);
 		}
-		const r = captureCli(outDir, { command, cwd: root });
+		const r = await captureCli(outDir, { command, cwd: root });
 		primaryFile = r.primaryFile;
 		kind = r.kind;
 		screen = r.screen;
 		exitCode = r.exitCode;
+		timing = r.timing as unknown as Record<string, unknown>;
 		repro = { command, cwd: "." };
 	} else if (driver === "tui") {
 		const command = args.command || meta.surfaces?.[0];
@@ -347,13 +350,17 @@ function capture(args: Record<string, string>) {
 			console.error("--command required for tui driver");
 			process.exit(2);
 		}
-		const r = captureTui(outDir, { command, cwd: root });
+		const r = await captureTui(outDir, { command, cwd: root });
 		primaryFile = r.castFile || r.primaryFile;
 		kind = r.castFile ? "recording" : r.kind;
 		screen = r.screen;
 		exitCode = r.exitCode;
 		degraded = r.degraded;
 		notes = r.notes;
+		timing = r.timing as unknown as Record<string, unknown>;
+		if (r.frameStats) {
+			frameStats = r.frameStats as unknown as Record<string, unknown>;
+		}
 		repro = { command, cwd: "." };
 	} else if (driver === "web") {
 		const url = args.url || meta.surfaces?.[0];
@@ -422,6 +429,8 @@ function capture(args: Record<string, string>) {
 			via: "capture-evidence",
 		},
 		exitCode,
+		...(timing !== undefined ? { timing } : {}),
+		...(frameStats !== undefined ? { frameStats } : {}),
 		degraded,
 		notes,
 	};
@@ -659,7 +668,13 @@ function main() {
 		}
 		return listScenarios(args.feature);
 	}
-	if (mode === "capture") return capture(args);
+	if (mode === "capture") {
+		void capture(args).catch((err) => {
+			console.error(err instanceof Error ? err.message : String(err));
+			process.exit(1);
+		});
+		return;
+	}
 	if (mode === "review") return review(args);
 	if (mode === "stitch") return stitch(args);
 	if (mode === "validate") return validate(args);

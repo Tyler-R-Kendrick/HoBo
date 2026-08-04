@@ -6,8 +6,8 @@
   ],
   "interface": "cli",
   "driver": "cli",
-  "capturedAt": "2026-07-31T20:50:36.553Z",
-  "runId": "",
+  "capturedAt": "2026-08-03T21:00:52.052Z",
+  "runId": "20260803-hobo-code-recert",
   "screen": {
     "cols": null,
     "rows": null
@@ -15,16 +15,42 @@
   "primary": {
     "file": "primary.txt",
     "kind": "transcript",
-    "bytes": 3949,
-    "sha256": "75004bd6b697a5a1c9562c5ee5523a042c915bc01cdfb1deb9e408e4d3a7f629"
+    "bytes": 4283,
+    "sha256": "75bcdc188efbef10a4d1968b5539426f87b70a5817f4089a7af4f0cf46c63049"
   },
+  "claims": [
+    {
+      "id": "claim-1",
+      "text": "Given I am on the critical path described by the feature seed"
+    },
+    {
+      "id": "claim-2",
+      "text": "When I run `hobo-code help`"
+    },
+    {
+      "id": "claim-3",
+      "text": "Then help lists verbs or usage"
+    },
+    {
+      "id": "claim-4",
+      "text": "And the next action is obvious without tribal knowledge"
+    },
+    {
+      "id": "claim-5",
+      "text": "And evidence is capturable for this scenario"
+    }
+  ],
   "frames": [],
   "repro": {
-    "command": "node packages/code/bin/hobo-code.mjs help",
+    "command": "HOBO_HOME=/tmp/tmp.YuNRE8ifK8 node packages/code/bin/hobo-code.mjs help",
     "cwd": ".",
     "via": "capture-evidence"
   },
   "exitCode": 0,
+  "timing": {
+    "durationMs": 228,
+    "timeToFirstOutputMs": 204
+  },
   "degraded": false,
   "notes": []
 }

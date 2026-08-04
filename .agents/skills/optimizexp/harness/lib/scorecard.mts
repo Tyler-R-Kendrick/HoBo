@@ -103,6 +103,19 @@ export type EvidenceCheck = {
 	/** Regex asserted against the primary transcript file content. */
 	transcriptContains?: string;
 	transcriptNotContains?: string;
+	/**
+	 * Perceptual budgets — asserted against meta.json `timing` / `frameStats`
+	 * captured by the drivers. These make responsiveness and flicker claims
+	 * falsifiable the same way exit codes are.
+	 */
+	/** meta.timing.durationMs must be < this. */
+	durationUnderMs?: number;
+	/** meta.timing.timeToFirstOutputMs must exist and be < this. */
+	firstOutputUnderMs?: number;
+	/** meta.frameStats.maxSilentGapMs must exist and be < this (TUI recordings). */
+	maxSilentGapUnderMs?: number;
+	/** meta.frameStats.totalOutputBytes must be < this (repaint-thrash budget). */
+	totalOutputBytesUnder?: number;
 	/** Optional note: what this check proves. */
 	note?: string;
 };
@@ -379,11 +392,26 @@ export function validateEvidenceChecksShape(raw: unknown): string[] {
 				problems.push(`${prefix}.${k} must be a string (regex)`);
 			}
 		}
+		for (const k of [
+			"durationUnderMs",
+			"firstOutputUnderMs",
+			"maxSilentGapUnderMs",
+			"totalOutputBytesUnder",
+		] as const) {
+			const v = check[k];
+			if (v !== undefined && (typeof v !== "number" || !(v > 0))) {
+				problems.push(`${prefix}.${k} must be a positive number (ms/bytes)`);
+			}
+		}
 		if (
 			check.exitCodeEquals === undefined &&
 			check.exitCodeNotEquals === undefined &&
 			check.transcriptContains === undefined &&
-			check.transcriptNotContains === undefined
+			check.transcriptNotContains === undefined &&
+			check.durationUnderMs === undefined &&
+			check.firstOutputUnderMs === undefined &&
+			check.maxSilentGapUnderMs === undefined &&
+			check.totalOutputBytesUnder === undefined
 		) {
 			problems.push(`${prefix}: at least one assertion required`);
 		}

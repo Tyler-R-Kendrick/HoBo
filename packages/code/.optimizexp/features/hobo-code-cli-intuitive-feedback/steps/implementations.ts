@@ -10,9 +10,9 @@ import type { OptimizexpWorld } from "./world.ts";
 
 /** Discovery snapshot — see discovery.json for full report. */
 export const DISCOVERY_PRIMARY = {
-  command: "pnpm run prepare-hooks" as string | null,
+  command: "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts help" as string | null,
   confidence: "medium",
-  reason: "script \"prepare-hooks\" matched seed keywords (score 5)",
+  reason: "product binary is the surface under review (scenario-binding lint)",
 };
 
 export const IMPLEMENTATION_STATUS = {

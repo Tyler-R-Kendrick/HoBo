@@ -14,18 +14,15 @@ import { createHash, randomUUID } from "node:crypto";
 import {
 	existsSync,
 	mkdirSync,
-	readFileSync,
 	readdirSync,
+	readFileSync,
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 
 import { getNamedEndpoint, getNamedEndpointHost } from "@hobo/core";
 
-import {
-	cleanupIsolation,
-	createIsolationContext,
-} from "./isolation.js";
+import { cleanupIsolation, createIsolationContext } from "./isolation.js";
 import type { IsolationContext } from "./types.js";
 
 // public-contract: compute pool schema.
@@ -295,15 +292,14 @@ export interface DispatchComputeTaskResult {
  * Dispatch work to a capacity-aware node; optionally run mediated isolation
  * on local-class nodes. Durable handback lives outside the sandbox root.
  */
-export function dispatchComputeTask(
+export async function dispatchComputeTask(
 	input: DispatchComputeTaskInput,
-): DispatchComputeTaskResult {
+): Promise<DispatchComputeTaskResult> {
 	const rootProbe = poolRoot(input.hoboHome, input.poolId);
 	const priorMeta = readJson<{ stationId: string }>(
 		join(rootProbe, "pool.json"),
 	);
-	const stationId =
-		input.stationId ?? priorMeta?.stationId ?? "station:local";
+	const stationId = input.stationId ?? priorMeta?.stationId ?? "station:local";
 	openComputePool({
 		hoboHome: input.hoboHome,
 		stationId,
@@ -348,7 +344,7 @@ export function dispatchComputeTask(
 	if (executeLocal) {
 		try {
 			status = "running";
-			isolation = createIsolationContext({
+			isolation = await createIsolationContext({
 				projectRoot: input.projectRoot,
 				hoboHome: input.hoboHome,
 				runId: `compute-${taskId}`,
@@ -372,7 +368,7 @@ export function dispatchComputeTask(
 				),
 				"utf8",
 			);
-			const cleaned = cleanupIsolation(isolation.runId, {
+			const cleaned = await cleanupIsolation(isolation.runId, {
 				hoboHome: input.hoboHome,
 				ok: true,
 				gates: ["compute:dispatch", `node:${node.nodeId}`],

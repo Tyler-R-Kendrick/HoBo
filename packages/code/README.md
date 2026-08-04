@@ -23,17 +23,82 @@ The installed binary is **compiled** (`dist/`). Source lives in `src/`.
 
 ### Interactive TTY (bare `hobo-code`)
 
-On a real TTY, bare `hobo-code` opens the **HoBo InteractiveShell** (product chrome):
+On a real TTY, bare `hobo-code` opens the **HoBo InteractiveShell**, drawn to
+the rubberhose identity in [`site/DESIGN.md`](../../site/DESIGN.md) — Steamboat
+Willie ink and Cuphead title cards, *never flat SaaS chrome*:
 
-| In the shell | What it is |
+- **Title card** on entry: the Chewy wordmark framed in ink, then it scrolls
+  into the transcript. It is a moment, not a permanent header.
+- **Ink cards** with hard sticker shadows (`┏━┓` + offset `▒`), not hairline
+  rules or soft Material elevation.
+- **The transcript is the surface** — roughly 19 content rows on an 80x24,
+  where the previous chrome left about 8.
+- **Strict black and white.** Vermillion appears only for a decision that can
+  change the real tree; green only for done. `NO_COLOR` is honoured.
+- **Bo** rides the one-line status strap and squash-stretches only while a
+  turn is in flight (reduced motion keeps him still).
+
+| Key | Does |
 |---|---|
-| Header | HoBo logo + animated **Bo** mascot |
-| Chat | Transcript · type a build prompt · Enter |
-| `/` slash | `guide` `config` `cost` `tasks` `status` `agent` `env` `auth` … |
-| Tab | Cycle **Chat → Tasks → Status** |
-| Footer | model · budget · hermetic env cue |
+| type | talk to the model |
+| `/` | commands (`↑`/`↓` to pick, Enter to run) |
+| Tab | cycle chat → tasks → status |
+| `↑`/`↓`, PgUp/PgDn | scroll the transcript |
+| Esc | cancel the turn in flight |
+| Ctrl+C | quit |
 
-This is **not** stock Pi Agent UI. Escape hatch only: `HOBO_CODE_TUI=pi` or `hobo-code --pi`.
+### The model is local by default
+
+hobo-code thinks **without a cloud account**. A locally hosted SLM is the
+default engine and BYOK is the fallback, not the price of entry:
+
+```bash
+ollama pull qwen2.5-coder:1.5b   # once
+hobo-code                        # streams from your machine, $0
+```
+
+Resolution order is local → cloud → honest dispatch-only, and every failure
+prints a reason you can act on rather than pretending. Overrides:
+`HOBO_CODE_ENGINE=local|pi|none`, `HOBO_CODE_MODEL=ollama/<tag>`,
+`OLLAMA_HOST`. Token counts come from the model server and cost reads `$0`
+because local inference is free.
+
+> **What the local engine can and cannot do today.** The local path is
+> **conversational**: it streams answers, keeps context, and costs nothing.
+> It does **not** yet call tools, so it cannot edit files on its own — the
+> approval gate below is reached by the cloud engine path (which has tool
+> use) and by `hobo-code promote` after you edit a sandbox yourself. Local
+> tool-use is the next step, and until it lands this README will not imply
+> otherwise.
+
+Turns run inside a mediated isolation sandbox — the canonical tree stays
+read-only. When work changes files, promotion asks first:
+
+```
+┏━ promote run-1a2b3c? ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃The canonical tree is untouched until you say yes.     ┃▒
+┃                                                       ┃▒
+┃  M  src/app.ts                                        ┃▒
+┃  A  src/new.ts                                        ┃▒
+┃                                                       ┃▒
+┃  y promote · n keep sandboxed                         ┃▒
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛▒
+```
+
+The prompt is modal — stray keys do nothing, `n`/Esc keeps the work sandboxed
+and tells you how to promote later, and only `y` promotes. Promotion runs the
+project's real gates, then copies the sandbox diff into your working tree
+**staged but not committed**, so you review before anything is permanent. If
+the gates fail, or there is nothing to apply, or the patch conflicts, it fails
+closed and the sandbox is left untouched — promotion never destroys work it
+did not manage to apply.
+
+Evidence capture: `HOBO_CODE_SHELL_MAX_MS` bounds a session so a recording
+ends through the normal quit path, and `HOBO_CODE_SHELL_KEYS` scripts
+interactive paths — both opt-in.
+
+Product identity lives in `/about`. Stock Pi TUI remains an escape hatch only
+(`HOBO_CODE_TUI=pi` or `hobo-code --pi`) and is never the product frame.
 
 When stdin is not a TTY, an empty invocation fails closed with
 `HOBO_CODE_INTERACTIVE_REQUIRED` and prints `hobo-code help` plus the prompt

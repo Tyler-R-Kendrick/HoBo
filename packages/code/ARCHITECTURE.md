@@ -16,6 +16,63 @@ Pi may still be used as a **completion engine** later; it must not be the
 product frame. Optimizexp / persona reviews that only score one-shot verbs
 while bare TTY is stock Pi are **invalid**.
 
+**Chrome obeys `site/DESIGN.md` (rubberhose), enforced by tests.** The shell
+draws ink cards with hard sticker shadows, a Chewy title card on entry, one
+inverse status strap, and a transcript that owns the viewport. Strict B&W;
+vermillion is reserved for a decision that can mutate the real tree and green
+for done. `test/rubberhose.test.ts` fails the build on hairline rules, rainbow
+accents, geometry drift, or a shrinking content area — the first version of
+this shell was a flicker-free *SaaS dashboard* and nothing in the suite could
+tell, so nothing objected.
+
+**Promotion applies before it cleans (`src/sandbox-promote.ts`).** The gate
+carries the sandbox diff into the canonical tree with `git apply --3way
+--index` and only then reclaims the worktree; a failed or empty apply fails
+closed with the sandbox intact. Gates are executed (`src/promotion-gates.ts`),
+not asserted — they were once hardcoded `pass: true`, which made "gated,
+audited" decoration over a literal.
+
+**The engine is local first (`src/ollama-engine.ts`, `src/engine-resolve.ts`).**
+A locally hosted SLM is the default so the product's $0 path is real; cloud
+BYOK is the fallback. Resolution is local → cloud → honest dispatch-only, and
+every failure degrades with an actionable reason. The ollama transport speaks
+`/api/chat` NDJSON directly (no vendor SDK between shell and model), streams
+each token as it lands, supports abort, reports server-side token counts, and
+prices local inference at $0. The local path is conversational today: it has
+no tool-use, so it cannot reach the promotion gate on its own.
+
+**pi-tui is a rendering library, not a product frame.** The shell drives
+`@earendil-works/pi-tui`'s differential renderer (`TUI` + `StreamTerminal`
+adapter in `src/shell-terminal.ts`) while HoBo owns every visible line of
+chrome. Render-economy contract (pinned by `test/render-budget.test.ts`):
+
+- repaint only on state change — idle Bo rest ticks request no render;
+- unchanged lines are never rewritten (line diff); no full-screen erases;
+- input is decoded as atomic sequences (arrows, bracketed paste, resize);
+- isolation/dispatch runs on async spawn so the loop never blocks a turn;
+- no alternate screen — the transcript survives exit;
+- replies are honest: without an engine, a turn *records a compute task*,
+  the footer says `engine:none · dispatch-only`, and no reply claims an
+  agent acted.
+
+**Completion engine (`src/shell-engine.ts`).** Pi is wired as the engine —
+never the frame: `createPiShellEngine` builds a pi `AgentSession` whose cwd
+is a **mediated isolation sandbox** (`createIsolationContext`), streams
+`text_delta` / tool events into shell turns, and supports Esc cancellation
+(`session.abort`). Engine turns never touch the canonical tree. When a turn
+actually changes files, the shell raises a **modal approval gate** showing the
+blast radius (`git status --porcelain` of the sandbox); only an explicit `y`
+runs the audited squash-only promote, `n`/Esc keeps the work sandboxed with
+the one-shot command to promote later, and every other key is inert so a
+mutation can never be triggered by a stray keystroke. The sandbox stays open
+on exit so un-promoted work survives. Provider-reported tokens and cost are
+read from the engine session (never estimated) and surface in the footer and
+`/cost` as live session spend. Availability is
+gated by `shouldAttemptEngine` (BYOK env / pi auth / `HOBO_CODE_ENGINE=pi`;
+`=none` opts out) and every failure degrades to the honest dispatch-only
+shell with a reason on stderr. The footer shows the model that actually runs
+(`pi · <provider>/<model>`, default `HOBO_AGENT_MODEL`).
+
 ```
 hobo-code (standalone binary; dispatch default)
     │

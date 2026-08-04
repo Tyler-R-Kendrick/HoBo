@@ -1,14 +1,14 @@
+import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
 	existsSync,
 	mkdirSync,
+	readdirSync,
+	readFileSync,
 	rmSync,
 	writeFileSync,
-	readFileSync,
-	readdirSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
 
 import { matrixForPlatform } from "./platform-matrix.js";
 import {
@@ -36,7 +36,22 @@ export interface CreateIsolationOptions {
 		root: string;
 		branch: string;
 		projectRoot: string;
-	}) => void;
+	}) => void | Promise<void>;
+}
+
+/**
+ * Async git runner — isolation setup/teardown must never block the event
+ * loop: the InteractiveShell keeps rendering while a dispatch turn runs.
+ */
+function runGit(
+	args: readonly string[],
+	cwd: string,
+): Promise<{ readonly status: number | null }> {
+	return new Promise((resolvePromise) => {
+		const child = spawn("git", [...args], { cwd, stdio: "ignore" });
+		child.on("error", () => resolvePromise({ status: null }));
+		child.on("exit", (code) => resolvePromise({ status: code }));
+	});
 }
 
 const openContexts = new Map<string, IsolationContext>();
@@ -49,19 +64,18 @@ function defaultRiftProbe(): boolean {
 	return process.env.HOBO_RIFT_COW === "1";
 }
 
-function defaultCreateWorktree(input: {
+async function defaultCreateWorktree(input: {
 	root: string;
 	branch: string;
 	projectRoot: string;
-}): void {
+}): Promise<void> {
 	mkdirSync(input.root, { recursive: true });
 	// Prefer real git worktree when project is a git repo; otherwise mediated copy stub.
 	const isGit = existsSync(join(input.projectRoot, ".git"));
 	if (isGit) {
-		const add = spawnSync(
-			"git",
+		const add = await runGit(
 			["worktree", "add", "-b", input.branch, input.root, "HEAD"],
-			{ cwd: input.projectRoot, encoding: "utf8" },
+			input.projectRoot,
 		);
 		if (add.status === 0) return;
 		// Fallback: empty mediated root if worktree add fails (e.g. branch exists).
@@ -113,9 +127,9 @@ function selectBackend(options: CreateIsolationOptions): IsolationBackend {
  * Create an isolated agent context: rift preferred, worktree fallback.
  * Canonical projectRoot stays read-only for agent mode (mediatedOnly: true).
  */
-export function createIsolationContext(
+export async function createIsolationContext(
 	options: CreateIsolationOptions,
-): IsolationContext {
+): Promise<IsolationContext> {
 	const runId =
 		options.runId ??
 		`run-${createHash("sha256").update(randomUUID()).digest("hex").slice(0, 12)}`;
@@ -147,7 +161,7 @@ export function createIsolationContext(
 		);
 	} else {
 		const createWt = options.createWorktree ?? defaultCreateWorktree;
-		createWt({
+		await createWt({
 			root: rootPath,
 			branch,
 			projectRoot: options.projectRoot,
@@ -160,7 +174,9 @@ export function createIsolationContext(
 		branch,
 		rootPath,
 		backend,
-		...(options.stationId !== undefined ? { stationId: options.stationId } : {}),
+		...(options.stationId !== undefined
+			? { stationId: options.stationId }
+			: {}),
 		durableRoot,
 		createdAt: new Date().toISOString(),
 		status: "open",
@@ -186,15 +202,15 @@ export interface CleanupResult {
  * Mandatory cleanup on every exit path. Durable learning artifacts outside
  * the ephemeral root are preserved.
  */
-export function cleanupIsolation(
+export async function cleanupIsolation(
 	runId: string,
 	options: {
 		readonly hoboHome: string;
 		readonly ok?: boolean;
 		readonly gates?: readonly string[];
-		readonly removeBranch?: (branch: string) => void;
+		readonly removeBranch?: (branch: string) => void | Promise<void>;
 	},
-): CleanupResult {
+): Promise<CleanupResult> {
 	const sandboxesRoot = join(options.hoboHome, "sandboxes");
 	const rootPath = join(sandboxesRoot, runId);
 	const durableRoot = join(options.hoboHome, "durable", "code", runId);
@@ -205,25 +221,22 @@ export function cleanupIsolation(
 	if (existsSync(rootPath)) {
 		// Prefer git worktree remove when applicable.
 		if (prior?.projectRoot && existsSync(join(prior.projectRoot, ".git"))) {
-			spawnSync("git", ["worktree", "remove", "--force", rootPath], {
-				cwd: prior.projectRoot,
-				encoding: "utf8",
-			});
-			spawnSync("git", ["worktree", "prune"], {
-				cwd: prior.projectRoot,
-				encoding: "utf8",
-			});
+			await runGit(
+				["worktree", "remove", "--force", rootPath],
+				prior.projectRoot,
+			);
+			await runGit(["worktree", "prune"], prior.projectRoot);
 		}
 		rmSync(rootPath, { recursive: true, force: true });
 	}
 
 	if (options.removeBranch) {
-		options.removeBranch(branch);
-	} else if (prior?.projectRoot && existsSync(join(prior.projectRoot, ".git"))) {
-		spawnSync("git", ["branch", "-D", branch], {
-			cwd: prior.projectRoot,
-			encoding: "utf8",
-		});
+		await options.removeBranch(branch);
+	} else if (
+		prior?.projectRoot &&
+		existsSync(join(prior.projectRoot, ".git"))
+	) {
+		await runGit(["branch", "-D", branch], prior.projectRoot);
 	}
 
 	const orphans: string[] = [];

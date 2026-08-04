@@ -20,10 +20,14 @@
  * Usage: node --import tsx scripts/check-optimizexp.mts
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkGherkinQuality } from "../.agents/skills/optimizexp/harness/lib/feature-quality.mts";
+import {
+	checkGherkinQuality,
+	checkScenarioBinding,
+} from "../.agents/skills/optimizexp/harness/lib/feature-quality.mts";
+import { lintAllRuns } from "../.agents/skills/optimizexp/harness/lib/run-lint.mts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -131,7 +135,151 @@ function checkBus(): string[] {
 	return (report.problems ?? []).map((p) => `bus: ${p}`);
 }
 
-const problems = [...checkPersonas(), ...checkFeatureQuality(), ...checkBus()];
+/** Project-local .optimizexp roots (packages/<pkg>/.optimizexp with config). */
+function projectOptimizexpRoots(): string[] {
+	const out: string[] = [];
+	for (const parent of ["site", "packages", "examples"]) {
+		const abs = path.join(root, parent);
+		if (!existsSync(abs)) continue;
+		for (const child of readdirSync(abs)) {
+			const cfg = path.join(abs, child, ".optimizexp", "config.json");
+			if (existsSync(cfg)) out.push(path.join(abs, child, ".optimizexp"));
+		}
+	}
+	return out;
+}
+
+function readJson<T>(file: string): T | null {
+	try {
+		return JSON.parse(readFileSync(file, "utf8")) as T;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Lane (d): scenario ↔ product binding. When a project's optimizexp config
+ * declares `productBinary`, every feature folder must actually invoke it —
+ * persona scenarios that only run repo scripts are filename decoration.
+ */
+function checkProductBinding(): string[] {
+	const problems: string[] = [];
+	let features = 0;
+	for (const optRoot of projectOptimizexpRoots()) {
+		const cfg = readJson<{ productBinary?: string }>(
+			path.join(optRoot, "config.json"),
+		);
+		const productBinary = cfg?.productBinary;
+		if (!productBinary) continue;
+		const featuresRoot = path.join(optRoot, "features");
+		if (!existsSync(featuresRoot)) continue;
+		for (const entry of readdirSync(featuresRoot)) {
+			const dir = path.join(featuresRoot, entry);
+			if (!statSync(dir).isDirectory()) continue;
+			features += 1;
+			const result = checkScenarioBinding(dir, productBinary);
+			for (const problem of result.problems) {
+				problems.push(`${path.relative(root, dir)}: ${problem}`);
+			}
+		}
+	}
+	if (problems.length === 0) {
+		console.log(`product-binding: OK (${features} feature folders)`);
+	}
+	return problems;
+}
+
+/**
+ * Lane (e): experience-catalog persona coverage. Project-local personas at or
+ * above the coverage priority (default ≤10, lower = more important) must own
+ * at least one catalog row — 11 of 13 hobo-code personas previously never
+ * reached the catalog, so their P0s could not fail assert-complete.
+ */
+function checkCatalogCoverage(): string[] {
+	const problems: string[] = [];
+	let personasChecked = 0;
+	for (const optRoot of projectOptimizexpRoots()) {
+		const cfg = readJson<{
+			personas?: { coveragePriorityMax?: number };
+		}>(path.join(optRoot, "config.json"));
+		const catalogPath = path.join(optRoot, "experience-catalog.json");
+		const personasDir = path.join(optRoot, "personas");
+		if (!existsSync(catalogPath) || !existsSync(personasDir)) continue;
+		const catalog = readJson<{
+			experiences?: { personaId?: string }[];
+		}>(catalogPath);
+		const covered = new Set(
+			(catalog?.experiences ?? [])
+				.map((e) => e.personaId)
+				.filter((p): p is string => typeof p === "string"),
+		);
+		const maxPriority = cfg?.personas?.coveragePriorityMax ?? 10;
+		for (const file of readdirSync(personasDir).filter((f) =>
+			f.endsWith(".md"),
+		)) {
+			const text = readFileSync(path.join(personasDir, file), "utf8");
+			const id = text.match(/^id:\s*(\S+)/m)?.[1];
+			const priority = Number(
+				text.match(/^priority:\s*(\d+)/m)?.[1] ?? Number.NaN,
+			);
+			if (!id || Number.isNaN(priority) || priority > maxPriority) continue;
+			personasChecked += 1;
+			if (!covered.has(id)) {
+				problems.push(
+					`${path.relative(root, catalogPath)}: persona "${id}" (priority ${priority} ≤ ${maxPriority}) owns no experience-catalog row`,
+				);
+			}
+		}
+	}
+	if (problems.length === 0) {
+		console.log(`catalog-coverage: OK (${personasChecked} priority personas)`);
+	}
+	return problems;
+}
+
+/**
+ * Lane (f): run-claim audit. Runs claiming completion (pareto-equilibrium,
+ * plateau, …) must be backed by a committed minimal evidence bundle — scores
+ * chain with matching sha256s and reviewable cited evidence. Also exposed as
+ * `pnpm run optimizexp:lint-runs`.
+ */
+function checkRuns(): string[] {
+	const tracked = new Set(
+		(
+			spawnSync("git", ["ls-files", "-z", ".optimizexp/runs"], {
+				cwd: root,
+				encoding: "utf8",
+				maxBuffer: 32 * 1024 * 1024,
+			}).stdout ?? ""
+		)
+			.split("\0")
+			.filter((f) => f.length > 0),
+	);
+	const results = lintAllRuns({
+		runsRoot: path.join(root, ".optimizexp", "runs"),
+		repoRoot: root,
+		trackedFiles: tracked,
+	});
+	const failed = results.filter((r) => r.status === "failed");
+	if (failed.length === 0) {
+		const verified = results.filter((r) => r.status === "verified").length;
+		const superseded = results.filter((r) => r.status === "superseded").length;
+		console.log(
+			`run-claims: OK (${results.length} runs · ${verified} verified · ${superseded} superseded)`,
+		);
+		return [];
+	}
+	return failed.flatMap((r) => r.problems.map((p) => `runs/${r.runId}: ${p}`));
+}
+
+const problems = [
+	...checkPersonas(),
+	...checkFeatureQuality(),
+	...checkBus(),
+	...checkProductBinding(),
+	...checkCatalogCoverage(),
+	...checkRuns(),
+];
 
 if (problems.length > 0) {
 	console.error(`\noptimizexp:check FAILED (${problems.length} problem(s)):`);

@@ -10,19 +10,19 @@ Feature: hobo-code-cli-intuitive-feedback (developer)
 
   Scenario: Primary path works for developer
     Given I am on the critical path described by the feature seed
-    When I run `pnpm run prepare-hooks`
+    When I run `pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts help`
     Then I see product chrome or structured status for this surface
     And the next action is obvious without tribal knowledge
     And evidence is capturable for this scenario
 
   Scenario: Help or status remains usable for developer
     Given I am on the critical path described by the feature seed
-    When I run `pnpm --help`
+    When I run `pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts status`
     Then help lists verbs or usage or the surface documents next steps
     And evidence is capturable for this scenario
 
   Scenario: Failure is actionable for developer
     Given something goes wrong on this journey
-    When I run `pnpm run not-a-real-script-zz`
+    When I run `pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts not-a-verb-zz`
     Then the error is non-blaming and actionable
     And evidence of what I saw is stored under evidence/

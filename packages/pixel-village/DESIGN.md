@@ -198,7 +198,7 @@ hardcoded hex in new work.
    cards, and HUD labels. Body copy stays `system-ui` — small pixel faces fail
    accessibility at paragraph length.
 6. **Sourced art, not drawn-in-code** — game and site art come from the vendored
-   CC0 packs under `packages/control-yard/assets/kenney/`. Do **not** assemble props
+   CC0 packs under `packages/pixel-village/assets/kenney/`. Do **not** assemble props
    out of rectangles and lines in the renderer; that is how the previous surface
    ended up looking like a paint program.
 
@@ -271,7 +271,7 @@ outlines. Chamfers, if ever needed, are stepped in whole pixels — never curved
 
 **Do:** author on the 16px grid; scale by integers; outline everything in `#3f2631`;
 use the vendored CC0 packs; keep body copy in `system-ui`; record every imported
-asset in `packages/control-yard/assets/CREDITS.md`.
+asset in `packages/pixel-village/assets/CREDITS.md`.
 
 **Don't:** build props from rectangles and lines in renderer code; mix vector
 illustration with pixel art; use rounded corners, blurred shadows, or gradients;

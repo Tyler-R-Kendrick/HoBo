@@ -709,6 +709,12 @@ It was not. The owner asked for the game to be re-arted and found the **website*
 4. **The generated Bo action sheets return, for site use only.** The five sheets (`wave`, `jump`, `hurt`, `sleep-wake`, `bindle-adjust`) live at `site/public/bo-actions/` with their frame metadata in `sheets.json`. They are **not** game assets: neither `@hobo/pixel-village` nor `@hobo/control-yard` loads them. What the owner rejected was the *game surface* built from renderer-drawn primitives, not this artwork — reading the rejection as covering the sheets was too broad. The traced scene panels stay retired. The hand-authored Bo (`bo-idle`, `bo-walk`, `bo-walk-left`) remains the canonical character art in `site/public/parallax/`; the sheets cover actions that art does not.
 5. **Identity changes are owner decisions.** An implementation problem is never sufficient grounds to replace a product identity. Where a contract cannot be built, the finding is raised and the contract amended — the surface is not re-skinned to whatever is easiest to render.
 
+### Path corrections to surviving clauses
+The clauses of [ADR-0147](#adr-0147) and [ADR-0148](#adr-0148) that survive this decision were written when the game lived in `packages/control-yard`. Their bodies are left as written — an ADR records what was decided at the time — so the corrected locations are stated here instead:
+
+- ADR-0148 clause 2 (vendored CC0 packs): now `packages/pixel-village/assets/kenney/`.
+- ADR-0148 clause 5 and ADR-0147 clause 6 (per-asset provenance): now `packages/pixel-village/assets/CREDITS.md`, and that ledger covers the pixel packs **only**. `packages/control-yard`'s own art has no ledger and never had one; see the gap recorded in the [asset sourcing policy](../asset-sourcing-policy.md).
+
 ### Consequences
 - **(+)** The product looks like the product again: one rubberhose identity across the site and the control plane, with Bo.
 - **(+)** The pixel-RPG effort is preserved rather than discarded, in a package that owns its own look and cannot leak into the product surfaces.

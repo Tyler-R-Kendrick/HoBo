@@ -13,13 +13,19 @@ import {
 	dockForZone,
 	fixtureCharacterState,
 	foldWorldDelta,
+	HOUSE_PLOTS,
 	makeConnection,
 	makeRail,
+	OPERATOR_SPRITE,
 	type PresenterInput,
 	presentYard,
 	type RenderItem,
 	scenarioWorld,
+	T,
+	TILE,
 	toWorldView,
+	VILLAGERS,
+	villagePlacements,
 	type WorldView,
 	YARD_LAYOUT,
 } from "../src/index.js";
@@ -38,15 +44,12 @@ function presenterInput(
 	const visual = deriveYardVisualState(snap);
 	return {
 		visual,
-		boPos: { x: 640, y: 360 },
-		boAnimationId: visual.bo.animationId,
 		zone: visual.bo.zone,
 		selectedZone: null,
 		speech: null,
 		particles: [],
 		testMode: true,
 		ready: true,
-		hasImage: () => true,
 		world: null,
 		scenarioMode: false,
 		waybills: [],
@@ -55,31 +58,37 @@ function presenterInput(
 	};
 }
 
-describe("Bo the autonomous foreman (clip mapping)", () => {
-	it("plays bo.sleep-wake while the station is not open", () => {
-		const snap = baseSnapshot({ occupancy: { status: "closed" } });
-		expect(deriveYardVisualState(snap).bo.animationId).toBe("bo.sleep-wake");
+describe("the Operator's semantic state (projection → meaning, never a clip)", () => {
+	it("never leaks a clip id: the presenter picks the tile, not this module", () => {
+		const visual = deriveYardVisualState(baseSnapshot({}));
+		expect(Object.keys(visual.bo).sort()).toEqual(["facing", "state", "zone"]);
+		expect(JSON.stringify(visual)).not.toContain("bo.");
 	});
 
-	it("plays bo.hurt when hazards are present (over lower priorities)", () => {
+	it("sleeps while the station is not open", () => {
+		const snap = baseSnapshot({ occupancy: { status: "closed" } });
+		expect(deriveYardVisualState(snap).bo.state).toBe("asleep");
+	});
+
+	it("reports error when hazards are present (over lower priorities)", () => {
 		const snap = baseSnapshot({
 			occupancy: { bootstrapActive: true },
 			doctor: { hazards: ["connection-revoked:conn-1"] },
 			connections: [makeConnection({ status: "pending" })],
 		});
-		expect(deriveYardVisualState(snap).bo.animationId).toBe("bo.hurt");
+		expect(deriveYardVisualState(snap).bo.state).toBe("error");
 	});
 
-	it("plays bo.bindle-adjust while the bootstrap rail is active", () => {
+	it("reports bootstrapping while the bootstrap rail is active", () => {
 		const snap = baseSnapshot({ occupancy: { bootstrapActive: true } });
-		expect(deriveYardVisualState(snap).bo.animationId).toBe("bo.bindle-adjust");
+		expect(deriveYardVisualState(snap).bo.state).toBe("bootstrapping");
 	});
 
-	it("plays bo.wave when a connection is pending or a rail awaits activation", () => {
+	it("asks for attention when a connection is pending or a rail awaits activation", () => {
 		const pendingConn = baseSnapshot({
 			connections: [makeConnection({ status: "pending" })],
 		});
-		expect(deriveYardVisualState(pendingConn).bo.animationId).toBe("bo.wave");
+		expect(deriveYardVisualState(pendingConn).bo.state).toBe("attention");
 
 		// A demoted bootstrap rail is steady state, never an attention item.
 		const bootstrapOnly = baseSnapshot({
@@ -91,28 +100,28 @@ describe("Bo the autonomous foreman (clip mapping)", () => {
 				}),
 			],
 		});
-		expect(deriveYardVisualState(bootstrapOnly).bo.animationId).toBe("bo.idle");
+		expect(deriveYardVisualState(bootstrapOnly).bo.state).toBe("idle");
 
 		for (const activationStatus of ["draft", "approved"] as const) {
 			const railWaiting = baseSnapshot({
 				rails: [makeRail({ activationStatus })],
 			});
 			expect(
-				deriveYardVisualState(railWaiting).bo.animationId,
+				deriveYardVisualState(railWaiting).bo.state,
 				activationStatus,
-			).toBe("bo.wave");
+			).toBe("attention");
 		}
 	});
 
-	it("plays bo.jump on recentSuccess, then falls through without it", () => {
+	it("celebrates on recentSuccess, then falls through without it", () => {
 		const snap = baseSnapshot({});
-		expect(
-			deriveYardVisualState(snap, { recentSuccess: true }).bo.animationId,
-		).toBe("bo.jump");
-		expect(deriveYardVisualState(snap).bo.animationId).toBe("bo.idle");
+		expect(deriveYardVisualState(snap, { recentSuccess: true }).bo.state).toBe(
+			"celebrating",
+		);
+		expect(deriveYardVisualState(snap).bo.state).toBe("idle");
 	});
 
-	it("keeps walk/idle when occupying an active rail (no attention needed)", () => {
+	it("keeps walking/idle when occupying an active rail (no attention needed)", () => {
 		const snap = baseSnapshot({
 			occupancy: { activeRailHash: "hash-1" },
 			rails: [makeRail({ activationStatus: "active" })],
@@ -120,13 +129,13 @@ describe("Bo the autonomous foreman (clip mapping)", () => {
 		});
 		const visual = deriveYardVisualState(snap);
 		expect(visual.bo.zone).toBe("activeRailTrack");
-		expect(visual.bo.animationId).toMatch(/^bo\.walk\./);
+		expect(visual.bo.state).toBe("walking");
 	});
 
-	it("action clips never flip facing (west sheets stay unmirrored data)", () => {
+	it("keeps facing as plain data (no sheet is ever mirrored)", () => {
 		const snap = baseSnapshot({ occupancy: { status: "closed" } });
 		const visual = deriveYardVisualState(snap);
-		expect(visual.bo.animationId).toBe("bo.sleep-wake");
+		expect(visual.bo.state).toBe("asleep");
 		expect(["east", "west"]).toContain(visual.bo.facing);
 	});
 });
@@ -255,42 +264,54 @@ describe("world view mapping", () => {
 describe("presenter world rendering", () => {
 	const worldView = toWorldView(scenarioWorld(1, 0), true) as WorldView;
 
-	it("renders one sticker card per camp room with its label", () => {
+	it("raises one house per camp room with its label over the roof", () => {
 		const { items } = presentYard(presenterInput({ world: worldView }));
-		for (const camp of worldView.camps) {
-			expect(byId(items, `camp-${camp.id}`), camp.id).toBeDefined();
+		worldView.camps.forEach((camp, i) => {
+			const roof = byId(items, `house-${camp.id}-0`);
+			expect(roof?.kind, camp.id).toBe("tile");
+			const plot = HOUSE_PLOTS[i];
+			if (roof?.kind === "tile" && plot) {
+				expect(roof.x).toBe(plot.tx * TILE);
+				expect(roof.y).toBe(plot.ty * TILE);
+			}
 			const label = byId(items, `camp-${camp.id}-label`);
 			expect(label?.kind).toBe("text");
-		}
+			if (label?.kind === "text" && plot) {
+				expect(label.y).toBeLessThan(plot.ty * TILE);
+			}
+		});
 	});
 
-	it("renders a bindlebug sprite per character with variant clip and idle alpha", () => {
+	it("renders a villager tile per Bindle, stable per id, dimmed when idle", () => {
 		const { items } = presentYard(presenterInput({ world: worldView }));
-		for (const ch of worldView.characters) {
-			const sprite = byId(items, `npc-${ch.id}`);
-			expect(sprite?.kind).toBe("sprite");
-			if (sprite?.kind !== "sprite") continue;
-			expect(sprite.animationId).toBe(`bindlebug.${ch.variant}.idle`);
-			expect(sprite.scale).toBe(0.5);
-			expect(sprite.testFrame).toBe(0);
-			if (ch.state === "idle") expect(sprite.alpha).toBe(0.6);
-			else expect(sprite.alpha).toBeUndefined();
+		for (const p of villagePlacements(worldView)) {
+			const sprite = byId(items, `npc-${p.id}`);
+			expect(sprite?.kind, p.id).toBe("tile");
+			if (sprite?.kind !== "tile") continue;
+			expect(sprite.sheet).toBe("chars");
+			expect(VILLAGERS).toContain(sprite.index);
+			expect(sprite.index).not.toBe(OPERATOR_SPRITE);
+			expect(sprite.alpha).toBe(p.state === "idle" ? 0.65 : 1);
 		}
 	});
 
-	it("marks stuck characters with a spark ink mark and low health with pips", () => {
+	it("marks stuck Bindles with a danger tile and low health with a bar", () => {
+		const campId = worldView.camps[0]?.id as string;
+		const base = worldView.characters[0] as WorldView["characters"][number];
 		const custom: WorldView = {
-			camps: worldView.camps,
+			camps: [worldView.camps[0] as WorldView["camps"][number]],
 			characters: [
 				{
-					...(worldView.characters[0] as WorldView["characters"][number]),
+					...base,
+					campId,
 					id: "x-stuck",
 					state: "stuck",
 					health: 0.3,
 					bubble: "error in span deadbeef",
 				},
 				{
-					...(worldView.characters[0] as WorldView["characters"][number]),
+					...base,
+					campId,
 					id: "x-reading",
 					state: "reading",
 					health: 1,
@@ -300,26 +321,28 @@ describe("presenter world rendering", () => {
 			demo: false,
 		};
 		const { items } = presentYard(presenterInput({ world: custom }));
-		const stuck = byId(items, "npc-x-stuck-stuck");
-		expect(stuck?.kind).toBe("text");
-		if (stuck?.kind === "text") expect(stuck.color).toBe("#c5301c");
+		const stuck = byId(items, "npc-x-stuck-danger");
+		expect(stuck?.kind).toBe("tile");
+		if (stuck?.kind === "tile") expect(stuck.index).toBe(T.target);
 		const pip = byId(items, "npc-x-stuck-health");
 		expect(pip?.kind).toBe("rect");
-		if (pip?.kind === "rect") expect(pip.fill).toBe("#c5301c");
+		if (pip?.kind === "rect") expect(pip.fill).toBe("#c34b35");
 		expect(byId(items, "npc-x-stuck-bubble-text")).toBeDefined();
 		const bubble = byId(items, "npc-x-stuck-bubble");
 		if (bubble?.kind === "rect") {
-			// Bubbles never occlude the Bootstrap Desk (DESIGN.md reserved regions).
-			const desk = YARD_LAYOUT.zones.bootstrapDesk;
-			expect(bubble.x).toBeGreaterThanOrEqual(desk.x + desk.width);
+			// Bubbles stay on the canvas — a truncated word helps nobody.
+			expect(bubble.x).toBeGreaterThanOrEqual(0);
+			expect(bubble.x + bubble.w).toBeLessThanOrEqual(YARD_LAYOUT.width);
 		}
-		expect(byId(items, "npc-x-reading-book")).toBeDefined();
+		// A healthy, reading Bindle spends no chrome at all.
+		expect(byId(items, "npc-x-reading-danger")).toBeUndefined();
 		expect(byId(items, "npc-x-reading-health")).toBeUndefined();
 	});
 
 	it("renders no world items when world is null", () => {
 		const { items } = presentYard(presenterInput({ world: null }));
 		expect(items.some((i) => i.id.startsWith("camp-"))).toBe(false);
+		expect(items.some((i) => i.id.startsWith("house-"))).toBe(false);
 		expect(items.some((i) => i.id.startsWith("npc-"))).toBe(false);
 	});
 
@@ -419,11 +442,12 @@ describe("camp room selection (regression: OTLP placeholder camps)", () => {
 
 describe("sheet docking", () => {
 	it("docks away from the zone it describes so the prop stays visible", () => {
-		// Connection Bay and Cost Booth sit past x=900, exactly where a
-		// right-docked 360px panel lands.
+		// The village puts the gate, the treasury and the hazard spur on the
+		// eastern half, so their sheets dock west; the town green and its notice
+		// board sit centre-west and dock east.
 		expect(dockForZone("connectionBay")).toBe("left");
 		expect(dockForZone("costBooth")).toBe("left");
-		expect(dockForZone("errorBunker")).toBe("right");
+		expect(dockForZone("errorBunker")).toBe("left");
 		expect(dockForZone("platformRest")).toBe("right");
 		expect(dockForZone("bootstrapDesk")).toBe("right");
 	});

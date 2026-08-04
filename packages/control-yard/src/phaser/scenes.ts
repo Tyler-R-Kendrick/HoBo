@@ -88,7 +88,6 @@ export class YardScene extends Phaser.Scene {
 	private host: YardHost;
 	private objects = new Map<string, Phaser.GameObjects.GameObject>();
 	private signatures = new Map<string, string>();
-	private animBySheet = new Map<string, string>();
 
 	constructor(host: YardHost) {
 		super({ key: "Yard" });
@@ -96,10 +95,7 @@ export class YardScene extends Phaser.Scene {
 	}
 
 	create(): void {
-		this.cameras.main.setBackgroundColor("#ffffff");
-		for (const a of this.host.manifest.animations) {
-			this.animBySheet.set(a.key, a.sheetKey);
-		}
+		this.cameras.main.setBackgroundColor("#84c669");
 		this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
 			const zone = zoneAt(pointer.worldX, pointer.worldY);
 			if (zone) this.host.onZoneClick(zone);
@@ -125,11 +121,7 @@ export class YardScene extends Phaser.Scene {
 		for (const item of model.items) {
 			seen.add(item.id);
 			const sig = signature(item);
-			if (this.signatures.get(item.id) === sig) {
-				// Sprites still need play-state upkeep even when props are stable.
-				if (item.kind === "sprite") this.syncSprite(item);
-				continue;
-			}
+			if (this.signatures.get(item.id) === sig) continue;
 			const existing = this.objects.get(item.id);
 			if (existing && this.objects.get(item.id)?.constructor) {
 				existing.destroy();
@@ -192,49 +184,24 @@ export class YardScene extends Phaser.Scene {
 				img.setDepth(item.depth);
 				return img;
 			}
-			case "sprite": {
-				const sheetKey = this.animBySheet.get(item.animationId);
-				if (!sheetKey) {
-					throw new Error(`unknown animation id: ${item.animationId}`);
-				}
-				const s = this.add.sprite(item.x, item.y, sheetKey);
-				// Feet baseline (assets_index origin {0.5, 1}).
-				s.setOrigin(0.5, 1);
-				s.setScale(item.scale);
-				s.setAlpha(item.alpha ?? 1);
-				s.setDepth(item.depth);
-				this.syncSprite(item, s);
-				return s;
+			case "tile": {
+				// Sourced art: a frame out of a vendored tilesheet, never a
+				// shape assembled here.
+				const t = this.add.image(item.x, item.y, item.sheet, item.index);
+				t.setOrigin(0, 0);
+				t.setScale(item.scale);
+				t.setAlpha(item.alpha ?? 1);
+				if (item.tint) t.setTint(hex(item.tint));
+				t.setDepth(item.depth);
+				return t;
 			}
-		}
-	}
-
-	private syncSprite(
-		item: Extract<RenderItem, { kind: "sprite" }>,
-		sprite?: Phaser.GameObjects.Sprite,
-	): void {
-		const s =
-			sprite ?? (this.objects.get(item.id) as Phaser.GameObjects.Sprite);
-		if (!s) return;
-		s.setPosition(item.x, item.y);
-		s.setAlpha(item.alpha ?? 1);
-		if (item.testFrame !== null) {
-			s.anims.stop();
-			const sheetKey = this.animBySheet.get(item.animationId);
-			if (sheetKey) s.setTexture(sheetKey, item.testFrame);
-		} else if (
-			s.anims.currentAnim?.key !== item.animationId ||
-			!s.anims.isPlaying
-		) {
-			s.play(item.animationId, true);
 		}
 	}
 }
 
 function signature(item: RenderItem): string {
-	// Sprites move every frame; exclude position so we update, not rebuild.
-	if (item.kind === "sprite") {
-		return `sprite:${item.animationId}:${item.scale}:${item.alpha ?? 1}:${item.depth}:${item.testFrame}`;
+	if (item.kind === "tile") {
+		return `tile:${item.sheet}:${item.index}:${item.x}:${item.y}:${item.scale}:${item.alpha ?? 1}:${item.tint ?? ""}:${item.depth}`;
 	}
 	return JSON.stringify(item);
 }

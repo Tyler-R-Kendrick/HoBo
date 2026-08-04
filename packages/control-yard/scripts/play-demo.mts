@@ -186,40 +186,36 @@ function imgdiff(
  * from the captured canvas shot (logical 1280×720 mapped onto the image).
  * Proves real ink actually rasterized where the seam says Bo stands.
  */
-const DARK_PIXELS_PY = `
+// The village is sourced pixel art, not ink on paper, so "is there dark ink
+// near Bo" can never hold. What must hold is that the canvas is a *populated
+// scene*: many distinct colours, and no single colour covering it (a blank
+// or single-fill canvas is the real failure this guards against).
+const SCENE_RICHNESS_PY = `
 import sys
 from PIL import Image
 img = Image.open(sys.argv[1]).convert("RGB")
-bx, by = float(sys.argv[2]), float(sys.argv[3])
-sx, sy = img.width / 1280.0, img.height / 720.0
-x0 = max(0, int((bx - 50) * sx)); y0 = max(0, int((by - 120) * sy))
-x1 = min(img.width, int((bx + 50) * sx)); y1 = min(img.height, int((by + 10) * sy))
-dark = sum(1 for p in img.crop((x0, y0, x1, y1)).getdata() if sum(p) < 90)
-print(dark)
+px = list(img.getdata())
+total = len(px)
+counts = {}
+for p in px:
+    counts[p] = counts.get(p, 0) + 1
+top = max(counts.values()) / total
+print(f"{len(counts)} {top:.4f}")
 `;
 
-function darkPixelsNearBo(png: string, bo: { x: number; y: number }): number {
+function sceneRichness(png: string): { colours: number; dominant: number } {
 	const r = spawnSync(
 		"uv",
-		[
-			"run",
-			"--with",
-			"pillow",
-			"python",
-			"-c",
-			DARK_PIXELS_PY,
-			png,
-			String(bo.x),
-			String(bo.y),
-		],
+		["run", "--with", "pillow", "python", "-c", SCENE_RICHNESS_PY, png],
 		{ encoding: "utf8" },
 	);
 	if (r.status !== 0) {
 		throw new Error(
-			`dark-pixel probe failed: ${(r.stderr || r.stdout || "").slice(-300)}`,
+			`scene-richness probe failed: ${(r.stderr || r.stdout || "").slice(-300)}`,
 		);
 	}
-	return Number((r.stdout || "0").trim());
+	const [colours, dominant] = (r.stdout || "0 1").trim().split(/\s+/);
+	return { colours: Number(colours), dominant: Number(dominant) };
 }
 
 function sleep(ms: number) {
@@ -456,15 +452,12 @@ try {
 						}
 					).__TEST__.state().bo,
 			);
-			const pixelSample = {
-				dark: darkPixelsNearBo(join(SHOTS, "canvas-only.png"), boPos),
-				bo: boPos,
-			};
-			report.pixelSample = pixelSample;
+			const richness = sceneRichness(join(SHOTS, "canvas-only.png"));
+			report.pixelSample = { ...richness, bo: boPos };
 			check(
-				"canvas dark ink near Bo",
-				pixelSample.dark > 20,
-				`dark=${pixelSample.dark}`,
+				"canvas renders a populated scene",
+				richness.colours > 24 && richness.dominant < 0.85,
+				`colours=${richness.colours} dominant=${(richness.dominant * 100).toFixed(1)}%`,
 			);
 			check(
 				"no console errors",

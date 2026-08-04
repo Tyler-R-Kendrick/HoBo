@@ -7,21 +7,19 @@ import {
 	type PresenterInput,
 	presentYard,
 	stampSquash,
+	villagerBob,
 } from "../src/index.js";
 
 function input(over: Partial<PresenterInput> = {}): PresenterInput {
 	const snap = baseSnapshot({ occupancy: { status: "closed" } });
 	return {
 		visual: null,
-		boPos: { x: 200, y: 600 },
-		boAnimationId: "bo.idle",
 		zone: "bootstrapDesk",
 		selectedZone: null,
 		speech: null,
 		particles: [],
 		testMode: true,
 		ready: true,
-		hasImage: () => false,
 		world: null,
 		scenarioMode: false,
 		waybills: deriveWaybills(snap),
@@ -95,5 +93,40 @@ describe("reduced motion parity", () => {
 		const items = presentYard(reduced).items;
 		expect(items.find((i) => i.id === "waybill-0")).toBeDefined();
 		expect(items.find((i) => i.id === "waybill-0-title")).toBeDefined();
+	});
+});
+
+describe("village liveness", () => {
+	// A village of static tiles is a diagram. Each Bindle bobs on its own phase
+	// so the town reads inhabited — and holds still when the OS asks.
+	function bobAt(t: number, id = "bindle-a") {
+		return villagerBob(input({ testMode: false, timeMs: t }), id);
+	}
+
+	it("moves villagers over time, in whole display pixels", () => {
+		const samples = [0, 200, 400, 600, 800, 1000, 1200].map((t) => bobAt(t));
+		expect(new Set(samples).size).toBeGreaterThan(1);
+		for (const v of samples) {
+			expect(Number.isInteger(v), `${v} must be a whole pixel`).toBe(true);
+			expect(Math.abs(v)).toBeLessThanOrEqual(3);
+		}
+	});
+
+	it("gives different Bindles different phases so the town isn't a chorus line", () => {
+		const ids = ["bindle-a", "bindle-b", "bindle-c", "orders", "billing"];
+		const atOneMoment = new Set(ids.map((id) => bobAt(320, id)));
+		expect(atOneMoment.size).toBeGreaterThan(1);
+	});
+
+	it("holds completely still under reduced motion and in test mode", () => {
+		for (const t of [0, 300, 700, 1100]) {
+			expect(
+				villagerBob(
+					input({ reducedMotion: true, testMode: false, timeMs: t }),
+					"x",
+				),
+			).toBe(0);
+			expect(villagerBob(input({ testMode: true, timeMs: t }), "x")).toBe(0);
+		}
 	});
 });

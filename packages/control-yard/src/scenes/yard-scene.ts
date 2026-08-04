@@ -12,7 +12,7 @@ import {
 	resolveAnimation,
 	type SpritesheetDef,
 } from "../assets-index-core.js";
-import type { YardVisualState } from "../entity-state.js";
+import type { BoAnimState, YardVisualState } from "../entity-state.js";
 import { YARD_LAYOUT } from "../layout.js";
 
 export type PhaserLikeLoader = {
@@ -162,9 +162,12 @@ export function yardSceneHud(): YardSceneHud {
 	});
 }
 
-/** Map visual state → which animation id Bo should play (stable id). */
-export function boAnimationForVisual(visual: YardVisualState): string {
-	return visual.bo.animationId;
+/**
+ * Map visual state → the Operator's semantic state. There is no Bo sprite and
+ * no clip id since ADR-0141: the presenter picks the tile from this.
+ */
+export function operatorStateForVisual(visual: YardVisualState): BoAnimState {
+	return visual.bo.state;
 }
 
 export function assertSheetFitsFrames(sheet: SpritesheetDef): void {

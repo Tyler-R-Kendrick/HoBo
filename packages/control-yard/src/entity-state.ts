@@ -7,12 +7,21 @@ import type { YardProjectionSnapshot } from "@hobo/management";
 
 import type { ZoneId } from "./layout.js";
 
+/**
+ * The Operator's semantic state, in priority order. This module maps the
+ * projection to MEANING only: since ADR-0141 the presenter picks the tile, so
+ * no clip id (`bo.*`) is ever produced here — there is no Bo sprite any more.
+ */
 export type BoAnimState =
-	| "idle"
+	| "asleep"
+	| "error"
+	| "bootstrapping"
+	| "attention"
+	| "celebrating"
 	| "walking"
 	| "occupying"
 	| "resolving"
-	| "error";
+	| "idle";
 
 export type RailVisualState =
 	| "dark"
@@ -30,10 +39,9 @@ export type ConnectionVisualState =
 export type GuestVisualState = "offline" | "idle" | "working" | "error";
 
 export type YardVisualState = Readonly<{
+	/** The Operator: which zone holds attention and why. */
 	bo: {
 		state: BoAnimState;
-		/** Stable animation id from assets_index — never a raw clip filename. */
-		animationId: string;
 		zone: ZoneId;
 		facing: "east" | "west";
 	};
@@ -60,7 +68,6 @@ export type YardVisualState = Readonly<{
 		connectorKind: string;
 		connectionId?: string;
 		visual: GuestVisualState;
-		animationId: string;
 		/** Provenance of `visual` (ConnectorActivityView.statusSource). */
 		statusSource: "derived-static" | "otlp";
 	}[];
@@ -90,24 +97,15 @@ export type YardVisualState = Readonly<{
 	occupyMode: "idle" | "occupying";
 }>;
 
-const GUEST_ANIM: Record<GuestVisualState, string> = {
-	offline: "guest.swe-claude.idle",
-	idle: "guest.swe-claude.idle",
-	working: "guest.swe-claude.work",
-	error: "guest.swe-claude.error",
-};
-
 export function deriveYardVisualState(
 	snap: YardProjectionSnapshot,
 	opts?: { selectedZone?: ZoneId; recentSuccess?: boolean },
 ): YardVisualState {
 	const selected = opts?.selectedZone;
 	const boZone = pickBoZone(snap, selected);
-	const boState = pickBoState(snap, boZone);
+	const boState = pickBoState(snap, boZone, opts);
 	const facing: "east" | "west" =
 		boZone === "connectionBay" || boZone === "costBooth" ? "east" : "west";
-
-	const animationId = pickBoAnimation(snap, boState, facing, opts);
 
 	const rails = snap.rails.map((r) =>
 		Object.freeze({
@@ -132,7 +130,6 @@ export function deriveYardVisualState(
 			connectorKind: a.connectorKind,
 			...(a.connectionId !== undefined ? { connectionId: a.connectionId } : {}),
 			visual: a.status,
-			animationId: GUEST_ANIM[a.status] ?? GUEST_ANIM.idle,
 			// Optional in the projection contract; absent means not yet measured.
 			statusSource: a.statusSource ?? "derived-static",
 		}),
@@ -151,7 +148,6 @@ export function deriveYardVisualState(
 	return Object.freeze({
 		bo: Object.freeze({
 			state: boState,
-			animationId,
 			zone: boZone,
 			facing,
 		}),
@@ -207,38 +203,27 @@ function pickBoZone(snap: YardProjectionSnapshot, selected?: ZoneId): ZoneId {
 	return "platformRest";
 }
 
-function pickBoState(snap: YardProjectionSnapshot, zone: ZoneId): BoAnimState {
-	if (snap.doctor.hazards.some((h) => h.startsWith("connection-revoked"))) {
-		return "error";
-	}
+/**
+ * Autonomous-foreman state mapping (M1 phase A, priority order). The order is
+ * the point: a closed Station outranks a hazard, a hazard outranks bootstrap,
+ * and none of them are ever overridden by a lower-priority steady state.
+ */
+function pickBoState(
+	snap: YardProjectionSnapshot,
+	zone: ZoneId,
+	opts?: { recentSuccess?: boolean },
+): BoAnimState {
+	if (snap.occupancy.status !== "open") return "asleep";
+	if (snap.doctor.hazards.length > 0) return "error";
+	if (snap.occupancy.bootstrapActive) return "bootstrapping";
+	if (attentionNeeded(snap)) return "attention";
+	if (opts?.recentSuccess) return "celebrating";
 	if (zone === "activeRailTrack" && snap.occupyMode === "occupying") {
 		return "walking";
 	}
 	if (snap.occupyMode === "occupying") return "occupying";
 	if (zone === "connectionBay") return "resolving";
 	return "idle";
-}
-
-/**
- * Autonomous-foreman clip mapping (M1 phase A, priority order).
- * All five action sheets are canonical west-facing art — never mirrored;
- * `facing` stays a plain data field for the walk sheets only.
- */
-function pickBoAnimation(
-	snap: YardProjectionSnapshot,
-	boState: BoAnimState,
-	facing: "east" | "west",
-	opts?: { recentSuccess?: boolean },
-): string {
-	if (snap.occupancy.status !== "open") return "bo.sleep-wake";
-	if (snap.doctor.hazards.length > 0) return "bo.hurt";
-	if (snap.occupancy.bootstrapActive) return "bo.bindle-adjust";
-	if (attentionNeeded(snap)) return "bo.wave";
-	if (opts?.recentSuccess) return "bo.jump";
-	if (boState === "walking") {
-		return facing === "east" ? "bo.walk.east" : "bo.walk.west";
-	}
-	return "bo.idle";
 }
 
 /**

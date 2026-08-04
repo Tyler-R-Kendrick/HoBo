@@ -47,34 +47,33 @@ const budgets = JSON.parse(
 	reducedMotion: { maxChangedPixelPct: number };
 };
 
-/** Character clips are the ones a player reads as a living creature. */
-const CHARACTER_PREFIXES = ["bo.", "guest.", "bindlebug."] as const;
-
-const CHARACTER_CLIPS = Object.keys(assetIndex.animationIds).filter((id) =>
-	CHARACTER_PREFIXES.some((p) => id.startsWith(p)),
-);
-
 /**
- * Clips that exist in `assets_index.json` but that NO scenario+tick can put on
- * screen with the current mappings. Each entry is a real product gap, not a
- * test convenience — deleting an entry here is the acceptance criterion for
- * closing that gap.
- *
- *  - `guest.swe-claude.idle` / `guest.swe-claude.error`: `deriveYardVisualState`
- *    maps activity status → these clips (GUEST_ANIM), but both the presenter
- *    (`yard-presenter.ts` guest sprite) and the seam's `currentEntities()` in
- *    `main.ts` hard-code `"guest.swe-claude.work"`, so the idle/error plates
- *    can never render. Fix = feed `visual.guests[].animationId` through instead.
- *  - `guest.swe-claude.walk`: no state machine ever selects it — guests are
- *    stationary at the Connection Bay. Either give guests transit or drop the
- *    clip from the sheet.
+ * The village renders sourced tiles, not animation clips (ADR-0141), so the
+ * "shipped art nobody can ever see" check moves from clip ids to **mechanic
+ * cues**: every visual the design promises must be reachable from some real
+ * projection state. An entry that never appears is a product gap, not a test
+ * convenience.
  */
-// `guest.swe-claude.idle` / `.error` became reachable once the presenter
-// stopped hard-coding the "work" clip and started reading the derived guest
-// state. `.walk` remains genuinely unbound: connectors are rendered at their
-// post, and nothing moves them along the bay.
-const KNOWN_UNBOUND_CLIPS: readonly string[] = Object.freeze([
-	"guest.swe-claude.walk",
+const MECHANIC_CUES: readonly { id: string; why: string }[] = Object.freeze([
+	{ id: "operator", why: "the Operator stands at the notice board" },
+	{ id: "banner-top", why: "Highball raises the town banner" },
+	{ id: "highball-label", why: "Highball is named, not just coloured" },
+	{ id: "treasury-coin-large", why: "quota + spend read as the treasury" },
+	{ id: "stores-barrel", why: "stores furnish the town" },
+]);
+
+/** `simulated-badge` is deliberately absent here: this harness serves real
+ *  data, and the badge must appear only for demo/scenario sources. Its
+ *  present-iff-simulated behaviour is asserted in access-trust.spec.ts. */
+
+/** Cues that need a specific projection state, checked in their own specs. */
+const STATEFUL_CUE_PREFIXES = Object.freeze([
+	"npc-", // a Bindle villager
+	"house-", // a Camp
+	"road-", // the active rail
+	"waybill-", // the approval gate
+	"hazard", // doctor hazards
+	"fence-", // the Connection boundary
 ]);
 
 const ZONES = Object.keys(YARD_LAYOUT.zones) as ZoneId[];
@@ -97,144 +96,52 @@ test.afterAll(async () => {
 });
 
 test.describe("animation-clip coverage", () => {
-	test("every character clip is reachable from some scenario + tick", async ({
+	test("every mechanic cue is reachable, and the village is built from tiles", async ({
 		page,
 	}) => {
-		test.setTimeout(180_000);
-		const seen = new Set<string>();
+		await page.goto(harness.gameUrl({}));
+		await waitForYard(page);
+		await waitForFrames(page, 8);
 
-		for (const [id, scenario] of Object.entries(SCENARIOS)) {
-			await page.goto(harness.gameUrl({ scenario: id }));
-			await waitForYard(page);
-
-			// Full tick sweep in-page: one round trip per scenario, not per tick.
-			const sweep = (await page.evaluate((totalTicks: number) => {
-				type Seam = {
-					state: () => {
-						bo: { animationId: string };
-						entities: readonly { animationId: string }[];
-					};
-					commands: {
-						advanceToTick: (n: number) => void;
-						advanceFrame: (dt?: number) => void;
-					};
-				};
-				const seam = (window as unknown as { __TEST__: Seam }).__TEST__;
-				const found = new Set<string>();
-				const collect = () => {
-					const s = seam.state();
-					found.add(s.bo.animationId);
-					for (const e of s.entities) found.add(e.animationId);
-				};
-				for (let t = 0; t <= totalTicks; t++) {
-					seam.commands.advanceToTick(t);
-					collect();
-					// Let Bo settle at the zone anchor: `resolveBoTransitAnim` masks
-					// the projection clip while he is in transit, so a state that only
-					// exists during a zone change would otherwise never be observable.
-					for (let f = 0; f < 4; f++) {
-						seam.commands.advanceFrame(16.67);
-						collect();
-					}
-				}
-				return [...found];
-			}, scenario.totalTicks)) as string[];
-			for (const clip of sweep) seen.add(clip);
-
-			// Zone selection drives Bo transit, which is where the walk plates live.
-			const walk = (await page.evaluate((zones: string[]) => {
-				type Seam = {
-					state: () => { bo: { animationId: string } };
-					commands: {
-						selectZone: (z: string) => void;
-						dismissSheet: () => void;
-						advanceFrame: (dt?: number) => void;
-					};
-				};
-				const seam = (window as unknown as { __TEST__: Seam }).__TEST__;
-				const found = new Set<string>();
-				for (const zone of zones) {
-					seam.commands.dismissSheet();
-					seam.commands.selectZone(zone);
-					for (let f = 0; f < 90; f++) {
-						seam.commands.advanceFrame(16.67);
-						found.add(seam.state().bo.animationId);
-					}
-				}
-				return [...found];
-			}, ZONES)) as string[];
-			for (const clip of walk) seen.add(clip);
-		}
-
-		// Live (non-scenario) pass: some clips key off real transitions that no
-		// scripted snapshot timeline reproduces (e.g. the success jump). Seeded,
-		// because in ?test=1 the boot path never auto-runs init/up, so the seam
-		// only becomes ready once a real snapshot exists.
-		{
-			await page.goto(harness.gameUrl({}));
-			await waitForYard(page);
-			const liveSeen = (await page.evaluate(async () => {
-				type Seam = {
-					state: () => {
-						bo: { animationId: string };
-						entities: readonly { animationId: string }[];
-					};
-					commands: {
-						runAction: (a: string) => Promise<void>;
-						advanceFrame: (dt?: number) => void;
-					};
-				};
-				const seam = (window as unknown as { __TEST__: Seam }).__TEST__;
-				const found = new Set<string>();
-				const collect = () => {
-					const s = seam.state();
-					found.add(s.bo.animationId);
-					for (const e of s.entities) found.add(e.animationId);
-				};
-				for (const action of [
-					"init",
-					"up",
-					"publish-rail",
-					"activate-rail",
-					"create-conn",
-					"authorize-conn",
-				]) {
-					await seam.commands.runAction(action).catch(() => undefined);
-					// 240 frames ≈ 4s: longer than the 2s success window, and long
-					// enough for Bo to finish any zone transit it triggered.
-					for (let f = 0; f < 240; f++) {
-						seam.commands.advanceFrame(16.67);
-						collect();
-					}
-				}
-				return [...found];
-			})) as string[];
-			for (const clip of liveSeen) seen.add(clip);
-			// Detach the live SSE subscription: node's server.close() waits for
-			// open connections, so leaving one attached wedges teardown.
-			await page.goto("about:blank");
-		}
-
-		const unreachable = CHARACTER_CLIPS.filter((clip) => !seen.has(clip));
-		const unexpected = unreachable.filter(
-			(clip) => !KNOWN_UNBOUND_CLIPS.includes(clip),
-		);
-		const staleAllowlist = KNOWN_UNBOUND_CLIPS.filter((clip) => seen.has(clip));
-
+		const rendered = await page.evaluate(() => {
+			const seam = (
+				window as unknown as { __TEST__: { renderIds?: () => string[] } }
+			).__TEST__;
+			return seam.renderIds ? seam.renderIds() : [];
+		});
 		expect(
-			unexpected,
-			`character clips in assets_index.json that no scenario+tick can render.\n` +
-				`reached: ${[...seen].sort().join(", ")}\n` +
-				`unreachable: ${unreachable.join(", ")}`,
-		).toEqual([]);
+			rendered.length,
+			"the seam must expose rendered item ids for cue coverage",
+		).toBeGreaterThan(0);
+
+		const missing = MECHANIC_CUES.filter((c) => !rendered.includes(c.id));
 		expect(
-			staleAllowlist,
-			"KNOWN_UNBOUND_CLIPS entries are now reachable — delete them from the allowlist",
+			missing.map((m) => `${m.id} (${m.why})`),
+			"mechanic cues that no state can put on screen",
 		).toEqual([]);
+
+		for (const prefix of STATEFUL_CUE_PREFIXES) {
+			// Families that need state this harness does not have: hazards need a
+			// doctor finding, waybills need a pending mutation, and npc-* needs
+			// world/OTLP data, and house-* needs Camps — all of which come from
+			// world/OTLP data (this harness serves yard projections only). Each is
+			// covered where that state exists — see world.test.ts and
+			// access-trust.spec.ts.
+			if (
+				prefix === "hazard" ||
+				prefix === "waybill-" ||
+				prefix === "npc-" ||
+				prefix === "house-"
+			) {
+				continue;
+			}
+			expect(
+				rendered.some((id) => id.startsWith(prefix)),
+				`no ${prefix}* rendered — the village is missing a whole family`,
+			).toBe(true);
+		}
 	});
-});
 
-test.describe("juice timing", () => {
 	test(`command acknowledgment lands within ${budgets.ackMaxMs}ms`, async ({
 		page,
 	}) => {

@@ -10,7 +10,8 @@ export type YardTheme = "day" | "night";
 
 export type YardTestEntity = Readonly<{
 	id: string;
-	animationId: string;
+	/** Semantic sprite id (`operator.<state>` / `villager.<state>`). */
+	sprite: string;
 	x: number;
 	y: number;
 }>;
@@ -34,7 +35,8 @@ export type YardTestState = Readonly<{
 	zone: ZoneId | null;
 	/** Zone under the lantern (pointer hover); null when nothing is inspected. */
 	hoveredZone: ZoneId | null;
-	bo: { x: number; y: number; animationId: string; facing: string };
+	/** The Operator: attention position + semantic state (no clip ids). */
+	bo: { x: number; y: number; state: string; facing: string };
 	occupyMode: string | null;
 	connCount: number;
 	trafficRate: number;
@@ -70,6 +72,9 @@ export type YardTestCommands = Readonly<{
 }>;
 
 export type YardTestSeam = {
+	/** Ids of everything currently rendered — lets tests assert that a
+	 *  mechanic's art is actually reachable rather than merely shipped. */
+	renderIds: () => readonly string[];
 	ready: boolean;
 	seed: number | null;
 	sceneKey: string;
@@ -79,7 +84,7 @@ export type YardTestSeam = {
 };
 
 export type YardTestHost = {
-	getBo: () => { x: number; y: number; animationId: string; facing: string };
+	getBo: () => { x: number; y: number; state: string; facing: string };
 	getZone: () => ZoneId | null;
 	getSnap: () => YardProjectionSnapshot | null;
 	getVisual: () => YardVisualState | null;
@@ -98,6 +103,7 @@ export type YardTestHost = {
 	setTheme: (theme: YardTheme) => void;
 	getTheme: () => YardTheme;
 	getReducedMotion: () => boolean;
+	getRenderIds: () => readonly string[];
 	getWaybillCount: () => number;
 	getHighball: () => boolean;
 	getScenario: () => string | null;
@@ -113,6 +119,7 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 		seed: null,
 		sceneKey: "Yard",
 		frameCount: 0,
+		renderIds: () => host.getRenderIds(),
 		state: () => {
 			const snap = host.getSnap();
 			const bo = host.getBo();

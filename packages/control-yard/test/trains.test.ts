@@ -153,15 +153,12 @@ describe("train rendering", () => {
 		const trains = deriveTrains(view(over));
 		return presentYard({
 			visual: null,
-			boPos: { x: 200, y: 600 },
-			boAnimationId: "bo.idle",
 			zone: "platformRest",
 			selectedZone: null,
 			speech: null,
 			particles: [],
 			testMode: true,
 			ready: true,
-			hasImage: () => false,
 			world: null,
 			scenarioMode: false,
 			waybills: [],
@@ -185,7 +182,7 @@ describe("train rendering", () => {
 
 	it("spends spark only on a derail, and states the real reason", () => {
 		const clean = render();
-		expect(clean.some((i) => "stroke" in i && i.stroke === "#c5301c")).toBe(
+		expect(clean.some((i) => "stroke" in i && i.stroke === "#c34b35")).toBe(
 			false,
 		);
 		const items = render({
@@ -197,7 +194,7 @@ describe("train rendering", () => {
 		expect(reason?.kind).toBe("text");
 		if (reason?.kind === "text") {
 			expect(reason.text).toBe("budget cap");
-			expect(reason.color).toBe("#c5301c");
+			expect(reason.color).toBe("#c34b35");
 		}
 	});
 });

@@ -2,10 +2,11 @@
  * Asset index ↔ disk coverage + measured frame dimension check.
  * STOP rule: measure PNG before trusting load.spritesheet config.
  */
+
+import { strict as assert } from "node:assert";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { strict as assert } from "node:assert";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = join(ROOT, "assets");
@@ -113,7 +114,9 @@ for (const [animId, ref] of Object.entries(index.animationIds)) {
 	const sheet = index.spritesheets[ref.sheet];
 	if (!sheet) fail(`animationIds ${animId} unknown sheet ${ref.sheet}`);
 	else if (!sheet.animations[ref.animation]) {
-		fail(`animationIds ${animId} missing anim ${ref.animation} on ${ref.sheet}`);
+		fail(
+			`animationIds ${animId} missing anim ${ref.animation} on ${ref.sheet}`,
+		);
 	}
 }
 

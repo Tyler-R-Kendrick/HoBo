@@ -15,7 +15,7 @@ import {
 	displaySheetForZone,
 	dockForZone,
 } from "./dom-overlay.js";
-import { detectRecentSuccess } from "./entity-state.js";
+import { type BoAnimState, detectRecentSuccess } from "./entity-state.js";
 import { YARD_LAYOUT, type ZoneId, zoneAnchor, zoneAt } from "./layout.js";
 import { createWorldClient } from "./net/world-client.js";
 import { createYardClient } from "./net/yard-client.js";
@@ -25,7 +25,7 @@ import {
 	applyTheme,
 	presentYard,
 	type RenderModel,
-	resolveBoTransitAnim,
+	villagePlacements,
 } from "./phaser/yard-presenter.js";
 import { SCENARIOS } from "./scenarios/index.js";
 import { scenarioWorld } from "./scenarios/world-fixture.js";
@@ -41,6 +41,7 @@ import {
 	type YardTheme,
 } from "./test-seam.js";
 import { anyDerailed, deriveTrains, type TrainView } from "./trains.js";
+import { LANDMARK, tilePx } from "./village.js";
 import {
 	createSpikeLedger,
 	deriveWaybills,
@@ -70,7 +71,7 @@ const engine = createYardEngine();
 const client = createYardClient({ apiBase: API });
 
 let snap: YardProjectionSnapshot | null = null;
-/** Bo jumps for ~2s after a rail activates / a connection authorizes. */
+/** The board celebrates for ~2s after a rail activates / a connection authorizes. */
 let successRemaining = 0;
 let worldView: WorldView | null = null;
 let worldDemo = false;
@@ -78,7 +79,6 @@ let assetsReady = false;
 let speech = "";
 let speechRemaining = 0;
 let lastError = "";
-let loadedImageKeys = new Set<string>();
 let scenarioState: { id: string; tick: number } | null = null;
 let theme: YardTheme = "day";
 let waybills: readonly Waybill[] = [];
@@ -197,7 +197,7 @@ function applySnapshot(next: YardProjectionSnapshot): void {
 	lastError = "";
 	const b = document.body.dataset;
 	b.yardReady = "1";
-	b.boAnim = currentBoAnim();
+	b.operator = currentOperatorState();
 	b.zone = currentZone();
 	b.connCount = String(next.connections.length);
 	b.traffic = String(next.metering.trafficRate);
@@ -360,38 +360,32 @@ function advanceToTick(n: number): void {
 function setTheme(next: YardTheme): void {
 	theme = next;
 	document.body.dataset.theme = next;
-	// The camera ground must invert with the props, or night renders as ink
-	// props on a white page.
+	// The camera ground must invert with the village, or night renders a lit
+	// meadow behind a darkened town.
 	setSceneBackground?.(next === "night" ? "#0a0a0a" : "#ffffff");
 }
 
+/**
+ * Serializable snapshot of who is standing where. Positions come from the same
+ * `villagePlacements` the presenter draws from, so the seam can never report a
+ * villager at a coordinate nothing is rendered at.
+ */
 function currentEntities(): readonly YardTestEntity[] {
+	const operator = tilePx(LANDMARK.operator.tx, LANDMARK.operator.ty);
 	const entities: YardTestEntity[] = [
 		{
-			id: "bo",
-			animationId: currentBoAnim(),
-			x: Math.round(engine.boPos.x),
-			y: Math.round(engine.boPos.y),
+			id: "operator",
+			sprite: `operator.${currentOperatorState()}`,
+			x: operator.x,
+			y: operator.y,
 		},
 	];
-	const visual = engine.visual;
-	if (visual?.connections.some((c) => c.visual === "authorized")) {
-		const bay = zoneAnchor("connectionBay");
+	for (const p of villagePlacements(worldView)) {
 		entities.push({
-			id: "guest-swe-claude",
-			animationId:
-				engine.visual?.guests.find((g) => g.visual !== "offline")
-					?.animationId ?? "guest.swe-claude.idle",
-			x: bay.x,
-			y: bay.y,
-		});
-	}
-	for (const ch of worldView?.characters ?? []) {
-		entities.push({
-			id: ch.id,
-			animationId: ch.animationId,
-			x: ch.x,
-			y: ch.y,
+			id: p.id,
+			sprite: `villager.${p.state}`,
+			x: p.x,
+			y: p.y,
 		});
 	}
 	return entities;
@@ -410,13 +404,8 @@ function currentZone(): ZoneId {
 	return engine.visual?.bo.zone ?? "platformRest";
 }
 
-function currentBoAnim(): string {
-	const projectionAnim = engine.visual?.bo.animationId ?? "bo.idle";
-	return resolveBoTransitAnim(
-		engine.boPos,
-		zoneAnchor(currentZone()),
-		projectionAnim,
-	);
+function currentOperatorState(): BoAnimState {
+	return engine.visual?.bo.state ?? "idle";
 }
 
 function selectZone(zone: ZoneId): void {
@@ -438,8 +427,8 @@ function selectZone(zone: ZoneId): void {
 
 function tick(dtSec: number): void {
 	engine.tick(dtSec);
-	// Reduced motion: Bo still goes where the projection sends him — his
-	// position is information — but he arrives instead of gliding there.
+	// Reduced motion: the operator's attention still follows the projection —
+	// that is information — but it lands instead of gliding there.
 	if (REDUCED_MOTION) {
 		const target = zoneAnchor(currentZone());
 		engine.boPos = { x: target.x, y: target.y };
@@ -447,7 +436,7 @@ function tick(dtSec: number): void {
 	if (speechRemaining > 0) speechRemaining -= dtSec;
 	if (successRemaining > 0) {
 		successRemaining -= dtSec;
-		// Jump window over: fall through to the steady-state projection clip.
+		// Celebration window over: fall through to the steady projection state.
 		if (successRemaining <= 0 && snap) engine.applySnapshot(snap);
 	}
 }
@@ -455,8 +444,6 @@ function tick(dtSec: number): void {
 function renderModel(): RenderModel {
 	const model = presentYard({
 		visual: engine.visual,
-		boPos: engine.boPos,
-		boAnimationId: currentBoAnim(),
 		zone: currentZone(),
 		selectedZone: engine.selectedZone,
 		hoveredZone,
@@ -464,7 +451,6 @@ function renderModel(): RenderModel {
 		particles: engine.particles,
 		testMode: TEST_MODE,
 		ready: assetsReady,
-		hasImage: (key) => loadedImageKeys.has(key),
 		world: worldView,
 		scenarioMode: SCENARIO_MODE,
 		waybills,
@@ -474,6 +460,7 @@ function renderModel(): RenderModel {
 			? { kind: fx.kind, elapsedMs: performance.now() - fx.startedAt }
 			: null,
 		reducedMotion: REDUCED_MOTION,
+		timeMs: performance.now(),
 	});
 	return applyTheme(model, theme);
 }
@@ -482,7 +469,7 @@ const testHost: YardTestHost = {
 	getBo: () => ({
 		x: Math.round(engine.boPos.x),
 		y: Math.round(engine.boPos.y),
-		animationId: currentBoAnim(),
+		state: currentOperatorState(),
 		facing: engine.visual?.bo.facing ?? "east",
 	}),
 	getZone: () => currentZone(),
@@ -537,6 +524,7 @@ const testHost: YardTestHost = {
 	setTheme: (next) => setTheme(next),
 	getTheme: () => theme,
 	getReducedMotion: () => REDUCED_MOTION,
+	getRenderIds: () => renderModel().items.map((i) => i.id),
 	getWaybillCount: () => waybills.length,
 	getHighball: () => highball,
 	getScenario: () => scenarioState?.id ?? null,
@@ -631,7 +619,6 @@ async function boot(): Promise<void> {
 	const res = await fetch(`${ASSET_BASE}/assets_index.json`);
 	const index = (await res.json()) as AssetIndex;
 	const manifest = describeYardSceneLoad(index, ASSET_BASE);
-	loadedImageKeys = new Set(manifest.images.map((i) => i.key));
 	// Evidence and scenario runs stay silent so captures are deterministic.
 	audio = createYardAudio({
 		index,
@@ -669,7 +656,7 @@ async function boot(): Promise<void> {
 			const b = document.body.dataset;
 			b.boX = String(Math.round(engine.boPos.x));
 			b.boY = String(Math.round(engine.boPos.y));
-			b.boAnim = currentBoAnim();
+			b.operator = currentOperatorState();
 			b.zone = currentZone();
 			if (!seam.ready && assetsReady && snap && seam.frameCount >= 2) {
 				seam.ready = true;
@@ -682,7 +669,7 @@ async function boot(): Promise<void> {
 		...yardPhaserConfig({
 			parent: "yard",
 			testMode: TEST_MODE,
-			backgroundColor: "#ffffff",
+			backgroundColor: "#84c669",
 		}),
 		type: Phaser.AUTO,
 		scale: {

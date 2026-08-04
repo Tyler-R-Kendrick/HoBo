@@ -2,14 +2,22 @@ import type { YardProjectionSnapshot } from "@hobo/management";
 import { describe, expect, it } from "vitest";
 import {
 	deriveYardVisualState,
+	HOUSE_PLOTS,
+	LANDMARK,
 	lanternLines,
 	lanternRowText,
+	OPERATOR_SPRITE,
 	type PresenterInput,
 	presentYard,
 	type RenderItem,
-	resolveBoTransitAnim,
+	ROAD_TY,
 	scenarioWorld,
+	T,
+	TILE,
+	TILE_SCALE,
 	toWorldView,
+	VILLAGERS,
+	villagePlacements,
 	type Waybill,
 	type WorldView,
 	YARD_LAYOUT,
@@ -61,15 +69,12 @@ function input(overrides: Partial<PresenterInput> = {}): PresenterInput {
 	const visual = deriveYardVisualState(baseSnap);
 	return {
 		visual,
-		boPos: { x: 640, y: 360 },
-		boAnimationId: visual.bo.animationId,
 		zone: visual.bo.zone,
 		selectedZone: null,
 		speech: null,
 		particles: [],
 		testMode: true,
 		ready: true,
-		hasImage: () => true,
 		world: null,
 		scenarioMode: false,
 		waybills: [],
@@ -99,97 +104,364 @@ function byId(
 	return items.find((i) => i.id === id);
 }
 
-describe("yard presenter", () => {
-	it("draws no labelled zone cards — only diegetic props", () => {
+/** Every tile in the model, keyed by the pixel cell it occupies. */
+function tiles(items: readonly RenderItem[]) {
+	return items.filter(
+		(i): i is Extract<RenderItem, { kind: "tile" }> => i.kind === "tile",
+	);
+}
+
+const world = toWorldView(scenarioWorld(1, 5), true) as WorldView;
+
+describe("the village is built from sourced tiles, never from primitives", () => {
+	it("draws no labelled zone cards — the village IS the affordance", () => {
 		const { items } = presentYard(input());
 		for (const z of Object.values(YARD_LAYOUT.zones)) {
 			expect(byId(items, `zone-${z.id}`), z.id).toBeUndefined();
 			expect(byId(items, `zone-${z.id}-shadow`), z.id).toBeUndefined();
-			expect(byId(items, `zone-${z.id}-rail`), z.id).toBeUndefined();
 			expect(byId(items, `zone-${z.id}-label`), z.id).toBeUndefined();
+			// The old enamel signs are gone with the props they were nailed to.
+			expect(byId(items, `sign-${z.id}`), z.id).toBeUndefined();
 		}
 	});
 
-	it("carries an enamel sign for every zone so names survive the redraw", () => {
+	it("lays the meadow and the road as tiles at integer scale", () => {
 		const { items } = presentYard(input());
-		for (const z of Object.values(YARD_LAYOUT.zones)) {
-			const plate = byId(items, `sign-${z.id}`);
-			expect(plate?.kind, z.id).toBe("rect");
-			if (plate?.kind === "rect") {
-				expect(plate.fill).toBe("#ffffff");
-				expect(plate.stroke).toBe("#101010");
-				expect(plate.lineWidth).toBe(2);
-				// Ink-on-paper only; never a spark/go plate.
-				expect(plate.x + plate.w).toBeLessThanOrEqual(YARD_LAYOUT.width);
+		const ground = byId(items, "ground-0-0");
+		expect(ground?.kind).toBe("tile");
+		if (ground?.kind === "tile") {
+			expect(ground.sheet).toBe("town");
+			expect(ground.scale).toBe(TILE_SCALE);
+			expect(Number.isInteger(ground.scale)).toBe(true);
+		}
+		// The road renders the active rail across the whole grid, three rows deep.
+		// Derived from ROAD_TY so moving the road cannot silently rot this test.
+		const road = byId(items, `road-0-${ROAD_TY}`);
+		expect(road?.kind).toBe("tile");
+		if (road?.kind === "tile") expect(road.index).toBe(T.dirtMid);
+		expect(byId(items, `road-0-${ROAD_TY - 1}`)).toBeDefined();
+		expect(byId(items, `road-0-${ROAD_TY + 1}`)).toBeDefined();
+		// Every tile is placed on the grid — no fractional pixel offsets.
+		for (const t of tiles(items)) {
+			expect(Number.isInteger(t.x), t.id).toBe(true);
+			expect(Number.isInteger(t.y), t.id).toBe(true);
+			expect(t.scale, t.id).toBe(TILE_SCALE);
+		}
+	});
+
+	it("places every fixed landmark on its verified tile", () => {
+		const { items } = presentYard(input());
+		const cases: [string, number][] = [
+			["notice-board-0", T.signpost],
+			["notice-board-1", T.signpost],
+			["stores-barrel", T.barrel],
+			["stores-chest", T.chest],
+		];
+		for (const [id, index] of cases) {
+			const item = byId(items, id);
+			expect(item?.kind, id).toBe("tile");
+			if (item?.kind === "tile") {
+				expect(item.sheet, id).toBe("town");
+				expect(item.index, id).toBe(index);
 			}
-			const label = byId(items, `sign-${z.id}-text`);
-			expect(label?.kind, z.id).toBe("text");
-			if (label?.kind === "text") {
-				expect(label.text).toBe(label.text.toUpperCase());
-				expect(label.color).toBe("#101010");
-			}
 		}
 	});
 
-	it("renders one prop per zone built from ink primitives", () => {
+	it("stands the Operator beside the notice board — there is no Bo", () => {
 		const { items } = presentYard(input());
-		for (const id of [
-			// platform: plank deck on posts + lamp post
-			"platform-plank-0",
-			"platform-post-a",
-			"lamp-glass",
-			// waybill desk: furniture + bell
-			"desk-slab",
-			"desk-leg-left",
-			"station-bell",
-			"station-bell-crown",
-			// rail track + switch stand
-			"track-bed",
-			"switch-post",
-			"switch-target",
-			// policy notice board
-			"board-slab",
-			"board-post-left",
-			"board-shingle-0",
-			// cost booth: coal tender + pressure governor
-			"tender-band-0",
-			"gauge-needle",
-			"gauge-hub",
-			// hazard spur
-			"spur-rail",
-			"spur-tie-broken",
-			"spur-bumper",
-			// connection siding
-			"siding-rail-0",
-			// the highball signal
-			"semaphore-post",
-		]) {
-			expect(byId(items, id), id).toBeDefined();
+		expect(byId(items, "bo")).toBeUndefined();
+		const op = byId(items, "operator");
+		expect(op?.kind).toBe("tile");
+		if (op?.kind !== "tile") return;
+		expect(op.sheet).toBe("chars");
+		expect(op.index).toBe(OPERATOR_SPRITE);
+		expect(VILLAGERS).not.toContain(op.index);
+		const board = byId(items, "notice-board-0");
+		if (board?.kind === "tile") {
+			expect(Math.abs(op.x - board.x)).toBeLessThanOrEqual(TILE);
+			expect(op.y).toBe(board.y);
 		}
 	});
 
-	it("binds the coal tender fill and the governor needle to metering", () => {
-		const { items } = presentYard(input());
-		// quotaUsed/quotaLimit = 0.5 → coal fills the lower half of the hopper.
-		const coal = items.filter((i) => i.id.startsWith("tender-coal-"));
-		expect(coal.length).toBeGreaterThan(0);
-		for (const c of coal) {
-			if (c.kind === "rect") expect(c.fill).toBe("#101010");
-		}
-		const filled = coal.reduce(
-			(sum, c) => sum + (c.kind === "rect" ? c.h : 0),
-			0,
+	it("holds the Operator back until the sheets are actually loaded", () => {
+		expect(byId(presentYard(input({ ready: false })).items, "operator")).toBe(
+			undefined,
 		);
-		// Hopper interior is 146..194; half fill ≈ 24px of coal (band insets ~3px).
-		expect(filled).toBeGreaterThan(15);
-		expect(filled).toBeLessThan(34);
-		// heat 0.1 → ink needle, not spark.
-		const needle = byId(items, "gauge-needle");
-		expect(needle?.kind).toBe("line");
-		if (needle?.kind === "line") expect(needle.color).toBe("#101010");
+	});
+});
+
+describe("houses are Camps, villagers are Bindles", () => {
+	it("raises exactly one house per REAL Camp, never a decorative building", () => {
+		const empty = presentYard(input()).items;
+		expect(empty.filter((i) => i.id.startsWith("house-"))).toHaveLength(0);
+
+		const { items } = presentYard(input({ world }));
+		expect(world.camps.length).toBeGreaterThan(0);
+		for (const camp of world.camps) {
+			expect(byId(items, `house-${camp.id}-0`), camp.id).toBeDefined();
+			const label = byId(items, `camp-${camp.id}-label`);
+			expect(label?.kind, camp.id).toBe("text");
+		}
+		// One plot consumed per camp and no more: the empty plots stay empty.
+		const roofs = items.filter((i) => /^house-.*-0$/.test(i.id));
+		expect(roofs).toHaveLength(world.camps.length);
 	});
 
-	it("turns the governor needle spark-red above 0.8 heat and sweeps with it", () => {
+	it("never raises more houses than there are plots", () => {
+		const many: WorldView = {
+			...world,
+			camps: Array.from({ length: 9 }, (_, i) => ({
+				id: `camp-${i}`,
+				label: `camp ${i}`,
+				x: 0,
+				y: 0,
+				w: 1,
+				h: 1,
+			})),
+		};
+		const { items } = presentYard(input({ world: many }));
+		expect(items.filter((i) => /^house-.*-0$/.test(i.id))).toHaveLength(
+			HOUSE_PLOTS.length,
+		);
+	});
+
+	it("stands one villager per Bindle on its own Camp's doorstep", () => {
+		const { items } = presentYard(input({ world }));
+		const placed = villagePlacements(world);
+		expect(placed.length).toBeGreaterThan(0);
+		for (const p of placed) {
+			const sprite = byId(items, `npc-${p.id}`);
+			expect(sprite?.kind, p.id).toBe("tile");
+			if (sprite?.kind !== "tile") continue;
+			expect(sprite.sheet).toBe("chars");
+			expect(VILLAGERS).toContain(sprite.index);
+			// …and standing on the ground, not floating: the slot is a real tile.
+			expect(sprite.x % TILE).toBe(0);
+			expect(sprite.y % TILE).toBe(0);
+			const plotIndex = world.camps.findIndex((c) => c.id === p.campId);
+			const plot = HOUSE_PLOTS[plotIndex];
+			expect(plot).toBeDefined();
+			expect(plot?.standing.some((s) => s.tx === p.tx && s.ty === p.ty)).toBe(
+				true,
+			);
+		}
+		// A Bindle always looks like itself.
+		expect(villagePlacements(world).map((p) => p.sprite)).toEqual(
+			placed.map((p) => p.sprite),
+		);
+	});
+
+	it("dims idle villagers and keeps working ones solid", () => {
+		const custom: WorldView = {
+			camps: [world.camps[0] as WorldView["camps"][number]],
+			characters: [
+				{
+					...(world.characters[0] as WorldView["characters"][number]),
+					id: "x-idle",
+					state: "idle",
+					health: 1,
+					bubble: null,
+				},
+				{
+					...(world.characters[0] as WorldView["characters"][number]),
+					id: "x-working",
+					state: "working",
+					health: 1,
+					bubble: null,
+				},
+			],
+			demo: false,
+		};
+		const only = {
+			...custom,
+			characters: custom.characters.map((c) => ({
+				...c,
+				campId: custom.camps[0]?.id as string,
+			})),
+		};
+		const { items } = presentYard(input({ world: only }));
+		const idle = byId(items, "npc-x-idle");
+		const working = byId(items, "npc-x-working");
+		if (idle?.kind === "tile") expect(idle.alpha).toBe(0.65);
+		if (working?.kind === "tile") expect(working.alpha).toBe(1);
+	});
+
+	it("plants a danger marker over a stuck or failing Bindle, and only then", () => {
+		const base = world.characters[0] as WorldView["characters"][number];
+		const campId = world.camps[0]?.id as string;
+		const custom: WorldView = {
+			camps: [world.camps[0] as WorldView["camps"][number]],
+			characters: [
+				{ ...base, campId, id: "x-stuck", state: "stuck", health: 1 },
+				{ ...base, campId, id: "x-sick", state: "working", health: 0.3 },
+				{ ...base, campId, id: "x-well", state: "working", health: 1 },
+			],
+			demo: false,
+		};
+		const { items } = presentYard(input({ world: custom }));
+		for (const id of ["x-stuck", "x-sick"]) {
+			const mark = byId(items, `npc-${id}-danger`);
+			expect(mark?.kind, id).toBe("tile");
+			if (mark?.kind !== "tile") continue;
+			expect(mark.index).toBe(T.target);
+			const body = byId(items, `npc-${id}`);
+			// The marker sits ON the thing it marks: same column, one row above.
+			if (body?.kind === "tile") {
+				expect(mark.x).toBe(body.x);
+				expect(mark.y).toBe(body.y - TILE);
+			}
+		}
+		expect(byId(items, "npc-x-well-danger")).toBeUndefined();
+		// Failing health also shows as a bar; full health spends no chrome on it.
+		const pip = byId(items, "npc-x-sick-health");
+		expect(pip?.kind).toBe("rect");
+		if (pip?.kind === "rect") expect(pip.fill).toBe("#c34b35");
+		expect(byId(items, "npc-x-well-health")).toBeUndefined();
+	});
+
+	it("keeps a Bindle's speech legible on screen", () => {
+		const campId = world.camps[0]?.id as string;
+		const custom: WorldView = {
+			camps: [world.camps[0] as WorldView["camps"][number]],
+			characters: [
+				{
+					...(world.characters[0] as WorldView["characters"][number]),
+					campId,
+					id: "x-talks",
+					bubble: "error in span deadbeef",
+				},
+			],
+			demo: false,
+		};
+		const { items } = presentYard(input({ world: custom }));
+		const bubble = byId(items, "npc-x-talks-bubble");
+		expect(bubble?.kind).toBe("rect");
+		if (bubble?.kind === "rect") {
+			expect(bubble.fill).toBe("#f4f1e8");
+			expect(bubble.stroke).toBe("#3f2631");
+			expect(bubble.x).toBeGreaterThanOrEqual(0);
+			expect(bubble.x + bubble.w).toBeLessThanOrEqual(YARD_LAYOUT.width);
+		}
+		expect(byId(items, "npc-x-talks-bubble-text")).toBeDefined();
+	});
+
+	it("renders no village people at all when the world is unknown", () => {
+		const { items } = presentYard(input({ world: null }));
+		expect(items.some((i) => i.id.startsWith("npc-"))).toBe(false);
+		expect(items.some((i) => i.id.startsWith("house-"))).toBe(false);
+		expect(items.some((i) => i.id.startsWith("camp-"))).toBe(false);
+	});
+});
+
+describe("the gate is the Connection", () => {
+	it("stands the gate open for an authorized Connection and bars it otherwise", () => {
+		const openItems = presentYard(input()).items;
+		const gate = LANDMARK.gate;
+		expect(byId(openItems, `fence-${gate.tx}-13`)).toBeUndefined();
+		expect(byId(openItems, `fence-${gate.tx + 1}-13`)).toBeUndefined();
+		// The fence itself is always there — a boundary is a real fact.
+		expect(byId(openItems, "fence-2-13")).toBeDefined();
+
+		const revoked = deriveYardVisualState({
+			...baseSnap,
+			connections: [
+				{
+					id: "conn-1",
+					alias: "work",
+					provider: "asana",
+					status: "revoked",
+				} as YardProjectionSnapshot["connections"][number],
+			],
+		});
+		const barred = presentYard(input({ visual: revoked })).items;
+		const bar = byId(barred, `fence-${gate.tx}-13`);
+		expect(bar?.kind).toBe("tile");
+		if (bar?.kind === "tile") expect(bar.index).toBe(T.gate);
+	});
+});
+
+describe("hazards are the only danger on the board", () => {
+	function hazardSnap(hazards: string[]): YardProjectionSnapshot {
+		return {
+			...baseSnap,
+			doctor: {
+				hazards,
+				bootstrapActive: false,
+			} as unknown as YardProjectionSnapshot["doctor"],
+		};
+	}
+
+	it("shows nothing at all — and no danger colour — on a clean board", () => {
+		const calm = presentYard(input()).items;
+		expect(byId(calm, "hazard-bomb")).toBeUndefined();
+		expect(byId(calm, "hazard-mark-0")).toBeUndefined();
+		expect(
+			calm.filter(
+				(i) =>
+					(i.kind === "rect" && i.fill === "#c34b35") ||
+					(i.kind === "line" && i.color === "#c34b35") ||
+					(i.kind === "text" && i.color === "#c34b35"),
+			),
+		).toHaveLength(0);
+	});
+
+	it("escalates with the hazard COUNT, not merely on/off", () => {
+		const marks = (n: number) =>
+			presentYard(
+				input({
+					visual: deriveYardVisualState(
+						hazardSnap(Array.from({ length: n }, (_, i) => `hazard-${i}`)),
+					),
+				}),
+			).items.filter((i) => /^hazard-mark-\d+$/.test(i.id)).length;
+		expect(marks(1)).toBe(1);
+		expect(marks(3)).toBe(3);
+		expect(marks(3)).toBeGreaterThan(marks(1));
+		expect(marks(5)).toBeGreaterThan(marks(3));
+	});
+
+	it("plants the hazard on its own spur and states the real reason", () => {
+		const { items } = presentYard(
+			input({
+				visual: deriveYardVisualState(
+					hazardSnap(["connection-revoked:conn-1"]),
+				),
+			}),
+		);
+		const bomb = byId(items, "hazard-bomb");
+		expect(bomb?.kind).toBe("tile");
+		if (bomb?.kind === "tile") {
+			expect(bomb.index).toBe(T.bomb);
+			expect(bomb.x).toBe(LANDMARK.hazardSpur.tx * TILE);
+		}
+		const mark = byId(items, "hazard-mark-0");
+		if (mark?.kind === "tile") expect(mark.index).toBe(T.target);
+		const reason = byId(items, "hazard-text-0");
+		expect(reason?.kind).toBe("text");
+		if (reason?.kind === "text") {
+			expect(reason.text).toBe("connection-revoked:conn-1");
+			expect(reason.color).toBe("#c34b35");
+			expect(reason.x).toBeGreaterThanOrEqual(0);
+		}
+		// …on a plaque, so danger text is never lost against the meadow.
+		const plaque = byId(items, "hazard-plaque");
+		expect(plaque?.kind).toBe("rect");
+		if (plaque?.kind === "rect") {
+			expect(plaque.fill).toBe("#f4f1e8");
+			expect(plaque.stroke).toBe("#c34b35");
+			expect(plaque.x + plaque.w).toBeLessThanOrEqual(YARD_LAYOUT.width);
+		}
+	});
+});
+
+describe("the treasury reads the metering projection back", () => {
+	it("prints the real quota fill, in danger only when the cap is nearly spent", () => {
+		const cool = byId(presentYard(input()).items, "treasury-label");
+		expect(cool?.kind).toBe("text");
+		if (cool?.kind === "text") {
+			expect(cool.text).toBe("quota 50%");
+			expect(cool.color).toBe("#3f2631");
+		}
 		const hot = deriveYardVisualState({
 			...baseSnap,
 			metering: {
@@ -197,230 +469,16 @@ describe("yard presenter", () => {
 				budgetUsd: 9,
 			} as YardProjectionSnapshot["metering"],
 		});
-		const cold = deriveYardVisualState(baseSnap);
-		const hotNeedle = byId(
+		const hotLabel = byId(
 			presentYard(input({ visual: hot })).items,
-			"gauge-needle",
+			"treasury-label",
 		);
-		const coldNeedle = byId(
-			presentYard(input({ visual: cold })).items,
-			"gauge-needle",
-		);
-		expect(hotNeedle?.kind).toBe("line");
-		if (hotNeedle?.kind === "line" && coldNeedle?.kind === "line") {
-			expect(hotNeedle.color).toBe("#c5301c");
-			// Higher heat sweeps the needle clockwise (further east).
-			expect(hotNeedle.x2).toBeGreaterThan(coldNeedle.x2);
-		}
-	});
-
-	it("keeps the fare readout beneath the gauge, clear of the Cost Booth sign", () => {
-		const { items } = presentYard(input());
-		const fare = byId(items, "cost-label");
-		const sign = byId(items, "sign-costBooth");
-		expect(fare?.kind).toBe("text");
-		if (fare?.kind === "text" && sign?.kind === "rect") {
-			expect(fare.y).toBeGreaterThan(sign.y + sign.h);
-		}
-	});
-
-	it("rolls out exactly one freight car per REAL connection — never a decorative one", () => {
-		const { items } = presentYard(input());
-		expect(byId(items, "car-0")).toBeDefined();
-		const label = byId(items, "car-0-label");
-		expect(label?.kind).toBe("text");
-		if (label?.kind === "text") expect(label.text).toBe("work");
-		// authorized → go-green door panel
-		const door = byId(items, "car-0-door");
-		if (door?.kind === "rect") expect(door.fill).toBe("#14672c");
-		// one connection → exactly one car body, no padding slots
-		expect(items.filter((i) => /^car-\d+$/.test(i.id))).toHaveLength(1);
-		expect(byId(items, "car-1")).toBeUndefined();
-	});
-
-	it("shows an empty siding (no cars at all) when there are no connections", () => {
-		const visual = deriveYardVisualState({ ...baseSnap, connections: [] });
-		const { items } = presentYard(input({ visual }));
-		expect(items.filter((i) => /^car-\d+$/.test(i.id))).toHaveLength(0);
-		expect(byId(items, "siding-rail-0")).toBeDefined();
-		expect(byId(items, "sign-connectionBay")).toBeDefined();
-	});
-
-	it("steams a spark-red car for every unhealthy connection status", () => {
-		for (const status of ["needs-reauth", "revoked", "expired"] as const) {
-			const visual = deriveYardVisualState({
-				...baseSnap,
-				connections: [
-					{
-						id: "conn-1",
-						alias: "work",
-						provider: "asana",
-						status,
-					} as YardProjectionSnapshot["connections"][number],
-				],
-			});
-			const { items } = presentYard(input({ visual }));
-			const door = byId(items, "car-0-door");
-			expect(door?.kind, status).toBe("rect");
-			if (door?.kind === "rect") expect(door.fill, status).toBe("#c5301c");
-			expect(byId(items, "car-0-steam-0"), status).toBeDefined();
-			expect(byId(items, "car-0-steam-2"), status).toBeDefined();
-		}
-	});
-
-	it("marks a pending car with an ink door and a question mark, no steam", () => {
-		const visual = deriveYardVisualState({
-			...baseSnap,
-			connections: [
-				{
-					id: "conn-1",
-					alias: "work",
-					provider: "asana",
-					status: "pending",
-				} as YardProjectionSnapshot["connections"][number],
-			],
-		});
-		const { items } = presentYard(input({ visual }));
-		const door = byId(items, "car-0-door");
-		if (door?.kind === "rect") expect(door.fill).toBe("#101010");
-		const mark = byId(items, "car-0-mark");
-		expect(mark?.kind).toBe("text");
-		if (mark?.kind === "text") expect(mark.text).toBe("?");
-		expect(byId(items, "car-0-steam-0")).toBeUndefined();
-	});
-
-	it("guest sprite needs real connector activity, not just an authorized connection", () => {
-		// An authorized connection alone is not an agent at work: with no
-		// activity row there is nobody to draw, and drawing one anyway would be
-		// decorative scenery masquerading as signal.
-		expect(
-			byId(presentYard(input()).items, "guest-swe-claude"),
-		).toBeUndefined();
-
-		const active = {
-			...baseSnap,
-			activity: [
-				{
-					connectorKind: "swe-claude",
-					connectionId: "conn-1",
-					status: "working",
-				},
-			],
-		} as unknown as YardProjectionSnapshot;
-		const activeVisual = deriveYardVisualState(active);
-		const withGuest = presentYard(
-			input({
-				visual: activeVisual,
-				zone: activeVisual.bo.zone,
-				boAnimationId: activeVisual.bo.animationId,
-			}),
-		);
-		const sprite = byId(withGuest.items, "guest-swe-claude");
-		expect(sprite).toBeDefined();
-		if (sprite?.kind === "sprite") {
-			expect(sprite.animationId).toBe("guest.swe-claude.work");
-		}
-
-		const noConn = {
-			...baseSnap,
-			connections: [],
-		};
-		const visual = deriveYardVisualState(noConn);
-		const { items } = presentYard(
-			input({
-				visual,
-				zone: visual.bo.zone,
-				boAnimationId: visual.bo.animationId,
-			}),
-		);
-		expect(byId(items, "guest-swe-claude")).toBeUndefined();
-	});
-
-	it("hazard spur stays quiet when clean and smokes spark-red on real hazards", () => {
-		const calm = presentYard(input()).items;
-		expect(byId(calm, "spur-rail")).toBeDefined();
-		// A clean board carries no red and no smoke anywhere.
-		expect(byId(calm, "bunker-warning-a")).toBeUndefined();
-		expect(byId(calm, "bunker-smoke-0")).toBeUndefined();
-		expect(
-			calm.filter(
-				(i) =>
-					(i.kind === "rect" && i.fill === "#c5301c") ||
-					(i.kind === "line" && i.color === "#c5301c") ||
-					(i.kind === "text" && i.color === "#c5301c"),
-			),
-		).toHaveLength(0);
-
-		const hazardSnap = {
-			...baseSnap,
-			doctor: {
-				hazards: ["connection-revoked:conn-1"],
-				bootstrapActive: false,
-			} as unknown as YardProjectionSnapshot["doctor"],
-		};
-		const visual = deriveYardVisualState(hazardSnap);
-		const { items } = presentYard(
-			input({
-				visual,
-				zone: visual.bo.zone,
-				boAnimationId: visual.bo.animationId,
-			}),
-		);
-		const warn = byId(items, "bunker-warning-a");
-		expect(warn?.kind).toBe("line");
-		if (warn?.kind === "line") expect(warn.color).toBe("#c5301c");
-		expect(byId(items, "bunker-smoke-0")).toBeDefined();
-		const text = byId(items, "bunker-hazard-0");
-		expect(text?.kind).toBe("text");
-		if (text?.kind === "text") {
-			expect(text.text).toBe("connection-revoked:con".slice(0, 22));
-			expect(text.color).toBe("#c5301c");
-		}
-	});
-
-	it("suppresses particles in test mode and emits them live", () => {
-		const particles = [{ x: 200, y: 340, alive: true }];
-		expect(
-			byId(presentYard(input({ particles })).items, "particle-0"),
-		).toBeUndefined();
-		expect(
-			byId(
-				presentYard(input({ particles, testMode: false })).items,
-				"particle-0",
-			),
-		).toBeDefined();
-	});
-
-	it("freezes sprites on testFrame in test mode, plays clips live", () => {
-		const { items } = presentYard(input());
-		const bo = byId(items, "bo");
-		if (bo?.kind === "sprite") expect(bo.testFrame).toBe(0);
-		const live = byId(presentYard(input({ testMode: false })).items, "bo");
-		if (live?.kind === "sprite") expect(live.testFrame).toBeNull();
-	});
-
-	it("resolveBoTransitAnim walks toward distant targets and settles on arrival", () => {
-		expect(
-			resolveBoTransitAnim({ x: 0, y: 0 }, { x: 100, y: 0 }, "bo.idle"),
-		).toBe("bo.walk.east");
-		expect(
-			resolveBoTransitAnim({ x: 100, y: 0 }, { x: 0, y: 0 }, "bo.idle"),
-		).toBe("bo.walk.west");
-		expect(
-			resolveBoTransitAnim({ x: 5, y: 5 }, { x: 5, y: 5 }, "bo.idle"),
-		).toBe("bo.idle");
-	});
-
-	it("omits optional plates when images are missing", () => {
-		const { items } = presentYard(input({ hasImage: () => false }));
-		expect(byId(items, "poles")).toBeUndefined();
-		expect(byId(items, "trail")).toBeUndefined();
-		expect(byId(items, "trail-front")).toBeUndefined();
+		if (hotLabel?.kind === "text") expect(hotLabel.color).toBe("#c34b35");
 	});
 });
 
 describe("HIGHBALL presenter props (M1 phase B)", () => {
-	it("renders up to 3 waybill cards with the top card frontmost", () => {
+	it("renders up to 3 waybill papers with the top one frontmost", () => {
 		const waybills = [0, 1].map((i) =>
 			makeWaybill({ id: `waybill:${i}`, title: `Waybill ${i}` }),
 		);
@@ -433,8 +491,11 @@ describe("HIGHBALL presenter props (M1 phase B)", () => {
 		expect(byId(items, "waybill-count")).toBeUndefined();
 		if (top?.kind === "rect" && below?.kind === "rect") {
 			expect(top.depth).toBeGreaterThan(below.depth);
-			expect(top.fill).toBe("#ffffff");
-			expect(top.stroke).toBe("#101010");
+			expect(top.fill).toBe("#f4f1e8");
+			expect(top.stroke).toBe("#3f2631");
+			// Pinned under the notice board, not floating in the meadow.
+			expect(top.x).toBeGreaterThanOrEqual(LANDMARK.noticeBoard.tx * TILE);
+			expect(top.y).toBeGreaterThan(LANDMARK.noticeBoard.ty * TILE);
 		}
 		const title = byId(items, "waybill-0-title");
 		expect(title?.kind).toBe("text");
@@ -453,51 +514,29 @@ describe("HIGHBALL presenter props (M1 phase B)", () => {
 		if (count?.kind === "text") expect(count.text).toBe("+2");
 	});
 
-	it("semaphore: arm down + no lamp/label when not highball", () => {
+	it("keeps the banner down until the board is genuinely clean", () => {
 		const { items } = presentYard(input());
-		expect(byId(items, "semaphore-post")).toBeDefined();
-		const arm = byId(items, "semaphore-arm");
-		expect(arm?.kind).toBe("line");
-		if (arm?.kind === "line") expect(arm.y2).toBeGreaterThan(arm.y1);
-		expect(byId(items, "semaphore-lamp")).toBeUndefined();
+		expect(byId(items, "banner-top")).toBeUndefined();
+		expect(byId(items, "banner-tail")).toBeUndefined();
 		expect(byId(items, "highball-label")).toBeUndefined();
 	});
 
-	it("semaphore: arm raised + go lamp + HIGHBALL label when highball", () => {
+	it("raises the town banner over the road on HIGHBALL", () => {
 		const { items } = presentYard(input({ highball: true }));
-		const arm = byId(items, "semaphore-arm");
-		expect(arm?.kind).toBe("line");
-		if (arm?.kind === "line") expect(arm.y2).toBeLessThan(arm.y1);
-		const lamp = byId(items, "semaphore-lamp");
-		expect(lamp?.kind).toBe("rect");
-		// go green is reserved for confirmed success only
-		if (lamp?.kind === "rect") expect(lamp.fill).toBe("#14672c");
+		const top = byId(items, "banner-top");
+		const tail = byId(items, "banner-tail");
+		expect(top?.kind).toBe("tile");
+		expect(tail?.kind).toBe("tile");
+		if (top?.kind === "tile" && tail?.kind === "tile") {
+			// Sourced art, not a drawn flag — and one banner, hung as two tiles.
+			expect(top.sheet).toBe("rogue");
+			expect(tail.sheet).toBe("rogue");
+			expect(top.x).toBe(LANDMARK.banner.tx * TILE);
+			expect(tail.y).toBe(top.y + TILE);
+		}
 		const label = byId(items, "highball-label");
 		expect(label?.kind).toBe("text");
 		if (label?.kind === "text") expect(label.text).toBe("HIGHBALL");
-	});
-
-	it("station bell always present; cream glow only with a station.open waybill", () => {
-		const calm = presentYard(input()).items;
-		expect(byId(calm, "station-bell")).toBeDefined();
-		expect(byId(calm, "station-bell-glow")).toBeUndefined();
-		const firstRun = presentYard(
-			input({
-				waybills: [
-					makeWaybill({
-						id: "waybill:station.open",
-						kind: "station.open",
-						title: "Open the Station",
-						confirmOp: "init-up",
-						blastRadius: "station",
-					}),
-				],
-			}),
-		).items;
-		const glow = byId(firstRun, "station-bell-glow");
-		expect(glow?.kind).toBe("rect");
-		// static cream ring — reduced-motion-safe onboarding signal
-		if (glow?.kind === "rect") expect(glow.fill).toBe("#f2f1ec");
 	});
 
 	it("HUD title carries the HIGHBALL! picture card", () => {
@@ -508,35 +547,35 @@ describe("HIGHBALL presenter props (M1 phase B)", () => {
 		}
 	});
 
-	it("plants the semaphore in the clear mid-left band, out of the sheet gutter", () => {
-		const { items } = presentYard(input({ highball: true }));
-		const post = byId(items, "semaphore-post");
-		expect(post?.kind).toBe("rect");
-		if (post?.kind !== "rect") return;
-		// The DOM sheet is right:32px / width ≤360 over a 1280 canvas — anything
-		// past x≈900 renders underneath it.
-		const SHEET_GUTTER_X = 900;
+	it("keeps every landmark inside the canvas, clear of the sheet gutter", () => {
+		const { items } = presentYard(input({ highball: true, world }));
+		// The DOM sheet is right:32px / width ≤360 over a 1280 canvas.
+		for (const t of tiles(items)) {
+			expect(t.x, t.id).toBeGreaterThanOrEqual(0);
+			expect(t.y, t.id).toBeGreaterThanOrEqual(0);
+			expect(t.y + TILE, t.id).toBeLessThanOrEqual(YARD_LAYOUT.height);
+		}
+		// Scenery is never sliced by the right edge (the grid overhangs it).
+		for (const t of tiles(items).filter((i) => i.id.startsWith("tree-"))) {
+			expect(t.x + TILE, t.id).toBeLessThanOrEqual(YARD_LAYOUT.width);
+		}
 		const label = byId(items, "highball-label");
-		const lamp = byId(items, "semaphore-lamp");
-		for (const item of [post, label, lamp]) {
-			if (item?.kind === "rect") {
-				expect(item.x + item.w, item.id).toBeLessThan(SHEET_GUTTER_X);
-			}
-			if (item?.kind === "text") {
-				expect(item.x, item.id).toBeLessThan(SHEET_GUTTER_X);
-			}
-		}
-		// …and clear of the Error Bunker (ends x=240) and Policy Board (x=560).
-		expect(post.x).toBeGreaterThan(YARD_LAYOUT.zones.errorBunker.x + 200);
-		expect(post.x + post.w).toBeLessThan(YARD_LAYOUT.zones.policyBoard.x);
-		// Base sits at the track bottom, mast rises into the open band.
-		expect(post.y).toBeLessThanOrEqual(250);
-		expect(post.y + post.h).toBeGreaterThanOrEqual(370);
-		if (label?.kind === "text") {
-			expect(label.x).toBeGreaterThan(
-				YARD_LAYOUT.zones.errorBunker.x + YARD_LAYOUT.zones.errorBunker.width,
-			);
-		}
+		if (label?.kind === "text") expect(label.x).toBeLessThan(900);
+	});
+});
+
+describe("motion is accent only", () => {
+	it("suppresses particles in test mode and emits them live", () => {
+		const particles = [{ x: 200, y: 340, alive: true }];
+		expect(
+			byId(presentYard(input({ particles })).items, "particle-0"),
+		).toBeUndefined();
+		expect(
+			byId(
+				presentYard(input({ particles, testMode: false })).items,
+				"particle-0",
+			),
+		).toBeDefined();
 	});
 });
 
@@ -553,8 +592,8 @@ describe("lantern inspect (free read verb)", () => {
 		const card = byId(items, "lantern-card");
 		expect(card?.kind).toBe("rect");
 		if (card?.kind === "rect") {
-			expect(card.fill).toBe("#ffffff");
-			expect(card.stroke).toBe("#101010");
+			expect(card.fill).toBe("#f4f1e8");
+			expect(card.stroke).toBe("#3f2631");
 			expect(card.lineWidth).toBe(2);
 		}
 		// hard sticker offset shadow, never a soft blur
@@ -681,8 +720,6 @@ describe("lantern inspect (free read verb)", () => {
 });
 
 describe("reserved regions", () => {
-	const world = toWorldView(scenarioWorld(1, 5), true) as WorldView;
-
 	function overlaps(
 		a: { x: number; y: number; w: number; h: number },
 		b: { x: number; y: number; w: number; h: number },
@@ -692,54 +729,72 @@ describe("reserved regions", () => {
 		);
 	}
 
-	/** Conservative bounding box for a render item (text estimated generously). */
-	function boxOf(
-		item: RenderItem,
-	): { x: number; y: number; w: number; h: number } | null {
-		switch (item.kind) {
-			case "rect":
-				return { x: item.x, y: item.y, w: item.w, h: item.h };
-			case "line":
-				return {
-					x: Math.min(item.x1, item.x2),
-					y: Math.min(item.y1, item.y2),
-					w: Math.max(2, Math.abs(item.x2 - item.x1)),
-					h: Math.max(2, Math.abs(item.y2 - item.y1)),
-				};
-			case "text":
-				return { x: item.x, y: item.y, w: item.text.length * 8, h: 14 };
-			default:
-				return null;
-		}
+	/** Pixel cell a tile occupies. */
+	function cell(t: Extract<RenderItem, { kind: "tile" }>) {
+		return { x: t.x, y: t.y, w: TILE, h: TILE };
 	}
 
-	it("camp rooms never collide with a zone rect", () => {
-		expect(world.camps.length).toBeGreaterThan(0);
-		for (const camp of world.camps) {
-			const room = { x: camp.x, y: camp.y, w: camp.w, h: camp.h };
-			for (const z of Object.values(YARD_LAYOUT.zones)) {
-				expect(
-					overlaps(room, { x: z.x, y: z.y, w: z.width, h: z.height }),
-					`${camp.id} vs ${z.id}`,
-				).toBe(false);
-			}
+	it("keeps the house band clear of every yard landmark and tree", () => {
+		const { items } = presentYard(input({ world, highball: true }));
+		const band = YARD_LAYOUT.campGrounds;
+		const region = {
+			x: band.x,
+			y: band.y,
+			w: band.width,
+			h: band.height,
+		};
+		const intruders = tiles(items).filter(
+			(t) =>
+				!t.id.startsWith("ground-") &&
+				!t.id.startsWith("road-") &&
+				!t.id.startsWith("house-") &&
+				!t.id.startsWith("npc-"),
+		);
+		expect(intruders.length).toBeGreaterThan(10);
+		for (const t of intruders) {
+			expect(overlaps(region, cell(t)), t.id).toBe(false);
 		}
 	});
 
-	it("camp rooms never collide with a static prop footprint", () => {
-		// Render WITHOUT the world so only fixed yard property is in the model.
-		const { items } = presentYard(input());
-		const props = items.filter(
-			(i) => i.depth < YARD_LAYOUT.depths.ui && !i.id.startsWith("ground-"),
+	it("encodes the quota level in the treasury the region actually shows", () => {
+		// A pile that only grows upward leaves the base tile unchanged, which
+		// reads as a dead region even though the projection moved.
+		const hoardAt = (fill: number) => {
+			const visual = deriveYardVisualState({
+				...baseSnap,
+				metering: {
+					...baseSnap.metering,
+					quotaUsed: fill * 1000,
+					quotaLimit: 1000,
+				} as YardProjectionSnapshot["metering"],
+			});
+			const item = presentYard(input({ visual })).items.find(
+				(i) => i.id === "treasury-coin-large",
+			);
+			return item?.kind === "tile" ? item.index : -1;
+		};
+		const tiers = [0.1, 0.4, 0.7, 0.95].map(hoardAt);
+		expect(new Set(tiers).size, "each quota tier must look different").toBe(4);
+	});
+
+	it("never stacks two props on the same tile cell", () => {
+		const { items } = presentYard(input({ world, highball: true }));
+		// Ground and road are deliberate full-grid layers; state markers are
+		// deliberately planted ON the thing they mark (DESIGN.md). Everything
+		// else is furniture and must not double up on a cell.
+		const props = tiles(items).filter(
+			(t) =>
+				!t.id.startsWith("ground-") &&
+				!t.id.startsWith("road-") &&
+				!t.id.endsWith("-danger"),
 		);
-		expect(props.length).toBeGreaterThan(40);
-		for (const camp of world.camps) {
-			const room = { x: camp.x, y: camp.y, w: camp.w, h: camp.h };
-			for (const item of props) {
-				const box = boxOf(item);
-				if (!box) continue;
-				expect(overlaps(room, box), `${camp.id} vs ${item.id}`).toBe(false);
-			}
+		const seen = new Map<string, string>();
+		for (const t of props) {
+			const key = `${t.x},${t.y}`;
+			expect(seen.has(key), `${t.id} collides with ${seen.get(key)}`).toBe(
+				false,
+			);
+			seen.set(key, t.id);
 		}
 	});
 });

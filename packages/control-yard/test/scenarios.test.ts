@@ -1,34 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import { deriveYardVisualState } from "../src/entity-state.js";
-import { zoneAnchor } from "../src/layout.js";
 import { SCENARIOS, type YardScenario } from "../src/scenarios/index.js";
 import type { YardTestEntity, YardTestState } from "../src/test-seam.js";
 import { isTestMode } from "../src/test-seam.js";
+import { LANDMARK, tilePx } from "../src/village.js";
 import { createYardEngine, type YardEngine } from "../src/yard-engine.js";
 
 const ALL = Object.values(SCENARIOS);
 
-/** Mirror main.ts entity assembly: bo always, guest when a conn is authorized. */
+/** Mirror main.ts entity assembly: the Operator, plus a villager per Bindle. */
 function entitiesFromEngine(engine: YardEngine): readonly YardTestEntity[] {
-	const entities: YardTestEntity[] = [
+	const at = tilePx(LANDMARK.operator.tx, LANDMARK.operator.ty);
+	return [
 		{
-			id: "bo",
-			animationId: engine.visual?.bo.animationId ?? "bo.idle",
-			x: Math.round(engine.boPos.x),
-			y: Math.round(engine.boPos.y),
+			id: "operator",
+			sprite: `operator.${engine.visual?.bo.state ?? "idle"}`,
+			x: at.x,
+			y: at.y,
 		},
 	];
-	if (engine.visual?.connections.some((c) => c.visual === "authorized")) {
-		const bay = zoneAnchor("connectionBay");
-		entities.push({
-			id: "guest-swe-claude",
-			animationId: "guest.swe-claude.work",
-			x: bay.x,
-			y: bay.y,
-		});
-	}
-	return entities;
 }
 
 /** Mirror main.ts seam state assembly from engine + snapshot at a tick. */
@@ -49,7 +40,7 @@ function stateAt(scenario: YardScenario, tick: number): YardTestState {
 		bo: Object.freeze({
 			x: Math.round(engine.boPos.x),
 			y: Math.round(engine.boPos.y),
-			animationId: visual?.bo.animationId ?? "bo.idle",
+			state: visual?.bo.state ?? "idle",
 			facing: visual?.bo.facing ?? "east",
 		}),
 		occupyMode: snap.occupyMode,

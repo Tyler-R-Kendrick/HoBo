@@ -220,6 +220,21 @@ blinking in unison. `<BoIdle still="rest" />` freezes him on one frame and never
 animates; `prefers-reduced-motion` does the same. He sleeps while off screen or on a
 hidden tab. Pass `label` for a Bo that should be announced, otherwise he is `aria-hidden`.
 
+## Heading anchors
+
+Every `h2`/`h3`/`h4` in `.prose` gets an `id` and a `#` link, via `rehype-slug`
+and `rehype-autolink-headings` (wired in `astro.config.ts`).
+
+This was a real gap, not a nicety: before it, **no docs page could be
+deep-linked**. `scroll-padding-top` was already set in `global.css` for anchors
+that did not exist, and the homepage linked to
+`/primitives/bindles/#greenfield-declare-the-bindle-generate-the-code`, which
+silently resolved to nothing.
+
+The `#` is hidden until the heading is hovered or the anchor is focused, and it
+occupies no layout when hidden — the heading's silhouette never shifts. It is
+never `display: none`, so a keyboard user can still reach it.
+
 ## Publishing (no Actions)
 
 The site is published by pushing the built output to the **`gh-pages` branch**, which

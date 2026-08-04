@@ -1924,3 +1924,46 @@ table.compare tr.hobo-row th {
 		transition: none;
 	}
 }
+
+/* --- Heading anchors ------------------------------------------------------
+   The `#` that appears beside a heading on hover/focus. Before rehype-slug no
+   `.prose` heading carried an id at all, so no docs page could be deep-linked
+   — and the homepage already linked into `/primitives/bindles/#greenfield-…`,
+   which resolved to nothing. `scroll-padding-top` was already set for anchors
+   that did not exist.
+
+   MA: the mark is absent until wanted. It occupies no layout when hidden, so
+   the heading's silhouette is unchanged — the affordance appears in the space
+   that was already there. */
+.prose .heading-anchor {
+	margin-left: 0.4ch;
+	color: var(--text-faint);
+	text-decoration: none;
+	opacity: 0;
+	transition: opacity var(--dur-tap) var(--ease);
+}
+
+.prose :is(h2, h3, h4):hover .heading-anchor,
+.prose .heading-anchor:focus-visible {
+	opacity: 1;
+}
+
+.prose .heading-anchor:focus-visible {
+	outline: 2px solid var(--spark);
+	outline-offset: 2px;
+}
+
+/* A keyboard user must be able to reach it, so it is never display:none. */
+@media (prefers-reduced-motion: reduce) {
+	.prose .heading-anchor {
+		transition: none;
+	}
+}
+
+/* Decorative marks carry no interaction. Stated here as well as in the markup
+   so the intent survives a refactor: these look clickable and are not. */
+.terminal .dots,
+.card-icon {
+	cursor: default;
+	user-select: none;
+}

@@ -196,6 +196,39 @@ readable; do not invent neon palettes.
 **Do not:** flat brand gradients, purple AI glow, glassmorphism, or full-color
 product illustration.
 
+### The five palettes
+
+Colour is a **second axis**, orthogonal to day/night. `data-theme` stays the
+inversion pair; `data-palette` re-inks the paper and the line. Absent the
+attribute you get `ink` — the canonical Steamboat Willie black-and-white — so
+the default is the *absence* of a choice, not a choice.
+
+| Palette | `data-palette` | Paper / ink (day) | Character |
+|---|---|---|---|
+| **Ink on Paper** | *(none)* | `#ffffff` / `#101010` | The canonical. Maximum MA — the page is mostly empty on purpose. |
+| **Dusk Meadow** | `dusk` | `#fbf5e9` / `#2e2418` | Ghibli golden hour. Warm paper, sepia line. |
+| **Rain Glass** | `rain` | `#f2f5f7` / `#1b2732` | A downpour seen through glass. Cool, quiet, indigo. |
+| **Cel Bloom** | `cel` | `#f7f0e1` / `#241a12` | Cuphead title card. Card stock and vermillion. |
+| **Moss Quiet** | `moss` | `#f1f4ee` / `#1e2a1c` | Forest floor. The softest of the five. |
+
+Every palette overrides the same sixteen tokens and each is an inversion pair,
+so night is never a separately-tuned palette — it is the same decision, flipped.
+
+**The Same Contract Rule.** Every palette carries exactly one paper, one ink,
+and two rare accents (`spark`, `go`). A palette that needs a third accent is not
+a theme, it is a different design system. This is what lets The One Voice Rule
+survive a switch: the accents stay rare in all five, so rarity keeps meaning
+what it meant.
+
+**The Absent Default Rule.** Selecting `ink` *removes* `data-palette` rather
+than setting it. The canonical look is what you get by not choosing, which keeps
+a stored preference from quietly becoming a fifth thing to maintain.
+
+Palettes are offered behind a disclosure, never as five buttons in the bar. The
+designer persona's clutter thresholds are the lowest available and
+`junior-frontend` treats choice overload as a hard budget — so five options may
+exist, but they may not shout. Closed, the picker costs one icon.
+
 ## Typography
 
 - **Display (h1–h3):** Chewy — rubberhose title card, slightly uneven friendly letterforms.

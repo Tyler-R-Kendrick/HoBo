@@ -3,6 +3,74 @@
 export type NavItem = { label: string; slug: string };
 export type NavGroup = { label: string; slug: string; items: NavItem[] };
 
+/**
+ * Sections — the layer the header actually renders.
+ *
+ * Fourteen top-level groups did not fit: 129 characters of label needs roughly
+ * 1300px in an 1160px container, so the nav was clipped at every width above
+ * the 760px hamburger breakpoint. It was only ever usable collapsed.
+ *
+ * Five sections, named for what a visitor is *doing* rather than what the
+ * codebase is organised as. The fourteen groups survive underneath — this
+ * nests them, it does not renumber them, so every existing slug still
+ * resolves and the sidebar can finally show one section instead of all 109
+ * links on every page.
+ */
+export type NavSection = { label: string; slug: string; groups: string[] };
+
+export const sections: NavSection[] = [
+	{
+		label: "Learn",
+		slug: "/guide/",
+		groups: ["Guide", "Primitives", "Architecture", "Roles"],
+	},
+	{
+		label: "Build",
+		slug: "/examples/",
+		groups: ["Examples", "Customizations", "CI/CD", "Testing"],
+	},
+	{
+		label: "Operate",
+		slug: "/operations/",
+		groups: ["Operations", "Observability", "Security", "Troubleshooting"],
+	},
+	{ label: "Reference", slug: "/reference/", groups: ["Reference"] },
+	{ label: "Agents", slug: "/agents/", groups: ["The Crew"] },
+];
+
+/** The groups belonging to a section, in declared order. */
+export function groupsOf(section: NavSection, groups: NavGroup[]): NavGroup[] {
+	return section.groups
+		.map((label) => groups.find((g) => g.label === label))
+		.filter((g): g is NavGroup => g !== undefined);
+}
+
+/**
+ * Which section owns a path.
+ *
+ * Longest-slug-first, because a plain `find` returned the first group that
+ * merely *listed* a page: `/reference/session-replay/` is cross-listed under
+ * Observability, so the old lookup badged it "Observability" rather than
+ * "Reference". Matching the most specific owner fixes that class of error
+ * instead of the three known instances.
+ */
+export function sectionFor(
+	path: string,
+	groups: NavGroup[],
+): NavSection | undefined {
+	let best: { section: NavSection; len: number } | undefined;
+	for (const section of sections) {
+		for (const group of groupsOf(section, groups)) {
+			for (const item of [{ slug: group.slug }, ...group.items]) {
+				if (path.startsWith(item.slug) && item.slug.length > (best?.len ?? 0)) {
+					best = { section, len: item.slug.length };
+				}
+			}
+		}
+	}
+	return best?.section;
+}
+
 export const nav: NavGroup[] = [
 	{
 		label: "Examples",

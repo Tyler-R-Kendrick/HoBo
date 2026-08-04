@@ -1,6 +1,6 @@
 ---
 import Base from "./Base.astro";
-import { nav } from "../nav";
+import { nav, groupsOf, sectionFor } from "../nav";
 import { href } from "../lib/url";
 
 interface Props {
@@ -14,9 +14,14 @@ interface Props {
 const { frontmatter, rawContent } = Astro.props;
 const path = Astro.url.pathname;
 const normalize = (p: string) => p.replace(/\/$/, "");
-const section = nav.find((group) =>
-	group.items.some((item) => path.startsWith(href(item.slug))),
-);
+// The sidebar shows ONE section, not all fourteen groups. Rendering every
+// group on every page produced a 109-link, ~4000px column in a 236px rail —
+// byte-identical to the footer, so a docs page showed the same 109 links
+// twice. `sectionFor` also resolves cross-listed pages by longest match, so
+// /reference/session-replay/ is badged Reference rather than Observability.
+const navSection = sectionFor(path.replace(href("/"), "/"), nav);
+const sectionGroups = navSection ? groupsOf(navSection, nav) : [];
+const section = navSection ?? sectionFor("/guide/", nav);
 const current = (slug: string) =>
 	normalize(path) === normalize(href(slug)) ? "page" : undefined;
 
@@ -42,7 +47,7 @@ const pageMarkdown = rawContent
 			</button>
 			<aside class="docs-sidebar" id="docs-sidebar">
 				{
-					nav.map((group) => (
+					sectionGroups.map((group) => (
 						<nav aria-label={group.label}>
 							<p class="nav-label">{group.label}</p>
 							<ul>

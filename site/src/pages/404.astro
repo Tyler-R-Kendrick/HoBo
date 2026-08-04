@@ -19,8 +19,18 @@ import { href } from "../lib/url";
 </Base>
 
 <style>
+	@keyframes lost-bob {
+		from,
+		to {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-6px);
+		}
+	}
+
 	.lost-bo {
 		margin-inline: auto;
-		animation: bob 3.6s ease-in-out infinite;
+		animation: lost-bob 3.6s var(--ease) infinite;
 	}
 </style>

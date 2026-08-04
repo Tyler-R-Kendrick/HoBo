@@ -1072,7 +1072,7 @@ a:hover {
 .hero h1 {
 	margin: 0 0 1.15rem;
 	font-family: var(--font-display);
-	font-size: clamp(2rem, 5vw, 3.6rem);
+	font-size: calc(clamp(2rem, 5vw, 3.6rem) * var(--display-size));
 	line-height: 1.06;
 	letter-spacing: 0.005em;
 	font-weight: 400;
@@ -1194,7 +1194,7 @@ a:hover {
 .section-head h2 {
 	margin: 0 0 0.7rem;
 	font-family: var(--font-display);
-	font-size: clamp(1.6rem, 3.1vw, 2.3rem);
+	font-size: calc(clamp(1.6rem, 3.1vw, 2.3rem) * var(--display-size));
 	line-height: 1.12;
 	letter-spacing: 0.005em;
 	font-weight: 400;
@@ -1587,7 +1587,7 @@ table.compare tr.hobo-row th {
 .cta-inner h2 {
 	margin: 0 0 0.65rem;
 	font-family: var(--font-display);
-	font-size: clamp(1.5rem, 3vw, 2.1rem);
+	font-size: calc(clamp(1.5rem, 3vw, 2.1rem) * var(--display-size));
 	letter-spacing: 0.005em;
 	font-weight: 400;
 }
@@ -1827,7 +1827,7 @@ table.compare tr.hobo-row th {
 .prose h1 {
 	margin: 0 0 1rem;
 	font-family: var(--font-display);
-	font-size: clamp(1.8rem, 3.7vw, 2.3rem);
+	font-size: calc(clamp(1.8rem, 3.7vw, 2.3rem) * var(--display-size));
 	line-height: 1.12;
 	letter-spacing: 0.01em;
 	font-weight: 400;
@@ -2174,13 +2174,20 @@ table.compare tr.hobo-row th {
 	text-align: center;
 }
 
-/* Display type. Multiplier rather than fixed sizes, so the existing clamp()
-   scale keeps working at every breakpoint. */
+/* Display type.
+   
+   NOT `font-size: calc(1em * var(--display-size))` — that was shipped and it
+   was wrong in the worst way: `1em` on a heading resolves to the INHERITED
+   size, so every h1 collapsed from clamp(2rem, 5vw, 3.6rem) to the body's
+   16px, on every design including the default. The hero headline rendered
+   smaller than the paragraph beneath it.
+   
+   The multiplier has to be applied where the size is actually declared, so the
+   clamp still does the responsive work and the design only scales it. */
 .hero h1,
 .section-head h2,
 .prose h1,
 .prose h2 {
-	font-size: calc(1em * var(--display-size));
 	letter-spacing: var(--display-track);
 	text-transform: var(--display-case);
 }
@@ -2243,4 +2250,16 @@ table.compare tr.hobo-row th {
 .palette-menu button span {
 	font-size: 0.74rem;
 	color: var(--text-faint);
+}
+
+/* A design that narrows the measure must also drop the hero to one column.
+   Broadsheet at 900px kept the two-column hero and clipped the code panel off
+   the right edge — the headline got bigger and the content got cut, which is
+   the opposite of the trade. Caught by screenshotting it, not by the build. */
+:root[data-design="broadsheet"] .hero,
+:root[data-design="titlecard"] .hero {
+	grid-template-columns: minmax(0, 1fr);
+}
+:root[data-design="titlecard"] .hero > * {
+	margin-inline: auto;
 }

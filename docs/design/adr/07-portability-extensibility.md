@@ -644,10 +644,10 @@ Crossplane (CNCF graduated) is the strongest living open standard for the "abstr
 ## ADR-0147
 **HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals.**
 
-**Status:** Proposed — amends [ADR-0135](#adr-0135).
+**Status:** Proposed — amends [ADR-0150](#adr-0150).
 
 ### Context
-[ADR-0135](#adr-0135) shipped `@hobo/control-yard` as the game-first control-plane UI over the shared management surface, but left the Phaser browser host **optional at v0** — a hand-rolled canvas script (`public/yard-game.js`) carried the visual surface while pure yard-engine + asset validation carried CI. Meanwhile the `src/draft/projects/otel-office` draft proved a zero-dependency world model driven by OTLP telemetry: characters and rooms materialize from observed traces/logs/metrics rather than invented state. The redesign (working title **HIGHBALL!**) merges the two: the yard becomes an *observed* world where control-plane reality — not scripted fiction — generates everything on screen. Seven labeled zones and a bespoke renderer cannot express that; a real scene graph, a shared world model, and honest signal provenance can.
+[ADR-0150](#adr-0150) shipped `@hobo/control-yard` as the game-first control-plane UI over the shared management surface, but left the Phaser browser host **optional at v0** — a hand-rolled canvas script (`public/yard-game.js`) carried the visual surface while pure yard-engine + asset validation carried CI. Meanwhile the `src/draft/projects/otel-office` draft proved a zero-dependency world model driven by OTLP telemetry: characters and rooms materialize from observed traces/logs/metrics rather than invented state. The redesign (working title **HIGHBALL!**) merges the two: the yard becomes an *observed* world where control-plane reality — not scripted fiction — generates everything on screen. Seven labeled zones and a bespoke renderer cannot express that; a real scene graph, a shared world model, and honest signal provenance can.
 
 ### Decision
 1. **Phaser 3 is the required browser host.** The v0 escape hatch in ADR-0150's consequences ("Phaser browser host is optional at v0") is superseded; the hand-rolled `public/yard-game.js` renderer is deleted. Everything else in ADR-0149 stands: layout lives in one `layout.ts`; clip metadata lives only in `assets/assets_index.json`; the Bo art bible (`site/public/parallax/README.md`) is law; config/inspect sheets confirm through the same `@hobo/management` functions as the CLI; tests stay offline.
@@ -693,7 +693,7 @@ The root cause was a contract that mandated an art style while supplying no art 
 ## ADR-0149
 **HoBo Rubberhose is the product identity; the pixel-RPG is a separate game project.**
 
-**Status:** Accepted — supersedes clauses 1 and 3 of [ADR-0148](#adr-0148); restores the art intent of [ADR-0135](#adr-0135) and [ADR-0140](#adr-0140) under a buildable contract.
+**Status:** Accepted — supersedes clauses 1 and 3 of [ADR-0148](#adr-0148); restores the art intent of [ADR-0150](#adr-0150) and [ADR-0147](#adr-0147) under a buildable contract.
 
 ### Context
 [ADR-0148](#adr-0148) diagnosed a real defect and drew the wrong conclusion from it.

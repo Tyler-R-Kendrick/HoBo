@@ -124,7 +124,7 @@ Current design examples align to this map:
 - `walkthrough.md` keeps operator SDK examples separate from app authoring
   imports.
 
-## Control-plane game UI (ADR-0149)
+## Control-plane game UI (ADR-0150)
 
 | Package | Role |
 |---|---|

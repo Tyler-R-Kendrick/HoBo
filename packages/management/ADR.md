@@ -1,7 +1,7 @@
 # ADR — `@hobo/management`
 
 **Status:** Accepted  
-**Related:** ADR-0131 (Station occupancy), ADR-0149 (control-plane game UI)
+**Related:** ADR-0131 (Station occupancy), ADR-0150 (control-plane game UI)
 
 ## Decision
 

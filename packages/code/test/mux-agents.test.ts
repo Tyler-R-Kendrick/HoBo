@@ -365,3 +365,18 @@ describe("remote panes do not pretend to be isolated", () => {
 		}
 	});
 });
+
+describe("ssh panes carry nothing local", () => {
+	it("drops the local cwd, which does not exist on the remote", () => {
+		// `cd '/home/alice/proj' && claude` on a machine without that path is
+		// `sh: 1: cd: can't cd to /home/alice/proj` — the agent never starts.
+		const remote = placedCommand({
+			name: "claude",
+			kind: "ssh",
+			host: "build-box",
+			command: "claude",
+		});
+		expect(remote).toBe("claude");
+		expect(remote).not.toContain("cd ");
+	});
+});

@@ -91,6 +91,23 @@ orphan directory nothing knew about.
   journalling. Preferring the snapshot made a real workspace invisible to
   `list`, `exec` and `remove` until someone thought to run `repair`.
 
+`create` never deletes a directory it cannot prove is dead. A name the registry
+does not list is *probably* debris, but the same state arises from a lost
+journal — where the directory holds an agent's uncommitted work — and from a
+clone another process is still running. Since `hobo-code mux` calls create on
+every run, deleting would turn one lost journal into silent, irreversible loss
+of every agent's tree. The directory is renamed to `<name>.debris` instead, and
+the new location is reported.
+
+`repair` restores from the snapshot only when the snapshot records a **larger**
+`eventCount` than the journal now holds, which is what truncation looks like. A
+snapshot that merely predates the last event is stale, and restoring from it
+would resurrect a workspace someone removed on purpose — written into the
+append-only journal, where it could never again be told from a real creation.
+`existsSync` on the workspace path cannot make this distinction: a surviving
+directory is the *signature* of a crash between recording a removal and
+performing it.
+
 Creation writes a `WorkspaceCreating` intent **before** touching the
 filesystem, because the clone is the long part and a crash inside it used to
 leave a directory nothing knew about — invisible to `list`, yet enough to make

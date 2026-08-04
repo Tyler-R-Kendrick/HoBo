@@ -79,6 +79,13 @@ if (command === "capability") {
 		process.stderr.write(`${created.reason ?? "create failed"}\n`);
 		process.exit(1);
 	}
+	if (created.debris) {
+		// stderr, so `create` keeps printing exactly the path on stdout — but
+		// an operator whose work was moved must be told where it went.
+		process.stderr.write(
+			`note: an unrecognised directory was in the way and was moved to ${created.debris} (not deleted)\n`,
+		);
+	}
 	// Path on stdout, matching rift, so callers can capture it directly.
 	emit(created.workspace.path, created.workspace);
 } else if (command === "list") {

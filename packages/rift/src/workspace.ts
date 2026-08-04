@@ -14,7 +14,15 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { type Capability, type CowTier, detectCapability } from "./capability.js";
 import {
@@ -61,6 +69,16 @@ export interface WorkspaceRecord {
 export interface Registry {
 	readonly root: string;
 	readonly workspaces: readonly WorkspaceRecord[];
+	/**
+	 * How many journal events this snapshot was folded from.
+	 *
+	 * Without it, a stale snapshot and a newer one look identical, and
+	 * `repair` cannot tell "the journal was truncated, restore from the
+	 * snapshot" from "the snapshot predates a removal, ignore it". `existsSync`
+	 * on the workspace path cannot discriminate: a surviving directory is the
+	 * *signature* of a crash between recording a removal and performing it.
+	 */
+	readonly eventCount?: number;
 }
 
 function registryPath(root: string): string {
@@ -100,14 +118,7 @@ export function readRegistry(root: string): Registry {
 
 /** The persisted projection, or null when it is absent or unreadable. */
 function readSnapshot(root: string): readonly WorkspaceRecord[] | null {
-	const file = registryPath(root);
-	if (!existsSync(file)) return null;
-	try {
-		const snapshot = JSON.parse(readFileSync(file, "utf8")) as Registry;
-		return Array.isArray(snapshot.workspaces) ? snapshot.workspaces : null;
-	} catch {
-		return null;
-	}
+	return readSnapshotRegistry(root)?.workspaces ?? null;
 }
 
 /**
@@ -124,26 +135,55 @@ function readSnapshot(root: string): readonly WorkspaceRecord[] | null {
 export function rebuildRegistry(root: string): Registry {
 	const abs = resolve(root);
 	const dir = riftDir(abs);
-	const projected = projectWorkspaces(readEvents(dir));
-	if (projected.length === 0) {
-		const snapshot = readSnapshot(abs) ?? [];
-		const surviving = snapshot.filter((w) => existsSync(w.path));
-		if (surviving.length > 0) {
-			for (const workspace of surviving) {
-				appendEvent(dir, {
-					type: "WorkspaceCreated",
-					at: workspace.createdAt,
-					workspace,
-				});
-			}
-			const restored: Registry = { root: abs, workspaces: surviving };
-			writeRegistry(restored);
-			return restored;
+	const events = readEvents(dir);
+	const projected = projectWorkspaces(events);
+	const snapshot = readSnapshotRegistry(abs);
+	// Restore only when the snapshot demonstrably saw *more* history than the
+	// journal now holds — that is truncation. A snapshot written before the
+	// last event is merely stale, and restoring from it would resurrect a
+	// workspace someone removed on purpose, written into the append-only
+	// journal where it could never be told from a real creation.
+	const truncated =
+		snapshot !== null &&
+		typeof snapshot.eventCount === "number" &&
+		snapshot.eventCount > events.length &&
+		snapshot.workspaces.length > 0;
+	if (truncated) {
+		const surviving = snapshot.workspaces.filter((w) => existsSync(w.path));
+		for (const workspace of surviving) {
+			appendEvent(dir, {
+				type: "WorkspaceCreated",
+				at: workspace.createdAt,
+				workspace,
+			});
 		}
+		const restored: Registry = {
+			root: abs,
+			workspaces: surviving,
+			eventCount: readEvents(dir).length,
+		};
+		writeRegistry(restored);
+		return restored;
 	}
-	const registry: Registry = { root: abs, workspaces: projected };
+	const registry: Registry = {
+		root: abs,
+		workspaces: projected,
+		eventCount: events.length,
+	};
 	writeRegistry(registry);
 	return registry;
+}
+
+/** The persisted projection with its bookkeeping, or null when unusable. */
+function readSnapshotRegistry(root: string): Registry | null {
+	const file = registryPath(root);
+	if (!existsSync(file)) return null;
+	try {
+		const snapshot = JSON.parse(readFileSync(file, "utf8")) as Registry;
+		return Array.isArray(snapshot.workspaces) ? snapshot : null;
+	} catch {
+		return null;
+	}
 }
 
 /** Append a creation event and refresh the snapshot. */
@@ -158,9 +198,11 @@ function recordCreated(root: string, workspace: WorkspaceRecord): void {
 /** Append the event, then refresh the snapshot it projects to. */
 function record(root: string, event: WorkspaceEvent): void {
 	appendEvent(riftDir(root), event);
+	const events = readEvents(riftDir(root));
 	writeRegistry({
 		root,
-		workspaces: projectWorkspaces(readEvents(riftDir(root))),
+		workspaces: projectWorkspaces(events),
+		eventCount: events.length,
 	});
 }
 
@@ -217,10 +259,13 @@ export interface CreateOptions {
 export interface CreateResult {
 	readonly workspace: WorkspaceRecord | null;
 	readonly reason?: string;
+	/** Where an unrecognised directory was moved, when one was in the way. */
+	readonly debris?: string;
 }
 
 export function createWorkspace(options: CreateOptions): CreateResult {
 	const root = resolve(options.root);
+	let debris: string | null = null;
 	// Parse before the name is ever joined onto a path: an unchecked name is a
 	// traversal primitive, not just bad input.
 	const parsed = parseWorkspaceName(options.name);
@@ -232,17 +277,25 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 	const capability = options.capability ?? detectCapability(root);
 	const base = join(root, RIFT_DIR, "workspaces", name);
 	if (existsSync(base)) {
-		// A directory the registry does not know about is debris, not a
-		// workspace. That covers both crash windows — during the clone, and
-		// during a removal that recorded the event but died inside `rmSync` —
-		// and it stays correct for any window added later, because the question
-		// asked is simply "does this workspace exist?" rather than "which
-		// specific failure produced this directory?".
 		const live = readRegistry(root).workspaces.some((w) => w.name === name);
 		if (live) {
 			return { workspace: null, reason: `workspace "${name}" already exists` };
 		}
-		rmSync(base, { recursive: true, force: true });
+		// The registry does not list it, so it is almost certainly debris from a
+		// crash. "Almost certainly" is not good enough to delete: the same state
+		// arises from a lost journal (where the directory holds an agent's
+		// uncommitted work) and from a clone another process is still running.
+		// `hobo-code mux` calls create on every run, so deleting here would turn
+		// one lost journal into silent, irreversible loss of every agent's tree.
+		// Move it aside instead — recovery stays possible and costs a rename.
+		const parked = parkDebris(base);
+		if (parked === null) {
+			return {
+				workspace: null,
+				reason: `"${name}" has a directory the registry does not list, and it could not be moved aside`,
+			};
+		}
+		debris = parked;
 	}
 	// Intent first: the filesystem work below can take seconds and can die.
 	record(root, {
@@ -269,7 +322,7 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 			createdAt: new Date().toISOString(),
 		};
 		recordCreated(root, made);
-		return { workspace: made };
+		return debris ? { workspace: made, debris } : { workspace: made };
 	}
 
 	mkdirSync(base, { recursive: true });
@@ -295,7 +348,25 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 		createdAt: new Date().toISOString(),
 	};
 	recordCreated(root, made);
-	return { workspace: made };
+	return debris ? { workspace: made, debris } : { workspace: made };
+}
+
+/**
+ * Move an unrecognised workspace directory out of the way, without deleting it.
+ * Returns the new path, or null if it could not be moved.
+ */
+function parkDebris(base: string): string | null {
+	for (let n = 0; n < 1000; n += 1) {
+		const target = `${base}.debris${n === 0 ? "" : `-${n}`}`;
+		if (existsSync(target)) continue;
+		try {
+			renameSync(base, target);
+			return target;
+		} catch {
+			return null;
+		}
+	}
+	return null;
 }
 
 export function removeWorkspace(root: string, name: string): boolean {

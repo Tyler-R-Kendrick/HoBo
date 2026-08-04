@@ -540,3 +540,70 @@ describe("an externally truncated journal", () => {
 		expect(readRegistry(root).workspaces).toEqual([]);
 	});
 });
+
+describe("create never destroys what it cannot prove is dead", () => {
+	it("parks an unrecognised directory instead of deleting it", () => {
+		// The registry not listing a name does not prove the directory is dead:
+		// a lost journal produces the same state, and the directory then holds
+		// an agent's uncommitted work. `hobo-code mux` calls create on every
+		// run, so deleting here turns one lost journal into silent, permanent
+		// loss of every agent's tree.
+		const root = source();
+		const made = createWorkspace({ root, name: "claude" });
+		const upper = made.workspace!.upper ?? made.workspace!.path;
+		writeFileSync(join(upper, "WORK.txt"), "UNCOMMITTED AGENT WORK\n");
+		// Lose the journal, exactly as external truncation would.
+		writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");
+
+		const again = createWorkspace({ root, name: "claude" });
+		expect(again.workspace).not.toBeNull();
+		expect(again.debris).toBeDefined();
+		// The work still exists, at the reported location.
+		const rescued = join(again.debris as string, "upper", "WORK.txt");
+		const flat = join(again.debris as string, "WORK.txt");
+		const found = existsSync(rescued) ? rescued : flat;
+		expect(existsSync(found)).toBe(true);
+		expect(readFileSync(found, "utf8")).toContain("UNCOMMITTED AGENT WORK");
+	});
+
+	it("still refuses outright when the registry does list the name", () => {
+		const root = source();
+		createWorkspace({ root, name: "claude" });
+		const again = createWorkspace({ root, name: "claude" });
+		expect(again.workspace).toBeNull();
+		expect(again.reason).toMatch(/already exists/);
+		expect(again.debris).toBeUndefined();
+	});
+});
+
+describe("repair distinguishes stale from truncated", () => {
+	it("does not resurrect a workspace that was deliberately removed", () => {
+		// removeWorkspace appends the event, rewrites the snapshot, then deletes.
+		// A crash after the append leaves: journal correct, snapshot stale, and
+		// the directory surviving — so `existsSync` is not evidence of life, it
+		// is the signature of that window.
+		const root = source();
+		createWorkspace({ root, name: "w" });
+		const snapshotPath = join(root, RIFT_DIR, "registry.json");
+		const stale = readFileSync(snapshotPath, "utf8");
+		const journal = join(root, RIFT_DIR, "events.jsonl");
+		writeFileSync(
+			journal,
+			`${readFileSync(journal, "utf8")}${JSON.stringify({ type: "WorkspaceRemoved", at: "2026-08-03T00:00:00.000Z", name: "w" })}\n`,
+		);
+		writeFileSync(snapshotPath, stale); // snapshot predates the removal
+		expect(readRegistry(root).workspaces).toEqual([]);
+		expect(rebuildRegistry(root).workspaces).toEqual([]);
+		expect(readRegistry(root).workspaces).toEqual([]);
+	});
+
+	it("still restores when the journal was genuinely truncated", () => {
+		const root = source();
+		createWorkspace({ root, name: "keep" });
+		writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");
+		expect(readRegistry(root).workspaces).toEqual([]);
+		expect(rebuildRegistry(root).workspaces.map((w) => w.name)).toEqual([
+			"keep",
+		]);
+	});
+});

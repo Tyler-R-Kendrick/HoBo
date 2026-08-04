@@ -1715,7 +1715,11 @@ export async function runHoboCodeCli(
 		// A remote host turns the same targets into ssh panes — identical shape.
 		const host = remoteHost;
 		const remoteTargets: MuxTarget[] = host
-			? targets.map((t): MuxTarget => ({ ...t, kind: "ssh", host }))
+			? targets.map(({ cwd: _local, exec: _wrapper, ...t }): MuxTarget => ({
+					...t,
+					kind: "ssh",
+					host,
+				}))
 			: targets;
 		const plan = planMux(session, remoteTargets);
 		if (agents.length === 0) {

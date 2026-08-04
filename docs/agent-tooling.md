@@ -184,6 +184,45 @@ A **knowledge-graph memory MCP server** (+ CLI) on the **Bun** runtime: `gbrain 
 - ⚠️ **Optional keys + data egress + cost:** remote providers use exactly one of `OPENAI_API_KEY` / `ZEROENTROPY_API_KEY` / `VOYAGE_API_KEY` (in `.env`) and receive embedding/query text. Don't point them at content you don't want shared. Local Ollama keeps embeddings local. The PGLite store is gitignored. To disable gbrain entirely, decline its MCP server or run setup with `--no-gbrain`.
 
 
+### spriterrific — local CLI skill (**prefer this one**)
+The Spriterrific **CLI**, installed on this machine as a `uv` tool
+(`uv tool install spriterrific`, currently **0.20.2**) and self-installing its
+skill with `spriterrific skill install --target all`. That command owns
+`.claude/skills/spriterrific`, `.agents/skills/spriterrific` and
+`.codex/skills/spriterrific`; re-run it with `--force` to upgrade rather than
+hand-editing, and note it does **not** write `.cursor/` or `.github/`.
+
+- **Requires** `FAL_KEY` in the gitignored `.env`, Python 3.11+ (uv provides it),
+  and `ffmpeg` for the video workflows. All three are present.
+- Generation bills **fal.ai directly**, per image and per video.
+
+**Prefer the local skill over `spriterrific-api`.** They drive the same engine,
+and the local one is the better default here for concrete reasons:
+
+1. **Review gates.** It writes a run folder with a review page, contact sheets
+   and per-stage artefacts you can look at before anything is promoted. The
+   hosted API returns URLs; the CLI hands you the evidence.
+2. **The anchor never leaves the machine unreviewed.** Facing, snap contract
+   and candidate height are checked locally, and a bad anchor is caught before
+   it is animated — which is where the cost is.
+3. **Reproducibility.** The run folder records prompts, seeds, model aliases and
+   costs beside the output, so a result can be re-derived.
+
+Reach for `spriterrific-api` only when the local CLI genuinely cannot run — no
+`FAL_KEY`, no Python, a machine without the tool — or when the user explicitly
+asks for the hosted queue. Say which one you used and why.
+
+**Runs are not committed.** `.gitignore` carries a repo-wide `runs/` rule; run
+folders are large, machine-specific and reproducible. Commit the *promoted*
+asset, not the run that made it.
+
+**Bo is asymmetric, and `--auto-orient` is a mirror.** It defaults to **on** and
+silently flips a wrong-way anchor to canonical, which hands Bo's bindle to the
+wrong arm. Always pass `--no-auto-orient` for him and read the facing line
+yourself. The engine assumes **W-authored** art (screen-left), so source a west
+anchor from `site/public/parallax/bo-walk-left.png` — a drawn west sheet — never
+by flipping the east one.
+
 ### spriterrific-api — `chongdashu/spriterrific-skills`
 Drives the **hosted Spriterrific HTTP API** — text prompt or reference image to
 game-ready 2D character anchors and animation spritesheets, generated on

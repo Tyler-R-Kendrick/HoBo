@@ -37,6 +37,14 @@ export interface MuxTarget {
 		readonly root: string;
 		readonly name: string;
 	};
+	/**
+	 * Station-brokered credential *reference* for an ssh pane.
+	 *
+	 * A reference, never the session token: the token is short-lived material
+	 * and must not reach a process table, a pane title, or a shell history. The
+	 * ssh agent resolves the reference.
+	 */
+	readonly credentialRef?: string;
 }
 
 export interface MuxPlan {
@@ -114,9 +122,15 @@ export function targetCommand(target: MuxTarget): string {
 		// `target.command` ran every agent in the remote login directory with no
 		// isolation at all, after allocating workspaces nobody then used.
 		// -t so the remote gets a TTY, matching what a local pane provides.
+		// The brokered reference travels as configuration rather than as an
+		// argument, so the pane uses the Station's session instead of whatever
+		// ambient key happens to be in ~/.ssh.
+		const identity = target.credentialRef
+			? `-o ${shellQuote(`IdentityAgent=${target.credentialRef}`)} `
+			: "";
 		return keepPaneOpen(
 			target.name,
-			`ssh -t ${target.host} ${shellQuote(placedCommand(target))}`,
+			`ssh -t ${identity}${target.host} ${shellQuote(placedCommand(target))}`,
 		);
 	}
 	return keepPaneOpen(target.name, placedCommand(target));

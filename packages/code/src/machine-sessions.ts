@@ -15,6 +15,8 @@
  * fallback that silently downgrades governance is worse than a clear failure.
  */
 
+import { createNativePamGateway } from "@hobo/stations";
+
 import type { DevMachine } from "./dev-machines.js";
 import { pamTarget, sshDestination } from "./dev-machines.js";
 
@@ -142,4 +144,63 @@ export function brokeredSshCommand(
 /** Human line for the mux panel — never includes session material. */
 export function describePane(pane: BrokeredPane): string {
 	return `${pane.agentId} · ${pane.machine.id} (${pane.machine.isolationClass}) · session ${pane.sessionId} until ${pane.expiresAt}`;
+}
+
+export interface StationBrokerContext {
+	readonly stationId: string;
+	readonly tenant: string;
+	readonly isolationClass: string;
+	readonly trustDomain?: string;
+}
+
+export interface OpenedGateway {
+	readonly broker: PaneSessionBroker;
+	/** Audit events produced so far — session refs only, never material. */
+	auditTypes(): readonly string[];
+	close(): Promise<void>;
+}
+
+/**
+ * Start the Station's native gateway for the life of a mux invocation.
+ *
+ * Native rather than a remote control plane: a local Station is the normal
+ * dogfooding case, and requiring Teleport/Boundary to be reachable before an
+ * agent pane can open would push people straight back to the ambient key this
+ * replaces.
+ */
+export async function openStationGateway(
+	context: StationBrokerContext,
+): Promise<OpenedGateway> {
+	const gateway = createNativePamGateway({
+		isolationClass: context.isolationClass as never,
+	});
+	await gateway.start({
+		stationId: context.stationId,
+		tenant: context.tenant,
+		isolationClass: context.isolationClass as never,
+		trustDomain: context.trustDomain ?? "local",
+	});
+	return {
+		broker: gateway as unknown as PaneSessionBroker,
+		auditTypes: () => gateway.auditEvents.map((e) => e.type),
+		close: () => gateway.stop(),
+	};
+}
+
+/** Broker one session per pane, keeping failures alongside successes. */
+export async function brokerPanes(
+	placements: readonly { machine: DevMachine; agentId: string }[],
+	options: BrokerOptions,
+): Promise<{
+	readonly panes: readonly BrokeredPane[];
+	readonly failures: readonly BrokerFailure[];
+}> {
+	const panes: BrokeredPane[] = [];
+	const failures: BrokerFailure[] = [];
+	for (const { machine, agentId } of placements) {
+		const outcome = await brokerPaneSession(machine, agentId, options);
+		if (outcome.ok) panes.push(outcome.pane);
+		else failures.push(outcome.failure);
+	}
+	return { panes, failures };
 }

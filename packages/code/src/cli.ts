@@ -21,6 +21,11 @@ import {
 	sshDestination,
 } from "./dev-machines.js";
 import {
+	brokerPanes,
+	describePane,
+	openStationGateway,
+} from "./machine-sessions.js";
+import {
 	runVirtualPane,
 	VIRTUAL_PANE_COMMANDS,
 	virtualPaneCommand,
@@ -1853,6 +1858,43 @@ export async function runHoboCodeCli(
 		const remoteHost = resolvedMachine
 			? sshDestination(resolvedMachine)
 			: undefined;
+
+		// Broker a Station session per remote pane. Doing this before tmux is
+		// touched means a denial stops the session from opening at all, rather
+		// than leaving panes sitting on a host they were not authorised for.
+		let brokered: Awaited<ReturnType<typeof brokerPanes>> | undefined;
+		let brokerAudit: readonly string[] = [];
+		if (resolvedMachine) {
+			const gateway = await openStationGateway({
+				stationId: platform.station.stationId,
+				tenant: tenant ?? "local",
+				isolationClass: resolvedMachine.isolationClass,
+			});
+			try {
+				brokered = await brokerPanes(
+					agents.map((a) => ({ machine: resolvedMachine, agentId: a.id })),
+					{ broker: gateway.broker, subject: "hobo-code", ttlSeconds: 3600 },
+				);
+				brokerAudit = gateway.auditTypes();
+			} finally {
+				await gateway.close();
+			}
+			if (brokered.panes.length === 0) {
+				return fail(
+					"HOBO_CODE_MUX_SESSION_DENIED",
+					panel("✕ mux", [
+						`the Station refused every session on ${resolvedMachine.id}.`,
+						...brokered.failures
+							.slice(0, 3)
+							.map((f) => `${f.agentId} · ${f.reason}`),
+						"Panes are not opened on a host the Station did not authorise;",
+						"there is no fallback to an ambient key.",
+					]),
+					["hobo-code machines", "hobo-code auth"],
+					{ machine: resolvedMachine, failures: brokered.failures },
+				);
+			}
+		}
 		const allocation = await allocateAgentWorkspaces({
 			workspaceRoot: workspace.path,
 			agentIds: agents.map((a) => a.id),
@@ -1888,12 +1930,21 @@ export async function runHoboCodeCli(
 		});
 		// A remote host turns the same targets into ssh panes — identical shape.
 		const host = remoteHost;
+		const brokeredFor = new Map(
+			(brokered?.panes ?? []).map((p) => [p.agentId, p.credentialRef]),
+		);
 		const remoteTargets: MuxTarget[] = host
-			? targets.map(({ cwd: _local, exec: _wrapper, ...t }): MuxTarget => ({
-					...t,
-					kind: "ssh",
-					host,
-				}))
+			? targets.map(({ cwd: _local, exec: _wrapper, ...t }): MuxTarget => {
+					const ref = brokeredFor.get(t.name);
+					return {
+						...t,
+						kind: "ssh",
+						host,
+						// Only a pane with a brokered session gets one; a pane
+						// without would otherwise silently use an ambient key.
+						...(ref !== undefined ? { credentialRef: ref } : {}),
+					};
+				})
 			: targets;
 		const plan = planMux(session, remoteTargets);
 		if (agents.length === 0) {
@@ -1921,6 +1972,13 @@ export async function runHoboCodeCli(
 			applied.detail,
 			`workspace · ${workspace.path} (${workspace.source})`,
 			`trees · ${allocation.backend}${allocation.reason ? ` — ${allocation.reason}` : ""}`,
+			...(brokered
+				? [
+						`sessions · ${brokered.panes.length} brokered by the Station (${brokerAudit.filter((t) => t === "pam.SessionStarted").length} started)`,
+						...brokered.panes.slice(0, 3).map((p) => `  ${describePane(p)}`),
+						...brokered.failures.map((f) => `  denied · ${f.agentId}: ${f.reason}`),
+					]
+				: []),
 			...(virtualPanes
 				? [
 						`shell · virtual (${VIRTUAL_PANE_COMMANDS} commands, no network, no execve)`,

@@ -222,6 +222,90 @@ Not Material elevation. Use **sticker depth**:
 - Film grain overlay sits above the whole page (non-interactive).
 - Parallax trail band uses **supplied plates**, not CSS-drawn hills.
 
+## Motion
+
+Rubberhose is an *animation* idiom. A still rubberhose surface is a poster of
+one — the bounce is the point, and motion here is identity, not decoration.
+
+But the persona who owns this identity declares `prefers-reduced-motion`, and
+two more declare `cognitive-load-sensitive`. So the rule is not "animate less".
+It is: **every motion must survive being removed.** If taking the animation away
+breaks comprehension, the animation was carrying information that should have
+been in the layout.
+
+### The curve
+
+One easing token, `--ease: cubic-bezier(0.22, 1, 0.36, 1)`. It overshoots and
+settles — squash-and-stretch expressed as a curve. Anything that needs a
+*different* curve is either not rubberhose or is a special case that must say
+why in a comment.
+
+**Durations.** Three steps, and no fourth:
+
+| Token | Value | For |
+|---|---|---|
+| `--dur-tap` | 120ms | State you caused: press, toggle, focus |
+| `--dur-move` | 220ms | Something travelling: hover lift, disclosure |
+| `--dur-scene` | 420ms | Something arriving: page-level reveal |
+
+Nothing exceeds 420ms. A rubberhose gag lands in under half a second; a UI that
+takes longer is not being charming, it is being slow.
+
+### MA (間) — the interval is the animation
+
+The Japanese `MA` is not empty time, it is *charged* time: the pause that gives
+the next beat meaning. Applied here:
+
+**The Rest Rule.** A sequence of entering elements is staggered by **60ms**, and
+the stagger is the content. Three cards arriving together is a state change;
+three cards arriving 60ms apart is a sentence. Never stagger more than five
+things — past that it stops reading as rhythm and starts reading as lag.
+
+**The Held Breath Rule.** Anything that reveals on scroll waits until it is
+**15% into the viewport**, not at the edge. The gap between "it could animate"
+and "it does" is the MA. Triggering at the boundary makes the page feel twitchy.
+
+**The Empty Frame Rule.** Motion never fills space that was doing work by being
+empty. If an animation's job is to draw the eye to a region, the region earns
+attention by having margin around it, not by moving.
+
+### Reduced motion — parity, not removal
+
+`@media (prefers-reduced-motion: reduce)` must leave the surface **complete**,
+not degraded:
+
+- Transitions collapse to `none`. Elements land in their final state — they do
+  not skip a step or appear un-styled.
+- Looping and idle animation (Bo's idle, film grain drift, parallax) **stops
+  entirely**. It is ambient, so its removal costs nothing.
+- Anything that communicates state — focus rings, open/closed, loading — keeps
+  communicating it, by colour, outline or position instead of movement.
+- Scroll-triggered reveals become *already revealed*. Never leave content at
+  `opacity: 0` behind a trigger that reduced-motion disabled: that is how a
+  motion preference turns into a blank page.
+
+**The audit test:** set `prefers-reduced-motion: reduce`, disable JavaScript,
+and load the page. Every piece of content must be present and legible. If
+anything is missing, the motion was load-bearing and the layout is wrong.
+
+### Parallax
+
+The trail parallax is the one place scroll drives motion. It is **ambient by
+definition**: it carries no information, so under reduced motion it simply
+stops, and nothing is lost. Layers move at fractions of scroll — never faster
+than scroll itself, which reads as a glitch rather than depth.
+
+### What motion may not do
+
+- **Don't** animate `width`, `height`, `top` or `left`. Transform and opacity
+  only; anything else invites layout thrash on a long docs page.
+- **Don't** animate on page load except for the one scene-level reveal. A page
+  that performs on arrival delays reading.
+- **Don't** use motion as the only signal for anything. Colour, position or text
+  must say it too.
+- **Don't** loop anything in the reading column. Ambient motion belongs in the
+  margins — literally.
+
 ## Shapes
 
 - **md radius 12px** default cards/buttons; **lg 18px** for story cards.

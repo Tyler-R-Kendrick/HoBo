@@ -50,6 +50,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 							? "dark"
 							: "light";
 				document.documentElement.dataset.theme = theme;
+				// Palette is the second axis. Absent or unknown => ink, the
+				// canonical black-and-white, so a bad stored value cannot strand
+				// anyone in a half-applied theme.
+				const pal = localStorage.getItem("hobo-palette");
+				if (pal && ["dusk", "rain", "cel", "moss"].includes(pal)) {
+					document.documentElement.dataset.palette = pal;
+				}
 			})();
 		</script>
 	</head>
@@ -67,6 +74,32 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 				const next = root.dataset.theme === "dark" ? "light" : "dark";
 				root.dataset.theme = next;
 				localStorage.setItem("hobo-theme", next);
+			});
+			// Palette picker. `ink` clears the attribute rather than setting a
+			// value, so the default stays the absence of a choice.
+			for (const b of document.querySelectorAll("[data-set-palette]")) {
+				b.addEventListener("click", () => {
+					const p = b.dataset.setPalette;
+					const root = document.documentElement;
+					if (p === "ink") {
+						delete root.dataset.palette;
+						localStorage.removeItem("hobo-palette");
+					} else {
+						root.dataset.palette = p;
+						localStorage.setItem("hobo-palette", p);
+					}
+					b.closest("details")?.removeAttribute("open");
+				});
+			}
+			// Click-away and Escape close the picker; a disclosure that only
+			// closes by clicking its own summary reads as broken.
+			document.addEventListener("click", (e) => {
+				const d = document.querySelector(".palette-picker[open]");
+				if (d && !d.contains(e.target)) d.removeAttribute("open");
+			});
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "Escape")
+					document.querySelector(".palette-picker[open]")?.removeAttribute("open");
 			});
 			for (const [btn, target] of [
 				[".nav-toggle", ".site-nav"],

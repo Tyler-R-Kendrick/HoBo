@@ -33,6 +33,12 @@
 
 	/* motion */
 	--ease: cubic-bezier(0.22, 1, 0.36, 1);
+	/* Three steps and no fourth (DESIGN.md § Motion). Nothing exceeds 420ms:
+	   a rubberhose gag lands in under half a second. */
+	--dur-tap: 120ms;
+	--dur-move: 220ms;
+	--dur-scene: 420ms;
+	--stagger: 60ms;
 }
 
 /* Night is opt-in: chosen by the toggle, a stored preference, or an OS that
@@ -110,6 +116,175 @@
 		0 12px 32px -12px rgba(16, 16, 16, 0.14);
 	--code-bg: #f7f7f5;
 	--hero-grid: rgba(16, 16, 16, 0.09);
+}
+
+/* ============================================================================
+   PALETTES — the second theme axis.
+
+   `data-theme` stays what it was: the day/night *mode*, an exact inversion
+   pair. `data-palette` is orthogonal — it re-inks the paper and the line
+   without touching that machinery, so the mode logic (and the day-default fix
+   it took two passes to get right) is not re-litigated for every new theme.
+
+   Absent `data-palette`, you get `ink`: the canonical Steamboat Willie
+   black-and-white. Every palette keeps the same contract — one paper, one ink,
+   two rare accents — so The One Voice Rule survives the switch. A palette that
+   needed a third accent would be a different design system, not a theme.
+
+   MA (間): each palette is defined by what it withholds. The accents exist to
+   be *absent* almost everywhere; the paper is mostly empty on purpose.
+   ============================================================================ */
+
+/* --- 2 · DUSK MEADOW — Ghibli golden hour. Warm paper, sepia ink. --------- */
+:root[data-palette="dusk"] {
+	--bg: #fbf5e9;
+	--bg-raised: #fffdf7;
+	--bg-inset: #f2e9d6;
+	--border: #ddd0b6;
+	--border-strong: #b9a97f;
+	--text: #2e2418;
+	--text-mute: #6b5a41;
+	--text-faint: #8d7c62;
+	--accent: #2e2418;
+	--accent-strong: #1a140c;
+	--accent-ink: #fbf5e9;
+	--accent-soft: rgba(46, 36, 24, 0.07);
+	--spark: #b4451f;
+	--spark-soft: rgba(180, 69, 31, 0.14);
+	--go: #5c6f2e;
+	--go-soft: rgba(92, 111, 46, 0.14);
+}
+:root[data-palette="dusk"][data-theme="dark"] {
+	--bg: #17120b;
+	--bg-raised: #1f1811;
+	--bg-inset: #241c13;
+	--border: rgba(251, 245, 233, 0.14);
+	--border-strong: rgba(251, 245, 233, 0.3);
+	--text: #f0e4cd;
+	--text-mute: #bfae90;
+	--text-faint: #9c8c71;
+	--accent: #f0e4cd;
+	--accent-strong: #fffdf7;
+	--accent-ink: #17120b;
+	--accent-soft: rgba(240, 228, 205, 0.08);
+	--spark: #ee8a5f;
+	--spark-soft: rgba(238, 138, 95, 0.16);
+	--go: #a3bd6a;
+	--go-soft: rgba(163, 189, 106, 0.16);
+}
+
+/* --- 3 · RAIN GLASS — Ghibli downpour. Cool paper, indigo ink. ----------- */
+:root[data-palette="rain"] {
+	--bg: #f2f5f7;
+	--bg-raised: #ffffff;
+	--bg-inset: #e5ebef;
+	--border: #cdd8de;
+	--border-strong: #9dafb9;
+	--text: #1b2732;
+	--text-mute: #4c5f6d;
+	--text-faint: #6f8290;
+	--accent: #1b2732;
+	--accent-strong: #0d1620;
+	--accent-ink: #f2f5f7;
+	--accent-soft: rgba(27, 39, 50, 0.06);
+	--spark: #2f6f8f;
+	--spark-soft: rgba(47, 111, 143, 0.14);
+	--go: #3f7d6a;
+	--go-soft: rgba(63, 125, 106, 0.14);
+}
+:root[data-palette="rain"][data-theme="dark"] {
+	--bg: #0b1219;
+	--bg-raised: #111b23;
+	--bg-inset: #16222c;
+	--border: rgba(228, 238, 244, 0.14);
+	--border-strong: rgba(228, 238, 244, 0.3);
+	--text: #e4eef4;
+	--text-mute: #a7bcc8;
+	--text-faint: #859aa8;
+	--accent: #e4eef4;
+	--accent-strong: #ffffff;
+	--accent-ink: #0b1219;
+	--accent-soft: rgba(228, 238, 244, 0.08);
+	--spark: #6fc0e0;
+	--spark-soft: rgba(111, 192, 224, 0.16);
+	--go: #74c4a8;
+	--go-soft: rgba(116, 196, 168, 0.16);
+}
+
+/* --- 4 · CEL BLOOM — Cuphead title card. Card stock, vermillion. --------- */
+:root[data-palette="cel"] {
+	--bg: #f7f0e1;
+	--bg-raised: #fffaf0;
+	--bg-inset: #ece1cb;
+	--border: #d6c6a8;
+	--border-strong: #a8916b;
+	--text: #241a12;
+	--text-mute: #5e4b38;
+	--text-faint: #806a52;
+	--accent: #241a12;
+	--accent-strong: #120c07;
+	--accent-ink: #f7f0e1;
+	--accent-soft: rgba(36, 26, 18, 0.07);
+	--spark: #c5301c;
+	--spark-soft: rgba(197, 48, 28, 0.14);
+	--go: #1f6b3a;
+	--go-soft: rgba(31, 107, 58, 0.14);
+}
+:root[data-palette="cel"][data-theme="dark"] {
+	--bg: #14100a;
+	--bg-raised: #1d1710;
+	--bg-inset: #231b12;
+	--border: rgba(247, 240, 225, 0.14);
+	--border-strong: rgba(247, 240, 225, 0.3);
+	--text: #f2e7d2;
+	--text-mute: #c0af92;
+	--text-faint: #9d8d73;
+	--accent: #f2e7d2;
+	--accent-strong: #fffaf0;
+	--accent-ink: #14100a;
+	--accent-soft: rgba(242, 231, 210, 0.08);
+	--spark: #ff7a63;
+	--spark-soft: rgba(255, 122, 99, 0.16);
+	--go: #57c777;
+	--go-soft: rgba(87, 199, 119, 0.16);
+}
+
+/* --- 5 · MOSS QUIET — Ghibli forest floor. The most MA of the five. ------ */
+:root[data-palette="moss"] {
+	--bg: #f1f4ee;
+	--bg-raised: #fbfdf9;
+	--bg-inset: #e3e9dd;
+	--border: #ccd6c4;
+	--border-strong: #9aab90;
+	--text: #1e2a1c;
+	--text-mute: #4d5c48;
+	--text-faint: #6f7e69;
+	--accent: #1e2a1c;
+	--accent-strong: #0f180e;
+	--accent-ink: #f1f4ee;
+	--accent-soft: rgba(30, 42, 28, 0.06);
+	--spark: #9a5b1c;
+	--spark-soft: rgba(154, 91, 28, 0.14);
+	--go: #2f6b3f;
+	--go-soft: rgba(47, 107, 63, 0.14);
+}
+:root[data-palette="moss"][data-theme="dark"] {
+	--bg: #0d120c;
+	--bg-raised: #141b13;
+	--bg-inset: #1a2218;
+	--border: rgba(233, 240, 229, 0.14);
+	--border-strong: rgba(233, 240, 229, 0.3);
+	--text: #e9f0e5;
+	--text-mute: #b0bfa9;
+	--text-faint: #8d9c87;
+	--accent: #e9f0e5;
+	--accent-strong: #fbfdf9;
+	--accent-ink: #0d120c;
+	--accent-soft: rgba(233, 240, 229, 0.08);
+	--spark: #e2a35c;
+	--spark-soft: rgba(226, 163, 92, 0.16);
+	--go: #7fc08d;
+	--go-soft: rgba(127, 192, 141, 0.16);
 }
 
 /* ---------- Reset-ish ---------- */
@@ -1684,4 +1859,68 @@ table.compare tr.hobo-row th {
 .error-page p {
 	color: var(--text-mute);
 	margin: 0 0 1.5rem;
+}
+
+/* --- Palette picker -------------------------------------------------------
+   A disclosure, not five buttons in the bar. The designer persona's clutter
+   thresholds are 1 (the lowest there is) and junior-frontend treats
+   choiceOverload as a hard budget that invalidates any uplift — so five
+   options may exist, but they may not *shout*. Closed, this costs one icon;
+   the palettes are there when looked for and invisible when not. That is the
+   same MA the palettes themselves are built on. */
+.palette-picker {
+	position: relative;
+}
+
+.palette-picker > summary {
+	list-style: none;
+	display: inline-flex;
+}
+
+.palette-picker > summary::-webkit-details-marker {
+	display: none;
+}
+
+.palette-menu {
+	position: absolute;
+	right: 0;
+	top: calc(100% + 0.4rem);
+	z-index: 40;
+	display: grid;
+	gap: 0.1rem;
+	min-width: 11rem;
+	padding: 0.35rem;
+	background: var(--bg-raised);
+	border: 2px solid var(--accent);
+	border-radius: var(--radius);
+	box-shadow: 3px 3px 0 var(--accent);
+}
+
+.palette-menu button {
+	appearance: none;
+	border: none;
+	border-radius: calc(var(--radius) - 6px);
+	background: none;
+	color: var(--text);
+	font: inherit;
+	font-size: 0.9rem;
+	text-align: left;
+	padding: 0.4rem 0.6rem;
+	cursor: pointer;
+	transition: background 0.14s var(--ease);
+}
+
+.palette-menu button:hover {
+	background: var(--accent-soft);
+}
+
+.palette-menu button:focus-visible {
+	outline: 2px solid var(--spark);
+	outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.palette-menu button {
+		transition: none;
+	}
 }

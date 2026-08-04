@@ -35,6 +35,15 @@ falling back to a git worktree.
 Inside the namespace, `.hobo-rift` is masked with an empty tmpfs. The lower
 layer is the whole source, which contains every other agent's upper layer.
 
+**This is containment, not a sandbox.** The mask hides the workspaces
+directory *at its path inside the merged view*; it does not remove the process's
+ability to reach the source tree by its real absolute path. An agent that walks
+out to `/path/to/source/.hobo-rift/workspaces/other/upper` still reads it, and a
+write to an absolute path in the source still lands in the source. What the
+isolation buys is that ordinary relative-path work — which is what agents
+actually do — cannot collide. Treat it as protection against accident, not
+against a hostile process.
+
 ## Schema and constraints
 
 Records, messages, and events are defined in

@@ -62,6 +62,8 @@ export interface AllocateOptions {
 	readonly env?: NodeJS.ProcessEnv;
 	/** Skip isolation entirely and share the workspace root. */
 	readonly shared?: boolean;
+	/** Why isolation was skipped, when it was not the user asking directly. */
+	readonly sharedReason?: string;
 	/** Seam for tests: where the bundled sidecar binary is found. */
 	readonly bundled?: () => string | null;
 }
@@ -106,7 +108,9 @@ export async function allocateAgentWorkspaces(
 	if (options.shared) {
 		return {
 			backend: "shared",
-			reason: "--shared: every agent uses the workspace root",
+			reason:
+				options.sharedReason ??
+				"--shared: every agent uses the workspace root",
 			workspaces: agentIds.map((agentId) => ({
 				agentId,
 				path: workspaceRoot,

@@ -18,7 +18,6 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join, resolve } from "node:path";
 import { type Capability, type CowTier, detectCapability } from "./capability.js";
 import {
-	abandonedCreations,
 	appendEvent,
 	journalPath,
 	projectWorkspaces,
@@ -88,31 +87,61 @@ export function readRegistry(root: string): Registry {
 	const abs = resolve(root);
 	const dir = riftDir(abs);
 	if (existsSync(journalPath(dir))) {
+		// Authoritative, including when it projects to empty: "everything was
+		// removed" and "nothing was ever created" are both legitimate. Falling
+		// back to the snapshot here would resurrect removed workspaces, which
+		// is worse than the truncation it would guard against — recovery from a
+		// lost journal is `repair`'s job, where an operator asked for it.
 		return { root: abs, workspaces: projectWorkspaces(readEvents(dir)) };
 	}
-	// No journal: a root from before journalling, or one that was never
-	// initialised. The snapshot is all there is.
-	const file = registryPath(abs);
-	if (existsSync(file)) {
-		try {
-			const snapshot = JSON.parse(readFileSync(file, "utf8")) as Registry;
-			if (Array.isArray(snapshot.workspaces)) {
-				return { root: abs, workspaces: snapshot.workspaces };
-			}
-		} catch {
-			/* unreadable and no journal — report empty rather than guessing */
-		}
-	}
-	return { root: abs, workspaces: [] };
+	// No journal: a root from before journalling, or one never initialised.
+	return { root: abs, workspaces: readSnapshot(abs) ?? [] };
 }
 
-/** Rebuild the snapshot from the journal. Exposed as `hobo-rift repair`. */
+/** The persisted projection, or null when it is absent or unreadable. */
+function readSnapshot(root: string): readonly WorkspaceRecord[] | null {
+	const file = registryPath(root);
+	if (!existsSync(file)) return null;
+	try {
+		const snapshot = JSON.parse(readFileSync(file, "utf8")) as Registry;
+		return Array.isArray(snapshot.workspaces) ? snapshot.workspaces : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Reconcile journal and snapshot. Exposed as `hobo-rift repair`.
+ *
+ * Normally this just rewrites the snapshot from the journal. When the journal
+ * is empty but the snapshot is not — external truncation, the classic
+ * zero-length-file-after-power-loss shape, since `appendFileSync` never
+ * truncates on its own — it replays the snapshot back into the journal instead,
+ * so workspaces that still exist on disk stop being orphans. That direction is
+ * deliberately only available here, where an operator asked for it: doing it
+ * implicitly on every read would resurrect deliberately removed workspaces.
+ */
 export function rebuildRegistry(root: string): Registry {
 	const abs = resolve(root);
-	const registry: Registry = {
-		root: abs,
-		workspaces: projectWorkspaces(readEvents(riftDir(abs))),
-	};
+	const dir = riftDir(abs);
+	const projected = projectWorkspaces(readEvents(dir));
+	if (projected.length === 0) {
+		const snapshot = readSnapshot(abs) ?? [];
+		const surviving = snapshot.filter((w) => existsSync(w.path));
+		if (surviving.length > 0) {
+			for (const workspace of surviving) {
+				appendEvent(dir, {
+					type: "WorkspaceCreated",
+					at: workspace.createdAt,
+					workspace,
+				});
+			}
+			const restored: Registry = { root: abs, workspaces: surviving };
+			writeRegistry(restored);
+			return restored;
+		}
+	}
+	const registry: Registry = { root: abs, workspaces: projected };
 	writeRegistry(registry);
 	return registry;
 }
@@ -203,12 +232,14 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 	const capability = options.capability ?? detectCapability(root);
 	const base = join(root, RIFT_DIR, "workspaces", name);
 	if (existsSync(base)) {
-		// A directory with no completed creation is debris from a crash during
-		// the clone, not a workspace. Refusing forever would be the wrong answer.
-		const abandoned = abandonedCreations(readEvents(riftDir(root))).some(
-			(a) => a.name === name,
-		);
-		if (!abandoned) {
+		// A directory the registry does not know about is debris, not a
+		// workspace. That covers both crash windows — during the clone, and
+		// during a removal that recorded the event but died inside `rmSync` —
+		// and it stays correct for any window added later, because the question
+		// asked is simply "does this workspace exist?" rather than "which
+		// specific failure produced this directory?".
+		const live = readRegistry(root).workspaces.some((w) => w.name === name);
+		if (live) {
 			return { workspace: null, reason: `workspace "${name}" already exists` };
 		}
 		rmSync(base, { recursive: true, force: true });

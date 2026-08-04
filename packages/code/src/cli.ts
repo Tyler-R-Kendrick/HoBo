@@ -1681,12 +1681,22 @@ export async function runHoboCodeCli(
 		// just a target whose kind says where the work runs.
 		// One virtual worktree per agent (rift by default) so parallel agents
 		// cannot collide in a shared checkout.
+		// A remote host has its own filesystem. Local workspace paths mean
+		// nothing there, so allocating them would either send this machine's
+		// absolute paths to a different one or waste the work outright; the
+		// remote's own working directory is the honest answer.
+		const remoteHost = typeof flags.host === "string" ? flags.host : undefined;
 		const allocation = await allocateAgentWorkspaces({
 			workspaceRoot: workspace.path,
 			agentIds: agents.map((a) => a.id),
 			fallbackRoot: join(hoboHome, "workspaces"),
 			env,
-			shared: flags.shared === true,
+			shared: flags.shared === true || remoteHost !== undefined,
+			...(remoteHost !== undefined && flags.shared !== true
+				? {
+						sharedReason: `--host ${remoteHost}: panes run on the remote, which has its own filesystem — local virtual worktrees would not exist there`,
+					}
+				: {}),
 		});
 		const workspaceFor = new Map(
 			allocation.workspaces.map((w) => [w.agentId, w]),
@@ -1703,7 +1713,7 @@ export async function runHoboCodeCli(
 			} satisfies MuxTarget;
 		});
 		// A remote host turns the same targets into ssh panes — identical shape.
-		const host = typeof flags.host === "string" ? flags.host : undefined;
+		const host = remoteHost;
 		const remoteTargets: MuxTarget[] = host
 			? targets.map((t): MuxTarget => ({ ...t, kind: "ssh", host }))
 			: targets;

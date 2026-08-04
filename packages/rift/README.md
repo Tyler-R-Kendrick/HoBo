@@ -52,7 +52,9 @@ debugging.
 
 Inside an overlay workspace, `.hobo-rift` is masked with an empty tmpfs: the
 whole source is the lower layer, so without that an agent could read every
-other agent's upper layer.
+other agent's upper layer. The mask covers the path *inside* the workspace —
+an absolute path back to the real source still resolves, so this protects
+against collisions, not against a hostile process.
 
 ## Usage
 

@@ -79,26 +79,3 @@ export function projectWorkspaces(
 	return [...byName.values()];
 }
 
-/**
- * Names whose creation started but never finished — the crash-during-clone
- * shape. Their directories exist but no workspace does, so `create` can clear
- * them instead of refusing forever.
- */
-export function abandonedCreations(
-	events: readonly WorkspaceEvent[],
-): readonly { readonly name: string; readonly path: string }[] {
-	const pending = new Map<string, { name: string; path: string }>();
-	for (const event of events) {
-		if (event.type === "WorkspaceCreating") {
-			pending.set(event.name, { name: event.name, path: event.path });
-		} else if (
-			event.type === "WorkspaceCreated" ||
-			event.type === "WorkspaceRemoved"
-		) {
-			pending.delete(
-				event.type === "WorkspaceCreated" ? event.workspace.name : event.name,
-			);
-		}
-	}
-	return [...pending.values()];
-}

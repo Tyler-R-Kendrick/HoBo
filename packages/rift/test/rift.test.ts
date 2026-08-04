@@ -266,16 +266,22 @@ describe("exec wrapper", () => {
 
 describe("overlay availability is reported, not silently skipped", () => {
 	it("says so when this machine cannot grant an unprivileged overlay", () => {
-		// runIf drops the block below with no skip count in the report, so a CI
-		// box without user namespaces would print "all passed" while proving
-		// nothing about the tier this package exists to add.
-		const available = probeOverlayfs();
+		// runIf drops the property block below with no skip count in the report,
+		// so a CI box without user namespaces would print "all passed" while
+		// proving nothing about the tier this package exists to add.
+		const root = source();
+		const available = probeOverlayfs(root);
 		if (!available) {
 			console.warn(
 				"[rift] unprivileged overlayfs unavailable here — the isolation property test did NOT run",
 			);
 		}
-		expect(typeof available).toBe("boolean");
+		// Not a tautology: the probe and the selector must agree. A probe that
+		// says yes while detectCapability picks something else (or vice versa)
+		// means the recorded tier does not describe the machine.
+		const tier = detectCapability(root).tier;
+		expect(available ? tier !== "hardlink" : tier !== "overlayfs").toBe(true);
+		if (available) expect(["reflink", "overlayfs"]).toContain(tier);
 	});
 });
 
@@ -469,5 +475,68 @@ describe("crash windows", () => {
 		const retry = createWorkspace({ root, name: "half" });
 		expect(retry.workspace).not.toBeNull();
 		expect(retry.reason).toBeUndefined();
+	});
+});
+
+describe("a removal that dies mid-delete", () => {
+	it("does not wedge the name forever", () => {
+		// Removal records the event before deleting, so a crash inside rmSync of
+		// a large tree leaves a directory the registry says is gone. Refusing to
+		// recreate it would drop every agent to a git worktree on the next mux —
+		// permanently, until a human deleted the directory by hand.
+		const root = source();
+		const made = createWorkspace({ root, name: "w" });
+		const path = made.workspace!.path;
+		const base = join(root, RIFT_DIR, "workspaces", "w");
+		// Record the removal, then leave the directory behind, as a crash would.
+		const journal = join(root, RIFT_DIR, "events.jsonl");
+		writeFileSync(
+			journal,
+			`${readFileSync(journal, "utf8")}${JSON.stringify({ type: "WorkspaceRemoved", at: "2026-08-03T00:00:00.000Z", name: "w" })}\n`,
+		);
+		expect(readRegistry(root).workspaces).toEqual([]);
+		expect(existsSync(base)).toBe(true);
+
+		const retry = createWorkspace({ root, name: "w" });
+		expect(retry.reason).toBeUndefined();
+		expect(retry.workspace).not.toBeNull();
+		expect(existsSync(retry.workspace!.path)).toBe(true);
+		expect(path).toBeDefined();
+	});
+});
+
+describe("an externally truncated journal", () => {
+	it("is recovered by repair, not silently on every read", () => {
+		// appendFileSync never truncates, so this needs external corruption —
+		// the zero-length-file-after-power-loss shape. Recovering implicitly
+		// would resurrect deliberately removed workspaces, so reads stay
+		// journal-authoritative and `repair` is where the operator opts in.
+		const root = source();
+		createWorkspace({ root, name: "keep" });
+		writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");
+		expect(readRegistry(root).workspaces).toEqual([]);
+		expect(rebuildRegistry(root).workspaces.map((w) => w.name)).toEqual([
+			"keep",
+		]);
+		// And the repair is durable — it went back into the journal.
+		expect(readRegistry(root).workspaces.map((w) => w.name)).toEqual(["keep"]);
+	});
+
+	it("repair does not resurrect a workspace whose directory is gone", () => {
+		const root = source();
+		const made = createWorkspace({ root, name: "gone" });
+		rmSync(join(root, RIFT_DIR, "workspaces", "gone"), {
+			recursive: true,
+			force: true,
+		});
+		writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");
+		expect(rebuildRegistry(root).workspaces).toEqual([]);
+		expect(made.workspace).not.toBeNull();
+	});
+
+	it("still reports empty when there genuinely are no workspaces", () => {
+		const root = source();
+		initRoot(root);
+		expect(readRegistry(root).workspaces).toEqual([]);
 	});
 });

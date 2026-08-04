@@ -11,6 +11,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { allocateAgentWorkspaces } from "../src/agent-workspaces.js";
 import { detectAgents, KNOWN_AGENTS } from "../src/agent-registry.js";
 import { inspectDevenv } from "../src/devenv.js";
 import {
@@ -338,5 +339,29 @@ describe("shell quoting", () => {
 		});
 		expect(command).toBe("cd '/ws/$(touch pwned)' && claude");
 		expect(command).not.toContain('"/ws/$(touch pwned)"');
+	});
+});
+
+describe("remote panes do not pretend to be isolated", () => {
+	it("skips local virtual worktrees for --host and says why", async () => {
+		// Local workspace paths do not exist on the remote machine. Allocating
+		// them either sends this machine's absolute paths somewhere they mean
+		// nothing, or wastes the work outright.
+		const result = await allocateAgentWorkspaces({
+			workspaceRoot: "/local/ws",
+			agentIds: ["claude", "codex"],
+			fallbackRoot: "/local/fallback",
+			shared: true,
+			sharedReason: "--host box: panes run on the remote",
+			runner: { run: async () => ({ code: 0, stdout: "", stderr: "" }) },
+			env: { PATH: "" },
+			bundled: () => null,
+		});
+		expect(result.backend).toBe("shared");
+		expect(result.reason).toMatch(/--host box/);
+		for (const w of result.workspaces) {
+			expect(w.path).toBe("/local/ws");
+			expect(w.exec).toBeUndefined();
+		}
 	});
 });

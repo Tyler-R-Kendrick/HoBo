@@ -32,6 +32,21 @@ closed with the sandbox intact. Gates are executed (`src/promotion-gates.ts`),
 not asserted — they were once hardcoded `pass: true`, which made "gated,
 audited" decoration over a literal.
 
+**Panes are real (`src/mux.ts`, `src/agent-registry.ts`).** The multiplexer
+used to draw three hardcoded panes that mapped to nothing. Agents are now
+auto-detected from evidence (binary on PATH and/or config directory) and each
+is seated in its own tmux window. `applyMux` is idempotent — an existing
+session is reused and only missing windows added, never killed. The
+load-bearing abstraction is the **uniform target**: local, local-inference and
+ssh are all just a command in a pane, so a locally spawned inference session
+and a remote ssh session share one lifecycle, naming and reattach story.
+
+**hobo-code declares its own environment (`devenv.nix`, `src/devenv.ts`).**
+The tools the harness shells out to are named in devenv rather than assumed.
+`inspectDevenv` reports whether that toolchain is installed and refuses to
+imply a hermetic shell that cannot be entered (nix is Linux/macOS; Windows via
+WSL2).
+
 **Tool calling is a separate, purpose-built model (`src/needle-tools.ts`,
 `bridges/needle_bridge.py`).** Cactus Needle — 26M params, distilled for
 function calling — plans tool calls; the chat SLM only writes prose. The

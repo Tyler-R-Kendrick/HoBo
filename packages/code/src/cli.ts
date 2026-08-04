@@ -10,7 +10,9 @@
  */
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
 import {
 	authLogin,
@@ -32,6 +34,7 @@ import {
 } from "./config-surface.js";
 import { costHumanSummary, inspectCost } from "./cost.js";
 import { cursorGuide, renderCursorGuideText } from "./cursor-guide.js";
+import { defaultDevenvProbes, devenvSummary, inspectDevenv } from "./devenv.js";
 import {
 	describeDistributedCompute,
 	dispatchComputeTask,
@@ -68,6 +71,13 @@ import {
 } from "./isolation.js";
 import { inspectModels, modelsHumanSummary } from "./models.js";
 import {
+	applyMux,
+	attachCommand,
+	type MuxTarget,
+	planMux,
+	tmuxRunner,
+} from "./mux.js";
+import {
 	CODE_FEATURE_DEFAULTS,
 	CODE_FEATURE_FLAGS,
 	type CodeFeaturePort,
@@ -99,6 +109,7 @@ export const HOBO_CODE_VERBS = [
 	"status",
 	"session",
 	"attach",
+	"mux",
 	"tasks",
 	"guide",
 	"scaffold",
@@ -240,6 +251,8 @@ function defaultHoboHome(env: NodeJS.ProcessEnv): string {
 /** Flags that consume the next token as their value (strict parsing). */
 const VALUE_FLAGS = new Set([
 	"home",
+	"session",
+	"host",
 	"cwd",
 	"tenant",
 	"domain",
@@ -272,6 +285,7 @@ const BOOL_FLAGS = new Set([
 	"print-cmd",
 	"printcmd",
 	"cursor",
+	"dry-run",
 ]);
 
 export class UnknownFlagError extends Error {
@@ -640,6 +654,24 @@ const VERB_HELP_PLAIN: Record<
 		"  hobo-code status    # mux chrome; herdr footer + clickableRegions in data",
 		"",
 		"See also: hobo-code status · hobo-code session · hobo-code help",
+	],
+	mux: [
+		"hobo-code mux — herdr-style multi-pane tmux session",
+		"",
+		"Seats every agent found on this machine in its own tmux window.",
+		"Local agents, local inference and ssh hosts are the same kind of",
+		"target: a command in a pane, so detach/reattach works identically.",
+		"",
+		"Usage:",
+		"  hobo-code mux                     detect agents, create/reuse session 'hobo'",
+		"  hobo-code mux --session work      name the session",
+		"  hobo-code mux --host box.example  run the same panes over ssh",
+		"  hobo-code mux --dry-run           show the plan without touching tmux",
+		"",
+		"Detection is evidence-based: a binary on PATH and/or a known config",
+		"directory. See hobo-code agent for what was found and why.",
+		"",
+		"Join: tmux attach -t hobo",
 	],
 	attach: [
 		"hobo-code attach — dev-terminal attach (tmux / mosh / Tailscale-shaped)",
@@ -1631,6 +1663,74 @@ export async function runHoboCodeCli(
 		});
 	}
 
+	if (verb === "mux") {
+		const probes = defaultProbes(env);
+		const agents = detectAgents(probes);
+		const session =
+			typeof flags.session === "string" && flags.session.length > 0
+				? flags.session
+				: "hobo";
+		// Every agent is a target; local inference is not a special case, it is
+		// just a target whose kind says where the work runs.
+		const targets: MuxTarget[] = agents.map((a) => ({
+			name: a.id,
+			kind: a.kind === "inference" ? "local-inference" : "local",
+			command: a.command,
+			cwd: projectDir,
+		}));
+		// A remote host turns the same targets into ssh panes — identical shape.
+		const host = typeof flags.host === "string" ? flags.host : undefined;
+		const remoteTargets: MuxTarget[] = host
+			? targets.map((t): MuxTarget => ({ ...t, kind: "ssh", host }))
+			: targets;
+		const plan = planMux(session, remoteTargets);
+		if (agents.length === 0) {
+			return fail(
+				"HOBO_CODE_MUX_NO_AGENTS",
+				panel("✕ mux", [
+					"no agents detected on this machine",
+					"install one (claude, codex, cursor-agent, opencode, …) or run hobo-code alone",
+				]),
+				["hobo-code agent", "hobo-code config"],
+				{ agents, plan },
+			);
+		}
+		const applied =
+			flags["dry-run"] === true
+				? {
+						ok: true,
+						session: plan.session,
+						created: plan.targets.map((t) => t.name),
+						existed: false,
+						detail: "dry run — no tmux invoked",
+					}
+				: await applyMux(plan, tmuxRunner());
+		const text = panel(applied.ok ? "✓ mux" : "✕ mux", [
+			applied.detail,
+			...agents.map(
+				(a) => `  ${a.id} · ${a.kind} · ${a.evidence[0] ?? "detected"}`,
+			),
+			`join · ${attachCommand(plan.session, host)}`,
+		]);
+		return applied.ok
+			? ok("HOBO_CODE_MUX", text, {
+					session: plan.session,
+					agents,
+					plan,
+					applied,
+				})
+			: fail(
+					"HOBO_CODE_MUX_FAILED",
+					text,
+					["tmux -V", "hobo-code mux --dry-run"],
+					{
+						agents,
+						plan,
+						applied,
+					},
+				);
+	}
+
 	if (verb === "attach") {
 		// Dev-terminal attach (tmux/mosh/Tailscale-shaped) — not control-plane remote admin.
 		const modeFlag =
@@ -1695,9 +1795,18 @@ export async function runHoboCodeCli(
 					? ["enter · devenv shell|direnv allow|nix develop"]
 					: ["optional · devenv.nix (never required)"]),
 		]);
-		return ok("HOBO_CODE_ENV", envText, {
+		// hobo-code declares its own environment with devenv; report whether the
+		// toolchain to enter it is actually installed rather than assuming.
+		const ownDevenv = inspectDevenv(
+			// dist/cli.js -> package root (devenv.nix lives beside package.json)
+			join(dirname(fileURLToPath(import.meta.url)), ".."),
+			defaultDevenvProbes(env),
+		);
+		const withDevenv = `${envText}\n${devenvSummary(ownDevenv)}`;
+		return ok("HOBO_CODE_ENV", withDevenv, {
 			hermetic,
-			text: envText,
+			devenv: ownDevenv,
+			text: withDevenv,
 			policy:
 				"Optional hermetic shell for hobo-code only; durable state under HOBO_HOME outside sandboxes; Nix not monorepo IaC.",
 		});

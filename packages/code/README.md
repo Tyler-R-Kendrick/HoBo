@@ -134,6 +134,54 @@ prompt. Machine callers should branch on `code` and consume `remediation[]`.
 | `/status` `/guide` `/tasks` `/login` | `hobo-code status` · `guide` · `tasks` · `auth login --agent` |
 | `/help` | keys + map · outside: `hobo-code help` |
 
+### Multi-pane agent sessions (`hobo-code mux`)
+
+Agents are **auto-detected** from evidence on your machine — a binary on PATH
+and/or a config directory — and each gets its own tmux window:
+
+```bash
+hobo-code mux                     # detect agents, create/reuse session "hobo"
+hobo-code mux --dry-run           # show the plan without touching tmux
+hobo-code mux --session work      # name it
+hobo-code mux --host box.example  # same panes, over ssh
+tmux attach -t hobo               # join
+```
+
+```
+✓ mux
+ created hobo with 6 window(s)
+  hobo-code · harness      · bin:/home/you/.local/bin/hobo-code
+  claude    · coding-agent · bin:/home/you/.local/bin/claude
+  codex     · coding-agent · bin:/home/you/.local/bin/codex
+  ollama    · inference    · bin:/usr/local/bin/ollama
+ join · tmux attach -t hobo
+```
+
+Re-running is idempotent: an existing session is reused and only missing
+windows are added — it never duplicates or kills a pane you are working in.
+
+**Local and remote are the same shape.** A local agent, a locally running
+inference server, and an ssh'd host are all just *a command in a pane*. Local
+inference is not a special case with its own lifecycle, so naming, detach and
+reattach behave identically wherever the work runs. `hobo-code agent` shows
+what was detected and the evidence for it.
+
+### hobo-code declares its own environment (devenv)
+
+The harness shells out to git, tmux, ssh, node/pnpm, python (for the Needle
+bridge) and ollama. Those are declared in [`devenv.nix`](./devenv.nix) rather
+than assumed:
+
+```bash
+devenv shell     # the declared toolchain
+devenv test      # check the environment is actually usable
+hobo-code env    # reports whether that toolchain is installed here
+```
+
+Nix covers Linux and macOS natively; Windows runs it under WSL2. `hobo-code
+env` says plainly when nix or devenv is missing instead of implying a
+hermetic shell you cannot enter.
+
 ## Quick start (Copilot-CLI-like)
 
 ```bash

@@ -9,8 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // public-contract: wire format id for hermetic env report payloads (CLI --json + evidence)
-export const HERMETIC_ENV_SCHEMA =
-	"hobo.code.hermetic-env/v1" as const;
+export const HERMETIC_ENV_SCHEMA = "hobo.code.hermetic-env/v1" as const;
 
 export type HermeticMarker =
 	| "devenv.nix"
@@ -57,6 +56,12 @@ function hasFile(root: string, name: string): boolean {
 /**
  * Probe project + process for hermetic shell signals.
  * Pure detection — does not activate devenv or spawn nix.
+ *
+ * hobo-code also ships its own `devenv.nix` / `devenv.yaml` (see the package
+ * root): the harness declares the tools it shells out to — git, tmux, ssh,
+ * node/pnpm, python for the Needle bridge, ollama for local inference —
+ * rather than assuming they exist. `hobo-code env` reports whether the
+ * toolchain to enter that environment is actually installed.
  */
 export function inspectHermeticEnv(options: {
 	readonly projectRoot: string;
@@ -93,9 +98,7 @@ export function inspectHermeticEnv(options: {
 
 	const hermeticDeclared = markers.length > 0;
 	const hermeticActive =
-		envHints.IN_NIX_SHELL ||
-		envHints.DEVENV_ROOT ||
-		envHints.DIRENV_DIR;
+		envHints.IN_NIX_SHELL || envHints.DEVENV_ROOT || envHints.DIRENV_DIR;
 
 	const recommendations: string[] = [];
 	if (hermeticDeclared && !hermeticActive) {

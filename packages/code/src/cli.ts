@@ -38,6 +38,7 @@ import { cursorGuide, renderCursorGuideText } from "./cursor-guide.js";
 import { defaultDevenvProbes, devenvSummary, inspectDevenv } from "./devenv.js";
 import {
 	describeDistributedCompute,
+	computeTaskPath,
 	dispatchComputeTask,
 } from "./distributed.js";
 import { dogfoodSummary } from "./dogfood.js";
@@ -2277,6 +2278,10 @@ export async function runHoboCodeCli(
 		poolId,
 		defaultVerb: defaultedVerb,
 		emptyPrompt,
+		dense,
+		// Point at the record itself: "recorded a task" is only checkable if
+		// the reply says where it landed.
+		taskPath: computeTaskPath(hoboHome, poolId, result.task.taskId),
 	});
 	return {
 		ok: dispatched,
@@ -2401,6 +2406,55 @@ function shortNodeLabel(nodeId: string): string {
 	return shortId(nodeId, 22);
 }
 
+/**
+ * What actually happened, in words.
+ *
+ * The dense form reads `✓ ★ / hello·st` — a status glyph, eight characters of
+ * the user's own prompt echoed back, and a two-letter pointer at another
+ * command. It says nothing about what `dispatch` did, and "✓" reads as "your
+ * request was carried out" when what happened is that a compute task was
+ * recorded. Help promises plain by default; this is that default.
+ */
+function renderDispatchPlain(input: {
+	readonly taskId: string;
+	readonly status: string;
+	readonly nodeId?: string;
+	readonly prompt: string;
+	readonly poolId: string;
+	readonly defaultVerb: boolean;
+	readonly emptyPrompt?: boolean;
+	readonly taskPath?: string;
+}): string {
+	const done = input.status === "done";
+	const failed = input.status === "failed";
+	const title = failed
+		? "✕ dispatch failed"
+		: done
+			? "✓ dispatch recorded"
+			: "· dispatch queued";
+	const rows: string[] = [];
+	rows.push(
+		failed
+			? "The compute task could not be recorded."
+			: done
+				? "Recorded a compute task. No agent has run it yet — dispatch queues work, it does not edit your project."
+				: "Queued a compute task; it has not been claimed yet.",
+	);
+	if (input.emptyPrompt) {
+		rows.push("No prompt was given, so the task carries an empty request.");
+	}
+	rows.push(`task · ${input.taskId}`);
+	if (input.taskPath) rows.push(`at · ${input.taskPath}`);
+	if (input.nodeId !== undefined) rows.push(`node · ${input.nodeId}`);
+	if (input.poolId !== "default") rows.push(`pool · ${input.poolId}`);
+	rows.push(
+		failed
+			? "Next: hobo-code status, or hobo-code tasks for the board."
+			: "Next: hobo-code tasks to see the board, or hobo-code status for this session.",
+	);
+	return panel(title, rows);
+}
+
 function renderDispatchSummary(input: {
 	readonly taskId: string;
 	readonly status: string;
@@ -2409,7 +2463,12 @@ function renderDispatchSummary(input: {
 	readonly poolId: string;
 	readonly defaultVerb: boolean;
 	readonly emptyPrompt?: boolean;
+	/** Glyph chrome is opt-in; plain English is the default the help promises. */
+	readonly dense?: boolean;
+	/** Where the task was written, so the reply points at something real. */
+	readonly taskPath?: string;
 }): string {
+	if (input.dense !== true) return renderDispatchPlain(input);
 	const glyph =
 		input.status === "done" ? "✓" : input.status === "failed" ? "✕" : "●";
 	// Title glyph already marks done — drop body ✓ twin. Fail/in-flight keep trail.

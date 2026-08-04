@@ -100,6 +100,15 @@ function poolRoot(hoboHome: string, poolId: string): string {
 	return join(hoboHome, "durable", "code", "compute", poolId);
 }
 
+/** Where a dispatched task's record lives, so a reply can point at it. */
+export function computeTaskPath(
+	hoboHome: string,
+	poolId: string,
+	taskId: string,
+): string {
+	return join(poolRoot(hoboHome, poolId), "tasks", `${taskId}.json`);
+}
+
 function writeJson(path: string, value: unknown): void {
 	mkdirSync(join(path, ".."), { recursive: true });
 	writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");

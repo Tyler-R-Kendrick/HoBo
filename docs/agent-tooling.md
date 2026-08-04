@@ -128,8 +128,13 @@ node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs status   # 0 healthy / 2
 node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs login    # device flow, needs the user
 ```
 
-- **Access tokens last one hour.** Run `ensure` before a generation batch; run
-  `login` when refresh is itself rejected.
+- **Access tokens last one hour**, refresh tokens 7 days — and each refresh
+  rolls that window, so a running daemon makes one `login` effectively
+  permanent. `ensure` refreshes if due *and* starts the background refresher.
+- The daemon is **single-instance via an O_EXCL PID lock**, because two loops
+  would consume each other's rotated tokens and break the chain. It logs to
+  `~/.higgsfield/daemon.log` and exits rather than spinning when the refresh
+  token is dead.
 - **Refresh tokens rotate on every use** and the old one dies immediately.
   Never call `/refresh` with curl during a session — that consumes the stored
   token and the next `ensure` fails. The store is written atomically at `0600`.

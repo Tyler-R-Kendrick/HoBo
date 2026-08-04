@@ -10,16 +10,42 @@ Higgsfield's access token lasts **one hour**. This skill mints and rotates it.
 ## Commands
 
 ```sh
-node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs ensure    # default: refresh only if needed
-node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs status    # how long is left
-node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs refresh   # force a rotation
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs ensure    # default: refresh if due, then keep it fresh
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs status    # token + daemon state
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs start     # background refresher
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs stop      # stop it
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs refresh   # force one rotation
 node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs login     # device flow (needs the user)
 ```
 
-**Reach for `ensure`.** It is a no-op when the token has more than five minutes
-left and refreshes otherwise, so it is safe to run before any generation batch.
-`status` exits `0` when healthy, `2` when a refresh is due, `1` when there is no
-token at all.
+**Reach for `ensure`.** It refreshes if the token is due, then starts the
+background refresher if it is not already running — so one call leaves the
+session self-sustaining. `status` exits `0` healthy, `2` refresh due, `1` no
+token.
+
+## The background refresher
+
+`start` spawns a detached loop that wakes shortly before expiry (5-minute skew),
+refreshes, rewrites `~/.claude.json`, and verifies with a real `initialize`
+call. It logs to `~/.higgsfield/daemon.log` and prints nothing — refreshing is
+supposed to be invisible.
+
+Because refresh tokens roll their own 7-day window on every use, a daemon that
+keeps running makes a single `login` effectively permanent.
+
+**Single-instance, enforced with an O_EXCL PID lock.** This is not tidiness:
+refresh tokens rotate, so two loops would each consume the other's freshly
+minted token and the second refresh of the pair would 401 — breaking the chain
+and forcing an interactive login. `start` refuses when a live holder exists, and
+takes over only a lock whose process is gone.
+
+Sleeps are capped at 15 minutes, so a suspended laptop wakes to a fresh check
+rather than oversleeping past expiry.
+
+It exits — rather than spinning — when the refresh token is dead or missing,
+because no amount of retrying fixes that. Transient failures (network, 5xx) back
+off 60s and retry. Check `~/.higgsfield/daemon.log` and `status` if generation
+starts 401ing.
 
 ## Which command to run
 

@@ -62,7 +62,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `livefix.*` | `livefix.Proposed`, `livefix.Applied` |
 | `match.*` | `match.Decided` |
 | `meter.*` | `meter.UsageRecorded` |
-| `migration.*` | `migration.Planned`, `migration.CutOver` |
+| `migration.*` | `migration.Planned`, `migration.SnapshotTaken`, `migration.PhaseApplied`, `migration.Verified`, `migration.CutOver`, `migration.RolledBack`, `migration.Failed`, `migration.Exported`, `migration.Imported` |
 | `model.*` | `model.Registered`, `model.Promoted` |
 | `notification.*` | `notification.Requested`, `notification.Delivered` |
 | `pack.*` | `pack.Imported` |

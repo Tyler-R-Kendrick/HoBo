@@ -39,7 +39,46 @@ export interface SqliteDataDualPort extends DataDualPort {
 	replicate(): number;
 	/** CDC lag: journal entries not yet applied to the target. */
 	lag(): number;
+	/**
+	 * Brownfield bulk snapshot: copy every current in-scope source row to the
+	 * target and advance the watermark to the current CDC head, so rows written
+	 * BEFORE this port existed are covered (snapshot-then-tail). Returns rows
+	 * copied.
+	 */
+	backfill(): number;
+	/**
+	 * Raise a write fence for a tenant on the SOURCE store (ADR-0080 §2 /
+	 * ADR-0053): subsequent `writeSource` calls for that tenant throw
+	 * `FencedTenantError`. Idempotent — re-raising returns the existing token.
+	 */
+	raiseFence(tenant: string): { readonly fenceToken: string };
+	isFenced(tenant: string): boolean;
+	/** Max CDC seq for the port's scope — the quiescent head after a drain. */
+	headSeq(): number;
+	/** The silo-side replication watermark: last CDC seq applied to the target. */
+	appliedWatermark(): number;
+	/**
+	 * Destructive source reap after a verified move: deletes the tenant's rows
+	 * from the pooled source. Refused unless the tenant is fenced AND the
+	 * oracle view shows checksum-equal, zero-loss source/target sets.
+	 */
+	reapSource(tenant: string): { readonly reaped: number };
 	close(): void;
+}
+
+/** A write arrived for a tenant whose streams are fenced (moved to a silo). */
+export class FencedTenantError extends Error {
+	readonly tenant: string;
+	readonly fenceToken: string;
+
+	constructor(tenant: string, fenceToken: string) {
+		super(
+			`tenant ${tenant} is fenced (${fenceToken}); its writes now belong to the silo`,
+		);
+		this.name = "FencedTenantError";
+		this.tenant = tenant;
+		this.fenceToken = fenceToken;
+	}
 }
 
 export interface CreateSqliteDataDualPortOptions {
@@ -73,6 +112,11 @@ export function createSqliteDataDualPort(
 			id TEXT NOT NULL,
 			op TEXT NOT NULL CHECK (op IN ('upsert', 'delete')),
 			doc TEXT
+		);
+		CREATE TABLE IF NOT EXISTS ${table}_tenant_fence (
+			tenant_id TEXT PRIMARY KEY,
+			fence_token TEXT NOT NULL,
+			fenced_at TEXT NOT NULL
 		);
 	`);
 	target.exec(`
@@ -170,9 +214,37 @@ export function createSqliteDataDualPort(
 		);
 	}
 
+	function fenceRow(forTenant: string): { fence_token: string } | undefined {
+		return source
+			.prepare(
+				`SELECT fence_token FROM ${table}_tenant_fence WHERE tenant_id = ?`,
+			)
+			.get(forTenant) as { fence_token: string } | undefined;
+	}
+
+	function maxSeq(): number {
+		const row = (
+			tenant
+				? source
+						.prepare(
+							`SELECT MAX(seq) AS head FROM ${table}_cdc_log WHERE tenant_id = ?`,
+						)
+						.get(tenant)
+				: source.prepare(`SELECT MAX(seq) AS head FROM ${table}_cdc_log`).get()
+		) as { head: number | bigint | null } | undefined;
+		return Number(row?.head ?? 0);
+	}
+
 	return {
 		fidelity: "live",
 		writeSource(writes) {
+			// Fail closed BEFORE the transaction: a fenced tenant's writes belong
+			// to its silo — refusing here is the zero-loss guarantee's write half.
+			for (const write of writes) {
+				const rowTenant = write.tenant ?? tenant ?? "default";
+				const fence = fenceRow(rowTenant);
+				if (fence) throw new FencedTenantError(rowTenant, fence.fence_token);
+			}
 			source.exec("BEGIN IMMEDIATE");
 			try {
 				for (const write of writes) {
@@ -220,6 +292,95 @@ export function createSqliteDataDualPort(
 		},
 		lag() {
 			return pendingChanges().length;
+		},
+		backfill() {
+			// Snapshot-then-tail: copy the current in-scope row set, then pin the
+			// watermark at today's CDC head so tailing resumes from here. One
+			// target transaction — a failed backfill leaves the watermark alone.
+			const rows = (tenant
+				? source
+						.prepare(
+							`SELECT tenant_id, id, doc FROM ${table} WHERE tenant_id = ? ORDER BY id`,
+						)
+						.all(tenant)
+				: source
+						.prepare(
+							`SELECT tenant_id, id, doc FROM ${table} ORDER BY tenant_id, id`,
+						)
+						.all()) as unknown as readonly {
+				tenant_id: string;
+				id: string;
+				doc: string;
+			}[];
+			const head = maxSeq();
+			target.exec("BEGIN IMMEDIATE");
+			try {
+				for (const row of rows) {
+					applyUpsert.run(row.tenant_id, row.id, row.doc);
+				}
+				target
+					.prepare(
+						`INSERT INTO ${table}_cdc_applied (table_name, watermark) VALUES (?, ?)
+						 ON CONFLICT (table_name) DO UPDATE SET watermark = excluded.watermark`,
+					)
+					.run(table, head);
+				target.exec("COMMIT");
+			} catch (error) {
+				target.exec("ROLLBACK");
+				throw error;
+			}
+			return rows.length;
+		},
+		raiseFence(forTenant) {
+			const existing = fenceRow(forTenant);
+			if (existing) return { fenceToken: existing.fence_token };
+			const fenceToken = `fence:${forTenant}:${maxSeq()}`;
+			source
+				.prepare(
+					`INSERT INTO ${table}_tenant_fence (tenant_id, fence_token, fenced_at) VALUES (?, ?, ?)`,
+				)
+				.run(forTenant, fenceToken, new Date().toISOString());
+			return { fenceToken };
+		},
+		isFenced(forTenant) {
+			return fenceRow(forTenant) !== undefined;
+		},
+		headSeq() {
+			return maxSeq();
+		},
+		appliedWatermark() {
+			return watermark();
+		},
+		reapSource(forTenant) {
+			// Destructive: only after the move is proven. Fenced + zero lag +
+			// checksum-equal oracle view, else refuse.
+			if (!fenceRow(forTenant)) {
+				throw new Error(
+					`reap refused: tenant ${forTenant} is not fenced; the pooled store may still be authoritative`,
+				);
+			}
+			if (pendingChanges().length > 0) {
+				throw new Error(
+					`reap refused: ${pendingChanges().length} un-replicated change(s) would be lost`,
+				);
+			}
+			const view = Object.freeze({
+				sourceRows: readRows(source),
+				targetRows: readRows(target),
+			});
+			const encode = (rows: readonly unknown[]) => JSON.stringify(rows);
+			if (
+				tenant !== undefined &&
+				encode(view.sourceRows) !== encode(view.targetRows)
+			) {
+				throw new Error(
+					"reap refused: source and silo row sets are not checksum-equal",
+				);
+			}
+			const result = source
+				.prepare(`DELETE FROM ${table} WHERE tenant_id = ?`)
+				.run(forTenant);
+			return { reaped: Number(result.changes) };
 		},
 		snapshot() {
 			return Object.freeze({

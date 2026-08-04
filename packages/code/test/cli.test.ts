@@ -53,14 +53,19 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(result.code).toBe("HOBO_CODE_INTERACTIVE_REQUIRED");
 		expect(result.exitCode).toBe(1);
 		expect(result.message).toMatch(/needs a TTY|hobo-code help/i);
-		expect((result.data as { interactiveRequired?: boolean }).interactiveRequired).toBe(true);
+		expect(
+			(result.data as { interactiveRequired?: boolean }).interactiveRequired,
+		).toBe(true);
 	});
 
 	it("rejects unknown flags instead of silently accepting them", async () => {
 		const home = temp("hobo-code-flags-");
 		const env = { ...process.env, HOBO_HOME: home };
 
-		const unknown = await runHoboCodeCli(["status", "--wat"], { env, hoboHome: home });
+		const unknown = await runHoboCodeCli(["status", "--wat"], {
+			env,
+			hoboHome: home,
+		});
 		expect(unknown.ok).toBe(false);
 		expect(unknown.exitCode).toBe(1);
 		expect(unknown.code).toBe("HOBO_CODE_UNKNOWN_FLAG");
@@ -76,12 +81,18 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(assigned.code).toBe("HOBO_CODE_UNKNOWN_FLAG");
 
 		// Boolean flags must not swallow the next token as a value.
-		const help = await runHoboCodeCli(["--json", "help"], { env, hoboHome: home });
+		const help = await runHoboCodeCli(["--json", "help"], {
+			env,
+			hoboHome: home,
+		});
 		expect(help.ok).toBe(true);
 		expect(help.code).toBe("HOBO_CODE_HELP");
 
 		// Known value-taking flags still consume the next token.
-		const cwdMiss = await runHoboCodeCli(["env", "--cwd"], { env, hoboHome: home });
+		const cwdMiss = await runHoboCodeCli(["env", "--cwd"], {
+			env,
+			hoboHome: home,
+		});
 		expect(cwdMiss.ok).toBe(false);
 		expect(cwdMiss.code).toBe("HOBO_CODE_UNKNOWN_FLAG");
 		expect(cwdMiss.message).toMatch(/requires a value/);
@@ -207,7 +218,12 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 	});
 
 	it("edit exposes neovim bridge and managed pane contract", async () => {
-		const r = await runHoboCodeCli(["edit", "src/cli.ts", "--bridge", "direct-exec"]);
+		const r = await runHoboCodeCli([
+			"edit",
+			"src/cli.ts",
+			"--bridge",
+			"direct-exec",
+		]);
 		expect(r.ok).toBe(true);
 		expect(r.code).toBe("HOBO_CODE_EDIT");
 		expect(r.message).toMatch(/◈ edit/);
@@ -285,9 +301,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(data.harness.skillRoots.length).toBeGreaterThan(0);
 		// Monorepo walk-up: at least one skill root should resolve when repo has .agents/skills
 		expect(data.harness.skillRoots.some((s) => s.present)).toBe(true);
-		expect(
-			data.harness.eve.defaultAgents.subagents.map((s) => s.id),
-		).toEqual(
+		expect(data.harness.eve.defaultAgents.subagents.map((s) => s.id)).toEqual(
 			expect.arrayContaining(["investigator", "implementer", "reviewer"]),
 		);
 		expect(data.harness.selfImprove.loop.length).toBeGreaterThan(3);
@@ -331,7 +345,13 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(data.cost.savings.savedPct).toBeGreaterThan(0);
 		expect(data.cost.freeLocal.some((f) => f.id === "ollama")).toBe(true);
 		expect(data.cost.tokenTools.map((t) => t.id)).toEqual(
-			expect.arrayContaining(["rtk", "headroom", "caveman", "serena", "ponytail"]),
+			expect.arrayContaining([
+				"rtk",
+				"headroom",
+				"caveman",
+				"serena",
+				"ponytail",
+			]),
 		);
 		expect(data.cost.routing.policy).toBe("cheapest-capable");
 		expect(data.cost.routing.picked).toBe("local-free");
@@ -398,7 +418,12 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(data.cursor.map.some((m) => m.status === "residual")).toBe(true);
 		expect(data.cursor.residual.length).toBeGreaterThan(0);
 
-		const fromFlag = await runHoboCodeCli(["guide", "--from", "cursor", "--json"]);
+		const fromFlag = await runHoboCodeCli([
+			"guide",
+			"--from",
+			"cursor",
+			"--json",
+		]);
 		expect(fromFlag.ok).toBe(true);
 		expect((fromFlag.data as { source: string }).source).toBe("cursor");
 	});
@@ -484,10 +509,12 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).not.toContain("sk-secret");
 		expect(r.message).toMatch(/sandbox/i);
 		expect(r.message).toMatch(/cost · hobo-code cost|free ·/i);
-		const data = r.data as { models: { byok: { name: string; present: boolean }[] } };
-		expect(data.models.byok.some((b) => b.name === "OPENAI_API_KEY" && b.present)).toBe(
-			true,
-		);
+		const data = r.data as {
+			models: { byok: { name: string; present: boolean }[] };
+		};
+		expect(
+			data.models.byok.some((b) => b.name === "OPENAI_API_KEY" && b.present),
+		).toBe(true);
 	});
 
 	it("defaults to dispatch when no verb is given", async () => {
@@ -503,9 +530,9 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			(result.data as { defaultVerb: boolean; task: { status: string } })
 				.defaultVerb,
 		).toBe(true);
-		expect(
-			(result.data as { task: { status: string } }).task.status,
-		).toBe("done");
+		expect((result.data as { task: { status: string } }).task.status).toBe(
+			"done",
+		);
 	});
 
 	it("explicit dispatch and status work as flat verbs", async () => {
@@ -528,7 +555,13 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		const login = await runHoboCodeCli(["auth", "login"], { hoboHome: home });
 		expect(login.ok).toBe(true);
 		expect(login.code).toBe("HOBO_CODE_AUTH");
-		for (const verb of ["platform", "budget", "remote", "nodes", "join"] as const) {
+		for (const verb of [
+			"platform",
+			"budget",
+			"remote",
+			"nodes",
+			"join",
+		] as const) {
 			const r = await runHoboCodeCli([verb], { hoboHome: home });
 			expect(r.code).not.toMatch(
 				/HOBO_CODE_PLATFORM|HOBO_CODE_BUDGET|HOBO_CODE_REMOTE|HOBO_CODE_NODES|HOBO_CODE_JOIN/,
@@ -555,12 +588,10 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(help.message).toMatch(/auth login/);
 		expect(help.message).toMatch(/cost|harness/);
 		expect(help.message).toMatch(/Maps:|guide|tasks|attach|cost|harness/i);
-		expect(
-			(help.data as { binary: string; defaultVerb: string }).binary,
-		).toBe("hobo-code");
-		expect(
-			(help.data as { defaultVerb: string }).defaultVerb,
-		).toBe("dispatch");
+		expect((help.data as { binary: string; defaultVerb: string }).binary).toBe(
+			"hobo-code",
+		);
+		expect((help.data as { defaultVerb: string }).defaultVerb).toBe("dispatch");
 		expect(CODE_FEATURE_FLAGS.distributed).toBe("code.distributed");
 		expect(HOBO_CODE_VERBS).toContain("env");
 		expect(
@@ -619,7 +650,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/--json/);
 		expect(r.message).toMatch(/login|station/i);
 		// Must not be the full top-level verb catalog only
-		expect(r.message).not.toMatch(/^  dispatch   Send work into the hive/m);
+		expect(r.message).not.toMatch(/^ {2}dispatch {3}Send work into the hive/m);
 		expect((r.data as { topic: string }).topic).toBe("auth");
 	});
 

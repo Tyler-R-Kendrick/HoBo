@@ -13,14 +13,17 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { AGUI_EVENT, type AguiEvent } from "./agui.js";
 import { BYOK_ENV_NAMES } from "./models.js";
 
 // ── Turn protocol ────────────────────────────────────────────────────────
 
-export type EngineTurnEvent =
-	| { readonly kind: "text-delta"; readonly delta: string }
-	| { readonly kind: "tool-start"; readonly name: string }
-	| { readonly kind: "tool-end"; readonly name: string; readonly ok: boolean };
+/**
+ * Engines speak AG-UI events (see `agui.ts`). The previous three-case union
+ * could not express argument streaming, run boundaries or errors, which is
+ * why the UI had nothing to show while a turn was still thinking.
+ */
+export type EngineTurnEvent = AguiEvent;
 
 /** Real token/cost accounting for a session — never estimated. */
 export interface EngineUsage {
@@ -180,6 +183,7 @@ export function listSandboxChanges(
 export interface PiAgentEventLike {
 	readonly type: string;
 	readonly toolName?: string;
+	readonly toolCallId?: string;
 	readonly isError?: boolean;
 	readonly assistantMessageEvent?: {
 		readonly type: string;
@@ -195,15 +199,23 @@ export function mapPiEventToTurnEvent(
 		event.assistantMessageEvent?.type === "text_delta" &&
 		typeof event.assistantMessageEvent.delta === "string"
 	) {
-		return { kind: "text-delta", delta: event.assistantMessageEvent.delta };
+		return {
+			type: AGUI_EVENT.textMessageContent,
+			messageId: "assistant",
+			delta: event.assistantMessageEvent.delta,
+		};
 	}
 	if (event.type === "tool_execution_start" && event.toolName) {
-		return { kind: "tool-start", name: event.toolName };
+		return {
+			type: AGUI_EVENT.toolCallStart,
+			toolCallId: event.toolCallId ?? event.toolName,
+			toolName: event.toolName,
+		};
 	}
 	if (event.type === "tool_execution_end" && event.toolName) {
 		return {
-			kind: "tool-end",
-			name: event.toolName,
+			type: AGUI_EVENT.toolCallResult,
+			toolCallId: event.toolCallId ?? event.toolName,
 			ok: event.isError !== true,
 		};
 	}
@@ -318,8 +330,10 @@ export async function createPiShellEngine(
 				const unsubscribe = session.subscribe((event) => {
 					const mapped = mapPiEventToTurnEvent(event as PiAgentEventLike);
 					if (!mapped) return;
-					if (mapped.kind === "text-delta") text += mapped.delta;
-					if (mapped.kind === "tool-start") toolCalls += 1;
+					if (mapped.type === AGUI_EVENT.textMessageContent) {
+						text += mapped.delta;
+					}
+					if (mapped.type === AGUI_EVENT.toolCallStart) toolCalls += 1;
 					onEvent(mapped);
 				});
 				try {

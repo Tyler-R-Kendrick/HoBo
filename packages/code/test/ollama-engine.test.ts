@@ -7,6 +7,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, describe, expect, it } from "vitest";
+import { AGUI_EVENT } from "../src/agui.js";
 import { engineMode, localModelFromSpec } from "../src/engine-resolve.js";
 import {
 	createOllamaShellEngine,
@@ -154,7 +155,14 @@ describe("local SLM engine", () => {
 		expect(result.text).toBe("Hello there");
 		// Deltas arrive incrementally — that is what makes a slow local model
 		// bearable instead of a frozen screen.
-		expect(events.filter((e) => e.kind === "text-delta")).toHaveLength(3);
+		expect(
+			events.filter((e) => e.type === AGUI_EVENT.textMessageContent),
+		).toHaveLength(3);
+		// The run is bracketed and the wait is announced, so the UI has
+		// something honest to show before the first token lands.
+		expect(events[0]!.type).toBe(AGUI_EVENT.runStarted);
+		expect(events.some((e) => e.type === AGUI_EVENT.stateDelta)).toBe(true);
+		expect(events.at(-1)!.type).toBe(AGUI_EVENT.runFinished);
 		expect(result.usage?.inputTokens).toBe(21);
 		expect(result.usage?.outputTokens).toBe(7);
 		expect(result.usage?.costUsd).toBe(0);

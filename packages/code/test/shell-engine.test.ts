@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterAll, describe, expect, it } from "vitest";
+import { AGUI_EVENT } from "../src/agui.js";
 import {
 	runInteractiveShell,
 	type ShellHost,
@@ -53,20 +54,32 @@ describe("mapPiEventToTurnEvent", () => {
 				type: "message_update",
 				assistantMessageEvent: { type: "text_delta", delta: "hel" },
 			}),
-		).toEqual({ kind: "text-delta", delta: "hel" });
+		).toEqual({
+			type: AGUI_EVENT.textMessageContent,
+			messageId: "assistant",
+			delta: "hel",
+		});
 		expect(
 			mapPiEventToTurnEvent({
 				type: "tool_execution_start",
 				toolName: "edit",
 			}),
-		).toEqual({ kind: "tool-start", name: "edit" });
+		).toEqual({
+			type: AGUI_EVENT.toolCallStart,
+			toolCallId: "edit",
+			toolName: "edit",
+		});
 		expect(
 			mapPiEventToTurnEvent({
 				type: "tool_execution_end",
 				toolName: "edit",
 				isError: true,
 			}),
-		).toEqual({ kind: "tool-end", name: "edit", ok: false });
+		).toEqual({
+			type: AGUI_EVENT.toolCallResult,
+			toolCallId: "edit",
+			ok: false,
+		});
 		expect(mapPiEventToTurnEvent({ type: "agent_start" })).toBeNull();
 		expect(
 			mapPiEventToTurnEvent({
@@ -114,10 +127,18 @@ function fakeEngine(overrides: Partial<ShellEngine> = {}): ShellEngine {
 		sandboxRoot: "/tmp/sandbox/run-x",
 		runId: "run-x",
 		async turn(_prompt, onEvent) {
-			onEvent({ kind: "tool-start", name: "edit" });
-			onEvent({ kind: "tool-end", name: "edit", ok: true });
+			onEvent({
+				type: AGUI_EVENT.toolCallStart,
+				toolCallId: "t1",
+				toolName: "edit",
+			});
+			onEvent({ type: AGUI_EVENT.toolCallResult, toolCallId: "t1", ok: true });
 			for (const delta of ["done", " and", " dusted"]) {
-				onEvent({ kind: "text-delta", delta });
+				onEvent({
+					type: AGUI_EVENT.textMessageContent,
+					messageId: "assistant",
+					delta,
+				});
 			}
 			return {
 				ok: true,
@@ -144,7 +165,9 @@ describe("engine-backed shell host", () => {
 			events.push(e),
 		);
 		expect(result.ok).toBe(true);
-		expect(events.some((e) => e.kind === "text-delta")).toBe(true);
+		expect(events.some((e) => e.type === AGUI_EVENT.textMessageContent)).toBe(
+			true,
+		);
 		// The reply is the model's answer — not padded with promotion nags.
 		expect(result.text).toBe("done and dusted");
 	});
@@ -236,13 +259,29 @@ describe("streaming turns through the InteractiveShell driver", () => {
 			complete: async () => "unused",
 			engineLabel: "fake · test/fake-model",
 			streamTurn: async (_prompt, onEvent) => {
-				onEvent({ kind: "tool-start", name: "read" });
-				onEvent({ kind: "tool-end", name: "read", ok: true });
-				onEvent({ kind: "text-delta", delta: "part-1 " });
+				onEvent({
+					type: AGUI_EVENT.toolCallStart,
+					toolCallId: "r1",
+					toolName: "read",
+				});
+				onEvent({
+					type: AGUI_EVENT.toolCallResult,
+					toolCallId: "r1",
+					ok: true,
+				});
+				onEvent({
+					type: AGUI_EVENT.textMessageContent,
+					messageId: "assistant",
+					delta: "part-1 ",
+				});
 				// Give the renderer a beat with only the partial text visible.
 				await new Promise((r) => setTimeout(r, 30));
 				sawPartialRender = true;
-				onEvent({ kind: "text-delta", delta: "part-2" });
+				onEvent({
+					type: AGUI_EVENT.textMessageContent,
+					messageId: "assistant",
+					delta: "part-2",
+				});
 				release();
 				return {
 					ok: true,
@@ -271,7 +310,7 @@ describe("streaming turns through the InteractiveShell driver", () => {
 		await gate;
 		expect(exitCode).toBe(0);
 		expect(sawPartialRender).toBe(true);
-		expect(frames).toContain("tool · read ✓");
+		expect(frames).toContain("tool ✓ read");
 		expect(frames).toContain("part-1 part-2");
 		// Footer carries the real engine label, not engine:none
 		expect(frames).toContain("fake · test/fake-model");
@@ -286,7 +325,11 @@ describe("streaming turns through the InteractiveShell driver", () => {
 			complete: async () => "unused",
 			streamTurn: (_prompt, onEvent) =>
 				new Promise((resolve) => {
-					onEvent({ kind: "text-delta", delta: "working…" });
+					onEvent({
+						type: AGUI_EVENT.textMessageContent,
+						messageId: "assistant",
+						delta: "working…",
+					});
 					resolveTurn = () =>
 						resolve({ ok: false, text: "", toolCalls: 0, aborted: true });
 				}),
@@ -404,8 +447,16 @@ describe("promotion approval gate (ADR-0139 mediated mutation)", () => {
 			complete: async () => "unused",
 			engineLabel: "fake · test/fake-model",
 			streamTurn: async (_p: string, onEvent: (e: EngineTurnEvent) => void) => {
-				onEvent({ kind: "tool-start", name: "edit" });
-				onEvent({ kind: "tool-end", name: "edit", ok: true });
+				onEvent({
+					type: AGUI_EVENT.toolCallStart,
+					toolCallId: "e1",
+					toolName: "edit",
+				});
+				onEvent({
+					type: AGUI_EVENT.toolCallResult,
+					toolCallId: "e1",
+					ok: true,
+				});
 				return { ok: true, text: "edited", toolCalls: 1, aborted: false };
 			},
 			pendingApprovalFor: async () => ({

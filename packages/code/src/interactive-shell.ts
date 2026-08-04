@@ -15,6 +15,11 @@
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
 import { HOBO_LOGO_TUI } from "./_generated/hobo-logo-tui.js";
+import {
+	EMPTY_TURN,
+	reduceTurn,
+	renderTurn as renderTurnView,
+} from "./agui.js";
 import { inspectCost } from "./cost.js";
 import { buildTasksSurface } from "./grok-build-parity.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
@@ -31,6 +36,7 @@ import type {
 	EngineTurnResult,
 	SandboxChange,
 } from "./shell-engine.js";
+import { createShellInput } from "./shell-input.js";
 import { StreamTerminal } from "./shell-terminal.js";
 import {
 	BO_CELL_HEIGHT,
@@ -94,6 +100,8 @@ export interface InteractiveShellState {
 	readonly pendingApproval: PendingApproval | null;
 	/** Live session token/cost accounting shown in the footer and /cost. */
 	readonly usageLabel: string;
+	/** Rows the Editor occupies, so the transcript can size around it. */
+	readonly inputRows: number;
 	readonly statusPlain: string;
 	readonly tasksPlain: string;
 	readonly footerHints: string;
@@ -117,16 +125,15 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		action: "about",
 	},
 	{
-		name: "guide",
-		description: "Claude Code → hobo-code map",
-		argv: ["guide"],
+		name: "ide",
+		description: "Open your editor on this session (neovim by default)",
+		argv: ["edit"],
 	},
 	{
-		name: "cursor",
-		description: "Cursor → hobo-code map",
-		argv: ["guide", "--cursor"],
+		name: "agent",
+		description: "Agent-native readiness (auth, protocols, unattended)",
+		argv: ["agent"],
 	},
-	{ name: "agent", description: "Agent-native inventory", argv: ["agent"] },
 	{ name: "config", description: "Setup / stack inventory", argv: ["config"] },
 	{ name: "cost", description: "$0 path + budget + savings", argv: ["cost"] },
 	{ name: "status", description: "Session / agent panes", argv: ["status"] },
@@ -151,11 +158,7 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		description: "Model + BYOK (no secrets)",
 		argv: ["models"],
 	},
-	{
-		name: "harness",
-		description: "Pi engine / Flue dual surface",
-		argv: ["harness"],
-	},
+
 	{
 		name: "attach",
 		description: "tmux/mosh/Tailscale-shaped attach",
@@ -400,6 +403,7 @@ export function createInitialShellState(
 		chatScroll: 0,
 		pendingApproval: null,
 		usageLabel: "",
+		inputRows: 1,
 		statusPlain,
 		tasksPlain,
 		footerHints: "Tab focus · / slash · ? help · Ctrl+C quit",
@@ -480,8 +484,9 @@ export function renderShellFrame(state: InteractiveShellState): string {
 	const w = state.width;
 	const lines: string[] = [];
 
-	// Bottom furniture: prompt line + status stripe.
-	const bodyRows = Math.max(3, state.height - 2);
+	// Bottom furniture: the status strap. The prompt is a real Editor
+	// component rendered beneath this frame, and it reports its own height.
+	const bodyRows = Math.max(3, state.height - 1 - state.inputRows);
 	// Card overhead: top rule + bottom rule + shadow row.
 	const inner = Math.max(1, bodyRows - 3);
 	const innerWidth = w - 3;
@@ -565,11 +570,6 @@ export function renderShellFrame(state: InteractiveShellState): string {
 		}),
 	);
 
-	const prompt =
-		state.slashOpen || state.input.startsWith("/")
-			? `/${state.slashFilter || state.input.replace(/^\//, "")}`
-			: state.input;
-	lines.push(fitCells(`❯ ${prompt}█`, w));
 	lines.push(statusStripe(statusSegments(state), w));
 
 	return lines.join("\n");
@@ -842,6 +842,23 @@ export function reduceShellKey(
 	return { state };
 }
 
+/** Tab cycles the transcript pane. */
+export function cycleFocus(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	const order: ShellFocus[] = ["chat", "tasks", "status"];
+	const i = order.indexOf(state.focus === "slash" ? "chat" : state.focus);
+	return { ...state, focus: order[(i + 1) % order.length]! };
+}
+
+/** Positive scrolls back through the transcript, negative returns toward now. */
+export function scrollChat(
+	state: InteractiveShellState,
+	delta: number,
+): InteractiveShellState {
+	return { ...state, chatScroll: Math.max(0, state.chatScroll + delta) };
+}
+
 export function appendAssistant(
 	state: InteractiveShellState,
 	text: string,
@@ -1021,7 +1038,7 @@ export async function runInteractiveShell(
 			state = appendProduct(
 				state,
 				[
-					"Slash: /guide /config /cost /tasks /status /agent /env /auth /login /about /quit",
+					"Commands: type / and pick — /ide /config /cost /tasks /status /agent /env /auth /about /quit",
 					"Chat: type a prompt and Enter — it is queued as a dispatch task (/about).",
 					"Keys: Tab panes · ↑/↓ pick + scroll · PgUp/PgDn scroll · Ctrl+C quit",
 				].join("\n"),
@@ -1071,57 +1088,51 @@ export async function runInteractiveShell(
 	const onSubmit = async (prompt: string) => {
 		if (options.host.streamTurn) {
 			turnInFlight = true;
-			let streamed = "";
-			const toolLines: string[] = [];
-			const renderTurn = (suffix = "") => {
-				const parts = [
-					...toolLines,
-					...(streamed.length > 0 ? [streamed] : []),
-				];
-				state = replaceLastAssistant(
-					state,
-					(parts.join("\n") || "…") + suffix,
-					"working",
-				);
+			let view = EMPTY_TURN;
+			const startedAt = Date.now();
+			// Paint an assistant entry the instant the turn starts. A local
+			// model can take many seconds to produce its first token, and an
+			// empty screen for that long reads as a hang.
+			state = appendAssistant(state, "…", "working");
+			tui.requestRender();
+			const paint = () => {
+				const elapsed = Math.round((Date.now() - startedAt) / 1000);
+				const body = renderTurnView(view);
+				// Until the first token lands, keep a visibly ticking counter:
+				// a local model can take many seconds, and silence reads as a hang.
+				const waiting =
+					view.text.length === 0 ? `${body || "…"} ${elapsed}s` : body;
+				state = replaceLastAssistant(state, waiting, "working");
 				tui.requestRender();
 			};
+			// Tick while waiting so the elapsed counter proves it is alive even
+			// before a single token has arrived.
+			const heartbeat = setInterval(() => {
+				if (!quit && view.text.length === 0) paint();
+			}, 1000);
+			heartbeat.unref?.();
 			try {
 				const result = await options.host.streamTurn(prompt, (event) => {
 					if (quit) return;
-					if (event.kind === "text-delta") {
-						streamed += event.delta;
-					} else if (event.kind === "tool-start") {
-						toolLines.push(`tool · ${event.name} …`);
-					} else if (event.kind === "tool-end") {
-						let i = toolLines.length - 1;
-						while (
-							i >= 0 &&
-							!toolLines[i]!.startsWith(`tool · ${event.name}`)
-						) {
-							i -= 1;
-						}
-						const line = `tool · ${event.name} ${event.ok ? "✓" : "✗"}`;
-						if (i >= 0) toolLines[i] = line;
-						else toolLines.push(line);
-					}
-					renderTurn();
+					view = reduceTurn(view, event);
+					paint();
 				});
 				if (quit) return;
+				const finalBody = renderTurnView(view) || result.text;
 				const tail = result.aborted
-					? "\n(turn cancelled)"
+					? "(cancelled)"
 					: result.ok
 						? ""
-						: `\n(turn failed: ${result.error ?? "unknown"})`;
-				const finalText =
-					[...toolLines, ...(result.text ? [result.text] : [])].join("\n") ||
-					(result.aborted ? "(turn cancelled)" : "(empty reply)");
+						: `(failed: ${result.error ?? "unknown"})`;
 				state = replaceLastAssistant(
 					state,
-					(finalText + (result.text ? tail : "")).slice(0, 8000),
+					`${finalBody || "(no reply)"}${tail ? `\n${tail}` : ""}`.slice(
+						0,
+						8000,
+					),
 					result.ok || result.aborted ? "idle" : "blocked",
 				);
 				refreshUsage();
-				// Edits stay sandboxed until an explicit approval (ADR-0139).
 				if (result.ok && !result.aborted && options.host.pendingApprovalFor) {
 					const approval = await options.host.pendingApprovalFor(result);
 					if (approval && !quit) {
@@ -1136,11 +1147,11 @@ export async function runInteractiveShell(
 					"blocked",
 				);
 			} finally {
+				clearInterval(heartbeat);
 				turnInFlight = false;
 			}
 			return;
 		}
-		turnInFlight = true;
 		try {
 			const text = await options.host.complete(prompt);
 			if (quit) return;
@@ -1193,6 +1204,49 @@ export async function runInteractiveShell(
 			);
 		}
 		state = { ...state, agentState: "idle" };
+	};
+
+	/** A completed line from the Editor: either a command or a prompt. */
+	const handleSubmitText = (text: string) => {
+		if (quit) return;
+		if (text.startsWith("/")) {
+			const name = text.slice(1).split(/\s+/)[0]?.toLowerCase() ?? "";
+			const item = DEFAULT_SLASH_ITEMS.find((i) => i.name === name);
+			if (item) {
+				void applySlash(item)
+					.then(() => {
+						if (!quit) tui.requestRender();
+					})
+					.catch(() => {});
+				return;
+			}
+			state = appendProduct(
+				state,
+				`Unknown command "${text}". Type / to see what exists.`,
+			);
+			tui.requestRender();
+			return;
+		}
+		if (turnInFlight) {
+			state = appendProduct(
+				state,
+				"Still working on the previous turn — Esc cancels it.",
+			);
+			tui.requestRender();
+			return;
+		}
+		state = {
+			...state,
+			chatScroll: 0,
+			messages: [...state.messages, { role: "user", text, at: Date.now() }],
+			agentState: "working",
+		};
+		tui.requestRender();
+		void onSubmit(text)
+			.then(() => {
+				if (!quit) tui.requestRender();
+			})
+			.catch(() => {});
 	};
 
 	const handleKey = (sequence: string) => {
@@ -1249,12 +1303,24 @@ export async function runInteractiveShell(
 		tui.requestRender();
 	};
 
+	const input = createShellInput({
+		tui,
+		commands: DEFAULT_SLASH_ITEMS.map((i) => ({
+			name: i.name,
+			description: i.description,
+		})),
+		onSubmit: (text) => handleSubmitText(text),
+	});
+
 	const view: Component = {
 		render(width: number): string[] {
 			const w = clamp(width, 40, 200);
 			const h = clamp(terminal.rows, 12, 80);
-			if (w !== state.width || h !== state.height) {
-				state = { ...state, width: w, height: h };
+			// The Editor grows with wrapped input; the transcript gives up rows
+			// to match so the frame never overflows the screen.
+			const rows = input.height(w);
+			if (w !== state.width || h !== state.height || rows !== state.inputRows) {
+				state = { ...state, width: w, height: h, inputRows: rows };
 			}
 			return renderShellFrame(state).split("\n");
 		},
@@ -1270,7 +1336,58 @@ export async function runInteractiveShell(
 	};
 
 	tui.addChild(view);
-	tui.setFocus(view);
+	tui.addChild(input.editor);
+	// The Editor owns editing keys (backspace, word kill, undo, cursor,
+	// history). The shell claims only true globals, and only when the editor
+	// would not otherwise need them.
+	tui.addInputListener((data) => {
+		if (quit) return undefined;
+		if (data === "\u0003") {
+			requestQuit();
+			return { consume: true };
+		}
+		if (state.pendingApproval) {
+			// Modal: the gate must see every key so a mutation cannot be
+			// approved by something falling through to the editor.
+			handleKey(data);
+			return { consume: true };
+		}
+		if (data === "\u001b") {
+			if (turnInFlight && options.host.cancelTurn) {
+				void options.host.cancelTurn().catch(() => {});
+				return { consume: true };
+			}
+			// Esc clears a half-typed line instead of doing nothing at all.
+			if (input.text().length > 0) {
+				input.clear();
+				tui.requestRender();
+				return { consume: true };
+			}
+			return { consume: true };
+		}
+		if (data === "\t") {
+			state = cycleFocus(state);
+			tui.requestRender();
+			return { consume: true };
+		}
+		if (matchesKey(data, "pageUp") || matchesKey(data, "pageDown")) {
+			state = scrollChat(state, matchesKey(data, "pageUp") ? 5 : -5);
+			tui.requestRender();
+			return { consume: true };
+		}
+		// Scroll the transcript with the arrows only when the editor is empty,
+		// so ↑ still means "previous prompt" while composing.
+		if (
+			input.text().length === 0 &&
+			(matchesKey(data, "up") || matchesKey(data, "down"))
+		) {
+			state = scrollChat(state, matchesKey(data, "up") ? 1 : -1);
+			tui.requestRender();
+			return { consume: true };
+		}
+		return undefined;
+	});
+	tui.setFocus(input.editor);
 	tui.start();
 
 	// Idle animation: request a repaint only when the sprite frame actually

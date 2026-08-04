@@ -58,10 +58,27 @@ export function targetCommand(target: MuxTarget): string {
 	if (target.kind === "ssh") {
 		if (!target.host) return `echo "ssh target ${target.name} has no host"`;
 		// -t so the remote gets a TTY, matching what a local pane provides.
-		return `ssh -t ${target.host} ${JSON.stringify(target.command)}`;
+		return keepPaneOpen(
+			target.name,
+			`ssh -t ${target.host} ${JSON.stringify(target.command)}`,
+		);
 	}
 	const prefix = target.cwd ? `cd ${JSON.stringify(target.cwd)} && ` : "";
-	return `${prefix}${target.command}`;
+	return keepPaneOpen(target.name, `${prefix}${target.command}`);
+}
+
+/**
+ * Keep a pane alive after its command exits, showing the status.
+ *
+ * tmux destroys a window the moment its command returns, so an agent that
+ * exits immediately (`ollama serve` when a server is already running, a CLI
+ * that needs auth) simply vanished — the session ended up with fewer panes
+ * than detected agents and nothing said why. Holding the pane turns a silent
+ * disappearance into a visible exit code.
+ */
+export function keepPaneOpen(name: string, command: string): string {
+	const label = name.replace(/'/g, "");
+	return `sh -c '${command.replace(/'/g, "'\\''")}; status=$?; printf "\\n[${label} exited %s — press enter to close]" "$status"; read _'`;
 }
 
 export function planMux(

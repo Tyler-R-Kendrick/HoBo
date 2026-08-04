@@ -12,6 +12,7 @@ Each file has: **What it is** · **Key elements** (the documentation) · **Relev
 | **Chaos engineering & chaos testing** | Deliberately injecting failure to validate resilience (steady-state, blast radius, game days) | [`chaos-engineering.md`](./chaos-engineering.md) |
 | **Feature flags** | Decoupling deploy from release via runtime flags (rollout, kill-switch, experiments) | [`feature-flags.md`](./feature-flags.md) |
 | **Runtime code-mutation persistence** | Persisting runtime/AI-generated code mutations back to source safely (the TS patch problem) | [`runtime-code-mutation-persistence.md`](./runtime-code-mutation-persistence.md) |
+| **Service mesh (Istio / Linkerd / Envoy)** | Platform-owned identity/mTLS, traffic policy, resilience, telemetry between services — and how HoBo relocates it into the WIT membrane | [`service-mesh.md`](./service-mesh.md) |
 
 > Related: **policy-as-code** (canonical tool [`../technologies/opa-rego.md`](../technologies/opa-rego.md), HoBo [Plan 29](../design/contracts-policy-flags.md#plan-29)); **consumer-driven contracts** (canonical tool [`../technologies/pact.md`](../technologies/pact.md), HoBo [Plan 29](../design/contracts-policy-flags.md#plan-29)).
 

@@ -10,6 +10,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | Doc | Covers | Plans |
 |---|---|---|
 | [`vision.md`](./vision.md#plan-00) | Vision, positioning & guiding principles | 00, 17 |
+| [`lineage.md`](./lineage.md) | The aggregate portrait & credits: every influence with posture, what's borrowed, divergence, and capture link | — |
 | [`architecture.md`](./architecture.md#plan-10) | Reference architecture + monorepo/package layout | 10 |
 | [`control-plane.md`](./control-plane.md#plan-04) | The Yard control plane; providers, IaC & build/VM adapters | 04 |
 | [`sdk-api.md`](./sdk-api.md#plan-02) | SDK / API design (the four-layer model) | 02 |

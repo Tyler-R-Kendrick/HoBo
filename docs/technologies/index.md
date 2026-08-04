@@ -21,6 +21,11 @@ Each file has: **What it is** · **Key features** (the documentation) · **Relev
 | **Varlock** | `.env`-native secrets/config with schema + providers (`@env-spec`) | [`varlock.md`](./varlock.md) |
 | **Pivotal Cloud Foundry (PCF)** | The original opinionated app PaaS (`cf push`, buildpacks, droplets) | [`cloud-foundry-pcf.md`](./cloud-foundry-pcf.md) |
 | **Prometheus AlertManager** | Alert routing/grouping/silencing/inhibition for Prometheus | [`prometheus-alertmanager.md`](./prometheus-alertmanager.md) |
+| **Tailscale** | WireGuard-based zero-config mesh VPN (tailnets, Funnel, grants); the adopted managed-overlay adapter (ADR-0122) | [`tailscale.md`](./tailscale.md) |
+| **Cedar** | AWS open-source authorization language + formally verified engine; optional `policy-engine` provider beside OPA | [`cedar.md`](./cedar.md) |
+| **Temporal** | Durable-execution platform (workflows-as-code, event-history replay); the benchmark HoBo's durable runtime is measured against | [`temporal.md`](./temporal.md) |
+| **Argo CD** | CNCF-graduated declarative GitOps CD (Application CRD, sync waves); reference target of GitOps publisher mode | [`argo-cd.md`](./argo-cd.md) |
+| **Flux CD** | CNCF-graduated GitOps toolkit (source/kustomize/helm controllers, OCI artifacts) | [`flux-cd.md`](./flux-cd.md) |
 
 > See also: the AI-training trio (Trace · Agent Lightning · DSPy) directly informs HoBo's **`training-engine`** ([ADR-0025](../design/adr/03-data-plane.md#adr-0025)/[Plan 23](../design/generated-stack.md#plan-23)); OPA/Rego and Pact are the canonical **optional providers** behind HoBo's policy ([Plan 29](../design/contracts-policy-flags.md#plan-29)) and contract ([Plan 29](../design/contracts-policy-flags.md#plan-29)) ports.
 

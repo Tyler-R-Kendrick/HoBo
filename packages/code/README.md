@@ -160,6 +160,32 @@ tmux attach -t hobo               # join
 Re-running is idempotent: an existing session is reused and only missing
 windows are added — it never duplicates or kills a pane you are working in.
 
+**Panes open in the devenv workspace, one virtual worktree per agent.** The
+workspace is the directory that declares the toolchain (`DEVENV_ROOT`, else the
+nearest `devenv.nix`, else the git root) — not wherever your shell happened to
+be. Each agent then gets its **own tree**, because agents sharing one checkout
+collide:
+
+```
+workspace · /home/you/app/packages/code (devenv-config)
+trees · rift
+  claude · /home/you/.rifts/claude
+  codex  · /home/you/.rifts/codex
+```
+
+[rift](https://github.com/anomalyco/rift) is the default — copy-on-write trees
+are near instant and cheap in space. It needs btrfs, reflink-capable XFS, or
+APFS, and ships per-platform binaries, so when it cannot run hobo-code falls
+back to a **git worktree per agent** and prints why:
+
+```
+trees · git-worktree — rift ships no binary for this platform
+```
+
+The worktree is cut from the enclosing git root, so a devenv workspace nested
+inside a monorepo still gets real per-agent isolation. `--shared` opts out and
+puts every agent in the workspace root.
+
 **Local and remote are the same shape.** A local agent, a locally running
 inference server, and an ssh'd host are all just *a command in a pane*. Local
 inference is not a special case with its own lifecycle, so naming, detach and

@@ -41,6 +41,17 @@ load-bearing abstraction is the **uniform target**: local, local-inference and
 ssh are all just a command in a pane, so a locally spawned inference session
 and a remote ssh session share one lifecycle, naming and reattach story.
 
+**Agents work in the devenv workspace, one tree each (`src/workspace.ts`,
+`src/agent-workspaces.ts`, `src/rift.ts`).** Panes used to open in
+`process.cwd()`. The workspace root is now resolved from `DEVENV_ROOT`, the
+nearest devenv config, or the git root, and every agent gets an isolated tree
+so parallel agents cannot collide. rift is the default backend (copy-on-write,
+near instant); the previous "rift backend" was a placeholder that created an
+empty directory holding a JSON marker, so an agent opening it found nothing.
+`probeRift` treats presence on PATH as insufficient — the npm package installs
+without a platform binary — and falls back to a git worktree cut from the
+enclosing repo, reporting the reason.
+
 **hobo-code declares its own environment (`devenv.nix`, `src/devenv.ts`).**
 The tools the harness shells out to are named in devenv rather than assumed.
 `inspectDevenv` reports whether that toolchain is installed and refuses to

@@ -972,3 +972,25 @@ Cloud Foundry delivered bindings via `VCAP_SERVICES` and Aspire-style hosts ofte
 - **(+)** Aligns with agent schema-only and never-compact credential audit.
 - **(−)** Operators must not expect always-on secret-config microservices on every Camp.
 
+
+## ADR-0146
+**Jurisdiction vocabulary, residency evaluation, and control→evidence packs — legal geography and compliance become typed, fail-closed inputs.**
+
+### Context
+Residency was typed but hollow: `residency` fields on Yards/Stations were never read, `can-trail`/`can-migrate` consumed a caller-supplied `residencyConflict` boolean no evaluator produced, `Tenant` had no residency despite Plan 50 §G, data-classification labels were doc-only, region tokens were unnormalized free strings in two styles, and "jurisdiction" appeared once in prose ([governance-planes](../governance-planes.md)) and once as a Cloudflare literal. On the compliance side, [ADR-0060](#adr-0060) §4 promised "frameworks are declarative control→evidence packs" with no schema, while the evidence sources (never-compact audit retention, `policy.Decided`, `gatekeeper.Decided`, OCSF export, crypto-shred) already exist. OSCAL is the recognized open spec for mapping controls to implementations ([`../../standards/oscal.md`](../../standards/oscal.md)).
+
+### Decision
+1. **Typed legal geography in `@hobo/core`** (`ports/jurisdiction.ts`, proto+CUE): a `JurisdictionId` catalog (eu, eea, us, us-gov, uk, ch, ca, au, in, jp, br, global) with informational `legalBasis` citations (GDPR, adequacy decisions, FedRAMP, provider sovereignty knobs) — cited, never depended on ([ADR-0144](07-portability-extensibility.md#adr-0144)); a normalized region→jurisdictions mapping covering every region token providers publish today; typed `DataClassification` (`public|internal|pii|phi|pci|secret`) replacing the doc-only labels.
+2. **`evaluateResidency` is the single evaluator**: pure and deterministic over `(constraint, region, catalog)`, **fail-closed on unmapped regions** (geography the platform cannot attest is geography a constraint cannot allow). It produces the `residencyConflict` inputs `can-trail`/`can-migrate` already consume and the machine-readable conflict codes (`region-unmapped`, `jurisdiction-denied`, `jurisdiction-not-allowed`).
+3. **Tenants carry residency**: optional `Tenant.residency: ResidencyConstraint` closes the Plan 50 §G promise; Gatekeeper reasons gain a `residency` gate value so residency refusals are first-class, not folded into `policy`.
+4. **Residency policy pack** (`@hobo/policy`, dependency-free): the walkthrough's `eu-data-stays-in-eu` rule as a real pack — deny for regulated classifications (pii/phi/pci/secret), warn for unregulated, deny unmapped regions, residency-evidence obligations on every allow. Layering is deliberate: core owns geography, policy owns rules over verdicts.
+5. **Control→evidence packs** (`@hobo/policy`): `hobo.control-evidence-pack/v1` — a framework's controls each cite evidence refs (`event-stream:` | `gate:` | `artifact:` | `retention:`) with an honest per-control status; `evaluateControlCoverage` computes satisfied/missing (planned controls never count as satisfied). Vocabulary aligns with OSCAL component-definition/control-implementation; a NIST SP 800-53 seed pack maps a small control set to evidence HoBo actually has. HoBo exports evidence for external GRC programs; **it does not attest** (governance-planes scope preserved).
+
+### Non-goals
+- No attestation program, no certification claims ([compliance-evidence-pack](../compliance-evidence-pack.md) rules unchanged).
+- No OSCAL schema dependency; no adequacy/transfer-mechanism graph in v1 (recorded as an iteration hook alongside cross-Camp replication residency enforcement and broker residency population).
+
+### Consequences
+- **(+)** Residency conflicts become evaluable, attributable plan-time verdicts with remediation, feeding existing gates without new event families.
+- **(+)** "Which controls does this deployment satisfy?" is a computable coverage report over real evidence streams.
+- **(−)** The jurisdiction catalog is a curated platform artifact that must track legal reality; unmapped-region fail-closed means new provider regions require a mapping entry before regulated workloads can land there — deliberate friction.

@@ -10,6 +10,27 @@ export {
 	rebuildAgentGuardrailState,
 } from "./agent-guardrails.js";
 export {
+	CONTROL_EVIDENCE_PACK_SCHEMA,
+	type ControlCoverageReport,
+	type ControlEvidenceKind,
+	type ControlEvidencePack,
+	ControlEvidenceParseError,
+	type ControlEvidenceRef,
+	type ControlMapping,
+	type ControlStatus,
+	evaluateControlCoverage,
+	NIST_800_53_SEED_PACK,
+	parseControlEvidencePack,
+} from "./control-evidence-pack.js";
+
+export {
+	DEFAULT_MESSAGING_POLICY_PACK,
+	evaluateMessagingPolicy,
+	MESSAGING_POLICY_PACK_ID,
+	type MessagingPolicyEvaluation,
+	type MessagingPolicyPack,
+} from "./messaging-policy-pack.js";
+export {
 	canonicalJson,
 	createDecision,
 	createDecisionRequest,
@@ -26,13 +47,13 @@ export {
 	serializePolicyIrDocument,
 	toWitDecisionRecord,
 } from "./policy-ir.js";
-
 export {
-	DEFAULT_MESSAGING_POLICY_PACK,
-	evaluateMessagingPolicy,
-	type MessagingPolicyEvaluation,
-	type MessagingPolicyPack,
-	MESSAGING_POLICY_PACK_ID,
-} from "./messaging-policy-pack.js";
+	DEFAULT_RESIDENCY_POLICY_PACK,
+	evaluateResidencyPolicy,
+	RESIDENCY_POLICY_PACK_ID,
+	type ResidencyPolicyEvaluation,
+	type ResidencyPolicyPack,
+	type ResidencyVerdictInput,
+} from "./residency-policy-pack.js";
 
 export const HOBO_POLICY_PACKAGE = "@hobo/policy";

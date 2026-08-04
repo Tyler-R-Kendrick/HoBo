@@ -71,6 +71,13 @@ flowchart LR
 ```
 
 ### Component responsibilities (C4 "container" level)
+
+> **Disambiguation** ([glossary](./glossary.md)): this table uses "component"
+> in the **C4 sense** — control-plane *modules*. The glossary's canonical
+> **Component** is the WASM/WASI deployable unit (manifest `component.v1`);
+> Dapr "components" are a third, adapter-local sense confined to
+> `runtime-dapr`. The taxonomy below (§Key boundaries) lists all three.
+
 | Component | Responsibility | Key inputs | Key outputs (events) |
 |---|---|---|---|
 | **Gateway** | Authn/z; expose SDK RPC + REST + MCP; accept commands; serve read models | Commands, identity tokens | `DeployRequested`, `BindleRegistered`, … |
@@ -90,6 +97,28 @@ flowchart LR
 `hobo inspect run <id>` / dashboard → Gateway → read model projection of the run's events (workflow/step/actor/saga timeline). Never touches the providers.
 
 ### Key boundaries & invariants
+
+**Component & boundary taxonomy.** "Component" and "boundary" each carry
+several precise senses; this table is the canonical disambiguation
+([ADR-0145](./adr/01-architecture-core.md#adr-0145) covers the companion
+Trait concept):
+
+| Sense | What it bounds / names | Typed as | Enforced by |
+|---|---|---|---|
+| **Component (WASM)** | The deployable unit | `ComponentDescriptor`/`LinkRecord` (`packages/core/src/ports/component-host.ts`), manifest `component.v1` | component-host conformance suite; WIT lock |
+| **Component (C4 module)** | Control-plane responsibility areas (table above) | prose | package layering rules |
+| **Component (Dapr)** | Dapr building-block bindings | adapter-local (`runtime-dapr`) | adapter tests |
+| **BoundaryContract** | Any of 13 integration edge kinds (http, event, resource-binding, agent-tool, …) with effects + resilience | `packages/contracts/src/contract-ir.ts` (`hobo.contract-ir/v1`, content-hashed) | `can-deploy` / Gatekeeper (ADR-0136) |
+| **Membrane (WIT/wRPC)** | The polyglot call boundary between components and providers | `LinkRecord.boundaryMode`/transport; link table + wRPC layer | runtime link enforcement; manifest-declared links only |
+| **Integration boundary (PACT)** | Consumer↔provider expectations across packages | `contracts/*.pact.json` + `*-boundaries.test.ts` | standards gate + `architecture:guard` |
+| **Parse boundary** | Untrusted input → derived domain types | per-package parsers | technical-standards.md ("one parser boundary") |
+| **Consistency boundary** | The write model (Aggregate) | stream + `expectedSeq`/fencing | DurableEventStore CAS (ADR-0135) |
+| **Capability boundary** | What a component may call, from inferred usage | grants (`packages/core/src/capability/`) | capability-enforcement conformance suite |
+| **Isolation boundary (Station)** | Control-plane isolation: tenant, residency, air-gap, trust domain | `StationIsolation` proto | Station/Rail policy pins |
+| **Tenancy boundary** | Pooled = logical, siloed = physical | app-tenant stream prefix + platform filter | cross-tenant-leak conformance gate (ADR-0080) |
+| **Trust/air-gap boundary** | Zero-egress sovereign Yards; in-boundary trust roots | ADR-0036 profile | offline bundle verification; egress denial |
+
+Invariants:
 1. **Commands mutate only via events.** No component writes resource state except by appending an event (CQRS/ES). This is what makes everything replayable — and it **includes ephemeral runtime-instance patches**: an agent's in-place patch isn't promoted to *source control*, but its full diff is captured as a durable `derivative.EphemeralPatchApplied` event ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)), so replaying the log still reconstructs the patched instance. "Not in source" never means "not in the replayable log."
 2. **Executors are the only thing that touches a cloud**, always sandboxed, always with a short-lived scoped token (never a long-lived secret). See [Plan 12](./security-networking.md#plan-12).
 3. **The Yard is itself a Bindle** deployed by an earlier Yard (or bootstrapped locally) — see [Plan 4 §Bootstrapping](./control-plane.md#plan-04).

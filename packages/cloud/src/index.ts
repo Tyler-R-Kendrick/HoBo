@@ -104,6 +104,8 @@ export {
 	type DeploymentPlan,
 	hashDeploymentPlan,
 	type MatchDecided,
+	type RankedCandidate,
+	type RejectedCandidate,
 	type Negotiation,
 	type PlanHash,
 	type PlanRemediation,

@@ -32,7 +32,8 @@ export function dependencyAnnotation(config: {
 	if (config.image !== undefined) frozen.image = config.image;
 	if (config.source !== undefined) frozen.source = config.source;
 	if (config.witWorld !== undefined) frozen.witWorld = config.witWorld;
-	if (config.endpoints !== undefined) frozen.endpoints = { ...config.endpoints };
+	if (config.endpoints !== undefined)
+		frozen.endpoints = { ...config.endpoints };
 	if (config.connectionString !== undefined) {
 		frozen.connectionString = config.connectionString;
 	}

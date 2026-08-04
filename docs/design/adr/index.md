@@ -158,3 +158,4 @@
 | 0147 | HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals | [portability-extensibility](07-portability-extensibility.md#adr-0147) |
 | 0148 | ~~Pixel-RPG identity replaces the traced rubberhose surface~~ (superseded by 0149) | [portability-extensibility](07-portability-extensibility.md#adr-0148) |
 | 0149 | HoBo Rubberhose is the product identity; the pixel-RPG is a separate game project (`@hobo/pixel-village`) | [portability-extensibility](07-portability-extensibility.md#adr-0149) |
+| 0150 | HoBo Yard game-first control-plane UI (renumbered from a colliding 0135 section) | [portability-extensibility](07-portability-extensibility.md#adr-0150) |

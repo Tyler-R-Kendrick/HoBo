@@ -42,6 +42,18 @@ message CapabilityVerdict {
 }
 
 // deployment stream body for match.Decided (one per resolved resource).
+message RankedCandidate {
+  string definition_id = 1;
+  string provider_id = 2;
+  uint32 specificity = 3;
+  uint32 priority = 4;
+}
+
+message RejectedCandidate {
+  string definition_id = 1;
+  string reason = 2;
+}
+
 message MatchDecided {
   string deployment_id = 1;
   string resource = 2;
@@ -49,11 +61,15 @@ message MatchDecided {
   string provider_id = 4;
   string port = 5;
   uint32 specificity = 6;
-  repeated string rejected = 7;
+  repeated string rejected = 7;    // deprecated alias of rejected_candidates ids
   string objective = 8;
   string region = 9;
   string rationale = 10;
-  string catalog_hash = 11;
+  string catalog_hash = 11;        // deprecated alias of catalog_content_hash
+  repeated RankedCandidate ranking = 12;
+  repeated RejectedCandidate rejected_candidates = 13;
+  bool tie = 14;
+  string catalog_content_hash = 15;
 }
 
 // A resolved node of the DeploymentPlan DAG (control-plane.md step 6).

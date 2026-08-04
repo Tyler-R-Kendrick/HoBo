@@ -47,6 +47,24 @@ export interface DeploymentPlan {
 	objective: string;
 }
 
+// domain-view: ranked candidate inside match.Decided; wire form is RankedCandidate in data-models/cloud.proto.
+export interface RankedCandidate {
+	definitionId: string;
+	providerId: string;
+	specificity: number;
+	priority: number;
+}
+
+// domain-view: structured rejection inside match.Decided; wire form is RejectedCandidate in data-models/cloud.proto.
+export interface RejectedCandidate {
+	definitionId: string;
+	reason: string;
+}
+
+// Canonical shape per control-plane-event-schema-contract (ADR-0033/ADR-0088):
+// full ranking, structured rejections with reasons, an explicit tie flag, and
+// the catalog content-hash. `rejected`/`catalogHash` remain populated as
+// deprecated aliases for one release.
 // domain-view: match.Decided body; wire form is MatchDecided in data-models/cloud.proto.
 export interface MatchDecided {
 	deploymentId: string;
@@ -55,11 +73,19 @@ export interface MatchDecided {
 	providerId: string;
 	port: string;
 	specificity: number;
+	/** @deprecated flat ids; read `rejectedCandidates` (reasons included). */
 	rejected: string[];
+	rejectedCandidates: RejectedCandidate[];
+	/** Full ranking, winner first (ADR-0088 attribution). */
+	ranking: RankedCandidate[];
+	/** True when the winner beat the runner-up only on the definition-id tiebreak. */
+	tie: boolean;
 	objective: string;
 	region?: string;
 	rationale: string;
+	/** @deprecated alias of `catalogContentHash`. */
 	catalogHash: string;
+	catalogContentHash: string;
 }
 
 // domain-view: rejection remediation; wire form is PlanRemediation in data-models/cloud.proto.

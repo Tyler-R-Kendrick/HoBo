@@ -519,7 +519,9 @@ Local port-based `hobo dev`, cross-cloud Junction connectivity, and public DNS w
 - **(+)** Follow-on closed robustness: Tailscale API MagicDNS, Netbird management HTTP, built-in Route53 SigV4, real ES256 DPoP + JWT-SVID, rego-lite policy docs, durable billing ledger + Stripe PaymentIntent REST.
 - **(−)** Multi-cluster hard isolation sharding, SPIRE Workload API fetch, and WebAuthn claim step-up remain operational/product follow-ons (interfaces ready).
 
-## ADR-0135
+## ADR-0150
+> Renumbered 2026-08-04: this section previously carried the id ADR-0135, colliding with the SQLite EventStore ADR (its own standalone file). All references below use ADR-0150.
+
 **HoBo Yard: game-first control-plane UI over the shared management surface (not a second lifecycle).**
 
 ### Context

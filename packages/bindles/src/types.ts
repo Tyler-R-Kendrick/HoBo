@@ -264,9 +264,7 @@ export interface ContainerDependencyOptions {
 export interface WasmComponentDependencyOptions {
 	readonly source: string;
 	readonly witWorld?: string;
-	readonly endpoints?: Readonly<
-		Record<string, { readonly port?: number }>
-	>;
+	readonly endpoints?: Readonly<Record<string, { readonly port?: number }>>;
 }
 
 export interface BindleBuilder {
@@ -278,15 +276,23 @@ export interface BindleBuilder {
 	topic<T = unknown>(): BindleResource<"topic">;
 	secret(): BindleResource<"secret">;
 	data(): BindleResource<"data">;
+	schedule(): BindleResource<"schedule">;
+	websocket(binding?: ComponentBinding): BindleResource<"websocket">;
+	job(binding?: ComponentBinding): BindleResource<"job">;
 	service(binding?: ComponentBinding): BindleResource<"service">;
+	flag(): BindleResource<"flag">;
+	auth(): BindleResource<"auth">;
+	crypto(): BindleResource<"crypto">;
+	notify(): BindleResource<"notify">;
+	guardrail(): BindleResource<"guardrail">;
+	ui(binding?: ComponentBinding): BindleResource<"ui">;
+	golden(): BindleResource<"golden">;
+	experiment(): BindleResource<"experiment">;
+	rollout(): BindleResource<"rollout">;
 	/** BYO external service (connection string / URL). No host runtime required. */
-	external(
-		options?: ExternalDependencyOptions,
-	): BindleResource<"external">;
+	external(options?: ExternalDependencyOptions): BindleResource<"external">;
 	/** Container image dependency — requires `hobo add runtime-oci`. */
-	container(
-		options: ContainerDependencyOptions,
-	): BindleResource<"container">;
+	container(options: ContainerDependencyOptions): BindleResource<"container">;
 	/** Wasm component dependency — requires `hobo add runtime-wasm`. */
 	wasmComponent(
 		options: WasmComponentDependencyOptions,

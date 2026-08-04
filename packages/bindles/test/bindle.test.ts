@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { bindle } from "../src/bindle.js";
 import { env } from "../src/env.js";
+import { CATALOG_ROWS } from "../src/types.js";
 
 describe("bindle()", () => {
 	it("builds a graph with at least two resources and one dependsOn edge", () => {
@@ -194,6 +195,46 @@ describe("bindle()", () => {
 			]),
 		);
 		expect(collectRequiredRuntimes(definition)).toEqual(["oci", "wasm"]);
+	});
+
+	it("exposes a builder method for every catalog factory", () => {
+		// Catalog factory names are kebab-case; builder keys are camelCase
+		// (only "wasm-component" -> wasmComponent differs today).
+		const builderKeyFor = (factory: string): string =>
+			factory.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
+		bindle("catalog-coverage", (b) => {
+			const builder = b as unknown as Record<string, unknown>;
+			for (const row of CATALOG_ROWS) {
+				expect(typeof builder[builderKeyFor(row.factory)], row.factory).toBe(
+					"function",
+				);
+			}
+			return {};
+		});
+	});
+
+	it("b.schedule() lands in the definition with empty declaredAllow", () => {
+		const definition = bindle("cron", (b) => ({
+			nightly: b.schedule(),
+		}));
+		expect(definition.resources.nightly.kind).toBe("schedule");
+		expect(definition.resources.nightly.stableId).toBe("schedule:nightly");
+		expect(definition.resources.nightly.declaredAllow).toEqual([]);
+		// schedule is an infra kind — no default App Kit session-replay.
+		expect(definition.resources.nightly.annotations).toEqual([]);
+	});
+
+	it("allow() narrows verbs on the new verb-bearing builder kinds", () => {
+		const definition = bindle("flags", (b) => ({
+			beta: b.flag().allow("eval", "change"),
+			deploy: b.rollout().allow("start", "promote"),
+		}));
+		expect(definition.resources.beta.kind).toBe("flag");
+		expect(definition.resources.beta.declaredAllow).toEqual(["eval", "change"]);
+		expect(definition.resources.deploy.declaredAllow).toEqual([
+			"start",
+			"promote",
+		]);
 	});
 
 	it("rejects empty resource names", () => {

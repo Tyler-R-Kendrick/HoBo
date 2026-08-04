@@ -14,9 +14,9 @@ import type {
 	BindleBuilder,
 	BindleDefinition,
 	BindleEdge,
+	BindleRequirements,
 	BindleResource,
 	BindleResourceRecord,
-	BindleRequirements,
 	ComponentBinding,
 	ContainerDependencyOptions,
 	ExternalDependencyOptions,
@@ -137,8 +137,23 @@ function createBuilder(): BindleBuilder {
 		topic: () => createBindleResource("topic"),
 		secret: () => createBindleResource("secret"),
 		data: () => createBindleResource("data"),
+		schedule: () => createBindleResource("schedule"),
+		websocket: (binding?: ComponentBinding) =>
+			createBindleResource("websocket", toHandler(binding)),
+		job: (binding?: ComponentBinding) =>
+			createBindleResource("job", toHandler(binding)),
 		service: (binding?: ComponentBinding) =>
 			createBindleResource("service", toHandler(binding)),
+		flag: () => createBindleResource("flag"),
+		auth: () => createBindleResource("auth"),
+		crypto: () => createBindleResource("crypto"),
+		notify: () => createBindleResource("notify"),
+		guardrail: () => createBindleResource("guardrail"),
+		ui: (binding?: ComponentBinding) =>
+			createBindleResource("ui", toHandler(binding)),
+		golden: () => createBindleResource("golden"),
+		experiment: () => createBindleResource("experiment"),
+		rollout: () => createBindleResource("rollout"),
 		external: (options: ExternalDependencyOptions = {}) =>
 			createBindleResource("external").with(
 				externalDependencyAnnotation(options),

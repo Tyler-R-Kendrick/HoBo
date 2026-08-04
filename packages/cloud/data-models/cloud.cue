@@ -32,6 +32,18 @@ package hobo
 	missing: [...string]
 }
 
+#RankedCandidate: {
+	definition_id: string & !=""
+	provider_id:   string & !=""
+	specificity:   uint
+	priority:      uint
+}
+
+#RejectedCandidate: {
+	definition_id: string & !=""
+	reason:        string & !=""
+}
+
 #MatchDecided: {
 	deploymentId: string & !=""
 	resource:     string & !=""
@@ -40,6 +52,10 @@ package hobo
 	port:         string & !=""
 	specificity:  uint
 	rejected: [...string]
+	ranking: [...#RankedCandidate]
+	rejectedCandidates: [...#RejectedCandidate]
+	tie:          bool
+	catalogContentHash: string & !=""
 	objective:    string & !=""
 	region?:      string
 	rationale:    string

@@ -65,7 +65,7 @@ export function matchResource(
 	const candidates = defs.filter((def) => def.port === intent.port);
 
 	const accepted: ResourceDefinition[] = [];
-	const rejected: string[] = [];
+	const rejectedCandidates: { definitionId: string; reason: string }[] = [];
 	let lastMissing: string[] = [];
 
 	for (const candidate of candidates) {
@@ -81,10 +81,16 @@ export function matchResource(
 				// Degrade: accept with an implicit PlanWarning (control-plane.md step 3).
 				accepted.push(candidate);
 			} else {
-				rejected.push(candidate.id);
+				rejectedCandidates.push({
+					definitionId: candidate.id,
+					reason: `required features not satisfied: ${verdict.missing.join(", ")}`,
+				});
 			}
 		} else {
-			rejected.push(candidate.id);
+			rejectedCandidates.push({
+				definitionId: candidate.id,
+				reason: "capability verdict none",
+			});
 		}
 	}
 
@@ -141,7 +147,21 @@ export function matchResource(
 	);
 	const winner = ranked[0] as ResourceDefinition;
 	const region = pickRegion(intent, winner);
-	const losers = ranked.slice(1).map((d) => d.id);
+	const losers = ranked
+		.slice(1)
+		.map((d) => ({ definitionId: d.id, reason: "outranked" }));
+	// Tie attribution (ADR-0088): the winner and runner-up compare equal on
+	// every objective dimension and are separated only by the definition-id
+	// tiebreak — recorded so a winner flip is attributable to a catalog change.
+	const runnerUp = ranked[1];
+	const costObjective =
+		intent.objective === "min-cost" || intent.objective === "cost";
+	const tie =
+		runnerUp !== undefined &&
+		winner.specificity === runnerUp.specificity &&
+		winner.priority === runnerUp.priority &&
+		(!costObjective || marginal(winner) === marginal(runnerUp));
+	const allRejected = [...rejectedCandidates, ...losers];
 
 	const decision: MatchDecided = {
 		deploymentId: "",
@@ -150,13 +170,22 @@ export function matchResource(
 		providerId: winner.providerId,
 		port: winner.port,
 		specificity: winner.specificity,
-		rejected: [...rejected, ...losers],
+		rejected: allRejected.map((entry) => entry.definitionId),
+		rejectedCandidates: allRejected,
+		ranking: ranked.map((d) => ({
+			definitionId: d.id,
+			providerId: d.providerId,
+			specificity: d.specificity,
+			priority: d.priority,
+		})),
+		tie,
 		objective: intent.objective,
 		rationale:
 			intent.objective === "min-cost" || intent.objective === "cost"
 				? "min-cost within constraints; stable tiebreak=definition-id"
 				: `objective=${intent.objective}; stable tiebreak=definition-id`,
 		catalogHash: registry.catalogHash,
+		catalogContentHash: registry.catalogHash,
 	};
 	if (region) decision.region = region;
 

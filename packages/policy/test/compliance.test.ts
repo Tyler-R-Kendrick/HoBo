@@ -10,6 +10,7 @@ import {
 	parseControlEvidencePack,
 } from "../src/control-evidence-pack.js";
 import { evaluateResidencyPolicy } from "../src/residency-policy-pack.js";
+import { GDPR_SEED_PACK, SOC2_SEED_PACK } from "../src/seed-packs.js";
 
 test("eu-data-stays-in-eu: pii landing in us-east-1 is denied with the rule named", () => {
 	const decision = evaluateResidencyPolicy({
@@ -123,4 +124,66 @@ test("coverage: missing evidence is named per control", () => {
 	assert.ok(ac3);
 	assert.deepEqual(ac3.missingRefs, ["gate:gatekeeper.Decided"]);
 	assert.ok(report.coverage < 0.2);
+});
+
+test("SOC 2 seed pack: honest coverage against today's real evidence set", () => {
+	// Refs that exist in code today: policy/gatekeeper decisions, capability
+	// grants, connection.Revoked (@hobo/identity), append-only journal,
+	// can-deploy, migration.SnapshotTaken (@hobo/trails), retention,
+	// conformance report. NOT present: revocation audit artifact, OCSF
+	// export, data.Classified.
+	const evidence = [
+		"event-stream:policy.Decided",
+		"gate:gatekeeper.Decided",
+		"gate:capability-grants",
+		"event-stream:connection.Revoked",
+		"event-stream:journal-append-only",
+		"gate:can-deploy",
+		"event-stream:gatekeeper.Decided",
+		"event-stream:migration.SnapshotTaken",
+		"retention:credential-audit-never-compact",
+		"artifact:conformance-report",
+	];
+	const report = evaluateControlCoverage(SOC2_SEED_PACK, evidence);
+	assert.equal(report.framework, "SOC 2 Trust Services Criteria");
+	assert.equal(report.total, 8);
+	assert.equal(report.satisfied, 5);
+	assert.deepEqual(report.missing.map((entry) => entry.controlId).sort(), [
+		"C1.1",
+		"CC6.3",
+		"CC7.2",
+	]);
+	const cc63 = report.missing.find((entry) => entry.controlId === "CC6.3");
+	assert.deepEqual(cc63?.missingRefs, ["artifact:connection-revocation-audit"]);
+});
+
+test("GDPR seed pack: coverage names the by-design gap; breach notification stays planned", () => {
+	const evidence = [
+		"event-stream:policy.Decided",
+		"gate:capability-grants",
+		"artifact:crypto-shred-erasure",
+		"event-stream:journal-append-only",
+		"gate:can-deploy",
+		"retention:credential-audit-never-compact",
+		"gate:gatekeeper.Decided",
+		"artifact:residency-evidence",
+		"artifact:ocsf-export",
+	];
+	const report = evaluateControlCoverage(GDPR_SEED_PACK, evidence);
+	assert.equal(report.total, 7);
+	// Art.25 misses data.Classified; Art.33 is status:planned — evidence
+	// presence cannot satisfy it.
+	assert.equal(report.satisfied, 5);
+	const art25 = report.missing.find((entry) => entry.controlId === "Art.25");
+	assert.deepEqual(art25?.missingRefs, ["event-stream:data.Classified"]);
+	const art33 = report.missing.find((entry) => entry.controlId === "Art.33");
+	assert.deepEqual(art33?.missingRefs, ["status:planned"]);
+});
+
+test("seed packs parsed at module load are frozen and schema-pinned", () => {
+	for (const pack of [SOC2_SEED_PACK, GDPR_SEED_PACK]) {
+		assert.equal(pack.schema, CONTROL_EVIDENCE_PACK_SCHEMA);
+		assert.ok(Object.isFrozen(pack));
+		assert.ok(Object.isFrozen(pack.controls));
+	}
 });

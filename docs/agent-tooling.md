@@ -184,6 +184,37 @@ A **knowledge-graph memory MCP server** (+ CLI) on the **Bun** runtime: `gbrain 
 - ⚠️ **Optional keys + data egress + cost:** remote providers use exactly one of `OPENAI_API_KEY` / `ZEROENTROPY_API_KEY` / `VOYAGE_API_KEY` (in `.env`) and receive embedding/query text. Don't point them at content you don't want shared. Local Ollama keeps embeddings local. The PGLite store is gitignored. To disable gbrain entirely, decline its MCP server or run setup with `--no-gbrain`.
 
 
+### spriterrific-api — `chongdashu/spriterrific-skills`
+Drives the **hosted Spriterrific HTTP API** — text prompt or reference image to
+game-ready 2D character anchors and animation spritesheets, generated on
+Spriterrific's cloud workers rather than a local checkout. Installed to all four
+skill trees (`.claude`, `.agents`, `.cursor`, `.github`) from
+`raw.githubusercontent.com/chongdashu/spriterrific-skills`, byte-identical, at
+**v1.3.2**.
+
+- **Auth:** `SPRITERRIFIC_API_KEY` (a `sk_…` bearer token, created at
+  app.spriterrific.com). Kept in the gitignored `.env`, never in-repo.
+- **It spends real money.** Jobs debit credits *up front*: an image step
+  (anchor) is 30 credits, a video step (one action animation) is 100. A
+  character job from a prompt is `3x30 + actions x100`; from a reference image
+  `2x30 + actions x100`; a variant `2x30 + actions x100`; an extra action job
+  100. Failed or skipped steps auto-refund, and 400s cost nothing. **Check
+  `GET /api/v1/me` and state the expected debit before enqueueing.**
+- **Risk:** prompts, reference images and generated artifacts go to
+  Spriterrific's service and its upstream providers (nano-banana-2-lite for
+  images, grok-imagine-video-1.5-i2v for video).
+- Frame re-picking, version listing and activation are **0 credits** — reach for
+  those before re-rolling a generation.
+- The companion **CLI** skill (`spriterrific`, for local checkouts with review
+  gates) is **not** installed here; this is the hosted surface only.
+
+**For Bo specifically:** the skill's own anti-patterns matter more than usual,
+because Bo is asymmetric and text prompts cannot pin identity. Never rebuild him
+from a fresh `sourcePrompt` or an externally generated lookalike to change an
+outfit or a facing — use a **character variant job** (`referenceJobId` +
+`editPrompt` naming only the delta), which preserves face, proportions and art
+style. A new facing is a variant job with a new `direction`, never a mirror.
+
 ### SkillOpt — `microsoft/SkillOpt` (MIT)
 A **skill optimization research harness**, not a runtime MCP server. SkillOpt treats a markdown skill as trainable external state for a frozen agent: it runs scored rollouts, proposes bounded add/delete/replace edits, accepts only validation-improving candidates, and exports a compact `best_skill.md`. It currently targets direct chat plus Codex CLI and Claude Code CLI harnesses. Use it offline when the repo has scored tasks or benchmark suites worth optimizing against; do not put it in always-on agent instructions. The setup script installs it directly from `git+https://github.com/microsoft/SkillOpt.git`, verifies `skillopt-train` and `skillopt-sleep`, and exposes [`../scripts/skillopt-sleep.sh`](../scripts/skillopt-sleep.sh) as the repo-local runner. Use the default mock backend for no-spend dry runs, then opt in to `--backend codex` or `--backend claude` when you want real replay on your own budget.
 

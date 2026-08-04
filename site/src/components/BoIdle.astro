@@ -89,7 +89,7 @@ const style = [
 	}
 
 	/* At night the soot silhouette takes the cream rim the SVG Bo has. */
-	:global(:root:not([data-theme="light"])) .bo-idle {
+	:global(:root[data-theme="dark"]) .bo-idle {
 		filter: drop-shadow(1px 0 0 var(--ink)) drop-shadow(-1px 0 0 var(--ink))
 			drop-shadow(0 1px 0 var(--ink)) drop-shadow(0 -1px 0 var(--ink));
 	}

@@ -7,9 +7,9 @@
 		"css": "site/src/styles/global.css",
 		"note": "site/DESIGN.md is the agent-facing contract and stays normative; global.css is the runtime truth. This sidecar carries only what the DESIGN.md frontmatter schema cannot hold \u2014 tonal ramps, shadows, motion, breakpoints, and component snippets. It does not duplicate or override token primitives.",
 		"defaultTheme": {
-			"runtime": "dark",
-			"selector": ":root and :root[data-theme=\"dark\"]",
-			"note": "The stylesheet's DEFAULT is night: :root sets --bg #0a0a0a / --ink #f2f1ec / --spark #ff7a63, and light is opt-in via :root[data-theme=\"light\"]. site/DESIGN.md's frontmatter documents the DAY values (#ffffff / #101010 / #c5301c) as the normative token set. Both are defensible \u2014 the contract can present day as the reference reading with inversion as the rule \u2014 but an agent that reads only the frontmatter will generate day-mode values for a night-default site. Recorded, not silently reconciled: which one is normative is an owner decision, not a scan's.",
+			"runtime": "light",
+			"selector": ":root and :root[data-theme=\"light\"]",
+			"note": "Resolved by owner decision: day is the default, night is supported. Bare :root carries the day palette, so the page is ink-on-paper before any script runs and with JavaScript off. Night is opt-in \u2014 the toggle, a stored preference, or an OS asking for dark. site/DESIGN.md's frontmatter documents the day values, which now matches the runtime rather than diverging from it.",
 			"dayValues": {
 				"paper": "#ffffff",
 				"ink": "#101010",

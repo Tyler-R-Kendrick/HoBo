@@ -35,7 +35,8 @@
 	--ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-:root,
+/* Night is opt-in: chosen by the toggle, a stored preference, or an OS that
+   asks for dark. Day is the default below. */
 :root[data-theme="dark"] {
 	color-scheme: dark;
 	--bg: #0a0a0a;
@@ -71,6 +72,10 @@
 	--hero-grid: rgba(244, 243, 238, 0.08);
 }
 
+/* Day is the default: bare :root, so the page is ink-on-paper before any
+   script runs and when JavaScript is off. `[data-theme="light"]` is kept so an
+   explicit choice of day still wins over an OS that asks for dark. */
+:root,
 :root[data-theme="light"] {
 	color-scheme: light;
 	--bg: #ffffff;

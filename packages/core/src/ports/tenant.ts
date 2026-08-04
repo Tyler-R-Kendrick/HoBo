@@ -2,6 +2,7 @@
  * Multi-tenant foundations — soft isolation via tenant IDs + policy.
  * Hard isolation: separate overlay networks and/or control-plane partitions.
  */
+import type { ResidencyConstraint } from "./jurisdiction.js";
 
 // public-contract: brand tag for tenant identifiers.
 export type TenantId = string & { readonly __brand: "TenantId" };
@@ -43,6 +44,12 @@ export interface Tenant {
 	readonly displayName: string;
 	readonly createdAt: string;
 	readonly isolationMode?: TenantIsolationMode;
+	/**
+	 * Per-tenant residency constraint (Plan 50 §G / ADR-0146): where this
+	 * tenant's data may live, evaluated by `evaluateResidency` at plan time
+	 * and consumed by can-trail/can-migrate as residency-conflict input.
+	 */
+	readonly residency?: ResidencyConstraint;
 	/**
 	 * Hard isolation: stable overlay network namespace (e.g. tailnet key or
 	 * Netbird setup key scope). Soft mode leaves this undefined.
@@ -86,8 +93,6 @@ export function tenantContextFromEnv(
 		...(branchRaw !== undefined && branchRaw.trim() !== ""
 			? { branch: branchRaw }
 			: {}),
-		...(envName !== undefined && envName.trim() !== ""
-			? { env: envName }
-			: {}),
+		...(envName !== undefined && envName.trim() !== "" ? { env: envName } : {}),
 	};
 }

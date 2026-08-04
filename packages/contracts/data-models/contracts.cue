@@ -99,7 +99,7 @@ package hobo
 }
 
 #MachineReadableReason: {
-  gate:    "contracts" | "policy" | "obligations" | "cost" | "effects" | "resilience"
+  gate:    "contracts" | "policy" | "obligations" | "cost" | "effects" | "resilience" | "residency"
   code:    string & != ""
   message: string & != ""
 }

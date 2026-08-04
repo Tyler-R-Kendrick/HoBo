@@ -1,6 +1,6 @@
 /**
  * `hobo serve control` — local control-plane HTTP+SSE for the Yard game UI.
- * Same management surface as CLI/MCP (ADR-0135 / ADR-0111 spirit).
+ * Same management surface as CLI/MCP (ADR-0150 / ADR-0111 spirit).
  */
 import type { CommandModule } from "@hobo/cli";
 import { createControlApiServer } from "@hobo/control-api";

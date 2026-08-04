@@ -1,107 +1,21 @@
-export { bindle } from "./bindle.js";
-export {
-	connectionRef,
-	requireConnection,
-	type ConnectionClient,
-	type ConnectionRequirement,
-} from "./connection.js";
-export {
-	collectRequiredRuntimes,
-	containerDependencyAnnotation,
-	DEPENDENCY_OPTION,
-	dependencyAnnotation,
-	dependencyRuntimeOf,
-	discoveryEnvForDependency,
-	discoveryEndpointsForDependency,
-	externalDependencyAnnotation,
-	isDependencyAnnotation,
-	readDependencyConfig,
-	wasmComponentDependencyAnnotation,
-	type RequiredRuntimeKind,
-} from "./dependencies.js";
-export { env } from "./env.js";
 export {
 	APP_KIT_KINDS,
-	HTTP_APP_KIT_KINDS,
-	INFRA_KIT_KINDS,
+	type AppKitKind,
 	appKitLabel,
+	HTTP_APP_KIT_KINDS,
+	type HttpAppKitKind,
+	INFRA_KIT_KINDS,
 	isAppKitKind,
 	isHttpAppKitKind,
-	type AppKitKind,
-	type HttpAppKitKind,
 } from "./app-kits.js";
 export {
-	defaultAppKitSessionReplayAnnotation,
-	isSessionReplayAnnotation,
-	sessionReplay,
-	SESSION_REPLAY_OPTION,
-	type SessionReplayBindleConfig,
-} from "./session-replay.js";
-export {
-	assertSourceAllowed,
-	config,
-	envField,
-	fromBinding,
-	schemaOnlyView,
-	SECRET_SOURCE_RANKS,
-	secretField,
-	sourceRankIndex,
-	type ConfigFieldDef,
-	type ConfigFieldKind,
-	type ConfigSchema,
-	type SecretSourceRank,
-} from "./config-schema.js";
-export {
-	generateCtxConfigSource,
-	materializeAgentConfigView,
-	type GeneratedAgentConfigView,
-} from "./config-codegen.js";
-export {
-	evaluateSecretlessConfigGate,
-	type ConfigGateReason,
-	type SecretlessConfigGateInput,
-	type SecretlessConfigGateResult,
-} from "./config-can-deploy.js";
-export {
+	type BindingDeliveryGateResult,
+	type BindingDeliveryReason,
 	evaluateBindingDeliveryGate,
 	isForbiddenSecretEnvKey,
 	looksLikeSecretEnvValue,
-	type BindingDeliveryGateResult,
-	type BindingDeliveryReason,
 } from "./binding-delivery.js";
-export {
-	CONFIG_SENSITIVITY,
-	type ConfigSensitivity,
-	sensitivityForField,
-} from "./config-sensitivity.js";
-export { secret } from "./secret-surface.js";
-export {
-	BINDLE_FEATURES_SCHEMA,
-	experiment as declareExperiment,
-	features,
-	featureSpecsToStoreInputs,
-	rollout,
-	type ExperimentDeclaration,
-	type ExperimentSpec,
-	type FeatureFlagSpec,
-	type FeaturesDeclaration,
-	type FeatureState,
-	type RolloutDeclaration,
-	type RolloutSpec,
-	type RolloutStageSpec,
-} from "./features.js";
-export {
-	assertNoBindleProviderSelection,
-	BINDLE_PROVIDER_SELECTION_FORBIDDEN,
-	BINDLE_PROVIDER_SELECTION_REMEDIATION,
-	collectExplicitProviderPins,
-	emptyBindleRequirements,
-	hashBindleRequirements,
-	isPlatformAnnotation,
-	parseBindleRequirements,
-	type BindleRequirementsHash,
-} from "./requirements.js";
-
+export { bindle } from "./bindle.js";
 export {
 	api,
 	auth,
@@ -112,13 +26,13 @@ export {
 	data,
 	experiment,
 	flag,
-	rolloutResource,
 	golden,
 	guardrail,
 	job,
 	kv,
 	notify,
 	queue,
+	rolloutResource,
 	schedule,
 	// secret is dual-exported from secret-surface.ts (resource + field builders)
 	service,
@@ -146,7 +60,92 @@ export {
 	createCollectionEvents,
 	manifestFromWiring,
 } from "./collect/index.js";
+export {
+	type ConfigGateReason,
+	evaluateSecretlessConfigGate,
+	type SecretlessConfigGateInput,
+	type SecretlessConfigGateResult,
+} from "./config-can-deploy.js";
+export {
+	type GeneratedAgentConfigView,
+	generateCtxConfigSource,
+	materializeAgentConfigView,
+} from "./config-codegen.js";
+export {
+	assertSourceAllowed,
+	type ConfigFieldDef,
+	type ConfigFieldKind,
+	type ConfigSchema,
+	config,
+	envField,
+	fromBinding,
+	SECRET_SOURCE_RANKS,
+	type SecretSourceRank,
+	schemaOnlyView,
+	secretField,
+	sourceRankIndex,
+} from "./config-schema.js";
+export {
+	CONFIG_SENSITIVITY,
+	type ConfigSensitivity,
+	sensitivityForField,
+} from "./config-sensitivity.js";
+export {
+	type ConnectionClient,
+	type ConnectionRequirement,
+	connectionRef,
+	requireConnection,
+} from "./connection.js";
+export {
+	collectRequiredRuntimes,
+	containerDependencyAnnotation,
+	DEPENDENCY_OPTION,
+	dependencyAnnotation,
+	dependencyRuntimeOf,
+	discoveryEndpointsForDependency,
+	discoveryEnvForDependency,
+	externalDependencyAnnotation,
+	isDependencyAnnotation,
+	type RequiredRuntimeKind,
+	readDependencyConfig,
+	wasmComponentDependencyAnnotation,
+} from "./dependencies.js";
+export { env } from "./env.js";
+export {
+	BINDLE_FEATURES_SCHEMA,
+	type ExperimentDeclaration,
+	type ExperimentSpec,
+	experiment as declareExperiment,
+	type FeatureFlagSpec,
+	type FeatureState,
+	type FeaturesDeclaration,
+	featureSpecsToStoreInputs,
+	features,
+	type RolloutDeclaration,
+	type RolloutSpec,
+	type RolloutStageSpec,
+	rollout,
+} from "./features.js";
+export {
+	assertNoBindleProviderSelection,
+	BINDLE_PROVIDER_SELECTION_FORBIDDEN,
+	BINDLE_PROVIDER_SELECTION_REMEDIATION,
+	type BindleRequirementsHash,
+	collectExplicitProviderPins,
+	emptyBindleRequirements,
+	hashBindleRequirements,
+	isPlatformAnnotation,
+	parseBindleRequirements,
+} from "./requirements.js";
 export { secretRef } from "./secret-ref.js";
+export { secret } from "./secret-surface.js";
+export {
+	defaultAppKitSessionReplayAnnotation,
+	isSessionReplayAnnotation,
+	SESSION_REPLAY_OPTION,
+	type SessionReplayBindleConfig,
+	sessionReplay,
+} from "./session-replay.js";
 export type {
 	AllowVerbsFor,
 	BindleBuilder,

@@ -11,6 +11,7 @@ export type BuildErrorCode =
 	| "HOBO_BUILD_SOURCE_MISSING"
 	| "HOBO_BUILD_SOURCE_PARSE"
 	| "HOBO_BUILD_COMPONENTIZE_FAILED"
+	| "HOBO_BUILD_COMPONENTIZE_TOOLCHAIN"
 	| "HOBO_BUILD_INTERNAL";
 
 export class BuildError extends Error {
@@ -50,6 +51,10 @@ export function remediationFor(error: BuildError): readonly string[] {
 			return ["Declare at least one service in `hobo.bindle.json`."];
 		case "HOBO_BUILD_USAGE":
 			return ["Run `hobo build --help` for supported flags."];
+		case "HOBO_BUILD_COMPONENTIZE_TOOLCHAIN":
+			return [
+				"Install @bytecodealliance/componentize-js (pinned toolchain) or unset HOBO_COMPONENTIZE_REAL to use the synthetic contract-shaped floor.",
+			];
 		default:
 			return error.code === "HOBO_BUILD_COMPONENTIZE_FAILED"
 				? ["Fix the reported service source and re-run `hobo build`."]

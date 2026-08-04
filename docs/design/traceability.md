@@ -443,6 +443,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0147 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0147) | HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals. | — (yard game surface) |
 | ADR-0148 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0148) | ~~Pixel-RPG identity: sourced CC0 pixel art replaces the traced rubberhose surface.~~ Superseded by ADR-0149; its buildability rule survives, its identity change does not. | — (superseded) |
 | ADR-0149 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0149) | HoBo Rubberhose is the product identity (`site/`, `@hobo/control-yard`); the pixel-RPG is a separate game project (`@hobo/pixel-village`) owning `HoBo Pixel`. Art is authored and vendored, never drawn from primitives in a renderer; generated Bo action sheets are site-only assets. | — (product + game identity) |
+| ADR-0150 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0150) | HoBo Yard game-first control-plane UI over the shared management surface (renumbered 2026-08-04 from a section that collided with the SQLite ADR-0135 id). | — (control-plane UI) |
 
 ## ADR Numbering and Status Audit
 

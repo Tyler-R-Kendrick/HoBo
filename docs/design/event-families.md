@@ -72,13 +72,14 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `pipeline.*` | `pipeline.Triggered`, `pipeline.Completed` |
 | `policy.*` | `policy.Decided`, `policy.ObligationCreated`, `policy.ObligationSatisfied` |
 | `projection.*` | `projection.Declared`, `projection.Lagged` |
-| `provider.*` | `provider.Registered`, `provider.Deprecated` |
+| `provider.*` | `provider.Registered`, `provider.Approved`, `provider.Deprecated` |
+| `messaging.*` | `messaging.topic.created`, `messaging.subscription.created`, `messaging.dead_lettered`, `messaging.delivery.permanent_failure` (+ 6 more lowercase literals in `@hobo/core` ports/messaging.ts — naming diverges from `aggregate.PastTenseFact`; rename tracked in GAPS.md REM) |
 | `query.*` | `query.*` |
 | `redteam.*` | `redteam.FindingRecorded` |
 | `registry.*` | `registry.BundleImported` |
 | `resource.*` | `resource.Provisioned`, `resource.DriftDetected` |
 | `resilience.*` | `resilience.Attempt`, `resilience.Terminal` |
-| `resourcedef.*` | `resourcedef.Registered`, `resourcedef.Updated` |
+| `resourcedef.*` | `resourcedef.Registered`, `resourcedef.Updated` (design-only: no emitter ships yet — emission from the registry write path is tracked in GAPS.md) |
 | `rollout.*` | `rollout.Started`, `rollout.Stepped`, `rollout.Promoted`, `rollout.RolledBack`, `rollout.Failed` |
 | `run.*` | `run.Started`, `run.StepCompleted` |
 | `runbook.*` | `runbook.Defined`, `runbook.Triggered`, `runbook.StepCompleted`, `runbook.Completed`, `runbook.Failed` |

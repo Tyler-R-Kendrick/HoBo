@@ -1,6 +1,6 @@
 import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { deploymentIdFor } from "@hobo/cli";
-import { deploymentViewProjection } from "@hobo/cloud";
+import { deploymentViewProjection, topologyViewProjection } from "@hobo/cloud";
 import {
 	getNamedEndpointSession,
 	listNamedEndpointSessions,
@@ -25,7 +25,7 @@ export function createInspectCommand(
 	deps: InspectCommandDeps = {},
 ): CommandModule {
 	return {
-		run: async ({ context, flags, emitProgress }) => {
+		run: async ({ context, flags, args, emitProgress }) => {
 			const { runtime } = deps;
 			if (!runtime) {
 				return {
@@ -40,6 +40,74 @@ export function createInspectCommand(
 
 			const projectDir = context.projectDir ?? flags.cwd ?? context.cwd;
 			const deploymentId = deploymentIdFor(projectDir);
+
+			// `hobo inspect graph` — render the TopologyView app-graph projection
+			// (E21): nodes are the bindle, its resources, and the yards they land
+			// on; edges are bindings and placements. Same durable log, same
+			// rebuild-from-zero discipline; `--json` gets the structured graph, the
+			// text path gets a readable adjacency listing via emitProgress.
+			if (args[0] === "graph") {
+				const graphSnapshot = await topologyViewProjection.rebuildFromZero(
+					runtime.store,
+					`deployment:${deploymentId}`,
+				);
+				const graphRow = topologyViewProjection.get(
+					graphSnapshot,
+					deploymentId,
+				);
+				if (!graphRow) {
+					return {
+						ok: true,
+						status: "no_history",
+						code: "HOBO_OK",
+						message: `hobo inspect graph: no deployment history for "${deploymentId}" — run \`hobo up\` first.`,
+						data: {
+							command: "inspect",
+							mode: "graph",
+							deploymentId,
+							found: false,
+						},
+					};
+				}
+				// Adjacency listing: every node, then its outbound edges.
+				for (const node of graphRow.nodes) {
+					const detail = [
+						node.port !== undefined ? `port=${node.port}` : undefined,
+						node.lifecycle !== undefined
+							? `lifecycle=${node.lifecycle}`
+							: undefined,
+						node.region !== undefined ? `region=${node.region}` : undefined,
+					]
+						.filter((part) => part !== undefined)
+						.join(" ");
+					emitProgress(
+						`${node.id} (${node.kind})${detail.length > 0 ? ` ${detail}` : ""}`,
+					);
+					for (const edge of graphRow.edges) {
+						if (edge.from !== node.id) continue;
+						emitProgress(`  -[${edge.kind}]-> ${edge.to}`);
+					}
+				}
+				return {
+					ok: true,
+					status: "ok",
+					code: "HOBO_OK",
+					message: `hobo inspect graph: deployment "${deploymentId}" — ${graphRow.nodes.length} node(s), ${graphRow.edges.length} edge(s)`,
+					data: {
+						command: "inspect",
+						mode: "graph",
+						deploymentId,
+						found: true,
+						graph: {
+							nodes: graphRow.nodes,
+							edges: graphRow.edges,
+						},
+						...(graphRow.bindleHash !== undefined
+							? { bindleHash: graphRow.bindleHash }
+							: {}),
+					},
+				};
+			}
 			const snapshot = await deploymentViewProjection.rebuildFromZero(
 				runtime.store,
 				`deployment:${deploymentId}`,

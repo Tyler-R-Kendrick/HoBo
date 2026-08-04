@@ -52,11 +52,33 @@ export interface ResidencyConstraint {
 	readonly deniedJurisdictions?: readonly JurisdictionId[];
 }
 
+/** Which lawful transfer mechanisms an evaluation may rely on. Default is
+ * "none": a region must sit directly inside an allowed jurisdiction. */
+export type TransferMechanismMode = "none" | "adequacy" | "adequacy-or-scc";
+
+// domain-view: catalog entry; wire form is TransferMechanismRecord in data-models/jurisdiction.proto.
+export interface TransferMechanismEdge {
+	readonly fromJurisdiction: JurisdictionId;
+	readonly toJurisdiction: JurisdictionId;
+	readonly mechanism: "adequacy" | "scc";
+	/** Citations (decision/instrument names), informational — never a dependency. */
+	readonly legalBasis: readonly string[];
+}
+
+// domain-view: evaluation output; wire form is TransferBasisRecord in data-models/jurisdiction.proto.
+export interface TransferBasis {
+	readonly mechanism: "intra-jurisdiction" | "adequacy" | "scc";
+	readonly fromJurisdiction: JurisdictionId;
+	readonly toJurisdiction: JurisdictionId;
+	readonly legalBasis: readonly string[];
+}
+
 export type ResidencyEvaluation =
 	| {
 			readonly ok: true;
 			readonly region: string;
 			readonly regionJurisdictions: readonly JurisdictionId[];
+			readonly transferBasis: TransferBasis;
 	  }
 	| {
 			readonly ok: false;
@@ -218,6 +240,87 @@ export const JURISDICTIONS: readonly JurisdictionRecord[] = Object.freeze(
  * `local` maps to `global` (self-host: the operator's own premises are their
  * own legal problem — HoBo does not guess).
  */
+/**
+ * Seed transfer-mechanism catalog (ADR-0146 v2): real adequacy decisions and
+ * the SCC instrument as data edges. Deliberately small and honest — every
+ * edge cites its instrument; absence of an edge means the transfer has no
+ * recognized basis here (fail-closed).
+ */
+export const TRANSFER_MECHANISMS: readonly TransferMechanismEdge[] =
+	Object.freeze(
+		(
+			[
+				// EU/EEA adequacy decisions (GDPR Art. 45).
+				...(["eu", "eea"] as const).flatMap((from): TransferMechanismEdge[] => [
+					{
+						fromJurisdiction: from,
+						toJurisdiction: "uk",
+						mechanism: "adequacy",
+						legalBasis: ["EU adequacy decision for the UK (2021)"],
+					},
+					{
+						fromJurisdiction: from,
+						toJurisdiction: "ch",
+						mechanism: "adequacy",
+						legalBasis: ["EU adequacy decision for Switzerland (2000/518/EC)"],
+					},
+					{
+						fromJurisdiction: from,
+						toJurisdiction: "jp",
+						mechanism: "adequacy",
+						legalBasis: ["EU-Japan mutual adequacy decision (2019)"],
+					},
+					{
+						fromJurisdiction: from,
+						toJurisdiction: "ca",
+						mechanism: "adequacy",
+						legalBasis: [
+							"EU adequacy decision for Canada (2002/2/EC, PIPEDA commercial)",
+						],
+					},
+					{
+						fromJurisdiction: from,
+						toJurisdiction: "us",
+						mechanism: "adequacy",
+						legalBasis: ["EU-US Data Privacy Framework adequacy (2023)"],
+					},
+					{
+						fromJurisdiction: from,
+						toJurisdiction: "global",
+						mechanism: "scc",
+						legalBasis: [
+							"GDPR Art. 46(2)(c) standard contractual clauses (2021/914)",
+						],
+					},
+				]),
+				// UK retained-GDPR mirrors of the same instruments.
+				{
+					fromJurisdiction: "uk",
+					toJurisdiction: "eu",
+					mechanism: "adequacy",
+					legalBasis: ["UK adequacy regulations for the EEA (2021)"],
+				},
+				{
+					fromJurisdiction: "uk",
+					toJurisdiction: "eea",
+					mechanism: "adequacy",
+					legalBasis: ["UK adequacy regulations for the EEA (2021)"],
+				},
+				{
+					fromJurisdiction: "uk",
+					toJurisdiction: "global",
+					mechanism: "scc",
+					legalBasis: ["UK International Data Transfer Agreement (2022)"],
+				},
+			] as TransferMechanismEdge[]
+		).map((edge) =>
+			Object.freeze({
+				...edge,
+				legalBasis: Object.freeze([...edge.legalBasis]),
+			}),
+		),
+	);
+
 export const REGION_JURISDICTIONS: Readonly<
 	Record<string, readonly JurisdictionId[]>
 > = Object.freeze({
@@ -267,6 +370,14 @@ export function evaluateResidency(input: {
 	readonly constraint: ResidencyConstraint;
 	readonly region: string;
 	readonly catalog?: Readonly<Record<string, readonly JurisdictionId[]>>;
+	/**
+	 * Lawful transfer mechanisms the evaluation may rely on when the region is
+	 * not directly inside an allowed jurisdiction (ADR-0146 v2). Default
+	 * "none" preserves strict fail-closed behavior; opting in never bypasses
+	 * denied jurisdictions or unmapped regions.
+	 */
+	readonly transferMechanisms?: TransferMechanismMode;
+	readonly mechanismCatalog?: readonly TransferMechanismEdge[];
 }): ResidencyEvaluation {
 	const region = normalizeRegion(input.region);
 	const regionJurisdictions = jurisdictionsForRegion(region, input.catalog);
@@ -291,17 +402,56 @@ export function evaluateResidency(input: {
 		});
 	}
 	const allowed = input.constraint.allowedJurisdictions;
-	const allowedHit =
-		allowed.includes("global") ||
-		regionJurisdictions.some((entry) => allowed.includes(entry));
-	if (!allowedHit) {
+	const allowedDirect = allowed.includes("global")
+		? "global"
+		: regionJurisdictions.find((entry) => allowed.includes(entry));
+	if (allowedDirect !== undefined) {
+		const inside = allowedDirect === "global" ? "global" : allowedDirect;
 		return Object.freeze({
-			ok: false,
-			code: "jurisdiction-not-allowed" as const,
+			ok: true,
 			region,
 			regionJurisdictions,
-			remediation: `region "${region}" (${regionJurisdictions.join(", ")}) is outside allowed jurisdictions [${allowed.join(", ")}]`,
+			transferBasis: Object.freeze({
+				mechanism: "intra-jurisdiction" as const,
+				fromJurisdiction: inside,
+				toJurisdiction: inside,
+				legalBasis: Object.freeze([] as string[]),
+			}),
 		});
 	}
-	return Object.freeze({ ok: true, region, regionJurisdictions });
+	const mode = input.transferMechanisms ?? "none";
+	if (mode !== "none") {
+		const edges = input.mechanismCatalog ?? TRANSFER_MECHANISMS;
+		const edge = edges.find(
+			(candidate) =>
+				allowed.includes(candidate.fromJurisdiction) &&
+				(candidate.toJurisdiction === "global" ||
+					regionJurisdictions.includes(candidate.toJurisdiction)) &&
+				(candidate.mechanism === "adequacy" || mode === "adequacy-or-scc"),
+		);
+		if (edge !== undefined) {
+			return Object.freeze({
+				ok: true,
+				region,
+				regionJurisdictions,
+				transferBasis: Object.freeze({
+					mechanism: edge.mechanism,
+					fromJurisdiction: edge.fromJurisdiction,
+					toJurisdiction: edge.toJurisdiction,
+					legalBasis: Object.freeze([...edge.legalBasis]),
+				}),
+			});
+		}
+	}
+	return Object.freeze({
+		ok: false,
+		code: "jurisdiction-not-allowed" as const,
+		region,
+		regionJurisdictions,
+		remediation: `region "${region}" (${regionJurisdictions.join(", ")}) is outside allowed jurisdictions [${allowed.join(", ")}]${
+			mode === "none"
+				? ""
+				: " and no recognized transfer mechanism connects them"
+		}`,
+	});
 }

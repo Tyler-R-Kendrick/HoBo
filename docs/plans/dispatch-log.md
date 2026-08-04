@@ -391,3 +391,38 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
   directories had to be removed first and restored whole.
 - **state:** `docs/plans/highball-pixel-control-plane/sdlc-state.md` § Reversed
   by the owner
+
+## 2026-08-04 — Remediation roadmap execution (0017 → wave 1–3)
+
+- **scope:** the 0017 roadmap executed to completion on
+  `feat/remediation-wave-1` — WS-A (match.Decided convergence, ADR-0149
+  renumber, OKF, gap-analysis re-score to 35 rows), WS-B (full ADR-0146
+  residency loop: Gatekeeper dimension, verify --region + env tenant
+  constraints through the policy layer, broker residency plane + placement
+  hard filter, typed context.dataClassifications, junction fail-closed
+  guard, opt-in adequacy/SCC transfer mechanisms), WS-C (OSCAL emitter,
+  SOC2/GDPR seed packs, OCSF widening + JWS batch signing), WS-D (real jco
+  componentize lane, scheduler port v1, BindleBuilder completion, real
+  credential-gated Cloudflare cloud-native provider, RFC 8628 device-code
+  login), WS-E (placement vocabulary, RealizationResult contract,
+  app-graph projection + `hobo inspect graph`, staged rollouts), WS-F
+  (new packages: sdk, registry, evals, training, agent-skills; opa/cedar
+  extractions; opentofu documented flag; npm-publish design 0018 —
+  F28/F29/F31/F32 remain full solution sketches per the recorded user
+  decision), WS-G (GAPS Iteration-5: 40 confirmed findings, 23 same-pass
+  remediations; known-limitations refresh)
+- **findings of note:** bindles schedule() lowers via the standard
+  hobo:data+paradigm pattern (roadmap D14 wording corrected); real wasm
+  bytes are not byte-stable across runs (Wizer, ADR-0105) so determinism
+  is asserted on inputs metadata; the shipped CLI never ran the residency
+  dimension until IMPL-022's same-pass fix
+- **tests:** core 106 / contracts 38 / policy 32 / broker 75 / junctions
+  29 / cloud 80 / hobo 247 / identity 96 / runtime-local 70 /
+  componentize 20 / runtime-cloud-native 22 / cli 83 / sdk 40 /
+  registry 21 / evals 17 / training 22 / agent-skills 6 /
+  provider-opa 4 / provider-cedar 4 / conformance 65 — all green;
+  architecture guard green; staged agent:check green per commit
+- **protocol:** parallel implementer subagents on disjoint package sets
+  (edit+test only, coordinator commits), three read-only GAPS finders +
+  coordinator verifier, rubber-duck + adversarial review before every
+  commit batch

@@ -10,6 +10,60 @@ export const DEPLOYMENT_PLAN_SCHEMA = "hobo.deployment-plan/v1" as const;
 
 export type Negotiation = "require" | "prefer";
 
+// ---- E19: placement-constraint vocabulary (HoBo-native; KubeFleet semantics
+// cited, shapes native — ADR-0107 non-goal: no Kubernetes types). The
+// vocabulary records what the Planner PLANS; spread/anti-affinity EXECUTION
+// stays delegated to wadm (adr/01-architecture-core.md:419).
+
+export type PlacementSelectorOp =
+	| "eq"
+	| "ne"
+	| "in"
+	| "not-in"
+	| "lt"
+	| "lte"
+	| "gt"
+	| "gte"
+	| "exists";
+
+// domain-view: parsed property selector; wire form is PlacementPropertySelector in data-models/cloud.proto.
+export interface PlacementPropertySelector {
+	/** "cost" | "region" | "provider" | "capacity" | "latency" | custom feature key. */
+	key: string;
+	op: PlacementSelectorOp;
+	values: string[];
+}
+
+export type PlacementAffinityMode = "affinity" | "anti-affinity";
+export type PlacementScope = "region" | "yard";
+
+// domain-view: parsed affinity/anti-affinity rule; wire form is PlacementAffinityRule in data-models/cloud.proto.
+export interface PlacementAffinityRule {
+	mode: PlacementAffinityMode;
+	/** The referenced resource class (capability port). */
+	targetPort: string;
+	scope: PlacementScope;
+}
+
+// domain-view: parsed spread directive; wire form is PlacementSpread in data-models/cloud.proto.
+export interface PlacementSpread {
+	dimension: PlacementScope;
+}
+
+// domain-view: parsed pickN cardinality; wire form is PlacementPickN in data-models/cloud.proto.
+export interface PlacementPickN {
+	/** Minimum distinct satisfying candidates matching must find (>= 1). */
+	count: number;
+}
+
+// domain-view: parsed placement-constraint set; wire form is PlacementCriteria in data-models/cloud.proto.
+export interface PlacementCriteria {
+	selectors: PlacementPropertySelector[];
+	affinities: PlacementAffinityRule[];
+	spread?: PlacementSpread;
+	pickN?: PlacementPickN;
+}
+
 // domain-view: parsed provider-neutral intent; wire form is ResourceIntent in data-models/cloud.proto.
 export interface ResourceIntent {
 	name: string;
@@ -20,6 +74,7 @@ export interface ResourceIntent {
 	deps: string[];
 	region?: string;
 	objective: string;
+	placement?: PlacementCriteria;
 }
 
 // domain-view: capability-negotiation verdict; wire form is CapabilityVerdict in data-models/cloud.proto.
@@ -47,6 +102,24 @@ export interface DeploymentPlan {
 	objective: string;
 }
 
+// domain-view: ranked candidate inside match.Decided; wire form is RankedCandidate in data-models/cloud.proto.
+export interface RankedCandidate {
+	definitionId: string;
+	providerId: string;
+	specificity: number;
+	priority: number;
+}
+
+// domain-view: structured rejection inside match.Decided; wire form is RejectedCandidate in data-models/cloud.proto.
+export interface RejectedCandidate {
+	definitionId: string;
+	reason: string;
+}
+
+// Canonical shape per control-plane-event-schema-contract (ADR-0033/ADR-0088):
+// full ranking, structured rejections with reasons, an explicit tie flag, and
+// the catalog content-hash. `rejected`/`catalogHash` remain populated as
+// deprecated aliases for one release.
 // domain-view: match.Decided body; wire form is MatchDecided in data-models/cloud.proto.
 export interface MatchDecided {
 	deploymentId: string;
@@ -55,11 +128,19 @@ export interface MatchDecided {
 	providerId: string;
 	port: string;
 	specificity: number;
+	/** @deprecated flat ids; read `rejectedCandidates` (reasons included). */
 	rejected: string[];
+	rejectedCandidates: RejectedCandidate[];
+	/** Full ranking, winner first (ADR-0088 attribution). */
+	ranking: RankedCandidate[];
+	/** True when the winner beat the runner-up only on the definition-id tiebreak. */
+	tie: boolean;
 	objective: string;
 	region?: string;
 	rationale: string;
+	/** @deprecated alias of `catalogContentHash`. */
 	catalogHash: string;
+	catalogContentHash: string;
 }
 
 // domain-view: rejection remediation; wire form is PlanRemediation in data-models/cloud.proto.

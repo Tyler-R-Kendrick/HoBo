@@ -21,10 +21,25 @@ package core
 	denied_jurisdictions: [...#JurisdictionRecord.id]
 }
 
+#TransferMechanismRecord: {
+	from_jurisdiction: #JurisdictionRecord.id
+	to_jurisdiction:   #JurisdictionRecord.id
+	mechanism:         "adequacy" | "scc"
+	legal_basis: [...string & !=""]
+}
+
+#TransferBasisRecord: {
+	mechanism:         "intra-jurisdiction" | "adequacy" | "scc"
+	from_jurisdiction: #JurisdictionRecord.id
+	to_jurisdiction:   #JurisdictionRecord.id
+	legal_basis: [...string & !=""]
+}
+
 #ResidencyEvaluationRecord: {
 	ok:     bool
 	code:   "" | "region-unmapped" | "jurisdiction-denied" | "jurisdiction-not-allowed"
 	region: string & !=""
 	region_jurisdictions: [...#JurisdictionRecord.id]
-	remediation?: string
+	remediation?:    string
+	transfer_basis?: #TransferBasisRecord
 }

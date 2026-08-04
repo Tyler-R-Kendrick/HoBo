@@ -24,6 +24,13 @@ export {
 } from "./corpus/replay.js";
 export * from "./diff.js";
 export * from "./golden-ir.js";
+export {
+	type CreateMessagingFn,
+	MESSAGING_CONFORMANCE_CONTRACT,
+	type MessagingAssertionName,
+	type MessagingConformanceReport,
+	runMessagingConformance,
+} from "./messaging-conformance.js";
 export type {
 	CreateRuntimeLocalQueueClock,
 	QueueClockAssertionName,
@@ -38,14 +45,6 @@ export {
 export * from "./registry.js";
 export * from "./report.js";
 export * from "./runner.js";
-export { MESSAGING_CONFORMANCE_SUITE } from "./suites/messaging.js";
-export {
-	MESSAGING_CONFORMANCE_CONTRACT,
-	type CreateMessagingFn,
-	type MessagingAssertionName,
-	type MessagingConformanceReport,
-	runMessagingConformance,
-} from "./messaging-conformance.js";
 export * from "./sdk-parity.js";
 export * from "./seed.js";
 export type {
@@ -82,6 +81,17 @@ export {
 	CAMP_EVENTSTORE_RUNTIME_PORT_CONTRACT_VERSION,
 	runEventStoreConformance,
 } from "./suites/eventstore.js";
+export { MESSAGING_CONFORMANCE_SUITE } from "./suites/messaging.js";
+export type {
+	ProduceRealizationResult,
+	RealizationResultAssertion,
+	RealizationResultConformanceReport,
+	RealizationResultScenario,
+} from "./suites/realization-result.js";
+export {
+	REALIZATION_RESULT_CONFORMANCE_CONTRACT,
+	runRealizationResultConformance,
+} from "./suites/realization-result.js";
 export type {
 	RuntimeDurabilityBackend,
 	RuntimePortConformanceReport,

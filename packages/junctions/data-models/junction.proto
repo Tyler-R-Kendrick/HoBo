@@ -21,6 +21,17 @@ message JunctionMemberManifest {
   string provider_id = 2;
   string region = 3;
   repeated string capabilities = 4;
+  // Residency tags data crossing to this member must satisfy (ADR-0103 #4):
+  // a jurisdiction id ("eu") or "classification:jurisdiction" ("pii:eu").
+  repeated string residency = 5;
+}
+
+// Fail-closed residency diagnostic for a member pair that gets no edge and no
+// halves (ADR-0103 #3-4).
+message ResidencyConflict {
+  string source_yard = 1;
+  string target_yard = 2;
+  string diagnostic = 3;
 }
 
 message PeeringEdge {
@@ -76,6 +87,7 @@ message JunctionConnectivityPlan {
   repeated TrustAnchorExchange trust_exchanges = 7;
   repeated PolicyPackDistribution policy_packs = 8;
   repeated RegistryBundleDistribution registry_bundles = 9;
+  repeated ResidencyConflict residency_conflicts = 10;
 }
 
 message YardConnectivityHalfPlan {

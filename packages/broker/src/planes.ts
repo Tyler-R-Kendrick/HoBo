@@ -5,6 +5,7 @@ import {
 	type GatekeeperEffect,
 	type PolicyDecisionRequest,
 	type PolicyPack,
+	type ResidencyGateVerdict,
 } from "@hobo/contracts";
 
 import type {
@@ -71,6 +72,7 @@ export interface GatePlaneOptions {
 	policyPack?: PolicyPack;
 	deployedState?: DeployedContractState;
 	candidate?: CandidateDeployment;
+	residency?: ResidencyGateVerdict;
 }
 
 export function createGatekeeperGatePlane(
@@ -88,6 +90,9 @@ export function createGatekeeperGatePlane(
 				...(options.policyPack !== undefined
 					? { policyPack: options.policyPack }
 					: {}),
+				...(options.residency !== undefined
+					? { residency: options.residency }
+					: {}),
 				costQuota: input.costQuota,
 			});
 			const reasons: RejectionReason[] = decision.reasons.map((reason) => ({
@@ -96,7 +101,9 @@ export function createGatekeeperGatePlane(
 						? "billing"
 						: reason.gate === "contracts"
 							? "contracts"
-							: "policy",
+							: reason.gate === "residency"
+								? "residency"
+								: "policy",
 				code: reason.code,
 				message: reason.message,
 			}));

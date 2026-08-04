@@ -1,3 +1,10 @@
+---
+type: Maintenance Note
+title: "hobo-code-interactive-shell sdlc-state"
+description: "Durable sdlc coordinator state for the hobo-code-interactive-shell initiative."
+tags: [hobo, plans, sdlc]
+---
+
 # SDLC state — hobo-code InteractiveShell
 
 **phase:** closed (shell v1 + optimizexp polish landed)

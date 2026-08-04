@@ -167,3 +167,54 @@ describe("planForYard()", () => {
 		}
 	});
 });
+
+describe("residency hard guard (ADR-0103 #4 / ADR-0146)", () => {
+	it("drops the edge and records a diagnostic when a peer region violates a residency tag", () => {
+		const plan = deriveConnectivityPlan(
+			twoYardJunction({
+				left: { region: "eu-west-1", residency: ["pii:eu"] },
+				right: { region: "us-east-1" },
+			}),
+		);
+		expect(plan.edges).toHaveLength(0);
+		expect(plan.residencyConflicts).toHaveLength(1);
+		expect(plan.residencyConflicts[0]?.diagnostic).toMatch(/pii:eu/u);
+		expect(plan.halvesByYard.left).toHaveLength(0);
+		expect(plan.halvesByYard.right).toHaveLength(0);
+	});
+
+	it("keeps the edge when the peer region satisfies the tag", () => {
+		const plan = deriveConnectivityPlan(
+			twoYardJunction({
+				left: { region: "eu-west-1", residency: ["pii:eu"] },
+				right: { region: "eu-central-1" },
+			}),
+		);
+		expect(plan.edges).toHaveLength(1);
+		expect(plan.residencyConflicts).toHaveLength(0);
+	});
+
+	it("accepts an explicit matching declaration in place of region attestation", () => {
+		const plan = deriveConnectivityPlan(
+			twoYardJunction({
+				left: { region: "eu-west-1", residency: ["pii:eu"] },
+				right: { residency: ["pii:eu"] },
+			}),
+		);
+		expect(plan.edges).toHaveLength(1);
+		expect(plan.residencyConflicts).toHaveLength(0);
+	});
+
+	it("fails closed when the demanding tag meets a peer with no region at all", () => {
+		const plan = deriveConnectivityPlan(
+			twoYardJunction({
+				left: { region: "eu-west-1", residency: ["eu"] },
+				right: {},
+			}),
+		);
+		expect(plan.edges).toHaveLength(0);
+		expect(plan.residencyConflicts[0]?.diagnostic).toMatch(
+			/declares no region/u,
+		);
+	});
+});

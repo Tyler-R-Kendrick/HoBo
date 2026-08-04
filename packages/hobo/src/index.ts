@@ -1,4 +1,8 @@
 export {
+	type AccessCommandDeps,
+	createAccessCommand,
+} from "./access-command.js";
+export {
 	type AddCommandDeps,
 	createAddCommand,
 	installableProviders,
@@ -10,12 +14,108 @@ export {
 	createAttestCommand,
 } from "./attest-command.js";
 export {
+	applyHoboMeshEnvHeaders,
+	type BareMetalServeResult,
+	type ComponentEndpoint,
+	collectBindleEnvInjections,
+	HOBO_BINDLE_ENV_HEADER,
+	HOBO_ENV_HEADER_PREFIX,
+	INTERNAL_MESH_HOST,
+	installInternalMesh,
+	internalMeshBase,
+	isExternalComponent,
+	listServableEntrypoints,
+	listServableEntrypointsWithReplay,
+	type NamedEndpointInfo,
+	type ServableEntrypoint,
+	serveProjectOnBareMetalYard,
+	serviceDiscoveryKey,
+} from "./bare-metal-host.js";
+export {
+	BARE_METAL_YARD_KIND,
+	BARE_METAL_YARD_SCHEMA,
+	type BareMetalYard,
+	type BareMetalYardConfig,
+	COMPONENT_HOST_KINDS,
+	type ComponentHostKind,
+	composeBareMetalTopology,
+	DEFAULT_BARE_METAL_YARD_NAME,
+	DEFAULT_COMPONENT_HOST,
+	DEFAULT_DEV_PORT,
+	DEFAULT_LOCAL_HOST,
+	defaultHoboHome,
+	initBareMetalYard,
+	LOCAL_HOST_KINDS,
+	type LocalHostKind,
+	loadBareMetalYardConfig,
+	normalizeComponentHostKind,
+	openBareMetalYard,
+	parseBareMetalYardConfig,
+	scaffoldBareMetalYardConfig,
+	yardConfigPath,
+} from "./bare-metal-yard.js";
+export {
+	type BindingDeliveryDoctorSection,
+	buildBindingDeliveryDoctorSection,
+} from "./binding-delivery-doctor.js";
+export {
+	BROKER_DISCOVERY_SCHEMA,
+	type BrokerAuthMethod,
+	type BrokerDiscoveryDocument,
+	BrokerDiscoveryError,
+	createBrokerDiscoveryClient,
+	defaultMockDiscovery,
+	parseBrokerDiscoveryDocument,
+} from "./broker-discovery.js";
+export {
+	type AnonymousSessionResult,
+	createMockRemoteBrokerState,
+	createRemoteBrokerClient,
+	type MockRemoteBrokerState,
+	type RemoteBrokerClient,
+	RemoteBrokerClientError,
+	type RemoteClaimResult,
+	type RemotePlaceResult,
+} from "./broker-remote-client.js";
+export {
+	collectExplicitProviderPins,
+	collectRequiredRuntimes,
+	createYardBrokerCatalog,
+	defaultComponentHostFromBroker,
+	defaultEmbeddedPolicySet,
+	describeBrokerRuntime,
+	EMBEDDED_BROKER_SCHEMA,
+	type EmbeddedBrokerState,
+	ensureEmbeddedBroker,
+	LOCAL_PROCESS_PROVIDER_ID,
+	loadEmbeddedBrokerState,
+	type PlacementResult,
+	resolveBindlePlacement,
+	saveEmbeddedBrokerState,
+	WASM_SANDBOX_PROVIDER_ID,
+} from "./broker-runtime.js";
+export {
+	type BrokerDeployMode,
+	type BrokerTarget,
+	type BrokerTargetFlags,
+	normalizeBrokerUri,
+	resolveBrokerTarget,
+	resolveBrokerUriFromFlags,
+	wantsAnonymousMode,
+} from "./broker-target.js";
+export {
+	type BrokerAwareUpCommandDeps,
+	createBrokerAwareUpCommand,
+	createBrokerAwareUpCommandWithMock,
+} from "./broker-up-command.js";
+export {
 	type CanDeployCommandDeps,
 	createCanDeployCommand,
 } from "./can-deploy-command.js";
 export {
 	type ClaimCommandDeps,
 	createClaimCommand,
+	createClaimCommandWithMock,
 } from "./claim-command.js";
 export {
 	type ComposedHoboCliOptions,
@@ -35,6 +135,12 @@ export {
 	createCloudflareDeployProvider,
 } from "./cloudflare-deploy-provider.js";
 export {
+	type CodeCommandDeps,
+	featurePortFromStore,
+	resolveCodeFeatures,
+} from "./code-command.js";
+export { describeCodeHarnessHealth } from "./code-health.js";
+export {
 	bootstrapDefaultProviders,
 	createDefaultCollectionTarget,
 	createDefaultDevRuntime,
@@ -48,6 +154,18 @@ export {
 	selectPulumiEstateAdapter,
 	toRegistrableProvider,
 } from "./compose.js";
+export {
+	authorizationHeaders,
+	type CredentialPresenter,
+	type CredentialScheme,
+	createCredentialPresenter,
+	mintMockDpopProof,
+	type PresentedCredential,
+} from "./credential-presenter.js";
+export {
+	createDeployCommand,
+	type DeployCommandDeps,
+} from "./deploy-command.js";
 export {
 	type DeployBackend,
 	type DeployTargetDescription,
@@ -64,24 +182,6 @@ export {
 	type DoctorCommandDeps,
 } from "./doctor-command.js";
 export {
-	createMessagingCommand,
-	type MessagingCommandDeps,
-} from "./messaging-command.js";
-export {
-	buildMessagingDoctorSection,
-	type MessagingDoctorSection,
-} from "./messaging-doctor.js";
-export {
-	buildBindingDeliveryDoctorSection,
-	type BindingDeliveryDoctorSection,
-} from "./binding-delivery-doctor.js";
-export {
-	evaluateMessagingCanDeploy,
-	type MessagingCanDeployReason,
-	type MessagingCanDeployRequest,
-	type MessagingCanDeployResult,
-} from "./messaging-can-deploy.js";
-export {
 	createDriftCommand,
 	DRIFT_CHECKED_EVENT,
 	DRIFT_DETECTED_EVENT,
@@ -93,74 +193,22 @@ export {
 	type EraseCommandDeps,
 } from "./erase-command.js";
 export {
+	createFeatureCommand,
+	type FeatureCommandDeps,
+} from "./feature-command.js";
+export {
 	createGenerateCommand,
 	type GenerateCommandDeps,
 } from "./generate-command.js";
 export {
-	type AdoptedResourceEntry,
-	createImportCommand,
-	type ImportCommandDeps,
-	RESOURCE_ADOPTED_EVENT,
-} from "./import-command.js";
-export {
-	createInspectCommand,
-	type InspectCommandDeps,
-} from "./inspect-command.js";
-export {
-	applyHoboMeshEnvHeaders,
-	collectBindleEnvInjections,
-	HOBO_BINDLE_ENV_HEADER,
-	HOBO_ENV_HEADER_PREFIX,
-	INTERNAL_MESH_HOST,
-	installInternalMesh,
-	internalMeshBase,
-	isExternalComponent,
-	listServableEntrypoints,
-	listServableEntrypointsWithReplay,
-	serveProjectOnBareMetalYard,
-	serviceDiscoveryKey,
-	type BareMetalServeResult,
-	type ComponentEndpoint,
-	type NamedEndpointInfo,
-	type ServableEntrypoint,
-} from "./bare-metal-host.js";
-export {
-	BARE_METAL_YARD_KIND,
-	BARE_METAL_YARD_SCHEMA,
-	type BareMetalYard,
-	type BareMetalYardConfig,
-	composeBareMetalTopology,
-	COMPONENT_HOST_KINDS,
-	type ComponentHostKind,
-	DEFAULT_COMPONENT_HOST,
-	DEFAULT_LOCAL_HOST,
-	defaultHoboHome,
-	DEFAULT_BARE_METAL_YARD_NAME,
-	DEFAULT_DEV_PORT,
-	initBareMetalYard,
-	LOCAL_HOST_KINDS,
-	type LocalHostKind,
-	loadBareMetalYardConfig,
-	normalizeComponentHostKind,
-	openBareMetalYard,
-	parseBareMetalYardConfig,
-	scaffoldBareMetalYardConfig,
-	yardConfigPath,
-} from "./bare-metal-yard.js";
-export {
-	serveBindleOnLocalYard,
-	serveProjectOnLocalCamp,
-	type LocalCampServeResult,
-	type LocalYardServeResult,
-} from "./local-yard-serve.js";
-export {
-	serveProjectOnIsolatedWasm,
-	type IsolatedWasmServeResult,
-} from "./isolated-wasm-runtime.js";
-export {
-	serveProjectOnHost,
-	type MultiHostServeResult,
-} from "./multi-host-serve.js";
+	HOBO_PROFILE_SCHEMA,
+	type HoboProfile,
+	type HoboProfileDefaultStation,
+	loadHoboProfile,
+	saveHoboProfile,
+	setDefaultStation,
+	upsertLoginProfile,
+} from "./hobo-profile.js";
 export {
 	buildPrivateComponentSpecs,
 	ensureAllRuntimeHosts,
@@ -169,169 +217,100 @@ export {
 	toRuntimeHostKind,
 } from "./host-registry.js";
 export {
-	createCloudNativeRuntimeCatalogEntry,
-	createLocalRuntimeCatalogEntry,
-	createOciRuntimeCatalogEntry,
-	createWasmRuntimeCatalogEntry,
-	hostToRuntimeInstallId,
-	OCI_PROVIDER_ID,
-	RUNTIME_INSTALL_IDS,
-	RUNTIME_PROVIDER_IDS,
-	runtimeInstallIdToHost,
-	type RuntimeInstallId,
-} from "./runtime-catalog.js";
+	createIdentityCommand,
+	type IdentityCommandDeps,
+	persistMigrationEvents,
+} from "./identity-command.js";
 export {
-	installRuntime,
+	type AdoptedResourceEntry,
+	createImportCommand,
+	type ImportCommandDeps,
+	RESOURCE_ADOPTED_EVENT,
+} from "./import-command.js";
+export {
+	createIncidentCommand,
+	type IncidentCommandDeps,
+} from "./incident-command.js";
+export {
+	createInspectCommand,
+	type InspectCommandDeps,
+} from "./inspect-command.js";
+export {
 	installedHostKinds,
+	installRuntime,
 	isRuntimeInstalled,
 	loadInstalledRuntimes,
 } from "./installed-runtimes.js";
-export { collectRequiredRuntimes } from "./broker-runtime.js";
 export {
-	bootWasmtimeSandbox,
-	componentizePrivateGuest,
-	ensureIsolatedWasmToolchain,
-	ensureWasmtimeBinary,
-	PINNED_WASMTIME_VERSION,
-	preparePrivateWasmComponent,
-	resolvePrivateWasmGuest,
-	type ComponentizeResult,
-	type IsolatedWasmToolchain,
-	type JcoTool,
-	type ResolvedPrivateGuest,
-	type WasmtimeBinary,
-	type WasmtimeSandbox,
-} from "./wasm-sandbox.js";
-export {
-	probeWasmHostInstall,
-	serveProjectOnLocalYard,
-	serveProjectOnWasmHost,
-	type WasmHostProbe,
-} from "./wasm-host.js";
+	type IsolatedWasmServeResult,
+	serveProjectOnIsolatedWasm,
+} from "./isolated-wasm-runtime.js";
 export {
 	BARE_METAL_PROVIDER_ID,
 	createBareMetalProvider,
 	createLocalProvider,
 	createProviderFromPorts,
 } from "./local-provider.js";
-export { createYardCommand } from "./yard-command.js";
-export { createStationCommand } from "./station-command.js";
 export {
-	createIdentityCommand,
-	persistMigrationEvents,
-	type IdentityCommandDeps,
-} from "./identity-command.js";
+	type LocalCampServeResult,
+	type LocalYardServeResult,
+	serveBindleOnLocalYard,
+	serveProjectOnLocalCamp,
+} from "./local-yard-serve.js";
 export {
-	createTrailsCommand,
-	type TrailsCommandDeps,
-} from "./trails-command.js";
-export {
-	createReplayCommand,
-	type ReplayCommandDeps,
-} from "./replay-command.js";
-export {
-	createAccessCommand,
-	type AccessCommandDeps,
-} from "./access-command.js";
-export {
-	createFeatureCommand,
-	type FeatureCommandDeps,
-} from "./feature-command.js";
-export {
-	createDeployCommand,
-	type DeployCommandDeps,
-} from "./deploy-command.js";
-export {
-	createIncidentCommand,
-	type IncidentCommandDeps,
-} from "./incident-command.js";
-export {
-	setDefaultStation,
-	type HoboProfileDefaultStation,
-} from "./hobo-profile.js";
-export {
-	createBrokerAwareUpCommand,
-	createBrokerAwareUpCommandWithMock,
-	type BrokerAwareUpCommandDeps,
-} from "./broker-up-command.js";
-export {
-	createBrokerAwareLoginCommand,
 	type BrokerAwareLoginCommandDeps,
+	createBrokerAwareLoginCommand,
 } from "./login-command.js";
-export {
-	resolveBrokerTarget,
-	resolveBrokerUriFromFlags,
-	wantsAnonymousMode,
-	normalizeBrokerUri,
-	type BrokerTarget,
-	type BrokerTargetFlags,
-	type BrokerDeployMode,
-} from "./broker-target.js";
-export {
-	BROKER_DISCOVERY_SCHEMA,
-	BrokerDiscoveryError,
-	createBrokerDiscoveryClient,
-	defaultMockDiscovery,
-	parseBrokerDiscoveryDocument,
-	type BrokerDiscoveryDocument,
-	type BrokerAuthMethod,
-} from "./broker-discovery.js";
-export {
-	createCredentialPresenter,
-	authorizationHeaders,
-	mintMockDpopProof,
-	type PresentedCredential,
-	type CredentialScheme,
-	type CredentialPresenter,
-} from "./credential-presenter.js";
-export {
-	createRemoteBrokerClient,
-	createMockRemoteBrokerState,
-	RemoteBrokerClientError,
-	type RemoteBrokerClient,
-	type RemotePlaceResult,
-	type RemoteClaimResult,
-	type AnonymousSessionResult,
-	type MockRemoteBrokerState,
-} from "./broker-remote-client.js";
-export {
-	HOBO_PROFILE_SCHEMA,
-	loadHoboProfile,
-	saveHoboProfile,
-	upsertLoginProfile,
-	type HoboProfile,
-} from "./hobo-profile.js";
-export {
-	createClaimCommandWithMock,
-} from "./claim-command.js";
-export {
-	collectExplicitProviderPins,
-	createYardBrokerCatalog,
-	defaultComponentHostFromBroker,
-	defaultEmbeddedPolicySet,
-	describeBrokerRuntime,
-	EMBEDDED_BROKER_SCHEMA,
-	ensureEmbeddedBroker,
-	LOCAL_PROCESS_PROVIDER_ID,
-	loadEmbeddedBrokerState,
-	resolveBindlePlacement,
-	saveEmbeddedBrokerState,
-	WASM_SANDBOX_PROVIDER_ID,
-	type EmbeddedBrokerState,
-	type PlacementResult,
-} from "./broker-runtime.js";
 export {
 	createLogsCommand,
 	type LogsCommandDeps,
 } from "./logs-command.js";
+export {
+	evaluateMessagingCanDeploy,
+	type MessagingCanDeployReason,
+	type MessagingCanDeployRequest,
+	type MessagingCanDeployResult,
+} from "./messaging-can-deploy.js";
+export {
+	createMessagingCommand,
+	type MessagingCommandDeps,
+} from "./messaging-command.js";
+export {
+	buildMessagingDoctorSection,
+	type MessagingDoctorSection,
+} from "./messaging-doctor.js";
+export {
+	type MultiHostServeResult,
+	serveProjectOnHost,
+} from "./multi-host-serve.js";
 export type { OcsfExportOptions } from "./ocsf-export.js";
 export {
+	auditEventsToOcsf,
 	credentialAuditToOcsf,
 	OCSF_EXPORT_VERSION,
+	type OcsfAuditEventRecord,
 	type OcsfAuthorizationRecord,
 	type OcsfBatch,
 	type OcsfCredentialChain,
+	type OcsfExportRecord,
+	type OcsfSealSignature,
+	type OcsfSealVerification,
+	verifyOcsfBatchSignature,
 } from "./ocsf-export.js";
+export {
+	DEFAULT_OIDC_CLIENT_ID,
+	DEVICE_CODE_GRANT_TYPE,
+	DeviceGrantError,
+	type DeviceGrantErrorCode,
+	type DeviceGrantOptions,
+	type DeviceGrantResult,
+	HOBO_OIDC_AUDIENCE_ENV,
+	HOBO_OIDC_CLIENT_ID_ENV,
+	HOBO_OIDC_ISSUER_ENV,
+	type OidcIssuerConfig,
+	resolveOidcIssuerConfig,
+	runDeviceCodeGrant,
+} from "./oidc-device-grant.js";
 export {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
@@ -342,19 +321,34 @@ export {
 	type RegistryCommandDeps,
 } from "./registry-command.js";
 export {
+	createReplayCommand,
+	type ReplayCommandDeps,
+} from "./replay-command.js";
+export {
 	createRunbookCommand,
 	type RunbookCommandDeps,
 } from "./runbook-command.js";
 export {
+	createCloudNativeRuntimeCatalogEntry,
+	createLocalRuntimeCatalogEntry,
+	createOciRuntimeCatalogEntry,
+	createWasmRuntimeCatalogEntry,
+	hostToRuntimeInstallId,
+	OCI_PROVIDER_ID,
+	RUNTIME_INSTALL_IDS,
+	RUNTIME_PROVIDER_IDS,
+	type RuntimeInstallId,
+	runtimeInstallIdToHost,
+} from "./runtime-catalog.js";
+export {
 	createSandboxCommand,
 	type SandboxCommandDeps,
 } from "./sandbox-command.js";
+export { createStationCommand } from "./station-command.js";
 export {
-	featurePortFromStore,
-	resolveCodeFeatures,
-	type CodeCommandDeps,
-} from "./code-command.js";
-export { describeCodeHarnessHealth } from "./code-health.js";
+	createTrailsCommand,
+	type TrailsCommandDeps,
+} from "./trails-command.js";
 export {
 	type CreateDeploymentInput,
 	createVercelClient,
@@ -373,3 +367,25 @@ export {
 	createVerifyCommand,
 	type VerifyCommandDeps,
 } from "./verify-command.js";
+export {
+	probeWasmHostInstall,
+	serveProjectOnLocalYard,
+	serveProjectOnWasmHost,
+	type WasmHostProbe,
+} from "./wasm-host.js";
+export {
+	bootWasmtimeSandbox,
+	type ComponentizeResult,
+	componentizePrivateGuest,
+	ensureIsolatedWasmToolchain,
+	ensureWasmtimeBinary,
+	type IsolatedWasmToolchain,
+	type JcoTool,
+	PINNED_WASMTIME_VERSION,
+	preparePrivateWasmComponent,
+	type ResolvedPrivateGuest,
+	resolvePrivateWasmGuest,
+	type WasmtimeBinary,
+	type WasmtimeSandbox,
+} from "./wasm-sandbox.js";
+export { createYardCommand } from "./yard-command.js";

@@ -68,9 +68,9 @@ Conservative rules, all mandatory:
   expiry — a recognizable protected character (Mickey silhouette, Betty Boop,
   Bimbo…) may never appear, even traced from a PD frame. Trace the *motion and
   construction*, not the identity.
-- **Bo remains the sole protagonist** per the art bible
-  (`site/public/parallax/README.md`). Traced material feeds NPCs and props;
-  it never replaces or competes with Bo.
+- **The Bo art bible is retired** (ADR-0148): shipped surfaces use sourced
+  open-licensed pixel art per the DESIGN.md contract; the Bo *character* may
+  return only as sourced pixel art. Historical traced material never ships.
 
 ### (b) CC0 audio — the juice layer
 

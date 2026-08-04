@@ -10,8 +10,39 @@ package hobo
 	prefer: [...string]
 	negotiation: "require" | "prefer"
 	deps: [...string]
-	region?:   string
-	objective: string & !=""
+	region?:     string
+	objective:   string & !=""
+	placement?:  #PlacementCriteria
+}
+
+// ---- E19: placement-constraint vocabulary (HoBo-native; KubeFleet semantics
+// cited, shapes native — no Kubernetes types, ADR-0107 non-goal).
+
+#PlacementPropertySelector: {
+	key: string & !=""
+	op:  "eq" | "ne" | "in" | "not-in" | "lt" | "lte" | "gt" | "gte" | "exists"
+	values: [...string]
+}
+
+#PlacementAffinityRule: {
+	mode:       "affinity" | "anti-affinity"
+	targetPort: string & !=""
+	scope:      "region" | "yard"
+}
+
+#PlacementSpread: {
+	dimension: "region" | "yard"
+}
+
+#PlacementPickN: {
+	count: uint & >0
+}
+
+#PlacementCriteria: {
+	selectors: [...#PlacementPropertySelector]
+	affinities: [...#PlacementAffinityRule]
+	spread?: #PlacementSpread
+	pickN?:  #PlacementPickN
 }
 
 #ResourceDefinitionRef: {
@@ -32,6 +63,18 @@ package hobo
 	missing: [...string]
 }
 
+#RankedCandidate: {
+	definition_id: string & !=""
+	provider_id:   string & !=""
+	specificity:   uint
+	priority:      uint
+}
+
+#RejectedCandidate: {
+	definition_id: string & !=""
+	reason:        string & !=""
+}
+
 #MatchDecided: {
 	deploymentId: string & !=""
 	resource:     string & !=""
@@ -40,6 +83,10 @@ package hobo
 	port:         string & !=""
 	specificity:  uint
 	rejected: [...string]
+	ranking: [...#RankedCandidate]
+	rejectedCandidates: [...#RejectedCandidate]
+	tie:          bool
+	catalogContentHash: string & !=""
 	objective:    string & !=""
 	region?:      string
 	rationale:    string
@@ -290,6 +337,32 @@ package hobo
 	set_id:         string
 	deadline:       string
 	obligation_id:  string
+}
+
+// ---- E21: TopologyView app-graph read model constraints ----
+
+#TopologyNode: {
+	id:    string & !=""
+	kind:  "bindle" | "resource" | "yard"
+	label: string & !=""
+	port?:       string
+	providerId?: string
+	region?:     string
+	lifecycle?: "provisioning" | "provisioned" | "failed" | "destroying" | "destroyed"
+}
+
+#TopologyEdge: {
+	from: string & !=""
+	to:   string & !=""
+	kind: "binding" | "placement"
+	region?: string
+}
+
+#TopologyViewRow: {
+	deploymentId: string & !=""
+	bindleHash?:  string
+	nodes: [...#TopologyNode]
+	edges: [...#TopologyEdge]
 }
 
 #LaneGrantRecord: {

@@ -78,7 +78,8 @@ backs ADR-0087 and gives docs, generators, and boundary lint one table to check.
 | Component host: multi-cloud registry (`componentHost=cloud-native`) | `@hobo/runtime-cloud-native` | Camp hosts | Mock provider for parity; cloud providers stubbed until certified. |
 | MCP server (tool surface parity with CLI verbs) | `@hobo/mcp` | agents | Deny-by-default auth; same canonical verb registry as CLI. |
 | Port/provider conformance suites | `@hobo/conformance` | adapters + CI | Certifies engines/providers claiming a port. |
-| PACT harness + effect-aware isolation/mocks/fault injection | `@hobo/contract-harness` | tests | ADR-0136 testing leverage for EffectSpec/ResilienceProfile. |
+| PACT harness (inventory/mock/verify/subset) | `@hobo/contract-harness` | tests | Contract fixtures and verification tooling. |
+| Effect-aware isolation/mocks/fault injection | `@hobo/contracts` | tests | Kept in `@hobo/contracts` per ADR-0136 §5 to avoid a core→harness→contracts→core cycle. |
 
 ## Re-export Decision
 
@@ -123,7 +124,7 @@ Current design examples align to this map:
 - `walkthrough.md` keeps operator SDK examples separate from app authoring
   imports.
 
-## Control-plane game UI (ADR-0135)
+## Control-plane game UI (ADR-0150)
 
 | Package | Role |
 |---|---|

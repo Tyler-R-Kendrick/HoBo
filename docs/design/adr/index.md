@@ -134,7 +134,7 @@
 | 0123 | Durable-workflow authoring (ADR-P5): explicit `workflow`/`step` wrappers canonical; `"use workflow"` directive = shallow opt-in TS sugar | [architecture-core](01-architecture-core.md#adr-0123) |
 | 0124 | In-Camp scheduling policies (ADR-P6/P7/P8): preemption/oversubscription/capacity-reservation as substrate-delegated per-Camp policy knobs | [architecture-core](01-architecture-core.md#adr-0124) |
 | 0125 | Trainable-annotation surface v1: signature-only empty implementations, param/output metadata on the contract, optional decorator sugar; ax-backed built-in `training-engine` | [data-plane](03-data-plane.md#adr-0125) |
-| 0126 | Committed platform entry files under `examples/*/deploy/` are the sanctioned JS-family exception (deploy artifacts ingested verbatim; sources stay TS-first) | [architecture-core](01-architecture-core.md#adr-0126) |
+| 0126 | Committed platform entry files under `packages/hobo/fixtures/deploy/<provider>/` are the sanctioned JS-family exception (deploy artifacts ingested verbatim; sources stay TS-first) | [architecture-core](01-architecture-core.md#adr-0126) |
 | 0127 | Lakebed accepted as a deploy-target adapter: honest-partial capabilities, deploy-driver realization, opt-in approval; rejected as a Yard substrate | [portability-extensibility](07-portability-extensibility.md#adr-0127) |
 | 0128 | ts-autocode vendored as a git submodule (`external/ts-autocode`) linked into the pnpm workspace; trainable scanning/emission delegates upstream | [architecture-core](01-architecture-core.md#adr-0128) |
 | 0129 | Provider-terms compliance: registered providers are the operator's own accounts; free-tier headroom is never pooled or resold; no account multiplication; adapters carry dated `terms` references | [portability-extensibility](07-portability-extensibility.md#adr-0129) |
@@ -158,3 +158,4 @@
 | 0147 | HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals | [portability-extensibility](07-portability-extensibility.md#adr-0147) |
 | 0148 | ~~Pixel-RPG identity replaces the traced rubberhose surface~~ (superseded by 0149) | [portability-extensibility](07-portability-extensibility.md#adr-0148) |
 | 0149 | HoBo Rubberhose is the product identity; the pixel-RPG is a separate game project (`@hobo/pixel-village`) | [portability-extensibility](07-portability-extensibility.md#adr-0149) |
+| 0150 | HoBo Yard game-first control-plane UI (renumbered from a colliding 0135 section) | [portability-extensibility](07-portability-extensibility.md#adr-0150) |

@@ -4,19 +4,19 @@ export {
 	selectConnectivityTier,
 } from "./connectivity.js";
 export { deriveFederationPlan } from "./federation.js";
-export {
-	type ActorSignalFederationLink,
-	type DeriveMessagingFederationInput,
-	deriveMessagingFederationPlan,
-	type JunctionMessagingFederationPlan,
-	JUNCTION_MESSAGING_FEDERATED_EVENT,
-	type TopicFederationLink,
-} from "./messaging-federation.js";
 export type {
 	JunctionConfig,
 	JunctionMemberManifestInput,
 } from "./junction.js";
 export { junction } from "./junction.js";
+export {
+	type ActorSignalFederationLink,
+	type DeriveMessagingFederationInput,
+	deriveMessagingFederationPlan,
+	JUNCTION_MESSAGING_FEDERATED_EVENT,
+	type JunctionMessagingFederationPlan,
+	type TopicFederationLink,
+} from "./messaging-federation.js";
 export type {
 	ConnectivityHalf,
 	ConnectivityTierName,
@@ -31,6 +31,7 @@ export type {
 	PeeringEdge,
 	PolicyPackDistribution,
 	RegistryBundleDistribution,
+	ResidencyConflict,
 	TrustAnchorExchange,
 	YardConnectivityHalfPlan,
 } from "./types.js";

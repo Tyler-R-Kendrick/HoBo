@@ -108,3 +108,77 @@ test("parse fails closed: empty allow-list and unknown ids are rejected", () => 
 		/unknown jurisdiction/u,
 	);
 });
+
+test("ok evaluations carry an intra-jurisdiction transfer basis", () => {
+	const verdict = evaluateResidency({
+		constraint: EU_PII,
+		region: "eu-west-1",
+	});
+	assert.equal(verdict.ok, true);
+	if (!verdict.ok) return;
+	assert.equal(verdict.transferBasis.mechanism, "intra-jurisdiction");
+	assert.equal(verdict.transferBasis.fromJurisdiction, "eu");
+});
+
+test("transfer mechanisms are opt-in: default mode never widens", () => {
+	const strict = evaluateResidency({ constraint: EU_PII, region: "us-east-1" });
+	assert.equal(strict.ok, false);
+});
+
+test("adequacy mode passes an EU constraint into a DPF-covered US region with the citation", () => {
+	const verdict = evaluateResidency({
+		constraint: EU_PII,
+		region: "us-east-1",
+		transferMechanisms: "adequacy",
+	});
+	assert.equal(verdict.ok, true);
+	if (!verdict.ok) return;
+	assert.equal(verdict.transferBasis.mechanism, "adequacy");
+	assert.equal(verdict.transferBasis.toJurisdiction, "us");
+	assert.match(
+		verdict.transferBasis.legalBasis.join(" "),
+		/Data Privacy Framework/u,
+	);
+});
+
+test("SCC needs the wider adequacy-or-scc mode", () => {
+	const adequacyOnly = evaluateResidency({
+		constraint: EU_PII,
+		region: "ap-south",
+		transferMechanisms: "adequacy",
+	});
+	assert.equal(adequacyOnly.ok, false);
+	if (adequacyOnly.ok === false) {
+		assert.match(adequacyOnly.remediation, /no recognized transfer mechanism/u);
+	}
+	const withScc = evaluateResidency({
+		constraint: EU_PII,
+		region: "ap-south",
+		transferMechanisms: "adequacy-or-scc",
+	});
+	assert.equal(withScc.ok, true);
+	if (!withScc.ok) return;
+	assert.equal(withScc.transferBasis.mechanism, "scc");
+});
+
+test("transfer mechanisms never bypass denied jurisdictions or unmapped regions", () => {
+	const denied = evaluateResidency({
+		constraint: parseResidencyConstraint({
+			classifications: ["pii"],
+			allowedJurisdictions: ["eu"],
+			deniedJurisdictions: ["us"],
+		}),
+		region: "us-east-1",
+		transferMechanisms: "adequacy-or-scc",
+	});
+	assert.equal(denied.ok, false);
+	if (denied.ok === false) assert.equal(denied.code, "jurisdiction-denied");
+
+	const unmapped = evaluateResidency({
+		constraint: EU_PII,
+		region: "atlantis-1",
+		transferMechanisms: "adequacy-or-scc",
+	});
+	assert.equal(unmapped.ok, false);
+	if (unmapped.ok === false) assert.equal(unmapped.code, "region-unmapped");
+});

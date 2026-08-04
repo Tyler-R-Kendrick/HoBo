@@ -6,8 +6,23 @@ import {
 	evaluateGatekeeper,
 	type GatekeeperDecision,
 	type PolicyPack,
+	type ResidencyGateVerdict,
 	type ResourcePlanRef,
 } from "@hobo/contracts";
+import {
+	evaluateResidency,
+	parseResidencyConstraint,
+	type ResidencyConstraint,
+} from "@hobo/core";
+import { evaluateResidencyPolicy } from "@hobo/policy";
+
+export interface VerifyResidencyDeps {
+	// The tenant's residency constraint (Tenant.residency, ADR-0146) — supplied
+	// by whoever configured the tenant, never inferred.
+	readonly constraint: ResidencyConstraint;
+	// Region the plan would land in. `--region` on the CLI overrides this.
+	readonly region?: string;
+}
 
 export interface VerifyCommandDeps {
 	// Policy pack the Gatekeeper runs. Defaults to the permissive pack (records a
@@ -19,9 +34,56 @@ export interface VerifyCommandDeps {
 	// generous ceiling so the permissive lane allows; inject a low limit to
 	// exercise the quota-exceeded denial.
 	readonly costLimit?: number;
+	// Residency dimension (ADR-0146). When present, verify evaluates the tenant
+	// constraint against the plan region fail-closed and the Gatekeeper emits
+	// gate:"residency" reasons on conflict. Absent = no constraint to evaluate.
+	readonly residency?: VerifyResidencyDeps;
 }
 
 const DEFAULT_COST_LIMIT = 100;
+
+// public-contract: env var naming the jurisdictions tenant data may live in.
+export const HOBO_RESIDENCY_ALLOW_ENV = "HOBO_RESIDENCY_ALLOW";
+// public-contract: env var naming explicitly denied jurisdictions.
+export const HOBO_RESIDENCY_DENY_ENV = "HOBO_RESIDENCY_DENY";
+// public-contract: env var scoping the constraint to data classifications.
+export const HOBO_RESIDENCY_CLASSIFICATIONS_ENV =
+	"HOBO_RESIDENCY_CLASSIFICATIONS";
+// public-contract: env var naming the default plan region (--region overrides).
+export const HOBO_REGION_ENV = "HOBO_REGION";
+
+function splitList(value: string | undefined): string[] {
+	return (value ?? "")
+		.split(",")
+		.map((entry) => entry.trim())
+		.filter((entry) => entry.length > 0);
+}
+
+/**
+ * Tenant residency from the environment (ADR-0146): the default source when
+ * no deps are injected, so the SHIPPED `hobo verify` runs the residency
+ * dimension rather than silently skipping it. No HOBO_RESIDENCY_ALLOW =
+ * no constraint (today's permissive behavior); a malformed value throws the
+ * core JurisdictionParseError, which run() surfaces as a typed config error
+ * — never a silent pass.
+ */
+export function residencyFromEnv(
+	env: Record<string, string | undefined> = process.env,
+): VerifyResidencyDeps | undefined {
+	const allowed = splitList(env[HOBO_RESIDENCY_ALLOW_ENV]);
+	if (allowed.length === 0) return undefined;
+	const denied = splitList(env[HOBO_RESIDENCY_DENY_ENV]);
+	const constraint = parseResidencyConstraint({
+		classifications: splitList(env[HOBO_RESIDENCY_CLASSIFICATIONS_ENV]),
+		allowedJurisdictions: allowed,
+		...(denied.length > 0 ? { deniedJurisdictions: denied } : {}),
+	});
+	const region = env[HOBO_REGION_ENV];
+	return Object.freeze({
+		constraint,
+		...(region !== undefined && region.length > 0 ? { region } : {}),
+	});
+}
 
 // Map a parsed manifest's resources to the Gatekeeper's plan refs. A resource's
 // `port` (kv/objectStore/…) is its channel; components without one contribute
@@ -78,13 +140,85 @@ export function createVerifyCommand(
 				requested: refs.length,
 			};
 
+			// Residency (ADR-0146): evaluate the tenant constraint against the plan
+			// region fail-closed and hand Gatekeeper the precomputed verdict.
+			// Injected deps win; otherwise the environment supplies the tenant
+			// constraint so the shipped CLI actually runs this dimension. The core
+			// verdict is layered through the @hobo/policy residency pack (deny for
+			// regulated classifications, warn for unregulated) per ADR-0146 §4.
+			let residencyDeps: VerifyResidencyDeps | undefined;
+			try {
+				residencyDeps = deps.residency ?? residencyFromEnv();
+			} catch (error) {
+				return {
+					ok: false,
+					status: "config-error",
+					code: "HOBO_RESIDENCY_CONFIG",
+					message: `hobo verify: invalid residency configuration — ${(error as Error).message}`,
+					remediation: [
+						`Fix ${HOBO_RESIDENCY_ALLOW_ENV}/${HOBO_RESIDENCY_DENY_ENV}/${HOBO_RESIDENCY_CLASSIFICATIONS_ENV}: comma-separated jurisdiction ids (eu, eea, us, ...) and classifications (pii, phi, ...).`,
+					],
+					data: { command: "verify" },
+				};
+			}
+			const regionFlag =
+				typeof flags.region === "string" ? flags.region : undefined;
+			const planRegion = regionFlag ?? residencyDeps?.region;
+			let residency: ResidencyGateVerdict | undefined;
+			const residencyWarnings: string[] = [];
+			if (residencyDeps) {
+				const evaluation = evaluateResidency({
+					constraint: residencyDeps.constraint,
+					region: planRegion ?? "",
+				});
+				const classifications =
+					residencyDeps.constraint.classifications.length > 0
+						? residencyDeps.constraint.classifications
+						: (["internal"] as const);
+				const reasons: NonNullable<ResidencyGateVerdict["reasons"]>[number][] =
+					[];
+				for (const classification of classifications) {
+					const policy = evaluateResidencyPolicy({
+						classification,
+						verdict: evaluation,
+					});
+					if (policy.effect === "deny") {
+						reasons.push({
+							code: evaluation.ok ? policy.ruleId : evaluation.code,
+							message: policy.reasons.join("; "),
+							...(evaluation.ok
+								? {}
+								: {
+										region: evaluation.region,
+										jurisdictions: evaluation.regionJurisdictions,
+									}),
+						});
+					} else if (policy.effect === "warn") {
+						residencyWarnings.push(...policy.reasons);
+					}
+				}
+				residency =
+					reasons.length > 0 ? { ok: false, reasons } : { ok: true, reasons: [] };
+			}
+
 			const decision = evaluateGatekeeper({
 				request: {
 					subject: { kind: "user", id: "anonymous" },
 					action: "deploy",
 					resource: { kind: "bindle", id: target },
 					phase: "plan",
-					context: { target },
+					context: {
+						target,
+						...(planRegion !== undefined ? { region: planRegion } : {}),
+						...(residencyDeps !== undefined &&
+						residencyDeps.constraint.classifications.length > 0
+							? {
+									dataClassifications: [
+										...residencyDeps.constraint.classifications,
+									],
+								}
+							: {}),
+					},
 				},
 				deployedState: { contracts: [] },
 				candidate: {
@@ -92,6 +226,7 @@ export function createVerifyCommand(
 					contracts: [],
 				},
 				policyPack: deps.policyPack ?? createPermissiveDefaultPack(),
+				...(residency !== undefined ? { residency } : {}),
 				costQuota,
 			});
 

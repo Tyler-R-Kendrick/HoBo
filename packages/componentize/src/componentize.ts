@@ -27,7 +27,8 @@ export const DEFAULT_CI_MATRIX = Object.freeze({
 	toolchain: PINNED_TOOLCHAIN,
 });
 
-const COMPONENT_MEDIA_TYPE = "application/vnd.wasm.component.v1+wasm";
+// public-contract: media type for wasm component artifacts across synthetic and real lanes.
+export const COMPONENT_MEDIA_TYPE = "application/vnd.wasm.component.v1+wasm";
 const CONTRACT_SCHEMA = "hobo.componentize/v1";
 const WIT_WORLD = "hobo:examples/hello-bindle@0.1.0/service";
 const CUSTOM_SECTION_NAME = "hobo.componentize.contract";
@@ -47,9 +48,12 @@ export interface WasmComponentArtifact {
 	metadata: string;
 }
 
+// public-contract: shape of the OCI descriptor emitted beside component bytes.
+export type WasmOciDescriptor = ReturnType<typeof buildOciDescriptor>;
+
 export interface ComponentizeResult {
 	component: WasmComponentArtifact;
-	oci: ReturnType<typeof buildOciDescriptor>;
+	oci: WasmOciDescriptor;
 	reproducibility: { controls: string[] };
 	ciMatrix: typeof DEFAULT_CI_MATRIX;
 }
@@ -245,7 +249,9 @@ function parseHealthBody(source: string) {
 	return match[1];
 }
 
-function buildOciDescriptor(component: WasmComponentArtifact) {
+// public-contract: OCI descriptor builder shared by the synthetic floor and the
+// real componentize lane (D13). Manifest layers reference the component digest.
+export function buildOciDescriptor(component: WasmComponentArtifact) {
 	return {
 		artifactType: COMPONENT_MEDIA_TYPE,
 		manifest: {

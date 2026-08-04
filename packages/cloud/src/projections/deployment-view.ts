@@ -14,6 +14,10 @@ export interface DeploymentDecisionRow {
 	providerId: string;
 	port: string;
 	region?: string;
+	/** Winner beat the runner-up only on the definition-id tiebreak (ADR-0088). */
+	tie?: boolean;
+	/** Count of candidates rejected or outranked for this resource. */
+	rejectedCount?: number;
 }
 
 // The provisioning-phase FSM status per resource, reconstructed for the saga
@@ -108,6 +112,7 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 			[CLOUD_EVENTS.MatchDecided]: (row, event) => {
 				const data = event.data as DeploymentDecisionRow & {
 					deploymentId: string;
+					rejectedCandidates?: unknown[];
 				};
 				const next = base(row, data.deploymentId);
 				const decision: DeploymentDecisionRow = {
@@ -117,6 +122,9 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 					port: data.port,
 				};
 				if (data.region !== undefined) decision.region = data.region;
+				if (data.tie !== undefined) decision.tie = data.tie;
+				if (Array.isArray(data.rejectedCandidates))
+					decision.rejectedCount = data.rejectedCandidates.length;
 				next.decisions = [...next.decisions, decision].sort((a, b) =>
 					a.resource.localeCompare(b.resource),
 				);

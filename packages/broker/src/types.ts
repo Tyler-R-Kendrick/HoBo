@@ -28,6 +28,7 @@ export const REJECTION_PLANES = [
 	"billing",
 	"placement",
 	"connectors",
+	"residency",
 ] as const;
 export type RejectionPlane = (typeof REJECTION_PLANES)[number];
 

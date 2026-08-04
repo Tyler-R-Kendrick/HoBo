@@ -39,3 +39,10 @@ package policy
 	satisfied: uint32 & <=total
 	missing_control_ids: [...string & !=""]
 }
+
+#OscalExportSummaryRecord: {
+	kind:          "component-definition" | "assessment-results"
+	framework:     string & !=""
+	version:       string & !=""
+	control_count: uint32
+}

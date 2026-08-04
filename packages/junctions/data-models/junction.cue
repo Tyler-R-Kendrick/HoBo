@@ -14,6 +14,13 @@ package data_models
 	provider_id:  string & !=""
 	region:       string
 	capabilities: [...#TierName]
+	residency:    [...string & !=""]
+}
+
+#ResidencyConflict: {
+	source_yard: string & !=""
+	target_yard: string & !=""
+	diagnostic:  string & !=""
 }
 
 #PeeringEdge: {
@@ -69,6 +76,7 @@ package data_models
 	trust_exchanges:  [...#TrustAnchorExchange]
 	policy_packs:     [...#PolicyPackDistribution]
 	registry_bundles: [...#RegistryBundleDistribution]
+	residency_conflicts: [...#ResidencyConflict]
 }
 
 #YardConnectivityHalfPlan: {

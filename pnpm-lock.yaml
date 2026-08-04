@@ -772,6 +772,9 @@ importers:
       '@hobo/mcp':
         specifier: workspace:*
         version: link:../mcp
+      '@hobo/policy':
+        specifier: workspace:*
+        version: link:../policy
       '@hobo/provider-aws':
         specifier: workspace:*
         version: link:../providers/provider-aws
@@ -1143,6 +1146,15 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/registry:
+    dependencies:
+      '@hobo/cloud':
+        specifier: workspace:*
+        version: link:../cloud
+      '@hobo/identity':
+        specifier: workspace:*
+        version: link:../identity
+
   packages/replay:
     devDependencies:
       '@hobo/contract-harness':
@@ -1307,6 +1319,22 @@ importers:
       vitest:
         specifier: ^4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/sdk:
+    dependencies:
+      '@hobo/cloud':
+        specifier: workspace:*
+        version: link:../cloud
+      '@hobo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@hobo/dispatcher':
+        specifier: workspace:*
+        version: link:../dispatcher
+    devDependencies:
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(vite@8.1.2(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/stage-gate:
     devDependencies:

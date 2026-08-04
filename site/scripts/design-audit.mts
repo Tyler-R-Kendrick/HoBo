@@ -420,10 +420,12 @@ async function interactionPass(browser: Browser, base: string) {
 	);
 	if (open) fail("picker-escape", "design menu does not close on Escape");
 
-	// Hover states exist (button + card).
-	await page.hover(".btn");
+	// Hover states exist (button + card). Filter to VISIBLE: the world heroes
+	// put hidden .btn elements first in the DOM, and hovering a hidden node
+	// times out — which is itself the audit doing its job on the audit.
+	await page.locator(".btn").locator("visible=true").first().hover();
 	await page.screenshot({ path: shot("interact", "btn-hover") });
-	const card = page.locator(".card").first();
+	const card = page.locator(".card").locator("visible=true").first();
 	if (await card.count()) {
 		await card.hover();
 		await page.screenshot({ path: shot("interact", "card-hover") });

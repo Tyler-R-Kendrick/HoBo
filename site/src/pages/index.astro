@@ -3,6 +3,7 @@ import { Code } from "astro:components";
 import Base from "../layouts/Base.astro";
 import Mascot from "../components/Mascot.astro";
 import ParallaxTrail from "../components/ParallaxTrail.astro";
+import WorldHero from "../components/WorldHero.astro";
 import Blimp from "../components/scenes/Blimp.astro";
 import Crossroads from "../components/scenes/Crossroads.astro";
 import Depot from "../components/scenes/Depot.astro";
@@ -33,10 +34,16 @@ const shikiThemes = {
 	description="HoBo describes your app once, finds it the cheapest home that passes your policies, and keeps it moving with continuous, zero-drama migrations — across any provider, any mix, or your own metal."
 >
 	<!-- ===================== Trail ===================== -->
-	<ParallaxTrail />
+	{/* Ink's band and hero render only when no world is chosen; each world
+	    brings its own art and its own opening argument instead. */}
+	<div class="ink-world">
+		<ParallaxTrail />
+	</div>
+
+	<WorldHero />
 
 	<!-- ===================== Hero ===================== -->
-	<section class="hero">
+	<section class="hero ink-world">
 		<div class="container">
 			<div>
 				<h1>

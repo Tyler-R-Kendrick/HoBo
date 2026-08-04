@@ -23,16 +23,50 @@ const here = sectionFor(path.replace(href("/"), "/"), nav);
 			<span>HoBo</span>
 		</a>
 		<nav class="site-nav" id="site-nav" aria-label="Main">
-			{
-				sections.map((section) => (
-					<a
-						href={href(section.slug)}
-						aria-current={here?.label === section.label ? "page" : undefined}
-					>
-						{section.label}
-					</a>
-				))
-			}
+			{/* The ink nav — and beneath it, each world's own. A world does not
+			    rename these links; it re-frames them: a newspaper has sections,
+			    a photoplay has acts, a dispatch board has tracks, a scrapbook
+			    has tabs. Same five destinations, five vocabularies. */}
+			<span class="ink-world nav-links">
+				{
+					sections.map((section) => (
+						<a
+							href={href(section.slug)}
+							aria-current={here?.label === section.label ? "page" : undefined}
+						>
+							{section.label}
+						</a>
+					))
+				}
+			</span>
+			<span class="world-nav world-nav-herald">
+				<a href={href("/guide/")}>Dispatches</a>
+				<a href={href("/examples/")}>Classifieds</a>
+				<a href={href("/operations/")}>Rail Schedules</a>
+				<a href={href("/reference/")}>The Record</a>
+				<a href={href("/agents/")}>Union Hall</a>
+			</span>
+			<span class="world-nav world-nav-photoplay">
+				<a href={href("/guide/")}><span class="act">ACT I</span> Learn</a>
+				<a href={href("/examples/")}><span class="act">ACT II</span> Build</a>
+				<a href={href("/operations/")}><span class="act">ACT III</span> Operate</a>
+				<a href={href("/reference/")}><span class="act">INTERMISSION</span> Reference</a>
+				<a href={href("/agents/")}><span class="act">ACT IV</span> Agents</a>
+			</span>
+			<span class="world-nav world-nav-dispatch">
+				<a href={href("/guide/")}><span class="trk">TRK·00</span>learn</a>
+				<a href={href("/examples/")}><span class="trk">TRK·01</span>build</a>
+				<a href={href("/operations/")}><span class="trk">TRK·02</span>operate</a>
+				<a href={href("/reference/")}><span class="trk">TRK·03</span>reference</a>
+				<a href={href("/agents/")}><span class="trk">TRK·04</span>agents</a>
+			</span>
+			<span class="world-nav world-nav-scrapbook">
+				<a href={href("/guide/")}>the road</a>
+				<a href={href("/examples/")}>the kit</a>
+				<a href={href("/operations/")}>the yards</a>
+				<a href={href("/reference/")}>the map</a>
+				<a href={href("/agents/")}>the crew</a>
+			</span>
 		</nav>
 		<div class="header-actions">
 			<a

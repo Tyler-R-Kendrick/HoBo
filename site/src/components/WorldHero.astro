@@ -1,0 +1,151 @@
+---
+// ==========================================================================
+// Four WORLDS, not four skins.
+//
+// The owner's rejection of the token-only axis was architectural and correct:
+// CSS custom properties can restyle a page but cannot change what it SAYS,
+// what it SHOWS, or how it BEHAVES. Each design is therefore its own world on
+// the marketing surface — its own copy in its own voice, its own generated
+// art, its own signature interaction — switched by the same picker.
+//
+// All variants are statically rendered and gated by `:root[data-design]`
+// (see worlds.css); the ink hero and parallax band hide when a world is
+// active. Hidden variants cost DOM, not pixels — their images are
+// loading="lazy" so browsers skip them until shown.
+//
+// Copy rules: same product truth as ink (PRODUCT.md binds — no invented
+// customers, no fake claims), different register per world.
+// ==========================================================================
+import { href } from "../lib/url";
+---
+
+<!-- ============ HERALD — the front page of a 1930s newspaper ============ -->
+<section class="world-hero world-herald" aria-label="HoBo, as a newspaper front page">
+	<div class="container">
+		<header class="herald-masthead">
+			<p class="herald-ears">EST. THE DESIGN PHASE</p>
+			<p class="herald-title">The Hobo Herald</p>
+			<p class="herald-ears">PRICE: ONE BINDLE</p>
+		</header>
+		<hr class="herald-rule" />
+		<div class="herald-page">
+			<div class="herald-story">
+				<h1>APPS FLEE COSTLY LANDLORDS;<br />CONTINUOUS MIGRATION BLAMED</h1>
+				<p class="herald-dek">
+					Workloads seen packing a single Bindle and boarding any provider
+					that passes policy — cost, region and uptime gates all reported
+					intact upon arrival.
+				</p>
+				<p class="herald-body">
+					<span class="herald-dateline">THE OPEN ROAD —</span> Sources close
+					to the control plane confirm that once an app is described, its
+					placement becomes a <em>standing decision</em>: when a better-value
+					home opens up, HoBo plans the move, gates it, and rides. Landlords
+					could not be reached for comment.
+				</p>
+				<div class="hero-ctas">
+					<a class="btn btn-primary" href={href("/guide/getting-started/")}>Read the notice</a>
+					<a class="btn btn-ghost" href={href("/guide/concepts/")}>Wire the newsroom</a>
+				</div>
+			</div>
+			<figure class="herald-figure">
+				<img src={href("/worlds/herald.webp")} alt="Engraving of Bo the soot-sprite stepping off a freight train" loading="lazy" />
+				<figcaption>— Our correspondent's engraving: a workload arrives at better rent.</figcaption>
+			</figure>
+		</div>
+	</div>
+</section>
+
+<!-- ============ PHOTOPLAY — a silent film, told in intertitles ============ -->
+<section class="world-hero world-photoplay" aria-label="HoBo, as a silent film">
+	<div class="container photoplay-stage">
+		<div class="photoplay-frame" data-photoplay>
+			<img class="photoplay-border" src={href("/worlds/photoplay.webp")} alt="" aria-hidden="true" loading="lazy" />
+			<div class="photoplay-card is-active" data-card>
+				<p>LO — THE WANDERING APP,<br />WEARY OF RENT,<br />PACKS ITS BINDLE.</p>
+			</div>
+			<div class="photoplay-card" data-card>
+				<p>IT RIDES AT MIDNIGHT.<br />THE CHEAPEST HOME THAT<br />PASSES POLICY AWAITS.</p>
+			</div>
+			<div class="photoplay-card" data-card>
+				<p>WHEN THE RENT TURNS —<br />IT SIMPLY RIDES AGAIN.</p>
+			</div>
+			<button class="photoplay-next" type="button">NEXT CARD ▸</button>
+		</div>
+		<div class="hero-ctas photoplay-ctas">
+			<a class="btn btn-primary" href={href("/guide/getting-started/")}>Roll the reel</a>
+			<a class="btn btn-ghost" href={href("/guide/concepts/")}>Read the programme</a>
+		</div>
+	</div>
+</section>
+
+<!-- ============ DISPATCH — the yard operations board ============ -->
+<section class="world-hero world-dispatch" aria-label="HoBo, as a dispatch board">
+	<div class="container">
+		<div class="dispatch-board">
+			<p class="dispatch-title">DISPATCH BOARD · every app a scheduled departure</p>
+			<ol class="dispatch-log" data-dispatch>
+				<li><span>14:02</span> bindle packed — hello-bindle</li>
+				<li><span>14:02</span> policies loaded — cost · region · uptime</li>
+				<li><span>14:03</span> camp selected — best value, passes all gates</li>
+				<li><span>14:07</span> migration planned · gated · ridden</li>
+				<li class="dispatch-cursor"><span>&gt;_</span> the board never sleeps. neither does placement.</li>
+			</ol>
+			<div class="hero-ctas">
+				<a class="btn btn-primary" href={href("/guide/getting-started/")}>Open the board</a>
+				<a class="btn btn-ghost" href={href("/guide/concepts/")}>Read the timetable</a>
+			</div>
+		</div>
+		<img class="dispatch-art" src={href("/worlds/dispatch.webp")} alt="A split-flap railway departure board" loading="lazy" />
+	</div>
+</section>
+
+<!-- ============ SCRAPBOOK — postcards home from the road ============ -->
+<section class="world-hero world-scrapbook" aria-label="HoBo, as a scrapbook">
+	<div class="container">
+		<h1 class="scrapbook-title">Notes from the open road.</h1>
+		<div class="scrapbook-spread">
+			<figure class="scrapbook-photo">
+				<span class="tape" aria-hidden="true"></span>
+				<img src={href("/worlds/scrapbook.webp")} alt="Paper-cutout collage of Bo walking through torn-paper hills" loading="lazy" />
+			</figure>
+			<div class="scrapbook-card">
+				<span class="tape tape-r" aria-hidden="true"></span>
+				<p>
+					Dear folks — found the app a cheaper room out west. Landlord never
+					even saw us pack. It's got its bindle, it's got its policies, and
+					when the rent turns, we'll ride again. <em>— Bo</em>
+				</p>
+				<div class="hero-ctas">
+					<a class="btn btn-primary" href={href("/guide/getting-started/")}>Pack along</a>
+					<a class="btn btn-ghost" href={href("/guide/concepts/")}>Flip the album</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<script>
+	// Photoplay: intertitle cards advance on click — the silent film's one
+	// interaction. Reduced motion sees no flicker (CSS) but cards still cycle.
+	for (const frame of document.querySelectorAll("[data-photoplay]")) {
+		const cards = [...frame.querySelectorAll("[data-card]")];
+		let i = 0;
+		frame.querySelector(".photoplay-next")?.addEventListener("click", () => {
+			cards[i].classList.remove("is-active");
+			i = (i + 1) % cards.length;
+			cards[i].classList.add("is-active");
+		});
+	}
+	// Dispatch: log lines type on when the board is the active world. Reduced
+	// motion renders everything settled.
+	const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+	const board = document.querySelector("[data-dispatch]");
+	if (board && !still) {
+		const lines = [...board.children];
+		lines.forEach((li, n) => {
+			(li as HTMLElement).style.animationDelay = `${n * 0.45}s`;
+			li.classList.add("dispatch-typed");
+		});
+	}
+</script>

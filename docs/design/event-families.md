@@ -20,8 +20,10 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `breakglass.*` | `breakglass.Requested`, `breakglass.Approved`, `breakglass.Started`, `breakglass.Used`, `breakglass.Revoked` |
 | `broker.*` | `broker.Requested`, `broker.Resolved`, `broker.Rejected`, `broker.ScaleRequested`, `broker.DeliverySubmitted`, `broker.ResolutionSigned`, `broker.EnvironmentPublished`, `broker.EnvironmentApproved` |
 | `camp.*` | `camp.Created`, `camp.RuntimeBound` |
-| `capability.*` | `capability.Denied` |
+| `budget.*` | `budget.ThresholdCrossed`, `budget.Recovered`, `budget.CreditApplied` |
+| `capability.*` | `capability.Denied`, `capability.GrantDenied` |
 | `chaos.*` | `chaos.ExperimentStarted`, `chaos.FaultInjected` |
+| `component.*` | `component.Loaded`, `component.Invoked`, `component.Trapped`, `component.TornDown` |
 | `compat.*` | `compat.GatePassed`, `compat.GateFailed` |
 | `config.*` | `config.Resolved` |
 | `code.*` | `code.HarnessEnabled`, `code.EvidenceCaptured`, `code.DispatchStarted`, `code.DispatchCompleted` (OpenFeature keys `code.harness.enabled`, `code.evidence.visual`, `code.monetization.surface`, `code.isolation.rift`, `code.distributed` are flag keys; durable facts use past-tense `code.*` events when emitted) |
@@ -36,9 +38,9 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `dev.*` | `dev.SessionStarted`, `dev.RequestServed`, `dev.HandlerReloaded`, `dev.ReloadFailed`, `dev.CodegenRan`, `dev.SessionStopped` |
 | `deployment.*` | `deployment.Planned`, `deployment.PlanRejected`, `deployment.ApplyStarted`, `deployment.ResourceApplied`, `deployment.ApplySucceeded`, `deployment.ApplyFailed`, `deployment.StatusObserved`, `deployment.Deployed`, `deployment.RolledBack` |
 | `derivative.*` | `derivative.UpgradeStarted`, `derivative.UpgradeSucceeded` |
-| `dispatch.*` | `dispatch.Decided` |
+| `dispatch.*` | `dispatch.Decided`, `dispatch.ReservationReserved`, `dispatch.ReservationConfirmed`, `dispatch.ReservationReleased`, `dispatch.ReservationExpired` |
 | `drift.*` | `drift.RemediationRouted`, `drift.DiffProposed` |
-| `domain.*` | `domain.Validated`, `domain.RoutingChanged`, `domain.RolledBack` |
+| `domain.*` | `domain.Validated`, `domain.CutoverStarted`, `domain.CutoverRefused`, `domain.TtlLowered`, `domain.RoutingChanged`, `domain.RolledBack` |
 | `env.*` | `env.Cloned`, `env.Promoted` |
 | `erasure.*` | `erasure.Requested`, `erasure.Completed` |
 | `eval.*` | `eval.Ran`, `eval.GateFailed` |
@@ -57,7 +59,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `invoice.*` | `invoice.LineItem`, `invoice.AdjustmentLine`, `invoice.LateUsageAdjustment` |
 | `junction.*` | `junction.TrustEstablished`, `junction.ArtifactShared` |
 | `lane.*` | `lane.Revoked` |
-| `link.*` | `link.Established`, `link.Called` |
+| `link.*` | `link.Established`, `link.Called`, `link.Rejected` |
 | `listing.*` | `listing.Published`, `listing.Certified`, `listing.Yanked` |
 | `livefix.*` | `livefix.Proposed`, `livefix.Applied` |
 | `match.*` | `match.Decided` |
@@ -65,6 +67,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `migration.*` | `migration.Planned`, `migration.SnapshotTaken`, `migration.PhaseApplied`, `migration.Verified`, `migration.CutOver`, `migration.RolledBack`, `migration.Failed`, `migration.Exported`, `migration.Imported` |
 | `model.*` | `model.Registered`, `model.Promoted` |
 | `notification.*` | `notification.Requested`, `notification.Delivered` |
+| `pam.*` | `pam.SessionStarted`, `pam.SessionRenewed`, `pam.SessionEnded`, `pam.SessionDenied`, `pam.GatewayStarted`, `pam.GatewayStopped` |
 | `pack.*` | `pack.Imported` |
 | `pipeline.*` | `pipeline.Triggered`, `pipeline.Completed` |
 | `policy.*` | `policy.Decided`, `policy.ObligationCreated`, `policy.ObligationSatisfied` |
@@ -79,9 +82,10 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `rollout.*` | `rollout.Started`, `rollout.Stepped`, `rollout.Promoted`, `rollout.RolledBack`, `rollout.Failed` |
 | `run.*` | `run.Started`, `run.StepCompleted` |
 | `runbook.*` | `runbook.Defined`, `runbook.Triggered`, `runbook.StepCompleted`, `runbook.Completed`, `runbook.Failed` |
-| `saga.*` | `saga.Started`, `saga.Compensated` |
+| `routing.*` | `routing.ReplanProposed`, `routing.ReplanHeld`, `routing.ReplanDenied`, `routing.Reapplied`, `routing.RampAdvanced` |
+| `saga.*` | `saga.Started`, `saga.StepEmitted`, `saga.Completed`, `saga.Compensated` |
 | `secret.*` | `secret.Accessed`, `secret.Unavailable` |
-| `yard.*` | `yard.Registered`, `yard.InventoryUpdated`, `yard.PlacementDecided` |
+| `yard.*` | `yard.Registered`, `yard.MatchDecided`, `yard.Generation*` (generation saga family), plus placement/inventory facts emitted by `@hobo/broker` yard-placement |
 | `connection.*` | `connection.Created`, `connection.Authorized`, `connection.TokenIssued`, `connection.Revoked`, `connection.Rotated` |
 | `rail.*` | `rail.Published`, `rail.Approved`, `rail.Activated`, `rail.Deactivated`, `rail.Retired` |
 | `station.*` | `station.Created`, `station.Configured`, `station.Closed`, `station.IdentityRotated` |
@@ -91,7 +95,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `spend.*` | `spend.Recorded`, `spend.CapGateEvaluated`, `spend.CircuitTripped`, `spend.CircuitReset`, `spend.DegradationRequired`, `spend.DegradationApplied`, `spend.DegradationRolledBack` |
 | `statuspage.*` | `statuspage.Published`, `statuspage.IncidentPosted` |
 | `stub.*` | `stub.Recorded` |
-| `subscription.*` | `subscription.Opened`, `subscription.Pushed` |
+| `subscription.*` | `subscription.Opened`, `subscription.Pushed`, `subscription.Recomputed`, `subscription.Closed` |
 | `support.*` | `support.UsageCorrectionApproved`, `support.DisputeOpened` |
 | `tenant.*` | `tenant.Provisioned`, `tenant.Suspended`, `tenant.Resumed`, `tenant.Offboarded`, `tenant.Exported`, `tenant.Imported`, `tenant.Fenced`, `tenant.Drained`, `tenant.Erased`, `tenant.CutoverFailed` |
 | `token.*` | `token.Granted`, `token.Used`, `token.Denied`, `token.Revoked` |

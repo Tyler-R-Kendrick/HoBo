@@ -5,15 +5,15 @@
  * `isHighball`, `waybillForZone`, `createSpikeLedger`, `createYardEngine`,
  * `deriveYardVisualState` — against the committed deterministic scenarios.
  * Nothing here touches Phaser, the DOM, or control-api: the browser suite
- * (packages/control-yard/test/e2e/) covers the visible half of the loop.
+ * (packages/pixel-village/test/e2e/) covers the visible half of the loop.
  */
 import assert from "node:assert/strict";
 
 import { Given, Then, When } from "@cucumber/cucumber";
 
-import type { ZoneId } from "../../packages/control-yard/src/layout.js";
-import type { YardScenario } from "../../packages/control-yard/src/scenarios/index.js";
-import { SCENARIOS } from "../../packages/control-yard/src/scenarios/index.js";
+import type { ZoneId } from "../../packages/pixel-village/src/layout.js";
+import type { YardScenario } from "../../packages/pixel-village/src/scenarios/index.js";
+import { SCENARIOS } from "../../packages/pixel-village/src/scenarios/index.js";
 import {
 	createSpikeLedger,
 	deriveWaybills,
@@ -21,8 +21,8 @@ import {
 	type SpikeLedger,
 	type Waybill,
 	waybillForZone,
-} from "../../packages/control-yard/src/waybills.js";
-import { createYardEngine } from "../../packages/control-yard/src/yard-engine.js";
+} from "../../packages/pixel-village/src/waybills.js";
+import { createYardEngine } from "../../packages/pixel-village/src/yard-engine.js";
 
 /** The projection shape the scenarios emit — no @hobo/management import needed. */
 type YardProjectionSnapshot = ReturnType<YardScenario["snapshotAt"]>;

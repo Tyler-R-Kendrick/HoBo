@@ -1,6 +1,6 @@
 # Credits and Provenance
 
-Asset ledger for `packages/control-yard/assets/`. Every entry in
+Asset ledger for `packages/pixel-village/assets/`. Every entry in
 [`assets_index.json`](assets_index.json) must have a row here (see
 "How to add a new asset" below). Modeled on
 `.agents/skills/pixel-snapper/references/credits.md`.

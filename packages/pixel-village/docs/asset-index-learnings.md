@@ -17,7 +17,7 @@ Probed with:
 
 ```bash
 uv run .agents/skills/gamedev-assets/scripts/asset_sheet_probe.py \
-  packages/control-yard/assets/bo/bo-walk.png --frame 160x157 --list
+  packages/pixel-village/assets/bo/bo-walk.png --frame 160x157 --list
 ```
 
 Delivery cells are the site repack (160×157), **not** the art-bible source 554×542.
@@ -39,8 +39,8 @@ Coverage check rejects byte-identical east/west sheets.
 
 ```bash
 uv run .agents/skills/gamedev-assets/scripts/asset_manifest_check.py \
-  --manifest packages/control-yard/assets/assets_index.json \
-  --root packages/control-yard/assets
+  --manifest packages/pixel-village/assets/assets_index.json \
+  --root packages/pixel-village/assets
 ```
 
 ## GIF review strips

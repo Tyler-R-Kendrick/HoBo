@@ -13,7 +13,7 @@
 			"Kenney roguelike sheets use 1px spacing between cells; Kenney tiny-* / urban tilemaps are packed with 0 spacing.",
 			"audio/: mono 22050Hz WAVs synthesized deterministically by scripts/synth-audio.py; see assets/CREDITS.md"
 		],
-		"designSystem": "site/DESIGN.md (packages/control-yard/DESIGN.md)"
+		"designSystem": "packages/pixel-village/DESIGN.md"
 	},
 	"images": {
 		"cargo-particle": {

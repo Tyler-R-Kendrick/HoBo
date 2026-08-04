@@ -1,9 +1,0 @@
-{
-  "status": "skipped",
-  "reason": "video preserve-canvas export keeps source video framing and does not recenter foreground bboxes",
-  "layoutMode": "preserve-canvas",
-  "targetFrame": [
-    256,
-    256
-  ]
-}

@@ -278,7 +278,6 @@ if (!staticAddr || typeof staticAddr === "string") {
 }
 const origin = `http://127.0.0.1:${staticAddr.port}`;
 const gameUrl = `${origin}/?test=1&seed=42&api=${encodeURIComponent(api.url)}`;
-const animUrl = `${origin}/anim-test.html`;
 
 console.log("HOBO_HOME", hoboHome);
 console.log("API", api.url);
@@ -537,59 +536,10 @@ try {
 		},
 	);
 
-	// ========== Recording 03: AnimTest east/west ==========
-	await withRecording(
-		"03-bo-walk-east-west",
-		{ width: 720, height: 560 },
-		async (page) => {
-			await page.goto(animUrl, { waitUntil: "load", timeout: 30000 });
-			await page.waitForFunction(
-				() =>
-					(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
-						?.ready === true,
-				null,
-				{ timeout: 15000 },
-			);
-			for (const anim of ["bo.idle", "bo.walk.east", "bo.walk.west"] as const) {
-				await page.evaluate((id) => {
-					(
-						window as unknown as {
-							__TEST__: { commands: { showAnim: (a: string) => void } };
-						}
-					).__TEST__.commands.showAnim(id);
-				}, anim);
-				// let many frames play for visible motion in video
-				await sleep(anim === "bo.idle" ? 900 : 1600);
-				const path = join(SHOTS, `anim-${anim.replace(/\./g, "-")}.png`);
-				await page.screenshot({ path });
-				const stA = await page.evaluate(() =>
-					(
-						window as unknown as {
-							__TEST__: { state: () => { animId: string } };
-						}
-					).__TEST__.state(),
-				);
-				check(`anim harness ${anim}`, stA.animId === anim, stA.animId);
-			}
-			// east then west back-to-back for flip proof
-			await page.evaluate(() => {
-				(
-					window as unknown as {
-						__TEST__: { commands: { showAnim: (a: string) => void } };
-					}
-				).__TEST__.commands.showAnim("bo.walk.east");
-			});
-			await sleep(1200);
-			await page.evaluate(() => {
-				(
-					window as unknown as {
-						__TEST__: { commands: { showAnim: (a: string) => void } };
-					}
-				).__TEST__.commands.showAnim("bo.walk.west");
-			});
-			await sleep(1200);
-		},
-	);
+	// The AnimTest harness is gone with the animation clips it exercised: the
+	// village renders static tiles, so `animationIds` is empty and the harness
+	// could only ever screenshot a blank canvas. Removed rather than left
+	// certifying a deleted capability.
 
 	// ========== Recording 04: rail / cost / doctor ==========
 	await withRecording(
@@ -671,12 +621,8 @@ const evidenceFiles = [
 	"06-after-actions.png",
 	"07-walk.png",
 	"canvas-only.png",
-	"anim-bo-idle.png",
-	"anim-bo-walk-east.png",
-	"anim-bo-walk-west.png",
 	"recordings/01-yard-loop.mp4",
 	"recordings/02-connection-sheet.mp4",
-	"recordings/03-bo-walk-east-west.mp4",
 	"recordings/04-rail-cost-doctor.mp4",
 ];
 
@@ -744,12 +690,9 @@ writeFileSync(manifestPath, `${JSON.stringify(manifestFinal, null, 2)}\n`);
 const syncList = [
 	"01-boot-live.png",
 	"02-connection-bay-sheet.png",
-	"anim-bo-walk-east.png",
-	"anim-bo-walk-west.png",
 	"evidence-manifest.json",
 	"visual-report.json",
 	"recordings/01-yard-loop.mp4",
-	"recordings/03-bo-walk-east-west.mp4",
 ];
 mkdirSync(join(EXP_EVIDENCE, "recordings"), { recursive: true });
 for (const rel of syncList) {

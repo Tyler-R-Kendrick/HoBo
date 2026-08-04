@@ -40,7 +40,12 @@ import {
 	type YardTestWorld,
 	type YardTheme,
 } from "./test-seam.js";
-import { anyDerailed, deriveTrains, type TrainView } from "./trains.js";
+import {
+	anyDerailed,
+	deriveTrains,
+	isPartialView,
+	type TrainView,
+} from "./trains.js";
 import { LANDMARK, tilePx } from "./village.js";
 import {
 	createSpikeLedger,
@@ -83,6 +88,7 @@ let scenarioState: { id: string; tick: number } | null = null;
 let theme: YardTheme = "day";
 let waybills: readonly Waybill[] = [];
 let trains: readonly TrainView[] = [];
+let trainsPartial = false;
 let audio: YardAudio | null = null;
 let setSceneBackground: ((color: string) => void) | null = null;
 /** Transient feedback in flight (stamp slam / derail hit-stop). */
@@ -455,6 +461,7 @@ function renderModel(): RenderModel {
 		scenarioMode: SCENARIO_MODE,
 		waybills,
 		trains,
+		trainsPartial,
 		highball,
 		fx: fx
 			? { kind: fx.kind, elapsedMs: performance.now() - fx.startedAt }
@@ -713,7 +720,11 @@ async function boot(): Promise<void> {
 	const refreshTrains = () => {
 		void client.deployments().then((view) => {
 			trains = Object.freeze(deriveTrains(view));
+			// A view missing a yard is not a yard with no deployments; say so
+			// rather than draw a confident, incomplete rail.
+			trainsPartial = isPartialView(view);
 			document.body.dataset.trains = String(trains.length);
+			document.body.dataset.trainsPartial = trainsPartial ? "1" : "0";
 			// A derail is the loudest event; sound it once per occurrence.
 			const derailed = anyDerailed(trains);
 			if (derailed && !wasDerailed) recordFx("derail");

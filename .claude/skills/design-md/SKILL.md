@@ -1,6 +1,6 @@
 ---
 name: design-md
-description: Google DESIGN.md visual identity for coding agents. HoBo site truth is site/DESIGN.md (rubberhose / Steamboat Willie / Cuphead). Lint with designmd; pre-commit runs pnpm run design:lint for all web UI packages.
+description: Google DESIGN.md visual identity for coding agents. HoBo truth is site/DESIGN.md (pixel-RPG: 16px grid, integer scaling, hard #3f2631 outlines, square corners). Lint with designmd; pre-commit runs pnpm run design:lint for all web UI packages.
 ---
 
 # design-md (HoBo)
@@ -22,7 +22,7 @@ description: Google DESIGN.md visual identity for coding agents. HoBo site truth
 
 ## Aesthetic (non-negotiable)
 
-**Steamboat Willie / Cuphead / Fleischer rubberhose** — thick ink outlines, hard sticker shadows, film grain, Chewy title-card type, black-and-white day/night inversion. Bo the bindlebug is soot with googly eyes. Traced art only. CTAs are **cartoon signage**, not pill ellipses.
+**Top-down pixel RPG** (ADR-0146) — art authored on a 16px grid and scaled by integers only, hard `#3f2631` outlines, square corners (every radius is `0`), warm earth against cool slate with grass/danger/accent as the functional colours, Kenney CC0 pixel display faces for headings and `system-ui` for body copy. **Art is sourced, never drawn in renderer code** — building props from rects and lines is what produced the surface this replaced. The earlier rubberhose/Steamboat-Willie contract and the Bo art bible are retired.
 
 ### Do
 

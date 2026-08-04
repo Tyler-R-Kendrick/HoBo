@@ -6,6 +6,7 @@ import {
 	type DeploymentsWireView,
 	type DeploymentWireRow,
 	deriveTrains,
+	isPartialView,
 	phaseForRow,
 	reasonForRow,
 } from "../src/trains.js";
@@ -196,5 +197,45 @@ describe("train rendering", () => {
 			expect(reason.text).toBe("budget cap");
 			expect(reason.color).toBe("#c34b35");
 		}
+	});
+});
+
+describe("partial deployment views are badged, never drawn as complete", () => {
+	it("detects a view that could not read part of the estate", () => {
+		expect(isPartialView(null)).toBe(false);
+		expect(isPartialView({ available: true, deployments: [] })).toBe(false);
+		expect(
+			isPartialView({
+				available: true,
+				deployments: [],
+				skippedYards: ["yard-b"],
+			}),
+		).toBe(true);
+	});
+
+	it("renders a PARTIAL badge on the rail, and only then", () => {
+		const base = {
+			visual: null,
+			boPos: { x: 200, y: 600 },
+			boAnimationId: "",
+			zone: "platformRest" as const,
+			selectedZone: null,
+			speech: null,
+			particles: [],
+			testMode: true,
+			ready: true,
+			hasImage: () => false,
+			world: null,
+			scenarioMode: false,
+			waybills: [],
+			highball: false,
+			trains: [],
+		};
+		const has = (partial: boolean) =>
+			presentYard({ ...base, trainsPartial: partial }).items.some(
+				(i) => i.id === "trains-partial-badge",
+			);
+		expect(has(true)).toBe(true);
+		expect(has(false)).toBe(false);
 	});
 });

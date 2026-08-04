@@ -42,6 +42,12 @@ export type DeploymentViewProjectionView = Readonly<{
 	source: DeploymentViewSource;
 	/** Yard store names folded (subdirs of `<HOBO_HOME>/yards`). */
 	yards: readonly string[];
+	/**
+	 * Yard stores that exist but could not be read (locked or corrupt). A
+	 * non-empty list means this view is PARTIAL: consumers must say so rather
+	 * than render it as the whole estate.
+	 */
+	skippedYards: readonly string[];
 	deployments: readonly DeploymentViewRow[];
 	count: number;
 	/** Max folded event seq (0 for the empty view). */
@@ -105,14 +111,21 @@ export async function projectDeploymentView(
 ): Promise<ManagementResult<DeploymentViewProjectionView>> {
 	const stores = listYardStores(ctx.hoboHome, input.yard);
 	const yards: string[] = [];
+	// A yard we could not read is NOT the same as a yard with no deployments.
+	// Report it so the caller can badge the view as partial instead of drawing
+	// a confident picture that is missing half the estate.
+	const skipped: string[] = [];
 	const events: EventEnvelope[] = [];
 	for (const store of stores) {
 		try {
-			events.push(...(await collectYardEvents(store.dataDir)));
+			// push(...arr) throws RangeError past the argument limit, which a
+			// long-lived yard will cross; append instead.
+			for (const event of await collectYardEvents(store.dataDir)) {
+				events.push(event);
+			}
 			yards.push(store.name);
 		} catch {
-			// Locked/corrupt store: skip rather than fail the whole view; the
-			// yard is simply absent from `yards`, so the omission is visible.
+			skipped.push(store.name);
 		}
 	}
 
@@ -123,6 +136,7 @@ export async function projectDeploymentView(
 				available: false,
 				source: "none" as const,
 				yards: Object.freeze([]),
+				skippedYards: Object.freeze([...skipped]),
 				deployments: Object.freeze([]),
 				count: 0,
 				seq: 0,
@@ -140,6 +154,7 @@ export async function projectDeploymentView(
 			available: true,
 			source: "yard-eventstore" as const,
 			yards: Object.freeze([...yards]),
+			skippedYards: Object.freeze([...skipped]),
 			deployments: Object.freeze(deployments),
 			count: deployments.length,
 			seq: snapshot.seq,

@@ -167,3 +167,25 @@ describe("projectCredentialAudit", () => {
 		expect(other.data?.rows).toEqual([]);
 	});
 });
+
+describe("partial projections are reported, not hidden", () => {
+	// A yard we cannot read is not a yard with no deployments. Reporting the
+	// second as the first is fabrication by omission — the consumer draws a
+	// confident picture missing part of the estate.
+	it("lists unreadable yard stores in skippedYards", async () => {
+		const home = tempHome();
+		const yards = join(home, "yards");
+		mkdirSync(join(yards, "broken-yard"), { recursive: true });
+		// A directory where the event store file is expected: unreadable, not absent.
+		mkdirSync(join(yards, "broken-yard", "eventstore.sqlite"), {
+			recursive: true,
+		});
+		const res = await projectDeploymentView(
+			createManagementContext({ hoboHome: home }),
+			{},
+		);
+		expect(res.ok).toBe(true);
+		const view = res.data as { skippedYards: readonly string[] };
+		expect(view.skippedYards).toContain("broken-yard");
+	});
+});

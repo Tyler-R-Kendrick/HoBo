@@ -92,12 +92,31 @@ type WorldDelta = Readonly<{
 	demo: boolean;
 }>;
 
+/** Refuse bodies larger than this rather than buffering them into the heap. */
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
+
+export class PayloadTooLargeError extends Error {
+	constructor() {
+		super(`request body exceeds ${MAX_BODY_BYTES} bytes`);
+		this.name = "PayloadTooLargeError";
+	}
+}
+
 async function readJson(
 	req: IncomingMessage,
 ): Promise<Record<string, unknown>> {
 	const chunks: Buffer[] = [];
+	let size = 0;
 	for await (const chunk of req) {
-		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+		const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+		size += buf.length;
+		// An unauthenticated ingest route must not let a single request
+		// exhaust the control plane's heap.
+		if (size > MAX_BODY_BYTES) {
+			req.destroy();
+			throw new PayloadTooLargeError();
+		}
+		chunks.push(buf);
 	}
 	if (chunks.length === 0) return {};
 	const raw = Buffer.concat(chunks).toString("utf8");
@@ -183,24 +202,63 @@ export async function createControlApiServer(
 		req: IncomingMessage,
 		res: ServerResponse,
 	): Promise<void> {
+		// Ingest WRITES control-plane state that renders as real, unbadged
+		// telemetry. A browser can issue a cross-origin POST without preflight
+		// when the content type is "simple", so require the OTLP content type
+		// and refuse any request carrying a browser Origin.
+		const contentType = String(req.headers["content-type"] ?? "");
+		if (!contentType.toLowerCase().includes("application/json")) {
+			sendJson(res, 415, {
+				ok: false,
+				code: "unsupported-media-type",
+				message: "OTLP/JSON ingest requires content-type: application/json",
+			});
+			return;
+		}
+		const origin = req.headers.origin;
+		if (typeof origin === "string" && origin.length > 0) {
+			sendJson(res, 403, {
+				ok: false,
+				code: "cross-origin-write-refused",
+				message:
+					"OTLP ingest does not accept cross-origin requests; point your exporter at this endpoint directly",
+			});
+			return;
+		}
+
 		let body: Record<string, unknown>;
 		try {
 			body = await readJson(req);
-		} catch {
-			sendJson(res, 400, {
+		} catch (err) {
+			const tooLarge = err instanceof PayloadTooLargeError;
+			sendJson(res, tooLarge ? 413 : 400, {
 				ok: false,
-				code: "bad-request",
-				message: `malformed OTLP/JSON ${signal} payload`,
+				code: tooLarge ? "payload-too-large" : "bad-request",
+				message: tooLarge
+					? `OTLP ${signal} payload exceeds ${MAX_BODY_BYTES} bytes`
+					: `malformed OTLP/JSON ${signal} payload`,
 			});
 			return;
 		}
 		const now = Date.now();
-		const events =
-			signal === "traces"
-				? mapTracePayload(body as OtlpTraceRequest, world, now, traceIndex)
-				: signal === "logs"
-					? mapLogsPayload(body as OtlpLogsRequest, world, now)
-					: mapMetricsPayload(body as OtlpMetricsRequest, world, now);
+		let events: ReturnType<typeof mapTracePayload>;
+		try {
+			events =
+				signal === "traces"
+					? mapTracePayload(body as OtlpTraceRequest, world, now, traceIndex)
+					: signal === "logs"
+						? mapLogsPayload(body as OtlpLogsRequest, world, now)
+						: mapMetricsPayload(body as OtlpMetricsRequest, world, now);
+		} catch (err) {
+			// A shape the mapper did not expect is the caller's problem, not a
+			// control-plane crash that silently drops the batch.
+			sendJson(res, 400, {
+				ok: false,
+				code: "bad-request",
+				message: `unmappable OTLP/JSON ${signal} payload: ${(err as Error).message}`,
+			});
+			return;
+		}
 		applyWorldEvents(events);
 		sendJson(res, 200, { ok: true, data: { accepted: events.length, demo } });
 	}

@@ -1,20 +1,17 @@
 {
-  "gameUrl": "http://127.0.0.1:46775/?test=1&seed=42&api=http%3A%2F%2F127.0.0.1%3A34839",
-  "apiUrl": "http://127.0.0.1:34839",
+  "gameUrl": "http://127.0.0.1:33897/?test=1&seed=42&api=http%3A%2F%2F127.0.0.1%3A36095",
+  "apiUrl": "http://127.0.0.1:36095",
   "checks": [
     "PASS test seam ready",
     "PASS connection authorized present — conn=1",
     "PASS traffic rate > 0 — traffic=0.4",
     "PASS bootstrap inactive",
     "PASS imgdiff boot — baseline created",
-    "PASS canvas renders a populated scene — colours=3901 dominant=20.6%",
+    "PASS canvas renders a populated scene — colours=2925 dominant=20.4%",
     "PASS no console errors",
     "PASS connection bay zone — zone=connectionBay",
     "PASS sheet opens — kind=connection.create",
     "PASS imgdiff connection bay — baseline created",
-    "PASS anim harness bo.idle — bo.idle",
-    "PASS anim harness bo.walk.east — bo.walk.east",
-    "PASS anim harness bo.walk.west — bo.walk.west",
     "PASS policyBoard zone — zone=policyBoard",
     "PASS costBooth zone — zone=costBooth",
     "PASS errorBunker zone — zone=errorBunker"
@@ -28,14 +25,13 @@
   "recordings": [
     "/home/codex/.herdr/worktrees/hobo/worktree-rapid-meadow-3f6e/packages/control-yard/public/shots/recordings/01-yard-loop.mp4",
     "/home/codex/.herdr/worktrees/hobo/worktree-rapid-meadow-3f6e/packages/control-yard/public/shots/recordings/02-connection-sheet.mp4",
-    "/home/codex/.herdr/worktrees/hobo/worktree-rapid-meadow-3f6e/packages/control-yard/public/shots/recordings/03-bo-walk-east-west.mp4",
     "/home/codex/.herdr/worktrees/hobo/worktree-rapid-meadow-3f6e/packages/control-yard/public/shots/recordings/04-rail-cost-doctor.mp4"
   ],
   "initialState": {
     "scene": "Yard",
     "ready": true,
     "seed": 42,
-    "frameCount": 9,
+    "frameCount": 8,
     "zone": "activeRailTrack",
     "hoveredZone": null,
     "bo": {
@@ -79,8 +75,8 @@
     }
   },
   "pixelSample": {
-    "colours": 3901,
-    "dominant": 0.2064,
+    "colours": 2925,
+    "dominant": 0.2041,
     "bo": {
       "x": 533,
       "y": 524,

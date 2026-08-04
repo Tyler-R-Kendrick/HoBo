@@ -14,6 +14,8 @@ import { YARD_LAYOUT } from "./layout.js";
 /** Wire shape of GET /v1/deployments/view (parse-don't-validate boundary). */
 export type DeploymentsWireView = Readonly<{
 	available: boolean;
+	/** Yard stores that exist but could not be read — the view is partial. */
+	skippedYards?: readonly string[];
 	source?: string;
 	yards?: readonly string[];
 	deployments?: readonly DeploymentWireRow[];
@@ -120,6 +122,15 @@ export function reasonForRow(row: DeploymentWireRow): string | null {
 		.filter(([, lifecycle]) => lifecycle === "failed")
 		.map(([resource]) => resource);
 	return failed.length > 0 ? `failed: ${failed.join(", ")}` : null;
+}
+
+/**
+ * True when the deployments view is missing part of the estate (a yard store
+ * was unreadable). The rail must say so: a partial view drawn as complete is
+ * fabrication by omission.
+ */
+export function isPartialView(view: DeploymentsWireView | null): boolean {
+	return (view?.skippedYards?.length ?? 0) > 0;
 }
 
 /**

@@ -127,6 +127,8 @@ export type PresenterInput = Readonly<{
 	waybills: readonly Waybill[];
 	/** Deployment sagas as rolling stock; empty when no durable store exists. */
 	trains?: readonly TrainView[];
+	/** True when the deployments view could not read part of the estate. */
+	trainsPartial?: boolean;
 	/** Highball goal state: clean board derived from reality only. */
 	highball: boolean;
 	/**
@@ -972,6 +974,22 @@ function drawWaybills(push: Push, input: PresenterInput): void {
  * unavailable — an honest empty road beats fabricated traffic.
  */
 function drawTrains(push: Push, input: PresenterInput): void {
+	// A deployments view that could not read part of the estate must say so.
+	// Drawing it as complete would be fabrication by omission — the operator
+	// cannot tell "no deployments" from "half the yards are unreadable".
+	if (input.trainsPartial) {
+		const track = YARD_LAYOUT.zones.activeRailTrack;
+		text(
+			push,
+			"trains-partial-badge",
+			track.x + 12,
+			track.y + 4,
+			"PARTIAL — a yard store could not be read",
+			"mono11",
+			DANGER,
+			D.ui + 3,
+		);
+	}
 	for (const train of input.trains ?? []) {
 		const derailed = train.phase === "derailed";
 		const edge = derailed ? DANGER : OUTLINE;

@@ -1,40 +1,42 @@
-/* HoBo Yard — ink-on-paper rubberhose (site/DESIGN.md / packages/control-yard/DESIGN.md).
-   Steamboat Willie / Cuphead / Fleischer: thick ink, sticker shadows, paper ground.
-   Accents spark/go only for status — never SaaS blues or generative color plates. */
+/* HIGHBALL! yard chrome — pixel-RPG identity (site/DESIGN.md, ADR-0146).
+   Square corners, hard outlines, Kenney CC0 pixel display face. The
+   rubberhose ink-on-paper contract this file used to implement is retired. */
 
-/* Chewy is vendored (Apache-2.0) at assets/fonts/Chewy-Regular.woff2 — no CDN.
-   The demo server maps /assets/* to the package assets/ dir (scripts/serve-demo.mts). */
+/* Kenney's CC0 pixel faces, vendored at assets/fonts/kenney/ with their
+   licence. Body copy is never set in a pixel face. */
 @font-face {
-	font-family: "Chewy";
-	font-style: normal;
-	font-weight: 400;
+	font-family: "Kenney Blocks";
+	src: url("/assets/fonts/kenney/KenneyBlocks.ttf") format("truetype");
 	font-display: swap;
-	src:
-		local("Chewy"),
-		url("/assets/fonts/Chewy-Regular.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Kenney Pixel";
+	src: url("/assets/fonts/kenney/KenneyPixel.ttf") format("truetype");
+	font-display: swap;
 }
 
 :root {
 	color-scheme: light;
-	--ink: #101010;
-	--soot: #1a1512;
-	--paper: #ffffff;
-	--cream: #f2f1ec;
-	--mute: #4a4a46;
-	--faint: #6e6d68;
-	--border: #e3e2de;
-	--border-strong: #c9c8c2;
-	--spark: #c5301c;
-	--go: #14672c;
-	--code-bg: #f7f7f5;
+	--ink: #3f2631;
+	--soot: #262b44;
+	--paper: #c0cbdc;
+	--cream: #d9e0ea;
+	--mute: #52607c;
+	--faint: #52607c;
+	--border: #8b9bb4;
+	--border-strong: #52607c;
+	--spark: #c34b35;
+	--go: #84c669;
+	--code-bg: #262b44;
 	--font-sans:
 		system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
 		sans-serif;
-	--font-display: "Chewy", "Comic Sans MS", cursive;
+	--font-display: "Kenney Blocks", "Kenney Pixel", ui-monospace, monospace;
 	--font-mono:
 		ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
-	--radius: 12px;
-	--radius-lg: 18px;
+	--radius: 0;
+	--radius-lg: 0;
 	--sticker: 4px 4px 0 var(--ink);
 	--sticker-sm: 2px 2px 0 var(--ink);
 }
@@ -94,7 +96,7 @@ header h1 {
 #dev-drawer {
 	margin: 0 0 14px;
 	border: 2px solid var(--ink);
-	border-radius: 2px;
+	border-radius: 0;
 	background: var(--paper);
 	box-shadow: var(--sticker-sm);
 	padding: 0;
@@ -158,7 +160,7 @@ header h1 {
 #hud span {
 	background: var(--cream);
 	border: 2px solid var(--ink);
-	border-radius: 999px;
+	border-radius: 0;
 	padding: 4px 10px;
 	box-shadow: var(--sticker-sm);
 	color: var(--mute);
@@ -185,7 +187,7 @@ button {
 	color: var(--paper);
 	background: var(--ink);
 	border: 2px solid var(--ink);
-	border-radius: 4px;
+	border-radius: 0;
 	padding: 8px 14px;
 	cursor: pointer;
 	box-shadow: var(--sticker);
@@ -318,7 +320,7 @@ main {
 	width: 100%;
 	font: inherit;
 	border: 2px solid var(--ink);
-	border-radius: 4px;
+	border-radius: 0;
 	background: var(--paper);
 	color: var(--ink);
 	padding: 6px 8px;
@@ -343,7 +345,7 @@ main {
 	margin-top: 10px;
 	background: var(--code-bg);
 	border: 1px solid var(--border-strong);
-	border-radius: 4px;
+	border-radius: 0;
 	padding: 8px;
 }
 

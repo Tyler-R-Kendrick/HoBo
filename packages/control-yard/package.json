@@ -60,7 +60,6 @@
 		"e2e:access": "playwright test test/e2e/access-trust.spec.ts",
 		"review:experience": "node --import tsx ./scripts/review-experience.mts",
 		"review:drift": "node --import tsx ./scripts/experience-drift.mts",
-		"serve": "node --import tsx ./scripts/serve-demo.mts",
-		"play:anim": "echo open public/anim-test.html via pnpm run serve"
+		"serve": "node --import tsx ./scripts/serve-demo.mts"
 	}
 }

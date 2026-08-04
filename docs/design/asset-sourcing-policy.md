@@ -18,7 +18,7 @@ tags: [hobo, design]
 
 Governs every visual, audio, and font asset that ships in `@hobo/control-yard`
 (the HIGHBALL! game surface, [ADR-0145](./adr/07-portability-extensibility.md#adr-0145))
-and any future game surface. The design identity is the rubberhose contract in
+and any future game surface. The design identity is the pixel-RPG contract in
 `site/DESIGN.md` / `packages/control-yard/DESIGN.md`; this policy governs where
 the raw material may come from and what provenance must travel with it.
 
@@ -64,16 +64,15 @@ mixed licenses); CC-BY audio falls under class (e), not here.
 
 ### (c) Fonts — OFL, vendored
 
-Display and UI fonts must be **SIL OFL** licensed (Chewy already is), vendored
-into the repo **with their license text** alongside the font files. No CDN
+Display and UI fonts must carry a permissive licence on the allowlist — Kenney's pixel faces are CC0. (An earlier revision of this doc claimed Chewy was OFL; it is Apache-2.0, and it is no longer used.) No CDN
 loading, no converted formats that strip the license, and a CREDITS.md row per
 family.
 
-### (d) CC0 pixel/prop art — silhouette reference only
-
-CC0 pixel art and prop sets may be used **only as silhouette or construction
-reference**, re-inked by hand to the 2–3px black-and-white rubberhose spec —
-**never dropped in raw**. A raw CC0 tile reads as a different game; the ink
+### (d) **CC0 pixel/prop art — used directly.** Vendored packs (Kenney and
+    equivalents) are the first-choice source and are used **as shipped**,
+    unmodified, with their upstream licence file beside them and a row in
+    `packages/control-yard/assets/CREDITS.md`. Any modification (e.g. a crop to
+    satisfy a grid invariant) must be disclosed in that row.
 pass is what makes it HoBo. Re-inked derivations get a CREDITS.md row naming
 the reference source.
 
@@ -99,5 +98,5 @@ the reference source.
 - License questions resolve against the `ALLOWED` set in
   [`scripts/check-licenses.ts`](../../scripts/check-licenses.ts); additions to
   that set need a dated review note, same as dependency licenses.
-- The Bo art bible and the DESIGN.md rubberhose contract always win a conflict
+- The DESIGN.md pixel contract (ADR-0146) always wins a conflict
   with a sourced asset: if the source can't survive the re-ink, it doesn't ship.

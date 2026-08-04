@@ -23,9 +23,6 @@ public/shots/
   06-after-actions.png
   07-walk.png
   canvas-only.png
-  anim-bo-idle.png
-  anim-bo-walk-east.png
-  anim-bo-walk-west.png
   recordings/
     01-yard-loop.mp4           # full loop: boot → zones → sheets
     02-connection-sheet.mp4    # connection bay open + confirm path
@@ -132,9 +129,7 @@ pnpm run test:behavior                             # headless core-loop acceptan
 ## Non-goals
 
 - Live cloud E2E
-- Claiming west walk by flipping east sheet
 - Hand-edited generated codegen outside asset index
-- **Blaming east when west jitters.** East/walk-right is the good plate. West
-  foot plant was unstable; yard re-registers west to east baseline (see
-  `docs/WALK_SHEET_HANDOFF.md`). Do not mirror either sheet. Do not “fix” east.
-  If west gait still vibrates after baseline stabilize, delegate redraw of **west**.
+- **Assembling props from rects and lines in the renderer.** Art is sourced
+  from the vendored CC0 packs (ADR-0146); primitive-drawn scenery is what
+  produced the surface this replaced.

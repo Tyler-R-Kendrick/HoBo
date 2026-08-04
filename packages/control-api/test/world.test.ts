@@ -191,3 +191,66 @@ describe("@hobo/control-api world read model", () => {
 		expect(delta).toContain('"events":[');
 	});
 });
+
+describe("OTLP ingest is not a cross-origin write primitive", () => {
+	// Ingest materializes stations, camps and characters that render as real,
+	// unbadged telemetry. A browser can POST cross-origin without preflight when
+	// the content type is "simple", so these guards are load-bearing.
+	it("refuses a browser Origin", async () => {
+		const server = await createControlApiServer({
+			hoboHome: tempHome(),
+			port: 0,
+			host: "127.0.0.1",
+		});
+		try {
+			const res = await fetch(`${server.url}/v1/otlp/v1/traces`, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					origin: "https://evil.example",
+				},
+				body: JSON.stringify({ resourceSpans: [] }),
+			});
+			expect(res.status).toBe(403);
+			expect((await res.json()).code).toBe("cross-origin-write-refused");
+		} finally {
+			await server.close();
+		}
+	});
+
+	it("refuses a non-JSON content type (the no-preflight path)", async () => {
+		const server = await createControlApiServer({
+			hoboHome: tempHome(),
+			port: 0,
+			host: "127.0.0.1",
+		});
+		try {
+			const res = await fetch(`${server.url}/v1/otlp/v1/traces`, {
+				method: "POST",
+				headers: { "content-type": "text/plain" },
+				body: JSON.stringify({ resourceSpans: [] }),
+			});
+			expect(res.status).toBe(415);
+		} finally {
+			await server.close();
+		}
+	});
+
+	it("rejects an unmappable payload instead of 500-ing the batch", async () => {
+		const server = await createControlApiServer({
+			hoboHome: tempHome(),
+			port: 0,
+			host: "127.0.0.1",
+		});
+		try {
+			const res = await fetch(`${server.url}/v1/otlp/v1/traces`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ resourceSpans: [null] }),
+			});
+			expect(res.status).toBeLessThan(500);
+		} finally {
+			await server.close();
+		}
+	});
+});

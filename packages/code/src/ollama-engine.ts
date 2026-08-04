@@ -12,6 +12,8 @@
  */
 
 import { AGUI_EVENT } from "./agui.js";
+import { LOCAL_TOOL_SCHEMA, runLocalTool } from "./local-tools.js";
+import type { ToolPlanner } from "./needle-tools.js";
 import {
 	type EngineTurnEvent,
 	type EngineTurnResult,
@@ -63,10 +65,28 @@ export function usageFromFrame(frame: OllamaChatFrame): EngineUsage {
 	};
 }
 
+export interface OllamaModelInfo {
+	readonly name: string;
+	/** Parameters as reported by the server, e.g. "1.5B" → 1.5e9. */
+	readonly parameters: number | null;
+	readonly family: string | null;
+}
+
 export interface OllamaProbe {
 	readonly ok: boolean;
 	readonly models: readonly string[];
+	readonly details: readonly OllamaModelInfo[];
 	readonly reason?: string;
+}
+
+/** "1.5B" → 1.5e9, "137M" → 1.37e8. Unknown shapes yield null. */
+export function parseParameterSize(raw: string | undefined): number | null {
+	if (!raw) return null;
+	const m = /^([\d.]+)\s*([BM])$/i.exec(raw.trim());
+	if (!m) return null;
+	const value = Number.parseFloat(m[1]!);
+	if (!Number.isFinite(value)) return null;
+	return m[2]!.toUpperCase() === "B" ? value * 1e9 : value * 1e6;
 }
 
 /** Is a local ollama reachable, and which models does it serve? */
@@ -84,20 +104,36 @@ export async function probeOllama(
 			return {
 				ok: false,
 				models: [],
+				details: [],
 				reason: `ollama HTTP ${response.status}`,
 			};
 		}
 		const body = (await response.json()) as {
-			models?: { name?: string }[];
+			models?: {
+				name?: string;
+				details?: { parameter_size?: string; family?: string };
+			}[];
 		};
-		const models = (body.models ?? [])
-			.map((m) => m.name)
-			.filter((n): n is string => typeof n === "string");
-		return { ok: true, models };
+		const details: OllamaModelInfo[] = (body.models ?? [])
+			.filter(
+				(
+					m,
+				): m is {
+					name: string;
+					details?: { parameter_size?: string; family?: string };
+				} => typeof m.name === "string",
+			)
+			.map((m) => ({
+				name: m.name,
+				parameters: parseParameterSize(m.details?.parameter_size),
+				family: m.details?.family ?? null,
+			}));
+		return { ok: true, models: details.map((d) => d.name), details };
 	} catch (err) {
 		return {
 			ok: false,
 			models: [],
+			details: [],
 			reason: err instanceof Error ? err.message : String(err),
 		};
 	} finally {
@@ -112,6 +148,7 @@ export async function probeOllama(
 export function selectChatModel(
 	models: readonly string[],
 	preferred?: string,
+	details: readonly OllamaModelInfo[] = [],
 ): string | null {
 	const chatable = models.filter((m) => !/embed/i.test(m));
 	if (preferred) {
@@ -125,15 +162,28 @@ export function selectChatModel(
 		// caller must see, not something to silently substitute.
 		return null;
 	}
-	return (
-		chatable.find((m) => m.startsWith(DEFAULT_LOCAL_MODEL.split(":")[0]!)) ??
-		chatable[0] ??
-		null
-	);
+	// Adaptive default: pick the *smallest* chat-capable model that is already
+	// pulled. On a CPU box a 1.5B model can take ~10s per token, which reads as
+	// a hang however good the UI is; responsiveness beats capability for the
+	// default, and HOBO_CODE_MODEL overrides whenever the user disagrees.
+	const sized = chatable
+		.map((name) => ({
+			name,
+			parameters:
+				details.find((d) => d.name === name)?.parameters ??
+				Number.POSITIVE_INFINITY,
+		}))
+		.sort((a, b) => a.parameters - b.parameters);
+	return sized[0]?.name ?? null;
 }
 
 export interface CreateOllamaEngineOptions {
 	readonly sandboxRoot: string;
+	/**
+	 * Decides which tools to run (Cactus Needle). Absent → conversation only,
+	 * which is honest but cannot edit files or reach the promotion gate.
+	 */
+	readonly planner?: ToolPlanner | null;
 	readonly runId: string;
 	readonly instructions: string;
 	readonly host?: string;
@@ -146,8 +196,10 @@ export type CreateOllamaEngineResult =
 	| { readonly engine: null; readonly reason: string };
 
 interface ChatMessage {
-	readonly role: "system" | "user" | "assistant";
+	readonly role: "system" | "user" | "assistant" | "tool";
 	readonly content: string;
+	/** Present on tool results so the model can attribute the output. */
+	readonly name?: string;
 }
 
 export async function createOllamaShellEngine(
@@ -161,7 +213,7 @@ export async function createOllamaShellEngine(
 			reason: `no local model server at ${host} (${probe.reason ?? "unreachable"}) — start ollama or set HOBO_CODE_ENGINE=none`,
 		};
 	}
-	const model = selectChatModel(probe.models, options.model);
+	const model = selectChatModel(probe.models, options.model, probe.details);
 	if (!model) {
 		return {
 			engine: null,
@@ -191,6 +243,58 @@ export async function createOllamaShellEngine(
 			inFlight = controller;
 			let text = "";
 			onEvent({ type: AGUI_EVENT.runStarted, runId: options.runId });
+
+			// Tool phase. A model distilled for function calling picks the
+			// tools; the chat model never has to emit JSON it is bad at.
+			let toolCalls = 0;
+			if (options.planner) {
+				onEvent({
+					type: AGUI_EVENT.stateDelta,
+					label: `planning tools with ${options.planner.id}…`,
+				});
+				const planned = await options.planner.plan(
+					prompt,
+					LOCAL_TOOL_SCHEMA.map((t) => ({
+						name: t.function.name,
+						parameters: t.function.parameters,
+					})),
+				);
+				for (const [index, call] of planned.entries()) {
+					const id = `tool-${index}`;
+					onEvent({
+						type: AGUI_EVENT.toolCallStart,
+						toolCallId: id,
+						toolName: call.name,
+					});
+					onEvent({
+						type: AGUI_EVENT.toolCallArgs,
+						toolCallId: id,
+						delta: JSON.stringify(call.arguments),
+					});
+					const outcome = runLocalTool(
+						options.sandboxRoot,
+						call.name,
+						call.arguments,
+					);
+					toolCalls += 1;
+					onEvent({
+						type: AGUI_EVENT.toolCallResult,
+						toolCallId: id,
+						ok: outcome.ok,
+						summary: outcome.summary,
+					});
+					// The chat model answers *from* the tool output, so the
+					// result has to enter its context, not just the transcript.
+					// ollama's chat API models tool output as its own role; feeding
+					// it back as a user turn made the model answer *about* the
+					// request instead of *from* the result.
+					history.push({
+						role: "tool",
+						name: call.name,
+						content: outcome.content,
+					});
+				}
+			}
 			// The model server has to load and evaluate the prompt before the
 			// first token; say so rather than showing a frozen screen.
 			onEvent({
@@ -201,7 +305,19 @@ export async function createOllamaShellEngine(
 				const response = await fetch(`${host}/api/chat`, {
 					method: "POST",
 					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ model, messages: history, stream: true }),
+					body: JSON.stringify({
+						model,
+						messages: history,
+						stream: true,
+						// Unbounded generation on a CPU box ran for minutes; a
+						// shell answer that never ends is the same as no answer.
+						options: {
+							num_predict: Number.parseInt(
+								process.env.HOBO_CODE_MAX_TOKENS ?? "384",
+								10,
+							),
+						},
+					}),
 					signal: controller.signal,
 				});
 				if (!response.ok || !response.body) {
@@ -255,7 +371,7 @@ export async function createOllamaShellEngine(
 				return {
 					ok: true,
 					text,
-					toolCalls: 0,
+					toolCalls,
 					aborted: false,
 					usage: usageDelta(before, cumulative),
 				};
@@ -280,7 +396,7 @@ export async function createOllamaShellEngine(
 				return {
 					ok: false,
 					text,
-					toolCalls: 0,
+					toolCalls,
 					aborted,
 					...(aborted ? {} : { error: message }),
 					usage: usageDelta(before, cumulative),

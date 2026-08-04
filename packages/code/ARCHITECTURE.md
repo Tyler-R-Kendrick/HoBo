@@ -32,6 +32,19 @@ closed with the sandbox intact. Gates are executed (`src/promotion-gates.ts`),
 not asserted — they were once hardcoded `pass: true`, which made "gated,
 audited" decoration over a literal.
 
+**Tool calling is a separate, purpose-built model (`src/needle-tools.ts`,
+`bridges/needle_bridge.py`).** Cactus Needle — 26M params, distilled for
+function calling — plans tool calls; the chat SLM only writes prose. The
+bridge is a long-lived Python process because loading JAX weights per turn
+would cost more than the inference. Tools (`src/local-tools.ts`) are confined
+to the sandbox by `resolveInSandbox`, which is the security boundary and is
+tested as such. Missing Needle degrades to conversation-only with a reason.
+
+**The default model is adaptive.** `selectChatModel` ranks by the parameter
+size the server reports and picks the smallest chat-capable model, because a
+1.5B model at ~10s/token on CPU reads as a hang no matter how good the UI is.
+`HOBO_CODE_MODEL` overrides; `HOBO_CODE_MAX_TOKENS` bounds generation.
+
 **The engine is local first (`src/ollama-engine.ts`, `src/engine-resolve.ts`).**
 A locally hosted SLM is the default so the product's $0 path is real; cloud
 BYOK is the fallback. Resolution is local → cloud → honest dispatch-only, and

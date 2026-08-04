@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
+import { allocateAgentWorkspaces } from "./agent-workspaces.js";
 import {
 	authLogin,
 	authStatus,
@@ -102,6 +103,7 @@ import {
 	renderStatusChip,
 	renderStatusText,
 } from "./tui.js";
+import { findWorkspaceRoot } from "./workspace.js";
 import { describeCodeWorlds } from "./worlds.js";
 
 export const HOBO_CODE_VERBS = [
@@ -286,6 +288,7 @@ const BOOL_FLAGS = new Set([
 	"printcmd",
 	"cursor",
 	"dry-run",
+	"shared",
 ]);
 
 export class UnknownFlagError extends Error {
@@ -1666,17 +1669,32 @@ export async function runHoboCodeCli(
 	if (verb === "mux") {
 		const probes = defaultProbes(env);
 		const agents = detectAgents(probes);
+		// Agents work in the declared devenv workspace, not wherever the shell
+		// happened to be standing.
+		const workspace = findWorkspaceRoot(projectDir, env);
 		const session =
 			typeof flags.session === "string" && flags.session.length > 0
 				? flags.session
 				: "hobo";
 		// Every agent is a target; local inference is not a special case, it is
 		// just a target whose kind says where the work runs.
+		// One virtual worktree per agent (rift by default) so parallel agents
+		// cannot collide in a shared checkout.
+		const allocation = await allocateAgentWorkspaces({
+			workspaceRoot: workspace.path,
+			agentIds: agents.map((a) => a.id),
+			fallbackRoot: join(hoboHome, "workspaces"),
+			env,
+			shared: flags.shared === true,
+		});
+		const workspaceFor = new Map(
+			allocation.workspaces.map((w) => [w.agentId, w]),
+		);
 		const targets: MuxTarget[] = agents.map((a) => ({
 			name: a.id,
 			kind: a.kind === "inference" ? "local-inference" : "local",
 			command: a.command,
-			cwd: projectDir,
+			cwd: workspaceFor.get(a.id)?.path ?? workspace.path,
 		}));
 		// A remote host turns the same targets into ssh panes — identical shape.
 		const host = typeof flags.host === "string" ? flags.host : undefined;
@@ -1707,8 +1725,10 @@ export async function runHoboCodeCli(
 				: await applyMux(plan, tmuxRunner());
 		const text = panel(applied.ok ? "✓ mux" : "✕ mux", [
 			applied.detail,
+			`workspace · ${workspace.path} (${workspace.source})`,
+			`trees · ${allocation.backend}${allocation.reason ? ` — ${allocation.reason}` : ""}`,
 			...agents.map(
-				(a) => `  ${a.id} · ${a.kind} · ${a.evidence[0] ?? "detected"}`,
+				(a) => `  ${a.id} · ${workspaceFor.get(a.id)?.path ?? workspace.path}`,
 			),
 			`join · ${attachCommand(plan.session, host)}`,
 		]);

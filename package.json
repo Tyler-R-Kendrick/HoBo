@@ -85,7 +85,8 @@
     "fetch:pr-base": "node --import tsx scripts/fetch-pr-base.ts",
     "gate:s1": "pnpm --prefix src/draft/technical-proofs/s1-stage-gate run gate:s1",
     "ship:gap-closure": "node --import tsx scripts/check-ship-gap-closure.mts",
-    "test:ship-gap-closure": "node --import tsx --test scripts/test/check-ship-gap-closure.test.ts"
+    "test:ship-gap-closure": "node --import tsx --test scripts/test/check-ship-gap-closure.test.ts",
+    "staging:cutover": "node --import tsx scripts/staging-cutover-demo.mts"
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.44.0",

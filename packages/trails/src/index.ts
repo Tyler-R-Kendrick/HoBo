@@ -1,34 +1,42 @@
 export {
-	TrailRunService,
 	TRAIL_RUN_STATES,
 	type TrailRunRecord,
+	TrailRunService,
 	type TrailRunState,
 } from "./aggregate.js";
 export {
 	CAN_TRAIL_SCHEMA_VERSION,
-	evaluateCanTrail,
 	type CanTrailInput,
 	type CanTrailReason,
 	type CanTrailResult,
+	evaluateCanTrail,
 } from "./can-trail.js";
+export {
+	type CreateSqliteDataDualPortOptions,
+	createSqliteDataDualPort,
+	type DataDualPort,
+	type SqliteDataDualPort,
+	type SqliteDataDualWrite,
+} from "./data-dual-port.js";
 export {
 	applySchemaStep,
 	createContractAssertedDataDualFixtures,
 	DATA_DUAL_SCHEMA,
-	evaluateDataDual,
 	type DataDualFixture,
 	type DataDualResult,
+	type DataDualView,
+	evaluateDataDual,
 	type SchemaApplyResult,
 } from "./data-steps.js";
 export {
 	defineTrail,
 	orderTrailSteps,
-	wireTrailPhaseDependencies,
 	TRAIL_DEFINITION_SCHEMA,
 	type TrailDefinition,
 	type TrailDefinitionInput,
 	type TrailStep,
 	type TrailStepKind,
+	wireTrailPhaseDependencies,
 } from "./definition.js";
 export {
 	createTrailEvent,
@@ -58,8 +66,8 @@ export {
 export {
 	stepChecksum,
 	TRAIL_HISTORY_SCHEMA,
-	TrailHistoryStore,
 	type TrailHistoryEntry,
+	TrailHistoryStore,
 } from "./history.js";
 export {
 	activateIdentityContinuousFromMatching,
@@ -84,8 +92,8 @@ export {
 } from "./recipes.js";
 export {
 	TRAIL_RUNNER_SCHEMA,
-	TrailRunner,
 	type TrailPlanEvidence,
+	TrailRunner,
 	type TrailRunnerOptions,
 	type TrailRunResult,
 } from "./runner.js";

@@ -280,3 +280,24 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **checks:** local `agent:check --base=origin/main` 10/10 green (core/connectivity/stations + provider packages); CodeRabbit SUCCESS (rate-limited review only); no PR comment threads
 - **failure class:** none for code CI; CodeRabbit free-plan rate limit only
 - **protocol:** `/sdlc --finish`
+
+## 2026-08-03 — Vision-gap closure: dispatcher→signals→loop→saga→staging→offerings→data dual
+
+- **branch:** `feat/vision-gap-closure`
+- **scope:** all seven phases of the vision-gap roadmap now implemented:
+  1-2 `@hobo/dispatcher` promotion + broker `budget.ThresholdCrossed`/`Recovered`
+  signal plane; 3-4 stations closed control loop + progressive cutover with the
+  `domain-cutover-saga-contract` proof promoted (fail-closed preconditions,
+  rollback hysteresis, refusal/TtlLowered ladder; frozen in the promotions
+  ledger); 5 `pnpm run staging:cutover` (simple rehearsal green with archived
+  evidence under `docs/design/instances/staging-cutover/`; vercel/cloudflare
+  lanes credential-gated exit 2); 6 generic per-resource-class offering
+  resolution + data-store vocabulary + station offering registry; 7 trails live
+  SQLite data-dual port (CDC dual-write journal, watermark replication,
+  pooled→siloed tenant scoping, divergence auto-compensate)
+- **behavior:** `transparent-backend-swap.feature` — "user notices nothing when
+  the backend swaps under budget pressure" (live-proxy zero-failed-requests);
+  behavior lane 100 scenarios green
+- **tests:** dispatcher 19, broker 70, core 78, stations 45, trails 17 green;
+  architecture guard + staged agent:check green per commit
+- **protocol:** goal-hook continuation of the incomplete prior session

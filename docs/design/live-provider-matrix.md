@@ -51,6 +51,24 @@ tags: [hobo, design, providers, honesty]
 | `runtime-cloud-native` | **Stub** providers (`HOBO_CLOUD_NATIVE_UNIMPLEMENTED`) |
 | `runtime-dapr` / `runtime-browser` | Specialized |
 
+## Traffic-routing staging cutover lane (`pnpm run staging:cutover`)
+
+The Phase-5 transparency demo: `scripts/staging-cutover-demo.mts` drives the
+production control loop (`@hobo/stations`) + progressive cutover through a real
+adapter while an external uptime probe (default 1 req/s) watches the public
+URL. The verdict (event trace, probe log, success rate) is archived under
+[`instances/staging-cutover/`](./instances/staging-cutover/). Only the adapter
+binding changes between lanes — the swap logic is identical.
+
+| Lane | Binding | Gate | Status |
+|---|---|---|---|
+| `--provider=simple` | Loopback backends + routing proxy | none | **Green** — archived run: 100% probe success across a budget-driven 10→50→100 swap |
+| `--provider=vercel` | Rolling Release canary between two mapped deployments | `VERCEL_TOKEN`, `VERCEL_PROJECT`, `VERCEL_DEPLOYMENT_A/B`, `HOBO_STAGING_PROBE_URL` | Cred-gated; fails closed (exit 2) without env |
+| `--provider=cloudflare` | LB pools + health checks on a staging zone | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_ACCOUNT_ID`, `HOBO_STAGING_BACKEND_A/B`, `HOBO_STAGING_PROBE_URL` | Cred-gated; fails closed (exit 2) without env |
+
+Success requires `reapplied` **and** zero failed probe samples; any probe
+failure exits non-zero and the archived evidence names the failing samples.
+
 ## Operator takeaway
 
 1. **Offline dogfood:** hello-bindle + self-host-yard + self-host-station — no cloud account.  

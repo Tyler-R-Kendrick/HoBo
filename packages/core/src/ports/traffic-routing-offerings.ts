@@ -1,5 +1,14 @@
 import { deepFreeze, enumValue, expectObject } from "../parse-utils.js";
 import {
+	matchResourceOfferings,
+	type OfferingFidelity,
+	type OfferingNegotiation,
+	type OfferingStability,
+	type ResourceOfferingMatch,
+	type ResourceOfferingResolveResult,
+	resolveResourceOfferings,
+} from "./offering-resolution.js";
+import {
 	parseRoutingProvider,
 	TrafficRoutingParseError,
 	type TrafficRoutingProvider,
@@ -8,6 +17,8 @@ import {
 /**
  * Portable TrafficRouting offerings (ADR-0143).
  * Providers declare these up front; apply-result capabilities prove realization.
+ * Negotiation semantics live in the generic resolver (`offering-resolution.ts`);
+ * this module pins the traffic-routing vocabulary and parse boundary.
  */
 export type TrafficRoutingOfferingId =
 	| "lb.lifecycle"
@@ -28,18 +39,11 @@ export type TrafficRoutingOfferingId =
 	| "observe.location"
 	| "resiliency.edge";
 
-export type TrafficRoutingOfferingStability =
-	| "stable"
-	| "preview"
-	| "experimental";
+export type TrafficRoutingOfferingStability = OfferingStability;
 
-export type TrafficRoutingOfferingFidelity =
-	| "real"
-	| "simulated"
-	| "mocked"
-	| "camp-only";
+export type TrafficRoutingOfferingFidelity = OfferingFidelity;
 
-export type TrafficRoutingNegotiation = "prefer" | "require";
+export type TrafficRoutingNegotiation = OfferingNegotiation;
 
 export interface TrafficRoutingOffering {
 	readonly id: TrafficRoutingOfferingId;
@@ -61,31 +65,12 @@ export interface TrafficRoutingPortRequest {
 }
 
 export type TrafficRoutingMatch =
-	| { readonly kind: "full"; readonly offerings: readonly TrafficRoutingOfferingId[] }
-	| {
-			readonly kind: "partial";
-			readonly offerings: readonly TrafficRoutingOfferingId[];
-			readonly missing: readonly TrafficRoutingOfferingId[];
-			readonly fallbacks: readonly TrafficRoutingOfferingId[];
-	  }
-	| {
-			readonly kind: "none";
-			readonly missing: readonly TrafficRoutingOfferingId[];
-			readonly remediation: string;
-	  };
+	ResourceOfferingMatch<TrafficRoutingOfferingId>;
 
-export type TrafficRoutingResolveResult =
-	| {
-			readonly kind: "resolved";
-			readonly provider: TrafficRoutingProvider;
-			readonly strategy: readonly TrafficRoutingOfferingId[];
-			readonly match: TrafficRoutingMatch;
-	  }
-	| {
-			readonly kind: "unresolved";
-			readonly missing: readonly TrafficRoutingOfferingId[];
-			readonly remediation: string;
-	  };
+export type TrafficRoutingResolveResult = ResourceOfferingResolveResult<
+	TrafficRoutingOfferingId,
+	TrafficRoutingProvider
+>;
 
 const OFFERINGS = new Set<TrafficRoutingOfferingId>([
 	"lb.lifecycle",
@@ -194,10 +179,7 @@ export function parseTrafficRoutingProviderProfile(
 	}
 	const fallbacks = Array.isArray(input.fallbacks)
 		? input.fallbacks.map((entry, index) =>
-				parseTrafficRoutingOfferingId(
-					entry,
-					`${path}.fallbacks[${index}]`,
-				),
+				parseTrafficRoutingOfferingId(entry, `${path}.fallbacks[${index}]`),
 			)
 		: [...DEFAULT_TRAFFIC_ROUTING_FALLBACKS];
 	return deepFreeze({
@@ -207,62 +189,23 @@ export function parseTrafficRoutingProviderProfile(
 	});
 }
 
+// public-contract: registry key consumers use to register/resolve this class.
+export const TRAFFIC_ROUTING_RESOURCE_CLASS = "traffic-routing";
+
 /**
  * Match requested offerings against a provider profile with prefer/require
- * negotiation and the profile's fallback ladder.
+ * negotiation and the profile's fallback ladder. Thin vocabulary binding over
+ * the generic per-resource-class resolver.
  */
 export function matchTrafficRoutingOfferings(
 	profile: TrafficRoutingProviderProfile,
 	request: TrafficRoutingPortRequest = {},
 ): TrafficRoutingMatch {
-	const requested = request.features ?? [];
-	const negotiation = request.negotiation ?? "prefer";
-	const native = new Set(profile.offerings.map((entry) => entry.id));
-	const fallbacks = profile.fallbacks.filter((id) => !native.has(id));
-	const available = new Set([...native, ...fallbacks]);
-
-	if (requested.length === 0) {
-		return {
-			kind: "full",
-			offerings: profile.offerings.map((entry) => entry.id),
-		};
-	}
-
-	const present = requested.filter((id) => available.has(id));
-	const missing = requested.filter((id) => !available.has(id));
-	const usedFallbacks = present.filter((id) => fallbacks.includes(id));
-
-	if (missing.length === 0 && usedFallbacks.length === 0) {
-		return { kind: "full", offerings: present };
-	}
-	if (missing.length === 0) {
-		return {
-			kind: "partial",
-			offerings: present,
-			missing: [],
-			fallbacks: usedFallbacks,
-		};
-	}
-	if (negotiation === "require") {
-		return {
-			kind: "none",
-			missing,
-			remediation: `provider ${profile.provider} lacks required traffic-routing offerings: ${missing.join(", ")}`,
-		};
-	}
-	if (present.length === 0) {
-		return {
-			kind: "none",
-			missing,
-			remediation: `provider ${profile.provider} cannot satisfy traffic-routing offerings: ${missing.join(", ")}`,
-		};
-	}
-	return {
-		kind: "partial",
-		offerings: present,
-		missing,
-		fallbacks: usedFallbacks,
-	};
+	return matchResourceOfferings(
+		TRAFFIC_ROUTING_RESOURCE_CLASS,
+		profile,
+		request,
+	);
 }
 
 /**
@@ -273,38 +216,12 @@ export function resolveTrafficRouting(
 	profiles: readonly TrafficRoutingProviderProfile[],
 	request: TrafficRoutingPortRequest = {},
 ): TrafficRoutingResolveResult {
-	if (profiles.length === 0) {
-		return {
-			kind: "unresolved",
-			missing: request.features ?? ["inprocess.weighted"],
-			remediation: "no traffic-routing provider profiles registered",
-		};
-	}
-	let lastMissing: readonly TrafficRoutingOfferingId[] = request.features ?? [];
-	let lastRemediation = "no provider satisfied traffic-routing request";
-	for (const profile of profiles) {
-		const match = matchTrafficRoutingOfferings(profile, request);
-		if (match.kind === "none") {
-			lastMissing = match.missing;
-			lastRemediation = match.remediation;
-			continue;
-		}
-		const strategy =
-			match.kind === "full"
-				? match.offerings
-				: [...match.offerings, ...match.fallbacks];
-		return {
-			kind: "resolved",
-			provider: profile.provider,
-			strategy: unique(strategy),
-			match,
-		};
-	}
-	return {
-		kind: "unresolved",
-		missing: lastMissing,
-		remediation: lastRemediation,
-	};
+	return resolveResourceOfferings(
+		TRAFFIC_ROUTING_RESOURCE_CLASS,
+		profiles,
+		request,
+		{ defaultMissing: ["inprocess.weighted"] },
+	);
 }
 
 export function offering(
@@ -321,12 +238,6 @@ export function offering(
 		fidelity: options.fidelity ?? "real",
 		features: deepFreeze([...(options.features ?? [])]),
 	});
-}
-
-function unique(
-	values: readonly TrafficRoutingOfferingId[],
-): readonly TrafficRoutingOfferingId[] {
-	return deepFreeze([...new Set(values)]);
 }
 
 function fail(path: string, expected: string, received: unknown): never {

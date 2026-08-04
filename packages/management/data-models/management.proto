@@ -59,12 +59,41 @@ message MeteringView {
   double spend_cap_usd = 3;
   double budget_usd = 4;
   double traffic_rate = 5;
+  // Provenance badge for traffic_rate: "synthetic" (derived from connection
+  // counts) | "otlp" (real metering signals).
+  string traffic_rate_source = 6;
 }
 
 message ConnectorActivityView {
   string connector_kind = 1;
   string status = 2; // offline | idle | working | error
   string connection_id = 3;
+  // Provenance badge for status: "derived-static" (mapped from connection
+  // lifecycle) | "otlp" (live agent telemetry).
+  string status_source = 4;
+}
+
+// Deployment saga read-model envelope. DeploymentView row wire shapes are
+// owned by hobo.cloud.v1 (packages/cloud/data-models/cloud.proto) —
+// referenced, not duplicated; json_deployments carries the JSON-encoded rows.
+message DeploymentViewProjectionView {
+  bool available = 1; // false when no local cloud event source exists
+  string source = 2;  // "yard-eventstore" | "none"
+  repeated string yards = 3;
+  uint32 count = 4;
+  uint64 seq = 5;
+  string json_deployments = 6; // JSON-encoded DeploymentViewRow[]
+}
+
+// Credential audit read-model envelope. CredentialAuditRecord wire shapes are
+// owned by hobo.cloud.v1 (packages/cloud/data-models/cloud.proto) —
+// referenced, not duplicated; json_rows carries the JSON-encoded rows.
+message CredentialAuditProjectionView {
+  bool available = 1; // false when no local credential event source exists
+  repeated string sources = 2; // "connections-store" | "yard-eventstore"
+  uint32 count = 3;
+  uint64 seq = 4;
+  string json_rows = 5; // JSON-encoded CredentialAuditRecord[]
 }
 
 message DoctorView {

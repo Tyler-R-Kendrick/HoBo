@@ -23,9 +23,6 @@ public/shots/
   06-after-actions.png
   07-walk.png
   canvas-only.png
-  anim-bo-idle.png
-  anim-bo-walk-east.png
-  anim-bo-walk-west.png
   recordings/
     01-yard-loop.mp4           # full loop: boot → zones → sheets
     02-connection-sheet.mp4    # connection bay open + confirm path
@@ -76,6 +73,45 @@ public/shots/
    `src/draft/exp-proofs/ux/control-yard/assets/evidence/` in the same change
    (see that package’s `AGENTS.md`).
 
+## Experiential validation is part of acceptance
+
+Screenshots prove a frame *rendered*. They do not prove the yard is **alive**,
+**operable**, or **honest**. Those are separate, automated gates — a UX change
+is not done until they pass (or until a failure is written up as a product gap,
+never silenced).
+
+### The gates
+
+| Gate | Command | Blocking? | What it decides |
+| --- | --- | --- | --- |
+| **Core loop** | `pnpm run test:behavior` | yes | The waybill desk offers exactly the real work the projection contains; Highball only from a genuinely clean board. Headless — no browser. |
+| **Liveness** | `pnpm --filter @hobo/control-yard run e2e` | yes | Every scenario beat with `mustChange` moves pixels *inside its own region* **and** satisfies its `seamPredicate`. Pixels changed AND the seam agrees why. |
+| **Motion / stillness duality** | same | yes | The idle yard reads alive with motion allowed, and holds still — never blank — under `prefers-reduced-motion`, within `docs/validation/feel-budgets.json`. |
+| **Clip coverage** | same | yes | Every character clip in `assets/assets_index.json` is reachable from some scenario+tick, or is on `KNOWN_UNBOUND_CLIPS` **with a written reason**. |
+| **Access + trust** | same | yes | Keyboard-only path to a confirmed command; visible focus on every keyboard stop in both themes; no serious/critical axe violations on the DOM chrome; SIMULATED provenance present in demo and absent live. |
+| **HYX vision review** | `run review:experience` | no | Advisory 0-3 scores for the `auto-visual` rubric items. Writes `public/shots/experience-review.json`; **this report must exist** before claiming a milestone. |
+| **HYX drift** | `run review:drift` | no (`--strict` opts in) | Fails when any rubric item's median dropped >= 1.0 vs its trailing-5 median. **A HYX score is required at milestones.** |
+
+### Rules
+
+1. **Assert through the seam, not through baselines.** The suite drives
+   `window.__TEST__` (`loadScenario` / `advanceToTick` / `setTheme` /
+   `selectZone` / `runAction` / `advanceFrame`) and derives every pixel region
+   from `YARD_LAYOUT` or a scenario's `expectedBeats[].region` at runtime.
+   **Never hard-code prop coordinates and never add a golden-image baseline** —
+   the art is expected to move; the semantics are not.
+2. **A failing experiential gate is a finding, not a flake.** There are no
+   retries (`playwright.config.ts` sets `retries: 0`). If a spec fails because
+   a feature is missing, leave it red and report it; do not weaken the
+   assertion. If it fails because the art moved, make the assertion structural.
+3. **Adding a scenario means adding its beats.** A new `YardScenario` without
+   `expectedBeats` is invisible to the liveness gate.
+4. **`review:experience` never blocks.** It exits 0 and writes
+   `{"skipped": true, ...}` when `ANTHROPIC_API_KEY` is absent.
+5. **The e2e harness never writes into `public/`.** `scripts/demo-harness.mts`
+   bundles `src/main.ts` into a scratch dir and serves it at `/dist/yard.js`,
+   so the suite and the evidence tour cannot clobber each other.
+
 ## Commands
 
 ```bash
@@ -84,14 +120,16 @@ pnpm --filter @hobo/control-yard run assets:coverage
 pnpm --filter @hobo/control-yard test
 pnpm --filter @hobo/control-yard run evidence      # capture screenshots + MP4s
 pnpm --filter @hobo/control-yard run evidence:check
+pnpm --filter @hobo/control-yard run e2e           # feel + liveness + access-trust
+pnpm --filter @hobo/control-yard run review:experience   # advisory HYX vision pass
+pnpm --filter @hobo/control-yard run review:drift        # advisory HYX regression watch
+pnpm run test:behavior                             # headless core-loop acceptance
 ```
 
 ## Non-goals
 
 - Live cloud E2E
-- Claiming west walk by flipping east sheet
 - Hand-edited generated codegen outside asset index
-- **Blaming east when west jitters.** East/walk-right is the good plate. West
-  foot plant was unstable; yard re-registers west to east baseline (see
-  `docs/WALK_SHEET_HANDOFF.md`). Do not mirror either sheet. Do not “fix” east.
-  If west gait still vibrates after baseline stabilize, delegate redraw of **west**.
+- **Assembling props from rects and lines in the renderer.** Art is sourced
+  from the vendored CC0 packs (ADR-0148); primitive-drawn scenery is what
+  produced the surface this replaced.

@@ -22,20 +22,30 @@
 	"dependencies": {
 		"@hobo/control-api": "workspace:*",
 		"@hobo/management": "workspace:*",
+		"@hobo/yard-world": "workspace:*",
 		"phaser": "3.87.0"
 	},
 	"devDependencies": {
+		"@anthropic-ai/sdk": "^0.115.0",
+		"@axe-core/playwright": "^4.12.1",
 		"@types/node": "^22.15.29",
+		"esbuild": "^0.28.1",
+		"pixelmatch": "^7.2.0",
+		"pngjs": "^7.0.0",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.9"
 	},
 	"scripts": {
 		"prebuild": "pnpm --filter @hobo/management build",
 		"build": "tsc -p tsconfig.json",
+		"bundle": "esbuild src/main.ts --bundle --format=esm --platform=browser --minify --outfile=public/dist/yard.js --log-level=warning",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "pnpm run build && pnpm run assets:validate",
 		"test": "vitest run",
+		"preplay": "pnpm run bundle",
+		"preserve": "pnpm run bundle",
+		"preevidence": "pnpm run bundle",
 		"assets:validate": "node --import tsx ./scripts/validate-assets.mts",
 		"assets:probe": "node --import tsx ./scripts/probe-sheet.mts",
 		"assets:sizes": "uv run ../../.agents/skills/gamedev-assets/scripts/asset_sizes.py --root ./assets --json ./tmp/asset_sizes.json",
@@ -44,7 +54,12 @@
 		"play": "node --import tsx ./scripts/play-demo.mts",
 		"evidence": "node --import tsx ./scripts/play-demo.mts && node --import tsx ./scripts/evidence-check.mts",
 		"evidence:check": "node --import tsx ./scripts/evidence-check.mts",
-		"serve": "node --import tsx ./scripts/serve-demo.mts",
-		"play:anim": "echo open public/anim-test.html via pnpm run serve"
+		"e2e": "playwright test",
+		"e2e:feel": "playwright test test/e2e/feel.spec.ts",
+		"e2e:liveness": "playwright test test/e2e/liveness.spec.ts",
+		"e2e:access": "playwright test test/e2e/access-trust.spec.ts",
+		"review:experience": "node --import tsx ./scripts/review-experience.mts",
+		"review:drift": "node --import tsx ./scripts/experience-drift.mts",
+		"serve": "node --import tsx ./scripts/serve-demo.mts"
 	}
 }

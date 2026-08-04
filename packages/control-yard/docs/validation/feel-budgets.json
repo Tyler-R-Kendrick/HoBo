@@ -1,0 +1,11 @@
+{
+	"$comment": "Designer-owned game-feel timing budgets (ms unless noted). Tests assert against these; change here, not in test constants. DESIGN.md Game Surface section is the prose authority.",
+	"ackMaxMs": 100,
+	"squashStretch": { "minMs": 80, "maxMs": 220 },
+	"hitStop": { "successMaxFrames": 0, "failureMinMs": 100, "failureMaxMs": 120 },
+	"semaphoreSettleMs": 300,
+	"speechBubbleSec": { "action": 2.5, "confirm": 2.0, "error": 3.0, "zoneLabel": 1.5 },
+	"stampSquashPct": 20,
+	"framePacing": { "longTaskAdvisoryMs": 120, "longTaskFailMs": 500 },
+	"reducedMotion": { "maxChangedPixelPct": 0.1 }
+}

@@ -44,3 +44,9 @@ test-results/
 
 # Test-run byproducts
 test/output/
+
+# Local scratch: generation runs and downloaded reference material.
+# Large, machine-specific, and not part of the product.
+runs/
+ref/
+*:Zone.Identifier

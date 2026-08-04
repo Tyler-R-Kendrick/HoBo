@@ -2,6 +2,7 @@
   "layer": "project",
   "slug": "otel-office",
   "title": "OTel Office — pixel-office observability POC for the HoBo platform",
+  "promotedTo": "packages/yard-world",
   "references": {
     "technicalProofs": [],
     "epicProofs": [],

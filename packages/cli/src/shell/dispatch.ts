@@ -147,6 +147,8 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 						anonymous: false,
 						temporary: false,
 						token: null,
+						demo: false,
+						demoSeed: null,
 					},
 				});
 			}

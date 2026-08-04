@@ -638,3 +638,53 @@ Crossplane (CNCF graduated) is the strongest living open standard for the "abstr
 - **ADR-P6:** preemption policy for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no preemption (`service` non-preemptible, `job` preemptible), substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
 - **ADR-P7:** oversubscription/density limits per component-host — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no oversubscription (requests = limits), opt-in per-Camp ratio, substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
 - **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: declarative Camp-level reservation realized via the substrate's primitive, honest about limits — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+
+## ADR-0147
+**HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals.**
+
+**Status:** Proposed — amends [ADR-0135](#adr-0135).
+
+### Context
+[ADR-0135](#adr-0135) shipped `@hobo/control-yard` as the game-first control-plane UI over the shared management surface, but left the Phaser browser host **optional at v0** — a hand-rolled canvas script (`public/yard-game.js`) carried the visual surface while pure yard-engine + asset validation carried CI. Meanwhile the `src/draft/projects/otel-office` draft proved a zero-dependency world model driven by OTLP telemetry: characters and rooms materialize from observed traces/logs/metrics rather than invented state. The redesign (working title **HIGHBALL!**) merges the two: the yard becomes an *observed* world where control-plane reality — not scripted fiction — generates everything on screen. Seven labeled zones and a bespoke renderer cannot express that; a real scene graph, a shared world model, and honest signal provenance can.
+
+### Decision
+1. **Phaser 3 is the required browser host.** The v0 escape hatch in ADR-0135's consequences ("Phaser browser host is optional at v0") is superseded; the hand-rolled `public/yard-game.js` renderer is deleted. Everything else in ADR-0135 stands: layout lives in one `layout.ts`; clip metadata lives only in `assets/assets_index.json`; the Bo art bible (`site/public/parallax/README.md`) is law; config/inspect sheets confirm through the same `@hobo/management` functions as the CLI; tests stay offline.
+2. **`@hobo/yard-world` is the shared world model** — a new zero-dependency package promoted from the `src/draft/projects/otel-office` draft. It owns the OTLP-driven projection: Bindle → bindlebug NPC in its Camp room, Camp → room, Yard → district, Junction → corridor, Station → world; an `AgentEvent` reducer; a `TraceIndex`; and the seeded simulator. Renderers (Phaser, ink fallback, tests) are pure consumers.
+3. **OTLP ingestion is an observational read model — explicitly not a second lifecycle event store.** `@hobo/control-api` gains OTLP-path-compatible ingest (`POST /v1/otlp/v1/{traces,logs,metrics}`) feeding a server-held read model multiplexed over SSE, plus `GET /v1/deployments/view` and `GET /v1/audit/credentials` via `@hobo/management` wrappers. ADR-0135 §"no second event store" is preserved: OTLP signals are observations *about* the Station/Connection families, never a parallel source of lifecycle truth, and no invented events leave the read model.
+4. **Game grammar: diegetic props with 1:1 projection bindings** replace the seven labeled zones. The approval gate becomes the core verb — a waybill desk where stamping APPROVE / spiking DENY fires the same management commands as the CLI. Bo is an autonomous foreman whose animation state is a pure projection (sleep-wake = closed/opening; bindle-adjust = `bootstrapActive`; hurt = hazard; jump = success; wave = attention/highball). The goal state **Highball** — a clean board — is generated only by reality. Progression is cosmetic-only; reads are never slower than the CLI; every juiced moment has an ink-first reduced-motion fallback.
+5. **Demo mode is the seeded simulator behind a flag, visibly labeled.** Synthetic signals (`metering.trafficRate`, connector activity status) carry source provenance and render with a **SIMULATED** badge; the simulator can never masquerade as observed reality.
+6. **Asset sourcing follows the [asset sourcing policy](../asset-sourcing-policy.md)** — public-domain trace plates, CC0 audio, OFL fonts, re-inked references only, with per-asset provenance recorded in `packages/control-yard/assets/CREDITS.md`.
+7. **Qualitative validation joins the acceptance gate.** The HYX rubric plus its evidence extensions become part of acceptance: a build that passes CI but fails the rubric's experience bar does not ship.
+
+### Consequences
+- **(+)** One world model serves Phaser, the ink fallback, and tests; the yard is generated by observed reality (OTLP + management projections), so the game can never drift from the control plane.
+- **(+)** Signal provenance is honest by construction — SIMULATED badges make demo mode safe to show without eroding trust in real telemetry.
+- **(+)** Deleting the hand-rolled renderer removes a divergent second scene graph; ADR-0135's management-surface guarantees carry over unchanged.
+- **(−)** Phaser becomes a hard dependency of the browser surface, and CI needs a real browser harness for visual acceptance rather than the pure-engine escape hatch.
+- **(−)** The OTLP ingest path adds a read-model surface `@hobo/control-api` must keep bounded (retention, cardinality) precisely because it is *not* an event store.
+
+## ADR-0148
+**Pixel-RPG identity: the control plane is a village; sourced CC0 pixel art replaces the traced rubberhose surface.**
+
+**Status:** Proposed — supersedes the art clauses of [ADR-0135](#adr-0135) and [ADR-0140](#adr-0140).
+
+### Context
+[ADR-0135](#adr-0135) made "the Bo art bible is law" and [ADR-0140](#adr-0140) restated it, binding every surface to a hand-traced 1930s rubberhose identity rendered in strict black and white. In practice the game surface could not be *built* from that contract: because no sourced game art existed, props were assembled from stacked rectangles and lines directly in the renderer. The product owner reviewed the running build and rejected it — the result read as a paint-program diagram rather than a game — and rejected the traced Bo/parallax artwork along with it, directing that free open-source video-game art be used instead.
+
+The root cause was a contract that mandated an art style while supplying no art to render it with. Vector primitives drawn in code cannot carry a hand-illustrated identity, and a renderer is the wrong place to author artwork.
+
+### Decision
+1. **The identity is a top-down pixel RPG.** `site/DESIGN.md` (mirrored byte-identically to `packages/control-yard/DESIGN.md`) is rewritten: a 16px tile grid, integer scaling only, hard `#3f2631` plum-black outlines, square corners, and a warm earth-and-slate palette taken directly from the vendored art. This replaces "ink on paper", "traced art only", the strict black-and-white base, and the Chewy title-card type.
+2. **Art is sourced, never drawn in renderer code.** Game and site art come from vendored CC0 packs under `packages/control-yard/assets/kenney/`. Building props out of `rect`/`line` primitives in the presenter is prohibited — that practice is what produced the rejected surface.
+3. **The Bo art bible is retired.** The traced Bo sprites, action sheets, derived bindlebug variants, and the parallax plates are removed from the shipped surfaces. ADR-0135's "Bo art bible is law" clause and ADR-0140's restatement of it no longer bind. The Bo *character* may return as sourced pixel art; the rejected raster assets do not.
+4. **The world mapping stands and gains a village vocabulary.** Station → town, Camp → house, Bindle → villager, active rail → road, Connection → gate, waybill/approval gate → notice board, quota+spend → treasury, hazard → marker, Highball → raised banner. Everything else in ADR-0140 is unchanged: 1:1 projection bindings, the approval gate as the core verb, Highball generated only by reality, SIMULATED provenance badges, cosmetic-only progression, and reduced-motion parity.
+5. **Licensing.** Only permissive, pre-approved licences (CC0-1.0 foremost) per `scripts/check-licenses.ts`, with per-asset provenance in `packages/control-yard/assets/CREDITS.md` and upstream licence files vendored beside the art.
+
+### Consequences
+- **(+)** The surface is buildable: designers and agents place sourced tiles and sprites instead of hand-coding shapes, so visual quality no longer depends on primitive-drawing skill inside a renderer.
+- **(+)** Colour returns as a functional tool — grass for healthy, rust for hazard, teal for interactive — instead of a monochrome base that forced every status into two rare accents.
+- **(+)** One material across site and game: chrome and sprites share a palette and outline weight.
+- **(−)** The traced artwork and the rubberhose identity are lost, including the five finished Bo action sheets and the five traced scene panels. This is deliberate and owner-directed.
+- **(−)** The site must be re-arted; `design:lint`, evidence baselines, and asset validation all churn in one pass.
+- **(−)** A dependency on an upstream art pack's style: extending the world means matching Kenney's 16px idiom or commissioning art that does.
+

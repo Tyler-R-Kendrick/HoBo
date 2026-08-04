@@ -1,7 +1,22 @@
 /**
  * Yard layout — single source of truth for zone coordinates and depths.
  * Star-Office-UI `layout.js` pattern: no magic numbers in scene logic.
+ *
+ * Since ADR-0148 the yard is a tiled village, so the clickable zone rects are
+ * DERIVED from `ZONE_TILE_RECT` × `TILE` rather than hand-placed: a click on a
+ * house, the notice board or the gate selects the zone that thing represents.
+ * `village.ts` only imports `ZoneId` as a type, so this runtime import is not a
+ * cycle.
  */
+
+import {
+	HOUSE_PLOTS,
+	HOUSE_TILES_W,
+	LANDMARK,
+	ROAD_TY,
+	TILE,
+	ZONE_TILE_RECT,
+} from "./village.js";
 
 export const YARD_WIDTH = 1280;
 export const YARD_HEIGHT = 720;
@@ -23,9 +38,17 @@ export type ZoneLayout = Readonly<{
 	width: number;
 	height: number;
 	depth: number;
-	/** Anchor for Bo walk target (feet). */
+	/** Anchor the operator's attention lands on: bottom-centre of the tile rect. */
 	anchorX: number;
 	anchorY: number;
+}>;
+
+/** Reserved region for dynamic world content (DESIGN.md "Reserved regions"). */
+export type PropRegion = Readonly<{
+	x: number;
+	y: number;
+	width: number;
+	height: number;
 }>;
 
 export type Layout = Readonly<{
@@ -33,6 +56,12 @@ export type Layout = Readonly<{
 	height: number;
 	groundY: number;
 	zones: Readonly<Record<ZoneId, ZoneLayout>>;
+	/**
+	 * Camp rooms + bindlebug NPCs render only inside this band (the
+	 * activeRailTrack-to-ground open area). Fixed zones are never moved and the
+	 * instrument panel (Bootstrap Desk, Connection Bay) is never occluded.
+	 */
+	campGrounds: PropRegion;
 	depths: Readonly<{
 		background: number;
 		track: number;
@@ -47,91 +76,93 @@ export type Layout = Readonly<{
 	trafficEmitter: Readonly<{ x: number; y: number; width: number }>;
 }>;
 
-const ZONES: Record<ZoneId, ZoneLayout> = {
-	platformRest: {
-		id: "platformRest",
-		label: "Platform Rest",
-		x: 80,
-		y: 480,
-		width: 220,
-		height: 160,
-		depth: 10,
-		anchorX: 190,
-		anchorY: 600,
-	},
-	bootstrapDesk: {
-		id: "bootstrapDesk",
-		label: "Bootstrap Desk",
-		x: 340,
-		y: 420,
-		width: 180,
-		height: 140,
-		depth: 11,
-		anchorX: 430,
-		anchorY: 540,
-	},
-	activeRailTrack: {
-		id: "activeRailTrack",
-		label: "Active Rail Track",
-		x: 120,
-		y: 300,
-		width: 1040,
-		height: 80,
-		depth: 5,
-		anchorX: 640,
-		anchorY: 360,
-	},
-	connectionBay: {
-		id: "connectionBay",
-		label: "Connection Bay",
-		x: 900,
-		y: 420,
-		width: 280,
-		height: 200,
-		depth: 12,
-		anchorX: 1040,
-		anchorY: 580,
-	},
-	policyBoard: {
-		id: "policyBoard",
-		label: "Policy Board",
-		x: 560,
-		y: 120,
-		width: 320,
-		height: 140,
-		depth: 8,
-		anchorX: 720,
-		anchorY: 250,
-	},
-	costBooth: {
-		id: "costBooth",
-		label: "Cost Booth",
-		x: 1000,
-		y: 120,
-		width: 200,
-		height: 140,
-		depth: 9,
-		anchorX: 1100,
-		anchorY: 250,
-	},
-	errorBunker: {
-		id: "errorBunker",
-		label: "Error Bunker",
-		x: 40,
-		y: 100,
-		width: 200,
-		height: 140,
-		depth: 9,
-		anchorX: 140,
-		anchorY: 230,
-	},
+const ZONE_LABEL: Record<ZoneId, string> = {
+	platformRest: "Platform Rest",
+	bootstrapDesk: "Bootstrap Desk",
+	activeRailTrack: "Active Rail Track",
+	connectionBay: "Connection Bay",
+	policyBoard: "Policy Board",
+	costBooth: "Cost Booth",
+	errorBunker: "Error Bunker",
 };
+
+/** Draw order hint only; hit-testing resolves overlaps by area, not by depth. */
+const ZONE_DEPTH: Record<ZoneId, number> = {
+	platformRest: 10,
+	bootstrapDesk: 11,
+	activeRailTrack: 5,
+	connectionBay: 12,
+	policyBoard: 8,
+	costBooth: 9,
+	errorBunker: 9,
+};
+
+/**
+ * Zone rects are the village grid, not free-floating boxes: a rect is exactly
+ * the tiles that draw the thing. The grid is 27 columns wide (1296px) so the
+ * road runs past the right edge — rects are clamped to the canvas so a click
+ * can never resolve outside it.
+ */
+function zoneFromTiles(id: ZoneId): ZoneLayout {
+	const r = ZONE_TILE_RECT[id];
+	const x = r.tx * TILE;
+	const y = r.ty * TILE;
+	const width = Math.min(r.w * TILE, YARD_WIDTH - x);
+	const height = Math.min(r.h * TILE, YARD_HEIGHT - y);
+	return Object.freeze({
+		id,
+		label: ZONE_LABEL[id],
+		x,
+		y,
+		width,
+		height,
+		depth: ZONE_DEPTH[id],
+		anchorX: Math.round(x + width / 2),
+		anchorY: y + height,
+	});
+}
+
+const ZONES: Record<ZoneId, ZoneLayout> = {
+	platformRest: zoneFromTiles("platformRest"),
+	bootstrapDesk: zoneFromTiles("bootstrapDesk"),
+	activeRailTrack: zoneFromTiles("activeRailTrack"),
+	connectionBay: zoneFromTiles("connectionBay"),
+	policyBoard: zoneFromTiles("policyBoard"),
+	costBooth: zoneFromTiles("costBooth"),
+	errorBunker: zoneFromTiles("errorBunker"),
+};
+
+/**
+ * DESIGN.md reserved region: the band the Camp houses and their Bindles own.
+ *
+ * Since ADR-0148 this is derived from `HOUSE_PLOTS` — the north side of the
+ * road, from the first plot's west edge to the last plot's east edge, down to
+ * the row the villagers stand on. Nothing else may be drawn inside it, so a
+ * house is never occluded by yard furniture.
+ */
+export const CAMP_GROUNDS: PropRegion = Object.freeze(houseBand());
+
+function houseBand(): PropRegion {
+	const left = Math.min(...HOUSE_PLOTS.map((p) => p.tx));
+	const right = Math.max(...HOUSE_PLOTS.map((p) => p.tx + HOUSE_TILES_W));
+	const top = Math.min(...HOUSE_PLOTS.map((p) => p.ty));
+	const bottom = Math.max(
+		...HOUSE_PLOTS.flatMap((p) => p.standing.map((s) => s.ty + 1)),
+	);
+	return {
+		x: left * TILE,
+		y: top * TILE,
+		width: (right - left) * TILE,
+		height: (bottom - top) * TILE,
+	};
+}
 
 export const YARD_LAYOUT: Layout = Object.freeze({
 	width: YARD_WIDTH,
 	height: YARD_HEIGHT,
 	groundY: 620,
 	zones: Object.freeze({ ...ZONES }),
+	campGrounds: CAMP_GROUNDS,
 	depths: Object.freeze({
 		background: 0,
 		track: 5,
@@ -142,11 +173,28 @@ export const YARD_LAYOUT: Layout = Object.freeze({
 		overlay: 50,
 	}),
 	speechBubble: Object.freeze({ offsetY: -90, maxWidth: 220 }),
-	costMeter: Object.freeze({ x: 1020, y: 150, width: 160, height: 18 }),
-	trafficEmitter: Object.freeze({ x: 140, y: 330, width: 1000 }),
+	/** Footprint of the treasury (quota + spend), in village pixels. */
+	costMeter: Object.freeze({
+		x: LANDMARK.treasury.tx * TILE,
+		y: LANDMARK.treasury.ty * TILE,
+		width: 2 * TILE,
+		height: TILE,
+	}),
+	/** Traffic rides the road, west to east, down its middle row. */
+	trafficEmitter: Object.freeze({
+		x: 0,
+		y: ROAD_TY * TILE + TILE / 2,
+		width: YARD_WIDTH,
+	}),
 });
 
+/**
+ * Zone under a pixel. Village rects nest (the notice board sits on the platform
+ * green), so the SMALLEST containing rect wins — otherwise the big rail band
+ * would swallow every click that lands on it.
+ */
 export function zoneAt(x: number, y: number): ZoneId | null {
+	let hit: ZoneLayout | null = null;
 	for (const zone of Object.values(YARD_LAYOUT.zones)) {
 		if (
 			x >= zone.x &&
@@ -154,10 +202,11 @@ export function zoneAt(x: number, y: number): ZoneId | null {
 			y >= zone.y &&
 			y <= zone.y + zone.height
 		) {
-			return zone.id;
+			const area = zone.width * zone.height;
+			if (!hit || area < hit.width * hit.height) hit = zone;
 		}
 	}
-	return null;
+	return hit?.id ?? null;
 }
 
 export function zoneAnchor(id: ZoneId): { x: number; y: number } {

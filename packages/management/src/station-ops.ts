@@ -9,7 +9,7 @@ import {
 
 import type { ManagementContext } from "./context.js";
 import { resolveDefaultStationId } from "./context.js";
-import { errResult, okResult, type ManagementResult } from "./result.js";
+import { errResult, type ManagementResult, okResult } from "./result.js";
 
 export type StationInitInput = Readonly<{
 	name?: string;

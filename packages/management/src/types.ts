@@ -48,6 +48,20 @@ export type RailPublicView = Readonly<{
 	budgetUsd: number;
 }>;
 
+/**
+ * Provenance of the metering trafficRate signal (HIGHBALL "kill or badge"):
+ * "synthetic" — derived from connection counts, not measured traffic;
+ * "otlp" — reserved for real OTLP-derived rates once metrics flow.
+ */
+export type TrafficRateSource = "synthetic" | "otlp";
+
+/**
+ * Provenance of a connector activity status (HIGHBALL "kill or badge"):
+ * "derived-static" — mapped statically from connection lifecycle status;
+ * "otlp" — reserved for live agent telemetry once OTLP signals flow.
+ */
+export type ConnectorStatusSource = "derived-static" | "otlp";
+
 export type MeteringView = Readonly<{
 	quotaUsed: number;
 	quotaLimit: number;
@@ -55,12 +69,22 @@ export type MeteringView = Readonly<{
 	budgetUsd: number;
 	/** Synthetic traffic rate 0..1 for yard particles; derived from connections. */
 	trafficRate: number;
+	/**
+	 * Provenance badge for trafficRate. Optional-with-default for consumers'
+	 * fixtures; projectYardSnapshot always sets it ("synthetic" today).
+	 */
+	trafficRateSource?: TrafficRateSource;
 }>;
 
 export type ConnectorActivityView = Readonly<{
 	connectorKind: string;
 	status: "offline" | "idle" | "working" | "error";
 	connectionId?: string;
+	/**
+	 * Provenance badge for status. Optional-with-default for consumers'
+	 * fixtures; projectYardSnapshot always sets it ("derived-static" today).
+	 */
+	statusSource?: ConnectorStatusSource;
 }>;
 
 export type DoctorView = Readonly<{

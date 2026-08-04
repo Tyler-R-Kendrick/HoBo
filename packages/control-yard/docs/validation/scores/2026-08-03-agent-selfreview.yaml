@@ -1,0 +1,114 @@
+# HYX self-assessment — NOT a substitute for the human playtests that
+# PLAYTEST-PROTOCOL.md requires. Recorded so the M1/M2 milestone has a
+# baseline score and so experience-drift has a first row to compare against.
+# Scored by the implementing agent against evidence captures, so treat the
+# self-serving direction of any borderline item with suspicion.
+rubric: hyx-rubric.yaml
+version: 1
+date: 2026-08-03
+reviewer: implementing-agent (self-review)
+build: HIGHBALL M1 + M2 + M3 (diegetic props, waybill desk, world NPCs, audio)
+stimulus:
+  - scenario: incident-storm, tick 90 (3 hazards, 3 waybills, revoked connection)
+  - scenario: clean board via the evidence tour fixture
+  - night theme via seam setTheme
+categories:
+  glanceability:
+    GLA-1:
+      score: 2
+      note: >-
+        Semaphore, waybill stack, and hazard tallies together answer "is the
+        yard healthy" quickly, but there is no single aggregate readout; the
+        operator composes it from three props.
+    GLA-2:
+      score: 3
+      note: >-
+        At 3 hazards the spark is concentrated in one place — warning
+        triangle, three tally bars, three hazard lines — plus the spark car
+        door. The eye goes to the break first. Verified: a clean board
+        renders zero spark anywhere.
+    GLA-3:
+      score: 2
+      note: >-
+        Night inverts ink and paper exactly and spark/go survive as accents,
+        so hierarchy holds. Docked a point: character sprites are raster art
+        and do not invert, so Bo and the bindlebugs read as silhouettes at
+        night rather than inverted line art.
+    GLA-4:
+      score: 2
+      note: Shift newsreel answers it on entry; there is no in-session recap.
+  feedback-juice:
+    JUI-1:
+      score: 3
+      note: Measured 57.9ms / 3 frames against a 100ms budget (feel.spec).
+    JUI-2:
+      score: 3
+      note: Go lamp + semaphore for success, spark + hit-stop + derail for failure.
+    JUI-3:
+      score: 2
+      note: >-
+        Stamp squash and derail hit-stop are tweened within budget; most prop
+        state changes still swap instantly.
+    JUI-4:
+      score: 3
+      note: >-
+        Measured 0.971% motion-on vs 0.000% under prefers-reduced-motion,
+        against a 0.1% budget — alive when allowed, genuinely still when asked,
+        and never blanked.
+  clarity-trust:
+    TRU-1:
+      score: 3
+      note: >-
+        SIMULATED badge whenever demo/scenario data drives the yard, and
+        synthetic lantern values carry a (SIMULATED) suffix read from the
+        management provenance fields.
+    TRU-2:
+      score: 3
+      note: Lantern hover reads real projection fields back verbatim.
+    TRU-3:
+      score: 2
+      note: >-
+        Waybills show blast radius and the real diff, and nothing rewards
+        approval speed. Docked: `station down` is still a plain button in the
+        dev drawer rather than a gated waybill.
+    TRU-4:
+      score: 3
+      note: >-
+        One car per real connection, one room per populated camp, no trains
+        when the deployment projection is unavailable. Regression-tested.
+  core-loop:
+    LOOP-1:
+      score: 2
+      note: Plausible from the evidence; unverified without a timed human run.
+    LOOP-2:
+      score: 3
+      note: The only goal is the clean board; no points, streaks, or volume rewards.
+    LOOP-3:
+      score: 2
+      note: Reads are instant and hover-free; no head-to-head timing against the CLI yet.
+  onboarding:
+    ONB-1:
+      score: null
+      note: >-
+        Cannot be self-scored — requires the cold-open think-aloud in
+        PLAYTEST-PROTOCOL.md. The mechanism (dark yard, sleeping Bo, one
+        glowing bell) is implemented and covered by cucumber.
+    ONB-2:
+      score: 2
+      note: The bell glows on first run; other mechanics rely on the enamel signs.
+  consistency:
+    CON-1:
+      score: 3
+      note: design:lint green; ink-on-paper held across all captures.
+    CON-2:
+      score: 3
+      note: >-
+        No mouth, no mirrored west sheets, bindlebugs visibly smaller and
+        simpler than Bo. Asserted in unit tests.
+result:
+  weighted_mean: 2.51
+  blocking_zeros: none
+  verdict: >-
+    Passes the 2.0 target and just reaches the 2.5 stretch. The unscored
+    ONB-1 and the two unverified core-loop items are exactly what the human
+    playtest round is for; this score must not be read as a substitute.

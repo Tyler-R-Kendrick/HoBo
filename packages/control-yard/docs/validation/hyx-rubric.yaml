@@ -1,0 +1,122 @@
+# HYX — HoBo Yard Experience rubric (machine-readable source of truth).
+# Human explanation + 0-vs-3 examples: HYX-RUBRIC.md.
+# Scoring: weighted mean over categories; see thresholds. Items tagged
+# auto-visual: true are judgeable from evidence PNG/keyframes by the
+# advisory vision pass (scripts/review-experience.mts).
+version: 1
+scale:
+  0: absent/broken
+  1: present but poor
+  2: adequate
+  3: delightful/exemplary
+categories:
+  glanceability: # operator-at-3am
+    weight: 3
+    items:
+      - id: GLA-1
+        text: >-
+          Overall yard health readable in <5s without interaction
+          (zone/prop posture, Bo demeanor).
+        auto-visual: true
+      - id: GLA-2
+        text: >-
+          The single most broken thing visually dominates — hazard draws the
+          eye before any decoration.
+        auto-visual: true
+      - id: GLA-3
+        text: >-
+          Day/night inversion preserves the same information hierarchy.
+        auto-visual: true
+      - id: GLA-4
+        text: >-
+          "What changed since I last looked" is answerable in one glance
+          (shift newsreel / seq delta), never by memory.
+  feedback-juice:
+    weight: 2
+    items:
+      - id: JUI-1
+        text: >-
+          Every command (sheet confirm / waybill stamp) has an immediate
+          (<100ms) acknowledgment before server confirmation lands.
+      - id: JUI-2
+        text: >-
+          Success and failure are distinguishable without reading text
+          (motion + go #14672c vs spark #c5301c).
+        auto-visual: true
+      - id: JUI-3
+        text: >-
+          State transitions are tweened (squash/stretch, hit-stop, particles
+          within feel-budgets.json); nothing pops with zero transition.
+      - id: JUI-4
+        text: >-
+          The idle world reads alive (Bo idle loop, ambient motion) but not
+          noisy; reduced-motion mode is still, never silent.
+        auto-visual: true
+  clarity-trust:
+    weight: 3
+    items:
+      - id: TRU-1
+        text: >-
+          Real vs simulated/synthetic data is visibly labeled at all times
+          (SIMULATED film-leader tag).
+        auto-visual: true
+      - id: TRU-2
+        text: >-
+          The game metaphor never obscures ground truth — hover/inspect
+          reveals the real resource name/id/fields on every prop.
+      - id: TRU-3
+        text: >-
+          Destructive actions are never juiced toward; friction scales with
+          blast radius; approval diffs are never summarized away.
+      - id: TRU-4
+        text: >-
+          Nothing decorative can be mistaken for signal (every car/NPC/prop
+          maps 1:1 to a projection entity).
+  core-loop:
+    weight: 2
+    items:
+      - id: LOOP-1
+        text: >-
+          Notice → investigate → act → confirm completes inside 60s on first
+          exposure to a seeded incident.
+      - id: LOOP-2
+        text: >-
+          Progression rewards map to real operational outcomes (clean board,
+          cleared hazards), never to click volume or approval speed.
+      - id: LOOP-3
+        text: >-
+          The game is never slower than the CLI for the same job; reads are
+          zero-friction.
+  onboarding:
+    weight: 1
+    items:
+      - id: ONB-1
+        text: >-
+          First-run: player discovers zone/prop selection + one command sheet
+          unprompted within 2 minutes (empty station teaches, no tutorial).
+      - id: ONB-2
+        text: >-
+          Each mechanic introduces itself the first time reality produces its
+          data (glow affordance), exactly once.
+  consistency:
+    weight: 1
+    items:
+      - id: CON-1
+        text: >-
+          Rubberhose B&W held: ink/paper base, spark/go reserved accents,
+          sticker shadows, 2-3px outlines, Chewy at title-card scale only
+          (design:lint covers tokens; judge the percept here).
+        auto-visual: true
+      - id: CON-2
+        text: >-
+          Bo character lock respected (no mouth, asymmetric bindle arm, west
+          sheets never mirrored); bindlebugs visibly smaller and simpler.
+        auto-visual: true
+thresholds:
+  block:
+    any_item_at: 0
+    in_categories: [glanceability, clarity-trust]
+  target:
+    weighted_mean: 2.0
+  stretch:
+    weighted_mean: 2.5

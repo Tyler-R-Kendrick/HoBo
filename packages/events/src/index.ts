@@ -31,5 +31,33 @@ export {
 	type SagaDefinition,
 	type SagaOutcome,
 } from "./saga.js";
+export {
+	CORPUS_BASELINE_SCHEMA,
+	CORPUS_ENTRY_SCHEMA,
+	type CorpusBaseline,
+	type CorpusEntry,
+	type CorpusReplay,
+	createCorpusBaseline,
+	createCorpusEntry,
+	decodeEventBody,
+	encodeEventBody,
+	EVENT_BODY_UPCASTER_GATE_SCHEMA,
+	type EventBody,
+	type EventBodySchema,
+	type EventBodyUpcaster,
+	type EventEvolutionContract,
+	type EventFieldSpec,
+	type EventFieldType,
+	eventSchema,
+	runCanDeployUpcasterGate,
+	stringField,
+	u32Field,
+	type UpcasterGateReport,
+	validateEventBody,
+} from "./upcaster.js";
+export {
+	MIGRATION_EVENT_CONTRACTS,
+	migrationCorpusBaseline,
+} from "./upcaster-corpus.js";
 
 export const HOBO_EVENTS_PACKAGE = "@hobo/events";

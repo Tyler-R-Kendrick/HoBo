@@ -339,6 +339,24 @@ export {
 	QueueParseError,
 } from "./ports/queue.js";
 export type {
+	IacOutputsLike,
+	RealizationBindingRecord,
+	RealizationResult,
+	RealizationResultRejection,
+	RealizedResourceRecord,
+	RecipeOutputsLike,
+	SecretRefRecord,
+} from "./ports/realization-result.js";
+export {
+	fromIacOutputs,
+	fromRecipeOutputs,
+	isSecretRefString,
+	looksLikeSecretKey,
+	parseRealizationResult,
+	REALIZATION_RESULT_SCHEMA,
+	RealizationResultParseError,
+} from "./ports/realization-result.js";
+export type {
 	FetchHandler,
 	HoboRuntimeHost,
 	HoboRuntimeHostKind,

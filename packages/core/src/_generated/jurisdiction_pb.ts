@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file jurisdiction.proto.
  */
 export const file_jurisdiction: GenFile = /*@__PURE__*/
-  fileDesc("ChJqdXJpc2RpY3Rpb24ucHJvdG8SDGhvYm8uY29yZS52MSJDChJKdXJpc2RpY3Rpb25SZWNvcmQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRITCgtsZWdhbF9iYXNpcxgDIAMoCSJICh9SZWdpb25KdXJpc2RpY3Rpb25NYXBwaW5nUmVjb3JkEg4KBnJlZ2lvbhgBIAEoCRIVCg1qdXJpc2RpY3Rpb25zGAIgAygJInEKGVJlc2lkZW5jeUNvbnN0cmFpbnRSZWNvcmQSFwoPY2xhc3NpZmljYXRpb25zGAEgAygJEh0KFWFsbG93ZWRfanVyaXNkaWN0aW9ucxgCIAMoCRIcChRkZW5pZWRfanVyaXNkaWN0aW9ucxgDIAMoCSJ4ChlSZXNpZGVuY3lFdmFsdWF0aW9uUmVjb3JkEgoKAm9rGAEgASgIEgwKBGNvZGUYAiABKAkSDgoGcmVnaW9uGAMgASgJEhwKFHJlZ2lvbl9qdXJpc2RpY3Rpb25zGAQgAygJEhMKC3JlbWVkaWF0aW9uGAUgASgJYgZwcm90bzM");
+  fileDesc("ChJqdXJpc2RpY3Rpb24ucHJvdG8SDGhvYm8uY29yZS52MSJDChJKdXJpc2RpY3Rpb25SZWNvcmQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRITCgtsZWdhbF9iYXNpcxgDIAMoCSJICh9SZWdpb25KdXJpc2RpY3Rpb25NYXBwaW5nUmVjb3JkEg4KBnJlZ2lvbhgBIAEoCRIVCg1qdXJpc2RpY3Rpb25zGAIgAygJInEKGVJlc2lkZW5jeUNvbnN0cmFpbnRSZWNvcmQSFwoPY2xhc3NpZmljYXRpb25zGAEgAygJEh0KFWFsbG93ZWRfanVyaXNkaWN0aW9ucxgCIAMoCRIcChRkZW5pZWRfanVyaXNkaWN0aW9ucxgDIAMoCSJ1ChdUcmFuc2Zlck1lY2hhbmlzbVJlY29yZBIZChFmcm9tX2p1cmlzZGljdGlvbhgBIAEoCRIXCg90b19qdXJpc2RpY3Rpb24YAiABKAkSEQoJbWVjaGFuaXNtGAMgASgJEhMKC2xlZ2FsX2Jhc2lzGAQgAygJInEKE1RyYW5zZmVyQmFzaXNSZWNvcmQSEQoJbWVjaGFuaXNtGAEgASgJEhkKEWZyb21fanVyaXNkaWN0aW9uGAIgASgJEhcKD3RvX2p1cmlzZGljdGlvbhgDIAEoCRITCgtsZWdhbF9iYXNpcxgEIAMoCSKzAQoZUmVzaWRlbmN5RXZhbHVhdGlvblJlY29yZBIKCgJvaxgBIAEoCBIMCgRjb2RlGAIgASgJEg4KBnJlZ2lvbhgDIAEoCRIcChRyZWdpb25fanVyaXNkaWN0aW9ucxgEIAMoCRITCgtyZW1lZGlhdGlvbhgFIAEoCRI5Cg50cmFuc2Zlcl9iYXNpcxgGIAEoCzIhLmhvYm8uY29yZS52MS5UcmFuc2ZlckJhc2lzUmVjb3JkYgZwcm90bzM");
 
 /**
  * @generated from message hobo.core.v1.JurisdictionRecord
@@ -101,6 +101,83 @@ export const ResidencyConstraintRecordSchema: GenMessage<ResidencyConstraintReco
   messageDesc(file_jurisdiction, 2);
 
 /**
+ * A lawful cross-border transfer edge between two jurisdictions (ADR-0146
+ * v2): adequacy decisions and standard contractual clauses as DATA, never
+ * code. Consulted only when an evaluation opts in via transfer_mechanisms.
+ *
+ * @generated from message hobo.core.v1.TransferMechanismRecord
+ */
+export type TransferMechanismRecord = Message<"hobo.core.v1.TransferMechanismRecord"> & {
+  /**
+   * @generated from field: string from_jurisdiction = 1;
+   */
+  fromJurisdiction: string;
+
+  /**
+   * @generated from field: string to_jurisdiction = 2;
+   */
+  toJurisdiction: string;
+
+  /**
+   * adequacy | scc
+   *
+   * @generated from field: string mechanism = 3;
+   */
+  mechanism: string;
+
+  /**
+   * Citations (decision/instrument names), informational — never a dependency.
+   *
+   * @generated from field: repeated string legal_basis = 4;
+   */
+  legalBasis: string[];
+};
+
+/**
+ * Describes the message hobo.core.v1.TransferMechanismRecord.
+ * Use `create(TransferMechanismRecordSchema)` to create a new message.
+ */
+export const TransferMechanismRecordSchema: GenMessage<TransferMechanismRecord> = /*@__PURE__*/
+  messageDesc(file_jurisdiction, 3);
+
+/**
+ * The lawful basis an ok evaluation relied on. intra-jurisdiction = the
+ * region sits directly inside an allowed jurisdiction (no transfer).
+ *
+ * @generated from message hobo.core.v1.TransferBasisRecord
+ */
+export type TransferBasisRecord = Message<"hobo.core.v1.TransferBasisRecord"> & {
+  /**
+   * intra-jurisdiction | adequacy | scc
+   *
+   * @generated from field: string mechanism = 1;
+   */
+  mechanism: string;
+
+  /**
+   * @generated from field: string from_jurisdiction = 2;
+   */
+  fromJurisdiction: string;
+
+  /**
+   * @generated from field: string to_jurisdiction = 3;
+   */
+  toJurisdiction: string;
+
+  /**
+   * @generated from field: repeated string legal_basis = 4;
+   */
+  legalBasis: string[];
+};
+
+/**
+ * Describes the message hobo.core.v1.TransferBasisRecord.
+ * Use `create(TransferBasisRecordSchema)` to create a new message.
+ */
+export const TransferBasisRecordSchema: GenMessage<TransferBasisRecord> = /*@__PURE__*/
+  messageDesc(file_jurisdiction, 4);
+
+/**
  * @generated from message hobo.core.v1.ResidencyEvaluationRecord
  */
 export type ResidencyEvaluationRecord = Message<"hobo.core.v1.ResidencyEvaluationRecord"> & {
@@ -130,6 +207,11 @@ export type ResidencyEvaluationRecord = Message<"hobo.core.v1.ResidencyEvaluatio
    * @generated from field: string remediation = 5;
    */
   remediation: string;
+
+  /**
+   * @generated from field: hobo.core.v1.TransferBasisRecord transfer_basis = 6;
+   */
+  transferBasis?: TransferBasisRecord | undefined;
 };
 
 /**
@@ -137,5 +219,5 @@ export type ResidencyEvaluationRecord = Message<"hobo.core.v1.ResidencyEvaluatio
  * Use `create(ResidencyEvaluationRecordSchema)` to create a new message.
  */
 export const ResidencyEvaluationRecordSchema: GenMessage<ResidencyEvaluationRecord> = /*@__PURE__*/
-  messageDesc(file_jurisdiction, 3);
+  messageDesc(file_jurisdiction, 5);
 

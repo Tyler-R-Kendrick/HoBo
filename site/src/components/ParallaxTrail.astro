@@ -251,7 +251,7 @@ const preloadSheet = href(`/parallax/${sheet}`);
 		will-change: transform;
 	}
 
-	:global(:root[data-theme="light"]) .plx-layer {
+	:global(:root:not([data-theme="dark"])) .plx-layer {
 		background-image: var(--art-light);
 	}
 
@@ -264,7 +264,7 @@ const preloadSheet = href(`/parallax/${sheet}`);
 		animation-name: plx-scroll-plate;
 	}
 
-	:global(:root[data-theme="light"]) .plx-plate {
+	:global(:root:not([data-theme="dark"])) .plx-plate {
 		background-image: var(--plate);
 	}
 

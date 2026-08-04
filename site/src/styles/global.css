@@ -453,12 +453,16 @@ a:hover {
 	text-decoration: none;
 }
 
-.theme-toggle .moon,
-:root[data-theme="light"] .theme-toggle .sun {
+/* The toggle shows the theme you would switch TO. Day is the default, so the
+   moon shows by default; night swaps in the sun. Keyed off `dark` rather than
+   `light` so the icon is right before the boot script sets the attribute and
+   when JavaScript is off. */
+.theme-toggle .sun,
+:root[data-theme="dark"] .theme-toggle .moon {
 	display: none;
 }
 
-:root[data-theme="light"] .theme-toggle .moon {
+:root[data-theme="dark"] .theme-toggle .sun {
 	display: block;
 }
 

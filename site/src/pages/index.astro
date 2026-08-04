@@ -1,6 +1,13 @@
 ---
 import { Code } from "astro:components";
 import Base from "../layouts/Base.astro";
+import Mascot from "../components/Mascot.astro";
+import ParallaxTrail from "../components/ParallaxTrail.astro";
+import Blimp from "../components/scenes/Blimp.astro";
+import Crossroads from "../components/scenes/Crossroads.astro";
+import Depot from "../components/scenes/Depot.astro";
+import Steamboat from "../components/scenes/Steamboat.astro";
+import Train from "../components/scenes/Train.astro";
 import { href } from "../lib/url";
 
 const bindleSnippet = `import { bindle } from "hobo/bindles";
@@ -25,20 +32,13 @@ const shikiThemes = {
 	title="HoBo — pack your bindle, we'll find your app a home"
 	description="HoBo describes your app once, finds it the cheapest home that passes your policies, and keeps it moving with continuous, zero-drama migrations — across any provider, any mix, or your own metal."
 >
-	<!-- ===================== Hero ===================== -->
-	<!-- The village strip: the control plane as HoBo actually renders it,
-	     composed from the same vendored CC0 tiles the game surface uses. -->
-	<div class="village-strip" role="img"
-		aria-label="A pixel-art village: houses along a road with villagers, a notice board, and a coin pile.">
-	</div>
+	<!-- ===================== Trail ===================== -->
+	<ParallaxTrail />
 
+	<!-- ===================== Hero ===================== -->
 	<section class="hero">
 		<div class="container">
 			<div>
-				<div class="hero-eyebrow">
-					<span class="badge badge-accent">Pre-release</span>
-					<span class="sticker">Cloud-agnostic · AI-native</span>
-				</div>
 				<h1>
 					Pack your bindle and hitch a ride —<br />
 					<em>we'll find your app a home.</em>
@@ -87,6 +87,7 @@ const shikiThemes = {
 					<strong>your code shouldn't pay a loyalty tax to its landlord</strong>.
 				</p>
 			</div>
+			<Crossroads />
 			<div class="grid grid-3" style="align-items: stretch;">
 				<div class="card tradeoff">
 					<h3>The company town</h3>
@@ -165,6 +166,7 @@ const shikiThemes = {
 					</div>
 				</div>
 			</div>
+			<Train />
 			<p class="section-foot">
 				Every hop is an event in an append-only log — replay the journey,
 				audit every fare, roll back any move.
@@ -185,6 +187,7 @@ const shikiThemes = {
 					isolation and trails for continuous moves. Start with the bindle.
 				</p>
 			</div>
+			<Depot />
 			<div class="grid grid-3 bento">
 				<a class="card span-2" href={href("/primitives/bindles/")}>
 					<h3><span class="term">Bindle</span> <span class="sticker">start here</span></h3>
@@ -314,6 +317,7 @@ const shikiThemes = {
 					their own scoped, short-lived credentials.
 				</p>
 			</div>
+			<Blimp />
 			<div class="grid grid-2">
 				<div class="grid" style="gap: 1rem;">
 					<div class="card">
@@ -402,6 +406,7 @@ const shikiThemes = {
 					Nobody else keeps looking for a cheaper home after move-in day.
 				</p>
 			</div>
+			<Steamboat />
 			<div
 				class="table-wrap"
 				tabindex="0"
@@ -491,6 +496,7 @@ const shikiThemes = {
 	<section class="cta-band">
 		<div class="container">
 			<div class="postcard">
+				<div class="postcard-bo"><Mascot size={84} flip /></div>
 				<h2 class="cta-inner-title">Ready to hit the rails?</h2>
 				<p style="margin: 0 auto 1.5rem; max-width: 36rem; color: var(--text-mute);">
 					Pack a bindle — that's the only must — and let your app find its
@@ -514,9 +520,22 @@ const shikiThemes = {
 	.cta-inner-title {
 		margin: 0 0 0.65rem;
 		font-family: var(--font-display);
-		font-size: clamp(1.3rem, 2.6vw, 1.8rem);
-		letter-spacing: 0.03em;
-		text-transform: uppercase;
-		font-weight: 700;
+		font-size: clamp(1.45rem, 2.8vw, 2rem);
+		letter-spacing: -0.01em;
+		font-weight: 620;
+	}
+
+	.postcard-bo {
+		position: absolute;
+		left: clamp(0.5rem, 3vw, 2.5rem);
+		bottom: 0.35rem;
+		transform-origin: 50% 96%;
+		animation: sway 2.2s ease-in-out infinite alternate;
+	}
+
+	@media (max-width: 820px) {
+		.postcard-bo {
+			display: none;
+		}
 	}
 </style>

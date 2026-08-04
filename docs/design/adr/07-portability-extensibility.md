@@ -666,7 +666,7 @@ Crossplane (CNCF graduated) is the strongest living open standard for the "abstr
 ## ADR-0148
 **Pixel-RPG identity: the control plane is a village; sourced CC0 pixel art replaces the traced rubberhose surface.**
 
-**Status:** Proposed — supersedes the art clauses of [ADR-0135](#adr-0135) and [ADR-0140](#adr-0140).
+**Status:** Superseded by [ADR-0149](#adr-0149) — the buildability finding stands; the identity change it drew from it does not. Its clauses 1 and 3 (rewriting the product identity, retiring Bo) are void; clauses 2, 4 and 5 survive under ADR-0149, scoped to `@hobo/pixel-village`.
 
 ### Context
 [ADR-0135](#adr-0135) made "the Bo art bible is law" and [ADR-0140](#adr-0140) restated it, binding every surface to a hand-traced 1930s rubberhose identity rendered in strict black and white. In practice the game surface could not be *built* from that contract: because no sourced game art existed, props were assembled from stacked rectangles and lines directly in the renderer. The product owner reviewed the running build and rejected it — the result read as a paint-program diagram rather than a game — and rejected the traced Bo/parallax artwork along with it, directing that free open-source video-game art be used instead.
@@ -688,3 +688,37 @@ The root cause was a contract that mandated an art style while supplying no art 
 - **(−)** The site must be re-arted; `design:lint`, evidence baselines, and asset validation all churn in one pass.
 - **(−)** A dependency on an upstream art pack's style: extending the world means matching Kenney's 16px idiom or commissioning art that does.
 
+## ADR-0149
+**HoBo Rubberhose is the product identity; the pixel-RPG is a separate game project.**
+
+**Status:** Accepted — supersedes clauses 1 and 3 of [ADR-0148](#adr-0148); restores the art intent of [ADR-0135](#adr-0135) and [ADR-0140](#adr-0140) under a buildable contract.
+
+### Context
+[ADR-0148](#adr-0148) diagnosed a real defect and drew the wrong conclusion from it.
+
+The diagnosis was right: props were being assembled from stacked `rect` and `line` primitives inside the renderer, because the contract mandated an art style while supplying no art to render it with. That surface read as a paint-program diagram, and the product owner rejected it along with the traced Bo and parallax artwork made for it.
+
+The conclusion did not follow. What failed was *the way the art was produced* — drawing illustrations in renderer code, and tracing rather than authoring — not the identity those illustrations were trying to express. ADR-0148 nonetheless rewrote `site/DESIGN.md` and its `packages/control-yard` mirror to a pixel-RPG identity, moved the marketing site to it, deleted Bo, and recorded the loss as "deliberate and owner-directed."
+
+It was not. The owner asked for the game to be re-arted and found the **website** re-arted instead: the rubberhose identity — Steamboat Willie / Cuphead ink-on-paper, black and white, Disney-meets-Ghibli minimalism — is the HoBo product identity and was never in question. The pixel-RPG work is wanted, as its own thing.
+
+### Decision
+1. **`HoBo Rubberhose` is restored as the product identity.** `site/DESIGN.md` and `packages/control-yard/DESIGN.md` return to it: thick ink outlines, hard sticker shadows, film grain, black-and-white day/night inversion, title-card lettering — never flat SaaS chrome. `site/` returns to its rubberhose implementation, and Bo returns with it (`bo-idle`, `bo-walk`, `bo-walk-left` and the site originals, plus the parallax plates and clouds).
+2. **The pixel-RPG becomes `@hobo/pixel-village`, themed separately.** The village renderer, the vendored Kenney CC0 packs, and the `HoBo Pixel` DESIGN.md move into that package and are scoped to it. `HoBo Pixel` is that project's identity and binds nothing outside it; it must never be mirrored onto `site/DESIGN.md` again.
+3. **ADR-0148's buildability rule survives, and now binds rubberhose too.** Art is authored as art and vendored as assets; assembling props from `rect`/`line` primitives in a presenter stays prohibited on every surface. A rubberhose surface that cannot be built from real artwork is to be fixed by producing artwork, not by changing the identity.
+4. **The generated Bo action sheets return, for site use only.** The five sheets (`wave`, `jump`, `hurt`, `sleep-wake`, `bindle-adjust`) live at `site/public/bo-actions/` with their frame metadata in `sheets.json`. They are **not** game assets: neither `@hobo/pixel-village` nor `@hobo/control-yard` loads them. What the owner rejected was the *game surface* built from renderer-drawn primitives, not this artwork — reading the rejection as covering the sheets was too broad. The traced scene panels stay retired. The hand-authored Bo (`bo-idle`, `bo-walk`, `bo-walk-left`) remains the canonical character art in `site/public/parallax/`; the sheets cover actions that art does not.
+5. **Identity changes are owner decisions.** An implementation problem is never sufficient grounds to replace a product identity. Where a contract cannot be built, the finding is raised and the contract amended — the surface is not re-skinned to whatever is easiest to render.
+
+### Path corrections to surviving clauses
+The clauses of [ADR-0147](#adr-0147) and [ADR-0148](#adr-0148) that survive this decision were written when the game lived in `packages/control-yard`. Their bodies are left as written — an ADR records what was decided at the time — so the corrected locations are stated here instead:
+
+- ADR-0148 clause 2 (vendored CC0 packs): now `packages/pixel-village/assets/kenney/`.
+- ADR-0148 clause 5 and ADR-0147 clause 6 (per-asset provenance): now `packages/pixel-village/assets/CREDITS.md`, and that ledger covers the pixel packs **only**. `packages/control-yard`'s own art has no ledger and never had one; see the gap recorded in the [asset sourcing policy](../asset-sourcing-policy.md).
+
+### Consequences
+- **(+)** The product looks like the product again: one rubberhose identity across the site and the control plane, with Bo.
+- **(+)** The pixel-RPG effort is preserved rather than discarded, in a package that owns its own look and cannot leak into the product surfaces.
+- **(+)** The rule that actually prevents a repeat — author art, do not draw it in a renderer — is kept and widened, so restoring rubberhose does not restore the defect that discredited it.
+- **(−)** Two visual identities exist in one repo, and `design:lint` must be scoped per package rather than assuming one truth.
+- **(−)** `@hobo/pixel-village` and `packages/control-yard` are both Phaser control-plane surfaces until the game project decides what it wants to be; that duplication is accepted for now in exchange for not losing the work.
+- **(−)** The site's rubberhose surface still needs the buildability fix from clause 3 — real authored art in place of any remaining renderer-drawn primitives. Restoring the identity does not by itself discharge that.

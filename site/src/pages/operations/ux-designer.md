@@ -6,7 +6,7 @@ description: "Crew operator that generates and maintains app UI against design.m
 
 # UX Designer (Crew)
 
-Generates and maintains application UI against design specs — for this site the Google [DESIGN.md](https://github.com/google-labs-code/design.md) contract is `site/DESIGN.md` (pixel-RPG: 16px grid, hard outlines, flat fills) — under the same guardrails and sandbox rules as other generators.
+Generates and maintains application UI against design specs — for this site the Google [DESIGN.md](https://github.com/google-labs-code/design.md) contract is `site/DESIGN.md` (rubberhose / Steamboat Willie / Cuphead) — under the same guardrails and sandbox rules as other generators.
 
 ## Mission
 

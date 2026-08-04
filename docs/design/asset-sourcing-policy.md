@@ -11,22 +11,39 @@ tags: [hobo, design]
 > reference but is no longer the primary path: art is **sourced**, not traced or
 > drawn in renderer code. CC0 game-art packs (Kenney and equivalents) are the
 > first-choice source; every vendored file keeps its upstream licence file beside
-> it and a row in `packages/control-yard/assets/CREDITS.md`.
+> it and a row in `packages/pixel-village/assets/CREDITS.md`.
 
 
 # Asset Sourcing Policy for the Control Yard
 
-Governs every visual, audio, and font asset that ships in `@hobo/control-yard`
-(the HIGHBALL! game surface, [ADR-0147](./adr/07-portability-extensibility.md#adr-0147))
-and any future game surface. The design identity is the pixel-RPG contract in
-`site/DESIGN.md` / `packages/control-yard/DESIGN.md`; this policy governs where
-the raw material may come from and what provenance must travel with it.
+Governs every visual, audio, and font asset that ships in a HoBo surface. The
+design identity depends on which surface: the product surfaces (`site/`,
+`@hobo/control-yard`) are **HoBo Rubberhose** (`site/DESIGN.md`), and
+`@hobo/pixel-village` — the separate pixel-RPG game project — is **HoBo Pixel**
+(`packages/pixel-village/DESIGN.md`). See
+[ADR-0149](./adr/07-portability-extensibility.md#adr-0149). This policy governs
+where the raw material may come from and what provenance must travel with it,
+whichever identity applies.
+
+One rule crosses both, carried over from
+[ADR-0148](./adr/07-portability-extensibility.md#adr-0148): **art is authored as
+art and vendored as assets.** Assembling props from `rect`/`line` primitives
+inside a renderer is prohibited on every surface — that practice is what
+produced the rejected build, and it is a defect regardless of which identity is
+being rendered.
 
 Two artifacts enforce the policy:
 
-- **`packages/control-yard/assets/CREDITS.md`** — the per-asset provenance
-  ledger. Every sourced or derived asset gets a row: what it is, where it came
-  from, license, and (for traced plates) source work + timestamp.
+- **A per-surface provenance ledger** — every sourced or derived asset gets a
+  row: what it is, where it came from, license, and (for traced plates) source
+  work + timestamp.
+  - `packages/pixel-village/assets/CREDITS.md` — the vendored Kenney CC0 packs
+    and anything derived from them.
+  - **Gap:** `packages/control-yard/` ships art (Bo, chrome, guests, particles,
+    trail plates) with **no** ledger. It never had one — the ledger arrived with
+    the pixel packs and left with them under
+    [ADR-0149](./adr/07-portability-extensibility.md#adr-0149). Recorded here
+    rather than papered over; it predates that ADR and is not discharged by it.
 - **[`scripts/check-licenses.ts`](../../scripts/check-licenses.ts)** — the
   `ALLOWED` SPDX allowlist that gates inbound licenses repo-wide. Asset licenses
   are judged against the same list; anything off-list requires the same
@@ -45,7 +62,7 @@ Conservative rules, all mandatory:
   check the specific work's US publication date and renewal history. When in
   doubt, don't trace it.
 - **Record provenance per traced plate** in
-  `packages/control-yard/assets/CREDITS.md`: source work title, year, and the
+  `packages/pixel-village/assets/CREDITS.md`: source work title, year, and the
   timestamp of the traced frame.
 - **Derived ORIGINAL characters only.** Trademark rights survive copyright
   expiry — a recognizable protected character (Mickey silhouette, Betty Boop,
@@ -71,7 +88,7 @@ family.
 ### (d) **CC0 pixel/prop art — used directly.** Vendored packs (Kenney and
     equivalents) are the first-choice source and are used **as shipped**,
     unmodified, with their upstream licence file beside them and a row in
-    `packages/control-yard/assets/CREDITS.md`. Any modification (e.g. a crop to
+    `packages/pixel-village/assets/CREDITS.md`. Any modification (e.g. a crop to
     satisfy a grid invariant) must be disclosed in that row.
 pass is what makes it HoBo. Re-inked derivations get a CREDITS.md row naming
 the reference source.
@@ -94,7 +111,7 @@ the reference source.
 ## Enforcement
 
 - A game-surface PR that adds or changes assets without matching
-  `packages/control-yard/assets/CREDITS.md` rows is incomplete.
+  `packages/pixel-village/assets/CREDITS.md` rows is incomplete.
 - License questions resolve against the `ALLOWED` set in
   [`scripts/check-licenses.ts`](../../scripts/check-licenses.ts); additions to
   that set need a dated review note, same as dependency licenses.

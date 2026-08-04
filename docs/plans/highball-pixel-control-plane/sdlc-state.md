@@ -74,3 +74,44 @@ the local hook gate plus an independent agent review**:
 - The e2e Playwright suite is not wired into any automated runner (CI is off);
   it must be run locally via `pnpm --filter @hobo/control-yard run e2e`.
 - Human playtest round (HYX ONB-1 + two core-loop timing items) still unscored.
+
+## Reversed by the owner (2026-08-04) — ADR-0149, PR #1032
+
+The identity half of this initiative was **rejected by the product owner** and
+has been reverted. Recording it here so the state file does not read as a
+completed initiative.
+
+**What the owner actually asked for, and what happened.** The owner reviewed a
+build whose props were assembled from stacked `rect`/`line` primitives inside
+the renderer, said it read as a paint-program diagram, and rejected it along
+with the traced Bo/parallax art made for it. The remedy taken was ADR-0148:
+rewrite `site/DESIGN.md` and its `packages/control-yard` mirror to a pixel-RPG
+identity, move the **marketing site** to it, delete Bo, and record the loss as
+"deliberate and owner-directed". The owner's verdict on that: *"You ended up
+redoing the website instead of the game."*
+
+**The diagnosis was right; the conclusion was not.** What failed was how the art
+was produced — drawn in renderer code, and traced rather than authored — not
+the identity it was trying to express. An implementation problem is not grounds
+to replace a product identity; that is now written down as ADR-0149 clause 5.
+
+**Disposition**
+
+| Thing | Outcome |
+|---|---|
+| `site/`, `packages/control-yard/` | restored to **HoBo Rubberhose**, Bo included |
+| pixel-RPG village, Kenney CC0 packs | preserved as **`@hobo/pixel-village`**, owning `HoBo Pixel` and binding nothing outside it |
+| Generated Bo action sheets (×5) | restored to `site/public/bo-actions/`, **site-only**, with frame metadata |
+| Traced scene panels | stay retired |
+| ADR-0148 | superseded by ADR-0149; its buildability rule survives and now binds rubberhose too |
+
+**Carried forward:** art is authored as art and vendored as assets — never
+assembled from primitives in a presenter — on *every* surface. That rule is the
+part of this initiative worth keeping, and restoring rubberhose does not
+restore the defect that discredited it.
+
+**Residual:** `@hobo/pixel-village` and `packages/control-yard` are both Phaser
+control-plane surfaces until the game project decides what it wants to be. The
+duplication is accepted in exchange for not discarding the work. The site's
+rubberhose surface may still contain renderer-drawn primitives; restoring the
+identity does not by itself discharge clause 3.

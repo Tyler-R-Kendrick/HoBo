@@ -371,3 +371,23 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
   all ✱ packages fully scoped
 - **protocol:** plan-mode (1 seam-probe Explore sweep) → approved plan →
   single docs PR
+
+## 2026-08-04 — restore HoBo Rubberhose; pixel-RPG becomes its own project (PR #1032)
+
+- **trigger:** owner rejection — *"You ended up redoing the website instead of
+  the game… I want my website design back."*
+- **branch:** `restore/rubberhose-identity` (2 commits, off `origin/main`)
+- **protocol:** sequential-fallback, coordinator-implemented (a revert of a
+  merged identity change is shared-file work end to end — no layer was
+  separable enough to dispatch)
+- **outcome:** `site/` + `packages/control-yard/` restored to HoBo Rubberhose
+  with Bo; pixel-RPG preserved as `@hobo/pixel-village` owning `HoBo Pixel`;
+  five generated Bo action sheets restored to `site/public/bo-actions/` as
+  site-only assets with frame metadata; ADR-0149 supersedes ADR-0148's identity
+  clauses while keeping its buildability rule
+- **gotcha worth remembering:** `git checkout <sha> -- <path>` does **not**
+  delete files absent from that commit, so the first restore left a silent mix
+  of rubberhose and pixel-era files that only surfaced as type errors. Both
+  directories had to be removed first and restored whole.
+- **state:** `docs/plans/highball-pixel-control-plane/sdlc-state.md` § Reversed
+  by the owner

@@ -192,6 +192,50 @@ describe("applyMux", () => {
 		expect(runner.calls.some((c) => c[0] === "kill-session")).toBe(false);
 	});
 
+	it("targets the session, not a window that happens to share its prefix", async () => {
+		// tmux resolves `-t hobo` as a window target: with a window named
+		// "hobo-code" it matched that instead of the session and failed with
+		// "index 0 in use", so the session came up with a single pane.
+		const plan = planMux("hobo", [
+			{ name: "hobo-code", kind: "local", command: "hobo-code" },
+			{ name: "claude", kind: "local", command: "claude" },
+		]);
+		const seen: string[] = [];
+		const runner: MuxRunner = {
+			run: async (args) => {
+				if (args[0] === "has-session") return { code: 1, stdout: "" };
+				if (args[0] === "new-window") {
+					seen.push(args[args.indexOf("-t") + 1]!);
+				}
+				return { code: 0, stdout: "" };
+			},
+		};
+		const result = await applyMux(plan, runner);
+		expect(seen).toEqual(["hobo:"]);
+		expect(result.created).toEqual(["hobo-code", "claude"]);
+	});
+
+	it("does not trust stale window names when it just created the session", async () => {
+		// A same-named session being torn down could still answer list-windows,
+		// and those stale names made applyMux skip creating real windows — the
+		// session came up with one pane instead of six.
+		const plan = planMux("hobo", [
+			{ name: "claude", kind: "local", command: "claude" },
+			{ name: "codex", kind: "local", command: "codex" },
+		]);
+		const runner: MuxRunner = {
+			run: async (args) => {
+				if (args[0] === "has-session") return { code: 1, stdout: "" };
+				if (args[0] === "list-windows") {
+					return { code: 0, stdout: "claude\ncodex\nghost" };
+				}
+				return { code: 0, stdout: "" };
+			},
+		};
+		const result = await applyMux(plan, runner);
+		expect(result.created).toEqual(["claude", "codex"]);
+	});
+
 	it("refuses to open an empty session when nothing was detected", async () => {
 		const result = await applyMux(planMux("hobo", []), fakeTmux());
 		expect(result.ok).toBe(false);

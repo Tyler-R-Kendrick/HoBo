@@ -36,6 +36,19 @@ export interface MuxPlan {
 	readonly commands: readonly string[];
 }
 
+/**
+ * Pin a `-t` target to a session.
+ *
+ * tmux treats `-t <name>` on new-window/list-windows as a *window* target, so
+ * a bare session name can prefix-match a window instead: with session "hobo"
+ * and window "hobo-code", `new-window -t hobo` failed with "index 0 in use"
+ * and the session silently came up with one pane. The trailing colon means
+ * "this session, tmux's choice of window".
+ */
+export function sessionTarget(session: string): string {
+	return `${session}:`;
+}
+
 /** tmux window names cannot contain dots or colons without confusing targets. */
 export function safeWindowName(raw: string): string {
 	const cleaned = raw
@@ -171,19 +184,25 @@ export async function applyMux(
 		created.push(safeWindowName(first.name));
 	}
 
-	const listed = await runner.run([
-		"list-windows",
-		"-t",
-		plan.session,
-		"-F",
-		"#{window_name}",
-	]);
-	const present = new Set(
-		listed.stdout
-			.split("\n")
-			.map((l) => l.trim())
-			.filter((l) => l.length > 0),
-	);
+	// Only ask tmux what already exists when joining a session we did not just
+	// create. Querying right after `new-session` can observe a same-named
+	// session still being torn down, and those stale window names made us skip
+	// creating the real ones — the session silently came up with one pane
+	// instead of six.
+	const present = new Set<string>(created);
+	if (existed) {
+		const listed = await runner.run([
+			"list-windows",
+			"-t",
+			sessionTarget(plan.session),
+			"-F",
+			"#{window_name}",
+		]);
+		for (const line of listed.stdout.split("\n")) {
+			const name = line.trim();
+			if (name.length > 0) present.add(name);
+		}
+	}
 
 	for (const target of plan.targets) {
 		const name = safeWindowName(target.name);
@@ -192,7 +211,7 @@ export async function applyMux(
 			"new-window",
 			"-d",
 			"-t",
-			plan.session,
+			sessionTarget(plan.session),
 			"-n",
 			name,
 			targetCommand(target),

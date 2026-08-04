@@ -1,6 +1,6 @@
 # SDLC state — HIGHBALL: gamified pixel-RPG control plane
 
-**Phase:** 5 — finish (integration → PR → Done gate)
+**Phase:** 5 — finish (integration merged; PR open; awaiting Done gate)
 **Branch:** `worktree/rapid-meadow-3f6e`
 **Entered the loop late:** this work began as a direct redesign request, not via
 `/sdlc` phases 1–4, so there is no brainstorm/plan/Linear trail behind it. It is

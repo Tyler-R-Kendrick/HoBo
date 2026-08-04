@@ -77,23 +77,43 @@ export function safeWindowName(raw: string): string {
  * makes "local inference in a new terminal" and "remote session" the same
  * shape to everything downstream.
  */
+/** POSIX single-quoting; double quotes still expand `$`, backticks and `\`. */
+export function shellQuote(value: string): string {
+	return `'${value.replace(/'/gu, `'\\''`)}'`;
+}
+
+/**
+ * The command that places `target.command` in its workspace — the exec wrapper
+ * for namespace-mounted trees, a `cd` otherwise, and nothing when the target
+ * has neither.
+ */
+export function placedCommand(target: MuxTarget): string {
+	if (target.exec) {
+		// The bundled sidecar is a .js file, which is only directly executable
+		// if its exec bit survived the install; run it through this node.
+		const binary = target.exec.binary.endsWith(".js")
+			? `${shellQuote(process.execPath)} ${shellQuote(target.exec.binary)}`
+			: shellQuote(target.exec.binary);
+		return `${binary} exec --root ${shellQuote(target.exec.root)} --name ${shellQuote(target.exec.name)} -- ${target.command}`;
+	}
+	return target.cwd
+		? `cd ${shellQuote(target.cwd)} && ${target.command}`
+		: target.command;
+}
+
 export function targetCommand(target: MuxTarget): string {
 	if (target.kind === "ssh") {
 		if (!target.host) return `echo "ssh target ${target.name} has no host"`;
+		// The remote gets the *placed* command, not the bare one. Sending only
+		// `target.command` ran every agent in the remote login directory with no
+		// isolation at all, after allocating workspaces nobody then used.
 		// -t so the remote gets a TTY, matching what a local pane provides.
 		return keepPaneOpen(
 			target.name,
-			`ssh -t ${target.host} ${JSON.stringify(target.command)}`,
+			`ssh -t ${target.host} ${shellQuote(placedCommand(target))}`,
 		);
 	}
-	if (target.exec) {
-		return keepPaneOpen(
-			target.name,
-			`${target.exec.binary} exec --root ${JSON.stringify(target.exec.root)} --name ${JSON.stringify(target.exec.name)} -- ${target.command}`,
-		);
-	}
-	const prefix = target.cwd ? `cd ${JSON.stringify(target.cwd)} && ` : "";
-	return keepPaneOpen(target.name, `${prefix}${target.command}`);
+	return keepPaneOpen(target.name, placedCommand(target));
 }
 
 /**

@@ -166,7 +166,82 @@ describe("exec wrapper", () => {
 				},
 				"claude",
 			),
-		).toBe('cd "/ws/a" && claude');
+		).toBe("cd '/ws/a' && claude");
+	});
+
+	it("single-quotes paths so the shell cannot expand them", () => {
+		// JSON.stringify produces double quotes, inside which `$(…)`, backticks
+		// and `\` are still interpreted — the path was an injection point.
+		const cmd = execCommand(
+			{
+				name: "a",
+				path: "/ws/$(touch pwned)",
+				tier: "copy",
+				source: "/src",
+				createdAt: "",
+			},
+			"claude",
+		);
+		expect(cmd).toBe("cd '/ws/$(touch pwned)' && claude");
+		expect(cmd).not.toContain('"');
+	});
+
+	it("survives a source path containing a space", () => {
+		// Unquoted mount options split on the space, so `mount: bad usage` — and
+		// because the chain used `;`, the agent's command then ran anyway, in
+		// whatever directory the shell happened to be in.
+		const cmd = execCommand(
+			{
+				name: "a",
+				path: "/ws with space/merged",
+				tier: "overlayfs",
+				source: "/src dir",
+				upper: "/ws with space/upper",
+				work: "/ws with space/work",
+				createdAt: "",
+			},
+			"claude",
+		);
+		expect(cmd).toContain("'lowerdir=/src dir,");
+		expect(cmd).not.toMatch(/-o lowerdir=\/src dir/);
+	});
+
+	it("aborts instead of running the command when the mount fails", () => {
+		const cmd = execCommand(
+			{
+				name: "a",
+				path: "/ws/merged",
+				tier: "overlayfs",
+				source: "/src",
+				upper: "/ws/upper",
+				work: "/ws/work",
+				createdAt: "",
+			},
+			"echo one; echo two",
+		);
+		// Every step joined with && and the command exec'd as a nested sh -c:
+		// a `;` here would let a compound command partially run unmounted.
+		expect(cmd).not.toMatch(/mount[^&]*;/);
+		expect(cmd).toContain("&& exec sh -c");
+	});
+
+	it("hides the rift directory so agents cannot read each other's trees", () => {
+		const cmd = execCommand(
+			{
+				name: "a",
+				path: "/ws/merged",
+				tier: "overlayfs",
+				source: "/src",
+				upper: "/ws/upper",
+				work: "/ws/work",
+				createdAt: "",
+			},
+			"claude",
+		);
+		// The whole source is the lower layer, which includes every other
+		// agent's upper layer.
+		expect(cmd).toContain("mount -t tmpfs none ");
+		expect(cmd).toContain("/ws/merged/.hobo-rift");
 	});
 
 	it("enters a user namespace and mounts the overlay", () => {
@@ -186,6 +261,21 @@ describe("exec wrapper", () => {
 		expect(cmd).toContain("lowerdir=/src");
 		expect(cmd).toContain("upperdir=/ws/a/upper");
 		expect(cmd).toContain("claude");
+	});
+});
+
+describe("overlay availability is reported, not silently skipped", () => {
+	it("says so when this machine cannot grant an unprivileged overlay", () => {
+		// runIf drops the block below with no skip count in the report, so a CI
+		// box without user namespaces would print "all passed" while proving
+		// nothing about the tier this package exists to add.
+		const available = probeOverlayfs();
+		if (!available) {
+			console.warn(
+				"[rift] unprivileged overlayfs unavailable here — the isolation property test did NOT run",
+			);
+		}
+		expect(typeof available).toBe("boolean");
 	});
 });
 
@@ -211,6 +301,25 @@ describe("workspace names are parsed, not trusted", () => {
 	it("refuses names that would escape the workspaces directory", () => {
 		for (const bad of ["../evil", "..", ".", "a/b", "a\\b", "", "   "]) {
 			expect(parseWorkspaceName(bad).ok).toBe(false);
+		}
+	});
+
+	it("refuses every shell metacharacter, not just path separators", () => {
+		// `create --name 'ws$(touch INJECTED)x'` executed the substitution in
+		// the SOURCE tree — the exact tree a workspace exists to protect.
+		for (const bad of [
+			"ws$(touch INJECTED)x",
+			"ws`id`",
+			"ws;rm -rf /",
+			"ws|cat",
+			"ws&bg",
+			"ws>out",
+			"ws'q",
+			'ws"q',
+			"ws x",
+			"ws\nx",
+		]) {
+			expect(parseWorkspaceName(bad).ok, bad).toBe(false);
 		}
 	});
 
@@ -245,7 +354,10 @@ describe("registry is a projection of the journal", () => {
 		const events = readEvents(join(root, RIFT_DIR));
 		expect(events.map((e) => e.type)).toEqual([
 			"RootInitialized",
+			// Intent is recorded before the clone, which can take seconds and die.
+			"WorkspaceCreating",
 			"WorkspaceCreated",
+			"WorkspaceCreating",
 			"WorkspaceCreated",
 			"WorkspaceRemoved",
 		]);
@@ -320,5 +432,42 @@ describe("wire boundary", () => {
 		});
 		expect(wire.tier).toBe(CowTierPb.HARDLINK);
 		expect(wire.isolatesInPlaceWrites).toBe(false);
+	});
+});
+
+describe("crash windows", () => {
+	it("prefers the journal over a stale-but-valid snapshot", () => {
+		// record() appends the event then rewrites the snapshot. A crash in
+		// between leaves a snapshot that parses perfectly and is wrong; trusting
+		// it made a real workspace invisible to list, exec and remove.
+		const root = source();
+		createWorkspace({ root, name: "alpha" });
+		const stale = readFileSync(join(root, RIFT_DIR, "registry.json"), "utf8");
+		createWorkspace({ root, name: "beta" });
+		writeFileSync(join(root, RIFT_DIR, "registry.json"), stale);
+		expect(readRegistry(root).workspaces.map((w) => w.name).sort()).toEqual([
+			"alpha",
+			"beta",
+		]);
+	});
+
+	it("clears debris from a creation that never finished", () => {
+		// The clone is the long part; a crash inside it left a directory that
+		// nothing knew about but that blocked the name forever.
+		const root = source();
+		const made = createWorkspace({ root, name: "half" });
+		const path = made.workspace!.path;
+		expect(existsSync(path)).toBe(true);
+		// Rewind the journal to just the intent, as a crash mid-clone would.
+		const journal = join(root, RIFT_DIR, "events.jsonl");
+		const kept = readFileSync(journal, "utf8")
+			.split("\n")
+			.filter((l) => l.length > 0 && !l.includes('"WorkspaceCreated"'));
+		writeFileSync(journal, `${kept.join("\n")}\n`);
+		expect(readRegistry(root).workspaces).toEqual([]);
+		// The name is reusable rather than poisoned.
+		const retry = createWorkspace({ root, name: "half" });
+		expect(retry.workspace).not.toBeNull();
+		expect(retry.reason).toBeUndefined();
 	});
 });

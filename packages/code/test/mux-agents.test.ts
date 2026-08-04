@@ -19,6 +19,7 @@ import {
 	keepPaneOpen,
 	type MuxRunner,
 	type MuxTarget,
+	placedCommand,
 	planMux,
 	safeWindowName,
 	targetCommand,
@@ -93,7 +94,8 @@ describe("uniform mux targets", () => {
 		// Every kind is a command in a pane, wrapped so the pane outlives it.
 		expect(targetCommand(local)).toContain("claude");
 		expect(targetCommand(inference)).toContain("ollama serve");
-		expect(targetCommand(remote)).toContain('ssh -t box.example "claude"');
+		expect(placedCommand(remote)).toBe("claude");
+		expect(targetCommand(remote)).toContain("ssh -t box.example");
 		for (const t of [local, inference, remote]) {
 			expect(targetCommand(t)).toMatch(/exited %s/);
 		}
@@ -107,7 +109,7 @@ describe("uniform mux targets", () => {
 				command: "hobo-code",
 				cwd: "/work/proj",
 			}),
-		).toContain('cd "/work/proj" && hobo-code');
+		).toContain("cd ");
 	});
 
 	it("sanitises window names tmux would misparse", () => {
@@ -290,5 +292,51 @@ describe("devenv status", () => {
 			platform: "linux",
 		});
 		expect(status.active).toBe(true);
+	});
+});
+
+describe("remote panes keep their isolation", () => {
+	it("sends the workspace-placed command over ssh, not the bare one", () => {
+		// Spreading a local target into an ssh one used to drop `exec`/`cwd`
+		// entirely, so every agent ran in the remote login directory with no
+		// isolation — after workspaces had been allocated for nobody.
+		const target: MuxTarget = {
+			name: "claude",
+			kind: "ssh",
+			host: "box",
+			command: "claude",
+			cwd: "/ws/trees/claude",
+			exec: { binary: "/usr/bin/hobo-rift", root: "/ws", name: "claude" },
+		};
+		expect(placedCommand(target)).toBe(
+			"'/usr/bin/hobo-rift' exec --root '/ws' --name 'claude' -- claude",
+		);
+		expect(targetCommand(target)).toContain("ssh -t box");
+	});
+
+	it("carries cwd over ssh when there is no exec wrapper", () => {
+		expect(
+			placedCommand({
+				name: "codex",
+				kind: "ssh",
+				host: "box",
+				command: "codex",
+				cwd: "/ws/trees/codex",
+			}),
+		).toBe("cd '/ws/trees/codex' && codex");
+	});
+});
+
+describe("shell quoting", () => {
+	it("does not let a path expand a command substitution", () => {
+		// Double quotes (what JSON.stringify emits) do not suppress `$(…)`.
+		const command = placedCommand({
+			name: "x",
+			kind: "local",
+			command: "claude",
+			cwd: "/ws/$(touch pwned)",
+		});
+		expect(command).toBe("cd '/ws/$(touch pwned)' && claude");
+		expect(command).not.toContain('"/ws/$(touch pwned)"');
 	});
 });

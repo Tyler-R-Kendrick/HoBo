@@ -27,6 +27,17 @@ export type ParseResult = ParseSuccess | ParseFailure;
 /** Length cap keeps the derived paths inside typical PATH_MAX budgets. */
 export const MAX_NAME_LENGTH = 64;
 
+/**
+ * Allowlist, not a denylist.
+ *
+ * The parsed name is spliced into shell commands as part of a path, so every
+ * shell metacharacter matters — rejecting only path separators let
+ * `--name 'ws$(touch INJECTED)x'` execute the substitution *in the source
+ * tree*, before the workspace was even entered. Enumerating what is allowed is
+ * the only version of this check that stays correct as call sites are added.
+ */
+const ALLOWED = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
+
 export function parseWorkspaceName(raw: string): ParseResult {
 	const name = raw.trim();
 	if (name.length === 0) return { ok: false, reason: "name is empty" };
@@ -39,13 +50,14 @@ export function parseWorkspaceName(raw: string): ParseResult {
 	if (name === "." || name === "..") {
 		return { ok: false, reason: `"${name}" is a directory reference, not a name` };
 	}
-	if (name.includes("/") || name.includes("\\")) {
-		return { ok: false, reason: "name must be a single path segment" };
-	}
-	if (name.includes("\0")) return { ok: false, reason: "name contains NUL" };
-	if (name.startsWith("-")) {
-		// A leading dash turns the name into a flag for anything we shell out to.
-		return { ok: false, reason: "name must not start with '-'" };
+	if (!ALLOWED.test(name)) {
+		// Covers path separators, NUL, every shell metacharacter, and a leading
+		// dash (which anything we shell out to would read as a flag).
+		return {
+			ok: false,
+			reason:
+				"name must start with a letter or digit and contain only letters, digits, '.', '_' or '-'",
+		};
 	}
 	return { ok: true, value: name as WorkspaceName };
 }

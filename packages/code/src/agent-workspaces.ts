@@ -62,6 +62,8 @@ export interface AllocateOptions {
 	readonly env?: NodeJS.ProcessEnv;
 	/** Skip isolation entirely and share the workspace root. */
 	readonly shared?: boolean;
+	/** Seam for tests: where the bundled sidecar binary is found. */
+	readonly bundled?: () => string | null;
 }
 
 function defaultGit(
@@ -113,7 +115,12 @@ export async function allocateAgentWorkspaces(
 		};
 	}
 
-	const capability = await probeRift(workspaceRoot, runner, env);
+	const capability = await probeRift(
+		workspaceRoot,
+		runner,
+		env,
+		options.bundled ?? undefined,
+	);
 	if (capability.usable) {
 		const workspaces: AgentWorkspace[] = [];
 		let failure: string | undefined;

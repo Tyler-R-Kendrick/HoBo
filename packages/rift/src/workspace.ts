@@ -18,7 +18,9 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join, resolve } from "node:path";
 import { type Capability, type CowTier, detectCapability } from "./capability.js";
 import {
+	abandonedCreations,
 	appendEvent,
+	journalPath,
 	projectWorkspaces,
 	readEvents,
 	type WorkspaceEvent,
@@ -71,12 +73,25 @@ function riftDir(root: string): string {
 }
 
 /**
- * Current workspaces. `registry.json` is a snapshot of the journal projection,
- * read first because it is one parse instead of N; when it is missing or torn
- * the journal is replayed instead, so a bad snapshot costs time, not data.
+ * Current workspaces, projected from the journal.
+ *
+ * The journal is the authority, always. An earlier version preferred
+ * `registry.json` whenever it *parsed*, which is wrong in the exact window
+ * `record()` creates: the event is appended and the snapshot rewritten as two
+ * steps, so a crash between them leaves a snapshot that is stale but perfectly
+ * valid — and preferring it made a real workspace invisible to `list`, `exec`
+ * and `remove` until someone thought to run `repair`. The snapshot is a
+ * convenience for other readers, not a source of truth; the journal is small
+ * enough that reading it is not worth being wrong over.
  */
 export function readRegistry(root: string): Registry {
 	const abs = resolve(root);
+	const dir = riftDir(abs);
+	if (existsSync(journalPath(dir))) {
+		return { root: abs, workspaces: projectWorkspaces(readEvents(dir)) };
+	}
+	// No journal: a root from before journalling, or one that was never
+	// initialised. The snapshot is all there is.
 	const file = registryPath(abs);
 	if (existsSync(file)) {
 		try {
@@ -85,10 +100,10 @@ export function readRegistry(root: string): Registry {
 				return { root: abs, workspaces: snapshot.workspaces };
 			}
 		} catch {
-			/* fall through to the journal — that is what it is for */
+			/* unreadable and no journal — report empty rather than guessing */
 		}
 	}
-	return { root: abs, workspaces: projectWorkspaces(readEvents(riftDir(abs))) };
+	return { root: abs, workspaces: [] };
 }
 
 /** Rebuild the snapshot from the journal. Exposed as `hobo-rift repair`. */
@@ -188,8 +203,23 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 	const capability = options.capability ?? detectCapability(root);
 	const base = join(root, RIFT_DIR, "workspaces", name);
 	if (existsSync(base)) {
-		return { workspace: null, reason: `workspace "${name}" already exists` };
+		// A directory with no completed creation is debris from a crash during
+		// the clone, not a workspace. Refusing forever would be the wrong answer.
+		const abandoned = abandonedCreations(readEvents(riftDir(root))).some(
+			(a) => a.name === name,
+		);
+		if (!abandoned) {
+			return { workspace: null, reason: `workspace "${name}" already exists` };
+		}
+		rmSync(base, { recursive: true, force: true });
 	}
+	// Intent first: the filesystem work below can take seconds and can die.
+	record(root, {
+		type: "WorkspaceCreating",
+		at: new Date().toISOString(),
+		name,
+		path: base,
+	});
 
 	if (capability.tier === "overlayfs") {
 		// The merged view only exists inside a mount namespace, so we lay down
@@ -244,13 +274,37 @@ export function removeWorkspace(root: string, name: string): boolean {
 	const registry = readRegistry(abs);
 	const existing = registry.workspaces.find((w) => w.name === parsed.value);
 	const base = join(abs, RIFT_DIR, "workspaces", parsed.value);
-	if (existsSync(base)) rmSync(base, { recursive: true, force: true });
+	// Record the removal before deleting: a crash mid-rm then leaves debris
+	// that `create` can clear, rather than a workspace the registry still
+	// advertises and `exec` cannot enter.
 	record(abs, {
 		type: "WorkspaceRemoved",
 		at: new Date().toISOString(),
 		name: parsed.value,
 	});
+	if (existsSync(base)) rmSync(base, { recursive: true, force: true });
 	return existing !== undefined;
+}
+
+/**
+ * POSIX single-quoting. `JSON.stringify` looks close enough and is not: it
+ * produces double quotes, inside which `$`, backticks and backslashes are
+ * still interpreted by the shell.
+ */
+export function shellQuote(value: string): string {
+	return `'${value.replace(/'/gu, `'\\''`)}'`;
+}
+
+/**
+ * Escape a path for use inside a mount option list.
+ *
+ * `-o` options are comma-separated and `key=value` colon-separated, so a path
+ * containing either has to be backslash-escaped or the kernel sees a different
+ * option list than intended. A space simply split the argument and the mount
+ * failed outright.
+ */
+export function escapeMountPath(path: string): string {
+	return path.replace(/([\\,:])/gu, "\\$1");
 }
 
 /**
@@ -265,11 +319,26 @@ export function execCommand(
 	command: string,
 ): string {
 	if (record.tier !== "overlayfs") {
-		return `cd ${JSON.stringify(record.path)} && ${command}`;
+		return `cd ${shellQuote(record.path)} && ${command}`;
 	}
-	const mount = `mount -t overlay overlay -o lowerdir=${record.source},upperdir=${record.upper},workdir=${record.work} ${record.path}`;
-	const inner = `${mount} && cd ${JSON.stringify(record.path)} && ${command}`;
-	return `unshare -Urm sh -c ${JSON.stringify(inner)}`;
+	const options = [
+		`lowerdir=${escapeMountPath(record.source)}`,
+		`upperdir=${escapeMountPath(record.upper ?? "")}`,
+		`workdir=${escapeMountPath(record.work ?? "")}`,
+	].join(",");
+	const mount = `mount -t overlay overlay -o ${shellQuote(options)} ${shellQuote(record.path)}`;
+	// Every step is joined with `&&`, and the caller's command is `exec`d as a
+	// nested `sh -c` so that a compound command cannot partially run when the
+	// mount fails. A `;` here is a data-loss bug, not a style choice: with an
+	// unmounted workspace the agent's command would run in whatever directory
+	// the shell happened to be in — outside the isolation entirely.
+	// The whole source is the lower layer, so the merged view would otherwise
+	// expose `.hobo-rift/workspaces/<every other agent>/upper` — one agent
+	// reading (and with the upper layer, effectively watching) another's work.
+	// An empty tmpfs over that path hides it inside this namespace only.
+	const hide = `mkdir -p ${shellQuote(join(record.path, RIFT_DIR))} && mount -t tmpfs none ${shellQuote(join(record.path, RIFT_DIR))}`;
+	const inner = `${mount} && ${hide} && cd ${shellQuote(record.path)} && exec sh -c ${shellQuote(command)}`;
+	return `unshare -Urm sh -c ${shellQuote(inner)}`;
 }
 
 export function runInWorkspace(

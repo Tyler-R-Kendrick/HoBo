@@ -28,6 +28,7 @@
 		"@earendil-works/pi-tui": "^0.83.0",
 		"@flue/runtime": "1.0.0-beta.9",
 		"@hobo/core": "workspace:*",
+		"@hobo/rift": "workspace:*",
 		"@hobo/stations": "workspace:*",
 		"valibot": "^1.4.2"
 	},

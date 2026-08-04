@@ -14,6 +14,18 @@ import type { WorkspaceRecord } from "./workspace.js";
 
 export type WorkspaceEvent =
 	| { readonly type: "RootInitialized"; readonly at: string; readonly root: string }
+	/**
+	 * Intent, written *before* any filesystem work. Cloning a large tree takes
+	 * seconds, and a crash inside it used to leave a directory nothing knew
+	 * about — invisible to `list`, but enough to make every later
+	 * `create --name same` fail with "already exists" forever.
+	 */
+	| {
+			readonly type: "WorkspaceCreating";
+			readonly at: string;
+			readonly name: string;
+			readonly path: string;
+	  }
 	| {
 			readonly type: "WorkspaceCreated";
 			readonly at: string;
@@ -65,4 +77,28 @@ export function projectWorkspaces(
 		}
 	}
 	return [...byName.values()];
+}
+
+/**
+ * Names whose creation started but never finished — the crash-during-clone
+ * shape. Their directories exist but no workspace does, so `create` can clear
+ * them instead of refusing forever.
+ */
+export function abandonedCreations(
+	events: readonly WorkspaceEvent[],
+): readonly { readonly name: string; readonly path: string }[] {
+	const pending = new Map<string, { name: string; path: string }>();
+	for (const event of events) {
+		if (event.type === "WorkspaceCreating") {
+			pending.set(event.name, { name: event.name, path: event.path });
+		} else if (
+			event.type === "WorkspaceCreated" ||
+			event.type === "WorkspaceRemoved"
+		) {
+			pending.delete(
+				event.type === "WorkspaceCreated" ? event.workspace.name : event.name,
+			);
+		}
+	}
+	return [...pending.values()];
 }

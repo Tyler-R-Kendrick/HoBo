@@ -27,7 +27,13 @@ equivalent isolation.
 The overlay tier's merged path exists **only inside a mount namespace**. `cd`
 from outside finds an empty directory, so commands must go through
 `hobo-rift exec`, which re-establishes the mount around them. `@hobo/code`
-builds its tmux pane commands with `exec --print-cmd` for exactly this reason.
+wraps every tmux pane command in `hobo-rift exec` for exactly this reason, and
+depends on `@hobo/rift` as a workspace package so the binary is always present
+— resolving through `PATH` alone left the feature inert, with every agent
+falling back to a git worktree.
+
+Inside the namespace, `.hobo-rift` is masked with an empty tmpfs. The lower
+layer is the whole source, which contains every other agent's upper layer.
 
 ## Schema and constraints
 
@@ -67,12 +73,21 @@ orphan directory nothing knew about.
 - **Materialized view / projection** — `projectWorkspaces` folds the journal
   into the current workspace set. It is pure, so it is tested without a
   filesystem and can be replayed at any time.
-- **Snapshot** — `.hobo-rift/registry.json`, the persisted projection. It is a
-  read optimisation, never a primary write.
-- **Read store** — `list` and `readRegistry` serve the snapshot first (one parse
-  instead of N); when the snapshot is missing or torn they replay the journal
-  instead, so a damaged snapshot costs time rather than data. `hobo-rift repair`
-  rebuilds it explicitly.
+- **Snapshot** — `.hobo-rift/registry.json`, the persisted projection, for other
+  readers. It is never authoritative: `record()` appends the event and rewrites
+  the snapshot as two steps, so a crash between them leaves a snapshot that
+  parses perfectly and is stale. `hobo-rift repair` rewrites it explicitly.
+- **Read store** — `list` and `readRegistry` project from the journal whenever
+  one exists, and consult the snapshot only for a root that predates
+  journalling. Preferring the snapshot made a real workspace invisible to
+  `list`, `exec` and `remove` until someone thought to run `repair`.
+
+Creation writes a `WorkspaceCreating` intent **before** touching the
+filesystem, because the clone is the long part and a crash inside it used to
+leave a directory nothing knew about — invisible to `list`, yet enough to make
+every later `create --name same` fail with "already exists" forever. Such
+debris is now cleared on the next create. `remove` likewise records before it
+deletes.
 
 ## Boundaries
 

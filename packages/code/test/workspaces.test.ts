@@ -20,7 +20,7 @@ import {
 	resolveRiftBinary,
 	type RiftRunner,
 } from "../src/rift.js";
-import { targetCommand } from "../src/mux.js";
+import { placedCommand } from "../src/mux.js";
 import { findWorkspaceRoot } from "../src/workspace.js";
 
 const dirs: string[] = [];
@@ -91,7 +91,7 @@ describe("rift capability", () => {
 				stderr: "Unable to locate the Rift binary for linux-arm64.",
 			}),
 		};
-		const cap = await probeRift("/ws", runner, { PATH: fakeRiftBin() });
+		const cap = await probeRift("/ws", runner, { PATH: fakeRiftBin() }, () => null);
 		expect(cap.usable).toBe(false);
 		expect(cap.reason).toMatch(/no binary for this platform/);
 	});
@@ -101,9 +101,11 @@ describe("rift capability", () => {
 			"/ws",
 			{ run: async () => ({ code: 0, stdout: "", stderr: "" }) },
 			{ PATH: "" },
+			// No PATH entry and no bundled copy either.
+			() => null,
 		);
 		expect(cap.usable).toBe(false);
-		expect(cap.reason).toMatch(/no rift binary on PATH/);
+		expect(cap.reason).toMatch(/no rift binary/);
 	});
 });
 
@@ -150,6 +152,7 @@ describe("per-agent workspaces", () => {
 			fallbackRoot: fallback,
 			runner: { run: async () => ({ code: 0, stdout: "", stderr: "" }) },
 			env: { PATH: "" },
+			bundled: () => null,
 			git: async (args, cwd) => {
 				cuts.push(cwd);
 				mkdirSync(args[args.length - 2]!, { recursive: true });
@@ -158,7 +161,7 @@ describe("per-agent workspaces", () => {
 		});
 		expect(result.backend).toBe("git-worktree");
 		expect(cuts).toEqual([repo]);
-		expect(result.reason).toMatch(/no rift binary on PATH/);
+		expect(result.reason).toMatch(/no rift binary/);
 		expect(result.workspaces[0]!.path).toBe(join(fallback, "claude"));
 	});
 
@@ -189,7 +192,7 @@ describe("sidecar preference", () => {
 		for (const name of ["rift", "hobo-rift"]) {
 			writeFileSync(join(dir, name), "#!/bin/sh\n", { mode: 0o755 });
 		}
-		const found = resolveRiftBinary({ PATH: dir });
+		const found = resolveRiftBinary({ PATH: dir }, () => null);
 		// Upstream needs btrfs/XFS-reflink/APFS and ships no binary for every
 		// platform; the sidecar works where it cannot, so it must win.
 		expect(found?.flavor).toBe("hobo");
@@ -200,12 +203,12 @@ describe("sidecar preference", () => {
 	it("falls back to upstream rift when the sidecar is absent", () => {
 		const dir = mkdtempSync(join(tmpdir(), "riftbin-"));
 		writeFileSync(join(dir, "rift"), "#!/bin/sh\n", { mode: 0o755 });
-		expect(resolveRiftBinary({ PATH: dir })?.flavor).toBe("upstream");
+		expect(resolveRiftBinary({ PATH: dir }, () => null)?.flavor).toBe("upstream");
 		rmSync(dir, { recursive: true, force: true });
 	});
 
 	it("reports no binary rather than guessing one", () => {
-		expect(resolveRiftBinary({ PATH: "" })).toBeNull();
+		expect(resolveRiftBinary({ PATH: "" }, () => null)).toBeNull();
 	});
 });
 
@@ -213,26 +216,26 @@ describe("entering a namespace-mounted workspace", () => {
 	it("runs the pane command through hobo-rift exec, not cd", () => {
 		// `cd` into an overlay merged path from outside the user namespace
 		// lands in an empty directory, so the agent would see no repo at all.
-		const wrapped = targetCommand({
+		const wrapped = placedCommand({
 			name: "claude",
 			kind: "local",
 			command: "claude",
 			cwd: "/ws/.hobo-rift/workspaces/claude/merged",
 			exec: { binary: "/usr/bin/hobo-rift", root: "/ws", name: "claude" },
 		});
-		expect(wrapped).toContain("/usr/bin/hobo-rift exec");
-		expect(wrapped).toContain('--name "claude"');
-		expect(wrapped).not.toContain("cd \"/ws/.hobo-rift");
+		expect(wrapped).toContain("'/usr/bin/hobo-rift' exec");
+		expect(wrapped).toContain("--name 'claude'");
+		expect(wrapped).not.toContain("cd '/ws/.hobo-rift");
 	});
 
 	it("still plain-cds for ordinary directory workspaces", () => {
-		const plain = targetCommand({
+		const plain = placedCommand({
 			name: "codex",
 			kind: "local",
 			command: "codex",
 			cwd: "/ws/trees/codex",
 		});
-		expect(plain).toContain('cd "/ws/trees/codex"');
+		expect(plain).toContain("cd '/ws/trees/codex'");
 		expect(plain).not.toContain("hobo-rift exec");
 	});
 });

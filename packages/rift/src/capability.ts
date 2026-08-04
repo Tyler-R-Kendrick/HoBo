@@ -59,23 +59,38 @@ export function probeReflink(dir: string): boolean {
 	}
 }
 
-/** Can we mount an overlay in an unprivileged user namespace? */
-export function probeOverlayfs(): boolean {
-	const probe = mkdtempSync(join(tmpdir(), "rift-ovl-"));
+/**
+ * Can we mount an overlay in an unprivileged user namespace **on this
+ * filesystem**?
+ *
+ * The directory matters: probing `/tmp` and then recording `overlayfs` for a
+ * project on a filesystem that cannot host the `upperdir` bakes in a tier that
+ * fails on every later `exec`, with no fallback left. Falls back to the
+ * temporary directory only when the target is not writable.
+ */
+export function probeOverlayfs(dir: string = tmpdir()): boolean {
+	let probe: string;
 	try {
-		for (const d of ["lower", "upper", "work", "merged"]) {
-			mkdtempSync(join(probe, `${d}-`));
-		}
+		probe = mkdtempSync(join(dir, ".rift-ovl-"));
+	} catch {
+		probe = mkdtempSync(join(tmpdir(), "rift-ovl-"));
+	}
+	try {
 		const lower = join(probe, "lower");
 		const upper = join(probe, "upper");
 		const work = join(probe, "work");
 		const merged = join(probe, "merged");
-		writeFileSync(join(probe, "mk"), "");
+		// Quoted and escaped exactly as execCommand does it: an unquoted probe
+		// failed on any path containing a space and silently demoted the machine
+		// to the hardlink tier, where in-place writes reach the source.
+		const q = (v: string) => `'${v.replace(/'/gu, `'\\''`)}'`;
+		const m = (v: string) => v.replace(/([\\,:])/gu, "\\$1");
+		const options = `lowerdir=${m(lower)},upperdir=${m(upper)},workdir=${m(work)}`;
 		const status = run("unshare", [
 			"-Urm",
 			"sh",
 			"-c",
-			`mkdir -p ${lower} ${upper} ${work} ${merged} && mount -t overlay overlay -o lowerdir=${lower},upperdir=${upper},workdir=${work} ${merged}`,
+			`mkdir -p ${q(lower)} ${q(upper)} ${q(work)} ${q(merged)} && mount -t overlay overlay -o ${q(options)} ${q(merged)}`,
 		]);
 		return status === 0;
 	} catch {
@@ -100,7 +115,7 @@ export function probeHardlink(dir: string): boolean {
 
 export interface ProbeOverrides {
 	readonly reflink?: (dir: string) => boolean;
-	readonly overlayfs?: () => boolean;
+	readonly overlayfs?: (dir: string) => boolean;
 	readonly hardlink?: (dir: string) => boolean;
 }
 
@@ -110,7 +125,7 @@ export function detectCapability(
 	overrides: ProbeOverrides = {},
 ): Capability {
 	const reflink = (overrides.reflink ?? probeReflink)(dir);
-	const overlayfs = (overrides.overlayfs ?? probeOverlayfs)();
+	const overlayfs = (overrides.overlayfs ?? probeOverlayfs)(dir);
 	const hardlink = (overrides.hardlink ?? probeHardlink)(dir);
 	const available: CowTier[] = [];
 	if (reflink) available.push("reflink");

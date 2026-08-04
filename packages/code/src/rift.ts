@@ -14,7 +14,8 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import { createRequire } from "node:module";
+import { delimiter, dirname, join } from "node:path";
 
 export interface RiftRunner {
 	readonly run: (
@@ -40,29 +41,60 @@ export interface RiftBinary {
 	readonly flavor: RiftFlavor;
 }
 
-/** First rift-compatible binary on PATH, sidecar preferred. */
+/**
+ * The sidecar as resolved through node, not PATH.
+ *
+ * `@hobo/rift` is a workspace dependency, so its binary is always present next
+ * to this package even when the user never installed anything globally.
+ * Relying on PATH alone made the whole feature inert: `hobo-rift` was on
+ * nobody's PATH, the probe reported "no rift binary", and every agent fell
+ * back to a git worktree — the behaviour this was meant to replace.
+ */
+export function bundledRiftBinary(): string | null {
+	try {
+		const require = createRequire(import.meta.url);
+		const manifest = require.resolve("@hobo/rift/package.json");
+		const binary = join(dirname(manifest), "dist", "bin", "hobo-rift.js");
+		return existsSync(binary) ? binary : null;
+	} catch {
+		return null;
+	}
+}
+
+/** First rift-compatible binary available, sidecar preferred. */
 export function resolveRiftBinary(
 	env: NodeJS.ProcessEnv = process.env,
+	bundled: () => string | null = bundledRiftBinary,
 ): RiftBinary | null {
 	const dirs = (env.PATH ?? "").split(delimiter).filter(Boolean);
+	// PATH first so an explicitly installed binary still wins.
 	for (const name of RIFT_BINARIES) {
 		for (const dir of dirs) {
 			const candidate = join(dir, name);
 			if (existsSync(candidate)) {
-				return { path: candidate, flavor: name === "hobo-rift" ? "hobo" : "upstream" };
+				return {
+					path: candidate,
+					flavor: name === "hobo-rift" ? "hobo" : "upstream",
+				};
 			}
 		}
 	}
-	return null;
+	const fallback = bundled();
+	return fallback ? { path: fallback, flavor: "hobo" } : null;
 }
 
 export function riftRunner(
 	binary: string = resolveRiftBinary()?.path ?? "rift",
 ): RiftRunner {
+	// The bundled sidecar is a .js file with a shebang that may not be
+	// executable in a fresh install, so run it through the current node.
+	const [command, prefix] = binary.endsWith(".js")
+		? [process.execPath, [binary]]
+		: [binary, []];
 	return {
 		run: (args, cwd) =>
 			new Promise((resolve) => {
-				const child = spawn(binary, [...args], {
+				const child = spawn(command, [...prefix, ...args], {
 					cwd,
 					stdio: ["ignore", "pipe", "pipe"],
 				});
@@ -108,13 +140,15 @@ export async function probeRift(
 	workspace: string,
 	runner: RiftRunner,
 	env: NodeJS.ProcessEnv = process.env,
+	bundled: () => string | null = bundledRiftBinary,
 ): Promise<RiftCapability> {
-	const found = resolveRiftBinary(env);
+	const found = resolveRiftBinary(env, bundled);
 	if (!found) {
 		return {
 			usable: false,
 			binary: null,
-			reason: "no rift binary on PATH (build packages/rift, or npm install -g rift-snapshot)",
+			reason:
+				"no rift binary available (bundled @hobo/rift missing and none on PATH)",
 		};
 	}
 	const { path: binary, flavor } = found;

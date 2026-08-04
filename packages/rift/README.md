@@ -28,8 +28,10 @@ so an append or a `sed -i` in one workspace **reaches the source**. It is kept
 only as a last resort before a full copy, and `capability` reports the hazard
 rather than presenting all tiers as equivalent.
 
-Regenerable bulk (`node_modules`, `.venv`, build output) is excluded from a
-clone unless you pass `--copy-all`.
+Regenerable bulk (`node_modules`, `.venv`, build output) is excluded when a
+tier has to **copy** entries, unless you pass `--copy-all`. The overlay tier
+copies nothing — the source is the lower layer — so the exclusion does not
+apply to it and `node_modules` is simply visible at no cost.
 
 ## Entering a workspace
 
@@ -43,8 +45,14 @@ hobo-rift exec --name claude -- claude          # run it
 hobo-rift exec --name claude --print-cmd -- claude   # print the wrapped command
 ```
 
-`hobo-code mux` uses `--print-cmd` to build its tmux pane commands, which is why
-panes land in a real isolated tree rather than an empty directory.
+`hobo-code mux` wraps each tmux pane command in `hobo-rift exec` for the same
+reason, which is why panes land in a real isolated tree rather than an empty
+directory. `--print-cmd` prints that wrapper instead of running it, for
+debugging.
+
+Inside an overlay workspace, `.hobo-rift` is masked with an empty tmpfs: the
+whole source is the lower layer, so without that an agent could read every
+other agent's upper layer.
 
 ## Usage
 

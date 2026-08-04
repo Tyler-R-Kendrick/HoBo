@@ -16,6 +16,7 @@ import { inspectDevenv } from "../src/devenv.js";
 import {
 	applyMux,
 	attachCommand,
+	keepPaneOpen,
 	type MuxRunner,
 	type MuxTarget,
 	planMux,
@@ -89,10 +90,13 @@ describe("uniform mux targets", () => {
 			command: "claude",
 			host: "box.example",
 		};
-		expect(targetCommand(local)).toBe("claude");
-		// Local inference is not special-cased — it is just a command in a pane.
-		expect(targetCommand(inference)).toBe("ollama serve");
-		expect(targetCommand(remote)).toBe('ssh -t box.example "claude"');
+		// Every kind is a command in a pane, wrapped so the pane outlives it.
+		expect(targetCommand(local)).toContain("claude");
+		expect(targetCommand(inference)).toContain("ollama serve");
+		expect(targetCommand(remote)).toContain('ssh -t box.example "claude"');
+		for (const t of [local, inference, remote]) {
+			expect(targetCommand(t)).toMatch(/exited %s/);
+		}
 	});
 
 	it("honours cwd for local targets", () => {
@@ -103,7 +107,7 @@ describe("uniform mux targets", () => {
 				command: "hobo-code",
 				cwd: "/work/proj",
 			}),
-		).toBe('cd "/work/proj" && hobo-code');
+		).toContain('cd "/work/proj" && hobo-code');
 	});
 
 	it("sanitises window names tmux would misparse", () => {
@@ -116,6 +120,24 @@ describe("uniform mux targets", () => {
 		expect(attachCommand("hobo", "box")).toBe(
 			'ssh -t box "tmux attach -t hobo"',
 		);
+	});
+});
+
+describe("panes outlive their command", () => {
+	it("holds the pane open and shows the exit status", () => {
+		// tmux destroys a window the instant its command returns, so an agent
+		// that exits immediately used to vanish with no explanation — the
+		// session simply had fewer panes than detected agents.
+		const cmd = keepPaneOpen("ollama", "ollama serve");
+		expect(cmd).toContain("ollama serve");
+		expect(cmd).toContain("ollama exited");
+		expect(cmd).toContain("read _");
+	});
+
+	it("does not let a quoted command break out of the wrapper", () => {
+		const cmd = keepPaneOpen("x", "echo 'hi there'");
+		expect(cmd.startsWith("sh -c '")).toBe(true);
+		expect(cmd.endsWith("'")).toBe(true);
 	});
 });
 

@@ -21,6 +21,7 @@
 		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {
+		"@bytecodealliance/componentize-js": "0.21.0",
 		"@types/node": "^22.15.0"
 	},
 	"scripts": {

@@ -639,7 +639,7 @@ Crossplane (CNCF graduated) is the strongest living open standard for the "abstr
 - **ADR-P7:** oversubscription/density limits per component-host — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no oversubscription (requests = limits), opt-in per-Camp ratio, substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
 - **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: declarative Camp-level reservation realized via the substrate's primitive, honest about limits — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
 
-## ADR-0145
+## ADR-0147
 **HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals.**
 
 **Status:** Proposed — amends [ADR-0135](#adr-0135).
@@ -663,7 +663,7 @@ Crossplane (CNCF graduated) is the strongest living open standard for the "abstr
 - **(−)** Phaser becomes a hard dependency of the browser surface, and CI needs a real browser harness for visual acceptance rather than the pure-engine escape hatch.
 - **(−)** The OTLP ingest path adds a read-model surface `@hobo/control-api` must keep bounded (retention, cardinality) precisely because it is *not* an event store.
 
-## ADR-0146
+## ADR-0148
 **Pixel-RPG identity: the control plane is a village; sourced CC0 pixel art replaces the traced rubberhose surface.**
 
 **Status:** Proposed — supersedes the art clauses of [ADR-0135](#adr-0135) and [ADR-0140](#adr-0140).

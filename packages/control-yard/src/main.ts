@@ -1,5 +1,5 @@
 /**
- * Browser entry — the ONLY module that instantiates Phaser.Game (ADR-0145).
+ * Browser entry — the ONLY module that instantiates Phaser.Game (ADR-0147).
  * Everything else is the headless library: engine + presenter + client + seam.
  * Bundled by esbuild to public/dist/yard.js.
  */

@@ -1,7 +1,7 @@
 /**
  * Typed control-api client for the browser host.
  * SSE (/v1/yard/stream) primary, polling fallback — commands POST to the
- * same management-backed endpoints the CLI uses (ADR-0135/ADR-0145 parity).
+ * same management-backed endpoints the CLI uses (ADR-0135/ADR-0147 parity).
  */
 
 import type { YardProjectionSnapshot } from "@hobo/management";

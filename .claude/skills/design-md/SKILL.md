@@ -22,7 +22,7 @@ description: Google DESIGN.md visual identity for coding agents. HoBo truth is s
 
 ## Aesthetic (non-negotiable)
 
-**Top-down pixel RPG** (ADR-0146) — art authored on a 16px grid and scaled by integers only, hard `#3f2631` outlines, square corners (every radius is `0`), warm earth against cool slate with grass/danger/accent as the functional colours, Kenney CC0 pixel display faces for headings and `system-ui` for body copy. **Art is sourced, never drawn in renderer code** — building props from rects and lines is what produced the surface this replaced. The earlier rubberhose/Steamboat-Willie contract and the Bo art bible are retired.
+**Top-down pixel RPG** (ADR-0148) — art authored on a 16px grid and scaled by integers only, hard `#3f2631` outlines, square corners (every radius is `0`), warm earth against cool slate with grass/danger/accent as the functional colours, Kenney CC0 pixel display faces for headings and `system-ui` for body copy. **Art is sourced, never drawn in renderer code** — building props from rects and lines is what produced the surface this replaced. The earlier rubberhose/Steamboat-Willie contract and the Bo art bible are retired.
 
 ### Do
 

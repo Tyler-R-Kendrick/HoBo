@@ -16,6 +16,9 @@ Each file has: **What it is** · **Key features** (the documentation) · **Relev
 | **OpenFeature** (CNCF) | Vendor-neutral feature-flag evaluation API + provider model | [`openfeature.md`](./openfeature.md) |
 | **OCSF** | Open Cybersecurity Schema Framework — normalized schema for security events | [`ocsf.md`](./ocsf.md) |
 | **FOCUS & OpenCost** (FinOps Foundation / CNCF) | Normalized cost/usage billing-data spec + cost-allocation spec | [`focus-opencost.md`](./focus-opencost.md) |
+| **CNAB** (JDF) | Signed multi-artifact application bundles + invocation images; packaging/signing lessons only (ADR-0144) | [`cnab.md`](./cnab.md) |
+| **OAM** (+ KubeVela) | Application/Component/Trait/Scope app-delivery spec; vocabulary alignment + wadm render target, never the model | [`oam.md`](./oam.md) |
+| **OSCAL** (NIST) | Machine-readable control catalogs/implementations/assessments; vocabulary for control→evidence packs, emit-at-boundary | [`oscal.md`](./oscal.md) |
 
 > See also: the **feature-flags pattern** lives in [`../patterns/feature-flags.md`](../patterns/feature-flags.md) (OpenFeature is its standard); telemetry standards underpin both observability ([Plan 5](../design/reliability-observability-cost.md#plan-05)) and the training reward signal ([Plan 23](../design/generated-stack.md#plan-23)); cost standards ground showback ([ADR-0039](../design/adr/02-identity-security.md#adr-0039)) and the [FinOps budget-routing control plane](../design/finops-budget-routing-control-plane.md#standards-baseline).
 

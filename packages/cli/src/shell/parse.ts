@@ -42,7 +42,7 @@ export interface CliFlags {
 	readonly token: string | null;
 	/** `hobo serve control --demo`: drive the world read model from the simulator. */
 	readonly demo: boolean;
-	/** Deterministic simulator seed for `--demo` (ADR-0145 demo mode). */
+	/** Deterministic simulator seed for `--demo` (ADR-0147 demo mode). */
 	readonly demoSeed: string | null;
 }
 
@@ -273,7 +273,7 @@ function parseOption(
 			}
 			throw unknownOption(token, verb);
 		case "--demo":
-			// `hobo serve control --demo` (ADR-0145): seeded world simulator,
+			// `hobo serve control --demo` (ADR-0147): seeded world simulator,
 			// always rendered with the SIMULATED badge.
 			if (verb === "serve") {
 				flags.demo = true;

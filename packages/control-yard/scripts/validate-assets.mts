@@ -83,7 +83,7 @@ for (const [id, sheet] of Object.entries(index.spritesheets)) {
 	}
 }
 
-// The Bo walk sheets are gone with the rubberhose identity (ADR-0146). The
+// The Bo walk sheets are gone with the rubberhose identity (ADR-0148). The
 // mirror guard used to live here; it silently evaluated to `undefined &&
 // undefined` once the sheets were deleted, so it is removed rather than left
 // as a check that quietly stopped checking. If directional sheets return,

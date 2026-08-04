@@ -67,6 +67,10 @@ HoBo is an **AI-native meta-cloud** — a meta cloud-orchestration layer that is
 **The gap:** every cloud-agnostic option above is either (a) IaC-flavored (you still think in infra), (b) Kubernetes-bound, or (c) not AI-native — and the wasm runtimes (wasmCloud/Spin) and orchestrators (Aspire) solve *runtime/wiring* — and schedulers (Nomad) solve *placement* — but not multi-cloud provisioning, agents, or durable workflows. Every AI-native option (Lakebed, Vercel) is single-runtime / locked-in. **No one combines cloud-agnostic ports/adapters (as WIT interfaces) + a wasm-default polyglot runtime + a Vercel-grade durable runtime + Nitric-style IfC/`.allow()` + Aspire-style wiring + agents-as-first-class + AI-generated providers AND implementations + a self-hostable control plane.** That intersection is HoBo. (Detailed Nitric and Lakebed captures + parity in [`docs/competitors/nitric`](../competitors/nitric.md) / [`docs/competitors/lakebed`](../competitors/lakebed.md).) (Detailed Nomad capture + parity in [`docs/competitors/nomad`](../competitors/nomad.md#hobo-mapping); displacement recorded in [ADR-0106](./adr/01-architecture-core.md#adr-0106).)
 
 ### What HoBo borrows (deliberately)
+
+> The full aggregate portrait — every influence with posture, borrowing, and
+> divergence — lives in [`lineage.md`](./lineage.md); this list stays the
+> founding-borrow summary.
 - **From Vercel Workflows:** the durable `workflow`/`step` feel and the **runtime** ports/adapters for the runtime.
 - **From Lakebed:** ruthless onboarding, machine-readable contracts (`llms.txt`), server authority — and we extend "machine-readable" from the app to *operations* (MCP).
 - **From Crossplane/Radius:** reconciliation + the dev-vs-platform separation (here: the provider-agnostic `bindle()` vs provider-specific `camp()`/`yard()` scope objects, and provider recipes/equivalence classes).

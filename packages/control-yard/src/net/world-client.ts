@@ -2,7 +2,7 @@
  * World-model client for control-api's /v1/world endpoints.
  * SSE (/v1/world/stream) primary: a full `world-snapshot` first, then `world`
  * deltas folded locally with @hobo/yard-world's pure reducer. Poll fallback
- * mirrors yard-client (ADR-0145: net is a thin typed edge, logic stays pure).
+ * mirrors yard-client (ADR-0147: net is a thin typed edge, logic stays pure).
  */
 
 import { type AgentEvent, applyEvent, type WorldState } from "@hobo/yard-world";

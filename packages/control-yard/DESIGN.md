@@ -279,7 +279,7 @@ outside the vendored palette without adding them here first.
 
 ## Game Surface (the Station village)
 
-The game is the primary control-plane surface (ADR-0146).
+The game is the primary control-plane surface (ADR-0148).
 
 **Canvas** — 1280×720 logical, `Phaser.Scale.FIT`, `pixelArt: true`,
 `roundPixels: true`, `antialias: false`. Tiles are 16px at ×3 (48px on screen).

@@ -33,7 +33,7 @@ being closed out through the loop's Done gate rather than retrofitted backwards.
 
 ## Integration findings (this phase)
 
-- **ADR numbering collision.** `origin/main` now occupies ADR-0145…0144. This
+- **ADR numbering collision.** `origin/main` now occupies ADR-0147…0144. This
   branch independently used 0140 and 0141. Both renumber to the next free
   numbers; every reference updated by the coordinator (single writer).
 - Branch base is 71 commits behind `origin/main`; integration merge required.

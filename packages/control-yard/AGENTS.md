@@ -131,5 +131,5 @@ pnpm run test:behavior                             # headless core-loop acceptan
 - Live cloud E2E
 - Hand-edited generated codegen outside asset index
 - **Assembling props from rects and lines in the renderer.** Art is sourced
-  from the vendored CC0 packs (ADR-0146); primitive-drawn scenery is what
+  from the vendored CC0 packs (ADR-0148); primitive-drawn scenery is what
   produced the surface this replaced.

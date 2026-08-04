@@ -3,7 +3,7 @@
  * The Phaser scene reconciles this model into GameObjects; nothing here
  * imports Phaser, so render output is unit-testable headlessly.
  *
- * The yard is the STATION VILLAGE (ADR-0146): a top-down pixel-RPG town built
+ * The yard is the STATION VILLAGE (ADR-0148): a top-down pixel-RPG town built
  * entirely from vendored Kenney CC0 tiles. Camps are houses, Bindles are the
  * villagers standing outside them, the active rail is the road, the approval
  * gate is a notice board, quota and spend are the treasury, and a doctor hazard

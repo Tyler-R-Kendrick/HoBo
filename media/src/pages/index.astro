@@ -1,6 +1,7 @@
 ---
 import SpritePlayer from "../components/SpritePlayer.astro";
-import { PLATES, SHEETS, SPRITES, TURNAROUND } from "../data/assets";
+import ModelViewer from "../components/ModelViewer.astro";
+import { BILL_SPRITES, CHARACTERS, PLATES, SHEETS, SPRITES, TURNAROUND } from "../data/assets";
 import { href } from "../lib/url";
 
 const title = "Bo — art department";
@@ -47,7 +48,22 @@ const description =
 
 		<main class="wrap">
 			<section>
-				<h2>Animations</h2>
+				<h2>Two characters</h2>
+				<div class="grid">
+					{
+						CHARACTERS.map((c) => (
+							<article class="card">
+								<h3>{c.name}</h3>
+								<p><strong>{c.tagline}</strong></p>
+								<p>{c.note}</p>
+							</article>
+						))
+					}
+				</div>
+			</section>
+
+			<section>
+				<h2>Bo — animations</h2>
 				<p class="section-note">
 					Playing at their exported cadence. The frame geometry beneath each one
 					is what the site itself reads — if these numbers drift, the preview
@@ -76,11 +92,42 @@ const description =
 			</section>
 
 			<section>
-				<h2>Turnaround</h2>
+				<h2>HoBit Bill — animations</h2>
 				<p class="section-note">
-					The model sheet the 3D lift was built from. Bo is <strong>asymmetric</strong> —
-					the bindle hangs from one specific arm and stays on that shoulder in
-					every view. Nothing here may be produced by mirroring.
+					Generated with the Spriterrific CLI from Bill's own turnaround.
+					Authored <strong>west</strong> and never mirrored — <code>--auto-orient</code>
+					is a flip and was turned off; the facing check returned ok/left at
+					confidence 1.0.
+				</p>
+				<div class="grid">
+					{
+						BILL_SPRITES.map((s) => (
+							<article class="card">
+								<div class="stage">
+									<SpritePlayer sheet={s} height="9rem" />
+								</div>
+								<h3>{s.title}</h3>
+								<dl class="spec">
+									<div><dt>Frames</dt><dd>{s.frames}</dd></div>
+									<div><dt>Grid</dt><dd>{s.grid.cols}×{s.grid.rows}</dd></div>
+									<div><dt>Cell</dt><dd>{s.frame.w}×{s.frame.h}</dd></div>
+									<div><dt>Cadence</dt><dd>{Math.round(s.tick * 1000)}ms</dd></div>
+								</dl>
+								<p>{s.note}</p>
+								<a class="dl" href={href(s.file)} download>Download sheet</a>
+							</article>
+						))
+					}
+				</div>
+			</section>
+
+			<section>
+				<h2>HoBit Bill — turnaround</h2>
+				<p class="section-note">
+					Bill's model sheet, and what the 3D lift was built from. He is
+					<strong>asymmetric</strong> — the bindle hangs from one specific arm
+					and stays on that shoulder in every view, so nothing here may be
+					produced by mirroring. Same rule as Bo, different character.
 				</p>
 				<div class="grid grid-4">
 					{
@@ -95,12 +142,12 @@ const description =
 			</section>
 
 			<section>
-				<h2>3D reference</h2>
+				<h2>HoBit Bill — 3D</h2>
 				<div class="card model">
-					<img
-						src={href("/reference/model-3d-preview.webp")}
-						alt="Rendered view of the 3D Bo mesh"
-						loading="lazy"
+					<ModelViewer
+						src="/reference/bill.glb"
+						poster="/reference/bill-model-3d-preview.webp"
+						height="24rem"
 					/>
 					<div>
 						<p>
@@ -115,13 +162,13 @@ const description =
 							scaffolding for reference frames; the drawings above remain the
 							identity.
 						</p>
-						<a class="dl" href={href("/reference/bo.glb")} download>Download .glb (2.6 MB)</a>
+						<a class="dl" href={href("/reference/bill.glb")} download>Download .glb (2.6 MB)</a>
 					</div>
 				</div>
 			</section>
 
 			<section>
-				<h2>Reference sheets</h2>
+				<h2>HoBit Bill — reference sheets</h2>
 				<div class="stack">
 					{
 						SHEETS.map((r) => (

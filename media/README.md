@@ -26,6 +26,34 @@ the live site loads and a second copy in the load path is a second thing to keep
 in sync. This package owns the *reference* art — the material you draw or
 generate **from**, which the site never serves.
 
+## Two characters
+
+**Bo** is the original — long-bodied, and the only one the site ships. Every
+sheet under `sprites/` and every scenery plate is his.
+
+**HoBit Bill** is not Bo. He came out of a turnaround generated *from* Bo's
+sheets and landed somewhere visibly different: rounder, squatter, differently
+furred. That was a failure of the generation. It is kept on purpose, under its
+own name, because the result was good — the alternative was to throw it away or,
+worse, to pass it off as Bo. Everything under `reference/bill-*` and the 3D lift
+is Bill's.
+
+**Do not mix them.** A Bill pose is not a Bo reference, and generating new Bo
+work from Bill's turnaround is precisely how Bo stops being Bo.
+
+## The 3D viewer
+
+`ModelViewer.astro` renders the `.glb` with **three.js**, bundled through Astro
+rather than loaded from a CDN: the published page runs under a CSP that blocks
+every external host, so an import map pointing at unpkg would work in dev and
+render an empty box in production — the worst failure shape there is. The cost
+is a ~613KB module, loaded only on this page.
+
+It renders only while the canvas is on screen (an idle WebGL loop is a laptop
+fan for nothing), keeps the still render as a poster until the mesh is ready,
+and does not auto-spin under `prefers-reduced-motion` — you can still orbit by
+hand.
+
 ## Identity: inherited, not defined
 
 This surface renders **HoBo Rubberhose**, and it does not get a vote. The

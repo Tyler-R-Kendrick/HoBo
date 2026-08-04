@@ -67,6 +67,27 @@ export const SPRITES: Sheet[] = [
 	},
 ];
 
+/**
+ * HoBit Bill's sheets, generated with the Spriterrific CLI.
+ *
+ * Kept apart from SPRITES on purpose: those are Bo's and the site ships them,
+ * these are Bill's and ship nowhere. The grid is Spriterrific's own export
+ * shape (256x256 cells) rather than the hand-packed strips Bo uses, which is
+ * why the numbers look nothing alike.
+ */
+export const BILL_SPRITES: Sheet[] = [
+	{
+		key: "bill-walk",
+		title: "Walk, west",
+		file: "sprites/bill-walk.png",
+		frame: { w: 256, h: 256 },
+		grid: { cols: 5, rows: 2 },
+		frames: 8,
+		tick: 0.1,
+		note: "Spriterrific, from Bill's own turnaround. Authored west (screen-left) with the bundle trailing behind him — generated that way, not flipped: --auto-orient is a mirror and was turned off, and the facing check returned ok/left at confidence 1.0.",
+	},
+];
+
 export type Plate = {
 	key: string;
 	title: string;
@@ -93,24 +114,24 @@ export type Reference = {
 };
 
 export const TURNAROUND: Reference[] = [
-	{ key: "front", title: "Front", file: "reference/turnaround-front.webp", note: "Bindle over one shoulder." },
-	{ key: "quarter", title: "Three-quarter", file: "reference/turnaround-quarter.webp", note: "45° toward screen-right." },
-	{ key: "side", title: "Side", file: "reference/turnaround-side.webp", note: "Profile, facing screen-right." },
-	{ key: "back", title: "Back", file: "reference/turnaround-back.webp", note: "No eyes — silhouette only." },
+	{ key: "front", title: "Front", file: "reference/bill-turnaround-front.webp", note: "Bindle over one shoulder." },
+	{ key: "quarter", title: "Three-quarter", file: "reference/bill-turnaround-quarter.webp", note: "Turned toward screen-right." },
+	{ key: "side", title: "Side", file: "reference/bill-turnaround-side.webp", note: "The generator did not give a true profile here; treat it as a second front read." },
+	{ key: "back", title: "Back", file: "reference/bill-turnaround-back.webp", note: "No eyes — silhouette only." },
 ];
 
 export const SHEETS: Reference[] = [
 	{
 		key: "expressions",
 		title: "Expressions",
-		file: "reference/expressions.webp",
+		file: "reference/bill-expressions.webp",
 		wide: true,
-		note: "Sixteen faces on one identical body. Bo has no mouth and no nose, so the eyes and brow carry every reading — which is why this sheet exists at all.",
+		note: "Sixteen faces on one identical body. Bill has no mouth and no nose, so the eyes and brow carry every reading — which is why this sheet exists at all.",
 	},
 	{
 		key: "poses",
 		title: "Poses",
-		file: "reference/poses.webp",
+		file: "reference/bill-poses.webp",
 		wide: true,
 		note: "Twelve whole-body poses at one scale. Reference for new sprite work: match the silhouette here before drawing frames.",
 	},
@@ -122,3 +143,33 @@ export const SHEETS: Reference[] = [
 		note: "The kit. Drawn as outline rather than solid fill, the same treatment the bindle bundle gets in the sprite sheets — props are objects, not soot.",
 	},
 ];
+
+/**
+ * Two characters, and they are not the same one.
+ *
+ * `Bo` is the original: long-bodied, and the only one the site ships. Every
+ * sheet in SPRITES is his.
+ *
+ * `HoBit Bill` came out of a turnaround generated from Bo's sheets — and came
+ * out visibly *not Bo*: rounder, squatter, differently furred. That was a
+ * failure of the generation, kept on purpose because the result was good, and
+ * given his own name rather than being passed off as Bo or thrown away.
+ * Everything under `reference/bill-*` and the 3D lift is Bill.
+ *
+ * They must not be mixed. A Bill pose is not a Bo reference, and generating
+ * new Bo work from Bill's turnaround is how Bo stops being Bo.
+ */
+export const CHARACTERS = [
+	{
+		key: "bo",
+		name: "Bo",
+		tagline: "The bindlebug. Long-bodied, and the one the site ships.",
+		note: "Every sprite sheet and scenery plate on hobo's site is Bo. His art is owned by site/public/parallax/.",
+	},
+	{
+		key: "bill",
+		name: "HoBit Bill",
+		tagline: "Rounder, squatter, his own character.",
+		note: "Born from a turnaround that drifted off Bo and landed somewhere better. Reference sheets and the 3D lift are his; he ships nowhere yet.",
+	},
+] as const;

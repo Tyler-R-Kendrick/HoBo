@@ -447,10 +447,6 @@ a:hover {
 	fill: var(--soot);
 }
 
-.mascot-flip {
-	transform: scaleX(-1);
-}
-
 .mascot .mascot-puff circle,
 .cloud .cloud-outline circle {
 	fill: var(--bg-raised);

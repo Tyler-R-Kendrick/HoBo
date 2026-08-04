@@ -18,10 +18,23 @@
 //           be present without asking for attention — beside prose, in a
 //           header — and `idle` where a hop is welcome.
 //
-// The clips were chosen by silhouette, not by eye. Alpha is identical
-// whether his eyes are open or shut, so the outline is a pure pose key: the
-// bounce ends 1.78 units from the rest pose and the blink sits 6.38 from it,
-// both under the 7.55 median step between neighbouring source frames. That
+// The clips were chosen by silhouette, not by eye, so the outline works as a
+// pose key and a clip can start or stop without a visible pop.
+//
+// How closely alpha matches between rest and blink differs by sheet, and the
+// unqualified claim that used to sit here — "alpha is identical whether his
+// eyes are open or shut" — was only ever true of one of them:
+//
+//   bo-idle   4618 differing alpha px. Its blink is a separate drawing, so the
+//             silhouette shifts a little; near enough not to pop, not identical.
+//   bo-stand  0. Its blink is derived from its own rest frame by editing the
+//             colour channel only, so the outline cannot drift by construction.
+//
+// The original figures below are from the source animation and are recorded as
+// found: the bounce ends 1.78 units from the rest pose and the blink sits 6.38
+// from it, both under the 7.55 median step between neighbouring source frames.
+// The tool that produced those units is not in the repo and they have not been
+// reproduced. Treat them as provenance, not as a check. That
 // is why a clip can start and stop at any time without a visible pop.
 //
 // Every instance schedules itself, so two Bos on the same page blink apart.

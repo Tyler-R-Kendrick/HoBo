@@ -136,8 +136,11 @@ cadence**, or his feet skate in one direction and plant in the other.
 ## How `bo-stand.png` was made
 
 Bases were taken from the two sheets that are actually Bo — `bo-idle.png`
-frame 0 and the narrowest-stance frame of `bo-walk.png` (frame 14, measured by
-foot spread, not chosen by eye). The five sheets in `../bo-actions/` were
+frame 0 and a narrow-stance frame of `bo-walk.png` (frame 14, picked by
+measuring foot spread across all 36 frames rather than by eye). It is not *the*
+narrowest: by bottom-band width frame 11 is tighter at 56px against 14's 59px,
+and by foot-blob separation ten frames tie. Frame 14 is a legitimately neutral
+stance, and the final art derives from the generated stand in any case. The five sheets in `../bo-actions/` were
 deliberately **not** used: their character has the bindle on the wrong side, no
 feet, and a coarser fur silhouette, so they would have taught the generator the
 wrong Bo.
@@ -149,8 +152,8 @@ to the stand. That turned out to be the right outcome, because a *generated*
 blink was the wrong idea anyway: the strip's stated invariant is that alpha is
 identical whether his eyes are open or shut, so the outline stays a pure pose
 key. A separate drawing cannot guarantee that. The blink is therefore derived
-from the stand — eye region cleared, four tapered white slivers put back at the
-corners, colour channel only — and rest-vs-blink alpha differs by **0 pixels**,
+from the stand — eye region cleared, then a wide sliver restored at each eye's
+outer corner and a small one at the inner corner, colour channel only — and rest-vs-blink alpha differs by **0 pixels**,
 where `bo-idle`'s own two frames differ by 4618.
 
 Two things about the format are easy to get wrong and were, in order:
@@ -164,7 +167,18 @@ Two things about the format are easy to get wrong and were, in order:
   conflated them and shipped Bo's legs and feet at grey 41–82 against
   `bo-idle`'s 0 — soft grey sticks instead of ink. Anything within 2px of paper
   is treated as edge and gets coverage; only the interior keeps a real grey, so
-  the bindle pole stays light and the legs go black. Whole-frame mean grey then
-  lands at 41.7 against the reference's 39.0.
+  the bindle pole stays light and the legs go nearly black — feet-region mean
+  grey 12.9 against the reference's 5.4, down from 41-82, but still 2.4x greyer.
+  Mean grey over inked pixels lands at 41.7 against 39.0.
+
+One label to read carefully: the 21726-against-21018 pixel comparison counts
+pixels with *any* coverage (`alpha > 0`), a 3.4% gap. Fully opaque pixels
+(`alpha == 255`) are 19589 against 18623, a 5.2% gap. Both are fine; the looser
+reading is simply the one that got written down first.
 
 He is **not** mirrored, here or anywhere — see above.
+
+The lid slivers are deliberately **asymmetric** — wide at each eye's outer corner,
+small at the inner one. An even set of four reads as a dotted line at the size Bo
+is actually drawn (roughly 2px a mark in the footer), which is how the first
+attempt looked; `bo-idle`'s own blink is lopsided for the same reason.

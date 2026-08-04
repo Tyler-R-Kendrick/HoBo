@@ -5,12 +5,20 @@
 // background; the soot eyelids on top do the blinking. The dust puffs are
 // the trace's own puff clusters, split out so they can kick up on their own
 // staggered cycles. Ink/paper colors come from CSS custom properties.
+//
+// There is deliberately NO `flip` prop. Bo is asymmetric: the bindle hangs
+// from one specific anatomical arm, and `scaleX(-1)` hands it to the other
+// one. It looks plausible at a glance and it is wrong — the failure mode
+// public/parallax/README.md already documents for the walk sheets, which had
+// shipped once before that note existed. It had shipped here too: the homepage
+// CTA rendered `<Mascot flip />`, putting the bundle over the wrong shoulder
+// directly above the words "Pack a bindle". Removing the prop rather than the
+// one call site is the point — a comment does not stop the next person.
 interface Props {
 	size?: number;
 	class?: string;
-	flip?: boolean;
 }
-const { size = 120, class: className = "", flip = false } = Astro.props;
+const { size = 120, class: className = "" } = Astro.props;
 ---
 
 <svg
@@ -18,7 +26,7 @@ const { size = 120, class: className = "", flip = false } = Astro.props;
 	height={size * (560 / 420)}
 	viewBox="0 0 420 560"
 	fill="none"
-	class={`mascot ${flip ? "mascot-flip" : ""} ${className}`}
+	class={`mascot ${className}`}
 	aria-hidden="true"
 >
 	<g class="mascot-under">

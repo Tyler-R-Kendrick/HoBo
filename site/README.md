@@ -199,21 +199,42 @@ scenery with him. `prefers-reduced-motion` pins it to paused and hides the butto
 
 ## Bo idling
 
-`BoIdle.astro` renders Bo standing still, and every so often he blinks or takes a hop.
-One strip, `public/parallax/bo-idle.png`, holds three independent states:
+`BoIdle.astro` renders Bo standing about, and every so often he blinks or moves. One
+strip holds three independent states:
 
 | Frames | State | |
 |---|---|---|
 | `0` | rest | the still pose, shown when nothing is playing |
-| `1`–`10` | bounce | one hop, which lands back on the rest pose |
+| `1`–`10` | cycle | one move, which lands back on the rest pose |
 | `11` | blink | eyes shut, on a body pose that matches rest |
 
-The clips were picked by silhouette rather than by eye. Alpha is identical whether his
-eyes are open or shut, so the outline is a pure pose key: the bounce ends **1.78** units
-from rest and the blink sits **6.38** from it, both under the **7.55** median step between
-neighbouring frames of the source sheet. That is what lets a clip start or stop at any
-moment without a visible pop, and it is why the states can be triggered independently
-instead of being locked into one long loop.
+**Two sheets share that contract**, so `variant` swaps the image and changes nothing
+else:
+
+| `variant` | Sheet | The cycle is |
+|---|---|---|
+| `idle` *(default)* | `public/parallax/bo-idle.png` | a hop — he is loitering |
+| `stand` | `public/parallax/bo-stand.png` | a breath anchored at the feet, so he never leaves the ground |
+
+Use `stand` where Bo should be present without asking for attention — the footer uses
+it, beside the pre-release caveat, because a mascot doing tricks next to that sentence
+undercuts it. Use `idle` where a hop is welcome.
+
+The clips were picked by silhouette rather than by eye, which is what lets a clip start
+or stop at any moment without a visible pop, and why the states can be triggered
+independently instead of being locked into one long loop.
+
+How closely alpha matches between rest and blink differs by sheet, and this file used to
+claim — wrongly — that it was identical in general:
+
+- `bo-idle` — **4618** differing alpha px. Its blink is a separate drawing, so the
+  silhouette shifts slightly. Near enough not to pop; not identical.
+- `bo-stand` — **0**. Its blink is derived from its own rest frame by editing the colour
+  channel only, so the outline cannot drift by construction.
+
+The original **1.78 / 6.38 / 7.55** unit figures are recorded as found from the source
+animation. No tool in this repo computes them and they have not been reproduced — treat
+them as provenance rather than as a check.
 
 Each instance runs its own timer, so several Bos on a page drift apart rather than
 blinking in unison. `<BoIdle still="rest" />` freezes him on one frame and never

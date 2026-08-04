@@ -48,8 +48,14 @@ below.
 - **Network egress (three paths, one of them automatic):**
   - `scripts/context.mjs` calls `impeccable.style/api/version` on the skill's
     boot/hook path — **on by default**, throttled to once a day. Disabled here
-    via [`../.impeccable/config.json`](../.impeccable/config.json)
-    (`"updateCheck": false`); `IMPECCABLE_NO_UPDATE_CHECK=1` does the same. Run
+    by **`IMPECCABLE_NO_UPDATE_CHECK=1`**, set in
+    [`../.claude/settings.json`](../.claude/settings.json) `env`. That is the
+    control that actually holds: upstream reads
+    [`../.impeccable/config.json`](../.impeccable/config.json)'s
+    `"updateCheck": false` relative to `process.cwd()`, so the file alone
+    covers repo-root sessions and **not** `cd site && …` — verified by driving
+    the real code path with a stubbed `fetch` (subdirectory: 1 request with the
+    config alone, 0 with the env var). Both are in place. Run
     `npx impeccable check` deliberately instead.
   - `scripts/generate-image.mjs` posts to `api.openai.com` — opt-in, only when
     you invoke it, and it needs your own key.

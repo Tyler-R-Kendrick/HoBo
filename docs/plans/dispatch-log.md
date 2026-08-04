@@ -323,3 +323,18 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
   `event-body-upcaster-gate` (promotions ledger now 9 frozen)
 - **tests:** trails 31, events 11, identity 88, behavior lane 100 scenarios —
   all green; architecture guard + staged agent:check green per commit
+
+## 2026-08-04 — Standards alignment (ADR-0144) + thin Convex provider (#1024)
+
+- **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/1024 — merge `86119ffcb`
+- **scope:** critique-driven delivery of the standards-alignment instruction
+  (fact-check + corrections in `docs/plans/0016`): ADR-0144 external-spec
+  posture + Resource Definition versioning; platform-engineering versioning
+  section; convex.md impedance boundaries; new wasp.md capture;
+  `@hobo/provider-convex` (honest equivalence classes, deploy-key-brokered
+  manifest, convex-deploy driver programs, typed impedance, fail-closed
+  cred-gated Management API); AGENTS.md bindle-first guidance;
+  live-provider-matrix row
+- **tests:** provider-convex 23/23; architecture guard + staged agent:check
+  green per commit (ADR index + traceability gates included)
+- **protocol:** goal-hook one-shot with two Explore fact-check sweeps

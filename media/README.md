@@ -77,3 +77,12 @@ The recipe, learned the expensive way — see the closeout notes in
 - **Text-only follows the prompt.** Describe Bo precisely in words and the grid
   sheets, turnarounds and new poses all come out on-model.
 - Use references only when you want the *same* pose reproduced faithfully.
+
+## Publishing
+
+The catalogue ships with the main site, not separately:
+`pnpm run site:deploy` builds both and publishes this one **nested** at
+`/HoBo/media/`. Nested rather than merged, because each Astro build has its own
+hashed `_astro/` bundle and a flattened root would let the two fight over that
+directory. One deploy commit therefore describes the whole published tree, and
+the script refuses to run if either `site/` or `media/` has uncommitted changes.

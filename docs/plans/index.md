@@ -21,6 +21,7 @@ Directory listing for audit/review logs and improvement plans written to `docs/p
 | [`0012-ship-remediation-plan.md`](./0012-ship-remediation-plan.md) | Implementation Plan | Agent-executable remediation work packages (WP-A–F) for 0011 findings, plus residual human blockers (Actions billing, counsel, npm token, real jco, live multi-cloud). |
 | [`0013-post-merge-ship-gap-review.md`](./0013-post-merge-ship-gap-review.md) | Review Findings | Post-merge gap review at main `61cfcdb9` after squash of #952–#956: agent remediations on main, residual H-* still open, Targets A/B/C re-score. |
 | [`0014-repo-projects-audit.md`](./0014-repo-projects-audit.md) | Review Findings | In-repo projects audit (packages/examples/draft only): maturity tiers, families, ranked gaps; stations/yards README hygiene wave. |
+| [`0015-radius-seam-hardening-instruction.md`](./0015-radius-seam-hardening-instruction.md) | Implementation Plan | Fact-checked critique + revised one-shot agent instruction for Radius/KubeFleet-inspired seam hardening: realization output contract, placement vocabulary, `match.Decided` convergence, app-graph projection, staged progressive rollouts. |
 | [`production-build-backlog.md`](./production-build-backlog.md) | Implementation Plan | HoBo v1 Production Build — staged Linear scope. |
 | [`proof-hardening-backfill.md`](./proof-hardening-backfill.md) | Implementation Plan | Backfill waves bringing the grandfathered draft proofs to the hardened artifact standard. |
 

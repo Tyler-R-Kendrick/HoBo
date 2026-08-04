@@ -16,6 +16,11 @@ import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
 import { allocateAgentWorkspaces } from "./agent-workspaces.js";
 import {
+	runVirtualPane,
+	VIRTUAL_PANE_COMMANDS,
+	virtualPaneCommand,
+} from "./virtual-pane.js";
+import {
 	authLogin,
 	authStatus,
 	clearAuthSession,
@@ -109,6 +114,7 @@ import { describeCodeWorlds } from "./worlds.js";
 
 export const HOBO_CODE_VERBS = [
 	"dispatch",
+	"vshell",
 	"status",
 	"session",
 	"attach",
@@ -254,6 +260,9 @@ function defaultHoboHome(env: NodeJS.ProcessEnv): string {
 /** Flags that consume the next token as their value (strict parsing). */
 const VALUE_FLAGS = new Set([
 	"home",
+	"workspace",
+	"tier",
+	"source",
 	"session",
 	"host",
 	"cwd",
@@ -290,6 +299,7 @@ const BOOL_FLAGS = new Set([
 	"cursor",
 	"dry-run",
 	"shared",
+	"virtual",
 ]);
 
 export class UnknownFlagError extends Error {
@@ -659,6 +669,37 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"See also: hobo-code status · hobo-code session · hobo-code help",
 	],
+	vshell: [
+		"hobo-code vshell — a virtual pane: virtual terminal over a virtual filesystem",
+		"",
+		"What a normal pane gives an agent is a real shell in a real directory.",
+		"rift separates the tree so agents cannot collide, but an agent can still",
+		"curl | sh, read ~/.aws/credentials by absolute path, or rm -rf its way",
+		"out. A virtual pane closes that: bash is interpreted in-process, so a",
+		"command that is not on the allow-list does not exist — there is no",
+		"execve behind it to escape to.",
+		"",
+		"Usage:",
+		"  hobo-code vshell                         virtual pane over the current project",
+		"  hobo-code vshell --workspace DIR         mount a specific directory",
+		"  hobo-code vshell --name claude           name the pane",
+		"  hobo-code vshell --tier T --source DIR   from a rift record (see below)",
+		"",
+		"Inside the pane:",
+		"  commands        list what exists here",
+		"  exit | Ctrl-D   leave",
+		"",
+		"Reads come from the real tree; writes stay in memory until promotion.",
+		"No path resolves outside the mounted root, and there are no network",
+		"commands at all.",
+		"",
+		"--tier/--source come from `hobo-rift create --json`: an overlay workspace",
+		"is mounted inside a namespace, so its path is empty to this process and",
+		"the source is what gets mounted instead.",
+		"",
+		"Not a VM: this bounds what an agent can name and touch, not what",
+		"hostile native code could do.",
+	],
 	mux: [
 		"hobo-code mux — herdr-style multi-pane tmux session",
 		"",
@@ -670,7 +711,12 @@ const VERB_HELP_PLAIN: Record<
 		"  hobo-code mux                     detect agents, create/reuse session 'hobo'",
 		"  hobo-code mux --session work      name the session",
 		"  hobo-code mux --host box.example  run the same panes over ssh",
+		"  hobo-code mux --virtual           panes get a virtual terminal + filesystem",
 		"  hobo-code mux --dry-run           show the plan without touching tmux",
+		"",
+		"--virtual replaces each pane's shell with an interpreter over a virtual",
+		"filesystem: commands off the allow-list do not exist, there is no network",
+		"and no execve, and writes stay off the checkout until promotion.",
 		"",
 		"Detection is evidence-based: a binary on PATH and/or a known config",
 		"directory. See hobo-code agent for what was found and why.",
@@ -1667,6 +1713,31 @@ export async function runHoboCodeCli(
 		});
 	}
 
+	if (verb === "vshell") {
+		// The pane entrypoint. It owns stdin for the life of the pane, so it
+		// returns its own result rather than going through the panel path.
+		const workspace =
+			typeof flags.workspace === "string" && flags.workspace.length > 0
+				? flags.workspace
+				: projectDir;
+		// `--agent` is a boolean flag elsewhere in this CLI, so the pane name
+		// rides on `--name` rather than silently parsing as `true`.
+		const agentId =
+			typeof flags.name === "string" && flags.name.length > 0
+				? flags.name
+				: "agent";
+		await runVirtualPane({
+			agentId,
+			workspace,
+			...(typeof flags.tier === "string" ? { tier: flags.tier } : {}),
+			...(typeof flags.source === "string" ? { source: flags.source } : {}),
+		});
+		return ok("HOBO_CODE_VSHELL", "virtual pane closed", {
+			agentId,
+			workspace,
+		});
+	}
+
 	if (verb === "mux") {
 		const probes = defaultProbes(env);
 		const agents = detectAgents(probes);
@@ -1701,12 +1772,19 @@ export async function runHoboCodeCli(
 		const workspaceFor = new Map(
 			allocation.workspaces.map((w) => [w.agentId, w]),
 		);
+		// A virtualized pane runs the harness's own shell over a virtual
+		// filesystem instead of the agent binary: the point is that the pane
+		// cannot reach anything the allow-list does not name, which a real agent
+		// process would immediately step outside of.
+		const virtualPanes = flags.virtual === true;
 		const targets: MuxTarget[] = agents.map((a) => {
 			const allocated = workspaceFor.get(a.id);
 			return {
 				name: a.id,
 				kind: a.kind === "inference" ? "local-inference" : "local",
-				command: a.command,
+				command: virtualPanes
+					? virtualPaneCommand(a.id, allocated?.path ?? workspace.path)
+					: a.command,
 				cwd: allocated?.path ?? workspace.path,
 				// Namespace-mounted workspaces are unreachable by cd alone.
 				...(allocated?.exec ? { exec: allocated.exec } : {}),
@@ -1747,6 +1825,11 @@ export async function runHoboCodeCli(
 			applied.detail,
 			`workspace · ${workspace.path} (${workspace.source})`,
 			`trees · ${allocation.backend}${allocation.reason ? ` — ${allocation.reason}` : ""}`,
+			...(virtualPanes
+				? [
+						`shell · virtual (${VIRTUAL_PANE_COMMANDS} commands, no network, no execve)`,
+					]
+				: []),
 			...agents.map(
 				(a) => `  ${a.id} · ${workspaceFor.get(a.id)?.path ?? workspace.path}`,
 			),

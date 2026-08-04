@@ -455,6 +455,16 @@ out. Two layers close that:
 Neither is a VM: just-bash runs in-process, so this bounds what an agent can
 *name and touch*, not what hostile native code could do.
 
+```sh
+hobo-code mux --virtual       # every pane gets one
+hobo-code vshell              # one, over the current project
+```
+
+The two layers compose rather than compete: `mux --virtual` runs the pane
+inside `hobo-rift exec`, so the kernel provides copy-on-write isolation from
+other agents and the interpreter provides the command allow-list over that
+tree.
+
 ## Remote panes
 
 `hobo-code mux --host <machine>` reaches only machines **declared** in

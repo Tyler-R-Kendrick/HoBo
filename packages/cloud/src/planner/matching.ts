@@ -7,9 +7,17 @@ import type {
 	PlannerRegistry,
 	ResourceDefinition,
 } from "../registry/catalog.js";
+import {
+	emptyPlacementContext,
+	type PlacementContext,
+	pickPlacementRegion,
+	placementRejection,
+	spreadSurvivors,
+} from "./placement.js";
 
 // Matching (control-plane.md steps 2-5): resolve a Resource Definition per
 // resource via context-matching, negotiate the provider Capability.satisfies,
+// apply the E19 placement-constraint vocabulary as deterministic hard filters,
 // then rank the survivors by the configured objective with a stable tiebreak.
 // Deterministic — no solver, no LLM.
 
@@ -59,7 +67,9 @@ function pickRegion(intent: ResourceIntent, def: ResourceDefinition): string {
 export function matchResource(
 	intent: ResourceIntent,
 	registry: PlannerRegistry,
+	placementContext?: PlacementContext,
 ): MatchOutcome {
+	const context = placementContext ?? emptyPlacementContext();
 	const defs = registry.definitions();
 	// Context-matching by capability class (the resource's `type` -> port).
 	const candidates = defs.filter((def) => def.port === intent.port);
@@ -142,11 +152,70 @@ export function matchResource(
 		return { ok: false, remediation };
 	}
 
-	const ranked = [...accepted].sort((a, b) =>
+	// E19: placement criteria act as deterministic hard filters between
+	// capability negotiation and objective ranking — the lexicographic
+	// `specificity → priority → objective → definition id` ranking (ADR-0033,
+	// ADR-0088) is untouched among the survivors.
+	const criteria = intent.placement;
+	let survivors = accepted;
+	if (criteria !== undefined) {
+		survivors = [];
+		for (const candidate of accepted) {
+			const reason = placementRejection(candidate, criteria, context);
+			if (reason === undefined) survivors.push(candidate);
+			else rejectedCandidates.push({ definitionId: candidate.id, reason });
+		}
+		const spreadKept = spreadSurvivors(survivors, intent, context);
+		if (spreadKept.length !== survivors.length) {
+			const keptIds = new Set(spreadKept.map((c) => c.id));
+			for (const candidate of survivors) {
+				if (!keptIds.has(candidate.id)) {
+					rejectedCandidates.push({
+						definitionId: candidate.id,
+						reason: "placement: spread across yards prefers a less-loaded yard",
+					});
+				}
+			}
+		}
+		survivors = spreadKept;
+		if (survivors.length === 0) {
+			return {
+				ok: false,
+				remediation: {
+					resource: intent.name,
+					code: "placement.unsatisfiable",
+					requiredPort: intent.port,
+					requiredFeatures: intent.require,
+					missing: rejectedCandidates
+						.filter((entry) => entry.reason.startsWith("placement:"))
+						.map((entry) => `${entry.definitionId}: ${entry.reason}`),
+					remediation: `no candidate for port ${intent.port} satisfies the placement criteria for resource ${intent.name}; relax the selectors/affinity or register a provider in the required region/yard`,
+				},
+			};
+		}
+	}
+
+	const ranked = [...survivors].sort((a, b) =>
 		rankByObjective(a, b, intent.objective),
 	);
+	if (criteria?.pickN !== undefined && ranked.length < criteria.pickN.count) {
+		return {
+			ok: false,
+			remediation: {
+				resource: intent.name,
+				code: "placement.cardinality-unsatisfiable",
+				requiredPort: intent.port,
+				requiredFeatures: intent.require,
+				missing: [],
+				remediation: `placement pickN=${criteria.pickN.count} requires at least ${criteria.pickN.count} distinct satisfying candidates for resource ${intent.name}; only ${ranked.length} matched — register more providers advertising port ${intent.port} or lower the cardinality`,
+			},
+		};
+	}
 	const winner = ranked[0] as ResourceDefinition;
-	const region = pickRegion(intent, winner);
+	const region =
+		criteria !== undefined
+			? pickPlacementRegion(intent, winner, context)
+			: pickRegion(intent, winner);
 	const losers = ranked
 		.slice(1)
 		.map((d) => ({ definitionId: d.id, reason: "outranked" }));

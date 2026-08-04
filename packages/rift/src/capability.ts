@@ -1,0 +1,136 @@
+/**
+ * What copy-on-write primitive does *this* machine actually have?
+ *
+ * Upstream rift needs btrfs, reflink-capable XFS, or APFS, and ships
+ * per-platform binaries — on a plain ext4 arm64 box it cannot run at all.
+ * That is not a reason to give agents a shared checkout; it is a reason to
+ * pick the best primitive the kernel will give us.
+ *
+ * The ladder, best first:
+ *
+ * | tier      | mechanism                  | instant | space | in-place writes |
+ * |-----------|----------------------------|---------|-------|-----------------|
+ * | reflink   | FICLONE (btrfs/XFS/APFS)   | yes     | shared| isolated        |
+ * | overlayfs | unprivileged userns overlay| yes     | diff  | isolated        |
+ * | hardlink  | cp -al                     | yes     | shared| **propagate**   |
+ * | copy      | cp -a                      | no      | full  | isolated        |
+ *
+ * Hardlink sits below overlayfs deliberately: `mv` breaks a hardlink safely,
+ * but an in-place append (`>>`, `sed -i` without a temp file) writes straight
+ * through to the original. That is a data-loss shape, so it is only used when
+ * nothing better exists.
+ */
+
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+export type CowTier = "reflink" | "overlayfs" | "hardlink" | "copy";
+
+// The parsed domain form of hobo.rift.v1.Capability: a string-literal tier
+// rather than a numeric enum, so an unhandled tier is a compile error.
+// domain-view: wire form is hobo.rift.v1.Capability; src/wire.ts converts.
+export interface Capability {
+	readonly tier: CowTier;
+	/** Every tier that probed successfully, best first. */
+	readonly available: readonly CowTier[];
+	/** Why the chosen tier, in one line. */
+	readonly reason: string;
+	/** True when writes in a workspace cannot reach the source. */
+	readonly isolatesInPlaceWrites: boolean;
+}
+
+function run(cmd: string, args: readonly string[]): number | null {
+	const r = spawnSync(cmd, [...args], { stdio: "ignore" });
+	return r.status;
+}
+
+/** Can this directory take a FICLONE reflink? */
+export function probeReflink(dir: string): boolean {
+	const probe = mkdtempSync(join(dir, ".rift-probe-"));
+	try {
+		writeFileSync(join(probe, "a"), "x");
+		return run("cp", ["--reflink=always", join(probe, "a"), join(probe, "b")]) === 0;
+	} catch {
+		return false;
+	} finally {
+		rmSync(probe, { recursive: true, force: true });
+	}
+}
+
+/** Can we mount an overlay in an unprivileged user namespace? */
+export function probeOverlayfs(): boolean {
+	const probe = mkdtempSync(join(tmpdir(), "rift-ovl-"));
+	try {
+		for (const d of ["lower", "upper", "work", "merged"]) {
+			mkdtempSync(join(probe, `${d}-`));
+		}
+		const lower = join(probe, "lower");
+		const upper = join(probe, "upper");
+		const work = join(probe, "work");
+		const merged = join(probe, "merged");
+		writeFileSync(join(probe, "mk"), "");
+		const status = run("unshare", [
+			"-Urm",
+			"sh",
+			"-c",
+			`mkdir -p ${lower} ${upper} ${work} ${merged} && mount -t overlay overlay -o lowerdir=${lower},upperdir=${upper},workdir=${work} ${merged}`,
+		]);
+		return status === 0;
+	} catch {
+		return false;
+	} finally {
+		rmSync(probe, { recursive: true, force: true });
+	}
+}
+
+/** Can we hardlink within this directory? */
+export function probeHardlink(dir: string): boolean {
+	const probe = mkdtempSync(join(dir, ".rift-probe-"));
+	try {
+		writeFileSync(join(probe, "a"), "x");
+		return run("cp", ["-al", join(probe, "a"), join(probe, "b")]) === 0;
+	} catch {
+		return false;
+	} finally {
+		rmSync(probe, { recursive: true, force: true });
+	}
+}
+
+export interface ProbeOverrides {
+	readonly reflink?: (dir: string) => boolean;
+	readonly overlayfs?: () => boolean;
+	readonly hardlink?: (dir: string) => boolean;
+}
+
+/** Choose the best tier available for `dir`. */
+export function detectCapability(
+	dir: string,
+	overrides: ProbeOverrides = {},
+): Capability {
+	const reflink = (overrides.reflink ?? probeReflink)(dir);
+	const overlayfs = (overrides.overlayfs ?? probeOverlayfs)();
+	const hardlink = (overrides.hardlink ?? probeHardlink)(dir);
+	const available: CowTier[] = [];
+	if (reflink) available.push("reflink");
+	if (overlayfs) available.push("overlayfs");
+	if (hardlink) available.push("hardlink");
+	available.push("copy");
+
+	const tier = available[0]!;
+	const reason =
+		tier === "reflink"
+			? "filesystem supports FICLONE reflinks"
+			: tier === "overlayfs"
+				? "no reflinks; using unprivileged overlayfs copy-on-write"
+				: tier === "hardlink"
+					? "no reflinks or overlayfs; hardlinks are instant but in-place writes reach the source"
+					: "no copy-on-write primitive available; falling back to a full copy";
+	return {
+		tier,
+		available,
+		reason,
+		isolatesInPlaceWrites: tier !== "hardlink",
+	};
+}

@@ -1690,12 +1690,17 @@ export async function runHoboCodeCli(
 		const workspaceFor = new Map(
 			allocation.workspaces.map((w) => [w.agentId, w]),
 		);
-		const targets: MuxTarget[] = agents.map((a) => ({
-			name: a.id,
-			kind: a.kind === "inference" ? "local-inference" : "local",
-			command: a.command,
-			cwd: workspaceFor.get(a.id)?.path ?? workspace.path,
-		}));
+		const targets: MuxTarget[] = agents.map((a) => {
+			const allocated = workspaceFor.get(a.id);
+			return {
+				name: a.id,
+				kind: a.kind === "inference" ? "local-inference" : "local",
+				command: a.command,
+				cwd: allocated?.path ?? workspace.path,
+				// Namespace-mounted workspaces are unreachable by cd alone.
+				...(allocated?.exec ? { exec: allocated.exec } : {}),
+			} satisfies MuxTarget;
+		});
 		// A remote host turns the same targets into ssh panes — identical shape.
 		const host = typeof flags.host === "string" ? flags.host : undefined;
 		const remoteTargets: MuxTarget[] = host

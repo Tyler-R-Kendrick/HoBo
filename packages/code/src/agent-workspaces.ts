@@ -23,6 +23,20 @@ import {
 	riftRunner,
 } from "./rift.js";
 
+/**
+ * How to enter a workspace that is not a plain directory.
+ *
+ * The sidecar's overlayfs tier mounts inside an unprivileged user namespace,
+ * so its merged path does not exist to anyone outside that namespace — `cd`
+ * would land in an empty directory. Commands must be run through
+ * `hobo-rift exec`, which re-establishes the mount around them.
+ */
+export interface WorkspaceExec {
+	readonly binary: string;
+	readonly root: string;
+	readonly name: string;
+}
+
 export type WorkspaceBackend = "rift" | "git-worktree" | "shared";
 
 export interface AgentWorkspace {
@@ -31,6 +45,8 @@ export interface AgentWorkspace {
 	readonly backend: WorkspaceBackend;
 	/** Why this backend, especially when it is not the preferred one. */
 	readonly note?: string;
+	/** Present when the tree can only be entered through a wrapper. */
+	readonly exec?: WorkspaceExec;
 }
 
 export interface AllocateOptions {
@@ -108,6 +124,17 @@ export async function allocateAgentWorkspaces(
 					agentId,
 					path: created.workspace.path,
 					backend: "rift",
+					// Only the sidecar has tiers that need a wrapper; upstream rift
+					// always hands back a directory you can simply cd into.
+					...(capability.flavor === "hobo" && capability.binary
+						? {
+								exec: {
+									binary: capability.binary,
+									root: workspaceRoot,
+									name: agentId,
+								},
+							}
+						: {}),
 				});
 				continue;
 			}

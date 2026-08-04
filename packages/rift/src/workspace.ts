@@ -1,0 +1,286 @@
+/**
+ * Virtual worktrees, built on whatever this machine can actually do.
+ *
+ * A workspace is a directory an agent can work in without disturbing the
+ * source. How it is produced depends on the tier (see capability.ts):
+ *
+ * - reflink / hardlink / copy → a real directory on disk, ready to `cd` into.
+ * - overlayfs → layers on disk plus a merged path that only exists inside a
+ *   mount namespace, so the caller runs commands through `exec`.
+ *
+ * Regenerable artifacts (node_modules, target, dist, .venv, caches) are
+ * excluded by default, matching rift: they are the bulk of the bytes and the
+ * cheapest thing to rebuild. `--copy-all` keeps them.
+ */
+
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { type Capability, type CowTier, detectCapability } from "./capability.js";
+import {
+	appendEvent,
+	projectWorkspaces,
+	readEvents,
+	type WorkspaceEvent,
+} from "./journal.js";
+import { parseWorkspaceName, type WorkspaceName } from "./names.js";
+
+// public-contract: marker identifying a registered rift root.
+export const RIFT_DIR = ".hobo-rift";
+
+/** Bulk that rebuilds itself; excluded unless the caller asks for everything. */
+export const REGENERABLE = [
+	"node_modules",
+	"target",
+	"dist",
+	"build",
+	"coverage",
+	".venv",
+	".turbo",
+	".next",
+	".cache",
+] as const;
+
+// Carries a branded WorkspaceName (names.ts) and overlay layers present only
+// for the overlay tier — neither of which proto3 can express.
+// domain-view: wire form is hobo.rift.v1.WorkspaceRecord; src/wire.ts converts.
+export interface WorkspaceRecord {
+	readonly name: string;
+	readonly path: string;
+	readonly tier: CowTier;
+	readonly source: string;
+	/** Overlay layers, when the tier needs them. */
+	readonly upper?: string;
+	readonly work?: string;
+	readonly createdAt: string;
+}
+
+// Holds the derived WorkspaceRecord above rather than the generated one.
+// domain-view: wire form is hobo.rift.v1.Registry; src/wire.ts converts.
+export interface Registry {
+	readonly root: string;
+	readonly workspaces: readonly WorkspaceRecord[];
+}
+
+function registryPath(root: string): string {
+	return join(root, RIFT_DIR, "registry.json");
+}
+
+function riftDir(root: string): string {
+	return join(root, RIFT_DIR);
+}
+
+/**
+ * Current workspaces. `registry.json` is a snapshot of the journal projection,
+ * read first because it is one parse instead of N; when it is missing or torn
+ * the journal is replayed instead, so a bad snapshot costs time, not data.
+ */
+export function readRegistry(root: string): Registry {
+	const abs = resolve(root);
+	const file = registryPath(abs);
+	if (existsSync(file)) {
+		try {
+			const snapshot = JSON.parse(readFileSync(file, "utf8")) as Registry;
+			if (Array.isArray(snapshot.workspaces)) {
+				return { root: abs, workspaces: snapshot.workspaces };
+			}
+		} catch {
+			/* fall through to the journal — that is what it is for */
+		}
+	}
+	return { root: abs, workspaces: projectWorkspaces(readEvents(riftDir(abs))) };
+}
+
+/** Rebuild the snapshot from the journal. Exposed as `hobo-rift repair`. */
+export function rebuildRegistry(root: string): Registry {
+	const abs = resolve(root);
+	const registry: Registry = {
+		root: abs,
+		workspaces: projectWorkspaces(readEvents(riftDir(abs))),
+	};
+	writeRegistry(registry);
+	return registry;
+}
+
+/** Append a creation event and refresh the snapshot. */
+function recordCreated(root: string, workspace: WorkspaceRecord): void {
+	record(root, {
+		type: "WorkspaceCreated",
+		at: workspace.createdAt,
+		workspace,
+	});
+}
+
+/** Append the event, then refresh the snapshot it projects to. */
+function record(root: string, event: WorkspaceEvent): void {
+	appendEvent(riftDir(root), event);
+	writeRegistry({
+		root,
+		workspaces: projectWorkspaces(readEvents(riftDir(root))),
+	});
+}
+
+function writeRegistry(registry: Registry): void {
+	mkdirSync(join(registry.root, RIFT_DIR), { recursive: true });
+	writeFileSync(
+		registryPath(registry.root),
+		`${JSON.stringify(registry, null, 2)}\n`,
+		"utf8",
+	);
+}
+
+export function initRoot(root: string): { root: string; created: boolean } {
+	const abs = resolve(root);
+	const created = !existsSync(join(abs, RIFT_DIR));
+	mkdirSync(join(abs, RIFT_DIR, "workspaces"), { recursive: true });
+	if (created) {
+		writeRegistry({ root: abs, workspaces: [] });
+		record(abs, {
+			type: "RootInitialized",
+			at: new Date().toISOString(),
+			root: abs,
+		});
+	}
+	return { root: abs, created };
+}
+
+/** Entries to clone, honouring the regenerable-artifact exclusion. */
+export function entriesToClone(
+	source: string,
+	copyAll: boolean,
+	list: (dir: string) => string[] = (d) => readdirSync(d),
+): string[] {
+	return list(source).filter((entry) => {
+		if (entry === RIFT_DIR) return false;
+		if (copyAll) return true;
+		return !REGENERABLE.includes(entry as (typeof REGENERABLE)[number]);
+	});
+}
+
+function cloneArgs(tier: CowTier): string[] {
+	if (tier === "reflink") return ["-a", "--reflink=always"];
+	if (tier === "hardlink") return ["-al"];
+	return ["-a"];
+}
+
+export interface CreateOptions {
+	readonly root: string;
+	readonly name: string;
+	readonly copyAll?: boolean;
+	readonly capability?: Capability;
+}
+
+export interface CreateResult {
+	readonly workspace: WorkspaceRecord | null;
+	readonly reason?: string;
+}
+
+export function createWorkspace(options: CreateOptions): CreateResult {
+	const root = resolve(options.root);
+	// Parse before the name is ever joined onto a path: an unchecked name is a
+	// traversal primitive, not just bad input.
+	const parsed = parseWorkspaceName(options.name);
+	if (!parsed.ok) {
+		return { workspace: null, reason: `invalid workspace name: ${parsed.reason}` };
+	}
+	const name: WorkspaceName = parsed.value;
+	if (!existsSync(join(root, RIFT_DIR))) initRoot(root);
+	const capability = options.capability ?? detectCapability(root);
+	const base = join(root, RIFT_DIR, "workspaces", name);
+	if (existsSync(base)) {
+		return { workspace: null, reason: `workspace "${name}" already exists` };
+	}
+
+	if (capability.tier === "overlayfs") {
+		// The merged view only exists inside a mount namespace, so we lay down
+		// the layers now and mount them per-exec.
+		const upper = join(base, "upper");
+		const work = join(base, "work");
+		const merged = join(base, "merged");
+		for (const dir of [upper, work, merged]) mkdirSync(dir, { recursive: true });
+		const made: WorkspaceRecord = {
+			name,
+			path: merged,
+			tier: "overlayfs",
+			source: root,
+			upper,
+			work,
+			createdAt: new Date().toISOString(),
+		};
+		recordCreated(root, made);
+		return { workspace: made };
+	}
+
+	mkdirSync(base, { recursive: true });
+	for (const entry of entriesToClone(root, options.copyAll === true)) {
+		const copied = spawnSync(
+			"cp",
+			[...cloneArgs(capability.tier), join(root, entry), join(base, entry)],
+			{ stdio: "ignore" },
+		);
+		if (copied.status !== 0) {
+			rmSync(base, { recursive: true, force: true });
+			return {
+				workspace: null,
+				reason: `clone failed for "${entry}" using ${capability.tier}`,
+			};
+		}
+	}
+	const made: WorkspaceRecord = {
+		name,
+		path: base,
+		tier: capability.tier,
+		source: root,
+		createdAt: new Date().toISOString(),
+	};
+	recordCreated(root, made);
+	return { workspace: made };
+}
+
+export function removeWorkspace(root: string, name: string): boolean {
+	const abs = resolve(root);
+	const parsed = parseWorkspaceName(name);
+	if (!parsed.ok) return false;
+	const registry = readRegistry(abs);
+	const existing = registry.workspaces.find((w) => w.name === parsed.value);
+	const base = join(abs, RIFT_DIR, "workspaces", parsed.value);
+	if (existsSync(base)) rmSync(base, { recursive: true, force: true });
+	record(abs, {
+		type: "WorkspaceRemoved",
+		at: new Date().toISOString(),
+		name: parsed.value,
+	});
+	return existing !== undefined;
+}
+
+/**
+ * Build the command that runs `command` inside a workspace.
+ *
+ * For directory-backed tiers this is just a `cd`. For overlayfs it enters a
+ * user namespace, mounts the overlay, and execs — which is what makes the
+ * isolation real without needing root.
+ */
+export function execCommand(
+	record: WorkspaceRecord,
+	command: string,
+): string {
+	if (record.tier !== "overlayfs") {
+		return `cd ${JSON.stringify(record.path)} && ${command}`;
+	}
+	const mount = `mount -t overlay overlay -o lowerdir=${record.source},upperdir=${record.upper},workdir=${record.work} ${record.path}`;
+	const inner = `${mount} && cd ${JSON.stringify(record.path)} && ${command}`;
+	return `unshare -Urm sh -c ${JSON.stringify(inner)}`;
+}
+
+export function runInWorkspace(
+	record: WorkspaceRecord,
+	command: string,
+): Promise<number | null> {
+	return new Promise((resolvePromise) => {
+		const child = spawn("sh", ["-c", execCommand(record, command)], {
+			stdio: "inherit",
+		});
+		child.on("error", () => resolvePromise(null));
+		child.on("exit", (code) => resolvePromise(code));
+	});
+}

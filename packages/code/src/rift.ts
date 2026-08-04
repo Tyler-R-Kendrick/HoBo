@@ -23,11 +23,46 @@ export interface RiftRunner {
 	) => Promise<{ code: number | null; stdout: string; stderr: string }>;
 }
 
-export function riftRunner(): RiftRunner {
+/**
+ * Binaries we will drive, in preference order.
+ *
+ * `hobo-rift` is our sidecar (`packages/rift`): it keeps upstream's CLI shape
+ * but adds an unprivileged-overlayfs tier, so it works on the ext4 machines
+ * where upstream — which needs btrfs/XFS-reflink/APFS and ships no binary for
+ * every platform — cannot run at all.
+ */
+export const RIFT_BINARIES = ["hobo-rift", "rift"] as const;
+
+export type RiftFlavor = "hobo" | "upstream";
+
+export interface RiftBinary {
+	readonly path: string;
+	readonly flavor: RiftFlavor;
+}
+
+/** First rift-compatible binary on PATH, sidecar preferred. */
+export function resolveRiftBinary(
+	env: NodeJS.ProcessEnv = process.env,
+): RiftBinary | null {
+	const dirs = (env.PATH ?? "").split(delimiter).filter(Boolean);
+	for (const name of RIFT_BINARIES) {
+		for (const dir of dirs) {
+			const candidate = join(dir, name);
+			if (existsSync(candidate)) {
+				return { path: candidate, flavor: name === "hobo-rift" ? "hobo" : "upstream" };
+			}
+		}
+	}
+	return null;
+}
+
+export function riftRunner(
+	binary: string = resolveRiftBinary()?.path ?? "rift",
+): RiftRunner {
 	return {
 		run: (args, cwd) =>
 			new Promise((resolve) => {
-				const child = spawn("rift", [...args], {
+				const child = spawn(binary, [...args], {
 					cwd,
 					stdio: ["ignore", "pipe", "pipe"],
 				});
@@ -52,16 +87,13 @@ export function riftRunner(): RiftRunner {
 export function riftOnPath(
 	env: NodeJS.ProcessEnv = process.env,
 ): string | null {
-	for (const dir of (env.PATH ?? "").split(delimiter).filter(Boolean)) {
-		const candidate = join(dir, "rift");
-		if (existsSync(candidate)) return candidate;
-	}
-	return null;
+	return resolveRiftBinary(env)?.path ?? null;
 }
 
 export interface RiftCapability {
 	readonly usable: boolean;
 	readonly binary: string | null;
+	readonly flavor?: RiftFlavor;
 	readonly reason?: string;
 }
 
@@ -77,27 +109,34 @@ export async function probeRift(
 	runner: RiftRunner,
 	env: NodeJS.ProcessEnv = process.env,
 ): Promise<RiftCapability> {
-	const binary = riftOnPath(env);
-	if (!binary) {
+	const found = resolveRiftBinary(env);
+	if (!found) {
 		return {
 			usable: false,
 			binary: null,
-			reason: "rift is not installed (npm install -g rift-snapshot)",
+			reason: "no rift binary on PATH (build packages/rift, or npm install -g rift-snapshot)",
 		};
 	}
+	const { path: binary, flavor } = found;
 	const probe = await runner.run(["list"], workspace);
 	const output = `${probe.stdout}${probe.stderr}`;
 	if (/unable to locate the rift binary/i.test(output)) {
 		return {
 			usable: false,
 			binary,
+			flavor,
 			reason: `rift ships no binary for this platform — ${output.trim().split("\n")[0]}`,
 		};
 	}
 	if (probe.code === null) {
-		return { usable: false, binary, reason: "rift could not be executed" };
+		return {
+			usable: false,
+			binary,
+			flavor,
+			reason: "rift could not be executed",
+		};
 	}
-	return { usable: true, binary };
+	return { usable: true, binary, flavor };
 }
 
 export interface RiftWorkspace {

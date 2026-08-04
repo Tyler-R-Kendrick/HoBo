@@ -91,6 +91,8 @@
   "devDependencies": {
     "@ast-grep/cli": "^0.44.0",
     "@biomejs/biome": "^2.5.2",
+    "@bufbuild/buf": "1.71.0",
+    "@bufbuild/protoc-gen-es": "2.12.1",
     "@changesets/cli": "^2.31.0",
     "@cucumber/cucumber": "^13.0.0",
     "@google/design.md": "^0.4.0",

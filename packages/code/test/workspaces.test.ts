@@ -13,7 +13,13 @@ import {
 	allocateAgentWorkspaces,
 	findGitRoot,
 } from "../src/agent-workspaces.js";
-import { parseCreatedPath, probeRift, type RiftRunner } from "../src/rift.js";
+import {
+	parseCreatedPath,
+	probeRift,
+	resolveRiftBinary,
+	type RiftRunner,
+} from "../src/rift.js";
+import { targetCommand } from "../src/mux.js";
 import { findWorkspaceRoot } from "../src/workspace.js";
 
 const dirs: string[] = [];
@@ -96,7 +102,7 @@ describe("rift capability", () => {
 			{ PATH: "" },
 		);
 		expect(cap.usable).toBe(false);
-		expect(cap.reason).toMatch(/not installed/);
+		expect(cap.reason).toMatch(/no rift binary on PATH/);
 	});
 });
 
@@ -151,7 +157,7 @@ describe("per-agent workspaces", () => {
 		});
 		expect(result.backend).toBe("git-worktree");
 		expect(cuts).toEqual([repo]);
-		expect(result.reason).toMatch(/not installed/);
+		expect(result.reason).toMatch(/no rift binary on PATH/);
 		expect(result.workspaces[0]!.path).toBe(join(fallback, "claude"));
 	});
 
@@ -173,5 +179,59 @@ describe("per-agent workspaces", () => {
 		mkdirSync(deep, { recursive: true });
 		expect(findGitRoot(deep)).toBe(repo);
 		expect(findGitRoot("/nowhere/at/all", () => false)).toBeNull();
+	});
+});
+
+describe("sidecar preference", () => {
+	it("picks hobo-rift over upstream rift when both are on PATH", () => {
+		const dir = mkdtempSync(join(tmpdir(), "riftbin-"));
+		for (const name of ["rift", "hobo-rift"]) {
+			writeFileSync(join(dir, name), "#!/bin/sh\n", { mode: 0o755 });
+		}
+		const found = resolveRiftBinary({ PATH: dir });
+		// Upstream needs btrfs/XFS-reflink/APFS and ships no binary for every
+		// platform; the sidecar works where it cannot, so it must win.
+		expect(found?.flavor).toBe("hobo");
+		expect(found?.path).toBe(join(dir, "hobo-rift"));
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("falls back to upstream rift when the sidecar is absent", () => {
+		const dir = mkdtempSync(join(tmpdir(), "riftbin-"));
+		writeFileSync(join(dir, "rift"), "#!/bin/sh\n", { mode: 0o755 });
+		expect(resolveRiftBinary({ PATH: dir })?.flavor).toBe("upstream");
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("reports no binary rather than guessing one", () => {
+		expect(resolveRiftBinary({ PATH: "" })).toBeNull();
+	});
+});
+
+describe("entering a namespace-mounted workspace", () => {
+	it("runs the pane command through hobo-rift exec, not cd", () => {
+		// `cd` into an overlay merged path from outside the user namespace
+		// lands in an empty directory, so the agent would see no repo at all.
+		const wrapped = targetCommand({
+			name: "claude",
+			kind: "local",
+			command: "claude",
+			cwd: "/ws/.hobo-rift/workspaces/claude/merged",
+			exec: { binary: "/usr/bin/hobo-rift", root: "/ws", name: "claude" },
+		});
+		expect(wrapped).toContain("/usr/bin/hobo-rift exec");
+		expect(wrapped).toContain('--name "claude"');
+		expect(wrapped).not.toContain("cd \"/ws/.hobo-rift");
+	});
+
+	it("still plain-cds for ordinary directory workspaces", () => {
+		const plain = targetCommand({
+			name: "codex",
+			kind: "local",
+			command: "codex",
+			cwd: "/ws/trees/codex",
+		});
+		expect(plain).toContain('cd "/ws/trees/codex"');
+		expect(plain).not.toContain("hobo-rift exec");
 	});
 });

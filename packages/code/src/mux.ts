@@ -27,6 +27,16 @@ export interface MuxTarget {
 	readonly host?: string;
 	/** Working directory for local targets. */
 	readonly cwd?: string;
+	/**
+	 * Run the command through a workspace wrapper instead of `cd`-ing to `cwd`.
+	 * Needed for namespace-mounted virtual worktrees, whose path is invisible
+	 * outside the mount.
+	 */
+	readonly exec?: {
+		readonly binary: string;
+		readonly root: string;
+		readonly name: string;
+	};
 }
 
 export interface MuxPlan {
@@ -74,6 +84,12 @@ export function targetCommand(target: MuxTarget): string {
 		return keepPaneOpen(
 			target.name,
 			`ssh -t ${target.host} ${JSON.stringify(target.command)}`,
+		);
+	}
+	if (target.exec) {
+		return keepPaneOpen(
+			target.name,
+			`${target.exec.binary} exec --root ${JSON.stringify(target.exec.root)} --name ${JSON.stringify(target.exec.name)} -- ${target.command}`,
 		);
 	}
 	const prefix = target.cwd ? `cd ${JSON.stringify(target.cwd)} && ` : "";

@@ -47,7 +47,8 @@ const here = sectionFor(path.replace(href("/"), "/"), nav);
 				</svg>
 			</a>
 			<details class="palette-picker">
-				<summary class="icon-btn" aria-label="Choose a design" title="Design">
+				<summary class="icon-btn picker-summary" aria-label="Choose a design" title="Design">
+					<span class="picker-word">Design</span>
 					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 						<circle cx="13.5" cy="6.5" r="1.5"></circle><circle cx="17.5" cy="10.5" r="1.5"></circle>
 						<circle cx="8.5" cy="7.5" r="1.5"></circle><circle cx="6.5" cy="12.5" r="1.5"></circle>
@@ -55,20 +56,25 @@ const here = sectionFor(path.replace(href("/"), "/"), nav);
 					</svg>
 				</summary>
 				<div class="palette-menu" role="group" aria-label="Design">
+					{/* Captions say what you GET, not the CSS that makes it — "paper
+					    planes, hard shadows" was judged tokens-speak by the persona
+					    review. And the current choice is marked: an unlabeled menu
+					    with no state forced people to memorise what each design looks
+					    like to know where they were. */}
 					<button type="button" data-set-design="ink">
-						Ink <span>sticker cards, thick line</span>
+						Ink <span>the classic — black ink on white paper</span>
 					</button>
 					<button type="button" data-set-design="broadsheet">
-						Broadsheet <span>rules, no boxes, narrow column</span>
+						Broadsheet <span>reads like a newspaper</span>
 					</button>
 					<button type="button" data-set-design="titlecard">
-						Title Card <span>centred, huge type, wide intervals</span>
+						Title Card <span>big centred cinema type</span>
 					</button>
 					<button type="button" data-set-design="ledger">
-						Ledger <span>tight, tabular, hairline</span>
+						Ledger <span>compact and technical</span>
 					</button>
 					<button type="button" data-set-design="cutout">
-						Cutout <span>paper planes, hard shadows</span>
+						Cutout <span>paper stickers with hard shadows</span>
 					</button>
 				</div>
 			</details>

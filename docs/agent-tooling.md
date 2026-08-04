@@ -46,8 +46,13 @@ workflow — `shape`, `critique`, `audit`, `polish`, plus dials like `bolder`,
 `quieter`, `colorize`. **No API keys**, but it is **not** offline — see egress
 below.
 - **Network egress (three paths, one of them automatic):**
-  - `scripts/context.mjs` calls `impeccable.style/api/version` on the skill's
-    boot/hook path — **on by default**, throttled to once a day. Disabled here
+  - `scripts/context.mjs` calls `impeccable.style/api/version` when it is run
+    **as a command** (`node scripts/context.mjs`, i.e. the skill's context
+    step) — on by default, throttled to once a day. The per-edit **hook does
+    not fetch**: `hook-lib.mjs` imports only `extractPlatform`/`loadContext`,
+    and the fetch sits behind `cli()`, which runs only when the file is invoked
+    as a script. Measured 0 requests from `hook.mjs` in both repo root and a
+    subdirectory, including the absolute-path Copilot variant. Disabled here
     by **`IMPECCABLE_NO_UPDATE_CHECK=1`**, set in
     [`../.claude/settings.json`](../.claude/settings.json) `env`. That is the
     control that actually holds: upstream reads
@@ -57,6 +62,13 @@ below.
     the real code path with a stubbed `fetch` (subdirectory: 1 request with the
     config alone, 0 with the env var). Both are in place. Run
     `npx impeccable check` deliberately instead.
+  - **Residual, stated rather than papered over:** `.claude/settings.json` is
+    Claude Code's file. A **Codex / Cursor / Copilot** session that runs an
+    impeccable command from a subdirectory gets neither control and will still
+    make that once-a-day request. `.codex/config.toml` has no env facility and
+    direnv is not used in this repo, so there is no mechanism here that would
+    close it without inventing one. The exposure is a version string, once a
+    day, from those harnesses only.
   - `scripts/generate-image.mjs` posts to `api.openai.com` — opt-in, only when
     you invoke it, and it needs your own key.
   - `scripts/concept-seed.mjs` calls `impeccable.style/api/roll` — opt-in.

@@ -5,8 +5,8 @@ the file name is the slot, and the slot fixes where it sits and how fast it goes
 
 | File | Layer | Speed (ground = 1) | Night | Shipped |
 |---|---|---|---|---|
-| `sky.png` | furthest back | 0.12x | invert | — |
-| `hills.png` | distant horizon | 0.40x | invert | — |
+| `sky.png` | furthest back | 0.12x | invert | yes |
+| `hills.png` | distant horizon | 0.40x | invert | yes |
 | `poles.png` | telephone poles | 0.55x | rim | yes |
 | `trail.png` | the ground, behind Bo | 1.00x | invert | yes |
 | `trail-front.png` | the near bank, in front of Bo | 1.00x | invert | yes |
@@ -75,3 +75,43 @@ the Bo sprite sheets use — 2.6MB of source crops became ~95KB of plates.
 Grayscale is not incidental — it is what makes the night theme free. Plates take
 `filter: invert(1)` in dark mode, which is exactly this design system's ink and
 paper inversion.
+
+## How `sky` and `hills` were made
+
+Both slots sat empty until the trail band had a real horizon. The drawings are
+generated — Higgsfield `nano_banana_2`, 21:9, 2k — and then put through the same
+normalization the reference plates got. **Generation is the easy half.** A model
+will not give you a tile, and the four steps that turn a picture into one are
+where all the failure modes live:
+
+1. **Ink to alpha.** Paper level is measured off the corners, not assumed white:
+   these render on textured off-white stock, so a fixed threshold either eats the
+   lightest linework or keeps the paper grain as faint ink. Coverage is then
+   posterized to the same 6 levels as the Bo sheets.
+2. **Denoise before measuring.** The hills drawing had one speck in the top-right
+   past the end of the hill band. Taking the outermost inked pixel put the crop
+   edge 32px beyond where the band stopped, and mirroring turned that margin into
+   a **64px hole sitting exactly on the seam** — a gap in the horizon, once per
+   loop. Thresholding on row/column ink weight does not fix it: on the sky plate
+   one dense ridge line dwarfs the faint clouds, so any threshold high enough to
+   reject the speck also crops the cloud tops. Ink weight is the wrong axis; size
+   is the right one. Components under ~0.02% of the frame are dropped, *then* the
+   box is measured.
+3. **Inset, then mirror `A A'` without repeating the edge columns.** A drawing
+   ends — the hill mass stops at a hard vertical edge where the pen lifted. Fold
+   on that column and the reflection turns a straight border into a spike, so the
+   crop is pulled 3% inward first and the fold lands on organic contour. The
+   reflection runs `c0..c(n-1)` then `c(n-2)..c1`: a plain reverse emits `c(n-1)`
+   twice at the fold and `c0` twice across the wrap, and a doubled column of a
+   near-vertical stroke draws as a hairline down the join — twice per loop, which
+   is the artifact mirroring exists to avoid. Wrap continuity is then exact by
+   construction, not by eye: the last column *is* `c1`, measured at 0/255.
+4. **Place at the scene position.** `sky` spans scene units 30–150, `hills`
+   120–199. 199 is deliberate: the ground plane starts at 198, so the hills' flat
+   base lands on the horizon rather than floating above it. Seating it lower does
+   not work — the trail is line art and never exceeds ~45% coverage, so a hill
+   mass extended behind it shows through the gaps as a black smear.
+
+The result is 38KB for both. If you replace either drawing, the numbers that
+matter are the scene units above and the 6-level posterization; everything else
+is recoverable by eye.

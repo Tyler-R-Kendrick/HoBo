@@ -196,6 +196,52 @@ readable; do not invent neon palettes.
 **Do not:** flat brand gradients, purple AI glow, glassmorphism, or full-color
 product illustration.
 
+### The five palettes
+
+Colour is a **second axis**, orthogonal to day/night. `data-theme` stays the
+inversion pair; `data-palette` re-inks the paper and the line. Absent the
+attribute you get `ink` — the canonical Steamboat Willie black-and-white — so
+the default is the *absence* of a choice, not a choice.
+
+| Palette | `data-palette` | Paper / ink (day) | Character |
+|---|---|---|---|
+| **Ink on Paper** | *(none)* | `#ffffff` / `#101010` | The canonical. Maximum MA — the page is mostly empty on purpose. |
+| **Dusk Meadow** | `dusk` | `#fbf5e9` / `#2e2418` | Ghibli golden hour. Warm paper, sepia line. |
+| **Rain Glass** | `rain` | `#f2f5f7` / `#1b2732` | A downpour seen through glass. Cool, quiet, indigo. |
+| **Cel Bloom** | `cel` | `#f7f0e1` / `#241a12` | Cuphead title card. Card stock and vermillion. |
+| **Moss Quiet** | `moss` | `#f1f4ee` / `#1e2a1c` | Forest floor. The softest of the five. |
+
+Every palette overrides the same sixteen tokens and each is an inversion pair,
+so night is never a separately-tuned palette — it is the same decision, flipped.
+
+**The Same Contract Rule.** Every palette carries exactly one paper, one ink,
+and two rare accents (`spark`, `go`). A palette that needs a third accent is not
+a theme, it is a different design system. This is what lets The One Voice Rule
+survive a switch: the accents stay rare in all five, so rarity keeps meaning
+what it meant.
+
+**The Absent Default Rule.** Selecting `ink` *removes* `data-palette` rather
+than setting it. The canonical look is what you get by not choosing, which keeps
+a stored preference from quietly becoming a fifth thing to maintain.
+
+**A palette declares 16 values; the rest derive.** `--ink`, `--link`,
+`--meadow`, `--sky` and their `-soft` pairs, plus `--code-bg` and `--hero-grid`,
+are `var()` indirections onto `--text`, `--accent` and `--bg` — so re-inking the
+paper re-inks the links, rules and code blocks automatically. This is not a
+convenience: when those eight were written out per-theme instead, every palette
+silently inherited the ink theme's pure-black `#101010` links, and Dusk shipped
+warm paper with cold links. A palette that has to restate a derived token is a
+sign the token belongs in the declared set, not that it should be overridden.
+
+The genuinely shared tokens are `--ember-a/b/c`, `--glow` and `--shadow`: a
+neutral depth ramp that is deliberately palette-independent, because shadow is
+paper behaviour, not ink colour.
+
+Palettes are offered behind a disclosure, never as five buttons in the bar. The
+designer persona's clutter thresholds are the lowest available and
+`junior-frontend` treats choice overload as a hard budget — so five options may
+exist, but they may not shout. Closed, the picker costs one icon.
+
 ## Typography
 
 - **Display (h1–h3):** Chewy — rubberhose title card, slightly uneven friendly letterforms.
@@ -221,6 +267,153 @@ Not Material elevation. Use **sticker depth**:
 - Thick 2–3px borders in `ink` / `border-strong`.
 - Film grain overlay sits above the whole page (non-interactive).
 - Parallax trail band uses **supplied plates**, not CSS-drawn hills.
+
+## Motion
+
+Rubberhose is an *animation* idiom. A still rubberhose surface is a poster of
+one — the bounce is the point, and motion here is identity, not decoration.
+
+But the persona who owns this identity declares `prefers-reduced-motion`, and
+two more declare `cognitive-load-sensitive`. So the rule is not "animate less".
+It is: **every motion must survive being removed.** If taking the animation away
+breaks comprehension, the animation was carrying information that should have
+been in the layout.
+
+### The curve
+
+**Two curves, and only two.**
+
+| Token | Curve | Peak | For |
+|---|---|---|---|
+| `--ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | 1.000 | Everything. Decelerates hard and stops clean. |
+| `--ease-boing` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | 1.098 | The bounce: overshoots and settles — squash-and-stretch expressed as a curve. |
+
+This entry used to claim there was one token and that `--ease` overshot. Neither
+was true: `--ease` peaks at exactly 1.0 and never overshoots, while three
+hardcoded copies of the real bounce curve sat in the stylesheet unnamed and
+unaccounted for. They are the same curve, so they are now one token.
+
+Reach for `--ease` by default. `--ease-boing` is for motion whose *job* is to
+read as cartoon physics — the postcard bob, the theme toggle, scene hovers — and
+a third curve is not available. Anything that seems to need one is either not
+rubberhose or is a special case that must say why in a comment.
+
+A generic design linter will flag the bounce as dated and prescribe exponential
+easing. On a flat SaaS surface that advice is correct. Here it is backwards:
+[ADR-0149](../docs/design/adr/07-portability-extensibility.md#adr-0149) makes the
+Fleischer identity binding, and the overshoot **is** the identity. Do not
+quiet that warning by flattening the curve.
+
+**Durations.** Three steps, and no fourth:
+
+| Token | Value | For |
+|---|---|---|
+| `--dur-tap` | 120ms | State you caused: press, toggle, focus |
+| `--dur-move` | 220ms | Something travelling: hover lift, disclosure |
+| `--dur-scene` | 420ms | Something arriving: page-level reveal |
+
+These govern **response** motion — transitions and entrances, anything the user
+waits through. A rubberhose gag lands in under half a second; a UI that takes
+longer is not being charming, it is being slow.
+
+**Ambient loops are exempt, and the exemption is finite.** A looping animation
+is scenery: nobody waits for it to finish, so a duration budget aimed at
+perceived latency does not apply. Every current exception, in full — anything
+not on this list is a bug:
+
+| Animation | Duration | Why it is exempt |
+|---|---|---|
+| `boing` / `boing-sm` | 550ms / 450ms | The signature bounce. Overshoot needs the settle; clipped to 420ms it reads as a twitch, not a squash. |
+| `postcard-sway` | 2.2s | Loop — homepage postcard drift |
+| `plx-cloud-squash` | 3.1s | Loop — parallax cloud |
+| `lost-bob` | 3.6s | Loop — Bo idling on the 404 |
+| `blink` | 7.3s | Loop — Bo's eyes |
+
+`boing` is the honest one to watch: it is response motion that exceeds the cap
+on purpose. Two named exceptions is a style; a third would mean the cap is
+fiction and the table should be rewritten instead of extended.
+
+### MA (間) — the interval is the animation
+
+The Japanese `MA` is not empty time, it is *charged* time: the pause that gives
+the next beat meaning. Applied here:
+
+**The Rest Rule.** A sequence of entering elements is staggered by **60ms**
+(`--stagger`), and the stagger is the content. Three cards arriving together is
+a state change; three cards arriving 60ms apart is a sentence. Never stagger
+more than five things — past that it stops reading as rhythm and starts reading
+as lag. *Implemented on the palette menu* (`.palette-picker[open] .palette-menu
+button`), which has exactly five items — the rule's ceiling, which is why those
+delays are written out rather than generated.
+
+**The Held Breath Rule.** Anything that reveals on scroll waits until it is
+**15% into the viewport**, not at the edge. The gap between "it could animate"
+and "it does" is the MA. Triggering at the boundary makes the page feel twitchy.
+*Implemented* as `animation-range: entry 15% entry 60%` on `.card` / `.scene`.
+This rule was documented before it was true — the range began at `entry 0%`,
+i.e. exactly the boundary the rule forbids — so treat an unimplemented rule here
+as a defect in the stylesheet, not a nicety in the doc.
+
+**The Empty Frame Rule.** Motion never fills space that was doing work by being
+empty. If an animation's job is to draw the eye to a region, the region earns
+attention by having margin around it, not by moving.
+
+### Reduced motion — parity, not removal
+
+`@media (prefers-reduced-motion: reduce)` must leave the surface **complete**,
+not degraded:
+
+- Transitions collapse to `none`. Elements land in their final state — they do
+  not skip a step or appear un-styled.
+- Looping and idle animation (Bo's idle, film grain drift, parallax) **stops
+  entirely**. It is ambient, so its removal costs nothing.
+- Anything that communicates state — focus rings, open/closed, loading — keeps
+  communicating it, by colour, outline or position instead of movement.
+- Scroll-triggered reveals become *already revealed*. Never leave content at
+  `opacity: 0` behind a trigger that reduced-motion disabled: that is how a
+  motion preference turns into a blank page.
+
+**Two limits of the blanket rule, stated rather than papered over.**
+
+*Delay is not duration.* Zeroing `animation-duration` leaves `animation-delay`
+untouched, and an element with `both` fill holds its **backwards** fill for the
+whole delay — so a staggered sequence still moves under reduced motion, just in
+one jump per step instead of a slide. The Rest Rule's five buttons did exactly
+that for 240ms. The reduced-motion block therefore zeroes `animation-delay` and
+`transition-delay` as well. Any new stagger inherits that; none should re-add a
+delay inside the reduced-motion block.
+
+*Scroll timelines ignore duration entirely.* The blanket
+`animation-duration: 0.01ms !important` does *not* stop a scroll-linked
+animation: `animation-timeline: view()` is driven by scroll position, not by
+time, so `rise-in` still runs under `prefers-reduced-motion`.
+It is survivable only because that keyframe animates `translate` and nothing
+else — the content is at worst offset by 34px, never hidden. **This is exactly
+why the rules above forbid opacity in a scroll reveal**: the mechanism that is
+supposed to disable it cannot. Any scroll-linked animation that touched opacity
+would be invisible to precisely the users who asked for less motion.
+
+**The audit test:** set `prefers-reduced-motion: reduce`, disable JavaScript,
+and load the page. Every piece of content must be present and legible. If
+anything is missing, the motion was load-bearing and the layout is wrong.
+
+### Parallax
+
+The trail parallax is the one place scroll drives motion. It is **ambient by
+definition**: it carries no information, so under reduced motion it simply
+stops, and nothing is lost. Layers move at fractions of scroll — never faster
+than scroll itself, which reads as a glitch rather than depth.
+
+### What motion may not do
+
+- **Don't** animate `width`, `height`, `top` or `left`. Transform and opacity
+  only; anything else invites layout thrash on a long docs page.
+- **Don't** animate on page load except for the one scene-level reveal. A page
+  that performs on arrival delays reading.
+- **Don't** use motion as the only signal for anything. Colour, position or text
+  must say it too.
+- **Don't** loop anything in the reading column. Ambient motion belongs in the
+  margins — literally.
 
 ## Shapes
 

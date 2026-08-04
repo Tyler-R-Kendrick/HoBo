@@ -251,7 +251,7 @@ const preloadSheet = href(`/parallax/${sheet}`);
 		will-change: transform;
 	}
 
-	:global(:root[data-theme="light"]) .plx-layer {
+	:global(:root:not([data-theme="dark"])) .plx-layer {
 		background-image: var(--art-light);
 	}
 
@@ -264,7 +264,7 @@ const preloadSheet = href(`/parallax/${sheet}`);
 		animation-name: plx-scroll-plate;
 	}
 
-	:global(:root[data-theme="light"]) .plx-plate {
+	:global(:root:not([data-theme="dark"])) .plx-plate {
 		background-image: var(--plate);
 	}
 
@@ -285,20 +285,20 @@ const preloadSheet = href(`/parallax/${sheet}`);
 	   same brilliant white and flattening the depth the parallax just built.
 	   By day none of this applies: paper is behind everything and distance
 	   already reads without help. */
-	:global(:root:not([data-theme="light"])) .plx-layer.is-invert {
+	:global(:root[data-theme="dark"]) .plx-layer.is-invert {
 		filter: invert(1) brightness(var(--tone, 1));
 	}
 
 	/* Keeping means keeping the ink, not keeping the brightness — a cloud that
 	   stays paper-white is a cut-out pasted on the night. */
-	:global(:root:not([data-theme="light"])) .plx-layer.is-keep {
+	:global(:root[data-theme="dark"]) .plx-layer.is-keep {
 		opacity: var(--tone, 1);
 	}
 
 	/* A solid silhouette stays solid and gets an ink outline instead — the
 	   same four-way rim Bo takes, so a black post reads against a black sky
 	   without turning into a white one. */
-	:global(:root:not([data-theme="light"])) .plx-layer.is-rim {
+	:global(:root[data-theme="dark"]) .plx-layer.is-rim {
 		/* Scaled off the tile unit rather than fixed: a pole shaft is only a
 		   few pixels across at this band height, so a rim that does not shrink
 		   with the band eats the black it is supposed to be outlining. */
@@ -414,7 +414,7 @@ const preloadSheet = href(`/parallax/${sheet}`);
 	}
 
 	/* At night the soot silhouette gets the cream rim the SVG Bo already has. */
-	:global(:root:not([data-theme="light"])) .plx-bo {
+	:global(:root[data-theme="dark"]) .plx-bo {
 		filter: drop-shadow(1.2px 0 0 var(--ink)) drop-shadow(-1.2px 0 0 var(--ink))
 			drop-shadow(0 1.2px 0 var(--ink)) drop-shadow(0 -1.2px 0 var(--ink));
 	}

@@ -1,6 +1,6 @@
 ---
 import Base from "./Base.astro";
-import { nav } from "../nav";
+import { nav, groupsOf, sectionFor } from "../nav";
 import { href } from "../lib/url";
 
 interface Props {
@@ -14,9 +14,19 @@ interface Props {
 const { frontmatter, rawContent } = Astro.props;
 const path = Astro.url.pathname;
 const normalize = (p: string) => p.replace(/\/$/, "");
-const section = nav.find((group) =>
-	group.items.some((item) => path.startsWith(href(item.slug))),
-);
+// The sidebar shows ONE section, not all fourteen groups. Rendering every
+// group on every page produced a 109-link, ~4000px column in a 236px rail —
+// byte-identical to the footer, so a docs page showed the same 109 links
+// twice. `sectionFor` resolves cross-listed pages by namespace root rather
+// than by who lists them, so /reference/session-replay/ — listed under both
+// Observability and Reference — is badged Reference, the namespace it lives in.
+const navSection = sectionFor(path.replace(href("/"), "/"), nav);
+const sectionGroups = navSection ? groupsOf(navSection, nav) : [];
+// A page can legitimately belong to no section — /legal/ is one. It used to
+// fall back to Learn, which badged a legal notice "Learn" and rendered an empty
+// 236px rail beside a "Docs menu ▾" button that opened nothing. An empty rail
+// reads as broken, so a sectionless page drops the rail and says "Docs".
+const section = navSection;
 const current = (slug: string) =>
 	normalize(path) === normalize(href(slug)) ? "page" : undefined;
 
@@ -31,7 +41,8 @@ const pageMarkdown = rawContent
 	title={`${frontmatter.title} · HoBo docs`}
 	description={frontmatter.description}
 >
-	<div class="container docs">
+	<div class:list={["container", "docs", sectionGroups.length === 0 && "docs-no-rail"]}>
+		{sectionGroups.length > 0 && (
 		<div>
 			<button
 				class="docs-sidebar-toggle"
@@ -42,7 +53,7 @@ const pageMarkdown = rawContent
 			</button>
 			<aside class="docs-sidebar" id="docs-sidebar">
 				{
-					nav.map((group) => (
+					sectionGroups.map((group) => (
 						<nav aria-label={group.label}>
 							<p class="nav-label">{group.label}</p>
 							<ul>
@@ -59,6 +70,7 @@ const pageMarkdown = rawContent
 				}
 			</aside>
 		</div>
+		)}
 		<article class="prose">
 			<div class="docs-meta">
 				<span class="badge">{section?.label ?? "Docs"}</span>

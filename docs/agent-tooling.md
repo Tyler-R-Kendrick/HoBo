@@ -39,6 +39,126 @@ A **skills collection** of engineering disciplines, installed via the `skills` C
 A **skill + always-on rule** that compresses the agent's **output** (~65–87% fewer tokens) while preserving technical accuracy. Commands: `/caveman [lite|full|ultra|wenyan]`, `/caveman-commit`, `/caveman-review`, `/caveman-compress <file>`, `/caveman-stats`. No API keys. Installed to `.agents/skills/caveman*` (+ `cavecrew`), `.cursor/rules/caveman.mdc` (`alwaysApply: true`), a `## Caveman mode (active)` block in `AGENTS.md`, and (for Claude Code) a global `claude` plugin. Optional env `CAVEMAN_STATUSLINE_SAVINGS=0`.
 - **It is ON by default.** To disable: delete `.cursor/rules/caveman.mdc`, remove the `<!-- caveman:begin … end -->` block from `AGENTS.md`, and run `npx -y github:JuliusBrussee/caveman -- --uninstall`.
 
+### impeccable — `pbakaus/impeccable` (Apache-2.0)
+A **design skill** for AI harnesses (npm `impeccable`, v3.5.0, homepage
+[impeccable.style](https://impeccable.style)). 23 commands spanning the design
+workflow — `shape`, `critique`, `audit`, `polish`, plus dials like `bolder`,
+`quieter`, `colorize`. **No API keys**, but it is **not** offline — see egress
+below.
+- **Network egress (three paths, one of them automatic):**
+  - `scripts/context.mjs` calls `impeccable.style/api/version` when it is run
+    **as a command** (`node scripts/context.mjs`, i.e. the skill's context
+    step) — on by default, throttled to once a day. The per-edit **hook does
+    not fetch**: `hook-lib.mjs` imports only `extractPlatform`/`loadContext`,
+    and the fetch sits behind `cli()`, which runs only when the file is invoked
+    as a script. Measured 0 requests from `hook.mjs` in both repo root and a
+    subdirectory, including the absolute-path Copilot variant. Disabled here
+    by **`IMPECCABLE_NO_UPDATE_CHECK=1`**, set in
+    [`../.claude/settings.json`](../.claude/settings.json) `env`. That is the
+    control that actually holds: upstream reads
+    [`../.impeccable/config.json`](../.impeccable/config.json)'s
+    `"updateCheck": false` relative to `process.cwd()`, so the file alone
+    covers repo-root sessions and **not** `cd site && …` — verified by driving
+    the real code path with a stubbed `fetch` (subdirectory: 1 request with the
+    config alone, 0 with the env var). Both are in place. Run
+    `npx impeccable check` deliberately instead.
+  - **Residual, stated rather than papered over:** `.claude/settings.json` is
+    Claude Code's file. A **Codex / Cursor / Copilot** session that runs an
+    impeccable command from a subdirectory gets neither control and will still
+    make that once-a-day request. `.codex/config.toml` has no env facility and
+    direnv is not used in this repo, so there is no mechanism here that would
+    close it without inventing one. The exposure is a version string, once a
+    day, from those harnesses only.
+  - `scripts/generate-image.mjs` posts to `api.openai.com` — opt-in, only when
+    you invoke it, and it needs your own key.
+  - `scripts/concept-seed.mjs` calls `impeccable.style/api/roll` — opt-in.
+- **Hooks (ON by default):** the install writes `PostToolUse` manifests to
+  `.codex/hooks.json`, `.cursor/hooks.json` and `.github/hooks/`, which run the
+  design detector after **every** `Edit`/`Write`/`apply_patch`. Each is guarded
+  (`[ ! -f <script> ] || node <script>`) so it no-ops when the skill is absent.
+  **Claude Code deliberately gets no hook** — this repo manages
+  `.claude/settings.json` itself and the installer does not write a `hooks` key
+  there. To remove the others, delete those files; `npx impeccable install`
+  rewrites them.
+- **Install:** `npx impeccable install` from the repo root; it auto-detects
+  harnesses and compiles **per harness** into `.claude`, `.agents`, `.cursor`
+  and `.github`. `npx impeccable check` reports drift, `npx impeccable update`
+  applies it. Committed, like the other skills.
+- **Init:** `/impeccable init` writes `PRODUCT.md` (product truth only). It does
+  **not** write `DESIGN.md` — [`site/DESIGN.md`](../site/DESIGN.md) remains the
+  design authority ([ADR-0149](./design/adr/07-portability-extensibility.md#adr-0149)),
+  and its context loader reads that file as incumbent authority. Do not run
+  `/impeccable document` at the repo root: a root `DESIGN.md` would auto-opt-in
+  the root to `design:lint` and introduce a fourth identity beside the three
+  that gate validates.
+- **Mirror-gate exemption:** impeccable is listed in `VENDORED_SKILLS` in
+  [`../scripts/check-skill-mirrors.ts`](../scripts/check-skill-mirrors.ts). The
+  byte-identical rule fits skills this repo authors; impeccable deliberately
+  emits Codex-only `agents/*.toml` and `agents/openai.yaml`, so forcing the
+  trees equal would corrupt the install and be undone by the next update.
+
+### Higgsfield MCP — `mcp.higgsfield.ai` (hosted, official)
+The **official hosted** MCP connector for Higgsfield AI image/video generation
+(30+ models). Registered in [`../.mcp.json`](../.mcp.json) as an HTTP server at
+`https://mcp.higgsfield.ai/mcp`.
+- **Auth:** account **OAuth**, not an API key — **no credential is stored in
+  this repo**. Sign in via `/mcp` in Claude Code.
+- **Approval:** project-scoped MCP servers start as *pending approval*; a human
+  must approve the server before it can be used. That is deliberate and cannot
+  be done on your behalf.
+- **Risk:** generation requests and any prompt content are sent to Higgsfield.
+  Treat it like the other network-egress tools in this table.
+
+### higgsfield-auth — repo-local skill
+Mints and rotates the Higgsfield MCP token. **The standard OAuth flow cannot
+complete here**: Higgsfield chooses between two flows `client_capability_based`,
+Claude Code is listed under `authorization_code_pkce`, and that path needs
+`http://localhost:<port>/callback` pre-registered with their Clerk tenant — it
+is not, so `clerk.higgsfield.ai` *and* Higgsfield's own `/oauth2/authorize`
+proxy both reject it with `redirect_uri does not match…`. Running `/mcp`
+reproduces the error rather than fixing it.
+
+The skill uses their **`device_code`** flow instead (endpoints published in no
+`.well-known` path — only in the service's OpenAPI doc) and installs the result
+as a plain `Authorization: Bearer` header.
+
+```sh
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs ensure   # refresh only if needed
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs status   # 0 healthy / 2 due / 1 none
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs login    # device flow, needs the user
+```
+
+- **Access tokens last one hour**, refresh tokens 7 days — and each refresh
+  rolls that window, so a running daemon makes one `login` effectively
+  permanent. `ensure` refreshes if due *and* starts the background refresher.
+- The daemon is **single-instance via an O_EXCL lock**, because two loops would
+  consume each other's rotated tokens and break the chain. It logs to
+  `~/.higgsfield/daemon.log` and exits rather than spinning when the refresh
+  token is dead.
+- The daemon **re-verifies its claim every iteration**, not just at startup, and
+  exits when it has lost it. Claiming once is not enough: a machine suspended
+  past the staleness window has already been taken over by whoever ran `start`
+  on wake, and a heartbeat that silently no-ops would leave two loops consuming
+  each other's rotated tokens. `stop` deliberately ignores the staleness filter,
+  since "no daemon running" while one is running is the one answer it must never
+  give.
+- The lock holds a **uid and is heartbeated**, not just a pid. Pids are
+  recycled, so a dead daemon's pid reappearing as an unrelated process would
+  make `kill(pid, 0)` report it live forever and wedge `start` until a manual
+  `stop`; `EPERM` did the same. A lock idle past 45 minutes is therefore
+  abandoned regardless of its pid — safe, since a live holder never sleeps more
+  than 15. Takeover is confirmed by re-reading the uid, so two starters
+  recovering from the same abandoned lock cannot both claim it.
+- **Refresh tokens rotate on every use** and the old one dies immediately.
+  Never call `/refresh` with curl during a session — that consumes the stored
+  token and the next `ensure` fails. The store is written atomically at `0600`,
+  and the response is **merged over** it rather than replacing it: a refresh
+  that returns no new `refresh_token` (the ordinary non-rotating shape) would
+  otherwise erase the stored one and force an interactive login.
+- Credentials live in `~/.higgsfield/token.json` and `~/.claude.json`, **never**
+  in the committed `.mcp.json`.
+- Restart Claude Code after `login` or a header-changing `refresh`.
+
 ### ponytail — `DietrichGebert/ponytail` (MIT)
 A **minimalist-coding skill**: channels a senior dev who pushes the laziest solution that works — YAGNI (does this need to exist?), standard library before custom code, native platform features before dependencies, one line before fifty. Commands: `/ponytail [lite|full|ultra]`, `/ponytail-review` (review a diff for over-engineering), `/ponytail-audit` (whole-repo bloat scan), `/ponytail-debt` (harvest `ponytail:` shortcut comments into a ledger), `/ponytail-gain`, `/ponytail-help`. **No API keys; no third-party data transmission.** Installed (6 skills) to `.claude/skills/ponytail*` (Claude Code) and `.agents/skills/ponytail*` (Cursor + Codex).
 - **Invocation-based here, not always-on.** Run `/ponytail` to activate it for a session. (Upstream also supports an always-on plugin install via `/plugin marketplace add DietrichGebert/ponytail` → `/plugin install ponytail@ponytail` in Claude Code; we use the skills route to keep it opt-in and committable, and to avoid stacking a second always-on directive on top of caveman.) Optional global config: `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE`.
@@ -98,7 +218,7 @@ bash scripts/setup-agent-tools.sh --agent copilot --no-gbrain
 The common layer installs agent-agnostic runtimes (`tgrep`, repo-pinned `ast-grep`, `rtk`, `serena`, `headroom`, `skillopt-train`, `skillopt-sleep`, and the **`github/gh-stack`** GitHub CLI extension for stacked PRs) and leaves per-agent plugin/skill registration alone. Agent-specific layers only install shims for the selected supported client. Devcontainers run the common layer by default through [`.devcontainer/post-create.sh`](../.devcontainer/post-create.sh), avoiding prompts, global CLI mutations, and optional gbrain setup during container creation.
 
 ## Per-agent wiring
-| | MCP servers (Serena, headroom, gbrain) | Skills (improve, mattpocock, caveman, ponytail) | Plugin / optimizer |
+| | MCP servers (Serena, headroom, gbrain, Higgsfield) | Skills (improve, mattpocock, caveman, ponytail, impeccable) | Plugin / optimizer |
 |---|---|---|---|
 | **Claude Code** | `.mcp.json` (auto-discovered) | `.claude/skills/` (incl. mattpocock) | `.claude/settings.json` for Superpowers; SkillOpt can run offline |
 | **Cursor** | `.cursor/mcp.json` | `.agents/skills/` + `.cursor/rules/` (caveman) | — (no plugin support) |

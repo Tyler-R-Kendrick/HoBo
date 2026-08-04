@@ -61,7 +61,7 @@ const shikiThemes = {
 			<div class="terminal-wrap">
 				<div class="terminal">
 				<div class="terminal-bar">
-					<span class="dots"><i></i><i></i><i></i></span>
+					<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
 					<span class="title">src/bindle.ts</span>
 				</div>
 				<Code
@@ -104,7 +104,7 @@ const shikiThemes = {
 					</p>
 				</div>
 				<div class="card">
-					<h3><span class="card-icon">→</span>The HoBo way</h3>
+					<h3><span class="card-icon" aria-hidden="true">→</span>The HoBo way</h3>
 					<p>
 						Travel light. Describe intent, not infrastructure, and let
 						policy, price, and reliability goals pick the home. Need
@@ -525,12 +525,21 @@ const shikiThemes = {
 		font-weight: 620;
 	}
 
+	@keyframes postcard-sway {
+		from {
+			transform: rotate(-1.5deg);
+		}
+		to {
+			transform: rotate(1.5deg);
+		}
+	}
+
 	.postcard-bo {
 		position: absolute;
 		left: clamp(0.5rem, 3vw, 2.5rem);
 		bottom: 0.35rem;
 		transform-origin: 50% 96%;
-		animation: sway 2.2s ease-in-out infinite alternate;
+		animation: postcard-sway 2.2s var(--ease) infinite alternate;
 	}
 
 	@media (max-width: 820px) {

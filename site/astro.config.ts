@@ -1,4 +1,6 @@
 import { defineConfig } from "astro/config";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeSlug from "rehype-slug";
 
 // GitHub Pages project site: https://tyler-r-kendrick.github.io/HoBo/
 // The base path is also hardcoded in markdown links (see site/README.md);
@@ -8,6 +10,22 @@ export default defineConfig({
 	base: "/HoBo",
 	trailingSlash: "ignore",
 	markdown: {
+		// Heading anchors. Without these no `.prose h2/h3` carried an `id`, so
+		// none of the 130+ docs pages could be deep-linked — and the homepage
+		// already links to `/primitives/bindles/#greenfield-…`, which silently
+		// resolved to nothing. `scroll-padding-top` was set for anchors that did
+		// not exist.
+		rehypePlugins: [
+			rehypeSlug,
+			[
+				rehypeAutolinkHeadings,
+				{
+					behavior: "append",
+					properties: { class: "heading-anchor", ariaHidden: "true", tabIndex: -1 },
+					content: { type: "text", value: "#" },
+				},
+			],
+		],
 		shikiConfig: {
 			// High-contrast variants: the standard GitHub themes fall below
 			// WCAG AA on the aged-paper/near-black code backgrounds.

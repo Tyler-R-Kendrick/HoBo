@@ -7,7 +7,8 @@
  * mirrored skill differs between the trees.
  *
  * Coverage: every skill directory present in BOTH `.claude/skills/` and `.agents/skills/`
- * is compared byte-for-byte. The REQUIRED_SKILLS below must additionally exist in both
+ * is compared byte-for-byte, except those in `VENDORED_SKILLS` — third-party
+ * skills whose own installer compiles different files per harness. The REQUIRED_SKILLS below must additionally exist in both
  * trees — a required skill missing from either (or both) mirrors fails the gate. For
  * non-required skills, existing in only one tree passes (deliberately unmirrored), and via
  * `compareSkill` a skill missing on BOTH sides passes (not yet created); a required skill
@@ -19,6 +20,21 @@ import process from "node:process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const REQUIRED_SKILLS = ["draft", "repo", "sdlc"];
+
+/**
+ * Vendored skills that are *compiled per harness* and must not be compared.
+ *
+ * The byte-identical rule below is right for skills this repo authors: one
+ * source of truth, copied to both trees, where a divergence is rot. It is wrong
+ * for a third-party skill installed by its own toolchain, which deliberately
+ * emits different files per harness — `impeccable` ships Codex-specific agent
+ * manifests (`agents/*.toml`, `agents/openai.yaml`) that have no Claude Code
+ * equivalent. Forcing those trees equal would corrupt the install, and the
+ * upstream installer would undo it on the next `npx impeccable update`.
+ *
+ * These are re-installed, never hand-edited, so there is no edit to rot.
+ */
+const VENDORED_SKILLS = new Set(["impeccable"]);
 
 function listSkillDirs(root: string, tree: string): Set<string> {
 	const dir = path.join(root, tree, "skills");
@@ -34,7 +50,9 @@ function listSkillDirs(root: string, tree: string): Set<string> {
 export function discoverMirroredSkills(root = repoRoot): string[] {
 	const claude = listSkillDirs(root, ".claude");
 	const agents = listSkillDirs(root, ".agents");
-	const shared = [...claude].filter((skill) => agents.has(skill));
+	const shared = [...claude]
+		.filter((skill) => agents.has(skill))
+		.filter((skill) => !VENDORED_SKILLS.has(skill));
 	return [...new Set([...REQUIRED_SKILLS, ...shared])].sort();
 }
 

@@ -5,6 +5,15 @@ description: "Source classes, provenance rules, and license boundaries for HIGHB
 tags: [hobo, design]
 ---
 
+> **Superseded in part by [ADR-0141](adr/07-portability-extensibility.md#adr-0141).**
+> The identity is now a top-down pixel RPG built from vendored CC0 pixel-art
+> packs. The pre-1929 public-domain *trace plate* workflow below is retained for
+> reference but is no longer the primary path: art is **sourced**, not traced or
+> drawn in renderer code. CC0 game-art packs (Kenney and equivalents) are the
+> first-choice source; every vendored file keeps its upstream licence file beside
+> it and a row in `packages/control-yard/assets/CREDITS.md`.
+
+
 # Asset Sourcing Policy for the Control Yard
 
 Governs every visual, audio, and font asset that ships in `@hobo/control-yard`

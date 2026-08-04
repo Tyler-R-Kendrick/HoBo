@@ -575,3 +575,29 @@ Station occupancy ([ADR-0131](01-architecture-core.md#adr-0131)), Rails, Connect
 - **ADR-P6:** preemption policy for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no preemption (`service` non-preemptible, `job` preemptible), substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
 - **ADR-P7:** oversubscription/density limits per component-host — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no oversubscription (requests = limits), opt-in per-Camp ratio, substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
 - **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: declarative Camp-level reservation realized via the substrate's primitive, honest about limits — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+
+## ADR-0141
+**Pixel-RPG identity: the control plane is a village; sourced CC0 pixel art replaces the traced rubberhose surface.**
+
+**Status:** Proposed — supersedes the art clauses of [ADR-0135](#adr-0135) and [ADR-0140](#adr-0140).
+
+### Context
+[ADR-0135](#adr-0135) made "the Bo art bible is law" and [ADR-0140](#adr-0140) restated it, binding every surface to a hand-traced 1930s rubberhose identity rendered in strict black and white. In practice the game surface could not be *built* from that contract: because no sourced game art existed, props were assembled from stacked rectangles and lines directly in the renderer. The product owner reviewed the running build and rejected it — the result read as a paint-program diagram rather than a game — and rejected the traced Bo/parallax artwork along with it, directing that free open-source video-game art be used instead.
+
+The root cause was a contract that mandated an art style while supplying no art to render it with. Vector primitives drawn in code cannot carry a hand-illustrated identity, and a renderer is the wrong place to author artwork.
+
+### Decision
+1. **The identity is a top-down pixel RPG.** `site/DESIGN.md` (mirrored byte-identically to `packages/control-yard/DESIGN.md`) is rewritten: a 16px tile grid, integer scaling only, hard `#3f2631` plum-black outlines, square corners, and a warm earth-and-slate palette taken directly from the vendored art. This replaces "ink on paper", "traced art only", the strict black-and-white base, and the Chewy title-card type.
+2. **Art is sourced, never drawn in renderer code.** Game and site art come from vendored CC0 packs under `packages/control-yard/assets/kenney/`. Building props out of `rect`/`line` primitives in the presenter is prohibited — that practice is what produced the rejected surface.
+3. **The Bo art bible is retired.** The traced Bo sprites, action sheets, derived bindlebug variants, and the parallax plates are removed from the shipped surfaces. ADR-0135's "Bo art bible is law" clause and ADR-0140's restatement of it no longer bind. The Bo *character* may return as sourced pixel art; the rejected raster assets do not.
+4. **The world mapping stands and gains a village vocabulary.** Station → town, Camp → house, Bindle → villager, active rail → road, Connection → gate, waybill/approval gate → notice board, quota+spend → treasury, hazard → marker, Highball → raised banner. Everything else in ADR-0140 is unchanged: 1:1 projection bindings, the approval gate as the core verb, Highball generated only by reality, SIMULATED provenance badges, cosmetic-only progression, and reduced-motion parity.
+5. **Licensing.** Only permissive, pre-approved licences (CC0-1.0 foremost) per `scripts/check-licenses.ts`, with per-asset provenance in `packages/control-yard/assets/CREDITS.md` and upstream licence files vendored beside the art.
+
+### Consequences
+- **(+)** The surface is buildable: designers and agents place sourced tiles and sprites instead of hand-coding shapes, so visual quality no longer depends on primitive-drawing skill inside a renderer.
+- **(+)** Colour returns as a functional tool — grass for healthy, rust for hazard, teal for interactive — instead of a monochrome base that forced every status into two rare accents.
+- **(+)** One material across site and game: chrome and sprites share a palette and outline weight.
+- **(−)** The traced artwork and the rubberhose identity are lost, including the five finished Bo action sheets and the five traced scene panels. This is deliberate and owner-directed.
+- **(−)** The site must be re-arted; `design:lint`, evidence baselines, and asset validation all churn in one pass.
+- **(−)** A dependency on an upstream art pack's style: extending the world means matching Kenney's 16px idiom or commissioning art that does.
+

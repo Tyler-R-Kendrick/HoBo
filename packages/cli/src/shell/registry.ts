@@ -40,6 +40,7 @@ export interface CommandRunInput {
 		readonly token: string | null;
 		readonly demo: boolean;
 		readonly demoSeed: string | null;
+		readonly region: string | null;
 	};
 	readonly args: readonly string[];
 	readonly verb: string;

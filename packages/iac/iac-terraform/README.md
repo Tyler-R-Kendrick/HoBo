@@ -31,6 +31,17 @@ bindings.
 `parsePlanChanges` (pure, fixture-tested) parses `show -json` plan documents
 into the typed change summary and fails dirty on malformed input.
 
+### OpenTofu
+
+There is deliberately **no separate `iac-opentofu` package**: OpenTofu and
+Terraform share the plan/apply/state protocol, so the CLI engine treats them
+as interchangeable binaries behind one flag —
+`createTerraformCliEngine({ binary: "tofu" })` (the **default**) or
+`{ binary: "terraform" }`. Version pins live beside the engine
+(`PINNED_TOFU_VERSION` / `PINNED_TERRAFORM_VERSION`). This is the resolved
+form of the `iac-opentofu` roadmap entry
+([docs/plans/0017](../../../docs/plans/0017-remediation-roadmap.md) F33).
+
 ## Exports
 
 - `createTerraformAdapter` — the `IacProvider` adapter.

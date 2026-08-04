@@ -1,3 +1,10 @@
+---
+type: Maintenance Note
+title: "hobo-code-experience-overhaul sdlc-state"
+description: "Durable sdlc coordinator state for the hobo-code-experience-overhaul initiative."
+tags: [hobo, plans, sdlc]
+---
+
 # SDLC state — hobo-code experience overhaul
 
 **phase:** closing (finish protocol)

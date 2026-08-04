@@ -21,7 +21,7 @@ Each file has: **What it is** · **Key features** (the documentation) · **Relev
 | **Varlock** | `.env`-native secrets/config with schema + providers (`@env-spec`) | [`varlock.md`](./varlock.md) |
 | **Pivotal Cloud Foundry (PCF)** | The original opinionated app PaaS (`cf push`, buildpacks, droplets) | [`cloud-foundry-pcf.md`](./cloud-foundry-pcf.md) |
 | **Prometheus AlertManager** | Alert routing/grouping/silencing/inhibition for Prometheus | [`prometheus-alertmanager.md`](./prometheus-alertmanager.md) |
-| **Tailscale** | WireGuard-based zero-config mesh VPN (tailnets, Funnel, grants); the adopted managed-overlay adapter (ADR-0122) | [`tailscale.md`](./tailscale.md) |
+| **Tailscale** | WireGuard-based zero-config mesh VPN (tailnets, Funnel, grants); opt-in managed-mesh adapter; WireGuard is the ADR-0122 portable floor | [`tailscale.md`](./tailscale.md) |
 | **Cedar** | AWS open-source authorization language + formally verified engine; optional `policy-engine` provider beside OPA | [`cedar.md`](./cedar.md) |
 | **Temporal** | Durable-execution platform (workflows-as-code, event-history replay); the benchmark HoBo's durable runtime is measured against | [`temporal.md`](./temporal.md) |
 | **Argo CD** | CNCF-graduated declarative GitOps CD (Application CRD, sync waves); reference target of GitOps publisher mode | [`argo-cd.md`](./argo-cd.md) |

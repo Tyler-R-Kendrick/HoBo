@@ -33,9 +33,7 @@ export function emptyBindleRequirements(): BindleRequirements {
 	});
 }
 
-export function parseBindleRequirements(
-	input: unknown,
-): BindleRequirements {
+export function parseBindleRequirements(input: unknown): BindleRequirements {
 	if (input === undefined || input === null) {
 		return emptyBindleRequirements();
 	}
@@ -55,9 +53,7 @@ export function parseBindleRequirements(
 	}
 	const require = canonicalizeList(asStringArray(raw.require ?? raw.requires));
 	const prefer = canonicalizeList(asStringArray(raw.prefer ?? raw.prefers));
-	const runtimes = canonicalizeList(
-		asStringArray(raw.runtimes ?? raw.runtime),
-	);
+	const runtimes = canonicalizeList(asStringArray(raw.runtimes ?? raw.runtime));
 	for (const item of [...require, ...prefer, ...runtimes]) {
 		assertProviderNeutralCapability(item);
 	}
@@ -114,9 +110,7 @@ export function collectExplicitProviderPins(
 	return Object.freeze([]);
 }
 
-export function isPlatformAnnotation(
-	annotation: ProviderAnnotation,
-): boolean {
+export function isPlatformAnnotation(annotation: ProviderAnnotation): boolean {
 	if (PLATFORM_OPTIONS.has(annotation.option)) {
 		return PLATFORM_PROVIDERS.has(annotation.provider);
 	}
@@ -196,9 +190,7 @@ function asStringArray(value: unknown): string[] {
 }
 
 function canonicalizeList(values: readonly string[]): readonly string[] {
-	return Object.freeze(
-		[...new Set(values.filter((v) => v.length > 0))].sort(),
-	);
+	return Object.freeze([...new Set(values.filter((v) => v.length > 0))].sort());
 }
 
 function canonicalizeLabels(

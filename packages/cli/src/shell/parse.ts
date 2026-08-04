@@ -44,6 +44,8 @@ export interface CliFlags {
 	readonly demo: boolean;
 	/** Deterministic simulator seed for `--demo` (ADR-0147 demo mode). */
 	readonly demoSeed: string | null;
+	/** Target region for residency-aware preflight (`hobo verify --region`). */
+	readonly region: string | null;
 }
 
 export interface CliRequest {
@@ -97,6 +99,7 @@ export function parseArgv(
 		token: null as string | null,
 		demo: false,
 		demoSeed: null as string | null,
+		region: null as string | null,
 	};
 	const args: string[] = [];
 	let verb: string | null = null;
@@ -179,6 +182,7 @@ function parseOption(
 		token: string | null;
 		demo: boolean;
 		demoSeed: string | null;
+		region: string | null;
 	},
 	verb: string | null,
 ): number {
@@ -283,6 +287,12 @@ function parseOption(
 		case "--demo-seed":
 			if (verb === "serve") {
 				flags.demoSeed = takeValue(argv, index, token);
+				return index + 1;
+			}
+			throw unknownOption(token, verb);
+		case "--region":
+			if (verb === "verify" || verb === "up") {
+				flags.region = takeValue(argv, index, token);
 				return index + 1;
 			}
 			throw unknownOption(token, verb);

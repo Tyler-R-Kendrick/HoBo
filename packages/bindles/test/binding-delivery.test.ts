@@ -13,9 +13,7 @@ describe("binding-delivery membrane (ADR-0141)", () => {
 		expect(isForbiddenSecretEnvKey("ConnectionStrings__db")).toBe(true);
 		expect(isForbiddenSecretEnvKey("DATABASE_URL")).toBe(true);
 		expect(isForbiddenSecretEnvKey("LOG_LEVEL")).toBe(false);
-		expect(
-			looksLikeSecretEnvValue("postgres://u:p@host/db"),
-		).toBe(true);
+		expect(looksLikeSecretEnvValue("postgres://u:p@host/db")).toBe(true);
 		expect(looksLikeSecretEnvValue("{db.connectionString}")).toBe(true);
 		expect(looksLikeSecretEnvValue("https://api.example")).toBe(false);
 	});

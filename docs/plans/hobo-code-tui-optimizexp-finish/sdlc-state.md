@@ -1,3 +1,10 @@
+---
+type: Maintenance Note
+title: "SDLC state — hobo-code TUI optimizexp finish"
+description: "Durable sdlc coordinator state for the initiative (phase, decisions, dispatched issues)."
+tags: [hobo, plans, sdlc]
+---
+
 # SDLC state — hobo-code TUI optimizexp finish
 
 **phase:** closed

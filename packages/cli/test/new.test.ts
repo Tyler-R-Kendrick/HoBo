@@ -48,7 +48,9 @@ async function assertFile(root: string, relativePath: string) {
 describe("hobo new scaffold", () => {
 	// Runs the scaffolded project's own tests/typecheck as subprocesses;
 	// cold CI runners exceed the 10s default.
-	it("scaffolds an api project through the CLI shell and stays offline", { timeout: 120_000 }, async () => {
+	it("scaffolds an api project through the CLI shell and stays offline", {
+		timeout: 120_000,
+	}, async () => {
 		await withScratch(async (cwd) => {
 			const result = await runHobo(["new", "snapshop", "-t", "api", "--json"], {
 				cwd,
@@ -95,27 +97,32 @@ describe("hobo new scaffold", () => {
 	});
 
 	// Spawns tsc + node --test for all four templates; slow on cold CI runners.
-	it("creates all four templates as runnable SDK project stubs", { timeout: 120_000 }, async () => {
-		await withScratch(async (cwd) => {
-			expect(VALID_TEMPLATES).toEqual(["todo", "api", "agent", "fullstack"]);
+	it(
+		"creates all four templates as runnable SDK project stubs",
+		{ timeout: 120_000 },
+		async () => {
+			await withScratch(async (cwd) => {
+				expect(VALID_TEMPLATES).toEqual(["todo", "api", "agent", "fullstack"]);
 
-			for (const template of VALID_TEMPLATES) {
-				const { projectDir, createdFiles } = await scaffoldHoboProject({
-					cwd,
-					name: `sample-${template}` as never,
-					template,
-				});
+				for (const template of VALID_TEMPLATES) {
+					const { projectDir, createdFiles } = await scaffoldHoboProject({
+						cwd,
+						name: `sample-${template}` as never,
+						template,
+					});
 
-				expect(createdFiles).toEqual(expectedCreatedFiles);
+					expect(createdFiles).toEqual(expectedCreatedFiles);
 
-				const report = await validateScaffoldProject(projectDir);
-				expect(report.ok).toBe(true);
-				expect(report.template).toBe(template);
-				assertGeneratedProjectRuns(projectDir);
-				assertGeneratedProjectTypechecks(projectDir);
-			}
-		});
-	}, 30_000);
+					const report = await validateScaffoldProject(projectDir);
+					expect(report.ok).toBe(true);
+					expect(report.template).toBe(template);
+					assertGeneratedProjectRuns(projectDir);
+					assertGeneratedProjectTypechecks(projectDir);
+				}
+			});
+		},
+		30_000,
+	);
 
 	it("prints exact next steps for human output", async () => {
 		await withScratch(async (cwd) => {
@@ -127,8 +134,8 @@ describe("hobo new scaffold", () => {
 			expect(result.stderr).toBe("");
 			expect(result.stdout).toMatch(/Created HoBo project snapshop/);
 			expect(result.stdout).toMatch(
-			/cd snapshop\nnpm install\nnpm run typecheck\nnpm test\nhobo dev/,
-		);
+				/cd snapshop\nnpm install\nnpm run typecheck\nnpm test\nhobo dev/,
+			);
 		});
 	});
 

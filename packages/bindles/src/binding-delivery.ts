@@ -61,8 +61,7 @@ export function evaluateBindingDeliveryGate(input: {
 				reasons.push({
 					code: "connection-strings-env",
 					path: `${pathPrefix}.${key}`,
-					message:
-						`forbidden ConnectionStrings__* env ${key} — use WIT links / ctx.bindings (ADR-0141)`,
+					message: `forbidden ConnectionStrings__* env ${key} — use WIT links / ctx.bindings (ADR-0141)`,
 				});
 				continue;
 			}
@@ -75,10 +74,9 @@ export function evaluateBindingDeliveryGate(input: {
 			}
 			if (typeof value === "string" && looksLikeSecretEnvValue(value)) {
 				reasons.push({
-					code:
-						/connectionString/i.test(value)
-							? "connection-string-token-env"
-							: "secret-env-value",
+					code: /connectionString/i.test(value)
+						? "connection-string-token-env"
+						: "secret-env-value",
 					path: `${pathPrefix}.${key}`,
 					message: `forbidden secret-shaped env value at ${key}`,
 				});

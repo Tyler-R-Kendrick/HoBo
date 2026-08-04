@@ -28,19 +28,21 @@ describe("bindle requirements + provider selection rejection", () => {
 	});
 
 	it("rejects provider key on requirements", () => {
-		expect(() =>
-			parseBindleRequirements({ provider: "azure" }),
-		).toThrow(/bindle-provider-selection-forbidden/);
+		expect(() => parseBindleRequirements({ provider: "azure" })).toThrow(
+			/bindle-provider-selection-forbidden/,
+		);
 	});
 
 	it("rejects cloud provider annotations at collection", () => {
 		expect(() =>
 			bindle("shop", (b) => {
-				const api = b.api(() => "ok").with({
-					provider: "azure",
-					option: "containerApp",
-					config: {},
-				});
+				const api = b
+					.api(() => "ok")
+					.with({
+						provider: "azure",
+						option: "containerApp",
+						config: {},
+					});
 				return { api };
 			}),
 		).toThrow(new RegExp(BINDLE_PROVIDER_SELECTION_FORBIDDEN));
@@ -48,11 +50,13 @@ describe("bindle requirements + provider selection rejection", () => {
 
 	it("allows platform env annotations", () => {
 		const shop = bindle("shop", (b) => {
-			const api = b.api(() => "ok").with({
-				provider: "hobo",
-				option: "env",
-				config: { FOO: "bar" },
-			});
+			const api = b
+				.api(() => "ok")
+				.with({
+					provider: "hobo",
+					option: "env",
+					config: { FOO: "bar" },
+				});
 			return { api };
 		});
 		// App Kit default session-replay comes first; env is appended via .with.

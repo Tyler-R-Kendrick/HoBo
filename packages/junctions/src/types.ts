@@ -41,6 +41,20 @@ export interface JunctionMemberManifest {
 	readonly providerId: string;
 	readonly region: string | null;
 	readonly capabilities: readonly ConnectivityTierName[];
+	/**
+	 * Residency tags data crossing to this member must satisfy (ADR-0103 #4):
+	 * a jurisdiction id ("eu") or "classification:jurisdiction" ("pii:eu").
+	 */
+	readonly residency: readonly string[];
+}
+
+// A member pair that failed the residency hard guard: no edge, no halves,
+// an explicit diagnostic instead (ADR-0103 #3-4 fail-closed rule).
+// domain-view: parse-produced diagnostic; wire form is ResidencyConflict in data-models/junction.proto.
+export interface ResidencyConflict {
+	readonly sourceYard: string;
+	readonly targetYard: string;
+	readonly diagnostic: string;
 }
 
 // domain-view: parse-produced junction value holding live Yard references and a
@@ -142,6 +156,7 @@ export interface JunctionConnectivityPlan {
 	readonly halvesByYard: Readonly<Record<string, readonly ConnectivityHalf[]>>;
 	readonly dns: JunctionDnsPlan;
 	readonly federation: JunctionFederationPlan;
+	readonly residencyConflicts: readonly ResidencyConflict[];
 }
 
 // One yard's extractable half of the junction plan, split into realize/resolve DNS sets.

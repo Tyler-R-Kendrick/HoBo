@@ -350,9 +350,39 @@ message FlagEvaluationRecord {
   string context_digest = 5;
 }
 
+// Staged-rollout target group (plan 0015 §B deliverable 4): ordered groups
+// within a stage, executed in parallel up to concurrency, halting past
+// max_failures, optionally gated by an approval barrier.
+message RolloutTargetGroupRecord {
+  string name = 1;
+  repeated string targets = 2;
+  uint32 concurrency = 3;      // 0 = inherit stage default / unbounded
+  uint32 max_failures = 4;
+  bool approval = 5;
+}
+
+// Recorded position a halted rollout resumes from.
+message RolloutResumePointRecord {
+  uint32 stage_index = 1;
+  uint32 group_index = 2;
+}
+
+// Pending approval barrier (stage- or group-scoped).
+message RolloutPendingApprovalRecord {
+  uint32 stage_index = 1;
+  uint32 group_index = 2;
+  string scope = 3;            // stage | group
+}
+
 message RolloutStageRecord {
   uint32 percent = 1;
   string duration = 2;
+  // Staged extensions (append-only; absent = degenerate percent-only stage).
+  repeated RolloutTargetGroupRecord groups = 3;
+  uint32 concurrency = 4;      // stage default max parallel targets per group
+  uint32 max_failures = 5;     // stage default halt threshold per group
+  bool approval = 6;           // approval barrier before the stage starts
+  string maintenance_window = 7;
 }
 
 message RolloutPolicyRecord {
@@ -365,10 +395,16 @@ message RolloutPolicyRecord {
 
 message RolloutStateRecord {
   string id = 1;
-  string status = 2;           // running | promoted | rolled_back | failed
+  string status = 2;           // running | promoted | rolled_back | failed | awaiting_approval | halted
   uint32 stage_index = 3;
   uint32 percent = 4;
   uint32 gateway_weight_percent = 5;
+  // Staged extensions (append-only).
+  uint32 group_index = 6;
+  repeated string completed_targets = 7;
+  repeated string failed_targets = 8;
+  RolloutResumePointRecord resume_from = 9;
+  RolloutPendingApprovalRecord pending_approval = 10;
 }
 
 message ExperimentDefinitionRecord {

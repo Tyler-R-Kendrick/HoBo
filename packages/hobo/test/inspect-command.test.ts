@@ -91,6 +91,83 @@ describe("createInspectCommand", () => {
 		});
 	});
 
+	it("renders the TopologyView app graph via `inspect graph` after a real `hobo up`", async () => {
+		await withProject(async (cwd) => {
+			const runtime = createDefaultYardRuntime();
+			openStores.push(runtime.store as RuntimeLocalEventStore);
+			const cli = createComposedHoboCli({ yardRuntime: runtime });
+
+			const up = envelope((await cli.run(["up", "--json"], { cwd })).stdout);
+			expect(up.status).toBe("deployed");
+
+			const inspect = envelope(
+				(await cli.run(["inspect", "graph", "--json"], { cwd })).stdout,
+			);
+			expect(inspect.ok).toBe(true);
+			expect(inspect.data.mode).toBe("graph");
+			expect(inspect.data.found).toBe(true);
+
+			const nodeIds = inspect.data.graph.nodes.map(
+				(node: { id: string }) => node.id,
+			);
+			// Nodes: the bindle, its resources, and the yard they land on.
+			expect(nodeIds).toContain(`bindle:${inspect.data.deploymentId}`);
+			expect(nodeIds).toContain("resource:service");
+			expect(nodeIds).toContain("resource:sessions");
+			expect(
+				inspect.data.graph.nodes.some(
+					(node: { kind: string }) => node.kind === "yard",
+				),
+			).toBe(true);
+
+			// Edges: the service->sessions binding and one placement per resource.
+			const edges = inspect.data.graph.edges as Array<{
+				from: string;
+				to: string;
+				kind: string;
+			}>;
+			expect(
+				edges.some(
+					(edge) =>
+						edge.kind === "binding" &&
+						edge.from === "resource:service" &&
+						edge.to === "resource:sessions",
+				),
+			).toBe(true);
+			expect(
+				edges.filter(
+					(edge) => edge.kind === "placement" && edge.to.startsWith("yard:"),
+				).length,
+			).toBeGreaterThanOrEqual(2);
+
+			// Provisioned lifecycle folded onto the resource nodes.
+			for (const node of inspect.data.graph.nodes as Array<{
+				kind: string;
+				lifecycle?: string;
+			}>) {
+				if (node.kind === "resource") {
+					expect(node.lifecycle).toBe("provisioned");
+				}
+			}
+		});
+	});
+
+	it("reports no graph history for a project that has never deployed", async () => {
+		await withProject(async (cwd) => {
+			const runtime = createDefaultYardRuntime();
+			openStores.push(runtime.store as RuntimeLocalEventStore);
+			const cli = createComposedHoboCli({ yardRuntime: runtime });
+
+			const inspect = envelope(
+				(await cli.run(["inspect", "graph", "--json"], { cwd })).stdout,
+			);
+			expect(inspect.ok).toBe(true);
+			expect(inspect.status).toBe("no_history");
+			expect(inspect.data.mode).toBe("graph");
+			expect(inspect.data.found).toBe(false);
+		});
+	});
+
 	it("reports no history for a project that has never deployed", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();

@@ -42,3 +42,12 @@ message ControlCoverageReportRecord {
   uint32 satisfied = 3;
   repeated string missing_control_ids = 4;
 }
+
+// Summary of one OSCAL-shaped boundary export. The full OSCAL JSON document
+// is a boundary artifact (docs/standards/oscal.md), not a wire record.
+message OscalExportSummaryRecord {
+  string kind = 1; // component-definition | assessment-results
+  string framework = 2;
+  string version = 3;
+  uint32 control_count = 4;
+}

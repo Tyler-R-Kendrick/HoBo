@@ -5,6 +5,11 @@ export {
 	matchResource,
 } from "./matching.js";
 export {
+	type DecidedPlacement,
+	emptyPlacementContext,
+	type PlacementContext,
+} from "./placement.js";
+export {
 	type PlanConfig,
 	type PlanRejection,
 	type PlanResult,

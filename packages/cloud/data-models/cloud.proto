@@ -19,6 +19,49 @@ message ResourceIntent {
   repeated string deps = 6;        // bind-edge dependency ids
   string region = 7;               // explicit region, if pinned
   string objective = 8;            // routing objective (default: min-cost)
+  PlacementCriteria placement = 9; // optional placement-constraint vocabulary (E19)
+}
+
+// ---- E19: placement-constraint vocabulary (HoBo-native shapes; semantics
+// cited from KubeFleet property-aware placement — no Kubernetes types cross
+// this boundary, ADR-0107 non-goal). The vocabulary records what the Planner
+// PLANS; spread/anti-affinity EXECUTION stays delegated to the runtime
+// scheduler (wadm — adr/01-architecture-core.md:419).
+
+// A property selector over a Resource Definition candidate: well-known keys
+// (cost | region | provider | capacity | latency) or a custom feature key.
+message PlacementPropertySelector {
+  string key = 1;                  // "cost" | "region" | "provider" | "capacity" | "latency" | custom key
+  string op = 2;                   // "eq" | "ne" | "in" | "not-in" | "lt" | "lte" | "gt" | "gte" | "exists"
+  repeated string values = 3;      // comparison operands (empty for "exists")
+}
+
+// Affinity/anti-affinity between resource classes (capability ports): the
+// matched candidate must co-locate with (affinity) or avoid (anti-affinity)
+// the placements already decided for the target class, at the given scope.
+message PlacementAffinityRule {
+  string mode = 1;                 // "affinity" | "anti-affinity"
+  string target_port = 2;          // the referenced resource class (capability port)
+  string scope = 3;                // "region" | "yard"
+}
+
+// Spread the placements of one resource class across a topology dimension.
+message PlacementSpread {
+  string dimension = 1;            // "region" | "yard"
+}
+
+// pickN cardinality: matching must find at least `count` distinct satisfying
+// candidates (the full ranking records them); the Planner still places one.
+message PlacementPickN {
+  uint32 count = 1;
+}
+
+// The composed placement-constraint set carried by a ResourceIntent.
+message PlacementCriteria {
+  repeated PlacementPropertySelector selectors = 1;
+  repeated PlacementAffinityRule affinities = 2;
+  PlacementSpread spread = 3;
+  PlacementPickN pick_n = 4;
 }
 
 // A Resource Definition candidate indexed by the Registry catalog projection.
@@ -42,6 +85,18 @@ message CapabilityVerdict {
 }
 
 // deployment stream body for match.Decided (one per resolved resource).
+message RankedCandidate {
+  string definition_id = 1;
+  string provider_id = 2;
+  uint32 specificity = 3;
+  uint32 priority = 4;
+}
+
+message RejectedCandidate {
+  string definition_id = 1;
+  string reason = 2;
+}
+
 message MatchDecided {
   string deployment_id = 1;
   string resource = 2;
@@ -49,11 +104,15 @@ message MatchDecided {
   string provider_id = 4;
   string port = 5;
   uint32 specificity = 6;
-  repeated string rejected = 7;
+  repeated string rejected = 7;    // deprecated alias of rejected_candidates ids
   string objective = 8;
   string region = 9;
   string rationale = 10;
-  string catalog_hash = 11;
+  string catalog_hash = 11;        // deprecated alias of catalog_content_hash
+  repeated RankedCandidate ranking = 12;
+  repeated RejectedCandidate rejected_candidates = 13;
+  bool tie = 14;
+  string catalog_content_hash = 15;
 }
 
 // A resolved node of the DeploymentPlan DAG (control-plane.md step 6).
@@ -329,6 +388,36 @@ message A2HHandoffRecord {
   string set_id = 7;
   string deadline = 8;
   string obligation_id = 9;
+}
+
+// ---- E21: TopologyView app-graph read model (deployment-dashboard-topology
+// explorer surface). A pure fold over the deployment event stream: nodes are
+// the bindle, its resources, and the yards they land on; edges are bindings
+// (bind-edge dependencies) and placements (resource -> yard). Traffic routing
+// stays with the stations RoutingTopology — this is the APP graph.
+
+message TopologyNode {
+  string id = 1;                   // "<kind>:<name>"
+  string kind = 2;                 // "bindle" | "resource" | "yard"
+  string label = 3;
+  string port = 4;                 // resource nodes: capability class
+  string provider_id = 5;          // resource/yard nodes: backing provider
+  string region = 6;
+  string lifecycle = 7;            // resource nodes: provisioning|provisioned|failed|destroying|destroyed
+}
+
+message TopologyEdge {
+  string from = 1;
+  string to = 2;
+  string kind = 3;                 // "binding" | "placement"
+  string region = 4;
+}
+
+message TopologyViewRow {
+  string deployment_id = 1;
+  string bindle_hash = 2;
+  repeated TopologyNode nodes = 3;
+  repeated TopologyEdge edges = 4;
 }
 
 message LaneGrantRecord {

@@ -1,14 +1,14 @@
 import type { Dirent } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
-
+import { createRealComponentize } from "@hobo/componentize";
 import type { CodegenFixtureOptions } from "../codegen/fixture.js";
 import {
 	assertGeneratedFresh,
 	writeCodegenFixtureProject,
 } from "./codegen-gate.js";
-
 import {
+	adaptRealComponentize,
 	type ComponentizeFn,
 	defaultComponentize,
 	toWasmBuildArtifact,
@@ -58,6 +58,9 @@ const DEFAULT_SERVICES: readonly ServiceDeclaration[] = Object.freeze([
 
 export type RunBuildOptions = BuildRequest & {
 	readonly componentize?: ComponentizeFn;
+	// public-contract: test seam for the HOBO_COMPONENTIZE_REAL toolchain probe;
+	// defaults to @hobo/componentize createRealComponentize.
+	readonly realComponentizeFactory?: typeof createRealComponentize;
 };
 
 type BuiltArtifact = {
@@ -69,7 +72,9 @@ export async function runBuild(request: RunBuildOptions): Promise<BuildResult> {
 	const projectRoot = resolve(request.projectRoot);
 	const targetRuntime = request.targetRuntime;
 	const sourceDateEpoch = request.sourceDateEpoch;
-	const componentize = request.componentize ?? defaultComponentize;
+	const componentize =
+		request.componentize ??
+		(await selectComponentize(request.realComponentizeFactory));
 
 	let events: BuildEvent[] = [
 		{
@@ -145,6 +150,26 @@ export async function writeBuildFixtureProject(
 			options,
 		);
 	}
+}
+
+// public-contract: HOBO_COMPONENTIZE_REAL=1 selects the real componentize
+// lane. When the toolchain is unavailable the build fails closed — it never
+// silently falls back to the synthetic floor once the real lane was requested.
+async function selectComponentize(
+	factory: typeof createRealComponentize = createRealComponentize,
+): Promise<ComponentizeFn> {
+	if (process.env.HOBO_COMPONENTIZE_REAL !== "1") {
+		return defaultComponentize;
+	}
+	const real = await factory();
+	if (!real.available) {
+		throw new BuildError(
+			"HOBO_BUILD_COMPONENTIZE_TOOLCHAIN",
+			"HOBO_COMPONENTIZE_REAL=1 but @bytecodealliance/componentize-js is not importable; refusing to fall back to the synthetic contract-shaped floor",
+			{ requested: "real", available: false },
+		);
+	}
+	return adaptRealComponentize(real);
 }
 
 async function assertGeneratedFreshWrapper(projectRoot: string): Promise<void> {

@@ -1,0 +1,32 @@
+{
+	"name": "@hobo/sdk",
+	"version": "0.0.1",
+	"license": "MIT",
+	"type": "module",
+	"private": true,
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "pnpm --filter @hobo/cloud build && pnpm --filter @hobo/contracts build && pnpm --filter @hobo/dispatcher build && tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@hobo/cloud": "workspace:*",
+		"@hobo/contracts": "workspace:*",
+		"@hobo/dispatcher": "workspace:*"
+	},
+	"devDependencies": {
+		"vitest": "^4.1.9"
+	},
+	"description": "HoBo operator SDK (ADR-0072): thin authoring factories over the dispatcher/policy/cloud engines plus frozen, parse-validated declarations for waiver/chaos/runbook/generateProvider/runner (docs/plans/0017 F23)."
+}

@@ -4,7 +4,7 @@ import path from "node:path";
 import type { CliContext } from "@hobo/cli";
 
 import { definePolicyRule, type PolicyPack } from "@hobo/contracts";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createVerifyCommand } from "../src/verify-command.js";
 
@@ -133,5 +133,109 @@ describe("createVerifyCommand", () => {
 			expect(result.code).toBe("HOBO_NO_BINDLE");
 			expect(result.code).not.toBe("HOBO_CLI_STUB");
 		}, false);
+	});
+});
+
+describe("residency dimension (ADR-0146)", () => {
+	const euPii = {
+		classifications: ["pii" as const],
+		allowedJurisdictions: ["eu" as const],
+	};
+
+	it("blocks a pii-classified plan landing outside the allowed jurisdiction", async () => {
+		await withProject(async (cwd) => {
+			const result = await createVerifyCommand({
+				residency: { constraint: euPii, region: "us-east-1" },
+			}).run(runInput(cwd));
+
+			expect(result.ok).toBe(false);
+			expect(result.status).toBe("deny");
+			expect(
+				result.remediation?.some((entry) =>
+					entry.includes("[residency] jurisdiction-not-allowed"),
+				),
+			).toBe(true);
+		});
+	});
+
+	it("allows when the plan region sits inside the allowed jurisdiction", async () => {
+		await withProject(async (cwd) => {
+			const result = await createVerifyCommand({
+				residency: { constraint: euPii, region: "eu-west-1" },
+			}).run(runInput(cwd));
+
+			expect(result.ok).toBe(true);
+			expect(result.status).toBe("allow");
+		});
+	});
+
+	it("fails closed on an unattested region (no region provided)", async () => {
+		await withProject(async (cwd) => {
+			const result = await createVerifyCommand({
+				residency: { constraint: euPii },
+			}).run(runInput(cwd));
+
+			expect(result.ok).toBe(false);
+			expect(
+				result.remediation?.some((entry) =>
+					entry.includes("[residency] region-unmapped"),
+				),
+			).toBe(true);
+		});
+	});
+});
+
+describe("residency from the environment (C9: the shipped CLI runs the dimension)", () => {
+	const saved: Record<string, string | undefined> = {};
+	const KEYS = [
+		"HOBO_RESIDENCY_ALLOW",
+		"HOBO_RESIDENCY_DENY",
+		"HOBO_RESIDENCY_CLASSIFICATIONS",
+		"HOBO_REGION",
+	];
+	beforeEach(() => {
+		for (const key of KEYS) {
+			saved[key] = process.env[key];
+			delete process.env[key];
+		}
+	});
+	afterEach(() => {
+		for (const key of KEYS) {
+			if (saved[key] === undefined) delete process.env[key];
+			else process.env[key] = saved[key];
+		}
+	});
+
+	it("denies through default deps when env pins pii to eu and the region is us", async () => {
+		process.env.HOBO_RESIDENCY_ALLOW = "eu";
+		process.env.HOBO_RESIDENCY_CLASSIFICATIONS = "pii";
+		process.env.HOBO_REGION = "us-east-1";
+		await withProject(async (cwd) => {
+			const result = await createVerifyCommand().run(runInput(cwd));
+			expect(result.ok).toBe(false);
+			expect(
+				result.remediation?.some((entry) => entry.includes("[residency]")),
+			).toBe(true);
+		});
+	});
+
+	it("warns (still allows) for unregulated data outside the jurisdiction", async () => {
+		process.env.HOBO_RESIDENCY_ALLOW = "eu";
+		process.env.HOBO_RESIDENCY_CLASSIFICATIONS = "internal";
+		process.env.HOBO_REGION = "us-east-1";
+		await withProject(async (cwd) => {
+			const result = await createVerifyCommand().run(runInput(cwd));
+			expect(result.ok).toBe(true);
+			expect(result.status).toBe("allow");
+		});
+	});
+
+	it("fails closed with a typed config error on an invalid jurisdiction id", async () => {
+		process.env.HOBO_RESIDENCY_ALLOW = "atlantis";
+		await withProject(async (cwd) => {
+			const result = await createVerifyCommand().run(runInput(cwd));
+			expect(result.ok).toBe(false);
+			expect(result.code).toBe("HOBO_RESIDENCY_CONFIG");
+		});
 	});
 });

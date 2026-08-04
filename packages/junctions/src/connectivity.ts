@@ -1,3 +1,9 @@
+import {
+	evaluateResidency,
+	parseDataClassification,
+	parseJurisdictionId,
+} from "@hobo/core";
+
 import { deriveFederationPlan } from "./federation.js";
 import { deepFreeze } from "./freeze.js";
 import {
@@ -12,6 +18,7 @@ import {
 	type JunctionMemberManifest,
 	JunctionParseError,
 	type PeeringEdge,
+	type ResidencyConflict,
 	type YardConnectivityHalfPlan,
 } from "./types.js";
 
@@ -74,11 +81,24 @@ export function deriveConnectivityPlan(
 		members.map((member) => [member.yardName, []]),
 	);
 
+	const residencyConflicts: ResidencyConflict[] = [];
+
 	for (let i = 0; i < members.length; i += 1) {
 		for (let j = i + 1; j < members.length; j += 1) {
 			const source = members[i];
 			const target = members[j];
 			if (!source || !target) continue;
+			const conflict = residencyConflictFor(source, target);
+			if (conflict !== undefined) {
+				// ADR-0103 #3-4: residency mismatches fail closed — the pair gets a
+				// diagnostic and NO edge/halves, never a silent public fallback.
+				residencyConflicts.push({
+					sourceYard: source.yardName,
+					targetYard: target.yardName,
+					diagnostic: conflict,
+				});
+				continue;
+			}
 			const tier = selectConnectivityTier(source, target);
 			const tierLevel = CONNECTIVITY_TIER_LEVELS[tier];
 			const edgeId = `${source.yardName}->${target.yardName}`;
@@ -131,7 +151,56 @@ export function deriveConnectivityPlan(
 		halvesByYard,
 		dns: { zone, records },
 		federation: deriveFederationPlan(definition),
+		residencyConflicts,
 	});
+}
+
+/**
+ * Residency hard guard for one member pair (ADR-0103 #4). Every residency tag
+ * one member declares must be satisfied by the peer: the peer declares the
+ * same tag (explicit guarantee), or the peer's declared region maps inside
+ * the tag's jurisdiction via the fail-closed core evaluator. A peer with no
+ * declared region cannot attest geography, so any residency demand on it is a
+ * conflict. Returns the diagnostic, or undefined when the pair is legal.
+ */
+function residencyConflictFor(
+	left: JunctionMemberManifest,
+	right: JunctionMemberManifest,
+): string | undefined {
+	return (
+		residencyDemandFailure(left, right) ?? residencyDemandFailure(right, left)
+	);
+}
+
+function residencyDemandFailure(
+	demander: JunctionMemberManifest,
+	peer: JunctionMemberManifest,
+): string | undefined {
+	for (const tag of demander.residency) {
+		if (peer.residency.includes(tag)) continue;
+		const separator = tag.indexOf(":");
+		const jurisdictionRaw = separator === -1 ? tag : tag.slice(separator + 1);
+		let allowed: ReturnType<typeof parseJurisdictionId>;
+		try {
+			if (separator !== -1) {
+				parseDataClassification(tag.slice(0, separator));
+			}
+			allowed = parseJurisdictionId(jurisdictionRaw);
+		} catch {
+			return `${demander.yardName} declares invalid residency tag "${tag}"`;
+		}
+		if (peer.region === null) {
+			return `${demander.yardName} requires residency "${tag}" but ${peer.yardName} declares no region`;
+		}
+		const evaluation = evaluateResidency({
+			constraint: { classifications: [], allowedJurisdictions: [allowed] },
+			region: peer.region,
+		});
+		if (!evaluation.ok) {
+			return `${demander.yardName} requires residency "${tag}" but ${peer.yardName} region "${evaluation.region}" fails: ${evaluation.remediation}`;
+		}
+	}
+	return undefined;
 }
 
 /**

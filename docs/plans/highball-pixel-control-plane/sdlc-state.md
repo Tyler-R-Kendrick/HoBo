@@ -1,3 +1,10 @@
+---
+type: Maintenance Note
+title: "highball-pixel-control-plane sdlc-state"
+description: "Durable sdlc coordinator state for the highball-pixel-control-plane initiative."
+tags: [hobo, plans, sdlc]
+---
+
 # SDLC state — HIGHBALL: gamified pixel-RPG control plane
 
 **Phase:** 5 — finish (integration merged; PR #1026 open; review fixes landed)

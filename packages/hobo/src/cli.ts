@@ -19,48 +19,48 @@ import { createDepotCatalogEntry } from "@hobo/runner-depot";
 import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
 import { createAccessCommand } from "./access-command.js";
 import { createAddCommand, registerInstallable } from "./add-command.js";
-import { createFeatureCommand } from "./feature-command.js";
-import { createDeployCommand } from "./deploy-command.js";
-import { createIncidentCommand } from "./incident-command.js";
 import { createAttestCommand } from "./attest-command.js";
-import { serveProjectOnLocalYard } from "./wasm-host.js";
 import { createBrokerCommand } from "./broker-command.js";
+import { createBrokerAwareUpCommand } from "./broker-up-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
-import { createConnectionCommand } from "./connection-command.js";
 import {
 	createDefaultYardRuntime,
 	resolveProjectCollectionTarget,
 	resolveProjectDevRuntime,
 	toRegistrableProvider,
 } from "./compose.js";
+import { createConnectionCommand } from "./connection-command.js";
+import { createDeployCommand } from "./deploy-command.js";
 import { createDerivativeCommand } from "./derivative-command.js";
 import { createDoctorCommand } from "./doctor-command.js";
 import { createDriftCommand } from "./drift-command.js";
-import { createMessagingCommand } from "./messaging-command.js";
 import { createEraseCommand } from "./erase-command.js";
+import { createFeatureCommand } from "./feature-command.js";
 import { createGenerateCommand } from "./generate-command.js";
 import { createIdentityCommand } from "./identity-command.js";
 import { createImportCommand } from "./import-command.js";
-import { createTrailsCommand } from "./trails-command.js";
-import { createReplayCommand } from "./replay-command.js";
+import { createIncidentCommand } from "./incident-command.js";
 import { createInspectCommand } from "./inspect-command.js";
 import { createLocalProvider } from "./local-provider.js";
+import { createBrokerAwareLoginCommand } from "./login-command.js";
 import { createLogsCommand } from "./logs-command.js";
+import { createMessagingCommand } from "./messaging-command.js";
 import { createRegistryCommand } from "./registry-command.js";
+import { createReplayCommand } from "./replay-command.js";
+import { createRunbookCommand } from "./runbook-command.js";
 import {
 	createCloudNativeRuntimeCatalogEntry,
 	createLocalRuntimeCatalogEntry,
 	createOciRuntimeCatalogEntry,
 	createWasmRuntimeCatalogEntry,
 } from "./runtime-catalog.js";
-import { createRunbookCommand } from "./runbook-command.js";
 import { createSandboxCommand } from "./sandbox-command.js";
-import { createVerifyCommand } from "./verify-command.js";
-import { createBrokerAwareUpCommand } from "./broker-up-command.js";
-import { createBrokerAwareLoginCommand } from "./login-command.js";
 import { createServeControlCommand } from "./serve-control-command.js";
 import { createStationCommand } from "./station-command.js";
+import { createTrailsCommand } from "./trails-command.js";
+import { createVerifyCommand } from "./verify-command.js";
+import { serveProjectOnLocalYard } from "./wasm-host.js";
 import { createYardCommand } from "./yard-command.js";
 
 export interface ComposedHoboCliOptions {
@@ -188,7 +188,9 @@ export function createComposedHoboCli(
 			// The cloud mock `createUpCommand` remains for tests that wire it directly.
 			up: createBrokerAwareUpCommand({ runtime }),
 			// Identity plane: persist profile + optional default broker association.
-			login: createBrokerAwareLoginCommand(),
+			// The composition root injects the platform fetch — the login/grant
+			// modules never reach for the global, so tests drive them offline.
+			login: createBrokerAwareLoginCommand({ fetchImpl: fetch }),
 			// Durable Connections: authorize once, mint short-lived tokens thereafter.
 			connection: createConnectionCommand(),
 			// Continuous identity migration observe surface (Matching/policy-driven; zero Bindle config).
@@ -217,7 +219,7 @@ export function createComposedHoboCli(
 			station: createStationCommand(),
 			// Session Replay (DOM/session reconstruction; distinct from event-log replay).
 			replay: createReplayCommand(),
-			// Local control-plane HTTP+SSE for Yard game UI (ADR-0135).
+			// Local control-plane HTTP+SSE for Yard game UI (ADR-0150).
 			serve: createServeControlCommand(),
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),

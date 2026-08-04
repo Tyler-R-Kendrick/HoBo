@@ -210,6 +210,9 @@ export type {
 	JurisdictionRecord,
 	ResidencyConstraint,
 	ResidencyEvaluation,
+	TransferBasis,
+	TransferMechanismEdge,
+	TransferMechanismMode,
 } from "./ports/jurisdiction.js";
 export {
 	evaluateResidency,
@@ -220,6 +223,7 @@ export {
 	parseJurisdictionId,
 	parseResidencyConstraint,
 	REGION_JURISDICTIONS,
+	TRANSFER_MECHANISMS,
 } from "./ports/jurisdiction.js";
 export type {
 	ActorPlacementMode,
@@ -335,6 +339,24 @@ export {
 	QueueParseError,
 } from "./ports/queue.js";
 export type {
+	IacOutputsLike,
+	RealizationBindingRecord,
+	RealizationResult,
+	RealizationResultRejection,
+	RealizedResourceRecord,
+	RecipeOutputsLike,
+	SecretRefRecord,
+} from "./ports/realization-result.js";
+export {
+	fromIacOutputs,
+	fromRecipeOutputs,
+	isSecretRefString,
+	looksLikeSecretKey,
+	parseRealizationResult,
+	REALIZATION_RESULT_SCHEMA,
+	RealizationResultParseError,
+} from "./ports/realization-result.js";
+export type {
 	FetchHandler,
 	HoboRuntimeHost,
 	HoboRuntimeHostKind,
@@ -349,6 +371,15 @@ export {
 	HOBO_RUNTIME_HOST_KINDS,
 	isHoboRuntimeHostKind,
 } from "./ports/runtime-host.js";
+export type { SchedulerPort } from "./ports/scheduler.js";
+export {
+	CronExpressionUnsupportedError,
+	parseIntervalCronSpec,
+	SCHEDULER_PORT,
+	SCHEDULER_PORT_DESCRIPTOR,
+	SCHEDULER_PORT_INTERFACE,
+	SchedulerParseError,
+} from "./ports/scheduler.js";
 export type {
 	RunId,
 	Seq,

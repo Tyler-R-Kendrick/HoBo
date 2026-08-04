@@ -6,6 +6,7 @@ import {
 	type DeploymentPlan,
 	hashDeploymentPlan,
 	type MatchDecided,
+	type PlacementCriteria,
 	type PlanHash,
 	type PlanRemediation,
 	type ResourceIntent,
@@ -13,6 +14,7 @@ import {
 } from "../plan-types.js";
 import type { PlannerRegistry } from "../registry/catalog.js";
 import { matchResource } from "./matching.js";
+import { emptyPlacementContext } from "./placement.js";
 
 // The Planner: a pure function `plan(bindle, config, registry) -> DeploymentPlan`
 // (control-plane.md "The Planner"). Easy to test, replayable, deterministic. It
@@ -23,6 +25,9 @@ export interface PlanConfig {
 	deploymentId: string;
 	objective?: string;
 	region?: string;
+	// E19: per-resource placement-constraint criteria, keyed by resource name.
+	// Attached to the lowered intents so the bindle manifest stays untouched.
+	placement?: Record<string, PlacementCriteria>;
 }
 
 export interface PlanSuccess {
@@ -92,19 +97,36 @@ export function plan(
 	const lowerOptions: { objective: string; region?: string } = { objective };
 	if (config.region !== undefined) lowerOptions.region = config.region;
 	const intents = lowerManifest(bindle, lowerOptions);
+	// E19: attach per-resource placement criteria to the lowered intents.
+	if (config.placement !== undefined) {
+		for (const intent of intents) {
+			const criteria = config.placement[intent.name];
+			if (criteria !== undefined) intent.placement = criteria;
+		}
+	}
 
 	const decisions: MatchDecided[] = [];
 	const resources: ResourcePlan[] = [];
 	const remediations: PlanRemediation[] = [];
+	// Placements decided so far this pass — affinity/anti-affinity/spread rules
+	// evaluate against it; deterministic because intents arrive in the
+	// byte-stable lowered (sorted-name) order.
+	const placementContext = emptyPlacementContext();
 
 	for (const intent of intents) {
-		const outcome = matchResource(intent, registry);
+		const outcome = matchResource(intent, registry, placementContext);
 		if (!outcome.ok) {
 			remediations.push(outcome.remediation);
 			continue;
 		}
 		const decision = { ...outcome.decision, deploymentId: config.deploymentId };
 		decisions.push(decision);
+		placementContext.placements.push({
+			resource: intent.name,
+			port: intent.port,
+			providerId: decision.providerId,
+			region: outcome.region,
+		});
 		const node: ResourcePlan = {
 			name: intent.name,
 			port: intent.port,

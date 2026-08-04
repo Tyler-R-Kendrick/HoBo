@@ -107,7 +107,7 @@ package data_models
 	rail_hash?:  string
 }
 
-#RejectionPlane: "policy" | "contracts" | "billing" | "placement" | "connectors"
+#RejectionPlane: "policy" | "contracts" | "billing" | "placement" | "connectors" | "residency"
 
 #RejectionReason: {
 	plane:   #RejectionPlane

@@ -144,6 +144,27 @@ export interface GatekeeperInput {
 	 * path remains available; continuous migration is still Matching-driven).
 	 */
 	canMigrate?: CanMigrateGateVerdict;
+	/**
+	 * Optional residency dimension (ADR-0146). When omitted, Gatekeeper does
+	 * not block on residency (the caller had no constraint to evaluate).
+	 */
+	residency?: ResidencyGateVerdict;
+}
+
+/**
+ * Precomputed residency dimension (ADR-0146): callers compute the geographic
+ * verdict with @hobo/core evaluateResidency (+ the @hobo/policy residency
+ * pack) and hand Gatekeeper the result — contracts stays free of core/policy
+ * geography imports, matching the other precomputed dimensions.
+ */
+export interface ResidencyGateVerdict {
+	ok: boolean;
+	reasons: ReadonlyArray<{
+		code: string;
+		message: string;
+		region?: string;
+		jurisdictions?: readonly string[];
+	}>;
 }
 
 /** Precomputed binding-delivery dimension (from @hobo/bindles evaluateBindingDeliveryGate). */
@@ -292,9 +313,36 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		}
 	}
 
+	// (g) residency (ADR-0146) — optional precomputed dimension. A residency
+	// conflict is a hard geographic fact: it denies like a broken contract,
+	// with the machine-readable evaluator output carried in the reason.
+	let residencyOk = true;
+	if (input.residency) {
+		residencyOk = input.residency.ok;
+		if (!input.residency.ok) {
+			for (const reason of input.residency.reasons) {
+				reasons.push({
+					gate: "residency",
+					code: reason.code,
+					message: reason.message,
+					details: {
+						...(reason.region !== undefined ? { region: reason.region } : {}),
+						...(reason.jurisdictions !== undefined
+							? { jurisdictions: [...reason.jurisdictions] }
+							: {}),
+					},
+				});
+			}
+		}
+	}
+
 	const decision = composeEffect({
 		contractOk:
-			canDeploy.ok && secretlessConfigOk && bindingDeliveryOk && canMigrateOk,
+			canDeploy.ok &&
+			secretlessConfigOk &&
+			bindingDeliveryOk &&
+			canMigrateOk &&
+			residencyOk,
 		policyEffect,
 		pendingObligations: pendingObligations.length > 0,
 		quotaOk: costQuota.ok,

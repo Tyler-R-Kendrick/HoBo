@@ -22,7 +22,6 @@ export {
 	NIST_800_53_SEED_PACK,
 	parseControlEvidencePack,
 } from "./control-evidence-pack.js";
-
 export {
 	DEFAULT_MESSAGING_POLICY_PACK,
 	evaluateMessagingPolicy,
@@ -30,6 +29,22 @@ export {
 	type MessagingPolicyEvaluation,
 	type MessagingPolicyPack,
 } from "./messaging-policy-pack.js";
+export {
+	emitOscalAssessmentEvidence,
+	emitOscalComponentDefinition,
+	OSCAL_VERSION,
+	type OscalAssessmentResultsDocument,
+	type OscalComponent,
+	type OscalComponentDefinitionDocument,
+	type OscalComponentDefinitionOptions,
+	type OscalControlImplementation,
+	type OscalExportKind,
+	type OscalExportSummary,
+	type OscalFinding,
+	type OscalImplementedRequirement,
+	type OscalProp,
+	summarizeOscalExport,
+} from "./oscal-export.js";
 export {
 	canonicalJson,
 	createDecision,
@@ -55,5 +70,6 @@ export {
 	type ResidencyPolicyPack,
 	type ResidencyVerdictInput,
 } from "./residency-policy-pack.js";
+export { GDPR_SEED_PACK, SOC2_SEED_PACK } from "./seed-packs.js";
 
 export const HOBO_POLICY_PACKAGE = "@hobo/policy";

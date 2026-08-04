@@ -329,9 +329,34 @@ package hobo
 	context_digest:  string
 }
 
+#RolloutTargetGroupRecord: {
+	name:          string
+	targets:       [...string] & [_, ...]
+	concurrency?:  uint & >=1
+	max_failures?: uint
+	approval?:     bool
+}
+
+#RolloutResumePointRecord: {
+	stage_index: uint
+	group_index: uint
+}
+
+#RolloutPendingApprovalRecord: {
+	stage_index: uint
+	group_index: uint
+	scope:       "stage" | "group"
+}
+
 #RolloutStageRecord: {
 	percent:   uint & >=0 & <=100
 	duration?: string
+	// Staged extensions (append-only; absent = degenerate percent-only stage).
+	groups?:             [...#RolloutTargetGroupRecord]
+	concurrency?:        uint & >=1
+	max_failures?:       uint
+	approval?:           bool
+	maintenance_window?: string
 }
 
 #RolloutPolicyRecord: {
@@ -344,10 +369,16 @@ package hobo
 
 #RolloutStateRecord: {
 	id:                     string
-	status:                 "running" | "promoted" | "rolled_back" | "failed"
+	status:                 "running" | "promoted" | "rolled_back" | "failed" | "awaiting_approval" | "halted"
 	stage_index:            uint
 	percent:                uint & >=0 & <=100
 	gateway_weight_percent: uint & >=0 & <=100
+	// Staged extensions (append-only).
+	group_index?:       uint
+	completed_targets?: [...string]
+	failed_targets?:    [...string]
+	resume_from?:       #RolloutResumePointRecord
+	pending_approval?:  #RolloutPendingApprovalRecord
 }
 
 #ExperimentDefinitionRecord: {

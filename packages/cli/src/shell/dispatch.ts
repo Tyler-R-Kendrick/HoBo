@@ -149,6 +149,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 						token: null,
 						demo: false,
 						demoSeed: null,
+						region: null,
 					},
 				});
 			}

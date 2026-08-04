@@ -38,7 +38,7 @@ minimal Rust proxy.
 
 HoBo takes the mesh's *goals* and relocates them; the mesh itself is an
 **optional adapter, never the model**
-(ADR-0143 non-goals; [ADR-0107 region](../design/adr/07-portability-extensibility.md#adr-0143):
+(ADR-0143 non-goals; [ADR-0143 non-goals](../design/adr/07-portability-extensibility.md#adr-0143):
 no Istio/Envoy xDS/Linkerd/Gateway API types in `@hobo/core`):
 
 - **Identity/mTLS** → SPIFFE-shaped workload identity and token brokering are

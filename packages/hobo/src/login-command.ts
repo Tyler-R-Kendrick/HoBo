@@ -1,36 +1,81 @@
 /**
- * Composed `hobo login` — fixture/OIDC session + optional default broker association.
+ * Composed `hobo login` — fixture session by default; real OAuth 2.0
+ * device-code grant (RFC 8628) when `HOBO_OIDC_ISSUER` is configured; plus
+ * optional default broker association persisted under HOBO_HOME.
  *
- * HONEST SCOPE: full OIDC browser flow and SPIRE-backed SVID brokering remain
- * behind local fixtures; this command persists principal + broker URI under HOBO_HOME.
+ * Fail-closed: once an issuer is explicitly configured, any grant failure
+ * (discovery, metadata, denial, expiry, verification) is a typed error —
+ * never a silent fixture fallback. Without an issuer, the offline fixture
+ * lane is unchanged and first-class.
+ *
+ * SPIRE-shaped seam: this grant authenticates the HUMAN principal only.
+ * Node/workload attestation stays behind @hobo/identity's fixture attestor
+ * (`createFixtureHostAttestor`) — a production SPIRE agent replaces that
+ * fixture behind the same attestor port (node attestation → workload SVIDs);
+ * it is a later adapter, deliberately not part of the login grant.
  */
+
 import {
-	createFixtureSession,
-	createLoginCommand as createCliLoginCommand,
 	type CommandModule,
 	type CommandResult,
+	createLoginCommand as createCliLoginCommand,
+	createFixtureSession,
 	type LoginCommandDeps,
+	type YardSession,
 } from "@hobo/cli";
+import type { PrincipalRef } from "@hobo/core";
 
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { resolveBrokerUriFromFlags } from "./broker-target.js";
 import { upsertLoginProfile } from "./hobo-profile.js";
+import {
+	DeviceGrantError,
+	type DeviceGrantResult,
+	type OidcIssuerConfig,
+	resolveOidcIssuerConfig,
+	runDeviceCodeGrant,
+} from "./oidc-device-grant.js";
 
 export interface BrokerAwareLoginCommandDeps extends LoginCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
+	/**
+	 * Injected fetch for the device-code grant. The composition root wires the
+	 * platform fetch; this module never reaches for the global itself, so tests
+	 * run the whole grant offline.
+	 */
+	readonly fetchImpl?: typeof fetch;
+	/** Injected sleep seam (poll interval waits). Tests inject a fake; default is a real timer. */
+	readonly sleep?: (ms: number) => Promise<void>;
+	/** Injected clock (epoch ms). */
+	readonly now?: () => number;
 }
 
 export function createBrokerAwareLoginCommand(
 	deps: BrokerAwareLoginCommandDeps = {},
 ): CommandModule {
-	const base = createCliLoginCommand(deps);
+	const fixtureBase = createCliLoginCommand(deps);
 	return {
 		implemented: true,
 		run: async (input): Promise<CommandResult> => {
-			const result = await base.run(input);
+			const env = deps.env ?? process.env;
+			const oidc = resolveOidcIssuerConfig(env);
+
+			let result: CommandResult;
+			let grant: DeviceGrantResult | null = null;
+			if (oidc === null) {
+				// Offline default lane: deterministic fixture session, unchanged.
+				result = await fixtureBase.run(input);
+			} else {
+				const authenticated = await runConfiguredGrant(deps, oidc, input);
+				if (!authenticated.ok) return authenticated.failure;
+				grant = authenticated.grant;
+				result = await createCliLoginCommand({
+					...deps,
+					session: authenticated.session,
+				}).run(input);
+			}
 			if (!result.ok) return result;
 
-			const env = deps.env ?? process.env;
 			const hoboHome =
 				typeof input.flags.home === "string" && input.flags.home.length > 0
 					? input.flags.home
@@ -49,8 +94,7 @@ export function createBrokerAwareLoginCommand(
 				kind: "user" as const,
 				id: "user:local-fixture",
 			};
-			const tenant =
-				typeof data.tenant === "string" ? data.tenant : "hobo-dev";
+			const tenant = typeof data.tenant === "string" ? data.tenant : "hobo-dev";
 			const token =
 				typeof data.token === "string"
 					? data.token
@@ -84,8 +128,121 @@ export function createBrokerAwareLoginCommand(
 					defaultBrokerUri: profile.defaultBrokerUri ?? null,
 					// Dual principal note: agent SVIDs are separate from human login.
 					principalPlane: "identity",
+					...(grant !== null
+						? {
+								authMethod: "device-code",
+								issuer: oidc?.issuer,
+								verificationUri: grant.verificationUri,
+							}
+						: { authMethod: "fixture" }),
 				},
 			};
 		},
+	};
+}
+
+type ConfiguredGrantOutcome =
+	| {
+			readonly ok: true;
+			readonly grant: DeviceGrantResult;
+			readonly session: YardSession;
+	  }
+	| { readonly ok: false; readonly failure: CommandResult };
+
+async function runConfiguredGrant(
+	deps: BrokerAwareLoginCommandDeps,
+	oidc: OidcIssuerConfig,
+	input: Parameters<CommandModule["run"]>[0],
+): Promise<ConfiguredGrantOutcome> {
+	const { fetchImpl } = deps;
+	if (fetchImpl === undefined) {
+		// Fail closed: an issuer was explicitly configured, so a missing network
+		// seam is an error — never a silent fixture fallback.
+		return {
+			ok: false,
+			failure: {
+				ok: false,
+				status: "error",
+				code: "HOBO_OIDC_NO_FETCH",
+				message: `${oidc.issuer} is configured as the OIDC issuer, but no fetch implementation was injected into the login command.`,
+				remediation: [
+					"Run login through the composed `hobo` binary (it wires the platform fetch), or inject fetchImpl into createBrokerAwareLoginCommand.",
+				],
+				data: { command: "login", issuer: oidc.issuer },
+			},
+		};
+	}
+	try {
+		const grant = await runDeviceCodeGrant({
+			config: oidc,
+			fetchImpl,
+			sleep:
+				deps.sleep ??
+				((ms: number) => new Promise((resolve) => setTimeout(resolve, ms))),
+			now: deps.now ?? (() => Date.now()),
+			emitProgress: input.emitProgress,
+		});
+		return {
+			ok: true,
+			grant,
+			session: sessionFromVerifiedGrant(grant, deps.now ?? (() => Date.now())),
+		};
+	} catch (error) {
+		if (error instanceof DeviceGrantError) {
+			return {
+				ok: false,
+				failure: {
+					ok: false,
+					status: "error",
+					code: error.code,
+					message: error.message,
+					remediation: error.remediation,
+					data: { command: "login", issuer: oidc.issuer },
+				},
+			};
+		}
+		return {
+			ok: false,
+			failure: {
+				ok: false,
+				status: "error",
+				code: "HOBO_OIDC_GRANT_FAILED",
+				message: `Device-code grant failed unexpectedly: ${String(error)}`,
+				remediation: [
+					"Retry `hobo login`; unset HOBO_OIDC_ISSUER to use the offline fixture session instead.",
+				],
+				data: { command: "login", issuer: oidc.issuer },
+			},
+		};
+	}
+}
+
+/** Map verified grant claims onto the Yard session shape the CLI persists. */
+function sessionFromVerifiedGrant(
+	grant: DeviceGrantResult,
+	now: () => number,
+): YardSession {
+	const claims = grant.claims;
+	const sub = typeof claims.sub === "string" ? claims.sub : "unknown";
+	const parent = claims.parentPrincipal;
+	const principal: PrincipalRef =
+		typeof parent === "object" &&
+		parent !== null &&
+		typeof (parent as { kind?: unknown }).kind === "string" &&
+		typeof (parent as { id?: unknown }).id === "string"
+			? {
+					kind: (parent as { kind: string }).kind as PrincipalRef["kind"],
+					id: (parent as { id: string }).id,
+				}
+			: { kind: "user", id: sub.includes(":") ? sub : `user:${sub}` };
+	const tenant =
+		typeof claims.tenant === "string" && claims.tenant.length > 0
+			? claims.tenant
+			: "hobo-dev";
+	return {
+		tenant,
+		principal,
+		token: grant.token,
+		issuedAt: new Date(now()).toISOString(),
 	};
 }

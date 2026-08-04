@@ -1,0 +1,24 @@
+{
+	"name": "@hobo/agent-skills",
+	"version": "0.0.1",
+	"license": "MIT",
+	"type": "module",
+	"private": true,
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run"
+	},
+	"description": "HoBo agent-skills bundle: the mirrored .agents/skills tree as a distributable module \u2014 parsed skills manifest (name/description/entry per skill), parse-don't-validate frontmatter, and a conformance check every skill must pass (docs/plans/0017 F27). Distribution rides Registry listings like Resource Packs."
+}

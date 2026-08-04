@@ -109,6 +109,34 @@ The **official hosted** MCP connector for Higgsfield AI image/video generation
 - **Risk:** generation requests and any prompt content are sent to Higgsfield.
   Treat it like the other network-egress tools in this table.
 
+### higgsfield-auth — repo-local skill
+Mints and rotates the Higgsfield MCP token. **The standard OAuth flow cannot
+complete here**: Higgsfield chooses between two flows `client_capability_based`,
+Claude Code is listed under `authorization_code_pkce`, and that path needs
+`http://localhost:<port>/callback` pre-registered with their Clerk tenant — it
+is not, so `clerk.higgsfield.ai` *and* Higgsfield's own `/oauth2/authorize`
+proxy both reject it with `redirect_uri does not match…`. Running `/mcp`
+reproduces the error rather than fixing it.
+
+The skill uses their **`device_code`** flow instead (endpoints published in no
+`.well-known` path — only in the service's OpenAPI doc) and installs the result
+as a plain `Authorization: Bearer` header.
+
+```sh
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs ensure   # refresh only if needed
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs status   # 0 healthy / 2 due / 1 none
+node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs login    # device flow, needs the user
+```
+
+- **Access tokens last one hour.** Run `ensure` before a generation batch; run
+  `login` when refresh is itself rejected.
+- **Refresh tokens rotate on every use** and the old one dies immediately.
+  Never call `/refresh` with curl during a session — that consumes the stored
+  token and the next `ensure` fails. The store is written atomically at `0600`.
+- Credentials live in `~/.higgsfield/token.json` and `~/.claude.json`, **never**
+  in the committed `.mcp.json`.
+- Restart Claude Code after `login` or a header-changing `refresh`.
+
 ### ponytail — `DietrichGebert/ponytail` (MIT)
 A **minimalist-coding skill**: channels a senior dev who pushes the laziest solution that works — YAGNI (does this need to exist?), standard library before custom code, native platform features before dependencies, one line before fifty. Commands: `/ponytail [lite|full|ultra]`, `/ponytail-review` (review a diff for over-engineering), `/ponytail-audit` (whole-repo bloat scan), `/ponytail-debt` (harvest `ponytail:` shortcut comments into a ledger), `/ponytail-gain`, `/ponytail-help`. **No API keys; no third-party data transmission.** Installed (6 skills) to `.claude/skills/ponytail*` (Claude Code) and `.agents/skills/ponytail*` (Cursor + Codex).
 - **Invocation-based here, not always-on.** Run `/ponytail` to activate it for a session. (Upstream also supports an always-on plugin install via `/plugin marketplace add DietrichGebert/ponytail` → `/plugin install ponytail@ponytail` in Claude Code; we use the skills route to keep it opt-in and committable, and to avoid stacking a second always-on directive on top of caveman.) Optional global config: `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE`.

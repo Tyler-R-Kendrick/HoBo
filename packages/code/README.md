@@ -430,6 +430,53 @@ Dispatch may use capacity-aware multi-node scheduling under the hood (`code.dist
 | `code.isolation.rift` | Prefer CoW rift when available |
 | `code.distributed` | Multi-node compute dispatch |
 
+## Virtualized panes
+
+A tmux pane can hand an agent a **virtual terminal over a virtual filesystem**
+instead of a real shell in a real directory.
+
+`rift` separates each agent's tree so agents cannot collide. It does nothing
+about what a command *is*: inside its own workspace an agent can still
+`curl | sh`, read `~/.aws/credentials` by absolute path, or `rm -rf` its way
+out. Two layers close that:
+
+- **Commands** — the pane runs a bash *interpreter*
+  ([just-bash](https://github.com/vercel-labs/just-bash)), not `/bin/bash`.
+  There is no `execve`: commands are TypeScript implementations dispatched from
+  a registry, so anything off the allow-list simply **does not exist** (`rm`
+  answers `command not found`). Network commands are absent entirely. Reads
+  come from the real tree, writes stay in memory until promotion, and no path
+  resolves outside the mounted root.
+- **Observation** — `tmux capture-pane` returns text tmux has already
+  interpreted. The harness instead runs its own VT parser
+  (`@xterm/headless`) over the pane's raw stream (`pipe-pane -O`), so a pane is
+  a structured screen the shell can render, gate on and record.
+
+Neither is a VM: just-bash runs in-process, so this bounds what an agent can
+*name and touch*, not what hostile native code could do.
+
+## Remote panes
+
+`hobo-code mux --host <machine>` reaches only machines **declared** in
+`devenv.machines.json`, beside the devenv files:
+
+```json
+{
+  "schemaVersion": "hobo.code.dev-machines/v1",
+  "machines": [
+    { "id": "build-box", "host": "build-box.tail1234.ts.net", "isolationClass": "development" },
+    { "id": "gpu", "host": "gpu.tail1234.ts.net", "user": "agent",
+      "isolationClass": "ephemeral", "agents": ["ollama"] }
+  ]
+}
+```
+
+Hosts resolve on the tailnet. Sessions are brokered through the Station's
+privileged-access gateway, which applies the target's isolation-class policy,
+issues short-lived material, and audits every session. Panes carry the
+credential *reference*, never the token. Without a gateway the pane is refused
+rather than falling back to an ambient `~/.ssh` key.
+
 ## Package layout
 
 `src/`, `test/`, `contracts/`, `data-models/` — konsistent production package.

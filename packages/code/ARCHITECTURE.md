@@ -207,3 +207,65 @@ None of Eve / DeepAgents / OpenShell / WDK are vendored; adapters stay optional.
 - PACT: `contracts/pacts/code-harness-boundary.pact.json`
 - Protobuf/CUE: `data-models/code_harness.{proto,cue}`
 - Composition root wires `createCodeCommand` in `@hobo/hobo`
+
+## Virtualized panes (virtual terminal + virtual filesystem)
+
+A tmux pane used to hand an agent a real shell in a real directory. `rift`
+separates the *tree* so agents cannot collide, but it does nothing about what a
+command **is**: inside its own workspace an agent can still `curl | sh`, read
+`~/.aws/credentials` by absolute path, or `rm -rf` its way out. The filesystem
+is isolated; the process is not.
+
+Two layers close that, and they answer different questions:
+
+| Layer | Question | Mechanism |
+|---|---|---|
+| `src/virtual-shell.ts` | what may run, and over which files | [just-bash](https://github.com/vercel-labs/just-bash) — bash implemented in TypeScript |
+| `src/virtual-terminal.ts` | what is actually on the pane | [`@xterm/headless`](https://www.npmjs.com/package/@xterm/headless) fed by `tmux pipe-pane` |
+
+**The command layer.** just-bash parses and evaluates bash in-process; there is
+no `execve` anywhere. Commands are TypeScript implementations dispatched from a
+registry, so a command that is not on the allow-list *does not exist* — `rm`
+answers `command not found` rather than being stopped by a rule someone has to
+remember to write. Network commands are absent unless a URL allow-list is
+declared, so there is nothing to configure around. The filesystem beneath is an
+overlay rooted at one directory: reads come from the real tree, writes stay in
+memory until promotion, absolute paths outside the root do not resolve, and
+symlinks are refused.
+
+`mountFor` picks that directory. For rift's directory-backed tiers it is the
+workspace; for the overlay tier it is the **source**, because an overlay merged
+path exists only inside the namespace `hobo-rift exec` creates and mounting it
+from another process yields an empty tree. In the virtualized case just-bash's
+own overlay supplies the copy-on-write, so no kernel mount is involved at all.
+
+**The observation layer.** `tmux capture-pane` returns text tmux has already
+interpreted, which cannot answer *when* a prompt appeared or what the screen
+held at a moment. The harness therefore runs its own VT parser over the pane's
+raw byte stream (`pipe-pane -O`), producing a structured screen buffer. That is
+what makes a pane something the shell can render, gate on and record instead of
+an opaque rectangle.
+
+**What this is not.** just-bash runs inside this process, so it is a governance
+and blast-radius boundary — what an agent can name and touch — not a defence
+against hostile native code. For that, the pane belongs in a VM or container;
+the layering here is what makes the ordinary case reviewable.
+
+## Remote panes go through the Station
+
+`mux --host` used to be `ssh -t <whatever was typed>`: an arbitrary host, an
+ambient key in `~/.ssh`, and no record — the least governed path in a product
+that brokers privileged access everywhere else.
+
+Dev machines are now **declared** in `devenv.machines.json` beside the devenv
+files (`src/dev-machines.ts`), so the reachable set is reviewable alongside the
+toolchain. Every field that reaches a command line — id, host, user — is
+allowlisted, because an ssh destination like `-oProxyCommand=...` is an
+argument rather than a hostname. Each entry becomes a `SessionTarget` for the
+Station's privileged-access gateway (`src/machine-sessions.ts`), which applies
+the target's isolation-class policy, returns short-lived material, and writes
+`pam.SessionStarted` / `pam.SessionDenied`. Panes carry the credential
+*reference*, never the session token, so nothing short-lived reaches a process
+table or a pane title. When no gateway is available the pane is refused rather
+than falling back to the ambient key — a fallback that silently downgrades
+governance is worse than a clear failure.

@@ -30,6 +30,8 @@
 		"@hobo/core": "workspace:*",
 		"@hobo/rift": "workspace:*",
 		"@hobo/stations": "workspace:*",
+		"@xterm/headless": "^6.0.0",
+		"just-bash": "^3.2.0",
 		"valibot": "^1.4.2"
 	},
 	"devDependencies": {

@@ -1,7 +1,7 @@
 /**
  * Executable step definitions for control-yard-core-loop.feature.
  *
- * Drives the HEADLESS @hobo/control-yard library directly — `deriveWaybills`,
+ * Drives the HEADLESS @hobo/pixel-village library directly — `deriveWaybills`,
  * `isHighball`, `waybillForZone`, `createSpikeLedger`, `createYardEngine`,
  * `deriveYardVisualState` — against the committed deterministic scenarios.
  * Nothing here touches Phaser, the DOM, or control-api: the browser suite

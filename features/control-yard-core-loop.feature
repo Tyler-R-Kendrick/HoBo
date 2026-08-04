@@ -1,5 +1,5 @@
 # HIGHBALL core loop — acceptance for the waybill desk, driven HEADLESS.
-# Every step runs the real @hobo/control-yard engine (deriveWaybills,
+# Every step runs the real @hobo/pixel-village engine (deriveWaybills,
 # isHighball, waybillForZone, createYardEngine, deriveYardVisualState) against
 # the committed deterministic scenarios in packages/pixel-village/src/scenarios/
 # — no browser, no Phaser, no control-api. The Playwright suite

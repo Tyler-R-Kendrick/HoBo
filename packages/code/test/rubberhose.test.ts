@@ -148,14 +148,14 @@ describe("the frame as a whole obeys the contract", () => {
 			reducedMotion: true,
 		});
 		const lines = plain(renderShellFrame(state)).split("\n");
-		expect(lines).toHaveLength(24);
-		// Card overhead is 3 rows + prompt + stripe: the rest is content.
-		// The pre-redesign chrome left roughly 8 content rows on this size.
+		// Frame = transcript card + status strap; the Editor renders beneath it
+		// and reports its own height via state.inputRows.
+		expect(lines).toHaveLength(23);
 		const contentRows = lines.filter((l) => l.startsWith(INK.vertical)).length;
 		expect(contentRows).toBeGreaterThanOrEqual(17);
 	});
 
-	it("ends with a prompt line and a single status strap", () => {
+	it("ends with a single status strap and leaves the prompt to the editor", () => {
 		const state = createInitialShellState({
 			width: 80,
 			height: 24,
@@ -163,8 +163,24 @@ describe("the frame as a whole obeys the contract", () => {
 			reducedMotion: true,
 		});
 		const lines = plain(renderShellFrame(state)).split("\n");
-		expect(lines[lines.length - 2]).toMatch(/^❯ /);
 		expect(lines[lines.length - 1]).toContain("hobo-code");
+		// The frame must not draw its own prompt: an append-only fake prompt is
+		// what shipped with no backspace, no cursor and no history.
+		expect(lines.some((l) => l.startsWith("❯"))).toBe(false);
+	});
+
+	it("gives the editor more room as the typed input wraps", () => {
+		const base = createInitialShellState({
+			width: 80,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		const oneRow = plain(renderShellFrame(base)).split("\n").length;
+		const threeRows = plain(renderShellFrame({ ...base, inputRows: 3 })).split(
+			"\n",
+		).length;
+		expect(oneRow - threeRows).toBe(2);
 	});
 
 	it("never emits the old dashboard furniture", () => {

@@ -30,7 +30,8 @@ describe("hobo-code auth (station login)", () => {
 		const home = temp("auth-local-");
 		const result = authLogin({ hoboHome: home });
 		expect(result.ok).toBe(true);
-		if (!result.ok || result.status !== "logged-in") throw new Error("expected login");
+		if (!result.ok || result.status !== "logged-in")
+			throw new Error("expected login");
 		expect(result.session.mode).toBe("local");
 		expect(result.session.stationId).toMatch(/^station:/);
 		expect(readAuthSession(home)?.sessionRef).toBe(result.session.sessionRef);
@@ -56,7 +57,8 @@ describe("hobo-code auth (station login)", () => {
 			userCode: pending.userCode,
 		});
 		expect(done.ok).toBe(true);
-		if (!done.ok || done.status !== "logged-in") throw new Error("expected complete");
+		if (!done.ok || done.status !== "logged-in")
+			throw new Error("expected complete");
 		expect(done.session.mode).toBe("remote");
 		expect(done.session.tenant).toBe("acme");
 		expect(done.session.domain).toBe("stations.acme.example");

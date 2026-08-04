@@ -11,6 +11,7 @@
  * disposes (ADR-0139 — promotion stays the sole audited mutation path).
  */
 
+import { AGUI_EVENT } from "./agui.js";
 import {
 	type EngineTurnEvent,
 	type EngineTurnResult,
@@ -189,6 +190,13 @@ export async function createOllamaShellEngine(
 			const controller = new AbortController();
 			inFlight = controller;
 			let text = "";
+			onEvent({ type: AGUI_EVENT.runStarted, runId: options.runId });
+			// The model server has to load and evaluate the prompt before the
+			// first token; say so rather than showing a frozen screen.
+			onEvent({
+				type: AGUI_EVENT.stateDelta,
+				label: `thinking with ${model}…`,
+			});
 			try {
 				const response = await fetch(`${host}/api/chat`, {
 					method: "POST",
@@ -214,8 +222,19 @@ export async function createOllamaShellEngine(
 						if (frame.error) throw new Error(frame.error);
 						const delta = frame.message?.content;
 						if (delta) {
+							if (text.length === 0) {
+								onEvent({
+									type: AGUI_EVENT.textMessageStart,
+									messageId: "assistant",
+									role: "assistant",
+								});
+							}
 							text += delta;
-							onEvent({ kind: "text-delta", delta });
+							onEvent({
+								type: AGUI_EVENT.textMessageContent,
+								messageId: "assistant",
+								delta,
+							});
 						}
 						if (frame.done) {
 							const turnUsage = usageFromFrame(frame);
@@ -230,6 +249,8 @@ export async function createOllamaShellEngine(
 						}
 					}
 				}
+				onEvent({ type: AGUI_EVENT.textMessageEnd, messageId: "assistant" });
+				onEvent({ type: AGUI_EVENT.runFinished, runId: options.runId });
 				history.push({ role: "assistant", content: text });
 				return {
 					ok: true,
@@ -242,6 +263,19 @@ export async function createOllamaShellEngine(
 				const message = err instanceof Error ? err.message : String(err);
 				const aborted = controller.signal.aborted || /abort/i.test(message);
 				// Keep a cancelled partial in history so the next turn has context.
+				if (aborted) {
+					onEvent({
+						type: AGUI_EVENT.runFinished,
+						runId: options.runId,
+						cancelled: true,
+					});
+				} else {
+					onEvent({
+						type: AGUI_EVENT.runError,
+						runId: options.runId,
+						message,
+					});
+				}
 				if (text.length > 0) history.push({ role: "assistant", content: text });
 				return {
 					ok: false,

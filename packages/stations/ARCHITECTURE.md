@@ -31,5 +31,5 @@ parsed types, not raw config objects.
 
 ## Layering
 
-Stations depend only on `@hobo/core`. Identity Connections attach `stationId`;
+Stations depend inward on `@hobo/core` (ports/envelopes), `@hobo/connectivity` (endpoint/routing shapes), and `@hobo/dispatcher` (budget-aware ranking for the routing control loop). Identity Connections attach `stationId`;
 Broker mounts a Station client as pure Conductor (no durable Connection store).

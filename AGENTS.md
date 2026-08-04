@@ -205,7 +205,7 @@ Invoke TypeScript repo scripts through `tsx`:
 node --import tsx scripts/no-hand-edited-generated-files.mts
 ```
 
-Do not add `.mjs` repo scripts. If a non-TypeScript JavaScript-family implementation file is unavoidable because of a tooling limitation, document the exception in an ADR before adding it. Sanctioned exceptions: committed platform entry files under `examples/*/deploy/` that the target platform ingests verbatim (ADR-0126).
+Do not add `.mjs` repo scripts. If a non-TypeScript JavaScript-family implementation file is unavoidable because of a tooling limitation, document the exception in an ADR before adding it. Sanctioned exceptions: committed platform entry files under `packages/hobo/fixtures/deploy/<provider>/` that the target platform ingests verbatim (ADR-0126).
 
 Before finalizing changes that add, rename, or modify implementation files, scripts, generated-file guards, package config, TypeScript config, Turbo config, or CI config, run:
 

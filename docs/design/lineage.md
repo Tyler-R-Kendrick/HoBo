@@ -23,7 +23,10 @@ the per-capture borrow sections across
 *adopted*: shipped as a dependency/substrate · *borrow-source*: idea taken,
 implementation ours · *analog*: measured against, honestly diverged ·
 *lesson*: only the lesson taken · *provider-target*: realized behind a port ·
-*standard*: spoken at the boundary. Governing rule for all of it:
+*standard*: spoken at the boundary · *informs*: shaped thinking without a
+borrowed mechanism · *head-on*: competitor measured and displaced. Compounds
+(e.g. *adopted substrate/adapter/discipline*) qualify the base posture.
+Governing rule for all of it:
 **"inspired by / maps to — never depends on"**
 ([ADR-0144](./adr/07-portability-extensibility.md#adr-0144)); standards are
 spoken at the boundary, never absorbed
@@ -57,7 +60,7 @@ the control plane is an event journal.**
 | **OAM / KubeVela** | standard (vocabulary) | Application/Component/**Trait**/Scope role separation (ADR-0144/0145); wadm render target (ADR-0108) | executable TS IR, scored matching, never OAM-as-model | [standards/oam](../standards/oam.md) |
 | **Nitric** | pillar (P3) | resource catalog, `.allow()` least privilege, IfC default authoring | wasm membrane, event-sourced plane | [competitors/nitric](../competitors/nitric.md#hobo-mapping) |
 | **.NET Aspire** | pillar (P2) | `WithReference` wiring, annotations, manifest IR, local orchestration DX | polyglot via WIT, provider-negotiated deploy | [competitors/aspire](../competitors/aspire.md#hobo-mapping) |
-| **Wasp / Open-SaaS** | lesson + packaging path | declarative app-spec instinct, opinionated App Kits | no dual authoring; kits as Resource/App Packs (ADR-0144 §5) | [competitors/wasp](../competitors/wasp.md#hobo-mapping) |
+| **Wasp / Open-SaaS** | lesson + packaging path | declarative app-spec instinct, opinionated App Kits | no dual authoring; kits as Resource/App Packs planned via Distribution (ADR-0145 §2) | [competitors/wasp](../competitors/wasp.md#hobo-mapping) |
 | **SST / Encore / Winglang** | analogs | IfC validation; typed linking; preflight/inflight cautionary tale | — | [sst](../competitors/sst.md#hobo-mapping) · [encore](../competitors/encore.md#hobo-mapping) · [winglang](../competitors/winglang.md#hobo-mapping) |
 
 ### Runtime & distributed substrate
@@ -93,6 +96,10 @@ the control plane is an event journal.**
 | **Flux CD** | lesson | OCI artifacts as signed delivery channel; controller-toolkit decomposition | reconcile from journal, not Git | [technologies/flux-cd](../technologies/flux-cd.md) |
 | **Octopus Deploy** | lesson | the delivery domain model as first-class nouns: environments, lifecycles, tenants, runbooks, approvals | promotion as policy-gated events; runbooks agent-first | [competitors/octopus-deploy](../competitors/octopus-deploy.md#hobo-mapping) |
 | **OpenGitOps / CDEvents / Serverless Workflow / OpenSLO / CloudEvents / OTel / OCSF / OpenFeature** | standards | spoken at the boundary | never absorbed (ADR-0046) | [standards index](../standards/index.md) |
+| **OSCAL** | standard | control→evidence vocabulary for compliance packs | boundary export only, no schema dependency (ADR-0146) | [standards/oscal](../standards/oscal.md) |
+| **CUE** | adopted discipline | data-model constraint language beside protobuf | constraints only, never a runtime dependency | [technologies index](../technologies/index.md) |
+| **OpenStack** | analog | self-host control-plane precedent | event-sourced control plane instead of service sprawl | [technologies index](../technologies/index.md) |
+| **Varlock** | informs | env/secret hygiene tooling | secretless bindings + broker-minted credentials instead | [technologies index](../technologies/index.md) |
 | **StackStorm / Prometheus AlertManager / HolmesGPT** | informs | event-driven runbooks; alert routing; AI SRE investigation | Crew agents as principals | [technologies index](../technologies/index.md) |
 
 ### Agent & AI training
@@ -113,7 +120,8 @@ above is the *full* credits surface. A commonly used informal shorthand —
 Nitric + Wasp; Trace/DSPy; OPA/Rego + FinOps; PACT + Argo/Flux/Octopus" — is
 accurate as a cluster sketch and maps onto the tables above; where it names a
 *lesson* or *analog* (Istio, CNAB, Octopus, Dapr), the posture column keeps
-the claim honest.
+the claim honest. Captures record their borrows in a clearly labelled borrow
+paragraph or section (exact heading form varies across the corpus).
 
 ## Maintenance
 

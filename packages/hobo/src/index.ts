@@ -298,6 +298,20 @@ export {
 	verifyOcsfBatchSignature,
 } from "./ocsf-export.js";
 export {
+	DEFAULT_OIDC_CLIENT_ID,
+	DEVICE_CODE_GRANT_TYPE,
+	DeviceGrantError,
+	type DeviceGrantErrorCode,
+	type DeviceGrantOptions,
+	type DeviceGrantResult,
+	HOBO_OIDC_AUDIENCE_ENV,
+	HOBO_OIDC_CLIENT_ID_ENV,
+	HOBO_OIDC_ISSUER_ENV,
+	type OidcIssuerConfig,
+	resolveOidcIssuerConfig,
+	runDeviceCodeGrant,
+} from "./oidc-device-grant.js";
+export {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
 	type PulumiBackedIacProviderOptions,

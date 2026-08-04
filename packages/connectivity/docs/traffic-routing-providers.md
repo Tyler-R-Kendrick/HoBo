@@ -56,7 +56,7 @@ Built-in profiles: `BUILTIN_TRAFFIC_ROUTING_PROFILES` from `@hobo/connectivity`.
 
 **Required**
 
-1. `declareOfferings()` → `TrafficRoutingProviderProfile`
+1. Export a `TrafficRoutingProviderProfile` constant declaring the offerings (e.g. `AWS_TRAFFIC_ROUTING_PROFILE`)
 2. `TrafficRoutingPort` with `apply` / `status` / `revoke?`
 3. Honest `full | partial | none` + concrete `unmet`
 4. Injectable transport for HTTP providers + Pact where applicable

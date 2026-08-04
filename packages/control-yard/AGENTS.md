@@ -1,6 +1,6 @@
 # `@hobo/control-yard` — agent instructions
 
-Game-first control-plane UI (ADR-0135). Projections only; Bo art bible locked;
+Game-first control-plane UI (ADR-0149). Projections only; sourced pixel art per DESIGN.md (ADR-0148 — Bo art bible retired);
 asset index is the sole clip metadata source.
 
 ## Evidence is mandatory (do not claim without files)

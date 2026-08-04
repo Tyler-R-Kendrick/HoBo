@@ -1,0 +1,201 @@
+/**
+ * Herdr-style multi-pane tmux sessions.
+ *
+ * Previously the "multiplexer" was a picture: `buildMultiplexerStatus` drew
+ * panes that corresponded to no real terminal. This drives tmux for real —
+ * one window per registered agent, in a session you can detach from and
+ * reattach to.
+ *
+ * The load-bearing idea is **uniform targets**: a locally spawned agent, a
+ * local inference server, and an ssh'd remote host are all just a command
+ * placed in a pane. Local inference is not a special case with its own
+ * lifecycle; it is a target like any other, so detach/reattach, naming and
+ * status work identically whether the work is on this box or another one.
+ */
+
+import { spawn } from "node:child_process";
+
+export type TargetKind = "local" | "local-inference" | "ssh";
+
+export interface MuxTarget {
+	/** Window name inside the tmux session. */
+	readonly name: string;
+	readonly kind: TargetKind;
+	/** Command to run in the window. */
+	readonly command: string;
+	/** Host for ssh targets; ignored otherwise. */
+	readonly host?: string;
+	/** Working directory for local targets. */
+	readonly cwd?: string;
+}
+
+export interface MuxPlan {
+	readonly session: string;
+	readonly targets: readonly MuxTarget[];
+	/** Fully-formed shell command per target, in window order. */
+	readonly commands: readonly string[];
+}
+
+/** tmux window names cannot contain dots or colons without confusing targets. */
+export function safeWindowName(raw: string): string {
+	const cleaned = raw
+		.replace(/[.:\s]+/g, "-")
+		.replace(/[^\w-]/g, "")
+		.replace(/^-+|-+$/g, "");
+	// An all-punctuation name collapses to nothing useful; name it rather than
+	// handing tmux a bare dash.
+	return cleaned.length > 0 ? cleaned.slice(0, 24) : "pane";
+}
+
+/**
+ * Resolve a target to the command tmux should run.
+ *
+ * ssh targets are wrapped rather than modelled separately — that is what
+ * makes "local inference in a new terminal" and "remote session" the same
+ * shape to everything downstream.
+ */
+export function targetCommand(target: MuxTarget): string {
+	if (target.kind === "ssh") {
+		if (!target.host) return `echo "ssh target ${target.name} has no host"`;
+		// -t so the remote gets a TTY, matching what a local pane provides.
+		return `ssh -t ${target.host} ${JSON.stringify(target.command)}`;
+	}
+	const prefix = target.cwd ? `cd ${JSON.stringify(target.cwd)} && ` : "";
+	return `${prefix}${target.command}`;
+}
+
+export function planMux(
+	session: string,
+	targets: readonly MuxTarget[],
+): MuxPlan {
+	return {
+		session: safeWindowName(session),
+		targets,
+		commands: targets.map(targetCommand),
+	};
+}
+
+export interface MuxRunner {
+	readonly run: (
+		args: readonly string[],
+	) => Promise<{ code: number | null; stdout: string }>;
+}
+
+/** Real tmux runner; stderr ignored so a chatty tmux cannot wedge us. */
+export function tmuxRunner(): MuxRunner {
+	return {
+		run: (args) =>
+			new Promise((resolve) => {
+				const child = spawn("tmux", [...args], {
+					stdio: ["ignore", "pipe", "ignore"],
+				});
+				let stdout = "";
+				child.stdout.setEncoding("utf8");
+				child.stdout.on("data", (c: string) => {
+					stdout += c;
+				});
+				child.on("error", () => resolve({ code: null, stdout }));
+				child.on("close", (code) => resolve({ code, stdout }));
+			}),
+	};
+}
+
+export interface ApplyResult {
+	readonly ok: boolean;
+	readonly session: string;
+	readonly created: readonly string[];
+	readonly existed: boolean;
+	readonly detail: string;
+}
+
+/**
+ * Create the session if absent and add one window per target.
+ *
+ * Idempotent: an existing session is reused and only missing windows are
+ * added, so running this twice does not duplicate panes or kill your work.
+ */
+export async function applyMux(
+	plan: MuxPlan,
+	runner: MuxRunner,
+): Promise<ApplyResult> {
+	const has = await runner.run(["has-session", "-t", plan.session]);
+	const existed = has.code === 0;
+	const created: string[] = [];
+
+	if (!existed) {
+		const first = plan.targets[0];
+		if (!first) {
+			return {
+				ok: false,
+				session: plan.session,
+				created: [],
+				existed: false,
+				detail: "no agents detected — nothing to seat in a session",
+			};
+		}
+		const start = await runner.run([
+			"new-session",
+			"-d",
+			"-s",
+			plan.session,
+			"-n",
+			safeWindowName(first.name),
+			targetCommand(first),
+		]);
+		if (start.code !== 0) {
+			return {
+				ok: false,
+				session: plan.session,
+				created: [],
+				existed: false,
+				detail: "tmux new-session failed (is tmux installed?)",
+			};
+		}
+		created.push(safeWindowName(first.name));
+	}
+
+	const listed = await runner.run([
+		"list-windows",
+		"-t",
+		plan.session,
+		"-F",
+		"#{window_name}",
+	]);
+	const present = new Set(
+		listed.stdout
+			.split("\n")
+			.map((l) => l.trim())
+			.filter((l) => l.length > 0),
+	);
+
+	for (const target of plan.targets) {
+		const name = safeWindowName(target.name);
+		if (present.has(name) || created.includes(name)) continue;
+		const added = await runner.run([
+			"new-window",
+			"-d",
+			"-t",
+			plan.session,
+			"-n",
+			name,
+			targetCommand(target),
+		]);
+		if (added.code === 0) created.push(name);
+	}
+
+	return {
+		ok: true,
+		session: plan.session,
+		created,
+		existed,
+		detail: existed
+			? `reattached to ${plan.session}; added ${created.length} window(s)`
+			: `created ${plan.session} with ${created.length} window(s)`,
+	};
+}
+
+/** The command a human runs to join the session — local or over ssh. */
+export function attachCommand(session: string, host?: string): string {
+	const local = `tmux attach -t ${safeWindowName(session)}`;
+	return host ? `ssh -t ${host} ${JSON.stringify(local)}` : local;
+}

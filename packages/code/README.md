@@ -63,13 +63,32 @@ prints a reason you can act on rather than pretending. Overrides:
 `OLLAMA_HOST`. Token counts come from the model server and cost reads `$0`
 because local inference is free.
 
-> **What the local engine can and cannot do today.** The local path is
-> **conversational**: it streams answers, keeps context, and costs nothing.
-> It does **not** yet call tools, so it cannot edit files on its own — the
-> approval gate below is reached by the cloud engine path (which has tool
-> use) and by `hobo-code promote` after you edit a sandbox yourself. Local
-> tool-use is the next step, and until it lands this README will not imply
-> otherwise.
+**Tool calling runs on [Cactus Needle](https://github.com/cactus-compute/needle)** —
+a 26M-parameter model distilled purely for function calling. Needle decides
+*which tool to run with which arguments*; the chat model writes prose. Asking a
+small general model to emit tool JSON is slow and unreliable; a model trained
+for that one job is neither.
+
+```bash
+git clone https://github.com/cactus-compute/needle.git ~/.cactus/needle
+cd ~/.cactus/needle && python3 -m venv .venv \
+  && .venv/bin/pip install jax jaxlib flax sentencepiece huggingface_hub datasets
+```
+
+Weights download on first use. Override with `HOBO_CODE_NEEDLE_DIR` /
+`HOBO_CODE_NEEDLE_PYTHON`, or turn tools off with `HOBO_CODE_TOOLS=0`. Without
+Needle the shell still runs — conversation only, and it says so.
+
+Tools are confined to the sandbox (`list_files`, `read_file`, `write_file`);
+any path that resolves outside it is refused, so a small model cannot wander
+into your real tree. Because tools now actually run, an editing turn reaches
+the promotion gate below.
+
+**The default model adapts to what you have pulled.** Rather than pinning one
+name, the shell picks the *smallest* chat-capable model the server reports —
+responsiveness is what makes a local shell usable, and a 1.5B model on a CPU
+box can take ~10s per token. `HOBO_CODE_MODEL` always wins if you disagree, and
+`HOBO_CODE_MAX_TOKENS` (default 384) bounds a reply.
 
 Turns run inside a mediated isolation sandbox — the canonical tree stays
 read-only. When work changes files, promotion asks first:

@@ -13,6 +13,7 @@
  * an engine must degrade the shell, not crash it.
  */
 
+import { createNeedlePlanner, needlePaths } from "./needle-tools.js";
 import {
 	createOllamaShellEngine,
 	DEFAULT_LOCAL_MODEL,
@@ -71,7 +72,15 @@ export async function resolveShellEngine(
 	const reasons: string[] = [];
 
 	if (mode === "auto" || mode === "local") {
+		// Tool calling is handled by Cactus Needle, a model distilled for
+		// exactly that. Absent → the engine still runs, just conversation-only.
+		const planned =
+			options.env.HOBO_CODE_TOOLS === "0"
+				? { planner: null, reason: "HOBO_CODE_TOOLS=0" }
+				: await createNeedlePlanner({ paths: needlePaths(options.env) });
+		if (!planned.planner && planned.reason) reasons.push(planned.reason);
 		const local = await createOllamaShellEngine({
+			planner: planned.planner,
 			sandboxRoot: options.sandboxRoot,
 			runId: options.runId,
 			instructions: options.instructions,

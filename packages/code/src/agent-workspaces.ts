@@ -17,10 +17,12 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import {
+	bundledRiftBinary,
 	createRiftWorkspace,
 	probeRift,
 	type RiftRunner,
 	riftRunner,
+	speaksContract,
 } from "./rift.js";
 
 /**
@@ -119,12 +121,45 @@ export async function allocateAgentWorkspaces(
 		};
 	}
 
-	const capability = await probeRift(
+	let capability = await probeRift(
 		workspaceRoot,
 		runner,
 		env,
 		options.bundled ?? undefined,
 	);
+	// A sidecar that does not advertise the contract is an older build: it
+	// accepts the same flags and silently mangles the argv, so composing
+	// against it reintroduces the injection it was fixed for. Fall back to the
+	// bundled copy — which ships with this code and therefore matches it —
+	// rather than trusting whatever is first on PATH.
+	if (
+		capability.usable &&
+		capability.flavor === "hobo" &&
+		!speaksContract(capability.contract)
+	) {
+		const fallback = (options.bundled ?? bundledRiftBinary)();
+		if (fallback && fallback !== capability.binary) {
+			const bundledRunner = riftRunner(fallback);
+			const reprobed = await probeRift(
+				workspaceRoot,
+				bundledRunner,
+				{ PATH: "" },
+				() => fallback,
+			);
+			if (reprobed.usable && speaksContract(reprobed.contract)) {
+				return allocateAgentWorkspaces({
+					...options,
+					runner: bundledRunner,
+					env: { ...env, PATH: "" },
+				});
+			}
+		}
+		capability = {
+			usable: false,
+			binary: capability.binary,
+			reason: `${capability.binary} predates the argv/namespace contract this build composes against — rebuild @hobo/rift or remove the stale binary from PATH`,
+		};
+	}
 	if (capability.usable) {
 		const workspaces: AgentWorkspace[] = [];
 		let failure: string | undefined;

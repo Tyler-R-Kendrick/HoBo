@@ -785,12 +785,14 @@ describe("exec reassembles its argv without losing quoting", () => {
 	});
 
 	it("runs a vector as a vector, not as a snippet", () => {
+		// The filename contains a space, so a bin that joins argv splits it into
+		// two nonexistent files. Without that, the assertion passes either way.
 		const root = source();
-		writeFileSync(join(root, "marker.txt"), "vector-ok\n");
+		writeFileSync(join(root, "my marker.txt"), "vector-ok\n");
 		createWorkspace({ root, name: "c" });
 		const r = spawnSync(
 			process.execPath,
-			[bin, "exec", "--root", root, "--name", "c", "--", "cat", "marker.txt"],
+			[bin, "exec", "--root", root, "--name", "c", "--", "cat", "my marker.txt"],
 			{ encoding: "utf8" },
 		);
 		expect(r.stdout).toContain("vector-ok");

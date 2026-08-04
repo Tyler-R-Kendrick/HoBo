@@ -127,6 +127,27 @@ export interface RiftCapability {
 	readonly binary: string | null;
 	readonly flavor?: RiftFlavor;
 	readonly reason?: string;
+	/** Behaviours the resolved sidecar advertises. */
+	readonly contract?: RiftContract;
+}
+
+/**
+ * What `hobo-code` needs a sidecar to guarantee.
+ *
+ * These arrived after the first sidecar release, and an older build accepts the
+ * same flags while silently mangling them: `exec -- a "b c"` becomes three
+ * words, so a workspace path containing a space or `;` is split — or executed.
+ * PATH is searched first so an explicitly installed binary wins, which means
+ * a stale one on PATH would otherwise shadow the bundled copy and take the
+ * composed commands with it.
+ */
+export interface RiftContract {
+	readonly execArgvVector?: boolean;
+	readonly namespaceMarker?: boolean;
+}
+
+export function speaksContract(contract: RiftContract | undefined): boolean {
+	return contract?.execArgvVector === true && contract?.namespaceMarker === true;
 }
 
 /**
@@ -170,7 +191,23 @@ export async function probeRift(
 			reason: "rift could not be executed",
 		};
 	}
-	return { usable: true, binary, flavor };
+	// Ask what it guarantees. Upstream rift has no such command and is never
+	// composed against, so only the sidecar is held to this.
+	let contract: RiftContract | undefined;
+	if (flavor === "hobo") {
+		const advertised = await runner.run(["capability", "--json"], workspace);
+		if (advertised.code === 0) {
+			try {
+				contract = (JSON.parse(advertised.stdout) as { contract?: RiftContract })
+					.contract;
+			} catch {
+				/* an older build prints something else; treated as no contract */
+			}
+		}
+	}
+	return contract !== undefined
+		? { usable: true, binary, flavor, contract }
+		: { usable: true, binary, flavor };
 }
 
 export interface RiftWorkspace {

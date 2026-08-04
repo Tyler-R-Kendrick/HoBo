@@ -122,7 +122,18 @@ export async function brokerPaneSession(
  *
  * The credential *reference* is passed, never the session token: the token is
  * short-lived material that must not reach a process table, a tmux pane title,
- * or a shell history file. The ssh agent/CA resolves the reference.
+ * or a shell history file.
+ *
+ * **Resolution is not implemented yet.** `IdentityAgent=tokenref://…` names an
+ * agent socket that nothing currently serves, and `openStationGateway` stops
+ * the in-process gateway as soon as brokering finishes, so a pane cannot
+ * redeem the reference. What works today is the *decision* — policy applied per
+ * isolation class, a session recorded, an audit event written — and the fact
+ * that a pane without one is refused. What does not work is authenticating the
+ * ssh connection from it; that needs a resident agent serving `tokenref://`,
+ * and until then a remote pane still needs its own key to actually connect.
+ * Said here rather than left implied, because "brokered, not ambient" reads as
+ * a completed claim.
  */
 export function brokeredSshCommand(
 	pane: BrokeredPane,

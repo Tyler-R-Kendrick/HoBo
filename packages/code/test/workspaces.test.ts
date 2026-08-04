@@ -16,6 +16,7 @@ import {
 import {
 	createRiftWorkspace,
 	parseCreatedPath,
+	speaksContract,
 	probeRift,
 	resolveRiftBinary,
 	type RiftRunner,
@@ -28,9 +29,9 @@ afterAll(() => {
 	for (const d of dirs) rmSync(d, { recursive: true, force: true });
 });
 /** A PATH containing a stand-in `rift`, so capability probing is exercised. */
-function fakeRiftBin(): string {
+function fakeRiftBin(name = "rift"): string {
 	const bin = tmp();
-	writeFileSync(join(bin, "rift"), "#!/bin/sh\nexit 0\n");
+	writeFileSync(join(bin, name), "#!/bin/sh\nexit 0\n");
 	return bin;
 }
 
@@ -289,5 +290,77 @@ describe("re-running mux in the same project", () => {
 		const created = await createRiftWorkspace("/ws", "claude", runner);
 		expect(created.workspace).toBeNull();
 		expect(created.reason).toMatch(/disk full/);
+	});
+});
+
+describe("a sidecar that predates the contract", () => {
+	/** A runner standing in for an older build: no `contract` in capability. */
+	function stale(): RiftRunner {
+		return {
+			run: async (args) => {
+				if (args[0] === "capability") {
+					return {
+						code: 0,
+						stderr: "",
+						stdout: JSON.stringify({ tier: "overlayfs", available: ["overlayfs"] }),
+					};
+				}
+				return { code: 0, stdout: "", stderr: "" };
+			},
+		};
+	}
+
+	function current(): RiftRunner {
+		return {
+			run: async (args) => {
+				if (args[0] === "capability") {
+					return {
+						code: 0,
+						stderr: "",
+						stdout: JSON.stringify({
+							tier: "overlayfs",
+							contract: { execArgvVector: true, namespaceMarker: true },
+						}),
+					};
+				}
+				if (args[0] === "create") {
+					return { code: 0, stderr: "", stdout: "/ws/.hobo-rift/workspaces/a/merged\n" };
+				}
+				return { code: 0, stdout: "", stderr: "" };
+			},
+		};
+	}
+
+	it("is not used, because composing against it reintroduces the injection", async () => {
+		// An older sidecar accepts the same flags and silently joins its argv,
+		// so a workspace path with a space or `;` is split — or executed. PATH
+		// is searched first, so a stale binary would otherwise shadow the
+		// bundled copy and take every composed command with it.
+		const result = await allocateAgentWorkspaces({
+			workspaceRoot: "/ws",
+			agentIds: ["claude"],
+			fallbackRoot: "/fallback",
+			runner: stale(),
+			env: { PATH: fakeRiftBin("hobo-rift") },
+			bundled: () => null,
+			git: async () => ({ code: 1, stderr: "no git" }),
+		});
+		expect(result.backend).not.toBe("rift");
+		expect(result.reason).toMatch(/predates the argv\/namespace contract/);
+	});
+
+	it("says the contract is met when the sidecar advertises it", async () => {
+		const capability = await probeRift("/ws", current(), {
+			PATH: fakeRiftBin("hobo-rift"),
+		});
+		expect(capability.usable).toBe(true);
+		expect(speaksContract(capability.contract)).toBe(true);
+	});
+
+	it("treats a missing contract as not spoken, not as absent policy", () => {
+		expect(speaksContract(undefined)).toBe(false);
+		expect(speaksContract({ execArgvVector: true })).toBe(false);
+		expect(speaksContract({ namespaceMarker: true })).toBe(false);
+		expect(speaksContract({ execArgvVector: true, namespaceMarker: true })).toBe(true);
 	});
 });

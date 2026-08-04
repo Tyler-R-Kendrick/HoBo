@@ -280,6 +280,19 @@ Station's privileged-access gateway (`src/machine-sessions.ts`), which applies
 the target's isolation-class policy, returns short-lived material, and writes
 `pam.SessionStarted` / `pam.SessionDenied`. Panes carry the credential
 *reference*, never the session token, so nothing short-lived reaches a process
-table or a pane title. When no gateway is available the pane is refused rather
-than falling back to the ambient key — a fallback that silently downgrades
-governance is worse than a clear failure.
+table or a pane title. When no gateway is available, or when any pane lacks a
+session, the command is refused rather than falling back to the ambient key —
+a fallback that silently downgrades governance is worse than a clear failure.
+
+**Residual: the reference is not yet redeemable.** `tokenref://` names an agent
+socket nothing serves, and the gateway stops when brokering finishes, so an ssh
+pane still authenticates with its own key. The brokering decision, the session
+record and the audit trail are real; the credential path is not. A resident
+agent that serves the reference is what closes it.
+
+Selecting a sidecar is a versioned decision, not a name lookup. `hobo-code`
+composes commands that require an argv-quoting `exec` and the namespace marker,
+both of which postdate the first sidecar release — and an older build accepts
+the same flags while silently mangling them. `hobo-rift capability --json`
+advertises the contract, and a sidecar that does not speak it is bypassed for
+the bundled copy rather than trusted because it happened to be first on PATH.

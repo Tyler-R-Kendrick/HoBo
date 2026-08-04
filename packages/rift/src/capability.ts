@@ -30,6 +30,24 @@ export type CowTier = "reflink" | "overlayfs" | "hardlink" | "copy";
 
 // The parsed domain form of hobo.rift.v1.Capability: a string-literal tier
 // rather than a numeric enum, so an unhandled tier is a compile error.
+/**
+ * Behaviours a caller may depend on.
+ *
+ * `hobo-code` composes commands that only work against a sidecar which quotes
+ * its argv vector and marks the namespace. Both arrived after the first
+ * release, and a sidecar found on PATH may predate them — silently, since the
+ * older one accepts the same flags and simply mangles them. Advertising the
+ * contract is what lets the caller notice instead of shipping an injection.
+ */
+export const CONTRACT = Object.freeze({
+	/** `exec -- cmd args…` quotes each element rather than joining on spaces. */
+	execArgvVector: true,
+	/** `exec` sets HOBO_RIFT_WORKSPACE inside the namespace. */
+	namespaceMarker: true,
+} as const);
+
+export type RiftContract = typeof CONTRACT;
+
 // domain-view: wire form is hobo.rift.v1.Capability; src/wire.ts converts.
 export interface Capability {
 	readonly tier: CowTier;
@@ -39,6 +57,8 @@ export interface Capability {
 	readonly reason: string;
 	/** True when writes in a workspace cannot reach the source. */
 	readonly isolatesInPlaceWrites: boolean;
+	/** Behaviours this build guarantees; absent on builds that predate it. */
+	readonly contract?: RiftContract;
 }
 
 function run(cmd: string, args: readonly string[]): number | null {
@@ -147,5 +167,6 @@ export function detectCapability(
 		available,
 		reason,
 		isolatesInPlaceWrites: tier !== "hardlink",
+		contract: CONTRACT,
 	};
 }

@@ -44,7 +44,11 @@ export interface VirtualPaneOptions {
 	readonly input?: NodeJS.ReadableStream;
 	readonly output?: NodeJS.WritableStream;
 	/** Seam for tests: observe or replace the shell the pane drives. */
-	readonly shell?: { run(command: string): Promise<VirtualRun> };
+	readonly shell?: {
+		run(command: string): Promise<VirtualRun>;
+		readonly commands?: readonly string[];
+		readonly writable?: boolean;
+	};
 }
 
 /**
@@ -84,13 +88,16 @@ export async function runVirtualPane(
 		env: { AGENT_ID: options.agentId },
 	});
 
+	// The banner is what tells an agent what it has, so it must describe the
+	// shell actually in use rather than the default one.
 	const described = shell as Partial<ReturnType<typeof createVirtualShell>>;
 	const available = described.commands ?? DEFAULT_COMMANDS;
+	const persists = described.writable ?? options.writable === true;
 	output.write(
 		`hobo-code virtual pane · ${options.agentId}\n` +
 			`workspace ${mount}\n` +
 			`${available.length} commands available; no network, no execve; ` +
-			`writes ${described.writable ? "persist" : "stay virtual until promotion"}\n` +
+			`writes ${persists ? "persist" : "stay virtual until promotion"}\n` +
 			`type 'commands' to list them, Ctrl-D to leave\n\n`,
 	);
 

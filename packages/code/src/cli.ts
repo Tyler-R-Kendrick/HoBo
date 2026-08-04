@@ -16,6 +16,11 @@ import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
 import { allocateAgentWorkspaces } from "./agent-workspaces.js";
 import {
+	DEV_MACHINES_FILE,
+	loadDevMachines,
+	sshDestination,
+} from "./dev-machines.js";
+import {
 	runVirtualPane,
 	VIRTUAL_PANE_COMMANDS,
 	virtualPaneCommand,
@@ -115,6 +120,7 @@ import { describeCodeWorlds } from "./worlds.js";
 export const HOBO_CODE_VERBS = [
 	"dispatch",
 	"vshell",
+	"machines",
 	"status",
 	"session",
 	"attach",
@@ -668,6 +674,26 @@ const VERB_HELP_PLAIN: Record<
 		"  hobo-code status    # mux chrome; herdr footer + clickableRegions in data",
 		"",
 		"See also: hobo-code status · hobo-code session · hobo-code help",
+	],
+	machines: [
+		"hobo-code machines — dev machines panes may reach",
+		"",
+		"A remote pane used to be `ssh -t <whatever was typed>`: an arbitrary",
+		"host, an ambient key, and no record. Machines are declared instead, in",
+		`${DEV_MACHINES_FILE} beside the devenv files, so the reachable set is`,
+		"reviewable alongside the toolchain.",
+		"",
+		"Usage:",
+		"  hobo-code machines",
+		"  hobo-code machines --json",
+		"",
+		"Each entry needs an id, a host (tailnet name), and an isolationClass;",
+		"`user` and `agents` are optional. Entries that do not parse are listed",
+		"as rejected rather than dropped.",
+		"",
+		"`hobo-code mux --host <id>` places panes on one. Sessions are brokered",
+		"by the Station's privileged-access gateway, which applies the target's",
+		"isolation-class policy and audits every session.",
 	],
 	vshell: [
 		"hobo-code vshell — a virtual pane: virtual terminal over a virtual filesystem",
@@ -1713,6 +1739,38 @@ export async function runHoboCodeCli(
 		});
 	}
 
+	if (verb === "machines") {
+		const project = loadDevMachines(projectDir);
+		const loaded = project.declared
+			? project
+			: loadDevMachines(join(dirname(fileURLToPath(import.meta.url)), ".."));
+		const rows = loaded.declared
+			? [
+					...(loaded.machines.length > 0
+						? loaded.machines.map(
+								(m) =>
+									`${m.id} · ${sshDestination(m)} · ${m.isolationClass}${m.agents && m.agents.length > 0 ? ` · ${m.agents.join(",")}` : ""}`,
+							)
+						: ["no machines declared"]),
+					// Never silently drop a bad entry: an operator who wrote one
+					// needs to know it is not in the reachable set.
+					...loaded.rejected.map((r) => `rejected · ${r.machine}: ${r.problem}`),
+					`file · ${loaded.path}`,
+				]
+			: [
+					`no ${DEV_MACHINES_FILE} beside the devenv files`,
+					"Declare machines there and panes can reach them; until then",
+					"mux runs locally only.",
+					`expected · ${loaded.path}`,
+				];
+		return ok("HOBO_CODE_MACHINES", panel("✓ machines", rows), {
+			machines: loaded.machines,
+			rejected: loaded.rejected,
+			declared: loaded.declared,
+			path: loaded.path,
+		});
+	}
+
 	if (verb === "vshell") {
 		// The pane entrypoint. It owns stdin for the life of the pane, so it
 		// returns its own result rather than going through the panel path.
@@ -1756,7 +1814,45 @@ export async function runHoboCodeCli(
 		// nothing there, so allocating them would either send this machine's
 		// absolute paths to a different one or waste the work outright; the
 		// remote's own working directory is the honest answer.
-		const remoteHost = typeof flags.host === "string" ? flags.host : undefined;
+		// `--host` names a *declared* machine, not an arbitrary ssh destination.
+		// Resolving it through the registry is what makes the reachable set
+		// reviewable; an unknown name is refused with the list of known ones
+		// rather than handed to ssh to fail obscurely.
+		// The project's own devenv declares its machines; hobo-code's package
+		// root is the fallback so the harness can ship defaults for itself.
+		const projectMachines = loadDevMachines(projectDir);
+		const declaredMachines = projectMachines.declared
+			? projectMachines
+			: loadDevMachines(join(dirname(fileURLToPath(import.meta.url)), ".."));
+		const requestedHost = typeof flags.host === "string" ? flags.host : undefined;
+		const resolvedMachine = requestedHost
+			? declaredMachines.machines.find(
+					(m) => m.id === requestedHost || m.host === requestedHost,
+				)
+			: undefined;
+		if (requestedHost && !resolvedMachine) {
+			return fail(
+				"HOBO_CODE_MUX_UNKNOWN_MACHINE",
+				panel("✕ mux", [
+					`"${requestedHost}" is not a declared dev machine.`,
+					declaredMachines.declared
+						? `known · ${declaredMachines.machines.map((m) => m.id).join(", ") || "none"}`
+						: `no ${DEV_MACHINES_FILE} beside the devenv files — declare machines there first`,
+					...(declaredMachines.rejected.length > 0
+						? declaredMachines.rejected.map(
+								(r) => `rejected · ${r.machine}: ${r.problem}`,
+							)
+						: []),
+					"Panes reach only declared machines so the set is reviewable, and",
+					"sessions are brokered by the Station rather than using an ambient key.",
+				]),
+				["hobo-code machines", "hobo-code mux --dry-run"],
+				{ requested: requestedHost, declared: declaredMachines },
+			);
+		}
+		const remoteHost = resolvedMachine
+			? sshDestination(resolvedMachine)
+			: undefined;
 		const allocation = await allocateAgentWorkspaces({
 			workspaceRoot: workspace.path,
 			agentIds: agents.map((a) => a.id),

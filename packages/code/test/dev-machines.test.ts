@@ -4,7 +4,11 @@
  * reachable set is declared, every field that reaches a command line is
  * allowlisted, and a malformed entry is reported rather than dropped.
  */
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { runHoboCodeCli } from "../src/cli.js";
 import {
 	DEV_MACHINES_FILE,
 	loadDevMachines,
@@ -150,5 +154,71 @@ describe("placement and brokering", () => {
 			isolationClass: "ephemeral",
 			address: "g.ts.net",
 		});
+	});
+});
+
+describe("mux resolves --host against the registry", () => {
+	it("refuses an undeclared host with the known set", async () => {
+		const home = mkdtempSync(join(tmpdir(), "hobo-m-"));
+		const project = mkdtempSync(join(tmpdir(), "proj-m-"));
+		writeFileSync(
+			join(project, DEV_MACHINES_FILE),
+			JSON.stringify({
+				machines: [
+					{ id: "build-box", host: "build-box.ts.net", isolationClass: "development" },
+				],
+			}),
+		);
+		const result = await runHoboCodeCli(["mux", "--dry-run", "--host", "evil.example"], {
+			hoboHome: home,
+			cwd: project,
+		});
+		// An arbitrary ssh destination is exactly what the registry exists to
+		// stop, so this must not reach tmux at all.
+		expect(result.ok).toBe(false);
+		expect(result.code).toBe("HOBO_CODE_MUX_UNKNOWN_MACHINE");
+		expect(result.message).toContain("build-box");
+		rmSync(home, { recursive: true, force: true });
+		rmSync(project, { recursive: true, force: true });
+	});
+
+	it("accepts a declared id and uses its tailnet host", async () => {
+		const home = mkdtempSync(join(tmpdir(), "hobo-m-"));
+		const project = mkdtempSync(join(tmpdir(), "proj-m-"));
+		writeFileSync(
+			join(project, DEV_MACHINES_FILE),
+			JSON.stringify({
+				machines: [
+					{ id: "build-box", host: "build-box.ts.net", isolationClass: "development" },
+				],
+			}),
+		);
+		const result = await runHoboCodeCli(["mux", "--dry-run", "--host", "build-box"], {
+			hoboHome: home,
+			cwd: project,
+		});
+		expect(result.ok).toBe(true);
+		expect(JSON.stringify(result.data)).toContain("build-box.ts.net");
+		rmSync(home, { recursive: true, force: true });
+		rmSync(project, { recursive: true, force: true });
+	});
+
+	it("lists declared machines and names the rejected ones", async () => {
+		const home = mkdtempSync(join(tmpdir(), "hobo-m-"));
+		const project = mkdtempSync(join(tmpdir(), "proj-m-"));
+		writeFileSync(
+			join(project, DEV_MACHINES_FILE),
+			JSON.stringify({
+				machines: [
+					{ id: "ok", host: "ok.ts.net", isolationClass: "development" },
+					{ id: "bad", host: "-oProxyCommand=evil", isolationClass: "development" },
+				],
+			}),
+		);
+		const result = await runHoboCodeCli(["machines"], { hoboHome: home, cwd: project });
+		expect(result.message).toContain("ok.ts.net");
+		expect(result.message).toMatch(/rejected · bad/);
+		rmSync(home, { recursive: true, force: true });
+		rmSync(project, { recursive: true, force: true });
 	});
 });

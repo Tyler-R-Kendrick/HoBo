@@ -116,6 +116,38 @@ export function readRegistry(root: string): Registry {
 	return { root: abs, workspaces: readSnapshot(abs) ?? [] };
 }
 
+/** Does this tree hold any file at all? Directories alone carry no work. */
+function containsFile(dir: string): boolean {
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		if (entry.isDirectory()) {
+			if (containsFile(join(dir, entry.name))) return true;
+		} else {
+			return true;
+		}
+	}
+	return false;
+}
+
+/** Parked directories awaiting an operator's attention. */
+export function listDebris(root: string): readonly string[] {
+	const dir = join(resolve(root), RIFT_DIR, "workspaces");
+	if (!existsSync(dir)) return [];
+	try {
+		return readdirSync(dir)
+			.filter((e) => e.includes(".debris"))
+			.map((e) => join(dir, e));
+	} catch {
+		return [];
+	}
+}
+
+/** Delete every parked directory. Explicit, because they hold real work. */
+export function pruneDebris(root: string): readonly string[] {
+	const parked = listDebris(root);
+	for (const path of parked) rmSync(path, { recursive: true, force: true });
+	return parked;
+}
+
 /** The persisted projection, or null when it is absent or unreadable. */
 function readSnapshot(root: string): readonly WorkspaceRecord[] | null {
 	return readSnapshotRegistry(root)?.workspaces ?? null;
@@ -132,7 +164,12 @@ function readSnapshot(root: string): readonly WorkspaceRecord[] | null {
  * deliberately only available here, where an operator asked for it: doing it
  * implicitly on every read would resurrect deliberately removed workspaces.
  */
-export function rebuildRegistry(root: string): Registry {
+export interface RepairResult extends Registry {
+	/** Set when repair declined to act and the operator needs to decide. */
+	readonly undecidable?: string;
+}
+
+export function rebuildRegistry(root: string): RepairResult {
 	const abs = resolve(root);
 	const dir = riftDir(abs);
 	const events = readEvents(dir);
@@ -171,6 +208,22 @@ export function rebuildRegistry(root: string): Registry {
 		eventCount: events.length,
 	};
 	writeRegistry(registry);
+	// A root written before snapshots carried `eventCount` cannot be judged:
+	// its snapshot might be a truncation survivor, or might merely predate a
+	// removal. Declining is the safe half of that choice, but saying nothing
+	// would leave an operator staring at workspaces that exist on disk and
+	// nowhere else.
+	if (
+		projected.length === 0 &&
+		snapshot !== null &&
+		snapshot.workspaces.length > 0 &&
+		typeof snapshot.eventCount !== "number"
+	) {
+		return {
+			...registry,
+			undecidable: `the snapshot lists ${snapshot.workspaces.length} workspace(s) but predates event counting, so it cannot be told from one that simply predates a removal — inspect ${registryPath(abs)} and recreate what you still want`,
+		};
+	}
 	return registry;
 }
 
@@ -289,7 +342,7 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 		// one lost journal into silent, irreversible loss of every agent's tree.
 		// Move it aside instead — recovery stays possible and costs a rename.
 		const parked = parkDebris(base);
-		if (parked === null) {
+		if (parked === null && existsSync(base)) {
 			return {
 				workspace: null,
 				reason: `"${name}" has a directory the registry does not list, and it could not be moved aside`,
@@ -356,6 +409,18 @@ export function createWorkspace(options: CreateOptions): CreateResult {
  * Returns the new path, or null if it could not be moved.
  */
 function parkDebris(base: string): string | null {
+	// A directory with no files in it holds nothing to preserve, and parking it
+	// would only accumulate clutter — the overlay tier always leaves an
+	// upper/work/merged skeleton, so a plain "is it empty" test never fires.
+	// Anything containing a file is kept, whatever it is.
+	try {
+		if (!containsFile(base)) {
+			rmSync(base, { recursive: true, force: true });
+			return null;
+		}
+	} catch {
+		/* unreadable — fall through and park it rather than guess */
+	}
 	for (let n = 0; n < 1000; n += 1) {
 		const target = `${base}.debris${n === 0 ? "" : `-${n}`}`;
 		if (existsSync(target)) continue;

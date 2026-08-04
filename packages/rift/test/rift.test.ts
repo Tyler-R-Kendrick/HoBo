@@ -31,6 +31,8 @@ import {
 } from "../src/wire.js";
 import {
 	createWorkspace,
+	listDebris,
+	pruneDebris,
 	rebuildRegistry,
 	entriesToClone,
 	execCommand,
@@ -605,5 +607,59 @@ describe("repair distinguishes stale from truncated", () => {
 		expect(rebuildRegistry(root).workspaces.map((w) => w.name)).toEqual([
 			"keep",
 		]);
+	});
+});
+
+describe("debris only accumulates when there is work to keep", () => {
+	it("does not park a skeleton with no files in it", () => {
+		// The overlay tier always leaves an upper/work/merged skeleton, so a
+		// plain "is the directory empty" test never fires and every repeated
+		// run would leave another parked copy behind.
+		const root = source();
+		createWorkspace({ root, name: "claude" });
+		for (let i = 0; i < 3; i += 1) {
+			writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");
+			createWorkspace({ root, name: "claude" });
+		}
+		expect(listDebris(root)).toEqual([]);
+	});
+
+	it("parks — and can prune — a directory that holds work", () => {
+		const root = source();
+		const made = createWorkspace({ root, name: "claude" });
+		writeFileSync(
+			join(made.workspace?.upper ?? made.workspace?.path ?? root, "w.txt"),
+			"work",
+		);
+		writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");
+		const again = createWorkspace({ root, name: "claude" });
+		expect(again.debris).toBeDefined();
+		expect(listDebris(root)).toHaveLength(1);
+		expect(pruneDebris(root)).toHaveLength(1);
+		expect(listDebris(root)).toEqual([]);
+	});
+});
+
+describe("a root that predates event counting", () => {
+	it("declines to guess, and says why, rather than resurrecting", () => {
+		const root = source();
+		createWorkspace({ root, name: "old" });
+		const snapshotPath = join(root, RIFT_DIR, "registry.json");
+		const snapshot = JSON.parse(readFileSync(snapshotPath, "utf8")) as Record<
+			string,
+			unknown
+		>;
+		snapshot.eventCount = undefined;
+		writeFileSync(
+			snapshotPath,
+			JSON.stringify({
+				root: snapshot.root,
+				workspaces: snapshot.workspaces,
+			}),
+		);
+		writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");
+		const repaired = rebuildRegistry(root);
+		expect(repaired.workspaces).toEqual([]);
+		expect(repaired.undecidable).toMatch(/predates event counting/);
 	});
 });

@@ -11,6 +11,8 @@ import {
 	createWorkspace,
 	execCommand,
 	initRoot,
+	listDebris,
+	pruneDebris,
 	readRegistry,
 	rebuildRegistry,
 	removeWorkspace,
@@ -90,14 +92,34 @@ if (command === "capability") {
 	emit(created.workspace.path, created.workspace);
 } else if (command === "list") {
 	const registry = readRegistry(root);
+	const parked = listDebris(root);
 	emit(
-		registry.workspaces.map((w) => `${w.name}\t${w.tier}\t${w.path}`).join("\n"),
-		registry,
+		[
+			...registry.workspaces.map((w) => `${w.name}\t${w.tier}\t${w.path}`),
+			// Parked directories hold real work; silence about them is how they
+			// get forgotten and eventually fill a disk.
+			...(parked.length > 0
+				? [
+						`\n${parked.length} parked director${parked.length === 1 ? "y" : "ies"} awaiting review (hobo-rift prune to delete):`,
+						...parked.map((p) => `  ${p}`),
+					]
+				: []),
+		].join("\n"),
+		{ ...registry, debris: parked },
+	);
+} else if (command === "prune") {
+	const removed = pruneDebris(root);
+	emit(
+		removed.length === 0
+			? "no parked directories"
+			: `deleted ${removed.length} parked director${removed.length === 1 ? "y" : "ies"}`,
+		{ removed },
 	);
 } else if (command === "repair") {
 	// Rebuild the snapshot from the journal after a torn write.
 	const registry = rebuildRegistry(root);
-	emit(`rebuilt ${registry.workspaces.length} workspace(s) from the journal`, registry);
+	if (registry.undecidable) process.stderr.write(`${registry.undecidable}\n`);
+	emit(`registry now lists ${registry.workspaces.length} workspace(s)`, registry);
 } else if (command === "remove") {
 	const name = flag("name");
 	if (!name) {
@@ -145,7 +167,8 @@ if (command === "capability") {
 			"  hobo-rift list       [--root DIR] [--json]   list workspaces",
 			"  hobo-rift remove --name NAME                 delete a workspace",
 			"  hobo-rift exec --name NAME -- CMD            run CMD inside the workspace",
-			"  hobo-rift repair     [--root DIR]            rebuild the registry from the journal",
+			"  hobo-rift repair     [--root DIR]            reconcile the registry with the journal",
+			"  hobo-rift prune      [--root DIR]            delete directories parked by create",
 			"",
 			"Tiers, best first: reflink · overlayfs · hardlink · copy.",
 			"",

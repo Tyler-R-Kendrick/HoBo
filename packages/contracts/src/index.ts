@@ -34,6 +34,10 @@ export {
 	serializeBoundaryContract,
 } from "./contract-ir.js";
 export {
+	describeContractEffects,
+	formatContractDescribe,
+} from "./describe.js";
+export {
 	CAPABILITY_EFFECTS,
 	type CapabilityEffect,
 	conservativeDefaultEffects,
@@ -59,16 +63,62 @@ export {
 	isEffectWideningBreaking,
 	isPure,
 	mayFail,
-	parseEffectSpec,
-	pureEffects,
 	PURITY_LEVELS,
 	type PurityLevel,
+	parseEffectSpec,
+	pureEffects,
 	purityJoin,
 	purityRank,
 	requiresNetwork,
 	serializeEffectManifest,
 	toEffectManifest,
 } from "./effects.js";
+export {
+	captureContractEffects,
+	createEffectIsolation,
+	type DomainMock,
+	dualFixturesForEffects,
+	type EffectIsolationReport,
+	filterPureContracts,
+	mocksForEffects,
+	runResilienceFaultInjection,
+} from "./effects-harness.js";
+export {
+	type BindingDeliveryGateVerdict,
+	type CanMigrateGateVerdict,
+	type CostQuotaInput,
+	type CostQuotaRecord,
+	evaluateGatekeeper,
+	GATEKEEPER_DECIDED_EVENT,
+	GATEKEEPER_SCHEMA_VERSION,
+	type GatekeeperDecision,
+	type GatekeeperEffect,
+	type GatekeeperInput,
+	type MachineReadableReason,
+	type ObligationRecord,
+	type ResidencyGateVerdict,
+	type SecretlessConfigGateVerdict,
+} from "./gatekeeper.js";
+export {
+	createPermissiveDefaultPack,
+	definePolicyRule,
+	EFFECT_RANK,
+	evaluatePolicyPack,
+	POLICY_DECIDED_EVENT_TYPE,
+	POLICY_PACK_ENGINE_ID,
+	type PolicyDecisionRequest,
+	type PolicyEffect,
+	type PolicyEvaluation,
+	type PolicyPack,
+	type PolicyRule,
+	type PolicyRuleOutcome,
+} from "./policy-pack.js";
+export {
+	CONTRACT_ENGINE_INTERFACE,
+	CONTRACT_ENGINE_PORT,
+	GATEKEEPER_INTERFACE,
+	GATEKEEPER_PORT,
+} from "./port.js";
 export {
 	applyResilienceProfile,
 	type BulkheadStrategy,
@@ -91,60 +141,10 @@ export {
 	type ResilienceStrategy,
 	type ResilienceStrategyKind,
 	type ResilienceTerminalFact,
-	type TimeoutStrategy,
 	ResilienceValidationError,
+	type TimeoutStrategy,
 	validateResilienceAgainstEffects,
 } from "./resilience.js";
-export {
-	captureContractEffects,
-	createEffectIsolation,
-	type DomainMock,
-	dualFixturesForEffects,
-	type EffectIsolationReport,
-	filterPureContracts,
-	mocksForEffects,
-	runResilienceFaultInjection,
-} from "./effects-harness.js";
-export {
-	describeContractEffects,
-	formatContractDescribe,
-} from "./describe.js";
-export {
-	type CostQuotaInput,
-	type CostQuotaRecord,
-	evaluateGatekeeper,
-	GATEKEEPER_DECIDED_EVENT,
-	GATEKEEPER_SCHEMA_VERSION,
-	type GatekeeperDecision,
-	type GatekeeperEffect,
-	type GatekeeperInput,
-	type MachineReadableReason,
-	type ObligationRecord,
-	type SecretlessConfigGateVerdict,
-	type BindingDeliveryGateVerdict,
-	type CanMigrateGateVerdict,
-} from "./gatekeeper.js";
-export {
-	createPermissiveDefaultPack,
-	definePolicyRule,
-	EFFECT_RANK,
-	evaluatePolicyPack,
-	POLICY_DECIDED_EVENT_TYPE,
-	POLICY_PACK_ENGINE_ID,
-	type PolicyDecisionRequest,
-	type PolicyEffect,
-	type PolicyEvaluation,
-	type PolicyPack,
-	type PolicyRule,
-	type PolicyRuleOutcome,
-} from "./policy-pack.js";
-
-export {
-	CONTRACT_ENGINE_INTERFACE,
-	CONTRACT_ENGINE_PORT,
-	GATEKEEPER_INTERFACE,
-	GATEKEEPER_PORT,
-} from "./port.js";
 
 // public-contract: the package id consumers assert against.
 export const HOBO_CONTRACTS_PACKAGE = "@hobo/contracts";

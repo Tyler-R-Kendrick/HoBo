@@ -1,4 +1,10 @@
 import {
+	evaluateResidency,
+	parseDataClassification,
+	parseJurisdictionId,
+} from "@hobo/core";
+
+import {
 	type ContentHash,
 	contentHashOf,
 	type YardCandidateDecision,
@@ -127,10 +133,7 @@ function evaluateCandidate(
 		}
 	}
 	for (const req of shape.require) {
-		if (
-			!yard.capabilities.includes(req) &&
-			!yard.shape.require.includes(req)
-		) {
+		if (!yard.capabilities.includes(req) && !yard.shape.require.includes(req)) {
 			hardFailures.push(`capability-missing:${req}`);
 		}
 	}
@@ -145,6 +148,12 @@ function evaluateCandidate(
 	for (const net of shape.network) {
 		if (!yard.shape.network.includes(net) && !yard.capabilities.includes(net)) {
 			hardFailures.push(`network-missing:${net}`);
+		}
+	}
+	for (const entry of shape.residency) {
+		const failure = residencyFailure(entry, yard);
+		if (failure !== undefined) {
+			hardFailures.push(failure);
 		}
 	}
 	for (const host of shape.componentHosts) {
@@ -182,10 +191,12 @@ function evaluateCandidate(
 		provider: shape.providerId && yard.providerId === shape.providerId ? 1 : 0,
 		runtime: shape.runtimeId && yard.runtimeId === shape.runtimeId ? 1 : 0,
 		exactLabels: countExactLabels(shape.labels, yard.labels),
-		exactProperties: countExactProperties(shape.properties, yard.shape.properties),
+		exactProperties: countExactProperties(
+			shape.properties,
+			yard.shape.properties,
+		),
 		hardCapabilities: shape.require.filter(
-			(r) =>
-				yard.capabilities.includes(r) || yard.shape.require.includes(r),
+			(r) => yard.capabilities.includes(r) || yard.shape.require.includes(r),
 		).length,
 	};
 
@@ -202,6 +213,47 @@ function evaluateCandidate(
 			),
 		}),
 	});
+}
+
+/**
+ * Residency hard filter (ADR-0146). A requested entry is either a bare
+ * jurisdiction id ("eu") or "classification:jurisdiction" ("pii:eu"). It is
+ * satisfied when the yard explicitly guarantees the entry in its own
+ * shape.residency, or when EVERY region the yard declares maps inside the
+ * entry's jurisdiction via the fail-closed core evaluator. A yard with no
+ * declared regions cannot attest geography, so any residency request fails.
+ */
+function residencyFailure(
+	entry: string,
+	yard: YardInstanceRegistration,
+): string | undefined {
+	if (yard.shape.residency.includes(entry)) return undefined;
+	const separator = entry.indexOf(":");
+	const jurisdictionRaw = separator === -1 ? entry : entry.slice(separator + 1);
+	try {
+		if (separator !== -1) {
+			parseDataClassification(entry.slice(0, separator));
+		}
+		const jurisdiction = parseJurisdictionId(jurisdictionRaw);
+		if (yard.shape.regions.length === 0) {
+			return `residency-unattested:${entry}`;
+		}
+		for (const region of yard.shape.regions) {
+			const evaluation = evaluateResidency({
+				constraint: {
+					classifications: [],
+					allowedJurisdictions: [jurisdiction],
+				},
+				region,
+			});
+			if (!evaluation.ok) {
+				return `residency-conflict:${entry}:${evaluation.region}`;
+			}
+		}
+		return undefined;
+	} catch {
+		return `residency-invalid:${entry}`;
+	}
 }
 
 function compareCandidates(

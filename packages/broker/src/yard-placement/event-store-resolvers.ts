@@ -9,7 +9,7 @@
  * The core fold (`foldYardEventStore`) remains provider-neutral; provider
  * resolvers wrap it after normalization.
  */
-import { type YardEvent, yardEvent, YARD_EVENTS } from "./events.js";
+import { YARD_EVENTS, type YardEvent, yardEvent } from "./events.js";
 import {
 	emptyYardEventStoreState,
 	foldYardEventStore,
@@ -78,9 +78,7 @@ export function createYardEventStoreFoldResolver(options: {
 	readonly providerId: string;
 	readonly resolverId: string;
 	readonly version?: string;
-	readonly normalize?: (
-		signal: ProviderNativeSignal,
-	) => readonly YardEvent[];
+	readonly normalize?: (signal: ProviderNativeSignal) => readonly YardEvent[];
 	readonly afterFold?: (
 		state: YardEventStoreState,
 		event: YardEvent,
@@ -278,7 +276,9 @@ function payloadToYardInstance(
 			),
 			require: Object.freeze([] as string[]),
 			prefer: Object.freeze([] as string[]),
-			residency: Object.freeze([] as string[]),
+			residency: Object.freeze(
+				Array.isArray(p.residency) ? p.residency.map(String) : ([] as string[]),
+			),
 			isolation: Object.freeze([] as string[]),
 			network: Object.freeze([] as string[]),
 			componentHosts: Object.freeze(
@@ -307,9 +307,15 @@ function payloadToYardInstance(
 			classes: Object.freeze({ default: 1000 }),
 			reservations: Object.freeze({}),
 		}),
-		registryCatalogHash: contentHashOf(`${providerId}-registry`) as `sha256:${string}`,
-		resolverCatalogHash: contentHashOf(`${providerId}-resolvers`) as `sha256:${string}`,
-		conformanceHash: contentHashOf(`${providerId}-conformance`) as `sha256:${string}`,
+		registryCatalogHash: contentHashOf(
+			`${providerId}-registry`,
+		) as `sha256:${string}`,
+		resolverCatalogHash: contentHashOf(
+			`${providerId}-resolvers`,
+		) as `sha256:${string}`,
+		conformanceHash: contentHashOf(
+			`${providerId}-conformance`,
+		) as `sha256:${string}`,
 		labels: Object.freeze({}),
 		registrationSeq: 1,
 	});
@@ -333,8 +339,7 @@ export function createEventStoreFoldResolverRegistry(
 	return {
 		get: (providerId) => map.get(providerId),
 		all: () => Object.freeze([...map.values()]),
-		descriptors: () =>
-			Object.freeze(resolvers.map((r) => r.descriptor)),
+		descriptors: () => Object.freeze(resolvers.map((r) => r.descriptor)),
 	};
 }
 

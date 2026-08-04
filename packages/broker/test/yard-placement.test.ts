@@ -55,18 +55,16 @@ describe("yard-first placement", () => {
 		).toBe(true);
 		// Bindle destroy must not destroy yard/camp/shared units.
 		const units = result.receipt?.executionUnits ?? [];
-		expect(units.find((u) => u.kind === "yard")?.destroyWithBindle).toBe(
-			false,
-		);
+		expect(units.find((u) => u.kind === "yard")?.destroyWithBindle).toBe(false);
 		expect(units.find((u) => u.kind === "shared")?.destroyWithBindle).toBe(
 			false,
 		);
 		expect(units.find((u) => u.kind === "bindle")?.destroyWithBindle).toBe(
 			true,
 		);
-		expect(result.events.some((e) => e.type === YARD_EVENTS.PlacementResolved)).toBe(
-			true,
-		);
+		expect(
+			result.events.some((e) => e.type === YARD_EVENTS.PlacementResolved),
+		).toBe(true);
 	});
 
 	it("denies generation by default", () => {
@@ -160,5 +158,111 @@ describe("yard-first placement", () => {
 			resources: [],
 		});
 		expect(req.schemaVersion).toBe(BINDLE_DEPLOYMENT_REQUEST_SCHEMA);
+	});
+});
+
+describe("residency hard filter (ADR-0146)", () => {
+	function residencyShape(residency: readonly string[]) {
+		return {
+			regions: [],
+			require: [],
+			prefer: [],
+			residency: [...residency],
+			isolation: [],
+			network: [],
+			componentHosts: [],
+			labels: {},
+			properties: {},
+			camps: [],
+		};
+	}
+
+	function residencyRequest(residency: readonly string[]) {
+		return {
+			requestId: "r-res",
+			selectionMode: "compatible" as const,
+			requestedShape: residencyShape(residency),
+			bindleManifestHash: contentHashOf("m"),
+			bindleRequirementsHash: contentHashOf("req"),
+			allowGenerationRequested: false,
+		};
+	}
+
+	function snapshotWith(options: Parameters<typeof localYardInstance>[0]) {
+		const inventory = createYardInventory("broker:test");
+		inventory.apply({
+			type: "yard.Registered",
+			yard: localYardInstance(options),
+		});
+		inventory.apply({
+			type: "yard.StatusChanged",
+			yardId: options.yardId,
+			status: "ready",
+			observedAt: new Date(0).toISOString(),
+		});
+		return inventory.snapshot();
+	}
+
+	it("accepts a yard whose declared regions sit inside the required jurisdiction", () => {
+		const snap = snapshotWith({
+			yardId: "yard:eu",
+			ownerTenantId: "local",
+			providerId: LOCAL_HOST_PROVIDER_ID,
+			regions: ["eu-west-1"],
+		});
+		const decision = matchYard(residencyRequest(["eu"]), snap, {
+			ownerTenantId: "local",
+		});
+		expect(decision.outcome).toBe("existing-yard");
+		expect(decision.winnerYardId).toBe("yard:eu");
+	});
+
+	it("fails closed when the yard's regions fall outside the jurisdiction", () => {
+		const snap = snapshotWith({
+			yardId: "yard:us",
+			ownerTenantId: "local",
+			providerId: LOCAL_HOST_PROVIDER_ID,
+			regions: ["us-east-1"],
+		});
+		const decision = matchYard(residencyRequest(["pii:eu"]), snap, {
+			ownerTenantId: "local",
+		});
+		expect(decision.outcome).toBe("rejected");
+		expect(
+			decision.candidates[0]?.hardFailures.some((f) =>
+				f.startsWith("residency-conflict:pii:eu"),
+			),
+		).toBe(true);
+	});
+
+	it("accepts an explicit residency guarantee from a local yard", () => {
+		const snap = snapshotWith({
+			yardId: "yard:local",
+			ownerTenantId: "local",
+			providerId: LOCAL_HOST_PROVIDER_ID,
+			residency: ["eu"],
+		});
+		const decision = matchYard(residencyRequest(["eu"]), snap, {
+			ownerTenantId: "local",
+		});
+		expect(decision.outcome).toBe("existing-yard");
+	});
+
+	it("rejects invalid residency tags rather than guessing", () => {
+		const snap = snapshotWith({
+			yardId: "yard:any",
+			ownerTenantId: "local",
+			providerId: LOCAL_HOST_PROVIDER_ID,
+			regions: ["eu-west-1"],
+		});
+		const decision = matchYard(residencyRequest(["atlantis"]), snap, {
+			ownerTenantId: "local",
+		});
+		expect(decision.outcome).toBe("rejected");
+		expect(
+			decision.candidates[0]?.hardFailures.includes(
+				"residency-invalid:atlantis",
+			),
+		).toBe(true);
 	});
 });

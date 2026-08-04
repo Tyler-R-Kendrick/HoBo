@@ -9,6 +9,10 @@ import {
 	NIST_800_53_SEED_PACK,
 	parseControlEvidencePack,
 } from "../src/control-evidence-pack.js";
+import {
+	POLICY_IR_SCHEMA_VERSION,
+	parseDecisionRequest,
+} from "../src/policy-ir.js";
 import { evaluateResidencyPolicy } from "../src/residency-policy-pack.js";
 import { GDPR_SEED_PACK, SOC2_SEED_PACK } from "../src/seed-packs.js";
 
@@ -186,4 +190,36 @@ test("seed packs parsed at module load are frozen and schema-pinned", () => {
 		assert.ok(Object.isFrozen(pack));
 		assert.ok(Object.isFrozen(pack.controls));
 	}
+});
+
+test("policy IR types context.dataClassifications (ADR-0146)", () => {
+	const base = {
+		schemaVersion: POLICY_IR_SCHEMA_VERSION,
+		subject: { kind: "user", id: "u1" },
+		action: "deploy",
+		resource: { kind: "bindle", id: "b1" },
+		phase: "plan",
+	};
+	const ok = parseDecisionRequest({
+		...base,
+		context: { dataClassifications: ["pii", "phi"] },
+	});
+	assert.deepEqual(ok.context, { dataClassifications: ["pii", "phi"] });
+
+	assert.throws(
+		() =>
+			parseDecisionRequest({
+				...base,
+				context: { dataClassifications: "pii" },
+			}),
+		/invalid-data-classifications/u,
+	);
+	assert.throws(
+		() =>
+			parseDecisionRequest({
+				...base,
+				context: { dataClassifications: ["pii", "made-up"] },
+			}),
+		/unknown-data-classification/u,
+	);
 });

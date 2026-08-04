@@ -6,8 +6,18 @@ import {
 	evaluateGatekeeper,
 	type GatekeeperDecision,
 	type PolicyPack,
+	type ResidencyGateVerdict,
 	type ResourcePlanRef,
 } from "@hobo/contracts";
+import { evaluateResidency, type ResidencyConstraint } from "@hobo/core";
+
+export interface VerifyResidencyDeps {
+	// The tenant's residency constraint (Tenant.residency, ADR-0146) — supplied
+	// by whoever configured the tenant, never inferred.
+	readonly constraint: ResidencyConstraint;
+	// Region the plan would land in. `--region` on the CLI overrides this.
+	readonly region?: string;
+}
 
 export interface VerifyCommandDeps {
 	// Policy pack the Gatekeeper runs. Defaults to the permissive pack (records a
@@ -19,6 +29,10 @@ export interface VerifyCommandDeps {
 	// generous ceiling so the permissive lane allows; inject a low limit to
 	// exercise the quota-exceeded denial.
 	readonly costLimit?: number;
+	// Residency dimension (ADR-0146). When present, verify evaluates the tenant
+	// constraint against the plan region fail-closed and the Gatekeeper emits
+	// gate:"residency" reasons on conflict. Absent = no constraint to evaluate.
+	readonly residency?: VerifyResidencyDeps;
 }
 
 const DEFAULT_COST_LIMIT = 100;
@@ -78,13 +92,52 @@ export function createVerifyCommand(
 				requested: refs.length,
 			};
 
+			// Residency (ADR-0146): evaluate the tenant constraint against the plan
+			// region fail-closed and hand Gatekeeper the precomputed verdict. The
+			// classifications the constraint covers travel in the policy request
+			// context so packs can also see them.
+			const regionFlag =
+				typeof flags.region === "string" ? flags.region : undefined;
+			const planRegion = regionFlag ?? deps.residency?.region;
+			let residency: ResidencyGateVerdict | undefined;
+			if (deps.residency) {
+				const evaluation = evaluateResidency({
+					constraint: deps.residency.constraint,
+					region: planRegion ?? "",
+				});
+				residency = evaluation.ok
+					? { ok: true, reasons: [] }
+					: {
+							ok: false,
+							reasons: [
+								{
+									code: evaluation.code,
+									message: evaluation.remediation,
+									region: evaluation.region,
+									jurisdictions: evaluation.regionJurisdictions,
+								},
+							],
+						};
+			}
+
 			const decision = evaluateGatekeeper({
 				request: {
 					subject: { kind: "user", id: "anonymous" },
 					action: "deploy",
 					resource: { kind: "bindle", id: target },
 					phase: "plan",
-					context: { target },
+					context: {
+						target,
+						...(planRegion !== undefined ? { region: planRegion } : {}),
+						...(deps.residency !== undefined &&
+						deps.residency.constraint.classifications.length > 0
+							? {
+									dataClassifications: [
+										...deps.residency.constraint.classifications,
+									],
+								}
+							: {}),
+					},
 				},
 				deployedState: { contracts: [] },
 				candidate: {
@@ -92,6 +145,7 @@ export function createVerifyCommand(
 					contracts: [],
 				},
 				policyPack: deps.policyPack ?? createPermissiveDefaultPack(),
+				...(residency !== undefined ? { residency } : {}),
 				costQuota,
 			});
 

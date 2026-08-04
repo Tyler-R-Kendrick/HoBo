@@ -135,3 +135,52 @@ describe("createVerifyCommand", () => {
 		}, false);
 	});
 });
+
+describe("residency dimension (ADR-0146)", () => {
+	const euPii = {
+		classifications: ["pii" as const],
+		allowedJurisdictions: ["eu" as const],
+	};
+
+	it("blocks a pii-classified plan landing outside the allowed jurisdiction", async () => {
+		await withProject(async (cwd) => {
+			const result = await createVerifyCommand({
+				residency: { constraint: euPii, region: "us-east-1" },
+			}).run(runInput(cwd));
+
+			expect(result.ok).toBe(false);
+			expect(result.status).toBe("deny");
+			expect(
+				result.remediation?.some((entry) =>
+					entry.includes("[residency] jurisdiction-not-allowed"),
+				),
+			).toBe(true);
+		});
+	});
+
+	it("allows when the plan region sits inside the allowed jurisdiction", async () => {
+		await withProject(async (cwd) => {
+			const result = await createVerifyCommand({
+				residency: { constraint: euPii, region: "eu-west-1" },
+			}).run(runInput(cwd));
+
+			expect(result.ok).toBe(true);
+			expect(result.status).toBe("allow");
+		});
+	});
+
+	it("fails closed on an unattested region (no region provided)", async () => {
+		await withProject(async (cwd) => {
+			const result = await createVerifyCommand({
+				residency: { constraint: euPii },
+			}).run(runInput(cwd));
+
+			expect(result.ok).toBe(false);
+			expect(
+				result.remediation?.some((entry) =>
+					entry.includes("[residency] region-unmapped"),
+				),
+			).toBe(true);
+		});
+	});
+});

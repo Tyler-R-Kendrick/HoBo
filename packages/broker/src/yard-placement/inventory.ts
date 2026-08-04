@@ -1,13 +1,13 @@
 import {
 	contentHashOf,
-	type YardInstanceRegistration,
-	type YardInventorySnapshot,
-	type YardRuntimeCatalogSnapshot,
-	type YardRuntimeRegistration,
 	YARD_INSTANCE_SCHEMA,
 	YARD_INVENTORY_SCHEMA,
 	YARD_RUNTIME_CATALOG_SCHEMA,
 	YARD_RUNTIME_SCHEMA,
+	type YardInstanceRegistration,
+	type YardInventorySnapshot,
+	type YardRuntimeCatalogSnapshot,
+	type YardRuntimeRegistration,
 } from "./types.js";
 
 export type YardInventoryEvent =
@@ -113,7 +113,11 @@ export function createYardRuntimeCatalog(): {
 		snapshot() {
 			const list = [...runtimes.values()].sort((a, b) => {
 				if (a.priority !== b.priority) return b.priority - a.priority;
-				return a.runtimeId < b.runtimeId ? -1 : a.runtimeId > b.runtimeId ? 1 : 0;
+				return a.runtimeId < b.runtimeId
+					? -1
+					: a.runtimeId > b.runtimeId
+						? 1
+						: 0;
 			});
 			const body = {
 				schemaVersion: YARD_RUNTIME_CATALOG_SCHEMA,
@@ -151,6 +155,7 @@ export function localYardInstance(options: {
 	readonly capabilities?: readonly string[];
 	readonly componentHosts?: readonly string[];
 	readonly regions?: readonly string[];
+	readonly residency?: readonly string[];
 }): YardInstanceRegistration {
 	const now = new Date().toISOString();
 	return Object.freeze({
@@ -164,7 +169,7 @@ export function localYardInstance(options: {
 			regions: Object.freeze([...(options.regions ?? ["local"])]),
 			require: Object.freeze([] as string[]),
 			prefer: Object.freeze([] as string[]),
-			residency: Object.freeze([] as string[]),
+			residency: Object.freeze([...(options.residency ?? [])]),
 			isolation: Object.freeze([] as string[]),
 			network: Object.freeze([] as string[]),
 			componentHosts: Object.freeze([

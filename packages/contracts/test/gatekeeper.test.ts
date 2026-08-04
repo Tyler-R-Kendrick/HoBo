@@ -214,94 +214,139 @@ describe("Gatekeeper composition", () => {
 	});
 });
 
-	it("DENIES when secretless-config ranking gate fails (ADR-0027)", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: goodQuota,
-			secretlessConfig: {
-				ok: false,
-				reasons: [
-					{
-						code: "static-escape-forbidden",
-						message: "field LEGACY source static-escape exceeds policy ceiling",
-						field: "LEGACY",
-					},
-				],
-			},
-		});
-		expect(result.decision).toBe("deny");
-		expect(
-			result.reasons.some((r) => r.code === "secretless-config:static-escape-forbidden"),
-		).toBe(true);
-	});
-
-	it("DENIES when binding-delivery gate fails (ADR-0141)", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: goodQuota,
-			bindingDelivery: {
-				ok: false,
-				reasons: [
-					{
-						code: "connection-strings-env",
-						message: "forbidden ConnectionStrings__* env",
-						path: "resources.api.env.ConnectionStrings__db",
-					},
-				],
-			},
-		});
-		expect(result.decision).toBe("deny");
-		expect(
-			result.reasons.some(
-				(r) => r.code === "binding-delivery:connection-strings-env",
-			),
-		).toBe(true);
-	});
-
-	it("DENIES when can-migrate dimension fails (continuous identity migration)", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: goodQuota,
-			canMigrate: {
-				ok: false,
-				summary: "can-migrate:blocked (mapping-spec-missing)",
-				reasons: [
-					{
-						code: "mapping-spec-missing",
-						message: "MappingSpec missing",
-					},
-				],
-				evidence: {
-					continuousDefault: true,
-					dryRun: true,
-					rollbackPosture: "compensate-to-source",
+it("DENIES when secretless-config ranking gate fails (ADR-0027)", () => {
+	const result = evaluateGatekeeper({
+		request: baseRequest,
+		deployedState: { contracts: [deployedContract] },
+		candidate: { plan, contracts: [compatibleCandidate] },
+		costQuota: goodQuota,
+		secretlessConfig: {
+			ok: false,
+			reasons: [
+				{
+					code: "static-escape-forbidden",
+					message: "field LEGACY source static-escape exceeds policy ceiling",
+					field: "LEGACY",
 				},
-			},
-		});
-		expect(result.decision).toBe("deny");
-		expect(
-			result.reasons.some((r) => r.code === "can-migrate:mapping-spec-missing"),
-		).toBe(true);
+			],
+		},
 	});
+	expect(result.decision).toBe("deny");
+	expect(
+		result.reasons.some(
+			(r) => r.code === "secretless-config:static-escape-forbidden",
+		),
+	).toBe(true);
+});
 
-	it("allows when can-migrate is ok (zero Bindle config continuous path)", () => {
+it("DENIES when binding-delivery gate fails (ADR-0141)", () => {
+	const result = evaluateGatekeeper({
+		request: baseRequest,
+		deployedState: { contracts: [deployedContract] },
+		candidate: { plan, contracts: [compatibleCandidate] },
+		costQuota: goodQuota,
+		bindingDelivery: {
+			ok: false,
+			reasons: [
+				{
+					code: "connection-strings-env",
+					message: "forbidden ConnectionStrings__* env",
+					path: "resources.api.env.ConnectionStrings__db",
+				},
+			],
+		},
+	});
+	expect(result.decision).toBe("deny");
+	expect(
+		result.reasons.some(
+			(r) => r.code === "binding-delivery:connection-strings-env",
+		),
+	).toBe(true);
+});
+
+it("DENIES when can-migrate dimension fails (continuous identity migration)", () => {
+	const result = evaluateGatekeeper({
+		request: baseRequest,
+		deployedState: { contracts: [deployedContract] },
+		candidate: { plan, contracts: [compatibleCandidate] },
+		costQuota: goodQuota,
+		canMigrate: {
+			ok: false,
+			summary: "can-migrate:blocked (mapping-spec-missing)",
+			reasons: [
+				{
+					code: "mapping-spec-missing",
+					message: "MappingSpec missing",
+				},
+			],
+			evidence: {
+				continuousDefault: true,
+				dryRun: true,
+				rollbackPosture: "compensate-to-source",
+			},
+		},
+	});
+	expect(result.decision).toBe("deny");
+	expect(
+		result.reasons.some((r) => r.code === "can-migrate:mapping-spec-missing"),
+	).toBe(true);
+});
+
+it("allows when can-migrate is ok (zero Bindle config continuous path)", () => {
+	const result = evaluateGatekeeper({
+		request: baseRequest,
+		deployedState: { contracts: [deployedContract] },
+		candidate: { plan, contracts: [compatibleCandidate] },
+		costQuota: goodQuota,
+		canMigrate: {
+			ok: true,
+			summary: "can-migrate:ok continuous dual-path ready",
+			reasons: [],
+			evidence: { continuousDefault: true, dryRun: true },
+		},
+	});
+	expect(result.decision).toBe("allow");
+});
+
+describe("residency dimension (ADR-0146)", () => {
+	it("denies with gate:'residency' reasons when the precomputed verdict conflicts", () => {
 		const result = evaluateGatekeeper({
 			request: baseRequest,
 			deployedState: { contracts: [deployedContract] },
 			candidate: { plan, contracts: [compatibleCandidate] },
 			costQuota: goodQuota,
-			canMigrate: {
-				ok: true,
-				summary: "can-migrate:ok continuous dual-path ready",
-				reasons: [],
-				evidence: { continuousDefault: true, dryRun: true },
+			residency: {
+				ok: false,
+				reasons: [
+					{
+						code: "jurisdiction-not-allowed",
+						message:
+							'region "us-east-1" (us) is outside allowed jurisdictions [eu]',
+						region: "us-east-1",
+						jurisdictions: ["us"],
+					},
+				],
 			},
+		});
+
+		expect(result.decision).toBe("deny");
+		const reason = result.reasons.find((entry) => entry.gate === "residency");
+		expect(reason?.code).toBe("jurisdiction-not-allowed");
+		expect(reason?.details?.region).toBe("us-east-1");
+		expect(reason?.details?.jurisdictions).toEqual(["us"]);
+		// still audited
+		expect(result.policyDecided.type).toBe("policy.Decided");
+	});
+
+	it("allows unchanged when the residency verdict is ok", () => {
+		const result = evaluateGatekeeper({
+			request: baseRequest,
+			deployedState: { contracts: [deployedContract] },
+			candidate: { plan, contracts: [compatibleCandidate] },
+			costQuota: goodQuota,
+			residency: { ok: true, reasons: [] },
 		});
 		expect(result.decision).toBe("allow");
+		expect(result.reasons).toEqual([]);
 	});
+});

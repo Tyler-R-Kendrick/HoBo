@@ -30,9 +30,22 @@ export const EFFECTS = Object.freeze([
 	"require-approval",
 ]);
 
+// Mirrors the ADR-0146 classification vocabulary pinned in
+// data-models/compliance.cue — kept local because this package is
+// deliberately dependency-free.
+export const DATA_CLASSIFICATIONS = Object.freeze([
+	"public",
+	"internal",
+	"pii",
+	"phi",
+	"pci",
+	"secret",
+]);
+
 const SUBJECT_KIND_SET = new Set(SUBJECT_KINDS);
 const PHASE_SET = new Set(PHASES);
 const EFFECT_SET = new Set(EFFECTS);
+const DATA_CLASSIFICATION_SET = new Set(DATA_CLASSIFICATIONS);
 
 export class PolicyIrValidationError extends Error {
 	code: string;
@@ -73,6 +86,7 @@ export function parseDecisionRequest(input) {
 				? {}
 				: canonicalJsonValue(source.context, "$.context"),
 	};
+	assertDataClassifications(request.context, "$.context.dataClassifications");
 	const inputHash = hashDecisionRequest(request);
 
 	if (source.inputHash !== undefined && source.inputHash !== inputHash) {
@@ -343,6 +357,36 @@ function parseEffect(input, path) {
 		throw new PolicyIrValidationError("unknown-effect", effect, path);
 	}
 	return effect;
+}
+
+// context.dataClassifications is the one context key with pinned semantics
+// (ADR-0146): when present it must be an array drawn from the classification
+// vocabulary, so residency-aware packs can trust it without re-parsing.
+function assertDataClassifications(context, path) {
+	if (
+		context === null ||
+		typeof context !== "object" ||
+		!Object.hasOwn(context, "dataClassifications")
+	) {
+		return;
+	}
+	const value = context.dataClassifications;
+	if (!Array.isArray(value)) {
+		throw new PolicyIrValidationError(
+			"invalid-data-classifications",
+			"dataClassifications must be an array of classification labels",
+			path,
+		);
+	}
+	for (const [index, entry] of value.entries()) {
+		if (!DATA_CLASSIFICATION_SET.has(entry)) {
+			throw new PolicyIrValidationError(
+				"unknown-data-classification",
+				String(entry),
+				`${path}[${index}]`,
+			);
+		}
+	}
 }
 
 function parseEvidence(input, request, path) {

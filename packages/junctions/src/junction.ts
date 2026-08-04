@@ -17,6 +17,7 @@ import {
 export interface JunctionMemberManifestInput {
 	readonly region?: string;
 	readonly capabilities?: readonly ConnectivityTierName[];
+	readonly residency?: readonly string[];
 }
 
 export interface JunctionConfig {
@@ -134,10 +135,22 @@ function parseMember(
 		}
 	}
 
+	const residency = input?.residency ?? [];
+	if (
+		!Array.isArray(residency) ||
+		residency.some((entry) => typeof entry !== "string" || entry.length === 0)
+	) {
+		throw new JunctionParseError(
+			"junction.manifest.invalid",
+			`manifest residency for ${yardEntry.name} must be an array of non-empty strings`,
+		);
+	}
+
 	return {
 		yardName: yardEntry.name,
 		providerId: yardEntry.providerId,
 		region,
 		capabilities,
+		residency,
 	};
 }

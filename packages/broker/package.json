@@ -23,7 +23,8 @@
 		"test:contract:provider": "vitest run contracts/provider"
 	},
 	"dependencies": {
-		"@hobo/contracts": "workspace:*"
+		"@hobo/contracts": "workspace:*",
+		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.15.29",

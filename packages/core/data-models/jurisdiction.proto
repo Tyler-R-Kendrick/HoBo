@@ -26,10 +26,31 @@ message ResidencyConstraintRecord {
   repeated string denied_jurisdictions = 3;
 }
 
+// A lawful cross-border transfer edge between two jurisdictions (ADR-0146
+// v2): adequacy decisions and standard contractual clauses as DATA, never
+// code. Consulted only when an evaluation opts in via transfer_mechanisms.
+message TransferMechanismRecord {
+  string from_jurisdiction = 1;
+  string to_jurisdiction = 2;
+  string mechanism = 3; // adequacy | scc
+  // Citations (decision/instrument names), informational — never a dependency.
+  repeated string legal_basis = 4;
+}
+
+// The lawful basis an ok evaluation relied on. intra-jurisdiction = the
+// region sits directly inside an allowed jurisdiction (no transfer).
+message TransferBasisRecord {
+  string mechanism = 1; // intra-jurisdiction | adequacy | scc
+  string from_jurisdiction = 2;
+  string to_jurisdiction = 3;
+  repeated string legal_basis = 4;
+}
+
 message ResidencyEvaluationRecord {
   bool ok = 1;
   string code = 2; // "" | region-unmapped | jurisdiction-denied | jurisdiction-not-allowed
   string region = 3;
   repeated string region_jurisdictions = 4;
   string remediation = 5;
+  TransferBasisRecord transfer_basis = 6;
 }

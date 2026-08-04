@@ -988,7 +988,7 @@ Residency was typed but hollow: `residency` fields on Yards/Stations were never 
 
 ### Non-goals
 - No attestation program, no certification claims ([compliance-evidence-pack](../compliance-evidence-pack.md) rules unchanged).
-- No OSCAL schema dependency; no adequacy/transfer-mechanism graph in v1 (recorded as an iteration hook alongside cross-Camp replication residency enforcement and broker residency population).
+- No OSCAL schema dependency. The v1 iteration hooks have since landed as the v2 loop closure: the Gatekeeper consumes a precomputed `residency` dimension (`ResidencyGateVerdict`) and `hobo verify --region` threads `Tenant.residency` + plan region + typed `context.dataClassifications` (validated by the policy IR) through it; the broker's yard-placement matcher enforces requested `shape.residency` tags fail-closed against declared regions or explicit guarantees, with a first-class `residency` rejection plane; junction connectivity inference drops edges on member residency conflicts with explicit diagnostics (ADR-0103 #4 realized); and `evaluateResidency` gained an **opt-in** transfer-mechanism mode (`adequacy` / `adequacy-or-scc`) over a cited `TRANSFER_MECHANISMS` data catalog, emitting the `transferBasis` every ok verdict relied on — the default mode stays strictly fail-closed, and mechanisms never bypass denied jurisdictions or unmapped regions.
 
 ### Consequences
 - **(+)** Residency conflicts become evaluable, attributable plan-time verdicts with remediation, feeding existing gates without new event families.

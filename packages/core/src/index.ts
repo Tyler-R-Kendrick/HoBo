@@ -210,6 +210,9 @@ export type {
 	JurisdictionRecord,
 	ResidencyConstraint,
 	ResidencyEvaluation,
+	TransferBasis,
+	TransferMechanismEdge,
+	TransferMechanismMode,
 } from "./ports/jurisdiction.js";
 export {
 	evaluateResidency,
@@ -220,6 +223,7 @@ export {
 	parseJurisdictionId,
 	parseResidencyConstraint,
 	REGION_JURISDICTIONS,
+	TRANSFER_MECHANISMS,
 } from "./ports/jurisdiction.js";
 export type {
 	ActorPlacementMode,

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -474,7 +474,7 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(pLines[pLines.length - 1]).toMatch(/^─{10,}$/);
 	});
 
-	it("dispatch default verb human output is multi-line summary", async () => {
+	it("dispatch default verb explains itself in plain English", async () => {
 		const home = temp("look-dispatch-home-");
 		const project = temp("look-dispatch-proj-");
 		const result = await runHoboCodeCli(["ship the first paint"], {
@@ -484,73 +484,51 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(result.ok).toBe(true);
 		expect(result.code).toBe("HOBO_CODE_DISPATCH");
 		const human = formatHoboCodeResult(result, false);
-		// defaulted bare prompt: title uses ★ (dispatch implied); no hobo-code twin
-		expect(human).toContain("✓ ★");
-		expect(human).not.toContain("hobo-code dispatch");
-		expect(human).not.toContain("hobo-code ★");
-		expect(human).not.toContain("hobo-code★");
-		// done: prompt·st — title ★ owns default; task id in data only
-		// prompt shortId(8) — long text truncates in chrome
-		expect(human).toMatch(/ship th…·st/);
-		expect(human).not.toMatch(/ · ◆ · /);
-		expect(human).not.toMatch(/\S+ · ✓ · /);
-		// task id omitted on done happy path
-		expect(human).not.toMatch(/^\s+\S+… · /m);
-		expect(human).not.toMatch(/^ task · /m);
-		expect(human).not.toContain(" · default · ");
-		expect(human).not.toContain("done ✓");
-		expect(human).not.toMatch(/^ {2}pipeline\s+/m);
-		expect(human).not.toMatch(/^ {2}status\s+/m);
-		expect(human).not.toMatch(/^ {2}note\s+/m);
-		expect(human).not.toMatch(/^ {2}prompt\s+/m);
-		expect(human).not.toMatch(/queue ● → claim ● → run ● → done ✓/);
-		expect(human).not.toContain("queued");
-		expect(human).not.toContain("bare prompt");
-		// next verb is last token (st) — no "next" word
-		expect(human).toMatch(/·st$/m);
-		expect(human).not.toContain("next st");
-		expect(human).not.toMatch(/^ {2}next\s+/m);
-		expect(human).not.toMatch(/next\s+status · rooms/);
-		expect(human).not.toMatch(/next\s+hobo-code /);
-		// local · station happy path omitted on done dispatch
-		expect(human).not.toMatch(/^ {2}node\s+/m);
-		expect(human).not.toMatch(/node\s+node-local-station-local/);
+
+		// This test used to pin the opposite: `✓ ★` over `ship th…·st` — a
+		// status glyph, eight characters of the user's own prompt echoed back,
+		// and a two-letter pointer at another verb. Help promises "plain by
+		// default · --dense is opt-in power chrome", so the default must say
+		// what happened.
+		expect(human).toMatch(/dispatch recorded/);
+		expect(human).toMatch(/No agent has run it yet/);
+		expect(human).toMatch(/does not edit your project/);
+		// It names the record, and the record is real.
+		expect(human).toMatch(/^ task · task-/m);
+		const cited = /at · (\S+)/.exec(human)?.[1];
+		expect(cited).toBeDefined();
+		expect(existsSync(cited as string)).toBe(true);
+		// No eight-character echo of the prompt standing in for content.
+		expect(human).not.toMatch(/ship th…/);
+		expect(human).not.toMatch(/·st$/m);
 		expect(human).toMatch(/─{10,}/);
-		// happy-path done: 3-line panel when soft omitted (title · task · rule)
-		expect(human.trimEnd().split("\n").length).toBeLessThanOrEqual(4);
-		// long prompt truncates in task chrome; full text stays in data
+
+		// A long prompt is not truncated into the panel at all now.
 		const longPrompt = `x${"y".repeat(60)}`;
 		const long = await runHoboCodeCli([longPrompt], {
 			hoboHome: home,
 			cwd: project,
 		});
-		const longOut = formatHoboCodeResult(long, false);
 		expect(long.ok).toBe(true);
-		expect(longOut).toMatch(/.{1,12}…?·st/);
-		expect(longOut).not.toMatch(/ · ◆ · /);
-		expect(longOut).not.toContain(longPrompt);
-		expect(longOut).not.toMatch(/^ {2}prompt\s+/m);
-		expect((long.data as { task: { prompt: string } }).task.prompt).toBe(
-			longPrompt,
-		);
-		const explicit = await runHoboCodeCli(["dispatch", "explicit"], {
+		expect(formatHoboCodeResult(long, false)).not.toContain("yyyyyyyy");
+	});
+
+	it("keeps the dense glyph chrome for the power path", async () => {
+		const home = temp("look-dense-home-");
+		const project = temp("look-dense-proj-");
+		const result = await runHoboCodeCli(["--dense", "ship the first paint"], {
 			hoboHome: home,
 			cwd: project,
 		});
-		const explicitOut = formatHoboCodeResult(explicit, false);
-		expect(explicit.ok).toBe(true);
-		// explicit verb uses short title d (matches help tail)
-		expect(explicitOut).toContain("✓ d");
-		expect(explicitOut).not.toContain("hobo-code d");
-		expect(explicitOut).not.toContain("hobo-code dispatch");
-		expect(explicitOut).toMatch(/explicit·st/);
-		expect(explicitOut).not.toMatch(/\S+ · ✓ · explicit/);
-		expect(explicitOut).not.toMatch(/ · ◆ · /);
-		expect(explicitOut).not.toContain("hobo-code ★");
-		expect(explicitOut).not.toContain(" · default · ");
-		expect(explicitOut).not.toMatch(/^ {2}note\s+/m);
-		expect(explicitOut).toMatch(/·st/);
-		expect((explicit.data as { defaultVerb: boolean }).defaultVerb).toBe(false);
+		const human = formatHoboCodeResult(result, true);
+		// Opt-in chrome keeps its idioms: ★ marks the defaulted bare path, the
+		// tail names the next verb, and the panel stays one scan.
+		expect(human).toContain("✓ ★");
+		expect(human).toMatch(/ship th…·st/);
+		expect(human).not.toContain("hobo-code dispatch");
+		// The dense formatter adds its own legend around the panel; the panel
+		// itself stays one scan, which is what the ★/tail idioms above pin.
+		expect(human).not.toMatch(/No agent has run it yet/);
 	});
 
 	it("empty non-TTY argv fails closed with panel chrome", async () => {

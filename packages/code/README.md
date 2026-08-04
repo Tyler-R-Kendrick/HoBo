@@ -430,6 +430,82 @@ Dispatch may use capacity-aware multi-node scheduling under the hood (`code.dist
 | `code.isolation.rift` | Prefer CoW rift when available |
 | `code.distributed` | Multi-node compute dispatch |
 
+## Virtualized panes
+
+A tmux pane can hand an agent a **virtual terminal over a virtual filesystem**
+instead of a real shell in a real directory.
+
+`rift` separates each agent's tree so agents cannot collide. It does nothing
+about what a command *is*: inside its own workspace an agent can still
+`curl | sh`, read `~/.aws/credentials` by absolute path, or `rm -rf` its way
+out. Two layers close that:
+
+- **Commands** — the pane runs a bash *interpreter*
+  ([just-bash](https://github.com/vercel-labs/just-bash)), not `/bin/bash`.
+  There is no `execve`: commands are TypeScript implementations dispatched from
+  a registry, so anything off the allow-list simply **does not exist** (`rm`
+  answers `command not found`). Network commands are absent entirely. Reads
+  come from the real tree and cannot resolve outside the mounted root; writes
+  stay in memory until promotion, so nothing an agent does reaches the
+  checkout. Two limits worth knowing: `find -delete` can remove files even
+  though `rm` is absent (in the default overlay that is the in-memory copy
+  only), and a path outside the root **writes** succeed into memory rather
+  than failing — they simply never reach disk.
+
+  Symlinks are refused, which in a pnpm workspace means every dependency under
+  `node_modules` reads as missing — and as a missing *file*, not as a policy
+  refusal. Mount the repository root rather than a package if an agent needs to
+  read dependency source.
+- **Observation** — `tmux capture-pane` returns text tmux has already
+  interpreted, which cannot say *when* a prompt appeared or what the screen
+  held at a moment. `src/virtual-terminal.ts` provides the replacement: a VT
+  parser (`@xterm/headless`) fed by `pipe-pane -O`, yielding a structured
+  screen buffer. **It is a library, not yet a wired surface** — nothing in the
+  pane path calls it today, so treat this as the mechanism that exists rather
+  than a behaviour you get.
+
+Neither is a VM: just-bash runs in-process, so this bounds what an agent can
+*name and touch*, not what hostile native code could do.
+
+```sh
+hobo-code mux --virtual       # every pane gets one
+hobo-code vshell              # one, over the current project
+```
+
+The two layers compose rather than compete: `mux --virtual` runs the pane
+inside `hobo-rift exec`, so the kernel provides copy-on-write isolation from
+other agents and the interpreter provides the command allow-list over that
+tree.
+
+## Remote panes
+
+`hobo-code mux --host <machine>` reaches only machines **declared** in
+`devenv.machines.json`, beside the devenv files:
+
+```json
+{
+  "schemaVersion": "hobo.code.dev-machines/v1",
+  "machines": [
+    { "id": "build-box", "host": "build-box.tail1234.ts.net", "isolationClass": "development" },
+    { "id": "gpu", "host": "gpu.tail1234.ts.net", "user": "agent",
+      "isolationClass": "ephemeral", "agents": ["ollama"] }
+  ]
+}
+```
+
+Hosts resolve on the tailnet. Sessions are brokered through the Station's
+privileged-access gateway, which applies the target's isolation-class policy,
+issues short-lived material, and audits every session. A pane that the Station
+did not authorise is refused rather than opened, and a machine's `agents` list
+is enforced.
+
+**What is not finished:** panes carry the credential *reference*
+(`IdentityAgent=tokenref://…`), and nothing serves that socket yet — the
+in-process gateway stops once brokering completes. So the *decision* is real
+(policy, session record, audit event) while the ssh connection still needs its
+own key. Resolving the reference requires a resident agent, which is the next
+step, not a shipped one.
+
 ## Package layout
 
 `src/`, `test/`, `contracts/`, `data-models/` — konsistent production package.

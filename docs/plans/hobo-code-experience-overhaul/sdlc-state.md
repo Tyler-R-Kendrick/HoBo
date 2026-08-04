@@ -163,3 +163,54 @@ The redesign addresses both, and encodes them so they cannot recur silently:
   `hobo-code-interactive-shell`).
 - Independent second-agent evidence reviewer (explicitly deselected for this
   overhaul).
+
+## Session continuation — multi-agent workspaces (2026-08-03)
+
+Phase: **closeout**. Landed as single-layer PRs on `feat/hobo-code-editor-agui`
+rather than a stack; each slice was small enough to review on its own base.
+
+### Shipped
+
+- **Local SLM tool-use.** The local engine now runs a real tool phase (Cactus
+  Needle plans the call, `local-tools.ts` executes it inside a sandbox that
+  refuses traversal and absolute paths) and feeds results back with `role:
+  "tool"`. Feeding them as `user` was why the model used to answer "none of the
+  given commands provided a tool to list files"; with the fix plus a
+  `num_predict` bound, a turn went from 173s to ~15s.
+- **devenv workspace + tmux panes.** Agents are auto-detected by evidence on
+  disk, each gets a pane, and panes open in the declared devenv workspace
+  rather than wherever the shell was standing. Local inference is just another
+  target kind, so a local model and an ssh'd remote host are the same shape.
+- **Per-agent virtual worktrees** — see below.
+
+### `@hobo/rift` sidecar (PR #1027)
+
+Upstream rift needs btrfs/XFS-reflink/APFS and ships per-platform binaries; on
+ext4/linux-arm64 both fail, so `mux` had been silently giving every agent the
+same checkout. The sidecar probes the host and picks the best primitive it
+actually has: reflink → unprivileged overlayfs (`unshare -Urm`) → hardlink →
+copy. `hardlink` ranks below `overlayfs` deliberately and reports
+`isolatesInPlaceWrites: false`, because hardlinked files share an inode and an
+append reaches the source.
+
+Measured here: overlayfs selected, workspace created in 97ms, and an in-place
+append inside a real tmux pane left the source untouched.
+
+Defects found *by building it*, all fixed in the same PR:
+
+- `--name ../../x` escaped the workspaces directory. Names are parsed into a
+  branded `WorkspaceName` before they can reach a path join.
+- Writing the PACT and then **executing** it caught two CLI defects: flags
+  before the verb were parsed as the verb, and failures exited 0.
+- Bookkeeping is an append-only journal with the registry as its projection, so
+  a torn snapshot replays instead of losing every workspace.
+
+### Remaining
+
+- Promotion gates are still hardcoded to this monorepo's script names; a
+  project with different scripts gets "could not run" (fails closed, but
+  unhelpful).
+- Needle is 26M parameters and its tool selection is imperfect on longer
+  prompts; the fine-tune path exists but is not taken.
+- The optimizexp re-certification for the rebuilt shell is captured but the
+  full multi-round dual-regime loop is still not run (carried from above).

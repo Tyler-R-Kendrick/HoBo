@@ -22,11 +22,38 @@ export interface MuxTarget {
 	readonly name: string;
 	readonly kind: TargetKind;
 	/** Command to run in the window. */
+	/**
+	 * The command to run in the pane, as a **shell snippet**.
+	 *
+	 * `placedCommand` prefixes it (`cd … && <command>`) or hands it to
+	 * `hobo-rift exec` after `--`, where the outer shell splits it into an argv
+	 * vector that rift re-quotes per token. A compound snippet therefore behaves
+	 * differently through the two branches, so keep pane commands simple; wrap
+	 * anything compound in `sh -c` yourself.
+	 */
 	readonly command: string;
 	/** Host for ssh targets; ignored otherwise. */
 	readonly host?: string;
 	/** Working directory for local targets. */
 	readonly cwd?: string;
+	/**
+	 * Run the command through a workspace wrapper instead of `cd`-ing to `cwd`.
+	 * Needed for namespace-mounted virtual worktrees, whose path is invisible
+	 * outside the mount.
+	 */
+	readonly exec?: {
+		readonly binary: string;
+		readonly root: string;
+		readonly name: string;
+	};
+	/**
+	 * Station-brokered credential *reference* for an ssh pane.
+	 *
+	 * A reference, never the session token: the token is short-lived material
+	 * and must not reach a process table, a pane title, or a shell history. The
+	 * ssh agent resolves the reference.
+	 */
+	readonly credentialRef?: string;
 }
 
 export interface MuxPlan {
@@ -67,17 +94,55 @@ export function safeWindowName(raw: string): string {
  * makes "local inference in a new terminal" and "remote session" the same
  * shape to everything downstream.
  */
+/** POSIX single-quoting; double quotes still expand `$`, backticks and `\`. */
+export function shellQuote(value: string): string {
+	return `'${value.replace(/'/gu, `'\\''`)}'`;
+}
+
+/**
+ * The command that places `target.command` in its workspace — the exec wrapper
+ * for namespace-mounted trees, a `cd` otherwise, and nothing when the target
+ * has neither.
+ */
+export function placedCommand(target: MuxTarget): string {
+	// An ssh target's workspace lives on the remote. Local paths — a `cwd` or
+	// an exec wrapper naming this machine's binaries — mean nothing there, and
+	// `cd '/home/alice/proj'` on a host without that path stops the agent from
+	// starting at all. Ignoring them here rather than trusting every caller to
+	// strip them keeps one place responsible for it.
+	if (target.kind === "ssh") return target.command;
+	if (target.exec) {
+		// The bundled sidecar is a .js file, which is only directly executable
+		// if its exec bit survived the install; run it through this node.
+		const binary = target.exec.binary.endsWith(".js")
+			? `${shellQuote(process.execPath)} ${shellQuote(target.exec.binary)}`
+			: shellQuote(target.exec.binary);
+		return `${binary} exec --root ${shellQuote(target.exec.root)} --name ${shellQuote(target.exec.name)} -- ${target.command}`;
+	}
+	return target.cwd
+		? `cd ${shellQuote(target.cwd)} && ${target.command}`
+		: target.command;
+}
+
 export function targetCommand(target: MuxTarget): string {
 	if (target.kind === "ssh") {
 		if (!target.host) return `echo "ssh target ${target.name} has no host"`;
+		// The remote gets the *placed* command, not the bare one. Sending only
+		// `target.command` ran every agent in the remote login directory with no
+		// isolation at all, after allocating workspaces nobody then used.
 		// -t so the remote gets a TTY, matching what a local pane provides.
+		// The brokered reference travels as configuration rather than as an
+		// argument, so the pane uses the Station's session instead of whatever
+		// ambient key happens to be in ~/.ssh.
+		const identity = target.credentialRef
+			? `-o ${shellQuote(`IdentityAgent=${target.credentialRef}`)} `
+			: "";
 		return keepPaneOpen(
 			target.name,
-			`ssh -t ${target.host} ${JSON.stringify(target.command)}`,
+			`ssh -t ${identity}${target.host} ${shellQuote(placedCommand(target))}`,
 		);
 	}
-	const prefix = target.cwd ? `cd ${JSON.stringify(target.cwd)} && ` : "";
-	return keepPaneOpen(target.name, `${prefix}${target.command}`);
+	return keepPaneOpen(target.name, placedCommand(target));
 }
 
 /**

@@ -17,11 +17,28 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import {
+	bundledRiftBinary,
 	createRiftWorkspace,
 	probeRift,
+	resolveRiftBinary,
 	type RiftRunner,
 	riftRunner,
+	speaksContract,
 } from "./rift.js";
+
+/**
+ * How to enter a workspace that is not a plain directory.
+ *
+ * The sidecar's overlayfs tier mounts inside an unprivileged user namespace,
+ * so its merged path does not exist to anyone outside that namespace — `cd`
+ * would land in an empty directory. Commands must be run through
+ * `hobo-rift exec`, which re-establishes the mount around them.
+ */
+export interface WorkspaceExec {
+	readonly binary: string;
+	readonly root: string;
+	readonly name: string;
+}
 
 export type WorkspaceBackend = "rift" | "git-worktree" | "shared";
 
@@ -31,6 +48,8 @@ export interface AgentWorkspace {
 	readonly backend: WorkspaceBackend;
 	/** Why this backend, especially when it is not the preferred one. */
 	readonly note?: string;
+	/** Present when the tree can only be entered through a wrapper. */
+	readonly exec?: WorkspaceExec;
 }
 
 export interface AllocateOptions {
@@ -46,6 +65,10 @@ export interface AllocateOptions {
 	readonly env?: NodeJS.ProcessEnv;
 	/** Skip isolation entirely and share the workspace root. */
 	readonly shared?: boolean;
+	/** Why isolation was skipped, when it was not the user asking directly. */
+	readonly sharedReason?: string;
+	/** Seam for tests: where the bundled sidecar binary is found. */
+	readonly bundled?: () => string | null;
 }
 
 function defaultGit(
@@ -80,15 +103,27 @@ export async function allocateAgentWorkspaces(
 		workspaceRoot,
 		agentIds,
 		fallbackRoot,
-		runner = riftRunner(),
 		git = defaultGit,
 		env = process.env,
 	} = options;
+	// The runner must invoke the binary that `env` resolves to. Defaulting it
+	// from `process.env` meant the contract could be read from one binary while
+	// `capability.binary` — which becomes `exec.binary` in every composed pane
+	// command — came from another, so a caller passing an `env` whose PATH held
+	// a stale sidecar got the check against the good one and the panes against
+	// the stale one.
+	const runner =
+		options.runner ??
+		riftRunner(
+			resolveRiftBinary(env, options.bundled ?? undefined)?.path ?? "rift",
+		);
 
 	if (options.shared) {
 		return {
 			backend: "shared",
-			reason: "--shared: every agent uses the workspace root",
+			reason:
+				options.sharedReason ??
+				"--shared: every agent uses the workspace root",
 			workspaces: agentIds.map((agentId) => ({
 				agentId,
 				path: workspaceRoot,
@@ -97,7 +132,45 @@ export async function allocateAgentWorkspaces(
 		};
 	}
 
-	const capability = await probeRift(workspaceRoot, runner, env);
+	let capability = await probeRift(
+		workspaceRoot,
+		runner,
+		env,
+		options.bundled ?? undefined,
+	);
+	// A sidecar that does not advertise the contract is an older build: it
+	// accepts the same flags and silently mangles the argv, so composing
+	// against it reintroduces the injection it was fixed for. Fall back to the
+	// bundled copy — which ships with this code and therefore matches it —
+	// rather than trusting whatever is first on PATH.
+	if (
+		capability.usable &&
+		capability.flavor === "hobo" &&
+		!speaksContract(capability.contract)
+	) {
+		const fallback = (options.bundled ?? bundledRiftBinary)();
+		if (fallback && fallback !== capability.binary) {
+			const bundledRunner = riftRunner(fallback);
+			const reprobed = await probeRift(
+				workspaceRoot,
+				bundledRunner,
+				{ PATH: "" },
+				() => fallback,
+			);
+			if (reprobed.usable && speaksContract(reprobed.contract)) {
+				return allocateAgentWorkspaces({
+					...options,
+					runner: bundledRunner,
+					env: { ...env, PATH: "" },
+				});
+			}
+		}
+		capability = {
+			usable: false,
+			binary: capability.binary,
+			reason: `${capability.binary} predates the argv/namespace contract this build composes against — rebuild @hobo/rift or remove the stale binary from PATH`,
+		};
+	}
 	if (capability.usable) {
 		const workspaces: AgentWorkspace[] = [];
 		let failure: string | undefined;
@@ -108,6 +181,17 @@ export async function allocateAgentWorkspaces(
 					agentId,
 					path: created.workspace.path,
 					backend: "rift",
+					// Only the sidecar has tiers that need a wrapper; upstream rift
+					// always hands back a directory you can simply cd into.
+					...(capability.flavor === "hobo" && capability.binary
+						? {
+								exec: {
+									binary: capability.binary,
+									root: workspaceRoot,
+									name: agentId,
+								},
+							}
+						: {}),
 				});
 				continue;
 			}

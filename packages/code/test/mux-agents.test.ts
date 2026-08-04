@@ -11,6 +11,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { allocateAgentWorkspaces } from "../src/agent-workspaces.js";
 import { detectAgents, KNOWN_AGENTS } from "../src/agent-registry.js";
 import { inspectDevenv } from "../src/devenv.js";
 import {
@@ -19,6 +20,7 @@ import {
 	keepPaneOpen,
 	type MuxRunner,
 	type MuxTarget,
+	placedCommand,
 	planMux,
 	safeWindowName,
 	targetCommand,
@@ -93,7 +95,8 @@ describe("uniform mux targets", () => {
 		// Every kind is a command in a pane, wrapped so the pane outlives it.
 		expect(targetCommand(local)).toContain("claude");
 		expect(targetCommand(inference)).toContain("ollama serve");
-		expect(targetCommand(remote)).toContain('ssh -t box.example "claude"');
+		expect(placedCommand(remote)).toBe("claude");
+		expect(targetCommand(remote)).toContain("ssh -t box.example");
 		for (const t of [local, inference, remote]) {
 			expect(targetCommand(t)).toMatch(/exited %s/);
 		}
@@ -107,7 +110,7 @@ describe("uniform mux targets", () => {
 				command: "hobo-code",
 				cwd: "/work/proj",
 			}),
-		).toContain('cd "/work/proj" && hobo-code');
+		).toContain("cd ");
 	});
 
 	it("sanitises window names tmux would misparse", () => {
@@ -290,5 +293,92 @@ describe("devenv status", () => {
 			platform: "linux",
 		});
 		expect(status.active).toBe(true);
+	});
+});
+
+// Superseded by "ssh panes carry nothing local" below: an earlier round routed
+// the exec wrapper and cwd over ssh, which sent this machine's absolute paths
+// to a different machine. Remote isolation has to come from the remote's own
+// workspace, not from local paths shipped across.
+describe("shell quoting", () => {
+	it("does not let a path expand a command substitution", () => {
+		// Double quotes (what JSON.stringify emits) do not suppress `$(…)`.
+		const command = placedCommand({
+			name: "x",
+			kind: "local",
+			command: "claude",
+			cwd: "/ws/$(touch pwned)",
+		});
+		expect(command).toBe("cd '/ws/$(touch pwned)' && claude");
+		expect(command).not.toContain('"/ws/$(touch pwned)"');
+	});
+});
+
+describe("remote panes do not pretend to be isolated", () => {
+	it("skips local virtual worktrees for --host and says why", async () => {
+		// Local workspace paths do not exist on the remote machine. Allocating
+		// them either sends this machine's absolute paths somewhere they mean
+		// nothing, or wastes the work outright.
+		const result = await allocateAgentWorkspaces({
+			workspaceRoot: "/local/ws",
+			agentIds: ["claude", "codex"],
+			fallbackRoot: "/local/fallback",
+			shared: true,
+			sharedReason: "--host box: panes run on the remote",
+			runner: { run: async () => ({ code: 0, stdout: "", stderr: "" }) },
+			env: { PATH: "" },
+			bundled: () => null,
+		});
+		expect(result.backend).toBe("shared");
+		expect(result.reason).toMatch(/--host box/);
+		for (const w of result.workspaces) {
+			expect(w.path).toBe("/local/ws");
+			expect(w.exec).toBeUndefined();
+		}
+	});
+});
+
+describe("ssh panes carry nothing local", () => {
+	it("drops a local cwd even when one is handed to it", () => {
+		// `cd '/home/alice/proj' && claude` on a machine without that path is
+		// `sh: 1: cd: can't cd to /home/alice/proj` — the agent never starts.
+		// The target below *carries* a cwd, so this fails against a version that
+		// relies on the caller having stripped it.
+		const remote = placedCommand({
+			name: "claude",
+			kind: "ssh",
+			host: "build-box",
+			command: "claude",
+			cwd: "/home/alice/proj",
+		});
+		expect(remote).toBe("claude");
+		expect(remote).not.toContain("cd ");
+	});
+
+	it("drops a local exec wrapper too", () => {
+		const remote = placedCommand({
+			name: "claude",
+			kind: "ssh",
+			host: "build-box",
+			command: "claude",
+			cwd: "/ws/merged",
+			exec: { binary: "/usr/local/bin/hobo-rift", root: "/ws", name: "claude" },
+		});
+		expect(remote).toBe("claude");
+		expect(remote).not.toContain("hobo-rift");
+	});
+
+	it("the whole pane command carries no local path", () => {
+		const pane = targetCommand({
+			name: "claude",
+			kind: "ssh",
+			host: "build-box",
+			command: "claude",
+			cwd: "/home/alice/proj",
+			exec: { binary: "/usr/local/bin/hobo-rift", root: "/ws", name: "claude" },
+		});
+		expect(pane).toContain("ssh -t build-box");
+		expect(pane).not.toContain("/home/alice/proj");
+		expect(pane).not.toContain("hobo-rift");
 	});
 });

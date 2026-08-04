@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -822,5 +822,41 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(data.hermetic.schema).toBe("hobo.code.hermetic-env/v1");
 		// Human chrome must not hide pure separation from nix-terminal persona.
 		expect(iso.message).toMatch(/durable/);
+	});
+});
+
+describe("dispatch says what it did", () => {
+	it("plain mode names the task, its path, and what dispatch is not", async () => {
+		const home = mkdtempSync(join(tmpdir(), "hobo-dispatch-"));
+		const project = mkdtempSync(join(tmpdir(), "hobo-proj-"));
+		const result = await runHoboCodeCli(["hello"], {
+			hoboHome: home,
+			cwd: project,
+		});
+		// The old reply was `✓ ★ / hello·st`: a glyph, eight characters of the
+		// user's own prompt, and a two-letter pointer at another command. "✓"
+		// read as "your request was carried out" when what happened is that a
+		// task was recorded.
+		expect(result.message).toMatch(/No agent has run it yet/);
+		expect(result.message).toMatch(/does not edit your project/);
+		// The path it cites must actually exist, or "recorded" is unverifiable.
+		const cited = /at · (\S+)/.exec(result.message)?.[1];
+		expect(cited).toBeDefined();
+		expect(existsSync(cited as string)).toBe(true);
+		rmSync(home, { recursive: true, force: true });
+		rmSync(project, { recursive: true, force: true });
+	});
+
+	it("keeps the dense glyph form behind --dense", async () => {
+		const home = mkdtempSync(join(tmpdir(), "hobo-dispatch-"));
+		const project = mkdtempSync(join(tmpdir(), "hobo-proj-"));
+		const result = await runHoboCodeCli(["--dense", "hello"], {
+			hoboHome: home,
+			cwd: project,
+		});
+		expect(result.message).toContain("★");
+		expect(result.message).not.toMatch(/No agent has run it yet/);
+		rmSync(home, { recursive: true, force: true });
+		rmSync(project, { recursive: true, force: true });
 	});
 });

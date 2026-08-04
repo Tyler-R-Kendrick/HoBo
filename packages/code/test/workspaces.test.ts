@@ -364,3 +364,36 @@ describe("a sidecar that predates the contract", () => {
 		expect(speaksContract({ execArgvVector: true, namespaceMarker: true })).toBe(true);
 	});
 });
+
+describe("the runner follows the env it was given", () => {
+	it("does not check one binary and compose against another", async () => {
+		// The guard reads the contract through the runner but reports
+		// `capability.binary` from `env`. Defaulting the runner from
+		// `process.env` let those be different binaries, so a caller passing an
+		// env whose PATH held a stale sidecar got the check against the good one
+		// and every pane composed against the stale one — silently, with no
+		// reason recorded.
+		const staleDir = tmp();
+		writeFileSync(join(staleDir, "hobo-rift"), "#!/bin/sh\nexit 0\n");
+		const seen: string[] = [];
+		const result = await allocateAgentWorkspaces({
+			workspaceRoot: "/ws",
+			agentIds: ["claude"],
+			fallbackRoot: join(tmp(), "fallback"),
+			// No explicit runner: the default must be built from `env`, not from
+			// whatever this process's PATH happens to hold.
+			env: { PATH: staleDir },
+			bundled: () => null,
+			git: async (args, cwd) => {
+				seen.push(cwd);
+				return { code: 1, stderr: "no git" };
+			},
+		});
+		for (const w of result.workspaces) {
+			// Whatever backend was chosen, no pane may be composed against a
+			// binary the check never saw.
+			if (w.exec) expect(w.exec.binary).toBe(join(staleDir, "hobo-rift"));
+		}
+		expect(result.backend).not.toBe("rift");
+	});
+});

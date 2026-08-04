@@ -38,15 +38,19 @@ export type CowTier = "reflink" | "overlayfs" | "hardlink" | "copy";
  * release, and a sidecar found on PATH may predate them — silently, since the
  * older one accepts the same flags and simply mangles them. Advertising the
  * contract is what lets the caller notice instead of shipping an injection.
+ *
+ * The values are **derived from the code that implements them** (see
+ * `deriveContract` in workspace.ts), never asserted as constants. A constant
+ * would keep reading `true` through a refactor that dropped the behaviour, so
+ * the guard would catch old sidecars and miss regressed ones — the more likely
+ * failure by far.
  */
-export const CONTRACT = Object.freeze({
+export interface RiftContract {
 	/** `exec -- cmd args…` quotes each element rather than joining on spaces. */
-	execArgvVector: true,
+	readonly execArgvVector: boolean;
 	/** `exec` sets HOBO_RIFT_WORKSPACE inside the namespace. */
-	namespaceMarker: true,
-} as const);
-
-export type RiftContract = typeof CONTRACT;
+	readonly namespaceMarker: boolean;
+}
 
 // domain-view: wire form is hobo.rift.v1.Capability; src/wire.ts converts.
 export interface Capability {
@@ -167,6 +171,5 @@ export function detectCapability(
 		available,
 		reason,
 		isolatesInPlaceWrites: tier !== "hardlink",
-		contract: CONTRACT,
 	};
 }

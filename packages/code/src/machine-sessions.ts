@@ -9,10 +9,16 @@
  *
  * A pane now asks the Station's privileged-access gateway for a session
  * against a *declared* machine (see `dev-machines.ts`). The gateway applies the
- * target's isolation-class policy, returns short-lived material, and writes
- * `pam.SessionStarted` / `pam.SessionDenied`. When no gateway is available the
- * pane is refused rather than quietly falling back to the ambient key — a
- * fallback that silently downgrades governance is worse than a clear failure.
+ * target's isolation-class policy and writes `pam.SessionStarted` /
+ * `pam.SessionDenied`. A pane the Station did not authorise is refused rather
+ * than quietly falling back to the ambient key — a fallback that silently
+ * downgrades governance is worse than a clear failure.
+ *
+ * **Read this before trusting the name of this module.** What is finished is
+ * the *decision*: policy applied per isolation class, a session recorded, an
+ * audit event written, and an unauthorised pane refused. What is not finished
+ * is the credential path — see `brokeredSshCommand` — so a remote pane still
+ * authenticates with its own key today.
  */
 
 import { createNativePamGateway } from "@hobo/stations";

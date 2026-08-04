@@ -35,8 +35,10 @@ import {
 } from "../src/wire.js";
 import {
 	createWorkspace,
+	deriveContract,
 	listDebris,
 	pruneDebris,
+	quoteVector,
 	rebuildRegistry,
 	entriesToClone,
 	execCommand,
@@ -851,5 +853,46 @@ describe("the namespace announces itself", () => {
 			"agent",
 		);
 		expect(cmd).not.toContain("HOBO_RIFT_WORKSPACE");
+	});
+});
+
+describe("the advertised contract is measured, not asserted", () => {
+	it("reports what the code actually does", () => {
+		const contract = deriveContract();
+		expect(contract.execArgvVector).toBe(true);
+		expect(contract.namespaceMarker).toBe(true);
+	});
+
+	it("is derived from the same functions a caller depends on", () => {
+		// The point of deriving rather than hardcoding: a refactor that stops
+		// quoting the vector, or drops the marker, flips the flag by
+		// construction. A constant would keep reading `true` and the guard would
+		// catch only *old* sidecars, never regressed ones — the likelier failure.
+		expect(quoteVector(["a b"])).toBe("'a b'");
+		expect(quoteVector(["x", "y z"])).toBe("'x' 'y z'");
+		const overlay = {
+			name: "probe",
+			path: "/p/merged",
+			tier: "overlayfs" as const,
+			source: "/p/src",
+			upper: "/p/upper",
+			work: "/p/work",
+			createdAt: "",
+		};
+		expect(execCommand(overlay, "x")).toContain("HOBO_RIFT_WORKSPACE=");
+		// Both flags trace to these two observations and nothing else.
+		expect(deriveContract()).toEqual({
+			execArgvVector: quoteVector(["a b"]) === "'a b'",
+			namespaceMarker: execCommand(overlay, "x").includes("HOBO_RIFT_WORKSPACE="),
+		});
+	});
+
+	it("the CLI advertises the derived values", () => {
+		const bin = join(here, "..", "dist", "bin", "hobo-rift.js");
+		const r = spawnSync(process.execPath, [bin, "capability", "--json"], {
+			encoding: "utf8",
+		});
+		const advertised = JSON.parse(r.stdout) as { contract?: unknown };
+		expect(advertised.contract).toEqual(deriveContract());
 	});
 });

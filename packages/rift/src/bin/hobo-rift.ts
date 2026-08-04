@@ -11,11 +11,12 @@ import {
 	createWorkspace,
 	execCommand,
 	initRoot,
+	deriveContract,
 	listDebris,
 	pruneDebris,
 	readRegistry,
+	quoteVector,
 	rebuildRegistry,
-	shellQuote,
 	removeWorkspace,
 	runInWorkspace,
 } from "../workspace.js";
@@ -63,7 +64,9 @@ function emit(human: string, data: unknown): void {
 }
 
 if (command === "capability") {
-	const cap = detectCapability(root);
+	// Measured here, where both modules are available, rather than asserted in
+	// the capability record itself.
+	const cap = { ...detectCapability(root), contract: deriveContract() };
 	emit(
 		`${cap.tier} · ${cap.reason}${cap.isolatesInPlaceWrites ? "" : " · WARNING: in-place writes reach the source"}`,
 		cap,
@@ -145,10 +148,7 @@ if (command === "capability") {
 	// containing a space split into stray positionals, and one containing `;`
 	// or `$(…)` executed in the namespace before the workspace command ever
 	// ran. `--shell` is the explicit way to ask for shell syntax.
-	const inner =
-		snippet !== undefined
-			? snippet
-			: vector.map((a) => shellQuote(a)).join(" ");
+	const inner = snippet !== undefined ? snippet : quoteVector(vector);
 	if (!name || inner.length === 0) {
 		process.stderr.write(
 			"exec needs --name <name> and either -- <cmd> [args…] or --shell <snippet>\n",

@@ -24,7 +24,12 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { type Capability, type CowTier, detectCapability } from "./capability.js";
+import {
+	type Capability,
+	type CowTier,
+	detectCapability,
+	type RiftContract,
+} from "./capability.js";
 import {
 	appendEvent,
 	journalPath,
@@ -567,6 +572,35 @@ export function escapeMountPath(path: string): string {
  * user namespace, mounts the overlay, and execs — which is what makes the
  * isolation real without needing root.
  */
+/**
+ * What this build actually guarantees, measured rather than declared.
+ *
+ * Each field runs the code path it describes: a refactor that stops quoting the
+ * vector, or drops the namespace marker, flips the flag by construction. A
+ * hardcoded `true` would keep advertising a contract the build no longer
+ * honours, which is the regression a caller cannot otherwise detect.
+ */
+export function deriveContract(): RiftContract {
+	const overlay: WorkspaceRecord = {
+		name: "probe",
+		path: "/probe/merged",
+		tier: "overlayfs",
+		source: "/probe/src",
+		upper: "/probe/upper",
+		work: "/probe/work",
+		createdAt: "",
+	};
+	return {
+		execArgvVector: quoteVector(["a b"]) === "'a b'",
+		namespaceMarker: execCommand(overlay, "x").includes("HOBO_RIFT_WORKSPACE="),
+	};
+}
+
+/** Quote an argv vector for reassembly into a shell command. */
+export function quoteVector(argv: readonly string[]): string {
+	return argv.map((a) => shellQuote(a)).join(" ");
+}
+
 export function execCommand(
 	record: WorkspaceRecord,
 	command: string,

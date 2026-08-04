@@ -20,6 +20,7 @@ import {
 	bundledRiftBinary,
 	createRiftWorkspace,
 	probeRift,
+	resolveRiftBinary,
 	type RiftRunner,
 	riftRunner,
 	speaksContract,
@@ -102,10 +103,20 @@ export async function allocateAgentWorkspaces(
 		workspaceRoot,
 		agentIds,
 		fallbackRoot,
-		runner = riftRunner(),
 		git = defaultGit,
 		env = process.env,
 	} = options;
+	// The runner must invoke the binary that `env` resolves to. Defaulting it
+	// from `process.env` meant the contract could be read from one binary while
+	// `capability.binary` — which becomes `exec.binary` in every composed pane
+	// command — came from another, so a caller passing an `env` whose PATH held
+	// a stale sidecar got the check against the good one and the panes against
+	// the stale one.
+	const runner =
+		options.runner ??
+		riftRunner(
+			resolveRiftBinary(env, options.bundled ?? undefined)?.path ?? "rift",
+		);
 
 	if (options.shared) {
 		return {

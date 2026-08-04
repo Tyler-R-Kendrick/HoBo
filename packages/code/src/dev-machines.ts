@@ -9,8 +9,9 @@
  * A dev machine is instead *declared* — in `devenv.machines.json` beside the
  * devenv files, so the set of hosts an agent can reach is reviewable in the
  * same place as the toolchain — resolved on the tailnet by its named endpoint,
- * and brokered through the Station's privileged-access gateway, which issues
- * short-lived material and writes an audit event per session.
+ * and brokered through the Station's privileged-access gateway, which applies
+ * the target's isolation-class policy and writes an audit event per session.
+ * (The credential path is not finished — see `machine-sessions.ts`.)
  */
 
 import { existsSync, readFileSync } from "node:fs";

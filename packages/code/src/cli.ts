@@ -700,7 +700,12 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"`hobo-code mux --host <id>` places panes on one. Sessions are brokered",
 		"by the Station's privileged-access gateway, which applies the target's",
-		"isolation-class policy and audits every session.",
+		"isolation-class policy and audits every session; a pane the Station did",
+		"not authorise is refused rather than opened.",
+		"",
+		"Not finished: the pane carries the credential reference, but nothing",
+		"serves it yet, so the ssh connection still uses your own key. The",
+		"decision and the audit trail are real; the credential path is not.",
 	],
 	vshell: [
 		"hobo-code vshell — a virtual pane: virtual terminal over a virtual filesystem",
@@ -1911,8 +1916,8 @@ export async function runHoboCodeCli(
 								(r) => `rejected · ${r.machine}: ${r.problem}`,
 							)
 						: []),
-					"Panes reach only declared machines so the set is reviewable, and",
-					"sessions are brokered by the Station rather than using an ambient key.",
+					"Panes reach only declared machines, so the set an agent can touch",
+					"is reviewable, and each session is authorised and audited.",
 				]),
 				["hobo-code machines", "hobo-code mux --dry-run"],
 				{ requested: requestedHost, declared: declaredMachines },
@@ -2036,7 +2041,8 @@ export async function runHoboCodeCli(
 				"HOBO_CODE_MUX_UNBROKERED_PANES",
 				panel("✕ mux", [
 					`${unbrokered.length} pane(s) have no Station session: ${unbrokered.map((t) => t.name).join(", ")}`,
-					"Opening them would use the ambient ~/.ssh key, unaudited.",
+					"Opening them would mean panes the Station never authorised, with",
+					"no session recorded — the ungoverned path this replaced.",
 					...(brokered?.failures ?? [])
 						.slice(0, 3)
 						.map((f) => `denied · ${f.agentId}: ${f.reason}`),

@@ -1,5 +1,4 @@
 {
-  "$comment": "Project-scoped MCP servers for Claude Code (auto-discovered). serena = semantic code retrieval/editing through language servers (no keys); headroom = local token-compression (no keys); gbrain = knowledge-graph memory via scripts/agent-mcp-gbrain.sh (fails closed without binary/provider; run gbrain init and choose local Ollama or an API-key provider; remote providers receive embedding/query text). See AUTH.md, AGENTS.md, docs/agent-tooling.md. Install binaries with: bash scripts/setup-agent-tools.sh --help",
   "mcpServers": {
     "headroom": {
       "command": "bash",
@@ -18,6 +17,10 @@
       "args": [
         "scripts/agent-mcp-serena.sh"
       ]
+    },
+    "higgsfield": {
+      "type": "http",
+      "url": "https://mcp.higgsfield.ai/mcp"
     }
   }
 }

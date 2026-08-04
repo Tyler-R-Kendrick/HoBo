@@ -39,6 +39,40 @@ A **skills collection** of engineering disciplines, installed via the `skills` C
 A **skill + always-on rule** that compresses the agent's **output** (~65–87% fewer tokens) while preserving technical accuracy. Commands: `/caveman [lite|full|ultra|wenyan]`, `/caveman-commit`, `/caveman-review`, `/caveman-compress <file>`, `/caveman-stats`. No API keys. Installed to `.agents/skills/caveman*` (+ `cavecrew`), `.cursor/rules/caveman.mdc` (`alwaysApply: true`), a `## Caveman mode (active)` block in `AGENTS.md`, and (for Claude Code) a global `claude` plugin. Optional env `CAVEMAN_STATUSLINE_SAVINGS=0`.
 - **It is ON by default.** To disable: delete `.cursor/rules/caveman.mdc`, remove the `<!-- caveman:begin … end -->` block from `AGENTS.md`, and run `npx -y github:JuliusBrussee/caveman -- --uninstall`.
 
+### impeccable — `pbakaus/impeccable` (Apache-2.0)
+A **design skill** for AI harnesses (npm `impeccable`, v3.5.0, homepage
+[impeccable.style](https://impeccable.style)). 23 commands spanning the design
+workflow — `shape`, `critique`, `audit`, `polish`, plus dials like `bolder`,
+`quieter`, `colorize`. **No API keys.**
+- **Install:** `npx impeccable install` from the repo root; it auto-detects
+  harnesses and compiles **per harness** into `.claude`, `.agents`, `.cursor`
+  and `.github`. `npx impeccable check` reports drift, `npx impeccable update`
+  applies it. Committed, like the other skills.
+- **Init:** `/impeccable init` writes `PRODUCT.md` (product truth only). It does
+  **not** write `DESIGN.md` — [`site/DESIGN.md`](../site/DESIGN.md) remains the
+  design authority ([ADR-0149](./design/adr/07-portability-extensibility.md#adr-0149)),
+  and its context loader reads that file as incumbent authority. Do not run
+  `/impeccable document` at the repo root: a root `DESIGN.md` would auto-opt-in
+  the root to `design:lint` and introduce a fourth identity beside the three
+  that gate validates.
+- **Mirror-gate exemption:** impeccable is listed in `VENDORED_SKILLS` in
+  [`../scripts/check-skill-mirrors.ts`](../scripts/check-skill-mirrors.ts). The
+  byte-identical rule fits skills this repo authors; impeccable deliberately
+  emits Codex-only `agents/*.toml` and `agents/openai.yaml`, so forcing the
+  trees equal would corrupt the install and be undone by the next update.
+
+### Higgsfield MCP — `mcp.higgsfield.ai` (hosted, official)
+The **official hosted** MCP connector for Higgsfield AI image/video generation
+(30+ models). Registered in [`../.mcp.json`](../.mcp.json) as an HTTP server at
+`https://mcp.higgsfield.ai/mcp`.
+- **Auth:** account **OAuth**, not an API key — **no credential is stored in
+  this repo**. Sign in via `/mcp` in Claude Code.
+- **Approval:** project-scoped MCP servers start as *pending approval*; a human
+  must approve the server before it can be used. That is deliberate and cannot
+  be done on your behalf.
+- **Risk:** generation requests and any prompt content are sent to Higgsfield.
+  Treat it like the other network-egress tools in this table.
+
 ### ponytail — `DietrichGebert/ponytail` (MIT)
 A **minimalist-coding skill**: channels a senior dev who pushes the laziest solution that works — YAGNI (does this need to exist?), standard library before custom code, native platform features before dependencies, one line before fifty. Commands: `/ponytail [lite|full|ultra]`, `/ponytail-review` (review a diff for over-engineering), `/ponytail-audit` (whole-repo bloat scan), `/ponytail-debt` (harvest `ponytail:` shortcut comments into a ledger), `/ponytail-gain`, `/ponytail-help`. **No API keys; no third-party data transmission.** Installed (6 skills) to `.claude/skills/ponytail*` (Claude Code) and `.agents/skills/ponytail*` (Cursor + Codex).
 - **Invocation-based here, not always-on.** Run `/ponytail` to activate it for a session. (Upstream also supports an always-on plugin install via `/plugin marketplace add DietrichGebert/ponytail` → `/plugin install ponytail@ponytail` in Claude Code; we use the skills route to keep it opt-in and committable, and to avoid stacking a second always-on directive on top of caveman.) Optional global config: `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE`.
@@ -98,7 +132,7 @@ bash scripts/setup-agent-tools.sh --agent copilot --no-gbrain
 The common layer installs agent-agnostic runtimes (`tgrep`, repo-pinned `ast-grep`, `rtk`, `serena`, `headroom`, `skillopt-train`, `skillopt-sleep`, and the **`github/gh-stack`** GitHub CLI extension for stacked PRs) and leaves per-agent plugin/skill registration alone. Agent-specific layers only install shims for the selected supported client. Devcontainers run the common layer by default through [`.devcontainer/post-create.sh`](../.devcontainer/post-create.sh), avoiding prompts, global CLI mutations, and optional gbrain setup during container creation.
 
 ## Per-agent wiring
-| | MCP servers (Serena, headroom, gbrain) | Skills (improve, mattpocock, caveman, ponytail) | Plugin / optimizer |
+| | MCP servers (Serena, headroom, gbrain, Higgsfield) | Skills (improve, mattpocock, caveman, ponytail, impeccable) | Plugin / optimizer |
 |---|---|---|---|
 | **Claude Code** | `.mcp.json` (auto-discovered) | `.claude/skills/` (incl. mattpocock) | `.claude/settings.json` for Superpowers; SkillOpt can run offline |
 | **Cursor** | `.cursor/mcp.json` | `.agents/skills/` + `.cursor/rules/` (caveman) | — (no plugin support) |

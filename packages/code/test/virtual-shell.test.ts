@@ -185,19 +185,22 @@ describe("what the agent writes", () => {
 		expect(readFileSync(outside, "utf8")).not.toContain("pwned");
 	});
 
-	it("reports a symlink as missing unless links are allowed", async () => {
+	it("reports a symlink as a missing file, not as a refusal", async () => {
 		// Every dependency in a pnpm workspace is a symlink, so this is the case
-		// an agent hits constantly — and `refused` is false, so the pane does not
-		// even print the "allow-list, not a missing binary" line.
+		// an agent hits constantly. `ls` still lists the entry — asserting on
+		// `ls` would pass regardless — so the assertion is on reading it, which
+		// is what actually fails, and on `refused` being false, which is the
+		// part that misleads.
 		const { root, outside } = workspace();
 		symlinkSync(outside, join(root, "link.txt"));
-		const strict = createVirtualShell({ workspace: root });
-		const blocked = await strict.run("cat link.txt");
-		expect(blocked.exitCode).not.toBe(0);
-		expect(blocked.refused).toBe(false);
-
-		const permissive = createVirtualShell({ workspace: root, allowSymlinks: true });
-		expect((await permissive.run("ls")).stdout).toContain("link.txt");
+		const shell = createVirtualShell({ workspace: root });
+		expect((await shell.run("ls")).stdout).toContain("link.txt");
+		const read = await shell.run("cat link.txt");
+		expect(read.exitCode).not.toBe(0);
+		expect(read.stdout).not.toContain("AKIA");
+		// Not "command not found" — so the pane prints no policy line, and the
+		// agent sees an ordinary missing file.
+		expect(read.refused).toBe(false);
 	});
 });
 

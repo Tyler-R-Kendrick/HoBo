@@ -93,13 +93,49 @@ describe("driving a virtual pane", () => {
 		expect(out).toContain("done");
 	});
 
-	it("reprompts on blank input without running anything", async () => {
-		// The old assertion (no "command not found") held with the guard
-		// deleted, because an empty command is a no-op anyway. Counting prompts
-		// is what actually distinguishes the two.
+	it("does not send blank input to the shell at all", async () => {
+		// Two earlier versions of this test could not fail: an empty command is
+		// a no-op, so neither "no command-not-found" nor a prompt count changes
+		// when the guard is deleted. Observing the shell is what distinguishes
+		// them.
 		const { root } = workspace();
-		const out = await drive(root, "\n\n\nexit\n");
-		expect(out.match(/claude:~\$/gu)?.length).toBe(4);
+		const seen: string[] = [];
+		const output = new PassThrough();
+		output.resume();
+		await runVirtualPane({
+			agentId: "claude",
+			workspace: root,
+			input: Readable.from(["\n   \n\nexit\n"]),
+			output,
+			shell: {
+				async run(command) {
+					seen.push(command);
+					return { stdout: "", stderr: "", exitCode: 0, refused: false };
+				},
+			},
+		});
+		expect(seen).toEqual([]);
+	});
+
+	it("does send a real command to the shell", async () => {
+		// The complement, so the test above cannot pass by the pane being inert.
+		const { root } = workspace();
+		const seen: string[] = [];
+		const output = new PassThrough();
+		output.resume();
+		await runVirtualPane({
+			agentId: "claude",
+			workspace: root,
+			input: Readable.from(["ls\nexit\n"]),
+			output,
+			shell: {
+				async run(command) {
+					seen.push(command);
+					return { stdout: "", stderr: "", exitCode: 0, refused: false };
+				},
+			},
+		});
+		expect(seen).toEqual(["ls"]);
 	});
 });
 
@@ -118,5 +154,45 @@ describe("the command tmux is given", () => {
 		// reassembles its argv; the end-to-end property is pinned in
 		// packages/rift's exec tests, because that is where it was broken.
 		expect(virtualPaneCommand("a", "/ws/o'brien")).toContain("'/ws/o'\\''brien'");
+	});
+});
+
+describe("--tier inside a namespace", () => {
+	it("is refused, because it would mount the shared tree", async () => {
+		// `hobo-rift exec` marks the namespace. Inside it the merged path is
+		// real, so redirecting to `source` hands this agent the tree every other
+		// agent shares — the collision rift exists to prevent, and invisible to
+		// the agent. Documenting it left a footgun; this closes it.
+		const { root } = workspace();
+		const output = new PassThrough();
+		output.resume();
+		await expect(
+			runVirtualPane({
+				agentId: "claude",
+				workspace: root,
+				tier: "overlayfs",
+				source: "/shared/source",
+				env: { HOBO_RIFT_WORKSPACE: "claude" },
+				input: Readable.from(["exit\n"]),
+				output,
+			}),
+		).rejects.toThrow(/already inside one/u);
+	});
+
+	it("is allowed outside a namespace, where it is the correct mount", async () => {
+		const { root } = workspace();
+		const output = new PassThrough();
+		output.resume();
+		await expect(
+			runVirtualPane({
+				agentId: "claude",
+				workspace: "/does/not/exist/merged",
+				tier: "overlayfs",
+				source: root,
+				env: {},
+				input: Readable.from(["exit\n"]),
+				output,
+			}),
+		).resolves.toBe(0);
 	});
 });

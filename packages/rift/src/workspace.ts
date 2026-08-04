@@ -590,7 +590,13 @@ export function execCommand(
 	// reading (and with the upper layer, effectively watching) another's work.
 	// An empty tmpfs over that path hides it inside this namespace only.
 	const hide = `mkdir -p ${shellQuote(join(record.path, RIFT_DIR))} && mount -t tmpfs none ${shellQuote(join(record.path, RIFT_DIR))}`;
-	const inner = `${mount} && ${hide} && cd ${shellQuote(record.path)} && exec sh -c ${shellQuote(command)}`;
+	// Mark the namespace. A process inside it sees the merged path as real, so
+	// a caller that also passes `--tier overlayfs --source …` would mount the
+	// SHARED source instead of this workspace — silent cross-agent access,
+	// which is the collision rift exists to prevent. The marker lets that be
+	// refused rather than left to documentation.
+	const marked = `HOBO_RIFT_WORKSPACE=${shellQuote(record.name)} exec sh -c ${shellQuote(command)}`;
+	const inner = `${mount} && ${hide} && cd ${shellQuote(record.path)} && ${marked}`;
 	return `unshare -Urm sh -c ${shellQuote(inner)}`;
 }
 

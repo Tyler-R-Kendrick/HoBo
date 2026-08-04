@@ -253,9 +253,12 @@ its own VT parser" reads as a behaviour, and today it is a capability.
 **Known limits.** `find -delete` deletes despite `rm` being absent (the
 in-memory copy in the default overlay, the real file when writable). A write to
 a path outside the root succeeds *into memory* rather than failing, so "nothing
-resolves outside the root" holds for reads only. Symlinks are refused by
-default, which makes `node_modules` unreadable in a pnpm tree unless
-`allowSymlinks` is set.
+resolves outside the root" holds for reads only. Symlinks are refused, which makes `node_modules`
+unreadable in a pnpm tree — and unreadable as a missing file rather than as a
+refusal, since `refused` is false. just-bash's `allowSymlinks` does not address
+it (it permits only links resolving inside the root, and a pnpm dependency link
+points outside), so mounting the repository root rather than a package is the
+actual answer.
 
 **What this is not.** just-bash runs inside this process, so it is a governance
 and blast-radius boundary — what an agent can name and touch — not a defence

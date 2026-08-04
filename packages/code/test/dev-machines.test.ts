@@ -183,6 +183,8 @@ describe("mux resolves --host against the registry", () => {
 		rmSync(project, { recursive: true, force: true });
 	});
 
+	// Asserts on the resolved host in `data` rather than on `ok`, which depends
+	// on a detected agent binary and so fails on a clean CI container.
 	it("accepts a declared id and uses its tailnet host", async () => {
 		const home = mkdtempSync(join(tmpdir(), "hobo-m-"));
 		const project = mkdtempSync(join(tmpdir(), "proj-m-"));
@@ -198,7 +200,7 @@ describe("mux resolves --host against the registry", () => {
 			hoboHome: home,
 			cwd: project,
 		});
-		expect(result.ok).toBe(true);
+		expect(result.code).not.toBe("HOBO_CODE_MUX_UNKNOWN_MACHINE");
 		expect(JSON.stringify(result.data)).toContain("build-box.ts.net");
 		rmSync(home, { recursive: true, force: true });
 		rmSync(project, { recursive: true, force: true });

@@ -7,7 +7,7 @@
  * and in particular the property that matters: an agent writing in place must
  * not reach the source.
  */
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -18,7 +18,11 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
+
+const here = dirname(fileURLToPath(import.meta.url));
 import { detectCapability, probeOverlayfs } from "../src/capability.js";
 import { projectWorkspaces, readEvents } from "../src/journal.js";
 import { parseWorkspaceName } from "../src/names.js";
@@ -225,7 +229,9 @@ describe("exec wrapper", () => {
 		// Every step joined with && and the command exec'd as a nested sh -c:
 		// a `;` here would let a compound command partially run unmounted.
 		expect(cmd).not.toMatch(/mount[^&]*;/);
-		expect(cmd).toContain("&& exec sh -c");
+		expect(cmd).toContain("exec sh -c");
+		// Every step joined with &&, so a failed mount stops the chain.
+		expect(cmd.split("&&").length).toBeGreaterThanOrEqual(4);
 	});
 
 	it("hides the rift directory so agents cannot read each other's trees", () => {
@@ -748,35 +754,100 @@ describe("two creates racing on one name", () => {
 });
 
 describe("exec reassembles its argv without losing quoting", () => {
-	it("keeps a path containing a space as one argument", () => {
-		// `argv.slice(sep + 1).join(" ")` looked equivalent to preserving the
-		// caller's quoting and was not: their shell has already consumed it, so
-		// a workspace path with a space arrived as stray positionals.
-		const record = {
-			name: "a",
-			path: "/ws/a",
-			tier: "copy" as const,
-			source: "/src",
-			createdAt: "",
-		};
-		const inner = ["hobo-code", "vshell", "--workspace", "/ws/my repo/merged"]
-			.map((a) => shellQuote(a))
-			.join(" ");
-		expect(inner).toBe(
-			"'hobo-code' 'vshell' '--workspace' '/ws/my repo/merged'",
+	// Against the BUILT BIN, not a helper. The defect was in
+	// `src/bin/hobo-rift.ts` joining argv with spaces, so a test that maps
+	// shellQuote itself would pass with the bug restored.
+	const bin = join(here, "..", "dist", "bin", "hobo-rift.js");
+
+	function printCmd(root: string, name: string, argv: readonly string[]): string {
+		const r = spawnSync(
+			process.execPath,
+			[bin, "exec", "--root", root, "--name", name, "--print-cmd", "--", ...argv],
+			{ encoding: "utf8" },
 		);
-		expect(execCommand(record, inner)).toContain("'/ws/my repo/merged'");
+		return `${r.stdout}${r.stderr}`;
+	}
+
+	it("keeps a path containing a space as one argument", () => {
+		const root = source();
+		createWorkspace({ root, name: "a" });
+		const out = printCmd(root, "a", ["cmd", "--workspace", "/ws/my repo/merged"]);
+		expect(out).toContain("'/ws/my repo/merged'");
 	});
 
 	it("neutralises a path that would otherwise execute", () => {
-		// A directory named `pj;touch $SP` used to run `touch` in the namespace,
-		// as a real binary, before the workspace command ran at all.
-		const hostile = "/tmp/pj;touch $SP-injected/x";
-		const quoted = shellQuote(hostile);
-		expect(quoted).toBe("'/tmp/pj;touch $SP-injected/x'");
-		// Inside single quotes both the separator and the expansion are literal.
-		expect(quoted.indexOf(";")).toBeGreaterThan(0);
-		expect(quoted.startsWith("'")).toBe(true);
-		expect(quoted.endsWith("'")).toBe(true);
+		// A directory named `pj;touch $SP` ran `touch` — a real binary, in the
+		// namespace — before the workspace command ran at all.
+		const root = source();
+		createWorkspace({ root, name: "b" });
+		const out = printCmd(root, "b", ["cmd", "--workspace", "/tmp/pj;touch $SP/x"]);
+		expect(out).toContain("'/tmp/pj;touch $SP/x'");
+	});
+
+	it("runs a vector as a vector, not as a snippet", () => {
+		const root = source();
+		writeFileSync(join(root, "marker.txt"), "vector-ok\n");
+		createWorkspace({ root, name: "c" });
+		const r = spawnSync(
+			process.execPath,
+			[bin, "exec", "--root", root, "--name", "c", "--", "cat", "marker.txt"],
+			{ encoding: "utf8" },
+		);
+		expect(r.stdout).toContain("vector-ok");
+	});
+
+	it("--shell still takes a snippet", () => {
+		const root = source();
+		createWorkspace({ root, name: "d" });
+		const r = spawnSync(
+			process.execPath,
+			[bin, "exec", "--root", root, "--name", "d", "--shell", "echo one; echo two"],
+			{ encoding: "utf8" },
+		);
+		expect(r.stdout).toContain("one");
+		expect(r.stdout).toContain("two");
+	});
+
+	it("refuses when given neither form", () => {
+		const root = source();
+		createWorkspace({ root, name: "e" });
+		const r = spawnSync(process.execPath, [bin, "exec", "--root", root, "--name", "e"], {
+			encoding: "utf8",
+		});
+		expect(r.status).toBe(2);
+		expect(r.stderr).toMatch(/--shell/u);
+	});
+});
+
+describe("the namespace announces itself", () => {
+	it("sets a marker a process inside can read", () => {
+		// Without it, a caller that also passes `--tier overlayfs --source …`
+		// would mount the SHARED source from inside the namespace and hand the
+		// agent every other agent's tree. The marker is what lets that be
+		// refused instead of documented.
+		const cmd = execCommand(
+			{
+				name: "claude",
+				path: "/ws/merged",
+				tier: "overlayfs",
+				source: "/src",
+				upper: "/ws/upper",
+				work: "/ws/work",
+				createdAt: "",
+			},
+			"agent",
+		);
+		// The outer sh -c wrapping re-escapes the quotes, so assert on the
+		// variable and its value rather than on a literal quoted form.
+		expect(cmd).toContain('HOBO_RIFT_WORKSPACE=');
+		expect(cmd).toMatch(/HOBO_RIFT_WORKSPACE=\S*claude/u);
+	});
+
+	it("does not set it for directory-backed tiers, which have no namespace", () => {
+		const cmd = execCommand(
+			{ name: "c", path: "/ws/c", tier: "copy", source: "/src", createdAt: "" },
+			"agent",
+		);
+		expect(cmd).not.toContain("HOBO_RIFT_WORKSPACE");
 	});
 });

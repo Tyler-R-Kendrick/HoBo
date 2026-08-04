@@ -452,9 +452,10 @@ out. Two layers close that:
   only), and a path outside the root **writes** succeed into memory rather
   than failing — they simply never reach disk.
 
-  Symlinks are refused by default, which in a pnpm workspace means dependency
-  sources under `node_modules` read as missing; pass `allowSymlinks` for a tree
-  whose links are trusted.
+  Symlinks are refused, which in a pnpm workspace means every dependency under
+  `node_modules` reads as missing — and as a missing *file*, not as a policy
+  refusal. Mount the repository root rather than a package if an agent needs to
+  read dependency source.
 - **Observation** — `tmux capture-pane` returns text tmux has already
   interpreted, which cannot say *when* a prompt appeared or what the screen
   held at a moment. `src/virtual-terminal.ts` provides the replacement: a VT

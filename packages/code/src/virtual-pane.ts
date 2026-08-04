@@ -11,7 +11,12 @@
  */
 
 import { createInterface } from "node:readline";
-import { createVirtualShell, DEFAULT_COMMANDS, mountFor } from "./virtual-shell.js";
+import {
+	createVirtualShell,
+	DEFAULT_COMMANDS,
+	mountFor,
+	type VirtualRun,
+} from "./virtual-shell.js";
 
 /** Count shown in the mux panel, so the claim is specific rather than vague. */
 export const VIRTUAL_PANE_COMMANDS = DEFAULT_COMMANDS.length;
@@ -34,8 +39,12 @@ export interface VirtualPaneOptions {
 	readonly tier?: string;
 	readonly source?: string;
 	readonly writable?: boolean;
+	/** Environment to read the namespace marker from; defaults to process.env. */
+	readonly env?: NodeJS.ProcessEnv;
 	readonly input?: NodeJS.ReadableStream;
 	readonly output?: NodeJS.WritableStream;
+	/** Seam for tests: observe or replace the shell the pane drives. */
+	readonly shell?: { run(command: string): Promise<VirtualRun> };
 }
 
 /**
@@ -49,6 +58,18 @@ export async function runVirtualPane(
 	options: VirtualPaneOptions,
 ): Promise<number> {
 	const output = options.output ?? process.stdout;
+	// `--tier/--source` describe a workspace seen from OUTSIDE its namespace.
+	// Inside (which is where `mux --virtual` runs), the merged path is real and
+	// redirecting to the source would hand this agent the shared tree. The
+	// marker `hobo-rift exec` sets is how that is detectable rather than
+	// left to whoever reads the help text.
+	const insideNamespace = (options.env ?? process.env).HOBO_RIFT_WORKSPACE !== undefined;
+	if (insideNamespace && options.tier !== undefined) {
+		throw new Error(
+			"--tier/--source describe a workspace from outside its namespace, but this pane is already inside one; " +
+				"mounting the source here would give this agent the shared tree instead of its own workspace",
+		);
+	}
 	const mount =
 		options.tier !== undefined && options.source !== undefined
 			? mountFor({
@@ -57,17 +78,19 @@ export async function runVirtualPane(
 					source: options.source,
 				})
 			: options.workspace;
-	const shell = createVirtualShell({
+	const shell = options.shell ?? createVirtualShell({
 		workspace: mount,
 		...(options.writable === true ? { writable: true } : {}),
 		env: { AGENT_ID: options.agentId },
 	});
 
+	const described = shell as Partial<ReturnType<typeof createVirtualShell>>;
+	const available = described.commands ?? DEFAULT_COMMANDS;
 	output.write(
 		`hobo-code virtual pane · ${options.agentId}\n` +
 			`workspace ${mount}\n` +
-			`${shell.commands.length} commands available; no network, no execve; ` +
-			`writes ${shell.writable ? "persist" : "stay virtual until promotion"}\n` +
+			`${available.length} commands available; no network, no execve; ` +
+			`writes ${described.writable ? "persist" : "stay virtual until promotion"}\n` +
 			`type 'commands' to list them, Ctrl-D to leave\n\n`,
 	);
 
@@ -85,7 +108,7 @@ export async function runVirtualPane(
 			continue;
 		}
 		if (command === "commands") {
-			output.write(`${shell.commands.join(" ")}\n`);
+			output.write(`${available.join(" ")}\n`);
 			prompt();
 			continue;
 		}

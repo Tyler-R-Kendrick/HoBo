@@ -22,6 +22,15 @@ export interface MuxTarget {
 	readonly name: string;
 	readonly kind: TargetKind;
 	/** Command to run in the window. */
+	/**
+	 * The command to run in the pane, as a **shell snippet**.
+	 *
+	 * `placedCommand` prefixes it (`cd … && <command>`) or hands it to
+	 * `hobo-rift exec` after `--`, where the outer shell splits it into an argv
+	 * vector that rift re-quotes per token. A compound snippet therefore behaves
+	 * differently through the two branches, so keep pane commands simple; wrap
+	 * anything compound in `sh -c` yourself.
+	 */
 	readonly command: string;
 	/** Host for ssh targets; ignored otherwise. */
 	readonly host?: string;

@@ -1812,7 +1812,15 @@ export async function runHoboCodeCli(
 				panel("✕ vshell", [
 					error instanceof Error ? error.message : String(error),
 					`workspace · ${workspace}`,
-					"A virtual pane mounts a real directory; that one could not be read.",
+					// Only add the mount hint when the mount is what failed;
+					// appending it to every error explains the wrong thing.
+					...(/namespace/u.test(
+						error instanceof Error ? error.message : String(error),
+					)
+						? []
+						: [
+								"A virtual pane mounts a real directory; that one could not be read.",
+							]),
 				]),
 				["hobo-code vshell --help", "hobo-code mux --dry-run"],
 				{ agentId, workspace },
@@ -1853,6 +1861,23 @@ export async function runHoboCodeCli(
 			? projectMachines
 			: loadDevMachines(join(dirname(fileURLToPath(import.meta.url)), ".."));
 		const requestedHost = typeof flags.host === "string" ? flags.host : undefined;
+		if (flags.virtual === true && requestedHost) {
+			// Before resolution and before brokering: a vshell command names a
+			// local workspace path that does not exist on the remote, and
+			// checking after the gateway ran would create and discard N sessions
+			// plus N audit events for a combination that cannot work.
+			return fail(
+				"HOBO_CODE_MUX_VIRTUAL_REMOTE",
+				panel("✕ mux", [
+					"--virtual and --host cannot be combined yet.",
+					"A virtual pane mounts a directory on this machine; the remote",
+					"has its own filesystem, so the path would not resolve there.",
+					"Run --virtual locally, or --host without it.",
+				]),
+				["hobo-code mux --virtual", `hobo-code mux --host ${requestedHost}`],
+				{ requestedHost },
+			);
+		}
 		const resolution = requestedHost
 			? resolveMachine(declaredMachines.machines, requestedHost)
 			: null;
@@ -1977,23 +2002,11 @@ export async function runHoboCodeCli(
 		// cannot reach anything the allow-list does not name, which a real agent
 		// process would immediately step outside of.
 		const virtualPanes = flags.virtual === true;
-		if (virtualPanes && requestedHost) {
-			// The vshell command names a local workspace path, which does not
-			// exist on the remote. Running it there would fail per pane, after
-			// sessions had already been brokered.
-			return fail(
-				"HOBO_CODE_MUX_VIRTUAL_REMOTE",
-				panel("✕ mux", [
-					"--virtual and --host cannot be combined yet.",
-					"A virtual pane mounts a directory on this machine; the remote",
-					"has its own filesystem, so the path would not resolve there.",
-					"Run --virtual locally, or --host without it.",
-				]),
-				["hobo-code mux --virtual", "hobo-code mux --host " + requestedHost],
-				{ requestedHost },
-			);
-		}
-		const targets: MuxTarget[] = agents.map((a) => {
+		// Panes come from `placeable`, not `agents`. Filtering only the brokering
+		// left every excluded agent with a pane on the machine that excluded it,
+		// carrying no credentialRef — i.e. the ambient ~/.ssh key, no session, no
+		// audit event. That was worse than before the placement filter existed.
+		const targets: MuxTarget[] = placeable.map((a) => {
 			const allocated = workspaceFor.get(a.id);
 			return {
 				name: a.id,
@@ -2011,17 +2024,32 @@ export async function runHoboCodeCli(
 		const brokeredFor = new Map(
 			(brokered?.panes ?? []).map((p) => [p.agentId, p.credentialRef]),
 		);
+		const unbrokered = host
+			? targets.filter((t) => !brokeredFor.has(t.name))
+			: [];
+		if (unbrokered.length > 0) {
+			// Fail rather than open these panes. An ssh pane with no
+			// credentialRef falls back to the ambient ~/.ssh key with no session
+			// and no audit event, which is exactly the ungoverned path this
+			// replaced — and it would do so silently.
+			return fail(
+				"HOBO_CODE_MUX_UNBROKERED_PANES",
+				panel("✕ mux", [
+					`${unbrokered.length} pane(s) have no Station session: ${unbrokered.map((t) => t.name).join(", ")}`,
+					"Opening them would use the ambient ~/.ssh key, unaudited.",
+					...(brokered?.failures ?? [])
+						.slice(0, 3)
+						.map((f) => `denied · ${f.agentId}: ${f.reason}`),
+				]),
+				["hobo-code machines", "hobo-code auth"],
+				{ unbrokered: unbrokered.map((t) => t.name) },
+			);
+		}
 		const remoteTargets: MuxTarget[] = host
 			? targets.map(({ cwd: _local, exec: _wrapper, ...t }): MuxTarget => {
-					const ref = brokeredFor.get(t.name);
-					return {
-						...t,
-						kind: "ssh",
-						host,
-						// Only a pane with a brokered session gets one; a pane
-						// without would otherwise silently use an ambient key.
-						...(ref !== undefined ? { credentialRef: ref } : {}),
-					};
+					// Non-null by the guard above: every ssh pane carries a session.
+					const ref = brokeredFor.get(t.name) as string;
+					return { ...t, kind: "ssh", host, credentialRef: ref };
 				})
 			: targets;
 		const plan = planMux(session, remoteTargets);
@@ -2067,7 +2095,7 @@ export async function runHoboCodeCli(
 						`shell · virtual (${VIRTUAL_PANE_COMMANDS} commands, no network, no execve)`,
 					]
 				: []),
-			...agents.map(
+			...placeable.map(
 				(a) => `  ${a.id} · ${workspaceFor.get(a.id)?.path ?? workspace.path}`,
 			),
 			`join · ${attachCommand(plan.session, host)}`,

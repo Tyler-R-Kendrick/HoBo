@@ -122,14 +122,6 @@ export interface VirtualShellOptions {
 	readonly env?: Readonly<Record<string, string>>;
 	/** Ceiling on a single command's runtime. */
 	readonly timeoutMs?: number;
-	/**
-	 * Follow symlinks inside the mounted root.
-	 *
-	 * Off by default: a symlink is the classic way out of a rooted filesystem.
-	 * On for a workspace whose links are known — a pnpm tree, where every
-	 * dependency is a link and refusing them makes dependency source unreadable.
-	 */
-	readonly allowSymlinks?: boolean;
 }
 
 /**
@@ -185,12 +177,17 @@ export function createVirtualShell(options: VirtualShellOptions): VirtualShell {
 	// ReadWriteFs is rooted at `/` with no mount point of its own, so the
 	// writable case composes it under a MountableFs to keep both variants
 	// presenting the workspace at the same path.
-	// Symlinks are refused by the overlay for good reason (they are the classic
-	// way out of a rooted filesystem), but in a pnpm workspace *every*
-	// dependency is one, so an agent reading `node_modules/...` gets a bare
-	// `No such file or directory` — precisely the "policy answer that looks
-	// like a missing file" this layer exists to avoid. `allowSymlinks` is the
-	// opt-in for a tree whose links are trusted; it stays off by default.
+	// Symlinks are refused, which is right — a symlink is the classic way out
+	// of a rooted filesystem — but it has a cost worth knowing: in a pnpm
+	// workspace *every* dependency is one, so an agent reading
+	// `node_modules/...` gets a bare `No such file or directory` with
+	// `refused: false`, i.e. a policy answer that looks like a missing file.
+	//
+	// just-bash's `allowSymlinks` does not fix that case: it permits only links
+	// whose target stays inside the mounted root, and a pnpm dependency link
+	// points outside it. Mounting the repository root instead of the package
+	// is the thing that actually helps, so the option is deliberately not
+	// exposed rather than offered as a fix that is not one.
 	const fs = writable
 		? new MountableFs({
 				mounts: [
@@ -200,11 +197,7 @@ export function createVirtualShell(options: VirtualShellOptions): VirtualShell {
 					},
 				],
 			})
-		: new OverlayFs({
-				root: options.workspace,
-				mountPoint: VIRTUAL_WORKSPACE,
-				...(options.allowSymlinks === true ? { allowSymlinks: true } : {}),
-			});
+		: new OverlayFs({ root: options.workspace, mountPoint: VIRTUAL_WORKSPACE });
 	const bash = new Bash({
 		fs,
 		cwd: VIRTUAL_WORKSPACE,

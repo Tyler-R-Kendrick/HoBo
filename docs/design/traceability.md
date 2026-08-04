@@ -440,6 +440,8 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0144 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0144) | External-spec posture: Crossplane/OAM/CNAB mapped at the boundary, never depended on; Resource Definition versioning (stable id, breaking change ⇒ new id, catalog-hash attribution); thin SaaS adapters with typed impedance. | — (standards posture) |
 | ADR-0145 | [architecture-core](./adr/01-architecture-core.md#adr-0145) | Traits as a first-class concept: declaratively attached operational behavior anchored on manifest annotations; normative trait-kind map over the nine existing mechanisms. | — (vocabulary) |
 | ADR-0146 | [identity-security](./adr/02-identity-security.md#adr-0146) | Typed legal geography (JurisdictionId catalog, region mapping, DataClassification), fail-closed evaluateResidency feeding existing gates, Tenant residency, residency Gatekeeper gate, residency policy pack, control→evidence packs with coverage. | — (governance) |
+| ADR-0147 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0147) | HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals. | — (yard game surface) |
+| ADR-0148 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0148) | Pixel-RPG identity: sourced CC0 pixel art replaces the traced rubberhose surface. | — (yard game identity) |
 
 ## ADR Numbering and Status Audit
 
@@ -447,8 +449,8 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0146`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
-  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068. (ADR-0118–ADR-0146 are contiguous except intentional historical gaps above.)
+- Explicit numbering gaps through `ADR-0148`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068. (ADR-0118–ADR-0148 are contiguous except intentional historical gaps above.)
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.
 

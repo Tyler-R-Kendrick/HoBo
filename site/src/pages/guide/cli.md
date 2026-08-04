@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: The hobo CLI
-description: "The canonical hobo command surface: lifecycle up/down, local loop, identity, delivery, authoring, governance, and ops verbs — 38 verbs with MCP parity."
+description: "The canonical hobo command surface: lifecycle up/down, local loop, identity, delivery, authoring, governance, and ops verbs — 40 verbs with MCP parity."
 ---
 
 # The `hobo` CLI
@@ -21,7 +21,7 @@ hobo down --camp pr-123
 
 `up` realizes the current object graph: build, plan, gate, provision, deploy. `down` tears it back in reverse dependency order. `up` always reruns the applicable gate before mutation — a stale preflight can never authorize a deploy. Continuous migrations run this same loop; there is no separate `migrate` verb.
 
-## The full verb surface (38)
+## The full verb surface (40)
 
 | Verb | Role | Semantics |
 |---|---|---|
@@ -41,6 +41,7 @@ hobo down --camp pr-123
 | `inspect` | read-only | Projections and time-travel views (`run`, `deploy`, `topology`, …). |
 | `logs` | read-only | Live-tail Camp streams. |
 | `doctor` | diagnostics | Environment, credential, connectivity, and portability hazards. |
+| `messaging` | diagnostics | Messaging capability + delivery-guarantee readiness. |
 | `codegen` / `build` / `collect` / `stub` | authoring | Bindings, wasm components, manifest IR, contract-backed stubs. |
 | `drift` | diagnostics | Drift report + governed remediation paths. |
 | `add` / `registry` | distribution | Install providers after sig/provenance/conformance; registry admin. |
@@ -51,6 +52,7 @@ hobo down --camp pr-123
 | `broker` | governance | Conductor resolve / config / matrix (placement plane). |
 | `yard` | control plane | Install and inspect the default bare-metal Yard. |
 | `station` | control plane | Station ops/setup (`init` \| `up` \| `down` \| `status` \| `rails *`) — not lifecycle. |
+| `serve` | control plane | Local control-plane HTTP+SSE for the Yard game UI. |
 | `replay` | observability | Session Replay list/get/open/summarize/retention/doctor. |
 | `derivative` | extensibility | Manage derived HoBo implementations. |
 | `runbook` | SRE | Execute or replay incident runbooks under policy. |
@@ -66,4 +68,4 @@ Where other tools invent ceremony commands, HoBo folds them into the model:
 
 ## Status
 
-All **38 canonical verbs** are on the composed `hobo` surface today and map **1:1** to [`hobo-mcp`](/HoBo/agents/mcp/) tools (parity is contract-tested). The default path is the **local lane**: offline Yard runtime, durable SQLite journal, no cloud account. Live deploy lanes are credential-gated (Cloudflare, Vercel, or live IaC credentials). Some advanced flags (`--to`, `--rollback`, `--seed`) and deeper multi-cloud depth are still maturing — see [the trail map](/HoBo/guide/status/). Global flags that work everywhere: `--json`, `--camp`, `--cwd`, `--verbose`, `-q`, `--help`.
+All **40 canonical verbs** are on the composed `hobo` surface today and map **1:1** to [`hobo-mcp`](/HoBo/agents/mcp/) tools (parity is contract-tested). The default path is the **local lane**: offline Yard runtime, durable SQLite journal, no cloud account. Live deploy lanes are credential-gated (Cloudflare, Vercel, or live IaC credentials). Some advanced flags (`--to`, `--rollback`, `--seed`) and deeper multi-cloud depth are still maturing — see [the trail map](/HoBo/guide/status/). Global flags that work everywhere: `--json`, `--camp`, `--cwd`, `--verbose`, `-q`, `--help`.

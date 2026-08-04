@@ -1,12 +1,12 @@
 ---
 layout: ../../layouts/Docs.astro
 title: CLI surface
-description: "Canonical hobo verbs by role: lifecycle, diagnosis, authoring, identity, progressive delivery, broker/station, and distribution (38 verbs)."
+description: "Canonical hobo verbs by role: lifecycle, diagnosis, authoring, identity, progressive delivery, broker/station, and distribution (40 verbs)."
 ---
 
 # CLI surface
 
-The `hobo` CLI is deliberately **small and stable**. The same **38** verbs appear as MCP tools. Docs examples use only this list.
+The `hobo` CLI is deliberately **small and stable**. The same **40** verbs appear as MCP tools. Docs examples use only this list.
 
 ## Lifecycle
 
@@ -37,6 +37,7 @@ The `hobo` CLI is deliberately **small and stable**. The same **38** verbs appea
 | `station` | Station **ops/setup** (not app lifecycle) |
 | `yard` | Bare-metal Yard install / inspect |
 | `broker` | Conductor config + resolve + matrix |
+| `serve` | Local control-plane HTTP+SSE for the Yard game UI |
 
 ## Authoring
 
@@ -59,6 +60,7 @@ The `hobo` CLI is deliberately **small and stable**. The same **38** verbs appea
 | `logs` | Live-tail Camp Streamer |
 | `replay` | **Session Replay** — `list` \| `get` \| `open` \| `summarize` \| `retention` \| `doctor` |
 | `doctor` | Environment / credential / portability hazards (incl. messaging readiness) |
+| `messaging` | Inspect messaging capability and delivery-guarantee readiness |
 | `drift` | Drift + governed remediation |
 | `runbook` | Execute runbooks (writes still policy-gated) |
 | `attest` | Signed evidence exports from audit facts |

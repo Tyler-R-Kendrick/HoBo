@@ -15,7 +15,7 @@ What you use day to day — **product surfaces**, not an inventory of private im
 | **Bindles** | Pack the app: services, resources, wiring, policy intent |
 | **App Kits** | Entrypoint kinds (`api`, `web`, `service`, …) inside a Bindle |
 | **Camps / Yards / Junctions** | Topology: home, provider scope, federation |
-| **Trails** | Continuous migration recipes when you need multi-step moves |
+| **Trails** | Continuous migration recipes + live upgrade/migration executors (preflight evidence, expand→backfill→contract, pooled→siloed tenant moves) |
 
 ## Runtime (Camp)
 
@@ -34,7 +34,9 @@ Default durable journal is a **single-owner SQLite** path. Alternate engines and
 
 | Surface | What you use it for |
 |---|---|
-| **Stations & Conductor** | Control-plane isolation + placement decisions |
+| **Stations & Conductor** | Control-plane isolation + placement decisions; routing control loop + progressive cutover |
+| **Dispatcher** | Deterministic credit/budget-aware backend selection (`dispatch.Decided`) |
+| **Jurisdiction & residency** | Region→jurisdiction catalog, per-tenant residency constraints, fail-closed residency gate |
 | **Gatekeeper / contracts** | can-deploy and composed deploy gates |
 | **Policy packs** | Deny-by-default authorization and obligations |
 | **Identity** | Workload identity, brokered tokens, continuous identity |

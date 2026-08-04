@@ -307,12 +307,30 @@ const writeLock = (flag) =>
 		mode: 0o600,
 	});
 
-/** Prove we still hold it, and refresh the mtime the staleness check reads. */
+/**
+ * Prove we still hold it, refresh the mtime the staleness check reads, and
+ * report whether the claim survived.
+ *
+ * The return value is the point. Claiming the lock once at startup is not
+ * enough: suspend a laptop for longer than the staleness window and this
+ * daemon's lock goes stale while the process is still alive, so a `start` on
+ * wake legitimately takes over — and then this process resumes holding a claim
+ * that is no longer true. A heartbeat that silently no-ops leaves two daemons
+ * refreshing the same rotating token, which is exactly what the lock exists to
+ * prevent. The caller must exit when this returns false.
+ */
 const heartbeatLock = () => {
 	try {
-		if (readLock()?.uid === LOCK_UID) writeLock("w");
+		if (readLock()?.uid !== LOCK_UID) return false;
+		writeLock("w");
+		return true;
 	} catch {
-		/* the next claim check will catch it */
+		// Ownership was already confirmed above, so a failed *write* does not
+		// mean we lost the lock — only that the mtime did not advance. Keep
+		// running: if that persists past the staleness window someone else takes
+		// over, and the next heartbeat sees a foreign uid and returns false.
+		// Self-correcting, where exiting on a transient fs error would not be.
+		return true;
 	}
 };
 
@@ -378,7 +396,14 @@ async function daemonLoop() {
 	log(`daemon started (pid ${process.pid})`);
 
 	for (;;) {
-		heartbeatLock();
+		// Re-verify the claim every iteration, not just at startup. A daemon that
+		// was suspended past the staleness window has already been taken over by
+		// whoever ran `start` on wake; continuing would mean two loops consuming
+		// each other's rotated refresh tokens.
+		if (!heartbeatLock()) {
+			log("lock lost to another daemon — exiting");
+			return 0;
+		}
 		const cur = readStore();
 		if (!cur?.refresh_token) {
 			log("no refresh token — login required; daemon exiting");
@@ -434,7 +459,27 @@ function daemonStart() {
 }
 
 function daemonStop() {
-	const holder = lockHolder();
+	// Deliberately bypasses the staleness window that `lockHolder` applies. A
+	// daemon suspended past it still holds a live pid, and `stop` reporting "no
+	// daemon running" while one is running is the one answer this command must
+	// never give — it would leave no way to stop it but `kill` by hand.
+	let holder = lockHolder();
+	if (holder === null) {
+		const stale = (() => {
+			try {
+				const rec = JSON.parse(readFileSync(LOCK, "utf8").trim());
+				if (!Number.isInteger(rec?.pid) || rec.pid <= 0) return null;
+				process.kill(rec.pid, 0);
+				return rec.pid;
+			} catch (err) {
+				return err?.code === "EPERM" ? null : null;
+			}
+		})();
+		if (stale !== null) {
+			console.log(`daemon pid ${stale} is alive but its lock went stale`);
+			holder = stale;
+		}
+	}
 	if (holder === null) {
 		console.log("no daemon running");
 		rmSync(LOCK, { force: true });

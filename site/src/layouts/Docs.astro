@@ -22,7 +22,11 @@ const normalize = (p: string) => p.replace(/\/$/, "");
 // Observability and Reference — is badged Reference, the namespace it lives in.
 const navSection = sectionFor(path.replace(href("/"), "/"), nav);
 const sectionGroups = navSection ? groupsOf(navSection, nav) : [];
-const section = navSection ?? sectionFor("/guide/", nav);
+// A page can legitimately belong to no section — /legal/ is one. It used to
+// fall back to Learn, which badged a legal notice "Learn" and rendered an empty
+// 236px rail beside a "Docs menu ▾" button that opened nothing. An empty rail
+// reads as broken, so a sectionless page drops the rail and says "Docs".
+const section = navSection;
 const current = (slug: string) =>
 	normalize(path) === normalize(href(slug)) ? "page" : undefined;
 
@@ -37,7 +41,8 @@ const pageMarkdown = rawContent
 	title={`${frontmatter.title} · HoBo docs`}
 	description={frontmatter.description}
 >
-	<div class="container docs">
+	<div class:list={["container", "docs", sectionGroups.length === 0 && "docs-no-rail"]}>
+		{sectionGroups.length > 0 && (
 		<div>
 			<button
 				class="docs-sidebar-toggle"
@@ -65,6 +70,7 @@ const pageMarkdown = rawContent
 				}
 			</aside>
 		</div>
+		)}
 		<article class="prose">
 			<div class="docs-meta">
 				<span class="badge">{section?.label ?? "Docs"}</span>

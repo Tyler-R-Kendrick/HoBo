@@ -135,6 +135,13 @@ node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs login    # device flow, 
   consume each other's rotated tokens and break the chain. It logs to
   `~/.higgsfield/daemon.log` and exits rather than spinning when the refresh
   token is dead.
+- The daemon **re-verifies its claim every iteration**, not just at startup, and
+  exits when it has lost it. Claiming once is not enough: a machine suspended
+  past the staleness window has already been taken over by whoever ran `start`
+  on wake, and a heartbeat that silently no-ops would leave two loops consuming
+  each other's rotated tokens. `stop` deliberately ignores the staleness filter,
+  since "no daemon running" while one is running is the one answer it must never
+  give.
 - The lock holds a **uid and is heartbeated**, not just a pid. Pids are
   recycled, so a dead daemon's pid reappearing as an unrelated process would
   make `kill(pid, 0)` report it live forever and wedge `start` until a manual

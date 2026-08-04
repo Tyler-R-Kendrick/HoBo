@@ -56,12 +56,20 @@
 	--stagger: 60ms;
 
 	/* Derived tokens — the reason a palette only has to declare 16 values.
-	   Each of these was previously written out per-theme with a value that was
-	   already identical to what it aliases, so the indirection changes nothing
-	   for ink/day and ink/night while making every palette re-ink its own links,
-	   rules and code blocks. Before this, Dusk had warm paper and pure-black
-	   #101010 links — DESIGN.md promises palettes re-ink "the paper and the
-	   line", and the line was not being re-inked. */
+	   Before this, Dusk had warm paper and pure-black #101010 links; DESIGN.md
+	   promises palettes re-ink "the paper and the line", and the line was not
+	   being re-inked.
+
+	   Six of these are exact: --ink/--link/--meadow/--sky and the two -soft pairs
+	   were already written out per-theme with values byte-identical to what they
+	   now alias, so ink/day and ink/night are unchanged.
+
+	   The two color-mix ones shift by a hair, and the honest numbers are:
+	     --code-bg    day  #f7f7f5 -> #f8f8f8      night #101010 -> #111111
+	     --hero-grid  day  unchanged               night alpha .08 -> .09
+	   All at or below the perceptibility threshold, but not "identical" — the
+	   grid-line alpha is a 12.5% relative change. Kept derived because a palette
+	   with warm paper and a neutral grey code block is the worse defect. */
 	--ink: var(--text);
 	--link: var(--text);
 	--meadow: var(--accent);
@@ -380,6 +388,12 @@ a:hover {
 		animation-duration: 0.01ms !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
+		/* Delay has to be zeroed too, not just duration. A staggered element with
+		   `both` fill holds its *backwards* fill for the whole delay, so the Rest
+		   Rule's five palette buttons still visibly slid down over 240ms with
+		   reduced motion on — the durations were zero but the waiting was not. */
+		animation-delay: 0ms !important;
+		transition-delay: 0ms !important;
 	}
 }
 
@@ -1592,6 +1606,13 @@ table.compare tr.hobo-row th {
 	gap: clamp(1.5rem, 4vw, 3.5rem);
 	align-items: start;
 	padding: 2rem 0 4rem;
+}
+
+/* A page in no section has no rail (see Docs.astro). Without this it would keep
+   the empty 236px column and sit the prose in the right-hand track, indented
+   past a gutter with nothing in it. */
+.docs.docs-no-rail {
+	grid-template-columns: minmax(0, 1fr);
 }
 
 @media (max-width: 860px) {

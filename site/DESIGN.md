@@ -373,10 +373,20 @@ not degraded:
   `opacity: 0` behind a trigger that reduced-motion disabled: that is how a
   motion preference turns into a blank page.
 
-**One known gap, stated rather than papered over.** The blanket
-`animation-duration: 0.01ms !important` that reduced motion relies on does *not*
-stop a scroll-linked animation: `animation-timeline: view()` is driven by scroll
-position, not by time, so `rise-in` still runs under `prefers-reduced-motion`.
+**Two limits of the blanket rule, stated rather than papered over.**
+
+*Delay is not duration.* Zeroing `animation-duration` leaves `animation-delay`
+untouched, and an element with `both` fill holds its **backwards** fill for the
+whole delay — so a staggered sequence still moves under reduced motion, just in
+one jump per step instead of a slide. The Rest Rule's five buttons did exactly
+that for 240ms. The reduced-motion block therefore zeroes `animation-delay` and
+`transition-delay` as well. Any new stagger inherits that; none should re-add a
+delay inside the reduced-motion block.
+
+*Scroll timelines ignore duration entirely.* The blanket
+`animation-duration: 0.01ms !important` does *not* stop a scroll-linked
+animation: `animation-timeline: view()` is driven by scroll position, not by
+time, so `rise-in` still runs under `prefers-reduced-motion`.
 It is survivable only because that keyframe animates `translate` and nothing
 else — the content is at worst offset by 34px, never hidden. **This is exactly
 why the rules above forbid opacity in a scroll reveal**: the mechanism that is

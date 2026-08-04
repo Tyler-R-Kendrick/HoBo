@@ -1,0 +1,95 @@
+---
+/**
+ * Plays a sprite sheet from its geometry.
+ *
+ * A grid sheet needs two stepped animations, not one: x walks the columns and
+ * y walks the rows, with y stepping once per full row of x. A single animation
+ * can only travel in a straight line across the sheet, which reads as the
+ * character sliding sideways through frames that do not belong to each other.
+ *
+ * Sizes are driven off the frame box so the sheet is never squashed — the
+ * element's aspect ratio is the frame's, and the background is scaled to
+ * `cols x rows` of that.
+ */
+import type { Sheet } from "../data/assets";
+import { href } from "../lib/url";
+
+interface Props {
+	sheet: Sheet;
+	height?: string;
+	paused?: boolean;
+}
+const { sheet, height = "8rem", paused = false } = Astro.props;
+const { frame, grid, frames, tick } = sheet;
+
+const style = [
+	`--sw:${frame.w}`,
+	`--sh:${frame.h}`,
+	`--cols:${grid.cols}`,
+	`--rows:${grid.rows}`,
+	`--dur:${(frames * tick).toFixed(3)}s`,
+	`--rowdur:${(frames * tick * grid.rows).toFixed(3)}s`,
+	`--h:${height}`,
+	`--sheet:url("${href(sheet.file)}")`,
+].join(";");
+---
+
+<span
+	class:list={["sprite", { "is-paused": paused, "is-grid": grid.rows > 1 }]}
+	style={style}
+	role="img"
+	aria-label={`${sheet.title} — ${frames} frames`}></span>
+
+<style>
+	.sprite {
+		display: block;
+		height: var(--h);
+		width: calc(var(--h) * (var(--sw) / var(--sh)));
+		background-image: var(--sheet);
+		background-repeat: no-repeat;
+		/* The whole sheet, scaled so one frame fills the box. */
+		background-size: calc(var(--h) * (var(--sw) / var(--sh)) * var(--cols))
+			calc(var(--h) * var(--rows));
+		image-rendering: auto;
+		animation: sprite-x var(--dur) steps(var(--cols)) infinite;
+	}
+
+	/* A grid sheet also has to descend rows, once per pass across the columns. */
+	.sprite.is-grid {
+		animation:
+			sprite-x calc(var(--dur) / var(--rows)) steps(var(--cols)) infinite,
+			sprite-y var(--dur) steps(var(--rows)) infinite;
+	}
+
+	.sprite.is-paused {
+		animation: none;
+	}
+
+	@keyframes sprite-x {
+		from {
+			background-position-x: 0;
+		}
+		to {
+			background-position-x: calc(var(--h) * (var(--sw) / var(--sh)) * var(--cols) * -1);
+		}
+	}
+
+	@keyframes sprite-y {
+		from {
+			background-position-y: 0;
+		}
+		to {
+			background-position-y: calc(var(--h) * var(--rows) * -1);
+		}
+	}
+
+	/* Reduced motion holds frame 0 rather than removing the asset: this page is
+	   *about* the animation, so a blank box would be the wrong accommodation.
+	   The still frame plus the stated cadence still tells you what it does. */
+	@media (prefers-reduced-motion: reduce) {
+		.sprite {
+			animation: none !important;
+			background-position: 0 0 !important;
+		}
+	}
+</style>

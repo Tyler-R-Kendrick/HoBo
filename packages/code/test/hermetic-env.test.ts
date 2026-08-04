@@ -3,10 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-	hermeticEnvSummary,
-	inspectHermeticEnv,
-} from "../src/hermetic-env.js";
+import { hermeticEnvSummary, inspectHermeticEnv } from "../src/hermetic-env.js";
 
 const temps: string[] = [];
 afterEach(() => {
@@ -48,9 +45,7 @@ describe("inspectHermeticEnv", () => {
 		expect(r.markers).toContain("devenv.nix");
 		expect(r.hermeticDeclared).toBe(true);
 		expect(r.fidelity).toBe("hermetic-declared");
-		expect(r.recommendations.some((x) => /devenv shell/i.test(x))).toBe(
-			true,
-		);
+		expect(r.recommendations.some((x) => /devenv shell/i.test(x))).toBe(true);
 	});
 
 	it("detects active nix shell via env without requiring files", () => {

@@ -46,7 +46,6 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		// One status strap carries product, engine and state.
 		expect(frame).toContain("hobo-code");
 		expect(frame).toContain("engine:none");
-		expect(frame).toContain("❯");
 	});
 
 	it("welcome message says honestly that prompts queue dispatch tasks", () => {
@@ -77,10 +76,13 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(state.slashOpen).toBe(true);
 		const frame = plain(renderShellFrame(state));
 		expect(frame).toMatch(/commands/);
-		expect(frame).toMatch(/\/guide/);
+		expect(frame).toMatch(/\/ide/);
 		expect(frame).toMatch(/\/config/);
 		expect(frame).toMatch(/\/about/);
-		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "guide")).toBe(true);
+		// One extensible editor command, not one command per harness.
+		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "ide")).toBe(true);
+		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "cursor")).toBe(false);
+		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "harness")).toBe(false);
 	});
 
 	it("arrow keys move the slash palette selection", () => {

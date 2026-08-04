@@ -1,12 +1,18 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { describeBuzzDistributedCompute } from "../src/buzz.js";
+import { runHoboCodeCli } from "../src/cli.js";
 import {
 	defaultHoboCodeEveAgents,
 	defineEveAgent,
 	defineEveSubagent,
 	describeEveSubagentSurface,
-	eveAgentRootPath,
 	EVE_AGENT_SCHEMA,
+	eveAgentRootPath,
 } from "../src/eve.js";
+import { createHarnessCore } from "../src/harness.js";
 import {
 	describeSecureSandboxStack,
 	planSecureSandbox,
@@ -20,12 +26,6 @@ import {
 	planDurableWorkflowRun,
 	vercelWorkflowWorld,
 } from "../src/worlds.js";
-import { createHarnessCore } from "../src/harness.js";
-import { describeBuzzDistributedCompute } from "../src/buzz.js";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { runHoboCodeCli } from "../src/cli.js";
 
 describe("hobo-code runtime foundations (Eve · DeepAgents+OpenShell+MxC · Worlds)", () => {
 	it("defines Eve-shaped coordinator + subagents", () => {
@@ -130,9 +130,7 @@ describe("hobo-code runtime foundations (Eve · DeepAgents+OpenShell+MxC · Worl
 	it("hive distributed descriptor names secure sandbox stack", () => {
 		const d = describeBuzzDistributedCompute();
 		expect(d.secureSandboxStack).toBe("deepagents+openshell+mxc");
-		expect(d.isolationClasses.some((c) => c.class === "openshell")).toBe(
-			true,
-		);
+		expect(d.isolationClasses.some((c) => c.class === "openshell")).toBe(true);
 		expect(d.isolationClasses.some((c) => c.class === "mxc")).toBe(true);
 	});
 

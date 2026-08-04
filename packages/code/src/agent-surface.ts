@@ -81,10 +81,16 @@ function envTruthy(env: NodeJS.ProcessEnv, name: string): boolean {
 }
 
 function sessionRefPresent(env: NodeJS.ProcessEnv, hoboHome: string): boolean {
-	if (env.HOBO_CODE_SESSION_REF && String(env.HOBO_CODE_SESSION_REF).length > 0) {
+	if (
+		env.HOBO_CODE_SESSION_REF &&
+		String(env.HOBO_CODE_SESSION_REF).length > 0
+	) {
 		return true;
 	}
-	if (env.HOBO_CODE_AGENT_TOKEN && String(env.HOBO_CODE_AGENT_TOKEN).length > 0) {
+	if (
+		env.HOBO_CODE_AGENT_TOKEN &&
+		String(env.HOBO_CODE_AGENT_TOKEN).length > 0
+	) {
 		return true;
 	}
 	const p = authSessionPath(hoboHome);
@@ -97,9 +103,7 @@ function sessionRefPresent(env: NodeJS.ProcessEnv, hoboHome: string): boolean {
 	}
 }
 
-function readSession(
-	hoboHome: string,
-): CodeAuthSession | null {
+function readSession(hoboHome: string): CodeAuthSession | null {
 	const p = authSessionPath(hoboHome);
 	if (!existsSync(p)) return null;
 	try {
@@ -143,7 +147,10 @@ export function inspectAgentSurface(
 			summary:
 				"Pre-bound HOBO_CODE_SESSION_REF / durable session.json (values never printed).",
 			try: "export HOBO_CODE_SESSION_REF=…  # or prior auth login",
-			standards: ["MCP stdio credential-from-env", "session-ref least privilege"],
+			standards: [
+				"MCP stdio credential-from-env",
+				"session-ref least privilege",
+			],
 		},
 		{
 			id: "workload-client-credentials",
@@ -178,9 +185,7 @@ export function inspectAgentSurface(
 	];
 
 	const humanFreeReady =
-		Boolean(session?.mode === "local") ||
-		sessRef ||
-		(agentMode && !session); // agent path will auto local-login
+		Boolean(session?.mode === "local") || sessRef || (agentMode && !session); // agent path will auto local-login
 
 	const worldRoot = join(hoboHome, "worlds");
 	const harness = createHarnessCore({ worldRoot });
@@ -249,7 +254,9 @@ export function inspectAgentSurface(
 		agentMode,
 		humanFreeAuth: {
 			ready: humanFreeReady,
-			mode: session?.mode ?? (sessRef ? "session-ref" : agentMode ? "local-auto-pending" : null),
+			mode:
+				session?.mode ??
+				(sessRef ? "session-ref" : agentMode ? "local-auto-pending" : null),
 			sessionPresent: Boolean(session),
 			sessionRefPresent: sessRef,
 			modes: authModes,
@@ -293,7 +300,9 @@ export function inspectAgentSurface(
 			"CIBA headless user consent",
 			"A2A multi-agent mesh product",
 		],
-		legend: "agent · auth · protocols · unattended",
+		// Was "agent · auth · protocols · unattended", which read as four
+		// subcommands that do not exist. These are the sections below.
+		legend: "sections: auth, protocols, unattended, learn",
 		notes: [
 			"MCP: tools/resources for agents; ACP: editor spawns agent over stdio.",
 			"HTTP MCP OAuth 2.1 is for user-delegated clients; agent steady-state prefers local/session-ref.",

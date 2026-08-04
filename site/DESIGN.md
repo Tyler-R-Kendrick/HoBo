@@ -281,10 +281,28 @@ been in the layout.
 
 ### The curve
 
-One easing token, `--ease: cubic-bezier(0.22, 1, 0.36, 1)`. It overshoots and
-settles — squash-and-stretch expressed as a curve. Anything that needs a
-*different* curve is either not rubberhose or is a special case that must say
-why in a comment.
+**Two curves, and only two.**
+
+| Token | Curve | Peak | For |
+|---|---|---|---|
+| `--ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | 1.000 | Everything. Decelerates hard and stops clean. |
+| `--ease-boing` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | 1.098 | The bounce: overshoots and settles — squash-and-stretch expressed as a curve. |
+
+This entry used to claim there was one token and that `--ease` overshot. Neither
+was true: `--ease` peaks at exactly 1.0 and never overshoots, while three
+hardcoded copies of the real bounce curve sat in the stylesheet unnamed and
+unaccounted for. They are the same curve, so they are now one token.
+
+Reach for `--ease` by default. `--ease-boing` is for motion whose *job* is to
+read as cartoon physics — the postcard bob, the theme toggle, scene hovers — and
+a third curve is not available. Anything that seems to need one is either not
+rubberhose or is a special case that must say why in a comment.
+
+A generic design linter will flag the bounce as dated and prescribe exponential
+easing. On a flat SaaS surface that advice is correct. Here it is backwards:
+[ADR-0149](../docs/design/adr/07-portability-extensibility.md#adr-0149) makes the
+Fleischer identity binding, and the overshoot **is** the identity. Do not
+quiet that warning by flattening the curve.
 
 **Durations.** Three steps, and no fourth:
 

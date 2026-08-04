@@ -7,6 +7,8 @@ import type {
 	ServePrivateContext,
 } from "@hobo/core";
 
+import { createCloudflareCloudNativeProvider } from "./cloudflare-provider.js";
+
 export type CloudNativeProviderId =
 	| "aws"
 	| "gcp"
@@ -107,7 +109,12 @@ export function defaultCloudNativeProviders(): CloudNativeHostProvider[] {
 		stubProvider("gcp"),
 		stubProvider("azure"),
 		stubProvider("vercel"),
-		stubProvider("cloudflare"),
+		// REAL provider (credential-gated): options are read presence-only from
+		// the environment; values are never logged.
+		createCloudflareCloudNativeProvider({
+			accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+			apiToken: process.env.CLOUDFLARE_API_TOKEN,
+		}),
 	];
 }
 
@@ -141,7 +148,11 @@ export function createCloudNativeRuntimeHost(
 			for (const provider of providers) {
 				const result = await provider.ensure(ctx);
 				notes.push(...result.notes.map((n) => `[${provider.id}] ${n}`));
-				if (!result.ready) ready = false;
+				// Credential-gated providers fail closed at the provider level, but do
+				// not block registry readiness: the registry's default serving path is
+				// `mock`, and the gate is surfaced honestly in notes + provider details.
+				if (!result.ready && result.details?.credentialGated !== true)
+					ready = false;
 			}
 			emit(
 				`hobo: cloud-native registry ready providers=[${providers.map((p) => p.id).join(",")}] default=${defaultProvider}`,

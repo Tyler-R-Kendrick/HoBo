@@ -17,8 +17,9 @@ const normalize = (p: string) => p.replace(/\/$/, "");
 // The sidebar shows ONE section, not all fourteen groups. Rendering every
 // group on every page produced a 109-link, ~4000px column in a 236px rail —
 // byte-identical to the footer, so a docs page showed the same 109 links
-// twice. `sectionFor` also resolves cross-listed pages by longest match, so
-// /reference/session-replay/ is badged Reference rather than Observability.
+// twice. `sectionFor` resolves cross-listed pages by namespace root rather
+// than by who lists them, so /reference/session-replay/ — listed under both
+// Observability and Reference — is badged Reference, the namespace it lives in.
 const navSection = sectionFor(path.replace(href("/"), "/"), nav);
 const sectionGroups = navSection ? groupsOf(navSection, nav) : [];
 const section = navSection ?? sectionFor("/guide/", nav);

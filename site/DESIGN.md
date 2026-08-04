@@ -224,6 +224,19 @@ what it meant.
 than setting it. The canonical look is what you get by not choosing, which keeps
 a stored preference from quietly becoming a fifth thing to maintain.
 
+**A palette declares 16 values; the rest derive.** `--ink`, `--link`,
+`--meadow`, `--sky` and their `-soft` pairs, plus `--code-bg` and `--hero-grid`,
+are `var()` indirections onto `--text`, `--accent` and `--bg` — so re-inking the
+paper re-inks the links, rules and code blocks automatically. This is not a
+convenience: when those eight were written out per-theme instead, every palette
+silently inherited the ink theme's pure-black `#101010` links, and Dusk shipped
+warm paper with cold links. A palette that has to restate a derived token is a
+sign the token belongs in the declared set, not that it should be overridden.
+
+The genuinely shared tokens are `--ember-a/b/c`, `--glow` and `--shadow`: a
+neutral depth ramp that is deliberately palette-independent, because shadow is
+paper behaviour, not ink colour.
+
 Palettes are offered behind a disclosure, never as five buttons in the bar. The
 designer persona's clutter thresholds are the lowest available and
 `junior-frontend` treats choice overload as a hard budget — so five options may
@@ -281,22 +294,47 @@ why in a comment.
 | `--dur-move` | 220ms | Something travelling: hover lift, disclosure |
 | `--dur-scene` | 420ms | Something arriving: page-level reveal |
 
-Nothing exceeds 420ms. A rubberhose gag lands in under half a second; a UI that
-takes longer is not being charming, it is being slow.
+These govern **response** motion — transitions and entrances, anything the user
+waits through. A rubberhose gag lands in under half a second; a UI that takes
+longer is not being charming, it is being slow.
+
+**Ambient loops are exempt, and the exemption is finite.** A looping animation
+is scenery: nobody waits for it to finish, so a duration budget aimed at
+perceived latency does not apply. Every current exception, in full — anything
+not on this list is a bug:
+
+| Animation | Duration | Why it is exempt |
+|---|---|---|
+| `boing` / `boing-sm` | 550ms / 450ms | The signature bounce. Overshoot needs the settle; clipped to 420ms it reads as a twitch, not a squash. |
+| `postcard-sway` | 2.2s | Loop — homepage postcard drift |
+| `plx-cloud-squash` | 3.1s | Loop — parallax cloud |
+| `lost-bob` | 3.6s | Loop — Bo idling on the 404 |
+| `blink` | 7.3s | Loop — Bo's eyes |
+
+`boing` is the honest one to watch: it is response motion that exceeds the cap
+on purpose. Two named exceptions is a style; a third would mean the cap is
+fiction and the table should be rewritten instead of extended.
 
 ### MA (間) — the interval is the animation
 
 The Japanese `MA` is not empty time, it is *charged* time: the pause that gives
 the next beat meaning. Applied here:
 
-**The Rest Rule.** A sequence of entering elements is staggered by **60ms**, and
-the stagger is the content. Three cards arriving together is a state change;
-three cards arriving 60ms apart is a sentence. Never stagger more than five
-things — past that it stops reading as rhythm and starts reading as lag.
+**The Rest Rule.** A sequence of entering elements is staggered by **60ms**
+(`--stagger`), and the stagger is the content. Three cards arriving together is
+a state change; three cards arriving 60ms apart is a sentence. Never stagger
+more than five things — past that it stops reading as rhythm and starts reading
+as lag. *Implemented on the palette menu* (`.palette-picker[open] .palette-menu
+button`), which has exactly five items — the rule's ceiling, which is why those
+delays are written out rather than generated.
 
 **The Held Breath Rule.** Anything that reveals on scroll waits until it is
 **15% into the viewport**, not at the edge. The gap between "it could animate"
 and "it does" is the MA. Triggering at the boundary makes the page feel twitchy.
+*Implemented* as `animation-range: entry 15% entry 60%` on `.card` / `.scene`.
+This rule was documented before it was true — the range began at `entry 0%`,
+i.e. exactly the boundary the rule forbids — so treat an unimplemented rule here
+as a defect in the stylesheet, not a nicety in the doc.
 
 **The Empty Frame Rule.** Motion never fills space that was doing work by being
 empty. If an animation's job is to draw the eye to a region, the region earns
@@ -316,6 +354,16 @@ not degraded:
 - Scroll-triggered reveals become *already revealed*. Never leave content at
   `opacity: 0` behind a trigger that reduced-motion disabled: that is how a
   motion preference turns into a blank page.
+
+**One known gap, stated rather than papered over.** The blanket
+`animation-duration: 0.01ms !important` that reduced motion relies on does *not*
+stop a scroll-linked animation: `animation-timeline: view()` is driven by scroll
+position, not by time, so `rise-in` still runs under `prefers-reduced-motion`.
+It is survivable only because that keyframe animates `translate` and nothing
+else — the content is at worst offset by 34px, never hidden. **This is exactly
+why the rules above forbid opacity in a scroll reveal**: the mechanism that is
+supposed to disable it cannot. Any scroll-linked animation that touched opacity
+would be invisible to precisely the users who asked for less motion.
 
 **The audit test:** set `prefers-reduced-motion: reduce`, disable JavaScript,
 and load the page. Every piece of content must be present and legible. If

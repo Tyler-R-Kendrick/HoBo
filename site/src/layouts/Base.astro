@@ -69,11 +69,23 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 		<Footer />
 		<script is:inline>
 			// The site's entire client-side behavior: theme + menu toggles.
-			document.querySelector(".theme-toggle")?.addEventListener("click", () => {
+			const themeToggle = document.querySelector(".theme-toggle");
+			// The markup ships `aria-pressed="false"`, but the boot script runs in
+			// <head> — before this button exists — so it cannot sync there. Without
+			// this the button reports "not pressed" while night is active, which is
+			// worse than omitting the attribute.
+			const syncPressed = () =>
+				themeToggle?.setAttribute(
+					"aria-pressed",
+					String(document.documentElement.dataset.theme === "dark"),
+				);
+			syncPressed();
+			themeToggle?.addEventListener("click", () => {
 				const root = document.documentElement;
 				const next = root.dataset.theme === "dark" ? "light" : "dark";
 				root.dataset.theme = next;
 				localStorage.setItem("hobo-theme", next);
+				syncPressed();
 			});
 			// Palette picker. `ink` clears the attribute rather than setting a
 			// value, so the default stays the absence of a choice.

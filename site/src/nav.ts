@@ -48,27 +48,45 @@ export function groupsOf(section: NavSection, groups: NavGroup[]): NavGroup[] {
 /**
  * Which section owns a path.
  *
- * Longest-slug-first, because a plain `find` returned the first group that
- * merely *listed* a page: `/reference/session-replay/` is cross-listed under
- * Observability, so the old lookup badged it "Observability" rather than
- * "Reference". Matching the most specific owner fixes that class of error
- * instead of the three known instances.
+ * Listing a page is not owning it. `/reference/session-replay/` is *listed*
+ * under both Observability and Reference, so a plain `find` badged it with
+ * whichever came first — "Observability".
+ *
+ * Longest-match does not fix that: the two groups list the page under the
+ * identical slug string, so length can never break the tie. The discriminator
+ * is which **namespace root** the path falls under. A section slug or a group
+ * slug is a root; an item slug is only a listing. `/reference/session-replay/`
+ * sits under the Reference group's `/reference/` and under no other root, so
+ * Reference owns it however many groups link to it.
+ *
+ * Roots are checked longest-first so a nested root beats its parent. Only when
+ * no root claims the path do we fall back to whoever lists it — that fallback
+ * is what still resolves pages living outside every group's namespace.
  */
 export function sectionFor(
 	path: string,
 	groups: NavGroup[],
 ): NavSection | undefined {
-	let best: { section: NavSection; len: number } | undefined;
+	let root: { section: NavSection; len: number } | undefined;
+	let listed: { section: NavSection; len: number } | undefined;
+
 	for (const section of sections) {
+		const roots = [section.slug, ...groupsOf(section, groups).map((g) => g.slug)];
+		for (const slug of roots) {
+			if (path.startsWith(slug) && slug.length > (root?.len ?? 0)) {
+				root = { section, len: slug.length };
+			}
+		}
 		for (const group of groupsOf(section, groups)) {
-			for (const item of [{ slug: group.slug }, ...group.items]) {
-				if (path.startsWith(item.slug) && item.slug.length > (best?.len ?? 0)) {
-					best = { section, len: item.slug.length };
+			for (const item of group.items) {
+				if (path.startsWith(item.slug) && item.slug.length > (listed?.len ?? 0)) {
+					listed = { section, len: item.slug.length };
 				}
 			}
 		}
 	}
-	return best?.section;
+
+	return (root ?? listed)?.section;
 }
 
 export const nav: NavGroup[] = [

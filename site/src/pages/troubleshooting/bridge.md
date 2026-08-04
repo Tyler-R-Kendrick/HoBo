@@ -76,7 +76,7 @@ The bridge is one routing mode of six, and they compose per boundary:
 | `bridge(handler, { session })` | session-scoped fork | local/remote dev |
 | `replay()` | serve recorded outputs | deterministic re-runs |
 | `shadow(candidate)` | duplicate traffic, compare, discard | testing the next version on real load |
-| `fault({ message, session })` | scoped failure injection | [chaos with no blast radius](/HoBo/guide/testing/#testing-runtime-availability) |
+| `fault({ message, session })` | scoped failure injection | [chaos with no blast radius](/HoBo/testing/chaos/#session-scoped-faults) |
 
 `router.status()` reports every boundary's routing state — who's bridged, what's shadowed, which faults are armed — so "what is my environment actually doing right now" is one call.
 

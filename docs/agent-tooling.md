@@ -131,13 +131,23 @@ node .claude/skills/higgsfield-auth/scripts/hf-auth.mjs login    # device flow, 
 - **Access tokens last one hour**, refresh tokens 7 days — and each refresh
   rolls that window, so a running daemon makes one `login` effectively
   permanent. `ensure` refreshes if due *and* starts the background refresher.
-- The daemon is **single-instance via an O_EXCL PID lock**, because two loops
-  would consume each other's rotated tokens and break the chain. It logs to
+- The daemon is **single-instance via an O_EXCL lock**, because two loops would
+  consume each other's rotated tokens and break the chain. It logs to
   `~/.higgsfield/daemon.log` and exits rather than spinning when the refresh
   token is dead.
+- The lock holds a **uid and is heartbeated**, not just a pid. Pids are
+  recycled, so a dead daemon's pid reappearing as an unrelated process would
+  make `kill(pid, 0)` report it live forever and wedge `start` until a manual
+  `stop`; `EPERM` did the same. A lock idle past 45 minutes is therefore
+  abandoned regardless of its pid — safe, since a live holder never sleeps more
+  than 15. Takeover is confirmed by re-reading the uid, so two starters
+  recovering from the same abandoned lock cannot both claim it.
 - **Refresh tokens rotate on every use** and the old one dies immediately.
   Never call `/refresh` with curl during a session — that consumes the stored
-  token and the next `ensure` fails. The store is written atomically at `0600`.
+  token and the next `ensure` fails. The store is written atomically at `0600`,
+  and the response is **merged over** it rather than replacing it: a refresh
+  that returns no new `refresh_token` (the ordinary non-rotating shape) would
+  otherwise erase the stored one and force an interactive login.
 - Credentials live in `~/.higgsfield/token.json` and `~/.claude.json`, **never**
   in the committed `.mcp.json`.
 - Restart Claude Code after `login` or a header-changing `refresh`.

@@ -18,6 +18,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import {
 	appendFileSync,
 	chmodSync,
@@ -26,6 +27,7 @@ import {
 	readFileSync,
 	renameSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -75,11 +77,22 @@ function readStore() {
  *
  * Atomic because the refresh token **rotates on every refresh**: a torn write
  * loses the only credential that can mint the next one, and the fix is a full
- * re-login. Rename is the cheapest way to make that impossible.
+ * re-login. Write-to-temp + rename means a reader sees either the old file or
+ * the new one, never a half-written one — so a crash mid-write costs a rerun.
+ * (Rename is atomic against process death, not against power loss: without an
+ * fsync the file can still come back empty after a hard cut. That is the
+ * accepted residual — the cost is one `login`.)
+ *
+ * Merged over the current store, not substituted for it. `/refresh` is
+ * documented to rotate, but a response that omits `refresh_token` — the
+ * ordinary non-rotating shape — would otherwise *delete* the stored one, and
+ * the next daemon tick would exit "no refresh token, login required". Keeping
+ * the old value when the server sends none is correct for both behaviours.
  */
 function writeStore(tok) {
 	mkdirSync(dirname(STORE), { recursive: true, mode: 0o700 });
 	const saved = {
+		...(readStore() ?? {}),
 		...tok,
 		obtained_at: Math.floor(Date.now() / 1000),
 		access_expires_at: Math.floor(Date.now() / 1000) + (tok.expires_in ?? 3600),
@@ -244,18 +257,64 @@ function log(line) {
 }
 
 /** Is the process holding the lock still alive? */
-function lockHolder() {
-	if (!existsSync(LOCK)) return null;
-	const pid = Number.parseInt(readFileSync(LOCK, "utf8").trim(), 10);
-	if (!Number.isInteger(pid) || pid <= 0) return null;
+/**
+ * This process's claim on the lock. A pid alone is not identity: pids are
+ * recycled, so a dead daemon's pid can come back as an unrelated process and
+ * `kill(pid, 0)` would report the lock live forever, wedging `start` until
+ * someone ran `stop` by hand. The uid makes ownership provable.
+ */
+const LOCK_UID = `${process.pid}-${randomUUID()}`;
+
+/**
+ * A lock older than this is treated as abandoned no matter what its pid says.
+ * The daemon heartbeats it every iteration and never sleeps longer than
+ * MAX_SLEEP_MS, so a live holder cannot go quiet this long — but a recycled
+ * pid can look alive indefinitely, and so can EPERM.
+ */
+const LOCK_STALE_MS = MAX_SLEEP_MS * 3;
+
+function readLock() {
 	try {
-		process.kill(pid, 0);
-		return pid;
-	} catch (err) {
-		// EPERM means it exists under another user — still alive.
-		return err?.code === "EPERM" ? pid : null;
+		const raw = readFileSync(LOCK, "utf8").trim();
+		const rec = raw.startsWith("{")
+			? JSON.parse(raw)
+			: { pid: Number.parseInt(raw, 10), uid: null };
+		if (!Number.isInteger(rec.pid) || rec.pid <= 0) return null;
+		if (Date.now() - statSync(LOCK).mtimeMs > LOCK_STALE_MS) return null;
+		return rec;
+	} catch {
+		return null;
 	}
 }
+
+/** The pid currently holding the lock, or null if nobody does. */
+function lockHolder() {
+	const rec = readLock();
+	if (!rec) return null;
+	if (rec.uid === LOCK_UID) return process.pid;
+	try {
+		process.kill(rec.pid, 0);
+		return rec.pid;
+	} catch (err) {
+		// EPERM means it exists under another user — still alive.
+		return err?.code === "EPERM" ? rec.pid : null;
+	}
+}
+
+const writeLock = (flag) =>
+	writeFileSync(LOCK, `${JSON.stringify({ pid: process.pid, uid: LOCK_UID })}\n`, {
+		flag,
+		mode: 0o600,
+	});
+
+/** Prove we still hold it, and refresh the mtime the staleness check reads. */
+const heartbeatLock = () => {
+	try {
+		if (readLock()?.uid === LOCK_UID) writeLock("w");
+	} catch {
+		/* the next claim check will catch it */
+	}
+};
 
 /**
  * Claim single-instance, atomically.
@@ -264,13 +323,20 @@ function lockHolder() {
  * two loops would each consume the other's newly-minted token and the second
  * refresh of the pair would 401 — breaking the chain and forcing an
  * interactive login. One writer, always.
+ *
+ * O_EXCL does the work in the common case. The subtle path is recovery from an
+ * abandoned lock: two starters can both see it unheld, both delete it, and
+ * both then succeed at O_EXCL — the second having erased the first's valid
+ * lock. So after taking over we re-read and confirm our own uid survived.
+ * Whoever wrote last wins and the other backs off, which is arbitrary but
+ * always leaves exactly one.
  */
 function claimLock() {
 	mkdirSync(DIR, { recursive: true, mode: 0o700 });
 	const holder = lockHolder();
-	if (holder !== null) return holder === process.pid ? true : false;
+	if (holder !== null) return holder === process.pid;
 	try {
-		writeFileSync(LOCK, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
+		writeLock("wx");
 		return true;
 	} catch {
 		// Lost a race, or a stale file we could not replace — take it over only
@@ -278,17 +344,18 @@ function claimLock() {
 		if (lockHolder() !== null) return false;
 		rmSync(LOCK, { force: true });
 		try {
-			writeFileSync(LOCK, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
-			return true;
+			writeLock("wx");
 		} catch {
 			return false;
 		}
+		return readLock()?.uid === LOCK_UID;
 	}
 }
 
 const releaseLock = () => {
 	try {
-		if (lockHolder() === process.pid) rmSync(LOCK, { force: true });
+		// Only ever remove our own lock — never a successor's.
+		if (readLock()?.uid === LOCK_UID) rmSync(LOCK, { force: true });
 	} catch {
 		/* going away anyway */
 	}
@@ -311,6 +378,7 @@ async function daemonLoop() {
 	log(`daemon started (pid ${process.pid})`);
 
 	for (;;) {
+		heartbeatLock();
 		const cur = readStore();
 		if (!cur?.refresh_token) {
 			log("no refresh token — login required; daemon exiting");

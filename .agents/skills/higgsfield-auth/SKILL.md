@@ -33,11 +33,24 @@ supposed to be invisible.
 Because refresh tokens roll their own 7-day window on every use, a daemon that
 keeps running makes a single `login` effectively permanent.
 
-**Single-instance, enforced with an O_EXCL PID lock.** This is not tidiness:
-refresh tokens rotate, so two loops would each consume the other's freshly
-minted token and the second refresh of the pair would 401 — breaking the chain
-and forcing an interactive login. `start` refuses when a live holder exists, and
-takes over only a lock whose process is gone.
+**Single-instance, enforced with an O_EXCL lock.** This is not tidiness: refresh
+tokens rotate, so two loops would each consume the other's freshly minted token
+and the second refresh of the pair would 401 — breaking the chain and forcing an
+interactive login. `start` refuses when a live holder exists, and takes over only
+a lock whose holder is gone.
+
+The lock stores a **uid, not just a pid**, and the daemon **heartbeats** it every
+iteration. A pid alone is not identity: pids get recycled, so a dead daemon's pid
+can reappear as an unrelated process and `kill(pid, 0)` would report the lock
+live forever — wedging `start` until someone ran `stop` by hand. `EPERM` (holder
+owned by another user) had the same effect. A lock whose mtime has not advanced
+in 45 minutes is therefore treated as abandoned regardless of what its pid says,
+which is safe because a live holder never sleeps longer than 15 minutes.
+
+Takeover is also confirmed rather than assumed: two starters recovering from the
+same abandoned lock can both see it unheld and both delete it, the second
+erasing the first's valid lock. After taking over, each re-reads and checks its
+own uid survived. Last writer wins, the other backs off, exactly one runs.
 
 Sleeps are capped at 15 minutes, so a suspended laptop wakes to a fresh check
 rather than oversleeping past expiry.
@@ -98,6 +111,16 @@ The script therefore writes `~/.higgsfield/token.json` **atomically** (temp file
 a rerun rather than a re-login. Do not hand-edit that file, and do not call
 `/refresh` with curl during a session — that silently consumes the stored token
 and the next `ensure` will fail.
+
+The new token is **merged over** the stored one, never substituted for it. A
+`/refresh` response that omits `refresh_token` — the ordinary shape for a server
+that is *not* rotating — would otherwise delete the stored one, and the next
+daemon tick would exit `no refresh token — login required`. Keeping the old value
+when the server sends none is correct whether or not rotation is happening.
+
+Rename is atomic against process death, which is the realistic failure. It is not
+atomic against power loss: without an `fsync` the file can still come back empty
+after a hard cut. That residual is accepted — the cost is one `login`.
 
 ## Where the credential lives
 

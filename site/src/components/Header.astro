@@ -4,9 +4,15 @@ import { nav, sections, sectionFor } from "../nav";
 import { href } from "../lib/url";
 
 const path = Astro.url.pathname;
-const isActive = (slug: string) => path.startsWith(href(slug));
 // The header shows sections, not groups. `aria-current="page"` is the spec
 // value — "true" is not a valid token and screen readers ignore it.
+//
+// `sectionFor` is the *sole* authority here. It used to be backed up by a
+// `path.startsWith(section.slug)` fallback, which marked a second link on any
+// page where the two disagreed — `/agents/` came out with both "Learn" and
+// "Agents" current. `aria-current="page"` identifies one element, so two is an
+// invalid state, not a redundant one. Now that `sectionFor` resolves section
+// slugs as namespace roots, the fallback only ever added the wrong answer.
 const here = sectionFor(path.replace(href("/"), "/"), nav);
 ---
 
@@ -21,13 +27,7 @@ const here = sectionFor(path.replace(href("/"), "/"), nav);
 				sections.map((section) => (
 					<a
 						href={href(section.slug)}
-						aria-current={
-							here?.label === section.label
-								? "page"
-								: isActive(section.slug)
-									? "page"
-									: undefined
-						}
+						aria-current={here?.label === section.label ? "page" : undefined}
 					>
 						{section.label}
 					</a>

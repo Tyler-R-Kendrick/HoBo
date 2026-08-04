@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# External skill symlinks (live in other projects)
+/.claude/skills/sound-effects
+/.claude/skills/text-to-speech
+/.claude/skills/music
+/.claude/skills/capture
+/.agents/skills/sound-effects
+/.agents/skills/text-to-speech
+/.agents/skills/music

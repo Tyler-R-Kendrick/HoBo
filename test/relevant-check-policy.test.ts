@@ -455,6 +455,37 @@ test("examples package source changes select architecture guard and workspace te
 	assert.equal(turboTestSelects(checks, "examples/hello-bindle"), true);
 });
 
+test("try-site app definitions select their workspace tests", () => {
+	const { workspaces, checks } = plan(
+		["examples/try-site/apps/kv-notes/app.ts"],
+		{
+			workspacePackageExists: () => true,
+		},
+	);
+
+	assert.deepEqual(workspaces, ["examples/try-site"]);
+	assert.equal(turboTestSelects(checks, "examples/try-site"), true);
+});
+
+test("site source changes select its workspace tests and typecheck", () => {
+	const { checks, workspaces } = plan(["site/src/lib/examples/controller.ts"], {
+		workspacePackageExists: () => true,
+	});
+
+	assert.deepEqual(workspaces, ["site"]);
+	assert.equal(checks.some(architectureGuardCheck), true);
+	assert.equal(turboTestSelects(checks, "site"), true);
+	assert.equal(
+		checks.some(
+			(check) =>
+				check.command === "pnpm" &&
+				check.args.join(" ") ===
+					"exec turbo run typecheck --filter=./site --output-logs=new-only",
+		),
+		true,
+	);
+});
+
 test("production package schema changes select workspace tests instead of root schema lane", () => {
 	const { checks, workspaces } = plan(
 		["packages/core/data-models/core.proto"],
@@ -516,4 +547,42 @@ test("editing cucumber.yaml trips the behavior lane", () => {
 test("unrelated docs edits do not trip the behavior lane", () => {
 	const { checks } = plan(["docs/design/vision.md"]);
 	assert.ok(!checks.some(isBehaviorLane));
+});
+
+function isOptimizexpLane(check: Check) {
+	return (
+		check.command === "pnpm" && check.args.join(" ") === "run optimizexp:check"
+	);
+}
+
+test("global .optimizexp changes select the optimizexp drift lane", () => {
+	const { checks, scopes } = plan([".optimizexp/personas/developer.md"]);
+	assert.ok(checks.some(isOptimizexpLane));
+	assert.ok(scopes.includes("optimizexp"));
+});
+
+test("project-local persona/feature changes select the optimizexp drift lane", () => {
+	const { checks } = plan([
+		"packages/code/.optimizexp/features/hobo-code-cost-zero/README.md",
+	]);
+	assert.ok(checks.some(isOptimizexpLane));
+});
+
+test("skill harness changes select the optimizexp drift lane", () => {
+	for (const file of [
+		".agents/skills/optimizexp/harness/generate-persona.mts",
+		".claude/skills/optimizexp/harness/generate-persona.mts",
+	]) {
+		assert.ok(plan([file]).checks.some(isOptimizexpLane), file);
+	}
+});
+
+test("gate script changes select the optimizexp drift lane", () => {
+	const { checks } = plan(["scripts/check-optimizexp.mts"]);
+	assert.ok(checks.some(isOptimizexpLane));
+});
+
+test("unrelated changes do not select the optimizexp drift lane", () => {
+	const { checks } = plan(["packages/core/src/index.ts"]);
+	assert.ok(!checks.some(isOptimizexpLane));
 });

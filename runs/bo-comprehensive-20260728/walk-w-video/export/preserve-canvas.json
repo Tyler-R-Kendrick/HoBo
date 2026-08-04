@@ -1,0 +1,358 @@
+{
+  "layoutMode": "preserve-canvas",
+  "heightNormalization": false,
+  "motionPreserved": true,
+  "sourceMaxCanvas": [
+    720,
+    720
+  ],
+  "cellSize": [
+    256,
+    256
+  ],
+  "scale": 0.35555555555555557,
+  "scaledCanvas": [
+    256,
+    256
+  ],
+  "paste": [
+    0,
+    0
+  ],
+  "resample": "LANCZOS",
+  "videoRecovery": "preserve-canvas",
+  "backgroundCleanup": {
+    "keyedToTransparentBlack": true,
+    "chroma": "#00FF00",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "sourceKeyMetadata": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/background-key-metadata.json",
+    "sourceFringeMetadata": "runs/bo-comprehensive-20260728/walk-w-video/recovered/green-fringe-metadata.json",
+    "postScaleGreenFringeCleanup": false,
+    "minGreen": 70,
+    "dominance": 24,
+    "edgeRadius": 1,
+    "postScaleDespill": true,
+    "despillPlan": {
+      "mode": "auto",
+      "chromaRgb": [
+        0,
+        255,
+        0
+      ],
+      "edgeRadius": 2,
+      "bandRadius": 12,
+      "dominance": 8,
+      "deepTintThreshold": 0.009,
+      "minDeepSample": 200,
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "deepTinted": 4594,
+          "deepTotal": 376533,
+          "deepFraction": 0.0122,
+          "bandOnly": true
+        }
+      ]
+    }
+  },
+  "frames": [
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-01.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 377,
+            "spillRemoved": 2332,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 28
+      }
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-02.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 385,
+            "spillRemoved": 2305,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 26
+      }
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-03.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 764,
+            "spillRemoved": 4248,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 29
+      }
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-04.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 584,
+            "spillRemoved": 3535,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 43
+      }
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-05.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 465,
+            "spillRemoved": 2513,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 42
+      }
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-06.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 394,
+            "spillRemoved": 3241,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 51
+      }
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-07.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-07.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 585,
+            "spillRemoved": 2995,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 42
+      }
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-08.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-08.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 643,
+            "spillRemoved": 4188,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 35
+      }
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-09.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-09.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 312,
+            "spillRemoved": 1641,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 46
+      }
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-10.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/normalized/frame-10.png",
+      "sourceSize": [
+        720,
+        720
+      ],
+      "postScaleDespill": {
+        "axes": [
+          {
+            "chromaRgb": [
+              0,
+              255,
+              0
+            ],
+            "edgeRadius": 2,
+            "bandOnly": true,
+            "despilledPixels": 416,
+            "spillRemoved": 2190,
+            "protectedPixels": 0
+          }
+        ]
+      },
+      "postScaleGreenFringeCleanup": null,
+      "greenTransparencyAudit": {
+        "hiddenGreenAlphaZeroPixels": 0,
+        "semiTransparentGreenFringePixels": 36
+      }
+    }
+  ]
+}

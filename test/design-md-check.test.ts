@@ -28,7 +28,10 @@ test("listWebUiProjects finds site DESIGN.md on real repo", () => {
 	assert.ok(site.designMd?.endsWith("site/DESIGN.md"));
 });
 
-test("runDesignMdCheck passes on real site DESIGN.md", () => {
+// designmd binary startup is slow on cold CI runners; allow more than 5s.
+test("runDesignMdCheck passes on real site DESIGN.md", {
+	timeout: 120_000,
+}, () => {
 	const { ok, results, projects } = runDesignMdCheck();
 	assert.ok(projects.length >= 1);
 	assert.equal(ok, true, JSON.stringify(results, null, 2));

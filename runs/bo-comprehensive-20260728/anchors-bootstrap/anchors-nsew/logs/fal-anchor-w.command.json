@@ -1,0 +1,39 @@
+{
+  "stage": "fal-anchor-w",
+  "args": [
+    "/home/codex/.local/share/uv/tools/spriterrific/bin/python",
+    "/home/codex/.local/share/uv/tools/spriterrific/lib/python3.11/site-packages/spriterrific/runtime_tools/fal_ai_image/scripts/fal_queue_image_run.py",
+    "--model-alias",
+    "nano-banana-2-lite-edit",
+    "--prompt-file",
+    "runs/bo-comprehensive-20260728/anchors-bootstrap/anchors-nsew/anchors/prompt-w.txt",
+    "--image-file",
+    "runs/bo-comprehensive-20260728/anchors-bootstrap/anchors-nsew/input/source.png",
+    "--image-file",
+    "runs/bo-comprehensive-20260728/anchors-bootstrap/anchors-nsew/guide/alternating-1024x1024.png",
+    "--out-dir",
+    "runs/bo-comprehensive-20260728/anchors-bootstrap/anchors-nsew/fal/anchor-w",
+    "--filename-prefix",
+    "anchor-w",
+    "--task-slug",
+    "anchors-nsew-anchor-w",
+    "--image-size",
+    "square_hd",
+    "--output-format",
+    "png",
+    "--quality",
+    "high"
+  ],
+  "cwd": null,
+  "status": "completed",
+  "startedAt": "2026-07-28T08:18:55.187479Z",
+  "completedAt": "2026-07-28T08:19:08.397515Z",
+  "exitCode": 0,
+  "stdout": "runs/bo-comprehensive-20260728/anchors-bootstrap/anchors-nsew/logs/fal-anchor-w.stdout.txt",
+  "stderr": "runs/bo-comprehensive-20260728/anchors-bootstrap/anchors-nsew/logs/fal-anchor-w.stderr.txt",
+  "envPresent": {
+    "FAL_KEY": false,
+    "FAL_API_KEY": true,
+    "REMOVE_BG_API_KEY": false
+  }
+}

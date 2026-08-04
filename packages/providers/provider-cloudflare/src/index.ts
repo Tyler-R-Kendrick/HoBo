@@ -62,3 +62,7 @@ export type {
 	ProviderClient,
 	ResourcePlan,
 } from "./types.js";
+export {
+	CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS,
+	CLOUDFLARE_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";

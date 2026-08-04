@@ -54,6 +54,16 @@
 			}
 		},
 		{
+			"proof": "src/draft/technical-proofs/dispatcher-maximize-credits-contract/src",
+			"promotedTo": "packages/dispatcher/src",
+			"status": "frozen",
+			"note": "ADR-0071 promotion: typed engine with traffic-backend category, EventInput-shaped facts (no proof envelope), parse-don't-validate boundaries; reservation-hardening invariants folded in.",
+			"digests": {
+				"dispatcher.d.ts": "sha256:c3c5ba34da8a8d4ee697f9691302e60d2754bdfae4a936a7cb86ba33b39fd4e9",
+				"dispatcher.ts": "sha256:e6ba45e67eba436722ef82c0d7e701aba98f6482ca285c2892f30533c2859508"
+			}
+		},
+		{
 			"proof": "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages/schema-tools",
 			"promotedTo": "packages/schema-tools",
 			"status": "frozen",
@@ -75,6 +85,33 @@
 				"src/types.ts": "sha256:2fd23e4a87f8feb36d65841ad16b9fa90bcab6d6cfb4a18df206d244807fdbac",
 				"test/codegen-pipeline.test.ts": "sha256:5113466f5fbe62a9d5e31917e9ecaff7cdd62c5b825488b867c91c11a30e80c9",
 				"tsconfig.json": "sha256:72909bdc6a21c90a32d98bf1a5bc1b40109b130f1d71e3b22b8b90f0ef36fb0b"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/domain-cutover-saga-contract/src",
+			"promotedTo": "packages/stations/src/traffic-routing/cutover.ts",
+			"status": "frozen",
+			"note": "ADR-0134 promotion: DNS-shaped saga re-expressed over TrafficRoutingPort — fail-closed preconditions (validated change, live incumbent via port.status, TTL lowered + waited => effective RTO), rollback hysteresis (consecutive failures), refusal/TtlLowered/Started/RampAdvanced/RoutingChanged/RolledBack event ladder.",
+			"digests": {
+				"domain-cutover-saga.ts": "sha256:c9c1957ae1d06f476caeaa7d740fd2a3dcfb7422668d08750fa1946baf1ebb5a"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/upgrade-rollback-dry-run-contract/src",
+			"promotedTo": "packages/trails/src/upgrade-preflight.ts",
+			"status": "frozen",
+			"note": "HOBO-499 M1 promotion: typed 11-field compatibility inputs, dry-run contract + four fixtures, rollback-evidence parser, scope-boundary register with fail-closed guard.",
+			"digests": {
+				"upgrade-rollback-dry-run.ts": "sha256:507a353f947813bf71c27bbd715fa7e7027de52605df53badfe71bf9054d3d51"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/event-body-upcaster-gate/src",
+			"promotedTo": "packages/events/src/upcaster.ts",
+			"status": "frozen",
+			"note": "M4 promotion: typed golden-replay corpus + upcaster-totality can-deploy gate (coverage, append-only baseline, total chain, purity, replay); migration.* v1 corpus pinned in packages/events/corpus.",
+			"digests": {
+				"event-body-upcaster-gate.ts": "sha256:7efc40d3e4d2b6383ebd748f9008aca5ad755c68a784ecac6b3fc719081f238e"
 			}
 		}
 	]

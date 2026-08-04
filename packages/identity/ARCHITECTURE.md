@@ -75,10 +75,12 @@ token-exchange call will replace the fixture derivation.
 
 Ranked resolution ladder in `src/secrets-port.ts` / `src/config-resolver.ts`:
 `bound-resource` → `provider-federation` → `camp-value` → `static-escape` (≤7d).
-`hobo:secrets` / Vault JWT-OIDC / cloud SM stubs are residual adapters; preferred
-paths are SVID-brokered tokens and `fromBinding` / `secretRef`. Dev uses
-contract-asserted fixtures (`createContractAssertedConfigFixtures`) with the same
-schema contracts as can-deploy.
+Built-in residual adapters: **memory** (default local Station / fixtures), Vault
+JWT-OIDC, AWS SM, Azure KV. Optional residual OpenBao lives in a separate package
+(`@hobo/adapter-openbao`) — not a default dependency. Preferred paths are
+SVID-brokered tokens and `fromBinding` / `secretRef`. Dev uses contract-asserted
+fixtures (`createContractAssertedConfigFixtures`) with the same schema contracts
+as can-deploy.
 
 ## Continuous Identity Migration Plane (ADR-0132)
 

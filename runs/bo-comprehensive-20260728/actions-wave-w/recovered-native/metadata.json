@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "mode": "padded-native-review",
+  "description": "Recovered components placed on a shared padded canvas without scaling.",
+  "canvasSize": [
+    512,
+    512
+  ],
+  "minCanvasSize": [
+    512,
+    512
+  ],
+  "placement": {
+    "centerX": 256,
+    "bottomY": 504
+  },
+  "frames": [
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-01.png",
+      "sourceSize": [
+        351,
+        336
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        81,
+        168
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-02.png",
+      "sourceSize": [
+        392,
+        336
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        60,
+        168
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-03.png",
+      "sourceSize": [
+        380,
+        336
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        66,
+        168
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-04.png",
+      "sourceSize": [
+        350,
+        336
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        81,
+        168
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-05.png",
+      "sourceSize": [
+        371,
+        336
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        71,
+        168
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-06.png",
+      "sourceSize": [
+        379,
+        338
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        67,
+        166
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-07.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-07.png",
+      "sourceSize": [
+        373,
+        338
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        70,
+        166
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-08.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-08.png",
+      "sourceSize": [
+        414,
+        337
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        49,
+        167
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-09.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-09.png",
+      "sourceSize": [
+        400,
+        337
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        56,
+        167
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-wave-w/recovered/frame-10.png",
+      "output": "runs/bo-comprehensive-20260728/actions-wave-w/recovered-native/frames/frame-10.png",
+      "sourceSize": [
+        352,
+        337
+      ],
+      "canvasSize": [
+        512,
+        512
+      ],
+      "offset": [
+        80,
+        167
+      ]
+    }
+  ]
+}

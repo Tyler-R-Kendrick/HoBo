@@ -1,0 +1,175 @@
+{
+  "sheet": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/generated/sheet.png",
+  "rows": 3,
+  "cols": 4,
+  "count": 10,
+  "keying": {
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 500,
+    "removedPixels": 2504941,
+    "keptPixelsBeforeDespeckle": 640787,
+    "bbox": [
+      43,
+      248,
+      2020,
+      1128
+    ]
+  },
+  "frames": [
+    {
+      "frame": "01",
+      "bbox": [
+        43,
+        248,
+        398,
+        612
+      ],
+      "area": 64600,
+      "center": [
+        220.5,
+        430.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-01.png"
+    },
+    {
+      "frame": "02",
+      "bbox": [
+        454,
+        249,
+        805,
+        609
+      ],
+      "area": 63774,
+      "center": [
+        629.5,
+        429.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-02.png"
+    },
+    {
+      "frame": "03",
+      "bbox": [
+        849,
+        249,
+        1206,
+        609
+      ],
+      "area": 63891,
+      "center": [
+        1027.5,
+        429.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-03.png"
+    },
+    {
+      "frame": "04",
+      "bbox": [
+        1257,
+        248,
+        1619,
+        611
+      ],
+      "area": 64759,
+      "center": [
+        1438.0,
+        429.5
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-04.png"
+    },
+    {
+      "frame": "05",
+      "bbox": [
+        1671,
+        249,
+        2020,
+        611
+      ],
+      "area": 63803,
+      "center": [
+        1845.5,
+        430.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-05.png"
+    },
+    {
+      "frame": "06",
+      "bbox": [
+        48,
+        767,
+        445,
+        1127
+      ],
+      "area": 64202,
+      "center": [
+        246.5,
+        947.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-06.png"
+    },
+    {
+      "frame": "07",
+      "bbox": [
+        449,
+        768,
+        843,
+        1128
+      ],
+      "area": 63902,
+      "center": [
+        646.0,
+        948.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-07.png"
+    },
+    {
+      "frame": "08",
+      "bbox": [
+        860,
+        765,
+        1202,
+        1127
+      ],
+      "area": 64136,
+      "center": [
+        1031.0,
+        946.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-08.png"
+    },
+    {
+      "frame": "09",
+      "bbox": [
+        1258,
+        765,
+        1605,
+        1128
+      ],
+      "area": 63992,
+      "center": [
+        1431.5,
+        946.5
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-09.png"
+    },
+    {
+      "frame": "10",
+      "bbox": [
+        1669,
+        764,
+        2012,
+        1126
+      ],
+      "area": 63728,
+      "center": [
+        1840.5,
+        945.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-10.png"
+    }
+  ]
+}

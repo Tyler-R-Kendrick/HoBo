@@ -1,70 +1,130 @@
 /**
- * `hobo-code` CLI — coding harness + distributed compute (ADR-0139).
+ * `hobo-code` CLI — coding harness + multi-node compute (ADR-0139).
  *
- * Flat verbs (no nested buzz):
- *   dispatch (default) | status | session | scaffold | isolate | promote |
- *   budget | remote | platform | join | agent | nodes | rooms | help
+ * App-building agent CLI (not a control-plane management tool).
+ *   dispatch (default) | status | session | attach | tasks | guide |
+ *   scaffold | isolate | promote | env | auth | models | cost | harness |
+ *   edit | config | agent | help
  *
  * Binary name: hobo-code (dash permitted).
  */
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defaultProbes, detectAgents } from "./agent-registry.js";
+import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
+import { allocateAgentWorkspaces } from "./agent-workspaces.js";
 import {
-	createBuzzAgentIdentity,
-	describeBuzzDistributedCompute,
-	dispatchBuzzTask,
-	joinBuzzRoom,
-	openBuzzHive,
-	registerBuzzAgent,
-} from "./buzz.js";
+	authLogin,
+	authStatus,
+	clearAuthSession,
+	confirmRemoteLogin,
+	readAuthSession,
+	resolveAuthenticatedStationId,
+} from "./auth.js";
+import {
+	claudeCodeGuide,
+	renderClaudeCodeGuideText,
+} from "./claude-code-guide.js";
+import {
+	type ConfigStackId,
+	configHumanSummary,
+	inspectConfigSurface,
+	isConfigStackId,
+} from "./config-surface.js";
+import { costHumanSummary, inspectCost } from "./cost.js";
+import { cursorGuide, renderCursorGuideText } from "./cursor-guide.js";
+import { defaultDevenvProbes, devenvSummary, inspectDevenv } from "./devenv.js";
+import {
+	describeDistributedCompute,
+	dispatchComputeTask,
+} from "./distributed.js";
+import { dogfoodSummary } from "./dogfood.js";
+import {
+	type BridgeMode,
+	editorBridgeHumanSummary,
+	editorBridgeOpenScript,
+	inspectEditorBridge,
+	type PaneLayout,
+} from "./editor-bridge.js";
+import { describeEveSubagentSurface } from "./eve.js";
 import {
 	createBudgetTracker,
 	DEFAULT_BUDGET_POLICY,
 	sponsoredWaitState,
 } from "./finops.js";
 import {
+	buildTasksSurface,
+	grokBuildParity,
+	renderGrokBuildFooter,
+	renderTasksBoardText,
+} from "./grok-build-parity.js";
+import {
+	harnessHumanSummary,
+	inspectHarnessSurface,
+} from "./harness-surface.js";
+import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
+import {
 	cleanupIsolation,
 	createIsolationContext,
 	listSandboxOrphans,
 } from "./isolation.js";
+import { inspectModels, modelsHumanSummary } from "./models.js";
+import {
+	applyMux,
+	attachCommand,
+	type MuxTarget,
+	planMux,
+	tmuxRunner,
+} from "./mux.js";
 import {
 	CODE_FEATURE_DEFAULTS,
 	CODE_FEATURE_FLAGS,
+	type CodeFeaturePort,
 	composeCodePlatform,
 	createMemoryFeaturePort,
-	type CodeFeaturePort,
 } from "./platform.js";
-import { promoteIsolation, type PromotionGate } from "./sandbox-promote.js";
+import { runProjectGates } from "./promotion-gates.js";
+import {
+	type CodeRemoteMode,
+	describeDevTerminalAttach,
+	shortNamedHost,
+} from "./remote.js";
+import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
+import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
 import { startCodeSession } from "./session.js";
-import { registerCodeNamedEndpoint } from "./remote.js";
 import {
 	buildMultiplexerStatus,
 	createPane,
+	herdrMuxCapabilities,
+	renderHerdrCapabilityFooter,
 	renderStatusChip,
 	renderStatusText,
 } from "./tui.js";
-import { dogfoodSummary } from "./dogfood.js";
-import { describeEveSubagentSurface } from "./eve.js";
-import { describeSecureSandboxStack } from "./sandbox-stack.js";
+import { findWorkspaceRoot } from "./workspace.js";
 import { describeCodeWorlds } from "./worlds.js";
 
 export const HOBO_CODE_VERBS = [
 	"dispatch",
 	"status",
 	"session",
+	"attach",
+	"mux",
+	"tasks",
+	"guide",
 	"scaffold",
 	"isolate",
 	"promote",
-	"budget",
-	"remote",
-	"platform",
-	"join",
+	"env",
+	"auth",
+	"models",
+	"cost",
+	"harness",
+	"edit",
+	"config",
 	"agent",
-	"nodes",
-	"rooms",
 	"help",
 ] as const;
 
@@ -79,10 +139,7 @@ function panel(title: string, rows: readonly string[]): string {
 	const body = rows.map((row) =>
 		row.startsWith(" ") || row.startsWith("  ") ? row : ` ${row}`,
 	);
-	const widest = Math.max(
-		title.length,
-		...body.map((r) => r.length),
-	);
+	const widest = Math.max(title.length, ...body.map((r) => r.length));
 	const ruleW = Math.max(12, Math.min(20, widest));
 	const rule = "─".repeat(ruleW);
 	// Happy-path one-scan panels drop soft twin (title · body · rule).
@@ -96,6 +153,66 @@ function panel(title: string, rows: readonly string[]): string {
 export type HoboCodeVerb = (typeof HOBO_CODE_VERBS)[number];
 
 const VERB_SET = new Set<string>(HOBO_CODE_VERBS);
+
+/** Levenshtein distance for near-miss verb detection (DX typo feedback). */
+function editDistance(a: string, b: string): number {
+	const m = a.length;
+	const n = b.length;
+	const dp: number[][] = Array.from({ length: m + 1 }, () =>
+		Array.from({ length: n + 1 }, () => 0),
+	);
+	for (let i = 0; i <= m; i++) dp[i]![0] = i;
+	for (let j = 0; j <= n; j++) dp[0]![j] = j;
+	for (let i = 1; i <= m; i++) {
+		for (let j = 1; j <= n; j++) {
+			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+			dp[i]![j] = Math.min(
+				dp[i - 1]![j]! + 1,
+				dp[i]![j - 1]! + 1,
+				dp[i - 1]![j - 1]! + cost,
+			);
+		}
+	}
+	return dp[m]![n]!;
+}
+
+/**
+ * If a single bare token looks like a mistyped verb (not a multi-word prompt),
+ * return the closest known verb; otherwise null (dispatch as prompt).
+ */
+export function suggestVerbTypo(token: string): string | null {
+	const t = token.trim().toLowerCase();
+	if (!t || t.includes(" ") || t.length < 3) return null;
+	// Multi-word / free-text prompts stay dispatch.
+	if (!/^[a-z][a-z0-9_-]*$/i.test(t)) return null;
+	if (VERB_SET.has(t)) return null;
+	let best: string | null = null;
+	let bestD = Infinity;
+	for (const v of HOBO_CODE_VERBS) {
+		if (v === "help" || v === "dispatch") continue;
+		const d = editDistance(t, v);
+		// Allow distance 1 always; distance 2 only for longer tokens.
+		const maxD = t.length <= 4 ? 1 : 2;
+		if (d > 0 && d <= maxD && d < bestD) {
+			bestD = d;
+			best = v;
+		}
+	}
+	return best;
+}
+
+/**
+ * CLI-shaped single tokens that are not verbs (hyphen/underscore idioms).
+ * GUI-native users often invent command names; celebrating them as dispatch
+ * is deceptive magic. One-word natural language (no separators) still dispatches.
+ */
+export function looksLikeUnknownVerbAttempt(token: string): boolean {
+	const t = token.trim().toLowerCase();
+	if (!t || t.includes(" ") || t.length < 3) return false;
+	if (!/^[a-z][a-z0-9_-]*$/i.test(t)) return false;
+	if (VERB_SET.has(t)) return false;
+	return t.includes("-") || t.includes("_");
+}
 
 export interface HoboCodeCliResult {
 	readonly ok: boolean;
@@ -113,13 +230,74 @@ export interface HoboCodeCliDeps {
 	readonly cwd?: string;
 	readonly features?: CodeFeaturePort;
 	readonly json?: boolean;
+	/**
+	 * Opt-in glyph/idiom chrome (power-user strip + ultra-short verb tails).
+	 * Default is plain/legible help and full verb titles for unfamiliar devs.
+	 * Also: HOBO_CODE_DENSE=1 or --dense / -D.
+	 */
+	readonly dense?: boolean;
 }
+
+export type FormatHoboCodeOptions = {
+	readonly json?: boolean;
+	readonly dense?: boolean;
+};
 
 function defaultHoboHome(env: NodeJS.ProcessEnv): string {
 	if (typeof env.HOBO_HOME === "string" && env.HOBO_HOME.length > 0) {
 		return env.HOBO_HOME;
 	}
 	return join(env.HOME ?? tmpdir(), ".hobo");
+}
+
+/** Flags that consume the next token as their value (strict parsing). */
+const VALUE_FLAGS = new Set([
+	"home",
+	"session",
+	"host",
+	"cwd",
+	"tenant",
+	"domain",
+	"station",
+	"pool",
+	"hive", // legacy alias of --pool
+	"stack",
+	"path",
+	"bridge",
+	"layout",
+	"editor",
+	"e", // alias of --editor
+	"complete",
+	"run",
+	"from",
+	"name",
+	"out",
+	"mode",
+]);
+
+/** Boolean flags (never consume the next token). */
+const BOOL_FLAGS = new Set([
+	"json",
+	"dense",
+	"help",
+	"agent",
+	"force",
+	"mock",
+	"complete-remote",
+	"print-cmd",
+	"printcmd",
+	"cursor",
+	"dry-run",
+	"shared",
+]);
+
+export class UnknownFlagError extends Error {
+	constructor(readonly flag: string) {
+		super(
+			`Unknown flag "--${flag}". Run "hobo-code help" to see supported flags.`,
+		);
+		this.name = "UnknownFlagError";
+	}
 }
 
 function parseArgv(argv: readonly string[]): {
@@ -137,31 +315,60 @@ function parseArgv(argv: readonly string[]): {
 			flags.json = true;
 			continue;
 		}
+		if (a === "--dense" || a === "-D") {
+			flags.dense = true;
+			continue;
+		}
 		if (a === "--help" || a === "-h") {
 			flags.help = true;
 			continue;
 		}
 		if (a.startsWith("--") && a.includes("=")) {
 			const eq = a.indexOf("=");
-			flags[a.slice(2, eq)] = a.slice(eq + 1);
-			continue;
-		}
-		if (a.startsWith("--") && i + 1 < argv.length && !argv[i + 1]!.startsWith("-")) {
-			flags[a.slice(2)] = argv[++i]!;
+			const name = a.slice(2, eq);
+			if (!VALUE_FLAGS.has(name) && !BOOL_FLAGS.has(name)) {
+				throw new UnknownFlagError(name);
+			}
+			flags[name] = a.slice(eq + 1);
 			continue;
 		}
 		if (a.startsWith("--")) {
-			flags[a.slice(2)] = true;
-			continue;
+			const name = a.slice(2);
+			if (VALUE_FLAGS.has(name)) {
+				const value = argv[i + 1];
+				if (value === undefined || value.startsWith("-")) {
+					throw new Error(
+						`Flag "--${name}" requires a value. Run "hobo-code help" to see supported flags.`,
+					);
+				}
+				flags[name] = value;
+				i += 1;
+				continue;
+			}
+			if (BOOL_FLAGS.has(name)) {
+				flags[name] = true;
+				continue;
+			}
+			throw new UnknownFlagError(name);
 		}
 		positional.push(a);
 	}
 
+	const first = positional[0];
+	// `hobo-code platform --help` keeps verb=platform (subcommand help).
+	// Bare `--help` / `help` → top-level help.
 	if (flags.help === true) {
+		if (first && VERB_SET.has(first) && first !== "help") {
+			return {
+				verb: first as HoboCodeVerb,
+				args: positional.slice(1),
+				flags,
+				defaultedVerb: false,
+			};
+		}
 		return { verb: "help", args: positional, flags, defaultedVerb: false };
 	}
 
-	const first = positional[0];
 	if (first && VERB_SET.has(first)) {
 		return {
 			verb: first as HoboCodeVerb,
@@ -174,12 +381,12 @@ function parseArgv(argv: readonly string[]): {
 	return { verb: "dispatch", args: positional, flags, defaultedVerb: true };
 }
 
-function helpText(): string {
+/**
+ * Power-user dense help: intentional glyph/tail idioms (opt-in via --dense).
+ * Full keys still available with --json.
+ */
+function helpTextDense(): string {
 	const flags = Object.values(CODE_FEATURE_FLAGS);
-	// Ultra-short OF tails: code.harness.enabled → harness; monetization → mon.
-	// Full keys live in help data payload.
-	// Ultra-short OF tails (1 letter): harness·evid·mon·rift·dist → h·e·m·r·d
-	// Full keys live in help data payload.
 	const ofShort = flags
 		.map((f) => {
 			const tail = f.replace(/^code\./, "").replace(/\..*$/, "");
@@ -191,20 +398,711 @@ function helpText(): string {
 			return tail[0] ?? tail;
 		})
 		.join("");
-	// 3-line help: title+OF · verb row A · verb row B.
-	// ◆ bare prompt; ★ default dispatch. Flag key legend lives in data/docs.
-	// Verb tails: d=dispatch st=status se=session sc=scaffold i=isolate
-	// pr=promote b=budget re=remote pl=platform n=nodes rm=rooms j=join a=agent
-	// Split verb strip so no line > ~20 (was one 34-col wall).
-	// Title denser: product★ + OF (no middot twins).
-	// Glue OF to product★. Letter strip implies count (●hemrd).
-	// Three balanced rows ≤17.
-	// Drop middot between ★ and OF — still scannable.
-	// ★d = default dispatch (◆ bare lives on empty prompt panel, not help).
-	// Two verb rows ≤15.
-	return `hobo-code★●${ofShort}
-★d·st·se·sc·i·pr
-b·re·pl·n·rm·j·a`;
+	return [
+		`hobo-code★●${ofShort}`,
+		"★d·st·se·sc·i·pr",
+		"ev·au·mo",
+		"",
+		"dense chrome (--dense | -D | HOBO_CODE_DENSE=1)",
+		"plain help: hobo-code help   ·   json: hobo-code help --json",
+		"",
+		"tails: ★d=dispatch-default  st=status  se=session  sc=scaffold",
+		"       i=isolate  pr=promote  ev=env  au=auth  mo=models",
+		`OF ●${ofShort}: h=harness e=evidence m=monetization r=rift d=distributed`,
+	].join("\n");
+}
+
+/**
+ * Default human-readable help (legible for unfamiliar devs).
+ * Full feature-flag keys live in the JSON data payload.
+ */
+function helpTextPlain(): string {
+	const lines = [
+		"hobo-code — HoBo coding harness CLI",
+		"You are in HoBo’s world · plain by default · --dense is opt-in power chrome",
+		"Entry contract: bare hobo-code needs a TTY; pipes/non-TTY must provide a prompt or use help.",
+		"",
+		"Usage:",
+		"  hobo-code <prompt>                 dispatch (default)",
+		"  hobo-code <verb> [args] [flags]",
+		"  hobo-code help | hobo-code --help",
+		"  hobo-code <verb> --help            help for one verb (e.g. auth)",
+		"  hobo-code help <verb>              same as <verb> --help",
+		"  hobo-code help --dense             power-user glyph strip + legend",
+		"",
+		"Start here:",
+		"  guide      Claude Code / Cursor → hobo-code maps (plain English)",
+		"  auth       Login to a Station (local auto, or tenant+domain)",
+		"  dispatch   Build / refine the app (default when given a prompt)",
+		"  help       This message",
+		"",
+		"Session & status:",
+		"  status     Session / agent panes in plain words (dense glyphs with --dense)",
+		"  session    Isolation session + handback",
+		"  attach     Dev-terminal attach (tmux/mosh/Tailscale-shaped)",
+		"  tasks      Background task board (Grok Build–shaped)",
+		"",
+		"Craft & cost:",
+		"  scaffold   OpenUI/Astryx scaffold template",
+		"  isolate    Mediated sandbox for agent work",
+		"  promote    Promote a run through gate checklist",
+		"  edit       Open [neo]vim in managed harness pane (CLI-native)",
+		"  cost       Budget, $0 path, savings, free/local routing",
+		"  models     Active model + BYOK / open-model env (no secrets)",
+		"  config     Env/flags inventory by stack (setup critique)",
+		"",
+		"Agent & harness:",
+		"  agent      Agent-native: human-free auth, MCP/ACP, unattended",
+		"  harness    Pi/Flue dual surface, skills, self-improve, brain",
+		"  env        Hermetic shell + durable vs sandbox layout",
+		"",
+		"Flags:",
+		"  --json              Machine-readable envelope (stdout)",
+		"  --dense, -D         Power-user dense glyph chrome (opt-in)",
+		"  --home <path>       Override HOBO_HOME",
+		"  --cwd <path>        Project root (hermetic markers, isolate)",
+		"  --help, -h          Show this help (plain by default)",
+		"",
+		"Env:",
+		"  HOBO_HOME           Durable home (default: $HOME/.hobo)",
+		"                      Prefer a path outside the Nix store",
+		"  HOBO_CODE_DENSE=1   Same as --dense for the process",
+		"  HOBO_CODE_AGENT=1   Unattended / no-elicitation agent contract",
+		"",
+		"First run:",
+		"  hobo-code                         # bare TTY → InteractiveShell (Bo + chat + /)",
+		"  hobo-code guide | guide --cursor   # Claude Code / Cursor maps",
+		"  hobo-code auth login               # Station identity (local auto)",
+		"  hobo-code auth login --agent       # human-free agent path",
+		'  hobo-code "add a settings page"    # dispatch (default verb)',
+		"  hobo-code config | agent           # setup + agent-native inventory",
+		"  hobo-code status | tasks | attach | cost | harness | edit",
+		"  hobo-code isolate my-run && hobo-code promote my-run",
+		"",
+		"Examples:",
+		'  hobo-code "refine the openui bindle"',
+		"  hobo-code scaffold --name demo",
+		"  hobo-code config --stack cost-budget",
+		"  hobo-code agent --json            # MCP/ACP + unattended contract",
+		"  hobo-code edit src/cli.ts        # neovim/vim managed pane",
+		"  hobo-code models                # BYOK / open models (no secrets)",
+		"  hobo-code cost                  # $0 path + savings",
+		"  hobo-code harness               # Pi/Flue dual surface + skills",
+		"  hobo-code env --json            # optional hermetic / durable layout",
+		"  hobo-code guide --cursor --json # Cursor feature map (machine)",
+		"",
+		"Notes:",
+		"  · Binary is hobo-code (not `hobo code`). Plain help default; --dense opt-in.",
+		"  · Bare TTY opens HoBo InteractiveShell (Bo + chat + slash) — not stock Pi UI.",
+		"  · Escape hatch only: HOBO_CODE_TUI=pi or hobo-code --pi (engine experiments).",
+		"  · Setup: hobo-code config (stacks: agent-native, cost-budget, editor-vim, …).",
+		"  · Agents: hobo-code agent (MCP/ACP, human-free auth, no-elicitation).",
+		"  · Maps: guide · edit (nvim) · tasks · attach · status · cost · harness · models.",
+		"  · CLI-native: prefer keyboard verbs; nvim bridge: packages/code/editor/hobo-code.nvim",
+		"  · Nix/devenv optional (never monorepo IaC). Full payloads: hobo-code help --json",
+	];
+	return lines.join("\n");
+}
+
+function helpText(dense: boolean): string {
+	return dense ? helpTextDense() : helpTextPlain();
+}
+
+/** Per-verb help (plain). Used by `hobo-code <verb> --help` and `hobo-code help <verb>`. */
+const VERB_HELP_PLAIN: Record<
+	Exclude<HoboCodeVerb, "help">,
+	readonly string[]
+> = {
+	dispatch: [
+		"hobo-code dispatch — app-building agent dispatch",
+		"",
+		"Usage:",
+		"  hobo-code dispatch <prompt…>",
+		"  hobo-code <prompt…>                 # same (default verb)",
+		"",
+		"Flags:",
+		"  --json              Machine-readable envelope",
+		"  --pool <id>         Compute pool (advanced)",
+		"  --home <path>       Override HOBO_HOME",
+		"  --help, -h          Show this help",
+		"",
+		"Requires: hobo-code auth login (local Station auto-resolves).",
+		"",
+		"Examples:",
+		'  hobo-code "add a login form to the bindle"',
+		'  hobo-code dispatch "refine the openui scaffold"',
+		"",
+		"See also: hobo-code auth · hobo-code scaffold · hobo-code session",
+	],
+	status: [
+		"hobo-code status — session / agent multiplexer chrome",
+		"",
+		"Usage:",
+		"  hobo-code status                 # plain English hierarchy (default)",
+		"  hobo-code status --dense         # power-user glyph box chrome",
+		"  hobo-code status --json",
+		"",
+		"What you see (plain default):",
+		"  · Agent list with idle / working / blocked / done words",
+		"  · Summary counts, theme, and a clear Next: line",
+		"  · Dense glyph box only with --dense (○ ● ▲ ✓ · ▸ focus)",
+		"",
+		"What you see (--dense):",
+		"  · Pane fold with semantic state glyphs; ≤4 panes per fold line",
+		"  · Footer legend: herdr · panes · detach · highlight→copy",
+		"  · --json exposes copyOnHighlight, detachable, theme, panes, capabilities",
+		"",
+		"Herdr differentiators (vs single-stream agent CLIs):",
+		"  · Multi-pane mux with background-ready agent states",
+		"  · Detachable session model (session verb persists handback)",
+		"  · Highlight-to-copy: select text in a pane → highlightBuffer / ↳ clip",
+		"",
+		"Flags:",
+		"  --dense, -D         Glyph box chrome (opt-in)",
+		"  --json              Machine-readable status + herdr capabilities",
+		"  --help, -h          Show this help",
+		"",
+		"See also: hobo-code session · hobo-code auth status",
+	],
+	session: [
+		"hobo-code session — isolation session + durable handback (Herdr mux)",
+		"",
+		"Usage:",
+		"  hobo-code session",
+		"  hobo-code session --json",
+		"",
+		"What you see:",
+		"  · Embedded Herdr status box (coordinator + worker panes)",
+		"  · Handback LED on title (● clean final · ●o open live)",
+		"  · --json: status.copyOnHighlight, detachable, theme herdr,",
+		"    persistence.durableRoot + session-end handback path",
+		"  · --json also embeds remote named-endpoint registration",
+		"",
+		"Persistence:",
+		"  Handback and session-end.json land under the run durable root",
+		"  inside $HOBO_HOME (outside the sandbox tree). Detach-friendly.",
+		"",
+		"Flags:",
+		"  --json              Machine-readable session + handback + herdr caps",
+		"  --home <path>       Override HOBO_HOME",
+		"  --help, -h          Show this help",
+		"",
+		"Uses the Station from hobo-code auth login when present.",
+		"",
+		"See also: hobo-code attach · hobo-code auth · hobo-code isolate · hobo-code status",
+	],
+	guide: [
+		"hobo-code guide — Claude Code / Cursor → hobo-code maps (plain English)",
+		"",
+		"For Claude Code advanced users and Cursor power users who want a cheat sheet.",
+		"",
+		"Usage:",
+		"  hobo-code guide                 # Claude Code map (default)",
+		"  hobo-code guide --cursor        # Cursor Agent/Composer/Background/BugBot map",
+		"  hobo-code guide --json",
+		"  hobo-code guide --cursor --json",
+		"",
+		"Claude Code map (default):",
+		"  workflows · remote connect · channels · routines",
+		"  automated/ultrareview · browser/Chrome · deep-research",
+		"  fork · btw · plan · login",
+		"",
+		"Cursor map (--cursor):",
+		"  Agent mode · Composer · Tab · Background Agent · BugBot",
+		"  MCP · Rules · Hooks · Memories · Automations · multi-model · CLI",
+		"",
+		"Each row shows status (supported / partial / residual) and a try command.",
+		"Honest gaps are listed under Residual.",
+		"",
+		"Flags:",
+		"  --cursor            Cursor power-user map (instead of Claude Code)",
+		"  --from cursor       Same as --cursor",
+		"  --json              Full structured map + residual list",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code guide",
+		"  hobo-code guide --cursor",
+		"  hobo-code guide --cursor --json",
+		"  hobo-code auth login   # then scaffold / dispatch",
+		"",
+		"See also: hobo-code help · hobo-code scaffold · hobo-code tasks · hobo-code isolate",
+	],
+	tasks: [
+		"hobo-code tasks — background task board (Grok Build–shaped)",
+		"",
+		"Usage:",
+		"  hobo-code tasks",
+		"  hobo-code tasks --json",
+		"",
+		"For AI-native Grok Build users:",
+		"  · Grok Build: fullscreen mouse TUI, tasks pane, click still-running,",
+		"    workflows overlay, subagents, headless -p, Plan Mode",
+		"  · hobo-code tasks: agent task board + clickable task-row story,",
+		"    durable Local World workflow steps, grokBuild parity JSON card",
+		"",
+		"What you see:",
+		"  · Subagent/task/watcher rows with semantic glyphs (○ idle · ● work · …)",
+		"  · Legend: grok-build · click · tasks · workflows",
+		"  · --json: clickableRegions, backgroundTasks, workflows, compare.grokBuild",
+		"",
+		"Flags:",
+		"  --json              Full tasks surface + Grok Build parity card",
+		"  --home <path>       Override HOBO_HOME",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code tasks",
+		"  hobo-code tasks --json",
+		"  hobo-code status    # mux chrome; herdr footer + clickableRegions in data",
+		"",
+		"See also: hobo-code status · hobo-code session · hobo-code help",
+	],
+	mux: [
+		"hobo-code mux — herdr-style multi-pane tmux session",
+		"",
+		"Seats every agent found on this machine in its own tmux window.",
+		"Local agents, local inference and ssh hosts are the same kind of",
+		"target: a command in a pane, so detach/reattach works identically.",
+		"",
+		"Usage:",
+		"  hobo-code mux                     detect agents, create/reuse session 'hobo'",
+		"  hobo-code mux --session work      name the session",
+		"  hobo-code mux --host box.example  run the same panes over ssh",
+		"  hobo-code mux --dry-run           show the plan without touching tmux",
+		"",
+		"Detection is evidence-based: a binary on PATH and/or a known config",
+		"directory. See hobo-code agent for what was found and why.",
+		"",
+		"Join: tmux attach -t hobo",
+	],
+	attach: [
+		"hobo-code attach — dev-terminal attach (tmux / mosh / Tailscale-shaped)",
+		"",
+		"Usage:",
+		"  hobo-code attach",
+		"  hobo-code attach --mode local|overlay",
+		"  hobo-code attach --json",
+		"",
+		"Mental model (preferred setups):",
+		"  · tmux     → detach/reattach coding sessions after SSH drop",
+		"  · cmux     → concurrent panes (see hobo-code status / session)",
+		"  · mosh     → optional UDP roaming on lossy mobile links",
+		"  · Tailscale→ --mode overlay named endpoint on the tailnet (ADR-0130)",
+		"",
+		"What you get:",
+		"  · Deterministic named endpoint host (local .hobo.localhost or overlay)",
+		"  · Attach / reattach steps + ssh/mosh hints",
+		"  · Link to session durable handback under $HOBO_HOME",
+		"  · Not a control-plane admin surface (no platform/budget/hive)",
+		"",
+		"Flags:",
+		"  --mode local|overlay   Endpoint mode (default: local)",
+		"  --json                 Full registration + compare + attach steps",
+		"  --home <path>          Override HOBO_HOME",
+		"  --help, -h             Show this help",
+		"",
+		"Examples:",
+		"  hobo-code attach",
+		"  hobo-code attach --mode overlay --json",
+		"  hobo-code session   # open work on the box, then re-attach later",
+		"",
+		"See also: hobo-code session · hobo-code status · hobo-code auth",
+	],
+	scaffold: [
+		"hobo-code scaffold — OpenUI/Astryx scaffold template",
+		"",
+		"Usage:",
+		"  hobo-code scaffold [--name <name>] [--out <dir>]",
+		"",
+		"Flags:",
+		"  --name <name>       Scaffold name",
+		"  --out <dir>         Output directory",
+		"  --json              Machine-readable result",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code scaffold --name demo",
+		"",
+		"See also: hobo-code dispatch · hobo-code help",
+	],
+	isolate: [
+		"hobo-code isolate — mediated sandbox for agent work",
+		"",
+		"Usage:",
+		"  hobo-code isolate [runId]",
+		"",
+		"Flags:",
+		"  --json              Isolation context + layout",
+		"  --cwd <path>        Project root",
+		"  --home <path>       Override HOBO_HOME",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code isolate my-run",
+		"  hobo-code promote my-run",
+		"",
+		"See also: hobo-code promote · hobo-code session",
+	],
+	promote: [
+		"hobo-code promote — promote a run through gate checklist",
+		"",
+		"Usage:",
+		"  hobo-code promote <runId>",
+		"  hobo-code promote --run <runId>",
+		"",
+		"Flags:",
+		"  --run <runId>       Run id",
+		"  --json              Machine-readable result",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code isolate my-run && hobo-code promote my-run",
+		"",
+		"See also: hobo-code isolate · hobo-code status",
+	],
+	env: [
+		"hobo-code env — hermetic shell + durable layout",
+		"",
+		"Usage:",
+		"  hobo-code env",
+		"  hobo-code env --json",
+		"",
+		"Flags:",
+		"  --json              Full hermetic report",
+		"  --cwd <path>        Project root",
+		"  --home <path>       Override HOBO_HOME",
+		"  --help, -h          Show this help",
+		"",
+		"See also: hobo-code help · hobo-code auth status",
+	],
+	models: [
+		"hobo-code models — active model + BYOK / open models",
+		"",
+		"Usage:",
+		"  hobo-code models",
+		"  hobo-code models --json",
+		"",
+		"Shows the active provider/model (HOBO_CODE_MODEL or default) and which",
+		"BYOK env *names* are set — never prints secret values.",
+		"",
+		"GHCP-parity notes:",
+		"  · Open models via BYOK env keys (OpenAI, Anthropic, Google, xAI, …)",
+		"  · Interactive animated title on bare TTY `hobo-code`",
+		"  · Sandbox via isolate/session after auth login",
+		"",
+		"$0 / free-local (cost-conscious):",
+		"  · export HOBO_CODE_MODEL=ollama/qwen2.5-coder:7b",
+		"  · or OPENAI_BASE_URL=http://127.0.0.1:… for local OpenAI-compatible / OrnithAI-class",
+		"  · see hobo-code cost for budget + savings scoreboard",
+		"",
+		"Flags:",
+		"  --json              Full models payload",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  export HOBO_CODE_MODEL=openai/gpt-4.1",
+		"  export OPENAI_API_KEY=…   # value never shown by models",
+		"  hobo-code models",
+		"",
+		"See also: hobo-code cost · hobo-code auth · hobo-code help",
+	],
+	config: [
+		"hobo-code config — env/flags inventory by stack (setup critique)",
+		"",
+		"Personas judge setup from preferred stacks. This command lists knobs,",
+		"presence (never secret values), and a setup checklist.",
+		"",
+		"Usage:",
+		"  hobo-code config",
+		"  hobo-code config --stack cost-budget|editor-vim|hermetic-nix|…",
+		"  hobo-code config --json",
+		"",
+		"Stacks:",
+		"  core · auth · models-byok · cost-budget · hermetic-nix",
+		"  isolation · remote-attach · editor-vim · harness-pi-flue",
+		"  chrome-dense · monetization",
+		"",
+		"Flags:",
+		"  --stack <id>        Filter knobs to one stack",
+		"  --json              Full inventory",
+		"  --cwd <path>        Project root for file markers",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code config",
+		"  hobo-code config --stack editor-vim",
+		"  hobo-code config --stack cost-budget --json",
+		"",
+		"See also: hobo-code env · hobo-code cost · hobo-code models · hobo-code edit",
+	],
+	edit: [
+		"hobo-code edit — open [neo]vim in a managed harness pane",
+		"",
+		"For CLI-native engineers who live in vim/neovim (keyboard-first).",
+		"",
+		"Usage:",
+		"  hobo-code edit [path]",
+		"  hobo-code edit --editor nvim|vim|hx",
+		"  hobo-code edit --bridge tmux-send|direct-exec|stdio-jsonrpc|acp",
+		"  hobo-code edit --layout split-right|split-below|float|replace",
+		"  hobo-code edit --json [path]",
+		"  hobo-code edit --print-cmd [path]   # print open script only (shell eval)",
+		"",
+		"Bridge:",
+		"  · tmux-send (default when tmux on PATH) — split pane titled hobo-code·nvim",
+		"  · direct-exec — spawn editor in this TTY",
+		"  · stdio-jsonrpc — neovim plugin ↔ hobo-code JSON",
+		"  · acp — ACP-shaped (partial)",
+		"",
+		"Extension:",
+		"  packages/code/editor/hobo-code.nvim  →  :HoboOpen :HoboStatus :HoboIsolation",
+		"",
+		"CLI navigation (no GUI):",
+		"  status · tasks · isolate · edit · promote · attach",
+		"",
+		"Flags:",
+		"  --editor <bin>      nvim | vim | hx | $EDITOR binary",
+		"  --bridge <mode>     tmux-send | direct-exec | stdio-jsonrpc | acp",
+		"  --layout <layout>   split-right | split-below | float | replace",
+		"  --print-cmd         Print open command only (no panel)",
+		"  --json              Full bridge contract",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code edit src/cli.ts",
+		"  hobo-code isolate my-run && hobo-code edit .",
+		"  hobo-code edit --bridge tmux-send --print-cmd path",
+		"",
+		"See also: hobo-code status · hobo-code isolate · hobo-code attach · hobo-code harness",
+	],
+	harness: [
+		"hobo-code harness — Pi/Flue dual surface, skills, self-improve, brain",
+		"",
+		"For AI automation engineers who live in harnesses (Pi terminal + Flue durable).",
+		"",
+		"Usage:",
+		"  hobo-code harness",
+		"  hobo-code harness --json",
+		"",
+		"Shows:",
+		"  · Dual surface: Pi TUI path + flue run hobo-code",
+		"  · Shared customization (harness-customization.ts — ADR-0139)",
+		"  · Skill roots (.agents/skills, .claude/skills) + presence",
+		"  · Eve-shaped subagents (investigator · implementer · reviewer)",
+		"  · Self-improve loop: isolate → evidence → promote → durable",
+		"  · Brain notes: Serena · gbrain · durable handback · GraphRAG residual",
+		"",
+		"Pi vs Flue (mental model):",
+		"  · Pi  — lightweight terminal coding-agent harness (tools loop)",
+		"  · Flue — TypeScript framework on Pi: describe knowledge, durable run",
+		"",
+		"Flags:",
+		"  --json              Full harness inventory",
+		"  --cwd <path>        Project root for skill-root presence",
+		"  --home <path>       Override HOBO_HOME (worlds hint)",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code harness",
+		"  hobo-code harness --json",
+		'  flue run hobo-code --input \'{"message":"status"}\'',
+		"",
+		"See also: hobo-code session · hobo-code tasks · hobo-code isolate · hobo-code cost",
+	],
+	cost: [
+		"hobo-code cost — budget, $0 path, savings, free/local routing",
+		"",
+		"For cost-conscious open-source devs on a tight or $0 budget.",
+		"",
+		"Usage:",
+		"  hobo-code cost",
+		"  hobo-code cost --json",
+		"",
+		"Shows:",
+		"  · Spend / cap / remaining (HOBO_CODE_BUDGET_USD)",
+		"  · Routing policy (cheapest-capable by default)",
+		"  · Active model + local/free hint",
+		"  · Savings vs illustrative always-frontier baseline",
+		"  · Free/local recipes (Ollama, OpenAI-compatible local, OrnithAI-class)",
+		"  · Token-tool stack (RTK, headroom, caveman, Serena, ponytail)",
+		"  · Monetization disable path (never inspects code/prompts)",
+		"",
+		"Env:",
+		"  HOBO_CODE_BUDGET_USD=5          Cap (default 5)",
+		"  HOBO_CODE_ROUTING=cheapest-capable|pinned|fallback-chain",
+		"  HOBO_CODE_MONETIZATION=0        Force monetization off",
+		"  HOBO_CODE_MODEL=ollama/…        Free/local model id",
+		"  OPENAI_BASE_URL / OLLAMA_HOST   Local endpoint",
+		"",
+		"Flags:",
+		"  --json              Full cost payload",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  export HOBO_CODE_MONETIZATION=0",
+		"  export HOBO_CODE_MODEL=ollama/qwen2.5-coder:7b",
+		"  hobo-code cost",
+		"",
+		"See also: hobo-code models · hobo-code help",
+	],
+	auth: [
+		"hobo-code auth — login to a Station (app agent identity)",
+		"",
+		"Usage:",
+		"  hobo-code auth login",
+		"  hobo-code auth login --tenant <id> --domain <host>",
+		"  hobo-code auth login --complete <device-code>",
+		"  hobo-code auth status",
+		"  hobo-code auth logout",
+		"  hobo-code auth whoami",
+		"",
+		"Local Station (default):",
+		"  Auto-resolves station:local (or the only local Station), inits if needed.",
+		"  Similar to a happy-path local copilot login — no browser required.",
+		"",
+		"Agent / human-free (preferred for coding agents):",
+		"  hobo-code auth login --agent",
+		"  Sets HOBO_CODE_AGENT contract: no browser, no elicitation, session-ref.",
+		"  Or: export HOBO_CODE_SESSION_REF=… / prior durable session.json",
+		"",
+		"Remote Station (human bootstrap residual for agents):",
+		"  Provide --tenant and --domain (station host).",
+		"  Prints a one-time device code + verification URL (RFC 8628-shaped).",
+		"  Complete with: hobo-code auth login --complete <code>",
+		"  Steady-state agents should prefer local/session-ref over device-code.",
+		"",
+		"Flags:",
+		"  --agent             Human-free local login + agent contract",
+		"  --tenant <id>       Tenant (required for remote)",
+		"  --domain <host>     Station domain (triggers remote login)",
+		"  --station <id>      Explicit station id",
+		"  --complete <code>   Finish remote device-code login",
+		"  --json              Machine-readable envelope",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code auth login",
+		"  hobo-code auth login --agent",
+		"  hobo-code auth login --tenant acme --domain stations.acme.example",
+		"  hobo-code auth status",
+		"  hobo-code auth logout",
+		"",
+		"See also: hobo-code agent · hobo-code session · hobo-code dispatch",
+	],
+	agent: [
+		"hobo-code agent — agent-native readiness (AX)",
+		"",
+		"For coding agents that need:",
+		"  · Human-free auth (local Station / session-ref; not browser-only)",
+		"  · Safe unattended iterate (isolate→promote, no elicitation)",
+		"  · Learn from mistakes (self-improve + durable handback)",
+		"  · Native protocols (MCP tools, ACP stdio, --json)",
+		"",
+		"Usage:",
+		"  hobo-code agent",
+		"  hobo-code agent --json",
+		"",
+		"Standards inventory (honest status):",
+		"  · MCP — tools/resources; stdio env credentials; HTTP OAuth 2.1 residual",
+		"  · ACP — editor↔agent JSON-RPC 2.0 over stdio (partial host)",
+		"  · stdio-jsonrpc / cli-json — unattended verb contract",
+		"  · Device-code / CIBA — human bootstrap residual",
+		"",
+		"Env:",
+		"  HOBO_CODE_AGENT=1              Enable agent contract",
+		"  HOBO_CODE_NO_ELICITATION=1     Same (no prompts)",
+		"  HOBO_CODE_SESSION_REF=…        Pre-bound session (never printed)",
+		"",
+		"Examples:",
+		"  export HOBO_CODE_AGENT=1",
+		"  hobo-code auth login --agent",
+		"  hobo-code agent --json",
+		"  hobo-code isolate --json && hobo-code promote --run <id> --json",
+		"",
+		"See also: hobo-code harness · hobo-code config --stack agent-native · auth",
+	],
+};
+
+function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
+	if (verb === "help") return helpText(dense);
+	if (dense) {
+		// Compact one-liner pointer + plain block would thrash; keep short.
+		const tails: Record<string, string> = {
+			dispatch: "★d",
+			status: "st",
+			session: "se",
+			attach: "at",
+			tasks: "tk",
+			guide: "gd",
+			scaffold: "sc",
+			isolate: "i",
+			promote: "pr",
+			env: "ev",
+			auth: "au",
+			models: "mo",
+			cost: "$",
+			harness: "hz",
+			edit: "ed",
+			config: "cfg",
+			agent: "ag",
+		};
+		const t = tails[verb] ?? verb;
+		return [
+			`hobo-code ${verb} · dense · tail ${t}`,
+			`plain: hobo-code ${verb} --help`,
+			`top:   hobo-code help --dense`,
+			"",
+			...VERB_HELP_PLAIN[verb],
+		].join("\n");
+	}
+	return VERB_HELP_PLAIN[verb].join("\n");
+}
+
+function isTopicVerb(token: string): token is Exclude<HoboCodeVerb, "help"> {
+	return VERB_SET.has(token) && token !== "help";
+}
+
+/**
+ * When --dense, compress long verb titles to power-user tails (glyph idioms).
+ * Default (plain) leaves messages unchanged for unfamiliar devs.
+ */
+export function applyDenseChrome(message: string): string {
+	const lines = message.split("\n");
+	const titleMap: Record<string, string> = {
+		"▣ isolate": "▣ i",
+		"✓ promote": "✓ pr",
+		"✕ promote": "✕ pr",
+		"✕ isolate": "✕ i",
+		"✕ session": "✕ se",
+		"✕ distributed": "✕ dist",
+		"✕ cmd": "✕ ?",
+		"? cmd": "? ?",
+		"▣ env": "▣ ev",
+		"▣ pl": "▣ pl",
+		"◎ re": "◎ re",
+		"◎ attach": "◎ at",
+		"▣ tasks": "▣ tk",
+		"▣ guide": "▣ gd",
+		"◈ b": "◈ b",
+		"✦ sc": "✦ sc",
+		"◈ cost": "◈ $",
+		"◈ harness": "◈ hz",
+		"◈ edit": "◈ ed",
+		"◈ config": "◈ cfg",
+	};
+	return lines
+		.map((line, idx) => {
+			if (idx === 0 && titleMap[line]) return titleMap[line]!;
+			// Short next-step idioms
+			return line
+				.replace(/^ next · hobo-code promote (.+)$/, " next · pr $1")
+				.replace(/^ next · hobo-code status$/, " next · st")
+				.replace(/^ try · hobo-code help$/, " try · help")
+				.replace(/^ did you mean · /, " ≈ ")
+				.replace(/^ unknown · /, " ? ");
+		})
+		.join("\n");
 }
 
 /**
@@ -215,32 +1113,68 @@ export async function runHoboCodeCli(
 	deps: HoboCodeCliDeps = {},
 ): Promise<HoboCodeCliResult> {
 	const env = deps.env ?? process.env;
-	const { verb, args, flags, defaultedVerb } = parseArgv(argv);
+	let parsed: ReturnType<typeof parseArgv>;
+	try {
+		parsed = parseArgv(argv);
+	} catch (error) {
+		// Strict flag parsing: unknown/malformed flags fail with a help pointer.
+		const message = error instanceof Error ? error.message : String(error);
+		return {
+			ok: false,
+			status: "failed",
+			code: "HOBO_CODE_UNKNOWN_FLAG",
+			message: panel("✕ flags", [message, "try · hobo-code help"]),
+			remediation: ["hobo-code help", "hobo-code <verb> --help"],
+			exitCode: 1,
+		};
+	}
+	const { verb, args, flags, defaultedVerb } = parsed;
 	const json = deps.json === true || flags.json === true;
+	const dense =
+		deps.dense === true ||
+		flags.dense === true ||
+		env.HOBO_CODE_DENSE === "1" ||
+		env.HOBO_CODE_DENSE === "true";
 	const hoboHome =
 		(typeof flags.home === "string" && flags.home) ||
 		deps.hoboHome ||
 		defaultHoboHome(env);
 	const projectDir =
-		(typeof flags.cwd === "string" && flags.cwd) ||
-		deps.cwd ||
-		process.cwd();
+		(typeof flags.cwd === "string" && flags.cwd) || deps.cwd || process.cwd();
 	const tenant =
 		(typeof flags.tenant === "string" && flags.tenant) ||
 		(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT) ||
 		"local";
 	const stationFlag =
 		typeof flags.station === "string" ? flags.station : undefined;
-	const hiveId = (typeof flags.hive === "string" && flags.hive) || "default";
+	const poolId =
+		(typeof flags.pool === "string" && flags.pool) ||
+		(typeof flags.hive === "string" && flags.hive) || // legacy alias
+		"default";
 	const features = deps.features ?? createMemoryFeaturePort();
 
+	const authSession = readAuthSession(hoboHome);
+	const resolvedStation =
+		stationFlag ??
+		authSession?.stationId ??
+		resolveAuthenticatedStationId(hoboHome);
+	const resolvedTenant =
+		tenant !== "local" ? tenant : (authSession?.tenant ?? tenant);
 	const platform = composeCodePlatform({
 		hoboHome,
-		...(stationFlag !== undefined ? { stationId: stationFlag } : {}),
+		...(resolvedStation !== undefined ? { stationId: resolvedStation } : {}),
 		autoInitStation: true,
-		tenant,
+		tenant: resolvedTenant,
 		features,
 	});
+
+	const withDense = (data?: unknown): unknown => {
+		if (data === undefined) return { dense };
+		if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+			return { dense, ...(data as Record<string, unknown>) };
+		}
+		return { dense, payload: data };
+	};
 
 	const ok = (
 		code: string,
@@ -251,7 +1185,7 @@ export async function runHoboCodeCli(
 		status: "ok",
 		code,
 		message,
-		...(data !== undefined ? { data } : {}),
+		data: withDense(data),
 		exitCode: 0,
 	});
 
@@ -266,24 +1200,366 @@ export async function runHoboCodeCli(
 		code,
 		message,
 		...(remediation !== undefined ? { remediation } : {}),
-		...(data !== undefined ? { data } : {}),
+		data: withDense(data),
 		exitCode: 1,
 	});
 
-	void json; // caller formats stdout
+	// json/dense formatting is applied by formatHoboCodeResult / bin.
 
-	if (verb === "help") {
-		// Architecture pins (data payload; human chrome stays dense).
-		return ok("HOBO_CODE_HELP", helpText(), {
+	// Bare single-token near-miss / CLI-shaped unknowns → kind recovery, not ★ success.
+	if (defaultedVerb && args.length === 1) {
+		const raw = String(args[0] ?? "");
+		const suggestion = suggestVerbTypo(raw);
+		if (suggestion) {
+			return fail(
+				"HOBO_CODE_UNKNOWN_VERB",
+				panel("? cmd", [
+					`not a verb · ${raw}`,
+					`did you mean · ${suggestion}`,
+					"try · hobo-code help",
+					`prompt · hobo-code "${raw}"`,
+				]),
+				[
+					`hobo-code ${suggestion} …`,
+					"hobo-code help",
+					`hobo-code "${raw}"  # send as build prompt`,
+				],
+				{ unknown: raw, suggestion, defaultVerb: "dispatch" },
+			);
+		}
+		if (looksLikeUnknownVerbAttempt(raw)) {
+			return fail(
+				"HOBO_CODE_UNKNOWN_VERB",
+				panel("? cmd", [
+					`not a verb · ${raw}`,
+					"try · hobo-code help",
+					`prompt · hobo-code "${raw}"`,
+					"or · hobo-code guide",
+				]),
+				[
+					"hobo-code help",
+					`hobo-code "${raw}"  # send as build prompt`,
+					"hobo-code guide",
+					'hobo-code "add a settings page"',
+				],
+				{ unknown: raw, defaultVerb: "dispatch" },
+			);
+		}
+	}
+
+	const hermetic = inspectHermeticEnv({
+		projectRoot: projectDir,
+		hoboHome,
+		env,
+	});
+
+	// Subcommand help: `hobo-code platform --help` or `hobo-code help platform`
+	const helpTopic =
+		verb === "help" && args[0] && isTopicVerb(String(args[0]))
+			? (String(args[0]) as Exclude<HoboCodeVerb, "help">)
+			: flags.help === true && verb !== "help"
+				? (verb as Exclude<HoboCodeVerb, "help">)
+				: null;
+
+	if (verb === "help" || helpTopic !== null) {
+		const topic = helpTopic;
+		const message =
+			topic !== null ? verbHelpText(topic, dense) : helpText(dense);
+		return ok("HOBO_CODE_HELP", message, {
 			verbs: [...HOBO_CODE_VERBS],
 			defaultVerb: "dispatch",
+			dense,
+			topic: topic ?? "top",
 			defaults: CODE_FEATURE_DEFAULTS,
-			distributed: describeBuzzDistributedCompute(),
+			distributed: describeDistributedCompute(),
 			binary: "hobo-code",
 			subagents: describeEveSubagentSurface(),
 			secureSandbox: describeSecureSandboxStack(),
 			worlds: describeCodeWorlds(hoboHome),
+			hermetic,
+			hermeticPolicy:
+				"Optional devenv/nix for hobo-code hermetic toolchains; not required; durable state stays under HOBO_HOME outside sandboxes.",
 		});
+	}
+
+	if (verb === "models") {
+		const status = inspectModels(env);
+		const body = modelsHumanSummary(status);
+		const text = panel("▣ models", body.split("\n"));
+		return ok("HOBO_CODE_MODELS", text, { models: status, text });
+	}
+
+	if (verb === "cost") {
+		const status = inspectCost(env);
+		const body = costHumanSummary(status);
+		const text = panel("◈ cost", body.split("\n"));
+		return ok("HOBO_CODE_COST", text, { cost: status, text });
+	}
+
+	if (verb === "harness") {
+		const status = inspectHarnessSurface({
+			cwd: projectDir,
+			hoboHome,
+		});
+		const body = harnessHumanSummary(status);
+		const text = panel("◈ harness", body.split("\n"));
+		return ok("HOBO_CODE_HARNESS", text, { harness: status, text });
+	}
+
+	if (verb === "config") {
+		const stackRaw =
+			typeof flags.stack === "string"
+				? flags.stack.toLowerCase()
+				: args[0] && !args[0].startsWith("-")
+					? args[0].toLowerCase()
+					: "";
+		const stack: ConfigStackId | null = isConfigStackId(stackRaw)
+			? stackRaw
+			: null;
+		if (stackRaw && !stack) {
+			return fail(
+				"HOBO_CODE_CONFIG_USAGE",
+				panel("✕ config", [
+					`unknown stack · ${stackRaw}`,
+					"try · agent-native | cost-budget | editor-vim | hermetic-nix | harness-pi-flue",
+					"list · hobo-code config --help",
+				]),
+				["hobo-code config --help", "hobo-code config --json"],
+			);
+		}
+		const status = inspectConfigSurface(env, projectDir);
+		const body = configHumanSummary(status, stack);
+		const text = panel("◈ config", body.split("\n"));
+		return ok("HOBO_CODE_CONFIG", text, {
+			config: status,
+			stack,
+			text,
+		});
+	}
+
+	if (verb === "agent") {
+		const status = inspectAgentSurface({
+			hoboHome,
+			cwd: projectDir,
+			env,
+		});
+		const body = agentHumanSummary(status);
+		const text = panel("◈ agent", body.split("\n"));
+		return ok("HOBO_CODE_AGENT", text, { agent: status, text });
+	}
+
+	if (verb === "edit") {
+		const pathArg =
+			args.find((a) => !a.startsWith("-")) ??
+			(typeof flags.path === "string" ? flags.path : null);
+		const bridgeRaw =
+			typeof flags.bridge === "string" ? flags.bridge.toLowerCase() : "";
+		const bridge = (
+			["tmux-send", "direct-exec", "stdio-jsonrpc", "acp"] as const
+		).includes(bridgeRaw as BridgeMode)
+			? (bridgeRaw as BridgeMode)
+			: undefined;
+		const layoutRaw =
+			typeof flags.layout === "string" ? flags.layout.toLowerCase() : "";
+		const layout = (
+			["split-right", "split-below", "float", "replace"] as const
+		).includes(layoutRaw as PaneLayout)
+			? (layoutRaw as PaneLayout)
+			: undefined;
+		const editor =
+			typeof flags.editor === "string"
+				? flags.editor
+				: typeof flags.e === "string"
+					? flags.e
+					: undefined;
+		const status = inspectEditorBridge({
+			env,
+			path: pathArg,
+			...(editor !== undefined ? { editor } : {}),
+			...(layout !== undefined ? { layout } : {}),
+			...(bridge !== undefined ? { bridge } : {}),
+			isolationRoot: null,
+		});
+		const openCmd = editorBridgeOpenScript(status);
+		if (flags["print-cmd"] === true || flags.printcmd === true) {
+			return ok(
+				"HOBO_CODE_EDIT",
+				openCmd.endsWith("\n") ? openCmd : `${openCmd}\n`,
+				{
+					editor: status,
+					openCommand: openCmd,
+					text: openCmd,
+				},
+			);
+		}
+		const body = editorBridgeHumanSummary(status);
+		const text = panel("◈ edit", [
+			...body.split("\n"),
+			`cmd · ${openCmd.length > 42 ? `${openCmd.slice(0, 40)}…` : openCmd}`,
+			"run · hobo-code edit --print-cmd … | sh   # or eval",
+		]);
+		return ok("HOBO_CODE_EDIT", text, {
+			editor: status,
+			openCommand: openCmd,
+			text,
+		});
+	}
+
+	if (verb === "auth") {
+		const sub = (args[0] ?? "status").toLowerCase();
+		const completeCode =
+			typeof flags.complete === "string"
+				? flags.complete
+				: args[0]?.toLowerCase() === "login" && args[1] === "--complete"
+					? args[2]
+					: undefined;
+		// login --complete CODE  or  auth login with --complete flag
+		if (
+			sub === "login" &&
+			(typeof flags.complete === "string" || args[1] === "--complete")
+		) {
+			const code =
+				(typeof flags.complete === "string" && flags.complete) ||
+				(args[1] === "--complete" ? args[2] : undefined) ||
+				args[1];
+			if (!code) {
+				return fail(
+					"HOBO_CODE_AUTH_USAGE",
+					panel("✕ auth", [
+						"missing device code",
+						"usage · hobo-code auth login --complete <code>",
+					]),
+					["hobo-code auth login --tenant <t> --domain <host>"],
+				);
+			}
+			const result = confirmRemoteLogin({
+				hoboHome,
+				userCode: String(code),
+			});
+			if (!result.ok || result.status !== "logged-in") {
+				const codeOut = result.ok ? "HOBO_CODE_AUTH_PENDING" : result.code;
+				const msg = result.message;
+				const rem = result.ok ? [] : result.remediation;
+				return fail(codeOut, panel("✕ auth", [msg]), rem);
+			}
+			const text = panel("✓ auth", [
+				result.message,
+				`station · ${result.session.stationId}`,
+				'next · hobo-code dispatch "…"',
+			]);
+			return ok("HOBO_CODE_AUTH", text, { auth: result, text });
+		}
+		if (sub === "login") {
+			const agentLogin =
+				flags.agent === true ||
+				env.HOBO_CODE_AGENT === "1" ||
+				env.HOBO_CODE_AGENT === "true";
+			// Agent path refuses remote device-code as steady-state: force local.
+			if (
+				agentLogin &&
+				(typeof flags.domain === "string" ||
+					typeof flags.tenant === "string") &&
+				flags.force !== true
+			) {
+				return fail(
+					"HOBO_CODE_AUTH_AGENT_REMOTE",
+					panel("✕ auth", [
+						"agent login refuses interactive remote device-code",
+						"use · local Station (drop --tenant/--domain)",
+						"or · pre-bind HOBO_CODE_SESSION_REF / prior session.json",
+						"human bootstrap · auth login --tenant … --domain … (no --agent)",
+					]),
+					[
+						"hobo-code auth login --agent",
+						"export HOBO_CODE_SESSION_REF=…",
+						"hobo-code agent --json",
+					],
+				);
+			}
+			const mock =
+				env.HOBO_CODE_AUTH_MOCK === "1" ||
+				flags.mock === true ||
+				flags["complete-remote"] === true;
+			const result = authLogin({
+				hoboHome,
+				...(typeof flags.tenant === "string" && !agentLogin
+					? { tenant: flags.tenant }
+					: {}),
+				...(typeof flags.domain === "string" && !agentLogin
+					? { domain: flags.domain }
+					: {}),
+				...(typeof flags.station === "string"
+					? { stationId: flags.station }
+					: {}),
+				completeRemoteImmediately: mock,
+				autoInitLocal: true,
+			});
+			if (!result.ok) {
+				return fail(
+					result.code,
+					panel("✕ auth", [
+						result.message,
+						...result.remediation.map((r) => `→ ${r}`),
+					]),
+					result.remediation,
+				);
+			}
+			if (result.status === "device-code-pending") {
+				const text = panel("◎ auth login", [
+					"remote device code",
+					`code · ${result.userCode}`,
+					`open · ${result.verificationUrl}`,
+					`then · hobo-code auth login --complete ${result.userCode}`,
+				]);
+				return ok("HOBO_CODE_AUTH_PENDING", text, { auth: result, text });
+			}
+			const text = panel("✓ auth login", [
+				result.session.mode === "local"
+					? `Logged in to Station ${result.session.stationId} (local)`
+					: `Logged in to Station ${result.session.displayName}`,
+				`tenant · ${result.session.tenant}`,
+				...(result.session.domain ? [`domain · ${result.session.domain}`] : []),
+				...(agentLogin
+					? [
+							"agent · human-free · no-elicitation",
+							`sessionRef · ${result.session.sessionRef.slice(0, 12)}…`,
+							"next · hobo-code agent --json · isolate --json",
+						]
+					: [
+							"sandbox · isolate/session (mediated)",
+							"models · hobo-code models",
+							'next · hobo-code "build something"',
+						]),
+			]);
+			return ok("HOBO_CODE_AUTH", text, {
+				auth: result,
+				session: result.session,
+				text,
+			});
+		}
+		if (sub === "logout") {
+			const cleared = clearAuthSession(hoboHome);
+			const text = panel("✓ auth logout", [
+				cleared ? "signed out" : "already signed out",
+				"next · hobo-code auth login",
+			]);
+			return ok("HOBO_CODE_AUTH", text, { cleared, text });
+		}
+		// status / whoami / default
+		const st = authStatus(hoboHome);
+		const text = panel(st.loggedIn ? "✓ auth" : "○ auth", [
+			st.message,
+			...(st.session
+				? [
+						`mode · ${st.session.mode}`,
+						`station · ${st.session.stationId}`,
+						`tenant · ${st.session.tenant}`,
+						"sandbox · isolate/session (mediated)",
+						"models · hobo-code models",
+					]
+				: ["next · hobo-code auth login"]),
+		]);
+		return ok("HOBO_CODE_AUTH", text, { auth: st, text });
 	}
 
 	if (verb === "status") {
@@ -306,189 +1582,259 @@ export async function runHoboCodeCli(
 					: (platform.station.remediation ?? "miss"),
 			),
 			createPane(
-				"hive",
-				platform.features.distributed ? "idle" : "blocked",
-				platform.features.distributed
-					? hiveId === "default"
-						? "" // idle glyph = ready
-						: hiveId
-					: "distributed off",
+				"auth",
+				authSession ? "done" : "idle",
+				authSession
+					? authSession.mode === "local"
+						? ""
+						: authSession.displayName
+					: "login",
 			),
 		];
 		const status = buildMultiplexerStatus(panes, {
 			remoteReady: true,
 			theme: "herdr",
 		});
-		// Box already carries Np · glyphs · remote — chip available in data for status bars.
-		const text = renderStatusText(status);
+		const herdr = herdrMuxCapabilities(status.theme);
+		const grokBuild = grokBuildParity();
+		// Plain default: English hierarchy for GUI-native humans.
+		// Dense opt-in: glyph box + Herdr/Grok footers (power chrome).
+		const text = dense
+			? `${renderStatusText(status)}\n${renderHerdrCapabilityFooter(herdr)}\n${renderGrokBuildFooter(grokBuild)}`
+			: renderStatusText(status, { plain: true });
 		const chip = renderStatusChip(status);
 		// Human primary output is the chrome itself, not a one-line summary.
 		return ok("HOBO_CODE_STATUS", text, {
 			status,
+			herdr,
+			capabilities: herdr,
+			grokBuild,
 			text,
 			chip,
+			dense,
 			platform,
 			dogfood: dogfoodSummary(platform.station.stationId),
 		});
 	}
 
-	if (verb === "platform") {
-		const flagLed = (label: string, v: boolean) =>
-			`${v ? "●" : "○"}${label}`;
-		const flags = platform.features;
-		// Ultra-short LED labels (match help OF tails); full ids in OpenFeature help.
-		const flagPairs: readonly [string, boolean][] = [
-			["harness", flags.harnessEnabled],
-			["evid", flags.visualEvidence],
-			["mon", flags.monetizationSurface],
-			["rift", flags.riftPreferred],
-			["dist", flags.distributed],
-		];
-		const strip = flagPairs.map(([label, v]) => flagLed(label, v)).join("·");
-		const allOn = flagPairs.every(([, v]) => v);
-		const offCount = flagPairs.filter(([, v]) => !v).length;
-		// Present LED bare; missing stays scannable.
-		const stationLed = platform.station.present ? "●" : "○miss";
-		const providerLine = formatProviderLine(
-			platform.provider.id,
-			platform.provider.packageHint,
-		);
-		const stationBits = [
-			stationLed,
-			platform.station.present &&
-			shortStation(platform.station.stationId) === "local"
-				? null
-				: shortStation(platform.station.stationId),
-			shortHash(platform.station.railHash),
-		].filter((x): x is string => x !== null && x.length > 0);
-		const text = panel("▣ pl", [
-			// Happy path: LED/hash only — all● is product default (omit).
-			// Strip + off-count only when any flag off.
-			// st observe is product default next — omit twin
-			allOn
-				? stationBits.join("·")
-				: `${stationBits.join("·")}·${strip}·${offCount}○`,
-			// Omit flue when package collapses to id (happy path).
-			...(providerLine === "flue" ? [] : [`provider · ${providerLine}`]),
-		]);
-		return ok("HOBO_CODE_PLATFORM", text, {
+	if (verb === "tasks") {
+		const surface = buildTasksSurface({
+			hoboHome,
+			...(typeof flags.run === "string" ? { runId: flags.run } : {}),
+			panes: [
+				createPane(
+					"coord",
+					platform.features.harnessEnabled ? "working" : "blocked",
+					platform.features.harnessEnabled ? "dispatch" : "harness off",
+				),
+				createPane("worker", "idle", "standby"),
+				createPane("watcher", "idle", "monitor"),
+			],
+		});
+		const text = renderTasksBoardText(surface);
+		return ok("HOBO_CODE_TASKS", text, {
+			...surface,
+			text,
 			platform,
-			dogfood: dogfoodSummary(platform.station.stationId),
-			distributed: describeBuzzDistributedCompute(),
+		});
+	}
+
+	if (verb === "guide") {
+		const fromRaw =
+			typeof flags.from === "string" ? flags.from.toLowerCase() : "";
+		const wantCursor =
+			flags.cursor === true ||
+			fromRaw === "cursor" ||
+			args.some((a) => a.toLowerCase() === "cursor");
+		if (wantCursor) {
+			const guide = cursorGuide();
+			const text = renderCursorGuideText(guide);
+			return ok("HOBO_CODE_GUIDE", text, {
+				guide,
+				cursor: guide,
+				source: "cursor",
+				text,
+			});
+		}
+		const guide = claudeCodeGuide();
+		const text = renderClaudeCodeGuideText(guide);
+		return ok("HOBO_CODE_GUIDE", text, {
+			guide,
+			claudeCode: guide,
+			source: "claude-code",
 			text,
 		});
 	}
 
-	if (verb === "remote") {
-		// Prefer short local DNS when single-tenant local; keep tenant for multi-tenant.
-		const reg = registerCodeNamedEndpoint({
-			mode: "local",
-			...(tenant !== "local" ? { tenant, project: "mux" } : {}),
+	if (verb === "mux") {
+		const probes = defaultProbes(env);
+		const agents = detectAgents(probes);
+		// Agents work in the declared devenv workspace, not wherever the shell
+		// happened to be standing.
+		const workspace = findWorkspaceRoot(projectDir, env);
+		const session =
+			typeof flags.session === "string" && flags.session.length > 0
+				? flags.session
+				: "hobo";
+		// Every agent is a target; local inference is not a special case, it is
+		// just a target whose kind says where the work runs.
+		// One virtual worktree per agent (rift by default) so parallel agents
+		// cannot collide in a shared checkout.
+		const allocation = await allocateAgentWorkspaces({
+			workspaceRoot: workspace.path,
+			agentIds: agents.map((a) => a.id),
+			fallbackRoot: join(hoboHome, "workspaces"),
+			env,
+			shared: flags.shared === true,
 		});
-		const modeLed = reg.mode === "local" ? "● local" : "● overlay";
+		const workspaceFor = new Map(
+			allocation.workspaces.map((w) => [w.agentId, w]),
+		);
+		const targets: MuxTarget[] = agents.map((a) => ({
+			name: a.id,
+			kind: a.kind === "inference" ? "local-inference" : "local",
+			command: a.command,
+			cwd: workspaceFor.get(a.id)?.path ?? workspace.path,
+		}));
+		// A remote host turns the same targets into ssh panes — identical shape.
+		const host = typeof flags.host === "string" ? flags.host : undefined;
+		const remoteTargets: MuxTarget[] = host
+			? targets.map((t): MuxTarget => ({ ...t, kind: "ssh", host }))
+			: targets;
+		const plan = planMux(session, remoteTargets);
+		if (agents.length === 0) {
+			return fail(
+				"HOBO_CODE_MUX_NO_AGENTS",
+				panel("✕ mux", [
+					"no agents detected on this machine",
+					"install one (claude, codex, cursor-agent, opencode, …) or run hobo-code alone",
+				]),
+				["hobo-code agent", "hobo-code config"],
+				{ agents, plan },
+			);
+		}
+		const applied =
+			flags["dry-run"] === true
+				? {
+						ok: true,
+						session: plan.session,
+						created: plan.targets.map((t) => t.name),
+						existed: false,
+						detail: "dry run — no tmux invoked",
+					}
+				: await applyMux(plan, tmuxRunner());
+		const text = panel(applied.ok ? "✓ mux" : "✕ mux", [
+			applied.detail,
+			`workspace · ${workspace.path} (${workspace.source})`,
+			`trees · ${allocation.backend}${allocation.reason ? ` — ${allocation.reason}` : ""}`,
+			...agents.map(
+				(a) => `  ${a.id} · ${workspaceFor.get(a.id)?.path ?? workspace.path}`,
+			),
+			`join · ${attachCommand(plan.session, host)}`,
+		]);
+		return applied.ok
+			? ok("HOBO_CODE_MUX", text, {
+					session: plan.session,
+					agents,
+					plan,
+					applied,
+				})
+			: fail(
+					"HOBO_CODE_MUX_FAILED",
+					text,
+					["tmux -V", "hobo-code mux --dry-run"],
+					{
+						agents,
+						plan,
+						applied,
+					},
+				);
+	}
+
+	if (verb === "attach") {
+		// Dev-terminal attach (tmux/mosh/Tailscale-shaped) — not control-plane remote admin.
+		const modeFlag =
+			typeof flags.mode === "string" ? flags.mode.toLowerCase() : "local";
+		const mode: CodeRemoteMode =
+			modeFlag === "overlay" ||
+			modeFlag === "tailscale" ||
+			modeFlag === "tailnet"
+				? "overlay"
+				: "local";
+		const surface = describeDevTerminalAttach({
+			mode,
+			...(tenant !== "local" ? { tenant, project: "mux" } : {}),
+			stationId: platform.station.stationId,
+		});
+		const reg = surface.registration;
+		const hostShort = shortNamedHost(reg.host);
 		const remoteStation = shortStation(platform.station.stationId);
-		// Prefer host; show url only when it is not https://host.
 		const urlExtra =
 			reg.url === `https://${reg.host}` || reg.url === `http://${reg.host}`
 				? null
 				: reg.url;
-		// resource/app default code/mux — omit twin when host already brands it.
-		const resApp = `${reg.resource}/${reg.app}`;
-		const defaultResApp =
-			resApp === "code/mux" || reg.host.includes("code.mux.");
-		// .hobo.localhost / .hobo.test product suffixes — drop for scan.
-		const hostShort = reg.host
-			.replace(/\.hobo\.localhost$/, "")
-			.replace(/\.hobo\.test$/, "");
-		// Happy-path host code.mux already brands mux — drop →mux twin.
-		const reachBit =
-			hostShort === "code.mux" || hostShort.startsWith("code.mux")
-				? null
-				: "→mux";
-		const text = panel("◎ re", [
-			// host + reach (st observe default next omitted; mosh/code/mux defaults off).
-			[
-				hostShort,
-				...(reachBit !== null ? [reachBit] : []),
-				...(defaultResApp ? [] : [resApp]),
-			].join("·"),
+		const text = panel("◎ attach", [
+			[hostShort, surface.legend].join(" · "),
 			...(urlExtra !== null ? [`url · ${urlExtra}`] : []),
-			// Local mode is product default — keep LED only when not local.
-			...(reg.mode === "local" ? [] : [`mode · ${modeLed}`]),
-			...(remoteStation === "local"
-				? []
-				: [`station · ${remoteStation}`]),
+			...(reg.mode === "local" ? [] : [`mode · ● overlay`]),
+			...(remoteStation === "local" ? [] : [`station · ${remoteStation}`]),
+			"reattach · hobo-code attach | session",
+			reg.mode === "overlay"
+				? "mosh · optional on lossy link"
+				: "local · no Tailscale required",
+			"next · hobo-code session",
 		]);
-		return ok("HOBO_CODE_REMOTE", text, {
-			registration: reg,
+		return ok("HOBO_CODE_ATTACH", text, {
+			...surface,
 			stationId: platform.station.stationId,
 			text,
 		});
 	}
 
-	if (verb === "budget") {
-		const monetizationEnv = env.HOBO_CODE_MONETIZATION;
-		const monetizationOptIn =
-			monetizationEnv === "0" ? false : platform.features.monetizationSurface;
-		const tracker = createBudgetTracker({
-			...DEFAULT_BUDGET_POLICY,
-			monetizationOptIn,
+	if (verb === "env") {
+		// Nix-terminal parity: inspect hermetic shell + durable layout without activating Nix.
+		const summary = hermeticEnvSummary(hermetic);
+		const markerBit =
+			hermetic.markers.length > 0
+				? hermetic.markers.slice(0, 3).join("+")
+				: "none";
+		const homeDisplay = displayPath(hoboHome, { hoboHome, cwd: projectDir });
+		const durableDisplay = displayPath(hermetic.layout.durable, {
+			hoboHome,
+			cwd: projectDir,
 		});
-		const snap = tracker.snapshot();
-		const wait = sponsoredWaitState({
-			enabled: monetizationOptIn,
-			slot: "status",
-		});
-		const bar = capacityBar(snap.spendUsd, Math.max(snap.capUsd, 0.01), 10);
-		const pct =
-			snap.capUsd > 0
-				? Math.min(100, Math.round((snap.spendUsd / snap.capUsd) * 100))
-				: 0;
-		const budgetProvider = platform.provider.id;
-		// Happy path: spend + monetize + privacy + wait on one scan line.
-		// mon surface on = wait slot available — single LED.
-		const monetizeBit = !snap.monetizationEnabled
-			? "○off"
-			: "●mon";
-		// cheapest-capable is product default routing — omit on happy path.
-		const routing =
-			snap.routingPolicy === "cheapest-capable"
-				? null
-				: snap.routingPolicy;
-		// Compact money: drop trailing .00 on whole dollars.
-		const money = (n: number) =>
-			Number.isInteger(n) || Math.abs(n - Math.round(n)) < 1e-9
-				? `$${Math.round(n)}`
-				: `$${n.toFixed(2)}`;
-		// Zero spend happy path: drop meter bar noise.
-		const spendBit =
-			snap.spendUsd === 0
-				? `$0/${money(snap.capUsd)}`
-				: `${money(snap.spendUsd)}/${money(snap.capUsd)} · ${pct}% ${bar}`;
-		const text = panel("◈ b", [
-			// Happy path: amount + mon (st observe is product default — omit next twin).
-			[spendBit, ...(routing !== null ? [routing] : []), monetizeBit].join(
-				"·",
-			),
-			// Omit flue happy-path provider noise.
-			...(budgetProvider === "flue"
+		// Always surface durable path (nix purity analog): declared shells need it too.
+		const envText = panel("▣ ev", [
+			summary,
+			`markers · ${markerBit}`,
+			`home · ${homeDisplay}`,
+			`durable · ${durableDisplay}`,
+			...(hermetic.hermeticActive
 				? []
-				: [`provider · ${budgetProvider}`]),
+				: hermetic.hermeticDeclared
+					? ["enter · devenv shell|direnv allow|nix develop"]
+					: ["optional · devenv.nix (never required)"]),
 		]);
-		return ok("HOBO_CODE_BUDGET", text, {
-			snapshot: snap,
-			sponsoredWait: wait,
-			provider: platform.provider,
-			defaultOn: true,
-			text,
+		// hobo-code declares its own environment with devenv; report whether the
+		// toolchain to enter it is actually installed rather than assuming.
+		const ownDevenv = inspectDevenv(
+			// dist/cli.js -> package root (devenv.nix lives beside package.json)
+			join(dirname(fileURLToPath(import.meta.url)), ".."),
+			defaultDevenvProbes(env),
+		);
+		const withDevenv = `${envText}\n${devenvSummary(ownDevenv)}`;
+		return ok("HOBO_CODE_ENV", withDevenv, {
+			hermetic,
+			devenv: ownDevenv,
+			text: withDevenv,
+			policy:
+				"Optional hermetic shell for hobo-code only; durable state under HOBO_HOME outside sandboxes; Nix not monorepo IaC.",
 		});
 	}
 
 	if (verb === "scaffold") {
 		const name =
-			args[0] ||
-			(typeof flags.name === "string" && flags.name) ||
-			"app";
+			args[0] || (typeof flags.name === "string" && flags.name) || "app";
 		const out =
 			(typeof flags.out === "string" && flags.out) || join(projectDir, name);
 		const result = scaffoldHighValueTemplate({
@@ -502,9 +1848,7 @@ export async function runHoboCodeCli(
 			cwd: projectDir,
 		});
 		const tmpl =
-			result.templateId === "openui-astryx-bindle"
-				? "ou"
-				: result.templateId;
+			result.templateId === "openui-astryx-bindle" ? "ou" : result.templateId;
 		// Short pin: flag key tail; omit feature twin when stem matches.
 		// visual.primary → primary (domain stem already "openui" on left).
 		const flagTail = result.openFeatureFlag
@@ -559,28 +1903,34 @@ export async function runHoboCodeCli(
 		if (!platform.features.harnessEnabled) {
 			return fail(
 				"HOBO_CODE_HARNESS_DISABLED",
-				// 3-line fail: short flag tail · FIX · short code
-				// h = harness (matches OF help tail).
-				panel("✕ i·h", [
-					`FIX h·✕HARNESS`,
+				panel("✕ isolate", [
+					"harness disabled (code.harness.enabled)",
+					"enable flag or unset override, then retry",
 				]),
+				[
+					"check OpenFeature / HOBO feature overrides for code.harness.enabled",
+					"hobo-code platform --json",
+					"hobo-code help",
+				],
 			);
 		}
 		const runId = args[0] ?? `run-${Date.now()}`;
-		const ctx = createIsolationContext({
+		const ctx = await createIsolationContext({
 			projectRoot: projectDir,
 			hoboHome,
 			runId,
 			forceWorktree: !platform.features.riftPreferred,
 			stationId: platform.station.stationId,
 		});
-		const backendGlyph =
-			ctx.backend.kind === "rift" ? "◆ rift" : "◇ worktree";
+		const backendGlyph = ctx.backend.kind === "rift" ? "◆ rift" : "◇ worktree";
 		// Active run is expected under sandboxes/; only other roots are leftovers.
 		const orphanCount = listSandboxOrphans(hoboHome).filter(
 			(p) => !p.endsWith(`/${ctx.runId}`) && !p.endsWith(`\\${ctx.runId}`),
 		).length;
-		const rootDisplay = displayPath(ctx.rootPath, { hoboHome, cwd: projectDir });
+		const rootDisplay = displayPath(ctx.rootPath, {
+			hoboHome,
+			cwd: projectDir,
+		});
 		const isoStation = shortStation(
 			ctx.stationId ?? platform.station.stationId,
 		);
@@ -591,33 +1941,44 @@ export async function runHoboCodeCli(
 			rootDisplay.endsWith(`/sandboxes/${ctx.runId}`);
 		// run-<ms> → short tail; keep explicit ids.
 		const runBit = shortId(ctx.runId, 14);
-		const isolateText = panel("▣ i", [
+		const durableDisplay = displayPath(ctx.durableRoot, {
+			hoboHome,
+			cwd: projectDir,
+		});
+		// Nix-terminal parity: human chrome must show pure sandbox≠durable split.
+		// Next step spelled out (DX): promote the run id after isolation.
+		const isolateText = panel("▣ isolate", [
 			// Omit worktree happy-path noise.
-			...(ctx.backend.kind === "worktree"
-				? []
-				: [`backend · ${backendGlyph}`]),
+			...(ctx.backend.kind === "worktree" ? [] : [`backend · ${backendGlyph}`]),
 			// Branch only when it differs from run id (code/<run> → run is default).
 			...(branchLabel === ctx.runId ||
 			branchLabel === shortId(ctx.runId, 28) ||
 			branchLabel === runBit
 				? []
 				: [`branch · ${branchLabel}`]),
-			// run · [root] · [▲N orphans] · lifecycle · next (clean default omitted).
 			[
 				// Title brands isolate — run id bare (no run · twin).
 				runBit,
 				...(defaultRoot ? [] : [rootDisplay]),
 				...(orphanCount > 0 ? [`▲${orphanCount} orphan`] : []),
-				// Lifecycle: create● only at open; next=pr (promote help tail).
 				"●",
-				"pr",
 			].join("·"),
+			`durable · ${durableDisplay}`,
+			`next · hobo-code promote ${ctx.runId}`,
 			...(isoStation === "local" ? [] : [`station · ${isoStation}`]),
 		]);
 		return ok("HOBO_CODE_ISOLATE", isolateText, {
 			isolation: ctx,
 			platform,
 			orphans: orphanCount,
+			hermetic,
+			durableRoot: ctx.durableRoot,
+			layout: {
+				sandbox: ctx.rootPath,
+				durable: ctx.durableRoot,
+				pureSeparation: true as const,
+			},
+			next: `hobo-code promote ${ctx.runId}`,
 			text: isolateText,
 		});
 	}
@@ -628,23 +1989,28 @@ export async function runHoboCodeCli(
 		if (!runId) {
 			return fail(
 				"HOBO_CODE_USAGE",
-				// Title brands pr; body carries need + code.
-				panel("✕ pr", [
-					// need + short code; angle brackets live in docs
-					"need·id·✕USAGE",
+				panel("✕ promote", [
+					"missing run id",
+					"usage · hobo-code promote <runId>",
+					"or · hobo-code promote --run <runId>",
+					"first · hobo-code isolate <runId>",
 				]),
+				[
+					"hobo-code isolate my-run",
+					"hobo-code promote my-run",
+					"hobo-code help",
+				],
 			);
 		}
-		const gates: PromotionGate[] = [
-			{ name: "architecture:guard", pass: true, detail: "ok" },
-			{ name: "standards:check", pass: true, detail: "ok" },
-			{ name: "agent:check", pass: true, detail: "ok" },
-			{ name: "docs:freshness", pass: true, detail: "ok" },
-		];
-		const result = promoteIsolation(
+		// Gates must be *run*, not asserted. These were hardcoded `pass: true`,
+		// which made "gated, audited" decoration over a literal — the promote
+		// path claimed a guarantee nothing was checking.
+		const gates: PromotionGate[] = await runProjectGates(projectDir);
+		const isolationRoot = join(hoboHome, "sandboxes", runId);
+		const result = await promoteIsolation(
 			{
 				runId,
-				isolationRoot: join(hoboHome, "sandboxes", runId),
+				isolationRoot,
 				targetProject: projectDir,
 				gateResults: gates.map((g) => g.name),
 				squashOnly: true,
@@ -664,39 +2030,60 @@ export async function runHoboCodeCli(
 		const gatesCompact = allPass
 			? `●${passed}`
 			: `${passed}/${gates.length} pass`;
-		// Success LEDs (cleaned/squash) + gates carry the story — no twin
-		// lifecycle/summary rows. Fail path keeps lifecycle + message.
-		const lifecycleFail = "●●●✕○";
 		const promoStation = shortStation(platform.station.stationId);
-		const promoteText = panel(`${glyph} pr`, [
+		const missingRun = result.code === "HOBO_CODE_PROMOTE_MISSING_RUN";
+		const promoteText = panel(`${glyph} promote`, [
 			// Code only on fail — success title already carries ✓.
 			...(result.ok ? [] : [`code · ${result.code}`]),
-			// Success: one run row with LEDs + gates + next. Fail keeps gate dump + lifecycle.
-			// squash-only is product default — LED is clean alone on success.
-			// Success: st observe is product default — omit next twin.
 			result.ok
 				? `${runId}·${result.cleaned ? "●" : "○"}clean·${gatesCompact}`
-				: `${runId}·${result.cleaned ? "●" : "○"}clean·${lifecycleFail}`,
+				: missingRun
+					? `no sandbox · ${runId}`
+					: `${runId}·${result.cleaned ? "●" : "○"}clean`,
 			...(promoStation === "local" ? [] : [`station · ${promoStation}`]),
 			...(result.ok
-				? []
-				: [
-						`gates · ${gatesCompact}`,
-						...gates.map(
-							(g) =>
-								`  ${g.pass ? "✓" : "✕"} ${shortGate(g.name).padEnd(12)} ${g.detail}`,
-						),
-						`summary · ${result.message}`,
-						// Last token is next verb — no "next" word.
-						"isolate",
-					]),
+				? ["next · hobo-code status"]
+				: missingRun
+					? [
+							"usage · hobo-code isolate <runId>",
+							"then · hobo-code promote <runId>",
+						]
+					: [
+							`gates · ${gatesCompact}`,
+							...gates.map(
+								(g) =>
+									`  ${g.pass ? "✓" : "✕"} ${shortGate(g.name).padEnd(12)} ${g.detail}`,
+							),
+							`summary · ${result.message}`,
+							"next · hobo-code isolate <runId>",
+						]),
 		]);
 		return {
 			ok: result.ok,
 			status: result.ok ? "ok" : "failed",
 			code: result.code,
 			message: promoteText,
-			data: { result, stationId: platform.station.stationId, text: promoteText },
+			...(result.ok
+				? {}
+				: {
+						remediation: missingRun
+							? [
+									`hobo-code isolate ${runId}`,
+									`hobo-code promote ${runId}`,
+									"hobo-code help",
+								]
+							: [
+									"fix failing gates, then re-run promote",
+									`hobo-code isolate ${runId}`,
+									"hobo-code help",
+								],
+					}),
+			data: {
+				result,
+				stationId: platform.station.stationId,
+				text: promoteText,
+				isolationRoot,
+			},
 			exitCode: result.ok ? 0 : 1,
 		};
 	}
@@ -705,16 +2092,22 @@ export async function runHoboCodeCli(
 		if (!platform.features.harnessEnabled) {
 			return fail(
 				"HOBO_CODE_HARNESS_DISABLED",
-				panel("✕ se·h", [
-					`FIX h·✕HARNESS`,
+				panel("✕ session", [
+					"harness disabled (code.harness.enabled)",
+					"enable flag or unset override, then retry",
 				]),
+				[
+					"check OpenFeature / HOBO feature overrides for code.harness.enabled",
+					"hobo-code platform --json",
+					"hobo-code help",
+				],
 			);
 		}
 		const sessionHome =
 			env.HOBO_CODE_EPHEMERAL_SESSION === "1"
 				? mkdtempSync(join(tmpdir(), "hobo-code-session-"))
 				: hoboHome;
-		const session = startCodeSession({
+		const session = await startCodeSession({
 			projectRoot: projectDir,
 			hoboHome: sessionHome,
 			stationId: platform.station.stationId,
@@ -723,11 +2116,7 @@ export async function runHoboCodeCli(
 			autoInitStation: true,
 		});
 		// Simulate in-session work, then resolve handback before painting mux.
-		session.setAgentState(
-			"worker",
-			"working",
-			session.platform.provider.id,
-		);
+		session.setAgentState("worker", "working", session.platform.provider.id);
 		const keepOpen = env.HOBO_CODE_SESSION_KEEP === "1";
 		const handback = keepOpen
 			? {
@@ -739,7 +2128,7 @@ export async function runHoboCodeCli(
 					orphans: [] as string[],
 					message: "session kept open",
 				}
-			: session.complete(true, [
+			: await session.complete(true, [
 					"session:demo",
 					`station:${session.platform.station.stationId}`,
 					`provider:${session.platform.provider.id}`,
@@ -748,10 +2137,8 @@ export async function runHoboCodeCli(
 		if (keepOpen) {
 			// Omit flue happy-path provider noise from pane summaries.
 			const provider = session.platform.provider.id;
-			const openSummary =
-				provider === "flue" ? "" : provider;
-			const workSummary =
-				provider === "flue" ? "" : provider;
+			const openSummary = provider === "flue" ? "" : provider;
+			const workSummary = provider === "flue" ? "" : provider;
 			// working glyph alone on flue; provider only when non-default
 			session.setAgentState("coordinator", "working", openSummary);
 			session.setAgentState("worker", "working", workSummary);
@@ -764,30 +2151,22 @@ export async function runHoboCodeCli(
 		}
 		const status = session.status();
 		if (env.HOBO_CODE_EPHEMERAL_SESSION === "1") {
-			cleanupIsolation(session.isolation.runId, {
+			await cleanupIsolation(session.isolation.runId, {
 				hoboHome: sessionHome,
 				ok: true,
 			});
 		}
 		// Snapshot kind only when not implied by handback LED (●open=live, ●clean=final).
-		const snapshotKind = keepOpen
-			? null
-			: handback.ok
-				? null
-				: "failed";
+		const snapshotKind = keepOpen ? null : handback.ok ? null : "failed";
 		const backendGlyph =
 			session.isolation.backend.kind === "rift" ? "◆ rift" : "◇ worktree";
 		// Strip run- prefix; short tail for title.
-		const runLabel = shortId(
-			session.isolation.runId.replace(/^run-/, ""),
-			6,
-		);
+		const runLabel = shortId(session.isolation.runId.replace(/^run-/, ""), 6);
 		const sessionStation = shortStation(session.platform.station.stationId);
 		const sessionProvider = session.platform.provider.id;
 		// Clean final: st is product default observe — omit next twin.
 		// Open/fail: ·pr promote (run already on title).
-		const sessionNext =
-			handback.ok && !keepOpen ? null : "pr";
+		const sessionNext = handback.ok && !keepOpen ? null : "pr";
 		// Handback LED: ● alone = clean final; ●o = open live; fail keeps text.
 		const handbackBit = keepOpen
 			? "●o"
@@ -804,9 +2183,7 @@ export async function runHoboCodeCli(
 			.filter((x): x is string => x !== null && x.length > 0)
 			.join("·");
 		const orphanBit =
-			handback.orphans.length === 0
-				? ""
-				: `·▲${handback.orphans.length}`;
+			handback.orphans.length === 0 ? "" : `·▲${handback.orphans.length}`;
 		// LED implies snapshot kind — only emit failed explicitly.
 		const snapBit = snapshotKind !== null ? `·${snapshotKind}` : "";
 		const nextBit = sessionNext !== null ? `·${sessionNext}` : "";
@@ -816,7 +2193,17 @@ export async function runHoboCodeCli(
 			embedded: true,
 			title: sessionTitle,
 		});
+		// Keep dense session box ≤4 lines; Herdr caps + durable path live in --json / --help.
 		const sessionText = chrome;
+		const herdr = herdrMuxCapabilities(status.theme);
+		const durableRoot = session.isolation.durableRoot;
+		const persistence = {
+			durableRoot,
+			handbackArtifact: "session-end.json",
+			handbackPath: join(durableRoot, "session-end.json"),
+			detachable: true as const,
+			sessionPersistence: true as const,
+		};
 		return {
 			ok: handback.ok,
 			status: handback.ok ? "ok" : "failed",
@@ -825,6 +2212,9 @@ export async function runHoboCodeCli(
 			data: {
 				isolation: session.isolation,
 				status,
+				herdr,
+				capabilities: herdr,
+				persistence,
 				remote: session.remote,
 				platform: session.platform,
 				handback,
@@ -835,190 +2225,40 @@ export async function runHoboCodeCli(
 		};
 	}
 
-	// ── Distributed hive verbs (flat; formerly nested under "buzz") ──
+	// ── Multi-node compute (capacity-aware dispatch; not a chat/hive product) ──
 
-	if (!platform.features.distributed) {
-		if (
-			verb === "dispatch" ||
-			verb === "join" ||
-			verb === "agent" ||
-			verb === "nodes" ||
-			verb === "rooms"
-		) {
-			// Short verb tails match help strip.
-			const verbTail =
-				verb === "dispatch"
-					? "d"
-					: verb === "join"
-						? "j"
-						: verb === "agent"
-							? "a"
-							: verb === "nodes"
-								? "nd"
-								: verb === "rooms"
-									? "rm"
-									: verb;
-			return fail(
-				"HOBO_CODE_DISTRIBUTED_DISABLED",
-				panel("✕ dist", [
-					// Title brands dist off — body: blocked verb + FIX.
-					`${verbTail}·FIX dist·✕DIST`,
-				]),
-			);
-		}
-	}
-
-	if (verb === "nodes" || verb === "rooms") {
-		const hive = openBuzzHive({
-			hoboHome,
-			stationId: platform.station.stationId,
-			hiveId,
-			autoRegisterLocalNode: true,
-			tenant,
-		});
-		const list = verb === "nodes" ? hive.nodes : hive.rooms;
-		const text =
-			verb === "nodes"
-				? renderNodeInventory(hive.hiveId, hive.nodes)
-				: renderRoomInventory(hive.hiveId, hive.rooms);
-		return ok("HOBO_CODE_HIVE", text, {
-			hive,
-			list,
-			text,
-			distributed: describeBuzzDistributedCompute(),
-		});
-	}
-
-	if (verb === "join") {
-		const displayName =
-			args[0] ||
-			(typeof flags.name === "string" && flags.name) ||
-			"operator";
-		openBuzzHive({
-			hoboHome,
-			stationId: platform.station.stationId,
-			hiveId,
-			autoRegisterLocalNode: true,
-			tenant,
-		});
-		const room = joinBuzzRoom({
-			hoboHome,
-			hiveId,
-			roomId: "room-main",
-			participant: {
-				kind: "human",
-				id: `human:${displayName}`,
-				displayName,
-			},
-		});
-		const peers = room.participants;
-		const humans = peers.filter((p) => p.kind === "human").length;
-		const agents = peers.filter((p) => p.kind === "agent").length;
-		const alone = peers.length === 1 && humans === 1 && agents === 0;
-		// Self brands name← — who fold is others only (no twin ◇self←).
-		const others = peers.filter(
-			(p) => !(p.kind === "human" && p.displayName === displayName),
+	if (!platform.features.distributed && verb === "dispatch") {
+		return fail(
+			"HOBO_CODE_DISTRIBUTED_DISABLED",
+			panel("✕ distributed", [
+				"dispatch requires code.distributed",
+				"enable distributed flag, then retry",
+			]),
+			["enable code.distributed feature flag", "hobo-code help"],
 		);
-		// Who fold: ≤4 glyphs; labels shrink with crowd (6→4→3).
-		const whoMax = others.length > 2 ? 3 : others.length > 1 ? 4 : 6;
-		const whoCap = 4;
-		const whoInline = others
-			.slice(0, whoCap)
-			.map((p) => {
-				const mark = p.kind === "agent" ? "◆" : "◇";
-				return `${mark}${shortWho(p.displayName, whoMax)}`;
-			})
-			.join("");
-		const whoMore =
-			others.length > whoCap ? `·+${others.length - whoCap}` : "";
-		const roomBit =
-			shortRoom(room.roomId) === "main"
-				? ""
-				: `·${shortRoom(room.roomId)}`;
-		// alone → ◆ agent; multi with agents already live → no next twin.
-		const joinNext = alone || agents === 0 ? "·◆" : "";
-		const joinText = panel(
-			"◇ j",
-			alone
-				? [
-						// alone: name←[·room]·◆ — main room omitted (default)
-						`${displayName}←${roomBit}${joinNext}`,
-						...(hiveId === "default" ? [] : [`hive · ${hiveId}`]),
-					]
-				: [
-						// name←[·room]·others[+·◆] (← owns self; who = peers - self)
-						`${displayName}←${roomBit}·${whoInline}${whoMore}${joinNext}`,
-						...(hiveId === "default" ? [] : [`hive · ${hiveId}`]),
-					],
-		);
-		return ok("HOBO_CODE_JOIN", joinText, { room, text: joinText });
-	}
-
-	if (verb === "agent") {
-		const name = args[0] ?? platform.provider.id;
-		const agent = createBuzzAgentIdentity({
-			displayName: name,
-			providerHint: platform.provider.packageHint,
-			stationId: platform.station.stationId,
-		});
-		openBuzzHive({
-			hoboHome,
-			stationId: platform.station.stationId,
-			hiveId,
-			autoRegisterLocalNode: true,
-			tenant,
-		});
-		registerBuzzAgent({
-			hoboHome,
-			hiveId,
-			agent,
-			roomId: "room-main",
-		});
-		const providerLabel = shortProviderLabel(agent.providerHint, 28);
-		const stationLabel = shortStation(agent.stationId);
-		const agentIdLabel = shortId(
-			agent.agentId.replace(/^sha256:/, ""),
-			8,
-		);
-		const agentText = panel("◆ a", [
-			// name + digest (●ca content-address default; ★ dispatch next omitted)
-			`${agent.displayName}·${agentIdLabel}${
-				providerLabel === "flue" ? "" : `·${providerLabel}`
-			}${stationLabel === "local" ? "" : `·${stationLabel}`}`,
-		]);
-		return ok("HOBO_CODE_AGENT", agentText, { agent, text: agentText });
 	}
 
 	// dispatch (default)
 	const emptyPrompt = args.length === 0;
+	if (emptyPrompt && !process.stdin.isTTY) {
+		return fail(
+			"HOBO_CODE_INTERACTIVE_REQUIRED",
+			panel("✕ input", [
+				"bare hobo-code needs a TTY; no prompt was provided",
+				"use hobo-code help or provide a prompt",
+			]),
+			["hobo-code help", 'hobo-code "describe the change"'],
+			{ interactiveRequired: true },
+		);
+	}
 	const prompt = emptyPrompt
 		? "refine scaffold under ponytail pressure"
 		: args.join(" ");
-	const agent = createBuzzAgentIdentity({
-		displayName: `worker-${platform.provider.id}`,
-		providerHint: platform.provider.packageHint,
-		stationId: platform.station.stationId,
-	});
-	openBuzzHive({
+	const result = await dispatchComputeTask({
 		hoboHome,
-		stationId: platform.station.stationId,
-		hiveId,
-		autoRegisterLocalNode: true,
-		tenant,
-	});
-	registerBuzzAgent({
-		hoboHome,
-		hiveId,
-		agent,
-		roomId: "room-main",
-	});
-	const result = dispatchBuzzTask({
-		hoboHome,
-		hiveId,
-		roomId: "room-main",
+		poolId,
 		prompt,
 		projectRoot: projectDir,
-		agent,
 		executeLocal: true,
 		stationId: platform.station.stationId,
 	});
@@ -1029,7 +2269,7 @@ export async function runHoboCodeCli(
 		status: result.task.status,
 		...(result.task.nodeId !== undefined ? { nodeId: result.task.nodeId } : {}),
 		prompt,
-		hiveId,
+		poolId,
 		defaultVerb: defaultedVerb,
 		emptyPrompt,
 	});
@@ -1040,10 +2280,11 @@ export async function runHoboCodeCli(
 		message: text,
 		data: {
 			task: result.task,
-			hive: result.hive,
+			pool: result.pool,
 			defaultVerb: defaultedVerb,
 			emptyPrompt,
 			text,
+			distributed: describeDistributedCompute(),
 		},
 		exitCode: dispatched ? 0 : 1,
 	};
@@ -1130,9 +2371,7 @@ function formatProviderLine(id: string, packageHint: string, max = 28): string {
 /** Distinguishing node tail (class already shown in inventory). */
 function shortNodeTail(nodeId: string): string {
 	if (nodeId.includes("local")) {
-		const rest = nodeId
-			.replace(/^node-local-?/, "")
-			.replace(/^station-?/, "");
+		const rest = nodeId.replace(/^node-local-?/, "").replace(/^station-?/, "");
 		if (rest === "" || rest === "local" || rest === "station-local") {
 			return "station";
 		}
@@ -1162,7 +2401,7 @@ function renderDispatchSummary(input: {
 	readonly status: string;
 	readonly nodeId?: string;
 	readonly prompt: string;
-	readonly hiveId: string;
+	readonly poolId: string;
 	readonly defaultVerb: boolean;
 	readonly emptyPrompt?: boolean;
 }): string {
@@ -1175,14 +2414,10 @@ function renderDispatchSummary(input: {
 			: input.status === "failed"
 				? "queue●→claim●→run●→fail✕"
 				: "queue●→claim○→run○→done○";
-	const node =
-		input.nodeId !== undefined
-			? shortNodeLabel(input.nodeId)
-			: "—";
+	const node = input.nodeId !== undefined ? shortNodeLabel(input.nodeId) : "—";
 	// local · station is the happy path — omit when done there.
 	const omitNode =
-		input.status === "done" &&
-		(node === "local · station" || node === "—");
+		input.status === "done" && (node === "local · station" || node === "—");
 	// Title ★ already marks defaulted bare path — body ◆ only for empty seed.
 	// ◆empty = empty argv seed (ponytail default in data/docs).
 	const defaultBit =
@@ -1192,11 +2427,8 @@ function renderDispatchSummary(input: {
 				? "empty"
 				: null;
 	// Empty prompt already named by ◆empty — drop seed text twin.
-	const promptBit = input.emptyPrompt
-		? null
-		: shortId(input.prompt, 8);
-	const nextBit =
-		input.status === "failed" ? "nodes" : "st";
+	const promptBit = input.emptyPrompt ? null : shortId(input.prompt, 8);
+	const nextBit = input.status === "failed" ? "nodes" : "st";
 	// Happy-path done: one scan line (task + next). In-flight/fail keep node/hive rows.
 	// Strip task- prefix (row already says task ·).
 	const taskId = shortId(input.taskId.replace(/^task-/, ""), 6);
@@ -1218,9 +2450,7 @@ function renderDispatchSummary(input: {
 					taskRow,
 					...(omitNode ? [] : [`node · ${node}`]),
 					// Omit hive when default — less noise on the happy path.
-					...(input.hiveId === "default"
-						? []
-						: [`hive · ${input.hiveId}`]),
+					...(input.poolId === "default" ? [] : [`pool · ${input.poolId}`]),
 				];
 	// Defaulted bare: ★. Explicit: d (matches help tail; full word in data).
 	// Product brand lives on status/help; verb panels use glyph+tail.
@@ -1256,7 +2486,7 @@ function nodeClassLabel(cls: string): string {
 }
 
 function renderNodeInventory(
-	hiveId: string,
+	poolId: string,
 	nodes: readonly {
 		readonly nodeId: string;
 		readonly class: string;
@@ -1267,7 +2497,6 @@ function renderNodeInventory(
 ): string {
 	const rows: string[] = [];
 	if (nodes.length === 0) {
-		// empty cue matches status language (★ = default dispatch)
 		rows.push("empty→★");
 	} else {
 		const online = nodes.filter((n) => n.status === "online").length;
@@ -1277,27 +2506,20 @@ function renderNodeInventory(
 		);
 		const busyTotal = nodes.reduce((n, x) => n + x.running, 0);
 		const nodeWord = nodes.length === 1 ? "node" : "nodes";
-		// Idle inventory: drop "0 busy"; all-online drops "N on".
 		const busyBit = busyTotal > 0 ? ` · ${busyTotal} busy` : "";
 		const onBit =
-			online === nodes.length && busyTotal === 0
-				? ""
-				: ` · ${online} on`;
-		// Idle all-free: one summary line with class tails (no table).
+			online === nodes.length && busyTotal === 0 ? "" : ` · ${online} on`;
 		const allIdle = busyTotal === 0 && online === nodes.length;
 		if (allIdle && nodes.length <= 4) {
 			const bits = nodes.map((n) => {
 				const mark = n.status === "online" ? "●" : "○";
-				// Idle: capacity glued to class (no space twin).
 				return `${mark}${nodeClassLabel(n.class)}${n.capacity}`;
 			});
-			// Title brands nodes — count + class caps (idle free = sum of caps).
 			rows.push(`${nodes.length}·${bits.join("·")}`);
 		} else {
 			rows.push(
 				`summary · ${nodes.length} ${nodeWord}${onBit}${busyBit} · ${freeTotal} free`,
 			);
-			// Bare column header — LED mark carries on/off (no ST twin).
 			rows.push(`CLASS    LOAD     RUN/CAP  ID`);
 			for (const n of nodes) {
 				const free = Math.max(0, n.capacity - n.running);
@@ -1312,13 +2534,8 @@ function renderNodeInventory(
 				}
 			}
 		}
-		// ★ dispatch is product default next — omit twin on inventory.
-		// Multi-row busy tables still get no trailing ★ wall.
 	}
-	const nodesTitle =
-		hiveId === "default"
-			? "▣ n"
-			: `▣ n·hive ${hiveId}`;
+	const nodesTitle = poolId === "default" ? "▣ n" : `▣ n·pool ${poolId}`;
 	return panel(nodesTitle, rows);
 }
 
@@ -1353,9 +2570,7 @@ function renderRoomInventory(
 			agents > 0 ? `◆${agents}` : null,
 		].filter((x): x is string => x !== null);
 		const allEmpty = occupancyBits.length === 0;
-		const occupancy = allEmpty
-			? "empty"
-			: occupancyBits.join("·");
+		const occupancy = allEmpty ? "empty" : occupancyBits.join("·");
 		// Single-room empty: one summary row (no twin # empty row).
 		if (allEmpty && rooms.length === 1) {
 			const roomLabel = shortRoom(rooms[0]!.roomId);
@@ -1384,9 +2599,7 @@ function renderRoomInventory(
 						: `${roomLabel}·${whoBits}${whoMore}`,
 				);
 			} else {
-				rows.push(
-					`${rooms.length}${roomWord}·${occupancy}`,
-				);
+				rows.push(`${rooms.length}${roomWord}·${occupancy}`);
 				for (const r of rooms) {
 					const roomLabel = shortRoom(r.roomId);
 					const title =
@@ -1424,18 +2637,24 @@ function renderRoomInventory(
 			rows.push("◇");
 		}
 	}
-	const roomsTitle =
-		hiveId === "default"
-			? "# rm"
-			: `# rm·hive ${hiveId}`;
+	const roomsTitle = hiveId === "default" ? "# rm" : `# rm·pool ${hiveId}`;
 	return panel(roomsTitle, rows);
 }
 
 /** Format CLI result for stdout (human or JSON). */
 export function formatHoboCodeResult(
 	result: HoboCodeCliResult,
-	json: boolean,
+	jsonOrOpts: boolean | FormatHoboCodeOptions = false,
 ): string {
+	const opts: FormatHoboCodeOptions =
+		typeof jsonOrOpts === "boolean" ? { json: jsonOrOpts } : jsonOrOpts;
+	const json = opts.json === true;
+	const denseFromData =
+		typeof result.data === "object" &&
+		result.data !== null &&
+		(result.data as { dense?: boolean }).dense === true;
+	const dense = opts.dense === true || denseFromData;
+
 	if (json) {
 		return `${JSON.stringify(
 			{
@@ -1453,15 +2672,21 @@ export function formatHoboCodeResult(
 		)}\n`;
 	}
 	if (result.code === "HOBO_CODE_HELP") {
-		return result.message.endsWith("\n") ? result.message : `${result.message}\n`;
+		// Help already chose plain vs dense in helpText().
+		return result.message.endsWith("\n")
+			? result.message
+			: `${result.message}\n`;
 	}
 
 	// Prefer embedded presentation body when present (status chrome, etc.).
 	const data = result.data as { text?: string } | undefined;
-	const body =
+	let body =
 		typeof data?.text === "string" && data.text.length > 0
 			? data.text
 			: result.message;
+	if (dense) {
+		body = applyDenseChrome(body);
+	}
 
 	const lines = [body];
 	// Adaptive panel rule is 12–20 ─ (see panel()); detect trailing rule line.
@@ -1484,8 +2709,7 @@ export function formatHoboCodeResult(
 		const cur = lines[0] ?? "";
 		const rule = trailingRule ?? "─".repeat(16);
 		if (trailingRule !== null && cur.endsWith(trailingRule)) {
-			lines[0] =
-				stripTrailingRule(cur) + `FIX  ${fixes}${codeBit}\n` + rule;
+			lines[0] = stripTrailingRule(cur) + `FIX  ${fixes}${codeBit}\n` + rule;
 		} else {
 			lines.push(`FIX  ${fixes}${codeBit}`);
 			lines.push(rule);

@@ -1,0 +1,23 @@
+{
+  "stage": "make-alternating-guide",
+  "args": [
+    "/home/codex/.local/share/uv/tools/spriterrific/bin/python",
+    "/home/codex/.local/share/uv/tools/spriterrific/lib/python3.11/site-packages/spriterrific/runtime_tools/animated_spritesheets/scripts/make_alternating_sheet.py",
+    "--size",
+    "2048x1536",
+    "--out",
+    "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v2/guide/alternating-2048x1536-4x3-pose-board.png"
+  ],
+  "cwd": null,
+  "status": "completed",
+  "startedAt": "2026-07-28T09:07:38.499114Z",
+  "completedAt": "2026-07-28T09:07:39.590328Z",
+  "exitCode": 0,
+  "stdout": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v2/logs/make-alternating-guide.stdout.txt",
+  "stderr": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v2/logs/make-alternating-guide.stderr.txt",
+  "envPresent": {
+    "FAL_KEY": false,
+    "FAL_API_KEY": true,
+    "REMOVE_BG_API_KEY": false
+  }
+}

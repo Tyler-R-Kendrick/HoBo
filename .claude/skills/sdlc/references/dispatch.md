@@ -58,10 +58,15 @@ The COORDINATOR owns all Linear state. Per issue, in order:
 4. Independent verification: for local worktrees spawn the `reviewer` subagent (read-only) on
    the worktree with the same checklist; for cloud PRs run the same checklist against the PR
    diff and re-run the gates on a local checkout of the PR branch.
-5. **Done rule:** move the issue to Done only when BOTH hold:
+5. **Done rule:** move the issue to Done only when ALL hold:
    (a) GitHub reports the PR checks green — query it yourself; never trust the report for
-   this — and (b) the review pass succeeds. Otherwise: send findings back through the same
-   backend (same worktree / PR-comment instructions to the coding agent), or re-plan the issue.
+   this — **or** a written billing-budget exception applies to a specific check,
+   (b) the independent review pass succeeds (including rubber-duck + adversarial thinking on
+   the parent for stack closeout),
+   (c) all PR comments and review threads are addressed,
+   (d) the PR is squash-merged (stack-aware merge when part of a stack).
+   Otherwise: send findings back through the same backend (same worktree / PR-comment
+   instructions to the coding agent), or re-plan the issue.
 6. Apply `cascadeDeltas` yourself, serially: traceability rows, ledgers, registries, GAPS-style
    registers, Linear comments. Append the outcome (success/failure + failure class + contract
    defect if any) to `docs/plans/dispatch-log.md`.
@@ -97,3 +102,45 @@ Cap concurrent local implementers so their scopes never share a package; cloud d
 isolated by construction but still count against the per-package exclusivity rule (never two
 agents on one package). Shared-file work is coordinator-only, which removes the usual
 merge-conflict class by construction.
+
+## Subagent incremental checkins
+
+Every implementer brief **must** require incremental commits (see SKILL.md and
+`stacked-prs.md`):
+
+- Commit after each red→green step; never one mega-commit at the end.
+- `pnpm agent:check -- --staged` before every commit.
+- Conventional, scoped messages.
+- Push/hand back often enough that a dead subagent does not lose the layer.
+
+Parent owns stack submit/sync/merge. Subagents do not restructure stacks.
+
+## Stack topology (multi-issue / multi-phase)
+
+When the plan has 2+ dependent issues or phases, the coordinator opens a **GitHub stack** with
+`gh stack` **before or as** layers are filled (see `stacked-prs.md`):
+
+1. Plan branch names `sdlc/<id>-NN-<slug>` in dependency order (foundations bottom).
+2. `gh stack init` / `gh stack add` for layers; dispatch each implementer onto its branch.
+3. `gh stack submit --auto --open` when layers are ready for review.
+4. Record stack number + PR URLs in `sdlc-state.md`.
+5. On mid-stack fixes: lower branch commit → `gh stack rebase --upstack` → push/sync.
+
+Single-issue work may stay a single PR. Multi-step work **must** stack.
+
+## Closeout (parent, after implementation)
+
+The Done rule is not complete until the parent finishes **bottom-up closeout** for every PR it
+opened (`stacked-prs.md` § Bottom-up closeout):
+
+1. Bottom PR first: rubber-duck + adversarial review + independent reviewer.
+2. Address **all** PR comments and review threads.
+3. Fix required status checks that actually ran and failed for code reasons. If checks are red
+   only for **billing/budget/quota** (jobs never started / spending limit), document on the PR
+   and **still squash-merge** — do not wait for green CI.
+4. Squash-merge that PR (`gh stack merge <pr> --yes --squash` or `gh pr merge <pr> --squash`;
+   `--admin` if protection blocks on billing-red checks), then `gh stack sync`.
+5. Repeat upward until the stack is fully merged.
+
+Never mark the initiative Done while open PRs remain with unresolved comments, failing
+**non-billing** checks, or missing squash-merge. Billing-red CI alone is not a Done blocker.

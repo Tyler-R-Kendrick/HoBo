@@ -9,8 +9,7 @@
       "type": "data.v1",
       "port": "hobo:data",
       "paradigm": "relational",
-      "allow": ["query"],
-      "connectionString": "{db.connectionString}"
+      "allow": ["query"]
     },
     "api": {
       "type": "component.v1",
@@ -22,8 +21,8 @@
         "http": { "scheme": "http", "targetPort": 8080, "external": true }
       },
       "env": {
-        "ConnectionStrings__db": "{db.connectionString}",
-        "SERVICE_REF": "${resources.data.postgres#db.outputs.connectionString}"
+        "LOG_LEVEL": "info",
+        "SERVICE_REF": "${resources.data.postgres#db.outputs.url}"
       },
       "annotations": {
         "scaling": { "min": 1, "max": 10 },

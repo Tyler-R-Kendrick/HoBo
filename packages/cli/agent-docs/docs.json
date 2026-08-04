@@ -232,6 +232,18 @@
       }
     },
     {
+      "name": "messaging",
+      "role": "diagnostics",
+      "summary": "Inspect messaging capability and delivery-guarantee readiness",
+      "cli": "hobo messaging",
+      "mcpTool": "messaging",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:messaging",
+        "verb": "call"
+      }
+    },
+    {
       "name": "codegen",
       "role": "authoring",
       "summary": "Regenerate checked-in generated clients",
@@ -420,6 +432,18 @@
       "capability": {
         "port": "hobo:mcp",
         "resource": "tool:station",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "serve",
+      "role": "control plane",
+      "summary": "Local control-plane HTTP+SSE for the Yard game UI",
+      "cli": "hobo serve",
+      "mcpTool": "serve",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:serve",
         "verb": "call"
       }
     },

@@ -8,8 +8,7 @@
     "db": {
       "type": "data.v1",
       "paradigm": "relational",
-      "allow": ["query"],
-      "connectionString": "{db.connectionString}"
+      "allow": ["query"]
     },
     "api": {
       "type": "component.v1",
@@ -18,7 +17,7 @@
       "exports": ["wasi:http/incoming-handler"],
       "links": [{ "import": "hobo:data", "to": "db" }],
       "env": {
-        "ConnectionStrings__db": "{db.connectionString}"
+        "LOG_LEVEL": "info"
       }
     },
     "site": {

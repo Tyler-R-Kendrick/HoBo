@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "spriterrificVersion": "0.20.2",
+  "runId": "bo-latest-sleep-wake-w",
+  "createdAt": "2026-07-28T15:30:51.505680+00:00",
+  "completedAt": "2026-07-28T15:30:51.505680+00:00",
+  "status": "completed",
+  "action": "sleep_wake",
+  "direction": "w",
+  "mode": "image",
+  "animationTiming": "transition",
+  "loopable": false,
+  "frameCount": 10,
+  "fps": 8,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "columns": 5,
+  "rows": 2,
+  "sourceRuntime": "runs/bo-comprehensive-20260728/runtime/sleep-wake-w",
+  "publicAssetReady": true
+}

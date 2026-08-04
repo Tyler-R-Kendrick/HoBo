@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "narrow-local-validation",
+  "title": "Narrow local validation after a small change",
+  "experiences": [
+    "dx",
+    "ax"
+  ],
+  "personas": [
+    "product-app-developer",
+    "product-agent-operator",
+    "product-platform-engineer",
+    "product-coding-agent",
+    "role-developers",
+    "role-devsecops",
+    "role-finops",
+    "role-platform-engineers",
+    "role-sre"
+  ],
+  "interfaces": [
+    "cli",
+    "mcp",
+    "web"
+  ],
+  "driver": "cli",
+  "surfaces": [
+    "pnpm run agent:check -- --staged"
+  ],
+  "tags": [
+    "@optimizexp",
+    "@dx",
+    "@ax"
+  ],
+  "generatedFromSeed": true,
+  "seedDigest": "d79a28308dd15a18",
+  "personaResolution": "explicit --personas",
+  "bindings": {
+    "steps": "steps/bindings.steps.ts",
+    "implementations": "steps/implementations.ts",
+    "tests": "test/narrow-local-validation.bindings.test.ts"
+  },
+  "implementationStatus": "wired",
+  "primaryCommand": "pnpm run agent:check -- --staged"
+}

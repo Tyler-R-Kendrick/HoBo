@@ -1,0 +1,30 @@
+{
+	"name": "@hobo/provider-convex",
+	"version": "0.0.1",
+	"license": "MIT",
+	"type": "module",
+	"private": true,
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build && pnpm --filter @hobo/bindles build",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@hobo/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@hobo/bindles": "workspace:*"
+	},
+	"description": "HoBo Convex deploy-target CloudProvider: reactive TypeScript BaaS behind the agnostic ports with honest-partial capability verdicts, typed impedance limits, and a credential-gated Management API client (ADR-0144)."
+}

@@ -2,26 +2,27 @@
  * Trail runner — plan / progressive dual / cutover / compensate.
  * Progressive ramp uses Harness FeatureFlagStore behind a sealed local port.
  */
-import { TrailRunService, type TrailRunRecord } from "./aggregate.js";
-import { evaluateCanTrail, type CanTrailResult } from "./can-trail.js";
+import { type TrailRunRecord, TrailRunService } from "./aggregate.js";
+import { type CanTrailResult, evaluateCanTrail } from "./can-trail.js";
+import type { DataDualPort } from "./data-dual-port.js";
+import {
+	applySchemaStep,
+	createContractAssertedDataDualFixtures,
+	type DataDualFixture,
+	type DataDualResult,
+	evaluateDataDual,
+	type SchemaApplyResult,
+} from "./data-steps.js";
 import {
 	orderTrailSteps,
 	type TrailDefinition,
 	type TrailStep,
 } from "./definition.js";
-import {
-	applySchemaStep,
-	createContractAssertedDataDualFixtures,
-	evaluateDataDual,
-	type DataDualFixture,
-	type DataDualResult,
-	type SchemaApplyResult,
-} from "./data-steps.js";
 import { TRAIL_EVENTS, type TrailEvent } from "./events.js";
 import {
 	stepChecksum,
-	TrailHistoryStore,
 	type TrailHistoryEntry,
+	TrailHistoryStore,
 } from "./history.js";
 import {
 	activateIdentityContinuousFromMatching,
@@ -69,6 +70,12 @@ export type TrailRunnerOptions = Readonly<{
 	readonly now?: () => string;
 	readonly history?: TrailHistoryStore;
 	readonly dataFixture?: DataDualFixture;
+	/**
+	 * Live data-dual port (two real stores + CDC replication). When present it
+	 * supersedes `dataFixture`: every data step re-snapshots both stores so the
+	 * oracle judges live state, not a frozen fixture (vision-gap Phase 7).
+	 */
+	readonly dataDual?: DataDualPort;
 	readonly dualOracleReady?: boolean;
 	readonly junctionHealthy?: boolean;
 	readonly policyAllows?: boolean;
@@ -81,6 +88,7 @@ export class TrailRunner {
 	readonly service: TrailRunService;
 	private readonly flags: ProgressiveFlagPort;
 	private readonly dataFixture: DataDualFixture;
+	private readonly dataDual: DataDualPort | undefined;
 	private readonly dualOracleReady: boolean;
 	private readonly junctionHealthy: boolean;
 	private readonly policyAllows: boolean;
@@ -95,6 +103,7 @@ export class TrailRunner {
 		this.service = new TrailRunService({ now: this.now });
 		this.dataFixture =
 			options.dataFixture ?? createContractAssertedDataDualFixtures();
+		this.dataDual = options.dataDual;
 		this.dualOracleReady = options.dualOracleReady !== false;
 		this.junctionHealthy = options.junctionHealthy !== false;
 		this.policyAllows = options.policyAllows !== false;
@@ -109,9 +118,7 @@ export class TrailRunner {
 			dualOracleReady: this.dualOracleReady,
 			junctionHealthy: this.junctionHealthy,
 		});
-		const ordered = canTrail.ok
-			? orderTrailSteps(composed.steps)
-			: [];
+		const ordered = canTrail.ok ? orderTrailSteps(composed.steps) : [];
 		return Object.freeze({
 			schemaVersion: TRAIL_RUNNER_SCHEMA,
 			canTrail,
@@ -220,16 +227,19 @@ export class TrailRunner {
 				step.kind === "data-transform" ||
 				step.kind === "continuous-dual-data"
 			) {
-				const r = evaluateDataDual(step, dataFixture);
+				// Live port supersedes the fixture: snapshot both stores NOW so
+				// the oracle judges real replicated state at this step.
+				const r = evaluateDataDual(
+					step,
+					this.dataDual ? this.dataDual.snapshot() : dataFixture,
+				);
 				dataResults.push(r);
 				if (!r.consistent || !r.zeroLoss) {
 					this.service.setDualHealth(false);
 					return this.result({
 						schemaResults,
 						dataResults,
-						...(identityProgress !== undefined
-							? { identityProgress }
-							: {}),
+						...(identityProgress !== undefined ? { identityProgress } : {}),
 						rampPercent,
 						aborted: true,
 						cutover: false,
@@ -245,9 +255,7 @@ export class TrailRunner {
 					return this.result({
 						schemaResults,
 						dataResults,
-						...(identityProgress !== undefined
-							? { identityProgress }
-							: {}),
+						...(identityProgress !== undefined ? { identityProgress } : {}),
 						rampPercent,
 						aborted: true,
 						cutover: false,
@@ -259,17 +267,13 @@ export class TrailRunner {
 			} else if (step.kind === "validation") {
 				const dualOk =
 					dataResults.every((d) => d.consistent && d.zeroLoss) &&
-					(identityProgress
-						? identityProgress.migrationPresent
-						: true);
+					(identityProgress ? identityProgress.migrationPresent : true);
 				if (!dualOk) {
 					this.service.setDualHealth(false);
 					return this.result({
 						schemaResults,
 						dataResults,
-						...(identityProgress !== undefined
-							? { identityProgress }
-							: {}),
+						...(identityProgress !== undefined ? { identityProgress } : {}),
 						rampPercent,
 						aborted: true,
 						cutover: false,
@@ -301,9 +305,7 @@ export class TrailRunner {
 						return this.result({
 							schemaResults,
 							dataResults,
-							...(identityProgress !== undefined
-								? { identityProgress }
-								: {}),
+							...(identityProgress !== undefined ? { identityProgress } : {}),
 							rampPercent,
 							aborted: true,
 							cutover: false,
@@ -312,10 +314,7 @@ export class TrailRunner {
 					}
 				}
 				if (identityHandle && identityProgress?.migrationPresent) {
-					identityProgress = advanceIdentityTrailRamp(
-						identityHandle,
-						100,
-					);
+					identityProgress = advanceIdentityTrailRamp(identityHandle, 100);
 				}
 				this.service.cutover();
 				this.service.completeStep(step.id);

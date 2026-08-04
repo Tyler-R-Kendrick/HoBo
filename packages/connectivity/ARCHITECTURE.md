@@ -130,6 +130,33 @@ Untrusted inputs at package boundaries are parse, don't validate: DNS labels, te
 - **Snapshot** — in-memory lease maps and endpoint registries are the snapshot of those projections.
 - **Read store** — `listLeases`, `getNamedEndpoint`, metering sinks serve the read store without replaying the raw event log.
 
+## Traffic routing intent
+
+```mermaid
+flowchart LR
+  ST[Station synthesis] --> PLAN[RoutingPlan]
+  PLAN --> RESOLVE[resolveTrafficRouting offerings]
+  RESOLVE --> SIMPLE[Simple inprocess.weighted]
+  RESOLVE --> CF[Cloudflare lb.lifecycle + weighted]
+  RESOLVE --> FUNNEL[Funnel multi + public tip]
+  RESOLVE --> VERCEL[Vercel edge canary/path]
+  RESOLVE --> LAKEBED[Lakebed inprocess + driver.route-bind]
+  RESOLVE --> FALLBACK[Fallback ladder DNS/Funnel/inprocess]
+  SIMPLE --> FACTS[routing.plan.* metering facts]
+  CF --> FACTS
+  FUNNEL --> OV[Existing OverlayNetwork]
+  FUNNEL --> FACTS
+  VERCEL --> FACTS
+  LAKEBED --> FACTS
+  LAKEBED --> DRV[lakebed-deploy driver program]
+```
+
+TrafficRouting coordinates backend-selection intent only. Providers **declare
+offerings**; Matching/`resolveTrafficRouting` applies prefer/require + the
+fallback ladder. `OverlayNetwork`, Funnel, and `PublicDnsManager` retain
+connectivity and exposure ownership. Partial realization is explicit. Custom
+providers: see `docs/traffic-routing-providers.md`.
+
 ## Secretless connector (ADR-0027 + ADR-0130)
 
 Residual classical credentials (Postgres, generic TCP) are mediated: the workload dials only a stable **named endpoint**; the connector holds short-lived material closed over, performs the handshake, and shuttles bytes. Public lease objects never expose `credentialMaterial`. Preferred path remains identity federation; mediation is for protocols that cannot be pure keyless.

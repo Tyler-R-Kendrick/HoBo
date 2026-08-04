@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "action": "wave",
+  "direction": "w",
+  "mode": "deterministic-composite",
+  "spritesheet": "spritesheet.png",
+  "previewGif": "preview.gif",
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "columns": 5,
+  "rows": 2,
+  "frames": 10,
+  "fps": 8,
+  "anchor": {
+    "x": 128,
+    "y": 255
+  },
+  "sourceRun": "wave-w-repair",
+  "publicAssetReady": true,
+  "runtimeFinalization": {
+    "anchorPolicy": "preserve-motion",
+    "requestedAnchorPolicy": "preserve-motion",
+    "targetBottomY": 255,
+    "targetCenterX": 128,
+    "framesAdjusted": 0,
+    "report": "finalize-runtime.json"
+  }
+}

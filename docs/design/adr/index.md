@@ -13,6 +13,9 @@
 - [`03-data-plane.md`](./03-data-plane.md) — Data plane, AI generation, agents & operators
 - [`07-portability-extensibility.md`](./07-portability-extensibility.md) — Portability, extensibility, deployment topology & scope
 
+## Standalone placement ADRs
+- [`yard-first-placement.md`](./yard-first-placement.md) — Yard owns provider selection; Camp provider-neutral until attached; Camps movable via Trails (implemented)
+
 ## Index
 
 | ID | Title | Theme doc |
@@ -22,7 +25,7 @@
 | 0003 | Event sourcing + CQRS (command store, actor-produced events, cached materializations) | [architecture-core](01-architecture-core.md#adr-0003) |
 | 0004 | Choreography sagas + virtual actors for orchestration | [architecture-core](01-architecture-core.md#adr-0004) |
 | 0005 | One ports/adapters shape for cloud, IaC & build (dagger-adjacent, wasm-on-OCI) | [architecture-core](01-architecture-core.md#adr-0005) |
-| 0006 | IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); per-resource stacks | [architecture-core](01-architecture-core.md#adr-0006) |
+| 0006 | IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); Nix optional not default; per-resource stacks | [architecture-core](01-architecture-core.md#adr-0006) · [devx-devenv-nix](../devx-devenv-nix.md) |
 | 0007 | Provider-specific options via an idiomatic typed-options builder (`.with(...)`) | [architecture-core](01-architecture-core.md#adr-0007) |
 | 0008 | Keyless agent identity (SVID/OIDC federation) + token broker | [identity-security](02-identity-security.md#adr-0008) |
 | 0009 | Capability Manifest capability/auth standard + Registry | [identity-security](02-identity-security.md#adr-0009) |
@@ -145,5 +148,10 @@
 | 0137 | Session Replay on every App Kit (`@hobo/replay`); Kit ≠ WIT membrane; `replay.*`; dual fixtures; distinct from event-log replay | [data-plane](03-data-plane.md#adr-0137) |
 | 0138 | Messaging plane unification; Kafka first-class capability provider; Dapr optional Camp runtime / ActorHost dual realization | [architecture-core](01-architecture-core.md#adr-0138) |
 | 0139 | HoBo Code: coding harness and harness multiplexer (`hobo-code` / `@hobo/code`) | [data-plane](03-data-plane.md#adr-0139) |
-| 0140 | HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals | [portability-extensibility](07-portability-extensibility.md#adr-0140) |
-| 0141 | Pixel-RPG identity: sourced CC0 pixel art replaces the traced rubberhose surface | [portability-extensibility](07-portability-extensibility.md#adr-0141) |
+| 0140 | Launch ship targets: OSS public (A), local-first developer tooling (B), hosted beta/GA (C); default order A→B→C; public claims must name target | [portability-extensibility](07-portability-extensibility.md#adr-0140) |
+| 0141 | Canonical binding delivery membrane: WIT import → link → provider (no env-credential channel) | [identity-security](02-identity-security.md#adr-0141) |
+| 0142 | Config as linked capability vs residual secrets; delegated refs and classification | [identity-security](02-identity-security.md#adr-0142) |
+| 0143 | TrafficRouting port: portable multi-backend intent, explicit partial realization, Station synthesis, and optional provider adapters | [portability-extensibility](07-portability-extensibility.md#adr-0143) |
+| 0144 | External-spec posture: Crossplane/OAM/CNAB mapped at the boundary, never depended on; Resource Definition versioning rules | [portability-extensibility](07-portability-extensibility.md#adr-0144) |
+| 0145 | HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals | [portability-extensibility](07-portability-extensibility.md#adr-0145) |
+| 0146 | Pixel-RPG identity: sourced CC0 pixel art replaces the traced rubberhose surface | [portability-extensibility](07-portability-extensibility.md#adr-0146) |

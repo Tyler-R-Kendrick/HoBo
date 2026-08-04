@@ -2,6 +2,9 @@
  * Contract-asserted config fixtures for `hobo dev` (ADR-0027 + ADR-0070).
  * Same schema contracts as can-deploy; agents only ever see schemaOnlyView.
  * Dual identity fixtures (ADR-0132) are composed in for continuous migration parity.
+ *
+ * Residual secrets default to **memory** (no optional OpenBao dependency).
+ * Install `@hobo/adapter-openbao` when residual OpenBao is required.
  */
 import type { ConfigSchema, SecretSourceRank } from "./config-types.js";
 import {
@@ -9,6 +12,7 @@ import {
 	type DualIdentityFixtures,
 } from "./migration-dual-fixtures.js";
 import {
+	createLocalStationSecretsPort,
 	createMemorySecretsPort,
 	type SecretsPort,
 } from "./secrets-port.js";
@@ -17,7 +21,10 @@ export type DevConfigFixture = Readonly<{
 	/** Schema hash the fixture is asserted against. */
 	schemaHash: string;
 	campValues: Readonly<Record<string, unknown>>;
-	/** Memory secrets port pre-seeded for residual provider-federation paths. */
+	/**
+	 * Residual secrets port for provider-federation paths.
+	 * Default: memory (built-in). OpenBao is optional via @hobo/adapter-openbao.
+	 */
 	secretsPort: SecretsPort;
 	/** Bound-resource token factories (short-lived fixtures). */
 	boundTokens: Readonly<Record<string, () => Promise<string>>>;
@@ -48,11 +55,30 @@ export async function createContractAssertedConfigFixtures(
 		allowStaticEscape?: boolean;
 		/** Tenant for dual identity fixtures. */
 		tenant?: string;
+		/**
+		 * Residual secrets backend for local Station / hobo dev.
+		 * Default **memory** (included). Use vault-jwt for Vault residual.
+		 * OpenBao is not built-in — use `@hobo/adapter-openbao`.
+		 */
+		residualBackend?: "memory" | "vault-jwt";
+		/** Station id for residual port scoping. */
+		stationId?: string;
 	},
 ): Promise<DevConfigFixture> {
-	const secretsPort = createMemorySecretsPort({
-		id: `secrets:dev-fixture:${schema.schemaHash.slice(0, 16)}`,
-	});
+	const residual = options?.residualBackend ?? "memory";
+	const stationId = options?.stationId ?? "local";
+	const secretsPort: SecretsPort =
+		residual === "memory"
+			? createMemorySecretsPort({
+					id: `secrets:dev-fixture:${schema.schemaHash.slice(0, 16)}`,
+				})
+			: createLocalStationSecretsPort({
+					stationId,
+					env: {
+						HOBO_LOCAL_SECRETS_BACKEND: residual,
+					},
+					id: `secrets:dev-fixture:${residual}:${schema.schemaHash.slice(0, 12)}`,
+				});
 	const seed = options?.seedSecrets ?? {};
 	for (const [name, value] of Object.entries(seed)) {
 		await secretsPort.put(name, value);

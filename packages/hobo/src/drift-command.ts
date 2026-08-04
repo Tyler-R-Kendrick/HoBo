@@ -6,6 +6,7 @@ import {
 } from "@hobo/cli";
 import {
 	collectStream,
+	currentFenceToken,
 	deploymentViewProjection,
 	type IacProgram,
 } from "@hobo/cloud";
@@ -302,11 +303,16 @@ export function createDriftCommand(deps: DriftCommandDeps = {}): CommandModule {
 					),
 			];
 			const existing = await collectStream(runtime.store, stream);
+			// The deployment stream is fenced once `up` writes through an
+			// aggregate/leased actor; choreography writers continue it with the
+			// current owner epoch instead of bypassing the fence.
+			const fenceToken = currentFenceToken(runtime.store, stream);
 			await runtime.store.append(stream, events, {
 				expectedSeq:
 					existing.length > 0 ? existing[existing.length - 1]!.seq : 0,
 				actor: DRIFT_ACTOR,
 				tenant: DEFAULT_TENANT,
+				...(fenceToken !== undefined ? { fenceToken } : {}),
 			});
 
 			return {

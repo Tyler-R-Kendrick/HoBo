@@ -4,7 +4,9 @@
  * No Effect-TS / Polly / XState dependencies.
  */
 
+// public-contract: schema version for EffectSpec declarations (ADR-0136).
 export const EFFECT_SPEC_SCHEMA_VERSION = "hobo.effect-spec/v1";
+// public-contract: schema version for captured EffectManifest exports (ADR-0136).
 export const EFFECT_MANIFEST_SCHEMA_VERSION = "hobo.effect-manifest/v1";
 
 /** Exclusive-ish purity lattice (more pure → less pure). */
@@ -47,6 +49,9 @@ export type DomainEffect = (typeof DOMAIN_EFFECTS)[number];
 
 export type EffectKind = CapabilityEffect | DomainEffect;
 
+// ADR-0136 parse-don't-validate DSL surface with readonly refined fields;
+// generated contracts_pb.ts EffectSpec is its wire form.
+// domain-view: deliberate refined domain type, permanent by design.
 export interface EffectSpec {
 	readonly schemaVersion: typeof EFFECT_SPEC_SCHEMA_VERSION;
 	/** Exclusive purity position on the lattice. */
@@ -274,6 +279,9 @@ export function isEffectWideningBreaking(
 
 // ── EffectManifest (export for external systems) ────────────────────────────
 
+// ADR-0136 parse-don't-validate export manifest with refined readonly fields;
+// generated contracts_pb.ts EffectManifest is the wire form.
+// domain-view: deliberate refined domain type, permanent by design.
 export interface EffectManifest {
 	readonly schemaVersion: typeof EFFECT_MANIFEST_SCHEMA_VERSION;
 	readonly contractId: string;
@@ -316,7 +324,9 @@ export function serializeEffectManifest(manifest: EffectManifest): string {
 
 // ── Effect capture (facts only; no re-execution on replay) ───────────────────
 
+// public-contract: fact name emitted when a contract effect is declared (ADR-0136).
 export const EFFECT_DECLARED_EVENT = "contract.EffectDeclared";
+// public-contract: fact name emitted when a declared effect is invoked (ADR-0136).
 export const EFFECT_INVOKED_EVENT = "contract.EffectInvoked";
 
 export interface EffectCaptureFact {

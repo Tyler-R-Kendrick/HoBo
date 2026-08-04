@@ -17,7 +17,8 @@
   "artifacts": {
     "examples": "examples",
     "notebook": "notebook.ipynb",
-    "diagrams": []
+    "diagrams": [],
+    "bench": "bench"
   },
   "waivers": []
 }

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "action": "walk",
+  "direction": "w",
+  "mode": "video",
+  "spritesheet": "spritesheet.png",
+  "previewGif": "preview.gif",
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "columns": 5,
+  "rows": 2,
+  "frames": 10,
+  "fps": 20,
+  "anchor": {
+    "x": 128,
+    "y": 255
+  },
+  "sourceRun": "walk-w-video",
+  "publicAssetReady": false
+}

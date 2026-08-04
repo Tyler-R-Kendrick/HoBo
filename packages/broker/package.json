@@ -4,7 +4,9 @@
 	"license": "MIT",
 	"type": "module",
 	"private": true,
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -25,7 +27,8 @@
 	},
 	"devDependencies": {
 		"@types/node": "^22.15.29",
-		"vitest": "^4.1.9"
+		"vitest": "^4.1.9",
+		"@hobo/storage-sqlite": "workspace:*"
 	},
 	"description": "The HoBo Broker: policy-governed brokering of Bindle/Camp/Yard/Junction placements across providers, wrapping the policy (OPA-shaped), contract (Gatekeeper/PACT), billing, delivery (Argo-shaped), and connector-registry planes."
 }

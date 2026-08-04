@@ -1,0 +1,31 @@
+{
+  "stage": "build-review-gif",
+  "args": [
+    "/home/codex/.local/share/uv/tools/spriterrific/bin/python",
+    "/home/codex/.local/share/uv/tools/spriterrific/lib/python3.11/site-packages/spriterrific/runtime_tools/animated_spritesheets/scripts/build_sequence_gif.py",
+    "--input-dir",
+    "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/normalized",
+    "--pattern",
+    "frame-{id}.png",
+    "--order",
+    "01,02,03,04,05,06,07,08,09,10",
+    "--durations-ms",
+    "120,120,120,120,120,120,120,120,120,120",
+    "--flat-bg",
+    "#f0f0f0",
+    "--out",
+    "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/review/preview.gif"
+  ],
+  "cwd": null,
+  "status": "completed",
+  "startedAt": "2026-07-28T09:08:59.238835Z",
+  "completedAt": "2026-07-28T09:08:59.370167Z",
+  "exitCode": 0,
+  "stdout": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/logs/build-review-gif.stdout.txt",
+  "stderr": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/logs/build-review-gif.stderr.txt",
+  "envPresent": {
+    "FAL_KEY": false,
+    "FAL_API_KEY": true,
+    "REMOVE_BG_API_KEY": false
+  }
+}

@@ -71,7 +71,8 @@ function parseToolchainPin(raw: unknown): ToolchainPin {
     }
   }
 
-  return toolchain;
+  // Equality check above proves the parsed pins match the literals in ToolchainPin.
+  return PINNED_TOOLCHAIN;
 }
 
 function assertRuntimeToolchain(toolchain: ToolchainPin) {

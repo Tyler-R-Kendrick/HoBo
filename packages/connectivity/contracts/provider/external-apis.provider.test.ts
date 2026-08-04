@@ -26,12 +26,20 @@ const contractsDir = path.resolve(
 );
 
 const EXTERNAL_PROVIDERS = [
-	"CloudflareDnsApi",
-	"Route53DnsApi",
-	"TailscaleControlApi",
-	"NetbirdManagementApi",
-	"StripeBillingApi",
-	"OpaPolicyApi",
+	{ provider: "CloudflareDnsApi", consumer: "HoboConnectivity" },
+	{
+		provider: "CloudflareLoadBalancingApi",
+		consumer: "HoboConnectivity",
+	},
+	{
+		provider: "VercelTrafficRoutingApi",
+		consumer: "HoboConnectivity",
+	},
+	{ provider: "Route53DnsApi", consumer: "HoboConnectivity" },
+	{ provider: "TailscaleControlApi", consumer: "HoboConnectivity" },
+	{ provider: "NetbirdManagementApi", consumer: "HoboConnectivity" },
+	{ provider: "StripeBillingApi", consumer: "HoboConnectivity" },
+	{ provider: "OpaPolicyApi", consumer: "HoboConnectivity" },
 ] as const;
 
 describe("external API provider contracts (offline)", () => {
@@ -40,17 +48,17 @@ describe("external API provider contracts (offline)", () => {
 		expect(inventory.ok, inventory.problems.join("; ")).toBe(true);
 
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
-		for (const name of EXTERNAL_PROVIDERS) {
-			const pact = pacts.find((p) => p.provider.name === name);
-			expect(pact, `missing pact for ${name}`).toBeDefined();
-			expect(pact!.consumer.name).toBe("HoboConnectivity");
-			expect(pact!.provider.name).toMatch(/^[A-Z][A-Za-z0-9]*$/);
-			expect(pact!.interactions.length).toBeGreaterThan(0);
+		for (const { provider, consumer } of EXTERNAL_PROVIDERS) {
+			const pact = pacts.find((p) => p.provider.name === provider);
+			if (!pact) throw new Error(`missing pact for ${provider}`);
+			expect(pact.consumer.name).toBe(consumer);
+			expect(pact.provider.name).toMatch(/^[A-Z][A-Za-z0-9]*$/);
+			expect(pact.interactions.length).toBeGreaterThan(0);
 
-			const mock = createMockProviderFromPact(pact!);
-			expect(mock.name).toBe(name);
-			const report = await verifyPact(pact!, mock);
-			expect(report.ok, `${name}: ${JSON.stringify(report.failures)}`).toBe(
+			const mock = createMockProviderFromPact(pact);
+			expect(mock.name).toBe(provider);
+			const report = await verifyPact(pact, mock);
+			expect(report.ok, `${provider}: ${JSON.stringify(report.failures)}`).toBe(
 				true,
 			);
 		}
@@ -59,10 +67,11 @@ describe("external API provider contracts (offline)", () => {
 	it("no external pact uses live network in provider suite", async () => {
 		// Guard: this suite must never call real endpoints — only pact mocks.
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
-		for (const name of EXTERNAL_PROVIDERS) {
-			const pact = pacts.find((p) => p.provider.name === name);
-			const mock = createMockProviderFromPact(pact!);
-			for (const interaction of pact!.interactions) {
+		for (const { provider } of EXTERNAL_PROVIDERS) {
+			const pact = pacts.find((p) => p.provider.name === provider);
+			if (!pact) throw new Error(`missing pact for ${provider}`);
+			const mock = createMockProviderFromPact(pact);
+			for (const interaction of pact.interactions) {
 				const actual = await mock.handle(interaction.request);
 				expect(actual.status, interaction.description).toBe(
 					interaction.response.status,

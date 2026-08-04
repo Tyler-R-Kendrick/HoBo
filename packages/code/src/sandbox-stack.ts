@@ -11,7 +11,7 @@
  *   (review of untrusted diffs, elevated gates).
  *
  * hobo-code does **not** vendor these runtimes. It pins the composition
- * contract and routes isolation classes (see buzz BUZZ_ISOLATION_CLASSES).
+ * contract and routes isolation classes (see compute COMPUTE_ISOLATION_CLASSES).
  * Local offline default remains worktree/rift mediated isolation; production
  * secure path is DeepAgents-orchestrated work inside OpenShell, with MxC when
  * the task class demands it.

@@ -3,76 +3,61 @@
  * hobo-code — standalone coding harness CLI (ADR-0139).
  * Default verb: dispatch.
  *
- * Bare `hobo-code` (or `hobo-code chat`) on a TTY opens the animated title
- * screen (Chewy wordmark + Bo idle, press any key) and then drops into the
- * **pi interactive coding harness** customized with the HoBo extension
- * (pi/extensions/hobo.ts) and HoBo system instructions — the same agent
- * harness the Flue surface (agents/hobo-code.ts) runs programmatically.
+ * Bare `hobo-code` (or `hobo-code chat`) on a TTY opens the **HoBo-owned
+ * InteractiveShell** (Bo + chat + slash + tasks/status) — NOT stock Pi Agent
+ * chrome. Pi remains an optional engine only:
+ *   HOBO_CODE_TUI=pi  or  hobo-code --pi
+ *
  * Piped stdout, --json, or any other verb stays one-shot.
+ *
+ * Note: the separate `hobo` binary is the control-plane shell (up/dev/plan),
+ * not this coding harness.
  */
 import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
-import { HOBO_AGENT_INSTRUCTIONS } from "../harness-customization.js";
-import { BO_IDLE_TICK_MS, renderTitleScreen } from "../splash.js";
+import { resolveShellEngine } from "../engine-resolve.js";
+import {
+	HOBO_AGENT_INSTRUCTIONS,
+	HOBO_AGENT_MODEL,
+} from "../harness-customization.js";
+import { runInteractiveShell } from "../interactive-shell.js";
+import { cleanupIsolation, createIsolationContext } from "../isolation.js";
+import type { ShellEngine } from "../shell-engine.js";
+import { createDefaultShellHost } from "../shell-host.js";
 
-const argv = process.argv.slice(2);
-const json = argv.includes("--json");
-const interactive = process.stdout.isTTY === true && process.stdin.isTTY === true;
+const rawArgv = process.argv.slice(2);
+const json = rawArgv.includes("--json");
+const dense =
+	rawArgv.includes("--dense") ||
+	rawArgv.includes("-D") ||
+	process.env.HOBO_CODE_DENSE === "1" ||
+	process.env.HOBO_CODE_DENSE === "true";
+const wantPiTui =
+	rawArgv.includes("--pi") ||
+	process.env.HOBO_CODE_TUI === "pi" ||
+	process.env.HOBO_CODE_TUI === "pi-tui";
+// Strip shell-only flags before CLI / chat detection
+const argv = rawArgv.filter((a) => a !== "--pi");
+const interactive =
+	process.stdout.isTTY === true && process.stdin.isTTY === true;
 const chatVerb = argv[0] === "chat";
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
- * Animated title screen on the alternate buffer. Fixed-geometry repaints
- * (cursor-home only, no clear) so the canvas never flickers. Resolves on
- * any keypress / Ctrl+C; restores the primary screen either way.
- */
-function showTitleScreen(): Promise<void> {
-	return new Promise((resolve) => {
-		const out = process.stdout;
-		const input = process.stdin;
-		out.write("\x1b[?1049h\x1b[?25l"); // alternate screen + hide cursor
-		let done = false;
-		const started = Date.now();
-		const paint = () => {
-			const frame = renderTitleScreen({ tickMs: Date.now() - started });
-			out.write(`\x1b[H${frame}`);
-		};
-		const finish = () => {
-			if (done) return;
-			done = true;
-			clearInterval(timer);
-			input.removeListener("data", onData);
-			if (input.isTTY) input.setRawMode(false);
-			input.pause();
-			out.write("\x1b[?25h\x1b[?1049l"); // show cursor + primary screen
-			resolve();
-		};
-		const onData = (chunk: Buffer) => {
-			if (chunk.includes(3)) process.exitCode = 130; // Ctrl+C
-			finish();
-		};
-		if (input.isTTY) input.setRawMode(true);
-		input.resume();
-		input.on("data", onData);
-		paint();
-		const timer = setInterval(paint, BO_IDLE_TICK_MS);
-		// Safety: never trap the user — auto-continue after 30s.
-		setTimeout(finish, 30_000).unref();
-	});
-}
-
-/**
- * Launch the pi interactive harness with HoBo customization.
- * Forwards pi's exit code; never resolves before pi exits (persistent).
+ * Legacy escape hatch: spawn stock Pi TUI with HoBo extension.
+ * Not the product default — use only for engine experiments.
  */
 function launchPiHarness(): Promise<number> {
-	const piEntry = fileURLToPath(import.meta.resolve("@mariozechner/pi-coding-agent"));
+	const piEntry = fileURLToPath(
+		import.meta.resolve("@earendil-works/pi-coding-agent"),
+	);
 	const piBin = join(dirname(piEntry), "cli.js");
 	const args = [
 		piBin,
-		"--no-extensions", // ignore ambient ~/.pi extensions; load only ours
+		"--no-extensions",
 		"-e",
 		join(pkgRoot, "pi", "extensions", "hobo.ts"),
 		"--append-system-prompt",
@@ -89,10 +74,79 @@ function launchPiHarness(): Promise<number> {
 }
 
 if (interactive && !json && (argv.length === 0 || chatVerb)) {
-	if (argv.length === 0) await showTitleScreen();
-	process.exitCode = await launchPiHarness();
+	if (wantPiTui) {
+		process.stderr.write(
+			"hobo-code: HOBO_CODE_TUI=pi / --pi — launching stock Pi TUI (escape hatch; not product default)\n",
+		);
+		process.exitCode = await launchPiHarness();
+	} else {
+		// Engine turns run in a mediated isolation sandbox (ADR-0139): the
+		// canonical tree stays read-only; promotion is the audited mutation path.
+		const hoboHome =
+			process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
+				? process.env.HOBO_HOME
+				: join(process.env.HOME ?? tmpdir(), ".hobo");
+		// Local first: a locally hosted SLM is the default engine so the shell
+		// thinks without a cloud account; BYOK is the fallback, not the price
+		// of entry. Turns run inside a mediated sandbox (ADR-0139).
+		let engine: ShellEngine | null = null;
+		const isolation = await createIsolationContext({
+			projectRoot: process.cwd(),
+			hoboHome,
+		});
+		const resolved = await resolveShellEngine({
+			sandboxRoot: isolation.rootPath,
+			runId: isolation.runId,
+			modelSpec: HOBO_AGENT_MODEL,
+			instructions: HOBO_AGENT_INSTRUCTIONS,
+			env: process.env,
+		});
+		if (resolved.engine) {
+			engine = resolved.engine;
+		} else {
+			await cleanupIsolation(isolation.runId, {
+				hoboHome,
+				ok: true,
+				gates: ["engine:unavailable"],
+			});
+			process.stderr.write(
+				`hobo-code: no completion engine — ${resolved.reason} (dispatch-only shell)\n`,
+			);
+		}
+
+		// Bounded session for evidence capture: a TUI claim needs a real TTY
+		// recording, and a recording needs the session to end through the normal
+		// quit path (not a kill mid-frame). Opt-in only; unset = runs until quit.
+		const maxMs = Number.parseInt(process.env.HOBO_CODE_SHELL_MAX_MS ?? "", 10);
+		// Scripted keys let interactive paths (slash palette, focus cycling) be
+		// captured as real recordings instead of being claimed without evidence.
+		// `\n`/`\t`/`\e` escapes are decoded so shells can pass them literally.
+		const scriptedKeys = process.env.HOBO_CODE_SHELL_KEYS
+			? process.env.HOBO_CODE_SHELL_KEYS.replace(/\\n/g, "\n")
+					.replace(/\\r/g, "\r")
+					.replace(/\\t/g, "\t")
+					.replace(/\\e/g, "\u001b")
+			: undefined;
+		const host = createDefaultShellHost({ dense, engine });
+		process.exitCode = await runInteractiveShell({
+			host,
+			dense,
+			reducedMotion:
+				process.env.HOBO_CODE_REDUCED_MOTION === "1" ||
+				process.env.HOBO_CODE_REDUCED_MOTION === "true",
+			...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : {}),
+			...(scriptedKeys !== undefined ? { scriptedKeys } : {}),
+		});
+		if (engine) {
+			await engine.dispose();
+			// Sandbox stays open so un-promoted edits survive the session.
+			process.stdout.write(
+				`sandbox kept: ${engine.sandboxRoot}\npromote (audited): hobo-code promote --run ${engine.runId}\n`,
+			);
+		}
+	}
 } else {
-	const result = await runHoboCodeCli(argv, { json });
-	process.stdout.write(formatHoboCodeResult(result, json));
+	const result = await runHoboCodeCli(argv, { json, dense });
+	process.stdout.write(formatHoboCodeResult(result, { json, dense }));
 	process.exitCode = result.exitCode;
 }

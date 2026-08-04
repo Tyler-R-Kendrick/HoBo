@@ -130,11 +130,27 @@ export interface GatekeeperInput {
 	/** Optional secretless-first config schema ranking gate (ADR-0027). */
 	secretlessConfig?: SecretlessConfigGateVerdict;
 	/**
+	 * Optional binding-delivery gate (ADR-0141): forbid secret-shaped env
+	 * (ConnectionStrings__*, password bags) — links only.
+	 */
+	bindingDelivery?: BindingDeliveryGateVerdict;
+	/**
 	 * Optional can-migrate dimension for identity adapter / spectrum cutovers.
 	 * When omitted, Gatekeeper does not block on migration readiness (deploy
 	 * path remains available; continuous migration is still Matching-driven).
 	 */
 	canMigrate?: CanMigrateGateVerdict;
+}
+
+/** Precomputed binding-delivery dimension (from @hobo/bindles evaluateBindingDeliveryGate). */
+export interface BindingDeliveryGateVerdict {
+	ok: boolean;
+	reasons: ReadonlyArray<{
+		code: string;
+		message: string;
+		path?: string;
+	}>;
+	summary?: string;
 }
 
 export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
@@ -231,6 +247,24 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		}
 	}
 
+	// (e2) binding-delivery (ADR-0141) — optional precomputed dimension.
+	let bindingDeliveryOk = true;
+	if (input.bindingDelivery) {
+		bindingDeliveryOk = input.bindingDelivery.ok;
+		if (!input.bindingDelivery.ok) {
+			for (const reason of input.bindingDelivery.reasons) {
+				reasons.push({
+					gate: "contracts",
+					code: `binding-delivery:${reason.code}`,
+					message: reason.message,
+					...(reason.path !== undefined
+						? { details: { path: reason.path } }
+						: {}),
+				});
+			}
+		}
+	}
+
 	// (f) can-migrate identity dual-path readiness — optional precomputed dimension.
 	// Continuous migration is Matching-driven; this gate only blocks when a caller
 	// supplies a dry-run verdict (adapter change / spectrum cutover evidence).
@@ -255,7 +289,8 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 	}
 
 	const decision = composeEffect({
-		contractOk: canDeploy.ok && secretlessConfigOk && canMigrateOk,
+		contractOk:
+			canDeploy.ok && secretlessConfigOk && bindingDeliveryOk && canMigrateOk,
 		policyEffect,
 		pendingObligations: pendingObligations.length > 0,
 		quotaOk: costQuota.ok,

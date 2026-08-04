@@ -2,7 +2,7 @@
 
 **HIGHBALL!** — the game-first control-plane UI: a top-down pixel-RPG village
 rendered from real projections (Phaser 3 host + OpenUI generative overlays).
-ADR-0140, art identity per ADR-0141.
+ADR-0145, art identity per ADR-0146.
 
 The yard is an *observed* world: every prop, character, and signal is a 1:1
 rendering of a real projection, and the goal state — the **highball**, a clean
@@ -42,7 +42,7 @@ pnpm --filter @hobo/control-yard run evidence:check
 
 
 Playable host: `public/index.html` + `public/dist/yard.js` (esbuild bundle of
-`src/main.ts`, the only module that constructs `Phaser.Game` — ADR-0140).
+`src/main.ts`, the only module that constructs `Phaser.Game` — ADR-0145).
 Rebuild it with `pnpm --filter @hobo/control-yard run bundle`; `play`,
 `serve`, and `evidence` do so automatically.  
 Anim isolation: `public/anim-test.html` (phaser-gamedev AnimTest pattern)
@@ -61,7 +61,7 @@ provenance rules in `DESIGN.md`.
 
 - **`site/DESIGN.md`** (mirrored `DESIGN.md` here) — the pixel-RPG contract:
   16px tile grid, integer scaling only, hard `#3f2631` outlines, square corners,
-  earth-and-slate palette. See [ADR-0141](../../docs/design/adr/07-portability-extensibility.md#adr-0141).
+  earth-and-slate palette. See [ADR-0146](../../docs/design/adr/07-portability-extensibility.md#adr-0146).
 - **`assets/kenney/`** — vendored CC0 tilesets (Kenney), each with its upstream
   licence beside it. **Art is sourced, never drawn in renderer code**: assembling
   props from rects and lines is what produced the surface this replaced.

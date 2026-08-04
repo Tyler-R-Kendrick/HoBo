@@ -59,6 +59,7 @@ export function createBindlesPublicApiSnapshot(
 		"dependencyAnnotation",
 		"dependencyRuntimeOf",
 		"discoveryEnvForDependency",
+		"discoveryEndpointsForDependency",
 		"externalDependencyAnnotation",
 		"containerDependencyAnnotation",
 		"wasmComponentDependencyAnnotation",
@@ -86,6 +87,13 @@ export function createBindlesPublicApiSnapshot(
 		"generateCtxConfigSource",
 		"materializeAgentConfigView",
 		"evaluateSecretlessConfigGate",
+		// ADR-0141 binding-delivery membrane
+		"evaluateBindingDeliveryGate",
+		"isForbiddenSecretEnvKey",
+		"looksLikeSecretEnvValue",
+		// ADR-0142 classification
+		"CONFIG_SENSITIVITY",
+		"sensitivityForField",
 		// Harness / feature flags IfC (ADR-0044 / ADR-0083)
 		"BINDLE_FEATURES_SCHEMA",
 		"declareExperiment",

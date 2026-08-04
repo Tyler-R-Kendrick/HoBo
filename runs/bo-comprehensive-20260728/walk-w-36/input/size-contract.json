@@ -1,0 +1,756 @@
+{
+  "version": 1,
+  "kind": "spriterrific-size-contract",
+  "name": "Bo runtime walk contract",
+  "source": "site/public/parallax/bo-walk.png",
+  "sourceKind": "image",
+  "action": "walk",
+  "direction": "e",
+  "runtimeCell": [
+    160,
+    157
+  ],
+  "sourceCanvas": [
+    160,
+    157
+  ],
+  "anchorPolicy": "grounded",
+  "pivot": "foot-center",
+  "targetVisibleHeight": 151,
+  "targetVisibleWidth": 144,
+  "maxVisibleWidth": 149,
+  "targetBottomY": 153,
+  "targetCenterX": 75,
+  "tolerances": {
+    "maxTargetHeightDriftPct": 0.08,
+    "maxIntraHeightDriftPct": 0.08,
+    "maxBottomDriftPx": 2,
+    "maxWidthOverflowPct": 0.12,
+    "maxCenterDriftPx": null
+  },
+  "measurementsSummary": {
+    "frames": 36,
+    "nonEmptyFrames": 36,
+    "frameSize": [
+      160,
+      157
+    ],
+    "visibleWidthRange": [
+      139,
+      149
+    ],
+    "visibleHeightRange": [
+      149,
+      153
+    ],
+    "visibleBottomYRange": [
+      153,
+      153
+    ],
+    "visibleCenterXRange": [
+      71.5,
+      76.0
+    ],
+    "medianVisibleWidth": 144.0,
+    "medianVisibleHeight": 151.0,
+    "medianBottomY": 153.0,
+    "medianCenterX": 75.0,
+    "maxVisibleWidth": 149,
+    "maxVisibleHeight": 153,
+    "intraHeightDriftPct": 0.026490066225165563
+  },
+  "measurements": [
+    {
+      "frame": "frame-01",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        5,
+        5,
+        146,
+        154
+      ],
+      "visibleWidth": 141,
+      "visibleHeight": 149,
+      "visibleCenterX": 75.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-02",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        6,
+        5,
+        146,
+        154
+      ],
+      "visibleWidth": 140,
+      "visibleHeight": 149,
+      "visibleCenterX": 75.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-03",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        6,
+        5,
+        147,
+        154
+      ],
+      "visibleWidth": 141,
+      "visibleHeight": 149,
+      "visibleCenterX": 76.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-04",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        7,
+        4,
+        146,
+        154
+      ],
+      "visibleWidth": 139,
+      "visibleHeight": 150,
+      "visibleCenterX": 76.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-05",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        5,
+        2,
+        146,
+        154
+      ],
+      "visibleWidth": 141,
+      "visibleHeight": 152,
+      "visibleCenterX": 75.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-06",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        4,
+        1,
+        149,
+        154
+      ],
+      "visibleWidth": 145,
+      "visibleHeight": 153,
+      "visibleCenterX": 76.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-07",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        3,
+        1,
+        150,
+        154
+      ],
+      "visibleWidth": 147,
+      "visibleHeight": 153,
+      "visibleCenterX": 76.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-08",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        2,
+        1,
+        150,
+        154
+      ],
+      "visibleWidth": 148,
+      "visibleHeight": 153,
+      "visibleCenterX": 75.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-09",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        2,
+        2,
+        150,
+        154
+      ],
+      "visibleWidth": 148,
+      "visibleHeight": 152,
+      "visibleCenterX": 75.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-10",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        2,
+        3,
+        150,
+        154
+      ],
+      "visibleWidth": 148,
+      "visibleHeight": 151,
+      "visibleCenterX": 75.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-11",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        5,
+        147,
+        154
+      ],
+      "visibleWidth": 146,
+      "visibleHeight": 149,
+      "visibleCenterX": 73.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-12",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        5,
+        145,
+        154
+      ],
+      "visibleWidth": 144,
+      "visibleHeight": 149,
+      "visibleCenterX": 72.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-13",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        4,
+        143,
+        154
+      ],
+      "visibleWidth": 142,
+      "visibleHeight": 150,
+      "visibleCenterX": 71.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-14",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        3,
+        143,
+        154
+      ],
+      "visibleWidth": 142,
+      "visibleHeight": 151,
+      "visibleCenterX": 71.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-15",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        0,
+        2,
+        144,
+        154
+      ],
+      "visibleWidth": 144,
+      "visibleHeight": 152,
+      "visibleCenterX": 71.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-16",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        2,
+        146,
+        154
+      ],
+      "visibleWidth": 145,
+      "visibleHeight": 152,
+      "visibleCenterX": 73.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-17",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        2,
+        3,
+        146,
+        154
+      ],
+      "visibleWidth": 144,
+      "visibleHeight": 151,
+      "visibleCenterX": 73.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-18",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        3,
+        4,
+        146,
+        154
+      ],
+      "visibleWidth": 143,
+      "visibleHeight": 150,
+      "visibleCenterX": 74.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-19",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        4,
+        5,
+        146,
+        154
+      ],
+      "visibleWidth": 142,
+      "visibleHeight": 149,
+      "visibleCenterX": 74.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-20",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        5,
+        5,
+        146,
+        154
+      ],
+      "visibleWidth": 141,
+      "visibleHeight": 149,
+      "visibleCenterX": 75.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-21",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        5,
+        3,
+        145,
+        154
+      ],
+      "visibleWidth": 140,
+      "visibleHeight": 151,
+      "visibleCenterX": 74.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-22",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        4,
+        2,
+        146,
+        154
+      ],
+      "visibleWidth": 142,
+      "visibleHeight": 152,
+      "visibleCenterX": 74.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-23",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        3,
+        1,
+        149,
+        154
+      ],
+      "visibleWidth": 146,
+      "visibleHeight": 153,
+      "visibleCenterX": 75.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-24",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        2,
+        1,
+        150,
+        154
+      ],
+      "visibleWidth": 148,
+      "visibleHeight": 153,
+      "visibleCenterX": 75.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-25",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        2,
+        1,
+        150,
+        154
+      ],
+      "visibleWidth": 148,
+      "visibleHeight": 153,
+      "visibleCenterX": 75.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-26",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        3,
+        150,
+        154
+      ],
+      "visibleWidth": 149,
+      "visibleHeight": 151,
+      "visibleCenterX": 75.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-27",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        4,
+        150,
+        154
+      ],
+      "visibleWidth": 149,
+      "visibleHeight": 150,
+      "visibleCenterX": 75.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-28",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        5,
+        149,
+        154
+      ],
+      "visibleWidth": 148,
+      "visibleHeight": 149,
+      "visibleCenterX": 74.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-29",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        5,
+        148,
+        154
+      ],
+      "visibleWidth": 147,
+      "visibleHeight": 149,
+      "visibleCenterX": 74.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-30",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        0,
+        5,
+        145,
+        154
+      ],
+      "visibleWidth": 145,
+      "visibleHeight": 149,
+      "visibleCenterX": 72.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-31",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        0,
+        2,
+        144,
+        154
+      ],
+      "visibleWidth": 144,
+      "visibleHeight": 152,
+      "visibleCenterX": 71.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-32",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        1,
+        2,
+        145,
+        154
+      ],
+      "visibleWidth": 144,
+      "visibleHeight": 152,
+      "visibleCenterX": 72.5,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-33",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        3,
+        2,
+        146,
+        154
+      ],
+      "visibleWidth": 143,
+      "visibleHeight": 152,
+      "visibleCenterX": 74.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-34",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        4,
+        3,
+        147,
+        154
+      ],
+      "visibleWidth": 143,
+      "visibleHeight": 151,
+      "visibleCenterX": 75.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-35",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        4,
+        4,
+        147,
+        154
+      ],
+      "visibleWidth": 143,
+      "visibleHeight": 150,
+      "visibleCenterX": 75.0,
+      "visibleBottomY": 153
+    },
+    {
+      "frame": "frame-36",
+      "source": "site/public/parallax/bo-walk.png",
+      "frameSize": [
+        160,
+        157
+      ],
+      "empty": false,
+      "alphaBBox": [
+        7,
+        5,
+        146,
+        154
+      ],
+      "visibleWidth": 139,
+      "visibleHeight": 149,
+      "visibleCenterX": 76.0,
+      "visibleBottomY": 153
+    }
+  ],
+  "promptGuidance": [
+    "Use a locked camera: no zoom, pan, crop, or camera push-in/out.",
+    "Keep the same apparent sprite scale as the input reference for the whole clip.",
+    "Keep the sprite's foot-center fixed; motion should come from the action, not from sliding the whole sprite around the frame.",
+    "Keep the first and final frames close to the same scale and placement so the result can be packed into a game spritesheet.",
+    "After processing, the sprite should remain about 151px tall inside a 160x157 runtime cell; treat this as scale guidance, not visible text.",
+    "Keep the contact/base point visually stable; the intended runtime bottom anchor is y=153."
+  ]
+}

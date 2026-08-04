@@ -1,8 +1,121 @@
 # `@hobo/code` architecture
 
+## Product UI ownership (hard rule)
+
+**Bare interactive `hobo-code` owns its chrome.** The default TTY path is
+`InteractiveShell` (`src/interactive-shell.ts`): HoBo logo + Bo, chat transcript,
+slash palette, tasks/status focus — **not** stock Pi Agent TUI.
+
+| Mode | When |
+|---|---|
+| **HoBo shell (default)** | TTY + bare / `chat` |
+| **Pi TUI escape hatch** | `HOBO_CODE_TUI=pi` or `hobo-code --pi` only |
+| **One-shot verbs** | `help`, `status`, `dispatch`, … |
+
+Pi may still be used as a **completion engine** later; it must not be the
+product frame. Optimizexp / persona reviews that only score one-shot verbs
+while bare TTY is stock Pi are **invalid**.
+
+**Chrome obeys `site/DESIGN.md` (rubberhose), enforced by tests.** The shell
+draws ink cards with hard sticker shadows, a Chewy title card on entry, one
+inverse status strap, and a transcript that owns the viewport. Strict B&W;
+vermillion is reserved for a decision that can mutate the real tree and green
+for done. `test/rubberhose.test.ts` fails the build on hairline rules, rainbow
+accents, geometry drift, or a shrinking content area — the first version of
+this shell was a flicker-free *SaaS dashboard* and nothing in the suite could
+tell, so nothing objected.
+
+**Promotion applies before it cleans (`src/sandbox-promote.ts`).** The gate
+carries the sandbox diff into the canonical tree with `git apply --3way
+--index` and only then reclaims the worktree; a failed or empty apply fails
+closed with the sandbox intact. Gates are executed (`src/promotion-gates.ts`),
+not asserted — they were once hardcoded `pass: true`, which made "gated,
+audited" decoration over a literal.
+
+**Panes are real (`src/mux.ts`, `src/agent-registry.ts`).** The multiplexer
+used to draw three hardcoded panes that mapped to nothing. Agents are now
+auto-detected from evidence (binary on PATH and/or config directory) and each
+is seated in its own tmux window. `applyMux` is idempotent — an existing
+session is reused and only missing windows added, never killed. The
+load-bearing abstraction is the **uniform target**: local, local-inference and
+ssh are all just a command in a pane, so a locally spawned inference session
+and a remote ssh session share one lifecycle, naming and reattach story.
+
+**Agents work in the devenv workspace, one tree each (`src/workspace.ts`,
+`src/agent-workspaces.ts`, `src/rift.ts`).** Panes used to open in
+`process.cwd()`. The workspace root is now resolved from `DEVENV_ROOT`, the
+nearest devenv config, or the git root, and every agent gets an isolated tree
+so parallel agents cannot collide. rift is the default backend (copy-on-write,
+near instant); the previous "rift backend" was a placeholder that created an
+empty directory holding a JSON marker, so an agent opening it found nothing.
+`probeRift` treats presence on PATH as insufficient — the npm package installs
+without a platform binary — and falls back to a git worktree cut from the
+enclosing repo, reporting the reason.
+
+**hobo-code declares its own environment (`devenv.nix`, `src/devenv.ts`).**
+The tools the harness shells out to are named in devenv rather than assumed.
+`inspectDevenv` reports whether that toolchain is installed and refuses to
+imply a hermetic shell that cannot be entered (nix is Linux/macOS; Windows via
+WSL2).
+
+**Tool calling is a separate, purpose-built model (`src/needle-tools.ts`,
+`bridges/needle_bridge.py`).** Cactus Needle — 26M params, distilled for
+function calling — plans tool calls; the chat SLM only writes prose. The
+bridge is a long-lived Python process because loading JAX weights per turn
+would cost more than the inference. Tools (`src/local-tools.ts`) are confined
+to the sandbox by `resolveInSandbox`, which is the security boundary and is
+tested as such. Missing Needle degrades to conversation-only with a reason.
+
+**The default model is adaptive.** `selectChatModel` ranks by the parameter
+size the server reports and picks the smallest chat-capable model, because a
+1.5B model at ~10s/token on CPU reads as a hang no matter how good the UI is.
+`HOBO_CODE_MODEL` overrides; `HOBO_CODE_MAX_TOKENS` bounds generation.
+
+**The engine is local first (`src/ollama-engine.ts`, `src/engine-resolve.ts`).**
+A locally hosted SLM is the default so the product's $0 path is real; cloud
+BYOK is the fallback. Resolution is local → cloud → honest dispatch-only, and
+every failure degrades with an actionable reason. The ollama transport speaks
+`/api/chat` NDJSON directly (no vendor SDK between shell and model), streams
+each token as it lands, supports abort, reports server-side token counts, and
+prices local inference at $0. The local path is conversational today: it has
+no tool-use, so it cannot reach the promotion gate on its own.
+
+**pi-tui is a rendering library, not a product frame.** The shell drives
+`@earendil-works/pi-tui`'s differential renderer (`TUI` + `StreamTerminal`
+adapter in `src/shell-terminal.ts`) while HoBo owns every visible line of
+chrome. Render-economy contract (pinned by `test/render-budget.test.ts`):
+
+- repaint only on state change — idle Bo rest ticks request no render;
+- unchanged lines are never rewritten (line diff); no full-screen erases;
+- input is decoded as atomic sequences (arrows, bracketed paste, resize);
+- isolation/dispatch runs on async spawn so the loop never blocks a turn;
+- no alternate screen — the transcript survives exit;
+- replies are honest: without an engine, a turn *records a compute task*,
+  the footer says `engine:none · dispatch-only`, and no reply claims an
+  agent acted.
+
+**Completion engine (`src/shell-engine.ts`).** Pi is wired as the engine —
+never the frame: `createPiShellEngine` builds a pi `AgentSession` whose cwd
+is a **mediated isolation sandbox** (`createIsolationContext`), streams
+`text_delta` / tool events into shell turns, and supports Esc cancellation
+(`session.abort`). Engine turns never touch the canonical tree. When a turn
+actually changes files, the shell raises a **modal approval gate** showing the
+blast radius (`git status --porcelain` of the sandbox); only an explicit `y`
+runs the audited squash-only promote, `n`/Esc keeps the work sandboxed with
+the one-shot command to promote later, and every other key is inert so a
+mutation can never be triggered by a stray keystroke. The sandbox stays open
+on exit so un-promoted work survives. Provider-reported tokens and cost are
+read from the engine session (never estimated) and surface in the footer and
+`/cost` as live session spend. Availability is
+gated by `shouldAttemptEngine` (BYOK env / pi auth / `HOBO_CODE_ENGINE=pi`;
+`=none` opts out) and every failure degrades to the honest dispatch-only
+shell with a reason on stderr. The footer shows the model that actually runs
+(`pi · <provider>/<model>`, default `HOBO_AGENT_MODEL`).
+
 ```
 hobo-code (standalone binary; dispatch default)
     │
+    ├─ InteractiveShell (default TTY)  Bo + chat + slash + tasks/status
     ├─ Eve subagents            defineEveAgent / defineEveSubagent (filesystem-first)
     ├─ Secure sandbox stack     DeepAgents + OpenShell + MxC (planSecureSandbox)
     ├─ Workflow Worlds          Local World offline · Vercel World prod (worlds.ts)
@@ -31,7 +144,9 @@ raw DTOs. Invalid values throw at the boundary (parse-don't-validate).
 
 ## Event architecture
 
-- **Command** — `hobo-code isolate|session|promote|scaffold|dispatch|…` (flat verbs; dispatch default).
+- **Command** — `hobo-code isolate|session|promote|scaffold|dispatch|config|agent|…` (flat verbs; dispatch default).
+- **Config inventory** — `inspectConfigSurface` / `hobo-code config [--stack …]` lists env/flags by persona stack (secrets presence-only; soft `missingCritical` gaps).
+- **Agent-native** — `inspectAgentSurface` / `hobo-code agent` inventories human-free auth, MCP/ACP protocols, no-elicitation unattended contract, and self-improve loop (SOTA: MCP Auth 2025-11, ACP stdio JSON-RPC).
 - **Event** — `code.IsolationCreated` / `IsolationCleaned` / `PromotionAudited` /
   `EvidenceEmitted` / `VisualLocked` / `BudgetRecorded` (durable under
   `HOBO_HOME/durable/code/<runId>/`).
@@ -53,6 +168,14 @@ Presentation helpers stay pure and unit-tested:
 
 - **Default loading** — `renderDefaultLoadingScreen` (`splash.ts`): console **HoBo logo** + **Bo idle** from real `assets/bo-idle.png` via deterministic `sprite-tui.ts` half-block conversion (12 frames rest·bounce·blink). Generated frames in `_generated/bo-idle-tui-frames.ts`. **Fixed canvas** so frame advance never reflows. Empty standalone mux paints this instead of empty→★.
 - `renderStatusText` / `renderStatusChip` — Herdr-style adaptive box: panes fold ≤4-wide; health glyphs; focus ▸; quiet omits default ★ next; chip omits herdr
+- `herdrMuxCapabilities` / `renderHerdrCapabilityFooter` — discoverable Herdr card (status footer + JSON); dense box stays quiet
+- `describeDevTerminalAttach` / `hobo-code attach` — tmux-like reattach + named endpoint; mosh optional; `--mode overlay` Tailscale-shaped (not control-plane admin)
+- `grokBuildParity` / `hobo-code tasks` — Grok Build–shaped tasks board + clickable/workflows/subagents compare card (not a Grok Build clone)
+- `claudeCodeGuide` / `hobo-code guide` — plain-English Claude Code → hobo-code map for non-dev app builders
+- `cursorGuide` / `hobo-code guide --cursor` — Cursor Agent/Composer/Background/BugBot → hobo-code map
+- `inspectCost` / `hobo-code cost` — $0 path, budget bar, savings vs frontier, free/local routing, token-tool stack
+- `inspectHarnessSurface` / `hobo-code harness` — Pi TUI + Flue run dual surface, skill roots, Eve subagents, self-improve loop, brain notes
+- `inspectEditorBridge` / `hobo-code edit` — vim/neovim managed pane bridge (tmux-send, stdio-jsonrpc, ACP-shaped) + `editor/hobo-code.nvim`
 - session uses `title` override — 4-line box: brand · run · handback LED · next (LED implies live/final)
 - `renderOpenUiHtml` — dark shell + `1 · generate` rail + seal; lede `→edit|→lock|→codegen`; foot `Edit→lock|Lock→codegen|seal`
 - `formatHoboCodeResult` — closed panels: one-scan happy path is 3 lines (title · body · rule, soft omitted); FIX + code inline on fails

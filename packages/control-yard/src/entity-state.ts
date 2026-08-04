@@ -9,7 +9,7 @@ import type { ZoneId } from "./layout.js";
 
 /**
  * The Operator's semantic state, in priority order. This module maps the
- * projection to MEANING only: since ADR-0141 the presenter picks the tile, so
+ * projection to MEANING only: since ADR-0146 the presenter picks the tile, so
  * no clip id (`bo.*`) is ever produced here — there is no Bo sprite any more.
  */
 export type BoAnimState =

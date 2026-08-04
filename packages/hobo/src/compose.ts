@@ -342,9 +342,11 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 // Assemble the default `YardRuntime` the cloud verbs (plan/up/down) drive. This
 // mirrors the composition the @hobo/cloud orchestrator + @hobo/cli cloud-verb
 // tests use: a runtime-local event store (manual clock), an in-memory actor
-// host, the in-process executor over the mock IaC backend, the in-process
+// host, the in-process executor over the real @hobo/iac-pulumi adapter with its
+// DEFAULT in-memory stand-in backend (not live cloud apply), the in-process
 // credential broker, and a provider registry built from the real
-// @hobo/provider-cloudflare provider. LOCAL/MOCKED lane — no real cloud calls.
+// @hobo/provider-cloudflare provider. LOCAL lane — no real cloud calls unless
+// HOBO_PULUMI_LIVE / cloud tokens unlock the credential-gated path.
 export function createDefaultYardRuntime(
 	options: DefaultYardRuntimeOptions = {},
 ): YardRuntime {

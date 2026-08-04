@@ -1,7 +1,7 @@
 # HYX — HoBo Yard Experience Rubric
 
 The qualitative acceptance instrument for the HIGHBALL! control-plane game
-(ADR-0140). The machine-readable source of truth is
+(ADR-0145). The machine-readable source of truth is
 [`hyx-rubric.yaml`](./hyx-rubric.yaml); this file explains how to score it.
 
 **Why it exists.** The evidence gate proves artifacts exist ("self-report is

@@ -58,6 +58,8 @@ export interface FunnelPublishOptions {
 
 export interface FunnelPublishResult {
 	readonly enabled: boolean;
+	/** True only when the provider confirmed that a public route was configured. */
+	readonly confirmed?: boolean;
 	/** Authenticated gateway hostname (never a raw overlay IP). */
 	readonly gatewayHostname: string | null;
 	readonly notes: readonly string[];
@@ -78,9 +80,7 @@ export interface OverlayNetwork {
 		readonly overlayNetworkId?: string;
 	}): readonly string[];
 	/** Optional: configure MagicDNS / split DNS for hierarchical names. */
-	configureMagicDns?(
-		config: MagicDnsSplitConfig,
-	): Promise<MagicDnsSplitResult>;
+	configureMagicDns?(config: MagicDnsSplitConfig): Promise<MagicDnsSplitResult>;
 	/** Optional: publish an authenticated public gateway (Funnel / reverse proxy). */
 	publishFunnel?(options: FunnelPublishOptions): Promise<FunnelPublishResult>;
 }

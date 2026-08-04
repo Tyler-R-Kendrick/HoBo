@@ -1,0 +1,128 @@
+{
+  "targetHeight": 210,
+  "maxWidth": 220,
+  "sourceMaxVisibleSize": [
+    503,
+    493
+  ],
+  "mode": "shared",
+  "allowUpscale": true,
+  "scale": 0.4259634888438134,
+  "sharedScale": 0.4259634888438134,
+  "frames": [
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/scaled/frame-01.png",
+      "sourceBBox": [
+        0,
+        0,
+        503,
+        493
+      ],
+      "sourceVisibleSize": [
+        503,
+        493
+      ],
+      "scale": 0.4259634888438134,
+      "outputSize": [
+        214,
+        210
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/scaled/frame-02.png",
+      "sourceBBox": [
+        0,
+        0,
+        502,
+        469
+      ],
+      "sourceVisibleSize": [
+        502,
+        469
+      ],
+      "scale": 0.4259634888438134,
+      "outputSize": [
+        214,
+        200
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/scaled/frame-03.png",
+      "sourceBBox": [
+        0,
+        0,
+        458,
+        388
+      ],
+      "sourceVisibleSize": [
+        458,
+        388
+      ],
+      "scale": 0.4259634888438134,
+      "outputSize": [
+        195,
+        165
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/scaled/frame-04.png",
+      "sourceBBox": [
+        0,
+        0,
+        440,
+        326
+      ],
+      "sourceVisibleSize": [
+        440,
+        326
+      ],
+      "scale": 0.4259634888438134,
+      "outputSize": [
+        187,
+        139
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/scaled/frame-05.png",
+      "sourceBBox": [
+        0,
+        0,
+        492,
+        482
+      ],
+      "sourceVisibleSize": [
+        492,
+        482
+      ],
+      "scale": 0.4259634888438134,
+      "outputSize": [
+        210,
+        205
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/scaled/frame-06.png",
+      "sourceBBox": [
+        0,
+        0,
+        470,
+        476
+      ],
+      "sourceVisibleSize": [
+        470,
+        476
+      ],
+      "scale": 0.4259634888438134,
+      "outputSize": [
+        200,
+        203
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "agent-tooling-setup",
+  "title": "Agent tooling progressive setup",
+  "experiences": [
+    "ax",
+    "dx"
+  ],
+  "personas": [
+    "product-app-developer",
+    "product-agent-operator",
+    "product-platform-engineer",
+    "product-coding-agent"
+  ],
+  "interfaces": [
+    "cli",
+    "mcp"
+  ],
+  "driver": "cli",
+  "surfaces": [
+    "pnpm run doctor",
+    "bash scripts/setup-agent-tools.sh --help",
+    "bash scripts/setup-agent-tools.sh --common-only --no-gbrain --no-skillopt",
+    "bash scripts/agent-mcp-gbrain.sh",
+    "bash scripts/agent-mcp-serena.sh",
+    "bash scripts/agent-mcp-headroom.sh",
+    "pnpm run skills:mirror-check"
+  ],
+  "tags": [
+    "@optimizexp",
+    "@ax",
+    "@dx"
+  ],
+  "generatedFromSeed": true,
+  "seedDigest": "a585bf495ce73c26",
+  "personaResolution": "explicit --personas",
+  "bindings": {
+    "steps": "steps/bindings.steps.ts",
+    "implementations": "steps/implementations.ts",
+    "tests": "test/agent-tooling-setup.bindings.test.ts"
+  },
+  "implementationStatus": "wired",
+  "primaryCommand": "bash scripts/setup-agent-tools.sh --help"
+}

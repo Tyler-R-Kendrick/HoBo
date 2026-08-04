@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "action": "walk",
+  "direction": "w",
+  "mode": "video",
+  "spritesheet": "spritesheet.png",
+  "previewGif": "preview.gif",
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "columns": 5,
+  "rows": 8,
+  "frames": 36,
+  "fps": 20,
+  "anchor": {
+    "x": 128,
+    "y": 255
+  },
+  "sourceRun": "walk-w-36",
+  "publicAssetReady": true,
+  "runtimeFinalization": {
+    "anchorPolicy": "grounded",
+    "requestedAnchorPolicy": "grounded",
+    "targetBottomY": 255,
+    "targetCenterX": 128,
+    "framesAdjusted": 36,
+    "report": "finalize-runtime.json"
+  }
+}

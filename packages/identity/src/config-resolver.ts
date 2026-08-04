@@ -95,6 +95,7 @@ export async function resolveConfigSchema(
 			name,
 			source: result.entry.source,
 			valueRef: result.entry.valueRef,
+			sensitivity: result.entry.sensitivity,
 			tenant: options.tenant,
 			subject: options.subject,
 			seq,

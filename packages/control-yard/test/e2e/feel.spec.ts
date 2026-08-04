@@ -48,7 +48,7 @@ const budgets = JSON.parse(
 };
 
 /**
- * The village renders sourced tiles, not animation clips (ADR-0141), so the
+ * The village renders sourced tiles, not animation clips (ADR-0146), so the
  * "shipped art nobody can ever see" check moves from clip ids to **mechanic
  * cues**: every visual the design promises must be reachable from some real
  * projection state. An entry that never appears is a product gap, not a test

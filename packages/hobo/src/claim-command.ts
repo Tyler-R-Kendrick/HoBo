@@ -1,6 +1,10 @@
 import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { DEFAULT_TENANT, deploymentIdFor } from "@hobo/cli";
-import { deploymentClaimed, deploymentViewProjection } from "@hobo/cloud";
+import {
+	currentFenceToken,
+	deploymentClaimed,
+	deploymentViewProjection,
+} from "@hobo/cloud";
 import type { PrincipalRef } from "@hobo/core";
 
 import {
@@ -235,6 +239,9 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 				};
 			}
 
+			// Continue the fenced deployment stream with the current owner
+			// epoch rather than bypassing the fence (same rule as drift).
+			const fenceToken = currentFenceToken(runtime.store, stream);
 			await runtime.store.append(
 				stream,
 				[
@@ -244,7 +251,12 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 						newOwner,
 					}),
 				],
-				{ expectedSeq: snapshot.seq, actor: newOwner, tenant: DEFAULT_TENANT },
+				{
+					expectedSeq: snapshot.seq,
+					actor: newOwner,
+					tenant: DEFAULT_TENANT,
+					...(fenceToken !== undefined ? { fenceToken } : {}),
+				},
 			);
 
 			// Re-fold to confirm the rebind preserved all provisioned state.

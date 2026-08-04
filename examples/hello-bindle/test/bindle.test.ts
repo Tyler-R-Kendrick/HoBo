@@ -21,6 +21,13 @@ const injectedEnv = {
 	config: { GREETING_PREFIX: "howdy", APP_TITLE: "howdy" },
 } as const;
 
+/** Default Session Replay annotation auto-attached to every App Kit (ADR-0137). */
+const sessionReplayDefault = {
+	provider: "hobo",
+	option: "session-replay",
+	config: { enabled: true, defaultSupply: "kit-local-on" },
+} as const;
+
 /**
  * Default-state authoring graph from `bindle()` — what the example constructs
  * before collection / plan / serve.
@@ -33,7 +40,7 @@ const DEFAULT_DEFINITION = {
 			name: "api",
 			stableId: "api:api",
 			declaredAllow: [],
-			annotations: [injectedEnv],
+			annotations: [sessionReplayDefault, injectedEnv],
 			dependsOn: [],
 		},
 		web: {
@@ -41,7 +48,7 @@ const DEFAULT_DEFINITION = {
 			name: "web",
 			stableId: "web:web",
 			declaredAllow: [],
-			annotations: [injectedEnv],
+			annotations: [sessionReplayDefault, injectedEnv],
 			// dependsOn stores dependency *kinds* (api resource kind is "api").
 			dependsOn: ["api"],
 		},

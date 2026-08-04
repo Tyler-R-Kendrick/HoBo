@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "action": "walk",
+  "direction": "w",
+  "mode": "deterministic-mirror-with-asymmetric-occlusion",
+  "spritesheet": "spritesheet.png",
+  "previewGif": "preview.gif",
+  "frameWidth": 160,
+  "frameHeight": 157,
+  "columns": 6,
+  "rows": 6,
+  "frames": 36,
+  "fps": 20,
+  "anchor": {
+    "x": 80,
+    "y": 153
+  },
+  "sourceRun": "bo-comprehensive-20260728/walk-w-asymmetric",
+  "publicAssetReady": true,
+  "sizeContractAudit": "size-contract-audit.json"
+}

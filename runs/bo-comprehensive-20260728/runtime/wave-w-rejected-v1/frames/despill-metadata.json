@@ -1,0 +1,210 @@
+{
+  "plan": {
+    "mode": "auto",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "edgeRadius": 2,
+    "bandRadius": 12,
+    "dominance": 8,
+    "deepTintThreshold": 0.009,
+    "minDeepSample": 200,
+    "axes": [
+      {
+        "chromaRgb": [
+          0,
+          255,
+          0
+        ],
+        "deepTinted": 0,
+        "deepTotal": 95263,
+        "deepFraction": 0.0,
+        "bandOnly": false
+      }
+    ]
+  },
+  "frames": [
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-01.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3454,
+          "spillRemoved": 109608,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-02.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3513,
+          "spillRemoved": 107902,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-03.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3720,
+          "spillRemoved": 112826,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-04.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3599,
+          "spillRemoved": 106013,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-05.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3691,
+          "spillRemoved": 113356,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-06.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3751,
+          "spillRemoved": 113946,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-07.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-07.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3591,
+          "spillRemoved": 110995,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-08.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-08.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3661,
+          "spillRemoved": 113506,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-09.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-09.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3616,
+          "spillRemoved": 107923,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-10.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/wave-w/frames/frame-10.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3510,
+          "spillRemoved": 107720,
+          "protectedPixels": 0
+        }
+      ]
+    }
+  ]
+}

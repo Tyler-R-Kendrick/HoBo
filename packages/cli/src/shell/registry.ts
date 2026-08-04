@@ -1,3 +1,4 @@
+import { stubResult } from "../cloud/stub.js";
 import type { CliContext, CommandResult } from "../types/envelope.js";
 import { UsageError } from "./errors.js";
 import { CANONICAL_VERBS, verbNames } from "./verbs.js";
@@ -96,12 +97,6 @@ export function createCommandRegistry(
 function stubCommand(verb: string): CommandModule {
 	return {
 		implemented: false,
-		run: async () => ({
-			ok: true,
-			status: "not_implemented",
-			code: "HOBO_CLI_STUB",
-			message: `${verb} is not yet implemented`,
-			data: {},
-		}),
+		run: async () => stubResult(verb),
 	};
 }

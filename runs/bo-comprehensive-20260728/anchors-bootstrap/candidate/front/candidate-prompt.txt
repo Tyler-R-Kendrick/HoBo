@@ -1,0 +1,45 @@
+Intended use: create a source-faithful game sprite anchor from a supplied visual reference.
+
+Input image role: strict visual authority. Preserve the source image's character identity and visual style. Keep the same chibi proportions when present, head/body ratio, silhouette, outfit, palette, line weight, rendering style, facial design, shape language, and key costume cues.
+
+Do not redesign, mature, de-chibi, normalize, westernize, reinterpret, restyle, simplify into a different aesthetic, or replace the character with a generic game sprite. Pixel snapping and palette cleanup are allowed later, but they must not imply a style redesign.
+
+Only adapt canvas, background, and facing as required by the requested anchor.
+
+Create one full-body front-facing character identity anchor on a 1024x1024 square canvas.
+
+
+Style target:
+- source-faithful 2D game sprite
+- preserve the reference image's art direction and visual proportions
+- preserve character-specific color relationships and line weight
+- keep outfit cues and silhouette readable at gameplay scale
+- clean enough for animation reference without inventing a new style
+- if pixel snapping is enabled later, keep the design compatible with snapping while preserving the source style
+
+Composition:
+- exactly one full-body character or object
+- facing the viewer / screen-front
+- centered
+- full body visible
+- generous margin on all sides
+
+
+- neutral upright pose unless the asset role implies a planted object
+
+Background:
+- opaque exact flat chroma green #00FF00 background
+- no gradients
+- no texture
+- no shadows
+- no checkerboard
+- no faux transparency
+- no matte-color spill
+
+Avoid:
+- text, labels, frame numbers
+- props beyond the reference design
+- scenery
+- extra characters
+- cropped limbs
+- transparent background

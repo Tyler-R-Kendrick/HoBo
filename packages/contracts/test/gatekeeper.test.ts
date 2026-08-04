@@ -237,6 +237,31 @@ describe("Gatekeeper composition", () => {
 		).toBe(true);
 	});
 
+	it("DENIES when binding-delivery gate fails (ADR-0141)", () => {
+		const result = evaluateGatekeeper({
+			request: baseRequest,
+			deployedState: { contracts: [deployedContract] },
+			candidate: { plan, contracts: [compatibleCandidate] },
+			costQuota: goodQuota,
+			bindingDelivery: {
+				ok: false,
+				reasons: [
+					{
+						code: "connection-strings-env",
+						message: "forbidden ConnectionStrings__* env",
+						path: "resources.api.env.ConnectionStrings__db",
+					},
+				],
+			},
+		});
+		expect(result.decision).toBe("deny");
+		expect(
+			result.reasons.some(
+				(r) => r.code === "binding-delivery:connection-strings-env",
+			),
+		).toBe(true);
+	});
+
 	it("DENIES when can-migrate dimension fails (continuous identity migration)", () => {
 		const result = evaluateGatekeeper({
 			request: baseRequest,

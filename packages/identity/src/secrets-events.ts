@@ -31,6 +31,8 @@ export function createConfigResolvedEvent(input: {
 	name: string;
 	source: SecretSourceRank;
 	valueRef?: string;
+	/** ADR-0142 classification — never a plaintext value. */
+	sensitivity?: "public" | "internal" | "sensitive";
 	tenant: string;
 	subject?: string;
 	seq?: number;
@@ -50,8 +52,11 @@ export function createConfigResolvedEvent(input: {
 		data: Object.freeze({
 			name: input.name,
 			source: input.source,
-			// Never a value — ref only.
+			// Never a value — ref + classification only.
 			...(input.valueRef !== undefined ? { valueRef: input.valueRef } : {}),
+			...(input.sensitivity !== undefined
+				? { sensitivity: input.sensitivity }
+				: {}),
 			...(input.subject !== undefined ? { subject: input.subject } : {}),
 			redacted: true,
 		}),

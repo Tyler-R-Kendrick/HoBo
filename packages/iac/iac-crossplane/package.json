@@ -4,6 +4,7 @@
 	"license": "MIT",
 	"description": "HoBo Kubernetes-substrate IacProvider: CompositeResourceClaims over a Crossplane cluster (HOBO-716).",
 	"type": "module",
+	"private": true,
 	"files": [
 		"LICENSE",
 		"dist"

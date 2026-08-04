@@ -19,6 +19,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>{title}</title>
 		<meta name="description" content={description} />
+		<meta name="referrer" content="no-referrer" />
 		<link rel="canonical" href={canonical} />
 		<link
 			rel="icon"

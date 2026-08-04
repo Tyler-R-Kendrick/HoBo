@@ -25,12 +25,19 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`adr/03-data-plane.md`](./adr/03-data-plane.md#adr-0137) | **ADR-0137** — Session Replay on every App Kit (`@hobo/replay`); privacy-first; `replay.*`; Kit ≠ WIT membrane | — |
 | [`adr/01-architecture-core.md`](./adr/01-architecture-core.md#adr-0138) | **ADR-0138** — Messaging plane unification; Kafka first-class capability provider; Dapr optional Camp runtime / ActorHost dual realization | 20, 21, 02 |
 | [`messaging-dapr-kafka-note.md`](./messaging-dapr-kafka-note.md) | Maintenance note for Messaging + Kafka + Dapr surfaces, fidelity honesty, permanent non-goals | — |
+| [`adr/yard-first-placement.md`](./adr/yard-first-placement.md) | Yard-first placement: Yard owns provider selection; Camp provider-neutral until attached; Camps movable via Trails | — |
+| [`devx-devenv-nix.md`](./devx-devenv-nix.md) | DevX: devenv-first local shells; Nix optional IaC only — never default multi-cloud path ([ADR-0006](./adr/01-architecture-core.md#adr-0006)) | — |
 | [`adr/01-architecture-core.md`](./adr/01-architecture-core.md#adr-0131) | **ADR-0131** — Station occupancy (hard control-plane isolation; Rails; pure Conductor) | — |
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0132) | **ADR-0132** — Continuous identity migration (dual-path; zero Bindle config) | — |
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0134) | **ADR-0134** — HoBo Trails (app-owned continuous migration recipes; composes `identity.continuous`) | — |
 | [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0130) | **ADR-0130** — Hierarchical DNS-valid naming (`.hobo.localhost` / `.hobo.test`; never bare `.hobo`) | — |
-| [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0140) | **ADR-0140** — HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals | — |
-| [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0141) | **ADR-0141** — Pixel-RPG identity: sourced CC0 pixel art replaces the traced rubberhose surface | — |
+| [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0140) | **ADR-0140** — Launch ship targets A/B/C (OSS public · local-first npm · hosted beta/GA); default order A→B→C | — |
+| [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0143) | **ADR-0143** — TrafficRouting port: portable multi-backend routing intent with explicit partial realization | — |
+| [`launch-ship-targets.md`](./launch-ship-targets.md) | Human-facing summary of ADR-0140 ship targets, S-stage interim cutlines, and claim rules | — |
+| [`instances/`](./instances/README.md) | Populated readiness dashboard, go/no-go, accepted-risk, and residual human-blocker **instances** (dated snapshots; contracts stay in sibling docs) | — |
+| [`pre-public-secret-scan.md`](./pre-public-secret-scan.md) | Target A runbook: full-history gitleaks before repo-public flip; evidence rules | — |
+| [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0145) | **ADR-0145** — HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals | — |
+| [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0146) | **ADR-0146** — Pixel-RPG identity: sourced CC0 pixel art replaces the traced rubberhose surface | — |
 | [`asset-sourcing-policy.md`](./asset-sourcing-policy.md) | Asset sourcing policy for the HIGHBALL! game surface: PD trace plates, CC0 audio, OFL fonts, re-inked references, license allowlist + CREDITS.md provenance | — |
 | [`ai-native-agent-auth.md`](./ai-native-agent-auth.md#plan-06) | AI-native platform, agent auth & end-user auth | 06 |
 | [`stage-3-agent-autonomy-acceptance.md`](./stage-3-agent-autonomy-acceptance.md) | Stage-3 (Agent Autonomy) acceptance record: scope in/out, promoted epic proofs, resolved stage-3 hooks, runnable stage gate | 06 |
@@ -60,6 +67,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`launch-e2e-persona-matrix.md`](./launch-e2e-persona-matrix.md) | Productization M0 contract for launch e2e persona journeys and pass/fail thresholds | — |
 | [`wasm-runtime-wit.md`](./wasm-runtime-wit.md#plan-20) | WASM/WASI runtime & WIT interface reference | 20 |
 | [`authoring-resources-wiring.md`](./authoring-resources-wiring.md#plan-21) | Authoring: resource catalog, wiring/manifest, config & the Hobo Code DSL | 21 |
+| [`twelve-factor-under-hobo.md`](./twelve-factor-under-hobo.md) | 12-factor under HoBo: links + config capability, not password-in-env (ADR-0141/0142) | — |
 | [`platform-engineering.md`](./platform-engineering.md#plan-25) | Platform engineering: Matching, environments, drivers/packs, Relay/GitOps/pipelines | 25 |
 | [`contracts-policy-flags.md`](./contracts-policy-flags.md#plan-29) | Contracts & compatibility, the policy plane & feature flags | 29 |
 | [`generated-stack.md`](./generated-stack.md#plan-23) | AI generation, the generated stack, patchability & verification/testing | 23, 09 |
@@ -80,6 +88,8 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`release-artifact-provenance-retention.md`](./release-artifact-provenance-retention.md) | Productization M0 handoff for release artifact provenance, retention, invalidation/yank, offline bundles, and support/debug access | — |
 | [`artifact-store.md`](./artifact-store.md) | Productization M0 scope and acceptance for artifact classes, custody states, access evidence, retention handoffs, yanks, and support-safe artifact evidence | — |
 | [`package-cache.md`](./package-cache.md) | Productization M0 scope and acceptance for package cache subjects, digest evidence, invalidation, offline availability, and support handoffs | — |
+| [`npm-publish-allowlist.md`](./npm-publish-allowlist.md) | First-publish npm allowlist, `0.1.0-alpha.x` prerelease policy, dual-bin (`@hobo/hobo` only), manual `workflow_dispatch` publish dry-run | — |
+| [`live-provider-matrix.md`](./live-provider-matrix.md) | Honest matrix: provider/IaC realize vs cred-gated live apply vs in-memory/stub (H-E5) | — |
 | [`marketplace-publisher-trust-evidence.md`](./marketplace-publisher-trust-evidence.md) | Productization M0 evidence contract for marketplace publisher trust tiers, review evidence, and launch limitations | — |
 | [`marketplace-payout-hooks.md`](./marketplace-payout-hooks.md) | Productization M0 scope and acceptance for publisher payout-readiness states, tax/identity handoffs, billing reconciliation, and payout launch limitations | — |
 | [`marketplace-ux.md`](./marketplace-ux.md) | Productization M0 scope and acceptance for marketplace browse, trust warnings, installability outcomes, org-catalog visibility, accessibility, and support handoffs | — |

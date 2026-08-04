@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "kind": "runtime-finalization",
+  "createdAt": "2026-07-28T10:16:57-05:00",
+  "animationDir": "runs/bo-comprehensive-20260728/runtime/wave-w",
+  "action": "wave",
+  "direction": "w",
+  "requestedAnchorPolicy": "preserve-motion",
+  "anchorPolicy": "preserve-motion",
+  "targetBottomY": 255,
+  "targetCenterX": 128,
+  "cellSize": [
+    256,
+    256
+  ],
+  "columns": 5,
+  "frames": 10,
+  "fps": 8,
+  "framesAdjusted": 0,
+  "maxAbsDx": 0,
+  "maxAbsDy": 0,
+  "publicAssetReady": true,
+  "records": [
+    {
+      "frame": "frame-01.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-02.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        25,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        25,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-03.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-04.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        24,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        24,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-05.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-06.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        24,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        24,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-07.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-08.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-09.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        25,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        25,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-10.png",
+      "policy": "preserve-motion",
+      "sourceBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "outputBBox": [
+        26,
+        42,
+        229,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    }
+  ]
+}

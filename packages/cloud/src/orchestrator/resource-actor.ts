@@ -22,7 +22,7 @@ import {
 	type IacProgram,
 } from "../executor/executor.js";
 import type { ResourcePlan } from "../plan-types.js";
-import { collectStream } from "../store/index.js";
+import { collectStream, currentFenceToken } from "../store/index.js";
 
 // The ResourceActor reconciliation FSM (control-plane.md "The ResourceActor
 // reconciliation FSM"). Each resource in a plan gets a durable virtual actor
@@ -196,9 +196,13 @@ export async function reconcileResource(
 			return { kind: "converged", snapshot };
 		}
 
+		const fenceToken = currentFenceToken(deps.store, stream);
 		const appendOpts = {
 			actor: ctx.actor,
 			tenant: ctx.tenant,
+			// The deployment stream may already be fenced by an earlier leased
+			// write; continue it under the current owner epoch (no rotation).
+			...(fenceToken !== undefined ? { fenceToken } : {}),
 			...(ctx.correlationId !== undefined
 				? { correlationId: ctx.correlationId }
 				: {}),
@@ -359,9 +363,13 @@ export async function destroyResource(
 		});
 		if (snapshot.state === "Destroyed") return { kind: "converged", snapshot };
 
+		const fenceToken = currentFenceToken(deps.store, stream);
 		const appendOpts = {
 			actor: ctx.actor,
 			tenant: ctx.tenant,
+			// Same fenced-stream rule as reconcile: continue under the current
+			// owner epoch.
+			...(fenceToken !== undefined ? { fenceToken } : {}),
 			...(ctx.correlationId !== undefined
 				? { correlationId: ctx.correlationId }
 				: {}),

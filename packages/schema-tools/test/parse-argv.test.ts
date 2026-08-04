@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseCodegenArgv, resolveFromModule } from "../src/parse.js";
 import {
@@ -60,9 +60,24 @@ describe("parseCodegenArgv flags", () => {
 		expect(invocation.filter).toBe(join(REPO_ROOT, "packages", "core"));
 	});
 
+	it("resolves an explicit package discovery root", () => {
+		const invocation = parseCodegenArgv(
+			["--packages-root", ".", "--filter", "site"],
+			REPO_ROOT,
+		);
+		expect(invocation.packagesRoot).toBe(resolve(REPO_ROOT));
+		expect(invocation.filter).toBe(join(REPO_ROOT, "site"));
+	});
+
 	it("rejects --filter without a value", () => {
 		expect(() => parseCodegenArgv(["--filter"], REPO_ROOT)).toThrow(
 			/missing value for --filter/,
+		);
+	});
+
+	it("rejects --packages-root without a value", () => {
+		expect(() => parseCodegenArgv(["--packages-root"], REPO_ROOT)).toThrow(
+			/missing value for --packages-root/,
 		);
 	});
 

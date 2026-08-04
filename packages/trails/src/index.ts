@@ -1,34 +1,88 @@
 export {
-	TrailRunService,
 	TRAIL_RUN_STATES,
 	type TrailRunRecord,
+	TrailRunService,
 	type TrailRunState,
 } from "./aggregate.js";
 export {
 	CAN_TRAIL_SCHEMA_VERSION,
-	evaluateCanTrail,
 	type CanTrailInput,
 	type CanTrailReason,
 	type CanTrailResult,
+	evaluateCanTrail,
 } from "./can-trail.js";
+export {
+	type CreateSqliteDataDualPortOptions,
+	createSqliteDataDualPort,
+	type DataDualPort,
+	FencedTenantError,
+	type SqliteDataDualPort,
+	type SqliteDataDualWrite,
+} from "./data-dual-port.js";
+export {
+	type CompatGateEvidence,
+	type DataMigrationPlan,
+	type DataMigrationResult,
+	type DataMigrationStatus,
+	type ExecuteDataMigrationOptions,
+	executeDataMigration,
+	MIGRATION_EVENTS,
+	MIGRATION_EXECUTOR_SCHEMA,
+	type MigrationFact,
+} from "./migration-executor.js";
+export {
+	type CreateSqliteSchemaApplyPortOptions,
+	createSqliteSchemaApplyPort,
+	type SchemaApplyPort,
+	type SchemaPhase,
+	type SchemaPhaseResult,
+	type SchemaSnapshotRef,
+} from "./schema-apply-port.js";
+export {
+	type CreateSqliteTenantMovePortsOptions,
+	createSqliteTenantMovePorts,
+	type SqliteTenantMovePorts,
+	TENANT_MOVE_SCHEMA,
+	type TenantFencePort,
+	type TenantTransferPort,
+} from "./tenant-move-port.js";
+export {
+	assertUpgradeScopeBoundary,
+	classifyUpgradeDryRunDecision,
+	COMPATIBILITY_INPUT_MATRIX,
+	type CompatibilityInputs,
+	evaluateUpgradeDryRun,
+	parseCompatibilityInputs,
+	parseRollbackEvidence,
+	type RollbackEvidence,
+	stableDigest,
+	type SupportHandoffRecord,
+	UPGRADE_DRY_RUN_FIXTURES,
+	UPGRADE_DRY_RUN_SCHEMA,
+	UPGRADE_SCOPE_BOUNDARIES,
+	type UpgradeDryRunReport,
+	type UpgradeDryRunRequest,
+	UpgradePreflightParseError,
+} from "./upgrade-preflight.js";
 export {
 	applySchemaStep,
 	createContractAssertedDataDualFixtures,
 	DATA_DUAL_SCHEMA,
-	evaluateDataDual,
 	type DataDualFixture,
 	type DataDualResult,
+	type DataDualView,
+	evaluateDataDual,
 	type SchemaApplyResult,
 } from "./data-steps.js";
 export {
 	defineTrail,
 	orderTrailSteps,
-	wireTrailPhaseDependencies,
 	TRAIL_DEFINITION_SCHEMA,
 	type TrailDefinition,
 	type TrailDefinitionInput,
 	type TrailStep,
 	type TrailStepKind,
+	wireTrailPhaseDependencies,
 } from "./definition.js";
 export {
 	createTrailEvent,
@@ -58,8 +112,8 @@ export {
 export {
 	stepChecksum,
 	TRAIL_HISTORY_SCHEMA,
-	TrailHistoryStore,
 	type TrailHistoryEntry,
+	TrailHistoryStore,
 } from "./history.js";
 export {
 	activateIdentityContinuousFromMatching,
@@ -84,8 +138,8 @@ export {
 } from "./recipes.js";
 export {
 	TRAIL_RUNNER_SCHEMA,
-	TrailRunner,
 	type TrailPlanEvidence,
+	TrailRunner,
 	type TrailRunnerOptions,
 	type TrailRunResult,
 } from "./runner.js";

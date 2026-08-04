@@ -1,13 +1,13 @@
 ---
 type: Agent Tooling Reference
 title: "Agent tooling"
-description: "Twelve third-party AI-coding tools plus repo-local repo and draft skills are wired into this repo for Claude Code, Cursor, Codex, and GitHub Copilot CLI."
+description: "Twelve third-party AI-coding tools plus repo-local repo, draft, sdlc, and optimizexp skills are wired into this repo for Claude Code, Cursor, Codex, and GitHub Copilot CLI."
 tags: [hobo, agent-tooling.md]
 ---
 
 # Agent tooling
 
-Twelve third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh). The repo-local `repo` and `draft` skills are mirrored in `.agents/skills/` and `.claude/skills/`; use `repo` for lifecycle work, `draft` for draft taxonomy and gate-enforced proof artifacts, and `sdlc` to coordinate the full development loop (brainstorm → plan → Linear one-shot issues → permission-gated implementer/reviewer subagents under `.claude/agents/`).
+Twelve third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh). The repo-local `repo`, `draft`, `sdlc`, `gh-stack`, and `optimizexp` skills are mirrored in `.agents/skills/` and `.claude/skills/` (all configured agents: Claude Code, Cursor, Codex, Grok, etc.); use `repo` for lifecycle work, `draft` for draft taxonomy and gate-enforced proof artifacts, `sdlc` to coordinate the full development loop (brainstorm → plan → one-shot issues → subagents with incremental checkins → parent-owned GitHub stacked PRs → bottom-up rubber-duck/adversarial review → comment/check repair → per-PR squash-merge), `gh-stack` for non-interactive `gh stack` CLI rules, and `optimizexp` for persona-driven UX/DX/AX experience optimization (write-ahead agent bus + **review→reduce experiment→verify** each pass by default; derived fixes must ship in-run; no iterations/pass budget; true plateau = flat scores **and** empty implementable backlog; `--report-only` to measure without edits; schema-v2 personas, evidence-checked scorecards (`evidenceChecks`/`justification`), product-CLI feature coverage under `.optimizexp/features/cli-product/`, drift gate `pnpm run optimizexp:check`; config under [`.optimizexp/`](../.optimizexp/README.md); **AX** progressive refs under [`.agents/skills/optimizexp/references/ax/`](../.agents/skills/optimizexp/references/ax/index.md) — specs, MCP, skills, harness CLIs, model routing, token optimization, hooks, auth). Invoking OptimizeXP grants standing approval for safe, in-scope preflight repairs; destructive, networked, secret-bearing, and unrelated actions still require separate authority.
 
 > **Note:** this is *tooling* config, not part of the HoBo product design (`docs/design/`). It was added on request to make the agents productive in this repo.
 
@@ -19,7 +19,7 @@ The fail-fast check is `pnpm run architecture:guard` (`pnpm run architecture:gua
 
 The full compatibility gate is `pnpm run validate:final`, backed by [`../scripts/run-tests.ts`](../scripts/run-tests.ts). Tests run on Vitest repo-wide (one runner for root `test/`, every draft package, and `packages/*`): the runner discovers tracked `*test.ts`/`*test.mjs` files per category and hands the list to a single `vitest run` through a temporary config file, so large categories cannot exceed the Windows command-length limit — the old character-budget batching and the isolated compile-heavy allowlist are gone because Vitest's per-file worker isolation makes them unnecessary. Package-scoped runs stay on `pnpm exec turbo run test --filter=./<workspace>` (each package's `test` script is `vitest run --root .`).
 
-Agent edit loops should not use Node test suites for discovery or broad diagnostics. Use `pnpm run search <text>` for exact indexed search, `pnpm run search:structure --filter <rule>` or `pnpm exec ast-grep run -p <pattern> -l ts` for AST search, then the narrowest compatible test command: `pnpm run test:smoke <file>` when Bun can run it, `pnpm run test:file <file>` or `pnpm run test:name <name> <file>` for normal local feedback, `HOBO_CHECK_BASE=origin/main pnpm run test:changed` for changed-scope validation, and `pnpm run validate:final` only after implementation is complete. `scripts/run-tests.ts` refuses broad agent edit-loop categories when `CI_AGENT`, `CODEX`, `CLAUDECODE`, or `CURSOR_AGENT` is set unless `--final` is passed, and `scripts/run-relevant-checks.ts` refuses broad root unit/contract scripts unless the caller explicitly passes `--final` or `--all`.
+Agent edit loops should not use Node test suites for discovery or broad diagnostics. Use `pnpm run search <text>` for exact indexed search, `pnpm run search:structure --filter <rule>` or `pnpm exec ast-grep run -p <pattern> -l ts` for AST search, then the narrowest compatible test command: `pnpm run test:smoke <file>` when Bun can run it, `pnpm run test:file <file>` or `pnpm run test:name <name> <file>` for normal local feedback, `HOBO_CHECK_BASE=origin/main pnpm run test:changed` for changed-scope validation, and `pnpm run validate:final` only after implementation is complete. `scripts/run-tests.ts` refuses broad agent edit-loop categories when `CI_AGENT`, `CODEX`, `CLAUDECODE`, or `CURSOR_AGENT` is set unless `--final` is passed, and `scripts/run-relevant-checks.ts` refuses broad root unit/contract scripts unless the caller explicitly passes `--final` or `--all`. Root `pnpm run lint:code` formats **`scripts/` and `test/` only** (Biome); keep those trees format-clean when editing automation.
 
 ## The twelve tools
 
@@ -51,17 +51,17 @@ A **trigram-indexed grep** for fast exact/regex search in large local checkouts.
 A **structural search and rewrite** tool for AST-shaped queries. The repo pins `@ast-grep/cli` as a dev dependency, allows its postinstall in `pnpm-workspace.yaml`, commits `sgconfig.yml`, and exposes `pnpm run search:structure` for configured scans. Use ad hoc patterns with `pnpm exec ast-grep run -p '<pattern>' -l ts` when you do not need a committed rule. The devcontainer recommends the VS Code ast-grep extension.
 
 ### Serena — `oraios/serena` (MIT)
-A **semantic-code MCP server**: it gives coding agents IDE-like symbol search, reference lookup, and safer symbol-aware edits/refactors through language servers. It is agent/harness agnostic because it speaks MCP; this repo exposes one shared launcher, [`../scripts/agent-mcp-serena.sh`](../scripts/agent-mcp-serena.sh), and points Claude Code, Cursor, and Codex at that wrapper instead of duplicating hard-coded commands. Install with `uv tool install -p 3.13 serena-agent`, then run `serena init`. No API keys. Serena may install/use language-server dependencies for the languages in the checkout.
+A **semantic-code MCP server**: it gives coding agents IDE-like symbol search, reference lookup, and safer symbol-aware edits/refactors through language servers. It is agent/harness agnostic because it speaks MCP; this repo exposes one shared launcher, [`../scripts/agent-mcp-serena.sh`](../scripts/agent-mcp-serena.sh) (fails closed with setup remediation when the binary is missing), and points Claude Code, Cursor, and Codex at that wrapper instead of duplicating hard-coded commands. The setup script runs the idempotent `serena init` even when the binary is already installed. Codex gives local MCP servers 30 seconds to initialize because Serena's first project scan can exceed Codex's 10-second default. No API keys. Serena may install/use language-server dependencies for the languages in the checkout.
 
 ### RTK — `rtk-ai/rtk` (Apache-2.0)
 A **Rust Token Killer command proxy** that compresses noisy shell-command output before it reaches coding agents. It is local, uses no API keys, and supports direct use (`rtk git status`, `rtk pnpm test:file <file>`, `rtk gain`) plus hook initialization for Claude Code/Copilot (`rtk init -g`), Codex (`rtk init -g --codex`), and Cursor (`rtk init -g --agent cursor`). The setup script installs it in the common/devcontainer layer when possible (existing `rtk`, Homebrew, Cargo, then upstream install script) and initializes hooks only in the selected agent-specific layer.
 
 ### headroom — `chopratejas/headroom` (Apache-2.0)
-A **token-compression MCP server** (also a CLI/proxy) that shrinks the **context fed to the model** — tool outputs, logs, file dumps — reversibly (`headroom_retrieve` fetches originals). Local-first, **no API keys**. MCP tools surface as `mcp__headroom__headroom_compress|retrieve|stats`. Launch: `headroom mcp serve` (wired in `.mcp.json` / `.cursor/mcp.json` / `.codex/config.toml`). For automatic compression of *all* traffic you can also run the proxy: `headroom proxy --port 8787` then `ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude` (optional; see `headroom mcp --help`).
+A **token-compression MCP server** (also a CLI/proxy) that shrinks the **context fed to the model** — tool outputs, logs, file dumps — reversibly (`headroom_retrieve` fetches originals). Local-first, **no API keys**. MCP tools surface as `mcp__headroom__headroom_compress|retrieve|stats`. Repo MCP configs launch via [`../scripts/agent-mcp-headroom.sh`](../scripts/agent-mcp-headroom.sh) (fails closed with setup remediation when the binary is missing). For automatic compression of *all* traffic you can also run the proxy: `headroom proxy --port 8787` then `ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude` (optional; see `headroom mcp --help`).
 
 ### gbrain — `garrytan/gbrain` (MIT)
-A **knowledge-graph memory MCP server** (+ CLI) on the **Bun** runtime: `gbrain capture` ingests notes, `gbrain search`/`query` does hybrid retrieval + synthesis. Launch: `gbrain serve` (stdio MCP). **Requires `gbrain init` once and an embedding key.**
-- ⚠️ **Keys + data egress + cost:** set exactly one of `OPENAI_API_KEY` / `ZEROENTROPY_API_KEY` / `VOYAGE_API_KEY` (in `.env`). gbrain **sends the text it embeds and your queries to that provider** — recurring API cost and data leaving your machine. It is **inert until initialized with a key**; don't point it at content you don't want shared. The local store (PGLite) is gitignored.
+A **knowledge-graph memory MCP server** (+ CLI) on the **Bun** runtime: `gbrain capture` ingests notes, `gbrain search`/`query` does hybrid retrieval + synthesis. Repo MCP configs launch via the shared fail-closed wrapper [`../scripts/agent-mcp-gbrain.sh`](../scripts/agent-mcp-gbrain.sh) (not bare `gbrain serve`) so a missing binary or initialized provider prints remediation pointing at [`../AUTH.md`](../AUTH.md) instead of a host "command not found". Run `gbrain init --pglite` once; local Ollama is the zero-key/local-data path.
+- ⚠️ **Optional keys + data egress + cost:** remote providers use exactly one of `OPENAI_API_KEY` / `ZEROENTROPY_API_KEY` / `VOYAGE_API_KEY` (in `.env`) and receive embedding/query text. Don't point them at content you don't want shared. Local Ollama keeps embeddings local. The PGLite store is gitignored. To disable gbrain entirely, decline its MCP server or run setup with `--no-gbrain`.
 
 
 ### SkillOpt — `microsoft/SkillOpt` (MIT)
@@ -73,14 +73,21 @@ The **repo** skill is mirrored in `.agents/skills/repo` and `.claude/skills/repo
 
 The **draft** skill is mirrored in `.agents/skills/draft` and `.claude/skills/draft`. Use it when creating, moving, or reviewing draft proof material under `src/draft/<kind>/<slug>`, including technical proofs, experience proofs, epic proofs, and project MVP rollups.
 
-Both repo-local skills keep Codex-valid `SKILL.md` frontmatter. Their bundled `references/` directories are Open Knowledge Format concept bundles with OKF metadata in the reference files. `pnpm.cmd run docs:okf` validates the docs OKF bundle and the `repo`, `draft`, and `sdlc` skill reference bundles in both mirrors, accepting LF or CRLF frontmatter line endings so Windows-authored docs use the same gate.
+The **sdlc** skill is mirrored in `.agents/skills/sdlc` and `.claude/skills/sdlc`. Use it for the full development loop. Multi-step work is delivered as **GitHub Stacked PRs** via the official `gh stack` extension; the parent agent owns stack topology and a mandatory **bottom-up closeout** (rubber-duck + adversarial review, all PR comments, status checks, squash-merge per PR). **`/sdlc --finish`** lands the current working session: commit remaining work, rebase on latest trunk, resolve conflicts, open/update PRs, push, and squash-merge every session PR (`references/finish.md`). **Billing/spending-limit CI failures do not block squash-merge** — document them and merge. Subagents implement one layer each with **incremental checkins**. Details: `references/finish.md`, `references/stacked-prs.md`, `references/dispatch.md`.
+
+The **gh-stack** skill is mirrored in `.agents/skills/gh-stack` and `.claude/skills/gh-stack`. Non-interactive CLI rules for `github/gh-stack` (`gh stack init|add|submit|sync|merge|view --json`). Install: `gh extension install github/gh-stack` (also `scripts/setup-agent-tools.sh` common layer). Docs: https://gh.io/stacks
+
+Repo-local skills keep Codex-valid `SKILL.md` frontmatter. Bundled `references/` directories are Open Knowledge Format concept bundles with OKF metadata in the reference files. `pnpm run docs:okf` validates the docs OKF bundle and the `repo`, `draft`, and `sdlc` skill reference bundles in both mirrors, accepting LF or CRLF frontmatter line endings so Windows-authored docs use the same gate.
 
 ## Progressive setup
 
 Start with the common layer, then add one supported agent shim only when you need it:
 
 ```bash
+bash scripts/setup-agent-tools.sh --help                 # flags only (no install)
 bash scripts/setup-agent-tools.sh --common-only --no-gbrain
+pnpm run doctor                                          # Node/pnpm + agent-tooling (AUTH/MCP/setup/PATH)
+# doctor: missing gbrain is a zero-key warn with pasteable --no-gbrain remediation (see AUTH.md)
 # later, choose one supported client:
 bash scripts/setup-agent-tools.sh --agent claude-code --no-gbrain
 bash scripts/setup-agent-tools.sh --agent cursor --no-gbrain
@@ -88,20 +95,21 @@ bash scripts/setup-agent-tools.sh --agent codex --no-gbrain
 bash scripts/setup-agent-tools.sh --agent copilot --no-gbrain
 ```
 
-The common layer installs agent-agnostic runtimes (`tgrep`, repo-pinned `ast-grep`, `rtk`, `serena`, `headroom`, `skillopt-train`, `skillopt-sleep`) and leaves per-agent plugin/skill registration alone. Agent-specific layers only install shims for the selected supported client. Devcontainers run the common layer by default through [`.devcontainer/post-create.sh`](../.devcontainer/post-create.sh), avoiding prompts, global CLI mutations, and key-requiring gbrain setup during container creation.
+The common layer installs agent-agnostic runtimes (`tgrep`, repo-pinned `ast-grep`, `rtk`, `serena`, `headroom`, `skillopt-train`, `skillopt-sleep`, and the **`github/gh-stack`** GitHub CLI extension for stacked PRs) and leaves per-agent plugin/skill registration alone. Agent-specific layers only install shims for the selected supported client. Devcontainers run the common layer by default through [`.devcontainer/post-create.sh`](../.devcontainer/post-create.sh), avoiding prompts, global CLI mutations, and optional gbrain setup during container creation.
 
 ## Per-agent wiring
 | | MCP servers (Serena, headroom, gbrain) | Skills (improve, mattpocock, caveman, ponytail) | Plugin / optimizer |
 |---|---|---|---|
 | **Claude Code** | `.mcp.json` (auto-discovered) | `.claude/skills/` (incl. mattpocock) | `.claude/settings.json` for Superpowers; SkillOpt can run offline |
 | **Cursor** | `.cursor/mcp.json` | `.agents/skills/` + `.cursor/rules/` (caveman) | — (no plugin support) |
-| **Codex** | `~/.codex/config.toml` (copy from `.codex/config.toml`, or `codex mcp add …`) | `.agents/skills/` + `AGENTS.md` | `codex plugin marketplace add/install` (per-machine); SkillOpt can run offline |
+| **Codex** | trusted-project `.codex/config.toml`; copy to `~/.codex/config.toml` or use `codex mcp add …` for a global fallback | `.agents/skills/` + `AGENTS.md` | `codex plugin marketplace add/install` (per-machine); SkillOpt can run offline |
 | **GitHub Copilot CLI** | — | — | `copilot plugin marketplace add/install` (per-machine) |
 
 Committed so a clone is wired up: `.mcp.json`, `.cursor/`, `.codex/config.toml`, `.claude/skills/`, `.agents/skills/`, shared MCP wrapper scripts, `AGENTS.md`, `CLAUDE.md`, `skills-lock.json`. Opening the repo in Claude Code/Cursor will prompt to start the `serena` + `headroom` + `gbrain` MCP servers — decline if unwanted.
 
 ## Install
 ```bash
+bash scripts/setup-agent-tools.sh --help        # flags only (no install)
 bash scripts/setup-agent-tools.sh --common-only --no-gbrain # common/devcontainer-safe layer
 bash scripts/setup-agent-tools.sh --agent codex --no-gbrain # add one supported agent shim
 bash scripts/setup-agent-tools.sh              # common + all supported shims

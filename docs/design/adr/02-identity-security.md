@@ -59,7 +59,7 @@ HoBo defines a **secretless-first** config/secrets model ([Plan 21](../authoring
 1. **References, not values, declared in a varlock-style typed schema.** `config()`/`secret()`/`env()` declarations resolve to **references**, resolved **per Camp at use-time** — a value never lives in the Bindle, the Camp config, or the event log. The declaration surface is a **typed, annotation/decorator-driven schema** in the spirit of varlock's `.env.schema`: each config/secret item declares its **type**, **required-ness**, **sensitivity** (secret vs non-secret config), and **source** (bound resource / provider-federated store / Camp value / static escape hatch). The schema is the committed, agent-readable *shape* (validated, coerced, and codegen'd to typed `ctx.config`, [ADR-0037](01-architecture-core.md#adr-0037)) while the *values* stay out of reach — going beyond varlock's vault-resolution by preferring no secret at all (the brokered path in (2)).
 2. **Resolution ladder (secretless-first):** (a) **bound resource** → SVID-brokered short-lived token (no secret exists); (b) **secret with provider federation** → broker a scoped token and read from the provider's secret store at use-time; (c) **non-secret config** → typed value from the Camp's Deployment Set; (d) **static-secret escape hatch** → only where no federation exists, **bounded** by TTL + rotation + audit + opt-in ([ADR-0023](#adr-0023)).
 3. **IaC state and provisioning outputs are a secret sink — closed explicitly.** IaC providers materialize secrets *into stack state* (a generated RDS master password, connection strings); those must not leak the way app config can't. So: **IaC state is encrypted at rest** (in the Yard's object store), and **secret-typed provisioning outputs are reference-ized — never captured as plaintext into `resource.Provisioned`** ([Plan 4](../control-plane.md#plan-04)): a connection string with an embedded credential lands as a brokered **reference** (ladder (a)/(b)), so the credential never enters the event log (upholding [ADR-0023](#adr-0023) §6/§8). Conformance asserts **no plaintext secret in IaC state or any event**.
-4. **Provider resolution is a pluggable adapter, scoped to the Camp.** The default identity/secrets model (SVID/SVID-brokered tokens, OIDC federation) stays the default, but cloud-specific IAM, keys, and certs plug in through a **`secrets` port adapter / extension** per provider. The Bindle declares *what it needs*; each Camp supplies *where it comes from* (Key Vault vs Secrets Manager vs Vault) via the matching adapter — so swapping clouds, or overriding the default identity path with a cloud-native one, is a Camp + extension change, not an app edit ([ADR-0024](07-portability-extensibility.md#adr-0024)).
+4. **Provider resolution is a pluggable adapter under the Yard's provider, realized at the Camp.** The default identity/secrets model (SVID/SVID-brokered tokens, OIDC federation) stays the default, but cloud-specific IAM, keys, and certs plug in through a **`secrets` port adapter / extension** per **Yard** provider. The Bindle declares *what it needs*; *where* it comes from (Key Vault vs Secrets Manager vs Vault) is selected by the **Yard-owned provider** and realized for Camps attached under that Yard — so **swapping clouds re-homes Camps via Trails / Yard attachment** (+ the matching adapter), not a Camp-local provider pin or app edit ([ADR-0024](07-portability-extensibility.md#adr-0024), [yard-first-placement](yard-first-placement.md)).
 5. **Audit + redaction.** Resolution is `config.Resolved` (ref → source, not value); secret reads are `secret.Accessed` joined to `token.Used`; values are redacted from logs/OTel/OpenInference spans and per-run-encrypted if they must transit a step's I/O.
 
 ### Operational design (implemented)
@@ -100,7 +100,11 @@ Policy may set **deny-ceilings** (`allowedSources`, `forbidStaticEscape`) so pro
 | Package | Responsibility |
 |---------|----------------|
 | `@hobo/bindles` | `config` / `env` / `secret` / `fromBinding` / `secretRef` schema surface + validation |
-| `@hobo/identity` | Resolution ladder orchestration (`resolveConfigSchema` / `resolveConfigEntry`), residual `SecretsPort` adapters (memory fixture, Vault JWT/OIDC, AWS SM stub, Azure KV stub), redacted `config.Resolved` / `secret.Accessed` events, contract-asserted dev fixtures |
+| `@hobo/identity` | Resolution ladder orchestration (`resolveConfigSchema` / `resolveConfigEntry`), residual `SecretsPort` adapters (memory fixture **default**, Vault JWT/OIDC, AWS SM, Azure KV), redacted `config.Resolved` / `secret.Accessed` events, contract-asserted dev fixtures |
+
+Optional residual **OpenBao** lives in **`@hobo/adapter-openbao`** (not a default dependency of `@hobo/identity` or composed `hobo`). Default residual installs use **memory** (`createMemorySecretsPort` / `createLocalStationSecretsPort`). Ranking is unchanged: bound-resource → provider-federation → camp-value → static-escape.
+
+**Local Station + wasm component host:** residual secrets on the **host** default to memory. Wasm guests receive only redacted placeholders / non-sensitive mesh env (`x-hobo-env-*`). Install `@hobo/adapter-openbao` for residual OpenBao (JWT + KV v2, offline or live).
 | `@hobo/connectivity` | Secretless connector (CyberArk-style mediation): plugin registry (postgres, tcp, mysql, redis + extensions); isolation tiers `shared` / `per-tenant` / `per-workload`; named local endpoints ([ADR-0130](07-portability-extensibility.md)); lease renew / drain; credential closed over — never on public lease |
 | `@hobo/cloud` CredentialAudit | Folds `config.*` / `secret.*` into never-compact security audit (joined with `token.*` / `connection.*`) |
 | `@hobo/contracts` Gatekeeper | Optional `secretlessConfig` verdict dimension composed into can-deploy |
@@ -931,3 +935,40 @@ Schema/data migrations (Supabase/Flyway/Atlas/pgroll patterns), cross-cloud app 
 - **(+)** One continuous migration abstraction spanning identity (hands-off) and app-specific data/schema/cross-cloud without parallel control planes.
 - **(+)** Golden oracles prove dual consistency, zero-loss, fail-closed, progressive abort, compensation, history idempotency, junction integrity, identity hands-off.
 - **(−)** Full commercial CDC depth (live Debezium connectors) and multi-DB dual-schema beyond Postgres-shaped fixtures remain residual production hardening, not required for the continuous dual Trail contracts.
+
+## ADR-0141
+**Canonical binding delivery membrane: WIT import → link → provider (no env-credential channel).**
+
+### Context
+Cloud Foundry delivered bindings via `VCAP_SERVICES` and Aspire-style hosts often inject `ConnectionStrings__*` into process env. That dual path conflicts with HoBo's WIT/wRPC membrane ([ADR-0069](01-architecture-core.md#adr-0069), [ADR-0023](#adr-0023)): capability is granted by **links**, deny-by-default. Env bags of credentials also compromise agentic integrity (agents scrape env) and wasm guest isolation. Operators asked for better 12-factor conformance without reintroducing password-in-env.
+
+### Decision
+1. **The only supported binding delivery document is the Component Model membrane:** Bindle bind edges → manifest **links** → WIT **imports** late-bound to **provider exports** → generated `ctx.bindings.*` / capability calls.
+2. **Env is never a substitute for links.** Secret-shaped process env (`ConnectionStrings__*`, URI userinfo, password-like keys, ambient `{resource.connectionString}` grants as runtime secrets) is **forbidden** on default bind/manifest/serve paths and fails the **binding-delivery** can-deploy dimension.
+3. **Non-goals (explicit):** `VCAP_SERVICES` compatibility; OSBAPI as the core provider protocol; CredHub product; password-in-env as "12-factor compliance"; default OpenBao/Vault on every lattice.
+4. **Optional public discovery only:** non-credential HTTP/named endpoints may be projected when classified public; never credentials.
+5. **12-factor under HoBo:** Factor III = schema outside the release + linked `wasi:config` (refs/sensitivity); Factor IV = attached services as **linked capabilities**, not connection-string env bags.
+
+### Consequences
+- **(+)** One integrity membrane; agents and guests cannot harvest ambient secrets from env.
+- **(+)** Honest 12-factor without CF legacy delivery shapes.
+- **(−)** Aspire demos that relied on `ConnectionStrings__*` must migrate to `ctx.bindings` / `fromBinding` / links.
+
+## ADR-0142
+**Config as linked capability vs residual secrets; delegated refs and classification.**
+
+### Context
+[ADR-0027](#adr-0027) ranks secretless resolution; [ADR-0113](#adr-0113) defines residual `hobo:secrets` over `wasi:config/store`. Teams still conflate (a) a Spring/CF "config server" that stores passwords, (b) deploy variance (log level, feature labels), and (c) residual classical vaults. Federation does not obsolete non-secret config, but a credential warehouse on every lattice is wrong for agentic defaults.
+
+### Decision
+1. **`wasi:config/store` is a normal capability** (import → link → provider). HoBo's pin returns `{ key, value-ref, sensitivity }` — refs first, not ambient values.
+2. **Config provider is import-optional:** if a component does not import config, no always-on config/vault service is required. Offline default is memory; durable Camp backends are optional profile choices — never OpenBao-as-config-provider.
+3. **Classification:** `public` | `internal` | `sensitive`. Sensitive config uses the ADR-0027 ladder (`fromBinding` / federation / ref); materialization is **host-mediated** only. Agents receive `schemaOnlyView` / placeholders; events carry refs + sensitivity, never plaintext.
+4. **Residual secrets** (`hobo:secrets`, SecretsPort, optional `@hobo/adapter-openbao`) stay residual. Memory is the default local residual; optional vault adapters are not default `@hobo/identity` dependencies.
+5. **No Config Server product** that doubles as CredHub. Non-secret camp-value may flow through the linked config provider; credentials do not.
+
+### Consequences
+- **(+)** Clear split: capability config vs residual vaults vs identity federation.
+- **(+)** Aligns with agent schema-only and never-compact credential audit.
+- **(−)** Operators must not expect always-on secret-config microservices on every Camp.
+

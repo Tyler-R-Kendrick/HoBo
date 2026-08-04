@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "action": "bindle_adjust",
+  "direction": "w",
+  "mode": "image",
+  "spritesheet": "spritesheet.png",
+  "previewGif": "preview.gif",
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "columns": 5,
+  "rows": 2,
+  "frames": 10,
+  "fps": 8,
+  "anchor": {
+    "x": 128,
+    "y": 255
+  },
+  "sourceRun": "actions-bindle-adjust-w",
+  "publicAssetReady": false
+}

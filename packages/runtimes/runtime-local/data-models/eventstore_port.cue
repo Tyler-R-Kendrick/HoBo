@@ -39,3 +39,50 @@ import "event_envelope.cue"
 	offending_type: string & !=""
 	reason:         string & !=""
 }
+
+#PositionedEvent: {
+	global_position: =~"^(0|[1-9][0-9]*)$"
+	event:           #EventEnvelope
+}
+
+#ReadAllRequest: {
+	after_position?: =~"^(0|[1-9][0-9]*)$"
+	limit?:          int & >0
+	stream_id?:      string & !=""
+	type?:           string & !=""
+	tenant?:         string & !=""
+	lane?:           string & !=""
+}
+
+#DurableCommitRequest: {
+	stream_id: string & !=""
+	events:    [...#EventInput]
+	append:    #AppendRequest
+	effects:   [...#DurableEffect]
+}
+
+#DurableEffect: {
+	kind:            string & !=""
+	idempotency_key: string & !=""
+	payload:         bytes
+}
+
+#DurableCommitResult: {
+	append:  #AppendResult
+	effects: [...#DurableEffectReceipt]
+}
+
+#DurableEffectReceipt: {
+	kind:            string & !=""
+	id:              string & !=""
+	idempotency_key: string & !=""
+	deduped:         bool
+}
+
+#SubscriptionCheckpoint: {
+	subscription_id: string & !=""
+	partition_id:    string & !=""
+	position:        =~"^(0|[1-9][0-9]*)$"
+	fence_token:     =~"^[1-9][0-9]*$"
+	updated_at:      string & !=""
+}

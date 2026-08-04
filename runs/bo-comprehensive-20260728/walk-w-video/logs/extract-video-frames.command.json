@@ -1,0 +1,22 @@
+{
+  "stage": "extract-video-frames",
+  "args": [
+    "ffmpeg",
+    "-y",
+    "-i",
+    "runs/bo-comprehensive-20260728/walk-w-video/fal/raw-video.mp4",
+    "runs/bo-comprehensive-20260728/walk-w-video/extracted/dense-frames/frame-%04d.png"
+  ],
+  "cwd": null,
+  "status": "completed",
+  "startedAt": "2026-07-28T08:21:14.688143Z",
+  "completedAt": "2026-07-28T08:21:15.286507Z",
+  "exitCode": 0,
+  "stdout": "runs/bo-comprehensive-20260728/walk-w-video/logs/extract-video-frames.stdout.txt",
+  "stderr": "runs/bo-comprehensive-20260728/walk-w-video/logs/extract-video-frames.stderr.txt",
+  "envPresent": {
+    "FAL_KEY": false,
+    "FAL_API_KEY": true,
+    "REMOVE_BG_API_KEY": false
+  }
+}

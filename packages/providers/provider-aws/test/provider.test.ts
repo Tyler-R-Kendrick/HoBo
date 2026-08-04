@@ -3,6 +3,8 @@ import { describe, it } from "vitest";
 
 import {
 	AWS_PROVIDER_ID,
+	AWS_TRAFFIC_ROUTING_OFFERING_IDS,
+	AWS_TRAFFIC_ROUTING_PROFILE,
 	createAwsProvider,
 	parsePublishedManifest,
 } from "../src/index.js";
@@ -121,5 +123,13 @@ describe("client: runtime binding client per port", () => {
 		assert.equal(client.providerService, "DynamoDB");
 		assert.deepEqual(client.bindings, { tableName: "sessions" });
 		assert.throws(() => provider.client("mainframe", {}));
+	});
+});
+
+describe("TrafficRouting offerings surface", () => {
+	it("declares lb.* features with inprocess fallback floor", () => {
+		assert.ok(AWS_TRAFFIC_ROUTING_OFFERING_IDS.includes("lb.lifecycle"));
+		assert.ok(AWS_TRAFFIC_ROUTING_OFFERING_IDS.includes("inprocess.weighted"));
+		assert.ok(AWS_TRAFFIC_ROUTING_PROFILE.fallbacks.includes("inprocess.weighted"));
 	});
 });

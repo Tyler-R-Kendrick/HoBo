@@ -5,7 +5,7 @@ description: "Source classes, provenance rules, and license boundaries for HIGHB
 tags: [hobo, design]
 ---
 
-> **Superseded in part by [ADR-0141](adr/07-portability-extensibility.md#adr-0141).**
+> **Superseded in part by [ADR-0146](adr/07-portability-extensibility.md#adr-0146).**
 > The identity is now a top-down pixel RPG built from vendored CC0 pixel-art
 > packs. The pre-1929 public-domain *trace plate* workflow below is retained for
 > reference but is no longer the primary path: art is **sourced**, not traced or
@@ -17,7 +17,7 @@ tags: [hobo, design]
 # Asset Sourcing Policy for the Control Yard
 
 Governs every visual, audio, and font asset that ships in `@hobo/control-yard`
-(the HIGHBALL! game surface, [ADR-0140](./adr/07-portability-extensibility.md#adr-0140))
+(the HIGHBALL! game surface, [ADR-0145](./adr/07-portability-extensibility.md#adr-0145))
 and any future game surface. The design identity is the rubberhose contract in
 `site/DESIGN.md` / `packages/control-yard/DESIGN.md`; this policy governs where
 the raw material may come from and what provenance must travel with it.

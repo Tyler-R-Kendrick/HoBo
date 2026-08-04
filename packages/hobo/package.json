@@ -6,8 +6,7 @@
 	"type": "module",
 	"bin": {
 		"hobo": "./dist/bin/hobo.js",
-		"hobo-mcp": "./dist/bin/hobo-mcp.js",
-		"hobo-code": "./dist/bin/hobo-code.js"
+		"hobo-mcp": "./dist/bin/hobo-mcp.js"
 	},
 	"files": [
 		"LICENSE",

@@ -519,8 +519,6 @@ Local port-based `hobo dev`, cross-cloud Junction connectivity, and public DNS w
 - **(+)** Follow-on closed robustness: Tailscale API MagicDNS, Netbird management HTTP, built-in Route53 SigV4, real ES256 DPoP + JWT-SVID, rego-lite policy docs, durable billing ledger + Stripe PaymentIntent REST.
 - **(−)** Multi-cluster hard isolation sharding, SPIRE Workload API fetch, and WebAuthn claim step-up remain operational/product follow-ons (interfaces ready).
 
-
-
 ## ADR-0135
 **HoBo Yard: game-first control-plane UI over the shared management surface (not a second lifecycle).**
 
@@ -541,6 +539,107 @@ Station occupancy ([ADR-0131](01-architecture-core.md#adr-0131)), Rails, Connect
 - **(−)** Phaser browser host is optional at v0; pure yard-engine + asset validation carry CI. Full visual browser harness remains a follow-on.
 
 ## ADR-0140
+**Launch ship targets: OSS public (A), local-first developer tooling (B), and hosted beta/GA (C) — ordered, named, and cutlined in S-stage terms.**
+
+### Context
+Ship-readiness work conflated three different “ship” meanings: make the monorepo public, publish local-first npm tooling, and run a hosted multi-cloud product. The [ship-readiness gap review](../../plans/0011-ship-readiness-gap-review.md) (2026-07-30) found launch definition missing (**L0**), no populated readiness/go-no-go instances (**O1**), and public claims that could overstate in-memory defaults, synthetic componentize wasm, or CI status. Productization still uses M0–M4 evidence gates ([ADR-0116](#adr-0116)) and beta/RC/GA records ([go-no-go-decision-record.md](../go-no-go-decision-record.md)); those remain for **hosted** release program work. They do not define interim OSS or npm cutlines. Production-build stages **S0–S6** remain the engineering maturity vocabulary for interim cutlines ([build-s0](../build-s0-stage-gate-acceptance.md), [build-s1](../build-s1-stage-gate-acceptance.md), [stage-2](../stage-2-first-cloud-yard-acceptance.md) and later stage records).
+
+### Decision
+1. **Three named ship targets** (stable labels for claims, go/no-go gates, and messaging):
+
+| Target | Label | Meaning |
+|---|---|---|
+| **A** | OSS public | Source + design + site as a **pre-release** monorepo. Not a hosted product claim. |
+| **B** | Local-first developer tooling | Installable npm/`npx` CLI + SDK for the **offline/local** lane. Not multi-cloud GA. |
+| **C** | Hosted beta / GA | Tenants, real cloud apply, staffed support, legal terms — public beta then GA. |
+
+2. **Default ship order is A → B → C.** Do not advance a later target’s public claims while an earlier target’s must-list is open, unless a written exception names the skipped target and residual risk.
+
+3. **Interim cutlines in S-stage terms** (engineering maturity, not M0–M4 productization alone):
+
+| Target | Interim cutline (S-stage) | Must not claim |
+|---|---|---|
+| **A** | **S0/S1 hygiene cutline:** design suite + local packages may be public as **pre-release**; truth-in-advertising; secret history scan; working `SECURITY` contact. S0/S1 **CI green is preferred, not a hard gate for “repo public”** — missing runners are an accepted residual risk until restored. | Hosted multi-cloud product, paid SaaS, production SSO, or “CI proven on main” without live runner evidence. |
+| **B** | **S1 offline golden-path cutline:** Target A met + publish allowlist/prerelease + single install story + offline `hobo` path documented with HONEST SCOPE (in-memory default IaC, synthetic componentize if still present) + support boundary for CLI-only. **S2 live cloud is not required** for Target B. | Live multi-provider apply as the default, portable WASM membrane if wasm is synthetic, production OIDC/SPIRE as default login. |
+| **C** | **S2+ product cutline for beta; S3+ depth and M3/M4 evidence for GA claims:** public-beta cutline + populated dashboard/go-no-go + counsel ToS/privacy/DPA/subprocessors + staffed support + dogfood Yard on a **real** provider + at least one non-fixture Bindle→cloud **apply** path. GA adds DR/paid-stack evidence when claimed, plus ratified cutline. | Any Target C public claim while legal, dogfood, or real-apply blockers remain open. |
+
+4. **Public claims must name the target.** README, site status, release notes, and marketing must state **Target A**, **Target B**, or **Target C** (or the long labels above). Unscoped “HoBo is shipping” language is invalid.
+
+5. **Hosted Target C is blocked** until **legal** (counsel-approved terms/privacy/DPA/subprocessor list), **dogfood** (Yard on real cloud + pilot path), and **real apply** (non-fixture provider apply, not in-memory-only success) are closed. Agents may document process instances and placeholders; they do not invent counsel-approved legal text or green CI/npm evidence.
+
+6. **Go/no-go gates** for A/B use gate values `repo-public` and `developer-tooling` on the [go/no-go decision record](../go-no-go-decision-record.md); beta / release-candidate / GA remain for Target C productization. Populated instances live under [`docs/design/instances/`](../instances/README.md). Human-facing summary: [`launch-ship-targets.md`](../launch-ship-targets.md). Remediation packages: [`0012-ship-remediation-plan.md`](../../plans/0012-ship-remediation-plan.md).
+
+### Consequences
+- **(+)** Separates OSS hygiene, npm DX, and hosted product so agents and humans cannot greenwash Target C with Target A evidence.
+- **(+)** S-stage cutlines give engineering an interim yardstick without rewriting ADR-0063’s undivided capability scope or ADR-0116’s M0–M4 evidence ladder.
+- **(+)** Forces every public claim to name A/B/C; residual risks (single maintainer, CI runner outage, synthetic wasm, in-memory default IaC) can be accepted per target instead of hidden.
+- **(−)** Three cutlines and two gate families (S-stage interim + M3/M4 hosted) require discipline in docs and go/no-go instances.
+- **(−)** Target C remains multi-quarter human/product work; this ADR does not schedule or complete it.
+
+## ADR-0143
+**TrafficRouting port — portable multi-backend routing intent.**
+
+### Context
+Stations need to coordinate routing across candidate backends without making Kubernetes, a service mesh, sidecars, or one provider's load-balancer API part of the application contract. Existing `OverlayNetwork`, Funnel, and `PublicDnsManager` surfaces already own private connectivity and public exposure; replacing them would merge distinct responsibilities and move provider detail into `@hobo/core`.
+
+### Decision
+1. `@hobo/core` defines a thin `TrafficRoutingPort`. Its parsed, deeply frozen `RoutingPlan` carries tenant-scoped service intent, narrow match rules, backend references, optional minimum availability and resiliency hints, and optional Station/Rail pins. The port reports explicit capabilities and `full | partial | none` realization.
+2. `@hobo/stations` owns pure plan synthesis from topology, availability observations, and an existing context-bound `PolicyDecision`. Missing Station context, a deny or mismatched decision, no usable backend, or a confirmed minimum-availability violation fails closed. Missing health or location observations produce a marked best-effort plan; synthesis performs no live provider calls.
+3. `@hobo/connectivity` owns **production** adapters (no capability stubs). Each adapter **declares a `TrafficRoutingProviderProfile`** of portable **offerings** (e.g. `lb.lifecycle`, `edge.canary`, `inprocess.weighted`). The offline Simple adapter is the floor (`inprocess.weighted`). **Cloudflare** declares `lb.lifecycle` + `lb.weighted` (+ optional health): it **creates** pools and load balancers when mappings are absent, updates when present, and deletes plan-owned LBs on revoke. **Funnel** declares `overlay.funnel` + `overlay.funnel.multi`: weighted multi-backend selection with a public Funnel tip (simultaneous multi-public only when `requireMultiPublic`). **Vercel** declares `edge.canary` / `edge.path` / `edge.header`. **Lakebed** declares `inprocess.weighted` + `driver.route-bind` (no multi-LB API — dual layer is production).
+4. **Fallback ladder is normative.** When a provider cannot cover requested offerings natively, resolution walks: native LB → edge substitutes → DNS policy (ADR-0035) → Funnel → in-process (± driver bind) → optional `mesh.optional` only if registered. `prefer` degrades with concrete `missing`/`fallbacks`; `require` fails closed with remediation naming a provider that offers the feature. Partial realization remains first-class; permanent always-deny stubs are not a v1 path. Metering never includes credentials.
+5. **Custom providers** implement: `declareOfferings()` → profile; `resolve`/`TrafficRoutingPort` apply/status/revoke; plus lifecycle/observe hooks only for offerings they claim. Minimum floor is `inprocess.weighted` composed with Simple.
+6. TrafficRouting is adjacent to `OverlayNetwork`, Funnel, and `PublicDnsManager`; it does not own Tailscale configuration, DNS zones, or Junction overlay state. Stations coordinate intent and preserve their isolation boundary; Junctions continue to own overlay realization. Health/location observations (`observe.health` / `observe.location`) feed synthesis when declared.
+
+### Non-goals
+- No Kubernetes requirement and no Istio, Gateway API, Cilium, Linkerd, Envoy xDS, or Kubernetes client types in `@hobo/core`.
+- No inventing a Lakebed multi-LB HTTP API the platform does not publish.
+- Optional k8s mesh adapters (`mesh.optional`) are never auto-required by Matching.
+
+### Consequences
+- **(+)** Lakebed, Cloudflare, Vercel, self-hosted, local, and WASM runtimes share one provider-neutral intent while choosing native or in-process realization.
+- **(+)** Offline tests and local Stations always have a zero-process baseline; provider gaps remain observable rather than implicit.
+- **(+)** V1 production bar: each shipped adapter can return `realized: "full"` for documented shapes; Cloudflare creates resources; Funnel multi-backend selection works; offerings + ladder give custom-provider authors a clear surface.
+- **(+)** Kubernetes meshes remain possible secondary adapters without becoming the portability boundary.
+- **(−)** V1 health-aware synthesis is incomplete-tolerant until `observe.health` is supplied.
+- **(−)** Vercel Rolling Releases may enable skew protection as a platform side-effect; adapters document but do not hide that.
+
+## ADR-0144
+**External-spec posture: Crossplane, OAM, and CNAB are mapped at the boundary — the core IR never depends on them — and Resource Definitions gain versioning rules.**
+
+### Context
+Crossplane (CNCF graduated) is the strongest living open standard for the "abstract request schema + explicit realization mapping + continuous reconciliation" pattern that HoBo's Resource Definitions + Matching implement; OAM anchors application-first modeling; CNAB carries packaging/signing lessons. The [Crossplane capture](../../competitors/crossplane.md#hobo-mapping) already records the concept parity, and [ADR-0108](01-architecture-core.md#adr-0108) already renders manifest IR to wadm/OAM — but no design-suite decision pins the posture, and `ResourceDefinition` has no versioning story: only Packs are versioned, and the catalog content-hash in `match.Decided` is the sole snapshot pin. History shows pure "describe once, run anywhere" specs (TOSCA, early OAM, CNAB) stall when operational reality leaks; systems that endure keep a stable high-level API plus an explicit, auditable mapping layer (Crossplane's path — and HoBo's).
+
+### Decision
+1. **Posture: inspired by / maps to — never depends on.** The concept mapping is normative for vocabulary alignment only: Crossplane **XRD** ≈ the schema side of a Resource Definition (`type`/`class`/`with` options shape); **Composition** ≈ the realization side (provider + driver + options; in code, provider capability manifests derived into definitions via `definitionsFor`); **Claim** ≈ developer consumption through Bindle resource kinds and ports; OAM **Application/Component** ≈ Bindle/resource; OAM **Trait** ≈ `.allow()` effects, policy packs, and Trails-attached operational behavior; **CNAB** contributes signed multi-artifact packaging lessons already realized by Registry listings + provenance ([ADR-0062](#adr-0062)), nothing more. The Bindle IR, WIT contracts, event-sourced audit, and Matching semantics remain independent of any external spec's evolution or continued dominance.
+2. **Resource Definition versioning.** A definition id names a stable request/realization shape. Compatible additions (new optional options, added `features`, cost updates) mutate in place and surface as `resourcedef.Updated`. **Breaking changes require a new definition id** (or an explicitly recorded conversion definition); the old id is deprecated, never silently rewritten. Every selection remains attributable because `match.Decided` records the catalog content-hash — a winner change is a catalog change, not nondeterminism ([ADR-0088](01-architecture-core.md#adr-0088)).
+3. **Realization mapping stays inside definitions/providers.** Any composition-like mapping (abstract request → concrete resources) is expressed in Resource Definitions and provider `realize()` paths — no parallel composition system, no external-spec engine on the deploy path.
+4. **AI-generated definitions stay sandboxed and conformance-gated** ([Plan 23](../generated-stack.md#plan-23)): propose → sandboxed validation against `@hobo/conformance` → certified into the Registry with signed provenance; advisory, off the deploy path.
+5. **Thin-adapter rule for SaaS backends** (Convex, and future Wasp-class targets): one-directional realization of ports via Resource Definitions; provider-specific escape hatches live only at Camp/Yard scope (`assertNoBindleProviderSelection` keeps Bindles clean) and are scored by the PortabilityReport ([ADR-0024](#adr-0024)); impedance boundaries are documented in the competitor capture so humans and agents cannot over-claim fidelity. Dual authoring is out of scope.
+
+### Non-goals
+- No Crossplane XRDs/Compositions, OAM manifests, or CNAB bundles as HoBo's resource model; OAM remains a wadm render target only ([ADR-0108](01-architecture-core.md#adr-0108)).
+- No naming dependency: HoBo's **Bindle** predates awareness of CNAB's unrelated "bindle" proposal; the collision is noted, not resolved by renaming.
+- No per-definition semver machinery beyond the id + catalog-hash rules above (Packs remain the versioned distribution unit).
+
+### Consequences
+- **(+)** Platform engineers migrating from Crossplane/KubeVela get a stable concept map with HoBo's additive differences (auditable `match.Decided`, deterministic scoring, FinOps objectives) called out.
+- **(+)** Definition evolution is now governed: breaking changes are visible catalog events, and tie flips stay attributable to catalog hashes.
+- **(+)** SaaS backends can be added as thin providers without eroding portability guarantees.
+- **(−)** New-id-per-breaking-change grows the catalog; deprecation hygiene falls on Pack maintainers.
+
+## Open / proposed decisions (ADR-Pn)
+
+> **Status (2026-07-03):** the last six open ADR-Pn are now resolved (P3/P4 were already); this list is retained as the decision trail.
+- **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — **Resolved by [ADR-0121](01-architecture-core.md#adr-0121)**: delegate to the substrate log/store by default (single-writer quorum, active-passive), embedded library-Raft only for the self-host floor, never hand-rolled — [Plan 5](../reliability-observability-cost.md#plan-05).
+- **ADR-P2:** overlay-mesh technology for cross-provider connectivity — **Resolved by [ADR-0122](#adr-0122)**: WireGuard portable default behind a `mesh` port, provider-native peering + managed meshes as opt-in adapters — [Plan 12](../security-networking.md#plan-12).
+- **ADR-P3:** policy language for ABAC — **Resolved by [ADR-0015](02-identity-security.md#adr-0015)** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
+- **ADR-P4:** default Planner objective — **Resolved by [ADR-0033](01-architecture-core.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 5](../reliability-observability-cost.md#plan-05)/[Plan 25](../platform-engineering.md#plan-25).
+- **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — **Resolved by [ADR-0123](01-architecture-core.md#adr-0123)**: explicit `workflow`/`step` wrappers are canonical + language-neutral; the `"use workflow"` directive is opt-in TS sugar with a shallow transform + replay-safety lint — [Plan 2](../sdk-api.md#plan-02).
+- **ADR-P6:** preemption policy for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no preemption (`service` non-preemptible, `job` preemptible), substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P7:** oversubscription/density limits per component-host — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no oversubscription (requests = limits), opt-in per-Camp ratio, substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: declarative Camp-level reservation realized via the substrate's primitive, honest about limits — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+
+## ADR-0145
 **HoBo Yard v2 (HIGHBALL): Phaser browser host required; `@hobo/yard-world` shared world model; OTLP-observed yard; provenance-badged signals.**
 
 **Status:** Proposed — amends [ADR-0135](#adr-0135).
@@ -564,19 +663,7 @@ Station occupancy ([ADR-0131](01-architecture-core.md#adr-0131)), Rails, Connect
 - **(−)** Phaser becomes a hard dependency of the browser surface, and CI needs a real browser harness for visual acceptance rather than the pure-engine escape hatch.
 - **(−)** The OTLP ingest path adds a read-model surface `@hobo/control-api` must keep bounded (retention, cardinality) precisely because it is *not* an event store.
 
-## Open / proposed decisions (ADR-Pn)
-
-> **Status (2026-07-03):** the last six open ADR-Pn are now resolved (P3/P4 were already); this list is retained as the decision trail.
-- **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — **Resolved by [ADR-0121](01-architecture-core.md#adr-0121)**: delegate to the substrate log/store by default (single-writer quorum, active-passive), embedded library-Raft only for the self-host floor, never hand-rolled — [Plan 5](../reliability-observability-cost.md#plan-05).
-- **ADR-P2:** overlay-mesh technology for cross-provider connectivity — **Resolved by [ADR-0122](#adr-0122)**: WireGuard portable default behind a `mesh` port, provider-native peering + managed meshes as opt-in adapters — [Plan 12](../security-networking.md#plan-12).
-- **ADR-P3:** policy language for ABAC — **Resolved by [ADR-0015](02-identity-security.md#adr-0015)** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
-- **ADR-P4:** default Planner objective — **Resolved by [ADR-0033](01-architecture-core.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 5](../reliability-observability-cost.md#plan-05)/[Plan 25](../platform-engineering.md#plan-25).
-- **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — **Resolved by [ADR-0123](01-architecture-core.md#adr-0123)**: explicit `workflow`/`step` wrappers are canonical + language-neutral; the `"use workflow"` directive is opt-in TS sugar with a shallow transform + replay-safety lint — [Plan 2](../sdk-api.md#plan-02).
-- **ADR-P6:** preemption policy for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no preemption (`service` non-preemptible, `job` preemptible), substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
-- **ADR-P7:** oversubscription/density limits per component-host — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no oversubscription (requests = limits), opt-in per-Camp ratio, substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
-- **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: declarative Camp-level reservation realized via the substrate's primitive, honest about limits — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
-
-## ADR-0141
+## ADR-0146
 **Pixel-RPG identity: the control plane is a village; sourced CC0 pixel art replaces the traced rubberhose surface.**
 
 **Status:** Proposed — supersedes the art clauses of [ADR-0135](#adr-0135) and [ADR-0140](#adr-0140).

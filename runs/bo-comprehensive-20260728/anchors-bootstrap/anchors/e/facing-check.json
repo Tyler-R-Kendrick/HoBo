@@ -1,0 +1,32 @@
+{
+  "direction": "e",
+  "checkedAt": "2026-07-28T08:19:38.403791Z",
+  "status": "uncertain",
+  "expectedSide": "right",
+  "detected": {
+    "facing": "unknown",
+    "confidence": 0.0,
+    "method": "silhouette-centroid-v1",
+    "headOffset": 0.0156,
+    "footOffset": -0.0427,
+    "figureWidth": 203,
+    "figureHeight": 170
+  },
+  "autoOrient": true,
+  "flipped": false,
+  "confidenceThreshold": 0.1,
+  "anchor": "runs/bo-comprehensive-20260728/anchors-bootstrap/anchors/e/anchor-snapped-1024-chroma.png",
+  "vlmCheck": {
+    "facing": "unknown",
+    "model": "google/gemini-2.5-flash-lite",
+    "endpointId": "openrouter/router/vision",
+    "method": "vlm-mirror-consistency",
+    "answers": {
+      "original": "right",
+      "mirrored": "right"
+    },
+    "costUsd": 6.74e-05,
+    "reason": "mirror-inconsistency"
+  },
+  "hint": "Facing could not be determined from the silhouette; eyeball the anchor before generating the animation set."
+}

@@ -1,0 +1,9 @@
+{"timestamp": "2026-07-28T08:18:52.698876Z", "event": "bootstrap_anchors_started", "character": "bo", "directions": ["w", "e"], "candidateFacing": "front", "gameView": "platformer", "anchorRole": "character", "pixelSnapAnchor": false, "resume": false}
+{"timestamp": "2026-07-28T08:18:52.700043Z", "event": "anchor_wizard_started", "stage": "all", "character": "bo", "candidateFacing": "front", "pixelSnapAnchor": false, "gameView": "platformer", "anchorRole": "character", "seed": null}
+{"timestamp": "2026-07-28T08:18:52.762044Z", "event": "candidate_source_preserved", "preset": "preserve-reference-v1", "source": "runs/bo-comprehensive-20260728/anchors-bootstrap/input/source-model-input.png", "prompt": "runs/bo-comprehensive-20260728/anchors-bootstrap/candidate/front/candidate-prompt.txt"}
+{"timestamp": "2026-07-28T08:19:11.166407Z", "event": "direction_anchor_published", "direction": "w", "path": "runs/bo-comprehensive-20260728/anchors-bootstrap/anchors/w/anchor-snapped-1024-chroma.png"}
+{"timestamp": "2026-07-28T08:19:27.303259Z", "event": "direction_anchor_published", "direction": "e", "path": "runs/bo-comprehensive-20260728/anchors-bootstrap/anchors/e/anchor-snapped-1024-chroma.png"}
+{"timestamp": "2026-07-28T08:19:30.483521Z", "event": "anchor_wizard_completed", "stage": "all", "character": "bo"}
+{"timestamp": "2026-07-28T08:19:33.206171Z", "event": "anchor_facing_checked", "direction": "w", "status": "ok", "expectedSide": "left", "detectedFacing": "left", "confidence": 1.0, "flipped": false, "vlmUsed": true}
+{"timestamp": "2026-07-28T08:19:38.403900Z", "event": "anchor_facing_checked", "direction": "e", "status": "uncertain", "expectedSide": "right", "detectedFacing": "unknown", "confidence": 0.0, "flipped": false, "vlmUsed": true}
+{"timestamp": "2026-07-28T08:19:38.405728Z", "event": "bootstrap_anchors_completed", "bootstrapJson": "runs/bo-comprehensive-20260728/anchors-bootstrap/bootstrap.json"}

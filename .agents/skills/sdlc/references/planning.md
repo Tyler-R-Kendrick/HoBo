@@ -30,5 +30,8 @@ Order the work as the proof layers order it:
   the changed proof; the `draft:cascade` gate enforces rollup updates mechanically.
 - Plans name exact packages/paths, the gates that prove each step, and the dependency order.
 - Requirements discovered mid-planning update the brainstorm record (append, never overwrite).
+- **Stack layers:** when the plan has 2+ dependent steps, name ordered stack branches
+  (`sdlc/<id>-NN-<slug>`) with foundations at the bottom. Multi-step delivery uses `gh stack`
+  (see `stacked-prs.md`); one issue per layer when possible.
 
-Exit: user-approved plan; state file updated (phase: planned, plan location).
+Exit: user-approved plan; state file updated (phase: planned, plan location, planned stack chain).

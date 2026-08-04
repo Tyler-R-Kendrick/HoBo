@@ -21,21 +21,24 @@ test("canonical CLI spec maps every verb to an implementation issue", async () =
 		verbs.get("up")?.implementationIssues.includes("HOBO-130"),
 		true,
 	);
-	assert.equal(verbs.has("deploy"), false);
+	// `deploy` is the attested CD observe family (status|logs|rollback), not lifecycle shipping.
+	assert.equal(verbs.has("deploy"), true);
+	assert.equal(verbs.has("trails"), true);
 	assert.equal(verbs.has("yard"), false);
 	assert.equal(verbs.has("forge"), false);
 
 	for (const verb of spec.verbs) {
 		assert.match(
 			verb.implementationIssues.join(" "),
-			/HOBO-\d+/,
-			`${verb.name} must cite at least one implementation issue`,
+			/(?:HOBO|ADR)-\d+/,
+			`${verb.name} must cite at least one HOBO-* or ADR-* reference`,
 		);
 	}
 
-	assert.deepEqual(
+	assert.equal(
 		spec.retiredAliases.find((alias) => alias.name === "deploy"),
-		{ name: "deploy", replacement: "up" },
+		undefined,
+		"lifecycle deploy must not be retired while deploy is a canonical CD verb",
 	);
 });
 
@@ -48,27 +51,27 @@ test("fenced command examples reject retired lifecycle verbs", async () => {
 	const spec = await loadCliSpec(root);
 	const problems = lintMarkdownContent(
 		"bad.md",
-		["```bash", "hobo deploy --camp prod", "hobo yard up", "```"].join("\n"),
+		["```bash", "hobo destroy --camp prod", "hobo yard up", "```"].join("\n"),
 		spec,
 	);
 
 	assert.deepEqual(
 		problems.map((problem) => problem.command),
-		["hobo deploy", "hobo yard"],
+		["hobo destroy", "hobo yard"],
 	);
 });
 
-test("cli package summaries reject retired pipe-delimited verbs", async () => {
+test("cli package summaries reject retired and unknown pipe-delimited verbs", async () => {
 	const spec = await loadCliSpec(root);
 	const problems = lintMarkdownContent(
 		"packages.md",
-		"  cli/ @hobo/cli hobo dev|deploy|plan|inspect|login|registry|yard|forge\n",
+		"  cli/ @hobo/cli hobo dev|plan|inspect|login|registry|yard|forge\n",
 		spec,
 	);
 
 	assert.deepEqual(
 		problems.map((problem) => problem.command),
-		["hobo deploy", "hobo yard", "hobo forge"],
+		["hobo yard", "hobo forge"],
 	);
 });
 

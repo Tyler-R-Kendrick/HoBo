@@ -45,16 +45,6 @@ export {
 	parseCapabilityManifestBundle,
 } from "./manifest.js";
 export type {
-	BindingResolverPort,
-	BindingSource,
-	ResolvedBinding,
-	ResourceId,
-} from "./ports/binding-resolver.js";
-export {
-	parseResourceId,
-	RESOURCE_ID_PATTERN,
-} from "./ports/binding-resolver.js";
-export type {
 	NamedEndpointMode,
 	NamedEndpointParams,
 } from "./naming.js";
@@ -69,55 +59,15 @@ export {
 	sanitizeDnsLabel,
 } from "./naming.js";
 export type {
-	ProjectId,
-	Tenant,
-	TenantContext,
-	TenantId,
-	TenantIsolationMode,
-	TenantScoped,
-} from "./ports/tenant.js";
+	BindingResolverPort,
+	BindingSource,
+	ResolvedBinding,
+	ResourceId,
+} from "./ports/binding-resolver.js";
 export {
-	LOCAL_DEFAULT_TENANT_ID,
-	parseProjectId,
-	parseTenantId,
-	tenantContextFromEnv,
-} from "./ports/tenant.js";
-export type {
-	PolicyDecision,
-	PolicyDecisionEffect,
-	PolicyEngine,
-	PolicyRequest,
-	PolicyResource,
-	PolicySubject,
-} from "./ports/policy-engine.js";
-export { allowDecision, denyDecision } from "./ports/policy-engine.js";
-export type {
-	MeteringBus,
-	MeteringSink,
-	UsageEvent,
-	UsageEventType,
-} from "./ports/metering.js";
-export { createMeteringBus, createUsageEvent } from "./ports/metering.js";
-export type {
-	DnsManagedBy,
-	DnsProvider,
-	DnsProviderKind,
-	DnsRecord,
-	DnsRecordType,
-	PublicDnsConfig,
-	PublicDnsManager,
-} from "./ports/dns.js";
-export type {
-	FunnelPublishOptions,
-	FunnelPublishResult,
-	MagicDnsSplitConfig,
-	MagicDnsSplitResult,
-	OverlayIdentity,
-	OverlayJoinOptions,
-	OverlayJoinResult,
-	OverlayNetwork,
-	OverlayProviderKind,
-} from "./ports/overlay.js";
+	parseResourceId,
+	RESOURCE_ID_PATTERN,
+} from "./ports/binding-resolver.js";
 export type {
 	ClockReplayResult,
 	ClockTraceEntry,
@@ -165,20 +115,35 @@ export type {
 } from "./ports/component-host.js";
 export { parseInterfaceId } from "./ports/component-host.js";
 export type {
-	FetchHandler,
-	HoboRuntimeHost,
-	HoboRuntimeHostKind,
-	IsolationInfo,
-	PrivateComponentSpec,
-	PrivateServeResult,
-	RuntimeEnsureContext,
-	RuntimeEnsureResult,
-	ServePrivateContext,
-} from "./ports/runtime-host.js";
+	DataStoreMatch,
+	DataStoreOffering,
+	DataStoreOfferingId,
+	DataStorePortRequest,
+	DataStoreProvider,
+	DataStoreProviderProfile,
+	DataStoreResolveResult,
+} from "./ports/data-store-offerings.js";
 export {
-	HOBO_RUNTIME_HOST_KINDS,
-	isHoboRuntimeHostKind,
-} from "./ports/runtime-host.js";
+	DATA_STORE_RESOURCE_CLASS,
+	DataStoreOfferingParseError,
+	DEFAULT_DATA_STORE_FALLBACKS,
+	dataStoreOffering,
+	matchDataStoreOfferings,
+	parseDataStoreOffering,
+	parseDataStoreOfferingId,
+	parseDataStoreProvider,
+	parseDataStoreProviderProfile,
+	resolveDataStore,
+} from "./ports/data-store-offerings.js";
+export type {
+	DnsManagedBy,
+	DnsProvider,
+	DnsProviderKind,
+	DnsRecord,
+	DnsRecordType,
+	PublicDnsConfig,
+	PublicDnsManager,
+} from "./ports/dns.js";
 export type {
 	ActorSignalEffectInput,
 	AppendOptions,
@@ -203,12 +168,13 @@ export type {
 	OutboxEffectInput,
 	PartitionId,
 	PositionedEvent,
-	QueueEffectInput,
 	QuarantineRecord,
+	QueueEffectInput,
 	ReadAllOptions,
 	ResetCheckpointOptions,
 	SnapshotRecord,
 	StreamFilter,
+	StreamHead,
 	Subscription,
 	SubscriptionCheckpoint,
 	SubscriptionId,
@@ -227,17 +193,101 @@ export {
 	isStaleFence,
 	MissingFenceError,
 	OptimisticSequenceConflictError,
+	PersistenceUnavailableError,
 	parseEventPosition,
 	parseFenceToken,
 	parsePartitionId,
 	parseSubscriptionId,
-	PersistenceUnavailableError,
 	SnapshotAheadError,
 	SqliteBusyError,
 	StaleFenceError,
 	StorageWorkerTerminatedError,
 	UnsupportedSchemaVersionError,
 } from "./ports/eventstore.js";
+export type {
+	ActorPlacementMode,
+	ConsumedMessage,
+	ConsumeOptions,
+	ConsumerGroupId,
+	DeliveryGuarantee,
+	InMemoryMessagingOptions,
+	Messaging,
+	MessagingCapabilities,
+	MessagingEvent,
+	MessagingLeaseId,
+	MessagingMessageId,
+	MessagingSpec,
+	PublishOptions,
+	PublishResult,
+	SubscriptionName,
+	SubscriptionSpec,
+	TopicName,
+	TopicSpec,
+} from "./ports/messaging.js";
+export {
+	assertDeliverySupported,
+	createInMemoryMessaging,
+	createPublishResult,
+	MESSAGING_PORT_CONTRACT_VERSION,
+	MESSAGING_WIT_INTERFACE,
+	MessagingCapabilityError,
+	MessagingDeliveryError,
+	MessagingParseError,
+	PORTABLE_MESSAGING_CAPABILITIES,
+	parseActorPlacementMode,
+	parseConsumerGroupId,
+	parseDeliveryGuarantee,
+	parseMessagingLeaseId,
+	parseMessagingMessageId,
+	parseMessagingSpec,
+	parseSubscriptionName,
+	parseSubscriptionSpec,
+	parseTopicName,
+	parseTopicSpec,
+	tenantScopedConsumerGroup,
+	tenantScopedTopicName,
+} from "./ports/messaging.js";
+export type {
+	MeteringBus,
+	MeteringSink,
+	UsageEvent,
+	UsageEventType,
+} from "./ports/metering.js";
+export { createMeteringBus, createUsageEvent } from "./ports/metering.js";
+export type {
+	OfferingFidelity,
+	OfferingNegotiation,
+	OfferingStability,
+	ResourceOffering,
+	ResourceOfferingMatch,
+	ResourceOfferingProfile,
+	ResourceOfferingRequest,
+	ResourceOfferingResolveResult,
+} from "./ports/offering-resolution.js";
+export {
+	matchResourceOfferings,
+	resolveResourceOfferings,
+} from "./ports/offering-resolution.js";
+export type {
+	FunnelPublishOptions,
+	FunnelPublishResult,
+	MagicDnsSplitConfig,
+	MagicDnsSplitResult,
+	OverlayIdentity,
+	OverlayJoinOptions,
+	OverlayJoinResult,
+	OverlayNetwork,
+	OverlayProviderKind,
+} from "./ports/overlay.js";
+export type {
+	PolicyDecision,
+	PolicyDecisionEffect,
+	PolicyEngine,
+	PolicyRequest,
+	PolicyResource,
+	PolicySubject,
+} from "./ports/policy-engine.js";
+export { allowDecision, denyDecision } from "./ports/policy-engine.js";
 export type {
 	ActorKey,
 	CompleteResult,
@@ -268,48 +318,20 @@ export {
 	QueueParseError,
 } from "./ports/queue.js";
 export type {
-	ActorPlacementMode,
-	ConsumeOptions,
-	ConsumedMessage,
-	ConsumerGroupId,
-	DeliveryGuarantee,
-	InMemoryMessagingOptions,
-	Messaging,
-	MessagingCapabilities,
-	MessagingEvent,
-	MessagingLeaseId,
-	MessagingMessageId,
-	MessagingSpec,
-	PublishOptions,
-	PublishResult,
-	SubscriptionName,
-	SubscriptionSpec,
-	TopicName,
-	TopicSpec,
-} from "./ports/messaging.js";
+	FetchHandler,
+	HoboRuntimeHost,
+	HoboRuntimeHostKind,
+	IsolationInfo,
+	PrivateComponentSpec,
+	PrivateServeResult,
+	RuntimeEnsureContext,
+	RuntimeEnsureResult,
+	ServePrivateContext,
+} from "./ports/runtime-host.js";
 export {
-	assertDeliverySupported,
-	createInMemoryMessaging,
-	createPublishResult,
-	MESSAGING_PORT_CONTRACT_VERSION,
-	MESSAGING_WIT_INTERFACE,
-	MessagingCapabilityError,
-	MessagingDeliveryError,
-	MessagingParseError,
-	parseActorPlacementMode,
-	parseConsumerGroupId,
-	parseDeliveryGuarantee,
-	parseMessagingMessageId,
-	parseMessagingLeaseId,
-	parseMessagingSpec,
-	parseSubscriptionName,
-	parseSubscriptionSpec,
-	parseTopicName,
-	parseTopicSpec,
-	PORTABLE_MESSAGING_CAPABILITIES,
-	tenantScopedConsumerGroup,
-	tenantScopedTopicName,
-} from "./ports/messaging.js";
+	HOBO_RUNTIME_HOST_KINDS,
+	isHoboRuntimeHostKind,
+} from "./ports/runtime-host.js";
 export type {
 	RunId,
 	Seq,
@@ -334,6 +356,95 @@ export {
 	StreamerClosedError,
 	StreamerParseError,
 } from "./ports/streamer.js";
+export type {
+	ProjectId,
+	Tenant,
+	TenantContext,
+	TenantId,
+	TenantIsolationMode,
+	TenantScoped,
+} from "./ports/tenant.js";
+export {
+	LOCAL_DEFAULT_TENANT_ID,
+	parseProjectId,
+	parseTenantId,
+	tenantContextFromEnv,
+} from "./ports/tenant.js";
+export type {
+	AppliedRuleCount,
+	ApplyResult,
+	BackendCount,
+	BackendId,
+	BackendRef,
+	LocationHint,
+	MinAvailabilitySpec,
+	PathPrefix,
+	RailHash,
+	ResiliencySpec,
+	RetryCount,
+	RevokeResult,
+	RoutingEndpoint,
+	RoutingInstant,
+	RoutingMatch,
+	RoutingPlan,
+	RoutingPlanId,
+	RoutingRealization,
+	RoutingRule,
+	RoutingService,
+	RoutingStatus,
+	RoutingWeight,
+	RoutingWeightStrategy,
+	StationId,
+	TimeoutMs,
+	TrafficIntent,
+	TrafficRoutingCapability,
+	TrafficRoutingMeteringEvent,
+	TrafficRoutingMeteringEventType,
+	TrafficRoutingPort,
+	TrafficRoutingProvider,
+	TrafficRoutingProviderKind,
+} from "./ports/traffic-routing.js";
+export {
+	createTrafficRoutingMeteringEvent,
+	parseApplyResult,
+	parseBackendId,
+	parseBackendRef,
+	parseMinAvailabilitySpec,
+	parseResiliencySpec,
+	parseRevokeResult,
+	parseRoutingMatch,
+	parseRoutingPlan,
+	parseRoutingPlanId,
+	parseRoutingProvider,
+	parseRoutingRule,
+	parseRoutingStatus,
+	parseRoutingWeight,
+	parseTrafficIntent,
+	parseTrafficRoutingPlanRecord,
+	TrafficRoutingParseError,
+	toTrafficRoutingPlanRecord,
+} from "./ports/traffic-routing.js";
+export type {
+	TrafficRoutingMatch,
+	TrafficRoutingNegotiation,
+	TrafficRoutingOffering,
+	TrafficRoutingOfferingFidelity,
+	TrafficRoutingOfferingId,
+	TrafficRoutingOfferingStability,
+	TrafficRoutingPortRequest,
+	TrafficRoutingProviderProfile,
+	TrafficRoutingResolveResult,
+} from "./ports/traffic-routing-offerings.js";
+export {
+	DEFAULT_TRAFFIC_ROUTING_FALLBACKS,
+	matchTrafficRoutingOfferings,
+	offering,
+	parseTrafficRoutingOffering,
+	parseTrafficRoutingOfferingId,
+	parseTrafficRoutingProviderProfile,
+	resolveTrafficRouting,
+	TRAFFIC_ROUTING_RESOURCE_CLASS,
+} from "./ports/traffic-routing-offerings.js";
 export type {
 	CandidateEdit,
 	CandidateId,

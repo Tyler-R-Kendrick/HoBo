@@ -1,13 +1,10 @@
 import { mkdirSync } from "node:fs";
 
-import { bindleScope, descriptorFromHandle } from "@hobo/bindles/topology";
-import { camp, providerSelection } from "@hobo/camps";
+import { camp } from "@hobo/camps";
 import type { HoboCli, YardRuntime } from "@hobo/cli";
 import { createComposedHoboCli, createDefaultYardRuntime } from "@hobo/hobo";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { type Yard, yard } from "@hobo/yards";
-
-import definition from "./bindle.js";
 
 // Self-hosting the Yard (control scope): instead of pointing the `hobo` CLI at
 // a provider-run control plane, the OPERATOR composes the whole Yard runtime
@@ -50,9 +47,12 @@ export interface SelfHostedYard {
 
 /**
  * Describe this deployment as HoBo topology objects: the status-page Bindle's
- * provider-agnostic resources inside one Camp, inside one Yard. The Camp's
- * single provider mapping is read from the runtime's own provider registry,
- * and `yard(...)` enforces @hobo/yards' one-provider-per-yard rule over it.
+ * provider-agnostic resources deploy into one Camp inside one Yard. Provider
+ * selection lives ONLY on the Yard (read from the runtime's own provider
+ * registry); the Camp stays provider-neutral and must not own the Bindle —
+ * the cloud verbs attach the Bindle via the deployment request
+ * (`deployment.Requested`) the operator issues through the CLI. The Camp's
+ * runtime requirements record WHERE this yard runs: the operator's own disk.
  */
 export function selfHostTopology(runtime: YardRuntime, dataDir: string): Yard {
 	const providerIds = runtime.registry.providers();
@@ -63,25 +63,12 @@ export function selfHostTopology(runtime: YardRuntime, dataDir: string): Yard {
 		);
 	}
 
-	const scope = bindleScope(definition.name, (collector) => {
-		for (const resource of Object.values(definition.resources)) {
-			collector.use(
-				descriptorFromHandle({
-					kind: resource.kind,
-					name: resource.name,
-					// api/web are component-shaped: they lower to the compute port.
-					port: "wasi:http",
-				}),
-			);
-		}
-	});
-
 	return yard("home-yard", {
+		provider: providerId,
 		camps: [
 			camp("prod", {
-				bindle: scope,
-				runtime: { kind: "runtime-local", eventStore: "sqlite", dataDir },
-				defaultProvider: providerSelection(providerId),
+				runtimeRequirements: ["runtime-local", "event-store:sqlite"],
+				labels: { "hobo.dev/event-store-data-dir": dataDir },
 			}),
 		],
 	});

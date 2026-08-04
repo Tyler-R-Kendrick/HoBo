@@ -1,0 +1,90 @@
+{
+  "canvas": [
+    256,
+    256
+  ],
+  "center_x": 128,
+  "bottom_y": 255,
+  "frames": [
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-01.png",
+      "paste_xy": [
+        30,
+        54
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-02.png",
+      "paste_xy": [
+        30,
+        57
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-03.png",
+      "paste_xy": [
+        29,
+        57
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-04.png",
+      "paste_xy": [
+        28,
+        55
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-05.png",
+      "paste_xy": [
+        32,
+        55
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-06.png",
+      "paste_xy": [
+        18,
+        57
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-07.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-07.png",
+      "paste_xy": [
+        19,
+        57
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-08.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-08.png",
+      "paste_xy": [
+        33,
+        55
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-09.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-09.png",
+      "paste_xy": [
+        32,
+        55
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-10.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized/frame-10.png",
+      "paste_xy": [
+        33,
+        55
+      ]
+    }
+  ]
+}

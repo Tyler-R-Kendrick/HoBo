@@ -1,0 +1,115 @@
+{
+  "sheet": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/generated/sheet.png",
+  "rows": 3,
+  "cols": 4,
+  "count": 6,
+  "keying": {
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 500,
+    "removedPixels": 2472415,
+    "keptPixelsBeforeDespeckle": 673313,
+    "bbox": [
+      29,
+      235,
+      1984,
+      1355
+    ]
+  },
+  "frames": [
+    {
+      "frame": "01",
+      "bbox": [
+        49,
+        235,
+        552,
+        728
+      ],
+      "area": 126298,
+      "center": [
+        300.5,
+        481.5
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-01.png"
+    },
+    {
+      "frame": "02",
+      "bbox": [
+        543,
+        259,
+        1045,
+        728
+      ],
+      "area": 117309,
+      "center": [
+        794.0,
+        493.5
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-02.png"
+    },
+    {
+      "frame": "03",
+      "bbox": [
+        1061,
+        339,
+        1519,
+        727
+      ],
+      "area": 105899,
+      "center": [
+        1290.0,
+        533.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-03.png"
+    },
+    {
+      "frame": "04",
+      "bbox": [
+        1544,
+        401,
+        1984,
+        727
+      ],
+      "area": 89597,
+      "center": [
+        1764.0,
+        564.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-04.png"
+    },
+    {
+      "frame": "05",
+      "bbox": [
+        29,
+        873,
+        521,
+        1355
+      ],
+      "area": 115102,
+      "center": [
+        275.0,
+        1114.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-05.png"
+    },
+    {
+      "frame": "06",
+      "bbox": [
+        570,
+        879,
+        1040,
+        1355
+      ],
+      "area": 118182,
+      "center": [
+        805.0,
+        1117.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-06.png"
+    }
+  ]
+}

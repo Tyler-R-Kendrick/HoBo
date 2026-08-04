@@ -222,7 +222,7 @@ The app **declares a tenancy model**; HoBo realizes it through **Matching** ([AD
 | Model | How it maps to HoBo | Isolation guarantee | Use when |
 |---|---|---|---|
 | **Pooled** *(default)* | shared resources; **stream-per-tenant** + tenant-scoped projections ([Plan 32](./data-plane.md#plan-32)) | **logical** — enforced by construction (§C); noisy-neighbor **bounded** by per-tenant quotas (§F), not eliminated | many small tenants; cost-sensitive |
-| **Siloed** | dedicated resources/schema, or a **Camp-per-tenant** (a provider-specific stack, [ADR-0026](./adr/01-architecture-core.md#adr-0026)) | **physical** — a resource/Camp boundary; strongest | few large / regulated tenants; **bounded** (Camp-per-tenant doesn't scale to 100k) |
+| **Siloed** | dedicated resources/schema, or a **Camp-per-tenant** (a Yard-attached deployment target under one provider, [ADR-0026](./adr/01-architecture-core.md#adr-0026); provider still owned by the Yard) | **physical** — a resource/Camp boundary; strongest | few large / regulated tenants; **bounded** (Camp-per-tenant doesn't scale to 100k) |
 | **Bridge / tiered** | most tenants pooled; specific tenants **promoted to silo** — a per-tenant Matching decision | per-tenant: logical or physical by tier | a long tail pooled + a few that need a silo (plan/regulatory) |
 | **Region-pooled** | pooled **within** a region/Camp, siloed **across** regions ([ADR-0040](./adr/01-architecture-core.md#adr-0040)) | logical in-region; physical across regions | per-tenant **residency** (a single global pool can't honor it) |
 

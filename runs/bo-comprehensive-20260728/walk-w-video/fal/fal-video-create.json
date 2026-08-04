@@ -1,0 +1,6 @@
+{
+  "request_id": "019fa7cf-d568-71b1-906e-d9dc8c2c42f7",
+  "response_url": "https://queue.fal.run/xai/grok-imagine-video/requests/019fa7cf-d568-71b1-906e-d9dc8c2c42f7",
+  "status_url": "https://queue.fal.run/xai/grok-imagine-video/requests/019fa7cf-d568-71b1-906e-d9dc8c2c42f7/status",
+  "cancel_url": "https://queue.fal.run/xai/grok-imagine-video/requests/019fa7cf-d568-71b1-906e-d9dc8c2c42f7/cancel"
+}

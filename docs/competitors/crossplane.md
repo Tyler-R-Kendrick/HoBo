@@ -236,6 +236,8 @@ Even here the substrate is unchanged: composing a `Deployment` **orchestrates a 
 
 ### Crossplane-as-borrow-source and IaC adapter (not a target to replace)
 
+> **Design-suite posture:** the XRD/Composition/Claim ↔ Resource Definition mapping and the definition-versioning rules it inspired are now normative in [ADR-0144](../design/adr/07-portability-extensibility.md#adr-0144) — vocabulary alignment only; the core IR never depends on Crossplane's continued dominance.
+
 Two relationships, both deliberate. **(1) Borrow.** HoBo takes Crossplane's **reconciliation model and dev-vs-platform separation** wholesale ([vision.md](../design/vision.md)) — the `bindle()` (provider-agnostic) vs `camp()`/`yard()` (provider-specific) scope split, provider recipes, and equivalence classes are Crossplane's idea, re-expressed as HoBo SDK objects. **(2) Adapter.** Crossplane is a **first-party `IacProvider`** alongside Pulumi/Terraform/OpenTofu, none primary ([ADR-0006](../design/adr/01-architecture-core.md#adr-0006)); when a Camp's substrate is Kubernetes, HoBo realizes resources **through** Crossplane (compositions + managed resources, reconciliation delegated to K8s controllers), with Crossplane-specific settings passed via `.with(...)`. HoBo's net-new is the layer **around** that engine: code-first IfC, a wasm-default runtime, an event-sourced/durable app runtime, auditable Matching, agents-as-principals, and provider generation.
 
 ### The one-line takeaway

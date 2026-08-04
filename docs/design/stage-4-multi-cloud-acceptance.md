@@ -70,8 +70,8 @@ resolution.*
    yields `deployment.PlanRejected` with a precise reason (provider capability feedback on
    [`control-plane.md#plan-04`](./control-plane.md#plan-04)).
 
-4. **Camp-only provider switch ([FR-004](./sdk-api.md#plan-02), [ADR-0011](./adr/01-architecture-core.md#adr-0011))** —
-   switching a resource's provider touches only the **Camp**'s mapping — no app/Bindle change.
+4. **Camp re-home / provider switch without app edits ([FR-004](./sdk-api.md#plan-02), [ADR-0011](./adr/01-architecture-core.md#adr-0011), [yard-first-placement](./adr/yard-first-placement.md))** —
+   switching a resource's provider is a **Yard/Trail concern**: re-attach the Camp to a different Yard (or run a Trail that re-homes it) — no app/Bindle change. Camps do not own provider selection.
 
 5. **Resource Definitions/Matching + Packs ([FR-060](../archive/requirements/requirements.md)/[FR-061](../archive/requirements/requirements.md)/[FR-062](../archive/requirements/requirements.md))** —
    Resource Definitions, Matching, and certified Resource Packs participate in resolution;

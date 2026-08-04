@@ -24,10 +24,11 @@ surfaces.
 | `login` | identity | Obtain a dev SVID through OIDC; never paste provider keys. Optional `--broker` / `--broker-uri` associates a default remote broker on the HOBO_HOME profile (identity plane; not placement). | HOBO-136, HOBO-184 |
 | `connection` | identity | Manage durable Station-owned Connections (create/authorize/list/get/revoke/rotate). Scoped by `--station` / profile.defaultStation. | HOBO-connection, ADR-0131 |
 | `identity` | identity | Observe continuous identity migration (status/inspect). Zero Bindle config; Matching + dual fixtures drive dual-path. | ADR-0132 |
+| `trails` | migration | Observe continuous migration Trails (`status`, `plan`, `inspect`). App-owned recipes; identity continuous stays zero Bindle config (`identity.continuous` compose). | ADR-0134 |
 | `access` | identity | Request elevated or cross-env access / break-glass (short-lived capability; audited). | ADR-0133 |
-| `feature` | delivery | OpenFeature flags, canary, and experiment observe: `list` \| `eval` \| `set` (dev) \| `kill` \| `canary` \| `experiment`. Sole app evaluation API is OpenFeature; no vendor SDKs. | ADR-0044, ADR-0083 |
-| `deploy` | delivery | Attested continuous delivery: `status` \| `logs` \| `rollback`. Secret-free status; no ambient credentials. | ADR-0083, ADR-0008 |
-| `incident` | delivery | CD failure disposition: `status` \| `open` (simulate A2H or sandboxed self-heal). Default A2H; self-heal only in ADR-0076 lane. | ADR-0082, ADR-0094, ADR-0076 |
+| `feature` | delivery | OpenFeature flags, canary, and experiment observe (`list`, `eval`, `set`, `kill`, `canary`, `experiment`). Sole app evaluation API is OpenFeature; no vendor SDKs. | ADR-0044, ADR-0083 |
+| `deploy` | delivery | Attested continuous delivery (`status`, `logs`, `rollback`). Secret-free status; no ambient credentials. | ADR-0083, ADR-0008 |
+| `incident` | delivery | CD failure disposition (`status`, `open` for A2H or sandboxed self-heal). Default A2H; self-heal only in ADR-0076 lane. | ADR-0082, ADR-0094, ADR-0076 |
 | `claim` | identity | Bind an anonymous `npx hobo up` deployment to an account while preserving state and URL. Local: event-store rebind. Remote: `hobo claim <account> --broker <uri> --token <claimToken>` exchanges the claim token without re-provision. | HOBO-136, HOBO-164 |
 | `plan` | read-only | Dry-run the `up` decision: DeploymentPlan, Matching choices, cost, and warnings as an approvable diff. | HOBO-125, HOBO-203, HOBO-208 |
 | `verify` | read-only | Optional preflight for the unified Gatekeeper decision. `up` still runs the same gate automatically before mutation. | HOBO-146, HOBO-227 |
@@ -35,6 +36,7 @@ surfaces.
 | `inspect` | read-only | Render projections and time-travel views such as `run`, `deploy`, and `topology`. | HOBO-140, HOBO-216 |
 | `logs` | read-only | Live-tail logs and streams through the Camp runtime Streamer. | HOBO-143, HOBO-216 |
 | `doctor` | diagnostics | Report environment, credential, connectivity, and portability hazards. | HOBO-147, HOBO-184, HOBO-190 |
+| `messaging` | diagnostics | Inspect messaging capability + delivery-guarantee readiness (Kafka/Redpanda, optional Dapr Camp runtime); pure readiness section also surfaces in `hobo doctor`. | ADR-0138 |
 | `codegen` | authoring | Regenerate checked-in `_generated/`; `--check` fails on drift. | HOBO-152 |
 | `build` | authoring | Compile services to wasm components with an OCI fallback; fails on generated drift. | HOBO-156 |
 | `collect` | authoring | Run resource collection and print the provider-agnostic manifest IR. | HOBO-160 |
@@ -51,8 +53,8 @@ surfaces.
 | `erase` | governance | Request crypto-shred erasure and projection rebuild for a data subject without rewriting historical events. | HOBO-295 |
 | `broker` | governance | The broker (the Conductor) on the CLI. Requires Station context when available (profile / `HOBO_STATION` / `--station`); receipts pin `stationId` + `railHash`. `broker config [--init]` scaffolds/validates `hobo.broker.json` (importable as a Rail under a Station); `broker up [--config --request]` assembles the Conductor against Station + active Rail + local-host catalog when no cloud config; `broker resolve --policies --request` runs one resolution; `broker matrix` prints the closed rejection-code catalog. App lifecycle stays `up`/`down`. | HOBO-521, HOBO-525, HOBO-528, HOBO-529 |
 | `serve` | control plane (local) | **Local control-plane HTTP+SSE** for the Yard game UI (`hobo serve control`). Same management surface as station/connection verbs; default `127.0.0.1:8790`. | ADR-0135 |
-| `station` | control plane (ops/setup) | **Station occupancy setup/ops family — not a lifecycle verb.** `station init` creates a Station under `HOBO_HOME` with a sealed bootstrap Rail and sets `profile.defaultStation` (imports existing `hobo.broker.json` as an approved Rail when present); `station up` / `station down` start/stop occupancy (data retained on down); `station status` projects isolation, active Rail hash, bootstrap-active, Connection counts; `station rails list\|publish\|approve\|activate\|status` manages Station-owned Rails. Missing Station fails closed with remediation `hobo station init`. | ADR-0131 |
-| `replay` | observability | **Session Replay** (DOM/session reconstruction on every **App Kit**) — `list` \| `get` \| `open` \| `summarize` \| `retention` \| `doctor`. Distinct from control-plane event-log replay and auth `session.*`. Local dual fixtures default-on for all App Kits (not only `web`); production flag/sample gated; `HOBO_REPLAY=0` kill switch. MCP parity via CANONICAL_VERBS. | ADR-0137 |
+| `station` | control plane (ops/setup) | **Station occupancy setup/ops family — not a lifecycle verb.** `station init` creates a Station under `HOBO_HOME` with a sealed bootstrap Rail and sets `profile.defaultStation` (imports existing `hobo.broker.json` as an approved Rail when present); `station up` / `station down` start/stop occupancy (data retained on down); `station status` projects isolation, active Rail hash, bootstrap-active, Connection counts; `station rails` manages Rails (`list`, `publish`, `approve`, `activate`, `status`). Missing Station fails closed with remediation `hobo station init`. | ADR-0131 |
+| `replay` | observability | **Session Replay** (DOM/session reconstruction on every **App Kit**) — subcommands `list`, `get`, `open`, `summarize`, `retention`, `doctor`. Distinct from control-plane event-log replay and auth `session.*`. Local dual fixtures default-on for all App Kits (not only `web`); production flag/sample gated; `HOBO_REPLAY=0` kill switch. MCP parity via CANONICAL_VERBS. | ADR-0137 |
 | `derivative` | extensibility | Manage derived HoBo implementations; `derivative upgrade` checks descriptors, runs upcasters, and reruns conformance. | HOBO-36, HOBO-336, HOBO-386 |
 | `runbook` | SRE | Execute or replay declarative incident runbooks; write actions still pass through policy obligations. | HOBO-260, HOBO-285 |
 
@@ -128,8 +130,8 @@ authoritative source.
 
 | Command | Replacement | Decision |
 |---|---|---|
-| `deploy` | `up` | Retired. Shipping is convergence of an object graph, not a separate lifecycle. |
 | `destroy` | `down` | Retired. Teardown is the inverse of `up`. |
+| `ship` | `up` | Rejected synonym. Shipping is convergence via `up`; use canonical `deploy` only for attested CD observe (`status`/`logs`/`rollback`). |
 | `teardown` | `down` | Retired. Use the same destructive verb everywhere. |
 | `rollback` | `up` | Retired as a verb. Use `hobo up --rollback` or `hobo up --to <revision>`. |
 | `promote` | `up` | Retired as a verb. Use `hobo up --camp <target> --to <revision>`. |

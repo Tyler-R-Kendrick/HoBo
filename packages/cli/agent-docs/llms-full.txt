@@ -149,6 +149,13 @@ Product: hobo
 - MCP tool: `doctor`
 - Capability: { port: hobo:mcp, resource: tool:doctor, verb: call }
 
+### messaging
+- Role: diagnostics
+- Summary: Inspect messaging capability and delivery-guarantee readiness
+- CLI: `hobo messaging`
+- MCP tool: `messaging`
+- Capability: { port: hobo:mcp, resource: tool:messaging, verb: call }
+
 ### codegen
 - Role: authoring
 - Summary: Regenerate checked-in generated clients
@@ -260,6 +267,13 @@ Product: hobo
 - CLI: `hobo station`
 - MCP tool: `station`
 - Capability: { port: hobo:mcp, resource: tool:station, verb: call }
+
+### serve
+- Role: control plane
+- Summary: Local control-plane HTTP+SSE for the Yard game UI
+- CLI: `hobo serve`
+- MCP tool: `serve`
+- Capability: { port: hobo:mcp, resource: tool:serve, verb: call }
 
 ### replay
 - Role: observability

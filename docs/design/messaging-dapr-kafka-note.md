@@ -45,5 +45,5 @@ pnpm --filter @hobo/provider-kafka test
 pnpm --filter @hobo/runtime-dapr test
 pnpm --filter @hobo/conformance test messaging-conformance
 pnpm --prefix src/draft/technical-proofs/messaging-dapr-kafka test
-# hobo doctor / hobo messaging status|realize|component-yaml
+# also: pnpm run doctor  (workspace health; messaging is tests + conformance only)
 ```

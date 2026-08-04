@@ -10,6 +10,16 @@ export {
 	snapshotBrokerDecisions,
 } from "./broker.js";
 export {
+	BUDGET_EVENTS,
+	type BudgetSignal,
+	type BudgetSignalData,
+	type BudgetSignalFold,
+	type BudgetSignalPolicy,
+	type BudgetSignalState,
+	budgetSignalEventInputs,
+	foldBudgetSignals,
+} from "./budget-signals.js";
+export {
 	buildCedarRequest,
 	CEDAR_ENGINE_ID,
 	type CedarGatePlaneOptions,
@@ -161,20 +171,23 @@ export {
 	defaultProviderResolvers,
 	defaultYardGenerationConnectors,
 	EMPTY_RESOLVER_CONFIG,
-	emptyYardEventStoreState,
 	EVENT_STORE_SLOT,
+	emptyYardEventStoreState,
 	foldYardEventStore,
 	foldYardEventStoreAll,
 	inventorySnapshotFromFold,
 	localYardInstance,
 	matchYard,
+	type ProviderNativeSignal,
 	parseBindleDeploymentRequest,
 	parseYardShape,
 	planYardGeneration,
 	resolveBindleDeployment,
 	restoreYardEventStore,
 	snapshotYardEventStore,
-	type ProviderNativeSignal,
+	YARD_EVENT_READ_SET,
+	YARD_EVENTS,
+	YARD_PLACEMENT_RECEIPT_SCHEMA,
 	type YardEvent,
 	type YardEventStoreFoldResolver,
 	type YardEventStoreState,
@@ -190,10 +203,7 @@ export {
 	type YardRuntimeRegistration,
 	type YardSelectionMode,
 	type YardShape,
-	YARD_EVENT_READ_SET,
-	YARD_EVENTS,
 	yardEvent,
-	YARD_PLACEMENT_RECEIPT_SCHEMA,
 } from "./yard-placement/index.js";
 
 // public-contract: the package identity consumers assert in boundary contracts.

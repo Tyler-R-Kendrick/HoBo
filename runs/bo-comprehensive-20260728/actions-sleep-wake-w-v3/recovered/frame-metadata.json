@@ -1,0 +1,175 @@
+{
+  "sheet": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/generated/sheet.png",
+  "rows": 3,
+  "cols": 4,
+  "count": 10,
+  "keying": {
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 500,
+    "removedPixels": 624594,
+    "keptPixelsBeforeDespeckle": 1144878,
+    "bbox": [
+      0,
+      120,
+      1536,
+      1152
+    ]
+  },
+  "frames": [
+    {
+      "frame": "01",
+      "bbox": [
+        123,
+        120,
+        307,
+        337
+      ],
+      "area": 24520,
+      "center": [
+        215.0,
+        228.5
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-01.png"
+    },
+    {
+      "frame": "02",
+      "bbox": [
+        502,
+        132,
+        688,
+        339
+      ],
+      "area": 23724,
+      "center": [
+        595.0,
+        235.5
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-02.png"
+    },
+    {
+      "frame": "03",
+      "bbox": [
+        1236,
+        163,
+        1433,
+        346
+      ],
+      "area": 22514,
+      "center": [
+        1334.5,
+        254.5
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-03.png"
+    },
+    {
+      "frame": "04",
+      "bbox": [
+        384,
+        384,
+        768,
+        768
+      ],
+      "area": 147456,
+      "center": [
+        576.0,
+        576.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-04.png"
+    },
+    {
+      "frame": "05",
+      "bbox": [
+        768,
+        384,
+        1152,
+        768
+      ],
+      "area": 147456,
+      "center": [
+        960.0,
+        576.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-05.png"
+    },
+    {
+      "frame": "06",
+      "bbox": [
+        1152,
+        384,
+        1536,
+        768
+      ],
+      "area": 147456,
+      "center": [
+        1344.0,
+        576.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-06.png"
+    },
+    {
+      "frame": "07",
+      "bbox": [
+        0,
+        768,
+        384,
+        1152
+      ],
+      "area": 147456,
+      "center": [
+        192.0,
+        960.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-07.png"
+    },
+    {
+      "frame": "08",
+      "bbox": [
+        384,
+        768,
+        768,
+        1152
+      ],
+      "area": 147456,
+      "center": [
+        576.0,
+        960.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-08.png"
+    },
+    {
+      "frame": "09",
+      "bbox": [
+        768,
+        768,
+        1152,
+        1152
+      ],
+      "area": 147456,
+      "center": [
+        960.0,
+        960.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-09.png"
+    },
+    {
+      "frame": "10",
+      "bbox": [
+        1152,
+        768,
+        1536,
+        1152
+      ],
+      "area": 147456,
+      "center": [
+        1344.0,
+        960.0
+      ],
+      "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v3/recovered/frame-10.png"
+    }
+  ]
+}

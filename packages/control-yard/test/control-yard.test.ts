@@ -137,7 +137,7 @@ describe("@hobo/control-yard", () => {
 		const manifest = describeYardSceneLoad(index);
 		expect(manifest.sheets.some((s) => s.key === "town")).toBe(true);
 		expect(manifest.sheets.some((s) => s.key === "chars")).toBe(true);
-		// The rubberhose Bo/bindlebug/guest art was deleted with ADR-0141.
+		// The rubberhose Bo/bindlebug/guest art was deleted with ADR-0146.
 		expect(manifest.sheets.some((s) => s.key.startsWith("bo-"))).toBe(false);
 		expect(manifest.animations).toHaveLength(0);
 	});

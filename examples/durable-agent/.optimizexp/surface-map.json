@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "projectId": "durable-agent",
+  "scannedAt": "2026-07-31T20:12:04.049Z",
+  "productName": "@hobo/example-durable-agent",
+  "packageDir": "examples/durable-agent",
+  "binaries": [],
+  "defaultEntry": null,
+  "nonInteractiveHelp": null,
+  "commands": [],
+  "interactiveSurfaces": [
+    {
+      "id": "default-tty-chat",
+      "entry": "bare-tty",
+      "driver": "tui",
+      "slashCommands": [
+        "/verbs",
+        "/agent",
+        "/config",
+        "/help"
+      ]
+    }
+  ],
+  "requiredJourneys": [
+    "help-discoverability",
+    "happy-critical-path",
+    "failure-actionable",
+    "in-session-discoverability"
+  ],
+  "probes": []
+}

@@ -1,6 +1,8 @@
 name: HoBo CI Fabric
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
@@ -132,9 +134,13 @@ jobs:
 
   main-gate:
     name: Main full gate
-    # merge_group covers the path to main; this workflow declares no push
-    # trigger, so a push clause here would be dead code.
-    if: github.event_name == 'merge_group' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # Full gate on path into main and already on main: merge queue, direct push
+    # to main, weekly schedule, and manual dispatch. PR events stay on pr-gate.
+    if: >
+      github.event_name == 'merge_group' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 40
     permissions:

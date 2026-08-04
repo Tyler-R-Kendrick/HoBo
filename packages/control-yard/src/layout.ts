@@ -2,7 +2,7 @@
  * Yard layout — single source of truth for zone coordinates and depths.
  * Star-Office-UI `layout.js` pattern: no magic numbers in scene logic.
  *
- * Since ADR-0141 the yard is a tiled village, so the clickable zone rects are
+ * Since ADR-0146 the yard is a tiled village, so the clickable zone rects are
  * DERIVED from `ZONE_TILE_RECT` × `TILE` rather than hand-placed: a click on a
  * house, the notice board or the gate selects the zone that thing represents.
  * `village.ts` only imports `ZoneId` as a type, so this runtime import is not a
@@ -135,7 +135,7 @@ const ZONES: Record<ZoneId, ZoneLayout> = {
 /**
  * DESIGN.md reserved region: the band the Camp houses and their Bindles own.
  *
- * Since ADR-0141 this is derived from `HOUSE_PLOTS` — the north side of the
+ * Since ADR-0146 this is derived from `HOUSE_PLOTS` — the north side of the
  * road, from the first plot's west edge to the last plot's east edge, down to
  * the row the villagers stand on. Nothing else may be drawn inside it, so a
  * house is never occluded by yard furniture.

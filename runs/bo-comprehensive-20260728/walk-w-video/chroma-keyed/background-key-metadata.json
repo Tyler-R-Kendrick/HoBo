@@ -1,0 +1,202 @@
+[
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-01.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-01.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 446455,
+    "keptPixelsBeforeDespeckle": 71945,
+    "bbox": [
+      130,
+      168,
+      629,
+      552
+    ]
+  },
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-02.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-02.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 447403,
+    "keptPixelsBeforeDespeckle": 70997,
+    "bbox": [
+      118,
+      168,
+      666,
+      534
+    ]
+  },
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-03.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-03.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 447018,
+    "keptPixelsBeforeDespeckle": 71382,
+    "bbox": [
+      120,
+      194,
+      662,
+      610
+    ]
+  },
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-04.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-04.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 451171,
+    "keptPixelsBeforeDespeckle": 67229,
+    "bbox": [
+      156,
+      230,
+      634,
+      638
+    ]
+  },
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-05.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-05.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 450320,
+    "keptPixelsBeforeDespeckle": 68080,
+    "bbox": [
+      172,
+      166,
+      610,
+      552
+    ]
+  },
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-06.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-06.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 450248,
+    "keptPixelsBeforeDespeckle": 68152,
+    "bbox": [
+      172,
+      180,
+      604,
+      574
+    ]
+  },
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-07.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-07.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 450810,
+    "keptPixelsBeforeDespeckle": 67590,
+    "bbox": [
+      165,
+      230,
+      594,
+      640
+    ]
+  },
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-08.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-08.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 452100,
+    "keptPixelsBeforeDespeckle": 66300,
+    "bbox": [
+      174,
+      198,
+      626,
+      614
+    ]
+  },
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-09.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-09.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 451177,
+    "keptPixelsBeforeDespeckle": 67223,
+    "bbox": [
+      166,
+      175,
+      682,
+      542
+    ]
+  },
+  {
+    "input": "runs/bo-comprehensive-20260728/walk-w-video/selected/frame-10.png",
+    "output": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-10.png",
+    "method": "chroma",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "threshold": 90.0,
+    "minComponentArea": 4,
+    "removedPixels": 450827,
+    "keptPixelsBeforeDespeckle": 67573,
+    "bbox": [
+      160,
+      196,
+      678,
+      598
+    ]
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "type": "animation-group",
+  "id": "bo-latest",
+  "character": "bo",
+  "status": "completed",
+  "children": [
+    "walk-w",
+    "jump-w",
+    "hurt-w",
+    "bindle-adjust-w",
+    "wave-w",
+    "sleep-wake-w"
+  ]
+}

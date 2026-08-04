@@ -1,0 +1,5 @@
+{"timestamp": "2026-07-28T09:07:18.959806Z", "event": "run_started", "action": "sleep_wake", "direction": "w", "mode": "image"}
+{"timestamp": "2026-07-28T09:07:18.959977Z", "event": "reference_facing_checked", "direction": "w", "status": "uncertain", "expectedSide": "left", "detectedFacing": "unknown", "flipped": false, "facingMode": "reference"}
+{"timestamp": "2026-07-28T09:07:18.960283Z", "event": "stage_started", "stage": "make-alternating-guide", "args": ["/home/codex/.local/share/uv/tools/spriterrific/bin/python", "/home/codex/.local/share/uv/tools/spriterrific/lib/python3.11/site-packages/spriterrific/runtime_tools/animated_spritesheets/scripts/make_alternating_sheet.py", "--size", "1536x1152", "--out", "runs/bo-comprehensive-20260728/actions-sleep-wake-w/guide/alternating-1536x1152-4x3-pose-board.png"]}
+{"timestamp": "2026-07-28T09:07:19.474467Z", "event": "stage_completed", "stage": "make-alternating-guide", "exitCode": 0}
+{"timestamp": "2026-07-28T09:07:19.582863Z", "event": "run_failed", "error": "generated pose board must be 1536x1152, got 2048x1536"}

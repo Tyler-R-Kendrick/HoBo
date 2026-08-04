@@ -88,6 +88,46 @@ export function buildMultiplexerStatus(
 	};
 }
 
+/**
+ * Discoverable Herdr multiplexer differentiators (JSON + help + status footer).
+ * Dense pane chrome stays quiet; this is the explicit capability surface.
+ */
+export interface HerdrMuxCapabilities {
+	readonly theme: "herdr" | "grok-build";
+	readonly copyOnHighlight: true;
+	readonly detachable: true;
+	readonly panes: true;
+	readonly sessionPersistence: true;
+	/** Ultra-short human legend (status footer / docs). */
+	readonly legend: string;
+	/** One-line accessibility narrative (non-mouse). */
+	readonly highlightNarrative: string;
+}
+
+/** Product-default Herdr capability card for status/session --json and help. */
+export function herdrMuxCapabilities(
+	theme: "herdr" | "grok-build" = "herdr",
+): HerdrMuxCapabilities {
+	return {
+		theme,
+		copyOnHighlight: true,
+		detachable: true,
+		panes: true,
+		sessionPersistence: true,
+		// Compact; avoid long "detach · click panes · copy-on-highlight" chrome noise.
+		legend: "herdr · panes · detach · highlight→copy",
+		highlightNarrative:
+			"Highlight text in a pane to copy (highlightBuffer / ↳ clip on status fold). Detachable sessions persist handback under $HOBO_HOME.",
+	};
+}
+
+/** Status footer under the dense box — names Herdr differentiators without bloating panes. */
+export function renderHerdrCapabilityFooter(
+	caps: HerdrMuxCapabilities = herdrMuxCapabilities(),
+): string {
+	return ` ${caps.legend}`;
+}
+
 function pad(s: string, n: number): string {
 	if (s.length === n) return s;
 	if (s.length > n) {
@@ -130,6 +170,69 @@ export interface StatusRenderOptions {
 	 * instead of the one-line empty→★ box. Pass frame/tickMs to animate.
 	 */
 	readonly loading?: LoadingScreenOptions | true;
+	/**
+	 * Plain (default human) path: English hierarchy instead of glyph box.
+	 * Dense / power-user glyph chrome is the historic default for this renderer;
+	 * CLI `status` without `--dense` should pass plain: true.
+	 */
+	readonly plain?: boolean;
+}
+
+const STATE_WORD: Record<AgentSemanticState, string> = {
+	idle: "idle",
+	working: "working",
+	blocked: "blocked",
+	done: "done",
+};
+
+/**
+ * GUI-native / plain-default status: calm hierarchy, full words, next actions.
+ * Dense box remains available via renderStatusText without plain:true.
+ */
+export function renderStatusTextPlain(
+	status: MultiplexerStatus,
+	options: StatusRenderOptions = {},
+): string {
+	const counts = countStates(status.panes);
+	const lines: string[] = [
+		options.title ?? "hobo-code · session status",
+		"",
+	];
+	if (status.panes.length === 0) {
+		lines.push("Agents: (none yet — open work with a prompt or isolate)");
+	} else {
+		lines.push("Agents:");
+		for (const pane of status.panes) {
+			const word = STATE_WORD[pane.semanticState];
+			const focus = pane.semanticState === "working" ? " (focus)" : "";
+			const summary =
+				pane.summary.trim().length > 0 ? ` — ${pane.summary.trim()}` : "";
+			lines.push(`  · ${pane.agentId.padEnd(10)} ${word}${focus}${summary}`);
+		}
+		lines.push("");
+		const summaryBits = [
+			counts.working > 0 ? `${counts.working} working` : null,
+			counts.blocked > 0 ? `${counts.blocked} blocked` : null,
+			counts.idle > 0 ? `${counts.idle} idle` : null,
+			counts.done > 0 ? `${counts.done} done` : null,
+		].filter((x): x is string => x !== null);
+		if (summaryBits.length > 0) {
+			lines.push(`Summary: ${summaryBits.join(" · ")}`);
+		}
+	}
+	const remote = status.remoteReady ? "remote-ready" : "local-only";
+	lines.push(`Theme: ${status.theme} · ${remote}`);
+	if (status.copyOnHighlight) {
+		lines.push("Tip: highlight text in a pane to copy");
+	}
+	const next =
+		options.nextHint ??
+		(counts.working + counts.blocked > 0
+			? "hobo-code status   # refresh · hobo-code tasks"
+			: "hobo-code guide | tasks | attach | \"your prompt\"");
+	lines.push(`Next:  ${next}`);
+	lines.push("Dense: hobo-code status --dense   # glyph box chrome");
+	return lines.join("\n");
 }
 
 /**
@@ -140,6 +243,9 @@ export function renderStatusText(
 	status: MultiplexerStatus,
 	options: StatusRenderOptions = {},
 ): string {
+	if (options.plain === true) {
+		return renderStatusTextPlain(status, options);
+	}
 	// Default state: no panes + standalone → console logo + Bo idle loading.
 	// Embedded / title override keep compact empty cue (parent owns chrome).
 	if (

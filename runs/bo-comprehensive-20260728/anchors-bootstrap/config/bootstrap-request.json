@@ -1,0 +1,33 @@
+{
+  "run_dir": "runs/bo-comprehensive-20260728/anchors-bootstrap",
+  "character_id": "bo",
+  "source_image": "ref/ChatGPT Image Jul 26, 2026, 09_01_34 PM.png",
+  "source_prompt": null,
+  "source_prompt_file": null,
+  "candidate_image": null,
+  "candidate_prompt": null,
+  "candidate_prompt_file": null,
+  "candidate_prompt_preset": "preserve-reference-v1",
+  "edit_prompt": null,
+  "pixel_snap_anchor": false,
+  "candidate_facing": "front",
+  "anchors_dir": null,
+  "directions": [
+    "w",
+    "e"
+  ],
+  "dry_fal": false,
+  "source_model_alias": "nano-banana-2-lite-t2i",
+  "candidate_model_alias": "nano-banana-2-lite-edit",
+  "anchor_model_alias": "nano-banana-2-lite-edit",
+  "chroma": "#00FF00",
+  "k_colors": 256,
+  "game_view": "platformer",
+  "anchor_role": "character",
+  "anchor_context": "same Bo character; strict monochrome 1930s rubber-hose line art; bindle remains on one anatomical arm; transparent-runtime intent; full body; stable scale; no scenery or shadow",
+  "check_facing": true,
+  "check_facing_vlm": true,
+  "auto_orient": true,
+  "resume": false,
+  "seed": null
+}

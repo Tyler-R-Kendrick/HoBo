@@ -51,7 +51,10 @@ const TEXT_EXTENSIONS = new Set([
 // data-models/). Barebones examples under examples/ are demos — only src/ +
 // tests; they must not be forced to ship contracts/data-models/deploy in git.
 const PRODUCTION_PACKAGE_PARENTS = new Set(["packages"]);
+// Nested categories hold one package per subdirectory (e.g. runtimes/local,
+// adapters/adapter-hono); the category dir itself is not a package.
 const NESTED_PRODUCTION_CATEGORIES = new Set([
+	"adapters",
 	"runtimes",
 	"providers",
 	"iac",
@@ -437,7 +440,11 @@ function changedFiles(args) {
 }
 
 function git(args) {
-	return execFileSync("git", args, { encoding: "utf8" }).trim();
+	return execFileSync("git", args, {
+		encoding: "utf8",
+		// monorepo `git ls-files` exceeds Node's default 1 MiB maxBuffer
+		maxBuffer: 32 * 1024 * 1024,
+	}).trim();
 }
 
 function implementationPackageRoot(file) {

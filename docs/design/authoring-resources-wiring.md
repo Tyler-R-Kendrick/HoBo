@@ -268,12 +268,12 @@ DNS and custom domains are **not** in the app-level catalog ([ADR-0035](./adr/07
 `bind` is a **reference**: lazy, convention-based, adopting Aspire `.WithReference()` semantics.
 - Declaring `bind: { db }` (or referencing a resource inside a handler) records a **dependency edge** (drives the DAG + link), and **injects connection info/endpoints** into the consumer.
 - **Lazy resolution** (Aspire's `ReferenceExpression`): references resolve at deploy/runtime, so the *same component* runs locally and on any provider with no code change.
-- **Convention:** endpoints/connection info are injected with predictable keys (Aspire uses `services__<name>__<endpoint>__<i>` and `ConnectionStrings__<name>`); HoBo exposes them as a typed `ctx.bindings.<name>` client generated from the resource's WIT port, with the raw env convention available underneath for non-wasm/container fallback.
+- **Convention (ADR-0141):** binding delivery is the **WIT membrane** — bind edges → manifest **links** → provider exports → typed `ctx.bindings.<name>`. **Secret-shaped process env is forbidden** (`ConnectionStrings__*`, credential URIs). Optional **public** HTTP discovery keys (`services__<name>__http__0`) may be projected for non-credential endpoints only.
 
 ```ts
 const db  = data("db");                          // abstract data dep; paradigm + backend resolved by Matching
 const api = service("api", { bind: { db } });    // api gets a typed db client; edge + link recorded
-// container/component fallback receives ConnectionStrings__db / services__db__... env vars
+// links only — no ConnectionStrings__* ambient grants (ADR-0141)
 ```
 
 **Config for any component *or* container is uniform.** Adopt Aspire's `addContainer(...)` surface, applied identically to wasm components and OCI containers (wasm-on-OCI is just another image). **`addContainer(...)` both wires *and* builds** ([ADR-0005](./adr/01-architecture-core.md#adr-0005)): it records the dependency edge/link *and* drives the build of the workload through the dagger-adjacent programmable **BuildProvider**, which **defaults to wasm-on-OCI** (and is swappable to plain OCI). One call covers wiring and the build step:
@@ -291,7 +291,7 @@ addContainer("cuda-job", "ghcr.io/acme/cuda-job:1.2")    // wires + builds via B
 ```
 The BuildProvider is the programmable build seam: a prebuilt image short-circuits the build; a source dir is compiled (wasm-on-OCI by default) before the edge/link is finalized.
 
-**Local dev (`hobo dev`):** an `addContainer` workload runs on the local container engine with the same env-injection convention as deploy (`ConnectionStrings__<name>` / `services__<name>__<endpoint>__<i>`); wasm-on-OCI images run on `runtime-local` with no container engine. Fidelity is labeled per the [ADR-0042](./adr/07-portability-extensibility.md#adr-0042) matrix — simulate with an engine present, labeled camp-only without one.
+**Local dev (`hobo dev`):** workloads run with the same **link/capability** membrane as deploy. Optional public endpoint discovery may inject non-credential `services__*` keys; **never** credential `ConnectionStrings__*`. Wasm-on-OCI images run on `runtime-local`. Fidelity is labeled per the [ADR-0042](./adr/07-portability-extensibility.md#adr-0042) matrix.
 
 **Annotations are typed extensibility (`.with(...)`).** Aspire attaches behavior via resource **annotations** consumed by deploy tools. HoBo's existing provider-specific options pattern **is** this: `.with(provider.options())` adds typed annotations that the resolved Provider/IaC adapter consumes; non-resolved providers' annotations are inert ([Plan 2](./sdk-api.md#plan-02)). First-party annotations (health, lifetime, replicas, scaling, residency) are typed and provider-neutral. `scaling {min,max}` is consumed by the Camp's `component-host` scheduler ([ADR-0108](./adr/01-architecture-core.md#adr-0108)).
 
@@ -306,13 +306,13 @@ The BuildProvider is the programmable build seam: a prebuilt image short-circuit
              "exports": ["wasi:http/incoming-handler"],
              "links": [ { "import": "hobo:data", "to": "db" } ],
              "endpoints": { "http": { "scheme": "http", "targetPort": 8080, "external": true } },
-             "env": { "ConnectionStrings__db": "{db.connectionString}" },
+             "links": [{ "import": "hobo:data", "to": "db" }],
              "annotations": { "scaling": { "min": 1, "max": 10 }, "with": { "aws.fargate": { "cpu": 512 } } } },
     "site":{ "type": "website.v1", "bind": ["api"] }
   }
 }
 ```
-- **Tokens** like `{db.connectionString}` are lazy references resolved at deploy (Aspire pattern).
+- **Lazy tokens** may appear in non-secret placeholders only; **connection-string ambient env grants are forbidden** (ADR-0141). Prefer links + `fromBinding`.
 - **`links`** are the wasm capability bindings ([Plan 20](./wasm-runtime-wit.md#plan-20)); **`allow`** mirrors the permission model above.
 - **FinOps plan-time bridge.** During **`hobo plan`**, the Planner lowers each manifest resource node to provider-neutral **`ResourceIntent`** before FinOps routing ([Plan 04](./control-plane.md#plan-04), [finops-budget-routing-control-plane.md](./finops-budget-routing-control-plane.md#ifc-and-hobo-plan-spine)); provider-specific `.with(...)` annotations stay in the manifest until after `RoutingDecision`.
 - The manifest is **content-addressed and event-sourced** (`deployment.Planned` carries it), so it's auditable/replayable ([Plan 11](./data-plane.md#plan-11)).
@@ -330,7 +330,7 @@ The BuildProvider is the programmable build seam: a prebuilt image short-circuit
 - **Per-resource provider-equivalence-class** — the class chosen + **why other members were rejected** (reuses the rejected-candidate reasons in `match.Decided`, [ADR-0033](./adr/01-architecture-core.md#adr-0033)).
 - **Upgrade readiness** — the pinned **`component-host` + `wasi:*` versions** ([ADR-0031](./adr/01-architecture-core.md#adr-0031)) and whether a host upgrade path/upcaster is available, so portability and upgradability read off one report.
 
-Manifest interop notes: the schema (`hobo.manifest/v1`) stays interop-close to Aspire's `aspire-manifest.json`, and HoBo imports an Aspire manifest as one input format; the container/wasm-host fallback injects endpoints/connection info on the Aspire `services__<name>__<endpoint>__<i>` / `ConnectionStrings__<name>` convention.
+Manifest interop notes: the schema (`hobo.manifest/v1`) stays interop-close to Aspire's structure for resource graphs, but **HoBo rejects Aspire credential-env delivery** (ADR-0141). Public endpoint discovery only; credentials never as process env.
 
 ### Configuration & secretless secrets
 
@@ -339,7 +339,7 @@ Apps need configuration (URLs, flags, tuning) and credentials (DB access, third-
 **Principles.**
 1. **Secretless-first.** The best secret is no secret: a bound resource is reached via the app's **SVID → brokered short-lived token**, so there is nothing to store or leak ([ADR-0008](./adr/index.md)).
 2. **References, not values.** Config/secret declarations resolve to **refs** (a pointer to a provider secret store path, a binding, or a federation trust), resolved **at use-time, per Camp**. A value never lives in the `Bindle`, the Camp config, or the event log.
-3. **Secretless is the default; provider specifics are a pluggable `secrets` port adapter.** The default identity path — SVID → SVID-brokered short-lived tokens, OIDC federation — stays the default. Cloud-specific IAM, keys, and certs plug in through a **`secrets` port adapter / extension per provider** ([ADR-0027](./adr/02-identity-security.md#adr-0027)). Because a Camp is the provider-specific layer, *where* a secret/config actually comes from (Key Vault vs Secrets Manager vs Vault; which region) and *which* adapter resolves it is a Camp concern; the Bindle only declares *what it needs*. Overriding the default identity path with a cloud-native one is a Camp + extension change, not an app edit.
+3. **Secretless is the default; provider specifics are a pluggable `secrets` port adapter.** The default identity path — SVID → SVID-brokered short-lived tokens, OIDC federation — stays the default. Cloud-specific IAM, keys, and certs plug in through a **`secrets` port adapter / extension per provider** ([ADR-0027](./adr/02-identity-security.md#adr-0027)). Because a **Yard owns provider selection** and a Camp **infers** provider on attach, *where* a secret/config actually comes from (Key Vault vs Secrets Manager vs Vault; which region) and *which* adapter resolves it is a **Yard-provider concern realized at the Camp** after attachment; the Bindle only declares *what it needs*. Overriding the default identity path with a cloud-native one is a Yard/Camp attachment + extension change, not an app edit.
 4. **Every access is audited; values are never telemetry.** Secret reads are `token.Used` / `secret.Accessed` events; OTel/OpenInference spans and `ctx.log` redact values ([Plan 5](./reliability-observability-cost.md#plan-05)).
 
 **SDK surface.** Declared inline (IfC) alongside resources; read via `ctx.config`. Each item is a **varlock-style declarative schema** entry ([ADR-0027](./adr/02-identity-security.md#adr-0027)) — typed and annotation-driven, carrying its **type, required, sensitivity, and source** — so `can-deploy` can validate the config surface without ever touching values:
@@ -396,17 +396,19 @@ flowchart TD
 3. **Non-secret config** → typed value from the Camp's Deployment Set (no broker needed).
 4. **Static-secret escape hatch** → only when a provider offers no federation/secret-store path. **Bounded, concretely:** max TTL **≤ 7 days** (default; per-Camp tunable down), **rotation enforced** (a key past TTL fails closed with a typed `SecretExpiredError`, it does not hang), **every fetch audited** (not just grant/revoke), and **in-process cache bounded** (short TTL; each cache miss re-audits) — explicit opt-in ([ADR-0023](./adr/02-identity-security.md#adr-0023)). `hobo doctor` warns when this path is used where federation exists ([Plan 7](./developer-experience.md#plan-07), FR-014).
 
-**Per-Camp binding (where values actually come from).** The Bindle declares *needs*; each Camp supplies the *source* (provider-specific), e.g.:
+**Per-Camp binding under a Yard (where values actually come from).** The Bindle declares *needs*; after a Camp **attaches to (or is inferred under) a Yard**, resolution uses that **Yard's provider** adapters for *where* sources live, e.g.:
 ```ts
-// camp("prod-aws") — provider mapping (no separate config file)
-camp("prod-aws").config({
-  STRIPE: fromSecretStore("aws:secretsmanager", "prod/stripe"),   // resolved via brokered token
+// Camp is provider-neutral; Yard owns cloud. Config sources resolve via Yard provider adapters.
+const prod = camp("prod").config({
+  STRIPE: fromSecretStore("secretsmanager", "prod/stripe"),   // store kind; cloud from Yard
   LOG_LEVEL: "warn",
 });
+// yard("aws", { provider: aws(), camps: [prod] })  → AWS Secrets Manager
+// re-home via Trail to yard("azure", …)           → Key Vault (same Bindle; no app edit)
 ```
-The same Bindle on `prod-azure` resolves `STRIPE` from Key Vault — **no app-code change** (the portability promise, [ADR-0024](./adr/07-portability-extensibility.md#adr-0024)). Resolution decisions are recorded as `config.Resolved` (ref → source **+ Camp**, never the value).
+The same Bindle under an Azure Yard resolves `STRIPE` from Key Vault — **no app-code change** (the portability promise, [ADR-0024](./adr/07-portability-extensibility.md#adr-0024), [yard-first-placement](./adr/yard-first-placement.md)). Resolution decisions are recorded as `config.Resolved` (ref → source **+ Camp + Yard provider**, never the value).
 
-**Multi-Camp drift.** Because each Camp sources secrets independently, the *same logical secret* can diverge across Camps (rotated in AWS, stale in Azure). HoBo does **not** sync secret values (it never holds them), but `hobo doctor` / `hobo verify` compare resolved **refs across an environment group** and warn on a key that is missing or maps inconsistently; `config.Resolved` (ref + Camp) makes drift inspectable in the audit log. Value correctness remains the secret-store owner's responsibility.
+**Multi-Camp / multi-Yard drift.** Because each Yard's secret store is independent, the *same logical secret* can diverge across Camps on different Yards (rotated in AWS, stale in Azure). HoBo does **not** sync secret values (it never holds them), but `hobo doctor` / `hobo verify` compare resolved **refs across an environment group** and warn on a key that is missing or maps inconsistently; `config.Resolved` (ref + Camp) makes drift inspectable in the audit log. Value correctness remains the secret-store owner's responsibility.
 
 **Events & audit.**
 - `config.Resolved` — a declared key bound to a source (binding / secret-store path / federation trust); carries the *ref* + Camp, never the value.
@@ -422,7 +424,7 @@ The same Bindle on `prod-azure` resolves `STRIPE` from Key Vault — **no app-co
 **Why this is safe.**
 - **Nothing to steal by default** — the common case (bound resources) uses brokered tokens, so there is no secret at rest ([ADR-0008](./adr/index.md)).
 - **Blast radius is bounded** — tokens are short-lived + resource-scoped; the static fallback is TTL'd, rotated, and audited ([ADR-0023](./adr/02-identity-security.md#adr-0023)).
-- **Portable** — the Bindle declares needs, the Camp supplies sources; swapping clouds is a Camp change, never an app edit.
+- **Portable** — the Bindle declares needs; sources resolve under the **Yard provider** at the attached Camp; **swapping clouds re-homes Camps via Trails / Yard attachment**, never an app edit or Camp-owned provider pin.
 
 Config notes: fetched secrets are held in a short, bounded in-process cache (TTL above) and each cache miss re-audits; non-secret config supports live reload, pushed from the Camp's Deployment Set; each provider's `secrets` port adapter resolves per-Camp sourcing, and providers without a native secrets port use a shim adapter behind the same port.
 

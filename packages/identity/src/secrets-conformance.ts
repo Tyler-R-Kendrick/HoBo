@@ -47,7 +47,10 @@ export function assertNoPlaintextConformance(surfaces: {
 		// Strip redacted placeholders and reference URIs before pattern scan.
 		const scrubbed = json
 			.replace(/\[REDACTED:[^\]]+\]/g, "[OK]")
-			.replace(/(secref|tokenref|staticref|vault):\/\/[^\s"]+/g, "[OK]");
+			.replace(
+				/(secref|tokenref|staticref|vault|openbao|aws-sm|azure-kv):\/\/[^\s"]+/g,
+				"[OK]",
+			);
 		for (const re of PLAINTEXT_PATTERNS) {
 			const m = re.exec(scrubbed);
 			if (m) {

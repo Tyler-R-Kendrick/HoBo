@@ -1,7 +1,8 @@
 # @hobo/camps — Architecture Evidence
 
 Production home of `camp()`, provider selection descriptors, resolution precedence,
-and offline `resolveLocalBindings` for local Camp dev.
+and offline `resolveLocalBindings` for local Camp dev. Camps are **provider-neutral
+until Yard-attached**; the Yard owns cloud provider selection ([yard-first-placement](../../docs/design/adr/yard-first-placement.md)).
 
 ## Schema and constraints
 
@@ -24,7 +25,7 @@ snapshots through the deployment stream:
 
 - **Command** — `ComposeCamp` records a provider-agnostic bindle inside a Camp mapping.
 - **Event** — `topology.CampComposed` appends the frozen Camp descriptor to the authoring stream.
-- **Actor** — `CampCompositionActor` owns Camp normalization and single-provider invariants.
+- **Actor** — `CampCompositionActor` owns Camp normalization and Yard-inferred single-provider invariants (Camps do not author cloud provider pins).
 - **Event store** — accepted topology events append to the platform event store.
 - **Materialized view / projection** — `CampRegistryProjection` folds composed camps into the camp read model.
 - **Snapshot** — the deep-frozen `Camp` value is the snapshot carried on `topology.CampComposed`.

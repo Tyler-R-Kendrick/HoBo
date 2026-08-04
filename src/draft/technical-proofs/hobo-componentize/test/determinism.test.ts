@@ -6,7 +6,9 @@ import { buildHelloBindle, componentizeRealBuildSkipReason } from "./helpers.js"
 const realBuildIt = componentizeRealBuildSkipReason ? it.skip : it;
 
 describe("componentize determinism", () => {
-  realBuildIt("keeps canonical inputs stable and smoke output consistent across rebuilds", async () => {
+  // Two full real builds back-to-back; cold CI runners exceed the 360s
+  // default lane budget even though local runs finish in ~75s.
+  realBuildIt("keeps canonical inputs stable and smoke output consistent across rebuilds", { timeout: 900_000 }, async () => {
     const first = await buildHelloBindle();
     const second = await buildHelloBindle();
 

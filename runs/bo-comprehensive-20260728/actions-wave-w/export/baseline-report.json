@@ -1,0 +1,210 @@
+[
+  {
+    "path": "runs/bo-comprehensive-20260728/actions-wave-w/export/spritesheet.raw.png",
+    "size": {
+      "width": 1280,
+      "height": 512
+    },
+    "frame": {
+      "width": 256,
+      "height": 256
+    },
+    "grid": {
+      "columns": 5,
+      "rows": 2
+    },
+    "targetBottomY": 255,
+    "targetCenterX": 128,
+    "visibleBottomYRange": [
+      255,
+      255
+    ],
+    "shiftYRange": [
+      0,
+      0
+    ],
+    "out": "runs/bo-comprehensive-20260728/actions-wave-w/export/spritesheet.png",
+    "frames": [
+      {
+        "index": 0,
+        "col": 0,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          34,
+          77,
+          221,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.0,
+        "shiftToTarget": [
+          1,
+          0
+        ]
+      },
+      {
+        "index": 1,
+        "col": 1,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          24,
+          77,
+          232,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 2,
+        "col": 2,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          27,
+          77,
+          229,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 3,
+        "col": 3,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          36,
+          77,
+          221,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 128.0,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 4,
+        "col": 4,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          30,
+          77,
+          227,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 128.0,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 5,
+        "col": 0,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          28,
+          76,
+          229,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 128.0,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 6,
+        "col": 1,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          29,
+          76,
+          227,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 7,
+        "col": 2,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          18,
+          77,
+          238,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 8,
+        "col": 3,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          22,
+          77,
+          235,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 128.0,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 9,
+        "col": 4,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          34,
+          77,
+          221,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.0,
+        "shiftToTarget": [
+          1,
+          0
+        ]
+      }
+    ]
+  }
+]

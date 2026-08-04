@@ -1,0 +1,64 @@
+Intended use: a reusable sleep wake animation spritesheet for a 2D game.
+
+Image 1 role: identity anchor. Preserve the exact approved anchor sprite identity.
+Image 2 role: black-and-white alternating-pixel pose-board geometry guide at the exact target size. Use it only to preserve the output aspect ratio, full-board composition, pixel texture, and implied 4 column x 3 row pose-board layout. It is not a background, style, contact-sheet, border, or grid-line reference. Do not copy its black pixels, white pixels, checker pattern, grid lines, borders, labels, or presentation-sheet look into the final output.
+
+Subject:
+- Same already-approved sprite character.
+- Direction: profile facing screen-left.
+- Keep this as the same character, not a redesign.
+
+Primary request: create a 10-frame sleep wake sequence on a 2048x1536 pose board. Place the animation frames in the first 10 cells of an implied 4 column x 3 row grid, reading left to right, top to bottom.
+- Frame 1: idle start
+- Frame 2: hit reaction
+- Frame 3: stagger
+- Frame 4: collapse start
+- Frame 5: falling
+- Frame 6: impact
+- Frame 7: settle
+- Frame 8: still pose
+- Frame 9: final still
+- Frame 10: final hold
+
+Look and rendering:
+- High-resolution pixelated sprite art.
+- Crisp chunky sprite edges.
+- Preserve visible pixel structure.
+- No painterly rendering, no airbrushing, no soft gradients.
+- Keep the sprite large and centered in each frame area.
+
+Composition and background constraints:
+- Use the full canvas as a model-friendly pose board, not a packed runtime spritesheet.
+- The visible output must be only separate character sprites on one uninterrupted solid chroma background.
+- Do not render a contact sheet, proof sheet, storyboard page, panel layout, framed sheet, margin, border, white page, gray page, checkerboard, or visible guide.
+- Exact canvas size: 2048x1536.
+- Exact implied grid: 4 columns x 3 rows, 12 cells total.
+- Each implied generation cell is 512x512 pixels.
+- Each used cell contains one centered 256x256 runtime safe area.
+- Put frames 1 through 10 in cells 1 through 10, reading left to right, top to bottom.
+- Cells after frame 10 must remain entirely flat #00FF00 with no character, marks, shadows, labels, or texture.
+- Exactly one character figure per used frame cell.
+- Keep every full-body figure entirely inside the canvas and entirely inside its own implied frame area.
+- Leave clear empty chroma green #00FF00 margin around the left edge, right edge, top, bottom, and between neighboring figures.
+- The first and last figures must not touch or crop against the canvas edge.
+- Keep scale consistent across all frames.
+- Keep the same foot baseline across all frames.
+- Center each character inside the 256x256 safe area of its implied 512x512 cell.
+- Keep the figures separated and fully readable.
+- No overlapping between frame areas.
+- Use an opaque exact flat chroma green #00FF00 background.
+- Every non-character pixel must be exact solid #00FF00, including the outer edges, gutters between sprites, and unused cells.
+- No white, gray, black, neutral, paper, studio, transparent, or checkerboard background.
+- No gradients, texture, anti-aliased haze, lighting effects, checkerboards, or faux transparency on the background.
+- No cast shadow, ground shadow, contact shadow, glow, particles, or effects touching the background.
+- No matte-color spill on the character.
+- Keep effects compact and away from frame edges.
+- Do not add scenery, props, text, UI, labels, frame numbers, guide marks, grid lines, cell outlines, borders, decorative effects, or extra characters.
+
+Avoid:
+- redesigning the character
+- changing costume colors
+- making the sprite tiny
+- faux transparency patterns
+- floor shadows or environment backdrops
+- non-chroma backgrounds

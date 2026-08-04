@@ -1,0 +1,33 @@
+{
+  "stage": "normalize-frames",
+  "args": [
+    "/home/codex/.local/share/uv/tools/spriterrific/bin/python",
+    "/home/codex/.local/share/uv/tools/spriterrific/lib/python3.11/site-packages/spriterrific/runtime_tools/animated_spritesheets/scripts/normalize_frames.py",
+    "--input-dir",
+    "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled",
+    "--out-dir",
+    "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/normalized",
+    "--glob",
+    "frame-*.png",
+    "--canvas",
+    "256x256",
+    "--center-x",
+    "128",
+    "--bottom-y",
+    "255",
+    "--flat-bg",
+    "#f0f0f0"
+  ],
+  "cwd": null,
+  "status": "completed",
+  "startedAt": "2026-07-28T08:54:55.033124Z",
+  "completedAt": "2026-07-28T08:54:55.412004Z",
+  "exitCode": 0,
+  "stdout": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/logs/normalize-frames.stdout.txt",
+  "stderr": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/logs/normalize-frames.stderr.txt",
+  "envPresent": {
+    "FAL_KEY": false,
+    "FAL_API_KEY": true,
+    "REMOVE_BG_API_KEY": false
+  }
+}

@@ -1,0 +1,678 @@
+{
+  "plan": {
+    "mode": "auto",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "edgeRadius": 2,
+    "bandRadius": 12,
+    "dominance": 8,
+    "deepTintThreshold": 0.009,
+    "minDeepSample": 200,
+    "axes": [
+      {
+        "chromaRgb": [
+          0,
+          255,
+          0
+        ],
+        "deepTinted": 3611,
+        "deepTotal": 2751400,
+        "deepFraction": 0.00131,
+        "bandOnly": false
+      }
+    ]
+  },
+  "frames": [
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-01.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11521,
+          "spillRemoved": 494597,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-02.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11419,
+          "spillRemoved": 410694,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-03.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9823,
+          "spillRemoved": 344135,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-04.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11605,
+          "spillRemoved": 334856,
+          "protectedPixels": 180
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-05.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10091,
+          "spillRemoved": 311533,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-06.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9508,
+          "spillRemoved": 329301,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-07.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-07.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11570,
+          "spillRemoved": 385116,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-08.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-08.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10867,
+          "spillRemoved": 368739,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-09.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-09.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 8992,
+          "spillRemoved": 316747,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-10.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-10.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11071,
+          "spillRemoved": 359480,
+          "protectedPixels": 480
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-11.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-11.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11023,
+          "spillRemoved": 379000,
+          "protectedPixels": 502
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-12.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-12.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9926,
+          "spillRemoved": 333222,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-13.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-13.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11932,
+          "spillRemoved": 376814,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-14.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-14.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10875,
+          "spillRemoved": 357185,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-15.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-15.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9203,
+          "spillRemoved": 322653,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-16.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-16.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10645,
+          "spillRemoved": 360543,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-17.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-17.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10028,
+          "spillRemoved": 346176,
+          "protectedPixels": 78
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-18.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-18.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 8834,
+          "spillRemoved": 308218,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-19.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-19.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10051,
+          "spillRemoved": 338289,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-20.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-20.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9930,
+          "spillRemoved": 327410,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-21.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-21.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9702,
+          "spillRemoved": 330086,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-22.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-22.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10514,
+          "spillRemoved": 364797,
+          "protectedPixels": 421
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-23.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-23.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10258,
+          "spillRemoved": 350752,
+          "protectedPixels": 387
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-24.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-24.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 8693,
+          "spillRemoved": 293704,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-25.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-25.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11085,
+          "spillRemoved": 354574,
+          "protectedPixels": 138
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-26.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-26.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9681,
+          "spillRemoved": 310083,
+          "protectedPixels": 170
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-27.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-27.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9115,
+          "spillRemoved": 308837,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-28.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-28.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9641,
+          "spillRemoved": 309916,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-29.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-29.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10338,
+          "spillRemoved": 372289,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-30.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-30.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9352,
+          "spillRemoved": 324974,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-31.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-31.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11607,
+          "spillRemoved": 398446,
+          "protectedPixels": 237
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-32.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-32.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11885,
+          "spillRemoved": 389233,
+          "protectedPixels": 251
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-33.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-33.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 9042,
+          "spillRemoved": 315553,
+          "protectedPixels": 136
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-34.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-34.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 11619,
+          "spillRemoved": 401062,
+          "protectedPixels": 203
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-35.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-35.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 10472,
+          "spillRemoved": 368620,
+          "protectedPixels": 183
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-36.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-36/recovered/frame-36.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 8889,
+          "spillRemoved": 305774,
+          "protectedPixels": 45
+        }
+      ]
+    }
+  ]
+}

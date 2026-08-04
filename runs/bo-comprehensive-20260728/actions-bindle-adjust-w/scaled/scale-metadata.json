@@ -1,0 +1,204 @@
+{
+  "targetHeight": 210,
+  "maxWidth": 220,
+  "sourceMaxVisibleSize": [
+    397,
+    364
+  ],
+  "mode": "shared",
+  "allowUpscale": true,
+  "scale": 0.5541561712846348,
+  "sharedScale": 0.5541561712846348,
+  "frames": [
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-01.png",
+      "sourceBBox": [
+        0,
+        0,
+        355,
+        364
+      ],
+      "sourceVisibleSize": [
+        355,
+        364
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        197,
+        202
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-02.png",
+      "sourceBBox": [
+        0,
+        0,
+        351,
+        360
+      ],
+      "sourceVisibleSize": [
+        351,
+        360
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        195,
+        199
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-03.png",
+      "sourceBBox": [
+        0,
+        0,
+        357,
+        360
+      ],
+      "sourceVisibleSize": [
+        357,
+        360
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        198,
+        199
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-04.png",
+      "sourceBBox": [
+        0,
+        0,
+        362,
+        363
+      ],
+      "sourceVisibleSize": [
+        362,
+        363
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        201,
+        201
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-05.png",
+      "sourceBBox": [
+        0,
+        0,
+        349,
+        362
+      ],
+      "sourceVisibleSize": [
+        349,
+        362
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        193,
+        201
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-06.png",
+      "sourceBBox": [
+        0,
+        0,
+        397,
+        360
+      ],
+      "sourceVisibleSize": [
+        397,
+        360
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        220,
+        199
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-07.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-07.png",
+      "sourceBBox": [
+        0,
+        0,
+        394,
+        360
+      ],
+      "sourceVisibleSize": [
+        394,
+        360
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        218,
+        199
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-08.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-08.png",
+      "sourceBBox": [
+        0,
+        0,
+        342,
+        362
+      ],
+      "sourceVisibleSize": [
+        342,
+        362
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        190,
+        201
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-09.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-09.png",
+      "sourceBBox": [
+        0,
+        0,
+        347,
+        363
+      ],
+      "sourceVisibleSize": [
+        347,
+        363
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        192,
+        201
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/recovered/frame-10.png",
+      "output": "runs/bo-comprehensive-20260728/actions-bindle-adjust-w/scaled/frame-10.png",
+      "sourceBBox": [
+        0,
+        0,
+        343,
+        362
+      ],
+      "sourceVisibleSize": [
+        343,
+        362
+      ],
+      "scale": 0.5541561712846348,
+      "outputSize": [
+        190,
+        201
+      ]
+    }
+  ]
+}

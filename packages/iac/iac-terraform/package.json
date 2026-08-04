@@ -4,6 +4,7 @@
 	"license": "MIT",
 	"description": "HoBo HCL-lane IacProvider: one adapter driving the OpenTofu (default) or Terraform binary over per-resource workspaces (HOBO-717).",
 	"type": "module",
+	"private": true,
 	"files": [
 		"LICENSE",
 		"dist"

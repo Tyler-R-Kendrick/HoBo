@@ -177,6 +177,42 @@ export {
 	type TenantIsolationRegistryOptions,
 	type TenantOverlayPlane,
 } from "./tenancy/isolation.js";
+export {
+	createCloudflareTrafficRouting,
+	type CloudflareTrafficRouting,
+	type CloudflareTrafficRoutingOptions,
+} from "./traffic-routing/cloudflare.js";
+export {
+	createSimpleTrafficRouting,
+	type SimpleTrafficRouting,
+} from "./traffic-routing/simple.js";
+export {
+	createFunnelTrafficRouting,
+	type FunnelTrafficRouting,
+	type FunnelTrafficRoutingOptions,
+} from "./traffic-routing/funnel.js";
+export {
+	buildTrafficRouteProgram,
+	createLakebedTrafficRouting,
+	type LakebedTrafficDeployOptions,
+	type LakebedTrafficDriverProgram,
+	type LakebedTrafficRouting,
+	type LakebedTrafficRoutingOptions,
+} from "./traffic-routing/lakebed.js";
+export {
+	createVercelTrafficRouting,
+	type VercelTrafficMode,
+	type VercelTrafficRouting,
+	type VercelTrafficRoutingOptions,
+} from "./traffic-routing/vercel.js";
+export {
+	BUILTIN_TRAFFIC_ROUTING_PROFILES,
+	CLOUDFLARE_TRAFFIC_ROUTING_PROFILE,
+	FUNNEL_TRAFFIC_ROUTING_PROFILE,
+	LAKEBED_TRAFFIC_ROUTING_PROFILE,
+	SIMPLE_TRAFFIC_ROUTING_PROFILE,
+	VERCEL_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing/profiles.js";
 
 // Environment network isolation + elevated access + break-glass (ADR-0133).
 export * from "./env-isolation/index.js";

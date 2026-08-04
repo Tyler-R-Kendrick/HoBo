@@ -86,6 +86,18 @@ export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 				flags.json === true ||
 				!process.stdin.isTTY ||
 				!process.stdout.isTTY;
+			// Off-TTY runs probe-and-exit silently otherwise — say why, and how
+			// to get the long-lived interactive server instead.
+			if (
+				once &&
+				flags.once !== true &&
+				flags.json !== true &&
+				(!process.stdin.isTTY || !process.stdout.isTTY)
+			) {
+				emitProgress(
+					"hobo dev: non-interactive terminal detected — running one-shot probe and exiting. Run `hobo dev` in an interactive terminal for the long-lived dev server.",
+				);
+			}
 			const portRaw = flags.port;
 			const port =
 				typeof portRaw === "string" || typeof portRaw === "number"

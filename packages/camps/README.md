@@ -2,9 +2,17 @@
 
 Production home of `camp()`, `providerSelection()`, resolution-precedence
 descriptors (`resolutionPrecedenceFor`), and offline `resolveLocalBindings` for
-local Camp development. A Camp maps a provider-agnostic Bindle onto exactly one
-provider; the package normalizes that mapping into immutable value objects.
-See [`ADR.md`](./ADR.md).
+local Camp development. A Camp is **provider-neutral until attached to a Yard**;
+the **Yard owns provider selection**, and the Camp **infers** provider from that
+Yard (or from Yard placement policy). Camps do not own Bindles and do not select
+cloud providers. Camps can move between Yards via Trails. See [`ADR.md`](./ADR.md)
+and the [yard-first-placement ADR](../../docs/design/adr/yard-first-placement.md).
+
+**API residual:** `defaultProvider` / `tiers` / `bindings` on `camp()` are
+**rejected at parse** (`Camp must not select a cloud provider`).
+`providerSelection(...)` is a descriptor helper for within-provider mapping /
+tests — not a Yard substitute. Deprecated type fields document migration only
+([design residual note](../../docs/design/devx-devenv-nix.md#design--code-residual-hobocamps)).
 
 ## Honest scope
 
@@ -13,8 +21,8 @@ Implemented: parsing/normalizing camp configs into frozen `Camp` and
 canonical manifest hashing (`canonicalManifestHash`, sorted-key sha256), and
 `resolveLocalBindings`, which substitutes lazy `${resource.property}` tokens in
 a `WiringManifest`'s env through a caller-supplied `BindingResolverPort` — and
-refuses any camp whose provider is not `local`. Not here: no deployment, no
-cloud provider calls, no binding resolver implementation of its own.
+refuses any camp whose **derived/inferred** provider is not `local`. Not here: no
+deployment, no cloud provider calls, no binding resolver implementation of its own.
 
 ## Commands
 

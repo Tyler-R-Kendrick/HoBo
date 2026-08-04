@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "kind": "bo-wave-body-lock-audit",
+  "source": "site/public/parallax/bo-idle.png",
+  "acceptedBase": "accepted-west-idle-base.png",
+  "frames": 10,
+  "cell": [
+    256,
+    256
+  ],
+  "freeArmRoi": [
+    24,
+    98,
+    100,
+    230
+  ],
+  "lockedRegionHash": "ba934b216c593b366468fad4b9779f51b45897e9f10df0eb9539d72873abf1d6",
+  "lockedPixelMismatchFrames": 0,
+  "topLeftRightEdgeAlphaByFrame": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "groundContactAlphaByFrame": [
+    1509,
+    1509,
+    1509,
+    1509,
+    1509,
+    1509,
+    1509,
+    1509,
+    1509,
+    1509
+  ],
+  "bodyBindleFeetEyesStatic": true,
+  "frameBleedDetected": false,
+  "passed": true
+}

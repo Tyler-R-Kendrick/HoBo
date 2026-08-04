@@ -1,0 +1,10 @@
+{
+	"id": "queue-echo",
+	"title": "Queue Echo",
+	"blurb": "Preview independent queue loops on three provider-specific Yards.",
+	"tags": ["queue", "placement-preview"],
+	"needs": ["http", "queue"],
+	"ui": "queue",
+	"entry": "app.ts",
+	"sourcePath": "examples/try-site/apps/queue-echo/app.ts"
+}

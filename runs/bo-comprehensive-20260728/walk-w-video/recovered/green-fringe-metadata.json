@@ -1,0 +1,251 @@
+{
+  "minGreen": 70,
+  "dominance": 24,
+  "edgeRadius": 1,
+  "minComponentArea": 4,
+  "highRemovalRatioThreshold": 0.02,
+  "warnings": [
+    {
+      "frame": "frame-01.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 3051,
+      "keptPixels": 68810,
+      "removedToKeptRatio": 0.044339485539892455
+    },
+    {
+      "frame": "frame-02.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 3173,
+      "keptPixels": 67743,
+      "removedToKeptRatio": 0.04683878777143026
+    },
+    {
+      "frame": "frame-03.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 3329,
+      "keptPixels": 67981,
+      "removedToKeptRatio": 0.048969565025521834
+    },
+    {
+      "frame": "frame-04.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 2874,
+      "keptPixels": 64315,
+      "removedToKeptRatio": 0.04468630957008474
+    },
+    {
+      "frame": "frame-05.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 2961,
+      "keptPixels": 65031,
+      "removedToKeptRatio": 0.045532130829911886
+    },
+    {
+      "frame": "frame-06.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 2755,
+      "keptPixels": 65320,
+      "removedToKeptRatio": 0.04217697489283527
+    },
+    {
+      "frame": "frame-07.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 3045,
+      "keptPixels": 64462,
+      "removedToKeptRatio": 0.04723713195370916
+    },
+    {
+      "frame": "frame-08.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 3114,
+      "keptPixels": 63122,
+      "removedToKeptRatio": 0.04933303760970818
+    },
+    {
+      "frame": "frame-09.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 2759,
+      "keptPixels": 64406,
+      "removedToKeptRatio": 0.04283762382386734
+    },
+    {
+      "frame": "frame-10.png",
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup.",
+      "removedGreenFringePixels": 3052,
+      "keptPixels": 64440,
+      "removedToKeptRatio": 0.047361887026691495
+    }
+  ],
+  "frames": [
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-01.png",
+      "removedGreenFringePixels": 3051,
+      "keptPixels": 68810,
+      "removedToKeptRatio": 0.044339485539892455,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        131,
+        168,
+        628,
+        552
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-02.png",
+      "removedGreenFringePixels": 3173,
+      "keptPixels": 67743,
+      "removedToKeptRatio": 0.04683878777143026,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        119,
+        168,
+        665,
+        534
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-03.png",
+      "removedGreenFringePixels": 3329,
+      "keptPixels": 67981,
+      "removedToKeptRatio": 0.048969565025521834,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        121,
+        195,
+        661,
+        609
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-04.png",
+      "removedGreenFringePixels": 2874,
+      "keptPixels": 64315,
+      "removedToKeptRatio": 0.04468630957008474,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        156,
+        232,
+        633,
+        637
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-05.png",
+      "removedGreenFringePixels": 2961,
+      "keptPixels": 65031,
+      "removedToKeptRatio": 0.045532130829911886,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        174,
+        166,
+        609,
+        552
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-06.png",
+      "removedGreenFringePixels": 2755,
+      "keptPixels": 65320,
+      "removedToKeptRatio": 0.04217697489283527,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        172,
+        181,
+        604,
+        572
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-07.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-07.png",
+      "removedGreenFringePixels": 3045,
+      "keptPixels": 64462,
+      "removedToKeptRatio": 0.04723713195370916,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        166,
+        230,
+        593,
+        639
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-08.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-08.png",
+      "removedGreenFringePixels": 3114,
+      "keptPixels": 63122,
+      "removedToKeptRatio": 0.04933303760970818,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        174,
+        199,
+        625,
+        613
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-09.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-09.png",
+      "removedGreenFringePixels": 2759,
+      "keptPixels": 64406,
+      "removedToKeptRatio": 0.04283762382386734,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        167,
+        176,
+        681,
+        540
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/walk-w-video/chroma-keyed/frame-10.png",
+      "output": "runs/bo-comprehensive-20260728/walk-w-video/recovered/frame-10.png",
+      "removedGreenFringePixels": 3052,
+      "keptPixels": 64440,
+      "removedToKeptRatio": 0.047361887026691495,
+      "minGreen": 70,
+      "dominance": 24,
+      "edgeRadius": 1,
+      "bbox": [
+        162,
+        198,
+        678,
+        597
+      ],
+      "warning": "high green-fringe removal ratio; green foreground details may have been removed. Use a non-green matte such as #FF00FF or pass --no-green-fringe-cleanup."
+    }
+  ]
+}

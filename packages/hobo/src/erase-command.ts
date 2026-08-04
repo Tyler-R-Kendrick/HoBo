@@ -2,6 +2,7 @@ import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { DEFAULT_TENANT, deploymentIdFor } from "@hobo/cli";
 import {
 	collectStream,
+	currentFenceToken,
 	deploymentViewProjection,
 	foldErasedSubjects,
 	subjectErasureRequested,
@@ -67,6 +68,9 @@ export function createEraseCommand(deps: EraseCommandDeps = {}): CommandModule {
 			}
 
 			const lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
+			// Continue the fenced deployment stream with the current owner epoch
+			// rather than bypassing the fence (same rule as drift).
+			const fenceToken = currentFenceToken(runtime.store, stream);
 			await runtime.store.append(
 				stream,
 				[
@@ -75,7 +79,12 @@ export function createEraseCommand(deps: EraseCommandDeps = {}): CommandModule {
 						reason: "operator-requested erasure",
 					}),
 				],
-				{ expectedSeq: lastSeq, actor: ERASE_ACTOR, tenant: DEFAULT_TENANT },
+				{
+					expectedSeq: lastSeq,
+					actor: ERASE_ACTOR,
+					tenant: DEFAULT_TENANT,
+					...(fenceToken !== undefined ? { fenceToken } : {}),
+				},
 			);
 			emitProgress(`erasure requested: ${subject}`);
 

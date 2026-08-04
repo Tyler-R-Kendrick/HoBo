@@ -1,0 +1,13 @@
+{
+  "status_code": 200,
+  "headers": {
+    "date": "Tue, 28 Jul 2026 08:19:06 GMT",
+    "content-type": "application/json",
+    "content-length": "474",
+    "connection": "close",
+    "vary": "origin, access-control-request-method, access-control-request-headers",
+    "access-control-allow-credentials": "true",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "x-robots-tag": "noindex"
+  }
+}

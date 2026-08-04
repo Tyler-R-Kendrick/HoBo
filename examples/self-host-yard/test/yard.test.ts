@@ -68,16 +68,13 @@ describe("self-host-yard", () => {
 		expect(hosted.topology.camps).toHaveLength(1);
 		const homeCamp = hosted.topology.camps[0];
 		expect(homeCamp?.envType).toBe("production");
-		expect(homeCamp?.bindle.resources.map((entry) => entry.stableId)).toEqual([
-			"api:api",
-			"web:web",
-		]);
+		expect(homeCamp?.derivedProviderId).toBe(providerId);
 		// The Camp records WHERE this yard runs: the operator's own disk.
-		expect(homeCamp?.runtime).toEqual({
-			kind: "runtime-local",
-			eventStore: "sqlite",
-			dataDir,
-		});
+		expect(homeCamp?.runtimeRequirements).toEqual([
+			"event-store:sqlite",
+			"runtime-local",
+		]);
+		expect(homeCamp?.labels["hobo.dev/event-store-data-dir"]).toBe(dataDir);
 	});
 
 	it("enforces one-provider-per-yard on the topology objects", async () => {

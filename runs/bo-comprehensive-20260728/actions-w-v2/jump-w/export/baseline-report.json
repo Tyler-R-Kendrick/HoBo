@@ -1,0 +1,162 @@
+[
+  {
+    "path": "runs/bo-comprehensive-20260728/actions-w-v2/jump-w/export/spritesheet.raw.png",
+    "size": {
+      "width": 1280,
+      "height": 512
+    },
+    "frame": {
+      "width": 256,
+      "height": 256
+    },
+    "grid": {
+      "columns": 5,
+      "rows": 2
+    },
+    "targetBottomY": 255,
+    "targetCenterX": 128,
+    "visibleBottomYRange": [
+      255,
+      255
+    ],
+    "shiftYRange": [
+      0,
+      0
+    ],
+    "out": "runs/bo-comprehensive-20260728/actions-w-v2/jump-w/export/spritesheet.png",
+    "frames": [
+      {
+        "index": 0,
+        "col": 0,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          18,
+          79,
+          238,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 1,
+        "col": 1,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          29,
+          93,
+          227,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 2,
+        "col": 2,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          23,
+          80,
+          233,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 3,
+        "col": 3,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          22,
+          112,
+          233,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.0,
+        "shiftToTarget": [
+          1,
+          0
+        ]
+      },
+      {
+        "index": 4,
+        "col": 4,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          18,
+          88,
+          238,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 5,
+        "col": 0,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          22,
+          111,
+          233,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.0,
+        "shiftToTarget": [
+          1,
+          0
+        ]
+      },
+      {
+        "index": 6,
+        "col": 1,
+        "row": 1,
+        "empty": true
+      },
+      {
+        "index": 7,
+        "col": 2,
+        "row": 1,
+        "empty": true
+      },
+      {
+        "index": 8,
+        "col": 3,
+        "row": 1,
+        "empty": true
+      },
+      {
+        "index": 9,
+        "col": 4,
+        "row": 1,
+        "empty": true
+      }
+    ]
+  }
+]

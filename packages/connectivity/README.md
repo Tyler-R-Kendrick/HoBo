@@ -2,6 +2,57 @@
 
 Multi-tenant connectivity foundations for HoBo: **DNS-valid hierarchical naming**, optional **local named HTTPS** (portless), **cross-cloud overlay** (Tailscale primary / Netbird alternative), **pluggable public DNS**, **PolicyEngine**, and **metering/usage events**.
 
+## TrafficRouting
+
+`TrafficRoutingPort` is the portable multi-backend routing-intent seam from
+[ADR-0143](../../docs/design/adr/07-portability-extensibility.md#adr-0143). It is
+adjacent to public DNS and overlay exposure: Stations coordinate plans; Junctions
+continue to own Tailscale/overlay configuration.
+
+```ts
+import { parseRoutingPlan } from "@hobo/core";
+import { createSimpleTrafficRouting } from "@hobo/connectivity";
+
+const routing = createSimpleTrafficRouting();
+const result = await routing.apply(parseRoutingPlan({
+  planId: "plan:checkout",
+  intent: {
+    service: "checkout",
+    tenantId: "local",
+    rules: [{
+      weightStrategy: "static",
+      backends: [{ id: "backend:local", service: "checkout", weight: 100 }],
+    }],
+  },
+  backends: [{ id: "backend:local", service: "checkout", weight: 100 }],
+  createdAt: new Date().toISOString(),
+}));
+// result.realized === "full"
+```
+
+| Adapter | Offerings (declared) | V1 realization |
+|---------|----------------------|----------------|
+| Simple | `inprocess.weighted` | Offline baseline; deterministic static weighted selection |
+| Cloudflare | `lb.lifecycle`, `lb.weighted`, `lb.health`* | Create pools+LB when unmapped; update when mapped; revoke deletes LB |
+| Funnel | `overlay.funnel`, `overlay.funnel.multi` | Multi-backend weighted selection + public Funnel tip (require multi-public opt-in) |
+| Vercel | `edge.canary`, `edge.path`, `edge.header` | Rolling Releases + project routes (stage/promote); injectible `fetch`; Pact |
+| Lakebed | `inprocess.weighted`, `driver.route-bind` | Dual layer: in-process multi-backend + optional `lakebed:traffic-route` driver |
+
+\* health when monitors/observations configured.
+
+**Offerings + fallback ladder:** see
+[`docs/traffic-routing-providers.md`](./docs/traffic-routing-providers.md).
+Profiles export as `BUILTIN_TRAFFIC_ROUTING_PROFILES`. Core APIs:
+`resolveTrafficRouting` / `matchTrafficRoutingOfferings`.
+
+No adapter requires Kubernetes. **No always-deny stubs.** Missing credentials or
+platform-unsupported fragments return `partial`/`none` with concrete `unmet`
+notes; credentials never enter plans, metering events, or result notes.
+Cloudflare brownfield maps (`poolIdsByBackend` / `loadBalancerIdsByPlan`) still
+work; lifecycle create needs `accountId`. Provider effects remain authoritative
+if best-effort metering delivery fails; active `planId` is idempotent and
+conflicting content fails closed.
+
 ## Quick starts
 
 ### 1. Hierarchical naming (pure)
@@ -160,6 +211,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for Mermaid diagrams covering local nam
 | Route53 DNS | `createRoute53DnsProvider({ accessKeyId, secretAccessKey, signRequest?, allowUnsigned? })` |
 | OPA/Rego policy | `createOpaPolicyEngine({ opaUrl?, regoModulePath? })` + `SAMPLE_HOBO_AUTHZ_REGO` |
 | Billing aggregator | `createBillingAggregator()` as a `MeteringSink` → `closePeriod()` invoices |
+| Traffic routing | `createSimpleTrafficRouting()` offline; Cloudflare, Funnel, production Vercel (RR + routes), dual-layer Lakebed |
 | Hard multi-tenant | `createTenantIsolationRegistry()` with `soft` \| `hard-overlay` \| `hard-control-plane` |
 | Dynamic DNS heartbeats | `createJunctionDynamicDnsRegistrar` / `createJunctionAgent({ publicDns, dnsTargets })` |
 

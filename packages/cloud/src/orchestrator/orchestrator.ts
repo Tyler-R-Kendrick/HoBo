@@ -5,7 +5,7 @@ import { emit } from "@hobo/events";
 import { CLOUD_EVENTS, deploymentDeployed } from "../events.js";
 import type { CredentialBroker, Executor } from "../executor/executor.js";
 import type { DeploymentPlan, ResourcePlan } from "../plan-types.js";
-import { collectStream } from "../store/index.js";
+import { collectStream, currentFenceToken } from "../store/index.js";
 import { type CompensationResult, runCompensation } from "./compensation.js";
 import {
 	foldResourceActor,
@@ -196,6 +196,9 @@ export async function runOrchestrator(
 	) {
 		const lastSeq =
 			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
+		// The deployment stream is fenced (owner_epoch set by the first leased
+		// write); the terminal fact continues under the current owner epoch.
+		const fenceToken = currentFenceToken(deps.store, stream);
 		await emit(
 			deps.store,
 			stream,
@@ -210,6 +213,7 @@ export async function runOrchestrator(
 				expectedSeq: lastSeq,
 				actor: ctx.actor,
 				tenant: ctx.tenant,
+				...(fenceToken !== undefined ? { fenceToken } : {}),
 				...(ctx.correlationId !== undefined
 					? { correlationId: ctx.correlationId }
 					: {}),

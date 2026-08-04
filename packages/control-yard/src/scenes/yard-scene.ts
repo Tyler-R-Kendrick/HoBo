@@ -164,7 +164,7 @@ export function yardSceneHud(): YardSceneHud {
 
 /**
  * Map visual state → the Operator's semantic state. There is no Bo sprite and
- * no clip id since ADR-0141: the presenter picks the tile from this.
+ * no clip id since ADR-0146: the presenter picks the tile from this.
  */
 export function operatorStateForVisual(visual: YardVisualState): BoAnimState {
 	return visual.bo.state;

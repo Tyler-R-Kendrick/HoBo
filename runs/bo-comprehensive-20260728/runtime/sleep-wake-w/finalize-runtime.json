@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "kind": "runtime-finalization",
+  "createdAt": "2026-07-28T10:19:47-05:00",
+  "animationDir": "runs/bo-comprehensive-20260728/runtime/sleep-wake-w",
+  "action": "sleep_wake",
+  "direction": "w",
+  "requestedAnchorPolicy": "grounded",
+  "anchorPolicy": "grounded",
+  "targetBottomY": 255,
+  "targetCenterX": 128,
+  "cellSize": [
+    256,
+    256
+  ],
+  "columns": 5,
+  "frames": 10,
+  "fps": 8,
+  "framesAdjusted": 0,
+  "maxAbsDx": 0,
+  "maxAbsDy": 0,
+  "publicAssetReady": true,
+  "records": [
+    {
+      "frame": "frame-01.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        40,
+        49,
+        216,
+        256
+      ],
+      "outputBBox": [
+        40,
+        49,
+        216,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-02.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        39,
+        59,
+        217,
+        256
+      ],
+      "outputBBox": [
+        39,
+        59,
+        217,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-03.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        38,
+        77,
+        218,
+        256
+      ],
+      "outputBBox": [
+        38,
+        77,
+        218,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-04.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        34,
+        82,
+        222,
+        256
+      ],
+      "outputBBox": [
+        34,
+        82,
+        222,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-05.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        37,
+        114,
+        219,
+        256
+      ],
+      "outputBBox": [
+        37,
+        114,
+        219,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-06.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        39,
+        113,
+        217,
+        256
+      ],
+      "outputBBox": [
+        39,
+        113,
+        217,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-07.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        40,
+        103,
+        216,
+        256
+      ],
+      "outputBBox": [
+        40,
+        103,
+        216,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-08.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        37,
+        95,
+        219,
+        256
+      ],
+      "outputBBox": [
+        37,
+        95,
+        219,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-09.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        40,
+        48,
+        216,
+        256
+      ],
+      "outputBBox": [
+        40,
+        48,
+        216,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": "frame-10.png",
+      "policy": "grounded",
+      "sourceBBox": [
+        38,
+        46,
+        219,
+        256
+      ],
+      "outputBBox": [
+        38,
+        46,
+        219,
+        256
+      ],
+      "dx": 0,
+      "dy": 0
+    }
+  ]
+}

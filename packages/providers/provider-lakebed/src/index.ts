@@ -41,6 +41,7 @@ export {
 	type RealizablePort,
 	realizeResourcePlan,
 	realizeResourcePlans,
+	realizeTrafficRoutingPlan,
 	resolveEquivalence,
 } from "./realize.js";
 export type {
@@ -55,6 +56,11 @@ export type {
 	ProviderClient,
 	ResourcePlan,
 } from "./types.js";
+
+export {
+	LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS,
+	LAKEBED_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
 
 // public-contract: the package id consumers assert against.
 export const HOBO_PROVIDER_LAKEBED_PACKAGE = "@hobo/provider-lakebed";

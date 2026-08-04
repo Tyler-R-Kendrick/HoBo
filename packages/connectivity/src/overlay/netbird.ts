@@ -1,4 +1,5 @@
 import {
+	createUsageEvent,
 	type FunnelPublishOptions,
 	type FunnelPublishResult,
 	type MagicDnsSplitConfig,
@@ -7,7 +8,6 @@ import {
 	type OverlayJoinOptions,
 	type OverlayJoinResult,
 	type OverlayNetwork,
-	createUsageEvent,
 } from "@hobo/core";
 
 import {
@@ -43,9 +43,7 @@ export function createNetbirdOverlay(options?: {
 			...(accessToken !== undefined && accessToken.length > 0
 				? { accessToken }
 				: {}),
-			...(setupKey !== undefined && setupKey.length > 0
-				? { setupKey }
-				: {}),
+			...(setupKey !== undefined && setupKey.length > 0 ? { setupKey } : {}),
 			...(options?.fetchImpl !== undefined
 				? { fetchImpl: options.fetchImpl }
 				: {}),
@@ -87,8 +85,7 @@ export function createNetbirdOverlay(options?: {
 					try {
 						const peers = await api.listPeers();
 						const hit = peers.find(
-							(p) =>
-								p.name === join.hostname || p.id === join.hostname,
+							(p) => p.name === join.hostname || p.id === join.hostname,
 						);
 						if (hit) {
 							nodeId = hit.id;
@@ -239,22 +236,30 @@ export function createNetbirdOverlay(options?: {
 				);
 			}
 
-			await options?.metering?.emit(
-				createUsageEvent({
-					tenantId: funnel.tenantId,
-					eventType: "overlay.funnel",
-					resource: funnel.backendUrl,
-					metadata: {
-						provider: "netbird",
-						enabled: gateway !== null,
-						gateway: gateway ?? "",
-					},
-				}),
-			);
+			try {
+				await options?.metering?.emit(
+					createUsageEvent({
+						tenantId: funnel.tenantId,
+						eventType: "overlay.funnel",
+						resource: gateway ?? "funnel",
+						metadata: {
+							provider: "netbird",
+							enabled: false,
+							gateway: gateway ?? "",
+						},
+					}),
+				);
+			} catch {
+				// Public-route capability remains authoritative when observation fails.
+			}
 			return {
-				enabled: gateway !== null,
+				enabled: false,
+				confirmed: false,
 				gatewayHostname: gateway,
-				notes,
+				notes: [
+					...notes,
+					"Netbird has no configured public reverse-proxy seam",
+				],
 			};
 		},
 	};

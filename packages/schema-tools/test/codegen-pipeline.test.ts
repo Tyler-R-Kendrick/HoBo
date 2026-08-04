@@ -1,7 +1,8 @@
-import { readFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
 import { checkCodegen, runCodegen } from "../src/codegen.js";
 import { vetReportEnvelope } from "../src/cue.js";
@@ -9,13 +10,28 @@ import { parseCodegenArgv } from "../src/parse.js";
 import { createCodegenReport, reportToJson } from "../src/types.js";
 
 const REPO_ROOT = join(fileURLToPath(new URL("../../..", import.meta.url)));
-// The frozen POC packages serve as read-only codegen fixtures; the drift test
-// tampers one generated file and restores it byte-identically.
-const POC_PACKAGES = join(
+// The frozen POC packages serve as read-only codegen fixtures. The frozen
+// s0-04 proof suite runs the same mutating tests against the same checked-in
+// tree, so this suite works on a private copy: two concurrent suites must
+// never tamper/write the same generated files.
+const POC_PACKAGES_SOURCE = join(
 	REPO_ROOT,
 	"src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages",
 );
 const CODEGEN_INTEGRATION_TIMEOUT_MS = 60_000;
+
+let POC_PACKAGES = POC_PACKAGES_SOURCE;
+let tempRoot: string | undefined;
+
+beforeAll(async () => {
+	tempRoot = await mkdtemp(join(tmpdir(), "schema-tools-poc-"));
+	POC_PACKAGES = join(tempRoot, "packages");
+	await cp(POC_PACKAGES_SOURCE, POC_PACKAGES, { recursive: true });
+}, CODEGEN_INTEGRATION_TIMEOUT_MS);
+
+afterAll(async () => {
+	if (tempRoot) await rm(tempRoot, { recursive: true, force: true });
+});
 
 function invocation(check = false) {
 	return Object.freeze({

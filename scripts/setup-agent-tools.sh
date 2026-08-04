@@ -10,8 +10,35 @@
 #   bash scripts/setup-agent-tools.sh --agents codex,cursor # common + selected shims
 #   bash scripts/setup-agent-tools.sh --no-gbrain           # skip key/egress memory tool
 #   bash scripts/setup-agent-tools.sh --no-skillopt         # skip microsoft/SkillOpt install
+#   bash scripts/setup-agent-tools.sh --help                # usage (no install)
 set -uo pipefail
 cd "$(dirname "$0")/.."
+
+usage() {
+  cat <<'EOF'
+Usage: bash scripts/setup-agent-tools.sh [options]
+
+Install/configure coding-agent tools for this repo (progressive layers).
+
+Options:
+  --common-only          Common/devcontainer-safe layer only (no agent CLI shims)
+  --agent NAME           One agent: claude-code | cursor | codex | copilot
+  --agents a,b           Comma-separated agent list
+  --no-gbrain            Skip gbrain (zero-key path; recommended first run)
+  --no-skillopt          Skip microsoft/SkillOpt install
+  -h, --help             Show this help and exit 0 (no install)
+
+Examples:
+  bash scripts/setup-agent-tools.sh --common-only --no-gbrain
+  bash scripts/setup-agent-tools.sh --agent codex --no-gbrain
+
+Keys / egress: AUTH.md
+Narrative:     docs/agent-tooling.md
+At-a-glance:   AGENTS.md
+MCP launchers (fail-closed): scripts/agent-mcp-{serena,headroom,gbrain}.sh
+Verify:        pnpm run doctor  (includes agent-tooling checks)
+EOF
+}
 
 WANT_GBRAIN=1
 WANT_SKILLOPT=1
@@ -19,15 +46,24 @@ COMMON_ONLY=0
 AGENT_FILTER="claude-code,cursor,codex,copilot"
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
     --no-gbrain) WANT_GBRAIN=0 ;;
     --no-skillopt) WANT_SKILLOPT=0 ;;
     --common-only) COMMON_ONLY=1; AGENT_FILTER="" ;;
     --agent|--agents)
+      opt="$1"
       shift
-      [ "$#" -gt 0 ] || { echo "missing value for $1" >&2; exit 2; }
+      [ "$#" -gt 0 ] || { echo "missing value for $opt" >&2; usage >&2; exit 2; }
       AGENT_FILTER="$1"
       ;;
-    *) echo "unknown option: $1" >&2; exit 2 ;;
+    *)
+      echo "unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
   esac
   shift
 done
@@ -104,6 +140,29 @@ if have pnpm; then
 else echo "  SKIP: pnpm missing for ast-grep verification"; fi
 
 
+say "GitHub Stacked PRs (github/gh-stack) -> gh CLI extension"
+if have gh; then
+  if gh extension list 2>/dev/null | grep -qE '[[:space:]]stack[[:space:]]|gh stack|github/gh-stack'; then
+    gh extension upgrade stack 2>/dev/null \
+      && echo "  gh-stack present/upgraded ($(gh stack --version 2>/dev/null || echo '?'))" \
+      || echo "  gh-stack present (upgrade skipped)"
+  else
+    gh extension install github/gh-stack \
+      && echo "  installed github/gh-stack" \
+      || echo "  gh-stack install FAILED"
+  fi
+  # Agent-safe local git defaults when run inside a checkout (fail-open outside a repo).
+  if [ -e .git ] || git rev-parse --git-dir >/dev/null 2>&1; then
+    git config --local rerere.enabled true 2>/dev/null \
+      && echo "  local rerere.enabled=true" || true
+    git config --local remote.pushDefault origin 2>/dev/null \
+      && echo "  local remote.pushDefault=origin" || true
+  fi
+  echo "  Docs: https://gh.io/stacks  | agent skill: .agents/skills/gh-stack + sdlc stacked-prs"
+else
+  echo "  SKIP: gh missing — install GitHub CLI then re-run"
+fi
+
 say "RTK (rtk-ai/rtk) -> token-compressing command proxy"
 if have rtk; then
   echo "  rtk present ($(rtk --version 2>/dev/null || echo '?'))"
@@ -118,23 +177,27 @@ elif have curl; then
 else echo "  SKIP: brew, cargo, or curl missing for rtk"; fi
 
 say "Serena (oraios/serena) -> uv tool + shared MCP wrapper"
-SERENA_BIN="$(command -v serena || true)"
-if have uv; then
+if have serena; then
+  echo "  serena present ($(serena --version 2>/dev/null || echo '?')) — skip reinstall"
+  serena init >/dev/null 2>&1 && echo "  initialized / already initialized" || echo "  init FAILED"
+elif have uv; then
   uv tool install -p 3.13 serena-agent \
-    && echo "  installed ($(${SERENA_BIN:-$HOME/.local/bin/serena} --version 2>/dev/null || echo '?'))" || echo "  FAILED"
+    && echo "  installed ($(command -v serena >/dev/null && serena --version 2>/dev/null || echo '?'))" || echo "  FAILED"
   SERENA_BIN="$(command -v serena || printf '%s/.local/bin/serena' "$HOME")"
   "$SERENA_BIN" init 2>/dev/null && echo "  initialized" || echo "  init skipped / already initialized"
 elif have python3; then
   python3 -m pip install --user uv 2>/dev/null \
     || python3 -m pip install --user --break-system-packages uv
   "$HOME/.local/bin/uv" tool install -p 3.13 serena-agent \
-    && echo "  installed ($(${SERENA_BIN:-$HOME/.local/bin/serena} --version 2>/dev/null || echo '?'))" || echo "  FAILED"
+    && echo "  installed ($(command -v serena >/dev/null && serena --version 2>/dev/null || echo '?'))" || echo "  FAILED"
   SERENA_BIN="$(command -v serena || printf '%s/.local/bin/serena' "$HOME")"
   "$SERENA_BIN" init 2>/dev/null && echo "  initialized" || echo "  init skipped / already initialized"
 else echo "  SKIP: uv/python3 missing"; fi
 
 say "headroom (chopratejas/headroom) -> pip + MCP server"
-if have python3; then
+if have headroom; then
+  echo "  headroom present ($(headroom --version 2>/dev/null || echo '?')) — skip reinstall"
+elif have python3; then
   python3 -m pip install --user "headroom-ai[mcp]" 2>/dev/null \
     || python3 -m pip install --user --break-system-packages "headroom-ai[mcp]" \
     && echo "  installed ($(headroom --version 2>/dev/null || echo '?'))" || echo "  FAILED"
@@ -158,8 +221,8 @@ if [ "$WANT_GBRAIN" = "1" ]; then
   say "gbrain (garrytan/gbrain) -> bun install"
   if have bun; then
     bun install -g github:garrytan/gbrain && echo "  installed ($(gbrain --version 2>/dev/null || echo '?'))" || echo "  FAILED"
-    echo "  NEXT (manual): set OPENAI_API_KEY|ZEROENTROPY_API_KEY|VOYAGE_API_KEY, then 'gbrain init --pglite'."
-    echo "  NOTE: gbrain sends embedding/query text to that provider (cost + egress)."
+    echo "  NEXT (manual): run 'gbrain init --pglite'; choose local Ollama or an API-key provider."
+    echo "  NOTE: API-key providers receive embedding/query text (cost + egress); local Ollama does not."
   else echo "  SKIP: bun missing — install Bun first or rerun with --no-gbrain"; fi
 else
   say "gbrain — skipped (--no-gbrain)"
@@ -175,6 +238,7 @@ if [ "$COMMON_ONLY" = "1" ]; then
   echo "  Next: rerun with --agent claude-code|cursor|codex|copilot when you know which client to configure."
   say "Done"
   echo "Ensure these are on PATH: $HOME/.local/bin (rtk/headroom/uv/serena/skillopt), $HOME/.bun/bin (gbrain)."
+  echo "Keys / egress: AUTH.md  |  narrative: docs/agent-tooling.md  |  table: AGENTS.md"
   exit 0
 fi
 
@@ -207,14 +271,14 @@ else echo "  SKIP: npx missing"; fi
 say "Register MCP servers in selected CLIs when present"
 if want_agent claude-code && have claude; then
   claude mcp add serena -- bash scripts/agent-mcp-serena.sh 2>/dev/null && echo "  claude: added serena" || echo "  claude: serena already present / skipped"
-  claude mcp add headroom -- headroom mcp serve 2>/dev/null && echo "  claude: added headroom" || echo "  claude: headroom already present / skipped"
-  [ "$WANT_GBRAIN" = "1" ] && { claude mcp add gbrain -- gbrain serve 2>/dev/null && echo "  claude: added gbrain" || echo "  claude: gbrain already present / skipped"; }
+  claude mcp add headroom -- bash scripts/agent-mcp-headroom.sh 2>/dev/null && echo "  claude: added headroom" || echo "  claude: headroom already present / skipped"
+  [ "$WANT_GBRAIN" = "1" ] && { claude mcp add gbrain -- bash scripts/agent-mcp-gbrain.sh 2>/dev/null && echo "  claude: added gbrain" || echo "  claude: gbrain already present / skipped"; }
 fi
 if want_agent codex; then
   if have codex; then
     codex mcp add serena -- bash scripts/agent-mcp-serena.sh 2>/dev/null && echo "  codex: added serena" || echo "  codex: serena skipped"
-    codex mcp add headroom -- headroom mcp serve 2>/dev/null && echo "  codex: added headroom" || echo "  codex: skipped"
-    [ "$WANT_GBRAIN" = "1" ] && { codex mcp add gbrain -- gbrain serve 2>/dev/null && echo "  codex: added gbrain" || echo "  codex: skipped"; }
+    codex mcp add headroom -- bash scripts/agent-mcp-headroom.sh 2>/dev/null && echo "  codex: added headroom" || echo "  codex: skipped"
+    [ "$WANT_GBRAIN" = "1" ] && { codex mcp add gbrain -- bash scripts/agent-mcp-gbrain.sh 2>/dev/null && echo "  codex: added gbrain" || echo "  codex: skipped"; }
   else
     echo "  Codex: CLI not found — use .codex/config.toml as the progressive setup reference."
   fi
@@ -244,4 +308,5 @@ echo "  NOTE: superpowers skills load at SESSION START — open a fresh session 
 
 say "Done"
 echo "Ensure these are on PATH: $HOME/.local/bin (rtk/headroom/uv/serena/skillopt), $HOME/.bun/bin (gbrain)."
-echo "See AGENTS.md and docs/agent-tooling.md. Keys for gbrain/SkillOpt live runs go in .env (see .env.example)."
+echo "Keys / egress: AUTH.md  |  narrative: docs/agent-tooling.md  |  table: AGENTS.md"
+echo "Optional gbrain MCP uses scripts/agent-mcp-gbrain.sh (fails closed with remediation when binary/key missing)."

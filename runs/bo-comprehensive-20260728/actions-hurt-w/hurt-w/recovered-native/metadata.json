@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "mode": "padded-native-review",
+  "description": "Recovered components placed on a shared padded canvas without scaling.",
+  "canvasSize": [
+    528,
+    512
+  ],
+  "minCanvasSize": [
+    512,
+    512
+  ],
+  "placement": {
+    "centerX": 264,
+    "bottomY": 504
+  },
+  "frames": [
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered-native/frames/frame-01.png",
+      "sourceSize": [
+        503,
+        493
+      ],
+      "canvasSize": [
+        528,
+        512
+      ],
+      "offset": [
+        13,
+        11
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered-native/frames/frame-02.png",
+      "sourceSize": [
+        502,
+        469
+      ],
+      "canvasSize": [
+        528,
+        512
+      ],
+      "offset": [
+        13,
+        35
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered-native/frames/frame-03.png",
+      "sourceSize": [
+        458,
+        388
+      ],
+      "canvasSize": [
+        528,
+        512
+      ],
+      "offset": [
+        35,
+        116
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered-native/frames/frame-04.png",
+      "sourceSize": [
+        440,
+        326
+      ],
+      "canvasSize": [
+        528,
+        512
+      ],
+      "offset": [
+        44,
+        178
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered-native/frames/frame-05.png",
+      "sourceSize": [
+        492,
+        482
+      ],
+      "canvasSize": [
+        528,
+        512
+      ],
+      "offset": [
+        18,
+        22
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/actions-hurt-w/hurt-w/recovered-native/frames/frame-06.png",
+      "sourceSize": [
+        470,
+        476
+      ],
+      "canvasSize": [
+        528,
+        512
+      ],
+      "offset": [
+        29,
+        28
+      ]
+    }
+  ]
+}

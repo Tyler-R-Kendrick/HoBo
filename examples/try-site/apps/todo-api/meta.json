@@ -1,0 +1,10 @@
+{
+	"id": "todo-api",
+	"title": "Todo API",
+	"blurb": "A small HTTP and KV service with a single-host default.",
+	"tags": ["api", "kv"],
+	"needs": ["http", "kv"],
+	"ui": "todos",
+	"entry": "app.ts",
+	"sourcePath": "examples/try-site/apps/todo-api/app.ts"
+}

@@ -53,6 +53,11 @@ function okText(stdout: string, exitCode = 0): CliRunResult {
 	return { exitCode, stdout, stderr: "" };
 }
 
+// Default progress renderer: plain lines on stderr (no spinner dependency).
+function defaultProgressSink(message: string): void {
+	process.stderr.write(`${message}\n`);
+}
+
 export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 	const registry =
 		options.registry ??
@@ -73,6 +78,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 
 	const dispatchCommand = async (
 		invocation: CommandInvocation,
+		onProgress: (message: string) => void = defaultProgressSink,
 	): Promise<CliEnvelope> => {
 		assertKnownVerb(invocation.verb);
 		const command = registry.get(invocation.verb);
@@ -81,7 +87,13 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 			flags: invocation.flags,
 			args: invocation.args,
 			verb: invocation.verb,
-			emitProgress: () => {},
+			// Progress lines go to stderr; machine lanes (-q/--json) stay silent.
+			emitProgress: (message) => {
+				if (invocation.flags.quiet || invocation.flags.json) {
+					return;
+				}
+				onProgress(message);
+			},
 		});
 		return buildEnvelope({
 			verb: invocation.verb,
@@ -165,12 +177,15 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 					requiresProject: projectScopedVerbs.has(request.verb),
 				});
 
-				const envelope = await dispatchCommand({
-					verb: request.verb,
-					args: request.args,
-					flags: request.flags,
-					context,
-				});
+				const envelope = await dispatchCommand(
+					{
+						verb: request.verb,
+						args: request.args,
+						flags: request.flags,
+						context,
+					},
+					runOptions.onProgress ?? defaultProgressSink,
+				);
 
 				return renderSuccess({
 					verb: request.verb,

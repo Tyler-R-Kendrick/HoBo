@@ -1,0 +1,19 @@
+{
+  "direction": "w",
+  "checkedAt": "2026-07-28T08:25:37.286708Z",
+  "status": "ok",
+  "expectedSide": "left",
+  "detected": {
+    "facing": "left",
+    "confidence": 0.2616,
+    "method": "silhouette-centroid-v1",
+    "headOffset": -0.0384,
+    "footOffset": -0.0569,
+    "figureWidth": 140,
+    "figureHeight": 153
+  },
+  "autoOrient": true,
+  "flipped": false,
+  "confidenceThreshold": 0.1,
+  "reference": "runs/bo-comprehensive-20260728/walk-w-36/input/source.png"
+}

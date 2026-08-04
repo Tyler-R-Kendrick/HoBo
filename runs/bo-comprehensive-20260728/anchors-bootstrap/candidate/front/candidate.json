@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "createdAt": "2026-07-28T08:18:55.048904Z",
+  "candidateFacing": "front",
+  "legacyDirection": null,
+  "candidateGenerationMode": "source-image-preserve-reference-shortcut",
+  "raw": "runs/bo-comprehensive-20260728/anchors-bootstrap/candidate/front/candidate-raw.png",
+  "pixelSnapped": false,
+  "anchorStyle": "preserve-reference-v1",
+  "anchor1024": "runs/bo-comprehensive-20260728/anchors-bootstrap/candidate/front/anchor-1024.png",
+  "anchor1024Chroma": "runs/bo-comprehensive-20260728/anchors-bootstrap/candidate/front/anchor-1024-chroma.png",
+  "snappedNative": null,
+  "snapped1024": "runs/bo-comprehensive-20260728/anchors-bootstrap/candidate/front/snapped-1024.png",
+  "snapped1024Chroma": "runs/bo-comprehensive-20260728/anchors-bootstrap/candidate/front/snapped-1024-chroma.png",
+  "snapRun": null,
+  "snappedSize": null,
+  "unsnappedTransform": {
+    "source": "runs/bo-comprehensive-20260728/anchors-bootstrap/candidate/front/candidate-raw.png",
+    "sourceSize": [
+      1450,
+      1085
+    ],
+    "targetSize": [
+      1024,
+      1024
+    ],
+    "preservedCanvas": false,
+    "foregroundBbox": [
+      323,
+      137,
+      1244,
+      930
+    ],
+    "scale": 0.9120521172638436,
+    "offset": [
+      92,
+      150
+    ],
+    "resampling": "lanczos",
+    "backgroundCleanup": "corner-connected",
+    "chroma": "#00FF00"
+  },
+  "kColors": 256,
+  "chroma": "#00FF00",
+  "seed": null,
+  "candidateBackgroundCheck": {
+    "version": 1,
+    "image": "runs/bo-comprehensive-20260728/anchors-bootstrap/candidate/front/candidate-raw.png",
+    "size": [
+      1450,
+      1085
+    ],
+    "alphaRange": [
+      255,
+      255
+    ],
+    "opaqueRatio": 1.0,
+    "transparentRatio": 0.0,
+    "chromaLikeRatio": 0.0,
+    "neutralLightRatio": 0.8154463689814079,
+    "secondNeutralBucketRatio": 0.012848561894168123,
+    "cornerLightNeutralCount": 4,
+    "cornerChromaLikeCount": 0,
+    "sampledNeutralTransitionRatio": 0.03724951519069166,
+    "chroma": "#00FF00",
+    "strict": false,
+    "passed": true
+  }
+}

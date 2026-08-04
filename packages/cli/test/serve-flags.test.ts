@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseArgv } from "../src/shell/parse.js";
 
 /**
- * `hobo serve control --demo` (ADR-0140): demo mode must be reachable from the
+ * `hobo serve control --demo` (ADR-0145): demo mode must be reachable from the
  * CLI, not only from env vars, and must stay scoped to the serve verb so it
  * can never silently apply to a real deploy.
  */

@@ -85,10 +85,13 @@ export {
 	buildMultiplexerStatus,
 	copyOnHighlight,
 	createPane,
+	herdrMuxCapabilities,
+	renderHerdrCapabilityFooter,
 	renderStatusChip,
 	renderStatusSurface,
 	renderStatusText,
 	setPaneState,
+	type HerdrMuxCapabilities,
 	type MultiplexerStatus,
 	type StatusRenderOptions,
 } from "./tui.js";
@@ -103,9 +106,40 @@ export {
 } from "./finops.js";
 
 export {
+	describeDevTerminalAttach,
 	registerCodeNamedEndpoint,
+	shortNamedHost,
+	type CodeRemoteMode,
 	type CodeRemoteRegistration,
+	type DevTerminalAttach,
+	type DevTerminalAttachSurface,
+	type DevTerminalCompare,
 } from "./remote.js";
+
+export {
+	buildTasksSurface,
+	grokBuildParity,
+	renderGrokBuildFooter,
+	renderTasksBoardText,
+	type GrokBuildCompare,
+	type GrokBuildParity,
+	type TaskBoardRow,
+	type TasksSurface,
+} from "./grok-build-parity.js";
+
+export {
+	claudeCodeGuide,
+	renderClaudeCodeGuideText,
+	type ClaudeCodeFeatureMapRow,
+	type ClaudeCodeGuide,
+} from "./claude-code-guide.js";
+
+export {
+	cursorGuide,
+	renderCursorGuideText,
+	type CursorFeatureMapRow,
+	type CursorGuide,
+} from "./cursor-guide.js";
 
 export {
 	codeImprovementTrails,
@@ -130,13 +164,25 @@ export {
 } from "./parse.js";
 
 export {
+	applyDenseChrome,
 	formatHoboCodeResult,
 	HOBO_CODE_VERBS,
+	looksLikeUnknownVerbAttempt,
 	runHoboCodeCli,
+	suggestVerbTypo,
+	type FormatHoboCodeOptions,
 	type HoboCodeCliDeps,
 	type HoboCodeCliResult,
 	type HoboCodeVerb,
 } from "./cli.js";
+
+export {
+	HERMETIC_ENV_SCHEMA,
+	hermeticEnvSummary,
+	inspectHermeticEnv,
+	type HermeticEnvReport,
+	type HermeticMarker,
+} from "./hermetic-env.js";
 
 export {
 	BO_CELL_HEIGHT,
@@ -163,6 +209,25 @@ export {
 	type BoIdleClip,
 	type LoadingScreenOptions,
 } from "./splash.js";
+
+export {
+	PRODUCT_NOT_PI,
+	DEFAULT_SLASH_ITEMS,
+	appendAssistant,
+	appendProduct,
+	createInitialShellState,
+	reduceShellKey,
+	renderShellFrame,
+	runInteractiveShell,
+	shellFrameIdentity,
+	type InteractiveShellState,
+	type ShellFocus,
+	type ShellHost,
+	type ShellMessage,
+	type ShellSlashItem,
+} from "./interactive-shell.js";
+
+export { createDefaultShellHost } from "./shell-host.js";
 
 export {
 	decodeGrayAlphaPng,
@@ -232,25 +297,96 @@ export {
 } from "./platform.js";
 
 export {
-	BUZZ_AGENT_SCHEMA,
-	BUZZ_HIVE_SCHEMA,
-	BUZZ_ISOLATION_CLASSES,
-	BUZZ_TASK_SCHEMA,
-	createBuzzAgentIdentity,
-	describeBuzzDistributedCompute,
-	dispatchBuzzTask,
-	joinBuzzRoom,
-	openBuzzHive,
-	registerBuzzAgent,
-	registerBuzzNode,
-	type BuzzAgentIdentity,
-	type BuzzHive,
-	type BuzzNode,
-	type BuzzNodeClass,
-	type BuzzRoom,
-	type BuzzTask,
-	type BuzzTaskStatus,
-	type DispatchBuzzTaskInput,
-	type DispatchBuzzTaskResult,
-	type OpenBuzzHiveOptions,
-} from "./buzz.js";
+	COMPUTE_ISOLATION_CLASSES,
+	COMPUTE_NODE_SCHEMA,
+	COMPUTE_POOL_SCHEMA,
+	COMPUTE_TASK_SCHEMA,
+	describeDistributedCompute,
+	dispatchComputeTask,
+	openComputePool,
+	registerComputeNode,
+	type ComputeNode,
+	type ComputeNodeClass,
+	type ComputeNodeStatus,
+	type ComputePool,
+	type ComputeTask,
+	type ComputeTaskStatus,
+	type DispatchComputeTaskInput,
+	type DispatchComputeTaskResult,
+	type OpenComputePoolOptions,
+} from "./distributed.js";
+
+export {
+	BYOK_ENV_NAMES,
+	CODE_MODELS_SCHEMA,
+	inspectModels,
+	modelsHumanSummary,
+	type ByokEnvPresence,
+	type ModelsStatus,
+} from "./models.js";
+
+export {
+	CODE_COST_SCHEMA,
+	costHumanSummary,
+	inspectCost,
+	type CostSavingsEstimate,
+	type CostStatus,
+	type FreeLocalEndpoint,
+	type TokenTool,
+} from "./cost.js";
+
+export {
+	CODE_HARNESS_SURFACE_SCHEMA,
+	harnessHumanSummary,
+	inspectHarnessSurface,
+	type HarnessBrainNote,
+	type HarnessSkillRoot,
+	type HarnessSurfaceStatus,
+} from "./harness-surface.js";
+
+export {
+	CODE_EDITOR_BRIDGE_SCHEMA,
+	editorBridgeHumanSummary,
+	editorBridgeOpenScript,
+	inspectEditorBridge,
+	type BridgeMode,
+	type EditorBridgeStatus,
+	type EditorKind,
+	type PaneLayout,
+} from "./editor-bridge.js";
+
+export {
+	CODE_CONFIG_SCHEMA,
+	CONFIG_STACK_IDS,
+	configHumanSummary,
+	inspectConfigSurface,
+	isConfigStackId,
+	type ConfigKnob,
+	type ConfigStackId,
+	type ConfigSurfaceStatus,
+} from "./config-surface.js";
+
+export {
+	CODE_AGENT_SCHEMA,
+	agentHumanSummary,
+	inspectAgentSurface,
+	type AgentAuthModeCard,
+	type AgentProtocolCard,
+	type AgentSurfaceStatus,
+} from "./agent-surface.js";
+
+export {
+	CODE_AUTH_SESSION_SCHEMA,
+	authLogin,
+	authStatus,
+	authSessionPath,
+	clearAuthSession,
+	confirmRemoteLogin,
+	readAuthSession,
+	resolveAuthenticatedStationId,
+	resolveStationTarget,
+	type AuthLoginInput,
+	type AuthLoginResult,
+	type CodeAuthMode,
+	type CodeAuthSession,
+} from "./auth.js";

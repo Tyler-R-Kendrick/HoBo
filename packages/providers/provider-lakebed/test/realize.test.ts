@@ -4,6 +4,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "vitest";
 
+import { parseRoutingPlan } from "@hobo/core";
+
 import {
 	assertDriverProgram,
 	LAKEBED_DRIVER,
@@ -11,6 +13,7 @@ import {
 	mergeLakebedOptions,
 	realizeResourcePlan,
 	realizeResourcePlans,
+	realizeTrafficRoutingPlan,
 } from "../src/index.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
@@ -76,5 +79,59 @@ describe("realize: ResourcePlan -> lakebed-deploy DRIVER program (ADR-0127)", ()
 		assert.equal(merged.coldStart, "warm");
 		assert.equal(merged.syncRpc, true);
 		assert.equal("cpu" in merged, false);
+	});
+
+	it("realizes a TrafficRouting plan as lakebed:traffic-route", () => {
+		const plan = parseRoutingPlan({
+			planId: "plan:checkout",
+			intent: {
+				service: "checkout",
+				tenantId: "tenant-a",
+				rules: [
+					{
+						backends: [
+							{
+								id: "backend:a",
+								service: "checkout",
+								weight: 60,
+								endpoint: "https://a.lakebed.app",
+							},
+							{
+								id: "backend:b",
+								service: "checkout",
+								weight: 40,
+								endpoint: "https://b.lakebed.app",
+							},
+						],
+					},
+				],
+			},
+			backends: [
+				{
+					id: "backend:a",
+					service: "checkout",
+					weight: 60,
+					endpoint: "https://a.lakebed.app",
+				},
+				{
+					id: "backend:b",
+					service: "checkout",
+					weight: 40,
+					endpoint: "https://b.lakebed.app",
+				},
+			],
+			createdAt: "2026-08-03T15:00:00.000Z",
+		});
+		const { driver } = realizeTrafficRoutingPlan(plan, {
+			deploymentId: "shop",
+			capsule: "capsule/shop",
+		});
+		assertDriverProgram(driver);
+		assert.equal(driver.resources[0]?.type, "lakebed:traffic-route");
+		assert.equal(driver.capsule, "capsule/shop");
+		assert.equal(
+			(driver.resources[0]?.inputs as { planId: string }).planId,
+			"plan:checkout",
+		);
 	});
 });

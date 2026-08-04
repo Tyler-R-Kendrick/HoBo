@@ -1,0 +1,210 @@
+[
+  {
+    "path": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/export/spritesheet.raw.png",
+    "size": {
+      "width": 1280,
+      "height": 512
+    },
+    "frame": {
+      "width": 256,
+      "height": 256
+    },
+    "grid": {
+      "columns": 5,
+      "rows": 2
+    },
+    "targetBottomY": 255,
+    "targetCenterX": 128,
+    "visibleBottomYRange": [
+      255,
+      255
+    ],
+    "shiftYRange": [
+      0,
+      0
+    ],
+    "out": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/export/spritesheet.png",
+    "frames": [
+      {
+        "index": 0,
+        "col": 0,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          40,
+          49,
+          216,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 1,
+        "col": 1,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          39,
+          58,
+          217,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 2,
+        "col": 2,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          38,
+          77,
+          218,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 3,
+        "col": 3,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          34,
+          81,
+          222,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 4,
+        "col": 4,
+        "row": 0,
+        "empty": false,
+        "alphaBBox": [
+          37,
+          114,
+          219,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 5,
+        "col": 0,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          39,
+          113,
+          217,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 6,
+        "col": 1,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          40,
+          103,
+          216,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 7,
+        "col": 2,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          37,
+          94,
+          219,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 8,
+        "col": 3,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          40,
+          48,
+          216,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 127.5,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      },
+      {
+        "index": 9,
+        "col": 4,
+        "row": 1,
+        "empty": false,
+        "alphaBBox": [
+          38,
+          46,
+          219,
+          256
+        ],
+        "visibleBottomY": 255,
+        "visibleCenterX": 128.0,
+        "shiftToTarget": [
+          0,
+          0
+        ]
+      }
+    ]
+  }
+]

@@ -42,7 +42,7 @@ export interface CliFlags {
 	readonly token: string | null;
 	/** `hobo serve control --demo`: drive the world read model from the simulator. */
 	readonly demo: boolean;
-	/** Deterministic simulator seed for `--demo` (ADR-0140 demo mode). */
+	/** Deterministic simulator seed for `--demo` (ADR-0145 demo mode). */
 	readonly demoSeed: string | null;
 }
 
@@ -273,7 +273,7 @@ function parseOption(
 			}
 			throw unknownOption(token, verb);
 		case "--demo":
-			// `hobo serve control --demo` (ADR-0140): seeded world simulator,
+			// `hobo serve control --demo` (ADR-0145): seeded world simulator,
 			// always rendered with the SIMULATED badge.
 			if (verb === "serve") {
 				flags.demo = true;
@@ -390,7 +390,9 @@ function nearestVerb(input: string): string | null {
 			best = { candidate, distance };
 		}
 	}
-	return best && best.distance <= Math.max(2, Math.floor(input.length / 2))
+	// Short verbs are cheap to fat-finger into another valid word: only suggest
+	// on distance ≤1 for inputs up to 4 chars, ≤2 for longer ones.
+	return best && best.distance <= (input.length <= 4 ? 1 : 2)
 		? best.candidate
 		: null;
 }

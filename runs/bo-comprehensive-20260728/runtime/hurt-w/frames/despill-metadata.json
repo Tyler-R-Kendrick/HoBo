@@ -1,0 +1,138 @@
+{
+  "plan": {
+    "mode": "auto",
+    "chromaRgb": [
+      0,
+      255,
+      0
+    ],
+    "edgeRadius": 2,
+    "bandRadius": 12,
+    "dominance": 8,
+    "deepTintThreshold": 0.009,
+    "minDeepSample": 200,
+    "axes": [
+      {
+        "chromaRgb": [
+          0,
+          255,
+          0
+        ],
+        "deepTinted": 0,
+        "deepTotal": 68740,
+        "deepFraction": 0.0,
+        "bandOnly": false
+      }
+    ]
+  },
+  "frames": [
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-01.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3548,
+          "spillRemoved": 131684,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-02.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3099,
+          "spillRemoved": 112177,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-03.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 2698,
+          "spillRemoved": 102910,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-04.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 2195,
+          "spillRemoved": 91929,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-05.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3173,
+          "spillRemoved": 104428,
+          "protectedPixels": 0
+        }
+      ]
+    },
+    {
+      "input": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/runtime/hurt-w/frames/frame-06.png",
+      "axes": [
+        {
+          "chromaRgb": [
+            0,
+            255,
+            0
+          ],
+          "edgeRadius": 2,
+          "bandOnly": false,
+          "despilledPixels": 3333,
+          "spillRemoved": 110784,
+          "protectedPixels": 0
+        }
+      ]
+    }
+  ]
+}

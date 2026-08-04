@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "mode": "padded-native-review",
+  "description": "Recovered components placed on a shared padded canvas without scaling.",
+  "canvasSize": [
+    384,
+    448
+  ],
+  "minCanvasSize": [
+    384,
+    448
+  ],
+  "placement": {
+    "centerX": 192,
+    "bottomY": 440
+  },
+  "frames": [
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-01.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-01.png",
+      "sourceSize": [
+        184,
+        217
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        100,
+        223
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-02.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-02.png",
+      "sourceSize": [
+        186,
+        207
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        99,
+        233
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-03.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-03.png",
+      "sourceSize": [
+        189,
+        188
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        98,
+        252
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-04.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-04.png",
+      "sourceSize": [
+        197,
+        183
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        94,
+        257
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-05.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-05.png",
+      "sourceSize": [
+        191,
+        149
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        97,
+        291
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-06.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-06.png",
+      "sourceSize": [
+        187,
+        150
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        99,
+        290
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-07.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-07.png",
+      "sourceSize": [
+        184,
+        160
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        100,
+        280
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-08.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-08.png",
+      "sourceSize": [
+        191,
+        170
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        97,
+        270
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-09.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-09.png",
+      "sourceSize": [
+        184,
+        218
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        100,
+        222
+      ]
+    },
+    {
+      "source": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered/frame-10.png",
+      "output": "runs/bo-comprehensive-20260728/actions-sleep-wake-w-v4/recovered-native/frames/frame-10.png",
+      "sourceSize": [
+        190,
+        220
+      ],
+      "canvasSize": [
+        384,
+        448
+      ],
+      "offset": [
+        97,
+        220
+      ]
+    }
+  ]
+}

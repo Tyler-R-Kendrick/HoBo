@@ -1,11 +1,18 @@
-import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-	HOBO_CODE_PACKAGE,
-	ISOLATION_PLATFORM_MATRIX,
+	applyInContextEdit,
 	assertEvidenceTripleComplete,
 	assertNoVendoredTokenTools,
 	buildMultiplexerStatus,
@@ -17,27 +24,31 @@ import {
 	createOpenUiSession,
 	createPane,
 	demonstrateDurability,
+	describeDevTerminalAttach,
 	dogfoodSummary,
 	emitEvidenceTriple,
+	HOBO_CODE_PACKAGE,
+	herdrMuxCapabilities,
+	ISOLATION_PLATFORM_MATRIX,
 	linkGherkinToOpenFeature,
 	listSandboxOrphans,
 	lockVisualArtifact,
-	applyInContextEdit,
 	measureTemplateSuccessRate,
 	parseEvidenceTriple,
 	parseIsolationContext,
 	parsePromotionRequest,
 	promoteIsolation,
 	registerCodeNamedEndpoint,
+	renderHerdrCapabilityFooter,
 	renderStatusText,
 	resetIsolationRegistry,
+	routeProvider,
 	runRhaiSubset,
 	scaffoldHighValueTemplate,
 	sponsoredWaitState,
 	startCodeSession,
 	tsAutocodeConventions,
 	validateLockedVisual,
-	routeProvider,
 } from "../src/index.js";
 
 const temps: string[] = [];
@@ -66,13 +77,13 @@ describe("@hobo/code", () => {
 		expect(() => parseEvidenceTriple({ schemaVersion: "nope" })).toThrow();
 	});
 
-	it("isolation creates worktree fallback and cleans with zero orphans", () => {
+	it("isolation creates worktree fallback and cleans with zero orphans", async () => {
 		const home = tempDir("hobo-code-home-");
 		const project = tempDir("hobo-code-proj-");
 		mkdirSync(join(project, "src"), { recursive: true });
 		writeFileSync(join(project, "README.md"), "proj\n");
 
-		const ctx = createIsolationContext({
+		const ctx = await createIsolationContext({
 			projectRoot: project,
 			hoboHome: home,
 			runId: "run-clean",
@@ -85,7 +96,7 @@ describe("@hobo/code", () => {
 		expect(existsSync(ctx.rootPath)).toBe(true);
 		expect(existsSync(ctx.durableRoot)).toBe(true);
 
-		const cleaned = cleanupIsolation("run-clean", {
+		const cleaned = await cleanupIsolation("run-clean", {
 			hoboHome: home,
 			ok: true,
 			gates: ["architecture:guard:pass"],
@@ -97,17 +108,17 @@ describe("@hobo/code", () => {
 		expect(cleaned.handback.ok).toBe(true);
 	});
 
-	it("cleanup on cancel still leaves zero orphans", () => {
+	it("cleanup on cancel still leaves zero orphans", async () => {
 		const home = tempDir("hobo-code-cancel-");
 		const project = tempDir("hobo-code-proj2-");
-		const ctx = createIsolationContext({
+		const ctx = await createIsolationContext({
 			projectRoot: project,
 			hoboHome: home,
 			runId: "run-cancel",
 			forceWorktree: true,
 		});
 		expect(existsSync(ctx.rootPath)).toBe(true);
-		const cleaned = cleanupIsolation("run-cancel", {
+		const cleaned = await cleanupIsolation("run-cancel", {
 			hoboHome: home,
 			ok: false,
 			gates: ["cancelled"],
@@ -130,16 +141,27 @@ describe("@hobo/code", () => {
 		).toBe("rift");
 	});
 
-	it("promotion is gated, squash-only, and cleans isolation", () => {
+	it("promotion is gated, applies the work, and only then cleans up", async () => {
 		const home = tempDir("hobo-code-promo-");
 		const project = tempDir("hobo-code-proj3-");
-		const ctx = createIsolationContext({
+		// A real git project is required: promotion carries a diff across.
+		spawnSync("git", ["init", "-q", "-b", "main"], { cwd: project });
+		spawnSync("git", ["config", "user.email", "t@example.com"], {
+			cwd: project,
+		});
+		spawnSync("git", ["config", "user.name", "t"], { cwd: project });
+		writeFileSync(join(project, "README.md"), "base\n");
+		spawnSync("git", ["add", "-A"], { cwd: project });
+		spawnSync("git", ["commit", "-qm", "base"], { cwd: project });
+
+		const ctx = await createIsolationContext({
 			projectRoot: project,
 			hoboHome: home,
 			runId: "run-promo",
 			forceWorktree: true,
 		});
-		const refused = promoteIsolation(
+
+		const refused = await promoteIsolation(
 			{
 				runId: "run-promo",
 				isolationRoot: ctx.rootPath,
@@ -154,8 +176,19 @@ describe("@hobo/code", () => {
 		);
 		expect(refused.ok).toBe(false);
 		expect(refused.code).toBe("HOBO_CODE_PROMOTE_GATES_FAILED");
+		// A refused promotion must never destroy the sandbox.
+		expect(existsSync(ctx.rootPath)).toBe(true);
 
-		const ok = promoteIsolation(
+		const passing = [
+			{ name: "architecture:guard", pass: true, detail: "ok" },
+			{ name: "standards:check", pass: true, detail: "ok" },
+			{ name: "agent:check", pass: true, detail: "ok" },
+			{ name: "docs:freshness", pass: true, detail: "ok" },
+		];
+
+		// Nothing changed in the sandbox → promotion fails closed and, above
+		// all, does not delete the sandbox while claiming success.
+		const empty = await promoteIsolation(
 			{
 				runId: "run-promo",
 				isolationRoot: ctx.rootPath,
@@ -163,18 +196,40 @@ describe("@hobo/code", () => {
 				gateResults: [],
 				squashOnly: true,
 			},
+			{ hoboHome: home, gates: passing },
+		);
+		expect(empty.ok).toBe(false);
+		expect(empty.code).toBe("HOBO_CODE_PROMOTE_NOTHING_TO_APPLY");
+		expect(existsSync(ctx.rootPath)).toBe(true);
+
+		// Now do real work in the sandbox: an edit and a new file.
+		writeFileSync(join(ctx.rootPath, "README.md"), "base\nfrom the agent\n");
+		writeFileSync(join(ctx.rootPath, "added.ts"), "export const x = 1;\n");
+
+		const ok = await promoteIsolation(
 			{
-				hoboHome: home,
-				gates: [
-					{ name: "architecture:guard", pass: true, detail: "ok" },
-					{ name: "standards:check", pass: true, detail: "ok" },
-					{ name: "agent:check", pass: true, detail: "ok" },
-					{ name: "docs:freshness", pass: true, detail: "ok" },
-				],
+				runId: "run-promo",
+				isolationRoot: ctx.rootPath,
+				targetProject: project,
+				gateResults: [],
+				squashOnly: true,
 			},
+			{ hoboHome: home, gates: passing },
 		);
 		expect(ok.ok).toBe(true);
 		expect(ok.code).toBe("HOBO_CODE_PROMOTED");
+		// The whole point: the work is actually in the project now.
+		expect(readFileSync(join(project, "README.md"), "utf8")).toContain(
+			"from the agent",
+		);
+		expect(existsSync(join(project, "added.ts"))).toBe(true);
+		// Staged for review, not committed behind the user's back.
+		const status = spawnSync("git", ["status", "--porcelain"], {
+			cwd: project,
+			encoding: "utf8",
+		});
+		expect(status.stdout).toMatch(/added\.ts/);
+		// Only after a successful apply is the sandbox reclaimed.
 		expect(ok.cleaned).toBe(true);
 		expect(listSandboxOrphans(home)).toEqual([]);
 	});
@@ -274,9 +329,9 @@ step "done"
 		expect(validation.ok).toBe(true);
 		expect(validation.hasPrimary).toBe(true);
 		expect(validation.hasBadge).toBe(true);
-		expect(() => applyInContextEdit({ ...session, locked: true }, "nope")).toThrow(
-			/immutable/,
-		);
+		expect(() =>
+			applyInContextEdit({ ...session, locked: true }, "nope"),
+		).toThrow(/immutable/);
 	});
 
 	it("TUI status observes agent state and supports copy-on-highlight", () => {
@@ -288,6 +343,10 @@ step "done"
 			theme: "herdr",
 		});
 		expect(status.copyOnHighlight).toBe(true);
+		const caps = herdrMuxCapabilities("herdr");
+		expect(caps.copyOnHighlight).toBe(true);
+		expect(caps.detachable).toBe(true);
+		expect(renderHerdrCapabilityFooter(caps)).toMatch(/highlight→copy/);
 		expect(status.clickableRegions).toContain("agent-state-badge");
 		expect(status.panes[0]?.semanticState).toBe("working");
 		const text = renderStatusText(status);
@@ -310,6 +369,10 @@ step "done"
 		expect(reg.host.endsWith(".hobo")).toBe(false);
 		expect(reg.url.includes("://")).toBe(true);
 		expect(reg.mosh.explored).toBe(true);
+		const surface = describeDevTerminalAttach({ mode: "local" });
+		expect(surface.attach.detachable).toBe(true);
+		expect(surface.compare.tmux).toMatch(/tmux/i);
+		expect(surface.legend).toMatch(/attach/);
 	});
 
 	it("budget is visible; monetization ON by default and never inspects code", () => {
@@ -328,7 +391,11 @@ step "done"
 				{ provider: "cheap", costUsd: 0.01, capable: true },
 				{ provider: "dear", costUsd: 1, capable: true },
 			],
-			{ capUsd: 5, routingPolicy: "cheapest-capable", monetizationOptIn: false },
+			{
+				capUsd: 5,
+				routingPolicy: "cheapest-capable",
+				monetizationOptIn: false,
+			},
 		);
 		expect(routed).toBe("cheap");
 	});
@@ -351,10 +418,10 @@ step "done"
 		expect(summary.connectivity).toBe(true);
 	});
 
-	it("startCodeSession wires isolation + status + cleanup", () => {
+	it("startCodeSession wires isolation + status + cleanup", async () => {
 		const home = tempDir("hobo-code-sess-");
 		const project = tempDir("hobo-code-sess-proj-");
-		const session = startCodeSession({
+		const session = await startCodeSession({
 			projectRoot: project,
 			hoboHome: home,
 			stationId: "station:local",
@@ -364,7 +431,7 @@ step "done"
 		expect(status.panes.some((p) => p.agentId === "worker")).toBe(true);
 		expect(session.harness.listSkills().length).toBeGreaterThan(0);
 		expect(session.remote.resource).toBe("code");
-		const handback = session.complete(true, ["agent:check:pass"]);
+		const handback = await session.complete(true, ["agent:check:pass"]);
 		expect(handback.isolationStatus).toBe("cleaned");
 		expect(listSandboxOrphans(home)).toEqual([]);
 	});

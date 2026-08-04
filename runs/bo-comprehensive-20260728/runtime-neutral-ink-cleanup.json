@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "kind": "bo-runtime-neutral-ink-cleanup",
+  "method": "luminance-to-rgb; alpha unchanged",
+  "actions": [
+    {
+      "action": "jump-w",
+      "frames": [
+        {
+          "frame": "frame-01.png",
+          "changedPixels": 16100
+        },
+        {
+          "frame": "frame-02.png",
+          "changedPixels": 14543
+        },
+        {
+          "frame": "frame-03.png",
+          "changedPixels": 15205
+        },
+        {
+          "frame": "frame-04.png",
+          "changedPixels": 15505
+        },
+        {
+          "frame": "frame-05.png",
+          "changedPixels": 15775
+        },
+        {
+          "frame": "frame-06.png",
+          "changedPixels": 14603
+        }
+      ]
+    },
+    {
+      "action": "hurt-w",
+      "frames": [
+        {
+          "frame": "frame-01.png",
+          "changedPixels": 18667
+        },
+        {
+          "frame": "frame-02.png",
+          "changedPixels": 16921
+        },
+        {
+          "frame": "frame-03.png",
+          "changedPixels": 15145
+        },
+        {
+          "frame": "frame-04.png",
+          "changedPixels": 12560
+        },
+        {
+          "frame": "frame-05.png",
+          "changedPixels": 16915
+        },
+        {
+          "frame": "frame-06.png",
+          "changedPixels": 17514
+        }
+      ]
+    },
+    {
+      "action": "bindle-adjust-w",
+      "frames": [
+        {
+          "frame": "frame-01.png",
+          "changedPixels": 9303
+        },
+        {
+          "frame": "frame-02.png",
+          "changedPixels": 8788
+        },
+        {
+          "frame": "frame-03.png",
+          "changedPixels": 9066
+        },
+        {
+          "frame": "frame-04.png",
+          "changedPixels": 8573
+        },
+        {
+          "frame": "frame-05.png",
+          "changedPixels": 8552
+        },
+        {
+          "frame": "frame-06.png",
+          "changedPixels": 9301
+        },
+        {
+          "frame": "frame-07.png",
+          "changedPixels": 9034
+        },
+        {
+          "frame": "frame-08.png",
+          "changedPixels": 8960
+        },
+        {
+          "frame": "frame-09.png",
+          "changedPixels": 8635
+        },
+        {
+          "frame": "frame-10.png",
+          "changedPixels": 8512
+        }
+      ]
+    },
+    {
+      "action": "sleep-wake-w",
+      "frames": [
+        {
+          "frame": "frame-01.png",
+          "changedPixels": 10479
+        },
+        {
+          "frame": "frame-02.png",
+          "changedPixels": 10083
+        },
+        {
+          "frame": "frame-03.png",
+          "changedPixels": 9622
+        },
+        {
+          "frame": "frame-04.png",
+          "changedPixels": 9128
+        },
+        {
+          "frame": "frame-05.png",
+          "changedPixels": 7834
+        },
+        {
+          "frame": "frame-06.png",
+          "changedPixels": 7585
+        },
+        {
+          "frame": "frame-07.png",
+          "changedPixels": 7928
+        },
+        {
+          "frame": "frame-08.png",
+          "changedPixels": 8871
+        },
+        {
+          "frame": "frame-09.png",
+          "changedPixels": 9466
+        },
+        {
+          "frame": "frame-10.png",
+          "changedPixels": 10086
+        }
+      ]
+    }
+  ]
+}

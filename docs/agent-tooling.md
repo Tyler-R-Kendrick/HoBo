@@ -43,7 +43,25 @@ A **skill + always-on rule** that compresses the agent's **output** (~65–87% f
 A **design skill** for AI harnesses (npm `impeccable`, v3.5.0, homepage
 [impeccable.style](https://impeccable.style)). 23 commands spanning the design
 workflow — `shape`, `critique`, `audit`, `polish`, plus dials like `bolder`,
-`quieter`, `colorize`. **No API keys.**
+`quieter`, `colorize`. **No API keys**, but it is **not** offline — see egress
+below.
+- **Network egress (three paths, one of them automatic):**
+  - `scripts/context.mjs` calls `impeccable.style/api/version` on the skill's
+    boot/hook path — **on by default**, throttled to once a day. Disabled here
+    via [`../.impeccable/config.json`](../.impeccable/config.json)
+    (`"updateCheck": false`); `IMPECCABLE_NO_UPDATE_CHECK=1` does the same. Run
+    `npx impeccable check` deliberately instead.
+  - `scripts/generate-image.mjs` posts to `api.openai.com` — opt-in, only when
+    you invoke it, and it needs your own key.
+  - `scripts/concept-seed.mjs` calls `impeccable.style/api/roll` — opt-in.
+- **Hooks (ON by default):** the install writes `PostToolUse` manifests to
+  `.codex/hooks.json`, `.cursor/hooks.json` and `.github/hooks/`, which run the
+  design detector after **every** `Edit`/`Write`/`apply_patch`. Each is guarded
+  (`[ ! -f <script> ] || node <script>`) so it no-ops when the skill is absent.
+  **Claude Code deliberately gets no hook** — this repo manages
+  `.claude/settings.json` itself and the installer does not write a `hooks` key
+  there. To remove the others, delete those files; `npx impeccable install`
+  rewrites them.
 - **Install:** `npx impeccable install` from the repo root; it auto-detects
   harnesses and compiles **per harness** into `.claude`, `.agents`, `.cursor`
   and `.github`. `npx impeccable check` reports drift, `npx impeccable update`

@@ -177,16 +177,32 @@
 				"value": "640px"
 			},
 			{
+				"name": "sm-plus",
+				"value": "680px"
+			},
+			{
 				"name": "md",
+				"value": "720px"
+			},
+			{
+				"name": "md-plus",
 				"value": "760px"
 			},
 			{
 				"name": "lg",
+				"value": "820px"
+			},
+			{
+				"name": "lg-plus",
 				"value": "860px"
 			},
 			{
 				"name": "xl",
 				"value": "920px"
+			},
+			{
+				"name": "xxl",
+				"value": "980px"
 			}
 		],
 		"layout": [
@@ -215,7 +231,7 @@
 			"refersTo": "button-primary",
 			"description": "The signature component: a chamfered wooden trail-sign, not a pill. Zero border-radius with a clip-path silhouette and a hard sticker shadow.",
 			"html": "<button class=\"ds-btn-primary\">Get started</button>",
-			"css": ".ds-btn-primary { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; padding: 0.78rem 1.65rem 0.72rem; border: none; border-radius: 0; clip-path: polygon(3% 0, 97% 0, 100% 50%, 97% 100%, 3% 100%, 0 50%); background: var(--ink, #101010); color: var(--paper, #ffffff); font-family: \"Chewy\", \"Comic Sans MS\", cursive; font-size: 1rem; letter-spacing: 0.01em; cursor: pointer; box-shadow: 3px 3px 0 var(--pop, rgba(16,16,16,0.85)); transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-primary:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--pop, rgba(16,16,16,0.85)); } .ds-btn-primary:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--pop, rgba(16,16,16,0.85)); } .ds-btn-primary:focus-visible { outline: 3px solid var(--spark, #c5301c); outline-offset: 3px; } @media (prefers-reduced-motion: reduce) { .ds-btn-primary { transition: none; } }"
+			"css": ".ds-btn-primary { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; padding: 0.78rem 1.65rem 0.72rem; border: none; border-radius: 0; clip-path: polygon(3% 0, 97% 0, 100% 50%, 97% 100%, 3% 100%, 0 50%); background: var(--ink, #101010); color: var(--bg, #ffffff); font-family: \"Chewy\", \"Comic Sans MS\", cursive; font-size: 1rem; letter-spacing: 0.01em; cursor: pointer; box-shadow: 3px 3px 0 var(--pop, rgba(16,16,16,0.85)); transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-primary:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--pop, rgba(16,16,16,0.85)); } .ds-btn-primary:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--pop, rgba(16,16,16,0.85)); } .ds-btn-primary:focus-visible { outline: 3px solid var(--spark, #c5301c); outline-offset: 3px; } @media (prefers-reduced-motion: reduce) { .ds-btn-primary { transition: none; } }"
 		},
 		{
 			"name": "Ink Card",
@@ -223,7 +239,7 @@
 			"refersTo": "card",
 			"description": "Thick-outlined surface with a hard offset shadow. Depth comes from the outline and the displaced copy, never from a blur.",
 			"html": "<div class=\"ds-card\"><h3>Bindle</h3><p>Application package: services, resources, wiring, policies.</p></div>",
-			"css": ".ds-card { background: var(--paper, #ffffff); color: var(--ink, #101010); border: 2px solid var(--ink, #101010); border-radius: 12px; padding: 1.25rem 1.4rem; box-shadow: 4px 4px 0 var(--ink, #101010); } .ds-card h3 { font-family: \"Chewy\", \"Comic Sans MS\", cursive; margin: 0 0 0.4rem; font-size: 1.15rem; font-weight: 400; } .ds-card p { margin: 0; font-family: system-ui, sans-serif; font-size: 0.95rem; line-height: 1.5; }"
+			"css": ".ds-card { background: var(--bg, #ffffff); color: var(--ink, #101010); border: 2px solid var(--ink, #101010); border-radius: 12px; padding: 1.25rem 1.4rem; box-shadow: 4px 4px 0 var(--ink, #101010); } .ds-card h3 { font-family: \"Chewy\", \"Comic Sans MS\", cursive; margin: 0 0 0.4rem; font-size: 1.15rem; font-weight: 400; } .ds-card p { margin: 0; font-family: system-ui, sans-serif; font-size: 0.95rem; line-height: 1.5; }"
 		},
 		{
 			"name": "Spark Link",
@@ -298,5 +314,6 @@
 			"Don't put free-text secrets or live credentials in examples (HoBo policy).",
 			"Don't link page prose to raw `docs/design/` repo paths \u2014 restate for Pages."
 		]
-	}
+	},
+	"components_note": "Synthesized from the project's real tokens per the document reference (\"If the project has no component library yet, synthesize canonical primitives from the tokens\"). These ds-* classes are not present in site/ \u2014 they are renderable exemplars of the system, not extracts of shipped markup. Every var() they use is a real runtime variable in site/src/styles/global.css, so they invert correctly with the theme."
 }

@@ -1,0 +1,4 @@
+{
+	"$comment": "Repo policy: no silent network egress from a vendored skill. `updateCheck: false` stops scripts/context.mjs from calling impeccable.style/api/version on the hook and boot path (it is otherwise on by default, once a day). Run `npx impeccable check` deliberately when you want to know about updates. Note that scripts/generate-image.mjs (api.openai.com) and scripts/concept-seed.mjs (impeccable.style/api/roll) are separate opt-in commands — they only run if you invoke them.",
+	"updateCheck": false
+}

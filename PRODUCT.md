@@ -62,7 +62,7 @@ lowest-common-denominator abstraction that hides the provider.
 ## Capabilities and Constraints
 
 - Active design + executable contract/proof repository with a production
-  `packages/` workspace (~68 package manifests).
+  `packages/` workspace (78 package manifests).
 - All 40 canonical `hobo` verbs dispatch against the local lane.
 - Live Vercel/Cloudflare paths and `HOBO_PULUMI_LIVE=1` are credential- or
   engine-gated, not default.
@@ -100,8 +100,11 @@ away:
 
 - Default deploy uses an **in-memory Pulumi stand-in** (`HONEST SCOPE` in
   `packages/hobo/src/compose.ts`).
-- `@hobo/componentize` emits **synthetic wasm contract bytes**
-  (`buildWasmContractBytes`), not a real jco/`componentize-js` pipeline.
+- `@hobo/componentize` has **two lanes**: the offline default emits synthetic
+  wasm contract bytes (`buildWasmContractBytes`) for digest/boundary proofs, and
+  `HOBO_COMPONENTIZE_REAL=1` drives the real jco/`componentize-js` pipeline
+  (toolchain-gated, fail-closed — never a silent synthetic fallback). The
+  synthetic default is the stand-in; the real lane is not.
 - Packages are **pre-release and not published to npm**.
 
 No testimonials, customers, benchmarks, pricing, or deployment claims exist.

@@ -296,38 +296,10 @@ describe("devenv status", () => {
 	});
 });
 
-describe("remote panes keep their isolation", () => {
-	it("sends the workspace-placed command over ssh, not the bare one", () => {
-		// Spreading a local target into an ssh one used to drop `exec`/`cwd`
-		// entirely, so every agent ran in the remote login directory with no
-		// isolation — after workspaces had been allocated for nobody.
-		const target: MuxTarget = {
-			name: "claude",
-			kind: "ssh",
-			host: "box",
-			command: "claude",
-			cwd: "/ws/trees/claude",
-			exec: { binary: "/usr/bin/hobo-rift", root: "/ws", name: "claude" },
-		};
-		expect(placedCommand(target)).toBe(
-			"'/usr/bin/hobo-rift' exec --root '/ws' --name 'claude' -- claude",
-		);
-		expect(targetCommand(target)).toContain("ssh -t box");
-	});
-
-	it("carries cwd over ssh when there is no exec wrapper", () => {
-		expect(
-			placedCommand({
-				name: "codex",
-				kind: "ssh",
-				host: "box",
-				command: "codex",
-				cwd: "/ws/trees/codex",
-			}),
-		).toBe("cd '/ws/trees/codex' && codex");
-	});
-});
-
+// Superseded by "ssh panes carry nothing local" below: an earlier round routed
+// the exec wrapper and cwd over ssh, which sent this machine's absolute paths
+// to a different machine. Remote isolation has to come from the remote's own
+// workspace, not from local paths shipped across.
 describe("shell quoting", () => {
 	it("does not let a path expand a command substitution", () => {
 		// Double quotes (what JSON.stringify emits) do not suppress `$(…)`.
@@ -367,16 +339,46 @@ describe("remote panes do not pretend to be isolated", () => {
 });
 
 describe("ssh panes carry nothing local", () => {
-	it("drops the local cwd, which does not exist on the remote", () => {
+	it("drops a local cwd even when one is handed to it", () => {
 		// `cd '/home/alice/proj' && claude` on a machine without that path is
 		// `sh: 1: cd: can't cd to /home/alice/proj` — the agent never starts.
+		// The target below *carries* a cwd, so this fails against a version that
+		// relies on the caller having stripped it.
 		const remote = placedCommand({
 			name: "claude",
 			kind: "ssh",
 			host: "build-box",
 			command: "claude",
+			cwd: "/home/alice/proj",
 		});
 		expect(remote).toBe("claude");
 		expect(remote).not.toContain("cd ");
+	});
+
+	it("drops a local exec wrapper too", () => {
+		const remote = placedCommand({
+			name: "claude",
+			kind: "ssh",
+			host: "build-box",
+			command: "claude",
+			cwd: "/ws/merged",
+			exec: { binary: "/usr/local/bin/hobo-rift", root: "/ws", name: "claude" },
+		});
+		expect(remote).toBe("claude");
+		expect(remote).not.toContain("hobo-rift");
+	});
+
+	it("the whole pane command carries no local path", () => {
+		const pane = targetCommand({
+			name: "claude",
+			kind: "ssh",
+			host: "build-box",
+			command: "claude",
+			cwd: "/home/alice/proj",
+			exec: { binary: "/usr/local/bin/hobo-rift", root: "/ws", name: "claude" },
+		});
+		expect(pane).toContain("ssh -t build-box");
+		expect(pane).not.toContain("/home/alice/proj");
+		expect(pane).not.toContain("hobo-rift");
 	});
 });

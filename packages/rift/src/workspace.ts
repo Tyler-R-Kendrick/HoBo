@@ -194,20 +194,20 @@ export function rebuildRegistry(root: string): RepairResult {
 				workspace,
 			});
 		}
+		// Persist what the journal now says, not what the snapshot said. Under a
+		// *partial* truncation those differ, and labelling the snapshot's list
+		// with the journal's length poisons the discriminator itself: a later
+		// genuine truncation would then restore from a count that never
+		// described those workspaces, silently dropping the ones it omits.
+		const after = readEvents(dir);
 		const restored: Registry = {
 			root: abs,
-			workspaces: surviving,
-			eventCount: readEvents(dir).length,
+			workspaces: projectWorkspaces(after),
+			eventCount: after.length,
 		};
 		writeRegistry(restored);
 		return restored;
 	}
-	const registry: Registry = {
-		root: abs,
-		workspaces: projected,
-		eventCount: events.length,
-	};
-	writeRegistry(registry);
 	// A root written before snapshots carried `eventCount` cannot be judged:
 	// its snapshot might be a truncation survivor, or might merely predate a
 	// removal. Declining is the safe half of that choice, but saying nothing
@@ -219,11 +219,25 @@ export function rebuildRegistry(root: string): RepairResult {
 		snapshot.workspaces.length > 0 &&
 		typeof snapshot.eventCount !== "number"
 	) {
+		// Leave the snapshot alone. It is the only surviving record of those
+		// workspaces' names, tiers and layer paths, and overwriting it with an
+		// empty list in the same call that says "go read this file" would leave
+		// the root strictly worse off for having run the recovery command.
 		return {
-			...registry,
-			undecidable: `the snapshot lists ${snapshot.workspaces.length} workspace(s) but predates event counting, so it cannot be told from one that simply predates a removal — inspect ${registryPath(abs)} and recreate what you still want`,
+			root: abs,
+			workspaces: projected,
+			...(typeof snapshot.eventCount === "number"
+				? { eventCount: snapshot.eventCount }
+				: {}),
+			undecidable: `the snapshot lists ${snapshot.workspaces.length} workspace(s) but predates event counting, so it cannot be told from one that simply predates a removal — ${registryPath(abs)} has been left untouched; inspect it and recreate what you still want`,
 		};
 	}
+	const registry: Registry = {
+		root: abs,
+		workspaces: projected,
+		eventCount: events.length,
+	};
+	writeRegistry(registry);
 	return registry;
 }
 
@@ -319,6 +333,7 @@ export interface CreateResult {
 export function createWorkspace(options: CreateOptions): CreateResult {
 	const root = resolve(options.root);
 	let debris: string | null = null;
+	let claim: string | null = null;
 	// Parse before the name is ever joined onto a path: an unchecked name is a
 	// traversal primitive, not just bad input.
 	const parsed = parseWorkspaceName(options.name);
@@ -327,11 +342,29 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 	}
 	const name: WorkspaceName = parsed.value;
 	if (!existsSync(join(root, RIFT_DIR))) initRoot(root);
+	// Claim the name before looking at the directory. Without this, two
+	// concurrent creates both see "no such workspace", and the second parks or
+	// recreates the tree the first is still copying into — two `cp -a` runs
+	// racing on the same destination can leave a file truncated. O_EXCL makes
+	// the claim atomic on every filesystem we target.
+	const claimed = claimName(root, name);
+	if (claimed === null) {
+		return {
+			workspace: null,
+			reason: `another process is creating "${name}" (stale? remove ${claimPath(root, name)})`,
+		};
+	}
+	claim = claimed;
+	const release = () => {
+		if (claim) rmSync(claim, { force: true });
+		claim = null;
+	};
 	const capability = options.capability ?? detectCapability(root);
 	const base = join(root, RIFT_DIR, "workspaces", name);
 	if (existsSync(base)) {
 		const live = readRegistry(root).workspaces.some((w) => w.name === name);
 		if (live) {
+			release();
 			return { workspace: null, reason: `workspace "${name}" already exists` };
 		}
 		// The registry does not list it, so it is almost certainly debris from a
@@ -343,6 +376,7 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 		// Move it aside instead — recovery stays possible and costs a rename.
 		const parked = parkDebris(base);
 		if (parked === null && existsSync(base)) {
+			release();
 			return {
 				workspace: null,
 				reason: `"${name}" has a directory the registry does not list, and it could not be moved aside`,
@@ -375,6 +409,7 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 			createdAt: new Date().toISOString(),
 		};
 		recordCreated(root, made);
+		release();
 		return debris ? { workspace: made, debris } : { workspace: made };
 	}
 
@@ -387,6 +422,7 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 		);
 		if (copied.status !== 0) {
 			rmSync(base, { recursive: true, force: true });
+			release();
 			return {
 				workspace: null,
 				reason: `clone failed for "${entry}" using ${capability.tier}`,
@@ -401,7 +437,57 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 		createdAt: new Date().toISOString(),
 	};
 	recordCreated(root, made);
+	release();
 	return debris ? { workspace: made, debris } : { workspace: made };
+}
+
+function claimPath(root: string, name: string): string {
+	return join(resolve(root), RIFT_DIR, "workspaces", `.${name}.claim`);
+}
+
+/** Atomically claim a name; null when another process holds it. */
+function claimName(root: string, name: string): string | null {
+	const path = claimPath(root, name);
+	mkdirSync(join(resolve(root), RIFT_DIR, "workspaces"), { recursive: true });
+	try {
+		// wx: fail if it exists. The atomicity is the whole point.
+		writeFileSync(path, `${process.pid}\n`, { flag: "wx" });
+		return path;
+	} catch {
+		// A create that died leaves its claim behind. Blocking the name forever
+		// on a dead process would be the wedge this package keeps re-learning,
+		// so take the claim over when nobody holds it.
+		if (!claimHolderAlive(path)) {
+			try {
+				rmSync(path, { force: true });
+				writeFileSync(path, `${process.pid}\n`, { flag: "wx" });
+				return path;
+			} catch {
+				return null;
+			}
+		}
+		return null;
+	}
+}
+
+/** Is the process that wrote this claim still running? */
+function claimHolderAlive(path: string): boolean {
+	let pid: number;
+	try {
+		pid = Number.parseInt(readFileSync(path, "utf8").trim(), 10);
+	} catch {
+		return false;
+	}
+	if (!Number.isInteger(pid) || pid <= 0) return false;
+	if (pid === process.pid) return false;
+	try {
+		// Signal 0 tests for existence without delivering anything.
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		// EPERM means it exists but belongs to another user — still alive.
+		return (error as NodeJS.ErrnoException).code === "EPERM";
+	}
 }
 
 /**

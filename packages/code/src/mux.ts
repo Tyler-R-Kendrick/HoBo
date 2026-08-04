@@ -88,6 +88,12 @@ export function shellQuote(value: string): string {
  * has neither.
  */
 export function placedCommand(target: MuxTarget): string {
+	// An ssh target's workspace lives on the remote. Local paths — a `cwd` or
+	// an exec wrapper naming this machine's binaries — mean nothing there, and
+	// `cd '/home/alice/proj'` on a host without that path stops the agent from
+	// starting at all. Ignoring them here rather than trusting every caller to
+	// strip them keeps one place responsible for it.
+	if (target.kind === "ssh") return target.command;
 	if (target.exec) {
 		// The bundled sidecar is a .js file, which is only directly executable
 		// if its exec bit survived the install; run it through this node.

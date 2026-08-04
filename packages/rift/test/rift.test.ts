@@ -663,3 +663,85 @@ describe("a root that predates event counting", () => {
 		expect(repaired.undecidable).toMatch(/predates event counting/);
 	});
 });
+
+describe("repair leaves evidence intact", () => {
+	it("does not overwrite the snapshot it tells the operator to read", () => {
+		// registry.json is the only surviving record of a workspace's name, tier
+		// and layer paths. Emptying it in the same call that says "go read this
+		// file" leaves the root worse off for having run the recovery command.
+		const root = source();
+		createWorkspace({ root, name: "keep" });
+		const snapshotPath = join(root, RIFT_DIR, "registry.json");
+		const snapshot = JSON.parse(readFileSync(snapshotPath, "utf8")) as {
+			root: string;
+			workspaces: unknown[];
+		};
+		writeFileSync(
+			snapshotPath,
+			JSON.stringify({ root: snapshot.root, workspaces: snapshot.workspaces }),
+		);
+		writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");
+
+		const repaired = rebuildRegistry(root);
+		expect(repaired.undecidable).toBeDefined();
+		const after = JSON.parse(readFileSync(snapshotPath, "utf8")) as {
+			workspaces: unknown[];
+		};
+		expect(after.workspaces).toHaveLength(1);
+	});
+
+	it("labels a restored snapshot with a count that matches the journal", () => {
+		// A partial truncation makes the snapshot's list and the journal's
+		// length disagree. Persisting one labelled with the other poisons the
+		// discriminator: a later genuine truncation would restore from a count
+		// that never described those workspaces.
+		const root = source();
+		createWorkspace({ root, name: "alpha" });
+		createWorkspace({ root, name: "beta" });
+		removeWorkspace(root, "alpha");
+		const journal = join(root, RIFT_DIR, "events.jsonl");
+		const lines = readFileSync(journal, "utf8").split("\n").filter(Boolean);
+		writeFileSync(journal, `${lines.slice(0, 3).join("\n")}\n`);
+
+		const repaired = rebuildRegistry(root);
+		const persisted = JSON.parse(
+			readFileSync(join(root, RIFT_DIR, "registry.json"), "utf8"),
+		) as { workspaces: unknown[]; eventCount: number };
+		// What repair reports, what list would report, and what the snapshot
+		// claims to be folded from must all be the same thing.
+		expect(persisted.workspaces).toHaveLength(repaired.workspaces.length);
+		expect(persisted.eventCount).toBe(
+			readFileSync(journal, "utf8").split("\n").filter(Boolean).length,
+		);
+		expect(readRegistry(root).workspaces).toHaveLength(
+			repaired.workspaces.length,
+		);
+	});
+});
+
+describe("two creates racing on one name", () => {
+	it("lets exactly one through while the other is in flight", () => {
+		const root = source();
+		// A live claim is what an in-flight create holds; the clone can take
+		// seconds on a large tree, and both processes would otherwise see
+		// "no such workspace" and copy into the same destination.
+		const claim = join(root, RIFT_DIR, "workspaces", ".claude.claim");
+		mkdirSync(join(root, RIFT_DIR, "workspaces"), { recursive: true });
+		writeFileSync(claim, `${process.ppid}\n`);
+		const blocked = createWorkspace({ root, name: "claude" });
+		expect(blocked.workspace).toBeNull();
+		expect(blocked.reason).toMatch(/another process is creating/);
+	});
+
+	it("takes over a claim whose holder is gone", () => {
+		// Otherwise a create that died wedges the name forever — the failure
+		// mode this package keeps re-learning.
+		const root = source();
+		const claim = join(root, RIFT_DIR, "workspaces", ".claude.claim");
+		mkdirSync(join(root, RIFT_DIR, "workspaces"), { recursive: true });
+		writeFileSync(claim, "2147483646\n"); // no such pid
+		const made = createWorkspace({ root, name: "claude" });
+		expect(made.workspace).not.toBeNull();
+		expect(existsSync(claim)).toBe(false);
+	});
+});

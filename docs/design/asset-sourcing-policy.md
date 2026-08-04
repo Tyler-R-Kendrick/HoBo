@@ -16,11 +16,21 @@ tags: [hobo, design]
 
 # Asset Sourcing Policy for the Control Yard
 
-Governs every visual, audio, and font asset that ships in `@hobo/control-yard`
-(the HIGHBALL! game surface, [ADR-0147](./adr/07-portability-extensibility.md#adr-0147))
-and any future game surface. The design identity is the pixel-RPG contract in
-`site/DESIGN.md` / `packages/control-yard/DESIGN.md`; this policy governs where
-the raw material may come from and what provenance must travel with it.
+Governs every visual, audio, and font asset that ships in a HoBo surface. The
+design identity depends on which surface: the product surfaces (`site/`,
+`@hobo/control-yard`) are **HoBo Rubberhose** (`site/DESIGN.md`), and
+`@hobo/pixel-village` — the separate pixel-RPG game project — is **HoBo Pixel**
+(`packages/pixel-village/DESIGN.md`). See
+[ADR-0149](./adr/07-portability-extensibility.md#adr-0149). This policy governs
+where the raw material may come from and what provenance must travel with it,
+whichever identity applies.
+
+One rule crosses both, carried over from
+[ADR-0148](./adr/07-portability-extensibility.md#adr-0148): **art is authored as
+art and vendored as assets.** Assembling props from `rect`/`line` primitives
+inside a renderer is prohibited on every surface — that practice is what
+produced the rejected build, and it is a defect regardless of which identity is
+being rendered.
 
 Two artifacts enforce the policy:
 

@@ -1,6 +1,6 @@
 ---
 name: design-md
-description: Google DESIGN.md visual identity for coding agents. HoBo truth is site/DESIGN.md (pixel-RPG: 16px grid, integer scaling, hard #3f2631 outlines, square corners). Lint with designmd; pre-commit runs pnpm run design:lint for all web UI packages.
+description: Google DESIGN.md visual identity for coding agents. HoBo truth is site/DESIGN.md (HoBo Rubberhose: Steamboat Willie/Cuphead ink-on-paper, thick ink outlines, hard sticker shadows, black and white with rare spark/go accents). packages/pixel-village owns a separate HoBo Pixel identity that binds only itself (ADR-0149). Lint with designmd; pre-commit runs pnpm run design:lint for all web UI packages.
 ---
 
 # design-md (HoBo)

@@ -1,0 +1,230 @@
+{
+	"meta": {
+		"version": 2,
+		"root": ".",
+		"defaultFps": 10,
+		"measuredAt": "2026-08-03",
+		"probedWith": "PNG IHDR read + alpha-gutter probe; re-checked by scripts/validate-assets.mts",
+		"notes": [
+			"Art identity is pixel-RPG. All artwork is vendored Kenney CC0-1.0 packs under kenney/ — see assets/CREDITS.md.",
+			"The previous rubberhose Bo/bindlebug/guest sprites and ink parallax plates were rejected by the product owner and removed.",
+			"Tilesheets live in the spritesheets map (same measured-grid shape); tile sheets carry kind: tilesheet and no animations.",
+			"STOP rule: every frameWidth/frameHeight/columns/rows/margin/spacing below was measured from the PNG header, not guessed.",
+			"Kenney roguelike sheets use 1px spacing between cells; Kenney tiny-* / urban tilemaps are packed with 0 spacing.",
+			"audio/: mono 22050Hz WAVs synthesized deterministically by scripts/synth-audio.py; see assets/CREDITS.md"
+		],
+		"designSystem": "site/DESIGN.md (packages/control-yard/DESIGN.md)"
+	},
+	"images": {
+		"cargo-particle": {
+			"path": "particles/cargo.png",
+			"width": 8,
+			"height": 8
+		},
+		"connection-bay": {
+			"path": "chrome/connection-bay.png",
+			"width": 32,
+			"height": 32
+		},
+		"ui-panel-simple": {
+			"id": "ui-panel-simple",
+			"path": "kenney/fantasy-ui-borders/panel-009.png",
+			"width": 48,
+			"height": 48
+		},
+		"ui-panel-plain": {
+			"id": "ui-panel-plain",
+			"path": "kenney/fantasy-ui-borders/panel-015.png",
+			"width": 48,
+			"height": 48
+		},
+		"ui-panel-frame": {
+			"id": "ui-panel-frame",
+			"path": "kenney/fantasy-ui-borders/panel-transparent-center-000.png",
+			"width": 48,
+			"height": 48
+		},
+		"ui-divider": {
+			"id": "ui-divider",
+			"path": "kenney/fantasy-ui-borders/divider-000.png",
+			"width": 96,
+			"height": 22
+		}
+	},
+	"spritesheets": {
+		"town": {
+			"id": "town",
+			"kind": "tilesheet",
+			"path": "kenney/tiny-town/tilemap_packed.png",
+			"width": 192,
+			"height": 176,
+			"frameWidth": 16,
+			"frameHeight": 16,
+			"columns": 12,
+			"rows": 11,
+			"margin": 0,
+			"spacing": 0,
+			"tileCount": 132,
+			"origin": {
+				"x": 0,
+				"y": 0
+			},
+			"source": "Kenney — Tiny Town (1.1), Tilemap/tilemap_packed.png, vendored unmodified",
+			"license": "CC0-1.0",
+			"animations": {}
+		},
+		"dungeon": {
+			"id": "dungeon",
+			"kind": "tilesheet",
+			"path": "kenney/tiny-dungeon/tilemap_packed.png",
+			"width": 192,
+			"height": 176,
+			"frameWidth": 16,
+			"frameHeight": 16,
+			"columns": 12,
+			"rows": 11,
+			"margin": 0,
+			"spacing": 0,
+			"tileCount": 132,
+			"origin": {
+				"x": 0,
+				"y": 0
+			},
+			"source": "Kenney — Tiny Dungeon (1.0), Tilemap/tilemap_packed.png, vendored unmodified",
+			"license": "CC0-1.0",
+			"animations": {}
+		},
+		"urban": {
+			"id": "urban",
+			"kind": "tilesheet",
+			"path": "kenney/rpg-urban/tilemap_packed.png",
+			"width": 432,
+			"height": 288,
+			"frameWidth": 16,
+			"frameHeight": 16,
+			"columns": 27,
+			"rows": 18,
+			"margin": 0,
+			"spacing": 0,
+			"tileCount": 486,
+			"origin": {
+				"x": 0,
+				"y": 0
+			},
+			"source": "Kenney — RPG Urban Pack (1.0), Tilemap/tilemap_packed.png, vendored unmodified",
+			"license": "CC0-1.0",
+			"animations": {}
+		},
+		"rogue": {
+			"id": "rogue",
+			"kind": "tilesheet",
+			"path": "kenney/roguelike-rpg/roguelikeSheet_transparent.png",
+			"width": 968,
+			"height": 526,
+			"frameWidth": 16,
+			"frameHeight": 16,
+			"columns": 57,
+			"rows": 31,
+			"margin": 0,
+			"spacing": 1,
+			"tileCount": 1767,
+			"origin": {
+				"x": 0,
+				"y": 0
+			},
+			"source": "Kenney — Roguelike/RPG pack (1.1), Spritesheet/roguelikeSheet_transparent.png, vendored unmodified",
+			"license": "CC0-1.0",
+			"animations": {}
+		},
+		"chars": {
+			"id": "chars",
+			"kind": "spritesheet",
+			"path": "kenney/roguelike-characters/roguelikeChar_transparent.png",
+			"width": 917,
+			"height": 203,
+			"frameWidth": 16,
+			"frameHeight": 16,
+			"columns": 54,
+			"rows": 12,
+			"margin": 0,
+			"spacing": 1,
+			"tileCount": 648,
+			"origin": {
+				"x": 0.5,
+				"y": 1
+			},
+			"anchor": "feet-baseline",
+			"note": "Upstream ships 918x203 — a trailing all-transparent 1px spacing column past the last cell. Vendored at 917x203 so the sheet matches the exact columns*16 + spacing*(columns-1) grid; no pixel content was changed.",
+			"source": "Kenney — Roguelike Characters (1.0), Spritesheet/roguelikeChar_transparent.png, trailing empty spacing column cropped",
+			"license": "CC0-1.0",
+			"animations": {}
+		},
+		"ui": {
+			"id": "ui",
+			"kind": "nine-slice",
+			"path": "kenney/fantasy-ui-borders/panel-000.png",
+			"width": 48,
+			"height": 48,
+			"frameWidth": 16,
+			"frameHeight": 16,
+			"columns": 3,
+			"rows": 3,
+			"margin": 0,
+			"spacing": 0,
+			"tileCount": 9,
+			"origin": {
+				"x": 0,
+				"y": 0
+			},
+			"note": "Nine-slice dialog/panel frame: 3x3 grid of 16x16 cells (corners, edges, fill). White on transparent — tint at draw time.",
+			"source": "Kenney — Fantasy UI Borders (1.0), PNG/Default/Panel/panel-000.png, vendored unmodified",
+			"license": "CC0-1.0",
+			"animations": {}
+		}
+	},
+	"animationIds": {},
+	"audio": {
+		"whistle": {
+			"id": "whistle",
+			"path": "audio/whistle.wav",
+			"durationMs": 1300,
+			"role": "highball",
+			"source": "in-repo synthesis; scripts/synth-audio.py"
+		},
+		"stamp": {
+			"id": "stamp",
+			"path": "audio/stamp.wav",
+			"durationMs": 200,
+			"role": "waybill-stamp",
+			"source": "in-repo synthesis; scripts/synth-audio.py"
+		},
+		"spike": {
+			"id": "spike",
+			"path": "audio/spike.wav",
+			"durationMs": 260,
+			"role": "waybill-spike",
+			"source": "in-repo synthesis; scripts/synth-audio.py"
+		},
+		"telegraph": {
+			"id": "telegraph",
+			"path": "audio/telegraph.wav",
+			"durationMs": 45,
+			"role": "stream-tick",
+			"source": "in-repo synthesis; scripts/synth-audio.py"
+		},
+		"steam": {
+			"id": "steam",
+			"path": "audio/steam.wav",
+			"durationMs": 850,
+			"role": "needs-reauth",
+			"source": "in-repo synthesis; scripts/synth-audio.py"
+		},
+		"derail": {
+			"id": "derail",
+			"path": "audio/derail.wav",
+			"durationMs": 550,
+			"role": "derail",
+			"source": "in-repo synthesis; scripts/synth-audio.py"
+		}
+	}
+}

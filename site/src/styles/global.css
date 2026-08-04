@@ -1,28 +1,10 @@
 /* ==========================================================================
    HoBo site design system.
-   One stylesheet, zero frameworks. Pixel-RPG identity: 16px-grid thinking,
-   integer scaling only, hard 2–3px outlines, blocky panels with hard offset
-   shadows, flat fills. No gradients-as-brand, no glassmorphism, no soft
-   blur elevation, no hand-drawn wobble.
-
-   Palette is derived from the CC0 Kenney tilesets the game surface uses, so
-   the site and the yard read as one world:
-
-     outline  #3f2631   every border/edge
-     deep     #262b44   dark ground / dark panels / night
-     stone    #c0cbdc   light panel fill (the UI ground by day)
-     slate    #52607c   secondary chrome / muted text
-     grass    #84c669   success, ground accents
-     path     #eaa56c   warm highlight / roads
-     wood     #a35422   structural warm
-     wood-dk  #763b36
-     accent   #37aaa5   teal — links, focus, interactive
-     danger   #c34b35   rust red — errors, destructive
-
-   Raw hues are exposed as `--pal-*`. Everything else is a *semantic* token
-   that points at them, so day/night can re-point without renaming. Legacy
-   names (`--ink`, `--paper`, `--spark`, `--pop`) are kept and re-pointed so
-   existing selectors keep working.
+   One stylesheet, zero frameworks. Strict black-and-white rubberhose cartoon
+   language (Steamboat Willie / Cuphead / Fleischer) starring Bo the bindlebug:
+   traced reference illustrations, thick ink outlines, hard offset "sticker"
+   shadows, Chewy title-card display type. Ink on paper by day, paper on ink
+   by night — exact inversions via custom properties.
 
    Agent contract: site/DESIGN.md (Google DESIGN.md format). Lint with
    `pnpm --filter hobo-site run design:lint` before shipping token changes.
@@ -31,140 +13,98 @@
 /* ---------- Tokens ---------- */
 
 :root {
-	/* --- raw Kenney palette (theme-independent) --- */
-	--pal-outline: #3f2631;
-	--pal-deep: #262b44;
-	--pal-stone: #c0cbdc;
-	--pal-slate: #52607c;
-	--pal-grass: #84c669;
-	--pal-path: #eaa56c;
-	--pal-wood: #a35422;
-	--pal-wood-dk: #763b36;
-	--pal-accent: #37aaa5;
-	--pal-danger: #c34b35;
-
-	/* type. Display faces are Kenney's CC0 pixel fonts, vendored at
-	   site/public/fonts/ (licence beside them). Body copy is NEVER set in a
-	   pixel face — headings, display and buttons only. */
+	/* type: Chewy = cartoon title-card lettering; quiet sans for everything else */
 	--font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
 		Arial, sans-serif;
-	--font-display: "Kenney Blocks", "Kenney Pixel", "Press Start 2P",
-		ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
+	--font-display: "Chewy", "Comic Sans MS", cursive;
+	--font-round: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+		Arial, sans-serif;
 	--font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono",
 		Menlo, Consolas, monospace;
 
-	/* layout — pixel chrome is blocky; radii are zero on purpose */
+	/* Bo the mascot is always soot-colored with white googly eyes */
+	--soot: #1a1512;
+
+	/* layout */
 	--container: 1160px;
 	--header-h: 3.75rem;
-	--radius: 0px;
-	--radius-lg: 0px;
-	/* the grid everything snaps to */
-	--px: 4px;
-	--tile: 16px;
-
-	/* edge weights — hard outlines, never hairlines on primary chrome */
-	--edge: 2px;
-	--edge-strong: 3px;
-	/* hard offset shadow distance (integer, no blur, ever) */
-	--drop: 4px;
+	--radius: 12px;
+	--radius-lg: 18px;
 
 	/* motion */
 	--ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@font-face {
-	font-family: "Kenney Pixel";
-	src: url("/HoBo/fonts/kenney-pixel.ttf") format("truetype");
-	font-display: swap;
-	font-weight: 400;
-	font-style: normal;
-}
-
-@font-face {
-	font-family: "Kenney Blocks";
-	src: url("/HoBo/fonts/kenney-blocks.ttf") format("truetype");
-	font-display: swap;
-	font-weight: 400;
-	font-style: normal;
-}
-
-/* ---------- Night: deep ground, stone edges ---------- */
-
 :root,
 :root[data-theme="dark"] {
 	color-scheme: dark;
-	--bg: #1d2135;
-	--bg-raised: var(--pal-deep);
-	--bg-inset: #171a2b;
-	--border: #3c4666;
-	--border-strong: var(--pal-slate);
-	--text: #e2e8f3;
-	--text-mute: #b3bdd2;
-	--text-faint: #93a0ba;
-	/* At night the drawn edge flips to stone so panels still read against a
-	   deep ground — the same day/night inversion idea, pixel-appropriate. */
-	--ink: var(--pal-stone);
-	--paper: var(--pal-deep);
-	--outline: var(--pal-outline);
-	--accent: #5ecfc9;
-	--accent-strong: var(--pal-accent);
-	--accent-ink: #10202a;
-	--accent-soft: rgba(55, 170, 165, 0.18);
-	/* primary button plate — fill/hover kept AA against --accent-ink */
-	--btn-fill: var(--pal-accent);
-	--btn-fill-hover: #5ecfc9;
-	--spark: #5ecfc9;
-	--spark-soft: rgba(55, 170, 165, 0.18);
-	--danger: #e06a52;
-	--danger-soft: rgba(195, 75, 53, 0.22);
-	--go: var(--pal-grass);
-	--go-soft: rgba(132, 198, 105, 0.18);
-	--path: var(--pal-path);
-	--wood: #c1683a;
-	--link: #e2e8f3;
-	/* hard offset shadow ink */
-	--pop: #0f0d16;
-	--pop-soft: #0f0d16;
-	--shadow: var(--drop) var(--drop) 0 var(--pop);
-	--code-bg: #171a2b;
+	--bg: #0a0a0a;
+	--bg-raised: #111111;
+	--bg-inset: #1a1a19;
+	--border: rgba(244, 243, 238, 0.14);
+	--border-strong: rgba(244, 243, 238, 0.32);
+	--text: #f2f1ec;
+	--text-mute: #b9b7b0;
+	--text-faint: #96948d;
+	--accent: #f2f1ec;
+	--accent-strong: #ffffff;
+	--accent-ink: #0a0a0a;
+	--accent-soft: rgba(244, 243, 238, 0.1);
+	--meadow: #f2f1ec;
+	--meadow-soft: rgba(244, 243, 238, 0.1);
+	--sky: #f2f1ec;
+	--sky-soft: rgba(244, 243, 238, 0.1);
+	--ink: #f2f1ec;
+	--pop: rgba(242, 241, 236, 0.85);
+	--pop-soft: rgba(242, 241, 236, 0.22);
+	--spark: #ff7a63;
+	--spark-soft: rgba(255, 122, 99, 0.16);
+	--go: #57c777;
+	--go-soft: rgba(87, 199, 119, 0.16);
+	--link: #f2f1ec;
+	--ember-a: #d9d8d3;
+	--ember-b: #9c9b96;
+	--ember-c: #5c5b57;
+	--glow: linear-gradient(transparent, transparent);
+	--shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 40px -12px rgba(0, 0, 0, 0.6);
+	--code-bg: #101010;
+	--hero-grid: rgba(244, 243, 238, 0.08);
 }
-
-/* ---------- Day: light stone ground, outline edges ---------- */
 
 :root[data-theme="light"] {
 	color-scheme: light;
-	--bg: #e6ebf4;
-	--bg-raised: var(--pal-stone);
-	--bg-inset: #d4dbe9;
-	--border: #9aa7bf;
-	--border-strong: var(--pal-slate);
-	--text: var(--pal-outline);
-	/* mute/faint are darkened off raw `slate` so they clear WCAG AA (4.5:1)
-	   against the *stone* panel fill, not just against the page ground. */
-	--text-mute: #3d4763;
-	--text-faint: #47536b;
-	--ink: var(--pal-outline);
-	--paper: var(--pal-stone);
-	--outline: var(--pal-outline);
-	--accent: #1f6f6b;
-	--accent-strong: var(--pal-accent);
+	--bg: #ffffff;
+	--bg-raised: #ffffff;
+	--bg-inset: #f4f4f2;
+	--border: #e3e2de;
+	--border-strong: #c9c8c2;
+	--text: #101010;
+	--text-mute: #4a4a46;
+	--text-faint: #6e6d68;
+	--accent: #101010;
+	--accent-strong: #000000;
 	--accent-ink: #ffffff;
-	--accent-soft: rgba(55, 170, 165, 0.2);
-	--btn-fill: #1f6f6b;
-	--btn-fill-hover: #17544f;
-	--spark: #1f6f6b;
-	--spark-soft: rgba(55, 170, 165, 0.2);
-	--danger: #a53a26;
-	--danger-soft: rgba(195, 75, 53, 0.18);
-	--go: #3f7a2e;
-	--go-soft: rgba(132, 198, 105, 0.28);
-	--path: var(--pal-path);
-	--wood: var(--pal-wood);
-	--link: var(--pal-outline);
-	--pop: var(--pal-outline);
-	--pop-soft: var(--pal-outline);
-	--shadow: var(--drop) var(--drop) 0 var(--pop);
-	--code-bg: #dbe2ee;
+	--accent-soft: rgba(16, 16, 16, 0.06);
+	--meadow: #101010;
+	--meadow-soft: rgba(16, 16, 16, 0.06);
+	--sky: #101010;
+	--sky-soft: rgba(16, 16, 16, 0.06);
+	--ink: #101010;
+	--pop: #101010;
+	--pop-soft: rgba(16, 16, 16, 0.22);
+	--spark: #c5301c;
+	--spark-soft: rgba(197, 48, 28, 0.12);
+	--go: #14672c;
+	--go-soft: rgba(26, 127, 55, 0.12);
+	--link: #101010;
+	--ember-a: #6e6d68;
+	--ember-b: #3c3b38;
+	--ember-c: #101010;
+	--glow: linear-gradient(transparent, transparent);
+	--shadow: 0 1px 2px rgba(16, 16, 16, 0.06),
+		0 12px 32px -12px rgba(16, 16, 16, 0.14);
+	--code-bg: #f7f7f5;
+	--hero-grid: rgba(16, 16, 16, 0.09);
 }
 
 /* ---------- Reset-ish ---------- */
@@ -191,27 +131,29 @@ body {
 	-webkit-font-smoothing: antialiased;
 }
 
+/* Old-reel film grain over everything (very faint, fixed, non-interactive). */
+body::after {
+	content: "";
+	position: fixed;
+	inset: 0;
+	z-index: 2147483647;
+	pointer-events: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+	background-size: 240px 240px;
+	opacity: 0.06;
+	mix-blend-mode: multiply;
+}
+
+:root[data-theme="dark"] body::after {
+	opacity: 0.05;
+	mix-blend-mode: screen;
+}
+
 img,
 svg {
 	max-width: 100%;
 	height: auto;
 	vertical-align: middle;
-}
-
-/* Pixel art is never resampled. Anything raster on this site is sprite art:
-   nearest-neighbour, and sized at integer multiples of its own pixel grid. */
-.pixel-art,
-img.pixel-art,
-canvas.pixel-art {
-	image-rendering: pixelated;
-	image-rendering: crisp-edges;
-}
-
-/* Inline pixel marks (Logo, favicon) are drawn on a 16-unit grid — never
-   antialias their edges. */
-svg.pixel-art,
-.pixel-art svg {
-	shape-rendering: crispEdges;
 }
 
 a {
@@ -230,11 +172,10 @@ a:hover {
 	color: var(--accent-ink);
 }
 
-/* Focus is a hard pixel ring in accent teal — square, never rounded. */
 :focus-visible {
-	outline: var(--edge-strong) solid var(--accent);
+	outline: 2.5px solid var(--spark);
 	outline-offset: 2px;
-	border-radius: 0;
+	border-radius: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -272,6 +213,103 @@ a:hover {
 	text-decoration-thickness: 1.5px;
 }
 
+/* ---------- Bo the mascot & clouds (shared SVG line-art rules) ---------- */
+
+.mascot .mascot-fur {
+	fill: var(--soot);
+}
+
+/* White backing that shows through the traced eye holes on any background. */
+.mascot .mascot-under ellipse {
+	fill: #ffffff;
+}
+
+/* At night the whole soot silhouette gets a cream rim so Bo stays visible. */
+:root[data-theme="dark"] .mascot .mascot-fur {
+	filter: drop-shadow(1.4px 0 0 var(--ink)) drop-shadow(-1.4px 0 0 var(--ink))
+		drop-shadow(0 1.4px 0 var(--ink)) drop-shadow(0 -1.4px 0 var(--ink));
+}
+
+.mascot .mascot-eye {
+	fill: #ffffff;
+}
+
+.mascot .mascot-pupil {
+	fill: var(--soot);
+}
+
+.mascot-flip {
+	transform: scaleX(-1);
+}
+
+.mascot .mascot-puff circle,
+.cloud .cloud-outline circle {
+	fill: var(--bg-raised);
+	stroke: var(--ink);
+	stroke-width: 3;
+}
+
+.cloud .cloud-outline circle {
+	stroke-width: 5;
+}
+
+.cloud .cloud-fill circle {
+	fill: var(--bg-raised);
+	stroke: none;
+}
+
+/* Bo blinks: soot eyelids drop over the traced eye holes on an irregular
+   cycle — one blink, a pause, then a quick double-blink, like he noticed
+   you watching. */
+.mascot .blink ellipse {
+	fill: var(--soot);
+	transform-box: fill-box;
+	transform-origin: 50% 0%;
+	transform: scaleY(0.04);
+	animation: blink 7.3s linear infinite;
+}
+
+@keyframes blink {
+	0%,
+	36% {
+		transform: scaleY(0.04);
+	}
+	38%,
+	39.5% {
+		transform: scaleY(1);
+	}
+	42%,
+	78% {
+		transform: scaleY(0.04);
+	}
+	79.5%,
+	80.5% {
+		transform: scaleY(1);
+	}
+	82% {
+		transform: scaleY(0.2);
+	}
+	83.5%,
+	84.5% {
+		transform: scaleY(1);
+	}
+	87%,
+	100% {
+		transform: scaleY(0.04);
+	}
+}
+
+/* Instances blink out of phase so the page never synchronizes. */
+.postcard-bo .mascot .blink ellipse {
+	animation-delay: -4.9s;
+}
+
+/* Dust kicks: the trace's own puff clusters, appearing and drifting off on
+   mismatched prime-ish cycles so the rhythm reads as random. */
+.mascot .dust path {
+	fill: var(--soot);
+}
+
 .skip-link {
 	position: absolute;
 	left: -9999px;
@@ -279,10 +317,8 @@ a:hover {
 	z-index: 100;
 	padding: 0.6rem 1rem;
 	background: var(--bg-raised);
-	color: var(--text);
-	border: var(--edge) solid var(--ink);
-	border-radius: 0;
-	box-shadow: var(--drop) var(--drop) 0 var(--pop);
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius);
 }
 
 .skip-link:focus {
@@ -303,9 +339,10 @@ a:hover {
 	top: 0;
 	z-index: 50;
 	height: var(--header-h);
-	/* flat pixel bar — opaque, no blur, no glass */
-	background: var(--bg-raised);
-	border-bottom: var(--edge-strong) solid var(--ink);
+	background: color-mix(in srgb, var(--bg) 78%, transparent);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border-bottom: 1px solid var(--border);
 }
 
 .site-header .container {
@@ -320,11 +357,18 @@ a:hover {
 	align-items: center;
 	gap: 0.55rem;
 	font-family: var(--font-display);
-	font-weight: 700;
-	font-size: 1.15rem;
-	letter-spacing: 0.06em;
-	text-transform: uppercase;
+	font-weight: 400;
+	font-size: 1.25rem;
+	letter-spacing: 0.005em;
 	color: var(--text);
+}
+
+.brand:hover .mascot {
+	transform: rotate(-8deg);
+}
+
+.brand .mascot {
+	transition: transform 0.25s var(--ease);
 }
 
 .brand:hover {
@@ -360,24 +404,22 @@ a:hover {
 
 .site-nav a {
 	padding: 0.4rem 0.7rem;
-	border-radius: 0;
-	border: var(--edge) solid transparent;
+	border-radius: 8px;
 	color: var(--text-mute);
 	font-size: 0.95rem;
 	font-weight: 500;
 }
 
 .site-nav a:hover {
-	color: var(--accent);
+	color: var(--spark);
 	background: var(--bg-inset);
-	border-color: var(--ink);
 	text-decoration: none;
+	animation: boing-sm 0.4s var(--ease) 1;
 }
 
 .site-nav a[aria-current="true"] {
-	color: var(--accent);
-	background: var(--accent-soft);
-	border-color: var(--ink);
+	color: var(--spark);
+	background: var(--spark-soft);
 }
 
 .header-actions {
@@ -393,8 +435,8 @@ a:hover {
 	justify-content: center;
 	width: 2.25rem;
 	height: 2.25rem;
-	border-radius: 0;
-	border: var(--edge) solid transparent;
+	border-radius: 8px;
+	border: 1px solid transparent;
 	background: none;
 	color: var(--text-mute);
 	cursor: pointer;
@@ -403,7 +445,6 @@ a:hover {
 .icon-btn:hover {
 	color: var(--text);
 	background: var(--bg-inset);
-	border-color: var(--ink);
 	text-decoration: none;
 }
 
@@ -446,12 +487,11 @@ a:hover {
 	}
 }
 
-/* ---------- Buttons as pixel-UI plates ---------- */
+/* ---------- Buttons as cartoon signage (not pills) ---------- */
 /*
- * Blocky Kenney-style button plates: flat fill, hard outline, a one-pixel
- * top highlight and bottom shade for the bevel, and a hard offset shadow.
- * Press moves the plate down onto its own shadow — integer pixels only, no
- * rotation, no bounce, no blur.
+ * Roadside / tavern sign boards: chamfered plank shape, thick ink rim,
+ * painted inner rail, title-card lettering, hard sticker shadow.
+ * Rubberhose vibe — Steamboat Willie / Cuphead signage, not SaaS ellipses.
  */
 
 .btn {
@@ -461,32 +501,77 @@ a:hover {
 	align-items: center;
 	justify-content: center;
 	gap: 0.45rem;
-	padding: 0.7rem 1.5rem;
-	border: var(--edge-strong) solid var(--ink);
+	/* Room for the plank silhouette + hanging rivets */
+	padding: 0.78rem 1.65rem 0.72rem;
+	/* Chamfered wooden-sign silhouette (not a pill / not a soft ellipse) */
+	border: none;
 	border-radius: 0;
-	box-shadow: var(--drop) var(--drop) 0 var(--btn-shadow);
+	clip-path: polygon(
+		0.55rem 0,
+		calc(100% - 0.55rem) 0,
+		100% 0.55rem,
+		100% calc(100% - 0.55rem),
+		calc(100% - 0.55rem) 100%,
+		0.55rem 100%,
+		0 calc(100% - 0.55rem),
+		0 0.55rem
+	);
+	/* Outer ink stroke via layered hard shadows (clip-path eats border) */
+	box-shadow:
+		0.28rem 0.28rem 0 var(--btn-shadow),
+		0 0 0 0.18rem var(--ink);
 	font-family: var(--font-display);
-	font-size: 0.95rem;
-	font-weight: 700;
-	letter-spacing: 0.06em;
-	text-transform: uppercase;
-	line-height: 1.2;
+	font-size: 1.15rem;
+	font-weight: 400;
+	letter-spacing: 0.04em;
+	line-height: 1.1;
+	text-transform: none;
 	cursor: pointer;
 	isolation: isolate;
-	transition: transform 0.08s steps(1, end), box-shadow 0.08s steps(1, end),
-		background-color 0.12s var(--ease), color 0.12s var(--ease);
+	transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+		box-shadow 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+		background-color 0.2s var(--ease), color 0.2s var(--ease),
+		filter 0.2s var(--ease);
 }
 
-/* Pixel bevel: hard inner highlight up top, hard inner shade below. */
+/* Painted inner rail — double-outline “sign board” edge */
 .btn::before {
 	content: "";
 	position: absolute;
-	inset: 0;
+	inset: 0.28rem;
 	z-index: 0;
 	pointer-events: none;
-	box-shadow:
-		inset 0 2px 0 rgba(255, 255, 255, 0.28),
-		inset 0 -2px 0 rgba(63, 38, 49, 0.35);
+	/* Slightly smaller chamfer so the rail tracks the plank */
+	clip-path: polygon(
+		0.35rem 0,
+		calc(100% - 0.35rem) 0,
+		100% 0.35rem,
+		100% calc(100% - 0.35rem),
+		calc(100% - 0.35rem) 100%,
+		0.35rem 100%,
+		0 calc(100% - 0.35rem),
+		0 0.35rem
+	);
+	border: none;
+	box-shadow: inset 0 0 0 0.1rem color-mix(in srgb, var(--ink) 55%, transparent);
+	opacity: 0.9;
+}
+
+/* Rivets / nail heads — classic cartoon signage hardware */
+.btn::after {
+	content: "";
+	position: absolute;
+	z-index: 1;
+	pointer-events: none;
+	/* two rivets along the top edge */
+	top: 0.42rem;
+	left: 0.85rem;
+	right: 0.85rem;
+	height: 0.28rem;
+	background:
+		radial-gradient(circle at 0.14rem 50%, var(--ink) 0 0.11rem, transparent 0.12rem),
+		radial-gradient(circle at calc(100% - 0.14rem) 50%, var(--ink) 0 0.11rem, transparent 0.12rem);
+	opacity: 0.85;
 }
 
 .btn > * {
@@ -496,37 +581,67 @@ a:hover {
 
 .btn:hover {
 	text-decoration: none;
-	/* lift by exactly one grid step, shadow grows by the same */
-	transform: translate(-2px, -2px);
-	box-shadow: calc(var(--drop) + 2px) calc(var(--drop) + 2px) 0
-		var(--btn-shadow);
-}
-
-.btn:active {
-	/* plate presses flat onto its shadow */
-	transform: translate(var(--drop), var(--drop));
-	box-shadow: 0 0 0 var(--btn-shadow);
-}
-
-.btn-primary {
-	color: var(--accent-ink);
-	background: var(--btn-fill);
+	/* hang / bounce like a wooden sign on a nail */
+	transform: translate(-3px, -4px) rotate(-1.25deg) scale(1.03);
+	box-shadow:
+		0.42rem 0.48rem 0 var(--btn-shadow),
+		0 0 0 0.2rem var(--ink);
+	filter: contrast(1.04);
 }
 
 .btn-primary:hover {
-	background: var(--btn-fill-hover);
-	color: var(--accent-ink);
+	background: var(--spark);
+	color: #ffffff;
+	/* Keep rivets readable on vermillion */
+	--btn-shadow: color-mix(in srgb, var(--soot) 55%, transparent);
 }
 
-.btn-ghost {
-	color: var(--text);
-	background: var(--bg-raised);
+.btn-primary:hover::before {
+	box-shadow: inset 0 0 0 0.1rem color-mix(in srgb, #ffffff 45%, transparent);
+}
+
+.btn-primary:hover::after {
+	background:
+		radial-gradient(circle at 0.14rem 50%, #ffffff 0 0.11rem, transparent 0.12rem),
+		radial-gradient(circle at calc(100% - 0.14rem) 50%, #ffffff 0 0.11rem, transparent 0.12rem);
+	opacity: 0.75;
 }
 
 .btn-ghost:hover {
+	color: var(--ink);
+	background: color-mix(in srgb, var(--spark) 12%, var(--bg-raised));
+	box-shadow:
+		0.42rem 0.48rem 0 var(--btn-shadow),
+		0 0 0 0.2rem var(--spark);
+}
+
+.btn-ghost:hover::before {
+	box-shadow: inset 0 0 0 0.1rem color-mix(in srgb, var(--spark) 70%, transparent);
+}
+
+.btn:active {
+	transform: translate(2px, 3px) rotate(0.5deg) scale(0.99);
+	box-shadow:
+		0.06rem 0.08rem 0 var(--btn-shadow),
+		0 0 0 0.16rem var(--ink);
+}
+
+.btn-primary {
+	/* Solid ink fill — shadow uses softer pop so it reads on dark/light */
+	--btn-shadow: var(--pop-soft);
+	color: var(--accent-ink);
+	background: var(--accent);
+}
+
+.btn-ghost {
+	--btn-shadow: var(--pop);
 	color: var(--text);
-	background: var(--bg-inset);
-	border-color: var(--accent-strong);
+	background: var(--bg-raised);
+	/* ghost signs read as painted boards, not filled posts */
+	box-shadow:
+		0.28rem 0.28rem 0 var(--btn-shadow),
+		0 0 0 0.18rem var(--ink),
+		inset 0 0 0 0.06rem color-mix(in srgb, var(--ink) 12%, transparent);
 }
 
 /* ---------- Copy buttons (code blocks + copy-page-as-markdown) ---------- */
@@ -544,8 +659,8 @@ a:hover {
 	align-items: center;
 	gap: 0.3rem;
 	padding: 0.25rem 0.6rem;
-	border: var(--edge) solid var(--border-strong);
-	border-radius: 0;
+	border: 1.5px solid var(--border-strong);
+	border-radius: 8px;
 	background: var(--bg-raised);
 	color: var(--text-mute);
 	font-family: var(--font-sans);
@@ -578,8 +693,8 @@ a:hover {
 	align-items: center;
 	gap: 0.35rem;
 	padding: 0.25rem 0.7rem;
-	border: var(--edge) solid var(--border-strong);
-	border-radius: 0;
+	border: 1.5px solid var(--border-strong);
+	border-radius: 999px;
 	background: var(--bg-raised);
 	color: var(--text-mute);
 	font-family: var(--font-sans);
@@ -604,22 +719,22 @@ a:hover {
 	align-items: center;
 	gap: 0.35rem;
 	padding: 0.15rem 0.7rem;
-	border-radius: 0;
-	border: var(--edge) solid var(--ink);
-	background: var(--bg-inset);
+	border-radius: 999px;
+	border: 2px solid var(--ink);
+	background: var(--bg-raised);
 	color: var(--text-mute);
-	font-family: var(--font-display);
-	font-size: 0.72rem;
+	font-family: var(--font-round);
+	font-size: 0.74rem;
 	font-weight: 700;
-	letter-spacing: 0.08em;
+	letter-spacing: 0.05em;
 	text-transform: uppercase;
 	white-space: nowrap;
-	box-shadow: 2px 2px 0 var(--pop);
+	transform: rotate(-1deg);
+	box-shadow: 0.15rem 0.15rem 0 var(--pop-soft);
 }
 
 .badge-accent {
-	color: var(--accent);
-	border-color: var(--accent);
+	color: var(--text-mute);
 }
 
 /* ---------- Hero ---------- */
@@ -627,7 +742,7 @@ a:hover {
 .hero {
 	position: relative;
 	padding: clamp(3.5rem, 9vw, 6rem) 0 clamp(2.5rem, 6vw, 4.5rem);
-	border-bottom: var(--edge-strong) solid var(--ink);
+	border-bottom: 3px dashed var(--border-strong);
 }
 
 .hero .container {
@@ -656,17 +771,16 @@ a:hover {
 .hero h1 {
 	margin: 0 0 1.15rem;
 	font-family: var(--font-display);
-	font-size: clamp(1.75rem, 4.2vw, 3rem);
-	line-height: 1.15;
-	letter-spacing: 0.01em;
-	font-weight: 700;
-	text-transform: uppercase;
+	font-size: clamp(2rem, 5vw, 3.6rem);
+	line-height: 1.06;
+	letter-spacing: 0.005em;
+	font-weight: 400;
 	text-wrap: balance;
 }
 
 .hero h1 em {
 	font-style: normal;
-	color: var(--accent);
+	color: var(--spark);
 }
 
 .hero-sub {
@@ -701,10 +815,10 @@ a:hover {
 }
 
 .terminal {
-	border: var(--edge-strong) solid var(--ink);
-	border-radius: 0;
+	border: 2.5px solid var(--ink);
+	border-radius: var(--radius-lg);
 	background: var(--code-bg);
-	box-shadow: var(--drop) var(--drop) 0 var(--pop);
+	box-shadow: 0.4rem 0.4rem 0 var(--pop-soft);
 	overflow: hidden;
 	font-size: 0.85rem;
 }
@@ -714,7 +828,7 @@ a:hover {
 	align-items: center;
 	gap: 0.5rem;
 	padding: 0.6rem 1rem;
-	border-bottom: var(--edge) solid var(--ink);
+	border-bottom: 1px solid var(--border);
 	background: var(--bg-raised);
 }
 
@@ -724,11 +838,15 @@ a:hover {
 }
 
 .terminal-bar .dots i {
-	width: 10px;
-	height: 10px;
-	border-radius: 0;
+	width: 11px;
+	height: 11px;
+	border-radius: 50%;
+	background: var(--border-strong);
+}
+
+.terminal-bar .dots i {
 	background: transparent;
-	border: var(--edge) solid var(--ink);
+	border: 2px solid var(--ink);
 }
 
 .terminal-bar .dots i:nth-child(2) {
@@ -760,7 +878,7 @@ a:hover {
 }
 
 .section + .section {
-	border-top: var(--edge-strong) solid var(--ink);
+	border-top: 3px dashed var(--border-strong);
 }
 
 .section-head {
@@ -775,11 +893,10 @@ a:hover {
 .section-head h2 {
 	margin: 0 0 0.7rem;
 	font-family: var(--font-display);
-	font-size: clamp(1.4rem, 2.7vw, 2rem);
-	line-height: 1.2;
-	letter-spacing: 0.01em;
-	font-weight: 700;
-	text-transform: uppercase;
+	font-size: clamp(1.6rem, 3.1vw, 2.3rem);
+	line-height: 1.12;
+	letter-spacing: 0.005em;
+	font-weight: 400;
 	text-wrap: balance;
 }
 
@@ -832,32 +949,29 @@ a:hover {
 .card {
 	position: relative;
 	padding: 1.35rem 1.4rem;
-	border: var(--edge-strong) solid var(--ink);
-	border-radius: 0;
+	border: 2.5px solid var(--ink);
+	border-radius: calc(var(--radius-lg) + 6px);
 	background: var(--bg-raised);
-	box-shadow: var(--drop) var(--drop) 0 var(--pop);
-	transition: transform 0.08s steps(1, end), box-shadow 0.08s steps(1, end),
-		border-color 0.12s var(--ease);
+	box-shadow: 0.32rem 0.32rem 0 var(--pop-soft);
+	transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
 
 a.card:hover {
 	text-decoration: none;
 	transform: translate(-2px, -2px);
-	border-color: var(--accent-strong);
-	box-shadow: calc(var(--drop) + 2px) calc(var(--drop) + 2px) 0 var(--pop);
+	border-color: var(--spark);
+	box-shadow: 0.5rem 0.5rem 0 var(--spark-soft);
 }
 
 a.card:hover .card-cta {
-	color: var(--accent);
+	color: var(--spark);
 }
 
 .card h3 {
 	margin: 0 0 0.45rem;
 	font-family: var(--font-display);
-	font-size: 1rem;
-	font-weight: 700;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+	font-size: 1.15rem;
+	font-weight: 400;
 	color: var(--text);
 	display: flex;
 	align-items: center;
@@ -881,11 +995,10 @@ a.card:hover .card-cta {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 2rem;
-	height: 2rem;
+	width: 2.1rem;
+	height: 2.1rem;
 	flex: none;
-	border-radius: 0;
-	border: var(--edge) solid var(--ink);
+	border-radius: 9px;
 	background: var(--accent-soft);
 	color: var(--accent);
 }
@@ -907,10 +1020,9 @@ a.card:hover .card-cta {
 	}
 }
 
-/* problem cards read as sunken plates: no drop, inset ground */
+/* problem cards */
 .tradeoff {
-	background: var(--bg-inset);
-	border-color: var(--border-strong);
+	border-style: dashed;
 	box-shadow: none;
 }
 
@@ -946,8 +1058,8 @@ a.card:hover .card-cta {
 
 .event-chips code {
 	padding: 0.12rem 0.5rem;
-	border: var(--edge) solid var(--border);
-	border-radius: 0;
+	border: 1px solid var(--border);
+	border-radius: 999px;
 	background: var(--bg-inset);
 	font-family: var(--font-mono);
 	font-size: 0.72rem;
@@ -955,21 +1067,56 @@ a.card:hover .card-cta {
 }
 
 
-/* ---------- Motion: integer steps, no squash, no rotation ---------- */
+/* ---------- Cartoon physics: hover boings & scroll reveals ---------- */
+
+@keyframes boing {
+	0% { transform: scale(1, 1); }
+	30% { transform: scale(1.05, 0.9) translateY(2px); }
+	55% { transform: scale(0.95, 1.07) translateY(-5px); }
+	78% { transform: scale(1.02, 0.98) translateY(0); }
+	100% { transform: scale(1, 1); }
+}
+
+@keyframes boing-sm {
+	0% { transform: none; }
+	40% { transform: translateY(-3px) scale(1.05, 0.95); }
+	72% { transform: translateY(1px) scale(0.98, 1.03); }
+	100% { transform: none; }
+}
+
+.hero h1:hover,
+.section-head h2:hover,
+.prose h1:hover,
+.card h3:hover,
+.cta-inner-title:hover {
+	animation: boing 0.55s var(--ease) 1;
+	transform-origin: 50% 100%;
+}
+
+.brand:hover {
+	animation: boing-sm 0.45s var(--ease) 1;
+	text-decoration: none;
+}
+
+.postcard-bo:hover {
+	animation: boing 0.55s var(--ease) 1;
+	transform-origin: 50% 100%;
+}
 
 .theme-toggle svg {
-	transition: transform 0.12s steps(2, end);
+	transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .theme-toggle:hover svg {
-	transform: translateY(-2px);
+	transform: rotate(24deg) scale(1.1);
 }
 
 /* Scroll-linked reveals where supported; static everywhere else.
    `translate` (not transform) so hover transforms stay free. */
 @supports (animation-timeline: view()) {
-	.card {
-		animation: rise-in steps(4, end) both;
+	.card,
+	.scene {
+		animation: rise-in linear both;
 		animation-timeline: view();
 		animation-range: entry 0% entry 55%;
 	}
@@ -977,14 +1124,41 @@ a.card:hover .card-cta {
 
 @keyframes rise-in {
 	from {
-		translate: 0 32px;
+		translate: 0 34px;
 	}
 	to {
 		translate: 0 0;
 	}
 }
 
-/* ---------- Inline labels, pixel underlines, panels ---------- */
+/* ---------- Story panels: traced reference illustrations ---------- */
+
+.scene {
+	margin: clamp(1.75rem, 4vw, 3rem) auto;
+	max-width: 680px;
+}
+
+.scene.scene-crossroads,
+.scene.scene-depot {
+	max-width: 820px;
+}
+
+.scene svg {
+	display: block;
+	width: 100%;
+	height: auto;
+	transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.scene:hover svg {
+	transform: translateY(-6px) rotate(-0.4deg);
+}
+
+.scene-ink {
+	fill: var(--ink);
+}
+
+/* ---------- Whimsy: stickers, squiggles, rails, postcards ---------- */
 
 /* Inline labels: reading-order hints, set as quiet small caps. */
 .sticker {
@@ -992,7 +1166,8 @@ a.card:hover .card-cta {
 	padding: 0;
 	border: 0;
 	background: none;
-	font-family: var(--font-display);
+	transform: none;
+	font-family: var(--font-sans);
 	font-size: 0.66rem;
 	font-weight: 700;
 	letter-spacing: 0.14em;
@@ -1001,31 +1176,27 @@ a.card:hover .card-cta {
 	white-space: nowrap;
 }
 
-/* Pixel underline for the word that matters: hard 4px blocks on the grid,
-   drawn with a repeating gradient so it stays crisp at any zoom. */
+/* Hand-drawn squiggle underline for the word that matters. */
 .squiggle {
-	background-image: repeating-linear-gradient(
-		to right,
-		var(--accent-strong) 0 8px,
-		transparent 8px 12px
-	);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='7' viewBox='0 0 40 7'%3E%3Cpath d='M0 5 Q 5 1 10 5 T 20 5 T 30 5 T 40 5' fill='none' stroke='%23c5301c' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
 	background-repeat: repeat-x;
 	background-position: 0 100%;
-	background-size: 12px 4px;
-	padding-bottom: 0.3em;
+	background-size: 40px 7px;
+	padding-bottom: 0.35em;
 }
 
-/* Big pixel panel: outer outline, inner rail, hard drop. The doubled edge
-   is the Kenney panel idiom — never a soft card. */
+:root[data-theme="dark"] .squiggle {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='7' viewBox='0 0 40 7'%3E%3Cpath d='M0 5 Q 5 1 10 5 T 20 5 T 30 5 T 40 5' fill='none' stroke='%23ff7a63' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* Postcard: dashed border, a stamp in the corner, slightly askew. */
 .postcard {
 	position: relative;
+	overflow: hidden;
 	padding: clamp(2.25rem, 5vw, 3.5rem);
-	border: var(--edge-strong) solid var(--ink);
-	border-radius: 0;
-	box-shadow:
-		inset 0 0 0 3px var(--bg-inset),
-		inset 0 0 0 5px var(--ink),
-		var(--drop) var(--drop) 0 var(--pop);
+	border: 3px dashed var(--ink);
+	border-radius: calc(var(--radius-lg) + 10px);
+	box-shadow: 0.45rem 0.45rem 0 var(--pop-soft);
 	background: var(--bg-raised);
 	text-align: center;
 }
@@ -1034,10 +1205,10 @@ a.card:hover .card-cta {
 
 .table-wrap {
 	overflow-x: auto;
-	border: var(--edge-strong) solid var(--ink);
-	border-radius: 0;
+	border: 2.5px solid var(--ink);
+	border-radius: calc(var(--radius-lg) + 4px);
 	background: var(--bg-raised);
-	box-shadow: var(--drop) var(--drop) 0 var(--pop);
+	box-shadow: 0.35rem 0.35rem 0 var(--pop-soft);
 }
 
 table.compare {
@@ -1051,7 +1222,7 @@ table.compare th,
 table.compare td {
 	padding: 0.75rem 1rem;
 	text-align: left;
-	border-bottom: 2px solid var(--border);
+	border-bottom: 1px solid var(--border);
 	vertical-align: top;
 }
 
@@ -1101,10 +1272,10 @@ table.compare tr.hobo-row th {
 
 .cta-inner {
 	position: relative;
+	overflow: hidden;
 	padding: clamp(2.25rem, 5vw, 3.5rem);
-	border: var(--edge-strong) solid var(--ink);
-	border-radius: 0;
-	box-shadow: var(--drop) var(--drop) 0 var(--pop);
+	border: 1px solid var(--border-strong);
+	border-radius: calc(var(--radius-lg) + 6px);
 	background: var(--bg-raised);
 	text-align: center;
 }
@@ -1112,10 +1283,9 @@ table.compare tr.hobo-row th {
 .cta-inner h2 {
 	margin: 0 0 0.65rem;
 	font-family: var(--font-display);
-	font-size: clamp(1.3rem, 2.6vw, 1.8rem);
-	letter-spacing: 0.03em;
-	text-transform: uppercase;
-	font-weight: 700;
+	font-size: clamp(1.5rem, 3vw, 2.1rem);
+	letter-spacing: 0.005em;
+	font-weight: 400;
 }
 
 .cta-inner p {
@@ -1132,7 +1302,7 @@ table.compare tr.hobo-row th {
 /* ---------- Footer ---------- */
 
 .site-footer {
-	border-top: var(--edge-strong) solid var(--ink);
+	border-top: 1px solid var(--border);
 	padding: 2.75rem 0 2.25rem;
 	font-size: 0.9rem;
 }
@@ -1188,9 +1358,15 @@ table.compare tr.hobo-row th {
 	color: var(--text);
 }
 
+/* Bo idles in the footer note, standing on the baseline of the text. */
+.footer-bo {
+	flex: none;
+	margin-bottom: -0.35rem;
+}
+
 .footer-note {
 	padding-top: 1.5rem;
-	border-top: var(--edge) solid var(--border);
+	border-top: 1px solid var(--border);
 	color: var(--text-faint);
 	font-size: 0.84rem;
 	display: flex;
@@ -1251,14 +1427,14 @@ table.compare tr.hobo-row th {
 	margin: 0;
 	padding: 0;
 	list-style: none;
-	border-left: var(--edge) solid var(--border);
+	border-left: 1px solid var(--border);
 }
 
 .docs-sidebar li a {
 	display: block;
 	padding: 0.32rem 0.85rem;
-	margin-left: -2px;
-	border-left: var(--edge) solid transparent;
+	margin-left: -1px;
+	border-left: 1px solid transparent;
 	color: var(--text-mute);
 	font-size: 0.9rem;
 }
@@ -1270,9 +1446,9 @@ table.compare tr.hobo-row th {
 }
 
 .docs-sidebar li a[aria-current="page"] {
-	color: var(--accent);
+	color: var(--spark);
 	font-weight: 600;
-	border-left-color: var(--accent);
+	border-left-color: var(--spark);
 }
 
 .docs-sidebar-toggle {
@@ -1280,8 +1456,8 @@ table.compare tr.hobo-row th {
 	width: 100%;
 	margin: 0 0 1rem;
 	padding: 0.55rem 0.9rem;
-	border: var(--edge) solid var(--ink);
-	border-radius: 0;
+	border: 1px solid var(--border-strong);
+	border-radius: 10px;
 	background: var(--bg-raised);
 	color: var(--text);
 	font-size: 0.9rem;
@@ -1300,8 +1476,8 @@ table.compare tr.hobo-row th {
 		position: static;
 		max-height: none;
 		padding: 1rem;
-		border: var(--edge) solid var(--ink);
-		border-radius: 0;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
 		background: var(--bg-raised);
 		margin-bottom: 1.5rem;
 	}
@@ -1326,7 +1502,7 @@ table.compare tr.hobo-row th {
 .edit-link {
 	margin-top: 3rem;
 	padding-top: 1.25rem;
-	border-top: var(--edge) solid var(--border);
+	border-top: 1px solid var(--border);
 	font-size: 0.88rem;
 }
 
@@ -1340,32 +1516,20 @@ table.compare tr.hobo-row th {
 .prose h1 {
 	margin: 0 0 1rem;
 	font-family: var(--font-display);
-	font-size: clamp(1.5rem, 3vw, 2rem);
-	line-height: 1.2;
-	letter-spacing: 0.02em;
-	text-transform: uppercase;
-	font-weight: 700;
+	font-size: clamp(1.8rem, 3.7vw, 2.3rem);
+	line-height: 1.12;
+	letter-spacing: 0.01em;
+	font-weight: 400;
 }
 
 .prose h2 {
 	margin: 2.4rem 0 0.8rem;
 	padding-top: 1.4rem;
-	border-top: var(--edge) solid var(--border-strong);
+	border-top: 2px dashed var(--border-strong);
 	font-family: var(--font-display);
-	font-size: 1.2rem;
-	letter-spacing: 0.03em;
-	text-transform: uppercase;
-	font-weight: 700;
-}
-
-/* Display type is uppercase, but identifiers are not: a heading that names a
-   command or a type must keep its real casing. */
-.hero h1 code,
-.section-head h2 code,
-.card h3 code,
-.prose h1 code,
-.prose h2 code {
-	text-transform: none;
+	font-size: 1.45rem;
+	letter-spacing: 0.005em;
+	font-weight: 400;
 }
 
 .prose h3 {
@@ -1401,12 +1565,14 @@ table.compare tr.hobo-row th {
 .prose blockquote {
 	margin: 1.25rem 0;
 	padding: 0.8rem 1.15rem;
-	border: var(--edge) solid var(--ink);
-	border-left-width: 6px;
-	border-left-color: var(--accent-strong);
-	border-radius: 0;
+	border: 2px dashed color-mix(in srgb, var(--accent) 70%, var(--ink));
+	border-left-width: 5px;
+	border-left-style: solid;
+	border-left-color: var(--accent);
+	border-radius: var(--radius);
 	background: var(--accent-soft);
 	color: var(--text);
+	transform: rotate(-0.2deg);
 }
 
 .prose blockquote p {
@@ -1417,7 +1583,7 @@ table.compare tr.hobo-row th {
 	font-family: var(--font-mono);
 	font-size: 0.86em;
 	padding: 0.1em 0.35em;
-	border-radius: 0;
+	border-radius: 6px;
 	background: var(--bg-inset);
 	border: 1px solid var(--border);
 }
@@ -1432,8 +1598,8 @@ table.compare tr.hobo-row th {
 .prose .astro-code {
 	margin: 1.15rem 0;
 	padding: 1rem 1.15rem;
-	border: var(--edge) solid var(--ink);
-	border-radius: 0;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
 	background: var(--code-bg) !important;
 	font-size: 0.85rem;
 	line-height: 1.6;
@@ -1468,7 +1634,7 @@ table.compare tr.hobo-row th {
 .prose hr {
 	margin: 2rem 0;
 	border: 0;
-	border-top: var(--edge) solid var(--border);
+	border-top: 1px solid var(--border);
 }
 
 /* ---------- Shiki dual theme ---------- */
@@ -1502,44 +1668,11 @@ table.compare tr.hobo-row th {
 }
 
 .error-page h1 {
-	font-family: var(--font-display);
 	font-size: clamp(3rem, 10vw, 5rem);
-	letter-spacing: 0.08em;
-	font-weight: 700;
 	margin: 0 0 0.5rem;
 }
 
 .error-page p {
 	color: var(--text-mute);
 	margin: 0 0 1.5rem;
-}
-
-/* ---------- Village strip (hero art) ---------- */
-
-/* Sourced pixel art, scaled by whole pixels only and pinned to the bottom so
-   the road meets the section edge. */
-.village-strip {
-	/* Authored at x3 and shown at its native 288px: the band is cropped on
-	   small screens rather than scaled, so pixels stay whole. */
-	height: 288px;
-	background-image: url("/HoBo/pixel/hero-village.png");
-	background-repeat: repeat-x;
-	background-position: center bottom;
-	background-size: auto 288px;
-	image-rendering: pixelated;
-	border-bottom: var(--edge-strong) solid var(--ink);
-}
-
-@media (max-width: 720px) {
-	.village-strip {
-		height: 192px;
-	}
-}
-
-/* Small caps chrome stays in the readable face — the pixel display face is
-   illegible below heading sizes. */
-.hero-eyebrow .badge,
-.hero-eyebrow .sticker {
-	font-family: var(--font-sans);
-	letter-spacing: 0.08em;
 }

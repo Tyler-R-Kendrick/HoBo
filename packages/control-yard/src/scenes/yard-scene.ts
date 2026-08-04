@@ -7,13 +7,15 @@
  */
 
 import {
-	type AssetIndex,
 	animationFrameList,
+	loadAssetIndex,
 	resolveAnimation,
+	sheetAbsolutePath,
+	type AssetIndex,
 	type SpritesheetDef,
-} from "../assets-index-core.js";
-import type { BoAnimState, YardVisualState } from "../entity-state.js";
+} from "../assets-index.js";
 import { YARD_LAYOUT } from "../layout.js";
+import type { YardVisualState } from "../entity-state.js";
 
 export type PhaserLikeLoader = {
 	spritesheet: (
@@ -60,11 +62,14 @@ export type YardLoadManifest = Readonly<{
 
 /** Build load manifest from asset index — only path into Phaser loaders. */
 export function describeYardSceneLoad(
-	index: AssetIndex,
+	index: AssetIndex = loadAssetIndex(),
 	assetBaseUrl = "",
 ): YardLoadManifest {
 	const base = assetBaseUrl.replace(/\/$/, "");
-	const url = (p: string) => (base ? `${base}/${p}` : p);
+	const url = (p: string) =>
+		base
+			? `${base}/${p}`
+			: joinAsset(index, p);
 
 	const sheets = Object.values(index.spritesheets).map((sheet) => ({
 		key: sheet.id,
@@ -102,6 +107,18 @@ export function describeYardSceneLoad(
 		images: Object.freeze(images),
 		animations: Object.freeze(animations),
 	});
+}
+
+function joinAsset(index: AssetIndex, rel: string): string {
+	// Prefer absolute package assets path for node; browser uses assetBaseUrl.
+	try {
+		return sheetAbsolutePath(index, "bo-idle").replace(
+			/bo\/bo-idle\.png$/,
+			rel,
+		);
+	} catch {
+		return rel;
+	}
 }
 
 export function applyLoadManifest(
@@ -162,12 +179,9 @@ export function yardSceneHud(): YardSceneHud {
 	});
 }
 
-/**
- * Map visual state → the Operator's semantic state. There is no Bo sprite and
- * no clip id since ADR-0148: the presenter picks the tile from this.
- */
-export function operatorStateForVisual(visual: YardVisualState): BoAnimState {
-	return visual.bo.state;
+/** Map visual state → which animation id Bo should play (stable id). */
+export function boAnimationForVisual(visual: YardVisualState): string {
+	return visual.bo.animationId;
 }
 
 export function assertSheetFitsFrames(sheet: SpritesheetDef): void {

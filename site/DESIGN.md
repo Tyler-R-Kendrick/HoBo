@@ -1,51 +1,48 @@
 ---
 version: alpha
-name: HoBo Pixel
+name: HoBo Rubberhose
 description: >
-  Top-down pixel-RPG identity for HoBo — 16px tile grid, integer scaling, hard
-  plum-black outlines, and a warm earth-and-slate palette taken directly from the
-  vendored Kenney CC0 art. The control plane is a village you tend, not a
-  dashboard you read.
+  Steamboat Willie / Cuphead / Fleischer-style rubberhose cartoon identity for the
+  HoBo GitHub Pages site. Thick ink outlines, hard sticker shadows, film grain,
+  black-and-white day/night inversion, and title-card lettering — never flat SaaS
+  chrome.
 colors:
-  primary: "#3f2631"
-  on-primary: "#f4f1e8"
-  secondary: "#52607c"
-  tertiary: "#37aaa5"
-  on-tertiary: "#1a1420"
-  on-danger: "#ffffff"
-  neutral: "#c0cbdc"
-  neutral-raised: "#d9e0ea"
-  neutral-inset: "#8b9bb4"
-  outline: "#3f2631"
-  deep: "#262b44"
-  stone: "#c0cbdc"
-  slate: "#52607c"
-  grass: "#84c669"
-  path: "#eaa56c"
-  wood: "#a35422"
-  wood-dark: "#763b36"
-  accent: "#37aaa5"
-  danger: "#c34b35"
-  gold: "#c66527"
-  parchment: "#f4f1e8"
-  code-bg: "#262b44"
-  night-bg: "#1a1420"
-  night-text: "#c0cbdc"
-  night-raised: "#262b44"
+  primary: "#101010"
+  on-primary: "#ffffff"
+  secondary: "#4a4a46"
+  tertiary: "#c5301c"
+  on-tertiary: "#ffffff"
+  neutral: "#ffffff"
+  neutral-raised: "#ffffff"
+  neutral-inset: "#f4f4f2"
+  ink: "#101010"
+  soot: "#1a1512"
+  paper: "#ffffff"
+  cream: "#f2f1ec"
+  mute: "#4a4a46"
+  faint: "#6e6d68"
+  border: "#e3e2de"
+  border-strong: "#c9c8c2"
+  spark: "#c5301c"
+  go: "#14672c"
+  code-bg: "#f7f7f5"
+  night-bg: "#0a0a0a"
+  night-text: "#f2f1ec"
+  night-raised: "#111111"
 typography:
   h1:
-    fontFamily: Kenney Pixel
+    fontFamily: Chewy
     fontSize: 3rem
     fontWeight: 400
     lineHeight: 1.1
-    letterSpacing: 0.02em
+    letterSpacing: 0.01em
   h2:
-    fontFamily: Kenney Pixel
+    fontFamily: Chewy
     fontSize: 2.25rem
     fontWeight: 400
     lineHeight: 1.15
   h3:
-    fontFamily: Kenney Pixel
+    fontFamily: Chewy
     fontSize: 1.5rem
     fontWeight: 400
     lineHeight: 1.2
@@ -70,110 +67,96 @@ typography:
     fontWeight: 400
     lineHeight: 1.5
 rounded:
-  sm: 0px
-  md: 0px
-  lg: 0px
-  pill: 0px
+  sm: 4px
+  md: 12px
+  lg: 18px
+  pill: 999px
 spacing:
   xs: 4px
   sm: 8px
   md: 16px
   lg: 24px
-  xl: 48px
+  xl: 40px
   "2xl": 64px
 components:
   button-primary:
-    backgroundColor: "{colors.wood}"
+    backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
     rounded: "{rounded.sm}"
-    padding: 12px
+    padding: 14px
     typography: "{typography.h3}"
   button-primary-hover:
-    backgroundColor: "{colors.accent}"
+    backgroundColor: "{colors.spark}"
     textColor: "{colors.on-tertiary}"
   button-ghost:
     backgroundColor: "{colors.neutral}"
     textColor: "{colors.primary}"
     rounded: "{rounded.sm}"
-    padding: 12px
+    padding: 14px
     typography: "{typography.h3}"
   card:
     backgroundColor: "{colors.neutral-raised}"
-    textColor: "{colors.outline}"
-    rounded: "{rounded.sm}"
-    padding: 16px
+    textColor: "{colors.ink}"
+    rounded: "{rounded.lg}"
+    padding: 24px
   card-border:
-    backgroundColor: "{colors.outline}"
-    textColor: "{colors.on-primary}"
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
   hairline:
-    backgroundColor: "{colors.slate}"
-    textColor: "{colors.parchment}"
+    backgroundColor: "{colors.border-strong}"
+    textColor: "{colors.ink}"
   hairline-soft:
-    backgroundColor: "{colors.neutral-inset}"
-    textColor: "{colors.outline}"
+    backgroundColor: "{colors.border}"
+    textColor: "{colors.ink}"
   badge:
     backgroundColor: "{colors.neutral-inset}"
-    textColor: "{colors.outline}"
-    rounded: "{rounded.sm}"
+    textColor: "{colors.mute}"
+    rounded: "{rounded.pill}"
     padding: 8px
   caption:
     backgroundColor: "{colors.neutral}"
-    textColor: "{colors.deep}"
+    textColor: "{colors.faint}"
     typography: "{typography.label-caps}"
   header:
-    backgroundColor: "{colors.deep}"
-    textColor: "{colors.on-primary}"
-    height: 64px
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    height: 60px
   code-block:
     backgroundColor: "{colors.code-bg}"
-    textColor: "{colors.on-primary}"
-    rounded: "{rounded.sm}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
     padding: 16px
   link:
-    textColor: "{colors.accent}"
+    textColor: "{colors.ink}"
   link-hover:
-    textColor: "{colors.gold}"
+    textColor: "{colors.spark}"
   focus-ring:
-    backgroundColor: "{colors.accent}"
+    backgroundColor: "{colors.spark}"
   status-go:
-    backgroundColor: "{colors.grass}"
-    textColor: "{colors.on-tertiary}"
-    rounded: "{rounded.sm}"
+    backgroundColor: "{colors.go}"
+    textColor: "{colors.on-primary}"
+    rounded: "{rounded.pill}"
     padding: 8px
-  status-danger:
-    backgroundColor: "{colors.danger}"
-    textColor: "{colors.on-danger}"
-    rounded: "{rounded.sm}"
-    padding: 8px
-  tile:
-    backgroundColor: "{colors.grass}"
-    textColor: "{colors.outline}"
-  tile-path:
-    backgroundColor: "{colors.path}"
-    textColor: "{colors.outline}"
-  panel-inset:
-    backgroundColor: "{colors.wood-dark}"
-    textColor: "{colors.parchment}"
+  mascot-bo:
+    backgroundColor: "{colors.soot}"
+    textColor: "{colors.cream}"
   theme-night:
     backgroundColor: "{colors.night-bg}"
     textColor: "{colors.night-text}"
   theme-night-surface:
     backgroundColor: "{colors.night-raised}"
-    textColor: "{colors.stone}"
+    textColor: "{colors.cream}"
 ---
 
 ## Overview
 
-**Brand & Style:** HoBo is a **top-down pixel RPG**. The control plane is rendered
-as a village you tend — Camps are buildings, Bindles are villagers, the active rail
-is the road through town, and the approval gate is a notice board you stamp. Not a
-dashboard with a mascot bolted on.
+**Brand & Style:** HoBo’s public site is a **1930s rubberhose cartoon** — Steamboat
+Willie ink-and-paper, Cuphead title cards, Fleischer bounce — not a pastel product
+dashboard. Everything is **ink on paper by day** and **paper on ink by night**
+(exact theme inversion). Bo the bindlebug is soot-colored with googly eyes; scenery
+is *traced* illustration, never generative glop.
 
-Every pixel sits on a **16px tile grid** and is scaled by **integers only**. The
-palette, the outline colour, and the shapes all come from the vendored Kenney CC0
-art, so hand-authored chrome and game art are visibly the same material.
-
-Voice stays “homeward bound” whimsy with precise technical tables. Agents generating
+Voice is “homeward bound” whimsy with precise technical tables. Agents generating
 or editing UI **must** read this file first and keep every surface on-system.
 
 Canonical CSS implementation: `site/src/styles/global.css`. This DESIGN.md is the
@@ -182,124 +165,117 @@ hardcoded hex in new work.
 
 ### Aesthetic pillars
 
-1. **16px grid, integer scale** — art is authored at 16px and displayed at ×2/×3/×4.
-   Never fractional scaling, never bilinear smoothing: always `image-rendering:
-   pixelated` and `roundPixels`.
-2. **Hard plum-black outline** — `#3f2631` edges everything: sprites, panels,
-   buttons. 2–3px at ×1 CSS scale. No soft shadows, no blur, no Material elevation.
-3. **Square corners** — every radius is `0`. Pixel art has no antialiased curves;
-   rounded chrome instantly reads as foreign.
-4. **Earth and slate** — warm wood/path tones against cool stone/slate, with
-   **grass** for success, **danger** rust for failure, and **accent** teal reserved
-   for interactive affordances. Colour is allowed and expected; it is not a
-   monochrome system.
-5. **Pixel display type, readable body** — the pixel face carries headings, title
-   cards, and HUD labels. Body copy stays `system-ui` — small pixel faces fail
-   accessibility at paragraph length.
-6. **Sourced art, not drawn-in-code** — game and site art come from the vendored
-   CC0 packs under `packages/control-yard/assets/kenney/`. Do **not** assemble props
-   out of rectangles and lines in the renderer; that is how the previous surface
-   ended up looking like a paint program.
+1. **Rubberhose geometry** — pie-cut eyes, sausage limbs, squash-and-stretch motion
+   (honor `prefers-reduced-motion`).
+2. **Thick ink outlines** — 2–3px borders; hard **sticker** offset shadows (not soft
+   Material elevation blobs).
+3. **Title-card type** — **Chewy** for display headings; quiet system-ui for body.
+4. **Film grain** — faint fixed grain overlay; old-reel vibe without muddy contrast.
+5. **Strict B&W base** — neutrals dominate; **spark** (vermillion) and **go** (green)
+   are rare interactive/status accents only — never rainbow chrome.
+6. **Traced art only** — mascot and scene panels are reference traces (`Mascot`,
+   `scenes/*`, parallax plates). Do not invent flat vector substitutes.
 
 ## Colors
 
-Warm earth against cool slate, with three functional accents. Taken from the
-vendored art, so chrome and sprites never clash.
+Palette is **ink / paper** with two functional accents.
 
-| Token | Role | Notes |
+| Token | Light role | Notes |
 |---|---|---|
-| **primary / outline** (`#3f2631`) | Every border and sprite edge | Deep plum-black, never pure `#000` |
-| **deep** (`#262b44`) | Headers, dark panels, night ground | Cool navy |
-| **neutral / stone** (`#c0cbdc`) | Panel and page ground | Light slate — the UI "paper" |
-| **secondary / slate** (`#52607c`) | Captions, meta, secondary chrome | |
-| **grass** (`#84c669`) | Success, healthy status, ground | |
-| **path** (`#eaa56c`) | Roads, rails, warm highlight | |
-| **wood** (`#a35422`) | Primary buttons, structures | |
-| **tertiary / accent** (`#37aaa5`) | Links, focus rings, interactive | Teal — the only "come touch me" colour |
-| **danger** (`#c34b35`) | Hazards, errors, destructive | Rust, not fire-engine red |
-| **parchment** (`#f4f1e8`) | Text on dark grounds | |
+| **primary / ink** (`#101010`) | Headlines, primary buttons, outlines | Steamboat soot-black |
+| **neutral / paper** (`#ffffff`) | Page ground | Clean cel paper |
+| **secondary / mute** (`#4a4a46`) | Captions, meta | Warm gray, not blue-gray SaaS |
+| **tertiary / spark** (`#c5301c`) | Focus, hover links, danger pop | Cuphead vermillion — sparingly |
+| **go** (`#14672c`) | Success / positive status | Rare |
+| **soot** (`#1a1512`) | Bo’s body fill | Never pure `#000` on the bug |
+| **cream** (`#f2f1ec`) | Night text / ink inversion pair | Paper-on-ink |
 
-**Dark theme:** grounds move to `night-bg` / `night-raised` and text to `stone`.
-Accents keep their hue in both themes — a hazard must read as a hazard at night.
+**Dark theme:** invert grounds and inks (`night-bg` / `night-text`). Accents stay
+readable; do not invent neon palettes.
 
-**Do not:** flat brand gradients, purple AI glow, glassmorphism, drop shadows with
-blur, or vector illustration mixed in beside pixel art.
+**Do not:** flat brand gradients, purple AI glow, glassmorphism, or full-color
+product illustration.
 
 ## Typography
 
-| Style | Family | Size / line-height | Use |
-|---|---|---|---|
-| h1 | Kenney Pixel | 3rem / 1.1 | Page + title cards |
-| h2 | Kenney Pixel | 2.25rem / 1.15 | Section heads |
-| h3 | Kenney Pixel | 1.5rem / 1.2 | Buttons, sub-heads |
-| body-md | system-ui | 1rem / 1.65 | Paragraphs |
-| label-caps | system-ui 700 | 0.75rem, 0.08em | HUD labels, meta |
-| mono | ui-monospace | 0.875rem / 1.5 | Code, ids, hashes |
+- **Display (h1–h3):** Chewy — rubberhose title card, slightly uneven friendly letterforms.
+- **Body:** system-ui stack — legible docs prose at 1rem / 1.65 line-height.
+- **Labels:** small caps tracking for badges and step numbers.
+- **Mono:** ui-monospace for code only.
 
-Set pixel faces at integer multiples of their native size where possible so glyphs
-stay crisp. Never set body copy in the pixel face.
+Headlines can be slightly oversized and “bouncy”; body stays calm so technical
+tables remain scannable.
 
 ## Layout
 
-Container ≈1160px. Header 64px. Spacing scale 4 / 8 / 16 / 24 / 48 / 64 — multiples
-of the 16px tile so chrome lines up with art. Game canvas is 1280×720 logical,
-`Phaser.Scale.FIT`, integer-scaled.
+- Max content width ≈ **1160px** container; header ~**3.75rem**.
+- Spacing scale: 4 / 8 / 16 / 24 / 40 / 64 — generous cartoon breathing room.
+- Docs: sticky sidebar + prose column; landing: hero + story scenes + bento cards.
+- Base path deploy: `/HoBo/` — links in markdown include the base.
 
 ## Elevation & Depth
 
-Depth is **stacking and outline weight**, never blur. A raised panel is
-`neutral-raised` with a 3px `outline` border and a hard 4px offset shadow in
-`outline` at 100% opacity. Overlapping game props sort by depth band, not by shadow.
+Not Material elevation. Use **sticker depth**:
+
+- Hard offset shadows (e.g. 4px 4px 0 ink) on cards/buttons when pop is needed.
+- Thick 2–3px borders in `ink` / `border-strong`.
+- Film grain overlay sits above the whole page (non-interactive).
+- Parallax trail band uses **supplied plates**, not CSS-drawn hills.
 
 ## Shapes
 
-All radii are `0`. Buttons, panels, badges, and inputs are rectangles with hard
-outlines. Chamfers, if ever needed, are stepped in whole pixels — never curved.
+- **md radius 12px** default cards/buttons; **lg 18px** for story cards.
+- Pills for badges/step chips.
+- Avoid 0-radius enterprise rectangles and 32px soft “iOS” bubbles.
 
 ## Components
 
-- **Button** — `wood` fill, `outline` border, `on-primary` label in the pixel face,
-  hard offset shadow. Hover flips fill to `accent`; press removes the offset (the
-  button visually sinks). Focus shows a 3px `accent` ring, always visible.
-- **Panel / card** — `neutral-raised` fill, 3px `outline`, square corners.
-- **Badge** — `neutral-inset`, square, label-caps.
-- **Status** — `grass` for go, `danger` for hazard, `accent` for pending/interactive.
-- **Link** — `accent`, underlined on hover in `gold`.
+### Buttons (cartoon signage — not pills)
+
+Buttons are **roadside / tavern sign boards**, not soft ellipses or Material CTAs:
+
+- **Silhouette:** chamfered wooden-plank `clip-path` (cut corners), never `border-radius: 999px`.
+- **Ink rim:** hard outer stroke + painted inner rail + top rivet/nail heads.
+- **Type:** Chewy title-card lettering (`h3` scale), slightly tracked.
+- **Primary:** solid ink (or night cream) fill, paper text; hover can flash **spark** vermillion like a painted warning sign.
+- **Ghost:** paper/board fill, ink rim, reads as an unpainted plank.
+- **Motion:** hang-and-bounce on hover (`translate` + slight `rotate`); press flattens the sticker shadow.
+- **Shadow:** hard offset sticker depth only — no soft blur elevation.
+
+### Cards
+
+- Paper ground, ink border, optional hard shadow; icons are monochrome or Bo art.
+
+### Navigation
+
+- Header on paper/ink with high contrast; active states use underline or ink chip,
+  not rainbow tabs.
+
+### Code
+
+- Inset code blocks on `code-bg`; grayscale filter acceptable so syntax never
+  breaks the B&W story.
+
+### Focus
+
+- **spark** outline 2.5px — always visible for a11y.
 
 ## Do's and Don'ts
 
-**Do:** author on the 16px grid; scale by integers; outline everything in `#3f2631`;
-use the vendored CC0 packs; keep body copy in `system-ui`; record every imported
-asset in `packages/control-yard/assets/CREDITS.md`.
+### Do
 
-**Don't:** build props from rectangles and lines in renderer code; mix vector
-illustration with pixel art; use rounded corners, blurred shadows, or gradients;
-scale pixel art fractionally; set paragraphs in a pixel font; introduce colours
-outside the vendored palette without adding them here first.
+- Lead with rubberhose / Steamboat / Cuphead language in new illustrations and
+  motion (bounce, squash, pie eyes).
+- Keep day/night as **inversion pairs** of the same tokens.
+- Trace or reuse existing Bo / scene / plate art.
+- Put interactive emphasis on **spark** sparingly; default chrome stays ink/paper.
+- Validate this file with `pnpm --filter hobo-site run design:lint`.
 
-## Game Surface (the Station village)
+### Don't
 
-The game is the primary control-plane surface (ADR-0148).
-
-**Canvas** — 1280×720 logical, `Phaser.Scale.FIT`, `pixelArt: true`,
-`roundPixels: true`, `antialias: false`. Tiles are 16px at ×3 (48px on screen).
-
-**World mapping** — every element is a real projection, never decoration:
-
-| Control plane | Village |
-|---|---|
-| Station | the town |
-| Camp | a house |
-| Bindle | a villager outside its house |
-| Active rail | the road through town |
-| Connection | a gate in the boundary fence |
-| Waybill / approval gate | the notice board |
-| Quota + spend | the treasury |
-| Doctor hazard | a hazard marker on the affected thing |
-| Highball (clean board) | the town banner raised |
-
-**Rules** — one sprite per real entity and no decorative extras; hazards are the
-only thing that may use `danger`; synthetic or simulated values always render with a
-visible `SIMULATED` tag; motion is accent only, so `prefers-reduced-motion` pins
-sprite frames and stops ambient motion while every state stays legible; audio is
-opt-in, muted by default, and never the sole carrier of a signal.
+- Don’t introduce flat SaaS blues, purples, or multi-stop brand gradients.
+- Don’t replace traced scenes with stock isometric 3D or “AI app” blobs.
+- Don’t thin outlines below ~2px on primary chrome.
+- Don’t soft-blur everything into modern glass UI.
+- Don’t put free-text secrets or live credentials in examples (HoBo policy).
+- Don’t link page prose to raw `docs/design/` repo paths — restate for Pages.

@@ -50,12 +50,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 							? "dark"
 							: "light";
 				document.documentElement.dataset.theme = theme;
-				// Palette is the second axis. Absent or unknown => ink, the
-				// canonical black-and-white, so a bad stored value cannot strand
-				// anyone in a half-applied theme.
-				const pal = localStorage.getItem("hobo-palette");
-				if (pal && ["dusk", "rain", "cel", "moss"].includes(pal)) {
-					document.documentElement.dataset.palette = pal;
+				// Design is the second axis — layout, type and surface, not just
+				// colour. Absent or unknown => ink, the canonical rubberhose, so a
+				// bad stored value cannot strand anyone in a half-applied theme.
+				const dsn = localStorage.getItem("hobo-design");
+				if (dsn && ["broadsheet", "titlecard", "ledger", "cutout"].includes(dsn)) {
+					document.documentElement.dataset.design = dsn;
 				}
 			})();
 		</script>
@@ -87,18 +87,18 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 				localStorage.setItem("hobo-theme", next);
 				syncPressed();
 			});
-			// Palette picker. `ink` clears the attribute rather than setting a
+			// Design picker. `ink` clears the attribute rather than setting a
 			// value, so the default stays the absence of a choice.
-			for (const b of document.querySelectorAll("[data-set-palette]")) {
+			for (const b of document.querySelectorAll("[data-set-design]")) {
 				b.addEventListener("click", () => {
-					const p = b.dataset.setPalette;
+					const p = b.dataset.setDesign;
 					const root = document.documentElement;
 					if (p === "ink") {
-						delete root.dataset.palette;
-						localStorage.removeItem("hobo-palette");
+						delete root.dataset.design;
+						localStorage.removeItem("hobo-design");
 					} else {
-						root.dataset.palette = p;
-						localStorage.setItem("hobo-palette", p);
+						root.dataset.design = p;
+						localStorage.setItem("hobo-design", p);
 					}
 					b.closest("details")?.removeAttribute("open");
 				});

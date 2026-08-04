@@ -144,6 +144,61 @@ Do not hand-edit generated files. Avoid manual barrel-file edits; prefer direct 
 
 The generated-files pre-commit guard (`scripts/no-hand-edited-generated-files.mts`) accepts generated-output changes only when the same commit also touches their driving sources: protobuf/CUE schemas, WIT interfaces, or a recognized generator (schema-tools, `packages/wit` codegen + `wit-lock.json`). Regenerate with the owning codegen command (`pnpm run codegen`, `pnpm --filter @hobo/wit run wit:gen`) rather than editing outputs.
 
+## Generated-art rules (Spriterrific, Higgsfield, any image/video model)
+
+**Skill precedence: the local `spriterrific` CLI skill beats `spriterrific-api`.**
+Same engine; the local one writes a reviewable run folder and catches a bad
+anchor before it is animated, which is where the cost is. Use the hosted API
+only when the CLI genuinely cannot run (no `FAL_KEY`, no Python, no tool) or the
+user asks for it — and say which you used.
+
+### Where assets land
+
+Three tiers, and the boundary between them is *review*, not convenience:
+
+| Tier | Path | Committed | What it is |
+|---|---|---|---|
+| Run | `media/runs/<run-id>/` | **no** (`.gitignore: runs/`) | raw generator output, prompts, provider payloads. Reproducible; large. |
+| Reference | `media/public/reference/` | yes | reviewed art you generate *from* — turnarounds, model sheets, meshes. Never served by the site. |
+| Shipped | `site/public/parallax/` | yes | what the live site loads. Normalised to the sheet contract. |
+
+Promote **upward only, and only after review.** Never commit a run folder, and
+never let generator output reach `site/` without passing the character lock in
+`site/public/parallax/README.md`. The repo already carries one folder of
+off-model sheets (`site/public/bo-actions/`, 1.28 MB, unreferenced) from
+skipping that step; do not add a second.
+
+### Visualise before promoting — and look at it
+
+Generated art fails in ways gates cannot see. A checklist that passes CI and an
+image with a mouth on a mouthless character are the same thing to `agent:check`.
+
+- **Render it and actually look**, at the size it will ship. Read the file back;
+  do not infer from the prompt you sent.
+- **Play sequences, don't eyeball sheets.** A spritesheet flat tells you nothing
+  about timing. `media/` renders every sheet animated from its real frame
+  geometry — add new sheets to `media/src/data/assets.ts` and view them there.
+- **Compare against the reference numerically**, not by vibe: silhouette
+  overlap, grey/alpha level histograms, opaque-pixel counts, feet baseline. The
+  measurable checks are what caught legs shipping at grey 41–82 against the
+  reference's 0.
+- **Composite in context** — a plate looks fine alone and wrong over the band.
+
+### Reporting back
+
+Every reply that produces or changes an asset ends with **somewhere the user can
+look**, not a path they have to go find:
+
+- a **live URL** when it is deployed — the catalogue is
+  `https://tyler-r-kendrick.github.io/HoBo/media/`, the site is `/HoBo/`;
+- the **local page** otherwise (`pnpm --filter hobo-media run dev`), plus the
+  repo path;
+- for Spriterrific specifically, the run's own `review/index.md`.
+
+State plainly what is **promoted** versus what is **sitting in a run for
+review**, and if the output is off-model, say so and leave it in the run. An
+asset the user cannot see is not delivered.
+
 ## Draft-proof promotion policy
 
 When a draft proof under `src/draft/` is promoted into a production package, **the package copy becomes canonical and the proof is frozen** — record the promotion in [`scripts/promotions.json`](scripts/promotions.json) (`status: "frozen"`, digests pinned via `pnpm run promotions:check -- --update`). After that, all changes land in the package; `pnpm run promotions:check` (enforced by the root test suite) fails if a frozen proof is edited. Partial promotions that deliberately leave capability behind in the proof use `status: "reference"` with a note explaining the split. This exists because promoted copies previously diverged silently (see GAPS.md implementation-gap register, IMPL-005/IMPL-006).

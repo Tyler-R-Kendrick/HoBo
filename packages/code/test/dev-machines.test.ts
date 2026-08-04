@@ -15,6 +15,7 @@ import {
 	machinesForAgent,
 	pamTarget,
 	parseDevMachine,
+	resolveMachine,
 	sshDestination,
 } from "../src/dev-machines.js";
 
@@ -218,6 +219,92 @@ describe("mux resolves --host against the registry", () => {
 		const result = await runHoboCodeCli(["machines"], { hoboHome: home, cwd: project });
 		expect(result.message).toContain("ok.ts.net");
 		expect(result.message).toMatch(/rejected · bad/);
+		rmSync(home, { recursive: true, force: true });
+		rmSync(project, { recursive: true, force: true });
+	});
+});
+
+describe("resolving --host is unambiguous", () => {
+	const machines = [
+		{ id: "jump", host: "dev-box", user: "root", isolationClass: "production" as const },
+		{ id: "dev-box", host: "sandbox.ts.net", user: "agent", isolationClass: "ephemeral" as const },
+	];
+
+	it("an exact id beats an earlier entry's host", () => {
+		// The old single-pass `id === x || host === x` selected `jump` here: the
+		// operator named one machine and got another, as another user, under a
+		// production policy instead of an ephemeral one.
+		const resolved = resolveMachine(machines, "dev-box");
+		expect(resolved && "machine" in resolved && resolved.machine.id).toBe("dev-box");
+		expect(resolved && "machine" in resolved && resolved.machine.isolationClass).toBe(
+			"ephemeral",
+		);
+	});
+
+	it("resolves by host when no id matches", () => {
+		const resolved = resolveMachine(machines, "sandbox.ts.net");
+		expect(resolved && "machine" in resolved && resolved.machine.id).toBe("dev-box");
+	});
+
+	it("refuses to choose when two machines share a host", () => {
+		const shared = [
+			{ id: "a", host: "same.ts.net", isolationClass: "development" as const },
+			{ id: "b", host: "same.ts.net", isolationClass: "production" as const },
+		];
+		const resolved = resolveMachine(shared, "same.ts.net");
+		expect(resolved && "ambiguous" in resolved).toBe(true);
+	});
+
+	it("returns null for an unknown name", () => {
+		expect(resolveMachine(machines, "nope")).toBeNull();
+	});
+});
+
+describe("declared agent placement is enforced", () => {
+	it("refuses when no detected agent may use the machine", async () => {
+		const home = mkdtempSync(join(tmpdir(), "hobo-m-"));
+		const project = mkdtempSync(join(tmpdir(), "proj-m-"));
+		writeFileSync(
+			join(project, DEV_MACHINES_FILE),
+			JSON.stringify({
+				machines: [
+					{
+						id: "gpu",
+						host: "gpu.ts.net",
+						isolationClass: "ephemeral",
+						// A machine that hosts nothing detectable here.
+						agents: ["no-such-agent"],
+					},
+				],
+			}),
+		);
+		const result = await runHoboCodeCli(["mux", "--dry-run", "--host", "gpu"], {
+			hoboHome: home,
+			cwd: project,
+		});
+		expect(result.ok).toBe(false);
+		expect(result.code).toBe("HOBO_CODE_MUX_NO_PLACEABLE_AGENTS");
+		rmSync(home, { recursive: true, force: true });
+		rmSync(project, { recursive: true, force: true });
+	});
+
+	it("refuses --virtual with --host rather than failing per pane", async () => {
+		const home = mkdtempSync(join(tmpdir(), "hobo-m-"));
+		const project = mkdtempSync(join(tmpdir(), "proj-m-"));
+		writeFileSync(
+			join(project, DEV_MACHINES_FILE),
+			JSON.stringify({
+				machines: [{ id: "box", host: "box.ts.net", isolationClass: "development" }],
+			}),
+		);
+		// A vshell command names a local path; on the remote it does not exist,
+		// and the panes would fail after sessions had already been brokered.
+		const result = await runHoboCodeCli(
+			["mux", "--dry-run", "--host", "box", "--virtual"],
+			{ hoboHome: home, cwd: project },
+		);
+		expect(result.ok).toBe(false);
+		expect(result.code).toBe("HOBO_CODE_MUX_VIRTUAL_REMOTE");
 		rmSync(home, { recursive: true, force: true });
 		rmSync(project, { recursive: true, force: true });
 	});

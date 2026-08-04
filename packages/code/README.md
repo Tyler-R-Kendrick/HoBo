@@ -445,12 +445,23 @@ out. Two layers close that:
   There is no `execve`: commands are TypeScript implementations dispatched from
   a registry, so anything off the allow-list simply **does not exist** (`rm`
   answers `command not found`). Network commands are absent entirely. Reads
-  come from the real tree, writes stay in memory until promotion, and no path
-  resolves outside the mounted root.
+  come from the real tree and cannot resolve outside the mounted root; writes
+  stay in memory until promotion, so nothing an agent does reaches the
+  checkout. Two limits worth knowing: `find -delete` can remove files even
+  though `rm` is absent (in the default overlay that is the in-memory copy
+  only), and a path outside the root **writes** succeed into memory rather
+  than failing — they simply never reach disk.
+
+  Symlinks are refused by default, which in a pnpm workspace means dependency
+  sources under `node_modules` read as missing; pass `allowSymlinks` for a tree
+  whose links are trusted.
 - **Observation** — `tmux capture-pane` returns text tmux has already
-  interpreted. The harness instead runs its own VT parser
-  (`@xterm/headless`) over the pane's raw stream (`pipe-pane -O`), so a pane is
-  a structured screen the shell can render, gate on and record.
+  interpreted, which cannot say *when* a prompt appeared or what the screen
+  held at a moment. `src/virtual-terminal.ts` provides the replacement: a VT
+  parser (`@xterm/headless`) fed by `pipe-pane -O`, yielding a structured
+  screen buffer. **It is a library, not yet a wired surface** — nothing in the
+  pane path calls it today, so treat this as the mechanism that exists rather
+  than a behaviour you get.
 
 Neither is a VM: just-bash runs in-process, so this bounds what an agent can
 *name and touch*, not what hostile native code could do.

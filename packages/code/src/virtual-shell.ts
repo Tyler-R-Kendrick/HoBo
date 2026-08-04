@@ -54,6 +54,10 @@ export const DEFAULT_COMMANDS = [
 	"egrep",
 	"fgrep",
 	"rg",
+	// `find` carries `-delete`, so "rm is absent" does not mean "nothing can
+	// delete". In the default overlay that only removes the in-memory copy; with
+	// `writable: true` it removes the real file. Kept because searching a tree
+	// without it is painful, and named here so the limit is not a surprise.
 	"find",
 	// transform
 	"awk",
@@ -118,7 +122,24 @@ export interface VirtualShellOptions {
 	readonly env?: Readonly<Record<string, string>>;
 	/** Ceiling on a single command's runtime. */
 	readonly timeoutMs?: number;
+	/**
+	 * Follow symlinks inside the mounted root.
+	 *
+	 * Off by default: a symlink is the classic way out of a rooted filesystem.
+	 * On for a workspace whose links are known — a pnpm tree, where every
+	 * dependency is a link and refusing them makes dependency source unreadable.
+	 */
+	readonly allowSymlinks?: boolean;
 }
+
+/**
+ * Commands that can remove files despite `rm` being absent.
+ *
+ * Named rather than implied: a reader who sees no `rm` in the allow-list will
+ * otherwise conclude that a virtual pane cannot delete anything, and that is
+ * not true.
+ */
+export const DELETION_CAPABLE = ["find"] as const;
 
 export interface VirtualRun {
 	readonly stdout: string;
@@ -164,6 +185,12 @@ export function createVirtualShell(options: VirtualShellOptions): VirtualShell {
 	// ReadWriteFs is rooted at `/` with no mount point of its own, so the
 	// writable case composes it under a MountableFs to keep both variants
 	// presenting the workspace at the same path.
+	// Symlinks are refused by the overlay for good reason (they are the classic
+	// way out of a rooted filesystem), but in a pnpm workspace *every*
+	// dependency is one, so an agent reading `node_modules/...` gets a bare
+	// `No such file or directory` — precisely the "policy answer that looks
+	// like a missing file" this layer exists to avoid. `allowSymlinks` is the
+	// opt-in for a tree whose links are trusted; it stays off by default.
 	const fs = writable
 		? new MountableFs({
 				mounts: [
@@ -173,7 +200,11 @@ export function createVirtualShell(options: VirtualShellOptions): VirtualShell {
 					},
 				],
 			})
-		: new OverlayFs({ root: options.workspace, mountPoint: VIRTUAL_WORKSPACE });
+		: new OverlayFs({
+				root: options.workspace,
+				mountPoint: VIRTUAL_WORKSPACE,
+				...(options.allowSymlinks === true ? { allowSymlinks: true } : {}),
+			});
 	const bash = new Bash({
 		fs,
 		cwd: VIRTUAL_WORKSPACE,

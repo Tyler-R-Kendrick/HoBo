@@ -41,6 +41,7 @@ import {
 	REGENERABLE,
 	removeWorkspace,
 	RIFT_DIR,
+	shellQuote,
 } from "../src/workspace.js";
 
 const dirs: string[] = [];
@@ -743,5 +744,39 @@ describe("two creates racing on one name", () => {
 		const made = createWorkspace({ root, name: "claude" });
 		expect(made.workspace).not.toBeNull();
 		expect(existsSync(claim)).toBe(false);
+	});
+});
+
+describe("exec reassembles its argv without losing quoting", () => {
+	it("keeps a path containing a space as one argument", () => {
+		// `argv.slice(sep + 1).join(" ")` looked equivalent to preserving the
+		// caller's quoting and was not: their shell has already consumed it, so
+		// a workspace path with a space arrived as stray positionals.
+		const record = {
+			name: "a",
+			path: "/ws/a",
+			tier: "copy" as const,
+			source: "/src",
+			createdAt: "",
+		};
+		const inner = ["hobo-code", "vshell", "--workspace", "/ws/my repo/merged"]
+			.map((a) => shellQuote(a))
+			.join(" ");
+		expect(inner).toBe(
+			"'hobo-code' 'vshell' '--workspace' '/ws/my repo/merged'",
+		);
+		expect(execCommand(record, inner)).toContain("'/ws/my repo/merged'");
+	});
+
+	it("neutralises a path that would otherwise execute", () => {
+		// A directory named `pj;touch $SP` used to run `touch` in the namespace,
+		// as a real binary, before the workspace command ran at all.
+		const hostile = "/tmp/pj;touch $SP-injected/x";
+		const quoted = shellQuote(hostile);
+		expect(quoted).toBe("'/tmp/pj;touch $SP-injected/x'");
+		// Inside single quotes both the separator and the expansion are literal.
+		expect(quoted.indexOf(";")).toBeGreaterThan(0);
+		expect(quoted.startsWith("'")).toBe(true);
+		expect(quoted.endsWith("'")).toBe(true);
 	});
 });

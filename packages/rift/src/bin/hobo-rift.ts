@@ -15,6 +15,7 @@ import {
 	pruneDebris,
 	readRegistry,
 	rebuildRegistry,
+	shellQuote,
 	removeWorkspace,
 	runInWorkspace,
 } from "../workspace.js";
@@ -29,7 +30,7 @@ const sep = argv.indexOf("--");
 const ours = sep >= 0 ? argv.slice(0, sep) : argv;
 
 /** Flags that consume the next token; needed to tell a flag value from the verb. */
-const VALUE_FLAGS = new Set(["--root", "--name"]);
+const VALUE_FLAGS = new Set(["--root", "--name", "--shell"]);
 
 function flag(name: string): string | undefined {
 	const i = ours.indexOf(`--${name}`);
@@ -136,9 +137,22 @@ if (command === "capability") {
 	if (!removed) process.exitCode = 1;
 } else if (command === "exec") {
 	const name = flag("name");
-	const inner = sep >= 0 ? argv.slice(sep + 1).join(" ") : "";
+	const vector = sep >= 0 ? argv.slice(sep + 1) : [];
+	const snippet = flag("shell");
+	// `--` takes an argv *vector*, and each element is quoted when the command
+	// is reassembled. Joining with spaces looked equivalent and was not: the
+	// caller's quoting is already consumed by their shell, so a workspace path
+	// containing a space split into stray positionals, and one containing `;`
+	// or `$(…)` executed in the namespace before the workspace command ever
+	// ran. `--shell` is the explicit way to ask for shell syntax.
+	const inner =
+		snippet !== undefined
+			? snippet
+			: vector.map((a) => shellQuote(a)).join(" ");
 	if (!name || inner.length === 0) {
-		process.stderr.write("exec needs --name <name> -- <command>\n");
+		process.stderr.write(
+			"exec needs --name <name> and either -- <cmd> [args…] or --shell <snippet>\n",
+		);
 		process.exit(2);
 	}
 	const record = readRegistry(root).workspaces.find((w) => w.name === name);
@@ -166,7 +180,8 @@ if (command === "capability") {
 			"  hobo-rift create --name NAME [--copy-all]    make a workspace, print its path",
 			"  hobo-rift list       [--root DIR] [--json]   list workspaces",
 			"  hobo-rift remove --name NAME                 delete a workspace",
-			"  hobo-rift exec --name NAME -- CMD            run CMD inside the workspace",
+			"  hobo-rift exec --name NAME -- CMD [ARGS…]    run CMD inside the workspace",
+			"  hobo-rift exec --name NAME --shell SNIPPET   run a shell snippet there",
 			"  hobo-rift repair     [--root DIR]            reconcile the registry with the journal",
 			"  hobo-rift prune      [--root DIR]            delete directories parked by create",
 			"",

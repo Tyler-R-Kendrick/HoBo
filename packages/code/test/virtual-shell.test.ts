@@ -7,13 +7,22 @@
  * as an escape attempt rather than a happy path, because the value of the layer
  * is entirely in what it refuses.
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import {
 	createVirtualShell,
 	DEFAULT_COMMANDS,
+	DELETION_CAPABLE,
 	isAllowed,
 	mountFor,
 	VIRTUAL_WORKSPACE,
@@ -105,12 +114,29 @@ describe("what the agent cannot run", () => {
 		}
 	});
 
-	it("cannot delete — rm is simply absent", async () => {
+	it("has no rm — but find -delete still deletes, and that is documented", async () => {
 		const { root } = workspace();
 		const shell = createVirtualShell({ workspace: root });
 		expect((await shell.run("rm -rf /")).refused).toBe(true);
 		expect((await shell.run("rm README.md")).refused).toBe(true);
+
+		// The honest part: `rm` being absent does NOT mean nothing can delete.
+		// In the default overlay this removes the in-memory copy only, so the
+		// checkout survives — but a reader who assumed "no rm, no deletion"
+		// would be wrong, which is why DELETION_CAPABLE names it.
+		await shell.run("find . -name README.md -delete");
+		expect((await shell.run("ls")).stdout).not.toContain("README.md");
 		expect(existsSync(join(root, "README.md"))).toBe(true);
+		expect(DELETION_CAPABLE).toContain("find");
+	});
+
+	it("find -delete reaches the real file when the shell is writable", async () => {
+		// Stated as a test rather than left for someone to discover: `writable`
+		// is exported API, and with it the deletion is not confined.
+		const { root } = workspace();
+		const shell = createVirtualShell({ workspace: root, writable: true });
+		await shell.run("find . -name README.md -delete");
+		expect(existsSync(join(root, "README.md"))).toBe(false);
 	});
 
 	it("honours a narrower allow-list", async () => {
@@ -142,13 +168,36 @@ describe("what the agent writes", () => {
 		expect(readFileSync(join(root, "out.txt"), "utf8")).toContain("persisted");
 	});
 
-	it("still cannot write outside the workspace when writable", async () => {
+	it("a write outside the root never reaches disk — but it does not fail", async () => {
+		// The distinction matters: `/workspace/..` is a *virtual* root, so the
+		// write succeeds into memory and returns 0. Nothing escapes, but
+		// "no path resolves outside the mounted root" is true of reads only,
+		// and an assertion that only checked the disk would pass without
+		// establishing that.
 		const { root, outside } = workspace();
 		const shell = createVirtualShell({ workspace: root, writable: true });
-		await shell.run(`echo pwned > ${outside}`);
-		await shell.run("echo pwned > ../credentials.txt");
+		const absolute = await shell.run(`echo pwned > ${outside}`);
+		const relative = await shell.run("echo pwned > ../credentials.txt");
+		expect(absolute.exitCode).toBe(0);
+		expect(relative.exitCode).toBe(0);
+		// …and yet the real file is untouched.
 		expect(readFileSync(outside, "utf8")).toContain("AKIA");
 		expect(readFileSync(outside, "utf8")).not.toContain("pwned");
+	});
+
+	it("reports a symlink as missing unless links are allowed", async () => {
+		// Every dependency in a pnpm workspace is a symlink, so this is the case
+		// an agent hits constantly — and `refused` is false, so the pane does not
+		// even print the "allow-list, not a missing binary" line.
+		const { root, outside } = workspace();
+		symlinkSync(outside, join(root, "link.txt"));
+		const strict = createVirtualShell({ workspace: root });
+		const blocked = await strict.run("cat link.txt");
+		expect(blocked.exitCode).not.toBe(0);
+		expect(blocked.refused).toBe(false);
+
+		const permissive = createVirtualShell({ workspace: root, allowSymlinks: true });
+		expect((await permissive.run("ls")).stdout).toContain("link.txt");
 	});
 });
 

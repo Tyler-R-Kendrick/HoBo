@@ -4,8 +4,10 @@
  * A normal pane runs the agent's binary. A virtualized one runs this: a REPL
  * whose every command goes through `virtual-shell.ts`, so the pane cannot name
  * anything the allow-list omits — there is no `execve` behind it to escape to.
- * Output is rendered through `virtual-terminal.ts`, which means the pane's
- * screen is a structure the harness holds rather than bytes it merely forwards.
+ * Output goes straight to the pane today. `virtual-terminal.ts` is the parser
+ * that would make the screen a structure the harness holds rather than bytes it
+ * forwards, but nothing routes through it yet — saying otherwise here would
+ * describe a design instead of the code.
  */
 
 import { createInterface } from "node:readline";

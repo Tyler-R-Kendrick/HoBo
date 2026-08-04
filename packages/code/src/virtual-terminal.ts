@@ -133,8 +133,12 @@ export function createVirtualTerminal(
  * above needs in order to be the thing doing the interpreting.
  */
 export function pipePaneCommand(target: string, sink: string): readonly string[] {
+	// Single quotes, not JSON.stringify: the sink is interpolated into a shell
+	// command tmux runs, and double quotes leave `$`, backticks and backslashes
+	// live.
+	const quoted = `'${sink.replace(/'/gu, `'\\''`)}'`;
 	// -O so existing output is included, not only what arrives after this call.
-	return ["pipe-pane", "-O", "-t", target, `cat >> ${JSON.stringify(sink)}`];
+	return ["pipe-pane", "-O", "-t", target, `cat >> ${quoted}`];
 }
 
 /** Stop streaming a pane. */

@@ -18,6 +18,8 @@ import { allocateAgentWorkspaces } from "./agent-workspaces.js";
 import {
 	DEV_MACHINES_FILE,
 	loadDevMachines,
+	machinesForAgent,
+	resolveMachine,
 	sshDestination,
 } from "./dev-machines.js";
 import {
@@ -724,9 +726,14 @@ const VERB_HELP_PLAIN: Record<
 		"No path resolves outside the mounted root, and there are no network",
 		"commands at all.",
 		"",
-		"--tier/--source come from `hobo-rift create --json`: an overlay workspace",
-		"is mounted inside a namespace, so its path is empty to this process and",
-		"the source is what gets mounted instead.",
+		"--tier/--source come from `hobo-rift create --json`, and are for running",
+		"vshell OUTSIDE the workspace's namespace: an overlay path is empty to a",
+		"process outside it, so the source is mounted instead.",
+		"",
+		"Do NOT pass them when vshell runs inside `hobo-rift exec` (which is what",
+		"`mux --virtual` does): there the merged path is real, and mounting the",
+		"source would hand the agent the SHARED tree instead of its own — exactly",
+		"the collision rift exists to prevent.",
 		"",
 		"Not a VM: this bounds what an agent can name and touch, not what",
 		"hostile native code could do.",
@@ -1789,12 +1796,28 @@ export async function runHoboCodeCli(
 			typeof flags.name === "string" && flags.name.length > 0
 				? flags.name
 				: "agent";
-		await runVirtualPane({
-			agentId,
-			workspace,
-			...(typeof flags.tier === "string" ? { tier: flags.tier } : {}),
-			...(typeof flags.source === "string" ? { source: flags.source } : {}),
-		});
+		// createVirtualShell throws synchronously on a missing root, and this
+		// verb awaits it directly — an unhandled rejection out of the CLI rather
+		// than a HOBO_CODE_* result, reachable from the documented flag.
+		try {
+			await runVirtualPane({
+				agentId,
+				workspace,
+				...(typeof flags.tier === "string" ? { tier: flags.tier } : {}),
+				...(typeof flags.source === "string" ? { source: flags.source } : {}),
+			});
+		} catch (error) {
+			return fail(
+				"HOBO_CODE_VSHELL_FAILED",
+				panel("✕ vshell", [
+					error instanceof Error ? error.message : String(error),
+					`workspace · ${workspace}`,
+					"A virtual pane mounts a real directory; that one could not be read.",
+				]),
+				["hobo-code vshell --help", "hobo-code mux --dry-run"],
+				{ agentId, workspace },
+			);
+		}
 		return ok("HOBO_CODE_VSHELL", "virtual pane closed", {
 			agentId,
 			workspace,
@@ -1830,11 +1853,26 @@ export async function runHoboCodeCli(
 			? projectMachines
 			: loadDevMachines(join(dirname(fileURLToPath(import.meta.url)), ".."));
 		const requestedHost = typeof flags.host === "string" ? flags.host : undefined;
-		const resolvedMachine = requestedHost
-			? declaredMachines.machines.find(
-					(m) => m.id === requestedHost || m.host === requestedHost,
-				)
-			: undefined;
+		const resolution = requestedHost
+			? resolveMachine(declaredMachines.machines, requestedHost)
+			: null;
+		if (resolution !== null && "ambiguous" in resolution) {
+			return fail(
+				"HOBO_CODE_MUX_AMBIGUOUS_MACHINE",
+				panel("✕ mux", [
+					`"${requestedHost}" is the host of more than one declared machine.`,
+					...resolution.ambiguous.map((m) => `  ${m.id} · ${m.isolationClass}`),
+					"Name one by its id — choosing for you is how the wrong session",
+					"gets brokered against the wrong isolation class.",
+				]),
+				["hobo-code machines"],
+				{ requested: requestedHost, ambiguous: resolution.ambiguous },
+			);
+		}
+		const resolvedMachine =
+			resolution !== null && "machine" in resolution
+				? resolution.machine
+				: undefined;
 		if (requestedHost && !resolvedMachine) {
 			return fail(
 				"HOBO_CODE_MUX_UNKNOWN_MACHINE",
@@ -1859,6 +1897,30 @@ export async function runHoboCodeCli(
 			? sshDestination(resolvedMachine)
 			: undefined;
 
+		// A machine may declare which agents it hosts; honouring that here is
+		// what makes the field mean anything. An agent with nowhere to go is
+		// named rather than silently placed on a machine that excluded it.
+		const placeable = resolvedMachine
+			? agents.filter((a) =>
+					machinesForAgent([resolvedMachine], a.id).length > 0,
+				)
+			: agents;
+		const excluded = resolvedMachine
+			? agents.filter((a) => !placeable.some((p) => p.id === a.id))
+			: [];
+		if (resolvedMachine && placeable.length === 0) {
+			return fail(
+				"HOBO_CODE_MUX_NO_PLACEABLE_AGENTS",
+				panel("✕ mux", [
+					`${resolvedMachine.id} declares agents · ${(resolvedMachine.agents ?? []).join(", ")}`,
+					`detected here · ${agents.map((a) => a.id).join(", ") || "none"}`,
+					"No detected agent is allowed on that machine.",
+				]),
+				["hobo-code machines", "hobo-code agent"],
+				{ machine: resolvedMachine, detected: agents.map((a) => a.id) },
+			);
+		}
+
 		// Broker a Station session per remote pane. Doing this before tmux is
 		// touched means a denial stops the session from opening at all, rather
 		// than leaving panes sitting on a host they were not authorised for.
@@ -1872,7 +1934,7 @@ export async function runHoboCodeCli(
 			});
 			try {
 				brokered = await brokerPanes(
-					agents.map((a) => ({ machine: resolvedMachine, agentId: a.id })),
+					placeable.map((a) => ({ machine: resolvedMachine, agentId: a.id })),
 					{ broker: gateway.broker, subject: "hobo-code", ttlSeconds: 3600 },
 				);
 				brokerAudit = gateway.auditTypes();
@@ -1915,6 +1977,22 @@ export async function runHoboCodeCli(
 		// cannot reach anything the allow-list does not name, which a real agent
 		// process would immediately step outside of.
 		const virtualPanes = flags.virtual === true;
+		if (virtualPanes && requestedHost) {
+			// The vshell command names a local workspace path, which does not
+			// exist on the remote. Running it there would fail per pane, after
+			// sessions had already been brokered.
+			return fail(
+				"HOBO_CODE_MUX_VIRTUAL_REMOTE",
+				panel("✕ mux", [
+					"--virtual and --host cannot be combined yet.",
+					"A virtual pane mounts a directory on this machine; the remote",
+					"has its own filesystem, so the path would not resolve there.",
+					"Run --virtual locally, or --host without it.",
+				]),
+				["hobo-code mux --virtual", "hobo-code mux --host " + requestedHost],
+				{ requestedHost },
+			);
+		}
 		const targets: MuxTarget[] = agents.map((a) => {
 			const allocated = workspaceFor.get(a.id);
 			return {
@@ -1972,6 +2050,11 @@ export async function runHoboCodeCli(
 			applied.detail,
 			`workspace · ${workspace.path} (${workspace.source})`,
 			`trees · ${allocation.backend}${allocation.reason ? ` — ${allocation.reason}` : ""}`,
+			...(excluded.length > 0
+				? [
+						`excluded · ${excluded.map((a) => a.id).join(", ")} (not declared for ${resolvedMachine?.id})`,
+					]
+				: []),
 			...(brokered
 				? [
 						`sessions · ${brokered.panes.length} brokered by the Station (${brokerAudit.filter((t) => t === "pam.SessionStarted").length} started)`,

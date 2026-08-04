@@ -241,10 +241,21 @@ own overlay supplies the copy-on-write, so no kernel mount is involved at all.
 
 **The observation layer.** `tmux capture-pane` returns text tmux has already
 interpreted, which cannot answer *when* a prompt appeared or what the screen
-held at a moment. The harness therefore runs its own VT parser over the pane's
-raw byte stream (`pipe-pane -O`), producing a structured screen buffer. That is
-what makes a pane something the shell can render, gate on and record instead of
-an opaque rectangle.
+held at a moment. `virtual-terminal.ts` runs a VT parser over a pane's raw byte
+stream (`pipe-pane -O`) and produces a structured screen buffer — the thing
+that would make a pane renderable, gateable and recordable instead of an opaque
+rectangle.
+
+**Status: the parser exists and is tested; nothing calls it yet.** The pane
+path still writes straight through. Stated plainly because "the harness runs
+its own VT parser" reads as a behaviour, and today it is a capability.
+
+**Known limits.** `find -delete` deletes despite `rm` being absent (the
+in-memory copy in the default overlay, the real file when writable). A write to
+a path outside the root succeeds *into memory* rather than failing, so "nothing
+resolves outside the root" holds for reads only. Symlinks are refused by
+default, which makes `node_modules` unreadable in a pnpm tree unless
+`allowSymlinks` is set.
 
 **What this is not.** just-bash runs inside this process, so it is a governance
 and blast-radius boundary — what an agent can name and touch — not a defence

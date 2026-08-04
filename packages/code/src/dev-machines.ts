@@ -186,6 +186,33 @@ export function loadDevMachines(
 	return { path, declared: true, machines, rejected };
 }
 
+/**
+ * Resolve a `--host` argument to exactly one declared machine.
+ *
+ * Ids win over hosts, and unambiguously. Matching `id === x || host === x` in a
+ * single pass let an *earlier* entry's host beat a *later* entry's exact id:
+ * with `[{id:"jump", host:"dev-box"}, {id:"dev-box", …}]`, `--host dev-box`
+ * selected `jump` — the operator named one machine and got another, as another
+ * user, under another isolation class. Duplicate ids were already rejected;
+ * this closes the same hole across the two namespaces.
+ */
+export function resolveMachine(
+	machines: readonly DevMachine[],
+	requested: string,
+):
+	| { readonly machine: DevMachine }
+	| { readonly ambiguous: readonly DevMachine[] }
+	| null {
+	const byId = machines.find((m) => m.id === requested);
+	if (byId) return { machine: byId };
+	const byHost = machines.filter((m) => m.host === requested);
+	if (byHost.length === 1) return { machine: byHost[0] as DevMachine };
+	// Two machines sharing a host is a declaration the operator has to settle;
+	// picking one silently is how the wrong session gets brokered.
+	if (byHost.length > 1) return { ambiguous: byHost };
+	return null;
+}
+
 /** Machines that may host a given agent. */
 export function machinesForAgent(
 	machines: readonly DevMachine[],

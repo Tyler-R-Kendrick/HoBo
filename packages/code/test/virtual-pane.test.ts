@@ -93,10 +93,13 @@ describe("driving a virtual pane", () => {
 		expect(out).toContain("done");
 	});
 
-	it("ignores blank input rather than running an empty command", async () => {
+	it("reprompts on blank input without running anything", async () => {
+		// The old assertion (no "command not found") held with the guard
+		// deleted, because an empty command is a no-op anyway. Counting prompts
+		// is what actually distinguishes the two.
 		const { root } = workspace();
 		const out = await drive(root, "\n\n\nexit\n");
-		expect(out).not.toContain("command not found");
+		expect(out.match(/claude:~\$/gu)?.length).toBe(4);
 	});
 });
 
@@ -110,7 +113,10 @@ describe("the command tmux is given", () => {
 
 	it("survives a path containing a quote", () => {
 		// A real rift path is a real directory name and may contain anything a
-		// directory name may contain.
+		// directory name may contain. NOTE: this pins the *first* level only.
+		// The composed pane command passes through `hobo-rift exec`, which
+		// reassembles its argv; the end-to-end property is pinned in
+		// packages/rift's exec tests, because that is where it was broken.
 		expect(virtualPaneCommand("a", "/ws/o'brien")).toContain("'/ws/o'\\''brien'");
 	});
 });

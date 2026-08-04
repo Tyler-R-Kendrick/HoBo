@@ -73,11 +73,21 @@ describe("a pane's bytes become a screen", () => {
 		term.dispose();
 	});
 
-	it("reflows on resize", async () => {
-		const term = createVirtualTerminal({ cols: 10, rows: 4 });
+	it("resizes without reflowing what is already on screen", async () => {
+		const term = createVirtualTerminal({ cols: 10, rows: 6 });
 		await term.write("abcdefghijklmno");
-		term.resize(40, 4);
-		expect(term.snapshot().cols).toBe(40);
+		expect(term.snapshot().lines[1]?.trimEnd()).toBe("klmno");
+		term.resize(40, 6);
+		const wide = term.snapshot();
+		expect(wide.cols).toBe(40);
+		// Existing rows keep their old wrap points — the emulator does not
+		// re-lay-out history. Output written *after* the resize uses the new
+		// width. Asserting only `cols === 40` would have hidden this, and a
+		// caller that expected reflow would be wrong.
+		expect(wide.lines[0]?.trimEnd()).toBe("abcdefghij");
+		expect(wide.lines[1]?.trimEnd()).toBe("klmno");
+		await term.write("\r\n0123456789012345678901234567890123456789012");
+		expect(term.snapshot().lines[2]?.trimEnd()).toHaveLength(40);
 		term.dispose();
 	});
 });
@@ -89,13 +99,21 @@ describe("streaming a pane out of tmux", () => {
 		const cmd = pipePaneCommand("hobo:claude", "/run/pane.log");
 		expect(cmd).toContain("pipe-pane");
 		expect(cmd).toContain("-O");
-		expect(cmd.join(" ")).toContain('"/run/pane.log"');
+		expect(cmd.join(" ")).toContain("'/run/pane.log'");
 	});
 
 	it("quotes the sink so a path with a space cannot split the command", () => {
 		expect(pipePaneCommand("hobo:claude", "/run/my panes/x.log").join(" ")).toContain(
-			'"/run/my panes/x.log"',
+			"'/run/my panes/x.log'",
 		);
+	});
+
+	it("neutralises a sink path that would otherwise expand", () => {
+		// Double quotes (what JSON.stringify emits) leave `$`, backticks and
+		// backslashes live — the same hazard mux.ts documents for cwd.
+		const cmd = pipePaneCommand("hobo:claude", "/run/$(touch pwned)/x.log").join(" ");
+		expect(cmd).toContain("'/run/$(touch pwned)/x.log'");
+		expect(cmd).not.toContain('"/run/$(touch pwned)');
 	});
 
 	it("stops streaming with no command argument", () => {

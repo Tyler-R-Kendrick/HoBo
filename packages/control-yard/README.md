@@ -1,7 +1,8 @@
 # `@hobo/control-yard`
 
-**HIGHBALL!** — the game-first control-plane UI (Phaser 3 host + OpenUI
-generative overlays). ADR-0140.
+**HIGHBALL!** — the game-first control-plane UI: a top-down pixel-RPG village
+rendered from real projections (Phaser 3 host + OpenUI generative overlays).
+ADR-0140, art identity per ADR-0141.
 
 The yard is an *observed* world: every prop, character, and signal is a 1:1
 rendering of a real projection, and the goal state — the **highball**, a clean
@@ -26,7 +27,6 @@ pnpm --filter @hobo/control-yard run assets:coverage
 pnpm --filter @hobo/control-yard run assets:validate
 pnpm --filter @hobo/control-yard run assets:extract-frames
 # then make GIFs via skill:
-# uv run .agents/skills/gamedev-assets/scripts/make_gifs.py --frames 'tmp/frames/bo-walk-east_walk/step*.png' --out tmp/gifs/bo-walk-east.gif
 
 # 2) Unit tests
 pnpm --filter @hobo/control-yard test
@@ -57,29 +57,35 @@ hobo serve control --demo --demo-seed 42   # world read model from the simulator
 Demo/simulated data always renders behind a **SIMULATED** tag — see the signal
 provenance rules in `DESIGN.md`.
 
-## Design system + art bible
+## Design system + art
 
-- **`site/DESIGN.md`** (mirrored `DESIGN.md` here) — rubberhose ink-on-paper contract.
-- **`site/public/parallax/README.md`** — Bo sheets; never mirror west.
-- **Plates** — reuse site `trail` / `poles` / `clouds` only. No generative color scenery.
+- **`site/DESIGN.md`** (mirrored `DESIGN.md` here) — the pixel-RPG contract:
+  16px tile grid, integer scaling only, hard `#3f2631` outlines, square corners,
+  earth-and-slate palette. See [ADR-0141](../../docs/design/adr/07-portability-extensibility.md#adr-0141).
+- **`assets/kenney/`** — vendored CC0 tilesets (Kenney), each with its upstream
+  licence beside it. **Art is sourced, never drawn in renderer code**: assembling
+  props from rects and lines is what produced the surface this replaced.
+- **`assets/CREDITS.md`** — per-asset provenance; every manifest entry needs a row.
+- **`src/village.ts`** — the tile vocabulary: which tile index means what, where
+  houses sit, how the road transitions, which villager a given Bindle always gets.
 
-Delivery frames (site plates):
+Vendored sheets:
 
-| Sheet | Grid | Frame | Cadence | Status |
-|---|---|---|---|---|
-| `bo-idle.png` | 12×1 | 207×230 | 125 ms | **reuse** (blink/bounce) |
-| `bo-walk.png` | 6×6 | 160×157 | **50 ms** | **reuse** east |
-| `bo-walk-left.png` | 6×6 | 160×157 | **50 ms** | site west + feet@153 |
-| `bo-{jump,hurt,bindle-adjust,wave,sleep-wake}-w.png` | 5×2 | 256×256 | 125 ms | foreman states |
-| `bindlebugs/bindlebug-{a,b,c}.png` | 12×1 | 104×115 | 125 ms | Bindle NPCs (derived) |
+| Id | Sheet | Grid | Use |
+|---|---|---|---|
+| `town` | `tiny-town/tilemap_packed.png` | 12×11 @16 | ground, houses, fences, props |
+| `dungeon` | `tiny-dungeon/tilemap_packed.png` | 12×11 @16 | hazard + interior props |
+| `urban` | `rpg-urban/tilemap_packed.png` | 27×18 @16 | modern/industrial props |
+| `rogue` | `roguelike-rpg/roguelikeSheet_transparent.png` | 57×31 @16, sp 1 | extended terrain |
+| `chars` | `roguelike-characters/roguelikeChar_transparent.png` | 54×12 @16, sp 1 | villagers = Bindles |
+| `ui` | `fantasy-ui-borders/panel-000.png` | 3×3 @16 | nine-slice panels |
 
-Bo's clip is a **pure projection** of station state — `sleep-wake` when closed,
-`hurt` on hazards, `bindle-adjust` on bootstrap, `wave` when attention is
-wanted, `jump` on confirmed success. He is choreography, never a prerequisite:
-commands fire immediately and Bo reacts afterwards.
+The world mapping is 1:1 with real projections — Station is the town, a Camp is a
+house, a Bindle is the villager outside it, the active rail is the road, a
+Connection is the gate, the waybill desk is the notice board, quota and spend are
+the treasury, and a clean board raises the banner.
 
-Notes: `docs/WALK_SHEET_HANDOFF.md`, `docs/asset-index-learnings.md`,
-`assets/CREDITS.md` (per-asset provenance; every manifest entry needs a row).
+Notes: `docs/asset-index-learnings.md`.
 
 ## Architecture (phaser-gamedev)
 
@@ -96,4 +102,6 @@ The scenes hold no logic: they reconcile the presenter's declarative
 `RenderModel` into GameObjects, so what the yard draws is unit-testable
 without a browser.
 
-Clip names resolve only through stable animation ids (`bo.idle`, `bo.walk.east`, …).
+Sprites resolve through vendored sheet ids plus a tile index, and the mapping
+from control-plane state to tile lives in `src/village.ts` — never inline in the
+renderer.

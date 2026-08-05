@@ -571,6 +571,26 @@ a:hover {
 
 
 
+/* Support rules for the APPROVED hand-traced Logo mark (restored after an
+   unapproved retrace replaced it and rendered as a smudge at 28px). */
+.mascot .mascot-under ellipse {
+	fill: #ffffff;
+}
+.mascot .mascot-eye {
+	fill: #ffffff;
+}
+.mascot .blink ellipse {
+	fill: var(--soot);
+}
+.mascot .dust path {
+	fill: var(--soot);
+}
+.mascot .mascot-puff circle {
+	fill: var(--bg-raised);
+	stroke: var(--ink);
+	stroke-width: 4;
+}
+
 .mascot .mascot-pupil {
 	fill: var(--soot);
 }

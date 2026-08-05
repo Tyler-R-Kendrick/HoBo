@@ -372,7 +372,11 @@ const shikiThemes = {
 						</p>
 					</div>
 				</div>
-				<div class="card" style="display:flex; flex-direction:column; justify-content:center; gap: 0.75rem;">
+				{/* align-self:start, not justify-content:center: this card sits in a grid
+				    row beside a column of four stacked cards, so a stretched card
+				    centred its few lines inside ~1700px of height — a wall of empty
+				    space above and below the heading. Hug the content instead. */}
+				<div class="card" style="display:flex; flex-direction:column; gap: 0.75rem; align-self:start;">
 					<h3>Reading this as an agent?</h3>
 					<p>
 						Welcome, fellow traveler. This whole site is written to be as

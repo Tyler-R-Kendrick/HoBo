@@ -305,3 +305,15 @@ Notes:
   single-commit history, never a source branch.
 - One-time repo setting if Pages isn't already serving: **Settings → Pages →
   Source → Deploy from a branch → `gh-pages` / `(root)`**.
+
+## Design audit (interactive)
+
+`pnpm --filter hobo-site run design:audit` drives the built site in a real
+browser (Playwright): every design × theme × page × viewport, real picker
+clicks, scrolls, hovers, and two pixel-diff acceptance criteria — switching
+designs must render identically to a fresh load (no bleedover), and the ink
+default must pixel-match a pre-axis baseline build (pass
+`--baseline-dist <dir>`). A differentiation pass asserts each design actually
+renders differently from ink, so a dead boot script cannot pass trivially.
+Output: screenshot corpus + `findings.md` under `runs/design-audit/`
+(gitignored). Exit code = number of failed checks.

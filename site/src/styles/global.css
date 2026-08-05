@@ -62,13 +62,20 @@
 	   designer persona caps visualClutter and interactiveClutter at 1, so these
 	   are five ways of being quiet — none of them adds ornament, and the ones
 	   that raise density (ledger, broadsheet) pay for it by removing chrome. */
-	--measure: 1160px;        /* content width */
+	--measure: 1160px;        /* content width (incumbent --container) */
 	--rhythm: 1;              /* vertical spacing multiplier */
-	--rule: 2px;              /* border weight */
+	--rule: 2.5px;            /* incumbent card border weight */
+	--card-radius: calc(var(--radius-lg) + 6px); /* incumbent card corner */
 	--surface-fill: var(--bg-raised);
-	--surface-shadow: 3px 3px 0 var(--accent);
+	--surface-shadow: 0.32rem 0.32rem 0 var(--pop-soft); /* incumbent */
+	--head-pad: 0rem;
 	--display-size: 1;        /* display type multiplier */
-	--display-track: 0em;
+	/* Defaults to the ORIGINAL display tracking, not 0. With 0em here, the
+	   design-surfaces rule silently retracked ink's own hero and section heads
+	   — the audit caught it as a reflow ghost cascading down the whole
+	   homepage against the pre-axis baseline. The default of a design token
+	   must be the incumbent value, or the axis redesigns the default. */
+	--display-track: 0.005em;
 	--display-case: none;
 	--body-size: 1rem;
 	--leading: 1.65;
@@ -204,6 +211,7 @@
 	--measure: 880px;
 	--rhythm: 0.85;
 	--rule: 1px;
+	--card-radius: 0px;
 	--surface-fill: transparent;
 	--surface-shadow: none;
 	--radius: 0px;
@@ -213,6 +221,7 @@
 	--body-size: 1.06rem;
 	--leading: 1.62;
 	--head-rule: 1px;
+	--head-pad: 0.5rem;
 }
 
 /* TITLE CARD — a cinema card. Chewy kept, but enormous, uppercase and centred,
@@ -221,10 +230,15 @@
 	--measure: 980px;
 	--rhythm: 2.1;
 	--rule: 0px;
+	--card-radius: 0px;
 	--surface-fill: transparent;
 	--surface-shadow: none;
 	--radius: 0px;
-	--display-size: 1.75;
+	/* 1.5, down from 1.75: at 1.75 the desktop headline alone filled screen
+	   one and no CTA survived inside the fold even with the hero interval
+	   tightened. 1.5 is still unmistakably a poster; it just shares the card
+	   with its billing line. */
+	--display-size: 1.5;
 	--display-track: 0.03em;
 	--display-case: uppercase;
 	--body-size: 1.08rem;
@@ -235,20 +249,26 @@
    tight leading. The most information per screen of the five, and the least
    decoration — which is how it stays under the clutter cap. */
 :root[data-design="ledger"] {
+	/* Mono is the VOICE (display, labels, tables, code) — not the reading
+	   face. All-mono body prose destroyed code findability: when everything is
+	   monospace, code stops being visually distinct, and docs reading slows.
+	   Both designer personas converged on "mono for structure, proportional
+	   for prose". */
 	--font-display: var(--font-mono);
-	--font-sans: var(--font-mono);
 	--measure: 1240px;
 	--rhythm: 0.7;
 	--rule: 1px;
+	--card-radius: 0px;
 	--surface-fill: transparent;
 	--surface-shadow: none;
 	--radius: 0px;
 	--radius-lg: 0px;
 	--display-size: 0.85;
 	--display-track: -0.01em;
-	--body-size: 0.9rem;
-	--leading: 1.5;
+	--body-size: 0.95rem;
+	--leading: 1.55;
 	--head-rule: 1px;
+	--head-pad: 0.5rem;
 }
 
 /* CUTOUT — paper collage. Everything sits on a card with a hard offset shadow
@@ -261,6 +281,7 @@
 	--measure: 1160px;
 	--rhythm: 1.35;
 	--rule: 3px;
+	--card-radius: 26px;
 	--surface-shadow: 6px 6px 0 var(--accent);
 	--radius: 18px;
 	--radius-lg: 26px;
@@ -278,7 +299,7 @@
 	--border-strong: #b9a97f;
 	--text: #2e2418;
 	--text-mute: #6b5a41;
-	--text-faint: #8d7c62;
+	--text-faint: #6b5a40; /* ≥4.5:1 on dusk paper (was #8d7c62 ≈3.7:1) */
 	--accent: #2e2418;
 	--accent-strong: #1a140c;
 	--accent-ink: #fbf5e9;
@@ -316,7 +337,7 @@
 	--border-strong: #9dafb9;
 	--text: #1b2732;
 	--text-mute: #4c5f6d;
-	--text-faint: #6f8290;
+	--text-faint: #54666f; /* ≥4.5:1 on rain paper (was #6f8290 ≈3.6:1) */
 	--accent: #1b2732;
 	--accent-strong: #0d1620;
 	--accent-ink: #f2f5f7;
@@ -392,7 +413,7 @@
 	--border-strong: #9aab90;
 	--text: #1e2a1c;
 	--text-mute: #4d5c48;
-	--text-faint: #6f7e69;
+	--text-faint: #5a624f;
 	--accent: #1e2a1c;
 	--accent-strong: #0f180e;
 	--accent-ink: #f1f4ee;
@@ -540,9 +561,7 @@ a:hover {
 }
 
 /* White backing that shows through the traced eye holes on any background. */
-.mascot .mascot-under ellipse {
-	fill: #ffffff;
-}
+
 
 /* At night the whole soot silhouette gets a cream rim so Bo stays visible. */
 :root[data-theme="dark"] .mascot .mascot-fur {
@@ -550,40 +569,32 @@ a:hover {
 		drop-shadow(0 1.4px 0 var(--ink)) drop-shadow(0 -1.4px 0 var(--ink));
 }
 
-.mascot .mascot-eye {
-	fill: #ffffff;
-}
+
 
 .mascot .mascot-pupil {
 	fill: var(--soot);
 }
 
 .mascot .mascot-puff circle,
-.cloud .cloud-outline circle {
-	fill: var(--bg-raised);
-	stroke: var(--ink);
-	stroke-width: 3;
+/* Clouds, traced. Two layers, and the night rule is the owner's, stated for
+   characters and props alike: the WHITE INTERIOR STAYS WHITE — a cloud is
+   white because clouds are white, not because the paper is — and the drawn
+   ink stays near-black, lifted a touch at night so the outline separates from
+   a dark sky instead of vanishing into it. No inversion on either layer. */
+.cloud .cloud-fill {
+	fill: #ffffff;
 }
-
-.cloud .cloud-outline circle {
-	stroke-width: 5;
+.cloud .cloud-ink {
+	fill: var(--soot);
 }
-
-.cloud .cloud-fill circle {
-	fill: var(--bg-raised);
-	stroke: none;
+:root[data-theme="dark"] .cloud .cloud-ink {
+	fill: #2a2320;
 }
 
 /* Bo blinks: soot eyelids drop over the traced eye holes on an irregular
    cycle — one blink, a pause, then a quick double-blink, like he noticed
    you watching. */
-.mascot .blink ellipse {
-	fill: var(--soot);
-	transform-box: fill-box;
-	transform-origin: 50% 0%;
-	transform: scaleY(0.04);
-	animation: blink 7.3s linear infinite;
-}
+
 
 @keyframes blink {
 	0%,
@@ -616,15 +627,11 @@ a:hover {
 }
 
 /* Instances blink out of phase so the page never synchronizes. */
-.postcard-bo .mascot .blink ellipse {
-	animation-delay: -4.9s;
-}
+
 
 /* Dust kicks: the trace's own puff clusters, appearing and drifting off on
    mismatched prime-ish cycles so the rhythm reads as random. */
-.mascot .dust path {
-	fill: var(--soot);
-}
+
 
 .skip-link {
 	position: absolute;
@@ -2152,25 +2159,40 @@ table.compare tr.hobo-row th {
 /* ============================================================================
    DESIGN SURFACES
 
-   Where the structural tokens land. Everything above styles one design; this
-   block is what makes the other four exist. Kept together deliberately: when a
-   design looks wrong, this is the one place to look.
+   Where the structural tokens land — and every rule here is gated behind
+   `:root[data-design]`, which is the load-bearing decision of this file.
+
+   Two attempts tried to make this block a no-op for the default design by
+   matching token defaults to incumbent values. Both failed in the pixels:
+   first a flat 2rem/4rem replaced a clamp() and shifted every section, then
+   the global .card rule put chrome on homepage cards whose incumbent look is
+   drawn by scoped pseudo-elements — a value can't match a property the
+   incumbent never set. Gating means ink (no attribute) matches the pre-axis
+   build BY CONSTRUCTION: no rule applies at all. The audit's baseline
+   pixel-diff enforces it.
    ============================================================================ */
 
-.container {
+:root[data-design] .container {
 	max-width: var(--measure);
 }
 
-/* Vertical rhythm. One multiplier drives every band, so a design is spacious
-   or tight as a whole rather than in patches. */
-.section,
-.docs {
+/* Vertical rhythm. One multiplier SCALES each surface's incumbent spacing —
+   it never replaces it with a new constant. The first version of this block
+   set `.section` to a flat 2rem/4rem, and since the incumbent was
+   clamp(3rem, 7vw, 5.5rem), ink's own homepage shifted ~56px at every section
+   boundary while the build stayed green. The audit's baseline diff caught it.
+   The rule: at every default token value, this whole block must be a no-op —
+   a design token's default IS the incumbent value. */
+:root[data-design] .section {
+	padding-block: calc(clamp(3rem, 7vw, 5.5rem) * var(--rhythm));
+}
+:root[data-design] .docs {
 	padding-block: calc(2rem * var(--rhythm)) calc(4rem * var(--rhythm));
 }
 
-.card {
+:root[data-design] .card {
 	border-width: var(--rule);
-	border-radius: var(--radius);
+	border-radius: var(--card-radius);
 	background: var(--surface-fill);
 	box-shadow: var(--surface-shadow);
 }
@@ -2203,43 +2225,51 @@ table.compare tr.hobo-row th {
    
    The multiplier has to be applied where the size is actually declared, so the
    clamp still does the responsive work and the design only scales it. */
-.hero h1,
-.section-head h2,
-.prose h1,
-.prose h2 {
+/* Display treatment applies to DISPLAY surfaces only — hero and section
+   heads. `.prose` headings were in this selector and the audit caught both
+   consequences at once: titlecard uppercased every docs content heading
+   (display treatment bleeding into Read-mode pages, 12 matrix failures), and
+   in ink the `--display-track: 0em` default silently overrode the prose
+   headings' own tracking — the only pixel drift on /guide/ vs the pre-axis
+   baseline. Content headings belong to content, not to the design's voice. */
+:root[data-design] .hero h1,
+:root[data-design] .section-head h2 {
 	letter-spacing: var(--display-track);
 	text-transform: var(--display-case);
 }
 
-.section-head {
+:root[data-design] .section-head {
 	border-bottom: var(--head-rule) solid var(--border);
-	padding-bottom: calc(0.5rem * var(--rhythm));
+	/* Incumbent has no bottom padding; a design that draws a head rule opts
+	   into the breathing room with --head-pad. The first version padded ink
+	   unconditionally — 8px of drift on every section head. */
+	padding-bottom: var(--head-pad);
 }
 
-.prose {
+:root[data-design] .prose {
 	font-size: var(--body-size);
 	line-height: var(--leading);
 }
 
-.btn {
-	border-radius: var(--radius);
-	border-width: var(--rule);
-}
+/* .btn is deliberately NOT design-tokened. Its identity is the clip-path
+   sticker — border: none, corners cut by polygon — so border-width/radius
+   were silent no-ops at best and drift at worst. If a design ever needs its
+   own button voice, that is a persona decision, not a token default. */
 
-/* Cutout tilts its planes a hair. Only the card, never text blocks — rotated
-   body copy is a legibility cost with no reading benefit. */
-:root[data-design="cutout"] .card:nth-child(odd) {
-	transform: rotate(-0.35deg);
-}
-:root[data-design="cutout"] .card:nth-child(even) {
-	transform: rotate(0.3deg);
-}
+/* Cutout does NOT tilt. The rotation shipped and the priority-1 designer
+   persona killed it with evidence: shadow-plate slivers peeking past rotated
+   card edges read as rendering debris, and rotated body text renders soft — a
+   legibility tax paying for a tell nobody asked for. Mobile and docs never
+   rotated and read fine, which proved it was never needed. Cutout's identity
+   is paper MATERIAL — plates, hard shadows, thick rule — not tilt. */
 
-/* Title card earns its name: the hero gets the whole viewport band and the
-   interval around it is the composition. MA, spent deliberately. */
+/* Title card earns its name: the hero owns the composition — but a cinema
+   card still carries its billing line. The first cut padded the hero so far
+   that desktop screen one held zero actions and zero product (impeccable
+   critique, P1); the interval spends less so a CTA lands inside the fold. */
 :root[data-design="titlecard"] .hero {
 	text-align: center;
-	padding-block: calc(5rem * var(--rhythm)) calc(4rem * var(--rhythm));
+	padding-block: calc(2.2rem * var(--rhythm)) calc(2rem * var(--rhythm));
 }
 :root[data-design="titlecard"] .hero-ctas {
 	justify-content: center;
@@ -2251,11 +2281,6 @@ table.compare tr.hobo-row th {
 	font-weight: 600;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	:root[data-design="cutout"] .card {
-		transform: none;
-	}
-}
 
 /* The design menu carries a one-line description per entry, because the names
    alone ("Ledger", "Cutout") do not tell you what changes. choiceOverload is
@@ -2307,11 +2332,10 @@ table.compare tr.hobo-row th {
 :root[data-design="broadsheet"] .grid > .card:last-child {
 	border-bottom: 0;
 }
-/* Long prose sets in two columns, which is the point of the narrow measure. */
-:root[data-design="broadsheet"] .prose > p {
-	text-align: justify;
-	hyphens: auto;
-}
+/* Ragged-right, deliberately. Justified web prose at this measure produced
+   visible rivers (all three personas cited the same paragraph), and an earlier
+   comment here promised two columns that no rule delivered. Serif + rules +
+   measure carry the newspaper voice on their own. */
 
 /* TITLE CARD — one thing per row, centred, with the interval doing the work. */
 :root[data-design="titlecard"] .grid-2,
@@ -2325,12 +2349,24 @@ table.compare tr.hobo-row th {
 :root[data-design="titlecard"] .card {
 	text-align: center;
 }
+/* Code NEVER centres, whatever the design's voice. The designer persona
+   caught titlecard centring every line of src/bindle.ts — indentation is the
+   one non-negotiable semantic of code, and a docs site that centres code is
+   decorating over meaning. Unconditional guard, all designs. */
+:root[data-design] :is(pre, code, .terminal) {
+	text-align: left;
+}
 :root[data-design="titlecard"] .section-head {
 	text-align: center;
 }
 
 /* LEDGER — pack it in. More columns, no gaps beyond a hairline, everything
-   left-aligned on a single grid like a table of contents. */
+   left-aligned on a single grid like a table of contents.
+
+   LOUD WARNING for future maintainers (a persona reviewer lost time to this):
+   in ledger, .grid-2 renders THREE columns and .grid-3 renders FOUR. The
+   class names state the ink layout; ledger's density promotes each by one.
+   If you are debugging "why does grid-2 have three columns" — this is why. */
 :root[data-design="ledger"] .grid-2 {
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -2359,8 +2395,24 @@ table.compare tr.hobo-row th {
 :root[data-design="cutout"] .grid {
 	gap: 2rem;
 }
+/* A 3-card grid reflowed to 2 columns strands the last card beside a hole —
+   and the stranded card was "The HoBo way", the argument's payoff. It spans
+   the row instead: the asymmetry now favours the conclusion. */
+:root[data-design="cutout"] .grid-3 > .card:last-child:nth-child(odd) {
+	grid-column: 1 / -1;
+}
 :root[data-design="cutout"] .card {
 	padding: 1.6rem;
+}
+
+/* Titlecard's 1.75x display on a phone filled the entire first viewport with
+   headline — zero actions on screen (all three personas flagged it). The
+   poster survives at 1.2x; the proposition and a CTA return to the fold. */
+@media (max-width: 600px) {
+	:root[data-design="titlecard"] {
+		--display-size: 1.2;
+		--rhythm: 1.3;
+	}
 }
 
 @media (max-width: 860px) {
@@ -2369,5 +2421,34 @@ table.compare tr.hobo-row th {
 	:root[data-design="cutout"] .grid-3,
 	:root[data-design="cutout"] .grid-4 {
 		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* The active design in the picker: a leading ink dot, plus the state itself
+   for assistive tech. Non-colour cue, per the designer persona's a11y needs. */
+.palette-menu button[aria-current="true"] {
+	font-weight: 700;
+}
+.palette-menu button[aria-current="true"]::before {
+	content: "● ";
+	color: var(--spark);
+}
+
+/* The design picker was the commissioned feature and its trigger was an
+   unlabeled glyph between two other unlabeled glyphs — discoverability zero
+   (impeccable critique, P1). A word at desktop widths; the icon carries it
+   alone on mobile where header space is real. */
+.picker-summary {
+	width: auto;
+	padding-inline: 0.55rem;
+	gap: 0.3rem;
+}
+.picker-word {
+	font-size: 0.8rem;
+	letter-spacing: 0.03em;
+}
+@media (max-width: 860px) {
+	.picker-word {
+		display: none;
 	}
 }

@@ -23,16 +23,50 @@ const here = sectionFor(path.replace(href("/"), "/"), nav);
 			<span>HoBo</span>
 		</a>
 		<nav class="site-nav" id="site-nav" aria-label="Main">
-			{
-				sections.map((section) => (
-					<a
-						href={href(section.slug)}
-						aria-current={here?.label === section.label ? "page" : undefined}
-					>
-						{section.label}
-					</a>
-				))
-			}
+			{/* The ink nav — and beneath it, each world's own. A world does not
+			    rename these links; it re-frames them: a newspaper has sections,
+			    a photoplay has acts, a dispatch board has tracks, a scrapbook
+			    has tabs. Same five destinations, five vocabularies. */}
+			<span class="ink-world nav-links">
+				{
+					sections.map((section) => (
+						<a
+							href={href(section.slug)}
+							aria-current={here?.label === section.label ? "page" : undefined}
+						>
+							{section.label}
+						</a>
+					))
+				}
+			</span>
+			<span class="world-nav world-nav-herald">
+				<a href={href("/guide/")}>Dispatches</a>
+				<a href={href("/examples/")}>Classifieds</a>
+				<a href={href("/operations/")}>Rail Schedules</a>
+				<a href={href("/reference/")}>The Record</a>
+				<a href={href("/agents/")}>Union Hall</a>
+			</span>
+			<span class="world-nav world-nav-photoplay">
+				<a href={href("/guide/")}><span class="act">ACT I</span> Learn</a>
+				<a href={href("/examples/")}><span class="act">ACT II</span> Build</a>
+				<a href={href("/operations/")}><span class="act">ACT III</span> Operate</a>
+				<a href={href("/reference/")}><span class="act">INTERMISSION</span> Reference</a>
+				<a href={href("/agents/")}><span class="act">ACT IV</span> Agents</a>
+			</span>
+			<span class="world-nav world-nav-dispatch">
+				<a href={href("/guide/")}><span class="trk">TRK·00</span>learn</a>
+				<a href={href("/examples/")}><span class="trk">TRK·01</span>build</a>
+				<a href={href("/operations/")}><span class="trk">TRK·02</span>operate</a>
+				<a href={href("/reference/")}><span class="trk">TRK·03</span>reference</a>
+				<a href={href("/agents/")}><span class="trk">TRK·04</span>agents</a>
+			</span>
+			<span class="world-nav world-nav-scrapbook">
+				<a href={href("/guide/")}>the road</a>
+				<a href={href("/examples/")}>the kit</a>
+				<a href={href("/operations/")}>the yards</a>
+				<a href={href("/reference/")}>the map</a>
+				<a href={href("/agents/")}>the crew</a>
+			</span>
 		</nav>
 		<div class="header-actions">
 			<a
@@ -47,7 +81,8 @@ const here = sectionFor(path.replace(href("/"), "/"), nav);
 				</svg>
 			</a>
 			<details class="palette-picker">
-				<summary class="icon-btn" aria-label="Choose a design" title="Design">
+				<summary class="icon-btn picker-summary" aria-label="Choose a design" title="Design">
+					<span class="picker-word">Design</span>
 					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 						<circle cx="13.5" cy="6.5" r="1.5"></circle><circle cx="17.5" cy="10.5" r="1.5"></circle>
 						<circle cx="8.5" cy="7.5" r="1.5"></circle><circle cx="6.5" cy="12.5" r="1.5"></circle>
@@ -55,20 +90,25 @@ const here = sectionFor(path.replace(href("/"), "/"), nav);
 					</svg>
 				</summary>
 				<div class="palette-menu" role="group" aria-label="Design">
+					{/* Captions say what you GET, not the CSS that makes it — "paper
+					    planes, hard shadows" was judged tokens-speak by the persona
+					    review. And the current choice is marked: an unlabeled menu
+					    with no state forced people to memorise what each design looks
+					    like to know where they were. */}
 					<button type="button" data-set-design="ink">
-						Ink <span>sticker cards, thick line</span>
+						Ink <span>the classic — black ink on white paper</span>
 					</button>
 					<button type="button" data-set-design="broadsheet">
-						Broadsheet <span>rules, no boxes, narrow column</span>
+						Broadsheet <span>reads like a newspaper</span>
 					</button>
 					<button type="button" data-set-design="titlecard">
-						Title Card <span>centred, huge type, wide intervals</span>
+						Title Card <span>big centred cinema type</span>
 					</button>
 					<button type="button" data-set-design="ledger">
-						Ledger <span>tight, tabular, hairline</span>
+						Ledger <span>compact and technical</span>
 					</button>
 					<button type="button" data-set-design="cutout">
-						Cutout <span>paper planes, hard shadows</span>
+						Cutout <span>paper stickers with hard shadows</span>
 					</button>
 				</div>
 			</details>

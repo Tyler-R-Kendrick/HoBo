@@ -2,6 +2,7 @@
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import "../styles/global.css";
+import "../styles/worlds.css";
 
 interface Props {
 	title: string;
@@ -88,7 +89,16 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 				syncPressed();
 			});
 			// Design picker. `ink` clears the attribute rather than setting a
-			// value, so the default stays the absence of a choice.
+			// value, so the default stays the absence of a choice. The current
+			// choice is marked with aria-current so the open menu answers "which
+			// one am I in?" — without it, knowing required memorising the designs.
+			const markCurrent = () => {
+				const cur = document.documentElement.dataset.design ?? "ink";
+				for (const b of document.querySelectorAll("[data-set-design]"))
+					if (b.dataset.setDesign === cur) b.setAttribute("aria-current", "true");
+					else b.removeAttribute("aria-current");
+			};
+			markCurrent();
 			for (const b of document.querySelectorAll("[data-set-design]")) {
 				b.addEventListener("click", () => {
 					const p = b.dataset.setDesign;
@@ -100,6 +110,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 						root.dataset.design = p;
 						localStorage.setItem("hobo-design", p);
 					}
+					markCurrent();
 					b.closest("details")?.removeAttribute("open");
 				});
 			}

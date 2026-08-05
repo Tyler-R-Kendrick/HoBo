@@ -175,6 +175,14 @@ hardcoded hex in new work.
    are rare interactive/status accents only — never rainbow chrome.
 6. **Traced art only** — mascot and scene panels are reference traces (`Mascot`,
    `scenes/*`, parallax plates). Do not invent flat vector substitutes.
+   Scene panels are being rebuilt one at a time from the approved prop art in
+   the media catalogue (`media/public/reference/scene-props/`), each prop
+   machine-traced into rigged layers that animate in place — `Crossroads` is
+   the first: the signpost's five boards wobble around their nails while the
+   post stays planted, composed with the supplied parallax plates and Bo's
+   idle strip. Prop ink follows the mascot night rule (lifts to soot with a
+   light rim, never inverts); plates invert to chalk; clouds keep their own
+   ink. Each remaining scene swaps only after its owner-approved preview.
 
 ## Colors
 

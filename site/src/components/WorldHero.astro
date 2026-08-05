@@ -53,6 +53,40 @@ import { href } from "../lib/url";
 				<figcaption>— Our correspondent's engraving: a workload arrives at better rent.</figcaption>
 			</figure>
 		</div>
+		<hr class="herald-rule herald-rule-thin" />
+		<div class="herald-columns">
+			<article>
+				<h2>TWO LANDLORDS DENOUNCED IN OPEN LETTER</h2>
+				<p>"A closed platform is easy," the letter reads, "right up until the
+				rent triples — one runtime, one bill, and the exits are decorative."
+				Of the other landlord: "raw cloud gives you full control… of a second
+				job. Every app team slowly becomes a part-time platform crew."</p>
+			</article>
+			<article>
+				<h2>THE RIDE, IN FOUR STOPS</h2>
+				<p><b>I.</b> Pack the Bindle — everything the app owns.
+				<b>II.</b> Declare policies — cost, region, uptime.
+				<b>III.</b> Board the Camp that passes every gate.
+				<b>IV.</b> When the rent turns, ride again. No rewrite, no war room.</p>
+			</article>
+			<figure class="herald-figure">
+				<img src={href("/worlds/herald2.webp")} alt="Engraving: Bo at a many-armed signpost crossroads" loading="lazy" />
+				<figcaption>— At the crossroads: any provider that passes policy is a valid road.</figcaption>
+			</figure>
+		</div>
+		<hr class="herald-rule herald-rule-thin" />
+		<div class="herald-classifieds">
+			<p class="herald-kicker">CLASSIFIEDS</p>
+			<div class="herald-ads">
+				<p><b>FOR HIRE — BINDLE.</b> Carries an entire application. Travels light. <a href={href("/primitives/bindles/")}>Enquire.</a></p>
+				<p><b>ROOMS — CAMPS.</b> By the night, any provider. Policy-vetted. <a href={href("/primitives/camps/")}>Enquire.</a></p>
+				<p><b>LOTS — YARDS.</b> Self-hosted ground, bring your own metal. <a href={href("/primitives/yards/")}>Enquire.</a></p>
+				<p><b>CONNECTIONS — JUNCTIONS.</b> Interchange made honest. <a href={href("/primitives/junctions/")}>Enquire.</a></p>
+			</div>
+		</div>
+		<p class="herald-notice">PUBLIC NOTICE — HoBo is pre-release. The surfaces
+		documented in this edition are the contract the product is being built to.
+		<a href={href("/guide/status/")}>Consult the record.</a></p>
 	</div>
 </section>
 
@@ -76,6 +110,27 @@ import { href } from "../lib/url";
 			<a class="btn btn-primary" href={href("/guide/getting-started/")}>Roll the reel</a>
 			<a class="btn btn-ghost" href={href("/guide/concepts/")}>Read the programme</a>
 		</div>
+		<div class="photoplay-scenes">
+			<div class="photoplay-still">
+				<img src={href("/worlds/photoplay2.webp")} alt="Film still: Bo walking a moonlit rail line" loading="lazy" />
+			</div>
+			<div class="photoplay-titles">
+				<p class="pp-scene">SCENE II</p>
+				<p class="pp-line">TWO LANDLORDS. ONE OWNS YOU.<br />THE OTHER WORKS YOU.</p>
+				<p class="pp-scene">SCENE III</p>
+				<p class="pp-line">PACK · DECLARE · BOARD ·<br />AND WHEN THE RENT TURNS — RIDE AGAIN.</p>
+			</div>
+		</div>
+		<div class="photoplay-cast">
+			<p class="pp-scene">CAST OF CHARACTERS</p>
+			<dl>
+				<div><dt><a href={href("/primitives/bindles/")}>THE BINDLE</a></dt><dd>the luggage</dd></div>
+				<div><dt><a href={href("/primitives/camps/")}>THE CAMP</a></dt><dd>the room for the night</dd></div>
+				<div><dt><a href={href("/primitives/yards/")}>THE YARD</a></dt><dd>the family lot</dd></div>
+				<div><dt><a href={href("/primitives/trails/")}>THE TRAIL</a></dt><dd>the road itself</dd></div>
+			</dl>
+		</div>
+		<p class="pp-end">— THE END IS NOT WRITTEN. (PRE-RELEASE) —</p>
 	</div>
 </section>
 
@@ -97,6 +152,28 @@ import { href } from "../lib/url";
 			</div>
 		</div>
 		<img class="dispatch-art" src={href("/worlds/dispatch.webp")} alt="A split-flap railway departure board" loading="lazy" />
+	</div>
+	<div class="container">
+		<div class="dispatch-tables">
+			<div>
+				<p class="dispatch-title">DEPARTURES</p>
+				<table class="dispatch-tt">
+					<tr><td>14:10</td><td>closed-paas → open-road</td><td>ON TIME</td></tr>
+					<tr><td>14:22</td><td>pricey-east → cheaper-west</td><td>GATED</td></tr>
+					<tr><td>14:31</td><td>own-metal ⇄ any-provider</td><td>STANDING</td></tr>
+				</table>
+			</div>
+			<div>
+				<p class="dispatch-title">YARD DESIGNATIONS</p>
+				<table class="dispatch-tt">
+					<tr><td><a href={href("/primitives/bindles/")}>BINDLE</a></td><td>cargo manifest — everything the app owns</td></tr>
+					<tr><td><a href={href("/primitives/camps/")}>CAMP</a></td><td>berth for the night</td></tr>
+					<tr><td><a href={href("/primitives/yards/")}>YARD</a></td><td>home rail, your own metal</td></tr>
+					<tr><td><a href={href("/primitives/junctions/")}>JUNCTION</a></td><td>interchange</td></tr>
+				</table>
+			</div>
+		</div>
+		<p class="dispatch-status">STATUS: PRE-RELEASE · LOCAL LANE LIVE · DEPLOY LANES CREDENTIAL-GATED · <a href={href("/guide/status/")}>full board</a></p>
 	</div>
 </section>
 
@@ -121,6 +198,29 @@ import { href } from "../lib/url";
 					<a class="btn btn-ghost" href={href("/guide/concepts/")}>Flip the album</a>
 				</div>
 			</div>
+		</div>
+		<div class="scrapbook-spread scrapbook-more">
+			<div class="scrapbook-card">
+				<span class="tape" aria-hidden="true"></span>
+				<p class="scrap-list-title">packing list</p>
+				<ul class="scrap-list">
+					<li>☑ <a href={href("/primitives/bindles/")}>bindle</a> — everything we own</li>
+					<li>☑ policies — what we'll pay, where we'll sleep</li>
+					<li>☑ <a href={href("/primitives/camps/")}>camp</a> — tonight's room</li>
+					<li>☑ <a href={href("/primitives/yards/")}>map of the yards</a> — in case we host ourselves</li>
+				</ul>
+			</div>
+			<figure class="scrapbook-photo">
+				<span class="tape tape-r" aria-hidden="true"></span>
+				<img src={href("/worlds/scrapbook2.webp")} alt="Paper collage of a crossroads signpost" loading="lazy" />
+			</figure>
+		</div>
+		<div class="scrapbook-card scrapbook-post2">
+			<span class="tape" aria-hidden="true"></span>
+			<p>Before we left — the old landlord owned the walls, and the new one
+			wanted us doing his chores nights and weekends. So we packed. One
+			bindle. That's the whole trick. <em>— Bo</em></p>
+			<p class="scrap-stub">🎫 ADMIT ONE — the open road <em>(pre-release: the road's still being laid)</em> · <a href={href("/guide/status/")}>see how far it goes</a></p>
 		</div>
 	</div>
 </section>

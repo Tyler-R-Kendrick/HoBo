@@ -173,3 +173,21 @@ export const CHARACTERS = [
 		note: "Born from a turnaround that drifted off Bo and landed somewhere better. Reference sheets and the 3D lift are his; he ships nowhere yet.",
 	},
 ] as const;
+
+
+/**
+ * APPROVED scene props — owner-approved 2026-08-05, round 1.
+ *
+ * Generated from scratch in the ink register (never from the old scene SVGs),
+ * destined to replace the five hand-built scene illustrations once each is
+ * layer-traced, rigged, and animated with spriterrific. These are the
+ * originals the traces derive from; the scenes they replace stay live until
+ * their animated successors are individually approved.
+ */
+export const SCENE_PROPS: Reference[] = [
+	{ key: "signpost", title: "Signpost", file: "reference/scene-props/signpost.webp", note: "→ scene-crossroads. Arms rigged individually; wobble when nudged." },
+	{ key: "train", title: "Locomotive", file: "reference/scene-props/train.webp", note: "→ scene-train. Wheels, rods and steam as layers; wheels roll, steam loops." },
+	{ key: "depot", title: "Depot", file: "reference/scene-props/depot.webp", note: "→ scene-depot. Hanging sign swings; clock hands tick." },
+	{ key: "blimp", title: "Blimp", file: "reference/scene-props/blimp.webp", note: "→ scene-blimp. Gentle bob; propeller spins." },
+	{ key: "steamboat", title: "Steamboat", file: "reference/scene-props/steamboat.webp", note: "→ scene-steamboat. Paddle churns, funnel puffs; stray ink text removed at trace." },
+];

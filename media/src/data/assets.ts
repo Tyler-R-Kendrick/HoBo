@@ -185,7 +185,7 @@ export const CHARACTERS = [
  * their animated successors are individually approved.
  */
 export const SCENE_PROPS: Reference[] = [
-	{ key: "signpost", title: "Signpost", file: "reference/scene-props/signpost.webp", note: "→ scene-crossroads. Arms rigged individually; wobble when nudged." },
+	{ key: "signpost", title: "Signpost", file: "reference/scene-props/signpost.webp", note: "→ scene-crossroads. LIVE: traced into six rigged layers (post+grass, five boards pivoting on their nails; the short broken board passes behind the post) — now animating on the homepage." },
 	{ key: "train", title: "Locomotive", file: "reference/scene-props/train.webp", note: "→ scene-train. Wheels, rods and steam as layers; wheels roll, steam loops." },
 	{ key: "depot", title: "Depot", file: "reference/scene-props/depot.webp", note: "→ scene-depot. Hanging sign swings; clock hands tick." },
 	{ key: "blimp", title: "Blimp", file: "reference/scene-props/blimp.webp", note: "→ scene-blimp. Gentle bob; propeller spins." },

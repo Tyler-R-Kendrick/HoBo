@@ -122,7 +122,9 @@ describe("browser WIT Environment Station", () => {
 		30_000,
 	);
 
-	it("does not embed OpenSaaS in the browser WIT guest (local-bridge deploy)", async () => {
+	it(
+		"does not embed OpenSaaS in the browser WIT guest (local-bridge deploy)",
+		async () => {
 		const { loadExamplesCatalog } = await import("../catalog.js");
 		const catalog = await loadExamplesCatalog();
 		const saas = catalog.find(({ id }) => id === "opensaas");
@@ -132,7 +134,9 @@ describe("browser WIT Environment Station", () => {
 			catalog.filter((example) => (example.handlersSource ?? "").trim().length > 0),
 		);
 		expect(source).not.toContain('"opensaas"');
-	});
+		},
+		30_000,
+	);
 
 	it("executes the declared notes delete route", async () => {
 		const source = buildBrowserStationGuestSource([

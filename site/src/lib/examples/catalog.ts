@@ -177,6 +177,7 @@ function parseMeta(value: unknown, directory: string) {
 	if (deployKindRaw !== "browser-wit" && deployKindRaw !== "local-bridge") {
 		throw new TypeError("meta.deployKind must be browser-wit or local-bridge");
 	}
+	const deployKind: "browser-wit" | "local-bridge" = deployKindRaw;
 	return {
 		id,
 		title: string(input.title, "meta.title"),
@@ -184,7 +185,7 @@ function parseMeta(value: unknown, directory: string) {
 		tags: strings(input.tags, "meta.tags"),
 		needs: strings(input.needs, "meta.needs"),
 		ui: ui as ExampleUiKind,
-		deployKind: deployKindRaw,
+		deployKind,
 		entry,
 		sourcePath,
 	};

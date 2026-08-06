@@ -46,7 +46,7 @@ Live Playwright: `examples:regression`, `examples:regression:opensaas`,
 ## Finish evidence
 
 - Live Playwright (2026-08-06): CF / OpenSaaS CF / anon matrix PASS.
-- `/sdlc --finish`: #1048 + #1049 squash-merged.
-- Pages tip restored to last-good tree after wasm deploys stuck
-  `pages-build-deployment` (queued/cancelled, no runner). Redeploy when
-  Actions runners accept jobs again.
+- `/sdlc --finish`: #1048 + #1049 + #1050 squash-merged (local `agent:check` /
+  githooks only — do not gate on or retrigger Action runners).
+- `site:deploy` pushed `gh-pages` tip with Examples catalog; WIT wasm omitted.
+  Agent must not poll/cancel/`POST …/pages/builds` for promote.

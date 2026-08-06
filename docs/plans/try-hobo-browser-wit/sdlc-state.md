@@ -31,17 +31,22 @@ Live Playwright: `examples:regression`, `examples:regression:opensaas`,
 - Branch: `feat/examples-temporary-anon-hosts`
 - PR: [#1048](https://github.com/Tyler-R-Kendrick/HoBo/pull/1048)
 - Merge: `e2012e5dea44d7ea42118e4ce74ab7a35138595f` (squash, 2026-08-06)
-- Pages: `pnpm run site:deploy` @ merge SHA; follow-up publishes WIT `examples/runtime`
-  (removed nested `public/examples/.gitignore` that blocked `git add` on gh-pages)
+- Pages: `pnpm run site:deploy` @ merge SHA; #1049 fixed nested gitignore so
+  runtime could be staged. **WIT wasm omitted from `gh-pages`** — Pages legacy
+  builds fail/hang on ~25MB wasm; deploy ships catalog + `runtime/PAGES.md`.
 - Stack: single layer
 
 ## Acceptance
 
 - Cloudflare Temporary Accounts station + OpenSaaS ship work without permanent API tokens.
 - Non-CF yards provision HTTP same-origin anon stations (never `blob:` as remote).
-- GitHub Pages `/HoBo/examples/` includes catalog + WIT runtime assets.
+- GitHub Pages `/HoBo/examples/` includes catalog (WIT wasm local-only; see
+  `scripts/deploy-site.mts`).
 
 ## Finish evidence
 
 - Live Playwright (2026-08-06): CF / OpenSaaS CF / anon matrix PASS.
-- `/sdlc --finish`: #1048 squash-merged; Pages redeployed with runtime fix.
+- `/sdlc --finish`: #1048 + #1049 squash-merged.
+- Pages tip restored to last-good tree after wasm deploys stuck
+  `pages-build-deployment` (queued/cancelled, no runner). Redeploy when
+  Actions runners accept jobs again.

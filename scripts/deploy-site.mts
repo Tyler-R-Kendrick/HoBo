@@ -24,6 +24,7 @@ import {
 	mkdtempSync,
 	readdirSync,
 	rmSync,
+	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -98,6 +99,32 @@ function publish(sha: string): void {
 		// Astro output is already built; Jekyll must not touch it, and without
 		// this file GitHub silently drops every `_astro/*` asset.
 		run("touch", [join(staging, ".nojekyll")], staging);
+
+		// GitHub Pages legacy builds fail / hang when the orphan commit includes
+		// the browser WIT runtime (~25MB wasm, or even station.js alone after
+		// wasm is stripped). Ship the Examples catalog + UI; full runtime stays
+		// local via `astro dev` / `examples:runtime`.
+		const runtimeDir = join(staging, "examples/runtime");
+		if (existsSync(runtimeDir)) {
+			rmSync(runtimeDir, { recursive: true, force: true });
+			mkdirSync(runtimeDir, { recursive: true });
+			writeFileSync(
+				join(runtimeDir, "PAGES.md"),
+				[
+					"# Browser WIT runtime on GitHub Pages",
+					"",
+					"The `examples/runtime/` WIT bundle is omitted from `gh-pages` —",
+					"Pages legacy builds fail or hang when it is included (~25MB",
+					"wasm, and `station.js` alone also stalls the builder).",
+					"",
+					"Examples HTML + `index.json` still ship. Local full runtime:",
+					"`pnpm --filter hobo-site run dev` (prebuild runs",
+					"`examples:runtime`).",
+					"",
+				].join("\n"),
+				"utf8",
+			);
+		}
 
 		run("git", ["add", "-A"], staging);
 		const message = `deploy: site + media @ ${sha.slice(0, 9)}`;

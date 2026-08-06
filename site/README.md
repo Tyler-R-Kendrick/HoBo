@@ -260,11 +260,14 @@ The `#` is hidden until the heading is hovered or the anchor is focused, and it
 occupies no layout when hidden — the heading's silhouette never shifts. It is
 never `display: none`, so a keyboard user can still reach it.
 
-## Publishing (no Actions)
+## Publishing (branch push; GitHub runs `pages-build-deployment`)
 
-The site is published by pushing the built output to the **`gh-pages` branch**, which
-GitHub Pages serves directly ("Deploy from a branch"). This deliberately avoids any
-GitHub Actions dependency. From the repo root:
+The site is published by pushing the built output to the **`gh-pages` branch**
+("Deploy from a branch"). Local publish stays `pnpm run site:deploy` — no
+workflow file in this repo — but GitHub's managed **`pages-build-deployment`**
+Action still has to pick up a runner before the new tip goes live. When that
+Action sits queued (spending limit / runner quota), the previous successful
+deployment keeps serving.
 
 ```sh
 pnpm run site:deploy              # build, then publish
@@ -309,6 +312,11 @@ Notes:
   single-commit history, never a source branch.
 - One-time repo setting if Pages isn't already serving: **Settings → Pages →
   Source → Deploy from a branch → `gh-pages` / `(root)`**.
+- **`examples/runtime/` WIT wasm is omitted from `gh-pages`.** Pages builds
+  fail or hang when the ~25MB bundle is included. Deploy writes
+  `examples/runtime/PAGES.md` instead. Full runtime: local
+  `pnpm --filter hobo-site run dev` (prebuild runs `examples:runtime`). Catalog
+  HTML + `index.json` still ship.
 
 ## Design audit (interactive)
 

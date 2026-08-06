@@ -25,32 +25,40 @@ import type {
 	WasmComponentDependencyOptions,
 } from "./types.js";
 
-// Structural detection of a @component-decorated class (Plan 2 Syntax 0)
+// Structural detection of a @component / @trainable-decorated class
 // via the shared symbol registry — the manifest layer never imports the
 // runtime's training machinery.
 const METADATA_SYMBOL =
 	(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");
 const COMPONENT_METADATA = Symbol.for("hobo.component.metadata");
+const TRAINABLE_METADATA = Symbol.for("hobo.trainable.metadata");
 
-function isDeclaredComponent(binding: ComponentBinding): boolean {
+/** Default name when authors use nameless `bindle((b) => …)`. */
+export const DEFAULT_BINDLE_NAME = "app";
+
+function isInstantiableClassBinding(binding: ComponentBinding): boolean {
 	if (typeof binding !== "function") return false;
 	const metadata = (
 		binding as unknown as Record<symbol, Record<symbol, unknown> | undefined>
 	)[METADATA_SYMBOL];
-	return metadata?.[COMPONENT_METADATA] !== undefined;
+	if (!metadata) return false;
+	return (
+		metadata[COMPONENT_METADATA] !== undefined ||
+		metadata[TRAINABLE_METADATA] !== undefined
+	);
 }
 
 /**
- * Normalize a binding to the stored handler thunk. A declared component
- * becomes `() => new Component()` — instantiation registers each
- * `@operation` trainable (DI semantics), so collecting or serving the
- * bindle surfaces the component's declared operations with no extra step.
+ * Normalize a binding to the stored handler thunk. A declared @component or
+ * @trainable class becomes `() => new Class()` — instantiation registers each
+ * operation/trainable (DI semantics), so collecting or serving the bindle
+ * surfaces the class's declared operations with no extra step.
  */
 function toHandler(
 	binding: ComponentBinding | undefined,
 ): (() => unknown) | undefined {
 	if (binding === undefined) return undefined;
-	if (isDeclaredComponent(binding)) {
+	if (isInstantiableClassBinding(binding)) {
 		const Component = binding as new () => object;
 		return () => new Component();
 	}
@@ -189,6 +197,9 @@ function toResourceRecord<K extends ResourceKind>(
 }
 
 export function bindle(
+	build: (builder: BindleBuilder) => Record<string, BindleResource>,
+): BindleDefinition;
+export function bindle(
 	name: string,
 	build: (builder: BindleBuilder) => Record<string, BindleResource>,
 ): BindleDefinition;
@@ -198,27 +209,40 @@ export function bindle(
 	build: (builder: BindleBuilder) => Record<string, BindleResource>,
 ): BindleDefinition;
 export function bindle(
-	name: string,
-	buildOrRequirements:
+	nameOrBuild:
+		| string
+		| ((builder: BindleBuilder) => Record<string, BindleResource>),
+	buildOrRequirements?:
 		| ((builder: BindleBuilder) => Record<string, BindleResource>)
 		| Partial<BindleRequirements>
 		| Record<string, unknown>,
 	maybeBuild?: (builder: BindleBuilder) => Record<string, BindleResource>,
 ): BindleDefinition {
-	if (typeof name !== "string" || name.length === 0) {
-		throw new TypeError("bindle name must be a non-empty string");
+	const nameless = typeof nameOrBuild === "function";
+	let name: string;
+	let build: (builder: BindleBuilder) => Record<string, BindleResource>;
+	let requirementsInput: unknown = {};
+
+	if (nameless) {
+		name = DEFAULT_BINDLE_NAME;
+		build = nameOrBuild;
+	} else {
+		if (typeof nameOrBuild !== "string" || nameOrBuild.length === 0) {
+			throw new TypeError("bindle name must be a non-empty string");
+		}
+		name = nameOrBuild;
+		if (typeof buildOrRequirements === "function") {
+			build = buildOrRequirements;
+		} else {
+			requirementsInput = buildOrRequirements ?? {};
+			if (typeof maybeBuild !== "function") {
+				throw new TypeError("bindle requires a builder function");
+			}
+			build = maybeBuild;
+		}
 	}
 
-	const build =
-		typeof buildOrRequirements === "function"
-			? buildOrRequirements
-			: maybeBuild;
-	if (typeof build !== "function") {
-		throw new TypeError("bindle requires a builder function");
-	}
-	const requirements = parseBindleRequirements(
-		typeof buildOrRequirements === "function" ? {} : buildOrRequirements,
-	);
+	let requirements = parseBindleRequirements(requirementsInput);
 
 	const builder = createBuilder();
 	const built = build(builder);
@@ -267,6 +291,10 @@ export function bindle(
 		}
 	}
 
+	if (nameless && isEmptyRequirements(requirements)) {
+		requirements = inferRequirementsFromResources(resources);
+	}
+
 	const definition: BindleDefinition = {
 		name,
 		resources: Object.freeze(resources),
@@ -283,4 +311,61 @@ export function bindle(
 	// Reject cloud provider selection annotations at collection boundary.
 	assertNoBindleProviderSelection(frozen);
 	return frozen;
+}
+
+function isEmptyRequirements(requirements: BindleRequirements): boolean {
+	return (
+		requirements.require.length === 0 &&
+		requirements.prefer.length === 0 &&
+		requirements.runtimes.length === 0 &&
+		Object.keys(requirements.labels).length === 0
+	);
+}
+
+/** Infer provider-neutral capabilities from declared resource kinds. */
+export function inferRequirementsFromResources(
+	resources: Readonly<Record<string, BindleResourceRecord>>,
+): BindleRequirements {
+	const require = new Set<string>();
+	const runtimes = new Set<string>();
+	for (const resource of Object.values(resources)) {
+		switch (resource.kind) {
+			case "web":
+			case "api":
+			case "service":
+			case "ui":
+			case "websocket":
+			case "job":
+				require.add("http");
+				runtimes.add("wasm");
+				break;
+			case "kv":
+				require.add("kv");
+				break;
+			case "queue":
+				require.add("queue");
+				break;
+			case "bucket":
+				require.add("bucket");
+				break;
+			case "topic":
+				require.add("topic");
+				break;
+			case "data":
+				require.add("data");
+				break;
+			case "secret":
+				require.add("secret");
+				break;
+			case "wasm-component":
+				runtimes.add("wasm");
+				break;
+			default:
+				break;
+		}
+	}
+	return parseBindleRequirements({
+		require: [...require].sort(),
+		runtimes: [...runtimes].sort(),
+	});
 }

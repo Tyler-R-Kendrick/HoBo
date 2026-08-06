@@ -1,0 +1,10 @@
+{
+	"id": "hello-world",
+	"title": "Hello World",
+	"blurb": "Bindle web(Hello) — trainable greet bound to the web fluent API.",
+	"tags": ["starter", "bindle", "web"],
+	"needs": ["http"],
+	"ui": "hello",
+	"entry": "app.ts",
+	"sourcePath": "examples/try-site/apps/hello-world/app.ts"
+}

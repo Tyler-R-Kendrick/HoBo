@@ -33,6 +33,8 @@ export function createBindlesPublicApiSnapshot(
 		"catalogFactoryNames",
 		"secretRef",
 		"bindle",
+		"DEFAULT_BINDLE_NAME",
+		"inferRequirementsFromResources",
 		"HOBO_BINDLES_PACKAGE",
 		"MANIFEST_SCHEMA",
 		"ManifestParseError",
@@ -164,7 +166,18 @@ export function createBindlesPublicApiSnapshot(
 				name: "bindle",
 				kind: "topology-builder",
 				signature:
-					"bindle(name: string, build: (b: BindleBuilder) => Record<string, BindleResource>): BindleDefinition",
+					"bindle(nameOrBuild: string | ((b: BindleBuilder) => Record<string, BindleResource>), …): BindleDefinition",
+			},
+			{
+				name: "DEFAULT_BINDLE_NAME",
+				kind: "package-constant",
+				signature: 'const DEFAULT_BINDLE_NAME: "app"',
+			},
+			{
+				name: "inferRequirementsFromResources",
+				kind: "helper",
+				signature:
+					"inferRequirementsFromResources(resources: Readonly<Record<string, BindleResourceRecord>>): BindleRequirements",
 			},
 			{
 				name: "HOBO_BINDLES_PACKAGE",

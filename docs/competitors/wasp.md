@@ -74,6 +74,19 @@ tags: [hobo, competitors]
 Open-SaaS-shaped kit as **Resource Pack / App Kit inspiration** — higher-level
 Bindle kits with curated features, not a second authoring surface.
 
+**Try-site demo:** `/HoBo/examples/` ships real Wasp Open-SaaS under
+[`examples/wasp-opensaas/`](../../examples/wasp-opensaas/HOBO.md) (from `wasp new -t saas`),
+packaged as a HoBo Bindle (`container` Postgres + `service`). **Pool** stamps
+Environment Stations first (Cloudflare Temporary Accounts + CORS relay
+`POST /station` — anonymous `*.workers.dev` + claim URL; relay bootstrapped with
+Temporary Accounts, zero permanent API tokens; no Bindle in the yard surface).
+**Ship** then places the app onto those stations
+(Compose / Railway / Cloudflare app paths). Yard deploy files are station-only
+(`stationBootstrap`; no `waspApp` / `cli`).
+Console URL: `/HoBo/examples/`. Start the bridge with
+`pnpm --filter hobo-site run examples:bridge`. Agent-browser feature:
+`pnpm --filter hobo-site run examples:regression`.
+
 **The one-line takeaway:** Wasp validates declarative app-level intent and
 opinionated kits; HoBo adopts those lessons at the Bindle/Pack layer and offers
 existing Wasp apps a packaging path — full dual authoring and generated React

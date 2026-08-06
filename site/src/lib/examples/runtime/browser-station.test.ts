@@ -82,6 +82,62 @@ describe("browser WIT Environment Station", () => {
 		});
 	});
 
+	it(
+		"implements greet from hello-world Bindle-derived guest handlers",
+		async () => {
+		const { loadExamplesCatalog } = await import("../catalog.js");
+		const catalog = await loadExamplesCatalog();
+		const hello = catalog.find(({ id }) => id === "hello-world")!;
+		expect(hello.handlersSource).toContain("Hello World!");
+		expect(hello.source).toContain("b.web(Hello)");
+		expect(hello.source).not.toContain("handlers.mjs");
+		const source = buildBrowserStationGuestSource([
+			{
+				id: hello.id,
+				runtime: hello.runtime,
+				handlersSource: hello.handlersSource,
+			},
+		]);
+		const guest = (await import(
+			`data:text/javascript,${encodeURIComponent(source)}`
+		)) as {
+			invoke(request: BrowserStationInvokeRequest): BrowserStationInvokeResponse;
+		};
+		const invoke = (body: unknown) => {
+			const response = guest.invoke({
+				exampleId: "hello-world",
+				stationId: "station:browser:test",
+				method: "POST",
+				path: "/api/greet",
+				bodyJson: JSON.stringify(body),
+			});
+			return { status: response.status, body: JSON.parse(response.bodyJson) };
+		};
+		expect(invoke({})).toEqual({ status: 200, body: { greeting: "Hello World!" } });
+		expect(invoke({ name: "Bo" })).toEqual({
+			status: 200,
+			body: { greeting: "Hello, Bo!" },
+		});
+		},
+		30_000,
+	);
+
+	it(
+		"does not embed OpenSaaS in the browser WIT guest (local-bridge deploy)",
+		async () => {
+		const { loadExamplesCatalog } = await import("../catalog.js");
+		const catalog = await loadExamplesCatalog();
+		const saas = catalog.find(({ id }) => id === "opensaas");
+		expect(saas?.deployKind).toBe("local-bridge");
+		expect(saas?.handlersSource).toBe("");
+		const source = buildBrowserStationGuestSource(
+			catalog.filter((example) => (example.handlersSource ?? "").trim().length > 0),
+		);
+		expect(source).not.toContain('"opensaas"');
+		},
+		30_000,
+	);
+
 	it("executes the declared notes delete route", async () => {
 		const source = buildBrowserStationGuestSource([
 			{
@@ -203,6 +259,51 @@ describe("browser WIT Environment Station", () => {
 		});
 
 		expect(html).toContain('button("Delete first", "delete"');
+	});
+
+	it("exposes hello and saas host UI mounts", () => {
+		const helloHtml = buildBrowserWitStationHtml({
+			exampleId: "hello-world",
+			title: "Hello World",
+			ui: "hello",
+			stationId: "station:browser:test",
+			targetLabel: "Browser WASM",
+			entryModuleSource: "export const $init = Promise.resolve(); export function invoke() {}",
+			wasmAssets: [],
+			manifest: manifest(),
+			runtime: {
+				schemaVersion: "hobo.try-runtime/v1",
+				resources: {},
+				routes: [{ method: "POST", path: "/api/greet", action: "greet" }],
+			},
+		});
+		expect(helloHtml).toContain('button("Greet", "greet"');
+
+		const saasHtml = buildBrowserWitStationHtml({
+			exampleId: "opensaas",
+			title: "OpenSaaS Kit",
+			ui: "saas",
+			stationId: "station:browser:test",
+			targetLabel: "Browser WASM",
+			entryModuleSource: "export const $init = Promise.resolve(); export function invoke() {}",
+			wasmAssets: [],
+			manifest: manifest(),
+			runtime: {
+				schemaVersion: "hobo.try-runtime/v1",
+				resources: {
+					users: { kind: "kv", initial: [] },
+					session: { kind: "kv", initial: null },
+					products: { kind: "kv", initial: [] },
+					orders: { kind: "kv", initial: [] },
+				},
+				routes: [
+					{ method: "POST", path: "/api/auth/login", action: "login" },
+					{ method: "GET", path: "/api/products", action: "listProducts" },
+				],
+			},
+		});
+		expect(saasHtml).toContain("mountSaasUi");
+		expect(saasHtml).toContain("Admin");
 	});
 
 	it("fails closed on a synthetic or malformed runtime manifest", () => {

@@ -178,6 +178,9 @@ importers:
       '@hobo/bindles':
         specifier: workspace:*
         version: link:../../packages/bindles
+      '@hobo/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
 
   external/ts-autocode:
     dependencies:
@@ -1516,6 +1519,12 @@ importers:
       '@bufbuild/protobuf':
         specifier: ^2.12.1
         version: 2.12.1
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../packages/bindles
+      '@hobo/runtime':
+        specifier: workspace:*
+        version: link:../packages/runtime
       astro:
         specifier: ^5.17.0
         version: 5.18.2(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
@@ -1532,6 +1541,9 @@ importers:
       rehype-slug:
         specifier: ^6.0.0
         version: 6.0.0
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
 
   src/draft/epic-proofs/cli-mcp-developer-experience: {}
 

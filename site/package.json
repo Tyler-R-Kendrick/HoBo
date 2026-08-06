@@ -14,6 +14,10 @@
     "codegen": "pnpm --dir .. exec node --import tsx packages/schema-tools/src/cli.ts --packages-root . --filter site",
     "codegen:check": "pnpm --dir .. exec node --import tsx packages/schema-tools/src/cli.ts --check --packages-root . --filter site",
     "examples:runtime": "node --import tsx scripts/build-browser-wit-runtime.mts",
+    "examples:bridge": "node --import tsx scripts/examples-local-bridge.mts",
+    "examples:regression": "node --import tsx scripts/examples-console-regression.mts",
+    "examples:regression:opensaas": "node --import tsx scripts/examples-opensaas-cloudflare-regression.mts",
+    "examples:regression:anon": "node --import tsx scripts/examples-anon-providers-regression.mts",
     "preview": "astro preview",
     "check": "astro check",
     "test": "pnpm run codegen:check && vitest run src/lib/examples",
@@ -26,12 +30,15 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.12.1",
+    "@hobo/bindles": "workspace:*",
+    "@hobo/runtime": "workspace:*",
     "astro": "^5.17.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@google/design.md": "^0.4.0",
     "rehype-autolink-headings": "^7.1.0",
-    "rehype-slug": "^6.0.0"
+    "rehype-slug": "^6.0.0",
+    "tsx": "^4.22.4"
   }
 }

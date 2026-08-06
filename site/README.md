@@ -6,9 +6,13 @@ The GitHub Pages site for HoBo: landing page, developer docs, and agent docs, se
 Built with [Astro](https://astro.build) in static output mode — no client-side framework.
 Most pages are prerendered HTML plus `src/styles/global.css`; the `/examples/`
 ship console is the deliberate exception, using a small TypeScript client and
-build-generated browser Component Model assets to provision independent local
-Environment Station previews without a server. Multi-host selections show policy
-placement intent; they do not claim browser-side failover or state mirroring.
+build-generated browser Component Model assets. Cloudflare Temporary Accounts
+station deploy uses same-origin `POST /HoBo/api/cf-temp/station` under
+`astro dev` / `astro preview` (Vite middleware → Cloudflare Temporary Accounts
+REST; zero permanent API tokens). Other yards use same-origin agent hosts at
+`POST /HoBo/api/anon/:provider/station` (real HTTP, never `blob:` as remote).
+Multi-host selections show policy placement intent; they do not claim
+browser-side failover or state mirroring.
 
 ## Working on the site
 

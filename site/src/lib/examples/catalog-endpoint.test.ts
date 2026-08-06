@@ -8,9 +8,9 @@ describe("Examples catalog endpoint", () => {
 		const catalog = (await response.json()) as { id: string; sourcePath: string }[];
 
 		expect(response.headers.get("content-type")).toContain("application/json");
-		expect(catalog).toHaveLength(4);
+		expect(catalog).toHaveLength(5);
 		expect(catalog[0]?.sourcePath).toBe(
-			"examples/try-site/apps/hello-counter/app.ts",
+			"examples/try-site/apps/hello-world/app.ts",
 		);
 	});
 });

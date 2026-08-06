@@ -24,8 +24,24 @@ consumed by runtime **actors**. This draft POC names the families the production
 | Conformance evidence | `conformance.VerifyRequested` → `conformance.Verified` | ConformanceGateActor | Camp EventStore | ProviderConformance view | Latest report ref | Camp evidence archive |
 
 `realizeHelloBindle` emits an `IacProgram` + optional `BuildSpec` through the
-`RealizeEmissionBoundary` contract. Runtime apply/preview **events** are out of scope for this
-draft POC — recorded-fixture conformance only.
+`RealizeEmissionBoundary` contract. Runtime apply/preview **events** for
+permanent accounts remain out of scope for the realize path — recorded-fixture
+conformance only.
+
+## Temporary accounts + claim
+
+Environment Station bootstrap uses Cloudflare Temporary Accounts only (no
+visitor OAuth, no permanent API tokens in-repo). Command/event alignment:
+
+| Concern | Command / event families | Notes |
+|---|---|---|
+| Temporary station provision | `station.ProvisionRequested` → `station.Provisioned` (anonymous) | REST PoW + Workers deploy via `provisionTemporaryEnvironmentStation` |
+| CORS relay bootstrap | `relay.BootstrapRequested` → `relay.Provisioned` | `bootstrapCorsRelayViaTemporaryAccounts` — Temporary Accounts deploy of CORS Worker |
+| Claim | `deployment.ClaimRequested` → `deployment.Claimed` | Open `claimUrl` in browser (~60m); not API tokens |
+| Browser entry | `POST /station` on relay `workers.dev` | Fixes ACAO gap on `api.cloudflare.com`; never returns `apiToken` |
+
+See package README “Temporary Environment Stations” and
+`station-broker/README.md`.
 
 ## Promotion path
 

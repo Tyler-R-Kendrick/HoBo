@@ -1,6 +1,6 @@
 import type { RoutingPolicy, SparseBudgetPolicy } from "./policy-planner.js";
 
-export type ExampleUiKind = "counter" | "notes" | "todos" | "queue";
+export type ExampleUiKind = "counter" | "hello" | "notes" | "todos" | "queue" | "saas";
 export type ExamplePolicy = SparseBudgetPolicy;
 
 export interface ExampleYard {
@@ -20,7 +20,16 @@ export type RuntimeAction =
 	| "delete"
 	| "toggle"
 	| "enqueue"
-	| "drain";
+	| "drain"
+	| "greet"
+	| "signup"
+	| "login"
+	| "logout"
+	| "me"
+	| "listProducts"
+	| "checkout"
+	| "listOrders"
+	| "adminListUsers";
 
 export interface ExampleRuntimeDescriptor {
 	readonly schemaVersion: "hobo.try-runtime/v1";
@@ -46,6 +55,8 @@ export interface ExampleTopology {
 	readonly allowedYardIds: readonly string[] | null;
 }
 
+export type ExampleDeployKind = "browser-wit" | "local-bridge";
+
 export interface ExampleCatalogEntry {
 	readonly id: string;
 	readonly title: string;
@@ -53,9 +64,13 @@ export interface ExampleCatalogEntry {
 	readonly tags: readonly string[];
 	readonly needs: readonly string[];
 	readonly ui: ExampleUiKind;
+	/** browser-wit = Component Model guest; local-bridge = Docker/Wasp station. */
+	readonly deployKind: ExampleDeployKind;
 	readonly entry: string;
 	readonly sourcePath: string;
 	readonly source: string;
+	/** Object-literal handlers.mjs body inlined into the browser WIT guest. */
+	readonly handlersSource: string;
 	readonly appPolicy: ExamplePolicy;
 	readonly deploymentPolicy: ExamplePolicy;
 	readonly topology: ExampleTopology;
@@ -74,6 +89,15 @@ const ACTIONS = [
 	"toggle",
 	"enqueue",
 	"drain",
+	"greet",
+	"signup",
+	"login",
+	"logout",
+	"me",
+	"listProducts",
+	"checkout",
+	"listOrders",
+	"adminListUsers",
 ] as const;
 
 export function parseExamplesCatalog(value: unknown): readonly ExampleCatalogEntry[] {
@@ -83,7 +107,14 @@ export function parseExamplesCatalog(value: unknown): readonly ExampleCatalogEnt
 
 function parseExample(value: unknown, label: string): ExampleCatalogEntry {
 	const input = record(value, label);
-	const ui = oneOf(input.ui, `${label}.ui`, ["counter", "notes", "todos", "queue"] as const);
+	const ui = oneOf(input.ui, `${label}.ui`, [
+		"counter",
+		"hello",
+		"notes",
+		"todos",
+		"queue",
+		"saas",
+	] as const);
 	const topology = parseTopology(input.topology, `${label}.topology`);
 	const yardIds = new Set(topology.yards.map(({ id }) => id));
 	if (
@@ -93,6 +124,13 @@ function parseExample(value: unknown, label: string): ExampleCatalogEntry {
 	) {
 		throw new TypeError(`${label}.topology references an unknown Yard`);
 	}
+	const deployKind =
+		input.deployKind === undefined
+			? "browser-wit"
+			: oneOf(input.deployKind, `${label}.deployKind`, [
+					"browser-wit",
+					"local-bridge",
+				] as const);
 	return {
 		id: string(input.id, `${label}.id`),
 		title: string(input.title, `${label}.title`),
@@ -100,9 +138,14 @@ function parseExample(value: unknown, label: string): ExampleCatalogEntry {
 		tags: strings(input.tags, `${label}.tags`),
 		needs: strings(input.needs, `${label}.needs`),
 		ui,
+		deployKind,
 		entry: string(input.entry, `${label}.entry`),
 		sourcePath: string(input.sourcePath, `${label}.sourcePath`),
 		source: string(input.source, `${label}.source`),
+		handlersSource:
+			input.handlersSource === undefined
+				? ""
+				: stringAllowEmpty(input.handlersSource, `${label}.handlersSource`),
 		appPolicy: parsePolicy(input.appPolicy, `${label}.appPolicy`),
 		deploymentPolicy: parsePolicy(input.deploymentPolicy, `${label}.deploymentPolicy`),
 		topology,
@@ -200,6 +243,11 @@ function record(value: unknown, label: string): Record<string, unknown> {
 
 function string(value: unknown, label: string): string {
 	if (typeof value !== "string" || value.length === 0) throw new TypeError(`${label} must be a non-empty string`);
+	return value;
+}
+
+function stringAllowEmpty(value: unknown, label: string): string {
+	if (typeof value !== "string") throw new TypeError(`${label} must be a string`);
 	return value;
 }
 

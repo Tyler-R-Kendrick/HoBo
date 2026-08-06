@@ -22,10 +22,49 @@ Capability Manifest.
 
 ## Scope (out)
 
-- Live Terraform/Wrangler execution against real Cloudflare accounts — `realize`
-  emits programs, it does not apply them
+- Live Terraform apply against permanent Cloudflare accounts — `realize`
+  emits programs, it does not apply them (temporary Environment Stations are
+  the exception below)
 - The Planner (S2-02) and Yard (S2-01)
 - D1, Queues, DNS, Hyperdrive
+
+## Temporary Environment Stations (in scope)
+
+Anonymous visitors need a real Cloudflare Environment Station without OAuth.
+Cloudflare Temporary Accounts ([claim deployments](https://developers.cloudflare.com/workers/platform/claim-deployments/))
+are the **only** auth model — **no** permanent `CLOUDFLARE_API_TOKEN` /
+`CLOUDFLARE_ACCOUNT_ID` for this path.
+
+| Path | When | API |
+|---|---|---|
+| `provisionTemporaryEnvironmentStation()` | Agents / Node backends | REST `provisioning/previews` + PoW + Workers script upload |
+| `deployTemporaryWithWrangler()` | Agents / CLI | `wrangler deploy --temporary` (Wrangler ≥ 4.102, **logged out**) |
+| `bootstrapCorsRelayViaTemporaryAccounts()` | Fix browser CORS | Deploys CORS relay Worker via Temporary Accounts |
+| CORS relay `POST /station` | Examples static site | Browser → relay `workers.dev` → Temporary Accounts (Worker→CF has no CORS) |
+
+Browser cannot read `api.cloudflare.com` Temporary Accounts responses (no ACAO).
+
+**Local website (preferred):** `pnpm --filter hobo-site run dev` serves
+same-origin `POST /HoBo/api/cf-temp/station` via Vite middleware → Temporary
+Accounts REST. Examples Deploy stations works with **only the website** — no
+external CORS relay URL, no permanent tokens.
+
+**Static hosts (GitHub Pages):** set `PUBLIC_HOBO_STATION_BROKER_URL` to a live
+Temporary Accounts CORS relay from:
+
+```bash
+pnpm exec tsx scripts/bootstrap-cf-cors-relay.mts
+# → relayUrl + claimUrl  (open claimUrl to keep past ~60m)
+```
+
+Agents can also call `provisionTemporaryEnvironmentStation()` directly
+(Node Temporary Accounts — proven live). Fail closed if broker unreachable —
+never `blob:` as Cloudflare.
+
+Note: Temporary Worker–hosted CORS relays may hit Cloudflare edge **1042** when
+managing sibling Workers Scripts; prefer same-origin `/api/cf-temp` locally, or
+claim the relay account / provision from Node Temporary Accounts.
+Aligns with HoBo claim semantics (`deployment.Claimed` / anonymous → account).
 
 ## Boundary note: iac-pulumi is test-only
 

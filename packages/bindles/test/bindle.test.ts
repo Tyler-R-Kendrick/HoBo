@@ -308,4 +308,35 @@ describe("declared components (Plan 2 Syntax 0)", () => {
 		// Stored verbatim: calling it without `new` is the caller's concern.
 		expect(definition.entrypoint("api")).toBe(NotAComponent);
 	});
+
+	it("accepts nameless bindle((b) => …) and infers requirements from kinds", () => {
+		const definition = bindle((b) => {
+			const web = b.web();
+			return { web };
+		});
+		expect(definition.name).toBe("app");
+		expect(definition.requirements.require).toEqual(["http"]);
+		expect(definition.requirements.runtimes).toEqual(["wasm"]);
+	});
+
+	it("instantiates @trainable classes bound to b.web", () => {
+		const METADATA_SYMBOL =
+			(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");
+		const TRAINABLE_METADATA = Symbol.for("hobo.trainable.metadata");
+		class Hello {
+			greet(name?: string): string {
+				return name?.trim() ? `Hello, ${name.trim()}!` : "Hello World!";
+			}
+		}
+		Object.defineProperty(Hello, METADATA_SYMBOL, {
+			value: { [TRAINABLE_METADATA]: ["Hello.greet"] },
+		});
+		const definition = bindle((b) => ({
+			web: b.web(Hello),
+		}));
+		const instance = definition.entrypoint("web")?.() as Hello;
+		expect(instance).toBeInstanceOf(Hello);
+		expect(instance.greet("Bo")).toBe("Hello, Bo!");
+		expect(definition.requirements.require).toContain("http");
+	});
 });

@@ -23,16 +23,22 @@
 			"campId": "try-cloudflare"
 		},
 		{
+			"id": "yard:railway",
+			"targetId": "railway",
+			"providerId": "railway",
+			"campId": "try-railway"
+		},
+		{
 			"id": "yard:netlify",
 			"targetId": "netlify",
 			"providerId": "netlify",
-			"campId": "try-netlify-lowered"
+			"campId": "try-netlify"
 		},
 		{
 			"id": "yard:vercel",
 			"targetId": "vercel",
 			"providerId": "vercel",
-			"campId": "try-vercel-lowered"
+			"campId": "try-vercel"
 		},
 		{
 			"id": "yard:lakebed",

@@ -1,0 +1,30 @@
+{
+	"schemaVersion": "hobo.try-example/v1",
+	"appPolicy": {
+		"redundancy": "none",
+		"maxReplicas": 1,
+		"resourcePool": ["local", "anonymous-remote"]
+	},
+	"deploymentPolicy": {},
+	"topology": {
+		"junction": {
+			"id": "junction:opensaas",
+			"yardIds": [
+				"yard:browser-wasm",
+				"yard:webernetes",
+				"yard:cloudflare",
+				"yard:railway",
+				"yard:netlify",
+				"yard:vercel",
+				"yard:lakebed",
+				"yard:kubernetes"
+			]
+		},
+		"allowedYardIds": [
+			"yard:webernetes",
+			"yard:lakebed",
+			"yard:cloudflare",
+			"yard:railway"
+		]
+	}
+}

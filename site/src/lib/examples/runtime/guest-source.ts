@@ -17,11 +17,13 @@ export type BrowserStationInvokeResponse = Pick<
 export interface BrowserRuntimeExample {
 	readonly id: string;
 	readonly runtime: BrowserRuntimeDescriptor;
+	/** Object-literal source from examples/try-site/apps/<id>/handlers.mjs */
+	readonly handlersSource?: string;
 }
 
 /**
  * Produce the JavaScript guest compiled by componentize-js. Runtime descriptors
- * are the executable example contract; the site UI does not reimplement them.
+ * plus per-example handler objects are the executable contract.
  */
 export function buildBrowserStationGuestSource(
 	examples: readonly BrowserRuntimeExample[],
@@ -29,8 +31,17 @@ export function buildBrowserStationGuestSource(
 	const descriptors = Object.fromEntries(
 		examples.map(({ id, runtime }) => [id, runtime]),
 	);
+	const handlerEntries = examples
+		.filter((example) => (example.handlersSource ?? "").trim().length > 0)
+		.map((example) => {
+			const body = example.handlersSource!.trim().replace(/;?\s*$/u, "");
+			return `  ${JSON.stringify(example.id)}: (${body})`;
+		});
+	const exampleHandlers = `{\n${handlerEntries.join(",\n")}\n}`;
+
 	return `
 const descriptors = ${safeJson(descriptors)};
+const exampleHandlers = ${exampleHandlers};
 const states = Object.create(null);
 let sequence = 0;
 
@@ -50,6 +61,14 @@ function stateFor(exampleId, descriptor) {
 
 function response(status, body) {
   return { status, bodyJson: JSON.stringify(body) };
+}
+
+function nextId() {
+  return String(++sequence);
+}
+
+function publicUser(user) {
+  return { id: user.id, email: user.email, name: user.name, role: user.role };
 }
 
 export function invoke(request) {
@@ -72,6 +91,18 @@ export function invoke(request) {
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) body = {};
 
+  const ctx = {
+    body,
+    state,
+    value,
+    route,
+    request,
+    response,
+    clone,
+    nextId,
+    publicUser,
+  };
+
   switch (route.action) {
     case "health":
       return response(200, { ok: true, station: request.stationId || null });
@@ -91,7 +122,7 @@ export function invoke(request) {
       return response(200, { [key]: 0 });
     }
     case "create": {
-      const item = { ...body, id: String(++sequence) };
+      const item = { ...body, id: nextId() };
       value.push(item);
       return response(201, clone(item));
     }
@@ -108,14 +139,20 @@ export function invoke(request) {
       return response(200, clone(item));
     }
     case "enqueue": {
-      const item = { id: String(++sequence), message: String(body.message || body.text || "") };
+      const item = { id: nextId(), message: String(body.message || body.text || "") };
       value.push(item);
       return response(202, clone(item));
     }
     case "drain":
       return response(200, { item: value.shift() || null, remaining: value.length });
-    default:
-      return response(500, { error: "unsupported runtime action" });
+    default: {
+      const handlers = exampleHandlers[request.exampleId];
+      const handler = handlers && handlers[route.action];
+      if (typeof handler !== "function") {
+        return response(500, { error: "unsupported runtime action" });
+      }
+      return handler(ctx);
+    }
   }
 }
 `.trimStart();

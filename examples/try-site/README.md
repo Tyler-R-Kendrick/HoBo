@@ -21,5 +21,7 @@ To add an example:
 
 GitHub Pages never receives provider credentials. Browser-WIT, Webernetes,
 Lakebed, and Kubernetes-simulation targets are local blob Environment Stations.
-Remote providers remain unavailable until a trusted out-of-browser bootstrap
-executor returns only a public URL and TTL.
+Cloudflare Pool stamps use Temporary Accounts through a CORS relay Worker
+(`bootstrapCorsRelayViaTemporaryAccounts` — zero permanent API tokens) —
+navigable `*.workers.dev` + claim URL — not blob.
+Other remotes stay stubbed until their temporary-account APIs land.

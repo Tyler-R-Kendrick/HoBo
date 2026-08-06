@@ -1,6 +1,9 @@
 import { readdir, readFile } from "node:fs/promises";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { tsImport } from "tsx/esm/api";
+
+import type { BindleDefinition } from "@hobo/bindles";
 
 import type { RoutingPolicy } from "./policy-planner.js";
 import type {
@@ -12,6 +15,8 @@ import type {
 	ExampleYard,
 	RuntimeAction,
 } from "./catalog-contract.js";
+import { deriveWebGuestFromBindle } from "./derive-web-guest.js";
+import { synthesizeTryRuntimeFromDeclared } from "./synthesize-try-runtime.js";
 
 export type {
 	ExampleCatalogEntry,
@@ -63,15 +68,86 @@ export async function loadExamplesCatalog(
 		);
 		const appPath = path.join(exampleRoot, meta.entry);
 		const appSource = await readFile(appPath, "utf8");
-		const appModule = (await import(pathToFileURL(appPath).href)) as {
+		let handlersFile = "";
+		try {
+			handlersFile = await readFile(path.join(exampleRoot, "handlers.mjs"), "utf8");
+		} catch (error) {
+			if (!isMissingFile(error)) throw error;
+		}
+		const appModule = (await tsImport(appPath, import.meta.url)) as {
+			readonly default?: unknown;
 			readonly runtime?: unknown;
 		};
-		const runtime = parseRuntime(appModule.runtime);
-		const source = `${appSource.trimEnd()}\n`;
-		catalog.push({ ...meta, source, runtime, ...descriptor });
+
+		const { runtime, guestHandlersSource } = resolveExampleRuntime(
+			meta.id,
+			meta.deployKind,
+			appSource,
+			appModule,
+			handlersFile,
+		);
+
+		catalog.push({
+			...meta,
+			source: `${appSource.trimEnd()}\n`,
+			handlersSource: guestHandlersSource,
+			runtime,
+			...descriptor,
+		});
 	}
 
 	return catalog;
+}
+
+const BRIDGE_PLACEHOLDER_RUNTIME: ExampleRuntimeDescriptor = {
+	schemaVersion: "hobo.try-runtime/v1",
+	resources: {},
+	routes: [{ method: "GET", path: "/health", action: "health" }],
+};
+
+function resolveExampleRuntime(
+	id: string,
+	deployKind: "browser-wit" | "local-bridge",
+	appSource: string,
+	appModule: { readonly default?: unknown; readonly runtime?: unknown },
+	handlersFile: string,
+): {
+	readonly runtime: ExampleRuntimeDescriptor;
+	readonly guestHandlersSource: string;
+} {
+	if (deployKind === "local-bridge") {
+		// Guest handlers are unused — OpenSaaS runs via Docker bridge.
+		return { runtime: BRIDGE_PLACEHOLDER_RUNTIME, guestHandlersSource: "" };
+	}
+
+	const bindleDef = appModule.default as BindleDefinition | undefined;
+	const hasWebEntrypoint =
+		bindleDef &&
+		typeof bindleDef === "object" &&
+		typeof bindleDef.entrypoint === "function" &&
+		typeof bindleDef.entrypoint("web") === "function";
+
+	if (hasWebEntrypoint && appModule.runtime === undefined) {
+		return deriveWebGuestFromBindle(bindleDef, appSource);
+	}
+
+	if (appModule.runtime !== undefined) {
+		return {
+			runtime: parseRuntime(appModule.runtime),
+			guestHandlersSource: handlersFile.trim(),
+		};
+	}
+
+	if (handlersFile.trim().length > 0) {
+		return {
+			runtime: synthesizeTryRuntimeFromDeclared(appSource),
+			guestHandlersSource: handlersFile.trim(),
+		};
+	}
+
+	throw new TypeError(
+		`Example ${id}: export runtime, handlers.mjs, or bindle default with b.web(Trainable)`,
+	);
 }
 
 function parseMeta(value: unknown, directory: string) {
@@ -91,8 +167,15 @@ function parseMeta(value: unknown, directory: string) {
 		);
 	}
 	const ui = string(input.ui, "meta.ui");
-	if (!["counter", "notes", "todos", "queue"].includes(ui)) {
-		throw new TypeError("meta.ui must be counter, notes, todos, or queue");
+	if (!["counter", "hello", "notes", "todos", "queue", "saas"].includes(ui)) {
+		throw new TypeError(
+			"meta.ui must be counter, hello, notes, todos, queue, or saas",
+		);
+	}
+	const deployKindRaw =
+		input.deployKind === undefined ? "browser-wit" : string(input.deployKind, "meta.deployKind");
+	if (deployKindRaw !== "browser-wit" && deployKindRaw !== "local-bridge") {
+		throw new TypeError("meta.deployKind must be browser-wit or local-bridge");
 	}
 	return {
 		id,
@@ -101,6 +184,7 @@ function parseMeta(value: unknown, directory: string) {
 		tags: strings(input.tags, "meta.tags"),
 		needs: strings(input.needs, "meta.needs"),
 		ui: ui as ExampleUiKind,
+		deployKind: deployKindRaw,
 		entry,
 		sourcePath,
 	};
@@ -286,6 +370,15 @@ function parseRuntime(value: unknown): ExampleRuntimeDescriptor {
 		"toggle",
 		"enqueue",
 		"drain",
+		"greet",
+		"signup",
+		"login",
+		"logout",
+		"me",
+		"listProducts",
+		"checkout",
+		"listOrders",
+		"adminListUsers",
 	];
 	const routes = input.routes.map((value, index) => {
 		const route = record(value, `runtime.routes[${index}]`);

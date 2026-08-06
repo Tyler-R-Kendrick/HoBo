@@ -426,3 +426,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
   (edit+test only, coordinator commits), three read-only GAPS finders +
   coordinator verifier, rubber-duck + adversarial review before every
   commit batch
+
+## 2026-08-06 — Examples Temporary Accounts + all-provider anon hosts
+
+| Field | Value |
+|---|---|
+| Initiative | `docs/plans/try-hobo-browser-wit/sdlc-state.md` |
+| Backend | sequential-fallback (parent) |
+| Branch | `feat/examples-temporary-anon-hosts` |
+| PRs | (pending `/sdlc --finish`) |
+| Scope | Cloudflare Temporary Accounts stations + OpenSaaS; same-origin `/api/anon` for other yards; never blob-as-remote; live Playwright matrix |
+| Gates | live `examples:regression` / `:opensaas` / `:anon` PASS; staged `agent:check` at finish |
+| Status | finishing |
+

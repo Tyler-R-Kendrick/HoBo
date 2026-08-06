@@ -15,7 +15,7 @@ export {
 	isForbiddenSecretEnvKey,
 	looksLikeSecretEnvValue,
 } from "./binding-delivery.js";
-export { bindle } from "./bindle.js";
+export { bindle, DEFAULT_BINDLE_NAME, inferRequirementsFromResources } from "./bindle.js";
 export {
 	api,
 	auth,

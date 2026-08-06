@@ -1,0 +1,11 @@
+{
+	"id": "opensaas",
+	"title": "OpenSaaS Kit",
+	"blurb": "Real Wasp Open-SaaS — Cloudflare Temporary Accounts client ship from Examples; Docker bridge for Webernetes/Lakebed.",
+	"tags": ["saas", "wasp", "auth", "payments"],
+	"needs": ["http", "container"],
+	"ui": "saas",
+	"deployKind": "local-bridge",
+	"entry": "app.ts",
+	"sourcePath": "examples/try-site/apps/opensaas/app.ts"
+}

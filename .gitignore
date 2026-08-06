@@ -54,7 +54,20 @@ ref/
 # hobo-media build output
 media/dist/
 media/.astro/
-# Per-edit design-hook cache. Regenerated constantly and merge-hostile: the
-# tracked copy at .impeccable/hook.cache.json has already blocked a branch
-# switch mid-merge. Do not track new ones.
-media/.impeccable/
+
+# Wasp OpenSaaS local build artifacts
+examples/wasp-opensaas/**/node_modules/
+examples/wasp-opensaas/**/.wasp/
+examples/wasp-opensaas/**/dist/
+examples/wasp-opensaas/**/package-lock.json
+examples/wasp-opensaas/**/.env.server
+examples/wasp-opensaas/**/.env.client
+# Template blog / Playwright e2e are not part of HoBo Examples Temporary Accounts path
+examples/wasp-opensaas/blog/
+examples/wasp-opensaas/e2e-tests/
+
+# Impeccable: machine-local consent + per-edit hook caches (merge-hostile).
+# Keep each surface's `.impeccable/design.json` tracked; ignore caches only.
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+**/.impeccable/hook.cache.json

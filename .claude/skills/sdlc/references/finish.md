@@ -45,11 +45,17 @@ If the session PR set is empty and the tree is clean relative to `origin/main`, 
 2. **Never commit secrets** (`.env`, keys, tokens). Prefer env var **names** only.
 3. **Never delete user work** (`git clean -fdx`, wipe unrelated branches).
 4. **`pnpm agent:check -- --staged`** before every commit; never bypass hooks.
+   Checkin gates are **local only** (agent hooks + `.githooks`). Do **not** wait
+   on, cancel, re-request, or otherwise drive GitHub Action runners for gates
+   or site promote (`gh run …`, `POST …/pages/builds`, polling
+   `pages-build-deployment`, etc.).
 5. **Rebase on `origin/main`** (or the stack base) before open/update PR; resolve conflicts fully.
 6. **Bottom-up closeout** for stacks (`stacked-prs.md`); single PR uses the same review steps.
-7. **Billing-red CI does not block squash-merge** (document + merge; `--admin` if needed).
-8. **Real CI failures** (tests/lint that ran and failed) must be fixed before merge — not
-   papered over with the billing exception.
+7. **If Actions happen to fire and are billing-red**, that does **not** block
+   squash-merge (document + merge; `--admin` if needed). Do not treat green CI
+   as a required gate.
+8. **Real local gate failures** (`agent:check` / hooks) must be fixed before
+   merge — not papered over.
 9. Update **`sdlc-state.md`** + append **`docs/plans/dispatch-log.md`** with outcomes.
 10. Prefer **one coherent delivery branch** for uncommitted sequential-fallback work; use
     `gh stack` when 2+ dependent layers remain open.

@@ -260,14 +260,13 @@ The `#` is hidden until the heading is hovered or the anchor is focused, and it
 occupies no layout when hidden — the heading's silhouette never shifts. It is
 never `display: none`, so a keyboard user can still reach it.
 
-## Publishing (branch push; GitHub runs `pages-build-deployment`)
+## Publishing (no Actions)
 
-The site is published by pushing the built output to the **`gh-pages` branch**
-("Deploy from a branch"). Local publish stays `pnpm run site:deploy` — no
-workflow file in this repo — but GitHub's managed **`pages-build-deployment`**
-Action still has to pick up a runner before the new tip goes live. When that
-Action sits queued (spending limit / runner quota), the previous successful
-deployment keeps serving.
+The site is published by pushing the built output to the **`gh-pages` branch**,
+which GitHub Pages serves ("Deploy from a branch"). Local publish is
+`pnpm run site:deploy` — no in-repo workflow, and **agents must not** wait on,
+cancel, or re-request Action runners for gates or promote. Checkin gates stay
+local: `.githooks` + `pnpm agent:check`.
 
 ```sh
 pnpm run site:deploy              # build, then publish

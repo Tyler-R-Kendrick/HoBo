@@ -52,10 +52,10 @@ lowest-common-denominator abstraction that hides the provider.
 - Two CLIs: `hobo` (control plane, 40 canonical verbs) and `hobo-code` (coding
   harness / dogfooding surface).
 - The website is landing page + developer docs + agent docs, built from `site/`
-  and published to the `gh-pages` branch via `pnpm run site:deploy` (no
-  in-repo workflow). GitHub's managed `pages-build-deployment` Action still
-  has to run for a tip to go live; when it queues on billing/quota, the last
-  successful deployment keeps serving.
+  and published to the `gh-pages` branch — deliberately **no GitHub Actions
+  dependency** for gates or publish (`pnpm run site:deploy`). Checkin gates
+  run only through agent hooks / githooks (`pnpm agent:check`); agents must
+  not wait on, cancel, or re-request Action runners.
 - A control-plane UI (`@hobo/control-yard`) and a separate pixel-RPG game
   project (`@hobo/pixel-village`).
 - Design suite, ADRs and traceability under `docs/design/`; proofs under

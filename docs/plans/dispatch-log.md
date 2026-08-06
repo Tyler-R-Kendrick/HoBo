@@ -434,8 +434,8 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Initiative | `docs/plans/try-hobo-browser-wit/sdlc-state.md` |
 | Backend | sequential-fallback (parent) |
 | Branch | `feat/examples-temporary-anon-hosts` |
-| PRs | (pending `/sdlc --finish`) |
+| PRs | [#1048](https://github.com/Tyler-R-Kendrick/HoBo/pull/1048) merged `e2012e5dea` |
 | Scope | Cloudflare Temporary Accounts stations + OpenSaaS; same-origin `/api/anon` for other yards; never blob-as-remote; live Playwright matrix |
 | Gates | live `examples:regression` / `:opensaas` / `:anon` PASS; staged `agent:check` at finish |
-| Status | finishing |
+| Status | closed — Pages deploy follow-up publishes WIT `examples/runtime` (nested gitignore fix) |
 

@@ -1,4 +1,4 @@
-import { connectorDefinition } from "@hobo/bindles";
+import { connectorDefinition } from "@hobo/bindles/connector";
 import { describe, expect, it } from "vitest";
 
 import { firecrawl } from "../src/index.js";

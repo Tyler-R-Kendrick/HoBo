@@ -1,3 +1,5 @@
+import type { ConnectionClient } from "./connection.js";
+
 export const CATALOG_ROWS = [
 	{ factory: "api", portRef: ["wasi:http", "hobo:http"], allowVerbs: [] },
 	{
@@ -140,7 +142,7 @@ export interface LoweringDescriptor {
 	readonly args: readonly unknown[];
 }
 
-// domain-view: generic, branded stableId view over the generated wire form.
+// domain-view: generic, branded stableId view over the wire form.
 export interface ResourceDescriptor<K extends ResourceKind = ResourceKind> {
 	readonly kind: K;
 	readonly name: string;
@@ -176,14 +178,72 @@ export interface SecretRef {
 	readonly lowersTo: "hobo:sdk";
 }
 
-// domain-view: readonly parse-don't-validate view over the generated wire form.
+// domain-view: readonly parse-don't-validate view over the wire form.
 export interface ProviderAnnotation {
 	readonly provider: string;
 	readonly option: string;
 	readonly config: Record<string, unknown>;
 }
 
-// domain-view: readonly parse-don't-validate view over the generated wire form.
+/** Package-owned metadata for an external application connector. */
+export interface ConnectorAuthDefinition {
+	readonly protocol: "auth.md";
+	readonly discovery: string;
+}
+
+/**
+ * Connector packages export one of these values. It describes the external
+ * application and its logical capabilities; it is deliberately not a vendor
+ * SDK wrapper and contains no credential material.
+ */
+export interface ConnectorDefinition<
+	Id extends string = string,
+	Capability extends string = string,
+> {
+	readonly kind: "connector-definition";
+	readonly id: Id;
+	readonly origin: string;
+	readonly audience?: string;
+	readonly auth: ConnectorAuthDefinition;
+	readonly capabilities: readonly Capability[];
+}
+
+export type ConnectorCapability<D extends ConnectorDefinition> =
+	D["capabilities"][number];
+
+/** Bindle-local declaration referencing a connector package symbol. */
+export interface ConnectorBinding<
+	D extends ConnectorDefinition = ConnectorDefinition,
+> {
+	readonly kind: "connector";
+	readonly definition: D;
+	readonly declaredAllow: readonly ConnectorCapability<D>[];
+	allow<C extends ConnectorCapability<D>>(...capabilities: C[]): ConnectorBinding<D>;
+}
+
+/** Serialized connector declaration carried beside resource records. */
+export interface BindleConnectorRecord {
+	readonly kind: "connector";
+	readonly name: string;
+	readonly target: string;
+	readonly origin: string;
+	readonly auth: ConnectorAuthDefinition;
+	readonly audience?: string;
+	readonly allow: readonly string[];
+}
+
+/** Station-owned runtime membrane used by component entrypoint factories. */
+export interface BindleRuntimeContext {
+	/**
+	 * Resolve this binding against the Station's Connection inventory. The
+	 * returned client may represent a user, team, or organization-authorized
+	 * connection. Tokens are issued by the Station; Bindle code never resolves
+	 * credential files, environment variables, or provider API keys itself.
+	 */
+	connector(binding: ConnectorBinding): ConnectionClient;
+}
+
+// domain-view: readonly parse-don't-validate view over the wire form.
 export interface BindleEdge {
 	readonly from: string;
 	readonly to: string;
@@ -199,11 +259,14 @@ export interface BindleResourceRecord<K extends ResourceKind = ResourceKind> {
 	readonly dependsOn: readonly string[];
 }
 
+export type BindleDependency = BindleResource | ConnectorBinding;
+export type BindleNode = BindleResource | ConnectorBinding;
+
 export interface BindleResource<K extends ResourceKind = ResourceKind> {
 	readonly kind: K;
-	dependsOn(...deps: BindleResource[]): BindleResource<K>;
+	dependsOn(...deps: BindleDependency[]): BindleResource<K>;
 	/** Aspire-style WithReference — alias of dependsOn. */
-	withReference(...deps: BindleResource[]): BindleResource<K>;
+	withReference(...deps: BindleDependency[]): BindleResource<K>;
 	allow(...verbs: AllowVerbsFor<K>[]): BindleResource<K>;
 	with(...annotations: ProviderAnnotation[]): BindleResource<K>;
 }
@@ -222,15 +285,19 @@ export interface BindleRequirements {
 export interface BindleDefinition {
 	readonly name: string;
 	readonly resources: Readonly<Record<string, BindleResourceRecord>>;
+	/** Present only when the Bindle declares external application connectors. */
+	readonly connectors?: Readonly<Record<string, BindleConnectorRecord>>;
 	readonly edges: readonly BindleEdge[];
 	/** Provider-neutral requirements only — never provider pins or resolver IDs. */
 	readonly requirements: BindleRequirements;
 	/**
-	 * Returns the app-host entrypoint handler bound to a resource via
-	 * `b.api(handler)` / `b.web(handler)`, or `undefined` when none was bound.
-	 * Non-enumerable, so it never appears in the serialized manifest graph.
+	 * Returns the app-host entrypoint factory bound to a resource. A Station may
+	 * supply a runtime context that resolves connector bindings to Connections.
+	 * The property stays non-enumerable so runtime functions never enter IR.
 	 */
-	entrypoint(name: string): (() => unknown) | undefined;
+	entrypoint(
+		name: string,
+	): ((context?: BindleRuntimeContext) => unknown) | undefined;
 }
 
 /**
@@ -242,8 +309,10 @@ export interface BindleDefinition {
  */
 export type DeclaredComponent = new () => object;
 
-/** What binds an app-shaped resource: a handler thunk or a declared component. */
-export type ComponentBinding = (() => unknown) | DeclaredComponent;
+/** What binds an app-shaped resource: a handler factory or declared component. */
+export type ComponentBinding =
+	| ((context?: BindleRuntimeContext) => unknown)
+	| DeclaredComponent;
 
 /** Options for BYO external dependencies (no provision). */
 export interface ExternalDependencyOptions {
@@ -289,6 +358,8 @@ export interface BindleBuilder {
 	golden(): BindleResource<"golden">;
 	experiment(): BindleResource<"experiment">;
 	rollout(): BindleResource<"rollout">;
+	/** External app binding from a connector package symbol. */
+	connector<D extends ConnectorDefinition>(definition: D): ConnectorBinding<D>;
 	/** BYO external service (connection string / URL). No host runtime required. */
 	external(options?: ExternalDependencyOptions): BindleResource<"external">;
 	/** Container image dependency — requires `hobo add runtime-oci`. */

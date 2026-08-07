@@ -7,6 +7,10 @@ export {
 	stationEvent,
 } from "./events.js";
 export {
+	createStationBindleRuntimeContext,
+	type StationConnectionResolver,
+} from "./connector-context.js";
+export {
 	type CreateStationOfferingRegistryOptions,
 	createStationOfferingRegistry,
 	type StationOfferingRegistration,
@@ -109,5 +113,4 @@ export {
 	STATION_SCHEMA_VERSION,
 } from "./types.js";
 
-// public-contract: the package id consumers assert against.
 export const HOBO_STATIONS_PACKAGE = "@hobo/stations";

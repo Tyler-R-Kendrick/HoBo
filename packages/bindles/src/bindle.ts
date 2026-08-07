@@ -1,5 +1,9 @@
 import { isAppKitKind } from "./app-kits.js";
 import {
+	connectorRecordsForBuilder,
+	withConnectorDeclarations,
+} from "./connector.js";
+import {
 	containerDependencyAnnotation,
 	externalDependencyAnnotation,
 	wasmComponentDependencyAnnotation,
@@ -13,11 +17,14 @@ import type {
 	AllowVerbsFor,
 	BindleBuilder,
 	BindleDefinition,
+	BindleDependency,
 	BindleEdge,
 	BindleRequirements,
 	BindleResource,
 	BindleResourceRecord,
+	BindleRuntimeContext,
 	ComponentBinding,
+	ConnectorBinding,
 	ContainerDependencyOptions,
 	ExternalDependencyOptions,
 	ProviderAnnotation,
@@ -25,15 +32,11 @@ import type {
 	WasmComponentDependencyOptions,
 } from "./types.js";
 
-// Structural detection of a @component / @trainable-decorated class
-// via the shared symbol registry — the manifest layer never imports the
-// runtime's training machinery.
 const METADATA_SYMBOL =
 	(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");
 const COMPONENT_METADATA = Symbol.for("hobo.component.metadata");
 const TRAINABLE_METADATA = Symbol.for("hobo.trainable.metadata");
 
-/** Default name when authors use nameless `bindle((b) => …)`. */
 export const DEFAULT_BINDLE_NAME = "app";
 
 function isInstantiableClassBinding(binding: ComponentBinding): boolean {
@@ -48,44 +51,46 @@ function isInstantiableClassBinding(binding: ComponentBinding): boolean {
 	);
 }
 
-/**
- * Normalize a binding to the stored handler thunk. A declared @component or
- * @trainable class becomes `() => new Class()` — instantiation registers each
- * operation/trainable (DI semantics), so collecting or serving the bindle
- * surfaces the class's declared operations with no extra step.
- */
+type EntrypointFactory = (context?: BindleRuntimeContext) => unknown;
+
 function toHandler(
 	binding: ComponentBinding | undefined,
-): (() => unknown) | undefined {
+): EntrypointFactory | undefined {
 	if (binding === undefined) return undefined;
 	if (isInstantiableClassBinding(binding)) {
 		const Component = binding as new () => object;
 		return () => new Component();
 	}
-	return binding as () => unknown;
+	return binding as EntrypointFactory;
 }
+
+type InternalDependency =
+	| InternalBindleResource<ResourceKind>
+	| ConnectorBinding;
 
 interface InternalBindleResource<K extends ResourceKind> {
 	readonly kind: K;
 	declaredAllow: string[];
 	annotations: ProviderAnnotation[];
-	dependencies: Set<InternalBindleResource<ResourceKind>>;
-	handler: (() => unknown) | undefined;
+	dependencies: Set<InternalDependency>;
+	handler: EntrypointFactory | undefined;
 }
 
 type TrackedBindleResource<K extends ResourceKind> = BindleResource<K> & {
 	readonly __bindleInternal: InternalBindleResource<K>;
 };
 
+function isConnectorBinding(dep: InternalDependency): dep is ConnectorBinding {
+	return "definition" in dep && dep.kind === "connector";
+}
+
 function createBindleResource<K extends ResourceKind>(
 	kind: K,
-	handler?: () => unknown,
+	handler?: EntrypointFactory,
 ): TrackedBindleResource<K> {
 	const internal: InternalBindleResource<K> = {
 		kind,
 		declaredAllow: [],
-		// Every App Kit (api/web/service/ui/websocket/job/wasm-component) is
-		// Session-Replay capable by default — zero Bindle config (ADR-0137).
 		annotations: isAppKitKind(kind)
 			? [defaultAppKitSessionReplayAnnotation()]
 			: [],
@@ -96,8 +101,12 @@ function createBindleResource<K extends ResourceKind>(
 	const resource: TrackedBindleResource<K> = {
 		kind,
 		__bindleInternal: internal,
-		dependsOn(...deps: BindleResource[]): BindleResource<K> {
+		dependsOn(...deps: BindleDependency[]): BindleResource<K> {
 			for (const dep of deps) {
+				if (dep.kind === "connector") {
+					internal.dependencies.add(dep);
+					continue;
+				}
 				const tracked = dep as TrackedBindleResource<ResourceKind>;
 				if (tracked.__bindleInternal) {
 					internal.dependencies.add(tracked.__bindleInternal);
@@ -105,7 +114,7 @@ function createBindleResource<K extends ResourceKind>(
 			}
 			return resource;
 		},
-		withReference(...deps: BindleResource[]): BindleResource<K> {
+		withReference(...deps: BindleDependency[]): BindleResource<K> {
 			return resource.dependsOn(...deps);
 		},
 		allow(...verbs: AllowVerbsFor<K>[]): BindleResource<K> {
@@ -118,7 +127,6 @@ function createBindleResource<K extends ResourceKind>(
 		},
 		with(...annotations: ProviderAnnotation[]): BindleResource<K> {
 			for (const annotation of annotations) {
-				// Later session-replay annotations replace the default App Kit one.
 				if (annotation.option === "session-replay") {
 					internal.annotations = internal.annotations.filter(
 						(a) => a.option !== "session-replay",
@@ -134,7 +142,7 @@ function createBindleResource<K extends ResourceKind>(
 }
 
 function createBuilder(): BindleBuilder {
-	return Object.freeze({
+	const base = {
 		api: (binding?: ComponentBinding) =>
 			createBindleResource("api", toHandler(binding)),
 		web: (binding?: ComponentBinding) =>
@@ -174,7 +182,8 @@ function createBuilder(): BindleBuilder {
 			createBindleResource("wasm-component").with(
 				wasmComponentDependencyAnnotation(options),
 			) as BindleResource<"wasm-component">,
-	});
+	};
+	return Object.freeze(withConnectorDeclarations(base));
 }
 
 function toResourceRecord<K extends ResourceKind>(
@@ -191,7 +200,11 @@ function toResourceRecord<K extends ResourceKind>(
 			internal.annotations.map((entry) => Object.freeze({ ...entry })),
 		),
 		dependsOn: Object.freeze(
-			[...internal.dependencies].map((dep) => dep.kind as string),
+			[...internal.dependencies].map((dep) =>
+				isConnectorBinding(dep)
+					? `connector:${dep.definition.id}`
+					: dep.kind,
+			),
 		),
 	});
 }
@@ -243,9 +256,9 @@ export function bindle(
 	}
 
 	let requirements = parseBindleRequirements(requirementsInput);
-
 	const builder = createBuilder();
 	const built = build(builder);
+	const connectors = connectorRecordsForBuilder(builder);
 	const resourceByName = new Map<
 		InternalBindleResource<ResourceKind>,
 		string
@@ -253,13 +266,12 @@ export function bindle(
 	const resources: Record<string, BindleResourceRecord> = {};
 	const edges: BindleEdge[] = [];
 	const stableIds = new Set<string>();
-	const handlers = new Map<string, () => unknown>();
+	const handlers = new Map<string, EntrypointFactory>();
 
 	for (const [resourceName, resource] of Object.entries(built)) {
 		if (typeof resourceName !== "string" || resourceName.length === 0) {
 			throw new TypeError("bindle resource names must be non-empty strings");
 		}
-
 		const tracked = resource as TrackedBindleResource<ResourceKind>;
 		const internal = tracked.__bindleInternal;
 		if (!internal) {
@@ -267,27 +279,30 @@ export function bindle(
 				"bindle build must return resources from the BindleBuilder",
 			);
 		}
-
 		const stableId = `${internal.kind}:${resourceName}`;
 		if (stableIds.has(stableId)) {
 			throw new TypeError(`duplicate bindle resource stableId "${stableId}"`);
 		}
 		stableIds.add(stableId);
-
 		resourceByName.set(internal, resourceName);
 		resources[resourceName] = toResourceRecord(resourceName, internal);
-		if (internal.handler) {
-			handlers.set(resourceName, internal.handler);
-		}
+		if (internal.handler) handlers.set(resourceName, internal.handler);
 	}
 
 	for (const [resourceName, resource] of Object.entries(built)) {
 		const tracked = resource as TrackedBindleResource<ResourceKind>;
 		for (const dep of tracked.__bindleInternal.dependencies) {
-			const depName = resourceByName.get(dep);
-			if (depName) {
-				edges.push(Object.freeze({ from: resourceName, to: depName }));
+			if (isConnectorBinding(dep)) {
+				edges.push(
+					Object.freeze({
+						from: resourceName,
+						to: `connector:${dep.definition.id}`,
+					}),
+				);
+				continue;
 			}
+			const depName = resourceByName.get(dep);
+			if (depName) edges.push(Object.freeze({ from: resourceName, to: depName }));
 		}
 	}
 
@@ -298,17 +313,14 @@ export function bindle(
 	const definition: BindleDefinition = {
 		name,
 		resources: Object.freeze(resources),
+		...(Object.keys(connectors).length > 0 ? { connectors } : {}),
 		edges: Object.freeze(edges),
 		requirements,
-		entrypoint: (resourceName: string): (() => unknown) | undefined =>
+		entrypoint: (resourceName: string): EntrypointFactory | undefined =>
 			handlers.get(resourceName),
 	};
-	// Keep the app-host entrypoints reachable for tooling/tests but out of the
-	// provider-agnostic manifest graph: non-enumerable so JSON.stringify and
-	// Object.keys still yield exactly { name, resources, edges, requirements }.
 	Object.defineProperty(definition, "entrypoint", { enumerable: false });
 	const frozen = Object.freeze(definition);
-	// Reject cloud provider selection annotations at collection boundary.
 	assertNoBindleProviderSelection(frozen);
 	return frozen;
 }
@@ -322,7 +334,6 @@ function isEmptyRequirements(requirements: BindleRequirements): boolean {
 	);
 }
 
-/** Infer provider-neutral capabilities from declared resource kinds. */
 export function inferRequirementsFromResources(
 	resources: Readonly<Record<string, BindleResourceRecord>>,
 ): BindleRequirements {

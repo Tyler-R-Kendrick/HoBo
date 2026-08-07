@@ -17,12 +17,6 @@ export {
 } from "./binding-delivery.js";
 export { bindle, DEFAULT_BINDLE_NAME, inferRequirementsFromResources } from "./bindle.js";
 export {
-	connectorDefinition,
-	connectorRecordsForBuilder,
-	defineConnector,
-	withConnectorDeclarations,
-} from "./connector.js";
-export {
 	api,
 	auth,
 	bucket,

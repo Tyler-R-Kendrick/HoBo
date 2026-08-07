@@ -41,19 +41,8 @@ export const CATALOG_ROWS = [
 	{ factory: "job", portRef: ["hobo:job"], allowVerbs: ["submit"] },
 	{ factory: "web", portRef: ["wasi:http"], allowVerbs: [] },
 	{ factory: "service", portRef: ["wasi:http"], allowVerbs: [] },
-	/**
-	 * External BYO dependency (SaaS / brownfield). No provision; Camp injects
-	 * connection strings / endpoint URLs. Aspire: AddConnectionString / external.
-	 */
 	{ factory: "external", portRef: ["hobo:external"], allowVerbs: [] },
-	/**
-	 * Container image dependency. Requires oci Camp host runtime on the broker.
-	 * Aspire: AddContainer.
-	 */
 	{ factory: "container", portRef: ["hobo:container"], allowVerbs: [] },
-	/**
-	 * Wasm component dependency (wasi:http or other). Requires wasm Camp host.
-	 */
 	{
 		factory: "wasm-component",
 		portRef: ["wasi:http", "hobo:wasm-component"],
@@ -131,7 +120,6 @@ export interface ResourceCatalogEntry {
 	readonly allowVerbs: readonly string[];
 }
 
-// domain-view: branded parse-don't-validate view over the generated wire form.
 export interface LoweringDescriptor {
 	readonly lowersTo: "hobo:sdk";
 	readonly kind: ResourceKind;
@@ -142,7 +130,6 @@ export interface LoweringDescriptor {
 	readonly args: readonly unknown[];
 }
 
-// domain-view: generic, branded stableId view over the wire form.
 export interface ResourceDescriptor<K extends ResourceKind = ResourceKind> {
 	readonly kind: K;
 	readonly name: string;
@@ -178,24 +165,18 @@ export interface SecretRef {
 	readonly lowersTo: "hobo:sdk";
 }
 
-// domain-view: readonly parse-don't-validate view over the wire form.
 export interface ProviderAnnotation {
 	readonly provider: string;
 	readonly option: string;
 	readonly config: Record<string, unknown>;
 }
 
-/** Package-owned metadata for an external application connector. */
 export interface ConnectorAuthDefinition {
 	readonly protocol: "auth.md";
 	readonly discovery: string;
 }
 
-/**
- * Connector packages export one of these values. It describes the external
- * application and its logical capabilities; it is deliberately not a vendor
- * SDK wrapper and contains no credential material.
- */
+/** Metadata owned by a connector package, never by application code. */
 export interface ConnectorDefinition<
 	Id extends string = string,
 	Capability extends string = string,
@@ -208,10 +189,13 @@ export interface ConnectorDefinition<
 	readonly capabilities: readonly Capability[];
 }
 
+/** Opaque value exported by connector packages and consumed by b.connector(). */
+export type ConnectorSymbol<D extends ConnectorDefinition = ConnectorDefinition> =
+	symbol & { readonly __hoboConnectorDefinition?: D };
+
 export type ConnectorCapability<D extends ConnectorDefinition> =
 	D["capabilities"][number];
 
-/** Bindle-local declaration referencing a connector package symbol. */
 export interface ConnectorBinding<
 	D extends ConnectorDefinition = ConnectorDefinition,
 > {
@@ -221,7 +205,6 @@ export interface ConnectorBinding<
 	allow<C extends ConnectorCapability<D>>(...capabilities: C[]): ConnectorBinding<D>;
 }
 
-/** Serialized connector declaration carried beside resource records. */
 export interface BindleConnectorRecord {
 	readonly kind: "connector";
 	readonly name: string;
@@ -232,24 +215,22 @@ export interface BindleConnectorRecord {
 	readonly allow: readonly string[];
 }
 
-/** Station-owned runtime membrane used by component entrypoint factories. */
+/** Runtime connector membrane supplied by the Station hosting the Bindle. */
 export interface BindleRuntimeContext {
 	/**
-	 * Resolve this binding against the Station's Connection inventory. The
-	 * returned client may represent a user, team, or organization-authorized
-	 * connection. Tokens are issued by the Station; Bindle code never resolves
-	 * credential files, environment variables, or provider API keys itself.
+	 * Resolves the declaration against Station Connection inventory. The result
+	 * may represent personal, team, or organization-authorized access. Token
+	 * issuance remains Station/broker-owned; application code never reads local
+	 * provider credentials.
 	 */
 	connector(binding: ConnectorBinding): ConnectionClient;
 }
 
-// domain-view: readonly parse-don't-validate view over the wire form.
 export interface BindleEdge {
 	readonly from: string;
 	readonly to: string;
 }
 
-// domain-view: generic, branded parse-don't-validate view over the wire form.
 export interface BindleResourceRecord<K extends ResourceKind = ResourceKind> {
 	readonly kind: K;
 	readonly name: string;
@@ -260,21 +241,15 @@ export interface BindleResourceRecord<K extends ResourceKind = ResourceKind> {
 }
 
 export type BindleDependency = BindleResource | ConnectorBinding;
-export type BindleNode = BindleResource | ConnectorBinding;
 
 export interface BindleResource<K extends ResourceKind = ResourceKind> {
 	readonly kind: K;
 	dependsOn(...deps: BindleDependency[]): BindleResource<K>;
-	/** Aspire-style WithReference — alias of dependsOn. */
 	withReference(...deps: BindleDependency[]): BindleResource<K>;
 	allow(...verbs: AllowVerbsFor<K>[]): BindleResource<K>;
 	with(...annotations: ProviderAnnotation[]): BindleResource<K>;
 }
 
-/**
- * Provider-neutral Bindle workload requirements (not provider resolver control).
- * See packages/bindles/src/requirements.ts for the parse boundary.
- */
 export interface BindleRequirements {
 	readonly require: readonly string[];
 	readonly prefer: readonly string[];
@@ -285,42 +260,26 @@ export interface BindleRequirements {
 export interface BindleDefinition {
 	readonly name: string;
 	readonly resources: Readonly<Record<string, BindleResourceRecord>>;
-	/** Present only when the Bindle declares external application connectors. */
 	readonly connectors?: Readonly<Record<string, BindleConnectorRecord>>;
 	readonly edges: readonly BindleEdge[];
-	/** Provider-neutral requirements only — never provider pins or resolver IDs. */
 	readonly requirements: BindleRequirements;
-	/**
-	 * Returns the app-host entrypoint factory bound to a resource. A Station may
-	 * supply a runtime context that resolves connector bindings to Connections.
-	 * The property stays non-enumerable so runtime functions never enter IR.
-	 */
 	entrypoint(
 		name: string,
 	): ((context?: BindleRuntimeContext) => unknown) | undefined;
 }
 
-/**
- * A `@component`-decorated class (Plan 2 Syntax 0): its `@operation`
- * methods declare shape + intent (+ optional rubric) and lower to
- * trainable manifest facts. Detected structurally via `Symbol.metadata`
- * (`Symbol.for("hobo.component.metadata")`) — no runtime import needed at
- * the manifest layer.
- */
 export type DeclaredComponent = new () => object;
 
-/** What binds an app-shaped resource: a handler factory or declared component. */
+/** App entrypoint factory; the Station supplies runtime context when serving. */
 export type ComponentBinding =
 	| ((context?: BindleRuntimeContext) => unknown)
 	| DeclaredComponent;
 
-/** Options for BYO external dependencies (no provision). */
 export interface ExternalDependencyOptions {
 	readonly connectionString?: string;
 	readonly endpoints?: Readonly<Record<string, string>>;
 }
 
-/** Options for container image dependencies (requires oci runtime). */
 export interface ContainerDependencyOptions {
 	readonly image: string;
 	readonly endpoints?: Readonly<
@@ -329,7 +288,6 @@ export interface ContainerDependencyOptions {
 	readonly env?: Readonly<Record<string, string>>;
 }
 
-/** Options for wasm component dependencies (requires wasm runtime). */
 export interface WasmComponentDependencyOptions {
 	readonly source: string;
 	readonly witWorld?: string;
@@ -358,13 +316,9 @@ export interface BindleBuilder {
 	golden(): BindleResource<"golden">;
 	experiment(): BindleResource<"experiment">;
 	rollout(): BindleResource<"rollout">;
-	/** External app binding from a connector package symbol. */
-	connector<D extends ConnectorDefinition>(definition: D): ConnectorBinding<D>;
-	/** BYO external service (connection string / URL). No host runtime required. */
+	connector<D extends ConnectorDefinition>(symbol: ConnectorSymbol<D>): ConnectorBinding<D>;
 	external(options?: ExternalDependencyOptions): BindleResource<"external">;
-	/** Container image dependency — requires `hobo add runtime-oci`. */
 	container(options: ContainerDependencyOptions): BindleResource<"container">;
-	/** Wasm component dependency — requires `hobo add runtime-wasm`. */
 	wasmComponent(
 		options: WasmComponentDependencyOptions,
 	): BindleResource<"wasm-component">;

@@ -3,6 +3,7 @@ import type {
 	BindleConnectorRecord,
 	ConnectorBinding,
 	ConnectorDefinition,
+	ConnectorSymbol,
 } from "./types.js";
 
 const CONNECTOR_REGISTRY = Symbol.for("hobo.connector.registry/v1");
@@ -18,15 +19,7 @@ function registry(): ConnectorRegistry {
 	return root[CONNECTOR_REGISTRY];
 }
 
-/**
- * Opaque package-exported connector symbol. The generic is compile-time only;
- * runtime metadata stays in the process-wide connector registry so connector
- * packages do not have to wrap or replace their vendor SDK.
- */
-export type ConnectorSymbol<D extends ConnectorDefinition = ConnectorDefinition> =
-	symbol & { readonly __hoboConnectorDefinition?: D };
-
-/** Connector-package authoring helper. */
+/** Connector-package authoring helper. Connector packages export this symbol. */
 export function defineConnector<const D extends ConnectorDefinition>(
 	definition: D,
 ): ConnectorSymbol<D> {
@@ -56,24 +49,26 @@ export function connectorDefinition<D extends ConnectorDefinition>(
 function createBinding<D extends ConnectorDefinition>(
 	definition: D,
 ): ConnectorBinding<D> {
-	const declaredAllow: string[] = [];
-	const make = (allow: readonly string[]): ConnectorBinding<D> =>
-		Object.freeze({
-			kind: "connector" as const,
-			definition,
-			declaredAllow: Object.freeze([...allow]) as ConnectorBinding<D>["declaredAllow"],
-			allow: (...capabilities) => {
-				for (const capability of capabilities) {
-					if (!definition.capabilities.includes(capability)) {
-						throw new Error(
-							`connector ${definition.id} does not advertise capability ${String(capability)}`,
-						);
-					}
+	const internal = { declaredAllow: [] as string[] };
+	const binding: ConnectorBinding<D> = {
+		kind: "connector",
+		definition,
+		get declaredAllow() {
+			return internal.declaredAllow as ConnectorBinding<D>["declaredAllow"];
+		},
+		allow(...capabilities) {
+			for (const capability of capabilities) {
+				if (!definition.capabilities.includes(capability)) {
+					throw new Error(
+						`connector ${definition.id} does not advertise capability ${String(capability)}`,
+					);
 				}
-				return make(capabilities);
-			},
-		});
-	return make(declaredAllow);
+			}
+			internal.declaredAllow = [...new Set(capabilities)];
+			return binding;
+		},
+	};
+	return Object.freeze(binding);
 }
 
 const builderBindings = new WeakMap<object, BuilderConnectorRegistry>();
@@ -85,6 +80,8 @@ export function withConnectorDeclarations<T extends object>(base: T): T & Bindle
 		...base,
 		connector<D extends ConnectorDefinition>(symbol: ConnectorSymbol<D>) {
 			const definition = connectorDefinition(symbol);
+			const existing = bindings.get(definition.id);
+			if (existing) return existing as ConnectorBinding<D>;
 			const binding = createBinding(definition);
 			bindings.set(definition.id, binding);
 			return binding;
@@ -111,10 +108,4 @@ export function connectorRecordsForBuilder(
 		});
 	}
 	return Object.freeze(records);
-}
-
-declare module "./types.js" {
-	interface BindleBuilder {
-		connector<D extends ConnectorDefinition>(symbol: ConnectorSymbol<D>): ConnectorBinding<D>;
-	}
 }

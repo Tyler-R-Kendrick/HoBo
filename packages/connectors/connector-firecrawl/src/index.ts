@@ -1,4 +1,4 @@
-import { defineConnector } from "@hobo/bindles";
+import { defineConnector } from "@hobo/bindles/connector";
 
 /**
  * Firecrawl external-service declaration for HoBo Bindles.

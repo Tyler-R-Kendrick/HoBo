@@ -5,7 +5,9 @@ import { app } from "../src/api.js";
 import definition from "../src/bindle.js";
 
 const FIRECRAWL = "services__firecrawl__http__0";
-afterEach(() => delete process.env[FIRECRAWL]);
+afterEach(() => {
+	delete process.env[FIRECRAWL];
+});
 
 describe("firecrawl-research", () => {
 	it("wires Firecrawl as an external dependency", () => {

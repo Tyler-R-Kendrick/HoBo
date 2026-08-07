@@ -1,63 +1,77 @@
 # Firecrawl research
 
-A minimal HoBo app that wires an external developer service into a Bindle without requiring a user-provided credential.
+A minimal HoBo app that uses a real external developer service while keeping authorization out of Bindle-local configuration.
 
-The API exposes `GET /research?q=...` and forwards the query to Firecrawl's v2 Search API. Firecrawl's keyless tier allows Search, Scrape, and Interact calls without an `Authorization` header, so the example is runnable without a `.env` file or Firecrawl account.
+The example exposes an inline `GET /research?q=...` handler. It declares Firecrawl with `b.connector(firecrawl)`, asks the hosting Station to resolve an authorized Connection, obtains a short-lived token from that Connection, and then uses Firecrawl's official Node SDK normally.
 
-## What this proves
+## The separation
 
-- `b.external(...)` declares Firecrawl as an external SaaS dependency using the current public `@hobo/bindles` SDK.
-- `.dependsOn(firecrawl)` records the application wiring edge.
-- HoBo's endpoint-discovery convention injects the dependency as `services__firecrawl__http__0` at runtime.
-- The application does not contain, request, or persist a Firecrawl API key.
-- Firecrawl remains an external application rather than being modeled as a portable HoBo resource.
+```text
+@hobo/connector-firecrawl       firecrawl
+        │                          │
+        │ connector symbol         │ official vendor SDK
+        ▼                          ▼
+   b.connector(...) ──► Station Connection ──► Firecrawl({ apiKey: token })
+                              │
+                              └─ personal / team / organization authorization
+```
+
+The connector package is metadata, not a client wrapper. It contains Firecrawl's service identity, Auth.md discovery location, and logical capabilities. The application separately depends on the official `firecrawl` package.
+
+## Bindle
 
 ```ts
-import { honoEntrypoint } from "@hobo/adapter-hono";
 import { bindle } from "@hobo/bindles";
-
-import { app } from "./api.js";
+import { firecrawl as firecrawlConnector } from "@hobo/connector-firecrawl";
+import { Firecrawl } from "firecrawl";
 
 export default bindle("firecrawl-research", (b) => {
-  const firecrawl = b.external({
-    endpoints: { http: "https://api.firecrawl.dev" },
-  });
+  const firecrawl = b.connector(firecrawlConnector).allow("search");
 
-  const api = b.api(honoEntrypoint(app)).dependsOn(firecrawl);
-  return { firecrawl, api };
+  const api = b.api((ctx) => {
+    if (!ctx) throw new Error("Station runtime context required");
+
+    return async (request: Request) => {
+      const query = new URL(request.url).searchParams.get("q")?.trim();
+      if (!query) {
+        return Response.json({ error: "missing query parameter: q" }, { status: 400 });
+      }
+
+      const connection = ctx.connector(firecrawl);
+      const { token } = await connection.token({ action: "search" });
+      const client = new Firecrawl({ apiKey: token });
+      return Response.json(await client.search(query, { limit: 5 }));
+    };
+  }).dependsOn(firecrawl);
+
+  return { api };
 });
 ```
 
-The request itself uses Firecrawl's documented keyless REST surface:
+There is no `FIRECRAWL_API_KEY`, secret ref, connector credential, or endpoint environment variable in the Bindle. The Station decides which healthy Connection satisfies the Firecrawl declaration. That Connection can later represent an organization-authorized Firecrawl account without changing this application.
 
-```http
-POST https://api.firecrawl.dev/v2/search
-Content-Type: application/json
+## Desired connector contract demonstrated here
 
-{"query":"HoBo SDK","limit":5,"sources":["web"]}
-```
+- A connector package exports an opaque symbol consumed by `b.connector(symbol)`.
+- Connector metadata and application SDKs remain separate dependencies.
+- `.allow("search")` is the Bindle's least-privilege logical capability declaration.
+- `api → connector:firecrawl` is recorded in the Bindle graph; Firecrawl is not represented as a HoBo resource.
+- At serve time the Station supplies `BindleRuntimeContext` and resolves the declaration against Station Connection inventory.
+- `ConnectionClient.token()` remains the credential boundary. The Station/identity broker may satisfy it through Auth.md/ID-JAG, an existing user grant, or an organization-authorized Connection.
+- The vendor SDK receives the resulting short-lived token through its normal `apiKey` constructor option.
 
-No authorization header is sent.
+Firecrawl's current official Node SDK is the `firecrawl` npm package and documents `new Firecrawl({ apiKey })` plus `client.search(query, { limit })`.
 
 ## Run tests
 
-From the repository root:
-
 ```bash
+pnpm --filter @hobo/connector-firecrawl test
 pnpm --filter @hobo/example-firecrawl-research test
 pnpm --filter @hobo/example-firecrawl-research typecheck
 ```
 
-## Connector migration
+## References
 
-This example deliberately does **not** invent a `connector()` call that does not yet exist in the shipped `@hobo/bindles` package.
-
-The canonical SDK contract already reserves `connector(name, options?)` for this exact external-application use case (HOBO-43), including typed operations, usage-inferred scopes, and connection-scoped credential brokering. The implementation currently remains in the connector authoring/runtime proof packages.
-
-When HOBO-43 is promoted, this example should become the first reference migration from the lower-level `b.external()` declaration to the public connector surface. Firecrawl is also a useful Auth.md/XAA target: Firecrawl directs agent platforms capable of minting a WorkOS ID-JAG to `https://www.firecrawl.dev/auth.md`; the keyless API remains a no-credential fallback for this demo.
-
-## Firecrawl references
-
-- Keyless launch: `https://www.firecrawl.dev/blog/firecrawl-keyless-launch`
-- Search API: `https://docs.firecrawl.dev/api-reference/endpoint/search`
-- Agent/Auth.md guidance: `https://www.firecrawl.dev/auth.md`
+- Firecrawl Node SDK: `https://www.npmjs.com/package/firecrawl`
+- Firecrawl repository: `https://github.com/firecrawl/firecrawl`
+- Firecrawl Auth.md: `https://www.firecrawl.dev/auth.md`

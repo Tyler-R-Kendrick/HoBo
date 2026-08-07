@@ -1,41 +1,102 @@
-import { collectBindleManifest, readDependencyConfig } from "@hobo/bindles";
-import { targetFromBindleDefinition } from "@hobo/cli";
-import { afterEach, describe, expect, it } from "vitest";
-import { app } from "../src/api.js";
+import { createStationBindleRuntimeContext } from "@hobo/stations";
+import { describe, expect, it, vi } from "vitest";
+
+const firecrawlMock = vi.hoisted(() => ({
+	apiKeys: [] as string[],
+	search: vi.fn(async (query: string, options: { limit: number }) => ({
+		success: true,
+		data: {
+			web: [{ title: "HoBo", url: "https://example.com/hobo", query, options }],
+		},
+	})),
+}));
+
+vi.mock("firecrawl", () => ({
+	Firecrawl: class {
+		constructor(options: { apiKey: string }) {
+			firecrawlMock.apiKeys.push(options.apiKey);
+		}
+		search = firecrawlMock.search;
+	},
+}));
+
 import definition from "../src/bindle.js";
 
-const FIRECRAWL = "services__firecrawl__http__0";
-afterEach(() => {
-	delete process.env[FIRECRAWL];
-});
-
 describe("firecrawl-research", () => {
-	it("wires Firecrawl as an external dependency", () => {
-		expect(definition.resources.firecrawl).toMatchObject({ kind: "external", stableId: "external:firecrawl" });
-		expect(definition.edges).toContainEqual({ from: "api", to: "firecrawl" });
-		expect(readDependencyConfig(definition.resources.firecrawl.annotations)).toEqual({ runtime: "none", kind: "external", endpoints: { http: "https://api.firecrawl.dev" } });
+	it("declares Firecrawl as a connector rather than a resource", () => {
+		expect(Object.keys(definition.resources)).toEqual(["api"]);
+		expect(definition.connectors?.firecrawl).toEqual({
+			kind: "connector",
+			name: "firecrawl",
+			target: "firecrawl",
+			origin: "https://api.firecrawl.dev",
+			auth: {
+				protocol: "auth.md",
+				discovery: "https://www.firecrawl.dev/auth.md",
+			},
+			allow: ["search"],
+		});
+		expect(definition.resources.api?.dependsOn).toContain("connector:firecrawl");
+		expect(definition.edges).toContainEqual({
+			from: "api",
+			to: "connector:firecrawl",
+		});
 	});
 
-	it("collects provider-agnostic manifest input", () => {
-		const result = collectBindleManifest(targetFromBindleDefinition(definition));
-		expect(result.bindleId).toBe("firecrawl-research");
-		expect(result.resources).toEqual(["api", "firecrawl"]);
+	it("asks the Station for a Connection token before using the vendor SDK", async () => {
+		firecrawlMock.apiKeys.length = 0;
+		firecrawlMock.search.mockClear();
+
+		const issueToken = vi.fn(async () => ({
+			token: "station-issued-firecrawl-token",
+			tokenRef: "token:firecrawl:1",
+			expiresAt: "2026-08-07T16:00:00.000Z",
+			connectionId: "connection:org-firecrawl",
+		}));
+		const resolve = vi.fn(() => ({
+			ref: "connection:org-firecrawl",
+			token: issueToken,
+		}));
+
+		const runtime = createStationBindleRuntimeContext({
+			stationId: "station:developer",
+			connections: { resolve },
+		});
+
+		const factory = definition.entrypoint("api");
+		expect(factory).toBeTypeOf("function");
+		const handler = factory?.(runtime) as (
+			request: Request,
+		) => Promise<Response>;
+		const response = await handler(
+			new Request("https://app.example/research?q=HoBo"),
+		);
+
+		expect(response.status).toBe(200);
+		expect(resolve).toHaveBeenCalledWith({
+			stationId: "station:developer",
+			target: "firecrawl",
+			origin: "https://api.firecrawl.dev",
+			authDiscovery: "https://www.firecrawl.dev/auth.md",
+			capabilities: ["search"],
+		});
+		expect(issueToken).toHaveBeenCalledWith({ action: "search" });
+		expect(firecrawlMock.apiKeys).toEqual(["station-issued-firecrawl-token"]);
+		expect(firecrawlMock.search).toHaveBeenCalledWith("HoBo", { limit: 5 });
 	});
 
-	it("uses the injected Firecrawl endpoint without a static credential", async () => {
-		process.env[FIRECRAWL] = "https://firecrawl.example/";
-		const original = globalThis.fetch;
-		globalThis.fetch = async (input, init) => {
-			expect(String(input)).toBe("https://firecrawl.example/v2/search");
-			expect(new Headers(init?.headers).has("authorization")).toBe(false);
-			return Response.json({ success: true, data: { web: [{ title: "HoBo", url: "https://example.com/hobo" }] } });
-		};
-		try {
-			const response = await app.request("/research?q=HoBo");
-			expect(response.status).toBe(200);
-			expect(await response.json()).toMatchObject({ query: "HoBo" });
-		} finally {
-			globalThis.fetch = original;
-		}
+	it("rejects an empty research query before resolving a Connection", async () => {
+		const resolve = vi.fn();
+		const runtime = createStationBindleRuntimeContext({
+			stationId: "station:developer",
+			connections: { resolve },
+		});
+		const handler = definition.entrypoint("api")?.(runtime) as (
+			request: Request,
+		) => Promise<Response>;
+
+		const response = await handler(new Request("https://app.example/research"));
+		expect(response.status).toBe(400);
+		expect(resolve).not.toHaveBeenCalled();
 	});
 });

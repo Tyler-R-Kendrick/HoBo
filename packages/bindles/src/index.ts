@@ -17,6 +17,12 @@ export {
 } from "./binding-delivery.js";
 export { bindle, DEFAULT_BINDLE_NAME, inferRequirementsFromResources } from "./bindle.js";
 export {
+	connectorDefinition,
+	connectorRecordsForBuilder,
+	defineConnector,
+	withConnectorDeclarations,
+} from "./connector.js";
+export {
 	api,
 	auth,
 	bucket,
@@ -149,11 +155,19 @@ export {
 export type {
 	AllowVerbsFor,
 	BindleBuilder,
+	BindleConnectorRecord,
 	BindleDefinition,
+	BindleDependency,
 	BindleEdge,
 	BindleRequirements,
 	BindleResource,
 	BindleResourceRecord,
+	BindleRuntimeContext,
+	ConnectorAuthDefinition,
+	ConnectorBinding,
+	ConnectorCapability,
+	ConnectorDefinition,
+	ConnectorSymbol,
 	ContainerDependencyOptions,
 	ExternalDependencyOptions,
 	LoweringDescriptor,
@@ -182,7 +196,6 @@ export {
 	service as wiringService,
 } from "./wiring/index.js";
 
-// public-contract: the package id emitted into generated bindle artifacts.
 export const HOBO_BINDLES_PACKAGE = "@hobo/bindles";
 
 export type {

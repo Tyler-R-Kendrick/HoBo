@@ -1,7 +1,11 @@
+// public-contract: persisted suite documents use this versioned schema identifier.
 export const SUITE_SCHEMA = "hobo.conformance.port-suite/v1" as const;
+// public-contract: persisted reports use this versioned schema identifier.
 export const REPORT_SCHEMA = "hobo.conformance.port-suite-report/v1" as const;
+// public-contract: SDK parity artifacts use this versioned schema identifier.
 export const SDK_PARITY_SCHEMA =
 	"hobo.conformance.sdk-parity-report/v1" as const;
+// public-contract: deterministic conformance runs share this default seed.
 export const DEFAULT_SEED = "hobo-conformance-default-seed" as const;
 
 export type ConformanceTier = "local" | "camp";
@@ -205,6 +209,28 @@ export interface AdapterRegistry {
 	register(adapter: ConformanceAdapter): void;
 	get(id: string): ConformanceAdapter | undefined;
 	list(): ConformanceAdapter[];
+}
+
+/**
+ * What a suite advertises about itself: the checks it can decide and the cases
+ * it decides them with. Registering the description separately from the runner
+ * is what lets a Resource Definition's `conformanceRef` point at a suite before
+ * anybody has run it.
+ */
+// domain-view: parse-dont-validate parsed/derived type; its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
+export interface ConformanceSuiteDescriptor {
+	readonly suiteId: string;
+	readonly dimension: string;
+	readonly checks: readonly string[];
+	readonly caseIds: readonly string[];
+}
+
+export interface ConformanceSuiteRegistry {
+	register(descriptor: ConformanceSuiteDescriptor): void;
+	get(suiteId: string): ConformanceSuiteDescriptor | undefined;
+	list(): readonly ConformanceSuiteDescriptor[];
+	/** Every check any registered suite can decide, deduplicated and sorted. */
+	checks(): readonly string[];
 }
 
 export interface SdkParityInput {

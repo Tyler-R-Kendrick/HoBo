@@ -1,0 +1,122 @@
+{
+	"schemaVersion": "hobo.deployment-offer/v1",
+	"offerId": "offer/e425ac6b6c81bece0fc58838e9f66d71cb37110fbaa724bb16e4cec023bdd741",
+	"recipeId": "recipe.cloudflare-upstash.live-leaderboard/v1",
+	"deploymentRef": "junction/recipe-cloudflare-upstash-live-leaderboard-v1",
+	"topologyDigest": "sha256:31efdb46b045e2d1db930d204c3b69f1e00c8c7c9150cd35be81b152f9148a71",
+	"resolutionDigest": "sha256:f1568aad5ba3f54757abb23b83cd9753a263b66de80f62188d6e330473767fcd",
+	"catalogDigest": "sha256:891553d43ffb3f1d80a58f35c14df4500216e82df0e5f0ce617008df67f3caec",
+	"profileRegistryDigest": "sha256:8563a93440edc3276f6ea66c498d0d0484dfaad8e3ff475541d3b1948094b216",
+	"placements": [
+		{
+			"placementId": "api",
+			"yardId": "edge",
+			"campId": "app",
+			"providerId": "cloudflare",
+			"primitive": "api",
+			"capabilityRef": "api",
+			"satisfiesProfileId": "api.http/v1",
+			"productDefinitionId": "cloudflare.temporary-workers-api/v1",
+			"realization": "native"
+		},
+		{
+			"placementId": "board",
+			"yardId": "cache",
+			"providerId": "upstash",
+			"primitive": "kv",
+			"capabilityRef": "board",
+			"satisfiesProfileId": "kv.redis-compatible/v1",
+			"productDefinitionId": "upstash.temporary-redis/v1",
+			"realization": "native"
+		}
+	],
+	"providers": [
+		{
+			"providerId": "cloudflare",
+			"sponsored": false,
+			"resourceOnly": false
+		},
+		{
+			"providerId": "upstash",
+			"sponsored": false,
+			"resourceOnly": true
+		}
+	],
+	"claimSummary": {
+		"actionCount": 2,
+		"providerCount": 2,
+		"atomicity": "best-effort-saga",
+		"earliestDeadlineMs": 1700086400000,
+		"items": [
+			{
+				"claimId": "claim/api",
+				"subjectRef": "junction/recipe-cloudflare-upstash-live-leaderboard-v1/edge/api",
+				"providerId": "cloudflare",
+				"mode": "account-claim",
+				"actionCount": 1,
+				"deadlineMs": 1700086400000,
+				"creatorAuthorityAfterClaim": "rotatable"
+			},
+			{
+				"claimId": "claim/board",
+				"subjectRef": "junction/recipe-cloudflare-upstash-live-leaderboard-v1/cache/board",
+				"providerId": "upstash",
+				"mode": "resource-claim",
+				"actionCount": 1,
+				"deadlineMs": 1700086400000,
+				"creatorAuthorityAfterClaim": "rotatable"
+			}
+		]
+	},
+	"sourceDisclosure": "public-source",
+	"credentialCustody": "secret-ref",
+	"requiredConsents": [
+		"claim.deadline-understood",
+		"claim.ownership-transfer"
+	],
+	"sponsoredCostCapMinorUnits": 0,
+	"guestLeases": [
+		{
+			"leaseId": "lease/cache",
+			"yardId": "cache",
+			"bootstrapClass": "anonymous-claimable",
+			"cleanupPolicy": "retain-until-provider-expiry",
+			"renewable": false,
+			"claimByMs": 1700086400000
+		},
+		{
+			"leaseId": "lease/edge",
+			"yardId": "edge",
+			"bootstrapClass": "anonymous-claimable",
+			"cleanupPolicy": "delete",
+			"renewable": false,
+			"claimByMs": 1700086400000
+		}
+	],
+	"trustEvidenceRefs": [
+		"cloudflare.temporary-workers-api/v1#sha256:cdcd88566d33d7d5548f8b3c464c2c11163873900894d20d11ba46afa9bba931",
+		"upstash.temporary-redis/v1#sha256:39924923b3c7ed1641a912fc7f4112a70c02cd8b4d36c40dc0571b34472789f8"
+	],
+	"conformanceEvidenceRefs": [
+		"conformance/cloudflare.temporary-workers-api/v1/api.http/v1",
+		"conformance/upstash.temporary-redis/v1/kv.redis-compatible/v1"
+	],
+	"portability": {
+		"providerCount": 2,
+		"exportSupportedPlacements": [
+			"api",
+			"board"
+		],
+		"exportMissingPlacements": [],
+		"migrationProfiles": []
+	},
+	"degradationNotices": [],
+	"issuedAtMs": 1700000000000,
+	"expiresAtMs": 1700000900000,
+	"signature": {
+		"algorithm": "test.detached-digest/v1",
+		"keyId": "test-key-1",
+		"payloadDigest": "sha256:2f67890f8e5990d45ce7cb9fcf2339b0b8afda654a4574241a1a91add70b8f96",
+		"signature": "sig:2f67890f8e5990d4"
+	}
+}

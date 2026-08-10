@@ -159,3 +159,4 @@
 | 0148 | ~~Pixel-RPG identity replaces the traced rubberhose surface~~ (superseded by 0149) | [portability-extensibility](07-portability-extensibility.md#adr-0148) |
 | 0149 | HoBo Rubberhose is the product identity; the pixel-RPG is a separate game project (`@hobo/pixel-village`) | [portability-extensibility](07-portability-extensibility.md#adr-0149) |
 | 0150 | HoBo Yard game-first control-plane UI (renumbered from a colliding 0135 section) | [portability-extensibility](07-portability-extensibility.md#adr-0150) |
+| 0151 | Capability implementation profiles, Resource Definition vNext, portable bindings, guest leases + claim bundles: anonymous and claimable Bindle hosting | [portability-extensibility](07-portability-extensibility.md#adr-0151) |

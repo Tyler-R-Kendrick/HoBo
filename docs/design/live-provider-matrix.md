@@ -25,14 +25,21 @@ tags: [hobo, design, providers, honesty]
 
 | Adapter | Realize IR | Live apply | Notes |
 |---|---|---|---|
-| `@hobo/provider-cloudflare` | Yes | Partial | `realize()` → program; composed CF deploy provider is **credential-gated** fixture/worker path |
+| `@hobo/provider-cloudflare` | Yes | **Anonymous temporary** | Temporary Accounts (`provisionTemporaryEnvironmentStation`); composed permanent-token deploy stays operator-only; OpenSaaS Examples `db` Bindle realized via **Neon Claimable Postgres** (`POST neon.new/api/v1/database`, zero keys; mock with `HOBO_OPENSAAS_DB_MOCK=1`); OpenSaaS anon server host chain = OpenPouch HTTP one-shot → **Clawdship** Docker competitor → CF Temporary Neon HTTP shim (`HOBO_OPENSAAS_SERVER_HOST=auto\|cloudflare\|openpouch\|clawdship`, mock `HOBO_OPENSAAS_SERVER_MOCK=1`; adapters in `site/scripts/anon-container-hosts/`; competitor doc [`docs/competitors/anon-container-hosts.md`](../competitors/anon-container-hosts.md)) |
+| `@hobo/provider-lakebed` | Yes | **Anonymous temporary** | Deploy-driver (ADR-0127) + anonymous `lakebed deploy` / injectable transport — **never** `LAKEBED_TOKEN` on Examples path |
+| `@hobo/provider-vercel` | Yes | **Vercel Drop** | [Drop](https://vercel.com/docs/drop): new project per stamp; Examples `/api/vercel-temp` (mock/`vercel login` session — **never** permanent `VERCEL_TOKEN`) |
+| `@hobo/provider-netlify` | Yes | **Anonymous CLI / Drop** | `netlify deploy --allow-anonymous` (+ injectable transport); Examples `/api/provider-temp/netlify` (`HOBO_NETLIFY_TEMP_MOCK=1` for CI — **never** `NETLIFY_AUTH_TOKEN`) |
+| `@hobo/provider-browser-wasm` | Yes | Local temporary | Examples same-origin `/api/anon/host/*` via `/api/provider-temp/browser-wasm` |
+| `@hobo/provider-webernetes` | Yes | Local temporary | Examples same-origin `/api/anon/host/*` via `/api/provider-temp/webernetes` |
+| `@hobo/provider-kubernetes` | Yes | Cred-gated / local | Package exists; **not** an Examples OOB station target |
 | `@hobo/provider-aws` | Yes | No default | IR only unless wired through live IaC engine |
 | `@hobo/provider-gcp` | Yes | No default | IR only |
 | `@hobo/provider-azure` | Yes | No default | IR only |
 | `@hobo/provider-kafka` | Capability | N/A messaging | Not a full cloud Yard provider |
-| `@hobo/provider-lakebed` | Yes | Partial | Deploy-driver style (ADR-0127) |
-| `@hobo/provider-convex` | Yes | Cred-gated | Deploy-driver style (ADR-0144); Management API client fails closed without a broker-minted `CONVEX_DEPLOY_KEY` (presence-only check, injected fetch); typed impedance limits exported |
+| `@hobo/provider-convex` | Yes | Cred-gated + Examples | `realize` → `applyDriverProgram`; Cloudflare Examples frontend = Temporary Pages; **anon Temporary Convex self-host fail-closed** under zero project API keys (`provisionConvexBackendAnonymous` rejection matrix: Instanode no anon containers, OpenPouch anon 256MiB cgroup, CF Temporary Containers 403); mock via `HOBO_CONVEX_SWAGHAUS_MOCK=1`; escapes `HOBO_CONVEX_OCI_HOST=cloudflare` / `HOBO_CONVEX_ALLOW_CLOUD=1`; WorkOS AuthKit for swaghaus; `/api/cf-temp/swaghaus` |
 | `@hobo/provider-ax` / `agentv` | Eval | N/A | AI-eval adapters |
+
+Shared temp contract: `hobo.temporary-environment-station/v1` in `@hobo/core` (`temporaryStationToAnonymousSessionShape` aligns with broker `AnonymousSessionResult`).
 
 ## IaC engines (`packages/iac/`)
 

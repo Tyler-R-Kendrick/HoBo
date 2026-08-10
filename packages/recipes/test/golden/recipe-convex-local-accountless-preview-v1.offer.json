@@ -1,0 +1,73 @@
+{
+	"schemaVersion": "hobo.deployment-offer/v1",
+	"offerId": "offer/e30b81d058b53dcb80c0973e386e62020d273173c96f3811ecee50bd5e96d1fb",
+	"recipeId": "recipe.convex.local-accountless-preview/v1",
+	"deploymentRef": "junction/recipe-convex-local-accountless-preview-v1",
+	"topologyDigest": "sha256:00f3790ebe62e724c87d095a7d2cdf961eb1751e2d854f3961911ad45e24fb95",
+	"resolutionDigest": "sha256:9fdc1c4229d1605ebd4656e0ebfb28394291d91c175722cbd8dc1cbf79a0fb39",
+	"catalogDigest": "sha256:891553d43ffb3f1d80a58f35c14df4500216e82df0e5f0ce617008df67f3caec",
+	"profileRegistryDigest": "sha256:8563a93440edc3276f6ea66c498d0d0484dfaad8e3ff475541d3b1948094b216",
+	"placements": [
+		{
+			"placementId": "backend",
+			"yardId": "local",
+			"campId": "app",
+			"providerId": "convex",
+			"primitive": "data",
+			"capabilityRef": "backend",
+			"satisfiesProfileId": "data.convex/v1",
+			"productDefinitionId": "convex.local-accountless/v1",
+			"realization": "native"
+		}
+	],
+	"providers": [
+		{
+			"providerId": "convex",
+			"sponsored": false,
+			"resourceOnly": false
+		}
+	],
+	"claimSummary": {
+		"actionCount": 0,
+		"providerCount": 0,
+		"atomicity": "single-resource",
+		"items": []
+	},
+	"sourceDisclosure": "public-source",
+	"credentialCustody": "secret-ref",
+	"requiredConsents": [],
+	"sponsoredCostCapMinorUnits": 0,
+	"guestLeases": [
+		{
+			"leaseId": "lease/local",
+			"yardId": "local",
+			"bootstrapClass": "local",
+			"cleanupPolicy": "delete",
+			"renewable": true,
+			"claimByMs": 1700086400000
+		}
+	],
+	"trustEvidenceRefs": [
+		"convex.local-accountless/v1#sha256:9f74c539fa0737ef77db5ca47ae9bd2e764a6911637f30c8bbe757627c7b313c"
+	],
+	"conformanceEvidenceRefs": [
+		"conformance/convex.local-accountless/v1/data.convex/v1"
+	],
+	"portability": {
+		"providerCount": 1,
+		"exportSupportedPlacements": [],
+		"exportMissingPlacements": [
+			"backend"
+		],
+		"migrationProfiles": []
+	},
+	"degradationNotices": [],
+	"issuedAtMs": 1700000000000,
+	"expiresAtMs": 1700000900000,
+	"signature": {
+		"algorithm": "test.detached-digest/v1",
+		"keyId": "test-key-1",
+		"payloadDigest": "sha256:35551b50b3093f1c4830ee58b54523ceca118538ea2f3eb8e4d231a237231024",
+		"signature": "sig:35551b50b3093f1c"
+	}
+}

@@ -179,6 +179,38 @@ recorded as a `broker.ResolutionSigned` fact. A consuming Yard verifies with
 a provider id, a price, the policy hash — fails verification. This is the
 HOBO-529 receipt-integrity requirement as running code.
 
+## Guest resolution evidence (anonymous → owned)
+
+A deployment created before its owner has authenticated with any provider
+([ADR-0151](adr/07-portability-extensibility.md)) carries an extra evidence
+record on both sides of the pipeline. `BrokerRequest.guest`
+(`GuestResolutionInput`) is what the caller brings: the recipe, the topology
+digest, the digests of the offer and the consent the human accepted, the
+bootstrap class, the sponsor cap they agreed to expose, and the maximum number
+of ownership ceremonies they will accept. `ResolutionReceipt.guest`
+(`GuestResolutionEvidence`) is what the resolution pinned: the lease, the claim
+bundle and its atomicity, the action count and earliest deadline, per-placement
+realization (`native` / `pack` / `bridge`) and creator-authority-after-claim,
+trust and conformance refs, source disclosures, credential custody, widening
+disclosures, and the cleanup policy.
+
+Both records are references, digests, counts, and deadlines — **never bearer
+material**. The claim URL, the temporary API token, and the database password
+live in the secret plane; the receipt names only the things they unlock.
+Because the signing payload is the receipt's canonical JSON, this evidence is
+covered by the same Ed25519 signature as the placements: the claim story cannot
+be edited after the fact without breaking verification.
+
+The parser enforces the invariants the CUE contract states, so an incoherent
+guest resolution cannot be represented past the boundary: a bundle with human
+actions must carry a deadline; `single-resource` atomicity cannot describe two
+ceremonies; a `bridge` placement must name the connectivity implementation it
+bridges through; a sponsor-backed placement must name a non-zero cap and a
+`public-anonymous` one must name none; and the evidence's digests must match
+the offer the human actually accepted
+(`assertGuestEvidenceMatchesOffer`) — otherwise consent on file was given for a
+different topology and no receipt is issued.
+
 ## The rejection matrix
 
 Rejection codes are a **closed catalog** (`REJECTION_MATRIX`), each pinned

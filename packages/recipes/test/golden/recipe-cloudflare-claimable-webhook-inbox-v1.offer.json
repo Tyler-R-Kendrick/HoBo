@@ -1,0 +1,101 @@
+{
+	"schemaVersion": "hobo.deployment-offer/v1",
+	"offerId": "offer/34bf8bc71cf88b7a1892e42b643e37948a519f77147f5396fd1f89e9f35f440a",
+	"recipeId": "recipe.cloudflare.claimable-webhook-inbox/v1",
+	"deploymentRef": "junction/recipe-cloudflare-claimable-webhook-inbox-v1",
+	"topologyDigest": "sha256:32728b322eb88a316df9169ac068ec9fbcd278747769f8635b7f804371b72641",
+	"resolutionDigest": "sha256:c57b2cdd993aec59c1416ba64237a00f9b93d3924bce2adf6cf465e455561fbc",
+	"catalogDigest": "sha256:891553d43ffb3f1d80a58f35c14df4500216e82df0e5f0ce617008df67f3caec",
+	"profileRegistryDigest": "sha256:8563a93440edc3276f6ea66c498d0d0484dfaad8e3ff475541d3b1948094b216",
+	"placements": [
+		{
+			"placementId": "inbox",
+			"yardId": "edge",
+			"campId": "app",
+			"providerId": "cloudflare",
+			"primitive": "webhook",
+			"capabilityRef": "inbox",
+			"satisfiesProfileId": "webhook.inbound-http/v1",
+			"productDefinitionId": "cloudflare.temporary-workers-api/v1",
+			"realization": "native"
+		},
+		{
+			"placementId": "log",
+			"yardId": "edge",
+			"campId": "app",
+			"providerId": "cloudflare",
+			"primitive": "kv",
+			"capabilityRef": "log",
+			"satisfiesProfileId": "kv.key-value/v1",
+			"productDefinitionId": "cloudflare.temporary-kv/v1",
+			"realization": "native"
+		}
+	],
+	"providers": [
+		{
+			"providerId": "cloudflare",
+			"sponsored": false,
+			"resourceOnly": false
+		}
+	],
+	"claimSummary": {
+		"actionCount": 1,
+		"providerCount": 1,
+		"atomicity": "single-resource",
+		"earliestDeadlineMs": 1700086400000,
+		"items": [
+			{
+				"claimId": "claim/inbox",
+				"subjectRef": "junction/recipe-cloudflare-claimable-webhook-inbox-v1/edge/inbox",
+				"providerId": "cloudflare",
+				"mode": "account-claim",
+				"actionCount": 1,
+				"deadlineMs": 1700086400000,
+				"creatorAuthorityAfterClaim": "rotatable"
+			}
+		]
+	},
+	"sourceDisclosure": "public-source",
+	"credentialCustody": "secret-ref",
+	"requiredConsents": [
+		"claim.deadline-understood",
+		"claim.ownership-transfer"
+	],
+	"sponsoredCostCapMinorUnits": 0,
+	"guestLeases": [
+		{
+			"leaseId": "lease/edge",
+			"yardId": "edge",
+			"bootstrapClass": "anonymous-claimable",
+			"cleanupPolicy": "delete",
+			"renewable": false,
+			"claimByMs": 1700086400000
+		}
+	],
+	"trustEvidenceRefs": [
+		"cloudflare.temporary-kv/v1#sha256:0f420b49fc49a327650c979774f35b704ef9afc08dee4bb4e34878cedfaee17f",
+		"cloudflare.temporary-workers-api/v1#sha256:cdcd88566d33d7d5548f8b3c464c2c11163873900894d20d11ba46afa9bba931"
+	],
+	"conformanceEvidenceRefs": [
+		"conformance/cloudflare.temporary-kv/v1/kv.key-value/v1",
+		"conformance/cloudflare.temporary-workers-api/v1/webhook.inbound-http/v1"
+	],
+	"portability": {
+		"providerCount": 1,
+		"exportSupportedPlacements": [
+			"inbox",
+			"log"
+		],
+		"exportMissingPlacements": [],
+		"migrationProfiles": []
+	},
+	"degradationNotices": [],
+	"issuedAtMs": 1700000000000,
+	"expiresAtMs": 1700000900000,
+	"signature": {
+		"algorithm": "test.detached-digest/v1",
+		"keyId": "test-key-1",
+		"payloadDigest": "sha256:a22660cb5d78087a8fd57b797d0a78d169b6af312c9a71f3f111326f8cfc7550",
+		"signature": "sig:a22660cb5d78087a"
+	}
+}

@@ -20,7 +20,7 @@ export const CF_PRIVACY_URL = "https://www.cloudflare.com/privacypolicy/"; // pu
 /** @deprecated Prefer TEMPORARY_STATION_TTL_MS from @hobo/core — re-export for CF callers. */
 export const TEMPORARY_STATION_TTL_MS = CORE_TEMPORARY_STATION_TTL_MS;
 
-export const CLOUDFLARE_TEMPORARY_PROVIDER_ID = "cloudflare" as const;
+export const CLOUDFLARE_TEMPORARY_PROVIDER_ID = "cloudflare" as const; // public-contract: stable temporary provider identifier
 
 export type TemporaryEnvironmentStationInput = {
 	readonly stationId: string;

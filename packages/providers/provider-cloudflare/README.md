@@ -236,3 +236,5 @@ dependency on that adapter. `@hobo/iac-pulumi` is imported **only** from
 pnpm --filter @hobo/provider-cloudflare run build
 pnpm --filter @hobo/provider-cloudflare run test
 ```
+
+Run both commands after changing temporary-account or realization boundaries.

@@ -33,6 +33,15 @@ Matching surface: `LAKEBED_TRAFFIC_ROUTING_PROFILE` declares
   competitor's runtime is an explicit operator decision.
 - **Secretless**: broker-minted, deployment-scoped deploy tokens;
   `staticSecrets: false` parse-enforced.
+- **Anonymous temporary stations**: `provisionTemporaryEnvironmentStation()`
+  runs Lakebed's password-free anonymous deploy (CLI transport by default;
+  injectable for tests). Returns the shared
+  `hobo.temporary-environment-station/v1` shape (`stationUrl` + `claimUrl` +
+  TTL). **Never** uses `LAKEBED_TOKEN` on this path. Permanent-token operator
+  deploys are out of scope for Examples.
+
+Native ports (Matching truth): `compute`, `kv`, `objectStore`, `database` —
+see `lakebedNativePorts()`. Queue/container are not native.
 
 ## Verification
 

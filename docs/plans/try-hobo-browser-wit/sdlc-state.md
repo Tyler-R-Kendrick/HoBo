@@ -21,7 +21,7 @@ provider bootstrap fail-closed on the static site.
 **Temporary Accounts + all-provider anon (2026-08-06):** Cloudflare Environment
 Stations + OpenSaaS ship via Temporary Accounts (`/api/cf-temp`, zero permanent
 tokens, never `blob:` as Cloudflare). Other yards
-(railway/netlify/vercel/webernetes/lakebed/kubernetes/browser-wasm) use
+(railway/netlify/vercel/webernetes/lakebed/browser-wasm) use
 same-origin agent hosts (`/api/anon/:provider`) — real HTTP under `astro dev`.
 Live Playwright: `examples:regression`, `examples:regression:opensaas`,
 `examples:regression:anon`.

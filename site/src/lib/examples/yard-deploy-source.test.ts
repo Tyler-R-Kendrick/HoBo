@@ -4,6 +4,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { GET } from "../../pages/examples/yards-deploy.json.js";
+import {
+	composePoolDeploySource,
+	providerImportForTarget,
+} from "./yard-deploy-source-contract.js";
 import { loadYardDeploySources, yardDeployByTarget } from "./yard-deploy-source.js";
 
 describe("Yard deploy sources", () => {
@@ -20,7 +24,7 @@ describe("Yard deploy sources", () => {
 		expect(contract).not.toContain("node:fs");
 	});
 
-	it("forbids Bindle/app fields on yard deploy surfaces", async () => {
+	it("keeps yard deploy surfaces as minimal provider re-exports", async () => {
 		const sources = await loadYardDeploySources();
 		for (const entry of sources) {
 			expect(entry.source, entry.targetId).not.toMatch(/\bwaspApp\b/u);
@@ -29,7 +33,11 @@ describe("Yard deploy sources", () => {
 				/examples\/try-site\/apps\//u,
 			);
 			expect(entry.source, entry.targetId).not.toMatch(/wasp-opensaas/u);
-			expect(entry.source, entry.targetId).toMatch(/\bstationBootstrap\b/u);
+			expect(entry.source, entry.targetId).not.toMatch(/\bstationBootstrap\b/u);
+			expect(entry.source, entry.targetId).not.toMatch(/\bcapabilities\s*:/u);
+			expect(entry.source, entry.targetId).not.toMatch(/\bresourceClass\s*:/u);
+			expect(entry.source, entry.targetId).toMatch(/export\s*\{/u);
+			expect(entry.source, entry.targetId).toMatch(/\bas default\b/u);
 		}
 	});
 
@@ -37,9 +45,41 @@ describe("Yard deploy sources", () => {
 		const sources = await loadYardDeploySources();
 		const map = yardDeployByTarget(sources);
 		expect(map.has("cloudflare")).toBe(true);
-		expect(map.has("railway")).toBe(true);
-		expect(map.get("railway")?.source).toContain("anonymous-remote");
-		expect(map.get("cloudflare")?.source).toContain("stationBootstrap");
+		expect(map.has("railway")).toBe(false);
+		expect(map.has("vercel")).toBe(true);
+		expect(map.get("cloudflare")?.source).toContain("@hobo/provider-cloudflare");
+		expect(map.get("vercel")?.source).toContain("@hobo/provider-vercel");
+	});
+
+	it("maps Pool targets to provider extension package imports", () => {
+		expect(providerImportForTarget("cloudflare")).toEqual({
+			packageName: "@hobo/provider-cloudflare",
+			exportName: "cloudflare",
+		});
+		expect(providerImportForTarget("browser-wasm")).toEqual({
+			packageName: "@hobo/provider-browser-wasm",
+			exportName: "browserWasm",
+		});
+	});
+
+	it("synthesizes station({ yards }) authoring for the provision plan", () => {
+		const composed = composePoolDeploySource({
+			provision: [
+				{ target: { id: "browser-wasm" } },
+				{ target: { id: "cloudflare" } },
+			],
+		});
+		expect(composed.pathLabel).toBe("examples/try-site/station.deploy.ts");
+		expect(composed.source).toContain('import { station } from "@hobo/stations"');
+		expect(composed.source).toContain(
+			'import { browserWasm } from "@hobo/provider-browser-wasm"',
+		);
+		expect(composed.source).toContain(
+			'import { cloudflare } from "@hobo/provider-cloudflare"',
+		);
+		expect(composed.source).toContain("yards: [browserWasm, cloudflare]");
+		expect(composed.source).not.toMatch(/\bcapabilities\b/u);
+		expect(composed.source).not.toMatch(/\bstationBootstrap\b/u);
 	});
 
 	it("prerenders yards-deploy.json for the console", async () => {
@@ -47,7 +87,7 @@ describe("Yard deploy sources", () => {
 		const body = (await response.json()) as { targetId: string }[];
 		expect(response.headers.get("content-type")).toContain("application/json");
 		expect(body.map((entry) => entry.targetId)).toEqual(
-			expect.arrayContaining(["browser-wasm", "cloudflare", "railway"]),
+			expect.arrayContaining(["browser-wasm", "cloudflare", "vercel"]),
 		);
 	});
 });

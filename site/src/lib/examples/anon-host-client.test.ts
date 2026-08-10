@@ -8,10 +8,13 @@ import {
 } from "./anon-host-client.js";
 
 describe("anon-host-client", () => {
-	it("lists same-origin anon providers (not cloudflare)", () => {
-		expect(isAnonSameOriginProvider("railway")).toBe(true);
-		expect(isAnonSameOriginProvider("browser-wasm")).toBe(true);
+	it("no longer stands in Temporary Accounts via anon hosts", () => {
+		// Real temp paths: cf-temp / lakebed-temp / provider-temp.
+		// Railway/Vercel fail closed — never claim anon HTML is Temporary Accounts.
+		expect(isAnonSameOriginProvider("railway")).toBe(false);
+		expect(isAnonSameOriginProvider("browser-wasm")).toBe(false);
 		expect(isAnonSameOriginProvider("cloudflare")).toBe(false);
+		expect(isAnonSameOriginProvider("lakebed")).toBe(false);
 	});
 
 	it("rejects blob URLs", () => {

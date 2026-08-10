@@ -70,7 +70,7 @@ export async function loadExamplesCatalog(
 		const appSource = await readFile(appPath, "utf8");
 		let handlersFile = "";
 		try {
-			handlersFile = await readFile(path.join(exampleRoot, "handlers.mjs"), "utf8");
+			handlersFile = await readFile(path.join(exampleRoot, "handlers.txt"), "utf8");
 		} catch (error) {
 			if (!isMissingFile(error)) throw error;
 		}
@@ -86,11 +86,24 @@ export async function loadExamplesCatalog(
 			appModule,
 			handlersFile,
 		);
+		const bindleContainers = extractBindleContainers(appModule.default);
+		const bindleWebApp = extractBindleWebApp(appModule.default);
+		if (
+			meta.deployKind === "local-bridge" &&
+			bindleContainers.length === 0 &&
+			bindleWebApp === null
+		) {
+			throw new TypeError(
+				`${meta.id}: local-bridge Bindle must declare b.web(waspApp|convexApp(...)) and/or b.container({ image }) resources to ship`,
+			);
+		}
 
 		catalog.push({
 			...meta,
 			source: `${appSource.trimEnd()}\n`,
 			handlersSource: guestHandlersSource,
+			bindleContainers,
+			bindleWebApp,
 			runtime,
 			...descriptor,
 		});
@@ -105,6 +118,62 @@ const BRIDGE_PLACEHOLDER_RUNTIME: ExampleRuntimeDescriptor = {
 	routes: [{ method: "GET", path: "/health", action: "health" }],
 };
 
+function extractBindleWebApp(
+	definition: unknown,
+): { readonly framework: string; readonly root: string } | null {
+	if (!definition || typeof definition !== "object") return null;
+	const resources = (definition as { resources?: unknown }).resources;
+	if (!resources || typeof resources !== "object") return null;
+	for (const resource of Object.values(resources as Record<string, unknown>)) {
+		if (!resource || typeof resource !== "object") continue;
+		if ((resource as { kind?: unknown }).kind !== "web") continue;
+		const annotations = (resource as { annotations?: unknown }).annotations;
+		if (!Array.isArray(annotations)) continue;
+		const webapp = annotations.find(
+			(entry) =>
+				entry &&
+				typeof entry === "object" &&
+				(entry as { option?: unknown }).option === "webapp" &&
+				(entry as { provider?: unknown }).provider === "hobo",
+		) as { config?: Record<string, unknown> } | undefined;
+		const framework = webapp?.config?.framework;
+		const root = webapp?.config?.root;
+		if (typeof framework === "string" && typeof root === "string") {
+			return { framework, root };
+		}
+	}
+	return null;
+}
+
+function extractBindleContainers(
+	definition: unknown,
+): readonly { readonly name: string; readonly image: string }[] {
+	if (!definition || typeof definition !== "object") return [];
+	const resources = (definition as { resources?: unknown }).resources;
+	if (!resources || typeof resources !== "object") return [];
+	const out: { name: string; image: string }[] = [];
+	for (const [name, resource] of Object.entries(
+		resources as Record<string, unknown>,
+	)) {
+		if (!resource || typeof resource !== "object") continue;
+		if ((resource as { kind?: unknown }).kind !== "container") continue;
+		const annotations = (resource as { annotations?: unknown }).annotations;
+		if (!Array.isArray(annotations)) continue;
+		const dep = annotations.find(
+			(entry) =>
+				entry &&
+				typeof entry === "object" &&
+				(entry as { option?: unknown }).option === "dependency" &&
+				(entry as { provider?: unknown }).provider === "hobo",
+		) as { config?: { image?: unknown } } | undefined;
+		const image = dep?.config?.image;
+		if (typeof image === "string" && image.length > 0) {
+			out.push({ name, image });
+		}
+	}
+	return out;
+}
+
 function resolveExampleRuntime(
 	id: string,
 	deployKind: "browser-wit" | "local-bridge",
@@ -116,7 +185,7 @@ function resolveExampleRuntime(
 	readonly guestHandlersSource: string;
 } {
 	if (deployKind === "local-bridge") {
-		// Guest handlers are unused — OpenSaaS runs via Docker bridge.
+		// Browser WIT guest unused — ship path deploys Bindle container images.
 		return { runtime: BRIDGE_PLACEHOLDER_RUNTIME, guestHandlersSource: "" };
 	}
 
@@ -146,7 +215,7 @@ function resolveExampleRuntime(
 	}
 
 	throw new TypeError(
-		`Example ${id}: export runtime, handlers.mjs, or bindle default with b.web(Trainable)`,
+		`Example ${id}: export runtime, handlers.txt, or bindle default with b.web(Trainable)`,
 	);
 }
 

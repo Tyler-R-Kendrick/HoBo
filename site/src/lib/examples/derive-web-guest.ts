@@ -1,12 +1,23 @@
 import type { BindleDefinition } from "@hobo/bindles";
 
-import type { ExampleRuntimeDescriptor } from "./catalog-contract.js";
+import type { ExampleRuntimeDescriptor, RuntimeAction } from "./catalog-contract.js";
 import { synthesizeTryRuntimeFromDeclared } from "./synthesize-try-runtime.js";
+
+const KV_BACKED_ACTIONS = new Set<RuntimeAction>([
+	"list",
+	"create",
+	"toggle",
+	"delete",
+]);
 
 /**
  * Derive try-runtime + guest handler object from a Bindle that binds a
  * trainable/component class to `web`. Guest handlers call the same method
  * bodies via Function#toString — Source pane never shows this machinery.
+ *
+ * When the Bindle also declares a `kv` resource and trainable ops are
+ * list/create/toggle(/delete), emit kv-backed try-runtime routes and leave
+ * guestHandlersSource empty so the browser guest uses built-in actions.
  */
 export function deriveWebGuestFromBindle(
 	definition: BindleDefinition,
@@ -28,14 +39,22 @@ export function deriveWebGuestFromBindle(
 		);
 	}
 
-	const runtime = synthesizeTryRuntimeFromDeclared(appSource);
-	const customActions = runtime.routes
+	const kvName = firstKvResourceName(definition);
+	const baseRuntime = synthesizeTryRuntimeFromDeclared(appSource);
+	const customActions = baseRuntime.routes
 		.map((route) => route.action)
 		.filter((action) => action !== "health");
 	if (customActions.length === 0) {
 		throw new TypeError(
 			`Bindle "${definition.name}" web binding declares no trainable operations`,
 		);
+	}
+
+	if (kvName && customActions.every((action) => KV_BACKED_ACTIONS.has(action))) {
+		return {
+			runtime: synthesizeKvBackedRuntime(kvName, customActions),
+			guestHandlersSource: "",
+		};
 	}
 
 	const handlerEntries: string[] = [];
@@ -58,8 +77,61 @@ export function deriveWebGuestFromBindle(
 	}
 
 	return {
-		runtime,
+		runtime: baseRuntime,
 		guestHandlersSource: `{\n${handlerEntries.join(",\n")}\n}`,
+	};
+}
+
+function firstKvResourceName(definition: BindleDefinition): string | null {
+	for (const [name, resource] of Object.entries(definition.resources)) {
+		if (resource?.kind === "kv") return name;
+	}
+	return null;
+}
+
+function synthesizeKvBackedRuntime(
+	kvName: string,
+	actions: readonly RuntimeAction[],
+): ExampleRuntimeDescriptor {
+	const collectionPath = `/api/${kebab(kvName)}`;
+	const routes: ExampleRuntimeDescriptor["routes"][number][] = [
+		{ method: "GET", path: "/health", action: "health" },
+	];
+	for (const action of actions) {
+		if (action === "list") {
+			routes.push({
+				method: "GET",
+				path: collectionPath,
+				action: "list",
+				resource: kvName,
+			});
+		} else if (action === "create") {
+			routes.push({
+				method: "POST",
+				path: collectionPath,
+				action: "create",
+				resource: kvName,
+			});
+		} else if (action === "toggle") {
+			routes.push({
+				method: "PATCH",
+				path: `${collectionPath}/:id`,
+				action: "toggle",
+				resource: kvName,
+			});
+		} else if (action === "delete") {
+			routes.push({
+				method: "DELETE",
+				path: `${collectionPath}/:id`,
+				action: "delete",
+				resource: kvName,
+			});
+		}
+	}
+	return {
+		schemaVersion: "hobo.try-runtime/v1",
+		resources: { [kvName]: { kind: "kv", initial: [] } },
+		routes,
 	};
 }
 
@@ -76,4 +148,11 @@ function callableSource(method: (...args: never[]) => unknown): string {
 	}
 	// Class method: `greet(name) { … }` → `function greet(name) { … }`
 	return `function ${src}`;
+}
+
+function kebab(value: string): string {
+	return value
+		.replace(/([a-z0-9])([A-Z])/gu, "$1-$2")
+		.replace(/_/gu, "-")
+		.toLowerCase();
 }

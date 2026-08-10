@@ -6,6 +6,44 @@ executable runtime routes, and sparse deployment policy. `yards.json` is the reg
 provider-specific Yard pool; each Yard has exactly one provider, while a
 Junction composes the Yards selected by policy.
 
+## Environment Station authoring (Pool Code)
+
+Pool Code shows the minimum deploy surface — import provider plugins and list
+them. Capabilities / resource-class matching stay inside provider packages
+(`EQUIVALENCE_CLASSES` → Matching default Resource Definitions).
+
+```ts
+import { station } from "@hobo/stations";
+import { cloudflare } from "@hobo/provider-cloudflare";
+import { lakebed } from "@hobo/provider-lakebed";
+
+export default station({
+  yards: [lakebed, cloudflare],
+});
+```
+
+Local helpers:
+
+- `environment-station.ts` / `station.ts` — Examples alias so samples can write
+  `station({ yards })` without changing ADR-0131 `@hobo/stations` Bindles.
+- `yards/<target>.deploy.ts` — one-line default re-exports from real
+  `@hobo/provider-*` packages (no thin tokens).
+
+Canonical sample: `station.deploy.ts`.
+
+## Temporary / agent stamps (no permanent tokens)
+
+| Yard | Package | Examples path |
+|---|---|---|
+| cloudflare | `@hobo/provider-cloudflare` | `/api/cf-temp` Temporary Accounts |
+| lakebed | `@hobo/provider-lakebed` | `/api/lakebed-temp` anonymous deploy |
+| vercel | `@hobo/provider-vercel` | `/api/vercel-temp` [Vercel Drop](https://vercel.com/docs/drop) |
+| browser-wasm / webernetes / netlify | matching `@hobo/provider-*` | `/api/provider-temp/:id` |
+
+Railway is **not** an Examples OOB yard (no anon/temp deploy API).
+
+Shared result shape: `hobo.temporary-environment-station/v1` (`@hobo/core`).
+
 To add an example:
 
 1. Copy an existing app folder and give `meta.json` a unique DNS-safe id.
@@ -19,9 +57,4 @@ To add an example:
    in its declared Junction, never every provider automatically.
 5. Run `pnpm --prefix examples/try-site test` and the site tests/build.
 
-GitHub Pages never receives provider credentials. Browser-WIT, Webernetes,
-Lakebed, and Kubernetes-simulation targets are local blob Environment Stations.
-Cloudflare Pool stamps use Temporary Accounts through a CORS relay Worker
-(`bootstrapCorsRelayViaTemporaryAccounts` — zero permanent API tokens) —
-navigable `*.workers.dev` + claim URL — not blob.
-Other remotes stay stubbed until their temporary-account APIs land.
+GitHub Pages never receives provider credentials.

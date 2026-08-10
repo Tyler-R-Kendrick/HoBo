@@ -1,54 +1,74 @@
 ---
 type: Reference
-title: "Wasp OpenSaaS on HoBo local station bridge"
-description: "Real Wasp Open-SaaS app packaged as HoBo containers; deployed via Examples local bridge."
+title: "Wasp OpenSaaS on HoBo"
+description: "Real wasp-lang/open-saas via @hobo/wasp waspApp(root) + Bindle deps from Open SaaS docs."
 tags: [hobo, examples, wasp, opensaas]
 ---
 
 # Wasp OpenSaaS (HoBo packaging path)
 
-This tree is a **real** [Wasp](https://wasp.sh) Open-SaaS app (`wasp new -t saas`),
-not a browser-WIT stub.
+Real [Open SaaS](https://docs.opensaas.sh/) from
+[wasp-lang/open-saas](https://github.com/wasp-lang/open-saas) (`wasp new -t saas`).
 
-## Layout
+## Bindle
 
-- `app/` — Wasp OpenSaaS sources (`main.wasp.ts`, Prisma, React client)
-- `docker-compose.yml` — Postgres + server + static client (Webernetes/Lakebed)
-- `docker/` — Dockerfiles that run `wasp build` then package artifacts
+```ts
+import { bindle } from "@hobo/bindles";
+import { waspApp } from "@hobo/wasp";
 
-## Local run (Examples console)
-
-URL (site `base` is `/HoBo`): **http://localhost:4321/HoBo/examples/**
-
-1. `pnpm --filter hobo-site run dev` (and `examples:runtime` once if WIT hosts 404)
-2. Pool → select a yard → **Deploy stations**
-   - **Cloudflare:** same-origin Temporary Accounts `/api/cf-temp/station` → live `*.workers.dev`
-   - **Other yards** (railway, netlify, vercel, webernetes, lakebed, kubernetes, browser-wasm):
-     same-origin agent host `/api/anon/:provider/station` (real HTTP; never `blob:` as remote).
-     Railway/Vercel have no password-free Temporary Accounts API; Netlify `--allow-anonymous`
-     is password-gated, so Examples use agent hosts for iframeable demos.
-3. Ship → pick **OpenSaaS Kit** → Deploy onto that station
-   - Cloudflare: `POST /api/cf-temp/opensaas` → `wrangler deploy --temporary` (zero permanent tokens)
-   - Other yards: `POST /api/anon/:provider/opensaas` → static OpenSaaS client on same-origin host
-   - Optional: Webernetes/Lakebed Docker via `examples:bridge` when you want full server/API
-
-Requires: Wasp CLI `npm i -g @wasp.sh/wasp-cli@^0.25` (first ship runs `wasp build` + `vite build` if artifacts missing).
-
-Agent-browser features (live — no mocks):
-
-```bash
-pnpm --filter hobo-site run examples:regression
-HOBO_OPENSAAS_SKIP_BUILD=1 pnpm --filter hobo-site run examples:regression:opensaas
-HOBO_OPENSAAS_SKIP_BUILD=1 pnpm --filter hobo-site run examples:regression:anon
+export default bindle((b) => {
+  const db = b.container({
+    image: "postgres:16-alpine",
+    endpoints: { postgres: { port: 5432 } },
+  }); // or b.external() for BYO DATABASE_URL
+  const web = b.web(waspApp("examples/wasp-opensaas/app")).dependsOn(db);
+  return { db, web };
+});
 ```
 
+Ship **runs `wasp` in `root`** (build / deploy railway / wrangler). Optional SaaS
+keys (Stripe, S3, SendGrid, …) map to `b.external` / camp connectors —
+`discoverWaspEnv(root)` reads `.env.server.example` per
+[Deploying](https://docs.opensaas.sh/guides/deploying/).
 
-## HoBo Bindle
+General deploy env (docs): `DATABASE_URL`, `JWT_SECRET`, `WASP_WEB_CLIENT_URL`,
+`WASP_SERVER_URL`.
 
-Stage Source (Ship) shows [`../try-site/apps/opensaas/app.ts`](../try-site/apps/opensaas/app.ts):
-container Postgres + `service` web surface with `require: ["http","container"]` / `runtimes: ["oci"]`.
+## Examples Temporary (anon)
 
-## Notes
+Bindle `db` (`postgres:16-alpine` locally) is realized on Cloudflare Temporary
+yards via **Neon Claimable Postgres** (`POST https://neon.new/api/v1/database`
+with **no Authorization** — 72h TTL, claim later). Zero project API keys.
 
-- Live Stripe/OAuth keys are optional for local smoke; set them in compose/provider env for full OpenSaaS payments.
-- Browser-wasm is not an OpenSaaS allowed yard — use Webernetes, Lakebed, Cloudflare, or Railway.
+| Piece | Anon Temporary host |
+|---|---|
+| `db` | Neon Claimable (`POST neon.new/api/v1/database`) |
+| Wasp server | **Host chain:** OpenPouch HTTP Instant Lane (one-shot) → **Clawdship** Docker competitor (one-shot) → Cloudflare Temporary Worker + Neon HTTP shim (`/health`, `/db/ping`) |
+| Web client | Cloudflare Temporary Pages (`wrangler deploy --temporary`) |
+
+| Env | Notes |
+|---|---|
+| (default) | Live Neon + auto host chain (`HOBO_OPENSAAS_SERVER_HOST=auto`) |
+| `HOBO_OPENSAAS_SERVER_HOST=cloudflare` | Skip competitors; CF Temporary Neon shim only |
+| `HOBO_OPENSAAS_SERVER_HOST=openpouch` | OpenPouch only (no fallback; still one-shot) |
+| `HOBO_OPENSAAS_SERVER_HOST=clawdship` | Clawdship only (OpenPouch competitor; still one-shot) |
+| `HOBO_OPENPOUCH_TRANSPORT=http\|cli` | Default `http` Instant Lane; `cli` = `npx openpouch` |
+| `HOBO_OPENSAAS_DB_MOCK=1` | CI mock DATABASE_URL |
+| `HOBO_OPENSAAS_SERVER_MOCK=1` | CI mock server URL |
+
+Per-host 429 writes a **6h cooldown** under `$TMPDIR/hobo-anon-host-cooldown/`
+(plus legacy `$TMPDIR/hobo-openpouch-cooldown.json`) so Examples never hammer free
+anon quota. Competitor matrix: [`docs/competitors/anon-container-hosts.md`](../../docs/competitors/anon-container-hosts.md).
+CF last resort is a Neon-backed Worker shim, not a full Express/Prisma Wasp process.
+
+Local yards still use the Postgres OCI image via compose/bridge.
+
+One-shot e2e: `node --import tsx site/scripts/retry-opensaas-e2e.mts`
+(validate: `site/scripts/validate-opensaas-temporary-e2e.mts`).
+
+## Local
+
+1. Docs: `wasp start db` · `wasp db migrate-dev` · `wasp start` (ports 3000/3001)
+2. Examples: Pool stations → Ship OpenSaaS; bridge compose realizes Postgres OCI + wasp build artifacts
+
+Compose `server`/`client` services = packaging of the Wasp `web` Kit, not Bindle resources.

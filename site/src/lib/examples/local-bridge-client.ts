@@ -13,6 +13,16 @@ export type LocalBridgeDeployRequest = {
 	readonly exampleId: string;
 	readonly stationId: string;
 	readonly targetId: string;
+	/** Wasp webApp from Bindle — ship runs wasp in `root`. */
+	readonly bindleWebApp: {
+		readonly framework: string;
+		readonly root: string;
+	};
+	/** Optional OCI deps from Bindle (e.g. Postgres) — not HoBo server/client tags. */
+	readonly bindleContainers: readonly {
+		readonly name: string;
+		readonly image: string;
+	}[];
 };
 
 export type LocalBridgeDeployResult = {

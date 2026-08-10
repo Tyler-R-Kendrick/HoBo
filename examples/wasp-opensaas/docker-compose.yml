@@ -1,6 +1,11 @@
-# HoBo packaging for real Wasp Open-SaaS (examples/wasp-opensaas/app).
-# Stage Source shows this Bindle; deploy goes through the local Docker bridge
-# onto Webernetes/Lakebed stations — not browser WIT.
+# Local realization of the OpenSaaS Bindle's Wasp webApp + Postgres OCI dep.
+# Bindle source of truth: examples/try-site/apps/opensaas/app.ts
+#   b.container({ image: "postgres:16-alpine" })  → db
+#   b.web(waspApp({ appRoot: "examples/wasp-opensaas/app" })) → web
+#
+# server/client below are Wasp build artifacts (wasp build), NOT Bindle
+# resources and NOT HoBo-owned images. Upstream:
+# https://github.com/wasp-lang/open-saas · https://docs.opensaas.sh/
 
 services:
   db:

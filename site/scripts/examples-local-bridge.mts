@@ -14,11 +14,112 @@ const HOST = "127.0.0.1";
 const PORT = Number(process.env.HOBO_EXAMPLES_BRIDGE_PORT ?? 8787);
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const REPO_ROOT = path.resolve(ROOT, "..");
-const WASP_APP = path.join(REPO_ROOT, "examples/wasp-opensaas/app");
 const COMPOSE_FILE = path.join(REPO_ROOT, "examples/wasp-opensaas/docker-compose.yml");
 const PROJECT = "hobo-wasp-opensaas";
 const CLIENT_URL = process.env.HOBO_OPENSAAS_CLIENT_URL ?? "http://127.0.0.1:3000";
 const SERVER_URL = process.env.HOBO_OPENSAAS_SERVER_URL ?? "http://127.0.0.1:3001";
+
+type BindleContainerRef = { readonly name: string; readonly image: string };
+type BindleWebAppRef = {
+	readonly framework: string;
+	readonly root: string;
+};
+
+async function loadOpenSaasBindle(): Promise<{
+	readonly webApp: BindleWebAppRef;
+	readonly waspAbsRoot: string;
+	readonly containers: Readonly<Record<string, string>>;
+	readonly discovered: Awaited<
+		ReturnType<(typeof import("@hobo/wasp"))["discoverWaspEnv"]>
+	>;
+}> {
+	const mod = (await import(
+		path.join(REPO_ROOT, "examples/try-site/apps/opensaas/app.ts")
+	)) as {
+		readonly default: {
+			readonly resources: Record<
+				string,
+				{
+					readonly kind: string;
+					readonly annotations: readonly {
+						readonly provider: string;
+						readonly option: string;
+						readonly config: Record<string, unknown>;
+					}[];
+				}
+			>;
+		};
+	};
+	const { bindleContainerImages } = await import(
+		path.join(REPO_ROOT, "examples/try-site/apps/opensaas/bindle-containers.ts")
+	);
+	const {
+		discoverWaspEnv,
+		isWaspWebAppAnnotation,
+		resolveWaspRoot,
+		waspRootFromAnnotations,
+	} = await import("@hobo/wasp");
+	const web = mod.default.resources.web;
+	if (!web || web.kind !== "web") {
+		throw new Error("OpenSaaS Bindle missing web resource — use b.web(waspApp(root))");
+	}
+	if (!web.annotations.some(isWaspWebAppAnnotation)) {
+		throw new Error("OpenSaaS Bindle web Kit missing hobo/webapp (wasp) annotation");
+	}
+	const root = waspRootFromAnnotations(web.annotations);
+	const waspAbsRoot = resolveWaspRoot(REPO_ROOT, root);
+	const discovered = await discoverWaspEnv(REPO_ROOT, root);
+	const fromDef = Object.fromEntries(
+		bindleContainerImages(mod.default).map((entry) => [entry.name, entry.image]),
+	);
+	return {
+		webApp: { framework: "wasp", root },
+		waspAbsRoot,
+		containers: { ...fromDef },
+		discovered,
+	};
+}
+
+function assertWaspBindleShip(
+	webApp: BindleWebAppRef | undefined,
+	containers: readonly BindleContainerRef[] | undefined,
+	expected: Awaited<ReturnType<typeof loadOpenSaasBindle>>,
+): { ok: true } | { ok: false; error: string; remediation: string } {
+	if (!webApp || webApp.framework !== "wasp") {
+		return {
+			ok: false,
+			error: "bindleWebApp required",
+			remediation:
+				"Ship must send Bindle b.web(waspApp(root)) — refuse example-id-only / fake HoBo image tags",
+		};
+	}
+	if (webApp.root !== expected.webApp.root) {
+		return {
+			ok: false,
+			error: `waspApp root mismatch (got ${webApp.root}, want ${expected.webApp.root})`,
+			remediation: "Align ship payload with Bindle waspApp(root)",
+		};
+	}
+	const wantDb = expected.containers.db;
+	const gotDb = containers?.find((entry) => entry.name === "db")?.image;
+	if (wantDb && gotDb && gotDb !== wantDb) {
+		return {
+			ok: false,
+			error: `Bindle container "db" image mismatch (got ${gotDb}, want ${wantDb})`,
+			remediation:
+				"Align Postgres OCI tag with b.container({ image }) in the OpenSaaS Bindle (or use b.external)",
+		};
+	}
+	if (containers?.some((c) => c.image.includes("hobo/opensaas-"))) {
+		return {
+			ok: false,
+			error: "Refuse HoBo-invented opensaas-server/client image tags",
+			remediation:
+				"Open SaaS is wasp-lang/open-saas — ship via waspApp(root) + Postgres OCI/external",
+		};
+	}
+	return { ok: true };
+}
 
 type DeployState = {
 	exampleId: string;
@@ -215,7 +316,7 @@ function extractUrl(text: string): string | null {
 	return match?.[0] ?? null;
 }
 
-async function deployRailway(): Promise<
+async function deployRailway(waspAbsRoot: string): Promise<
 	{ ok: true; clientUrl: string; serverUrl: string } | { ok: false; error: string; remediation: string }
 > {
 	const waspOk = await commandAvailable("wasp");
@@ -226,13 +327,12 @@ async function deployRailway(): Promise<
 			remediation: "Install Wasp (curl -sSL https://get.wasp-lang.dev/installer.sh | sh), login to Railway, then retry",
 		};
 	}
-	const result = await run("wasp", ["deploy", "railway"], WASP_APP);
+	const result = await run("wasp", ["deploy", "railway"], waspAbsRoot);
 	if (result.code !== 0) {
 		return {
 			ok: false,
 			error: result.stderr.trim() || result.stdout.trim() || "wasp deploy railway failed",
-			remediation:
-				"Run `wasp deploy railway` in examples/wasp-opensaas/app with Railway auth configured (railway login)",
+			remediation: `Run \`wasp deploy railway\` in ${waspAbsRoot} with Railway auth configured (railway login)`,
 		};
 	}
 	const url =
@@ -253,7 +353,7 @@ async function deployRailway(): Promise<
 	};
 }
 
-async function deployCloudflare(): Promise<
+async function deployCloudflare(waspAbsRoot: string): Promise<
 	{ ok: true; clientUrl: string; serverUrl: string } | { ok: false; error: string; remediation: string }
 > {
 	const waspOk = await commandAvailable("wasp");
@@ -272,7 +372,7 @@ async function deployCloudflare(): Promise<
 			remediation: "Install Cloudflare wrangler (`npm i -g wrangler`) and `wrangler login`, then retry",
 		};
 	}
-	const build = await run("wasp", ["build"], WASP_APP);
+	const build = await run("wasp", ["build"], waspAbsRoot);
 	if (build.code !== 0) {
 		return {
 			ok: false,
@@ -280,11 +380,11 @@ async function deployCloudflare(): Promise<
 			remediation: "Fix wasp build errors in examples/wasp-opensaas/app, then retry",
 		};
 	}
-	const webApp = path.join(WASP_APP, ".wasp/build/web-app");
+	const webApp = path.join(waspAbsRoot, ".wasp/build/web-app");
 	const deploy = await run("wrangler", ["pages", "deploy", "build", "--project-name", "hobo-opensaas"], webApp);
 	if (deploy.code !== 0) {
 		// Fallback: try workers deploy if pages project missing
-		const workers = await run("wrangler", ["deploy"], path.join(WASP_APP, ".wasp/build"));
+		const workers = await run("wrangler", ["deploy"], path.join(waspAbsRoot, ".wasp/build"));
 		if (workers.code !== 0) {
 			return {
 				ok: false,
@@ -329,6 +429,7 @@ async function deployCloudflare(): Promise<
 
 async function deployNetlifyOrVercel(
 	targetId: "netlify" | "vercel",
+	waspAbsRoot: string,
 ): Promise<
 	{ ok: true; clientUrl: string; serverUrl: string } | { ok: false; error: string; remediation: string }
 > {
@@ -349,7 +450,7 @@ async function deployNetlifyOrVercel(
 			remediation: "Install Wasp, build the app, then retry",
 		};
 	}
-	const build = await run("wasp", ["build"], WASP_APP);
+	const build = await run("wasp", ["build"], waspAbsRoot);
 	if (build.code !== 0) {
 		return {
 			ok: false,
@@ -357,7 +458,7 @@ async function deployNetlifyOrVercel(
 			remediation: "Fix wasp build errors in examples/wasp-opensaas/app",
 		};
 	}
-	const webApp = path.join(WASP_APP, ".wasp/build/web-app");
+	const webApp = path.join(waspAbsRoot, ".wasp/build/web-app");
 	const args =
 		targetId === "netlify"
 			? ["deploy", "--prod", "--dir", "build"]
@@ -489,23 +590,46 @@ const server = createServer(async (req, res) => {
 
 	if (method === "POST" && url.pathname === "/deploy") {
 		const raw = await readBody(req);
-		let body: { exampleId?: string; stationId?: string; targetId?: string };
+		let body: {
+			exampleId?: string;
+			stationId?: string;
+			targetId?: string;
+			bindleContainers?: BindleContainerRef[];
+			bindleWebApp?: BindleWebAppRef;
+		};
 		try {
 			body = JSON.parse(raw) as typeof body;
 		} catch {
 			sendJson(res, 400, { error: "invalid JSON body" });
 			return;
 		}
-		if (body.exampleId !== "opensaas") {
-			sendJson(res, 400, {
-				error: `Bridge only deploys opensaas (got ${body.exampleId ?? "missing"})`,
-			});
-			return;
-		}
 		if (!body.stationId) {
 			sendJson(res, 400, { error: "stationId required" });
 			return;
 		}
+		let expected: Awaited<ReturnType<typeof loadOpenSaasBindle>>;
+		try {
+			expected = await loadOpenSaasBindle();
+		} catch (error) {
+			sendJson(res, 500, {
+				error: error instanceof Error ? error.message : String(error),
+				remediation: "Failed to load OpenSaaS Bindle from examples/try-site/apps/opensaas",
+			});
+			return;
+		}
+		const bindleCheck = assertWaspBindleShip(
+			body.bindleWebApp,
+			body.bindleContainers,
+			expected,
+		);
+		if (!bindleCheck.ok) {
+			sendJson(res, 400, {
+				error: bindleCheck.error,
+				remediation: bindleCheck.remediation,
+			});
+			return;
+		}
+		const exampleId = body.exampleId ?? "opensaas";
 		const targetId = body.targetId ?? "webernetes";
 
 		if (targetId === "webernetes" || targetId === "lakebed") {
@@ -517,14 +641,14 @@ const server = createServer(async (req, res) => {
 			const healthy = await waitHealthy(CLIENT_URL);
 			if (!healthy) {
 				sendJson(res, 503, {
-					error: "OpenSaaS client did not become healthy",
+					error: `Wasp OpenSaaS client at ${CLIENT_URL} did not become healthy`,
 					remediation:
 						"Check docker compose logs for hobo-wasp-opensaas. See examples/wasp-opensaas/HOBO.md",
 				});
 				return;
 			}
 			deployState = {
-				exampleId: "opensaas",
+				exampleId,
 				stationId: body.stationId,
 				targetId,
 				clientUrl: CLIENT_URL,
@@ -535,7 +659,7 @@ const server = createServer(async (req, res) => {
 		}
 
 		if (targetId === "railway") {
-			const result = await deployRailway();
+			const result = await deployRailway(expected.waspAbsRoot);
 			if (!result.ok) {
 				sendJson(res, 503, { error: result.error, remediation: result.remediation });
 				return;
@@ -552,7 +676,7 @@ const server = createServer(async (req, res) => {
 		}
 
 		if (targetId === "cloudflare") {
-			const result = await deployCloudflare();
+			const result = await deployCloudflare(expected.waspAbsRoot);
 			if (!result.ok) {
 				sendJson(res, 503, { error: result.error, remediation: result.remediation });
 				return;
@@ -569,7 +693,7 @@ const server = createServer(async (req, res) => {
 		}
 
 		if (targetId === "netlify" || targetId === "vercel") {
-			const result = await deployNetlifyOrVercel(targetId);
+			const result = await deployNetlifyOrVercel(targetId, expected.waspAbsRoot);
 			if (!result.ok) {
 				sendJson(res, 503, { error: result.error, remediation: result.remediation });
 				return;
@@ -600,7 +724,7 @@ server.listen(PORT, HOST, () => {
 		JSON.stringify({
 			bridge: `http://${HOST}:${PORT}`,
 			composeFile: COMPOSE_FILE,
-			waspApp: WASP_APP,
+			waspApp: path.join(REPO_ROOT, "examples/wasp-opensaas/app"),
 			clientUrl: CLIENT_URL,
 			serverUrl: SERVER_URL,
 		}),

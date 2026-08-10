@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "pnpm run examples:runtime",
+    "prebuild": "pnpm run examples:runtime && pnpm run generate:recipe-terms",
     "build": "astro build",
     "codegen": "pnpm --dir .. exec node --import tsx packages/schema-tools/src/cli.ts --packages-root . --filter site",
     "codegen:check": "pnpm --dir .. exec node --import tsx packages/schema-tools/src/cli.ts --check --packages-root . --filter site",
@@ -26,12 +26,17 @@
     "design:export:css": "designmd export --format css-tailwind DESIGN.md",
     "design:export:dtcg": "designmd export --format dtcg DESIGN.md",
     "design:spec": "designmd spec",
-    "design:audit": "node --import tsx scripts/design-audit.mts --dist dist"
+    "design:audit": "node --import tsx scripts/design-audit.mts --dist dist",
+    "generate:recipe-terms": "node --import tsx scripts/generate-recipe-terms.mts"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.12.1",
     "@hobo/bindles": "workspace:*",
+    "@hobo/convex": "workspace:*",
+    "@hobo/provider-convex": "workspace:*",
+    "@hobo/recipes": "workspace:*",
     "@hobo/runtime": "workspace:*",
+    "@hobo/wasp": "workspace:*",
     "astro": "^5.17.0"
   },
   "devDependencies": {

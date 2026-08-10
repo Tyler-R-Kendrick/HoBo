@@ -3,24 +3,11 @@
  * Never uses blob: URLs.
  */
 
-export type AnonProviderId =
-	| "railway"
-	| "netlify"
-	| "vercel"
-	| "webernetes"
-	| "lakebed"
-	| "kubernetes"
-	| "browser-wasm";
+/** Legacy type kept for OpenSaaS same-origin helper signatures (unused OOB). */
+export type AnonProviderId = string;
 
-export const ANON_SAME_ORIGIN_PROVIDERS: ReadonlySet<string> = new Set([
-	"railway",
-	"netlify",
-	"vercel",
-	"webernetes",
-	"lakebed",
-	"kubernetes",
-	"browser-wasm",
-]);
+/** Empty — Railway dropped from OOB; Vercel uses Drop (`/api/vercel-temp`). */
+export const ANON_SAME_ORIGIN_PROVIDERS: ReadonlySet<string> = new Set();
 
 export type AnonStationProvision = {
 	readonly ok: true;

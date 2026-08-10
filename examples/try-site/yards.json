@@ -23,12 +23,6 @@
 			"campId": "try-cloudflare"
 		},
 		{
-			"id": "yard:railway",
-			"targetId": "railway",
-			"providerId": "railway",
-			"campId": "try-railway"
-		},
-		{
 			"id": "yard:netlify",
 			"targetId": "netlify",
 			"providerId": "netlify",
@@ -45,12 +39,6 @@
 			"targetId": "lakebed",
 			"providerId": "lakebed",
 			"campId": "try-lakebed"
-		},
-		{
-			"id": "yard:kubernetes",
-			"targetId": "kubernetes",
-			"providerId": "kubernetes",
-			"campId": "try-kubernetes-lowered"
 		}
 	]
 }

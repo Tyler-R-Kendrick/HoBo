@@ -10,12 +10,18 @@ describe("deriveWebGuestFromBindle", () => {
 		expect(() => deriveWebGuestFromBindle(definition, "")).toThrow(/no web entrypoint/);
 	});
 
-	it("embeds real Hello.greet body into guest handlers for hello-world", async () => {
+	it("derives kv-backed try-runtime for todo-api without custom guest handlers", async () => {
 		const catalog = await loadExamplesCatalog();
-		const hello = catalog.find(({ id }) => id === "hello-world")!;
-		expect(hello.handlersSource).toMatch(/function greet|greet\(/);
-		expect(hello.handlersSource).toContain("Hello World!");
-		expect(hello.handlersSource).toContain("Hello,");
-		expect(hello.source).not.toContain(hello.handlersSource);
+		const todos = catalog.find(({ id }) => id === "todo-api")!;
+		expect(todos.handlersSource).toBe("");
+		expect(todos.runtime.resources.todos).toEqual({ kind: "kv", initial: [] });
+		expect(todos.runtime.routes.map(({ action }) => action)).toEqual([
+			"health",
+			"list",
+			"create",
+			"toggle",
+		]);
+		expect(todos.source).toContain("@trainable");
+		expect(todos.source).toContain("b.web(Todos)");
 	});
 });

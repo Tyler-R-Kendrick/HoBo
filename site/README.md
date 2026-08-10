@@ -6,13 +6,23 @@ The GitHub Pages site for HoBo: landing page, developer docs, and agent docs, se
 Built with [Astro](https://astro.build) in static output mode — no client-side framework.
 Most pages are prerendered HTML plus `src/styles/global.css`; the `/examples/`
 ship console is the deliberate exception, using a small TypeScript client and
-build-generated browser Component Model assets. Cloudflare Temporary Accounts
-station deploy uses same-origin `POST /HoBo/api/cf-temp/station` under
-`astro dev` / `astro preview` (Vite middleware → Cloudflare Temporary Accounts
-REST; zero permanent API tokens). Other yards use same-origin agent hosts at
-`POST /HoBo/api/anon/:provider/station` (real HTTP, never `blob:` as remote).
-Multi-host selections show policy placement intent; they do not claim
-browser-side failover or state mirroring.
+build-generated browser Component Model assets. The console is a three-board
+strip: **Pool** (dropdown multi-select yards — Local merges Browser WASM +
+Webernetes; All/None; Code shows `station({ yards })` provider imports for the
+station provision plan), **Ship** (app Bindle
+source), **Live** (Preview ↔ Logs + claim URLs when anonymous deploys issue
+them — no Claim CTA). Temporary/agent station stamps (zero permanent API tokens) under `astro
+dev` / preview: Cloudflare `/api/cf-temp`, Lakebed `/api/lakebed-temp`,
+Vercel Drop `/api/vercel-temp`, Netlify `/api/provider-temp/netlify`
+(`netlify deploy --allow-anonymous`), local yards `/api/provider-temp/:id`
+→ same-origin `/api/anon/host/*`. Replay mocks:
+`HOBO_LAKEBED_TEMP_MOCK=1 HOBO_VERCEL_DROP_MOCK=1 HOBO_NETLIFY_TEMP_MOCK=1`.
+Temp APIs advertise `apiVersion: hobo-temp-v2` — kill stale `:4321` processes
+if Deploy returns HTML. Static GitHub Pages has no temp brokers.
+Railway is not an OOB yard. Matching-honest native ports live in
+`src/lib/examples/target-capability-packs.ts`. Multi-host selections show
+policy placement intent; they do not claim browser-side failover or state
+mirroring.
 
 ## Working on the site
 

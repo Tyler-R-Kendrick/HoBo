@@ -5,6 +5,7 @@
  * requirements from the draft skill (`.claude/skills/draft/references/<layer>/process.md`):
  * a zod-valid `proof.json` (schema: `scripts/lib/proof-manifest.ts`), executed `examples/`
  * (the gate runs each example and diffs committed expected output — the unforgeable artifact),
+ * optional package-local `draft:prepare` setup before example execution,
  * a structure-valid notebook, layer artifacts (bench for technical, executable features for
  * epic, per-experience-type assets for exp), and waivers backed by an ADR.
  *
@@ -134,6 +135,25 @@ export function checkWorkspace(
 
 	// examples/ — executed, unforgeable.
 	if (!waived.has("examples")) {
+		let examplesReady = true;
+		const packagePath = path.join(abs, "package.json");
+		const packageJson = existsSync(packagePath)
+			? JSON.parse(readFileSync(packagePath, "utf8"))
+			: undefined;
+		if (runExamples && packageJson?.scripts?.["draft:prepare"]) {
+			const prepare = spawnSync("pnpm", ["run", "draft:prepare"], {
+				cwd: abs,
+				encoding: "utf8",
+				timeout: 120_000,
+				env: { ...process.env, NODE_OPTIONS: "" },
+			});
+			if (prepare.error || prepare.status !== 0) {
+				examplesReady = false;
+				problems.push(
+					`draft:prepare failed: ${prepare.error?.message ?? (prepare.stderr || "").trim().slice(0, 300)}`,
+				);
+			}
+		}
 		const examplesDir = path.join(abs, manifest.artifacts.examples);
 		const examples = existsSync(examplesDir)
 			? readdirSync(examplesDir).filter(
@@ -156,7 +176,7 @@ export function checkWorkspace(
 				);
 				continue;
 			}
-			if (!runExamples) continue;
+			if (!runExamples || !examplesReady) continue;
 			const run = spawnSync(
 				"node",
 				[
@@ -171,9 +191,9 @@ export function checkWorkspace(
 					env: { ...process.env, NODE_OPTIONS: "" },
 				},
 			);
-			if (run.status !== 0) {
+			if (run.error || run.status !== 0) {
 				problems.push(
-					`example ${example} exited ${run.status}: ${(run.stderr || "").trim().slice(0, 300)}`,
+					`example ${example} failed: ${run.error?.message ?? (run.stderr || "").trim().slice(0, 300)}`,
 				);
 			} else if (run.stdout.trim() !== readFileSync(expected, "utf8").trim()) {
 				problems.push(

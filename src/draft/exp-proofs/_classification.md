@@ -15,13 +15,13 @@
 
 | Type | Count |
 |---|---|
-| dx | 58 |
+| dx | 59 |
 | ux | 37 |
 | cx | 50 |
 | ax | 3 |
 | api | 10 |
 
-## dx (58)
+## dx (59)
 
 | Package | Rationale |
 |---|---|
@@ -39,6 +39,7 @@
 | `cli-manage-inspect-logs-drift-prototype` | CLI developer surface |
 | `cli-migration-transcript-prototype` | CLI developer surface |
 | `dapr-parity-anchor-audit` | competitor-doc anchor audit (docs engineering) |
+| `convex-swaghaus-bindle` | Convex swaghaus Bindle authoring DX (provider-neutral convexApp) |
 | `data-flywheel-privacy-spike` | internal ML-ops privacy spike |
 | `default-role-action-matrix-contract` | authorization-defaults model (internal security eng) |
 | `devops-canary-rollout-journey-contract` | ruling: ops journeys are developer/operator experience |

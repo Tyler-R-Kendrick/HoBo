@@ -46,11 +46,16 @@ async function assertYardSurfacesStationOnly() {
 				);
 			}
 		}
-		if (!/\bstationBootstrap\b/u.test(source)) {
-			throw new Error(`yard ${name} missing stationBootstrap`);
+		if (!/export\s*\{[\s\S]*\bas default\b/u.test(source)) {
+			throw new Error(`yard ${name} must be a minimal provider default re-export`);
+		}
+		if (/\bcapabilities\s*:/u.test(source) || /\bstationBootstrap\b/u.test(source)) {
+			throw new Error(
+				`yard ${name} must not hand-list capabilities/stationBootstrap — provider plugins own those`,
+			);
 		}
 	}
-	log(`✓ ${files.length} yard surfaces are station-only`);
+	log(`✓ ${files.length} yard surfaces are minimal provider re-exports`);
 }
 
 function examplesUrl(): string {
@@ -93,32 +98,34 @@ async function openConsole(page: Page) {
 }
 
 async function runScenario(page: Page, browser: Browser) {
-	log("Scenario: select Cloudflare yard → Stage Source is station-only");
-	await page.locator('[data-yard-select] option[value="cloudflare"]').click();
+	log("Scenario: select Cloudflare yard → Pool Code is provider-import station authoring");
+	await page.locator("[data-yard-trigger]").click();
+	await page.locator('[data-yard-option="cloudflare"]').click();
+	await page.locator('[data-pool-view="code"]').click();
 	await page.waitForFunction(
 		() =>
-			document.querySelector("[data-source-path]")?.textContent?.includes(
-				"cloudflare.deploy.ts",
+			document.querySelector("[data-pool-source-path]")?.textContent?.includes(
+				"station.deploy.ts",
 			) === true,
 		null,
 		{ timeout: 10_000 },
 	);
-	const source = await page.locator("[data-source]").innerText();
+	const source = await page.locator("[data-pool-source]").innerText();
 	for (const pattern of BANNED_YARD_PATTERNS) {
 		if (pattern.test(source)) {
-			throw new Error(`Stage Source still exposes banned field matching ${pattern}`);
+			throw new Error(`Pool Code still exposes banned field matching ${pattern}`);
 		}
 	}
-	if (
-		!/Temporary Accounts|same-origin|\/api\/cf-temp|wrangler --temporary/u.test(
-			source,
-		)
-	) {
-		throw new Error(
-			"Stage Source missing Temporary Accounts / same-origin bootstrap hint",
-		);
+	if (!source.includes("@hobo/provider-cloudflare")) {
+		throw new Error("Pool Code missing @hobo/provider-cloudflare import");
 	}
-	log("✓ Cloudflare yard Source is station-only");
+	if (!/export default station\(\{\s*yards:/u.test(source)) {
+		throw new Error("Pool Code missing export default station({ yards: … })");
+	}
+	if (/\bcapabilities\b/u.test(source) || /\bstationBootstrap\b/u.test(source)) {
+		throw new Error("Pool Code must not hand-list capabilities/stationBootstrap");
+	}
+	log("✓ Cloudflare yard Pool Code is provider-import station authoring");
 
 	log("Scenario: Deploy stations → live Temporary Accounts workers.dev");
 	await page.selectOption("[data-yard-select]", ["cloudflare"]);

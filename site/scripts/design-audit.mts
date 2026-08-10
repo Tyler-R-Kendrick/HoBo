@@ -455,14 +455,14 @@ async function interactionPass(browser: Browser, base: string) {
 	const ex = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 	await applyState(ex, "ink", "light");
 	await ex.goto(base + "/HoBo/examples/", { waitUntil: "networkidle" });
-	const tab = ex.locator('[data-view="source"]').first();
+	const tab = ex.locator('[data-view="logs"]').first();
 	if (await tab.count()) {
 		await tab.click();
 		await ex.waitForTimeout(250);
 		const pressed = await tab.getAttribute("aria-pressed");
 		if (pressed !== "true")
-			fail("examples-tabs", "source tab click did not set aria-pressed");
-		await ex.screenshot({ path: shot("interact", "examples-source-tab") });
+			fail("examples-tabs", "logs tab click did not set aria-pressed");
+		await ex.screenshot({ path: shot("interact", "examples-logs-tab") });
 	}
 	await ex.close();
 }

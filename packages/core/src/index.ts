@@ -568,6 +568,19 @@ export type {
 	RuntimePort,
 } from "./ports.js";
 export { createPortDescriptor } from "./ports.js";
+export type {
+	TemporaryEnvironmentStationInput,
+	TemporaryEnvironmentStationResult,
+	TemporaryStationAnonymousSessionShape,
+} from "./ports/temporary-station.js";
+export {
+	assertTemporaryEnvironmentStationResult,
+	TEMPORARY_ENVIRONMENT_STATION_SCHEMA,
+	TEMPORARY_STATION_TTL_MS,
+	temporaryStationExpiresAt,
+	temporaryStationToAnonymousSessionShape,
+	temporaryStationTtlSeconds,
+} from "./ports/temporary-station.js";
 export type { PublicTypeSurfaceResult } from "./surface-guard.js";
 export {
 	assertCoreApiSnapshot,

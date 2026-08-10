@@ -3,6 +3,11 @@
 // constraints (parse, don't validate), so these parsed domain types are
 // unrepresentable in an invalid state past the parser boundary.
 
+import type {
+	GuestResolutionEvidence,
+	GuestResolutionInput,
+} from "./guest-evidence.js";
+
 // public-contract: the broker wire schema version every receipt/rejection pins.
 export const BROKER_SCHEMA_VERSION = "hobo.broker/v1";
 
@@ -114,6 +119,8 @@ export interface BrokerRequest {
 	scope: TopologyScope;
 	requirements: readonly ResourceRequirement[];
 	spendEstimateUsd: number;
+	/** Anonymous/pre-claim resolution inputs (ADR-0151); absent for an owned deployment. */
+	guest?: GuestResolutionInput;
 }
 
 // domain-view: one decided placement; wire form is PlacementDecision in data-models/broker.proto.
@@ -140,6 +147,8 @@ export interface ResolutionReceipt {
 	stationId: string;
 	/** Content-addressed active Rail hash — required on every receipt. */
 	railHash: string;
+	/** Claim-relevant evidence for a guest deployment (ADR-0151); never bearer material. */
+	guest?: GuestResolutionEvidence;
 }
 
 // domain-view: machine-readable per-plane refusal; wire form is RejectionReason in data-models/broker.proto.

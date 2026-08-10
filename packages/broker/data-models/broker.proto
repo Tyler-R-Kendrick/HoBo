@@ -87,6 +87,25 @@ message BrokerRequest {
   TopologyScope scope = 3;
   repeated ResourceRequirement requirements = 4;
   double spend_estimate_usd = 5;
+  // Anonymous/claimable resolution inputs (ADR-0151). Absent on a request
+  // from an authenticated owner deploying into an owned Yard.
+  GuestResolutionInput guest = 6;
+}
+
+// What an anonymous or pre-claim caller brings to resolution. Everything here
+// is an input the Broker must weigh, never a secret it must hold.
+message GuestResolutionInput {
+  string recipe_id = 1;
+  string topology_digest = 2;
+  // Digest of the offer the human accepted, and of the consent record.
+  string offer_digest = 3;
+  string consent_digest = 4;
+  // Bootstrap class the caller is entitled to (public-anonymous, sponsor, …).
+  string bootstrap_class = 5;
+  // Ceiling the sponsor is willing to expose, in minor units.
+  int64 sponsor_cost_cap_minor_units = 6;
+  // Maximum human ownership actions the caller will accept.
+  uint32 max_claim_actions = 7;
 }
 
 // One per-resource placement the broker decided.
@@ -113,6 +132,51 @@ message ResolutionReceipt {
   // Station occupancy pins (ADR-0131); Conductor does not own durable state.
   string station_id = 8;
   string rail_hash = 9;
+  // Anonymous/claimable evidence (ADR-0151). Absent for an owned deployment.
+  GuestResolutionEvidence guest = 10;
+}
+
+// The claim-relevant facts a receipt must pin so a deployment's ownership
+// story is reconstructable later. Bearer material never appears here — only
+// references, digests, counts, and deadlines.
+message GuestResolutionEvidence {
+  string recipe_id = 1;
+  string topology_digest = 2;
+  string offer_digest = 3;
+  string consent_digest = 4;
+  string guest_lease_id = 5;
+  string lease_expires_at = 6;
+  string claim_bundle_id = 7;
+  // single-resource | provider-bundled | best-effort-saga
+  string claim_atomicity = 8;
+  uint32 claim_action_count = 9;
+  string earliest_claim_deadline = 10;
+  repeated GuestPlacementEvidence placements = 11;
+  repeated string trust_evidence_refs = 12;
+  repeated string conformance_refs = 13;
+  // What the human was told HoBo or a provider would receive.
+  repeated string source_disclosures = 14;
+  repeated string credential_custody = 15;
+  // Any native→pack or native→bridge widening the offer disclosed.
+  repeated string widening_disclosures = 16;
+  int64 sponsor_cost_cap_minor_units = 17;
+  string cleanup_policy = 18;
+}
+
+// Per-placement realization facts, so a receipt distinguishes a
+// provider-native product from a pack HoBo deployed on generic compute.
+message GuestPlacementEvidence {
+  string resource_id = 1;
+  string definition_id = 2;
+  // native | pack | bridge
+  string realization = 3;
+  string runtime_model = 4;
+  repeated string capability_profile_refs = 5;
+  repeated string binding_profile_refs = 6;
+  string connectivity_ref = 7;
+  string bootstrap_class = 8;
+  string claim_mode = 9;
+  string creator_authority_after_claim = 10;
 }
 
 // One machine-readable reason a resolution was rejected, named by the

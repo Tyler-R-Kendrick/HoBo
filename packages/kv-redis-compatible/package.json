@@ -1,0 +1,36 @@
+{
+	"name": "@hobo/kv-redis-compatible",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "HoBo provider-neutral Redis-compatible key/value authoring and conformance: requirement builders for kv.redis-compatible/v1 and kv.valkey/v1, a declarative conformance suite of pure command cases driven by an injected executor, honestly-scoped consistency claims, and the guard that stops list/stream/pub-sub support from being read as a queue or topic capability.",
+	"type": "module",
+	"files": [
+		"LICENSE",
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@hobo/capability-profiles": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.29",
+		"vitest": "^4.1.9"
+	},
+	"scripts": {
+		"prebuild": "pnpm --filter @hobo/capability-profiles build",
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run test/",
+		"test:unit": "vitest run test/"
+	}
+}

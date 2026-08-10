@@ -83,6 +83,91 @@ package data_models
 	scope:          #TopologyScope
 	requirements: [...#ResourceRequirement] & [_, ...]
 	spend_estimate_usd: number & >=0
+	guest?:             #GuestResolutionInput
+}
+
+#Digest: string & =~"^sha256:[0-9a-f]{64}$"
+#Instant: string & =~"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+
+#BootstrapClass: "public-anonymous" | "proof-of-work" | "capability-token" |
+	"agent-self-registration" | "sponsor-backed" | "wallet-funded" |
+	"local-accountless" | "preauthenticated-agent" | "user-owned"
+
+#Realization: "native" | "pack" | "bridge"
+
+#ClaimAtomicity: "single-resource" | "provider-bundled" | "best-effort-saga"
+
+#CleanupPolicy: "delete" | "retain-temporarily" | "transfer" | "migrate"
+
+#CreatorAuthorityAfterClaim: "absent" | "reauthorization-required" | "rotatable" |
+	"retained" | "unknown"
+
+#GuestResolutionInput: {
+	recipe_id:       string & !=""
+	topology_digest: #Digest
+	offer_digest:    #Digest
+	consent_digest:  #Digest
+	bootstrap_class: #BootstrapClass
+	// A sponsor-backed request must name a non-zero cap; an anonymous one
+	// costs the sponsor nothing and must not carry a budget.
+	sponsor_cost_cap_minor_units: int & >=0
+	max_claim_actions:            uint & <=16
+	if bootstrap_class == "sponsor-backed" {
+		sponsor_cost_cap_minor_units: >0
+	}
+	if bootstrap_class == "public-anonymous" {
+		sponsor_cost_cap_minor_units: 0
+	}
+}
+
+#GuestPlacementEvidence: {
+	resource_id:   string & !=""
+	definition_id: string & !=""
+	realization:   #Realization
+	runtime_model: string & !=""
+	capability_profile_refs: [...string & !=""] & [_, ...]
+	binding_profile_refs?: [...string & !=""]
+	connectivity_ref?:     string & !=""
+	bootstrap_class:       #BootstrapClass
+	claim_mode:            string & !=""
+	// A placement whose creator authority is unknown cannot be presented as
+	// owner-controlled; the resolver must have gated on this already.
+	creator_authority_after_claim: #CreatorAuthorityAfterClaim
+	// Widening off native must be attributable to a binding or pack, so a
+	// bridge placement has to say what it bridges through.
+	if realization == "bridge" {
+		connectivity_ref: string & !=""
+	}
+}
+
+#GuestResolutionEvidence: {
+	recipe_id:       string & !=""
+	topology_digest: #Digest
+	offer_digest:    #Digest
+	consent_digest:  #Digest
+	guest_lease_id:  string & !=""
+	lease_expires_at?: #Instant
+	claim_bundle_id:   string & !=""
+	claim_atomicity:   #ClaimAtomicity
+	claim_action_count: uint
+	earliest_claim_deadline?: #Instant
+	placements: [...#GuestPlacementEvidence] & [_, ...]
+	trust_evidence_refs: [...string & !=""] & [_, ...]
+	conformance_refs: [...string & !=""] & [_, ...]
+	source_disclosures?: [...string & !=""]
+	credential_custody?: [...string & !=""]
+	widening_disclosures?: [...string & !=""]
+	sponsor_cost_cap_minor_units: int & >=0
+	cleanup_policy:               #CleanupPolicy
+	// A bundle with human actions must carry a deadline; one with none must
+	// not imply a ceremony that will never arrive.
+	if claim_action_count > 0 {
+		earliest_claim_deadline: #Instant
+	}
+	// Single-resource atomicity describes exactly one claimable placement.
+	if claim_atomicity == "single-resource" {
+		claim_action_count: <=1
+	}
 }
 
 #PlacementDecision: {
@@ -105,6 +190,7 @@ package data_models
 	placements: [...#PlacementDecision] & [_, ...]
 	station_id?: string
 	rail_hash?:  string
+	guest?:      #GuestResolutionEvidence
 }
 
 #RejectionPlane: "policy" | "contracts" | "billing" | "placement" | "connectors" | "residency"

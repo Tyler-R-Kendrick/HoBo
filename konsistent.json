@@ -11,7 +11,8 @@
         "!packages/providers",
         "!packages/iac",
         "!packages/connectors",
-        "!packages/adapters"
+        "!packages/adapters",
+        "!packages/packs"
       ],
       "must": {
         "haveType": "directory",
@@ -20,13 +21,14 @@
     },
     {
       "name": "nested-package-scaffolding",
-      "description": "Packages nested under a category container (runtimes/, providers/, iac/, adapters/, connectors/) follow the same HoBo package layout as top-level packages.",
+      "description": "Packages nested under a category container (runtimes/, providers/, iac/, adapters/, connectors/, packs/) follow the same HoBo package layout as top-level packages.",
       "paths": [
         "packages/runtimes/{name}",
         "packages/providers/{name}",
         "packages/iac/{name}",
         "packages/connectors/{name}",
-        "packages/adapters/{name}"
+        "packages/adapters/{name}",
+        "packages/packs/{name}"
       ],
       "must": {
         "haveType": "directory",

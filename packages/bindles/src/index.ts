@@ -110,6 +110,12 @@ export {
 	readDependencyConfig,
 	wasmComponentDependencyAnnotation,
 } from "./dependencies.js";
+export {
+	isWebAppAnnotation,
+	WASP_WEBAPP_METADATA,
+	WEBAPP_OPTION,
+	webAppAnnotationFromBinding,
+} from "./webapp.js";
 export { env } from "./env.js";
 export {
 	BINDLE_FEATURES_SCHEMA,

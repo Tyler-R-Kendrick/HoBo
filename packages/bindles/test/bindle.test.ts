@@ -37,8 +37,8 @@ describe("bindle()", () => {
 			requirements: {
 				labels: {},
 				prefer: [],
-				require: [],
-				runtimes: [],
+				require: ["data", "http", "queue"],
+				runtimes: ["wasm"],
 			},
 			resources: {
 				store: {
@@ -317,6 +317,24 @@ describe("declared components (Plan 2 Syntax 0)", () => {
 		expect(definition.name).toBe("app");
 		expect(definition.requirements.require).toEqual(["http"]);
 		expect(definition.requirements.runtimes).toEqual(["wasm"]);
+	});
+
+	it("infers http/container + oci from b.service() + b.container() with no requirements block", () => {
+		const nameless = bindle((b) => {
+			const db = b.container({ image: "postgres:16-alpine" });
+			const web = b.service().dependsOn(db);
+			return { db, web };
+		});
+		expect(nameless.requirements.require).toEqual(["container", "http"]);
+		expect(nameless.requirements.runtimes).toEqual(["oci"]);
+
+		const named = bindle("opensaas", (b) => {
+			const db = b.container({ image: "postgres:16-alpine" });
+			const web = b.service().dependsOn(db);
+			return { db, web };
+		});
+		expect(named.requirements.require).toEqual(["container", "http"]);
+		expect(named.requirements.runtimes).toEqual(["oci"]);
 	});
 
 	it("instantiates @trainable classes bound to b.web", () => {

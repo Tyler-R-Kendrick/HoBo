@@ -31,6 +31,7 @@ import type {
 	ResourceKind,
 	WasmComponentDependencyOptions,
 } from "./types.js";
+import { webAppAnnotationFromBinding } from "./webapp.js";
 
 const METADATA_SYMBOL =
 	(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");
@@ -145,8 +146,14 @@ function createBuilder(): BindleBuilder {
 	const base = {
 		api: (binding?: ComponentBinding) =>
 			createBindleResource("api", toHandler(binding)),
-		web: (binding?: ComponentBinding) =>
-			createBindleResource("web", toHandler(binding)),
+		web: (binding?: ComponentBinding) => {
+			const resource = createBindleResource("web", toHandler(binding));
+			const webapp = webAppAnnotationFromBinding(binding);
+			if (webapp) {
+				resource.with(webapp);
+			}
+			return resource;
+		},
 		kv: () => createBindleResource("kv"),
 		bucket: () => createBindleResource("bucket"),
 		queue: () => createBindleResource("queue"),
@@ -306,7 +313,10 @@ export function bindle(
 		}
 	}
 
-	if (nameless && isEmptyRequirements(requirements)) {
+	// Usage is the source of truth: b.web()/b.service() → http (+ wasm unless
+	// containers force oci), b.container() → container + oci. Explicit
+	// require/runtimes only when the author opts in with a non-empty block.
+	if (isEmptyRequirements(requirements)) {
 		requirements = inferRequirementsFromResources(resources);
 	}
 
@@ -371,9 +381,18 @@ export function inferRequirementsFromResources(
 			case "wasm-component":
 				runtimes.add("wasm");
 				break;
+			case "container":
+				require.add("container");
+				runtimes.add("oci");
+				break;
 			default:
 				break;
 		}
+	}
+	// OCI containers imply the Camp host; drop default wasm when oci is present
+	// so nameless Bindles with container+service do not force a wasm runtime.
+	if (runtimes.has("oci")) {
+		runtimes.delete("wasm");
 	}
 	return parseBindleRequirements({
 		require: [...require].sort(),

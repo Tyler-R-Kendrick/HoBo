@@ -115,6 +115,10 @@ export function createBindlesPublicApiSnapshot(
 		"appKitLabel",
 		"isAppKitKind",
 		"isHttpAppKitKind",
+		"WEBAPP_OPTION",
+		"WASP_WEBAPP_METADATA",
+		"webAppAnnotationFromBinding",
+		"isWebAppAnnotation",
 		...factoryNames,
 	]);
 
@@ -503,6 +507,27 @@ export function createBindlesPublicApiSnapshot(
 				name: "appKitLabel",
 				kind: "app-kit-helper",
 				signature: "appKitLabel(kind: AppKitKind): string",
+			},
+			{
+				name: "WEBAPP_OPTION",
+				kind: "webapp-constant",
+				signature: 'const WEBAPP_OPTION: "webapp"',
+			},
+			{
+				name: "WASP_WEBAPP_METADATA",
+				kind: "webapp-metadata-symbol",
+				signature: "const WASP_WEBAPP_METADATA: symbol",
+			},
+			{
+				name: "webAppAnnotationFromBinding",
+				kind: "webapp-helper",
+				signature:
+					"webAppAnnotationFromBinding(binding: ComponentBinding | undefined): ProviderAnnotation | undefined",
+			},
+			{
+				name: "isWebAppAnnotation",
+				kind: "webapp-helper",
+				signature: "isWebAppAnnotation(annotation: ProviderAnnotation): boolean",
 			},
 			...extraExports,
 		],

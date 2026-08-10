@@ -1,4 +1,5 @@
 import type { CommandModule, YardRuntime } from "@hobo/cli";
+import type { ClaimBundle } from "@hobo/claims";
 import { DEFAULT_TENANT, deploymentIdFor } from "@hobo/cli";
 import {
 	currentFenceToken,
@@ -20,6 +21,8 @@ import {
 } from "./broker-remote-client.js";
 import { resolveBrokerUriFromFlags } from "./broker-target.js";
 import { defaultHoboHome } from "./bare-metal-yard.js";
+import { runClaimCeremony } from "./claim-ceremony.js";
+import type { ClaimOwnershipVerifier } from "./claim-ceremony.js";
 import {
 	createCredentialPresenter,
 	type CredentialPresenter,
@@ -34,6 +37,8 @@ export interface ClaimCommandDeps {
 	readonly createRemoteClient?: (brokerUri: string) => RemoteBrokerClient;
 	readonly mockRemote?: MockRemoteBrokerState;
 	readonly env?: NodeJS.ProcessEnv;
+	readonly bundle?: ClaimBundle;
+	readonly verifyOwnership?: ClaimOwnershipVerifier;
 }
 
 // `hobo claim` — bind an anonymous deployment to an account WITHOUT
@@ -52,6 +57,25 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 				deps.env ??
 				(context as { env?: NodeJS.ProcessEnv }).env ??
 				process.env;
+
+			// The multi-step ownership ceremony (ADR-0151): a bundle can hold two
+			// providers with two clocks, so it gets verbs of its own rather than
+			// being collapsed into the single-shot account rebind below.
+			const subcommand = args[0];
+			if (
+				subcommand === "status" ||
+				subcommand === "open" ||
+				subcommand === "finalize"
+			) {
+				return runClaimCeremony({
+					subcommand,
+					args: args.slice(1),
+					flags,
+					context,
+					deps,
+				});
+			}
+
 			const accountRaw = args[0] ?? flags.to;
 			const account =
 				typeof accountRaw === "string" && accountRaw.length > 0

@@ -1,0 +1,32 @@
+{
+	"name": "@hobo/convex",
+	"version": "0.0.1",
+	"license": "MIT",
+	"type": "module",
+	"private": true,
+	"files": [
+		"LICENSE",
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"description": "Convex webApp primitive for HoBo Bindles — maps JamesCowling/swaghaus (and other Convex+Vite apps) onto b.web() with discovered env/WorkOS deps.",
+	"scripts": {
+		"build": "pnpm --filter @hobo/runtime build && pnpm --filter @hobo/bindles build && tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@hobo/bindles": "workspace:*",
+		"@hobo/runtime": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.3"
+	}
+}

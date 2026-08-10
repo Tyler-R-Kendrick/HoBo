@@ -491,6 +491,15 @@ Head-to-head:
 
 The cleanest framing: **Convex is a backend HoBo realizes as a capability provider** — now scaffolded as `@hobo/provider-convex` (`packages/providers/provider-convex`, thin adapter per [ADR-0144](../design/adr/07-portability-extensibility.md#adr-0144)). A Bindle that declares `data`/`bucket`/`api` resources is mapped (via Resource Definitions, [Plan 25](../design/platform-engineering.md#plan-25)) to a Convex deployment: the provider's capability manifest advertises `database/reactive` (with `search.vector` and `functions.scheduled` as capability features), `objectStore`, and `web/service`; provisioning targets Convex's **Management API** behind a credential-gated, fail-closed client (deploy keys are broker-held — `staticSecrets: false`, wired via `secretRef`, never Bindle config); connection refs flow through the manifest ([Plan 21](../design/authoring-resources-wiring.md#plan-21)). In that framing Convex is *infrastructure HoBo orchestrates*, not a competitor. Note honestly: HoBo has **no `vector` port today** — vector search rides as a feature of the reactive-database capability until one lands.
 
+### Examples — Swaghaus (WorkOS kept)
+
+Live Examples catalog ships [JamesCowling/swaghaus](https://github.com/JamesCowling/swaghaus) (MIT) under `examples/convex-swaghaus/` via a provider-neutral Bindle:
+
+- Authoring: `@hobo/convex` `convexApp(root)` on `b.web(...)` plus official `b.container({ image: "ghcr.io/get-convex/convex-backend:latest" })` and WorkOS AuthKit as `b.external` — Bindle never pins the `convex` provider ([ADR-0144](../design/adr/07-portability-extensibility.md#adr-0144)); never invent `hobo/convex-*` images.
+- Cloudflare Examples Yard: **anon Temporary Convex self-host is fail-closed** under zero project API keys (`@hobo/provider-convex` `provisionConvexBackendAnonymous` — Instanode: no anon containers; OpenPouch anon: 256MiB cgroup vs ~205MB `convex-local-backend`; CF Temporary Containers apply **403**). Mock via `HOBO_CONVEX_SWAGHAUS_MOCK=1`. Escapes: `HOBO_CONVEX_OCI_HOST=cloudflare`, `HOBO_CONVEX_ALLOW_CLOUD=1`. E2B/SnapDeploy credentialed paths stay **out of scope**. Frontend still Temporary Pages. Local Yard compose remains in `examples/convex-swaghaus/docker-compose.yml`.
+- WorkOS client id/secrets ride Camp `secretRef` / external connector — **presence-gated, fail closed**. CI may set `HOBO_CONVEX_SWAGHAUS_MOCK=1`; no silent mock without that flag when Containers credentials are absent.
+- Operator SDK adapters: `CONVEX_SDK_RESOURCES` (`defineResource` for reactive database + function-host).
+
 ### Impedance boundaries for the provider path
 
 Realizing ports on Convex is deliberately **partial-fidelity**; these boundaries are scored by the PortabilityReport ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024) — provider `.with()` blocks and paradigm mismatches are lock-in sources) so neither humans nor agents can over-claim:

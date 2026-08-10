@@ -118,6 +118,46 @@ export {
 	createClaimCommandWithMock,
 } from "./claim-command.js";
 export {
+	type ApplyClaimCommandResult,
+	CLAIM_COMMAND_EVENT,
+	CLAIM_FACT_PREFIX,
+	type ClaimItemView,
+	type ClaimPlaneSnapshot,
+	type ClaimStatusView,
+	applyClaimCommand,
+	claimStatusView,
+	claimStreamFor,
+	rebuildClaimState,
+	requireItem,
+} from "./claim-plane.js";
+export {
+	type FileOneTimeActionStoreOptions,
+	createFileOneTimeActionStore,
+} from "./one-time-action-store-file.js";
+export {
+	type BuildRecipeContextInput,
+	EVIDENCE_DIRECTORY,
+	type RecipeCatalogSnapshot,
+	type RecipeContext,
+	RecipePlaneError,
+	type RecipeSummary,
+	buildRecipeContext,
+	compileTopology,
+	definitionsOf,
+	deploymentRequestFromBindle,
+	isAcceptedCompilation,
+	listRecipeSummaries,
+	loadTrustEvidence,
+	projectCatalog,
+	requireRecipe,
+	summarizeRecipe,
+} from "./recipe-plane.js";
+export { createRecipesCommand } from "./recipes-command.js";
+export {
+	type OfferCommandDeps,
+	createOfferCommand,
+} from "./offer-command.js";
+export {
 	type ComposedHoboCliOptions,
 	createComposedHoboCli,
 } from "./cli.js";

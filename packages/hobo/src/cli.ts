@@ -24,6 +24,8 @@ import { createBrokerCommand } from "./broker-command.js";
 import { createBrokerAwareUpCommand } from "./broker-up-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
+import { createOfferCommand } from "./offer-command.js";
+import { createRecipesCommand } from "./recipes-command.js";
 import {
 	createDefaultYardRuntime,
 	resolveProjectCollectionTarget,
@@ -225,6 +227,10 @@ export function createComposedHoboCli(
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),
 			claim: createClaimCommand({ runtime }),
+			// Anonymous-to-owned: what HoBo can deploy before a provider login,
+			// and the proposal a human consents to before anything is created.
+			recipes: createRecipesCommand(),
+			offer: createOfferCommand({ runtime }),
 			registry: createRegistryCommand({ runtime }),
 			add: createAddCommand({ runtime }),
 			import: createImportCommand({ runtime }),

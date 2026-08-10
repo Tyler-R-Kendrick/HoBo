@@ -16,6 +16,8 @@
 - deploy (delivery): Attested continuous delivery status/logs/rollback (secret-free) — CLI `hobo deploy`; MCP tool `deploy`
 - incident (delivery): CD failure disposition: A2H handoff or sandboxed self-heal — CLI `hobo incident`; MCP tool `incident`
 - claim (identity): Bind an anonymous deployment to an account — CLI `hobo claim`; MCP tool `claim`
+- recipes (read-only): List and inspect deployment recipes and their claim terms — CLI `hobo recipes`; MCP tool `recipes`
+- offer (read-only): Compile a deployment offer and its consent requirements — CLI `hobo offer`; MCP tool `offer`
 - plan (read-only): Dry-run the up decision — CLI `hobo plan`; MCP tool `plan`
 - verify (read-only): Run the unified Gatekeeper preflight — CLI `hobo verify`; MCP tool `verify`
 - can-deploy (read-only): Diagnose producer/consumer compatibility — CLI `hobo can-deploy`; MCP tool `can-deploy`

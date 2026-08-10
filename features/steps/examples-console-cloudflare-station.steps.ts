@@ -1,24 +1,74 @@
 /**
  * Cucumber steps for features/examples-console-cloudflare-station.feature.
  * Delegates to the Playwright feature runner (same gate as examples:regression).
+ * The runner needs `astro dev` serving EXAMPLES_BASE_URL; these steps boot it
+ * themselves (and tear it down) when nothing is already listening, so the
+ * behavior lane passes on a cold checkout instead of requiring a manually
+ * started dev server.
  */
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Given, Then, When, setDefaultTimeout } from "@cucumber/cucumber";
+import { AfterAll, Given, Then, When, setDefaultTimeout } from "@cucumber/cucumber";
 
-setDefaultTimeout(180_000);
+setDefaultTimeout(300_000);
 
 const REPO_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const SCRIPT = path.join(
 	REPO_ROOT,
 	"site/scripts/examples-console-regression.mts",
 );
+const BASE_URL = process.env.EXAMPLES_BASE_URL ?? "http://127.0.0.1:4321/HoBo/";
+const HEALTH_URL = new URL("api/cf-temp", BASE_URL).toString();
 
 let featurePassed = false;
+let devServer: ChildProcess | undefined;
+
+async function healthOk(): Promise<boolean> {
+	try {
+		const response = await fetch(HEALTH_URL);
+		return response.ok;
+	} catch {
+		return false;
+	}
+}
+
+async function ensureDevServer(): Promise<void> {
+	if (await healthOk()) return;
+	if (!devServer) {
+		devServer = spawn("pnpm", ["--filter", "hobo-site", "run", "dev"], {
+			cwd: REPO_ROOT,
+			env: process.env,
+			stdio: "ignore",
+			detached: true,
+		});
+		devServer.on("error", () => {
+			devServer = undefined;
+		});
+	}
+	const deadline = Date.now() + 120_000;
+	while (Date.now() < deadline) {
+		if (await healthOk()) return;
+		await new Promise((resolveSleep) => setTimeout(resolveSleep, 1_000));
+	}
+	throw new Error(
+		`astro dev never became healthy at ${HEALTH_URL} within 120s — start it manually with \`pnpm --filter hobo-site run dev\``,
+	);
+}
+
+AfterAll(() => {
+	if (devServer?.pid !== undefined) {
+		try {
+			process.kill(-devServer.pid, "SIGTERM");
+		} catch {
+			devServer.kill("SIGTERM");
+		}
+	}
+});
 
 async function runPlaywrightFeature(): Promise<void> {
 	if (featurePassed) return;
+	await ensureDevServer();
 	await new Promise<void>((resolve, reject) => {
 		const child = spawn(process.execPath, ["--import", "tsx", SCRIPT], {
 			cwd: REPO_ROOT,

@@ -50,6 +50,15 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/stations",
 	"packages/storage-sqlite",
 	"packages/trails",
+	"packages/agent-skills",
+	"packages/evals",
+	"packages/pixel-village",
+	"packages/registry",
+	"packages/dispatcher",
+	"packages/rift",
+	"packages/sdk",
+	"packages/training",
+	"packages/yard-world",
 ]);
 
 // Documented, narrowly-scoped exceptions. The AI training/eval providers
@@ -69,6 +78,21 @@ const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	"packages/providers/runner-blacksmith->packages/providers/runner-github",
 	"packages/providers/runner-depot->packages/providers/runner-github",
 	"packages/providers/runner-depot->packages/providers/runner-blacksmith",
+	// The policy-engine gate-plane adapters (docs/plans/0017 F30) lower engine
+	// verdicts onto @hobo/contracts' shared vocabulary (GatekeeperEffect,
+	// PolicyDecisionRequest). The dependency deliberately points
+	// provider->contracts so @hobo/broker can depend on the adapters without a
+	// cycle; contracts is the shared contract layer, not an app package.
+	"packages/providers/provider-opa->packages/contracts",
+	"packages/providers/provider-cedar->packages/contracts",
+	// provider-convex's @hobo/bindles edge is a devDependency only: the
+	// golden-bindle test asserts no provider selection leaks into bindle
+	// authoring (assertNoBindleProviderSelection). No runtime import exists.
+	"packages/providers/provider-convex->packages/bindles",
+	// The OpenBao adapter (#1003) implements @hobo/identity's secrets-manager
+	// port; that port vocabulary lives in identity rather than core, same
+	// future-ADR tiering as the training/eval and runner exceptions above.
+	"packages/adapters/adapter-openbao->packages/identity",
 	// ADR-0135: the local/browser runtimes compose @hobo/storage-sqlite as the
 	// durable engine behind HoBo-owned ports (schema v2, SqliteJournal). This is
 	// the sanctioned runtime->storage composition, not a port bypass.

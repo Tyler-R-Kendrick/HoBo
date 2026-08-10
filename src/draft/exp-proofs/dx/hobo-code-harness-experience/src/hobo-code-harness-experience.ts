@@ -62,7 +62,7 @@ export function parseExperienceResult(input: unknown): ExperienceResult {
 	});
 }
 
-export function runHoboCodeHarnessExperience(): ExperienceResult {
+export async function runHoboCodeHarnessExperience(): Promise<ExperienceResult> {
 	const home = mkdtempSync(join(tmpdir(), "hobo-code-exp-home-"));
 	const project = mkdtempSync(join(tmpdir(), "hobo-code-exp-proj-"));
 	const scaffoldOut = join(project, "demo-app");
@@ -77,7 +77,7 @@ export function runHoboCodeHarnessExperience(): ExperienceResult {
 			template.respectsKonsistent &&
 			template.gherkinFeature.includes("visual.feature");
 
-		const session = startCodeSession({
+		const session = await startCodeSession({
 			projectRoot: project,
 			hoboHome: home,
 			stationId: "station:local",
@@ -105,7 +105,7 @@ export function runHoboCodeHarnessExperience(): ExperienceResult {
 		});
 		const evidenceOk = assertEvidenceTripleComplete(triple);
 
-		const handback = session.complete(true, [
+		const handback = await session.complete(true, [
 			"experience:template",
 			"experience:visual",
 			"experience:evidence",

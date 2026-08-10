@@ -79,6 +79,17 @@ backs ADR-0087 and gives docs, generators, and boundary lint one table to check.
 | MCP server (tool surface parity with CLI verbs) | `@hobo/mcp` | agents | Deny-by-default auth; same canonical verb registry as CLI. |
 | Port/provider conformance suites | `@hobo/conformance` | adapters + CI | Certifies engines/providers claiming a port. |
 | PACT harness (inventory/mock/verify/subset) | `@hobo/contract-harness` | tests | Contract fixtures and verification tooling. |
+| Capability implementation profiles, refinement graph, requirement parsing, hard-gate + lexicographic selection | `@hobo/capability-profiles` | cloud + providers + recipes | ADR-0151 semantic layer between Bindle primitives and products; imports no provider package. |
+| Portable capability bindings, binding profiles, connectivity registry, `SecretRef` locators | `@hobo/bindings` | providers + runtimes + recipes | ADR-0151; refs only — a resolved secret value is unrepresentable in a binding record. |
+| Guest leases, claim items/bundles, claim reducer, one-time action store | `@hobo/claims` | control plane + providers | ADR-0151 shared lifecycle; provider packages implement strategies, never their own reducer. |
+| Trust requirements, evidence freshness/signature verification | `@hobo/trust` | cloud + recipes | ADR-0151 gates; no weighted scalar score in the production path. |
+| Deployment recipes, recipe compiler, `DeploymentOffer` | `@hobo/recipes` | CLI + site + control plane | ADR-0151; recipes choose topology, Bindles keep requirements. Never mutates a Bindle. |
+| Resource Definition vNext + profile-aware matching | `@hobo/cloud` | control plane | ADR-0151 extends the existing catalog/Matching; legacy definitions keep their port path and are never promoted implicitly. |
+| PostgreSQL profile helpers, conformance suite, pg_dump/pg_restore argv builders | `@hobo/data-postgres` | app authors + providers | Provider-neutral; imports no provider package. |
+| Redis-compatible/Valkey profile helpers + conformance | `@hobo/kv-redis-compatible` | app authors + providers | Queue/Topic semantics require separate profiles and separate conformance. |
+| Signed digest-pinned implementation packs (`pack.postgres.oci`, `pack.valkey.oci`, `pack.convex.oci`) | `@hobo/pack-*` | Yards + executors | ADR-0151 `pack` realization on generic compute; ownership follows the Yard or migrate-on-claim. |
+| Agent-principal discovery, registration, claim, rotation (`auth.md`) | `@hobo/auth-md` | agents + claim coordinator | ADR-0151 identity plane; an agent claim never completes an infrastructure claim. |
+| Anonymous/claimable provider adapters (Neon, Prisma Postgres, Upstash, Vercel, Netlify, Cloudflare temporary accounts, ttl.sh) | `@hobo/provider-*` | control plane | Definitions + pure compilers + effectful drivers behind injected transports; register through the catalog, never a central switch. |
 | Effect-aware isolation/mocks/fault injection | `@hobo/contracts` | tests | Kept in `@hobo/contracts` per ADR-0136 §5 to avoid a core→harness→contracts→core cycle. |
 
 ## Re-export Decision

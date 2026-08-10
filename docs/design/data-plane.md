@@ -627,3 +627,15 @@ A **search test**: index a fixture corpus, then assert (a) an in-core full-text 
 The generic `search` port; **full-text search in the core** (reactive, declarative text index) with Postgres FTS + one managed engine as reference adapters; **vector, graph, OWL/Semantic-Web, and hybrid as optional extension libraries** behind the same port (vector ships pgvector + a managed engine, the `embed` capability with local + hosted adapters, BYO vectors as the escape hatch, hybrid/RRF fusing full-text + an extension). Each extension brings its own index declaration, operators, and conformance.
 
 **Non-goal:** baking any rich modality into the core as a built-in default — apps install only the extensions they use.
+
+## Capability profiles in the data plane
+
+`data` is a Bindle primitive; what a workload actually needs from it is a **capability implementation profile** ([ADR-0151](./adr/07-portability-extensibility.md#adr-0151)).
+
+`data.relational/v1` may be satisfied by D1, SQLite, PostgreSQL, or another conformant relational implementation. `data.postgres/v1` refines it and means the PostgreSQL wire protocol and behavior — D1 does not satisfy it, and the refinement graph makes that a structural fact rather than a review comment. `data.vector.pgvector/v1` refines `data.vector/v1` and requires `data.postgres/v1` plus extension conformance. `data.convex/v1` composes document storage, HTTP actions, realtime WebSockets, scheduled work, and file storage rather than pretending to be a generic document store.
+
+The same rule governs the other primitives. `kv.redis-compatible/v1` covers key/value semantics; list, stream, and pub/sub support does **not** imply `queue.at-least-once/v1` or `topic.pubsub/v1`, which are separate profiles with separate conformance suites. `bucket.s3-compatible/v1` refines `bucket.object/v1`. Each profile ships a conformance suite, and a product advertises only the subset it passes.
+
+**Bindings are separate from provisioning.** A data product emits a portable `CapabilityBinding` — protocol endpoints as non-secret refs plus credential and certificate `secretRef`s — and a runtime-specific connectivity implementation projects it into the workload. Cloudflare Hyperdrive and the Neon serverless driver are two connectivity implementations of `binding.postgresql/v1`; neither is a database. A binding rotates without changing the logical resource identity, which is what makes post-claim credential rotation possible without rebinding every consumer.
+
+**Export and import are first-class.** Migration profiles (`migration.postgres.pg-dump/v1`, `migration.postgres.logical-copy/v1`, `migration.convex.snapshot/v1`) are declared by the product, executed behind injected process ports with argv arrays rather than shell strings, and verified — row and document counts, sampled hashes, files, indexes, health — before any cutover. A migration never destroys its source until the destination is verified, the connector is cut over, and the rollback window has closed.

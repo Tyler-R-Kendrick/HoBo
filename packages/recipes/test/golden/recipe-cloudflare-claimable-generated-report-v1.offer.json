@@ -1,0 +1,87 @@
+{
+	"schemaVersion": "hobo.deployment-offer/v1",
+	"offerId": "offer/6ca8f806f2a22703527e39ef1f57ed7cc49e1c86508e2f8aec7431ec04417b0e",
+	"recipeId": "recipe.cloudflare.claimable-generated-report/v1",
+	"deploymentRef": "junction/recipe-cloudflare-claimable-generated-report-v1",
+	"topologyDigest": "sha256:9608b5ed6f62a60859396f905a03854d4ae1fa215952d17f85a394f6ebc7435c",
+	"resolutionDigest": "sha256:b4e8f7703dd6bfb3ec0e287dc3a74395357cf148108963f44062cf0cc2258a24",
+	"catalogDigest": "sha256:891553d43ffb3f1d80a58f35c14df4500216e82df0e5f0ce617008df67f3caec",
+	"profileRegistryDigest": "sha256:8563a93440edc3276f6ea66c498d0d0484dfaad8e3ff475541d3b1948094b216",
+	"placements": [
+		{
+			"placementId": "report",
+			"yardId": "site",
+			"campId": "web",
+			"providerId": "cloudflare",
+			"primitive": "web",
+			"capabilityRef": "site",
+			"satisfiesProfileId": "web.static/v1",
+			"productDefinitionId": "cloudflare.temporary-workers-web/v1",
+			"realization": "native"
+		}
+	],
+	"providers": [
+		{
+			"providerId": "cloudflare",
+			"sponsored": false,
+			"resourceOnly": false
+		}
+	],
+	"claimSummary": {
+		"actionCount": 1,
+		"providerCount": 1,
+		"atomicity": "single-resource",
+		"earliestDeadlineMs": 1700003600000,
+		"items": [
+			{
+				"claimId": "claim/report",
+				"subjectRef": "junction/recipe-cloudflare-claimable-generated-report-v1/site/report",
+				"providerId": "cloudflare",
+				"mode": "account-claim",
+				"actionCount": 1,
+				"deadlineMs": 1700003600000,
+				"creatorAuthorityAfterClaim": "rotatable"
+			}
+		]
+	},
+	"sourceDisclosure": "public-source",
+	"credentialCustody": "secret-ref",
+	"requiredConsents": [
+		"claim.deadline-understood",
+		"claim.ownership-transfer"
+	],
+	"sponsoredCostCapMinorUnits": 0,
+	"guestLeases": [
+		{
+			"leaseId": "lease/site",
+			"yardId": "site",
+			"bootstrapClass": "anonymous-claimable",
+			"cleanupPolicy": "delete",
+			"renewable": false,
+			"claimByMs": 1700003600000
+		}
+	],
+	"trustEvidenceRefs": [
+		"cloudflare.temporary-workers-web/v1#sha256:ddc06504edc4575b4bef2faa65bbafb62d7ed473f33a460d3f17642e1c111034"
+	],
+	"conformanceEvidenceRefs": [
+		"conformance/cloudflare.temporary-workers-web/v1/web.hosted/v1"
+	],
+	"portability": {
+		"providerCount": 1,
+		"exportSupportedPlacements": [
+			"report"
+		],
+		"exportMissingPlacements": [],
+		"migrationProfiles": []
+	},
+	"degradationNotices": [],
+	"issuedAtMs": 1700000000000,
+	"expiresAtMs": 1700000900000,
+	"signature": {
+		"algorithm": "test.detached-digest/v1",
+		"keyId": "test-key-1",
+		"payloadDigest": "sha256:8bfc62a3611296394bde41c22bd8e1122ad871e1f5d8ac3c95bdf5b30685e470",
+		"signature": "sig:8bfc62a361129639"
+	}
+}

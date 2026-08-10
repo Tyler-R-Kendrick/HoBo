@@ -57,6 +57,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`plan-diff-viewer.md`](./plan-diff-viewer.md) | Productization M0 scope and acceptance for Plan/Diff Viewer | — |
 | [`security-verification.md`](./security-verification.md) | V1 vulnerability disclosure and security launch-blocker process | — |
 | [`threat-model-security-review.md`](./threat-model-security-review.md) | Productization M0 scope and acceptance for v1 threat-model and security-review gates | — |
+| [`anonymous-claim-threat-model.md`](./anonymous-claim-threat-model.md) | Threat boundaries and required controls for guest leases, claim bundles, sponsor-backed deployment, and migrate-on-claim (ADR-0151) | — |
 | [`pre-launch-outcome-contract.md`](./pre-launch-outcome-contract.md) | Productization M0 contract for pre-launch outcome baselines and v1 value evidence | — |
 | [`ai-generation-launch-posture.md`](./ai-generation-launch-posture.md) | Productization M0 launch posture for AI-generation safety claims, limitations, and review routing | — |
 | [`launch-blocker-taxonomy.md`](./launch-blocker-taxonomy.md) | Productization M0 launch-blocker severity taxonomy and go/no-go exception posture | — |

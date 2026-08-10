@@ -24,6 +24,49 @@ export {
 } from "./corpus/replay.js";
 export * from "./diff.js";
 export * from "./golden-ir.js";
+export type {
+	LiveAdapterFactory,
+	LiveAdapterModule,
+	LiveCleanupOutcome,
+	LiveCliOptions,
+	LiveCliResult,
+	LiveConformanceOptions,
+	LiveConformancePorts,
+	LiveConformanceResult,
+	LiveRefusalCode,
+	LiveResourceHandle,
+	LiveResourceRequest,
+	LiveRunGrant,
+	LiveRunGrantInput,
+} from "./live/index.js";
+export {
+	ANONYMOUS_EVIDENCE_ARTIFACT_SCHEMA,
+	type AnonymousTrustEvidenceArtifact,
+	assertNoUpgradedUnknowns,
+	assertSanitized,
+	CI_ENV_KEYS,
+	CLEANUP_CHECK,
+	checksFromReports,
+	conformanceOutcomeFromArtifact,
+	DEFAULT_EVIDENCE_FRESHNESS_WINDOW_MS,
+	type EvidenceProvenance,
+	type EvidenceSigner,
+	emitAnonymousTrustEvidence,
+	evidenceIsFullyPassing,
+	LIVE_ENV_KEYS,
+	LIVE_REFUSAL_CODES,
+	LIVE_RUN_SCHEMA,
+	LiveEvidenceError,
+	type LiveEvidenceInput,
+	LiveRunRefusedError,
+	liveRunRefusalFor,
+	MAXIMUM_EVIDENCE_FRESHNESS_WINDOW_MS,
+	parseLiveRunGrant,
+	runLiveAnonymousConformance,
+	runLiveConformanceCli,
+	selectionEvidenceFacts,
+	standardTrustChecksFrom,
+} from "./live/index.js";
 export {
 	type CreateMessagingFn,
 	MESSAGING_CONFORMANCE_CONTRACT,
@@ -56,6 +99,7 @@ export {
 	STREAMER_CONFORMANCE_CONTRACT,
 } from "./streamer.js";
 export * from "./suite.js";
+export * from "./suites/anonymous/index.js";
 export type {
 	ComponentHostAdapter,
 	ComponentHostConformanceReport,

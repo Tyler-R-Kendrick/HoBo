@@ -1,0 +1,178 @@
+/**
+ * Stable HoBo error codes for the Neon claimable-Postgres driver.
+ *
+ * Provider text is never interpolated verbatim: an upstream error body has
+ * carried a connection string before, and an error message is the one string
+ * that reliably reaches a log, a receipt, and a support ticket.
+ */
+
+export const PROVIDER_ERROR_CODES = [
+	"PROVIDER_RATE_LIMITED",
+	"PROVIDER_AUTH_FAILED",
+	"PROVIDER_CONTRACT_CHANGED",
+	"PROVIDER_OPERATION_AMBIGUOUS",
+	"PROVISIONING_CONFLICT",
+	"LEASE_EXPIRED",
+	"CLAIM_EXPIRED",
+	"CLAIM_NOT_VERIFIED",
+	"BINDING_ROTATION_REQUIRED",
+	"MIGRATION_FAILED",
+	"SECRET_CUSTODY_UNAVAILABLE",
+] as const;
+
+export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[number];
+
+export type ProviderErrorDetail = Readonly<
+	Record<string, string | number | boolean>
+>;
+
+export type ProviderErrorOptions = {
+	/** Safe to repeat the operation verbatim. Ambiguity is never retryable. */
+	readonly retryable?: boolean;
+	readonly retryAfterMs?: number;
+	readonly detail?: ProviderErrorDetail;
+	readonly cause?: unknown;
+};
+
+/** Shapes that must never survive into an error message, log line, or receipt. */
+const CREDENTIAL_PATTERNS: readonly RegExp[] = [
+	/postgres(?:ql)?:\/\/\S+/giu,
+	/\bBearer\s+\S+/giu,
+	/\b(?:password|pgpassword|pwd)\s*[=:]\s*\S+/giu,
+	/\bnpg_[A-Za-z0-9_-]{4,}/giu,
+	/\b(?:sk|pk)[-_][A-Za-z0-9_-]{8,}/giu,
+	/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/giu,
+];
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters out of provider text is the point; a raw CR/LF in a message is log forging.
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+
+/**
+ * Replace anything credential-shaped with a marker and flatten control
+ * characters so provider text cannot forge a log record.
+ */
+export function redactProviderText(text: string, maxLength = 256): string {
+	let out = text;
+	for (const pattern of CREDENTIAL_PATTERNS)
+		out = out.replace(pattern, "[redacted]");
+	out = out.replace(CONTROL_CHARS, " ").trim();
+	return out.length > maxLength ? `${out.slice(0, maxLength)}…` : out;
+}
+
+export class NeonProviderError extends Error {
+	readonly code: ProviderErrorCode;
+	readonly retryable: boolean;
+	readonly retryAfterMs?: number;
+	readonly detail: ProviderErrorDetail;
+
+	constructor(
+		code: ProviderErrorCode,
+		message: string,
+		options: ProviderErrorOptions = {},
+	) {
+		super(
+			redactProviderText(message),
+			options.cause !== undefined ? { cause: options.cause } : {},
+		);
+		this.name = "NeonProviderError";
+		this.code = code;
+		this.retryable = options.retryable ?? false;
+		if (options.retryAfterMs !== undefined)
+			this.retryAfterMs = options.retryAfterMs;
+		this.detail = Object.freeze({ ...(options.detail ?? {}) });
+	}
+
+	/** Receipt-safe projection. Already redacted by construction. */
+	toJSON(): {
+		readonly name: string;
+		readonly code: ProviderErrorCode;
+		readonly message: string;
+		readonly retryable: boolean;
+		readonly retryAfterMs?: number;
+		readonly detail: ProviderErrorDetail;
+	} {
+		return {
+			name: this.name,
+			code: this.code,
+			message: this.message,
+			retryable: this.retryable,
+			...(this.retryAfterMs !== undefined
+				? { retryAfterMs: this.retryAfterMs }
+				: {}),
+			detail: this.detail,
+		};
+	}
+}
+
+export function isProviderError(value: unknown): value is NeonProviderError {
+	return value instanceof NeonProviderError;
+}
+
+/** Map an HTTP status from the claimable-database API onto a HoBo code. */
+export function providerErrorForStatus(
+	status: number,
+	options: {
+		readonly method: "GET" | "POST";
+		readonly body?: string;
+		readonly retryAfterMs?: number;
+	},
+): NeonProviderError {
+	const body =
+		options.body === undefined ? "" : redactProviderText(options.body, 180);
+	const detail: ProviderErrorDetail = {
+		status,
+		method: options.method,
+		...(body ? { body } : {}),
+	};
+	if (status === 429) {
+		return new NeonProviderError(
+			"PROVIDER_RATE_LIMITED",
+			`neon.new returned 429`,
+			{
+				retryable: true,
+				...(options.retryAfterMs !== undefined
+					? { retryAfterMs: options.retryAfterMs }
+					: {}),
+				detail,
+			},
+		);
+	}
+	if (status === 401 || status === 403) {
+		return new NeonProviderError(
+			"PROVIDER_AUTH_FAILED",
+			`neon.new returned ${status}`,
+			{ detail },
+		);
+	}
+	if (status === 409) {
+		return new NeonProviderError(
+			"PROVISIONING_CONFLICT",
+			`neon.new returned 409`,
+			{ detail },
+		);
+	}
+	if (status >= 500) {
+		// A 5xx on a create is indistinguishable from "created but not
+		// acknowledged", so it is ambiguous rather than retryable. A 5xx on a
+		// read is safe to repeat.
+		return options.method === "POST"
+			? new NeonProviderError(
+					"PROVIDER_OPERATION_AMBIGUOUS",
+					`neon.new returned ${status} to a create; the database may or may not exist`,
+					{ detail },
+				)
+			: new NeonProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					`neon.new returned ${status}`,
+					{
+						retryable: true,
+						detail,
+					},
+				);
+	}
+	return new NeonProviderError(
+		"PROVIDER_CONTRACT_CHANGED",
+		`neon.new returned an unexpected ${status}`,
+		{ detail },
+	);
+}

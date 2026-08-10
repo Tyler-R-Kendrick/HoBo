@@ -1,0 +1,235 @@
+/**
+ * The HTTP boundary for the claimable-database API, as an injected port.
+ *
+ * Nothing in this package reaches for a global `fetch`. A host supplies a
+ * transport; the guard below is what makes any supplied transport safe —
+ * HTTPS only, one allowlisted host, no redirect chasing, bounded body, bounded
+ * time. A driver that trusts its transport is a driver that can be pointed at
+ * an attacker's origin by a single bad config value.
+ */
+import { NeonProviderError, redactProviderText } from "./errors.js";
+
+export type TransportMethod = "GET" | "POST";
+
+export type TransportRequest = {
+	readonly method: TransportMethod;
+	readonly url: string;
+	readonly headers: Readonly<Record<string, string>>;
+	readonly body?: string;
+	readonly timeoutMs: number;
+	readonly maxResponseBytes: number;
+};
+
+export type TransportResponse = {
+	readonly status: number;
+	readonly headers: Readonly<Record<string, string>>;
+	readonly body: string;
+};
+
+/**
+ * Implementations MUST NOT follow redirects and MUST abort at `timeoutMs`.
+ * The guard re-checks both, but a transport that silently follows a 302 has
+ * already sent the request body to the redirect target.
+ */
+export interface NeonTransport {
+	request(request: TransportRequest): Promise<TransportResponse>;
+}
+
+export type TransportPolicy = {
+	readonly allowedHosts: readonly string[];
+	readonly allowedPathPrefix: string;
+	readonly maxResponseBytes: number;
+	readonly timeoutMs: number;
+};
+
+/** Only the documented official origin. Neon Launchpad has exactly one. */
+export const NEON_ALLOWED_HOSTS = ["neon.new"] as const;
+
+export const DEFAULT_TRANSPORT_POLICY: TransportPolicy = {
+	allowedHosts: NEON_ALLOWED_HOSTS,
+	allowedPathPrefix: "/api/v1/",
+	maxResponseBytes: 64 * 1024,
+	timeoutMs: 15_000,
+};
+
+/**
+ * Parse an outbound URL against the policy. Returns the parsed URL so callers
+ * cannot accidentally use the unchecked string.
+ */
+export function assertAllowedEndpoint(
+	url: string,
+	policy: TransportPolicy,
+): URL {
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		throw new NeonProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			"request url is not a valid URL",
+		);
+	}
+	if (parsed.protocol !== "https:") {
+		throw new NeonProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`request url must use https, got ${parsed.protocol.replace(":", "")}`,
+		);
+	}
+	if (parsed.username !== "" || parsed.password !== "") {
+		throw new NeonProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			"request url must not embed userinfo",
+		);
+	}
+	if (parsed.port !== "" && parsed.port !== "443") {
+		throw new NeonProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`request url must use the default https port, got ${parsed.port}`,
+		);
+	}
+	const host = parsed.hostname.toLowerCase();
+	if (!policy.allowedHosts.includes(host)) {
+		throw new NeonProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`host ${host} is not an allowlisted official provider host`,
+			{ detail: { host, allowed: policy.allowedHosts.join(",") } },
+		);
+	}
+	if (!parsed.pathname.startsWith(policy.allowedPathPrefix)) {
+		throw new NeonProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`path ${parsed.pathname} is outside the allowlisted ${policy.allowedPathPrefix} prefix`,
+		);
+	}
+	return parsed;
+}
+
+function headerValue(
+	headers: Readonly<Record<string, string>>,
+	name: string,
+): string | undefined {
+	const lower = name.toLowerCase();
+	for (const [key, value] of Object.entries(headers)) {
+		if (key.toLowerCase() === lower) return value;
+	}
+	return undefined;
+}
+
+/**
+ * Wrap any transport with the request/response invariants.
+ *
+ * A 3xx is rejected outright rather than followed: the claimable-database API
+ * documents no redirects, so one is either a contract change or a hijack, and
+ * neither should silently resolve.
+ */
+export function createGuardedTransport(
+	inner: NeonTransport,
+	policy: TransportPolicy = DEFAULT_TRANSPORT_POLICY,
+): NeonTransport {
+	return {
+		async request(request) {
+			const url = assertAllowedEndpoint(request.url, policy);
+			const timeoutMs = Math.min(request.timeoutMs, policy.timeoutMs);
+			const maxResponseBytes = Math.min(
+				request.maxResponseBytes,
+				policy.maxResponseBytes,
+			);
+			if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+				throw new NeonProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					"request timeout must be positive",
+				);
+			}
+
+			const response = await inner.request({
+				...request,
+				url: url.toString(),
+				timeoutMs,
+				maxResponseBytes,
+			});
+
+			if (response.status >= 300 && response.status < 400) {
+				const location = headerValue(response.headers, "location") ?? "";
+				throw new NeonProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					`provider returned a ${response.status} redirect, which this driver never follows`,
+					{
+						detail: {
+							status: response.status,
+							location: redactProviderText(location, 120),
+						},
+					},
+				);
+			}
+
+			const declared = Number(
+				headerValue(response.headers, "content-length") ?? Number.NaN,
+			);
+			if (Number.isFinite(declared) && declared > maxResponseBytes) {
+				throw new NeonProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					`provider declared a ${declared} byte response, over the ${maxResponseBytes} byte cap`,
+				);
+			}
+			if (Buffer.byteLength(response.body, "utf8") > maxResponseBytes) {
+				throw new NeonProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					`provider response exceeded the ${maxResponseBytes} byte cap`,
+				);
+			}
+
+			return response;
+		},
+	};
+}
+
+/**
+ * Minimal WHATWG-fetch adapter. `fetchImpl` is required — the point of the
+ * port is that reaching the network is always something a host decided to
+ * hand over, never something a library reached for.
+ */
+export function createFetchTransport(options: {
+	readonly fetchImpl: typeof globalThis.fetch;
+}): NeonTransport {
+	const { fetchImpl } = options;
+	return {
+		async request(request) {
+			const controller = new AbortController();
+			const timer = setTimeout(() => {
+				controller.abort();
+			}, request.timeoutMs);
+			try {
+				const response = await fetchImpl(request.url, {
+					method: request.method,
+					headers: { ...request.headers },
+					...(request.body !== undefined ? { body: request.body } : {}),
+					redirect: "manual",
+					signal: controller.signal,
+				});
+				const headers: Record<string, string> = {};
+				response.headers.forEach((value, key) => {
+					headers[key.toLowerCase()] = value;
+				});
+				const text = await response.text();
+				if (Buffer.byteLength(text, "utf8") > request.maxResponseBytes) {
+					throw new NeonProviderError(
+						"PROVIDER_CONTRACT_CHANGED",
+						`provider response exceeded the ${request.maxResponseBytes} byte cap`,
+					);
+				}
+				return { status: response.status, headers, body: text };
+			} catch (cause) {
+				if (cause instanceof NeonProviderError) throw cause;
+				// A timed-out or dropped request never proves the server did
+				// nothing, so it can only be reported as ambiguous.
+				throw new NeonProviderError(
+					"PROVIDER_OPERATION_AMBIGUOUS",
+					`${request.method} to the provider did not complete`,
+					{ cause, detail: { method: request.method } },
+				);
+			} finally {
+				clearTimeout(timer);
+			}
+		},
+	};
+}

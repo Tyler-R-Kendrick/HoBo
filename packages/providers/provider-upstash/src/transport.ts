@@ -1,0 +1,273 @@
+/**
+ * The HTTP boundary, as an injected port.
+ *
+ * Nothing in this package reaches for a global `fetch`. A host supplies a
+ * transport; the guard below is what makes any supplied transport safe. That
+ * matters more here than usual, because the control-plane call is
+ * unauthenticated and anonymous: there is no account, no API key, and
+ * therefore nothing that would fail if the request went somewhere else. An
+ * attacker-controlled origin would simply hand back a markdown document with
+ * their token in it, and the driver would faithfully bind a workload to a
+ * Redis the attacker can read.
+ *
+ * So: HTTPS only, allowlisted host, no redirect chasing, bounded body,
+ * bounded time — and two separate policies, because the control plane and the
+ * data plane are different origins with different rules.
+ */
+import { redactProviderText, UpstashProviderError } from "./errors.js";
+
+export type TransportMethod = "GET" | "POST";
+
+export type TransportRequest = {
+	readonly method: TransportMethod;
+	readonly url: string;
+	readonly headers: Readonly<Record<string, string>>;
+	readonly body?: string;
+	readonly timeoutMs: number;
+	readonly maxResponseBytes: number;
+};
+
+export type TransportResponse = {
+	readonly status: number;
+	readonly headers: Readonly<Record<string, string>>;
+	readonly body: string;
+};
+
+/**
+ * Implementations MUST NOT follow redirects and MUST abort at `timeoutMs`.
+ * The guard re-checks both, but a transport that silently follows a 302 has
+ * already sent the request — and, on the data plane, the bearer token — to
+ * the redirect target.
+ */
+export interface UpstashTransport {
+	request(request: TransportRequest): Promise<TransportResponse>;
+}
+
+export type TransportPolicy = {
+	/** Exact hostnames. */
+	readonly allowedHosts: readonly string[];
+	/** Suffixes, for the per-database data-plane origins. Must start with a dot. */
+	readonly allowedHostSuffixes: readonly string[];
+	readonly allowedPathPrefix: string;
+	readonly maxResponseBytes: number;
+	readonly timeoutMs: number;
+};
+
+/** The one documented no-signup origin. */
+// public-contract: allowlisted control-plane host; widening it widens egress.
+export const UPSTASH_CONTROL_PLANE_HOST = "upstash.com" as const;
+
+/** Per-database REST origins are `<name>-<id>.upstash.io`. */
+// public-contract: allowlisted data-plane suffix; widening it widens egress.
+export const UPSTASH_DATA_PLANE_HOST_SUFFIX = ".upstash.io" as const;
+
+export const UPSTASH_CONTROL_PLANE_POLICY: TransportPolicy = {
+	allowedHosts: [UPSTASH_CONTROL_PLANE_HOST],
+	allowedHostSuffixes: [],
+	allowedPathPrefix: "/start-redis",
+	// The create response is a markdown document with an inline quickstart, so
+	// it is comfortably larger than a JSON envelope — and still nowhere near
+	// this. A response over the cap is a contract change, not a big database.
+	maxResponseBytes: 64 * 1024,
+	timeoutMs: 15_000,
+};
+
+export const UPSTASH_DATA_PLANE_POLICY: TransportPolicy = {
+	allowedHosts: [],
+	allowedHostSuffixes: [UPSTASH_DATA_PLANE_HOST_SUFFIX],
+	allowedPathPrefix: "/",
+	// Comfortably above any single value: a `GET` of a maximum-size value
+	// comes back JSON-encoded, and an `LRANGE` returns many at once, so a cap
+	// set to the value limit would reject legitimate reads.
+	maxResponseBytes: 8 * 1024 * 1024,
+	timeoutMs: 10_000,
+};
+
+/**
+ * Parse an outbound URL against a policy. Returns the parsed URL so callers
+ * cannot accidentally keep using the unchecked string.
+ */
+export function assertAllowedEndpoint(
+	url: string,
+	policy: TransportPolicy,
+): URL {
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		throw new UpstashProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			"request url is not a valid URL",
+		);
+	}
+	if (parsed.protocol !== "https:") {
+		throw new UpstashProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`request url must use https, got ${parsed.protocol.replace(":", "")}`,
+		);
+	}
+	if (parsed.username !== "" || parsed.password !== "") {
+		throw new UpstashProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			"request url must not embed userinfo",
+		);
+	}
+	if (parsed.port !== "" && parsed.port !== "443") {
+		throw new UpstashProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`request url must use the default https port, got ${parsed.port}`,
+		);
+	}
+	const host = parsed.hostname.toLowerCase();
+	const allowed =
+		policy.allowedHosts.includes(host) ||
+		policy.allowedHostSuffixes.some(
+			// `.upstash.io` alone is not a match: there has to be a label in
+			// front of it, or `evil.com/.upstash.io` style tricks get closer.
+			(suffix) => host.endsWith(suffix) && host.length > suffix.length,
+		);
+	if (!allowed) {
+		throw new UpstashProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`host ${host} is not an allowlisted official provider host`,
+			{ detail: { host } },
+		);
+	}
+	if (!parsed.pathname.startsWith(policy.allowedPathPrefix)) {
+		throw new UpstashProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`path ${parsed.pathname} is outside the allowlisted ${policy.allowedPathPrefix} prefix`,
+		);
+	}
+	return parsed;
+}
+
+function headerValue(
+	headers: Readonly<Record<string, string>>,
+	name: string,
+): string | undefined {
+	const lower = name.toLowerCase();
+	for (const [key, value] of Object.entries(headers)) {
+		if (key.toLowerCase() === lower) return value;
+	}
+	return undefined;
+}
+
+/**
+ * Wrap any transport with the request/response invariants.
+ *
+ * A 3xx is rejected rather than followed: this API documents no redirects, so
+ * one is either a contract change or a hijack, and neither should silently
+ * resolve into a successful-looking parse.
+ */
+export function createGuardedTransport(
+	inner: UpstashTransport,
+	policy: TransportPolicy,
+): UpstashTransport {
+	return {
+		async request(request) {
+			const url = assertAllowedEndpoint(request.url, policy);
+			const timeoutMs = Math.min(request.timeoutMs, policy.timeoutMs);
+			const maxResponseBytes = Math.min(
+				request.maxResponseBytes,
+				policy.maxResponseBytes,
+			);
+			if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+				throw new UpstashProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					"request timeout must be positive",
+				);
+			}
+
+			const response = await inner.request({
+				...request,
+				url: url.toString(),
+				timeoutMs,
+				maxResponseBytes,
+			});
+
+			if (response.status >= 300 && response.status < 400) {
+				const location = headerValue(response.headers, "location") ?? "";
+				throw new UpstashProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					`provider returned a ${response.status} redirect, which this driver never follows`,
+					{
+						detail: {
+							status: response.status,
+							location: redactProviderText(location, 120),
+						},
+					},
+				);
+			}
+
+			const declared = Number(
+				headerValue(response.headers, "content-length") ?? Number.NaN,
+			);
+			if (Number.isFinite(declared) && declared > maxResponseBytes) {
+				throw new UpstashProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					`provider declared a ${declared} byte response, over the ${maxResponseBytes} byte cap`,
+				);
+			}
+			if (Buffer.byteLength(response.body, "utf8") > maxResponseBytes) {
+				throw new UpstashProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					`provider response exceeded the ${maxResponseBytes} byte cap`,
+				);
+			}
+
+			return response;
+		},
+	};
+}
+
+/**
+ * Minimal WHATWG-fetch adapter. `fetchImpl` is required — the point of the
+ * port is that reaching the network is always something a host decided to hand
+ * over, never something a library reached for.
+ */
+export function createFetchTransport(options: {
+	readonly fetchImpl: typeof globalThis.fetch;
+}): UpstashTransport {
+	const { fetchImpl } = options;
+	return {
+		async request(request) {
+			const controller = new AbortController();
+			const timer = setTimeout(() => {
+				controller.abort();
+			}, request.timeoutMs);
+			try {
+				const response = await fetchImpl(request.url, {
+					method: request.method,
+					headers: { ...request.headers },
+					...(request.body !== undefined ? { body: request.body } : {}),
+					redirect: "manual",
+					signal: controller.signal,
+				});
+				const headers: Record<string, string> = {};
+				response.headers.forEach((value, key) => {
+					headers[key.toLowerCase()] = value;
+				});
+				const text = await response.text();
+				if (Buffer.byteLength(text, "utf8") > request.maxResponseBytes) {
+					throw new UpstashProviderError(
+						"PROVIDER_CONTRACT_CHANGED",
+						`provider response exceeded the ${request.maxResponseBytes} byte cap`,
+					);
+				}
+				return { status: response.status, headers, body: text };
+			} catch (cause) {
+				if (cause instanceof UpstashProviderError) throw cause;
+				// A timed-out or dropped request never proves the server did
+				// nothing, so it can only be reported as ambiguous.
+				throw new UpstashProviderError(
+					"PROVIDER_OPERATION_AMBIGUOUS",
+					`${request.method} to the provider did not complete`,
+					{ cause, detail: { method: request.method } },
+				);
+			} finally {
+				clearTimeout(timer);
+			}
+		},
+	};
+}

@@ -228,6 +228,8 @@ pnpm --filter @hobo/provider-neon run build
 pnpm --filter @hobo/provider-neon run test
 ```
 
+Run both commands after changing the generated boundary models or driver.
+
 Gates protecting this package: TypeScript (`strict`,
 `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`), the Pact-shaped
 boundary contract in `contracts/provider-neon-boundary.pact.json`, the

@@ -55,6 +55,24 @@ worktree/branch/PR/**stack layer**). On entry: read it; if it exists, **reconcil
 else** (see `references/dispatch.md` § Resume). Write it at every phase boundary. Dispatch outcomes
 append to `docs/plans/dispatch-log.md`. Record stack id / branch chain / PR numbers in the state file.
 
+For design-relevant layers, also record `designerConsensus.required`, `reviewId`,
+`cycle`, `result`, `consensusEntryId`, `proposalDigest`, `reviewedHeadSha`, and
+`assertedAt`. This Markdown is a coordinator view, not approval authority; the
+OptimizeXP council state and append-only bus must pass deterministic
+`consensus-loop.mts --mode assert-yay` on the current head.
+
+```yaml
+designerConsensus:
+  required: true
+  reviewId: <id>
+  cycle: <n>
+  result: yay
+  consensusEntryId: <id>
+  proposalDigest: <sha256>
+  reviewedHeadSha: <sha>
+  assertedAt: <timestamp>
+```
+
 ## Phases (details in references/)
 
 0. **`--finish` (session land)** — `references/finish.md`. When the flag is present, run the
@@ -82,6 +100,10 @@ append to `docs/plans/dispatch-log.md`. Record stack id / branch chain / PR numb
    **parent** reviews and merges **each PR from the bottom up**. Do not mark the initiative
    complete until every opened PR is reviewed, repaired (when repairable), and **squash-merged**.
    Billing/budget-only CI failures do **not** block merge.
+   Every design-relevant layer additionally requires the exact-six designer
+   council after evidence refresh and another current-head `assert-yay`
+   immediately before merge. Any nay returns to implementation; any later
+   commit or effective-diff change makes the approval stale.
 
 ## Role split
 
@@ -148,10 +170,16 @@ For **each** open PR in bottom-up order:
    cascade/reg misses, over-engineering, missing gates, silent shared-file edits by subagents.
 3. **Independent review** — spawn the `reviewer` (or re-run the acceptance checklist yourself on
    a clean checkout). Do not trust the implementer's self-report.
-4. **Comments & review feedback** — list every unresolved PR comment and review thread
+4. **Designer council when relevant** — deterministically classify the changed
+   paths and acceptance tags, refresh evidence, and run or resume the exact-six
+   OptimizeXP council. A nay emits rework; repeat implementation → independent
+   review → evidence → council until unanimous current-head yay or honest
+   blocked termination. A non-design exemption must be machine-readable and
+   justified; never skip silently.
+5. **Comments & review feedback** — list every unresolved PR comment and review thread
    (`gh api` / `gh pr view` / review comments). Address **all** of them: fix code, or reply with
    a reasoned non-action and resolve the thread. Leave no actionable thread open.
-5. **Status checks** — wait for required checks when they can run. Repair real failures
+6. **Status checks** — wait for required checks when they can run. Repair real failures
    (tests, lint, architecture). Re-run narrow gates after fixes; `gh stack sync` / rebase so CI
    sees the fix.
    - **Billing / budget / quota does not block squash-merge.** If a check fails solely because
@@ -167,7 +195,10 @@ For **each** open PR in bottom-up order:
         permission. If merge is impossible without elevated rights, say so — still do not
         leave the PR as "waiting on CI" when CI cannot run.
      4. Never use this exception for real test/lint/type failures.
-6. **Squash-merge that PR** when review is clean and either checks are green **or** only
+7. **Re-assert designer consensus** for relevant work after all comment/check
+   fixes. If HEAD, effective diff, acceptance, or evidence changed, refresh and
+   reconvene; do not merge stale approval. Billing exceptions do not waive this.
+8. **Squash-merge that PR** when review is clean and either checks are green **or** only
    billing-budget failures remain (after documenting them):
    ```bash
    # Stack-aware (preferred when in a stack):
@@ -178,7 +209,7 @@ For **each** open PR in bottom-up order:
    gh pr merge <pr-number> --squash --delete-branch --admin
    gh stack sync --prune   # after merge; realign remaining layers
    ```
-7. Only then move to the next PR up the stack. Repeat until the stack is fully merged.
+9. Only then move to the next PR up the stack. Repeat until the stack is fully merged.
 
 Do **not** batch-merge the whole stack until every lower layer has passed rubber-duck + adversarial
 review and comment/check cleanup. Prefer one-PR-at-a-time bottom-up merges so each layer's review
@@ -197,6 +228,11 @@ is honest against its final base.
   documented on the PR + state file, (b) the independent review pass succeeds, (c) all PR
   comments/threads are addressed, and (d) the PR is **squash-merged**. Billing-red CI is not a
   reason to leave a reviewed PR open.
+- A design-relevant issue/layer is additionally Done only when the exact six
+  canonical personas unanimously approve the current proposal digest and HEAD,
+  no hard blocker remains, and deterministic `assert-yay` passes. `/sdlc
+  --finish`, a majority, investment exhaustion, or billing-red CI cannot waive
+  this gate.
 - Perf, contract (PACT), and feature (cucumber) tests are first-class: acceptance criteria become
   failing tests before implementation starts.
 - Use this repo's performance-first loop: search before validate; narrow `agent:check` before
@@ -208,6 +244,7 @@ is honest against its final base.
 ## Reference routing
 
 - **Session land / `--finish`:** `references/finish.md`
+- Designer council authority: `../optimizexp/references/design-council.md`
 - Stack create/sync/merge + bottom-up closeout: `references/stacked-prs.md`
 - Dispatch backends, handback, Done rule: `references/dispatch.md`
 - Brainstorm / plan / Linear / loops / cascade: remaining files under `references/`

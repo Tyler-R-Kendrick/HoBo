@@ -66,3 +66,13 @@ test("run-tests.ts excludes node:test-style files from vitest lanes", () => {
 	const source = readFileSync("scripts/run-tests.ts", "utf8");
 	expect(source).toContain("isNodeTestFile");
 });
+
+test("run-tests.ts preserves the canonical Vitest execution settings", () => {
+	const source = readFileSync("scripts/run-tests.ts", "utf8");
+	expect(source).toContain("pathToFileURL");
+	expect(source).toContain('"vitest.config.ts"');
+	expect(source).toContain("...baseConfig.test");
+	expect(source).toContain('pool: "forks"');
+	expect(source).toContain("HOBO_RELEVANT_CHECK_CONCURRENCY");
+	expect(source).toContain("maxWorkers:");
+});

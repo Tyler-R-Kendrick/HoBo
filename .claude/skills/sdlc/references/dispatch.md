@@ -65,6 +65,9 @@ The COORDINATOR owns all Linear state. Per issue, in order:
    the parent for stack closeout),
    (c) all PR comments and review threads are addressed,
    (d) the PR is squash-merged (stack-aware merge when part of a stack).
+   For design-relevant work, also require current-head exact-six unanimous
+   designer consensus, no unresolved hard blocker, and deterministic
+   `assert-yay`. Billing exceptions apply only to CI and never waive consensus.
    Otherwise: send findings back through the same backend (same worktree / PR-comment
    instructions to the coding agent), or re-plan the issue.
 6. Apply `cascadeDeltas` yourself, serially: traceability rows, ledgers, registries, GAPS-style
@@ -134,13 +137,19 @@ The Done rule is not complete until the parent finishes **bottom-up closeout** f
 opened (`stacked-prs.md` § Bottom-up closeout):
 
 1. Bottom PR first: rubber-duck + adversarial review + independent reviewer.
-2. Address **all** PR comments and review threads.
-3. Fix required status checks that actually ran and failed for code reasons. If checks are red
+2. Refresh acceptance evidence and run the designer council when relevance
+   detection requires it. Any nay becomes the next implementer handback;
+   re-review and reconvene after the fix.
+3. Address **all** PR comments and review threads.
+4. Fix required status checks that actually ran and failed for code reasons. If checks are red
    only for **billing/budget/quota** (jobs never started / spending limit), document on the PR
    and **still squash-merge** — do not wait for green CI.
-4. Squash-merge that PR (`gh stack merge <pr> --yes --squash` or `gh pr merge <pr> --squash`;
+5. Re-run current-head `assert-yay` for relevant work. Any post-council
+   commit/effective-diff change invalidates approval.
+6. Squash-merge that PR (`gh stack merge <pr> --yes --squash` or `gh pr merge <pr> --squash`;
    `--admin` if protection blocks on billing-red checks), then `gh stack sync`.
-5. Repeat upward until the stack is fully merged.
+7. Repeat upward until the stack is fully merged. Recompute each upper layer's
+   effective proposal digest after lower-layer merge/rebase and reconvene if it changed.
 
 Never mark the initiative Done while open PRs remain with unresolved comments, failing
 **non-billing** checks, or missing squash-merge. Billing-red CI alone is not a Done blocker.

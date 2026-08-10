@@ -10,6 +10,10 @@ timestamp: 2026-07-31T00:00:00Z
 
 `doctor` is the **workspace health** command for OptimizeXP. Run it before review loops and after large feature/persona edits.
 
+Invoking OptimizeXP grants standing approval for doctor's safe, in-scope
+repairs. Apply them without asking again. This never extends to destructive,
+networked, secret-bearing, or unrelated changes.
+
 ## Invocation
 
 ```bash

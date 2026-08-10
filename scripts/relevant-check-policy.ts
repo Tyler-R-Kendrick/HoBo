@@ -201,6 +201,7 @@ export function selectRelevantChecks(
 	const optimizexpChanged = touchedAny([
 		/(^|\/)\.optimizexp(\/|$)/u,
 		/^\.(agents|claude)\/skills\/optimizexp(\/|$)/u,
+		/^\.(agents|claude)\/skills\/sdlc(\/|$)/u,
 		/^scripts\/check-optimizexp\.mts$/u,
 	]);
 	const traceabilityChanged =
@@ -347,7 +348,7 @@ export function selectRelevantChecks(
 
 	if (
 		files.some((file) =>
-			/^\.(claude|agents)\/skills\/(draft|repo|sdlc)\//u.test(file),
+			/^\.(claude|agents)\/skills\/(draft|optimizexp|repo|sdlc)\//u.test(file),
 		)
 	) {
 		checks.push({

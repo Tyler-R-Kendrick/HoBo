@@ -11,7 +11,8 @@
  *      `lib/feature-quality.mts` — bans template-only "exercise the surface"
  *      Gherkin and missing `@persona:`/`@interface:` tags.
  *
- *   c. `validate-bus` over `.optimizexp/bus/entries/` via the review-loop CLI.
+ *   c. `validate-bus` over `.optimizexp/bus/entries/` via the review-loop CLI,
+ *      including council bus/state cross-checks through the consensus helper.
  *      The 282 legacy entries that predated the current scorecard-evidence
  *      contract were archived to `.optimizexp/bus-archive/` (not scanned), so
  *      this lane is a hard fail. New runs are additionally gated per-run by
@@ -120,7 +121,13 @@ function checkBus(): string[] {
 	const reviewLoop =
 		".agents/skills/optimizexp/workflows/cross-agent/review-loop.mts";
 	const result = runHarness(reviewLoop, ["--mode", "validate-bus"]);
-	let report: { ok?: boolean; entries?: number; problems?: string[] };
+	let report: {
+		ok?: boolean;
+		entries?: number;
+		councilStates?: number;
+		councilEntries?: number;
+		problems?: string[];
+	};
 	try {
 		report = JSON.parse(result.stdout) as typeof report;
 	} catch {
@@ -129,7 +136,9 @@ function checkBus(): string[] {
 		];
 	}
 	if (result.status === 0 && report.ok) {
-		console.log(`bus: OK (${report.entries ?? 0} entries)`);
+		console.log(
+			`bus: OK (${report.entries ?? 0} entries; ${report.councilStates ?? 0} council states, ${report.councilEntries ?? 0} council entries)`,
+		);
 		return [];
 	}
 	return (report.problems ?? []).map((p) => `bus: ${p}`);

@@ -577,6 +577,33 @@ test("skill harness changes select the optimizexp drift lane", () => {
 	}
 });
 
+test("consensus state and SDLC integration select the optimizexp gate", () => {
+	for (const file of [
+		".optimizexp/runs/run-1/consensus/review-1/state.json",
+		".agents/skills/sdlc/references/finish.md",
+		".claude/skills/sdlc/SKILL.md",
+	]) {
+		assert.ok(plan([file]).checks.some(isOptimizexpLane), file);
+	}
+});
+
+test("OptimizeXP skill edits select the byte-identical mirror gate", () => {
+	for (const file of [
+		".agents/skills/optimizexp/references/design-council.md",
+		".claude/skills/optimizexp/workflows/cross-agent/consensus-loop.mts",
+	]) {
+		const { checks } = plan([file]);
+		assert.ok(
+			checks.some(
+				(check) =>
+					check.command === "pnpm" &&
+					check.args.join(" ") === "run skills:mirror-check",
+			),
+			file,
+		);
+	}
+});
+
 test("gate script changes select the optimizexp drift lane", () => {
 	const { checks } = plan(["scripts/check-optimizexp.mts"]);
 	assert.ok(checks.some(isOptimizexpLane));

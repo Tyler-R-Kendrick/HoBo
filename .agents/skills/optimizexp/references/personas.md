@@ -246,6 +246,14 @@ Concatenate with the persona markdown body. That composite string is the **perso
 4. Personas with missing/invalid `experiences` are **never** auto-selected.
 5. Time-box: sort by `priority`, then id; apply `--max-personas N`.
 
+## Designer council selection
+
+The SDLC designer-consensus gate is the one exception to experience-intersection
+selection: it explicitly selects the exact six IDs in `design-council.md`.
+Their honest `experiences` bindings still control ordinary OptimizeXP reviews.
+Existing product personas remain valid but never vote in the council. Council
+priority is deterministic speaking order only, never authority.
+
 ## Authoring new personas (manual)
 
 1. Prefer `--persona "seed"` so the rewrite path is used.

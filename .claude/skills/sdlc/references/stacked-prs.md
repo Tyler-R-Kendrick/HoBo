@@ -178,7 +178,18 @@ For PR at index `i` (bottom first):
    - Spawn `reviewer` subagent or re-run acceptance checklist + relevant gates yourself.
    - Query GitHub checks yourself; never trust implementer "green" alone.
 
-5. **All PR comments and review feedback**
+5. **Current-head designer council when relevant**
+   - Classify changed paths and acceptance tags deterministically. A non-design
+     exemption is machine-readable and justified; a prior council cycle always
+     makes the layer relevant.
+   - Refresh current-head acceptance/evidence manifests, compute the proposal
+     digest against the layer's effective base, then run or resume the exact six
+     personas through the append-only OptimizeXP council.
+   - Any nay appends a rework packet and returns to implementation. Repeat
+     independent review → evidence → council after fixes. No majority, quorum,
+     timeout, or investment-weighted approval exists.
+
+6. **All PR comments and review feedback**
    ```bash
    gh pr view <n> --comments
    gh api repos/{owner}/{repo}/pulls/<n>/comments
@@ -188,7 +199,7 @@ For PR at index `i` (bottom first):
    - Resolve threads after addressing.
    - Re-request review if human reviewers are in the loop.
 
-6. **Status checks**
+7. **Status checks**
    - Wait for required checks **when runners can start**.
    - On real (code) failure: fix on this layer, commit, `gh stack push` / `gh stack sync`, re-check.
    - **Billing / budget / quota — do not block merge:**
@@ -208,7 +219,12 @@ For PR at index `i` (bottom first):
      5. This exception **never** covers failing tests, lint, architecture, secret-scan content
         findings, or any check that actually executed and found a defect.
 
-7. **Squash-merge this PR**
+8. **Assert and squash-merge this PR**
+   - For design-relevant work, run deterministic `assert-yay` against the exact
+     current HEAD and proposal manifest immediately before merge. A comment fix,
+     check repair, rebase, changed acceptance/evidence digest, or effective-base
+     change after approval makes it stale and requires refreshed evidence plus a
+     new council cycle. Billing-only CI exceptions do not waive this assertion.
    ```bash
    gh stack merge <pr-number> --yes --squash
    # single PR: gh pr merge <pr-number> --squash --delete-branch
@@ -218,7 +234,9 @@ For PR at index `i` (bottom first):
    Prefer merging **one PR at a time** after its review so the next layer rebases onto real trunk
    history (especially after squash-merge). Do not leave comments unresolved "for later."
 
-8. Advance to the next PR up the stack. Repeat until none remain.
+9. Advance to the next PR up the stack. After each lower squash-merge and sync,
+   recompute every affected upper layer's effective proposal digest and rerun
+   council review if it changed. Repeat until none remain.
 
 ### Stack-complete criteria
 
@@ -226,6 +244,8 @@ For PR at index `i` (bottom first):
 - `gh stack view --json` shows no open unmerged work (or stack fully pruned).
 - Linear/issue tracker: each issue Done only under the Done rule (checks + review + merge).
 - `docs/plans/dispatch-log.md` and `sdlc-state.md` updated with outcomes.
+- Each design-relevant layer records its council review ID, consensus entry,
+  proposal digest, reviewed head, cycle, and final assertion time.
 - Workspace cleaned per `repo` skill when appropriate.
 
 ## Done rule (stack-aware)
@@ -238,6 +258,9 @@ A layer is Done only when **all** hold:
 4. PR **squash-merged** (stack-aware merge when in a stack). Billing-red CI is not a leave-open state.
 5. Cascade deltas applied by the coordinator.
 6. Issue tracker moved to Done by the coordinator (never by the implementer).
+7. For design-relevant work, exact-six unanimous approval binds the current
+   proposal digest and HEAD, no blocker is open, and `assert-yay` passes. The
+   billing exception waives only CI; it never waives council consensus.
 
 ## Failure classes (for dispatch-log)
 

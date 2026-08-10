@@ -489,9 +489,18 @@ importers:
 
   packages/cloud:
     dependencies:
+      '@hobo/bindings':
+        specifier: workspace:*
+        version: link:../bindings
       '@hobo/bindles':
         specifier: workspace:*
         version: link:../bindles
+      '@hobo/capability-profiles':
+        specifier: workspace:*
+        version: link:../capability-profiles
+      '@hobo/claims':
+        specifier: workspace:*
+        version: link:../claims
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
@@ -800,6 +809,19 @@ importers:
         specifier: workspace:*
         version: link:../runtimes/runtime-local
 
+  packages/data-postgres:
+    dependencies:
+      '@hobo/capability-profiles':
+        specifier: workspace:*
+        version: link:../capability-profiles
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
   packages/dispatcher:
     devDependencies:
       '@types/node':
@@ -989,6 +1011,19 @@ importers:
         specifier: ^22.15.29
         version: 22.20.0
 
+  packages/kv-redis-compatible:
+    dependencies:
+      '@hobo/capability-profiles':
+        specifier: workspace:*
+        version: link:../capability-profiles
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
   packages/management:
     dependencies:
       '@hobo/cloud':
@@ -1044,6 +1079,63 @@ importers:
       '@hobo/runtime-local':
         specifier: workspace:*
         version: link:../runtimes/runtime-local
+
+  packages/packs/pack-framework:
+    dependencies:
+      '@hobo/bindings':
+        specifier: workspace:*
+        version: link:../../bindings
+      '@hobo/capability-profiles':
+        specifier: workspace:*
+        version: link:../../capability-profiles
+    devDependencies:
+      '@hobo/cloud':
+        specifier: workspace:*
+        version: link:../../cloud
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/packs/pack-postgres-oci:
+    dependencies:
+      '@hobo/bindings':
+        specifier: workspace:*
+        version: link:../../bindings
+      '@hobo/capability-profiles':
+        specifier: workspace:*
+        version: link:../../capability-profiles
+      '@hobo/pack-framework':
+        specifier: workspace:*
+        version: link:../pack-framework
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/packs/pack-valkey-oci:
+    dependencies:
+      '@hobo/bindings':
+        specifier: workspace:*
+        version: link:../../bindings
+      '@hobo/capability-profiles':
+        specifier: workspace:*
+        version: link:../../capability-profiles
+      '@hobo/pack-framework':
+        specifier: workspace:*
+        version: link:../pack-framework
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/pixel-village:
     dependencies:

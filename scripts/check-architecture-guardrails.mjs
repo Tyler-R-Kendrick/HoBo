@@ -59,6 +59,7 @@ const NESTED_PRODUCTION_CATEGORIES = new Set([
 	"providers",
 	"iac",
 	"connectors",
+	"packs",
 ]);
 
 export function isProductionPackageRoot(packageRoot) {

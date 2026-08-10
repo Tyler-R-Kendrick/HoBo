@@ -1,0 +1,39 @@
+{
+	"name": "@hobo/pack-framework",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "HoBo implementation-pack mechanics: signed, digest-pinned pack manifests, verification-before-execution, the Resource Definition vNext projection with realization \"pack\", pack configuration parsing with mandatory persistence, secret custody that mints credentials instead of receiving them, and a declarative conformance harness behind an injected runner.",
+	"type": "module",
+	"files": [
+		"LICENSE",
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@hobo/bindings": "workspace:*",
+		"@hobo/capability-profiles": "workspace:*"
+	},
+	"devDependencies": {
+		"@hobo/cloud": "workspace:*",
+		"@types/node": "^22.15.29",
+		"vitest": "^4.1.9"
+	},
+	"scripts": {
+		"prebuild": "pnpm --filter @hobo/bindings build && pnpm --filter @hobo/capability-profiles build",
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"typecheck:test": "tsc -p tsconfig.test.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run test/",
+		"test:unit": "vitest run test/"
+	}
+}

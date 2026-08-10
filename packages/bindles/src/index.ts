@@ -110,6 +110,12 @@ export {
 	readDependencyConfig,
 	wasmComponentDependencyAnnotation,
 } from "./dependencies.js";
+export {
+	isWebAppAnnotation,
+	WASP_WEBAPP_METADATA,
+	WEBAPP_OPTION,
+	webAppAnnotationFromBinding,
+} from "./webapp.js";
 export { env } from "./env.js";
 export {
 	BINDLE_FEATURES_SCHEMA,
@@ -190,6 +196,7 @@ export {
 	service as wiringService,
 } from "./wiring/index.js";
 
+// public-contract: package identity used by generated manifests and tooling.
 export const HOBO_BINDLES_PACKAGE = "@hobo/bindles";
 
 export type {

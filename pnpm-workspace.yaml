@@ -6,6 +6,7 @@ packages:
   - "packages/connectors/*"
   - "packages/runtimes/*"
   - "packages/providers/*"
+  - "packages/packs/*"
   - "packages/iac/*"
   - "examples/*"
   - "src/draft/technical-proofs/*"

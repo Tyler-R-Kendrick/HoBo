@@ -15,7 +15,10 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@hobo/bindings": "workspace:*",
 		"@hobo/bindles": "workspace:*",
+		"@hobo/capability-profiles": "workspace:*",
+		"@hobo/claims": "workspace:*",
 		"@hobo/core": "workspace:*",
 		"@hobo/data": "workspace:*",
 		"@hobo/events": "workspace:*",
@@ -26,7 +29,7 @@
 		"@hobo/runtime-local": "workspace:*"
 	},
 	"scripts": {
-		"prebuild": "pnpm --filter @hobo/core build && pnpm --filter @hobo/bindles build && pnpm --filter @hobo/data build && pnpm --filter @hobo/events build && pnpm --filter @hobo/identity build",
+		"prebuild": "pnpm --filter @hobo/core build && pnpm --filter @hobo/bindles build && pnpm --filter @hobo/data build && pnpm --filter @hobo/events build && pnpm --filter @hobo/identity build && pnpm --filter @hobo/capability-profiles build && pnpm --filter @hobo/bindings build && pnpm --filter @hobo/claims build",
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",

@@ -54,6 +54,9 @@ and [ADR-0083](../../docs/design/adr/02-identity-security.md#adr-0083).
 `bindle()` returns frozen `BindleManifest` derived types. Invalid dependency handles are
 unrepresentable past the builder seam.
 
+Nameless Bindles compile as `app`. Provider pins fail with the exported stable error code and
+remediation text because provider selection belongs on a Yard.
+
 `pnpm --filter @hobo/bindles run test:schema` vets manifest fixtures with `HOBO_CUE_BIN`,
 the root `.tools/cue/v0.14.0/` cache populated by `pnpm run test:schema`, or `cue` on `PATH`.
 

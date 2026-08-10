@@ -8,5 +8,5 @@
     "types": ["node"]
   },
   "include": ["scripts/**/*", "test/**/*"],
-  "exclude": ["scripts/ci/**"]
+	"exclude": ["scripts/ci/**", "test/output/**"]
 }

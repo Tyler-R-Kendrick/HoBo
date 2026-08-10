@@ -2,15 +2,22 @@ import { createHash } from "node:crypto";
 
 import type { BindleDefinition, ProviderAnnotation } from "./types.js";
 
+// public-contract: callers branch on this stable provider-selection error code.
 export const BINDLE_PROVIDER_SELECTION_FORBIDDEN =
 	"bindle-provider-selection-forbidden" as const;
 
+// public-contract: tooling presents this remediation for the stable error code.
 export const BINDLE_PROVIDER_SELECTION_REMEDIATION =
 	"Provider selection belongs on a Yard. Declare or request a provider-specific Yard and attach this Bindle deployment to it." as const;
 
 /** Platform annotations that are not cloud provider pins. */
 const PLATFORM_PROVIDERS = new Set(["hobo", "hobo:build"]);
-const PLATFORM_OPTIONS = new Set(["env", "dependency", "session-replay"]);
+const PLATFORM_OPTIONS = new Set([
+	"env",
+	"dependency",
+	"session-replay",
+	"webapp",
+]);
 
 /**
  * Provider-neutral Bindle workload requirements (not resolver control).

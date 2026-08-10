@@ -179,6 +179,26 @@ export {
 	type ResourcePlan,
 } from "./plan-types.js";
 export {
+	capabilityRequirementFromBindleRequirements,
+	matchCapabilityRequirement,
+	profileCatalogHash,
+	type ProfileMatchAccepted,
+	type ProfileMatchInput,
+	type ProfileMatchOutcome,
+	type ProfileMatchRejected,
+} from "./planner/profile-matching.js";
+export {
+	RESOURCE_DEFINITION_VNEXT_SCHEMA,
+	ResourceDefinitionMigrationError,
+	parseResourceDefinitionVNext,
+	semanticsDigestInput,
+	toSelectionCandidate,
+	type PlacementConstraint,
+	type RemediationHint,
+	type ResourceDefinitionSemantics,
+	type ResourceDefinitionVNext,
+} from "./registry/resource-definition-vnext.js";
+export {
 	type DecidedPlacement,
 	emptyPlacementContext,
 	type MatchAccepted,

@@ -38,6 +38,8 @@ const METADATA_SYMBOL =
 const COMPONENT_METADATA = Symbol.for("hobo.component.metadata");
 const TRAINABLE_METADATA = Symbol.for("hobo.trainable.metadata");
 
+/** Default name when authors use nameless `bindle((b) => …)`. */
+// public-contract: nameless Bindles compile to this stable manifest name.
 export const DEFAULT_BINDLE_NAME = "app";
 
 function isInstantiableClassBinding(binding: ComponentBinding): boolean {

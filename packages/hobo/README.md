@@ -43,3 +43,5 @@ Related honesty elsewhere in this package:
 **Pre-release:** `@hobo/hobo` is **not published to npm** as a stable install story yet. Prefer the monorepo workspace binary until publish hygiene and CI-proven release land. Ship targets: [`docs/design/launch-ship-targets.md`](../../docs/design/launch-ship-targets.md), [ADR-0140](../../docs/design/adr/07-portability-extensibility.md#adr-0140).
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for layering and runtime assembly.
+
+Validate integration changes with `pnpm --filter @hobo/hobo run test`.

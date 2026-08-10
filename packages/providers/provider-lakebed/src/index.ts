@@ -11,6 +11,8 @@ export {
 	equivalenceForPort,
 	INITIAL_CAPABILITY_PORTS,
 	type InitialCapabilityPort,
+	lakebedNativeFeaturesForPort,
+	lakebedNativePorts,
 } from "./equivalence.js";
 export {
 	AUTH_SCHEMA,
@@ -61,6 +63,17 @@ export {
 	LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS,
 	LAKEBED_TRAFFIC_ROUTING_PROFILE,
 } from "./traffic-routing-offerings.js";
+export {
+	createLakebedAnonymousCliTransport,
+	LAKEBED_TEMPORARY_PROVIDER_ID,
+	materializeEnvironmentStationCapsule,
+	parseLakebedDeployOutput,
+	provisionTemporaryEnvironmentStation,
+	supportsAnonymousTemporaryDeploy,
+	type LakebedAnonymousDeployResult,
+	type LakebedAnonymousTransport,
+	type LakebedTemporaryStationInput,
+} from "./temporary-station.js";
 
 // public-contract: the package id consumers assert against.
 export const HOBO_PROVIDER_LAKEBED_PACKAGE = "@hobo/provider-lakebed";

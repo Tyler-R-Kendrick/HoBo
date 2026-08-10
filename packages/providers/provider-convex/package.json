@@ -14,17 +14,18 @@
 		}
 	},
 	"scripts": {
-		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
+		"build": "pnpm --filter @hobo/core build && pnpm --filter @hobo/sdk build && tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "pnpm run build && pnpm --filter @hobo/bindles build",
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@hobo/core": "workspace:*"
+		"@hobo/core": "workspace:*",
+		"@hobo/sdk": "workspace:*"
 	},
 	"devDependencies": {
 		"@hobo/bindles": "workspace:*"
 	},
-	"description": "HoBo Convex deploy-target CloudProvider: reactive TypeScript BaaS behind the agnostic ports with honest-partial capability verdicts, typed impedance limits, and a credential-gated Management API client (ADR-0144)."
+	"description": "HoBo Convex deploy-target CloudProvider: reactive TypeScript BaaS (Cloud or self-host) behind agnostic ports with honest-partial capability verdicts, typed impedance limits, SDK defineResource adapters, and credential-gated deploy/apply (ADR-0144). Anonymous Temporary self-host of official Convex OCI/binary is fail-closed under zero project API keys (rejection matrix in provisionConvexBackendAnonymous)."
 }

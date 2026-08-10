@@ -24,9 +24,9 @@ export interface ConvexDeploymentInfo {
 export class ConvexCredentialsError extends Error {
 	constructor() {
 		super(
-			"convex management API is credential-gated: no deploy key present. " +
-				"Route a broker-minted key via secretRef / the Yard token broker " +
-				"(deploy keys are never stored in Bindles or Camps).",
+			"convex deploy is credential-gated: need broker CONVEX_DEPLOY_KEY " +
+				"(Convex Cloud) or CONVEX_SELF_HOSTED_URL + CONVEX_SELF_HOSTED_ADMIN_KEY " +
+				"(self-host). Route via secretRef / Yard token broker — never Bindle config.",
 		);
 		this.name = "ConvexCredentialsError";
 	}

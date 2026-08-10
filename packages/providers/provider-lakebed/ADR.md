@@ -62,4 +62,9 @@ Secretless-first: the Yard broker holds the vendor relationship and mints
 short-lived, deployment-scoped deploy tokens per operation (HOBO-110 model).
 `staticSecrets: false` is parse-enforced — no static Lakebed token anywhere.
 
+Anonymous Temporary / agent Environment Stations use Lakebed's password-free
+`lakebed deploy` path via `provisionTemporaryEnvironmentStation` (injectable
+transport; default CLI strips `LAKEBED_TOKEN`). Claim later for hosted env
+sync — never permanent operator tokens on the Examples stamp path.
+
 [ADR-0127]: ../../../docs/design/adr/07-portability-extensibility.md#adr-0127

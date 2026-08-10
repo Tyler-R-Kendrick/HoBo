@@ -37,6 +37,33 @@ event-sourced replay) and leaking static deploy keys.
 5. **Escape hatches stay Yard-scoped.** Convex-specific options ride Camp/Yard
    `.with(...)` annotations; Bindles reject provider annotations by
    construction (`assertNoBindleProviderSelection`).
+6. **`data.convex/v1` is a data descriptor, not a registry.** The capability
+   profile refines `data.document/v1` and nothing else. Self-hosted Convex may
+   persist to Postgres, MySQL, or SQLite, but a storage engine is not a
+   capability surface — `DATA_CONVEX_NON_REFINEMENTS` records each tempting
+   confusion with its refutation instead of leaving it to be re-derived.
+7. **Three hosting forms, never conflated.** `convex.local-accountless/v1` is
+   development-only and carries an explicit no-production-durability flag; a
+   tunnel in front of it is typed as a Connector, not a claim.
+   `convex.selfhosted-oci/v1` pins registry-verified image digests, both
+   public HTTP surfaces (3210 client API, 3211 HTTP actions), a required
+   `/convex/data` volume, and optional external SQL / S3-compatible storage.
+   `convex.cloud-sponsored-transfer/v1` is sponsor-backed and explicitly not
+   anonymous: a destination team must exist first and sponsor deploy keys are
+   revoked after the transfer.
+8. **Exclusive ownership is proven by replacement, not by upgrade.** A Convex
+   admin key is an irrevocable secret baked into the deployment, so any
+   pre-claim authority is treated as compromised. `src/strong-claim.ts` is a
+   pure state machine over provision-fresh → deploy → fence → export → import
+   → verify → cutover → bounded rollback window → destroy, with every effect
+   behind the injected `ConvexMigrationDriver`. Ordering invariants (source
+   authoritative on failed import, cutover only after verification, source
+   destroyed only after cutover plus a closed rollback window, failure never
+   reports completion) live in the decider and are unit-tested.
+9. **Conformance is fail-closed data.** `CONVEX_CONFORMANCE_PROFILE` follows
+   the repo's pack convention (a frozen exported record plus a pure evaluator,
+   as in `@hobo/policy`), and `evaluateConvexConformance` treats `unknown`,
+   missing, and unrecognized outcomes as blocks.
 
 ## Consequences
 

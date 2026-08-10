@@ -33,3 +33,18 @@ The package contains no Firecrawl credential and has no dependency on the Firecr
 - `extract`
 
 Auth discovery is rooted at Firecrawl's published `https://www.firecrawl.dev/auth.md`. Connector capability names are HoBo's logical least-privilege contract; the Station/identity broker maps them to the concrete authorization scopes advertised by the service at resolution time.
+
+## Architecture evidence
+
+The declaration follows parse, don't validate: `defineConnector` lowers the
+literal onto parsed derived types (`ConnectorDefinition`) or throws — a
+symbol never registers with a malformed kind, id, or origin. The wire form
+is pinned in [`data-models/connector_firecrawl.proto`](./data-models/connector_firecrawl.proto)
+(+ CUE bounds); the auth-discovery boundary is fixtured in
+[`contracts/pacts/connector-firecrawl-boundary.pact.json`](./contracts/pacts/connector-firecrawl-boundary.pact.json).
+This package emits no events: a connector declaration is static authoring
+content. In the platform's command → event pipeline, the Station-owned
+resolver is the actor — its connection commands append `connection.*` facts
+to the event store, and materialized views / projections (with snapshots
+feeding read stores) expose connection state; this package only supplies
+the parsed declaration those flows consume.

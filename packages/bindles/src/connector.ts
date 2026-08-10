@@ -6,6 +6,8 @@ import type {
 	ConnectorSymbol,
 } from "./types.js";
 
+export type { ConnectorDefinition, ConnectorSymbol } from "./types.js";
+
 const CONNECTOR_REGISTRY = Symbol.for("hobo.connector.registry/v1");
 
 type ConnectorRegistry = Map<symbol, ConnectorDefinition>;
@@ -24,13 +26,23 @@ export function defineConnector<const D extends ConnectorDefinition>(
 	definition: D,
 ): ConnectorSymbol<D> {
 	if (definition.kind !== "connector-definition") {
-		throw new TypeError("connector definition must use kind connector-definition");
+		throw new TypeError(
+			"connector definition must use kind connector-definition",
+		);
 	}
 	if (!definition.id || !definition.origin) {
 		throw new TypeError("connector definition requires id and origin");
 	}
-	const symbol = Symbol.for(`hobo.connector/${definition.id}`) as ConnectorSymbol<D>;
-	registry().set(symbol, Object.freeze({ ...definition }));
+	const symbol = Symbol.for(
+		`hobo.connector/${definition.id}`,
+	) as ConnectorSymbol<D>;
+	// The freeze widens D back to the base definition shape; the cast is safe
+	// because D extends ConnectorDefinition (exactOptionalPropertyTypes rejects
+	// the generic Readonly<D> otherwise).
+	registry().set(
+		symbol,
+		Object.freeze({ ...definition }) as ConnectorDefinition,
+	);
 	return symbol;
 }
 
@@ -74,7 +86,9 @@ function createBinding<D extends ConnectorDefinition>(
 const builderBindings = new WeakMap<object, BuilderConnectorRegistry>();
 
 /** Internal Bindle-builder hook; public app authors only call b.connector(...). */
-export function withConnectorDeclarations<T extends object>(base: T): T & BindleBuilder {
+export function withConnectorDeclarations<T extends object>(
+	base: T,
+): T & BindleBuilder {
 	const bindings: BuilderConnectorRegistry = new Map();
 	const builder = {
 		...base,

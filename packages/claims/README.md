@@ -94,3 +94,6 @@ trace, or a public read model; only the reference does.
 - `contracts/pacts/claim-coordinator-strategy.pact.json` — the coordinator to
   provider-strategy boundary, including observation that deliberately does not
   complete an item.
+
+Run `pnpm --filter @hobo/claims test` for reducer, admission, one-time action,
+and provider-strategy contract coverage.

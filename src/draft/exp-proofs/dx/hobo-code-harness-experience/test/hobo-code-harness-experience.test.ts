@@ -6,9 +6,9 @@ import {
 } from "../src/hobo-code-harness-experience.js";
 
 describe("hobo-code-harness-experience", () => {
-	it("exercises template, visual lock-in, and isolation cleanup", () => {
+	it("exercises template, visual lock-in, and isolation cleanup", async () => {
 		expect(EXPERIENCE_ID).toBe("hobo-code-harness-experience");
-		const result = runHoboCodeHarnessExperience();
+		const result = await runHoboCodeHarnessExperience();
 		expect(result.templateOk).toBe(true);
 		expect(result.visualOk).toBe(true);
 		expect(result.evidenceOk).toBe(true);

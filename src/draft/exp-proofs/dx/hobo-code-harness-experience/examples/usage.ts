@@ -6,7 +6,7 @@ import { strict as assert } from "node:assert";
 
 import { runHoboCodeHarnessExperience } from "../src/hobo-code-harness-experience.js";
 
-const result = runHoboCodeHarnessExperience();
+const result = await runHoboCodeHarnessExperience();
 assert.equal(result.templateOk, true);
 assert.equal(result.visualOk, true);
 assert.equal(result.evidenceOk, true);

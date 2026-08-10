@@ -439,3 +439,26 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 | Gates | live `examples:regression` / `:opensaas` / `:anon` PASS; staged `agent:check` at finish |
 | Status | closed — Pages deploy follow-up publishes WIT `examples/runtime` (nested gitignore fix) |
 
+
+
+## 2026-08-10 — full-gate verification sweep after getting latest
+
+- **scope:** `check:all` run against merged main (`601a2154b`, PRs through
+  #1053) surfaced three cold-checkout breaks, all fixed: (1) the
+  package-boundaries model (`packages/conformance/src/boundaries.ts`) was
+  missing nine packages (dispatcher, rift, pixel-village, yard-world, sdk,
+  registry, evals, training, agent-skills) so `lint:boundaries` threw before
+  evaluating a single rule; four now-visible outward edges recorded as
+  documented exceptions (provider-opa/cedar→contracts per 0017 F30,
+  provider-convex→bindles devDep-only, adapter-openbao→identity per #1003);
+  (2) the hobo-code-harness-experience draft proof still called
+  `startCodeSession`/`complete` synchronously after #1027 made them async —
+  proof, test, and example made async; (3) the examples-console cucumber
+  scenario (#1048) required a manually started `astro dev` — the steps now
+  boot and tear down the dev server themselves with a cf-temp health poll.
+- **verified:** boundaries green (zero violations); behavior 108/108;
+  draft artifacts, cascade, schema, standards, licenses, docs
+  coverage/design/OKF all green; unit lane 737 files green (3 tsc-in-test
+  proofs are 5s-timeout flaky only under full parallel load — pass in
+  isolation). Stale-dist gotcha noted: a warm worktree with a pre-#1048
+  `@hobo/bindles` dist 500s the examples console; rebuild fixes it.

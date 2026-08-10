@@ -68,6 +68,16 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 		role: "identity",
 		summary: "Bind an anonymous deployment to an account",
 	},
+	{
+		name: "recipes",
+		role: "read-only",
+		summary: "List and inspect deployment recipes and their claim terms",
+	},
+	{
+		name: "offer",
+		role: "read-only",
+		summary: "Compile a deployment offer and its consent requirements",
+	},
 	{ name: "plan", role: "read-only", summary: "Dry-run the up decision" },
 	{
 		name: "verify",

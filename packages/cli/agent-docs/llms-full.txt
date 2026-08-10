@@ -107,6 +107,20 @@ Product: hobo
 - MCP tool: `claim`
 - Capability: { port: hobo:mcp, resource: tool:claim, verb: call }
 
+### recipes
+- Role: read-only
+- Summary: List and inspect deployment recipes and their claim terms
+- CLI: `hobo recipes`
+- MCP tool: `recipes`
+- Capability: { port: hobo:mcp, resource: tool:recipes, verb: call }
+
+### offer
+- Role: read-only
+- Summary: Compile a deployment offer and its consent requirements
+- CLI: `hobo offer`
+- MCP tool: `offer`
+- Capability: { port: hobo:mcp, resource: tool:offer, verb: call }
+
 ### plan
 - Role: read-only
 - Summary: Dry-run the up decision

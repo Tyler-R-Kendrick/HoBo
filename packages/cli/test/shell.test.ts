@@ -24,6 +24,8 @@ const canonicalVerbNames = [
 	"deploy",
 	"incident",
 	"claim",
+	"recipes",
+	"offer",
 	"plan",
 	"verify",
 	"can-deploy",
@@ -96,6 +98,8 @@ Canonical verbs:
   deploy      delivery      Attested continuous delivery status/logs/rollback (secret-free)
   incident    delivery      CD failure disposition: A2H handoff or sandboxed self-heal
   claim       identity      Bind an anonymous deployment to an account
+  recipes     read-only     List and inspect deployment recipes and their claim terms
+  offer       read-only     Compile a deployment offer and its consent requirements
   plan        read-only     Dry-run the up decision
   verify      read-only     Run the unified Gatekeeper preflight
   can-deploy  read-only     Diagnose producer/consumer compatibility

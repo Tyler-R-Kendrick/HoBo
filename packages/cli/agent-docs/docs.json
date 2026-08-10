@@ -160,6 +160,30 @@
       }
     },
     {
+      "name": "recipes",
+      "role": "read-only",
+      "summary": "List and inspect deployment recipes and their claim terms",
+      "cli": "hobo recipes",
+      "mcpTool": "recipes",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:recipes",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "offer",
+      "role": "read-only",
+      "summary": "Compile a deployment offer and its consent requirements",
+      "cli": "hobo offer",
+      "mcpTool": "offer",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:offer",
+        "verb": "call"
+      }
+    },
+    {
       "name": "plan",
       "role": "read-only",
       "summary": "Dry-run the up decision",

@@ -68,26 +68,37 @@ tags: [hobo, competitors]
 | `app.auth` one-liner | `auth` resource kind + identity plane (SVIDs, OIDC) | ➕ agent principals included ([Plan 06](../design/ai-native-agent-auth.md#plan-06)) |
 | Open-SaaS starter kit | **App Kits / Resource Packs** — curated, signed bundles | 🔜 the borrow: ship opinionated kits (auth+payments+admin) as Packs ([Plan 25](../design/platform-engineering.md#plan-25)) |
 | `wasp deploy` (Fly/Railway) | `hobo up` with Matching-selected providers | ➕ provider-negotiated, `match.Decided`-audited |
-| `wasp build` standard bundle | Packaging path: an existing Wasp app deploys onto HoBo as a `container`/`service` resource | ✅ one-directional adoption, no dual authoring |
+| `wasp build` standard bundle | Packaging path: existing Wasp app via `@hobo/wasp` `waspApp` + `b.web(...)`; deps via OCI containers / external connectors | ✅ one-directional adoption, no dual authoring |
 
 **The borrow HoBo takes:** modular, spec-style feature composition and the
 Open-SaaS-shaped kit as **Resource Pack / App Kit inspiration** — higher-level
 Bindle kits with curated features, not a second authoring surface.
 
-**Try-site demo:** `/HoBo/examples/` ships real Wasp Open-SaaS under
-[`examples/wasp-opensaas/`](../../examples/wasp-opensaas/HOBO.md) (from `wasp new -t saas`),
-packaged as a HoBo Bindle (`container` Postgres + `service`). **Pool** stamps
-Environment Stations first (Cloudflare Temporary Accounts + CORS relay
-`POST /station` — anonymous `*.workers.dev` + claim URL; relay bootstrapped with
-Temporary Accounts, zero permanent API tokens; no Bindle in the yard surface).
-**Ship** then places the app onto those stations
-(Compose / Railway / Cloudflare app paths). Yard deploy files are station-only
-(`stationBootstrap`; no `waspApp` / `cli`).
+**Try-site demo:** `/HoBo/examples/` ships real [Open SaaS](https://docs.opensaas.sh/)
+under [`examples/wasp-opensaas/`](../../examples/wasp-opensaas/HOBO.md)
+(from [wasp-lang/open-saas](https://github.com/wasp-lang/open-saas)), declared as:
+
+```ts
+b.web(waspApp("examples/wasp-opensaas/app")).dependsOn(
+  b.container({ image: "postgres:16-alpine" }) // or b.external(...)
+)
+```
+
+Ship resolves that `root` and runs `wasp` there. Optional SaaS deps
+(Stripe/S3/email) come from camp / `b.external` connectors — discovered from
+`.env.*.example` via `@hobo/wasp` `discoverWaspEnv` per
+[Open SaaS deploying](https://docs.opensaas.sh/guides/deploying/).
+
+**Pool** stamps Environment Stations first (Cloudflare Temporary Accounts + CORS
+relay `POST /station` — anonymous `*.workers.dev` + claim URL; zero permanent
+API tokens; no Bindle in the yard surface). **Ship** places the Wasp app onto
+those stations (`wasp build` / Temporary Accounts / Compose realization). Yard
+deploy files are station-only (`stationBootstrap`; no `waspApp` / `cli`).
 Console URL: `/HoBo/examples/`. Start the bridge with
 `pnpm --filter hobo-site run examples:bridge`. Agent-browser feature:
 `pnpm --filter hobo-site run examples:regression`.
 
 **The one-line takeaway:** Wasp validates declarative app-level intent and
 opinionated kits; HoBo adopts those lessons at the Bindle/Pack layer and offers
-existing Wasp apps a packaging path — full dual authoring and generated React
-glue stay out of scope.
+existing Wasp apps a packaging path via `@hobo/wasp` — full dual authoring and
+generated React glue stay out of scope.

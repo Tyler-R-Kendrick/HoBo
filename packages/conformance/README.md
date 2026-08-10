@@ -234,7 +234,8 @@ pnpm exec turbo run test --filter ./packages/conformance
 ```
 
 The mandatory lanes are offline and deterministic. The live lane is opt-in and
-never runs as part of them.
+never runs as part of them. Suite, report, and SDK-parity artifacts carry the
+exported versioned schema identifiers so consumers can reject unknown versions.
 
 ## Boundaries
 

@@ -1,21 +1,26 @@
 import { bindle } from "@hobo/bindles";
+import { waspApp } from "@hobo/wasp";
 
 /**
- * HoBo packaging Bindle for real Wasp Open-SaaS
- * (examples/wasp-opensaas/app — wasp new -t saas).
+ * Real Open SaaS (wasp-lang/open-saas) Bindle.
+ * Docs: https://docs.opensaas.sh/ · deploy env: /guides/deploying/
  *
- * Deploy path: local Docker bridge onto Webernetes/Lakebed stations.
- * Not a browser WIT try-runtime kit.
+ * - db: self-host Postgres via OCI (or swap to b.external for BYO DATABASE_URL)
+ * - web: waspApp(root) — ship runs `wasp` in that directory
+ *
+ * Optional SaaS keys (Stripe, S3, SendGrid, …) come from camp / b.external
+ * connectors; discoverWaspEnv(root) lists them from .env.*.example.
  */
-export default bindle(
-	"opensaas",
-	{ require: ["http", "container"], runtimes: ["oci"] },
-	(b) => {
-		const db = b.container({
-			image: "postgres:16-alpine",
-			endpoints: { sql: { port: 5432 } },
-		});
-		const web = b.service().dependsOn(db);
-		return { db, web };
-	},
-);
+export default bindle((b) => {
+	const db = b.container({
+		image: "postgres:16-alpine",
+		endpoints: { postgres: { port: 5432 } },
+		env: {
+			POSTGRES_USER: "wasp",
+			POSTGRES_PASSWORD: "wasp",
+			POSTGRES_DB: "OpenSaaS",
+		},
+	});
+	const web = b.web(waspApp("examples/wasp-opensaas/app")).dependsOn(db);
+	return { db, web };
+});

@@ -9,6 +9,14 @@ export type OpenSaasTemporaryShipResult = {
 	readonly expiresAt: string;
 	readonly anonymous: true;
 	readonly temporary: true;
+	readonly databaseMode: "neon-claimable";
+	readonly databaseClaimUrl: string;
+	readonly databaseMocked: boolean;
+	readonly serverMode:
+		| "openpouch-anon"
+		| "clawdship-anon"
+		| "cloudflare-temp-neon";
+	readonly serverMocked: boolean;
 };
 
 function sameOriginCfTempBase(pageUrl?: string | URL, basePath = "/HoBo/"): string {
@@ -30,23 +38,31 @@ function sameOriginCfTempBase(pageUrl?: string | URL, basePath = "/HoBo/"): stri
 }
 
 /**
- * Ship real Wasp OpenSaaS client via same-origin Temporary Accounts API.
- * Does not use local-bridge / wrangler login / permanent API tokens.
+ * Ship real Open SaaS via Temporary Accounts.
+ * `root` is the Bindle waspApp(root) path — server builds that tree.
+ * Bindle `db` is realized via Neon Claimable (anon, zero project keys).
  */
 export async function shipOpenSaasViaTemporaryAccounts(input: {
 	readonly stationId: string;
 	readonly pageUrl?: string | URL;
 	readonly basePath?: string;
 	readonly fetchImpl?: typeof fetch;
+	readonly root: string;
 }): Promise<OpenSaasTemporaryShipResult> {
 	const base = sameOriginCfTempBase(input.pageUrl, input.basePath);
 	const fetchImpl = input.fetchImpl ?? fetch;
+	if (!input.root.trim()) {
+		throw new Error("Temporary Accounts ship requires Bindle waspApp(root)");
+	}
 	let response: Response;
 	try {
 		response = await fetchImpl(`${base}/opensaas`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ stationId: input.stationId }),
+			body: JSON.stringify({
+				stationId: input.stationId,
+				root: input.root,
+			}),
 			signal: AbortSignal.timeout(600_000),
 		});
 	} catch (error) {
@@ -63,6 +79,11 @@ export async function shipOpenSaasViaTemporaryAccounts(input: {
 		serverUrl?: string;
 		claimUrl?: string;
 		expiresAt?: string;
+		databaseMode?: string;
+		databaseClaimUrl?: string;
+		databaseMocked?: boolean;
+		serverMode?: string;
+		serverMocked?: boolean;
 	};
 	if (!response.ok || !body.ok) {
 		throw new Error(
@@ -79,6 +100,29 @@ export async function shipOpenSaasViaTemporaryAccounts(input: {
 	if (!body.claimUrl || !body.serverUrl || !body.expiresAt) {
 		throw new Error("OpenSaaS Temporary Accounts response missing claimUrl/serverUrl");
 	}
+	if (body.databaseMode !== "neon-claimable" || !body.databaseClaimUrl) {
+		throw new Error(
+			"OpenSaaS Temporary Accounts response missing Neon claimable db fields",
+		);
+	}
+	if (
+		body.serverMode !== "openpouch-anon" &&
+		body.serverMode !== "clawdship-anon" &&
+		body.serverMode !== "cloudflare-temp-neon"
+	) {
+		throw new Error(
+			"OpenSaaS Temporary Accounts response missing anon server mode (openpouch-anon|clawdship-anon|cloudflare-temp-neon)",
+		);
+	}
+	if (
+		!body.serverUrl ||
+		/127\.0\.0\.1|localhost/iu.test(body.serverUrl) ||
+		body.serverUrl === body.clientUrl
+	) {
+		throw new Error(
+			"OpenSaaS Temporary Accounts serverUrl must be a distinct public anon host",
+		);
+	}
 	return {
 		exampleId: body.exampleId ?? "opensaas",
 		stationId: input.stationId,
@@ -88,5 +132,10 @@ export async function shipOpenSaasViaTemporaryAccounts(input: {
 		expiresAt: body.expiresAt,
 		anonymous: true,
 		temporary: true,
+		databaseMode: "neon-claimable",
+		databaseClaimUrl: body.databaseClaimUrl,
+		databaseMocked: Boolean(body.databaseMocked),
+		serverMode: body.serverMode,
+		serverMocked: Boolean(body.serverMocked),
 	};
 }

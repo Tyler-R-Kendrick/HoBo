@@ -11,6 +11,14 @@
 	},
 	"dependencies": {
 		"@hobo/bindles": "workspace:*",
-		"@hobo/runtime": "workspace:*"
+		"@hobo/convex": "workspace:*",
+		"@hobo/provider-browser-wasm": "workspace:*",
+		"@hobo/provider-cloudflare": "workspace:*",
+		"@hobo/provider-lakebed": "workspace:*",
+		"@hobo/provider-netlify": "workspace:*",
+		"@hobo/provider-vercel": "workspace:*",
+		"@hobo/provider-webernetes": "workspace:*",
+		"@hobo/runtime": "workspace:*",
+		"@hobo/wasp": "workspace:*"
 	}
 }

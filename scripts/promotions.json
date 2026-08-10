@@ -113,6 +113,12 @@
 			"digests": {
 				"event-body-upcaster-gate.ts": "sha256:7efc40d3e4d2b6383ebd748f9008aca5ad755c68a784ecac6b3fc719081f238e"
 			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/provider-vercel-contract",
+			"promotedTo": "packages/providers/provider-vercel",
+			"status": "reference",
+			"note": "Production @hobo/provider-vercel ships equivalence + impedance + fail-closed temporary provision (no VERCEL_TOKEN for Examples). Draft proof remains reference for PortabilityReport / marketplace depth until those slices land."
 		}
 	]
 }

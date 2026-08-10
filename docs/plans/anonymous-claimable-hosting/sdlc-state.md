@@ -20,8 +20,11 @@ and the Try HoBo experience as reviewable dependency-ordered pull requests.
 1. `sdlc/anonymous-hosting-01-foundations` — capability, binding, claim, trust, and durable ownership contracts.
 2. `sdlc/anonymous-hosting-02-realizations` — portable data, KV, and OCI realization packs.
 3. `sdlc/anonymous-hosting-03-resolution` — recipes, capability resolution, conformance, and architecture guidance.
-4. `sdlc/anonymous-hosting-04-providers` — provider adapters and HoBo runtime/CLI integration.
-5. `sdlc/anonymous-hosting-05-experience` — examples, site, proofs, generated docs, and operational guidance.
+4. `sdlc/anonymous-hosting-04-providers` — claimable data-provider adapters.
+5. `sdlc/anonymous-hosting-05-edge-providers` — claimable edge-host adapters.
+6. `sdlc/anonymous-hosting-06-runtime-providers` — portable runtime-host adapters.
+7. `sdlc/anonymous-hosting-07-integration` — HoBo runtime, CLI, and app-framework integration.
+8. `sdlc/anonymous-hosting-08-experience` — examples, site, proofs, generated docs, and operational guidance.
 
 ## Closeout
 

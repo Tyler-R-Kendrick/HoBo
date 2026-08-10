@@ -1,6 +1,8 @@
 /**
- * Deploy real Wasp OpenSaaS client to Cloudflare Temporary Accounts.
- * Zero permanent CLOUDFLARE_API_TOKEN — `wrangler deploy --temporary` logged out.
+ * Full Temporary OpenSaaS ship (anon, zero project API keys):
+ * 1) Neon Claimable Postgres (Bindle `db`)
+ * 2) Anon server host chain: OpenPouch HTTP → Clawdship Docker → CF Temporary Neon shim
+ * 3) Cloudflare Temporary Pages client (REACT_APP_API_URL → server)
  */
 import { spawn } from "node:child_process";
 import { access } from "node:fs/promises";
@@ -8,18 +10,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseWranglerTemporaryOutput } from "../../packages/providers/provider-cloudflare/src/wrangler-temporary.ts";
+import { resolveWaspRoot } from "@hobo/wasp";
+import {
+	provisionAnonOpenSaasServer,
+	type AnonServerHostMode,
+} from "./anon-server-host-chain.mts";
+import { provisionNeonClaimablePostgres } from "./neon-claimable-postgres.mts";
 
 const REPO_ROOT = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
 	"../..",
-);
-export const OPENSAAS_APP_ROOT = path.join(
-	REPO_ROOT,
-	"examples/wasp-opensaas/app",
-);
-const CLIENT_BUILD = path.join(
-	OPENSAAS_APP_ROOT,
-	".wasp/out/web-app/build/index.html",
 );
 
 export type OpenSaasTemporaryDeployResult = {
@@ -31,6 +31,14 @@ export type OpenSaasTemporaryDeployResult = {
 	readonly anonymous: true;
 	readonly temporary: true;
 	readonly exampleId: "opensaas";
+	readonly waspAbsRoot: string;
+	readonly databaseUrl: string;
+	readonly databaseClaimUrl: string;
+	readonly databaseMode: "neon-claimable";
+	readonly databaseMocked: boolean;
+	readonly serverMode: AnonServerHostMode;
+	readonly serverMocked: boolean;
+	readonly serverFallbackFrom?: string;
 };
 
 function run(
@@ -62,15 +70,25 @@ function run(
 	});
 }
 
-async function ensureClientBuild(env: NodeJS.ProcessEnv): Promise<void> {
-	try {
-		await access(CLIENT_BUILD);
-		return;
-	} catch {
-		/* build missing */
+async function ensureClientBuild(
+	waspAbsRoot: string,
+	env: NodeJS.ProcessEnv,
+	force: boolean,
+): Promise<void> {
+	const clientBuild = path.join(
+		waspAbsRoot,
+		".wasp/out/web-app/build/index.html",
+	);
+	if (!force) {
+		try {
+			await access(clientBuild);
+			return;
+		} catch {
+			/* build missing */
+		}
 	}
 
-	const waspOk = (await run("wasp", ["version"], OPENSAAS_APP_ROOT, env)).code === 0;
+	const waspOk = (await run("wasp", ["version"], waspAbsRoot, env)).code === 0;
 	if (!waspOk) {
 		throw new Error(
 			"wasp CLI not found. Install: npm i -g @wasp.sh/wasp-cli@^0.25",
@@ -86,7 +104,7 @@ async function ensureClientBuild(env: NodeJS.ProcessEnv): Promise<void> {
 		SMTP_USERNAME: env.SMTP_USERNAME ?? "x",
 		SMTP_PASSWORD: env.SMTP_PASSWORD ?? "x",
 	};
-	const waspBuild = await run("wasp", ["build"], OPENSAAS_APP_ROOT, buildEnv);
+	const waspBuild = await run("wasp", ["build"], waspAbsRoot, buildEnv);
 	if (waspBuild.code !== 0) {
 		throw new Error(
 			waspBuild.stderr.trim() ||
@@ -95,7 +113,7 @@ async function ensureClientBuild(env: NodeJS.ProcessEnv): Promise<void> {
 		);
 	}
 
-	const vite = await run("npx", ["vite", "build"], OPENSAAS_APP_ROOT, {
+	const vite = await run("npx", ["vite", "build"], waspAbsRoot, {
 		...buildEnv,
 		REACT_APP_API_URL: env.REACT_APP_API_URL ?? "https://example.com",
 	});
@@ -104,26 +122,86 @@ async function ensureClientBuild(env: NodeJS.ProcessEnv): Promise<void> {
 			vite.stderr.trim() || vite.stdout.trim() || "vite build failed for OpenSaaS",
 		);
 	}
-	await access(CLIENT_BUILD);
+	await access(clientBuild);
 }
 
 /**
- * Build (if needed) + `wrangler deploy --temporary` for OpenSaaS static client.
+ * Full anon Temporary OpenSaaS: Neon db + anon server chain + CF Temporary client.
  */
 export async function deployOpenSaasTemporaryClient(input: {
+	readonly root: string;
 	readonly wranglerBin?: string;
 	readonly skipBuild?: boolean;
-} = {}): Promise<OpenSaasTemporaryDeployResult> {
+	readonly mockDatabase?: boolean;
+	readonly mockServer?: boolean;
+}): Promise<OpenSaasTemporaryDeployResult> {
+	const waspAbsRoot = resolveWaspRoot(REPO_ROOT, input.root);
 	const env = { ...process.env };
 	delete env.CLOUDFLARE_API_TOKEN;
 	delete env.CLOUDFLARE_API_KEY;
 	delete env.CF_API_TOKEN;
 	delete env.CLOUDFLARE_ACCOUNT_ID;
 
-	if (!input.skipBuild) {
-		await ensureClientBuild(env);
+	const mockDatabase =
+		input.mockDatabase === true || env.HOBO_OPENSAAS_DB_MOCK === "1";
+	const mockServer =
+		input.mockServer === true || env.HOBO_OPENSAAS_SERVER_MOCK === "1";
+
+	const database = await provisionNeonClaimablePostgres({
+		ref: "hobo-opensaas",
+		mock: mockDatabase,
+	});
+	env.DATABASE_URL = database.databaseUrl;
+
+	// Placeholder client URL for server boot (dev CORS is open).
+	const placeholderClient = "https://hobo-opensaas-client.workers.dev";
+	const server = await provisionAnonOpenSaasServer({
+		waspAbsRoot,
+		databaseUrl: database.databaseUrl,
+		webClientUrl: placeholderClient,
+		mock: mockServer,
+	});
+	// #region agent log
+	fetch("http://127.0.0.1:7655/ingest/eac23247-0462-43c4-8e6e-14b2a6cecba6", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-Debug-Session-Id": "2dc295",
+		},
+		body: JSON.stringify({
+			sessionId: "2dc295",
+			runId: process.env.HOBO_DEBUG_RUN_ID ?? "pre-fix",
+			hypothesisId: "E",
+			location: "deploy-opensaas-temporary-lib.mts:server",
+			message: "anon server provisioned for OpenSaaS Temporary",
+			data: {
+				mode: server.mode,
+				mocked: server.mocked,
+				fallbackFrom:
+					"fallbackFrom" in server ? server.fallbackFrom ?? null : null,
+				host: (() => {
+					try {
+						return new URL(server.serverUrl).hostname;
+					} catch {
+						return "invalid";
+					}
+				})(),
+			},
+			timestamp: Date.now(),
+		}),
+	}).catch(() => {});
+	// #endregion
+	env.REACT_APP_API_URL = server.serverUrl;
+	env.WASP_SERVER_URL = server.serverUrl;
+	env.WASP_WEB_CLIENT_URL = placeholderClient;
+
+	const forceClientRebuild = !mockServer;
+	if (!input.skipBuild || forceClientRebuild) {
+		await ensureClientBuild(waspAbsRoot, env, forceClientRebuild);
 	} else {
-		await access(CLIENT_BUILD);
+		await access(
+			path.join(waspAbsRoot, ".wasp/out/web-app/build/index.html"),
+		);
 	}
 
 	const bin = input.wranglerBin ?? "npx";
@@ -131,7 +209,7 @@ export async function deployOpenSaasTemporaryClient(input: {
 		bin === "npx"
 			? ["--yes", "wrangler@4.102.0", "deploy", "--temporary"]
 			: ["deploy", "--temporary"];
-	const result = await run(bin, args, OPENSAAS_APP_ROOT, env);
+	const result = await run(bin, args, waspAbsRoot, env);
 	if (result.code !== 0) {
 		throw new Error(
 			result.stderr.trim() ||
@@ -140,14 +218,24 @@ export async function deployOpenSaasTemporaryClient(input: {
 		);
 	}
 	const parsed = parseWranglerTemporaryOutput(result.stdout, result.stderr);
+
 	return {
 		ok: true,
 		clientUrl: parsed.stationUrl,
-		serverUrl: parsed.stationUrl,
+		serverUrl: server.serverUrl,
 		claimUrl: parsed.claimUrl,
-		expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+		expiresAt: database.expiresAt,
 		anonymous: true,
 		temporary: true,
 		exampleId: "opensaas",
+		waspAbsRoot,
+		databaseUrl: database.databaseUrl,
+		databaseClaimUrl: database.claimUrl,
+		databaseMode: "neon-claimable",
+		databaseMocked: database.mocked,
+		serverMode: server.mode,
+		serverMocked: server.mocked,
+		serverFallbackFrom:
+			"fallbackFrom" in server ? server.fallbackFrom : undefined,
 	};
 }

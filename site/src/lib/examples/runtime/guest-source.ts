@@ -17,7 +17,7 @@ export type BrowserStationInvokeResponse = Pick<
 export interface BrowserRuntimeExample {
 	readonly id: string;
 	readonly runtime: BrowserRuntimeDescriptor;
-	/** Object-literal source from examples/try-site/apps/<id>/handlers.mjs */
+	/** Object-literal source from examples/try-site/apps/<id>/handlers.txt */
 	readonly handlersSource?: string;
 }
 

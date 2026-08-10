@@ -457,7 +457,7 @@ test("examples package source changes select architecture guard and workspace te
 
 test("try-site app definitions select their workspace tests", () => {
 	const { workspaces, checks } = plan(
-		["examples/try-site/apps/kv-notes/app.ts"],
+		["examples/try-site/apps/hello-world/app.ts"],
 		{
 			workspacePackageExists: () => true,
 		},

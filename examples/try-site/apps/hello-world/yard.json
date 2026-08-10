@@ -11,8 +11,7 @@
 				"yard:cloudflare",
 				"yard:netlify",
 				"yard:vercel",
-				"yard:lakebed",
-				"yard:kubernetes"
+				"yard:lakebed"
 			]
 		}
 	}

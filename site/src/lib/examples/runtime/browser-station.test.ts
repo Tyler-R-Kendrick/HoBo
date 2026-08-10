@@ -83,14 +83,15 @@ describe("browser WIT Environment Station", () => {
 	});
 
 	it(
-		"implements greet from hello-world Bindle-derived guest handlers",
+		"implements greet from hello-world handlers.txt guest handlers",
 		async () => {
 		const { loadExamplesCatalog } = await import("../catalog.js");
 		const catalog = await loadExamplesCatalog();
 		const hello = catalog.find(({ id }) => id === "hello-world")!;
 		expect(hello.handlersSource).toContain("Hello World!");
-		expect(hello.source).toContain("b.web(Hello)");
-		expect(hello.source).not.toContain("handlers.mjs");
+		expect(hello.source).toContain("b.web()");
+		expect(hello.source).not.toContain("@trainable");
+		expect(hello.source).not.toContain("handlers.txt");
 		const source = buildBrowserStationGuestSource([
 			{
 				id: hello.id,
@@ -117,6 +118,52 @@ describe("browser WIT Environment Station", () => {
 		expect(invoke({ name: "Bo" })).toEqual({
 			status: 200,
 			body: { greeting: "Hello, Bo!" },
+		});
+		},
+		30_000,
+	);
+
+	it(
+		"implements todo-api list/create/toggle via kv-backed built-in guest actions",
+		async () => {
+		const { loadExamplesCatalog } = await import("../catalog.js");
+		const catalog = await loadExamplesCatalog();
+		const todos = catalog.find(({ id }) => id === "todo-api")!;
+		expect(todos.source).toContain("@trainable");
+		expect(todos.handlersSource).toBe("");
+		const source = buildBrowserStationGuestSource([
+			{
+				id: todos.id,
+				runtime: todos.runtime,
+				handlersSource: todos.handlersSource,
+			},
+		]);
+		const guest = (await import(
+			`data:text/javascript,${encodeURIComponent(source)}`
+		)) as {
+			invoke(request: BrowserStationInvokeRequest): BrowserStationInvokeResponse;
+		};
+		const invoke = (method: string, path: string, body?: unknown) => {
+			const response = guest.invoke({
+				exampleId: "todo-api",
+				stationId: "station:browser:test",
+				method,
+				path,
+				bodyJson: JSON.stringify(body ?? {}),
+			});
+			return { status: response.status, body: JSON.parse(response.bodyJson) };
+		};
+		expect(invoke("POST", "/api/todos", { text: "ship it", completed: false })).toEqual({
+			status: 201,
+			body: { id: "1", text: "ship it", completed: false },
+		});
+		expect(invoke("GET", "/api/todos")).toEqual({
+			status: 200,
+			body: { items: [{ id: "1", text: "ship it", completed: false }] },
+		});
+		expect(invoke("PATCH", "/api/todos/:id", { id: "1" })).toEqual({
+			status: 200,
+			body: { id: "1", text: "ship it", completed: true },
 		});
 		},
 		30_000,

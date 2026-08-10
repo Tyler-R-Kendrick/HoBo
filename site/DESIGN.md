@@ -461,6 +461,23 @@ Buttons are **roadside / tavern sign boards**, not soft ellipses or Material CTA
 
 - **spark** outline 2.5px — always visible for a11y.
 
+### Native chrome
+
+OS defaults (grey scroll thumbs, system select arrows, triangle `<details>`
+markers, bland cursors) are **off-system**. Own them in
+`site/src/styles/native-chrome.css` (loaded from `Base.astro` after
+`global.css`):
+
+- **Scrollbars:** thick ink thumb on inset track; hover → `spark`; Firefox via
+  `scrollbar-color` / `scrollbar-width`.
+- **Cursors:** SVG ink pointer / hand / I-beam (`--cursor-ink`,
+  `--cursor-point`, `--cursor-type`); `not-allowed` on disabled.
+- **Selects:** `appearance: none` + ink chevron; sticker border + hard offset
+  shadow. Multi-select lists use authored checklists (see Examples), not OS
+  `<select multiple>` chrome.
+- **Details:** ink chevron that rotates open; hide `::-webkit-details-marker`.
+- **Checkboxes / radios / range:** `accent-color: var(--ink)`.
+
 ## Do's and Don'ts
 
 ### Do

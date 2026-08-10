@@ -1,0 +1,12 @@
+{
+  "name": "@hobo/draft-convex-swaghaus-bindle",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --root ."
+  },
+  "dependencies": {
+    "@hobo/bindles": "workspace:*",
+    "@hobo/convex": "workspace:*"
+  }
+}

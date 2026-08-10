@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { loadExamplesCatalog } from "./catalog.js";
 import {
+	allYardUiTargetIds,
+	buildYardUiOptions,
+	composePoolDeploySource,
 	defaultSelectedStationIds,
 	defaultSelectedTargetIds,
 	HOST_SANDBOX_TOKENS,
@@ -16,6 +19,9 @@ import {
 	SHIP_LOCKED_DEPLOY_LABEL,
 	shipStationsReady,
 	targetPackCanHostNow,
+	toggleYardUiOption,
+	yardOptionSelectionState,
+	yardSelectionSummary,
 } from "./controller.js";
 import { resolveDemoPolicy } from "./demo-policies.js";
 import type { DeployedStation } from "./station-registry.js";
@@ -51,7 +57,7 @@ describe("Examples Home Station", () => {
 		]);
 		expect(localOnly.skipped.find(({ target }) => target.id === "cloudflare")).toBeUndefined();
 		expect(targetPackCanHostNow("cloudflare")).toBe(true);
-		expect(targetPackCanHostNow("railway")).toBe(true);
+		expect(targetPackCanHostNow("lakebed")).toBe(true);
 		expect(targetPackCanHostNow("netlify")).toBe(true);
 		expect(targetPackCanHostNow("vercel")).toBe(true);
 
@@ -65,7 +71,7 @@ describe("Examples Home Station", () => {
 
 	it("gates example deploy onto deployed stations only", async () => {
 		const catalog = await loadExamplesCatalog();
-		const queue = catalog.find(({ id }) => id === "queue-echo")!;
+		const hello = catalog.find(({ id }) => id === "hello-world")!;
 		const stations: DeployedStation[] = [
 			{
 				id: "station:browser:home:browser-wasm",
@@ -87,14 +93,15 @@ describe("Examples Home Station", () => {
 			},
 		];
 
-		expect([...defaultSelectedStationIds(queue, stations)]).toEqual([
+		expect([...defaultSelectedStationIds(hello, stations)]).toEqual([
 			"station:browser:home:browser-wasm",
 			"station:browser:home:webernetes",
 		]);
+		// Empty appPolicy → single primary; both stations stay selected for Ship.
 		expect(
-			resolveExampleStationPlan(queue, stations).provision.map(({ target }) => target.id),
-		).toEqual(["browser-wasm", "webernetes"]);
-		expect(resolveExampleStationPlan(queue, []).provision).toEqual([]);
+			resolveExampleStationPlan(hello, stations).provision.map(({ target }) => target.id),
+		).toEqual(["browser-wasm"]);
+		expect(resolveExampleStationPlan(hello, []).provision).toEqual([]);
 	});
 
 	it("keeps repository policy fixtures for example→yard planning", async () => {
@@ -110,56 +117,123 @@ describe("Examples Home Station", () => {
 		);
 
 		expect(plans["hello-world"]).toEqual([["browser-wasm", "primary"]]);
-		expect(plans["kv-notes"]).toEqual([
-			["browser-wasm", "primary"],
-			["cloudflare", "standby"],
-		]);
 		expect(plans["todo-api"]).toEqual([["browser-wasm", "primary"]]);
-		expect(plans["queue-echo"]).toEqual([
-			["browser-wasm", "primary"],
-			["webernetes", "replica"],
-			["lakebed", "replica"],
-		]);
 		expect(plans["opensaas"]).toEqual([["webernetes", "primary"]]);
+		expect(plans["swaghaus"]).toEqual([["cloudflare", "primary"]]);
 	});
 
-	it("selects only Yard-allowed candidates; Cloudflare/Railway stay hostable", async () => {
+	it("defaults Pool selection to every hostable yard", async () => {
 		const catalog = await loadExamplesCatalog();
-		const queue = catalog.find(({ id }) => id === "queue-echo")!;
-		const notes = catalog.find(({ id }) => id === "kv-notes")!;
+		const yards = catalog[0]!.topology.yards;
+		const { defaultPoolTargetIds } = await import("./controller.js");
+		expect([...defaultPoolTargetIds(yards)].sort()).toEqual(
+			[
+				"browser-wasm",
+				"cloudflare",
+				"lakebed",
+				"netlify",
+				"vercel",
+				"webernetes",
+			].sort(),
+		);
+	});
+
+	it("selects only Yard-allowed candidates; Cloudflare/Vercel stay hostable", async () => {
+		const catalog = await loadExamplesCatalog();
+		const hello = catalog.find(({ id }) => id === "hello-world")!;
 		const saas = catalog.find(({ id }) => id === "opensaas")!;
 
-		expect([...defaultSelectedTargetIds(queue)]).toEqual([
-			"browser-wasm",
-			"webernetes",
-			"lakebed",
-		]);
-		const notesCf = resolveExampleDeployPlan(notes).skipped.find(
+		expect([...defaultSelectedTargetIds(hello)].sort()).toEqual(
+			[
+				"browser-wasm",
+				"cloudflare",
+				"lakebed",
+				"netlify",
+				"vercel",
+				"webernetes",
+			].sort(),
+		);
+		const helloCf = resolveExampleDeployPlan(hello).skipped.find(
 			({ target }) => target.id === "cloudflare",
 		);
 		// Cloudflare is hostable; may still be skipped for budget/role reasons, never cannot-host.
-		if (notesCf) expect(notesCf.reason).not.toBe("cannot-host");
+		if (helloCf) expect(helloCf.reason).not.toBe("cannot-host");
 		expect(saas.topology.allowedYardIds).toEqual([
 			"yard:webernetes",
 			"yard:lakebed",
 			"yard:cloudflare",
-			"yard:railway",
+			"yard:vercel",
 		]);
 		expect(targetPackCanHostNow("cloudflare")).toBe(true);
-		expect(targetPackCanHostNow("railway")).toBe(true);
+		expect(targetPackCanHostNow("vercel")).toBe(true);
 	});
 
-	it("loads yard deploy surfaces for Pool Stage Source", async () => {
+	it("loads yard deploy surfaces for Pool Code", async () => {
 		const sources = await loadYardDeploySources();
 		const byId = Object.fromEntries(sources.map((entry) => [entry.targetId, entry]));
 		expect(byId.cloudflare?.sourcePath).toBe(
 			"examples/try-site/yards/cloudflare.deploy.ts",
 		);
-		expect(byId.railway?.source).toContain("anonymous-remote");
-		expect(byId.railway?.source).not.toContain("waspApp");
+		expect(byId.railway).toBeUndefined();
+		expect(byId.vercel?.source).toContain("@hobo/provider-vercel");
 		expect(byId.cloudflare?.source).not.toMatch(/\bcli\s*:/);
-		expect(byId.cloudflare?.source).toContain("stationBootstrap");
-		expect(byId["browser-wasm"]?.source).toContain("browser-wit");
+		expect(byId.cloudflare?.source).toContain("@hobo/provider-cloudflare");
+		expect(byId["browser-wasm"]?.source).toContain("browserWasm");
+	});
+
+	it("merges Browser WASM + Webernetes into one Local yard option", async () => {
+		const catalog = await loadExamplesCatalog();
+		const options = buildYardUiOptions(catalog[0]!.topology.yards);
+		const local = options.find((option) => option.id === "local");
+		expect(local?.targetIds).toEqual(["browser-wasm", "webernetes"]);
+		expect(options.some((option) => option.id === "browser-wasm")).toBe(false);
+		expect(options.some((option) => option.id === "webernetes")).toBe(false);
+		expect(options.some((option) => option.id === "cloudflare")).toBe(true);
+
+		const none = new Set<string>();
+		const both = toggleYardUiOption(none, local!);
+		expect([...both].sort()).toEqual(["browser-wasm", "webernetes"]);
+		expect(yardOptionSelectionState(local!, both)).toBe("all");
+		// Local is one UI option covering two stations — summary names the count.
+		expect(yardSelectionSummary(options, both)).toBe("Local · 2 stations");
+		expect(toggleYardUiOption(both, local!).size).toBe(0);
+		const allIds = new Set(allYardUiTargetIds(options));
+		expect(allIds.size).toBe(6);
+		expect(yardSelectionSummary(options, allIds)).toBe("All · 6 stations");
+		expect(allYardUiTargetIds(options)).toEqual(
+			expect.arrayContaining(["browser-wasm", "webernetes", "cloudflare"]),
+		);
+		expect(allYardUiTargetIds(options)).not.toContain("kubernetes");
+		expect(options.some((option) => option.id === "kubernetes")).toBe(false);
+	});
+
+	it("composes Pool Code as station({ yards }) from the provision plan", async () => {
+		const catalog = await loadExamplesCatalog();
+		const yards = catalog[0]!.topology.yards;
+		const plan = resolveStationDeployPlan(
+			yards,
+			new Set(["browser-wasm", "webernetes", "cloudflare"]),
+			"local-only",
+		);
+		const composed = composePoolDeploySource({
+			provision: plan.provision,
+		});
+		expect(plan.provision.map(({ target }) => target.id).sort()).toEqual([
+			"browser-wasm",
+			"cloudflare",
+			"webernetes",
+		]);
+		expect(composed.pathLabel).toBe("examples/try-site/station.deploy.ts");
+		expect(composed.source).toContain('import { station } from "@hobo/stations"');
+		expect(composed.source).toContain("@hobo/provider-browser-wasm");
+		expect(composed.source).toContain("@hobo/provider-webernetes");
+		expect(composed.source).toContain("@hobo/provider-cloudflare");
+		expect(composed.source).toContain("browserWasm");
+		expect(composed.source).toContain("webernetes");
+		expect(composed.source).toContain("cloudflare");
+		expect(composed.source).toMatch(/export default station\(\{\s*yards:/);
+		expect(composed.source).not.toMatch(/\bstationBootstrap\b/);
+		expect(composed.source).not.toMatch(/\bcapabilities\b/);
 	});
 
 	it("waits for in-flight bootstrap workers before a failed deployment rejects", async () => {
@@ -184,9 +258,14 @@ describe("Examples Home Station", () => {
 		);
 		const focusId = pickSourceFocusId(selected, "opensaas", catalog[0]!.id);
 		const focus = catalog.find((example) => example.id === focusId);
-		expect(focus?.source).toContain("opensaas");
 		expect(focus?.source).toContain("b.container");
+		expect(focus?.source).toContain("waspApp(");
+		expect(focus?.source).toContain("examples/wasp-opensaas/app");
+		expect(focus?.source).not.toContain("hobo/opensaas-");
 		expect(focus?.deployKind).toBe("local-bridge");
+		expect(focus?.bindleContainers.map((c) => c.name)).toEqual(["db"]);
+		expect(focus?.bindleWebApp?.framework).toBe("wasp");
+		expect(focus?.bindleWebApp?.root).toBe("examples/wasp-opensaas/app");
 	});
 
 	it("prefers the active live host over Ship selection for Stage Source", async () => {
@@ -211,7 +290,7 @@ describe("Examples Home Station", () => {
 				}),
 		);
 		expect(focus?.source).toContain("b.container");
-		expect(focus?.source).not.toContain("b.web(Hello)");
+		expect(focus?.source).not.toContain("@trainable");
 	});
 
 	it("hard-locks Ship until registry.stations.length > 0", async () => {
@@ -224,12 +303,22 @@ describe("Examples Home Station", () => {
 		expect(resolveExampleStationPlan(hello, []).provision).toEqual([]);
 	});
 
-	it("keeps hello Source as Bindle-only app.ts (no guest/try-runtime theater)", async () => {
+	it("keeps hello Source as minimal plain web Bindle (no trainable)", async () => {
 		const catalog = await loadExamplesCatalog();
 		const hello = catalog.find(({ id }) => id === "hello-world")!;
 		expect(hello.source.trimStart().startsWith("import")).toBe(true);
-		expect(hello.source).toContain("b.web(Hello)");
+		expect(hello.source).toContain("b.web()");
+		expect(hello.source).not.toContain("@trainable");
 		expect(hello.source).not.toContain("guest handlers");
-		expect(hello.source).not.toContain("schemaVersion");
+		expect(hello.source).toContain("export const runtime");
+	});
+
+	it("keeps todo Source as trainable Todos on b.web", async () => {
+		const catalog = await loadExamplesCatalog();
+		const todos = catalog.find(({ id }) => id === "todo-api")!;
+		expect(todos.source).toContain("@trainable");
+		expect(todos.source).toContain("b.web(Todos)");
+		expect(todos.source).not.toContain("export const runtime");
+		expect(todos.handlersSource).toBe("");
 	});
 });

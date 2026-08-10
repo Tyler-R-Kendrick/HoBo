@@ -14,6 +14,19 @@ import {
 	provisionAnonStationViaSameOrigin,
 	shipOpenSaasViaSameOriginAnon,
 } from "./anon-host-client.js";
+import { provisionLakebedStationViaBroker } from "./lakebed-broker-client.js";
+import {
+	isProviderTempId,
+	provisionProviderTempStation,
+} from "./provider-temp-client.js";
+import {
+	primitivesForExample,
+	recipesForExample,
+	summarizeTerms,
+	termsRows,
+} from "./app-recipe-terms.js";
+import { TARGET_CAPABILITY_PACKS } from "./target-capability-packs.js";
+import { provisionVercelStationViaBroker } from "./vercel-broker-client.js";
 import {
 	applyLocalBridgeUrlOverride,
 	createBridgeStationHost,
@@ -21,6 +34,7 @@ import {
 	probeLocalBridge,
 } from "./local-bridge-client.js";
 import { shipOpenSaasViaTemporaryAccounts } from "./opensaas-temporary-ship.js";
+import { shipSwaghausViaTemporaryAccounts } from "./swaghaus-temporary-ship.js";
 import {
 	applyStationBrokerUrlOverride,
 	provisionCloudflareStationViaBroker,
@@ -45,8 +59,13 @@ import {
 	type DeployedStation,
 	type StationRegistry,
 } from "./station-registry.js";
-import {
+import { composePoolDeploySource } from "./yard-deploy-source-contract.js";
+
+export { composePoolDeploySource } from "./yard-deploy-source-contract.js";
+export {
+	providerImportForTarget,
 	yardDeployByTarget,
+	type ProviderImportSpec,
 	type YardDeploySource,
 } from "./yard-deploy-source-contract.js";
 
@@ -56,6 +75,7 @@ interface TargetPack {
 	readonly canHostNow: boolean;
 	readonly unavailableReason?: string;
 	readonly native: readonly string[];
+	/** Matching prefer-degrades (missing ports) — formerly ad-hoc lowers. */
 	readonly lowers: Readonly<Record<string, string>>;
 	readonly environment: string;
 }
@@ -73,6 +93,8 @@ interface LiveHost {
 	readonly exampleTitle: string;
 	readonly runtime: StationHostRuntime;
 	readonly frame: HTMLIFrameElement;
+	/** Anonymous / Temporary Accounts claim URL when the host issued one. */
+	readonly claimUrl?: string;
 }
 
 export const HOST_SANDBOX_TOKENS = ["allow-scripts"] as const;
@@ -85,72 +107,22 @@ export function shipStationsReady(stationCount: number): boolean {
 	return stationCount > 0;
 }
 
-const TARGET_PACKS: Readonly<Record<string, TargetPack>> = {
-	"browser-wasm": {
-		label: "Browser WASM",
-		resourceClass: "local",
-		canHostNow: true,
-		native: ["http", "kv", "queue"],
-		lowers: {},
-		environment: "same-origin agent anon host · browser Component Model",
-	},
-	webernetes: {
-		label: "Webernetes (local)",
-		resourceClass: "local",
-		canHostNow: true,
-		native: ["http", "kv", "queue", "container"],
-		lowers: {},
-		environment: "same-origin agent anon host (Docker bridge optional)",
-	},
-	cloudflare: {
-		label: "Cloudflare",
-		resourceClass: "anonymous-remote",
-		canHostNow: true,
-		native: ["http", "kv", "queue", "container"],
-		lowers: {},
-		environment: "Temporary Accounts Workers (no permanent token)",
-	},
-	railway: {
-		label: "Railway",
-		resourceClass: "anonymous-remote",
-		canHostNow: true,
-		native: ["http", "kv", "queue", "container"],
-		lowers: {},
-		environment: "same-origin agent anon host (Railway has no public anon API)",
-	},
-	netlify: {
-		label: "Netlify",
-		resourceClass: "anonymous-remote",
-		canHostNow: true,
-		native: ["http", "container"],
-		lowers: { kv: "memory", queue: "memory" },
-		environment: "same-origin agent anon host (Netlify --allow-anonymous is password-gated)",
-	},
-	vercel: {
-		label: "Vercel",
-		resourceClass: "anonymous-remote",
-		canHostNow: true,
-		native: ["http", "container"],
-		lowers: { kv: "memory", queue: "memory" },
-		environment: "same-origin agent anon host (Vercel claimable deploy retired)",
-	},
-	lakebed: {
-		label: "Lakebed (local)",
-		resourceClass: "local",
-		canHostNow: true,
-		native: ["http", "kv", "queue", "container"],
-		lowers: {},
-		environment: "same-origin agent anon host (Docker bridge optional)",
-	},
-	kubernetes: {
-		label: "Kubernetes (local simulation)",
-		resourceClass: "local",
-		canHostNow: true,
-		native: ["http"],
-		lowers: { kv: "in-memory binding", queue: "in-memory binding" },
-		environment: "same-origin agent anon host · no kubeconfig",
-	},
-};
+const TARGET_PACKS: Readonly<Record<string, TargetPack>> = Object.fromEntries(
+	Object.entries(TARGET_CAPABILITY_PACKS).map(([id, pack]) => [
+		id,
+		{
+			label: pack.label,
+			resourceClass: pack.resourceClass,
+			canHostNow: pack.canHostNow,
+			...(pack.unavailableReason
+				? { unavailableReason: pack.unavailableReason }
+				: {}),
+			native: pack.native,
+			lowers: pack.preferDegrades,
+			environment: pack.environment,
+		} satisfies TargetPack,
+	]),
+);
 
 let bridgeOnline = false;
 
@@ -177,14 +149,6 @@ export async function bootExamplesConsole(): Promise<void> {
 	const catalog = parseExamplesCatalog(await response.json());
 	if (catalog.length === 0) throw new Error("Examples catalog is empty");
 
-	const yardsResponse = await fetch(`${base}examples/yards-deploy.json`);
-	if (!yardsResponse.ok) {
-		throw new Error(`Yard deploy sources unavailable (${yardsResponse.status})`);
-	}
-	const yardSources = yardDeployByTarget(
-		(await yardsResponse.json()) as YardDeploySource[],
-	);
-
 	const health = await probeLocalBridge();
 	bridgeOnline = health.ok && health.docker;
 
@@ -196,11 +160,8 @@ export async function bootExamplesConsole(): Promise<void> {
 	let poolSelected = defaultPoolTargetIds(poolYards);
 	let demoPreset: DemoPolicyPresetId = "local-only";
 	let appSelectedId: string | null = null;
-	let sourceFocusId: string = catalog[0]!.id;
-	/** Stage Source follows Pool yard focus until Ship/Live overrides. */
-	let sourceFocusKind: "app" | "yard" | "live" = "app";
-	let focusedYardTargetId: string | null = null;
-	let claimedHostId: string | null = null;
+	let focusedYardTargetId: string | null =
+		poolSelected.values().next().value ?? poolYards[0]?.targetId ?? null;
 	let stageHostId: string | null = null;
 	let stationPlan = resolveStationDeployPlan(poolYards, poolSelected, demoPreset);
 	let live: LiveHost[] = [];
@@ -214,45 +175,72 @@ export async function bootExamplesConsole(): Promise<void> {
 		appSelectedId ? new Set([appSelectedId]) : new Set<string>();
 
 	const activeStageHost = () =>
-		live.find((host) => host.stationId === stageHostId) ??
-		live.find((host) => host.stationId === claimedHostId) ??
-		live[0] ??
-		null;
+		live.find((host) => host.stationId === stageHostId) ?? live[0] ?? null;
 
-	const focusedExample = () => {
-		const focusId = resolveStageSourceFocusId({
-			selected: selectedAppSet(),
-			sourceFocusId,
-			fallbackId: catalog[0]!.id,
-			activeLiveExampleId:
-				sourceFocusKind === "live" ? (activeStageHost()?.exampleId ?? null) : null,
+	const shipExample = () => {
+		const id = appSelectedId ?? catalog[0]!.id;
+		return catalog.find((example) => example.id === id) ?? catalog[0]!;
+	};
+
+	const paintPoolSource = () => {
+		const composed = composePoolDeploySource({
+			provision: stationPlan.provision,
 		});
-		return catalog.find((example) => example.id === focusId) ?? catalog[0]!;
+		ui.poolSourcePath.textContent = composed.pathLabel;
+		ui.poolSource.textContent = composed.source;
 	};
 
-	const paintSource = () => {
-		if (sourceFocusKind === "yard" && focusedYardTargetId) {
-			const yardSource = yardSources.get(focusedYardTargetId);
-			if (yardSource) {
-				ui.sourcePath.textContent = yardSource.sourcePath;
-				ui.source.textContent = yardSource.source;
-				const pack = packFor(focusedYardTargetId);
-				ui.exampleTitle.textContent = `${pack.label} · yard`;
-				return;
-			}
+	const paintShipSource = () => {
+		if (!appSelectedId) {
+			ui.shipSourcePath.textContent = "select an app";
+			ui.shipSource.textContent = "// Pick an app to inspect Bindle source.";
+			return;
 		}
-		const focus = focusedExample();
-		current = focus;
-		ui.sourcePath.textContent = focus.sourcePath;
-		ui.source.textContent = focus.source;
+		const example = shipExample();
+		current = example;
+		ui.shipSourcePath.textContent = example.sourcePath;
+		ui.shipSource.textContent = example.source;
 	};
 
-	const setStageView = (view: "host" | "source") => {
+	const paintClaimCodes = (host: LiveHost | null) => {
+		if (!host) {
+			ui.claimCodes.hidden = true;
+			ui.claimUrl.hidden = true;
+			ui.claimUrl.removeAttribute("href");
+			ui.claimUrl.textContent = "";
+			ui.claimMissing.hidden = true;
+			return;
+		}
+		ui.claimCodes.hidden = false;
+		const claim = host.claimUrl ?? host.station.claimUrl;
+		if (claim) {
+			ui.claimUrl.hidden = false;
+			ui.claimUrl.href = claim;
+			ui.claimUrl.textContent = claim;
+			ui.claimMissing.hidden = true;
+		} else {
+			ui.claimUrl.hidden = true;
+			ui.claimUrl.removeAttribute("href");
+			ui.claimUrl.textContent = "";
+			ui.claimMissing.hidden = false;
+		}
+	};
+
+	const setStageView = (view: "preview" | "logs") => {
 		for (const button of root.querySelectorAll<HTMLButtonElement>("[data-view]")) {
 			button.setAttribute("aria-pressed", String(button.dataset.view === view));
 		}
 		for (const panel of root.querySelectorAll<HTMLElement>("[data-view-panel]")) {
 			panel.hidden = panel.dataset.viewPanel !== view;
+		}
+	};
+
+	const setPoolView = (view: "policy" | "code") => {
+		for (const button of root.querySelectorAll<HTMLButtonElement>("[data-pool-view]")) {
+			button.setAttribute("aria-pressed", String(button.dataset.poolView === view));
+		}
+		for (const panel of root.querySelectorAll<HTMLElement>("[data-pool-panel]")) {
+			panel.hidden = panel.dataset.poolPanel !== view;
 		}
 	};
 
@@ -294,7 +282,6 @@ export async function bootExamplesConsole(): Promise<void> {
 			host.runtime.revoke();
 		}
 		live = [];
-		claimedHostId = null;
 		stageHostId = null;
 	};
 
@@ -304,17 +291,17 @@ export async function bootExamplesConsole(): Promise<void> {
 
 	const render = () => {
 		stationPlan = resolveStationDeployPlan(poolYards, poolSelected, demoPreset);
-		const focus = focusedExample();
+		const focus = shipExample();
 		current = focus;
 		const stationsReady = shipStationsReady(registry.stations.length);
 		const phase: "pool" | "ship" | "live" =
 			!stationsReady ? "pool" : live.length === 0 ? "ship" : "live";
 		ui.strip.dataset.phase = phase;
 		gateBoards(stationsReady, live.length > 0);
-		ui.stage.dataset.claimed = claimedHostId ? "true" : "false";
-		const claimedHost = live.find((host) => host.stationId === claimedHostId);
-		ui.exampleTitle.textContent = claimedHost
-			? `Claimed · ${claimedHost.exampleTitle}`
+		ui.stage.dataset.claimed = "false";
+		const active = activeStageHost();
+		ui.exampleTitle.textContent = active
+			? `${active.exampleTitle} · ${active.station.label}`
 			: live.length > 0
 				? "Live hosts"
 				: phase === "pool"
@@ -322,25 +309,18 @@ export async function bootExamplesConsole(): Promise<void> {
 					: focus.title;
 		ui.emptyTitle.textContent =
 			phase === "pool"
-				? "Stamp stations first"
+				? "Pool stations first"
 				: phase === "ship"
 					? "Ship an app next"
 					: "Preview a host";
-		ui.claimedBanner.hidden = !claimedHost;
-		ui.claimedBanner.textContent = claimedHost
-			? `Yours · ${claimedHost.exampleTitle} on ${claimedHost.station.label}`
-			: "";
-		if (sourceFocusKind !== "yard") {
-			ui.sourcePath.textContent = focus.sourcePath;
-			ui.source.textContent = focus.source;
-		} else {
-			paintSource();
-		}
+		paintPoolSource();
+		paintShipSource();
+		paintClaimCodes(active);
 		const shipLead = root.querySelector<HTMLElement>('[data-board="ship"] .ex-board-lead');
 		if (shipLead) {
 			shipLead.textContent = stationsReady
-				? "Pick one app to deploy onto stations from Pool. Selection shows Bindle source on Stage."
-				: "Deploy at least one station in Pool first. Ship stays locked until stations are ready.";
+				? "Pick one app Bindle. Source stays on this board."
+				: "Loads one catalog app onto every pooled station.";
 		}
 		if (!stationsReady) appSelectedId = null;
 
@@ -359,8 +339,7 @@ export async function bootExamplesConsole(): Promise<void> {
 				poolSelected = next;
 				if (focusedTargetId) {
 					focusedYardTargetId = focusedTargetId;
-					sourceFocusKind = "yard";
-					setStageView("source");
+					setPoolView("code");
 				}
 				render();
 			},
@@ -380,14 +359,11 @@ export async function bootExamplesConsole(): Promise<void> {
 					);
 				}
 				appSelectedId = id;
-				if (id) {
-					sourceFocusId = id;
-					sourceFocusKind = "app";
-					setStageView("source");
-				}
+				paintShipSource();
 				render();
 			});
 			renderAppsPolicy(ui.examplePolicy, catalog, selectedAppSet(), registry.stations);
+			renderClaimTerms(ui, catalog, appSelectedId);
 			ui.examplePlanLine.textContent = appsPlanSummary();
 			const example = appSelectedId
 				? catalog.find((entry) => entry.id === appSelectedId)
@@ -406,6 +382,7 @@ export async function bootExamplesConsole(): Promise<void> {
 			placeholder.textContent = "Select an app…";
 			ui.appSelect.append(placeholder);
 			ui.examplePolicy.replaceChildren();
+			renderClaimTerms(ui, catalog, null);
 			ui.examplePlanLine.textContent = SHIP_GATE_PLAN_LINE;
 			ui.deployApps.disabled = true;
 			ui.deployApps.firstElementChild!.textContent = SHIP_LOCKED_DEPLOY_LABEL;
@@ -415,20 +392,20 @@ export async function bootExamplesConsole(): Promise<void> {
 		ui.stationPlanLine.textContent = `station plan: ${stationPlan.summary}`;
 		ui.provisionPreview.textContent =
 			phase === "pool"
-				? "Pool picks yards. Ship picks one app. Live previews and claims."
+				? "Pool stamps stations. Ship loads a Bindle. Preview lands here."
 				: phase === "ship"
 					? "Pick an app, then Deploy onto your stations."
-					: "Preview a host on stage, Open in a new tab, then Claim to pin it.";
+					: "Toggle Preview ↔ Logs. Claim URLs show above when issued.";
 		ui.deployStations.disabled = busy || stationPlan.provision.length === 0;
 		ui.deployStations.firstElementChild!.textContent = `Deploy stations (${stationPlan.provision.length})`;
 
-		renderLiveSelect(ui, live, claimedHostId, stageHostId);
+		renderLiveSelect(ui, live, stageHostId);
 		const activePreview = activeStageHost();
 		if (ui.openPreview) {
 			if (activePreview) {
 				ui.openPreview.hidden = false;
 				ui.openPreview.href = activePreview.runtime.url;
-				ui.openPreview.textContent = "Open preview";
+				ui.openPreview.textContent = "Open";
 			} else {
 				ui.openPreview.hidden = true;
 				ui.openPreview.removeAttribute("href");
@@ -436,63 +413,20 @@ export async function bootExamplesConsole(): Promise<void> {
 		}
 	};
 
-	const liveAction = (action: "preview" | "open" | "claim") => {
-		if (busy) return;
-		const hostId = ui.liveSelect.value || stageHostId || live[0]?.stationId;
-		const host = live.find((entry) => entry.stationId === hostId);
-		if (!host) return;
-		if (action === "preview") {
-			stageHostId = host.stationId;
-			sourceFocusId = host.exampleId;
-			sourceFocusKind = "live";
-			setStageView("host");
-			ui.terminal.append(
-				line("system", `Previewing ${host.exampleTitle} on ${host.station.label}`),
-			);
-			render();
-		} else if (action === "open") {
-			window.open(host.runtime.url, "_blank", "noopener");
-			ui.terminal.append(
-				line("system", `Opened preview tab · ${host.exampleTitle} · ${host.runtime.url}`),
-			);
-		} else {
-			const claimTarget = host.station.claimUrl ?? host.runtime.url;
-			if (host.station.claimUrl) {
-				window.open(host.station.claimUrl, "_blank", "noopener");
-			}
-			claimedHostId = host.stationId;
-			stageHostId = host.stationId;
-			sourceFocusId = host.exampleId;
-			sourceFocusKind = "live";
-			setStageView("host");
-			ui.terminal.append(
-				line(
-					"success",
-					`✓ Claimed ${host.exampleTitle} on ${host.station.label}${
-						host.station.claimUrl ? ` · ${claimTarget}` : ""
-					}`,
-				),
-			);
-			render();
-		}
-	};
-
 	for (const button of root.querySelectorAll<HTMLButtonElement>("[data-view]")) {
 		button.addEventListener("click", () => {
-			const view = button.dataset.view === "source" ? "source" : "host";
+			const view = button.dataset.view === "logs" ? "logs" : "preview";
 			const host = activeStageHost();
-			if (host && sourceFocusKind !== "yard") {
-				stageHostId = host.stationId;
-				sourceFocusId = host.exampleId;
-				sourceFocusKind = "live";
-			}
+			if (host) stageHostId = host.stationId;
 			setStageView(view);
-			paintSource();
-			if (view === "source" && sourceFocusKind !== "yard" && live.length > 0) {
-				const focus = focusedExample();
-				ui.exampleTitle.textContent =
-					live.length > 1 ? `${focus.title} · source` : focus.title;
-			}
+		});
+	}
+
+	for (const button of root.querySelectorAll<HTMLButtonElement>("[data-pool-view]")) {
+		button.addEventListener("click", () => {
+			const view = button.dataset.poolView === "code" ? "code" : "policy";
+			setPoolView(view);
+			if (view === "code") paintPoolSource();
 		});
 	}
 
@@ -500,14 +434,8 @@ export async function bootExamplesConsole(): Promise<void> {
 		const host = live.find((entry) => entry.stationId === ui.liveSelect.value);
 		if (!host) return;
 		stageHostId = host.stationId;
-		sourceFocusId = host.exampleId;
-		sourceFocusKind = "live";
 		render();
 	});
-	ui.livePreview.addEventListener("click", () => liveAction("preview"));
-	ui.liveOpen.addEventListener("click", () => liveAction("open"));
-	ui.liveClaim.addEventListener("click", () => liveAction("claim"));
-
 	ui.removeStation.addEventListener("click", () => {
 		if (busy) return;
 		const id = ui.stationSelect.value;
@@ -544,6 +472,7 @@ export async function bootExamplesConsole(): Promise<void> {
 		if (busy) return;
 		busy = true;
 		ui.deployState.textContent = "deploying-stations";
+		setStageView("logs");
 		render();
 		try {
 			await writeTerminal(
@@ -574,7 +503,7 @@ export async function bootExamplesConsole(): Promise<void> {
 				let endpointUrl: string | undefined;
 				let claimUrl: string | undefined;
 				let expiresAt: string | undefined;
-				if (pack.resourceClass === "anonymous-remote" && target.id === "cloudflare") {
+				if (target.id === "cloudflare") {
 					// Real Cloudflare Temporary Account via same-origin /api/cf-temp
 					// (astro dev) or configured Temporary Accounts CORS relay.
 					// Never stamp blob: and call it Cloudflare.
@@ -599,8 +528,87 @@ export async function bootExamplesConsole(): Promise<void> {
 						"system",
 						`→ claimUrl ${claimUrl} (expires ${expiresAt})`,
 					);
+				} else if (target.id === "lakebed") {
+					const provisioned = await provisionLakebedStationViaBroker({
+						stationId,
+						pageUrl: window.location.href,
+						basePath: base,
+					});
+					endpointUrl = provisioned.stationUrl;
+					claimUrl = provisioned.claimUrl;
+					expiresAt = provisioned.expiresAt;
+					await writeTerminal(
+						ui.terminal,
+						"success",
+						`✓ Lakebed anonymous Environment Station ${stationId}`,
+					);
+					await writeTerminal(
+						ui.terminal,
+						"system",
+						`→ stationUrl ${endpointUrl}`,
+					);
+					await writeTerminal(
+						ui.terminal,
+						"system",
+						`→ claimUrl ${claimUrl} (expires ${expiresAt})`,
+					);
+				} else if (target.id === "vercel") {
+					const provisioned = await provisionVercelStationViaBroker({
+						stationId,
+						pageUrl: window.location.href,
+						basePath: base,
+					});
+					endpointUrl = provisioned.stationUrl;
+					claimUrl = provisioned.claimUrl;
+					expiresAt = provisioned.expiresAt;
+					await writeTerminal(
+						ui.terminal,
+						"success",
+						`✓ Vercel Drop Environment Station ${stationId}`,
+					);
+					await writeTerminal(
+						ui.terminal,
+						"system",
+						`→ stationUrl ${endpointUrl}`,
+					);
+					await writeTerminal(
+						ui.terminal,
+						"system",
+						`→ claimUrl ${claimUrl} (expires ${expiresAt}) · https://vercel.com/docs/drop`,
+					);
+				} else if (!pack.canHostNow) {
+					await writeTerminal(
+						ui.terminal,
+						"skip",
+						`· fail-closed ${target.id}: ${pack.unavailableReason ?? "no temporary/agent provision"}`,
+					);
+					continue;
+				} else if (isProviderTempId(target.id)) {
+					const provisioned = await provisionProviderTempStation({
+						providerId: target.id,
+						stationId,
+						pageUrl: window.location.href,
+						basePath: base,
+					});
+					endpointUrl = provisioned.stationUrl;
+					claimUrl = provisioned.claimUrl;
+					expiresAt = provisioned.expiresAt;
+					await writeTerminal(
+						ui.terminal,
+						"success",
+						`✓ temporary Environment Station ${stationId} · ${pack.label}`,
+					);
+					await writeTerminal(
+						ui.terminal,
+						"system",
+						`→ stationUrl ${endpointUrl}`,
+					);
+					await writeTerminal(
+						ui.terminal,
+						"system",
+						`→ claimUrl ${claimUrl} (expires ${expiresAt})`,
+					);
 				} else if (isAnonSameOriginProvider(target.id)) {
-					// Real HTTP same-origin agent host — never blob: as remote.
 					const provisioned = await provisionAnonStationViaSameOrigin({
 						providerId: target.id,
 						stationId,
@@ -673,6 +681,7 @@ export async function bootExamplesConsole(): Promise<void> {
 		resetHostFrames(ui);
 		ui.terminal.replaceChildren();
 		ui.deployState.textContent = "deploying";
+		setStageView("logs");
 		render();
 		const opened: LiveHost[] = [];
 		try {
@@ -713,6 +722,7 @@ export async function bootExamplesConsole(): Promise<void> {
 					);
 					const hostStationId = `${station.id}:${example.id}`;
 					let runtime: StationHostRuntime;
+					let hostClaimUrl: string | undefined = station.claimUrl;
 					const frame = createHostFrame(
 						`${example.title} on ${pack.label}`,
 						example.deployKind === "local-bridge"
@@ -722,22 +732,33 @@ export async function bootExamplesConsole(): Promise<void> {
 					ui.junctionNote.before(frame);
 
 					if (example.deployKind === "local-bridge") {
+						const containers = example.bindleContainers;
+						const webApp = example.bindleWebApp;
+						const isWaspWebApp = webApp?.framework === "wasp";
+						const isConvexWebApp = webApp?.framework === "convex";
+						if (containers.length === 0 && !isWaspWebApp && !isConvexWebApp) {
+							throw new Error(
+								`${example.id}: Bindle declares neither b.web(waspApp|convexApp(...)) nor b.container({ image }) — refuse example-id side channel`,
+							);
+						}
 						const cloudflareTemporary =
-							example.id === "opensaas" && target.id === "cloudflare";
+							target.id === "cloudflare" && (isWaspWebApp || isConvexWebApp);
 						const sameOriginAnon =
-							example.id === "opensaas" && isAnonSameOriginProvider(target.id);
-						if (cloudflareTemporary) {
+							isWaspWebApp && isAnonSameOriginProvider(target.id);
+						if (cloudflareTemporary && isConvexWebApp) {
 							await writeTerminal(
 								ui.terminal,
 								"system",
-								`→ OpenSaaS Temporary Accounts ship (wasp client → wrangler --temporary)`,
+								`→ convexApp(${webApp!.root}) → Temporary Accounts (convex deploy in that root)`,
 							);
-							const deployed = await shipOpenSaasViaTemporaryAccounts({
+							const deployed = await shipSwaghausViaTemporaryAccounts({
 								stationId: hostStationId,
 								pageUrl: window.location.href,
 								basePath: base,
+								root: webApp!.root,
 							});
 							runtime = createBridgeStationHost(deployed.clientUrl);
+							hostClaimUrl = deployed.claimUrl;
 							frame.src = runtime.url;
 							frame.hidden = false;
 							await writeTerminal(
@@ -748,13 +769,39 @@ export async function bootExamplesConsole(): Promise<void> {
 							await writeTerminal(
 								ui.terminal,
 								"system",
-								`→ claimUrl ${deployed.claimUrl} (expires ${deployed.expiresAt})`,
+								`→ claimUrl ${deployed.claimUrl} (expires ${deployed.expiresAt})${deployed.mocked ? " · mock" : ""}`,
+							);
+						} else if (cloudflareTemporary && isWaspWebApp) {
+							await writeTerminal(
+								ui.terminal,
+								"system",
+								`→ waspApp(${webApp!.root}) → Temporary Accounts + Neon claimable db (zero keys)`,
+							);
+							const deployed = await shipOpenSaasViaTemporaryAccounts({
+								stationId: hostStationId,
+								pageUrl: window.location.href,
+								basePath: base,
+								root: webApp!.root,
+							});
+							runtime = createBridgeStationHost(deployed.clientUrl);
+							hostClaimUrl = deployed.claimUrl;
+							frame.src = runtime.url;
+							frame.hidden = false;
+							await writeTerminal(
+								ui.terminal,
+								"success",
+								`✓ ${example.title} · ${pack.label} · ${deployed.clientUrl}`,
+							);
+							await writeTerminal(
+								ui.terminal,
+								"system",
+								`→ claimUrl ${deployed.claimUrl} (expires ${deployed.expiresAt}) · db=${deployed.databaseMode}${deployed.databaseMocked ? " (mock)" : ""} · server=${deployed.serverMode}${deployed.serverMocked ? " (mock)" : ""} ${deployed.serverUrl} · dbClaim ${deployed.databaseClaimUrl}`,
 							);
 						} else if (sameOriginAnon) {
 							await writeTerminal(
 								ui.terminal,
 								"system",
-								`→ OpenSaaS same-origin agent ship target=${target.id} (no permanent provider login)`,
+								`→ waspApp(${webApp!.root}) → same-origin agent host target=${target.id}`,
 							);
 							const deployed = await shipOpenSaasViaSameOriginAnon({
 								providerId: target.id,
@@ -763,6 +810,7 @@ export async function bootExamplesConsole(): Promise<void> {
 								basePath: base,
 							});
 							runtime = createBridgeStationHost(deployed.clientUrl);
+							hostClaimUrl = deployed.claimUrl;
 							frame.src = runtime.url;
 							frame.hidden = false;
 							await writeTerminal(
@@ -775,31 +823,42 @@ export async function bootExamplesConsole(): Promise<void> {
 								"system",
 								`→ claimUrl ${deployed.claimUrl} (expires ${deployed.expiresAt}) · hostKind=${deployed.hostKind}`,
 							);
+						} else if (isConvexWebApp) {
+							throw new Error(
+								`${example.id}: Convex swaghaus Temporary self-host of official Convex OCI/binary is fail-closed under zero project API keys (see examples/convex-swaghaus/HOBO.md). Use Cloudflare Temporary ship path or HOBO_CONVEX_SWAGHAUS_MOCK=1.`,
+							);
 						} else {
 						const health = await probeLocalBridge();
 						bridgeOnline = health.ok;
 						if (!bridgeOnline) {
 							throw new Error(
 								health.remediation ??
-									"Local bridge required for OpenSaaS. Run: pnpm --filter hobo-site run examples:bridge",
+									"Local bridge required for Wasp OpenSaaS ship. Run: pnpm --filter hobo-site run examples:bridge",
 							);
 						}
 						const localDockerTarget =
 							target.id === "webernetes" || target.id === "lakebed";
 						if (localDockerTarget && !health.docker) {
 							throw new Error(
-								"Docker required for Webernetes/Lakebed OpenSaaS. Install Docker or ship to Railway/Cloudflare.",
+								"Docker required for Webernetes/Lakebed Wasp OpenSaaS realization (Postgres OCI + wasp build). Install Docker or ship via Cloudflare Temporary Accounts.",
+							);
+						}
+						if (!isWaspWebApp) {
+							throw new Error(
+								`${example.id}: local bridge ship requires b.web(waspApp(root)) — container-only Bindles are not enough`,
 							);
 						}
 						await writeTerminal(
 							ui.terminal,
 							"system",
-							`→ local bridge deploy target=${target.id} example=${example.id} station=${station.id}`,
+							`→ bridge deploy waspApp(${webApp!.root}) db=${containers.find((c) => c.name === "db")?.image ?? "external/camp"} target=${target.id}`,
 						);
 						const deployed = await deployViaLocalBridge({
 							exampleId: example.id,
 							stationId: hostStationId,
 							targetId: target.id,
+							bindleWebApp: webApp!,
+							bindleContainers: containers,
 						});
 						runtime = createBridgeStationHost(deployed.clientUrl);
 						frame.src = runtime.url;
@@ -852,30 +911,26 @@ export async function bootExamplesConsole(): Promise<void> {
 						exampleTitle: example.title,
 						runtime,
 						frame,
+						...(hostClaimUrl ? { claimUrl: hostClaimUrl } : {}),
 					} satisfies LiveHost;
 				},
 			);
 			opened.push(...provisioned);
 			live = opened;
-			claimedHostId = null;
 			stageHostId = live[0]?.stationId ?? null;
 			await writeTerminal(
 				ui.terminal,
 				"success",
-				`✓ ${live.length} host(s) live · Preview, Open, or Claim on board 3`,
+				`✓ ${live.length} host(s) live · Preview ↔ Logs · claim URLs above when issued`,
 			);
 			ui.deployState.textContent = "live";
-			if (live[0]) {
-				sourceFocusId = live[0].exampleId;
-				setStageView("host");
-			}
+			if (live[0]) setStageView("preview");
 		} catch (error) {
 			for (const host of opened) {
 				host.frame.remove();
 				host.runtime.revoke();
 			}
 			live = [];
-			claimedHostId = null;
 			stageHostId = null;
 			await writeTerminal(
 				ui.terminal,
@@ -994,12 +1049,102 @@ export function targetPackCanHostNow(targetId: string): boolean {
 export function defaultPoolTargetIds(yards: readonly ExampleYard[]): Set<string> {
 	return new Set(
 		yards
-			.filter((yard) => {
-				const pack = packFor(yard.targetId);
-				return pack.canHostNow && pack.resourceClass === "local";
-			})
+			.filter((yard) => packFor(yard.targetId).canHostNow)
 			.map((yard) => yard.targetId),
 	);
+}
+
+/** Browser WASM + Webernetes share one Pool dropdown option. */
+export const LOCAL_YARD_TARGET_IDS = ["browser-wasm", "webernetes"] as const;
+
+export type YardUiOption = {
+	readonly id: string;
+	readonly label: string;
+	readonly targetIds: readonly string[];
+	readonly title: string;
+};
+
+export function buildYardUiOptions(yards: readonly ExampleYard[]): YardUiOption[] {
+	const byTarget = new Map(yards.map((yard) => [yard.targetId, yard] as const));
+	const options: YardUiOption[] = [];
+	const consumed = new Set<string>();
+	const localTargets = LOCAL_YARD_TARGET_IDS.filter((id) => byTarget.has(id));
+	if (localTargets.length > 0) {
+		for (const id of localTargets) consumed.add(id);
+		options.push({
+			id: "local",
+			label: "Local (Browser WASM · Webernetes)",
+			targetIds: localTargets,
+			title: "Browser Component Model + local Webernetes — one local lane",
+		});
+	}
+	for (const yard of yards) {
+		if (consumed.has(yard.targetId)) continue;
+		const pack = packFor(yard.targetId);
+		options.push({
+			id: yard.targetId,
+			label: pack.label,
+			targetIds: [yard.targetId],
+			title: `${yard.id} · ${pack.environment}`,
+		});
+	}
+	return options;
+}
+
+export function yardOptionSelectionState(
+	option: YardUiOption,
+	selected: ReadonlySet<string>,
+): "all" | "some" | "none" {
+	let hit = 0;
+	for (const id of option.targetIds) {
+		if (selected.has(id)) hit += 1;
+	}
+	if (hit === 0) return "none";
+	if (hit === option.targetIds.length) return "all";
+	return "some";
+}
+
+export function toggleYardUiOption(
+	selected: ReadonlySet<string>,
+	option: YardUiOption,
+): Set<string> {
+	const next = new Set(selected);
+	if (yardOptionSelectionState(option, selected) === "all") {
+		for (const id of option.targetIds) next.delete(id);
+	} else {
+		for (const id of option.targetIds) next.add(id);
+	}
+	return next;
+}
+
+export function allYardUiTargetIds(options: readonly YardUiOption[]): string[] {
+	return options.flatMap((option) => [...option.targetIds]);
+}
+
+export function yardSelectionSummary(
+	options: readonly YardUiOption[],
+	selected: ReadonlySet<string>,
+): string {
+	if (selected.size === 0) return "Select yards…";
+	const fully = options.filter(
+		(option) => yardOptionSelectionState(option, selected) === "all",
+	);
+	const allTargetCount = allYardUiTargetIds(options).length;
+	// Local merges browser-wasm + webernetes into one option — summary must
+	// report station/target count (matches Deploy stations N), not option count.
+	if (fully.length === options.length && selected.size === allTargetCount) {
+		return `All · ${selected.size} stations`;
+	}
+	if (fully.length === 0) return `${selected.size} station(s)`;
+	const labels = fully.map((option) =>
+		option.id === "local" ? "Local" : option.label,
+	);
+	if (labels.length <= 2) {
+		return selected.size === labels.length
+			? labels.join(", ")
+			: `${labels.join(", ")} · ${selected.size} stations`;
+	}
+	return `${selected.size} stations · ${labels.slice(0, 2).join(", ")}…`;
 }
 
 export function defaultSelectedTargetIds(example: ExampleCatalogEntry): Set<string> {
@@ -1049,6 +1194,35 @@ function renderDemoPresets(
 	container.value = current;
 }
 
+function yardOptionHint(
+	option: YardUiOption,
+	plan: DeployPlan,
+): { hint: string; title: string } {
+	const roles: string[] = [];
+	const skips: string[] = [];
+	for (const targetId of option.targetIds) {
+		const provision = plan.provision.find(({ target }) => target.id === targetId);
+		const skipped = plan.skipped.find(({ target }) => target.id === targetId);
+		if (provision) roles.push(provision.role);
+		else if (skipped) skips.push(skipped.reason);
+		else {
+			const pack = packFor(targetId);
+			skips.push(pack.canHostNow ? "ready" : "unavailable");
+		}
+	}
+	if (roles.length > 0) {
+		const unique = [...new Set(roles)];
+		return {
+			hint: unique.length === 1 ? unique[0]! : unique.join(" + "),
+			title: option.title,
+		};
+	}
+	return {
+		hint: [...new Set(skips)].join(" · ") || "ready",
+		title: option.title,
+	};
+}
+
 function renderYardSelect(
 	select: HTMLSelectElement,
 	yards: readonly ExampleYard[],
@@ -1056,55 +1230,168 @@ function renderYardSelect(
 	plan: DeployPlan,
 	onChange: (next: Set<string>, focusedTargetId: string | null) => void,
 ) {
-	type YardSelectState = { previous: Set<string>; pendingFocus?: string };
+	type YardSelectState = { previous: Set<string> };
 	const selectState = select as HTMLSelectElement & {
 		_yardState?: YardSelectState;
 	};
-	select.replaceChildren(
-		...yards.map((yard) => {
-			const pack = packFor(yard.targetId);
-			const option = document.createElement("option");
-			option.value = yard.targetId;
-			option.selected = selected.has(yard.targetId);
-			const provision = plan.provision.find(({ target }) => target.id === yard.targetId);
-			const skipped = plan.skipped.find(({ target }) => target.id === yard.targetId);
-			const hint = provision
-				? provision.role
-				: skipped
-					? skipped.reason
-					: pack.canHostNow
-						? "ready"
-						: "unavailable";
-			option.textContent = `${pack.label} · ${hint}`;
-			option.title = `${yard.id} · ${pack.environment}`;
-			return option;
-		}),
-	);
+	const picker =
+		select.closest<HTMLElement>("[data-yard-picker]") ??
+		select.parentElement?.closest<HTMLElement>("[data-yard-picker]") ??
+		null;
+	const list =
+		picker?.querySelector<HTMLElement>("[data-yard-list]") ??
+		select
+			.closest(".ex-field")
+			?.querySelector<HTMLElement>("[data-yard-list]") ??
+		null;
+	const menu = picker?.querySelector<HTMLElement>("[data-yard-menu]") ?? null;
+	const trigger =
+		picker?.querySelector<HTMLButtonElement>("[data-yard-trigger]") ?? null;
+	const summary =
+		picker?.querySelector<HTMLElement>("[data-yard-summary]") ?? null;
+	const allBtn = picker?.querySelector<HTMLButtonElement>("[data-yard-all]") ?? null;
+	const noneBtn =
+		picker?.querySelector<HTMLButtonElement>("[data-yard-none]") ?? null;
+
+	const options = buildYardUiOptions(yards);
+
+	const syncNative = (next: ReadonlySet<string>) => {
+		select.replaceChildren(
+			...yards.map((yard) => {
+				const option = document.createElement("option");
+				option.value = yard.targetId;
+				option.selected = next.has(yard.targetId);
+				option.textContent = `${packFor(yard.targetId).label}`;
+				return option;
+			}),
+		);
+	};
+
+	const paintList = () => {
+		if (!list) return;
+		list.replaceChildren(
+			...options.map((option) => {
+				const meta = yardOptionHint(option, plan);
+				const state = yardOptionSelectionState(option, selected);
+				const button = document.createElement("button");
+				button.type = "button";
+				button.className = "ex-yard-option";
+				button.dataset.yardOption = option.id;
+				button.dataset.yardTargets = option.targetIds.join(",");
+				button.setAttribute("role", "option");
+				button.setAttribute(
+					"aria-selected",
+					state === "all" ? "true" : "false",
+				);
+				button.setAttribute(
+					"aria-checked",
+					state === "all" ? "true" : state === "some" ? "mixed" : "false",
+				);
+				button.setAttribute("aria-pressed", state === "all" ? "true" : "false");
+				button.title = meta.title;
+				const check = document.createElement("span");
+				check.className = "ex-yard-check";
+				check.setAttribute("aria-hidden", "true");
+				const copy = document.createElement("span");
+				copy.className = "ex-yard-copy";
+				const label = document.createElement("span");
+				label.className = "ex-yard-label";
+				label.textContent = option.label;
+				const hint = document.createElement("span");
+				hint.className = "ex-yard-hint";
+				hint.textContent = meta.hint;
+				copy.append(label, hint);
+				button.append(check, copy);
+				return button;
+			}),
+		);
+		if (summary) summary.textContent = yardSelectionSummary(options, selected);
+	};
+
+	const setMenuOpen = (open: boolean) => {
+		if (!menu || !trigger) return;
+		menu.hidden = !open;
+		trigger.setAttribute("aria-expanded", open ? "true" : "false");
+	};
+
+	syncNative(selected);
+	paintList();
+
 	if (select.dataset.bound !== "1") {
 		selectState._yardState = { previous: new Set(selected) };
-		// mousedown captures the clicked option before <select multiple> mutates selection.
-		select.addEventListener("mousedown", (event) => {
-			const target = event.target;
-			if (target instanceof HTMLOptionElement && target.value) {
-				selectState._yardState = {
-					...(selectState._yardState ?? { previous: new Set<string>() }),
-					pendingFocus: target.value,
-				};
-			}
-		});
-		select.addEventListener("change", () => {
+		const emit = (next: Set<string>, focused: string | null) => {
 			const state = selectState._yardState ?? { previous: new Set<string>() };
+			state.previous = next;
+			selectState._yardState = state;
+			onChange(next, focused);
+		};
+
+		const applySelection = (next: Set<string>, focused: string | null) => {
+			syncNative(next);
+			emit(next, focused);
+		};
+
+		list?.addEventListener("click", (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) return;
+			const button = target.closest<HTMLButtonElement>("[data-yard-option]");
+			if (!button?.dataset.yardOption) return;
+			const targetIds = (button.dataset.yardTargets ?? "")
+				.split(",")
+				.map((id) => id.trim())
+				.filter(Boolean);
+			if (targetIds.length === 0) return;
+			const option: YardUiOption = {
+				id: button.dataset.yardOption,
+				label: button.querySelector(".ex-yard-label")?.textContent ?? button.dataset.yardOption,
+				targetIds,
+				title: button.title,
+			};
+			const current = new Set(
+				[...select.selectedOptions].map((entry) => entry.value).filter(Boolean),
+			);
+			const next = toggleYardUiOption(current, option);
+			applySelection(next, option.targetIds[0] ?? null);
+		});
+
+		allBtn?.addEventListener("click", () => {
+			const ids = [
+				...(list?.querySelectorAll<HTMLElement>("[data-yard-targets]") ?? []),
+			].flatMap((el) =>
+				(el.dataset.yardTargets ?? "")
+					.split(",")
+					.map((id) => id.trim())
+					.filter(Boolean),
+			);
+			applySelection(new Set(ids), null);
+		});
+		noneBtn?.addEventListener("click", () => {
+			applySelection(new Set(), null);
+		});
+
+		trigger?.addEventListener("click", () => {
+			const open = trigger.getAttribute("aria-expanded") === "true";
+			setMenuOpen(!open);
+		});
+
+		document.addEventListener("pointerdown", (event) => {
+			if (!picker || !menu || menu.hidden) return;
+			const target = event.target;
+			if (!(target instanceof Node) || picker.contains(target)) return;
+			setMenuOpen(false);
+		});
+		document.addEventListener("keydown", (event) => {
+			if (event.key === "Escape") setMenuOpen(false);
+		});
+
+		select.addEventListener("change", () => {
 			const next = new Set(
 				[...select.selectedOptions].map((option) => option.value).filter(Boolean),
 			);
+			const state = selectState._yardState ?? { previous: new Set<string>() };
 			const added = [...next].find((id) => !state.previous.has(id));
 			const removed = [...state.previous].find((id) => !next.has(id));
-			const focused =
-				state.pendingFocus ?? added ?? removed ?? [...next][0] ?? null;
-			state.previous = next;
-			state.pendingFocus = undefined;
-			selectState._yardState = state;
-			onChange(next, focused);
+			emit(next, added ?? removed ?? [...next][0] ?? null);
 		});
 		select.dataset.bound = "1";
 	} else if (selectState._yardState) {
@@ -1202,6 +1489,59 @@ function renderAppsPolicy(
 	);
 }
 
+/**
+ * Disclose the claim terms before the deploy button, not after.
+ *
+ * The terms come from the shipped recipes (`recipe-terms.json`, generated from
+ * `@hobo/recipes`), matched to the app by the primitives it declares. When no
+ * shipped recipe covers the app the panel says so rather than showing the
+ * terms of a recipe that would deploy something else.
+ */
+function renderClaimTerms(
+	ui: {
+		termsFold: HTMLElement;
+		termsSummary: HTMLElement;
+		termsLead: HTMLElement;
+		terms: HTMLElement;
+	},
+	catalog: readonly ExampleCatalogEntry[],
+	appId: string | null,
+): void {
+	const example = appId
+		? catalog.find((entry) => entry.id === appId)
+		: undefined;
+	if (!example) {
+		ui.termsFold.hidden = true;
+		ui.terms.replaceChildren();
+		ui.termsSummary.textContent = "";
+		ui.termsLead.textContent = "";
+		return;
+	}
+
+	const [best] = recipesForExample(example);
+	ui.termsFold.hidden = false;
+	if (!best) {
+		ui.termsSummary.textContent = "— no shipped recipe covers this app yet";
+		ui.termsLead.textContent = `This app needs ${primitivesForExample(example).join(
+			", ",
+		)}. No recipe in the catalog places all of them, so there are no claim terms to show.`;
+		ui.terms.replaceChildren();
+		return;
+	}
+
+	ui.termsSummary.textContent = `— ${summarizeTerms(best)}`;
+	ui.termsLead.textContent = `${best.displayName}: ${best.description}`;
+	ui.terms.replaceChildren(
+		...termsRows(best).flatMap(([label, value]) => {
+			const term = document.createElement("dt");
+			term.textContent = label;
+			const description = document.createElement("dd");
+			description.textContent = value;
+			return [term, description];
+		}),
+	);
+}
+
 function renderPolicy(container: HTMLElement, plan: DeployPlan) {
 	const fields = [
 		["redundancy", plan.policy.redundancy],
@@ -1225,7 +1565,6 @@ function renderPolicy(container: HTMLElement, plan: DeployPlan) {
 function renderLiveSelect(
 	ui: ReturnType<typeof requiredElements>,
 	live: readonly LiveHost[],
-	claimedHostId: string | null,
 	stageHostId: string | null,
 ) {
 	ui.hostEmpty.hidden = live.length > 0;
@@ -1234,7 +1573,6 @@ function renderLiveSelect(
 		(stageHostId && live.some((host) => host.stationId === stageHostId)
 			? stageHostId
 			: null) ??
-		claimedHostId ??
 		live[0]?.stationId ??
 		null;
 
@@ -1244,10 +1582,6 @@ function renderLiveSelect(
 		option.value = "";
 		option.textContent = "None yet";
 		ui.liveSelect.append(option);
-		ui.livePreview.disabled = true;
-		ui.liveOpen.disabled = true;
-		ui.liveClaim.disabled = true;
-		ui.claimedLine.hidden = true;
 		ui.placement.textContent = "Ship an app to see placement.";
 		ui.hostTabs.replaceChildren();
 		ui.junctionNote.hidden = true;
@@ -1263,16 +1597,7 @@ function renderLiveSelect(
 			return option;
 		}),
 	);
-	ui.livePreview.disabled = false;
-	ui.liveOpen.disabled = false;
-	ui.liveClaim.disabled = claimedHostId === activeId;
-	ui.liveClaim.textContent = claimedHostId === activeId ? "Claimed" : "Claim";
 
-	const claimed = live.find((host) => host.stationId === claimedHostId);
-	ui.claimedLine.hidden = !claimed;
-	ui.claimedLine.textContent = claimed
-		? `Claimed: ${claimed.exampleTitle} on ${claimed.station.label}`
-		: "";
 	ui.placement.textContent = live
 		.map((host) => {
 			const pack = packFor(host.station.targetId);
@@ -1295,7 +1620,7 @@ function renderLiveSelect(
 		}),
 	);
 	ui.junctionNote.hidden = false;
-	ui.junctionNote.textContent = `Placement preview: ${live.length} host(s) · Preview / Open / Claim`;
+	ui.junctionNote.textContent = `Placement preview: ${live.length} host(s) · Open for a new tab`;
 }
 
 function createHostFrame(
@@ -1353,8 +1678,11 @@ function resetHostFrames(ui: ReturnType<typeof requiredElements>) {
 	ui.hostTabs.hidden = true;
 	ui.hostEmpty.hidden = false;
 	ui.junctionNote.hidden = true;
-	ui.claimedBanner.hidden = true;
-	ui.claimedBanner.textContent = "";
+	ui.claimCodes.hidden = true;
+	ui.claimUrl.hidden = true;
+	ui.claimUrl.removeAttribute("href");
+	ui.claimUrl.textContent = "";
+	ui.claimMissing.hidden = true;
 	ui.stage.dataset.claimed = "false";
 }
 
@@ -1388,7 +1716,7 @@ export function normalizeBase(value: string | undefined): string {
 	return `${value ?? "/"}`.replace(/\/?$/u, "/");
 }
 
-/** Last selected app wins for Stage Source; fall back to first selected / catalog. */
+/** Last selected app wins for Ship Bindle focus; fall back to first selected / catalog. */
 export function pickSourceFocusId(
 	selected: ReadonlySet<string>,
 	focusId: string | null | undefined,
@@ -1400,7 +1728,7 @@ export function pickSourceFocusId(
 }
 
 /**
- * Stage Source follows the active live host when one is on Stage; otherwise Ship selection.
+ * Prefer the active live host's example when present; otherwise Ship selection.
  */
 export function resolveStageSourceFocusId(input: {
 	readonly selected: ReadonlySet<string>;
@@ -1442,12 +1770,16 @@ function requiredElements(root: HTMLElement) {
 		hostTabs: get<HTMLElement>("[data-host-tabs]"),
 		hostEmpty: get<HTMLElement>("[data-host-empty]"),
 		emptyTitle: get<HTMLElement>("[data-empty-title]"),
-		claimedBanner: get<HTMLElement>("[data-claimed-banner]"),
 		openPreview: root.querySelector<HTMLAnchorElement>("[data-open-preview]"),
 		provisionPreview: get<HTMLElement>("[data-provision-preview]"),
 		junctionNote: get<HTMLElement>("[data-junction-note]"),
-		sourcePath: get<HTMLElement>("[data-source-path]"),
-		source: get<HTMLElement>("[data-source]"),
+		poolSourcePath: get<HTMLElement>("[data-pool-source-path]"),
+		poolSource: get<HTMLElement>("[data-pool-source]"),
+		shipSourcePath: get<HTMLElement>("[data-ship-source-path]"),
+		shipSource: get<HTMLElement>("[data-ship-source]"),
+		claimCodes: get<HTMLElement>("[data-claim-codes]"),
+		claimUrl: get<HTMLAnchorElement>("[data-claim-url]"),
+		claimMissing: get<HTMLElement>("[data-claim-missing]"),
 		stationId: get<HTMLElement>("[data-station-id]"),
 		yardSelect: get<HTMLSelectElement>("[data-yard-select]"),
 		demoPolicy: get<HTMLSelectElement>("[data-demo-policy]"),
@@ -1460,14 +1792,14 @@ function requiredElements(root: HTMLElement) {
 		appSelect: get<HTMLSelectElement>("[data-app-select]"),
 		examplePolicy: get<HTMLElement>("[data-example-policy]"),
 		examplePlanLine: get<HTMLElement>("[data-example-plan-line]"),
+		termsFold: get<HTMLElement>("[data-terms-fold]"),
+		termsSummary: get<HTMLElement>("[data-terms-summary]"),
+		termsLead: get<HTMLElement>("[data-terms-lead]"),
+		terms: get<HTMLElement>("[data-terms]"),
 		deployApps: get<HTMLButtonElement>("[data-deploy-apps]"),
 		deployState: get<HTMLElement>("[data-deploy-state]"),
 		terminal: get<HTMLElement>("[data-terminal]"),
 		liveSelect: get<HTMLSelectElement>("[data-live-select]"),
-		livePreview: get<HTMLButtonElement>("[data-live-preview]"),
-		liveOpen: get<HTMLButtonElement>("[data-live-open]"),
-		liveClaim: get<HTMLButtonElement>("[data-live-claim]"),
-		claimedLine: get<HTMLElement>("[data-claimed-line]"),
 		placement: get<HTMLElement>("[data-placement]"),
 	};
 }

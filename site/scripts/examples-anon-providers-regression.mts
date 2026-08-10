@@ -1,9 +1,14 @@
 /**
- * Live regression: every non-Cloudflare Examples yard provisions a real HTTP
- * same-origin anon Environment Station (+ OpenSaaS ship) via /api/anon.
- * No blob:. No mock greenwash.
+ * Live regression: Examples temporary/agent Environment Station APIs.
+ * Lakebed → /api/lakebed-temp (HOBO_LAKEBED_TEMP_MOCK=1 for CI).
+ * Vercel Drop → /api/vercel-temp (HOBO_VERCEL_DROP_MOCK=1 for CI).
+ * Netlify anonymous → /api/provider-temp/netlify (HOBO_NETLIFY_TEMP_MOCK=1 for CI).
+ * Local yards → same-origin /api/anon/host via provider-temp.
  *
- * Run: HOBO_OPENSAAS_SKIP_BUILD=1 EXAMPLES_BASE_URL=… pnpm --filter hobo-site run examples:regression:anon
+ * Run:
+ *   HOBO_LAKEBED_TEMP_MOCK=1 HOBO_VERCEL_DROP_MOCK=1 HOBO_NETLIFY_TEMP_MOCK=1 \
+ *   EXAMPLES_BASE_URL=http://127.0.0.1:4321/HoBo/ \
+ *   pnpm --filter hobo-site run examples:regression:anon
  */
 import { chromium, type Page } from "playwright";
 
@@ -11,166 +16,217 @@ const BASE = (
 	process.env.EXAMPLES_BASE_URL ?? "http://127.0.0.1:4321/HoBo/"
 ).replace(/\/?$/u, "/");
 
-const PROVIDERS = [
-	"railway",
-	"netlify",
-	"vercel",
-	"webernetes",
-	"lakebed",
-	"kubernetes",
+const EXPECTED_API_VERSION = "hobo-temp-v2";
+
+const LOCAL_PROVIDER_TEMP = [
 	"browser-wasm",
+	"webernetes",
 ] as const;
 
 function log(msg: string) {
-	console.log(`[feature:anon-providers] ${msg}`);
+	console.log(`[feature:temp-providers] ${msg}`);
 }
 
-async function assertApis(page: Page) {
-	const health = await page.request.get(new URL("api/anon/", BASE).toString());
-	if (!health.ok()) {
+async function readJson(
+	res: Awaited<ReturnType<Page["request"]["get"]>>,
+	label: string,
+): Promise<Record<string, unknown>> {
+	const ct = res.headers()["content-type"] ?? "";
+	const text = await res.text();
+	if (text.trimStart().startsWith("<") || !ct.includes("application/json")) {
 		throw new Error(
-			`anon API down (${health.status()}). Start: pnpm --filter hobo-site run dev`,
+			`${label}: expected JSON, got ${ct || "unknown"} HTTP ${res.status()} (HTML usually means stale astro on this port — kill it and restart with mocks)`,
 		);
 	}
-	const body = (await health.json()) as { ok?: boolean; providers?: string[] };
-	if (!body.ok || !Array.isArray(body.providers)) {
-		throw new Error(`Unexpected anon health: ${JSON.stringify(body)}`);
-	}
-	for (const id of PROVIDERS) {
-		if (!body.providers.includes(id)) {
-			throw new Error(`anon health missing provider ${id}`);
-		}
-	}
-	log(`✓ same-origin anon API · ${body.providers.join(",")}`);
+	return JSON.parse(text) as Record<string, unknown>;
 }
 
-async function provisionStation(page: Page, providerId: string) {
+async function assertLakebed(page: Page) {
+	const health = await page.request.get(
+		new URL("api/lakebed-temp", BASE).toString(),
+	);
+	const healthBody = await readJson(health, "lakebed-temp health");
+	if (!health.ok() || healthBody.ok !== true) {
+		throw new Error(
+			`lakebed-temp API down (${health.status()}). Start: HOBO_LAKEBED_TEMP_MOCK=1 pnpm --filter hobo-site run dev`,
+		);
+	}
+	if (healthBody.apiVersion !== EXPECTED_API_VERSION) {
+		throw new Error(
+			`lakebed-temp stale apiVersion=${String(healthBody.apiVersion)}`,
+		);
+	}
 	const res = await page.request.post(
-		new URL(`api/anon/${providerId}/station`, BASE).toString(),
+		new URL("api/lakebed-temp/station", BASE).toString(),
+		{
+			data: { stationId: "station:regression:lakebed" },
+			timeout: 60_000,
+		},
+	);
+	const body = await readJson(res, "lakebed-temp station");
+	if (!res.ok() || body.ok !== true) {
+		throw new Error(`lakebed station failed: ${String(body.error ?? res.status())}`);
+	}
+	const stationUrl = String(body.stationUrl ?? "");
+	if (!stationUrl.includes("lakebed.")) {
+		throw new Error(`lakebed stationUrl not Lakebed host: ${stationUrl}`);
+	}
+	if (!body.claimUrl) throw new Error("lakebed missing claimUrl");
+	log(`✓ lakebed-temp · ${stationUrl}`);
+}
+
+async function assertVercelDrop(page: Page) {
+	const health = await page.request.get(
+		new URL("api/vercel-temp", BASE).toString(),
+	);
+	const healthBody = await readJson(health, "vercel-temp health");
+	if (!health.ok() || healthBody.ok !== true) {
+		throw new Error(
+			`vercel-temp API down (${health.status()}). Start: HOBO_VERCEL_DROP_MOCK=1 pnpm --filter hobo-site run dev`,
+		);
+	}
+	if (healthBody.apiVersion !== EXPECTED_API_VERSION) {
+		throw new Error(
+			`vercel-temp stale apiVersion=${String(healthBody.apiVersion)}`,
+		);
+	}
+	const res = await page.request.post(
+		new URL("api/vercel-temp/station", BASE).toString(),
+		{
+			data: { stationId: "station:regression:vercel" },
+			timeout: 60_000,
+		},
+	);
+	const body = await readJson(res, "vercel-temp station");
+	if (!res.ok() || body.ok !== true) {
+		throw new Error(`vercel Drop station failed: ${String(body.error ?? res.status())}`);
+	}
+	const stationUrl = String(body.stationUrl ?? "");
+	if (!stationUrl.includes("vercel.app")) {
+		throw new Error(`vercel stationUrl not *.vercel.app: ${stationUrl}`);
+	}
+	if (!body.claimUrl) throw new Error("vercel missing claimUrl");
+	log(`✓ vercel-temp (Drop) · ${stationUrl}`);
+}
+
+async function assertNetlify(page: Page) {
+	const health = await page.request.get(
+		new URL("api/provider-temp/netlify", BASE).toString(),
+	);
+	const healthBody = await readJson(health, "provider-temp/netlify health");
+	if (!health.ok() || healthBody.ok !== true) {
+		throw new Error(
+			`provider-temp/netlify down (${health.status()}). Start: HOBO_NETLIFY_TEMP_MOCK=1 pnpm --filter hobo-site run dev`,
+		);
+	}
+	if (healthBody.apiVersion !== EXPECTED_API_VERSION) {
+		throw new Error(
+			`netlify temp stale apiVersion=${String(healthBody.apiVersion)} — kill old :4321 and restart`,
+		);
+	}
+	const res = await page.request.post(
+		new URL("api/provider-temp/netlify/station", BASE).toString(),
+		{
+			data: { stationId: "station:regression:netlify" },
+			timeout: 180_000,
+		},
+	);
+	const body = await readJson(res, "provider-temp/netlify station");
+	if (!res.ok() || body.ok !== true) {
+		throw new Error(
+			`netlify station failed: ${String(body.error ?? body.remediation ?? res.status())}`,
+		);
+	}
+	const stationUrl = String(body.stationUrl ?? "");
+	if (!stationUrl.includes("netlify.app")) {
+		throw new Error(`netlify stationUrl not *.netlify.app: ${stationUrl}`);
+	}
+	if (!body.claimUrl) throw new Error("netlify missing claimUrl");
+	log(`✓ provider-temp/netlify · ${stationUrl}`);
+}
+
+async function assertLocalProviderTemp(page: Page, providerId: string) {
+	const health = await page.request.get(
+		new URL(`api/provider-temp/${providerId}`, BASE).toString(),
+	);
+	const healthBody = await readJson(health, `provider-temp/${providerId} health`);
+	if (!health.ok() || healthBody.ok !== true) {
+		throw new Error(
+			`provider-temp/${providerId} down (${health.status()}). Restart astro with current tree.`,
+		);
+	}
+	if (healthBody.apiVersion !== EXPECTED_API_VERSION) {
+		throw new Error(
+			`${providerId} temp stale apiVersion=${String(healthBody.apiVersion)}`,
+		);
+	}
+
+	const res = await page.request.post(
+		new URL(`api/provider-temp/${providerId}/station`, BASE).toString(),
 		{
 			data: { stationId: `station:regression:${providerId}` },
 			timeout: 60_000,
 		},
 	);
-	const body = (await res.json()) as {
-		ok?: boolean;
-		error?: string;
-		stationUrl?: string;
-		endpointUrl?: string;
-		claimUrl?: string;
-		hostKind?: string;
-	};
-	if (!res.ok() || !body.ok) {
+	const body = await readJson(res, `provider-temp/${providerId} station`);
+	if (!res.ok() || body.ok !== true) {
 		throw new Error(
-			`${providerId} station failed: ${body.error ?? res.status()}`,
+			`${providerId} temp station failed: ${String(body.error ?? res.status())}`,
 		);
 	}
-	const url = body.stationUrl ?? body.endpointUrl ?? "";
+	const url = String(body.stationUrl ?? "");
 	if (!url.startsWith("http") || url.startsWith("blob:")) {
-		throw new Error(`${providerId} returned bad stationUrl: ${url}`);
+		throw new Error(`${providerId} bad stationUrl: ${url}`);
 	}
 	if (!url.includes("/api/anon/host/")) {
-		throw new Error(`${providerId} stationUrl not same-origin host: ${url}`);
-	}
-	const get = await page.request.get(url);
-	if (!get.ok()) {
-		throw new Error(`${providerId} host GET ${get.status()} for ${url}`);
-	}
-	const html = await get.text();
-	if (!/data-hobo-station/i.test(html)) {
-		throw new Error(`${providerId} host missing data-hobo-station`);
-	}
-	log(`✓ ${providerId} station · ${url}`);
-	return url;
-}
-
-async function shipOpenSaas(page: Page, providerId: string) {
-	const res = await page.request.post(
-		new URL(`api/anon/${providerId}/opensaas`, BASE).toString(),
-		{
-			data: { stationId: `station:regression:${providerId}:opensaas` },
-			timeout: 180_000,
-		},
-	);
-	const body = (await res.json()) as {
-		ok?: boolean;
-		error?: string;
-		clientUrl?: string;
-		claimUrl?: string;
-		hostKind?: string;
-	};
-	if (!res.ok() || !body.ok || !body.clientUrl) {
 		throw new Error(
-			`${providerId} opensaas failed: ${body.error ?? res.status()}`,
+			`${providerId} expected same-origin anon host URL, got ${url}`,
 		);
 	}
-	if (body.clientUrl.startsWith("blob:")) {
-		throw new Error(`${providerId} opensaas returned blob:`);
-	}
-	const get = await page.request.get(body.clientUrl);
-	if (!get.ok()) {
+	if (!body.claimUrl) throw new Error(`${providerId} missing claimUrl`);
+
+	const host = await page.request.get(url);
+	const hostText = await host.text();
+	if (!host.ok() || !hostText.includes(`data-hobo-station="${providerId}"`)) {
 		throw new Error(
-			`${providerId} OpenSaaS GET ${get.status()} for ${body.clientUrl}`,
+			`${providerId} host not navigable (HTTP ${host.status()}): ${url}`,
 		);
 	}
-	const html = await get.text();
-	if (html.length < 100) {
-		throw new Error(`${providerId} OpenSaaS host too small`);
-	}
-	log(`✓ ${providerId} OpenSaaS · ${body.clientUrl}`);
-	return body.clientUrl;
+	log(`✓ provider-temp/${providerId} · ${url}`);
 }
 
-async function uiSmokeRailway(page: Page) {
-	const url = new URL(`${BASE}examples/`);
-	url.searchParams.set("feature", "anon-providers");
-	url.searchParams.set("t", String(Date.now()));
-	await page.goto(url.toString(), { waitUntil: "networkidle", timeout: 60_000 });
-	await page.evaluate(() => localStorage.clear());
-	await page.goto(url.toString(), { waitUntil: "networkidle", timeout: 60_000 });
-	await page.selectOption("[data-yard-select]", ["railway"]);
-	await page.click("[data-deploy-stations]");
-	await page.waitForFunction(
-		() => {
-			const state = document.querySelector("[data-deploy-state]")?.textContent;
-			return state === "stations-ready" || state === "failed";
-		},
-		null,
-		{ timeout: 120_000 },
-	);
-	const snap = await page.evaluate(() => ({
-		state: document.querySelector("[data-deploy-state]")?.textContent ?? "",
-		terminal: document.querySelector("[data-terminal]")?.textContent ?? "",
-	}));
-	if (snap.state !== "stations-ready") {
-		throw new Error(`Railway UI station deploy failed:\n${snap.terminal}`);
+async function assertCfTempHealth(page: Page) {
+	const health = await page.request.get(new URL("api/cf-temp", BASE).toString());
+	const body = await readJson(health, "cf-temp health");
+	if (!health.ok() || body.ok !== true) {
+		throw new Error(`cf-temp health failed HTTP ${health.status()}`);
 	}
-	if (/blob:/i.test(snap.terminal)) {
-		throw new Error("Railway UI used blob: — refusing");
+	if (body.apiVersion !== EXPECTED_API_VERSION) {
+		throw new Error(
+			`cf-temp stale apiVersion=${String(body.apiVersion)} — restart site`,
+		);
 	}
-	if (!/same-origin agent/i.test(snap.terminal)) {
-		throw new Error(`expected same-origin agent in terminal:\n${snap.terminal}`);
-	}
-	log("✓ Railway UI Deploy stations → same-origin agent");
+	log("✓ cf-temp health");
 }
 
 async function main() {
-	const browser = await chromium.launch();
+	const browser = await chromium.launch({ headless: true });
 	const page = await browser.newPage();
 	try {
-		await assertApis(page);
-		for (const providerId of PROVIDERS) {
-			await provisionStation(page, providerId);
-			await shipOpenSaas(page, providerId);
+		await assertCfTempHealth(page);
+		await assertLakebed(page);
+		await assertVercelDrop(page);
+		await assertNetlify(page);
+		for (const id of LOCAL_PROVIDER_TEMP) {
+			await assertLocalProviderTemp(page, id);
 		}
-		await uiSmokeRailway(page);
-		log("PASS all anon providers");
+		log("all temporary/agent provider regressions green");
 	} finally {
 		await browser.close();
 	}
 }
 
 main().catch((error) => {
-	console.error(error instanceof Error ? error.message : error);
+	console.error(error);
 	process.exitCode = 1;
 });

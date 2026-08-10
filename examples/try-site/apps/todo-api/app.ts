@@ -1,22 +1,30 @@
 import { bindle } from "@hobo/bindles";
+import { intent, trainable } from "@hobo/runtime";
 
-export const runtime = {
-	schemaVersion: "hobo.try-runtime/v1",
-	resources: { todos: { kind: "kv", initial: [] } },
-	routes: [
-		{ method: "GET", path: "/health", action: "health" },
-		{ method: "GET", path: "/api/todos", action: "list", resource: "todos" },
-		{ method: "POST", path: "/api/todos", action: "create", resource: "todos" },
-		{ method: "PATCH", path: "/api/todos/:id", action: "toggle", resource: "todos" },
-	],
-} as const;
+type Todo = { id: string; text: string; completed: boolean };
 
-export default bindle(
-	"todo-api",
-	{ require: ["http", "kv"], runtimes: ["wasm"] },
-	(b) => {
-		const todos = b.kv().allow("get", "set");
-		const api = b.api().dependsOn(todos);
-		return { todos, api };
-	},
-);
+@trainable
+class Todos {
+	@intent("List all todos")
+	list(): { items: Todo[] } {
+		return { items: [] };
+	}
+
+	@intent("Create a todo from text")
+	create(text: string): Todo {
+		return { id: "0", text, completed: false };
+	}
+
+	@intent("Toggle todo completed flag")
+	toggle(id: string): Todo {
+		return { id, text: "", completed: true };
+	}
+}
+
+export default bindle((b) => {
+	const todos = b.kv().allow("get", "set");
+	return {
+		todos,
+		web: b.web(Todos).dependsOn(todos),
+	};
+});

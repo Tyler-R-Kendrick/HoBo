@@ -57,6 +57,18 @@ export interface ExampleTopology {
 
 export type ExampleDeployKind = "browser-wit" | "local-bridge";
 
+/** OCI container resources extracted from the example Bindle (ship must use these). */
+export type ExampleBindleContainer = {
+	readonly name: string;
+	readonly image: string;
+};
+
+/** webApp Kit metadata from Bindle annotations (e.g. `@hobo/wasp` waspApp). */
+export type ExampleBindleWebApp = {
+	readonly framework: string;
+	readonly root: string;
+};
+
 export interface ExampleCatalogEntry {
 	readonly id: string;
 	readonly title: string;
@@ -64,13 +76,17 @@ export interface ExampleCatalogEntry {
 	readonly tags: readonly string[];
 	readonly needs: readonly string[];
 	readonly ui: ExampleUiKind;
-	/** browser-wit = Component Model guest; local-bridge = Docker/Wasp station. */
+	/** browser-wit = Component Model guest; local-bridge = Bindle container/webApp ship. */
 	readonly deployKind: ExampleDeployKind;
 	readonly entry: string;
 	readonly sourcePath: string;
 	readonly source: string;
-	/** Object-literal handlers.mjs body inlined into the browser WIT guest. */
+	/** Object-literal handlers.txt body inlined into the browser WIT guest. */
 	readonly handlersSource: string;
+	/** Present when Bindle declares `b.container({ image })` (e.g. Postgres OCI). */
+	readonly bindleContainers: readonly ExampleBindleContainer[];
+	/** Present when Bindle declares `b.web(waspApp(...))` (or compatible webApp). */
+	readonly bindleWebApp: ExampleBindleWebApp | null;
 	readonly appPolicy: ExamplePolicy;
 	readonly deploymentPolicy: ExamplePolicy;
 	readonly topology: ExampleTopology;
@@ -146,11 +162,45 @@ function parseExample(value: unknown, label: string): ExampleCatalogEntry {
 			input.handlersSource === undefined
 				? ""
 				: stringAllowEmpty(input.handlersSource, `${label}.handlersSource`),
+		bindleContainers: parseBindleContainers(
+			input.bindleContainers,
+			`${label}.bindleContainers`,
+		),
+		bindleWebApp: parseBindleWebApp(input.bindleWebApp, `${label}.bindleWebApp`),
 		appPolicy: parsePolicy(input.appPolicy, `${label}.appPolicy`),
 		deploymentPolicy: parsePolicy(input.deploymentPolicy, `${label}.deploymentPolicy`),
 		topology,
 		runtime: parseRuntime(input.runtime, `${label}.runtime`),
 	};
+}
+
+function parseBindleWebApp(
+	value: unknown,
+	label: string,
+): ExampleBindleWebApp | null {
+	if (value === undefined || value === null) return null;
+	const row = record(value, label);
+	return {
+		framework: string(row.framework, `${label}.framework`),
+		root: string(row.root, `${label}.root`),
+	};
+}
+
+function parseBindleContainers(
+	value: unknown,
+	label: string,
+): readonly ExampleBindleContainer[] {
+	if (value === undefined) return [];
+	if (!Array.isArray(value)) {
+		throw new TypeError(`${label} must be an array`);
+	}
+	return value.map((entry, index) => {
+		const row = record(entry, `${label}[${index}]`);
+		return {
+			name: string(row.name, `${label}[${index}].name`),
+			image: string(row.image, `${label}[${index}].image`),
+		};
+	});
 }
 
 function parseTopology(value: unknown, label: string): ExampleTopology {

@@ -1,8 +1,8 @@
 {
 	"id": "todo-api",
 	"title": "Todo API",
-	"blurb": "A small HTTP and KV service with a single-host default.",
-	"tags": ["api", "kv"],
+	"blurb": "Trainable Todos bound to b.web — list, create, and toggle over KV.",
+	"tags": ["api", "kv", "trainable"],
 	"needs": ["http", "kv"],
 	"ui": "todos",
 	"entry": "app.ts",

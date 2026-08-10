@@ -1,14 +1,14 @@
 import { bindle } from "@hobo/bindles";
-import { intent, trainable } from "@hobo/runtime";
 
-@trainable
-class Hello {
-	@intent("Produce a simple hello-world greeting")
-	greet(name?: string): string {
-		return name?.trim() ? `Hello, ${name.trim()}!` : "Hello World!";
-	}
-}
+export const runtime = {
+	schemaVersion: "hobo.try-runtime/v1",
+	resources: {},
+	routes: [
+		{ method: "GET", path: "/health", action: "health" },
+		{ method: "POST", path: "/api/greet", action: "greet" },
+	],
+} as const;
 
 export default bindle((b) => ({
-	web: b.web(Hello),
+	web: b.web(),
 }));

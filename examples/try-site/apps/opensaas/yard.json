@@ -13,18 +13,16 @@
 				"yard:browser-wasm",
 				"yard:webernetes",
 				"yard:cloudflare",
-				"yard:railway",
 				"yard:netlify",
 				"yard:vercel",
-				"yard:lakebed",
-				"yard:kubernetes"
+				"yard:lakebed"
 			]
 		},
 		"allowedYardIds": [
 			"yard:webernetes",
 			"yard:lakebed",
 			"yard:cloudflare",
-			"yard:railway"
+			"yard:vercel"
 		]
 	}
 }

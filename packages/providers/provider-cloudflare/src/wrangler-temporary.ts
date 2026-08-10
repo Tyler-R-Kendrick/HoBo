@@ -121,9 +121,11 @@ export async function deployTemporaryWithWrangler(
 		stationId: input.stationId,
 		scriptName,
 		stationUrl: parsed.stationUrl,
+		primaryUrl: parsed.stationUrl,
 		claimUrl: parsed.claimUrl,
 		accountId: "temporary",
 		expiresAt: new Date(Date.now() + TEMPORARY_STATION_TTL_MS).toISOString(),
+		providerId: "cloudflare",
 		anonymous: true,
 		temporary: true,
 	};

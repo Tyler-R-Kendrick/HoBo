@@ -134,3 +134,9 @@ persistence, and `released` is a stronger claim than `retained` or `orphaned`.
 Every message and detail passes `redactHostText`. In a browser the string most
 likely to carry a secret is a URL, so `access_token=…`-shaped query parameters
 and bearer tokens never reach a console line or a receipt.
+
+## Validation
+
+```bash
+pnpm --filter @hobo/provider-browser-wasm run test
+```

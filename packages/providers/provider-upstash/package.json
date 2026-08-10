@@ -1,0 +1,39 @@
+{
+	"name": "@hobo/provider-upstash",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "HoBo Upstash temporary Redis provider: the data-only upstash.temporary-redis/v1 product definition (kv.redis-compatible/v1 native, therefore kv.key-value/v1 by refinement, and nothing queue or topic), a narrow versioned parser for the no-signup start-redis markdown response, an injected-transport driver that deposits the REST token into secret custody before it can reach a receipt, provider-reported expiry, and a console claim ceremony with a blocking post-claim token rotation.",
+	"type": "module",
+	"files": [
+		"LICENSE",
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@bufbuild/protobuf": "2.12.1",
+		"@hobo/bindings": "workspace:*",
+		"@hobo/capability-profiles": "workspace:*",
+		"@hobo/kv-redis-compatible": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.29",
+		"vitest": "^4.1.9"
+	},
+	"scripts": {
+		"prebuild": "pnpm --filter @hobo/bindings build && pnpm --filter @hobo/capability-profiles build && pnpm --filter @hobo/kv-redis-compatible build",
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run test/",
+		"test:unit": "vitest run test/"
+	}
+}

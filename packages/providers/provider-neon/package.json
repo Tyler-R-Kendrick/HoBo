@@ -1,0 +1,38 @@
+{
+	"name": "@hobo/provider-neon",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "HoBo Neon Claimable Postgres provider: the data-only neon.claimable-postgres/v1 product definition (data.postgres/v1 native, therefore data.relational/v1 by refinement), an injected-transport REST driver for the unauthenticated neon.new claimable-database API, provider-reported expiry, resource-scoped claim with a blocking post-claim credential rotation ceremony, and pg_dump/pg_restore plus logical-copy migration behind an injected ProcessRunner.",
+	"type": "module",
+	"files": [
+		"LICENSE",
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@bufbuild/protobuf": "2.12.1",
+		"@hobo/bindings": "workspace:*",
+		"@hobo/capability-profiles": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.29",
+		"vitest": "^4.1.9"
+	},
+	"scripts": {
+		"prebuild": "pnpm --filter @hobo/bindings build && pnpm --filter @hobo/capability-profiles build",
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run test/",
+		"test:unit": "vitest run test/"
+	}
+}

@@ -97,3 +97,6 @@ trace, or a public read model; only the reference does.
 
 Run `pnpm --filter @hobo/claims test` for reducer, admission, one-time action,
 and provider-strategy contract coverage.
+
+The foundation layer also refreshes the root lockfile; `pnpm run install:check`
+verifies that current trunk plus these workspaces installs frozen.

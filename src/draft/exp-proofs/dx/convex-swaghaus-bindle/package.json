@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "draft:prepare": "pnpm --filter @hobo/convex build",
     "test": "vitest run --root ."
   },
   "dependencies": {

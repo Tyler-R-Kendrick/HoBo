@@ -110,4 +110,7 @@ catalog does not export).
 
 ## Validation
 
+- `pnpm run draft:artifacts -- src/draft/exp-proofs/dx/convex-swaghaus-bindle`
+  runs the package's `draft:prepare` hook before executing the example, so a
+  clean checkout builds `@hobo/convex` before resolving its package exports.
 - `pnpm --prefix src/draft/exp-proofs/dx/convex-swaghaus-bindle test`

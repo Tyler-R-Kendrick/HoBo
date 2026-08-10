@@ -1,4 +1,10 @@
 import {
+	TEMPORARY_STATION_TTL_MS as CORE_TEMPORARY_STATION_TTL_MS,
+	temporaryStationExpiresAt,
+	type TemporaryEnvironmentStationResult as SharedTemporaryEnvironmentStationResult,
+} from "@hobo/core";
+
+import {
 	assertStationWorkerHasNoAppCode,
 	ENVIRONMENT_STATION_WORKER_MODULE,
 	ENVIRONMENT_STATION_WORKER_NAME_PREFIX,
@@ -11,7 +17,10 @@ import {
 export const CF_API_BASE = "https://api.cloudflare.com/client/v4"; // public-contract: Cloudflare API v4 base used by Temporary Accounts
 export const CF_TERMS_URL = "https://www.cloudflare.com/terms/"; // public-contract: Temporary Accounts terms URL
 export const CF_PRIVACY_URL = "https://www.cloudflare.com/privacypolicy/"; // public-contract: Temporary Accounts privacy URL
-export const TEMPORARY_STATION_TTL_MS = 60 * 60 * 1000; // public-contract: Temporary Accounts station TTL (1h)
+/** @deprecated Prefer TEMPORARY_STATION_TTL_MS from @hobo/core — re-export for CF callers. */
+export const TEMPORARY_STATION_TTL_MS = CORE_TEMPORARY_STATION_TTL_MS;
+
+export const CLOUDFLARE_TEMPORARY_PROVIDER_ID = "cloudflare" as const; // public-contract: stable temporary provider identifier
 
 export type TemporaryEnvironmentStationInput = {
 	readonly stationId: string;
@@ -26,16 +35,14 @@ export type TemporaryEnvironmentStationInput = {
 	readonly bindings?: Readonly<Record<string, string>>;
 };
 
-export type TemporaryEnvironmentStationResult = {
-	readonly stationId: string;
-	readonly scriptName: string;
-	readonly stationUrl: string;
-	readonly claimUrl: string;
-	readonly accountId: string;
-	readonly expiresAt: string;
-	readonly anonymous: true;
-	readonly temporary: true;
-};
+/** Cloudflare Temporary Accounts result — shared contract + CF scriptName/accountId. */
+export type TemporaryEnvironmentStationResult =
+	SharedTemporaryEnvironmentStationResult & {
+		readonly providerId: typeof CLOUDFLARE_TEMPORARY_PROVIDER_ID;
+		readonly scriptName: string;
+		readonly accountId: string;
+		readonly primaryUrl: string;
+	};
 
 export type TemporaryPreviewAccount = {
 	readonly accountId: string;
@@ -300,14 +307,16 @@ export async function provisionTemporaryEnvironmentStation(
 		...(input.bindings ? { bindings: input.bindings } : {}),
 	});
 
-	const expiresAt = new Date(Date.now() + TEMPORARY_STATION_TTL_MS).toISOString();
+	const expiresAt = temporaryStationExpiresAt(TEMPORARY_STATION_TTL_MS);
 	return {
 		stationId: input.stationId,
 		scriptName,
 		stationUrl: deployed.workersDevUrl,
+		primaryUrl: deployed.workersDevUrl,
 		claimUrl: account.claimUrl,
 		accountId: account.accountId,
 		expiresAt,
+		providerId: CLOUDFLARE_TEMPORARY_PROVIDER_ID,
 		anonymous: true,
 		temporary: true,
 	};

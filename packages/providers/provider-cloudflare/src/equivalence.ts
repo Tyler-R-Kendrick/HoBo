@@ -28,3 +28,10 @@ export const INITIAL_CAPABILITY_PORTS = Object.freeze(
 export function equivalenceForPort(port: InitialCapabilityPort) {
 	return EQUIVALENCE_CLASSES[port];
 }
+
+/** HoBo ports this provider can natively host (Matching / Examples truth). */
+export function cloudflareNativePorts(): readonly string[] {
+	return Object.freeze(
+		[...new Set(Object.values(EQUIVALENCE_CLASSES).map((entry) => entry.port))],
+	);
+}

@@ -1,0 +1,33 @@
+{
+	"name": "@hobo/auth-md",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "HoBo auth.md agent-principal plane: OAuth Protected Resource Metadata discovery, anonymous agent registration, identity assertions, human claim, and post-claim rotation/revocation — kept separate from human session and infrastructure ownership.",
+	"type": "module",
+	"files": [
+		"LICENSE",
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.29",
+		"vitest": "^4.1.9"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run test/ contracts/",
+		"test:unit": "vitest run test/",
+		"test:contract:consumer": "vitest run contracts/consumer"
+	}
+}

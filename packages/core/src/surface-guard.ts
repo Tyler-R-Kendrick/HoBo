@@ -45,6 +45,11 @@ export const CORE_API_SNAPSHOT = deepFreeze({
 		"parseTrafficRoutingPlanRecord",
 		"toTrafficRoutingPlanRecord",
 		"TrafficRoutingParseError",
+		"TEMPORARY_ENVIRONMENT_STATION_SCHEMA",
+		"TEMPORARY_STATION_TTL_MS",
+		"TemporaryEnvironmentStationResult",
+		"assertTemporaryEnvironmentStationResult",
+		"temporaryStationToAnonymousSessionShape",
 	],
 });
 

@@ -93,6 +93,12 @@ const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	// port; that port vocabulary lives in identity rather than core, same
 	// future-ADR tiering as the training/eval and runner exceptions above.
 	"packages/adapters/adapter-openbao->packages/identity",
+	// Connector packages (#1052) are AUTHORING-side declarations, not runtime
+	// adapters: they export an opaque symbol built with @hobo/bindles'
+	// defineConnector so b.connector() can resolve it. The edge points at the
+	// authoring surface by design; future connector packages extend this list
+	// until the same future ADR classifies the connector tier.
+	"packages/connectors/connector-firecrawl->packages/bindles",
 	// ADR-0135: the local/browser runtimes compose @hobo/storage-sqlite as the
 	// durable engine behind HoBo-owned ports (schema v2, SqliteJournal). This is
 	// the sanctioned runtime->storage composition, not a port bypass.

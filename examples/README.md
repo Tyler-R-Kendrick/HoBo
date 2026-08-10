@@ -13,6 +13,7 @@ derived types, and event-driven CQRS shape.
 | Example | What it proves |
 |---|---|
 | [`hello-bindle/`](./hello-bindle/README.md) | Minimal Bindle: private API + public web via mesh. Consumes shared [`@hobo/adapter-hono`](../packages/adapters/adapter-hono/README.md); `src/api.ts` is bundled to wasm for isolated-wasm. |
+| [`firecrawl-research/`](./firecrawl-research/README.md) | External developer-service wiring with `b.connector(firecrawl)`: connector metadata from `@hobo/connector-firecrawl`, the official Firecrawl SDK as a separate app dependency, and Station-issued Connection tokens that can resolve personal/team/organization-authorized access. |
 | [`multi-cloud-shop/`](./multi-cloud-shop/README.md) | A shop (storefront, API, kv store, orders queue) as one unchanged Bindle deployable to two providers. |
 | [`durable-agent/`](./durable-agent/README.md) | A durable, tool-invoking agent on `@hobo/runtime`'s authoring surface (`agent()` + `createWorkflowEngine()`). |
 | [`self-host-yard/`](./self-host-yard/README.md) | Operating your own Yard: the whole control plane composed in-process with a SQLite event log. |

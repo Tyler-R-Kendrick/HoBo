@@ -12,6 +12,10 @@
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
 		},
+		"./connector": {
+			"types": "./dist/connector.d.ts",
+			"default": "./dist/connector.js"
+		},
 		"./wiring": {
 			"types": "./dist/wiring/index.d.ts",
 			"default": "./dist/wiring/index.js"

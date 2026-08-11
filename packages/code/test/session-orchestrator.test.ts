@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	AgentLifecycleState,
 	DeliveryLifecycleState,
+	SessionLifecycleState,
 } from "../src/_generated/code_harness_pb.js";
 import type { MuxRunner } from "../src/mux.js";
 import { createResidentSessionRuntime } from "../src/resident-session-runtime.js";
@@ -289,6 +290,10 @@ describe("session orchestrator", () => {
 		expect(saved.gitState?.unstagedPaths).toContain("unstaged.txt");
 		expect(saved.gitState?.untrackedPaths).toContain("untracked.txt");
 		expect(git(cwd, ["rev-parse", "HEAD"])).toBe(head);
+		const checkpointRef = `refs/hobo/checkpoints/${createHash("sha256").update("session-1").digest("hex")}/${saved.checkpoints[0]?.id}`;
+		expect(git(cwd, ["rev-parse", checkpointRef])).toBe(
+			saved.checkpoints[0]?.gitCommit,
+		);
 		expect(
 			spawnSync("git", ["rev-parse", "--verify", "refs/stash"], {
 				cwd,
@@ -309,6 +314,18 @@ describe("session orchestrator", () => {
 		);
 		expect(restored.gitState?.stagedPaths).toContain("staged.txt");
 		expect(git(cwd, ["rev-parse", "HEAD"])).toBe(head);
+		git(cwd, ["reset", "--hard", "HEAD"]);
+		git(cwd, ["clean", "-fd"]);
+		await orchestrator.execute(
+			envelope("session-1", restored.revision ?? 0n, "stopSession", {
+				removeWorktree: true,
+			}),
+		);
+		expect(
+			spawnSync("git", ["rev-parse", "--verify", checkpointRef], {
+				cwd: created.session?.projectRoot,
+			}).status,
+		).not.toBe(0);
 		runtime.close();
 	});
 
@@ -422,6 +439,7 @@ describe("session orchestrator", () => {
 		expect(approvals.at(-1)).toMatchObject({
 			operation: "merge-pull-request",
 			commandId: mergeCommand.commandId,
+			actorId: "test-client",
 			details: { pullRequestNumber: "42" },
 		});
 		harness.runtime.close();
@@ -515,6 +533,162 @@ describe("session orchestrator", () => {
 			gitState: { dirty: false },
 		});
 		expect(git(cwd, ["log", "-1", "--pretty=%s"])).toBe("retry safely");
+		harness.runtime.close();
+	});
+
+	it("reconciles a pending push as not applied after restart, then retries exactly once", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		const remote = temp("hobo-code-pending-push-remote-");
+		git(remote, ["init", "--bare", "-q"]);
+		git(cwd, ["remote", "add", "origin", remote]);
+		let pushes = 0;
+		let probes = 0;
+		const base = sessionProcessRunner();
+		const runner: SessionProcessRunner = {
+			run(command, args, workdir, env) {
+				if (command === "git" && args[0] === "push" && ++pushes === 1) {
+					return Promise.resolve({
+						code: 1,
+						stdout: "",
+						stderr: "connection lost before push",
+					});
+				}
+				if (command === "git" && args[0] === "ls-remote" && ++probes === 1) {
+					return Promise.resolve({
+						code: 1,
+						stdout: "",
+						stderr: "provider unavailable",
+					});
+				}
+				return base.run(command, args, workdir, env);
+			},
+		};
+		const options = {
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: () => true,
+		};
+		const command = {
+			...envelope("session-1", harness.created.revision ?? 0n, "push", {
+				remote: "origin",
+			}),
+			commandId: "pending-push",
+		};
+		await expect(
+			createSessionOrchestrator(options).execute(command),
+		).rejects.toThrow("connection lost before push");
+		await expect(
+			createSessionOrchestrator(options).execute(command),
+		).resolves.toMatchObject({
+			deliveryState: { lifecycleState: DeliveryLifecycleState.READY },
+		});
+		expect(pushes).toBe(2);
+		harness.runtime.close();
+	});
+
+	it("repairs approved stack metadata after submit before completing reconciliation", async () => {
+		const harness = await createHarness();
+		let edits = 0;
+		const base = sessionProcessRunner();
+		const runner: SessionProcessRunner = {
+			run(command, args, cwd, env) {
+				if (command !== "gh") return base.run(command, args, cwd, env);
+				if (args[0] === "stack") {
+					return Promise.resolve({ code: 0, stdout: "", stderr: "" });
+				}
+				if (args[0] === "pr" && args[1] === "edit") {
+					edits += 1;
+					return Promise.resolve({
+						code: edits === 1 ? 1 : 0,
+						stdout: "",
+						stderr: edits === 1 ? "connection lost after submit" : "",
+					});
+				}
+				if (args.includes("url,title,body,baseRefName")) {
+					return Promise.resolve({
+						code: 0,
+						stdout: JSON.stringify([
+							{
+								url: "https://github.test/o/r/pull/42",
+								title: "old",
+								body: "old",
+								baseRefName: "old-parent",
+							},
+						]),
+						stderr: "",
+					});
+				}
+				return Promise.resolve({
+					code: 0,
+					stdout: JSON.stringify({
+						number: 42,
+						url: "https://github.test/o/r/pull/42",
+					}),
+					stderr: "",
+				});
+			},
+		};
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: () => true,
+		});
+		const stacked = await orchestrator.execute(
+			envelope(
+				"session-1",
+				harness.created.revision ?? 0n,
+				"stackPullRequest",
+				{ parentBranch: "main", title: "approved", body: "approved body" },
+			),
+		);
+		expect(edits).toBe(2);
+		expect(stacked.deliveryState?.stackParentBranch).toBe("main");
+		harness.runtime.close();
+	});
+
+	it("finishes close-on-merge when provider reconciliation observes MERGED", async () => {
+		const harness = await createHarness();
+		const closable = await harness.runtime.update(
+			"session-1",
+			harness.created.revision ?? 0n,
+			(snapshot) => {
+				if (snapshot.session) snapshot.session.closeOnMerge = true;
+			},
+		);
+		const runner: SessionProcessRunner = {
+			async run(command, args) {
+				if (command === "gh" && args[0] === "stack") {
+					return {
+						code: 1,
+						stdout: "",
+						stderr: "connection lost after merge",
+					};
+				}
+				return {
+					code: 0,
+					stdout: JSON.stringify({ state: "MERGED" }),
+					stderr: "",
+				};
+			},
+		};
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: () => true,
+		});
+		const merged = await orchestrator.execute(
+			envelope("session-1", closable.revision ?? 0n, "mergePullRequest", {
+				pullRequestNumber: "42",
+			}),
+		);
+		expect(merged.deliveryState?.lifecycleState).toBe(
+			DeliveryLifecycleState.MERGED,
+		);
+		expect(merged.session?.lifecycleState).toBe(SessionLifecycleState.STOPPED);
 		harness.runtime.close();
 	});
 });

@@ -2,8 +2,11 @@ import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
 	existsSync,
+	closeSync,
+	fsyncSync,
 	linkSync,
 	mkdirSync,
+	openSync,
 	readFileSync,
 	realpathSync,
 	renameSync,
@@ -34,6 +37,7 @@ export type SessionDeliveryOperation =
 export interface SessionDeliveryApproval {
 	readonly operation: SessionDeliveryOperation;
 	readonly commandId: string;
+	readonly actorId: string;
 	readonly sessionId: string;
 	readonly expectedRevision: bigint;
 	readonly details: Readonly<Record<string, string | boolean>>;
@@ -178,17 +182,25 @@ async function fileLocked<T>(path: string, work: () => Promise<T>): Promise<T> {
 function writeJsonAtomic(path: string, value: unknown): void {
 	mkdirSync(dirname(path), { recursive: true });
 	const temporary = `${path}.${process.pid}.${randomUUID()}`;
-	writeFileSync(
-		temporary,
-		`${JSON.stringify(value, (_key, item) =>
-			typeof item === "bigint" ? item.toString() : item,
-		)}\n`,
-		{
-			flag: "wx",
-			mode: 0o600,
-		},
-	);
+	const descriptor = openSync(temporary, "wx", 0o600);
+	try {
+		writeFileSync(
+			descriptor,
+			`${JSON.stringify(value, (_key, item) =>
+				typeof item === "bigint" ? item.toString() : item,
+			)}\n`,
+		);
+		fsyncSync(descriptor);
+	} finally {
+		closeSync(descriptor);
+	}
 	renameSync(temporary, path);
+	const directory = openSync(dirname(path), "r");
+	try {
+		fsyncSync(directory);
+	} finally {
+		closeSync(directory);
+	}
 }
 
 export function createSessionOrchestrator(
@@ -242,6 +254,7 @@ export function createSessionOrchestrator(
 		const approval = Object.freeze({
 			operation,
 			commandId: command.commandId,
+			actorId: command.actorId,
 			sessionId: command.sessionId,
 			expectedRevision: command.expectedRevision ?? 0n,
 			details: Object.freeze(details),
@@ -332,6 +345,35 @@ export function createSessionOrchestrator(
 		);
 	}
 
+	async function pullRequestForBranch(
+		session: NonNullable<SessionSnapshot["session"]>,
+		fields: string,
+	): Promise<"unknown" | Record<string, unknown> | undefined> {
+		const listed = await runner.run(
+			"gh",
+			[
+				"pr",
+				"list",
+				"--head",
+				session.branch,
+				"--state",
+				"all",
+				"--json",
+				fields,
+			],
+			session.worktreePath,
+		);
+		if (listed.code !== 0) return "unknown";
+		try {
+			const pullRequests = JSON.parse(listed.stdout) as unknown;
+			return Array.isArray(pullRequests)
+				? (pullRequests[0] as Record<string, unknown> | undefined)
+				: "unknown";
+		} catch {
+			return "unknown";
+		}
+	}
+
 	async function deliveryOutcome(
 		command: SessionCommandEnvelope,
 		snapshot: SessionSnapshot,
@@ -366,15 +408,42 @@ export function createSessionOrchestrator(
 					? "applied"
 					: "not-applied";
 			}
-			case "openPullRequest":
+			case "openPullRequest": {
+				const pullRequest = await pullRequestForBranch(session, "url");
+				if (pullRequest === "unknown") return "unknown";
+				return typeof pullRequest?.url === "string" ? "applied" : "not-applied";
+			}
 			case "stackPullRequest": {
-				const viewed = await runner.run(
-					"gh",
-					["pr", "view", session.branch, "--json", "url"],
-					session.worktreePath,
+				const pullRequest = await pullRequestForBranch(
+					session,
+					"url,title,body,baseRefName",
 				);
-				if (viewed.code !== 0) return "unknown";
-				return /"url"\s*:/u.test(viewed.stdout) ? "applied" : "not-applied";
+				if (pullRequest === "unknown") return "unknown";
+				if (typeof pullRequest?.url !== "string") return "not-applied";
+				const value = command.command.value;
+				if (
+					pullRequest.title !== value.title ||
+					pullRequest.body !== value.body ||
+					pullRequest.baseRefName !== value.parentBranch
+				) {
+					const repaired = await runner.run(
+						"gh",
+						[
+							"pr",
+							"edit",
+							session.branch,
+							"--base",
+							value.parentBranch,
+							"--title",
+							value.title,
+							"--body",
+							value.body,
+						],
+						session.worktreePath,
+					);
+					if (repaired.code !== 0) return "unknown";
+				}
+				return "applied";
 			}
 			case "mergePullRequest": {
 				const viewed = await runner.run(
@@ -447,8 +516,8 @@ export function createSessionOrchestrator(
 					},
 				);
 			}
-			case "mergePullRequest":
-				return options.runtime.update(
+			case "mergePullRequest": {
+				const merged = await options.runtime.update(
 					session.id,
 					revision(snapshot),
 					(next) => {
@@ -457,6 +526,10 @@ export function createSessionOrchestrator(
 						next.deliveryState.message = "pull request merge reconciled";
 					},
 				);
+				return requiredSession(merged).closeOnMerge
+					? options.runtime.stop(session.id, revision(merged))
+					: merged;
+			}
 			default:
 				return snapshot;
 		}
@@ -477,12 +550,16 @@ export function createSessionOrchestrator(
 		if (prior.status === "failed") return undefined;
 		if (prior.status !== "complete") {
 			const snapshot = await options.runtime.load(command.sessionId);
-			if (
-				snapshot &&
-				(await deliveryOutcome(command, snapshot)) === "applied"
-			) {
+			const outcome = snapshot
+				? await deliveryOutcome(command, snapshot)
+				: "unknown";
+			if (snapshot && outcome === "applied") {
 				writeJsonAtomic(path, { ...prior, status: "complete" });
 				return reconcileAppliedDelivery(command, snapshot);
+			}
+			if (outcome === "not-applied") {
+				writeJsonAtomic(path, { ...prior, status: "failed" });
+				return undefined;
 			}
 			throw new Error(
 				"delivery command has an unknown prior outcome; reconcile before retrying",
@@ -579,12 +656,18 @@ export function createSessionOrchestrator(
 		return snapshot;
 	}
 
+	function checkpointRef(sessionId: string, checkpointId: string): string {
+		return `refs/hobo/checkpoints/${createHash("sha256").update(sessionId).digest("hex")}/${checkpointId}`;
+	}
+
 	async function checkpoint(
 		snapshot: SessionSnapshot,
 		label: string,
 	): Promise<SessionSnapshot> {
 		const session = requiredSession(snapshot);
 		const cwd = session.worktreePath;
+		const checkpointId = randomUUID();
+		const ref = checkpointRef(session.id, checkpointId);
 		const commonGitDir = realpathSync(
 			await run(
 				"git",
@@ -647,23 +730,29 @@ export function createSessionOrchestrator(
 						}
 					}
 				}
-				return options.runtime.update(
-					session.id,
-					revision(snapshot),
-					async (next) => {
-						next.checkpoints.push(
-							create(CheckpointSchema, {
-								id: randomUUID(),
-								sessionId: session.id,
-								gitCommit: commit,
-								label,
-								lifecycleState: CheckpointLifecycleState.CREATED,
-								createdAt: now(),
-							}),
-						);
-						await gitState(next);
-					},
-				);
+				await run("git", ["update-ref", ref, commit], cwd);
+				try {
+					return await options.runtime.update(
+						session.id,
+						revision(snapshot),
+						async (next) => {
+							next.checkpoints.push(
+								create(CheckpointSchema, {
+									id: checkpointId,
+									sessionId: session.id,
+									gitCommit: commit,
+									label,
+									lifecycleState: CheckpointLifecycleState.CREATED,
+									createdAt: now(),
+								}),
+							);
+							await gitState(next);
+						},
+					);
+				} catch (error) {
+					await runner.run("git", ["update-ref", "-d", ref], cwd);
+					throw error;
+				}
 			},
 		);
 	}
@@ -727,23 +816,6 @@ export function createSessionOrchestrator(
 				await gitState(next);
 			},
 		);
-	}
-
-	async function deliveryFailure(
-		snapshot: SessionSnapshot,
-		error: unknown,
-	): Promise<never> {
-		await options.runtime.update(
-			requiredSession(snapshot).id,
-			revision(snapshot),
-			(next) => {
-				if (next.deliveryState) {
-					next.deliveryState.lifecycleState = DeliveryLifecycleState.FAILED;
-					next.deliveryState.message = String(error);
-				}
-			},
-		);
-		throw error;
 	}
 
 	async function openPullRequest(
@@ -912,15 +984,44 @@ export function createSessionOrchestrator(
 								action.value.paneId,
 							);
 						case "stopSession": {
+							if (
+								action.value.removeWorktree &&
+								(await run(
+									"git",
+									["status", "--porcelain=v1"],
+									requiredSession(snapshot).worktreePath,
+								))
+							) {
+								throw new Error(
+									"delete requires a clean worktree; checkpoint or commit current work first",
+								);
+							}
 							const stopped = await options.runtime.stop(
 								command.sessionId,
 								revision(snapshot),
 							);
 							if (action.value.removeWorktree) {
+								const session = requiredSession(stopped);
+								const refs = await run(
+									"git",
+									[
+										"for-each-ref",
+										"--format=%(refname)",
+										`refs/hobo/checkpoints/${createHash("sha256").update(session.id).digest("hex")}`,
+									],
+									session.worktreePath,
+								);
+								for (const ref of refs.split("\n").filter(Boolean)) {
+									await run(
+										"git",
+										["update-ref", "-d", ref],
+										session.worktreePath,
+									);
+								}
 								await run(
 									"git",
-									["worktree", "remove", requiredSession(stopped).worktreePath],
-									requiredSession(stopped).projectRoot,
+									["worktree", "remove", session.worktreePath],
+									session.projectRoot,
 								);
 							}
 							return stopped;
@@ -997,45 +1098,35 @@ export function createSessionOrchestrator(
 							});
 						case "push":
 							return deliveryEffect("push", command, snapshot, async () => {
-								try {
-									await run(
-										"git",
-										[
-											"push",
-											"--set-upstream",
-											action.value.remote,
-											requiredSession(snapshot).branch,
-										],
-										requiredSession(snapshot).worktreePath,
-									);
-									return options.runtime.update(
-										command.sessionId,
-										revision(snapshot),
-										(next) => {
-											if (next.deliveryState) {
-												next.deliveryState.remote = action.value.remote;
-												next.deliveryState.lifecycleState =
-													DeliveryLifecycleState.READY;
-												next.deliveryState.message = "branch pushed";
-											}
-										},
-									);
-								} catch (error) {
-									return deliveryFailure(snapshot, error);
-								}
+								await run(
+									"git",
+									[
+										"push",
+										"--set-upstream",
+										action.value.remote,
+										requiredSession(snapshot).branch,
+									],
+									requiredSession(snapshot).worktreePath,
+								);
+								return options.runtime.update(
+									command.sessionId,
+									revision(snapshot),
+									(next) => {
+										if (next.deliveryState) {
+											next.deliveryState.remote = action.value.remote;
+											next.deliveryState.lifecycleState =
+												DeliveryLifecycleState.READY;
+											next.deliveryState.message = "branch pushed";
+										}
+									},
+								);
 							});
 						case "openPullRequest":
 							return deliveryEffect(
 								"open-pull-request",
 								command,
 								snapshot,
-								async () => {
-									try {
-										return await openPullRequest(snapshot, action.value);
-									} catch (error) {
-										return deliveryFailure(snapshot, error);
-									}
-								},
+								() => openPullRequest(snapshot, action.value),
 							);
 						case "stackPullRequest":
 							return deliveryEffect(
@@ -1043,75 +1134,70 @@ export function createSessionOrchestrator(
 								command,
 								snapshot,
 								async () => {
-									try {
-										const session = requiredSession(snapshot);
-										await run(
-											"gh",
-											[
-												"stack",
-												"init",
-												"--base",
-												action.value.parentBranch,
-												session.branch,
-											],
-											session.worktreePath,
+									const session = requiredSession(snapshot);
+									await run(
+										"gh",
+										[
+											"stack",
+											"init",
+											"--base",
+											action.value.parentBranch,
+											session.branch,
+										],
+										session.worktreePath,
+									);
+									await run(
+										"gh",
+										["stack", "submit", "--auto", "--open"],
+										session.worktreePath,
+									);
+									await run(
+										"gh",
+										[
+											"pr",
+											"edit",
+											session.branch,
+											"--title",
+											action.value.title,
+											"--body",
+											action.value.body,
+										],
+										session.worktreePath,
+									);
+									const url = await run(
+										"gh",
+										[
+											"pr",
+											"view",
+											session.branch,
+											"--json",
+											"url",
+											"--jq",
+											".url",
+										],
+										session.worktreePath,
+									);
+									const match = /\/pull\/(\d+)/u.exec(url);
+									if (!match)
+										throw new Error(
+											"gh stack submit did not produce a pull request URL",
 										);
-										await run(
-											"gh",
-											["stack", "submit", "--auto", "--open"],
-											session.worktreePath,
-										);
-										await run(
-											"gh",
-											[
-												"pr",
-												"edit",
-												session.branch,
-												"--title",
-												action.value.title,
-												"--body",
-												action.value.body,
-											],
-											session.worktreePath,
-										);
-										const url = await run(
-											"gh",
-											[
-												"pr",
-												"view",
-												session.branch,
-												"--json",
-												"url",
-												"--jq",
-												".url",
-											],
-											session.worktreePath,
-										);
-										const match = /\/pull\/(\d+)/u.exec(url);
-										if (!match)
-											throw new Error(
-												"gh stack submit did not produce a pull request URL",
+									return options.runtime.update(
+										command.sessionId,
+										revision(snapshot),
+										(next) => {
+											if (!next.deliveryState) return;
+											next.deliveryState.lifecycleState =
+												DeliveryLifecycleState.PULL_REQUEST_OPEN;
+											next.deliveryState.pullRequestNumber = BigInt(
+												match[1] ?? "0",
 											);
-										return options.runtime.update(
-											command.sessionId,
-											revision(snapshot),
-											(next) => {
-												if (!next.deliveryState) return;
-												next.deliveryState.lifecycleState =
-													DeliveryLifecycleState.PULL_REQUEST_OPEN;
-												next.deliveryState.pullRequestNumber = BigInt(
-													match[1] ?? "0",
-												);
-												next.deliveryState.pullRequestUrl = url;
-												next.deliveryState.stackParentBranch =
-													action.value.parentBranch;
-												next.deliveryState.message =
-													"stacked pull request open";
-											},
-										);
-									} catch (error) {
-										return deliveryFailure(snapshot, error);
-									}
+											next.deliveryState.pullRequestUrl = url;
+											next.deliveryState.stackParentBranch =
+												action.value.parentBranch;
+											next.deliveryState.message = "stacked pull request open";
+										},
+									);
 								},
 							);
 						case "mergePullRequest":
@@ -1120,39 +1206,32 @@ export function createSessionOrchestrator(
 								command,
 								snapshot,
 								async () => {
-									try {
-										await run(
-											"gh",
-											[
-												"stack",
-												"merge",
-												String(action.value.pullRequestNumber),
-												"--yes",
-												"--squash",
-											],
-											requiredSession(snapshot).worktreePath,
-										);
-										const merged = await options.runtime.update(
-											command.sessionId,
-											revision(snapshot),
-											(next) => {
-												if (next.deliveryState) {
-													next.deliveryState.lifecycleState =
-														DeliveryLifecycleState.MERGED;
-													next.deliveryState.message =
-														"pull request squash-merged";
-												}
-											},
-										);
-										return requiredSession(merged).closeOnMerge
-											? options.runtime.stop(
-													command.sessionId,
-													revision(merged),
-												)
-											: merged;
-									} catch (error) {
-										return deliveryFailure(snapshot, error);
-									}
+									await run(
+										"gh",
+										[
+											"stack",
+											"merge",
+											String(action.value.pullRequestNumber),
+											"--yes",
+											"--squash",
+										],
+										requiredSession(snapshot).worktreePath,
+									);
+									const merged = await options.runtime.update(
+										command.sessionId,
+										revision(snapshot),
+										(next) => {
+											if (next.deliveryState) {
+												next.deliveryState.lifecycleState =
+													DeliveryLifecycleState.MERGED;
+												next.deliveryState.message =
+													"pull request squash-merged";
+											}
+										},
+									);
+									return requiredSession(merged).closeOnMerge
+										? options.runtime.stop(command.sessionId, revision(merged))
+										: merged;
 								},
 							);
 						case undefined:

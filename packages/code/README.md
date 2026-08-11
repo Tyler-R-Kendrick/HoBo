@@ -511,12 +511,12 @@ tree.
 
 Hosts resolve on the tailnet. Sessions are brokered through the Station's
 privileged-access gateway, which applies the target's isolation-class policy,
-issues short-lived material, and audits every session. A pane that the Station
+issues a short-lived authorization, and audits every session. A pane that the Station
 did not authorise is refused rather than opened, and a machine's `agents` list
 is enforced.
 
-The Station redeems each credential reference through a lease-bound local
-SSH-agent socket backed by `SSH_AUTH_SOCK`. The resident proxy survives tmux
+The Station authorization gates a lease-bound local SSH-agent socket backed by
+`SSH_AUTH_SOCK`. The resident proxy survives tmux
 detach, expires with the authorization, and drains redemption/end facts to the
 Station's Yard audit feed. Private keys and session tokens are never copied
 into pane commands or remote hosts; a missing installed agent fails closed.

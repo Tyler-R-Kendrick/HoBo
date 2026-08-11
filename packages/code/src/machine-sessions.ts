@@ -14,9 +14,9 @@
  * than quietly falling back to the ambient key — a fallback that silently
  * downgrades governance is worse than a clear failure.
  *
- * The authorized tokenref is redeemed locally through a lease-bound proxy to
- * the user's installed SSH agent. Private keys and session tokens never enter
- * pane commands, process arguments, or the remote machine.
+ * The authorized Station session gates a lease-bound proxy to the user's
+ * installed SSH agent. Private keys and session tokens never enter pane
+ * commands, process arguments, or the remote machine.
  */
 
 import { appendFileSync } from "node:fs";
@@ -271,7 +271,7 @@ export async function openStationGateway(
 	const requireUpstream = (): string => {
 		if (!upstreamSocket) {
 			throw new Error(
-				"SSH_AUTH_SOCK is required to redeem the Station authorization",
+				"SSH_AUTH_SOCK is required for the Station-authorized agent",
 			);
 		}
 		return upstreamSocket;

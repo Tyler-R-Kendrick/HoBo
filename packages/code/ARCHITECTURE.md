@@ -277,7 +277,7 @@ toolchain. Every field that reaches a command line — id, host, user — is
 allowlisted, because an ssh destination like `-oProxyCommand=...` is an
 argument rather than a hostname. Each entry becomes a `SessionTarget` for the
 Station's privileged-access gateway (`src/machine-sessions.ts`), which applies
-the target's isolation-class policy, returns short-lived material, and writes
+the target's isolation-class policy, returns a short-lived authorization, and writes
 `pam.SessionStarted` / `pam.SessionDenied`. Panes carry a lease-bound local
 SSH-agent socket, never the credential reference or session token, so nothing
 short-lived reaches a process table or pane title. The proxy forwards the

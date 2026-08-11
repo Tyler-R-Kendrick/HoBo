@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+	residentProxyEnvironment,
 	runResidentSshAgentProxy,
 	startSshAgentProxy,
 } from "../src/ssh-agent-proxy.js";
@@ -20,6 +21,13 @@ function root(): string {
 	const value = mkdtempSync(join(tmpdir(), "hobo-tokenref-agent-"));
 	roots.push(value);
 	return value;
+}
+
+function agentFrame(type: number): Buffer {
+	const frame = Buffer.alloc(5);
+	frame.writeUInt32BE(1, 0);
+	frame[4] = type;
+	return frame;
 }
 
 describe("lease-bound SSH agent proxy", () => {
@@ -39,21 +47,32 @@ describe("lease-bound SSH agent proxy", () => {
 			expiresAt: new Date(Date.now() + 60_000).toISOString(),
 			onRedeem: () => redeemed.push("redeemed"),
 		});
-		const echoed = await new Promise<string>((resolve, reject) => {
+		await new Promise<void>((resolve, reject) => {
 			const client = createConnection(proxyPath);
 			client.once("error", reject);
-			client.once("connect", () => client.write("ssh-agent-frame"));
+			client.once("connect", () => client.end(resolve));
+		});
+		expect(redeemed).toEqual([]);
+		const request = agentFrame(13);
+		const echoed = await new Promise<Buffer>((resolve, reject) => {
+			const client = createConnection(proxyPath);
+			client.once("error", reject);
+			client.once("connect", () => client.write(request));
 			client.once("data", (data) => {
-				resolve(data.toString("utf8"));
+				resolve(data);
 				client.end();
 			});
 		});
-		expect(echoed).toBe("ssh-agent-frame");
+		expect(echoed).toEqual(request);
 		expect(redeemed).toEqual(["redeemed"]);
 		await proxy.close();
 		await new Promise<void>((resolve, reject) =>
 			upstream.close((error) => (error ? reject(error) : resolve())),
 		);
+	});
+
+	it("does not pass launcher secrets to the detached proxy", () => {
+		expect(residentProxyEnvironment()).toEqual({});
 	});
 
 	it("refuses an expired Station lease", async () => {
@@ -97,7 +116,7 @@ describe("lease-bound SSH agent proxy", () => {
 		await new Promise<void>((resolve, reject) => {
 			const client = createConnection(proxyPath);
 			client.once("error", reject);
-			client.once("connect", () => client.end(resolve));
+			client.once("connect", () => client.end(agentFrame(13), resolve));
 		});
 		expect(await resident).toBe(0);
 		const audit = readFileSync(auditPath, "utf8");

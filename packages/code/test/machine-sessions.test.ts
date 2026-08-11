@@ -26,7 +26,7 @@ import {
 	openStationGateway,
 	type PaneSessionBroker,
 } from "../src/machine-sessions.js";
-import { targetCommand } from "../src/mux.js";
+import { type MuxTarget, targetCommand } from "../src/mux.js";
 
 const machine: DevMachine = {
 	id: "build-box",
@@ -90,7 +90,7 @@ describe("brokering a pane", () => {
 });
 
 describe("session material stays in the gateway", () => {
-	it("passes the redeemed agent socket to ssh, never a tokenref or token", async () => {
+	it("passes the authorized agent socket to ssh, never a tokenref or token", async () => {
 		const outcome = await brokerPaneSession(machine, "claude", {
 			broker: fakeBroker("ok"),
 			subject: "hobo-code",
@@ -117,26 +117,30 @@ describe("session material stays in the gateway", () => {
 		expect(line).not.toContain("tokenref://");
 	});
 
-	it("an ssh pane without a brokered session gets no identity option", () => {
+	it("refuses an ssh pane without a brokered session", () => {
 		// Otherwise it would quietly fall back to whatever is in ~/.ssh, which
 		// is the ambient authority this replaces.
-		const bare = targetCommand({
-			name: "claude",
-			kind: "ssh",
-			host: "box",
-			command: "claude",
-		});
-		expect(bare).not.toContain("IdentityAgent");
+		expect(() =>
+			targetCommand({
+				name: "claude",
+				kind: "ssh",
+				host: "box",
+				command: "claude",
+			} as MuxTarget),
+		).toThrow("requires a host and Station authorization");
 		const brokeredPane = targetCommand({
 			name: "claude",
 			kind: "ssh",
 			host: "box",
 			command: "claude",
 			identityAgent: "/run/user/1000/hobo-agent.sock",
+			expiresAt: new Date(Date.now() + 60_000).toISOString(),
 		});
 		expect(brokeredPane).toContain(
 			"IdentityAgent=/run/user/1000/hobo-agent.sock",
 		);
+		expect(brokeredPane).toContain("IdentityFile=none");
+		expect(brokeredPane).toContain("BatchMode=yes");
 	});
 
 	it("terminates a remote pane when its Station lease expires", () => {

@@ -23,6 +23,34 @@ export interface SshAgentProxy {
 	close(): Promise<void>;
 }
 
+const SSH_AGENT_SIGN_REQUEST = 13;
+const MAX_AGENT_FRAME_BYTES = 1024 * 1024;
+
+function observeSignatureRequests(
+	onSignature: () => void,
+): (chunk: Buffer) => void {
+	let pending = Buffer.alloc(0);
+	let observed = false;
+	return (chunk) => {
+		if (observed) return;
+		pending = Buffer.concat([pending, chunk]);
+		while (pending.length >= 4) {
+			const length = pending.readUInt32BE(0);
+			if (length < 1 || length > MAX_AGENT_FRAME_BYTES) {
+				pending = Buffer.alloc(0);
+				return;
+			}
+			if (pending.length < length + 4) return;
+			if (pending[4] === SSH_AGENT_SIGN_REQUEST) {
+				observed = true;
+				onSignature();
+				return;
+			}
+			pending = pending.subarray(length + 4);
+		}
+	};
+}
+
 /** Lease-bound transparent proxy for the installed SSH agent protocol. */
 export async function startSshAgentProxy(
 	options: SshAgentProxyOptions,
@@ -63,18 +91,19 @@ export async function startSshAgentProxy(
 		connections.add(upstream);
 		upstream.once("close", () => connections.delete(upstream));
 		upstream.once("connect", () => {
-			Promise.resolve(options.onRedeem?.()).then(
-				() => {
-					client.pipe(upstream);
-					upstream.pipe(client);
-				},
-				(error) => {
-					client.destroy(
-						error instanceof Error ? error : new Error(String(error)),
-					);
-					upstream.destroy();
-				},
+			client.on(
+				"data",
+				observeSignatureRequests(() => {
+					Promise.resolve(options.onRedeem?.()).catch((error) => {
+						client.destroy(
+							error instanceof Error ? error : new Error(String(error)),
+						);
+						upstream.destroy();
+					});
+				}),
 			);
+			client.pipe(upstream);
+			upstream.pipe(client);
 		});
 		upstream.once("error", (error) => client.destroy(error));
 		client.once("error", () => upstream.destroy());
@@ -130,6 +159,10 @@ export interface ResidentProxyPayload extends SshAgentProxyOptions {
 export interface ResidentSshAgentProxy {
 	readonly socketPath: string;
 	stop(): Promise<void>;
+}
+
+export function residentProxyEnvironment(): NodeJS.ProcessEnv {
+	return {};
 }
 
 function parseResidentPayload(encoded: string): ResidentProxyPayload {
@@ -240,8 +273,9 @@ export async function startResidentSshAgentProxy(
 	const entry = process.argv[1];
 	if (!entry) throw new Error("cannot locate hobo-code executable");
 	const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
-	const child = spawn(process.execPath, [entry, "_tokenref-agent", encoded], {
+	const child = spawn(process.execPath, [entry, "_station-agent", encoded], {
 		detached: true,
+		env: residentProxyEnvironment(),
 		stdio: "ignore",
 	});
 	let spawnError: Error | undefined;

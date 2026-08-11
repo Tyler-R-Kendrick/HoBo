@@ -80,7 +80,7 @@ function launchPiHarness(): Promise<number> {
 	});
 }
 
-if (argv[0] === "_tokenref-agent") {
+if (argv[0] === "_station-agent") {
 	try {
 		process.exitCode = await runResidentSshAgentProxy(argv[1] ?? "");
 	} catch (error) {
@@ -178,8 +178,8 @@ if (argv[0] === "_tokenref-agent") {
 							readonly authorizationSessionId?: string;
 							readonly authorizationExpiresAt?: string;
 							readonly auditTypes?: readonly string[];
-							readonly credentialMode?: "station-tokenref-agent";
-							readonly identityAgent?: string;
+							readonly credentialMode?: "station-authorized-agent";
+							readonly identityAgent: string;
 							readonly closeAuthorization?: () => Promise<void>;
 						};
 					}
@@ -214,7 +214,7 @@ if (argv[0] === "_tokenref-agent") {
 	) {
 		const { machine, port } = action;
 		process.stdout.write(
-			`browser: http://127.0.0.1:${port}\nremote: ${machine.id} via Station-authorized SSH forwarding (${action.authorizationSessionId ?? "authorized"}; expires ${action.authorizationExpiresAt ?? "unknown"}; ${(action.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station tokenref redeemed through ${action.identityAgent ?? "the lease-bound local agent"}; no key or token is copied\n`,
+			`browser: http://127.0.0.1:${port}\nremote: ${machine.id} via Station-authorized SSH forwarding (${action.authorizationSessionId ?? "authorized"}; expires ${action.authorizationExpiresAt ?? "unknown"}; ${(action.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station authorization gates ${action.identityAgent}; no key or token is copied\n`,
 		);
 		try {
 			const leaseMs = authorizationLeaseDelay(

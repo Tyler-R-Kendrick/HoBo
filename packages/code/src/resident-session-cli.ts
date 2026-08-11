@@ -35,12 +35,26 @@ export function shouldWaitForResidentSession(
 export function remoteSessionServeSshArgs(
 	machine: DevMachine,
 	port: number,
-	identityAgent?: string,
+	identityAgent: string,
 ): readonly string[] {
+	if (!identityAgent) {
+		throw new Error("Station authorization did not provide an SSH agent");
+	}
 	const endpoint = `127.0.0.1:${port}`;
 	return [
 		"-T",
-		...(identityAgent ? ["-o", `IdentityAgent=${identityAgent}`] : []),
+		"-o",
+		`IdentityAgent=${identityAgent}`,
+		"-o",
+		"IdentityFile=none",
+		"-o",
+		"PreferredAuthentications=publickey",
+		"-o",
+		"PasswordAuthentication=no",
+		"-o",
+		"KbdInteractiveAuthentication=no",
+		"-o",
+		"BatchMode=yes",
 		"-o",
 		"ExitOnForwardFailure=yes",
 		"-L",
@@ -168,12 +182,12 @@ export async function runResidentSessionCli(input: {
 	if (operation === "serve") {
 		if (input.remoteServe) {
 			return {
-				message: `forwarding resident browser from ${input.remoteServe.machine.id} at http://127.0.0.1:${input.remoteServe.port}; Station authorization is redeemed through a lease-bound local SSH agent`,
+				message: `forwarding resident browser from ${input.remoteServe.machine.id} at http://127.0.0.1:${input.remoteServe.port}; Station authorization gates a lease-bound local SSH agent`,
 				data: {
 					terminalAction: {
 						kind: "forward-sessions",
 						...input.remoteServe,
-						credentialMode: "station-tokenref-agent",
+						credentialMode: "station-authorized-agent",
 					},
 				},
 			};

@@ -11,6 +11,7 @@ export type NativeCaptureInput = {
 };
 
 export type NativeCaptureResult = {
+	exitCode: number | null;
 	primaryFile: string;
 	kind: "video" | "image" | "transcript";
 	degraded: boolean;
@@ -34,6 +35,7 @@ export function captureNative(
 ): NativeCaptureResult {
 	mkdirSync(outDir, { recursive: true });
 	const notes: string[] = [];
+	let exitCode: number | null = null;
 	const cmd =
 		input.command ||
 		process.env.OPTIMIZEXP_NATIVE_CAPTURE ||
@@ -47,6 +49,7 @@ export function captureNative(
 			encoding: "utf8",
 			timeout: input.timeoutMs ?? 180_000,
 		});
+		exitCode = r.status;
 		notes.push(`native command exit ${r.status}`);
 		if (r.stderr) notes.push(redactText(r.stderr).slice(0, 300));
 		const files = readdirSync(outDir);
@@ -59,9 +62,10 @@ export function captureNative(
 				spawnSync("cp", ["-f", src, primary]);
 			}
 			return {
+				exitCode: r.status,
 				primaryFile: primary,
 				kind: "video",
-				degraded: false,
+				degraded: r.status !== 0,
 				notes,
 				screen: { widthPx: null, heightPx: null, cols: null, rows: null },
 			};
@@ -73,6 +77,7 @@ export function captureNative(
 				spawnSync("cp", ["-f", src, primary]);
 			}
 			return {
+				exitCode: r.status,
 				primaryFile: primary,
 				kind: "image",
 				degraded: true,
@@ -106,6 +111,7 @@ export function captureNative(
 		"utf8",
 	);
 	return {
+		exitCode,
 		primaryFile: brief,
 		kind: "transcript",
 		degraded: true,

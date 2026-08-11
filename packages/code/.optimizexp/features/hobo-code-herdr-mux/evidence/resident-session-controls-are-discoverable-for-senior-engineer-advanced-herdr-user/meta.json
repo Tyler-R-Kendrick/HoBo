@@ -6,7 +6,7 @@
   ],
   "interface": "cli",
   "driver": "cli",
-  "capturedAt": "2026-08-11T07:23:44.459Z",
+  "capturedAt": "2026-08-11T08:39:00.758Z",
   "runId": "20260810-hobo-code-sessions",
   "screen": {
     "cols": null,
@@ -15,8 +15,8 @@
   "primary": {
     "file": "primary.txt",
     "kind": "transcript",
-    "bytes": 308,
-    "sha256": "f7966d71e1f143685081380a013bcb5963f9734421018b8186a8e3646f21f820"
+    "bytes": 2349,
+    "sha256": "a2eb1c0a6c56fdf01086fbe1c1dc828dc12d6e8b145ecaf1d27c85cc91bf7cfc"
   },
   "claims": [
     {
@@ -48,8 +48,8 @@
   },
   "exitCode": 0,
   "timing": {
-    "durationMs": 253,
-    "timeToFirstOutputMs": null
+    "durationMs": 262,
+    "timeToFirstOutputMs": 244
   },
   "degraded": false,
   "notes": []

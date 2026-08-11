@@ -1,6 +1,6 @@
 {
   "status": "accepted",
-  "reviewer": "codex",
+  "reviewer": "codex-visual-review",
   "relevance": "relevant",
   "completeness": "complete",
   "coverageMode": "full-journey",
@@ -11,7 +11,7 @@
     "claim-4",
     "claim-5"
   ],
-  "artifactSha256": "6f03e98b42f7f7180eaa820ff0191e08a116ce5b7e12fb27c90b349073f349fd",
-  "reviewedAt": "2026-08-11T07:37:03.571Z",
-  "notes": "Playback and captured frames show authenticated loopback UI creation, tabs, panes, focus/prompt controls, checkpoint, approved delivery controls, explicit detached state, reattach, stop, and Station forwarding guidance. Native journey exited 0."
+  "artifactSha256": "5db8ff7a377506c6257cb3a01121402639bd6d1cd0ace2b36ba513b264051cf7",
+  "reviewedAt": "2026-08-11T08:35:07.032Z",
+  "notes": "Played the fresh 7.08s recording and inspected its detached-state frame: the authenticated loopback UI visibly creates a named session, creates a Review tab and Observer pane, marks pane focus, accepts a prompt, creates a checkpoint, detaches with controls/output hidden, reattaches, and stops after confirmation. The page explicitly says remote access uses declared Station forwarding and never binds publicly. Native replay exited 0 from the committed capture-browser.mts command."
 }

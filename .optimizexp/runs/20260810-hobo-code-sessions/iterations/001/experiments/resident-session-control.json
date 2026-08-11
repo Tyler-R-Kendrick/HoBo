@@ -18,10 +18,10 @@
   },
   "after": {
     "path": "packages/code/.optimizexp/features/hobo-code-herdr-mux/evidence/resident-session-controls-are-discoverable-for-senior-engineer-advanced-herdr-user/primary.txt",
-    "sha256": "f7966d71e1f143685081380a013bcb5963f9734421018b8186a8e3646f21f820",
+		"sha256": "a2eb1c0a6c56fdf01086fbe1c1dc828dc12d6e8b145ecaf1d27c85cc91bf7cfc",
     "evidenceId": "current-head-resident-session-help"
   },
   "afterOutcomeId": "20260810-hobo-code-sessions-0003",
   "result": "improved",
-  "verifiedAt": "2026-08-11T07:40:44.000Z"
+	"verifiedAt": "2026-08-11T08:39:00.757Z"
 }

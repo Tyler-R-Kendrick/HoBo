@@ -406,6 +406,83 @@ describe("declared agent placement is enforced", () => {
 		}
 	});
 
+	it("retains authorization for a remote pane that survives failed rollback", async () => {
+		const home = mkdtempSync(join(tmpdir(), "hobo-m-"));
+		const project = mkdtempSync(join(tmpdir(), "proj-m-"));
+		const bin = join(project, "bin");
+		mkdirSync(bin);
+		writeFileSync(join(bin, "claude"), "");
+		writeFileSync(join(bin, "codex"), "");
+		writeFileSync(
+			join(project, DEV_MACHINES_FILE),
+			JSON.stringify({
+				machines: [
+					{
+						id: "box",
+						host: "box.ts.net",
+						isolationClass: "development",
+						agents: ["claude", "codex"],
+					},
+				],
+			}),
+		);
+		let stopped = 0;
+		try {
+			const result = await runHoboCodeCli(["mux", "--host", "box"], {
+				hoboHome: home,
+				cwd: project,
+				env: { HOME: join(project, "empty-home"), PATH: bin },
+				muxRunner: {
+					run: async (args) => {
+						if (args[0] === "has-session") return { code: 1, stdout: "" };
+						if (args[0] === "new-session") return { code: 0, stdout: "" };
+						if (args[0] === "new-window") return { code: 1, stdout: "" };
+						if (args[0] === "kill-session") return { code: 1, stdout: "" };
+						return { code: 0, stdout: "" };
+					},
+				},
+				openStationGateway: async () => ({
+					broker: {
+						registerTarget() {},
+						async brokerSession(request) {
+							const agent = request.reason?.includes("claude")
+								? "claude"
+								: "codex";
+							return {
+								sessionId: `session-${agent}`,
+								expiresAt: new Date(Date.now() + 60_000).toISOString(),
+								credentialRef: `tokenref://session-${agent}`,
+								protocol: "hobo-svid",
+							};
+						},
+					},
+					auditTypes: () => ["pam.SessionStarted", "pam.SessionStarted"],
+					yardDrainCount: () => 2,
+					resolveSshIdentity: async (pane) => ({
+						pane: { ...pane, identityAgent: "/tmp/unused.sock" },
+						stop: async () => {},
+					}),
+					handoffSshIdentity: async (pane) => ({
+						pane: {
+							...pane,
+							identityAgent: `/tmp/${pane.agentId}.sock`,
+						},
+						stop: async () => {
+							stopped++;
+						},
+					}),
+					close: async () => {},
+				}),
+			});
+			expect(result.code).toBe("HOBO_CODE_MUX_FAILED");
+			expect(result.ok).toBe(false);
+			expect(stopped).toBe(1);
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+			rmSync(project, { recursive: true, force: true });
+		}
+	});
+
 	it("refuses when no detected agent may use the machine", async () => {
 		const home = mkdtempSync(join(tmpdir(), "hobo-m-"));
 		const project = mkdtempSync(join(tmpdir(), "proj-m-"));

@@ -353,6 +353,7 @@ export async function applyMux(
 		]);
 		if (added.code !== 0) {
 			let rolledBack = true;
+			const surviving = new Set(created);
 			if (existed) {
 				for (const createdName of [...created].reverse()) {
 					const removed = await runner.run([
@@ -360,16 +361,18 @@ export async function applyMux(
 						"-t",
 						`${plan.session}:${createdName}`,
 					]);
+					if (removed.code === 0) surviving.delete(createdName);
 					rolledBack = rolledBack && removed.code === 0;
 				}
 			} else {
 				const removed = await runner.run(["kill-session", "-t", plan.session]);
 				rolledBack = removed.code === 0;
+				if (rolledBack) surviving.clear();
 			}
 			return {
 				ok: false,
 				session: plan.session,
-				created: rolledBack ? [] : created,
+				created: [...surviving],
 				existed,
 				detail: `tmux new-window failed for ${name}; rollback ${rolledBack ? "complete" : "incomplete"}`,
 			};

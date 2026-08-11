@@ -90,6 +90,7 @@ import { inspectModels, modelsHumanSummary } from "./models.js";
 import {
 	applyMux,
 	attachCommand,
+	type MuxRunner,
 	type MuxTarget,
 	planMux,
 	safeWindowName,
@@ -267,6 +268,7 @@ export interface HoboCodeCliDeps {
 	readonly openStationGateway?: (
 		context: Parameters<typeof openStationGateway>[0],
 	) => Promise<OpenedGateway>;
+	readonly muxRunner?: MuxRunner;
 }
 
 export type FormatHoboCodeOptions = {
@@ -2149,9 +2151,9 @@ export async function runHoboCodeCli(
 							existed: false,
 							detail: "dry run — no tmux invoked",
 						}
-					: await applyMux(plan, tmuxRunner());
+					: await applyMux(plan, deps.muxRunner ?? tmuxRunner());
 			const created = new Set(applied.created);
-			if (applied.ok && flags["dry-run"] !== true) {
+			if (flags["dry-run"] !== true) {
 				for (const identity of resolvedIdentities) {
 					if (created.has(safeWindowName(identity.pane.agentId))) {
 						retainedIdentityAgents.add(identity.pane.agentId);

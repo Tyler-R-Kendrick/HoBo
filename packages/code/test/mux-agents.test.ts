@@ -291,6 +291,26 @@ describe("applyMux", () => {
 		expect(base.calls).toContainEqual(["kill-window", "-t", "hobo:codex"]);
 		expect(base.calls.some((call) => call[0] === "kill-session")).toBe(false);
 	});
+
+	it("reports panes that survive an incomplete rollback", async () => {
+		const plan = planMux("hobo", [
+			{ name: "claude", kind: "local", command: "claude" },
+			{ name: "codex", kind: "local", command: "codex" },
+		]);
+		const runner: MuxRunner = {
+			run: async (args) => {
+				if (args[0] === "has-session") return { code: 1, stdout: "" };
+				if (args[0] === "new-session") return { code: 0, stdout: "" };
+				if (args[0] === "new-window") return { code: 1, stdout: "" };
+				if (args[0] === "kill-session") return { code: 1, stdout: "" };
+				return { code: 0, stdout: "" };
+			},
+		};
+		const result = await applyMux(plan, runner);
+		expect(result.ok).toBe(false);
+		expect(result.detail).toContain("rollback incomplete");
+		expect(result.created).toEqual(["claude"]);
+	});
 });
 
 describe("devenv status", () => {

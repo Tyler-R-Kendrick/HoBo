@@ -136,6 +136,12 @@ prompt. Machine callers should branch on `code` and consume `remediation[]`.
 
 ### Multi-pane agent sessions (`hobo-code mux`)
 
+The resident-session core stores versioned snapshots and events in HoBo's
+SQLite EventStore while tmux owns the PTYs. A process restart reloads the same
+session, pane IDs, branch, and worktree; stale writers fail before tmux is
+mutated. The protobuf/CUE boundary in `data-models/code_harness.*` and the
+executable boundary Pact protect the shared CLI/TUI/web contract.
+
 Agents are **auto-detected** from evidence on your machine — a binary on PATH
 and/or a config directory — and each gets its own tmux window:
 

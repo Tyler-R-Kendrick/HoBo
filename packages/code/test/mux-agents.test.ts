@@ -142,6 +142,12 @@ describe("panes outlive their command", () => {
 		expect(cmd.startsWith("sh -c '")).toBe(true);
 		expect(cmd.endsWith("'")).toBe(true);
 	});
+
+	it("treats pane titles as labels, never shell source", () => {
+		const cmd = keepPaneOpen("$(touch /tmp/owned)", "true");
+		expect(cmd).not.toContain("$(touch");
+		expect(cmd).toContain("touch-tmpowned exited");
+	});
 });
 
 describe("applyMux", () => {

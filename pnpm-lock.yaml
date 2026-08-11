@@ -651,6 +651,9 @@ importers:
       '@hobo/rift':
         specifier: workspace:*
         version: link:../rift
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-local
       '@hobo/stations':
         specifier: workspace:*
         version: link:../stations

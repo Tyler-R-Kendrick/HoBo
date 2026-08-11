@@ -1,0 +1,55 @@
+{
+  "featureId": "hobo-code-herdr-mux",
+  "scenarioSlug": "browser-control-stays-local-and-usable-for-senior-engineer-advanced-herdr-user",
+  "personaIds": [
+    "senior-engineer-advanced-herdr-user"
+  ],
+  "interface": "web",
+  "driver": "web",
+  "capturedAt": "2026-08-11T04:30:47.595Z",
+  "runId": "20260810-hobo-code-sessions",
+  "screen": {
+    "widthPx": 1280,
+    "heightPx": 720,
+    "cols": null,
+    "rows": null
+  },
+  "primary": {
+    "file": "primary.webm",
+    "kind": "video",
+    "bytes": 67344,
+    "sha256": "78b0b6373d8730a306b849ffc34a56b238c357f2c10aa0866aaad29842bbfd28"
+  },
+  "claims": [
+    {
+      "id": "claim-1",
+      "text": "Given the loopback session control server is running with its bearer token"
+    },
+    {
+      "id": "claim-2",
+      "text": "When I open its authenticated browser URL"
+    },
+    {
+      "id": "claim-3",
+      "text": "Then I can create, list, reattach, detach, stop, focus, and prompt resident sessions"
+    },
+    {
+      "id": "claim-4",
+      "text": "And the page explains remote access through Station forwarding without binding publicly"
+    },
+    {
+      "id": "claim-5",
+      "text": "And evidence is capturable for this scenario"
+    }
+  ],
+  "frames": [],
+  "repro": {
+    "url": "http://127.0.0.1:33025/?token=0ynNT9KSEorZSKtHd8iLDO160OddYWcXrVTIe3EqOWk",
+    "via": "capture-evidence"
+  },
+  "exitCode": null,
+  "degraded": false,
+  "notes": [
+    "playwright screenshot captured"
+  ]
+}

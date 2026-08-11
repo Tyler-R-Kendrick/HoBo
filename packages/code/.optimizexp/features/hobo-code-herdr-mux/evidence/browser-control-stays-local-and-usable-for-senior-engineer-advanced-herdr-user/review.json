@@ -1,0 +1,17 @@
+{
+  "status": "accepted",
+  "reviewer": "codex-live",
+  "relevance": "relevant",
+  "completeness": "complete",
+  "coverageMode": "full-journey",
+  "coveredClaims": [
+    "claim-1",
+    "claim-2",
+    "claim-3",
+    "claim-4",
+    "claim-5"
+  ],
+  "artifactSha256": "78b0b6373d8730a306b849ffc34a56b238c357f2c10aa0866aaad29842bbfd28",
+  "reviewedAt": "2026-08-11T04:31:00.305Z",
+  "notes": "Rendered current-head page shows create controls, full versioned command boundary, explicit approval checkbox, and Station forwarding guidance while stating the server never binds publicly."
+}

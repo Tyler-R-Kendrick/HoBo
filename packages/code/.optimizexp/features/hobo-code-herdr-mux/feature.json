@@ -20,9 +20,10 @@
   ],
   "driver": "cli",
   "surfaces": [
-    "hobo-code status",
-    "hobo-code status --json",
-    "hobo-code session --json",
+    "hobo-code session --help",
+    "hobo-code session list --json",
+    "hobo-code session attach <sessionId>",
+    "hobo-code session serve",
     "hobo-code help",
     "hobo-code status --help",
     "hobo-code session --help"
@@ -41,5 +42,5 @@
     "tests": "test/hobo-code-herdr-mux.bindings.test.ts"
   },
   "implementationStatus": "wired",
-  "primaryCommand": "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts status"
+  "primaryCommand": "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts session --help"
 }

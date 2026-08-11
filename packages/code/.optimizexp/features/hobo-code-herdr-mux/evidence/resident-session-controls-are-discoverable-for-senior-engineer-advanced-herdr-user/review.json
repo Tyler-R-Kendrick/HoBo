@@ -1,0 +1,17 @@
+{
+  "status": "accepted",
+  "reviewer": "codex-live",
+  "relevance": "relevant",
+  "completeness": "complete",
+  "coverageMode": "full-journey",
+  "coveredClaims": [
+    "claim-1",
+    "claim-2",
+    "claim-3",
+    "claim-4",
+    "claim-5"
+  ],
+  "artifactSha256": "cceb25b00b674d4eb6f0bede739190daf45138bbee1a10211e0300c75d0527e6",
+  "reviewedAt": "2026-08-11T04:25:28.785Z",
+  "notes": "Exit-zero transcript visibly lists resident sessions, tabs, panes, agents, checkpoints, approved delivery, detach/reattach, persistence, and browser control."
+}

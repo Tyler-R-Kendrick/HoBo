@@ -21,7 +21,15 @@
  * authenticates with its own key today.
  */
 
-import { createNativePamGateway } from "@hobo/stations";
+import { appendFileSync } from "node:fs";
+import { join } from "node:path";
+
+import {
+	createNativePamGateway,
+	createPamAuditSink,
+	createStationClient,
+	railEnablesPam,
+} from "@hobo/stations";
 
 import type { DevMachine } from "./dev-machines.js";
 import { pamTarget, sshDestination } from "./dev-machines.js";
@@ -94,7 +102,9 @@ export async function brokerPaneSession(
 			subject: options.subject,
 			target: target.id,
 			preferSecretless: true,
-			...(options.ttlSeconds !== undefined ? { ttlSeconds: options.ttlSeconds } : {}),
+			...(options.ttlSeconds !== undefined
+				? { ttlSeconds: options.ttlSeconds }
+				: {}),
 			reason: `hobo-code pane for agent ${agentId}`,
 		});
 		return {
@@ -131,13 +141,10 @@ export async function brokerPaneSession(
  * or a shell history file.
  *
  * **Resolution is not implemented yet.** `IdentityAgent=tokenref://…` names an
- * agent socket that nothing currently serves, and `openStationGateway` stops
- * the in-process gateway as soon as brokering finishes, so a pane cannot
- * redeem the reference. What works today is the *decision* — policy applied per
- * isolation class, a session recorded, an audit event written — and the fact
- * that a pane without one is refused. What does not work is authenticating the
- * ssh connection from it; that needs a resident agent serving `tokenref://`,
- * and until then a remote pane still needs its own key to actually connect.
+ * agent socket that nothing currently serves. What works today is the
+ * Station-backed decision and durable audit. What does not work is
+ * authenticating the ssh connection from the reference; that needs a resident
+ * tokenref agent, and until then remote access still needs the user's own key.
  * Said here rather than left implied, because "brokered, not ambient" reads as
  * a completed claim.
  */
@@ -164,16 +171,16 @@ export function describePane(pane: BrokeredPane): string {
 }
 
 export interface StationBrokerContext {
+	readonly hoboHome: string;
 	readonly stationId: string;
-	readonly tenant: string;
-	readonly isolationClass: string;
-	readonly trustDomain?: string;
+	readonly isolationClass: DevMachine["isolationClass"];
 }
 
 export interface OpenedGateway {
 	readonly broker: PaneSessionBroker;
 	/** Audit events produced so far — session refs only, never material. */
 	auditTypes(): readonly string[];
+	/** End every live authorization and persist its terminal audit facts. */
 	close(): Promise<void>;
 }
 
@@ -188,19 +195,49 @@ export interface OpenedGateway {
 export async function openStationGateway(
 	context: StationBrokerContext,
 ): Promise<OpenedGateway> {
+	const station = createStationClient({
+		hoboHome: context.hoboHome,
+		stationId: context.stationId,
+	});
+	const occupancy = station.occupancy();
+	if (occupancy.status !== "open") {
+		throw new Error(`station ${context.stationId} is closed`);
+	}
+	const rail = station.activeRail();
+	if (!railEnablesPam(rail.policyPacks, rail.metadata)) {
+		throw new Error(
+			`active Rail ${rail.id} does not enable privileged access for station ${context.stationId}`,
+		);
+	}
+	const auditPath = join(station.dataDir, "pam-audit.jsonl");
+	const auditSink = createPamAuditSink({
+		yardAppend: (event) => {
+			appendFileSync(auditPath, `${JSON.stringify(event)}\n`, {
+				encoding: "utf8",
+				mode: 0o600,
+			});
+		},
+	});
 	const gateway = createNativePamGateway({
-		isolationClass: context.isolationClass as never,
+		isolationClass: context.isolationClass,
+		auditSink,
 	});
 	await gateway.start({
-		stationId: context.stationId,
-		tenant: context.tenant,
-		isolationClass: context.isolationClass as never,
-		trustDomain: context.trustDomain ?? "local",
+		stationId: occupancy.stationId,
+		tenant: occupancy.isolation.tenant,
+		isolationClass: context.isolationClass,
+		railId: rail.id,
+		trustDomain: occupancy.isolation.trustDomain,
 	});
+	let closed = false;
 	return {
 		broker: gateway as unknown as PaneSessionBroker,
 		auditTypes: () => gateway.auditEvents.map((e) => e.type),
-		close: () => gateway.stop(),
+		async close() {
+			if (closed) return;
+			closed = true;
+			await gateway.stop();
+		},
 	};
 }
 

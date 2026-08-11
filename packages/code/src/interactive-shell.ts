@@ -266,6 +266,16 @@ export function filterSlash(
 	);
 }
 
+function slashItemForInput(text: string): ShellSlashItem | undefined {
+	const [name = "", ...args] = text.slice(1).trim().split(/\s+/);
+	const item = DEFAULT_SLASH_ITEMS.find(
+		(candidate) => candidate.name === name.toLowerCase(),
+	);
+	return item?.name === "sessions" && args.length > 0
+		? { ...item, argv: ["session", ...args] }
+		: item;
+}
+
 /**
  * Split raw terminal input into atomic key sequences: escape sequences
  * (CSI/SS3/paste blocks) stay whole, printable runs stay whole, single
@@ -768,8 +778,7 @@ export function reduceShellKey(
 		const text = state.input.trim();
 		if (!text) return { state };
 		if (text.startsWith("/")) {
-			const name = text.slice(1).split(/\s+/)[0]?.toLowerCase() ?? "";
-			const item = DEFAULT_SLASH_ITEMS.find((i) => i.name === name);
+			const item = slashItemForInput(text);
 			if (item) {
 				return {
 					state: {
@@ -1047,6 +1056,7 @@ export async function runInteractiveShell(
 				state,
 				[
 					"Commands: type / and pick — /ide /config /cost /tasks /status /agent /env /auth /about /quit",
+					"Resident control: /sessions <args> (plain /sessions lists).",
 					"Chat: type a prompt and Enter — it is queued as a dispatch task (/about).",
 					"Keys: Tab panes · ↑/↓ pick + scroll · PgUp/PgDn scroll · Ctrl+C quit",
 				].join("\n"),
@@ -1218,8 +1228,7 @@ export async function runInteractiveShell(
 	const handleSubmitText = (text: string) => {
 		if (quit) return;
 		if (text.startsWith("/")) {
-			const name = text.slice(1).split(/\s+/)[0]?.toLowerCase() ?? "";
-			const item = DEFAULT_SLASH_ITEMS.find((i) => i.name === name);
+			const item = slashItemForInput(text);
 			if (item) {
 				void applySlash(item)
 					.then(() => {

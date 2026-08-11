@@ -16,23 +16,6 @@ import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
 import { allocateAgentWorkspaces } from "./agent-workspaces.js";
 import {
-	DEV_MACHINES_FILE,
-	loadDevMachines,
-	machinesForAgent,
-	resolveMachine,
-	sshDestination,
-} from "./dev-machines.js";
-import {
-	brokerPanes,
-	describePane,
-	openStationGateway,
-} from "./machine-sessions.js";
-import {
-	runVirtualPane,
-	VIRTUAL_PANE_COMMANDS,
-	virtualPaneCommand,
-} from "./virtual-pane.js";
-import {
 	authLogin,
 	authStatus,
 	clearAuthSession,
@@ -52,10 +35,17 @@ import {
 } from "./config-surface.js";
 import { costHumanSummary, inspectCost } from "./cost.js";
 import { cursorGuide, renderCursorGuideText } from "./cursor-guide.js";
+import {
+	DEV_MACHINES_FILE,
+	loadDevMachines,
+	machinesForAgent,
+	resolveMachine,
+	sshDestination,
+} from "./dev-machines.js";
 import { defaultDevenvProbes, devenvSummary, inspectDevenv } from "./devenv.js";
 import {
-	describeDistributedCompute,
 	computeTaskPath,
+	describeDistributedCompute,
 	dispatchComputeTask,
 } from "./distributed.js";
 import { dogfoodSummary } from "./dogfood.js";
@@ -88,6 +78,13 @@ import {
 	createIsolationContext,
 	listSandboxOrphans,
 } from "./isolation.js";
+import {
+	brokerPaneSession,
+	brokerPanes,
+	describePane,
+	type OpenedGateway,
+	openStationGateway,
+} from "./machine-sessions.js";
 import { inspectModels, modelsHumanSummary } from "./models.js";
 import {
 	applyMux,
@@ -109,11 +106,14 @@ import {
 	describeDevTerminalAttach,
 	shortNamedHost,
 } from "./remote.js";
+import {
+	type RemoteSessionServe,
+	runResidentSessionCli,
+} from "./resident-session-cli.js";
 import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
 import { startCodeSession } from "./session.js";
-import { runResidentSessionCli } from "./resident-session-cli.js";
 import {
 	buildMultiplexerStatus,
 	createPane,
@@ -122,6 +122,11 @@ import {
 	renderStatusChip,
 	renderStatusText,
 } from "./tui.js";
+import {
+	runVirtualPane,
+	VIRTUAL_PANE_COMMANDS,
+	virtualPaneCommand,
+} from "./virtual-pane.js";
 import { findWorkspaceRoot } from "./workspace.js";
 import { describeCodeWorlds } from "./worlds.js";
 
@@ -257,6 +262,9 @@ export interface HoboCodeCliDeps {
 	 * Also: HOBO_CODE_DENSE=1 or --dense / -D.
 	 */
 	readonly dense?: boolean;
+	readonly openStationGateway?: (
+		context: Parameters<typeof openStationGateway>[0],
+	) => Promise<OpenedGateway>;
 }
 
 export type FormatHoboCodeOptions = {
@@ -297,6 +305,7 @@ const VALUE_FLAGS = new Set([
 	"name",
 	"out",
 	"mode",
+	"port",
 ]);
 
 /** Boolean flags (never consume the next token). */
@@ -337,6 +346,10 @@ function parseArgv(argv: readonly string[]): {
 	const positional: string[] = [];
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i]!;
+		if (a === "--") {
+			positional.push(...argv.slice(i + 1));
+			break;
+		}
 		if (a === "--json") {
 			flags.json = true;
 			continue;
@@ -600,13 +613,14 @@ const VERB_HELP_PLAIN: Record<
 		"  hobo-code session split <sessionId> <paneId> <horizontal|vertical> <title> [command…]",
 		"  hobo-code session focus | close-pane <sessionId> <paneId>",
 		"  hobo-code session prompt <sessionId> <paneId> <text…>",
-		"  hobo-code session agent-start <sessionId> <paneId> <provider> <command…>",
+		"  hobo-code session agent-start <sessionId> <paneId> <provider> <command> [-- <command-args…>]",
 		"  hobo-code session agent-stop <sessionId> <agentRunId>",
 		"  hobo-code session checkpoint <sessionId> <label>",
 		"  hobo-code session restore <sessionId> <checkpointId>",
 		"  hobo-code session commit | push | pr | stack | merge … --approve",
 		"  hobo-code session stop | delete <sessionId>",
-		"  hobo-code session serve",
+		"  hobo-code session serve [--port <port>]",
+		"  hobo-code session serve --host <declared-machine> --port <port>",
 		"  hobo-code session              # legacy one-shot handback",
 		"",
 		"Resident controls:",
@@ -620,11 +634,15 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"Flags:",
 		"  --approve           Required for commit, push, PR, stack, and merge",
+		"  --host <machine>    Station-authorized declared dev machine",
+		"  --port <port>       Fixed loopback port (required with --host)",
 		"  --json              Machine-readable snapshots",
 		"  --home <path>       Override HOBO_HOME",
 		"  --help, -h          Show this help",
 		"",
-		"Uses the Station from hobo-code auth login when present.",
+		"Remote browser serving asks that Station to authorize and audit access,",
+		"then opens SSH local forwarding; denial has no fallback. SSH still uses",
+		"the user's configured key because tokenref redemption is not implemented.",
 		"",
 		"See also: hobo-code attach · hobo-code auth · hobo-code isolate · hobo-code status",
 	],
@@ -1266,7 +1284,7 @@ export async function runHoboCodeCli(
 	const platform = composeCodePlatform({
 		hoboHome,
 		...(resolvedStation !== undefined ? { stationId: resolvedStation } : {}),
-		autoInitStation: true,
+		autoInitStation: !(verb === "session" && typeof flags.host === "string"),
 		tenant: resolvedTenant,
 		features,
 	});
@@ -1974,8 +1992,8 @@ export async function runHoboCodeCli(
 		let brokerAudit: readonly string[] = [];
 		if (resolvedMachine) {
 			const gateway = await openStationGateway({
+				hoboHome,
 				stationId: platform.station.stationId,
-				tenant: tenant ?? "local",
 				isolationClass: resolvedMachine.isolationClass,
 			});
 			try {
@@ -2497,11 +2515,137 @@ export async function runHoboCodeCli(
 		}
 		if (args.length > 0) {
 			try {
+				const requestedHost =
+					args[0] === "serve" && typeof flags.host === "string"
+						? flags.host
+						: undefined;
+				const requestedPort =
+					args[0] === "serve" && typeof flags.port === "string"
+						? flags.port
+						: undefined;
+				if (requestedHost && requestedPort === undefined) {
+					return fail(
+						"HOBO_CODE_SESSION_REMOTE_PORT_REQUIRED",
+						panel("✕ session", [
+							"remote session serving requires a fixed --port",
+							"the same loopback port is used on both sides of the SSH forward",
+						]),
+						[`hobo-code session serve --host ${requestedHost} --port 4242`],
+					);
+				}
+				const servePort =
+					requestedPort !== undefined && /^\d+$/u.test(requestedPort)
+						? Number.parseInt(requestedPort, 10)
+						: undefined;
+				if (
+					requestedPort !== undefined &&
+					(servePort === undefined || servePort < 1 || servePort > 65_535)
+				) {
+					return fail(
+						"HOBO_CODE_SESSION_INVALID_PORT",
+						panel("✕ session", [
+							"--port must be an integer from 1 through 65535",
+						]),
+						["hobo-code session serve --port 4242"],
+					);
+				}
+
+				let remoteServe: RemoteSessionServe | undefined;
+				if (requestedHost && servePort !== undefined) {
+					const projectMachines = loadDevMachines(projectDir);
+					const declaredMachines = projectMachines.declared
+						? projectMachines
+						: loadDevMachines(
+								join(dirname(fileURLToPath(import.meta.url)), ".."),
+							);
+					const resolution = resolveMachine(
+						declaredMachines.machines,
+						requestedHost,
+					);
+					if (resolution !== null && "ambiguous" in resolution) {
+						return fail(
+							"HOBO_CODE_SESSION_AMBIGUOUS_MACHINE",
+							panel("✕ session", [
+								`"${requestedHost}" is the host of more than one declared machine.`,
+								...resolution.ambiguous.map(
+									(m) => `  ${m.id} · ${m.isolationClass}`,
+								),
+								"name one by its declared id",
+							]),
+							["hobo-code machines"],
+						);
+					}
+					const machine =
+						resolution !== null && "machine" in resolution
+							? resolution.machine
+							: undefined;
+					if (!machine) {
+						return fail(
+							"HOBO_CODE_SESSION_UNKNOWN_MACHINE",
+							panel("✕ session", [
+								`"${requestedHost}" is not a declared dev machine.`,
+								declaredMachines.declared
+									? `known · ${declaredMachines.machines.map((m) => m.id).join(", ") || "none"}`
+									: `no ${DEV_MACHINES_FILE} beside the devenv files`,
+								"remote browsers have no fallback to arbitrary SSH hosts",
+							]),
+							["hobo-code machines"],
+						);
+					}
+
+					const gateway = await (deps.openStationGateway ?? openStationGateway)(
+						{
+							hoboHome,
+							stationId: platform.station.stationId,
+							isolationClass: machine.isolationClass,
+						},
+					);
+					let outcome: Awaited<ReturnType<typeof brokerPaneSession>>;
+					outcome = await brokerPaneSession(machine, "resident-browser", {
+						broker: gateway.broker,
+						subject: "hobo-code",
+						ttlSeconds: 3600,
+					});
+					const auditTypes = gateway.auditTypes();
+					if (!outcome.ok) {
+						await gateway.close();
+						return fail(
+							"HOBO_CODE_SESSION_REMOTE_DENIED",
+							panel("✕ session", [
+								`the Station refused browser access to ${machine.id}`,
+								outcome.failure.reason,
+								"SSH forwarding was not opened; there is no fallback",
+							]),
+							["hobo-code machines", "hobo-code auth"],
+						);
+					}
+					if (!auditTypes.includes("pam.SessionStarted")) {
+						await gateway.close();
+						return fail(
+							"HOBO_CODE_SESSION_REMOTE_AUDIT_MISSING",
+							panel("✕ session", [
+								`the Station authorized ${machine.id} without a start audit event`,
+								"SSH forwarding was not opened",
+							]),
+							["hobo-code auth status"],
+						);
+					}
+					remoteServe = {
+						machine,
+						port: servePort,
+						authorizationSessionId: outcome.pane.sessionId,
+						authorizationExpiresAt: outcome.pane.expiresAt,
+						auditTypes,
+						closeAuthorization: gateway.close,
+					};
+				}
 				const resident = await runResidentSessionCli({
 					args,
 					hoboHome,
 					projectDir,
 					approved: flags.approve === true,
+					...(servePort !== undefined ? { servePort } : {}),
+					...(remoteServe !== undefined ? { remoteServe } : {}),
 				});
 				if (resident) {
 					return ok(

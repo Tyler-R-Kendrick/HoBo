@@ -1,21 +1,64 @@
 import { randomUUID } from "node:crypto";
 
 import { AgentLifecycleState } from "./_generated/code_harness_pb.js";
+import type { DevMachine } from "./dev-machines.js";
+import { sshDestination } from "./dev-machines.js";
 import {
 	createLocalSessionControl,
 	sessionCommandEnvelope,
 } from "./local-session-control.js";
 import { residentSessionTmuxName } from "./resident-session-runtime.js";
 import {
-	sessionSnapshotJson,
 	type SessionSnapshot,
+	sessionSnapshotJson,
 } from "./session-contract.js";
 
 const DELIVERY_COMMANDS = new Set(["commit", "push", "pr", "stack", "merge"]);
 
+export function remoteSessionServeSshArgs(
+	machine: DevMachine,
+	port: number,
+): readonly string[] {
+	const endpoint = `127.0.0.1:${port}`;
+	return [
+		"-T",
+		"-o",
+		"ExitOnForwardFailure=yes",
+		"-L",
+		`${endpoint}:${endpoint}`,
+		sshDestination(machine),
+		"hobo-code",
+		"session",
+		"serve",
+		"--port",
+		String(port),
+	];
+}
+
+export function authorizationLeaseDelay(
+	expiresAt: string,
+	nowMs = Date.now(),
+): number {
+	const expiresAtMs = Date.parse(expiresAt);
+	if (!Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) {
+		throw new Error("Station authorization is expired or invalid");
+	}
+	return Math.min(expiresAtMs - nowMs, 2_147_483_647);
+}
+
 export interface ResidentSessionCliResult {
 	readonly message: string;
 	readonly data: unknown;
+}
+
+export interface RemoteSessionServe {
+	readonly machine: DevMachine;
+	readonly port: number;
+	readonly authorizationSessionId: string;
+	readonly authorizationExpiresAt: string;
+	readonly auditTypes: readonly string[];
+	/** Process-local lease close; omitted from JSON output. */
+	readonly closeAuthorization: () => Promise<void>;
 }
 
 function required(value: string | undefined, usage: string): string {
@@ -79,11 +122,25 @@ export async function runResidentSessionCli(input: {
 	readonly projectDir: string;
 	readonly approved: boolean;
 	readonly actorId?: string;
+	readonly servePort?: number;
+	readonly remoteServe?: RemoteSessionServe;
 }): Promise<ResidentSessionCliResult | undefined> {
 	const [operation, ...args] = input.args;
 	if (!operation) return undefined;
 	const actorId = input.actorId ?? `cli-${process.pid}`;
 	if (operation === "serve") {
+		if (input.remoteServe) {
+			return {
+				message: `forwarding resident browser from ${input.remoteServe.machine.id} at http://127.0.0.1:${input.remoteServe.port}; SSH authentication uses the user's configured key because tokenref redemption is not implemented`,
+				data: {
+					terminalAction: {
+						kind: "forward-sessions",
+						...input.remoteServe,
+						credentialMode: "user-ssh-key",
+					},
+				},
+			};
+		}
 		return {
 			message: "starting loopback session browser",
 			data: {
@@ -91,6 +148,7 @@ export async function runResidentSessionCli(input: {
 					kind: "serve-sessions",
 					hoboHome: input.hoboHome,
 					projectRoot: input.projectDir,
+					...(input.servePort !== undefined ? { port: input.servePort } : {}),
 				},
 			},
 		};

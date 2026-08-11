@@ -5,6 +5,17 @@
  * rather than falling back, and that session *material* never leaves the
  * gateway.
  */
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+	initStation,
+	loadStationEvents,
+	PAM_RAIL_CAPABILITY,
+	persistStationEvents,
+	StationService,
+	stationRoot,
+} from "@hobo/stations";
 import { describe, expect, it } from "vitest";
 import type { DevMachine } from "../src/dev-machines.js";
 import {
@@ -30,7 +41,8 @@ function fakeBroker(behaviour: "ok" | "deny"): PaneSessionBroker {
 			registered.push(target.id);
 		},
 		async brokerSession(request) {
-			if (behaviour === "deny") throw new Error("policy: elevated token required");
+			if (behaviour === "deny")
+				throw new Error("policy: elevated token required");
 			return {
 				sessionId: `sess-${request.target}`,
 				expiresAt: "2026-08-04T00:00:00.000Z",
@@ -123,15 +135,55 @@ describe("session material stays in the gateway", () => {
 });
 
 describe("the real Station gateway", () => {
-	it("brokers a session and audits it", async () => {
+	it("refuses a missing or bootstrap-only Station", async () => {
+		const hoboHome = mkdtempSync(join(tmpdir(), "hobo-code-pam-"));
+		try {
+			await expect(
+				openStationGateway({
+					hoboHome,
+					stationId: "station:missing",
+					isolationClass: "development",
+				}),
+			).rejects.toThrow(/station .* not found/);
+			initStation({ hoboHome, id: "station:local", tenant: "acme" });
+			await expect(
+				openStationGateway({
+					hoboHome,
+					stationId: "station:local",
+					isolationClass: "development",
+				}),
+			).rejects.toThrow(/does not enable privileged access/);
+		} finally {
+			rmSync(hoboHome, { recursive: true, force: true });
+		}
+	});
+
+	it("brokers against the active Rail and durably audits until lease close", async () => {
 		// Exercised against @hobo/stations itself, not a fake: the contract that
 		// matters is the one the product actually calls.
-		const gateway = await openStationGateway({
-			stationId: "station:local",
-			tenant: "local",
-			isolationClass: "development",
-		});
+		const hoboHome = mkdtempSync(join(tmpdir(), "hobo-code-pam-"));
 		try {
+			initStation({ hoboHome, id: "station:local", tenant: "acme" });
+			const service = StationService.fromEvents(
+				loadStationEvents(hoboHome, "station:local"),
+				{ stationId: "station:local" },
+			);
+			const rail = service.publishRail({
+				id: "rail-pam",
+				name: "PAM",
+				version: "1.0.0",
+				stationId: "station:local",
+				policyPacks: [PAM_RAIL_CAPABILITY],
+			});
+			service.approveRail(rail.contentHash);
+			service.activateRail(rail.contentHash);
+			persistStationEvents(hoboHome, "station:local", service.events);
+
+			const gateway = await openStationGateway({
+				hoboHome,
+				stationId: "station:local",
+				isolationClass: "development",
+			});
 			const outcome = await brokerPaneSession(machine, "claude", {
 				broker: gateway.broker,
 				subject: "hobo-code",
@@ -142,8 +194,17 @@ describe("the real Station gateway", () => {
 			expect(outcome.pane.protocol).toBe("hobo-svid");
 			expect(outcome.pane.credentialRef).toMatch(/^tokenref:\/\//);
 			expect(gateway.auditTypes()).toContain("pam.SessionStarted");
-		} finally {
+			expect(gateway.auditTypes()).not.toContain("pam.SessionEnded");
 			await gateway.close();
+			const durable = readFileSync(
+				join(stationRoot(hoboHome, "station:local"), "pam-audit.jsonl"),
+				"utf8",
+			);
+			expect(durable).toContain('"tenant":"acme"');
+			expect(durable).toContain('"type":"pam.SessionStarted"');
+			expect(durable).toContain('"type":"pam.SessionEnded"');
+		} finally {
+			rmSync(hoboHome, { recursive: true, force: true });
 		}
 	});
 });

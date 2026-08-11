@@ -102,6 +102,37 @@ describe("resident session loopback server", () => {
 			expect(html).toContain("forward this loopback port");
 			expect(html).toContain("never binds publicly");
 			expect(html).toContain("Full command boundary");
+			for (const action of [
+				"create-tab",
+				"create-pane",
+				"split-horizontal",
+				"split-vertical",
+				"close-pane",
+				"start-agent",
+				"stop-agent",
+				"create-checkpoint",
+				"restore-checkpoint",
+				"commit",
+				"push",
+				"open-pr",
+				"stack-pr",
+				"merge-pr",
+			]) {
+				expect(html).toContain(`'${action}'`);
+			}
+			expect(html).toContain("b.dataset.action=action");
+			expect(html).toContain(
+				"if(card.contains(document.activeElement)&&s.session.id!==forceId)continue",
+			);
+			expect(html).toContain("await refresh(id)");
+			expect(html).toContain("pullRequestNumber:Number(pullRequestNumber)");
+			expect(html).not.toContain("root.replaceChildren()");
+			expect(html).toContain(
+				"This browser is detached. Reattach to view pane output and controls.",
+			);
+			expect(html.indexOf("if(!attached)")).toBeLessThan(
+				html.indexOf("await api('/code/sessions/"),
+			);
 			const script = /<script>([\s\S]+)<\/script>/u.exec(html)?.[1];
 			expect(script).toBeDefined();
 			expect(() => new Function(script ?? "")).not.toThrow();

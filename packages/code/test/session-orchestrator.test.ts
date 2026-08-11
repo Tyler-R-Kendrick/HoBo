@@ -650,6 +650,7 @@ describe("session orchestrator", () => {
 	it("rejects a stacked pull request published from an unapproved head", async () => {
 		const harness = await createHarness();
 		let created = false;
+		let closed = false;
 		let edited = false;
 		const base = sessionProcessRunner();
 		const orchestrator = createSessionOrchestrator({
@@ -679,6 +680,7 @@ describe("session orchestrator", () => {
 							stderr: "",
 						});
 					if (args[0] === "stack" && args[1] === "submit") created = true;
+					if (args[0] === "pr" && args[1] === "close") closed = true;
 					if (args[0] === "pr" && args[1] === "edit") edited = true;
 					if (args[0] === "stack" && args[1] === "view")
 						return Promise.resolve({
@@ -703,6 +705,7 @@ describe("session orchestrator", () => {
 				),
 			),
 		).rejects.toThrow("approved Git HEAD");
+		expect(closed).toBe(true);
 		expect(edited).toBe(false);
 		harness.runtime.close();
 	});

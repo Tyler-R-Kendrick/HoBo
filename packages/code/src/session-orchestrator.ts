@@ -1719,11 +1719,26 @@ export function createSessionOrchestrator(
 									);
 									const pullRequestNumber =
 										await stackPullRequestNumber(session);
-									await requireApprovedPullRequestHead(
-										session,
-										pullRequestNumber,
-										ledger.context.preHead,
-									);
+									try {
+										await requireApprovedPullRequestHead(
+											session,
+											pullRequestNumber,
+											ledger.context.preHead,
+										);
+									} catch (error) {
+										try {
+											await run(
+												"gh",
+												["pr", "close", String(pullRequestNumber)],
+												session.worktreePath,
+											);
+										} catch (closeError) {
+											throw new Error(
+												`gh stack submit produced an unapproved pull request and compensating close failed: ${String(closeError)}`,
+											);
+										}
+										throw error;
+									}
 									await run(
 										"gh",
 										[

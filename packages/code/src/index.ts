@@ -175,6 +175,17 @@ export {
 } from "./resident-session-runtime.js";
 
 export {
+	createSessionOrchestrator,
+	sessionProcessRunner,
+	type SessionDeliveryApproval,
+	type SessionDeliveryOperation,
+	type SessionOrchestrator,
+	type SessionOrchestratorOptions,
+	type SessionProcessResult,
+	type SessionProcessRunner,
+} from "./session-orchestrator.js";
+
+export {
 	parseEvidenceTriple,
 	parseIsolationContext,
 	parsePromotionRequest,

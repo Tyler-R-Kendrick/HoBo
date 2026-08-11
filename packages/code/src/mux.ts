@@ -14,6 +14,10 @@
  */
 
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { closeSync, openSync, readFileSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 export type TargetKind = "local" | "local-inference" | "ssh";
 
@@ -155,7 +159,7 @@ export function targetCommand(target: MuxTarget): string {
  * disappearance into a visible exit code.
  */
 export function keepPaneOpen(name: string, command: string): string {
-	const label = name.replace(/'/g, "");
+	const label = safeWindowName(name);
 	return `sh -c '${command.replace(/'/g, "'\\''")}; status=$?; printf "\\n[${label} exited %s — press enter to close]" "$status"; read _'`;
 }
 
@@ -173,24 +177,64 @@ export function planMux(
 export interface MuxRunner {
 	readonly run: (
 		args: readonly string[],
-	) => Promise<{ code: number | null; stdout: string }>;
+	) => Promise<{ code: number | null; stdout: string; stderr?: string }>;
 }
 
 /** Real tmux runner; stderr ignored so a chatty tmux cannot wedge us. */
-export function tmuxRunner(): MuxRunner {
+export function tmuxRunner(prefix: readonly string[] = []): MuxRunner {
 	return {
 		run: (args) =>
 			new Promise((resolve) => {
-				const child = spawn("tmux", [...args], {
-					stdio: ["ignore", "pipe", "ignore"],
+				const pipeOutput =
+					args[0]?.startsWith("list-") === true ||
+					args[0] === "display-message" ||
+					args[0] === "capture-pane";
+				const atomicOutput = args.includes("-P");
+				const diagnose =
+					args[0] === "has-session" || args[0] === "list-sessions";
+				const outputPath = atomicOutput
+					? join(tmpdir(), `hobo-tmux-${process.pid}-${randomUUID()}`)
+					: undefined;
+				const outputFd = outputPath
+					? openSync(outputPath, "w", 0o600)
+					: undefined;
+				const child = spawn("tmux", [...prefix, ...args], {
+					// A newly forked tmux server can inherit stdout. Giving mutating
+					// commands a pipe leaves callers waiting forever for EOF. `-P`
+					// output goes through a private file so pane creation stays atomic.
+					stdio: [
+						"ignore",
+						outputFd ?? (pipeOutput ? "pipe" : "ignore"),
+						diagnose ? "pipe" : "ignore",
+					],
 				});
 				let stdout = "";
-				child.stdout.setEncoding("utf8");
-				child.stdout.on("data", (c: string) => {
-					stdout += c;
-				});
-				child.on("error", () => resolve({ code: null, stdout }));
-				child.on("close", (code) => resolve({ code, stdout }));
+				let stderr = "";
+				let settled = false;
+				if (child.stdout) {
+					child.stdout.setEncoding("utf8");
+					child.stdout.on("data", (c: string) => {
+						stdout += c;
+					});
+				}
+				if (child.stderr) {
+					child.stderr.setEncoding("utf8");
+					child.stderr.on("data", (c: string) => {
+						stderr += c;
+					});
+				}
+				const finish = (code: number | null) => {
+					if (settled) return;
+					settled = true;
+					if (outputFd !== undefined) closeSync(outputFd);
+					if (outputPath) {
+						stdout = readFileSync(outputPath, "utf8");
+						unlinkSync(outputPath);
+					}
+					resolve({ code, stdout, stderr });
+				};
+				child.once("error", () => finish(null));
+				child.once("close", finish);
 			}),
 	};
 }

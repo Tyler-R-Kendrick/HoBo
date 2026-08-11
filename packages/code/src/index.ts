@@ -168,6 +168,13 @@ export {
 } from "./session-contract.js";
 
 export {
+	createResidentSessionRuntime,
+	type CreateResidentSessionOptions,
+	type ResidentSessionRuntime,
+	type ResidentSessionRuntimeOptions,
+} from "./resident-session-runtime.js";
+
+export {
 	parseEvidenceTriple,
 	parseIsolationContext,
 	parsePromotionRequest,

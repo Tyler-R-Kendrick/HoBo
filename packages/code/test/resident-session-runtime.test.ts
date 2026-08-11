@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +8,7 @@ import { createRuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+	AgentLifecycleState,
 	PaneLifecycleState,
 	SessionLifecycleState,
 } from "../src/_generated/code_harness_pb.js";
@@ -24,11 +26,19 @@ const lockWorker = join(
 function runLockWorker(
 	dataDir: string,
 	marker: string,
+	tracer?: { readonly role: "first" | "second"; readonly deadOwner: string },
 ): Promise<number | null> {
 	return new Promise((resolve) => {
 		const child = spawn(
 			process.execPath,
-			["--import", "tsx", lockWorker, dataDir, marker],
+			[
+				"--import",
+				"tsx",
+				lockWorker,
+				dataDir,
+				marker,
+				...(tracer ? [tracer.role, tracer.deadOwner] : []),
+			],
 			{ stdio: "ignore" },
 		);
 		child.once("exit", resolve);
@@ -47,6 +57,14 @@ function tempRoot(): string {
 	const root = mkdtempSync(join(tmpdir(), "hobo-code-resident-"));
 	roots.push(root);
 	return root;
+}
+
+function sessionLockPath(dataDir: string, sessionId: string): string {
+	return join(
+		dataDir,
+		"session-locks",
+		`${createHash("sha256").update(sessionId).digest("hex")}.lock`,
+	);
 }
 
 function fakeTmux(): MuxRunner & { calls: string[][] } {
@@ -187,6 +205,68 @@ describe("resident session runtime", () => {
 		runtime.close();
 	});
 
+	it("keeps pane closure parseable across reload after an agent run", async () => {
+		const dataDir = tempRoot();
+		const runtime = createResidentSessionRuntime({ dataDir, tmux: fakeTmux() });
+		const created = await runtime.create({
+			id: "task-close-agent-pane",
+			name: "close-agent-pane",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/close-agent-pane",
+			clientId: "cli",
+		});
+		const split = await runtime.splitPane(
+			"task-close-agent-pane",
+			created.revision,
+			created.focusedPaneId,
+			"vertical",
+			"agent",
+		);
+		const paneId = split.focusedPaneId;
+		const started = await runtime.startAgent(
+			"task-close-agent-pane",
+			split.revision,
+			paneId,
+			"codex",
+			["codex"],
+			"review",
+		);
+		await expect(
+			runtime.closePane("task-close-agent-pane", started.revision, paneId),
+		).rejects.toThrow(`pane ${paneId} has an active agent`);
+
+		const finished = await runtime.update(
+			"task-close-agent-pane",
+			started.revision,
+			(snapshot) => {
+				const run = snapshot.agentRuns[0];
+				const pane = snapshot.panes.find(
+					(candidate) => candidate.id === paneId,
+				);
+				if (!run || !pane) throw new Error("agent pane state is missing");
+				run.lifecycleState = AgentLifecycleState.DONE;
+				pane.agentRunId = undefined;
+			},
+		);
+		const closed = await runtime.closePane(
+			"task-close-agent-pane",
+			finished.revision,
+			paneId,
+		);
+		expect(closed.agentRuns).toEqual([]);
+		runtime.close();
+
+		const reopened = createResidentSessionRuntime({
+			dataDir,
+			tmux: fakeTmux(),
+		});
+		const restored = await reopened.load("task-close-agent-pane");
+		expect(restored?.agentRuns).toEqual([]);
+		expect(restored?.panes.some((pane) => pane.id === paneId)).toBe(false);
+		reopened.close();
+	});
+
 	it("deduplicates acknowledged pane input without inventing a state revision", async () => {
 		const tmux = fakeTmux();
 		const runtime = createResidentSessionRuntime({ dataDir: tempRoot(), tmux });
@@ -216,6 +296,33 @@ describe("resident session runtime", () => {
 		expect(replayed.revision).toBe(created.revision);
 		expect(tmux.calls.filter((call) => call[0] === "send-keys")).toHaveLength(
 			1,
+		);
+		runtime.close();
+	});
+
+	it("starts a command-only agent without adding an empty argv entry", async () => {
+		const runtime = createResidentSessionRuntime({
+			dataDir: tempRoot(),
+			tmux: fakeTmux(),
+		});
+		const created = await runtime.create({
+			id: "task-command-only-agent",
+			name: "command-only",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/command-only",
+			clientId: "cli",
+		});
+		const started = await runtime.startAgent(
+			"task-command-only-agent",
+			created.revision,
+			created.focusedPaneId,
+			"codex",
+			["codex", "--full-auto"],
+			"",
+		);
+		expect(started.agentRuns[0]?.lifecycleState).toBe(
+			AgentLifecycleState.WORKING,
 		);
 		runtime.close();
 	});
@@ -329,6 +436,84 @@ describe("resident session runtime", () => {
 		]);
 		expect(statuses.sort()).toEqual([0, 2]);
 		expect(readFileSync(marker, "utf8").trim().split("\n")).toHaveLength(1);
+	});
+
+	it("does not let stale-lock contenders remove the newly acquired owner", async () => {
+		const dataDir = tempRoot();
+		const marker = join(dataDir, "stale-race.log");
+		const deadOwner = "2147483647";
+		const first = createResidentSessionRuntime({ dataDir, tmux: fakeTmux() });
+		await first.create({
+			id: "task-process-lock",
+			name: "lock",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/process-lock",
+			clientId: "cli",
+		});
+		first.close();
+		writeFileSync(sessionLockPath(dataDir, "task-process-lock"), deadOwner);
+
+		const statuses = await Promise.all([
+			runLockWorker(dataDir, marker, { role: "first", deadOwner }),
+			runLockWorker(dataDir, marker, { role: "second", deadOwner }),
+		]);
+		expect(statuses.sort()).toEqual([0, 2]);
+		expect(readFileSync(marker, "utf8").trim().split("\n")).toHaveLength(1);
+	});
+
+	it("recovers when a stale-lock claimant crashes during takeover", async () => {
+		const dataDir = tempRoot();
+		const tmux = fakeTmux();
+		const runtime = createResidentSessionRuntime({ dataDir, tmux });
+		const created = await runtime.create({
+			id: "task-reclaim-crash",
+			name: "reclaim",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/reclaim",
+			clientId: "cli",
+		});
+		const path = sessionLockPath(dataDir, "task-reclaim-crash");
+		const deadOwnerId = "2147483647-deadbeef";
+		const marker = `hobo:${deadOwnerId}\n`;
+		writeFileSync(path, marker);
+		writeFileSync(
+			`${path}.hobo-${deadOwnerId}.reclaim-2147483646-cafebabe`,
+			marker,
+		);
+
+		const changed = await runtime.createTab(
+			"task-reclaim-crash",
+			created.revision,
+			"recovered",
+		);
+		expect(changed.tabs.map((tab) => tab.title)).toContain("recovered");
+		runtime.close();
+	});
+
+	it("fails closed when a lock owner is malformed", async () => {
+		const dataDir = tempRoot();
+		const tmux = fakeTmux();
+		const runtime = createResidentSessionRuntime({ dataDir, tmux });
+		const created = await runtime.create({
+			id: "task-unknown-lock",
+			name: "unknown",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/unknown",
+			clientId: "cli",
+		});
+		const path = sessionLockPath(dataDir, "task-unknown-lock");
+		writeFileSync(path, "not-an-owner");
+		const before = tmux.calls.length;
+
+		await expect(
+			runtime.createTab("task-unknown-lock", created.revision, "unsafe"),
+		).rejects.toThrow("busy");
+		expect(readFileSync(path, "utf8")).toBe("not-an-owner");
+		expect(tmux.calls).toHaveLength(before);
+		runtime.close();
 	});
 
 	it("replays an event written after the last SQLite snapshot", async () => {

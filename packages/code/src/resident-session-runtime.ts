@@ -1,12 +1,16 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
+	existsSync,
 	linkSync,
 	mkdirSync,
+	readdirSync,
 	readFileSync,
+	renameSync,
+	rmSync,
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { create, type JsonValue } from "@bufbuild/protobuf";
 import { createRuntimeLocalEventStore } from "@hobo/runtime-local";
 
@@ -211,14 +215,83 @@ export function createResidentSessionRuntime(
 		}
 	}
 
+	function clearStaleLock(path: string, sessionId: string): void {
+		let marker: string;
+		try {
+			marker = readFileSync(path, "utf8");
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+			throw error;
+		}
+		const owner = /^hobo:(\d+)-([0-9a-f-]+)\n$/u.exec(marker);
+		const legacyOwner = /^(\d+)$/u.exec(marker);
+		const pid = Number(owner?.[1] ?? legacyOwner?.[1]);
+		if (!Number.isSafeInteger(pid) || processAlive(pid)) {
+			throw new Error(`session ${sessionId} is busy`);
+		}
+		const ownerPath = owner
+			? `${path}.hobo-${owner[1]}-${owner[2]}`
+			: `${path}.hobo-${pid}-legacy`;
+		const claimPrefix = `${basename(ownerPath)}.reclaim-`;
+		let claimSource = ownerPath;
+		const findClaims = (): string[] =>
+			readdirSync(dirname(ownerPath)).filter((entry) =>
+				entry.startsWith(claimPrefix),
+			);
+		if (legacyOwner && !existsSync(ownerPath) && findClaims().length === 0) {
+			try {
+				writeFileSync(ownerPath, marker, { flag: "wx", mode: 0o600 });
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+			}
+		}
+		if (!existsSync(claimSource)) {
+			const claims = findClaims();
+			if (claims.length !== 1) throw new Error(`session ${sessionId} is busy`);
+			claimSource = join(dirname(ownerPath), claims[0] ?? "");
+			const claimant = /\.reclaim-(\d+)-/u.exec(claimSource);
+			if (!claimant || processAlive(Number(claimant[1]))) {
+				throw new Error(`session ${sessionId} is busy`);
+			}
+		}
+		const claimPath = `${ownerPath}.reclaim-${process.pid}-${randomUUID()}`;
+		try {
+			renameSync(claimSource, claimPath);
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+				throw new Error(`session ${sessionId} is busy`);
+			}
+			throw error;
+		}
+		let released = false;
+		try {
+			if (readFileSync(path, "utf8") !== marker) {
+				throw new Error(`session ${sessionId} is busy`);
+			}
+			unlinkSync(path);
+			released = true;
+		} finally {
+			if (released) rmSync(claimPath, { force: true });
+		}
+	}
+
 	async function locked<T>(
 		sessionId: string,
 		work: () => Promise<T>,
 	): Promise<T> {
 		const path = lockPath(sessionId);
-		const ownerPath = `${path}.${process.pid}.${randomUUID()}`;
-		writeFileSync(ownerPath, String(process.pid), { flag: "wx", mode: 0o600 });
+		const ownerId = `${process.pid}-${randomUUID()}`;
+		const marker = `hobo:${ownerId}\n`;
+		const ownerPath = `${path}.hobo-${ownerId}`;
+		writeFileSync(ownerPath, marker, { flag: "wx", mode: 0o600 });
 		let acquired = false;
+		const release = (): void => {
+			try {
+				if (readFileSync(path, "utf8") === marker) unlinkSync(path);
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+			}
+		};
 		try {
 			for (let attempt = 0; attempt < 2; attempt += 1) {
 				try {
@@ -228,27 +301,27 @@ export function createResidentSessionRuntime(
 					break;
 				} catch (error) {
 					if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-					const owner = Number.parseInt(readFileSync(path, "utf8"), 10);
-					if (Number.isSafeInteger(owner) && processAlive(owner)) {
-						throw new Error(`session ${sessionId} is busy`);
-					}
-					try {
-						unlinkSync(path);
-					} catch (unlinkError) {
-						if ((unlinkError as NodeJS.ErrnoException).code !== "ENOENT") {
-							throw unlinkError;
-						}
-					}
+					clearStaleLock(path, sessionId);
 				}
 			}
+			if (!acquired) throw new Error(`could not acquire session ${sessionId}`);
+			try {
+				const result = await work();
+				release();
+				return result;
+			} catch (error) {
+				try {
+					release();
+				} catch (releaseError) {
+					throw new AggregateError(
+						[error, releaseError],
+						`session ${sessionId} failed and its lock could not be released`,
+					);
+				}
+				throw error;
+			}
 		} finally {
-			unlinkSync(ownerPath);
-		}
-		if (!acquired) throw new Error(`could not acquire session ${sessionId}`);
-		try {
-			return await work();
-		} finally {
-			unlinkSync(path);
+			rmSync(ownerPath, { force: true });
 		}
 	}
 
@@ -926,10 +999,26 @@ export function createResidentSessionRuntime(
 				const index = snapshot.panes.findIndex((pane) => pane.id === paneId);
 				const pane = snapshot.panes[index];
 				if (!pane) throw new Error(`pane ${paneId} does not exist`);
+				const paneRuns = snapshot.agentRuns.filter(
+					(run) => run.paneId === paneId,
+				);
+				if (
+					paneRuns.some(
+						(run) =>
+							run.lifecycleState !== AgentLifecycleState.DONE &&
+							run.lifecycleState !== AgentLifecycleState.FAILED &&
+							run.lifecycleState !== AgentLifecycleState.STOPPED,
+					)
+				) {
+					throw new Error(`pane ${paneId} has an active agent`);
+				}
 				if (pane.lifecycleState !== PaneLifecycleState.MISSING) {
 					await runTmux(["kill-pane", "-t", pane.runtimeId]);
 				}
 				snapshot.panes.splice(index, 1);
+				snapshot.agentRuns = snapshot.agentRuns.filter(
+					(run) => run.paneId !== paneId,
+				);
 				if (
 					!snapshot.panes.some((candidate) => candidate.tabId === pane.tabId)
 				) {
@@ -1015,7 +1104,7 @@ export function createResidentSessionRuntime(
 				) {
 					throw new Error(`pane ${paneId} already has an active agent`);
 				}
-				const resolved = [...paneCommand(command), prompt];
+				const resolved = [...paneCommand(command), ...(prompt ? [prompt] : [])];
 				const tabTitle =
 					snapshot.tabs.find((tab) => tab.id === pane.tabId)?.title ?? "tab";
 				const timestamp = now();

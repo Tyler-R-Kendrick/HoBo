@@ -75,6 +75,40 @@ describe("lease-bound SSH agent proxy", () => {
 		expect(residentProxyEnvironment()).toEqual({});
 	});
 
+	it("does not forward a signing request when audit persistence fails", async () => {
+		const dir = root();
+		const upstreamPath = join(dir, "upstream.sock");
+		const proxyPath = join(dir, "proxy.sock");
+		const received: Buffer[] = [];
+		const upstream = createServer((socket) =>
+			socket.on("data", (data) => received.push(data)),
+		);
+		await new Promise<void>((resolve, reject) => {
+			upstream.once("error", reject);
+			upstream.listen(upstreamPath, resolve);
+		});
+		const proxy = await startSshAgentProxy({
+			socketPath: proxyPath,
+			upstreamSocket: upstreamPath,
+			expiresAt: new Date(Date.now() + 60_000).toISOString(),
+			onRedeem: async () => {
+				throw new Error("audit unavailable");
+			},
+		});
+		await new Promise<void>((resolve) => {
+			const client = createConnection(proxyPath);
+			client.once("connect", () => client.write(agentFrame(13)));
+			client.once("error", () => resolve());
+			client.once("close", () => resolve());
+		});
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(Buffer.concat(received)).toHaveLength(0);
+		await proxy.close();
+		await new Promise<void>((resolve, reject) =>
+			upstream.close((error) => (error ? reject(error) : resolve())),
+		);
+	});
+
 	it("refuses an expired Station lease", async () => {
 		const dir = root();
 		await expect(

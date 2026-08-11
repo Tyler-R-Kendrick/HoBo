@@ -26,29 +26,35 @@ export interface SshAgentProxy {
 const SSH_AGENT_SIGN_REQUEST = 13;
 const MAX_AGENT_FRAME_BYTES = 1024 * 1024;
 
-function observeSignatureRequests(
-	onSignature: () => void,
-): (chunk: Buffer) => void {
+async function forwardAgentFrames(
+	client: Socket,
+	upstream: Socket,
+	onSignature: () => void | Promise<void>,
+): Promise<void> {
 	let pending = Buffer.alloc(0);
 	let observed = false;
-	return (chunk) => {
-		if (observed) return;
+	for await (const value of client) {
+		const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
 		pending = Buffer.concat([pending, chunk]);
 		while (pending.length >= 4) {
 			const length = pending.readUInt32BE(0);
 			if (length < 1 || length > MAX_AGENT_FRAME_BYTES) {
-				pending = Buffer.alloc(0);
-				return;
+				throw new Error("invalid SSH agent frame length");
 			}
-			if (pending.length < length + 4) return;
-			if (pending[4] === SSH_AGENT_SIGN_REQUEST) {
-				observed = true;
-				onSignature();
-				return;
-			}
+			if (pending.length < length + 4) break;
+			const frame = pending.subarray(0, length + 4);
 			pending = pending.subarray(length + 4);
+			if (!observed && frame[4] === SSH_AGENT_SIGN_REQUEST) {
+				await onSignature();
+				observed = true;
+			}
+			await new Promise<void>((resolve, reject) => {
+				upstream.write(frame, (error) => (error ? reject(error) : resolve()));
+			});
 		}
-	};
+	}
+	if (pending.length > 0) throw new Error("truncated SSH agent frame");
+	upstream.end();
 }
 
 /** Lease-bound transparent proxy for the installed SSH agent protocol. */
@@ -91,18 +97,14 @@ export async function startSshAgentProxy(
 		connections.add(upstream);
 		upstream.once("close", () => connections.delete(upstream));
 		upstream.once("connect", () => {
-			client.on(
-				"data",
-				observeSignatureRequests(() => {
-					Promise.resolve(options.onRedeem?.()).catch((error) => {
-						client.destroy(
-							error instanceof Error ? error : new Error(String(error)),
-						);
-						upstream.destroy();
-					});
-				}),
-			);
-			client.pipe(upstream);
+			void forwardAgentFrames(client, upstream, () =>
+				options.onRedeem?.(),
+			).catch((error) => {
+				client.destroy(
+					error instanceof Error ? error : new Error(String(error)),
+				);
+				upstream.destroy();
+			});
 			upstream.pipe(client);
 		});
 		upstream.once("error", (error) => client.destroy(error));

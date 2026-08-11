@@ -132,25 +132,28 @@ function geometryTmux(): MuxRunner {
 				return { code: 0, stdout: `%${pane}\n` };
 			}
 			if (args[0] === "list-panes") {
+				const count = commands.size;
 				return {
 					code: 0,
 					stdout: [...commands]
-						.map(([id, command], index) =>
-							[
+						.map(([id, command], index) => {
+							const nested = count > 2 && index > 0;
+							const lower = nested && index === 2;
+							return [
 								id,
-								index === 1 ? "1" : "0",
+								index === count - 1 ? "1" : "0",
 								"1",
 								index === 0 ? "0" : "60",
-								"0",
+								lower ? "12" : "0",
 								"60",
-								"40",
+								nested ? (lower ? "28" : "12") : "40",
 								"120",
 								"40",
 								command,
 								"",
 								"",
-							].join("\t"),
-						)
+							].join("\t");
+						})
 						.join("\n"),
 				};
 			}
@@ -178,12 +181,19 @@ describe("resident session runtime", () => {
 			branch: "code/layout",
 			clientId: "browser",
 		});
-		await runtime.splitPane(
+		const horizontal = await runtime.splitPane(
 			"task-layout",
 			created.revision,
 			created.focusedPaneId,
 			"horizontal",
 			"agent",
+		);
+		await runtime.splitPane(
+			"task-layout",
+			horizontal.revision,
+			horizontal.focusedPaneId,
+			"vertical",
+			"logs",
 		);
 		const loaded = await runtime.load("task-layout");
 		expect(loaded?.panes).toMatchObject([
@@ -199,7 +209,15 @@ describe("resident session runtime", () => {
 				leftColumn: 60,
 				topRow: 0,
 				width: 60,
-				height: 40,
+				height: 12,
+				windowWidth: 120,
+				windowHeight: 40,
+			},
+			{
+				leftColumn: 60,
+				topRow: 12,
+				width: 60,
+				height: 28,
 				windowWidth: 120,
 				windowHeight: 40,
 			},

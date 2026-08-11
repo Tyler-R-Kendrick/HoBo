@@ -6,7 +6,7 @@
   ],
   "interface": "native",
   "driver": "native",
-  "capturedAt": "2026-08-11T12:40:48.812Z",
+  "capturedAt": "2026-08-11T13:04:38.342Z",
   "runId": "20260811-hobo-code-panes",
   "screen": {
     "widthPx": null,
@@ -17,8 +17,8 @@
   "primary": {
     "file": "primary.webm",
     "kind": "video",
-    "bytes": 1219185,
-    "sha256": "c0f83481685ba27801cb22b90db7bc749777141b97c090e8d97d45714efaec94"
+    "bytes": 1159340,
+    "sha256": "71c616955ffd5dbae2d53a1c141639150bbeaa26855a2ba7ff5716ac5ef198d1"
   },
   "claims": [
     {
@@ -43,7 +43,11 @@
     }
   ],
   "frames": [
-    "frame-000.png"
+    "frame-000.png",
+    "frame-approval.png",
+    "frame-narrow.png",
+    "frame-panes.png",
+    "frame-stopped.png"
   ],
   "repro": {
     "nativeCmd": "node --import tsx packages/code/.optimizexp/features/hobo-code-herdr-mux/steps/capture-browser.mts",

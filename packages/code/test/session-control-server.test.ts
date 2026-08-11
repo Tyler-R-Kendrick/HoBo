@@ -125,6 +125,7 @@ describe("resident session loopback server", () => {
 			expect(html).toContain("grid.style.aspectRatio");
 			expect(html).toContain("tile.style.left=g.left+'%'");
 			expect(html).toContain("@media(max-width:48rem)");
+			expect(html).toContain("width:100%!important;height:auto!important");
 			expect(html).toContain("b.dataset.action=action");
 			expect(html).toContain("sessionStorage.hoboCodeClientId");
 			expect(html).toContain("p.id===s.focusedPaneId?' · focused':'");

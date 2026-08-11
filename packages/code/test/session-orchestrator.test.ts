@@ -175,6 +175,29 @@ describe("session orchestrator", () => {
 		runtime.close();
 	});
 
+	it("reuses an existing branch when a prior create died before persistence", async () => {
+		const repo = repository();
+		git(repo, ["branch", "code/retry"]);
+		const dataDir = temp("hobo-code-existing-branch-");
+		const runtime = createResidentSessionRuntime({ dataDir, tmux: fakeTmux() });
+		const orchestrator = createSessionOrchestrator({
+			runtime,
+			worktreesDir: join(dataDir, "worktrees"),
+		});
+		const created = await orchestrator.execute(
+			envelope("session-retry", 0n, "createSession", {
+				name: "retry",
+				projectRoot: repo,
+				branch: "code/retry",
+				clientId: "test-client",
+			}),
+		);
+		expect(
+			git(created.session?.worktreePath ?? "", ["branch", "--show-current"]),
+		).toBe("code/retry");
+		runtime.close();
+	});
+
 	it("preserves a running session and worktree when post-create Git refresh fails", async () => {
 		const repo = repository();
 		const dataDir = temp("hobo-code-refresh-failure-");

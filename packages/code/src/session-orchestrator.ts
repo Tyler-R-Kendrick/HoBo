@@ -790,6 +790,11 @@ export function createSessionOrchestrator(
 						const value = command.command.value;
 						const projectRoot = resolve(value.projectRoot);
 						await run("git", ["rev-parse", "--show-toplevel"], projectRoot);
+						await run(
+							"git",
+							["check-ref-format", "--branch", value.branch],
+							projectRoot,
+						);
 						const worktreePath = sessionPath(
 							options.worktreesDir,
 							command.sessionId,
@@ -815,10 +820,34 @@ export function createSessionOrchestrator(
 							);
 						});
 						let addedWorktree = false;
+						let createdBranch = false;
 						if (!exactOrphan) {
+							const branch = await runner.run(
+								"git",
+								[
+									"show-ref",
+									"--verify",
+									"--quiet",
+									`refs/heads/${value.branch}`,
+								],
+								projectRoot,
+							);
+							if (branch.code !== 0 && branch.code !== 1) {
+								throw commandError("git show-ref", branch);
+							}
+							createdBranch = branch.code === 1;
 							await run(
 								"git",
-								["worktree", "add", "-b", value.branch, worktreePath, "HEAD"],
+								createdBranch
+									? [
+											"worktree",
+											"add",
+											"-b",
+											value.branch,
+											worktreePath,
+											"HEAD",
+										]
+									: ["worktree", "add", worktreePath, value.branch],
 								projectRoot,
 							);
 							addedWorktree = true;
@@ -843,11 +872,18 @@ export function createSessionOrchestrator(
 								)) &&
 								!(await options.runtime.load(command.sessionId))
 							) {
-								await runner.run(
+								const removed = await runner.run(
 									"git",
 									["worktree", "remove", worktreePath],
 									projectRoot,
 								);
+								if (removed.code === 0 && createdBranch) {
+									await runner.run(
+										"git",
+										["branch", "-D", value.branch],
+										projectRoot,
+									);
+								}
 							}
 							throw error;
 						}

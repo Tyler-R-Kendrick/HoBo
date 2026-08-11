@@ -1583,7 +1583,9 @@ export function createSessionOrchestrator(
 								revision(snapshot),
 								action.value.tabId,
 								action.value.title,
-								action.value.command,
+								action.value.command.length > 0
+									? action.value.command
+									: undefined,
 							);
 						case "splitPane":
 							return options.runtime.splitPane(
@@ -1592,7 +1594,9 @@ export function createSessionOrchestrator(
 								action.value.paneId,
 								action.value.direction as "horizontal" | "vertical",
 								action.value.title,
-								action.value.command,
+								action.value.command.length > 0
+									? action.value.command
+									: undefined,
 							);
 						case "closePane":
 							return options.runtime.closePane(

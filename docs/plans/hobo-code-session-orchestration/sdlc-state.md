@@ -24,10 +24,10 @@ tags: [hobo, code, sessions, sdlc]
 
 | Layer | Branch | Status | PR |
 |---|---|---|---|
-| 01 contracts and proofs | `sdlc/hobo-code-sessions-01-contracts` | in progress | — |
-| 02 resident runtime | `sdlc/hobo-code-sessions-02-runtime` | pending | — |
-| 03 orchestration | `sdlc/hobo-code-sessions-03-orchestration` | pending | — |
-| 04 TUI, web, and remote clients | `sdlc/hobo-code-sessions-04-clients` | pending | — |
+| 01 contracts and proofs | `sdlc/hobo-code-sessions-01-contracts` | complete | — |
+| 02 resident runtime | `sdlc/hobo-code-sessions-02-runtime` | complete | — |
+| 03 orchestration | `sdlc/hobo-code-sessions-03-orchestration` | complete | — |
+| 04 TUI, web, and remote clients | `sdlc/hobo-code-sessions-04-clients` | in progress | — |
 | 05 GitHub delivery and evidence | `sdlc/hobo-code-sessions-05-delivery` | pending | — |
 
 ## Acceptance

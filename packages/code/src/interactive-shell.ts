@@ -137,6 +137,11 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 	{ name: "config", description: "Setup / stack inventory", argv: ["config"] },
 	{ name: "cost", description: "$0 path + budget + savings", argv: ["cost"] },
 	{ name: "status", description: "Session / agent panes", argv: ["status"] },
+	{
+		name: "sessions",
+		description: "Resident tmux sessions",
+		argv: ["session", "list"],
+	},
 	{ name: "tasks", description: "Background task board", argv: ["tasks"] },
 	{
 		name: "env",

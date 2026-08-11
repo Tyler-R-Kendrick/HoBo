@@ -25,6 +25,7 @@ import {
 } from "../harness-customization.js";
 import { runInteractiveShell } from "../interactive-shell.js";
 import { cleanupIsolation, createIsolationContext } from "../isolation.js";
+import { startSessionControlServer } from "../session-control-server.js";
 import type { ShellEngine } from "../shell-engine.js";
 import { createDefaultShellHost } from "../shell-host.js";
 
@@ -148,5 +149,68 @@ if (interactive && !json && (argv.length === 0 || chatVerb)) {
 } else {
 	const result = await runHoboCodeCli(argv, { json, dense });
 	process.stdout.write(formatHoboCodeResult(result, { json, dense }));
-	process.exitCode = result.exitCode;
+	const action =
+		result.data && typeof result.data === "object"
+			? (
+					result.data as {
+						readonly terminalAction?: {
+							readonly kind?: string;
+							readonly sessionName?: string;
+							readonly hoboHome?: string;
+							readonly projectRoot?: string;
+						};
+					}
+				).terminalAction
+			: undefined;
+	if (result.ok && action?.kind === "attach-session" && action.sessionName) {
+		const args = process.env.TMUX
+			? ["switch-client", "-t", action.sessionName]
+			: ["attach-session", "-t", action.sessionName];
+		process.exitCode = await new Promise<number>((resolve) => {
+			const child = spawn("tmux", args, { stdio: "inherit" });
+			child.once("error", () => resolve(1));
+			child.once("exit", (code, signal) =>
+				resolve(signal === "SIGINT" ? 130 : (code ?? 1)),
+			);
+		});
+	} else if (
+		result.ok &&
+		action?.kind === "detach-session" &&
+		process.env.TMUX
+	) {
+		process.exitCode = await new Promise<number>((resolve) => {
+			const child = spawn("tmux", ["detach-client"], { stdio: "inherit" });
+			child.once("error", () => resolve(1));
+			child.once("exit", (code) => resolve(code ?? 1));
+		});
+	} else if (result.ok && action?.kind === "serve-sessions") {
+		const hoboHome =
+			action.hoboHome ??
+			(process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
+				? process.env.HOBO_HOME
+				: join(process.env.HOME ?? tmpdir(), ".hobo"));
+		const requestedPort = Number.parseInt(
+			process.env.HOBO_CODE_SESSION_PORT ?? "0",
+			10,
+		);
+		const server = await startSessionControlServer({
+			hoboHome,
+			projectRoot: action.projectRoot ?? process.cwd(),
+			port:
+				Number.isSafeInteger(requestedPort) && requestedPort > 0
+					? requestedPort
+					: 0,
+		});
+		process.stdout.write(
+			`browser: ${server.url}\nremote: forward 127.0.0.1:${server.port} through a declared Station machine; the server never binds publicly\n`,
+		);
+		await new Promise<void>((resolve) => {
+			process.once("SIGINT", resolve);
+			process.once("SIGTERM", resolve);
+		});
+		await server.close();
+		process.exitCode = 0;
+	} else {
+		process.exitCode = result.exitCode;
+	}
 }

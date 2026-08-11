@@ -254,7 +254,10 @@ hobo-code scaffold --name demo
 hobo-code status                 # plain English session hierarchy (default)
 hobo-code status --dense         # power-user glyph box + Herdr/Grok footers
 hobo-code tasks                  # background task board
-hobo-code session
+hobo-code session create review
+hobo-code session list
+hobo-code session attach <session-id> # tmux attach, or switch-client in tmux
+hobo-code session serve               # token-authenticated loopback browser
 hobo-code attach                 # tmux-like reattach + named endpoint
 hobo-code attach --mode overlay  # Tailscale/overlay host
 hobo-code isolate my-run
@@ -269,7 +272,7 @@ hobo-code dispatch "…"
 hobo-code auth login
 hobo-code auth status
 hobo-code status                       # plain hierarchy; --dense for glyph box
-hobo-code session --json
+hobo-code session list --json
 hobo-code scaffold --name demo
 hobo-code isolate --json
 hobo-code promote --run <id>
@@ -289,7 +292,7 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **auth** | Station login / status / logout (local auto, remote tenant+domain) |
 | **models** | Active model + BYOK env presence (open models; no secret values) |
 | status | Session / agent multiplexer chrome |
-| session | Isolation session + handback |
+| session | Resident branch/worktree sessions: tmux tabs/panes, harness agents, checkpoints, attach/switch, approved Git/PR delivery, and loopback browser control (`session --help`) |
 | **attach** | Dev-terminal attach (tmux reattach · mosh? · Tailscale overlay named endpoint) |
 | **tasks** | Background task board (Grok Build–shaped: click · tasks · workflows) |
 | **guide** | Claude Code → hobo-code map (plain English for non-dev app builders) |

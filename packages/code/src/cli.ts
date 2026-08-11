@@ -113,6 +113,7 @@ import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
 import { startCodeSession } from "./session.js";
+import { runResidentSessionCli } from "./resident-session-cli.js";
 import {
 	buildMultiplexerStatus,
 	createPane,
@@ -313,6 +314,7 @@ const BOOL_FLAGS = new Set([
 	"dry-run",
 	"shared",
 	"virtual",
+	"approve",
 ]);
 
 export class UnknownFlagError extends Error {
@@ -589,25 +591,36 @@ const VERB_HELP_PLAIN: Record<
 		"See also: hobo-code session · hobo-code auth status",
 	],
 	session: [
-		"hobo-code session — isolation session + durable handback (Herdr mux)",
+		"hobo-code session — resident tmux agent sessions + durable handback",
 		"",
 		"Usage:",
-		"  hobo-code session",
-		"  hobo-code session --json",
+		"  hobo-code session list | create <name> [branch]",
+		"  hobo-code session show | attach | switch | detach <sessionId>",
+		"  hobo-code session tab <sessionId> <title>",
+		"  hobo-code session split <sessionId> <paneId> <horizontal|vertical> <title> [command…]",
+		"  hobo-code session focus | close-pane <sessionId> <paneId>",
+		"  hobo-code session prompt <sessionId> <paneId> <text…>",
+		"  hobo-code session agent-start <sessionId> <paneId> <provider> <command…>",
+		"  hobo-code session agent-stop <sessionId> <agentRunId>",
+		"  hobo-code session checkpoint <sessionId> <label>",
+		"  hobo-code session restore <sessionId> <checkpointId>",
+		"  hobo-code session commit | push | pr | stack | merge … --approve",
+		"  hobo-code session stop | delete <sessionId>",
+		"  hobo-code session serve",
+		"  hobo-code session              # legacy one-shot handback",
 		"",
-		"What you see:",
-		"  · Embedded Herdr status box (coordinator + worker panes)",
-		"  · Handback LED on title (● clean final · ●o open live)",
-		"  · --json: status.copyOnHighlight, detachable, theme herdr,",
-		"    persistence.durableRoot + session-end handback path",
-		"  · --json also embeds remote named-endpoint registration",
+		"Resident controls:",
+		"  One branch-backed worktree per session; tabs, panes, agents, input,",
+		"  checkpoints, delivery, detach/reattach, and browser control share",
+		"  the same revisioned command/snapshot boundary.",
 		"",
 		"Persistence:",
-		"  Handback and session-end.json land under the run durable root",
-		"  inside $HOBO_HOME (outside the sandbox tree). Detach-friendly.",
+		"  SQLite snapshots live under $HOBO_HOME/durable/code/sessions; tmux",
+		"  owns PTYs, so sessions survive client and control-server restarts.",
 		"",
 		"Flags:",
-		"  --json              Machine-readable session + handback + herdr caps",
+		"  --approve           Required for commit, push, PR, stack, and merge",
+		"  --json              Machine-readable snapshots",
 		"  --home <path>       Override HOBO_HOME",
 		"  --help, -h          Show this help",
 		"",
@@ -1771,7 +1784,9 @@ export async function runHoboCodeCli(
 						: ["no machines declared"]),
 					// Never silently drop a bad entry: an operator who wrote one
 					// needs to know it is not in the reachable set.
-					...loaded.rejected.map((r) => `rejected · ${r.machine}: ${r.problem}`),
+					...loaded.rejected.map(
+						(r) => `rejected · ${r.machine}: ${r.problem}`,
+					),
 					`file · ${loaded.path}`,
 				]
 			: [
@@ -1865,7 +1880,8 @@ export async function runHoboCodeCli(
 		const declaredMachines = projectMachines.declared
 			? projectMachines
 			: loadDevMachines(join(dirname(fileURLToPath(import.meta.url)), ".."));
-		const requestedHost = typeof flags.host === "string" ? flags.host : undefined;
+		const requestedHost =
+			typeof flags.host === "string" ? flags.host : undefined;
 		if (flags.virtual === true && requestedHost) {
 			// Before resolution and before brokering: a vshell command names a
 			// local workspace path that does not exist on the remote, and
@@ -1931,8 +1947,8 @@ export async function runHoboCodeCli(
 		// what makes the field mean anything. An agent with nowhere to go is
 		// named rather than silently placed on a machine that excluded it.
 		const placeable = resolvedMachine
-			? agents.filter((a) =>
-					machinesForAgent([resolvedMachine], a.id).length > 0,
+			? agents.filter(
+					(a) => machinesForAgent([resolvedMachine], a.id).length > 0,
 				)
 			: agents;
 		const excluded = resolvedMachine
@@ -2093,7 +2109,9 @@ export async function runHoboCodeCli(
 				? [
 						`sessions · ${brokered.panes.length} brokered by the Station (${brokerAudit.filter((t) => t === "pam.SessionStarted").length} started)`,
 						...brokered.panes.slice(0, 3).map((p) => `  ${describePane(p)}`),
-						...brokered.failures.map((f) => `  denied · ${f.agentId}: ${f.reason}`),
+						...brokered.failures.map(
+							(f) => `  denied · ${f.agentId}: ${f.reason}`,
+						),
 					]
 				: []),
 			...(virtualPanes
@@ -2476,6 +2494,31 @@ export async function runHoboCodeCli(
 					"hobo-code help",
 				],
 			);
+		}
+		if (args.length > 0) {
+			try {
+				const resident = await runResidentSessionCli({
+					args,
+					hoboHome,
+					projectDir,
+					approved: flags.approve === true,
+				});
+				if (resident) {
+					return ok(
+						"HOBO_CODE_RESIDENT_SESSION",
+						panel("✓ session", resident.message.split("\n")),
+						resident.data,
+					);
+				}
+			} catch (error) {
+				return fail(
+					"HOBO_CODE_SESSION_FAILED",
+					panel("✕ session", [
+						error instanceof Error ? error.message : String(error),
+					]),
+					["hobo-code session --help", "hobo-code session list"],
+				);
+			}
 		}
 		const sessionHome =
 			env.HOBO_CODE_EPHEMERAL_SESSION === "1"

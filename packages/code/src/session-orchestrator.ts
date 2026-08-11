@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
-	existsSync,
 	closeSync,
+	existsSync,
 	fsyncSync,
 	linkSync,
 	mkdirSync,
@@ -10,6 +10,7 @@ import {
 	readFileSync,
 	realpathSync,
 	renameSync,
+	rmSync,
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
@@ -179,8 +180,28 @@ async function fileLocked<T>(path: string, work: () => Promise<T>): Promise<T> {
 	}
 }
 
+function ensureDirectoryDurable(directory: string): void {
+	if (existsSync(directory)) return;
+	const parent = dirname(directory);
+	if (parent === directory) return;
+	ensureDirectoryDurable(parent);
+	try {
+		mkdirSync(directory);
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+	}
+	for (const target of [directory, parent]) {
+		const descriptor = openSync(target, "r");
+		try {
+			fsyncSync(descriptor);
+		} finally {
+			closeSync(descriptor);
+		}
+	}
+}
+
 function writeJsonAtomic(path: string, value: unknown): void {
-	mkdirSync(dirname(path), { recursive: true });
+	ensureDirectoryDurable(dirname(path));
 	const temporary = `${path}.${process.pid}.${randomUUID()}`;
 	const descriptor = openSync(temporary, "wx", 0o600);
 	try {
@@ -201,6 +222,18 @@ function writeJsonAtomic(path: string, value: unknown): void {
 	} finally {
 		closeSync(directory);
 	}
+}
+
+interface DeliveryLedger {
+	readonly digest: string;
+	readonly status: "pending" | "applied" | "failed" | "complete";
+	readonly approval: SessionDeliveryApproval;
+	readonly context: {
+		readonly preHead?: string;
+		readonly expectedTree?: string;
+		readonly expectedMessage?: string;
+		readonly pullRequestNumbers?: readonly number[];
+	};
 }
 
 export function createSessionOrchestrator(
@@ -275,10 +308,7 @@ export function createSessionOrchestrator(
 		const digest = deliveryFingerprint(command);
 		const path = deliveryLedgerPath(command);
 		if (existsSync(path)) {
-			const prior = JSON.parse(readFileSync(path, "utf8")) as {
-				digest?: string;
-				status?: string;
-			};
+			const prior = JSON.parse(readFileSync(path, "utf8")) as DeliveryLedger;
 			if (prior.digest !== digest)
 				throw new Error(
 					"command ID was reused for a different delivery action",
@@ -296,24 +326,82 @@ export function createSessionOrchestrator(
 					`${operation} has an unknown prior outcome; reconcile before retrying`,
 				);
 		}
-		writeJsonAtomic(path, { digest, status: "pending", approval });
+		const ledger: DeliveryLedger = {
+			digest,
+			status: "pending",
+			approval,
+			context: await deliveryContext(command, snapshot),
+		};
+		writeJsonAtomic(path, ledger);
 		try {
 			const result = await work();
-			writeJsonAtomic(path, { digest, status: "complete", approval });
+			writeJsonAtomic(path, { ...ledger, status: "complete" });
 			return result;
 		} catch (error) {
 			const current = await options.runtime.load(command.sessionId);
 			const outcome = current
-				? await deliveryOutcome(command, current)
+				? await deliveryOutcome(command, current, ledger)
 				: "unknown";
 			if (current && outcome === "applied") {
-				writeJsonAtomic(path, { digest, status: "complete", approval });
-				return reconcileAppliedDelivery(command, current);
+				writeJsonAtomic(path, { ...ledger, status: "applied" });
+				const reconciled = await reconcileAppliedDelivery(
+					command,
+					current,
+					ledger,
+				);
+				writeJsonAtomic(path, { ...ledger, status: "complete" });
+				return reconciled;
 			}
 			if (outcome === "not-applied") {
-				writeJsonAtomic(path, { digest, status: "failed", approval });
+				writeJsonAtomic(path, { ...ledger, status: "failed" });
 			}
 			throw error;
+		}
+	}
+
+	async function fullWorktreeTree(cwd: string): Promise<string> {
+		const indexDir = join(options.worktreesDir, ".delivery-indexes");
+		mkdirSync(indexDir, { recursive: true });
+		const indexPath = join(indexDir, randomUUID());
+		try {
+			const env = { GIT_INDEX_FILE: indexPath };
+			await run("git", ["read-tree", "HEAD"], cwd, env);
+			await run("git", ["add", "-A"], cwd, env);
+			return run("git", ["write-tree"], cwd, env);
+		} finally {
+			rmSync(indexPath, { force: true });
+		}
+	}
+
+	async function deliveryContext(
+		command: SessionCommandEnvelope,
+		snapshot: SessionSnapshot,
+	): Promise<DeliveryLedger["context"]> {
+		const session = requiredSession(snapshot);
+		switch (command.command.case) {
+			case "commit":
+				return {
+					preHead: await run(
+						"git",
+						["rev-parse", "HEAD"],
+						session.worktreePath,
+					),
+					expectedTree: await fullWorktreeTree(session.worktreePath),
+					expectedMessage: command.command.value.message,
+				};
+			case "openPullRequest":
+			case "stackPullRequest": {
+				const pullRequests = await pullRequestsForBranch(session, "number");
+				if (pullRequests === "unknown")
+					throw new Error("cannot establish pre-effect pull request state");
+				return {
+					pullRequestNumbers: pullRequests.flatMap((item) =>
+						typeof item.number === "number" ? [item.number] : [],
+					),
+				};
+			}
+			default:
+				return {};
 		}
 	}
 
@@ -345,10 +433,10 @@ export function createSessionOrchestrator(
 		);
 	}
 
-	async function pullRequestForBranch(
+	async function pullRequestsForBranch(
 		session: NonNullable<SessionSnapshot["session"]>,
 		fields: string,
-	): Promise<"unknown" | Record<string, unknown> | undefined> {
+	): Promise<"unknown" | Record<string, unknown>[]> {
 		const listed = await runner.run(
 			"gh",
 			[
@@ -367,16 +455,47 @@ export function createSessionOrchestrator(
 		try {
 			const pullRequests = JSON.parse(listed.stdout) as unknown;
 			return Array.isArray(pullRequests)
-				? (pullRequests[0] as Record<string, unknown> | undefined)
+				? (pullRequests as Record<string, unknown>[])
 				: "unknown";
 		} catch {
 			return "unknown";
 		}
 	}
 
+	async function pullRequestForDelivery(
+		command: SessionCommandEnvelope,
+		session: NonNullable<SessionSnapshot["session"]>,
+		ledger: DeliveryLedger,
+	): Promise<"unknown" | Record<string, unknown> | undefined> {
+		const fields =
+			command.command.case === "stackPullRequest"
+				? "number,url,state,title,body,baseRefName"
+				: "number,url,state";
+		const listed = await pullRequestsForBranch(session, fields);
+		if (listed === "unknown") return "unknown";
+		const previous = new Set(ledger.context.pullRequestNumbers ?? []);
+		const open = listed.filter(
+			(item) => item.state === "OPEN" && typeof item.number === "number",
+		);
+		const newlyCreated = open.filter(
+			(item) => !previous.has(item.number as number),
+		);
+		if (newlyCreated.length === 1) return newlyCreated[0];
+		if (newlyCreated.length > 1) return "unknown";
+		if (open.length !== 1) return open.length === 0 ? undefined : "unknown";
+		if (command.command.case !== "stackPullRequest") return open[0];
+		const value = command.command.value;
+		return open[0]?.title === value.title &&
+			open[0]?.body === value.body &&
+			open[0]?.baseRefName === value.parentBranch
+			? open[0]
+			: undefined;
+	}
+
 	async function deliveryOutcome(
 		command: SessionCommandEnvelope,
 		snapshot: SessionSnapshot,
+		ledger: DeliveryLedger,
 	): Promise<"applied" | "not-applied" | "unknown"> {
 		const session = requiredSession(snapshot);
 		switch (command.command.case) {
@@ -386,7 +505,27 @@ export function createSessionOrchestrator(
 					["rev-parse", "HEAD"],
 					session.worktreePath,
 				);
-				return head !== snapshot.gitState?.headSha ? "applied" : "not-applied";
+				if (head === ledger.context.preHead) return "not-applied";
+				const [parent, tree, message] = await Promise.all([
+					runner.run("git", ["rev-parse", `${head}^`], session.worktreePath),
+					runner.run(
+						"git",
+						["rev-parse", `${head}^{tree}`],
+						session.worktreePath,
+					),
+					runner.run(
+						"git",
+						["show", "-s", "--format=%s", head],
+						session.worktreePath,
+					),
+				]);
+				if (parent.code !== 0 || tree.code !== 0 || message.code !== 0)
+					return "unknown";
+				return parent.stdout.trim() === ledger.context.preHead &&
+					tree.stdout.trim() === ledger.context.expectedTree &&
+					message.stdout.trim() === ledger.context.expectedMessage
+					? "applied"
+					: "unknown";
 			}
 			case "push": {
 				const head = await run(
@@ -409,14 +548,19 @@ export function createSessionOrchestrator(
 					: "not-applied";
 			}
 			case "openPullRequest": {
-				const pullRequest = await pullRequestForBranch(session, "url");
+				const pullRequest = await pullRequestForDelivery(
+					command,
+					session,
+					ledger,
+				);
 				if (pullRequest === "unknown") return "unknown";
 				return typeof pullRequest?.url === "string" ? "applied" : "not-applied";
 			}
 			case "stackPullRequest": {
-				const pullRequest = await pullRequestForBranch(
+				const pullRequest = await pullRequestForDelivery(
+					command,
 					session,
-					"url,title,body,baseRefName",
+					ledger,
 				);
 				if (pullRequest === "unknown") return "unknown";
 				if (typeof pullRequest?.url !== "string") return "not-applied";
@@ -470,6 +614,7 @@ export function createSessionOrchestrator(
 	async function reconcileAppliedDelivery(
 		command: SessionCommandEnvelope,
 		snapshot: SessionSnapshot,
+		ledger: DeliveryLedger,
 	): Promise<SessionSnapshot> {
 		const session = requiredSession(snapshot);
 		switch (command.command.case) {
@@ -490,15 +635,19 @@ export function createSessionOrchestrator(
 			}
 			case "openPullRequest":
 			case "stackPullRequest": {
-				const viewed = await run(
-					"gh",
-					["pr", "view", session.branch, "--json", "number,url"],
-					session.worktreePath,
+				const pullRequest = await pullRequestForDelivery(
+					command,
+					session,
+					ledger,
 				);
-				const pullRequest = JSON.parse(viewed) as {
-					readonly number: number;
-					readonly url: string;
-				};
+				if (
+					pullRequest === "unknown" ||
+					typeof pullRequest?.number !== "number" ||
+					typeof pullRequest.url !== "string"
+				)
+					throw new Error("pull request outcome is not uniquely attributable");
+				const pullRequestNumber = pullRequest.number;
+				const pullRequestUrl = pullRequest.url;
 				return options.runtime.update(
 					session.id,
 					revision(snapshot),
@@ -506,8 +655,8 @@ export function createSessionOrchestrator(
 						if (!next.deliveryState) return;
 						next.deliveryState.lifecycleState =
 							DeliveryLifecycleState.PULL_REQUEST_OPEN;
-						next.deliveryState.pullRequestNumber = BigInt(pullRequest.number);
-						next.deliveryState.pullRequestUrl = pullRequest.url;
+						next.deliveryState.pullRequestNumber = BigInt(pullRequestNumber);
+						next.deliveryState.pullRequestUrl = pullRequestUrl;
 						next.deliveryState.stackParentBranch =
 							command.command.case === "stackPullRequest"
 								? command.command.value.parentBranch
@@ -540,22 +689,28 @@ export function createSessionOrchestrator(
 	): Promise<SessionSnapshot | undefined> {
 		const path = deliveryLedgerPath(command);
 		if (!existsSync(path)) return undefined;
-		const prior = JSON.parse(readFileSync(path, "utf8")) as {
-			digest?: string;
-			status?: string;
-		};
+		const prior = JSON.parse(readFileSync(path, "utf8")) as DeliveryLedger;
 		const digest = deliveryFingerprint(command);
 		if (prior.digest !== digest)
 			throw new Error("command ID was reused for a different action");
 		if (prior.status === "failed") return undefined;
 		if (prior.status !== "complete") {
 			const snapshot = await options.runtime.load(command.sessionId);
-			const outcome = snapshot
-				? await deliveryOutcome(command, snapshot)
-				: "unknown";
+			const outcome =
+				prior.status === "applied"
+					? "applied"
+					: snapshot
+						? await deliveryOutcome(command, snapshot, prior)
+						: "unknown";
 			if (snapshot && outcome === "applied") {
+				writeJsonAtomic(path, { ...prior, status: "applied" });
+				const reconciled = await reconcileAppliedDelivery(
+					command,
+					snapshot,
+					prior,
+				);
 				writeJsonAtomic(path, { ...prior, status: "complete" });
-				return reconcileAppliedDelivery(command, snapshot);
+				return reconciled;
 			}
 			if (outcome === "not-applied") {
 				writeJsonAtomic(path, { ...prior, status: "failed" });
@@ -722,12 +877,7 @@ export function createSessionOrchestrator(
 							cwd,
 						);
 					} finally {
-						try {
-							unlinkSync(indexPath);
-						} catch (error) {
-							if ((error as NodeJS.ErrnoException).code !== "ENOENT")
-								throw error;
-						}
+						rmSync(indexPath, { force: true });
 					}
 				}
 				await run("git", ["update-ref", ref, commit], cwd);
@@ -798,11 +948,7 @@ export function createSessionOrchestrator(
 				);
 				await run("git", ["read-tree", indexCommit], cwd);
 			} finally {
-				try {
-					unlinkSync(indexPath);
-				} catch (error) {
-					if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-				}
+				rmSync(indexPath, { force: true });
 			}
 		}
 		return options.runtime.update(
@@ -1011,18 +1157,18 @@ export function createSessionOrchestrator(
 									],
 									session.worktreePath,
 								);
-								for (const ref of refs.split("\n").filter(Boolean)) {
-									await run(
-										"git",
-										["update-ref", "-d", ref],
-										session.worktreePath,
-									);
-								}
 								await run(
 									"git",
 									["worktree", "remove", session.worktreePath],
 									session.projectRoot,
 								);
+								for (const ref of refs.split("\n").filter(Boolean)) {
+									await run(
+										"git",
+										["update-ref", "-d", ref],
+										session.projectRoot,
+									);
+								}
 							}
 							return stopped;
 						}

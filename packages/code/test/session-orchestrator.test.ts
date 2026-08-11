@@ -329,6 +329,53 @@ describe("session orchestrator", () => {
 		runtime.close();
 	});
 
+	it("keeps checkpoint refs when worktree removal fails", async () => {
+		const harness = await createHarness();
+		const saved = await harness.orchestrator.execute(
+			envelope(
+				"session-1",
+				harness.created.revision ?? 0n,
+				"createCheckpoint",
+				{
+					label: "keep-until-removed",
+				},
+			),
+		);
+		const checkpointRef = `refs/hobo/checkpoints/${createHash("sha256").update("session-1").digest("hex")}/${saved.checkpoints[0]?.id}`;
+		const base = sessionProcessRunner();
+		const runner: SessionProcessRunner = {
+			run(command, args, cwd, env) {
+				if (
+					command === "git" &&
+					args[0] === "worktree" &&
+					args[1] === "remove"
+				) {
+					return Promise.resolve({
+						code: 1,
+						stdout: "",
+						stderr: "remove failed",
+					});
+				}
+				return base.run(command, args, cwd, env);
+			},
+		};
+		await expect(
+			createSessionOrchestrator({
+				runtime: harness.runtime,
+				worktreesDir: join(harness.dataDir, "worktrees"),
+				runner,
+			}).execute(
+				envelope("session-1", saved.revision ?? 0n, "stopSession", {
+					removeWorktree: true,
+				}),
+			),
+		).rejects.toThrow("remove failed");
+		expect(git(harness.repo, ["rev-parse", checkpointRef])).toBe(
+			saved.checkpoints[0]?.gitCommit,
+		);
+		harness.runtime.close();
+	});
+
 	it("fails closed before commit, push, PR, stack, or merge without approval", async () => {
 		const { runtime, orchestrator, created } = await createHarness();
 		const cwd = created.session?.worktreePath ?? "";
@@ -348,14 +395,41 @@ describe("session orchestrator", () => {
 		const harness = await createHarness();
 		const calls: Array<{ command: string; args: readonly string[] }> = [];
 		const approvals: SessionDeliveryApproval[] = [];
+		let pullRequestCreated = false;
 		const base = sessionProcessRunner();
 		const runner: SessionProcessRunner = {
 			async run(command, args, cwd) {
 				calls.push({ command, args });
-				if (command === "gh" && args[0] === "pr") {
+				if (command === "gh" && args[0] === "stack" && args[1] === "submit") {
+					pullRequestCreated = true;
+					return { code: 0, stdout: "", stderr: "" };
+				}
+				if (command === "gh" && args[0] === "pr" && args[1] === "list") {
 					return {
 						code: 0,
-						stdout: "https://github.test/o/r/pull/42\n",
+						stdout: JSON.stringify(
+							pullRequestCreated
+								? [
+										{
+											number: 42,
+											url: "https://github.test/o/r/pull/42",
+											state: "OPEN",
+											title: "approved",
+											body: "body",
+											baseRefName: "main",
+										},
+									]
+								: [],
+						),
+						stderr: "",
+					};
+				}
+				if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+					return {
+						code: 0,
+						stdout: args.includes("state")
+							? JSON.stringify({ state: "MERGED" })
+							: "https://github.test/o/r/pull/42\n",
 						stderr: "",
 					};
 				}
@@ -536,6 +610,48 @@ describe("session orchestrator", () => {
 		harness.runtime.close();
 	});
 
+	it("does not reconcile an unrelated commit as the approved commit", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		writeFileSync(join(cwd, "expected.txt"), "expected\n");
+		let commitAttempts = 0;
+		const base = sessionProcessRunner();
+		const runner: SessionProcessRunner = {
+			async run(command, args, workdir, env) {
+				if (
+					command === "git" &&
+					args[0] === "commit" &&
+					++commitAttempts === 1
+				) {
+					await base.run("git", ["commit", "-m", "unrelated"], workdir, env);
+					return { code: 1, stdout: "", stderr: "approved commit failed" };
+				}
+				return base.run(command, args, workdir, env);
+			},
+		};
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: () => true,
+		});
+		const command = {
+			...envelope("session-1", harness.created.revision ?? 0n, "commit", {
+				message: "approved",
+			}),
+			commandId: "ambiguous-commit",
+		};
+		await expect(orchestrator.execute(command)).rejects.toThrow(
+			"approved commit failed",
+		);
+		await expect(orchestrator.execute(command)).rejects.toThrow(
+			"unknown prior outcome",
+		);
+		expect(git(cwd, ["log", "-1", "--pretty=%s"])).toBe("unrelated");
+		expect(commitAttempts).toBe(1);
+		harness.runtime.close();
+	});
+
 	it("reconciles a pending push as not applied after restart, then retries exactly once", async () => {
 		const harness = await createHarness();
 		const cwd = harness.created.session?.worktreePath ?? "";
@@ -591,11 +707,13 @@ describe("session orchestrator", () => {
 	it("repairs approved stack metadata after submit before completing reconciliation", async () => {
 		const harness = await createHarness();
 		let edits = 0;
+		let submitted = false;
 		const base = sessionProcessRunner();
 		const runner: SessionProcessRunner = {
 			run(command, args, cwd, env) {
 				if (command !== "gh") return base.run(command, args, cwd, env);
 				if (args[0] === "stack") {
+					if (args[1] === "submit") submitted = true;
 					return Promise.resolve({ code: 0, stdout: "", stderr: "" });
 				}
 				if (args[0] === "pr" && args[1] === "edit") {
@@ -606,17 +724,32 @@ describe("session orchestrator", () => {
 						stderr: edits === 1 ? "connection lost after submit" : "",
 					});
 				}
-				if (args.includes("url,title,body,baseRefName")) {
+				if (args[0] === "pr" && args[1] === "list") {
 					return Promise.resolve({
 						code: 0,
-						stdout: JSON.stringify([
-							{
-								url: "https://github.test/o/r/pull/42",
-								title: "old",
-								body: "old",
-								baseRefName: "old-parent",
-							},
-						]),
+						stdout: JSON.stringify(
+							submitted
+								? [
+										{
+											number: 42,
+											url: "https://github.test/o/r/pull/42",
+											state: "OPEN",
+											title: edits >= 2 ? "approved" : "old",
+											body: edits >= 2 ? "approved body" : "old",
+											baseRefName: edits >= 2 ? "main" : "old-parent",
+										},
+									]
+								: [
+										{
+											number: 41,
+											url: "https://github.test/o/r/pull/41",
+											state: "MERGED",
+											title: "historical",
+											body: "historical",
+											baseRefName: "main",
+										},
+									],
+						),
 						stderr: "",
 					});
 				}
@@ -646,6 +779,56 @@ describe("session orchestrator", () => {
 		);
 		expect(edits).toBe(2);
 		expect(stacked.deliveryState?.stackParentBranch).toBe("main");
+		expect(stacked.deliveryState?.pullRequestNumber).toBe(42n);
+		harness.runtime.close();
+	});
+
+	it("retries local reconciliation before marking provider work complete", async () => {
+		const harness = await createHarness();
+		let failReconciliation = true;
+		const runtime = new Proxy(harness.runtime, {
+			get(target, property, receiver) {
+				if (property !== "update")
+					return Reflect.get(target, property, receiver);
+				return async (...args: Parameters<typeof target.update>) => {
+					if (failReconciliation) {
+						failReconciliation = false;
+						throw new Error("local reconciliation failed");
+					}
+					return target.update(...args);
+				};
+			},
+		});
+		const runner: SessionProcessRunner = {
+			async run(command, args) {
+				if (command === "gh" && args[0] === "stack") {
+					return { code: 1, stdout: "", stderr: "connection lost after merge" };
+				}
+				return {
+					code: 0,
+					stdout: JSON.stringify({ state: "MERGED" }),
+					stderr: "",
+				};
+			},
+		};
+		const orchestrator = createSessionOrchestrator({
+			runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: () => true,
+		});
+		const command = envelope(
+			"session-1",
+			harness.created.revision ?? 0n,
+			"mergePullRequest",
+			{ pullRequestNumber: "42" },
+		);
+		await expect(orchestrator.execute(command)).rejects.toThrow(
+			"local reconciliation failed",
+		);
+		await expect(orchestrator.execute(command)).resolves.toMatchObject({
+			deliveryState: { lifecycleState: DeliveryLifecycleState.MERGED },
+		});
 		harness.runtime.close();
 	});
 

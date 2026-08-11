@@ -650,6 +650,7 @@ describe("session orchestrator", () => {
 	it("rejects a stacked pull request published from an unapproved head", async () => {
 		const harness = await createHarness();
 		let created = false;
+		let edited = false;
 		const base = sessionProcessRunner();
 		const orchestrator = createSessionOrchestrator({
 			runtime: harness.runtime,
@@ -678,6 +679,7 @@ describe("session orchestrator", () => {
 							stderr: "",
 						});
 					if (args[0] === "stack" && args[1] === "submit") created = true;
+					if (args[0] === "pr" && args[1] === "edit") edited = true;
 					if (args[0] === "stack" && args[1] === "view")
 						return Promise.resolve({
 							code: 0,
@@ -700,7 +702,77 @@ describe("session orchestrator", () => {
 					{ parentBranch: "main", title: "approved", body: "" },
 				),
 			),
+		).rejects.toThrow("approved Git HEAD");
+		expect(edited).toBe(false);
+		harness.runtime.close();
+	});
+
+	it("closes a newly created pull request whose provider head is unapproved", async () => {
+		const harness = await createHarness();
+		let created = false;
+		let closed = false;
+		const base = sessionProcessRunner();
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner: {
+				run(command, args, cwd, env) {
+					if (command !== "gh") return base.run(command, args, cwd, env);
+					if (args[0] === "repo")
+						return Promise.resolve({ code: 0, stdout: "main\n", stderr: "" });
+					if (args[0] === "pr" && args[1] === "list")
+						return Promise.resolve({
+							code: 0,
+							stdout: JSON.stringify(
+								created
+									? [
+											{
+												number: 42,
+												url: "https://github.test/o/r/pull/42",
+												state: "OPEN",
+												title: "approved",
+												body: "",
+												isDraft: false,
+												baseRefName: "main",
+												headRefOid: "f".repeat(40),
+											},
+										]
+									: [],
+							),
+							stderr: "",
+						});
+					if (args[0] === "pr" && args[1] === "create") {
+						created = true;
+						return Promise.resolve({
+							code: 0,
+							stdout: "https://github.test/o/r/pull/42\n",
+							stderr: "",
+						});
+					}
+					if (args[0] === "pr" && args[1] === "close") {
+						closed = true;
+						return Promise.resolve({ code: 0, stdout: "", stderr: "" });
+					}
+					return Promise.resolve({
+						code: 1,
+						stdout: "",
+						stderr: "unexpected command",
+					});
+				},
+			},
+			authorize: () => true,
+		});
+		await expect(
+			orchestrator.execute(
+				envelope(
+					"session-1",
+					harness.created.revision ?? 0n,
+					"openPullRequest",
+					{ title: "approved", body: "", draft: false },
+				),
+			),
 		).rejects.toThrow("approved pull request");
+		expect(closed).toBe(true);
 		harness.runtime.close();
 	});
 

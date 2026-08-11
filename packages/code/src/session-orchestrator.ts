@@ -844,6 +844,26 @@ export function createSessionOrchestrator(
 		return number;
 	}
 
+	async function requireApprovedPullRequestHead(
+		session: NonNullable<SessionSnapshot["session"]>,
+		pullRequestNumber: number,
+		preHead: string,
+	): Promise<void> {
+		const listed = await pullRequestsForBranch(
+			session,
+			"number,state,headRefOid",
+		);
+		const candidate =
+			listed === "unknown"
+				? undefined
+				: listed.find(
+						(item) =>
+							item.number === pullRequestNumber && item.state === "OPEN",
+					);
+		if (candidate?.headRefOid !== preHead)
+			throw new Error("pull request head does not match the approved Git HEAD");
+	}
+
 	async function deliveryOutcome(
 		command: SessionCommandEnvelope,
 		snapshot: SessionSnapshot,
@@ -1325,8 +1345,16 @@ export function createSessionOrchestrator(
 			pullRequest === "unknown" ||
 			pullRequest?.number !== Number(match[1]) ||
 			typeof pullRequest.url !== "string"
-		)
+		) {
+			try {
+				await run("gh", ["pr", "close", match[1] ?? ""], session.worktreePath);
+			} catch (error) {
+				throw new Error(
+					`gh pr create produced an unapproved pull request and compensating close failed: ${String(error)}`,
+				);
+			}
 			throw new Error("gh pr create did not produce its approved pull request");
+		}
 		return options.runtime.update(session.id, revision(snapshot), (next) => {
 			if (!next.deliveryState) return;
 			next.deliveryState.lifecycleState =
@@ -1691,6 +1719,11 @@ export function createSessionOrchestrator(
 									);
 									const pullRequestNumber =
 										await stackPullRequestNumber(session);
+									await requireApprovedPullRequestHead(
+										session,
+										pullRequestNumber,
+										ledger.context.preHead,
+									);
 									await run(
 										"gh",
 										[

@@ -6,11 +6,11 @@
 import { randomBytes } from "node:crypto";
 
 import {
-	DEFAULT_ENV_NETWORK_ISOLATION_POLICY_PACK,
-} from "../env-isolation/policy-pack.js";
-import {
 	verifyElevatedAccessCapability,
 } from "../env-isolation/elevated-capability.js";
+import {
+	DEFAULT_ENV_NETWORK_ISOLATION_POLICY_PACK,
+} from "../env-isolation/policy-pack.js";
 import type { IsolationClass } from "../env-isolation/types.js";
 import { createPamAuditSink } from "./audit.js";
 import {
@@ -26,6 +26,7 @@ import {
 	verifySessionToken,
 } from "./session-broker.js";
 import {
+	type AuditSink,
 	PAM_GATEWAY_SCHEMA,
 	type PamKind,
 	type PamTransportConfig,
@@ -34,7 +35,6 @@ import {
 	type SessionRequest,
 	type SessionTarget,
 	type StationContext,
-	type AuditSink,
 } from "./types.js";
 
 export type CreatePrivilegedAccessGatewayOptions = Readonly<{
@@ -59,6 +59,8 @@ export type PrivilegedAccessGatewayHandle = PrivilegedAccessGateway & {
 	readonly auditEvents: readonly import("./types.js").PamAuditEvent[];
 	readonly yardDrainCount: number;
 	verifyLocalSession(token: string): ReturnType<typeof verifySessionToken>;
+	/** Transfer a live local authorization to a resident protocol adapter. */
+	handoffSession(sessionId: string): SessionHandle;
 };
 
 function parseTarget(
@@ -188,6 +190,22 @@ export function createPrivilegedAccessGateway(
 				keys,
 				expectedEnv: options.isolationClass,
 			});
+		},
+		handoffSession(sessionId) {
+			const session = sessions.get(sessionId);
+			if (!session) {
+				throw Object.assign(new Error(`PAM session ${sessionId} is not live`), {
+					code: "pam-session-not-found",
+				});
+			}
+			if (session.remoteId) {
+				throw Object.assign(
+					new Error("remote PAM sessions cannot be handed to a local adapter"),
+					{ code: "pam-session-remote" },
+				);
+			}
+			sessions.delete(sessionId);
+			return session;
 		},
 		registerTarget(target) {
 			if (target.isolationClass !== options.isolationClass) {

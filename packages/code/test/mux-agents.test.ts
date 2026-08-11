@@ -91,12 +91,14 @@ describe("uniform mux targets", () => {
 			kind: "ssh",
 			command: "claude",
 			host: "box.example",
+			identityAgent: "/run/user/1000/hobo-agent.sock",
+			expiresAt: new Date(Date.now() + 60_000).toISOString(),
 		};
 		// Every kind is a command in a pane, wrapped so the pane outlives it.
 		expect(targetCommand(local)).toContain("claude");
 		expect(targetCommand(inference)).toContain("ollama serve");
 		expect(placedCommand(remote)).toBe("claude");
-		expect(targetCommand(remote)).toContain("ssh -t box.example");
+		expect(targetCommand(remote)).toContain("box.example");
 		for (const t of [local, inference, remote]) {
 			expect(targetCommand(t)).toMatch(/exited %s/);
 		}
@@ -250,6 +252,65 @@ describe("applyMux", () => {
 		expect(result.ok).toBe(false);
 		expect(result.detail).toMatch(/no agents detected/);
 	});
+
+	it("reports a pane that tmux could not create", async () => {
+		const plan = planMux("hobo", [
+			{ name: "claude", kind: "local", command: "claude" },
+			{ name: "codex", kind: "local", command: "codex" },
+		]);
+		const base = fakeTmux();
+		const runner: MuxRunner = {
+			run: async (args) =>
+				args[0] === "new-window"
+					? { code: 1, stdout: "", stderr: "tmux refused" }
+					: base.run(args),
+		};
+		const result = await applyMux(plan, runner);
+		expect(result.ok).toBe(false);
+		expect(result.detail).toContain("codex");
+		expect(result.detail).toContain("rollback complete");
+		expect(base.calls).toContainEqual(["kill-session", "-t", "hobo"]);
+		expect(result.created).toEqual([]);
+	});
+
+	it("removes only newly added windows when an existing session update fails", async () => {
+		const plan = planMux("hobo", [
+			{ name: "claude", kind: "local", command: "claude" },
+			{ name: "codex", kind: "local", command: "codex" },
+			{ name: "cursor", kind: "local", command: "cursor-agent" },
+		]);
+		const base = fakeTmux(["claude"]);
+		const runner: MuxRunner = {
+			run: async (args) =>
+				args[0] === "new-window" && args.includes("cursor")
+					? { code: 1, stdout: "", stderr: "tmux refused" }
+					: base.run(args),
+		};
+		const result = await applyMux(plan, runner);
+		expect(result.ok).toBe(false);
+		expect(base.calls).toContainEqual(["kill-window", "-t", "hobo:codex"]);
+		expect(base.calls.some((call) => call[0] === "kill-session")).toBe(false);
+	});
+
+	it("reports panes that survive an incomplete rollback", async () => {
+		const plan = planMux("hobo", [
+			{ name: "claude", kind: "local", command: "claude" },
+			{ name: "codex", kind: "local", command: "codex" },
+		]);
+		const runner: MuxRunner = {
+			run: async (args) => {
+				if (args[0] === "has-session") return { code: 1, stdout: "" };
+				if (args[0] === "new-session") return { code: 0, stdout: "" };
+				if (args[0] === "new-window") return { code: 1, stdout: "" };
+				if (args[0] === "kill-session") return { code: 1, stdout: "" };
+				return { code: 0, stdout: "" };
+			},
+		};
+		const result = await applyMux(plan, runner);
+		expect(result.ok).toBe(false);
+		expect(result.detail).toContain("rollback incomplete");
+		expect(result.created).toEqual(["claude"]);
+	});
 });
 
 describe("devenv status", () => {
@@ -356,6 +417,8 @@ describe("ssh panes carry nothing local", () => {
 			host: "build-box",
 			command: "claude",
 			cwd: "/home/alice/proj",
+			identityAgent: "/run/user/1000/hobo-agent.sock",
+			expiresAt: new Date(Date.now() + 60_000).toISOString(),
 		});
 		expect(remote).toBe("claude");
 		expect(remote).not.toContain("cd ");
@@ -369,6 +432,8 @@ describe("ssh panes carry nothing local", () => {
 			command: "claude",
 			cwd: "/ws/merged",
 			exec: { binary: "/usr/local/bin/hobo-rift", root: "/ws", name: "claude" },
+			identityAgent: "/run/user/1000/hobo-agent.sock",
+			expiresAt: new Date(Date.now() + 60_000).toISOString(),
 		});
 		expect(remote).toBe("claude");
 		expect(remote).not.toContain("hobo-rift");
@@ -382,8 +447,10 @@ describe("ssh panes carry nothing local", () => {
 			command: "claude",
 			cwd: "/home/alice/proj",
 			exec: { binary: "/usr/local/bin/hobo-rift", root: "/ws", name: "claude" },
+			identityAgent: "/run/user/1000/hobo-agent.sock",
+			expiresAt: new Date(Date.now() + 60_000).toISOString(),
 		});
-		expect(pane).toContain("ssh -t build-box");
+		expect(pane).toContain("build-box");
 		expect(pane).not.toContain("/home/alice/proj");
 		expect(pane).not.toContain("hobo-rift");
 	});

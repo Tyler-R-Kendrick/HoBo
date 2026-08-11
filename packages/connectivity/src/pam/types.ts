@@ -59,6 +59,7 @@ export type SessionHandle = Readonly<{
 export type PamAuditEvent = Readonly<{
 	type:
 		| "pam.SessionStarted"
+		| "pam.CredentialRedeemed"
 		| "pam.SessionEnded"
 		| "pam.SessionDenied"
 		| "pam.SessionRenewed"

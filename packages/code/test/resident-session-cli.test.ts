@@ -53,9 +53,22 @@ describe("resident session remote browser", () => {
 					isolationClass: "development",
 				},
 				4242,
+				"/run/user/1000/hobo-agent.sock",
 			),
 		).toEqual([
 			"-T",
+			"-o",
+			"IdentityAgent=/run/user/1000/hobo-agent.sock",
+			"-o",
+			"IdentityFile=none",
+			"-o",
+			"PreferredAuthentications=publickey",
+			"-o",
+			"PasswordAuthentication=no",
+			"-o",
+			"KbdInteractiveAuthentication=no",
+			"-o",
+			"BatchMode=yes",
 			"-o",
 			"ExitOnForwardFailure=yes",
 			"-L",
@@ -67,6 +80,20 @@ describe("resident session remote browser", () => {
 			"--port",
 			"4242",
 		]);
+	});
+
+	it("refuses remote forwarding without a Station-authorized agent", () => {
+		expect(() =>
+			remoteSessionServeSshArgs(
+				{
+					id: "build-box",
+					host: "build-box.ts.net",
+					isolationClass: "development",
+				},
+				4242,
+				"",
+			),
+		).toThrow("did not provide an SSH agent");
 	});
 
 	it("requires a fixed port before resolving a remote machine", async () => {
@@ -153,6 +180,21 @@ describe("resident session remote browser", () => {
 							},
 						},
 						auditTypes: () => ["pam.SessionStarted"],
+						yardDrainCount: () => 2,
+						resolveSshIdentity: async (pane) => ({
+							pane: {
+								...pane,
+								identityAgent: "/run/user/1000/hobo-agent.sock",
+							},
+							stop: async () => {},
+						}),
+						handoffSshIdentity: async (pane) => ({
+							pane: {
+								...pane,
+								identityAgent: "/run/user/1000/hobo-agent.sock",
+							},
+							stop: async () => {},
+						}),
 						close: async () => {
 							closed = true;
 						},
@@ -184,7 +226,8 @@ describe("resident session remote browser", () => {
 						authorizationSessionId: "pam-session-1",
 						authorizationExpiresAt: "2026-08-12T00:00:00.000Z",
 						auditTypes: ["pam.SessionStarted"],
-						credentialMode: "user-ssh-key",
+						credentialMode: "station-authorized-agent",
+						identityAgent: "/run/user/1000/hobo-agent.sock",
 					}),
 				}),
 			);

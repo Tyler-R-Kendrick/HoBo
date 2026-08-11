@@ -277,18 +277,14 @@ toolchain. Every field that reaches a command line — id, host, user — is
 allowlisted, because an ssh destination like `-oProxyCommand=...` is an
 argument rather than a hostname. Each entry becomes a `SessionTarget` for the
 Station's privileged-access gateway (`src/machine-sessions.ts`), which applies
-the target's isolation-class policy, returns short-lived material, and writes
-`pam.SessionStarted` / `pam.SessionDenied`. Panes carry the credential
-*reference*, never the session token, so nothing short-lived reaches a process
-table or a pane title. When no gateway is available, or when any pane lacks a
-session, the command is refused rather than falling back to the ambient key —
-a fallback that silently downgrades governance is worse than a clear failure.
-
-**Residual: the reference is not yet redeemable.** `tokenref://` names an agent
-socket nothing serves, and the gateway stops when brokering finishes, so an ssh
-pane still authenticates with its own key. The brokering decision, the session
-record and the audit trail are real; the credential path is not. A resident
-agent that serves the reference is what closes it.
+the target's isolation-class policy, returns a short-lived authorization, and writes
+`pam.SessionStarted` / `pam.SessionDenied`. Panes carry a lease-bound local
+SSH-agent socket, never the credential reference or session token, so nothing
+short-lived reaches a process table or pane title. The proxy forwards the
+SSH-agent protocol to the installed `SSH_AUTH_SOCK`, survives tmux detach,
+expires with the Station authorization, and drains redemption/end facts into
+the Station Yard audit feed. When the gateway or installed agent is unavailable,
+the command is refused rather than falling back to ambient-key selection.
 
 Selecting a sidecar is a versioned decision, not a name lookup. `hobo-code`
 composes commands that require an argv-quoting `exec` and the namespace marker,

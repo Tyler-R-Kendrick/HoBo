@@ -21,10 +21,9 @@ import { join } from "node:path";
 
 export type TargetKind = "local" | "local-inference" | "ssh";
 
-export interface MuxTarget {
+interface MuxTargetBase {
 	/** Window name inside the tmux session. */
 	readonly name: string;
-	readonly kind: TargetKind;
 	/** Command to run in the window. */
 	/**
 	 * The command to run in the pane, as a **shell snippet**.
@@ -36,8 +35,6 @@ export interface MuxTarget {
 	 * anything compound in `sh -c` yourself.
 	 */
 	readonly command: string;
-	/** Host for ssh targets; ignored otherwise. */
-	readonly host?: string;
 	/** Working directory for local targets. */
 	readonly cwd?: string;
 	/**
@@ -50,15 +47,20 @@ export interface MuxTarget {
 		readonly root: string;
 		readonly name: string;
 	};
-	/**
-	 * Station-brokered credential *reference* for an ssh pane.
-	 *
-	 * A reference, never the session token: the token is short-lived material
-	 * and must not reach a process table, a pane title, or a shell history. The
-	 * ssh agent resolves the reference.
-	 */
-	readonly credentialRef?: string;
 }
+
+export type MuxTarget =
+	| (MuxTargetBase & {
+			readonly kind: "local" | "local-inference";
+	  })
+	| (MuxTargetBase & {
+			readonly kind: "ssh";
+			readonly host: string;
+			/** Lease-bound local SSH-agent socket for this authorized pane. */
+			readonly identityAgent: string;
+			/** Station authorization deadline; SSH is terminated at expiry. */
+			readonly expiresAt: string;
+	  });
 
 export interface MuxPlan {
 	readonly session: string;
@@ -130,7 +132,11 @@ export function placedCommand(target: MuxTarget): string {
 
 export function targetCommand(target: MuxTarget): string {
 	if (target.kind === "ssh") {
-		if (!target.host) return `echo "ssh target ${target.name} has no host"`;
+		if (!target.host || !target.identityAgent || !target.expiresAt) {
+			throw new Error(
+				`ssh target ${target.name} requires a host and Station authorization`,
+			);
+		}
 		// The remote gets the *placed* command, not the bare one. Sending only
 		// `target.command` ran every agent in the remote login directory with no
 		// isolation at all, after allocating workspaces nobody then used.
@@ -138,15 +144,34 @@ export function targetCommand(target: MuxTarget): string {
 		// The brokered reference travels as configuration rather than as an
 		// argument, so the pane uses the Station's session instead of whatever
 		// ambient key happens to be in ~/.ssh.
-		const identity = target.credentialRef
-			? `-o ${shellQuote(`IdentityAgent=${target.credentialRef}`)} `
-			: "";
-		return keepPaneOpen(
-			target.name,
-			`ssh -t ${identity}${target.host} ${shellQuote(placedCommand(target))}`,
-		);
+		const identity = [
+			`IdentityAgent=${target.identityAgent}`,
+			"IdentityFile=none",
+			"PreferredAuthentications=publickey",
+			"PasswordAuthentication=no",
+			"KbdInteractiveAuthentication=no",
+			"BatchMode=yes",
+		]
+			.map((option) => `-o ${shellQuote(option)}`)
+			.join(" ");
+		const ssh = `ssh -t ${identity} ${target.host} ${shellQuote(placedCommand(target))}`;
+		return keepPaneOpen(target.name, leaseCommand(ssh, target.expiresAt));
 	}
 	return keepPaneOpen(target.name, placedCommand(target));
+}
+
+/** POSIX lease timer for an established SSH process. */
+export function leaseCommand(
+	command: string,
+	expiresAt: string,
+	nowMs = Date.now(),
+): string {
+	const expiry = Date.parse(expiresAt);
+	if (!Number.isFinite(expiry) || expiry <= nowMs) {
+		throw new Error("Station authorization is expired or invalid");
+	}
+	const seconds = Math.max(1, Math.ceil((expiry - nowMs) / 1_000));
+	return `sh -c ${shellQuote(`${command} & child=$!; (sleep ${seconds}; kill -TERM "$child" 2>/dev/null) & lease=$!; wait "$child"; status=$?; kill "$lease" 2>/dev/null; wait "$lease" 2>/dev/null; exit "$status"`)}`;
 }
 
 /**
@@ -326,7 +351,33 @@ export async function applyMux(
 			name,
 			targetCommand(target),
 		]);
-		if (added.code === 0) created.push(name);
+		if (added.code !== 0) {
+			let rolledBack = true;
+			const surviving = new Set(created);
+			if (existed) {
+				for (const createdName of [...created].reverse()) {
+					const removed = await runner.run([
+						"kill-window",
+						"-t",
+						`${plan.session}:${createdName}`,
+					]);
+					if (removed.code === 0) surviving.delete(createdName);
+					rolledBack = rolledBack && removed.code === 0;
+				}
+			} else {
+				const removed = await runner.run(["kill-session", "-t", plan.session]);
+				rolledBack = removed.code === 0;
+				if (rolledBack) surviving.clear();
+			}
+			return {
+				ok: false,
+				session: plan.session,
+				created: [...surviving],
+				existed,
+				detail: `tmux new-window failed for ${name}; rollback ${rolledBack ? "complete" : "incomplete"}`,
+			};
+		}
+		created.push(name);
 	}
 
 	return {

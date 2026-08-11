@@ -84,13 +84,16 @@ import {
 	describePane,
 	type OpenedGateway,
 	openStationGateway,
+	type ResolvedSshIdentity,
 } from "./machine-sessions.js";
 import { inspectModels, modelsHumanSummary } from "./models.js";
 import {
 	applyMux,
 	attachCommand,
+	type MuxRunner,
 	type MuxTarget,
 	planMux,
+	safeWindowName,
 	tmuxRunner,
 } from "./mux.js";
 import {
@@ -265,6 +268,7 @@ export interface HoboCodeCliDeps {
 	readonly openStationGateway?: (
 		context: Parameters<typeof openStationGateway>[0],
 	) => Promise<OpenedGateway>;
+	readonly muxRunner?: MuxRunner;
 }
 
 export type FormatHoboCodeOptions = {
@@ -642,8 +646,8 @@ const VERB_HELP_PLAIN: Record<
 		"  --help, -h          Show this help",
 		"",
 		"Remote browser serving asks that Station to authorize and audit access,",
-		"then opens SSH local forwarding; denial has no fallback. SSH still uses",
-		"the user's configured key because tokenref redemption is not implemented.",
+		"then gates the installed SSH agent for that lease and opens local",
+		"forwarding. No key or session token is copied; denial has no fallback.",
 		"",
 		"See also: hobo-code attach · hobo-code auth · hobo-code isolate · hobo-code status",
 	],
@@ -735,9 +739,9 @@ const VERB_HELP_PLAIN: Record<
 		"isolation-class policy and audits every session; a pane the Station did",
 		"not authorise is refused rather than opened.",
 		"",
-		"Not finished: the pane carries the credential reference, but nothing",
-		"serves it yet, so the ssh connection still uses your own key. The",
-		"decision and the audit trail are real; the credential path is not.",
+		"Each Station authorization gates a lease-bound local SSH-agent",
+		"socket backed by SSH_AUTH_SOCK. Keys and tokens are never copied into",
+		"the pane; redemption and lease termination drain to Station Yard audit.",
 	],
 	vshell: [
 		"hobo-code vshell — a virtual pane: virtual terminal over a virtual filesystem",
@@ -1991,8 +1995,9 @@ export async function runHoboCodeCli(
 		// than leaving panes sitting on a host they were not authorised for.
 		let brokered: Awaited<ReturnType<typeof brokerPanes>> | undefined;
 		let brokerAudit: readonly string[] = [];
+		let resolvedIdentities: readonly ResolvedSshIdentity[] = [];
 		if (resolvedMachine) {
-			const gateway = await openStationGateway({
+			const gateway = await (deps.openStationGateway ?? openStationGateway)({
 				hoboHome,
 				stationId: platform.station.stationId,
 				isolationClass: resolvedMachine.isolationClass,
@@ -2002,6 +2007,25 @@ export async function runHoboCodeCli(
 					placeable.map((a) => ({ machine: resolvedMachine, agentId: a.id })),
 					{ broker: gateway.broker, subject: "hobo-code", ttlSeconds: 3600 },
 				);
+				if (brokered.panes.length > 0) {
+					if (flags["dry-run"] === true) {
+						resolvedIdentities = brokered.panes.map((pane) => ({
+							pane: { ...pane, identityAgent: "<station-agent-socket>" },
+							stop: async () => {},
+						}));
+					} else {
+						const identities: ResolvedSshIdentity[] = [];
+						try {
+							for (const pane of brokered.panes) {
+								identities.push(await gateway.handoffSshIdentity(pane));
+							}
+						} catch (error) {
+							await Promise.all(identities.map((identity) => identity.stop()));
+							throw error;
+						}
+						resolvedIdentities = identities;
+					}
+				}
 				brokerAudit = gateway.auditTypes();
 			} finally {
 				await gateway.close();
@@ -2022,144 +2046,175 @@ export async function runHoboCodeCli(
 				);
 			}
 		}
-		const allocation = await allocateAgentWorkspaces({
-			workspaceRoot: workspace.path,
-			agentIds: agents.map((a) => a.id),
-			fallbackRoot: join(hoboHome, "workspaces"),
-			env,
-			shared: flags.shared === true || remoteHost !== undefined,
-			...(remoteHost !== undefined && flags.shared !== true
-				? {
-						sharedReason: `--host ${remoteHost}: panes run on the remote, which has its own filesystem — local virtual worktrees would not exist there`,
+		const retainedIdentityAgents = new Set<string>();
+		try {
+			const allocation = await allocateAgentWorkspaces({
+				workspaceRoot: workspace.path,
+				agentIds: agents.map((a) => a.id),
+				fallbackRoot: join(hoboHome, "workspaces"),
+				env,
+				shared: flags.shared === true || remoteHost !== undefined,
+				...(remoteHost !== undefined && flags.shared !== true
+					? {
+							sharedReason: `--host ${remoteHost}: panes run on the remote, which has its own filesystem — local virtual worktrees would not exist there`,
+						}
+					: {}),
+			});
+			const workspaceFor = new Map(
+				allocation.workspaces.map((w) => [w.agentId, w]),
+			);
+			// A virtualized pane runs the harness's own shell over a virtual
+			// filesystem instead of the agent binary: the point is that the pane
+			// cannot reach anything the allow-list does not name, which a real agent
+			// process would immediately step outside of.
+			const virtualPanes = flags.virtual === true;
+			// Panes come from `placeable`, not `agents`. Filtering only the brokering
+			// left every excluded agent with a pane on the machine that excluded it,
+			// carrying no credentialRef — i.e. the ambient ~/.ssh key, no session, no
+			// audit event. That was worse than before the placement filter existed.
+			const targets: MuxTarget[] = placeable.map((a) => {
+				const allocated = workspaceFor.get(a.id);
+				return {
+					name: a.id,
+					kind: a.kind === "inference" ? "local-inference" : "local",
+					command: virtualPanes
+						? virtualPaneCommand(a.id, allocated?.path ?? workspace.path)
+						: a.command,
+					cwd: allocated?.path ?? workspace.path,
+					// Namespace-mounted workspaces are unreachable by cd alone.
+					...(allocated?.exec ? { exec: allocated.exec } : {}),
+				} satisfies MuxTarget;
+			});
+			// A remote host turns the same targets into ssh panes — identical shape.
+			const host = remoteHost;
+			const brokeredFor = new Map(
+				resolvedIdentities.map((identity) => [
+					identity.pane.agentId,
+					identity.pane,
+				]),
+			);
+			const unbrokered = host
+				? targets.filter((t) => !brokeredFor.has(t.name))
+				: [];
+			if (unbrokered.length > 0) {
+				// Fail rather than open these panes. An ssh pane with no
+				// credentialRef falls back to the ambient ~/.ssh key with no session
+				// and no audit event, which is exactly the ungoverned path this
+				// replaced — and it would do so silently.
+				return fail(
+					"HOBO_CODE_MUX_UNBROKERED_PANES",
+					panel("✕ mux", [
+						`${unbrokered.length} pane(s) have no Station session: ${unbrokered.map((t) => t.name).join(", ")}`,
+						"Opening them would mean panes the Station never authorised, with",
+						"no session recorded — the ungoverned path this replaced.",
+						...(brokered?.failures ?? [])
+							.slice(0, 3)
+							.map((f) => `denied · ${f.agentId}: ${f.reason}`),
+					]),
+					["hobo-code machines", "hobo-code auth"],
+					{ unbrokered: unbrokered.map((t) => t.name) },
+				);
+			}
+			const remoteTargets: MuxTarget[] = host
+				? targets.map(({ cwd: _local, exec: _wrapper, ...t }): MuxTarget => {
+						// Non-null by the guard above: every ssh pane carries a session.
+						const pane = brokeredFor.get(t.name);
+						if (!pane)
+							throw new Error(`missing Station identity for pane ${t.name}`);
+						return {
+							...t,
+							kind: "ssh",
+							host,
+							identityAgent: pane.identityAgent,
+							expiresAt: pane.expiresAt,
+						};
+					})
+				: targets;
+			const plan = planMux(session, remoteTargets);
+			if (agents.length === 0) {
+				return fail(
+					"HOBO_CODE_MUX_NO_AGENTS",
+					panel("✕ mux", [
+						"no agents detected on this machine",
+						"install one (claude, codex, cursor-agent, opencode, …) or run hobo-code alone",
+					]),
+					["hobo-code agent", "hobo-code config"],
+					{ agents, plan },
+				);
+			}
+			const applied =
+				flags["dry-run"] === true
+					? {
+							ok: true,
+							session: plan.session,
+							created: plan.targets.map((t) => t.name),
+							existed: false,
+							detail: "dry run — no tmux invoked",
+						}
+					: await applyMux(plan, deps.muxRunner ?? tmuxRunner());
+			const created = new Set(applied.created);
+			if (flags["dry-run"] !== true) {
+				for (const identity of resolvedIdentities) {
+					if (created.has(safeWindowName(identity.pane.agentId))) {
+						retainedIdentityAgents.add(identity.pane.agentId);
 					}
-				: {}),
-		});
-		const workspaceFor = new Map(
-			allocation.workspaces.map((w) => [w.agentId, w]),
-		);
-		// A virtualized pane runs the harness's own shell over a virtual
-		// filesystem instead of the agent binary: the point is that the pane
-		// cannot reach anything the allow-list does not name, which a real agent
-		// process would immediately step outside of.
-		const virtualPanes = flags.virtual === true;
-		// Panes come from `placeable`, not `agents`. Filtering only the brokering
-		// left every excluded agent with a pane on the machine that excluded it,
-		// carrying no credentialRef — i.e. the ambient ~/.ssh key, no session, no
-		// audit event. That was worse than before the placement filter existed.
-		const targets: MuxTarget[] = placeable.map((a) => {
-			const allocated = workspaceFor.get(a.id);
-			return {
-				name: a.id,
-				kind: a.kind === "inference" ? "local-inference" : "local",
-				command: virtualPanes
-					? virtualPaneCommand(a.id, allocated?.path ?? workspace.path)
-					: a.command,
-				cwd: allocated?.path ?? workspace.path,
-				// Namespace-mounted workspaces are unreachable by cd alone.
-				...(allocated?.exec ? { exec: allocated.exec } : {}),
-			} satisfies MuxTarget;
-		});
-		// A remote host turns the same targets into ssh panes — identical shape.
-		const host = remoteHost;
-		const brokeredFor = new Map(
-			(brokered?.panes ?? []).map((p) => [p.agentId, p.credentialRef]),
-		);
-		const unbrokered = host
-			? targets.filter((t) => !brokeredFor.has(t.name))
-			: [];
-		if (unbrokered.length > 0) {
-			// Fail rather than open these panes. An ssh pane with no
-			// credentialRef falls back to the ambient ~/.ssh key with no session
-			// and no audit event, which is exactly the ungoverned path this
-			// replaced — and it would do so silently.
-			return fail(
-				"HOBO_CODE_MUX_UNBROKERED_PANES",
-				panel("✕ mux", [
-					`${unbrokered.length} pane(s) have no Station session: ${unbrokered.map((t) => t.name).join(", ")}`,
-					"Opening them would mean panes the Station never authorised, with",
-					"no session recorded — the ungoverned path this replaced.",
-					...(brokered?.failures ?? [])
-						.slice(0, 3)
-						.map((f) => `denied · ${f.agentId}: ${f.reason}`),
-				]),
-				["hobo-code machines", "hobo-code auth"],
-				{ unbrokered: unbrokered.map((t) => t.name) },
-			);
-		}
-		const remoteTargets: MuxTarget[] = host
-			? targets.map(({ cwd: _local, exec: _wrapper, ...t }): MuxTarget => {
-					// Non-null by the guard above: every ssh pane carries a session.
-					const ref = brokeredFor.get(t.name) as string;
-					return { ...t, kind: "ssh", host, credentialRef: ref };
-				})
-			: targets;
-		const plan = planMux(session, remoteTargets);
-		if (agents.length === 0) {
-			return fail(
-				"HOBO_CODE_MUX_NO_AGENTS",
-				panel("✕ mux", [
-					"no agents detected on this machine",
-					"install one (claude, codex, cursor-agent, opencode, …) or run hobo-code alone",
-				]),
-				["hobo-code agent", "hobo-code config"],
-				{ agents, plan },
-			);
-		}
-		const applied =
-			flags["dry-run"] === true
-				? {
-						ok: true,
+				}
+			}
+			const text = panel(applied.ok ? "✓ mux" : "✕ mux", [
+				applied.detail,
+				`workspace · ${workspace.path} (${workspace.source})`,
+				`trees · ${allocation.backend}${allocation.reason ? ` — ${allocation.reason}` : ""}`,
+				...(excluded.length > 0
+					? [
+							`excluded · ${excluded.map((a) => a.id).join(", ")} (not declared for ${resolvedMachine?.id})`,
+						]
+					: []),
+				...(brokered
+					? [
+							`sessions · ${brokered.panes.length} brokered by the Station (${brokerAudit.filter((t) => t === "pam.SessionStarted").length} started)`,
+							...brokered.panes.slice(0, 3).map((p) => `  ${describePane(p)}`),
+							...brokered.failures.map(
+								(f) => `  denied · ${f.agentId}: ${f.reason}`,
+							),
+						]
+					: []),
+				...(virtualPanes
+					? [
+							`shell · virtual (${VIRTUAL_PANE_COMMANDS} commands, no network, no execve)`,
+						]
+					: []),
+				...placeable.map(
+					(a) =>
+						`  ${a.id} · ${workspaceFor.get(a.id)?.path ?? workspace.path}`,
+				),
+				`join · ${attachCommand(plan.session, host)}`,
+			]);
+			return applied.ok
+				? ok("HOBO_CODE_MUX", text, {
 						session: plan.session,
-						created: plan.targets.map((t) => t.name),
-						existed: false,
-						detail: "dry run — no tmux invoked",
-					}
-				: await applyMux(plan, tmuxRunner());
-		const text = panel(applied.ok ? "✓ mux" : "✕ mux", [
-			applied.detail,
-			`workspace · ${workspace.path} (${workspace.source})`,
-			`trees · ${allocation.backend}${allocation.reason ? ` — ${allocation.reason}` : ""}`,
-			...(excluded.length > 0
-				? [
-						`excluded · ${excluded.map((a) => a.id).join(", ")} (not declared for ${resolvedMachine?.id})`,
-					]
-				: []),
-			...(brokered
-				? [
-						`sessions · ${brokered.panes.length} brokered by the Station (${brokerAudit.filter((t) => t === "pam.SessionStarted").length} started)`,
-						...brokered.panes.slice(0, 3).map((p) => `  ${describePane(p)}`),
-						...brokered.failures.map(
-							(f) => `  denied · ${f.agentId}: ${f.reason}`,
-						),
-					]
-				: []),
-			...(virtualPanes
-				? [
-						`shell · virtual (${VIRTUAL_PANE_COMMANDS} commands, no network, no execve)`,
-					]
-				: []),
-			...placeable.map(
-				(a) => `  ${a.id} · ${workspaceFor.get(a.id)?.path ?? workspace.path}`,
-			),
-			`join · ${attachCommand(plan.session, host)}`,
-		]);
-		return applied.ok
-			? ok("HOBO_CODE_MUX", text, {
-					session: plan.session,
-					agents,
-					plan,
-					applied,
-				})
-			: fail(
-					"HOBO_CODE_MUX_FAILED",
-					text,
-					["tmux -V", "hobo-code mux --dry-run"],
-					{
 						agents,
 						plan,
 						applied,
-					},
-				);
+					})
+				: fail(
+						"HOBO_CODE_MUX_FAILED",
+						text,
+						["tmux -V", "hobo-code mux --dry-run"],
+						{
+							agents,
+							plan,
+							applied,
+						},
+					);
+		} finally {
+			await Promise.all(
+				resolvedIdentities
+					.filter(
+						(identity) => !retainedIdentityAgents.has(identity.pane.agentId),
+					)
+					.map((identity) => identity.stop()),
+			);
+		}
 	}
 
 	if (verb === "attach") {
@@ -2631,12 +2686,27 @@ export async function runHoboCodeCli(
 							["hobo-code auth status"],
 						);
 					}
+					let identity: ResolvedSshIdentity;
+					try {
+						identity = await gateway.resolveSshIdentity(outcome.pane);
+					} catch (error) {
+						await gateway.close();
+						return fail(
+							"HOBO_CODE_SESSION_REMOTE_IDENTITY_UNAVAILABLE",
+							panel("✕ session", [
+								error instanceof Error ? error.message : String(error),
+								"SSH forwarding was not opened; there is no ambient-key fallback",
+							]),
+							["ssh-add -l", "hobo-code auth status"],
+						);
+					}
 					remoteServe = {
 						machine,
 						port: servePort,
 						authorizationSessionId: outcome.pane.sessionId,
 						authorizationExpiresAt: outcome.pane.expiresAt,
 						auditTypes,
+						identityAgent: identity.pane.identityAgent,
 						closeAuthorization: gateway.close,
 					};
 				}

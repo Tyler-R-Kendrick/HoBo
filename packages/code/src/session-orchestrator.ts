@@ -258,15 +258,19 @@ export function createSessionOrchestrator(
 		operation: SessionDeliveryOperation,
 		snapshot: SessionSnapshot,
 		command: SessionCommandEnvelope,
+		context: DeliveryLedger["context"],
 	): Promise<SessionDeliveryApproval> {
 		const action = command.command;
 		const details: Record<string, string | boolean> = {};
 		switch (action.case) {
 			case "commit":
 				details.message = action.value.message;
+				details.gitHead = context.preHead ?? "";
+				details.gitTree = context.expectedTree ?? "";
 				break;
 			case "push":
 				details.remote = action.value.remote;
+				details.gitHead = context.preHead ?? "";
 				break;
 			case "openPullRequest":
 				details.title = action.value.title;
@@ -302,11 +306,11 @@ export function createSessionOrchestrator(
 		operation: SessionDeliveryOperation,
 		command: SessionCommandEnvelope,
 		snapshot: SessionSnapshot,
-		work: () => Promise<SessionSnapshot>,
+		work: (ledger: DeliveryLedger) => Promise<SessionSnapshot>,
 	): Promise<SessionSnapshot> {
-		const approval = await approved(operation, snapshot, command);
 		const digest = deliveryFingerprint(command);
 		const path = deliveryLedgerPath(command);
+		let ledger: DeliveryLedger;
 		if (existsSync(path)) {
 			const prior = JSON.parse(readFileSync(path, "utf8")) as DeliveryLedger;
 			if (prior.digest !== digest)
@@ -320,21 +324,24 @@ export function createSessionOrchestrator(
 				return current;
 			}
 			if (prior.status === "failed") {
-				unlinkSync(path);
+				ledger = prior;
 			} else
 				throw new Error(
 					`${operation} has an unknown prior outcome; reconcile before retrying`,
 				);
+		} else {
+			const context = await deliveryContext(command, snapshot);
+			const approval = await approved(operation, snapshot, command, context);
+			ledger = {
+				digest,
+				status: "pending",
+				approval,
+				context,
+			};
+			writeJsonAtomic(path, ledger);
 		}
-		const ledger: DeliveryLedger = {
-			digest,
-			status: "pending",
-			approval,
-			context: await deliveryContext(command, snapshot),
-		};
-		writeJsonAtomic(path, ledger);
 		try {
-			const result = await work();
+			const result = await work(ledger);
 			writeJsonAtomic(path, { ...ledger, status: "complete" });
 			return result;
 		} catch (error) {
@@ -367,10 +374,14 @@ export function createSessionOrchestrator(
 			const env = { GIT_INDEX_FILE: indexPath };
 			await run("git", ["read-tree", "HEAD"], cwd, env);
 			await run("git", ["add", "-A"], cwd, env);
-			return run("git", ["write-tree"], cwd, env);
+			return await run("git", ["write-tree"], cwd, env);
 		} finally {
 			rmSync(indexPath, { force: true });
 		}
+	}
+
+	async function setWorktreeIndex(cwd: string, commit: string): Promise<void> {
+		await run("git", ["read-tree", "--reset", commit], cwd);
 	}
 
 	async function deliveryContext(
@@ -389,9 +400,20 @@ export function createSessionOrchestrator(
 					expectedTree: await fullWorktreeTree(session.worktreePath),
 					expectedMessage: command.command.value.message,
 				};
+			case "push":
+				return {
+					preHead: await run(
+						"git",
+						["rev-parse", "HEAD"],
+						session.worktreePath,
+					),
+				};
 			case "openPullRequest":
 			case "stackPullRequest": {
-				const pullRequests = await pullRequestsForBranch(session, "number");
+				const pullRequests = await pullRequestsForBranch(
+					session,
+					"number,title,body,isDraft,state",
+				);
 				if (pullRequests === "unknown")
 					throw new Error("cannot establish pre-effect pull request state");
 				return {
@@ -470,7 +492,7 @@ export function createSessionOrchestrator(
 		const fields =
 			command.command.case === "stackPullRequest"
 				? "number,url,state,title,body,baseRefName"
-				: "number,url,state";
+				: "number,url,state,title,body,isDraft";
 		const listed = await pullRequestsForBranch(session, fields);
 		if (listed === "unknown") return "unknown";
 		const previous = new Set(ledger.context.pullRequestNumbers ?? []);
@@ -483,7 +505,15 @@ export function createSessionOrchestrator(
 		if (newlyCreated.length === 1) return newlyCreated[0];
 		if (newlyCreated.length > 1) return "unknown";
 		if (open.length !== 1) return open.length === 0 ? undefined : "unknown";
-		if (command.command.case !== "stackPullRequest") return open[0];
+		if (command.command.case === "openPullRequest") {
+			const value = command.command.value;
+			return open[0]?.title === value.title &&
+				open[0]?.body === value.body &&
+				open[0]?.isDraft === (value.draft ?? false)
+				? open[0]
+				: undefined;
+		}
+		if (command.command.case !== "stackPullRequest") return undefined;
 		const value = command.command.value;
 		return open[0]?.title === value.title &&
 			open[0]?.body === value.body &&
@@ -528,11 +558,6 @@ export function createSessionOrchestrator(
 					: "unknown";
 			}
 			case "push": {
-				const head = await run(
-					"git",
-					["rev-parse", "HEAD"],
-					session.worktreePath,
-				);
 				const remote = await runner.run(
 					"git",
 					[
@@ -543,7 +568,7 @@ export function createSessionOrchestrator(
 					session.worktreePath,
 				);
 				if (remote.code !== 0) return "unknown";
-				return remote.stdout.split(/\s/u)[0] === head
+				return remote.stdout.split(/\s/u)[0] === ledger.context.preHead
 					? "applied"
 					: "not-applied";
 			}
@@ -570,12 +595,13 @@ export function createSessionOrchestrator(
 					pullRequest.body !== value.body ||
 					pullRequest.baseRefName !== value.parentBranch
 				) {
+					if (typeof pullRequest.number !== "number") return "unknown";
 					const repaired = await runner.run(
 						"gh",
 						[
 							"pr",
 							"edit",
-							session.branch,
+							String(pullRequest.number),
 							"--base",
 							value.parentBranch,
 							"--title",
@@ -618,8 +644,16 @@ export function createSessionOrchestrator(
 	): Promise<SessionSnapshot> {
 		const session = requiredSession(snapshot);
 		switch (command.command.case) {
-			case "commit":
+			case "commit": {
+				const expectedTree = ledger.context.expectedTree;
+				if (!expectedTree)
+					throw new Error("approved commit is missing its Git tree");
+				await setWorktreeIndex(
+					session.worktreePath,
+					await run("git", ["rev-parse", "HEAD"], session.worktreePath),
+				);
 				return refresh(snapshot);
+			}
 			case "push": {
 				const remote = command.command.value.remote;
 				return options.runtime.update(
@@ -1229,44 +1263,79 @@ export function createSessionOrchestrator(
 						case "restoreCheckpoint":
 							return restore(snapshot, action.value.checkpointId);
 						case "commit":
-							return deliveryEffect("commit", command, snapshot, async () => {
-								await run(
-									"git",
-									["add", "-A"],
-									requiredSession(snapshot).worktreePath,
-								);
-								await run(
-									"git",
-									["commit", "-m", action.value.message],
-									requiredSession(snapshot).worktreePath,
-								);
-								return refresh(snapshot);
-							});
+							return deliveryEffect(
+								"commit",
+								command,
+								snapshot,
+								async (ledger) => {
+									const session = requiredSession(snapshot);
+									const preHead = ledger.context.preHead;
+									const expectedTree = ledger.context.expectedTree;
+									if (!preHead || !expectedTree)
+										throw new Error(
+											"approved commit is missing its Git identity",
+										);
+									const commit = await run(
+										"git",
+										[
+											"commit-tree",
+											expectedTree,
+											"-p",
+											preHead,
+											"-m",
+											action.value.message,
+										],
+										session.worktreePath,
+									);
+									await run(
+										"git",
+										[
+											"update-ref",
+											`refs/heads/${session.branch}`,
+											commit,
+											preHead,
+										],
+										session.worktreePath,
+									);
+									await setWorktreeIndex(session.worktreePath, commit);
+									return refresh(snapshot);
+								},
+							);
 						case "push":
-							return deliveryEffect("push", command, snapshot, async () => {
-								await run(
-									"git",
-									[
-										"push",
-										"--set-upstream",
-										action.value.remote,
-										requiredSession(snapshot).branch,
-									],
-									requiredSession(snapshot).worktreePath,
-								);
-								return options.runtime.update(
-									command.sessionId,
-									revision(snapshot),
-									(next) => {
-										if (next.deliveryState) {
-											next.deliveryState.remote = action.value.remote;
-											next.deliveryState.lifecycleState =
-												DeliveryLifecycleState.READY;
-											next.deliveryState.message = "branch pushed";
-										}
-									},
-								);
-							});
+							return deliveryEffect(
+								"push",
+								command,
+								snapshot,
+								async (ledger) => {
+									const session = requiredSession(snapshot);
+									const preHead = ledger.context.preHead;
+									if (!preHead)
+										throw new Error(
+											"approved push is missing its Git identity",
+										);
+									await run(
+										"git",
+										[
+											"push",
+											action.value.remote,
+											`${preHead}:refs/heads/${session.branch}`,
+										],
+										session.worktreePath,
+									);
+									return options.runtime.update(
+										command.sessionId,
+										revision(snapshot),
+										(next) => {
+											if (next.deliveryState) {
+												next.deliveryState.remote = action.value.remote;
+												next.deliveryState.lifecycleState =
+													DeliveryLifecycleState.READY;
+												next.deliveryState.message = "branch pushed";
+											}
+										},
+									);
+								},
+							);
 						case "openPullRequest":
 							return deliveryEffect(
 								"open-pull-request",
@@ -1279,7 +1348,7 @@ export function createSessionOrchestrator(
 								"stack-pull-request",
 								command,
 								snapshot,
-								async () => {
+								async (ledger) => {
 									const session = requiredSession(snapshot);
 									await run(
 										"gh",
@@ -1297,12 +1366,25 @@ export function createSessionOrchestrator(
 										["stack", "submit", "--auto", "--open"],
 										session.worktreePath,
 									);
+									const pullRequest = await pullRequestForDelivery(
+										command,
+										session,
+										ledger,
+									);
+									if (
+										pullRequest === "unknown" ||
+										typeof pullRequest?.number !== "number" ||
+										typeof pullRequest.url !== "string"
+									)
+										throw new Error(
+											"gh stack submit did not produce a unique pull request",
+										);
 									await run(
 										"gh",
 										[
 											"pr",
 											"edit",
-											session.branch,
+											String(pullRequest.number),
 											"--title",
 											action.value.title,
 											"--body",
@@ -1310,24 +1392,8 @@ export function createSessionOrchestrator(
 										],
 										session.worktreePath,
 									);
-									const url = await run(
-										"gh",
-										[
-											"pr",
-											"view",
-											session.branch,
-											"--json",
-											"url",
-											"--jq",
-											".url",
-										],
-										session.worktreePath,
-									);
-									const match = /\/pull\/(\d+)/u.exec(url);
-									if (!match)
-										throw new Error(
-											"gh stack submit did not produce a pull request URL",
-										);
+									const pullRequestNumber = pullRequest.number;
+									const pullRequestUrl = pullRequest.url;
 									return options.runtime.update(
 										command.sessionId,
 										revision(snapshot),
@@ -1335,10 +1401,9 @@ export function createSessionOrchestrator(
 											if (!next.deliveryState) return;
 											next.deliveryState.lifecycleState =
 												DeliveryLifecycleState.PULL_REQUEST_OPEN;
-											next.deliveryState.pullRequestNumber = BigInt(
-												match[1] ?? "0",
-											);
-											next.deliveryState.pullRequestUrl = url;
+											next.deliveryState.pullRequestNumber =
+												BigInt(pullRequestNumber);
+											next.deliveryState.pullRequestUrl = pullRequestUrl;
 											next.deliveryState.stackParentBranch =
 												action.value.parentBranch;
 											next.deliveryState.message = "stacked pull request open";

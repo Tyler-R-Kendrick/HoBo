@@ -574,10 +574,11 @@ describe("session orchestrator", () => {
 		const cwd = harness.created.session?.worktreePath ?? "";
 		writeFileSync(join(cwd, "retry.txt"), "retry\n");
 		let failCommit = true;
+		const retryApprovals: SessionDeliveryApproval[] = [];
 		const base = sessionProcessRunner();
 		const runner: SessionProcessRunner = {
 			run(command, args, workdir, env) {
-				if (command === "git" && args[0] === "commit" && failCommit) {
+				if (command === "git" && args[0] === "commit-tree" && failCommit) {
 					failCommit = false;
 					return Promise.resolve({
 						code: 1,
@@ -592,7 +593,10 @@ describe("session orchestrator", () => {
 			runtime: harness.runtime,
 			worktreesDir: join(harness.dataDir, "worktrees"),
 			runner,
-			authorize: () => true,
+			authorize: (action) => {
+				retryApprovals.push(action);
+				return true;
+			},
 		});
 		const command = {
 			...envelope("session-1", harness.created.revision ?? 0n, "commit", {
@@ -603,9 +607,14 @@ describe("session orchestrator", () => {
 		await expect(orchestrator.execute(command)).rejects.toThrow(
 			"hook rejected before commit",
 		);
-		await expect(orchestrator.execute(command)).resolves.toMatchObject({
-			gitState: { dirty: false },
-		});
+		expect(git(cwd, ["ls-files"])).toBe("staged.txt\nunstaged.txt");
+		const retried = await orchestrator.execute(command);
+		expect(git(cwd, ["rev-parse", "HEAD^{tree}"])).toBe(
+			retryApprovals[0]?.details.gitTree,
+		);
+		expect(git(cwd, ["ls-files"])).toBe("retry.txt\nstaged.txt\nunstaged.txt");
+		expect(retried.gitState?.dirty).toBe(false);
+		expect(retryApprovals).toHaveLength(1);
 		expect(git(cwd, ["log", "-1", "--pretty=%s"])).toBe("retry safely");
 		harness.runtime.close();
 	});
@@ -620,10 +629,11 @@ describe("session orchestrator", () => {
 			async run(command, args, workdir, env) {
 				if (
 					command === "git" &&
-					args[0] === "commit" &&
+					args[0] === "update-ref" &&
 					++commitAttempts === 1
 				) {
-					await base.run("git", ["commit", "-m", "unrelated"], workdir, env);
+					git(workdir, ["add", "-A"]);
+					git(workdir, ["commit", "-qm", "unrelated"]);
 					return { code: 1, stdout: "", stderr: "approved commit failed" };
 				}
 				return base.run(command, args, workdir, env);
@@ -649,6 +659,70 @@ describe("session orchestrator", () => {
 		);
 		expect(git(cwd, ["log", "-1", "--pretty=%s"])).toBe("unrelated");
 		expect(commitAttempts).toBe(1);
+		harness.runtime.close();
+	});
+
+	it("commits only the tree included in the approval descriptor", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		writeFileSync(join(cwd, "approved.txt"), "approved\n");
+		let approval: SessionDeliveryApproval | undefined;
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			authorize(action) {
+				approval = action;
+				writeFileSync(join(cwd, "after-approval.txt"), "later\n");
+				return true;
+			},
+		});
+		const committed = await orchestrator.execute(
+			envelope("session-1", harness.created.revision ?? 0n, "commit", {
+				message: "approved tree",
+			}),
+		);
+		expect(approval?.details.gitHead).toBeDefined();
+		expect(approval?.details.gitTree).toBe(
+			git(cwd, ["rev-parse", "HEAD^{tree}"]),
+		);
+		expect(
+			spawnSync("git", ["cat-file", "-e", "HEAD:after-approval.txt"], {
+				cwd,
+			}).status,
+		).not.toBe(0);
+		expect(committed.gitState?.untrackedPaths).toContain("after-approval.txt");
+		harness.runtime.close();
+	});
+
+	it("pushes only the commit included in the approval descriptor", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		const remote = temp("hobo-code-approved-push-remote-");
+		git(remote, ["init", "--bare", "-q"]);
+		git(cwd, ["remote", "add", "origin", remote]);
+		const approvedHead = git(cwd, ["rev-parse", "HEAD"]);
+		let approval: SessionDeliveryApproval | undefined;
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			authorize(action) {
+				approval = action;
+				writeFileSync(join(cwd, "after-approval.txt"), "later\n");
+				git(cwd, ["add", "-A"]);
+				git(cwd, ["commit", "-qm", "after approval"]);
+				return true;
+			},
+		});
+		await orchestrator.execute(
+			envelope("session-1", harness.created.revision ?? 0n, "push", {
+				remote: "origin",
+			}),
+		);
+		expect(approval?.details.gitHead).toBe(approvedHead);
+		expect(git(remote, ["rev-parse", "refs/heads/code/review"])).toBe(
+			approvedHead,
+		);
+		expect(git(cwd, ["rev-parse", "HEAD"])).not.toBe(approvedHead);
 		harness.runtime.close();
 	});
 
@@ -707,6 +781,7 @@ describe("session orchestrator", () => {
 	it("repairs approved stack metadata after submit before completing reconciliation", async () => {
 		const harness = await createHarness();
 		let edits = 0;
+		const editTargets: string[] = [];
 		let submitted = false;
 		const base = sessionProcessRunner();
 		const runner: SessionProcessRunner = {
@@ -718,6 +793,7 @@ describe("session orchestrator", () => {
 				}
 				if (args[0] === "pr" && args[1] === "edit") {
 					edits += 1;
+					editTargets.push(args[2] ?? "");
 					return Promise.resolve({
 						code: edits === 1 ? 1 : 0,
 						stdout: "",
@@ -780,6 +856,59 @@ describe("session orchestrator", () => {
 		expect(edits).toBe(2);
 		expect(stacked.deliveryState?.stackParentBranch).toBe("main");
 		expect(stacked.deliveryState?.pullRequestNumber).toBe(42n);
+		expect(editTargets).toEqual(["42", "42"]);
+		harness.runtime.close();
+	});
+
+	it("does not reconcile an unrelated pre-existing pull request", async () => {
+		const harness = await createHarness();
+		let creates = 0;
+		const runner: SessionProcessRunner = {
+			async run(command, args) {
+				if (command === "gh" && args[0] === "pr" && args[1] === "list") {
+					return {
+						code: 0,
+						stdout: JSON.stringify([
+							{
+								number: 41,
+								url: "https://github.test/o/r/pull/41",
+								state: "OPEN",
+								title: "unrelated",
+								body: "unrelated",
+								isDraft: false,
+							},
+						]),
+						stderr: "",
+					};
+				}
+				if (command === "gh" && args[0] === "pr" && args[1] === "create") {
+					creates += 1;
+					return { code: 1, stdout: "", stderr: "create failed" };
+				}
+				return { code: 1, stdout: "", stderr: "unexpected command" };
+			},
+		};
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: () => true,
+		});
+		await expect(
+			orchestrator.execute(
+				envelope(
+					"session-1",
+					harness.created.revision ?? 0n,
+					"openPullRequest",
+					{ title: "approved", body: "approved body", draft: false },
+				),
+			),
+		).rejects.toThrow("create failed");
+		expect(creates).toBe(1);
+		expect(
+			(await harness.runtime.load("session-1"))?.deliveryState
+				?.pullRequestNumber,
+		).toBeUndefined();
 		harness.runtime.close();
 	});
 

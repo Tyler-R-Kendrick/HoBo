@@ -45,8 +45,6 @@
   "frames": [
     "frame-000.png",
     "frame-approval.png",
-    "frame-narrow.png",
-    "frame-panes.png",
     "frame-stopped.png"
   ],
   "repro": {

@@ -9,6 +9,10 @@ import {
 	createLocalSessionControl,
 	type LocalSessionControl,
 } from "./local-session-control.js";
+import {
+	SessionApprovalRequiredError,
+	sessionDeliveryApprovalDigest,
+} from "./session-orchestrator.js";
 import { sessionSnapshotJson } from "./session-contract.js";
 
 export interface SessionControlServerOptions {
@@ -74,8 +78,8 @@ function browserHtml(token: string, projectRoot: string): string {
 <h2>Full command boundary</h2><p>Paste any <code>hobo.code.session-command/v1</code> envelope.</p>
 <textarea id="command" aria-label="Session command JSON"></textarea><label><input id="approved" type="checkbox"> Approve commit, push, PR, stack, or merge</label><button id="send">Send command</button><pre id="result" aria-live="polite"></pre>
 <script>const cfg=${config};const headers={authorization:'Bearer '+cfg.token,'content-type':'application/json'};const clientId=sessionStorage.hoboCodeClientId??='browser-'+crypto.randomUUID();let snapshots=[];
-const api=async(path,options={})=>{const r=await fetch(path,{...options,headers});const body=await r.json();if(!r.ok)throw Error(body.error||r.statusText);return body};
-const send=async(command,approved=false)=>api('/code/commands',{method:'POST',body:JSON.stringify({command,approved})});
+const api=async(path,options={})=>{const r=await fetch(path,{...options,headers});const body=await r.json();if(!r.ok){const error=Error(body.error||r.statusText);error.body=body;error.status=r.status;throw error}return body};
+const send=(command,approvalDigest)=>api('/code/commands',{method:'POST',body:JSON.stringify({command,...(approvalDigest?{approvalDigest}:{})})});
 const envelope=(snapshot,name,value)=>({schemaVersion:'hobo.code.session-command/v1',commandId:crypto.randomUUID(),actorId:clientId,sessionId:snapshot.session.id,expectedRevision:String(snapshot.revision),[name]:value});
 const result=document.querySelector('#result');
 async function act(id,name,value,approved=false){const snapshot=snapshots.find(x=>x.session.id===id);if(!snapshot)throw Error('session disappeared');await send(envelope(snapshot,name,value),approved);await refresh(id)}
@@ -83,21 +87,22 @@ async function attempt(run){try{await run()}catch(e){result.textContent=String(e
 function button(label,action,run){const b=document.createElement('button');b.type='button';b.textContent=label;b.dataset.action=action;b.onclick=()=>attempt(run);return b}
 function text(label,initial=''){const value=prompt(label,initial);return value===null?null:value.trim()}
 function shell(command){return command?['sh','-lc',command]:[]}
-async function approved(id,name,value,label){if(confirm('Approve '+label+'?'))await act(id,name,value,true)}
+async function approveCommand(command,label,id){let challenge;try{await send(command);throw Error('delivery command completed without approval')}catch(error){if(error.status!==409||!error.body?.approvalDigest)throw error;challenge=error.body}const details=JSON.stringify(challenge.approval.details,null,2);result.textContent='Approval required for '+label+'\\n\\nExact effect:\\n'+details+'\\n\\nApproval '+challenge.approvalDigest;if(!confirm('Approve '+label+'?\\n\\nExact effect:\\n'+details+'\\n\\nApproval '+challenge.approvalDigest))return;const out=await send(command,challenge.approvalDigest);await refresh(id);return out}
+async function approved(id,name,value,label){const snapshot=snapshots.find(x=>x.session.id===id);if(!snapshot)throw Error('session disappeared');return approveCommand(envelope(snapshot,name,value),label,id)}
 function paneControls(s,p){const box=document.createElement('div');box.className='pane';const heading=document.createElement('strong');heading.textContent=p.title+' · '+p.id+(p.id===s.focusedPaneId?' · focused':'');box.append(heading,button('Focus','focus-pane',()=>act(s.session.id,'focusPane',{paneId:p.id})),button('Prompt','prompt-pane',async()=>{const input=text('Input for '+p.title);if(input!==null)await act(s.session.id,'sendInput',{paneId:p.id,input:input+'\\n'})}));
 	for(const [label,direction,action] of [['Split horizontal','horizontal','split-horizontal'],['Split vertical','vertical','split-vertical']])box.append(button(label,action,async()=>{const title=text(label+' pane title');if(!title)return;const command=text('Command (optional)')??'';await act(s.session.id,'splitPane',{paneId:p.id,direction,title,command:shell(command)})}));
 	box.append(button('Close pane','close-pane',()=>confirm('Close pane '+p.title+' ('+p.id+')?')&&act(s.session.id,'closePane',{paneId:p.id})),button('Start agent','start-agent',async()=>{const provider=text('Agent provider','codex');if(!provider)return;const command=text('Agent executable','codex');if(!command)return;const agentPrompt=text('Initial agent prompt','Continue the assigned task.');if(agentPrompt===null)return;await act(s.session.id,'startAgent',{paneId:p.id,provider,command:[command],prompt:agentPrompt})}));
-	for(const run of s.agentRuns.filter(x=>x.id===p.agentRunId))box.append(document.createTextNode(' '+run.provider+' · '+run.summary+' '),button('Stop agent','stop-agent',()=>act(s.session.id,'stopAgent',{agentRunId:run.id})));
+	for(const run of s.agentRuns.filter(x=>x.id===p.agentRunId))box.append(document.createTextNode(' '+run.provider+' · '+run.id+' · '+run.summary+' '),button('Stop agent','stop-agent',()=>confirm('Stop agent '+run.provider+' ('+run.id+') in pane '+p.id+'?')&&act(s.session.id,'stopAgent',{agentRunId:run.id})));
 	return box}
-async function render(card,s){card.replaceChildren();const attached=s.attachedClientIds.includes(clientId);const title=document.createElement('h2');title.textContent=s.session.name+' · '+s.session.branch+' · r'+s.revision;card.append(title,attached?button('Detach','detach',()=>act(s.session.id,'detachSession',{clientId})):button('Reattach','reattach',()=>act(s.session.id,'reattachSession',{clientId})),button('Stop session','stop-session',()=>confirm('Stop session '+s.session.name+'? Running panes and agents will terminate.')&&act(s.session.id,'stopSession',{removeWorktree:false})));
+async function render(card,s){card.replaceChildren();const attached=s.attachedClientIds.includes(clientId);const title=document.createElement('h2');title.textContent=s.session.name+' · '+s.session.id+' · '+s.session.branch+' · r'+s.revision;card.append(title,attached?button('Detach','detach',()=>act(s.session.id,'detachSession',{clientId})):button('Reattach','reattach',()=>act(s.session.id,'reattachSession',{clientId})),button('Stop session','stop-session',()=>confirm('Stop session '+s.session.name+'? Running panes and agents will terminate.')&&act(s.session.id,'stopSession',{removeWorktree:false})));
 	if(!attached){const note=document.createElement('p');note.className='muted';note.textContent='This browser is detached. Reattach to view pane output and controls.';card.append(note);return}
 	card.append(button('New tab','create-tab',async()=>{const title=text('Tab title');if(title)await act(s.session.id,'createTab',{title})}));
 	for(const tab of s.tabs){const group=document.createElement('section');group.className='tab';const heading=document.createElement('h3');heading.textContent=tab.title+' · '+tab.id;group.append(heading,button('New pane','create-pane',async()=>{const title=text('Pane title');if(!title)return;const command=text('Command (optional)')??'';await act(s.session.id,'createPane',{tabId:tab.id,title,command:shell(command)})}));for(const pane of s.panes.filter(x=>x.tabId===tab.id)){group.append(paneControls(s,pane));const output=document.createElement('pre');output.textContent=(await api('/code/sessions/'+encodeURIComponent(s.session.id)+'/panes/'+encodeURIComponent(pane.id)+'/output?lines=80')).output;group.append(output)}card.append(group)}
-	const checkpoints=document.createElement('section');checkpoints.className='checkpoints';checkpoints.append(button('Create checkpoint','create-checkpoint',async()=>{const label=text('Checkpoint label');if(label)await act(s.session.id,'createCheckpoint',{label})}));for(const checkpoint of s.checkpoints)checkpoints.append(document.createTextNode(' '+checkpoint.label+' '),button('Restore','restore-checkpoint',()=>act(s.session.id,'restoreCheckpoint',{checkpointId:checkpoint.id})));card.append(checkpoints);
-	const delivery=document.createElement('section');delivery.className='delivery';const heading=document.createElement('h3');heading.textContent='Approved delivery';const head=s.gitState.headSha;delivery.append(heading,button('Commit','commit',async()=>{const message=text('Commit message');if(message)await approved(s.session.id,'commit',{message},'commit "'+message+'" from '+head)}),button('Push','push',async()=>{const remote=text('Remote','origin');if(remote)await approved(s.session.id,'push',{remote},'push '+head+' to '+remote)}),button('Open PR','open-pr',async()=>{const title=text('Pull request title');if(!title)return;const body=text('Pull request body')??'';await approved(s.session.id,'openPullRequest',{title,body,draft:false},'pull request "'+title+'" from '+head)}),button('Stack PR','stack-pr',async()=>{const parentBranch=text('Parent branch','main');if(!parentBranch)return;const title=text('Pull request title');if(title)await approved(s.session.id,'stackPullRequest',{parentBranch,title,body:''},'stacked pull request "'+title+'" onto '+parentBranch+' from '+head)}),button('Merge PR','merge-pr',async()=>{const pullRequestNumber=text('Pull request number',String(s.deliveryState?.pullRequestNumber??''));if(pullRequestNumber)await approved(s.session.id,'mergePullRequest',{pullRequestNumber:Number(pullRequestNumber)},'pull request #'+pullRequestNumber+' at '+head)}));card.append(delivery)}
+	const checkpoints=document.createElement('section');checkpoints.className='checkpoints';checkpoints.append(button('Create checkpoint','create-checkpoint',async()=>{const label=text('Checkpoint label');if(label)await act(s.session.id,'createCheckpoint',{label})}));for(const checkpoint of s.checkpoints)checkpoints.append(document.createTextNode(' '+checkpoint.label+' · '+checkpoint.id+' · '+checkpoint.gitCommit+' '),button('Restore','restore-checkpoint',()=>confirm('Restore checkpoint '+checkpoint.label+' ('+checkpoint.id+') at '+checkpoint.gitCommit+'? Current worktree must be clean.')&&act(s.session.id,'restoreCheckpoint',{checkpointId:checkpoint.id})));card.append(checkpoints);
+	const delivery=document.createElement('section');delivery.className='delivery';const heading=document.createElement('h3');heading.textContent='Approved delivery';delivery.append(heading,button('Commit','commit',async()=>{const message=text('Commit message');if(message)await approved(s.session.id,'commit',{message},'commit "'+message+'"')}),button('Push','push',async()=>{const remote=text('Remote','origin');if(remote)await approved(s.session.id,'push',{remote},'push to '+remote)}),button('Open PR','open-pr',async()=>{const title=text('Pull request title');if(!title)return;const body=text('Pull request body')??'';await approved(s.session.id,'openPullRequest',{title,body,draft:false},'pull request "'+title+'"')}),button('Stack PR','stack-pr',async()=>{const parentBranch=text('Parent branch','main');if(!parentBranch)return;const title=text('Pull request title');if(title)await approved(s.session.id,'stackPullRequest',{parentBranch,title,body:''},'stacked pull request "'+title+'" onto '+parentBranch)}),button('Merge PR','merge-pr',async()=>{const pullRequestNumber=text('Pull request number',String(s.deliveryState?.pullRequestNumber??''));if(pullRequestNumber)await approved(s.session.id,'mergePullRequest',{pullRequestNumber:Number(pullRequestNumber)},'pull request #'+pullRequestNumber)}));card.append(delivery)}
 async function refresh(forceId){try{snapshots=await api('/code/sessions');const root=document.querySelector('#sessions');const cards=new Map([...root.querySelectorAll('.session')].map(card=>[card.dataset.sessionId,card]));const seen=new Set();for(const s of snapshots){seen.add(s.session.id);let card=cards.get(s.session.id);if(!card){card=document.createElement('section');card.className='session';card.dataset.sessionId=s.session.id;root.append(card)}if(card.contains(document.activeElement)&&s.session.id!==forceId)continue;await render(card,s)}for(const [id,card] of cards)if(!seen.has(id))card.remove()}catch(e){result.textContent=String(e)}}
 document.querySelector('#create').onsubmit=async e=>{e.preventDefault();const name=document.querySelector('#name').value;const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');const id=slug+'-'+crypto.randomUUID().slice(0,8);const branch=document.querySelector('#branch').value||'code/'+id;await send({schemaVersion:'hobo.code.session-command/v1',commandId:crypto.randomUUID(),actorId:clientId,sessionId:id,expectedRevision:'0',createSession:{name,projectRoot:cfg.projectRoot,branch,clientId}});await refresh()};
-document.querySelector('#send').onclick=()=>attempt(async()=>{const out=await send(JSON.parse(document.querySelector('#command').value),document.querySelector('#approved').checked);result.textContent=JSON.stringify(out,null,2);await refresh()});refresh();setInterval(refresh,1000);</script></body></html>`;
+document.querySelector('#send').onclick=()=>attempt(async()=>{const command=JSON.parse(document.querySelector('#command').value);const out=document.querySelector('#approved').checked?await approveCommand(command,'raw delivery command'):await send(command);if(out)result.textContent=JSON.stringify(out,null,2);await refresh()});refresh();setInterval(refresh,1000);</script></body></html>`;
 }
 
 export async function startSessionControlServer(
@@ -167,17 +172,25 @@ export async function startSessionControlServer(
 			if (request.method === "POST" && url.pathname === "/code/commands") {
 				const body = (await requestBody(request)) as {
 					readonly command?: unknown;
-					readonly approved?: unknown;
+					readonly approvalDigest?: unknown;
 				};
 				const snapshot = await control.execute(
 					body.command,
-					body.approved === true,
+					typeof body.approvalDigest === "string" ? body.approvalDigest : false,
 				);
 				json(response, 200, sessionSnapshotJson(snapshot));
 				return;
 			}
 			json(response, 404, { error: "not found" });
 		} catch (error) {
+			if (error instanceof SessionApprovalRequiredError) {
+				json(response, 409, {
+					error: error.message,
+					approval: error.approval,
+					approvalDigest: sessionDeliveryApprovalDigest(error.approval),
+				});
+				return;
+			}
 			json(response, 400, {
 				error: error instanceof Error ? error.message : String(error),
 			});

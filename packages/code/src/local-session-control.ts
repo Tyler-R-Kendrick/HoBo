@@ -9,6 +9,7 @@ import {
 } from "./resident-session-runtime.js";
 import {
 	createSessionOrchestrator,
+	sessionDeliveryApprovalDigest,
 	type SessionDeliveryApproval,
 	type SessionProcessRunner,
 } from "./session-orchestrator.js";
@@ -33,7 +34,10 @@ export interface LocalSessionControl {
 		paneId: string,
 		lines?: number,
 	): Promise<string>;
-	execute(command: unknown, approved?: boolean): Promise<SessionSnapshot>;
+	execute(
+		command: unknown,
+		approval?: boolean | string,
+	): Promise<SessionSnapshot>;
 	tmuxName(sessionId: string): string;
 	close(): void;
 }
@@ -53,13 +57,14 @@ export function createLocalSessionControl(
 		load: (sessionId) => runtime.load(sessionId),
 		capturePane: (sessionId, paneId, lines) =>
 			runtime.capturePane(sessionId, paneId, lines),
-		execute(command, approved = false) {
+		execute(command, approval = false) {
 			return createSessionOrchestrator({
 				runtime,
 				worktreesDir,
 				...(options.runner ? { runner: options.runner } : {}),
 				authorize: async (action, snapshot) =>
-					approved &&
+					(approval === true ||
+						approval === sessionDeliveryApprovalDigest(action)) &&
 					(options.authorize === undefined ||
 						(await options.authorize(action, snapshot))),
 			}).execute(command);

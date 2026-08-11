@@ -124,7 +124,12 @@ describe("resident session loopback server", () => {
 			expect(html).toContain("sessionStorage.hoboCodeClientId");
 			expect(html).toContain("p.id===s.focusedPaneId?' · focused':'");
 			expect(html).toContain("Running panes and agents will terminate.");
-			expect(html).toContain("'pull request #'+pullRequestNumber+' at '+head");
+			expect(html).toContain("Exact effect:");
+			expect(html).toContain("Approval required for ");
+			expect(html).toContain("challenge.approvalDigest");
+			expect(html).toContain("Stop agent '+run.provider+' ('+run.id+')");
+			expect(html).toContain("Restore checkpoint '+checkpoint.label");
+			expect(html).toContain("s.session.name+' · '+s.session.id");
 			expect(html).toContain(
 				"if(card.contains(document.activeElement)&&s.session.id!==forceId)continue",
 			);
@@ -163,11 +168,60 @@ describe("resident session loopback server", () => {
 			expect(createdResponse.status).toBe(200);
 			const created = (await createdResponse.json()) as {
 				revision: string;
+				session: { worktreePath: string };
 				panes: readonly { id: string }[];
 				agentRuns: readonly unknown[];
 			};
 			expect(created.panes).toHaveLength(1);
 			expect(created.agentRuns).toEqual([]);
+			writeFileSync(
+				join(created.session.worktreePath, "approved.txt"),
+				"approved\n",
+			);
+			const commitCommand = envelope("session-1", created.revision, "commit", {
+				message: "approved browser commit",
+			});
+			const challengeResponse = await fetch(
+				`http://127.0.0.1:${server.port}/code/commands`,
+				{
+					method: "POST",
+					headers,
+					body: JSON.stringify({ command: commitCommand }),
+				},
+			);
+			expect(challengeResponse.status).toBe(409);
+			const challenge = (await challengeResponse.json()) as {
+				approvalDigest: string;
+				approval: { details: { gitHead: string; message: string } };
+			};
+			expect(challenge.approval.details).toMatchObject({
+				message: "approved browser commit",
+			});
+			const wrongApproval = await fetch(
+				`http://127.0.0.1:${server.port}/code/commands`,
+				{
+					method: "POST",
+					headers,
+					body: JSON.stringify({
+						command: commitCommand,
+						approvalDigest: "0".repeat(64),
+					}),
+				},
+			);
+			expect(wrongApproval.status).toBe(409);
+			const approvedCommit = await fetch(
+				`http://127.0.0.1:${server.port}/code/commands`,
+				{
+					method: "POST",
+					headers,
+					body: JSON.stringify({
+						command: commitCommand,
+						approvalDigest: challenge.approvalDigest,
+					}),
+				},
+			);
+			expect(approvedCommit.status).toBe(200);
+			const committed = (await approvedCommit.json()) as { revision: string };
 
 			const detached = await fetch(
 				`http://127.0.0.1:${server.port}/code/commands`,
@@ -175,9 +229,14 @@ describe("resident session loopback server", () => {
 					method: "POST",
 					headers,
 					body: JSON.stringify({
-						command: envelope("session-1", created.revision, "detachSession", {
-							clientId: "browser-test",
-						}),
+						command: envelope(
+							"session-1",
+							committed.revision,
+							"detachSession",
+							{
+								clientId: "browser-test",
+							},
+						),
 					}),
 				},
 			);

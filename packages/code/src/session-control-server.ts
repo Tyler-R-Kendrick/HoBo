@@ -9,11 +9,11 @@ import {
 	createLocalSessionControl,
 	type LocalSessionControl,
 } from "./local-session-control.js";
+import { sessionSnapshotJson } from "./session-contract.js";
 import {
 	SessionApprovalRequiredError,
 	sessionDeliveryApprovalDigest,
 } from "./session-orchestrator.js";
-import { sessionSnapshotJson } from "./session-contract.js";
 
 export interface SessionControlServerOptions {
 	readonly hoboHome: string;

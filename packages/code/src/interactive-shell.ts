@@ -177,12 +177,15 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
  * Product identity claim. Shown in `/about` and `/help` only — never printed
  * on frames or replies (branding in the answer channel is noise).
  */
+// public-contract: shell identity shown by help and about consumers.
 export const PRODUCT_NOT_PI = "hobo-code · HoBo shell (not stock Pi Agent)";
 
 /** Footer engine label until a real completion engine is wired (Slice 2). */
+// public-contract: stable engine status text rendered by shell clients.
 export const ENGINE_NONE_LABEL = "engine:none · dispatch-only";
 
 /** Approval-gate affordance text — y promotes, n/Esc keeps work sandboxed. */
+// public-contract: stable approval affordance shared by shell renderers.
 export const APPROVAL_PROMPT = "y promote · n keep sandboxed";
 
 // ── Pure helpers ─────────────────────────────────────────────────────────

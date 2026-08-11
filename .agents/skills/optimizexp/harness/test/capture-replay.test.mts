@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { analyzeCast } from "../lib/cast-stats.mts";
 import { captureCli } from "../drivers/cli.mts";
+import { captureNative } from "../drivers/native.mts";
 
 // CLI captures are honest transcripts (exit code + full output + timing) —
 // never synthetic .cast "recordings" (that is how a frozen TUI once got
@@ -18,6 +19,25 @@ assert.match(result.primaryFile, /primary\.txt$/);
 assert.equal(result.exitCode, 0);
 const transcript = readFileSync(result.primaryFile, "utf8");
 assert.match(transcript, /replayable evidence/);
+
+const native = captureNative(mkdtempSync(path.join(tmpdir(), "optimizexp-native-")), {
+	command: "exit 7",
+	cwd: process.cwd(),
+});
+assert.equal(native.exitCode, 7);
+assert.equal(native.degraded, true);
+
+const repeatedDir = mkdtempSync(path.join(tmpdir(), "optimizexp-native-repeat-"));
+const firstNative = captureNative(repeatedDir, {
+	command: 'printf first > "$OUT_DIR/frame.png"',
+	cwd: process.cwd(),
+});
+assert.equal(firstNative.kind, "image");
+const repeatedNative = captureNative(repeatedDir, {
+	command: "true",
+	cwd: process.cwd(),
+});
+assert.equal(repeatedNative.kind, "transcript");
 
 // Perceptual timing is captured and machine-checkable.
 assert.equal(typeof result.timing.durationMs, "number");

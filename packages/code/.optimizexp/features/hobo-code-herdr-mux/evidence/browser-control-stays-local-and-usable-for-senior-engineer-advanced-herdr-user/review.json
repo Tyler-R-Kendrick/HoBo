@@ -1,0 +1,17 @@
+{
+  "status": "accepted",
+  "reviewer": "codex-playback",
+  "relevance": "relevant",
+  "completeness": "complete",
+  "coverageMode": "full-journey",
+  "coveredClaims": [
+    "claim-1",
+    "claim-2",
+    "claim-3",
+    "claim-4",
+    "claim-5"
+  ],
+  "artifactSha256": "3324a5c0aa7a1347eca09736861df79727f32ee45af376e4ae669fd330d17750",
+  "reviewedAt": "2026-08-11T10:23:54.431Z",
+  "notes": "Played the 10.8s capture and inspected all three committed frames. It shows tab and pane creation, focus and prompt input, checkpoint restore, an agent run with explicit stop confirmation, a server-issued commit challenge bound to message, gitHead, gitIndexTree, gitTree, and approval digest, detach/reattach, and the final stopped session state with pane and agent processes no longer running."
+}

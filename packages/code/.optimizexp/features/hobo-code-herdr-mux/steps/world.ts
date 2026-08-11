@@ -1,33 +1,36 @@
-/**
- * OptimizeXP World for feature `hobo-code-herdr-mux`.
- * Shared mutable state for Cucumber steps — no live external services.
- */
-export type OptimizexpWorld = {
-  featureId: string;
-  personaId: string | null;
-  lastExitCode: number | null;
-  lastStdout: string;
-  lastStderr: string;
-  lastCommand: string | null;
-  notes: string[];
-  statusClear: boolean;
-  nextActionObvious: boolean;
-  errorActionable: boolean;
-  evidencePath: string | null;
+import type { SessionControlServer } from "../../../../src/session-control-server.ts";
+
+export type CommandResult = {
+	status: number | null;
+	stdout: string;
+	stderr: string;
 };
 
-export function createWorld(featureId: string): OptimizexpWorld {
-  return {
-    featureId,
-    personaId: null,
-    lastExitCode: null,
-    lastStdout: "",
-    lastStderr: "",
-    lastCommand: null,
-    notes: [],
-    statusClear: false,
-    nextActionObvious: false,
-    errorActionable: false,
-    evidencePath: null,
-  };
+export type BrowserJourney = {
+	server: SessionControlServer;
+	headers: Record<string, string>;
+	html: string;
+	commands: string[];
+};
+
+export type OptimizexpWorld = {
+	featureId: string;
+	personaId: string | null;
+	scenarioName: string;
+	command: CommandResult | null;
+	browser: BrowserJourney | null;
+	temporaryPaths: string[];
+};
+
+export function createWorld(
+	featureId = "hobo-code-herdr-mux",
+): OptimizexpWorld {
+	return {
+		featureId,
+		personaId: null,
+		scenarioName: "",
+		command: null,
+		browser: null,
+		temporaryPaths: [],
+	};
 }

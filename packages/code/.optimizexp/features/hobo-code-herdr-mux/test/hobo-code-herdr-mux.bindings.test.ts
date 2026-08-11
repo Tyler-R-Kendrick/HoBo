@@ -1,62 +1,42 @@
-/**
- * Vitest binding/smoke tests for OptimizeXP feature `hobo-code-herdr-mux`.
- */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+
 import {
-  DISCOVERY_PRIMARY,
-  IMPLEMENTATION_STATUS,
-  exerciseSurface,
-  observeHerdrJson,
-  onCriticalPath,
-  readHerdrHelp,
-  setFeatureContext,
-  setPersona,
+	assertActionableMissingSession,
+	assertBaseSessionHelp,
+	assertCurrentSessionHelp,
+	assertDetachHelp,
+	cleanup,
+	runBaseSessionHelp,
+	runCurrentCli,
 } from "../steps/implementations.ts";
-import { createWorld } from "../steps/world.ts";
+import { createWorld, type OptimizexpWorld } from "../steps/world.ts";
 
-describe("optimizexp feature hobo-code-herdr-mux bindings", () => {
-  it("exposes discovery metadata", () => {
-    expect(IMPLEMENTATION_STATUS.exerciseSurface).toBe("wired");
-    expect(DISCOVERY_PRIMARY.command).toMatch(/status/);
-  });
+let world: OptimizexpWorld;
 
-  it("sets persona and feature context", () => {
-    const world = createWorld("hobo-code-herdr-mux");
-    setPersona(world, "senior-engineer-advanced-herdr-user");
-    setFeatureContext(world, "hobo-code-herdr-mux");
-    expect(world.personaId).toBe("senior-engineer-advanced-herdr-user");
-    expect(world.featureId).toBe("hobo-code-herdr-mux");
-  });
+afterEach(async () => {
+	await cleanup(world);
+});
 
-  it("critical path finds feature metadata", () => {
-    const world = createWorld("hobo-code-herdr-mux");
-    setFeatureContext(world, "hobo-code-herdr-mux");
-    onCriticalPath(world);
-    expect(world.notes.some((n) => n.includes("critical path"))).toBe(true);
-  });
+describe("hobo-code Herdr mux acceptance bindings", () => {
+	it("executes current resident-session help", () => {
+		world = createWorld();
+		runCurrentCli(world, ["session", "--help"]);
+		assertCurrentSessionHelp(world);
+		assertDetachHelp(world);
+		expect(world.command?.status).toBe(0);
+	});
 
-  it("status surface shows herdr footer and pane fold", () => {
-    const world = createWorld("hobo-code-herdr-mux");
-    setFeatureContext(world, "hobo-code-herdr-mux");
-    exerciseSurface(world);
-    expect(world.lastExitCode).toBe(0);
-    expect(world.lastStdout).toMatch(/herdr · panes · detach · highlight→copy/);
-    expect(world.statusClear).toBe(true);
-  });
+	it("executes the reviewed base help", () => {
+		world = createWorld();
+		runBaseSessionHelp(world);
+		assertBaseSessionHelp(world);
+		expect(world.command?.stdout).toContain("durable handback");
+	});
 
-  it("JSON exposes herdr capabilities and persistence", () => {
-    const world = createWorld("hobo-code-herdr-mux");
-    setFeatureContext(world, "hobo-code-herdr-mux");
-    observeHerdrJson(world);
-    expect(world.lastExitCode).toBe(0);
-    expect(world.statusClear).toBe(true);
-  });
-
-  it("help names herdr differentiators", () => {
-    const world = createWorld("hobo-code-herdr-mux");
-    setFeatureContext(world, "hobo-code-herdr-mux");
-    readHerdrHelp(world);
-    expect(world.lastExitCode).toBe(0);
-    expect(world.statusClear).toBe(true);
-  });
+	it("executes the actionable missing-session path", () => {
+		world = createWorld();
+		runCurrentCli(world, ["session", "show", "missing-session"]);
+		assertActionableMissingSession(world);
+		expect(world.command?.status).toBe(1);
+	});
 });

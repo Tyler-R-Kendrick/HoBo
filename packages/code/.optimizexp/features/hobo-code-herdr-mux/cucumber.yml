@@ -1,0 +1,6 @@
+default:
+  paths:
+    - "packages/code/.optimizexp/features/hobo-code-herdr-mux/*.feature"
+  import:
+    - "packages/code/.optimizexp/features/hobo-code-herdr-mux/steps/**/*.ts"
+  publishQuiet: true

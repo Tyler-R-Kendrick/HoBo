@@ -383,6 +383,7 @@ async function capture(args: Record<string, string>) {
 		primaryFile = r.primaryFile;
 		kind = r.kind;
 		screen = r.screen;
+		exitCode = r.exitCode;
 		degraded = r.degraded;
 		notes = r.notes;
 		repro = { nativeCmd: args.nativeCmd || process.env.OPTIMIZEXP_NATIVE_CAPTURE };

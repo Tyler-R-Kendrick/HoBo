@@ -23,6 +23,7 @@ Rules:
 3. Optional `frames/` is replaced as a set when keyframe mode runs.
 4. Bus outcome entries **link** to the evidence path; they do not embed binaries.
 5. Run-local copies under `.optimizexp/runs/<runId>/artifacts/` are allowed as scratch; **canonical** evidence is the feature folder path.
+6. Native capture may promote only media created or changed by the current command; preserve its exit code and mark non-zero captures degraded.
 
 ## Capture priority by interface
 

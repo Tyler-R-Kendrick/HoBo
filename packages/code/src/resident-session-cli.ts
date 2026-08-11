@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { AgentLifecycleState } from "./_generated/code_harness_pb.js";
+import {
+	AgentLifecycleState,
+	SessionLifecycleState,
+} from "./_generated/code_harness_pb.js";
 import type { DevMachine } from "./dev-machines.js";
 import { sshDestination } from "./dev-machines.js";
 import {
@@ -14,6 +17,18 @@ import {
 } from "./session-contract.js";
 
 const DELIVERY_COMMANDS = new Set(["commit", "push", "pr", "stack", "merge"]);
+
+export function shouldWaitForResidentSession(
+	sessionState: SessionLifecycleState,
+	agentStates: readonly AgentLifecycleState[],
+): boolean {
+	return (
+		sessionState === SessionLifecycleState.RUNNING &&
+		agentStates.some((state) =>
+			[AgentLifecycleState.STARTING, AgentLifecycleState.WORKING].includes(state),
+		)
+	);
+}
 
 export function remoteSessionServeSshArgs(
 	machine: DevMachine,
@@ -217,10 +232,9 @@ export async function runResidentSessionCli(input: {
 			if (!snapshot) throw new Error(`session ${sessionId} does not exist`);
 			while (
 				operation === "wait" &&
-				snapshot.agentRuns.some((run) =>
-					[AgentLifecycleState.STARTING, AgentLifecycleState.WORKING].includes(
-						run.lifecycleState,
-					),
+				shouldWaitForResidentSession(
+					snapshot.session?.lifecycleState ?? SessionLifecycleState.FAILED,
+					snapshot.agentRuns.map((run) => run.lifecycleState),
 				)
 			) {
 				await new Promise((resolve) => setTimeout(resolve, 250));

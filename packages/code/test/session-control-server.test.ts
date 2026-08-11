@@ -124,6 +124,8 @@ describe("resident session loopback server", () => {
 			expect(html).toContain("sessionStorage.hoboCodeClientId");
 			expect(html).toContain("p.id===s.focusedPaneId?' · focused':'");
 			expect(html).toContain("Running panes and agents will terminate.");
+			expect(html).toContain("Session is stopped.");
+			expect(html).toContain("'+s.session.id+')?");
 			expect(html).toContain("Exact effect:");
 			expect(html).toContain("Approval required for ");
 			expect(html).toContain("challenge.approvalDigest");

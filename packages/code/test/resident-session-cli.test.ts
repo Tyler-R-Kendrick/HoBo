@@ -4,14 +4,31 @@ import { join } from "node:path";
 import { loadStationEvents } from "@hobo/stations";
 import { describe, expect, it } from "vitest";
 
+import {
+	AgentLifecycleState,
+	SessionLifecycleState,
+} from "../src/_generated/code_harness_pb.js";
 import { runHoboCodeCli } from "../src/cli.js";
 import { DEV_MACHINES_FILE } from "../src/dev-machines.js";
 import {
 	authorizationLeaseDelay,
 	remoteSessionServeSshArgs,
+	shouldWaitForResidentSession,
 } from "../src/resident-session-cli.js";
 
 describe("resident session remote browser", () => {
+	it("does not wait on stale agent state after a session is terminal", () => {
+		expect(
+			shouldWaitForResidentSession(SessionLifecycleState.RUNNING, [
+				AgentLifecycleState.WORKING,
+			]),
+		).toBe(true);
+		expect(
+			shouldWaitForResidentSession(SessionLifecycleState.STOPPED, [
+				AgentLifecycleState.WORKING,
+			]),
+		).toBe(false);
+	});
 	it("fails closed at the Station authorization deadline", () => {
 		expect(
 			authorizationLeaseDelay(

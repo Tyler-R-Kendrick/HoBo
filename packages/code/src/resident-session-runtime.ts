@@ -629,6 +629,13 @@ export function createResidentSessionRuntime(
 			latest.session.lifecycleState = SessionLifecycleState.FAILED;
 			for (const pane of latest.panes) {
 				pane.lifecycleState = PaneLifecycleState.MISSING;
+				pane.agentRunId = undefined;
+			}
+			for (const run of latest.agentRuns) {
+				if (!isActiveAgent(run.lifecycleState)) continue;
+				run.lifecycleState = AgentLifecycleState.FAILED;
+				run.updatedAt = now();
+				run.summary = "tmux session missing";
 			}
 			return changed(latest);
 		});

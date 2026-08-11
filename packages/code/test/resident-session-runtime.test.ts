@@ -680,13 +680,31 @@ describe("resident session runtime", () => {
 	it("marks a vanished tmux session missing and permits recreation", async () => {
 		const dataDir = tempRoot();
 		const first = createResidentSessionRuntime({ dataDir, tmux: fakeTmux() });
-		await first.create({
+		const created = await first.create({
 			id: "task-recover",
 			name: "recover",
 			projectRoot: "/repo",
 			worktreePath: "/worktree",
 			branch: "code/recover",
 			clientId: "cli",
+		});
+		await first.update("task-recover", created.revision ?? 0n, (snapshot) => {
+			const pane = snapshot.panes[0];
+			if (!pane) throw new Error("expected initial pane");
+			pane.agentRunId = "run-before-tmux-loss";
+			snapshot.agentRuns.push(
+				create(AgentRunSchema, {
+					id: pane.agentRunId,
+					sessionId: "task-recover",
+					paneId: pane.id,
+					provider: "codex",
+					lifecycleState: AgentLifecycleState.WORKING,
+					startedAt: "2026-08-10T00:00:00.000Z",
+					updatedAt: "2026-08-10T00:00:00.000Z",
+					summary: "agent running",
+					terminalOnly: true,
+				}),
+			);
 		});
 		first.close();
 		const restarted = createResidentSessionRuntime({
@@ -702,6 +720,10 @@ describe("resident session runtime", () => {
 		const missing = await restarted.load("task-recover");
 		expect(missing?.session?.lifecycleState).toBe(SessionLifecycleState.FAILED);
 		expect(missing?.panes[0]?.lifecycleState).toBe(PaneLifecycleState.MISSING);
+		expect(missing?.panes[0]?.agentRunId).toBeUndefined();
+		expect(missing?.agentRuns[0]?.lifecycleState).toBe(
+			AgentLifecycleState.FAILED,
+		);
 		restarted.close();
 
 		const recovered = createResidentSessionRuntime({
@@ -719,7 +741,7 @@ describe("resident session runtime", () => {
 		expect(recreated.session?.lifecycleState).toBe(
 			SessionLifecycleState.RUNNING,
 		);
-		expect(recreated.revision).toBe(3n);
+		expect(recreated.revision).toBe(4n);
 		recovered.close();
 	});
 

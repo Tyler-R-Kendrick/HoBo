@@ -407,7 +407,13 @@ describe("session orchestrator", () => {
 					return {
 						code: 0,
 						stdout: JSON.stringify({
-							branches: [{ name: "code/review", pr: { number: 42 } }],
+							branches: [
+								{
+									name: "code/review",
+									head: git(cwd, ["rev-parse", "HEAD"]),
+									pr: { number: 42 },
+								},
+							],
 						}),
 						stderr: "",
 					};
@@ -647,7 +653,9 @@ describe("session orchestrator", () => {
 		harness.runtime.close();
 	});
 
-	it("does not submit unapproved sibling stack branches", async () => {
+	it.each(["sibling", "stale-head"])(
+		"does not submit unapproved stack scope (%s)",
+		async (failure) => {
 		const harness = await createHarness();
 		let submitted = false;
 		const base = sessionProcessRunner();
@@ -663,10 +671,16 @@ describe("session orchestrator", () => {
 						return Promise.resolve({
 							code: 0,
 							stdout: JSON.stringify({
-								branches: [
-									{ name: "code/review" },
-									{ name: "code/unapproved-sibling" },
-								],
+								branches:
+									failure === "sibling"
+										? [
+												{
+													name: "code/review",
+													head: git(cwd, ["rev-parse", "HEAD"]),
+												},
+												{ name: "code/unapproved-sibling" },
+											]
+										: [{ name: "code/review", head: "f".repeat(40) }],
 							}),
 							stderr: "",
 						});
@@ -688,7 +702,8 @@ describe("session orchestrator", () => {
 		).rejects.toThrow("exactly the current branch");
 		expect(submitted).toBe(false);
 		harness.runtime.close();
-	});
+		},
+	);
 
 	it.each([
 		{ preexisting: false, closes: true },
@@ -734,7 +749,13 @@ describe("session orchestrator", () => {
 						return Promise.resolve({
 							code: 0,
 							stdout: JSON.stringify({
-								branches: [{ name: "code/review", pr: { number: 42 } }],
+								branches: [
+									{
+										name: "code/review",
+										head: git(cwd, ["rev-parse", "HEAD"]),
+										pr: { number: 42 },
+									},
+								],
 							}),
 							stderr: "",
 						});
@@ -1323,7 +1344,13 @@ describe("session orchestrator", () => {
 						return Promise.resolve({
 							code: 0,
 							stdout: JSON.stringify({
-								branches: [{ name: "code/review", pr: { number: 42 } }],
+								branches: [
+									{
+										name: "code/review",
+										head: git(cwd, ["rev-parse", "HEAD"]),
+										pr: { number: 42 },
+									},
+								],
 							}),
 							stderr: "",
 						});

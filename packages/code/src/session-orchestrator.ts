@@ -854,11 +854,12 @@ export function createSessionOrchestrator(
 			session.worktreePath,
 		);
 		const parsed = JSON.parse(output) as {
-			branches?: Array<{ name?: string }>;
+			branches?: Array<{ name?: string; head?: string }>;
 		};
 		if (
 			parsed.branches?.length !== 1 ||
 			parsed.branches[0]?.name !== session.branch ||
+			parsed.branches[0]?.head !== preHead ||
 			(await run("git", ["rev-parse", "HEAD"], session.worktreePath)) !==
 				preHead
 		) {

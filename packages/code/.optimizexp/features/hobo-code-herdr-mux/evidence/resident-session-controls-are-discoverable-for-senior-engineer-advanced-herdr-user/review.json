@@ -1,6 +1,6 @@
 {
   "status": "accepted",
-  "reviewer": "codex-live",
+  "reviewer": "codex",
   "relevance": "relevant",
   "completeness": "complete",
   "coverageMode": "full-journey",
@@ -11,7 +11,7 @@
     "claim-4",
     "claim-5"
   ],
-  "artifactSha256": "cceb25b00b674d4eb6f0bede739190daf45138bbee1a10211e0300c75d0527e6",
-  "reviewedAt": "2026-08-11T04:25:28.785Z",
-  "notes": "Exit-zero transcript visibly lists resident sessions, tabs, panes, agents, checkpoints, approved delivery, detach/reattach, persistence, and browser control."
+  "artifactSha256": "f7966d71e1f143685081380a013bcb5963f9734421018b8186a8e3646f21f820",
+  "reviewedAt": "2026-08-11T07:24:29.179Z",
+  "notes": "Installed package binary exits successfully and lists resident session, tab, pane, agent, checkpoint, approved delivery, detach, reattach, browser, and Station forwarding controls."
 }

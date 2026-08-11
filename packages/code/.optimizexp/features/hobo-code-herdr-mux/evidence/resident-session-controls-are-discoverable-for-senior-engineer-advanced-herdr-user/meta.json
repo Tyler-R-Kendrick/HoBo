@@ -6,7 +6,7 @@
   ],
   "interface": "cli",
   "driver": "cli",
-  "capturedAt": "2026-08-11T04:25:05.182Z",
+  "capturedAt": "2026-08-11T07:23:44.459Z",
   "runId": "20260810-hobo-code-sessions",
   "screen": {
     "cols": null,
@@ -15,8 +15,8 @@
   "primary": {
     "file": "primary.txt",
     "kind": "transcript",
-    "bytes": 1918,
-    "sha256": "cceb25b00b674d4eb6f0bede739190daf45138bbee1a10211e0300c75d0527e6"
+    "bytes": 308,
+    "sha256": "f7966d71e1f143685081380a013bcb5963f9734421018b8186a8e3646f21f820"
   },
   "claims": [
     {
@@ -42,14 +42,14 @@
   ],
   "frames": [],
   "repro": {
-    "command": "rtk proxy pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts session --help",
+    "command": "/tmp/hobo-code-installed-final.tjuKrc/bin/hobo-code.mjs session --help",
     "cwd": ".",
     "via": "capture-evidence"
   },
   "exitCode": 0,
   "timing": {
-    "durationMs": 2116,
-    "timeToFirstOutputMs": 1903
+    "durationMs": 253,
+    "timeToFirstOutputMs": null
   },
   "degraded": false,
   "notes": []

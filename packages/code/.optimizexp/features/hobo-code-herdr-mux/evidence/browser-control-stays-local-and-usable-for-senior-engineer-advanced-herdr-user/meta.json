@@ -4,21 +4,21 @@
   "personaIds": [
     "senior-engineer-advanced-herdr-user"
   ],
-  "interface": "web",
-  "driver": "web",
-  "capturedAt": "2026-08-11T04:30:47.595Z",
+  "interface": "native",
+  "driver": "native",
+  "capturedAt": "2026-08-11T07:36:00.612Z",
   "runId": "20260810-hobo-code-sessions",
   "screen": {
-    "widthPx": 1280,
-    "heightPx": 720,
+    "widthPx": null,
+    "heightPx": null,
     "cols": null,
     "rows": null
   },
   "primary": {
     "file": "primary.webm",
     "kind": "video",
-    "bytes": 67344,
-    "sha256": "78b0b6373d8730a306b849ffc34a56b238c357f2c10aa0866aaad29842bbfd28"
+    "bytes": 659408,
+    "sha256": "6f03e98b42f7f7180eaa820ff0191e08a116ce5b7e12fb27c90b349073f349fd"
   },
   "claims": [
     {
@@ -42,14 +42,16 @@
       "text": "And evidence is capturable for this scenario"
     }
   ],
-  "frames": [],
+  "frames": [
+    "frame-000.png"
+  ],
   "repro": {
-    "url": "http://127.0.0.1:33025/?token=0ynNT9KSEorZSKtHd8iLDO160OddYWcXrVTIe3EqOWk",
+    "nativeCmd": "node --import tsx /tmp/hobo-code-browser-evidence.mts",
     "via": "capture-evidence"
   },
   "exitCode": null,
   "degraded": false,
   "notes": [
-    "playwright screenshot captured"
+    "native command exit 0"
   ]
 }

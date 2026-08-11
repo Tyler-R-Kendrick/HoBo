@@ -1,6 +1,6 @@
 {
   "status": "accepted",
-  "reviewer": "codex-live",
+  "reviewer": "codex",
   "relevance": "relevant",
   "completeness": "complete",
   "coverageMode": "full-journey",
@@ -11,7 +11,7 @@
     "claim-4",
     "claim-5"
   ],
-  "artifactSha256": "78b0b6373d8730a306b849ffc34a56b238c357f2c10aa0866aaad29842bbfd28",
-  "reviewedAt": "2026-08-11T04:31:00.305Z",
-  "notes": "Rendered current-head page shows create controls, full versioned command boundary, explicit approval checkbox, and Station forwarding guidance while stating the server never binds publicly."
+  "artifactSha256": "6f03e98b42f7f7180eaa820ff0191e08a116ce5b7e12fb27c90b349073f349fd",
+  "reviewedAt": "2026-08-11T07:37:03.571Z",
+  "notes": "Playback and captured frames show authenticated loopback UI creation, tabs, panes, focus/prompt controls, checkpoint, approved delivery controls, explicit detached state, reattach, stop, and Station forwarding guidance. Native journey exited 0."
 }

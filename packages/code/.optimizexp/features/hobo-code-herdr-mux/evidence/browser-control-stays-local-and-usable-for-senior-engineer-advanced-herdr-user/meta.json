@@ -43,7 +43,8 @@
     }
   ],
   "frames": [
-    "frame-000.png"
+    "frame-000.png",
+    "frame-approval.png"
   ],
   "repro": {
     "nativeCmd": "node --import tsx packages/code/.optimizexp/features/hobo-code-herdr-mux/steps/capture-browser.mts",

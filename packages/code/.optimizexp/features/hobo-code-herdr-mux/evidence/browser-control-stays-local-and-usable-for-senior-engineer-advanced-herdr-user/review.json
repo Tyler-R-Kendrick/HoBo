@@ -13,5 +13,5 @@
   ],
   "artifactSha256": "7e475342e9ffa4001b82d500befde13592ad6967895cf66cfa2394c0d8e225cc",
   "reviewedAt": "2026-08-11T09:27:56.624Z",
-  "notes": "Played the 14.4s capture and inspected both committed frames. It shows tab and pane creation, focus and prompt input, checkpoint restore, an agent run with explicit stop confirmation, a server-issued commit challenge with exact message, gitHead, gitIndexTree, gitTree, and approval digest, detach/reattach, and loopback Station-forwarding guidance."
+  "notes": "Played the 10.64s capture and inspected both committed frames. It shows tab and pane creation, focus and prompt input, checkpoint restore, an agent run with explicit stop confirmation, a server-issued commit challenge with exact message, gitHead, gitIndexTree, gitTree, and approval digest, detach/reattach, and loopback Station-forwarding guidance."
 }

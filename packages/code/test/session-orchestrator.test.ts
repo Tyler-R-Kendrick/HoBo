@@ -647,6 +647,49 @@ describe("session orchestrator", () => {
 		harness.runtime.close();
 	});
 
+	it("does not submit unapproved sibling stack branches", async () => {
+		const harness = await createHarness();
+		let submitted = false;
+		const base = sessionProcessRunner();
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner: {
+				run(command, args, cwd, env) {
+					if (command !== "gh") return base.run(command, args, cwd, env);
+					if (args[0] === "pr" && args[1] === "list")
+						return Promise.resolve({ code: 0, stdout: "[]", stderr: "" });
+					if (args[0] === "stack" && args[1] === "view")
+						return Promise.resolve({
+							code: 0,
+							stdout: JSON.stringify({
+								branches: [
+									{ name: "code/review" },
+									{ name: "code/unapproved-sibling" },
+								],
+							}),
+							stderr: "",
+						});
+					if (args[0] === "stack" && args[1] === "submit") submitted = true;
+					return Promise.resolve({ code: 0, stdout: "", stderr: "" });
+				},
+			},
+			authorize: () => true,
+		});
+		await expect(
+			orchestrator.execute(
+				envelope(
+					"session-1",
+					harness.created.revision ?? 0n,
+					"stackPullRequest",
+					{ parentBranch: "main", title: "approved", body: "" },
+				),
+			),
+		).rejects.toThrow("exactly the current branch");
+		expect(submitted).toBe(false);
+		harness.runtime.close();
+	});
+
 	it.each([
 		{ preexisting: false, closes: true },
 		{ preexisting: true, closes: false },

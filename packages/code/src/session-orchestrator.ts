@@ -844,6 +844,30 @@ export function createSessionOrchestrator(
 		return number;
 	}
 
+	async function requireApprovedStackScope(
+		session: NonNullable<SessionSnapshot["session"]>,
+		preHead: string,
+	): Promise<void> {
+		const output = await run(
+			"gh",
+			["stack", "view", "--json"],
+			session.worktreePath,
+		);
+		const parsed = JSON.parse(output) as {
+			branches?: Array<{ name?: string }>;
+		};
+		if (
+			parsed.branches?.length !== 1 ||
+			parsed.branches[0]?.name !== session.branch ||
+			(await run("git", ["rev-parse", "HEAD"], session.worktreePath)) !==
+				preHead
+		) {
+			throw new Error(
+				"approved stack must contain exactly the current branch at the approved Git HEAD",
+			);
+		}
+	}
+
 	async function requireApprovedPullRequestHead(
 		session: NonNullable<SessionSnapshot["session"]>,
 		pullRequestNumber: number,
@@ -1711,6 +1735,10 @@ export function createSessionOrchestrator(
 											session.branch,
 										],
 										session.worktreePath,
+									);
+									await requireApprovedStackScope(
+										session,
+										ledger.context.preHead,
 									);
 									await run(
 										"gh",

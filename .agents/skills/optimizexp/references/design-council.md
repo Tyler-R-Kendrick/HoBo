@@ -243,8 +243,8 @@ linked-worktree and fixture validation always resolves the configured checkout.
 Required reviews compare the proposal's sorted paths and SHA-256 of the
 full-index binary Git diff with the effective base-to-head diff. Exemptions are
 also base/head-bound and must list that exact diff; self-attested paths fail.
-Binary evidence diffs up to 16 MiB are inspected directly so current-head
-validation does not fail on reviewed recordings or screenshots.
+Binary evidence source payloads up to 16 MiB are inspected directly so
+current-head validation does not fail on reviewed recordings or screenshots.
 
 ## SDLC gate
 

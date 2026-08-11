@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { COUNCIL_PERSONAS, stateDigest, type CouncilState } from "../lib/design-council.mts";
-import { runConsensusCommand } from "../../workflows/cross-agent/consensus-loop.mts";
+import { inspectGitReviewSubject, runConsensusCommand } from "../../workflows/cross-agent/consensus-loop.mts";
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../../../..");
 const CLI = path.join(REPO, ".agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts");
@@ -87,6 +89,28 @@ function resolveBlocker(root: string, state: CouncilState, body: Record<string, 
 }
 
 describe("designer consensus CLI", () => {
+	it("inspects a 16 MiB high-entropy binary evidence diff", () => {
+		const root = mkdtempSync(path.join(tmpdir(), "design-council-binary-"));
+		const git = (...args: string[]) =>
+			execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+		try {
+			git("init", "-q");
+			writeFileSync(path.join(root, "baseline.txt"), "baseline\n");
+			git("add", "baseline.txt");
+			git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "baseline");
+			const base = git("rev-parse", "HEAD");
+			writeFileSync(path.join(root, "evidence.bin"), randomBytes(16 * 1024 * 1024));
+			git("add", "evidence.bin");
+			git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "evidence");
+			const head = git("rev-parse", "HEAD");
+			const inspected = inspectGitReviewSubject(root, base, head, base);
+			assert.deepEqual(inspected.problems, []);
+			assert.ok(inspected.normalizedDiffHash);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
 	it("opens, records exact-six zero-investment submissions, decides, and asserts current approval", () => {
 		const root = seedRepo();
 		try {

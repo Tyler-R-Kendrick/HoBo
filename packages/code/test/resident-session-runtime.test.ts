@@ -52,13 +52,38 @@ function tempRoot(): string {
 function fakeTmux(): MuxRunner & { calls: string[][] } {
 	const calls: string[][] = [];
 	let pane = 0;
+	let lastInputCommand = "";
+	const sessions = new Set<string>();
 	return {
 		calls,
 		async run(args) {
 			calls.push([...args]);
+			if (args[0] === "has-session") {
+				const target = args[args.indexOf("-t") + 1] ?? "";
+				return {
+					code: sessions.has(target) ? 0 : 1,
+					stdout: "",
+					stderr: "can't find session",
+				};
+			}
+			if (args[0] === "kill-session") {
+				sessions.delete(args[args.indexOf("-t") + 1] ?? "");
+			}
+			if (args[0] === "show-options") {
+				return {
+					code: lastInputCommand ? 0 : 1,
+					stdout: lastInputCommand,
+				};
+			}
+			if (args[0] === "send-keys" && args.includes("set-option")) {
+				lastInputCommand = args.at(-1) ?? "";
+			}
 			if (
 				["new-session", "new-window", "split-window"].includes(args[0] ?? "")
 			) {
+				if (args[0] === "new-session") {
+					sessions.add(args[args.indexOf("-s") + 1] ?? "");
+				}
 				pane += 1;
 				return { code: 0, stdout: `%${pane}\n` };
 			}
@@ -133,11 +158,7 @@ describe("resident session runtime", () => {
 			focused.focusedPaneId,
 			"review",
 		);
-		const detached = await runtime.detach(
-			"task-2",
-			focused.revision + 1n,
-			"cli-1",
-		);
+		const detached = await runtime.detach("task-2", focused.revision, "cli-1");
 		expect(detached.attachedClientIds).toEqual([]);
 		const attached = await runtime.reattach(
 			"task-2",
@@ -163,6 +184,80 @@ describe("resident session runtime", () => {
 				"kill-session",
 			]),
 		);
+		runtime.close();
+	});
+
+	it("deduplicates acknowledged pane input without inventing a state revision", async () => {
+		const tmux = fakeTmux();
+		const runtime = createResidentSessionRuntime({ dataDir: tempRoot(), tmux });
+		const created = await runtime.create({
+			id: "task-input",
+			name: "input",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/input",
+			clientId: "cli",
+		});
+		const first = await runtime.sendInput(
+			"task-input",
+			created.revision,
+			created.focusedPaneId,
+			"approve",
+			"command-input-1",
+		);
+		const replayed = await runtime.sendInput(
+			"task-input",
+			created.revision,
+			created.focusedPaneId,
+			"approve",
+			"command-input-1",
+		);
+		expect(first.revision).toBe(created.revision);
+		expect(replayed.revision).toBe(created.revision);
+		expect(tmux.calls.filter((call) => call[0] === "send-keys")).toHaveLength(
+			1,
+		);
+		runtime.close();
+	});
+
+	it("adopts a metadata-bearing tmux session left before its first event", async () => {
+		const metadata = Buffer.from(
+			JSON.stringify({
+				paneId: "orphan-pane",
+				tabId: "orphan-tab",
+				paneTitle: "shell",
+				tabTitle: "main",
+				workingDirectory: "/worktree",
+			}),
+		).toString("base64url");
+		const calls: string[][] = [];
+		const runtime = createResidentSessionRuntime({
+			dataDir: tempRoot(),
+			tmux: {
+				async run(args) {
+					calls.push([...args]);
+					if (args[0] === "has-session") return { code: 0, stdout: "" };
+					if (args[0] === "list-panes") {
+						return {
+							code: 0,
+							stdout: `%7\t1\t1\tenv HOBO_PANE_META=${metadata} sh -c true\n`,
+						};
+					}
+					return { code: 0, stdout: "" };
+				},
+			},
+		});
+		const adopted = await runtime.create({
+			id: "task-orphan",
+			name: "orphan",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/orphan",
+			clientId: "cli",
+		});
+		expect(adopted.panes[0]?.id).toBe("orphan-pane");
+		expect(adopted.panes[0]?.runtimeId).toBe("%7");
+		expect(calls.some((call) => call[0] === "new-session")).toBe(false);
 		runtime.close();
 	});
 
@@ -238,7 +333,8 @@ describe("resident session runtime", () => {
 
 	it("replays an event written after the last SQLite snapshot", async () => {
 		const dataDir = tempRoot();
-		const runtime = createResidentSessionRuntime({ dataDir, tmux: fakeTmux() });
+		const tmux = fakeTmux();
+		const runtime = createResidentSessionRuntime({ dataDir, tmux });
 		const created = await runtime.create({
 			id: "task-tail",
 			name: "tail",
@@ -269,7 +365,7 @@ describe("resident session runtime", () => {
 
 		const reopened = createResidentSessionRuntime({
 			dataDir,
-			tmux: fakeTmux(),
+			tmux,
 		});
 		expect((await reopened.load("task-tail"))?.revision).toBe(2n);
 		reopened.close();
@@ -361,9 +457,40 @@ describe("resident session runtime", () => {
 		restarted.close();
 	});
 
-	it("does not persist failure when tmux availability is unknown", async () => {
+	it("ignores malformed tmux pane metadata instead of persisting it", async () => {
 		const dataDir = tempRoot();
 		const first = createResidentSessionRuntime({ dataDir, tmux: fakeTmux() });
+		await first.create({
+			id: "task-malformed",
+			name: "malformed",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/malformed",
+			clientId: "cli",
+		});
+		first.close();
+		const restarted = createResidentSessionRuntime({
+			dataDir,
+			tmux: {
+				run: async (args) =>
+					args[0] === "has-session"
+						? { code: 0, stdout: "" }
+						: {
+								code: 0,
+								stdout: "%1\t1\t1\tenv HOBO_PANE_META=e30 sh -c true\n",
+							},
+			},
+		});
+		const restored = await restarted.load("task-malformed");
+		expect(restored?.revision).toBe(1n);
+		expect(restored?.panes[0]?.id).not.toBe("");
+		restarted.close();
+	});
+
+	it("does not persist failure when tmux availability is unknown", async () => {
+		const dataDir = tempRoot();
+		const tmux = fakeTmux();
+		const first = createResidentSessionRuntime({ dataDir, tmux });
 		await first.create({
 			id: "task-probe",
 			name: "probe",
@@ -388,7 +515,7 @@ describe("resident session runtime", () => {
 		);
 		unavailable.close();
 
-		const healthy = createResidentSessionRuntime({ dataDir, tmux: fakeTmux() });
+		const healthy = createResidentSessionRuntime({ dataDir, tmux });
 		const restored = await healthy.load("task-probe");
 		expect(restored?.session?.lifecycleState).toBe(
 			SessionLifecycleState.RUNNING,

@@ -11,6 +11,8 @@ import { create, type JsonValue } from "@bufbuild/protobuf";
 import { createRuntimeLocalEventStore } from "@hobo/runtime-local";
 
 import {
+	AgentLifecycleState,
+	AgentRunSchema,
 	DeliveryLifecycleState,
 	PaneLifecycleState,
 	PaneSchema,
@@ -85,6 +87,7 @@ export interface ResidentSessionRuntime {
 		expectedRevision: bigint,
 		paneId: string,
 		input: string,
+		commandId?: string,
 	): Promise<SessionSnapshot>;
 	closePane(
 		sessionId: string,
@@ -102,6 +105,24 @@ export interface ResidentSessionRuntime {
 		clientId: string,
 	): Promise<SessionSnapshot>;
 	stop(sessionId: string, expectedRevision: bigint): Promise<SessionSnapshot>;
+	startAgent(
+		sessionId: string,
+		expectedRevision: bigint,
+		paneId: string,
+		provider: string,
+		command: readonly string[],
+		prompt: string,
+	): Promise<SessionSnapshot>;
+	stopAgent(
+		sessionId: string,
+		expectedRevision: bigint,
+		agentRunId: string,
+	): Promise<SessionSnapshot>;
+	update(
+		sessionId: string,
+		expectedRevision: bigint,
+		work: (snapshot: SessionSnapshot) => void | Promise<void>,
+	): Promise<SessionSnapshot>;
 	close(): void;
 }
 
@@ -139,9 +160,23 @@ function decodePaneMetadata(command: string): TmuxPaneMetadata | undefined {
 	const encoded = /HOBO_PANE_META=([A-Za-z0-9_-]+)/u.exec(command)?.[1];
 	if (!encoded) return undefined;
 	try {
-		return JSON.parse(
+		const value: unknown = JSON.parse(
 			Buffer.from(encoded, "base64url").toString("utf8"),
-		) as TmuxPaneMetadata;
+		);
+		if (!value || typeof value !== "object") return undefined;
+		const record = value as Record<string, unknown>;
+		for (const field of [
+			"paneId",
+			"tabId",
+			"paneTitle",
+			"tabTitle",
+			"workingDirectory",
+		]) {
+			if (typeof record[field] !== "string" || record[field] === "") {
+				return undefined;
+			}
+		}
+		return record as TmuxPaneMetadata;
 	} catch {
 		return undefined;
 	}
@@ -308,10 +343,15 @@ export function createResidentSessionRuntime(
 		await runTmux(["select-pane", "-t", runtimeId]);
 	}
 
-	async function reconcilePanes(
+	type ActualPane = {
+		readonly runtimeId: string;
+		readonly active: boolean;
+		readonly metadata: TmuxPaneMetadata;
+	};
+
+	async function readActualPanes(
 		sessionId: string,
-		snapshot: SessionSnapshot,
-	): Promise<SessionSnapshot> {
+	): Promise<readonly ActualPane[]> {
 		const result = await options.tmux.run([
 			"list-panes",
 			"-s",
@@ -325,7 +365,7 @@ export function createResidentSessionRuntime(
 				`tmux pane reconciliation unavailable: ${result.stderr ?? "unknown error"}`,
 			);
 		}
-		const actual = result.stdout
+		return result.stdout
 			.split("\n")
 			.map((line) => line.split("\t", 4))
 			.map(
@@ -340,16 +380,17 @@ export function createResidentSessionRuntime(
 					metadata: decodePaneMetadata(command),
 				}),
 			)
-			.filter(
-				(
-					entry,
-				): entry is {
-					runtimeId: string;
-					active: boolean;
-					metadata: TmuxPaneMetadata;
-				} => Boolean(entry.runtimeId && entry.metadata),
+			.filter((entry): entry is ActualPane =>
+				Boolean(entry.runtimeId && entry.metadata),
 			);
-		if (actual.length === 0) return snapshot;
+	}
+
+	function applyActualPanes(
+		sessionId: string,
+		snapshot: SessionSnapshot,
+		actual: readonly ActualPane[],
+	): boolean {
+		if (actual.length === 0) return false;
 
 		let drifted = false;
 		const actualPaneIds = new Set(actual.map((entry) => entry.metadata.paneId));
@@ -407,6 +448,18 @@ export function createResidentSessionRuntime(
 				drifted = true;
 			}
 		}
+		return drifted;
+	}
+
+	async function reconcilePanes(
+		sessionId: string,
+		snapshot: SessionSnapshot,
+	): Promise<SessionSnapshot> {
+		const drifted = applyActualPanes(
+			sessionId,
+			snapshot,
+			await readActualPanes(sessionId),
+		);
 		return drifted ? changed(snapshot) : snapshot;
 	}
 
@@ -542,30 +595,6 @@ export function createResidentSessionRuntime(
 				if (prior?.session?.lifecycleState === SessionLifecycleState.RUNNING) {
 					throw new Error(`session ${id} already exists`);
 				}
-				const tabId = randomUUID();
-				const paneId = randomUUID();
-				const shell = tmuxCommand("shell", input.shell, {
-					paneId,
-					tabId,
-					paneTitle: "shell",
-					tabTitle: "main",
-					workingDirectory: worktreePath,
-				});
-				const name = tmuxSession(id);
-				const stdout = await runTmux([
-					"new-session",
-					"-d",
-					"-P",
-					"-F",
-					"#{pane_id}",
-					"-s",
-					name,
-					"-n",
-					"main",
-					"-c",
-					worktreePath,
-					shell,
-				]);
 				const timestamp = now();
 				const snapshot = create(SessionSnapshotSchema, {
 					schemaVersion: SESSION_SNAPSHOT_SCHEMA,
@@ -580,18 +609,8 @@ export function createResidentSessionRuntime(
 						updatedAt: timestamp,
 						closeOnMerge: input.closeOnMerge ?? false,
 					},
-					tabs: [{ id: tabId, sessionId: id, title: "main", position: 0 }],
-					panes: [
-						{
-							id: paneId,
-							sessionId: id,
-							tabId,
-							title: "shell",
-							lifecycleState: PaneLifecycleState.RUNNING,
-							runtimeId: paneRuntimeId(stdout),
-							workingDirectory: worktreePath,
-						},
-					],
+					tabs: [],
+					panes: [],
 					agentRuns: [],
 					checkpoints: [],
 					gitState: {
@@ -611,12 +630,77 @@ export function createResidentSessionRuntime(
 						remote: "origin",
 						message: "",
 					},
-					focusedTabId: tabId,
-					focusedPaneId: paneId,
+					focusedTabId: "",
+					focusedPaneId: "",
 					attachedClientIds: [clientId],
 					revision: (prior?.revision ?? 0n) + 1n,
 					capturedAt: timestamp,
 				});
+				const name = tmuxSession(id);
+				if (!prior) {
+					const existing = await options.tmux.run(["has-session", "-t", name]);
+					if (existing.code === 0) {
+						applyActualPanes(id, snapshot, await readActualPanes(id));
+						const focused =
+							snapshot.panes.find(
+								(pane) => pane.id === snapshot.focusedPaneId,
+							) ?? snapshot.panes[0];
+						if (!focused) {
+							throw new Error(
+								`tmux session ${name} exists but has no valid HoBo pane metadata`,
+							);
+						}
+						snapshot.focusedPaneId = focused.id;
+						snapshot.focusedTabId = focused.tabId;
+						const adopted = clone(snapshot);
+						await persist(adopted, "code.SessionCreated");
+						return adopted;
+					}
+				}
+				const tabId = randomUUID();
+				const paneId = randomUUID();
+				const shell = tmuxCommand("shell", input.shell, {
+					paneId,
+					tabId,
+					paneTitle: "shell",
+					tabTitle: "main",
+					workingDirectory: worktreePath,
+				});
+				const stdout = await runTmux([
+					"new-session",
+					"-d",
+					"-P",
+					"-F",
+					"#{pane_id}",
+					"-s",
+					name,
+					"-n",
+					"main",
+					"-c",
+					worktreePath,
+					shell,
+				]);
+				snapshot.tabs.push(
+					create(TabSchema, {
+						id: tabId,
+						sessionId: id,
+						title: "main",
+						position: 0,
+					}),
+				);
+				snapshot.panes.push(
+					create(PaneSchema, {
+						id: paneId,
+						sessionId: id,
+						tabId,
+						title: "shell",
+						lifecycleState: PaneLifecycleState.RUNNING,
+						runtimeId: paneRuntimeId(stdout),
+						workingDirectory: worktreePath,
+					}),
+				);
+				snapshot.focusedTabId = tabId;
+				snapshot.focusedPaneId = paneId;
 				try {
 					await persist(
 						snapshot,
@@ -746,14 +830,43 @@ export function createResidentSessionRuntime(
 			});
 		},
 
-		async sendInput(sessionId, expectedRevision, paneId, input) {
+		async sendInput(sessionId, expectedRevision, paneId, input, commandId) {
 			return mutate(sessionId, expectedRevision, async (snapshot) => {
 				const pane = snapshot.panes.find(
 					(candidate) => candidate.id === paneId,
 				);
 				if (!pane) throw new Error(`pane ${paneId} does not exist`);
-				await runTmux(["send-keys", "-t", pane.runtimeId, "-l", "--", input]);
-				return changed(snapshot);
+				if (commandId) {
+					const prior = await options.tmux.run([
+						"show-options",
+						"-p",
+						"-v",
+						"-t",
+						pane.runtimeId,
+						"@hobo_last_input_command",
+					]);
+					if (prior.code === 0 && prior.stdout.trim() === commandId) {
+						return snapshot;
+					}
+					await runTmux([
+						"send-keys",
+						"-t",
+						pane.runtimeId,
+						"-l",
+						"--",
+						input,
+						";",
+						"set-option",
+						"-p",
+						"-t",
+						pane.runtimeId,
+						"@hobo_last_input_command",
+						commandId,
+					]);
+				} else {
+					await runTmux(["send-keys", "-t", pane.runtimeId, "-l", "--", input]);
+				}
+				return snapshot;
 			});
 		},
 
@@ -782,9 +895,16 @@ export function createResidentSessionRuntime(
 				if (snapshot.focusedPaneId === paneId) {
 					const next =
 						snapshot.panes.find(
-							(candidate) => candidate.tabId === pane.tabId,
-						) ?? snapshot.panes[0];
+							(candidate) =>
+								candidate.tabId === pane.tabId &&
+								candidate.lifecycleState !== PaneLifecycleState.MISSING,
+						) ??
+						snapshot.panes.find(
+							(candidate) =>
+								candidate.lifecycleState !== PaneLifecycleState.MISSING,
+						);
 					if (!next) throw new Error("session has no remaining pane");
+					await focusRuntimePane(next.runtimeId);
 					snapshot.focusedPaneId = next.id;
 					snapshot.focusedTabId = next.tabId;
 				}
@@ -824,6 +944,90 @@ export function createResidentSessionRuntime(
 				for (const pane of snapshot.panes)
 					pane.lifecycleState = PaneLifecycleState.EXITED;
 				return changed(snapshot);
+			});
+		},
+
+		async startAgent(
+			sessionId,
+			expectedRevision,
+			paneId,
+			provider,
+			command,
+			prompt,
+		) {
+			return mutate(sessionId, expectedRevision, async (snapshot) => {
+				const pane = snapshot.panes.find(
+					(candidate) => candidate.id === paneId,
+				);
+				if (!pane) throw new Error(`pane ${paneId} does not exist`);
+				if (
+					snapshot.agentRuns.some(
+						(run) =>
+							run.paneId === paneId &&
+							run.lifecycleState < AgentLifecycleState.DONE,
+					)
+				) {
+					throw new Error(`pane ${paneId} already has an active agent`);
+				}
+				const resolved = [...paneCommand(command), prompt];
+				const tabTitle =
+					snapshot.tabs.find((tab) => tab.id === pane.tabId)?.title ?? "tab";
+				await runTmux([
+					"respawn-pane",
+					"-k",
+					"-t",
+					pane.runtimeId,
+					"-c",
+					pane.workingDirectory,
+					tmuxCommand(provider, resolved, {
+						paneId: pane.id,
+						tabId: pane.tabId,
+						paneTitle: pane.title,
+						tabTitle,
+						workingDirectory: pane.workingDirectory,
+					}),
+				]);
+				const timestamp = now();
+				const run = create(AgentRunSchema, {
+					id: randomUUID(),
+					sessionId,
+					paneId,
+					provider: required(provider, "provider"),
+					lifecycleState: AgentLifecycleState.WORKING,
+					startedAt: timestamp,
+					updatedAt: timestamp,
+					summary: "agent running",
+					terminalOnly: true,
+				});
+				snapshot.agentRuns.push(run);
+				pane.agentRunId = run.id;
+				return changed(snapshot);
+			});
+		},
+
+		async stopAgent(sessionId, expectedRevision, agentRunId) {
+			return mutate(sessionId, expectedRevision, async (snapshot) => {
+				const run = snapshot.agentRuns.find(
+					(candidate) => candidate.id === agentRunId,
+				);
+				if (!run) throw new Error(`agent run ${agentRunId} does not exist`);
+				const pane = snapshot.panes.find(
+					(candidate) => candidate.id === run.paneId,
+				);
+				if (!pane) throw new Error(`pane ${run.paneId} does not exist`);
+				await runTmux(["send-keys", "-t", pane.runtimeId, "C-c"]);
+				run.lifecycleState = AgentLifecycleState.STOPPED;
+				run.updatedAt = now();
+				run.summary = "agent stopped";
+				pane.agentRunId = undefined;
+				return changed(snapshot);
+			});
+		},
+
+		async update(sessionId, expectedRevision, work) {
+			return mutate(sessionId, expectedRevision, async (snapshot) => {
+				await work(snapshot);
+				return changed(parseSessionSnapshot(sessionSnapshotJson(snapshot)));
 			});
 		},
 

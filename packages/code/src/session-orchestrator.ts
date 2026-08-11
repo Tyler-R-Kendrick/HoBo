@@ -5,6 +5,7 @@ import {
 	linkSync,
 	mkdirSync,
 	readFileSync,
+	realpathSync,
 	renameSync,
 	unlinkSync,
 	writeFileSync,
@@ -49,6 +50,7 @@ export interface SessionProcessRunner {
 		command: string,
 		args: readonly string[],
 		cwd: string,
+		env?: Readonly<Record<string, string>>,
 	): Promise<SessionProcessResult>;
 }
 
@@ -69,10 +71,11 @@ export interface SessionOrchestrator {
 
 export function sessionProcessRunner(): SessionProcessRunner {
 	return {
-		run(command, args, cwd) {
+		run(command, args, cwd, env) {
 			return new Promise((done) => {
 				const child = spawn(command, [...args], {
 					cwd,
+					env: env ? { ...process.env, ...env } : process.env,
 					stdio: ["ignore", "pipe", "pipe"],
 				});
 				let stdout = "";
@@ -198,8 +201,9 @@ export function createSessionOrchestrator(
 		command: string,
 		args: readonly string[],
 		cwd: string,
+		env?: Readonly<Record<string, string>>,
 	): Promise<string> {
-		const result = await runner.run(command, args, cwd);
+		const result = await runner.run(command, args, cwd, env);
 		if (result.code !== 0)
 			throw commandError(`${command} ${args[0] ?? ""}`, result);
 		return result.stdout.trim();
@@ -255,14 +259,8 @@ export function createSessionOrchestrator(
 		work: () => Promise<SessionSnapshot>,
 	): Promise<SessionSnapshot> {
 		const approval = await approved(operation, snapshot, command);
-		const digest = createHash("sha256")
-			.update(
-				JSON.stringify(command.command, (_key, value) =>
-					typeof value === "bigint" ? value.toString() : value,
-				),
-			)
-			.digest("hex");
-		const path = deliveryLedgerPath(command.commandId);
+		const digest = deliveryFingerprint(command);
+		const path = deliveryLedgerPath(command);
 		if (existsSync(path)) {
 			const prior = JSON.parse(readFileSync(path, "utf8")) as {
 				digest?: string;
@@ -278,43 +276,214 @@ export function createSessionOrchestrator(
 					throw new Error(`session ${command.sessionId} does not exist`);
 				return current;
 			}
-			throw new Error(
-				`${operation} has an unknown prior outcome; reconcile before retrying`,
-			);
+			if (prior.status === "failed") {
+				unlinkSync(path);
+			} else
+				throw new Error(
+					`${operation} has an unknown prior outcome; reconcile before retrying`,
+				);
 		}
 		writeJsonAtomic(path, { digest, status: "pending", approval });
-		const result = await work();
-		writeJsonAtomic(path, { digest, status: "complete", approval });
-		return result;
+		try {
+			const result = await work();
+			writeJsonAtomic(path, { digest, status: "complete", approval });
+			return result;
+		} catch (error) {
+			const current = await options.runtime.load(command.sessionId);
+			const outcome = current
+				? await deliveryOutcome(command, current)
+				: "unknown";
+			if (current && outcome === "applied") {
+				writeJsonAtomic(path, { digest, status: "complete", approval });
+				return reconcileAppliedDelivery(command, current);
+			}
+			if (outcome === "not-applied") {
+				writeJsonAtomic(path, { digest, status: "failed", approval });
+			}
+			throw error;
+		}
 	}
 
-	function deliveryLedgerPath(commandId: string): string {
+	function deliveryFingerprint(command: SessionCommandEnvelope): string {
+		return createHash("sha256")
+			.update(
+				JSON.stringify(
+					{
+						schemaVersion: command.schemaVersion,
+						commandId: command.commandId,
+						actorId: command.actorId,
+						sessionId: command.sessionId,
+						expectedRevision: command.expectedRevision,
+						command: command.command,
+					},
+					(_key, value) =>
+						typeof value === "bigint" ? value.toString() : value,
+				),
+			)
+			.digest("hex");
+	}
+
+	function deliveryLedgerPath(command: SessionCommandEnvelope): string {
 		return join(
 			options.worktreesDir,
 			".commands",
-			`${createHash("sha256").update(commandId).digest("hex")}.json`,
+			createHash("sha256").update(command.sessionId).digest("hex"),
+			`${createHash("sha256").update(command.commandId).digest("hex")}.json`,
 		);
+	}
+
+	async function deliveryOutcome(
+		command: SessionCommandEnvelope,
+		snapshot: SessionSnapshot,
+	): Promise<"applied" | "not-applied" | "unknown"> {
+		const session = requiredSession(snapshot);
+		switch (command.command.case) {
+			case "commit": {
+				const head = await run(
+					"git",
+					["rev-parse", "HEAD"],
+					session.worktreePath,
+				);
+				return head !== snapshot.gitState?.headSha ? "applied" : "not-applied";
+			}
+			case "push": {
+				const head = await run(
+					"git",
+					["rev-parse", "HEAD"],
+					session.worktreePath,
+				);
+				const remote = await runner.run(
+					"git",
+					[
+						"ls-remote",
+						command.command.value.remote,
+						`refs/heads/${session.branch}`,
+					],
+					session.worktreePath,
+				);
+				if (remote.code !== 0) return "unknown";
+				return remote.stdout.split(/\s/u)[0] === head
+					? "applied"
+					: "not-applied";
+			}
+			case "openPullRequest":
+			case "stackPullRequest": {
+				const viewed = await runner.run(
+					"gh",
+					["pr", "view", session.branch, "--json", "url"],
+					session.worktreePath,
+				);
+				if (viewed.code !== 0) return "unknown";
+				return /"url"\s*:/u.test(viewed.stdout) ? "applied" : "not-applied";
+			}
+			case "mergePullRequest": {
+				const viewed = await runner.run(
+					"gh",
+					[
+						"pr",
+						"view",
+						String(command.command.value.pullRequestNumber),
+						"--json",
+						"state",
+					],
+					session.worktreePath,
+				);
+				if (viewed.code !== 0) return "unknown";
+				return /"state"\s*:\s*"MERGED"/u.test(viewed.stdout)
+					? "applied"
+					: "not-applied";
+			}
+			default:
+				return "not-applied";
+		}
+	}
+
+	async function reconcileAppliedDelivery(
+		command: SessionCommandEnvelope,
+		snapshot: SessionSnapshot,
+	): Promise<SessionSnapshot> {
+		const session = requiredSession(snapshot);
+		switch (command.command.case) {
+			case "commit":
+				return refresh(snapshot);
+			case "push": {
+				const remote = command.command.value.remote;
+				return options.runtime.update(
+					session.id,
+					revision(snapshot),
+					(next) => {
+						if (!next.deliveryState) return;
+						next.deliveryState.remote = remote;
+						next.deliveryState.lifecycleState = DeliveryLifecycleState.READY;
+						next.deliveryState.message = "branch push reconciled";
+					},
+				);
+			}
+			case "openPullRequest":
+			case "stackPullRequest": {
+				const viewed = await run(
+					"gh",
+					["pr", "view", session.branch, "--json", "number,url"],
+					session.worktreePath,
+				);
+				const pullRequest = JSON.parse(viewed) as {
+					readonly number: number;
+					readonly url: string;
+				};
+				return options.runtime.update(
+					session.id,
+					revision(snapshot),
+					(next) => {
+						if (!next.deliveryState) return;
+						next.deliveryState.lifecycleState =
+							DeliveryLifecycleState.PULL_REQUEST_OPEN;
+						next.deliveryState.pullRequestNumber = BigInt(pullRequest.number);
+						next.deliveryState.pullRequestUrl = pullRequest.url;
+						next.deliveryState.stackParentBranch =
+							command.command.case === "stackPullRequest"
+								? command.command.value.parentBranch
+								: undefined;
+						next.deliveryState.message = "pull request reconciled";
+					},
+				);
+			}
+			case "mergePullRequest":
+				return options.runtime.update(
+					session.id,
+					revision(snapshot),
+					(next) => {
+						if (!next.deliveryState) return;
+						next.deliveryState.lifecycleState = DeliveryLifecycleState.MERGED;
+						next.deliveryState.message = "pull request merge reconciled";
+					},
+				);
+			default:
+				return snapshot;
+		}
 	}
 
 	async function priorDeliveryResult(
 		command: SessionCommandEnvelope,
 	): Promise<SessionSnapshot | undefined> {
-		const path = deliveryLedgerPath(command.commandId);
+		const path = deliveryLedgerPath(command);
 		if (!existsSync(path)) return undefined;
 		const prior = JSON.parse(readFileSync(path, "utf8")) as {
 			digest?: string;
 			status?: string;
 		};
-		const digest = createHash("sha256")
-			.update(
-				JSON.stringify(command.command, (_key, value) =>
-					typeof value === "bigint" ? value.toString() : value,
-				),
-			)
-			.digest("hex");
+		const digest = deliveryFingerprint(command);
 		if (prior.digest !== digest)
 			throw new Error("command ID was reused for a different action");
+		if (prior.status === "failed") return undefined;
 		if (prior.status !== "complete") {
+			const snapshot = await options.runtime.load(command.sessionId);
+			if (
+				snapshot &&
+				(await deliveryOutcome(command, snapshot)) === "applied"
+			) {
+				writeJsonAtomic(path, { ...prior, status: "complete" });
+				return reconcileAppliedDelivery(command, snapshot);
+			}
 			throw new Error(
 				"delivery command has an unknown prior outcome; reconcile before retrying",
 			);
@@ -415,30 +584,68 @@ export function createSessionOrchestrator(
 		label: string,
 	): Promise<SessionSnapshot> {
 		const session = requiredSession(snapshot);
+		const cwd = session.worktreePath;
+		const commonGitDir = realpathSync(
+			await run(
+				"git",
+				["rev-parse", "--path-format=absolute", "--git-common-dir"],
+				cwd,
+			),
+		);
 		return fileLocked(
 			join(
 				options.worktreesDir,
 				".repository-locks",
-				`${createHash("sha256").update(session.projectRoot).digest("hex")}.lock`,
+				`${createHash("sha256").update(commonGitDir).digest("hex")}.lock`,
 			),
 			async () => {
-				const cwd = session.worktreePath;
 				const status = await run("git", ["status", "--porcelain=v1"], cwd);
 				let commit = await run("git", ["rev-parse", "HEAD"], cwd);
 				if (status) {
-					await run(
+					const head = commit;
+					const stagedTree = await run("git", ["write-tree"], cwd);
+					const indexCommit = await run(
 						"git",
 						[
-							"stash",
-							"push",
-							"--include-untracked",
-							"--message",
-							`hobo:${session.id}:${label}`,
+							"commit-tree",
+							stagedTree,
+							"-p",
+							head,
+							"-m",
+							`hobo index: ${label}`,
 						],
 						cwd,
 					);
-					commit = await run("git", ["rev-parse", "refs/stash"], cwd);
-					await run("git", ["stash", "apply", "--index", commit], cwd);
+					const indexDir = join(options.worktreesDir, ".checkpoint-indexes");
+					mkdirSync(indexDir, { recursive: true });
+					const indexPath = join(indexDir, randomUUID());
+					try {
+						const env = { GIT_INDEX_FILE: indexPath };
+						await run("git", ["read-tree", "HEAD"], cwd, env);
+						await run("git", ["add", "-A"], cwd, env);
+						const fullTree = await run("git", ["write-tree"], cwd, env);
+						commit = await run(
+							"git",
+							[
+								"commit-tree",
+								fullTree,
+								"-p",
+								head,
+								"-p",
+								indexCommit,
+								"-m",
+								`hobo checkpoint: ${label}`,
+							],
+							cwd,
+						);
+					} finally {
+						try {
+							unlinkSync(indexPath);
+						} catch (error) {
+							if ((error as NodeJS.ErrnoException).code !== "ENOENT")
+								throw error;
+						}
+					}
 				}
 				return options.runtime.update(
 					session.id,
@@ -485,7 +692,29 @@ export function createSessionOrchestrator(
 			);
 			if (base !== head)
 				throw new Error("checkpoint belongs to a different HEAD");
-			await run("git", ["stash", "apply", "--index", target.gitCommit], cwd);
+			const indexCommit = await run(
+				"git",
+				["rev-parse", `${target.gitCommit}^2`],
+				cwd,
+			);
+			const indexDir = join(options.worktreesDir, ".checkpoint-indexes");
+			mkdirSync(indexDir, { recursive: true });
+			const indexPath = join(indexDir, randomUUID());
+			try {
+				await run(
+					"git",
+					["read-tree", "--reset", "-u", target.gitCommit],
+					cwd,
+					{ GIT_INDEX_FILE: indexPath },
+				);
+				await run("git", ["read-tree", indexCommit], cwd);
+			} finally {
+				try {
+					unlinkSync(indexPath);
+				} catch (error) {
+					if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+				}
+			}
 		}
 		return options.runtime.update(
 			session.id,

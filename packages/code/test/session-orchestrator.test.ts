@@ -58,7 +58,7 @@ function repository(): string {
 function fakeTmux(): MuxRunner & { calls: string[][] } {
 	const calls: string[][] = [];
 	let pane = 0;
-	let sessionExists = false;
+	const sessions = new Set<string>();
 	let agentRunId = "";
 	let agentExit = "";
 	return {
@@ -79,17 +79,22 @@ function fakeTmux(): MuxRunner & { calls: string[][] } {
 				agentExit = `${agentRunId}:130`;
 			}
 			if (args[0] === "has-session") {
+				const target = args[args.indexOf("-t") + 1] ?? "";
 				return {
-					code: sessionExists ? 0 : 1,
+					code: sessions.has(target) ? 0 : 1,
 					stdout: "",
 					stderr: "can't find session",
 				};
 			}
-			if (args[0] === "kill-session") sessionExists = false;
+			if (args[0] === "kill-session") {
+				sessions.delete(args[args.indexOf("-t") + 1] ?? "");
+			}
 			if (
 				["new-session", "new-window", "split-window"].includes(args[0] ?? "")
 			) {
-				if (args[0] === "new-session") sessionExists = true;
+				if (args[0] === "new-session") {
+					sessions.add(args[args.indexOf("-s") + 1] ?? "");
+				}
 				pane += 1;
 				return { code: 0, stdout: `%${pane}\n` };
 			}
@@ -261,6 +266,11 @@ describe("session orchestrator", () => {
 		expect(saved.gitState?.unstagedPaths).toContain("unstaged.txt");
 		expect(saved.gitState?.untrackedPaths).toContain("untracked.txt");
 		expect(git(cwd, ["rev-parse", "HEAD"])).toBe(head);
+		expect(
+			spawnSync("git", ["rev-parse", "--verify", "refs/stash"], {
+				cwd,
+			}).status,
+		).not.toBe(0);
 
 		git(cwd, ["reset", "--hard", "HEAD"]);
 		git(cwd, ["clean", "-fd"]);
@@ -391,6 +401,97 @@ describe("session orchestrator", () => {
 			commandId: mergeCommand.commandId,
 			details: { pullRequestNumber: "42" },
 		});
+		harness.runtime.close();
+	});
+
+	it("scopes delivery replay to the full command envelope and session", async () => {
+		const harness = await createHarness();
+		let merges = 0;
+		const runner: SessionProcessRunner = {
+			async run(command, args, cwd) {
+				if (command === "gh" && args[0] === "stack") {
+					merges += 1;
+					return { code: 0, stdout: "", stderr: "" };
+				}
+				return sessionProcessRunner().run(command, args, cwd);
+			},
+		};
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: () => true,
+		});
+		const first = {
+			...envelope(
+				"session-1",
+				harness.created.revision ?? 0n,
+				"mergePullRequest",
+				{ pullRequestNumber: "42" },
+			),
+			commandId: "shared-command-id",
+		};
+		await orchestrator.execute(first);
+		await expect(
+			orchestrator.execute({ ...first, actorId: "different-actor" }),
+		).rejects.toThrow("reused");
+
+		const second = await orchestrator.execute(
+			envelope("session-2", 0n, "createSession", {
+				name: "second",
+				projectRoot: harness.repo,
+				branch: "code/second",
+				clientId: "test-client",
+			}),
+		);
+		await orchestrator.execute({
+			...envelope("session-2", second.revision ?? 0n, "mergePullRequest", {
+				pullRequestNumber: "42",
+			}),
+			commandId: "shared-command-id",
+		});
+		expect(merges).toBe(2);
+		harness.runtime.close();
+	});
+
+	it("retries a confirmed pre-effect delivery failure with the same command ID", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		writeFileSync(join(cwd, "retry.txt"), "retry\n");
+		let failCommit = true;
+		const base = sessionProcessRunner();
+		const runner: SessionProcessRunner = {
+			run(command, args, workdir, env) {
+				if (command === "git" && args[0] === "commit" && failCommit) {
+					failCommit = false;
+					return Promise.resolve({
+						code: 1,
+						stdout: "",
+						stderr: "hook rejected before commit",
+					});
+				}
+				return base.run(command, args, workdir, env);
+			},
+		};
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: () => true,
+		});
+		const command = {
+			...envelope("session-1", harness.created.revision ?? 0n, "commit", {
+				message: "retry safely",
+			}),
+			commandId: "retry-command",
+		};
+		await expect(orchestrator.execute(command)).rejects.toThrow(
+			"hook rejected before commit",
+		);
+		await expect(orchestrator.execute(command)).resolves.toMatchObject({
+			gitState: { dirty: false },
+		});
+		expect(git(cwd, ["log", "-1", "--pretty=%s"])).toBe("retry safely");
 		harness.runtime.close();
 	});
 });

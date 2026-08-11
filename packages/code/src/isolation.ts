@@ -78,7 +78,9 @@ async function defaultCreateWorktree(input: {
 			input.projectRoot,
 		);
 		if (add.status === 0) return;
-		// Fallback: empty mediated root if worktree add fails (e.g. branch exists).
+		throw new Error(
+			`git worktree add failed for ${input.branch}; no shared fallback was created`,
+		);
 	}
 	mkdirSync(input.root, { recursive: true });
 	writeFileSync(

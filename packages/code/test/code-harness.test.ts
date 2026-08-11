@@ -108,6 +108,33 @@ describe("@hobo/code", () => {
 		expect(cleaned.handback.ok).toBe(true);
 	});
 
+	it("does not silently replace a failed git worktree with an empty sandbox", async () => {
+		const home = tempDir("hobo-code-fail-closed-home-");
+		const project = tempDir("hobo-code-fail-closed-project-");
+		spawnSync("git", ["init", "-q", "-b", "main"], { cwd: project });
+		spawnSync("git", ["config", "user.email", "t@example.com"], {
+			cwd: project,
+		});
+		spawnSync("git", ["config", "user.name", "t"], { cwd: project });
+		writeFileSync(join(project, "README.md"), "base\n");
+		spawnSync("git", ["add", "-A"], { cwd: project });
+		spawnSync("git", ["commit", "-qm", "base"], { cwd: project });
+		spawnSync("git", ["branch", "code/already-there"], { cwd: project });
+
+		await expect(
+			createIsolationContext({
+				projectRoot: project,
+				hoboHome: home,
+				runId: "collision",
+				branch: "code/already-there",
+				forceWorktree: true,
+			}),
+		).rejects.toThrow("git worktree add failed");
+		expect(
+			existsSync(join(home, "sandboxes/collision/.hobo-mediated-view.json")),
+		).toBe(false);
+	});
+
 	it("cleanup on cancel still leaves zero orphans", async () => {
 		const home = tempDir("hobo-code-cancel-");
 		const project = tempDir("hobo-code-proj2-");

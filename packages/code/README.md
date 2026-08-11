@@ -142,6 +142,13 @@ session, pane IDs, branch, and worktree; stale writers fail before tmux is
 mutated. The protobuf/CUE boundary in `data-models/code_harness.*` and the
 executable boundary Pact protect the shared CLI/TUI/web contract.
 
+Each managed session gets a real Git branch and worktree. The shared command
+router starts or interrupts agent harnesses in panes, captures dirty Git state
+as restorable stash commits without moving the branch, and refuses commit,
+push, PR, stack, or squash-merge operations until its caller explicitly
+approves them. Failed worktree creation is fatal; it never falls back to an
+empty or shared directory.
+
 Agents are **auto-detected** from evidence on your machine — a binary on PATH
 and/or a config directory — and each gets its own tmux window:
 

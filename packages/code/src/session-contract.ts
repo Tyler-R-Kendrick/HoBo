@@ -4,9 +4,9 @@ import {
 	CheckpointLifecycleState,
 	DeliveryLifecycleState,
 	PaneLifecycleState,
-	SessionLifecycleState,
 	type SessionCommandEnvelope,
 	SessionCommandEnvelopeSchema,
+	SessionLifecycleState,
 	type SessionSnapshot,
 	SessionSnapshotSchema,
 } from "./_generated/code_harness_pb.js";
@@ -160,6 +160,7 @@ function validateCommand(command: SessionCommandEnvelope["command"]): void {
 			specified(command.value.removeWorktree, "stopSession.removeWorktree");
 			break;
 		case "createCheckpoint":
+			required(command.value.label, "createCheckpoint.label");
 			break;
 		case undefined:
 			throw new TypeError("command must be specified");

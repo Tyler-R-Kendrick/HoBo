@@ -6,7 +6,8 @@
  * behavior lane passes on a cold checkout instead of requiring a manually
  * started dev server.
  */
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, execFile, spawn } from "node:child_process";
+import { promisify } from "node:util";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AfterAll, Given, Then, When, setDefaultTimeout } from "@cucumber/cucumber";
@@ -23,6 +24,9 @@ const HEALTH_URL = new URL("api/cf-temp", BASE_URL).toString();
 
 let featurePassed = false;
 let devServer: ChildProcess | undefined;
+let devServerFailure = "";
+
+const execFileAsync = promisify(execFile);
 
 async function healthOk(): Promise<boolean> {
 	try {
@@ -36,19 +40,52 @@ async function healthOk(): Promise<boolean> {
 async function ensureDevServer(): Promise<void> {
 	if (await healthOk()) return;
 	if (!devServer) {
+		try {
+			await execFileAsync(
+				"pnpm",
+				[
+					"--filter",
+					"@hobo/wasp",
+					"--filter",
+					"@hobo/convex",
+					"--filter",
+					"@hobo/provider-convex",
+					"build",
+				],
+				{ cwd: REPO_ROOT, env: process.env, timeout: 180_000 },
+			);
+		} catch (error) {
+			throw new Error(`site dependency build failed: ${String(error)}`);
+		}
 		devServer = spawn("pnpm", ["--filter", "hobo-site", "run", "dev"], {
 			cwd: REPO_ROOT,
 			env: process.env,
-			stdio: "ignore",
+			stdio: ["ignore", "pipe", "pipe"],
 			detached: true,
 		});
-		devServer.on("error", () => {
+		const collect = (chunk: Buffer) => {
+			devServerFailure = `${devServerFailure}${chunk.toString("utf8")}`.slice(
+				-4000,
+			);
+		};
+		devServer.stdout?.on("data", collect);
+		devServer.stderr?.on("data", collect);
+		devServer.on("error", (error) => {
+			devServerFailure = String(error);
+			devServer = undefined;
+		});
+		devServer.on("exit", (code, signal) => {
+			devServerFailure =
+				devServerFailure || `astro dev exited ${code ?? signal ?? "unknown"}`;
 			devServer = undefined;
 		});
 	}
 	const deadline = Date.now() + 120_000;
 	while (Date.now() < deadline) {
 		if (await healthOk()) return;
+		if (!devServer) {
+			throw new Error(`astro dev failed to start: ${devServerFailure}`);
+		}
 		await new Promise((resolveSleep) => setTimeout(resolveSleep, 1_000));
 	}
 	throw new Error(

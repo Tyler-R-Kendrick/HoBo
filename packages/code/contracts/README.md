@@ -1,7 +1,8 @@
 # @hobo/code contracts
 
-PACT consumer evidence for the HoBo Code harness boundary:
+Executable PACT consumer/provider evidence for the `SessionControlPlane` seam:
 
 - isolation create/cleanup (rift preferred, worktree fallback)
 - promotion as sole mutation path
-- evidence triple emission for Gherkin + OpenFeature scenarios
+- durable resident-session create/detach/reattach/pane-focus semantics
+- every pane in a session snapshot is backed by a non-empty runtime identifier

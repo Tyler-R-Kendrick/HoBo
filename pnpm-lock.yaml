@@ -633,6 +633,9 @@ importers:
 
   packages/code:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: 2.12.1
+        version: 2.12.1
       '@earendil-works/pi-coding-agent':
         specifier: ^0.83.0
         version: 0.83.0(@modelcontextprotocol/sdk@1.30.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
@@ -2116,6 +2119,16 @@ importers:
 
   src/draft/epic-proofs/governance-planes-s6-08: {}
 
+  src/draft/epic-proofs/hobo-code-session-orchestration:
+    dependencies:
+      '@hobo/code':
+        specifier: workspace:*
+        version: link:../../../../packages/code
+    devDependencies:
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(vite@8.1.2(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
   src/draft/epic-proofs/identity-auth-secrets-cross-app-access-xaa: {}
 
   src/draft/epic-proofs/mapping-styles-planner-resolution: {}
@@ -2538,6 +2551,16 @@ importers:
   src/draft/technical-proofs/actor-host-runtime-port-contract: {}
 
   src/draft/technical-proofs/adopt-in-place-contract: {}
+
+  src/draft/technical-proofs/agent-session-control-plane-contract:
+    dependencies:
+      '@hobo/code':
+        specifier: workspace:*
+        version: link:../../../../packages/code
+    devDependencies:
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(vite@8.1.2(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
   src/draft/technical-proofs/alertmanager-routing-contract: {}
 

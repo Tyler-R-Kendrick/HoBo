@@ -100,8 +100,14 @@ async function openConsole(page: Page) {
 async function runScenario(page: Page, browser: Browser) {
 	log("Scenario: select Cloudflare yard → Pool Code is provider-import station authoring");
 	await page.locator("[data-yard-trigger]").click();
-	await page.locator('[data-yard-option="cloudflare"]').click();
-	await page.locator('[data-pool-view="code"]').click();
+	const cloudflare = page.locator('[data-yard-option="cloudflare"]');
+	if ((await cloudflare.getAttribute("aria-pressed")) !== "true") {
+		await cloudflare.click();
+	} else {
+		await page.keyboard.press("Escape");
+	}
+	const code = page.locator('[data-pool-view="code"]');
+	if ((await code.getAttribute("aria-pressed")) !== "true") await code.click();
 	await page.waitForFunction(
 		() =>
 			document.querySelector("[data-pool-source-path]")?.textContent?.includes(

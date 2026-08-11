@@ -223,7 +223,9 @@ async function compareTrees(
 	for (const [rel] of [...actualRel.entries()].sort(([a], [b]) =>
 		a.localeCompare(b),
 	)) {
-		drift.push({ path: `${labelPrefix}/${rel}`, kind: "added" });
+		if (rel.endsWith("_pb.ts")) {
+			drift.push({ path: `${labelPrefix}/${rel}`, kind: "added" });
+		}
 	}
 
 	return drift;

@@ -56,12 +56,22 @@ try {
 		throw new Error(
 			`new pane failed: ${await page.locator("#result").textContent()}`,
 		);
+	dialogs.push("Monitor", "");
+	await page.locator('[data-action="create-pane"]').last().click();
+	await pause();
 
 	await page.locator('[data-action="focus-pane"]').first().click();
 	dialogs.push("continue the release review");
 	await page.locator('[data-action="prompt-pane"]').first().click();
 	await pause();
+	if ((await page.locator("#result").textContent()) !== "sendInput completed")
+		throw new Error("prompt delivery did not report a visible outcome");
+	await page.screenshot({
+		path: path.join(output, "browser-control-full.png"),
+		fullPage: true,
+	});
 	await page.locator(".pane-grid").scrollIntoViewIfNeeded();
+	await page.screenshot({ path: path.join(output, "pane-layout-desktop.png") });
 	await page.screenshot({ path: path.join(frames, "frame-panes.png") });
 	await page.setViewportSize({ width: 600, height: 720 });
 	const narrowPanes = await page
@@ -71,6 +81,7 @@ try {
 		);
 	if (narrowPanes.some((width) => width < 500))
 		throw new Error(`narrow panes did not stack: ${narrowPanes.join(", ")}`);
+	await page.screenshot({ path: path.join(output, "pane-layout-narrow.png") });
 	await page.screenshot({ path: path.join(frames, "frame-narrow.png") });
 	await page.setViewportSize({ width: 1280, height: 720 });
 

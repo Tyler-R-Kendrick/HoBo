@@ -1,11 +1,17 @@
 {
-  "status": "pending",
-  "reviewer": "",
-  "relevance": "pending",
-  "completeness": "pending",
-  "coverageMode": "single-state",
-  "coveredClaims": [],
-  "artifactSha256": "71c616955ffd5dbae2d53a1c141639150bbeaa26855a2ba7ff5716ac5ef198d1",
-  "reviewedAt": "",
-  "notes": "Playback review required before this evidence can support a score."
+  "status": "accepted",
+  "reviewer": "019ff0f5-4c26-7e62-aa2a-f227f1d58643",
+  "relevance": "relevant",
+  "completeness": "complete",
+  "coverageMode": "full-journey",
+  "coveredClaims": [
+    "claim-1",
+    "claim-2",
+    "claim-3",
+    "claim-4",
+    "claim-5"
+  ],
+  "artifactSha256": "f7cfe6b1e4f1e5642cae4ae27d17ce1b09daf199557df8ca4c04be2bec8840ec",
+  "reviewedAt": "2026-08-11T14:03:00.648Z",
+  "notes": "Independent playback and focused gates verified authenticated loopback control, Station forwarding, visible prompt completion, focused pane, nested 75/25 geometry, narrow stacking, detach/reattach, and stop."
 }

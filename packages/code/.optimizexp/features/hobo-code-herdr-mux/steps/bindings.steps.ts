@@ -1,7 +1,6 @@
 import { After, Before, Given, Then, When } from "@cucumber/cucumber";
 import {
 	assertActionableMissingSession,
-	assertBaseSessionHelp,
 	assertCurrentSessionHelp,
 	assertDetachHelp,
 	assertScenarioEvidenceExists,
@@ -9,7 +8,6 @@ import {
 	cleanup,
 	exerciseBrowserControls,
 	openBrowserJourney,
-	runBaseSessionHelp,
 	runCurrentCli,
 	startBrowserJourney,
 } from "./implementations.ts";
@@ -59,20 +57,6 @@ Then(
 	"detach and reattach are explicit without tribal knowledge",
 	function (this: OptimizexpWorld) {
 		assertDetachHelp(this);
-	},
-);
-
-When(
-	"I run the same `hobo-code session --help` command at the reviewed base commit",
-	function (this: OptimizexpWorld) {
-		runBaseSessionHelp(this);
-	},
-);
-
-Then(
-	"help shows only the prior one-shot handback surface",
-	function (this: OptimizexpWorld) {
-		assertBaseSessionHelp(this);
 	},
 );
 

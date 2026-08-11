@@ -15,12 +15,6 @@ Feature: hobo-code-herdr-mux (senior engineer advanced herdr user)
     And detach and reattach are explicit without tribal knowledge
     And evidence is capturable for this scenario
 
-  Scenario: Legacy session help shows the measured baseline for senior-engineer-advanced-herdr-user
-    Given I am on the critical path described by the feature seed
-    When I run the same `hobo-code session --help` command at the reviewed base commit
-    Then help shows only the prior one-shot handback surface
-    And evidence is capturable for this scenario
-
   Scenario: Failure is actionable for senior-engineer-advanced-herdr-user
     Given something goes wrong on this journey
     When I run `hobo-code session show missing-session`

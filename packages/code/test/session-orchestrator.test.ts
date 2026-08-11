@@ -212,8 +212,8 @@ describe("session orchestrator", () => {
 			run(command, args, cwd) {
 				if (
 					command === "git" &&
-					args[0] === "status" &&
-					args.includes("--untracked-files=all")
+					args[0] === "diff" &&
+					args.includes("--name-only")
 				) {
 					return Promise.resolve({
 						code: 1,
@@ -392,6 +392,81 @@ describe("session orchestrator", () => {
 		).rejects.toThrow("explicit approval");
 		expect(git(cwd, ["log", "-1", "--pretty=%s"])).toBe("base");
 		runtime.close();
+	});
+
+	it("stages and unstages selected paths before an approved staged-only commit", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		writeFileSync(join(cwd, "staged.txt"), "selected\n");
+		writeFileSync(join(cwd, "unstaged.txt"), "leave working\n");
+
+		const staged = await harness.orchestrator.execute(
+			envelope("session-1", harness.created.revision ?? 0n, "stagePaths", {
+				paths: ["staged.txt"],
+			}),
+		);
+		expect(staged.gitState?.stagedPaths).toEqual(["staged.txt"]);
+		expect(staged.gitState?.unstagedPaths).toEqual(["unstaged.txt"]);
+
+		const unstaged = await harness.orchestrator.execute(
+			envelope("session-1", staged.revision ?? 0n, "unstagePaths", {
+				paths: ["staged.txt"],
+			}),
+		);
+		expect(unstaged.gitState?.stagedPaths).toEqual([]);
+
+		const restaged = await harness.orchestrator.execute(
+			envelope("session-1", unstaged.revision ?? 0n, "stagePaths", {
+				paths: ["staged.txt"],
+			}),
+		);
+		const approvals: SessionDeliveryApproval[] = [];
+		const approved = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			authorize: (action) => {
+				approvals.push(action);
+				return true;
+			},
+		});
+		const committed = await approved.execute(
+			envelope("session-1", restaged.revision ?? 0n, "commit", {
+				message: "selected only",
+				stagedOnly: true,
+			}),
+		);
+
+		expect(git(cwd, ["show", "HEAD:staged.txt"])).toBe("selected");
+		expect(git(cwd, ["show", "HEAD:unstaged.txt"])).toBe("base");
+		expect(readFileSync(join(cwd, "unstaged.txt"), "utf8")).toBe(
+			"leave working\n",
+		);
+		expect(committed.gitState?.unstagedPaths).toEqual(["unstaged.txt"]);
+		expect(approvals).toHaveLength(1);
+		expect(approvals[0]?.details).toMatchObject({ stagedOnly: true });
+		harness.runtime.close();
+	});
+
+	it("authorizes newline and quoted paths without parsing porcelain text", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		const path = 'line\n"quoted".txt';
+		writeFileSync(join(cwd, path), "edge\n");
+
+		const staged = await harness.orchestrator.execute(
+			envelope("session-1", harness.created.revision ?? 0n, "stagePaths", {
+				paths: [path],
+			}),
+		);
+
+		expect(staged.gitState?.stagedPaths).toContain(path);
+		const unstaged = await harness.orchestrator.execute(
+			envelope("session-1", staged.revision ?? 0n, "unstagePaths", {
+				paths: [path],
+			}),
+		);
+		expect(unstaged.gitState?.untrackedPaths).toContain(path);
+		harness.runtime.close();
 	});
 
 	it("runs approved commit, push, stacked PR, and squash merge operations", async () => {

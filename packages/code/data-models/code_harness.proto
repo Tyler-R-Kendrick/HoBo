@@ -50,6 +50,30 @@ enum DeliveryLifecycleState {
   DELIVERY_LIFECYCLE_STATE_FAILED = 7;
 }
 
+enum GitWorkbenchSelectionKind {
+  GIT_WORKBENCH_SELECTION_KIND_UNSPECIFIED = 0;
+  GIT_WORKBENCH_SELECTION_KIND_FILE = 1;
+  GIT_WORKBENCH_SELECTION_KIND_BRANCH = 2;
+  GIT_WORKBENCH_SELECTION_KIND_COMMIT = 3;
+  GIT_WORKBENCH_SELECTION_KIND_STASH = 4;
+}
+
+enum GitWorkbenchActionKind {
+  GIT_WORKBENCH_ACTION_KIND_UNSPECIFIED = 0;
+  GIT_WORKBENCH_ACTION_KIND_FETCH = 1;
+  GIT_WORKBENCH_ACTION_KIND_PULL = 2;
+  GIT_WORKBENCH_ACTION_KIND_BRANCH_CREATE = 3;
+  GIT_WORKBENCH_ACTION_KIND_BRANCH_CHECKOUT = 4;
+  GIT_WORKBENCH_ACTION_KIND_BRANCH_DELETE = 5;
+  GIT_WORKBENCH_ACTION_KIND_STASH_CREATE = 6;
+  GIT_WORKBENCH_ACTION_KIND_STASH_APPLY = 7;
+  GIT_WORKBENCH_ACTION_KIND_STASH_POP = 8;
+  GIT_WORKBENCH_ACTION_KIND_STASH_DROP = 9;
+  GIT_WORKBENCH_ACTION_KIND_FILE_DISCARD = 10;
+  GIT_WORKBENCH_ACTION_KIND_FILE_IGNORE = 11;
+  GIT_WORKBENCH_ACTION_KIND_COMMIT_REVERT = 12;
+}
+
 message Session {
   string id = 1;
   string name = 2;
@@ -119,6 +143,81 @@ message GitState {
   repeated string staged_paths = 8;
   repeated string unstaged_paths = 9;
   repeated string untracked_paths = 10;
+}
+
+message GitWorkbenchSelection {
+  GitWorkbenchSelectionKind kind = 1;
+  string value = 2;
+}
+
+message GitWorkbenchFile {
+  string path = 1;
+  optional string previous_path = 2;
+  bool staged = 3;
+  bool unstaged = 4;
+  bool untracked = 5;
+}
+
+message GitWorkbenchBranch {
+  string name = 1;
+  string oid = 2;
+  optional string upstream = 3;
+  bool current = 4;
+  string subject = 5;
+}
+
+message GitWorkbenchCommit {
+  string oid = 1;
+  string short_oid = 2;
+  repeated string parents = 3;
+  string decorations = 4;
+  string subject = 5;
+  string author = 6;
+  string authored_at = 7;
+  string graph = 8;
+}
+
+message GitWorkbenchStash {
+  string ref = 1;
+  string oid = 2;
+  string subject = 3;
+  string authored_at = 4;
+}
+
+message GitWorkbenchDiff {
+  string path = 1;
+  string text = 2;
+  bool truncated = 3;
+}
+
+message GitWorkbenchTruncation {
+  bool files = 1;
+  bool branches = 2;
+  bool commits = 3;
+  bool stashes = 4;
+}
+
+message GitWorkbenchSnapshot {
+  optional string branch = 1;
+  optional string upstream = 2;
+  uint32 ahead = 3;
+  uint32 behind = 4;
+  repeated GitWorkbenchFile files = 5;
+  repeated GitWorkbenchBranch branches = 6;
+  repeated GitWorkbenchCommit commits = 7;
+  repeated GitWorkbenchStash stashes = 8;
+  optional GitWorkbenchDiff selected_diff = 9;
+  GitWorkbenchTruncation truncated = 10;
+}
+
+message GitWorkbenchActionRequest {
+  GitWorkbenchActionKind action = 1;
+  optional GitWorkbenchSelection selection = 2;
+  string argument = 3;
+}
+
+message GitWorkbenchActionResult {
+  bool ok = 1;
 }
 
 message DeliveryState {
@@ -216,6 +315,15 @@ message RestoreCheckpointCommand {
 
 message CommitCommand {
   string message = 1;
+  optional bool staged_only = 2;
+}
+
+message StagePathsCommand {
+  repeated string paths = 1;
+}
+
+message UnstagePathsCommand {
+  repeated string paths = 1;
 }
 
 message PushCommand {
@@ -264,6 +372,8 @@ message SessionCommandEnvelope {
     OpenPullRequestCommand open_pull_request = 26;
     StackPullRequestCommand stack_pull_request = 27;
     MergePullRequestCommand merge_pull_request = 28;
+    StagePathsCommand stage_paths = 29;
+    UnstagePathsCommand unstage_paths = 30;
   }
 }
 

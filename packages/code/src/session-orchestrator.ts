@@ -367,6 +367,7 @@ export function createSessionOrchestrator(
 		switch (action.case) {
 			case "commit":
 				details.message = action.value.message;
+				details.stagedOnly = action.value.stagedOnly ?? false;
 				details.gitHead = context.preHead ?? "";
 				details.gitIndexTree = context.preIndexTree ?? "";
 				details.gitTree = context.expectedTree ?? "";
@@ -608,7 +609,10 @@ export function createSessionOrchestrator(
 				return {
 					preHead,
 					preIndexTree,
-					expectedTree: await fullWorktreeTree(session.worktreePath),
+					expectedTree:
+						command.command.value.stagedOnly === true
+							? preIndexTree
+							: await fullWorktreeTree(session.worktreePath),
 					expectedMessage: command.command.value.message,
 				};
 			}
@@ -1104,9 +1108,9 @@ export function createSessionOrchestrator(
 	async function gitState(snapshot: SessionSnapshot): Promise<void> {
 		const session = requiredSession(snapshot);
 		const cwd = session.worktreePath;
-		const [head, status] = await Promise.all([
+		const [head, paths] = await Promise.all([
 			run("git", ["rev-parse", "HEAD"], cwd),
-			run("git", ["status", "--porcelain=v1", "--untracked-files=all"], cwd),
+			gitPaths(cwd),
 		]);
 		const upstream = await runner.run(
 			"git",
@@ -1134,31 +1138,50 @@ export function createSessionOrchestrator(
 			);
 			[ahead, behind] = counts.split(/\s+/u).map(Number) as [number, number];
 		}
-		const stagedPaths: string[] = [];
-		const unstagedPaths: string[] = [];
-		const untrackedPaths: string[] = [];
-		for (const line of status.split("\n").filter(Boolean)) {
-			const index = line[0] ?? " ";
-			const worktree = line[1] ?? " ";
-			const path = line.slice(3).split(" -> ").at(-1) ?? "";
-			if (index === "?" && worktree === "?") untrackedPaths.push(path);
-			else {
-				if (index !== " ") stagedPaths.push(path);
-				if (worktree !== " ") unstagedPaths.push(path);
-			}
-		}
 		snapshot.gitState = create(GitStateSchema, {
 			worktreePath: cwd,
 			branch: session.branch,
 			headSha: head,
 			baseSha,
-			dirty: status.length > 0,
+			dirty: paths.staged.size + paths.unstaged.size + paths.untracked.size > 0,
 			ahead,
 			behind,
-			stagedPaths,
-			unstagedPaths,
-			untrackedPaths,
+			stagedPaths: [...paths.staged],
+			unstagedPaths: [...paths.unstaged],
+			untrackedPaths: [...paths.untracked],
 		});
+	}
+
+	function nulPaths(stdout: string): Set<string> {
+		return new Set(stdout.split("\0").filter(Boolean));
+	}
+
+	async function gitPaths(cwd: string): Promise<{
+		readonly staged: Set<string>;
+		readonly unstaged: Set<string>;
+		readonly untracked: Set<string>;
+	}> {
+		const [staged, unstaged, untracked] = await Promise.all([
+			runner.run("git", ["diff", "--cached", "--name-only", "-z"], cwd),
+			runner.run("git", ["diff", "--name-only", "-z"], cwd),
+			runner.run(
+				"git",
+				["ls-files", "--others", "--exclude-standard", "-z"],
+				cwd,
+			),
+		]);
+		for (const [name, result] of [
+			["git diff --cached", staged],
+			["git diff", unstaged],
+			["git ls-files", untracked],
+		] as const) {
+			if (result.code !== 0) throw commandError(name, result);
+		}
+		return {
+			staged: nulPaths(staged.stdout),
+			unstaged: nulPaths(unstaged.stdout),
+			untracked: nulPaths(untracked.stdout),
+		};
 	}
 
 	async function refresh(snapshot: SessionSnapshot): Promise<SessionSnapshot> {
@@ -1167,6 +1190,40 @@ export function createSessionOrchestrator(
 			revision(snapshot),
 			gitState,
 		);
+	}
+
+	async function changedPaths(
+		cwd: string,
+		kind: "stage" | "unstage",
+	): Promise<Set<string>> {
+		const paths = await gitPaths(cwd);
+		return kind === "unstage"
+			? paths.staged
+			: new Set([...paths.unstaged, ...paths.untracked]);
+	}
+
+	async function updateIndex(
+		snapshot: SessionSnapshot,
+		paths: readonly string[],
+		kind: "stage" | "unstage",
+	): Promise<SessionSnapshot> {
+		const cwd = requiredSession(snapshot).worktreePath;
+		const allowed = await changedPaths(cwd, kind);
+		for (const path of paths) {
+			if (!allowed.has(path)) {
+				throw new Error(
+					`${path} is not an ${kind === "stage" ? "unstaged" : "staged"} changed path`,
+				);
+			}
+		}
+		await run(
+			"git",
+			kind === "stage"
+				? ["add", "--", ...paths]
+				: ["reset", "-q", "HEAD", "--", ...paths],
+			cwd,
+		);
+		return refresh(snapshot);
 	}
 
 	async function loaded(
@@ -1631,6 +1688,10 @@ export function createSessionOrchestrator(
 							return checkpoint(snapshot, action.value.label);
 						case "restoreCheckpoint":
 							return restore(snapshot, action.value.checkpointId);
+						case "stagePaths":
+							return updateIndex(snapshot, action.value.paths, "stage");
+						case "unstagePaths":
+							return updateIndex(snapshot, action.value.paths, "unstage");
 						case "commit":
 							return deliveryEffect(
 								"commit",

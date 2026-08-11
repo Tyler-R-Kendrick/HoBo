@@ -179,6 +179,7 @@ describe("engine-backed shell host", () => {
 				'case "$1" in',
 				"  has-session) exit 0 ;;",
 				'  list-panes) printf "%s\\n" "$HOBO_TMUX_PANE"; exit 0 ;;',
+				'  new-window) printf "%%2\\n" ;;',
 				'  attach-session|switch-client|detach-client) printf "%s\\n" "$*" >> "$HOBO_TMUX_LOG" ;;',
 				"esac",
 				"",

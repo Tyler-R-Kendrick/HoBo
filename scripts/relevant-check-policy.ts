@@ -180,12 +180,16 @@ export function selectRelevantChecks(
 		// Feature files and step definitions live inside proof packages
 		// (src/draft/<kind>/<slug>/features/...), so match the path segment,
 		// not a repo-root prefix. The cucumber config is cucumber.yaml.
-		touchedAny([
-			/(^|\/)features\//u,
-			/\.feature$/u,
-			/^cucumber\.ya?ml$/u,
-			/playwright\.behavior\.config\./u,
-		]);
+		files.some(
+			(file) =>
+				!/(^|\/)\.optimizexp\/features\//u.test(file) &&
+				[
+					/(^|\/)features\//u,
+					/\.feature$/u,
+					/^cucumber\.ya?ml$/u,
+					/playwright\.behavior\.config\./u,
+				].some((pattern) => pattern.test(file)),
+		);
 	const visualChanged =
 		touched(["tests/visual", "storybook"]) ||
 		touchedAny([/playwright\.visual\.config\./u, /\.stories\./u]);

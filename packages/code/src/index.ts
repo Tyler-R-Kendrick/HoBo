@@ -189,6 +189,14 @@ export {
 } from "./session-control-server.js";
 
 export {
+	INITIAL_GIT_TERMINAL_STATE,
+	moveGitTerminalSelection,
+	renderGitTerminalPane,
+	runGitTerminalPane,
+	type GitTerminalPaneState,
+} from "./git-terminal-pane.js";
+
+export {
 	createSessionOrchestrator,
 	sessionProcessRunner,
 	type SessionDeliveryApproval,

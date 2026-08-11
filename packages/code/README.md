@@ -264,6 +264,28 @@ hobo-code isolate my-run
 hobo-code promote my-run
 ```
 
+`session attach` ensures every resident tmux session has a native ANSI `Git`
+window; `hobo-code session git <sessionId>` opens the same pane directly.
+`session serve` mirrors that workbench beside the browser terminal tabs. Its
+Status, Files, Branches, Commits, Stash, and diff panels follow lazygit's
+keyboard model: `1`–`5` focuses a panel, arrows or `j`/`k` move, and `Space`
+stages the selected whole file. Fetch/fast-forward pull, discard/ignore,
+branch create/checkout/delete, stash create/apply/pop/drop, and commit revert
+stay in the same pane. Commit, push, PR, stack, and merge remain on the existing
+exact-effect approval boundary; commits use only the reviewed index. Bounded
+panels show a `+`, always retain the current branch, and disable committing
+when the complete changed-file set cannot be reviewed.
+
+| lazygit workflow | HoBo Code workbench |
+|---|---|
+| Status and sync | ahead/behind, fetch, fast-forward pull |
+| Files | diff, whole-file stage/unstage, discard, local ignore |
+| Branches | inspect, create, checkout, safe delete |
+| Commits | graph, inspect, revert |
+| Stash | create with untracked files, inspect, apply, pop, drop |
+| Delivery | staged-only commit, push, PR, stacked PR, squash merge with exact-effect approval |
+| Deliberate boundary | partial-hunk editing and interactive rebase stay in the adjacent terminal |
+
 ## Usage
 
 ```bash

@@ -73,11 +73,13 @@ export interface ResidentSessionRuntime {
 		paneId: string,
 		lines?: number,
 	): Promise<string>;
+	paneRole(sessionId: string, paneId: string): Promise<string | undefined>;
 	createTab(
 		sessionId: string,
 		expectedRevision: bigint,
 		title: string,
 		command?: readonly string[],
+		role?: string,
 	): Promise<SessionSnapshot>;
 	createPane(
 		sessionId: string,
@@ -167,6 +169,7 @@ type TmuxPaneMetadata = {
 	readonly paneTitle: string;
 	readonly tabTitle: string;
 	readonly workingDirectory: string;
+	readonly role?: string;
 };
 
 function encodePaneMetadata(metadata: TmuxPaneMetadata): string {
@@ -192,6 +195,9 @@ function decodePaneMetadata(command: string): TmuxPaneMetadata | undefined {
 			if (typeof record[field] !== "string" || record[field] === "") {
 				return undefined;
 			}
+		}
+		if (record.role !== undefined && typeof record.role !== "string") {
+			return undefined;
 		}
 		return record as TmuxPaneMetadata;
 	} catch {
@@ -953,7 +959,13 @@ export function createResidentSessionRuntime(
 			]);
 		},
 
-		async createTab(sessionId, expectedRevision, title, command) {
+		async paneRole(sessionId, paneId) {
+			return (await readActualPanes(sessionId)).find(
+				(entry) => entry.metadata.paneId === paneId,
+			)?.metadata.role;
+		},
+
+		async createTab(sessionId, expectedRevision, title, command, role) {
 			return mutate(sessionId, expectedRevision, async (snapshot) => {
 				const tabTitle = required(title, "title");
 				const tabId = randomUUID();
@@ -965,6 +977,7 @@ export function createResidentSessionRuntime(
 					paneTitle: tabTitle,
 					tabTitle,
 					workingDirectory,
+					...(role ? { role: required(role, "role") } : {}),
 				});
 				const stdout = await runTmux([
 					"new-window",

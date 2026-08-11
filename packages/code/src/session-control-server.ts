@@ -4,7 +4,18 @@ import {
 	type IncomingMessage,
 	type ServerResponse,
 } from "node:http";
-
+import { fromJson, type JsonValue } from "@bufbuild/protobuf";
+import {
+	GitWorkbenchActionKind,
+	GitWorkbenchActionRequestSchema,
+	GitWorkbenchSelectionKind,
+} from "./_generated/code_harness_pb.js";
+import {
+	type GitSelection,
+	type GitWorkbenchAction,
+	readGitWorkbenchSnapshot,
+	runGitWorkbenchAction,
+} from "./git-workbench.js";
 import {
 	createLocalSessionControl,
 	type LocalSessionControl,
@@ -13,6 +24,7 @@ import { sessionSnapshotJson } from "./session-contract.js";
 import {
 	SessionApprovalRequiredError,
 	sessionDeliveryApprovalDigest,
+	sessionProcessRunner,
 } from "./session-orchestrator.js";
 
 export interface SessionControlServerOptions {
@@ -50,6 +62,45 @@ function json(response: ServerResponse, status: number, body: unknown): void {
 	);
 }
 
+function parseGitWorkbenchAction(input: unknown): GitWorkbenchAction {
+	const body = fromJson(GitWorkbenchActionRequestSchema, input as JsonValue, {
+		ignoreUnknownFields: false,
+	});
+	const actions = {
+		[GitWorkbenchActionKind.FETCH]: "fetch",
+		[GitWorkbenchActionKind.PULL]: "pull",
+		[GitWorkbenchActionKind.BRANCH_CREATE]: "branch-create",
+		[GitWorkbenchActionKind.BRANCH_CHECKOUT]: "branch-checkout",
+		[GitWorkbenchActionKind.BRANCH_DELETE]: "branch-delete",
+		[GitWorkbenchActionKind.STASH_CREATE]: "stash-create",
+		[GitWorkbenchActionKind.STASH_APPLY]: "stash-apply",
+		[GitWorkbenchActionKind.STASH_POP]: "stash-pop",
+		[GitWorkbenchActionKind.STASH_DROP]: "stash-drop",
+		[GitWorkbenchActionKind.FILE_DISCARD]: "file-discard",
+		[GitWorkbenchActionKind.FILE_IGNORE]: "file-ignore",
+		[GitWorkbenchActionKind.COMMIT_REVERT]: "commit-revert",
+	} as const;
+	const action = actions[body.action as keyof typeof actions];
+	if (!action) throw new Error("invalid Git workbench action");
+	if (action === "fetch" || action === "pull") return { action };
+	if (action === "branch-create") return { action, name: body.argument };
+	if (action === "stash-create") return { action, message: body.argument };
+	if (!body.selection?.value)
+		throw new Error("missing Git workbench selection");
+	const kinds = {
+		[GitWorkbenchSelectionKind.FILE]: "file",
+		[GitWorkbenchSelectionKind.BRANCH]: "branch",
+		[GitWorkbenchSelectionKind.COMMIT]: "commit",
+		[GitWorkbenchSelectionKind.STASH]: "stash",
+	} as const;
+	const kind = kinds[body.selection.kind as keyof typeof kinds];
+	if (!kind) throw new Error("invalid Git workbench selection");
+	return {
+		action,
+		selection: { kind, value: body.selection.value },
+	} as GitWorkbenchAction;
+}
+
 async function requestBody(request: IncomingMessage): Promise<unknown> {
 	const chunks: Buffer[] = [];
 	let size = 0;
@@ -70,7 +121,12 @@ function browserHtml(token: string, projectRoot: string): string {
 	return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <meta name="referrer" content="no-referrer"><title>HoBo Code sessions</title>
-<style>body{font:14px ui-monospace,monospace;margin:2rem auto;padding:0 1rem;background:#111;color:#eee}button,input,textarea{font:inherit;margin:.25rem;padding:.45rem;background:#222;color:#eee;border:1px solid #555}button:focus,input:focus,textarea:focus{outline:2px solid #8cf}.session{border:1px solid #444;padding:.75rem;margin:.75rem 0}.tab,.agents,.checkpoints,.delivery{border-left:2px solid #444;margin:.5rem 0;padding:.25rem .75rem}.tab-list{display:flex;gap:.25rem;overflow:auto}.tab-list [aria-selected=true]{background:#8cf;color:#111}.pane-grid{position:relative;min-height:24rem;margin:.5rem 0;border:1px solid #666;background:#080808;overflow:hidden}.pane-grid.fallback{display:grid;grid-template-columns:repeat(auto-fit,minmax(22rem,1fr));height:auto!important;aspect-ratio:auto!important}.pane-tile{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;min-width:0;min-height:0;border:1px solid #666;background:#151515;overflow:hidden}.pane-tile.focused{border-color:#8cf;box-shadow:inset 0 0 0 1px #8cf}.pane{padding:.25rem;flex:0 0 auto}.pane strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pane-tile pre{flex:1;margin:0;padding:.5rem;overflow:auto;white-space:pre;color:#ddd}.fallback .pane-tile{position:relative!important;inset:auto!important;min-height:18rem}.muted{color:#aaa}textarea{box-sizing:border-box;width:100%;min-height:9rem}.error{color:#f99}@media(max-width:48rem){.pane-grid{display:grid;grid-template-columns:1fr;height:auto!important;aspect-ratio:auto!important;overflow:visible}.pane-tile{position:relative!important;inset:auto!important;width:100%!important;height:auto!important;min-height:18rem}}</style></head>
+<style>
+:root{color-scheme:dark;--ink:#d9e0e7;--muted:#82909e;--bg:#081015;--panel:#0d171d;--raised:#132128;--line:#29404b;--focus:#8bd5ca;--accent:#f5a97f;--good:#a6da95;--bad:#ed8796}
+*{box-sizing:border-box}body{font:14px ui-monospace,SFMono-Regular,Consolas,monospace;margin:2rem auto;padding:0 1rem;max-width:100rem;background:var(--bg);color:var(--ink)}button,input,textarea{font:inherit;margin:.25rem;padding:.45rem;background:var(--raised);color:var(--ink);border:1px solid var(--line)}button:hover{border-color:var(--accent)}button:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--focus);outline-offset:1px}.session{border:1px solid var(--line);padding:.75rem;margin:.75rem 0;background:#0a1318}.tab,.agents,.checkpoints,.delivery{border-left:2px solid var(--line);margin:.5rem 0;padding:.25rem .75rem}.tab-list{display:flex;gap:.25rem;overflow:auto}.tab-list [aria-selected=true]{background:var(--focus);color:#081015}.pane-grid{position:relative;min-height:24rem;margin:.5rem 0;border:1px solid var(--line);background:#05090b;overflow:hidden}.pane-grid.fallback{display:grid;grid-template-columns:repeat(auto-fit,minmax(22rem,1fr));height:auto!important;aspect-ratio:auto!important}.pane-tile{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;min-width:0;min-height:0;border:1px solid var(--line);background:var(--panel);overflow:hidden}.pane-tile.focused{border-color:var(--focus);box-shadow:inset 0 0 0 1px var(--focus)}.pane{padding:.25rem;flex:0 0 auto}.pane strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pane-tile pre{flex:1;margin:0;padding:.5rem;overflow:auto;white-space:pre;color:var(--ink)}.fallback .pane-tile{position:relative!important;inset:auto!important;min-height:18rem}.muted{color:var(--muted)}textarea{width:100%;min-height:9rem}.error{color:var(--bad)}
+.git-workbench{display:grid;grid-template-columns:minmax(18rem,32rem) minmax(24rem,1fr);gap:.5rem;margin-top:.5rem;min-height:42rem}.git-sidebar,.git-main{display:flex;flex-direction:column;gap:.5rem;min-width:0}.git-panel{border:1px solid var(--line);background:var(--panel);min-height:0}.git-panel h3{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;margin:0;padding:.4rem .55rem;background:var(--raised);color:var(--muted)}.git-list{max-height:11rem;overflow:auto}.git-row{display:grid;grid-template-columns:3.5rem minmax(0,1fr);gap:.45rem;width:100%;margin:0;border:0;border-top:1px solid #16262e;text-align:left;background:transparent}.git-row[aria-selected=true]{background:#18313a;color:#fff}.git-mark{color:var(--accent)}.git-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.git-diff{flex:1;min-height:25rem;margin:0;padding:.75rem;overflow:auto;white-space:pre;tab-size:4;background:#060b0e;color:var(--ink)}.git-summary{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:.5rem;border:1px solid var(--line);background:var(--panel)}.git-summary strong{color:var(--focus)}.git-actions{display:flex;flex-wrap:wrap;align-items:center;padding:.25rem;border:1px solid var(--line);background:var(--panel)}.git-hints{color:var(--muted);margin-left:auto;padding:.4rem}.git-pipeline{display:flex;gap:.35rem;align-items:center}.git-pipeline span{color:var(--muted)}.git-pipeline .ready{color:var(--good)}
+@media(max-width:48rem){body{margin:.75rem auto}.pane-grid{display:grid;grid-template-columns:1fr;height:auto!important;aspect-ratio:auto!important;overflow:visible}.pane-tile{position:relative!important;inset:auto!important;width:100%!important;height:auto!important;min-height:18rem}.git-workbench{display:flex;flex-direction:column;min-height:0}.git-main{order:-1}.git-diff{min-height:18rem;max-height:55vh}.git-list{max-height:9rem}.git-hints{width:100%;margin:0}}
+</style></head>
 <body><h1>HoBo Code resident sessions</h1><p>Loopback control plane · refreshes every second · delivery requires approval.</p>
 <p><strong>Authenticated</strong> · bearer-protected loopback control.</p>
 <p>Remote: forward this loopback port through a declared Station machine. The server never binds publicly.</p>
@@ -78,7 +134,7 @@ function browserHtml(token: string, projectRoot: string): string {
 <main id="sessions" aria-label="Resident sessions"></main>
 <h2>Full command boundary</h2><p>Paste any <code>hobo.code.session-command/v1</code> envelope.</p>
 <textarea id="command" aria-label="Session command JSON"></textarea><label><input id="approved" type="checkbox"> Approve commit, push, PR, stack, or merge</label><button id="send">Send command</button><pre id="result" aria-live="polite"></pre>
-<script>const cfg=${config};const headers={authorization:'Bearer '+cfg.token,'content-type':'application/json'};const clientId=sessionStorage.hoboCodeClientId??='browser-'+crypto.randomUUID();let snapshots=[];
+<script>const cfg=${config};const headers={authorization:'Bearer '+cfg.token,'content-type':'application/json'};const clientId=sessionStorage.hoboCodeClientId??='browser-'+crypto.randomUUID();let snapshots=[];let refreshFlight;const forcedRefreshIds=new Set();const activeSurface=new Map();const gitSelections=new Map();const gitMutationFlights=new Map();
 const api=async(path,options={})=>{const r=await fetch(path,{...options,headers});const body=await r.json();if(!r.ok){const error=Error(body.error||r.statusText);error.body=body;error.status=r.status;throw error}return body};
 const send=(command,approvalDigest)=>api('/code/commands',{method:'POST',body:JSON.stringify({command,...(approvalDigest?{approvalDigest}:{})})});
 const envelope=(snapshot,name,value)=>({schemaVersion:'hobo.code.session-command/v1',commandId:crypto.randomUUID(),actorId:clientId,sessionId:snapshot.session.id,expectedRevision:String(snapshot.revision),[name]:value});
@@ -96,13 +152,30 @@ function paneControls(s,p){const box=document.createElement('div');box.className
 	box.append(button('Close pane','close-pane',()=>confirm('Close pane '+p.title+' ('+p.id+')?')&&act(s.session.id,'closePane',{paneId:p.id})),button('Start agent','start-agent',async()=>{const provider=text('Agent provider','codex');if(!provider)return;const command=text('Agent executable','codex');if(!command)return;const agentPrompt=text('Initial agent prompt','Continue the assigned task.');if(agentPrompt===null)return;await act(s.session.id,'startAgent',{paneId:p.id,provider,command:[command],prompt:agentPrompt})}));
 	for(const run of s.agentRuns.filter(x=>x.id===p.agentRunId))box.append(document.createTextNode(' '+run.provider+' · '+run.id+' · '+run.summary+' '),button('Stop agent','stop-agent',()=>confirm('Stop agent '+run.provider+' ('+run.id+') in pane '+p.id+'?')&&act(s.session.id,'stopAgent',{agentRunId:run.id})));
 	return box}
+
+function gitRow(s,panel,kind,value,mark,label){const row=button('',kind+'-row',()=>selectGit(s,panel,kind,value));row.className='git-row';row.dataset.gitPanel=String(panel);row.dataset.gitKind=kind;row.dataset.gitValue=value;const selected=gitSelections.get(s.session.id);row.ariaSelected=String(selected?.panel===panel&&selected?.kind===kind&&selected?.value===value);const badge=document.createElement('span');badge.className='git-mark';badge.textContent=mark;const name=document.createElement('span');name.className='git-label';name.textContent=label;row.append(badge,name);return row}
+function gitPanel(number,title,rows,truncated=false){const panel=document.createElement('section');panel.className='git-panel';panel.dataset.gitPanel=String(number);const heading=document.createElement('h3');heading.textContent=number+' '+title+(truncated?' · first '+rows.length+'+':'');const list=document.createElement('div');list.className='git-list';list.append(...rows);if(!rows.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='  —';list.append(empty)}panel.append(heading,list);return panel}
+function selectedGitRow(s,selected=gitSelections.get(s.session.id)){if(!selected)return;const card=[...document.querySelectorAll('.session')].find(node=>node.dataset.sessionId===s.session.id);return [...(card?.querySelectorAll('.git-row')??[])].find(row=>row.dataset.gitPanel===String(selected.panel)&&row.dataset.gitKind===selected.kind&&row.dataset.gitValue===selected.value)}
+async function selectGit(s,panel,kind,value){gitSelections.set(s.session.id,{panel,kind,value});await refresh(s.session.id);selectedGitRow(s,{panel,kind,value})?.focus()}
+function toggleGitFile(s){const previous=gitMutationFlights.get(s.session.id)??Promise.resolve();const flight=previous.then(async()=>{const selected=gitSelections.get(s.session.id);if(selected?.kind!=='file')return;const git=await api('/code/sessions/'+encodeURIComponent(s.session.id)+'/git?kind=file&value='+encodeURIComponent(selected.value));const file=git.files.find(item=>item.path===selected.value);if(!file)return;const unstage=file.staged&&!file.unstaged&&!file.untracked;await act(s.session.id,unstage?'unstagePaths':'stagePaths',{paths:[file.path]});selectedGitRow(s,selected)?.focus()}).finally(()=>{if(gitMutationFlights.get(s.session.id)===flight)gitMutationFlights.delete(s.session.id)});gitMutationFlights.set(s.session.id,flight);return flight}
+function gitActionBody(request){return{action:'GIT_WORKBENCH_ACTION_KIND_'+request.action.replaceAll('-','_').toUpperCase(),...(request.selection?{selection:{kind:'GIT_WORKBENCH_SELECTION_KIND_'+request.selection.kind.toUpperCase(),value:request.selection.value}}:{}),argument:request.name??request.message??''}}
+async function localGit(s,request,label,confirmEffect=false){if(confirmEffect&&!confirm(label+'?\\n\\nExact effect:\\n'+JSON.stringify(request,null,2)))return;await api('/code/sessions/'+encodeURIComponent(s.session.id)+'/git/actions',{method:'POST',body:JSON.stringify(gitActionBody(request))});result.textContent=label+' completed';await refresh(s.session.id);selectedGitRow(s)?.focus()}
+async function gitWorkbench(s){let selected=gitSelections.get(s.session.id);let query=selected?'?kind='+encodeURIComponent(selected.kind)+'&value='+encodeURIComponent(selected.value):'';let git;try{git=await api('/code/sessions/'+encodeURIComponent(s.session.id)+'/git'+query)}catch(error){if(!selected)throw error;gitSelections.delete(s.session.id);selected=undefined;git=await api('/code/sessions/'+encodeURIComponent(s.session.id)+'/git')}
+	if(!selected){const first=git.files[0];const commit=git.commits[0];if(first)gitSelections.set(s.session.id,selected={panel:2,kind:'file',value:first.path});else if(commit)gitSelections.set(s.session.id,selected={panel:4,kind:'commit',value:commit.oid});if(selected)git=await api('/code/sessions/'+encodeURIComponent(s.session.id)+'/git?kind='+encodeURIComponent(selected.kind)+'&value='+encodeURIComponent(selected.value))}
+	const workbench=document.createElement('section');workbench.className='git-workbench';workbench.tabIndex=0;workbench.setAttribute('aria-label','Git workbench');
+	const sidebar=document.createElement('div');sidebar.className='git-sidebar';const statusRows=git.branch?[gitRow(s,1,'branch',git.branch,git.ahead+'↑ '+git.behind+'↓',git.branch+(git.upstream?' → '+git.upstream:''))]:git.commits[0]?[gitRow(s,1,'commit',git.commits[0].oid,'HEAD','detached at '+git.commits[0].shortOid)]:[];sidebar.append(gitPanel(1,'Status',statusRows),gitPanel(2,'Files',git.files.map(file=>gitRow(s,2,'file',file.path,file.untracked?'??':file.staged&&file.unstaged?'MM':file.staged?'S':'M',file.path)),git.truncated.files),gitPanel(3,'Branches',git.branches.map(branch=>gitRow(s,3,'branch',branch.name,branch.current?'*':'',branch.name+(branch.upstream?' → '+branch.upstream:''))),git.truncated.branches));
+	const main=document.createElement('div');main.className='git-main';const summary=document.createElement('div');summary.className='git-summary';const branch=document.createElement('strong');branch.textContent=git.branch??'detached HEAD';const counts=document.createElement('span');counts.textContent=git.files.length+(git.truncated.files?'+':'')+' changed · '+git.files.filter(file=>file.staged).length+(git.truncated.files?'+':'')+' staged';const pipeline=document.createElement('span');pipeline.className='git-pipeline';pipeline.innerHTML='<span class="ready">● worktree</span><span>›</span><span>commit</span><span>›</span><span>push</span><span>›</span><span>PR</span><span>›</span><span>merge</span>';summary.append(branch,counts,pipeline);main.append(summary,gitPanel(4,'Commits',git.commits.map(commit=>gitRow(s,4,'commit',commit.oid,commit.graph+' '+commit.shortOid,commit.subject+' · '+commit.author)),git.truncated.commits),gitPanel(5,'Stash',git.stashes.map(stash=>gitRow(s,5,'stash',stash.ref,'≡',stash.subject)),git.truncated.stashes));
+	const diffPanel=document.createElement('section');diffPanel.className='git-panel';const diffHeading=document.createElement('h3');diffHeading.textContent='Preview'+(git.selectedDiff?' · '+git.selectedDiff.path:'');const diff=document.createElement('pre');diff.className='git-diff';diff.textContent=git.selectedDiff?.text??'Select a file, branch, commit, or stash to inspect it.';diffPanel.append(diffHeading,diff);main.append(diffPanel);
+	const actions=document.createElement('div');actions.className='git-actions';const commit=button('Commit','git-commit',async()=>{if(git.truncated.files)throw Error('Commit disabled: more than 200 changed files; use the terminal for a complete review.');const message=text('Commit staged changes');if(message)await approved(s.session.id,'commit',{message,stagedOnly:true},'staged commit "'+message+'"')});commit.disabled=git.truncated.files;const selection=gitSelections.get(s.session.id);const selectedFile=selection?.kind==='file'?git.files.find(file=>file.path===selection.value):undefined;actions.append(button('Stage / unstage','git-stage',()=>toggleGitFile(s)),button('Discard','git-discard',()=>selection?.kind==='file'&&localGit(s,{action:'file-discard',selection},'discard '+selection.value,true)),button('Ignore','git-ignore',()=>selectedFile?.untracked&&localGit(s,{action:'file-ignore',selection},'ignore '+selection.value,true)),button('Fetch','git-fetch',()=>localGit(s,{action:'fetch'},'fetch')),button('Pull','git-pull',()=>localGit(s,{action:'pull'},'fast-forward pull',true)),button('Checkout','git-checkout',()=>selection?.kind==='branch'&&localGit(s,{action:'branch-checkout',selection},'checkout '+selection.value,true)),button('New branch','git-new-branch',async()=>{const name=text('New branch name');if(name)await localGit(s,{action:'branch-create',name},'create branch '+name)}),button('Delete branch','git-delete-branch',()=>selection?.kind==='branch'&&localGit(s,{action:'branch-delete',selection},'delete branch '+selection.value,true)),button('Stash all','git-stash-create',async()=>{const message=text('Stash message','HoBo Code workbench');if(message)await localGit(s,{action:'stash-create',message},'stash worktree')}),button('Apply stash','git-stash-apply',()=>selection?.kind==='stash'&&localGit(s,{action:'stash-apply',selection},'apply '+selection.value,true)),button('Pop stash','git-stash-pop',()=>selection?.kind==='stash'&&localGit(s,{action:'stash-pop',selection},'pop '+selection.value,true)),button('Drop stash','git-stash-drop',()=>selection?.kind==='stash'&&localGit(s,{action:'stash-drop',selection},'drop '+selection.value,true)),button('Revert commit','git-revert',()=>selection?.kind==='commit'&&localGit(s,{action:'commit-revert',selection},'revert '+selection.value,true)),commit,button('Push','git-push',async()=>{const remote=text('Remote','origin');if(remote)await approved(s.session.id,'push',{remote},'push to '+remote)}),button('Open PR','git-open-pr',async()=>{const title=text('Pull request title');if(!title)return;await approved(s.session.id,'openPullRequest',{title,body:'',draft:false},'pull request "'+title+'"')}),button('Stack','git-stack',async()=>{const parentBranch=text('Parent branch','main');const title=text('Pull request title');if(parentBranch&&title)await approved(s.session.id,'stackPullRequest',{parentBranch,title,body:''},'stacked pull request "'+title+'" onto '+parentBranch)}),button('Merge','git-merge',async()=>{const number=text('Pull request number',String(s.deliveryState?.pullRequestNumber??''));if(number)await approved(s.session.id,'mergePullRequest',{pullRequestNumber:Number(number)},'pull request #'+number)}));const hints=document.createElement('span');hints.className='git-hints';hints.textContent='1–5 panels · ↑↓/jk move · Space stage · c commit · p push';actions.append(hints);main.append(actions);workbench.append(sidebar,main);
+	workbench.onkeydown=e=>{const rows=[...workbench.querySelectorAll('.git-row')];const current=rows.indexOf(document.activeElement);if(/^[1-5]$/u.test(e.key)){e.preventDefault();workbench.querySelector('[data-git-panel="'+e.key+'"] .git-row')?.click();return}if(['ArrowDown','j','ArrowUp','k'].includes(e.key)){e.preventDefault();const delta=e.key==='ArrowUp'||e.key==='k'?-1:1;const row=rows[Math.max(0,Math.min(rows.length-1,current<0?0:current+delta))];row?.click();return}if(e.key===' '){e.preventDefault();attempt(()=>toggleGitFile(s));return}if(e.key==='c'){e.preventDefault();commit.click();return}if(e.key==='p'){e.preventDefault();actions.querySelector('[data-action=git-push]')?.click()}};return workbench}
 async function render(card,s){card.replaceChildren();const running=s.session.lifecycleState==='SESSION_LIFECYCLE_STATE_RUNNING';const failed=s.session.lifecycleState==='SESSION_LIFECYCLE_STATE_FAILED';const attached=s.attachedClientIds.includes(clientId);const title=document.createElement('h2');title.textContent=s.session.name+' · '+s.session.id+' · '+s.session.branch+' · '+(running?'running':failed?'failed':'stopped')+' · r'+s.revision;card.append(title);if(!running){const note=document.createElement('p');note.className='muted';note.textContent=failed?'Session failed unexpectedly. Pane and agent processes are no longer running.':'Session is stopped. Pane and agent processes are no longer running.';card.append(note);return}card.append(attached?button('Detach','detach',()=>act(s.session.id,'detachSession',{clientId})):button('Reattach','reattach',()=>act(s.session.id,'reattachSession',{clientId})),button('Stop session','stop-session',()=>confirm('Stop session '+s.session.name+' ('+s.session.id+')? Running panes and agents will terminate.')&&act(s.session.id,'stopSession',{removeWorktree:false})));
 	if(!attached){const note=document.createElement('p');note.className='muted';note.textContent='This browser is detached. Reattach to view pane output and controls.';card.append(note);return}
 	card.append(button('New tab','create-tab',async()=>{const title=text('Tab title');if(title)await act(s.session.id,'createTab',{title})}));
-	const tabs=document.createElement('nav');tabs.className='tab-list';tabs.role='tablist';for(const tab of s.tabs){const pane=s.panes.find(x=>x.tabId===tab.id);const select=button(tab.title,'select-tab',()=>pane&&act(s.session.id,'focusPane',{paneId:pane.id}));select.role='tab';select.ariaSelected=String(tab.id===s.focusedTabId);tabs.append(select)}card.append(tabs);const tab=s.tabs.find(x=>x.id===s.focusedTabId)??s.tabs[0];if(tab){const group=document.createElement('section');group.className='tab';group.role='tabpanel';const heading=document.createElement('h3');heading.textContent=tab.title+' · '+tab.id;group.append(heading,button('New pane','create-pane',async()=>{const title=text('Pane title');if(!title)return;const command=text('Command (optional)')??'';await act(s.session.id,'createPane',{tabId:tab.id,title,command:shell(command)})}));const panes=s.panes.filter(x=>x.tabId===tab.id);const grid=document.createElement('div');grid.className='pane-grid';const geometry=panes.map(paneGeometry);if(geometry.some(g=>!g)){grid.classList.add('fallback')}else if(geometry[0])grid.style.aspectRatio=geometry[0].ratio;for(const [index,pane] of panes.entries()){const tile=document.createElement('article');tile.className='pane-tile'+(pane.id===s.focusedPaneId?' focused':'');tile.setAttribute('aria-label','Pane '+pane.title);const g=geometry[index];if(g){tile.style.left=g.left+'%';tile.style.top=g.top+'%';tile.style.width=g.width+'%';tile.style.height=g.height+'%'}tile.append(paneControls(s,pane));const output=document.createElement('pre');output.textContent=(await api('/code/sessions/'+encodeURIComponent(s.session.id)+'/panes/'+encodeURIComponent(pane.id)+'/output?lines=80')).output;tile.append(output);grid.append(tile)}group.append(grid);card.append(group)}
+	const surface=activeSurface.get(s.session.id)??'terminal';const tabs=document.createElement('nav');tabs.className='tab-list';tabs.role='tablist';for(const tab of s.tabs){const pane=s.panes.find(x=>x.tabId===tab.id);const select=button(tab.title,'select-tab',async()=>{activeSurface.set(s.session.id,'terminal');if(pane)await act(s.session.id,'focusPane',{paneId:pane.id})});select.role='tab';select.ariaSelected=String(surface==='terminal'&&tab.id===s.focusedTabId);tabs.append(select)}const gitTab=button('Git','select-git-tab',async()=>{activeSurface.set(s.session.id,'git');await refresh(s.session.id)});gitTab.role='tab';gitTab.ariaSelected=String(surface==='git');tabs.append(gitTab);card.append(tabs);if(surface==='git'){card.append(await gitWorkbench(s));return}const tab=s.tabs.find(x=>x.id===s.focusedTabId)??s.tabs[0];if(tab){const group=document.createElement('section');group.className='tab';group.role='tabpanel';const heading=document.createElement('h3');heading.textContent=tab.title+' · '+tab.id;group.append(heading,button('New pane','create-pane',async()=>{const title=text('Pane title');if(!title)return;const command=text('Command (optional)')??'';await act(s.session.id,'createPane',{tabId:tab.id,title,command:shell(command)})}));const panes=s.panes.filter(x=>x.tabId===tab.id);const grid=document.createElement('div');grid.className='pane-grid';const geometry=panes.map(paneGeometry);if(geometry.some(g=>!g)){grid.classList.add('fallback')}else if(geometry[0])grid.style.aspectRatio=geometry[0].ratio;for(const [index,pane] of panes.entries()){const tile=document.createElement('article');tile.className='pane-tile'+(pane.id===s.focusedPaneId?' focused':'');tile.setAttribute('aria-label','Pane '+pane.title);const g=geometry[index];if(g){tile.style.left=g.left+'%';tile.style.top=g.top+'%';tile.style.width=g.width+'%';tile.style.height=g.height+'%'}tile.append(paneControls(s,pane));const output=document.createElement('pre');output.textContent=(await api('/code/sessions/'+encodeURIComponent(s.session.id)+'/panes/'+encodeURIComponent(pane.id)+'/output?lines=80')).output;tile.append(output);grid.append(tile)}group.append(grid);card.append(group)}
 	const checkpoints=document.createElement('section');checkpoints.className='checkpoints';checkpoints.append(button('Create checkpoint','create-checkpoint',async()=>{const label=text('Checkpoint label');if(label)await act(s.session.id,'createCheckpoint',{label})}));for(const checkpoint of s.checkpoints)checkpoints.append(document.createTextNode(' '+checkpoint.label+' · '+checkpoint.id+' · '+checkpoint.gitCommit+' '),button('Restore','restore-checkpoint',()=>confirm('Restore checkpoint '+checkpoint.label+' ('+checkpoint.id+') at '+checkpoint.gitCommit+'? Current worktree must be clean.')&&act(s.session.id,'restoreCheckpoint',{checkpointId:checkpoint.id})));card.append(checkpoints);
 	const delivery=document.createElement('section');delivery.className='delivery';const heading=document.createElement('h3');heading.textContent='Approved delivery';delivery.append(heading,button('Commit','commit',async()=>{const message=text('Commit message');if(message)await approved(s.session.id,'commit',{message},'commit "'+message+'"')}),button('Push','push',async()=>{const remote=text('Remote','origin');if(remote)await approved(s.session.id,'push',{remote},'push to '+remote)}),button('Open PR','open-pr',async()=>{const title=text('Pull request title');if(!title)return;const body=text('Pull request body')??'';await approved(s.session.id,'openPullRequest',{title,body,draft:false},'pull request "'+title+'"')}),button('Stack PR','stack-pr',async()=>{const parentBranch=text('Parent branch','main');if(!parentBranch)return;const title=text('Pull request title');if(title)await approved(s.session.id,'stackPullRequest',{parentBranch,title,body:''},'stacked pull request "'+title+'" onto '+parentBranch)}),button('Merge PR','merge-pr',async()=>{const pullRequestNumber=text('Pull request number',String(s.deliveryState?.pullRequestNumber??''));if(pullRequestNumber)await approved(s.session.id,'mergePullRequest',{pullRequestNumber:Number(pullRequestNumber)},'pull request #'+pullRequestNumber)}));card.append(delivery)}
-async function refresh(forceId){try{snapshots=await api('/code/sessions');const root=document.querySelector('#sessions');const cards=new Map([...root.querySelectorAll('.session')].map(card=>[card.dataset.sessionId,card]));const seen=new Set();for(const s of snapshots){seen.add(s.session.id);let card=cards.get(s.session.id);if(!card){card=document.createElement('section');card.className='session';card.dataset.sessionId=s.session.id;root.append(card)}if(card.contains(document.activeElement)&&s.session.id!==forceId)continue;await render(card,s)}for(const [id,card] of cards)if(!seen.has(id))card.remove()}catch(e){result.textContent=String(e)}}
+async function refreshNow(forceIds){try{snapshots=await api('/code/sessions');const root=document.querySelector('#sessions');const cards=new Map([...root.querySelectorAll('.session')].map(card=>[card.dataset.sessionId,card]));const seen=new Set();for(const s of snapshots){seen.add(s.session.id);let card=cards.get(s.session.id);if(!card){card=document.createElement('section');card.className='session';card.dataset.sessionId=s.session.id;root.append(card)}const focused=card.contains(document.activeElement);if(focused&&!forceIds.has(s.session.id))continue;const scrollY=window.scrollY;await render(card,s);if(focused)selectedGitRow(s)?.focus();window.scrollTo(0,scrollY)}for(const [id,card] of cards)if(!seen.has(id))card.remove()}catch(e){result.textContent=String(e)}}
+function refresh(forceId){if(forceId)forcedRefreshIds.add(forceId);if(!refreshFlight)refreshFlight=(async()=>{do{const forceIds=new Set(forcedRefreshIds);forcedRefreshIds.clear();await refreshNow(forceIds)}while(forcedRefreshIds.size)})().finally(()=>{refreshFlight=undefined});return refreshFlight}
 document.querySelector('#create').onsubmit=async e=>{e.preventDefault();const name=document.querySelector('#name').value;const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');const id=slug+'-'+crypto.randomUUID().slice(0,8);const branch=document.querySelector('#branch').value||'code/'+id;await send({schemaVersion:'hobo.code.session-command/v1',commandId:crypto.randomUUID(),actorId:clientId,sessionId:id,expectedRevision:'0',createSession:{name,projectRoot:cfg.projectRoot,branch,clientId}});await refresh()};
 document.querySelector('#send').onclick=()=>attempt(async()=>{const command=JSON.parse(document.querySelector('#command').value);const out=document.querySelector('#approved').checked?await approveCommand(command,'raw delivery command'):await send(command);if(out)result.textContent=JSON.stringify(out,null,2);await refresh()});refresh();setInterval(refresh,1000);</script></body></html>`;
 }
@@ -114,6 +187,7 @@ export async function startSessionControlServer(
 	const control =
 		options.control ??
 		createLocalSessionControl({ hoboHome: options.hoboHome });
+	const runner = sessionProcessRunner();
 	const server = createServer(async (request, response) => {
 		try {
 			const url = new URL(request.url ?? "/", "http://127.0.0.1");
@@ -169,6 +243,57 @@ export async function startSessionControlServer(
 						lines,
 					),
 				});
+				return;
+			}
+			const gitWorkbench = /^\/code\/sessions\/([^/]+)\/git$/u.exec(
+				url.pathname,
+			);
+			if (request.method === "GET" && gitWorkbench) {
+				const snapshot = await control.load(
+					decodeURIComponent(gitWorkbench[1] ?? ""),
+				);
+				if (!snapshot?.session) {
+					json(response, 404, { error: "session not found" });
+					return;
+				}
+				const kind = url.searchParams.get("kind");
+				const value = url.searchParams.get("value");
+				const selection: GitSelection | undefined =
+					kind && value && ["file", "branch", "commit", "stash"].includes(kind)
+						? { kind: kind as GitSelection["kind"], value }
+						: undefined;
+				if ((kind || value) && !selection) {
+					json(response, 400, { error: "invalid Git workbench selection" });
+					return;
+				}
+				json(
+					response,
+					200,
+					await readGitWorkbenchSnapshot(
+						snapshot.session.worktreePath,
+						runner,
+						selection,
+					),
+				);
+				return;
+			}
+			const gitAction = /^\/code\/sessions\/([^/]+)\/git\/actions$/u.exec(
+				url.pathname,
+			);
+			if (request.method === "POST" && gitAction) {
+				const snapshot = await control.load(
+					decodeURIComponent(gitAction[1] ?? ""),
+				);
+				if (!snapshot?.session) {
+					json(response, 404, { error: "session not found" });
+					return;
+				}
+				await runGitWorkbenchAction(
+					snapshot.session.worktreePath,
+					runner,
+					parseGitWorkbenchAction(await requestBody(request)),
+				);
+				json(response, 200, { ok: true });
 				return;
 			}
 			if (request.method === "POST" && url.pathname === "/code/commands") {

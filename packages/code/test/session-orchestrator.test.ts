@@ -429,6 +429,7 @@ describe("session orchestrator", () => {
 											title: "approved",
 											body: "body",
 											baseRefName: "main",
+											headRefOid: git(cwd, ["rev-parse", "HEAD"]),
 										},
 									]
 								: [],
@@ -643,6 +644,109 @@ describe("session orchestrator", () => {
 			),
 		).rejects.toThrow("Git HEAD changed after stack approval");
 		expect(stackCalled).toBe(false);
+		harness.runtime.close();
+	});
+
+	it("rejects a stacked pull request published from an unapproved head", async () => {
+		const harness = await createHarness();
+		let created = false;
+		const base = sessionProcessRunner();
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner: {
+				run(command, args, cwd, env) {
+					if (command !== "gh") return base.run(command, args, cwd, env);
+					if (args[0] === "pr" && args[1] === "list")
+						return Promise.resolve({
+							code: 0,
+							stdout: JSON.stringify(
+								created
+									? [
+											{
+												number: 42,
+												url: "https://github.test/o/r/pull/42",
+												state: "OPEN",
+												title: "approved",
+												body: "",
+												baseRefName: "main",
+												headRefOid: "f".repeat(40),
+											},
+										]
+									: [],
+							),
+							stderr: "",
+						});
+					if (args[0] === "stack" && args[1] === "submit") created = true;
+					if (args[0] === "stack" && args[1] === "view")
+						return Promise.resolve({
+							code: 0,
+							stdout: JSON.stringify({
+								branches: [{ name: "code/review", pr: { number: 42 } }],
+							}),
+							stderr: "",
+						});
+					return Promise.resolve({ code: 0, stdout: "", stderr: "" });
+				},
+			},
+			authorize: () => true,
+		});
+		await expect(
+			orchestrator.execute(
+				envelope(
+					"session-1",
+					harness.created.revision ?? 0n,
+					"stackPullRequest",
+					{ parentBranch: "main", title: "approved", body: "" },
+				),
+			),
+		).rejects.toThrow("approved pull request");
+		harness.runtime.close();
+	});
+
+	it("does not open a pull request after its approved head changes", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		let createCalled = false;
+		const base = sessionProcessRunner();
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner: {
+				run(command, args, worktree, env) {
+					if (command !== "gh") return base.run(command, args, worktree, env);
+					if (args[0] === "repo")
+						return Promise.resolve({ code: 0, stdout: "main\n", stderr: "" });
+					if (args[0] === "pr" && args[1] === "list")
+						return Promise.resolve({ code: 0, stdout: "[]", stderr: "" });
+					if (args[0] === "pr" && args[1] === "create") createCalled = true;
+					return Promise.resolve({ code: 0, stdout: "", stderr: "" });
+				},
+			},
+			authorize(action) {
+				if (action.operation === "open-pull-request") {
+					expect(action.details.gitHead).toBe(git(cwd, ["rev-parse", "HEAD"]));
+					writeFileSync(
+						join(cwd, "changed-after-pr-approval.txt"),
+						"changed\n",
+					);
+					git(cwd, ["add", "changed-after-pr-approval.txt"]);
+					git(cwd, ["commit", "-qm", "changed after PR approval"]);
+				}
+				return true;
+			},
+		});
+		await expect(
+			orchestrator.execute(
+				envelope(
+					"session-1",
+					harness.created.revision ?? 0n,
+					"openPullRequest",
+					{ title: "approved", body: "", draft: false },
+				),
+			),
+		).rejects.toThrow("Git HEAD changed after pull request approval");
+		expect(createCalled).toBe(false);
 		harness.runtime.close();
 	});
 
@@ -1124,6 +1228,7 @@ describe("session orchestrator", () => {
 											title: edits >= 2 ? "approved" : "old",
 											body: edits >= 2 ? "approved body" : "old",
 											baseRefName: edits >= 2 ? "main" : "old-parent",
+											headRefOid: git(cwd, ["rev-parse", "HEAD"]),
 										},
 									]
 								: [
@@ -1178,8 +1283,10 @@ describe("session orchestrator", () => {
 		let creates = 0;
 		let created = false;
 		let approval: SessionDeliveryApproval | undefined;
+		const base = sessionProcessRunner();
 		const runner: SessionProcessRunner = {
-			async run(command, args) {
+			async run(command, args, cwd, env) {
+				if (command !== "gh") return base.run(command, args, cwd, env);
 				if (command === "gh" && args[0] === "repo")
 					return { code: 0, stdout: "main\n", stderr: "" };
 				if (command === "gh" && args[0] === "pr" && args[1] === "list") {
@@ -1241,8 +1348,10 @@ describe("session orchestrator", () => {
 
 	it("does not adopt an identical pull request that predates approval", async () => {
 		const harness = await createHarness();
+		const base = sessionProcessRunner();
 		const runner: SessionProcessRunner = {
-			async run(command, args) {
+			async run(command, args, cwd, env) {
+				if (command !== "gh") return base.run(command, args, cwd, env);
 				if (command === "gh" && args[0] === "repo")
 					return { code: 0, stdout: "main\n", stderr: "" };
 				if (command === "gh" && args[0] === "pr" && args[1] === "list")

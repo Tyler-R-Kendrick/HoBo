@@ -45,6 +45,28 @@ export interface SessionDeliveryApproval {
 	readonly details: Readonly<Record<string, string | boolean>>;
 }
 
+export function sessionDeliveryApprovalDigest(
+	approval: SessionDeliveryApproval,
+): string {
+	return createHash("sha256")
+		.update(
+			JSON.stringify(approval, (_key, value) =>
+				typeof value === "bigint" ? value.toString() : value,
+			),
+		)
+		.digest("hex");
+}
+
+export class SessionApprovalRequiredError extends Error {
+	readonly approval: SessionDeliveryApproval;
+
+	constructor(approval: SessionDeliveryApproval) {
+		super(`${approval.operation} requires explicit approval`);
+		this.name = "SessionApprovalRequiredError";
+		this.approval = approval;
+	}
+}
+
 export interface SessionProcessResult {
 	readonly code: number | null;
 	readonly stdout: string;
@@ -358,6 +380,7 @@ export function createSessionOrchestrator(
 				details.body = action.value.body;
 				details.draft = action.value.draft ?? false;
 				details.parentBranch = context.parentBranch ?? "";
+				details.gitHead = context.preHead ?? "";
 				break;
 			case "stackPullRequest":
 				details.parentBranch = action.value.parentBranch;
@@ -382,7 +405,7 @@ export function createSessionOrchestrator(
 			details: Object.freeze(details),
 		});
 		if (!(await options.authorize?.(approval, snapshot))) {
-			throw new Error(`${operation} requires explicit approval`);
+			throw new SessionApprovalRequiredError(approval);
 		}
 		return approval;
 	}
@@ -619,6 +642,11 @@ export function createSessionOrchestrator(
 				if (!parentBranch)
 					throw new Error("pull request base branch is unknown");
 				return {
+					preHead: await run(
+						"git",
+						["rev-parse", "HEAD"],
+						session.worktreePath,
+					),
 					parentBranch,
 					pullRequestNumbers: pullRequests.flatMap((item) =>
 						typeof item.number === "number" ? [item.number] : [],
@@ -760,8 +788,8 @@ export function createSessionOrchestrator(
 	): Promise<"unknown" | Record<string, unknown> | undefined> {
 		const fields =
 			command.command.case === "stackPullRequest"
-				? "number,url,state,title,body,baseRefName"
-				: "number,url,state,title,body,isDraft,baseRefName";
+				? "number,url,state,title,body,baseRefName,headRefOid"
+				: "number,url,state,title,body,isDraft,baseRefName,headRefOid";
 		const listed = await pullRequestsForBranch(session, fields);
 		if (listed === "unknown") return "unknown";
 		const previous = new Set(ledger.context.pullRequestNumbers ?? []);
@@ -779,7 +807,8 @@ export function createSessionOrchestrator(
 			return candidate.title === value.title &&
 				candidate.body === value.body &&
 				candidate.isDraft === (value.draft ?? false) &&
-				candidate.baseRefName === ledger.context.parentBranch
+				candidate.baseRefName === ledger.context.parentBranch &&
+				candidate.headRefOid === ledger.context.preHead
 				? candidate
 				: undefined;
 		}
@@ -790,7 +819,8 @@ export function createSessionOrchestrator(
 		const value = command.command.value;
 		return candidate.title === value.title &&
 			candidate.body === value.body &&
-			candidate.baseRefName === value.parentBranch
+			candidate.baseRefName === value.parentBranch &&
+			candidate.headRefOid === ledger.context.preHead
 			? candidate
 			: undefined;
 	}
@@ -1266,6 +1296,8 @@ export function createSessionOrchestrator(
 
 	async function openPullRequest(
 		snapshot: SessionSnapshot,
+		command: SessionCommandEnvelope,
+		ledger: DeliveryLedger,
 		input: {
 			title: string;
 			body: string;
@@ -1274,6 +1306,13 @@ export function createSessionOrchestrator(
 		},
 	): Promise<SessionSnapshot> {
 		const session = requiredSession(snapshot);
+		if (!ledger.context.preHead)
+			throw new Error("approved pull request is missing its Git identity");
+		if (
+			(await run("git", ["rev-parse", "HEAD"], session.worktreePath)) !==
+			ledger.context.preHead
+		)
+			throw new Error("Git HEAD changed after pull request approval");
 		const args = ["pr", "create", "--title", input.title, "--body", input.body];
 		if (input.parent) args.push("--base", input.parent);
 		if (input.draft) args.push("--draft");
@@ -1281,12 +1320,19 @@ export function createSessionOrchestrator(
 		const match = /\/pull\/(\d+)/u.exec(output);
 		if (!match)
 			throw new Error("gh pr create did not return a pull request URL");
+		const pullRequest = await pullRequestForDelivery(command, session, ledger);
+		if (
+			pullRequest === "unknown" ||
+			pullRequest?.number !== Number(match[1]) ||
+			typeof pullRequest.url !== "string"
+		)
+			throw new Error("gh pr create did not produce its approved pull request");
 		return options.runtime.update(session.id, revision(snapshot), (next) => {
 			if (!next.deliveryState) return;
 			next.deliveryState.lifecycleState =
 				DeliveryLifecycleState.PULL_REQUEST_OPEN;
 			next.deliveryState.pullRequestNumber = BigInt(match[1] ?? "0");
-			next.deliveryState.pullRequestUrl = output.split("\n").at(-1);
+			next.deliveryState.pullRequestUrl = pullRequest.url as string;
 			next.deliveryState.stackParentBranch = input.parent;
 			next.deliveryState.message = "pull request open";
 		});
@@ -1603,7 +1649,7 @@ export function createSessionOrchestrator(
 								command,
 								snapshot,
 								(ledger) =>
-									openPullRequest(snapshot, {
+									openPullRequest(snapshot, command, ledger, {
 										...action.value,
 										parent: ledger.context.parentBranch,
 									}),

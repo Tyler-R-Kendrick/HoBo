@@ -647,9 +647,14 @@ describe("session orchestrator", () => {
 		harness.runtime.close();
 	});
 
-	it("rejects a stacked pull request published from an unapproved head", async () => {
+	it.each([
+		{ preexisting: false, closes: true },
+		{ preexisting: true, closes: false },
+	])(
+		"rejects a stacked pull request published from an unapproved head (preexisting=$preexisting)",
+		async ({ preexisting, closes }) => {
 		const harness = await createHarness();
-		let created = false;
+		let created = preexisting;
 		let closed = false;
 		let edited = false;
 		const base = sessionProcessRunner();
@@ -705,10 +710,11 @@ describe("session orchestrator", () => {
 				),
 			),
 		).rejects.toThrow("approved Git HEAD");
-		expect(closed).toBe(true);
+		expect(closed).toBe(closes);
 		expect(edited).toBe(false);
 		harness.runtime.close();
-	});
+		},
+	);
 
 	it("closes a newly created pull request whose provider head is unapproved", async () => {
 		const harness = await createHarness();

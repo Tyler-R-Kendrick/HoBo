@@ -230,12 +230,12 @@ export function parseSessionSnapshot(input: unknown): SessionSnapshot {
 		lifecycle(pane.lifecycleState, PANE_STATES, "panes[].lifecycleState");
 		paneTabIds.set(pane.id, pane.tabId);
 	}
-	const agentIds = new Set<string>();
+	const agentPanes = new Map<string, string>();
 	for (const agent of snapshot.agentRuns) {
 		required(agent.id, "agentRuns[].id");
-		if (agentIds.has(agent.id))
+		if (agentPanes.has(agent.id))
 			throw new TypeError("agentRuns[].id must be unique");
-		agentIds.add(agent.id);
+		agentPanes.set(agent.id, agent.paneId);
 		required(agent.provider, "agentRuns[].provider");
 		optionalRequired(agent.providerSessionId, "agentRuns[].providerSessionId");
 		required(agent.startedAt, "agentRuns[].startedAt");
@@ -247,8 +247,12 @@ export function parseSessionSnapshot(input: unknown): SessionSnapshot {
 		lifecycle(agent.lifecycleState, AGENT_STATES, "agentRuns[].lifecycleState");
 	}
 	for (const pane of snapshot.panes) {
-		if (pane.agentRunId && !agentIds.has(pane.agentRunId)) {
-			throw new TypeError("panes[].agentRunId must reference an agent run");
+		if (pane.agentRunId) {
+			const agentPaneId = agentPanes.get(pane.agentRunId);
+			if (!agentPaneId)
+				throw new TypeError("panes[].agentRunId must reference an agent run");
+			if (agentPaneId !== pane.id)
+				throw new TypeError("panes[].agentRunId must reference its own pane");
 		}
 	}
 	const checkpointIds = new Set<string>();

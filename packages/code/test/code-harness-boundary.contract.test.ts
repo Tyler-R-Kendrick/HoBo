@@ -167,6 +167,28 @@ describe("SessionControlPlane boundary pact", () => {
 		expect(() =>
 			parseSessionSnapshot({
 				...input,
+				panes: [
+					{ ...input.panes[0], agentRunId: "agent-1" },
+					{ ...input.panes[0], id: "pane-2", runtimeId: "%2" },
+				],
+				agentRuns: [
+					{
+						id: "agent-1",
+						sessionId: "session-1",
+						paneId: "pane-2",
+						provider: "codex",
+						lifecycleState: "AGENT_LIFECYCLE_STATE_WORKING",
+						startedAt: "2026-08-10T00:00:00Z",
+						updatedAt: "2026-08-10T00:00:00Z",
+						summary: "working",
+						terminalOnly: false,
+					},
+				],
+			}),
+		).toThrow("panes[].agentRunId must reference its own pane");
+		expect(() =>
+			parseSessionSnapshot({
+				...input,
 				agentRuns: [
 					{
 						id: "agent-1",

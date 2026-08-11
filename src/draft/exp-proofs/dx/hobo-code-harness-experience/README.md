@@ -10,20 +10,23 @@
 **Friction eliminated:**
 
 1. Agents writing freely into the canonical tree (sandbox purity).
-2. No high-value starting template with OpenFeature-linked Gherkin.
-3. No visual lock-in source of truth for subsequent codegen.
-4. Orphan worktrees after agent runs.
+2. Agent processes disappearing when the launching client exits.
+3. No shared session identity across CLI, TUI, and remote clients.
+4. No high-value starting template with OpenFeature-linked Gherkin.
+5. No visual lock-in source of truth for subsequent codegen.
+6. Orphan worktrees after agent runs.
 
 ## Flow (mermaid)
 
 ```mermaid
 flowchart LR
-  A[hobo code session] --> B[mediated isolation]
-  B --> C[scaffold openui-astryx-bindle]
-  C --> D[OpenUI edit + lock]
-  D --> E[Gherkin + OF evidence triple]
-  E --> F[promote squash-only]
-  F --> G[cleanup zero orphans]
+  A[hobo code session] --> B[resident session and mediated isolation]
+  B --> C[detach and reattach from any client]
+  C --> D[scaffold openui-astryx-bindle]
+  D --> E[OpenUI edit + lock]
+  E --> F[Gherkin + OF evidence triple]
+  F --> G[promote squash-only]
+  G --> H[cleanup zero orphans]
 ```
 
 ## Exercise

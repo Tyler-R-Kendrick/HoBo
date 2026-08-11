@@ -105,7 +105,7 @@ describe("hobo-codegen --check drift semantics", () => {
 	);
 
 	it(
-		"reports 'added' for a stray file in the generated tree",
+		"reports 'added' for a stray protobuf output in the generated tree",
 		async () => {
 			const stray = join(
 				repoRoot,
@@ -113,7 +113,7 @@ describe("hobo-codegen --check drift semantics", () => {
 				"widgets",
 				"src",
 				"_generated",
-				"stray.ts",
+				"stray_pb.ts",
 			);
 			try {
 				await writeFile(stray, "export const stray = true;\n");
@@ -122,7 +122,7 @@ describe("hobo-codegen --check drift semantics", () => {
 				const envelope = JSON.parse(result.stdout);
 				expect(envelope.status).toBe("DRIFT");
 				expect(envelope.drift).toEqual([
-					{ path: "widgets/stray.ts", kind: "added" },
+					{ path: "widgets/stray_pb.ts", kind: "added" },
 				]);
 			} finally {
 				await rm(stray, { force: true });

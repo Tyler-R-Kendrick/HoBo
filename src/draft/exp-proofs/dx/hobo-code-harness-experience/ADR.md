@@ -6,10 +6,11 @@ Experience proof companion to [ADR-0139](../../../../docs/design/adr/03-data-pla
 
 Demonstrate the developer journey for `hobo code` as an executable DX proof that:
 
-1. scaffolds the high-value OpenUI + Astryx Bindle template,
-2. runs OpenUI → in-context edit → lock,
-3. emits the evidence triple for a Gherkin + OpenFeature scenario,
-4. completes isolation with zero orphans.
+1. keeps the session resident when a client detaches and exposes the same snapshot on reattach,
+2. scaffolds the high-value OpenUI + Astryx Bindle template,
+3. runs OpenUI → in-context edit → lock,
+4. emits the evidence triple for a Gherkin + OpenFeature scenario,
+5. completes isolation with zero orphans.
 
 ## Parse, don't validate
 

@@ -3,7 +3,7 @@
 		"name": "@hobo/code"
 	},
 	"provider": {
-		"name": "hobo-code-isolation-runtime"
+		"name": "SessionControlPlane"
 	},
 	"interactions": [
 		{
@@ -61,6 +61,108 @@
 					"ok": true,
 					"code": "HOBO_CODE_PROMOTED",
 					"cleaned": true
+				}
+			}
+		},
+		{
+			"description": "create a resident session with runtime-backed panes",
+			"request": {
+				"method": "POST",
+				"path": "/code/sessions",
+				"body": {
+					"sessionId": "session-1",
+					"name": "session-contract",
+					"projectRoot": "/repo",
+					"branch": "code/session-contract",
+					"clientId": "client-1"
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"schemaVersion": "hobo.code.session-snapshot/v1",
+					"session": {
+						"id": "session-1",
+						"lifecycleState": "SESSION_LIFECYCLE_STATE_RUNNING"
+					},
+					"panes": [
+						{
+							"id": "pane-coordinator",
+							"runtimeId": "%1"
+						},
+						{
+							"id": "pane-worker",
+							"runtimeId": "%2"
+						}
+					],
+					"attachedClientIds": ["client-1"],
+					"focusedPaneId": "pane-coordinator"
+				}
+			}
+		},
+		{
+			"description": "detach without stopping the resident session",
+			"request": {
+				"method": "POST",
+				"path": "/code/sessions/session-1/detach",
+				"body": {
+					"clientId": "client-1"
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"session": {
+						"id": "session-1",
+						"lifecycleState": "SESSION_LIFECYCLE_STATE_RUNNING"
+					},
+					"attachedClientIds": []
+				}
+			}
+		},
+		{
+			"description": "reattach to the durable session snapshot",
+			"request": {
+				"method": "POST",
+				"path": "/code/sessions/session-1/reattach",
+				"body": {
+					"clientId": "client-2"
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"session": {
+						"id": "session-1",
+						"lifecycleState": "SESSION_LIFECYCLE_STATE_RUNNING"
+					},
+					"panes": [
+						{
+							"id": "pane-coordinator",
+							"runtimeId": "%1"
+						},
+						{
+							"id": "pane-worker",
+							"runtimeId": "%2"
+						}
+					],
+					"attachedClientIds": ["client-2"]
+				}
+			}
+		},
+		{
+			"description": "switch focus to another runtime-backed pane",
+			"request": {
+				"method": "POST",
+				"path": "/code/sessions/session-1/focus",
+				"body": {
+					"paneId": "pane-worker"
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"focusedPaneId": "pane-worker"
 				}
 			}
 		}

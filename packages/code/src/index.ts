@@ -158,6 +158,16 @@ export {
 } from "./session.js";
 
 export {
+	parseSessionCommand,
+	parseSessionSnapshot,
+	SESSION_COMMAND_SCHEMA,
+	SESSION_SNAPSHOT_SCHEMA,
+	sessionSnapshotJson,
+	type SessionCommandEnvelope,
+	type SessionSnapshot,
+} from "./session-contract.js";
+
+export {
 	parseEvidenceTriple,
 	parseIsolationContext,
 	parsePromotionRequest,

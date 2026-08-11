@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -55,6 +55,24 @@ describe("codegen determinism", () => {
 });
 
 describe("drift gate", () => {
+	it(
+		"ignores generated assets owned by another generator",
+		async () => {
+			const unrelated = join(
+				POC_PACKAGES,
+				"core/src/_generated/illustration.ts",
+			);
+			await writeFile(unrelated, "export const illustration = true;\n");
+			try {
+				const report = await checkCodegen(invocation(true));
+				expect(report.status).toBe("CLEAN");
+			} finally {
+				await rm(unrelated, { force: true });
+			}
+		},
+		CODEGEN_INTEGRATION_TIMEOUT_MS,
+	);
+
 	it(
 		"checkCodegen reports DRIFT for tampered generated file without mutating disk",
 		async () => {

@@ -1352,6 +1352,7 @@ function renderYardSelect(
 			);
 			const next = toggleYardUiOption(current, option);
 			applySelection(next, option.targetIds[0] ?? null);
+			setMenuOpen(false);
 		});
 
 		allBtn?.addEventListener("click", () => {

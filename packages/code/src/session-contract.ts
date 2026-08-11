@@ -204,6 +204,7 @@ export function parseSessionSnapshot(input: unknown): SessionSnapshot {
 	const tabIds = new Set<string>();
 	for (const tab of snapshot.tabs) {
 		required(tab.id, "tabs[].id");
+		if (tabIds.has(tab.id)) throw new TypeError("tabs[].id must be unique");
 		required(tab.title, "tabs[].title");
 		specified(tab.position, "tabs[].position");
 		if (tab.sessionId !== session.id) {
@@ -214,6 +215,8 @@ export function parseSessionSnapshot(input: unknown): SessionSnapshot {
 	const paneTabIds = new Map<string, string>();
 	for (const pane of snapshot.panes) {
 		required(pane.id, "panes[].id");
+		if (paneTabIds.has(pane.id))
+			throw new TypeError("panes[].id must be unique");
 		required(pane.title, "panes[].title");
 		required(pane.runtimeId, "panes[].runtimeId");
 		required(pane.workingDirectory, "panes[].workingDirectory");
@@ -227,8 +230,12 @@ export function parseSessionSnapshot(input: unknown): SessionSnapshot {
 		lifecycle(pane.lifecycleState, PANE_STATES, "panes[].lifecycleState");
 		paneTabIds.set(pane.id, pane.tabId);
 	}
+	const agentIds = new Set<string>();
 	for (const agent of snapshot.agentRuns) {
 		required(agent.id, "agentRuns[].id");
+		if (agentIds.has(agent.id))
+			throw new TypeError("agentRuns[].id must be unique");
+		agentIds.add(agent.id);
 		required(agent.provider, "agentRuns[].provider");
 		optionalRequired(agent.providerSessionId, "agentRuns[].providerSessionId");
 		required(agent.startedAt, "agentRuns[].startedAt");
@@ -239,8 +246,17 @@ export function parseSessionSnapshot(input: unknown): SessionSnapshot {
 		}
 		lifecycle(agent.lifecycleState, AGENT_STATES, "agentRuns[].lifecycleState");
 	}
+	for (const pane of snapshot.panes) {
+		if (pane.agentRunId && !agentIds.has(pane.agentRunId)) {
+			throw new TypeError("panes[].agentRunId must reference an agent run");
+		}
+	}
+	const checkpointIds = new Set<string>();
 	for (const checkpoint of snapshot.checkpoints) {
 		required(checkpoint.id, "checkpoints[].id");
+		if (checkpointIds.has(checkpoint.id))
+			throw new TypeError("checkpoints[].id must be unique");
+		checkpointIds.add(checkpoint.id);
 		required(checkpoint.gitCommit, "checkpoints[].gitCommit");
 		required(checkpoint.createdAt, "checkpoints[].createdAt");
 		if (checkpoint.sessionId !== session.id) {

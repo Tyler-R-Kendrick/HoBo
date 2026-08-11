@@ -65,16 +65,20 @@ describe("SessionControlPlane boundary pact", () => {
 				updatedAt: "2026-08-10T00:00:00Z",
 				closeOnMerge: false,
 			},
-			tabs: [{ id: "tab-1", sessionId: "session-1", title: "main", position: 0 }],
-			panes: [{
-				id: "pane-1",
-				sessionId: "session-1",
-				tabId: "tab-1",
-				title: "agent",
-				lifecycleState: "PANE_LIFECYCLE_STATE_RUNNING",
-				runtimeId: "%1",
-				workingDirectory: "/repo-worktree",
-			}],
+			tabs: [
+				{ id: "tab-1", sessionId: "session-1", title: "main", position: 0 },
+			],
+			panes: [
+				{
+					id: "pane-1",
+					sessionId: "session-1",
+					tabId: "tab-1",
+					title: "agent",
+					lifecycleState: "PANE_LIFECYCLE_STATE_RUNNING",
+					runtimeId: "%1",
+					workingDirectory: "/repo-worktree",
+				},
+			],
 			agentRuns: [],
 			checkpoints: [],
 			gitState: {
@@ -146,20 +150,37 @@ describe("SessionControlPlane boundary pact", () => {
 			}),
 		).toThrow("panes[].agentRunId must not be empty");
 		expect(() =>
+			parseSessionSnapshot({ ...input, tabs: [...input.tabs, input.tabs[0]] }),
+		).toThrow("tabs[].id must be unique");
+		expect(() =>
 			parseSessionSnapshot({
 				...input,
-				agentRuns: [{
-					id: "agent-1",
-					sessionId: "session-1",
-					paneId: "pane-1",
-					provider: "codex",
-					providerSessionId: "",
-					lifecycleState: "AGENT_LIFECYCLE_STATE_IDLE",
-					startedAt: "2026-08-10T00:00:00Z",
-					updatedAt: "2026-08-10T00:00:00Z",
-					summary: "",
-					terminalOnly: false,
-				}],
+				panes: [...input.panes, input.panes[0]],
+			}),
+		).toThrow("panes[].id must be unique");
+		expect(() =>
+			parseSessionSnapshot({
+				...input,
+				panes: [{ ...input.panes[0], agentRunId: "missing-agent" }],
+			}),
+		).toThrow("panes[].agentRunId must reference an agent run");
+		expect(() =>
+			parseSessionSnapshot({
+				...input,
+				agentRuns: [
+					{
+						id: "agent-1",
+						sessionId: "session-1",
+						paneId: "pane-1",
+						provider: "codex",
+						providerSessionId: "",
+						lifecycleState: "AGENT_LIFECYCLE_STATE_IDLE",
+						startedAt: "2026-08-10T00:00:00Z",
+						updatedAt: "2026-08-10T00:00:00Z",
+						summary: "",
+						terminalOnly: false,
+					},
+				],
 			}),
 		).toThrow("agentRuns[].providerSessionId must not be empty");
 		expect(() =>

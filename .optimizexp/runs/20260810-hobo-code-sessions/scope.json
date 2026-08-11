@@ -39,7 +39,7 @@
   "delightPasses": null,
   "delightPassesLabel": "infinite",
   "delightCyclesCompleted": 0,
-  "surveyCompleted": false,
+  "surveyCompleted": true,
   "equilibrium": {
     "kind": "pareto",
     "reason": "pareto-equilibrium",

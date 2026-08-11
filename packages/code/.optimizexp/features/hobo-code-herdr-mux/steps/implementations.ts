@@ -1,232 +1,365 @@
-/**
- * Step implementations for `hobo-code-herdr-mux`.
- * Exercises hobo-code status/session/help Herdr surfaces (not generic monorepo scripts).
- */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import {
+	existsSync,
+	mkdtempSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { OptimizexpWorld } from "./world.ts";
 
-const PKG = path.resolve(process.cwd(), "packages/code");
+import { createLocalSessionControl } from "../../../../src/local-session-control.ts";
+import type { MuxRunner } from "../../../../src/mux.ts";
+import { startSessionControlServer } from "../../../../src/session-control-server.ts";
+import type { CommandResult, OptimizexpWorld } from "./world.ts";
+
+const ROOT = process.cwd();
+const PACKAGE = path.join(ROOT, "packages/code");
 const BIN = "src/bin/hobo-code.ts";
+const FEATURE = path.join(PACKAGE, ".optimizexp/features/hobo-code-herdr-mux");
 
-/** Discovery snapshot — primary is status human chrome + herdr footer. */
-export const DISCOVERY_PRIMARY = {
-  command:
-    "pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts status" as string | null,
-  confidence: "high",
-  reason: "Herdr persona critical path = status pane mux + capability footer",
-};
-
-export const IMPLEMENTATION_STATUS = {
-  exerciseSurface: "wired",
-  criticalPath: "wired",
-  failurePath: "wired",
-} as const;
-
-function runHoboCode(
-  args: string[],
-  opts: { home?: string; cwd?: string } = {},
-): { status: number | null; stdout: string; stderr: string } {
-  const home = opts.home ?? mkdtempSync(path.join(tmpdir(), "oxp-herdr-home-"));
-  const cwd = opts.cwd ?? mkdtempSync(path.join(tmpdir(), "oxp-herdr-cwd-"));
-  const r = spawnSync(
-    "node",
-    ["--import", "tsx", BIN, ...args],
-    {
-      cwd: PKG,
-      encoding: "utf8",
-      timeout: 60_000,
-      maxBuffer: 4 * 1024 * 1024,
-      env: {
-        ...process.env,
-        HOBO_HOME: home,
-        HOBO_CODE_EPHEMERAL_SESSION: "1",
-      },
-    },
-  );
-  // Best-effort cleanup of ephemeral homes (ignore errors).
-  if (!opts.home) {
-    try {
-      rmSync(home, { recursive: true, force: true });
-    } catch {
-      /* ignore */
-    }
-  }
-  if (!opts.cwd) {
-    try {
-      rmSync(cwd, { recursive: true, force: true });
-    } catch {
-      /* ignore */
-    }
-  }
-  return {
-    status: r.status,
-    stdout: r.stdout ?? "",
-    stderr: r.stderr ?? "",
-  };
+function temporary(world: OptimizexpWorld, prefix: string): string {
+	const value = mkdtempSync(path.join(tmpdir(), prefix));
+	world.temporaryPaths.push(value);
+	return value;
 }
 
-export function setPersona(world: OptimizexpWorld, personaId: string): void {
-  world.personaId = personaId;
-  world.notes.push(`persona active: ${personaId}`);
+function run(
+	command: string,
+	args: readonly string[],
+	options: { cwd?: string; env?: NodeJS.ProcessEnv; input?: Buffer } = {},
+): CommandResult {
+	const result = spawnSync(command, [...args], {
+		cwd: options.cwd ?? ROOT,
+		env: options.env ?? process.env,
+		encoding: "utf8",
+		input: options.input,
+		timeout: 60_000,
+		maxBuffer: 8 * 1024 * 1024,
+	});
+	return {
+		status: result.status,
+		stdout: result.stdout?.toString() ?? "",
+		stderr: `${result.stderr?.toString() ?? ""}${result.error ? `\n${result.error.message}` : ""}`,
+	};
 }
 
-export function setFeatureContext(world: OptimizexpWorld, featureId: string): void {
-  world.featureId = featureId;
-  world.notes.push(`feature under review: ${featureId}`);
+function requireSuccess(result: CommandResult, label: string): void {
+	if (result.status !== 0) {
+		throw new Error(
+			`${label} failed (${result.status})\n${result.stdout}\n${result.stderr}`,
+		);
+	}
 }
 
-export function onCriticalPath(world: OptimizexpWorld): void {
-  const seed = path.join(PKG, ".optimizexp/features", world.featureId, "SEED.md");
-  const featureJson = path.join(
-    PKG,
-    ".optimizexp/features",
-    world.featureId,
-    "feature.json",
-  );
-  if (!existsSync(seed) && !existsSync(featureJson)) {
-    world.notes.push("critical path: feature folder incomplete");
-    world.statusClear = false;
-    return;
-  }
-  world.notes.push("critical path: feature seed/metadata present");
-  world.statusClear = true;
+export function runCurrentCli(
+	world: OptimizexpWorld,
+	args: readonly string[],
+): void {
+	const home = temporary(world, "oxp-hobo-code-home-");
+	world.command = run("node", ["--import", "tsx", BIN, ...args], {
+		cwd: PACKAGE,
+		env: { ...process.env, HOBO_HOME: home },
+	});
 }
 
-/**
- * Primary surface: hobo-code status (dense box + herdr capability footer).
- */
-export function exerciseSurface(world: OptimizexpWorld): void {
-  const command = DISCOVERY_PRIMARY.command!;
-  world.lastCommand = command;
-  const r = runHoboCode(["status"]);
-  world.lastExitCode = r.status;
-  world.lastStdout = r.stdout;
-  world.lastStderr = r.stderr;
-  const out = `${r.stdout}\n${r.stderr}`;
-  world.notes.push(
-    `exerciseSurface: ran status → exit ${r.status}`,
-  );
-  const hasBox = /┌─+┐/.test(out);
-  const hasFooter = /herdr · panes · detach · highlight→copy/.test(out);
-  const hasPanes = /○co|✓sn|○au|●co/.test(out);
-  world.statusClear = hasBox && hasFooter && hasPanes && r.status === 0;
-  world.nextActionObvious = hasFooter || /status --help|session --help/.test(out);
-  world.errorActionable = r.status !== 0 && out.trim().length > 0;
-  if (!world.statusClear) {
-    world.notes.push(
-      `status missing herdr chrome: box=${hasBox} footer=${hasFooter} panes=${hasPanes}`,
-    );
-  }
+export function runBaseSessionHelp(world: OptimizexpWorld): void {
+	const checkout = temporary(world, "oxp-hobo-code-base-");
+	const archive = spawnSync(
+		"git",
+		["archive", "--format=tar", "origin/main", "packages/code"],
+		{ cwd: ROOT, maxBuffer: 32 * 1024 * 1024 },
+	);
+	if (archive.status !== 0 || !archive.stdout) {
+		throw new Error(`could not read reviewed base: ${archive.stderr}`);
+	}
+	const extracted = run("tar", ["-xf", "-", "-C", checkout], {
+		input: archive.stdout,
+	});
+	requireSuccess(extracted, "extract reviewed base");
+	symlinkSync(
+		path.join(ROOT, "node_modules"),
+		path.join(checkout, "node_modules"),
+	);
+	symlinkSync(
+		path.join(PACKAGE, "node_modules"),
+		path.join(checkout, "packages/code/node_modules"),
+	);
+	const home = temporary(world, "oxp-hobo-code-base-home-");
+	world.command = run("node", ["--import", "tsx", BIN, "session", "--help"], {
+		cwd: path.join(checkout, "packages/code"),
+		env: { ...process.env, HOBO_HOME: home },
+	});
 }
 
-/** status --json + session --json herdr/persistence flags. */
-export function observeHerdrJson(world: OptimizexpWorld): void {
-  const st = runHoboCode(["status", "--json"]);
-  const se = runHoboCode(["session", "--json"]);
-  world.lastCommand = "hobo-code status --json && hobo-code session --json";
-  world.lastExitCode = se.status === 0 && st.status === 0 ? 0 : 1;
-  world.lastStdout = `${st.stdout}\n---\n${se.stdout}`;
-  world.lastStderr = `${st.stderr}\n${se.stderr}`;
-  const blob = world.lastStdout;
-  const ok =
-    /"copyOnHighlight"\s*:\s*true/.test(blob) &&
-    /"detachable"\s*:\s*true/.test(blob) &&
-    /"theme"\s*:\s*"herdr"/.test(blob) &&
-    /"durableRoot"/.test(blob) &&
-    /session-end\.json/.test(blob) &&
-    /"legend"\s*:\s*"herdr/.test(blob);
-  world.statusClear = ok && world.lastExitCode === 0;
-  world.nextActionObvious = ok;
-  world.notes.push(
-    ok
-      ? "herdr JSON: copyOnHighlight+detachable+theme+persistence present"
-      : "herdr JSON missing expected flags",
-  );
+export function assertCurrentSessionHelp(world: OptimizexpWorld): void {
+	const result = world.command;
+	if (!result) throw new Error("session help was not run");
+	requireSuccess(result, "current session help");
+	for (const term of [
+		"resident tmux agent sessions",
+		"tab",
+		"pane",
+		"agent-start",
+		"checkpoint",
+		"commit | push | pr | stack | merge",
+		"session serve",
+	]) {
+		if (!result.stdout.includes(term))
+			throw new Error(`current session help does not expose ${term}`);
+	}
 }
 
-/** Top help + status/session --help herdr callouts. */
-export function readHerdrHelp(world: OptimizexpWorld): void {
-  const help = runHoboCode(["help"]);
-  const stHelp = runHoboCode(["status", "--help"]);
-  const seHelp = runHoboCode(["session", "--help"]);
-  world.lastCommand = "hobo-code help|status --help|session --help";
-  world.lastExitCode =
-    help.status === 0 && stHelp.status === 0 && seHelp.status === 0 ? 0 : 1;
-  world.lastStdout = [help.stdout, stHelp.stdout, seHelp.stdout].join("\n---\n");
-  world.lastStderr = [help.stderr, stHelp.stderr, seHelp.stderr].join("\n");
-  const blob = world.lastStdout;
-  const ok =
-    /Herdr mux|Herdr-style|Herdr differentiators/i.test(blob) &&
-    /highlight→copy|highlight-to-copy|copyOnHighlight|highlightBuffer/i.test(
-      blob,
-    ) &&
-    /detach/i.test(blob) &&
-    /persist|handback|durable|HOBO_HOME/i.test(blob);
-  world.statusClear = ok && world.lastExitCode === 0;
-  world.nextActionObvious = ok;
-  world.notes.push(ok ? "help names herdr differentiators" : "help missing herdr");
+export function assertDetachHelp(world: OptimizexpWorld): void {
+	const output = world.command?.stdout ?? "";
+	if (
+		!/attach \| switch \| detach/.test(output) ||
+		!/detach\/reattach/.test(output)
+	)
+		throw new Error("session help does not explain detach and reattach");
 }
 
-export function observeFailure(world: OptimizexpWorld): void {
-  // Herdr happy path is primary; soft-fail path: unknown verb still suggests help.
-  const r = runHoboCode(["not-a-real-verb-zzzz"]);
-  world.lastCommand = "hobo-code not-a-real-verb-zzzz";
-  world.lastExitCode = r.status;
-  world.lastStdout = r.stdout;
-  world.lastStderr = r.stderr;
-  const out = `${r.stdout}\n${r.stderr}`;
-  world.errorActionable =
-    r.status !== 0 && (/help|did you mean|unknown|≈/i.test(out) || out.length > 0);
-  world.statusClear = world.errorActionable;
-  world.nextActionObvious = /help/i.test(out);
-  world.notes.push(`observeFailure: exit ${r.status} actionable=${world.errorActionable}`);
+export function assertBaseSessionHelp(world: OptimizexpWorld): void {
+	const result = world.command;
+	if (!result) throw new Error("base session help was not run");
+	requireSuccess(result, "base session help");
+	if (!result.stdout.includes("isolation session + durable handback"))
+		throw new Error("base help does not show the one-shot handback surface");
+	if (
+		/create <name>|agent-start|checkpoint <sessionId>|session serve/.test(
+			result.stdout,
+		)
+	)
+		throw new Error("base help unexpectedly exposes resident controls");
 }
 
-export function assertClearStatus(world: OptimizexpWorld): void {
-  if (!world.statusClear) {
-    throw new Error(
-      `Expected clear status from surface; notes=${world.notes.join(" | ")} stdout=${world.lastStdout.slice(0, 400)}`,
-    );
-  }
+export function assertActionableMissingSession(world: OptimizexpWorld): void {
+	const result = world.command;
+	if (!result || result.status === 0)
+		throw new Error("missing session unexpectedly succeeded");
+	const output = `${result.stdout}\n${result.stderr}`;
+	if (!/session missing-session does not exist/.test(output))
+		throw new Error(`missing-session error is unclear: ${output}`);
+	if (!/session --help/.test(output) || !/session list/.test(output))
+		throw new Error(`missing-session error has no recovery action: ${output}`);
 }
 
-export function assertNextActionObvious(world: OptimizexpWorld): void {
-  if (!world.nextActionObvious && world.lastExitCode !== 0) {
-    throw new Error(
-      `Expected obvious next action; stderr=${world.lastStderr.slice(0, 300)}`,
-    );
-  }
+function git(cwd: string, args: readonly string[]): void {
+	const result = run("git", args, { cwd });
+	requireSuccess(result, `git ${args.join(" ")}`);
 }
 
-export function assertErrorActionable(world: OptimizexpWorld): void {
-  if (world.lastExitCode === 0) return;
-  if (!world.errorActionable) {
-    throw new Error(
-      `Expected actionable error output; exit=${world.lastExitCode}`,
-    );
-  }
+function repository(world: OptimizexpWorld): string {
+	const root = temporary(world, "oxp-hobo-code-project-");
+	git(root, ["init", "-q", "-b", "main"]);
+	git(root, ["config", "user.email", "optimizexp@example.com"]);
+	git(root, ["config", "user.name", "OptimizeXP"]);
+	writeFileSync(path.join(root, "README.md"), "browser acceptance\n");
+	git(root, ["add", "README.md"]);
+	git(root, ["commit", "-qm", "base"]);
+	return root;
 }
 
-export function assertHerdrCapabilitiesReadable(world: OptimizexpWorld): void {
-  if (!world.statusClear) {
-    throw new Error(
-      `Herdr capabilities not machine-readable; notes=${world.notes.join(" | ")}`,
-    );
-  }
+function fakeTmux(commands: string[]): MuxRunner {
+	let pane = 0;
+	let exists = false;
+	return {
+		async run(args) {
+			commands.push(args.join(" "));
+			if (args[0] === "has-session")
+				return { code: exists ? 0 : 1, stdout: "" };
+			if (
+				["new-session", "new-window", "split-window"].includes(args[0] ?? "")
+			) {
+				exists = true;
+				return { code: 0, stdout: `%${++pane}\n` };
+			}
+			if (args[0] === "capture-pane")
+				return { code: 0, stdout: "browser journey output\n" };
+			if (args[0] === "kill-session") exists = false;
+			return { code: 0, stdout: "" };
+		},
+	};
 }
 
-export function assertHerdrHelpNamesDifferentiators(world: OptimizexpWorld): void {
-  if (!world.statusClear) {
-    throw new Error(
-      `Help missing herdr differentiators; notes=${world.notes.join(" | ")} stdout=${world.lastStdout.slice(0, 400)}`,
-    );
-  }
+export async function startBrowserJourney(
+	world: OptimizexpWorld,
+): Promise<void> {
+	const hoboHome = temporary(world, "oxp-hobo-code-browser-home-");
+	const projectRoot = repository(world);
+	const commands: string[] = [];
+	const control = createLocalSessionControl({
+		hoboHome,
+		tmux: fakeTmux(commands),
+	});
+	const server = await startSessionControlServer({
+		hoboHome,
+		projectRoot,
+		token: "optimizexp-browser-token",
+		control,
+	});
+	if (!server.url.startsWith("http://127.0.0.1:"))
+		throw new Error(`browser server is not loopback-only: ${server.url}`);
+	const unauthorized = await fetch(
+		`http://127.0.0.1:${server.port}/code/sessions`,
+	);
+	if (unauthorized.status !== 401)
+		throw new Error("browser API accepted a request without its bearer token");
+	world.browser = {
+		server,
+		headers: {
+			authorization: `Bearer ${server.token}`,
+			"content-type": "application/json",
+		},
+		html: "",
+		commands,
+	};
 }
 
-export function markEvidenceCapturable(world: OptimizexpWorld): void {
-  world.evidencePath = `packages/code/.optimizexp/features/${world.featureId}/evidence/`;
-  world.notes.push(`evidence capturable under ${world.evidencePath}`);
+export async function openBrowserJourney(
+	world: OptimizexpWorld,
+): Promise<void> {
+	if (!world.browser) throw new Error("browser server was not started");
+	const response = await fetch(world.browser.server.url);
+	if (response.status !== 200)
+		throw new Error(`authenticated browser returned ${response.status}`);
+	world.browser.html = await response.text();
+}
+
+async function browserCommand(
+	world: OptimizexpWorld,
+	sessionId: string,
+	revision: string,
+	name: string,
+	value: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+	const browser = world.browser;
+	if (!browser) throw new Error("browser server was not started");
+	const response = await fetch(
+		`http://127.0.0.1:${browser.server.port}/code/commands`,
+		{
+			method: "POST",
+			headers: browser.headers,
+			body: JSON.stringify({
+				command: {
+					schemaVersion: "hobo.code.session-command/v1",
+					commandId: randomUUID(),
+					actorId: "browser",
+					sessionId,
+					expectedRevision: revision,
+					[name]: value,
+				},
+			}),
+		},
+	);
+	const body = (await response.json()) as Record<string, unknown>;
+	if (!response.ok) throw new Error(String(body.error ?? response.statusText));
+	return body;
+}
+
+export async function exerciseBrowserControls(
+	world: OptimizexpWorld,
+): Promise<void> {
+	const browser = world.browser;
+	if (!browser) throw new Error("browser page was not opened");
+	for (const marker of [
+		'id="create"',
+		"'reattach'",
+		"'detach'",
+		"'stop-session'",
+		"'focus-pane'",
+		"'prompt-pane'",
+	]) {
+		if (!browser.html.includes(marker))
+			throw new Error(`browser page is missing ${marker}`);
+	}
+
+	const sessionId = `browser-${randomUUID().slice(0, 8)}`;
+	let snapshot = await browserCommand(world, sessionId, "0", "createSession", {
+		name: "Browser acceptance",
+		projectRoot:
+			world.temporaryPaths.find((value) =>
+				value.includes("oxp-hobo-code-project-"),
+			) ?? "",
+		branch: `code/${sessionId}`,
+		clientId: "browser",
+	});
+	const session = snapshot.session as { projectRoot?: string } | undefined;
+	if (!session?.projectRoot)
+		throw new Error("browser create did not return a session");
+	const panes = snapshot.panes as { id: string }[];
+	const paneId = panes[0]?.id;
+	if (!paneId) throw new Error("browser create did not return a pane");
+	const next = async (name: string, value: Record<string, unknown>) => {
+		snapshot = await browserCommand(
+			world,
+			sessionId,
+			String(snapshot.revision),
+			name,
+			value,
+		);
+	};
+	await next("focusPane", { paneId });
+	await next("sendInput", { paneId, input: "continue the review\n" });
+	await next("detachSession", { clientId: "browser" });
+	if (
+		((snapshot.attachedClientIds as string[] | undefined) ?? []).includes(
+			"browser",
+		)
+	)
+		throw new Error("browser detach did not detach the client");
+	await next("reattachSession", { clientId: "browser" });
+	if (
+		!((snapshot.attachedClientIds as string[] | undefined) ?? []).includes(
+			"browser",
+		)
+	)
+		throw new Error("browser reattach did not restore the client");
+	const listed = await fetch(
+		`http://127.0.0.1:${browser.server.port}/code/sessions`,
+		{ headers: browser.headers },
+	);
+	const sessions = (await listed.json()) as { session?: { id?: string } }[];
+	if (!sessions.some((item) => item.session?.id === sessionId))
+		throw new Error("browser list did not return the created session");
+	await next("stopSession", { removeWorktree: false });
+	if (!browser.commands.some((command) => command.startsWith("select-pane")))
+		throw new Error("browser focus did not reach tmux");
+	if (!browser.commands.some((command) => command.startsWith("send-keys")))
+		throw new Error("browser prompt did not reach tmux");
+}
+
+export function assertStationExplanation(world: OptimizexpWorld): void {
+	const html = world.browser?.html ?? "";
+	if (
+		!html.includes(
+			"forward this loopback port through a declared Station machine",
+		)
+	)
+		throw new Error("browser page does not explain Station forwarding");
+	if (!html.includes("never binds publicly"))
+		throw new Error("browser page does not explain its public-bind refusal");
+}
+
+export function assertScenarioEvidenceExists(world: OptimizexpWorld): void {
+	const slug = world.scenarioName
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/gu, "-")
+		.replace(/^-|-$/gu, "");
+	const evidence = path.join(FEATURE, "evidence", slug);
+	if (
+		!existsSync(evidence) ||
+		!existsSync(path.join(evidence, "manifest.json"))
+	)
+		throw new Error(`scenario evidence is missing: ${evidence}`);
+}
+
+export async function cleanup(world: OptimizexpWorld): Promise<void> {
+	await world.browser?.server.close();
+	world.browser = null;
+	for (const value of world.temporaryPaths.reverse())
+		rmSync(value, { recursive: true, force: true });
+	world.temporaryPaths = [];
 }

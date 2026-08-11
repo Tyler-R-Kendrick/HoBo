@@ -1,122 +1,133 @@
-/**
- * Cucumber step bindings for OptimizeXP feature `hobo-code-herdr-mux`.
- * Thin adapters → implementations.ts (keeps Gherkin text stable).
- */
-import { Given, Then, When } from "@cucumber/cucumber";
+import { After, Before, Given, Then, When } from "@cucumber/cucumber";
 import {
-  assertClearStatus,
-  assertErrorActionable,
-  assertHerdrCapabilitiesReadable,
-  assertHerdrHelpNamesDifferentiators,
-  assertNextActionObvious,
-  exerciseSurface,
-  markEvidenceCapturable,
-  observeFailure,
-  observeHerdrJson,
-  onCriticalPath,
-  readHerdrHelp,
-  setFeatureContext,
-  setPersona,
+	assertActionableMissingSession,
+	assertBaseSessionHelp,
+	assertCurrentSessionHelp,
+	assertDetachHelp,
+	assertScenarioEvidenceExists,
+	assertStationExplanation,
+	cleanup,
+	exerciseBrowserControls,
+	openBrowserJourney,
+	runBaseSessionHelp,
+	runCurrentCli,
+	startBrowserJourney,
 } from "./implementations.ts";
 import { createWorld, type OptimizexpWorld } from "./world.ts";
 
-// Cucumber World — attach helpers on `this`
-function w(world: OptimizexpWorld | undefined): OptimizexpWorld {
-  // cucumber may use World class; fall back to module singleton for simple runs
-  return world ?? getSingleton();
-}
+Before(function (this: OptimizexpWorld, scenario) {
+	Object.assign(this, createWorld());
+	this.scenarioName = scenario.pickle.name;
+});
 
-let singleton: OptimizexpWorld | null = null;
-function getSingleton(): OptimizexpWorld {
-  singleton ??= createWorld("hobo-code-herdr-mux");
-  return singleton;
-}
-
-Given("persona {string} is active", function (this: OptimizexpWorld, personaId: string) {
-  const world = this?.featureId ? this : getSingleton();
-  if (!world.featureId) Object.assign(world, createWorld("hobo-code-herdr-mux"));
-  setPersona(world, personaId);
+After(async function (this: OptimizexpWorld) {
+	await cleanup(this);
 });
 
 Given(
-  "feature {string} is under optimizexp review",
-  function (this: OptimizexpWorld, featureId: string) {
-    const world = this?.featureId ? this : getSingleton();
-    setFeatureContext(world, featureId);
-  },
+	"persona {string} is active",
+	function (this: OptimizexpWorld, personaId: string) {
+		this.personaId = personaId;
+	},
 );
 
 Given(
-  "I am on the critical path described by the feature seed",
-  function (this: OptimizexpWorld) {
-    onCriticalPath(w(this));
-  },
+	"feature {string} is under optimizexp review",
+	function (this: OptimizexpWorld, featureId: string) {
+		this.featureId = featureId;
+	},
 );
 
-Given("something goes wrong on this journey", function (this: OptimizexpWorld) {
-  const world = w(this);
-  world.notes.push("failure path primed");
-});
+Given("I am on the critical path described by the feature seed", () => {});
+Given("something goes wrong on this journey", () => {});
 
-When("I exercise the surface as this persona would", function (this: OptimizexpWorld) {
-  exerciseSurface(w(this));
-});
-
-When("I observe the failure as this persona", function (this: OptimizexpWorld) {
-  observeFailure(w(this));
-});
-
-When("I observe herdr JSON surfaces as this persona", function (this: OptimizexpWorld) {
-  observeHerdrJson(w(this));
-});
-
-When("I read herdr help as this persona", function (this: OptimizexpWorld) {
-  readHerdrHelp(w(this));
-});
-
-Then("I receive clear status about what happened", function (this: OptimizexpWorld) {
-  assertClearStatus(w(this));
-});
-
-Then(
-  "herdr capabilities and persistence are machine-readable",
-  function (this: OptimizexpWorld) {
-    assertHerdrCapabilitiesReadable(w(this));
-  },
+When(
+	/^I run `pnpm --filter @hobo\/code exec node --import tsx src\/bin\/hobo-code\.ts session --help`$/u,
+	function (this: OptimizexpWorld) {
+		runCurrentCli(this, ["session", "--help"]);
+	},
 );
 
 Then(
-  "help names herdr mux highlight-copy and persistence",
-  function (this: OptimizexpWorld) {
-    assertHerdrHelpNamesDifferentiators(w(this));
-  },
+	"I see resident session, tab, pane, agent, checkpoint, delivery, and browser controls",
+	function (this: OptimizexpWorld) {
+		assertCurrentSessionHelp(this);
+	},
 );
 
 Then(
-  "the next action is obvious without tribal knowledge",
-  function (this: OptimizexpWorld) {
-    assertNextActionObvious(w(this));
-  },
+	"detach and reattach are explicit without tribal knowledge",
+	function (this: OptimizexpWorld) {
+		assertDetachHelp(this);
+	},
 );
 
-Then("evidence is capturable for this scenario", function (this: OptimizexpWorld) {
-  markEvidenceCapturable(w(this));
-});
-
-Then("the error is non-blaming and actionable", function (this: OptimizexpWorld) {
-  assertErrorActionable(w(this));
-});
+When(
+	"I run the same `hobo-code session --help` command at the reviewed base commit",
+	function (this: OptimizexpWorld) {
+		runBaseSessionHelp(this);
+	},
+);
 
 Then(
-  "I am not forced into repeated artificial hurdles",
-  function (this: OptimizexpWorld) {
-    // Structural: a single command attempt is enough for scaffold; agent refines.
-    const world = w(this);
-    if (world.notes.filter((n) => n.includes("exerciseSurface")).length > 3) {
-      throw new Error("too many exercise attempts — friction signal");
-    }
-  },
+	"help shows only the prior one-shot handback surface",
+	function (this: OptimizexpWorld) {
+		assertBaseSessionHelp(this);
+	},
 );
 
-// re-export for tests
-export { createWorld, getSingleton };
+When(
+	"I run `hobo-code session show missing-session`",
+	function (this: OptimizexpWorld) {
+		runCurrentCli(this, ["session", "show", "missing-session"]);
+	},
+);
+
+Then(
+	"the error is non-blaming and actionable",
+	function (this: OptimizexpWorld) {
+		assertActionableMissingSession(this);
+	},
+);
+
+Given(
+	"the loopback session control server is running with its bearer token",
+	async function (this: OptimizexpWorld) {
+		await startBrowserJourney(this);
+	},
+);
+
+When(
+	"I open its authenticated browser URL",
+	async function (this: OptimizexpWorld) {
+		await openBrowserJourney(this);
+	},
+);
+
+Then(
+	"I can create, list, reattach, detach, stop, focus, and prompt resident sessions",
+	async function (this: OptimizexpWorld) {
+		await exerciseBrowserControls(this);
+	},
+);
+
+Then(
+	"the page explains remote access through Station forwarding without binding publicly",
+	function (this: OptimizexpWorld) {
+		assertStationExplanation(this);
+	},
+);
+
+Then(
+	"evidence is capturable for this scenario",
+	function (this: OptimizexpWorld) {
+		assertScenarioEvidenceExists(this);
+	},
+);
+
+Then(
+	/^evidence of what I saw is stored under evidence\/$/u,
+	function (this: OptimizexpWorld) {
+		assertScenarioEvidenceExists(this);
+	},
+);

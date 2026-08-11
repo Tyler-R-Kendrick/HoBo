@@ -653,9 +653,10 @@ describe("session orchestrator", () => {
 		harness.runtime.close();
 	});
 
-	it.each(["sibling", "stale-head"])(
-		"does not submit unapproved stack scope (%s)",
-		async (failure) => {
+	it.each([
+		"sibling",
+		"stale-head",
+	])("does not submit unapproved stack scope (%s)", async (failure) => {
 		const harness = await createHarness();
 		let submitted = false;
 		const base = sessionProcessRunner();
@@ -702,15 +703,15 @@ describe("session orchestrator", () => {
 		).rejects.toThrow("exactly the current branch");
 		expect(submitted).toBe(false);
 		harness.runtime.close();
-		},
-	);
+	});
 
 	it.each([
 		{ preexisting: false, closes: true },
 		{ preexisting: true, closes: false },
-	])(
-		"rejects a stacked pull request published from an unapproved head (preexisting=$preexisting)",
-		async ({ preexisting, closes }) => {
+	])("rejects a stacked pull request published from an unapproved head (preexisting=$preexisting)", async ({
+		preexisting,
+		closes,
+	}) => {
 		const harness = await createHarness();
 		let created = preexisting;
 		let closed = false;
@@ -777,8 +778,7 @@ describe("session orchestrator", () => {
 		expect(closed).toBe(closes);
 		expect(edited).toBe(false);
 		harness.runtime.close();
-		},
-	);
+	});
 
 	it("closes a newly created pull request whose provider head is unapproved", async () => {
 		const harness = await createHarness();

@@ -369,6 +369,53 @@ describe("resident session runtime", () => {
 		runtime.close();
 	});
 
+	it("does not stop a historical terminal run", async () => {
+		const runtime = createResidentSessionRuntime({
+			dataDir: tempRoot(),
+			tmux: fakeTmux(),
+		});
+		const created = await runtime.create({
+			id: "task-terminal-stop",
+			name: "terminal-stop",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/terminal-stop",
+			clientId: "cli",
+		});
+		const started = await runtime.startAgent(
+			created.session?.id ?? "missing",
+			created.revision,
+			created.focusedPaneId,
+			"codex",
+			["codex"],
+			"review",
+		);
+		const runId = started.agentRuns[0]?.id ?? "missing";
+		const finished = await runtime.update(
+			created.session?.id ?? "missing",
+			started.revision,
+			(snapshot) => {
+				const run = snapshot.agentRuns.find(
+					(candidate) => candidate.id === runId,
+				);
+				const pane = snapshot.panes.find(
+					(candidate) => candidate.id === run?.paneId,
+				);
+				if (!run || !pane) throw new Error("agent state is missing");
+				run.lifecycleState = AgentLifecycleState.DONE;
+				pane.agentRunId = undefined;
+			},
+		);
+		await expect(
+			runtime.stopAgent(
+				created.session?.id ?? "missing",
+				finished.revision,
+				runId,
+			),
+		).rejects.toThrow("already terminal");
+		runtime.close();
+	});
+
 	it("adopts a metadata-bearing tmux session left before its first event", async () => {
 		const metadata = Buffer.from(
 			JSON.stringify({

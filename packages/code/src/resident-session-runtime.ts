@@ -1176,6 +1176,8 @@ export function createResidentSessionRuntime(
 					(candidate) => candidate.id === agentRunId,
 				);
 				if (!run) throw new Error(`agent run ${agentRunId} does not exist`);
+				if (!isActiveAgent(run.lifecycleState))
+					throw new Error(`agent run ${agentRunId} is already terminal`);
 				const pane = snapshot.panes.find(
 					(candidate) => candidate.id === run.paneId,
 				);

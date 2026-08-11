@@ -600,6 +600,52 @@ describe("session orchestrator", () => {
 		harness.runtime.close();
 	});
 
+	it("does not submit a stack after its approved head changes", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		let stackCalled = false;
+		const base = sessionProcessRunner();
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner: {
+				run(command, args, worktree, env) {
+					if (command !== "gh") return base.run(command, args, worktree, env);
+					if (args[0] === "pr" && args[1] === "list")
+						return Promise.resolve({ code: 0, stdout: "[]", stderr: "" });
+					if (args[0] === "stack" && args[1] === "view")
+						return Promise.resolve({
+							code: 0,
+							stdout: JSON.stringify({ branches: [] }),
+							stderr: "",
+						});
+					if (args[0] === "stack") stackCalled = true;
+					return Promise.resolve({ code: 0, stdout: "", stderr: "" });
+				},
+			},
+			authorize(action) {
+				if (action.operation === "stack-pull-request") {
+					writeFileSync(join(cwd, "changed-after-approval.txt"), "changed\n");
+					git(cwd, ["add", "changed-after-approval.txt"]);
+					git(cwd, ["commit", "-qm", "changed after approval"]);
+				}
+				return true;
+			},
+		});
+		await expect(
+			orchestrator.execute(
+				envelope(
+					"session-1",
+					harness.created.revision ?? 0n,
+					"stackPullRequest",
+					{ parentBranch: "main", title: "approved", body: "" },
+				),
+			),
+		).rejects.toThrow("Git HEAD changed after stack approval");
+		expect(stackCalled).toBe(false);
+		harness.runtime.close();
+	});
+
 	it("refuses to merge a pull request whose head changed after approval", async () => {
 		const harness = await createHarness();
 		let head = "a".repeat(40);

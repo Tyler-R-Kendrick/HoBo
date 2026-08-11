@@ -363,6 +363,7 @@ export function createSessionOrchestrator(
 				details.parentBranch = action.value.parentBranch;
 				details.title = action.value.title;
 				details.body = action.value.body;
+				details.gitHead = context.preHead ?? "";
 				break;
 			case "mergePullRequest":
 				details.pullRequestNumber = String(action.value.pullRequestNumber);
@@ -431,9 +432,10 @@ export function createSessionOrchestrator(
 			return result;
 		} catch (error) {
 			const current = await options.runtime.load(command.sessionId);
-			const outcome = current
-				? await deliveryOutcome(command, current, ledger)
-				: "unknown";
+			let outcome: "applied" | "not-applied" | "unknown" = "unknown";
+			try {
+				if (current) outcome = await deliveryOutcome(command, current, ledger);
+			} catch {}
 			if (current && outcome === "applied") {
 				writeJsonAtomic(path, { ...ledger, status: "applied" });
 				const reconciled = await reconcileAppliedDelivery(
@@ -631,6 +633,11 @@ export function createSessionOrchestrator(
 				if (pullRequests === "unknown")
 					throw new Error("cannot establish pre-effect pull request state");
 				return {
+					preHead: await run(
+						"git",
+						["rev-parse", "HEAD"],
+						session.worktreePath,
+					),
 					pullRequestNumbers: pullRequests.flatMap((item) =>
 						typeof item.number === "number" ? [item.number] : [],
 					),
@@ -1608,6 +1615,18 @@ export function createSessionOrchestrator(
 								snapshot,
 								async (ledger) => {
 									const session = requiredSession(snapshot);
+									if (!ledger.context.preHead)
+										throw new Error(
+											"approved stack is missing its Git identity",
+										);
+									if (
+										(await run(
+											"git",
+											["rev-parse", "HEAD"],
+											session.worktreePath,
+										)) !== ledger.context.preHead
+									)
+										throw new Error("Git HEAD changed after stack approval");
 									await run(
 										"gh",
 										[

@@ -9,6 +9,8 @@
  * - no success theater, no fixed "Next:" filler, no branding in replies;
  * - every reply teaches the equivalent one-shot command.
  */
+import { spawn } from "node:child_process";
+
 import {
 	formatHoboCodeResult,
 	type HoboCodeCliDeps,
@@ -35,6 +37,42 @@ function dispatchedTask(result: HoboCodeCliResult): DispatchedTaskShape | null {
 function oneShotHint(prompt: string): string {
 	const compact = prompt.length > 48 ? `${prompt.slice(0, 47)}…` : prompt;
 	return `One-shot equivalent: hobo-code "${compact.replace(/"/g, '\\"')}"`;
+}
+
+async function executeResidentTerminalAction(
+	result: HoboCodeCliResult,
+	env: NodeJS.ProcessEnv,
+): Promise<void> {
+	const action =
+		result.data && typeof result.data === "object"
+			? (
+					result.data as {
+						readonly terminalAction?: {
+							readonly kind?: string;
+							readonly sessionName?: string;
+						};
+					}
+				).terminalAction
+			: undefined;
+	if (!result.ok) return;
+	const args =
+		action?.kind === "attach-session" && action.sessionName
+			? env.TMUX
+				? ["switch-client", "-t", action.sessionName]
+				: ["attach-session", "-t", action.sessionName]
+			: action?.kind === "detach-session" && env.TMUX
+				? ["detach-client"]
+				: undefined;
+	if (!args) return;
+	const code = await new Promise<number>((resolve) => {
+		const child = spawn("tmux", args, { stdio: "inherit", env });
+		child.once("error", () => resolve(1));
+		child.once("exit", (exitCode, signal) =>
+			resolve(signal === "SIGINT" ? 130 : (exitCode ?? 1)),
+		);
+	});
+	if (code !== 0)
+		throw new Error(`tmux ${args[0]} failed with exit code ${code}`);
 }
 
 export interface DefaultShellHostOptions extends HoboCodeCliDeps {
@@ -111,10 +149,12 @@ export function createDefaultShellHost(
 				...deps,
 				json: false,
 			});
-			return formatHoboCodeResult(result, {
+			const text = formatHoboCodeResult(result, {
 				json: false,
 				dense: deps.dense === true,
 			});
+			await executeResidentTerminalAction(result, deps.env ?? process.env);
+			return text;
 		},
 		async complete(prompt) {
 			const result = await runHoboCodeCli([prompt], {

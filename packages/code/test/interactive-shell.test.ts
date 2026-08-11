@@ -1,3 +1,4 @@
+import { PassThrough, Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 
 /** Visible text only — accents must never change what a test sees. */
@@ -19,6 +20,7 @@ import {
 	PRODUCT_NOT_PI,
 	reduceShellKey,
 	renderShellFrame,
+	runInteractiveShell,
 	shellFrameIdentity,
 	splitKeySequences,
 } from "../src/interactive-shell.js";
@@ -81,6 +83,9 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(frame).toMatch(/\/about/);
 		// One extensible editor command, not one command per harness.
 		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "ide")).toBe(true);
+		expect(
+			DEFAULT_SLASH_ITEMS.find((i) => i.name === "sessions")?.argv,
+		).toEqual(["session", "list"]);
 		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "cursor")).toBe(false);
 		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "harness")).toBe(false);
 	});
@@ -240,6 +245,53 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		]);
 		expect(splitKeySequences("\r\u0003")).toEqual(["\r", "\u0003"]);
 		expect(splitKeySequences("\x1bOP")).toEqual(["\x1bOP"]);
+	});
+
+	it("passes typed /sessions arguments through the resident session verb", async () => {
+		const calls: string[][] = [];
+		await runInteractiveShell({
+			stdin: new PassThrough(),
+			stdout: new Writable({ write: (_chunk, _encoding, done) => done() }),
+			host: {
+				runVerb: async (argv) => {
+					calls.push([...argv]);
+					return "ok";
+				},
+				complete: async () => "unused",
+			},
+			reducedMotion: true,
+			scriptedKeys:
+				"/sessions agent-start task pane codex codex -- --full-auto\r",
+		});
+		expect(calls).toEqual([
+			[
+				"session",
+				"agent-start",
+				"task",
+				"pane",
+				"codex",
+				"codex",
+				"--",
+				"--full-auto",
+			],
+		]);
+	});
+
+	it("documents typed resident session commands in /help", async () => {
+		let output = "";
+		await runInteractiveShell({
+			stdin: new PassThrough(),
+			stdout: new Writable({
+				write: (chunk, _encoding, done) => {
+					output += chunk.toString();
+					done();
+				},
+			}),
+			host: { runVerb: async () => "unused", complete: async () => "unused" },
+			reducedMotion: true,
+			scriptedKeys: "/help\r",
+		});
+		expect(plain(output)).toContain("/sessions <args>");
 	});
 });
 

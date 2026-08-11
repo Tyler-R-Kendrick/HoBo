@@ -79,15 +79,22 @@ describe("strict black & white with rare accents", () => {
 	});
 
 	it("uses vermillion only when asked, and green only when asked", () => {
-		const spark = inkCard(["body"], { width: 30, accent: "spark" }).join("\n");
-		const go = inkCard(["body"], { width: 30, accent: "go" }).join("\n");
-		expect(spark).toContain(ACCENT.spark);
-		expect(spark).not.toContain(ACCENT.go);
-		expect(go).toContain(ACCENT.go);
-		expect(go).not.toContain(ACCENT.spark);
-		// No rainbow chrome: those two plus reset are the whole palette.
-		const used = spark.match(/\u001b\[[0-9;]*m/g) ?? [];
-		expect(new Set(used)).toEqual(new Set([ACCENT.spark, ACCENT.reset]));
+		const noColor = process.env.NO_COLOR;
+		delete process.env.NO_COLOR;
+		try {
+			const spark = inkCard(["body"], { width: 30, accent: "spark" }).join("\n");
+			const go = inkCard(["body"], { width: 30, accent: "go" }).join("\n");
+			expect(spark).toContain(ACCENT.spark);
+			expect(spark).not.toContain(ACCENT.go);
+			expect(go).toContain(ACCENT.go);
+			expect(go).not.toContain(ACCENT.spark);
+			// No rainbow chrome: those two plus reset are the whole palette.
+			const used = spark.match(/\u001b\[[0-9;]*m/g) ?? [];
+			expect(new Set(used)).toEqual(new Set([ACCENT.spark, ACCENT.reset]));
+		} finally {
+			if (noColor === undefined) delete process.env.NO_COLOR;
+			else process.env.NO_COLOR = noColor;
+		}
 	});
 
 	it("measures width past escapes so colour never shifts layout", () => {

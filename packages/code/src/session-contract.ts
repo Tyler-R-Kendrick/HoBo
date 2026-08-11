@@ -317,7 +317,7 @@ export function parseSessionSnapshot(input: unknown): SessionSnapshot {
 }
 
 export function sessionSnapshotJson(snapshot: SessionSnapshot): unknown {
-	return toJson(SessionSnapshotSchema, snapshot);
+	return toJson(SessionSnapshotSchema, snapshot, { alwaysEmitImplicit: true });
 }
 
 export type { SessionCommandEnvelope, SessionSnapshot };

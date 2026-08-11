@@ -68,6 +68,11 @@ export interface ResidentSessionRuntime {
 	create(options: CreateResidentSessionOptions): Promise<SessionSnapshot>;
 	load(sessionId: string): Promise<SessionSnapshot | undefined>;
 	list(): Promise<readonly SessionSnapshot[]>;
+	capturePane(
+		sessionId: string,
+		paneId: string,
+		lines?: number,
+	): Promise<string>;
 	createTab(
 		sessionId: string,
 		expectedRevision: bigint,
@@ -138,7 +143,7 @@ export interface ResidentSessionRuntime {
 	close(): void;
 }
 
-function tmuxSession(sessionId: string): string {
+export function residentSessionTmuxName(sessionId: string): string {
 	const hash = createHash("sha256").update(sessionId).digest("hex").slice(0, 8);
 	return `h-${safeWindowName(sessionId).slice(0, 13)}-${hash}`;
 }
@@ -439,7 +444,7 @@ export function createResidentSessionRuntime(
 			"list-panes",
 			"-s",
 			"-t",
-			tmuxSession(sessionId),
+			residentSessionTmuxName(sessionId),
 			"-F",
 			"#{pane_id}\t#{pane_active}\t#{window_active}\t#{pane_start_command}\t#{@hobo_agent_run}\t#{@hobo_agent_exit}",
 		]);
@@ -601,7 +606,7 @@ export function createResidentSessionRuntime(
 		const present = await options.tmux.run([
 			"has-session",
 			"-t",
-			tmuxSession(sessionId),
+			residentSessionTmuxName(sessionId),
 		]);
 		if (present.code === 0) {
 			return locked(sessionId, async () => {
@@ -781,7 +786,7 @@ export function createResidentSessionRuntime(
 					revision: (prior?.revision ?? 0n) + 1n,
 					capturedAt: timestamp,
 				});
-				const name = tmuxSession(id);
+				const name = residentSessionTmuxName(id);
 				if (!prior) {
 					const existing = await options.tmux.run(["has-session", "-t", name]);
 					if (existing.code === 0) {
@@ -880,6 +885,24 @@ export function createResidentSessionRuntime(
 			);
 		},
 
+		async capturePane(sessionId, paneId, lines = 200) {
+			if (!Number.isSafeInteger(lines) || lines < 1 || lines > 2_000) {
+				throw new TypeError("lines must be an integer from 1 through 2000");
+			}
+			const snapshot = await load(sessionId);
+			if (!snapshot) throw new Error(`session ${sessionId} does not exist`);
+			const pane = snapshot.panes.find((candidate) => candidate.id === paneId);
+			if (!pane) throw new Error(`pane ${paneId} does not exist`);
+			return runTmux([
+				"capture-pane",
+				"-p",
+				"-S",
+				`-${lines}`,
+				"-t",
+				pane.runtimeId,
+			]);
+		},
+
 		async createTab(sessionId, expectedRevision, title, command) {
 			return mutate(sessionId, expectedRevision, async (snapshot) => {
 				const tabTitle = required(title, "title");
@@ -900,7 +923,7 @@ export function createResidentSessionRuntime(
 					"-F",
 					"#{pane_id}",
 					"-t",
-					sessionTarget(tmuxSession(sessionId)),
+					sessionTarget(residentSessionTmuxName(sessionId)),
 					"-n",
 					safeWindowName(tabTitle),
 					"-c",
@@ -1094,7 +1117,11 @@ export function createResidentSessionRuntime(
 				if (
 					snapshot.session?.lifecycleState === SessionLifecycleState.RUNNING
 				) {
-					await runTmux(["kill-session", "-t", tmuxSession(sessionId)]);
+					await runTmux([
+						"kill-session",
+						"-t",
+						residentSessionTmuxName(sessionId),
+					]);
 				}
 				if (snapshot.session)
 					snapshot.session.lifecycleState = SessionLifecycleState.STOPPED;

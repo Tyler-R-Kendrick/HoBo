@@ -169,10 +169,24 @@ export {
 
 export {
 	createResidentSessionRuntime,
+	residentSessionTmuxName,
 	type CreateResidentSessionOptions,
 	type ResidentSessionRuntime,
 	type ResidentSessionRuntimeOptions,
 } from "./resident-session-runtime.js";
+
+export {
+	createLocalSessionControl,
+	sessionCommandEnvelope,
+	type LocalSessionControl,
+	type LocalSessionControlOptions,
+} from "./local-session-control.js";
+
+export {
+	startSessionControlServer,
+	type SessionControlServer,
+	type SessionControlServerOptions,
+} from "./session-control-server.js";
 
 export {
 	createSessionOrchestrator,

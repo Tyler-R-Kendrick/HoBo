@@ -98,6 +98,26 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(cwdMiss.message).toMatch(/requires a value/);
 	});
 
+	it("passes command flags after -- to resident agent commands", async () => {
+		const home = temp("hobo-code-agent-args-");
+		const result = await runHoboCodeCli(
+			[
+				"session",
+				"agent-start",
+				"missing-session",
+				"pane",
+				"codex",
+				"codex",
+				"--",
+				"--full-auto",
+			],
+			{ hoboHome: home },
+		);
+		expect(result.code).toBe("HOBO_CODE_SESSION_FAILED");
+		expect(result.message).toContain("session missing-session does not exist");
+		expect(result.message).not.toContain("Unknown flag");
+	});
+
 	it("agent inventories human-free auth, MCP/ACP, unattended contract", async () => {
 		const home = temp("hobo-code-agent-");
 		const login = await runHoboCodeCli(["auth", "login", "--agent"], {

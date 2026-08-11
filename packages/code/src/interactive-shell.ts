@@ -137,6 +137,11 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 	{ name: "config", description: "Setup / stack inventory", argv: ["config"] },
 	{ name: "cost", description: "$0 path + budget + savings", argv: ["cost"] },
 	{ name: "status", description: "Session / agent panes", argv: ["status"] },
+	{
+		name: "sessions",
+		description: "Resident tmux sessions",
+		argv: ["session", "list"],
+	},
 	{ name: "tasks", description: "Background task board", argv: ["tasks"] },
 	{
 		name: "env",
@@ -172,12 +177,15 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
  * Product identity claim. Shown in `/about` and `/help` only — never printed
  * on frames or replies (branding in the answer channel is noise).
  */
+// public-contract: shell identity shown by help and about consumers.
 export const PRODUCT_NOT_PI = "hobo-code · HoBo shell (not stock Pi Agent)";
 
 /** Footer engine label until a real completion engine is wired (Slice 2). */
+// public-contract: stable engine status text rendered by shell clients.
 export const ENGINE_NONE_LABEL = "engine:none · dispatch-only";
 
 /** Approval-gate affordance text — y promotes, n/Esc keeps work sandboxed. */
+// public-contract: stable approval affordance shared by shell renderers.
 export const APPROVAL_PROMPT = "y promote · n keep sandboxed";
 
 // ── Pure helpers ─────────────────────────────────────────────────────────
@@ -256,6 +264,16 @@ export function filterSlash(
 	return items.filter(
 		(i) => i.name.includes(f) || i.description.toLowerCase().includes(f),
 	);
+}
+
+function slashItemForInput(text: string): ShellSlashItem | undefined {
+	const [name = "", ...args] = text.slice(1).trim().split(/\s+/);
+	const item = DEFAULT_SLASH_ITEMS.find(
+		(candidate) => candidate.name === name.toLowerCase(),
+	);
+	return item?.name === "sessions" && args.length > 0
+		? { ...item, argv: ["session", ...args] }
+		: item;
 }
 
 /**
@@ -760,8 +778,7 @@ export function reduceShellKey(
 		const text = state.input.trim();
 		if (!text) return { state };
 		if (text.startsWith("/")) {
-			const name = text.slice(1).split(/\s+/)[0]?.toLowerCase() ?? "";
-			const item = DEFAULT_SLASH_ITEMS.find((i) => i.name === name);
+			const item = slashItemForInput(text);
 			if (item) {
 				return {
 					state: {
@@ -1039,6 +1056,7 @@ export async function runInteractiveShell(
 				state,
 				[
 					"Commands: type / and pick — /ide /config /cost /tasks /status /agent /env /auth /about /quit",
+					"Resident control: /sessions <args> (plain /sessions lists).",
 					"Chat: type a prompt and Enter — it is queued as a dispatch task (/about).",
 					"Keys: Tab panes · ↑/↓ pick + scroll · PgUp/PgDn scroll · Ctrl+C quit",
 				].join("\n"),
@@ -1210,8 +1228,7 @@ export async function runInteractiveShell(
 	const handleSubmitText = (text: string) => {
 		if (quit) return;
 		if (text.startsWith("/")) {
-			const name = text.slice(1).split(/\s+/)[0]?.toLowerCase() ?? "";
-			const item = DEFAULT_SLASH_ITEMS.find((i) => i.name === name);
+			const item = slashItemForInput(text);
 			if (item) {
 				void applySlash(item)
 					.then(() => {

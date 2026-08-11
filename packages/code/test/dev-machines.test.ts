@@ -7,6 +7,13 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+	initStation,
+	loadStationEvents,
+	PAM_RAIL_CAPABILITY,
+	persistStationEvents,
+	StationService,
+} from "@hobo/stations";
 import { describe, expect, it } from "vitest";
 import { runHoboCodeCli } from "../src/cli.js";
 import {
@@ -27,13 +34,35 @@ function loader(contents: string) {
 	);
 }
 
+function enablePam(home: string): void {
+	initStation({ hoboHome: home, id: "station:local", tenant: "local" });
+	const service = StationService.fromEvents(
+		loadStationEvents(home, "station:local"),
+		{ stationId: "station:local" },
+	);
+	const rail = service.publishRail({
+		id: "rail-pam",
+		name: "PAM",
+		version: "1.0.0",
+		stationId: "station:local",
+		policyPacks: [PAM_RAIL_CAPABILITY],
+	});
+	service.approveRail(rail.contentHash);
+	service.activateRail(rail.contentHash);
+	persistStationEvents(home, "station:local", service.events);
+}
+
 describe("declared dev machines", () => {
 	it("reads the registry beside the devenv files", () => {
 		const loaded = loader(
 			JSON.stringify({
 				schemaVersion: "hobo.code.dev-machines/v1",
 				machines: [
-					{ id: "build-box", host: "build-box.tail1234.ts.net", isolationClass: "development" },
+					{
+						id: "build-box",
+						host: "build-box.tail1234.ts.net",
+						isolationClass: "development",
+					},
 					{
 						id: "gpu",
 						host: "gpu.tail1234.ts.net",
@@ -48,20 +77,26 @@ describe("declared dev machines", () => {
 		expect(loaded.declared).toBe(true);
 		expect(loaded.machines.map((m) => m.id)).toEqual(["build-box", "gpu"]);
 		expect(loaded.rejected).toEqual([]);
-		expect(sshDestination(loaded.machines[1] as never)).toBe("agent@gpu.tail1234.ts.net");
+		expect(sshDestination(loaded.machines[1] as never)).toBe(
+			"agent@gpu.tail1234.ts.net",
+		);
 	});
 
 	it("reports an absent registry without inventing machines", () => {
-		const loaded = loadDevMachines("/pkg", () => "", () => false);
+		const loaded = loadDevMachines(
+			"/pkg",
+			() => "",
+			() => false,
+		);
 		expect(loaded.declared).toBe(false);
 		expect(loaded.machines).toEqual([]);
 	});
 
 	it("says why a malformed file yielded nothing", () => {
 		expect(loader("{not json").rejected[0]?.problem).toMatch(/unreadable/);
-		expect(loader(JSON.stringify({ machines: "nope" })).rejected[0]?.problem).toMatch(
-			/no machines array/,
-		);
+		expect(
+			loader(JSON.stringify({ machines: "nope" })).rejected[0]?.problem,
+		).toMatch(/no machines array/);
 	});
 });
 
@@ -100,7 +135,9 @@ describe("fields that reach a command line are allowlisted", () => {
 			{ id: "m", host: "box.ts.net", isolationClass: "whatever" },
 			0,
 		);
-		expect("problem" in parsed && parsed.problem.problem).toMatch(/isolationClass/);
+		expect("problem" in parsed && parsed.problem.problem).toMatch(
+			/isolationClass/,
+		);
 	});
 
 	it("rejects a duplicate id instead of letting one pane mean two hosts", () => {
@@ -142,8 +179,13 @@ describe("placement and brokering", () => {
 	];
 
 	it("restricts a machine to its declared agents", () => {
-		expect(machinesForAgent(machines, "claude").map((m) => m.id)).toEqual(["any"]);
-		expect(machinesForAgent(machines, "ollama").map((m) => m.id)).toEqual(["any", "gpu"]);
+		expect(machinesForAgent(machines, "claude").map((m) => m.id)).toEqual([
+			"any",
+		]);
+		expect(machinesForAgent(machines, "ollama").map((m) => m.id)).toEqual([
+			"any",
+			"gpu",
+		]);
 	});
 
 	it("registers as a PAM target carrying the declared isolation class", () => {
@@ -166,14 +208,21 @@ describe("mux resolves --host against the registry", () => {
 			join(project, DEV_MACHINES_FILE),
 			JSON.stringify({
 				machines: [
-					{ id: "build-box", host: "build-box.ts.net", isolationClass: "development" },
+					{
+						id: "build-box",
+						host: "build-box.ts.net",
+						isolationClass: "development",
+					},
 				],
 			}),
 		);
-		const result = await runHoboCodeCli(["mux", "--dry-run", "--host", "evil.example"], {
-			hoboHome: home,
-			cwd: project,
-		});
+		const result = await runHoboCodeCli(
+			["mux", "--dry-run", "--host", "evil.example"],
+			{
+				hoboHome: home,
+				cwd: project,
+			},
+		);
 		// An arbitrary ssh destination is exactly what the registry exists to
 		// stop, so this must not reach tmux at all.
 		expect(result.ok).toBe(false);
@@ -188,18 +237,26 @@ describe("mux resolves --host against the registry", () => {
 	it("accepts a declared id and uses its tailnet host", async () => {
 		const home = mkdtempSync(join(tmpdir(), "hobo-m-"));
 		const project = mkdtempSync(join(tmpdir(), "proj-m-"));
+		enablePam(home);
 		writeFileSync(
 			join(project, DEV_MACHINES_FILE),
 			JSON.stringify({
 				machines: [
-					{ id: "build-box", host: "build-box.ts.net", isolationClass: "development" },
+					{
+						id: "build-box",
+						host: "build-box.ts.net",
+						isolationClass: "development",
+					},
 				],
 			}),
 		);
-		const result = await runHoboCodeCli(["mux", "--dry-run", "--host", "build-box"], {
-			hoboHome: home,
-			cwd: project,
-		});
+		const result = await runHoboCodeCli(
+			["mux", "--dry-run", "--host", "build-box"],
+			{
+				hoboHome: home,
+				cwd: project,
+			},
+		);
 		expect(result.code).not.toBe("HOBO_CODE_MUX_UNKNOWN_MACHINE");
 		expect(JSON.stringify(result.data)).toContain("build-box.ts.net");
 		rmSync(home, { recursive: true, force: true });
@@ -214,11 +271,18 @@ describe("mux resolves --host against the registry", () => {
 			JSON.stringify({
 				machines: [
 					{ id: "ok", host: "ok.ts.net", isolationClass: "development" },
-					{ id: "bad", host: "-oProxyCommand=evil", isolationClass: "development" },
+					{
+						id: "bad",
+						host: "-oProxyCommand=evil",
+						isolationClass: "development",
+					},
 				],
 			}),
 		);
-		const result = await runHoboCodeCli(["machines"], { hoboHome: home, cwd: project });
+		const result = await runHoboCodeCli(["machines"], {
+			hoboHome: home,
+			cwd: project,
+		});
 		expect(result.message).toContain("ok.ts.net");
 		expect(result.message).toMatch(/rejected · bad/);
 		rmSync(home, { recursive: true, force: true });
@@ -228,8 +292,18 @@ describe("mux resolves --host against the registry", () => {
 
 describe("resolving --host is unambiguous", () => {
 	const machines = [
-		{ id: "jump", host: "dev-box", user: "root", isolationClass: "production" as const },
-		{ id: "dev-box", host: "sandbox.ts.net", user: "agent", isolationClass: "ephemeral" as const },
+		{
+			id: "jump",
+			host: "dev-box",
+			user: "root",
+			isolationClass: "production" as const,
+		},
+		{
+			id: "dev-box",
+			host: "sandbox.ts.net",
+			user: "agent",
+			isolationClass: "ephemeral" as const,
+		},
 	];
 
 	it("an exact id beats an earlier entry's host", () => {
@@ -237,15 +311,19 @@ describe("resolving --host is unambiguous", () => {
 		// operator named one machine and got another, as another user, under a
 		// production policy instead of an ephemeral one.
 		const resolved = resolveMachine(machines, "dev-box");
-		expect(resolved && "machine" in resolved && resolved.machine.id).toBe("dev-box");
-		expect(resolved && "machine" in resolved && resolved.machine.isolationClass).toBe(
-			"ephemeral",
+		expect(resolved && "machine" in resolved && resolved.machine.id).toBe(
+			"dev-box",
 		);
+		expect(
+			resolved && "machine" in resolved && resolved.machine.isolationClass,
+		).toBe("ephemeral");
 	});
 
 	it("resolves by host when no id matches", () => {
 		const resolved = resolveMachine(machines, "sandbox.ts.net");
-		expect(resolved && "machine" in resolved && resolved.machine.id).toBe("dev-box");
+		expect(resolved && "machine" in resolved && resolved.machine.id).toBe(
+			"dev-box",
+		);
 	});
 
 	it("refuses to choose when two machines share a host", () => {
@@ -296,7 +374,9 @@ describe("declared agent placement is enforced", () => {
 		writeFileSync(
 			join(project, DEV_MACHINES_FILE),
 			JSON.stringify({
-				machines: [{ id: "box", host: "box.ts.net", isolationClass: "development" }],
+				machines: [
+					{ id: "box", host: "box.ts.net", isolationClass: "development" },
+				],
 			}),
 		);
 		// A vshell command names a local path; on the remote it does not exist,

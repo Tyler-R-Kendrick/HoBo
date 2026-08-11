@@ -6,7 +6,13 @@
  * gate, the host's promote-hint honesty, and streaming turns flowing through
  * the real InteractiveShell driver with Esc cancellation.
  */
-import { mkdtempSync, rmSync } from "node:fs";
+import {
+	chmodSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
@@ -16,6 +22,11 @@ import {
 	runInteractiveShell,
 	type ShellHost,
 } from "../src/interactive-shell.js";
+import type { MuxRunner } from "../src/mux.js";
+import {
+	createResidentSessionRuntime,
+	residentSessionTmuxName,
+} from "../src/resident-session-runtime.js";
 import {
 	type EngineTurnEvent,
 	formatUsage,
@@ -156,6 +167,98 @@ function fakeEngine(overrides: Partial<ShellEngine> = {}): ShellEngine {
 }
 
 describe("engine-backed shell host", () => {
+	it("executes resident attach and detach actions", async () => {
+		const home = temp("hc-shell-session-");
+		const bin = temp("hc-shell-bin-");
+		const log = join(home, "tmux.log");
+		const tmuxPath = join(bin, "tmux");
+		writeFileSync(
+			tmuxPath,
+			[
+				"#!/bin/sh",
+				'case "$1" in',
+				"  has-session) exit 0 ;;",
+				'  list-panes) printf "%s\\n" "$HOBO_TMUX_PANE"; exit 0 ;;',
+				'  attach-session|switch-client|detach-client) printf "%s\\n" "$*" >> "$HOBO_TMUX_LOG" ;;',
+				"esac",
+				"",
+			].join("\n"),
+		);
+		chmodSync(tmuxPath, 0o755);
+		const tmux: MuxRunner = {
+			async run(args) {
+				if (args[0] === "has-session") {
+					return { code: 1, stdout: "", stderr: "can't find session" };
+				}
+				return {
+					code: 0,
+					stdout: args[0] === "new-session" ? "%1\n" : "",
+				};
+			},
+		};
+		const runtime = createResidentSessionRuntime({
+			dataDir: join(home, "durable", "code", "sessions"),
+			tmux,
+		});
+		const created = await runtime.create({
+			id: "switchable",
+			name: "switchable",
+			projectRoot: "/repo",
+			worktreePath: "/repo/.worktrees/switchable",
+			branch: "code/switchable",
+			clientId: "seed",
+		});
+		runtime.close();
+		const pane = created.panes[0];
+		const tab = created.tabs[0];
+		if (!pane || !tab) throw new Error("seed session has no pane");
+		const metadata = Buffer.from(
+			JSON.stringify({
+				paneId: pane.id,
+				tabId: tab.id,
+				paneTitle: pane.title,
+				tabTitle: tab.title,
+				workingDirectory: pane.workingDirectory,
+			}),
+		).toString("base64url");
+
+		const env = {
+			...process.env,
+			PATH: `${bin}:${process.env.PATH ?? ""}`,
+			HOBO_TMUX_LOG: log,
+			HOBO_TMUX_PANE: `${pane.runtimeId}\t1\t1\tenv HOBO_PANE_META=${metadata}\t\t`,
+		};
+		const priorPath = process.env.PATH;
+		const priorPane = process.env.HOBO_TMUX_PANE;
+		try {
+			process.env.PATH = env.PATH;
+			process.env.HOBO_TMUX_PANE = env.HOBO_TMUX_PANE;
+			const attached = await createDefaultShellHost({
+				hoboHome: home,
+				env,
+			}).runVerb(["session", "attach", "switchable"]);
+			expect(attached).toContain("attach switchable");
+			await createDefaultShellHost({
+				hoboHome: home,
+				env: { ...env, TMUX: "/tmp/tmux,1,0" },
+			}).runVerb(["session", "switch", "switchable"]);
+			await createDefaultShellHost({
+				hoboHome: home,
+				env: { ...env, TMUX: "/tmp/tmux,1,0" },
+			}).runVerb(["session", "detach", "switchable"]);
+		} finally {
+			if (priorPath === undefined) delete process.env.PATH;
+			else process.env.PATH = priorPath;
+			if (priorPane === undefined) delete process.env.HOBO_TMUX_PANE;
+			else process.env.HOBO_TMUX_PANE = priorPane;
+		}
+
+		const name = residentSessionTmuxName("switchable");
+		expect(readFileSync(log, "utf8")).toBe(
+			`attach-session -t ${name}\nswitch-client -t ${name}\ndetach-client\n`,
+		);
+	});
+
 	it("advertises the engine and streams turns without mutating anything", async () => {
 		const host = createDefaultShellHost({ engine: fakeEngine() });
 		expect(host.engineLabel).toBe("fake · test/fake-model");

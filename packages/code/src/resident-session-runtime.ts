@@ -56,6 +56,14 @@ export interface ResidentSessionRuntimeOptions {
 	readonly shell?: readonly string[];
 }
 
+function isActiveAgent(state: AgentLifecycleState): boolean {
+	return ![
+		AgentLifecycleState.DONE,
+		AgentLifecycleState.FAILED,
+		AgentLifecycleState.STOPPED,
+	].includes(state);
+}
+
 export interface ResidentSessionRuntime {
 	create(options: CreateResidentSessionOptions): Promise<SessionSnapshot>;
 	load(sessionId: string): Promise<SessionSnapshot | undefined>;
@@ -1002,14 +1010,7 @@ export function createResidentSessionRuntime(
 				const paneRuns = snapshot.agentRuns.filter(
 					(run) => run.paneId === paneId,
 				);
-				if (
-					paneRuns.some(
-						(run) =>
-							run.lifecycleState !== AgentLifecycleState.DONE &&
-							run.lifecycleState !== AgentLifecycleState.FAILED &&
-							run.lifecycleState !== AgentLifecycleState.STOPPED,
-					)
-				) {
+				if (paneRuns.some((run) => isActiveAgent(run.lifecycleState))) {
 					throw new Error(`pane ${paneId} has an active agent`);
 				}
 				if (pane.lifecycleState !== PaneLifecycleState.MISSING) {
@@ -1097,9 +1098,7 @@ export function createResidentSessionRuntime(
 				if (!pane) throw new Error(`pane ${paneId} does not exist`);
 				if (
 					snapshot.agentRuns.some(
-						(run) =>
-							run.paneId === paneId &&
-							run.lifecycleState < AgentLifecycleState.DONE,
+						(run) => run.paneId === paneId && isActiveAgent(run.lifecycleState),
 					)
 				) {
 					throw new Error(`pane ${paneId} already has an active agent`);

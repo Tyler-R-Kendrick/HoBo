@@ -327,6 +327,48 @@ describe("resident session runtime", () => {
 		runtime.close();
 	});
 
+	it("does not replace an agent whose stop is unconfirmed", async () => {
+		const runtime = createResidentSessionRuntime({
+			dataDir: tempRoot(),
+			tmux: fakeTmux(),
+		});
+		const created = await runtime.create({
+			id: "task-unconfirmed-stop",
+			name: "unconfirmed-stop",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/unconfirmed-stop",
+			clientId: "cli",
+		});
+		const started = await runtime.startAgent(
+			"task-unconfirmed-stop",
+			created.revision,
+			created.focusedPaneId,
+			"codex",
+			["codex"],
+			"review",
+		);
+		const stopped = await runtime.stopAgent(
+			"task-unconfirmed-stop",
+			started.revision,
+			started.agentRuns[0]?.id ?? "missing",
+		);
+		expect(stopped.agentRuns[0]?.lifecycleState).toBe(
+			AgentLifecycleState.UNKNOWN,
+		);
+		await expect(
+			runtime.startAgent(
+				"task-unconfirmed-stop",
+				stopped.revision,
+				stopped.focusedPaneId,
+				"codex",
+				["codex"],
+				"replace",
+			),
+		).rejects.toThrow("already has an active agent");
+		runtime.close();
+	});
+
 	it("adopts a metadata-bearing tmux session left before its first event", async () => {
 		const metadata = Buffer.from(
 			JSON.stringify({

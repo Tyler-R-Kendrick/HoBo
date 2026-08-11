@@ -232,6 +232,8 @@ describe("SessionControlPlane boundary pact", () => {
 				"detach without stopping the resident session",
 				"reattach to the durable session snapshot",
 				"switch focus to another runtime-backed pane",
+				"inspect a selected Git workbench file",
+				"create a branch through the typed Git workbench action boundary",
 			]),
 		);
 		expect(result.snapshot.session.lifecycleState).toBe(

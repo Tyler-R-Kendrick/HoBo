@@ -165,6 +165,57 @@
 					"focusedPaneId": "pane-worker"
 				}
 			}
+		},
+		{
+			"description": "inspect a selected Git workbench file",
+			"request": {
+				"method": "GET",
+				"path": "/code/sessions/session-1/git?kind=file&value=README.md"
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"branch": "code/session-contract",
+					"ahead": 1,
+					"behind": 0,
+					"files": [
+						{
+							"path": "README.md",
+							"staged": false,
+							"unstaged": true,
+							"untracked": false
+						}
+					],
+					"selectedDiff": {
+						"path": "README.md",
+						"text": "+workbench\n",
+						"truncated": false
+					},
+					"truncated": {
+						"files": false,
+						"branches": false,
+						"commits": false,
+						"stashes": false
+					}
+				}
+			}
+		},
+		{
+			"description": "create a branch through the typed Git workbench action boundary",
+			"request": {
+				"method": "POST",
+				"path": "/code/sessions/session-1/git/actions",
+				"body": {
+					"action": "GIT_WORKBENCH_ACTION_KIND_BRANCH_CREATE",
+					"argument": "code/contract-branch"
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"ok": true
+				}
+			}
 		}
 	],
 	"metadata": {

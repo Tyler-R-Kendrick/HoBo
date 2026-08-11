@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file code_harness.proto.
  */
 export const file_code_harness: GenFile = /*@__PURE__*/
-  fileDesc("ChJjb2RlX2hhcm5lc3MucHJvdG8SDGhvYm8uY29kZS52MSL2AQoHU2Vzc2lvbhIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhQKDHByb2plY3Rfcm9vdBgDIAEoCRIVCg13b3JrdHJlZV9wYXRoGAQgASgJEg4KBmJyYW5jaBgFIAEoCRI8Cg9saWZlY3ljbGVfc3RhdGUYBiABKA4yIy5ob2JvLmNvZGUudjEuU2Vzc2lvbkxpZmVjeWNsZVN0YXRlEhIKCmNyZWF0ZWRfYXQYByABKAkSEgoKdXBkYXRlZF9hdBgIIAEoCRIbCg5jbG9zZV9vbl9tZXJnZRgJIAEoCEgAiAEBQhEKD19jbG9zZV9vbl9tZXJnZSJYCgNUYWISCgoCaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIVCghwb3NpdGlvbhgEIAEoDUgAiAEBQgsKCV9wb3NpdGlvbiLNAgoEUGFuZRIKCgJpZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJEg4KBnRhYl9pZBgDIAEoCRINCgV0aXRsZRgEIAEoCRI5Cg9saWZlY3ljbGVfc3RhdGUYBSABKA4yIC5ob2JvLmNvZGUudjEuUGFuZUxpZmVjeWNsZVN0YXRlEhIKCnJ1bnRpbWVfaWQYBiABKAkSGQoRd29ya2luZ19kaXJlY3RvcnkYByABKAkSGQoMYWdlbnRfcnVuX2lkGAggASgJSACIAQESEwoLbGVmdF9jb2x1bW4YCSABKA0SDwoHdG9wX3JvdxgKIAEoDRINCgV3aWR0aBgLIAEoDRIOCgZoZWlnaHQYDCABKA0SFAoMd2luZG93X3dpZHRoGA0gASgNEhUKDXdpbmRvd19oZWlnaHQYDiABKA1CDwoNX2FnZW50X3J1bl9pZCKqAgoIQWdlbnRSdW4SCgoCaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIPCgdwYW5lX2lkGAMgASgJEhAKCHByb3ZpZGVyGAQgASgJEiAKE3Byb3ZpZGVyX3Nlc3Npb25faWQYBSABKAlIAIgBARI6Cg9saWZlY3ljbGVfc3RhdGUYBiABKA4yIS5ob2JvLmNvZGUudjEuQWdlbnRMaWZlY3ljbGVTdGF0ZRISCgpzdGFydGVkX2F0GAcgASgJEhIKCnVwZGF0ZWRfYXQYCCABKAkSDwoHc3VtbWFyeRgJIAEoCRIaCg10ZXJtaW5hbF9vbmx5GAogASgISAGIAQFCFgoUX3Byb3ZpZGVyX3Nlc3Npb25faWRCEAoOX3Rlcm1pbmFsX29ubHkipAEKCkNoZWNrcG9pbnQSCgoCaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRISCgpnaXRfY29tbWl0GAMgASgJEg0KBWxhYmVsGAQgASgJEj8KD2xpZmVjeWNsZV9zdGF0ZRgFIAEoDjImLmhvYm8uY29kZS52MS5DaGVja3BvaW50TGlmZWN5Y2xlU3RhdGUSEgoKY3JlYXRlZF9hdBgGIAEoCSL4AQoIR2l0U3RhdGUSFQoNd29ya3RyZWVfcGF0aBgBIAEoCRIOCgZicmFuY2gYAiABKAkSEAoIaGVhZF9zaGEYAyABKAkSEAoIYmFzZV9zaGEYBCABKAkSEgoFZGlydHkYBSABKAhIAIgBARISCgVhaGVhZBgGIAEoDUgBiAEBEhMKBmJlaGluZBgHIAEoDUgCiAEBEhQKDHN0YWdlZF9wYXRocxgIIAMoCRIWCg51bnN0YWdlZF9wYXRocxgJIAMoCRIXCg91bnRyYWNrZWRfcGF0aHMYCiADKAlCCAoGX2RpcnR5QggKBl9haGVhZEIJCgdfYmVoaW5kIpcCCg1EZWxpdmVyeVN0YXRlEj0KD2xpZmVjeWNsZV9zdGF0ZRgBIAEoDjIkLmhvYm8uY29kZS52MS5EZWxpdmVyeUxpZmVjeWNsZVN0YXRlEg4KBnJlbW90ZRgCIAEoCRIgChNwdWxsX3JlcXVlc3RfbnVtYmVyGAMgASgESACIAQESHQoQcHVsbF9yZXF1ZXN0X3VybBgEIAEoCUgBiAEBEiAKE3N0YWNrX3BhcmVudF9icmFuY2gYBSABKAlIAogBARIPCgdtZXNzYWdlGAYgASgJQhYKFF9wdWxsX3JlcXVlc3RfbnVtYmVyQhMKEV9wdWxsX3JlcXVlc3RfdXJsQhYKFF9zdGFja19wYXJlbnRfYnJhbmNoItcDCg9TZXNzaW9uU25hcHNob3QSFgoOc2NoZW1hX3ZlcnNpb24YASABKAkSJgoHc2Vzc2lvbhgCIAEoCzIVLmhvYm8uY29kZS52MS5TZXNzaW9uEh8KBHRhYnMYAyADKAsyES5ob2JvLmNvZGUudjEuVGFiEiEKBXBhbmVzGAQgAygLMhIuaG9iby5jb2RlLnYxLlBhbmUSKgoKYWdlbnRfcnVucxgFIAMoCzIWLmhvYm8uY29kZS52MS5BZ2VudFJ1bhItCgtjaGVja3BvaW50cxgGIAMoCzIYLmhvYm8uY29kZS52MS5DaGVja3BvaW50EikKCWdpdF9zdGF0ZRgHIAEoCzIWLmhvYm8uY29kZS52MS5HaXRTdGF0ZRIzCg5kZWxpdmVyeV9zdGF0ZRgIIAEoCzIbLmhvYm8uY29kZS52MS5EZWxpdmVyeVN0YXRlEhYKDmZvY3VzZWRfdGFiX2lkGAkgASgJEhcKD2ZvY3VzZWRfcGFuZV9pZBgKIAEoCRIbChNhdHRhY2hlZF9jbGllbnRfaWRzGAsgAygJEhUKCHJldmlzaW9uGAwgASgESACIAQESEwoLY2FwdHVyZWRfYXQYDSABKAlCCwoJX3JldmlzaW9uIl0KFENyZWF0ZVNlc3Npb25Db21tYW5kEgwKBG5hbWUYASABKAkSFAoMcHJvamVjdF9yb290GAIgASgJEg4KBmJyYW5jaBgDIAEoCRIRCgljbGllbnRfaWQYBCABKAkiKQoURGV0YWNoU2Vzc2lvbkNvbW1hbmQSEQoJY2xpZW50X2lkGAEgASgJIisKFlJlYXR0YWNoU2Vzc2lvbkNvbW1hbmQSEQoJY2xpZW50X2lkGAEgASgJIiMKEEZvY3VzUGFuZUNvbW1hbmQSDwoHcGFuZV9pZBgBIAEoCSJGChJTdG9wU2Vzc2lvbkNvbW1hbmQSHAoPcmVtb3ZlX3dvcmt0cmVlGAEgASgISACIAQFCEgoQX3JlbW92ZV93b3JrdHJlZSIhChBDcmVhdGVUYWJDb21tYW5kEg0KBXRpdGxlGAEgASgJIkMKEUNyZWF0ZVBhbmVDb21tYW5kEg4KBnRhYl9pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIPCgdjb21tYW5kGAMgAygJIlYKEFNwbGl0UGFuZUNvbW1hbmQSDwoHcGFuZV9pZBgBIAEoCRIRCglkaXJlY3Rpb24YAiABKAkSDQoFdGl0bGUYAyABKAkSDwoHY29tbWFuZBgEIAMoCSIjChBDbG9zZVBhbmVDb21tYW5kEg8KB3BhbmVfaWQYASABKAkiMgoQU2VuZElucHV0Q29tbWFuZBIPCgdwYW5lX2lkGAEgASgJEg0KBWlucHV0GAIgASgJIlcKEVN0YXJ0QWdlbnRDb21tYW5kEg8KB3BhbmVfaWQYASABKAkSEAoIcHJvdmlkZXIYAiABKAkSDwoHY29tbWFuZBgDIAMoCRIOCgZwcm9tcHQYBCABKAkiKAoQU3RvcEFnZW50Q29tbWFuZBIUCgxhZ2VudF9ydW5faWQYASABKAkiKAoXQ3JlYXRlQ2hlY2twb2ludENvbW1hbmQSDQoFbGFiZWwYASABKAkiMQoYUmVzdG9yZUNoZWNrcG9pbnRDb21tYW5kEhUKDWNoZWNrcG9pbnRfaWQYASABKAkiIAoNQ29tbWl0Q29tbWFuZBIPCgdtZXNzYWdlGAEgASgJIh0KC1B1c2hDb21tYW5kEg4KBnJlbW90ZRgBIAEoCSJTChZPcGVuUHVsbFJlcXVlc3RDb21tYW5kEg0KBXRpdGxlGAEgASgJEgwKBGJvZHkYAiABKAkSEgoFZHJhZnQYAyABKAhIAIgBAUIICgZfZHJhZnQiTQoXU3RhY2tQdWxsUmVxdWVzdENvbW1hbmQSFQoNcGFyZW50X2JyYW5jaBgBIAEoCRINCgV0aXRsZRgCIAEoCRIMCgRib2R5GAMgASgJIjYKF01lcmdlUHVsbFJlcXVlc3RDb21tYW5kEhsKE3B1bGxfcmVxdWVzdF9udW1iZXIYASABKAQiiAoKFlNlc3Npb25Db21tYW5kRW52ZWxvcGUSFgoOc2NoZW1hX3ZlcnNpb24YASABKAkSEgoKY29tbWFuZF9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRISCgpzZXNzaW9uX2lkGAQgASgJEh4KEWV4cGVjdGVkX3JldmlzaW9uGAUgASgESAGIAQESPAoOY3JlYXRlX3Nlc3Npb24YCiABKAsyIi5ob2JvLmNvZGUudjEuQ3JlYXRlU2Vzc2lvbkNvbW1hbmRIABI8Cg5kZXRhY2hfc2Vzc2lvbhgLIAEoCzIiLmhvYm8uY29kZS52MS5EZXRhY2hTZXNzaW9uQ29tbWFuZEgAEkAKEHJlYXR0YWNoX3Nlc3Npb24YDCABKAsyJC5ob2JvLmNvZGUudjEuUmVhdHRhY2hTZXNzaW9uQ29tbWFuZEgAEjQKCmZvY3VzX3BhbmUYDSABKAsyHi5ob2JvLmNvZGUudjEuRm9jdXNQYW5lQ29tbWFuZEgAEjgKDHN0b3Bfc2Vzc2lvbhgOIAEoCzIgLmhvYm8uY29kZS52MS5TdG9wU2Vzc2lvbkNvbW1hbmRIABI0CgpjcmVhdGVfdGFiGA8gASgLMh4uaG9iby5jb2RlLnYxLkNyZWF0ZVRhYkNvbW1hbmRIABI2CgtjcmVhdGVfcGFuZRgQIAEoCzIfLmhvYm8uY29kZS52MS5DcmVhdGVQYW5lQ29tbWFuZEgAEjQKCnNwbGl0X3BhbmUYESABKAsyHi5ob2JvLmNvZGUudjEuU3BsaXRQYW5lQ29tbWFuZEgAEjQKCmNsb3NlX3BhbmUYEiABKAsyHi5ob2JvLmNvZGUudjEuQ2xvc2VQYW5lQ29tbWFuZEgAEjQKCnNlbmRfaW5wdXQYEyABKAsyHi5ob2JvLmNvZGUudjEuU2VuZElucHV0Q29tbWFuZEgAEjYKC3N0YXJ0X2FnZW50GBQgASgLMh8uaG9iby5jb2RlLnYxLlN0YXJ0QWdlbnRDb21tYW5kSAASNAoKc3RvcF9hZ2VudBgVIAEoCzIeLmhvYm8uY29kZS52MS5TdG9wQWdlbnRDb21tYW5kSAASQgoRY3JlYXRlX2NoZWNrcG9pbnQYFiABKAsyJS5ob2JvLmNvZGUudjEuQ3JlYXRlQ2hlY2twb2ludENvbW1hbmRIABJEChJyZXN0b3JlX2NoZWNrcG9pbnQYFyABKAsyJi5ob2JvLmNvZGUudjEuUmVzdG9yZUNoZWNrcG9pbnRDb21tYW5kSAASLQoGY29tbWl0GBggASgLMhsuaG9iby5jb2RlLnYxLkNvbW1pdENvbW1hbmRIABIpCgRwdXNoGBkgASgLMhkuaG9iby5jb2RlLnYxLlB1c2hDb21tYW5kSAASQQoRb3Blbl9wdWxsX3JlcXVlc3QYGiABKAsyJC5ob2JvLmNvZGUudjEuT3BlblB1bGxSZXF1ZXN0Q29tbWFuZEgAEkMKEnN0YWNrX3B1bGxfcmVxdWVzdBgbIAEoCzIlLmhvYm8uY29kZS52MS5TdGFja1B1bGxSZXF1ZXN0Q29tbWFuZEgAEkMKEm1lcmdlX3B1bGxfcmVxdWVzdBgcIAEoCzIlLmhvYm8uY29kZS52MS5NZXJnZVB1bGxSZXF1ZXN0Q29tbWFuZEgAQgkKB2NvbW1hbmRCFAoSX2V4cGVjdGVkX3JldmlzaW9uIkYKE1Nlc3Npb25DcmVhdGVkRXZlbnQSLwoIc25hcHNob3QYASABKAsyHS5ob2JvLmNvZGUudjEuU2Vzc2lvblNuYXBzaG90IigKE0NsaWVudERldGFjaGVkRXZlbnQSEQoJY2xpZW50X2lkGAEgASgJIioKFUNsaWVudFJlYXR0YWNoZWRFdmVudBIRCgljbGllbnRfaWQYASABKAkiIwoQUGFuZUZvY3VzZWRFdmVudBIPCgdwYW5lX2lkGAEgASgJIlYKE1Nlc3Npb25DaGFuZ2VkRXZlbnQSDgoGY2hhbmdlGAEgASgJEi8KCHNuYXBzaG90GAIgASgLMh0uaG9iby5jb2RlLnYxLlNlc3Npb25TbmFwc2hvdCLOAwoUU2Vzc2lvbkV2ZW50RW52ZWxvcGUSFgoOc2NoZW1hX3ZlcnNpb24YASABKAkSEAoIZXZlbnRfaWQYAiABKAkSEgoKc2Vzc2lvbl9pZBgDIAEoCRIQCghzZXF1ZW5jZRgEIAEoBBITCgtvY2N1cnJlZF9hdBgFIAEoCRIUCgxjYXVzYXRpb25faWQYBiABKAkSPAoPc2Vzc2lvbl9jcmVhdGVkGAogASgLMiEuaG9iby5jb2RlLnYxLlNlc3Npb25DcmVhdGVkRXZlbnRIABI8Cg9jbGllbnRfZGV0YWNoZWQYCyABKAsyIS5ob2JvLmNvZGUudjEuQ2xpZW50RGV0YWNoZWRFdmVudEgAEkAKEWNsaWVudF9yZWF0dGFjaGVkGAwgASgLMiMuaG9iby5jb2RlLnYxLkNsaWVudFJlYXR0YWNoZWRFdmVudEgAEjYKDHBhbmVfZm9jdXNlZBgNIAEoCzIeLmhvYm8uY29kZS52MS5QYW5lRm9jdXNlZEV2ZW50SAASPAoPc2Vzc2lvbl9jaGFuZ2VkGA4gASgLMiEuaG9iby5jb2RlLnYxLlNlc3Npb25DaGFuZ2VkRXZlbnRIAEIHCgVldmVudCKsAQoUU2Vzc2lvbkNvbW1hbmRSZXN1bHQSEAoIYWNjZXB0ZWQYASABKAgSDAoEY29kZRgCIAEoCRIPCgdtZXNzYWdlGAMgASgJEi8KCHNuYXBzaG90GAQgASgLMh0uaG9iby5jb2RlLnYxLlNlc3Npb25TbmFwc2hvdBIyCgZldmVudHMYBSADKAsyIi5ob2JvLmNvZGUudjEuU2Vzc2lvbkV2ZW50RW52ZWxvcGUiVwoQSXNvbGF0aW9uQmFja2VuZBIMCgRraW5kGAEgASgJEhAKCHBsYXRmb3JtGAIgASgJEhMKC2Nvd19jYXBhYmxlGAMgASgIEg4KBnJlYXNvbhgEIAEoCSLcAQoQSXNvbGF0aW9uQ29udGV4dBIWCg5zY2hlbWFfdmVyc2lvbhgBIAEoCRIOCgZydW5faWQYAiABKAkSDgoGYnJhbmNoGAMgASgJEhEKCXJvb3RfcGF0aBgEIAEoCRIvCgdiYWNrZW5kGAUgASgLMh4uaG9iby5jb2RlLnYxLklzb2xhdGlvbkJhY2tlbmQSEgoKc3RhdGlvbl9pZBgGIAEoCRIUCgxkdXJhYmxlX3Jvb3QYByABKAkSEgoKY3JlYXRlZF9hdBgIIAEoCRIOCgZzdGF0dXMYCSABKAkifQoQUHJvbW90aW9uUmVxdWVzdBIOCgZydW5faWQYASABKAkSFgoOaXNvbGF0aW9uX3Jvb3QYAiABKAkSFgoOdGFyZ2V0X3Byb2plY3QYAyABKAkSFAoMZ2F0ZV9yZXN1bHRzGAQgAygJEhMKC3NxdWFzaF9vbmx5GAUgASgIImQKD1Byb21vdGlvblJlc3VsdBIKCgJvaxgBIAEoCBIMCgRjb2RlGAIgASgJEg8KB21lc3NhZ2UYAyABKAkSFQoNbWVyZ2VkX2JyYW5jaBgEIAEoCRIPCgdjbGVhbmVkGAUgASgIIqABCg5FdmlkZW5jZVRyaXBsZRIQCghmbGFnX2tleRgBIAEoCRIQCghzY2VuYXJpbxgCIAEoCRIeChZwbGF5d3JpZ2h0X3NjcmlwdF9wYXRoGAMgASgJEhoKEnJlY29yZGluZ19tcDRfcGF0aBgEIAEoCRIYChBzY3JlZW5zaG90X3BhdGhzGAUgAygJEhQKDGR1cmFibGVfcm9vdBgGIAEoCSJlCg5BZ2VudFBhbmVTdGF0ZRIQCghhZ2VudF9pZBgBIAEoCRIWCg5zZW1hbnRpY19zdGF0ZRgCIAEoCRIPCgdzdW1tYXJ5GAMgASgJEhgKEGhpZ2hsaWdodF9idWZmZXIYBCABKAkihQEKF0luZmVyZW5jZUJ1ZGdldFNuYXBzaG90EhAKCHByb3ZpZGVyGAEgASgJEhEKCXNwZW5kX3VzZBgCIAEoARIPCgdjYXBfdXNkGAMgASgBEhwKFG1vbmV0aXphdGlvbl9lbmFibGVkGAQgASgIEhYKDnJvdXRpbmdfcG9saWN5GAUgASgJKvoBChVTZXNzaW9uTGlmZWN5Y2xlU3RhdGUSJwojU0VTU0lPTl9MSUZFQ1lDTEVfU1RBVEVfVU5TUEVDSUZJRUQQABIkCiBTRVNTSU9OX0xJRkVDWUNMRV9TVEFURV9TVEFSVElORxABEiMKH1NFU1NJT05fTElGRUNZQ0xFX1NUQVRFX1JVTk5JTkcQAhIkCiBTRVNTSU9OX0xJRkVDWUNMRV9TVEFURV9TVE9QUElORxADEiMKH1NFU1NJT05fTElGRUNZQ0xFX1NUQVRFX1NUT1BQRUQQBBIiCh5TRVNTSU9OX0xJRkVDWUNMRV9TVEFURV9GQUlMRUQQBSrCAQoSUGFuZUxpZmVjeWNsZVN0YXRlEiQKIFBBTkVfTElGRUNZQ0xFX1NUQVRFX1VOU1BFQ0lGSUVEEAASIQodUEFORV9MSUZFQ1lDTEVfU1RBVEVfU1RBUlRJTkcQARIgChxQQU5FX0xJRkVDWUNMRV9TVEFURV9SVU5OSU5HEAISHwobUEFORV9MSUZFQ1lDTEVfU1RBVEVfRVhJVEVEEAMSIAocUEFORV9MSUZFQ1lDTEVfU1RBVEVfTUlTU0lORxAEKs4CChNBZ2VudExpZmVjeWNsZVN0YXRlEiUKIUFHRU5UX0xJRkVDWUNMRV9TVEFURV9VTlNQRUNJRklFRBAAEiIKHkFHRU5UX0xJRkVDWUNMRV9TVEFURV9TVEFSVElORxABEh4KGkFHRU5UX0xJRkVDWUNMRV9TVEFURV9JRExFEAISIQodQUdFTlRfTElGRUNZQ0xFX1NUQVRFX1dPUktJTkcQAxIhCh1BR0VOVF9MSUZFQ1lDTEVfU1RBVEVfQkxPQ0tFRBAEEh4KGkFHRU5UX0xJRkVDWUNMRV9TVEFURV9ET05FEAUSIAocQUdFTlRfTElGRUNZQ0xFX1NUQVRFX0ZBSUxFRBAGEiEKHUFHRU5UX0xJRkVDWUNMRV9TVEFURV9TVE9QUEVEEAcSIQodQUdFTlRfTElGRUNZQ0xFX1NUQVRFX1VOS05PV04QCCroAQoYQ2hlY2twb2ludExpZmVjeWNsZVN0YXRlEioKJkNIRUNLUE9JTlRfTElGRUNZQ0xFX1NUQVRFX1VOU1BFQ0lGSUVEEAASJgoiQ0hFQ0tQT0lOVF9MSUZFQ1lDTEVfU1RBVEVfQ1JFQVRFRBABEigKJENIRUNLUE9JTlRfTElGRUNZQ0xFX1NUQVRFX1JFU1RPUklORxACEicKI0NIRUNLUE9JTlRfTElGRUNZQ0xFX1NUQVRFX1JFU1RPUkVEEAMSJQohQ0hFQ0tQT0lOVF9MSUZFQ1lDTEVfU1RBVEVfRkFJTEVEEAQqzwIKFkRlbGl2ZXJ5TGlmZWN5Y2xlU3RhdGUSKAokREVMSVZFUllfTElGRUNZQ0xFX1NUQVRFX1VOU1BFQ0lGSUVEEAASIQodREVMSVZFUllfTElGRUNZQ0xFX1NUQVRFX0lETEUQARIiCh5ERUxJVkVSWV9MSUZFQ1lDTEVfU1RBVEVfUkVBRFkQAhIkCiBERUxJVkVSWV9MSUZFQ1lDTEVfU1RBVEVfUFVTSElORxADEi4KKkRFTElWRVJZX0xJRkVDWUNMRV9TVEFURV9QVUxMX1JFUVVFU1RfT1BFThAEEiQKIERFTElWRVJZX0xJRkVDWUNMRV9TVEFURV9NRVJHSU5HEAUSIwofREVMSVZFUllfTElGRUNZQ0xFX1NUQVRFX01FUkdFRBAGEiMKH0RFTElWRVJZX0xJRkVDWUNMRV9TVEFURV9GQUlMRUQQB2IGcHJvdG8z");
+  fileDesc("ChJjb2RlX2hhcm5lc3MucHJvdG8SDGhvYm8uY29kZS52MSL2AQoHU2Vzc2lvbhIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhQKDHByb2plY3Rfcm9vdBgDIAEoCRIVCg13b3JrdHJlZV9wYXRoGAQgASgJEg4KBmJyYW5jaBgFIAEoCRI8Cg9saWZlY3ljbGVfc3RhdGUYBiABKA4yIy5ob2JvLmNvZGUudjEuU2Vzc2lvbkxpZmVjeWNsZVN0YXRlEhIKCmNyZWF0ZWRfYXQYByABKAkSEgoKdXBkYXRlZF9hdBgIIAEoCRIbCg5jbG9zZV9vbl9tZXJnZRgJIAEoCEgAiAEBQhEKD19jbG9zZV9vbl9tZXJnZSJYCgNUYWISCgoCaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIVCghwb3NpdGlvbhgEIAEoDUgAiAEBQgsKCV9wb3NpdGlvbiLNAgoEUGFuZRIKCgJpZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJEg4KBnRhYl9pZBgDIAEoCRINCgV0aXRsZRgEIAEoCRI5Cg9saWZlY3ljbGVfc3RhdGUYBSABKA4yIC5ob2JvLmNvZGUudjEuUGFuZUxpZmVjeWNsZVN0YXRlEhIKCnJ1bnRpbWVfaWQYBiABKAkSGQoRd29ya2luZ19kaXJlY3RvcnkYByABKAkSGQoMYWdlbnRfcnVuX2lkGAggASgJSACIAQESEwoLbGVmdF9jb2x1bW4YCSABKA0SDwoHdG9wX3JvdxgKIAEoDRINCgV3aWR0aBgLIAEoDRIOCgZoZWlnaHQYDCABKA0SFAoMd2luZG93X3dpZHRoGA0gASgNEhUKDXdpbmRvd19oZWlnaHQYDiABKA1CDwoNX2FnZW50X3J1bl9pZCKqAgoIQWdlbnRSdW4SCgoCaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIPCgdwYW5lX2lkGAMgASgJEhAKCHByb3ZpZGVyGAQgASgJEiAKE3Byb3ZpZGVyX3Nlc3Npb25faWQYBSABKAlIAIgBARI6Cg9saWZlY3ljbGVfc3RhdGUYBiABKA4yIS5ob2JvLmNvZGUudjEuQWdlbnRMaWZlY3ljbGVTdGF0ZRISCgpzdGFydGVkX2F0GAcgASgJEhIKCnVwZGF0ZWRfYXQYCCABKAkSDwoHc3VtbWFyeRgJIAEoCRIaCg10ZXJtaW5hbF9vbmx5GAogASgISAGIAQFCFgoUX3Byb3ZpZGVyX3Nlc3Npb25faWRCEAoOX3Rlcm1pbmFsX29ubHkipAEKCkNoZWNrcG9pbnQSCgoCaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRISCgpnaXRfY29tbWl0GAMgASgJEg0KBWxhYmVsGAQgASgJEj8KD2xpZmVjeWNsZV9zdGF0ZRgFIAEoDjImLmhvYm8uY29kZS52MS5DaGVja3BvaW50TGlmZWN5Y2xlU3RhdGUSEgoKY3JlYXRlZF9hdBgGIAEoCSL4AQoIR2l0U3RhdGUSFQoNd29ya3RyZWVfcGF0aBgBIAEoCRIOCgZicmFuY2gYAiABKAkSEAoIaGVhZF9zaGEYAyABKAkSEAoIYmFzZV9zaGEYBCABKAkSEgoFZGlydHkYBSABKAhIAIgBARISCgVhaGVhZBgGIAEoDUgBiAEBEhMKBmJlaGluZBgHIAEoDUgCiAEBEhQKDHN0YWdlZF9wYXRocxgIIAMoCRIWCg51bnN0YWdlZF9wYXRocxgJIAMoCRIXCg91bnRyYWNrZWRfcGF0aHMYCiADKAlCCAoGX2RpcnR5QggKBl9haGVhZEIJCgdfYmVoaW5kIl0KFUdpdFdvcmtiZW5jaFNlbGVjdGlvbhI1CgRraW5kGAEgASgOMicuaG9iby5jb2RlLnYxLkdpdFdvcmtiZW5jaFNlbGVjdGlvbktpbmQSDQoFdmFsdWUYAiABKAkigwEKEEdpdFdvcmtiZW5jaEZpbGUSDAoEcGF0aBgBIAEoCRIaCg1wcmV2aW91c19wYXRoGAIgASgJSACIAQESDgoGc3RhZ2VkGAMgASgIEhAKCHVuc3RhZ2VkGAQgASgIEhEKCXVudHJhY2tlZBgFIAEoCEIQCg5fcHJldmlvdXNfcGF0aCJ1ChJHaXRXb3JrYmVuY2hCcmFuY2gSDAoEbmFtZRgBIAEoCRILCgNvaWQYAiABKAkSFQoIdXBzdHJlYW0YAyABKAlIAIgBARIPCgdjdXJyZW50GAQgASgIEg8KB3N1YmplY3QYBSABKAlCCwoJX3Vwc3RyZWFtIp8BChJHaXRXb3JrYmVuY2hDb21taXQSCwoDb2lkGAEgASgJEhEKCXNob3J0X29pZBgCIAEoCRIPCgdwYXJlbnRzGAMgAygJEhMKC2RlY29yYXRpb25zGAQgASgJEg8KB3N1YmplY3QYBSABKAkSDgoGYXV0aG9yGAYgASgJEhMKC2F1dGhvcmVkX2F0GAcgASgJEg0KBWdyYXBoGAggASgJIlMKEUdpdFdvcmtiZW5jaFN0YXNoEgsKA3JlZhgBIAEoCRILCgNvaWQYAiABKAkSDwoHc3ViamVjdBgDIAEoCRITCgthdXRob3JlZF9hdBgEIAEoCSJBChBHaXRXb3JrYmVuY2hEaWZmEgwKBHBhdGgYASABKAkSDAoEdGV4dBgCIAEoCRIRCgl0cnVuY2F0ZWQYAyABKAgiWwoWR2l0V29ya2JlbmNoVHJ1bmNhdGlvbhINCgVmaWxlcxgBIAEoCBIQCghicmFuY2hlcxgCIAEoCBIPCgdjb21taXRzGAMgASgIEg8KB3N0YXNoZXMYBCABKAgiyAMKFEdpdFdvcmtiZW5jaFNuYXBzaG90EhMKBmJyYW5jaBgBIAEoCUgAiAEBEhUKCHVwc3RyZWFtGAIgASgJSAGIAQESDQoFYWhlYWQYAyABKA0SDgoGYmVoaW5kGAQgASgNEi0KBWZpbGVzGAUgAygLMh4uaG9iby5jb2RlLnYxLkdpdFdvcmtiZW5jaEZpbGUSMgoIYnJhbmNoZXMYBiADKAsyIC5ob2JvLmNvZGUudjEuR2l0V29ya2JlbmNoQnJhbmNoEjEKB2NvbW1pdHMYByADKAsyIC5ob2JvLmNvZGUudjEuR2l0V29ya2JlbmNoQ29tbWl0EjAKB3N0YXNoZXMYCCADKAsyHy5ob2JvLmNvZGUudjEuR2l0V29ya2JlbmNoU3Rhc2gSOgoNc2VsZWN0ZWRfZGlmZhgJIAEoCzIeLmhvYm8uY29kZS52MS5HaXRXb3JrYmVuY2hEaWZmSAKIAQESNwoJdHJ1bmNhdGVkGAogASgLMiQuaG9iby5jb2RlLnYxLkdpdFdvcmtiZW5jaFRydW5jYXRpb25CCQoHX2JyYW5jaEILCglfdXBzdHJlYW1CEAoOX3NlbGVjdGVkX2RpZmYirgEKGUdpdFdvcmtiZW5jaEFjdGlvblJlcXVlc3QSNAoGYWN0aW9uGAEgASgOMiQuaG9iby5jb2RlLnYxLkdpdFdvcmtiZW5jaEFjdGlvbktpbmQSOwoJc2VsZWN0aW9uGAIgASgLMiMuaG9iby5jb2RlLnYxLkdpdFdvcmtiZW5jaFNlbGVjdGlvbkgAiAEBEhAKCGFyZ3VtZW50GAMgASgJQgwKCl9zZWxlY3Rpb24iJgoYR2l0V29ya2JlbmNoQWN0aW9uUmVzdWx0EgoKAm9rGAEgASgIIpcCCg1EZWxpdmVyeVN0YXRlEj0KD2xpZmVjeWNsZV9zdGF0ZRgBIAEoDjIkLmhvYm8uY29kZS52MS5EZWxpdmVyeUxpZmVjeWNsZVN0YXRlEg4KBnJlbW90ZRgCIAEoCRIgChNwdWxsX3JlcXVlc3RfbnVtYmVyGAMgASgESACIAQESHQoQcHVsbF9yZXF1ZXN0X3VybBgEIAEoCUgBiAEBEiAKE3N0YWNrX3BhcmVudF9icmFuY2gYBSABKAlIAogBARIPCgdtZXNzYWdlGAYgASgJQhYKFF9wdWxsX3JlcXVlc3RfbnVtYmVyQhMKEV9wdWxsX3JlcXVlc3RfdXJsQhYKFF9zdGFja19wYXJlbnRfYnJhbmNoItcDCg9TZXNzaW9uU25hcHNob3QSFgoOc2NoZW1hX3ZlcnNpb24YASABKAkSJgoHc2Vzc2lvbhgCIAEoCzIVLmhvYm8uY29kZS52MS5TZXNzaW9uEh8KBHRhYnMYAyADKAsyES5ob2JvLmNvZGUudjEuVGFiEiEKBXBhbmVzGAQgAygLMhIuaG9iby5jb2RlLnYxLlBhbmUSKgoKYWdlbnRfcnVucxgFIAMoCzIWLmhvYm8uY29kZS52MS5BZ2VudFJ1bhItCgtjaGVja3BvaW50cxgGIAMoCzIYLmhvYm8uY29kZS52MS5DaGVja3BvaW50EikKCWdpdF9zdGF0ZRgHIAEoCzIWLmhvYm8uY29kZS52MS5HaXRTdGF0ZRIzCg5kZWxpdmVyeV9zdGF0ZRgIIAEoCzIbLmhvYm8uY29kZS52MS5EZWxpdmVyeVN0YXRlEhYKDmZvY3VzZWRfdGFiX2lkGAkgASgJEhcKD2ZvY3VzZWRfcGFuZV9pZBgKIAEoCRIbChNhdHRhY2hlZF9jbGllbnRfaWRzGAsgAygJEhUKCHJldmlzaW9uGAwgASgESACIAQESEwoLY2FwdHVyZWRfYXQYDSABKAlCCwoJX3JldmlzaW9uIl0KFENyZWF0ZVNlc3Npb25Db21tYW5kEgwKBG5hbWUYASABKAkSFAoMcHJvamVjdF9yb290GAIgASgJEg4KBmJyYW5jaBgDIAEoCRIRCgljbGllbnRfaWQYBCABKAkiKQoURGV0YWNoU2Vzc2lvbkNvbW1hbmQSEQoJY2xpZW50X2lkGAEgASgJIisKFlJlYXR0YWNoU2Vzc2lvbkNvbW1hbmQSEQoJY2xpZW50X2lkGAEgASgJIiMKEEZvY3VzUGFuZUNvbW1hbmQSDwoHcGFuZV9pZBgBIAEoCSJGChJTdG9wU2Vzc2lvbkNvbW1hbmQSHAoPcmVtb3ZlX3dvcmt0cmVlGAEgASgISACIAQFCEgoQX3JlbW92ZV93b3JrdHJlZSIhChBDcmVhdGVUYWJDb21tYW5kEg0KBXRpdGxlGAEgASgJIkMKEUNyZWF0ZVBhbmVDb21tYW5kEg4KBnRhYl9pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIPCgdjb21tYW5kGAMgAygJIlYKEFNwbGl0UGFuZUNvbW1hbmQSDwoHcGFuZV9pZBgBIAEoCRIRCglkaXJlY3Rpb24YAiABKAkSDQoFdGl0bGUYAyABKAkSDwoHY29tbWFuZBgEIAMoCSIjChBDbG9zZVBhbmVDb21tYW5kEg8KB3BhbmVfaWQYASABKAkiMgoQU2VuZElucHV0Q29tbWFuZBIPCgdwYW5lX2lkGAEgASgJEg0KBWlucHV0GAIgASgJIlcKEVN0YXJ0QWdlbnRDb21tYW5kEg8KB3BhbmVfaWQYASABKAkSEAoIcHJvdmlkZXIYAiABKAkSDwoHY29tbWFuZBgDIAMoCRIOCgZwcm9tcHQYBCABKAkiKAoQU3RvcEFnZW50Q29tbWFuZBIUCgxhZ2VudF9ydW5faWQYASABKAkiKAoXQ3JlYXRlQ2hlY2twb2ludENvbW1hbmQSDQoFbGFiZWwYASABKAkiMQoYUmVzdG9yZUNoZWNrcG9pbnRDb21tYW5kEhUKDWNoZWNrcG9pbnRfaWQYASABKAkiSgoNQ29tbWl0Q29tbWFuZBIPCgdtZXNzYWdlGAEgASgJEhgKC3N0YWdlZF9vbmx5GAIgASgISACIAQFCDgoMX3N0YWdlZF9vbmx5IiIKEVN0YWdlUGF0aHNDb21tYW5kEg0KBXBhdGhzGAEgAygJIiQKE1Vuc3RhZ2VQYXRoc0NvbW1hbmQSDQoFcGF0aHMYASADKAkiHQoLUHVzaENvbW1hbmQSDgoGcmVtb3RlGAEgASgJIlMKFk9wZW5QdWxsUmVxdWVzdENvbW1hbmQSDQoFdGl0bGUYASABKAkSDAoEYm9keRgCIAEoCRISCgVkcmFmdBgDIAEoCEgAiAEBQggKBl9kcmFmdCJNChdTdGFja1B1bGxSZXF1ZXN0Q29tbWFuZBIVCg1wYXJlbnRfYnJhbmNoGAEgASgJEg0KBXRpdGxlGAIgASgJEgwKBGJvZHkYAyABKAkiNgoXTWVyZ2VQdWxsUmVxdWVzdENvbW1hbmQSGwoTcHVsbF9yZXF1ZXN0X251bWJlchgBIAEoBCL8CgoWU2Vzc2lvbkNvbW1hbmRFbnZlbG9wZRIWCg5zY2hlbWFfdmVyc2lvbhgBIAEoCRISCgpjb21tYW5kX2lkGAIgASgJEhAKCGFjdG9yX2lkGAMgASgJEhIKCnNlc3Npb25faWQYBCABKAkSHgoRZXhwZWN0ZWRfcmV2aXNpb24YBSABKARIAYgBARI8Cg5jcmVhdGVfc2Vzc2lvbhgKIAEoCzIiLmhvYm8uY29kZS52MS5DcmVhdGVTZXNzaW9uQ29tbWFuZEgAEjwKDmRldGFjaF9zZXNzaW9uGAsgASgLMiIuaG9iby5jb2RlLnYxLkRldGFjaFNlc3Npb25Db21tYW5kSAASQAoQcmVhdHRhY2hfc2Vzc2lvbhgMIAEoCzIkLmhvYm8uY29kZS52MS5SZWF0dGFjaFNlc3Npb25Db21tYW5kSAASNAoKZm9jdXNfcGFuZRgNIAEoCzIeLmhvYm8uY29kZS52MS5Gb2N1c1BhbmVDb21tYW5kSAASOAoMc3RvcF9zZXNzaW9uGA4gASgLMiAuaG9iby5jb2RlLnYxLlN0b3BTZXNzaW9uQ29tbWFuZEgAEjQKCmNyZWF0ZV90YWIYDyABKAsyHi5ob2JvLmNvZGUudjEuQ3JlYXRlVGFiQ29tbWFuZEgAEjYKC2NyZWF0ZV9wYW5lGBAgASgLMh8uaG9iby5jb2RlLnYxLkNyZWF0ZVBhbmVDb21tYW5kSAASNAoKc3BsaXRfcGFuZRgRIAEoCzIeLmhvYm8uY29kZS52MS5TcGxpdFBhbmVDb21tYW5kSAASNAoKY2xvc2VfcGFuZRgSIAEoCzIeLmhvYm8uY29kZS52MS5DbG9zZVBhbmVDb21tYW5kSAASNAoKc2VuZF9pbnB1dBgTIAEoCzIeLmhvYm8uY29kZS52MS5TZW5kSW5wdXRDb21tYW5kSAASNgoLc3RhcnRfYWdlbnQYFCABKAsyHy5ob2JvLmNvZGUudjEuU3RhcnRBZ2VudENvbW1hbmRIABI0CgpzdG9wX2FnZW50GBUgASgLMh4uaG9iby5jb2RlLnYxLlN0b3BBZ2VudENvbW1hbmRIABJCChFjcmVhdGVfY2hlY2twb2ludBgWIAEoCzIlLmhvYm8uY29kZS52MS5DcmVhdGVDaGVja3BvaW50Q29tbWFuZEgAEkQKEnJlc3RvcmVfY2hlY2twb2ludBgXIAEoCzImLmhvYm8uY29kZS52MS5SZXN0b3JlQ2hlY2twb2ludENvbW1hbmRIABItCgZjb21taXQYGCABKAsyGy5ob2JvLmNvZGUudjEuQ29tbWl0Q29tbWFuZEgAEikKBHB1c2gYGSABKAsyGS5ob2JvLmNvZGUudjEuUHVzaENvbW1hbmRIABJBChFvcGVuX3B1bGxfcmVxdWVzdBgaIAEoCzIkLmhvYm8uY29kZS52MS5PcGVuUHVsbFJlcXVlc3RDb21tYW5kSAASQwoSc3RhY2tfcHVsbF9yZXF1ZXN0GBsgASgLMiUuaG9iby5jb2RlLnYxLlN0YWNrUHVsbFJlcXVlc3RDb21tYW5kSAASQwoSbWVyZ2VfcHVsbF9yZXF1ZXN0GBwgASgLMiUuaG9iby5jb2RlLnYxLk1lcmdlUHVsbFJlcXVlc3RDb21tYW5kSAASNgoLc3RhZ2VfcGF0aHMYHSABKAsyHy5ob2JvLmNvZGUudjEuU3RhZ2VQYXRoc0NvbW1hbmRIABI6Cg11bnN0YWdlX3BhdGhzGB4gASgLMiEuaG9iby5jb2RlLnYxLlVuc3RhZ2VQYXRoc0NvbW1hbmRIAEIJCgdjb21tYW5kQhQKEl9leHBlY3RlZF9yZXZpc2lvbiJGChNTZXNzaW9uQ3JlYXRlZEV2ZW50Ei8KCHNuYXBzaG90GAEgASgLMh0uaG9iby5jb2RlLnYxLlNlc3Npb25TbmFwc2hvdCIoChNDbGllbnREZXRhY2hlZEV2ZW50EhEKCWNsaWVudF9pZBgBIAEoCSIqChVDbGllbnRSZWF0dGFjaGVkRXZlbnQSEQoJY2xpZW50X2lkGAEgASgJIiMKEFBhbmVGb2N1c2VkRXZlbnQSDwoHcGFuZV9pZBgBIAEoCSJWChNTZXNzaW9uQ2hhbmdlZEV2ZW50Eg4KBmNoYW5nZRgBIAEoCRIvCghzbmFwc2hvdBgCIAEoCzIdLmhvYm8uY29kZS52MS5TZXNzaW9uU25hcHNob3QizgMKFFNlc3Npb25FdmVudEVudmVsb3BlEhYKDnNjaGVtYV92ZXJzaW9uGAEgASgJEhAKCGV2ZW50X2lkGAIgASgJEhIKCnNlc3Npb25faWQYAyABKAkSEAoIc2VxdWVuY2UYBCABKAQSEwoLb2NjdXJyZWRfYXQYBSABKAkSFAoMY2F1c2F0aW9uX2lkGAYgASgJEjwKD3Nlc3Npb25fY3JlYXRlZBgKIAEoCzIhLmhvYm8uY29kZS52MS5TZXNzaW9uQ3JlYXRlZEV2ZW50SAASPAoPY2xpZW50X2RldGFjaGVkGAsgASgLMiEuaG9iby5jb2RlLnYxLkNsaWVudERldGFjaGVkRXZlbnRIABJAChFjbGllbnRfcmVhdHRhY2hlZBgMIAEoCzIjLmhvYm8uY29kZS52MS5DbGllbnRSZWF0dGFjaGVkRXZlbnRIABI2CgxwYW5lX2ZvY3VzZWQYDSABKAsyHi5ob2JvLmNvZGUudjEuUGFuZUZvY3VzZWRFdmVudEgAEjwKD3Nlc3Npb25fY2hhbmdlZBgOIAEoCzIhLmhvYm8uY29kZS52MS5TZXNzaW9uQ2hhbmdlZEV2ZW50SABCBwoFZXZlbnQirAEKFFNlc3Npb25Db21tYW5kUmVzdWx0EhAKCGFjY2VwdGVkGAEgASgIEgwKBGNvZGUYAiABKAkSDwoHbWVzc2FnZRgDIAEoCRIvCghzbmFwc2hvdBgEIAEoCzIdLmhvYm8uY29kZS52MS5TZXNzaW9uU25hcHNob3QSMgoGZXZlbnRzGAUgAygLMiIuaG9iby5jb2RlLnYxLlNlc3Npb25FdmVudEVudmVsb3BlIlcKEElzb2xhdGlvbkJhY2tlbmQSDAoEa2luZBgBIAEoCRIQCghwbGF0Zm9ybRgCIAEoCRITCgtjb3dfY2FwYWJsZRgDIAEoCBIOCgZyZWFzb24YBCABKAki3AEKEElzb2xhdGlvbkNvbnRleHQSFgoOc2NoZW1hX3ZlcnNpb24YASABKAkSDgoGcnVuX2lkGAIgASgJEg4KBmJyYW5jaBgDIAEoCRIRCglyb290X3BhdGgYBCABKAkSLwoHYmFja2VuZBgFIAEoCzIeLmhvYm8uY29kZS52MS5Jc29sYXRpb25CYWNrZW5kEhIKCnN0YXRpb25faWQYBiABKAkSFAoMZHVyYWJsZV9yb290GAcgASgJEhIKCmNyZWF0ZWRfYXQYCCABKAkSDgoGc3RhdHVzGAkgASgJIn0KEFByb21vdGlvblJlcXVlc3QSDgoGcnVuX2lkGAEgASgJEhYKDmlzb2xhdGlvbl9yb290GAIgASgJEhYKDnRhcmdldF9wcm9qZWN0GAMgASgJEhQKDGdhdGVfcmVzdWx0cxgEIAMoCRITCgtzcXVhc2hfb25seRgFIAEoCCJkCg9Qcm9tb3Rpb25SZXN1bHQSCgoCb2sYASABKAgSDAoEY29kZRgCIAEoCRIPCgdtZXNzYWdlGAMgASgJEhUKDW1lcmdlZF9icmFuY2gYBCABKAkSDwoHY2xlYW5lZBgFIAEoCCKgAQoORXZpZGVuY2VUcmlwbGUSEAoIZmxhZ19rZXkYASABKAkSEAoIc2NlbmFyaW8YAiABKAkSHgoWcGxheXdyaWdodF9zY3JpcHRfcGF0aBgDIAEoCRIaChJyZWNvcmRpbmdfbXA0X3BhdGgYBCABKAkSGAoQc2NyZWVuc2hvdF9wYXRocxgFIAMoCRIUCgxkdXJhYmxlX3Jvb3QYBiABKAkiZQoOQWdlbnRQYW5lU3RhdGUSEAoIYWdlbnRfaWQYASABKAkSFgoOc2VtYW50aWNfc3RhdGUYAiABKAkSDwoHc3VtbWFyeRgDIAEoCRIYChBoaWdobGlnaHRfYnVmZmVyGAQgASgJIoUBChdJbmZlcmVuY2VCdWRnZXRTbmFwc2hvdBIQCghwcm92aWRlchgBIAEoCRIRCglzcGVuZF91c2QYAiABKAESDwoHY2FwX3VzZBgDIAEoARIcChRtb25ldGl6YXRpb25fZW5hYmxlZBgEIAEoCBIWCg5yb3V0aW5nX3BvbGljeRgFIAEoCSr6AQoVU2Vzc2lvbkxpZmVjeWNsZVN0YXRlEicKI1NFU1NJT05fTElGRUNZQ0xFX1NUQVRFX1VOU1BFQ0lGSUVEEAASJAogU0VTU0lPTl9MSUZFQ1lDTEVfU1RBVEVfU1RBUlRJTkcQARIjCh9TRVNTSU9OX0xJRkVDWUNMRV9TVEFURV9SVU5OSU5HEAISJAogU0VTU0lPTl9MSUZFQ1lDTEVfU1RBVEVfU1RPUFBJTkcQAxIjCh9TRVNTSU9OX0xJRkVDWUNMRV9TVEFURV9TVE9QUEVEEAQSIgoeU0VTU0lPTl9MSUZFQ1lDTEVfU1RBVEVfRkFJTEVEEAUqwgEKElBhbmVMaWZlY3ljbGVTdGF0ZRIkCiBQQU5FX0xJRkVDWUNMRV9TVEFURV9VTlNQRUNJRklFRBAAEiEKHVBBTkVfTElGRUNZQ0xFX1NUQVRFX1NUQVJUSU5HEAESIAocUEFORV9MSUZFQ1lDTEVfU1RBVEVfUlVOTklORxACEh8KG1BBTkVfTElGRUNZQ0xFX1NUQVRFX0VYSVRFRBADEiAKHFBBTkVfTElGRUNZQ0xFX1NUQVRFX01JU1NJTkcQBCrOAgoTQWdlbnRMaWZlY3ljbGVTdGF0ZRIlCiFBR0VOVF9MSUZFQ1lDTEVfU1RBVEVfVU5TUEVDSUZJRUQQABIiCh5BR0VOVF9MSUZFQ1lDTEVfU1RBVEVfU1RBUlRJTkcQARIeChpBR0VOVF9MSUZFQ1lDTEVfU1RBVEVfSURMRRACEiEKHUFHRU5UX0xJRkVDWUNMRV9TVEFURV9XT1JLSU5HEAMSIQodQUdFTlRfTElGRUNZQ0xFX1NUQVRFX0JMT0NLRUQQBBIeChpBR0VOVF9MSUZFQ1lDTEVfU1RBVEVfRE9ORRAFEiAKHEFHRU5UX0xJRkVDWUNMRV9TVEFURV9GQUlMRUQQBhIhCh1BR0VOVF9MSUZFQ1lDTEVfU1RBVEVfU1RPUFBFRBAHEiEKHUFHRU5UX0xJRkVDWUNMRV9TVEFURV9VTktOT1dOEAgq6AEKGENoZWNrcG9pbnRMaWZlY3ljbGVTdGF0ZRIqCiZDSEVDS1BPSU5UX0xJRkVDWUNMRV9TVEFURV9VTlNQRUNJRklFRBAAEiYKIkNIRUNLUE9JTlRfTElGRUNZQ0xFX1NUQVRFX0NSRUFURUQQARIoCiRDSEVDS1BPSU5UX0xJRkVDWUNMRV9TVEFURV9SRVNUT1JJTkcQAhInCiNDSEVDS1BPSU5UX0xJRkVDWUNMRV9TVEFURV9SRVNUT1JFRBADEiUKIUNIRUNLUE9JTlRfTElGRUNZQ0xFX1NUQVRFX0ZBSUxFRBAEKs8CChZEZWxpdmVyeUxpZmVjeWNsZVN0YXRlEigKJERFTElWRVJZX0xJRkVDWUNMRV9TVEFURV9VTlNQRUNJRklFRBAAEiEKHURFTElWRVJZX0xJRkVDWUNMRV9TVEFURV9JRExFEAESIgoeREVMSVZFUllfTElGRUNZQ0xFX1NUQVRFX1JFQURZEAISJAogREVMSVZFUllfTElGRUNZQ0xFX1NUQVRFX1BVU0hJTkcQAxIuCipERUxJVkVSWV9MSUZFQ1lDTEVfU1RBVEVfUFVMTF9SRVFVRVNUX09QRU4QBBIkCiBERUxJVkVSWV9MSUZFQ1lDTEVfU1RBVEVfTUVSR0lORxAFEiMKH0RFTElWRVJZX0xJRkVDWUNMRV9TVEFURV9NRVJHRUQQBhIjCh9ERUxJVkVSWV9MSUZFQ1lDTEVfU1RBVEVfRkFJTEVEEAcq6gEKGUdpdFdvcmtiZW5jaFNlbGVjdGlvbktpbmQSLAooR0lUX1dPUktCRU5DSF9TRUxFQ1RJT05fS0lORF9VTlNQRUNJRklFRBAAEiUKIUdJVF9XT1JLQkVOQ0hfU0VMRUNUSU9OX0tJTkRfRklMRRABEicKI0dJVF9XT1JLQkVOQ0hfU0VMRUNUSU9OX0tJTkRfQlJBTkNIEAISJwojR0lUX1dPUktCRU5DSF9TRUxFQ1RJT05fS0lORF9DT01NSVQQAxImCiJHSVRfV09SS0JFTkNIX1NFTEVDVElPTl9LSU5EX1NUQVNIEAQqwwQKFkdpdFdvcmtiZW5jaEFjdGlvbktpbmQSKQolR0lUX1dPUktCRU5DSF9BQ1RJT05fS0lORF9VTlNQRUNJRklFRBAAEiMKH0dJVF9XT1JLQkVOQ0hfQUNUSU9OX0tJTkRfRkVUQ0gQARIiCh5HSVRfV09SS0JFTkNIX0FDVElPTl9LSU5EX1BVTEwQAhIrCidHSVRfV09SS0JFTkNIX0FDVElPTl9LSU5EX0JSQU5DSF9DUkVBVEUQAxItCilHSVRfV09SS0JFTkNIX0FDVElPTl9LSU5EX0JSQU5DSF9DSEVDS09VVBAEEisKJ0dJVF9XT1JLQkVOQ0hfQUNUSU9OX0tJTkRfQlJBTkNIX0RFTEVURRAFEioKJkdJVF9XT1JLQkVOQ0hfQUNUSU9OX0tJTkRfU1RBU0hfQ1JFQVRFEAYSKQolR0lUX1dPUktCRU5DSF9BQ1RJT05fS0lORF9TVEFTSF9BUFBMWRAHEicKI0dJVF9XT1JLQkVOQ0hfQUNUSU9OX0tJTkRfU1RBU0hfUE9QEAgSKAokR0lUX1dPUktCRU5DSF9BQ1RJT05fS0lORF9TVEFTSF9EUk9QEAkSKgomR0lUX1dPUktCRU5DSF9BQ1RJT05fS0lORF9GSUxFX0RJU0NBUkQQChIpCiVHSVRfV09SS0JFTkNIX0FDVElPTl9LSU5EX0ZJTEVfSUdOT1JFEAsSKwonR0lUX1dPUktCRU5DSF9BQ1RJT05fS0lORF9DT01NSVRfUkVWRVJUEAxiBnByb3RvMw");
 
 /**
  * @generated from message hobo.code.v1.Session
@@ -350,6 +350,351 @@ export const GitStateSchema: GenMessage<GitState> = /*@__PURE__*/
   messageDesc(file_code_harness, 5);
 
 /**
+ * @generated from message hobo.code.v1.GitWorkbenchSelection
+ */
+export type GitWorkbenchSelection = Message<"hobo.code.v1.GitWorkbenchSelection"> & {
+  /**
+   * @generated from field: hobo.code.v1.GitWorkbenchSelectionKind kind = 1;
+   */
+  kind: GitWorkbenchSelectionKind;
+
+  /**
+   * @generated from field: string value = 2;
+   */
+  value: string;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchSelection.
+ * Use `create(GitWorkbenchSelectionSchema)` to create a new message.
+ */
+export const GitWorkbenchSelectionSchema: GenMessage<GitWorkbenchSelection> = /*@__PURE__*/
+  messageDesc(file_code_harness, 6);
+
+/**
+ * @generated from message hobo.code.v1.GitWorkbenchFile
+ */
+export type GitWorkbenchFile = Message<"hobo.code.v1.GitWorkbenchFile"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * @generated from field: optional string previous_path = 2;
+   */
+  previousPath?: string | undefined;
+
+  /**
+   * @generated from field: bool staged = 3;
+   */
+  staged: boolean;
+
+  /**
+   * @generated from field: bool unstaged = 4;
+   */
+  unstaged: boolean;
+
+  /**
+   * @generated from field: bool untracked = 5;
+   */
+  untracked: boolean;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchFile.
+ * Use `create(GitWorkbenchFileSchema)` to create a new message.
+ */
+export const GitWorkbenchFileSchema: GenMessage<GitWorkbenchFile> = /*@__PURE__*/
+  messageDesc(file_code_harness, 7);
+
+/**
+ * @generated from message hobo.code.v1.GitWorkbenchBranch
+ */
+export type GitWorkbenchBranch = Message<"hobo.code.v1.GitWorkbenchBranch"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string oid = 2;
+   */
+  oid: string;
+
+  /**
+   * @generated from field: optional string upstream = 3;
+   */
+  upstream?: string | undefined;
+
+  /**
+   * @generated from field: bool current = 4;
+   */
+  current: boolean;
+
+  /**
+   * @generated from field: string subject = 5;
+   */
+  subject: string;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchBranch.
+ * Use `create(GitWorkbenchBranchSchema)` to create a new message.
+ */
+export const GitWorkbenchBranchSchema: GenMessage<GitWorkbenchBranch> = /*@__PURE__*/
+  messageDesc(file_code_harness, 8);
+
+/**
+ * @generated from message hobo.code.v1.GitWorkbenchCommit
+ */
+export type GitWorkbenchCommit = Message<"hobo.code.v1.GitWorkbenchCommit"> & {
+  /**
+   * @generated from field: string oid = 1;
+   */
+  oid: string;
+
+  /**
+   * @generated from field: string short_oid = 2;
+   */
+  shortOid: string;
+
+  /**
+   * @generated from field: repeated string parents = 3;
+   */
+  parents: string[];
+
+  /**
+   * @generated from field: string decorations = 4;
+   */
+  decorations: string;
+
+  /**
+   * @generated from field: string subject = 5;
+   */
+  subject: string;
+
+  /**
+   * @generated from field: string author = 6;
+   */
+  author: string;
+
+  /**
+   * @generated from field: string authored_at = 7;
+   */
+  authoredAt: string;
+
+  /**
+   * @generated from field: string graph = 8;
+   */
+  graph: string;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchCommit.
+ * Use `create(GitWorkbenchCommitSchema)` to create a new message.
+ */
+export const GitWorkbenchCommitSchema: GenMessage<GitWorkbenchCommit> = /*@__PURE__*/
+  messageDesc(file_code_harness, 9);
+
+/**
+ * @generated from message hobo.code.v1.GitWorkbenchStash
+ */
+export type GitWorkbenchStash = Message<"hobo.code.v1.GitWorkbenchStash"> & {
+  /**
+   * @generated from field: string ref = 1;
+   */
+  ref: string;
+
+  /**
+   * @generated from field: string oid = 2;
+   */
+  oid: string;
+
+  /**
+   * @generated from field: string subject = 3;
+   */
+  subject: string;
+
+  /**
+   * @generated from field: string authored_at = 4;
+   */
+  authoredAt: string;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchStash.
+ * Use `create(GitWorkbenchStashSchema)` to create a new message.
+ */
+export const GitWorkbenchStashSchema: GenMessage<GitWorkbenchStash> = /*@__PURE__*/
+  messageDesc(file_code_harness, 10);
+
+/**
+ * @generated from message hobo.code.v1.GitWorkbenchDiff
+ */
+export type GitWorkbenchDiff = Message<"hobo.code.v1.GitWorkbenchDiff"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * @generated from field: string text = 2;
+   */
+  text: string;
+
+  /**
+   * @generated from field: bool truncated = 3;
+   */
+  truncated: boolean;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchDiff.
+ * Use `create(GitWorkbenchDiffSchema)` to create a new message.
+ */
+export const GitWorkbenchDiffSchema: GenMessage<GitWorkbenchDiff> = /*@__PURE__*/
+  messageDesc(file_code_harness, 11);
+
+/**
+ * @generated from message hobo.code.v1.GitWorkbenchTruncation
+ */
+export type GitWorkbenchTruncation = Message<"hobo.code.v1.GitWorkbenchTruncation"> & {
+  /**
+   * @generated from field: bool files = 1;
+   */
+  files: boolean;
+
+  /**
+   * @generated from field: bool branches = 2;
+   */
+  branches: boolean;
+
+  /**
+   * @generated from field: bool commits = 3;
+   */
+  commits: boolean;
+
+  /**
+   * @generated from field: bool stashes = 4;
+   */
+  stashes: boolean;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchTruncation.
+ * Use `create(GitWorkbenchTruncationSchema)` to create a new message.
+ */
+export const GitWorkbenchTruncationSchema: GenMessage<GitWorkbenchTruncation> = /*@__PURE__*/
+  messageDesc(file_code_harness, 12);
+
+/**
+ * @generated from message hobo.code.v1.GitWorkbenchSnapshot
+ */
+export type GitWorkbenchSnapshot = Message<"hobo.code.v1.GitWorkbenchSnapshot"> & {
+  /**
+   * @generated from field: optional string branch = 1;
+   */
+  branch?: string | undefined;
+
+  /**
+   * @generated from field: optional string upstream = 2;
+   */
+  upstream?: string | undefined;
+
+  /**
+   * @generated from field: uint32 ahead = 3;
+   */
+  ahead: number;
+
+  /**
+   * @generated from field: uint32 behind = 4;
+   */
+  behind: number;
+
+  /**
+   * @generated from field: repeated hobo.code.v1.GitWorkbenchFile files = 5;
+   */
+  files: GitWorkbenchFile[];
+
+  /**
+   * @generated from field: repeated hobo.code.v1.GitWorkbenchBranch branches = 6;
+   */
+  branches: GitWorkbenchBranch[];
+
+  /**
+   * @generated from field: repeated hobo.code.v1.GitWorkbenchCommit commits = 7;
+   */
+  commits: GitWorkbenchCommit[];
+
+  /**
+   * @generated from field: repeated hobo.code.v1.GitWorkbenchStash stashes = 8;
+   */
+  stashes: GitWorkbenchStash[];
+
+  /**
+   * @generated from field: optional hobo.code.v1.GitWorkbenchDiff selected_diff = 9;
+   */
+  selectedDiff?: GitWorkbenchDiff | undefined;
+
+  /**
+   * @generated from field: hobo.code.v1.GitWorkbenchTruncation truncated = 10;
+   */
+  truncated?: GitWorkbenchTruncation | undefined;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchSnapshot.
+ * Use `create(GitWorkbenchSnapshotSchema)` to create a new message.
+ */
+export const GitWorkbenchSnapshotSchema: GenMessage<GitWorkbenchSnapshot> = /*@__PURE__*/
+  messageDesc(file_code_harness, 13);
+
+/**
+ * @generated from message hobo.code.v1.GitWorkbenchActionRequest
+ */
+export type GitWorkbenchActionRequest = Message<"hobo.code.v1.GitWorkbenchActionRequest"> & {
+  /**
+   * @generated from field: hobo.code.v1.GitWorkbenchActionKind action = 1;
+   */
+  action: GitWorkbenchActionKind;
+
+  /**
+   * @generated from field: optional hobo.code.v1.GitWorkbenchSelection selection = 2;
+   */
+  selection?: GitWorkbenchSelection | undefined;
+
+  /**
+   * @generated from field: string argument = 3;
+   */
+  argument: string;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchActionRequest.
+ * Use `create(GitWorkbenchActionRequestSchema)` to create a new message.
+ */
+export const GitWorkbenchActionRequestSchema: GenMessage<GitWorkbenchActionRequest> = /*@__PURE__*/
+  messageDesc(file_code_harness, 14);
+
+/**
+ * @generated from message hobo.code.v1.GitWorkbenchActionResult
+ */
+export type GitWorkbenchActionResult = Message<"hobo.code.v1.GitWorkbenchActionResult"> & {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok: boolean;
+};
+
+/**
+ * Describes the message hobo.code.v1.GitWorkbenchActionResult.
+ * Use `create(GitWorkbenchActionResultSchema)` to create a new message.
+ */
+export const GitWorkbenchActionResultSchema: GenMessage<GitWorkbenchActionResult> = /*@__PURE__*/
+  messageDesc(file_code_harness, 15);
+
+/**
  * @generated from message hobo.code.v1.DeliveryState
  */
 export type DeliveryState = Message<"hobo.code.v1.DeliveryState"> & {
@@ -389,7 +734,7 @@ export type DeliveryState = Message<"hobo.code.v1.DeliveryState"> & {
  * Use `create(DeliveryStateSchema)` to create a new message.
  */
 export const DeliveryStateSchema: GenMessage<DeliveryState> = /*@__PURE__*/
-  messageDesc(file_code_harness, 6);
+  messageDesc(file_code_harness, 16);
 
 /**
  * @generated from message hobo.code.v1.SessionSnapshot
@@ -466,7 +811,7 @@ export type SessionSnapshot = Message<"hobo.code.v1.SessionSnapshot"> & {
  * Use `create(SessionSnapshotSchema)` to create a new message.
  */
 export const SessionSnapshotSchema: GenMessage<SessionSnapshot> = /*@__PURE__*/
-  messageDesc(file_code_harness, 7);
+  messageDesc(file_code_harness, 17);
 
 /**
  * @generated from message hobo.code.v1.CreateSessionCommand
@@ -498,7 +843,7 @@ export type CreateSessionCommand = Message<"hobo.code.v1.CreateSessionCommand"> 
  * Use `create(CreateSessionCommandSchema)` to create a new message.
  */
 export const CreateSessionCommandSchema: GenMessage<CreateSessionCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 8);
+  messageDesc(file_code_harness, 18);
 
 /**
  * @generated from message hobo.code.v1.DetachSessionCommand
@@ -515,7 +860,7 @@ export type DetachSessionCommand = Message<"hobo.code.v1.DetachSessionCommand"> 
  * Use `create(DetachSessionCommandSchema)` to create a new message.
  */
 export const DetachSessionCommandSchema: GenMessage<DetachSessionCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 9);
+  messageDesc(file_code_harness, 19);
 
 /**
  * @generated from message hobo.code.v1.ReattachSessionCommand
@@ -532,7 +877,7 @@ export type ReattachSessionCommand = Message<"hobo.code.v1.ReattachSessionComman
  * Use `create(ReattachSessionCommandSchema)` to create a new message.
  */
 export const ReattachSessionCommandSchema: GenMessage<ReattachSessionCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 10);
+  messageDesc(file_code_harness, 20);
 
 /**
  * @generated from message hobo.code.v1.FocusPaneCommand
@@ -549,7 +894,7 @@ export type FocusPaneCommand = Message<"hobo.code.v1.FocusPaneCommand"> & {
  * Use `create(FocusPaneCommandSchema)` to create a new message.
  */
 export const FocusPaneCommandSchema: GenMessage<FocusPaneCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 11);
+  messageDesc(file_code_harness, 21);
 
 /**
  * @generated from message hobo.code.v1.StopSessionCommand
@@ -566,7 +911,7 @@ export type StopSessionCommand = Message<"hobo.code.v1.StopSessionCommand"> & {
  * Use `create(StopSessionCommandSchema)` to create a new message.
  */
 export const StopSessionCommandSchema: GenMessage<StopSessionCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 12);
+  messageDesc(file_code_harness, 22);
 
 /**
  * @generated from message hobo.code.v1.CreateTabCommand
@@ -583,7 +928,7 @@ export type CreateTabCommand = Message<"hobo.code.v1.CreateTabCommand"> & {
  * Use `create(CreateTabCommandSchema)` to create a new message.
  */
 export const CreateTabCommandSchema: GenMessage<CreateTabCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 13);
+  messageDesc(file_code_harness, 23);
 
 /**
  * @generated from message hobo.code.v1.CreatePaneCommand
@@ -610,7 +955,7 @@ export type CreatePaneCommand = Message<"hobo.code.v1.CreatePaneCommand"> & {
  * Use `create(CreatePaneCommandSchema)` to create a new message.
  */
 export const CreatePaneCommandSchema: GenMessage<CreatePaneCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 14);
+  messageDesc(file_code_harness, 24);
 
 /**
  * @generated from message hobo.code.v1.SplitPaneCommand
@@ -642,7 +987,7 @@ export type SplitPaneCommand = Message<"hobo.code.v1.SplitPaneCommand"> & {
  * Use `create(SplitPaneCommandSchema)` to create a new message.
  */
 export const SplitPaneCommandSchema: GenMessage<SplitPaneCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 15);
+  messageDesc(file_code_harness, 25);
 
 /**
  * @generated from message hobo.code.v1.ClosePaneCommand
@@ -659,7 +1004,7 @@ export type ClosePaneCommand = Message<"hobo.code.v1.ClosePaneCommand"> & {
  * Use `create(ClosePaneCommandSchema)` to create a new message.
  */
 export const ClosePaneCommandSchema: GenMessage<ClosePaneCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 16);
+  messageDesc(file_code_harness, 26);
 
 /**
  * @generated from message hobo.code.v1.SendInputCommand
@@ -681,7 +1026,7 @@ export type SendInputCommand = Message<"hobo.code.v1.SendInputCommand"> & {
  * Use `create(SendInputCommandSchema)` to create a new message.
  */
 export const SendInputCommandSchema: GenMessage<SendInputCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 17);
+  messageDesc(file_code_harness, 27);
 
 /**
  * @generated from message hobo.code.v1.StartAgentCommand
@@ -713,7 +1058,7 @@ export type StartAgentCommand = Message<"hobo.code.v1.StartAgentCommand"> & {
  * Use `create(StartAgentCommandSchema)` to create a new message.
  */
 export const StartAgentCommandSchema: GenMessage<StartAgentCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 18);
+  messageDesc(file_code_harness, 28);
 
 /**
  * @generated from message hobo.code.v1.StopAgentCommand
@@ -730,7 +1075,7 @@ export type StopAgentCommand = Message<"hobo.code.v1.StopAgentCommand"> & {
  * Use `create(StopAgentCommandSchema)` to create a new message.
  */
 export const StopAgentCommandSchema: GenMessage<StopAgentCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 19);
+  messageDesc(file_code_harness, 29);
 
 /**
  * @generated from message hobo.code.v1.CreateCheckpointCommand
@@ -747,7 +1092,7 @@ export type CreateCheckpointCommand = Message<"hobo.code.v1.CreateCheckpointComm
  * Use `create(CreateCheckpointCommandSchema)` to create a new message.
  */
 export const CreateCheckpointCommandSchema: GenMessage<CreateCheckpointCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 20);
+  messageDesc(file_code_harness, 30);
 
 /**
  * @generated from message hobo.code.v1.RestoreCheckpointCommand
@@ -764,7 +1109,7 @@ export type RestoreCheckpointCommand = Message<"hobo.code.v1.RestoreCheckpointCo
  * Use `create(RestoreCheckpointCommandSchema)` to create a new message.
  */
 export const RestoreCheckpointCommandSchema: GenMessage<RestoreCheckpointCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 21);
+  messageDesc(file_code_harness, 31);
 
 /**
  * @generated from message hobo.code.v1.CommitCommand
@@ -774,6 +1119,11 @@ export type CommitCommand = Message<"hobo.code.v1.CommitCommand"> & {
    * @generated from field: string message = 1;
    */
   message: string;
+
+  /**
+   * @generated from field: optional bool staged_only = 2;
+   */
+  stagedOnly?: boolean | undefined;
 };
 
 /**
@@ -781,7 +1131,41 @@ export type CommitCommand = Message<"hobo.code.v1.CommitCommand"> & {
  * Use `create(CommitCommandSchema)` to create a new message.
  */
 export const CommitCommandSchema: GenMessage<CommitCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 22);
+  messageDesc(file_code_harness, 32);
+
+/**
+ * @generated from message hobo.code.v1.StagePathsCommand
+ */
+export type StagePathsCommand = Message<"hobo.code.v1.StagePathsCommand"> & {
+  /**
+   * @generated from field: repeated string paths = 1;
+   */
+  paths: string[];
+};
+
+/**
+ * Describes the message hobo.code.v1.StagePathsCommand.
+ * Use `create(StagePathsCommandSchema)` to create a new message.
+ */
+export const StagePathsCommandSchema: GenMessage<StagePathsCommand> = /*@__PURE__*/
+  messageDesc(file_code_harness, 33);
+
+/**
+ * @generated from message hobo.code.v1.UnstagePathsCommand
+ */
+export type UnstagePathsCommand = Message<"hobo.code.v1.UnstagePathsCommand"> & {
+  /**
+   * @generated from field: repeated string paths = 1;
+   */
+  paths: string[];
+};
+
+/**
+ * Describes the message hobo.code.v1.UnstagePathsCommand.
+ * Use `create(UnstagePathsCommandSchema)` to create a new message.
+ */
+export const UnstagePathsCommandSchema: GenMessage<UnstagePathsCommand> = /*@__PURE__*/
+  messageDesc(file_code_harness, 34);
 
 /**
  * @generated from message hobo.code.v1.PushCommand
@@ -798,7 +1182,7 @@ export type PushCommand = Message<"hobo.code.v1.PushCommand"> & {
  * Use `create(PushCommandSchema)` to create a new message.
  */
 export const PushCommandSchema: GenMessage<PushCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 23);
+  messageDesc(file_code_harness, 35);
 
 /**
  * @generated from message hobo.code.v1.OpenPullRequestCommand
@@ -825,7 +1209,7 @@ export type OpenPullRequestCommand = Message<"hobo.code.v1.OpenPullRequestComman
  * Use `create(OpenPullRequestCommandSchema)` to create a new message.
  */
 export const OpenPullRequestCommandSchema: GenMessage<OpenPullRequestCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 24);
+  messageDesc(file_code_harness, 36);
 
 /**
  * @generated from message hobo.code.v1.StackPullRequestCommand
@@ -852,7 +1236,7 @@ export type StackPullRequestCommand = Message<"hobo.code.v1.StackPullRequestComm
  * Use `create(StackPullRequestCommandSchema)` to create a new message.
  */
 export const StackPullRequestCommandSchema: GenMessage<StackPullRequestCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 25);
+  messageDesc(file_code_harness, 37);
 
 /**
  * @generated from message hobo.code.v1.MergePullRequestCommand
@@ -869,7 +1253,7 @@ export type MergePullRequestCommand = Message<"hobo.code.v1.MergePullRequestComm
  * Use `create(MergePullRequestCommandSchema)` to create a new message.
  */
 export const MergePullRequestCommandSchema: GenMessage<MergePullRequestCommand> = /*@__PURE__*/
-  messageDesc(file_code_harness, 26);
+  messageDesc(file_code_harness, 38);
 
 /**
  * @generated from message hobo.code.v1.SessionCommandEnvelope
@@ -1017,6 +1401,18 @@ export type SessionCommandEnvelope = Message<"hobo.code.v1.SessionCommandEnvelop
      */
     value: MergePullRequestCommand;
     case: "mergePullRequest";
+  } | {
+    /**
+     * @generated from field: hobo.code.v1.StagePathsCommand stage_paths = 29;
+     */
+    value: StagePathsCommand;
+    case: "stagePaths";
+  } | {
+    /**
+     * @generated from field: hobo.code.v1.UnstagePathsCommand unstage_paths = 30;
+     */
+    value: UnstagePathsCommand;
+    case: "unstagePaths";
   } | { case: undefined; value?: undefined };
 };
 
@@ -1025,7 +1421,7 @@ export type SessionCommandEnvelope = Message<"hobo.code.v1.SessionCommandEnvelop
  * Use `create(SessionCommandEnvelopeSchema)` to create a new message.
  */
 export const SessionCommandEnvelopeSchema: GenMessage<SessionCommandEnvelope> = /*@__PURE__*/
-  messageDesc(file_code_harness, 27);
+  messageDesc(file_code_harness, 39);
 
 /**
  * @generated from message hobo.code.v1.SessionCreatedEvent
@@ -1042,7 +1438,7 @@ export type SessionCreatedEvent = Message<"hobo.code.v1.SessionCreatedEvent"> & 
  * Use `create(SessionCreatedEventSchema)` to create a new message.
  */
 export const SessionCreatedEventSchema: GenMessage<SessionCreatedEvent> = /*@__PURE__*/
-  messageDesc(file_code_harness, 28);
+  messageDesc(file_code_harness, 40);
 
 /**
  * @generated from message hobo.code.v1.ClientDetachedEvent
@@ -1059,7 +1455,7 @@ export type ClientDetachedEvent = Message<"hobo.code.v1.ClientDetachedEvent"> & 
  * Use `create(ClientDetachedEventSchema)` to create a new message.
  */
 export const ClientDetachedEventSchema: GenMessage<ClientDetachedEvent> = /*@__PURE__*/
-  messageDesc(file_code_harness, 29);
+  messageDesc(file_code_harness, 41);
 
 /**
  * @generated from message hobo.code.v1.ClientReattachedEvent
@@ -1076,7 +1472,7 @@ export type ClientReattachedEvent = Message<"hobo.code.v1.ClientReattachedEvent"
  * Use `create(ClientReattachedEventSchema)` to create a new message.
  */
 export const ClientReattachedEventSchema: GenMessage<ClientReattachedEvent> = /*@__PURE__*/
-  messageDesc(file_code_harness, 30);
+  messageDesc(file_code_harness, 42);
 
 /**
  * @generated from message hobo.code.v1.PaneFocusedEvent
@@ -1093,7 +1489,7 @@ export type PaneFocusedEvent = Message<"hobo.code.v1.PaneFocusedEvent"> & {
  * Use `create(PaneFocusedEventSchema)` to create a new message.
  */
 export const PaneFocusedEventSchema: GenMessage<PaneFocusedEvent> = /*@__PURE__*/
-  messageDesc(file_code_harness, 31);
+  messageDesc(file_code_harness, 43);
 
 /**
  * @generated from message hobo.code.v1.SessionChangedEvent
@@ -1115,7 +1511,7 @@ export type SessionChangedEvent = Message<"hobo.code.v1.SessionChangedEvent"> & 
  * Use `create(SessionChangedEventSchema)` to create a new message.
  */
 export const SessionChangedEventSchema: GenMessage<SessionChangedEvent> = /*@__PURE__*/
-  messageDesc(file_code_harness, 32);
+  messageDesc(file_code_harness, 44);
 
 /**
  * @generated from message hobo.code.v1.SessionEventEnvelope
@@ -1192,7 +1588,7 @@ export type SessionEventEnvelope = Message<"hobo.code.v1.SessionEventEnvelope"> 
  * Use `create(SessionEventEnvelopeSchema)` to create a new message.
  */
 export const SessionEventEnvelopeSchema: GenMessage<SessionEventEnvelope> = /*@__PURE__*/
-  messageDesc(file_code_harness, 33);
+  messageDesc(file_code_harness, 45);
 
 /**
  * @generated from message hobo.code.v1.SessionCommandResult
@@ -1229,7 +1625,7 @@ export type SessionCommandResult = Message<"hobo.code.v1.SessionCommandResult"> 
  * Use `create(SessionCommandResultSchema)` to create a new message.
  */
 export const SessionCommandResultSchema: GenMessage<SessionCommandResult> = /*@__PURE__*/
-  messageDesc(file_code_harness, 34);
+  messageDesc(file_code_harness, 46);
 
 /**
  * Isolation backend chosen for an agent task (ADR-0139).
@@ -1265,7 +1661,7 @@ export type IsolationBackend = Message<"hobo.code.v1.IsolationBackend"> & {
  * Use `create(IsolationBackendSchema)` to create a new message.
  */
 export const IsolationBackendSchema: GenMessage<IsolationBackend> = /*@__PURE__*/
-  messageDesc(file_code_harness, 35);
+  messageDesc(file_code_harness, 47);
 
 /**
  * Agent task isolation handle. Ephemeral; cleaned on every exit path.
@@ -1328,7 +1724,7 @@ export type IsolationContext = Message<"hobo.code.v1.IsolationContext"> & {
  * Use `create(IsolationContextSchema)` to create a new message.
  */
 export const IsolationContextSchema: GenMessage<IsolationContext> = /*@__PURE__*/
-  messageDesc(file_code_harness, 36);
+  messageDesc(file_code_harness, 48);
 
 /**
  * Promotion is the sole audited mutation path into the canonical tree.
@@ -1367,7 +1763,7 @@ export type PromotionRequest = Message<"hobo.code.v1.PromotionRequest"> & {
  * Use `create(PromotionRequestSchema)` to create a new message.
  */
 export const PromotionRequestSchema: GenMessage<PromotionRequest> = /*@__PURE__*/
-  messageDesc(file_code_harness, 37);
+  messageDesc(file_code_harness, 49);
 
 /**
  * @generated from message hobo.code.v1.PromotionResult
@@ -1404,7 +1800,7 @@ export type PromotionResult = Message<"hobo.code.v1.PromotionResult"> & {
  * Use `create(PromotionResultSchema)` to create a new message.
  */
 export const PromotionResultSchema: GenMessage<PromotionResult> = /*@__PURE__*/
-  messageDesc(file_code_harness, 38);
+  messageDesc(file_code_harness, 50);
 
 /**
  * Evidence triple for a passing Gherkin + OpenFeature scenario.
@@ -1448,7 +1844,7 @@ export type EvidenceTriple = Message<"hobo.code.v1.EvidenceTriple"> & {
  * Use `create(EvidenceTripleSchema)` to create a new message.
  */
 export const EvidenceTripleSchema: GenMessage<EvidenceTriple> = /*@__PURE__*/
-  messageDesc(file_code_harness, 39);
+  messageDesc(file_code_harness, 51);
 
 /**
  * Agent semantic state for the Herdr-like multiplexer.
@@ -1484,7 +1880,7 @@ export type AgentPaneState = Message<"hobo.code.v1.AgentPaneState"> & {
  * Use `create(AgentPaneStateSchema)` to create a new message.
  */
 export const AgentPaneStateSchema: GenMessage<AgentPaneState> = /*@__PURE__*/
-  messageDesc(file_code_harness, 40);
+  messageDesc(file_code_harness, 52);
 
 /**
  * Budget / FinOps snapshot for inference spend (dogfoods existing FinOps).
@@ -1523,7 +1919,7 @@ export type InferenceBudgetSnapshot = Message<"hobo.code.v1.InferenceBudgetSnaps
  * Use `create(InferenceBudgetSnapshotSchema)` to create a new message.
  */
 export const InferenceBudgetSnapshotSchema: GenMessage<InferenceBudgetSnapshot> = /*@__PURE__*/
-  messageDesc(file_code_harness, 41);
+  messageDesc(file_code_harness, 53);
 
 /**
  * @generated from enum hobo.code.v1.SessionLifecycleState
@@ -1744,4 +2140,116 @@ export enum DeliveryLifecycleState {
  */
 export const DeliveryLifecycleStateSchema: GenEnum<DeliveryLifecycleState> = /*@__PURE__*/
   enumDesc(file_code_harness, 4);
+
+/**
+ * @generated from enum hobo.code.v1.GitWorkbenchSelectionKind
+ */
+export enum GitWorkbenchSelectionKind {
+  /**
+   * @generated from enum value: GIT_WORKBENCH_SELECTION_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_SELECTION_KIND_FILE = 1;
+   */
+  FILE = 1,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_SELECTION_KIND_BRANCH = 2;
+   */
+  BRANCH = 2,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_SELECTION_KIND_COMMIT = 3;
+   */
+  COMMIT = 3,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_SELECTION_KIND_STASH = 4;
+   */
+  STASH = 4,
+}
+
+/**
+ * Describes the enum hobo.code.v1.GitWorkbenchSelectionKind.
+ */
+export const GitWorkbenchSelectionKindSchema: GenEnum<GitWorkbenchSelectionKind> = /*@__PURE__*/
+  enumDesc(file_code_harness, 5);
+
+/**
+ * @generated from enum hobo.code.v1.GitWorkbenchActionKind
+ */
+export enum GitWorkbenchActionKind {
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_FETCH = 1;
+   */
+  FETCH = 1,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_PULL = 2;
+   */
+  PULL = 2,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_BRANCH_CREATE = 3;
+   */
+  BRANCH_CREATE = 3,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_BRANCH_CHECKOUT = 4;
+   */
+  BRANCH_CHECKOUT = 4,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_BRANCH_DELETE = 5;
+   */
+  BRANCH_DELETE = 5,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_STASH_CREATE = 6;
+   */
+  STASH_CREATE = 6,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_STASH_APPLY = 7;
+   */
+  STASH_APPLY = 7,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_STASH_POP = 8;
+   */
+  STASH_POP = 8,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_STASH_DROP = 9;
+   */
+  STASH_DROP = 9,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_FILE_DISCARD = 10;
+   */
+  FILE_DISCARD = 10,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_FILE_IGNORE = 11;
+   */
+  FILE_IGNORE = 11,
+
+  /**
+   * @generated from enum value: GIT_WORKBENCH_ACTION_KIND_COMMIT_REVERT = 12;
+   */
+  COMMIT_REVERT = 12,
+}
+
+/**
+ * Describes the enum hobo.code.v1.GitWorkbenchActionKind.
+ */
+export const GitWorkbenchActionKindSchema: GenEnum<GitWorkbenchActionKind> = /*@__PURE__*/
+  enumDesc(file_code_harness, 6);
 

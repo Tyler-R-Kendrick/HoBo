@@ -5,6 +5,8 @@ package code
 #AgentLifecycleState: "AGENT_LIFECYCLE_STATE_STARTING" | "AGENT_LIFECYCLE_STATE_IDLE" | "AGENT_LIFECYCLE_STATE_WORKING" | "AGENT_LIFECYCLE_STATE_BLOCKED" | "AGENT_LIFECYCLE_STATE_DONE" | "AGENT_LIFECYCLE_STATE_FAILED" | "AGENT_LIFECYCLE_STATE_STOPPED" | "AGENT_LIFECYCLE_STATE_UNKNOWN"
 #CheckpointLifecycleState: "CHECKPOINT_LIFECYCLE_STATE_CREATED" | "CHECKPOINT_LIFECYCLE_STATE_RESTORING" | "CHECKPOINT_LIFECYCLE_STATE_RESTORED" | "CHECKPOINT_LIFECYCLE_STATE_FAILED"
 #DeliveryLifecycleState: "DELIVERY_LIFECYCLE_STATE_IDLE" | "DELIVERY_LIFECYCLE_STATE_READY" | "DELIVERY_LIFECYCLE_STATE_PUSHING" | "DELIVERY_LIFECYCLE_STATE_PULL_REQUEST_OPEN" | "DELIVERY_LIFECYCLE_STATE_MERGING" | "DELIVERY_LIFECYCLE_STATE_MERGED" | "DELIVERY_LIFECYCLE_STATE_FAILED"
+#GitWorkbenchSelectionKind: "GIT_WORKBENCH_SELECTION_KIND_FILE" | "GIT_WORKBENCH_SELECTION_KIND_BRANCH" | "GIT_WORKBENCH_SELECTION_KIND_COMMIT" | "GIT_WORKBENCH_SELECTION_KIND_STASH"
+#GitWorkbenchActionKind: "GIT_WORKBENCH_ACTION_KIND_FETCH" | "GIT_WORKBENCH_ACTION_KIND_PULL" | "GIT_WORKBENCH_ACTION_KIND_BRANCH_CREATE" | "GIT_WORKBENCH_ACTION_KIND_BRANCH_CHECKOUT" | "GIT_WORKBENCH_ACTION_KIND_BRANCH_DELETE" | "GIT_WORKBENCH_ACTION_KIND_STASH_CREATE" | "GIT_WORKBENCH_ACTION_KIND_STASH_APPLY" | "GIT_WORKBENCH_ACTION_KIND_STASH_POP" | "GIT_WORKBENCH_ACTION_KIND_STASH_DROP" | "GIT_WORKBENCH_ACTION_KIND_FILE_DISCARD" | "GIT_WORKBENCH_ACTION_KIND_FILE_IGNORE" | "GIT_WORKBENCH_ACTION_KIND_COMMIT_REVERT"
 
 #Session: {
 	id:              string & !=""
@@ -77,6 +79,79 @@ package code
 	untracked_paths: [...string]
 }
 
+#GitWorkbenchSelection: {
+	kind:  #GitWorkbenchSelectionKind
+	value: string & !=""
+}
+
+#GitWorkbenchFile: {
+	path:           string & !=""
+	previous_path?: string & !=""
+	staged:         bool
+	unstaged:       bool
+	untracked:      bool
+}
+
+#GitWorkbenchBranch: {
+	name:      string & !=""
+	oid:       string & !=""
+	upstream?: string & !=""
+	current:   bool
+	subject:   string
+}
+
+#GitWorkbenchCommit: {
+	oid:         string & !=""
+	short_oid:   string & !=""
+	parents:     [...string & !=""]
+	decorations: string
+	subject:     string
+	author:      string & !=""
+	authored_at: string & !=""
+	graph:       string
+}
+
+#GitWorkbenchStash: {
+	ref:         string & !=""
+	oid:         string & !=""
+	subject:     string
+	authored_at: string & !=""
+}
+
+#GitWorkbenchDiff: {
+	path:      string & !=""
+	text:      string
+	truncated: bool
+}
+
+#GitWorkbenchTruncation: {
+	files:    bool
+	branches: bool
+	commits:  bool
+	stashes:  bool
+}
+
+#GitWorkbenchSnapshot: {
+	branch?:        string & !=""
+	upstream?:      string & !=""
+	ahead:          int & >=0
+	behind:         int & >=0
+	files:          [...#GitWorkbenchFile]
+	branches:       [...#GitWorkbenchBranch]
+	commits:        [...#GitWorkbenchCommit]
+	stashes:        [...#GitWorkbenchStash]
+	selected_diff?: #GitWorkbenchDiff
+	truncated:      #GitWorkbenchTruncation
+}
+
+#GitWorkbenchActionRequest: {
+	action:     #GitWorkbenchActionKind
+	selection?: #GitWorkbenchSelection
+	argument:   string
+}
+
+#GitWorkbenchActionResult: ok: bool
+
 #DeliveryState: {
 	lifecycle_state:     #DeliveryLifecycleState
 	remote:              string & !=""
@@ -139,7 +214,12 @@ package code
 #StopAgentCommand: agent_run_id: string & !=""
 #CreateCheckpointCommand: label: string
 #RestoreCheckpointCommand: checkpoint_id: string & !=""
-#CommitCommand: message: string & !=""
+#CommitCommand: {
+	message:      string & !=""
+	staged_only?: bool
+}
+#StagePathsCommand: paths: [string & !="", ...string & !=""]
+#UnstagePathsCommand: paths: [string & !="", ...string & !=""]
 #PushCommand: remote: string & !=""
 #OpenPullRequestCommand: {
 	title: string & !=""
@@ -186,7 +266,9 @@ package code
 	(push: #PushCommand) |
 	(open_pull_request: #OpenPullRequestCommand) |
 	(stack_pull_request: #StackPullRequestCommand) |
-	(merge_pull_request: #MergePullRequestCommand)
+	(merge_pull_request: #MergePullRequestCommand) |
+	(stage_paths: #StagePathsCommand) |
+	(unstage_paths: #UnstagePathsCommand)
 }
 
 #SessionEventEnvelope: {

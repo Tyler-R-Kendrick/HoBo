@@ -144,6 +144,43 @@ export async function verifySessionControlPlanePact(input: unknown): Promise<{
 				result = snapshot;
 				break;
 			}
+			case "GET /code/sessions/session-1/git?kind=file&value=README.md":
+				result = {
+					branch: "code/session-contract",
+					ahead: 1,
+					behind: 0,
+					files: [
+						{
+							path: "README.md",
+							staged: false,
+							unstaged: true,
+							untracked: false,
+						},
+					],
+					branches: [],
+					commits: [],
+					stashes: [],
+					selectedDiff: {
+						path: "README.md",
+						text: "+workbench\n",
+						truncated: false,
+					},
+					truncated: {
+						files: false,
+						branches: false,
+						commits: false,
+						stashes: false,
+					},
+				};
+				break;
+			case "POST /code/sessions/session-1/git/actions":
+				assert.equal(
+					object(body).action,
+					"GIT_WORKBENCH_ACTION_KIND_BRANCH_CREATE",
+				);
+				assert.equal(object(body).argument, "code/contract-branch");
+				result = { ok: true };
+				break;
 			default:
 				response.writeHead(404).end();
 				return;

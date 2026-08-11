@@ -138,6 +138,13 @@ function validateCommand(command: SessionCommandEnvelope["command"]): void {
 		case "commit":
 			required(command.value.message, "commit.message");
 			break;
+		case "stagePaths":
+		case "unstagePaths":
+			if (command.value.paths.length === 0) {
+				throw new TypeError(`${command.case}.paths must not be empty`);
+			}
+			commandLine(command.value.paths, `${command.case}.paths`);
+			break;
 		case "push":
 			required(command.value.remote, "push.remote");
 			break;

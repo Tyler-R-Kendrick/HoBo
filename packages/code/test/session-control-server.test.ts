@@ -160,8 +160,10 @@ describe("resident session loopback server", () => {
 			const created = (await createdResponse.json()) as {
 				revision: string;
 				panes: readonly { id: string }[];
+				agentRuns: readonly unknown[];
 			};
 			expect(created.panes).toHaveLength(1);
+			expect(created.agentRuns).toEqual([]);
 
 			const detached = await fetch(
 				`http://127.0.0.1:${server.port}/code/commands`,

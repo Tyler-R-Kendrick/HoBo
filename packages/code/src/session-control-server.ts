@@ -68,6 +68,7 @@ function browserHtml(token: string, projectRoot: string): string {
 <meta name="referrer" content="no-referrer"><title>HoBo Code sessions</title>
 <style>body{font:14px ui-monospace,monospace;max-width:72rem;margin:2rem auto;padding:0 1rem;background:#111;color:#eee}button,input,textarea{font:inherit;margin:.25rem;padding:.45rem;background:#222;color:#eee;border:1px solid #555}button:focus,input:focus,textarea:focus{outline:2px solid #8cf}.session{border:1px solid #444;padding:.75rem;margin:.75rem 0}textarea{box-sizing:border-box;width:100%;min-height:9rem}.error{color:#f99}</style></head>
 <body><h1>HoBo Code resident sessions</h1><p>Loopback control plane · refreshes every second · delivery requires approval.</p>
+<p>Remote: forward this loopback port through a declared Station machine. The server never binds publicly.</p>
 <form id="create"><label>Name <input id="name" required></label><label> Branch <input id="branch" placeholder="code/task"></label><button>Create session</button></form>
 <main id="sessions" aria-live="polite"></main>
 <h2>Full command boundary</h2><p>Paste any <code>hobo.code.session-command/v1</code> envelope.</p>

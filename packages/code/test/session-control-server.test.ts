@@ -99,6 +99,8 @@ describe("resident session loopback server", () => {
 			expect(page.status).toBe(200);
 			const html = await page.text();
 			expect(html).toContain("HoBo Code resident sessions");
+			expect(html).toContain("forward this loopback port");
+			expect(html).toContain("never binds publicly");
 			expect(html).toContain("Full command boundary");
 			const script = /<script>([\s\S]+)<\/script>/u.exec(html)?.[1];
 			expect(script).toBeDefined();

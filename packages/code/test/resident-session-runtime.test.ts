@@ -269,6 +269,36 @@ describe("resident session runtime", () => {
 		reopened.close();
 	});
 
+	it("terminalizes active agents when their session stops", async () => {
+		const runtime = createResidentSessionRuntime({
+			dataDir: tempRoot(),
+			tmux: fakeTmux(),
+		});
+		const created = await runtime.create({
+			id: "task-stop-agent",
+			name: "stop-agent",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/stop-agent",
+			clientId: "cli",
+		});
+		const started = await runtime.startAgent(
+			"task-stop-agent",
+			created.revision,
+			created.focusedPaneId,
+			"codex",
+			["codex"],
+			"",
+		);
+		const stopped = await runtime.stop("task-stop-agent", started.revision);
+		expect(stopped.agentRuns[0]?.lifecycleState).toBe(
+			AgentLifecycleState.STOPPED,
+		);
+		expect(stopped.agentRuns[0]?.summary).toBe("session stopped");
+		expect(stopped.panes[0]?.agentRunId).toBeUndefined();
+		runtime.close();
+	});
+
 	it("deduplicates acknowledged pane input without inventing a state revision", async () => {
 		const tmux = fakeTmux();
 		const runtime = createResidentSessionRuntime({ dataDir: tempRoot(), tmux });

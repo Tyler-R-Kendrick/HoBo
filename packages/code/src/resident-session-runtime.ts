@@ -1091,8 +1091,16 @@ export function createResidentSessionRuntime(
 				}
 				if (snapshot.session)
 					snapshot.session.lifecycleState = SessionLifecycleState.STOPPED;
-				for (const pane of snapshot.panes)
+				for (const pane of snapshot.panes) {
 					pane.lifecycleState = PaneLifecycleState.EXITED;
+					pane.agentRunId = undefined;
+				}
+				for (const run of snapshot.agentRuns) {
+					if (!isActiveAgent(run.lifecycleState)) continue;
+					run.lifecycleState = AgentLifecycleState.STOPPED;
+					run.updatedAt = now();
+					run.summary = "session stopped";
+				}
 				return changed(snapshot);
 			});
 		},

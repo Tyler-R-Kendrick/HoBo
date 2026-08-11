@@ -109,7 +109,10 @@ try {
 	await pause();
 	dialogs.push("");
 	await page.click('[data-action="stop-session"]');
-	await pause();
+	await page
+		.locator(".session .muted", { hasText: "Session is stopped" })
+		.waitFor();
+	await page.screenshot({ path: path.join(output, "frame-stopped.png") });
 } finally {
 	await context.close();
 	await browser.close();

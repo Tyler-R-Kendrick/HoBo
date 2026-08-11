@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
 	AgentLifecycleState,
+	PaneLifecycleState,
 	SessionLifecycleState,
 } from "./_generated/code_harness_pb.js";
 import type { DevMachine } from "./dev-machines.js";
@@ -17,6 +18,7 @@ import {
 } from "./session-contract.js";
 
 const DELIVERY_COMMANDS = new Set(["commit", "push", "pr", "stack", "merge"]);
+const GIT_PANE_ROLE = "hobo-code.git-workbench";
 
 export function shouldWaitForResidentSession(
 	sessionState: SessionLifecycleState,
@@ -167,6 +169,54 @@ async function commandFor(
 	}
 }
 
+async function ensureGitPane(
+	hoboHome: string,
+	sessionId: string,
+): Promise<void> {
+	const control = createLocalSessionControl({ hoboHome });
+	try {
+		let snapshot = await control.load(sessionId);
+		if (!snapshot) throw new Error(`session ${sessionId} does not exist`);
+		for (const pane of snapshot.panes.filter(
+			(candidate) => candidate.lifecycleState === PaneLifecycleState.RUNNING,
+		)) {
+			const role = await control.runtime
+				.paneRole(sessionId, pane.id)
+				.catch(() => undefined);
+			if (role !== GIT_PANE_ROLE) continue;
+			const frame = await control
+				.capturePane(sessionId, pane.id, 30)
+				.catch(() => "");
+			if (!frame.includes("[Git exited ")) return;
+			const current = await control.load(sessionId);
+			if (!current) throw new Error(`session ${sessionId} disappeared`);
+			snapshot = await control.runtime.closePane(
+				sessionId,
+				revision(current),
+				pane.id,
+			);
+		}
+		snapshot = await control.load(sessionId);
+		if (!snapshot) throw new Error(`session ${sessionId} disappeared`);
+		await control.runtime.createTab(
+			sessionId,
+			revision(snapshot),
+			"Git",
+			[
+				process.env.HOBO_CODE_BIN ?? "hobo-code",
+				"session",
+				"git",
+				sessionId,
+				"--home",
+				hoboHome,
+			],
+			GIT_PANE_ROLE,
+		);
+	} finally {
+		control.close();
+	}
+}
+
 export async function runResidentSessionCli(input: {
 	readonly args: readonly string[];
 	readonly hoboHome: string;
@@ -244,6 +294,26 @@ export async function runResidentSessionCli(input: {
 	}
 
 	const sessionId = required(args[0], `${operation} <sessionId> …`);
+	if (operation === "git") {
+		const control = createLocalSessionControl({ hoboHome: input.hoboHome });
+		try {
+			const snapshot = await control.load(sessionId);
+			if (!snapshot) throw new Error(`session ${sessionId} does not exist`);
+			return {
+				message: `opening Git pane for ${summary(snapshot)}`,
+				data: {
+					snapshot: sessionSnapshotJson(snapshot),
+					terminalAction: {
+						kind: "git-pane",
+						sessionId,
+						hoboHome: input.hoboHome,
+					},
+				},
+			};
+		} finally {
+			control.close();
+		}
+	}
 	if (["show", "status", "wait"].includes(operation)) {
 		const control = createLocalSessionControl({ hoboHome: input.hoboHome });
 		try {
@@ -420,6 +490,9 @@ export async function runResidentSessionCli(input: {
 	}
 	if (DELIVERY_COMMANDS.has(operation) && !input.approved) {
 		throw new Error(`${operation} requires --approve`);
+	}
+	if (operation === "attach" || operation === "switch") {
+		await ensureGitPane(input.hoboHome, sessionId);
 	}
 	const snapshot = await commandFor(
 		input.hoboHome,

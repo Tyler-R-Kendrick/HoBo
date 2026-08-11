@@ -539,6 +539,16 @@ test("editing a step definition trips the behavior lane", () => {
 	assert.ok(checks.some(isBehaviorLane));
 });
 
+test("OptimizeXP evidence features use their own gate, not the root behavior lane", () => {
+	const { checks } = plan([
+		"packages/code/.optimizexp/features/git-workbench/git-workbench.feature",
+	]);
+	assert.equal(checks.some(isBehaviorLane), false);
+	assert.ok(
+		checks.some((check) => check.args.join(" ") === "run optimizexp:check"),
+	);
+});
+
 test("editing cucumber.yaml trips the behavior lane", () => {
 	const { checks } = plan(["cucumber.yaml"]);
 	assert.ok(checks.some(isBehaviorLane));

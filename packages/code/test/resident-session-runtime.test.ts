@@ -265,7 +265,20 @@ describe("resident session runtime", () => {
 			branch: "code/build",
 			clientId: "cli-1",
 		});
-		const tab = await runtime.createTab("task-2", initial.revision, "tests");
+		const tab = await runtime.createTab(
+			"task-2",
+			initial.revision,
+			"tests",
+			undefined,
+			"hobo-code.git-workbench",
+		);
+		const newWindow = tmux.calls.find((call) => call[0] === "new-window");
+		const encoded = /HOBO_PANE_META=([A-Za-z0-9_-]+)/u.exec(
+			newWindow?.at(-1) ?? "",
+		)?.[1];
+		expect(
+			JSON.parse(Buffer.from(encoded ?? "", "base64url").toString("utf8")),
+		).toMatchObject({ role: "hobo-code.git-workbench" });
 		const split = await runtime.splitPane(
 			"task-2",
 			tab.revision,

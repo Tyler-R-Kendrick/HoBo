@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-
+import {
+	consumeGitTerminalPromptChunk,
+	INITIAL_GIT_TERMINAL_STATE,
+	moveGitTerminalSelection,
+	renderGitTerminalPane,
+} from "../src/git-terminal-pane.js";
 import {
 	readGitWorkbenchSnapshot,
 	runGitWorkbenchAction,
@@ -7,6 +12,13 @@ import {
 import type { SessionProcessRunner } from "../src/session-orchestrator.js";
 
 describe("Git workbench", () => {
+	it("keeps pasted prompt text when Enter arrives in the same TTY chunk", () => {
+		expect(consumeGitTerminalPromptChunk("", "ship the pane\r")).toEqual({
+			done: true,
+			value: "ship the pane",
+		});
+	});
+
 	it("reads branch divergence and changed-file state from porcelain output", async () => {
 		const calls: Array<{
 			command: string;
@@ -79,6 +91,41 @@ describe("Git workbench", () => {
 				({ command, args }) => command === "git" && Array.isArray(args),
 			),
 		).toBe(true);
+		const frame = renderGitTerminalPane(snapshot, INITIAL_GIT_TERMINAL_STATE);
+		expect(frame).toContain("hobo-code · Git · feature/workbench · ↑2 ↓1");
+		expect(frame).toContain("2 Files");
+		expect(frame).toContain("3 Branches");
+		expect(frame).toContain("4 Commits");
+		expect(frame).toContain("5 Stash");
+		expect(
+			moveGitTerminalSelection(snapshot, INITIAL_GIT_TERMINAL_STATE, 1).selected
+				.files,
+		).toBe(1);
+
+		const firstFile = snapshot.files[0];
+		if (!firstFile) throw new Error("fixture has no changed file");
+		const manyFiles = Array.from({ length: 12 }, (_, index) => ({
+			...firstFile,
+			path: `file-${index}.ts`,
+		}));
+		const scrolled = renderGitTerminalPane(
+			{ ...snapshot, files: manyFiles },
+			{
+				...INITIAL_GIT_TERMINAL_STATE,
+				selected: { ...INITIAL_GIT_TERMINAL_STATE.selected, files: 11 },
+			},
+		);
+		expect(scrolled).toContain("12/12");
+		expect(scrolled).toContain("file-11.ts");
+		expect(
+			renderGitTerminalPane(
+				{
+					...snapshot,
+					truncated: { ...snapshot.truncated, files: true },
+				},
+				INITIAL_GIT_TERMINAL_STATE,
+			),
+		).toContain("first 3+");
 	});
 
 	it("reads bounded local branches, commit graph rows, and stashes", async () => {

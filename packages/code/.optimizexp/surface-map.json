@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "projectId": "code",
-  "scannedAt": "2026-08-01T04:11:59.111Z",
+  "scannedAt": "2026-08-11T20:16:27.691Z",
   "productName": "hobo-code",
   "packageDir": "packages/code",
   "binaries": [
     {
       "name": "hobo-code",
-      "binPath": "/home/codex/.herdr/worktrees/hobo/hobo-devx/packages/code/bin/hobo-code.mjs",
+      "binPath": "/home/codex/.herdr/worktrees/hobo/worktree-silver-river-5c07/.worktrees/hobo-code-git-pane/packages/code/bin/hobo-code.mjs",
       "packageName": "@hobo/code"
     }
   ],
@@ -15,7 +15,7 @@
     "command": "hobo-code",
     "interactive": true,
     "driver": "tui",
-    "notes": "interactive markers in /home/codex/.herdr/worktrees/hobo/hobo-devx/packages/code/src/bin/hobo-code.ts; interactive markers in /home/codex/.herdr/worktrees/hobo/hobo-devx/packages/code/dist/bin/hobo-code.js; interactive markers in README"
+    "notes": "interactive markers in /home/codex/.herdr/worktrees/hobo/worktree-silver-river-5c07/.worktrees/hobo-code-git-pane/packages/code/src/bin/hobo-code.ts; interactive markers in /home/codex/.herdr/worktrees/hobo/worktree-silver-river-5c07/.worktrees/hobo-code-git-pane/packages/code/dist/bin/hobo-code.js; interactive markers in README"
   },
   "nonInteractiveHelp": {
     "command": "hobo-code help",
@@ -26,6 +26,20 @@
       "id": "dispatch",
       "argv": [
         "dispatch"
+      ],
+      "kind": "verb"
+    },
+    {
+      "id": "vshell",
+      "argv": [
+        "vshell"
+      ],
+      "kind": "verb"
+    },
+    {
+      "id": "machines",
+      "argv": [
+        "machines"
       ],
       "kind": "verb"
     },
@@ -47,6 +61,13 @@
       "id": "attach",
       "argv": [
         "attach"
+      ],
+      "kind": "verb"
+    },
+    {
+      "id": "mux",
+      "argv": [
+        "mux"
       ],
       "kind": "verb"
     },
@@ -169,13 +190,5 @@
     "failure-actionable",
     "in-session-discoverability"
   ],
-  "probes": [
-    {
-      "command": "pnpm --filter @hobo/code exec hobo-code help 2>/dev/null || hobo-code help",
-      "exitCode": 0,
-      "stdoutDigest": "01ba4719c80b6fe9",
-      "capturedAt": "2026-08-01T04:11:58.284Z",
-      "notes": "spawnSync bash EPERM"
-    }
-  ]
+  "probes": []
 }

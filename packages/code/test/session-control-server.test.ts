@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { chromium } from "playwright";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createLocalSessionControl } from "../src/local-session-control.js";
@@ -140,17 +141,46 @@ describe("resident session loopback server", () => {
 			expect(html).toContain("Stop agent '+run.provider+' ('+run.id+')");
 			expect(html).toContain("Restore checkpoint '+checkpoint.label");
 			expect(html).toContain("s.session.name+' · '+s.session.id");
-			expect(html).toContain(
-				"if(card.contains(document.activeElement)&&s.session.id!==forceId)continue",
-			);
+			expect(html).toContain("focused&&!forceIds.has(s.session.id)");
 			expect(html).toContain("await refresh(id)");
 			expect(html).toContain("pullRequestNumber:Number(pullRequestNumber)");
+			expect(html).toContain("Git workbench");
+			expect(html).toContain("1–5 panels · ↑↓/jk move · Space stage");
+			expect(html).toContain("stagedOnly:true");
+			expect(html).toContain("data-git-panel");
+			expect(html).toContain("forcedRefreshIds.add(forceId)");
+			expect(html).toContain("while(forcedRefreshIds.size)");
+			expect(html).toContain("const scrollY=window.scrollY");
+			expect(html).toContain("window.scrollTo(0,scrollY)");
+			for (const action of [
+				"select-git-tab",
+				"git-stage",
+				"git-discard",
+				"git-ignore",
+				"git-fetch",
+				"git-pull",
+				"git-checkout",
+				"git-new-branch",
+				"git-delete-branch",
+				"git-stash-create",
+				"git-stash-apply",
+				"git-stash-pop",
+				"git-stash-drop",
+				"git-revert",
+				"git-commit",
+				"git-push",
+				"git-open-pr",
+				"git-stack",
+				"git-merge",
+			]) {
+				expect(html).toContain(`'${action}'`);
+			}
 			expect(html).not.toContain("root.replaceChildren()");
 			expect(html).toContain(
 				"This browser is detached. Reattach to view pane output and controls.",
 			);
 			expect(html.indexOf("if(!attached)")).toBeLessThan(
-				html.indexOf("await api('/code/sessions/"),
+				html.indexOf("/panes/'+encodeURIComponent(pane.id)+'/output"),
 			);
 			const script = /<script>([\s\S]+)<\/script>/u.exec(html)?.[1];
 			expect(script).toBeDefined();
@@ -188,6 +218,29 @@ describe("resident session loopback server", () => {
 				join(created.session.worktreePath, "approved.txt"),
 				"approved\n",
 			);
+			const gitResponse = await fetch(
+				`http://127.0.0.1:${server.port}/code/sessions/session-1/git`,
+				{ headers },
+			);
+			expect(gitResponse.status).toBe(200);
+			expect(await gitResponse.json()).toMatchObject({
+				branch: "code/review",
+				files: [{ path: "approved.txt", untracked: true }],
+			});
+			const invalidSelection = await fetch(
+				`http://127.0.0.1:${server.port}/code/sessions/session-1/git?kind=tag&value=v1`,
+				{ headers },
+			);
+			expect(invalidSelection.status).toBe(400);
+			const invalidAction = await fetch(
+				`http://127.0.0.1:${server.port}/code/sessions/session-1/git/actions`,
+				{
+					method: "POST",
+					headers,
+					body: JSON.stringify({ action: "shell", command: "rm -rf" }),
+				},
+			);
+			expect(invalidAction.status).toBe(400);
 			const commitCommand = envelope("session-1", created.revision, "commit", {
 				message: "approved browser commit",
 			});
@@ -270,4 +323,156 @@ describe("resident session loopback server", () => {
 		await expect(restarted.list()).resolves.toHaveLength(1);
 		restarted.close();
 	});
+
+	it("keeps keyboard selection and focus through forced Git refreshes", async () => {
+		const hoboHome = temp("hobo-session-browser-home-");
+		const projectRoot = repository();
+		const control = createLocalSessionControl({ hoboHome, tmux: fakeTmux() });
+		const server = await startSessionControlServer({
+			hoboHome,
+			projectRoot,
+			token: "browser-token",
+			control,
+		});
+		const headers = {
+			authorization: "Bearer browser-token",
+			"content-type": "application/json",
+		};
+		const createdResponse = await fetch(
+			`http://127.0.0.1:${server.port}/code/commands`,
+			{
+				method: "POST",
+				headers,
+				body: JSON.stringify({
+					command: envelope("keyboard-session", "0", "createSession", {
+						name: "keyboard review",
+						projectRoot,
+						branch: "code/keyboard-review",
+						clientId: "browser-test",
+					}),
+				}),
+			},
+		);
+		const created = (await createdResponse.json()) as {
+			session: { worktreePath: string };
+		};
+		writeFileSync(join(created.session.worktreePath, "stashed.txt"), "stash\n");
+		git(created.session.worktreePath, ["add", "stashed.txt"]);
+		git(created.session.worktreePath, ["stash", "push", "-m", "browser stash"]);
+		writeFileSync(
+			join(created.session.worktreePath, "approved.txt"),
+			"approved\n",
+		);
+
+		const browser = await chromium.launch({ headless: true });
+		try {
+			const page = await browser.newPage();
+			page.setDefaultTimeout(3_000);
+			const pageErrors: string[] = [];
+			page.on("pageerror", (error) => pageErrors.push(error.message));
+			await page.addInitScript(() => {
+				sessionStorage.hoboCodeClientId = "browser-test";
+			});
+			await page.goto(server.url);
+			await page.waitForTimeout(250);
+			if ((await page.getByRole("tab", { name: "Git" }).count()) === 0)
+				throw new Error(
+					JSON.stringify({
+						pageErrors,
+						result: await page.locator("#result").textContent(),
+						body: await page.locator("body").innerText(),
+					}),
+				);
+			await page.getByRole("tab", { name: "Git" }).click();
+			await page.locator(".git-workbench").waitFor();
+
+			for (const [key, kind, panel] of [
+				["1", "branch", "1"],
+				["2", "file", "2"],
+				["3", "branch", "3"],
+				["4", "commit", "4"],
+				["5", "stash", "5"],
+			] as const) {
+				await page.keyboard.press(key);
+				await page.waitForFunction(
+					({ expected, expectedPanel }) =>
+						document.activeElement instanceof HTMLElement &&
+						document.activeElement.dataset.gitKind === expected &&
+						document.activeElement.dataset.gitPanel === expectedPanel &&
+						document.activeElement.getAttribute("aria-selected") === "true",
+					{ expected: kind, expectedPanel: panel },
+				);
+			}
+
+			await page.keyboard.press("2");
+			await page.waitForFunction(
+				() =>
+					document.activeElement instanceof HTMLElement &&
+					document.activeElement.dataset.gitKind === "file" &&
+					document.activeElement.getAttribute("aria-selected") === "true",
+			);
+			await page.keyboard.press("Space");
+			await expect
+				.poll(
+					() =>
+						spawnSync("git", ["status", "--short"], {
+							cwd: created.session.worktreePath,
+							encoding: "utf8",
+						}).stdout,
+				)
+				.toContain("A  approved.txt");
+			await page.waitForFunction(
+				() =>
+					// @ts-expect-error browser test reaches the inline workbench state
+					gitMutationFlights.size === 0 &&
+					document.activeElement instanceof HTMLElement &&
+					document.activeElement.dataset.gitKind === "file",
+			);
+			await page.keyboard.press("Space");
+			await expect
+				.poll(
+					() =>
+						spawnSync("git", ["status", "--short"], {
+							cwd: created.session.worktreePath,
+							encoding: "utf8",
+						}).stdout,
+				)
+				.toContain("?? approved.txt");
+			await page.waitForFunction(
+				() =>
+					// @ts-expect-error browser test reaches the inline workbench state
+					gitMutationFlights.size === 0 &&
+					document.activeElement instanceof HTMLElement &&
+					document.activeElement.dataset.gitKind === "file",
+			);
+
+			await page.keyboard.press("j");
+			await page.waitForFunction(
+				() =>
+					document.activeElement instanceof HTMLElement &&
+					document.activeElement.dataset.gitKind === "branch" &&
+					document.activeElement.dataset.gitPanel === "3" &&
+					document.activeElement.getAttribute("aria-selected") === "true",
+			);
+			await page.keyboard.press("2");
+			await page.waitForFunction(
+				() =>
+					document.activeElement instanceof HTMLElement &&
+					document.activeElement.dataset.gitKind === "file" &&
+					document.activeElement.dataset.gitPanel === "2" &&
+					document.activeElement.getAttribute("aria-selected") === "true",
+			);
+			await page.keyboard.press("k");
+			await page.waitForFunction(
+				() =>
+					document.activeElement instanceof HTMLElement &&
+					document.activeElement.dataset.gitKind === "branch" &&
+					document.activeElement.dataset.gitPanel === "1" &&
+					document.activeElement.getAttribute("aria-selected") === "true",
+			);
+		} finally {
+			await browser.close();
+			await server.close();
+		}
+	}, 20_000);
 });

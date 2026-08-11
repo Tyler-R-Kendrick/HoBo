@@ -625,6 +625,8 @@ const VERB_HELP_PLAIN: Record<
 		"  hobo-code session commit | push | pr | stack | merge … --approve",
 		"  hobo-code session stop | delete <sessionId>",
 		"  hobo-code session serve [--port <port>]",
+		"    Resident terminal tabs plus a lazygit-style Git workbench",
+		"  hobo-code session git <sessionId>  # native ANSI pane inside tmux",
 		"  hobo-code session serve --host <declared-machine> --port <port>",
 		"  hobo-code session              # legacy one-shot handback",
 		"",

@@ -27,6 +27,18 @@ const native = captureNative(mkdtempSync(path.join(tmpdir(), "optimizexp-native-
 assert.equal(native.exitCode, 7);
 assert.equal(native.degraded, true);
 
+const repeatedDir = mkdtempSync(path.join(tmpdir(), "optimizexp-native-repeat-"));
+const firstNative = captureNative(repeatedDir, {
+	command: 'printf first > "$OUT_DIR/frame.png"',
+	cwd: process.cwd(),
+});
+assert.equal(firstNative.kind, "image");
+const repeatedNative = captureNative(repeatedDir, {
+	command: "true",
+	cwd: process.cwd(),
+});
+assert.equal(repeatedNative.kind, "transcript");
+
 // Perceptual timing is captured and machine-checkable.
 assert.equal(typeof result.timing.durationMs, "number");
 assert.ok(

@@ -6,7 +6,7 @@
   ],
   "interface": "native",
   "driver": "native",
-  "capturedAt": "2026-08-11T08:32:58.063Z",
+  "capturedAt": "2026-08-11T09:27:45.062Z",
   "runId": "20260810-hobo-code-sessions",
   "screen": {
     "widthPx": null,
@@ -17,8 +17,8 @@
   "primary": {
     "file": "primary.webm",
     "kind": "video",
-    "bytes": 657657,
-    "sha256": "5db8ff7a377506c6257cb3a01121402639bd6d1cd0ace2b36ba513b264051cf7"
+    "bytes": 1189038,
+    "sha256": "7e475342e9ffa4001b82d500befde13592ad6967895cf66cfa2394c0d8e225cc"
   },
   "claims": [
     {

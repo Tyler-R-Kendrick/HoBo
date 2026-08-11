@@ -21,8 +21,14 @@ const context = await browser.newContext({
 	recordVideo: { dir: output, size: { width: 1280, height: 720 } },
 });
 const page = await context.newPage();
-const dialogs: string[] = [];
-page.on("dialog", (dialog) => dialog.accept(dialogs.shift() ?? ""));
+const dialogs: (string | null)[] = [];
+const confirmations: string[] = [];
+page.on("dialog", async (dialog) => {
+	if (dialog.type() === "confirm") confirmations.push(dialog.message());
+	const answer = dialogs.shift();
+	if (answer === null) await dialog.dismiss();
+	else await dialog.accept(answer ?? "");
+});
 const pause = () => page.waitForTimeout(600);
 
 try {
@@ -65,6 +71,32 @@ try {
 		throw new Error(
 			`checkpoint failed: ${await page.locator("#result").textContent()}`,
 		);
+	dialogs.push("");
+	await page.click('[data-action="restore-checkpoint"]');
+	await pause();
+
+	dialogs.push("shell", "sh", "", "");
+	await page.locator('[data-action="start-agent"]').first().click();
+	await pause();
+	await page.locator('[data-action="stop-agent"]').first().click();
+	await page.waitForTimeout(1_400);
+
+	dialogs.push("browser approval proof", null);
+	await page.click('[data-action="commit"]');
+	await pause();
+	if (
+		!confirmations.some(
+			(message) =>
+				message.includes("Exact effect:") &&
+				message.includes("gitHead") &&
+				message.includes("gitTree"),
+		)
+	)
+		throw new Error(
+			`delivery approval did not show the server-bound effect: ${JSON.stringify(confirmations)}; ${await page.locator("#result").textContent()}`,
+		);
+	await page.locator("#result").scrollIntoViewIfNeeded();
+	await page.screenshot({ path: path.join(output, "frame-approval.png") });
 
 	await page.click('[data-action="detach"]');
 	await page

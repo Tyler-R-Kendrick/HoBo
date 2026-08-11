@@ -1,5 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	renameSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { redactText } from "../lib/redaction.mts";
 
@@ -43,6 +50,12 @@ export function captureNative(
 		"";
 
 	if (cmd) {
+		const before = new Map(
+			readdirSync(outDir).map((file) => {
+				const stat = statSync(path.join(outDir, file));
+				return [file, `${stat.mtimeMs}:${stat.size}`];
+			}),
+		);
 		const r = spawnSync("bash", ["-lc", cmd], {
 			cwd: input.cwd,
 			env: { ...process.env, OUT_DIR: outDir },
@@ -52,15 +65,16 @@ export function captureNative(
 		exitCode = r.status;
 		notes.push(`native command exit ${r.status}`);
 		if (r.stderr) notes.push(redactText(r.stderr).slice(0, 300));
-		const files = readdirSync(outDir);
+		const files = readdirSync(outDir).filter((file) => {
+			const stat = statSync(path.join(outDir, file));
+			return before.get(file) !== `${stat.mtimeMs}:${stat.size}`;
+		});
 		const video = files.find((f) => /\.(mp4|webm|mov)$/i.test(f));
 		const image = files.find((f) => /\.(png|jpe?g|webp|gif)$/i.test(f));
 		if (video) {
 			const primary = path.join(outDir, "primary" + path.extname(video));
 			const src = path.join(outDir, video);
-			if (src !== primary) {
-				spawnSync("cp", ["-f", src, primary]);
-			}
+			if (src !== primary) renameSync(src, primary);
 			return {
 				exitCode: r.status,
 				primaryFile: primary,
@@ -73,9 +87,7 @@ export function captureNative(
 		if (image) {
 			const primary = path.join(outDir, "primary" + path.extname(image));
 			const src = path.join(outDir, image);
-			if (src !== primary) {
-				spawnSync("cp", ["-f", src, primary]);
-			}
+			if (src !== primary) renameSync(src, primary);
 			return {
 				exitCode: r.status,
 				primaryFile: primary,

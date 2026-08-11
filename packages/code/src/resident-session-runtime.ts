@@ -516,6 +516,20 @@ export function createResidentSessionRuntime(
 				pane.lifecycleState = PaneLifecycleState.RUNNING;
 				drifted = true;
 			}
+			const intendedRun = pane.agentRunId
+				? snapshot.agentRuns.find((run) => run.id === pane.agentRunId)
+				: undefined;
+			if (
+				intendedRun?.lifecycleState === AgentLifecycleState.STARTING &&
+				entry.agentRunId !== intendedRun.id
+			) {
+				intendedRun.lifecycleState = AgentLifecycleState.FAILED;
+				intendedRun.updatedAt = now();
+				intendedRun.summary =
+					"agent start interrupted before tmux acknowledged it";
+				pane.agentRunId = undefined;
+				drifted = true;
+			}
 			if (entry.agentRunId) {
 				const run = snapshot.agentRuns.find(
 					(candidate) => candidate.id === entry.agentRunId,

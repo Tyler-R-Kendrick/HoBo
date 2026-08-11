@@ -5,10 +5,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRuntimeLocalEventStore } from "@hobo/runtime-local";
+import { create } from "@bufbuild/protobuf";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
 	AgentLifecycleState,
+	AgentRunSchema,
 	PaneLifecycleState,
 	SessionLifecycleState,
 } from "../src/_generated/code_harness_pb.js";
@@ -728,6 +730,73 @@ describe("resident session runtime", () => {
 		).toBe(true);
 		expect(reconciled?.focusedPaneId).toBe("pane-after-crash");
 		expect(reconciled?.revision).toBe(2n);
+		restarted.close();
+	});
+
+	it("fails a markerless agent start intent so the pane can recover", async () => {
+		const dataDir = tempRoot();
+		const first = createResidentSessionRuntime({ dataDir, tmux: fakeTmux() });
+		const created = await first.create({
+			id: "task-agent-intent",
+			name: "intent",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/intent",
+			clientId: "cli",
+		});
+		const runId = "run-before-crash";
+		const intended = await first.update(
+			"task-agent-intent",
+			created.revision ?? 0n,
+			(snapshot) => {
+				snapshot.agentRuns.push(
+					create(AgentRunSchema, {
+						id: runId,
+						sessionId: "task-agent-intent",
+						paneId: snapshot.focusedPaneId,
+						provider: "codex",
+						lifecycleState: AgentLifecycleState.STARTING,
+						startedAt: "2026-08-10T00:00:00.000Z",
+						updatedAt: "2026-08-10T00:00:00.000Z",
+						summary: "agent start requested",
+						terminalOnly: true,
+					}),
+				);
+				const pane = snapshot.panes.find(
+					(candidate) => candidate.id === snapshot.focusedPaneId,
+				);
+				if (pane) pane.agentRunId = runId;
+			},
+		);
+		first.close();
+		const pane = intended.panes[0];
+		const tab = intended.tabs[0];
+		const metadata = Buffer.from(
+			JSON.stringify({
+				paneId: pane?.id,
+				tabId: tab?.id,
+				paneTitle: pane?.title,
+				tabTitle: tab?.title,
+				workingDirectory: pane?.workingDirectory,
+			}),
+		).toString("base64url");
+		const restarted = createResidentSessionRuntime({
+			dataDir,
+			tmux: {
+				run: async (args) =>
+					args[0] === "has-session"
+						? { code: 0, stdout: "" }
+						: {
+								code: 0,
+								stdout: `${pane?.runtimeId}\t1\t1\tenv HOBO_PANE_META=${metadata} sh -c true\t\t\n`,
+							},
+			},
+		});
+		const recovered = await restarted.load("task-agent-intent");
+		expect(recovered?.agentRuns[0]?.lifecycleState).toBe(
+			AgentLifecycleState.FAILED,
+		);
+		expect(recovered?.panes[0]?.agentRunId).toBeUndefined();
 		restarted.close();
 	});
 

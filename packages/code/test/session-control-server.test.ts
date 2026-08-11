@@ -81,7 +81,8 @@ describe("resident session loopback server", () => {
 	it("serves authenticated browser controls and the shared command boundary", async () => {
 		const hoboHome = temp("hobo-session-server-home-");
 		const projectRoot = repository();
-		const control = createLocalSessionControl({ hoboHome, tmux: fakeTmux() });
+		const tmux = fakeTmux();
+		const control = createLocalSessionControl({ hoboHome, tmux });
 		const server = await startSessionControlServer({
 			hoboHome,
 			projectRoot,
@@ -154,5 +155,8 @@ describe("resident session loopback server", () => {
 		} finally {
 			await server.close();
 		}
+		const restarted = createLocalSessionControl({ hoboHome, tmux });
+		await expect(restarted.list()).resolves.toHaveLength(1);
+		restarted.close();
 	});
 });

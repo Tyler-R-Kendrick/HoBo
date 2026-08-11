@@ -34,6 +34,12 @@ package code
 	runtime_id:        string & !=""
 	working_directory: string & !=""
 	agent_run_id?:     string & !=""
+	left_column:       int & >=0
+	top_row:           int & >=0
+	width:              int & >=0
+	height:             int & >=0
+	window_width:       int & >=0
+	window_height:      int & >=0
 }
 
 #AgentRun: {

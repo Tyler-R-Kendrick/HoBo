@@ -59,6 +59,8 @@ try {
 	dialogs.push("continue the release review");
 	await page.locator('[data-action="prompt-pane"]').first().click();
 	await pause();
+	await page.locator(".pane-grid").scrollIntoViewIfNeeded();
+	await page.screenshot({ path: path.join(output, "frame-panes.png") });
 
 	dialogs.push("before delivery");
 	await page.click('[data-action="create-checkpoint"]');

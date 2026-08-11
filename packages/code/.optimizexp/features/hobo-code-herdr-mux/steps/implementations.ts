@@ -165,6 +165,7 @@ function repository(world: OptimizexpWorld): string {
 function fakeTmux(commands: string[]): MuxRunner {
 	let pane = 0;
 	let exists = false;
+	const paneCommands = new Map<string, string>();
 	return {
 		async run(args) {
 			commands.push(args.join(" "));
@@ -174,8 +175,33 @@ function fakeTmux(commands: string[]): MuxRunner {
 				["new-session", "new-window", "split-window"].includes(args[0] ?? "")
 			) {
 				exists = true;
-				return { code: 0, stdout: `%${++pane}\n` };
+				const id = `%${++pane}`;
+				paneCommands.set(id, args.at(-1) ?? "");
+				return { code: 0, stdout: `${id}\n` };
 			}
+			if (args[0] === "list-panes")
+				return {
+					code: 0,
+					stdout: [...paneCommands]
+						.map(([id, command], index) => {
+							const tiled = paneCommands.size > 2 && index > 0;
+							return [
+								id,
+								index === paneCommands.size - 1 ? "1" : "0",
+								"1",
+								tiled && index === 2 ? "60" : "0",
+								"0",
+								tiled ? "60" : "120",
+								"40",
+								"120",
+								"40",
+								command,
+								"",
+								"",
+							].join("\t");
+						})
+						.join("\n"),
+				};
 			if (args[0] === "capture-pane")
 				return { code: 0, stdout: "browser journey output\n" };
 			if (args[0] === "kill-session") exists = false;

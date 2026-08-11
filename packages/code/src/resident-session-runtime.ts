@@ -432,6 +432,12 @@ export function createResidentSessionRuntime(
 	type ActualPane = {
 		readonly runtimeId: string;
 		readonly active: boolean;
+		readonly leftColumn: number;
+		readonly topRow: number;
+		readonly width: number;
+		readonly height: number;
+		readonly windowWidth: number;
+		readonly windowHeight: number;
 		readonly metadata: TmuxPaneMetadata;
 		readonly agentRunId: string;
 		readonly agentExit: string;
@@ -446,7 +452,7 @@ export function createResidentSessionRuntime(
 			"-t",
 			residentSessionTmuxName(sessionId),
 			"-F",
-			"#{pane_id}\t#{pane_active}\t#{window_active}\t#{pane_start_command}\t#{@hobo_agent_run}\t#{@hobo_agent_exit}",
+			"#{pane_id}\t#{pane_active}\t#{window_active}\t#{pane_left}\t#{pane_top}\t#{pane_width}\t#{pane_height}\t#{window_width}\t#{window_height}\t#{pane_start_command}\t#{@hobo_agent_run}\t#{@hobo_agent_exit}",
 		]);
 		if (result.code !== 0) {
 			throw new Error(
@@ -455,18 +461,48 @@ export function createResidentSessionRuntime(
 		}
 		return result.stdout
 			.split("\n")
-			.map((line) => line.split("\t", 6))
+			.map((line) => {
+				const fields = line.split("\t", 12);
+				return fields.length >= 12
+					? fields
+					: [
+							fields[0],
+							fields[1],
+							fields[2],
+							"0",
+							"0",
+							"0",
+							"0",
+							"0",
+							"0",
+							fields[3],
+							fields[4],
+							fields[5],
+						];
+			})
 			.map(
 				([
 					runtimeId = "",
 					paneActive = "0",
 					windowActive = "0",
+					leftColumn = "0",
+					topRow = "0",
+					width = "0",
+					height = "0",
+					windowWidth = "0",
+					windowHeight = "0",
 					command = "",
 					agentRunId = "",
 					agentExit = "",
 				]) => ({
 					runtimeId,
 					active: paneActive === "1" && windowActive === "1",
+					leftColumn: Number(leftColumn),
+					topRow: Number(topRow),
+					width: Number(width),
+					height: Number(height),
+					windowWidth: Number(windowWidth),
+					windowHeight: Number(windowHeight),
 					metadata: decodePaneMetadata(command),
 					agentRunId,
 					agentExit,
@@ -515,10 +551,22 @@ export function createResidentSessionRuntime(
 			}
 			if (
 				pane.runtimeId !== entry.runtimeId ||
-				pane.lifecycleState !== PaneLifecycleState.RUNNING
+				pane.lifecycleState !== PaneLifecycleState.RUNNING ||
+				pane.leftColumn !== entry.leftColumn ||
+				pane.topRow !== entry.topRow ||
+				pane.width !== entry.width ||
+				pane.height !== entry.height ||
+				pane.windowWidth !== entry.windowWidth ||
+				pane.windowHeight !== entry.windowHeight
 			) {
 				pane.runtimeId = entry.runtimeId;
 				pane.lifecycleState = PaneLifecycleState.RUNNING;
+				pane.leftColumn = entry.leftColumn;
+				pane.topRow = entry.topRow;
+				pane.width = entry.width;
+				pane.height = entry.height;
+				pane.windowWidth = entry.windowWidth;
+				pane.windowHeight = entry.windowHeight;
 				drifted = true;
 			}
 			const intendedRun = pane.agentRunId
@@ -728,6 +776,7 @@ export function createResidentSessionRuntime(
 		);
 		snapshot.focusedTabId = source.tabId;
 		snapshot.focusedPaneId = id;
+		applyActualPanes(sessionId, snapshot, await readActualPanes(sessionId));
 		return changed(snapshot);
 	}
 
@@ -851,6 +900,7 @@ export function createResidentSessionRuntime(
 				);
 				snapshot.focusedTabId = tabId;
 				snapshot.focusedPaneId = paneId;
+				applyActualPanes(id, snapshot, await readActualPanes(id));
 				try {
 					await persist(
 						snapshot,
@@ -953,6 +1003,7 @@ export function createResidentSessionRuntime(
 				);
 				snapshot.focusedTabId = tabId;
 				snapshot.focusedPaneId = paneId;
+				applyActualPanes(sessionId, snapshot, await readActualPanes(sessionId));
 				return changed(snapshot);
 			});
 		},

@@ -188,7 +188,8 @@ export function tmuxRunner(prefix: readonly string[] = []): MuxRunner {
 				const pipeOutput =
 					args[0]?.startsWith("list-") === true ||
 					args[0] === "display-message" ||
-					args[0] === "capture-pane";
+					args[0] === "capture-pane" ||
+					args[0] === "show-options";
 				const atomicOutput = args.includes("-P");
 				const diagnose =
 					args[0] === "has-session" || args[0] === "list-sessions";

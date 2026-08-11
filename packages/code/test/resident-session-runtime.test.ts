@@ -598,6 +598,28 @@ describe("resident session runtime", () => {
 		);
 		const panes = await tmux.run(["list-panes", "-a", "-F", "#{pane_id}"]);
 		expect(panes.stdout.trim().split("\n")).toHaveLength(3);
+		await runtime.sendInput(
+			"real",
+			split.revision,
+			split.focusedPaneId,
+			"dedupe-token",
+			"real-input-1",
+		);
+		await runtime.sendInput(
+			"real",
+			split.revision,
+			split.focusedPaneId,
+			"dedupe-token",
+			"real-input-1",
+		);
+		const captured = await tmux.run([
+			"capture-pane",
+			"-p",
+			"-t",
+			split.panes.find((pane) => pane.id === split.focusedPaneId)?.runtimeId ??
+				"",
+		]);
+		expect(captured.stdout.match(/dedupe-token/gu)).toHaveLength(1);
 		runtime.close();
 
 		const reopened = createResidentSessionRuntime({ dataDir, tmux });

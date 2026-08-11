@@ -347,6 +347,8 @@ export function createResidentSessionRuntime(
 		readonly runtimeId: string;
 		readonly active: boolean;
 		readonly metadata: TmuxPaneMetadata;
+		readonly agentRunId: string;
+		readonly agentExit: string;
 	};
 
 	async function readActualPanes(
@@ -358,7 +360,7 @@ export function createResidentSessionRuntime(
 			"-t",
 			tmuxSession(sessionId),
 			"-F",
-			"#{pane_id}\t#{pane_active}\t#{window_active}\t#{pane_start_command}",
+			"#{pane_id}\t#{pane_active}\t#{window_active}\t#{pane_start_command}\t#{@hobo_agent_run}\t#{@hobo_agent_exit}",
 		]);
 		if (result.code !== 0) {
 			throw new Error(
@@ -367,17 +369,21 @@ export function createResidentSessionRuntime(
 		}
 		return result.stdout
 			.split("\n")
-			.map((line) => line.split("\t", 4))
+			.map((line) => line.split("\t", 6))
 			.map(
 				([
 					runtimeId = "",
 					paneActive = "0",
 					windowActive = "0",
 					command = "",
+					agentRunId = "",
+					agentExit = "",
 				]) => ({
 					runtimeId,
 					active: paneActive === "1" && windowActive === "1",
 					metadata: decodePaneMetadata(command),
+					agentRunId,
+					agentExit,
 				}),
 			)
 			.filter((entry): entry is ActualPane =>
@@ -428,6 +434,32 @@ export function createResidentSessionRuntime(
 				pane.runtimeId = entry.runtimeId;
 				pane.lifecycleState = PaneLifecycleState.RUNNING;
 				drifted = true;
+			}
+			if (entry.agentRunId) {
+				const run = snapshot.agentRuns.find(
+					(candidate) => candidate.id === entry.agentRunId,
+				);
+				if (run && run.lifecycleState === AgentLifecycleState.STARTING) {
+					run.lifecycleState = AgentLifecycleState.WORKING;
+					run.updatedAt = now();
+					run.summary = "agent running";
+					drifted = true;
+				}
+				if (
+					run &&
+					run.lifecycleState !== AgentLifecycleState.STOPPED &&
+					entry.agentExit.startsWith(`${run.id}:`)
+				) {
+					const status = Number(entry.agentExit.slice(run.id.length + 1));
+					run.lifecycleState =
+						status === 0
+							? AgentLifecycleState.DONE
+							: AgentLifecycleState.FAILED;
+					run.updatedAt = now();
+					run.summary = `agent exited ${status}`;
+					pane.agentRunId = undefined;
+					drifted = true;
+				}
 			}
 			if (
 				entry.active &&
@@ -527,6 +559,17 @@ export function createResidentSessionRuntime(
 		return metadata
 			? `env HOBO_PANE_META=${encodePaneMetadata(metadata)} ${wrapped}`
 			: wrapped;
+	}
+
+	function tmuxAgentCommand(
+		command: readonly string[],
+		metadata: TmuxPaneMetadata,
+		agentRunId: string,
+	): string {
+		const invocation = paneCommand(command).map(shellQuote).join(" ");
+		const fallbackShell = paneCommand().map(shellQuote).join(" ");
+		const script = `${invocation}; status=$?; tmux set-option -p @hobo_agent_exit ${agentRunId}:$status; exec ${fallbackShell}`;
+		return `env HOBO_PANE_META=${encodePaneMetadata(metadata)} sh -c ${shellQuote(script)}`;
 	}
 
 	async function split(
@@ -837,6 +880,7 @@ export function createResidentSessionRuntime(
 				);
 				if (!pane) throw new Error(`pane ${paneId} does not exist`);
 				if (commandId) {
+					const encoded = Buffer.from(commandId, "utf8").toString("base64url");
 					const prior = await options.tmux.run([
 						"show-options",
 						"-p",
@@ -845,9 +889,11 @@ export function createResidentSessionRuntime(
 						pane.runtimeId,
 						"@hobo_last_input_command",
 					]);
-					if (prior.code === 0 && prior.stdout.trim() === commandId) {
+					const processed = prior.stdout.trim().split(",").filter(Boolean);
+					if (prior.code === 0 && processed.includes(encoded)) {
 						return snapshot;
 					}
+					const nextProcessed = [...processed.slice(-63), encoded].join(",");
 					await runTmux([
 						"send-keys",
 						"-t",
@@ -861,7 +907,7 @@ export function createResidentSessionRuntime(
 						"-t",
 						pane.runtimeId,
 						"@hobo_last_input_command",
-						commandId,
+						nextProcessed,
 					]);
 				} else {
 					await runTmux(["send-keys", "-t", pane.runtimeId, "-l", "--", input]);
@@ -972,36 +1018,67 @@ export function createResidentSessionRuntime(
 				const resolved = [...paneCommand(command), prompt];
 				const tabTitle =
 					snapshot.tabs.find((tab) => tab.id === pane.tabId)?.title ?? "tab";
-				await runTmux([
-					"respawn-pane",
-					"-k",
-					"-t",
-					pane.runtimeId,
-					"-c",
-					pane.workingDirectory,
-					tmuxCommand(provider, resolved, {
-						paneId: pane.id,
-						tabId: pane.tabId,
-						paneTitle: pane.title,
-						tabTitle,
-						workingDirectory: pane.workingDirectory,
-					}),
-				]);
 				const timestamp = now();
 				const run = create(AgentRunSchema, {
 					id: randomUUID(),
 					sessionId,
 					paneId,
 					provider: required(provider, "provider"),
-					lifecycleState: AgentLifecycleState.WORKING,
+					lifecycleState: AgentLifecycleState.STARTING,
 					startedAt: timestamp,
 					updatedAt: timestamp,
-					summary: "agent running",
+					summary: "agent start requested",
 					terminalOnly: true,
 				});
 				snapshot.agentRuns.push(run);
 				pane.agentRunId = run.id;
-				return changed(snapshot);
+				const intent = await changed(snapshot);
+				try {
+					await runTmux([
+						"respawn-pane",
+						"-k",
+						"-t",
+						pane.runtimeId,
+						"-c",
+						pane.workingDirectory,
+						tmuxAgentCommand(
+							resolved,
+							{
+								paneId: pane.id,
+								tabId: pane.tabId,
+								paneTitle: pane.title,
+								tabTitle,
+								workingDirectory: pane.workingDirectory,
+							},
+							run.id,
+						),
+						";",
+						"set-option",
+						"-p",
+						"-t",
+						pane.runtimeId,
+						"@hobo_agent_run",
+						run.id,
+						";",
+						"set-option",
+						"-p",
+						"-t",
+						pane.runtimeId,
+						"@hobo_agent_exit",
+						"",
+					]);
+				} catch (error) {
+					run.lifecycleState = AgentLifecycleState.FAILED;
+					run.updatedAt = now();
+					run.summary = String(error);
+					pane.agentRunId = undefined;
+					await changed(intent);
+					throw error;
+				}
+				run.lifecycleState = AgentLifecycleState.WORKING;
+				run.updatedAt = now();
+				run.summary = "agent running";
+				return changed(intent);
 			});
 		},
 
@@ -1015,12 +1092,36 @@ export function createResidentSessionRuntime(
 					(candidate) => candidate.id === run.paneId,
 				);
 				if (!pane) throw new Error(`pane ${run.paneId} does not exist`);
-				await runTmux(["send-keys", "-t", pane.runtimeId, "C-c"]);
-				run.lifecycleState = AgentLifecycleState.STOPPED;
+				run.lifecycleState = AgentLifecycleState.UNKNOWN;
 				run.updatedAt = now();
-				run.summary = "agent stopped";
-				pane.agentRunId = undefined;
-				return changed(snapshot);
+				run.summary = "agent stop requested";
+				const intent = await changed(snapshot);
+				await runTmux(["send-keys", "-t", pane.runtimeId, "C-c"]);
+				let confirmed = false;
+				for (let attempt = 0; attempt < 20; attempt += 1) {
+					const exit = await options.tmux.run([
+						"show-options",
+						"-p",
+						"-v",
+						"-t",
+						pane.runtimeId,
+						"@hobo_agent_exit",
+					]);
+					if (exit.code === 0 && exit.stdout.trim().startsWith(`${run.id}:`)) {
+						confirmed = true;
+						break;
+					}
+					await new Promise((done) => setTimeout(done, 50));
+				}
+				run.lifecycleState = confirmed
+					? AgentLifecycleState.STOPPED
+					: AgentLifecycleState.UNKNOWN;
+				run.updatedAt = now();
+				run.summary = confirmed
+					? "agent stopped"
+					: "stop requested; completion unconfirmed";
+				if (confirmed) pane.agentRunId = undefined;
+				return changed(intent);
 			});
 		},
 

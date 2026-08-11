@@ -7,6 +7,7 @@ import {
 	linkSync,
 	mkdirSync,
 	openSync,
+	readdirSync,
 	readFileSync,
 	realpathSync,
 	renameSync,
@@ -14,7 +15,7 @@ import {
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { create } from "@bufbuild/protobuf";
 
 import {
@@ -200,6 +201,15 @@ function ensureDirectoryDurable(directory: string): void {
 	}
 }
 
+function fsyncDirectory(directory: string): void {
+	const descriptor = openSync(directory, "r");
+	try {
+		fsyncSync(descriptor);
+	} finally {
+		closeSync(descriptor);
+	}
+}
+
 function writeJsonAtomic(path: string, value: unknown): void {
 	ensureDirectoryDurable(dirname(path));
 	const temporary = `${path}.${process.pid}.${randomUUID()}`;
@@ -216,12 +226,7 @@ function writeJsonAtomic(path: string, value: unknown): void {
 		closeSync(descriptor);
 	}
 	renameSync(temporary, path);
-	const directory = openSync(dirname(path), "r");
-	try {
-		fsyncSync(directory);
-	} finally {
-		closeSync(directory);
-	}
+	fsyncDirectory(dirname(path));
 }
 
 interface DeliveryLedger {
@@ -230,8 +235,10 @@ interface DeliveryLedger {
 	readonly approval: SessionDeliveryApproval;
 	readonly context: {
 		readonly preHead?: string;
+		readonly preIndexTree?: string;
 		readonly expectedTree?: string;
 		readonly expectedMessage?: string;
+		readonly parentBranch?: string;
 		readonly pullRequestNumbers?: readonly number[];
 	};
 }
@@ -266,6 +273,7 @@ export function createSessionOrchestrator(
 			case "commit":
 				details.message = action.value.message;
 				details.gitHead = context.preHead ?? "";
+				details.gitIndexTree = context.preIndexTree ?? "";
 				details.gitTree = context.expectedTree ?? "";
 				break;
 			case "push":
@@ -276,6 +284,7 @@ export function createSessionOrchestrator(
 				details.title = action.value.title;
 				details.body = action.value.body;
 				details.draft = action.value.draft ?? false;
+				details.parentBranch = context.parentBranch ?? "";
 				break;
 			case "stackPullRequest":
 				details.parentBranch = action.value.parentBranch;
@@ -324,7 +333,8 @@ export function createSessionOrchestrator(
 				return current;
 			}
 			if (prior.status === "failed") {
-				ledger = prior;
+				ledger = { ...prior, status: "pending" };
+				writeJsonAtomic(path, ledger);
 			} else
 				throw new Error(
 					`${operation} has an unknown prior outcome; reconcile before retrying`,
@@ -380,8 +390,142 @@ export function createSessionOrchestrator(
 		}
 	}
 
-	async function setWorktreeIndex(cwd: string, commit: string): Promise<void> {
-		await run("git", ["read-tree", "--reset", commit], cwd);
+	function clearStaleHoboIndexLock(indexPath: string): void {
+		const lockPath = `${indexPath}.lock`;
+		if (!existsSync(lockPath)) return;
+		let marker: string;
+		try {
+			marker = readFileSync(lockPath, "utf8");
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+			throw error;
+		}
+		const staleOwner = /^hobo:(\d+)-([0-9a-f-]+)\n$/u.exec(marker);
+		if (!staleOwner || processAlive(Number(staleOwner[1])))
+			throw new Error("Git index is busy");
+		const ownerPath = `${lockPath}.hobo-${staleOwner[1]}-${staleOwner[2]}`;
+		const claimPrefix = `${basename(ownerPath)}.reclaim-`;
+		let claimSource = ownerPath;
+		if (!existsSync(claimSource)) {
+			const claims = readdirSync(dirname(ownerPath)).filter((entry) =>
+				entry.startsWith(claimPrefix),
+			);
+			if (claims.length !== 1) throw new Error("Git index is busy");
+			claimSource = join(dirname(ownerPath), claims[0] ?? "");
+			const claimant = /\.reclaim-(\d+)-/u.exec(claimSource);
+			if (!claimant || processAlive(Number(claimant[1])))
+				throw new Error("Git index is busy");
+		}
+		const claimPath = `${ownerPath}.reclaim-${process.pid}-${randomUUID()}`;
+		try {
+			renameSync(claimSource, claimPath);
+			fsyncDirectory(dirname(claimPath));
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ENOENT")
+				throw new Error("Git index is busy");
+			throw error;
+		}
+		let released = false;
+		try {
+			if (readFileSync(lockPath, "utf8") !== marker)
+				throw new Error("Git index is busy");
+			unlinkSync(lockPath);
+			fsyncDirectory(dirname(lockPath));
+			released = true;
+		} finally {
+			if (released) {
+				rmSync(claimPath, { force: true });
+				fsyncDirectory(dirname(claimPath));
+			}
+		}
+	}
+
+	async function setWorktreeIndex(
+		cwd: string,
+		commit: string,
+		context: DeliveryLedger["context"],
+		branch?: string,
+	): Promise<void> {
+		const preHead = context.preHead;
+		const preIndexTree = context.preIndexTree;
+		const expectedTree = context.expectedTree;
+		if (!preHead || !preIndexTree || !expectedTree)
+			throw new Error("approved commit is missing its Git identity");
+		const indexPath = await run(
+			"git",
+			["rev-parse", "--path-format=absolute", "--git-path", "index"],
+			cwd,
+		);
+		clearStaleHoboIndexLock(indexPath);
+		const replacement = `${indexPath}.hobo-${randomUUID()}`;
+		const inspection = `${indexPath}.hobo-${randomUUID()}`;
+		try {
+			await run("git", ["read-tree", commit], cwd, {
+				GIT_INDEX_FILE: replacement,
+			});
+			const lockPath = `${indexPath}.lock`;
+			const ownerId = `${process.pid}-${randomUUID()}`;
+			const owner = `hobo:${ownerId}\n`;
+			const ownerPath = `${lockPath}.hobo-${ownerId}`;
+			const ownerFile = openSync(ownerPath, "wx", 0o600);
+			try {
+				writeFileSync(ownerFile, owner);
+				fsyncSync(ownerFile);
+			} finally {
+				closeSync(ownerFile);
+			}
+			fsyncDirectory(dirname(ownerPath));
+			let locked = false;
+			try {
+				for (let attempt = 0; attempt < 2; attempt += 1) {
+					try {
+						linkSync(ownerPath, lockPath);
+						fsyncDirectory(dirname(lockPath));
+						locked = true;
+						break;
+					} catch (error) {
+						if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+						clearStaleHoboIndexLock(indexPath);
+					}
+				}
+				if (!locked) throw new Error("Git index is busy");
+				writeFileSync(inspection, readFileSync(indexPath), { mode: 0o600 });
+				const currentIndexTree = await run("git", ["write-tree"], cwd, {
+					GIT_INDEX_FILE: inspection,
+				});
+				if (
+					currentIndexTree !== preIndexTree &&
+					currentIndexTree !== expectedTree
+				)
+					throw new Error("Git index changed after delivery approval");
+				const head = await run("git", ["rev-parse", "HEAD"], cwd);
+				if (branch) {
+					if (head !== preHead)
+						throw new Error("Git HEAD changed after delivery approval");
+					await run(
+						"git",
+						["update-ref", `refs/heads/${branch}`, commit, preHead],
+						cwd,
+					);
+				} else if (head !== commit) {
+					throw new Error("approved commit is no longer checked out");
+				}
+				if (currentIndexTree !== expectedTree)
+					renameSync(replacement, indexPath);
+			} finally {
+				try {
+					if (readFileSync(lockPath, "utf8") === owner) {
+						unlinkSync(lockPath);
+						fsyncDirectory(dirname(lockPath));
+					}
+				} catch {}
+				rmSync(ownerPath, { force: true });
+				fsyncDirectory(dirname(ownerPath));
+			}
+		} finally {
+			rmSync(replacement, { force: true });
+			rmSync(inspection, { force: true });
+		}
 	}
 
 	async function deliveryContext(
@@ -390,16 +534,30 @@ export function createSessionOrchestrator(
 	): Promise<DeliveryLedger["context"]> {
 		const session = requiredSession(snapshot);
 		switch (command.command.case) {
-			case "commit":
+			case "commit": {
+				const indexPath = await run(
+					"git",
+					["rev-parse", "--path-format=absolute", "--git-path", "index"],
+					session.worktreePath,
+				);
+				clearStaleHoboIndexLock(indexPath);
+				const preHead = await run(
+					"git",
+					["rev-parse", "HEAD"],
+					session.worktreePath,
+				);
+				const preIndexTree = await run(
+					"git",
+					["write-tree"],
+					session.worktreePath,
+				);
 				return {
-					preHead: await run(
-						"git",
-						["rev-parse", "HEAD"],
-						session.worktreePath,
-					),
+					preHead,
+					preIndexTree,
 					expectedTree: await fullWorktreeTree(session.worktreePath),
 					expectedMessage: command.command.value.message,
 				};
+			}
 			case "push":
 				return {
 					preHead: await run(
@@ -408,11 +566,38 @@ export function createSessionOrchestrator(
 						session.worktreePath,
 					),
 				};
-			case "openPullRequest":
+			case "openPullRequest": {
+				const pullRequests = await pullRequestsForBranch(
+					session,
+					"number,title,body,isDraft,state,baseRefName",
+				);
+				if (pullRequests === "unknown")
+					throw new Error("cannot establish pre-effect pull request state");
+				const parentBranch = await run(
+					"gh",
+					[
+						"repo",
+						"view",
+						"--json",
+						"defaultBranchRef",
+						"--jq",
+						".defaultBranchRef.name",
+					],
+					session.worktreePath,
+				);
+				if (!parentBranch)
+					throw new Error("pull request base branch is unknown");
+				return {
+					parentBranch,
+					pullRequestNumbers: pullRequests.flatMap((item) =>
+						typeof item.number === "number" ? [item.number] : [],
+					),
+				};
+			}
 			case "stackPullRequest": {
 				const pullRequests = await pullRequestsForBranch(
 					session,
-					"number,title,body,isDraft,state",
+					"number,title,body,isDraft,state,baseRefName",
 				);
 				if (pullRequests === "unknown")
 					throw new Error("cannot establish pre-effect pull request state");
@@ -492,7 +677,7 @@ export function createSessionOrchestrator(
 		const fields =
 			command.command.case === "stackPullRequest"
 				? "number,url,state,title,body,baseRefName"
-				: "number,url,state,title,body,isDraft";
+				: "number,url,state,title,body,isDraft,baseRefName";
 		const listed = await pullRequestsForBranch(session, fields);
 		if (listed === "unknown") return "unknown";
 		const previous = new Set(ledger.context.pullRequestNumbers ?? []);
@@ -502,24 +687,47 @@ export function createSessionOrchestrator(
 		const newlyCreated = open.filter(
 			(item) => !previous.has(item.number as number),
 		);
-		if (newlyCreated.length === 1) return newlyCreated[0];
-		if (newlyCreated.length > 1) return "unknown";
-		if (open.length !== 1) return open.length === 0 ? undefined : "unknown";
 		if (command.command.case === "openPullRequest") {
+			if (newlyCreated.length > 1) return "unknown";
+			const candidate = newlyCreated[0];
+			if (!candidate) return undefined;
 			const value = command.command.value;
-			return open[0]?.title === value.title &&
-				open[0]?.body === value.body &&
-				open[0]?.isDraft === (value.draft ?? false)
-				? open[0]
+			return candidate.title === value.title &&
+				candidate.body === value.body &&
+				candidate.isDraft === (value.draft ?? false) &&
+				candidate.baseRefName === ledger.context.parentBranch
+				? candidate
 				: undefined;
 		}
 		if (command.command.case !== "stackPullRequest") return undefined;
+		const stackNumber = await stackPullRequestNumber(session);
+		const candidate = open.find((item) => item.number === stackNumber);
+		if (!candidate) return undefined;
 		const value = command.command.value;
-		return open[0]?.title === value.title &&
-			open[0]?.body === value.body &&
-			open[0]?.baseRefName === value.parentBranch
-			? open[0]
+		return candidate.title === value.title &&
+			candidate.body === value.body &&
+			candidate.baseRefName === value.parentBranch
+			? candidate
 			: undefined;
+	}
+
+	async function stackPullRequestNumber(
+		session: NonNullable<SessionSnapshot["session"]>,
+	): Promise<number> {
+		const output = await run(
+			"gh",
+			["stack", "view", "--json"],
+			session.worktreePath,
+		);
+		const parsed = JSON.parse(output) as {
+			branches?: Array<{ name?: string; pr?: { number?: number } }>;
+		};
+		const number = parsed.branches?.find(
+			(branch) => branch.name === session.branch,
+		)?.pr?.number;
+		if (typeof number !== "number")
+			throw new Error("gh stack submit did not identify its pull request");
+		return number;
 	}
 
 	async function deliveryOutcome(
@@ -545,7 +753,7 @@ export function createSessionOrchestrator(
 					),
 					runner.run(
 						"git",
-						["show", "-s", "--format=%s", head],
+						["show", "-s", "--format=%B", head],
 						session.worktreePath,
 					),
 				]);
@@ -553,7 +761,7 @@ export function createSessionOrchestrator(
 					return "unknown";
 				return parent.stdout.trim() === ledger.context.preHead &&
 					tree.stdout.trim() === ledger.context.expectedTree &&
-					message.stdout.trim() === ledger.context.expectedMessage
+					message.stdout.trim() === ledger.context.expectedMessage?.trim()
 					? "applied"
 					: "unknown";
 			}
@@ -589,30 +797,6 @@ export function createSessionOrchestrator(
 				);
 				if (pullRequest === "unknown") return "unknown";
 				if (typeof pullRequest?.url !== "string") return "not-applied";
-				const value = command.command.value;
-				if (
-					pullRequest.title !== value.title ||
-					pullRequest.body !== value.body ||
-					pullRequest.baseRefName !== value.parentBranch
-				) {
-					if (typeof pullRequest.number !== "number") return "unknown";
-					const repaired = await runner.run(
-						"gh",
-						[
-							"pr",
-							"edit",
-							String(pullRequest.number),
-							"--base",
-							value.parentBranch,
-							"--title",
-							value.title,
-							"--body",
-							value.body,
-						],
-						session.worktreePath,
-					);
-					if (repaired.code !== 0) return "unknown";
-				}
 				return "applied";
 			}
 			case "mergePullRequest": {
@@ -645,12 +829,10 @@ export function createSessionOrchestrator(
 		const session = requiredSession(snapshot);
 		switch (command.command.case) {
 			case "commit": {
-				const expectedTree = ledger.context.expectedTree;
-				if (!expectedTree)
-					throw new Error("approved commit is missing its Git tree");
 				await setWorktreeIndex(
 					session.worktreePath,
 					await run("git", ["rev-parse", "HEAD"], session.worktreePath),
+					ledger.context,
 				);
 				return refresh(snapshot);
 			}
@@ -1287,17 +1469,12 @@ export function createSessionOrchestrator(
 										],
 										session.worktreePath,
 									);
-									await run(
-										"git",
-										[
-											"update-ref",
-											`refs/heads/${session.branch}`,
-											commit,
-											preHead,
-										],
+									await setWorktreeIndex(
 										session.worktreePath,
+										commit,
+										ledger.context,
+										session.branch,
 									);
-									await setWorktreeIndex(session.worktreePath, commit);
 									return refresh(snapshot);
 								},
 							);
@@ -1341,7 +1518,11 @@ export function createSessionOrchestrator(
 								"open-pull-request",
 								command,
 								snapshot,
-								() => openPullRequest(snapshot, action.value),
+								(ledger) =>
+									openPullRequest(snapshot, {
+										...action.value,
+										parent: ledger.context.parentBranch,
+									}),
 							);
 						case "stackPullRequest":
 							return deliveryEffect(
@@ -1366,25 +1547,14 @@ export function createSessionOrchestrator(
 										["stack", "submit", "--auto", "--open"],
 										session.worktreePath,
 									);
-									const pullRequest = await pullRequestForDelivery(
-										command,
-										session,
-										ledger,
-									);
-									if (
-										pullRequest === "unknown" ||
-										typeof pullRequest?.number !== "number" ||
-										typeof pullRequest.url !== "string"
-									)
-										throw new Error(
-											"gh stack submit did not produce a unique pull request",
-										);
+									const pullRequestNumber =
+										await stackPullRequestNumber(session);
 									await run(
 										"gh",
 										[
 											"pr",
 											"edit",
-											String(pullRequest.number),
+											String(pullRequestNumber),
 											"--title",
 											action.value.title,
 											"--body",
@@ -1392,7 +1562,19 @@ export function createSessionOrchestrator(
 										],
 										session.worktreePath,
 									);
-									const pullRequestNumber = pullRequest.number;
+									const pullRequest = await pullRequestForDelivery(
+										command,
+										session,
+										ledger,
+									);
+									if (
+										pullRequest === "unknown" ||
+										pullRequest?.number !== pullRequestNumber ||
+										typeof pullRequest.url !== "string"
+									)
+										throw new Error(
+											"gh stack submit did not produce its approved pull request",
+										);
 									const pullRequestUrl = pullRequest.url;
 									return options.runtime.update(
 										command.sessionId,

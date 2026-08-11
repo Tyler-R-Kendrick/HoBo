@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
 	existsSync,
+	linkSync,
 	mkdtempSync,
 	readFileSync,
 	rmSync,
@@ -398,8 +399,17 @@ describe("session orchestrator", () => {
 		let pullRequestCreated = false;
 		const base = sessionProcessRunner();
 		const runner: SessionProcessRunner = {
-			async run(command, args, cwd) {
+			async run(command, args, cwd, env) {
 				calls.push({ command, args });
+				if (command === "gh" && args[0] === "stack" && args[1] === "view") {
+					return {
+						code: 0,
+						stdout: JSON.stringify({
+							branches: [{ name: "code/review", pr: { number: 42 } }],
+						}),
+						stderr: "",
+					};
+				}
 				if (command === "gh" && args[0] === "stack" && args[1] === "submit") {
 					pullRequestCreated = true;
 					return { code: 0, stdout: "", stderr: "" };
@@ -434,7 +444,7 @@ describe("session orchestrator", () => {
 					};
 				}
 				if (command === "gh") return { code: 0, stdout: "", stderr: "" };
-				return base.run(command, args, cwd);
+				return base.run(command, args, cwd, env);
 			},
 		};
 		const remote = temp("hobo-code-orchestrator-remote-");
@@ -574,7 +584,15 @@ describe("session orchestrator", () => {
 		const cwd = harness.created.session?.worktreePath ?? "";
 		writeFileSync(join(cwd, "retry.txt"), "retry\n");
 		let failCommit = true;
+		let retryLedgerStatus = "";
 		const retryApprovals: SessionDeliveryApproval[] = [];
+		const ledgerPath = join(
+			harness.dataDir,
+			"worktrees",
+			".commands",
+			createHash("sha256").update("session-1").digest("hex"),
+			`${createHash("sha256").update("retry-command").digest("hex")}.json`,
+		);
 		const base = sessionProcessRunner();
 		const runner: SessionProcessRunner = {
 			run(command, args, workdir, env) {
@@ -585,6 +603,11 @@ describe("session orchestrator", () => {
 						stdout: "",
 						stderr: "hook rejected before commit",
 					});
+				}
+				if (command === "git" && args[0] === "commit-tree") {
+					retryLedgerStatus = (
+						JSON.parse(readFileSync(ledgerPath, "utf8")) as { status: string }
+					).status;
 				}
 				return base.run(command, args, workdir, env);
 			},
@@ -614,6 +637,7 @@ describe("session orchestrator", () => {
 		);
 		expect(git(cwd, ["ls-files"])).toBe("retry.txt\nstaged.txt\nunstaged.txt");
 		expect(retried.gitState?.dirty).toBe(false);
+		expect(retryLedgerStatus).toBe("pending");
 		expect(retryApprovals).toHaveLength(1);
 		expect(git(cwd, ["log", "-1", "--pretty=%s"])).toBe("retry safely");
 		harness.runtime.close();
@@ -632,8 +656,21 @@ describe("session orchestrator", () => {
 					args[0] === "update-ref" &&
 					++commitAttempts === 1
 				) {
-					git(workdir, ["add", "-A"]);
-					git(workdir, ["commit", "-qm", "unrelated"]);
+					const head = git(workdir, ["rev-parse", "HEAD"]);
+					const unrelated = git(workdir, [
+						"commit-tree",
+						`${head}^{tree}`,
+						"-p",
+						head,
+						"-m",
+						"unrelated",
+					]);
+					git(workdir, [
+						"update-ref",
+						"refs/heads/code/review",
+						unrelated,
+						head,
+					]);
 					return { code: 1, stdout: "", stderr: "approved commit failed" };
 				}
 				return base.run(command, args, workdir, env);
@@ -691,6 +728,109 @@ describe("session orchestrator", () => {
 			}).status,
 		).not.toBe(0);
 		expect(committed.gitState?.untrackedPaths).toContain("after-approval.txt");
+		harness.runtime.close();
+	});
+
+	it("fails closed without discarding index changes made after approval", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		const approvedHead = git(cwd, ["rev-parse", "HEAD"]);
+		writeFileSync(join(cwd, "approved.txt"), "approved\n");
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			authorize() {
+				writeFileSync(join(cwd, "after-approval.txt"), "later\n");
+				git(cwd, ["add", "after-approval.txt"]);
+				return true;
+			},
+		});
+		await expect(
+			orchestrator.execute(
+				envelope("session-1", harness.created.revision ?? 0n, "commit", {
+					message: "approved tree",
+				}),
+			),
+		).rejects.toThrow("Git index changed after delivery approval");
+		expect(git(cwd, ["rev-parse", "HEAD"])).toBe(approvedHead);
+		expect(git(cwd, ["diff", "--cached", "--name-only"])).toBe(
+			"after-approval.txt",
+		);
+		harness.runtime.close();
+	});
+
+	it("recovers only HoBo-owned stale Git index locks", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		const indexLock = `${git(cwd, [
+			"rev-parse",
+			"--path-format=absolute",
+			"--git-path",
+			"index",
+		])}.lock`;
+		const staleOwner = "2147483647-00000000-0000-0000-0000-000000000000";
+		const staleMarker = `hobo:${staleOwner}\n`;
+		const staleOwnerPath = `${indexLock}.hobo-${staleOwner}`;
+		writeFileSync(staleOwnerPath, staleMarker);
+		linkSync(staleOwnerPath, indexLock);
+		writeFileSync(join(cwd, "approved.txt"), "approved\n");
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			authorize: () => true,
+		});
+		const committed = await orchestrator.execute(
+			envelope("session-1", harness.created.revision ?? 0n, "commit", {
+				message: "recover stale lock",
+			}),
+		);
+		expect(existsSync(indexLock)).toBe(false);
+		const head = git(cwd, ["rev-parse", "HEAD"]);
+		writeFileSync(indexLock, "external Git lock");
+		writeFileSync(join(cwd, "blocked.txt"), "blocked\n");
+		await expect(
+			orchestrator.execute(
+				envelope("session-1", committed.revision ?? 0n, "commit", {
+					message: "must remain blocked",
+				}),
+			),
+		).rejects.toThrow("Git index is busy");
+		expect(readFileSync(indexLock, "utf8")).toBe("external Git lock");
+		expect(git(cwd, ["rev-parse", "HEAD"])).toBe(head);
+		harness.runtime.close();
+	});
+
+	it("reconciles a committed multiline approval by its full message", async () => {
+		const harness = await createHarness();
+		const cwd = harness.created.session?.worktreePath ?? "";
+		writeFileSync(join(cwd, "approved.txt"), "approved\n");
+		let failRefresh = true;
+		const runtime = new Proxy(harness.runtime, {
+			get(target, property, receiver) {
+				if (property !== "update")
+					return Reflect.get(target, property, receiver);
+				return async (...args: Parameters<typeof target.update>) => {
+					if (failRefresh) {
+						failRefresh = false;
+						throw new Error("crash after commit publication");
+					}
+					return target.update(...args);
+				};
+			},
+		});
+		const committed = await createSessionOrchestrator({
+			runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			authorize: () => true,
+		}).execute(
+			envelope("session-1", harness.created.revision ?? 0n, "commit", {
+				message: "approved subject\n\napproved body",
+			}),
+		);
+		expect(committed.gitState?.dirty).toBe(false);
+		expect(git(cwd, ["show", "-s", "--format=%B", "HEAD"])).toBe(
+			"approved subject\n\napproved body",
+		);
 		harness.runtime.close();
 	});
 
@@ -788,6 +928,14 @@ describe("session orchestrator", () => {
 			run(command, args, cwd, env) {
 				if (command !== "gh") return base.run(command, args, cwd, env);
 				if (args[0] === "stack") {
+					if (args[1] === "view")
+						return Promise.resolve({
+							code: 0,
+							stdout: JSON.stringify({
+								branches: [{ name: "code/review", pr: { number: 42 } }],
+							}),
+							stderr: "",
+						});
 					if (args[1] === "submit") submitted = true;
 					return Promise.resolve({ code: 0, stdout: "", stderr: "" });
 				}
@@ -845,14 +993,16 @@ describe("session orchestrator", () => {
 			runner,
 			authorize: () => true,
 		});
-		const stacked = await orchestrator.execute(
-			envelope(
-				"session-1",
-				harness.created.revision ?? 0n,
-				"stackPullRequest",
-				{ parentBranch: "main", title: "approved", body: "approved body" },
-			),
+		const command = envelope(
+			"session-1",
+			harness.created.revision ?? 0n,
+			"stackPullRequest",
+			{ parentBranch: "main", title: "approved", body: "approved body" },
 		);
+		await expect(orchestrator.execute(command)).rejects.toThrow(
+			"connection lost after submit",
+		);
+		const stacked = await orchestrator.execute(command);
 		expect(edits).toBe(2);
 		expect(stacked.deliveryState?.stackParentBranch).toBe("main");
 		expect(stacked.deliveryState?.pullRequestNumber).toBe(42n);
@@ -860,31 +1010,96 @@ describe("session orchestrator", () => {
 		harness.runtime.close();
 	});
 
-	it("does not reconcile an unrelated pre-existing pull request", async () => {
+	it("does not reconcile an unrelated pull request created during delivery", async () => {
 		const harness = await createHarness();
 		let creates = 0;
+		let created = false;
+		let approval: SessionDeliveryApproval | undefined;
 		const runner: SessionProcessRunner = {
 			async run(command, args) {
+				if (command === "gh" && args[0] === "repo")
+					return { code: 0, stdout: "main\n", stderr: "" };
 				if (command === "gh" && args[0] === "pr" && args[1] === "list") {
 					return {
 						code: 0,
-						stdout: JSON.stringify([
-							{
-								number: 41,
-								url: "https://github.test/o/r/pull/41",
-								state: "OPEN",
-								title: "unrelated",
-								body: "unrelated",
-								isDraft: false,
-							},
-						]),
+						stdout: JSON.stringify(
+							created
+								? [
+										{
+											number: 41,
+											url: "https://github.test/o/r/pull/41",
+											state: "OPEN",
+											title: "approved",
+											body: "approved body",
+											isDraft: false,
+											baseRefName: "wrong-base",
+										},
+									]
+								: [],
+						),
 						stderr: "",
 					};
 				}
 				if (command === "gh" && args[0] === "pr" && args[1] === "create") {
 					creates += 1;
+					created = true;
 					return { code: 1, stdout: "", stderr: "create failed" };
 				}
+				return { code: 1, stdout: "", stderr: "unexpected command" };
+			},
+		};
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: (action) => {
+				approval = action;
+				return true;
+			},
+		});
+		await expect(
+			orchestrator.execute(
+				envelope(
+					"session-1",
+					harness.created.revision ?? 0n,
+					"openPullRequest",
+					{ title: "approved", body: "approved body", draft: false },
+				),
+			),
+		).rejects.toThrow("create failed");
+		expect(creates).toBe(1);
+		expect(approval?.details.parentBranch).toBe("main");
+		expect(
+			(await harness.runtime.load("session-1"))?.deliveryState
+				?.pullRequestNumber,
+		).toBeUndefined();
+		harness.runtime.close();
+	});
+
+	it("does not adopt an identical pull request that predates approval", async () => {
+		const harness = await createHarness();
+		const runner: SessionProcessRunner = {
+			async run(command, args) {
+				if (command === "gh" && args[0] === "repo")
+					return { code: 0, stdout: "main\n", stderr: "" };
+				if (command === "gh" && args[0] === "pr" && args[1] === "list")
+					return {
+						code: 0,
+						stdout: JSON.stringify([
+							{
+								number: 40,
+								url: "https://github.test/o/r/pull/40",
+								state: "OPEN",
+								title: "approved",
+								body: "approved body",
+								isDraft: false,
+								baseRefName: "main",
+							},
+						]),
+						stderr: "",
+					};
+				if (command === "gh" && args[0] === "pr" && args[1] === "create")
+					return { code: 1, stdout: "", stderr: "create failed" };
 				return { code: 1, stdout: "", stderr: "unexpected command" };
 			},
 		};
@@ -904,7 +1119,6 @@ describe("session orchestrator", () => {
 				),
 			),
 		).rejects.toThrow("create failed");
-		expect(creates).toBe(1);
 		expect(
 			(await harness.runtime.load("session-1"))?.deliveryState
 				?.pullRequestNumber,

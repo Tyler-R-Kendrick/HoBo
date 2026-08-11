@@ -100,6 +100,9 @@ describe("resident session loopback server", () => {
 			const html = await page.text();
 			expect(html).toContain("HoBo Code resident sessions");
 			expect(html).toContain("Full command boundary");
+			const script = /<script>([\s\S]+)<\/script>/u.exec(html)?.[1];
+			expect(script).toBeDefined();
+			expect(() => new Function(script ?? "")).not.toThrow();
 
 			const headers = {
 				authorization: "Bearer test-token",

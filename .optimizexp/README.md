@@ -141,6 +141,9 @@ A feature folder may carry a `KNOWN-DEFECTS.md` (see `features/cli-product/KNOWN
 
 `pnpm run optimizexp:check` ([`scripts/check-optimizexp.mts`](../scripts/check-optimizexp.mts)) hard-fails on (a) persona schema-v2 validation across the global and project-local persona trees, (b) the skill's feature-quality lint (template-only Gherkin ban, `@persona:`/`@interface:` tags) over every feature folder, and (c) `validate-bus` over the live bus (`.optimizexp/bus/entries/`). The 282 legacy entries that predated the scorecard-evidence contract were archived to [`bus-archive/`](bus-archive/README.md), which the validator does not scan, so the bus lane is now a hard gate. The lane auto-selects in `agent:check` when `.optimizexp/**`, the skill mirrors, or the gate script change.
 
+Current-head design-council validation hashes full binary Git diffs and supports
+reviewed evidence payloads up to 16 MiB.
+
 ## Evidence policy
 
 1. Prefer **video** for visual surfaces (web / native / rich TUI).

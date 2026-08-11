@@ -108,7 +108,7 @@ function readJson(file: string): unknown {
 export function inspectGitReviewSubject(root: string, baseSha: string, headSha: string, baseRef = "origin/main") {
 	const env = { ...process.env };
 	for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_PREFIX"]) delete env[key];
-	const git = (...args: string[]) => spawnSync("git", ["-C", root, ...args], { encoding: "utf8", env });
+	const git = (...args: string[]) => spawnSync("git", ["-C", root, ...args], { encoding: "utf8", env, maxBuffer: 16 * 1024 * 1024 });
 	const output = (...args: string[]) => {
 		const result = git(...args);
 		return result.status === 0 ? result.stdout.trim() : null;

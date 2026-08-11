@@ -139,46 +139,117 @@ function processAlive(pid: number): boolean {
 	}
 }
 
+function clearStaleHoboLock(path: string, busyMessage: string): void {
+	let marker: string;
+	try {
+		marker = readFileSync(path, "utf8");
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+		throw error;
+	}
+	const staleOwner = /^hobo:(\d+)-([0-9a-f-]+)\n$/u.exec(marker);
+	if (!staleOwner || processAlive(Number(staleOwner[1])))
+		throw new Error(busyMessage);
+	const ownerPath = `${path}.hobo-${staleOwner[1]}-${staleOwner[2]}`;
+	const claimPrefix = `${basename(ownerPath)}.reclaim-`;
+	let claimSource = ownerPath;
+	if (!existsSync(claimSource)) {
+		const claims = readdirSync(dirname(ownerPath)).filter((entry) =>
+			entry.startsWith(claimPrefix),
+		);
+		if (claims.length !== 1) throw new Error(busyMessage);
+		claimSource = join(dirname(ownerPath), claims[0] ?? "");
+		const claimant = /\.reclaim-(\d+)-/u.exec(claimSource);
+		if (!claimant || processAlive(Number(claimant[1])))
+			throw new Error(busyMessage);
+	}
+	const claimPath = `${ownerPath}.reclaim-${process.pid}-${randomUUID()}`;
+	try {
+		renameSync(claimSource, claimPath);
+		fsyncDirectory(dirname(claimPath));
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT")
+			throw new Error(busyMessage);
+		throw error;
+	}
+	let released = false;
+	try {
+		if (readFileSync(path, "utf8") !== marker) throw new Error(busyMessage);
+		unlinkSync(path);
+		fsyncDirectory(dirname(path));
+		released = true;
+	} finally {
+		if (released) {
+			rmSync(claimPath, { force: true });
+			fsyncDirectory(dirname(claimPath));
+		}
+	}
+}
+
 async function fileLocked<T>(path: string, work: () => Promise<T>): Promise<T> {
 	mkdirSync(dirname(path), { recursive: true });
-	const owner = `${path}.${process.pid}.${randomUUID()}`;
-	writeFileSync(owner, String(process.pid), { flag: "wx", mode: 0o600 });
+	const ownerId = `${process.pid}-${randomUUID()}`;
+	const marker = `hobo:${ownerId}\n`;
+	const ownerPath = `${path}.hobo-${ownerId}`;
+	const ownerFile = openSync(ownerPath, "wx", 0o600);
+	try {
+		writeFileSync(ownerFile, marker);
+		fsyncSync(ownerFile);
+	} finally {
+		closeSync(ownerFile);
+	}
+	fsyncDirectory(dirname(ownerPath));
 	let acquired = false;
+	let outcome:
+		| { readonly ok: true; readonly value: T }
+		| {
+				readonly ok: false;
+				readonly error: unknown;
+		  };
 	try {
 		for (let attempt = 0; attempt < 2; attempt += 1) {
 			try {
-				linkSync(owner, path);
+				linkSync(ownerPath, path);
+				fsyncDirectory(dirname(path));
 				acquired = true;
 				break;
 			} catch (error) {
 				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-				let pid = 0;
-				try {
-					pid = Number.parseInt(readFileSync(path, "utf8"), 10);
-				} catch (readError) {
-					if ((readError as NodeJS.ErrnoException).code === "ENOENT") continue;
-					throw readError;
-				}
-				if (Number.isSafeInteger(pid) && processAlive(pid)) {
-					throw new Error(`operation is busy: ${path}`);
-				}
-				try {
-					unlinkSync(path);
-				} catch (unlinkError) {
-					if ((unlinkError as NodeJS.ErrnoException).code !== "ENOENT")
-						throw unlinkError;
-				}
+				clearStaleHoboLock(path, `operation is busy: ${path}`);
 			}
 		}
-	} finally {
-		unlinkSync(owner);
+		if (!acquired) throw new Error(`could not acquire operation lock: ${path}`);
+		outcome = { ok: true, value: await work() };
+	} catch (error) {
+		outcome = { ok: false, error };
 	}
-	if (!acquired) throw new Error(`could not acquire operation lock: ${path}`);
+	let cleanupError: unknown;
 	try {
-		return await work();
-	} finally {
-		unlinkSync(path);
+		if (acquired) {
+			try {
+				if (readFileSync(path, "utf8") === marker) {
+					unlinkSync(path);
+					fsyncDirectory(dirname(path));
+				}
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+			}
+		}
+		rmSync(ownerPath, { force: true });
+		fsyncDirectory(dirname(ownerPath));
+	} catch (error) {
+		cleanupError = error;
 	}
+	if (!outcome.ok) {
+		if (cleanupError)
+			throw new AggregateError(
+				[outcome.error, cleanupError],
+				`operation failed and its lock could not be released: ${path}`,
+			);
+		throw outcome.error;
+	}
+	if (cleanupError) throw cleanupError;
+	return outcome.value;
 }
 
 function ensureDirectoryDurable(directory: string): void {
@@ -240,6 +311,8 @@ interface DeliveryLedger {
 		readonly expectedMessage?: string;
 		readonly parentBranch?: string;
 		readonly pullRequestNumbers?: readonly number[];
+		readonly pullRequestHeadSha?: string;
+		readonly pullRequestUrl?: string;
 	};
 }
 
@@ -293,6 +366,8 @@ export function createSessionOrchestrator(
 				break;
 			case "mergePullRequest":
 				details.pullRequestNumber = String(action.value.pullRequestNumber);
+				details.pullRequestHeadSha = context.pullRequestHeadSha ?? "";
+				details.pullRequestUrl = context.pullRequestUrl ?? "";
 				break;
 			default:
 				throw new Error(`${operation} is not a delivery command`);
@@ -391,53 +466,7 @@ export function createSessionOrchestrator(
 	}
 
 	function clearStaleHoboIndexLock(indexPath: string): void {
-		const lockPath = `${indexPath}.lock`;
-		if (!existsSync(lockPath)) return;
-		let marker: string;
-		try {
-			marker = readFileSync(lockPath, "utf8");
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-			throw error;
-		}
-		const staleOwner = /^hobo:(\d+)-([0-9a-f-]+)\n$/u.exec(marker);
-		if (!staleOwner || processAlive(Number(staleOwner[1])))
-			throw new Error("Git index is busy");
-		const ownerPath = `${lockPath}.hobo-${staleOwner[1]}-${staleOwner[2]}`;
-		const claimPrefix = `${basename(ownerPath)}.reclaim-`;
-		let claimSource = ownerPath;
-		if (!existsSync(claimSource)) {
-			const claims = readdirSync(dirname(ownerPath)).filter((entry) =>
-				entry.startsWith(claimPrefix),
-			);
-			if (claims.length !== 1) throw new Error("Git index is busy");
-			claimSource = join(dirname(ownerPath), claims[0] ?? "");
-			const claimant = /\.reclaim-(\d+)-/u.exec(claimSource);
-			if (!claimant || processAlive(Number(claimant[1])))
-				throw new Error("Git index is busy");
-		}
-		const claimPath = `${ownerPath}.reclaim-${process.pid}-${randomUUID()}`;
-		try {
-			renameSync(claimSource, claimPath);
-			fsyncDirectory(dirname(claimPath));
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === "ENOENT")
-				throw new Error("Git index is busy");
-			throw error;
-		}
-		let released = false;
-		try {
-			if (readFileSync(lockPath, "utf8") !== marker)
-				throw new Error("Git index is busy");
-			unlinkSync(lockPath);
-			fsyncDirectory(dirname(lockPath));
-			released = true;
-		} finally {
-			if (released) {
-				rmSync(claimPath, { force: true });
-				fsyncDirectory(dirname(claimPath));
-			}
-		}
+		clearStaleHoboLock(`${indexPath}.lock`, "Git index is busy");
 	}
 
 	async function setWorktreeIndex(
@@ -607,9 +636,57 @@ export function createSessionOrchestrator(
 					),
 				};
 			}
+			case "mergePullRequest": {
+				const identity = await pullRequestIdentity(
+					session,
+					command.command.value.pullRequestNumber,
+				);
+				return {
+					pullRequestHeadSha: identity.headRefOid,
+					pullRequestUrl: identity.url,
+				};
+			}
 			default:
 				return {};
 		}
+	}
+
+	async function pullRequestIdentity(
+		session: NonNullable<SessionSnapshot["session"]>,
+		pullRequestNumber: bigint,
+	): Promise<{ readonly headRefOid: string; readonly url: string }> {
+		const raw = await run(
+			"gh",
+			["pr", "view", String(pullRequestNumber), "--json", "headRefOid,url"],
+			session.worktreePath,
+		);
+		const identity = JSON.parse(raw) as {
+			readonly headRefOid?: unknown;
+			readonly url?: unknown;
+		};
+		if (
+			typeof identity.headRefOid !== "string" ||
+			!/^[0-9a-f]{40}$/u.test(identity.headRefOid) ||
+			typeof identity.url !== "string" ||
+			identity.url.length === 0
+		)
+			throw new Error("pull request identity is incomplete");
+		return { headRefOid: identity.headRefOid, url: identity.url };
+	}
+
+	async function assertApprovedPullRequestIdentity(
+		session: NonNullable<SessionSnapshot["session"]>,
+		pullRequestNumber: bigint,
+		context: DeliveryLedger["context"],
+	): Promise<void> {
+		if (!context.pullRequestHeadSha || !context.pullRequestUrl)
+			throw new Error("approved merge is missing its pull request identity");
+		const current = await pullRequestIdentity(session, pullRequestNumber);
+		if (
+			current.headRefOid !== context.pullRequestHeadSha ||
+			current.url !== context.pullRequestUrl
+		)
+			throw new Error("pull request changed after merge approval");
 	}
 
 	function deliveryFingerprint(command: SessionCommandEnvelope): string {
@@ -1598,17 +1675,24 @@ export function createSessionOrchestrator(
 								"merge-pull-request",
 								command,
 								snapshot,
-								async () => {
+								async (ledger) => {
+									const session = requiredSession(snapshot);
+									await assertApprovedPullRequestIdentity(
+										session,
+										action.value.pullRequestNumber,
+										ledger.context,
+									);
 									await run(
 										"gh",
 										[
-											"stack",
+											"pr",
 											"merge",
 											String(action.value.pullRequestNumber),
-											"--yes",
 											"--squash",
+											"--match-head-commit",
+											ledger.context.pullRequestHeadSha ?? "",
 										],
-										requiredSession(snapshot).worktreePath,
+										session.worktreePath,
 									);
 									const merged = await options.runtime.update(
 										command.sessionId,

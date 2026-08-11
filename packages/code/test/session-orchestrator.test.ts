@@ -3,8 +3,10 @@ import { createHash } from "node:crypto";
 import {
 	existsSync,
 	linkSync,
+	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	renameSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -437,9 +439,14 @@ describe("session orchestrator", () => {
 				if (command === "gh" && args[0] === "pr" && args[1] === "view") {
 					return {
 						code: 0,
-						stdout: args.includes("state")
-							? JSON.stringify({ state: "MERGED" })
-							: "https://github.test/o/r/pull/42\n",
+						stdout: args.includes("headRefOid,url")
+							? JSON.stringify({
+									headRefOid: "a".repeat(40),
+									url: "https://github.test/o/r/pull/42",
+								})
+							: args.includes("state")
+								? JSON.stringify({ state: "MERGED" })
+								: "https://github.test/o/r/pull/42\n",
 						stderr: "",
 					};
 				}
@@ -512,12 +519,16 @@ describe("session orchestrator", () => {
 		).toBe(true);
 		expect(
 			calls.some((call) =>
-				call.args.join(" ").includes("stack merge 42 --yes --squash"),
+				call.args
+					.join(" ")
+					.includes(
+						`pr merge 42 --squash --match-head-commit ${"a".repeat(40)}`,
+					),
 			),
 		).toBe(true);
 		expect(
 			calls.filter((call) =>
-				call.args.join(" ").includes("stack merge 42 --yes --squash"),
+				call.args.join(" ").includes("pr merge 42 --squash"),
 			),
 		).toHaveLength(1);
 		expect(approvals.at(-1)).toMatchObject({
@@ -534,7 +545,17 @@ describe("session orchestrator", () => {
 		let merges = 0;
 		const runner: SessionProcessRunner = {
 			async run(command, args, cwd) {
-				if (command === "gh" && args[0] === "stack") {
+				if (command === "gh" && args.includes("headRefOid,url")) {
+					return {
+						code: 0,
+						stdout: JSON.stringify({
+							headRefOid: "a".repeat(40),
+							url: "https://github.test/o/r/pull/42",
+						}),
+						stderr: "",
+					};
+				}
+				if (command === "gh" && args[0] === "pr" && args[1] === "merge") {
 					merges += 1;
 					return { code: 0, stdout: "", stderr: "" };
 				}
@@ -576,6 +597,62 @@ describe("session orchestrator", () => {
 			commandId: "shared-command-id",
 		});
 		expect(merges).toBe(2);
+		harness.runtime.close();
+	});
+
+	it("refuses to merge a pull request whose head changed after approval", async () => {
+		const harness = await createHarness();
+		let head = "a".repeat(40);
+		let merges = 0;
+		let approval: SessionDeliveryApproval | undefined;
+		const runner: SessionProcessRunner = {
+			async run(command, args) {
+				if (command === "gh" && args.includes("headRefOid,url")) {
+					return {
+						code: 0,
+						stdout: JSON.stringify({
+							headRefOid: head,
+							url: "https://github.test/o/r/pull/42",
+						}),
+						stderr: "",
+					};
+				}
+				if (command === "gh" && args[0] === "pr" && args[1] === "merge") {
+					merges += 1;
+					return { code: 0, stdout: "", stderr: "" };
+				}
+				return {
+					code: 0,
+					stdout: JSON.stringify({ state: "OPEN" }),
+					stderr: "",
+				};
+			},
+		};
+		const orchestrator = createSessionOrchestrator({
+			runtime: harness.runtime,
+			worktreesDir: join(harness.dataDir, "worktrees"),
+			runner,
+			authorize: (candidate) => {
+				approval = candidate;
+				head = "b".repeat(40);
+				return true;
+			},
+		});
+		await expect(
+			orchestrator.execute(
+				envelope(
+					"session-1",
+					harness.created.revision ?? 0n,
+					"mergePullRequest",
+					{ pullRequestNumber: "42" },
+				),
+			),
+		).rejects.toThrow("pull request changed after merge approval");
+		expect(merges).toBe(0);
+		expect(approval?.details).toMatchObject({
+			pullRequestHeadSha: "a".repeat(40),
+			pullRequestUrl: "https://github.test/o/r/pull/42",
+		});
 		harness.runtime.close();
 	});
 
@@ -797,6 +874,46 @@ describe("session orchestrator", () => {
 		).rejects.toThrow("Git index is busy");
 		expect(readFileSync(indexLock, "utf8")).toBe("external Git lock");
 		expect(git(cwd, ["rev-parse", "HEAD"])).toBe(head);
+		harness.runtime.close();
+	});
+
+	it("does not remove claimed or unknown operation locks", async () => {
+		const harness = await createHarness();
+		const lockPath = join(
+			harness.dataDir,
+			"worktrees",
+			".operation-locks",
+			`${createHash("sha256").update("session-1").digest("hex")}.lock`,
+		);
+		mkdirSync(join(lockPath, ".."), { recursive: true });
+		const staleOwner = "2147483647-00000000-0000-0000-0000-000000000000";
+		const marker = `hobo:${staleOwner}\n`;
+		const ownerPath = `${lockPath}.hobo-${staleOwner}`;
+		const claimPath = `${ownerPath}.reclaim-${process.pid}-00000000-0000-0000-0000-000000000001`;
+		writeFileSync(ownerPath, marker);
+		linkSync(ownerPath, lockPath);
+		renameSync(ownerPath, claimPath);
+
+		await expect(
+			harness.orchestrator.execute(
+				envelope("session-1", harness.created.revision ?? 0n, "focusPane", {
+					paneId: harness.created.focusedPaneId,
+				}),
+			),
+		).rejects.toThrow("operation is busy");
+		expect(readFileSync(lockPath, "utf8")).toBe(marker);
+		expect(readFileSync(claimPath, "utf8")).toBe(marker);
+		rmSync(lockPath);
+		rmSync(claimPath);
+		writeFileSync(lockPath, "external lock");
+		await expect(
+			harness.orchestrator.execute(
+				envelope("session-1", harness.created.revision ?? 0n, "focusPane", {
+					paneId: harness.created.focusedPaneId,
+				}),
+			),
+		).rejects.toThrow("operation is busy");
+		expect(readFileSync(lockPath, "utf8")).toBe("external lock");
 		harness.runtime.close();
 	});
 
@@ -1144,7 +1261,17 @@ describe("session orchestrator", () => {
 		});
 		const runner: SessionProcessRunner = {
 			async run(command, args) {
-				if (command === "gh" && args[0] === "stack") {
+				if (command === "gh" && args.includes("headRefOid,url")) {
+					return {
+						code: 0,
+						stdout: JSON.stringify({
+							headRefOid: "a".repeat(40),
+							url: "https://github.test/o/r/pull/42",
+						}),
+						stderr: "",
+					};
+				}
+				if (command === "gh" && args[0] === "pr" && args[1] === "merge") {
 					return { code: 1, stdout: "", stderr: "connection lost after merge" };
 				}
 				return {
@@ -1186,7 +1313,17 @@ describe("session orchestrator", () => {
 		);
 		const runner: SessionProcessRunner = {
 			async run(command, args) {
-				if (command === "gh" && args[0] === "stack") {
+				if (command === "gh" && args.includes("headRefOid,url")) {
+					return {
+						code: 0,
+						stdout: JSON.stringify({
+							headRefOid: "a".repeat(40),
+							url: "https://github.test/o/r/pull/42",
+						}),
+						stderr: "",
+					};
+				}
+				if (command === "gh" && args[0] === "pr" && args[1] === "merge") {
 					return {
 						code: 1,
 						stdout: "",

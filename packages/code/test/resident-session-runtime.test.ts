@@ -4,8 +4,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRuntimeLocalEventStore } from "@hobo/runtime-local";
 import { create } from "@bufbuild/protobuf";
+import { createRuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -112,12 +112,119 @@ function fakeTmux(): MuxRunner & { calls: string[][] } {
 	};
 }
 
+function geometryTmux(): MuxRunner {
+	let pane = 0;
+	let exists = false;
+	const commands = new Map<string, string>();
+	return {
+		async run(args) {
+			if (args[0] === "has-session") {
+				return {
+					code: exists ? 0 : 1,
+					stdout: "",
+					stderr: "can't find session",
+				};
+			}
+			if (["new-session", "split-window"].includes(args[0] ?? "")) {
+				exists = true;
+				pane += 1;
+				commands.set(`%${pane}`, args.at(-1) ?? "");
+				return { code: 0, stdout: `%${pane}\n` };
+			}
+			if (args[0] === "list-panes") {
+				const count = commands.size;
+				return {
+					code: 0,
+					stdout: [...commands]
+						.map(([id, command], index) => {
+							const nested = count > 2 && index > 0;
+							const lower = nested && index === 2;
+							return [
+								id,
+								index === count - 1 ? "1" : "0",
+								"1",
+								index === 0 ? "0" : "60",
+								lower ? "12" : "0",
+								"60",
+								nested ? (lower ? "28" : "12") : "40",
+								"120",
+								"40",
+								command,
+								"",
+								"",
+							].join("\t");
+						})
+						.join("\n"),
+				};
+			}
+			return { code: 0, stdout: "" };
+		},
+	};
+}
+
 function realTmux(server: string): MuxRunner {
 	tmuxServers.push(server);
 	return tmuxRunner(["-L", server]);
 }
 
 describe("resident session runtime", () => {
+	it("projects tmux cell geometry into the durable pane snapshot", async () => {
+		const runtime = createResidentSessionRuntime({
+			dataDir: tempRoot(),
+			tmux: geometryTmux(),
+		});
+		const created = await runtime.create({
+			id: "task-layout",
+			name: "layout",
+			projectRoot: "/repo",
+			worktreePath: "/worktree",
+			branch: "code/layout",
+			clientId: "browser",
+		});
+		const horizontal = await runtime.splitPane(
+			"task-layout",
+			created.revision,
+			created.focusedPaneId,
+			"horizontal",
+			"agent",
+		);
+		await runtime.splitPane(
+			"task-layout",
+			horizontal.revision,
+			horizontal.focusedPaneId,
+			"vertical",
+			"logs",
+		);
+		const loaded = await runtime.load("task-layout");
+		expect(loaded?.panes).toMatchObject([
+			{
+				leftColumn: 0,
+				topRow: 0,
+				width: 60,
+				height: 40,
+				windowWidth: 120,
+				windowHeight: 40,
+			},
+			{
+				leftColumn: 60,
+				topRow: 0,
+				width: 60,
+				height: 12,
+				windowWidth: 120,
+				windowHeight: 40,
+			},
+			{
+				leftColumn: 60,
+				topRow: 12,
+				width: 60,
+				height: 28,
+				windowWidth: 120,
+				windowHeight: 40,
+			},
+		]);
+		runtime.close();
+	});
+
 	it("keeps one tmux session durable across runtime restarts", async () => {
 		const dataDir = tempRoot();
 		const tmux = fakeTmux();

@@ -78,6 +78,12 @@ message Pane {
   string runtime_id = 6;
   string working_directory = 7;
   optional string agent_run_id = 8;
+  uint32 left_column = 9;
+  uint32 top_row = 10;
+  uint32 width = 11;
+  uint32 height = 12;
+  uint32 window_width = 13;
+  uint32 window_height = 14;
 }
 
 message AgentRun {

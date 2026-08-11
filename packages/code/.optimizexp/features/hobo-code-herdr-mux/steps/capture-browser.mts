@@ -8,6 +8,8 @@ import { createWorld } from "./world.ts";
 const output = process.env.OUT_DIR;
 if (!output) throw new Error("OUT_DIR is required");
 mkdirSync(output, { recursive: true });
+const frames = path.join(output, "frames");
+mkdirSync(frames, { recursive: true });
 
 const require = createRequire(path.join(process.cwd(), "package.json"));
 const { chromium } = require("playwright") as typeof import("playwright");
@@ -54,11 +56,34 @@ try {
 		throw new Error(
 			`new pane failed: ${await page.locator("#result").textContent()}`,
 		);
+	dialogs.push("Monitor", "");
+	await page.locator('[data-action="create-pane"]').last().click();
+	await pause();
 
 	await page.locator('[data-action="focus-pane"]').first().click();
 	dialogs.push("continue the release review");
 	await page.locator('[data-action="prompt-pane"]').first().click();
 	await pause();
+	if ((await page.locator("#result").textContent()) !== "sendInput completed")
+		throw new Error("prompt delivery did not report a visible outcome");
+	await page.screenshot({
+		path: path.join(output, "browser-control-full.png"),
+		fullPage: true,
+	});
+	await page.locator(".pane-grid").scrollIntoViewIfNeeded();
+	await page.screenshot({ path: path.join(output, "pane-layout-desktop.png") });
+	await page.screenshot({ path: path.join(frames, "frame-panes.png") });
+	await page.setViewportSize({ width: 600, height: 720 });
+	const narrowPanes = await page
+		.locator(".pane-tile")
+		.evaluateAll((tiles) =>
+			tiles.map((tile) => tile.getBoundingClientRect().width),
+		);
+	if (narrowPanes.some((width) => width < 500))
+		throw new Error(`narrow panes did not stack: ${narrowPanes.join(", ")}`);
+	await page.screenshot({ path: path.join(output, "pane-layout-narrow.png") });
+	await page.screenshot({ path: path.join(frames, "frame-narrow.png") });
+	await page.setViewportSize({ width: 1280, height: 720 });
 
 	dialogs.push("before delivery");
 	await page.click('[data-action="create-checkpoint"]');
@@ -96,13 +121,13 @@ try {
 			`delivery approval did not show the server-bound effect: ${JSON.stringify(confirmations)}; ${await page.locator("#result").textContent()}`,
 		);
 	await page.locator("#result").scrollIntoViewIfNeeded();
-	await page.screenshot({ path: path.join(output, "frame-approval.png") });
+	await page.screenshot({ path: path.join(frames, "frame-approval.png") });
 
 	await page.click('[data-action="detach"]');
 	await page
 		.locator(".session .muted", { hasText: "This browser is detached" })
 		.waitFor();
-	await page.screenshot({ path: path.join(output, "frame-000.png") });
+	await page.screenshot({ path: path.join(frames, "frame-000.png") });
 	await page.waitForTimeout(1_200);
 	await page.click('[data-action="reattach"]');
 	await page.waitForSelector('[data-action="stop-session"]');
@@ -112,7 +137,7 @@ try {
 	await page
 		.locator(".session .muted", { hasText: "Session is stopped" })
 		.waitFor();
-	await page.screenshot({ path: path.join(output, "frame-stopped.png") });
+	await page.screenshot({ path: path.join(frames, "frame-stopped.png") });
 } finally {
 	await context.close();
 	await browser.close();

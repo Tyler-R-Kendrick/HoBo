@@ -1,12 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import {
-	existsSync,
-	mkdtempSync,
-	rmSync,
-	symlinkSync,
-	writeFileSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -65,35 +59,6 @@ export function runCurrentCli(
 	});
 }
 
-export function runBaseSessionHelp(world: OptimizexpWorld): void {
-	const checkout = temporary(world, "oxp-hobo-code-base-");
-	const archive = spawnSync(
-		"git",
-		["archive", "--format=tar", "origin/main", "packages/code"],
-		{ cwd: ROOT, maxBuffer: 32 * 1024 * 1024 },
-	);
-	if (archive.status !== 0 || !archive.stdout) {
-		throw new Error(`could not read reviewed base: ${archive.stderr}`);
-	}
-	const extracted = run("tar", ["-xf", "-", "-C", checkout], {
-		input: archive.stdout,
-	});
-	requireSuccess(extracted, "extract reviewed base");
-	symlinkSync(
-		path.join(ROOT, "node_modules"),
-		path.join(checkout, "node_modules"),
-	);
-	symlinkSync(
-		path.join(PACKAGE, "node_modules"),
-		path.join(checkout, "packages/code/node_modules"),
-	);
-	const home = temporary(world, "oxp-hobo-code-base-home-");
-	world.command = run("node", ["--import", "tsx", BIN, "session", "--help"], {
-		cwd: path.join(checkout, "packages/code"),
-		env: { ...process.env, HOBO_HOME: home },
-	});
-}
-
 export function assertCurrentSessionHelp(world: OptimizexpWorld): void {
 	const result = world.command;
 	if (!result) throw new Error("session help was not run");
@@ -119,20 +84,6 @@ export function assertDetachHelp(world: OptimizexpWorld): void {
 		!/detach\/reattach/.test(output)
 	)
 		throw new Error("session help does not explain detach and reattach");
-}
-
-export function assertBaseSessionHelp(world: OptimizexpWorld): void {
-	const result = world.command;
-	if (!result) throw new Error("base session help was not run");
-	requireSuccess(result, "base session help");
-	if (!result.stdout.includes("isolation session + durable handback"))
-		throw new Error("base help does not show the one-shot handback surface");
-	if (
-		/create <name>|agent-start|checkpoint <sessionId>|session serve/.test(
-			result.stdout,
-		)
-	)
-		throw new Error("base help unexpectedly exposes resident controls");
 }
 
 export function assertActionableMissingSession(world: OptimizexpWorld): void {
@@ -165,6 +116,8 @@ function repository(world: OptimizexpWorld): string {
 function fakeTmux(commands: string[]): MuxRunner {
 	let pane = 0;
 	let exists = false;
+	let activePane = "";
+	const paneCommands = new Map<string, string>();
 	return {
 		async run(args) {
 			commands.push(args.join(" "));
@@ -174,8 +127,48 @@ function fakeTmux(commands: string[]): MuxRunner {
 				["new-session", "new-window", "split-window"].includes(args[0] ?? "")
 			) {
 				exists = true;
-				return { code: 0, stdout: `%${++pane}\n` };
+				const id = `%${++pane}`;
+				activePane = id;
+				paneCommands.set(id, args.at(-1) ?? "");
+				return { code: 0, stdout: `${id}\n` };
 			}
+			if (args[0] === "select-pane") {
+				activePane = args[args.indexOf("-t") + 1] ?? activePane;
+				return { code: 0, stdout: "" };
+			}
+			if (args[0] === "list-panes")
+				return {
+					code: 0,
+					stdout: [...paneCommands]
+						.map(([id, command], index) => {
+							const nested = paneCommands.size > 3;
+							const left = nested && index > 1 ? "90" : "0";
+							const top = nested && index === 3 ? "20" : "0";
+							const width = nested
+								? index === 0
+									? "120"
+									: index === 1
+										? "90"
+										: "30"
+								: "120";
+							const height = nested && index > 1 ? "20" : "40";
+							return [
+								id,
+								id === activePane ? "1" : "0",
+								"1",
+								left,
+								top,
+								width,
+								height,
+								"120",
+								"40",
+								command,
+								"",
+								"",
+							].join("\t");
+						})
+						.join("\n"),
+				};
 			if (args[0] === "capture-pane")
 				return { code: 0, stdout: "browser journey output\n" };
 			if (args[0] === "kill-session") exists = false;

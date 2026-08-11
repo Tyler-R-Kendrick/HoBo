@@ -121,6 +121,10 @@ describe("resident session loopback server", () => {
 				expect(html).toContain(`'${action}'`);
 			}
 			expect(html).toContain("b.dataset.action=action");
+			expect(html).toContain("sessionStorage.hoboCodeClientId");
+			expect(html).toContain("p.id===s.focusedPaneId?' · focused':'");
+			expect(html).toContain("Running panes and agents will terminate.");
+			expect(html).toContain("'pull request #'+pullRequestNumber+' at '+head");
 			expect(html).toContain(
 				"if(card.contains(document.activeElement)&&s.session.id!==forceId)continue",
 			);

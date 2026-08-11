@@ -89,6 +89,23 @@ function summary(snapshot: SessionSnapshot): string {
 	return `${session.id} · ${session.branch} · ${snapshot.tabs.length} tab(s) · ${snapshot.panes.length} pane(s) · ${agents} agent(s) · r${snapshot.revision ?? 0n}`;
 }
 
+function details(snapshot: SessionSnapshot): string {
+	return [
+		summary(snapshot),
+		`focus · tab ${snapshot.focusedTabId} · pane ${snapshot.focusedPaneId}`,
+		...snapshot.tabs.map((tab) => `tab · ${tab.id} · ${tab.title}`),
+		...snapshot.panes.map(
+			(pane) => `pane · ${pane.id} · tab ${pane.tabId} · ${pane.title}`,
+		),
+		...snapshot.agentRuns.map(
+			(run) => `agent · ${run.id} · pane ${run.paneId} · ${run.provider}`,
+		),
+		...snapshot.checkpoints.map(
+			(checkpoint) => `checkpoint · ${checkpoint.id} · ${checkpoint.label}`,
+		),
+	].join("\n");
+}
+
 async function commandFor(
 	hoboHome: string,
 	actorId: string,
@@ -127,7 +144,7 @@ export async function runResidentSessionCli(input: {
 }): Promise<ResidentSessionCliResult | undefined> {
 	const [operation, ...args] = input.args;
 	if (!operation) return undefined;
-	const actorId = input.actorId ?? `cli-${process.pid}`;
+	const actorId = input.actorId ?? `cli-${process.ppid}`;
 	if (operation === "serve") {
 		if (input.remoteServe) {
 			return {
@@ -184,7 +201,7 @@ export async function runResidentSessionCli(input: {
 				}),
 			);
 			return {
-				message: `created ${summary(snapshot)}`,
+				message: `created ${details(snapshot)}`,
 				data: { snapshot: sessionSnapshotJson(snapshot) },
 			};
 		} finally {
@@ -211,7 +228,7 @@ export async function runResidentSessionCli(input: {
 				if (!snapshot) throw new Error(`session ${sessionId} disappeared`);
 			}
 			return {
-				message: summary(snapshot),
+				message: details(snapshot),
 				data: { snapshot: sessionSnapshotJson(snapshot) },
 			};
 		} finally {

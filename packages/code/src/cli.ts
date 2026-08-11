@@ -610,6 +610,7 @@ const VERB_HELP_PLAIN: Record<
 		"  hobo-code session list | create <name> [branch]",
 		"  hobo-code session show | attach | switch | detach <sessionId>",
 		"  hobo-code session tab <sessionId> <title>",
+		"  hobo-code session pane <sessionId> <tabId> <title> [command…]",
 		"  hobo-code session split <sessionId> <paneId> <horizontal|vertical> <title> [command…]",
 		"  hobo-code session focus | close-pane <sessionId> <paneId>",
 		"  hobo-code session prompt <sessionId> <paneId> <text…>",

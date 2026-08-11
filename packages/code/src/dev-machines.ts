@@ -10,8 +10,8 @@
  * devenv files, so the set of hosts an agent can reach is reviewable in the
  * same place as the toolchain — resolved on the tailnet by its named endpoint,
  * and brokered through the Station's privileged-access gateway, which applies
- * the target's isolation-class policy and writes an audit event per session.
- * (The credential path is not finished — see `machine-sessions.ts`.)
+ * the target's isolation-class policy, serves a lease-bound SSH-agent proxy,
+ * and writes each authorization, redemption, and terminal event to Yard audit.
  */
 
 import { existsSync, readFileSync } from "node:fs";

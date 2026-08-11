@@ -14,11 +14,9 @@
  * than quietly falling back to the ambient key — a fallback that silently
  * downgrades governance is worse than a clear failure.
  *
- * **Read this before trusting the name of this module.** What is finished is
- * the *decision*: policy applied per isolation class, a session recorded, an
- * audit event written, and an unauthorised pane refused. What is not finished
- * is the credential path — see `brokeredSshCommand` — so a remote pane still
- * authenticates with its own key today.
+ * The authorized tokenref is redeemed locally through a lease-bound proxy to
+ * the user's installed SSH agent. Private keys and session tokens never enter
+ * pane commands, process arguments, or the remote machine.
  */
 
 import { appendFileSync } from "node:fs";
@@ -33,6 +31,12 @@ import {
 
 import type { DevMachine } from "./dev-machines.js";
 import { pamTarget, sshDestination } from "./dev-machines.js";
+import {
+	type ResidentSshAgentProxy,
+	type SshAgentProxy,
+	startResidentSshAgentProxy,
+	startSshAgentProxy,
+} from "./ssh-agent-proxy.js";
 
 /** The slice of `@hobo/stations`' gateway a pane actually needs. */
 export interface PaneSessionBroker {
@@ -65,6 +69,10 @@ export interface BrokeredPane {
 	readonly protocol: string;
 	readonly destination: string;
 }
+
+export type ResolvedBrokeredPane = BrokeredPane & {
+	readonly identityAgent: string;
+};
 
 export interface BrokerFailure {
 	readonly machine: DevMachine;
@@ -136,30 +144,22 @@ export async function brokerPaneSession(
 /**
  * The ssh invocation for a brokered pane.
  *
- * The credential *reference* is passed, never the session token: the token is
- * short-lived material that must not reach a process table, a tmux pane title,
- * or a shell history file.
- *
- * **Resolution is not implemented yet.** `IdentityAgent=tokenref://…` names an
- * agent socket that nothing currently serves. What works today is the
- * Station-backed decision and durable audit. What does not work is
- * authenticating the ssh connection from the reference; that needs a resident
- * tokenref agent, and until then remote access still needs the user's own key.
- * Said here rather than left implied, because "brokered, not ambient" reads as
- * a completed claim.
+ * The local agent socket is passed, never the credential reference or session
+ * token. The proxy exists only for the Station lease and forwards the SSH-agent
+ * protocol to the installed user agent without copying private keys.
  */
 export function brokeredSshCommand(
-	pane: BrokeredPane,
+	pane: ResolvedBrokeredPane,
 	command: string,
 ): string {
 	const quote = (v: string) => `'${v.replace(/'/gu, `'\\''`)}'`;
-	// -o so the reference travels as configuration rather than as an argument
-	// that shows up in `ps` on the remote.
+	// -o selects the lease-bound local socket; no credential material reaches the
+	// remote command or its process table.
 	return [
 		"ssh",
 		"-t",
 		"-o",
-		quote(`IdentityAgent=${pane.credentialRef}`),
+		quote(`IdentityAgent=${pane.identityAgent}`),
 		quote(pane.destination),
 		quote(command),
 	].join(" ");
@@ -174,12 +174,25 @@ export interface StationBrokerContext {
 	readonly hoboHome: string;
 	readonly stationId: string;
 	readonly isolationClass: DevMachine["isolationClass"];
+	/** Override for tests; normal runs use the installed SSH_AUTH_SOCK. */
+	readonly sshAuthSock?: string;
+}
+
+export interface ResolvedSshIdentity {
+	readonly pane: ResolvedBrokeredPane;
+	stop(): Promise<void>;
 }
 
 export interface OpenedGateway {
 	readonly broker: PaneSessionBroker;
 	/** Audit events produced so far — session refs only, never material. */
 	auditTypes(): readonly string[];
+	/** Number of facts durably appended to the Station's Yard audit feed. */
+	yardDrainCount(): number;
+	/** Process-local proxy, used while browser forwarding keeps this CLI alive. */
+	resolveSshIdentity(pane: BrokeredPane): Promise<ResolvedSshIdentity>;
+	/** Resident proxy, used by tmux after this launcher exits. */
+	handoffSshIdentity(pane: BrokeredPane): Promise<ResolvedSshIdentity>;
 	/** End every live authorization and persist its terminal audit facts. */
 	close(): Promise<void>;
 }
@@ -229,13 +242,92 @@ export async function openStationGateway(
 		railId: rail.id,
 		trustDomain: occupancy.isolation.trustDomain,
 	});
+	const upstreamSocket = context.sshAuthSock ?? process.env.SSH_AUTH_SOCK;
+	const proxyPath = (sessionId: string): string => {
+		if (!/^[a-zA-Z0-9_-]+$/u.test(sessionId)) {
+			throw new Error("PAM session id is not safe for a socket path");
+		}
+		return join(station.dataDir, "ssh-agent", `${sessionId}.sock`);
+	};
+	const auditEvent = async (
+		pane: BrokeredPane,
+		type: "pam.CredentialRedeemed" | "pam.SessionEnded",
+		reason?: string,
+	): Promise<void> => {
+		await auditSink.append({
+			type,
+			time: new Date().toISOString(),
+			stationId: occupancy.stationId,
+			tenant: occupancy.isolation.tenant,
+			sessionId: pane.sessionId,
+			subject: "hobo-code",
+			target: pamTarget(pane.machine).id,
+			isolationClass: context.isolationClass,
+			kind: "native",
+			credentialRef: pane.credentialRef,
+			...(reason ? { reason } : {}),
+		});
+	};
+	const requireUpstream = (): string => {
+		if (!upstreamSocket) {
+			throw new Error(
+				"SSH_AUTH_SOCK is required to redeem the Station authorization",
+			);
+		}
+		return upstreamSocket;
+	};
+	const localProxies = new Set<SshAgentProxy>();
 	let closed = false;
 	return {
 		broker: gateway as unknown as PaneSessionBroker,
 		auditTypes: () => gateway.auditEvents.map((e) => e.type),
+		yardDrainCount: () => gateway.yardDrainCount,
+		async resolveSshIdentity(pane) {
+			const proxy = await startSshAgentProxy({
+				socketPath: proxyPath(pane.sessionId),
+				upstreamSocket: requireUpstream(),
+				expiresAt: pane.expiresAt,
+				onRedeem: () => auditEvent(pane, "pam.CredentialRedeemed"),
+			});
+			localProxies.add(proxy);
+			return {
+				pane: { ...pane, identityAgent: proxy.socketPath },
+				async stop() {
+					localProxies.delete(proxy);
+					await proxy.close();
+				},
+			};
+		},
+		async handoffSshIdentity(pane) {
+			gateway.handoffSession(pane.sessionId);
+			let proxy: ResidentSshAgentProxy;
+			try {
+				proxy = await startResidentSshAgentProxy({
+					socketPath: proxyPath(pane.sessionId),
+					upstreamSocket: requireUpstream(),
+					expiresAt: pane.expiresAt,
+					auditPath,
+					stationId: occupancy.stationId,
+					tenant: occupancy.isolation.tenant,
+					sessionId: pane.sessionId,
+					subject: "hobo-code",
+					target: pamTarget(pane.machine).id,
+					isolationClass: context.isolationClass,
+					credentialRef: pane.credentialRef,
+				});
+			} catch (error) {
+				await auditEvent(pane, "pam.SessionEnded", "agent-proxy-start-failed");
+				throw error;
+			}
+			return {
+				pane: { ...pane, identityAgent: proxy.socketPath },
+				stop: proxy.stop,
+			};
+		},
 		async close() {
 			if (closed) return;
 			closed = true;
+			await Promise.all([...localProxies].map((proxy) => proxy.close()));
 			await gateway.stop();
 		},
 	};

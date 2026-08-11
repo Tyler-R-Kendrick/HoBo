@@ -84,6 +84,7 @@ import {
 	describePane,
 	type OpenedGateway,
 	openStationGateway,
+	type ResolvedSshIdentity,
 } from "./machine-sessions.js";
 import { inspectModels, modelsHumanSummary } from "./models.js";
 import {
@@ -91,6 +92,7 @@ import {
 	attachCommand,
 	type MuxTarget,
 	planMux,
+	safeWindowName,
 	tmuxRunner,
 } from "./mux.js";
 import {
@@ -642,8 +644,8 @@ const VERB_HELP_PLAIN: Record<
 		"  --help, -h          Show this help",
 		"",
 		"Remote browser serving asks that Station to authorize and audit access,",
-		"then opens SSH local forwarding; denial has no fallback. SSH still uses",
-		"the user's configured key because tokenref redemption is not implemented.",
+		"then redeems that lease through the installed SSH agent and opens local",
+		"forwarding. No key or session token is copied; denial has no fallback.",
 		"",
 		"See also: hobo-code attach · hobo-code auth · hobo-code isolate · hobo-code status",
 	],
@@ -735,9 +737,9 @@ const VERB_HELP_PLAIN: Record<
 		"isolation-class policy and audits every session; a pane the Station did",
 		"not authorise is refused rather than opened.",
 		"",
-		"Not finished: the pane carries the credential reference, but nothing",
-		"serves it yet, so the ssh connection still uses your own key. The",
-		"decision and the audit trail are real; the credential path is not.",
+		"Each authorization is redeemed through a lease-bound local SSH-agent",
+		"socket backed by SSH_AUTH_SOCK. Keys and tokens are never copied into",
+		"the pane; redemption and lease termination drain to Station Yard audit.",
 	],
 	vshell: [
 		"hobo-code vshell — a virtual pane: virtual terminal over a virtual filesystem",
@@ -1991,6 +1993,7 @@ export async function runHoboCodeCli(
 		// than leaving panes sitting on a host they were not authorised for.
 		let brokered: Awaited<ReturnType<typeof brokerPanes>> | undefined;
 		let brokerAudit: readonly string[] = [];
+		let resolvedIdentities: readonly ResolvedSshIdentity[] = [];
 		if (resolvedMachine) {
 			const gateway = await openStationGateway({
 				hoboHome,
@@ -2002,6 +2005,25 @@ export async function runHoboCodeCli(
 					placeable.map((a) => ({ machine: resolvedMachine, agentId: a.id })),
 					{ broker: gateway.broker, subject: "hobo-code", ttlSeconds: 3600 },
 				);
+				if (brokered.panes.length > 0) {
+					if (flags["dry-run"] === true) {
+						resolvedIdentities = brokered.panes.map((pane) => ({
+							pane: { ...pane, identityAgent: "<station-agent-socket>" },
+							stop: async () => {},
+						}));
+					} else {
+						const identities: ResolvedSshIdentity[] = [];
+						try {
+							for (const pane of brokered.panes) {
+								identities.push(await gateway.handoffSshIdentity(pane));
+							}
+						} catch (error) {
+							await Promise.all(identities.map((identity) => identity.stop()));
+							throw error;
+						}
+						resolvedIdentities = identities;
+					}
+				}
 				brokerAudit = gateway.auditTypes();
 			} finally {
 				await gateway.close();
@@ -2062,7 +2084,10 @@ export async function runHoboCodeCli(
 		// A remote host turns the same targets into ssh panes — identical shape.
 		const host = remoteHost;
 		const brokeredFor = new Map(
-			(brokered?.panes ?? []).map((p) => [p.agentId, p.credentialRef]),
+			resolvedIdentities.map((identity) => [
+				identity.pane.agentId,
+				identity.pane,
+			]),
 		);
 		const unbrokered = host
 			? targets.filter((t) => !brokeredFor.has(t.name))
@@ -2089,8 +2114,16 @@ export async function runHoboCodeCli(
 		const remoteTargets: MuxTarget[] = host
 			? targets.map(({ cwd: _local, exec: _wrapper, ...t }): MuxTarget => {
 					// Non-null by the guard above: every ssh pane carries a session.
-					const ref = brokeredFor.get(t.name) as string;
-					return { ...t, kind: "ssh", host, credentialRef: ref };
+					const pane = brokeredFor.get(t.name);
+					if (!pane)
+						throw new Error(`missing Station identity for pane ${t.name}`);
+					return {
+						...t,
+						kind: "ssh",
+						host,
+						identityAgent: pane.identityAgent,
+						expiresAt: pane.expiresAt,
+					};
 				})
 			: targets;
 		const plan = planMux(session, remoteTargets);
@@ -2115,6 +2148,17 @@ export async function runHoboCodeCli(
 						detail: "dry run — no tmux invoked",
 					}
 				: await applyMux(plan, tmuxRunner());
+		const created = new Set(applied.created);
+		await Promise.all(
+			resolvedIdentities
+				.filter(
+					(identity) =>
+						!applied.ok ||
+						flags["dry-run"] === true ||
+						!created.has(safeWindowName(identity.pane.agentId)),
+				)
+				.map((identity) => identity.stop()),
+		);
 		const text = panel(applied.ok ? "✓ mux" : "✕ mux", [
 			applied.detail,
 			`workspace · ${workspace.path} (${workspace.source})`,
@@ -2631,12 +2675,27 @@ export async function runHoboCodeCli(
 							["hobo-code auth status"],
 						);
 					}
+					let identity: ResolvedSshIdentity;
+					try {
+						identity = await gateway.resolveSshIdentity(outcome.pane);
+					} catch (error) {
+						await gateway.close();
+						return fail(
+							"HOBO_CODE_SESSION_REMOTE_IDENTITY_UNAVAILABLE",
+							panel("✕ session", [
+								error instanceof Error ? error.message : String(error),
+								"SSH forwarding was not opened; there is no ambient-key fallback",
+							]),
+							["ssh-add -l", "hobo-code auth status"],
+						);
+					}
 					remoteServe = {
 						machine,
 						port: servePort,
 						authorizationSessionId: outcome.pane.sessionId,
 						authorizationExpiresAt: outcome.pane.expiresAt,
 						auditTypes,
+						identityAgent: identity.pane.identityAgent,
 						closeAuthorization: gateway.close,
 					};
 				}

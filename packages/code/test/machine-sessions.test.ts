@@ -90,14 +90,18 @@ describe("brokering a pane", () => {
 });
 
 describe("session material stays in the gateway", () => {
-	it("passes a reference to ssh, never a token", async () => {
+	it("passes the redeemed agent socket to ssh, never a tokenref or token", async () => {
 		const outcome = await brokerPaneSession(machine, "claude", {
 			broker: fakeBroker("ok"),
 			subject: "hobo-code",
 		});
 		if (!outcome.ok) throw new Error("expected a brokered pane");
-		const cmd = brokeredSshCommand(outcome.pane, "claude");
-		expect(cmd).toContain("IdentityAgent=tokenref://");
+		const cmd = brokeredSshCommand(
+			{ ...outcome.pane, identityAgent: "/run/user/1000/hobo-agent.sock" },
+			"claude",
+		);
+		expect(cmd).toContain("IdentityAgent=/run/user/1000/hobo-agent.sock");
+		expect(cmd).not.toContain("tokenref://");
 		// A token on a command line is visible in `ps` on the remote.
 		expect(cmd).not.toContain("sessionToken");
 	});
@@ -128,9 +132,24 @@ describe("session material stays in the gateway", () => {
 			kind: "ssh",
 			host: "box",
 			command: "claude",
-			credentialRef: "tokenref://pam/native/x",
+			identityAgent: "/run/user/1000/hobo-agent.sock",
 		});
-		expect(brokeredPane).toContain("IdentityAgent=tokenref://pam/native/x");
+		expect(brokeredPane).toContain(
+			"IdentityAgent=/run/user/1000/hobo-agent.sock",
+		);
+	});
+
+	it("terminates a remote pane when its Station lease expires", () => {
+		const command = targetCommand({
+			name: "claude",
+			kind: "ssh",
+			host: "box",
+			command: "claude",
+			identityAgent: "/run/user/1000/hobo-agent.sock",
+			expiresAt: new Date(Date.now() + 60_000).toISOString(),
+		});
+		expect(command).toContain("sleep 60");
+		expect(command).toContain('kill -TERM "child"'.replace("child", "$child"));
 	});
 });
 
@@ -195,7 +214,9 @@ describe("the real Station gateway", () => {
 			expect(outcome.pane.credentialRef).toMatch(/^tokenref:\/\//);
 			expect(gateway.auditTypes()).toContain("pam.SessionStarted");
 			expect(gateway.auditTypes()).not.toContain("pam.SessionEnded");
+			expect(gateway.yardDrainCount()).toBe(gateway.auditTypes().length);
 			await gateway.close();
+			expect(gateway.yardDrainCount()).toBe(gateway.auditTypes().length);
 			const durable = readFileSync(
 				join(stationRoot(hoboHome, "station:local"), "pam-audit.jsonl"),
 				"utf8",

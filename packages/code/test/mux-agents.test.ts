@@ -250,6 +250,23 @@ describe("applyMux", () => {
 		expect(result.ok).toBe(false);
 		expect(result.detail).toMatch(/no agents detected/);
 	});
+
+	it("reports a pane that tmux could not create", async () => {
+		const plan = planMux("hobo", [
+			{ name: "claude", kind: "local", command: "claude" },
+			{ name: "codex", kind: "local", command: "codex" },
+		]);
+		const base = fakeTmux();
+		const runner: MuxRunner = {
+			run: async (args) =>
+				args[0] === "new-window"
+					? { code: 1, stdout: "", stderr: "tmux refused" }
+					: base.run(args),
+		};
+		const result = await applyMux(plan, runner);
+		expect(result.ok).toBe(false);
+		expect(result.detail).toContain("codex");
+	});
 });
 
 describe("devenv status", () => {

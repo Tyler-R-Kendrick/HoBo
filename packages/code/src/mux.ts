@@ -51,13 +51,15 @@ export interface MuxTarget {
 		readonly name: string;
 	};
 	/**
-	 * Station-brokered credential *reference* for an ssh pane.
+	 * Lease-bound local SSH-agent socket for an authorized ssh pane.
 	 *
 	 * A reference, never the session token: the token is short-lived material
 	 * and must not reach a process table, a pane title, or a shell history. The
 	 * ssh agent resolves the reference.
 	 */
-	readonly credentialRef?: string;
+	readonly identityAgent?: string;
+	/** Station authorization deadline; the SSH process is terminated at expiry. */
+	readonly expiresAt?: string;
 }
 
 export interface MuxPlan {
@@ -138,15 +140,30 @@ export function targetCommand(target: MuxTarget): string {
 		// The brokered reference travels as configuration rather than as an
 		// argument, so the pane uses the Station's session instead of whatever
 		// ambient key happens to be in ~/.ssh.
-		const identity = target.credentialRef
-			? `-o ${shellQuote(`IdentityAgent=${target.credentialRef}`)} `
+		const identity = target.identityAgent
+			? `-o ${shellQuote(`IdentityAgent=${target.identityAgent}`)} `
 			: "";
+		const ssh = `ssh -t ${identity}${target.host} ${shellQuote(placedCommand(target))}`;
 		return keepPaneOpen(
 			target.name,
-			`ssh -t ${identity}${target.host} ${shellQuote(placedCommand(target))}`,
+			target.expiresAt ? leaseCommand(ssh, target.expiresAt) : ssh,
 		);
 	}
 	return keepPaneOpen(target.name, placedCommand(target));
+}
+
+/** POSIX lease timer for an established SSH process. */
+export function leaseCommand(
+	command: string,
+	expiresAt: string,
+	nowMs = Date.now(),
+): string {
+	const expiry = Date.parse(expiresAt);
+	if (!Number.isFinite(expiry) || expiry <= nowMs) {
+		throw new Error("Station authorization is expired or invalid");
+	}
+	const seconds = Math.max(1, Math.ceil((expiry - nowMs) / 1_000));
+	return `sh -c ${shellQuote(`${command} & child=$!; (sleep ${seconds}; kill -TERM "$child" 2>/dev/null) & lease=$!; wait "$child"; status=$?; kill "$lease" 2>/dev/null; wait "$lease" 2>/dev/null; exit "$status"`)}`;
 }
 
 /**
@@ -326,7 +343,16 @@ export async function applyMux(
 			name,
 			targetCommand(target),
 		]);
-		if (added.code === 0) created.push(name);
+		if (added.code !== 0) {
+			return {
+				ok: false,
+				session: plan.session,
+				created,
+				existed,
+				detail: `tmux new-window failed for ${name}`,
+			};
+		}
+		created.push(name);
 	}
 
 	return {

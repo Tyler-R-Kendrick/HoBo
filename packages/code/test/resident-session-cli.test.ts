@@ -53,9 +53,12 @@ describe("resident session remote browser", () => {
 					isolationClass: "development",
 				},
 				4242,
+				"/run/user/1000/hobo-agent.sock",
 			),
 		).toEqual([
 			"-T",
+			"-o",
+			"IdentityAgent=/run/user/1000/hobo-agent.sock",
 			"-o",
 			"ExitOnForwardFailure=yes",
 			"-L",
@@ -153,6 +156,21 @@ describe("resident session remote browser", () => {
 							},
 						},
 						auditTypes: () => ["pam.SessionStarted"],
+						yardDrainCount: () => 2,
+						resolveSshIdentity: async (pane) => ({
+							pane: {
+								...pane,
+								identityAgent: "/run/user/1000/hobo-agent.sock",
+							},
+							stop: async () => {},
+						}),
+						handoffSshIdentity: async (pane) => ({
+							pane: {
+								...pane,
+								identityAgent: "/run/user/1000/hobo-agent.sock",
+							},
+							stop: async () => {},
+						}),
 						close: async () => {
 							closed = true;
 						},
@@ -184,7 +202,8 @@ describe("resident session remote browser", () => {
 						authorizationSessionId: "pam-session-1",
 						authorizationExpiresAt: "2026-08-12T00:00:00.000Z",
 						auditTypes: ["pam.SessionStarted"],
-						credentialMode: "user-ssh-key",
+						credentialMode: "station-tokenref-agent",
+						identityAgent: "/run/user/1000/hobo-agent.sock",
 					}),
 				}),
 			);

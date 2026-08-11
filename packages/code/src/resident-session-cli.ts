@@ -25,7 +25,9 @@ export function shouldWaitForResidentSession(
 	return (
 		sessionState === SessionLifecycleState.RUNNING &&
 		agentStates.some((state) =>
-			[AgentLifecycleState.STARTING, AgentLifecycleState.WORKING].includes(state),
+			[AgentLifecycleState.STARTING, AgentLifecycleState.WORKING].includes(
+				state,
+			),
 		)
 	);
 }
@@ -33,10 +35,12 @@ export function shouldWaitForResidentSession(
 export function remoteSessionServeSshArgs(
 	machine: DevMachine,
 	port: number,
+	identityAgent?: string,
 ): readonly string[] {
 	const endpoint = `127.0.0.1:${port}`;
 	return [
 		"-T",
+		...(identityAgent ? ["-o", `IdentityAgent=${identityAgent}`] : []),
 		"-o",
 		"ExitOnForwardFailure=yes",
 		"-L",
@@ -72,6 +76,7 @@ export interface RemoteSessionServe {
 	readonly authorizationSessionId: string;
 	readonly authorizationExpiresAt: string;
 	readonly auditTypes: readonly string[];
+	readonly identityAgent: string;
 	/** Process-local lease close; omitted from JSON output. */
 	readonly closeAuthorization: () => Promise<void>;
 }
@@ -163,12 +168,12 @@ export async function runResidentSessionCli(input: {
 	if (operation === "serve") {
 		if (input.remoteServe) {
 			return {
-				message: `forwarding resident browser from ${input.remoteServe.machine.id} at http://127.0.0.1:${input.remoteServe.port}; SSH authentication uses the user's configured key because tokenref redemption is not implemented`,
+				message: `forwarding resident browser from ${input.remoteServe.machine.id} at http://127.0.0.1:${input.remoteServe.port}; Station authorization is redeemed through a lease-bound local SSH agent`,
 				data: {
 					terminalAction: {
 						kind: "forward-sessions",
 						...input.remoteServe,
-						credentialMode: "user-ssh-key",
+						credentialMode: "station-tokenref-agent",
 					},
 				},
 			};

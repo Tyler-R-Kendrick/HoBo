@@ -33,6 +33,7 @@ import {
 import { startSessionControlServer } from "../session-control-server.js";
 import type { ShellEngine } from "../shell-engine.js";
 import { createDefaultShellHost } from "../shell-host.js";
+import { runResidentSshAgentProxy } from "../ssh-agent-proxy.js";
 
 const rawArgv = process.argv.slice(2);
 const json = rawArgv.includes("--json");
@@ -79,7 +80,16 @@ function launchPiHarness(): Promise<number> {
 	});
 }
 
-if (interactive && !json && (argv.length === 0 || chatVerb)) {
+if (argv[0] === "_tokenref-agent") {
+	try {
+		process.exitCode = await runResidentSshAgentProxy(argv[1] ?? "");
+	} catch (error) {
+		process.stderr.write(
+			`hobo-code: resident SSH agent failed: ${error instanceof Error ? error.message : String(error)}\n`,
+		);
+		process.exitCode = 1;
+	}
+} else if (interactive && !json && (argv.length === 0 || chatVerb)) {
 	if (wantPiTui) {
 		process.stderr.write(
 			"hobo-code: HOBO_CODE_TUI=pi / --pi — launching stock Pi TUI (escape hatch; not product default)\n",
@@ -168,7 +178,8 @@ if (interactive && !json && (argv.length === 0 || chatVerb)) {
 							readonly authorizationSessionId?: string;
 							readonly authorizationExpiresAt?: string;
 							readonly auditTypes?: readonly string[];
-							readonly credentialMode?: "user-ssh-key";
+							readonly credentialMode?: "station-tokenref-agent";
+							readonly identityAgent?: string;
 							readonly closeAuthorization?: () => Promise<void>;
 						};
 					}
@@ -203,16 +214,20 @@ if (interactive && !json && (argv.length === 0 || chatVerb)) {
 	) {
 		const { machine, port } = action;
 		process.stdout.write(
-			`browser: http://127.0.0.1:${port}\nremote: ${machine.id} via Station-authorized SSH forwarding (${action.authorizationSessionId ?? "authorized"}; expires ${action.authorizationExpiresAt ?? "unknown"}; ${(action.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: user's configured key; Station tokenref redemption is not implemented\n`,
+			`browser: http://127.0.0.1:${port}\nremote: ${machine.id} via Station-authorized SSH forwarding (${action.authorizationSessionId ?? "authorized"}; expires ${action.authorizationExpiresAt ?? "unknown"}; ${(action.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station tokenref redeemed through ${action.identityAgent ?? "the lease-bound local agent"}; no key or token is copied\n`,
 		);
 		try {
 			const leaseMs = authorizationLeaseDelay(
 				action.authorizationExpiresAt ?? "",
 			);
 			process.exitCode = await new Promise<number>((resolve) => {
-				const child = spawn("ssh", remoteSessionServeSshArgs(machine, port), {
-					stdio: "inherit",
-				});
+				const child = spawn(
+					"ssh",
+					remoteSessionServeSshArgs(machine, port, action.identityAgent),
+					{
+						stdio: "inherit",
+					},
+				);
 				let expired = false;
 				let hardStop: NodeJS.Timeout | undefined;
 				const expiration = setTimeout(() => {

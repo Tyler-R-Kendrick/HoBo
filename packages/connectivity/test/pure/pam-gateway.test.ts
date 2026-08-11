@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	applyEnvIsolationAclHints,
 	createNativePamGateway,
+	createSessionBrokerKeys,
 	createTeleportPamGateway,
 	mintElevatedAccessCapability,
-	renderEnvIsolationTailscaleAcl,
-	applyEnvIsolationAclHints,
-	verifySessionToken,
-	createSessionBrokerKeys,
 	mintSessionToken,
+	renderEnvIsolationTailscaleAcl,
+	verifySessionToken,
 } from "../../src/index.js";
 
 describe("PAM gateway complete secretless broker", () => {
@@ -76,6 +76,32 @@ describe("PAM gateway complete secretless broker", () => {
 		});
 		expect(ok.kind).toBe("teleport");
 		await gw.stop();
+	});
+
+	it("hands a local session to a resident protocol adapter", async () => {
+		const gw = createNativePamGateway({ isolationClass: "development" });
+		await gw.start({
+			stationId: "s1",
+			tenant: "acme",
+			isolationClass: "development",
+			trustDomain: "yard.local",
+		});
+		const session = await gw.brokerSession({
+			subject: "user:dev",
+			target: { id: "ssh:box", kind: "ssh", isolationClass: "development" },
+			preferSecretless: true,
+		});
+		expect(gw.handoffSession(session.sessionId).sessionId).toBe(
+			session.sessionId,
+		);
+		await gw.stop();
+		expect(
+			gw.auditEvents.some(
+				(event) =>
+					event.type === "pam.SessionEnded" &&
+					event.sessionId === session.sessionId,
+			),
+		).toBe(false);
 	});
 
 	it("session broker tokens are integrity-checked", () => {

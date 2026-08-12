@@ -27,6 +27,16 @@ accents, geometry drift, or a shrinking content area — the first version of
 this shell was a flicker-free *SaaS dashboard* and nothing in the suite could
 tell, so nothing objected.
 
+**The durable-review terminal is a native HoBo pane, not a vendored viewer.**
+`src/review/review-terminal-*.ts` paints inbox + manifest-first continuous
+diff with the same rubberhose cards as the shell. Layout ideas (unified /
+split / stacked, sticky headers, width bands) were evaluated against Hunk /
+OpenTUI and rejected as a dependency — Hunk would own chrome, add a second
+TUI runtime beside Pi, and talk to raw git. Mutations go through
+`ReviewCommand` (`stage-selection` / `unstage-selection` / `apply-suggestion`
+/ exact-effect publish). See
+[`docs/design-decisions/review-terminal-native-renderer.md`](../../docs/design-decisions/review-terminal-native-renderer.md).
+
 **Promotion applies before it cleans (`src/sandbox-promote.ts`).** The gate
 carries the sandbox diff into the canonical tree with `git apply --3way
 --index` and only then reclaims the worktree; a failed or empty apply fails

@@ -27,7 +27,7 @@ Every HoBo capability is reachable three ways, with identical semantics:
 |---|---|---|
 | **SDK** | code | The same typed objects the [primitives](/HoBo/primitives/) docs describe. |
 | **CLI** | humans & scripts | The [canonical verb surface](/HoBo/guide/cli/) — deliberately small, stable to memorize. |
-| **MCP** | agents | Ships today as the `hobo-mcp` stdio binary: all **40** CLI verbs as tools, parity contract-tested — see [the MCP surface](/HoBo/agents/mcp/). |
+| **MCP** | agents | Ships today as the `hobo-mcp` stdio binary: the canonical verb set as tools, parity contract-tested — see [the MCP surface](/HoBo/agents/mcp/). |
 
 No agent-only side entrance with different rules: if policy would stop a human doing it, it stops an agent doing it, and vice versa.
 
@@ -57,7 +57,8 @@ Durable Camp storage defaults to a **single-owner SQLite partition** behind Even
 
 ## Start here
 
-- [The MCP surface](/HoBo/agents/mcp/) — the shipping `hobo-mcp` binary: stdio transport, the 40 canonical verbs as tools, `HOBO_MCP_TOOLS` scoping, deny-by-default audited decisions.
+- [The MCP surface](/HoBo/agents/mcp/) — the shipping `hobo-mcp` binary: stdio transport, the canonical verb set as tools, `HOBO_MCP_TOOLS` scoping, deny-by-default audited decisions.
+- [hobo-code](/HoBo/guide/hobo-code/) — the interactive Bo session. Not a `hobo` verb.
 - [`llms.txt`](/HoBo/llms.txt) — the machine-readable site briefing.
 - [Architecture](/HoBo/architecture/) — package layout, durable EventStore default, contract effects.
 - [Testing](/HoBo/guide/testing/) — effect-aware isolation and offline durability tests.

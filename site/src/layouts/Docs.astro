@@ -74,6 +74,7 @@ const pageMarkdown = rawContent
 		<article class="prose">
 			<div class="docs-meta">
 				<span class="badge">{section?.label ?? "Docs"}</span>
+				<a class="docs-search-link" href={href("/search/")}>Search docs</a>
 				{
 					pageMarkdown && (
 						<button

@@ -26,25 +26,27 @@ Out of scope for now:
 
 ## Required local checks
 
-Use Node.js 24, matching CI.
+Use Node.js ≥ 22 (CI is 24) and the repo `packageManager` (`pnpm@10.33.4`). Clone with submodules — a GitHub zip without `external/ts-autocode` is incomplete.
 
 ```sh
-npm ci
-npm test
-npm run standards:check
-npm run docs:cli-lint
-npm run docs:design-lint
-npm run docs:coverage
-npm run docs:freshness
-node --import tsx scripts/validate-traceability.ts
-node --import tsx scripts/validate-sdk-contracts.ts
-node --import tsx scripts/validate-deployment-set-delta.ts
+corepack enable pnpm
+pnpm install
+pnpm exec turbo run build --filter @hobo/adapter-hono --filter @hobo/hobo
+pnpm test
+pnpm run standards:check
+pnpm run docs:cli-lint
+pnpm run docs:design-lint
+pnpm run docs:coverage
+pnpm run docs:freshness
+pnpm exec node --import tsx scripts/validate-traceability.ts
+pnpm exec node --import tsx scripts/validate-sdk-contracts.ts
+pnpm exec node --import tsx scripts/validate-deployment-set-delta.ts
 ```
 
 Optional local hook:
 
 ```sh
-npm run prepare-hooks
+pnpm run prepare-hooks
 ```
 
 ## Documentation rule
@@ -56,10 +58,10 @@ Use this checklist:
 - README still describes the repo accurately.
 - `docs/design/index.md` still describes current design organization.
 - Relevant design doc, ADR, proof README, or draft package README changed with the implementation.
-- New public commands or examples pass `npm run docs:cli-lint`.
+- New public commands or examples pass `pnpm run docs:cli-lint`.
 - New ADR references are indexed and pass traceability validation.
 - New event families are added to `docs/design/event-families.md` before use.
-- New JavaScript-family implementation files are TypeScript `.ts` sources, and `npm run standards:check` passes or the exception is recorded in an ADR/proof note.
+- New JavaScript-family implementation files are TypeScript `.ts` sources, and `pnpm run standards:check` passes or the exception is recorded in an ADR/proof note.
 
 ## Licensing of contributions
 

@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: The hobo CLI
-description: "The canonical hobo command surface: lifecycle up/down, local loop, identity, delivery, authoring, governance, and ops verbs — 40 verbs with MCP parity."
+description: "The canonical hobo command surface: lifecycle up/down, local loop, identity, delivery, authoring, governance, and ops verbs — MCP parity with the verb set in verbs.ts."
 ---
 
 # The `hobo` CLI
@@ -21,7 +21,7 @@ hobo down --camp pr-123
 
 `up` realizes the current object graph: build, plan, gate, provision, deploy. `down` tears it back in reverse dependency order. `up` always reruns the applicable gate before mutation — a stale preflight can never authorize a deploy. Continuous migrations run this same loop; there is no separate `migrate` verb.
 
-## The full verb surface (40)
+## The full verb surface
 
 | Verb | Role | Semantics |
 |---|---|---|
@@ -68,4 +68,4 @@ Where other tools invent ceremony commands, HoBo folds them into the model:
 
 ## Status
 
-All **40 canonical verbs** are on the composed `hobo` surface today and map **1:1** to [`hobo-mcp`](/HoBo/agents/mcp/) tools (parity is contract-tested). The default path is the **local lane**: offline Yard runtime, durable SQLite journal, no cloud account. Live deploy lanes are credential-gated (Cloudflare, Vercel, or live IaC credentials). Some advanced flags (`--to`, `--rollback`, `--seed`) and deeper multi-cloud depth are still maturing — see [the trail map](/HoBo/guide/status/). Global flags that work everywhere: `--json`, `--camp`, `--cwd`, `--verbose`, `-q`, `--help`.
+The **canonical verb set** is on the composed `hobo` surface today and maps **1:1** to [`hobo-mcp`](/HoBo/agents/mcp/) tools (parity is contract-tested). Lifecycle is `up` / `down`; `hobo deploy` is **observe-only** delivery status, not the ship verb. Interactive authoring is [`hobo-code`](/HoBo/guide/hobo-code/). The default path is the **local lane**: offline Yard runtime, durable SQLite journal, no cloud account. Live deploy lanes are credential-gated (Cloudflare, Vercel, or live IaC credentials). Some advanced flags (`--to`, `--rollback`, `--seed`) and deeper multi-cloud depth are still maturing — see [the trail map](/HoBo/guide/status/). Global flags that work everywhere: `--json`, `--camp`, `--cwd`, `--verbose`, `-q`, `--help`.

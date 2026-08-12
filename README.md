@@ -95,8 +95,10 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 
 ### Requirements
 
-- Node.js 24 in CI; local Node must satisfy `package.json` (`>=20.20.0`).
+- Node.js ≥ 22 locally (`node:sqlite`); CI uses Node 24. `package.json` `engines.node` is `>=22`.
 - pnpm through Corepack, using the checked-in `pnpm-lock.yaml`.
+- Clone the git tree with submodules (`external/ts-autocode`). A GitHub zip without that submodule is incomplete.
+- Build the composition root with turbo (`pnpm exec turbo run build --filter @hobo/adapter-hono --filter @hobo/hobo`). `pnpm --filter @hobo/hobo build` alone is not enough.
 
 Install dependencies **first** (cold clones need this before most gates):
 

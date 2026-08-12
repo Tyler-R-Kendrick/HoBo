@@ -324,9 +324,11 @@ Notes:
 - **`examples/runtime/` WIT wasm is omitted from `gh-pages`.** Pages builds
   fail or hang when the ~25MB bundle is included. Deploy writes
   `examples/runtime/PAGES.md` instead. The Examples console probes
-  `examples/runtime/manifest.json` and **disables Deploy** with “Needs local
-  WIT runtime” instead of 404ing mid-plan. Full runtime: local
-  `pnpm --filter hobo-site run dev` (prebuild runs `examples:runtime`). Catalog
+  `examples/runtime/manifest.json` and **routes Ship to local-bridge apps**
+  (OpenSaaS / Swaghaus). Working Pages path: run
+  `pnpm --filter hobo-site run examples:bridge` then open
+  `/HoBo/examples/?bridge=http://127.0.0.1:8787`. Browser-WIT hello-world
+  stays on local `pnpm --filter hobo-site run dev`. Catalog
   HTML + `index.json` still ship.
 
 ## Design audit (interactive)

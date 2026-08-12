@@ -11,7 +11,7 @@ import Steamboat from "../components/scenes/Steamboat.astro";
 import Train from "../components/scenes/Train.astro";
 import { href } from "../lib/url";
 
-const bindleSnippet = `import { bindle } from "hobo/bindles";
+const bindleSnippet = `import { bindle } from "@hobo/bindles";
 
 import { app as helloApi } from "./api";
 import { app as helloWeb } from "./webapp";
@@ -51,7 +51,9 @@ const shikiThemes = {
 					<em>we'll find your app a home.</em>
 				</h1>
 				<p class="hero-sub">
-					HoBo continuously migrates your app to the
+					<strong>Pre-release</strong> — not on npm; clone the repo and build
+					<code>@hobo/hobo</code>. Default apply is an in-memory Pulumi
+					stand-in. HoBo continuously migrates your app to the
 					<strong>cheapest home that passes your policies</strong>. Describe
 					it once; when a better deal opens up — on any provider, a mix of
 					them, or your own metal — HoBo plans the move, gates it, and rides.
@@ -518,7 +520,7 @@ const shikiThemes = {
 					<a class="btn btn-primary" href={href("/guide/getting-started/")}
 						>Get started</a
 					>
-					<a class="btn btn-ghost" href={href("/primitives/bindles/")}
+					<a class="btn btn-ghost" href={href("/primitives/")}
 						>Meet the primitives</a
 					>
 				</div>

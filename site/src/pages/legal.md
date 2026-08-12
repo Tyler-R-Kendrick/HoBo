@@ -37,7 +37,7 @@ on this site should be read as them.
 HoBo is **pre-release**. The surfaces documented on this site are the contract the
 product is being built to, not a description of shipped, supported software. Some
 documented capabilities are design-pinned rather than implemented; the
-[trail map](/guide/status/) is the honest breakdown. Nothing here is a warranty, a
+[trail map](/HoBo/guide/status/) is the honest breakdown. Nothing here is a warranty, a
 service-level commitment, or a compliance certification.
 
 We do not claim SOC 2, ISO 27001, GDPR, HIPAA, PCI, or any other certification.
@@ -62,8 +62,8 @@ governs that usage, including its free-tier and acceptable-use terms.
 
 HoBo never holds a provider account on your behalf, never pools or resells free-tier
 capacity across users, and never creates or rotates accounts to reset a free tier.
-That boundary is a recorded architectural decision, not just a practice — see
-[](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/).
+That boundary is a recorded architectural decision, not just a practice. See
+the [trail map](/HoBo/guide/status/).
 
 ## Contact
 

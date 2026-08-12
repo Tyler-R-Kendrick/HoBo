@@ -17,6 +17,8 @@ import {
 	resolveStationDeployPlan,
 	SHIP_GATE_PLAN_LINE,
 	SHIP_LOCKED_DEPLOY_LABEL,
+	SHIP_RUNTIME_MISSING_LINE,
+	preferShipExampleId,
 	shipStationsReady,
 	targetPackCanHostNow,
 	toggleYardUiOption,
@@ -67,6 +69,15 @@ describe("Examples Home Station", () => {
 			"cost-first-multi",
 		);
 		expect(multi.provision).toHaveLength(3);
+	});
+
+	it("prefers a local-bridge app when Pages omits the WIT runtime", async () => {
+		const catalog = await loadExamplesCatalog();
+		expect(preferShipExampleId(catalog, true)).toBe(catalog[0]?.id);
+		const preferred = preferShipExampleId(catalog, false);
+		const picked = catalog.find((entry) => entry.id === preferred);
+		expect(picked?.deployKind).toBe("local-bridge");
+		expect(SHIP_RUNTIME_MISSING_LINE).toContain("examples:bridge");
 	});
 
 	it("gates example deploy onto deployed stations only", async () => {

@@ -1,0 +1,11 @@
+{
+	"_documentation": "Synthetic GitHub REST GET /repos/{owner}/{repo} payload. permissions.push is true so comment/approve/request-changes can be offered when the actor is not the author. No live tokens.",
+	"full_name": "acme/widgets",
+	"permissions": {
+		"admin": false,
+		"maintain": false,
+		"push": true,
+		"triage": true,
+		"pull": true
+	}
+}

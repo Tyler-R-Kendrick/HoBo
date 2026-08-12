@@ -1,0 +1,15 @@
+{
+	"_documentation": "Synthetic GitHub REST reviews page 2. Second review has no correlation marker. Used to prove pagination continues past page 1. No live tokens.",
+	"items": [
+		{
+			"id": 81,
+			"node_id": "PRR_kwDOSYNTH81",
+			"user": { "login": "bot", "id": 3 },
+			"body": "CI note",
+			"state": "COMMENTED",
+			"commit_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"submitted_at": "2026-08-01T02:00:00Z",
+			"html_url": "https://github.com/acme/widgets/pull/42#pullrequestreview-81"
+		}
+	]
+}

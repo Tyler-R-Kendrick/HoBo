@@ -1,0 +1,13 @@
+{
+	"_documentation": "Synthetic GitHub GraphQL viewer + repository.viewerPermission + pullRequest.author payload used to type capabilities. Actor is not the PR author and has WRITE, so approve is allowed. No live tokens.",
+	"data": {
+		"viewer": { "login": "reviewer" },
+		"repository": {
+			"viewerPermission": "WRITE",
+			"pullRequest": {
+				"author": { "login": "octocat" },
+				"viewerCanApplySuggestion": true
+			}
+		}
+	}
+}

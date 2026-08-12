@@ -1,0 +1,9 @@
+{
+	"_documentation": "Synthetic GitHub REST POST /repos/{owner}/{repo}/pulls/{number}/reviews response. Returned after Comment/Approve/Request Changes. No live tokens.",
+	"id": 99,
+	"node_id": "PRR_kwDOSYNTH99",
+	"body": "<!-- hobo-code-review:v1:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc -->",
+	"state": "COMMENTED",
+	"commit_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+	"html_url": "https://github.com/acme/widgets/pull/42#pullrequestreview-99"
+}

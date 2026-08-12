@@ -1,0 +1,43 @@
+{
+	"_documentation": "Synthetic GitHub REST review-comments page 2. Outdated top-level comment plus a later file-level comment. Proves pagination and outdated import. No live tokens.",
+	"items": [
+		{
+			"id": 1003,
+			"node_id": "PRRC_kwDOSYNTH1003",
+			"pull_request_review_id": 81,
+			"body": "This hunk moved.",
+			"path": "src/old.ts",
+			"commit_id": "cccccccccccccccccccccccccccccccccccccccc",
+			"original_commit_id": "cccccccccccccccccccccccccccccccccccccccc",
+			"user": { "login": "reviewer", "id": 2 },
+			"created_at": "2026-07-30T00:00:00Z",
+			"updated_at": "2026-07-30T00:00:00Z",
+			"line": null,
+			"original_line": 8,
+			"side": "RIGHT",
+			"subject_type": "line",
+			"position": null,
+			"original_position": 2,
+			"outdated": true
+		},
+		{
+			"id": 1004,
+			"node_id": "PRRC_kwDOSYNTH1004",
+			"pull_request_review_id": 81,
+			"body": "File-level note.",
+			"path": "README.md",
+			"commit_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"original_commit_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"user": { "login": "bot", "id": 3 },
+			"created_at": "2026-08-01T03:00:00Z",
+			"updated_at": "2026-08-01T03:00:00Z",
+			"line": null,
+			"original_line": null,
+			"side": "RIGHT",
+			"subject_type": "file",
+			"position": null,
+			"original_position": null,
+			"outdated": false
+		}
+	]
+}

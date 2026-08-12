@@ -1,0 +1,15 @@
+{
+	"_documentation": "Synthetic GitHub REST GET /repos/{owner}/{repo}/pulls/{number}/reviews page 1. First review carries a reconcilable HoBo HTML correlation comment. No live tokens.",
+	"items": [
+		{
+			"id": 80,
+			"node_id": "PRR_kwDOSYNTH80",
+			"user": { "login": "reviewer", "id": 2 },
+			"body": "Looks good overall.\n\n<!-- hobo-code-review:v1:1111111111111111111111111111111111111111111111111111111111111111 -->",
+			"state": "APPROVED",
+			"commit_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"submitted_at": "2026-08-01T01:00:00Z",
+			"html_url": "https://github.com/acme/widgets/pull/42#pullrequestreview-80"
+		}
+	]
+}

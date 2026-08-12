@@ -1,0 +1,119 @@
+{
+	"_documentation": "Synthetic GitHub GraphQL repository.pullRequest.reviewThreads page 1. Thread ids are GraphQL node IDs; comments.databaseId match REST comment ids so refresh can normalize without duplicating. No live tokens.",
+	"data": {
+		"repository": {
+			"pullRequest": {
+				"id": "PR_kwDOSYNTH42",
+				"reviewThreads": {
+					"pageInfo": { "hasNextPage": true, "endCursor": "thread-page-1" },
+					"nodes": [
+						{
+							"id": "PRRT_kwDOSYNTH1",
+							"isResolved": true,
+							"isOutdated": false,
+							"comments": {
+								"pageInfo": { "hasNextPage": false, "endCursor": null },
+								"nodes": [
+									{
+										"id": "PRRC_kwDOSYNTH1001",
+										"databaseId": 1001,
+										"body": "Please rename this helper.",
+										"createdAt": "2026-08-01T00:00:00Z",
+										"updatedAt": "2026-08-01T00:10:00Z",
+										"outdated": false,
+										"path": "src/app.ts",
+										"diffHunk": "@@ -8,7 +8,7 @@",
+										"replyTo": null,
+										"author": { "login": "reviewer" },
+										"originalCommit": {
+											"oid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+										},
+										"commit": {
+											"oid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+										},
+										"position": 4,
+										"originalPosition": 4,
+										"line": 12,
+										"originalLine": 12,
+										"startLine": 10,
+										"originalStartLine": 10,
+										"diffSide": "RIGHT",
+										"startDiffSide": "RIGHT",
+										"subjectType": "LINE"
+									},
+									{
+										"id": "PRRC_kwDOSYNTH1002",
+										"databaseId": 1002,
+										"body": "Will do.\n\n<!-- hobo-code-review:v1:2222222222222222222222222222222222222222222222222222222222222222 -->",
+										"createdAt": "2026-08-01T00:20:00Z",
+										"updatedAt": "2026-08-01T00:20:00Z",
+										"outdated": false,
+										"path": "src/app.ts",
+										"diffHunk": "@@ -8,7 +8,7 @@",
+										"replyTo": {
+											"id": "PRRC_kwDOSYNTH1001",
+											"databaseId": 1001
+										},
+										"author": { "login": "octocat" },
+										"originalCommit": {
+											"oid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+										},
+										"commit": {
+											"oid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+										},
+										"position": 4,
+										"originalPosition": 4,
+										"line": 12,
+										"originalLine": 12,
+										"startLine": 10,
+										"originalStartLine": 10,
+										"diffSide": "RIGHT",
+										"startDiffSide": "RIGHT",
+										"subjectType": "LINE"
+									}
+								]
+							}
+						},
+						{
+							"id": "PRRT_kwDOSYNTH2",
+							"isResolved": false,
+							"isOutdated": true,
+							"comments": {
+								"pageInfo": { "hasNextPage": false, "endCursor": null },
+								"nodes": [
+									{
+										"id": "PRRC_kwDOSYNTH1003",
+										"databaseId": 1003,
+										"body": "This hunk moved.",
+										"createdAt": "2026-07-30T00:00:00Z",
+										"updatedAt": "2026-07-30T00:00:00Z",
+										"outdated": true,
+										"path": "src/old.ts",
+										"diffHunk": "@@ -1,4 +1,4 @@",
+										"replyTo": null,
+										"author": { "login": "reviewer" },
+										"originalCommit": {
+											"oid": "cccccccccccccccccccccccccccccccccccccccc"
+										},
+										"commit": {
+											"oid": "cccccccccccccccccccccccccccccccccccccccc"
+										},
+										"position": null,
+										"originalPosition": 2,
+										"line": null,
+										"originalLine": 8,
+										"startLine": null,
+										"originalStartLine": null,
+										"diffSide": "RIGHT",
+										"startDiffSide": null,
+										"subjectType": "LINE"
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		}
+	}
+}

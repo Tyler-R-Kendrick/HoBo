@@ -1,0 +1,52 @@
+{
+	"_documentation": "Synthetic GitHub GraphQL reviewThreads page 2 (after: thread-page-1). File-level thread. databaseId 1004 matches REST. No live tokens.",
+	"data": {
+		"repository": {
+			"pullRequest": {
+				"id": "PR_kwDOSYNTH42",
+				"reviewThreads": {
+					"pageInfo": { "hasNextPage": false, "endCursor": "thread-page-2" },
+					"nodes": [
+						{
+							"id": "PRRT_kwDOSYNTH3",
+							"isResolved": false,
+							"isOutdated": false,
+							"comments": {
+								"pageInfo": { "hasNextPage": false, "endCursor": null },
+								"nodes": [
+									{
+										"id": "PRRC_kwDOSYNTH1004",
+										"databaseId": 1004,
+										"body": "File-level note.",
+										"createdAt": "2026-08-01T03:00:00Z",
+										"updatedAt": "2026-08-01T03:00:00Z",
+										"outdated": false,
+										"path": "README.md",
+										"diffHunk": "",
+										"replyTo": null,
+										"author": { "login": "bot" },
+										"originalCommit": {
+											"oid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+										},
+										"commit": {
+											"oid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+										},
+										"position": null,
+										"originalPosition": null,
+										"line": null,
+										"originalLine": null,
+										"startLine": null,
+										"originalStartLine": null,
+										"diffSide": "RIGHT",
+										"startDiffSide": null,
+										"subjectType": "FILE"
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		}
+	}
+}

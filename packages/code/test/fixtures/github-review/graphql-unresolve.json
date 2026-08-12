@@ -1,0 +1,8 @@
+{
+	"_documentation": "Synthetic GitHub GraphQL unresolveReviewThread mutation result. No live tokens.",
+	"data": {
+		"unresolveReviewThread": {
+			"thread": { "id": "PRRT_kwDOSYNTH1", "isResolved": false }
+		}
+	}
+}

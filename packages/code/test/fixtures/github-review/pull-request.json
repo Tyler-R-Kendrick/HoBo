@@ -1,0 +1,21 @@
+{
+	"_documentation": "Synthetic GitHub REST GET /repos/{owner}/{repo}/pulls/{number} payload (X-GitHub-Api-Version: 2022-11-28). Used to resolve exact base/head SHAs. No live tokens or accounts.",
+	"id": 4242,
+	"node_id": "PR_kwDOSYNTH42",
+	"number": 42,
+	"state": "open",
+	"title": "Add durable review import",
+	"body": "synthetic pull request body",
+	"html_url": "https://github.com/acme/widgets/pull/42",
+	"user": { "login": "octocat", "id": 1, "node_id": "U_kwDOSYNTHUSER1" },
+	"base": {
+		"ref": "main",
+		"sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"repo": { "full_name": "acme/widgets" }
+	},
+	"head": {
+		"ref": "feat/durable-review",
+		"sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	},
+	"author_association": "CONTRIBUTOR"
+}

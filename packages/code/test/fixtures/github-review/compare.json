@@ -1,0 +1,10 @@
+{
+	"_documentation": "Synthetic GitHub REST GET /repos/{owner}/{repo}/compare/{base}...{head} payload. Supplies merge_base_commit.sha so the provider pins exact SHAs. No live tokens.",
+	"status": "ahead",
+	"ahead_by": 2,
+	"behind_by": 0,
+	"total_commits": 2,
+	"merge_base_commit": {
+		"sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	}
+}

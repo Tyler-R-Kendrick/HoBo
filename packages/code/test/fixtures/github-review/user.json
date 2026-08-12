@@ -1,0 +1,6 @@
+{
+	"_documentation": "Synthetic GitHub REST GET /user payload for the authenticated actor. No live tokens.",
+	"login": "reviewer",
+	"id": 2,
+	"node_id": "U_kwDOSYNTHUSER2"
+}

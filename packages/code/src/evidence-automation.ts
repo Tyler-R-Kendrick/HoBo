@@ -1,75 +1,19 @@
 import { createHash } from "node:crypto";
 
+import type {
+	BrowserRecordingAction,
+	BrowserRecordingTarget,
+	CompletedBrowserRecording,
+} from "./browser-recording.js";
+
 // public-contract: deterministic reusable browser-automation export schema.
 export const EVIDENCE_AUTOMATION_SCHEMA =
 	"hobo.code.evidence-automation/v1" as const;
 
-export type EvidenceAutomationTarget = Readonly<{
-	role?:
-		| "button"
-		| "checkbox"
-		| "combobox"
-		| "heading"
-		| "link"
-		| "menuitem"
-		| "option"
-		| "radio"
-		| "status"
-		| "switch"
-		| "tab"
-		| "textbox";
-	name?: string;
-	label?: string;
-	testId?: string;
-	text?: string;
-	css?: string;
-}>;
-
-export type EvidenceAutomationStep =
-	| Readonly<{ type: "click"; target: EvidenceAutomationTarget }>
-	| Readonly<{
-			type: "fill";
-			target: EvidenceAutomationTarget;
-			sensitive?: boolean;
-			value:
-				| Readonly<{ kind: "literal"; text: string }>
-				| Readonly<{ kind: "environment"; name: string }>;
-	  }>
-	| Readonly<{
-			type: "move";
-			target: EvidenceAutomationTarget;
-			position: Readonly<{ x: number; y: number }>;
-	  }>
-	| Readonly<{
-			type: "press";
-			target: EvidenceAutomationTarget;
-			key: string;
-	  }>
-	| Readonly<{
-			type: "assert";
-			target: EvidenceAutomationTarget;
-			expectation:
-				| Readonly<{
-						kind: "visible" | "hidden" | "enabled" | "disabled";
-				  }>
-				| Readonly<{ kind: "text" | "value"; value: string }>
-				| Readonly<{ kind: "checked"; value: boolean }>;
-	  }>
-	| Readonly<{ type: "assert-url"; path: string }>
-	| Readonly<{ type: "screenshot"; name: string }>;
-
-export interface CompletedEvidenceBrowserRecording {
-	readonly id: string;
-	readonly title: string;
-	readonly status: "completed";
-	readonly startUrl: string;
-	readonly steps: readonly EvidenceAutomationStep[];
-}
-
 export interface EvidenceAutomationArtifact {
 	readonly id: `sha256:${string}`;
 	readonly path: string;
-	readonly mediaType: "text/markdown" | "text/typescript";
+	readonly mediaType: "application/json" | "text/markdown" | "text/typescript";
 	readonly sha256: string;
 	readonly contents: string;
 }
@@ -78,58 +22,85 @@ export interface EvidenceRecordingAutomationExport {
 	readonly schemaVersion: typeof EVIDENCE_AUTOMATION_SCHEMA;
 	readonly capabilityId: string;
 	readonly sourceRecordingId: string;
+	readonly sourceArtifactRef?: string;
+	readonly replayability: "ready" | "needs-input";
+	readonly requiredEnvironment: readonly string[];
 	readonly artifacts: readonly EvidenceAutomationArtifact[];
 	readonly commands: readonly string[];
 }
 
-/** Convert a completed semantic browser recording into a portable capability. */
+/** Compile stored semantic recording evidence into agent instructions and runnable code. */
 export function exportEvidenceRecordingAutomation(
-	recording: CompletedEvidenceBrowserRecording,
+	recording: CompletedBrowserRecording,
+	options: { readonly name?: string; readonly sourceArtifactRef?: string } = {},
 ): EvidenceRecordingAutomationExport {
-	const id = boundedText(recording.id, "recording id", 256);
-	const title = boundedText(recording.title, "recording title", 256);
-	if (recording.status !== "completed") {
+	if (recording.status !== "completed")
 		throw new TypeError("evidence automation requires a completed recording");
-	}
-	const startUrl = httpUrl(recording.startUrl);
-	if (!Array.isArray(recording.steps) || recording.steps.length === 0) {
-		throw new TypeError("evidence automation requires recorded steps");
-	}
-
-	const capabilityId = slug(title) || slug(id);
+	if (recording.actions.length === 0)
+		throw new TypeError("evidence automation requires recorded actions");
+	const capabilityId = slug(options.name ?? recording.title ?? recording.id);
 	if (!capabilityId) throw new TypeError("recording needs a reusable name");
-	const root = `automations/${capabilityId}`;
-	const specPath = `${root}/automation.spec.ts`;
+	const root = `.agents/skills/${capabilityId}`;
+	const specPath = `${root}/scripts/run.spec.ts`;
 	const command = `pnpm exec playwright test ${specPath} --workers=1`;
-	const steps = recording.steps.map((step, index) => renderStep(step, index));
-	const instructions = recording.steps.map(describeStep);
-	const spec = renderSpec(title, startUrl, steps);
+	const requiredEnvironment = Object.freeze(
+		[...new Set(recording.actions.flatMap(environmentFor))].sort(),
+	);
 	const skill = renderSkill({
 		capabilityId,
 		command,
-		instructions,
-		recordingId: id,
-		title,
+		recording,
+		...(options.sourceArtifactRef
+			? { sourceArtifactRef: options.sourceArtifactRef }
+			: {}),
 	});
+	const spec = renderSpec(recording);
+	const source = `${JSON.stringify(recording, null, 2)}\n`;
 
 	return Object.freeze({
 		schemaVersion: EVIDENCE_AUTOMATION_SCHEMA,
 		capabilityId,
-		sourceRecordingId: id,
+		sourceRecordingId: recording.id,
+		...(options.sourceArtifactRef
+			? { sourceArtifactRef: options.sourceArtifactRef }
+			: {}),
+		replayability: requiredEnvironment.length > 0 ? "needs-input" : "ready",
+		requiredEnvironment,
 		artifacts: Object.freeze([
 			artifact(`${root}/SKILL.md`, "text/markdown", skill),
 			artifact(specPath, "text/typescript", spec),
+			artifact(`${root}/references/recording.json`, "application/json", source),
 		]),
 		commands: Object.freeze([command]),
 	});
 }
 
-function renderSpec(
-	title: string,
-	startUrl: URL,
-	steps: readonly string[],
-): string {
+function renderSpec(recording: CompletedBrowserRecording): string {
+	const startUrl = new URL(recording.startUrl);
 	const path = `${startUrl.pathname}${startUrl.search}${startUrl.hash}`;
+	const checkpoints = new Map(
+		recording.checkpoints.map((checkpoint) => [
+			checkpoint.afterAction,
+			checkpoint,
+		]),
+	);
+	const steps = recording.actions.flatMap((action, index) => {
+		const rendered = [renderAction(action, index, recording.viewport)];
+		const checkpoint = checkpoints.get(action.sequence);
+		if (checkpoint) {
+			rendered.push(
+				`await expect(page).toHaveURL(new URL(${quote(checkpoint.path)}, baseURL).href);`,
+			);
+			if (checkpoint.title)
+				rendered.push(
+					`await expect(page).toHaveTitle(${quote(checkpoint.title)});`,
+				);
+			rendered.push(
+				`await page.screenshot({ path: test.info().outputPath(${quote(`checkpoint-${checkpoint.sequence}.png`)}), animations: "disabled", caret: "hide", fullPage: true });`,
+			);
+		}
+		return rendered;
+	});
 	return `import { expect, test, type Locator } from "playwright/test";
 
 const baseURL = process.env.HOBO_AUTOMATION_BASE_URL ?? ${quote(startUrl.origin)};
@@ -141,196 +112,133 @@ function requiredEnv(name: string): string {
 }
 
 async function recordedTarget(candidates: readonly Locator[], label: string): Promise<Locator> {
-  for (const candidate of candidates) {
-    if (await candidate.count() === 1) return candidate;
-  }
+  for (const candidate of candidates) if (await candidate.count() === 1) return candidate;
   throw new Error(\`Recorded target is missing or ambiguous: \${label}\`);
 }
 
-test(${quote(title)}, async ({ page }) => {
+test(${quote(recording.title)}, async ({ page }) => {
   await page.goto(new URL(${quote(path)}, baseURL).href, { waitUntil: "domcontentloaded" });
 ${steps.map((step) => indent(step, 2)).join("\n")}
 });
 `;
 }
 
-function renderStep(step: EvidenceAutomationStep, index: number): string {
+function renderAction(
+	action: BrowserRecordingAction,
+	index: number,
+	viewport: CompletedBrowserRecording["viewport"],
+): string {
+	if (action.type === "navigate")
+		return `await page.goto(new URL(${quote(action.path)}, baseURL).href, { waitUntil: "domcontentloaded" });`;
+	if (action.type === "scroll")
+		return `await page.evaluate(([x, y]) => scrollTo(x, y), [${action.x}, ${action.y}]);`;
+	if (action.type === "pointer")
+		return `await page.mouse.move((page.viewportSize()?.width ?? ${viewport.width}) * ${ratio(action.x, viewport.width)}, (page.viewportSize()?.height ?? ${viewport.height}) * ${ratio(action.y, viewport.height)});`;
+	if (action.type === "press" && !action.target)
+		return `await page.keyboard.press(${quote(action.key)});`;
+	if (!("target" in action))
+		throw new TypeError("recorded action requires a target");
 	const variable = `step${index + 1}`;
-	if (step.type === "assert-url") {
-		if (!step.path.startsWith("/") || step.path.length > 4_096) {
-			throw new TypeError("recorded URL assertion path is invalid");
-		}
-		return `await expect(page).toHaveURL(new URL(${quote(step.path)}, baseURL).href);`;
-	}
-	if (step.type === "screenshot") {
-		if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/u.test(step.name)) {
-			throw new TypeError("recorded screenshot name is invalid");
-		}
-		return `await page.screenshot({ path: test.info().outputPath(${quote(`${step.name}.png`)}), animations: "disabled", caret: "hide", fullPage: true });`;
-	}
-	const target = renderTarget(step.target);
+	const target = renderTarget(action.target);
 	const declaration = `const ${variable} = await recordedTarget([${target.candidates.join(", ")}], ${quote(target.label)});`;
-	if (step.type === "click") {
+	if (action.type === "click")
 		return `${declaration}\nawait ${variable}.click();`;
-	}
-	if (step.type === "fill") {
-		if (step.sensitive && step.value.kind !== "environment") {
-			throw new TypeError(
-				"sensitive recorded values must use an environment variable",
-			);
-		}
-		const value =
-			step.value.kind === "environment"
-				? `requiredEnv(${quote(environmentName(step.value.name))})`
-				: quote(boundedText(step.value.text, "fill value", 8_192));
-		return `${declaration}\nawait ${variable}.fill(${value});`;
-	}
-	if (step.type === "move") {
-		const x = ratio(step.position.x, "pointer x");
-		const y = ratio(step.position.y, "pointer y");
-		return `${declaration}\nconst ${variable}Box = await ${variable}.boundingBox();\nif (!${variable}Box) throw new Error(${quote(`Recorded target has no layout box: ${target.label}`)});\nawait page.mouse.move(${variable}Box.x + ${variable}Box.width * ${x}, ${variable}Box.y + ${variable}Box.height * ${y});`;
-	}
-	if (step.type === "press") {
-		return `${declaration}\nawait ${variable}.press(${quote(boundedText(step.key, "pressed key", 128))});`;
-	}
-	const assertion = renderAssertion(variable, step.expectation);
-	return `${declaration}\n${assertion}`;
+	if (action.type === "hover")
+		return `${declaration}\nawait ${variable}.hover();`;
+	if (action.type === "fill")
+		return `${declaration}\nawait ${variable}.fill(requiredEnv(${quote(action.value.name)}));`;
+	if (action.type === "press")
+		return `${declaration}\nawait ${variable}.press(${quote(action.key)});`;
+	throw new TypeError("recorded action type is unsupported");
 }
 
-function renderTarget(target: EvidenceAutomationTarget): {
+function renderTarget(target: BrowserRecordingTarget | undefined): {
 	readonly candidates: readonly string[];
 	readonly label: string;
 } {
+	if (!target) throw new TypeError("recorded action requires a target");
 	const candidates: string[] = [];
-	if (target.role) {
+	if (target.role)
 		candidates.push(
 			target.name
-				? `page.getByRole(${quote(target.role)}, { name: ${quote(boundedText(target.name, "target name", 512))}, exact: true })`
+				? `page.getByRole(${quote(target.role)}, { name: ${quote(target.name)}, exact: true })`
 				: `page.getByRole(${quote(target.role)})`,
 		);
-	}
 	if (target.label)
-		candidates.push(
-			`page.getByLabel(${quote(boundedText(target.label, "target label", 512))}, { exact: true })`,
-		);
+		candidates.push(`page.getByLabel(${quote(target.label)}, { exact: true })`);
 	if (target.testId)
-		candidates.push(
-			`page.getByTestId(${quote(boundedText(target.testId, "target test id", 512))})`,
-		);
-	if (target.text)
-		candidates.push(
-			`page.getByText(${quote(boundedText(target.text, "target text", 512))}, { exact: true })`,
-		);
-	if (target.css)
-		candidates.push(
-			`page.locator(${quote(boundedText(target.css, "target CSS", 2_048))})`,
-		);
-	if (candidates.length === 0) {
-		throw new TypeError("recorded target requires a semantic locator or CSS");
-	}
+		candidates.push(`page.getByTestId(${quote(target.testId)})`);
+	if (target.stableId)
+		candidates.push(`page.locator(${quote(`#${cssEscape(target.stableId)}`)})`);
+	if (target.css) candidates.push(`page.locator(${quote(target.css)})`);
+	if (candidates.length === 0)
+		throw new TypeError("recorded target requires a locator");
 	return {
 		candidates,
 		label:
 			target.name ??
 			target.label ??
 			target.testId ??
-			target.text ??
+			target.stableId ??
 			target.css ??
 			"target",
 	};
 }
 
-function describeStep(step: EvidenceAutomationStep, index: number): string {
-	if (step.type === "assert-url") {
-		return `${index + 1}. Verify the browser URL is ${step.path}.`;
-	}
-	if (step.type === "screenshot") {
-		return `${index + 1}. Capture screenshot evidence ${step.name}.png.`;
-	}
-	const target = renderTarget(step.target).label;
-	if (step.type === "click") return `${index + 1}. Click ${target}.`;
-	if (step.type === "fill") {
-		return `${index + 1}. Fill ${target}${step.value.kind === "environment" ? ` from \`${environmentName(step.value.name)}\`` : ""}.`;
-	}
-	if (step.type === "move") {
-		return `${index + 1}. Move within ${target} at ${ratio(step.position.x, "pointer x") * 100}%, ${ratio(step.position.y, "pointer y") * 100}%.`;
-	}
-	if (step.type === "press") {
-		return `${index + 1}. Press ${boundedText(step.key, "pressed key", 128)} on ${target}.`;
-	}
-	return `${index + 1}. Verify ${target} ${describeExpectation(step.expectation)}.`;
-}
-
-function renderAssertion(
-	variable: string,
-	expectation: Extract<
-		EvidenceAutomationStep,
-		{ type: "assert" }
-	>["expectation"],
-): string {
-	switch (expectation.kind) {
-		case "visible":
-			return `await expect(${variable}).toBeVisible();`;
-		case "hidden":
-			return `await expect(${variable}).toBeHidden();`;
-		case "enabled":
-			return `await expect(${variable}).toBeEnabled();`;
-		case "disabled":
-			return `await expect(${variable}).toBeDisabled();`;
-		case "text":
-			return `await expect(${variable}).toHaveText(${quote(boundedText(expectation.value, "expected text", 8_192))});`;
-		case "value":
-			return `await expect(${variable}).toHaveValue(${quote(boundedText(expectation.value, "expected value", 8_192))});`;
-		case "checked":
-			return expectation.value
-				? `await expect(${variable}).toBeChecked();`
-				: `await expect(${variable}).not.toBeChecked();`;
-	}
-}
-
-function describeExpectation(
-	expectation: Extract<
-		EvidenceAutomationStep,
-		{ type: "assert" }
-	>["expectation"],
-): string {
-	if (expectation.kind === "text" || expectation.kind === "value") {
-		return `${expectation.kind} is ${boundedText(expectation.value, `expected ${expectation.kind}`, 8_192)}`;
-	}
-	if (expectation.kind === "checked") {
-		return expectation.value ? "is checked" : "is not checked";
-	}
-	return `is ${expectation.kind}`;
-}
-
 function renderSkill(input: {
 	readonly capabilityId: string;
 	readonly command: string;
-	readonly instructions: readonly string[];
-	readonly recordingId: string;
-	readonly title: string;
+	readonly recording: CompletedBrowserRecording;
+	readonly sourceArtifactRef?: string;
 }): string {
+	const steps = input.recording.actions.map(describeAction).join("\n");
 	return `---
 name: ${input.capabilityId}
-description: ${quote(`Reproduce the recorded browser path: ${input.title}`)}
+description: ${quote(`Reproduce the recorded browser path: ${input.recording.title}`)}
 ---
 
-# ${input.title}
+# ${input.recording.title}
 
-Source recording: \`${input.recordingId}\`
+Source recording: \`${input.recording.id}\`${input.sourceArtifactRef ? ` (\`${input.sourceArtifactRef}\`)` : ""}
 
-Use this capability when an agent needs to reproduce this browser path. Prefer the generated semantic locators; do not replace them with coordinates.
+Reproduce this path with the generated semantic Playwright automation. Supply every named environment variable at runtime; never copy secrets into this skill or the recording.
 
 ## Recorded path
 
-${input.instructions.join("\n")}
+${steps}
 
 ## Run
 
 \`${input.command}\`
 
-Set \`HOBO_AUTOMATION_BASE_URL\` to replay against another deployment. Run with one worker so the recorded path remains ordered and deterministic.
+Set \`HOBO_AUTOMATION_BASE_URL\` to replay against another deployment. Keep one worker so the path remains ordered and deterministic. New checkpoint screenshots are emitted as test evidence on every run.
 `;
+}
+
+function describeAction(action: BrowserRecordingAction, index: number): string {
+	const prefix = `${index + 1}.`;
+	if (action.type === "navigate")
+		return `${prefix} Navigate to ${action.path}.`;
+	if (action.type === "scroll")
+		return `${prefix} Scroll to ${action.x}, ${action.y}.`;
+	if (action.type === "pointer")
+		return `${prefix} Move the pointer to the recorded viewport-relative position.`;
+	if (action.type === "press" && !action.target)
+		return `${prefix} Press ${action.key}.`;
+	if (!("target" in action))
+		throw new TypeError("recorded action requires a target");
+	const target = renderTarget(action.target).label;
+	if (action.type === "click") return `${prefix} Click ${target}.`;
+	if (action.type === "hover") return `${prefix} Hover ${target}.`;
+	if (action.type === "fill")
+		return `${prefix} Fill ${target} from \`${action.value.name}\`.`;
+	if (action.type === "press")
+		return `${prefix} Press ${action.key} on ${target}.`;
+	throw new TypeError("recorded action type is unsupported");
+}
+
+function environmentFor(action: BrowserRecordingAction): readonly string[] {
+	return action.type === "fill" ? [action.value.name] : [];
 }
 
 function artifact(
@@ -348,51 +256,6 @@ function artifact(
 	});
 }
 
-function boundedText(value: unknown, label: string, maximum: number): string {
-	if (
-		typeof value !== "string" ||
-		value.trim().length === 0 ||
-		value.length > maximum
-	) {
-		throw new TypeError(`${label} is invalid`);
-	}
-	return value;
-}
-
-function httpUrl(value: unknown): URL {
-	const text = boundedText(value, "recording start URL", 4_096);
-	let url: URL;
-	try {
-		url = new URL(text);
-	} catch {
-		throw new TypeError("recording start URL must be absolute");
-	}
-	if (url.protocol !== "http:" && url.protocol !== "https:") {
-		throw new TypeError("recording start URL must use HTTP(S)");
-	}
-	return url;
-}
-
-function environmentName(value: unknown): string {
-	const name = boundedText(value, "environment variable name", 128);
-	if (!/^[A-Z_][A-Z0-9_]*$/u.test(name)) {
-		throw new TypeError("environment variable name is invalid");
-	}
-	return name;
-}
-
-function ratio(value: unknown, label: string): number {
-	if (
-		typeof value !== "number" ||
-		!Number.isFinite(value) ||
-		value < 0 ||
-		value > 1
-	) {
-		throw new TypeError(`${label} must be between 0 and 1`);
-	}
-	return value;
-}
-
 function quote(value: string): string {
 	return JSON.stringify(value).replaceAll("<", "\\u003c");
 }
@@ -406,6 +269,17 @@ function slug(value: string): string {
 		.replace(/^-|-$/gu, "")
 		.slice(0, 64)
 		.replace(/-$/u, "");
+}
+
+function ratio(value: number, dimension: number): number {
+	return Number(Math.max(0, Math.min(1, value / dimension)).toFixed(6));
+}
+
+function cssEscape(value: string): string {
+	return value.replace(
+		/[^A-Za-z0-9_-]/gu,
+		(character) => `\\${character.codePointAt(0)?.toString(16)} `,
+	);
 }
 
 function indent(value: string, spaces: number): string {

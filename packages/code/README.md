@@ -116,6 +116,17 @@ Evidence capture: `HOBO_CODE_SHELL_MAX_MS` bounds a session so a recording
 ends through the normal quit path, and `HOBO_CODE_SHELL_KEYS` scripts
 interactive paths — both opt-in.
 
+The browser evidence overlay can capture a PNG screenshot or record a WebM
+plus a secret-free semantic action/checkpoint manifest. Both appear in the
+live Evidence report. After a completed recording, **Save as capability**
+compiles the same stored manifest into
+`.agents/skills/<name>/{SKILL.md,scripts/run.spec.ts,references/recording.json}`.
+Generated Playwright uses role/label/test-id locators before stable ids, emits
+fresh checkpoint screenshots, takes recorded input through named environment
+variables, and can target another deployment with
+`HOBO_AUTOMATION_BASE_URL`. The control server validates the overlay origin,
+capture signatures, recording schema, and capability path before writing.
+
 Product identity lives in `/about`. Stock Pi TUI remains an escape hatch only
 (`HOBO_CODE_TUI=pi` or `hobo-code --pi`) and is never the product frame.
 

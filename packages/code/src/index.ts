@@ -98,10 +98,7 @@ export {
 export {
 	EVIDENCE_AUTOMATION_SCHEMA,
 	exportEvidenceRecordingAutomation,
-	type CompletedEvidenceBrowserRecording,
 	type EvidenceAutomationArtifact,
-	type EvidenceAutomationStep,
-	type EvidenceAutomationTarget,
 	type EvidenceRecordingAutomationExport,
 } from "./evidence-automation.js";
 

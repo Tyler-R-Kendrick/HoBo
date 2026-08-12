@@ -4,181 +4,131 @@ import { dirname, join } from "node:path";
 import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 
-import { exportEvidenceRecordingAutomation } from "../src/index.js";
+import {
+	BROWSER_RECORDING_SCHEMA,
+	type CompletedBrowserRecording,
+	exportEvidenceRecordingAutomation,
+} from "../src/index.js";
+
+function recording(
+	actions: CompletedBrowserRecording["actions"],
+): CompletedBrowserRecording {
+	return {
+		schemaVersion: BROWSER_RECORDING_SCHEMA,
+		id: "recording-checkout-17",
+		title: "Checkout as a returning customer",
+		status: "completed",
+		startUrl: "https://shop.example/cart?draft=1",
+		endUrl: "https://shop.example/complete",
+		durationMs: 1_200,
+		viewport: { width: 1_000, height: 800 },
+		actions,
+		checkpoints: [
+			{ sequence: 1, afterAction: 1, path: "/complete", title: "Complete" },
+		],
+	};
+}
 
 describe("evidence recording automation export", () => {
-	it("turns a completed browser path into a reusable agent skill and Playwright spec", () => {
-		const exported = exportEvidenceRecordingAutomation({
-			id: "recording-checkout-17",
-			title: "Checkout as a returning customer",
-			status: "completed",
-			startUrl: "https://shop.example/cart?draft=1",
-			steps: [
+	it("turns stored recording evidence into one reusable skill and deterministic spec", () => {
+		const exported = exportEvidenceRecordingAutomation(
+			recording([
 				{
+					sequence: 1,
+					offsetMs: 4,
 					type: "click",
-					target: {
-						role: "button",
-						name: "Checkout",
-						testId: "checkout",
-					},
+					target: { role: "button", name: "Checkout", testId: "checkout" },
 				},
 				{
+					sequence: 2,
+					offsetMs: 8,
 					type: "fill",
 					target: { label: "Email" },
-					value: { kind: "literal", text: "dev@example.com" },
+					value: { kind: "parameter", name: "CUSTOMER_EMAIL" },
 				},
-			],
-		});
+				{ sequence: 3, offsetMs: 9, type: "pointer", x: 250, y: 600 },
+			]),
+			{ sourceArtifactRef: "sha256:recording", name: "Returning checkout" },
+		);
 
 		expect(exported).toMatchObject({
-			schemaVersion: "hobo.code.evidence-automation/v1",
-			capabilityId: "checkout-as-a-returning-customer",
+			capabilityId: "returning-checkout",
 			sourceRecordingId: "recording-checkout-17",
-			commands: [
-				"pnpm exec playwright test automations/checkout-as-a-returning-customer/automation.spec.ts --workers=1",
-			],
+			sourceArtifactRef: "sha256:recording",
+			replayability: "needs-input",
+			requiredEnvironment: ["CUSTOMER_EMAIL"],
 		});
 		expect(exported.artifacts.map(({ path }) => path)).toEqual([
-			"automations/checkout-as-a-returning-customer/SKILL.md",
-			"automations/checkout-as-a-returning-customer/automation.spec.ts",
+			".agents/skills/returning-checkout/SKILL.md",
+			".agents/skills/returning-checkout/scripts/run.spec.ts",
+			".agents/skills/returning-checkout/references/recording.json",
 		]);
-
 		const skill = exported.artifacts[0]?.contents ?? "";
 		const spec = exported.artifacts[1]?.contents ?? "";
-		expect(skill).toContain("name: checkout-as-a-returning-customer");
 		expect(skill).toContain("Source recording: `recording-checkout-17`");
-		expect(skill).toContain("Checkout as a returning customer");
-		expect(skill).toContain(exported.commands[0]);
-		expect(spec).toContain('from "playwright/test"');
-		expect(spec).toContain("HOBO_AUTOMATION_BASE_URL");
-		expect(spec).toContain(
-			'getByRole("button", { name: "Checkout", exact: true })',
-		);
-		expect(spec).toContain('getByTestId("checkout")');
-		expect(spec).toContain('.fill("dev@example.com")');
-
-		for (const artifact of exported.artifacts) {
-			expect(artifact.id).toBe(`sha256:${artifact.sha256}`);
+		expect(skill).toContain("`CUSTOMER_EMAIL`");
+		expect(spec).toContain('getByRole("button", { name: "Checkout"');
+		expect(spec).toContain('requiredEnv("CUSTOMER_EMAIL")');
+		expect(spec).toContain("page.viewportSize()?.width ?? 1000");
+		expect(spec).toContain('toHaveURL(new URL("/complete", baseURL).href)');
+		expect(spec).toContain('outputPath("checkpoint-1.png")');
+		for (const artifact of exported.artifacts)
 			expect(createHash("sha256").update(artifact.contents).digest("hex")).toBe(
 				artifact.sha256,
 			);
-		}
-	});
-
-	it("replays movement and state changes while capturing new screenshot evidence", () => {
-		const exported = exportEvidenceRecordingAutomation({
-			id: "recording-profile-4",
-			title: "Update profile",
-			status: "completed",
-			startUrl: "http://127.0.0.1:4173/profile",
-			steps: [
-				{
-					type: "move",
-					target: { testId: "profile-card" },
-					position: { x: 0.25, y: 0.75 },
-				},
-				{
-					type: "fill",
-					target: { label: "Password" },
-					sensitive: true,
-					value: { kind: "environment", name: "HOBO_TEST_PASSWORD" },
-				},
-				{
-					type: "press",
-					target: { label: "Password" },
-					key: "Enter",
-				},
-				{
-					type: "assert",
-					target: { role: "status", name: "Profile status" },
-					expectation: { kind: "text", value: "Profile saved" },
-				},
-				{ type: "assert-url", path: "/profile?saved=1" },
-				{ type: "screenshot", name: "profile-saved" },
-			],
-		});
-
-		const skill = exported.artifacts[0]?.contents ?? "";
-		const spec = exported.artifacts[1]?.contents ?? "";
-		expect(skill).toContain("Move within profile-card at 25%, 75%.");
-		expect(skill).toContain("Fill Password from `HOBO_TEST_PASSWORD`.");
-		expect(skill).toContain("Verify Profile status text is Profile saved.");
-		expect(skill).not.toContain("Password value");
-		expect(spec).toContain('requiredEnv("HOBO_TEST_PASSWORD")');
-		expect(spec).toMatch(/Box\.width \* 0\.25/u);
-		expect(spec).toMatch(/Box\.height \* 0\.75/u);
-		expect(spec).toContain('.press("Enter")');
-		expect(spec).toContain('.toHaveText("Profile saved")');
-		expect(spec).toContain(
-			'toHaveURL(new URL("/profile?saved=1", baseURL).href)',
-		);
-		expect(spec).toContain('test.info().outputPath("profile-saved.png")');
-		expect(spec).toContain('animations: "disabled"');
 	});
 
 	it("emits a Playwright bundle the installed compiler can load", () => {
-		const exported = exportEvidenceRecordingAutomation({
-			id: "recording-runnable",
-			title: "Runnable checkout",
-			status: "completed",
-			startUrl: "http://127.0.0.1:4173/checkout",
-			steps: [{ type: "click", target: { role: "button", name: "Pay" } }],
-		});
-		const root = mkdtempSync(
-			join(process.cwd(), "test", "evidence-automation-test-"),
+		const exported = exportEvidenceRecordingAutomation(
+			recording([
+				{
+					sequence: 1,
+					offsetMs: 1,
+					type: "click",
+					target: { role: "button", name: "Pay" },
+				},
+			]),
 		);
+		const root = mkdtempSync(join(process.cwd(), "test", "automation-"));
 		try {
 			for (const artifact of exported.artifacts) {
 				const path = join(root, artifact.path);
 				mkdirSync(dirname(path), { recursive: true });
 				writeFileSync(path, artifact.contents);
 			}
-			const specPath = join(root, exported.artifacts[1]?.path ?? "");
-			const program = ts.createProgram([specPath], {
-				module: ts.ModuleKind.NodeNext,
-				moduleResolution: ts.ModuleResolutionKind.NodeNext,
-				noEmit: true,
-				skipLibCheck: true,
-				strict: true,
-				target: ts.ScriptTarget.ES2022,
-				types: ["node"],
-			});
-			const diagnostics = ts
-				.getPreEmitDiagnostics(program)
-				.map(({ messageText }) =>
-					ts.flattenDiagnosticMessageText(messageText, "\n"),
-				);
-			expect(diagnostics).toEqual([]);
+			const program = ts.createProgram(
+				[join(root, exported.artifacts[1]?.path ?? "")],
+				{
+					module: ts.ModuleKind.NodeNext,
+					moduleResolution: ts.ModuleResolutionKind.NodeNext,
+					noEmit: true,
+					skipLibCheck: true,
+					strict: true,
+					target: ts.ScriptTarget.ES2022,
+					types: ["node"],
+				},
+			);
+			expect(
+				ts
+					.getPreEmitDiagnostics(program)
+					.map(({ messageText }) =>
+						ts.flattenDiagnosticMessageText(messageText, "\n"),
+					),
+			).toEqual([]);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
 	});
 
-	it("refuses incomplete recordings and literal sensitive values", () => {
+	it("refuses interrupted or empty recordings", () => {
 		expect(() =>
 			exportEvidenceRecordingAutomation({
-				id: "recording-active",
-				title: "Still recording",
-				status: "recording",
-				startUrl: "https://example.test",
-				steps: [{ type: "click", target: { text: "Continue" } }],
-			} as never),
-		).toThrow(/completed recording/);
-		expect(() =>
-			exportEvidenceRecordingAutomation({
-				id: "recording-secret",
-				title: "Secret entry",
-				status: "completed",
-				startUrl: "https://example.test",
-				steps: [
-					{
-						type: "fill",
-						target: { label: "Password" },
-						sensitive: true,
-						value: { kind: "literal", text: "do-not-export" },
-					},
-				],
+				...recording([]),
+				status: "interrupted",
 			}),
-		).toThrow(/environment variable/);
+		).toThrow(/completed/);
+		expect(() => exportEvidenceRecordingAutomation(recording([]))).toThrow(
+			/recorded actions/,
+		);
 	});
 });

@@ -1,5 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -296,10 +302,62 @@ describe("resident session loopback server", () => {
 					}),
 				},
 			);
-			expect(await manifestResponse.json()).toMatchObject({
+			const manifestResult = (await manifestResponse.json()) as {
+				recordingId: string;
+				artifactRefs: readonly string[];
+			};
+			expect(manifestResult).toMatchObject({
 				recordingId: "recording-17",
 				artifactRefs: [videoArtifactRef, expect.stringMatching(/^sha256:/u)],
 			});
+			const capabilityResponse = await fetch(
+				server.controlsUrlTemplate.replace("/controls/", "/api/actions/"),
+				{
+					method: "POST",
+					headers: {
+						origin: "http://127.0.0.1:4173",
+						"content-type": "text/plain",
+					},
+					body: JSON.stringify({
+						type: "save-capability",
+						recordingId: manifestResult.recordingId,
+						name: "Checkout replay",
+					}),
+				},
+			);
+			expect(capabilityResponse.status).toBe(201);
+			const capability = (await capabilityResponse.json()) as {
+				capabilityId: string;
+				command: string;
+				replayability: string;
+				artifactRefs: readonly string[];
+			};
+			expect(capability).toMatchObject({
+				capabilityId: "checkout-replay",
+				replayability: "ready",
+				command:
+					"pnpm exec playwright test .agents/skills/checkout-replay/scripts/run.spec.ts --workers=1",
+			});
+			expect(capability.artifactRefs).toHaveLength(3);
+			expect(
+				readFileSync(
+					join(projectRoot, ".agents", "skills", "checkout-replay", "SKILL.md"),
+					"utf8",
+				),
+			).toContain(`Source recording: \`recording-17\``);
+			expect(
+				readFileSync(
+					join(
+						projectRoot,
+						".agents",
+						"skills",
+						"checkout-replay",
+						"scripts",
+						"run.spec.ts",
+					),
+					"utf8",
+				),
+			).toContain('getByRole("button", { name: "Checkout"');
 
 			const headers = {
 				authorization: "Bearer test-token",

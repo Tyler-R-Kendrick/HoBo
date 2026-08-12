@@ -45,6 +45,9 @@ export const ZERO_USAGE: EngineUsage = {
 	costUsd: 0,
 };
 
+/** Skills are product capabilities; the engine may disable extensions, never skills. */
+export const PI_SKILLS_ENABLED = true;
+
 /** Per-turn delta = after − before (clamped at zero for safety). */
 export function usageDelta(
 	before: EngineUsage,
@@ -281,7 +284,7 @@ export async function createPiShellEngine(
 			agentDir: sdk.getAgentDir(),
 			settingsManager,
 			noExtensions: true,
-			noSkills: true,
+			noSkills: !PI_SKILLS_ENABLED,
 			noPromptTemplates: true,
 			noThemes: true,
 			appendSystemPrompt: [options.instructions],

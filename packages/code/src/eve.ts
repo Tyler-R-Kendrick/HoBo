@@ -146,7 +146,7 @@ export function defaultHoboCodeEveAgents(): {
 			"HoBo Code coordinator: dispatch, promote, evidence; delegates specialist work to Eve subagents.",
 		model: "default",
 		tools: ["dispatch", "status", "promote", "scaffold", "budget"],
-		skills: ["repo", "sdlc", "tdd", "review"],
+		skills: ["repo", "sdlc", "impeccable", "tdd", "review"],
 		subagents: ["investigator", "implementer", "reviewer"],
 		// Coordinator may stay local-process; tools that mutate code still sandbox.
 		sandboxClass: "local-process",

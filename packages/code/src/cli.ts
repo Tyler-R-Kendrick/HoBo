@@ -3,7 +3,7 @@
  *
  * App-building agent CLI (not a control-plane management tool).
  *   dispatch (default) | status | session | attach | tasks | guide |
- *   scaffold | isolate | promote | env | auth | models | cost | harness |
+ *   scaffold | dev | isolate | promote | env | auth | models | cost | harness |
  *   edit | config | agent | help
  *
  * Binary name: hobo-code (dash permitted).
@@ -43,6 +43,7 @@ import {
 	sshDestination,
 } from "./dev-machines.js";
 import { defaultDevenvProbes, devenvSummary, inspectDevenv } from "./devenv.js";
+import { startDevBrowserSession } from "./dev-browser.js";
 import {
 	computeTaskPath,
 	describeDistributedCompute,
@@ -144,6 +145,7 @@ export const HOBO_CODE_VERBS = [
 	"tasks",
 	"guide",
 	"scaffold",
+	"dev",
 	"isolate",
 	"promote",
 	"env",
@@ -310,6 +312,7 @@ const VALUE_FLAGS = new Set([
 	"out",
 	"mode",
 	"port",
+	"debug-port",
 ]);
 
 /** Boolean flags (never consume the next token). */
@@ -328,6 +331,7 @@ const BOOL_FLAGS = new Set([
 	"shared",
 	"virtual",
 	"approve",
+	"once",
 ]);
 
 export class UnknownFlagError extends Error {
@@ -487,6 +491,7 @@ function helpTextPlain(): string {
 		"",
 		"Craft & cost:",
 		"  scaffold   OpenUI/Astryx scaffold template",
+		"  dev        Deploy the current web app with browser evidence controls",
 		"  isolate    Mediated sandbox for agent work",
 		"  promote    Promote a run through gate checklist",
 		"  edit       Open [neo]vim in managed harness pane (CLI-native)",
@@ -525,6 +530,7 @@ function helpTextPlain(): string {
 		"Examples:",
 		'  hobo-code "refine the openui bindle"',
 		"  hobo-code scaffold --name demo",
+		"  hobo-code dev --cwd demo",
 		"  hobo-code config --stack cost-budget",
 		"  hobo-code agent --json            # MCP/ACP + unattended contract",
 		"  hobo-code edit src/cli.ts        # neovim/vim managed pane",
@@ -856,6 +862,25 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"See also: hobo-code dispatch · hobo-code help",
 	],
+	dev: [
+		"hobo-code dev — local browser deployment with evidence controls",
+		"",
+		"Usage:",
+		"  hobo-code dev [--cwd <app>] [--port <port>] [--debug-port <port>]",
+		"  hobo-code dev --once --json       # bounded deployment probe",
+		"",
+		"The app is served from public/. Open the debug URL to use the Evidence",
+		"overlay for reports, annotations, screenshots, recordings, and replay.",
+		"",
+		"Flags:",
+		"  --cwd <app>         App root containing public/index.html",
+		"  --port <port>       Raw app port (default 4173; 0 chooses a free port)",
+		"  --debug-port <port> Evidence controls port (default 4174; 0 chooses free)",
+		"  --once              Probe both surfaces, then stop",
+		"  --json              Machine-readable deployment URLs and evidence path",
+		"",
+		"See also: hobo-code scaffold · hobo-code harness · hobo-code session",
+	],
 	isolate: [
 		"hobo-code isolate — mediated sandbox for agent work",
 		"",
@@ -1166,6 +1191,7 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 			tasks: "tk",
 			guide: "gd",
 			scaffold: "sc",
+			dev: "dv",
 			isolate: "i",
 			promote: "pr",
 			env: "ev",
@@ -2300,6 +2326,92 @@ export async function runHoboCodeCli(
 			policy:
 				"Optional hermetic shell for hobo-code only; durable state under HOBO_HOME outside sandboxes; Nix not monorepo IaC.",
 		});
+	}
+
+	if (verb === "dev") {
+		const port = Number(flags.port ?? 4173);
+		const debugPort = Number(flags["debug-port"] ?? 4174);
+		if (
+			![port, debugPort].every(
+				(value) => Number.isInteger(value) && value >= 0 && value <= 65_535,
+			)
+		) {
+			return fail(
+				"HOBO_CODE_DEV_USAGE",
+				panel("✕ dev", ["ports must be integers from 0 through 65535"]),
+				["hobo-code dev --help"],
+			);
+		}
+		let session: Awaited<ReturnType<typeof startDevBrowserSession>> | undefined;
+		try {
+			session = await startDevBrowserSession({
+				projectDir,
+				hoboHome,
+				appPort: port,
+				debugPort,
+			});
+			const deployed = session;
+			const [appProbe, debugProbe, controlsProbe] = await Promise.all([
+				fetch(deployed.appUrl),
+				fetch(deployed.debugUrl),
+				fetch(deployed.controlsUrl),
+			]);
+			const probes = [appProbe, debugProbe, controlsProbe];
+			if (probes.some((probe) => !probe.ok)) {
+				throw new Error(
+					`browser deployment probe failed (${probes.map((probe) => probe.status).join("/")})`,
+				);
+			}
+			const once = flags.once === true;
+			if (once) {
+				await deployed.close();
+				session = undefined;
+			} else {
+				const stop = (exitCode: number): void => {
+					process.exitCode = exitCode;
+					void deployed.close();
+				};
+				process.once("SIGINT", () => stop(130));
+				process.once("SIGTERM", () => stop(143));
+			}
+			const text = panel("◎ dev", [
+				`browser · ${deployed.debugUrl}`,
+				`app · ${deployed.appUrl}`,
+				`evidence · ${displayPath(deployed.evidencePath, { hoboHome, cwd: projectDir })}`,
+				...(once ? ["probe · passed; stopped"] : ["live · Ctrl-C to stop"]),
+			]);
+			return ok("HOBO_CODE_DEV", text, {
+				deployment: {
+					mode: "local-browser",
+					deploymentId: deployed.sessionId,
+					sessionId: deployed.sessionId,
+					appUrl: deployed.appUrl,
+					debugUrl: deployed.debugUrl,
+					controlsUrl: deployed.controlsUrl,
+					reportUrl: deployed.reportUrl,
+					evidencePath: deployed.evidencePath,
+					served: {
+						appStatus: appProbe.status,
+						debugStatus: debugProbe.status,
+						controlsStatus: controlsProbe.status,
+					},
+					stopped: once,
+				},
+				text,
+			});
+		} catch (error) {
+			await session?.close().catch(() => {});
+			return fail(
+				"HOBO_CODE_DEV_FAILED",
+				panel("✕ dev", [
+					error instanceof Error ? error.message : String(error),
+				]),
+				[
+					"ensure public/index.html exists",
+					"choose free ports with --port and --debug-port",
+				],
+			);
+		}
 	}
 
 	if (verb === "scaffold") {

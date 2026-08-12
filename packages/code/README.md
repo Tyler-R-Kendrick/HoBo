@@ -18,7 +18,7 @@ The installed binary is **compiled** (`dist/`). Source lives in `src/`.
 
 | Binary | Product |
 |---|---|
-| **`hobo-code`** | App-building coding agent (this package) |
+| **`hobo-code`** | App-building coding agent plus local browser-debug deployment (this package) |
 | **`hobo`** | Control-plane shell (`up` / `dev` / `plan` / …) — **not** the coding harness |
 
 ### Interactive TTY (bare `hobo-code`)
@@ -281,6 +281,7 @@ export HOBO_CODE_MODEL=openai/gpt-4.1
 # 2) Build
 hobo-code "add a settings page to the bindle"
 hobo-code scaffold --name demo
+hobo-code dev --cwd demo          # open the printed browser/debug URL
 hobo-code status                 # plain English session hierarchy (default)
 hobo-code status --dense         # power-user glyph box + Herdr/Grok footers
 hobo-code tasks                  # background task board
@@ -326,6 +327,7 @@ hobo-code auth status
 hobo-code status                       # plain hierarchy; --dense for glyph box
 hobo-code session list --json
 hobo-code scaffold --name demo
+hobo-code dev --cwd demo
 hobo-code isolate --json
 hobo-code promote --run <id>
 hobo-code env --json
@@ -354,9 +356,15 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **config** | Env/flags inventory by stack (setup critique; secrets presence-only) |
 | **agent** | Agent-native readiness: human-free auth, MCP/ACP, unattended/no-elicitation |
 | scaffold | OpenUI/Astryx scaffold template |
+| **dev** | Serve `public/` with isolated browser evidence controls |
 | isolate / promote | Built-in mediated sandbox + gated promote |
 | env | Optional hermetic shell + durable layout |
 | help | Plain help (or `--dense` glyph idioms) |
+
+`dev` reuses the durable Evidence port, report, screenshot/recording capture,
+replay, and `.hobo/recordings` capability exporter. Its browser boundary is
+protected by the TypeScript exact-message parser and
+`contracts/pacts/code-dev-browser-boundary.pact.json`.
 
 **GHCP-adjacent differentiators:** animated title on bare TTY, enterprise-style Station auth, BYOK/open models via `models`, mediated sandbox (`isolate`/`session`).
 
@@ -431,6 +439,7 @@ Stack that multiplies savings (repo agent tooling): **RTK** (shell noise) · **h
 ```bash
 hobo-code harness              # dual surface inventory
 hobo-code harness --json       # skills · Eve · self-improve · brain
+# Interactive Pi loads project skills, including Impeccable for web-app debugging.
 # Interactive Pi path shares instructions with:
 #   flue run hobo-code --input '{"message":"…"}'
 ```

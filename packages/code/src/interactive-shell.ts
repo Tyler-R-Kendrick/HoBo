@@ -136,6 +136,11 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 	},
 	{ name: "config", description: "Setup / stack inventory", argv: ["config"] },
 	{ name: "cost", description: "$0 path + budget + savings", argv: ["cost"] },
+	{
+		name: "dev",
+		description: "Deploy app + browser evidence controls",
+		argv: ["dev"],
+	},
 	{ name: "status", description: "Session / agent panes", argv: ["status"] },
 	{
 		name: "sessions",

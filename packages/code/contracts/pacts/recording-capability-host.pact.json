@@ -9,7 +9,8 @@
 				"path": "/__hobo/evidence/api/actions/:controlsCapability",
 				"headers": {
 					"origin": "http://127.0.0.1:4173",
-					"content-type": "text/plain"
+					"content-type": "text/plain",
+					"authorization": "Bearer test-token"
 				},
 				"body": {
 					"type": "save-capability",

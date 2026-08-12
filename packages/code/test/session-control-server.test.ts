@@ -309,6 +309,24 @@ describe("resident session loopback server", () => {
 				},
 			);
 			expect(foreignAction.status).toBe(403);
+			const reportAction = await fetch(
+				server.controlsUrlTemplate.replace("/controls/", "/api/actions/"),
+				{
+					method: "POST",
+					headers: {
+						origin: "http://127.0.0.1:4173",
+						"content-type": "text/plain",
+					},
+					body: JSON.stringify({ type: "report" }),
+				},
+			);
+			const reportResult = (await reportAction.json()) as { url: string };
+			expect(reportAction.status).toBe(200);
+			expect(reportResult.url).toContain("?report=");
+			expect(reportResult.url).not.toContain("test-token");
+			const readOnlyReport = await fetch(reportResult.url);
+			expect(readOnlyReport.status).toBe(200);
+			expect(await readOnlyReport.text()).not.toContain("test-token");
 			const actionResponse = await fetch(
 				`${server.controlsUrlTemplate.replace("/controls/", "/api/captures/")}?kind=screenshot&subject=browser%3Acurrent`,
 				{
@@ -394,6 +412,18 @@ describe("resident session loopback server", () => {
 				"/controls/",
 				"/api/actions/",
 			);
+			const unprivilegedCapability = await fetch(capabilityUrl, {
+				method: "POST",
+				headers: {
+					origin: "http://127.0.0.1:4173",
+					"content-type": "text/plain",
+				},
+				body: JSON.stringify(capabilityInteraction.request.body),
+			});
+			expect(unprivilegedCapability.status).toBe(403);
+			expect(await unprivilegedCapability.json()).toMatchObject({
+				error: "recording capability export requires controls authorization",
+			});
 			expect(
 				new URL(capabilityUrl).pathname.replace(
 					/\/[^/]+$/u,

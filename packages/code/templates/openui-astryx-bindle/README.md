@@ -19,12 +19,13 @@ High-value **`hobo-code`** template — first paint under `public/`.
 ```bash
 # scaffold (from project root)
 hobo-code scaffold --name my-app
+hobo-code dev --cwd my-app
 
 # default verb is dispatch — bare prompt is work
 hobo-code "refine the openui first paint"
 ```
 
-1. Open `public/index.html` — first-paint frame (dark shell, step rail, responsive grid, reduced-motion safe).
+1. Open the browser URL printed by `hobo-code dev` — live first paint plus HoBo evidence controls.
 2. Edit in context, then **lock** an OpenUI intermediary artifact.
 3. Treat locked HTML as truth · codegen.
 

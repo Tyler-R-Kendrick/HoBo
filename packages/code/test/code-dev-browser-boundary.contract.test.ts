@@ -36,6 +36,13 @@ describe("code dev-browser boundary pact", () => {
 			{
 				request: {
 					method: "GET",
+					path: "/__hobo/evidence/bo-idle.png",
+				},
+				response: { status: 200 },
+			},
+			{
+				request: {
+					method: "GET",
 					path: "/__hobo/evidence/controls/{capability}",
 				},
 				response: { status: 200 },

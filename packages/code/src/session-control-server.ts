@@ -728,6 +728,7 @@ export async function startSessionControlServer(
 				response.end(
 					renderEvidenceOverlayControls({
 						parentOrigin,
+						reportUrl: `http://127.0.0.1:${(server.address() as { port: number }).port}/__hobo/evidence?report=${encodeURIComponent(reportCapability)}`,
 						...(sessionId ? { sessionId } : {}),
 						capabilityAuthorization: `Bearer ${token}`,
 					}),

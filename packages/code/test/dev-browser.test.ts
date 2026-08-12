@@ -60,6 +60,12 @@ describe("hobo-code browser development deployment", () => {
 					await fetch(`${session.appUrl}__hobo/evidence/bridge.js`)
 				).text(),
 			).toContain("data-hobo-evidence-overlay");
+			const bo = await fetch(`${session.appUrl}__hobo/evidence/bo-idle.png`);
+			expect(bo.status).toBe(200);
+			expect(bo.headers.get("content-type")).toBe("image/png");
+			expect(new Uint8Array(await bo.arrayBuffer()).slice(0, 8)).toEqual(
+				Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+			);
 
 			const controls = await fetch(session.controlsUrl);
 			expect(controls.status).toBe(200);

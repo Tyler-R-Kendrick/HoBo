@@ -112,6 +112,8 @@ export {
 } from "./evidence-port.js";
 
 export {
+	EVIDENCE_OVERLAY_BO_PATH,
+	evidenceOverlayBoIdleResponse,
 	parseEvidenceOverlayMessage,
 	renderEvidenceOverlayBridge,
 	renderEvidenceOverlayControls,

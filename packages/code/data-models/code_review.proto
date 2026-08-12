@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package hobo.code.review.v1;
+
+enum ReviewDecision {
+  REVIEW_DECISION_UNSPECIFIED = 0;
+  REVIEW_DECISION_COMMENT = 1;
+  REVIEW_DECISION_APPROVE = 2;
+  REVIEW_DECISION_REQUEST_CHANGES = 3;
+}
+
+enum ReviewInboxDisposition {
+  REVIEW_INBOX_DISPOSITION_UNSPECIFIED = 0;
+  REVIEW_INBOX_DISPOSITION_ACTIVE = 1;
+  REVIEW_INBOX_DISPOSITION_DEFERRED = 2;
+  REVIEW_INBOX_DISPOSITION_IGNORED = 3;
+}
+
+enum ReviewErrorCode {
+  REVIEW_ERROR_CODE_UNSPECIFIED = 0;
+  REVIEW_ERROR_CODE_MALFORMED_INPUT = 1;
+  REVIEW_ERROR_CODE_NOT_FOUND = 2;
+  REVIEW_ERROR_CODE_STALE_REVISION = 3;
+  REVIEW_ERROR_CODE_STALE_GENERATION = 4;
+  REVIEW_ERROR_CODE_UNSUPPORTED_CAPABILITY = 5;
+  REVIEW_ERROR_CODE_APPROVAL_REQUIRED = 6;
+  REVIEW_ERROR_CODE_APPROVAL_MISMATCH = 7;
+  REVIEW_ERROR_CODE_PROVIDER_DRIFT = 8;
+  REVIEW_ERROR_CODE_AMBIGUOUS_OUTCOME = 9;
+  REVIEW_ERROR_CODE_ANCHOR_STALE = 10;
+  REVIEW_ERROR_CODE_ANCHOR_AMBIGUOUS = 11;
+  REVIEW_ERROR_CODE_PATCH_CONFLICT = 12;
+  REVIEW_ERROR_CODE_BODY_LIMIT = 13;
+  REVIEW_ERROR_CODE_PAGE_LIMIT = 14;
+  REVIEW_ERROR_CODE_CORRUPTED_STATE = 15;
+  REVIEW_ERROR_CODE_AUTH_DENIED = 16;
+  REVIEW_ERROR_CODE_IDEMPOTENT_REPLAY = 17;
+}
+
+message ReviewWorkingTreeTarget {
+  string repository_id = 1;
+  string repository_root = 2;
+  string base_commit_oid = 3;
+  string index_tree_oid = 4;
+  string worktree_manifest_hash = 5;
+}
+
+message ReviewIndexTarget {
+  string repository_id = 1;
+  string repository_root = 2;
+  string base_commit_oid = 3;
+  string index_tree_oid = 4;
+}
+
+message ReviewCommitTarget {
+  string repository_id = 1;
+  string repository_root = 2;
+  string parent_commit_oid = 3;
+  string commit_oid = 4;
+  string stable_patch_evidence = 5;
+}
+
+message ReviewRangeTarget {
+  string repository_id = 1;
+  string repository_root = 2;
+  string requested_base_ref = 3;
+  string requested_head_ref = 4;
+  string merge_base_oid = 5;
+  string base_commit_oid = 6;
+  string head_commit_oid = 7;
+}
+
+message ReviewPullRequestTarget {
+  string provider = 1;
+  string host = 2;
+  string repository = 3;
+  uint32 number = 4;
+  string base_ref = 5;
+  string head_ref = 6;
+  string merge_base_oid = 7;
+  string base_commit_oid = 8;
+  string head_commit_oid = 9;
+  string provider_node_id = 10;
+}
+
+message ReviewStackMemberTarget {
+  string member_id = 1;
+  string base_commit_oid = 2;
+  string head_commit_oid = 3;
+  string merge_base_oid = 4;
+}
+
+message ReviewStackTarget {
+  string stack_id = 1;
+  string repository_id = 2;
+  repeated ReviewStackMemberTarget members = 3;
+  string aggregate_base_oid = 4;
+  string aggregate_head_oid = 5;
+}
+
+message ReviewTarget {
+  oneof kind {
+    ReviewWorkingTreeTarget working_tree = 1;
+    ReviewIndexTarget index = 2;
+    ReviewCommitTarget commit = 3;
+    ReviewRangeTarget range = 4;
+    ReviewPullRequestTarget pull_request = 5;
+    ReviewStackTarget stack = 6;
+  }
+}
+
+message ReviewCommandEnvelope {
+  string schema_version = 1;
+  string command_id = 2;
+  string actor_id = 3;
+  string review_id = 4;
+  uint64 expected_revision = 5;
+  string command_kind = 6;
+  bytes command_json = 7;
+}
+
+message ReviewSnapshot {
+  string schema_version = 1;
+  string review_id = 2;
+  uint64 revision = 3;
+  string session_id = 4;
+  string current_generation_id = 5;
+  ReviewTarget target = 6;
+  repeated string thread_ids = 7;
+  repeated string coverage_ids = 8;
+  string pending_review_id = 9;
+  ReviewInboxDisposition inbox_disposition = 10;
+  bool closed = 11;
+  string updated_at = 12;
+}
+
+message ReviewTypedError {
+  ReviewErrorCode code = 1;
+  string message = 2;
+}

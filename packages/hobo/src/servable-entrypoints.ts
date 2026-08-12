@@ -144,6 +144,23 @@ export function listServableEntrypointsWithReplay(
 	};
 }
 
+/** Browser-facing origin. Component hosts rewrite Request URLs to component.local. */
+function publicRequestUrl(request: Request): URL {
+	const url = new URL(request.url);
+	if (url.hostname !== "component.local") return url;
+	const host = request.headers.get("host")?.trim();
+	if (!host) return url;
+	try {
+		const publicUrl = new URL(`${url.protocol}//${host}`);
+		publicUrl.pathname = url.pathname;
+		publicUrl.search = url.search;
+		publicUrl.hash = url.hash;
+		return publicUrl;
+	} catch {
+		return url;
+	}
+}
+
 function applyEvidenceOverlay(
 	entrypoints: readonly ServableEntrypoint[],
 	controlsUrl: string,
@@ -151,7 +168,7 @@ function applyEvidenceOverlay(
 	return entrypoints.map((entry) => ({
 		...entry,
 		handler: async (request) => {
-			const requestUrl = new URL(request.url);
+			const requestUrl = publicRequestUrl(request);
 			if (
 				(request.method === "GET" || request.method === "HEAD") &&
 				requestUrl.pathname === EVIDENCE_OVERLAY_BO_PATH
@@ -263,9 +280,9 @@ function cspAllowsEvidenceBridge(
 				!sources.some(
 					(source) =>
 						source.startsWith("'nonce-") ||
-					source.startsWith("'sha256-") ||
-					source.startsWith("'sha384-") ||
-					source.startsWith("'sha512-") ||
+						source.startsWith("'sha256-") ||
+						source.startsWith("'sha384-") ||
+						source.startsWith("'sha512-") ||
 						source === "'strict-dynamic'",
 				));
 		const scheme = `${new URL(appOrigin).protocol}`;

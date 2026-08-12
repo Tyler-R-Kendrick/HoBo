@@ -1,13 +1,9 @@
 #!/usr/bin/env node
-// Enable TypeScript bindle sources (src/bindle.ts) when tsx is available so
-// `hobo dev` can load the flagship authoring path without a separate build.
-try {
-	// Dynamic string keeps tsc from requiring a tsx type package.
-	const specifier = ["tsx", "esm"].join("/");
-	await import(specifier);
-} catch {
-	// optional — projects with dist/bindle.js still load
-}
+// Register TypeScript bindle sources before composing the CLI so `hobo dev`
+// runs the flagship src/bindle.ts authoring path without a separate build.
+import { register } from "tsx/esm/api";
+
+register();
 
 import { createCloudflareProvider } from "@hobo/provider-cloudflare";
 

@@ -70,7 +70,7 @@ hobo-code [flags] [<verb>] [args]
 hobo-code [flags] <prompt...>   # default verb: dispatch
 ```
 
-Package: `@hobo/code` / composition-root bin from `@hobo/hobo`. Flat verbs: `dispatch` (default), `status`, `session`, `scaffold`, `isolate`, `promote`, `budget`, `remote`, `platform`, `join`, `agent`, `nodes`, `rooms`, `help`. Distributed compute (block/buzz-inspired hive) is folded into those verbs — there is **no** nested `buzz` verb. See [ADR-0139](./adr/03-data-plane.md#adr-0139) and [hobo-code-isolation-runbook.md](./hobo-code-isolation-runbook.md).
+Package: `@hobo/code` / composition-root bin from `@hobo/hobo`. Flat verbs: `dispatch` (default), `status`, `session`, `scaffold`, `isolate`, `promote`, `budget`, `remote`, `platform`, `join`, `agent`, `nodes`, `rooms`, `help`. Distributed compute (block/buzz-inspired hive) is folded into those verbs — there is **no** nested `buzz` verb. Atomic templates emit from the interactive `hobo-code` session (say "deploy to azure" / "create a hello world app"), not a retrieve subcommand. See [ADR-0139](./adr/03-data-plane.md#adr-0139), [ADR-0152](./adr/03-data-plane.md#adr-0152), and [hobo-code-isolation-runbook.md](./hobo-code-isolation-runbook.md).
 
 ## Station context resolution
 

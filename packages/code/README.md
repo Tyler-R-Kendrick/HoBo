@@ -1,5 +1,15 @@
 # `@hobo/code` · binary **`hobo-code`**
 
+Atomic templates (ADR-0152) emit from the **interactive session**, not a
+retrieve verb. Start Bo and say the phrase:
+
+```bash
+hobo-code
+# then: create a hello world app
+#        deploy to azure
+#        bundle apps in the same network
+```
+
 **App-building agent / helper** for HoBo — not a control-plane management CLI.
 
 CLI name is **`hobo-code`** (dash is fine). There is **no** `hobo code` nested verb.
@@ -280,8 +290,12 @@ export HOBO_CODE_MODEL=openai/gpt-4.1
 
 # 2) Build
 hobo-code "add a settings page to the bindle"
+hobo-code "hello world app"      # copy examples/hello-world — no hobo CLI
+# In the Bo TUI: "create a hello world app" · "run it" · "debug it"
+# replies with the live bindle / debug / controls / report URLs
+# Create fills local atomic templates (templates/atoms), not a web fetch.
 hobo-code scaffold --name demo
-hobo-code dev --cwd demo          # open the printed browser/debug URL
+hobo-code dev --cwd demo          # run its Bindle on a local Yard + Evidence
 hobo-code status                 # plain English session hierarchy (default)
 hobo-code status --dense         # power-user glyph box + Herdr/Grok footers
 hobo-code tasks                  # background task board
@@ -306,6 +320,11 @@ stay in the same pane. Commit, push, PR, stack, and merge remain on the existing
 exact-effect approval boundary; commits use only the reviewed index. Bounded
 panels show a `+`, always retain the current branch, and disable committing
 when the complete changed-file set cannot be reviewed.
+
+Inside the interactive shell, `/dev` runs the current project's Bindle through
+the same local Yard as `hobo dev`; it does not invent a static-site server.
+Use `/hobo <args>` for the full control plane, for example
+`/hobo yard status` or `/hobo plan`.
 
 | lazygit workflow | HoBo Code workbench |
 |---|---|
@@ -355,8 +374,8 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **edit** | Open [neo]vim in managed harness pane (tmux/stdio bridge + hobo-code.nvim) |
 | **config** | Env/flags inventory by stack (setup critique; secrets presence-only) |
 | **agent** | Agent-native readiness: human-free auth, MCP/ACP, unattended/no-elicitation |
-| scaffold | OpenUI/Astryx scaffold template |
-| **dev** | Serve `public/` with isolated browser evidence controls |
+| scaffold | Copy a shipped repo example (`examples/hello-world`, `examples/barebones`, …) |
+| **dev** | Run the project Bindle on a local Yard + Evidence controls |
 | isolate / promote | Built-in mediated sandbox + gated promote |
 | env | Optional hermetic shell + durable layout |
 | help | Plain help (or `--dense` glyph idioms) |
@@ -364,8 +383,10 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 `dev` reuses the durable Evidence port, report, screenshot/recording capture,
 replay, and `.hobo/recordings` capability exporter. Its browser boundary is
 protected by the TypeScript exact-message parser and
-`contracts/pacts/code-dev-browser-boundary.pact.json`. The canonical Bo idle
-animation opens the desk; **Open Evidence** is a direct read-only report link.
+`contracts/pacts/code-dev-browser-boundary.pact.json`. The Yard host maps the
+public `Host` onto overlay `parentOrigin` (the component-local rewrite stays
+internal) and serves `bo-idle.png` as bytes so the Bo idle launcher paints.
+**Open Evidence** is a direct read-only report link.
 
 **GHCP-adjacent differentiators:** animated title on bare TTY, enterprise-style Station auth, BYOK/open models via `models`, mediated sandbox (`isolate`/`session`).
 

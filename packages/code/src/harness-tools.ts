@@ -37,19 +37,36 @@ export const hoboDispatchTool = defineTool({
 	run: async ({ input }) => runJson(input.prompt.trim().split(/\s+/)),
 });
 
-/** Scaffold a new app/bindle from a shipped template. */
+/** Materialize a shipped repo example (hello-world, barebones, …). */
 export const hoboScaffoldTool = defineTool({
 	name: "hobo_scaffold",
 	description:
-		"Scaffold a new HoBo app from the shipped high-value template (openui-astryx-bindle) into the sandbox.",
+		"Copy a shipped HoBo example from the repo catalog into the workspace. Prefer hello-world for greeting apps; unknown new-app requests use barebones. Does not call the hobo CLI or the network.",
 	input: v.object({
 		name: v.string(),
 	}),
 	run: async ({ input }) => runJson(["scaffold", input.name]),
 });
 
+/** Run the current Bindle on the local Yard and return live endpoints. */
+export const hoboDevTool = defineTool({
+	name: "hobo_dev",
+	description:
+		"Run the workspace Bindle on the local Yard with Evidence overlay. Returns the real bindle, debug, controls, and report URLs for this environment. Use when the user says run it or debug it.",
+	input: v.object({
+		cwd: v.optional(v.string()),
+	}),
+	run: async ({ input }) =>
+		runJson(
+			input.cwd
+				? ["dev", "--cwd", input.cwd, "--port", "0", "--debug-port", "0"]
+				: ["dev", "--port", "0", "--debug-port", "0"],
+		),
+});
+
 export const HOBO_AGENT_TOOLS = [
 	hoboHiveStatusTool,
 	hoboDispatchTool,
 	hoboScaffoldTool,
+	hoboDevTool,
 ];

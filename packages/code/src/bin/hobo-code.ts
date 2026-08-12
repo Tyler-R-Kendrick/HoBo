@@ -154,6 +154,7 @@ if (argv[0] === "_station-agent") {
 			...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : {}),
 			...(scriptedKeys !== undefined ? { scriptedKeys } : {}),
 		});
+		await host.dispose?.();
 		if (engine) {
 			await engine.dispose();
 			// Sandbox stays open so un-promoted edits survive the session.

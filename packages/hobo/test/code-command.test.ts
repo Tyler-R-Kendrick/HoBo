@@ -43,7 +43,7 @@ describe("hobo-code composition bridge", () => {
 		const features = resolveCodeFeatures({
 			env: { HOBO_HOME: home, HOBO_TENANT: "local" },
 		});
-		const result = await runHoboCodeCli(["hello", "world"], {
+		const result = await runHoboCodeCli(["dispatch", "probe-identity"], {
 			hoboHome: home,
 			cwd: project,
 			features,

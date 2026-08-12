@@ -692,3 +692,47 @@ hobo-code pins three external foundations as **composition contracts** (not vend
 - Secure stack: `packages/code/src/sandbox-stack.ts`
 - Worlds: `packages/code/src/worlds.ts`
 - Related: ADR-0130, ADR-0131, ADR-0134, ADR-0044, ADR-0083, ADR-0123, ADR-0128, HOBO-152, HOBO-394
+
+## ADR-0152
+**Atomic templates + local SQLite hybrid retrieval for zero-inference emission.**
+
+**Status:** Accepted — extends [ADR-0139](#adr-0139) (hobo-code ScaffoldingAgent) and [ADR-0135](03-data-plane-sqlite-default.md) (one-writer SQLite).
+
+### Context
+Bo was emitting whole reference apps, or inventing Bindles with an LLM, for intents that already exist as literal snippets in `examples/`. A first atom slice used whole-file `atom.json` units and a process-local FTS5 index. That conflated topology, env injection, and handlers; skipped Tier-0 architecture-guard files; and left the embedder and confidence policy underspecified.
+
+### Decision
+1. **Atoms are parameterized multi-line snippets** under `packages/code/templates/atoms/<id>/` (`meta.json` + `body/` + `acceptance.json`). Each atom declares `requires` / `provides` capability tags. They are not whole apps and not single lines.
+2. **Tier-0 architecture-guard atoms are mandatory:** konsistent layout, proto+CUE pair, Pact stub, package skeleton. Hello-world composition includes them so an emitted Bindle can pass architecture guards.
+3. **Source of truth is the committed corpus.** The SQLite file at `$HOBO_HOME/durable/code/template-index.sqlite` is a rebuildable derived cache (one writer, WAL, `file://` offline fallback; NATS JetStream Object Store remains the preferred replica *target* for Station stores, not a second source of truth for atoms).
+4. **Embedder pin:** `hobo-hashed-trigram-v1`, dim 256, n=3, FNV-1a, SHA-256 content hash of `id|dim|n|vocab`. Domain vocabulary includes bindle, campEnv, dependsOn, services__api__http__0, stationId, trail, junction, openFeature, litestream, NATS JetStream Object Store, konsistent, protobuf, cue, pact. `LocalEmbedder` is the ONNX/transformers.js swap slot. **No remote embedding API.**
+5. **Hybrid retrieve:** FTS5 lexical + dense cosine (+ optional sqlite-vec `vec0` when `HOBO_SQLITE_VEC` loads) fused with RRF `k=60`. High confidence requires an FTS hit and fused score ≥ `0.018`. Default low-confidence behaviour is **refuse**. Escalate only when `allowEscalate` is set. Silent low-confidence emission is forbidden.
+6. **Composition is in scope.** `composeAtoms` auto-satisfies requires from the corpus and topo-sorts; missing providers or cycles fail closed.
+7. **Render is pure TypeScript `{{param}}` + Valibot.** No Handlebars, no EJS. No ts-morph in this decision.
+8. **ScaffoldingAgent is additive.** `scaffoldHighValueTemplate` / `openui-astryx-bindle` stay unchanged. New path: `scaffoldFromIntent` / `scaffoldFromAtoms`. Emission is a **chat turn** in the `hobo-code` session (`tryWorkspaceAction`), not a retrieve subcommand. Full `examples/` apps remain composition proofs.
+9. **No new protobuf family in `@hobo/code`.** Atoms are a file corpus, not an integration boundary. Parse-don't-validate is Valibot at the retrieve/fill boundary. Proto+CUE+PACT are *emitted* by Tier-0 atoms.
+10. **Closed intent map is preferred over retrieval.** Phrases such as "deploy to azure" and "bundle apps in the same network" live in `templates/intents/*.json` and match before FTS/dense. A hit is score `1` and emits with zero inference.
+11. **Entity-aware merge, not last-write-wins.** Snippets mark `/* @hobo.entity */`, `/* @hobo.slot strategy=append|union|once */`, and `/* @hobo.hole kind=trainable */`. Same path merges by entity+slot. Unmarked collisions and once-slot drift fail closed. "Same network" means two Camps in one Yard; "deploy to Azure" is a Yard `provider` pin, never a Bindle pin.
+12. **Inference holes use `"use training"` / `training.define`.** First-pass PoCs emit trainable skeletons (ADR-0025 / ADR-0125), not invented handler logic. The training engine fills implementation specifics later.
+
+### Amendment (entity-aware merge · closed intents · trainable holes)
+
+The first ADR-0152 emit path overwrote files in topo order. That made "add a second Camp to the Azure Yard" unrepresentable without an LLM. Merge + the closed map close that: known HoBo phrases compile to an entity graph; only `@hobo.hole` regions are allowed to become inference later.
+
+### Non-goals
+- Shipping ONNX weights or a required native sqlite-vec dependency.
+- ts-morph structural TypeScript surgery.
+- Replacing `examples/` or the high-value OpenUI template.
+- A second codegen CLI (HOBO-152 / HOBO-394 stay elevated, not forked).
+
+### Consequences
+- **(+)** High-confidence hello-world / architecture-guard / station / connector intents emit with zero inference and stay offline.
+- **(+)** Wrong-template silent emit is unrepresentable past the confidence gate.
+- **(−)** Novel intents still need an LLM (or a new atom). The hashed-trigram encoder is a stable $0 vocabulary, not a semantic model; ONNX swap is future.
+- **(−)** Multi-atom file collisions without snippet markers fail closed. Marked slots merge; unmarked drift is a conflict, not last-write-wins.
+
+### References
+- Package: `packages/code/src/atom-*.ts`, `packages/code/templates/atoms/`
+- Session: bare `hobo-code`, then the phrase (no retrieve verb)
+- Tests: `packages/code/test/atom-*.test.ts`
+- Related: ADR-0135, ADR-0139, HOBO-152, HOBO-394

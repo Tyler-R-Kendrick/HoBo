@@ -21,8 +21,8 @@ import {
 import {
 	type BareMetalServeResult,
 	type ComponentEndpoint,
-	type FetchHandler,
 	collectBindleEnvInjections,
+	type FetchHandler,
 	installInternalMesh,
 	internalMeshBase,
 	listServableEntrypoints,
@@ -95,7 +95,7 @@ async function webRequestToHttp(request: Request): Promise<HttpRequest> {
 }
 
 function httpResponseToWeb(response: HttpResponse): Response {
-	return new Response(response.body, {
+	return new Response(Buffer.from(response.body, "latin1"), {
 		status: response.status,
 		headers: Object.fromEntries(response.headers),
 	});
@@ -124,7 +124,7 @@ function componentDescriptor(
 					return {
 						status: webRes.status,
 						headers: [...webRes.headers.entries()] as [string, string][],
-						body: await webRes.text(),
+						body: Buffer.from(await webRes.arrayBuffer()).toString("latin1"),
 					};
 				},
 			},
@@ -145,7 +145,14 @@ async function listen(
 		req.on("end", () => {
 			void (async () => {
 				try {
-					const url = new URL(req.url ?? "/", `http://${host}:${port}`);
+					const bound = server.address();
+					const boundPort =
+						bound !== null && typeof bound === "object" ? bound.port : port;
+					const authority =
+						typeof req.headers.host === "string" && req.headers.host.length > 0
+							? req.headers.host
+							: `${host}:${boundPort}`;
+					const url = new URL(req.url ?? "/", `http://${authority}`);
 					const body = Buffer.concat(chunks);
 					const method = req.method ?? "GET";
 					const init: RequestInit = {
@@ -289,11 +296,23 @@ export async function serveBindleOnLocalYard(options: {
 	const servers: Server[] = [];
 	let publicIndex = 0;
 	for (const entry of externalEntries) {
-		const port = basePort + publicIndex;
+		const requestedPort = basePort === 0 ? 0 : basePort + publicIndex;
 		publicIndex += 1;
+		const componentId = entry.name;
+		const publicHandler: FetchHandler = async (request) => {
+			const httpReq = await webRequestToHttp(request);
+			const httpRes = await componentHost.handleHttp(componentId, httpReq);
+			return httpResponseToWeb(httpRes);
+		};
+		const server = await listen(publicHandler, requestedPort);
+		const address = server.address();
+		if (address === null || typeof address === "string") {
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+			throw new Error(`external ${entry.kind}:${entry.name} has no TCP port`);
+		}
+		const port = address.port;
 		const url = `http://127.0.0.1:${port}`;
 		const key = serviceDiscoveryKey(entry.name);
-		const componentId = entry.name;
 		endpoints.push({
 			resourceName: entry.name,
 			kind: entry.kind,
@@ -304,12 +323,7 @@ export async function serveBindleOnLocalYard(options: {
 		});
 		serviceDiscovery[key] = url;
 		process.env[key] = url;
-		const publicHandler: FetchHandler = async (request) => {
-			const httpReq = await webRequestToHttp(request);
-			const httpRes = await componentHost.handleHttp(componentId, httpReq);
-			return httpResponseToWeb(httpRes);
-		};
-		servers.push(await listen(publicHandler, port));
+		servers.push(server);
 		emit(`hobo dev: Yard exposed ${entry.kind}:${entry.name} at ${url}`);
 	}
 
@@ -343,9 +357,7 @@ export async function serveBindleOnLocalYard(options: {
 	emit(
 		`hobo dev: Camp injected discovery [${Object.keys(serviceDiscovery).join(", ")}] ` +
 			`bindle-env [${Object.keys(bindleEnv).join(", ")}]` +
-			(named.primaryNamedUrl
-				? ` named=${named.primaryNamedUrl}`
-				: ""),
+			(named.primaryNamedUrl ? ` named=${named.primaryNamedUrl}` : ""),
 	);
 
 	const exposedEndpoints = endpoints.filter((e) => e.external);

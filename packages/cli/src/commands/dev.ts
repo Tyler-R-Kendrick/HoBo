@@ -79,19 +79,20 @@ export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 		),
 		run: async ({ context, flags, emitProgress }) => {
 			const projectDir = context.projectDir ?? context.cwd;
+			const bridged = process.env.HOBO_CODE_DEV_BRIDGE === "1";
 			// Long-running only for interactive terminals without --json/--once.
 			// Machine-readable and CI runs probe-and-exit so they don't hang.
 			const once =
 				flags.once === true ||
 				flags.json === true ||
-				!process.stdin.isTTY ||
-				!process.stdout.isTTY;
+				(!bridged && (!process.stdin.isTTY || !process.stdout.isTTY));
 			// Off-TTY runs probe-and-exit silently otherwise — say why, and how
 			// to get the long-lived interactive server instead.
 			if (
 				once &&
 				flags.once !== true &&
 				flags.json !== true &&
+				!bridged &&
 				(!process.stdin.isTTY || !process.stdout.isTTY)
 			) {
 				emitProgress(

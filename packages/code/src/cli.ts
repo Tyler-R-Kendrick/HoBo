@@ -36,6 +36,10 @@ import {
 import { costHumanSummary, inspectCost } from "./cost.js";
 import { cursorGuide, renderCursorGuideText } from "./cursor-guide.js";
 import {
+	type DevBrowserSession,
+	startDevBrowserSession,
+} from "./dev-browser.js";
+import {
 	DEV_MACHINES_FILE,
 	loadDevMachines,
 	machinesForAgent,
@@ -43,7 +47,6 @@ import {
 	sshDestination,
 } from "./dev-machines.js";
 import { defaultDevenvProbes, devenvSummary, inspectDevenv } from "./devenv.js";
-import { startDevBrowserSession } from "./dev-browser.js";
 import {
 	computeTaskPath,
 	describeDistributedCompute,
@@ -58,6 +61,7 @@ import {
 	type PaneLayout,
 } from "./editor-bridge.js";
 import { describeEveSubagentSurface } from "./eve.js";
+import { matchExampleRequest, materializeExample } from "./example-catalog.js";
 import {
 	createBudgetTracker,
 	DEFAULT_BUDGET_POLICY,
@@ -132,6 +136,10 @@ import {
 	virtualPaneCommand,
 } from "./virtual-pane.js";
 import { findWorkspaceRoot } from "./workspace.js";
+import {
+	matchWorkspaceAction,
+	resolveRunnableProject,
+} from "./workspace-actions.js";
 import { describeCodeWorlds } from "./worlds.js";
 
 export const HOBO_CODE_VERBS = [
@@ -271,6 +279,9 @@ export interface HoboCodeCliDeps {
 		context: Parameters<typeof openStationGateway>[0],
 	) => Promise<OpenedGateway>;
 	readonly muxRunner?: MuxRunner;
+	readonly startDevSession?: typeof startDevBrowserSession;
+	readonly onDevSession?: (session: DevBrowserSession) => void;
+	readonly fetch?: typeof globalThis.fetch;
 }
 
 export type FormatHoboCodeOptions = {
@@ -490,7 +501,7 @@ function helpTextPlain(): string {
 		"  tasks      Background task board (Grok Build–shaped)",
 		"",
 		"Craft & cost:",
-		"  scaffold   OpenUI/Astryx scaffold template",
+		"  scaffold   Copy a shipped repo example (hello-world, barebones, …)",
 		"  dev        Deploy the current web app with browser evidence controls",
 		"  isolate    Mediated sandbox for agent work",
 		"  promote    Promote a run through gate checklist",
@@ -846,13 +857,16 @@ const VERB_HELP_PLAIN: Record<
 		"See also: hobo-code session · hobo-code status · hobo-code auth",
 	],
 	scaffold: [
-		"hobo-code scaffold — OpenUI/Astryx scaffold template",
+		"hobo-code scaffold — copy a shipped repo example (hello-world, barebones, …)",
 		"",
 		"Usage:",
 		"  hobo-code scaffold [--name <name>] [--out <dir>]",
+		"  hobo-code scaffold hello-world",
+		"",
+		'A chat prompt like "hello world app" does the same thing — no hobo CLI.',
 		"",
 		"Flags:",
-		"  --name <name>       Scaffold name",
+		"  --name <name>       App / folder name",
 		"  --out <dir>         Output directory",
 		"  --json              Machine-readable result",
 		"  --help, -h          Show this help",
@@ -863,23 +877,24 @@ const VERB_HELP_PLAIN: Record<
 		"See also: hobo-code dispatch · hobo-code help",
 	],
 	dev: [
-		"hobo-code dev — local browser deployment with evidence controls",
+		"hobo-code dev — run the project Bindle on a local Yard with Evidence",
 		"",
 		"Usage:",
 		"  hobo-code dev [--cwd <app>] [--port <port>] [--debug-port <port>]",
 		"  hobo-code dev --once --json       # bounded deployment probe",
 		"",
-		"The app is served from public/. Open the debug URL to use the Evidence",
-		"overlay for reports, annotations, screenshots, recordings, and replay.",
+		"This delegates to hobo dev: the project's Bindle is placed on a local Yard",
+		"and its real web endpoint receives Evidence controls and session replay.",
 		"",
 		"Flags:",
-		"  --cwd <app>         App root containing public/index.html",
-		"  --port <port>       Raw app port (default 4173; 0 chooses a free port)",
+		"  --cwd <app>         HoBo project root (src/bindle.ts or dist/bindle.js)",
+		"  --port <port>       Local Yard port (default 4173; 0 chooses a free port)",
 		"  --debug-port <port> Evidence controls port (default 4174; 0 chooses free)",
-		"  --once              Probe both surfaces, then stop",
+		"  --once              Probe the Bindle and Evidence surfaces, then stop",
 		"  --json              Machine-readable deployment URLs and evidence path",
 		"",
-		"See also: hobo-code scaffold · hobo-code harness · hobo-code session",
+		"Interactive: /dev or /hobo yard status",
+		"See also: hobo dev · hobo-code harness · hobo-code session",
 	],
 	isolate: [
 		"hobo-code isolate — mediated sandbox for agent work",
@@ -2342,30 +2357,33 @@ export async function runHoboCodeCli(
 				["hobo-code dev --help"],
 			);
 		}
-		let session: Awaited<ReturnType<typeof startDevBrowserSession>> | undefined;
+		let session: DevBrowserSession | undefined;
 		try {
-			session = await startDevBrowserSession({
+			session = await (deps.startDevSession ?? startDevBrowserSession)({
 				projectDir,
 				hoboHome,
 				appPort: port,
 				debugPort,
+				env,
 			});
 			const deployed = session;
-			const [appProbe, debugProbe, controlsProbe] = await Promise.all([
-				fetch(deployed.appUrl),
-				fetch(deployed.debugUrl),
-				fetch(deployed.controlsUrl),
+			const fetchUrl = deps.fetch ?? globalThis.fetch;
+			const [appProbe, controlsProbe] = await Promise.all([
+				fetchUrl(deployed.appUrl),
+				fetchUrl(deployed.controlsUrl),
 			]);
-			const probes = [appProbe, debugProbe, controlsProbe];
+			const probes = [appProbe, controlsProbe];
 			if (probes.some((probe) => !probe.ok)) {
 				throw new Error(
-					`browser deployment probe failed (${probes.map((probe) => probe.status).join("/")})`,
+					`Bindle deployment probe failed (${probes.map((probe) => probe.status).join("/")})`,
 				);
 			}
 			const once = flags.once === true;
 			if (once) {
 				await deployed.close();
 				session = undefined;
+			} else if (deps.onDevSession) {
+				deps.onDevSession(deployed);
 			} else {
 				const stop = (exitCode: number): void => {
 					process.exitCode = exitCode;
@@ -2375,24 +2393,31 @@ export async function runHoboCodeCli(
 				process.once("SIGTERM", () => stop(143));
 			}
 			const text = panel("◎ dev", [
-				`browser · ${deployed.debugUrl}`,
-				`app · ${deployed.appUrl}`,
+				`bindle · ${deployed.appUrl}`,
+				...(deployed.namedUrl ? [`named · ${deployed.namedUrl}`] : []),
+				`debug · ${deployed.debugUrl}`,
+				`controls · ${deployed.controlsUrl}`,
+				`report · ${deployed.reportUrl}`,
+				`yard · local`,
 				`evidence · ${displayPath(deployed.evidencePath, { hoboHome, cwd: projectDir })}`,
 				...(once ? ["probe · passed; stopped"] : ["live · Ctrl-C to stop"]),
 			]);
 			return ok("HOBO_CODE_DEV", text, {
 				deployment: {
-					mode: "local-browser",
+					mode: "local-bindle",
 					deploymentId: deployed.sessionId,
 					sessionId: deployed.sessionId,
 					appUrl: deployed.appUrl,
 					debugUrl: deployed.debugUrl,
 					controlsUrl: deployed.controlsUrl,
 					reportUrl: deployed.reportUrl,
+					...(deployed.namedUrl !== undefined
+						? { namedUrl: deployed.namedUrl }
+						: {}),
 					evidencePath: deployed.evidencePath,
 					served: {
 						appStatus: appProbe.status,
-						debugStatus: debugProbe.status,
+						debugStatus: appProbe.status,
 						controlsStatus: controlsProbe.status,
 					},
 					stopped: once,
@@ -2407,7 +2432,8 @@ export async function runHoboCodeCli(
 					error instanceof Error ? error.message : String(error),
 				]),
 				[
-					"ensure public/index.html exists",
+					"ensure the project has src/bindle.ts or dist/bindle.js",
+					"ensure the hobo CLI is on PATH (or set HOBO_CODE_HOBO_BIN)",
 					"choose free ports with --port and --debug-port",
 				],
 			);
@@ -2419,6 +2445,26 @@ export async function runHoboCodeCli(
 			args[0] || (typeof flags.name === "string" && flags.name) || "app";
 		const out =
 			(typeof flags.out === "string" && flags.out) || join(projectDir, name);
+		const matched = matchExampleRequest(
+			[args[0], typeof flags.name === "string" ? flags.name : ""]
+				.filter(Boolean)
+				.join(" "),
+		);
+		if (matched && matched.id !== "openui-astryx-bindle") {
+			const copied = materializeExample({
+				exampleId: matched.id,
+				outputDir: out,
+				appName: name,
+			});
+			const text = panel("✦ sc", [
+				[matched.id, shortId(name, 10), `${copied.files.length}f`].join("·"),
+			]);
+			return ok("HOBO_CODE_SCAFFOLD", text, {
+				result: copied,
+				stationId: platform.station.stationId,
+				text,
+			});
+		}
 		const result = scaffoldHighValueTemplate({
 			outputDir: out,
 			appName: name,
@@ -2974,6 +3020,61 @@ export async function runHoboCodeCli(
 	}
 
 	// ── Multi-node compute (capacity-aware dispatch; not a chat/hive product) ──
+
+	const examplePrompt = args.join(" ");
+	const workspaceAction =
+		verb === "dispatch" ? matchWorkspaceAction(examplePrompt) : undefined;
+	const matchedExample =
+		workspaceAction?.kind === "create" ||
+		workspaceAction?.kind === "create-and-run"
+			? { id: workspaceAction.exampleId }
+			: verb === "dispatch"
+				? matchExampleRequest(examplePrompt)
+				: undefined;
+	if (matchedExample) {
+		const name =
+			(typeof flags.name === "string" && flags.name) || matchedExample.id;
+		const out =
+			(typeof flags.out === "string" && flags.out) || join(projectDir, name);
+		const copied = materializeExample({
+			exampleId: matchedExample.id,
+			outputDir: out,
+			appName: name,
+			intent: examplePrompt,
+		});
+		if (workspaceAction?.kind === "create-and-run") {
+			return runHoboCodeCli(
+				["dev", "--cwd", copied.outputDir, "--port", "0", "--debug-port", "0"],
+				deps,
+			);
+		}
+		const text = panel("✦ ex", [
+			[matchedExample.id, shortId(name, 10), `${copied.files.length}f`].join(
+				"·",
+			),
+		]);
+		return ok("HOBO_CODE_EXAMPLE", text, {
+			result: copied,
+			example: matchedExample.id,
+			stationId: platform.station.stationId,
+			text,
+		});
+	}
+
+	if (workspaceAction?.kind === "run" || workspaceAction?.kind === "debug") {
+		const target = resolveRunnableProject(projectDir);
+		if (target === undefined) {
+			return fail(
+				"HOBO_CODE_DEV_FAILED",
+				panel("✕ run", ["no Bindle to run — create a hello world app first"]),
+				['say "create a hello world app"', "hobo-code help"],
+			);
+		}
+		return runHoboCodeCli(
+			["dev", "--cwd", target, "--port", "0", "--debug-port", "0"],
+			deps,
+		);
+	}
 
 	if (!platform.features.distributed && verb === "dispatch") {
 		return fail(

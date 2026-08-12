@@ -31,8 +31,8 @@ import {
 	type EngineTurnEvent,
 	formatUsage,
 	mapPiEventToTurnEvent,
-	parsePorcelain,
 	PI_SKILLS_ENABLED,
+	parsePorcelain,
 	type ShellEngine,
 	shouldAttemptEngine,
 	usageDelta,
@@ -172,6 +172,41 @@ function fakeEngine(overrides: Partial<ShellEngine> = {}): ShellEngine {
 }
 
 describe("engine-backed shell host", () => {
+	it("runs HoBo control commands and closes its bridged dev session", async () => {
+		const root = temp("hc-hobo-control-");
+		const hoboBin = join(root, "hobo");
+		writeFileSync(hoboBin, "#!/bin/sh\nprintf 'hobo:%s\\n' \"$*\"\n");
+		chmodSync(hoboBin, 0o755);
+		let closed = false;
+		const host = createDefaultShellHost({
+			cwd: root,
+			hoboHome: join(root, ".hobo"),
+			env: { ...process.env, HOBO_CODE_HOBO_BIN: hoboBin },
+			startDevSession: async () => ({
+				sessionId: "dev-test",
+				appUrl: "http://127.0.0.1:4173/",
+				debugUrl: "http://127.0.0.1:4173/",
+				controlsUrl: "http://127.0.0.1:4174/controls/test",
+				reportUrl: "http://127.0.0.1:4174/report",
+				evidencePath: join(root, ".hobo", "durable", "code", "evidence"),
+				close: async () => {
+					closed = true;
+				},
+			}),
+			fetch: async () => new Response("ok"),
+		});
+
+		expect(await host.runVerb(["hobo", "yard", "status"])).toContain(
+			"hobo:yard status",
+		);
+		expect(await host.runVerb(["hobo", "dev", "--port", "0"])).toContain(
+			"bindle",
+		);
+		expect(closed).toBe(false);
+		await host.dispose?.();
+		expect(closed).toBe(true);
+	});
+
 	it("executes resident attach and detach actions", async () => {
 		const home = temp("hc-shell-session-");
 		const bin = temp("hc-shell-bin-");

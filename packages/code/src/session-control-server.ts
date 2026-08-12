@@ -399,6 +399,7 @@ export async function startSessionControlServer(
 ): Promise<SessionControlServer> {
 	const token = options.token ?? randomBytes(32).toString("base64url");
 	const controlsCapability = randomBytes(24).toString("base64url");
+	const reportCapability = randomBytes(24).toString("base64url");
 	const controlsOrigins = new Set<string>();
 	const control =
 		options.control ??
@@ -530,11 +531,18 @@ export async function startSessionControlServer(
 				json(response, 201, { ok: true, id, artifactRef: artifact.id });
 				return;
 			}
+			const privilegedReport =
+				url.searchParams.get("token") === token || authorized(request, token);
+			const readOnlyReport =
+				url.searchParams.get("report") === reportCapability;
 			if (
 				request.method === "GET" &&
 				url.pathname === "/__hobo/evidence" &&
-				(url.searchParams.get("token") === token || authorized(request, token))
+				(privilegedReport || readOnlyReport)
 			) {
+				const artifactQuery = privilegedReport
+					? `token=${encodeURIComponent(token)}`
+					: `report=${encodeURIComponent(reportCapability)}`;
 				const report = await currentEvidenceReport(
 					control,
 					options.projectRoot,
@@ -550,7 +558,7 @@ export async function startSessionControlServer(
 								? {
 										artifacts: fact.artifacts.map((artifact) => ({
 											...artifact,
-											path: `${artifact.path}?token=${encodeURIComponent(token)}`,
+											path: `${artifact.path}?${artifactQuery}`,
 										})),
 									}
 								: {}),
@@ -559,7 +567,9 @@ export async function startSessionControlServer(
 				};
 				const html = renderEvidenceReportHtml(liveReport, {
 					live: true,
-					controlsHref: `/?token=${encodeURIComponent(token)}`,
+					...(privilegedReport
+						? { controlsHref: `/?token=${encodeURIComponent(token)}` }
+						: {}),
 				});
 				response.writeHead(200, {
 					"cache-control": "no-store",
@@ -577,7 +587,8 @@ export async function startSessionControlServer(
 				url.pathname === `/__hobo/evidence/api/actions/${controlsCapability}`
 			) {
 				const origin = request.headers.origin;
-				if (!origin || !controlsOrigins.has(origin)) {
+				const privileged = authorized(request, token);
+				if ((!origin || !controlsOrigins.has(origin)) && !privileged) {
 					json(response, 403, {
 						error: "evidence action origin is not registered",
 					});
@@ -594,7 +605,7 @@ export async function startSessionControlServer(
 				if (message.type === "report") {
 					json(response, 200, {
 						ok: true,
-						url: `http://127.0.0.1:${(server.address() as { port: number }).port}/__hobo/evidence?token=${encodeURIComponent(token)}`,
+						url: `http://127.0.0.1:${(server.address() as { port: number }).port}/__hobo/evidence?report=${encodeURIComponent(reportCapability)}`,
 					});
 					return;
 				}
@@ -632,6 +643,13 @@ export async function startSessionControlServer(
 					return;
 				}
 				if (message.type === "save-capability") {
+					if (!privileged) {
+						json(response, 403, {
+							error:
+								"recording capability export requires controls authorization",
+						});
+						return;
+					}
 					const recording = evidence
 						.records("recording")
 						.find((candidate) => candidate.subject === message.recordingId);
@@ -711,6 +729,7 @@ export async function startSessionControlServer(
 					renderEvidenceOverlayControls({
 						parentOrigin,
 						...(sessionId ? { sessionId } : {}),
+						capabilityAuthorization: `Bearer ${token}`,
 					}),
 				);
 				return;
@@ -721,7 +740,9 @@ export async function startSessionControlServer(
 			if (
 				request.method === "GET" &&
 				artifactMatch &&
-				(url.searchParams.get("token") === token || authorized(request, token))
+				(url.searchParams.get("token") === token ||
+					url.searchParams.get("report") === reportCapability ||
+					authorized(request, token))
 			) {
 				const artifact = evidence.readArtifact(`sha256:${artifactMatch[1]}`);
 				if (!artifact) {

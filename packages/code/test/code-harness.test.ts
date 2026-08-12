@@ -303,6 +303,7 @@ describe("@hobo/code", () => {
 		const harness = createHarnessCore({ worldRoot: world });
 		const skills = harness.listSkills();
 		expect(skills.map((s) => s.name)).toContain("repo");
+		expect(skills.map((s) => s.name)).toContain("impeccable");
 		expect(skills.map((s) => s.name)).toContain("ponytail");
 
 		const wf = harness.runRhaiWorkflow(`

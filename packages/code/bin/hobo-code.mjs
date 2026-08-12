@@ -7,7 +7,7 @@
  * If dist is missing or older than src, rebuild before running so the *installed*
  * CLI matches the source under review.
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -77,8 +77,22 @@ if (!existsSync(distBin)) {
 	process.exit(1);
 }
 
-const run = spawnSync(process.execPath, [distBin, ...process.argv.slice(2)], {
+const run = spawn(process.execPath, [distBin, ...process.argv.slice(2)], {
 	stdio: "inherit",
 	env: process.env,
+	detached: process.platform !== "win32",
 });
-process.exit(run.status ?? 1);
+const interrupt = () => run.kill("SIGINT");
+const terminate = () => run.kill("SIGTERM");
+process.on("SIGINT", interrupt);
+process.on("SIGTERM", terminate);
+const result = await new Promise((resolve) => {
+	run.once("error", (error) => resolve({ error }));
+	run.once("exit", (status, signal) => resolve({ status, signal }));
+});
+process.off("SIGINT", interrupt);
+process.off("SIGTERM", terminate);
+if (result.error) process.stderr.write(`hobo-code: ${result.error.message}\n`);
+process.exitCode =
+	result.status ??
+	(result.signal === "SIGINT" ? 130 : result.signal === "SIGTERM" ? 143 : 1);

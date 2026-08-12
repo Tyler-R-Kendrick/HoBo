@@ -32,6 +32,7 @@ import {
 	formatUsage,
 	mapPiEventToTurnEvent,
 	parsePorcelain,
+	PI_SKILLS_ENABLED,
 	type ShellEngine,
 	shouldAttemptEngine,
 	usageDelta,
@@ -129,6 +130,10 @@ describe("shouldAttemptEngine", () => {
 			shouldAttemptEngine({ HOBO_CODE_MODEL: "ollama/x" }, noAgentDir),
 		).toBe(false);
 	});
+});
+
+it("keeps project skills enabled in the Pi-backed product engine", () => {
+	expect(PI_SKILLS_ENABLED).toBe(true);
 });
 
 function fakeEngine(overrides: Partial<ShellEngine> = {}): ShellEngine {

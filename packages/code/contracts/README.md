@@ -9,6 +9,8 @@ Executable PACT consumer/provider evidence for the `SessionControlPlane` seam:
   stable serial/zero-retry playback commands
 - durable resident-session create/detach/reattach/pane-focus semantics
 - every pane in a session snapshot is backed by a non-empty runtime identifier
+- evidence triple emission for Gherkin + OpenFeature scenarios
+- local browser deployment: uncached app, isolated controls, validated evidence events
 
 The generated-skill/host interaction reuses the existing parsed TypeScript
 browser-recording and overlay-action boundaries; it adds no new wire record, so
@@ -24,4 +26,6 @@ consumer/provider behavior, and
 `recording-capability-host.pact.json` drives the production tokenized HTTP
 action in `test/session-control-server.test.ts`, including the real parser,
 exporter, confined persistence path, status, headers, payload, and response.
+Repository-writing exports additionally require controls-only bearer
+authorization that is never sent to the application-origin bridge.
 Harness discovery is exercised separately against the persisted layout.

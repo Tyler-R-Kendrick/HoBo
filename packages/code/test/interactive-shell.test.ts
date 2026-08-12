@@ -86,6 +86,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(
 			DEFAULT_SLASH_ITEMS.find((i) => i.name === "sessions")?.argv,
 		).toEqual(["session", "list"]);
+		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "dev")).toBe(true);
 		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "cursor")).toBe(false);
 		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "harness")).toBe(false);
 	});

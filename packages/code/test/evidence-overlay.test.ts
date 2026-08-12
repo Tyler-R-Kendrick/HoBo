@@ -142,6 +142,17 @@ describe("evidence overlay privileged controls", () => {
 			renderEvidenceOverlayControls({ parentOrigin: "https://app.example/x" }),
 		).toThrow(/parent origin/);
 	});
+
+	it("keeps repository-write authorization inside the controls document", () => {
+		const html = renderEvidenceOverlayControls({
+			parentOrigin: "http://localhost:4173",
+			capabilityAuthorization: "Bearer controls-only",
+		});
+
+		expect(html).toContain("Bearer controls-only");
+		expect(html).toContain('fetch(location.pathname.replace("/controls/"');
+		expect(html).toContain("event.source!==window.parent");
+	});
 });
 
 describe("evidence overlay iframe-wrapper fallback", () => {

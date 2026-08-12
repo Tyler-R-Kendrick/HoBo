@@ -76,6 +76,7 @@ const HOBO_SKILL_NAMES = [
 	"repo",
 	"sdlc",
 	"draft",
+	"impeccable",
 	"caveman",
 	"ponytail",
 	"improve",

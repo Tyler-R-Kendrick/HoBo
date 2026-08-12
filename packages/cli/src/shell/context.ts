@@ -37,7 +37,9 @@ export async function defaultContextFactory(
 ): Promise<CliContext> {
 	const projectDir = await findProjectDir(request.cwd);
 	if (request.requiresProject && !projectDir) {
-		throw new NoBindleError(request.cwd);
+		throw new NoBindleError(request.cwd, {
+			monorepo: await looksLikeHoboMonorepo(request.cwd),
+		});
 	}
 
 	return {
@@ -66,6 +68,14 @@ async function findProjectDir(startDir: string): Promise<string | null> {
 		}
 		current = parent;
 	}
+}
+
+async function looksLikeHoboMonorepo(startDir: string): Promise<boolean> {
+	const root = path.resolve(startDir);
+	return (
+		(await exists(path.join(root, "pnpm-workspace.yaml"))) &&
+		(await exists(path.join(root, "examples", "hello-bindle")))
+	);
 }
 
 async function exists(filePath: string): Promise<boolean> {

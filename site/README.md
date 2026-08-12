@@ -323,7 +323,9 @@ Notes:
   Source → Deploy from a branch → `gh-pages` / `(root)`**.
 - **`examples/runtime/` WIT wasm is omitted from `gh-pages`.** Pages builds
   fail or hang when the ~25MB bundle is included. Deploy writes
-  `examples/runtime/PAGES.md` instead. Full runtime: local
+  `examples/runtime/PAGES.md` instead. The Examples console probes
+  `examples/runtime/manifest.json` and **disables Deploy** with “Needs local
+  WIT runtime” instead of 404ing mid-plan. Full runtime: local
   `pnpm --filter hobo-site run dev` (prebuild runs `examples:runtime`). Catalog
   HTML + `index.json` still ship.
 

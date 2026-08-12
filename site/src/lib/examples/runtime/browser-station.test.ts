@@ -8,6 +8,7 @@ import {
 } from "../../../_generated/browser_station_pb.js";
 
 import {
+	browserWitRuntimeAvailable,
 	buildBrowserWitStationHtml,
 	parseBrowserRuntimeManifest,
 } from "./browser-station.js";
@@ -372,5 +373,21 @@ describe("browser WIT Environment Station", () => {
 				},
 			}),
 		).toThrow(/assetDigests/);
+	});
+});
+
+describe("browserWitRuntimeAvailable", () => {
+	it("is false when the Pages host 404s the manifest", async () => {
+		const fetchImpl = (async () => new Response("missing", { status: 404 })) as typeof fetch;
+		await expect(
+			browserWitRuntimeAvailable("https://example.test/HoBo/examples/runtime", fetchImpl),
+		).resolves.toBe(false);
+	});
+
+	it("is true when the manifest is published", async () => {
+		const fetchImpl = (async () => new Response("{}", { status: 200 })) as typeof fetch;
+		await expect(
+			browserWitRuntimeAvailable("/HoBo/examples/runtime", fetchImpl),
+		).resolves.toBe(true);
 	});
 });

@@ -97,7 +97,12 @@ export type {
 	HoboCli,
 } from "./shell/dispatch.js";
 export { createHoboCli, dispatchCommand, runHobo } from "./shell/dispatch.js";
-export { CliError, NoBindleError, UsageError } from "./shell/errors.js";
+export {
+	BindleImportError,
+	CliError,
+	NoBindleError,
+	UsageError,
+} from "./shell/errors.js";
 export { parseArgv } from "./shell/parse.js";
 export type {
 	CommandModule,

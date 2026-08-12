@@ -25,6 +25,22 @@ export interface BrowserWitStationInput {
 	readonly runtime: BrowserRuntimeDescriptor;
 }
 
+export async function browserWitRuntimeAvailable(
+	assetBaseUrl: string,
+	fetchImpl: typeof fetch = fetch,
+): Promise<boolean> {
+	const manifestUrl = new URL(
+		`${assetBaseUrl.replace(/\/$/u, "")}/manifest.json`,
+		typeof document === "undefined" ? "https://example.invalid/" : document.baseURI,
+	);
+	try {
+		const response = await fetchImpl(manifestUrl, { credentials: "same-origin" });
+		return response.ok;
+	} catch {
+		return false;
+	}
+}
+
 export async function createBrowserWitStationHost(
 	input: BrowserWitStationInput,
 ): Promise<BrowserWitStationHost> {

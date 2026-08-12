@@ -55,8 +55,7 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 	{
 		name: "deploy",
 		role: "delivery",
-		summary:
-			"Attested continuous delivery status/logs/rollback (secret-free)",
+		summary: "Attested continuous delivery status/logs/rollback (secret-free)",
 	},
 	{
 		name: "incident",
@@ -229,6 +228,7 @@ export const projectScopedVerbs = new Set(
 		(verb) =>
 			![
 				"new",
+				"doctor",
 				"login",
 				"claim",
 				"identity",

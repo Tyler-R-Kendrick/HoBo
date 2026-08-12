@@ -10,6 +10,8 @@ import {
 	type ManifestV1,
 } from "@hobo/bindles";
 
+import { BindleImportError } from "../shell/errors.js";
+
 // The TypeScript-source bindle loader (docs/plans/0006 item 3-1). It
 // materializes the collection target the cloud verbs operate on from the
 // project's own `src/bindle.ts` (the flagship authoring flow the site
@@ -53,8 +55,11 @@ export async function loadBindleDefinition(
 				string,
 				unknown
 			>;
-		} catch {
-			return null;
+		} catch (error) {
+			if (isUncompiledTypeScript(candidate, error)) {
+				continue;
+			}
+			throw new BindleImportError(absolute, error);
 		}
 
 		const definition = (module.default ?? module.bindle) as unknown;
@@ -62,6 +67,14 @@ export async function loadBindleDefinition(
 	}
 
 	return null;
+}
+
+function isUncompiledTypeScript(candidate: string, error: unknown): boolean {
+	if (!/\.(ts|mts)$/u.test(candidate)) return false;
+	const message = error instanceof Error ? error.message : String(error);
+	return /ERR_UNKNOWN_FILE_EXTENSION|Unknown file extension|\.ts['"]/u.test(
+		message,
+	);
 }
 
 function isBindleDefinition(value: unknown): value is BindleDefinition {

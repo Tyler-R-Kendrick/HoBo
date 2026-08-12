@@ -4,6 +4,7 @@ import {
 	assertNoSensitivePlaintext,
 	defaultPrivacyPolicy,
 	maskRrwebEvent,
+	redactDebugPayload,
 	shouldMaskNode,
 } from "../src/privacy.js";
 
@@ -31,9 +32,7 @@ describe("privacy defaults", () => {
 		});
 		const blob = JSON.stringify(event);
 		expect(blob).not.toContain("hunter2");
-		expect(() =>
-			assertNoSensitivePlaintext(blob, ["hunter2"]),
-		).not.toThrow();
+		expect(() => assertNoSensitivePlaintext(blob, ["hunter2"])).not.toThrow();
 	});
 
 	it("redacts Authorization headers in network capture", () => {
@@ -51,5 +50,23 @@ describe("privacy defaults", () => {
 		const headers = (event.data as { headers: Record<string, string> }).headers;
 		expect(headers.Authorization).toBe("••••");
 		expect(headers["Content-Type"]).toBe("application/json");
+	});
+
+	it("redacts terminal secrets embedded in generic output", () => {
+		const redacted = redactDebugPayload({
+			observable: {
+				output: [
+					"PASSWORD=hunter2\nAWS_ACCESS_KEY_ID=AKIA1234567890ABCDEF",
+					"postgres://app:supersecret@localhost/replay",
+					"token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.signature-value",
+				],
+			},
+		});
+		const serialized = JSON.stringify(redacted);
+		expect(serialized).not.toContain("hunter2");
+		expect(serialized).not.toContain("AKIA1234567890ABCDEF");
+		expect(serialized).not.toContain("supersecret");
+		expect(serialized).not.toContain("eyJhbGciOiJIUzI1NiJ9");
+		expect(serialized).toContain("••••");
 	});
 });

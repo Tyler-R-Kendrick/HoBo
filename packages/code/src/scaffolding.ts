@@ -9,6 +9,8 @@ import {
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { openUiStarterRoot } from "@hobo/patterns";
+
 import { composeAtoms } from "./atom-compose.js";
 import {
 	type EmissionDecision,
@@ -55,7 +57,10 @@ export function scaffoldHighValueTemplate(
 	options: ScaffoldOptions,
 ): ScaffoldResult {
 	const templateId = options.templateId ?? HIGH_VALUE_TEMPLATE_ID;
-	const templateDir = join(TEMPLATES_ROOT, templateId);
+	const templateDir =
+		templateId === HIGH_VALUE_TEMPLATE_ID
+			? openUiStarterRoot()
+			: join(TEMPLATES_ROOT, templateId);
 	if (!existsSync(templateDir)) {
 		throw new Error(`template not found: ${templateId}`);
 	}

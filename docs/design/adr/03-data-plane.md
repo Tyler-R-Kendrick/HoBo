@@ -725,14 +725,28 @@ The first ADR-0152 emit path overwrote files in topo order. That made "add a sec
 - Replacing `examples/` or the high-value OpenUI template.
 - A second codegen CLI (HOBO-152 / HOBO-394 stay elevated, not forked).
 
+## ADR-0153
+**Canonical `@hobo/patterns` catalog, ontology-vector retrieval, explicit `template` verb.**
+
+**Status:** Accepted — supersedes ADR-0152 as the source of truth for pattern *bodies*. ADR-0152 chat emit remains for known session phrases.
+
+### Context
+#1087 shipped atoms inside `@hobo/code`. That created a second template system beside `hobo new` and `openui-astryx-bindle`. Retrieval used a hashed-trigram embedder. The product needed one catalog, typed contracts, calibrated abstention, and a zero-LLM route that is an explicit verb — not silent chat interception.
+
+### Decision
+1. **`@hobo/patterns` is the only catalog.** Manifests + renderings are canonical. SQLite/VS Code output is generated.
+2. **Default vector is a generated ontology** from `@hobo/bindles` / `@hobo/capability-profiles` exports. No remote embeddings. No sqlite-vec.
+3. **Zero-LLM guarantee is `hobo-code template` and `/template`.** Spies on model/dispatch seams stay at zero. Unprefixed chat is unchanged (#1087 create/run/debug stays).
+4. **`hobo new` and `hobo-code scaffold` are adapters.** Public output contracts stay.
+5. **Model2Vec is rejected** for this catalog size: would need install-time or committed weights. Ontology-vector + FTS/exact/RRF is enough.
+
 ### Consequences
-- **(+)** High-confidence hello-world / architecture-guard / station / connector intents emit with zero inference and stay offline.
-- **(+)** Wrong-template silent emit is unrepresentable past the confidence gate.
-- **(−)** Novel intents still need an LLM (or a new atom). The hashed-trigram encoder is a stable $0 vocabulary, not a semantic model; ONNX swap is future.
-- **(−)** Multi-atom file collisions without snippet markers fail closed. Marked slots merge; unmarked drift is a conflict, not last-write-wins.
+- **(+)** One package, proto+CUE, receipts, abstention, local SQLite index.
+- **(+)** `hobo new` and `hobo-code scaffold` stay public adapters; OpenUI starter lives in the catalog.
+- **(−)** Atoms under `packages/code/templates/atoms` remain ADR-0152 chat-emit fixtures until a dedicated delete.
+- **(−)** Model2Vec rejected: no offline-packaged weights that clear no-download / no-native-compile gates.
 
 ### References
-- Package: `packages/code/src/atom-*.ts`, `packages/code/templates/atoms/`
-- Session: bare `hobo-code`, then the phrase (no retrieve verb)
-- Tests: `packages/code/test/atom-*.test.ts`
-- Related: ADR-0135, ADR-0139, HOBO-152, HOBO-394
+- Package: `packages/patterns/`
+- Zero-LLM route: `hobo-code template`, `/template`
+- Related: ADR-0135, ADR-0139, ADR-0152

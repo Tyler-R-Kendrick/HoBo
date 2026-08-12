@@ -2,7 +2,10 @@ import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { UsageError } from "../shell/errors.js";
 import type { CommandModule } from "../shell/registry.js";
-import { buildProjectFiles } from "../templates/index.js";
+import {
+	assertCatalogStarter,
+	buildProjectFiles,
+} from "../templates/index.js";
 import {
 	type ProjectName,
 	parseProjectName,
@@ -49,6 +52,7 @@ export function createNewCommand(): CommandModule {
 
 			const name = parseProjectName(rawName);
 			const template = parseTemplateId(flags.template ?? "api");
+			assertCatalogStarter(template);
 			const result = await scaffoldHoboProject({
 				cwd: context.cwd,
 				name,

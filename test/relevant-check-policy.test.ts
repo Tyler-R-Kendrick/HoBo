@@ -539,6 +539,13 @@ test("editing a step definition trips the behavior lane", () => {
 	assert.ok(checks.some(isBehaviorLane));
 });
 
+test("pattern-catalog starter Gherkin is fixture data, not the repo behavior lane", () => {
+	const { checks } = plan([
+		"packages/patterns/patterns/starter/code/openui-astryx-bindle/project/features/visual.feature",
+	]);
+	assert.equal(checks.some(isBehaviorLane), false);
+});
+
 test("OptimizeXP evidence features use their own gate, not the root behavior lane", () => {
 	const { checks } = plan([
 		"packages/code/.optimizexp/features/git-workbench/git-workbench.feature",

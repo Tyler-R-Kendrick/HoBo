@@ -1,5 +1,7 @@
 # HoBo reference examples
 
+Atomic copyable patterns live in [`packages/patterns`](../packages/patterns/README.md) (`@hobo/patterns`, ADR-0153). `examples/*` stay full apps — they are not the catalog.
+
 `examples/*` are HoBo's reference example apps: runnable, production-grade
 packages that make the product story inspectable without becoming a hidden
 implementation lane (scope and proof modes:

@@ -180,6 +180,11 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		argv: ["attach"],
 	},
 	{ name: "clear", description: "Clear chat transcript", action: "clear" },
+	{
+		name: "template",
+		description: "Search/render HoBo patterns with zero LLM tokens",
+		argv: ["template"],
+	},
 	{ name: "quit", description: "Exit hobo-code shell", action: "quit" },
 ] as const;
 

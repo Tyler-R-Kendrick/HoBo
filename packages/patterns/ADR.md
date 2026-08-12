@@ -1,0 +1,52 @@
+# ADR-0153 — `@hobo/patterns` catalog and ontology-vector retrieval
+
+**Status:** Accepted  
+**Date:** 2026-08-12
+
+## Context
+
+HoBo had three template surfaces: `hobo new -t todo|api|agent|fullstack`,
+`hobo-code scaffold` / `openui-astryx-bindle`, and `#1087` atoms inside
+`@hobo/code`. None was a typed, versioned catalog. This package is the
+single source of truth.
+
+## Decision
+
+1. Canonical artifacts are `pattern.json` + rendering files. SQLite and VS Code
+   snippets are generated projections. Semantic catalog digest is verified at
+   load; SQLite page bytes are not a cross-version identity.
+2. Default vector is a generated ontology from `@hobo/bindles` `CATALOG` and
+   `@hobo/capability-profiles` primitives/runtimes, plus a reviewed alias layer.
+   Vectors are L2-normalized little-endian float32 BLOBs. Exact ID/alias/symbol,
+   FTS5/BM25 when available, and ontology cosine are fused with RRF (`k = 60`).
+   No sqlite-vec, Faiss, HNSW, or loadable extension.
+3. Zero-LLM proof is owned by `hobo-code template` and `/template`. Ordinary
+   chat is unchanged. Receipts record `llmCalls = 0`.
+4. `hobo new` and `hobo-code scaffold` are adapters. CLI starter file maps live
+   in this package (`renderCliStarterFiles`). The OpenUI starter moved to
+   `patterns/starter/code/openui-astryx-bindle/project/`.
+5. Application writes only inside a caller-supplied isolation root. Promotion
+   stays `@hobo/code`.
+6. Atoms under `packages/code/templates/atoms` remain chat-emit fixtures
+   (ADR-0152). They are not a fourth catalog.
+
+## Model2Vec rejection
+
+Evaluated as an optional `DenseEncoderPort` challenger. **Not adopted.**
+
+| Gate | Result |
+|---|---|
+| No runtime network | Official weights live on Hugging Face. Would require install-time or committed download. |
+| No install download | Fail. |
+| Approved license + digest + reproducible pack | No committed artifact; cannot attest. |
+| Cross-platform Node load without native compile | Official path is Python / Rust-WASM. Shipping WASM or ONNX would add size and a second encoder identity. |
+| Quality vs exact + FTS + ontology on this catalog (tens of concepts) | No measured gain that justifies the packaging cost. Held-out ontology+FTS already meets expected metrics. |
+
+Default remains `hobo-ontology-vector-v1`. The port exists so a future
+offline-packaged encoder can be measured without changing call sites.
+
+## Consequences
+
+- One proto+CUE package, receipts, calibrated abstention.
+- Atoms stay until a dedicated delete; adapters must not fork new bodies.
+- Chat create/run/debug from ADR-0152 is unchanged.

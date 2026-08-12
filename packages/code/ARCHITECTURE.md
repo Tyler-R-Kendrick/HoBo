@@ -175,6 +175,15 @@ raw DTOs. Invalid values throw at the boundary (parse-don't-validate).
 - **Read store** — durable handback / evidence / budget snapshots served without
   replaying ephemeral sandbox state (ephemeral root may already be cleaned).
 
+## Durable review git source
+
+Review diffs are a separate aggregate from the Git workbench snapshot.
+`src/review/git-review-source.ts` implements `ReviewDiffSource` plus a
+SHA-256 content store: manifest-first paging, generation-bound cursors,
+isolated PR object fetches under `refs/hobo/reviews/`, and an explicit
+typed state when a provider patch is truncated. Full unified bodies stay
+out of session snapshots; EventStore partition is `hobo-code-reviews`.
+
 ## Look / feel surfaces
 
 Presentation helpers stay pure and unit-tested:

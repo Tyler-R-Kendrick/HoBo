@@ -3,6 +3,7 @@ import {
 	existsSync,
 	mkdirSync,
 	readFileSync,
+	realpathSync,
 	renameSync,
 	rmSync,
 	unlinkSync,
@@ -13,7 +14,7 @@ import {
 	type IncomingMessage,
 	type ServerResponse,
 } from "node:http";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import {
 	buildCorrelation,
@@ -47,6 +48,7 @@ import {
 	readGitWorkbenchSnapshot,
 	runGitWorkbenchAction,
 } from "./git-workbench.js";
+import { parseSkillName } from "./harness.js";
 import {
 	createLocalSessionControl,
 	type LocalSessionControl,
@@ -97,25 +99,33 @@ function json(response: ServerResponse, status: number, body: unknown): void {
 	);
 }
 
-function saveRecordingCapability(
+export function saveRecordingCapability(
 	projectRoot: string,
 	exported: ReturnType<typeof exportEvidenceRecordingAutomation>,
-): string {
-	const skillsRoot = join(projectRoot, ".agents", "skills");
-	const target = join(skillsRoot, exported.capabilityId);
+): void {
+	parseSkillName(exported.capabilityId);
+	const projectRealPath = realpathSync(projectRoot);
+	const hoboRoot = join(projectRoot, ".hobo");
+	mkdirSync(hoboRoot, { recursive: true });
+	assertDescendant(projectRealPath, realpathSync(hoboRoot));
+	const recordingsRoot = join(hoboRoot, "recordings");
+	mkdirSync(recordingsRoot, { recursive: true });
+	assertDescendant(projectRealPath, realpathSync(recordingsRoot));
+	const target = join(recordingsRoot, exported.capabilityId);
 	if (existsSync(target))
 		throw new Error(`capability already exists: ${exported.capabilityId}`);
 	const staging = join(
-		skillsRoot,
+		recordingsRoot,
 		`.${exported.capabilityId}-${randomBytes(8).toString("hex")}`,
 	);
 	mkdirSync(staging, { recursive: true });
 	try {
 		for (const artifact of exported.artifacts) {
-			const prefix = `.agents/skills/${exported.capabilityId}/`;
+			const prefix = `.hobo/recordings/${exported.capabilityId}/`;
 			if (!artifact.path.startsWith(prefix))
 				throw new Error("automation artifact escaped its capability directory");
-			const path = join(staging, artifact.path.slice(prefix.length));
+			const path = resolve(staging, artifact.path.slice(prefix.length));
+			assertDescendant(staging, path);
 			mkdirSync(dirname(path), { recursive: true });
 			writeFileSync(path, artifact.contents, { encoding: "utf8", flag: "wx" });
 		}
@@ -124,7 +134,12 @@ function saveRecordingCapability(
 		rmSync(staging, { recursive: true, force: true });
 		throw error;
 	}
-	return target;
+}
+
+function assertDescendant(root: string, candidate: string): void {
+	const child = relative(root, candidate);
+	if (child.startsWith("..") || isAbsolute(child))
+		throw new Error("recording capability path escaped the project root");
 }
 
 function parseGitWorkbenchAction(input: unknown): GitWorkbenchAction {
@@ -638,7 +653,7 @@ export async function startSessionControlServer(
 						name: message.name,
 						sourceArtifactRef,
 					});
-					const path = saveRecordingCapability(options.projectRoot, exported);
+					saveRecordingCapability(options.projectRoot, exported);
 					const artifactRefs = exported.artifacts.map((generated) => {
 						const writer = evidence.beginArtifact({
 							title: generated.path,
@@ -659,7 +674,7 @@ export async function startSessionControlServer(
 						ok: true,
 						id,
 						capabilityId: exported.capabilityId,
-						path,
+						path: `.hobo/recordings/${exported.capabilityId}`,
 						command: exported.commands[0],
 						replayability: exported.replayability,
 						requiredEnvironment: exported.requiredEnvironment,

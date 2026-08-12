@@ -120,12 +120,23 @@ The browser evidence overlay can capture a PNG screenshot or record a WebM
 plus a secret-free semantic action/checkpoint manifest. Both appear in the
 live Evidence report. After a completed recording, **Save as capability**
 compiles the same stored manifest into
-`.agents/skills/<name>/{SKILL.md,scripts/run.spec.ts,references/recording.json}`.
+`.hobo/recordings/<name>/{SKILL.md,scripts/run.spec.ts,references/recording.json}`
+under the selected project root (the repository root when launched there).
 Generated Playwright uses role/label/test-id locators before stable ids, emits
 fresh checkpoint screenshots, takes recorded input through named environment
 variables, and can target another deployment with
-`HOBO_AUTOMATION_BASE_URL`. The control server validates the overlay origin,
-capture signatures, recording schema, and capability path before writing.
+`HOBO_AUTOMATION_BASE_URL`. Playback pins viewport, locale, timezone, color
+scheme, reduced motion, serial execution, zero retries, and fixed-time
+auto-waited locator priority; recorded offsets remain evidence rather than
+workstation-dependent sleeps. Ambiguous locators, cross-origin exports, and
+recorded route/title drift fail closed. Generated source is byte-stable for the
+same recording, while app data and third-party network responses remain the
+target application's responsibility. Built-in skill names receive a
+`recording-` prefix instead of being shadowed. Run playback from the project
+root that contains the selected `.hobo/recordings` directory. The control
+server validates the overlay origin, capture signatures, recording schema, and
+capability path before writing. HoBo harnesses discover these project-local
+recording skills before general agent skill roots.
 
 Product identity lives in `/about`. Stock Pi TUI remains an escape hatch only
 (`HOBO_CODE_TUI=pi` or `hobo-code --pi`) and is never the product frame.

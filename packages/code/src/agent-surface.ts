@@ -188,7 +188,7 @@ export function inspectAgentSurface(
 		Boolean(session?.mode === "local") || sessRef || (agentMode && !session); // agent path will auto local-login
 
 	const worldRoot = join(hoboHome, "worlds");
-	const harness = createHarnessCore({ worldRoot });
+	const harness = createHarnessCore({ worldRoot, projectRoot: cwd });
 	const mcp = harness.exposeMcp();
 	const harnessStatus = inspectHarnessSurface({ cwd, hoboHome });
 

@@ -9,6 +9,17 @@ import type {
 // public-contract: deterministic reusable browser-automation export schema.
 export const EVIDENCE_AUTOMATION_SCHEMA =
 	"hobo.code.evidence-automation/v1" as const;
+const RECORDING_CAPABILITY_ROOT = ".hobo/recordings";
+const RESERVED_CAPABILITY_IDS = new Set([
+	"repo",
+	"sdlc",
+	"draft",
+	"caveman",
+	"ponytail",
+	"improve",
+	"tdd",
+	"review",
+]);
 
 export interface EvidenceAutomationArtifact {
 	readonly id: `sha256:${string}`;
@@ -29,38 +40,42 @@ export interface EvidenceRecordingAutomationExport {
 	readonly commands: readonly string[];
 }
 
+type ReplayableBrowserRecording = CompletedBrowserRecording & {
+	readonly __replayableBrowserRecording: unique symbol;
+};
+
 /** Compile stored semantic recording evidence into agent instructions and runnable code. */
 export function exportEvidenceRecordingAutomation(
 	recording: CompletedBrowserRecording,
 	options: { readonly name?: string; readonly sourceArtifactRef?: string } = {},
 ): EvidenceRecordingAutomationExport {
-	if (recording.status !== "completed")
-		throw new TypeError("evidence automation requires a completed recording");
-	if (recording.actions.length === 0)
-		throw new TypeError("evidence automation requires recorded actions");
-	const capabilityId = slug(options.name ?? recording.title ?? recording.id);
-	if (!capabilityId) throw new TypeError("recording needs a reusable name");
-	const root = `.agents/skills/${capabilityId}`;
+	const replayable = parseReplayableBrowserRecording(recording);
+	const requestedId = slug(options.name ?? replayable.title ?? replayable.id);
+	if (!requestedId) throw new TypeError("recording needs a reusable name");
+	const capabilityId = RESERVED_CAPABILITY_IDS.has(requestedId)
+		? `recording-${requestedId}`
+		: requestedId;
+	const root = `${RECORDING_CAPABILITY_ROOT}/${capabilityId}`;
 	const specPath = `${root}/scripts/run.spec.ts`;
-	const command = `pnpm exec playwright test ${specPath} --workers=1`;
+	const command = `pnpm exec playwright test ${specPath} --workers=1 --retries=0`;
 	const requiredEnvironment = Object.freeze(
-		[...new Set(recording.actions.flatMap(environmentFor))].sort(),
+		[...new Set(replayable.actions.flatMap(environmentFor))].sort(),
 	);
 	const skill = renderSkill({
 		capabilityId,
 		command,
-		recording,
+		recording: replayable,
 		...(options.sourceArtifactRef
 			? { sourceArtifactRef: options.sourceArtifactRef }
 			: {}),
 	});
-	const spec = renderSpec(recording);
-	const source = `${JSON.stringify(recording, null, 2)}\n`;
+	const spec = renderSpec(replayable);
+	const source = `${JSON.stringify(replayable, null, 2)}\n`;
 
 	return Object.freeze({
 		schemaVersion: EVIDENCE_AUTOMATION_SCHEMA,
 		capabilityId,
-		sourceRecordingId: recording.id,
+		sourceRecordingId: replayable.id,
 		...(options.sourceArtifactRef
 			? { sourceArtifactRef: options.sourceArtifactRef }
 			: {}),
@@ -75,9 +90,25 @@ export function exportEvidenceRecordingAutomation(
 	});
 }
 
-function renderSpec(recording: CompletedBrowserRecording): string {
+function parseReplayableBrowserRecording(
+	recording: CompletedBrowserRecording,
+): ReplayableBrowserRecording {
+	if (recording.status !== "completed")
+		throw new TypeError("evidence automation requires a completed recording");
+	if (recording.actions.length === 0)
+		throw new TypeError("evidence automation requires recorded actions");
+	if (new URL(recording.startUrl).origin !== new URL(recording.endUrl).origin)
+		throw new TypeError(
+			"cross-origin recordings cannot be exported for playback",
+		);
+	return recording as ReplayableBrowserRecording;
+}
+
+function renderSpec(recording: ReplayableBrowserRecording): string {
 	const startUrl = new URL(recording.startUrl);
 	const path = `${startUrl.pathname}${startUrl.search}${startUrl.hash}`;
+	const endUrl = new URL(recording.endUrl);
+	const endPath = `${endUrl.pathname}${endUrl.search}${endUrl.hash}`;
 	const checkpoints = new Map(
 		recording.checkpoints.map((checkpoint) => [
 			checkpoint.afterAction,
@@ -101,9 +132,20 @@ function renderSpec(recording: CompletedBrowserRecording): string {
 		}
 		return rendered;
 	});
+	steps.push(
+		`await expect(page).toHaveURL(new URL(${quote(endPath)}, baseURL).href);`,
+	);
 	return `import { expect, test, type Locator } from "playwright/test";
 
 const baseURL = process.env.HOBO_AUTOMATION_BASE_URL ?? ${quote(startUrl.origin)};
+
+test.describe.configure({ mode: "serial", retries: 0 });
+test.use({
+  viewport: { width: ${recording.viewport.width}, height: ${recording.viewport.height} },
+  locale: "en-US",
+  timezoneId: "UTC",
+  colorScheme: "light",
+});
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -112,11 +154,17 @@ function requiredEnv(name: string): string {
 }
 
 async function recordedTarget(candidates: readonly Locator[], label: string): Promise<Locator> {
-  for (const candidate of candidates) if (await candidate.count() === 1) return candidate;
+  for (const candidate of candidates) {
+    try {
+      await expect(candidate, label).toHaveCount(1, { timeout: 5_000 });
+      return candidate;
+    } catch {}
+  }
   throw new Error(\`Recorded target is missing or ambiguous: \${label}\`);
 }
 
 test(${quote(recording.title)}, async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "light" });
   await page.goto(new URL(${quote(path)}, baseURL).href, { waitUntil: "domcontentloaded" });
 ${steps.map((step) => indent(step, 2)).join("\n")}
 });
@@ -211,7 +259,7 @@ ${steps}
 
 \`${input.command}\`
 
-Set \`HOBO_AUTOMATION_BASE_URL\` to replay against another deployment. Keep one worker so the path remains ordered and deterministic. New checkpoint screenshots are emitted as test evidence on every run.
+Set \`HOBO_AUTOMATION_BASE_URL\` to replay against another deployment and run this command from the project root containing \`.hobo/recordings\`. Playback uses a stable ordered action sequence and fixed-time semantic-locator waits, pins the recorded viewport plus locale, timezone, color scheme, reduced motion, serial execution, and zero retries. Recorded offsets remain evidence rather than sleeps so replay does not depend on workstation timing. New checkpoint screenshots are emitted as test evidence on every run; locator ambiguity or recorded route/title drift fails closed.
 `;
 }
 

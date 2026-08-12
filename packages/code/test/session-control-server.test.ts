@@ -202,6 +202,15 @@ describe("resident session loopback server", () => {
 			const screenshot = Uint8Array.from([
 				0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3,
 			]);
+			const foreignCapture = await fetch(
+				`${server.controlsUrlTemplate.replace("/controls/", "/api/captures/")}?kind=screenshot`,
+				{
+					method: "POST",
+					headers: { origin: "https://attacker.example" },
+					body: screenshot,
+				},
+			);
+			expect(foreignCapture.status).toBe(403);
 			const actionResponse = await fetch(
 				`${server.controlsUrlTemplate.replace("/controls/", "/api/captures/")}?kind=screenshot&subject=browser%3Acurrent`,
 				{
@@ -220,7 +229,65 @@ describe("resident session loopback server", () => {
 			const capturedAsset = await fetch(
 				`http://127.0.0.1:${server.port}/__hobo/assets/sha256/${captured.artifactRef.slice(7)}?token=test-token`,
 			);
-			expect(new Uint8Array(await capturedAsset.arrayBuffer())).toEqual(screenshot);
+			expect(new Uint8Array(await capturedAsset.arrayBuffer())).toEqual(
+				screenshot,
+			);
+			const video = Uint8Array.from([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3]);
+			const videoResponse = await fetch(
+				`${server.controlsUrlTemplate.replace("/controls/", "/api/captures/")}?kind=recording-video`,
+				{
+					method: "POST",
+					headers: { origin: "http://127.0.0.1:4173" },
+					body: video,
+				},
+			);
+			expect(videoResponse.status).toBe(201);
+			const videoArtifactRef = (
+				(await videoResponse.json()) as { artifactRef: string }
+			).artifactRef;
+			const manifestResponse = await fetch(
+				`${server.controlsUrlTemplate.replace("/controls/", "/api/captures/")}?kind=recording-manifest`,
+				{
+					method: "POST",
+					headers: {
+						origin: "http://127.0.0.1:4173",
+						"content-type": "application/json",
+					},
+					body: JSON.stringify({
+						videoArtifactRef,
+						manifest: {
+							schemaVersion: "hobo.code.browser-recording/v1",
+							id: "recording-17",
+							title: "Checkout",
+							status: "completed",
+							startUrl: "http://127.0.0.1:4173/cart",
+							endUrl: "http://127.0.0.1:4173/complete",
+							durationMs: 42,
+							viewport: { width: 1280, height: 720 },
+							actions: [
+								{
+									sequence: 1,
+									offsetMs: 3,
+									type: "click",
+									target: { role: "button", name: "Checkout" },
+								},
+							],
+							checkpoints: [
+								{
+									sequence: 1,
+									afterAction: 1,
+									path: "/complete",
+									title: "Complete",
+								},
+							],
+						},
+					}),
+				},
+			);
+			expect(await manifestResponse.json()).toMatchObject({
+				recordingId: "recording-17",
+				artifactRefs: [videoArtifactRef, expect.stringMatching(/^sha256:/u)],
+			});
 
 			const headers = {
 				authorization: "Bearer test-token",

@@ -117,6 +117,15 @@ export {
 } from "./evidence-overlay.js";
 
 export {
+	BROWSER_RECORDING_SCHEMA,
+	parseBrowserRecording,
+	type BrowserRecordingAction,
+	type BrowserRecordingCheckpoint,
+	type BrowserRecordingTarget,
+	type CompletedBrowserRecording,
+} from "./browser-recording.js";
+
+export {
 	applyInContextEdit,
 	createOpenUiSession,
 	lockVisualArtifact,

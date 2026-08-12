@@ -17,6 +17,9 @@ describe("evidence overlay message boundary", () => {
 			note: "The approval state is unclear.",
 		},
 		{ type: "capture", kind: "screenshot" },
+		{ type: "record", action: "start" },
+		{ type: "record", action: "stop" },
+		{ type: "save-capability", recordingId: "recording-17", name: "Checkout" },
 		{ type: "report" },
 		{ type: "replay", sessionId: "session-17" },
 		{
@@ -48,6 +51,8 @@ describe("evidence overlay message boundary", () => {
 		{ type: "delete-project" },
 		{ type: "report", extra: true },
 		{ type: "capture", kind: "screen-and-audio" },
+		{ type: "record", action: "pause" },
+		{ type: "save-capability", recordingId: "", name: "Checkout" },
 		{ type: "annotate", selector: "", note: "note" },
 		{ type: "edit-request", selector: "main", prompt: "x".repeat(8_193) },
 	])("rejects malformed or over-broad payloads", (data) => {
@@ -56,7 +61,7 @@ describe("evidence overlay message boundary", () => {
 				{ origin: controlsOrigin, data },
 				controlsOrigin,
 			),
-		).toThrow(/message|type|field|length|capture/);
+		).toThrow(/message|type|field|length|capture|recording/);
 	});
 });
 
@@ -76,6 +81,7 @@ describe("evidence overlay bridge", () => {
 		expect(script).toContain("prefers-reduced-motion: reduce");
 		expect(script).toContain("@media (max-width: 42rem)");
 		expect(script).not.toContain('postMessage(message, "*")');
+		expect(() => new Function(script)).not.toThrow();
 	});
 
 	it("escapes URL source text and fails closed on a same-origin mount", () => {
@@ -108,6 +114,8 @@ describe("evidence overlay privileged controls", () => {
 		for (const type of [
 			"annotate",
 			"capture",
+			"record",
+			"save-capability",
 			"report",
 			"replay",
 			"edit-request",
@@ -118,8 +126,10 @@ describe("evidence overlay privileged controls", () => {
 		expect(html).toContain('aria-live="polite"');
 		expect(html).toContain("prefers-reduced-motion: reduce");
 		expect(html).toContain("@media (max-width: 32rem)");
-		expect(html).toContain("postMessage(message, parentOrigin)");
+		expect(html).toContain("postMessage(message,parentOrigin)");
 		expect(html).toContain("Opening evidence report…");
+		expect(html).toContain("Recording actions, navigation, and state changes.");
+		expect(html).toContain("Save as capability…");
 		expect(html).not.toContain('postMessage(message, "*")');
 		expect(html).not.toMatch(/bearer|token|credential/iu);
 	});

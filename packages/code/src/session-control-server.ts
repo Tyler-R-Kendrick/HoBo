@@ -26,6 +26,7 @@ import {
 	GitWorkbenchSelectionKind,
 	SessionLifecycleState,
 } from "./_generated/code_harness_pb.js";
+import { parseBrowserRecording } from "./browser-recording.js";
 import {
 	parseEvidenceOverlayMessage,
 	renderEvidenceOverlayControls,
@@ -133,7 +134,9 @@ function parseGitWorkbenchAction(input: unknown): GitWorkbenchAction {
 }
 
 async function requestBody(request: IncomingMessage): Promise<unknown> {
-	return JSON.parse((await requestBytes(request, 1_048_576)).toString("utf8") || "{}");
+	return JSON.parse(
+		(await requestBytes(request, 1_048_576)).toString("utf8") || "{}",
+	);
 }
 
 async function requestBytes(
@@ -348,6 +351,7 @@ export async function startSessionControlServer(
 ): Promise<SessionControlServer> {
 	const token = options.token ?? randomBytes(32).toString("base64url");
 	const controlsCapability = randomBytes(24).toString("base64url");
+	const controlsOrigins = new Set<string>();
 	const control =
 		options.control ??
 		createLocalSessionControl({ hoboHome: options.hoboHome });
@@ -392,17 +396,69 @@ export async function startSessionControlServer(
 				url.pathname === `/__hobo/evidence/api/captures/${controlsCapability}`
 			) {
 				const origin = request.headers.origin;
+				if (!origin || !controlsOrigins.has(origin)) {
+					json(response, 403, {
+						error: "evidence capture origin is not registered",
+					});
+					return;
+				}
 				if (origin) response.setHeader("access-control-allow-origin", origin);
-				if (url.searchParams.get("kind") !== "screenshot") {
+				const kind = url.searchParams.get("kind");
+				if (kind === "recording-video") {
+					const bytes = await requestBytes(request, 64 * 1024 * 1024);
+					if (
+						!bytes.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))
+					)
+						throw new TypeError("browser recording must be WebM");
+					const writer = evidence.beginArtifact({
+						title: "Browser recording video",
+						mediaType: "video/webm",
+					});
+					writer.write(bytes);
+					const artifact = writer.finish();
+					json(response, 201, { ok: true, artifactRef: artifact.id });
+					return;
+				}
+				if (kind === "recording-manifest") {
+					const body = (await requestBody(request)) as Record<string, unknown>;
+					const manifest = parseBrowserRecording(body.manifest);
+					if (typeof body.videoArtifactRef !== "string")
+						throw new TypeError("recording video artifact is required");
+					evidence.readArtifact(body.videoArtifactRef);
+					const bytes = Buffer.from(`${JSON.stringify(manifest)}\n`);
+					const writer = evidence.beginArtifact({
+						title: "Browser recording actions",
+						mediaType: "application/json",
+					});
+					writer.write(bytes);
+					const actions = writer.finish();
+					const id = evidence.submit({
+						kind: "recording",
+						title: manifest.title,
+						summary: `${manifest.actions.length} actions and ${manifest.checkpoints.length} state checkpoints captured over ${manifest.durationMs} ms.`,
+						subject: manifest.id,
+						artifactRefs: [body.videoArtifactRef, actions.id],
+					});
+					json(response, 201, {
+						ok: true,
+						id,
+						recordingId: manifest.id,
+						artifactRefs: [body.videoArtifactRef, actions.id],
+					});
+					return;
+				}
+				if (kind !== "screenshot") {
 					json(response, 400, { error: "invalid evidence capture kind" });
 					return;
 				}
 				const bytes = await requestBytes(request, 16 * 1024 * 1024);
 				if (
 					bytes.length < 8 ||
-					!bytes.subarray(0, 8).equals(
-						Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-					)
+					!bytes
+						.subarray(0, 8)
+						.equals(
+							Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+						)
 				) {
 					throw new TypeError("screenshot capture must be PNG");
 				}
@@ -504,36 +560,18 @@ export async function startSessionControlServer(
 					);
 					return;
 				}
-				if (
-					message.type === "capture" ||
-					message.type === "annotate" ||
-					message.type === "edit-request"
-				) {
+				if (message.type === "annotate" || message.type === "edit-request") {
 					const id = evidence.submit({
-						kind:
-							message.type === "capture"
-								? message.kind === "clip"
-									? "recording"
-									: "screenshot"
-								: message.type === "annotate"
-									? "annotation"
-									: "note",
+						kind: message.type === "annotate" ? "annotation" : "note",
 						title:
-							message.type === "capture"
-								? `Requested ${String(message.kind)}`
-								: message.type === "annotate"
-									? "Browser annotation"
-									: "Browser edit request",
+							message.type === "annotate"
+								? "Browser annotation"
+								: "Browser edit request",
 						summary:
 							message.type === "annotate"
 								? String(message.note ?? "")
-								: message.type === "edit-request"
-									? String(message.prompt ?? "")
-									: "Capture requested from the browser overlay; host completion is pending.",
-						subject:
-							message.type !== "capture"
-								? message.selector
-								: "browser:current",
+								: String(message.prompt ?? ""),
+						subject: message.selector,
 						artifactRefs: [],
 					});
 					json(response, 202, { ok: true, id });
@@ -551,6 +589,12 @@ export async function startSessionControlServer(
 					json(response, 400, { error: "missing parent origin" });
 					return;
 				}
+				const registeredOrigin = new URL(parentOrigin).origin;
+				if (registeredOrigin !== parentOrigin) {
+					json(response, 400, { error: "invalid parent origin" });
+					return;
+				}
+				controlsOrigins.add(registeredOrigin);
 				response.writeHead(200, {
 					"cache-control": "no-store",
 					"content-type": "text/html; charset=utf-8",

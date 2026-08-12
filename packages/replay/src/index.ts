@@ -44,12 +44,16 @@ export {
 	withTrail,
 } from "./correlation.js";
 export {
+	createDebugReplayRecorder,
 	createDebugTrackEnvelope,
 	DEBUG_REPLAY_EVENT_TYPE,
 	DEBUG_REPLAY_LEVEL_ENV,
 	DEBUG_REPLAY_SCHEMA_VERSION,
 	DEBUG_REPLAY_TRACKS,
 	type DebugReplayLevel,
+	type DebugReplayRecorder,
+	type DebugReplayRecordInput,
+	type DebugReplayRecording,
 	type DebugReplayTrack,
 	type DebugTrackEnvelope,
 	type DebugTrackInput,
@@ -87,6 +91,7 @@ export {
 } from "./metering.js";
 export {
 	createFixtureReplayEngine,
+	type DebugTimelineItem,
 	loadPlayerPayload,
 	type OpenUiPlayerDescriptor,
 	type PlayerPayload,

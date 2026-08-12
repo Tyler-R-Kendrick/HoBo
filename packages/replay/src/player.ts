@@ -2,13 +2,29 @@
  * Player helpers + OpenUI-friendly component descriptor.
  * Reconstruction uses injectable rrweb-player (or fixture reconstruction in CI).
  */
+
+import {
+	type DebugReplayLevel,
+	type DebugReplayTrack,
+	isDebugTrackEnvelope,
+} from "./debug-replay.js";
 import type { SessionBlobStore, SessionIndex } from "./storage.js";
 import type { RrwebEvent, SessionRecord } from "./types.js";
 import { ReplayParseError } from "./types.js";
 
+export type DebugTimelineItem = Readonly<{
+	sequence: number;
+	timestamp: number;
+	track: DebugReplayTrack;
+	level: Exclude<DebugReplayLevel, "off">;
+	metadata: Readonly<Record<string, unknown>>;
+}>;
+
 export type PlayerPayload = Readonly<{
 	session: SessionRecord;
 	events: readonly RrwebEvent[];
+	/** Read-only metadata projection; observable/diagnostic payloads stay in blobs. */
+	debugTimeline: readonly DebugTimelineItem[];
 	/** OpenUI / Control Yard mount descriptor (read-only). */
 	openUi: OpenUiPlayerDescriptor;
 	/** Deep link for CLI / MCP / Control Yard. */
@@ -27,6 +43,7 @@ export type OpenUiPlayerDescriptor = Readonly<{
 	controlYardZone: "session-replay";
 	/** Mutations are not allowed from player UI. */
 	mutationSurface: "cli-only";
+	readOnly: true;
 }>;
 
 export type ReplayEngine = {
@@ -94,10 +111,25 @@ export async function loadPlayerPayload(input: {
 			timestamp: events[events.length - 1]!.timestamp,
 		});
 	}
+	const debugTimeline = Object.freeze(
+		events
+			.filter(isDebugTrackEnvelope)
+			.map((event) =>
+				Object.freeze({
+					sequence: event.data.sequence,
+					timestamp: event.timestamp,
+					track: event.data.track,
+					level: event.data.level,
+					metadata: event.data.payload.metadata,
+				}),
+			)
+			.sort((left, right) => left.sequence - right.sequence),
+	);
 
 	return Object.freeze({
 		session,
 		events: Object.freeze(events),
+		debugTimeline,
 		deepLink: `hobo://replay/open?session=${encodeURIComponent(session.id)}&station=${encodeURIComponent(input.stationId)}`,
 		openUi: Object.freeze({
 			kind: "hobo.replay.player" as const,
@@ -113,6 +145,7 @@ export async function loadPlayerPayload(input: {
 			jumpTargets: Object.freeze(jumpTargets),
 			controlYardZone: "session-replay" as const,
 			mutationSurface: "cli-only" as const,
+			readOnly: true as const,
 		}),
 	});
 }

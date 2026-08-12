@@ -193,6 +193,13 @@ describe("resident session loopback server", () => {
 			const html = await page.text();
 			expect(html).toContain("HoBo Code resident sessions");
 			expect(html).toContain("Evidence report");
+			expect(html).toContain("Durable review");
+			const reviews = await fetch(
+				`http://127.0.0.1:${server.port}/api/reviews`,
+				{ headers: { authorization: "Bearer test-token" } },
+			);
+			expect(reviews.status).toBe(200);
+			expect(await reviews.json()).toMatchObject({ reviews: [] });
 			expect(html).toContain("forward this loopback port");
 			expect(html).toContain("never binds publicly");
 			expect(html).toContain("Full command boundary");

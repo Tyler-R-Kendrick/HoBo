@@ -55,6 +55,7 @@ import {
 } from "./local-session-control.js";
 import { createLocalReviewControl } from "./review/local-review-control.js";
 import { handleReviewHttp } from "./review/review-http.js";
+import { handleReviewHttpRequest } from "./review/review-http-routes.js";
 import { sessionSnapshotJson } from "./session-contract.js";
 import {
 	SessionApprovalRequiredError,
@@ -219,7 +220,7 @@ function browserHtml(token: string, projectRoot: string): string {
 @media(max-width:48rem){body{margin:.75rem auto}.pane-grid{display:grid;grid-template-columns:1fr;height:auto!important;aspect-ratio:auto!important;overflow:visible}.pane-tile{position:relative!important;inset:auto!important;width:100%!important;height:auto!important;min-height:18rem}.git-workbench{display:flex;flex-direction:column;min-height:0}.git-main{order:-1}.git-diff{min-height:18rem;max-height:55vh}.git-list{max-height:9rem}.git-hints{width:100%;margin:0}}
 </style></head>
 <body><h1>HoBo Code resident sessions</h1><p>Loopback control plane · refreshes every second · delivery requires approval.</p>
-<p><strong>Authenticated</strong> · bearer-protected loopback control. · <a href="/__hobo/evidence?token=${encodeURIComponent(token)}">Evidence report</a></p>
+<p><strong>Authenticated</strong> · bearer-protected loopback control. · <a href="/__hobo/evidence?token=${encodeURIComponent(token)}">Evidence report</a> · <a href="/reviews">Durable review</a></p>
 <p>Remote: forward this loopback port through a declared Station machine. The server never binds publicly.</p>
 <form id="create"><label>Name <input id="name" required></label><label> Branch <input id="branch" placeholder="code/task"></label><button>Create session</button></form>
 <main id="sessions" aria-label="Resident sessions"></main>
@@ -954,6 +955,15 @@ export async function startSessionControlServer(
 					parseGitWorkbenchAction(await requestBody(request)),
 				);
 				json(response, 200, { ok: true });
+				return;
+			}
+			if (
+				await handleReviewHttpRequest(request, response, {
+					token,
+					control: reviews,
+					hoboHome: options.hoboHome,
+				})
+			) {
 				return;
 			}
 			if (

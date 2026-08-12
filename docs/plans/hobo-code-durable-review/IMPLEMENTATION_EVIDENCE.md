@@ -30,8 +30,8 @@ separate record of what the reviewer inspected.
 
 ## Validation
 
-Package tests on this branch: 631 passed before the terminal-host/inbox
-integration commit; re-run `pnpm --prefix packages/code test` after merge.
+Package tests after integration: 679 passed, 4 skipped
+(`pnpm --prefix packages/code test`).
 
 Coordinator also ran focused review suites for runtime, orchestrator,
 GitHub provider, patch apply, inbox, stack, terminal, agent routing, and HTTP.

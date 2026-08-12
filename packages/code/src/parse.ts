@@ -6,6 +6,8 @@ import {
 	CODE_EVIDENCE_SCHEMA,
 	CODE_ISOLATION_SCHEMA,
 	type EvidenceTriple,
+	type EvidenceKind,
+	type GuestEvidenceSubmission,
 	type IsolationContext,
 	type IsolationKind,
 	type IsolationStatus,
@@ -31,6 +33,62 @@ function requireBoolean(value: unknown, path: string): boolean {
 		throw new TypeError(`${path} must be a boolean`);
 	}
 	return value;
+}
+
+const EVIDENCE_KINDS = new Set<EvidenceKind>([
+	"status",
+	"test",
+	"feature",
+	"decision",
+	"diagram",
+	"screenshot",
+	"recording",
+	"replay",
+	"annotation",
+	"note",
+]);
+const ARTIFACT_REF = /^sha256:[0-9a-f]{64}$/;
+
+/** Parse guest evidence without allowing the guest to assign host trust. */
+export function parseGuestEvidenceSubmission(
+	input: unknown,
+): GuestEvidenceSubmission {
+	const source = requireObject(input, "GuestEvidenceSubmission");
+	for (const hostOwned of [
+		"verification",
+		"origin",
+		"actor",
+		"recordedAt",
+		"path",
+		"uri",
+	]) {
+		if (hostOwned in source) {
+			throw new TypeError(`${hostOwned} is host-owned`);
+		}
+	}
+	const kind = requireString(source.kind, "kind") as EvidenceKind;
+	if (!EVIDENCE_KINDS.has(kind)) {
+		throw new TypeError("kind must be a hobo:evidence kind");
+	}
+	const artifactRefs = Array.isArray(source.artifactRefs)
+		? source.artifactRefs.map((ref, index) => {
+			const value = requireString(ref, `artifactRefs[${index}]`);
+			if (!ARTIFACT_REF.test(value)) {
+				throw new TypeError(`artifactRefs[${index}] must be a sha256 reference`);
+			}
+			return value;
+		})
+		: [];
+	return Object.freeze({
+		kind,
+		title: requireString(source.title, "title"),
+		summary: requireString(source.summary, "summary"),
+		subject: requireString(source.subject, "subject"),
+		artifactRefs: Object.freeze(artifactRefs),
+		...(source.sourceRef === undefined
+			? {}
+			: { sourceRef: requireString(source.sourceRef, "sourceRef") }),
+	});
 }
 
 /** Parse isolation context from untrusted JSON/wire into a derived domain type. */

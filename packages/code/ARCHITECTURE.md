@@ -137,9 +137,12 @@ hobo-code (standalone binary; dispatch default)
 ## Parse, don't validate
 
 Untrusted isolation / promotion / evidence input crosses parser boundaries in
-`parseIsolationContext()`, `parsePromotionRequest()`, and `parseEvidenceTriple()`
+`parseIsolationContext()`, `parsePromotionRequest()`, `parseEvidenceTriple()`, and
+`parseGuestEvidenceSubmission()`
 into deep-frozen **derived domain types** (`IsolationContext`, `PromotionRequest`,
-`EvidenceTriple`). Downstream harness sessions receive those **parsed types**, not
+`EvidenceTriple`, `GuestEvidenceSubmission`). The WIT evidence guest cannot set
+verification, origin, actor, timestamps, paths, or URIs; the host stamps those
+after parsing and stores large artifacts by digest. Downstream sessions receive parsed types, not
 raw DTOs. Invalid values throw at the boundary (parse-don't-validate).
 
 ## Event architecture

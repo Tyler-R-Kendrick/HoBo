@@ -472,6 +472,31 @@ message EvidenceTriple {
   string durable_root = 6;
 }
 
+enum EvidenceKind {
+  EVIDENCE_KIND_UNSPECIFIED = 0;
+  EVIDENCE_KIND_STATUS = 1;
+  EVIDENCE_KIND_TEST = 2;
+  EVIDENCE_KIND_FEATURE = 3;
+  EVIDENCE_KIND_DECISION = 4;
+  EVIDENCE_KIND_DIAGRAM = 5;
+  EVIDENCE_KIND_SCREENSHOT = 6;
+  EVIDENCE_KIND_RECORDING = 7;
+  EVIDENCE_KIND_REPLAY = 8;
+  EVIDENCE_KIND_ANNOTATION = 9;
+  EVIDENCE_KIND_NOTE = 10;
+}
+
+// Guest-submitted wire form. The host stamps origin, verification, actor,
+// time, and content-addressed storage after parsing.
+message GuestEvidenceSubmission {
+  EvidenceKind kind = 1;
+  string title = 2;
+  string summary = 3;
+  string subject = 4;
+  repeated string artifact_refs = 5;
+  string source_ref = 6;
+}
+
 // Agent semantic state for the Herdr-like multiplexer.
 message AgentPaneState {
   string agent_id = 1;

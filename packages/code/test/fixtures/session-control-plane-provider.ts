@@ -1,6 +1,8 @@
 import { strict as assert } from "node:assert";
 import { createServer } from "node:http";
 
+import { parseGuestEvidenceSubmission } from "../../src/parse.js";
+
 interface PactInteraction {
 	readonly description: string;
 	readonly request: {
@@ -104,6 +106,15 @@ export async function verifySessionControlPlanePact(input: unknown): Promise<{
 					cleaned: true,
 				};
 				break;
+			case "POST /code/evidence": {
+				const submission = parseGuestEvidenceSubmission(body);
+				result = {
+					...submission,
+					verification: "claimed",
+					origin: "component",
+				};
+				break;
+			}
 			case "POST /code/sessions": {
 				const sessionId = stringField(body, "sessionId");
 				const clientId = stringField(body, "clientId");

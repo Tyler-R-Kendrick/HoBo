@@ -5,6 +5,8 @@ export {
 	type AgentPaneState,
 	type AgentSemanticState,
 	type EvidenceTriple,
+	type EvidenceKind,
+	type GuestEvidenceSubmission,
 	type HandbackReport,
 	type InferenceBudgetSnapshot,
 	type IsolationBackend,
@@ -209,6 +211,7 @@ export {
 
 export {
 	parseEvidenceTriple,
+	parseGuestEvidenceSubmission,
 	parseIsolationContext,
 	parsePromotionRequest,
 } from "./parse.js";

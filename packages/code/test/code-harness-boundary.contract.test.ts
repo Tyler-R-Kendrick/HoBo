@@ -228,6 +228,7 @@ describe("SessionControlPlane boundary pact", () => {
 				"create isolation context with worktree fallback when rift unavailable",
 				"cleanup leaves zero orphans and primary worktree clean",
 				"promotion is gated and squash-only",
+				"guest evidence is accepted only as a host-attributed claim",
 				"create a resident session with runtime-backed panes",
 				"detach without stopping the resident session",
 				"reattach to the durable session snapshot",

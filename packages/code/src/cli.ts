@@ -36,6 +36,10 @@ import {
 import { costHumanSummary, inspectCost } from "./cost.js";
 import { cursorGuide, renderCursorGuideText } from "./cursor-guide.js";
 import {
+	type DevBrowserSession,
+	startDevBrowserSession,
+} from "./dev-browser.js";
+import {
 	DEV_MACHINES_FILE,
 	loadDevMachines,
 	machinesForAgent,
@@ -43,7 +47,6 @@ import {
 	sshDestination,
 } from "./dev-machines.js";
 import { defaultDevenvProbes, devenvSummary, inspectDevenv } from "./devenv.js";
-import { startDevBrowserSession } from "./dev-browser.js";
 import {
 	computeTaskPath,
 	describeDistributedCompute,
@@ -271,6 +274,9 @@ export interface HoboCodeCliDeps {
 		context: Parameters<typeof openStationGateway>[0],
 	) => Promise<OpenedGateway>;
 	readonly muxRunner?: MuxRunner;
+	readonly startDevSession?: typeof startDevBrowserSession;
+	readonly onDevSession?: (session: DevBrowserSession) => void;
+	readonly fetch?: typeof globalThis.fetch;
 }
 
 export type FormatHoboCodeOptions = {
@@ -863,23 +869,24 @@ const VERB_HELP_PLAIN: Record<
 		"See also: hobo-code dispatch · hobo-code help",
 	],
 	dev: [
-		"hobo-code dev — local browser deployment with evidence controls",
+		"hobo-code dev — run the project Bindle on a local Yard with Evidence",
 		"",
 		"Usage:",
 		"  hobo-code dev [--cwd <app>] [--port <port>] [--debug-port <port>]",
 		"  hobo-code dev --once --json       # bounded deployment probe",
 		"",
-		"The app is served from public/. Open the debug URL to use the Evidence",
-		"overlay for reports, annotations, screenshots, recordings, and replay.",
+		"This delegates to hobo dev: the project's Bindle is placed on a local Yard",
+		"and its real web endpoint receives Evidence controls and session replay.",
 		"",
 		"Flags:",
-		"  --cwd <app>         App root containing public/index.html",
-		"  --port <port>       Raw app port (default 4173; 0 chooses a free port)",
+		"  --cwd <app>         HoBo project root (src/bindle.ts or dist/bindle.js)",
+		"  --port <port>       Local Yard port (default 4173; 0 chooses a free port)",
 		"  --debug-port <port> Evidence controls port (default 4174; 0 chooses free)",
-		"  --once              Probe both surfaces, then stop",
+		"  --once              Probe the Bindle and Evidence surfaces, then stop",
 		"  --json              Machine-readable deployment URLs and evidence path",
 		"",
-		"See also: hobo-code scaffold · hobo-code harness · hobo-code session",
+		"Interactive: /dev or /hobo yard status",
+		"See also: hobo dev · hobo-code harness · hobo-code session",
 	],
 	isolate: [
 		"hobo-code isolate — mediated sandbox for agent work",
@@ -2342,30 +2349,33 @@ export async function runHoboCodeCli(
 				["hobo-code dev --help"],
 			);
 		}
-		let session: Awaited<ReturnType<typeof startDevBrowserSession>> | undefined;
+		let session: DevBrowserSession | undefined;
 		try {
-			session = await startDevBrowserSession({
+			session = await (deps.startDevSession ?? startDevBrowserSession)({
 				projectDir,
 				hoboHome,
 				appPort: port,
 				debugPort,
+				env,
 			});
 			const deployed = session;
-			const [appProbe, debugProbe, controlsProbe] = await Promise.all([
-				fetch(deployed.appUrl),
-				fetch(deployed.debugUrl),
-				fetch(deployed.controlsUrl),
+			const fetchUrl = deps.fetch ?? globalThis.fetch;
+			const [appProbe, controlsProbe] = await Promise.all([
+				fetchUrl(deployed.appUrl),
+				fetchUrl(deployed.controlsUrl),
 			]);
-			const probes = [appProbe, debugProbe, controlsProbe];
+			const probes = [appProbe, controlsProbe];
 			if (probes.some((probe) => !probe.ok)) {
 				throw new Error(
-					`browser deployment probe failed (${probes.map((probe) => probe.status).join("/")})`,
+					`Bindle deployment probe failed (${probes.map((probe) => probe.status).join("/")})`,
 				);
 			}
 			const once = flags.once === true;
 			if (once) {
 				await deployed.close();
 				session = undefined;
+			} else if (deps.onDevSession) {
+				deps.onDevSession(deployed);
 			} else {
 				const stop = (exitCode: number): void => {
 					process.exitCode = exitCode;
@@ -2375,14 +2385,14 @@ export async function runHoboCodeCli(
 				process.once("SIGTERM", () => stop(143));
 			}
 			const text = panel("◎ dev", [
-				`browser · ${deployed.debugUrl}`,
-				`app · ${deployed.appUrl}`,
+				`bindle · ${deployed.appUrl}`,
+				`yard · local`,
 				`evidence · ${displayPath(deployed.evidencePath, { hoboHome, cwd: projectDir })}`,
 				...(once ? ["probe · passed; stopped"] : ["live · Ctrl-C to stop"]),
 			]);
 			return ok("HOBO_CODE_DEV", text, {
 				deployment: {
-					mode: "local-browser",
+					mode: "local-bindle",
 					deploymentId: deployed.sessionId,
 					sessionId: deployed.sessionId,
 					appUrl: deployed.appUrl,
@@ -2392,7 +2402,7 @@ export async function runHoboCodeCli(
 					evidencePath: deployed.evidencePath,
 					served: {
 						appStatus: appProbe.status,
-						debugStatus: debugProbe.status,
+						debugStatus: appProbe.status,
 						controlsStatus: controlsProbe.status,
 					},
 					stopped: once,
@@ -2407,7 +2417,8 @@ export async function runHoboCodeCli(
 					error instanceof Error ? error.message : String(error),
 				]),
 				[
-					"ensure public/index.html exists",
+					"ensure the project has src/bindle.ts or dist/bindle.js",
+					"ensure the hobo CLI is on PATH (or set HOBO_CODE_HOBO_BIN)",
 					"choose free ports with --port and --debug-port",
 				],
 			);

@@ -278,6 +278,24 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		]);
 	});
 
+	it("passes typed /hobo arguments through to the HoBo control plane", async () => {
+		const calls: string[][] = [];
+		await runInteractiveShell({
+			stdin: new PassThrough(),
+			stdout: new Writable({ write: (_chunk, _encoding, done) => done() }),
+			host: {
+				runVerb: async (argv) => {
+					calls.push([...argv]);
+					return "ok";
+				},
+				complete: async () => "unused",
+			},
+			reducedMotion: true,
+			scriptedKeys: "/hobo yard status\r",
+		});
+		expect(calls).toEqual([["hobo", "yard", "status"]]);
+	});
+
 	it("documents typed resident session commands in /help", async () => {
 		let output = "";
 		await runInteractiveShell({
@@ -293,6 +311,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 			scriptedKeys: "/help\r",
 		});
 		expect(plain(output)).toContain("/sessions <args>");
+		expect(plain(output)).toContain("/hobo <args>");
 	});
 });
 

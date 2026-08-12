@@ -1140,6 +1140,9 @@ importers:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.12
+      tsx:
+        specifier: 4.22.4
+        version: 4.22.4
     devDependencies:
       '@hobo/contract-harness':
         specifier: workspace:*

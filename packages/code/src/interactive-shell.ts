@@ -138,8 +138,13 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 	{ name: "cost", description: "$0 path + budget + savings", argv: ["cost"] },
 	{
 		name: "dev",
-		description: "Deploy app + browser evidence controls",
+		description: "Run this Bindle on a local Yard + Evidence",
 		argv: ["dev"],
+	},
+	{
+		name: "hobo",
+		description: "Run Bindle, Yard, and control-plane commands",
+		argv: ["hobo"],
 	},
 	{ name: "status", description: "Session / agent panes", argv: ["status"] },
 	{
@@ -276,9 +281,10 @@ function slashItemForInput(text: string): ShellSlashItem | undefined {
 	const item = DEFAULT_SLASH_ITEMS.find(
 		(candidate) => candidate.name === name.toLowerCase(),
 	);
-	return item?.name === "sessions" && args.length > 0
+	if (!item?.argv || args.length === 0) return item;
+	return item.name === "sessions"
 		? { ...item, argv: ["session", ...args] }
-		: item;
+		: { ...item, argv: [...item.argv, ...args] };
 }
 
 /**
@@ -962,6 +968,8 @@ export interface ShellHost {
 	readonly usageLabel?: () => string;
 	/** Extra `/about` lines describing the live engine + sandbox. */
 	readonly aboutLines?: readonly string[];
+	/** Release long-lived local dev sessions owned by this shell. */
+	readonly dispose?: () => Promise<void>;
 }
 
 export interface RunInteractiveShellOptions {
@@ -1060,8 +1068,9 @@ export async function runInteractiveShell(
 			state = appendProduct(
 				state,
 				[
-					"Commands: type / and pick — /ide /config /cost /tasks /status /agent /env /auth /about /quit",
+					"Commands: type / and pick — /dev /hobo /ide /config /tasks /status /about /quit",
 					"Resident control: /sessions <args> (plain /sessions lists).",
+					"HoBo control plane: /hobo <args> (for example /hobo yard status).",
 					"Chat: type a prompt and Enter — it is queued as a dispatch task (/about).",
 					"Keys: Tab panes · ↑/↓ pick + scroll · PgUp/PgDn scroll · Ctrl+C quit",
 				].join("\n"),

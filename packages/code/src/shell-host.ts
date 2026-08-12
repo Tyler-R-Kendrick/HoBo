@@ -17,6 +17,7 @@ import {
 	type HoboCodeCliResult,
 	runHoboCodeCli,
 } from "./cli.js";
+import type { DevBrowserSession } from "./dev-browser.js";
 import type { PendingApproval, ShellHost } from "./interactive-shell.js";
 import { formatUsage, type ShellEngine } from "./shell-engine.js";
 
@@ -37,6 +38,38 @@ function dispatchedTask(result: HoboCodeCliResult): DispatchedTaskShape | null {
 function oneShotHint(prompt: string): string {
 	const compact = prompt.length > 48 ? `${prompt.slice(0, 47)}…` : prompt;
 	return `One-shot equivalent: hobo-code "${compact.replace(/"/g, '\\"')}"`;
+}
+
+async function runHoboCommand(
+	argv: readonly string[],
+	deps: DefaultShellHostOptions,
+): Promise<string> {
+	const env = { ...process.env, ...deps.env };
+	const command = env.HOBO_CODE_HOBO_BIN ?? env.HOBO_BIN ?? "hobo";
+	return new Promise((resolve, reject) => {
+		const child = spawn(command, [...argv], {
+			cwd: deps.cwd ?? process.cwd(),
+			env,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+		let output = "";
+		const append = (chunk: Buffer): void => {
+			output = `${output}${chunk.toString("utf8")}`.slice(-64 * 1024);
+		};
+		child.stdout.on("data", append);
+		child.stderr.on("data", append);
+		child.once("error", reject);
+		child.once("exit", (code, signal) => {
+			const text = output.trimEnd();
+			if (code === 0) resolve(text || `hobo ${argv.join(" ")} completed`);
+			else
+				reject(
+					new Error(
+						`${text ? `${text}\n` : ""}hobo exited with ${signal ?? code ?? "unknown status"}`,
+					),
+				);
+		});
+	});
 }
 
 async function executeResidentTerminalAction(
@@ -84,6 +117,14 @@ export function createDefaultShellHost(
 	deps: DefaultShellHostOptions = {},
 ): ShellHost {
 	const engine = deps.engine ?? null;
+	const devSessions = new Set<DevBrowserSession>();
+	const cliDeps: DefaultShellHostOptions = {
+		...deps,
+		onDevSession: (session) => {
+			devSessions.add(session);
+			deps.onDevSession?.(session);
+		},
+	};
 	const engineExtras: Partial<ShellHost> = engine
 		? {
 				engineLabel: `${engine.id} · ${engine.modelLabel}`,
@@ -145,8 +186,12 @@ export function createDefaultShellHost(
 	return {
 		...engineExtras,
 		async runVerb(argv) {
-			const result = await runHoboCodeCli([...argv], {
-				...deps,
+			if (argv[0] === "hobo" && argv[1] !== "dev") {
+				return runHoboCommand(argv.slice(1), deps);
+			}
+			const codeArgv = argv[0] === "hobo" ? argv.slice(1) : argv;
+			const result = await runHoboCodeCli([...codeArgv], {
+				...cliDeps,
 				json: false,
 			});
 			const text = formatHoboCodeResult(result, {
@@ -155,6 +200,10 @@ export function createDefaultShellHost(
 			});
 			await executeResidentTerminalAction(result, deps.env ?? process.env);
 			return text;
+		},
+		dispose: async () => {
+			await Promise.all([...devSessions].map((session) => session.close()));
+			devSessions.clear();
 		},
 		async complete(prompt) {
 			const result = await runHoboCodeCli([prompt], {

@@ -2,9 +2,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
-
 import { loadBindleDefinition } from "@hobo/cli";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { createComposedHoboCli } from "../src/cli.js";
 import {
@@ -142,21 +141,12 @@ describe("bare-metal yard e2e", () => {
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		initBareMetalYard({ hoboHome });
 
-		const basePort = 19000 + Math.floor(Math.random() * 1000);
 		const cli = createComposedHoboCli();
 		const previous = process.env.HOBO_HOME;
 		process.env.HOBO_HOME = hoboHome;
 		try {
 			const result = await cli.run(
-				[
-					"dev",
-					"--once",
-					"--port",
-					String(basePort),
-					"--cwd",
-					helloBindleDir,
-					"--json",
-				],
+				["dev", "--once", "--port", "0", "--cwd", helloBindleDir, "--json"],
 				{ cwd: helloBindleDir },
 			);
 			const envelope = JSON.parse(result.stdout) as {
@@ -184,6 +174,7 @@ describe("bare-metal yard e2e", () => {
 			expect(envelope.data.exposedEndpoints).toEqual([
 				expect.objectContaining({ resourceName: "web", external: true }),
 			]);
+			expect(envelope.data.endpoints[0]?.port).not.toBe(0);
 			const apiEp = envelope.data.endpoints.find(
 				(e) => e.resourceName === "api",
 			);

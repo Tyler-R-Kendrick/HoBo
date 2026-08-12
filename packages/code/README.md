@@ -281,7 +281,7 @@ export HOBO_CODE_MODEL=openai/gpt-4.1
 # 2) Build
 hobo-code "add a settings page to the bindle"
 hobo-code scaffold --name demo
-hobo-code dev --cwd demo          # open the printed browser/debug URL
+hobo-code dev --cwd demo          # run its Bindle on a local Yard + Evidence
 hobo-code status                 # plain English session hierarchy (default)
 hobo-code status --dense         # power-user glyph box + Herdr/Grok footers
 hobo-code tasks                  # background task board
@@ -306,6 +306,11 @@ stay in the same pane. Commit, push, PR, stack, and merge remain on the existing
 exact-effect approval boundary; commits use only the reviewed index. Bounded
 panels show a `+`, always retain the current branch, and disable committing
 when the complete changed-file set cannot be reviewed.
+
+Inside the interactive shell, `/dev` runs the current project's Bindle through
+the same local Yard as `hobo dev`; it does not invent a static-site server.
+Use `/hobo <args>` for the full control plane, for example
+`/hobo yard status` or `/hobo plan`.
 
 | lazygit workflow | HoBo Code workbench |
 |---|---|
@@ -356,7 +361,7 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **config** | Env/flags inventory by stack (setup critique; secrets presence-only) |
 | **agent** | Agent-native readiness: human-free auth, MCP/ACP, unattended/no-elicitation |
 | scaffold | OpenUI/Astryx scaffold template |
-| **dev** | Serve `public/` with isolated browser evidence controls |
+| **dev** | Run the project Bindle on a local Yard + Evidence controls |
 | isolate / promote | Built-in mediated sandbox + gated promote |
 | env | Optional hermetic shell + durable layout |
 | help | Plain help (or `--dense` glyph idioms) |

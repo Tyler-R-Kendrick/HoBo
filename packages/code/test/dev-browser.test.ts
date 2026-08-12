@@ -1,17 +1,19 @@
 import {
+	chmodSync,
 	mkdirSync,
 	mkdtempSync,
-	existsSync,
 	rmSync,
-	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { runHoboCodeCli } from "../src/cli.js";
-import { startDevBrowserSession } from "../src/dev-browser.js";
+import {
+	type DevBrowserSession,
+	startDevBrowserSession,
+} from "../src/dev-browser.js";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -19,29 +21,62 @@ afterEach(() => {
 	roots.length = 0;
 });
 
-function fixture(): { projectDir: string; hoboHome: string } {
-	const root = mkdtempSync(join(tmpdir(), "hobo-code-dev-browser-"));
+function fixture(): {
+	projectDir: string;
+	hoboHome: string;
+	hoboBin: string;
+} {
+	const root = mkdtempSync(join(tmpdir(), "hobo-code-bindle-dev-"));
 	roots.push(root);
 	const projectDir = join(root, "app");
-	const publicDir = join(projectDir, "public");
 	const hoboHome = join(root, "home");
-	mkdirSync(publicDir, { recursive: true });
+	mkdirSync(join(projectDir, "src"), { recursive: true });
+	writeFileSync(join(projectDir, "src", "bindle.ts"), "export default {};\n");
+	const hoboBin = join(root, "hobo");
 	writeFileSync(
-		join(publicDir, "index.html"),
-		'<!doctype html><html><body><h1 data-testid="app-title">Draft app</h1></body></html>',
+		hoboBin,
+		`#!/usr/bin/env node
+import { createServer } from "node:http";
+const args = process.argv.slice(2);
+const portAt = args.indexOf("--port");
+const port = portAt >= 0 ? Number(args[portAt + 1]) : 4173;
+const controls = process.env.HOBO_CODE_EVIDENCE_CONTROLS_URL ?? "missing";
+const server = createServer((_request, response) => {
+  response.writeHead(200, { "content-type": "text/html" });
+  response.end(\`<h1 data-testid="app-title">Bindle app</h1><p>\${controls}</p>\`);
+});
+server.listen(port, "127.0.0.1", () => {
+  const address = server.address();
+  process.stderr.write(\`hobo dev: listening on http://127.0.0.1:\${address.port}/ (Ctrl-C to stop)\\n\`);
+});
+const close = () => server.close(() => process.exit(0));
+process.on("SIGINT", close);
+process.on("SIGTERM", close);
+`,
 	);
-	return { projectDir, hoboHome };
+	chmodSync(hoboBin, 0o755);
+	return { projectDir, hoboHome, hoboBin };
 }
 
-describe("hobo-code browser development deployment", () => {
-	it("serves the app and overlay, then persists browser debug commands", async () => {
-		const { projectDir, hoboHome } = fixture();
-		const privatePath = join(projectDir, "private.txt");
-		writeFileSync(privatePath, "must stay private");
-		symlinkSync(privatePath, join(projectDir, "public", "leak.txt"));
+function fakeSession(): DevBrowserSession {
+	return {
+		sessionId: "dev-test",
+		appUrl: "http://127.0.0.1:4173/",
+		debugUrl: "http://127.0.0.1:4173/",
+		controlsUrl: "http://127.0.0.1:4174/controls/test",
+		reportUrl: "http://127.0.0.1:4174/report",
+		evidencePath: "/tmp/evidence",
+		close: async () => {},
+	};
+}
+
+describe("hobo-code Bindle development bridge", () => {
+	it("runs the project through hobo dev without requiring public/index.html", async () => {
+		const { projectDir, hoboHome, hoboBin } = fixture();
 		const session = await startDevBrowserSession({
 			projectDir,
 			hoboHome,
+			hoboBin,
 			appPort: 0,
 			debugPort: 0,
 			sessionId: "dev-test",
@@ -49,117 +84,55 @@ describe("hobo-code browser development deployment", () => {
 		try {
 			const app = await fetch(session.appUrl);
 			expect(app.status).toBe(200);
-			expect(await app.text()).toContain("Draft app");
-			expect((await fetch(`${session.appUrl}leak.txt`)).status).toBe(404);
-
-			const debug = await fetch(session.debugUrl);
-			expect(debug.status).toBe(200);
-			expect(await debug.text()).toContain("/__hobo/evidence/bridge.js");
-			expect(
-				await (
-					await fetch(`${session.appUrl}__hobo/evidence/bridge.js`)
-				).text(),
-			).toContain("data-hobo-evidence-overlay");
-			const bo = await fetch(`${session.appUrl}__hobo/evidence/bo-idle.png`);
-			expect(bo.status).toBe(200);
-			expect(bo.headers.get("content-type")).toBe("image/png");
-			expect(new Uint8Array(await bo.arrayBuffer()).slice(0, 8)).toEqual(
-				Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-			);
+			const html = await app.text();
+			expect(html).toContain("Bindle app");
+			expect(html).toContain("/__hobo/evidence/controls/");
+			expect(session.debugUrl).toBe(session.appUrl);
 
 			const controls = await fetch(session.controlsUrl);
 			expect(controls.status).toBe(200);
 			expect(await controls.text()).toContain("Evidence desk");
-
-			const actionUrl = new URL(session.controlsUrl);
-			actionUrl.pathname = actionUrl.pathname.replace(
-				"/controls/",
-				"/api/actions/",
-			);
-			actionUrl.search = "";
-			const response = await fetch(actionUrl, {
-				method: "POST",
-				headers: {
-					"content-type": "text/plain",
-					origin: new URL(session.debugUrl).origin,
-				},
-				body: JSON.stringify({
-					type: "annotate",
-					selector: "[data-testid=app-title]",
-					note: "Heading needs clearer state.",
-				}),
-			});
-			expect(response.status).toBe(202);
-			expect(await (await fetch(session.reportUrl)).text()).toContain(
-				"Heading needs clearer state.",
-			);
 		} finally {
 			await session.close();
 		}
-	});
+	}, 15_000);
 
-	it("exposes dev as a real CLI verb with a bounded probe mode", async () => {
+	it("exposes /dev as a bounded Bindle/Yard probe", async () => {
 		const { projectDir, hoboHome } = fixture();
+		let started = false;
+		let closed = false;
+		const session = fakeSession();
+		const fetchActual = globalThis.fetch;
 		const result = await runHoboCodeCli(
-			[
-				"dev",
-				"--cwd",
-				projectDir,
-				"--port",
-				"0",
-				"--debug-port",
-				"0",
-				"--once",
-			],
-			{ hoboHome, env: { ...process.env, HOBO_HOME: hoboHome } },
+			["dev", "--cwd", projectDir, "--port", "0", "--once"],
+			{
+				hoboHome,
+				env: { ...process.env, HOBO_HOME: hoboHome },
+				startDevSession: async () => {
+					started = true;
+					return { ...session, close: async () => (closed = true) };
+				},
+				fetch: async (input, init) => {
+					if (String(input).startsWith("http://127.0.0.1:")) {
+						return new Response("ok", { status: 200 });
+					}
+					return fetchActual(input, init);
+				},
+			},
 		);
 
-		expect(result.ok).toBe(true);
-		expect(result.code).toBe("HOBO_CODE_DEV");
-		expect(result.message).toMatch(/browser|debug/i);
-		expect(result.data).toMatchObject({
-			deployment: {
-				mode: "local-browser",
-				served: { appStatus: 200, debugStatus: 200, controlsStatus: 200 },
-				stopped: true,
+		expect(started).toBe(true);
+		expect(closed).toBe(true);
+		expect(result).toMatchObject({
+			ok: true,
+			code: "HOBO_CODE_DEV",
+			data: {
+				deployment: {
+					mode: "local-bindle",
+					served: { appStatus: 200, controlsStatus: 200 },
+					stopped: true,
+				},
 			},
 		});
-	});
-
-	it("fails a bad debug probe and closes the started servers", async () => {
-		const { projectDir, hoboHome } = fixture();
-		const fetchActual = globalThis.fetch;
-		let appUrl = "";
-		const fetchMock = vi
-			.spyOn(globalThis, "fetch")
-			.mockImplementation(async (input, init) => {
-				const url = String(input);
-				if (url.includes("__hobo_debug"))
-					return new Response("broken", { status: 500 });
-				if (url.startsWith("http://127.0.0.1:") && url.endsWith("/"))
-					appUrl = url;
-				return fetchActual(input, init);
-			});
-		const result = await runHoboCodeCli(
-			[
-				"dev",
-				"--cwd",
-				projectDir,
-				"--port",
-				"0",
-				"--debug-port",
-				"0",
-				"--once",
-			],
-			{ hoboHome, env: { ...process.env, HOBO_HOME: hoboHome } },
-		);
-		fetchMock.mockRestore();
-
-		expect(result).toMatchObject({ ok: false, code: "HOBO_CODE_DEV_FAILED" });
-		expect(result.message).toContain("200/500/200");
-		expect(
-			existsSync(join(hoboHome, "runtime", "code", "evidence-controls-url")),
-		).toBe(false);
-		await expect(fetchActual(appUrl)).rejects.toThrow();
 	});
 });

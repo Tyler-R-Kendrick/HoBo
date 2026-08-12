@@ -39,6 +39,34 @@ describe("session replay deep bindle serve integration", () => {
 			rmSync(hoboHome, { recursive: true, force: true });
 		}
 	});
+
+	it("uses the public Host header when the component host rewrites origin", async () => {
+		const definition = bindle("hosted-app", (b) => ({
+			web: b.web(
+				() => async () =>
+					new Response("<html><body>hosted</body></html>", {
+						headers: { "content-type": "text/html" },
+					}),
+			),
+		}));
+		const [web] = listServableEntrypoints(definition, {
+			env: {
+				HOBO_REPLAY: "0",
+				HOBO_CODE_EVIDENCE_CONTROLS_URL:
+					"http://127.0.0.1:4319/__hobo/evidence/controls",
+			},
+		});
+		const html = await (
+			await web!.handler(
+				new Request("http://component.local/", {
+					headers: { host: "127.0.0.1:4173" },
+				}),
+			)
+		).text();
+		expect(html).toContain("parentOrigin=http%3A%2F%2F127.0.0.1%3A4173");
+		expect(html).not.toContain("parentOrigin=http%3A%2F%2Fcomponent.local");
+		expect(html).toContain('class=\\"bo\\"');
+	});
 	it("wraps every web entrypoint so HTML gets bootstrap and ingest works", async () => {
 		const definition = bindle("demo-app", (b) => {
 			const api = b.api(

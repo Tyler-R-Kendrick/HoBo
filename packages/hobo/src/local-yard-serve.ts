@@ -95,7 +95,7 @@ async function webRequestToHttp(request: Request): Promise<HttpRequest> {
 }
 
 function httpResponseToWeb(response: HttpResponse): Response {
-	return new Response(response.body, {
+	return new Response(Buffer.from(response.body, "latin1"), {
 		status: response.status,
 		headers: Object.fromEntries(response.headers),
 	});
@@ -124,7 +124,7 @@ function componentDescriptor(
 					return {
 						status: webRes.status,
 						headers: [...webRes.headers.entries()] as [string, string][],
-						body: await webRes.text(),
+						body: Buffer.from(await webRes.arrayBuffer()).toString("latin1"),
 					};
 				},
 			},
@@ -145,7 +145,14 @@ async function listen(
 		req.on("end", () => {
 			void (async () => {
 				try {
-					const url = new URL(req.url ?? "/", `http://${host}:${port}`);
+					const bound = server.address();
+					const boundPort =
+						bound !== null && typeof bound === "object" ? bound.port : port;
+					const authority =
+						typeof req.headers.host === "string" && req.headers.host.length > 0
+							? req.headers.host
+							: `${host}:${boundPort}`;
+					const url = new URL(req.url ?? "/", `http://${authority}`);
 					const body = Buffer.concat(chunks);
 					const method = req.method ?? "GET";
 					const init: RequestInit = {

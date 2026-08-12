@@ -369,8 +369,10 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 `dev` reuses the durable Evidence port, report, screenshot/recording capture,
 replay, and `.hobo/recordings` capability exporter. Its browser boundary is
 protected by the TypeScript exact-message parser and
-`contracts/pacts/code-dev-browser-boundary.pact.json`. The canonical Bo idle
-animation opens the desk; **Open Evidence** is a direct read-only report link.
+`contracts/pacts/code-dev-browser-boundary.pact.json`. The Yard host maps the
+public `Host` onto overlay `parentOrigin` (the component-local rewrite stays
+internal) and serves `bo-idle.png` as bytes so the Bo idle launcher paints.
+**Open Evidence** is a direct read-only report link.
 
 **GHCP-adjacent differentiators:** animated title on bare TTY, enterprise-style Station auth, BYOK/open models via `models`, mediated sandbox (`isolate`/`session`).
 

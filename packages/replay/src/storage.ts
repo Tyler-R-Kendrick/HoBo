@@ -33,6 +33,7 @@ export type SessionIndex = {
 	upsert(record: SessionRecord): Promise<void>;
 	get(sessionId: string): Promise<SessionRecord | undefined>;
 	list(query?: SessionListQuery): Promise<readonly SessionRecord[]>;
+	listChunks(sessionId: string): Promise<readonly RecordingChunk[]>;
 	appendChunkMeta(sessionId: string, chunk: RecordingChunk): Promise<void>;
 };
 
@@ -134,6 +135,9 @@ export function createMemoryDualFixtures(seed?: {
 			const limit = query.limit ?? 100;
 			return Object.freeze(rows.slice(0, limit));
 		},
+		async listChunks(sessionId) {
+			return Object.freeze([...(chunkLists.get(sessionId) ?? [])]);
+		},
 		async appendChunkMeta(sessionId, chunk) {
 			const cur = indexMap.get(sessionId);
 			if (!cur) return;
@@ -164,8 +168,12 @@ export function createMemoryDualFixtures(seed?: {
 export function createFilesystemDualFixtures(rootDir: string): DualFixtureStore {
 	const sessionsDir = join(rootDir, "sessions");
 	const blobsDir = join(rootDir, "blobs");
+	const chunksDir = join(rootDir, "chunks");
 	mkdirSync(sessionsDir, { recursive: true });
 	mkdirSync(blobsDir, { recursive: true });
+	mkdirSync(chunksDir, { recursive: true });
+	const chunksPath = (sessionId: string) =>
+		join(chunksDir, `${encodeURIComponent(sessionId)}.json`);
 
 	const blobs: SessionBlobStore = {
 		async put(sessionId, seq, events) {
@@ -221,9 +229,21 @@ export function createFilesystemDualFixtures(rootDir: string): DualFixtureStore 
 			});
 			return mem.index.list(query);
 		},
+		async listChunks(sessionId) {
+			const path = chunksPath(sessionId);
+			if (!existsSync(path)) return Object.freeze([]);
+			return Object.freeze(
+				JSON.parse(readFileSync(path, "utf8")) as RecordingChunk[],
+			);
+		},
 		async appendChunkMeta(sessionId, chunk) {
 			const cur = await index.get(sessionId);
 			if (!cur) return;
+			writeFileSync(
+				chunksPath(sessionId),
+				JSON.stringify([...(await index.listChunks(sessionId)), chunk], null, 2),
+				"utf8",
+			);
 			await index.upsert(
 				Object.freeze({
 					...cur,

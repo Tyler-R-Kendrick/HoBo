@@ -99,7 +99,10 @@ export async function loadPlayerPayload(input: {
 	const events: RrwebEvent[] = [];
 	// If explicit blob refs not provided, player consumers typically pass refs
 	// collected during ingest. Dual-fixture tests pass them explicitly.
-	for (const ref of input.blobRefs ?? []) {
+	const blobRefs =
+		input.blobRefs ??
+		(await input.index.listChunks(input.sessionId)).map((chunk) => chunk.blobRef);
+	for (const ref of blobRefs) {
 		const chunk = await input.blobs.get(ref);
 		if (chunk) events.push(...chunk);
 	}

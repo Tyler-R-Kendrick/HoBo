@@ -1,9 +1,13 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
 	buildCorrelation,
 	createDebugReplayRecorder,
 	createDebugTrackEnvelope,
+	createFilesystemDualFixtures,
 	createMemoryDualFixtures,
 	DEBUG_REPLAY_TRACKS,
 	loadPlayerPayload,
@@ -144,5 +148,37 @@ describe("debug replay contract", () => {
 		expect(await recorder.stop()).toBeUndefined();
 		expect(await fixtures.index.get("debug-off")).toBeUndefined();
 		expect(lifecycle).toEqual([REPLAY_EVENTS.Disabled]);
+	});
+
+	it("reloads persisted debug timelines without process-local blob refs", async () => {
+		const root = mkdtempSync(join(tmpdir(), "hobo-debug-replay-"));
+		try {
+			const fixtures = createFilesystemDualFixtures(root);
+			const recorder = createDebugReplayRecorder({
+				sessionId: "debug-persisted",
+				correlation: buildCorrelation({ stationId: "station:local" }),
+				store: fixtures.blobs,
+				index: fixtures.index,
+				batchSize: 1,
+			});
+			recorder.record({
+				track: "terminal",
+				metadata: { paneId: "pane-1" },
+			});
+			await recorder.stop();
+
+			const restarted = createFilesystemDualFixtures(root);
+			const player = await loadPlayerPayload({
+				sessionId: "debug-persisted",
+				index: restarted.index,
+				blobs: restarted.blobs,
+				stationId: "station:local",
+			});
+			expect(player.debugTimeline).toEqual([
+				expect.objectContaining({ track: "terminal", sequence: 0 }),
+			]);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

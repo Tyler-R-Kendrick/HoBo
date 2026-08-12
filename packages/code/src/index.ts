@@ -93,6 +93,12 @@ export {
 } from "./evidence-report.js";
 
 export {
+	parseEvidenceOverlayMessage,
+	type EvidenceOverlayMessage,
+	type EvidenceOverlayMessageEvent,
+} from "./evidence-overlay.js";
+
+export {
 	applyInContextEdit,
 	createOpenUiSession,
 	lockVisualArtifact,

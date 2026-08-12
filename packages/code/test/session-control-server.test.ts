@@ -254,6 +254,35 @@ describe("resident session loopback server", () => {
 			};
 			expect(created.panes).toHaveLength(1);
 			expect(created.agentRuns).toEqual([]);
+			const recorded = await fetch(
+				`http://127.0.0.1:${server.port}/code/sessions/session-1/replay`,
+				{
+					method: "POST",
+					headers,
+					body: JSON.stringify({
+						track: "annotation",
+						metadata: { selector: "#primary" },
+						observable: { note: "spacing is wrong", token: "must-redact" },
+					}),
+				},
+			);
+			expect(await recorded.json()).toMatchObject({
+				accepted: true,
+				level: "observable",
+			});
+			const replay = await fetch(
+				`http://127.0.0.1:${server.port}/code/sessions/session-1/replay`,
+				{ headers },
+			);
+			expect(await replay.json()).toMatchObject({
+				openUi: { readOnly: true, mutationSurface: "cli-only" },
+				debugTimeline: [
+					expect.objectContaining({
+						track: "annotation",
+						metadata: { selector: "#primary" },
+					}),
+				],
+			});
 			writeFileSync(
 				join(created.session.worktreePath, "approved.txt"),
 				"approved\n",

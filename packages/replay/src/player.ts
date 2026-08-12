@@ -101,7 +101,9 @@ export async function loadPlayerPayload(input: {
 	// collected during ingest. Dual-fixture tests pass them explicitly.
 	const blobRefs =
 		input.blobRefs ??
-		(await input.index.listChunks(input.sessionId)).map((chunk) => chunk.blobRef);
+		(await input.index.listChunks(input.sessionId)).map(
+			(chunk) => chunk.blobRef,
+		);
 	for (const ref of blobRefs) {
 		const chunk = await input.blobs.get(ref);
 		if (chunk) events.push(...chunk);

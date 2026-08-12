@@ -6,15 +6,15 @@ import { createHash } from "node:crypto";
 import {
 	existsSync,
 	mkdirSync,
-	readFileSync,
 	readdirSync,
+	readFileSync,
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 
 import {
-	REPLAY_SCHEMA_VERSION,
 	parseSessionRecord,
+	REPLAY_SCHEMA_VERSION,
 	type RecordingChunk,
 	type RrwebEvent,
 	type SessionRecord,
@@ -165,7 +165,9 @@ export function createMemoryDualFixtures(seed?: {
  * Filesystem dual fixtures under a Station data dir (local / air-gap path).
  * Layout: `<root>/sessions/<id>.json` + `<root>/blobs/<hash>.json`
  */
-export function createFilesystemDualFixtures(rootDir: string): DualFixtureStore {
+export function createFilesystemDualFixtures(
+	rootDir: string,
+): DualFixtureStore {
 	const sessionsDir = join(rootDir, "sessions");
 	const blobsDir = join(rootDir, "blobs");
 	const chunksDir = join(rootDir, "chunks");
@@ -241,7 +243,11 @@ export function createFilesystemDualFixtures(rootDir: string): DualFixtureStore 
 			if (!cur) return;
 			writeFileSync(
 				chunksPath(sessionId),
-				JSON.stringify([...(await index.listChunks(sessionId)), chunk], null, 2),
+				JSON.stringify(
+					[...(await index.listChunks(sessionId)), chunk],
+					null,
+					2,
+				),
 				"utf8",
 			);
 			await index.upsert(

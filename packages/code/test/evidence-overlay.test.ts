@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { parseEvidenceOverlayMessage } from "../src/evidence-overlay.js";
+import {
+	parseEvidenceOverlayMessage,
+	renderEvidenceOverlayBridge,
+	renderEvidenceOverlayControls,
+	renderEvidenceOverlayWrapper,
+} from "../src/evidence-overlay.js";
 
 const controlsOrigin = "http://127.0.0.1:4319";
 
@@ -52,5 +57,106 @@ describe("evidence overlay message boundary", () => {
 				controlsOrigin,
 			),
 		).toThrow(/message|type|field|length|capture/);
+	});
+});
+
+describe("evidence overlay bridge", () => {
+	it("mounts a dormant accessible launcher and isolated controls", () => {
+		const script = renderEvidenceOverlayBridge({
+			controlsUrl: "http://127.0.0.1:4319/__hobo/evidence/controls",
+		});
+
+		expect(script).toContain('attachShadow({ mode: "closed" })');
+		expect(script).toContain('aria-label=\\"Open HoBo evidence controls\\"');
+		expect(script).toContain('title=\\"HoBo evidence controls\\"');
+		expect(script).toContain("event.origin !== controlsOrigin");
+		expect(script).toContain("event.source !== frame.contentWindow");
+		expect(script).toContain("prefers-reduced-motion: reduce");
+		expect(script).toContain("@media (max-width: 42rem)");
+		expect(script).not.toContain('postMessage(message, "*")');
+	});
+
+	it("escapes URL source text and fails closed on a same-origin mount", () => {
+		const script = renderEvidenceOverlayBridge({
+			controlsUrl: "https://controls.example/evidence?label=</script>",
+		});
+
+		expect(script).not.toContain("</script>");
+		expect(script).toContain("controlsOrigin === window.location.origin");
+	});
+
+	it.each([
+		"/relative",
+		"javascript:alert(1)",
+		"file:///tmp/control.html",
+	])("rejects an unsafe controls URL: %s", (controlsUrl) => {
+		expect(() => renderEvidenceOverlayBridge({ controlsUrl })).toThrow(
+			/controls URL/,
+		);
+	});
+});
+
+describe("evidence overlay privileged controls", () => {
+	it("renders every approved action without exposing credentials", () => {
+		const html = renderEvidenceOverlayControls({
+			parentOrigin: "http://localhost:4173",
+			sessionId: "session-17",
+		});
+
+		for (const type of [
+			"annotate",
+			"capture",
+			"report",
+			"replay",
+			"edit-request",
+		]) {
+			expect(html).toContain(type);
+		}
+		expect(html).toContain("Content-Security-Policy");
+		expect(html).toContain('aria-live="polite"');
+		expect(html).toContain("prefers-reduced-motion: reduce");
+		expect(html).toContain("@media (max-width: 32rem)");
+		expect(html).toContain("postMessage(message, parentOrigin)");
+		expect(html).not.toContain('postMessage(message, "*")');
+		expect(html).not.toMatch(/bearer|token|credential/iu);
+	});
+
+	it("requires an exact parent origin", () => {
+		expect(() =>
+			renderEvidenceOverlayControls({ parentOrigin: "https://app.example/x" }),
+		).toThrow(/parent origin/);
+	});
+});
+
+describe("evidence overlay iframe-wrapper fallback", () => {
+	it("keeps the application and privileged controls on separate origins", () => {
+		const html = renderEvidenceOverlayWrapper({
+			appUrl: "http://localhost:4173/demo",
+			controlsUrl: "http://127.0.0.1:4319/__hobo/evidence/controls",
+		});
+
+		expect(html).toContain('title="Development application"');
+		expect(html).toContain('title="HoBo evidence controls"');
+		expect(html).toContain('aria-label="Open HoBo evidence controls"');
+		expect(html).toContain("event.origin !== controlsOrigin");
+		expect(html).toContain("event.source !== controls.contentWindow");
+		expect(html).toContain("@media (max-width: 42rem)");
+		expect(html).toContain("prefers-reduced-motion: reduce");
+		expect(html).not.toContain('postMessage(message, "*")');
+	});
+
+	it("rejects same-origin controls and unsafe application URLs", () => {
+		expect(() =>
+			renderEvidenceOverlayWrapper({
+				appUrl: "https://app.example/demo",
+				controlsUrl: "https://app.example/controls",
+			}),
+		).toThrow(/separate origin/);
+		expect(() =>
+			renderEvidenceOverlayWrapper({
+				appUrl: "data:text/html,hello",
+				controlsUrl: "https://controls.example/controls",
+			}),
+		).toThrow(/application URL/);
 	});
 });

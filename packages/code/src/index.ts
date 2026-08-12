@@ -94,8 +94,14 @@ export {
 
 export {
 	parseEvidenceOverlayMessage,
+	renderEvidenceOverlayBridge,
+	renderEvidenceOverlayControls,
+	renderEvidenceOverlayWrapper,
+	type EvidenceOverlayBridgeOptions,
+	type EvidenceOverlayControlsOptions,
 	type EvidenceOverlayMessage,
 	type EvidenceOverlayMessageEvent,
+	type EvidenceOverlayWrapperOptions,
 } from "./evidence-overlay.js";
 
 export {

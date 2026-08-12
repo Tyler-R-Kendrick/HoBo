@@ -21,6 +21,7 @@ import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
 import type { DevMachine } from "../dev-machines.js";
 import { resolveShellEngine } from "../engine-resolve.js";
 import { runGitTerminalPane } from "../git-terminal-pane.js";
+import { runReviewTerminalPane } from "../review/review-terminal-host.js";
 import {
 	HOBO_AGENT_INSTRUCTIONS,
 	HOBO_AGENT_MODEL,
@@ -174,6 +175,7 @@ if (argv[0] === "_station-agent") {
 							readonly kind?: string;
 							readonly sessionName?: string;
 							readonly sessionId?: string;
+							readonly reviewId?: string;
 							readonly hoboHome?: string;
 							readonly projectRoot?: string;
 							readonly machine?: DevMachine;
@@ -207,6 +209,15 @@ if (argv[0] === "_station-agent") {
 				(process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
 					? process.env.HOBO_HOME
 					: join(process.env.HOME ?? tmpdir(), ".hobo")),
+		});
+	} else if (result.ok && action?.kind === "review-pane") {
+		process.exitCode = await runReviewTerminalPane({
+			hoboHome:
+				action.hoboHome ??
+				(process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
+					? process.env.HOBO_HOME
+					: join(process.env.HOME ?? tmpdir(), ".hobo")),
+			...(action.reviewId === undefined ? {} : { reviewId: action.reviewId }),
 		});
 	} else if (
 		result.ok &&

@@ -227,6 +227,10 @@ export {
 	runGitTerminalPane,
 } from "./git-terminal-pane.js";
 export {
+	buildReviewTerminalDocument,
+	runReviewTerminalPane,
+} from "./review/review-terminal-host.js";
+export {
 	buildTasksSurface,
 	type GrokBuildCompare,
 	type GrokBuildParity,

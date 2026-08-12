@@ -2,6 +2,7 @@ import { reviewError } from "./review-errors.js";
 import {
 	REVIEW_COMMAND_SCHEMA,
 	REVIEW_SNAPSHOT_SCHEMA,
+	type ReviewAnchor,
 	type ReviewCommand,
 	type ReviewCommandEnvelope,
 	type ReviewInboxDisposition,
@@ -41,6 +42,64 @@ function requiredBigInt(value: unknown, field: string): bigint {
 		return BigInt(value);
 	if (typeof value === "string" && /^-?\d+$/u.test(value)) return BigInt(value);
 	throw reviewError("malformed-input", `${field} must be an integer revision`);
+}
+
+function optionalInteger(value: unknown, field: string): number | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value !== "number" || !Number.isInteger(value)) {
+		throw reviewError("malformed-input", `${field} must be an integer`);
+	}
+	return value;
+}
+
+function parseReviewAnchor(value: unknown): ReviewAnchor {
+	const body = record(value, "anchor");
+	const pathBefore = optionalString(body.pathBefore, "anchor.pathBefore");
+	const pathAfter = optionalString(body.pathAfter, "anchor.pathAfter");
+	const baseBlobOid = optionalString(body.baseBlobOid, "anchor.baseBlobOid");
+	const headBlobOid = optionalString(body.headBlobOid, "anchor.headBlobOid");
+	const baseContentHash = optionalString(
+		body.baseContentHash,
+		"anchor.baseContentHash",
+	);
+	const headContentHash = optionalString(
+		body.headContentHash,
+		"anchor.headContentHash",
+	);
+	const startLine = optionalInteger(body.startLine, "anchor.startLine");
+	const endLine = optionalInteger(body.endLine, "anchor.endLine");
+	const hunkId = optionalString(body.hunkId, "anchor.hunkId");
+	const hunkFingerprint = optionalString(
+		body.hunkFingerprint,
+		"anchor.hunkFingerprint",
+	);
+	const selectedContentHash = optionalString(
+		body.selectedContentHash,
+		"anchor.selectedContentHash",
+	);
+	const side = requiredString(body.side, "anchor.side");
+	if (side !== "old" && side !== "new") {
+		throw reviewError("malformed-input", "anchor.side must be old or new");
+	}
+	return {
+		anchorId: requiredString(body.anchorId, "anchor.anchorId"),
+		generationId: requiredString(body.generationId, "anchor.generationId"),
+		fileId: requiredString(body.fileId, "anchor.fileId"),
+		side,
+		contextBeforeHashes: strings(body.contextBeforeHashes, "contextBeforeHashes"),
+		contextAfterHashes: strings(body.contextAfterHashes, "contextAfterHashes"),
+		...(pathBefore === undefined ? {} : { pathBefore }),
+		...(pathAfter === undefined ? {} : { pathAfter }),
+		...(baseBlobOid === undefined ? {} : { baseBlobOid }),
+		...(headBlobOid === undefined ? {} : { headBlobOid }),
+		...(baseContentHash === undefined ? {} : { baseContentHash }),
+		...(headContentHash === undefined ? {} : { headContentHash }),
+		...(startLine === undefined ? {} : { startLine }),
+		...(endLine === undefined ? {} : { endLine }),
+		...(hunkId === undefined ? {} : { hunkId }),
+		...(hunkFingerprint === undefined ? {} : { hunkFingerprint }),
+		...(selectedContentHash === undefined ? {} : { selectedContentHash }),
+	};
 }
 
 function strings(value: unknown, field: string): readonly string[] {
@@ -305,15 +364,27 @@ function parseCommand(value: unknown): ReviewCommand {
 						exclusionReason,
 					};
 		}
-		case "create-thread":
+		case "create-thread": {
+			const visibility = requiredString(body.visibility, "visibility");
+			if (
+				visibility !== "private" &&
+				visibility !== "session" &&
+				visibility !== "forge"
+			) {
+				throw reviewError(
+					"malformed-input",
+					"thread visibility must be private, session, or forge",
+				);
+			}
 			return {
 				kind,
 				body: requiredString(body.body, "body"),
-				visibility: requiredString(body.visibility, "visibility") as
-					| "private"
-					| "session"
-					| "forge",
+				visibility,
+				...(body.anchor === undefined
+					? {}
+					: { anchor: parseReviewAnchor(body.anchor) }),
 			};
+		}
 		case "add-message":
 			return {
 				kind,

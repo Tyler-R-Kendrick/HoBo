@@ -4,6 +4,7 @@ import type { LocalReviewControl } from "./local-review-control.js";
 import { ReviewApprovalRequiredError } from "./review-approval.js";
 import { parseReviewCommand } from "./review-contract.js";
 import { ReviewError } from "./review-errors.js";
+import { projectReviewInboxItem } from "./review-inbox.js";
 import { reviewSnapshotJson } from "./review-projections.js";
 import type { ReviewCommandResult, ReviewSnapshot } from "./review-ports.js";
 
@@ -52,27 +53,8 @@ function commandResultJson(result: ReviewCommandResult): unknown {
 	};
 }
 
-function inboxItem(snapshot: ReviewSnapshot): Record<string, unknown> {
-	return {
-		itemId: `inbox:${snapshot.reviewId}`,
-		reviewId: snapshot.reviewId,
-		targetLabel:
-			snapshot.target?.kind === "pull-request"
-				? `${snapshot.target.repository}#${snapshot.target.number}`
-				: (snapshot.target?.kind ?? "review"),
-		manualDisposition: snapshot.inboxDisposition,
-		derivedState: snapshot.closed ? "closed" : "needs-review",
-		attentionReasons: snapshot.closed ? [] : ["unreviewed"],
-		progress: {
-			reviewedFiles: 0,
-			totalFiles: 0,
-			reviewedHunks: 0,
-			totalHunks: 0,
-			staleUnits: 0,
-			excludedUnits: 0,
-		},
-		lastUpdatedAt: snapshot.updatedAt,
-	};
+function inboxItem(snapshot: ReviewSnapshot) {
+	return projectReviewInboxItem({ snapshot });
 }
 
 function fail(response: ServerResponse, error: unknown): void {

@@ -1230,6 +1230,7 @@ const VERB_HELP_PLAIN: Record<
 		"Usage:",
 		"  hobo-code review --json --command '<review-command-envelope>'",
 		"  hobo-code review list --json",
+		"  hobo-code review pane [reviewId]",
 		"",
 		"Commands persist in $HOBO_HOME/durable/code/reviews, not the session PTY log.",
 		"Publishing to GitHub still requires an exact-effect approval digest.",
@@ -1556,6 +1557,20 @@ export async function runHoboCodeCli(
 	if (verb === "review") {
 		const control = createLocalReviewControl({ hoboHome });
 		try {
+			if (args[0] === "pane") {
+				const text = panel("◈ review", [
+					"opening durable review pane",
+					"keyboard-only · Tab surface · q quit",
+				]);
+				return ok("HOBO_CODE_REVIEW", text, {
+					text,
+					terminalAction: {
+						kind: "review-pane",
+						hoboHome,
+						...(typeof args[1] === "string" ? { reviewId: args[1] } : {}),
+					},
+				});
+			}
 			if (args[0] === "list") {
 				const snapshots = await control.list();
 				const text = panel("◈ review", [

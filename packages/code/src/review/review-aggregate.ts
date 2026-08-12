@@ -261,6 +261,15 @@ function requireMessage(
 	return message;
 }
 
+function reviewAuthorKind(
+	state: ReviewAggregate,
+	actorId: string,
+): ReviewMessage["authorKind"] {
+	return Object.values(state.routedAgents).includes(actorId)
+		? "agent"
+		: "human";
+}
+
 function requireDraft(message: ReviewMessage): void {
 	if (message.publicationState !== "private") {
 		throw reviewError(
@@ -465,22 +474,26 @@ export async function decideReviewEvents(
 			const stored = await storeBody(ctx, command.command.body);
 			const threadId = ctx.id();
 			const messageId = ctx.id();
+			const authorKind = reviewAuthorKind(state, command.actorId);
 			const thread: ReviewThread = {
 				threadId,
 				reviewId: command.reviewId,
-				origin: "local-human",
+				origin: authorKind === "agent" ? "local-agent" : "local-human",
 				visibility: command.command.visibility,
 				resolution: "open",
 				anchorHealth: "current",
 				messageIds: [messageId],
 				createdAt: at,
 				updatedAt: at,
+				...(command.command.anchor === undefined
+					? {}
+					: { anchor: command.command.anchor }),
 			};
 			const message: ReviewMessage = {
 				messageId,
 				threadId,
 				authorId: command.actorId,
-				authorKind: "human",
+				authorKind,
 				origin: "local",
 				bodyHash: stored.bodyHash,
 				createdAt: at,
@@ -508,7 +521,7 @@ export async function decideReviewEvents(
 				messageId: ctx.id(),
 				threadId: command.command.threadId,
 				authorId: command.actorId,
-				authorKind: "human",
+				authorKind: reviewAuthorKind(state, command.actorId),
 				origin: "local",
 				bodyHash: stored.bodyHash,
 				createdAt: at,

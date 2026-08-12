@@ -455,6 +455,26 @@ export async function runResidentSessionCli(input: {
 			control.close();
 		}
 	}
+	if (operation === "review") {
+		const control = createLocalSessionControl({ hoboHome: input.hoboHome });
+		try {
+			const snapshot = await control.load(sessionId);
+			if (!snapshot) throw new Error(`session ${sessionId} does not exist`);
+			return {
+				message: `opening review pane for ${summary(snapshot)}`,
+				data: {
+					snapshot: sessionSnapshotJson(snapshot),
+					terminalAction: {
+						kind: "review-pane",
+						sessionId,
+						hoboHome: input.hoboHome,
+					},
+				},
+			};
+		} finally {
+			control.close();
+		}
+	}
 	if (operation === "git") {
 		const control = createLocalSessionControl({ hoboHome: input.hoboHome });
 		try {

@@ -321,6 +321,17 @@ exact-effect approval boundary; commits use only the reviewed index. Bounded
 panels show a `+`, always retain the current branch, and disable committing
 when the complete changed-file set cannot be reviewed.
 
+Durable review is a separate aggregate from the resident session. Use
+`hobo-code review --json --command '…'` for scripted start/coverage/thread
+commands, `hobo-code review list` to inspect the inbox, and
+`hobo-code review pane` or `hobo-code session review <sessionId>` for the
+rubberhose terminal reviewer. The loopback browser Review tab talks to the
+same `$HOBO_HOME/durable/code/reviews` store. The Git workbench still
+authorizes the staged tree; review coverage records what a human actually
+inspected. GitHub publication, thread reply/resolve, hunk stage/unstage, and
+suggestion apply all require an exact-effect approval digest. Only GitHub is
+implemented.
+
 Inside the interactive shell, `/dev` runs the current project's Bindle through
 the same local Yard as `hobo dev`; it does not invent a static-site server.
 Use `/hobo <args>` for the full control plane, for example

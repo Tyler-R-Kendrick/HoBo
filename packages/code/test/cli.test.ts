@@ -909,4 +909,17 @@ describe("dispatch says what it did", () => {
 		expect(result.ok).toBe(true);
 		expect(result.code).toBe("HOBO_CODE_REVIEW");
 	});
+
+	it("opens a review pane without elicitation", async () => {
+		const home = temp("hobo-review-pane-");
+		const result = await runHoboCodeCli(["review", "pane"], {
+			env: { ...process.env, HOBO_HOME: home },
+		});
+		expect(result.ok).toBe(true);
+		expect(result.code).toBe("HOBO_CODE_REVIEW");
+		expect(
+			(result.data as { terminalAction?: { kind?: string } }).terminalAction
+				?.kind,
+		).toBe("review-pane");
+	});
 });

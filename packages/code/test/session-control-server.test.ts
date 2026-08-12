@@ -230,6 +230,14 @@ describe("resident session loopback server", () => {
 					}),
 				]),
 			});
+			const portable = await fetch(
+				`http://127.0.0.1:${server.port}/__hobo/evidence/api/export`,
+				{ headers },
+			);
+			expect(await portable.json()).toMatchObject({
+				html: expect.stringContaining("portable export"),
+				manifest: expect.stringContaining('"controlsEnabled": false'),
+			});
 			const createdResponse = await fetch(
 				`http://127.0.0.1:${server.port}/code/commands`,
 				{

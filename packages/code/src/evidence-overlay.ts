@@ -131,6 +131,15 @@ window.addEventListener("message", (event) => {
   if (isRecord(event.data) && exact(event.data, ["type"]) && event.data.type === "overlay-close") { setOpen(false); return; }
   const message = parse(event.data);
   if (!message) { status.textContent = "HoBo evidence refused an invalid command"; return; }
+  if (message.type === "annotate") {
+    let target;
+    try { target = document.querySelector(message.selector); } catch { status.textContent = "HoBo evidence refused an invalid selector"; return; }
+    if (!target) { status.textContent = "HoBo evidence could not find that element"; return; }
+    target.dataset.hoboEvidenceAnnotation = message.note;
+    target.style.outline = "3px solid #c5301c";
+    target.style.outlineOffset = "3px";
+    status.textContent = "HoBo evidence pinned the annotation";
+  }
   window.dispatchEvent(new CustomEvent("hobo:evidence-overlay", { detail: message }));
 });
 document.documentElement.append(host);

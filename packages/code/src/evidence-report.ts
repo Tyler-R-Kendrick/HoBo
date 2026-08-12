@@ -76,6 +76,11 @@ export interface PortableEvidenceReportExport {
 	readonly manifest: string;
 }
 
+export interface EvidenceReportHtmlOptions {
+	readonly live?: boolean;
+	readonly controlsHref?: string;
+}
+
 const SECTION_TITLES: Record<EvidenceReportSectionId, string> = {
 	session: "Session",
 	git: "Git",
@@ -144,12 +149,21 @@ export function renderEvidenceReportExport(
 		2,
 	)}\n`;
 
+	return { html: renderEvidenceReportHtml(report), manifest };
+}
+
+export function renderEvidenceReportHtml(
+	report: EvidenceReport,
+	options: EvidenceReportHtmlOptions = {},
+): string {
 	const sections = report.sections.map(renderSection).join("\n");
-	const html = `<!doctype html>
+	const live = options.live === true;
+	return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  ${live ? '<meta http-equiv="refresh" content="2">' : ""}
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
   <title>${escapeHtml(report.title)}</title>
   <style>
@@ -169,17 +183,15 @@ export function renderEvidenceReportExport(
 </head>
 <body>
   <header>
-    <p>HoBo evidence report · portable export</p>
+    <p>HoBo evidence report · ${live ? "live projection" : "portable export"}</p>
     <h1>${escapeHtml(report.title)}</h1>
     <p>Generated <time datetime="${escapeHtml(report.generatedAt)}">${escapeHtml(report.generatedAt)}</time></p>
-    <button type="button" disabled aria-disabled="true">Live controls unavailable in export</button>
+    ${live && options.controlsHref ? `<a href="${escapeHtml(options.controlsHref)}">Open session controls</a>` : '<button type="button" disabled aria-disabled="true">Live controls unavailable in export</button>'}
   </header>
   <main>${sections}</main>
 </body>
 </html>
 `;
-
-	return { html, manifest };
 }
 
 function renderSection(section: EvidenceReportSection): string {

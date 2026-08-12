@@ -71,6 +71,8 @@ describe("evidence overlay bridge", () => {
 		expect(script).toContain('title=\\"HoBo evidence controls\\"');
 		expect(script).toContain("event.origin !== controlsOrigin");
 		expect(script).toContain("event.source !== frame.contentWindow");
+		expect(script).toContain("target.dataset.hoboEvidenceAnnotation");
+		expect(script).toContain('target.style.outline = "3px solid #c5301c"');
 		expect(script).toContain("prefers-reduced-motion: reduce");
 		expect(script).toContain("@media (max-width: 42rem)");
 		expect(script).not.toContain('postMessage(message, "*")');

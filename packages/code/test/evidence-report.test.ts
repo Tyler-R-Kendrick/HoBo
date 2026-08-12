@@ -5,6 +5,7 @@ import {
 	type EvidenceReportInput,
 	projectEvidenceReport,
 	renderEvidenceReportExport,
+	renderEvidenceReportHtml,
 } from "../src/index.js";
 
 const input: EvidenceReportInput = {
@@ -122,6 +123,12 @@ describe("evidence report projection", () => {
 		expect(portable.html).toContain('href="assets/unit.txt"');
 		expect(portable.html).toContain("Unit &lt;report&gt;");
 		expect(portable.html).toContain("Live controls unavailable in export");
+		expect(
+			renderEvidenceReportHtml(report, {
+				live: true,
+				controlsHref: "/?token=opaque",
+			}),
+		).toContain("live projection");
 		expect(portable.html).toContain("disabled");
 		expect(portable.html).toContain("Content-Security-Policy");
 		expect(manifest.controlsEnabled).toBe(false);

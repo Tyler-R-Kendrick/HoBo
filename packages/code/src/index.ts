@@ -1,13 +1,414 @@
 export {
-	CODE_EVIDENCE_SCHEMA,
-	CODE_ISOLATION_SCHEMA,
-	HOBO_CODE_PACKAGE,
+	type AgentAuthModeCard,
+	type AgentProtocolCard,
+	type AgentSurfaceStatus,
+	agentHumanSummary,
+	CODE_AGENT_SCHEMA,
+	inspectAgentSurface,
+} from "./agent-surface.js";
+export {
+	type AuthLoginInput,
+	type AuthLoginResult,
+	authLogin,
+	authSessionPath,
+	authStatus,
+	CODE_AUTH_SESSION_SCHEMA,
+	type CodeAuthMode,
+	type CodeAuthSession,
+	clearAuthSession,
+	confirmRemoteLogin,
+	readAuthSession,
+	resolveAuthenticatedStationId,
+	resolveStationTarget,
+} from "./auth.js";
+export {
+	type ClaudeCodeFeatureMapRow,
+	type ClaudeCodeGuide,
+	claudeCodeGuide,
+	renderClaudeCodeGuideText,
+} from "./claude-code-guide.js";
+export {
+	applyDenseChrome,
+	type FormatHoboCodeOptions,
+	formatHoboCodeResult,
+	HOBO_CODE_VERBS,
+	type HoboCodeCliDeps,
+	type HoboCodeCliResult,
+	type HoboCodeVerb,
+	looksLikeUnknownVerbAttempt,
+	runHoboCodeCli,
+	suggestVerbTypo,
+} from "./cli.js";
+export {
+	CODE_CONFIG_SCHEMA,
+	CONFIG_STACK_IDS,
+	type ConfigKnob,
+	type ConfigStackId,
+	type ConfigSurfaceStatus,
+	configHumanSummary,
+	inspectConfigSurface,
+	isConfigStackId,
+} from "./config-surface.js";
+export {
+	CODE_COST_SCHEMA,
+	type CostSavingsEstimate,
+	type CostStatus,
+	costHumanSummary,
+	type FreeLocalEndpoint,
+	inspectCost,
+	type TokenTool,
+} from "./cost.js";
+export {
+	type CursorFeatureMapRow,
+	type CursorGuide,
+	cursorGuide,
+	renderCursorGuideText,
+} from "./cursor-guide.js";
+export {
+	COMPUTE_ISOLATION_CLASSES,
+	COMPUTE_NODE_SCHEMA,
+	COMPUTE_POOL_SCHEMA,
+	COMPUTE_TASK_SCHEMA,
+	type ComputeNode,
+	type ComputeNodeClass,
+	type ComputeNodeStatus,
+	type ComputePool,
+	type ComputeTask,
+	type ComputeTaskStatus,
+	type DispatchComputeTaskInput,
+	type DispatchComputeTaskResult,
+	describeDistributedCompute,
+	dispatchComputeTask,
+	type OpenComputePoolOptions,
+	openComputePool,
+	registerComputeNode,
+} from "./distributed.js";
+export {
+	type CodeTrailRef,
+	type CqReflectHook,
+	codeImprovementTrails,
+	cqReflectHook,
+	dogfoodStationOccupancy,
+	dogfoodSummary,
+	type StationOccupancyRef,
+} from "./dogfood.js";
+export {
+	type BridgeMode,
+	CODE_EDITOR_BRIDGE_SCHEMA,
+	type EditorBridgeStatus,
+	type EditorKind,
+	editorBridgeHumanSummary,
+	editorBridgeOpenScript,
+	inspectEditorBridge,
+	type PaneLayout,
+} from "./editor-bridge.js";
+export {
+	type DefineEveAgentInput,
+	defaultHoboCodeEveAgents,
+	defineEveAgent,
+	defineEveSubagent,
+	describeEveSubagentSurface,
+	EVE_AGENT_SCHEMA,
+	type EveAgentDefinition,
+	type EveAgentKind,
+	eveAgentRootPath,
+} from "./eve.js";
+export {
+	assertEvidenceTripleComplete,
+	type EmitEvidenceInput,
+	emitEvidenceTriple,
+	linkGherkinToOpenFeature,
+} from "./evidence.js";
+export {
+	type EvidenceOverlayBridgeOptions,
+	type EvidenceOverlayControlsOptions,
+	type EvidenceOverlayMessage,
+	type EvidenceOverlayMessageEvent,
+	type EvidenceOverlayWrapperOptions,
+	parseEvidenceOverlayMessage,
+	renderEvidenceOverlayBridge,
+	renderEvidenceOverlayControls,
+	renderEvidenceOverlayWrapper,
+} from "./evidence-overlay.js";
+export {
+	createEvidencePort,
+	type EvidenceArtifactRef,
+	type StoredEvidenceArtifact,
+	type StoredEvidenceRecord,
+} from "./evidence-port.js";
+export {
+	appendSignedEvidenceNote,
+	EVIDENCE_REPORT_SCHEMA,
+	EVIDENCE_REPORT_SECTIONS,
+	type EvidenceArtifact,
+	type EvidenceFact,
+	type EvidenceReport,
+	type EvidenceReportHtmlOptions,
+	type EvidenceReportInput,
+	type EvidenceReportSection,
+	type EvidenceReportSectionId,
+	type EvidenceState,
+	type PortableEvidenceReportExport,
+	projectEvidenceReport,
+	renderEvidenceReportExport,
+	renderEvidenceReportHtml,
+	type SignedEvidenceNote,
+} from "./evidence-report.js";
+export {
+	type BudgetPolicy,
+	createBudgetTracker,
+	DEFAULT_BUDGET_POLICY,
+	routeProvider,
+	type SpendEvent,
+	sponsoredWaitState,
+} from "./finops.js";
+export {
+	type GitTerminalPaneState,
+	INITIAL_GIT_TERMINAL_STATE,
+	moveGitTerminalSelection,
+	renderGitTerminalPane,
+	runGitTerminalPane,
+} from "./git-terminal-pane.js";
+export {
+	buildTasksSurface,
+	type GrokBuildCompare,
+	type GrokBuildParity,
+	grokBuildParity,
+	renderGrokBuildFooter,
+	renderTasksBoardText,
+	type TaskBoardRow,
+	type TasksSurface,
+} from "./grok-build-parity.js";
+export {
+	type CreateHarnessOptions,
+	createHarnessCore,
+	type DurableWorldState,
+	demonstrateDurability,
+	type HarnessCore,
+	type LoadedSkill,
+	type RhaiWorkflowResult,
+	runRhaiSubset,
+	type SkillName,
+} from "./harness.js";
+export {
+	CODE_HARNESS_SURFACE_SCHEMA,
+	type HarnessBrainNote,
+	type HarnessSkillRoot,
+	type HarnessSurfaceStatus,
+	harnessHumanSummary,
+	inspectHarnessSurface,
+} from "./harness-surface.js";
+export {
+	HERMETIC_ENV_SCHEMA,
+	type HermeticEnvReport,
+	type HermeticMarker,
+	hermeticEnvSummary,
+	inspectHermeticEnv,
+} from "./hermetic-env.js";
+export {
+	appendAssistant,
+	appendProduct,
+	createInitialShellState,
+	DEFAULT_SLASH_ITEMS,
+	type InteractiveShellState,
+	PRODUCT_NOT_PI,
+	reduceShellKey,
+	renderShellFrame,
+	runInteractiveShell,
+	type ShellFocus,
+	type ShellHost,
+	type ShellMessage,
+	type ShellSlashItem,
+	shellFrameIdentity,
+} from "./interactive-shell.js";
+export {
+	type CleanupResult,
+	type CreateIsolationOptions,
+	cleanupIsolation,
+	createIsolationContext,
+	getOpenIsolation,
+	listSandboxOrphans,
+	readHandback,
+	resetIsolationRegistry,
+} from "./isolation.js";
+export {
+	createLocalSessionControl,
+	type LocalSessionControl,
+	type LocalSessionControlOptions,
+	sessionCommandEnvelope,
+} from "./local-session-control.js";
+export {
+	BYOK_ENV_NAMES,
+	type ByokEnvPresence,
+	CODE_MODELS_SCHEMA,
+	inspectModels,
+	type ModelsStatus,
+	modelsHumanSummary,
+} from "./models.js";
+
+export {
+	parseEvidenceTriple,
+	parseGuestEvidenceSubmission,
+	parseIsolationContext,
+	parsePromotionRequest,
+} from "./parse.js";
+export {
+	bindCodeStation,
+	CODE_FEATURE_DEFAULTS,
+	CODE_FEATURE_FLAGS,
+	type CodeFeaturePort,
+	type CodePlatformSnapshot,
+	type CodeStationBinding,
+	composeCodePlatform,
+	createMemoryFeaturePort,
+	SWE_PROVIDER_CATALOG,
+	type SweProviderDescriptor,
+	type SweProviderId,
+	selectSweProvider,
+} from "./platform.js";
+export {
+	ISOLATION_PLATFORM_MATRIX,
+	matrixForPlatform,
+} from "./platform-matrix.js";
+export {
+	type CodeRemoteMode,
+	type CodeRemoteRegistration,
+	type DevTerminalAttach,
+	type DevTerminalAttachSurface,
+	type DevTerminalCompare,
+	describeDevTerminalAttach,
+	registerCodeNamedEndpoint,
+	shortNamedHost,
+} from "./remote.js";
+export {
+	type CreateResidentSessionOptions,
+	createResidentSessionRuntime,
+	type ResidentSessionRuntime,
+	type ResidentSessionRuntimeOptions,
+	residentSessionTmuxName,
+} from "./resident-session-runtime.js";
+export {
+	assertMediatedOnly,
+	assertNoVendoredTokenTools,
+	EXTERNAL_TOKEN_TOOLS,
+	type PromoteOptions,
+	type PromotionGate,
+	promoteIsolation,
+	runPromotionGates,
+} from "./sandbox-promote.js";
+export {
+	describeSecureSandboxStack,
+	planSecureSandbox,
+	SECURE_SANDBOX_STACK_SCHEMA,
+	type SecureSandboxPlan,
+	type SecureSandboxStackDescriptor,
+	type SecureSandboxTier,
+	tierForEveSandboxClass,
+} from "./sandbox-stack.js";
+export {
+	HIGH_VALUE_TEMPLATE_ID,
+	measureTemplateSuccessRate,
+	type ScaffoldOptions,
+	type SuccessRateSample,
+	scaffoldHighValueTemplate,
+	TEMPLATES_ROOT,
+	tsAutocodeConventions,
+} from "./scaffolding.js";
+export {
+	type CodeSession,
+	type CodeSessionOptions,
+	startCodeSession,
+} from "./session.js";
+export {
+	parseSessionCommand,
+	parseSessionSnapshot,
+	SESSION_COMMAND_SCHEMA,
+	SESSION_SNAPSHOT_SCHEMA,
+	type SessionCommandEnvelope,
+	type SessionSnapshot,
+	sessionSnapshotJson,
+} from "./session-contract.js";
+export {
+	type SessionControlServer,
+	type SessionControlServerOptions,
+	startSessionControlServer,
+} from "./session-control-server.js";
+export {
+	createSessionOrchestrator,
+	type SessionDeliveryApproval,
+	type SessionDeliveryOperation,
+	type SessionOrchestrator,
+	type SessionOrchestratorOptions,
+	type SessionProcessResult,
+	type SessionProcessRunner,
+	sessionProcessRunner,
+} from "./session-orchestrator.js";
+export { createDefaultShellHost } from "./shell-host.js";
+export {
+	BO_CELL_HEIGHT,
+	BO_CELL_WIDTH,
+	BO_IDLE_BLINK,
+	BO_IDLE_FRAME_COUNT,
+	BO_IDLE_FRAMES,
+	BO_IDLE_REST,
+	BO_IDLE_SPRITE_SOURCE,
+	BO_IDLE_TICK_MS,
+	type BoIdleClip,
+	boIdleClipName,
+	dumpLoadingAnimation,
+	HOBO_LOGO_CONSOLE,
+	HOBO_MARK_CONSOLE,
+	iterateLoadingFrames,
+	LOADING_CANVAS_HEIGHT,
+	LOADING_CANVAS_WIDTH,
+	type LoadingScreenOptions,
+	measureLoadingSurface,
+	padLine,
+	paintCell,
+	renderBoIdleFrame,
+	renderDefaultLoadingScreen,
+	selectBoIdleFrame,
+} from "./splash.js";
+export {
+	decodeGrayAlphaPng,
+	extractSpriteFrame,
+	type GrayAlphaImage,
+	measureTuiSprite,
+	renderBraille,
+	renderHalfBlocks,
+	type SampledBitmap,
+	type SpriteSheetMeta,
+	type SpriteToTuiOptions,
+	sampleInkBitmap,
+	spriteFrameToTui,
+	spriteStripMeta,
+	spriteStripToTuiFrames,
+	type TuiSpriteMode,
+} from "./sprite-tui.js";
+export {
+	buildMultiplexerStatus,
+	copyOnHighlight,
+	createPane,
+	type HerdrMuxCapabilities,
+	herdrMuxCapabilities,
+	type MultiplexerStatus,
+	renderHerdrCapabilityFooter,
+	renderStatusChip,
+	renderStatusSurface,
+	renderStatusText,
+	type StatusRenderOptions,
+	setPaneState,
+} from "./tui.js";
+export {
 	type AgentPaneState,
 	type AgentSemanticState,
-	type EvidenceTriple,
+	CODE_EVIDENCE_SCHEMA,
+	CODE_ISOLATION_SCHEMA,
 	type EvidenceKind,
+	type EvidenceTriple,
 	type GuestEvidenceSubmission,
 	type HandbackReport,
+	HOBO_CODE_PACKAGE,
 	type InferenceBudgetSnapshot,
 	type IsolationBackend,
 	type IsolationContext,
@@ -19,463 +420,23 @@ export {
 	type PromotionResult,
 	type ScaffoldResult,
 } from "./types.js";
-
-export {
-	ISOLATION_PLATFORM_MATRIX,
-	matrixForPlatform,
-} from "./platform-matrix.js";
-
-export {
-	cleanupIsolation,
-	createIsolationContext,
-	getOpenIsolation,
-	listSandboxOrphans,
-	readHandback,
-	resetIsolationRegistry,
-	type CleanupResult,
-	type CreateIsolationOptions,
-} from "./isolation.js";
-
-export {
-	assertMediatedOnly,
-	assertNoVendoredTokenTools,
-	EXTERNAL_TOKEN_TOOLS,
-	promoteIsolation,
-	runPromotionGates,
-	type PromoteOptions,
-	type PromotionGate,
-} from "./sandbox-promote.js";
-
-export {
-	createHarnessCore,
-	demonstrateDurability,
-	runRhaiSubset,
-	type CreateHarnessOptions,
-	type DurableWorldState,
-	type HarnessCore,
-	type LoadedSkill,
-	type RhaiWorkflowResult,
-	type SkillName,
-} from "./harness.js";
-
-export {
-	HIGH_VALUE_TEMPLATE_ID,
-	TEMPLATES_ROOT,
-	measureTemplateSuccessRate,
-	scaffoldHighValueTemplate,
-	tsAutocodeConventions,
-	type ScaffoldOptions,
-	type SuccessRateSample,
-} from "./scaffolding.js";
-
-export {
-	assertEvidenceTripleComplete,
-	emitEvidenceTriple,
-	linkGherkinToOpenFeature,
-	type EmitEvidenceInput,
-} from "./evidence.js";
-
-export {
-	appendSignedEvidenceNote,
-	EVIDENCE_REPORT_SCHEMA,
-	EVIDENCE_REPORT_SECTIONS,
-	projectEvidenceReport,
-	renderEvidenceReportExport,
-	type EvidenceArtifact,
-	type EvidenceFact,
-	type EvidenceReport,
-	type EvidenceReportInput,
-	type EvidenceReportSection,
-	type EvidenceReportSectionId,
-	type EvidenceState,
-	type PortableEvidenceReportExport,
-	type SignedEvidenceNote,
-} from "./evidence-report.js";
-
-export {
-	createEvidencePort,
-	type EvidenceArtifactRef,
-	type StoredEvidenceArtifact,
-	type StoredEvidenceRecord,
-} from "./evidence-port.js";
-
-export {
-	parseEvidenceOverlayMessage,
-	renderEvidenceOverlayBridge,
-	renderEvidenceOverlayControls,
-	renderEvidenceOverlayWrapper,
-	type EvidenceOverlayBridgeOptions,
-	type EvidenceOverlayControlsOptions,
-	type EvidenceOverlayMessage,
-	type EvidenceOverlayMessageEvent,
-	type EvidenceOverlayWrapperOptions,
-} from "./evidence-overlay.js";
-
 export {
 	applyInContextEdit,
 	createOpenUiSession,
 	lockVisualArtifact,
+	type OpenUiSession,
 	renderOpenUiHtml,
 	validateLockedVisual,
-	type OpenUiSession,
 } from "./visual.js";
 export {
-	buildMultiplexerStatus,
-	copyOnHighlight,
-	createPane,
-	herdrMuxCapabilities,
-	renderHerdrCapabilityFooter,
-	renderStatusChip,
-	renderStatusSurface,
-	renderStatusText,
-	setPaneState,
-	type HerdrMuxCapabilities,
-	type MultiplexerStatus,
-	type StatusRenderOptions,
-} from "./tui.js";
-
-export {
-	createBudgetTracker,
-	DEFAULT_BUDGET_POLICY,
-	routeProvider,
-	sponsoredWaitState,
-	type BudgetPolicy,
-	type SpendEvent,
-} from "./finops.js";
-
-export {
-	describeDevTerminalAttach,
-	registerCodeNamedEndpoint,
-	shortNamedHost,
-	type CodeRemoteMode,
-	type CodeRemoteRegistration,
-	type DevTerminalAttach,
-	type DevTerminalAttachSurface,
-	type DevTerminalCompare,
-} from "./remote.js";
-
-export {
-	buildTasksSurface,
-	grokBuildParity,
-	renderGrokBuildFooter,
-	renderTasksBoardText,
-	type GrokBuildCompare,
-	type GrokBuildParity,
-	type TaskBoardRow,
-	type TasksSurface,
-} from "./grok-build-parity.js";
-
-export {
-	claudeCodeGuide,
-	renderClaudeCodeGuideText,
-	type ClaudeCodeFeatureMapRow,
-	type ClaudeCodeGuide,
-} from "./claude-code-guide.js";
-
-export {
-	cursorGuide,
-	renderCursorGuideText,
-	type CursorFeatureMapRow,
-	type CursorGuide,
-} from "./cursor-guide.js";
-
-export {
-	codeImprovementTrails,
-	cqReflectHook,
-	dogfoodStationOccupancy,
-	dogfoodSummary,
-	type CodeTrailRef,
-	type CqReflectHook,
-	type StationOccupancyRef,
-} from "./dogfood.js";
-
-export {
-	startCodeSession,
-	type CodeSession,
-	type CodeSessionOptions,
-} from "./session.js";
-
-export {
-	parseSessionCommand,
-	parseSessionSnapshot,
-	SESSION_COMMAND_SCHEMA,
-	SESSION_SNAPSHOT_SCHEMA,
-	sessionSnapshotJson,
-	type SessionCommandEnvelope,
-	type SessionSnapshot,
-} from "./session-contract.js";
-
-export {
-	createResidentSessionRuntime,
-	residentSessionTmuxName,
-	type CreateResidentSessionOptions,
-	type ResidentSessionRuntime,
-	type ResidentSessionRuntimeOptions,
-} from "./resident-session-runtime.js";
-
-export {
-	createLocalSessionControl,
-	sessionCommandEnvelope,
-	type LocalSessionControl,
-	type LocalSessionControlOptions,
-} from "./local-session-control.js";
-
-export {
-	startSessionControlServer,
-	type SessionControlServer,
-	type SessionControlServerOptions,
-} from "./session-control-server.js";
-
-export {
-	INITIAL_GIT_TERMINAL_STATE,
-	moveGitTerminalSelection,
-	renderGitTerminalPane,
-	runGitTerminalPane,
-	type GitTerminalPaneState,
-} from "./git-terminal-pane.js";
-
-export {
-	createSessionOrchestrator,
-	sessionProcessRunner,
-	type SessionDeliveryApproval,
-	type SessionDeliveryOperation,
-	type SessionOrchestrator,
-	type SessionOrchestratorOptions,
-	type SessionProcessResult,
-	type SessionProcessRunner,
-} from "./session-orchestrator.js";
-
-export {
-	parseEvidenceTriple,
-	parseGuestEvidenceSubmission,
-	parseIsolationContext,
-	parsePromotionRequest,
-} from "./parse.js";
-
-export {
-	applyDenseChrome,
-	formatHoboCodeResult,
-	HOBO_CODE_VERBS,
-	looksLikeUnknownVerbAttempt,
-	runHoboCodeCli,
-	suggestVerbTypo,
-	type FormatHoboCodeOptions,
-	type HoboCodeCliDeps,
-	type HoboCodeCliResult,
-	type HoboCodeVerb,
-} from "./cli.js";
-
-export {
-	HERMETIC_ENV_SCHEMA,
-	hermeticEnvSummary,
-	inspectHermeticEnv,
-	type HermeticEnvReport,
-	type HermeticMarker,
-} from "./hermetic-env.js";
-
-export {
-	BO_CELL_HEIGHT,
-	BO_CELL_WIDTH,
-	BO_IDLE_BLINK,
-	BO_IDLE_FRAME_COUNT,
-	BO_IDLE_FRAMES,
-	BO_IDLE_REST,
-	BO_IDLE_SPRITE_SOURCE,
-	BO_IDLE_TICK_MS,
-	boIdleClipName,
-	dumpLoadingAnimation,
-	HOBO_LOGO_CONSOLE,
-	HOBO_MARK_CONSOLE,
-	iterateLoadingFrames,
-	LOADING_CANVAS_HEIGHT,
-	LOADING_CANVAS_WIDTH,
-	measureLoadingSurface,
-	padLine,
-	paintCell,
-	renderBoIdleFrame,
-	renderDefaultLoadingScreen,
-	selectBoIdleFrame,
-	type BoIdleClip,
-	type LoadingScreenOptions,
-} from "./splash.js";
-
-export {
-	PRODUCT_NOT_PI,
-	DEFAULT_SLASH_ITEMS,
-	appendAssistant,
-	appendProduct,
-	createInitialShellState,
-	reduceShellKey,
-	renderShellFrame,
-	runInteractiveShell,
-	shellFrameIdentity,
-	type InteractiveShellState,
-	type ShellFocus,
-	type ShellHost,
-	type ShellMessage,
-	type ShellSlashItem,
-} from "./interactive-shell.js";
-
-export { createDefaultShellHost } from "./shell-host.js";
-
-export {
-	decodeGrayAlphaPng,
-	extractSpriteFrame,
-	measureTuiSprite,
-	renderBraille,
-	renderHalfBlocks,
-	sampleInkBitmap,
-	spriteFrameToTui,
-	spriteStripMeta,
-	spriteStripToTuiFrames,
-	type GrayAlphaImage,
-	type SampledBitmap,
-	type SpriteSheetMeta,
-	type SpriteToTuiOptions,
-	type TuiSpriteMode,
-} from "./sprite-tui.js";
-
-export {
-	defaultHoboCodeEveAgents,
-	defineEveAgent,
-	defineEveSubagent,
-	describeEveSubagentSurface,
-	eveAgentRootPath,
-	EVE_AGENT_SCHEMA,
-	type DefineEveAgentInput,
-	type EveAgentDefinition,
-	type EveAgentKind,
-} from "./eve.js";
-
-export {
-	describeSecureSandboxStack,
-	planSecureSandbox,
-	SECURE_SANDBOX_STACK_SCHEMA,
-	tierForEveSandboxClass,
-	type SecureSandboxPlan,
-	type SecureSandboxStackDescriptor,
-	type SecureSandboxTier,
-} from "./sandbox-stack.js";
-
-export {
 	CODE_WORLD_SCHEMA,
-	describeCodeWorlds,
-	localWorld,
-	planDurableWorkflowRun,
-	vercelWorkflowWorld,
 	type CodeWorldCapabilities,
 	type CodeWorldDescriptor,
 	type CodeWorldKind,
 	type DurableWorkflowRun,
 	type DurableWorkflowStep,
+	describeCodeWorlds,
+	localWorld,
+	planDurableWorkflowRun,
+	vercelWorkflowWorld,
 } from "./worlds.js";
-
-export {
-	bindCodeStation,
-	CODE_FEATURE_DEFAULTS,
-	CODE_FEATURE_FLAGS,
-	composeCodePlatform,
-	createMemoryFeaturePort,
-	selectSweProvider,
-	SWE_PROVIDER_CATALOG,
-	type CodeFeaturePort,
-	type CodePlatformSnapshot,
-	type CodeStationBinding,
-	type SweProviderDescriptor,
-	type SweProviderId,
-} from "./platform.js";
-
-export {
-	COMPUTE_ISOLATION_CLASSES,
-	COMPUTE_NODE_SCHEMA,
-	COMPUTE_POOL_SCHEMA,
-	COMPUTE_TASK_SCHEMA,
-	describeDistributedCompute,
-	dispatchComputeTask,
-	openComputePool,
-	registerComputeNode,
-	type ComputeNode,
-	type ComputeNodeClass,
-	type ComputeNodeStatus,
-	type ComputePool,
-	type ComputeTask,
-	type ComputeTaskStatus,
-	type DispatchComputeTaskInput,
-	type DispatchComputeTaskResult,
-	type OpenComputePoolOptions,
-} from "./distributed.js";
-
-export {
-	BYOK_ENV_NAMES,
-	CODE_MODELS_SCHEMA,
-	inspectModels,
-	modelsHumanSummary,
-	type ByokEnvPresence,
-	type ModelsStatus,
-} from "./models.js";
-
-export {
-	CODE_COST_SCHEMA,
-	costHumanSummary,
-	inspectCost,
-	type CostSavingsEstimate,
-	type CostStatus,
-	type FreeLocalEndpoint,
-	type TokenTool,
-} from "./cost.js";
-
-export {
-	CODE_HARNESS_SURFACE_SCHEMA,
-	harnessHumanSummary,
-	inspectHarnessSurface,
-	type HarnessBrainNote,
-	type HarnessSkillRoot,
-	type HarnessSurfaceStatus,
-} from "./harness-surface.js";
-
-export {
-	CODE_EDITOR_BRIDGE_SCHEMA,
-	editorBridgeHumanSummary,
-	editorBridgeOpenScript,
-	inspectEditorBridge,
-	type BridgeMode,
-	type EditorBridgeStatus,
-	type EditorKind,
-	type PaneLayout,
-} from "./editor-bridge.js";
-
-export {
-	CODE_CONFIG_SCHEMA,
-	CONFIG_STACK_IDS,
-	configHumanSummary,
-	inspectConfigSurface,
-	isConfigStackId,
-	type ConfigKnob,
-	type ConfigStackId,
-	type ConfigSurfaceStatus,
-} from "./config-surface.js";
-
-export {
-	CODE_AGENT_SCHEMA,
-	agentHumanSummary,
-	inspectAgentSurface,
-	type AgentAuthModeCard,
-	type AgentProtocolCard,
-	type AgentSurfaceStatus,
-} from "./agent-surface.js";
-
-export {
-	CODE_AUTH_SESSION_SCHEMA,
-	authLogin,
-	authStatus,
-	authSessionPath,
-	clearAuthSession,
-	confirmRemoteLogin,
-	readAuthSession,
-	resolveAuthenticatedStationId,
-	resolveStationTarget,
-	type AuthLoginInput,
-	type AuthLoginResult,
-	type CodeAuthMode,
-	type CodeAuthSession,
-} from "./auth.js";

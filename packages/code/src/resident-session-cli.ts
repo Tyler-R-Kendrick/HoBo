@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
+
+import { createFilesystemDualFixtures, loadPlayerPayload } from "@hobo/replay";
 
 import {
 	AgentLifecycleState,
@@ -9,6 +12,7 @@ import type { DevMachine } from "./dev-machines.js";
 import { sshDestination } from "./dev-machines.js";
 import {
 	createLocalSessionControl,
+	type LocalSessionControl,
 	sessionCommandEnvelope,
 } from "./local-session-control.js";
 import { residentSessionTmuxName } from "./resident-session-runtime.js";
@@ -16,6 +20,10 @@ import {
 	type SessionSnapshot,
 	sessionSnapshotJson,
 } from "./session-contract.js";
+import {
+	type SessionProcessRunner,
+	sessionProcessRunner,
+} from "./session-orchestrator.js";
 
 const DELIVERY_COMMANDS = new Set(["commit", "push", "pr", "stack", "merge"]);
 const GIT_PANE_ROLE = "hobo-code.git-workbench";
@@ -217,6 +225,122 @@ async function ensureGitPane(
 	}
 }
 
+export async function forkResidentSession(input: {
+	readonly control: LocalSessionControl;
+	readonly runner: SessionProcessRunner;
+	readonly sourceSessionId: string;
+	readonly actorId: string;
+	readonly checkpointId?: string;
+	readonly name?: string;
+}): Promise<
+	Readonly<{
+		sourceCheckpoint: SessionSnapshot["checkpoints"][number];
+		snapshot: SessionSnapshot;
+	}>
+> {
+	let source = await input.control.load(input.sourceSessionId);
+	if (!source?.session) {
+		throw new Error(`session ${input.sourceSessionId} does not exist`);
+	}
+	const sourceSession = source.session;
+	let sourceCheckpoint = input.checkpointId
+		? source.checkpoints.find((item) => item.id === input.checkpointId)
+		: undefined;
+	if (input.checkpointId && !sourceCheckpoint) {
+		throw new Error(`checkpoint ${input.checkpointId} does not exist`);
+	}
+	if (!sourceCheckpoint) {
+		source = await input.control.execute(
+			sessionCommandEnvelope(
+				input.sourceSessionId,
+				revision(source),
+				input.actorId,
+				"createCheckpoint",
+				{ label: "debug replay fork" },
+			),
+		);
+		sourceCheckpoint = source.checkpoints.at(-1);
+	}
+	if (!sourceCheckpoint) throw new Error("fork checkpoint was not created");
+
+	const suffix = randomUUID().slice(0, 8);
+	const name = input.name ?? `${sourceSession.name} fork`;
+	const sessionId = `${slug(name)}-${suffix}`;
+	const branch = `code/${slug(name)}-${suffix}`;
+	const branchResult = await input.runner.run(
+		"git",
+		["branch", branch, sourceCheckpoint.gitCommit],
+		sourceSession.projectRoot,
+	);
+	if (branchResult.code !== 0) {
+		throw new Error(branchResult.stderr || `could not create ${branch}`);
+	}
+	try {
+		let snapshot = await input.control.execute(
+			sessionCommandEnvelope(sessionId, 0n, input.actorId, "createSession", {
+				name,
+				projectRoot: sourceSession.projectRoot,
+				branch,
+				clientId: input.actorId,
+			}),
+		);
+		snapshot = await input.control.execute(
+			sessionCommandEnvelope(
+				sessionId,
+				revision(snapshot),
+				input.actorId,
+				"createCheckpoint",
+				{
+					label: `fork of ${input.sourceSessionId}/${sourceCheckpoint.id}`,
+				},
+			),
+		);
+		return Object.freeze({ sourceCheckpoint, snapshot });
+	} catch (error) {
+		if (!(await input.control.load(sessionId))) {
+			await input.runner.run(
+				"git",
+				["branch", "-D", branch],
+				sourceSession.projectRoot,
+			);
+		}
+		throw error;
+	}
+}
+
+async function residentReplay(hoboHome: string, sessionId: string) {
+	const fixtures = createFilesystemDualFixtures(
+		join(hoboHome, "durable", "code", "replay"),
+	);
+	const records = (
+		await fixtures.index.list({
+			stationId: "station:local",
+			limit: 1_000,
+		})
+	)
+		.filter(
+			(record) =>
+				record.correlation.controlPlaneEventId === `hobo-code:${sessionId}`,
+		)
+		.sort((left, right) => right.startedAt.localeCompare(left.startedAt));
+	const latest = records[0];
+	if (!latest) throw new Error(`debug replay for ${sessionId} does not exist`);
+	const player = await loadPlayerPayload({
+		sessionId: latest.id,
+		index: fixtures.index,
+		blobs: fixtures.blobs,
+		stationId: "station:local",
+	});
+	return Object.freeze({
+		sessionId,
+		replaySessionId: player.session.id,
+		level: player.debugTimeline[0]?.level ?? "observable",
+		readOnly: true as const,
+		timeline: player.debugTimeline,
+		openUi: player.openUi,
+	});
+}
+
 export async function runResidentSessionCli(input: {
 	readonly args: readonly string[];
 	readonly hoboHome: string;
@@ -269,6 +393,21 @@ export async function runResidentSessionCli(input: {
 			control.close();
 		}
 	}
+	if (operation === "replay") {
+		const sessionId = required(args[0], "replay <sessionId>");
+		const replay = await residentReplay(input.hoboHome, sessionId);
+		return {
+			message: replay.timeline.length
+				? replay.timeline
+						.map(
+							(item) =>
+								`${item.sequence} · ${item.track} · ${new Date(item.timestamp).toISOString()}`,
+						)
+						.join("\n")
+				: `debug replay ${sessionId} has no events`,
+			data: { replay },
+		};
+	}
 	if (operation === "create") {
 		const name = required(args[0], "create <name> [branch]");
 		const suffix = randomUUID().slice(0, 8);
@@ -294,6 +433,28 @@ export async function runResidentSessionCli(input: {
 	}
 
 	const sessionId = required(args[0], `${operation} <sessionId> …`);
+	if (operation === "fork") {
+		const control = createLocalSessionControl({ hoboHome: input.hoboHome });
+		try {
+			const forked = await forkResidentSession({
+				control,
+				runner: sessionProcessRunner(),
+				sourceSessionId: sessionId,
+				actorId,
+				...(args[1] ? { checkpointId: args[1] } : {}),
+				...(args[2] ? { name: args.slice(2).join(" ") } : {}),
+			});
+			return {
+				message: `forked ${summary(forked.snapshot)} from checkpoint ${forked.sourceCheckpoint.id}`,
+				data: {
+					sourceCheckpoint: forked.sourceCheckpoint,
+					snapshot: sessionSnapshotJson(forked.snapshot),
+				},
+			};
+		} finally {
+			control.close();
+		}
+	}
 	if (operation === "git") {
 		const control = createLocalSessionControl({ hoboHome: input.hoboHome });
 		try {

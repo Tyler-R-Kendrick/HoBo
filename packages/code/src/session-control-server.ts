@@ -25,6 +25,7 @@ import {
 	type EvidenceFact,
 	projectEvidenceReport,
 	renderEvidenceReportExport,
+	renderEvidenceReportHtml,
 } from "./evidence-report.js";
 import {
 	type GitSelection,
@@ -341,8 +342,9 @@ export async function startSessionControlServer(
 				...(options.replayLevel ? { level: options.replayLevel } : {}),
 				env: process.env,
 				correlation: buildCorrelation({
-					stationId: "local",
+					stationId: "station:local",
 					principalRef: "principal:local-developer",
+					controlPlaneEventId: `hobo-code:${sessionId}`,
 				}),
 				store: replayStore.blobs,
 				index: replayStore.index,
@@ -360,8 +362,9 @@ export async function startSessionControlServer(
 				url.pathname === "/__hobo/evidence" &&
 				(url.searchParams.get("token") === token || authorized(request, token))
 			) {
-				const { html } = renderEvidenceReportExport(
+				const html = renderEvidenceReportHtml(
 					await currentEvidenceReport(control, options.projectRoot, evidence),
+					{ live: true, controlsHref: `/?token=${encodeURIComponent(token)}` },
 				);
 				response.writeHead(200, {
 					"cache-control": "no-store",
@@ -437,7 +440,7 @@ export async function startSessionControlServer(
 						sessionId,
 						index: replayStore.index,
 						blobs: replayStore.blobs,
-						stationId: "local",
+						stationId: "station:local",
 					}),
 				);
 				return;
@@ -484,6 +487,19 @@ export async function startSessionControlServer(
 					response,
 					200,
 					await currentEvidenceReport(control, options.projectRoot, evidence),
+				);
+				return;
+			}
+			if (
+				request.method === "GET" &&
+				url.pathname === "/__hobo/evidence/api/export"
+			) {
+				json(
+					response,
+					200,
+					renderEvidenceReportExport(
+						await currentEvidenceReport(control, options.projectRoot, evidence),
+					),
 				);
 				return;
 			}

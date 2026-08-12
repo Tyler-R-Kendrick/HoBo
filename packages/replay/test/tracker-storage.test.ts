@@ -3,9 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
-
+import { buildCorrelation } from "../src/correlation.js";
 import { buildEvidencePack } from "../src/evidence.js";
 import { evaluateRecordingPolicy } from "../src/policy.js";
+import { createReplayService } from "../src/service.js";
 import {
 	createFilesystemDualFixtures,
 	createMemoryDualFixtures,
@@ -15,8 +16,7 @@ import {
 	createFixtureRecordEngine,
 	createTracker,
 } from "../src/tracker.js";
-import { buildCorrelation } from "../src/correlation.js";
-import { createReplayService } from "../src/service.js";
+import { REPLAY_SCHEMA_VERSION } from "../src/types.js";
 
 describe("tracker + dual fixtures", () => {
 	it("local path records, stores, and ends with zero extra config", async () => {
@@ -113,15 +113,44 @@ describe("tracker + dual fixtures", () => {
 			const tracker = createDefaultLocalTracker({
 				store: fixtures.blobs,
 				index: fixtures.index,
-				seedEvents: [
-					{ type: 2, timestamp: 1, data: { tagName: "html" } },
-				],
+				seedEvents: [{ type: 2, timestamp: 1, data: { tagName: "html" } }],
 			});
 			await tracker.flush();
 			const ended = await tracker.stop();
 			const loaded = await fixtures.index.get(tracker.sessionId);
 			expect(loaded?.id).toBe(ended?.id);
 			expect(loaded?.status).toBe("ended");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("fails closed on duplicate filesystem chunk writers", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "hobo-replay-writer-"));
+		try {
+			const fixtures = createFilesystemDualFixtures(dir);
+			const tracker = createDefaultLocalTracker({
+				store: fixtures.blobs,
+				index: fixtures.index,
+				seedEvents: [],
+			});
+			await tracker.flush();
+			const chunk = {
+				schemaVersion: REPLAY_SCHEMA_VERSION,
+				sessionId: tracker.sessionId,
+				seq: 0,
+				contentHash: `sha256:${"a".repeat(64)}` as const,
+				byteSize: 10,
+				blobRef: "fs:fixture.json",
+				createdAt: new Date(0).toISOString(),
+			};
+			await fixtures.index.appendChunkMeta(tracker.sessionId, chunk);
+			await expect(
+				fixtures.index.appendChunkMeta(tracker.sessionId, chunk),
+			).rejects.toMatchObject({ code: "replay-writer-conflict" });
+			expect(await fixtures.index.listChunks(tracker.sessionId)).toEqual([
+				chunk,
+			]);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -140,18 +169,14 @@ describe("tracker + dual fixtures", () => {
 		await tracker.flush();
 		const ended = await tracker.stop();
 		expect(ended?.correlation.errorId).toBe("err-42");
-		expect(ended?.correlation.harnessFlagKeys).toContain(
-			"hobo.session-replay",
-		);
+		expect(ended?.correlation.harnessFlagKeys).toContain("hobo.session-replay");
 
 		const summary = await service.summarize(tracker.sessionId);
 		expect(summary).toContain("err-42");
 
 		const pack = buildEvidencePack({
 			session: ended!,
-			recording: [
-				{ type: 2, timestamp: 10, data: { tagName: "div" } },
-			],
+			recording: [{ type: 2, timestamp: 10, data: { tagName: "div" } }],
 			playwrightRefs: ["trace.zip"],
 			assertionLog: ["checkout failed"],
 		});

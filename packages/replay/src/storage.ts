@@ -2,12 +2,15 @@
  * SessionBlobStore + SessionIndex ports and local dual-fixture adapters.
  * Heavy rrweb blobs: content-addressed. Metadata: index. Offline-first.
  */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
 	existsSync,
 	mkdirSync,
 	readdirSync,
 	readFileSync,
+	renameSync,
+	rmdirSync,
+	rmSync,
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -58,6 +61,16 @@ export type DualFixtureStore = Readonly<{
 
 function sha256(payload: string): `sha256:${string}` {
 	return `sha256:${createHash("sha256").update(payload).digest("hex")}`;
+}
+
+function atomicWrite(path: string, payload: string): void {
+	const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+	try {
+		writeFileSync(temporary, payload, { encoding: "utf8", flag: "wx" });
+		renameSync(temporary, path);
+	} finally {
+		rmSync(temporary, { force: true });
+	}
 }
 
 /** In-memory dual fixtures (tests / schemaOnlyView). */
@@ -171,11 +184,52 @@ export function createFilesystemDualFixtures(
 	const sessionsDir = join(rootDir, "sessions");
 	const blobsDir = join(rootDir, "blobs");
 	const chunksDir = join(rootDir, "chunks");
+	const locksDir = join(rootDir, "locks");
 	mkdirSync(sessionsDir, { recursive: true });
 	mkdirSync(blobsDir, { recursive: true });
 	mkdirSync(chunksDir, { recursive: true });
+	mkdirSync(locksDir, { recursive: true });
 	const chunksPath = (sessionId: string) =>
 		join(chunksDir, `${encodeURIComponent(sessionId)}.json`);
+	const sessionPath = (sessionId: string) =>
+		join(sessionsDir, `${encodeURIComponent(sessionId)}.json`);
+	const readChunks = (sessionId: string): readonly RecordingChunk[] => {
+		const path = chunksPath(sessionId);
+		return existsSync(path)
+			? (JSON.parse(readFileSync(path, "utf8")) as RecordingChunk[])
+			: [];
+	};
+	const readSession = (sessionId: string): SessionRecord | undefined => {
+		const path = sessionPath(sessionId);
+		if (!existsSync(path)) return undefined;
+		const session = parseSessionRecord(JSON.parse(readFileSync(path, "utf8")));
+		if (!existsSync(chunksPath(sessionId))) return session;
+		const chunks = readChunks(sessionId);
+		return Object.freeze({
+			...session,
+			chunkCount: chunks.length,
+			totalBytes: chunks.reduce((sum, chunk) => sum + chunk.byteSize, 0),
+		});
+	};
+	const withWriter = <T>(sessionId: string, action: () => T): T => {
+		const lock = join(locksDir, encodeURIComponent(sessionId));
+		try {
+			mkdirSync(lock);
+		} catch (error) {
+			throw Object.assign(
+				new Error(`replay writer already active: ${sessionId}`),
+				{
+					code: "replay-writer-conflict",
+					cause: error,
+				},
+			);
+		}
+		try {
+			return action();
+		} finally {
+			rmdirSync(lock);
+		}
+	};
 
 	const blobs: SessionBlobStore = {
 		async put(sessionId, seq, events) {
@@ -183,7 +237,7 @@ export function createFilesystemDualFixtures(
 			const contentHash = sha256(payload);
 			const file = `${contentHash.slice(7)}.json`;
 			const path = join(blobsDir, file);
-			writeFileSync(path, payload, "utf8");
+			atomicWrite(path, payload);
 			const blobRef = `fs:${file}`;
 			return Object.freeze({
 				schemaVersion: REPLAY_SCHEMA_VERSION,
@@ -207,56 +261,60 @@ export function createFilesystemDualFixtures(
 	const index: SessionIndex = {
 		async upsert(record) {
 			const parsed = parseSessionRecord(record);
-			writeFileSync(
-				join(sessionsDir, `${parsed.id}.json`),
-				JSON.stringify(parsed, null, 2),
-				"utf8",
+			withWriter(parsed.id, () =>
+				atomicWrite(sessionPath(parsed.id), JSON.stringify(parsed, null, 2)),
 			);
 		},
 		async get(sessionId) {
-			const path = join(sessionsDir, `${sessionId}.json`);
-			if (!existsSync(path)) return undefined;
-			return parseSessionRecord(JSON.parse(readFileSync(path, "utf8")));
+			return readSession(sessionId);
 		},
 		async list(query = {}) {
 			const files = existsSync(sessionsDir)
 				? readdirSync(sessionsDir).filter((f) => f.endsWith(".json"))
 				: [];
 			const mem = createMemoryDualFixtures({
-				sessions: files.map((f) =>
-					parseSessionRecord(
-						JSON.parse(readFileSync(join(sessionsDir, f), "utf8")),
-					),
-				),
+				sessions: files.flatMap((f) => {
+					const session = readSession(decodeURIComponent(f.slice(0, -5)));
+					return session ? [session] : [];
+				}),
 			});
 			return mem.index.list(query);
 		},
 		async listChunks(sessionId) {
-			const path = chunksPath(sessionId);
-			if (!existsSync(path)) return Object.freeze([]);
-			return Object.freeze(
-				JSON.parse(readFileSync(path, "utf8")) as RecordingChunk[],
-			);
+			return Object.freeze([...readChunks(sessionId)]);
 		},
 		async appendChunkMeta(sessionId, chunk) {
-			const cur = await index.get(sessionId);
-			if (!cur) return;
-			writeFileSync(
-				chunksPath(sessionId),
-				JSON.stringify(
-					[...(await index.listChunks(sessionId)), chunk],
-					null,
-					2,
-				),
-				"utf8",
-			);
-			await index.upsert(
-				Object.freeze({
-					...cur,
-					chunkCount: cur.chunkCount + 1,
-					totalBytes: cur.totalBytes + chunk.byteSize,
-				}),
-			);
+			withWriter(sessionId, () => {
+				const cur = readSession(sessionId);
+				if (!cur) return;
+				const chunks = [...readChunks(sessionId)];
+				const nextSequence = chunks.reduce(
+					(max, item) => Math.max(max, item.seq + 1),
+					0,
+				);
+				if (chunk.sessionId !== sessionId || chunk.seq !== nextSequence) {
+					throw Object.assign(
+						new Error(
+							`replay chunk sequence conflict: ${sessionId}:${chunk.seq}`,
+						),
+						{ code: "replay-writer-conflict" },
+					);
+				}
+				chunks.push(chunk);
+				atomicWrite(chunksPath(sessionId), JSON.stringify(chunks, null, 2));
+				atomicWrite(
+					sessionPath(sessionId),
+					JSON.stringify(
+						{
+							...cur,
+							chunkCount: chunks.length,
+							totalBytes: chunks.reduce((sum, item) => sum + item.byteSize, 0),
+						},
+						null,
+						2,
+					),
+				);
+			});
 		},
 	};
 

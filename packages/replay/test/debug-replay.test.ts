@@ -181,4 +181,56 @@ describe("debug replay contract", () => {
 			rmSync(root, { recursive: true, force: true });
 		}
 	});
+
+	it("keeps read-only flushes immutable and resumes persisted sequences", async () => {
+		const root = mkdtempSync(join(tmpdir(), "hobo-debug-resume-"));
+		try {
+			const fixtures = createFilesystemDualFixtures(root);
+			const first = createDebugReplayRecorder({
+				sessionId: "debug-resumed",
+				correlation: buildCorrelation({ stationId: "station:local" }),
+				store: fixtures.blobs,
+				index: fixtures.index,
+				batchSize: 1,
+			});
+			first.record({ track: "terminal", metadata: { command: "pwd" } });
+			await first.stop();
+
+			const beforeRead = await fixtures.index.get("debug-resumed");
+			const reader = createDebugReplayRecorder({
+				sessionId: "debug-resumed",
+				correlation: buildCorrelation({ stationId: "station:local" }),
+				store: fixtures.blobs,
+				index: fixtures.index,
+			});
+			await reader.flush();
+			expect(await fixtures.index.get("debug-resumed")).toEqual(beforeRead);
+
+			const resumed = createDebugReplayRecorder({
+				sessionId: "debug-resumed",
+				correlation: buildCorrelation({ stationId: "station:local" }),
+				store: fixtures.blobs,
+				index: fixtures.index,
+				batchSize: 1,
+			});
+			resumed.record({ track: "git", metadata: { operation: "commit" } });
+			await resumed.stop();
+
+			const chunks = await fixtures.index.listChunks("debug-resumed");
+			expect(chunks.map((chunk) => chunk.seq)).toEqual([0, 1]);
+			const player = await loadPlayerPayload({
+				sessionId: "debug-resumed",
+				index: fixtures.index,
+				blobs: fixtures.blobs,
+				stationId: "station:local",
+			});
+			expect(player.debugTimeline.map((item) => item.sequence)).toEqual([0, 1]);
+			expect(await fixtures.index.get("debug-resumed")).toMatchObject({
+				status: "ended",
+				chunkCount: 2,
+			});
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
 });

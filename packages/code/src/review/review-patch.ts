@@ -281,8 +281,8 @@ function sliceHunk(hunk: ReviewHunk, start: number, end: number): ReviewHunk {
 					lineId: `${line.lineId}:context`,
 					kind: "context",
 					rawText: linePayload(line),
-					oldLine: line.oldLine,
 					newLine: newCursor,
+					...(line.oldLine === undefined ? {} : { oldLine: line.oldLine }),
 				}),
 			);
 			if (marker) rebuilt.push(marker);

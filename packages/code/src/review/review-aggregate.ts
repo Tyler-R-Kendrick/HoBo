@@ -9,6 +9,7 @@ import {
 	REVIEW_EVENT_MESSAGE_ADDED,
 	REVIEW_EVENT_MESSAGE_DELETED,
 	REVIEW_EVENT_MESSAGE_EDITED,
+	REVIEW_EVENT_PATCH_APPLIED,
 	REVIEW_EVENT_PENDING_PREPARED,
 	REVIEW_EVENT_PUBLICATION_CHANGED,
 	REVIEW_EVENT_STARTED,
@@ -21,6 +22,7 @@ import {
 import type {
 	ReviewCommandEnvelope,
 	ReviewContentStore,
+	PendingReview,
 	ReviewCoverageRecord,
 	ReviewCoverageUnit,
 	ReviewDiffSource,
@@ -44,6 +46,7 @@ export interface ReviewAggregate {
 	coverage: Record<string, ReviewCoverageRecord>;
 	threads: Record<string, ReviewThread>;
 	messages: Record<string, ReviewMessage>;
+	pending: Record<string, PendingReview>;
 	routedAgents: Record<string, string>;
 	processed: Record<string, ReviewSnapshot>;
 }
@@ -66,6 +69,7 @@ export function emptyReviewAggregate(reviewId = ""): ReviewAggregate {
 		coverage: {},
 		threads: {},
 		messages: {},
+		pending: {},
 		routedAgents: {},
 		processed: {},
 	};
@@ -79,6 +83,7 @@ function cloneState(state: ReviewAggregate): ReviewAggregate {
 		coverage: { ...state.coverage },
 		threads: { ...state.threads },
 		messages: { ...state.messages },
+		pending: { ...state.pending },
 		routedAgents: { ...state.routedAgents },
 		processed: Object.fromEntries(
 			Object.entries(state.processed).map(([commandId, snapshot]) => [
@@ -188,9 +193,12 @@ export function applyReviewEvent(
 			break;
 		}
 		case REVIEW_EVENT_PENDING_PREPARED:
+			next.pending[event.data.pending.pendingReviewId] = event.data.pending;
+			break;
 		case REVIEW_EVENT_PUBLICATION_CHANGED:
 		case REVIEW_EVENT_INBOX_DISPOSITION_SET:
 		case REVIEW_EVENT_CLOSED:
+		case REVIEW_EVENT_PATCH_APPLIED:
 			if (event.type === REVIEW_EVENT_PUBLICATION_CHANGED) {
 				for (const messageId of event.data.messageIds) {
 					const message = next.messages[messageId];
@@ -696,12 +704,39 @@ export async function decideReviewEvents(
 				},
 			];
 		case "apply-suggestion":
+			return [
+				{
+					type: REVIEW_EVENT_PATCH_APPLIED,
+					data: {
+						...base,
+						operation: "apply-suggestion",
+						approvalDigest: command.command.approvalDigest,
+						messageId: command.command.messageId,
+					},
+				},
+			];
 		case "stage-selection":
 		case "unstage-selection":
-			throw reviewError(
-				"unsupported-capability",
-				`${kind} is not implemented by the review runtime`,
-				{ kind },
-			);
+			return [
+				{
+					type: REVIEW_EVENT_PATCH_APPLIED,
+					data: {
+						...base,
+						operation: kind,
+						approvalDigest: command.command.approvalDigest,
+						generationId: command.command.generationId,
+						fileId: command.command.fileId,
+						...(command.command.hunkId === undefined
+							? {}
+							: { hunkId: command.command.hunkId }),
+						...(command.command.startLine === undefined
+							? {}
+							: { startLine: command.command.startLine }),
+						...(command.command.endLine === undefined
+							? {}
+							: { endLine: command.command.endLine }),
+					},
+				},
+			];
 	}
 }

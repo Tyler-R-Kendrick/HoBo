@@ -2,6 +2,7 @@ import { join } from "node:path";
 import {
 	createResidentReviewRuntime,
 	type ResidentReviewRuntime,
+	type ReviewView,
 } from "./resident-review-runtime.js";
 import { parseReviewCommand } from "./review-contract.js";
 import type {
@@ -26,6 +27,7 @@ export interface LocalReviewControl {
 	readonly runtime: ResidentReviewRuntime;
 	execute(command: unknown): Promise<ReviewCommandResult>;
 	load(reviewId: string): Promise<ReviewSnapshot>;
+	loadView(reviewId: string): Promise<ReviewView>;
 	list(input?: {
 		readonly sessionId?: string;
 	}): Promise<readonly ReviewSnapshot[]>;
@@ -56,6 +58,7 @@ export function createLocalReviewControl(
 			return runtime.execute(parseReviewCommand(command));
 		},
 		load: (reviewId) => runtime.load(reviewId),
+		loadView: (reviewId) => runtime.loadView(reviewId),
 		list: (input) => runtime.list(input),
 		close: () => runtime.close(),
 	};

@@ -9,6 +9,7 @@ import {
 	REVIEW_EVENT_MESSAGE_ADDED,
 	REVIEW_EVENT_MESSAGE_DELETED,
 	REVIEW_EVENT_MESSAGE_EDITED,
+	REVIEW_EVENT_PATCH_APPLIED,
 	REVIEW_EVENT_PENDING_PREPARED,
 	REVIEW_EVENT_PUBLICATION_CHANGED,
 	REVIEW_EVENT_STARTED,
@@ -181,6 +182,8 @@ export function projectReviewEvent(
 			};
 		case REVIEW_EVENT_CLOSED:
 			return { ...snapshot, revision, updatedAt, closed: true };
+		case REVIEW_EVENT_PATCH_APPLIED:
+			return { ...snapshot, revision, updatedAt };
 	}
 }
 

@@ -30,6 +30,7 @@ import {
 	type ReviewDomainEvent,
 	reviewEventInput,
 } from "./review-events.js";
+import type { PendingReview } from "./review-ports.js";
 import {
 	REVIEW_PARTITION,
 	type ReviewCommandEnvelope,
@@ -175,7 +176,14 @@ export interface ResidentReviewRuntimeOptions {
 	readonly inlineLimit?: number;
 }
 
+export interface ReviewView {
+	readonly snapshot: ReviewSnapshot;
+	readonly aggregate: ReviewAggregate;
+	readonly pending?: PendingReview;
+}
+
 export interface ResidentReviewRuntime extends ReviewRuntime {
+	loadView(reviewId: string): Promise<ReviewView>;
 	close(): void;
 }
 
@@ -483,6 +491,23 @@ export function createResidentReviewRuntime(
 
 		async load(reviewId: string): Promise<ReviewSnapshot> {
 			return cloneFrozen(await loadUnlocked(reviewId));
+		},
+
+		async loadView(reviewId: string): Promise<ReviewView> {
+			const state = await fold(reviewId);
+			if (!state.exists) {
+				throw reviewError("not-found", `review ${reviewId} does not exist`, {
+					reviewId,
+				});
+			}
+			const pendingId = state.snapshot.pendingReviewId;
+			const pending =
+				pendingId === undefined ? undefined : state.pending[pendingId];
+			return {
+				snapshot: cloneFrozen(state.snapshot),
+				aggregate: state,
+				...(pending === undefined ? {} : { pending }),
+			};
 		},
 
 		async list(input) {

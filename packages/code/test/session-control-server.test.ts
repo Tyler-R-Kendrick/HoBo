@@ -238,6 +238,7 @@ describe("resident session loopback server", () => {
 			expect(html).toContain("await refresh(id)");
 			expect(html).toContain("pullRequestNumber:Number(pullRequestNumber)");
 			expect(html).toContain("Git workbench");
+			expect(html).toContain("Durable review");
 			expect(html).toContain("1–5 panels · ↑↓/jk move · Space stage");
 			expect(html).toContain("stagedOnly:true");
 			expect(html).toContain("data-git-panel");
@@ -247,6 +248,9 @@ describe("resident session loopback server", () => {
 			expect(html).toContain("window.scrollTo(0,scrollY)");
 			for (const action of [
 				"select-git-tab",
+				"select-review-tab",
+				"review-start",
+				"review-send",
 				"git-stage",
 				"git-discard",
 				"git-ignore",

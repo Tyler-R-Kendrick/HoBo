@@ -166,11 +166,15 @@ export function createReviewPatchExecutor(
 			const built = buildDirectionPatch({
 				direction: input.direction,
 				file: { file: record.file, hunks: record.hunks },
-				hunkId: input.hunkId,
-				startLine: input.startLine,
-				endLine: input.endLine,
-				suggestionBody: input.suggestionBody,
 				worktreeText: worktreeBytes.toString("utf8"),
+				...(input.hunkId === undefined ? {} : { hunkId: input.hunkId }),
+				...(input.startLine === undefined
+					? {}
+					: { startLine: input.startLine }),
+				...(input.endLine === undefined ? {} : { endLine: input.endLine }),
+				...(input.suggestionBody === undefined
+					? {}
+					: { suggestionBody: input.suggestionBody }),
 			});
 			const simulated = await simulateCachedApply({
 				repositoryRoot,
@@ -326,7 +330,7 @@ function buildDirectionPatch(input: {
 			startLine: input.startLine,
 			endLine: input.endLine,
 			replacement: parsed.replacement,
-			expectedPreimage: expected,
+			...(expected === undefined ? {} : { expectedPreimage: expected }),
 		});
 		return {
 			text: built.text,

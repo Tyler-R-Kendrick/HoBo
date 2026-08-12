@@ -290,6 +290,36 @@ describe("resident review runtime", () => {
 		runtime.close();
 	});
 
+	it("records approved patch selections as durable review events", async () => {
+		const dataDir = tempRoot();
+		const runtime = createResidentReviewRuntime({
+			dataDir,
+			id: ids(),
+			now: () => "2026-08-12T00:00:00.000Z",
+		});
+		const started = await runtime.execute(
+			envelope("review-patch", "cmd-start", 0n, {
+				kind: "start-review",
+				target: commitTarget(),
+			}),
+		);
+		const staged = await runtime.execute(
+			envelope("review-patch", "cmd-stage", started.revision, {
+				kind: "stage-selection",
+				generationId: started.snapshot.currentGenerationId ?? "",
+				fileId: "file-a",
+				hunkId: "hunk-1",
+				approvalDigest: "d".repeat(64),
+			}),
+		);
+		expect(staged.replayed).toBe(false);
+		expect(staged.revision).toBe(started.revision + 1n);
+		expect(await collectTypes(dataDir, "review-patch")).toContain(
+			"code.ReviewPatchApplied",
+		);
+		runtime.close();
+	});
+
 	it("covers thread and message CRUD, pending publication, and inbox close", async () => {
 		const runtime = createResidentReviewRuntime({
 			dataDir: tempRoot(),

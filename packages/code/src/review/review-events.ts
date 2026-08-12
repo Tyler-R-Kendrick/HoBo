@@ -44,6 +44,8 @@ export const REVIEW_EVENT_INBOX_DISPOSITION_SET =
 	"code.ReviewInboxDispositionSet";
 // public-contract: the review was closed.
 export const REVIEW_EVENT_CLOSED = "code.ReviewClosed";
+// public-contract: an approved local patch mutation was recorded.
+export const REVIEW_EVENT_PATCH_APPLIED = "code.ReviewPatchApplied";
 
 export const REVIEW_EVENT_TYPES = [
 	REVIEW_EVENT_STARTED,
@@ -61,6 +63,7 @@ export const REVIEW_EVENT_TYPES = [
 	REVIEW_EVENT_PUBLICATION_CHANGED,
 	REVIEW_EVENT_INBOX_DISPOSITION_SET,
 	REVIEW_EVENT_CLOSED,
+	REVIEW_EVENT_PATCH_APPLIED,
 ] as const;
 
 export type ReviewEventType = (typeof REVIEW_EVENT_TYPES)[number];
@@ -163,6 +166,22 @@ export type ReviewDomainEvent =
 	| {
 			readonly type: typeof REVIEW_EVENT_CLOSED;
 			readonly data: ReviewEventMeta;
+	  }
+	| {
+			readonly type: typeof REVIEW_EVENT_PATCH_APPLIED;
+			readonly data: ReviewEventMeta & {
+				readonly operation:
+					| "apply-suggestion"
+					| "stage-selection"
+					| "unstage-selection";
+				readonly approvalDigest: string;
+				readonly generationId?: string;
+				readonly fileId?: string;
+				readonly hunkId?: string;
+				readonly messageId?: string;
+				readonly startLine?: number;
+				readonly endLine?: number;
+			};
 	  };
 
 const EVENT_TYPES = new Set<string>(REVIEW_EVENT_TYPES);
@@ -184,6 +203,14 @@ function requiredString(value: unknown, field: string): string {
 function optionalString(value: unknown, field: string): string | undefined {
 	if (value === undefined) return undefined;
 	return requiredString(value, field);
+}
+
+function optionalNumber(value: unknown, field: string): number | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value !== "number" || !Number.isInteger(value)) {
+		throw reviewError("malformed-input", `${field} must be an integer`);
+	}
+	return value;
 }
 
 export function isReviewEventType(value: string): value is ReviewEventType {
@@ -355,6 +382,39 @@ export function parseReviewEvent(value: {
 			};
 		case REVIEW_EVENT_CLOSED:
 			return { type: value.type, data: meta };
+		case REVIEW_EVENT_PATCH_APPLIED: {
+			const operation = requiredString(data.operation, "operation");
+			if (
+				operation !== "apply-suggestion" &&
+				operation !== "stage-selection" &&
+				operation !== "unstage-selection"
+			) {
+				throw reviewError(
+					"malformed-input",
+					"patch operation must be a review selection mutation",
+				);
+			}
+			const generationId = optionalString(data.generationId, "generationId");
+			const fileId = optionalString(data.fileId, "fileId");
+			const hunkId = optionalString(data.hunkId, "hunkId");
+			const messageId = optionalString(data.messageId, "messageId");
+			const startLine = optionalNumber(data.startLine, "startLine");
+			const endLine = optionalNumber(data.endLine, "endLine");
+			return {
+				type: value.type,
+				data: {
+					...meta,
+					operation,
+					approvalDigest: requiredString(data.approvalDigest, "approvalDigest"),
+					...(generationId === undefined ? {} : { generationId }),
+					...(fileId === undefined ? {} : { fileId }),
+					...(hunkId === undefined ? {} : { hunkId }),
+					...(messageId === undefined ? {} : { messageId }),
+					...(startLine === undefined ? {} : { startLine }),
+					...(endLine === undefined ? {} : { endLine }),
+				},
+			};
+		}
 	}
 }
 

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	CODE_FEATURE_FLAGS,
 	HOBO_CODE_VERBS,
+	REVIEW_COMMAND_SCHEMA,
 	runHoboCodeCli,
 } from "../src/index.js";
 
@@ -40,6 +41,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(HOBO_CODE_VERBS).toContain("config");
 		// agent = protocol-native AX inventory (MCP/ACP), not hive join/rooms
 		expect(HOBO_CODE_VERBS).toContain("agent");
+		expect(HOBO_CODE_VERBS).toContain("review");
 		expect(HOBO_CODE_VERBS).not.toContain("remote");
 		expect(HOBO_CODE_VERBS[0]).toBe("dispatch");
 	});
@@ -879,5 +881,32 @@ describe("dispatch says what it did", () => {
 		expect(result.message).not.toMatch(/No agent has run it yet/);
 		rmSync(home, { recursive: true, force: true });
 		rmSync(project, { recursive: true, force: true });
+	});
+
+	it("executes a durable review command without elicitation", async () => {
+		const home = temp("hobo-review-cli-");
+		const command = {
+			schemaVersion: REVIEW_COMMAND_SCHEMA,
+			commandId: "cli-cmd-1",
+			actorId: "actor-1",
+			reviewId: "review-cli-1",
+			expectedRevision: "0",
+			command: {
+				kind: "start-review",
+				target: {
+					kind: "commit",
+					repositoryId: "repo-1",
+					repositoryRoot: home,
+					parentCommitOid: "a".repeat(40),
+					commitOid: "b".repeat(40),
+				},
+			},
+		};
+		const result = await runHoboCodeCli(
+			["review", "--json", "--command", JSON.stringify(command)],
+			{ env: { ...process.env, HOBO_HOME: home } },
+		);
+		expect(result.ok).toBe(true);
+		expect(result.code).toBe("HOBO_CODE_REVIEW");
 	});
 });

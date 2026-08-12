@@ -173,7 +173,9 @@ export function buildSuggestionPatch(input: {
 	});
 	validateSuggestionPreimage({
 		actual: preview.preimage,
-		expected: input.expectedPreimage,
+		...(input.expectedPreimage === undefined
+			? {}
+			: { expected: input.expectedPreimage }),
 	});
 	const split = splitFileText(input.original);
 	const oldCount = input.endLine - input.startLine + 1;

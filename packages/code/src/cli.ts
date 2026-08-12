@@ -4,7 +4,7 @@
  * App-building agent CLI (not a control-plane management tool).
  *   dispatch (default) | status | session | attach | tasks | guide |
  *   scaffold | template | dev | isolate | promote | env | auth | models | cost | harness |
- *   edit | config | agent | help
+ *   edit | config | agent | review | help
  *
  * Binary name: hobo-code (dash permitted).
  */
@@ -142,6 +142,9 @@ import {
 	resolveRunnableProject,
 } from "./workspace-actions.js";
 import { describeCodeWorlds } from "./worlds.js";
+import { ReviewError } from "./review/review-errors.js";
+import { createLocalReviewControl } from "./review/local-review-control.js";
+import { parseReviewCommand } from "./review/review-contract.js";
 
 export const HOBO_CODE_VERBS = [
 	"dispatch",
@@ -166,6 +169,7 @@ export const HOBO_CODE_VERBS = [
 	"edit",
 	"config",
 	"agent",
+	"review",
 	"help",
 ] as const;
 
@@ -319,6 +323,7 @@ const VALUE_FLAGS = new Set([
 	"editor",
 	"e", // alias of --editor
 	"complete",
+	"command",
 	"run",
 	"from",
 	"name",
@@ -506,6 +511,7 @@ function helpTextPlain(): string {
 		"Session & status:",
 		"  status     Session / agent panes in plain words (dense glyphs with --dense)",
 		"  session    Isolation session + handback",
+		"  review     Durable review commands (JSON, no elicitation)",
 		"  attach     Dev-terminal attach (tmux/mosh/Tailscale-shaped)",
 		"  tasks      Background task board (Grok Build–shaped)",
 		"",
@@ -1218,6 +1224,18 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"See also: hobo-code harness · hobo-code config --stack agent-native · auth",
 	],
+	review: [
+		"hobo-code review — durable review commands (no elicitation)",
+		"",
+		"Usage:",
+		"  hobo-code review --json --command '<review-command-envelope>'",
+		"  hobo-code review list --json",
+		"",
+		"Commands persist in $HOBO_HOME/durable/code/reviews, not the session PTY log.",
+		"Publishing to GitHub still requires an exact-effect approval digest.",
+		"",
+		"See also: hobo-code session · hobo-code agent --json",
+	],
 };
 
 function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
@@ -1533,6 +1551,63 @@ export async function runHoboCodeCli(
 			stack,
 			text,
 		});
+	}
+
+	if (verb === "review") {
+		const control = createLocalReviewControl({ hoboHome });
+		try {
+			if (args[0] === "list") {
+				const snapshots = await control.list();
+				const text = panel("◈ review", [
+					`${snapshots.length} review(s)`,
+					"json · hobo-code review list --json",
+				]);
+				return ok("HOBO_CODE_REVIEW", text, { reviews: snapshots, text });
+			}
+			const raw =
+				typeof flags.command === "string"
+					? flags.command
+					: args.find((item) => item.startsWith("{"));
+			if (!raw) {
+				return fail(
+					"HOBO_CODE_REVIEW_USAGE",
+					panel("✕ review", [
+						"missing command envelope",
+						"usage · hobo-code review --json --command '{...}'",
+					]),
+					["hobo-code review --help"],
+				);
+			}
+			let parsed: unknown;
+			try {
+				parsed = JSON.parse(raw);
+			} catch {
+				return fail(
+					"HOBO_CODE_REVIEW_USAGE",
+					panel("✕ review", ["--command must be JSON"]),
+					["hobo-code review --help"],
+				);
+			}
+			const command = parseReviewCommand(parsed);
+			const result = await control.execute(command);
+			const text = panel("◈ review", [
+				result.replayed ? "replayed" : "applied",
+				`id · ${result.reviewId}`,
+				`rev · ${result.revision.toString()}`,
+			]);
+			return ok("HOBO_CODE_REVIEW", text, { review: result, text });
+		} catch (error) {
+			if (error instanceof ReviewError) {
+				return fail(
+					`HOBO_CODE_REVIEW_${error.code.toUpperCase().replaceAll("-", "_")}`,
+					panel("✕ review", [error.message]),
+					["hobo-code review --help"],
+				);
+			}
+			throw error;
+		} finally {
+			control.close();
+		}
 	}
 
 	if (verb === "agent") {

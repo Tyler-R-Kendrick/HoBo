@@ -104,7 +104,7 @@ const captureScreenshot = async (command) => {
   host.style.visibility = "hidden";
   try {
     const blob = await pngBlob();
-    const response = await fetch(captureUrl("screenshot"), { method: "POST", body: blob, credentials: "omit" });
+    const response = await fetch(captureUrl("screenshot"), { method: "POST", body: await blob.arrayBuffer(), credentials: "omit" });
     const result = await response.json(); resultToControls(command, response.ok, result); status.textContent = response.ok ? "Screenshot saved to Evidence." : result.error || "Screenshot failed";
   } catch (error) { const result={error:String(error)}; resultToControls(command,false,result); status.textContent="Screenshot permission was denied or capture failed"; }
   finally { host.style.visibility = ""; }
@@ -129,9 +129,9 @@ const startRecording = async (command) => {
     if(stopped)return;stopped=true;listeners.forEach(([node,type,listener,options])=>node.removeEventListener(type,listener,options));
     const finished=new Promise(resolve=>recorder.addEventListener("stop",resolve,{once:true})); recorder.stop(); await finished; stream.getTracks().forEach(track=>track.stop());
     const video=new Blob(chunks,{type:recorder.mimeType||"video/webm"});
-    const videoResponse=await fetch(captureUrl("recording-video"),{method:"POST",body:video,credentials:"omit"});const videoResult=await videoResponse.json();if(!videoResponse.ok)throw Error(videoResult.error||"video upload failed");
+    const videoResponse=await fetch(captureUrl("recording-video"),{method:"POST",body:await video.arrayBuffer(),credentials:"omit"});const videoResult=await videoResponse.json();if(!videoResponse.ok)throw Error(videoResult.error||"video upload failed");
     const manifest={schemaVersion:"hobo.code.browser-recording/v1",id:crypto.randomUUID(),title:document.title||"Browser recording",status:statusValue,startUrl,endUrl:location.href,durationMs:Date.now()-started,viewport:{width:innerWidth,height:innerHeight},actions,checkpoints};
-    const response=await fetch(captureUrl("recording-manifest"),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({manifest,videoArtifactRef:videoResult.artifactRef}),credentials:"omit"});const result=await response.json();resultToControls({type:"record",action:"stop"},response.ok,result);status.textContent=response.ok?"Recording saved to Evidence.":result.error||"Recording failed";return result;
+    const response=await fetch(captureUrl("recording-manifest"),{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify({manifest,videoArtifactRef:videoResult.artifactRef}),credentials:"omit"});const result=await response.json();resultToControls({type:"record",action:"stop"},response.ok,result);status.textContent=response.ok?"Recording saved to Evidence.":result.error||"Recording failed";return result;
   };
   stream.getVideoTracks()[0]?.addEventListener("ended",()=>stop("interrupted").catch(()=>{}),{once:true});
   evidenceRecording={stop}; recordingStop.hidden=false; setOpen(false); recordingStop.focus(); resultToControls(command,true,{recording:true}); status.textContent="Recording actions and state changes.";

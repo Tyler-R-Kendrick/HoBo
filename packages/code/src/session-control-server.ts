@@ -529,6 +529,12 @@ export async function startSessionControlServer(
 				url.pathname === `/__hobo/evidence/api/actions/${controlsCapability}`
 			) {
 				const origin = request.headers.origin;
+				if (!origin || !controlsOrigins.has(origin)) {
+					json(response, 403, {
+						error: "evidence action origin is not registered",
+					});
+					return;
+				}
 				if (origin) response.setHeader("access-control-allow-origin", origin);
 				const message = parseEvidenceOverlayMessage(
 					{

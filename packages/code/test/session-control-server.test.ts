@@ -211,6 +211,18 @@ describe("resident session loopback server", () => {
 				},
 			);
 			expect(foreignCapture.status).toBe(403);
+			const foreignAction = await fetch(
+				server.controlsUrlTemplate.replace("/controls/", "/api/actions/"),
+				{
+					method: "POST",
+					headers: {
+						origin: "https://attacker.example",
+						"content-type": "text/plain",
+					},
+					body: JSON.stringify({ type: "report" }),
+				},
+			);
+			expect(foreignAction.status).toBe(403);
 			const actionResponse = await fetch(
 				`${server.controlsUrlTemplate.replace("/controls/", "/api/captures/")}?kind=screenshot&subject=browser%3Acurrent`,
 				{

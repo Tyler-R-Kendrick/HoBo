@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 export type EvidenceOverlayMessage =
 	| {
 			readonly type: "annotate";
@@ -33,10 +35,49 @@ export interface EvidenceOverlayBridgeOptions {
 
 export interface EvidenceOverlayControlsOptions {
 	readonly parentOrigin: string;
+	/** Read-only report capability used by the direct Evidence link. */
+	readonly reportUrl?: string;
 	readonly sessionId?: string;
 	/** Controls-origin credential; never exposed to the application bridge. */
 	readonly capabilityAuthorization?: string;
 }
+
+// public-contract: stable same-origin route shared by browser-debug hosts.
+export const EVIDENCE_OVERLAY_BO_PATH = "/__hobo/evidence/bo-idle.png";
+
+let boIdlePng: Buffer | undefined;
+
+function readEvidenceOverlayBoIdlePng(): Buffer {
+	boIdlePng ??= readFileSync(new URL("../assets/bo-idle.png", import.meta.url));
+	return boIdlePng;
+}
+
+/** Same-origin response for the canonical browser-debug launcher art. */
+export function evidenceOverlayBoIdleResponse(head = false): Response {
+	return new Response(
+		head ? null : new Uint8Array(readEvidenceOverlayBoIdlePng()),
+		{
+			headers: {
+				"cache-control": "public, max-age=3600, immutable",
+				"content-type": "image/png",
+			},
+		},
+	);
+}
+
+const BO_LAUNCHER_HTML = `<button class="launcher" type="button" title="Open Evidence" aria-label="Open Evidence" aria-expanded="false" aria-controls="hobo-evidence-controls"><span class="bo" aria-hidden="true"></span></button>`;
+
+const BO_LAUNCHER_CSS = `
+.launcher{display:block;width:5.2rem;height:5.75rem;padding:0;border:0;background:transparent;color:#101010;cursor:pointer;filter:drop-shadow(1px 0 0 #f2f1ec) drop-shadow(-1px 0 0 #f2f1ec) drop-shadow(0 1px 0 #f2f1ec) drop-shadow(0 -1px 0 #f2f1ec) drop-shadow(0 .28rem .18rem rgba(0,0,0,.28));transition:filter 140ms ease,transform 140ms ease}
+.launcher[hidden]{display:none}
+.launcher:hover{filter:drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(0 .38rem .22rem rgba(0,0,0,.36));transform:translateY(-.12rem)}
+.launcher:active{transform:translateY(.08rem)}
+.launcher:focus-visible{outline:3px solid #c5301c;outline-offset:4px;border-radius:12px}
+.launcher[aria-expanded="true"]{display:none}
+.bo{display:block;width:5.175rem;height:5.75rem;background:url("${EVIDENCE_OVERLAY_BO_PATH}") 0 0/62.1rem 5.75rem no-repeat;animation:hobo-bo-idle 7s steps(1,end) infinite}
+.recording-stop{min-height:2.75rem;padding:.7rem 1rem;border:3px solid #101010;border-radius:4px;background:#fff;color:#101010;box-shadow:3px 3px 0 #101010;font:400 1rem/1 Chewy,"Arial Rounded MT Bold",system-ui,sans-serif;cursor:pointer}.recording-stop:hover{background:#c5301c;color:#fff}.recording-stop:focus-visible{outline:3px solid #c5301c;outline-offset:4px}.recording-stop[hidden]{display:none}
+@keyframes hobo-bo-idle{0%,55%,80%,87%,94%,100%{background-position-x:0}58%{background-position-x:-5.175rem}60%{background-position-x:-10.35rem}62%{background-position-x:-15.525rem}64%{background-position-x:-20.7rem}66%{background-position-x:-25.875rem}68%{background-position-x:-31.05rem}70%{background-position-x:-36.225rem}72%{background-position-x:-41.4rem}74%{background-position-x:-46.575rem}76%{background-position-x:-51.75rem}90%{background-position-x:-56.925rem}}
+`;
 
 export interface EvidenceOverlayWrapperOptions {
 	readonly appUrl: string;
@@ -46,18 +87,14 @@ export interface EvidenceOverlayWrapperOptions {
 const BRIDGE_CSS = `
 :host{all:initial;position:fixed;z-index:2147483647;right:1rem;bottom:1rem;color:#101010;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 *{box-sizing:border-box}
-button{font:400 1rem/1 Chewy,"Arial Rounded MT Bold",system-ui,sans-serif}
-.launcher{min-height:2.75rem;padding:.7rem 1rem;border:3px solid #101010;border-radius:4px;background:#fff;color:#101010;box-shadow:4px 4px 0 #101010;cursor:pointer;letter-spacing:.04em;transform:rotate(-1deg)}
-.launcher:hover{background:#c5301c;color:#fff}
-.launcher:focus-visible{outline:3px solid #c5301c;outline-offset:4px}
-.launcher[aria-expanded="true"]{display:none}
+${BO_LAUNCHER_CSS}
 .panel{position:absolute;right:0;bottom:0;width:min(26rem,calc(100vw - 2rem));height:min(42rem,calc(100vh - 2rem));overflow:hidden;border:3px solid #101010;border-radius:18px 18px 4px 18px;background:#fff;box-shadow:6px 6px 0 #101010;transform-origin:bottom right;animation:hobo-evidence-in 160ms cubic-bezier(.16,1,.3,1)}
 .panel[hidden]{display:none}
 iframe{display:block;width:100%;height:100%;border:0;background:#fff}
 .status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 @keyframes hobo-evidence-in{from{opacity:.75;transform:translateY(.5rem) scale(.98)}to{opacity:1;transform:none}}
 @media (max-width: 42rem){:host{right:.75rem;bottom:.75rem}.panel{position:fixed;inset:auto .5rem .5rem;height:min(72vh,42rem);width:auto;border-radius:18px 18px 4px 4px}}
-@media (prefers-reduced-motion: reduce){.panel{animation:none}.launcher{scroll-behavior:auto}}
+@media (prefers-reduced-motion: reduce){.panel{animation:none}.launcher{transition:none}.bo{animation:none}}
 `;
 
 const BROWSER_MESSAGE_PARSER = `
@@ -161,6 +198,14 @@ function scriptJson(value: unknown): string {
 		.replaceAll("\u2029", "\\u2029");
 }
 
+function htmlAttribute(value: string): string {
+	return value
+		.replaceAll("&", "&amp;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;");
+}
+
 /**
  * Render the capability-limited page bridge. Privileged fetches stay inside
  * the separate-origin controls frame; the host page receives no credential.
@@ -179,8 +224,8 @@ const host = document.createElement("div");
 host.dataset.hoboEvidenceOverlay = "";
 const shadow = host.attachShadow({ mode: "closed" });
 shadow.innerHTML = ${scriptJson(`<style>${BRIDGE_CSS}</style>
-<button class="launcher" type="button" aria-label="Open HoBo evidence controls" aria-expanded="false" aria-controls="hobo-evidence-controls">HoBo evidence</button>
-<button class="launcher recording-stop" type="button" hidden>Recording · Stop</button><section class="panel" id="hobo-evidence-controls" aria-label="HoBo evidence controls" hidden><iframe title="HoBo evidence controls" sandbox="allow-forms allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe></section>
+${BO_LAUNCHER_HTML}
+<button class="recording-stop" type="button" hidden>Recording · Stop</button><section class="panel" id="hobo-evidence-controls" aria-label="HoBo evidence controls" hidden><iframe title="HoBo evidence controls" sandbox="allow-forms allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"></iframe></section>
 <p class="status" role="status" aria-live="polite"></p>`)};
 const launcher = shadow.querySelector(".launcher");
 const panel = shadow.querySelector(".panel");
@@ -191,7 +236,7 @@ frame.src = controlsUrl.href;
 const setOpen = (open) => {
   panel.hidden = !open;
   launcher.setAttribute("aria-expanded", String(open));
-  launcher.setAttribute("aria-label", open ? "Close HoBo evidence controls" : "Open HoBo evidence controls");
+  launcher.setAttribute("aria-label", open ? "Close Evidence" : "Open Evidence");
   if (open) frame.focus(); else launcher.focus();
 };
 launcher.addEventListener("click", () => setOpen(panel.hidden));
@@ -232,6 +277,14 @@ export function renderEvidenceOverlayControls(
 	options: EvidenceOverlayControlsOptions,
 ): string {
 	const parentOrigin = trustedOrigin(options.parentOrigin, "parent origin");
+	const reportUrl =
+		options.reportUrl === undefined
+			? undefined
+			: absoluteHttpUrl(options.reportUrl, "report URL").href;
+	const reportAction =
+		reportUrl === undefined
+			? '<button type="button" data-command="report">Open Evidence</button>'
+			: `<a class="action" href="${htmlAttribute(reportUrl)}" target="_blank" rel="noopener noreferrer">Open Evidence</a>`;
 	const sessionId =
 		options.sessionId === undefined
 			? undefined
@@ -246,13 +299,13 @@ export function renderEvidenceOverlayControls(
 <meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
 <title>HoBo evidence controls</title><style>
 :root{color-scheme:light;--ink:#101010;--paper:#fff;--cream:#f2f1ec;--mute:#4a4a46;--spark:#c5301c;--go:#14672c}
-*{box-sizing:border-box}body{margin:0;padding:1rem;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}h1,h2,button{font-family:Chewy,"Arial Rounded MT Bold",system-ui,sans-serif;font-weight:400}h1{margin:0;font-size:1.8rem;line-height:1.1;letter-spacing:.01em;text-shadow:2px 2px 0 #e3e2de;transform:rotate(-1deg)}h2{margin:.25rem 0;font-size:1.35rem}p{margin:.35rem 0 1rem;color:var(--mute)}header{display:flex;align-items:start;justify-content:space-between;gap:1rem;border-bottom:3px solid var(--ink);padding-bottom:.85rem}.close{flex:0 0 auto}.action-group{margin:1rem 0}.action-group>h2{font-family:system-ui,sans-serif;font-size:.75rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}button,input,textarea{font:inherit}button{min-height:2.75rem;border:3px solid var(--ink);border-radius:4px;background:var(--paper);color:var(--ink);box-shadow:3px 3px 0 var(--ink);font-family:Chewy,"Arial Rounded MT Bold",system-ui,sans-serif;font-size:1.05rem;cursor:pointer;transform:rotate(-.5deg)}button:nth-child(even){transform:rotate(.5deg)}button:hover{background:var(--spark);color:#fff}button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--spark);outline-offset:3px}form{margin-top:1rem;padding-top:1rem;border-top:2px solid var(--ink)}label{display:block;margin:.65rem 0 .25rem;font-size:.8rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}input,textarea{width:100%;border:2px solid var(--ink);border-radius:4px;padding:.65rem;background:var(--cream);color:var(--ink)}textarea{min-height:5.5rem;resize:vertical}form button{width:100%;margin-top:.75rem;background:var(--ink);color:#fff}.status{min-height:1.5rem;margin-top:1rem;color:var(--go);font-weight:700}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;padding:1rem;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}h1,h2,button,.action{font-family:Chewy,"Arial Rounded MT Bold",system-ui,sans-serif;font-weight:400}h1{margin:0;font-size:1.8rem;line-height:1.1;letter-spacing:.01em;text-shadow:2px 2px 0 #e3e2de;transform:rotate(-1deg)}h2{margin:.25rem 0;font-size:1.35rem}p{margin:.35rem 0 1rem;color:var(--mute)}header{display:flex;align-items:start;justify-content:space-between;gap:1rem;border-bottom:1px solid var(--ink);padding-bottom:.85rem}.close{flex:0 0 auto}.action-group{margin:1rem 0}.action-group>h2{font-family:system-ui,sans-serif;font-size:.75rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}button,input,textarea{font:inherit}button,.action{display:grid;place-items:center;min-height:2.75rem;border:3px solid var(--ink);border-radius:4px;background:var(--paper);color:var(--ink);box-shadow:3px 3px 0 var(--ink);font-size:1.05rem;line-height:1;text-align:center;text-decoration:none;cursor:pointer;transform:rotate(-.5deg)}button:nth-child(even),.action:nth-child(even){transform:rotate(.5deg)}button:hover,.action:hover{background:var(--spark);color:#fff}button:active,.action:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}button:focus-visible,.action:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--spark);outline-offset:3px}form{margin-top:1rem;padding-top:1rem;border-top:2px solid var(--ink)}label{display:block;margin:.65rem 0 .25rem;font-size:.8rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}input,textarea{width:100%;border:2px solid var(--ink);border-radius:4px;padding:.65rem;background:var(--cream);color:var(--ink)}textarea{min-height:5.5rem;resize:vertical}form button{width:100%;margin-top:.75rem;background:var(--ink);color:#fff}.status{min-height:1.5rem;margin-top:1rem;color:var(--go);font-weight:700}
 @media (max-width: 32rem){body{padding:.75rem}.actions{grid-template-columns:1fr}h1{font-size:1.4rem}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}button:active{transform:none}}
 </style></head><body>
 <header><div><h1>Evidence desk</h1><p>Capture what happened. Review before changing code.</p></div><button class="close" type="button" data-close aria-label="Close HoBo evidence controls">Close</button></header>
 <main><section class="action-group" aria-labelledby="inspect-title"><h2 id="inspect-title">Inspect</h2><div class="actions">
-<button type="button" data-command="report">Open report</button><button type="button" data-command="replay">Replay session</button></div></section>
+${reportAction}<button type="button" data-command="replay">Replay session</button></div></section>
 <section class="action-group" aria-labelledby="capture-title"><h2 id="capture-title">Capture</h2><div class="actions">
 <button type="button" data-command="screenshot">Screenshot</button><button type="button" data-command="record">Record</button><button type="button" data-command="stop" hidden>Stop</button><button type="button" data-command="capability" hidden>Save as capability…</button></div></section>
 <form id="annotate"><h2>Annotate</h2><label for="annotation-selector">Element selector</label><input id="annotation-selector" name="selector" required maxlength="2048" autocomplete="off"><label for="annotation-note">Note</label><textarea id="annotation-note" name="note" required maxlength="8192"></textarea><button type="submit">Pin annotation</button></form>
@@ -276,11 +329,11 @@ export function renderEvidenceOverlayWrapper(
 	});
 	return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>HoBo evidence workspace</title><style>
-html,body,.app{width:100%;height:100%;margin:0;border:0}.launcher{position:fixed;z-index:2;right:1rem;bottom:1rem;min-height:2.75rem;padding:.7rem 1rem;border:3px solid #101010;border-radius:4px;background:#fff;color:#101010;box-shadow:4px 4px 0 #101010;font:400 1rem/1 Chewy,"Arial Rounded MT Bold",system-ui,sans-serif;cursor:pointer;transform:rotate(-1deg)}.launcher:hover{background:#c5301c;color:#fff}.launcher:focus-visible{outline:3px solid #c5301c;outline-offset:4px}.launcher[aria-expanded="true"]{display:none}.controls-shell{position:fixed;z-index:1;right:1rem;bottom:1rem;width:min(26rem,calc(100vw - 2rem));height:min(42rem,calc(100vh - 2rem));border:3px solid #101010;border-radius:18px 18px 4px 18px;background:#fff;box-shadow:6px 6px 0 #101010;overflow:hidden}.controls-shell[hidden]{display:none}.controls{width:100%;height:100%;border:0}
+html,body,.app{width:100%;height:100%;margin:0;border:0}${BO_LAUNCHER_CSS}.launcher{position:fixed;z-index:2;right:1rem;bottom:1rem}.controls-shell{position:fixed;z-index:1;right:1rem;bottom:1rem;width:min(26rem,calc(100vw - 2rem));height:min(42rem,calc(100vh - 2rem));border:3px solid #101010;border-radius:18px 18px 4px 18px;background:#fff;box-shadow:6px 6px 0 #101010;overflow:hidden}.controls-shell[hidden]{display:none}.controls{width:100%;height:100%;border:0}
 @media (max-width: 42rem){.launcher{right:.75rem;bottom:.75rem}.controls-shell{inset:auto .5rem .5rem;height:min(72vh,42rem);width:auto;border-radius:18px 18px 4px 4px}}
 @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
-</style></head><body><iframe class="app" title="Development application" referrerpolicy="no-referrer"></iframe><button class="launcher" type="button" aria-label="Open HoBo evidence controls" aria-expanded="false" aria-controls="hobo-evidence-wrapper-controls">HoBo evidence</button><section class="controls-shell" id="hobo-evidence-wrapper-controls" hidden><iframe class="controls" title="HoBo evidence controls" sandbox="allow-forms allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe></section><script>
-const cfg=${config};const controlsUrl=new URL(cfg.controlsUrl);const controlsOrigin=controlsUrl.origin;const app=document.querySelector(".app");const controls=document.querySelector(".controls");const shell=document.querySelector(".controls-shell");const launcher=document.querySelector(".launcher");app.src=cfg.appUrl;controls.src=cfg.controlsUrl;const setOpen=(open)=>{shell.hidden=!open;launcher.setAttribute("aria-expanded",String(open));launcher.setAttribute("aria-label",open?"Close HoBo evidence controls":"Open HoBo evidence controls");if(open)controls.focus();else launcher.focus()};launcher.addEventListener("click",()=>setOpen(shell.hidden));window.addEventListener("keydown",(event)=>{if(event.key==="Escape"&&!shell.hidden)setOpen(false)});${BROWSER_MESSAGE_PARSER}window.addEventListener("message",(event)=>{if(event.origin !== controlsOrigin || event.source !== controls.contentWindow)return;if(isRecord(event.data)&&exact(event.data,["type"])&&event.data.type==="overlay-close"){setOpen(false);return}const message=parse(event.data);if(!message)return;app.contentWindow?.postMessage(message,new URL(cfg.appUrl).origin);window.dispatchEvent(new CustomEvent("hobo:evidence-overlay",{detail:message}));fetch(new URL("/__hobo/evidence/api/actions/"+controlsUrl.pathname.split("/").pop(),controlsUrl),{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify(message),credentials:"omit"}).then(async(response)=>{const result=await response.json();if(response.ok&&typeof result.url==="string")window.open(result.url,"_blank","noopener,noreferrer")}).catch(()=>{})});
+</style></head><body><iframe class="app" title="Development application" referrerpolicy="no-referrer"></iframe>${BO_LAUNCHER_HTML.replace("hobo-evidence-controls", "hobo-evidence-wrapper-controls")}<section class="controls-shell" id="hobo-evidence-wrapper-controls" hidden><iframe class="controls" title="HoBo evidence controls" sandbox="allow-forms allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"></iframe></section><script>
+const cfg=${config};const controlsUrl=new URL(cfg.controlsUrl);const controlsOrigin=controlsUrl.origin;const app=document.querySelector(".app");const controls=document.querySelector(".controls");const shell=document.querySelector(".controls-shell");const launcher=document.querySelector(".launcher");app.src=cfg.appUrl;controls.src=cfg.controlsUrl;const setOpen=(open)=>{shell.hidden=!open;launcher.setAttribute("aria-expanded",String(open));launcher.setAttribute("aria-label",open?"Close Evidence":"Open Evidence");if(open)controls.focus();else launcher.focus()};launcher.addEventListener("click",()=>setOpen(shell.hidden));window.addEventListener("keydown",(event)=>{if(event.key==="Escape"&&!shell.hidden)setOpen(false)});${BROWSER_MESSAGE_PARSER}window.addEventListener("message",(event)=>{if(event.origin !== controlsOrigin || event.source !== controls.contentWindow)return;if(isRecord(event.data)&&exact(event.data,["type"])&&event.data.type==="overlay-close"){setOpen(false);return}const message=parse(event.data);if(!message)return;app.contentWindow?.postMessage(message,new URL(cfg.appUrl).origin);window.dispatchEvent(new CustomEvent("hobo:evidence-overlay",{detail:message}));fetch(new URL("/__hobo/evidence/api/actions/"+controlsUrl.pathname.split("/").pop(),controlsUrl),{method:"POST",headers:{"content-type":"text/plain"},body:JSON.stringify(message),credentials:"omit"}).then(async(response)=>{const result=await response.json();if(response.ok&&typeof result.url==="string")window.open(result.url,"_blank","noopener,noreferrer")}).catch(()=>{})});
 </script></body></html>`;
 }
 

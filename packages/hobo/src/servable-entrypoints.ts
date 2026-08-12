@@ -11,6 +11,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BindleDefinition } from "@hobo/bindles";
 import {
+	EVIDENCE_OVERLAY_BO_PATH,
+	evidenceOverlayBoIdleResponse,
 	renderEvidenceOverlayBridge,
 	renderEvidenceOverlayWrapper,
 } from "@hobo/code";
@@ -150,6 +152,12 @@ function applyEvidenceOverlay(
 		...entry,
 		handler: async (request) => {
 			const requestUrl = new URL(request.url);
+			if (
+				(request.method === "GET" || request.method === "HEAD") &&
+				requestUrl.pathname === EVIDENCE_OVERLAY_BO_PATH
+			) {
+				return evidenceOverlayBoIdleResponse(request.method === "HEAD");
+			}
 			const controls = new URL(controlsUrl);
 			if (!controls.searchParams.has("parentOrigin")) {
 				controls.searchParams.set("parentOrigin", requestUrl.origin);
@@ -186,7 +194,10 @@ function applyEvidenceOverlay(
 			const bodyEnd = html.toLowerCase().lastIndexOf("</body>");
 			if (
 				bodyEnd >= 0 &&
-				cspAllowsInlineScript(response.headers.get("content-security-policy"))
+				cspAllowsEvidenceBridge(
+					response.headers.get("content-security-policy"),
+					requestUrl.origin,
+				)
 			) {
 				return htmlResponse(
 					response,
@@ -204,7 +215,7 @@ function applyEvidenceOverlay(
 			headers.delete("content-security-policy-report-only");
 			headers.set(
 				"content-security-policy",
-				`default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-src ${requestUrl.origin} ${controls.origin}`,
+				`default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src ${requestUrl.origin}; frame-src ${requestUrl.origin} ${controls.origin}`,
 			);
 			return new Response(wrapper, responseInit(response, headers));
 		},
@@ -223,7 +234,10 @@ function discoveredEvidenceControlsUrl(
 	return value || undefined;
 }
 
-function cspAllowsInlineScript(value: string | null): boolean {
+function cspAllowsEvidenceBridge(
+	value: string | null,
+	appOrigin: string,
+): boolean {
 	if (value === null) return true;
 	return value.split(",").every((policy) => {
 		const directives = new Map(
@@ -233,21 +247,39 @@ function cspAllowsInlineScript(value: string | null): boolean {
 				.filter((parts) => parts[0]?.length)
 				.map((parts) => [parts[0]?.toLowerCase() ?? "", parts.slice(1)]),
 		);
-		const sources =
+		const scriptSources =
 			directives.get("script-src-elem") ??
 			directives.get("script-src") ??
 			directives.get("default-src");
-		if (sources === undefined) return true;
-		return (
-			sources.includes("'unsafe-inline'") &&
-			!sources.some(
-				(source) =>
-					source.startsWith("'nonce-") ||
+		const styleSources =
+			directives.get("style-src-elem") ??
+			directives.get("style-src") ??
+			directives.get("default-src");
+		const imageSources =
+			directives.get("img-src") ?? directives.get("default-src");
+		const allowsInline = (sources: readonly string[] | undefined) =>
+			sources === undefined ||
+			(sources.includes("'unsafe-inline'") &&
+				!sources.some(
+					(source) =>
+						source.startsWith("'nonce-") ||
 					source.startsWith("'sha256-") ||
 					source.startsWith("'sha384-") ||
 					source.startsWith("'sha512-") ||
-					source === "'strict-dynamic'",
-			)
+						source === "'strict-dynamic'",
+				));
+		const scheme = `${new URL(appOrigin).protocol}`;
+		const allowsImage =
+			imageSources === undefined ||
+			imageSources.some(
+				(source) =>
+					source === "*" ||
+					source === "'self'" ||
+					source === appOrigin ||
+					source === scheme,
+			);
+		return (
+			allowsInline(scriptSources) && allowsInline(styleSources) && allowsImage
 		);
 	});
 }

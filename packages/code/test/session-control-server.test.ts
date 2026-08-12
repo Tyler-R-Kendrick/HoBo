@@ -284,7 +284,18 @@ describe("resident session loopback server", () => {
 			expect(await report.text()).toContain("Current development evidence");
 			const controls = await fetch(server.controlsUrl("http://127.0.0.1:4173"));
 			expect(controls.status).toBe(200);
-			expect(await controls.text()).toContain("Evidence desk");
+			const controlsHtml = await controls.text();
+			expect(controlsHtml).toContain("Evidence desk");
+			const evidenceHref = /href="([^"]+\?report=[^"]+)"/u.exec(
+				controlsHtml,
+			)?.[1];
+			expect(evidenceHref).toBeDefined();
+			expect(evidenceHref).not.toContain("test-token");
+			const linkedEvidence = await fetch(evidenceHref!);
+			expect(linkedEvidence.status).toBe(200);
+			expect(await linkedEvidence.text()).toContain(
+				"Current development evidence",
+			);
 			const screenshot = Uint8Array.from([
 				0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3,
 			]);

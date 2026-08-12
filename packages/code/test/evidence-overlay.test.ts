@@ -72,7 +72,10 @@ describe("evidence overlay bridge", () => {
 		});
 
 		expect(script).toContain('attachShadow({ mode: "closed" })');
-		expect(script).toContain('aria-label=\\"Open HoBo evidence controls\\"');
+		expect(script).toContain('aria-label=\\"Open Evidence\\"');
+		expect(script).toContain('class=\\"bo\\"');
+		expect(script).toContain("/__hobo/evidence/bo-idle.png");
+		expect(script).not.toContain(">HoBo evidence</button>");
 		expect(script).toContain('title=\\"HoBo evidence controls\\"');
 		expect(script).toContain("event.origin !== controlsOrigin");
 		expect(script).toContain("event.source !== frame.contentWindow");
@@ -111,6 +114,7 @@ describe("evidence overlay privileged controls", () => {
 	it("renders every approved action without exposing credentials", () => {
 		const html = renderEvidenceOverlayControls({
 			parentOrigin: "http://localhost:4173",
+			reportUrl: "http://127.0.0.1:4319/__hobo/evidence?report=read-only",
 			sessionId: "session-17",
 		});
 
@@ -130,7 +134,12 @@ describe("evidence overlay privileged controls", () => {
 		expect(html).toContain("prefers-reduced-motion: reduce");
 		expect(html).toContain("@media (max-width: 32rem)");
 		expect(html).toContain("postMessage(message,parentOrigin)");
-		expect(html).toContain("Opening evidence report…");
+		expect(html).toContain(
+			'href="http://127.0.0.1:4319/__hobo/evidence?report=read-only"',
+		);
+		expect(html).toContain('target="_blank"');
+		expect(html).toContain("Open Evidence");
+		expect(html).toContain("[hidden]{display:none!important}");
 		expect(html).toContain("Recording actions, navigation, and state changes.");
 		expect(html).toContain("Save as capability…");
 		expect(html).not.toContain('postMessage(message, "*")');
@@ -139,19 +148,32 @@ describe("evidence overlay privileged controls", () => {
 
 	it("requires an exact parent origin", () => {
 		expect(() =>
-			renderEvidenceOverlayControls({ parentOrigin: "https://app.example/x" }),
+			renderEvidenceOverlayControls({
+				parentOrigin: "https://app.example/x",
+				reportUrl: "https://controls.example/report",
+			}),
 		).toThrow(/parent origin/);
 	});
 
 	it("keeps repository-write authorization inside the controls document", () => {
 		const html = renderEvidenceOverlayControls({
 			parentOrigin: "http://localhost:4173",
+			reportUrl: "http://127.0.0.1:4319/__hobo/evidence?report=read-only",
 			capabilityAuthorization: "Bearer controls-only",
 		});
 
 		expect(html).toContain("Bearer controls-only");
 		expect(html).toContain('fetch(location.pathname.replace("/controls/"');
 		expect(html).toContain("event.source!==window.parent");
+	});
+
+	it("preserves the message-based report action for callers without a report URL", () => {
+		const html = renderEvidenceOverlayControls({
+			parentOrigin: "http://localhost:4173",
+		});
+
+		expect(html).toContain('data-command="report"');
+		expect(html).toContain('post({type:"report"},command)');
 	});
 });
 
@@ -164,7 +186,11 @@ describe("evidence overlay iframe-wrapper fallback", () => {
 
 		expect(html).toContain('title="Development application"');
 		expect(html).toContain('title="HoBo evidence controls"');
-		expect(html).toContain('aria-label="Open HoBo evidence controls"');
+		expect(html).toContain('aria-label="Open Evidence"');
+		expect(html).toContain('class="bo"');
+		expect(html).toContain(".launcher[hidden]{display:none}");
+		expect(html).toContain("allow-popups");
+		expect(html).not.toContain("allow-popups-to-escape-sandbox");
 		expect(html).toContain("event.origin !== controlsOrigin");
 		expect(html).toContain("event.source !== controls.contentWindow");
 		expect(html).toContain("@media (max-width: 42rem)");

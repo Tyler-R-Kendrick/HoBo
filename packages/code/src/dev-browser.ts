@@ -3,7 +3,11 @@ import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import { extname, join, relative, resolve, sep } from "node:path";
 
-import { renderEvidenceOverlayBridge } from "./evidence-overlay.js";
+import {
+	EVIDENCE_OVERLAY_BO_PATH,
+	evidenceOverlayBoIdleResponse,
+	renderEvidenceOverlayBridge,
+} from "./evidence-overlay.js";
 import { startSessionControlServer } from "./session-control-server.js";
 
 export interface DevBrowserSessionOptions {
@@ -154,14 +158,18 @@ export async function startDevBrowserSession(
 	const appServer = createServer((request, response) => {
 		const url = new URL(request.url ?? "/", "http://127.0.0.1");
 		const result =
-			request.method === "GET" && url.pathname === "/__hobo/evidence/bridge.js"
-				? new Response(bridge, {
-						headers: {
-							"cache-control": "no-store",
-							"content-type": "text/javascript; charset=utf-8",
-						},
-					})
-				: serveStatic(publicDir, request);
+			(request.method === "GET" || request.method === "HEAD") &&
+			url.pathname === EVIDENCE_OVERLAY_BO_PATH
+				? evidenceOverlayBoIdleResponse(request.method === "HEAD")
+				: request.method === "GET" &&
+						url.pathname === "/__hobo/evidence/bridge.js"
+					? new Response(bridge, {
+							headers: {
+								"cache-control": "no-store",
+								"content-type": "text/javascript; charset=utf-8",
+							},
+						})
+					: serveStatic(publicDir, request);
 		void send(response, result).catch((error) =>
 			response.destroy(error as Error),
 		);

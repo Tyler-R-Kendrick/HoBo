@@ -171,6 +171,15 @@ describe("session replay deep bindle serve integration", () => {
 			html.indexOf('data-hobo-evidence-overlay-bridge="1"'),
 		);
 		expect(web.headers.get("x-hobo-evidence-overlay")).toBe("bridge");
+		const bo = await entries
+			.find((entry) => entry.name === "web")!
+			.handler(
+				new Request("http://127.0.0.1:4000/__hobo/evidence/bo-idle.png"),
+			);
+		expect(bo.headers.get("content-type")).toBe("image/png");
+		expect(new Uint8Array(await bo.arrayBuffer()).slice(0, 8)).toEqual(
+			Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+		);
 
 		const api = await entries
 			.find((entry) => entry.name === "api")!
@@ -187,7 +196,8 @@ describe("session replay deep bindle serve integration", () => {
 				return new Response("<html><body>locked</body></html>", {
 					headers: {
 						"content-type": "text/html",
-						"content-security-policy": "default-src 'self'; script-src 'self'",
+						"content-security-policy":
+							"default-src 'self'; script-src 'unsafe-inline'; style-src 'none'; img-src 'none'",
 						etag: '"locked-v1"',
 						digest: "sha-256=:stale:",
 						integrity: "stale",

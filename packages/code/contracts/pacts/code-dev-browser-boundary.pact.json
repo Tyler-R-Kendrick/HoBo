@@ -15,6 +15,14 @@
 			}
 		},
 		{
+			"description": "serve the canonical Bo idle launcher sheet",
+			"request": { "method": "GET", "path": "/__hobo/evidence/bo-idle.png" },
+			"response": {
+				"status": 200,
+				"headers": { "content-type": "image/png" }
+			}
+		},
+		{
 			"description": "serve the separate-origin browser evidence controls",
 			"request": { "method": "GET", "path": "/__hobo/evidence/controls/{capability}" },
 			"response": {

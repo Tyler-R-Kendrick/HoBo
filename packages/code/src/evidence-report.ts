@@ -12,8 +12,7 @@ export const EVIDENCE_REPORT_SECTIONS = [
 	"replay",
 ] as const;
 
-export type EvidenceReportSectionId =
-	(typeof EVIDENCE_REPORT_SECTIONS)[number];
+export type EvidenceReportSectionId = (typeof EVIDENCE_REPORT_SECTIONS)[number];
 export type EvidenceState =
 	| "claimed"
 	| "captured"
@@ -238,7 +237,9 @@ function assertPortableArtifact(artifact: EvidenceArtifact): void {
 		parts[0] !== "assets" ||
 		parts.some((part) => part === "" || part === "." || part === "..") ||
 		artifact.path.includes("\\") ||
-		/[\u0000-\u001f?#]/u.test(artifact.path) ||
+		artifact.path.includes("?") ||
+		artifact.path.includes("#") ||
+		[...artifact.path].some((character) => character.charCodeAt(0) < 32) ||
 		!/^[a-f0-9]{64}$/u.test(artifact.sha256)
 	) {
 		throw new Error(`unsafe portable artifact: ${artifact.id}`);

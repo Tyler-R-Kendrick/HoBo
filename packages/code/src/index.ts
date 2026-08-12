@@ -273,7 +273,6 @@ export {
 	type ModelsStatus,
 	modelsHumanSummary,
 } from "./models.js";
-
 export {
 	parseEvidenceTriple,
 	parseGuestEvidenceSubmission,
@@ -456,6 +455,12 @@ export {
 	renderOpenUiHtml,
 	validateLockedVisual,
 } from "./visual.js";
+export {
+	formatLiveEndpoints,
+	matchWorkspaceAction,
+	resolveRunnableProject,
+	type WorkspaceAction,
+} from "./workspace-actions.js";
 export {
 	CODE_WORLD_SCHEMA,
 	type CodeWorldCapabilities,

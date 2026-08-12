@@ -136,6 +136,10 @@ import {
 	virtualPaneCommand,
 } from "./virtual-pane.js";
 import { findWorkspaceRoot } from "./workspace.js";
+import {
+	matchWorkspaceAction,
+	resolveRunnableProject,
+} from "./workspace-actions.js";
 import { describeCodeWorlds } from "./worlds.js";
 
 export const HOBO_CODE_VERBS = [
@@ -2390,6 +2394,10 @@ export async function runHoboCodeCli(
 			}
 			const text = panel("◎ dev", [
 				`bindle · ${deployed.appUrl}`,
+				...(deployed.namedUrl ? [`named · ${deployed.namedUrl}`] : []),
+				`debug · ${deployed.debugUrl}`,
+				`controls · ${deployed.controlsUrl}`,
+				`report · ${deployed.reportUrl}`,
 				`yard · local`,
 				`evidence · ${displayPath(deployed.evidencePath, { hoboHome, cwd: projectDir })}`,
 				...(once ? ["probe · passed; stopped"] : ["live · Ctrl-C to stop"]),
@@ -2403,6 +2411,9 @@ export async function runHoboCodeCli(
 					debugUrl: deployed.debugUrl,
 					controlsUrl: deployed.controlsUrl,
 					reportUrl: deployed.reportUrl,
+					...(deployed.namedUrl !== undefined
+						? { namedUrl: deployed.namedUrl }
+						: {}),
 					evidencePath: deployed.evidencePath,
 					served: {
 						appStatus: appProbe.status,
@@ -3011,8 +3022,15 @@ export async function runHoboCodeCli(
 	// ── Multi-node compute (capacity-aware dispatch; not a chat/hive product) ──
 
 	const examplePrompt = args.join(" ");
+	const workspaceAction =
+		verb === "dispatch" ? matchWorkspaceAction(examplePrompt) : undefined;
 	const matchedExample =
-		verb === "dispatch" ? matchExampleRequest(examplePrompt) : undefined;
+		workspaceAction?.kind === "create" ||
+		workspaceAction?.kind === "create-and-run"
+			? { id: workspaceAction.exampleId }
+			: verb === "dispatch"
+				? matchExampleRequest(examplePrompt)
+				: undefined;
 	if (matchedExample) {
 		const name =
 			(typeof flags.name === "string" && flags.name) || matchedExample.id;
@@ -3023,6 +3041,12 @@ export async function runHoboCodeCli(
 			outputDir: out,
 			appName: name,
 		});
+		if (workspaceAction?.kind === "create-and-run") {
+			return runHoboCodeCli(
+				["dev", "--cwd", copied.outputDir, "--port", "0", "--debug-port", "0"],
+				deps,
+			);
+		}
 		const text = panel("✦ ex", [
 			[matchedExample.id, shortId(name, 10), `${copied.files.length}f`].join(
 				"·",
@@ -3034,6 +3058,21 @@ export async function runHoboCodeCli(
 			stationId: platform.station.stationId,
 			text,
 		});
+	}
+
+	if (workspaceAction?.kind === "run" || workspaceAction?.kind === "debug") {
+		const target = resolveRunnableProject(projectDir);
+		if (target === undefined) {
+			return fail(
+				"HOBO_CODE_DEV_FAILED",
+				panel("✕ run", ["no Bindle to run — create a hello world app first"]),
+				['say "create a hello world app"', "hobo-code help"],
+			);
+		}
+		return runHoboCodeCli(
+			["dev", "--cwd", target, "--port", "0", "--debug-port", "0"],
+			deps,
+		);
 	}
 
 	if (!platform.features.distributed && verb === "dispatch") {

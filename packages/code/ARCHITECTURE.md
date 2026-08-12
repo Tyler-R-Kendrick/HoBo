@@ -182,7 +182,7 @@ Presentation helpers stay pure and unit-tested:
 - session uses `title` override — 4-line box: brand · run · handback LED · next (LED implies live/final)
 - `renderOpenUiHtml` — dark shell + `1 · generate` rail + seal; lede `→edit|→lock|→codegen`; foot `Edit→lock|Lock→codegen|seal`
 - `formatHoboCodeResult` — closed panels: one-scan happy path is 3 lines (title · body · rule, soft omitted); FIX + code inline on fails
-- `example-catalog.ts` — load `examples/` from the package (and in-repo `examples/` when present); Bo instructions bake that catalog; a hello-world prompt materializes the example without `hobo`
+- `example-catalog.ts` + `workspace-actions.ts` — Bo TUI turns "create a hello world app" / "run it" / "debug it" into a copied example plus live bindle/debug/controls/report URLs, without `hobo` or a network fetch
 - template `public/index.html` + `styles.css` — scaffold first paint + matching step rail
 - product binary `hobo-code`: flat verbs, dispatch default, no nested buzz
 

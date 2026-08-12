@@ -944,6 +944,11 @@ export interface ShellHost {
 	/** Handle a user chat prompt; return assistant text. */
 	readonly complete: (prompt: string) => Promise<string>;
 	/**
+	 * Deterministic create / run / debug turns. When this returns text, the
+	 * shell must not send the prompt to the completion engine.
+	 */
+	readonly tryWorkspaceAction?: (prompt: string) => Promise<string | null>;
+	/**
 	 * Streaming turn (Slice 2, engine wired): events render live; the promise
 	 * resolves with the final turn result. When absent, `complete` is used.
 	 */
@@ -1118,6 +1123,14 @@ export async function runInteractiveShell(
 	let turnInFlight = false;
 
 	const onSubmit = async (prompt: string) => {
+		if (options.host.tryWorkspaceAction) {
+			const handled = await options.host.tryWorkspaceAction(prompt);
+			if (handled !== null) {
+				if (quit) return;
+				state = appendAssistant(state, handled.slice(0, 8000), "idle");
+				return;
+			}
+		}
 		if (options.host.streamTurn) {
 			turnInFlight = true;
 			let view = EMPTY_TURN;

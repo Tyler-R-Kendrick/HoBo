@@ -22,28 +22,52 @@ export interface DevBrowserSession {
 	readonly controlsUrl: string;
 	readonly reportUrl: string;
 	readonly evidencePath: string;
+	readonly namedUrl?: string;
 	readonly close: () => Promise<void>;
 }
 
 function waitForAppUrl(
 	child: ChildProcessWithoutNullStreams,
 	timeoutMs: number,
-): Promise<string> {
+): Promise<{ readonly appUrl: string; readonly namedUrl?: string }> {
 	return new Promise((resolveUrl, reject) => {
 		let output = "";
 		let settled = false;
-		const finish = (error?: Error, url?: string): void => {
+		let appUrl: string | undefined;
+		let namedUrl: string | undefined;
+		let grace: ReturnType<typeof setTimeout> | undefined;
+		const finish = (
+			error?: Error,
+			urls?: { readonly appUrl: string; readonly namedUrl?: string },
+		): void => {
 			if (settled) return;
 			settled = true;
 			clearTimeout(timer);
+			if (grace) clearTimeout(grace);
 			if (error) reject(error);
-			else if (url) resolveUrl(url);
+			else if (urls) resolveUrl(urls);
 			else reject(new Error("hobo dev did not report a URL"));
+		};
+		const maybeFinish = (): void => {
+			if (!appUrl) return;
+			if (namedUrl) finish(undefined, { appUrl, namedUrl });
+			else {
+				grace ??= setTimeout(() => {
+					if (!appUrl) return;
+					finish(
+						undefined,
+						namedUrl ? { appUrl, namedUrl } : { appUrl },
+					);
+				}, 400);
+			}
 		};
 		const inspect = (chunk: Buffer): void => {
 			output = `${output}${chunk.toString("utf8")}`.slice(-8192);
-			const match = /hobo dev: listening on (https?:\/\/\S+)/u.exec(output);
-			if (match?.[1]) finish(undefined, match[1]);
+			const listen = /hobo dev: listening on (https?:\/\/\S+)/u.exec(output);
+			if (listen?.[1]) appUrl = listen[1];
+			const named = /named=(https?:\/\/\S+)/u.exec(output);
+			if (named?.[1]) namedUrl = named[1];
+			maybeFinish();
 		};
 		child.stdout.on("data", inspect);
 		child.stderr.on("data", inspect);
@@ -112,19 +136,23 @@ export async function startDevBrowserSession(
 	);
 
 	try {
-		const appUrl = await waitForAppUrl(
+		const started = await waitForAppUrl(
 			child,
 			options.startupTimeoutMs ?? 60_000,
 		);
-		const controlsUrl = evidence.controlsUrl(new URL(appUrl).origin, sessionId);
+		const controlsUrl = evidence.controlsUrl(
+			new URL(started.appUrl).origin,
+			sessionId,
+		);
 		let closed = false;
 		return {
 			sessionId,
-			appUrl,
-			debugUrl: appUrl,
+			appUrl: started.appUrl,
+			debugUrl: started.appUrl,
 			controlsUrl,
 			reportUrl: evidence.reportUrl,
 			evidencePath: join(options.hoboHome, "durable", "code", "evidence"),
+			...(started.namedUrl !== undefined ? { namedUrl: started.namedUrl } : {}),
 			close: async () => {
 				if (closed) return;
 				closed = true;

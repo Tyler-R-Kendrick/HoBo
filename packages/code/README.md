@@ -281,6 +281,8 @@ export HOBO_CODE_MODEL=openai/gpt-4.1
 # 2) Build
 hobo-code "add a settings page to the bindle"
 hobo-code "hello world app"      # copy examples/hello-world — no hobo CLI
+# In the Bo TUI: "create a hello world app" · "run it" · "debug it"
+# replies with the live bindle / debug / controls / report URLs
 hobo-code scaffold --name demo
 hobo-code dev --cwd demo          # run its Bindle on a local Yard + Evidence
 hobo-code status                 # plain English session hierarchy (default)

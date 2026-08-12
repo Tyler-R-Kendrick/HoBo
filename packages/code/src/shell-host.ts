@@ -10,6 +10,7 @@
  * - every reply teaches the equivalent one-shot command.
  */
 import { spawn } from "node:child_process";
+import { join } from "node:path";
 
 import {
 	formatHoboCodeResult,
@@ -18,8 +19,14 @@ import {
 	runHoboCodeCli,
 } from "./cli.js";
 import type { DevBrowserSession } from "./dev-browser.js";
+import { materializeExample } from "./example-catalog.js";
 import type { PendingApproval, ShellHost } from "./interactive-shell.js";
 import { formatUsage, type ShellEngine } from "./shell-engine.js";
+import {
+	formatLiveEndpoints,
+	matchWorkspaceAction,
+	resolveRunnableProject,
+} from "./workspace-actions.js";
 
 interface DispatchedTaskShape {
 	readonly taskId?: string;
@@ -117,6 +124,8 @@ export function createDefaultShellHost(
 	deps: DefaultShellHostOptions = {},
 ): ShellHost {
 	const engine = deps.engine ?? null;
+	const workspaceRoot = deps.cwd ?? process.cwd();
+	let lastProjectDir: string | undefined;
 	const devSessions = new Set<DevBrowserSession>();
 	const cliDeps: DefaultShellHostOptions = {
 		...deps,
@@ -183,6 +192,74 @@ export function createDefaultShellHost(
 				},
 			}
 		: {};
+	const tryWorkspaceAction = async (prompt: string): Promise<string | null> => {
+		const action = matchWorkspaceAction(prompt);
+		if (!action) return null;
+		if (action.kind === "create" || action.kind === "create-and-run") {
+			const outputDir = join(workspaceRoot, action.exampleId);
+			const copied = materializeExample({
+				exampleId: action.exampleId,
+				outputDir,
+				appName: action.exampleId,
+			});
+			lastProjectDir = copied.outputDir;
+			if (action.kind === "create") {
+				return [
+					`Created ${copied.templateId} at ${copied.outputDir}.`,
+					'src/bindle.ts is ready. Say "run it" or "debug it" for live endpoints.',
+				].join("\n");
+			}
+		}
+		const projectDir = resolveRunnableProject(workspaceRoot, lastProjectDir);
+		if (projectDir === undefined) {
+			return 'No Bindle to run. Say "create a hello world app" first.';
+		}
+		const result = await runHoboCodeCli(
+			["dev", "--cwd", projectDir, "--port", "0", "--debug-port", "0"],
+			{ ...cliDeps, json: false },
+		);
+		if (!result.ok) {
+			return formatHoboCodeResult(result, {
+				json: false,
+				dense: deps.dense === true,
+			});
+		}
+		const deployment =
+			result.data && typeof result.data === "object"
+				? (
+						result.data as {
+							readonly deployment?: {
+								readonly appUrl?: string;
+								readonly debugUrl?: string;
+								readonly controlsUrl?: string;
+								readonly reportUrl?: string;
+								readonly namedUrl?: string;
+							};
+						}
+					).deployment
+				: undefined;
+		if (
+			!deployment?.appUrl ||
+			!deployment.debugUrl ||
+			!deployment.controlsUrl ||
+			!deployment.reportUrl
+		) {
+			return formatHoboCodeResult(result, {
+				json: false,
+				dense: deps.dense === true,
+			});
+		}
+		return formatLiveEndpoints({
+			appUrl: deployment.appUrl,
+			debugUrl: deployment.debugUrl,
+			controlsUrl: deployment.controlsUrl,
+			reportUrl: deployment.reportUrl,
+			...(deployment.namedUrl !== undefined
+				? { namedUrl: deployment.namedUrl }
+				: {}),
+			emphasis: action.kind === "debug" ? "debug" : "run",
+		});
+	};
 	return {
 		...engineExtras,
 		async runVerb(argv) {
@@ -205,7 +282,10 @@ export function createDefaultShellHost(
 			await Promise.all([...devSessions].map((session) => session.close()));
 			devSessions.clear();
 		},
+		tryWorkspaceAction,
 		async complete(prompt) {
+			const handled = await tryWorkspaceAction(prompt);
+			if (handled !== null) return handled;
 			const result = await runHoboCodeCli([prompt], {
 				...deps,
 				json: false,

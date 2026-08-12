@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { bindle } from "@hobo/bindles";
 import { describe, expect, it } from "vitest";
 
@@ -7,6 +10,35 @@ import {
 } from "../src/servable-entrypoints.js";
 
 describe("session replay deep bindle serve integration", () => {
+	it("discovers the running hobo-code evidence capability", async () => {
+		const hoboHome = mkdtempSync(join(tmpdir(), "hobo-evidence-discovery-"));
+		try {
+			mkdirSync(join(hoboHome, "runtime", "code"), { recursive: true });
+			writeFileSync(
+				join(hoboHome, "runtime", "code", "evidence-controls-url"),
+				"http://127.0.0.1:4319/__hobo/evidence/controls/capability\n",
+			);
+			const definition = bindle("discovered-app", (b) => ({
+				web: b.web(
+					() => async () =>
+						new Response("<html><body>discovered</body></html>", {
+							headers: { "content-type": "text/html" },
+						}),
+				),
+			}));
+			const [web] = listServableEntrypoints(definition, {
+				env: { HOBO_HOME: hoboHome, HOBO_REPLAY: "0" },
+			});
+			const html = await (
+				await web!.handler(new Request("http://127.0.0.1:4000/"))
+			).text();
+			expect(html).toContain(
+				"controls/capability?parentOrigin=http%3A%2F%2F127.0.0.1%3A4000",
+			);
+		} finally {
+			rmSync(hoboHome, { recursive: true, force: true });
+		}
+	});
 	it("wraps every web entrypoint so HTML gets bootstrap and ingest works", async () => {
 		const definition = bindle("demo-app", (b) => {
 			const api = b.api(
@@ -156,6 +188,9 @@ describe("session replay deep bindle serve integration", () => {
 					headers: {
 						"content-type": "text/html",
 						"content-security-policy": "default-src 'self'; script-src 'self'",
+						etag: '"locked-v1"',
+						digest: "sha-256=:stale:",
+						integrity: "stale",
 					},
 				});
 			}),
@@ -177,6 +212,9 @@ describe("session replay deep bindle serve integration", () => {
 		expect(wrapperHtml).toContain(
 			"http://127.0.0.1:4319/__hobo/evidence/controls",
 		);
+		expect(wrapped.headers.has("etag")).toBe(false);
+		expect(wrapped.headers.has("digest")).toBe(false);
+		expect(wrapped.headers.has("integrity")).toBe(false);
 
 		const raw = await web!.handler(
 			new Request(
@@ -194,12 +232,16 @@ describe("session replay deep bindle serve integration", () => {
 			web: b.web(
 				() => async () =>
 					new Response("<html><body>safe</body></html>", {
-						headers: { "content-type": "text/html" },
+						headers: {
+							"content-type": "text/html",
+							"content-length": "30",
+							etag: '"safe-v1"',
+						},
 					}),
 			),
 		}));
 		const [web] = listServableEntrypoints(definition, {
-			env: {},
+			env: { HOBO_REPLAY: "0" },
 			evidenceControlsUrl: "http://127.0.0.1:4000/controls",
 		});
 		const response = await web!.handler(new Request("http://127.0.0.1:4000/"));
@@ -209,5 +251,72 @@ describe("session replay deep bindle serve integration", () => {
 		expect(response.headers.get("x-hobo-evidence-overlay")).toBe(
 			"refused-same-origin",
 		);
+		expect(response.headers.get("content-length")).toBe("30");
+		expect(response.headers.get("etag")).toBe('"safe-v1"');
+	});
+
+	it("leaves encoded HTML untouched instead of injecting invalid bytes", async () => {
+		const encoded = new Uint8Array([31, 139, 8, 0, 1, 2, 3, 4]);
+		const definition = bindle("encoded-app", (b) => ({
+			web: b.web(
+				() => async () =>
+					new Response(encoded, {
+						headers: {
+							"content-type": "text/html",
+							"content-encoding": "gzip",
+							"content-length": String(encoded.byteLength),
+							etag: '"encoded-v1"',
+						},
+					}),
+			),
+		}));
+		const [web] = listServableEntrypoints(definition, {
+			env: { HOBO_REPLAY: "0" },
+			evidenceControlsUrl: "http://127.0.0.1:4319/controls",
+		});
+
+		const response = await web!.handler(new Request("http://127.0.0.1:4000/"));
+		expect(new Uint8Array(await response.arrayBuffer())).toEqual(encoded);
+		expect(response.headers.get("content-encoding")).toBe("gzip");
+		expect(response.headers.get("content-length")).toBe("8");
+		expect(response.headers.get("etag")).toBe('"encoded-v1"');
+		expect(response.headers.get("x-hobo-evidence-overlay")).toBeNull();
+	});
+
+	it("drops stale body validators after injecting the bridge", async () => {
+		const staleHeaders = [
+			"content-length",
+			"etag",
+			"integrity",
+			"content-integrity",
+			"content-md5",
+			"digest",
+			"content-digest",
+			"repr-digest",
+		] as const;
+		const definition = bindle("validator-app", (b) => ({
+			web: b.web(
+				() => async () =>
+					new Response("<html><body>fresh</body></html>", {
+						headers: {
+							"content-type": "text/html",
+							...Object.fromEntries(
+								staleHeaders.map((name) => [name, "stale"]),
+							),
+						},
+					}),
+			),
+		}));
+		const [web] = listServableEntrypoints(definition, {
+			env: { HOBO_REPLAY: "0" },
+			evidenceControlsUrl: "http://127.0.0.1:4319/controls",
+		});
+
+		const response = await web!.handler(new Request("http://127.0.0.1:4000/"));
+		expect(await response.text()).toContain(
+			"data-hobo-evidence-overlay-bridge",
+		);
+		for (const name of staleHeaders)
+			expect(response.headers.has(name)).toBe(false);
 	});
 });

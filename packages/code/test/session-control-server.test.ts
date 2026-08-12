@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -91,6 +91,12 @@ describe("resident session loopback server", () => {
 			control,
 		});
 		try {
+			expect(
+				existsSync(join(hoboHome, "runtime", "code", "evidence-controls-url")),
+			).toBe(true);
+			expect(server.controlsUrlTemplate).toMatch(
+				/^http:\/\/127\.0\.0\.1:\d+\/__hobo\/evidence\/controls\/[A-Za-z0-9_-]+$/u,
+			);
 			const unauthorized = await fetch(
 				`http://127.0.0.1:${server.port}/code/sessions`,
 			);
@@ -193,6 +199,19 @@ describe("resident session loopback server", () => {
 			const controls = await fetch(server.controlsUrl("http://127.0.0.1:4173"));
 			expect(controls.status).toBe(200);
 			expect(await controls.text()).toContain("Evidence desk");
+			const actionResponse = await fetch(
+				`${server.controlsUrlTemplate.replace("/controls/", "/api/actions/")}`,
+				{
+					method: "POST",
+					headers: {
+						origin: "http://127.0.0.1:4173",
+						"content-type": "text/plain",
+					},
+					body: JSON.stringify({ type: "capture", kind: "screenshot" }),
+				},
+			);
+			expect(actionResponse.status).toBe(202);
+			expect(await actionResponse.json()).toMatchObject({ ok: true });
 
 			const headers = {
 				authorization: "Bearer test-token",
@@ -212,7 +231,13 @@ describe("resident session loopback server", () => {
 					}),
 				},
 			);
-			expect(evidenceResponse.status).toBe(201);
+			expect(evidenceResponse.status).toBe(200);
+			expect(await evidenceResponse.json()).toMatchObject({
+				kind: "test",
+				verification: "claimed",
+				origin: "hobo-code:control-server",
+				actor: "principal:local-developer",
+			});
 			const liveReport = await fetch(
 				`http://127.0.0.1:${server.port}/__hobo/evidence/api/report`,
 				{ headers },
@@ -229,6 +254,14 @@ describe("resident session loopback server", () => {
 						],
 					}),
 				]),
+			});
+			const portable = await fetch(
+				`http://127.0.0.1:${server.port}/__hobo/evidence/api/export`,
+				{ headers },
+			);
+			expect(await portable.json()).toMatchObject({
+				html: expect.stringContaining("portable export"),
+				manifest: expect.stringContaining('"controlsEnabled": false'),
 			});
 			const createdResponse = await fetch(
 				`http://127.0.0.1:${server.port}/code/commands`,

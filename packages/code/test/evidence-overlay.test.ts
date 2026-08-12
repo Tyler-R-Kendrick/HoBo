@@ -71,6 +71,8 @@ describe("evidence overlay bridge", () => {
 		expect(script).toContain('title=\\"HoBo evidence controls\\"');
 		expect(script).toContain("event.origin !== controlsOrigin");
 		expect(script).toContain("event.source !== frame.contentWindow");
+		expect(script).toContain("target.dataset.hoboEvidenceAnnotation");
+		expect(script).toContain('target.style.outline = "3px solid #c5301c"');
 		expect(script).toContain("prefers-reduced-motion: reduce");
 		expect(script).toContain("@media (max-width: 42rem)");
 		expect(script).not.toContain('postMessage(message, "*")');
@@ -117,6 +119,7 @@ describe("evidence overlay privileged controls", () => {
 		expect(html).toContain("prefers-reduced-motion: reduce");
 		expect(html).toContain("@media (max-width: 32rem)");
 		expect(html).toContain("postMessage(message, parentOrigin)");
+		expect(html).toContain("Opening evidence report…");
 		expect(html).not.toContain('postMessage(message, "*")');
 		expect(html).not.toMatch(/bearer|token|credential/iu);
 	});

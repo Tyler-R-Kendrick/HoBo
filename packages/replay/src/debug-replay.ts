@@ -164,10 +164,13 @@ export function createDebugReplayRecorder(input: {
 	let eventSequence = 0;
 	let itemSequence = 0;
 	let chunkSequence = 0;
+	let initialized = false;
+	let writing = false;
+	let existing: SessionRecord | undefined;
 	let stopped = false;
 	let failure: unknown;
 	let stopResult: Promise<DebugReplayRecording | undefined> | undefined;
-	const buffer: DebugTrackEnvelope[] = [];
+	const buffer: DebugReplayRecordInput[] = [];
 	const chunks: RecordingChunk[] = [];
 
 	const emit = (type: ReplayEvent["type"], data: Record<string, unknown>) => {
@@ -197,24 +200,70 @@ export function createDebugReplayRecorder(input: {
 		});
 	}
 
-	const initial: SessionRecord = Object.freeze({
-		schemaVersion: REPLAY_SCHEMA_VERSION,
-		id: sessionId,
-		status: "recording",
-		startedAt,
-		correlation: input.correlation,
-		privacy,
-		chunkCount: 0,
-		totalBytes: 0,
-	});
-	let writes: Promise<void> = input.index.upsert(initial);
+	const initialize = async () => {
+		if (initialized) return;
+		existing = await input.index.get(sessionId);
+		chunks.push(...(await input.index.listChunks(sessionId)));
+		chunkSequence = chunks.reduce(
+			(max, chunk) => Math.max(max, chunk.seq + 1),
+			0,
+		);
+		for (const chunk of chunks) {
+			for (const event of (await input.store.get(chunk.blobRef)) ?? []) {
+				if (isDebugTrackEnvelope(event)) {
+					itemSequence = Math.max(itemSequence, event.data.sequence + 1);
+				}
+			}
+		}
+		initialized = true;
+	};
+
+	const beginWriting = async () => {
+		if (writing) return;
+		await initialize();
+		let session: SessionRecord;
+		if (existing) {
+			const { endedAt: _endedAt, ...resumable } = existing;
+			session = Object.freeze({ ...resumable, status: "recording" });
+		} else {
+			session = Object.freeze({
+				schemaVersion: REPLAY_SCHEMA_VERSION,
+				id: sessionId,
+				status: "recording",
+				startedAt,
+				correlation: input.correlation,
+				privacy,
+				chunkCount: 0,
+				totalBytes: 0,
+			});
+		}
+		await input.index.upsert(session);
+		existing = session;
+		writing = true;
+		emit(REPLAY_EVENTS.Started, { mode: "debug", level });
+	};
+
+	let writes: Promise<void> = Promise.resolve();
 
 	const queueBuffered = () => {
 		if (buffer.length === 0) return;
-		const batch = Object.freeze(buffer.splice(0, buffer.length));
-		const seq = chunkSequence++;
+		const pending = Object.freeze(buffer.splice(0, buffer.length));
 		writes = writes
 			.then(async () => {
+				await beginWriting();
+				const batch = Object.freeze(
+					pending.flatMap((entry) => {
+						const envelope = createDebugTrackEnvelope({
+							...entry,
+							sequence: itemSequence++,
+							timestamp: entry.timestamp ?? Date.now(),
+							level,
+						});
+						return envelope ? [envelope] : [];
+					}),
+				);
+				if (batch.length === 0) return;
+				const seq = chunkSequence++;
 				const chunk = await input.store.put(sessionId, seq, batch);
 				await input.index.appendChunkMeta(sessionId, chunk);
 				chunks.push(chunk);
@@ -231,8 +280,6 @@ export function createDebugReplayRecorder(input: {
 			});
 	};
 
-	emit(REPLAY_EVENTS.Started, { mode: "debug", level });
-
 	const flush = async () => {
 		queueBuffered();
 		await writes;
@@ -246,14 +293,7 @@ export function createDebugReplayRecorder(input: {
 		bufferedCount: () => buffer.length,
 		record(entry) {
 			if (stopped) return false;
-			const envelope = createDebugTrackEnvelope({
-				...entry,
-				sequence: itemSequence++,
-				timestamp: entry.timestamp ?? Date.now(),
-				level,
-			});
-			if (!envelope) return false;
-			buffer.push(envelope);
+			buffer.push(entry);
 			if (buffer.length >= batchSize) queueBuffered();
 			return true;
 		},
@@ -263,7 +303,9 @@ export function createDebugReplayRecorder(input: {
 			stopped = true;
 			stopResult = (async () => {
 				await flush();
-				const current = (await input.index.get(sessionId)) ?? initial;
+				await beginWriting();
+				const current = await input.index.get(sessionId);
+				if (!current) throw new Error(`replay session missing: ${sessionId}`);
 				const session: SessionRecord = Object.freeze({
 					...current,
 					status: "ended",

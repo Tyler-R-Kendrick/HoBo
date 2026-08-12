@@ -613,6 +613,8 @@ const VERB_HELP_PLAIN: Record<
 		"Usage:",
 		"  hobo-code session list | create <name> [branch]",
 		"  hobo-code session show | attach | switch | detach <sessionId>",
+		"  hobo-code session replay <sessionId>  # read-only synchronized timeline",
+		"  hobo-code session fork <sessionId> [checkpointId] [name]",
 		"  hobo-code session tab <sessionId> <title>",
 		"  hobo-code session pane <sessionId> <tabId> <title> [command…]",
 		"  hobo-code session split <sessionId> <paneId> <horizontal|vertical> <title> [command…]",

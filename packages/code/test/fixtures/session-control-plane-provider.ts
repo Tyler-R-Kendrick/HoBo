@@ -111,7 +111,7 @@ export async function verifySessionControlPlanePact(input: unknown): Promise<{
 				result = {
 					...submission,
 					verification: "claimed",
-					origin: "component",
+					origin: "hobo-code:control-server",
 				};
 				break;
 			}

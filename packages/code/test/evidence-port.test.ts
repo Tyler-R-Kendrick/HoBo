@@ -3,7 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createEvidencePort } from "../src/evidence-port.js";
+import {
+	asHoboEvidenceHost,
+	createEvidencePort,
+} from "../src/evidence-port.js";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -28,8 +31,14 @@ describe("WIT evidence host port", () => {
 		});
 		writer.write(new Uint8Array([1, 2, 3]));
 		const artifact = writer.finish();
+		const host = asHoboEvidenceHost(port);
+		expect(host.submit).toBe(port.submit);
+		expect(host.beginArtifact).toBe(port.beginArtifact);
 		expect(artifact.id).toMatch(/^sha256:[a-f0-9]{64}$/u);
 		expect(existsSync(port.artifactPath(artifact.id))).toBe(true);
+		expect([...(port.readArtifact(artifact.id)?.bytes ?? [])]).toEqual([
+			1, 2, 3,
+		]);
 
 		const id = port.submit({
 			kind: "screenshot",

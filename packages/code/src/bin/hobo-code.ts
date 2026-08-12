@@ -277,7 +277,7 @@ if (argv[0] === "_station-agent") {
 					: 0,
 		});
 		process.stdout.write(
-			`browser: ${server.url}\nremote: forward 127.0.0.1:${server.port} through a declared Station machine; the server never binds publicly\n`,
+			`browser: ${server.url}\nevidence report: ${server.reportUrl}\nevidence controls: ${server.controlsUrlTemplate}\nhobo dev: HOBO_CODE_EVIDENCE_CONTROLS_URL=${server.controlsUrlTemplate}?parentOrigin=<app-origin>\nremote: forward 127.0.0.1:${server.port} through a declared Station machine; the server never binds publicly\n`,
 		);
 		await new Promise<void>((resolve) => {
 			process.once("SIGINT", resolve);

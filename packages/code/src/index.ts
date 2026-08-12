@@ -80,21 +80,26 @@ export {
 	EVIDENCE_REPORT_SCHEMA,
 	EVIDENCE_REPORT_SECTIONS,
 	projectEvidenceReport,
+	renderEvidenceReportHtml,
 	renderEvidenceReportExport,
 	type EvidenceArtifact,
 	type EvidenceFact,
 	type EvidenceReport,
 	type EvidenceReportInput,
+	type EvidenceReportHtmlOptions,
 	type EvidenceReportSection,
 	type EvidenceReportSectionId,
 	type EvidenceState,
 	type PortableEvidenceReportExport,
+	type PortableEvidenceAsset,
 	type SignedEvidenceNote,
 } from "./evidence-report.js";
 
 export {
+	asHoboEvidenceHost,
 	createEvidencePort,
 	type EvidenceArtifactRef,
+	type ReadEvidenceArtifact,
 	type StoredEvidenceArtifact,
 	type StoredEvidenceRecord,
 } from "./evidence-port.js";

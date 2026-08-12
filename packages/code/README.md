@@ -280,6 +280,7 @@ export HOBO_CODE_MODEL=openai/gpt-4.1
 
 # 2) Build
 hobo-code "add a settings page to the bindle"
+hobo-code "hello world app"      # copy examples/hello-world — no hobo CLI
 hobo-code scaffold --name demo
 hobo-code dev --cwd demo          # run its Bindle on a local Yard + Evidence
 hobo-code status                 # plain English session hierarchy (default)
@@ -360,7 +361,7 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **edit** | Open [neo]vim in managed harness pane (tmux/stdio bridge + hobo-code.nvim) |
 | **config** | Env/flags inventory by stack (setup critique; secrets presence-only) |
 | **agent** | Agent-native readiness: human-free auth, MCP/ACP, unattended/no-elicitation |
-| scaffold | OpenUI/Astryx scaffold template |
+| scaffold | Copy a shipped repo example (`examples/hello-world`, `examples/barebones`, …) |
 | **dev** | Run the project Bindle on a local Yard + Evidence controls |
 | isolate / promote | Built-in mediated sandbox + gated promote |
 | env | Optional hermetic shell + durable layout |

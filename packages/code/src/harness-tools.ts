@@ -37,11 +37,11 @@ export const hoboDispatchTool = defineTool({
 	run: async ({ input }) => runJson(input.prompt.trim().split(/\s+/)),
 });
 
-/** Scaffold a new app/bindle from a shipped template. */
+/** Materialize a shipped repo example (hello-world, barebones, …). */
 export const hoboScaffoldTool = defineTool({
 	name: "hobo_scaffold",
 	description:
-		"Scaffold a new HoBo app from the shipped high-value template (openui-astryx-bindle) into the sandbox.",
+		"Copy a shipped HoBo example from the repo catalog into the workspace. Prefer hello-world for greeting apps; unknown new-app requests use barebones. Does not call the hobo CLI or the network.",
 	input: v.object({
 		name: v.string(),
 	}),

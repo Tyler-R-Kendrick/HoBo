@@ -61,6 +61,7 @@ import {
 	type PaneLayout,
 } from "./editor-bridge.js";
 import { describeEveSubagentSurface } from "./eve.js";
+import { matchExampleRequest, materializeExample } from "./example-catalog.js";
 import {
 	createBudgetTracker,
 	DEFAULT_BUDGET_POLICY,
@@ -496,7 +497,7 @@ function helpTextPlain(): string {
 		"  tasks      Background task board (Grok Build–shaped)",
 		"",
 		"Craft & cost:",
-		"  scaffold   OpenUI/Astryx scaffold template",
+		"  scaffold   Copy a shipped repo example (hello-world, barebones, …)",
 		"  dev        Deploy the current web app with browser evidence controls",
 		"  isolate    Mediated sandbox for agent work",
 		"  promote    Promote a run through gate checklist",
@@ -852,13 +853,16 @@ const VERB_HELP_PLAIN: Record<
 		"See also: hobo-code session · hobo-code status · hobo-code auth",
 	],
 	scaffold: [
-		"hobo-code scaffold — OpenUI/Astryx scaffold template",
+		"hobo-code scaffold — copy a shipped repo example (hello-world, barebones, …)",
 		"",
 		"Usage:",
 		"  hobo-code scaffold [--name <name>] [--out <dir>]",
+		"  hobo-code scaffold hello-world",
+		"",
+		'A chat prompt like "hello world app" does the same thing — no hobo CLI.',
 		"",
 		"Flags:",
-		"  --name <name>       Scaffold name",
+		"  --name <name>       App / folder name",
 		"  --out <dir>         Output directory",
 		"  --json              Machine-readable result",
 		"  --help, -h          Show this help",
@@ -2430,6 +2434,26 @@ export async function runHoboCodeCli(
 			args[0] || (typeof flags.name === "string" && flags.name) || "app";
 		const out =
 			(typeof flags.out === "string" && flags.out) || join(projectDir, name);
+		const matched = matchExampleRequest(
+			[args[0], typeof flags.name === "string" ? flags.name : ""]
+				.filter(Boolean)
+				.join(" "),
+		);
+		if (matched && matched.id !== "openui-astryx-bindle") {
+			const copied = materializeExample({
+				exampleId: matched.id,
+				outputDir: out,
+				appName: name,
+			});
+			const text = panel("✦ sc", [
+				[matched.id, shortId(name, 10), `${copied.files.length}f`].join("·"),
+			]);
+			return ok("HOBO_CODE_SCAFFOLD", text, {
+				result: copied,
+				stationId: platform.station.stationId,
+				text,
+			});
+		}
 		const result = scaffoldHighValueTemplate({
 			outputDir: out,
 			appName: name,
@@ -2985,6 +3009,32 @@ export async function runHoboCodeCli(
 	}
 
 	// ── Multi-node compute (capacity-aware dispatch; not a chat/hive product) ──
+
+	const examplePrompt = args.join(" ");
+	const matchedExample =
+		verb === "dispatch" ? matchExampleRequest(examplePrompt) : undefined;
+	if (matchedExample) {
+		const name =
+			(typeof flags.name === "string" && flags.name) || matchedExample.id;
+		const out =
+			(typeof flags.out === "string" && flags.out) || join(projectDir, name);
+		const copied = materializeExample({
+			exampleId: matchedExample.id,
+			outputDir: out,
+			appName: name,
+		});
+		const text = panel("✦ ex", [
+			[matchedExample.id, shortId(name, 10), `${copied.files.length}f`].join(
+				"·",
+			),
+		]);
+		return ok("HOBO_CODE_EXAMPLE", text, {
+			result: copied,
+			example: matchedExample.id,
+			stationId: platform.station.stationId,
+			text,
+		});
+	}
 
 	if (!platform.features.distributed && verb === "dispatch") {
 		return fail(

@@ -179,7 +179,7 @@
       "version": "0.1.0",
       "stability": "experimental",
       "path": "wit/hobo-sdk.wit",
-      "sha256": "sha256:fd3c785a595dd95a4aac559d9efa09e9572a012887857086aee839eb692fe275"
+      "sha256": "sha256:30169e873df4d026138724e2c82c416f3551df81abb58a4d67b9e74ca6c86bbe"
     },
     {
       "id": "hobo:runtime/workflow@0.1.0@experimental",
@@ -270,6 +270,16 @@
       "stability": "experimental",
       "path": "wit/deps/hobo-blob-events/hobo-blob-events.wit",
       "sha256": "sha256:1c8473c01beb90995cd22ceb68dedc8143cf7e145f0b464e9876f1c1a105dc3e"
+    },
+    {
+      "id": "hobo:evidence/evidence@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "evidence",
+      "interface_name": "evidence",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-evidence/hobo-evidence.wit",
+      "sha256": "sha256:e92d9ddfe6c7b3792014d1577e712bd9e4d872f4f843c40c41a11c4741d2835c"
     },
     {
       "id": "hobo:training-engine/types@0.1.0@experimental",

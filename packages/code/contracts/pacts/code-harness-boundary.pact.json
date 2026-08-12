@@ -65,6 +65,28 @@
 			}
 		},
 		{
+			"description": "guest evidence is accepted only as a host-attributed claim",
+			"request": {
+				"method": "POST",
+				"path": "/code/evidence",
+				"body": {
+					"kind": "test",
+					"title": "contract suite",
+					"summary": "passed",
+					"subject": "packages/code",
+					"artifactRefs": []
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"verification": "claimed",
+					"origin": "component",
+					"kind": "test"
+				}
+			}
+		},
+		{
 			"description": "create a resident session with runtime-backed panes",
 			"request": {
 				"method": "POST",

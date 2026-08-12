@@ -337,6 +337,17 @@ package code
 	durable_root:           string & !=""
 }
 
+#EvidenceKind: "status" | "test" | "feature" | "decision" | "diagram" | "screenshot" | "recording" | "replay" | "annotation" | "note"
+
+#GuestEvidenceSubmission: {
+	kind:          #EvidenceKind
+	title:         string & !=""
+	summary:       string & !=""
+	subject:       string & !=""
+	artifact_refs: [...string & =~"^sha256:[0-9a-f]{64}$"]
+	source_ref?:   string & !=""
+}
+
 #AgentPaneState: {
 	agent_id:        string & !=""
 	semantic_state:  "blocked" | "working" | "done" | "idle"

@@ -1,5 +1,6 @@
 // world hobo:sdk/sdk@0.1.0
 export type * as HoboBlobEventsBlobEvents010 from './interfaces/hobo-blob-events-blob-events.js'; // import hobo:blob-events/blob-events@0.1.0
+export type * as HoboEvidenceEvidence010 from './interfaces/hobo-evidence-evidence.js'; // import hobo:evidence/evidence@0.1.0
 export type * as HoboQueueQueue010 from './interfaces/hobo-queue-queue.js'; // import hobo:queue/queue@0.1.0
 export type * as HoboRuntimeActor010 from './interfaces/hobo-runtime-actor.js'; // import hobo:runtime/actor@0.1.0
 export type * as HoboRuntimeAgent010 from './interfaces/hobo-runtime-agent.js'; // import hobo:runtime/agent@0.1.0

@@ -144,6 +144,7 @@ describe("forward/reverse surface parity", () => {
 				"hobo:queue/queue@0.1.0",
 				"hobo:scheduler/scheduler@0.1.0",
 				"hobo:blob-events/blob-events@0.1.0",
+				"hobo:evidence/evidence@0.1.0",
 			],
 			exports: [] as string[],
 		};

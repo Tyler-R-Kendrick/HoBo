@@ -8,6 +8,17 @@ export const HOBO_CODE_PACKAGE = "@hobo/code" as const;
 export type IsolationKind = "rift" | "worktree";
 export type IsolationStatus = "open" | "cleaned" | "failed";
 export type AgentSemanticState = "blocked" | "working" | "done" | "idle";
+export type EvidenceKind =
+	| "status"
+	| "test"
+	| "feature"
+	| "decision"
+	| "diagram"
+	| "screenshot"
+	| "recording"
+	| "replay"
+	| "annotation"
+	| "note";
 
 // domain-view: richer parse-don't-validate view over IsolationBackend wire form
 export interface IsolationBackend {
@@ -72,6 +83,18 @@ export interface EvidenceTriple {
 	readonly recordingMp4Path: string;
 	readonly screenshotPaths: readonly string[];
 	readonly durableRoot: string;
+}
+
+// domain-view: guest-safe half of hobo:evidence/evidence@0.1.0. Trust,
+// identity, time, and storage location are stamped by the host after parsing.
+// parallel-type-allowed: refined WIT guest view narrows the generated protobuf enum to public string literals.
+export interface GuestEvidenceSubmission {
+	readonly kind: EvidenceKind;
+	readonly title: string;
+	readonly summary: string;
+	readonly subject: string;
+	readonly artifactRefs: readonly string[];
+	readonly sourceRef?: string;
 }
 
 // domain-view: richer parse-don't-validate view over AgentPaneState wire form

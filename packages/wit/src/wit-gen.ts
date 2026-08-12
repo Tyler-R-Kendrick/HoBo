@@ -32,6 +32,7 @@ const HOBO_DEP_DIRS = [
 	"hobo-queue",
 	"hobo-scheduler",
 	"hobo-blob-events",
+	"hobo-evidence",
 ] as const;
 
 export const GENERATION_TARGETS = [
@@ -70,6 +71,16 @@ export const GENERATION_TARGETS = [
 		witPath: "wit/deps/hobo-blob-events/hobo-blob-events.wit",
 		worldName: "blob-events-provider",
 		outSubdir: "blob-events-provider",
+	},
+	{
+		witPath: "wit/deps/hobo-evidence/hobo-evidence.wit",
+		worldName: "evidence-guest",
+		outSubdir: "evidence-guest",
+	},
+	{
+		witPath: "wit/deps/hobo-evidence/hobo-evidence.wit",
+		worldName: "evidence-provider",
+		outSubdir: "evidence-provider",
 	},
 	{
 		witPath: "wit/deps/hobo-training-engine/hobo-training-engine.wit",

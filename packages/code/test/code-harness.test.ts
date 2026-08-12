@@ -35,6 +35,7 @@ import {
 	lockVisualArtifact,
 	measureTemplateSuccessRate,
 	parseEvidenceTriple,
+	parseGuestEvidenceSubmission,
 	parseIsolationContext,
 	parsePromotionRequest,
 	promoteIsolation,
@@ -75,6 +76,37 @@ describe("@hobo/code", () => {
 			/squashOnly/,
 		);
 		expect(() => parseEvidenceTriple({ schemaVersion: "nope" })).toThrow();
+		expect(() =>
+			parseGuestEvidenceSubmission({
+				kind: "test",
+				title: "unit suite",
+				summary: "passed",
+				subject: "packages/code",
+				artifactRefs: [],
+				verification: "verified",
+			}),
+		).toThrow(/host-owned/);
+	});
+
+	it("parses guest evidence without granting host trust", () => {
+		const submission = parseGuestEvidenceSubmission({
+			kind: "screenshot",
+			title: "session overview",
+			summary: "developer-visible capture",
+			subject: "session:demo",
+			artifactRefs: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+			sourceRef: "scenario:overview",
+		});
+
+		expect(submission).toEqual({
+			kind: "screenshot",
+			title: "session overview",
+			summary: "developer-visible capture",
+			subject: "session:demo",
+			artifactRefs: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+			sourceRef: "scenario:overview",
+		});
+		expect(Object.isFrozen(submission)).toBe(true);
 	});
 
 	it("isolation creates worktree fallback and cleans with zero orphans", async () => {

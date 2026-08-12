@@ -8,6 +8,10 @@
  */
 import type { BindleDefinition } from "@hobo/bindles";
 import {
+	renderEvidenceOverlayBridge,
+	renderEvidenceOverlayWrapper,
+} from "@hobo/code";
+import {
 	applySessionReplayToEntrypoints,
 	type BindleSessionReplayPlan,
 	type DualFixtureStore,
@@ -28,13 +32,18 @@ export type ListServableEntrypointsResult = {
 	readonly sessionReplayStore: DualFixtureStore;
 };
 
+type ServableEntrypointOptions = {
+	readonly env?: NodeJS.ProcessEnv;
+	readonly stationId?: string;
+	readonly evidenceControlsUrl?: string;
+};
+
+const EVIDENCE_RAW_PARAM = "__hobo_evidence_raw";
+
 /** HTTP App Kits that host fetch handlers on local Yard / Camp. */
 function isHttpAppKit(kind: string): boolean {
 	return (
-		kind === "api" ||
-		kind === "web" ||
-		kind === "service" ||
-		kind === "ui"
+		kind === "api" || kind === "web" || kind === "service" || kind === "ui"
 	);
 }
 
@@ -70,20 +79,14 @@ function asFetchHandler(value: unknown): FetchHandler | null {
  */
 export function listServableEntrypoints(
 	definition: BindleDefinition,
-	options: {
-		readonly env?: NodeJS.ProcessEnv;
-		readonly stationId?: string;
-	} = {},
+	options: ServableEntrypointOptions = {},
 ): ServableEntrypoint[] {
 	return listServableEntrypointsWithReplay(definition, options).entrypoints;
 }
 
 export function listServableEntrypointsWithReplay(
 	definition: BindleDefinition,
-	options: {
-		readonly env?: NodeJS.ProcessEnv;
-		readonly stationId?: string;
-	} = {},
+	options: ServableEntrypointOptions = {},
 ): ListServableEntrypointsResult {
 	const entries: ServableEntrypoint[] = [];
 	for (const [name, record] of Object.entries(definition.resources)) {
@@ -111,9 +114,138 @@ export function listServableEntrypointsWithReplay(
 			? { stationId: options.stationId }
 			: {}),
 	});
+	const controlsUrl =
+		options.evidenceControlsUrl ??
+		(options.env ?? process.env).HOBO_CODE_EVIDENCE_CONTROLS_URL;
 	return {
-		entrypoints: [...applied.entrypoints],
+		entrypoints:
+			controlsUrl === undefined || controlsUrl.length === 0
+				? [...applied.entrypoints]
+				: applyEvidenceOverlay(applied.entrypoints, controlsUrl),
 		sessionReplay: applied.plan,
 		sessionReplayStore: applied.store,
 	};
+}
+
+function applyEvidenceOverlay(
+	entrypoints: readonly ServableEntrypoint[],
+	controlsUrl: string,
+): ServableEntrypoint[] {
+	const controls = new URL(controlsUrl);
+	const bridge = `<script data-hobo-evidence-overlay-bridge="1">${renderEvidenceOverlayBridge({ controlsUrl })}</script>`;
+	return entrypoints.map((entry) => ({
+		...entry,
+		handler: async (request) => {
+			const requestUrl = new URL(request.url);
+			if (
+				request.method === "GET" &&
+				requestUrl.searchParams.has(EVIDENCE_RAW_PARAM)
+			) {
+				requestUrl.searchParams.delete(EVIDENCE_RAW_PARAM);
+				return entry.handler(new Request(requestUrl, request));
+			}
+
+			const response = await entry.handler(request);
+			if (
+				request.method !== "GET" ||
+				!(response.headers.get("content-type") ?? "").includes("text/html")
+			) {
+				return response;
+			}
+			if (requestUrl.origin === controls.origin) {
+				return responseWithEvidenceHeader(response, "refused-same-origin");
+			}
+
+			const html = await response.text();
+			const bodyEnd = html.toLowerCase().lastIndexOf("</body>");
+			if (
+				bodyEnd >= 0 &&
+				cspAllowsInlineScript(response.headers.get("content-security-policy"))
+			) {
+				return htmlResponse(
+					response,
+					`${html.slice(0, bodyEnd)}${bridge}${html.slice(bodyEnd)}`,
+					"bridge",
+				);
+			}
+
+			requestUrl.searchParams.set(EVIDENCE_RAW_PARAM, "1");
+			const wrapper = renderEvidenceOverlayWrapper({
+				appUrl: requestUrl.href,
+				controlsUrl,
+			});
+			const headers = responseHeaders(response, "wrapper");
+			headers.delete("content-security-policy-report-only");
+			headers.set(
+				"content-security-policy",
+				`default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-src ${requestUrl.origin} ${controls.origin}`,
+			);
+			return new Response(wrapper, responseInit(response, headers));
+		},
+	}));
+}
+
+function cspAllowsInlineScript(value: string | null): boolean {
+	if (value === null) return true;
+	return value.split(",").every((policy) => {
+		const directives = new Map(
+			policy
+				.split(";")
+				.map((part) => part.trim().split(/\s+/))
+				.filter((parts) => parts[0]?.length)
+				.map((parts) => [parts[0]?.toLowerCase() ?? "", parts.slice(1)]),
+		);
+		const sources =
+			directives.get("script-src-elem") ??
+			directives.get("script-src") ??
+			directives.get("default-src");
+		if (sources === undefined) return true;
+		return (
+			sources.includes("'unsafe-inline'") &&
+			!sources.some(
+				(source) =>
+					source.startsWith("'nonce-") ||
+					source.startsWith("'sha256-") ||
+					source.startsWith("'sha384-") ||
+					source.startsWith("'sha512-") ||
+					source === "'strict-dynamic'",
+			)
+		);
+	});
+}
+
+function responseHeaders(response: Response, mode: string): Headers {
+	const headers = new Headers(response.headers);
+	headers.delete("content-length");
+	headers.set("x-hobo-evidence-overlay", mode);
+	return headers;
+}
+
+function responseInit(response: Response, headers: Headers): ResponseInit {
+	return {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	};
+}
+
+function htmlResponse(
+	response: Response,
+	html: string,
+	mode: string,
+): Response {
+	return new Response(
+		html,
+		responseInit(response, responseHeaders(response, mode)),
+	);
+}
+
+function responseWithEvidenceHeader(
+	response: Response,
+	mode: string,
+): Response {
+	return new Response(
+		response.body,
+		responseInit(response, responseHeaders(response, mode)),
+	);
 }

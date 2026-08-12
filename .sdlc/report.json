@@ -1,0 +1,54 @@
+{
+	"issue": "swarm-h-review-browser",
+	"branch": "feat/hobo-review-browser",
+	"gates": [
+		{
+			"name": "packages/code vitest review-control-server",
+			"pass": true
+		},
+		{
+			"name": "packages/code vitest review-browser-security",
+			"pass": true
+		},
+		{
+			"name": "packages/code vitest review-browser-accessibility",
+			"pass": true
+		},
+		{
+			"name": "biome check owned review files",
+			"pass": true
+		}
+	],
+	"cascadeDeltas": [
+		{
+			"file": "packages/code/src/review/review-http-routes.ts",
+			"change": "Added attachReviewRoutes/handleReviewHttpRequest/startReviewControlServer for bearer-only loopback review API."
+		},
+		{
+			"file": "packages/code/src/review/review-browser-assets.ts",
+			"change": "Product-owned review HTML shell with restrictive CSP and no token-in-URL."
+		},
+		{
+			"file": "packages/code/src/review/review-browser-view.ts",
+			"change": "Safe textContent renderers for reviews, files, diff hunks, and threads."
+		},
+		{
+			"file": "packages/code/src/review/review-browser-controller.ts",
+			"change": "Keyboard file movement and fetch client; no localStorage review truth."
+		},
+		{
+			"file": "packages/code/ARCHITECTURE.md",
+			"change": "Documented durable review browser surface and coordinator hook."
+		},
+		{
+			"file": "packages/code/README.md",
+			"change": "Noted /reviews loopback API beside session serve."
+		}
+	],
+	"requirementChanges": [
+		{
+			"id": "coordinator-wire",
+			"change": "session-control-server.ts left untouched. Coordinator should call handleReviewHttpRequest before other routes, or attachReviewRoutes on a dedicated server."
+		}
+	]
+}

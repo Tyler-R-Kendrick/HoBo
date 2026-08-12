@@ -93,6 +93,13 @@ export {
 } from "./evidence-report.js";
 
 export {
+	createEvidencePort,
+	type EvidenceArtifactRef,
+	type StoredEvidenceArtifact,
+	type StoredEvidenceRecord,
+} from "./evidence-port.js";
+
+export {
 	parseEvidenceOverlayMessage,
 	renderEvidenceOverlayBridge,
 	renderEvidenceOverlayControls,

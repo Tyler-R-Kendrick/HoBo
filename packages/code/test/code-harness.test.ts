@@ -94,7 +94,9 @@ describe("@hobo/code", () => {
 			title: "session overview",
 			summary: "developer-visible capture",
 			subject: "session:demo",
-			artifactRefs: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+			artifactRefs: [
+				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			],
 			sourceRef: "scenario:overview",
 		});
 
@@ -103,7 +105,9 @@ describe("@hobo/code", () => {
 			title: "session overview",
 			summary: "developer-visible capture",
 			subject: "session:demo",
-			artifactRefs: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+			artifactRefs: [
+				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			],
 			sourceRef: "scenario:overview",
 		});
 		expect(Object.isFrozen(submission)).toBe(true);
@@ -353,6 +357,14 @@ step "done"
 
 	it("emits full evidence triple for passing Gherkin+OpenFeature scenario", () => {
 		const durable = tempDir("hobo-code-ev-");
+		const capture = tempDir("hobo-code-capture-");
+		const recording = join(capture, "recording.mp4");
+		const screenshot = join(capture, "primary.png");
+		writeFileSync(recording, Buffer.from("\0\0\0\u0018ftypisomreal capture"));
+		writeFileSync(
+			screenshot,
+			Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]),
+		);
 		const link = linkGherkinToOpenFeature(
 			"Primary surface renders and is lockable",
 			"app.visual.primary",
@@ -363,11 +375,23 @@ step "done"
 			flagKey: link.flagKey,
 			scenario: link.scenario,
 			passed: true,
+			recordingMp4Path: recording,
+			screenshotPaths: [screenshot],
 		});
 		expect(assertEvidenceTripleComplete(triple)).toBe(true);
 		expect(existsSync(triple.playwrightScriptPath)).toBe(true);
 		expect(existsSync(triple.recordingMp4Path)).toBe(true);
 		expect(triple.screenshotPaths.length).toBeGreaterThan(0);
+		expect(() =>
+			emitEvidenceTriple({
+				durableRoot: durable,
+				flagKey: link.flagKey,
+				scenario: link.scenario,
+				passed: true,
+				recordingMp4Path: join(capture, "missing.mp4"),
+				screenshotPaths: [screenshot],
+			}),
+		).toThrow("recording capture does not exist");
 	});
 
 	it("OpenUI generate → edit → lock → agent browser validate", () => {

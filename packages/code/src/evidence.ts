@@ -1,4 +1,10 @@
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
 import { CODE_EVIDENCE_SCHEMA, type EvidenceTriple } from "./types.js";
@@ -9,6 +15,10 @@ export interface EmitEvidenceInput {
 	readonly flagKey: string;
 	readonly scenario: string;
 	readonly passed: boolean;
+	/** Existing Playwright video capture. HoBo never fabricates evidence media. */
+	readonly recordingMp4Path: string;
+	/** Existing key screenshots produced by the scenario run. */
+	readonly screenshotPaths: readonly string[];
 	/** Optional rendered HTML path for screenshot assertions. */
 	readonly htmlPath?: string;
 }
@@ -23,6 +33,17 @@ export function emitEvidenceTriple(input: EmitEvidenceInput): EvidenceTriple {
 			"evidence triple only emitted for passing Gherkin+OpenFeature scenarios",
 		);
 	}
+	if (!existsSync(input.recordingMp4Path)) {
+		throw new Error("recording capture does not exist");
+	}
+	if (input.screenshotPaths.length === 0) {
+		throw new Error("at least one screenshot capture is required");
+	}
+	for (const path of input.screenshotPaths) {
+		if (!existsSync(path) || statSync(path).size === 0) {
+			throw new Error(`screenshot capture does not exist or is empty: ${path}`);
+		}
+	}
 
 	const root = join(input.durableRoot, "evidence", input.flagKey);
 	mkdirSync(root, { recursive: true });
@@ -31,7 +52,12 @@ export function emitEvidenceTriple(input: EmitEvidenceInput): EvidenceTriple {
 	const recordingMp4Path = join(root, "recording.mp4");
 	const screenshotDir = join(root, "screenshots");
 	mkdirSync(screenshotDir, { recursive: true });
-	const screenshotPath = join(screenshotDir, "assert-primary.png");
+	const screenshotPaths = input.screenshotPaths.map((source, index) => {
+		const target = join(screenshotDir, `assert-${index + 1}.png`);
+		copyFileSync(source, target);
+		return target;
+	});
+	const screenshotPath = screenshotPaths[0] as string;
 
 	const pageHtml = input.htmlPath
 		? `<!-- locked visual from ${input.htmlPath} -->`
@@ -51,22 +77,7 @@ export function emitEvidenceTriple(input: EmitEvidenceInput): EvidenceTriple {
 	].join("\n");
 	writeFileSync(playwrightScriptPath, script, "utf8");
 
-	// Minimal deterministic "mp4" artifact marker (not a full encoder).
-	// Production lanes attach real Playwright video; structure is gated here.
-	const mp4Marker = Buffer.from([
-		0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, // ftyp box header-ish
-		0x68, 0x6f, 0x62, 0x6f, // 'hobo'
-		0x00, 0x00, 0x00, 0x01,
-		...Buffer.from(`evidence:${input.flagKey}:${input.scenario}`),
-	]);
-	writeFileSync(recordingMp4Path, mp4Marker);
-
-	// Deterministic PNG-like placeholder for key screenshot assertions.
-	const pngStub = Buffer.from([
-		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // PNG signature
-		...Buffer.from(`hobo-evidence:${input.scenario}`),
-	]);
-	writeFileSync(screenshotPath, pngStub);
+	copyFileSync(input.recordingMp4Path, recordingMp4Path);
 
 	const triple: EvidenceTriple = {
 		schemaVersion: CODE_EVIDENCE_SCHEMA,
@@ -74,7 +85,7 @@ export function emitEvidenceTriple(input: EmitEvidenceInput): EvidenceTriple {
 		scenario: input.scenario,
 		playwrightScriptPath,
 		recordingMp4Path,
-		screenshotPaths: [screenshotPath],
+		screenshotPaths,
 		durableRoot: input.durableRoot,
 	};
 
@@ -91,8 +102,9 @@ export function assertEvidenceTripleComplete(triple: EvidenceTriple): boolean {
 	return (
 		existsSync(triple.playwrightScriptPath) &&
 		existsSync(triple.recordingMp4Path) &&
+		statSync(triple.recordingMp4Path).size > 0 &&
 		triple.screenshotPaths.length > 0 &&
-		triple.screenshotPaths.every((p) => existsSync(p))
+		triple.screenshotPaths.every((p) => existsSync(p) && statSync(p).size > 0)
 	);
 }
 

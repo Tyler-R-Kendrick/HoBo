@@ -138,7 +138,7 @@ function applyEvidenceOverlay(
 		handler: async (request) => {
 			const requestUrl = new URL(request.url);
 			if (
-				(request.method === "GET" || request.method === "HEAD") &&
+				request.method === "GET" &&
 				requestUrl.searchParams.has(EVIDENCE_RAW_PARAM)
 			) {
 				requestUrl.searchParams.delete(EVIDENCE_RAW_PARAM);
@@ -146,7 +146,10 @@ function applyEvidenceOverlay(
 			}
 
 			const response = await entry.handler(request);
-			if (!(response.headers.get("content-type") ?? "").includes("text/html")) {
+			if (
+				request.method !== "GET" ||
+				!(response.headers.get("content-type") ?? "").includes("text/html")
+			) {
 				return response;
 			}
 			if (requestUrl.origin === controls.origin) {

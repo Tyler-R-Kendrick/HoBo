@@ -119,6 +119,7 @@ describe("evidence overlay privileged controls", () => {
 		expect(html).toContain("prefers-reduced-motion: reduce");
 		expect(html).toContain("@media (max-width: 32rem)");
 		expect(html).toContain("postMessage(message, parentOrigin)");
+		expect(html).toContain("Opening evidence report…");
 		expect(html).not.toContain('postMessage(message, "*")');
 		expect(html).not.toMatch(/bearer|token|credential/iu);
 	});

@@ -6,6 +6,9 @@
  * **App Kit** (not "membrane type"): Bindle-declared application surfaces
  * (api, web, service, ui, …). Every HTTP App Kit is Session-Replay wrapped.
  */
+
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { BindleDefinition } from "@hobo/bindles";
 import {
 	renderEvidenceOverlayBridge,
@@ -39,6 +42,16 @@ type ServableEntrypointOptions = {
 };
 
 const EVIDENCE_RAW_PARAM = "__hobo_evidence_raw";
+const STALE_BODY_HEADERS = [
+	"content-length",
+	"etag",
+	"integrity",
+	"content-integrity",
+	"content-md5",
+	"digest",
+	"content-digest",
+	"repr-digest",
+] as const;
 
 /** HTTP App Kits that host fetch handlers on local Yard / Camp. */
 function isHttpAppKit(kind: string): boolean {
@@ -114,9 +127,11 @@ export function listServableEntrypointsWithReplay(
 			? { stationId: options.stationId }
 			: {}),
 	});
+	const env = options.env ?? process.env;
 	const controlsUrl =
 		options.evidenceControlsUrl ??
-		(options.env ?? process.env).HOBO_CODE_EVIDENCE_CONTROLS_URL;
+		env.HOBO_CODE_EVIDENCE_CONTROLS_URL ??
+		discoveredEvidenceControlsUrl(env);
 	return {
 		entrypoints:
 			controlsUrl === undefined || controlsUrl.length === 0
@@ -131,12 +146,16 @@ function applyEvidenceOverlay(
 	entrypoints: readonly ServableEntrypoint[],
 	controlsUrl: string,
 ): ServableEntrypoint[] {
-	const controls = new URL(controlsUrl);
-	const bridge = `<script data-hobo-evidence-overlay-bridge="1">${renderEvidenceOverlayBridge({ controlsUrl })}</script>`;
 	return entrypoints.map((entry) => ({
 		...entry,
 		handler: async (request) => {
 			const requestUrl = new URL(request.url);
+			const controls = new URL(controlsUrl);
+			if (!controls.searchParams.has("parentOrigin")) {
+				controls.searchParams.set("parentOrigin", requestUrl.origin);
+			}
+			const resolvedControlsUrl = controls.href;
+			const bridge = `<script data-hobo-evidence-overlay-bridge="1">${renderEvidenceOverlayBridge({ controlsUrl: resolvedControlsUrl })}</script>`;
 			if (
 				request.method === "GET" &&
 				requestUrl.searchParams.has(EVIDENCE_RAW_PARAM)
@@ -149,6 +168,13 @@ function applyEvidenceOverlay(
 			if (
 				request.method !== "GET" ||
 				!(response.headers.get("content-type") ?? "").includes("text/html")
+			) {
+				return response;
+			}
+			const contentEncoding = response.headers.get("content-encoding");
+			if (
+				contentEncoding !== null &&
+				contentEncoding.trim().toLowerCase() !== "identity"
 			) {
 				return response;
 			}
@@ -172,9 +198,9 @@ function applyEvidenceOverlay(
 			requestUrl.searchParams.set(EVIDENCE_RAW_PARAM, "1");
 			const wrapper = renderEvidenceOverlayWrapper({
 				appUrl: requestUrl.href,
-				controlsUrl,
+				controlsUrl: resolvedControlsUrl,
 			});
-			const headers = responseHeaders(response, "wrapper");
+			const headers = transformedResponseHeaders(response, "wrapper");
 			headers.delete("content-security-policy-report-only");
 			headers.set(
 				"content-security-policy",
@@ -183,6 +209,18 @@ function applyEvidenceOverlay(
 			return new Response(wrapper, responseInit(response, headers));
 		},
 	}));
+}
+
+function discoveredEvidenceControlsUrl(
+	env: NodeJS.ProcessEnv,
+): string | undefined {
+	const hoboHome =
+		env.HOBO_HOME ?? (env.HOME ? join(env.HOME, ".hobo") : undefined);
+	if (!hoboHome) return undefined;
+	const path = join(hoboHome, "runtime", "code", "evidence-controls-url");
+	if (!existsSync(path)) return undefined;
+	const value = readFileSync(path, "utf8").trim();
+	return value || undefined;
 }
 
 function cspAllowsInlineScript(value: string | null): boolean {
@@ -216,8 +254,13 @@ function cspAllowsInlineScript(value: string | null): boolean {
 
 function responseHeaders(response: Response, mode: string): Headers {
 	const headers = new Headers(response.headers);
-	headers.delete("content-length");
 	headers.set("x-hobo-evidence-overlay", mode);
+	return headers;
+}
+
+function transformedResponseHeaders(response: Response, mode: string): Headers {
+	const headers = responseHeaders(response, mode);
+	for (const name of STALE_BODY_HEADERS) headers.delete(name);
 	return headers;
 }
 
@@ -236,7 +279,7 @@ function htmlResponse(
 ): Response {
 	return new Response(
 		html,
-		responseInit(response, responseHeaders(response, mode)),
+		responseInit(response, transformedResponseHeaders(response, mode)),
 	);
 }
 

@@ -81,7 +81,7 @@
 				"status": 200,
 				"body": {
 					"verification": "claimed",
-					"origin": "component",
+					"origin": "hobo-code:control-server",
 					"kind": "test"
 				}
 			}

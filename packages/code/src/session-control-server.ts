@@ -1,5 +1,12 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	unlinkSync,
+	writeFileSync,
+} from "node:fs";
+import {
 	createServer,
 	type IncomingMessage,
 	type ServerResponse,
@@ -19,7 +26,10 @@ import {
 	GitWorkbenchSelectionKind,
 	SessionLifecycleState,
 } from "./_generated/code_harness_pb.js";
-import { renderEvidenceOverlayControls } from "./evidence-overlay.js";
+import {
+	parseEvidenceOverlayMessage,
+	renderEvidenceOverlayControls,
+} from "./evidence-overlay.js";
 import { createEvidencePort } from "./evidence-port.js";
 import {
 	type EvidenceFact,
@@ -58,6 +68,7 @@ export interface SessionControlServer {
 	readonly token: string;
 	readonly url: string;
 	readonly reportUrl: string;
+	readonly controlsUrlTemplate: string;
 	controlsUrl(parentOrigin: string, sessionId?: string): string;
 	close(): Promise<void>;
 }
@@ -262,12 +273,14 @@ async function currentEvidenceReport(
 		annotation: "features",
 		note: "progress",
 	} as const;
-	for (const record of evidence.records()) {
+	const records = evidence.records();
+	for (const record of records) {
+		if (record.kind === "note") continue;
 		facts.push({
 			id: `evidence:${record.id}`,
 			section: sections[record.kind],
 			title: record.title,
-			detail: record.summary,
+			detail: `${record.summary} · ${record.actor} via ${record.origin}${record.sourceRef ? ` · ${record.sourceRef}` : ""}`,
 			state: record.verification,
 			observedAt: record.recordedAt,
 			artifacts: record.artifactRefs.flatMap((ref) => {
@@ -309,7 +322,17 @@ async function currentEvidenceReport(
 		title: "Current development evidence",
 		generatedAt,
 		facts,
-		notes: [],
+		notes: records
+			.filter((record) => record.kind === "note")
+			.map((record, sequence) => ({
+				id: record.id,
+				sequence: sequence + 1,
+				section: sections[record.kind],
+				body: `${record.summary} · ${record.origin}${record.sourceRef ? ` · ${record.sourceRef}` : ""}`,
+				createdAt: record.recordedAt,
+				signer: record.actor,
+				signature: record.signature ?? "",
+			})),
 	});
 }
 
@@ -362,10 +385,32 @@ export async function startSessionControlServer(
 				url.pathname === "/__hobo/evidence" &&
 				(url.searchParams.get("token") === token || authorized(request, token))
 			) {
-				const html = renderEvidenceReportHtml(
-					await currentEvidenceReport(control, options.projectRoot, evidence),
-					{ live: true, controlsHref: `/?token=${encodeURIComponent(token)}` },
+				const report = await currentEvidenceReport(
+					control,
+					options.projectRoot,
+					evidence,
 				);
+				const liveReport = {
+					...report,
+					sections: report.sections.map((section) => ({
+						...section,
+						facts: section.facts.map((fact) => ({
+							...fact,
+							...(fact.artifacts
+								? {
+										artifacts: fact.artifacts.map((artifact) => ({
+											...artifact,
+											path: `${artifact.path}?token=${encodeURIComponent(token)}`,
+										})),
+									}
+								: {}),
+						})),
+					})),
+				};
+				const html = renderEvidenceReportHtml(liveReport, {
+					live: true,
+					controlsHref: `/?token=${encodeURIComponent(token)}`,
+				});
 				response.writeHead(200, {
 					"cache-control": "no-store",
 					"content-security-policy":
@@ -375,6 +420,80 @@ export async function startSessionControlServer(
 					"x-content-type-options": "nosniff",
 				});
 				response.end(html);
+				return;
+			}
+			if (
+				request.method === "POST" &&
+				url.pathname === `/__hobo/evidence/api/actions/${controlsCapability}`
+			) {
+				const origin = request.headers.origin;
+				if (origin) response.setHeader("access-control-allow-origin", origin);
+				const message = parseEvidenceOverlayMessage(
+					{
+						origin: origin ?? "http://127.0.0.1",
+						data: await requestBody(request),
+					},
+					origin ?? "http://127.0.0.1",
+				);
+				if (message.type === "report") {
+					json(response, 200, {
+						ok: true,
+						url: `http://127.0.0.1:${(server.address() as { port: number }).port}/__hobo/evidence?token=${encodeURIComponent(token)}`,
+					});
+					return;
+				}
+				if (
+					message.type === "replay" &&
+					typeof message.sessionId === "string"
+				) {
+					json(
+						response,
+						200,
+						await loadPlayerPayload({
+							sessionId: message.sessionId,
+							index: replayStore.index,
+							blobs: replayStore.blobs,
+							stationId: "station:local",
+						}),
+					);
+					return;
+				}
+				if (
+					message.type === "capture" ||
+					message.type === "annotate" ||
+					message.type === "edit-request"
+				) {
+					const id = evidence.submit({
+						kind:
+							message.type === "capture"
+								? message.kind === "clip"
+									? "recording"
+									: "screenshot"
+								: message.type === "annotate"
+									? "annotation"
+									: "note",
+						title:
+							message.type === "capture"
+								? `Requested ${String(message.kind)}`
+								: message.type === "annotate"
+									? "Browser annotation"
+									: "Browser edit request",
+						summary:
+							message.type === "annotate"
+								? String(message.note ?? "")
+								: message.type === "edit-request"
+									? String(message.prompt ?? "")
+									: "Capture requested from the browser overlay; host completion is pending.",
+						subject:
+							message.type !== "capture"
+								? message.selector
+								: "browser:current",
+						artifactRefs: [],
+					});
+					json(response, 202, { ok: true, id });
+					return;
+				}
+				json(response, 400, { error: "invalid evidence overlay action" });
 				return;
 			}
 			if (
@@ -401,6 +520,28 @@ export async function startSessionControlServer(
 				);
 				return;
 			}
+			const artifactMatch = /^\/__hobo\/assets\/sha256\/([a-f0-9]{64})$/u.exec(
+				url.pathname,
+			);
+			if (
+				request.method === "GET" &&
+				artifactMatch &&
+				(url.searchParams.get("token") === token || authorized(request, token))
+			) {
+				const artifact = evidence.readArtifact(`sha256:${artifactMatch[1]}`);
+				if (!artifact) {
+					json(response, 404, { error: "evidence artifact not found" });
+					return;
+				}
+				response.writeHead(200, {
+					"cache-control": "private, immutable",
+					"content-length": String(artifact.bytes.byteLength),
+					"content-type": artifact.mediaType,
+					"x-content-type-options": "nosniff",
+				});
+				response.end(artifact.bytes);
+				return;
+			}
 			if (request.method === "GET" && url.pathname === "/") {
 				if (url.searchParams.get("token") !== token) {
 					json(response, 401, { error: "missing session control token" });
@@ -422,9 +563,12 @@ export async function startSessionControlServer(
 				return;
 			}
 			if (request.method === "POST" && url.pathname === "/code/evidence") {
-				json(response, 201, {
-					id: evidence.submit(await requestBody(request)),
-				});
+				const id = evidence.submit(await requestBody(request));
+				const record = evidence
+					.records()
+					.find((candidate) => candidate.id === id);
+				if (!record) throw new Error("stored evidence record is missing");
+				json(response, 200, record);
 				return;
 			}
 			const replayMatch = /^\/code\/sessions\/([^/]+)\/replay$/u.exec(
@@ -499,6 +643,7 @@ export async function startSessionControlServer(
 					200,
 					renderEvidenceReportExport(
 						await currentEvidenceReport(control, options.projectRoot, evidence),
+						(id) => evidence.readArtifact(id).bytes,
 					),
 				);
 				return;
@@ -627,11 +772,21 @@ export async function startSessionControlServer(
 	const address = server.address();
 	if (!address || typeof address === "string")
 		throw new Error("server has no port");
+	const controlsUrlTemplate = `http://127.0.0.1:${address.port}/__hobo/evidence/controls/${controlsCapability}`;
+	const discoveryPath = join(
+		options.hoboHome,
+		"runtime",
+		"code",
+		"evidence-controls-url",
+	);
+	mkdirSync(join(options.hoboHome, "runtime", "code"), { recursive: true });
+	writeFileSync(discoveryPath, `${controlsUrlTemplate}\n`, { mode: 0o600 });
 	return {
 		port: address.port,
 		token,
 		url: `http://127.0.0.1:${address.port}/?token=${encodeURIComponent(token)}`,
 		reportUrl: `http://127.0.0.1:${address.port}/__hobo/evidence?token=${encodeURIComponent(token)}`,
+		controlsUrlTemplate,
 		controlsUrl: (parentOrigin, sessionId) => {
 			const url = new URL(
 				`http://127.0.0.1:${address.port}/__hobo/evidence/controls/${controlsCapability}`,
@@ -647,6 +802,13 @@ export async function startSessionControlServer(
 				() =>
 					new Promise<void>((resolve, reject) => {
 						server.close((error) => {
+							if (
+								existsSync(discoveryPath) &&
+								readFileSync(discoveryPath, "utf8").trim() ===
+									controlsUrlTemplate
+							) {
+								unlinkSync(discoveryPath);
+							}
 							control.close();
 							if (error) reject(error);
 							else resolve();

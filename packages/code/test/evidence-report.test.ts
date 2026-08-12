@@ -123,12 +123,14 @@ describe("evidence report projection", () => {
 		expect(portable.html).toContain('href="assets/unit.txt"');
 		expect(portable.html).toContain("Unit &lt;report&gt;");
 		expect(portable.html).toContain("Live controls unavailable in export");
-		expect(
-			renderEvidenceReportHtml(report, {
-				live: true,
-				controlsHref: "/?token=opaque",
-			}),
-		).toContain("live projection");
+		const live = renderEvidenceReportHtml(report, {
+			live: true,
+			controlsHref: "/?token=opaque",
+		});
+		expect(live).toContain("live projection");
+		expect(live).not.toContain('http-equiv="refresh"');
+		expect(live).toContain("Trust summary:");
+		expect(live).toContain("Submitted assertion; not independently checked.");
 		expect(portable.html).toContain("disabled");
 		expect(portable.html).toContain("Content-Security-Policy");
 		expect(manifest.controlsEnabled).toBe(false);

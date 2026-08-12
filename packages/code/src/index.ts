@@ -91,12 +91,15 @@ export {
 	type EvidenceReportSectionId,
 	type EvidenceState,
 	type PortableEvidenceReportExport,
+	type PortableEvidenceAsset,
 	type SignedEvidenceNote,
 } from "./evidence-report.js";
 
 export {
+	asHoboEvidenceHost,
 	createEvidencePort,
 	type EvidenceArtifactRef,
+	type ReadEvidenceArtifact,
 	type StoredEvidenceArtifact,
 	type StoredEvidenceRecord,
 } from "./evidence-port.js";

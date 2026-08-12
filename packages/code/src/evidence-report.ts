@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 // public-contract: deterministic portable evidence-report schema identifier.
 export const EVIDENCE_REPORT_SCHEMA = "hobo.code.evidence-report/v1" as const;
 
@@ -74,6 +76,14 @@ export interface EvidenceReport {
 export interface PortableEvidenceReportExport {
 	readonly html: string;
 	readonly manifest: string;
+	readonly assets: readonly PortableEvidenceAsset[];
+}
+
+export interface PortableEvidenceAsset {
+	readonly path: string;
+	readonly mediaType: string;
+	readonly sha256: string;
+	readonly bytesBase64: string;
 }
 
 export interface EvidenceReportHtmlOptions {
@@ -134,8 +144,27 @@ export function projectEvidenceReport(
 
 export function renderEvidenceReportExport(
 	report: EvidenceReport,
+	readArtifact?: (id: string) => Uint8Array | undefined,
 ): PortableEvidenceReportExport {
 	const artifacts = collectPortableArtifacts(report);
+	const assets = readArtifact
+		? artifacts.map((artifact) => {
+				const bytes = readArtifact(artifact.id);
+				if (!bytes)
+					throw new Error(`portable artifact is missing: ${artifact.id}`);
+				if (
+					createHash("sha256").update(bytes).digest("hex") !== artifact.sha256
+				) {
+					throw new Error(`artifact digest mismatch: ${artifact.id}`);
+				}
+				return {
+					path: artifact.path,
+					mediaType: artifact.mediaType,
+					sha256: artifact.sha256,
+					bytesBase64: Buffer.from(bytes).toString("base64"),
+				};
+			})
+		: [];
 	const manifest = `${JSON.stringify(
 		{
 			schemaVersion: report.schemaVersion,
@@ -149,7 +178,7 @@ export function renderEvidenceReportExport(
 		2,
 	)}\n`;
 
-	return { html: renderEvidenceReportHtml(report), manifest };
+	return { html: renderEvidenceReportHtml(report), manifest, assets };
 }
 
 export function renderEvidenceReportHtml(
@@ -158,12 +187,20 @@ export function renderEvidenceReportHtml(
 ): string {
 	const sections = report.sections.map(renderSection).join("\n");
 	const live = options.live === true;
+	const counts = report.sections
+		.flatMap(({ facts }) => facts)
+		.reduce<Record<EvidenceState, number>>(
+			(accumulator, { state }) => {
+				accumulator[state] += 1;
+				return accumulator;
+			},
+			{ claimed: 0, captured: 0, verified: 0, stale: 0, missing: 0 },
+		);
 	return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  ${live ? '<meta http-equiv="refresh" content="2">' : ""}
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
   <title>${escapeHtml(report.title)}</title>
   <style>
@@ -173,10 +210,20 @@ export function renderEvidenceReportHtml(
     h1, h2, h3, p { margin-top: 0; }
     ol, ul { padding-left: 1.4rem; }
     article, aside { border-top: 1px dashed #756954; padding-top: .8rem; }
-    [data-state] { border-left: .4rem solid #d7a84b; padding-left: .8rem; }
+    [data-state] { border-left: .4rem dashed #f2eadb; padding-left: .8rem; }
+    [data-state="captured"] { border-left-style: solid; border-color: #d7a84b; }
     [data-state="verified"] { border-color: #7ecb79; }
-    [data-state="stale"], [data-state="missing"] { border-color: #df6b57; }
+    [data-state="stale"] { border-style: dotted; border-color: #d7a84b; }
+    [data-state="missing"] { border-style: double; border-color: #df6b57; }
     .state { text-transform: uppercase; }
+    .trust { display: grid; grid-template-columns: repeat(auto-fit,minmax(13rem,1fr)); gap: .5rem; margin: 1rem 0 0; }
+    .trust div { border-left: .35rem solid #f2eadb; padding-left: .6rem; }
+    .trust div:nth-child(2) { border-color: #d7a84b; }
+    .trust div:nth-child(3) { border-color: #7ecb79; }
+    .trust div:nth-child(4) { border-color: #d7a84b; }
+    .trust div:nth-child(5) { border-color: #df6b57; }
+    .trust dt { font-weight: 800; text-transform: uppercase; }
+    .trust dd { margin: .15rem 0 0; }
     a { color: #9bc7ff; }
     button { font: inherit; padding: .5rem .75rem; }
   </style>
@@ -186,7 +233,16 @@ export function renderEvidenceReportHtml(
     <p>HoBo evidence report · ${live ? "live projection" : "portable export"}</p>
     <h1>${escapeHtml(report.title)}</h1>
     <p>Generated <time datetime="${escapeHtml(report.generatedAt)}">${escapeHtml(report.generatedAt)}</time></p>
+    <p><strong>Trust summary:</strong> ${counts.verified} verified · ${counts.captured} captured · ${counts.claimed} claimed · ${counts.stale} stale · ${counts.missing} missing</p>
+    <dl class="trust" aria-label="Evidence trust states">
+      <div><dt>Claimed</dt><dd>Submitted assertion; not independently checked.</dd></div>
+      <div><dt>Captured</dt><dd>Content-addressed artifact recorded by the host.</dd></div>
+      <div><dt>Verified</dt><dd>Acceptance evidence passed against this state.</dd></div>
+      <div><dt>Stale</dt><dd>Evidence predates the current state.</dd></div>
+      <div><dt>Missing</dt><dd>Required evidence has not been supplied.</dd></div>
+    </dl>
     ${live && options.controlsHref ? `<a href="${escapeHtml(options.controlsHref)}">Open session controls</a>` : '<button type="button" disabled aria-disabled="true">Live controls unavailable in export</button>'}
+    ${live ? '<a href="">Refresh evidence</a><span> · Live report updates when this page is refreshed.</span>' : ""}
   </header>
   <main>${sections}</main>
 </body>

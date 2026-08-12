@@ -42,6 +42,7 @@ export interface MaterializeExampleOptions {
 	readonly exampleId: string;
 	readonly outputDir: string;
 	readonly appName: string;
+	readonly intent?: string;
 	readonly catalog?: readonly ExampleCatalogEntry[];
 }
 
@@ -305,7 +306,7 @@ export function materializeExample(
 	options: MaterializeExampleOptions,
 ): MaterializeExampleResult {
 	const fromAtoms = emitFromAtoms({
-		intent: `${options.exampleId} ${options.appName} app`,
+		intent: options.intent ?? `${options.exampleId} ${options.appName} app`,
 		outputDir: options.outputDir,
 		params: { name: options.appName },
 	});

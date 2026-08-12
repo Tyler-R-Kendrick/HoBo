@@ -32,6 +32,7 @@ describe("Bo workspace actions", () => {
 		expect(matchWorkspaceAction("create a hello world app")).toEqual({
 			kind: "create",
 			exampleId: "hello-world",
+			prompt: "create a hello world app",
 		});
 		expect(matchWorkspaceAction("run it")).toEqual({ kind: "run" });
 		expect(matchWorkspaceAction("debug it")).toEqual({ kind: "debug" });
@@ -39,8 +40,19 @@ describe("Bo workspace actions", () => {
 			{
 				kind: "create-and-run",
 				exampleId: "hello-world",
+				prompt: "create a hello world app and run it",
 			},
 		);
+		expect(matchWorkspaceAction("deploy to azure")).toEqual({
+			kind: "create",
+			exampleId: "deploy.azure",
+			prompt: "deploy to azure",
+		});
+		expect(matchWorkspaceAction("bundle apps in the same network")).toEqual({
+			kind: "create",
+			exampleId: "network.colocate",
+			prompt: "bundle apps in the same network",
+		});
 		expect(matchWorkspaceAction("run the tests")).toBeUndefined();
 		expect(matchWorkspaceAction("refine the openui bindle")).toBeUndefined();
 	});
@@ -72,6 +84,11 @@ describe("Bo workspace actions", () => {
 		);
 		expect(createdText).toMatch(/hello-world/i);
 		expect(createdText).toMatch(/src\/bindle\.ts/);
+
+		const azureText = await host.tryWorkspaceAction?.("deploy to azure");
+		expect(azureText).toMatch(/deploy\.azure|azure/i);
+		expect(azureText).toMatch(/src\/yard\.ts/);
+		expect(azureText).not.toMatch(/hobo-code atoms/i);
 
 		const runText = await host.tryWorkspaceAction?.("run it");
 		expect(runText).toContain("http://127.0.0.1:48211/");

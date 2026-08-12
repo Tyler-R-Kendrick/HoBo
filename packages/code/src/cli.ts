@@ -3,7 +3,7 @@
  *
  * App-building agent CLI (not a control-plane management tool).
  *   dispatch (default) | status | session | attach | tasks | guide |
- *   scaffold | atoms | dev | isolate | promote | env | auth | models | cost | harness |
+ *   scaffold | dev | isolate | promote | env | auth | models | cost | harness |
  *   edit | config | agent | help
  *
  * Binary name: hobo-code (dash permitted).
@@ -15,11 +15,6 @@ import { fileURLToPath } from "node:url";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
 import { allocateAgentWorkspaces } from "./agent-workspaces.js";
-import {
-	rankAtoms,
-	rebuildAtomIndex,
-	retrieveAtoms,
-} from "./atom-index.js";
 import {
 	authLogin,
 	authStatus,
@@ -158,7 +153,6 @@ export const HOBO_CODE_VERBS = [
 	"tasks",
 	"guide",
 	"scaffold",
-	"atoms",
 	"dev",
 	"isolate",
 	"promote",
@@ -508,7 +502,6 @@ function helpTextPlain(): string {
 		"",
 		"Craft & cost:",
 		"  scaffold   Copy a shipped repo example (hello-world, barebones, …)",
-		"  atoms      Rebuild / retrieve the local atomic template index",
 		"  dev        Deploy the current web app with browser evidence controls",
 		"  isolate    Mediated sandbox for agent work",
 		"  promote    Promote a run through gate checklist",
@@ -883,27 +876,6 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"See also: hobo-code dispatch · hobo-code help",
 	],
-	atoms: [
-		"hobo-code atoms — local atomic template index (offline, $0)",
-		"",
-		"Usage:",
-		"  hobo-code atoms rebuild [--out <sqlite>]",
-		"  hobo-code atoms retrieve <intent…>",
-		"",
-		"Rebuild writes $HOBO_HOME/durable/code/template-index.sqlite from templates/atoms.",
-		"Retrieve is FTS5 + pinned local embedder + RRF. High-confidence emits without an LLM.",
-		"",
-		"Flags:",
-		"  --out <path>        Derived SQLite cache path",
-		"  --json              Machine-readable result",
-		"  --help, -h          Show this help",
-		"",
-		"Examples:",
-		'  hobo-code atoms rebuild',
-		'  hobo-code atoms retrieve "create a hello world app"',
-		"",
-		"See also: hobo-code scaffold · pnpm --filter @hobo/code run atoms:index",
-	],
 	dev: [
 		"hobo-code dev — run the project Bindle on a local Yard with Evidence",
 		"",
@@ -1234,7 +1206,6 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 			tasks: "tk",
 			guide: "gd",
 			scaffold: "sc",
-			atoms: "atx",
 			dev: "dv",
 			isolate: "i",
 			promote: "pr",
@@ -2469,43 +2440,6 @@ export async function runHoboCodeCli(
 		}
 	}
 
-	if (verb === "atoms") {
-		const sub = args[0] ?? "rebuild";
-		if (sub === "retrieve") {
-			const intent = args.slice(1).join(" ").trim();
-			if (intent.length === 0) {
-				return fail(
-					"HOBO_CODE_ATOMS",
-					panel("? at", ["retrieve needs an intent"]),
-					['hobo-code atoms retrieve "create a hello world app"'],
-				);
-			}
-			const hit = retrieveAtoms(intent);
-			const top = rankAtoms(intent, 3)
-				.map((row) => `${row.kind}:${row.id}`)
-				.join(" · ");
-			const text = panel("✦ at", [
-				[
-					hit.decision,
-					hit.confidence,
-					hit.composition?.id ?? hit.atoms[0]?.id ?? "none",
-				].join("·"),
-				top,
-			]);
-			return ok("HOBO_CODE_ATOMS", text, { result: hit, ranked: rankAtoms(intent, 5), text });
-		}
-		const out =
-			typeof flags.out === "string" && flags.out.length > 0
-				? flags.out
-				: undefined;
-		const rebuilt = rebuildAtomIndex(out !== undefined ? { path: out } : {});
-		const text = panel("✦ at", [
-			`rebuild ${rebuilt.atomCount}a ${rebuilt.compositionCount}c`,
-			rebuilt.embedderId,
-		]);
-		return ok("HOBO_CODE_ATOMS", text, { result: rebuilt, text });
-	}
-
 	if (verb === "scaffold") {
 		const name =
 			args[0] || (typeof flags.name === "string" && flags.name) || "app";
@@ -3106,6 +3040,7 @@ export async function runHoboCodeCli(
 			exampleId: matchedExample.id,
 			outputDir: out,
 			appName: name,
+			intent: examplePrompt,
 		});
 		if (workspaceAction?.kind === "create-and-run") {
 			return runHoboCodeCli(

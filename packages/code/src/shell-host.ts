@@ -11,7 +11,7 @@
  */
 import { spawn } from "node:child_process";
 import { join } from "node:path";
-
+import { emitFromAtoms } from "./atom-index.js";
 import {
 	formatHoboCodeResult,
 	type HoboCodeCliDeps,
@@ -33,6 +33,38 @@ interface DispatchedTaskShape {
 	readonly status?: string;
 	readonly handbackPath?: string;
 	readonly error?: string;
+}
+
+function formatSessionCreateReply(options: {
+	readonly id: string;
+	readonly outputDir: string;
+	readonly files: readonly string[];
+	readonly holes: readonly string[];
+}): string {
+	const preview = [...options.files]
+		.filter((file) => !file.endsWith(".gitkeep"))
+		.sort((left, right) => {
+			const rank = (file: string): number => {
+				if (/(?:^|\/)(?:bindle|yard)\.ts$/u.test(file)) return 0;
+				if (file.startsWith("src/")) return 1;
+				return 2;
+			};
+			return rank(left) - rank(right);
+		})
+		.slice(0, 8)
+		.join(", ");
+	const hole =
+		options.holes.length > 0
+			? `Trainable holes (${options.holes.join(", ")}) are "use training" skeletons — not invented logic.`
+			: undefined;
+	return [
+		`Created ${options.id} at ${options.outputDir}.`,
+		preview.length > 0 ? `Wrote ${preview}.` : undefined,
+		hole,
+		'Say "run it" or "debug it" when you want live endpoints.',
+	]
+		.filter((line): line is string => line !== undefined)
+		.join("\n");
 }
 
 function dispatchedTask(result: HoboCodeCliResult): DispatchedTaskShape | null {
@@ -197,17 +229,37 @@ export function createDefaultShellHost(
 		if (!action) return null;
 		if (action.kind === "create" || action.kind === "create-and-run") {
 			const outputDir = join(workspaceRoot, action.exampleId);
-			const copied = materializeExample({
-				exampleId: action.exampleId,
+			const emitted = emitFromAtoms({
+				intent: action.prompt,
 				outputDir,
-				appName: action.exampleId,
+				params: { name: action.exampleId.replace(/[^a-z0-9-]+/giu, "-") },
 			});
-			lastProjectDir = copied.outputDir;
-			if (action.kind === "create") {
-				return [
-					`Created ${copied.templateId} at ${copied.outputDir}.`,
-					'src/bindle.ts is ready. Say "run it" or "debug it" for live endpoints.',
-				].join("\n");
+			if (emitted.ok) {
+				lastProjectDir = outputDir;
+				if (action.kind === "create") {
+					return formatSessionCreateReply({
+						id: emitted.compositionId ?? action.exampleId,
+						outputDir,
+						files: emitted.files,
+						holes: emitted.holes,
+					});
+				}
+			} else {
+				const copied = materializeExample({
+					exampleId: action.exampleId,
+					outputDir,
+					appName: action.exampleId,
+					intent: action.prompt,
+				});
+				lastProjectDir = copied.outputDir;
+				if (action.kind === "create") {
+					return formatSessionCreateReply({
+						id: copied.templateId,
+						outputDir: copied.outputDir,
+						files: copied.files,
+						holes: [],
+					});
+				}
 			}
 		}
 		const projectDir = resolveRunnableProject(workspaceRoot, lastProjectDir);

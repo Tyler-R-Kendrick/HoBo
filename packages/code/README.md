@@ -1,14 +1,13 @@
 # `@hobo/code` · binary **`hobo-code`**
 
-Atomic templates (ADR-0152) live in `templates/atoms/`. Rebuild the derived
-SQLite index offline and emit a high-confidence Bindle without an LLM:
+Atomic templates (ADR-0152) emit from the **interactive session**, not a
+retrieve verb. Start Bo and say the phrase:
 
 ```bash
-pnpm --filter @hobo/code run atoms:index
-hobo-code atoms retrieve "create a hello world app"
-hobo-code atoms retrieve "deploy to azure"
-hobo-code atoms retrieve "bundle apps in the same network"
-hobo-code scaffold hello-world --name greeter
+hobo-code
+# then: create a hello world app
+#        deploy to azure
+#        bundle apps in the same network
 ```
 
 **App-building agent / helper** for HoBo — not a control-plane management CLI.

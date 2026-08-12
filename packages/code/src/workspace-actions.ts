@@ -1,14 +1,23 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
+import { matchClosedIntent } from "./atom-intent.js";
 import {
 	type ExampleCatalogEntry,
 	matchExampleRequest,
 } from "./example-catalog.js";
 
 export type WorkspaceAction =
-	| { readonly kind: "create"; readonly exampleId: string }
-	| { readonly kind: "create-and-run"; readonly exampleId: string }
+	| {
+			readonly kind: "create";
+			readonly exampleId: string;
+			readonly prompt: string;
+	  }
+	| {
+			readonly kind: "create-and-run";
+			readonly exampleId: string;
+			readonly prompt: string;
+	  }
 	| { readonly kind: "run" }
 	| { readonly kind: "debug" };
 
@@ -34,11 +43,13 @@ export function matchWorkspaceAction(
 	const normalized = normalize(prompt);
 	if (normalized.length === 0) return undefined;
 	const example = matchExampleRequest(prompt, catalog);
+	const closed = matchClosedIntent(prompt);
+	const exampleId = example?.id ?? closed?.id;
 	const wantsRun = RUN_WORDS.test(normalized) && !TEST_WORDS.test(normalized);
-	if (example && wantsRun) {
-		return { kind: "create-and-run", exampleId: example.id };
+	if (exampleId && wantsRun) {
+		return { kind: "create-and-run", exampleId, prompt };
 	}
-	if (example) return { kind: "create", exampleId: example.id };
+	if (exampleId) return { kind: "create", exampleId, prompt };
 	if (TEST_WORDS.test(normalized)) return undefined;
 	if (RUN_PROMPT.test(normalized)) return { kind: "run" };
 	if (DEBUG_PROMPT.test(normalized)) return { kind: "debug" };

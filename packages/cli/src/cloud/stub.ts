@@ -14,7 +14,7 @@ export function stubResult(verb: string): CommandResult {
 		ok: legacyOk,
 		status: "not_implemented",
 		code: "HOBO_CLI_STUB",
-		message: `${verb} is not yet implemented`,
+		message: `${verb} needs the composed @hobo/hobo binary after a workspace build (pnpm exec turbo run build --filter @hobo/hobo). This adapter-free shell is a stub, not the local lane.`,
 		data: {},
 	};
 }

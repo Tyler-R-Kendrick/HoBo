@@ -332,7 +332,7 @@ export async function ensureEmbeddedBroker(options: {
 		} catch {
 			wasmAvailable = false;
 			emit(
-				"hobo broker-runtime: wasm toolchain unavailable; local process yard remains eligible",
+				"hobo broker-runtime: local process yard is the default (isolated-wasm not equipped)",
 			);
 		}
 	}

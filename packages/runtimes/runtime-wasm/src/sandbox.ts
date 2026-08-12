@@ -377,7 +377,6 @@ export async function ensureIsolatedWasmToolchain(
 	const emit = options.emitProgress ?? (() => {});
 	const notes: string[] = [];
 
-	emit(`hobo: ensuring isolated-wasm toolchain under ${hoboHome}`);
 	const wasmtime = await ensureWasmtimeBinary({
 		hoboHome,
 		env,

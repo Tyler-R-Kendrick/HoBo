@@ -198,7 +198,7 @@ export function initBareMetalYard(
 	const configPath = yardConfigPath(hoboHome);
 	if (existsSync(configPath) && options.force !== true) {
 		throw new Error(
-			`local Yard already configured at ${configPath} (pass --force to overwrite)`,
+			`local Yard already configured at ${configPath} — first-run already happened. Run \`hobo yard status\` or pass --force to overwrite`,
 		);
 	}
 	const config = scaffoldBareMetalYardConfig({

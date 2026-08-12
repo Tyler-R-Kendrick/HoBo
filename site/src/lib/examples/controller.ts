@@ -33,6 +33,7 @@ import {
 	deployViaLocalBridge,
 	probeLocalBridge,
 } from "./local-bridge-client.js";
+import { browserWitRuntimeAvailable } from "./runtime/browser-station.js";
 import { shipOpenSaasViaTemporaryAccounts } from "./opensaas-temporary-ship.js";
 import { shipSwaghausViaTemporaryAccounts } from "./swaghaus-temporary-ship.js";
 import {
@@ -102,9 +103,25 @@ export const HOST_SANDBOX_TOKENS = ["allow-scripts"] as const;
 /** Ship stays locked until Pool has at least one deployed station. */
 export const SHIP_LOCKED_DEPLOY_LABEL = "Locked — deploy stations first";
 export const SHIP_GATE_PLAN_LINE = "Deploy at least one station in Pool first.";
+export const SHIP_RUNTIME_MISSING_LABEL = "Pick a local-bridge app";
+export const SHIP_RUNTIME_MISSING_LINE =
+	"Browser WIT runtime is not on this host (Pages omits ~25MB wasm). Pick OpenSaaS or Swaghaus, run `pnpm --filter hobo-site run examples:bridge`, then reload with ?bridge=http://127.0.0.1:8787.";
 
 export function shipStationsReady(stationCount: number): boolean {
 	return stationCount > 0;
+}
+
+export function preferShipExampleId(
+	catalog: readonly { readonly id: string; readonly deployKind: string }[],
+	witRuntimeReady: boolean | null,
+): string | undefined {
+	if (witRuntimeReady === false) {
+		return (
+			catalog.find((entry) => entry.deployKind === "local-bridge")?.id ??
+			catalog[0]?.id
+		);
+	}
+	return catalog[0]?.id;
 }
 
 const TARGET_PACKS: Readonly<Record<string, TargetPack>> = Object.fromEntries(
@@ -125,6 +142,7 @@ const TARGET_PACKS: Readonly<Record<string, TargetPack>> = Object.fromEntries(
 );
 
 let bridgeOnline = false;
+let witRuntimeReady: boolean | null = null;
 
 export async function bootExamplesConsole(): Promise<void> {
 	const root = document.querySelector<HTMLElement>("[data-examples-console]");
@@ -348,6 +366,9 @@ export async function bootExamplesConsole(): Promise<void> {
 		ui.removeStation.disabled = busy || ui.stationSelect.value === "";
 
 		if (stationsReady) {
+			if (!appSelectedId) {
+				appSelectedId = preferShipExampleId(catalog, witRuntimeReady) ?? null;
+			}
 			renderAppSelect(ui.appSelect, catalog, appSelectedId, !busy, (id) => {
 				if (busy || registry.stations.length === 0) return;
 				if (live.length > 0) {
@@ -371,10 +392,19 @@ export async function bootExamplesConsole(): Promise<void> {
 			const shipSlots = example
 				? resolveExampleStationPlan(example, registry.stations).provision.length
 				: 0;
-			ui.deployApps.disabled = busy || !appSelectedId || shipSlots === 0;
-			ui.deployApps.firstElementChild!.textContent = appSelectedId
-				? `Deploy app (${shipSlots} host)`
-				: "Deploy app";
+			const needsWit =
+				example !== undefined && example.deployKind !== "local-bridge";
+			const witMissing = needsWit && witRuntimeReady === false;
+			ui.deployApps.disabled =
+				busy || !appSelectedId || shipSlots === 0 || witMissing;
+			ui.deployApps.firstElementChild!.textContent = witMissing
+				? SHIP_RUNTIME_MISSING_LABEL
+				: appSelectedId
+					? `Deploy app (${shipSlots} host)`
+					: "Deploy app";
+			if (witMissing) {
+				ui.examplePlanLine.textContent = SHIP_RUNTIME_MISSING_LINE;
+			}
 		} else {
 			ui.appSelect.replaceChildren();
 			const placeholder = document.createElement("option");
@@ -412,6 +442,11 @@ export async function bootExamplesConsole(): Promise<void> {
 			}
 		}
 	};
+
+	void browserWitRuntimeAvailable(`${base}examples/runtime`).then((ok) => {
+		witRuntimeReady = ok;
+		render();
+	});
 
 	for (const button of root.querySelectorAll<HTMLButtonElement>("[data-view]")) {
 		button.addEventListener("click", () => {
@@ -687,6 +722,12 @@ export async function bootExamplesConsole(): Promise<void> {
 		try {
 			const example = catalog.find((entry) => entry.id === appSelectedId);
 			if (!example) throw new Error("Selected app missing from catalog");
+			if (
+				example.deployKind !== "local-bridge" &&
+				!(await browserWitRuntimeAvailable(`${base}examples/runtime`))
+			) {
+				throw new Error(SHIP_RUNTIME_MISSING_LINE);
+			}
 			const plan = resolveExampleStationPlan(example, registry.stations);
 			await writeTerminal(
 				ui.terminal,

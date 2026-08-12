@@ -13,22 +13,27 @@ Time to leave home. This guide takes you from an empty directory to an app that 
 
 **[Yards](/HoBo/primitives/yards/)** and **[Junctions](/HoBo/primitives/junctions/)** are advanced scenarios — pin a provider, multi-region, or multi-cloud. Short section [at the end](#advanced--yards-and-junctions).
 
-> **Pre-release note:** HoBo is pre-release, but the core flow on this page **runs today**: a project with a `src/bindle.ts` runs `hobo collect`, `hobo plan`, `hobo up`, and `hobo dev` against the default **local lane** (offline Yard runtime, durable SQLite journal) — no cloud account required. Live deploy lanes (Cloudflare, Vercel, live IaC credentials) are credential-gated. Sections still maturing are marked design-stage below.
+> **Pre-release note:** `@hobo/*` is **not on npm**. Public `npx hobo` is a *different* package. The local lane (`collect` / `plan` / `up` / `dev`) runs **after** you clone this repo, install with pnpm, and build the workspace. Default IaC is still an **in-memory Pulumi stand-in**. Live Cloudflare/Vercel/Pulumi lanes are credential-gated.
 
 ## Prerequisites
 
-- **Node.js** ≥ 20 (any Component-Model language can author bindles eventually — TypeScript is the first reference implementation).
-- A terminal, ten minutes, and no cloud account. Really: `hobo dev` and even your first deploy work without one.
+- **Node.js** ≥ 22 (`node:sqlite`; CI uses 24). TypeScript is the first reference implementation.
+- **pnpm** 10 (`packageManager` in the repo root). A GitHub zip without `external/ts-autocode` is incomplete — clone with submodules / the full tree.
+- No cloud account for the local lane.
 
-## Scaffold a program
+## Run the local lane (clone — not npm)
 
 ```sh
-npx hobo new my-app --template fullstack
-cd my-app
-hobo dev
+git clone https://github.com/Tyler-R-Kendrick/HoBo.git
+cd HoBo
+pnpm install
+pnpm exec turbo run build --filter @hobo/adapter-hono --filter @hobo/hobo
+pnpm --filter @hobo/hobo exec hobo doctor --cwd examples/hello-bindle
+pnpm --filter @hobo/hobo exec hobo plan --cwd examples/hello-bindle
+pnpm --filter @hobo/hobo exec hobo up --cwd examples/hello-bindle
 ```
 
-`hobo new` scaffolds a runnable SDK program (templates: `todo`, `api`, `agent`, `fullstack`); `hobo dev` boots an offline local camp and serves **your bindle's own api/web entrypoint handler in-process** — no sign-up, no network.
+Do **not** run `npx hobo`. Use the composed `@hobo/hobo` binary from this workspace. A half-built tree will fail to import `@hobo/adapter-hono` (and used to look like “no Bindle”). `hobo new` exists on that binary only; it is not a public npm scaffold.
 
 ## Step 1 — Pack your bindle
 
@@ -36,7 +41,7 @@ The bindle is the first thing HoBo looks for and the only thing it ships. It's p
 
 ```ts
 // src/bindle.ts
-import { bindle } from "hobo/bindles";
+import { bindle } from "@hobo/bindles";
 
 import { app as api } from "./api";
 import { app as web } from "./webapp";
@@ -61,7 +66,7 @@ Three things to internalize — they're what make everything later cheap:
 - **`.dependsOn(...)` is the wiring.** It declares edges *and* injects typed bindings at runtime. Nothing reaches a backend it didn't declare — deny by default.
 - **`.allow(...)` is inline least privilege.** Verbs are scoped to the resource's kind — `"read"`/`"write"` on a data port, `"enqueue"` on a queue, `"get"`/`"set"` on a kv store. Permissions travel *in* the bindle, so they move when the app moves. That's the trick: a bindle carries everything needed to unpack it anywhere, which is exactly what makes migrating to a cheaper home a routine event instead of a rewrite.
 
-That's a complete, deployable description — and it deploys today: run `hobo up` and HoBo converges against the default **local lane** (build, plan, gate, provision, deploy — offline, durable SQLite journal, no cloud account). If a committed `hobo.bindle.json` is present it wins; otherwise the manifest is compiled from `src/bindle.ts`.
+That's a complete description. Against a **built** `@hobo/hobo` binary, `hobo up --cwd examples/hello-bindle` converges on the default **local lane** (offline, durable SQLite journal, in-memory Pulumi stand-in — not live multi-cloud). If a committed `hobo.bindle.json` is present it wins; otherwise the manifest is compiled from `src/bindle.ts`.
 
 > **Starting from nothing?** You don't need existing code to pack a bindle. Declare a `@component` class whose `@operation` methods carry an intent, a typed contract shape, and an optional rubric — a `stub()` body declares *code to be generated* — and hand it straight to `b.api(...)`. See [Greenfield: declare the bindle, generate the code](/HoBo/primitives/bindles/#greenfield-declare-the-bindle-generate-the-code).
 
@@ -71,7 +76,7 @@ A **camp** answers *what environment is this?* — not *which cloud account*. Ca
 
 ```ts
 // src/camps.ts — optional; omit entirely for inferred local camps
-import { camp } from "hobo/camps";
+import { camp } from "@hobo/camps";
 
 export const prod = camp("prod", {
   envType: "prod",
@@ -83,7 +88,7 @@ export const prod = camp("prod", {
 
 ```ts
 // src/yard.ts
-import { yard } from "hobo/yards";
+import { yard } from "@hobo/yards";
 import { prod } from "./camps";
 
 export default yard("aws-east", {
@@ -105,11 +110,11 @@ Useful truths:
 
 - **The camp is a *current address*, not a vow.** The bindle stays provider-agnostic so the home can change. Continuous migration reuses plan → gate → converge.
 - **Writing a camp is optional.** No camp file → inferred local camp on the default lane. Explicit camps pin env semantics or satisfy locked-down placement policy.
-- **Zero-setup first deploy:** `hobo up` / `hobo dev` need no cloud credentials. `hobo login` mints a local dev session; `hobo claim` binds an anonymous deployment to an account later. **Live** lanes are credential-gated: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or live IaC credentials.
+- **Zero-setup first deploy:** after the workspace build above, `hobo up` / `hobo dev` need no cloud credentials. `hobo login` mints a local dev session; `hobo claim` binds an anonymous deployment to an account later. **Live** lanes are credential-gated: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or live IaC credentials.
 - **Provider-native power stays in the Bindle** as additive annotations (not a rewrite):
 
 ```ts
-import { aws } from "hobo/providers/aws";
+import { aws } from "@hobo/provider-aws";
 
 const apiSvc = b
   .api(() => api.fetch)
@@ -125,8 +130,8 @@ Skip this on day one. Come back when you pin a provider or go multi-cloud.
 ### Yard: one provider, many camps
 
 ```ts
-import { camp } from "hobo/camps";
-import { yard } from "hobo/yards";
+import { camp } from "@hobo/camps";
+import { yard } from "@hobo/yards";
 
 export default yard("aws", {
   provider: "aws",
@@ -145,7 +150,7 @@ One yard per provider. Multi-region = several camps under one yard. Multi-cloud 
 > **Early-stage:** `junction()` authoring and plan derivation ship; each yard still realizes its own half. Full multi-cloud realization is on the [trail map](/HoBo/guide/status/).
 
 ```ts
-import { junction } from "hobo/junctions";
+import { junction } from "@hobo/junctions";
 import awsYard from "./yards/aws";
 import azureYard from "./yards/azure";
 
@@ -160,4 +165,5 @@ Requires **at least two** member yards. Continuous migration then has a bigger m
 - Worked examples ship with the product docs and starter templates.
 - [Core concepts](/HoBo/guide/concepts/) — the vocabulary in one sitting.
 - [The hobo CLI](/HoBo/guide/cli/) — the whole verb surface (it's deliberately small).
+- [hobo-code](/HoBo/guide/hobo-code/) — talk to Bo after `hobo-code` starts the session.
 - [HoBo for agents](/HoBo/agents/) — pointing an AI agent at HoBo? It gets its own credentials, not yours.

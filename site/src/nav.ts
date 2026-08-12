@@ -25,7 +25,7 @@ export const sections: NavSection[] = [
 		groups: ["Guide", "Primitives", "Architecture", "Roles"],
 	},
 	{
-		label: "Build",
+		label: "Examples",
 		slug: "/examples/",
 		groups: ["Examples", "Customizations", "CI/CD", "Testing"],
 	},
@@ -103,7 +103,9 @@ export const nav: NavGroup[] = [
 			{ label: "Getting started", slug: "/guide/getting-started/" },
 			{ label: "Core concepts", slug: "/guide/concepts/" },
 			{ label: "The hobo CLI", slug: "/guide/cli/" },
+			{ label: "hobo-code", slug: "/guide/hobo-code/" },
 			{ label: "The trail map", slug: "/guide/status/" },
+			{ label: "Search", slug: "/search/" },
 		],
 	},
 	{

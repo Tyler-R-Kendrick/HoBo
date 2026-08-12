@@ -2,7 +2,9 @@
 
 A HoBo example shop: a **storefront web app**, a **shop API**, a **products kv
 store**, an **orders queue**, and the **bindle** that wires them — one unchanged
-bindle deployable to two providers.
+bindle. Provider selection belongs on a **Yard**, not inside the Bindle. The
+local Yard advertises `kv` + `queue`, so `hobo plan` / `hobo up` can demo this
+package on the default lane. Live AWS/Azure apply is still credential-gated.
 
 ## The pieces
 
@@ -41,8 +43,16 @@ bytes. The cost-gated CI lanes in
 ## Run it
 
 ```bash
+pnpm exec turbo run build --filter @hobo/hobo
 pnpm --filter @hobo/example-multi-cloud-shop test
+pnpm --filter @hobo/hobo exec hobo plan --cwd examples/multi-cloud-shop
+pnpm --filter @hobo/hobo exec hobo up --cwd examples/multi-cloud-shop
 ```
+
+If `hobo plan` still exits `HOBO_PLAN_REJECTED`, the printed remediations name
+the unsatisfied port. The local Yard must advertise `kv` and `queue` (see
+`createBareMetalProvider` in `@hobo/hobo`). Do not invent a cloud provider pin
+on the Bindle — attach a provider-specific Yard instead.
 
 ## How this maps to HoBo's architecture
 

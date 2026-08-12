@@ -49,8 +49,8 @@ lowest-common-denominator abstraction that hides the provider.
 
 ## Operating Context
 
-- Two CLIs: `hobo` (control plane, 40 canonical verbs) and `hobo-code` (coding
-  harness / dogfooding surface).
+- Two CLIs: `hobo` (control plane, canonical verb set in
+  `packages/cli/src/shell/verbs.ts`) and `hobo-code` (interactive Bo session).
 - The website is landing page + developer docs + agent docs, built from `site/`
   and published to the `gh-pages` branch — deliberately **no GitHub Actions
   dependency** for gates or publish (`pnpm run site:deploy`). Checkin gates
@@ -65,7 +65,7 @@ lowest-common-denominator abstraction that hides the provider.
 
 - Active design + executable contract/proof repository with a production
   `packages/` workspace (78 package manifests).
-- All 40 canonical `hobo` verbs dispatch against the local lane.
+- The canonical `hobo` verb set dispatches against the local lane.
 - Live Vercel/Cloudflare paths and `HOBO_PULUMI_LIVE=1` are credential- or
   engine-gated, not default.
 - Ship targets A (OSS public) → B (local-first developer tooling) → C (hosted

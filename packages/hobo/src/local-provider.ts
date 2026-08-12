@@ -59,8 +59,10 @@ export const BARE_METAL_PROVIDER_ID = "local" as const;
 // Ports a local Yard's Camps can realize on the operator's machine.
 const BARE_METAL_PORTS = [
 	"kv",
+	"queue",
 	"objectStore",
 	"hobo:key-value",
+	"hobo:message-queue",
 	"hobo:object-store",
 	"hobo:http-service",
 	"hobo:web-app",

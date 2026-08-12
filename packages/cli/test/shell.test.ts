@@ -207,7 +207,7 @@ describe("HoBo CLI shell", () => {
 			expect(envelope.verb).toBe("plan");
 			expect(envelope.status).toBe("not_implemented");
 			expect(envelope.code).toBe("HOBO_CLI_STUB");
-			expect(envelope.message).toBe("plan is not yet implemented");
+			expect(String(envelope.message)).toMatch(/composed @hobo\/hobo binary/);
 			expect((envelope.context as { cwd: string }).cwd).toBe(cwd);
 			expect((envelope.context as { projectDir: string }).projectDir).toBe(cwd);
 		});
@@ -355,7 +355,7 @@ describe("HoBo CLI shell", () => {
 			const quiet = await runHobo(["plan", "-q"], { cwd });
 			expect(quiet.exitCode).toBe(1);
 			expect(quiet.stdout).toBe("");
-			expect(quiet.stderr).toMatch(/plan is not yet implemented/);
+			expect(quiet.stderr).toMatch(/composed @hobo\/hobo binary/);
 		});
 	});
 

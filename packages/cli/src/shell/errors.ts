@@ -28,17 +28,42 @@ export class UsageError extends CliError {
 }
 
 export class NoBindleError extends CliError {
-	constructor(cwd: string) {
+	constructor(cwd: string, options: { readonly monorepo?: boolean } = {}) {
+		const monorepo = options.monorepo === true;
 		super(
-			`No Bindle here: ${cwd}\nRun from a HoBo project or pass --cwd <path> to one.`,
+			monorepo
+				? `No Bindle here: ${cwd}\nThis looks like the HoBo monorepo root, not an app.`
+				: `No Bindle here: ${cwd}\nRun from a HoBo project or pass --cwd <path> to one.`,
 			1,
 			"HOBO_NO_BINDLE",
-			[
-				"Run `hobo new <name>` to scaffold a project, or `cd` into an existing HoBo project.",
-				"Pass `--cwd <path>` to point at a directory containing hobo.bindle.json.",
-			],
+			monorepo
+				? [
+						"After `pnpm install` and `pnpm exec turbo run build --filter @hobo/adapter-hono --filter @hobo/hobo`, try `hobo doctor --cwd examples/hello-bindle`.",
+						"Pass `--cwd <path>` to a directory with `src/bindle.ts` or `hobo.bindle.json`.",
+					]
+				: [
+						"Pass `--cwd <path>` to a directory with `src/bindle.ts` or `hobo.bindle.json`.",
+						"Do not run `npx hobo` — `@hobo/*` is not on npm.",
+					],
 		);
 		this.name = "NoBindleError";
+	}
+}
+
+export class BindleImportError extends CliError {
+	constructor(sourcePath: string, cause: unknown) {
+		const detail = cause instanceof Error ? cause.message : String(cause);
+		super(
+			`Bindle at ${sourcePath} failed to load: ${detail}`,
+			1,
+			"HOBO_BINDLE_IMPORT",
+			[
+				"Build workspace deps the Bindle imports (hello-bindle needs `pnpm exec turbo run build --filter @hobo/adapter-hono`).",
+				"Use the composed `@hobo/hobo` binary after a workspace build, not a half-built zip.",
+			],
+		);
+		this.name = "BindleImportError";
+		this.cause = cause;
 	}
 }
 

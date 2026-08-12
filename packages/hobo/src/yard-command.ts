@@ -120,11 +120,12 @@ export function createYardCommand(): CommandModule {
 						code: "HOBO_YARD_INIT_FAILED",
 						message: `hobo yard init: ${error instanceof Error ? error.message : String(error)}`,
 						remediation: [
-							"Pass --force to overwrite an existing yard.json.",
+							"If yard.json already exists, first-run succeeded — run `hobo yard status`.",
+							"Pass --force only to overwrite an existing yard.json.",
 							"Set HOBO_HOME to choose an alternate install root.",
-							"Use --host wasm for Wasmtime process sandboxes (private components).",
+							"Default host is local process. Use --host wasm only when you want Wasmtime sandboxes.",
 							"Use --host oci for WASM-on-OCI / Kubernetes.",
-							"Run `hobo yard ensure` to install host toolchains.",
+							"Run `hobo yard ensure` to install optional host toolchains.",
 						],
 						data: { command: "yard" },
 					};

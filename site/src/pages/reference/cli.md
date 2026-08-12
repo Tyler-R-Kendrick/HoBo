@@ -1,12 +1,12 @@
 ---
 layout: ../../layouts/Docs.astro
 title: CLI surface
-description: "Canonical hobo verbs by role: lifecycle, diagnosis, authoring, identity, progressive delivery, broker/station, and distribution (40 verbs)."
+description: "Canonical hobo verbs by role: lifecycle, diagnosis, authoring, identity, progressive delivery, broker/station, and distribution (source: verbs.ts)."
 ---
 
 # CLI surface
 
-The `hobo` CLI is deliberately **small and stable**. The same **40** verbs appear as MCP tools. Docs examples use only this list.
+The `hobo` CLI is deliberately **small and stable**. The same canonical verb set appears as MCP tools. Docs examples use only this list.
 
 ## Lifecycle
 

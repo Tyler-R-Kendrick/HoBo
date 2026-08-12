@@ -420,7 +420,7 @@ Run the smallest sufficient lane through `pnpm agent:check`; no-arg mode validat
 Durable, non-obvious notes for this environment. The startup update script already runs `corepack enable pnpm` + `pnpm install --frozen-lockfile`, so dependencies are ready; do not re-add install steps here.
 
 - **No server/GUI.** This is a design-docs + executable proof/contract repo (see README "Current state"). "Running the app" means the validation/lint/test tooling, not a web/backend service. Verify the environment with `pnpm run doctor`, `pnpm run lint`, `pnpm run standards:check`, `pnpm test`, and the doc validators listed in `README.md` "How to work in this repo".
-- **Node version.** Local Node 22 satisfies `engines` (`>=20.20.0`); CI uses Node 24. The `pnpm install` warnings about `wizer-win32-x64` bins are expected on Linux (Windows-arch optional deps) and are harmless.
+- **Node version.** Local Node 22 satisfies `engines` (`>=22`); CI uses Node 24. Optional Windows bins are not fetched on Linux (`pnpm.supportedArchitectures.os` is `current`).
 - **Developer inner loop for a single proof package:** `pnpm exec turbo run test --filter ./src/draft/<kind>/<slug>` (see `src/draft/AGENTS.md`). The turbo "no output files found" warning on `test` is expected (no build outputs) and not a failure.
 - **`test:smoke` runs Vitest** (`vitest run --no-isolate`), same engine as `test:file`; there is no bun dependency.
 - **`tgrep` is not installed**, so `pnpm run search` falls back to `rg`. Always pass explicit path args (e.g. `pnpm run search "pattern" src docs`); running it with no path scope over the full worktree can be very slow.

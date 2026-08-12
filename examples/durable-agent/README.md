@@ -61,6 +61,8 @@ proof's full flow.
 
 ## Run it
 
+**Tests only.** This package has no `src/bindle.ts`, so `hobo up` / `hobo plan` are the wrong verbs — they look for a Bindle.
+
 ```bash
 pnpm --filter @hobo/example-durable-agent test
 ```

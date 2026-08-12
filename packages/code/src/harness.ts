@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
+import { findRepoRoot } from "./harness-surface.js";
 
 /**
  * Programmable harness core (composition boundary).
@@ -12,15 +19,7 @@ import { join } from "node:path";
  * Durability: Vercel Workflow Worlds; Local World offline (`worlds.ts`).
  */
 
-export type SkillName =
-	| "repo"
-	| "sdlc"
-	| "draft"
-	| "caveman"
-	| "ponytail"
-	| "improve"
-	| "tdd"
-	| "review";
+export type SkillName = string & { readonly __skillName: unique symbol };
 
 export interface LoadedSkill {
 	readonly name: SkillName;
@@ -55,7 +54,7 @@ export interface HarnessCore {
 		/** Secure stack preferred in prod; local is mediated worktree/rift. */
 		readonly stack: "deepagents+openshell+mxc" | "mediated-local";
 	};
-	readonly useSkill: (name: SkillName) => LoadedSkill;
+	readonly useSkill: (name: string) => LoadedSkill;
 	readonly useTool: (name: string) => { name: string; mcp: boolean };
 	readonly listSkills: () => readonly LoadedSkill[];
 	readonly runRhaiWorkflow: (source: string) => RhaiWorkflowResult;
@@ -73,7 +72,7 @@ export interface HarnessCore {
 	};
 }
 
-const HOBO_SKILLS: readonly SkillName[] = [
+const HOBO_SKILL_NAMES = [
 	"repo",
 	"sdlc",
 	"draft",
@@ -83,6 +82,12 @@ const HOBO_SKILLS: readonly SkillName[] = [
 	"tdd",
 	"review",
 ] as const;
+
+export function parseSkillName(input: string): SkillName {
+	if (!/^[a-z0-9](?:[a-z0-9-]{0,127})$/u.test(input))
+		throw new TypeError("skill name must be a lowercase slug");
+	return input as SkillName;
+}
 
 /**
  * Minimal sandboxed Rhai-subset interpreter for workflow definitions.
@@ -138,6 +143,8 @@ export function runRhaiSubset(source: string): RhaiWorkflowResult {
 export interface CreateHarnessOptions {
 	/** Durable world root (outside ephemeral isolation). Default HOBO_HOME/worlds. */
 	readonly worldRoot: string;
+	/** Project whose local skills and recordings are available to this harness. */
+	readonly projectRoot?: string;
 	readonly skillRoots?: readonly string[];
 }
 
@@ -145,9 +152,19 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 	const worldRoot = options.worldRoot;
 	mkdirSync(worldRoot, { recursive: true });
 
+	const projectRoot = options.projectRoot ?? process.cwd();
+	const repoRoot = findRepoRoot(projectRoot);
 	const skillRoots = options.skillRoots ?? [
-		".agents/skills",
-		".claude/skills",
+		join(projectRoot, ".hobo", "recordings"),
+		...(repoRoot === projectRoot
+			? []
+			: [
+					join(repoRoot, ".hobo", "recordings"),
+					join(repoRoot, ".agents", "skills"),
+					join(repoRoot, ".claude", "skills"),
+				]),
+		join(projectRoot, ".agents", "skills"),
+		join(projectRoot, ".claude", "skills"),
 	];
 
 	function resolveSkill(name: SkillName): LoadedSkill {
@@ -172,6 +189,24 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 		};
 	}
 
+	function skillNames(): readonly SkillName[] {
+		const names = new Set<SkillName>(HOBO_SKILL_NAMES.map(parseSkillName));
+		for (const root of skillRoots) {
+			if (!existsSync(root)) continue;
+			for (const entry of readdirSync(root, { withFileTypes: true })) {
+				if (!entry.isDirectory()) continue;
+				let name: SkillName;
+				try {
+					name = parseSkillName(entry.name);
+				} catch {
+					continue;
+				}
+				if (existsSync(join(root, name, "SKILL.md"))) names.add(name);
+			}
+		}
+		return [...names].sort();
+	}
+
 	return {
 		useModel(id: string) {
 			const provider = id.includes("/") ? id.split("/")[0]! : "default";
@@ -185,14 +220,14 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 					: ("deepagents+openshell+mxc" as const);
 			return { root, mediated: true as const, stack };
 		},
-		useSkill(name: SkillName) {
-			return resolveSkill(name);
+		useSkill(name: string) {
+			return resolveSkill(parseSkillName(name));
 		},
 		useTool(name: string) {
 			return { name, mcp: true };
 		},
 		listSkills() {
-			return HOBO_SKILLS.map(resolveSkill);
+			return skillNames().map(resolveSkill);
 		},
 		runRhaiWorkflow(source: string) {
 			return runRhaiSubset(source);
@@ -239,7 +274,7 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 					"hobo.code.evidence",
 					"hobo.code.status",
 					"hobo.code.budget",
-					...HOBO_SKILLS.map((s) => `skill.${s}`),
+					...skillNames().map((skill) => `skill.${skill}`),
 				],
 			};
 		},

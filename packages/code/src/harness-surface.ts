@@ -72,6 +72,7 @@ export type HarnessSurfaceStatus = {
 };
 
 const SKILL_ROOT_CANDIDATES = [
+	{ rel: ".hobo/recordings", role: "project recording skills" },
 	{ rel: ".agents/skills", role: "repo skills (primary)" },
 	{ rel: ".claude/skills", role: "Claude-mirrored skills" },
 	{ rel: ".agents/skills", role: "package-local skills" }, // also checked under package cwd
@@ -137,6 +138,7 @@ function resolveSkillRoots(cwd: string): {
 		tryAdd(cwd, c.rel, c.role);
 	}
 	if (repoRoot !== cwd) {
+		tryAdd(repoRoot, ".hobo/recordings", "project recording skills");
 		tryAdd(repoRoot, ".agents/skills", "repo skills (primary)");
 		tryAdd(repoRoot, ".claude/skills", "Claude-mirrored skills");
 	}

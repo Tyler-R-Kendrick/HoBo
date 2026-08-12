@@ -105,7 +105,10 @@ export async function startCodeSession(
 	});
 
 	const worldRoot = join(options.hoboHome, "worlds");
-	const harness = createHarnessCore({ worldRoot });
+	const harness = createHarnessCore({
+		worldRoot,
+		projectRoot: options.projectRoot,
+	});
 	const budget = createBudgetTracker({
 		...(options.budget ?? DEFAULT_BUDGET_POLICY),
 		monetizationOptIn:

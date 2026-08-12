@@ -51,6 +51,7 @@ import {
 	tsAutocodeConventions,
 	validateLockedVisual,
 } from "../src/index.js";
+import { parseSkillName } from "../src/harness.js";
 
 const temps: string[] = [];
 afterEach(() => {
@@ -319,6 +320,77 @@ step "done"
 		expect(after.survivingRestart).toBe(true);
 		expect(harness.exposeMcp().protocol).toBe("mcp");
 		expect(harness.exposeMcp().tools).toContain("hobo.code.isolation");
+	});
+
+	it("loads generated recording skills only from the project recording root", () => {
+		const project = tempDir("hobo-code-recording-project-");
+		const skill = join(project, ".hobo", "recordings", "checkout-replay");
+		mkdirSync(skill, { recursive: true });
+		writeFileSync(join(skill, "SKILL.md"), "# Checkout replay\n");
+		const harness = createHarnessCore({
+			worldRoot: tempDir("hobo-code-recording-world-"),
+			projectRoot: project,
+		});
+
+		expect(harness.useSkill("checkout-replay")).toMatchObject({
+			name: "checkout-replay",
+			available: true,
+			pathHint: join(skill, "SKILL.md"),
+		});
+		expect(harness.listSkills().map(({ name }) => name)).toContain(
+			"checkout-replay",
+		);
+		expect(harness.exposeMcp().tools).toContain("skill.checkout-replay");
+		expect(() => harness.useSkill("../checkout-replay")).toThrow(
+			"skill name must be a lowercase slug",
+		);
+	});
+
+	it("keeps generated skill-name parsing aligned with the CUE invariant", () => {
+		const cue = readFileSync(
+			join(import.meta.dirname, "..", "data-models", "code_harness.cue"),
+			"utf8",
+		);
+		const pattern = /#GeneratedSkillName:\s*string\s*&\s*=~"([^"]+)"/u.exec(
+			cue,
+		)?.[1];
+		expect(pattern).toBeDefined();
+		if (!pattern) throw new Error("GeneratedSkillName CUE regex is missing");
+		const accepts = new RegExp(pattern);
+		for (const value of ["repo", "checkout-replay", "a".repeat(128)]) {
+			expect(parseSkillName(value)).toBe(value);
+			expect(accepts.test(value)).toBe(true);
+		}
+		for (const value of ["../escape", "Checkout", "a".repeat(129), ""]) {
+			expect(() => parseSkillName(value)).toThrow();
+			expect(accepts.test(value)).toBe(false);
+		}
+	});
+
+	it("falls back to repository recordings from a nested project", () => {
+		const repository = tempDir("hobo-code-recording-repo-");
+		mkdirSync(join(repository, ".git"));
+		const project = join(repository, "packages", "app");
+		const skill = join(repository, ".hobo", "recordings", "checkout-replay");
+		const repoSkill = join(repository, ".agents", "skills", "repo-only");
+		mkdirSync(project, { recursive: true });
+		mkdirSync(skill, { recursive: true });
+		mkdirSync(repoSkill, { recursive: true });
+		writeFileSync(join(skill, "SKILL.md"), "# Checkout replay\n");
+		writeFileSync(join(repoSkill, "SKILL.md"), "# Repo only\n");
+
+		const harness = createHarnessCore({
+			worldRoot: tempDir("hobo-code-recording-world-"),
+			projectRoot: project,
+		});
+		expect(harness.useSkill("checkout-replay")).toMatchObject({
+			available: true,
+			pathHint: join(skill, "SKILL.md"),
+		});
+		expect(harness.useSkill("repo-only")).toMatchObject({
+			available: true,
+			pathHint: join(repoSkill, "SKILL.md"),
+		});
 	});
 
 	it("rhai subset rejects unsupported statements", () => {

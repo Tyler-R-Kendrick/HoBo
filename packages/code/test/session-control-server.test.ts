@@ -4,6 +4,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,11 +12,51 @@ import { join } from "node:path";
 import { chromium } from "playwright";
 import { afterEach, describe, expect, it } from "vitest";
 
+import {
+	BROWSER_RECORDING_SCHEMA,
+	exportEvidenceRecordingAutomation,
+} from "../src/index.js";
 import { createLocalSessionControl } from "../src/local-session-control.js";
 import type { MuxRunner } from "../src/mux.js";
-import { startSessionControlServer } from "../src/session-control-server.js";
+import {
+	saveRecordingCapability,
+	startSessionControlServer,
+} from "../src/session-control-server.js";
 
 const roots: string[] = [];
+const capabilityInteractions = (
+	JSON.parse(
+		readFileSync(
+			join(
+				import.meta.dirname,
+				"..",
+				"contracts",
+				"pacts",
+				"recording-capability-host.pact.json",
+			),
+			"utf8",
+		),
+	) as {
+		interactions: readonly {
+			request: {
+				method: string;
+				path: string;
+				headers: Record<string, string>;
+				body: Record<string, unknown>;
+			};
+			response: {
+				status: number;
+				headers: Record<string, string>;
+				body: Record<string, unknown>;
+			};
+		}[];
+	}
+).interactions;
+
+const capabilityInteraction = capabilityInteractions[0];
+const rejectedCapabilityInteraction = capabilityInteractions[1];
+if (!capabilityInteraction || !rejectedCapabilityInteraction)
+	throw new Error("recording capability PACT is empty");
 
 afterEach(() => {
 	for (const root of roots.splice(0))
@@ -85,6 +126,45 @@ function envelope(
 }
 
 describe("resident session loopback server", () => {
+	it("rejects a recording root symlink that escapes the project", () => {
+		const projectRoot = temp("hobo-session-recording-project-");
+		const outside = temp("hobo-session-recording-outside-");
+		symlinkSync(outside, join(projectRoot, ".hobo"), "dir");
+		const exported = exportEvidenceRecordingAutomation(
+			{
+				schemaVersion: BROWSER_RECORDING_SCHEMA,
+				id: "recording-escape",
+				title: "Escape",
+				status: "completed",
+				startUrl: "https://example.test/start",
+				endUrl: "https://example.test/end",
+				durationMs: 1,
+				viewport: { width: 800, height: 600 },
+				actions: [
+					{
+						sequence: 1,
+						offsetMs: 0,
+						type: "navigate",
+						path: "/end",
+					},
+				],
+				checkpoints: [],
+			},
+			{ name: "Escape" },
+		);
+
+		expect(() => saveRecordingCapability(projectRoot, exported)).toThrow(
+			"recording capability path escaped the project root",
+		);
+		expect(existsSync(join(outside, "recordings"))).toBe(false);
+		expect(() =>
+			saveRecordingCapability(temp("hobo-session-recording-forged-"), {
+				...exported,
+				capabilityId: "../escape",
+			}),
+		).toThrow("skill name must be a lowercase slug");
+	});
+
 	it("serves authenticated browser controls and the shared command boundary", async () => {
 		const hoboHome = temp("hobo-session-server-home-");
 		const projectRoot = repository();
@@ -310,38 +390,64 @@ describe("resident session loopback server", () => {
 				recordingId: "recording-17",
 				artifactRefs: [videoArtifactRef, expect.stringMatching(/^sha256:/u)],
 			});
-			const capabilityResponse = await fetch(
-				server.controlsUrlTemplate.replace("/controls/", "/api/actions/"),
-				{
-					method: "POST",
-					headers: {
-						origin: "http://127.0.0.1:4173",
-						"content-type": "text/plain",
-					},
-					body: JSON.stringify({
-						type: "save-capability",
-						recordingId: manifestResult.recordingId,
-						name: "Checkout replay",
-					}),
-				},
+			const capabilityUrl = server.controlsUrlTemplate.replace(
+				"/controls/",
+				"/api/actions/",
 			);
-			expect(capabilityResponse.status).toBe(201);
+			expect(
+				new URL(capabilityUrl).pathname.replace(
+					/\/[^/]+$/u,
+					"/:controlsCapability",
+				),
+			).toBe(capabilityInteraction.request.path);
+			const rejectedResponse = await fetch(capabilityUrl, {
+				method: rejectedCapabilityInteraction.request.method,
+				headers: rejectedCapabilityInteraction.request.headers,
+				body: JSON.stringify(rejectedCapabilityInteraction.request.body),
+			});
+			expect(rejectedResponse.status).toBe(
+				rejectedCapabilityInteraction.response.status,
+			);
+			for (const [name, value] of Object.entries(
+				rejectedCapabilityInteraction.response.headers,
+			))
+				expect(rejectedResponse.headers.get(name)).toBe(value);
+			expect(await rejectedResponse.json()).toMatchObject(
+				rejectedCapabilityInteraction.response.body,
+			);
+			const capabilityResponse = await fetch(capabilityUrl, {
+				method: capabilityInteraction.request.method,
+				headers: capabilityInteraction.request.headers,
+				body: JSON.stringify(capabilityInteraction.request.body),
+			});
+			expect(manifestResult.recordingId).toBe(
+				capabilityInteraction.request.body.recordingId,
+			);
+			expect(capabilityResponse.status).toBe(
+				capabilityInteraction.response.status,
+			);
+			for (const [name, value] of Object.entries(
+				capabilityInteraction.response.headers,
+			))
+				expect(capabilityResponse.headers.get(name)).toBe(value);
 			const capability = (await capabilityResponse.json()) as {
 				capabilityId: string;
 				command: string;
+				path: string;
 				replayability: string;
 				artifactRefs: readonly string[];
 			};
-			expect(capability).toMatchObject({
-				capabilityId: "checkout-replay",
-				replayability: "ready",
-				command:
-					"pnpm exec playwright test .agents/skills/checkout-replay/scripts/run.spec.ts --workers=1",
-			});
+			expect(capability).toMatchObject(capabilityInteraction.response.body);
 			expect(capability.artifactRefs).toHaveLength(3);
 			expect(
 				readFileSync(
-					join(projectRoot, ".agents", "skills", "checkout-replay", "SKILL.md"),
+					join(
+						projectRoot,
+						".hobo",
+						"recordings",
+						"checkout-replay",
+						"SKILL.md",
+					),
 					"utf8",
 				),
 			).toContain(`Source recording: \`recording-17\``);
@@ -349,8 +455,8 @@ describe("resident session loopback server", () => {
 				readFileSync(
 					join(
 						projectRoot,
-						".agents",
-						"skills",
+						".hobo",
+						"recordings",
 						"checkout-replay",
 						"scripts",
 						"run.spec.ts",

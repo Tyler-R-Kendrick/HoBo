@@ -10,7 +10,9 @@ slash palette, tasks/status focus — **not** stock Pi Agent TUI.
 |---|---|
 | **HoBo shell (default)** | TTY + bare / `chat` |
 | **Pi TUI escape hatch** | `HOBO_CODE_TUI=pi` or `hobo-code --pi` only |
-| **One-shot verbs** | `help`, `status`, `dispatch`, … |
+| **One-shot verbs** | `help`, `status`, `dispatch`, `template`, … |
+
+`hobo-code template` / `/template` is the zero-LLM pattern route (`@hobo/patterns`, ADR-0153). It must not start a completion engine.
 
 Pi may still be used as a **completion engine** later; it must not be the
 product frame. Optimizexp / persona reviews that only score one-shot verbs
@@ -184,7 +186,8 @@ Presentation helpers stay pure and unit-tested:
 - `formatHoboCodeResult` — closed panels: one-scan happy path is 3 lines (title · body · rule, soft omitted); FIX + code inline on fails
 - `atom-index.ts` — closed intent map first, then retrieve→Valibot→compose→**entity-aware merge**→emit (ADR-0152). `templates/intents/` owns phrases like "deploy to azure" / "same network". Snippet slots merge by entity; `@hobo.hole` emits `"use training"` / `training.define`, not invented logic. Derived cache `$HOBO_HOME/durable/code/template-index.sqlite`. High-confidence emits with zero inference; low-confidence refuses unless `allowEscalate`. Full `examples/` apps stay composition proofs.
 - `example-catalog.ts` + `workspace-actions.ts` — Bo TUI turns "create a hello world app" / "run it" / "debug it" into emitted atoms plus live bindle/debug/controls/report URLs, without `hobo` or a network fetch
-- template `public/index.html` + `styles.css` — scaffold first paint + matching step rail
+- `@hobo/patterns` — catalog source of truth; OpenUI starter lives at `starter.code.openui-astryx-bindle`. `hobo-code scaffold` is the compatibility adapter.
+- template `public/index.html` + `styles.css` — catalog starter first paint + matching step rail
 - product binary `hobo-code`: flat verbs, dispatch default, no nested buzz
 
 ## Runtime foundations (pinned)

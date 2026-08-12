@@ -33,6 +33,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(HOBO_CODE_VERBS).toContain("attach");
 		expect(HOBO_CODE_VERBS).toContain("tasks");
 		expect(HOBO_CODE_VERBS).toContain("guide");
+		expect(HOBO_CODE_VERBS).toContain("template");
 		expect(HOBO_CODE_VERBS).toContain("cost");
 		expect(HOBO_CODE_VERBS).toContain("harness");
 		expect(HOBO_CODE_VERBS).toContain("edit");

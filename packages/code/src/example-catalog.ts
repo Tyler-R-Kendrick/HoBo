@@ -10,11 +10,12 @@ import {
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { openUiStarterRoot } from "@hobo/patterns";
+
 import { emitFromAtoms } from "./atom-index.js";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const EXAMPLES_ROOT = join(PACKAGE_ROOT, "examples");
-const TEMPLATES_ROOT = join(PACKAGE_ROOT, "templates");
 
 const SKIP_COPY = new Set([
 	"node_modules",
@@ -139,7 +140,7 @@ function loadPackagedExamples(): ExampleCatalogEntry[] {
 			: inferRepoExample(name, sourceDir);
 		if (entry) entries.push({ ...entry, source: "package" });
 	}
-	const openui = join(TEMPLATES_ROOT, "openui-astryx-bindle");
+	const openui = openUiStarterRoot();
 	if (existsSync(openui)) {
 		entries.push(
 			inferRepoExample("openui-astryx-bindle", openui, {

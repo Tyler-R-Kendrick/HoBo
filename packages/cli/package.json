@@ -23,6 +23,7 @@
 		"@hobo/cloud": "workspace:*",
 		"@hobo/componentize": "workspace:*",
 		"@hobo/core": "workspace:*",
+		"@hobo/patterns": "workspace:*",
 		"ts-autocode-grounding": "workspace:*",
 		"ts-autocode-training": "workspace:*"
 	},

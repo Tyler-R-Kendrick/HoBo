@@ -180,9 +180,12 @@ export function selectRelevantChecks(
 		// Feature files and step definitions live inside proof packages
 		// (src/draft/<kind>/<slug>/features/...), so match the path segment,
 		// not a repo-root prefix. The cucumber config is cucumber.yaml.
+		// Catalog starter trees may ship Gherkin fixtures; they are not the
+		// repository behavior lane.
 		files.some(
 			(file) =>
 				!/(^|\/)\.optimizexp\/features\//u.test(file) &&
+				!/(^|\/)packages\/patterns\/patterns\//u.test(file) &&
 				[
 					/(^|\/)features\//u,
 					/\.feature$/u,

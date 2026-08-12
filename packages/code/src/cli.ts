@@ -3,7 +3,7 @@
  *
  * App-building agent CLI (not a control-plane management tool).
  *   dispatch (default) | status | session | attach | tasks | guide |
- *   scaffold | dev | isolate | promote | env | auth | models | cost | harness |
+ *   scaffold | template | dev | isolate | promote | env | auth | models | cost | harness |
  *   edit | config | agent | help
  *
  * Binary name: hobo-code (dash permitted).
@@ -121,6 +121,7 @@ import {
 import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
+import { runTemplateCommand } from "./template-command.js";
 import { startCodeSession } from "./session.js";
 import {
 	buildMultiplexerStatus,
@@ -153,6 +154,7 @@ export const HOBO_CODE_VERBS = [
 	"tasks",
 	"guide",
 	"scaffold",
+	"template",
 	"dev",
 	"isolate",
 	"promote",
@@ -321,9 +323,16 @@ const VALUE_FLAGS = new Set([
 	"from",
 	"name",
 	"out",
+	"isolation",
 	"mode",
 	"port",
 	"debug-port",
+	"id",
+	"format",
+	"params",
+	"kind",
+	"maturity",
+	"top-k",
 ]);
 
 /** Boolean flags (never consume the next token). */
@@ -876,6 +885,23 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"See also: hobo-code dispatch · hobo-code help",
 	],
+	template: [
+		"hobo-code template — local pattern search/render (zero LLM tokens)",
+		"",
+		"Usage:",
+		"  hobo-code template search <query>",
+		"  hobo-code template --id bindle.topology.web-api --json",
+		"  hobo-code template \"web frontend backed by an api\"",
+		"",
+		"Flags:",
+		"  --id <pattern-id>   Exact catalog id",
+		"  --format <kind>     snippet|file|project|markdown|vscode|effects",
+		"  --params <json>     Typed render params",
+		"  --top-k <n>         Candidate cap",
+		"  --json              Machine-readable receipt",
+		"",
+		"Does not start a model turn. Chat phrases stay on the session.",
+	],
 	dev: [
 		"hobo-code dev — run the project Bindle on a local Yard with Evidence",
 		"",
@@ -1206,6 +1232,7 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 			tasks: "tk",
 			guide: "gd",
 			scaffold: "sc",
+			template: "tp",
 			dev: "dv",
 			isolate: "i",
 			promote: "pr",
@@ -2438,6 +2465,18 @@ export async function runHoboCodeCli(
 				],
 			);
 		}
+	}
+
+	if (verb === "template") {
+		const result = runTemplateCommand({ args, flags });
+		return {
+			ok: result.ok,
+			status: result.ok ? "ok" : "failed",
+			code: result.code,
+			message: result.message,
+			data: result.data,
+			exitCode: result.ok ? 0 : 1,
+		};
 	}
 
 	if (verb === "scaffold") {

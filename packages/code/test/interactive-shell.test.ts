@@ -354,8 +354,8 @@ describe("slash palette viewport", () => {
 		});
 		standard = reduceShellKey(standard, "/").state;
 		const standardFrame = plain(renderShellFrame(standard));
-		expect(standardFrame).toContain("/quit");
-		expect(standardFrame).not.toMatch(/\d+-\d+ of \d+/);
+		expect(standardFrame).toContain("/template");
+		expect(standardFrame).toMatch(/1-\d+ of \d+/);
 
 		let short = createInitialShellState({
 			width: 80,

@@ -648,6 +648,9 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+      '@hobo/replay':
+        specifier: workspace:*
+        version: link:../replay
       '@hobo/rift':
         specifier: workspace:*
         version: link:../rift

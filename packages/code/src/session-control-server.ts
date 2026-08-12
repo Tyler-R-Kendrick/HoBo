@@ -7,6 +7,13 @@ import {
 import { join } from "node:path";
 import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import {
+	buildCorrelation,
+	createDebugReplayRecorder,
+	createFilesystemDualFixtures,
+	type DebugReplayLevel,
+	loadPlayerPayload,
+} from "@hobo/replay";
+import {
 	GitWorkbenchActionKind,
 	GitWorkbenchActionRequestSchema,
 	GitWorkbenchSelectionKind,
@@ -42,6 +49,7 @@ export interface SessionControlServerOptions {
 	readonly port?: number;
 	readonly token?: string;
 	readonly control?: LocalSessionControl;
+	readonly replayLevel?: DebugReplayLevel;
 }
 
 export interface SessionControlServer {
@@ -318,6 +326,31 @@ export async function startSessionControlServer(
 		origin: "hobo-code:control-server",
 		signingKey: token,
 	});
+	const replayStore = createFilesystemDualFixtures(
+		join(options.hoboHome, "durable", "code", "replay"),
+	);
+	const replayRecorders = new Map<
+		string,
+		ReturnType<typeof createDebugReplayRecorder>
+	>();
+	const recorder = (sessionId: string) => {
+		let value = replayRecorders.get(sessionId);
+		if (!value) {
+			value = createDebugReplayRecorder({
+				sessionId,
+				...(options.replayLevel ? { level: options.replayLevel } : {}),
+				env: process.env,
+				correlation: buildCorrelation({
+					stationId: "local",
+					principalRef: "principal:local-developer",
+				}),
+				store: replayStore.blobs,
+				index: replayStore.index,
+			});
+			replayRecorders.set(sessionId, value);
+		}
+		return value;
+	};
 	const runner = sessionProcessRunner();
 	const server = createServer(async (request, response) => {
 		try {
@@ -391,6 +424,58 @@ export async function startSessionControlServer(
 				});
 				return;
 			}
+			const replayMatch = /^\/code\/sessions\/([^/]+)\/replay$/u.exec(
+				url.pathname,
+			);
+			if (request.method === "GET" && replayMatch) {
+				const sessionId = decodeURIComponent(replayMatch[1] ?? "");
+				await recorder(sessionId).flush();
+				json(
+					response,
+					200,
+					await loadPlayerPayload({
+						sessionId,
+						index: replayStore.index,
+						blobs: replayStore.blobs,
+						stationId: "local",
+					}),
+				);
+				return;
+			}
+			if (request.method === "POST" && replayMatch) {
+				const sessionId = decodeURIComponent(replayMatch[1] ?? "");
+				const body = (await requestBody(request)) as Record<string, unknown>;
+				if (
+					typeof body.track !== "string" ||
+					![
+						"browser",
+						"terminal",
+						"agent",
+						"git",
+						"test",
+						"annotation",
+						"approval",
+					].includes(body.track)
+				) {
+					throw new TypeError("invalid debug replay track");
+				}
+				const accepted = recorder(sessionId).record({
+					track: body.track as Parameters<
+						ReturnType<typeof recorder>["record"]
+					>[0]["track"],
+					metadata:
+						typeof body.metadata === "object" && body.metadata !== null
+							? (body.metadata as Record<string, unknown>)
+							: {},
+					observable:
+						typeof body.observable === "object" && body.observable !== null
+							? (body.observable as Record<string, unknown>)
+							: {},
+				});
+				await recorder(sessionId).flush();
+				json(response, 202, { accepted, level: recorder(sessionId).level });
+				return;
+			}
 			if (
 				request.method === "GET" &&
 				url.pathname === "/__hobo/evidence/api/report"
@@ -427,13 +512,15 @@ export async function startSessionControlServer(
 					url.searchParams.get("lines") ?? "200",
 					10,
 				);
-				json(response, 200, {
-					output: await control.capturePane(
-						decodeURIComponent(paneOutput[1] ?? ""),
-						decodeURIComponent(paneOutput[2] ?? ""),
-						lines,
-					),
+				const sessionId = decodeURIComponent(paneOutput[1] ?? "");
+				const paneId = decodeURIComponent(paneOutput[2] ?? "");
+				const output = await control.capturePane(sessionId, paneId, lines);
+				recorder(sessionId).record({
+					track: "terminal",
+					metadata: { paneId, lines },
+					observable: { output },
 				});
+				json(response, 200, { output });
 				return;
 			}
 			const gitWorkbench = /^\/code\/sessions\/([^/]+)\/git$/u.exec(
@@ -538,12 +625,17 @@ export async function startSessionControlServer(
 			return url.href;
 		},
 		close: () =>
-			new Promise<void>((resolve, reject) => {
-				server.close((error) => {
-					control.close();
-					if (error) reject(error);
-					else resolve();
-				});
-			}),
+			Promise.all(
+				[...replayRecorders.values()].map((value) => value.stop()),
+			).then(
+				() =>
+					new Promise<void>((resolve, reject) => {
+						server.close((error) => {
+							control.close();
+							if (error) reject(error);
+							else resolve();
+						});
+					}),
+			),
 	};
 }

@@ -30,6 +30,7 @@
 		"@flue/runtime": "1.0.0-beta.9",
 		"@hobo/core": "workspace:*",
 		"@hobo/rift": "workspace:*",
+		"@hobo/replay": "workspace:*",
 		"@hobo/runtime-local": "workspace:*",
 		"@hobo/stations": "workspace:*",
 		"@xterm/headless": "^6.0.0",

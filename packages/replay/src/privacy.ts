@@ -37,22 +37,28 @@ export function shouldMaskNode(
 	const attrs = ctx.attributes ?? {};
 	for (const sel of policy.maskSelectors) {
 		if (sel.startsWith("[") && sel.endsWith("]")) {
-			const attr = sel.slice(1, -1).split("=")[0]?.replace(/^data-/, "data-");
+			const attr = sel
+				.slice(1, -1)
+				.split("=")[0]
+				?.replace(/^data-/, "data-");
 			// Attribute presence selectors like [data-hobo-mask]
 			const bare = sel.slice(1, -1);
 			if (!bare.includes("=") && bare in attrs) return true;
-			if (bare.startsWith("type=") && type === bare.slice(5).replace(/['"]/g, "")) {
+			if (
+				bare.startsWith("type=") &&
+				type === bare.slice(5).replace(/['"]/g, "")
+			) {
 				return true;
 			}
 			if (attr && attr in attrs) return true;
 		}
-		if (sel.startsWith(".") && ctx.selectorHints?.some((h) => h.includes(sel.slice(1)))) {
+		if (
+			sel.startsWith(".") &&
+			ctx.selectorHints?.some((h) => h.includes(sel.slice(1)))
+		) {
 			return true;
 		}
-		if (
-			sel.includes("input[type=") &&
-			SENSITIVE_INPUT_TYPES.has(type)
-		) {
+		if (sel.includes("input[type=") && SENSITIVE_INPUT_TYPES.has(type)) {
 			return true;
 		}
 	}
@@ -82,6 +88,42 @@ export function maskRrwebEvents(
 	return Object.freeze(events.map((e) => maskRrwebEvent(e, policy)));
 }
 
+const SENSITIVE_DEBUG_KEY =
+	/^(?:authorization|proxy-authorization|cookie|set-cookie|x-api-key|api[_-]?key|password|passwd|secret|token|access[_-]?token|refresh[_-]?token|private[_-]?key|credentials?)$/i;
+const HIDDEN_REASONING_KEY =
+	/^(?:reasoning|chain[_-]?of[_-]?thought|hidden[_-]?reasoning|thoughts)$/i;
+const SECRET_STRING =
+	/(?:Bearer\s+\S+|-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]{8,})/i;
+
+/** Redact generic debug payloads before every persistence path, at every level. */
+export function redactDebugPayload(
+	payload: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	return Object.freeze(redactDebugValue(payload) as Record<string, unknown>);
+}
+
+function redactDebugValue(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return Object.freeze(value.map(redactDebugValue));
+	}
+	if (typeof value === "string") {
+		return SECRET_STRING.test(value) ? MASK_TOKEN : value;
+	}
+	if (value === null || typeof value !== "object") return value;
+
+	const out: Record<string, unknown> = {};
+	for (const [key, nested] of Object.entries(
+		value as Record<string, unknown>,
+	)) {
+		if (SENSITIVE_DEBUG_KEY.test(key) || HIDDEN_REASONING_KEY.test(key)) {
+			out[key] = MASK_TOKEN;
+			continue;
+		}
+		out[key] = redactDebugValue(nested);
+	}
+	return Object.freeze(out);
+}
+
 /**
  * Assert that known sensitive plaintext never appears in a serialized blob
  * under default policy (privacy regression helper).
@@ -101,7 +143,7 @@ export function assertNoSensitivePlaintext(
 				new Error(
 					`privacy regression: sensitive plaintext leaked into replay blob`,
 				),
-				{ code: "replay-privacy-leak", secretHint: secret.slice(0, 3) + "…" },
+				{ code: "replay-privacy-leak", secretHint: `${secret.slice(0, 3)}…` },
 			);
 		}
 	}
@@ -120,7 +162,8 @@ function deepMask(
 	}
 	const obj = value as Record<string, unknown>;
 	const out: Record<string, unknown> = {};
-	const tag = typeof obj.tagName === "string" ? obj.tagName.toLowerCase() : undefined;
+	const tag =
+		typeof obj.tagName === "string" ? obj.tagName.toLowerCase() : undefined;
 	const attrs =
 		obj.attributes && typeof obj.attributes === "object"
 			? (obj.attributes as Record<string, string>)
@@ -156,12 +199,7 @@ function deepMask(
 			continue;
 		}
 		// Network plugin redaction: strip Authorization and cookie headers.
-		if (
-			k === "headers" &&
-			v &&
-			typeof v === "object" &&
-			!Array.isArray(v)
-		) {
+		if (k === "headers" && v && typeof v === "object" && !Array.isArray(v)) {
 			const headers = { ...(v as Record<string, unknown>) };
 			for (const h of Object.keys(headers)) {
 				if (/^(authorization|cookie|set-cookie|x-api-key)$/i.test(h)) {

@@ -149,6 +149,14 @@ push, PR, stack, or squash-merge operations until its caller explicitly
 approves them. Failed worktree creation is fatal; it never falls back to an
 empty or shared directory.
 
+`hobo-code session serve` also exposes the live evidence report and records a
+privacy-redacted debug timeline beside each resident session. Replay levels are
+`metadata`, `observable` (default), `diagnostic`, or `off` via
+`HOBO_REPLAY_LEVEL`; `HOBO_REPLAY=0` is the process kill switch. Browser,
+terminal, agent, Git, test, annotation, and approval tracks share the existing
+`@hobo/replay` store. The player is read-only; continuing from history requires
+a new checkpoint-backed resident session.
+
 Agents are **auto-detected** from evidence on your machine — a binary on PATH
 and/or a config directory — and each gets its own tmux window:
 

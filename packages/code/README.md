@@ -314,7 +314,10 @@ window; `hobo-code session git <sessionId>` opens the same pane directly.
 `session serve` mirrors that workbench beside the browser terminal tabs. Its
 Status, Files, Branches, Commits, Stash, and diff panels follow lazygit's
 keyboard model: `1`–`5` focuses a panel, arrows or `j`/`k` move, and `Space`
-stages the selected whole file. Fetch/fast-forward pull, discard/ignore,
+stages the selected whole file. Durable review is a separate loopback
+surface (`GET /reviews`, `/api/reviews*`) — bearer header only, no-store,
+product-owned file/diff/thread panes; coordinator attaches
+`handleReviewHttpRequest` onto the session control server. Fetch/fast-forward pull, discard/ignore,
 branch create/checkout/delete, stash create/apply/pop/drop, and commit revert
 stay in the same pane. Commit, push, PR, stack, and merge remain on the existing
 exact-effect approval boundary; commits use only the reviewed index. Bounded

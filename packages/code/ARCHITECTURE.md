@@ -194,6 +194,22 @@ isolated PR object fetches under `refs/hobo/reviews/`, and an explicit
 typed state when a provider patch is truncated. Full unified bodies stay
 out of session snapshots; EventStore partition is `hobo-code-reviews`.
 
+## Durable review browser
+
+`src/review/review-http-routes.ts` is the Swarm H surface. Coordinator
+wires it with `attachReviewRoutes(server)` / `handleReviewHttpRequest`;
+this package does not edit `session-control-server.ts`. The loopback API
+is bearer-only (timing-safe, never a `?token=` query), `Cache-Control:
+no-store`, `nosniff`, restrictive CSP, origin/host loopback checks,
+bounded bodies, and typed OCC/`page-limit` errors. Mutable projections
+carry `revision`. Responses strip client filesystem paths.
+
+Product UI lives in `review-browser-assets.ts` + `review-browser-view.ts`
++ `review-browser-controller.ts`: safe `textContent` only, no
+`localStorage` review truth, keyboard file movement (`j`/`k`/arrows,
+Enter, Escape, `t`), and labeled landmarks. Proof: `test/review-control-server.test.ts`,
+`test/review-browser-security.test.ts`, `test/review-browser-accessibility.test.ts`.
+
 ## Look / feel surfaces
 
 Presentation helpers stay pure and unit-tested:

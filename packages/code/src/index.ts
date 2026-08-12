@@ -76,6 +76,23 @@ export {
 } from "./evidence.js";
 
 export {
+	appendSignedEvidenceNote,
+	EVIDENCE_REPORT_SCHEMA,
+	EVIDENCE_REPORT_SECTIONS,
+	projectEvidenceReport,
+	renderEvidenceReportExport,
+	type EvidenceArtifact,
+	type EvidenceFact,
+	type EvidenceReport,
+	type EvidenceReportInput,
+	type EvidenceReportSection,
+	type EvidenceReportSectionId,
+	type EvidenceState,
+	type PortableEvidenceReportExport,
+	type SignedEvidenceNote,
+} from "./evidence-report.js";
+
+export {
 	applyInContextEdit,
 	createOpenUiSession,
 	lockVisualArtifact,

@@ -133,15 +133,22 @@ function parseGitWorkbenchAction(input: unknown): GitWorkbenchAction {
 }
 
 async function requestBody(request: IncomingMessage): Promise<unknown> {
+	return JSON.parse((await requestBytes(request, 1_048_576)).toString("utf8") || "{}");
+}
+
+async function requestBytes(
+	request: IncomingMessage,
+	maximum: number,
+): Promise<Buffer> {
 	const chunks: Buffer[] = [];
 	let size = 0;
 	for await (const chunk of request) {
 		const bytes = Buffer.from(chunk);
 		size += bytes.length;
-		if (size > 1_048_576) throw new Error("request body exceeds 1 MiB");
+		if (size > maximum) throw new Error("request body exceeds capture limit");
 		chunks.push(bytes);
 	}
-	return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+	return Buffer.concat(chunks);
 }
 
 function browserHtml(token: string, projectRoot: string): string {
@@ -380,6 +387,45 @@ export async function startSessionControlServer(
 	const server = createServer(async (request, response) => {
 		try {
 			const url = new URL(request.url ?? "/", "http://127.0.0.1");
+			if (
+				request.method === "POST" &&
+				url.pathname === `/__hobo/evidence/api/captures/${controlsCapability}`
+			) {
+				const origin = request.headers.origin;
+				if (origin) response.setHeader("access-control-allow-origin", origin);
+				if (url.searchParams.get("kind") !== "screenshot") {
+					json(response, 400, { error: "invalid evidence capture kind" });
+					return;
+				}
+				const bytes = await requestBytes(request, 16 * 1024 * 1024);
+				if (
+					bytes.length < 8 ||
+					!bytes.subarray(0, 8).equals(
+						Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+					)
+				) {
+					throw new TypeError("screenshot capture must be PNG");
+				}
+				const subject = url.searchParams.get("subject") ?? "browser:current";
+				if (!subject.trim() || subject.length > 512) {
+					throw new TypeError("screenshot subject is invalid");
+				}
+				const writer = evidence.beginArtifact({
+					title: "Browser screenshot",
+					mediaType: "image/png",
+				});
+				writer.write(bytes);
+				const artifact = writer.finish();
+				const id = evidence.submit({
+					kind: "screenshot",
+					title: "Browser screenshot",
+					summary: `Captured ${bytes.length} PNG bytes from the browser overlay.`,
+					subject,
+					artifactRefs: [artifact.id],
+				});
+				json(response, 201, { ok: true, id, artifactRef: artifact.id });
+				return;
+			}
 			if (
 				request.method === "GET" &&
 				url.pathname === "/__hobo/evidence" &&

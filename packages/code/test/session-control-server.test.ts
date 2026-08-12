@@ -199,19 +199,28 @@ describe("resident session loopback server", () => {
 			const controls = await fetch(server.controlsUrl("http://127.0.0.1:4173"));
 			expect(controls.status).toBe(200);
 			expect(await controls.text()).toContain("Evidence desk");
+			const screenshot = Uint8Array.from([
+				0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3,
+			]);
 			const actionResponse = await fetch(
-				`${server.controlsUrlTemplate.replace("/controls/", "/api/actions/")}`,
+				`${server.controlsUrlTemplate.replace("/controls/", "/api/captures/")}?kind=screenshot&subject=browser%3Acurrent`,
 				{
 					method: "POST",
 					headers: {
 						origin: "http://127.0.0.1:4173",
-						"content-type": "text/plain",
 					},
-					body: JSON.stringify({ type: "capture", kind: "screenshot" }),
+					body: screenshot,
 				},
 			);
-			expect(actionResponse.status).toBe(202);
-			expect(await actionResponse.json()).toMatchObject({ ok: true });
+			expect(actionResponse.status).toBe(201);
+			const captured = (await actionResponse.json()) as {
+				artifactRef: string;
+			};
+			expect(captured.artifactRef).toMatch(/^sha256:[a-f0-9]{64}$/u);
+			const capturedAsset = await fetch(
+				`http://127.0.0.1:${server.port}/__hobo/assets/sha256/${captured.artifactRef.slice(7)}?token=test-token`,
+			);
+			expect(new Uint8Array(await capturedAsset.arrayBuffer())).toEqual(screenshot);
 
 			const headers = {
 				authorization: "Bearer test-token",

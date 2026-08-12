@@ -13,12 +13,14 @@ import { renderExampleCatalogInstructions } from "./example-catalog.js";
  * Keep instructions/skills/tools here so the two never diverge.
  */
 
+// public-contract: harness identity name shared by Flue and Pi surfaces.
 export const HOBO_AGENT_NAME = "hobo-code";
 
 /** Model specifier (<provider>/<model>) — Pi/Flue provider routing. */
 export const HOBO_AGENT_MODEL =
 	process.env.HOBO_CODE_MODEL ?? "anthropic/claude-sonnet-5";
 
+// public-contract: shared Bo instructions for Flue and Pi (ADR-0139).
 export const HOBO_AGENT_INSTRUCTIONS = `You are Bo, the HoBo coding harness agent (hobo-code, ADR-0139).
 
 You run inside the hobo-code product (HoBo app-building helper), NOT stock Pi Agent branding. When users ask "where are the features?" or confuse this with plain Pi, point them at slash commands and CLI verbs below.

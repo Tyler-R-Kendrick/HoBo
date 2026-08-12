@@ -23,6 +23,7 @@ import type { ScaffoldResult } from "./types.js";
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const TEMPLATES_ROOT = join(PACKAGE_ROOT, "templates");
 
+// public-contract: default high-value scaffold id when no atom composition wins.
 export const HIGH_VALUE_TEMPLATE_ID = "openui-astryx-bindle" as const;
 
 export interface ScaffoldOptions {

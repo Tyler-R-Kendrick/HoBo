@@ -89,6 +89,8 @@ describe("bindle session-replay integration", () => {
 		);
 		const html = await page.text();
 		expect(html).toContain('data-hobo-replay="1"');
+		expect(html).toContain('pagehide",function(){flush();stopped=true;}');
+		expect(html).toContain("stop:function(){flush();stopped=true;}");
 		expect(page.headers.get("x-hobo-session-replay")).toBe("1");
 
 		const ingest = await surface.handler(

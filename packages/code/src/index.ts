@@ -96,6 +96,13 @@ export {
 } from "./evidence-report.js";
 
 export {
+	EVIDENCE_AUTOMATION_SCHEMA,
+	exportEvidenceRecordingAutomation,
+	type EvidenceAutomationArtifact,
+	type EvidenceRecordingAutomationExport,
+} from "./evidence-automation.js";
+
+export {
 	asHoboEvidenceHost,
 	createEvidencePort,
 	type EvidenceArtifactRef,

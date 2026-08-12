@@ -3,6 +3,8 @@ import {
 	existsSync,
 	mkdirSync,
 	readFileSync,
+	renameSync,
+	rmSync,
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
@@ -11,7 +13,7 @@ import {
 	type IncomingMessage,
 	type ServerResponse,
 } from "node:http";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import {
 	buildCorrelation,
@@ -27,6 +29,7 @@ import {
 	SessionLifecycleState,
 } from "./_generated/code_harness_pb.js";
 import { parseBrowserRecording } from "./browser-recording.js";
+import { exportEvidenceRecordingAutomation } from "./evidence-automation.js";
 import {
 	parseEvidenceOverlayMessage,
 	renderEvidenceOverlayControls,
@@ -92,6 +95,36 @@ function json(response: ServerResponse, status: number, body: unknown): void {
 			typeof value === "bigint" ? value.toString() : value,
 		),
 	);
+}
+
+function saveRecordingCapability(
+	projectRoot: string,
+	exported: ReturnType<typeof exportEvidenceRecordingAutomation>,
+): string {
+	const skillsRoot = join(projectRoot, ".agents", "skills");
+	const target = join(skillsRoot, exported.capabilityId);
+	if (existsSync(target))
+		throw new Error(`capability already exists: ${exported.capabilityId}`);
+	const staging = join(
+		skillsRoot,
+		`.${exported.capabilityId}-${randomBytes(8).toString("hex")}`,
+	);
+	mkdirSync(staging, { recursive: true });
+	try {
+		for (const artifact of exported.artifacts) {
+			const prefix = `.agents/skills/${exported.capabilityId}/`;
+			if (!artifact.path.startsWith(prefix))
+				throw new Error("automation artifact escaped its capability directory");
+			const path = join(staging, artifact.path.slice(prefix.length));
+			mkdirSync(dirname(path), { recursive: true });
+			writeFileSync(path, artifact.contents, { encoding: "utf8", flag: "wx" });
+		}
+		renameSync(staging, target);
+	} catch (error) {
+		rmSync(staging, { recursive: true, force: true });
+		throw error;
+	}
+	return target;
 }
 
 function parseGitWorkbenchAction(input: unknown): GitWorkbenchAction {
@@ -581,6 +614,57 @@ export async function startSessionControlServer(
 						artifactRefs: [],
 					});
 					json(response, 202, { ok: true, id });
+					return;
+				}
+				if (message.type === "save-capability") {
+					const recording = evidence
+						.records("recording")
+						.find((candidate) => candidate.subject === message.recordingId);
+					if (!recording)
+						throw new TypeError("recording evidence was not found");
+					const sourceArtifactRef = recording.artifactRefs.find(
+						(ref) => evidence.artifact(ref)?.mediaType === "application/json",
+					);
+					if (!sourceArtifactRef)
+						throw new Error("recording action artifact is missing");
+					const manifest = parseBrowserRecording(
+						JSON.parse(
+							Buffer.from(
+								evidence.readArtifact(sourceArtifactRef).bytes,
+							).toString("utf8"),
+						),
+					);
+					const exported = exportEvidenceRecordingAutomation(manifest, {
+						name: message.name,
+						sourceArtifactRef,
+					});
+					const path = saveRecordingCapability(options.projectRoot, exported);
+					const artifactRefs = exported.artifacts.map((generated) => {
+						const writer = evidence.beginArtifact({
+							title: generated.path,
+							mediaType: generated.mediaType,
+						});
+						writer.write(Buffer.from(generated.contents));
+						return writer.finish().id;
+					});
+					const id = evidence.submit({
+						kind: "feature",
+						title: `Reusable capability: ${exported.capabilityId}`,
+						summary: `${manifest.actions.length} recorded actions compiled to agent instructions and deterministic Playwright automation (${exported.replayability}).`,
+						subject: `capability:${exported.capabilityId}`,
+						artifactRefs,
+						sourceRef: sourceArtifactRef,
+					});
+					json(response, 201, {
+						ok: true,
+						id,
+						capabilityId: exported.capabilityId,
+						path,
+						command: exported.commands[0],
+						replayability: exported.replayability,
+						requiredEnvironment: exported.requiredEnvironment,
+						artifactRefs,
+					});
 					return;
 				}
 				json(response, 400, { error: "invalid evidence overlay action" });

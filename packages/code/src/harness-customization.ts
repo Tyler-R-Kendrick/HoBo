@@ -1,3 +1,4 @@
+import { renderAtomCatalogInstructions } from "./atom-index.js";
 import { renderExampleCatalogInstructions } from "./example-catalog.js";
 
 /**
@@ -37,4 +38,6 @@ Rules you must not break:
 - Keep responses dense and technical. No filler.
 - When a tool result is present in the conversation, answer FROM that result. Do not claim you lack a tool that has already run.
 
-${renderExampleCatalogInstructions()}`;
+${renderExampleCatalogInstructions()}
+
+${renderAtomCatalogInstructions()}`;

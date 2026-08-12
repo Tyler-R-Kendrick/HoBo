@@ -121,7 +121,7 @@ hobo-code (standalone binary; dispatch default)
     ├─ Workflow Worlds          Local World offline · Vercel World prod (worlds.ts)
     ├─ IsolationAgent surface   createIsolationContext / cleanupIsolation / promoteIsolation
     ├─ HarnessCoreAgent surface createHarnessCore + Rhai subset + Local World checkpoints
-    ├─ ScaffoldingAgent surface scaffoldHighValueTemplate + tsAutocodeConventions
+    ├─ ScaffoldingAgent surface scaffoldHighValueTemplate + scaffoldFromIntent/Atoms + tsAutocodeConventions
     ├─ VisualEvidenceAgent      createOpenUiSession / lockVisualArtifact / emitEvidenceTriple
     ├─ TUIMultiplexerAgent      buildMultiplexerStatus / copyOnHighlight · splash logo+Bo
     ├─ FinOpsMonetizationAgent  createBudgetTracker / sponsoredWaitState
@@ -182,7 +182,8 @@ Presentation helpers stay pure and unit-tested:
 - session uses `title` override — 4-line box: brand · run · handback LED · next (LED implies live/final)
 - `renderOpenUiHtml` — dark shell + `1 · generate` rail + seal; lede `→edit|→lock|→codegen`; foot `Edit→lock|Lock→codegen|seal`
 - `formatHoboCodeResult` — closed panels: one-scan happy path is 3 lines (title · body · rule, soft omitted); FIX + code inline on fails
-- `example-catalog.ts` + `workspace-actions.ts` — Bo TUI turns "create a hello world app" / "run it" / "debug it" into a copied example plus live bindle/debug/controls/report URLs, without `hobo` or a network fetch
+- `atom-index.ts` — retrieve→Valibot→compose→emit over `templates/atoms` (SQLite FTS5 + pinned `hobo-hashed-trigram-v1` + RRF, ADR-0152). Derived cache `$HOBO_HOME/durable/code/template-index.sqlite`. High-confidence emits with zero inference; low-confidence refuses unless `allowEscalate`. Full `examples/` apps stay composition proofs.
+- `example-catalog.ts` + `workspace-actions.ts` — Bo TUI turns "create a hello world app" / "run it" / "debug it" into emitted atoms plus live bindle/debug/controls/report URLs, without `hobo` or a network fetch
 - template `public/index.html` + `styles.css` — scaffold first paint + matching step rail
 - product binary `hobo-code`: flat verbs, dispatch default, no nested buzz
 

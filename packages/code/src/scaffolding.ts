@@ -2,14 +2,21 @@ import {
 	cpSync,
 	existsSync,
 	mkdirSync,
-	readFileSync,
 	readdirSync,
+	readFileSync,
 	statSync,
 	writeFileSync,
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-
+import { composeAtoms } from "./atom-compose.js";
+import {
+	type EmissionDecision,
+	emitFromAtoms,
+	loadAtomCorpus,
+	retrieveAtoms,
+} from "./atom-index.js";
+import { fillAtomBody, parseAtomParams } from "./atom-template.js";
 import type { ScaffoldResult } from "./types.js";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -65,7 +72,13 @@ export function scaffoldHighValueTemplate(
 	}
 
 	// Ensure konsistent-shaped dirs for Bindle apps that grow into packages.
-	for (const dir of ["src", "test", "contracts", "data-models", "src/_generated"]) {
+	for (const dir of [
+		"src",
+		"test",
+		"contracts",
+		"data-models",
+		"src/_generated",
+	]) {
 		mkdirSync(join(options.outputDir, dir), { recursive: true });
 	}
 	writeFileSync(
@@ -127,6 +140,201 @@ export function measureTemplateSuccessRate(
 		attempts,
 		successes,
 		rate: attempts === 0 ? 0 : successes / attempts,
+	};
+}
+
+export interface ScaffoldFromIntentOptions {
+	readonly outputDir: string;
+	readonly appName: string;
+	readonly intent: string;
+	readonly params?: Readonly<Record<string, string>>;
+	readonly allowEscalate?: boolean;
+}
+
+export interface ScaffoldFromAtomsOptions {
+	readonly outputDir: string;
+	readonly appName: string;
+	readonly atomIds: readonly string[];
+	readonly params?: Readonly<Record<string, string>>;
+}
+
+export interface AtomScaffoldResult {
+	readonly ok: boolean;
+	readonly source: "atoms" | "none";
+	readonly decision: EmissionDecision;
+	readonly fallback?: "llm";
+	readonly result?: ScaffoldResult;
+}
+
+function ensureKonsistentDirs(outputDir: string): void {
+	for (const dir of [
+		"src",
+		"test",
+		"contracts",
+		"data-models",
+		"src/_generated",
+	]) {
+		mkdirSync(join(outputDir, dir), { recursive: true });
+	}
+	writeFileSync(join(outputDir, "src/_generated", ".gitkeep"), "", "utf8");
+}
+
+function toScaffoldResult(
+	templateId: string,
+	outputDir: string,
+	openFeatureFlag: string,
+	gherkinFeature: string,
+): ScaffoldResult {
+	return {
+		templateId,
+		outputDir,
+		files: walkFiles(outputDir),
+		openFeatureFlag,
+		gherkinFeature,
+		respectsKonsistent: true,
+		respectsGenerated: true,
+	};
+}
+
+/**
+ * Retrieve → compose → Valibot → fill → write. Additive to
+ * scaffoldHighValueTemplate. Low-confidence intents refuse.
+ */
+export function scaffoldFromIntent(
+	options: ScaffoldFromIntentOptions,
+): AtomScaffoldResult {
+	const retrieved = retrieveAtoms(
+		options.intent,
+		options.allowEscalate !== undefined
+			? { allowEscalate: options.allowEscalate }
+			: {},
+	);
+	if (!retrieved.ok) {
+		return {
+			ok: false,
+			source: "none",
+			decision: retrieved.decision,
+			fallback: "llm",
+		};
+	}
+	const emitted = emitFromAtoms({
+		intent: options.intent,
+		outputDir: options.outputDir,
+		params: { name: options.appName, ...options.params },
+		...(options.allowEscalate !== undefined
+			? { allowEscalate: options.allowEscalate }
+			: {}),
+	});
+	if (!emitted.ok) {
+		return {
+			ok: false,
+			source: "none",
+			decision: emitted.decision,
+			...(emitted.fallback !== undefined ? { fallback: emitted.fallback } : {}),
+		};
+	}
+	ensureKonsistentDirs(options.outputDir);
+	const openFeature = emitted.files.some((file) => file.includes("flags"));
+	const gherkin = emitted.files.find((file) => file.endsWith(".feature"));
+	writeFileSync(
+		join(options.outputDir, "hobo.scaffold.json"),
+		JSON.stringify(
+			{
+				templateId: emitted.compositionId ?? retrieved.atoms[0]?.id ?? "atoms",
+				appName: options.appName,
+				source: "atoms",
+				intent: options.intent,
+				decision: "emit",
+				atomIds: retrieved.atoms.map((atom) => atom.id),
+				tsAutocode: true,
+				konsistent: true,
+				generatedDir: "src/_generated",
+			},
+			null,
+			2,
+		),
+		"utf8",
+	);
+	return {
+		ok: true,
+		source: "atoms",
+		decision: "emit",
+		result: toScaffoldResult(
+			emitted.compositionId ?? retrieved.atoms[0]?.id ?? "atoms",
+			options.outputDir,
+			openFeature ? "app.feature.primary" : "",
+			gherkin ?? "",
+		),
+	};
+}
+
+/** Emit an explicit atom set after compose + Valibot. Skips retrieval. */
+export function scaffoldFromAtoms(
+	options: ScaffoldFromAtomsOptions,
+): AtomScaffoldResult {
+	const corpus = loadAtomCorpus();
+	const selected = options.atomIds
+		.map((id) => corpus.atoms.find((atom) => atom.id === id))
+		.filter((atom): atom is NonNullable<typeof atom> => atom !== undefined);
+	if (selected.length !== options.atomIds.length) {
+		return { ok: false, source: "none", decision: "refuse" };
+	}
+	const composed = composeAtoms(selected, corpus.atoms);
+	if (!composed.ok) {
+		return { ok: false, source: "none", decision: "refuse" };
+	}
+	const parsed = parseAtomParams(composed.atoms, {
+		name: options.appName,
+		...options.params,
+	});
+	if (!parsed.ok) {
+		return { ok: false, source: "none", decision: "refuse" };
+	}
+	mkdirSync(options.outputDir, { recursive: true });
+	for (const atom of composed.atoms) {
+		for (const file of atom.files) {
+			const target = join(
+				options.outputDir,
+				fillAtomBody(file.path, parsed.params),
+			);
+			mkdirSync(dirname(target), { recursive: true });
+			writeFileSync(
+				target,
+				fillAtomBody(
+					readFileSync(join(atom.dir, file.from), "utf8"),
+					parsed.params,
+				),
+			);
+		}
+	}
+	ensureKonsistentDirs(options.outputDir);
+	writeFileSync(
+		join(options.outputDir, "hobo.scaffold.json"),
+		JSON.stringify(
+			{
+				templateId: options.atomIds[0] ?? "atoms",
+				appName: options.appName,
+				source: "atoms",
+				atomIds: composed.atoms.map((atom) => atom.id),
+				tsAutocode: true,
+				konsistent: true,
+				generatedDir: "src/_generated",
+			},
+			null,
+			2,
+		),
+		"utf8",
+	);
+	return {
+		ok: true,
+		source: "atoms",
+		decision: "emit",
+		result: toScaffoldResult(
+			options.atomIds[0] ?? "atoms",
+			options.outputDir,
+			"",
+			"",
+		),
 	};
 }
 

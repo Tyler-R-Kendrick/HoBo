@@ -10,6 +10,8 @@ import {
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { emitFromAtoms } from "./atom-index.js";
+
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const EXAMPLES_ROOT = join(PACKAGE_ROOT, "examples");
 const TEMPLATES_ROOT = join(PACKAGE_ROOT, "templates");
@@ -47,7 +49,7 @@ export interface MaterializeExampleResult {
 	readonly templateId: string;
 	readonly outputDir: string;
 	readonly files: readonly string[];
-	readonly source: "repo";
+	readonly source: "repo" | "atoms";
 }
 
 interface ParsedManifest {
@@ -302,6 +304,32 @@ function walkFiles(dir: string, base = dir): string[] {
 export function materializeExample(
 	options: MaterializeExampleOptions,
 ): MaterializeExampleResult {
+	const fromAtoms = emitFromAtoms({
+		intent: `${options.exampleId} ${options.appName} app`,
+		outputDir: options.outputDir,
+		params: { name: options.appName },
+	});
+	if (fromAtoms.ok) {
+		writeFileSync(
+			join(options.outputDir, "hobo.scaffold.json"),
+			`${JSON.stringify(
+				{
+					templateId: fromAtoms.compositionId ?? options.exampleId,
+					appName: options.appName,
+					source: "atoms",
+					files: fromAtoms.files,
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		return {
+			templateId: fromAtoms.compositionId ?? options.exampleId,
+			outputDir: options.outputDir,
+			files: walkFiles(options.outputDir),
+			source: "atoms",
+		};
+	}
 	const catalog = options.catalog ?? loadExampleCatalog();
 	const entry = catalog.find((item) => item.id === options.exampleId);
 	if (!entry) throw new Error(`example not found: ${options.exampleId}`);

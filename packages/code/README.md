@@ -1,5 +1,14 @@
 # `@hobo/code` · binary **`hobo-code`**
 
+Atomic templates (ADR-0152) live in `templates/atoms/`. Rebuild the derived
+SQLite index offline and emit a high-confidence Bindle without an LLM:
+
+```bash
+pnpm --filter @hobo/code run atoms:index
+hobo-code atoms retrieve "create a hello world app"
+hobo-code scaffold hello-world --name greeter
+```
+
 **App-building agent / helper** for HoBo — not a control-plane management CLI.
 
 CLI name is **`hobo-code`** (dash is fine). There is **no** `hobo code` nested verb.
@@ -283,6 +292,7 @@ hobo-code "add a settings page to the bindle"
 hobo-code "hello world app"      # copy examples/hello-world — no hobo CLI
 # In the Bo TUI: "create a hello world app" · "run it" · "debug it"
 # replies with the live bindle / debug / controls / report URLs
+# Create fills local atomic templates (templates/atoms), not a web fetch.
 hobo-code scaffold --name demo
 hobo-code dev --cwd demo          # run its Bindle on a local Yard + Evidence
 hobo-code status                 # plain English session hierarchy (default)

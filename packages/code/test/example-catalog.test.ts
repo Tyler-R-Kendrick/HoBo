@@ -67,7 +67,7 @@ describe("hobo-code example catalog", () => {
 			/bindle\(/,
 		);
 		expect(existsSync(join(out, "node_modules"))).toBe(false);
-		expect(result.source).toBe("repo");
+		expect(result.source).toBe("atoms");
 	});
 
 	it("bakes the repo catalog into Bo so the agent does not fetch state", () => {

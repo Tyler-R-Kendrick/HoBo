@@ -711,6 +711,13 @@ Bo was emitting whole reference apps, or inventing Bindles with an LLM, for inte
 7. **Render is pure TypeScript `{{param}}` + Valibot.** No Handlebars, no EJS. No ts-morph in this decision.
 8. **ScaffoldingAgent is additive.** `scaffoldHighValueTemplate` / `openui-astryx-bindle` stay unchanged. New path: `scaffoldFromIntent` / `scaffoldFromAtoms` / `hobo-code atoms rebuild|retrieve`. Full `examples/` apps remain composition proofs.
 9. **No new protobuf family in `@hobo/code`.** Atoms are a file corpus, not an integration boundary. Parse-don't-validate is Valibot at the retrieve/fill boundary. Proto+CUE+PACT are *emitted* by Tier-0 atoms.
+10. **Closed intent map is preferred over retrieval.** Phrases such as "deploy to azure" and "bundle apps in the same network" live in `templates/intents/*.json` and match before FTS/dense. A hit is score `1` and emits with zero inference.
+11. **Entity-aware merge, not last-write-wins.** Snippets mark `/* @hobo.entity */`, `/* @hobo.slot strategy=append|union|once */`, and `/* @hobo.hole kind=trainable */`. Same path merges by entity+slot. Unmarked collisions and once-slot drift fail closed. "Same network" means two Camps in one Yard; "deploy to Azure" is a Yard `provider` pin, never a Bindle pin.
+12. **Inference holes use `"use training"` / `training.define`.** First-pass PoCs emit trainable skeletons (ADR-0025 / ADR-0125), not invented handler logic. The training engine fills implementation specifics later.
+
+### Amendment (entity-aware merge · closed intents · trainable holes)
+
+The first ADR-0152 emit path overwrote files in topo order. That made "add a second Camp to the Azure Yard" unrepresentable without an LLM. Merge + the closed map close that: known HoBo phrases compile to an entity graph; only `@hobo.hole` regions are allowed to become inference later.
 
 ### Non-goals
 - Shipping ONNX weights or a required native sqlite-vec dependency.
@@ -722,7 +729,7 @@ Bo was emitting whole reference apps, or inventing Bindles with an LLM, for inte
 - **(+)** High-confidence hello-world / architecture-guard / station / connector intents emit with zero inference and stay offline.
 - **(+)** Wrong-template silent emit is unrepresentable past the confidence gate.
 - **(−)** Novel intents still need an LLM (or a new atom). The hashed-trigram encoder is a stable $0 vocabulary, not a semantic model; ONNX swap is future.
-- **(−)** Multi-atom file collisions (two atoms writing `src/webapp.ts`) are resolved by write order after topo-sort; compositions must not include conflicting providers.
+- **(−)** Multi-atom file collisions without snippet markers fail closed. Marked slots merge; unmarked drift is a conflict, not last-write-wins.
 
 ### References
 - Package: `packages/code/src/atom-*.ts`, `packages/code/templates/atoms/`

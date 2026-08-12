@@ -12,6 +12,8 @@ import {
 	cosineSimilarity,
 	embedAtomText,
 } from "./atom-embedder.js";
+import { loadClosedIntents, matchClosedIntent } from "./atom-intent.js";
+import { mergeAtomFiles } from "./atom-merge.js";
 import {
 	type AtomComposition,
 	type AtomTemplate,
@@ -30,6 +32,8 @@ export {
 	HOBO_DOMAIN_VOCABULARY,
 	hashedTrigramEmbedder,
 } from "./atom-embedder.js";
+export { loadClosedIntents, matchClosedIntent } from "./atom-intent.js";
+export { mergeAtomFiles, parseSnippet } from "./atom-merge.js";
 export { ATOMS_ROOT, loadAtomCorpus } from "./atom-template.js";
 
 export const ATOM_RRF_K = 60;
@@ -58,6 +62,7 @@ export interface RetrieveAtomsResult {
 	readonly fallback?: "llm";
 	readonly score: number;
 	readonly ranked: readonly RankedHit[];
+	readonly defaultParams?: Readonly<Record<string, string>>;
 }
 
 export interface EmitFromAtomsOptions {
@@ -73,6 +78,7 @@ export interface EmitFromAtomsResult {
 	readonly decision: EmissionDecision;
 	readonly compositionId?: string;
 	readonly files: readonly string[];
+	readonly holes: readonly string[];
 	readonly fallback?: "llm";
 	readonly code?: string;
 }
@@ -383,6 +389,18 @@ function scoreItems(
 }
 
 export function rankAtoms(intent: string, limit = 8): readonly RankedHit[] {
+	const mapped = matchClosedIntent(intent, loadClosedIntents());
+	if (mapped) {
+		return [
+			{ id: mapped.id, kind: "composition" as const, score: 1, fts: true },
+			...mapped.atoms.map((id) => ({
+				id,
+				kind: "atom" as const,
+				score: 1,
+				fts: true,
+			})),
+		].slice(0, limit);
+	}
 	const index = openIndex();
 	const queryVec = embedAtomText(intent);
 	const ftsAtoms = ftsRanks(index.db, intent, "atom");
@@ -411,6 +429,40 @@ export function retrieveAtoms(
 	options: RetrieveAtomsOptions = {},
 ): RetrieveAtomsResult {
 	const index = openIndex();
+	const mapped = matchClosedIntent(intent, loadClosedIntents());
+	if (mapped) {
+		const selected = mapped.atoms
+			.map((id) => index.byId.get(id))
+			.filter((atom): atom is AtomTemplate => atom !== undefined);
+		const composed = composeAtoms(selected, index.atoms);
+		if (composed.ok && composed.atoms.length > 0) {
+			return {
+				ok: true,
+				confidence: "high",
+				decision: "emit",
+				composition: {
+					id: mapped.id,
+					description: mapped.description,
+					tags: [...mapped.phrases],
+					queries: [...mapped.phrases],
+					atoms: [...mapped.atoms],
+				},
+				atoms: composed.atoms,
+				score: 1,
+				ranked: [
+					{
+						id: mapped.id,
+						kind: "composition",
+						score: 1,
+						fts: true,
+					},
+				],
+				...(Object.keys(mapped.params).length > 0
+					? { defaultParams: mapped.params }
+					: {}),
+			};
+		}
+	}
 	const ranked = rankAtoms(intent, 12);
 	const top = ranked.find((hit) => hit.fts);
 	const refuse = (score: number): RetrieveAtomsResult => ({
@@ -472,12 +524,14 @@ export function emitFromAtoms(
 			source: "none",
 			decision: retrieved.decision,
 			files: [],
+			holes: [],
 			fallback: "llm",
 		};
 	}
 	const name = options.params?.name ?? retrieved.composition?.id ?? "app";
 	const parsed = parseAtomParams(retrieved.atoms, {
 		name,
+		...retrieved.defaultParams,
 		...options.params,
 	});
 	if (!parsed.ok) {
@@ -486,22 +540,27 @@ export function emitFromAtoms(
 			source: "none",
 			decision: "refuse",
 			files: [],
+			holes: [],
 			...(parsed.code !== undefined ? { code: parsed.code } : {}),
 		};
 	}
+	const materialized = materializeAtomFiles(retrieved.atoms, parsed.params);
+	if (!materialized.ok) {
+		return {
+			ok: false,
+			source: "none",
+			decision: "refuse",
+			files: [],
+			holes: [],
+			...(materialized.code !== undefined ? { code: materialized.code } : {}),
+		};
+	}
 	const written: string[] = [];
-	for (const atom of retrieved.atoms) {
-		for (const file of atom.files) {
-			const source = join(atom.dir, file.from);
-			const relativePath = fillAtomBody(file.path, parsed.params);
-			const target = join(options.outputDir, relativePath);
-			mkdirSync(dirname(target), { recursive: true });
-			writeFileSync(
-				target,
-				fillAtomBody(readFileSync(source, "utf8"), parsed.params),
-			);
-			written.push(relativePath);
-		}
+	for (const [relativePath, body] of materialized.files) {
+		const target = join(options.outputDir, relativePath);
+		mkdirSync(dirname(target), { recursive: true });
+		writeFileSync(target, body);
+		written.push(relativePath);
 	}
 	return {
 		ok: true,
@@ -511,7 +570,25 @@ export function emitFromAtoms(
 			? { compositionId: retrieved.composition.id }
 			: {}),
 		files: written,
+		holes: materialized.holes,
 	};
+}
+
+export function materializeAtomFiles(
+	atoms: readonly AtomTemplate[],
+	params: Readonly<Record<string, string>>,
+): ReturnType<typeof mergeAtomFiles> {
+	const contributions = atoms.flatMap((atom) =>
+		atom.files.map((file) => ({
+			atomId: atom.id,
+			path: fillAtomBody(file.path, params),
+			body: fillAtomBody(
+				readFileSync(join(atom.dir, file.from), "utf8"),
+				params,
+			),
+		})),
+	);
+	return mergeAtomFiles(contributions);
 }
 
 export function renderAtomCatalogInstructions(

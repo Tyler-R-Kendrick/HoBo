@@ -31,6 +31,13 @@ const EVAL_CASES: ReadonlyArray<{
 	{ intent: "openfeature flag", expectTop3: ["openfeature.flag"] },
 	{ intent: "trail step", expectTop3: ["trail.step"] },
 	{ intent: "litestream sqlite", expectTop3: ["storage.litestream"] },
+	{ intent: "deploy to azure", expectTop3: ["deploy.azure"], emit: true },
+	{
+		intent: "bundle apps in the same network",
+		expectTop3: ["network.colocate"],
+		emit: true,
+	},
+	{ intent: "trainable hello", expectTop3: ["hello.trainable"], emit: true },
 ];
 
 describe("retrieval evaluation set", () => {

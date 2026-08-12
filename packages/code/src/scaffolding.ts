@@ -14,9 +14,10 @@ import {
 	type EmissionDecision,
 	emitFromAtoms,
 	loadAtomCorpus,
+	materializeAtomFiles,
 	retrieveAtoms,
 } from "./atom-index.js";
-import { fillAtomBody, parseAtomParams } from "./atom-template.js";
+import { parseAtomParams } from "./atom-template.js";
 import type { ScaffoldResult } from "./types.js";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -290,22 +291,15 @@ export function scaffoldFromAtoms(
 	if (!parsed.ok) {
 		return { ok: false, source: "none", decision: "refuse" };
 	}
+	const materialized = materializeAtomFiles(composed.atoms, parsed.params);
+	if (!materialized.ok) {
+		return { ok: false, source: "none", decision: "refuse" };
+	}
 	mkdirSync(options.outputDir, { recursive: true });
-	for (const atom of composed.atoms) {
-		for (const file of atom.files) {
-			const target = join(
-				options.outputDir,
-				fillAtomBody(file.path, parsed.params),
-			);
-			mkdirSync(dirname(target), { recursive: true });
-			writeFileSync(
-				target,
-				fillAtomBody(
-					readFileSync(join(atom.dir, file.from), "utf8"),
-					parsed.params,
-				),
-			);
-		}
+	for (const [relativePath, body] of materialized.files) {
+		const target = join(options.outputDir, relativePath);
+		mkdirSync(dirname(target), { recursive: true });
+		writeFileSync(target, body);
 	}
 	ensureKonsistentDirs(options.outputDir);
 	writeFileSync(

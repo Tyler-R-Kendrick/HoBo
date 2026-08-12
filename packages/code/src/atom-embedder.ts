@@ -38,6 +38,10 @@ export const HOBO_DOMAIN_VOCABULARY = [
 	"camp",
 	"OpenFeature",
 	"Gherkin",
+	"azure",
+	"colocate",
+	"use training",
+	"trainable",
 ] as const;
 
 export const ATOM_EMBEDDER_HASH = createHash("sha256")

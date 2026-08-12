@@ -6,6 +6,8 @@ SQLite index offline and emit a high-confidence Bindle without an LLM:
 ```bash
 pnpm --filter @hobo/code run atoms:index
 hobo-code atoms retrieve "create a hello world app"
+hobo-code atoms retrieve "deploy to azure"
+hobo-code atoms retrieve "bundle apps in the same network"
 hobo-code scaffold hello-world --name greeter
 ```
 

@@ -15,5 +15,10 @@ pnpm --filter @hobo/code run atoms:index
 hobo-code atoms rebuild
 ```
 
+Closed intents in `../intents/` match before the index (`deploy to azure`,
+`bundle apps in the same network`). Same-path snippets merge by
+`@hobo.entity` / `@hobo.slot` / `@hobo.hole`. Holes are `"use training"`
+skeletons, not authored logic.
+
 High-confidence retrieve emits with zero inference. Full apps under
 `examples/` stay composition proofs.

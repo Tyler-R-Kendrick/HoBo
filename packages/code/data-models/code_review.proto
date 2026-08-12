@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+// Durable review command/snapshot wire types. Generated to src/_generated/code_review_pb.ts.
+
 package hobo.code.review.v1;
 
 enum ReviewDecision {

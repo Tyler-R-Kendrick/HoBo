@@ -159,6 +159,13 @@ raw DTOs. Invalid values throw at the boundary (parse-don't-validate).
   owns create/cleanup; promotion is a gated command.
 - **Event store** — append-only JSON audits under `HOBO_HOME/durable/code/<runId>/`
   (`isolation.json`, `handback.json`, `promotions/*.json`, `evidence/**`).
+- **Durable review runtime** — `@hobo/runtime-local` EventStore partition
+  `hobo-code-reviews`, stream `code-review:<reviewId>`. Commands are OCC on
+  `expectedRevision`; duplicate `commandId` is an idempotent replay. Snapshots
+  stay compact (ids + hashes); message bodies and manifests live in a content
+  store by hash. Review revision is independent of `hobo-code-sessions`. Per-review
+  file locks recover stale owners the same way sessions do — there is no global
+  review lock. Session events never embed a full review snapshot.
 - **Materialized view / projection** — multiplexer `AgentPaneState` list + budget
   snapshot projected from session mutations (status surface).
 - **Snapshot** — Local World checkpoint (`HOBO_HOME/worlds/<runId>/state.json`) and

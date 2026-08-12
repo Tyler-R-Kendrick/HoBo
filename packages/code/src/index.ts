@@ -390,6 +390,22 @@ export {
 	sessionSnapshotJson,
 } from "./session-contract.js";
 export {
+	parseReviewCommand,
+	parseReviewSnapshot,
+	parseReviewTarget,
+} from "./review/review-contract.js";
+export { ReviewError, type ReviewErrorCode, reviewError } from "./review/review-errors.js";
+export {
+	REVIEW_COMMAND_SCHEMA,
+	REVIEW_PAGE_SCHEMA,
+	REVIEW_PARTITION,
+	REVIEW_SNAPSHOT_SCHEMA,
+	type ReviewCommand,
+	type ReviewCommandEnvelope,
+	type ReviewSnapshot,
+	type ReviewTarget,
+} from "./review/review-ports.js";
+export {
 	type SessionControlServer,
 	type SessionControlServerOptions,
 	startSessionControlServer,

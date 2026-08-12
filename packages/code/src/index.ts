@@ -76,6 +76,42 @@ export {
 } from "./evidence.js";
 
 export {
+	appendSignedEvidenceNote,
+	EVIDENCE_REPORT_SCHEMA,
+	EVIDENCE_REPORT_SECTIONS,
+	projectEvidenceReport,
+	renderEvidenceReportExport,
+	type EvidenceArtifact,
+	type EvidenceFact,
+	type EvidenceReport,
+	type EvidenceReportInput,
+	type EvidenceReportSection,
+	type EvidenceReportSectionId,
+	type EvidenceState,
+	type PortableEvidenceReportExport,
+	type SignedEvidenceNote,
+} from "./evidence-report.js";
+
+export {
+	createEvidencePort,
+	type EvidenceArtifactRef,
+	type StoredEvidenceArtifact,
+	type StoredEvidenceRecord,
+} from "./evidence-port.js";
+
+export {
+	parseEvidenceOverlayMessage,
+	renderEvidenceOverlayBridge,
+	renderEvidenceOverlayControls,
+	renderEvidenceOverlayWrapper,
+	type EvidenceOverlayBridgeOptions,
+	type EvidenceOverlayControlsOptions,
+	type EvidenceOverlayMessage,
+	type EvidenceOverlayMessageEvent,
+	type EvidenceOverlayWrapperOptions,
+} from "./evidence-overlay.js";
+
+export {
 	applyInContextEdit,
 	createOpenUiSession,
 	lockVisualArtifact,

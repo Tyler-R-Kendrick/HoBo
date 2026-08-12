@@ -100,6 +100,7 @@ describe("resident session loopback server", () => {
 			expect(page.status).toBe(200);
 			const html = await page.text();
 			expect(html).toContain("HoBo Code resident sessions");
+			expect(html).toContain("Evidence report");
 			expect(html).toContain("forward this loopback port");
 			expect(html).toContain("never binds publicly");
 			expect(html).toContain("Full command boundary");
@@ -186,10 +187,49 @@ describe("resident session loopback server", () => {
 			expect(script).toBeDefined();
 			expect(() => new Function(script ?? "")).not.toThrow();
 
+			const report = await fetch(server.reportUrl);
+			expect(report.status).toBe(200);
+			expect(await report.text()).toContain("Current development evidence");
+			const controls = await fetch(server.controlsUrl("http://127.0.0.1:4173"));
+			expect(controls.status).toBe(200);
+			expect(await controls.text()).toContain("Evidence desk");
+
 			const headers = {
 				authorization: "Bearer test-token",
 				"content-type": "application/json",
 			};
+			const evidenceResponse = await fetch(
+				`http://127.0.0.1:${server.port}/code/evidence`,
+				{
+					method: "POST",
+					headers,
+					body: JSON.stringify({
+						kind: "test",
+						title: "Focused server test",
+						summary: "passed",
+						subject: "project:test",
+						artifactRefs: [],
+					}),
+				},
+			);
+			expect(evidenceResponse.status).toBe(201);
+			const liveReport = await fetch(
+				`http://127.0.0.1:${server.port}/__hobo/evidence/api/report`,
+				{ headers },
+			);
+			expect(await liveReport.json()).toMatchObject({
+				sections: expect.arrayContaining([
+					expect.objectContaining({
+						id: "tests",
+						facts: [
+							expect.objectContaining({
+								title: "Focused server test",
+								state: "claimed",
+							}),
+						],
+					}),
+				]),
+			});
 			const createdResponse = await fetch(
 				`http://127.0.0.1:${server.port}/code/commands`,
 				{

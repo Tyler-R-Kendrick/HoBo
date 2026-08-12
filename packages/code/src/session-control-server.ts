@@ -4,12 +4,21 @@ import {
 	type IncomingMessage,
 	type ServerResponse,
 } from "node:http";
+import { join } from "node:path";
 import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import {
 	GitWorkbenchActionKind,
 	GitWorkbenchActionRequestSchema,
 	GitWorkbenchSelectionKind,
+	SessionLifecycleState,
 } from "./_generated/code_harness_pb.js";
+import { renderEvidenceOverlayControls } from "./evidence-overlay.js";
+import { createEvidencePort } from "./evidence-port.js";
+import {
+	type EvidenceFact,
+	projectEvidenceReport,
+	renderEvidenceReportExport,
+} from "./evidence-report.js";
 import {
 	type GitSelection,
 	type GitWorkbenchAction,
@@ -39,6 +48,8 @@ export interface SessionControlServer {
 	readonly port: number;
 	readonly token: string;
 	readonly url: string;
+	readonly reportUrl: string;
+	controlsUrl(parentOrigin: string, sessionId?: string): string;
 	close(): Promise<void>;
 }
 
@@ -128,7 +139,7 @@ function browserHtml(token: string, projectRoot: string): string {
 @media(max-width:48rem){body{margin:.75rem auto}.pane-grid{display:grid;grid-template-columns:1fr;height:auto!important;aspect-ratio:auto!important;overflow:visible}.pane-tile{position:relative!important;inset:auto!important;width:100%!important;height:auto!important;min-height:18rem}.git-workbench{display:flex;flex-direction:column;min-height:0}.git-main{order:-1}.git-diff{min-height:18rem;max-height:55vh}.git-list{max-height:9rem}.git-hints{width:100%;margin:0}}
 </style></head>
 <body><h1>HoBo Code resident sessions</h1><p>Loopback control plane · refreshes every second · delivery requires approval.</p>
-<p><strong>Authenticated</strong> · bearer-protected loopback control.</p>
+<p><strong>Authenticated</strong> · bearer-protected loopback control. · <a href="/__hobo/evidence?token=${encodeURIComponent(token)}">Evidence report</a></p>
 <p>Remote: forward this loopback port through a declared Station machine. The server never binds publicly.</p>
 <form id="create"><label>Name <input id="name" required></label><label> Branch <input id="branch" placeholder="code/task"></label><button>Create session</button></form>
 <main id="sessions" aria-label="Resident sessions"></main>
@@ -180,17 +191,180 @@ document.querySelector('#create').onsubmit=async e=>{e.preventDefault();const na
 document.querySelector('#send').onclick=()=>attempt(async()=>{const command=JSON.parse(document.querySelector('#command').value);const out=document.querySelector('#approved').checked?await approveCommand(command,'raw delivery command'):await send(command);if(out)result.textContent=JSON.stringify(out,null,2);await refresh()});refresh();setInterval(refresh,1000);</script></body></html>`;
 }
 
+async function currentEvidenceReport(
+	control: LocalSessionControl,
+	projectRoot: string,
+	evidence: ReturnType<typeof createEvidencePort>,
+) {
+	const generatedAt = new Date().toISOString();
+	const sessions = await control.list();
+	const facts: EvidenceFact[] = sessions.flatMap((snapshot) => {
+		const session = snapshot.session;
+		if (!session) return [];
+		const state =
+			session.lifecycleState === SessionLifecycleState.FAILED
+				? "failed"
+				: session.lifecycleState === SessionLifecycleState.STOPPED
+					? "stopped"
+					: "running";
+		return [
+			{
+				id: `session:${session.id}`,
+				section: "session",
+				title: session.name,
+				detail: `${state} on ${session.branch}; ${snapshot.panes.length} panes, ${snapshot.agentRuns.length} agent runs`,
+				state: state === "failed" ? "stale" : "captured",
+				observedAt: generatedAt,
+			},
+			{
+				id: `progress:${session.id}`,
+				section: "progress",
+				title: `${session.name} progress`,
+				detail: `${snapshot.checkpoints.length} checkpoints; ${snapshot.deliveryState?.message || "delivery not started"}`,
+				state: "captured",
+				observedAt: generatedAt,
+			},
+		];
+	});
+	for (const snapshot of sessions) {
+		if (!snapshot.session) continue;
+		const git = await readGitWorkbenchSnapshot(
+			snapshot.session.worktreePath,
+			sessionProcessRunner(),
+		);
+		facts.push({
+			id: `git:${snapshot.session.id}`,
+			section: "git",
+			title: git.branch ?? "Detached worktree",
+			detail: `${git.files.length}${git.truncated.files ? "+" : ""} changed files; ${git.ahead} ahead, ${git.behind} behind`,
+			state: "captured",
+			observedAt: generatedAt,
+		});
+	}
+	const sections = {
+		status: "progress",
+		test: "tests",
+		feature: "features",
+		decision: "adrs",
+		diagram: "diagrams",
+		screenshot: "features",
+		recording: "features",
+		replay: "replay",
+		annotation: "features",
+		note: "progress",
+	} as const;
+	for (const record of evidence.records()) {
+		facts.push({
+			id: `evidence:${record.id}`,
+			section: sections[record.kind],
+			title: record.title,
+			detail: record.summary,
+			state: record.verification,
+			observedAt: record.recordedAt,
+			artifacts: record.artifactRefs.flatMap((ref) => {
+				const artifact = evidence.artifact(ref);
+				return artifact
+					? [
+							{
+								id: artifact.id,
+								label: artifact.title,
+								mediaType: artifact.mediaType,
+								path: artifact.path,
+								sha256: artifact.sha256,
+							},
+						]
+					: [];
+			}),
+		});
+	}
+	for (const [section, title] of [
+		["tests", "No test run report submitted"],
+		["features", "No feature evidence submitted"],
+		["adrs", "No ADR evidence submitted"],
+		["diagrams", "No architecture diagram submitted"],
+		["replay", "No debug replay submitted"],
+	] as const) {
+		if (facts.some((fact) => fact.section === section)) continue;
+		facts.push({
+			id: `missing:${section}`,
+			section,
+			title,
+			detail:
+				"A producer must submit this evidence through the HoBo evidence port.",
+			state: "missing",
+			observedAt: generatedAt,
+		});
+	}
+	return projectEvidenceReport({
+		reportId: `project:${projectRoot}`,
+		title: "Current development evidence",
+		generatedAt,
+		facts,
+		notes: [],
+	});
+}
+
 export async function startSessionControlServer(
 	options: SessionControlServerOptions,
 ): Promise<SessionControlServer> {
 	const token = options.token ?? randomBytes(32).toString("base64url");
+	const controlsCapability = randomBytes(24).toString("base64url");
 	const control =
 		options.control ??
 		createLocalSessionControl({ hoboHome: options.hoboHome });
+	const evidence = createEvidencePort({
+		root: join(options.hoboHome, "durable", "code", "evidence"),
+		actor: "principal:local-developer",
+		origin: "hobo-code:control-server",
+		signingKey: token,
+	});
 	const runner = sessionProcessRunner();
 	const server = createServer(async (request, response) => {
 		try {
 			const url = new URL(request.url ?? "/", "http://127.0.0.1");
+			if (
+				request.method === "GET" &&
+				url.pathname === "/__hobo/evidence" &&
+				(url.searchParams.get("token") === token || authorized(request, token))
+			) {
+				const { html } = renderEvidenceReportExport(
+					await currentEvidenceReport(control, options.projectRoot, evidence),
+				);
+				response.writeHead(200, {
+					"cache-control": "no-store",
+					"content-security-policy":
+						"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; media-src 'self'; frame-ancestors 'none'",
+					"content-type": "text/html; charset=utf-8",
+					"referrer-policy": "no-referrer",
+					"x-content-type-options": "nosniff",
+				});
+				response.end(html);
+				return;
+			}
+			if (
+				request.method === "GET" &&
+				url.pathname === `/__hobo/evidence/controls/${controlsCapability}`
+			) {
+				const parentOrigin = url.searchParams.get("parentOrigin");
+				if (!parentOrigin) {
+					json(response, 400, { error: "missing parent origin" });
+					return;
+				}
+				response.writeHead(200, {
+					"cache-control": "no-store",
+					"content-type": "text/html; charset=utf-8",
+					"referrer-policy": "no-referrer",
+					"x-content-type-options": "nosniff",
+				});
+				const sessionId = url.searchParams.get("sessionId");
+				response.end(
+					renderEvidenceOverlayControls({
+						parentOrigin,
+						...(sessionId ? { sessionId } : {}),
+					}),
+				);
+				return;
+			}
 			if (request.method === "GET" && url.pathname === "/") {
 				if (url.searchParams.get("token") !== token) {
 					json(response, 401, { error: "missing session control token" });
@@ -209,6 +383,23 @@ export async function startSessionControlServer(
 			}
 			if (!authorized(request, token)) {
 				json(response, 401, { error: "invalid session control token" });
+				return;
+			}
+			if (request.method === "POST" && url.pathname === "/code/evidence") {
+				json(response, 201, {
+					id: evidence.submit(await requestBody(request)),
+				});
+				return;
+			}
+			if (
+				request.method === "GET" &&
+				url.pathname === "/__hobo/evidence/api/report"
+			) {
+				json(
+					response,
+					200,
+					await currentEvidenceReport(control, options.projectRoot, evidence),
+				);
 				return;
 			}
 			if (request.method === "GET" && url.pathname === "/code/sessions") {
@@ -337,6 +528,15 @@ export async function startSessionControlServer(
 		port: address.port,
 		token,
 		url: `http://127.0.0.1:${address.port}/?token=${encodeURIComponent(token)}`,
+		reportUrl: `http://127.0.0.1:${address.port}/__hobo/evidence?token=${encodeURIComponent(token)}`,
+		controlsUrl: (parentOrigin, sessionId) => {
+			const url = new URL(
+				`http://127.0.0.1:${address.port}/__hobo/evidence/controls/${controlsCapability}`,
+			);
+			url.searchParams.set("parentOrigin", parentOrigin);
+			if (sessionId) url.searchParams.set("sessionId", sessionId);
+			return url.href;
+		},
 		close: () =>
 			new Promise<void>((resolve, reject) => {
 				server.close((error) => {

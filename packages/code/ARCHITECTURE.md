@@ -135,6 +135,7 @@ hobo-code (standalone binary; dispatch default)
 - Protobuf records live in [`data-models/code_harness.proto`](./data-models/code_harness.proto).
 - CUE constraints bound every protobuf type in [`data-models/code_harness.cue`](./data-models/code_harness.cue).
 - PACT consumer evidence lives under [`contracts/pacts/`](./contracts/pacts/).
+- Durable review mutations (`src/review/review-orchestrator.ts`) reuse the session exact-effect ledger: `pending` before provider I/O, receipt after, `ambiguous` on uncertain transport, and no auto-reprepare under a stale approval digest.
 
 ## Parse, don't validate
 

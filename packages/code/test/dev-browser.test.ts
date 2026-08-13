@@ -16,6 +16,7 @@ import {
 	resolveHoboBin,
 	startDevBrowserSession,
 } from "../src/dev-browser.js";
+import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
 import { stopStationSidecars } from "../src/station-sidecars.js";
 
 const roots: string[] = [];
@@ -190,7 +191,10 @@ describe("hobo-code Bindle development bridge", () => {
 			);
 			expect(session.appUrl).toMatch(/^http:\/\/127\.0\.0\.1:/u);
 
-			const controls = await fetch(session.controlsUrl);
+			expect(session.controlsUrl).toMatch(
+				/evidence\.code\..*\.hobo\.localhost/,
+			);
+			const controls = await fetch(loopbackFetchUrl(session.controlsUrl));
 			expect(controls.status).toBe(200);
 			expect(await controls.text()).toContain("Evidence desk");
 		} finally {
@@ -213,11 +217,12 @@ describe("hobo-code Bindle development bridge", () => {
 		});
 		const evidenceUrl = session.reportUrl;
 		expect(evidenceUrl).toMatch(/__hobo\/evidence/);
+		expect(evidenceUrl).toMatch(/evidence\.code\..*\.hobo\.localhost/);
 		await session.close();
-		const still = await fetch(evidenceUrl);
+		const still = await fetch(loopbackFetchUrl(evidenceUrl));
 		expect(still.status).toBe(200);
 		await stopStationSidecars(hoboHome, "station:local");
-		await expect(fetch(evidenceUrl)).rejects.toThrow();
+		await expect(fetch(loopbackFetchUrl(evidenceUrl))).rejects.toThrow();
 	}, 15_000);
 
 	it("exposes /dev as a bounded Bindle/Yard probe", async () => {

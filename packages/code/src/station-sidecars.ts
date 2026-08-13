@@ -16,6 +16,11 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+	loopbackFetchUrl,
+	type OccupancyNameScope,
+	preferNamedEndpoint,
+} from "./occupancy-endpoints.js";
 import { startSessionControlServer } from "./session-control-server.js";
 import { startLocalDashboard } from "./session-dashboard.js";
 import {
@@ -145,9 +150,44 @@ function pidAlive(pid: number | undefined): boolean {
 	}
 }
 
+function occupancyScope(view: AuthedStationView): OccupancyNameScope {
+	return {
+		tenant: view.tenant,
+		environment: view.environment,
+		...(view.project !== undefined ? { project: view.project } : {}),
+		...(view.branch !== undefined ? { branch: view.branch } : {}),
+	};
+}
+
+function publishSidecarUrls(
+	snapshot: StationSidecarSnapshot,
+	scope: OccupancyNameScope,
+): StationSidecarSnapshot {
+	return {
+		...snapshot,
+		dashboardUrl: snapshot.dashboardUrl
+			? preferNamedEndpoint(snapshot.dashboardUrl, "dashboard", scope)
+			: snapshot.dashboardUrl,
+		evidenceUrl: preferNamedEndpoint(snapshot.evidenceUrl, "evidence", scope),
+		evidenceReportUrl: preferNamedEndpoint(
+			snapshot.evidenceReportUrl,
+			"evidence",
+			scope,
+		),
+		evidenceControlsUrl: preferNamedEndpoint(
+			snapshot.evidenceControlsUrl,
+			"evidence",
+			scope,
+		),
+		otlpHttpUrl: snapshot.otlpHttpUrl
+			? preferNamedEndpoint(snapshot.otlpHttpUrl, "otlp", scope)
+			: snapshot.otlpHttpUrl,
+	};
+}
+
 async function evidenceReachable(url: string): Promise<boolean> {
 	try {
-		const response = await fetch(url, {
+		const response = await fetch(loopbackFetchUrl(url), {
 			signal: AbortSignal.timeout(400),
 		});
 		return response.ok;
@@ -391,18 +431,21 @@ export async function startStationSidecars(
 		"pid" in evidence && typeof evidence.pid === "number" && evidence.pid > 0
 			? evidence.pid
 			: undefined;
-	const snapshot: StationSidecarSnapshot = {
-		schema: STATION_SIDECARS_SCHEMA,
-		stationId: view.stationId,
-		environment: view.environment,
-		dashboardUrl,
-		evidenceUrl: evidence.url,
-		evidenceReportUrl: evidence.reportUrl,
-		evidenceControlsUrl: evidence.controlsUrlTemplate,
-		...(evidencePid !== undefined ? { evidencePid } : {}),
-		otlpHttpUrl,
-		startedAt: new Date().toISOString(),
-	};
+	const snapshot = publishSidecarUrls(
+		{
+			schema: STATION_SIDECARS_SCHEMA,
+			stationId: view.stationId,
+			environment: view.environment,
+			dashboardUrl,
+			evidenceUrl: evidence.url,
+			evidenceReportUrl: evidence.reportUrl,
+			evidenceControlsUrl: evidence.controlsUrlTemplate,
+			...(evidencePid !== undefined ? { evidencePid } : {}),
+			otlpHttpUrl,
+			startedAt: new Date().toISOString(),
+		},
+		occupancyScope(view),
+	);
 	writeSnapshot(options.hoboHome, snapshot);
 
 	const sidecars: StationSidecars = {

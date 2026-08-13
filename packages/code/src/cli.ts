@@ -62,6 +62,7 @@ import {
 } from "./editor-bridge.js";
 import { describeEveSubagentSurface } from "./eve.js";
 import { debugViewUrl } from "./evidence-overlay.js";
+import { loopbackFetchUrl } from "./occupancy-endpoints.js";
 import { matchExampleRequest, materializeExample } from "./example-catalog.js";
 import {
 	createBudgetTracker,
@@ -702,7 +703,7 @@ const VERB_HELP_PLAIN: Record<
 	dashboard: [
 		"hobo-code dashboard — local Aspire-style resource board",
 		"",
-		"Co-launches the ADR-0111 local SPA (default http://127.0.0.1:8787)",
+		"Co-launches the ADR-0111 local SPA (default http://dashboard.code.local.hobo.localhost:8787)",
 		"over the session occupancy projection, plus OTLP ingest :4317/:4318.",
 		"Start/stop/restart and Ready=healthy live here. Fleet is camp-deferred",
 		"without a Camp connection.",
@@ -1994,7 +1995,7 @@ export async function runHoboCodeCli(
 		const text = panel("◎ dashboard", [
 			`spa · ${dash.url}`,
 			`otlp-http · ${dash.otlpHttpUrl}`,
-			`otlp-grpc · 127.0.0.1:${dash.otlpGrpcPort}`,
+			`otlp-grpc · ${new URL(dash.otlpHttpUrl).hostname}:${dash.otlpGrpcPort}`,
 			`env · ${env.HOBO_ENV ?? "local-dev"}`,
 			once ? "probe · bound; stopped" : "live · Ctrl-C to stop",
 		]);
@@ -2609,7 +2610,7 @@ export async function runHoboCodeCli(
 			const [appProbe, debugProbe, controlsProbe] = await Promise.all([
 				fetchUrl(deployed.appUrl),
 				fetchUrl(debugViewUrl(deployed.appUrl)),
-				fetchUrl(deployed.controlsUrl),
+				fetchUrl(loopbackFetchUrl(deployed.controlsUrl)),
 			]);
 			const probes = [appProbe, debugProbe, controlsProbe];
 			if (probes.some((probe) => !probe.ok)) {

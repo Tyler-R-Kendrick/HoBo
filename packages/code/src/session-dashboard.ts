@@ -5,19 +5,17 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-import {
-	assembleSessionResources,
-	type SessionResourceInventory,
-} from "./session-resources.js";
+import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import {
 	createResourceLifecycle,
 	type ResourceLifecycle,
 } from "./session-lifecycle.js";
+import { createOtelSink, fleetView, type OtelSink } from "./session-otel.js";
 import {
-	createOtelSink,
-	fleetView,
-	type OtelSink,
-} from "./session-otel.js";
+	assembleSessionResources,
+	type SessionResourceInventory,
+} from "./session-resources.js";
+import { describeAuthedStationSession } from "./station-session.js";
 
 // public-contract: ADR-0111 local dashboard listen port
 export const DEFAULT_DASHBOARD_PORT = 8787;
@@ -138,7 +136,9 @@ function json(
 	response.end(payload);
 }
 
-function readBody(request: import("node:http").IncomingMessage): Promise<string> {
+function readBody(
+	request: import("node:http").IncomingMessage,
+): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const chunks: Buffer[] = [];
 		request.on("data", (chunk) => {
@@ -240,9 +240,8 @@ export async function startLocalDashboard(options: {
 			);
 			return;
 		}
-		const telemetryMatch = /^\/api\/resources\/([^/]+)\/(logs|traces|metrics)$/u.exec(
-			url.pathname,
-		);
+		const telemetryMatch =
+			/^\/api\/resources\/([^/]+)\/(logs|traces|metrics)$/u.exec(url.pathname);
 		if (method === "GET" && telemetryMatch) {
 			const id = decodeURIComponent(telemetryMatch[1] ?? "");
 			const kind = telemetryMatch[2];
@@ -255,9 +254,8 @@ export async function startLocalDashboard(options: {
 			});
 			return;
 		}
-		const actionMatch = /^\/api\/resources\/([^/]+)\/(start|stop|restart)$/u.exec(
-			url.pathname,
-		);
+		const actionMatch =
+			/^\/api\/resources\/([^/]+)\/(start|stop|restart)$/u.exec(url.pathname);
 		if (method === "POST" && actionMatch) {
 			const id = decodeURIComponent(actionMatch[1] ?? "");
 			const verb = actionMatch[2];
@@ -338,10 +336,25 @@ export async function startLocalDashboard(options: {
 			Number(env.HOBO_DEV_OTLP_GRPC_PORT ?? DEFAULT_OTLP_GRPC_PORT),
 	);
 
+	const view = describeAuthedStationSession({
+		hoboHome: options.hoboHome,
+		env,
+		ensureLocalLogin: false,
+	});
+	const scope = {
+		tenant: view.tenant,
+		environment: view.environment,
+		...(view.project !== undefined ? { project: view.project } : {}),
+		...(view.branch !== undefined ? { branch: view.branch } : {}),
+	};
 	return {
-		url: `http://127.0.0.1:${port}/`,
+		url: preferNamedEndpoint(`http://127.0.0.1:${port}/`, "dashboard", scope),
 		port,
-		otlpHttpUrl: `http://127.0.0.1:${otlpHttpPort}/v1/logs`,
+		otlpHttpUrl: preferNamedEndpoint(
+			`http://127.0.0.1:${otlpHttpPort}/v1/logs`,
+			"otlp",
+			scope,
+		),
 		otlpHttpPort,
 		otlpGrpcPort,
 		inventory: load,

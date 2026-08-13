@@ -71,7 +71,8 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
 - **Bo** rides the one-line status strap and squash-stretches only while a
   turn is in flight (reduced motion keeps him still).
 - **Station sidecars** start with the session: the Aspire dashboard
-  (`http://127.0.0.1:8787`) and the Evidence SPA. Evidence is a Station
+  (`http://dashboard.code.local.hobo.localhost:8787`) and the Evidence SPA
+  (`http://evidence.code.local.hobo.localhost:8788`). Evidence is a Station
   occupancy process — it stays up for the whole coding session. `/dev`,
   Bindle stop, TTY quit, and `session.complete()` do not tear it down.
   Logout (or `stopStationSidecars`) does. Opt out with `HOBO_CODE_SIDECARS=0`.

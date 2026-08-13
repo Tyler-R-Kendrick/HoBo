@@ -826,8 +826,11 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			env: { ...process.env, HOBO_HOME: home, HOBO_ENV: "preview" },
 		});
 		expect(dash.ok).toBe(true);
-		expect(dash.message).toMatch(/spa · http:\/\/127\.0\.0\.1:/);
-		expect(dash.message).toMatch(/otlp-http/);
+		expect(dash.message).toMatch(
+			/spa · http:\/\/dashboard\.code\..*\.hobo\.localhost:/,
+		);
+		expect(dash.message).not.toMatch(/spa · http:\/\/127\.0\.0\.1:/);
+		expect(dash.message).toMatch(/otlp-http · http:\/\/otlp\.code\./);
 	});
 
 	it("plain status uses English hierarchy; dense keeps glyph box", async () => {

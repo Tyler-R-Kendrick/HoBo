@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { authLogin } from "../src/auth.js";
+import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
 import {
 	attachStationSidecars,
 	formatSidecarStrap,
@@ -53,22 +54,32 @@ describe("station occupancy sidecars", () => {
 		try {
 			expect(sidecars.stationId).toBe("station:local");
 			expect(sidecars.environment).toBe("local-dev");
-			const dash = await fetch(sidecars.dashboardUrl);
+			expect(sidecars.dashboardUrl).toMatch(/\.hobo\.localhost(?::\d+)?\/?$/);
+			expect(sidecars.evidenceUrl).toMatch(
+				/evidence\.code\..*\.hobo\.localhost/,
+			);
+			expect(sidecars.dashboardUrl).not.toMatch(/127\.0\.0\.1/);
+			expect(sidecars.evidenceUrl).not.toMatch(/127\.0\.0\.1/);
+			const dash = await fetch(loopbackFetchUrl(sidecars.dashboardUrl));
 			expect(dash.status).toBe(200);
 			expect(await dash.text()).toMatch(/hobo-code · resources/);
 			const resources = await fetch(
-				new URL("/api/resources", sidecars.dashboardUrl),
+				new URL("/api/resources", loopbackFetchUrl(sidecars.dashboardUrl)),
 			);
 			const inventory = (await resources.json()) as { ok: boolean };
 			expect(inventory.ok).toBe(true);
-			const evidence = await fetch(sidecars.evidenceUrl);
+			const evidence = await fetch(loopbackFetchUrl(sidecars.evidenceUrl));
 			expect(evidence.status).toBe(200);
 			expect(sidecars.evidenceReportUrl).toMatch(/__hobo\/evidence/);
 			const disk = readStationSidecars(hoboHome, "station:local");
 			expect(disk?.dashboardUrl).toBe(sidecars.dashboardUrl);
 			expect(disk?.evidenceUrl).toBe(sidecars.evidenceUrl);
-			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(/dash:/);
-			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(/evidence:/);
+			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(
+				/dash:dashboard\.code\./,
+			);
+			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(
+				/evidence:evidence\.code\./,
+			);
 		} finally {
 			await sidecars.close();
 		}
@@ -87,9 +98,13 @@ describe("station occupancy sidecars", () => {
 		});
 		try {
 			expect(session.sidecars).toBeDefined();
-			const dash = await fetch(session.sidecars?.dashboardUrl ?? "");
+			const dash = await fetch(
+				loopbackFetchUrl(session.sidecars?.dashboardUrl ?? ""),
+			);
 			expect(dash.status).toBe(200);
-			const evidence = await fetch(session.sidecars?.evidenceUrl ?? "");
+			const evidence = await fetch(
+				loopbackFetchUrl(session.sidecars?.evidenceUrl ?? ""),
+			);
 			expect(evidence.status).toBe(200);
 		} finally {
 			await session.complete(true, ["sidecars"]);
@@ -108,14 +123,15 @@ describe("station occupancy sidecars", () => {
 			autoInitStation: true,
 		});
 		const evidenceUrl = session.sidecars?.evidenceUrl ?? "";
-		expect(evidenceUrl).toMatch(/127\.0\.0\.1/);
+		expect(evidenceUrl).toMatch(/evidence\.code\..*\.hobo\.localhost/);
+		expect(evidenceUrl).not.toMatch(/127\.0\.0\.1/);
 		await session.complete(true, ["session-end"]);
-		const still = await fetch(evidenceUrl);
+		const still = await fetch(loopbackFetchUrl(evidenceUrl));
 		expect(still.status).toBe(200);
 		const disk = readStationSidecars(hoboHome, "station:local");
 		expect(disk?.evidenceUrl).toBe(evidenceUrl);
 		await stopStationSidecars(hoboHome, "station:local");
-		await expect(fetch(evidenceUrl)).rejects.toThrow();
+		await expect(fetch(loopbackFetchUrl(evidenceUrl))).rejects.toThrow();
 	});
 
 	it("keeps Evidence up after /dev closes", async () => {
@@ -141,10 +157,12 @@ describe("station occupancy sidecars", () => {
 			projectRoot: hoboHome,
 			env: { HOBO_ENV: "local-dev" },
 		});
-		const still = await fetch(sidecars.evidenceUrl);
+		const still = await fetch(loopbackFetchUrl(sidecars.evidenceUrl));
 		expect(still.status).toBe(200);
 		await sidecars.close();
-		await expect(fetch(sidecars.evidenceUrl)).rejects.toThrow();
+		await expect(
+			fetch(loopbackFetchUrl(sidecars.evidenceUrl)),
+		).rejects.toThrow();
 	});
 
 	it("honours HOBO_CODE_SIDECARS=0", () => {

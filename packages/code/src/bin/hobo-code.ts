@@ -27,6 +27,7 @@ import {
 } from "../harness-customization.js";
 import { runInteractiveShell } from "../interactive-shell.js";
 import { cleanupIsolation, createIsolationContext } from "../isolation.js";
+import { preferNamedEndpoint } from "../occupancy-endpoints.js";
 import {
 	authorizationLeaseDelay,
 	remoteSessionServeSshArgs,
@@ -279,8 +280,14 @@ if (argv[0] === "_station-agent") {
 					? requestedPort
 					: 0,
 		});
+		const browser = preferNamedEndpoint(server.url, "evidence");
+		const report = preferNamedEndpoint(server.reportUrl, "evidence");
+		const controls = preferNamedEndpoint(
+			server.controlsUrlTemplate,
+			"evidence",
+		);
 		process.stdout.write(
-			`browser: ${server.url}\nevidence report: ${server.reportUrl}\nevidence controls: ${server.controlsUrlTemplate}\nhobo dev: HOBO_CODE_EVIDENCE_CONTROLS_URL=${server.controlsUrlTemplate}?parentOrigin=<app-origin>\nremote: forward 127.0.0.1:${server.port} through a declared Station machine; the server never binds publicly\n`,
+			`browser: ${browser}\nevidence report: ${report}\nevidence controls: ${controls}\nhobo dev: HOBO_CODE_EVIDENCE_CONTROLS_URL=${controls}?parentOrigin=<app-origin>\nremote: forward ${new URL(browser).host} through a declared Station machine; the server never binds publicly\n`,
 		);
 		await new Promise<void>((resolve) => {
 			process.once("SIGINT", resolve);

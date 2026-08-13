@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { authLogin } from "../src/auth.js";
+import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
 import { startLocalDashboard } from "../src/session-dashboard.js";
 import { recordDevDeployment } from "../src/session-resources.js";
 
@@ -64,13 +65,16 @@ describe("local Aspire dashboard listener", () => {
 				time: "2026-08-13T00:00:00.000Z",
 			});
 
-			const page = await fetch(dash.url);
+			expect(dash.url).toMatch(/dashboard\.code\..*\.hobo\.localhost/);
+			expect(dash.url).not.toMatch(/127\.0\.0\.1/);
+			const listen = loopbackFetchUrl(dash.url);
+			const page = await fetch(listen);
 			const html = await page.text();
 			expect(page.status).toBe(200);
 			expect(html).toMatch(/hobo-code · resources/);
 			expect(html).toMatch(/\/api\/resources/);
 
-			const resources = await fetch(new URL("/api/resources", dash.url));
+			const resources = await fetch(new URL("/api/resources", listen));
 			const inventory = (await resources.json()) as {
 				ok: boolean;
 				scope: { environment: string };
@@ -79,24 +83,26 @@ describe("local Aspire dashboard listener", () => {
 			};
 			expect(inventory.ok).toBe(true);
 			expect(inventory.scope.environment).toBe("local-dev");
-			expect(inventory.bindles.some((row) => row.id.includes("hello-world"))).toBe(
-				true,
-			);
+			expect(
+				inventory.bindles.some((row) => row.id.includes("hello-world")),
+			).toBe(true);
 			expect(
 				inventory.endpoints.some((row) => row.backendUrl.includes("4173")),
 			).toBe(true);
 			expect(
-				inventory.endpoints.some((row) => row.resolvedAddresses.includes("127.0.0.1")),
+				inventory.endpoints.some((row) =>
+					row.resolvedAddresses.includes("127.0.0.1"),
+				),
 			).toBe(true);
 
-			const logs = await fetch(new URL("/api/resources/web/logs", dash.url));
+			const logs = await fetch(new URL("/api/resources/web/logs", listen));
 			const logBody = (await logs.json()) as { logs: { body: string }[] };
 			expect(logBody.logs.map((row) => row.body)).toEqual(["listening"]);
-			const traces = await fetch(new URL("/api/resources/web/traces", dash.url));
+			const traces = await fetch(new URL("/api/resources/web/traces", listen));
 			const traceBody = (await traces.json()) as { traces: { name: string }[] };
 			expect(traceBody.traces.map((row) => row.name)).toEqual(["GET /"]);
 			const metrics = await fetch(
-				new URL("/api/resources/web/metrics", dash.url),
+				new URL("/api/resources/web/metrics", listen),
 			);
 			const metricBody = (await metrics.json()) as {
 				metrics: { name: string }[];
@@ -105,7 +111,7 @@ describe("local Aspire dashboard listener", () => {
 				"http.server.duration",
 			]);
 
-			const started = await fetch(new URL("/api/resources/web/start", dash.url), {
+			const started = await fetch(new URL("/api/resources/web/start", listen), {
 				method: "POST",
 			});
 			const startBody = (await started.json()) as {
@@ -114,7 +120,7 @@ describe("local Aspire dashboard listener", () => {
 			};
 			expect(startBody.started).toBe(true);
 
-			const fleet = await fetch(new URL("/api/fleet", dash.url));
+			const fleet = await fetch(new URL("/api/fleet", listen));
 			const fleetBody = (await fleet.json()) as {
 				scope: string;
 				reason?: string;

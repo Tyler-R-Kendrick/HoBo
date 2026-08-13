@@ -316,8 +316,13 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 				"../src/station-sidecars.js"
 			);
 			const disk = readStationSidecars(home, "station:local");
-			expect(disk?.evidenceUrl).toMatch(/127\.0\.0\.1/);
-			const still = await fetch(disk?.evidenceUrl ?? "");
+			expect(disk?.evidenceUrl).toMatch(
+				/evidence\.code\..*\.hobo\.localhost/,
+			);
+			const { loopbackFetchUrl } = await import(
+				"../src/occupancy-endpoints.js"
+			);
+			const still = await fetch(loopbackFetchUrl(disk?.evidenceUrl ?? ""));
 			expect(still.status).toBe(200);
 			await stopStationSidecars(home, "station:local");
 		} finally {

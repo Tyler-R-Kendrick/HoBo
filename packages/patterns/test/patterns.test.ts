@@ -275,4 +275,20 @@ describe("@hobo/patterns", () => {
 		});
 		expect(parsed.patternId).toBe("bindle.named");
 	});
+
+	it("hard filters cannot be overridden by similarity", () => {
+		const receipt = searchPatterns({
+			catalog,
+			vocabulary,
+			query: {
+				query: "bindle.named",
+				kind: "starter",
+				autoSelect: true,
+			},
+		});
+		expect(receipt.selectedId).toBe("");
+		expect(
+			receipt.candidates.every((item) => item.patternId.startsWith("starter.")),
+		).toBe(true);
+	});
 });

@@ -7,7 +7,9 @@ import { evaluatePatternRetrieval, parseEvalCases } from "../src/validate.js";
 import { buildHoboVocabulary } from "../src/vocabulary.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const cases = parseEvalCases(readFileSync(join(root, "evals", "cases.jsonl"), "utf8"));
+const cases = parseEvalCases(
+	readFileSync(join(root, "evals", "cases.jsonl"), "utf8"),
+);
 const catalog = loadPatternCatalog({ root: join(root, "patterns") });
 const vocabulary = buildHoboVocabulary({
 	aliasPath: join(root, "vocabulary", "aliases.json"),

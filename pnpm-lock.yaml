@@ -1340,6 +1340,9 @@ importers:
       '@hobo/storage-sqlite':
         specifier: workspace:*
         version: link:../storage-sqlite
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
   packages/pixel-village:
     dependencies:

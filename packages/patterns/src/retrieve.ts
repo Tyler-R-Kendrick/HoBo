@@ -53,8 +53,6 @@ export function searchPatterns(input: {
 		normalized.features,
 		input.vocabulary,
 	);
-	const ftsQuery = compileFts(normalized.terms);
-
 	const indexVectors = input.index
 		? new Map(
 				loadIndexVectors(input.index).map((row) => [
@@ -82,7 +80,35 @@ export function searchPatterns(input: {
 		? input.index.ftsAvailable
 		: input.ftsAvailable !== false;
 
-	const ranked = input.catalog.patterns.map((pattern) => {
+	const filtered = input.catalog.patterns.filter((pattern) => {
+		if (
+			request.kindFilter.length > 0 &&
+			!request.kindFilter.includes(pattern.kind)
+		) {
+			return false;
+		}
+		if (
+			request.maturityFilter.length > 0 &&
+			!request.maturityFilter.includes(pattern.maturity)
+		) {
+			return false;
+		}
+		if (
+			request.languageFilter &&
+			!pattern.languages.includes(request.languageFilter)
+		) {
+			return false;
+		}
+		if (
+			request.contextFilter &&
+			!pattern.contexts.includes(request.contextFilter)
+		) {
+			return false;
+		}
+		return true;
+	});
+
+	const ranked = filtered.map((pattern) => {
 		const exactId =
 			request.exactId === pattern.id || request.query === pattern.id;
 		const exactAlias = pattern.aliases.some(

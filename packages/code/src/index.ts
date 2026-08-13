@@ -438,7 +438,9 @@ export {
 	formatSidecarStrap,
 	readStationSidecars,
 	sidecarsEnabled,
+	attachStationSidecars,
 	startStationSidecars,
+	stopStationSidecars,
 	STATION_SIDECARS_SCHEMA,
 } from "./station-sidecars.js";
 export { createDefaultShellHost } from "./shell-host.js";
@@ -517,6 +519,7 @@ export {
 } from "./tui-components.js";
 export {
 	BROADCAST,
+	BROADCAST_CHROME_ROWS,
 	BROADCAST_INNER_INSET,
 	broadcastFrame,
 } from "./tui-broadcast.js";

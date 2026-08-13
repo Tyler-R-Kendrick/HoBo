@@ -7,8 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import { debugViewUrl } from "./evidence-overlay.js";
 import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
-import { startSessionControlServer } from "./session-control-server.js";
-import { readStationSidecars } from "./station-sidecars.js";
+import { attachStationSidecars } from "./station-sidecars.js";
 
 export interface DevBrowserSessionOptions {
 	readonly projectDir: string;
@@ -250,29 +249,28 @@ export async function startDevBrowserSession(
 	}
 	const projectDir = resolve(options.projectDir);
 	linkGeneratedAppRuntime(projectDir);
-	const occupied = options.stationId
-		? readStationSidecars(options.hoboHome, options.stationId)
-		: null;
-	const evidence = occupied
-		? {
-				port: Number(new URL(occupied.evidenceUrl).port),
-				token: "",
-				url: occupied.evidenceUrl,
-				reportUrl: occupied.evidenceReportUrl,
-				controlsUrlTemplate: occupied.evidenceControlsUrl,
-				controlsUrl: (parentOrigin: string, sid?: string) => {
-					const url = new URL(occupied.evidenceControlsUrl);
-					url.searchParams.set("parentOrigin", parentOrigin);
-					if (sid) url.searchParams.set("sessionId", sid);
-					return url.href;
-				},
-				close: async () => {},
-			}
-		: await startSessionControlServer({
-				hoboHome: options.hoboHome,
-				projectRoot: projectDir,
-				port: options.debugPort ?? 4174,
-			});
+	const occupied = await attachStationSidecars({
+		hoboHome: options.hoboHome,
+		projectRoot: projectDir,
+		...(options.env !== undefined ? { env: options.env } : {}),
+		...(options.debugPort !== undefined
+			? { evidencePort: options.debugPort }
+			: {}),
+	});
+	const evidence = {
+		port: Number(new URL(occupied.evidenceUrl).port),
+		token: "",
+		url: occupied.evidenceUrl,
+		reportUrl: occupied.evidenceReportUrl,
+		controlsUrlTemplate: occupied.evidenceControlsUrl,
+		controlsUrl: (parentOrigin: string, sid?: string) => {
+			const url = new URL(occupied.evidenceControlsUrl);
+			url.searchParams.set("parentOrigin", parentOrigin);
+			if (sid) url.searchParams.set("sessionId", sid);
+			return url.href;
+		},
+		close: async () => {},
+	};
 	const controlsTemplate = new URL(evidence.controlsUrlTemplate);
 	controlsTemplate.searchParams.set("sessionId", sessionId);
 	const env = { ...process.env, ...options.env };

@@ -33,6 +33,17 @@ export interface StationSidecarSnapshot {
 	readonly startedAt: string;
 }
 
+interface RunningSidecars {
+	readonly sidecars: StationSidecars;
+	refs: number;
+}
+
+const running = new Map<string, RunningSidecars>();
+
+function sidecarKey(hoboHome: string, stationId: string): string {
+	return `${hoboHome}::${stationId}`;
+}
+
 export interface StationSidecars extends StationSidecarSnapshot {
 	readonly close: () => Promise<void>;
 }
@@ -113,6 +124,25 @@ function occupancy(
 	});
 }
 
+async function startEvidenceServer(
+	options: StartStationSidecarsOptions,
+): Promise<Awaited<ReturnType<typeof startSessionControlServer>>> {
+	const projectRoot = options.projectRoot ?? process.cwd();
+	try {
+		return await startSessionControlServer({
+			hoboHome: options.hoboHome,
+			projectRoot,
+			port: options.evidencePort ?? 8788,
+		});
+	} catch {
+		return startSessionControlServer({
+			hoboHome: options.hoboHome,
+			projectRoot,
+			port: 0,
+		});
+	}
+}
+
 export async function startStationSidecars(
 	options: StartStationSidecarsOptions,
 ): Promise<StationSidecars> {
@@ -127,51 +157,60 @@ export async function startStationSidecars(
 			view.message || "Not logged in — run: hobo-code auth login",
 		);
 	}
+	const key = sidecarKey(options.hoboHome, view.stationId);
+	const existing = running.get(key);
+	if (existing) {
+		existing.refs += 1;
+		return existing.sidecars;
+	}
 
-	const dashboard = await startLocalDashboard({
-		hoboHome: options.hoboHome,
-		env,
-		port: options.dashboardPort ?? 8787,
-		otlpHttpPort: options.otlpHttpPort ?? 0,
-		otlpGrpcPort: options.otlpGrpcPort ?? 0,
-	});
-	let evidence: Awaited<ReturnType<typeof startSessionControlServer>>;
+	// Evidence is required for the whole occupancy. Dashboard is best-effort.
+	const evidence = await startEvidenceServer(options);
+	let dashboardUrl = "";
+	let otlpHttpUrl = "";
+	let closeDashboard: () => Promise<void> = async () => {};
 	try {
-		evidence = await startSessionControlServer({
+		const dashboard = await startLocalDashboard({
 			hoboHome: options.hoboHome,
-			projectRoot: options.projectRoot ?? process.cwd(),
-			port: options.evidencePort ?? 8788,
+			env,
+			port: options.dashboardPort ?? 8787,
+			otlpHttpPort: options.otlpHttpPort ?? 0,
+			otlpGrpcPort: options.otlpGrpcPort ?? 0,
 		});
+		dashboardUrl = dashboard.url;
+		otlpHttpUrl = dashboard.otlpHttpUrl;
+		closeDashboard = () => dashboard.close();
 	} catch {
-		evidence = await startSessionControlServer({
-			hoboHome: options.hoboHome,
-			projectRoot: options.projectRoot ?? process.cwd(),
-			port: 0,
-		});
+		// Evidence still runs.
 	}
 
 	const snapshot: StationSidecarSnapshot = {
 		schema: STATION_SIDECARS_SCHEMA,
 		stationId: view.stationId,
 		environment: view.environment,
-		dashboardUrl: dashboard.url,
+		dashboardUrl,
 		evidenceUrl: evidence.url,
 		evidenceReportUrl: evidence.reportUrl,
 		evidenceControlsUrl: evidence.controlsUrlTemplate,
-		otlpHttpUrl: dashboard.otlpHttpUrl,
+		otlpHttpUrl,
 		startedAt: new Date().toISOString(),
 	};
 	writeSnapshot(options.hoboHome, snapshot);
 
-	return {
+	const sidecars: StationSidecars = {
 		...snapshot,
 		async close() {
+			const held = running.get(key);
+			if (!held || held.sidecars !== sidecars) return;
+			held.refs -= 1;
+			if (held.refs > 0) return;
+			running.delete(key);
 			const path = stationSidecarsPath(options.hoboHome, view.stationId);
-			await Promise.allSettled([dashboard.close(), evidence.close()]);
+			await Promise.allSettled([closeDashboard(), evidence.close()]);
 			if (existsSync(path)) {
 				try {
 					const current = readStationSidecars(options.hoboHome, view.stationId);
-					if (current?.dashboardUrl === snapshot.dashboardUrl) {
+					if (current?.evidenceUrl === snapshot.evidenceUrl) {
 						unlinkSync(path);
 					}
 				} catch {
@@ -180,13 +219,54 @@ export async function startStationSidecars(
 			}
 		},
 	};
+	running.set(key, { sidecars, refs: 1 });
+	return sidecars;
+}
+
+/** Attach to the Station Evidence sidecar. Never owns its lifetime. */
+export async function attachStationSidecars(
+	options: StartStationSidecarsOptions,
+): Promise<StationSidecarSnapshot> {
+	const env = options.env ?? process.env;
+	const view = occupancy(
+		options.hoboHome,
+		env,
+		options.ensureLocalLogin !== false,
+	);
+	if (!view.loggedIn || view.stationId.length === 0) {
+		throw new Error(
+			view.message || "Not logged in — run: hobo-code auth login",
+		);
+	}
+	const key = sidecarKey(options.hoboHome, view.stationId);
+	const live = running.get(key)?.sidecars;
+	if (live) return live;
+	// Start if this process has no occupancy yet. Caller must not close —
+	// Evidence belongs to the Station session, not /dev.
+	return startStationSidecars(options);
+}
+
+/** Tear down occupancy sidecars regardless of attach count. */
+export async function stopStationSidecars(
+	hoboHome: string,
+	stationId: string,
+): Promise<void> {
+	const key = sidecarKey(hoboHome, stationId);
+	const held = running.get(key);
+	if (!held) return;
+	held.refs = 1;
+	await held.sidecars.close();
 }
 
 export function formatSidecarStrap(
 	sidecars: StationSidecarSnapshot,
 ): readonly string[] {
-	return [
-		`dash:${new URL(sidecars.dashboardUrl).host}`,
-		`evidence:${new URL(sidecars.evidenceUrl).host}`,
-	];
+	const chips: string[] = [];
+	if (sidecars.dashboardUrl) {
+		chips.push(`dash:${new URL(sidecars.dashboardUrl).host}`);
+	}
+	if (sidecars.evidenceUrl) {
+		chips.push(`evidence:${new URL(sidecars.evidenceUrl).host}`);
+	}
+	return chips;
 }

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { authLogin } from "../src/auth.js";
 import {
+	attachStationSidecars,
 	formatSidecarStrap,
 	readStationSidecars,
 	sidecarsEnabled,
@@ -89,6 +90,35 @@ describe("station occupancy sidecars", () => {
 		} finally {
 			await session.complete(true, ["sidecars"]);
 		}
+	});
+
+	it("keeps Evidence up after /dev closes", async () => {
+		const hoboHome = tempHome();
+		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		const sidecars = await startStationSidecars({
+			hoboHome,
+			projectRoot: hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			dashboardPort: 0,
+			evidencePort: 0,
+			otlpHttpPort: 0,
+			otlpGrpcPort: 0,
+		});
+		const attached = await attachStationSidecars({
+			hoboHome,
+			projectRoot: hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+		});
+		expect(attached.evidenceUrl).toBe(sidecars.evidenceUrl);
+		await attachStationSidecars({
+			hoboHome,
+			projectRoot: hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+		});
+		const still = await fetch(sidecars.evidenceUrl);
+		expect(still.status).toBe(200);
+		await sidecars.close();
+		await expect(fetch(sidecars.evidenceUrl)).rejects.toThrow();
 	});
 
 	it("honours HOBO_CODE_SIDECARS=0", () => {

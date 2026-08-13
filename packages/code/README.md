@@ -71,8 +71,9 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
 - **Bo** rides the one-line status strap and squash-stretches only while a
   turn is in flight (reduced motion keeps him still).
 - **Station sidecars** start with the session: the Aspire dashboard
-  (`http://127.0.0.1:8787`) and the Evidence SPA. They are occupancy
-  processes, not extra verbs. Opt out with `HOBO_CODE_SIDECARS=0`.
+  (`http://127.0.0.1:8787`) and the Evidence SPA. Evidence stays up for
+  the whole occupancy — `/dev` attaches, it does not start or stop it.
+  Opt out with `HOBO_CODE_SIDECARS=0`.
 
 | Key | Does |
 |---|---|

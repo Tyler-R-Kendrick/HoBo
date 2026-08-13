@@ -132,6 +132,7 @@ import {
 	type ResourceKind,
 	recordDevDeployment,
 } from "./session-resources.js";
+import { stopStationSidecars } from "./station-sidecars.js";
 import {
 	describeAuthedStationSession,
 	stationDevEnv,
@@ -2606,15 +2607,21 @@ export async function runHoboCodeCli(
 				);
 			}
 			const once = flags.once === true;
+			const sessionOwnsSidecars = deps.onDevSession !== undefined;
 			if (once) {
 				await deployed.close();
 				session = undefined;
+				if (!sessionOwnsSidecars) {
+					await stopStationSidecars(hoboHome, station.stationId);
+				}
 			} else if (deps.onDevSession) {
 				deps.onDevSession(deployed);
 			} else {
 				const stop = (exitCode: number): void => {
 					process.exitCode = exitCode;
-					void deployed.close();
+					void deployed.close().then(() =>
+						stopStationSidecars(hoboHome, station.stationId),
+					);
 				};
 				process.once("SIGINT", () => stop(130));
 				process.once("SIGTERM", () => stop(143));

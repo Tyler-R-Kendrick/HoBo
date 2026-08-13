@@ -26,7 +26,7 @@ afterEach(() => {
 describe("atomic template retrieval", () => {
 	it("loads git-backed meta.json atoms without a network fetch", () => {
 		const corpus = loadAtomCorpus();
-		expect(ATOMS_ROOT.replace(/\\/gu, "/")).toMatch(/templates\/atoms$/u);
+		expect(ATOMS_ROOT.replace(/\\/gu, "/")).toMatch(/\/atoms$/u);
 		expect(corpus.atoms.some((atom) => atom.id === "bindle.web-api")).toBe(
 			true,
 		);

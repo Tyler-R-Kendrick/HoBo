@@ -27,8 +27,9 @@ single source of truth.
    `patterns/starter/code/openui-astryx-bindle/project/`.
 5. Application writes only inside a caller-supplied isolation root. Promotion
    stays `@hobo/code`.
-6. Atoms under `packages/code/templates/atoms` remain chat-emit fixtures
-   (ADR-0152). They are not a fourth catalog.
+6. Atomic snippets live in `packages/patterns/atoms` and load through the
+   catalog. `hobo-code template list|search|render` is the CLI. Chat emit
+   (ADR-0152) reads the same trees.
 
 ## Model2Vec rejection
 

@@ -89,32 +89,47 @@ export function applyPatternPlan(input: {
 		pattern,
 		...(input.params ? { params: input.params } : {}),
 	});
-	const target = assertSafe(input.isolationRoot, input.targetPath);
-	mkdirSync(dirname(target), { recursive: true });
-	let previous = "";
-	try {
-		previous = readFileSync(target, "utf8");
-	} catch {
-		previous = "";
-	}
-	const next = rendered.files[0]?.contents ?? "";
-	const merged = applyStructural(previous, next);
-	const already = merged === previous;
-	if (!already) {
-		writeFileSync(target, merged);
+	const changed: string[] = [];
+	const postimage: string[] = [];
+	let allIdempotent = true;
+	for (const [index, file] of rendered.files.entries()) {
+		const rel =
+			rendered.files.length === 1 ? input.targetPath || file.path : file.path;
+		const target = assertSafe(input.isolationRoot, rel);
+		mkdirSync(dirname(target), { recursive: true });
+		let previous = "";
+		try {
+			previous = readFileSync(target, "utf8");
+		} catch {
+			previous = "";
+		}
+		const merged =
+			index === 0 && rendered.files.length === 1
+				? applyStructural(previous, file.contents)
+				: previous.includes(file.contents.trim())
+					? previous
+					: previous.trim() === ""
+						? file.contents
+						: `${previous.trimEnd()}\n\n${file.contents}`;
+		if (merged !== previous) {
+			writeFileSync(target, merged);
+			changed.push(rel);
+			allIdempotent = false;
+		}
+		postimage.push(file.digest);
 	}
 	void plan;
 	return create(PatternApplicationReceiptSchema, {
 		isolationRunId: input.isolationRunId,
-		changedFiles: already ? [] : [input.targetPath],
-		postimage: [rendered.snippetDigest],
-		idempotent: already,
+		changedFiles: changed,
+		postimage,
+		idempotent: allIdempotent,
 		promotionRequired: true,
 		promotionRef: "hobo-code promote",
 		llmCalls: 0,
 		llmInputTokens: 0,
 		llmOutputTokens: 0,
 		status: ReceiptStatus.ACCEPTED,
-		reasonCode: already ? "idempotent" : "applied-isolation",
+		reasonCode: allIdempotent ? "idempotent" : "applied-isolation",
 	});
 }

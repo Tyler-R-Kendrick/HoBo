@@ -24,15 +24,42 @@ export function runTemplateCommand(input: {
 	const query =
 		(typeof input.flags.id === "string" && input.flags.id) || rest.join(" ");
 	const action = TEMPLATE_SUB.has(sub ?? "") ? sub : "search";
+	if (
+		action === "list" ||
+		(action === "search" && !query && input.flags.all === true)
+	) {
+		const ids = catalog.patterns.map((item) => item.id);
+		return {
+			ok: true,
+			code: "HOBO_CODE_TEMPLATE",
+			message: ids.join("\n"),
+			data: {
+				ids,
+				count: ids.length,
+				llmCalls: 0,
+				llmInputTokens: 0,
+				llmOutputTokens: 0,
+			},
+		};
+	}
 	if (!query) {
 		return {
 			ok: false,
 			code: "HOBO_CODE_TEMPLATE_INDEX_INVALID",
-			message: "template needs a query or --id",
+			message: "template needs a query, --id, or list",
 			data: { llmCalls: 0, llmInputTokens: 0, llmOutputTokens: 0 },
 		};
 	}
-	const search = searchPatterns({ catalog, vocabulary, query });
+	const params = templateParams(input.flags);
+	const search = searchPatterns({
+		catalog,
+		vocabulary,
+		query: {
+			query,
+			id: typeof input.flags.id === "string" ? input.flags.id : "",
+			autoSelect: true,
+		},
+	});
 	if (action === "compose") {
 		const composed = composePatterns({ catalog, vocabulary, query });
 		return {
@@ -72,16 +99,19 @@ export function runTemplateCommand(input: {
 				data: search,
 			};
 		}
+		const pattern = catalog.patterns.find((item) => item.id === id);
 		const applied = applyPatternPlan({
 			catalog,
 			patternId: id,
 			isolationRoot,
 			targetPath:
 				(typeof input.flags.path === "string" && input.flags.path) ||
+				pattern?.renderings[0]?.outputFiles[0] ||
 				"src/bindle.ts",
 			isolationRunId:
 				(typeof input.flags.run === "string" && input.flags.run) ||
 				"template-apply",
+			...(Object.keys(params).length > 0 ? { params } : {}),
 		});
 		return {
 			ok: applied.status === 1,
@@ -101,7 +131,11 @@ export function runTemplateCommand(input: {
 				data: search,
 			};
 		}
-		const rendered = renderPattern({ catalog, pattern });
+		const rendered = renderPattern({
+			catalog,
+			pattern,
+			...(Object.keys(params).length > 0 ? { params } : {}),
+		});
 		return {
 			ok: true,
 			code: "HOBO_CODE_TEMPLATE",
@@ -120,6 +154,7 @@ export function runTemplateCommand(input: {
 }
 
 const TEMPLATE_SUB = new Set([
+	"list",
 	"search",
 	"show",
 	"render",
@@ -127,3 +162,28 @@ const TEMPLATE_SUB = new Set([
 	"compose",
 	"apply",
 ]);
+
+function templateParams(
+	flags: Readonly<Record<string, string | boolean>>,
+): Record<string, string> {
+	const out: Record<string, string> = {};
+	if (typeof flags.name === "string" && flags.name) {
+		out.name = flags.name;
+		out.resourceName = flags.name;
+	}
+	if (typeof flags.params === "string" && flags.params) {
+		const parsed = JSON.parse(flags.params) as unknown;
+		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+			for (const [key, value] of Object.entries(parsed)) {
+				if (
+					typeof value === "string" ||
+					typeof value === "number" ||
+					typeof value === "boolean"
+				) {
+					out[key] = String(value);
+				}
+			}
+		}
+	}
+	return out;
+}

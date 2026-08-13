@@ -16,6 +16,7 @@ export {
 	SearchDecision,
 } from "./_generated/patterns_pb.js";
 export {
+	defaultAtomsRoot,
 	defaultCatalogRoot,
 	loadPatternCatalog,
 	openUiStarterRoot,

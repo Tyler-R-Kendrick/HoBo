@@ -1,10 +1,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { defaultAtomsRoot } from "@hobo/patterns";
 import * as v from "valibot";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-export const ATOMS_ROOT = join(PACKAGE_ROOT, "templates", "atoms");
+export const ATOMS_ROOT = defaultAtomsRoot();
 export const COMPOSITIONS_ROOT = join(
 	PACKAGE_ROOT,
 	"templates",

@@ -121,8 +121,8 @@ import {
 import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
-import { runTemplateCommand } from "./template-command.js";
 import { startCodeSession } from "./session.js";
+import { runTemplateCommand } from "./template-command.js";
 import {
 	buildMultiplexerStatus,
 	createPane,
@@ -352,6 +352,7 @@ const BOOL_FLAGS = new Set([
 	"virtual",
 	"approve",
 	"once",
+	"all",
 ]);
 
 export class UnknownFlagError extends Error {
@@ -889,17 +890,21 @@ const VERB_HELP_PLAIN: Record<
 		"hobo-code template — local pattern search/render (zero LLM tokens)",
 		"",
 		"Usage:",
+		"  hobo-code template list",
 		"  hobo-code template search <query>",
-		"  hobo-code template --id bindle.topology.web-api --json",
-		"  hobo-code template \"web frontend backed by an api\"",
+		"  hobo-code template --id bindle.web-only --json",
+		"  hobo-code template render bindle.web-api --name greeter",
+		'  hobo-code template "web frontend backed by an api"',
 		"",
 		"Flags:",
-		"  --id <pattern-id>   Exact catalog id",
+		"  --id <pattern-id>   Exact catalog or atom id",
+		"  --name <id>         Typed name param for snippets",
 		"  --format <kind>     snippet|file|project|markdown|vscode|effects",
 		"  --params <json>     Typed render params",
 		"  --top-k <n>         Candidate cap",
 		"  --json              Machine-readable receipt",
 		"",
+		"Lists and renders reviewed catalog patterns and atomic snippets.",
 		"Does not start a model turn. Chat phrases stay on the session.",
 	],
 	dev: [

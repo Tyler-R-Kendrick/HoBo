@@ -27,6 +27,12 @@ package does not silently intercept it. See [ADR.md](./ADR.md).
 ```sh
 pnpm --filter @hobo/patterns test
 pnpm --filter @hobo/patterns run eval
+hobo-code template list
 hobo-code template search "web frontend backed by an api"
+hobo-code template --id bindle.web-only
+hobo-code template render bindle.web-api --name greeter
 hobo-code template --id bindle.topology.web-api --json
 ```
+
+Atomic snippets live in [`atoms/`](./atoms/README.md) and load with the rest of
+the catalog. Chat emit uses the same trees.

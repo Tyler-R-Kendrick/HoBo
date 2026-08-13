@@ -7,12 +7,13 @@ import {
 	type PatternRenderReceipt,
 	PatternRenderReceiptSchema,
 	ReceiptStatus,
+	RenderingKind,
 } from "./_generated/patterns_pb.js";
 import type { PatternCatalog } from "./catalog.js";
 import { readRenderingBody } from "./catalog.js";
 import { PatternParseError } from "./parse.js";
 
-const TOKEN = /\{\{([a-zA-Z][a-zA-Z0-9]*)\}\}/gu;
+const TOKEN = /\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/gu;
 
 export function fillTemplate(
 	body: string,
@@ -78,29 +79,52 @@ export function renderPattern(input: {
 	readonly renderingId?: string;
 	readonly params?: Readonly<Record<string, unknown>>;
 }): PatternRenderReceipt {
-	const rendering =
-		input.pattern.renderings.find(
-			(item) => item.renderingId === input.renderingId,
-		) ??
-		input.pattern.renderings.find((item) => item.isDefault) ??
-		input.pattern.renderings[0]!;
-	const params = parseParams(input.pattern, input.params);
-	const body = fillTemplate(
-		readRenderingBody(input.catalog, input.pattern, rendering.renderingId),
-		params,
+	const named = input.renderingId
+		? input.pattern.renderings.filter(
+				(item) => item.renderingId === input.renderingId,
+			)
+		: [];
+	const multiFile = input.pattern.renderings.filter(
+		(item) =>
+			item.kind === RenderingKind.FILE || item.kind === RenderingKind.PROJECT,
 	);
-	const digest = createHash("sha256").update(body).digest("hex");
-	const path =
-		rendering.outputFiles[0] ||
-		`src/${input.pattern.id.replaceAll(".", "-")}.ts`;
-	if (path.startsWith("/") || path.includes("..")) {
-		throw new PatternParseError("rendering path escapes destination");
-	}
+	const renderings =
+		named.length > 0
+			? named
+			: multiFile.length > 1
+				? multiFile
+				: [
+						input.pattern.renderings.find((item) => item.isDefault) ??
+							input.pattern.renderings[0]!,
+					];
+	const params = parseParams(input.pattern, input.params);
+	const files = renderings.map((rendering) => {
+		const body = fillTemplate(
+			readRenderingBody(input.catalog, input.pattern, rendering.renderingId),
+			params,
+		);
+		const path = fillTemplate(
+			rendering.outputFiles[0] ||
+				`src/${input.pattern.id.replaceAll(".", "-")}.ts`,
+			params,
+		);
+		if (path.startsWith("/") || path.includes("..")) {
+			throw new PatternParseError("rendering path escapes destination");
+		}
+		return {
+			path,
+			digest: createHash("sha256").update(body).digest("hex"),
+			contents: body,
+		};
+	});
+	const digest = createHash("sha256")
+		.update(files.map((file) => file.digest).join(":"))
+		.digest("hex");
 	return create(PatternRenderReceiptSchema, {
 		patternId: input.pattern.id,
 		patternVersion: input.pattern.version,
-		renderingId: rendering.renderingId,
-		files: [{ path, digest, contents: body }],
+		renderingId: renderings[0]?.renderingId ?? "",
+		files,
 		snippetDigest: digest,
 		catalogDigest: input.catalog.digest,
 		vocabularyDigest: "",

@@ -276,6 +276,23 @@ describe("@hobo/patterns", () => {
 		expect(parsed.patternId).toBe("bindle.named");
 	});
 
+	it("resolves hobo new compatibility aliases before concept aliases", () => {
+		expect(
+			searchPatterns({
+				catalog,
+				vocabulary,
+				query: "api",
+			}).selectedId,
+		).toBe("starter.cli.api");
+		expect(
+			searchPatterns({
+				catalog,
+				vocabulary,
+				query: "agent",
+			}).selectedId,
+		).toBe("starter.cli.agent");
+	});
+
 	it("hard filters cannot be overridden by similarity", () => {
 		const receipt = searchPatterns({
 			catalog,

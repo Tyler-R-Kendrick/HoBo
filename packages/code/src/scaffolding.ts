@@ -9,7 +9,11 @@ import {
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openUiStarterRoot } from "@hobo/patterns";
+import {
+	catalogStarterProjectRoot,
+	isCliStarterAlias,
+	openUiStarterRoot,
+} from "@hobo/patterns";
 
 import { composeAtoms } from "./atom-compose.js";
 import {
@@ -32,6 +36,20 @@ export interface ScaffoldOptions {
 	readonly outputDir: string;
 	readonly appName: string;
 	readonly templateId?: string;
+}
+
+function resolveCatalogStarterDir(templateId: string): string {
+	if (
+		templateId === HIGH_VALUE_TEMPLATE_ID ||
+		templateId === "starter.code.openui-astryx-bindle" ||
+		templateId === "openui"
+	) {
+		return openUiStarterRoot();
+	}
+	if (isCliStarterAlias(templateId)) {
+		return catalogStarterProjectRoot(templateId);
+	}
+	throw new Error(`template not found: ${templateId}`);
 }
 
 function walkFiles(dir: string, base = dir): string[] {
@@ -57,10 +75,7 @@ export function scaffoldHighValueTemplate(
 	options: ScaffoldOptions,
 ): ScaffoldResult {
 	const templateId = options.templateId ?? HIGH_VALUE_TEMPLATE_ID;
-	const templateDir =
-		templateId === HIGH_VALUE_TEMPLATE_ID
-			? openUiStarterRoot()
-			: join(TEMPLATES_ROOT, templateId);
+	const templateDir = resolveCatalogStarterDir(templateId);
 	if (!existsSync(templateDir)) {
 		throw new Error(`template not found: ${templateId}`);
 	}

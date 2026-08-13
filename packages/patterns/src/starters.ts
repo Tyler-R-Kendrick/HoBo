@@ -17,6 +17,14 @@ export function catalogStarterId(template: CliStarterAlias): string {
 	return `starter.cli.${template}`;
 }
 
+export function isCliStarterAlias(value: string): value is CliStarterAlias {
+	return (CLI_STARTER_ALIASES as readonly string[]).includes(value);
+}
+
+export function catalogStarterProjectRoot(template: CliStarterAlias): string {
+	return join(defaultCatalogRoot(), "starter", "cli", template, "project");
+}
+
 export function assertCatalogStarter(template: CliStarterAlias): void {
 	const catalog = loadPatternCatalog();
 	const id = catalogStarterId(template);

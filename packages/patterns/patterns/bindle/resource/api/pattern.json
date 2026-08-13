@@ -7,8 +7,8 @@
   "intent": "declare one API resource",
   "description": "declare one API resource",
   "aliases": [
-    "api",
-    "backend"
+    "backend",
+    "api resource"
   ],
   "apiSymbols": [],
   "features": [

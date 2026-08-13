@@ -19,6 +19,10 @@ Promotes:
 
 - `src/draft/technical-proofs/hobo-cli-shell-contract/` (CLI shell, parser, registry, renderer, dispatch seam)
 - `src/draft/technical-proofs/hobo-new-scaffold-contract/` (`hobo new` offline scaffolds)
+
+`hobo new -t todo|api|agent|fullstack` is a compatibility adapter. File bodies
+come from `@hobo/patterns` `starter.cli.*` catalog trees (ADR-0153). Aliases
+stay the public contract; do not fork starter text back into this package.
 - `src/draft/technical-proofs/hobo-build-cli-contract/` (`hobo build` orchestration, HOBO-613 / S1-23)
 - `src/draft/epic-proofs/cli-mcp-developer-experience/` (CLI↔MCP parity boundary)
 

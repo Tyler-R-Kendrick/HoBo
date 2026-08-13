@@ -63,10 +63,10 @@
   ],
   "provenance": [
     {
-      "path": "packages/code/templates/openui-astryx-bindle",
-      "commit": "ff9edbad6",
+      "path": "packages/patterns/patterns/starter/code/openui-astryx-bindle/project",
+      "commit": "df9250bd9",
       "symbol": "HIGH_VALUE_TEMPLATE_ID",
-      "rationale": "moved OpenUI/Harness starter into the catalog; not canonical Bindle syntax"
+      "rationale": "git-followed from packages/code/templates/openui-astryx-bindle (531938eb0); OpenUI/Harness starter, not canonical Bindle syntax"
     }
   ],
   "limitations": [

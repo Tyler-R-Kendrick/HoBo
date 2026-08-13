@@ -2,10 +2,7 @@ import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { UsageError } from "../shell/errors.js";
 import type { CommandModule } from "../shell/registry.js";
-import {
-	assertCatalogStarter,
-	buildProjectFiles,
-} from "../templates/index.js";
+import { assertCatalogStarter, buildProjectFiles } from "../templates/index.js";
 import {
 	type ProjectName,
 	parseProjectName,
@@ -13,17 +10,6 @@ import {
 	type ScaffoldResult,
 	VALID_TEMPLATES,
 } from "../types/scaffold.js";
-
-const createdFileOrder = [
-	".gitignore",
-	"app.test.ts",
-	"app.ts",
-	"hobo.bindle.json",
-	"package.json",
-	"src/_generated/hobo.d.ts",
-	"src/_generated/index.ts",
-	"tsconfig.json",
-] as const;
 
 export class DestinationExistsError extends UsageError {
 	constructor(message: string) {
@@ -99,17 +85,14 @@ export async function scaffoldHoboProject(input: {
 		);
 	}
 
-	await mkdir(path.join(projectDir, "src/_generated"), { recursive: true });
-
 	const files = buildProjectFiles({
 		name: input.name,
 		template: input.template,
 	});
-	for (const relativePath of createdFileOrder) {
-		const content = files.get(relativePath);
-		if (content === undefined) {
-			throw new Error(`Missing scaffold template for ${relativePath}`);
-		}
+	if (files.size === 0) {
+		throw new Error(`catalog starter ${input.template} rendered no files`);
+	}
+	for (const [relativePath, content] of files) {
 		await writeOwnedFile(projectDir, relativePath, content);
 	}
 
@@ -117,7 +100,7 @@ export async function scaffoldHoboProject(input: {
 		projectDir,
 		name: input.name,
 		template: input.template,
-		createdFiles: [...createdFileOrder],
+		createdFiles: [...files.keys()],
 		offline: true,
 		nextSteps: [
 			`cd ${input.name}`,
@@ -130,8 +113,27 @@ export async function scaffoldHoboProject(input: {
 }
 
 export async function validateScaffoldProject(projectDir: string) {
+	let template: ReturnType<typeof parseTemplateId>;
+	try {
+		const bindleRaw = JSON.parse(
+			await readFile(path.join(projectDir, "hobo.bindle.json"), "utf8"),
+		) as { template?: unknown };
+		template = parseTemplateId(String(bindleRaw.template ?? ""));
+	} catch {
+		return {
+			ok: false,
+			missing: ["hobo.bindle.json"],
+			canRunHoboDev: false,
+			typecheck: { status: "fail", reason: "missing scaffold files" },
+			tests: { status: "fail", reason: "missing scaffold files" },
+		};
+	}
+	const expected = buildProjectFiles({
+		name: parseProjectName("validate"),
+		template,
+	});
 	const missing: string[] = [];
-	for (const relativePath of createdFileOrder) {
+	for (const relativePath of expected.keys()) {
 		try {
 			await stat(path.join(projectDir, relativePath));
 		} catch {
@@ -154,11 +156,7 @@ export async function validateScaffoldProject(projectDir: string) {
 	) as {
 		scripts?: Record<string, string>;
 	};
-	const bindle = JSON.parse(
-		await readFile(path.join(projectDir, "hobo.bindle.json"), "utf8"),
-	) as {
-		template: string;
-	};
+	const bindle = { template };
 	const app = await readFile(path.join(projectDir, "app.ts"), "utf8");
 	const appTest = await readFile(path.join(projectDir, "app.test.ts"), "utf8");
 	const generated = await readFile(
@@ -184,11 +182,7 @@ export async function validateScaffoldProject(projectDir: string) {
 	if (packageJson.scripts?.typecheck !== "tsc --noEmit") {
 		violations.push("package.json must expose tsc --noEmit");
 	}
-	if (
-		!VALID_TEMPLATES.includes(
-			bindle.template as (typeof VALID_TEMPLATES)[number],
-		)
-	) {
+	if (!VALID_TEMPLATES.includes(template)) {
 		violations.push("bindle template must be one of the valid templates");
 	}
 	if (!app.includes(`template: "${bindle.template}"`)) {

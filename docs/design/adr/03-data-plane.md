@@ -740,6 +740,7 @@ The first ADR-0152 emit path overwrote files in topo order. That made "add a sec
 4. **`hobo new` and `hobo-code scaffold` are adapters.** Public output contracts stay.
 5. **Model2Vec is rejected** for this catalog size: would need install-time or committed weights. Ontology-vector + FTS/exact/RRF is enough.
 6. **Structural apply uses the pinned TypeScript compiler API**, not ts-morph (second compiler identity + TS 6 lag) and not regex/line-number edits. CLI starter bodies live in `patterns/starter/cli/<alias>/project/`.
+7. **Compatibility aliases** `todo|api|agent|fullstack` select `starter.cli.*` before concept aliases. Short alias uniqueness is enforced. `hobo new` writes whatever the catalog renders.
 
 ### Consequences
 - **(+)** One package, proto+CUE, receipts, abstention, local SQLite index.

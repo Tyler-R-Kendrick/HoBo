@@ -303,7 +303,7 @@ export function buildPatternIndex(input: {
 	if (tmp) mkdirSync(dirname(tmp), { recursive: true });
 	const driver = tmp
 		? createNodeSqliteDriver({ path: tmp, disableExtensions: true })
-		: createMemoryNodeSqliteDriver();
+		: createMemoryNodeSqliteDriver({ disableExtensions: true });
 	try {
 		driver.beginImmediate();
 		const ftsAvailable = probeFts(driver);
@@ -376,7 +376,7 @@ export function openPatternIndex(input: {
 	if (!input.catalog || !input.vocabulary) {
 		throw new Error("pattern index missing and catalog fallback not provided");
 	}
-	const driver = createMemoryNodeSqliteDriver();
+	const driver = createMemoryNodeSqliteDriver({ disableExtensions: true });
 	driver.beginImmediate();
 	const ftsAvailable = probeFts(driver);
 	populate(driver, input.catalog, input.vocabulary, ftsAvailable);

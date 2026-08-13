@@ -42,8 +42,8 @@ export function validatePatternCatalog(input: {
 		const defaults = pattern.renderings.filter((item) => item.isDefault);
 		if (defaults.length !== 1) issues.push(`${pattern.id}: default rendering`);
 		for (const alias of [...pattern.aliases, ...pattern.legacyAliases]) {
-			if (alias !== pattern.id && !alias.includes(".")) continue;
 			const key = alias.trim().toLowerCase();
+			if (!key) continue;
 			const prior = exactAliases.get(key);
 			if (prior && prior !== pattern.id) {
 				issues.push(`alias ${alias} claimed by ${prior} and ${pattern.id}`);

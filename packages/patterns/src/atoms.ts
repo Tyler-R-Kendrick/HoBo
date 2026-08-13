@@ -118,7 +118,7 @@ export function parseAtomAsPattern(
 		title: id,
 		intent: description,
 		description,
-		aliases: [...new Set([id, ...tags, ...queries])],
+		aliases: [...new Set([id, ...queries])],
 		apiSymbols: [],
 		features: featuresFor(kind, tags),
 		contexts: ["existing-typescript", "new-file"],

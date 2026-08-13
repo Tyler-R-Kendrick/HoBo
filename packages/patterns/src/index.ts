@@ -64,6 +64,8 @@ export {
 	CLI_STARTER_ALIASES,
 	type CliStarterAlias,
 	catalogStarterId,
+	catalogStarterProjectRoot,
+	isCliStarterAlias,
 	renderCliStarterFiles,
 } from "./starters.js";
 export {

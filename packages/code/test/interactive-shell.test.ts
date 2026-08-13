@@ -278,6 +278,32 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		]);
 	});
 
+	it("routes /template through runVerb and never starts a model turn", async () => {
+		const verbs: string[][] = [];
+		let streamTurns = 0;
+		await runInteractiveShell({
+			stdin: new PassThrough(),
+			stdout: new Writable({ write: (_chunk, _encoding, done) => done() }),
+			host: {
+				runVerb: async (argv) => {
+					verbs.push([...argv]);
+					return "0 LLM calls · 0 LLM tokens";
+				},
+				streamTurn: async () => {
+					streamTurns += 1;
+					return { ok: true, text: "model", toolCalls: 0, aborted: false };
+				},
+				complete: async () => "unused",
+			},
+			reducedMotion: true,
+			scriptedKeys: "/template web frontend backed by an api\r",
+		});
+		expect(verbs).toEqual([
+			["template", "web", "frontend", "backed", "by", "an", "api"],
+		]);
+		expect(streamTurns).toBe(0);
+	});
+
 	it("passes typed /hobo arguments through to the HoBo control plane", async () => {
 		const calls: string[][] = [];
 		await runInteractiveShell({

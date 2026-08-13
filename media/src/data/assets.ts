@@ -88,6 +88,33 @@ export const BILL_SPRITES: Sheet[] = [
 	},
 ];
 
+/**
+ * Bo's pixel reference sheets, built by `media/scripts/build-bo-pixel-reference.py`.
+ *
+ * Not generated art: every sprite is a deterministic downscale-and-quantize of
+ * the shipped sheets in `site/public/parallax/`, so the identity — bindle arm,
+ * eye spacing, fur silhouette — is inherited rather than re-drawn. 48px grid,
+ * flat black and white on transparency. The one derived view (north) is the
+ * front stand mirrored with enclosed whites inked out; front-to-back mirroring
+ * keeps the bindle on the same anatomical shoulder, unlike the forbidden
+ * east↔west mirror.
+ */
+export const BO_PIXEL_SHEETS: Reference[] = [
+	{
+		key: "bo-pixel-reference",
+		title: "Pixel reference",
+		file: "reference/bo-pixel-reference.png",
+		wide: true,
+		note: "Bo on a 48px grid — four facings, a walk stride each way, idle hop, stand breath, and an integer scale ramp. Derived from the shipped sheets, so the pixel Bo cannot drift from the real one.",
+	},
+	{
+		key: "bo-pixel-sprites",
+		title: "Pixel sprites, native scale",
+		file: "reference/bo-pixel-sprites.png",
+		note: "The same sprites at 1x in 56×56 cells, one section per row, feet on a shared baseline four pixels up. This is the file to build from; the labeled sheet above is for reading.",
+	},
+];
+
 export type Plate = {
 	key: string;
 	title: string;

@@ -41,6 +41,33 @@ is Bill's.
 **Do not mix them.** A Bill pose is not a Bo reference, and generating new Bo
 work from Bill's turnaround is precisely how Bo stops being Bo.
 
+## Bo in pixels
+
+`reference/bo-pixel-reference.png` (labeled, 4×) and
+`reference/bo-pixel-sprites.png` (native 1×, 56×56 cells) put Bo on a 48px
+pixel grid: four facings, one walk stride each way, the idle hop, the stand
+breath, and an integer scale ramp. Flat black and white on transparency — the
+character lock's palette, now literally two colors.
+
+No generation model is involved. Every sprite is a deterministic
+downscale-and-quantize of the shipped sheets in `site/public/parallax/`,
+rebuilt end-to-end by:
+
+```sh
+uv run media/scripts/build-bo-pixel-reference.py
+```
+
+so the pixel Bo *cannot* drift from the real one — rerunning the script after a
+sheet change regenerates both files. The east walk sheet's pale ground ellipse
+is stripped on the way through (reference frames carry no ground shadow), and
+sprites sit on a shared baseline four pixels above the cell floor.
+
+The **north** view is the one derived pose: the front stand mirrored, with
+every white region fully enclosed by ink — the eyes, and the pole where it
+crosses in front of the body — inked out, because a rear view cannot see them.
+It is labeled `N*` on the sheet for that reason. Why mirroring is legitimate
+*here* and nowhere else is covered below.
+
 ## The 3D viewer
 
 `ModelViewer.astro` renders the `.glb` with **three.js**, bundled through Astro
@@ -79,10 +106,19 @@ looks plausible at a glance and is wrong. It has shipped twice — once in the
 west walk sheet, once as `<Mascot flip />` on the homepage CTA, directly above
 the words "Pack a bindle".
 
-**No asset in this catalogue may be produced by reflecting another.** The
-turnaround was drawn as four views for that reason, and the 3D lift ran with
-symmetry enforcement off — it would otherwise have "corrected" the bindle by
-giving him two, or by deleting it.
+**No asset in this catalogue may be produced by reflecting another view of the
+same facing.** The turnaround was drawn as four views for that reason, and the
+3D lift ran with symmetry enforcement off — it would otherwise have "corrected"
+the bindle by giving him two, or by deleting it.
+
+One reflection is geometrically sound, and it is the only one: **front to
+back**. Walking around a character swaps screen-left and screen-right — that is
+what turning around *is* — so a rear view mirrors the front's silhouette while
+the bindle stays on the same anatomical shoulder. The pixel sheet's `N*` view
+is derived this way (with the enclosed whites inked out, since a back view sees
+no eyes and no crossing pole). East↔west remains forbidden: those are two views
+of the *same* side of the world, and mirroring one into the other is precisely
+the arm-swap failure above.
 
 ## The 3D lift is scaffolding
 

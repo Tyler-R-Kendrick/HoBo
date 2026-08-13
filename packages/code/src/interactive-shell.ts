@@ -185,6 +185,11 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		description: "Search/render HoBo patterns with zero LLM tokens",
 		argv: ["template"],
 	},
+	{
+		name: "review",
+		description: "Durable review session (coverage, threads, exact-effect publish)",
+		argv: ["review"],
+	},
 	{ name: "quit", description: "Exit hobo-code shell", action: "quit" },
 ] as const;
 

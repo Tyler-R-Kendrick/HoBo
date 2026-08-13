@@ -187,6 +187,7 @@ Presentation helpers stay pure and unit-tested:
 - `atom-index.ts` — closed intent map first, then retrieve→Valibot→compose→**entity-aware merge**→emit (ADR-0152). Snippet bodies live in `@hobo/patterns` `atoms/` and are also listed by `hobo-code template`. `templates/intents/` owns phrases like "deploy to azure" / "same network". Snippet slots merge by entity; `@hobo.hole` emits `"use training"` / `training.define`, not invented logic. Derived cache `$HOBO_HOME/durable/code/template-index.sqlite`. High-confidence emits with zero inference; low-confidence refuses unless `allowEscalate`. Full `examples/` apps stay composition proofs.
 - `example-catalog.ts` + `workspace-actions.ts` — Bo TUI turns "create a hello world app" / "run it" / "debug it" into emitted atoms plus live bindle/debug/controls/report URLs, without `hobo` or a network fetch
 - `@hobo/patterns` — catalog source of truth; OpenUI starter plus atomic snippets. `hobo-code template list|search|render` is the CLI. `hobo-code scaffold` remains the high-value starter adapter.
+- `review/` — durable review aggregate (ADR-0154). Commands `hobo.code.review-command/v1`; EventStore `hobo-code-reviews`. Coverage, threads, pending publish, exact-effect GitHub submit. Git workbench stays the mutation surface; review records what was inspected.
 - template `public/index.html` + `styles.css` — catalog starter first paint + matching step rail
 - product binary `hobo-code`: flat verbs, dispatch default, no nested buzz
 

@@ -8,6 +8,15 @@ hobo-code
 # then: create a hello world app
 #        deploy to azure
 #        bundle apps in the same network
+#        /review
+```
+
+Durable review (ADR-0154) is a separate aggregate from the session:
+
+```bash
+hobo-code review start --target range --base HEAD^ --head HEAD
+hobo-code review mark --id <reviewId> <fileId>
+hobo-code review thread --id <reviewId> "please name this constant"
 ```
 
 **App-building agent / helper** for HoBo — not a control-plane management CLI.

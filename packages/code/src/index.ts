@@ -381,6 +381,15 @@ export {
 	startCodeSession,
 } from "./session.js";
 export {
+	REVIEW_COMMAND_SCHEMA,
+	REVIEW_SNAPSHOT_SCHEMA,
+	parseReviewCommand,
+	parseReviewSnapshot,
+} from "./review/review-contract.js";
+export { createReviewRuntime } from "./review/review-runtime.js";
+export { runReviewCommand } from "./review/review-command.js";
+export { renderReviewPane } from "./review/review-terminal.js";
+export {
 	parseSessionCommand,
 	parseSessionSnapshot,
 	SESSION_COMMAND_SCHEMA,

@@ -286,6 +286,8 @@ export function createDefaultShellHost(
 								readonly controlsUrl?: string;
 								readonly reportUrl?: string;
 								readonly namedUrl?: string;
+								readonly stationId?: string;
+								readonly environment?: string;
 							};
 						}
 					).deployment
@@ -308,6 +310,12 @@ export function createDefaultShellHost(
 			reportUrl: deployment.reportUrl,
 			...(deployment.namedUrl !== undefined
 				? { namedUrl: deployment.namedUrl }
+				: {}),
+			...(deployment.stationId !== undefined
+				? { stationId: deployment.stationId }
+				: {}),
+			...(deployment.environment !== undefined
+				? { environment: deployment.environment }
 				: {}),
 			emphasis: action.kind === "debug" ? "debug" : "run",
 		});

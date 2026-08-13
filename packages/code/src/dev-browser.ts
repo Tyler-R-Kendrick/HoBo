@@ -12,6 +12,9 @@ export interface DevBrowserSessionOptions {
 	readonly sessionId?: string;
 	readonly hoboBin?: string;
 	readonly env?: NodeJS.ProcessEnv;
+	readonly stationId?: string;
+	readonly tenant?: string;
+	readonly environment?: string;
 	readonly startupTimeoutMs?: number;
 }
 
@@ -23,6 +26,8 @@ export interface DevBrowserSession {
 	readonly reportUrl: string;
 	readonly evidencePath: string;
 	readonly namedUrl?: string;
+	readonly stationId?: string;
+	readonly environment?: string;
 	readonly close: () => Promise<void>;
 }
 
@@ -54,10 +59,7 @@ function waitForAppUrl(
 			else {
 				grace ??= setTimeout(() => {
 					if (!appUrl) return;
-					finish(
-						undefined,
-						namedUrl ? { appUrl, namedUrl } : { appUrl },
-					);
+					finish(undefined, namedUrl ? { appUrl, namedUrl } : { appUrl });
 				}, 400);
 			}
 		};
@@ -120,6 +122,9 @@ export async function startDevBrowserSession(
 	const controlsTemplate = new URL(evidence.controlsUrlTemplate);
 	controlsTemplate.searchParams.set("sessionId", sessionId);
 	const env = { ...process.env, ...options.env };
+	const stationId = options.stationId ?? env.HOBO_STATION;
+	const tenant = options.tenant ?? env.HOBO_TENANT;
+	const environment = options.environment ?? env.HOBO_ENV;
 	const child = spawn(
 		options.hoboBin ?? env.HOBO_CODE_HOBO_BIN ?? env.HOBO_BIN ?? "hobo",
 		["dev", "--cwd", projectDir, "--port", String(options.appPort ?? 4173)],
@@ -130,6 +135,9 @@ export async function startDevBrowserSession(
 				HOBO_HOME: options.hoboHome,
 				HOBO_CODE_DEV_BRIDGE: "1",
 				HOBO_CODE_EVIDENCE_CONTROLS_URL: controlsTemplate.href,
+				...(stationId ? { HOBO_STATION: stationId } : {}),
+				...(tenant ? { HOBO_TENANT: tenant } : {}),
+				...(environment ? { HOBO_ENV: environment } : {}),
 			},
 			stdio: ["pipe", "pipe", "pipe"],
 		},
@@ -153,6 +161,8 @@ export async function startDevBrowserSession(
 			reportUrl: evidence.reportUrl,
 			evidencePath: join(options.hoboHome, "durable", "code", "evidence"),
 			...(started.namedUrl !== undefined ? { namedUrl: started.namedUrl } : {}),
+			...(stationId ? { stationId } : {}),
+			...(environment ? { environment } : {}),
 			close: async () => {
 				if (closed) return;
 				closed = true;

@@ -750,3 +750,23 @@ The first ADR-0152 emit path overwrote files in topo order. That made "add a sec
 - Package: `packages/patterns/`
 - Zero-LLM route: `hobo-code template`, `/template`
 - Related: ADR-0135, ADR-0139, ADR-0152
+
+## ADR-0154
+**Durable HoBo Code review aggregate.**
+
+**Status:** Accepted
+
+### Context
+Git workbench snapshots are mutation surfaces. "Reviewed index" meant authorizing a staged tree, not recording what a human inspected. Diffs and threads cannot live on the resident session event stream.
+
+### Decision
+1. Review commands/snapshots are `hobo.code.review-command/v1` and `hobo.code.review-snapshot/v1`.
+2. Persistence is EventStore partition `hobo-code-reviews`, stream `code-review:<id>`.
+3. Diff bytes are content-addressed outside session events.
+4. Coverage and threads are generation-bound. Re-anchoring is explicit (exact / unique-context / stale / ambiguous).
+5. GitHub publish, hunk stage, and suggestion apply use exact-effect digests plus HEAD/index revalidation.
+6. Inbox is a derived projection, not the aggregate.
+
+### Consequences
+- **(+)** Terminal, CLI, and browser share one parse-don't-validate contract.
+- **(−)** GitHub CLI (`gh`) is the live provider; tests use a fake provider plus a real temporary Git repository.

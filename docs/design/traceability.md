@@ -447,6 +447,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0151 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0151) | Capability profiles, signed recipes and offers, durable guest leases and claims, conformance evidence, and provider adapters implement anonymous-to-owned hosting without provider pins in Bindles. | — (anonymous claimable hosting) |
 | ADR-0152 | [data-plane](./adr/03-data-plane.md#adr-0152) | Atomic templates + local SQLite FTS5/dense/RRF retrieval: high-confidence emit with zero inference, Valibot fill, require/provide composition, `$0` offline embedder pin. | — (2026-08-12 atom corpus) |
 | ADR-0153 | [data-plane](./adr/03-data-plane.md#adr-0153) | `@hobo/patterns` catalog is source of truth; ontology-vector + explicit `hobo-code template` / `/template` zero-LLM route; Model2Vec rejected. | `packages/patterns` |
+| ADR-0154 | [data-plane](./adr/03-data-plane.md#adr-0154) | Durable `@hobo/code` review aggregate, generation-bound coverage, exact-effect GitHub publish. | `packages/code` |
 
 ## ADR Numbering and Status Audit
 

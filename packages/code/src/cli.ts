@@ -122,6 +122,7 @@ import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
 import { startCodeSession } from "./session.js";
+import { runReviewCommand } from "./review/review-command.js";
 import { runTemplateCommand } from "./template-command.js";
 import {
 	buildMultiplexerStatus,
@@ -155,6 +156,7 @@ export const HOBO_CODE_VERBS = [
 	"guide",
 	"scaffold",
 	"template",
+	"review",
 	"dev",
 	"isolate",
 	"promote",
@@ -328,6 +330,9 @@ const VALUE_FLAGS = new Set([
 	"port",
 	"debug-port",
 	"id",
+	"target",
+	"base",
+	"head",
 	"format",
 	"params",
 	"kind",
@@ -907,6 +912,18 @@ const VERB_HELP_PLAIN: Record<
 		"Lists and renders reviewed catalog patterns and atomic snippets.",
 		"Does not start a model turn. Chat phrases stay on the session.",
 	],
+	review: [
+		"hobo-code review — durable local/PR/stack review (exact-effect publish)",
+		"",
+		"Usage:",
+		"  hobo-code review start [--target working-tree|index|range|commit]",
+		"  hobo-code review show --id <reviewId>",
+		"  hobo-code review mark --id <reviewId> <fileId>",
+		"  hobo-code review thread --id <reviewId> <body>",
+		"",
+		"Review state is a separate EventStore aggregate (hobo-code-reviews).",
+		"Forge publish binds the pending-review digest and expected HEAD.",
+	],
 	dev: [
 		"hobo-code dev — run the project Bindle on a local Yard with Evidence",
 		"",
@@ -1238,6 +1255,7 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 			guide: "gd",
 			scaffold: "sc",
 			template: "tp",
+			review: "rv",
 			dev: "dv",
 			isolate: "i",
 			promote: "pr",
@@ -2470,6 +2488,18 @@ export async function runHoboCodeCli(
 				],
 			);
 		}
+	}
+
+	if (verb === "review") {
+		const result = await runReviewCommand({ args, flags });
+		return {
+			ok: result.ok,
+			status: result.ok ? "ok" : "failed",
+			code: result.code,
+			message: result.message,
+			data: result.data,
+			exitCode: result.ok ? 0 : 1,
+		};
 	}
 
 	if (verb === "template") {

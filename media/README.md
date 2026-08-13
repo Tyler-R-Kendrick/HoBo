@@ -44,9 +44,11 @@ work from Bill's turnaround is precisely how Bo stops being Bo.
 ## Bo in pixels
 
 `reference/bo-pixel-reference.png` (labeled, 4×) and
-`reference/bo-pixel-sprites.png` (native 1×, 56×56 cells) put Bo on a 48px
-pixel grid: four facings, one walk stride each way, the idle hop, the stand
-breath, and an integer scale ramp. Flat black and white on transparency — the
+`reference/bo-pixel-sprites.png` (native 1×, 56×56 cells) are a **model
+sheet** of Bo on a 48px pixel grid: a four-facing turnaround, six poses (sit,
+crouch, hop, wave, point, startled) and seven expressions (the eyes carry
+every reading — neutral, look left/right/up, wide, sleepy, blink), plus an
+integer scale ramp. Flat black and white on transparency — the
 character lock's palette, now literally two colors — plus a 1px dual rim:
 white around the black fur so he reads on dark grounds (he is solid ink and
 vanishes there otherwise), black around exposed white so the bundle keeps an
@@ -54,9 +56,14 @@ outline on paper. The rim is 8-neighbour; a 4-neighbour rim breaks into dashes
 along the diagonal fur edges and reads as noise instead of a contour. The
 sheet's grounds strip shows the same sprite on paper, slate and night.
 
-No generation model is involved. Every sprite is a deterministic
-downscale-and-quantize of the shipped sheets in `site/public/parallax/`,
-rebuilt end-to-end by:
+No generation model is involved. The bodies are a deterministic
+downscale-and-quantize of the shipped sheets in `site/public/parallax/`, and
+every pose beyond the turnaround is deterministic pixel surgery on those
+bases — the eye region repainted with the pupil placed per expression, legs
+erased and re-posed, posture squashed or stretched at source resolution, the
+free arm drawn as the same one-stroke-one-dot rubber hose the sheets use. The
+bindle arm never changes: it holds the pole in every cell. Rebuilt end-to-end
+by:
 
 ```sh
 uv run media/scripts/build-bo-pixel-reference.py

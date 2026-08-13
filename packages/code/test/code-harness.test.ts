@@ -581,6 +581,7 @@ step "done"
 			projectRoot: project,
 			hoboHome: home,
 			stationId: "station:local",
+			sidecars: false,
 		});
 		session.setAgentState("worker", "working", "editing");
 		const status = session.status();

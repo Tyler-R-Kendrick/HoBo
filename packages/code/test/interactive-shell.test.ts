@@ -294,6 +294,31 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(splitKeySequences("\x1bOP")).toEqual(["\x1bOP"]);
 	});
 
+	it("starts Station dashboard and Evidence sidecars for a live session", async () => {
+		const { authLogin } = await import("../src/auth.js");
+		const { readStationSidecars } = await import("../src/station-sidecars.js");
+		const home = mkdtempSync(join(tmpdir(), "hobo-code-shell-sidecars-"));
+		authLogin({ hoboHome: home, autoInitLocal: true });
+		try {
+			await runInteractiveShell({
+				stdin: new PassThrough(),
+				stdout: new Writable({ write: (_chunk, _encoding, done) => done() }),
+				host: {
+					runVerb: async () => "ok",
+					complete: async () => "unused",
+				},
+				hoboHome: home,
+				sidecars: true,
+				reducedMotion: true,
+				scriptedKeys: "\u0003",
+			});
+			// closed on quit — discovery removed
+			expect(readStationSidecars(home, "station:local")).toBeNull();
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+		}
+	});
+
 	it("passes typed /sessions arguments through the resident session verb", async () => {
 		const calls: string[][] = [];
 		await runInteractiveShell({

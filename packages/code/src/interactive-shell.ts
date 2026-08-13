@@ -49,6 +49,12 @@ import {
 	formatStationStatusBlock,
 	formatStationStrap,
 } from "./station-session.js";
+import {
+	formatSidecarStrap,
+	type StationSidecars,
+	sidecarsEnabled,
+	startStationSidecars,
+} from "./station-sidecars.js";
 import { buildMultiplexerStatus, createPane, renderStatusText } from "./tui.js";
 import { BROADCAST_INNER_INSET } from "./tui-broadcast.js";
 import {
@@ -128,6 +134,8 @@ export interface InteractiveShellState {
 	readonly stationLabel: string;
 	/** Occupancy environment chip (`env:local-dev`). Empty when logged out. */
 	readonly envLabel: string;
+	/** Occupied Station sidecar chips (`dash:host:port`). */
+	readonly sidecarChips: readonly string[];
 	readonly productTitle: string;
 	/** Hard product identity — must never be stock Pi chrome. */
 	readonly engineLabel: "hobo-shell";
@@ -476,6 +484,7 @@ export function createInitialShellState(
 		hermeticLabel: hermeticEnvSummary(hermetic).split("\n")[0] ?? "env",
 		stationLabel: stationChips[0] ?? "auth:out",
 		envLabel: stationChips[1] ?? "",
+		sidecarChips: [],
 		productTitle: "hobo-code",
 		engineLabel: "hobo-shell",
 	};
@@ -529,6 +538,7 @@ export function statusSegments(state: InteractiveShellState): string[] {
 		`${boMarker(state)} hobo-code`,
 		state.stationLabel,
 		state.envLabel,
+		...state.sidecarChips,
 		modelChip,
 		state.usageLabel || state.costLabel,
 		state.agentState,
@@ -1015,6 +1025,11 @@ export interface RunInteractiveShellOptions {
 	readonly scriptedKeys?: string;
 	/** Test hook: receives the terminal for repaint-economy assertions. */
 	readonly onTerminal?: (terminal: StreamTerminal) => void;
+	/**
+	 * Start Station dashboard + Evidence sidecars. Default: on for a live TTY
+	 * unless HOBO_CODE_SIDECARS=0. Tests pass false to stay off-network.
+	 */
+	readonly sidecars?: boolean;
 }
 
 /**
@@ -1049,6 +1064,21 @@ export async function runInteractiveShell(
 		env: shellEnv,
 		ensureLocalLogin: true,
 	});
+	const wantSidecars =
+		options.sidecars === true ||
+		(options.sidecars !== false && sidecarsEnabled(shellEnv) && isTty);
+	let sidecars: StationSidecars | undefined;
+	if (wantSidecars) {
+		try {
+			sidecars = await startStationSidecars({
+				hoboHome: shellHome,
+				projectRoot: options.cwd ?? process.cwd(),
+				env: shellEnv,
+			});
+		} catch {
+			sidecars = undefined;
+		}
+	}
 	let state = createInitialShellState({
 		width:
 			"columns" in stdout &&
@@ -1070,6 +1100,23 @@ export async function runInteractiveShell(
 	});
 	if (options.host.engineLabel) {
 		state = { ...state, modelLabel: options.host.engineLabel };
+	}
+	if (sidecars) {
+		state = {
+			...state,
+			sidecarChips: [...formatSidecarStrap(sidecars)],
+			messages: [
+				...state.messages,
+				{
+					role: "product",
+					text: [
+						`dashboard · ${sidecars.dashboardUrl}`,
+						`evidence · ${sidecars.evidenceUrl}`,
+					].join("\n"),
+					at: Date.now(),
+				},
+			],
+		};
 	}
 
 	const terminal = new StreamTerminal({
@@ -1531,6 +1578,7 @@ export async function runInteractiveShell(
 		// runs even if the driver threw — a CLI that can strand a terminal in
 		// raw mode is not shippable.
 		tui.stop();
+		await sidecars?.close().catch(() => {});
 	}
 	return 0;
 }

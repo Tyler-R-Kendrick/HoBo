@@ -434,6 +434,13 @@ export {
 } from "./session-lifecycle.js";
 export { createOtelSink, fleetView } from "./session-otel.js";
 export { startLocalDashboard } from "./session-dashboard.js";
+export {
+	formatSidecarStrap,
+	readStationSidecars,
+	sidecarsEnabled,
+	startStationSidecars,
+	STATION_SIDECARS_SCHEMA,
+} from "./station-sidecars.js";
 export { createDefaultShellHost } from "./shell-host.js";
 export {
 	BO_CELL_HEIGHT,

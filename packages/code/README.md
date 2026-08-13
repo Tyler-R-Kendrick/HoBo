@@ -70,6 +70,9 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
   change the real tree; green only for done. `NO_COLOR` is honoured.
 - **Bo** rides the one-line status strap and squash-stretches only while a
   turn is in flight (reduced motion keeps him still).
+- **Station sidecars** start with the session: the Aspire dashboard
+  (`http://127.0.0.1:8787`) and the Evidence SPA. They are occupancy
+  processes, not extra verbs. Opt out with `HOBO_CODE_SIDECARS=0`.
 
 | Key | Does |
 |---|---|
@@ -396,7 +399,7 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **models** | Active model + BYOK env presence (open models; no secret values) |
 | status | Session / agent multiplexer chrome |
 | **resources** | Session topology + real endpoints (Station occupancy × `HOBO_ENV`) |
-| **dashboard** | Local Aspire SPA + OTel ingest + start/stop/Ready (ADR-0111 `:8787`) |
+| **dashboard** | Local Aspire SPA (also a default Station sidecar on session start) |
 | session | Resident branch/worktree sessions: tmux tabs/panes, harness agents, checkpoints, attach/switch, approved Git/PR delivery, and loopback browser control (`session --help`) |
 | **attach** | Dev-terminal attach (tmux reattach · mosh? · Tailscale overlay named endpoint) |
 | **tasks** | Background task board (Grok Build–shaped: click · tasks · workflows) |

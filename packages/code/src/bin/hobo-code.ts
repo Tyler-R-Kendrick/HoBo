@@ -147,6 +147,8 @@ if (argv[0] === "_station-agent") {
 		const host = createDefaultShellHost({ dense, engine });
 		process.exitCode = await runInteractiveShell({
 			host,
+			hoboHome,
+			cwd: process.cwd(),
 			dense,
 			reducedMotion:
 				process.env.HOBO_CODE_REDUCED_MOTION === "1" ||

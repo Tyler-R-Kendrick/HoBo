@@ -21,6 +21,11 @@ import {
 } from "./platform.js";
 import { registerCodeNamedEndpoint } from "./remote.js";
 import {
+	type StationSidecars,
+	sidecarsEnabled,
+	startStationSidecars,
+} from "./station-sidecars.js";
+import {
 	buildMultiplexerStatus,
 	createPane,
 	type MultiplexerStatus,
@@ -40,6 +45,8 @@ export interface CodeSessionOptions {
 	readonly pinnedProvider?: SweProviderId;
 	readonly autoInitStation?: boolean;
 	readonly tenant?: string;
+	/** Occupancy sidecars (dashboard + evidence). Default on. */
+	readonly sidecars?: boolean;
 }
 
 export interface CodeSession {
@@ -55,6 +62,7 @@ export interface CodeSession {
 	readonly budget: ReturnType<typeof createBudgetTracker>;
 	readonly remote: ReturnType<typeof registerCodeNamedEndpoint>;
 	readonly dogfood: ReturnType<typeof dogfoodSummary>;
+	readonly sidecars?: StationSidecars;
 	readonly complete: (
 		ok: boolean,
 		gates?: readonly string[],
@@ -122,6 +130,17 @@ export async function startCodeSession(
 		tenant: options.tenant ?? "local",
 	});
 	const dogfood = dogfoodSummary(platform.station.stationId);
+	let sidecars: StationSidecars | undefined;
+	if (options.sidecars !== false && sidecarsEnabled()) {
+		try {
+			sidecars = await startStationSidecars({
+				hoboHome: options.hoboHome,
+				projectRoot: options.projectRoot,
+			});
+		} catch {
+			sidecars = undefined;
+		}
+	}
 
 	const panes = new Map([
 		[
@@ -134,6 +153,7 @@ export async function startCodeSession(
 		ok: boolean,
 		gates: readonly string[] = [],
 	): Promise<HandbackReport> => {
+		await sidecars?.close().catch(() => {});
 		const result = await cleanupIsolation(isolation.runId, {
 			hoboHome: options.hoboHome,
 			ok,
@@ -167,6 +187,7 @@ export async function startCodeSession(
 		budget,
 		remote,
 		dogfood,
+		...(sidecars ? { sidecars } : {}),
 		status() {
 			return buildMultiplexerStatus([...panes.values()], {
 				remoteReady: true,

@@ -10,11 +10,15 @@ import {
 	readStationSidecars,
 	sidecarsEnabled,
 	startStationSidecars,
+	stopStationSidecars,
 } from "../src/station-sidecars.js";
 
 const homes: string[] = [];
-afterEach(() => {
-	for (const home of homes) rmSync(home, { recursive: true, force: true });
+afterEach(async () => {
+	for (const home of homes) {
+		await stopStationSidecars(home, "station:local").catch(() => {});
+		rmSync(home, { recursive: true, force: true });
+	}
 	homes.length = 0;
 });
 
@@ -89,7 +93,29 @@ describe("station occupancy sidecars", () => {
 			expect(evidence.status).toBe(200);
 		} finally {
 			await session.complete(true, ["sidecars"]);
+			await stopStationSidecars(hoboHome, "station:local");
 		}
+	});
+
+	it("keeps Station Evidence up after the hobo session completes", async () => {
+		const { startCodeSession } = await import("../src/session.js");
+		const hoboHome = tempHome();
+		const project = mkdtempSync(join(tmpdir(), "hobo-code-sidecar-keep-"));
+		homes.push(project);
+		const session = await startCodeSession({
+			projectRoot: project,
+			hoboHome,
+			autoInitStation: true,
+		});
+		const evidenceUrl = session.sidecars?.evidenceUrl ?? "";
+		expect(evidenceUrl).toMatch(/127\.0\.0\.1/);
+		await session.complete(true, ["session-end"]);
+		const still = await fetch(evidenceUrl);
+		expect(still.status).toBe(200);
+		const disk = readStationSidecars(hoboHome, "station:local");
+		expect(disk?.evidenceUrl).toBe(evidenceUrl);
+		await stopStationSidecars(hoboHome, "station:local");
+		await expect(fetch(evidenceUrl)).rejects.toThrow();
 	});
 
 	it("keeps Evidence up after /dev closes", async () => {

@@ -123,8 +123,8 @@ import { runReviewCommand } from "./review/review-command.js";
 import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
-import { startLocalDashboard } from "./session-dashboard.js";
 import { startCodeSession } from "./session.js";
+import { startLocalDashboard } from "./session-dashboard.js";
 import {
 	assembleSessionResources,
 	filterSessionResources,
@@ -132,11 +132,14 @@ import {
 	type ResourceKind,
 	recordDevDeployment,
 } from "./session-resources.js";
-import { stopStationSidecars } from "./station-sidecars.js";
 import {
 	describeAuthedStationSession,
 	stationDevEnv,
 } from "./station-session.js";
+import {
+	releaseStationSidecars,
+	stopStationSidecars,
+} from "./station-sidecars.js";
 import { runTemplateCommand } from "./template-command.js";
 import {
 	buildMultiplexerStatus,
@@ -1855,6 +1858,14 @@ export async function runHoboCodeCli(
 			});
 		}
 		if (sub === "logout") {
+			const occupied = describeAuthedStationSession({
+				hoboHome,
+				env,
+				ensureLocalLogin: false,
+			});
+			if (occupied.loggedIn && occupied.stationId.length > 0) {
+				await stopStationSidecars(hoboHome, occupied.stationId);
+			}
 			const cleared = clearAuthSession(hoboHome);
 			const text = panel("✓ auth logout", [
 				cleared ? "signed out" : "already signed out",
@@ -2607,21 +2618,18 @@ export async function runHoboCodeCli(
 				);
 			}
 			const once = flags.once === true;
-			const sessionOwnsSidecars = deps.onDevSession !== undefined;
 			if (once) {
 				await deployed.close();
 				session = undefined;
-				if (!sessionOwnsSidecars) {
-					await stopStationSidecars(hoboHome, station.stationId);
-				}
+				await releaseStationSidecars(hoboHome, station.stationId);
 			} else if (deps.onDevSession) {
 				deps.onDevSession(deployed);
 			} else {
 				const stop = (exitCode: number): void => {
 					process.exitCode = exitCode;
-					void deployed.close().then(() =>
-						stopStationSidecars(hoboHome, station.stationId),
-					);
+					void deployed
+						.close()
+						.then(() => releaseStationSidecars(hoboHome, station.stationId));
 				};
 				process.once("SIGINT", () => stop(130));
 				process.once("SIGTERM", () => stop(143));
@@ -2637,8 +2645,7 @@ export async function runHoboCodeCli(
 						...(station.branch ? { branch: station.branch } : {}),
 					},
 					bindleName:
-						resolveRunnableProject(projectDir)?.split(/[/\\]/u).at(-1) ??
-						"app",
+						resolveRunnableProject(projectDir)?.split(/[/\\]/u).at(-1) ?? "app",
 					appUrl: deployed.appUrl,
 					debugUrl: deployed.debugUrl,
 					controlsUrl: deployed.controlsUrl,

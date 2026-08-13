@@ -1,7 +1,10 @@
 /**
  * Station occupancy sidecars for a coding session.
- * Dashboard + Evidence SPA start with the session and die with it.
+ * Dashboard is in-process and dies with the owner. Evidence is occupancy-
+ * scoped: persist mode detaches it so Bindle /dev, session.complete(), and
+ * TTY quit do not stop the SPA.
  */
+import { spawn } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -9,7 +12,9 @@ import {
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { startSessionControlServer } from "./session-control-server.js";
 import { startLocalDashboard } from "./session-dashboard.js";
@@ -29,6 +34,7 @@ export interface StationSidecarSnapshot {
 	readonly evidenceUrl: string;
 	readonly evidenceReportUrl: string;
 	readonly evidenceControlsUrl: string;
+	readonly evidencePid?: number;
 	readonly otlpHttpUrl: string;
 	readonly startedAt: string;
 }
@@ -57,6 +63,11 @@ export interface StartStationSidecarsOptions {
 	readonly otlpHttpPort?: number;
 	readonly otlpGrpcPort?: number;
 	readonly ensureLocalLogin?: boolean;
+	/**
+	 * Detach Evidence as a Station occupancy process. Default on for TTY /
+	 * startCodeSession / /dev attach. Tests omit this to stay in-process.
+	 */
+	readonly persistEvidence?: boolean;
 }
 
 function safeLabel(value: string): string {
@@ -124,9 +135,197 @@ function occupancy(
 	});
 }
 
+function pidAlive(pid: number | undefined): boolean {
+	if (pid === undefined || pid <= 0) return false;
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function evidenceReachable(url: string): Promise<boolean> {
+	try {
+		const response = await fetch(url, {
+			signal: AbortSignal.timeout(400),
+		});
+		return response.ok;
+	} catch {
+		return false;
+	}
+}
+
+export async function isStationEvidenceLive(
+	snapshot: StationSidecarSnapshot | null,
+): Promise<boolean> {
+	if (!snapshot?.evidenceUrl) return false;
+	if (snapshot.evidencePid !== undefined && !pidAlive(snapshot.evidencePid)) {
+		return false;
+	}
+	return evidenceReachable(snapshot.evidenceUrl);
+}
+
+function resolveTsxLoader(from: string): string | undefined {
+	let dir = dirname(from);
+	for (let i = 0; i < 8; i += 1) {
+		const loader = join(dir, "node_modules", "tsx", "dist", "loader.mjs");
+		if (existsSync(loader)) return loader;
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	return undefined;
+}
+
+function evidenceWorkerEntry(): {
+	readonly entry: string;
+	readonly ts: boolean;
+} {
+	const here = dirname(fileURLToPath(import.meta.url));
+	const compiled = join(here, "evidence-sidecar-main.js");
+	if (existsSync(compiled)) return { entry: compiled, ts: false };
+	return { entry: join(here, "evidence-sidecar-main.ts"), ts: true };
+}
+
+interface PersistentEvidence {
+	readonly url: string;
+	readonly reportUrl: string;
+	readonly controlsUrlTemplate: string;
+	readonly pid: number;
+	readonly close: () => Promise<void>;
+}
+
+async function spawnPersistentEvidence(
+	options: StartStationSidecarsOptions,
+): Promise<PersistentEvidence> {
+	const readyPath = join(
+		tmpdir(),
+		`hobo-evidence-${process.pid}-${Date.now()}.json`,
+	);
+	const worker = evidenceWorkerEntry();
+	const tsx = worker.ts ? resolveTsxLoader(worker.entry) : undefined;
+	const args =
+		worker.ts && tsx ? ["--import", tsx, worker.entry] : [worker.entry];
+	const child = spawn(process.execPath, args, {
+		detached: true,
+		stdio: "ignore",
+		env: {
+			...process.env,
+			...options.env,
+			HOBO_HOME: options.hoboHome,
+			HOBO_CODE_SIDECARS: "0",
+			HOBO_CODE_SIDECAR_READY: readyPath,
+			HOBO_CODE_SIDECAR_ROOT: options.projectRoot ?? process.cwd(),
+			HOBO_CODE_EVIDENCE_PORT: String(options.evidencePort ?? 8788),
+		},
+	});
+	if (child.pid === undefined) {
+		throw new Error("failed to spawn Station Evidence sidecar");
+	}
+	child.unref();
+	const deadline = Date.now() + 12_000;
+	while (Date.now() < deadline) {
+		if (existsSync(readyPath)) {
+			try {
+				const parsed = JSON.parse(readFileSync(readyPath, "utf8")) as {
+					readonly url?: string;
+					readonly reportUrl?: string;
+					readonly controlsUrl?: string;
+					readonly pid?: number;
+				};
+				if (
+					typeof parsed.url === "string" &&
+					typeof parsed.reportUrl === "string" &&
+					typeof parsed.controlsUrl === "string" &&
+					typeof parsed.pid === "number"
+				) {
+					try {
+						unlinkSync(readyPath);
+					} catch {
+						// ready file is best-effort
+					}
+					const pid = parsed.pid;
+					return {
+						url: parsed.url,
+						reportUrl: parsed.reportUrl,
+						controlsUrlTemplate: parsed.controlsUrl,
+						pid,
+						close: async () => {},
+					};
+				}
+			} catch {
+				// still writing
+			}
+		}
+		if (child.exitCode !== null) {
+			throw new Error(
+				`Station Evidence sidecar exited (${child.exitCode ?? "unknown"})`,
+			);
+		}
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
+	try {
+		process.kill(child.pid, "SIGTERM");
+	} catch {
+		// already gone
+	}
+	throw new Error("Station Evidence sidecar did not become ready");
+}
+
+function killEvidencePid(pid: number | undefined): void {
+	if (!pidAlive(pid) || pid === undefined) return;
+	try {
+		process.kill(pid, "SIGTERM");
+	} catch {
+		// occupancy teardown is best-effort
+	}
+}
+
+async function waitForEvidenceDown(
+	url: string | undefined,
+	pid: number | undefined,
+): Promise<void> {
+	const deadline = Date.now() + 2_000;
+	while (Date.now() < deadline) {
+		const reachable = url ? await evidenceReachable(url) : false;
+		if (!reachable && !pidAlive(pid)) return;
+		await new Promise((resolve) => setTimeout(resolve, 40));
+	}
+	if (pidAlive(pid) && pid !== undefined) {
+		try {
+			process.kill(pid, "SIGKILL");
+		} catch {
+			// last resort
+		}
+	}
+}
+
 async function startEvidenceServer(
 	options: StartStationSidecarsOptions,
-): Promise<Awaited<ReturnType<typeof startSessionControlServer>>> {
+): Promise<
+	PersistentEvidence | Awaited<ReturnType<typeof startSessionControlServer>>
+> {
+	if (options.persistEvidence === true) {
+		const disk = readStationSidecars(
+			options.hoboHome,
+			occupancy(
+				options.hoboHome,
+				options.env ?? process.env,
+				options.ensureLocalLogin !== false,
+			).stationId,
+		);
+		if ((await isStationEvidenceLive(disk)) && disk) {
+			return {
+				url: disk.evidenceUrl,
+				reportUrl: disk.evidenceReportUrl,
+				controlsUrlTemplate: disk.evidenceControlsUrl,
+				pid: disk.evidencePid ?? 0,
+				close: async () => {},
+			};
+		}
+		return spawnPersistentEvidence(options);
+	}
 	const projectRoot = options.projectRoot ?? process.cwd();
 	try {
 		return await startSessionControlServer({
@@ -165,7 +364,11 @@ export async function startStationSidecars(
 	}
 
 	// Evidence is required for the whole occupancy. Dashboard is best-effort.
-	const evidence = await startEvidenceServer(options);
+	const persist = options.persistEvidence === true;
+	const evidence = await startEvidenceServer({
+		...options,
+		persistEvidence: persist,
+	});
 	let dashboardUrl = "";
 	let otlpHttpUrl = "";
 	let closeDashboard: () => Promise<void> = async () => {};
@@ -184,6 +387,10 @@ export async function startStationSidecars(
 		// Evidence still runs.
 	}
 
+	const evidencePid =
+		"pid" in evidence && typeof evidence.pid === "number" && evidence.pid > 0
+			? evidence.pid
+			: undefined;
 	const snapshot: StationSidecarSnapshot = {
 		schema: STATION_SIDECARS_SCHEMA,
 		stationId: view.stationId,
@@ -192,6 +399,7 @@ export async function startStationSidecars(
 		evidenceUrl: evidence.url,
 		evidenceReportUrl: evidence.reportUrl,
 		evidenceControlsUrl: evidence.controlsUrlTemplate,
+		...(evidencePid !== undefined ? { evidencePid } : {}),
 		otlpHttpUrl,
 		startedAt: new Date().toISOString(),
 	};
@@ -205,8 +413,10 @@ export async function startStationSidecars(
 			held.refs -= 1;
 			if (held.refs > 0) return;
 			running.delete(key);
+			await closeDashboard();
+			if (persist) return;
 			const path = stationSidecarsPath(options.hoboHome, view.stationId);
-			await Promise.allSettled([closeDashboard(), evidence.close()]);
+			await evidence.close();
 			if (existsSync(path)) {
 				try {
 					const current = readStationSidecars(options.hoboHome, view.stationId);
@@ -241,9 +451,22 @@ export async function attachStationSidecars(
 	const key = sidecarKey(options.hoboHome, view.stationId);
 	const live = running.get(key)?.sidecars;
 	if (live) return live;
-	// Start if this process has no occupancy yet. Caller must not close —
-	// Evidence belongs to the Station session, not /dev.
-	return startStationSidecars(options);
+	const disk = readStationSidecars(options.hoboHome, view.stationId);
+	if ((await isStationEvidenceLive(disk)) && disk) return disk;
+	// Start if this Station has no Evidence yet. Caller must not close —
+	// Evidence belongs to the occupancy, not /dev.
+	return startStationSidecars({ ...options, persistEvidence: true });
+}
+
+/** Close in-process dashboard/refs. Persist Evidence stays up. */
+export async function releaseStationSidecars(
+	hoboHome: string,
+	stationId: string,
+): Promise<void> {
+	const key = sidecarKey(hoboHome, stationId);
+	const held = running.get(key);
+	if (!held) return;
+	await held.sidecars.close();
 }
 
 /** Tear down occupancy sidecars regardless of attach count. */
@@ -253,9 +476,23 @@ export async function stopStationSidecars(
 ): Promise<void> {
 	const key = sidecarKey(hoboHome, stationId);
 	const held = running.get(key);
-	if (!held) return;
-	held.refs = 1;
-	await held.sidecars.close();
+	const disk = readStationSidecars(hoboHome, stationId);
+	if (held) {
+		held.refs = 1;
+		await held.sidecars.close();
+	}
+	const evidencePid = disk?.evidencePid ?? held?.sidecars.evidencePid;
+	const evidenceUrl = disk?.evidenceUrl ?? held?.sidecars.evidenceUrl;
+	killEvidencePid(evidencePid);
+	await waitForEvidenceDown(evidenceUrl, evidencePid);
+	const path = stationSidecarsPath(hoboHome, stationId);
+	if (existsSync(path)) {
+		try {
+			unlinkSync(path);
+		} catch {
+			// discovery is best-effort
+		}
+	}
 }
 
 export function formatSidecarStrap(

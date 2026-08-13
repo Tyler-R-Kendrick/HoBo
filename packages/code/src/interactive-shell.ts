@@ -1074,6 +1074,7 @@ export async function runInteractiveShell(
 				hoboHome: shellHome,
 				projectRoot: options.cwd ?? process.cwd(),
 				env: shellEnv,
+				persistEvidence: true,
 			});
 		} catch {
 			sidecars = undefined;

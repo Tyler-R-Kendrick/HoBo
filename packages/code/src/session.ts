@@ -136,6 +136,7 @@ export async function startCodeSession(
 			sidecars = await startStationSidecars({
 				hoboHome: options.hoboHome,
 				projectRoot: options.projectRoot,
+				persistEvidence: true,
 			});
 		} catch {
 			sidecars = undefined;

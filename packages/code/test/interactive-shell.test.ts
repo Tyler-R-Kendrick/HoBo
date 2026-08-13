@@ -312,8 +312,14 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 				reducedMotion: true,
 				scriptedKeys: "\u0003",
 			});
-			// closed on quit — discovery removed
-			expect(readStationSidecars(home, "station:local")).toBeNull();
+			const { stopStationSidecars } = await import(
+				"../src/station-sidecars.js"
+			);
+			const disk = readStationSidecars(home, "station:local");
+			expect(disk?.evidenceUrl).toMatch(/127\.0\.0\.1/);
+			const still = await fetch(disk?.evidenceUrl ?? "");
+			expect(still.status).toBe(200);
+			await stopStationSidecars(home, "station:local");
 		} finally {
 			rmSync(home, { recursive: true, force: true });
 		}

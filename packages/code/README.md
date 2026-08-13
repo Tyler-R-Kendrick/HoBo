@@ -10,7 +10,8 @@ hobo-code template list
 hobo-code template "web frontend backed by an api"
 hobo-code template render bindle.named --params '{"resourceName":"shop"}'
 hobo-code
-# then: /template frontend backed by an api
+# then: /templates
+#        /template frontend backed by an api
 #        create a hello world app
 #        deploy to azure
 #        /review
@@ -38,7 +39,10 @@ The installed binary is **compiled** (`dist/`). Source lives in `src/`.
 | Link bin: `pnpm --filter @hobo/code link --global` (uses `bin/hobo-code.mjs`) | Symlink straight at `dist/bin/hobo-code.js` and forget rebuilds |
 | Evidence / optimizexp: exercise the **installed** `hobo-code` after build | Capture only via `node --import tsx src/bin/…` (can pass while dist is stale) |
 
-`bin/hobo-code.mjs` **auto-rebuilds** when `src/` is newer than `dist/` (skip with `HOBO_CODE_SKIP_STALE_REBUILD=1`).
+`bin/hobo-code.mjs` **auto-rebuilds** when `src/` is newer than `dist/` by
+running `tsc` for `@hobo/code` only (no nested `@hobo/core` / stations
+prebuild fan-out). Skip with `HOBO_CODE_SKIP_STALE_REBUILD=1`. If dependency
+`dist/` is missing, run `pnpm exec turbo run build --filter=@hobo/code`.
 
 | Binary | Product |
 |---|---|
@@ -49,14 +53,19 @@ The installed binary is **compiled** (`dist/`). Source lives in `src/`.
 
 On a real TTY, bare `hobo-code` opens the **HoBo InteractiveShell**, drawn to
 the rubberhose identity in [`site/DESIGN.md`](../../site/DESIGN.md) — Steamboat
-Willie ink and Cuphead title cards, *never flat SaaS chrome*:
+Willie ink and Cuphead title cards, *never flat SaaS chrome*
+([`DESIGN.md`](./DESIGN.md) — same tokens as the site). Chrome is a retained
+TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
 
 - **Title card** on entry: the Chewy wordmark framed in ink, then it scrolls
   into the transcript. It is a moment, not a permanent header.
 - **Ink cards** with hard sticker shadows (`┏━┓` + offset `▒`), not hairline
   rules or soft Material elevation.
 - **The transcript is the surface** — roughly 19 content rows on an 80x24,
-  where the previous chrome left about 8.
+  where the previous chrome left about 8. A command rail
+  (`[ /dev ] [ /templates ] [ /hobo ] …`) sits on the card so slash verbs
+  are visible without opening the palette. `/templates` and bare `/template`
+  list the local catalog (zero LLM); `/template <query>` searches.
 - **Strict black and white.** Vermillion appears only for a decision that can
   change the real tree; green only for done. `NO_COLOR` is honoured.
 - **Bo** rides the one-line status strap and squash-stretches only while a
@@ -66,7 +75,7 @@ Willie ink and Cuphead title cards, *never flat SaaS chrome*:
 |---|---|
 | type | talk to the model |
 | `/` | commands (`↑`/`↓` to pick, Enter to run) |
-| Tab | cycle chat → tasks → status |
+| Tab | cycle chat → tasks → status → resources |
 | `↑`/`↓`, PgUp/PgDn | scroll the transcript |
 | Esc | cancel the turn in flight |
 | Ctrl+C | quit |
@@ -176,8 +185,9 @@ prompt. Machine callers should branch on `code` and consume `remediation[]`.
 
 | Shell slash | One-shot CLI |
 |---|---|
+| `/templates` `/template` | `hobo-code template` · `hobo-code templates` (bare = list) |
 | `/agent` `/config` `/cost` `/harness` | `hobo-code agent` · `config` · `cost` · `harness` |
-| `/status` `/guide` `/tasks` `/login` | `hobo-code status` · `guide` · `tasks` · `auth login --agent` |
+| `/status` `/resources` `/guide` `/tasks` `/login` | `hobo-code status` · `resources` · `guide` · `tasks` · `auth login --agent` |
 | `/help` | keys + map · outside: `hobo-code help` |
 
 ### Multi-pane agent sessions (`hobo-code mux`)
@@ -336,8 +346,13 @@ exact-effect approval boundary; commits use only the reviewed index. Bounded
 panels show a `+`, always retain the current branch, and disable committing
 when the complete changed-file set cannot be reviewed.
 
-Inside the interactive shell, `/dev` runs the current project's Bindle through
-the same local Yard as `hobo dev`; it does not invent a static-site server.
+Inside the interactive shell, `/dev` (or saying `run it` / `debug it`) runs the
+current project's Bindle through the same local Yard as `hobo dev`; it does
+not invent a static-site server. The child is piped (no TTY): hobo-code sets
+`HOBO_CODE_DEV_BRIDGE=1`, starts Node with `--import tsx`, and links generated
+app deps (`@hobo/adapter-hono`, `@hobo/bindles`, `hono`) so `src/bindle.ts`
+loads without `pnpm install`. When `hobo` is not on PATH, it uses
+`packages/hobo/dist/bin/hobo.js`. Override with `HOBO_CODE_HOBO_BIN`.
 Use `/hobo <args>` for the full control plane, for example
 `/hobo yard status` or `/hobo plan`.
 
@@ -380,6 +395,8 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **auth** | Station login / status / logout (local auto, remote tenant+domain) |
 | **models** | Active model + BYOK env presence (open models; no secret values) |
 | status | Session / agent multiplexer chrome |
+| **resources** | Session topology + real endpoints (Station occupancy × `HOBO_ENV`) |
+| **dashboard** | Local Aspire SPA + OTel ingest + start/stop/Ready (ADR-0111 `:8787`) |
 | session | Resident branch/worktree sessions: tmux tabs/panes, harness agents, checkpoints, attach/switch, approved Git/PR delivery, and loopback browser control (`session --help`) |
 | **attach** | Dev-terminal attach (tmux reattach · mosh? · Tailscale overlay named endpoint) |
 | **tasks** | Background task board (Grok Build–shaped: click · tasks · workflows) |
@@ -395,13 +412,25 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | env | Optional hermetic shell + durable layout |
 | help | Plain help (or `--dense` glyph idioms) |
 
+Bare `hobo-code` paints through `buildShellTree` → `ShellChrome` inside a
+`BroadcastFrame` (algorithmic old-TV / film-broadcast bezel). Chat, slash,
+approval, and tasks/status/resources are queryable TUI components
+(`ChatTranscript`, `SlashPalette`, `ApprovalDialog`, `TextPane`), not pre-baked
+card strings. Every `tui-*` source is in DESIGN.md lint scope.
+
 `dev` reuses the durable Evidence port, report, screenshot/recording capture,
 replay, and `.hobo/recordings` capability exporter. Its browser boundary is
 protected by the TypeScript exact-message parser and
-`contracts/pacts/code-dev-browser-boundary.pact.json`. The Yard host maps the
-public `Host` onto overlay `parentOrigin` (the component-local rewrite stays
-internal) and serves `bo-idle.png` as bytes so the Bo idle launcher paints.
-**Open Evidence** is a direct read-only report link.
+`contracts/pacts/code-dev-browser-boundary.pact.json`. The printed **bindle**
+and **debug** URLs are the named endpoint
+(`http://web.<app>.local.hobo.localhost:<port>/?__hobo_debug=1` for debug). That
+view always serves the Evidence workspace chrome with the animated Bo idle
+launcher, then iframes the raw app (`__hobo_evidence_raw=1`). The loopback
+`127.0.0.1` listen URL is printed once as **loopback** so the IP stays visible.
+The Yard host maps the public `Host` onto overlay `parentOrigin` (the
+component-local rewrite stays internal) and serves `bo-idle.png` as bytes so
+the Bo idle launcher paints. **Open Evidence** is a direct read-only report
+link.
 
 **GHCP-adjacent differentiators:** animated title on bare TTY, enterprise-style Station auth, BYOK/open models via `models`, mediated sandbox (`isolate`/`session`).
 

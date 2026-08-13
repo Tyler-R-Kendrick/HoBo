@@ -36,6 +36,8 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(HOBO_CODE_VERBS).toContain("template");
 		expect(HOBO_CODE_VERBS).toContain("review");
 		expect(HOBO_CODE_VERBS).toContain("cost");
+		expect(HOBO_CODE_VERBS).toContain("resources");
+		expect(HOBO_CODE_VERBS).toContain("dashboard");
 		expect(HOBO_CODE_VERBS).toContain("harness");
 		expect(HOBO_CODE_VERBS).toContain("edit");
 		expect(HOBO_CODE_VERBS).toContain("config");
@@ -786,6 +788,46 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/prompt ·/);
 		expect(r.message).not.toMatch(/^✓ ★/m);
 		expect(r.exitCode).toBe(1);
+	});
+
+	it("resources is the same projection as JSON and names login when logged out", async () => {
+		const home = temp("hc-resources-");
+		const loggedOut = await runHoboCodeCli(["resources"], { hoboHome: home });
+		expect(loggedOut.ok).toBe(false);
+		expect(loggedOut.code).toBe("HOBO_CODE_RESOURCES");
+		expect(loggedOut.message).toMatch(/auth:out/);
+		expect(loggedOut.message).toMatch(/hobo-code auth login/);
+		expect(loggedOut.exitCode).toBe(1);
+
+		const login = await runHoboCodeCli(["auth", "login", "--agent"], {
+			hoboHome: home,
+		});
+		expect(login.ok).toBe(true);
+		const board = await runHoboCodeCli(["resources", "--json"], {
+			hoboHome: home,
+			env: { ...process.env, HOBO_HOME: home, HOBO_ENV: "preview" },
+		});
+		expect(board.ok).toBe(true);
+		expect(board.message).toMatch(/station:local/);
+		expect(board.message).toMatch(/preview/);
+		const payload = board.data as {
+			inventory?: { scope?: { environment?: string }; missing?: unknown[] };
+		};
+		expect(payload.inventory?.scope?.environment).toBe("preview");
+		expect(payload.inventory?.missing).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ kind: "yard" }),
+				expect.objectContaining({ kind: "bindle" }),
+			]),
+		);
+
+		const dash = await runHoboCodeCli(["dashboard", "--once", "--port", "0"], {
+			hoboHome: home,
+			env: { ...process.env, HOBO_HOME: home, HOBO_ENV: "preview" },
+		});
+		expect(dash.ok).toBe(true);
+		expect(dash.message).toMatch(/spa · http:\/\/127\.0\.0\.1:/);
+		expect(dash.message).toMatch(/otlp-http/);
 	});
 
 	it("plain status uses English hierarchy; dense keeps glyph box", async () => {

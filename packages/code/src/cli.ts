@@ -2,7 +2,7 @@
  * `hobo-code` CLI — coding harness + multi-node compute (ADR-0139).
  *
  * App-building agent CLI (not a control-plane management tool).
- *   dispatch (default) | status | session | attach | tasks | guide |
+ *   dispatch (default) | status | resources | session | attach | tasks | guide |
  *   scaffold | template | dev | isolate | promote | env | auth | models | cost | harness |
  *   edit | config | agent | help
  *
@@ -61,6 +61,7 @@ import {
 	type PaneLayout,
 } from "./editor-bridge.js";
 import { describeEveSubagentSurface } from "./eve.js";
+import { debugViewUrl } from "./evidence-overlay.js";
 import { matchExampleRequest, materializeExample } from "./example-catalog.js";
 import {
 	createBudgetTracker,
@@ -122,7 +123,15 @@ import { runReviewCommand } from "./review/review-command.js";
 import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
+import { startLocalDashboard } from "./session-dashboard.js";
 import { startCodeSession } from "./session.js";
+import {
+	assembleSessionResources,
+	filterSessionResources,
+	formatSessionResources,
+	type ResourceKind,
+	recordDevDeployment,
+} from "./session-resources.js";
 import {
 	describeAuthedStationSession,
 	stationDevEnv,
@@ -143,6 +152,7 @@ import {
 } from "./virtual-pane.js";
 import { findWorkspaceRoot } from "./workspace.js";
 import {
+	liveEndpointLines,
 	matchWorkspaceAction,
 	resolveRunnableProject,
 } from "./workspace-actions.js";
@@ -153,6 +163,8 @@ export const HOBO_CODE_VERBS = [
 	"vshell",
 	"machines",
 	"status",
+	"resources",
+	"dashboard",
 	"session",
 	"attach",
 	"mux",
@@ -326,6 +338,7 @@ const VALUE_FLAGS = new Set([
 	"e", // alias of --editor
 	"complete",
 	"run",
+	"kind",
 	"from",
 	"name",
 	"out",
@@ -436,6 +449,10 @@ function parseArgv(argv: readonly string[]): {
 		positional.push(a);
 	}
 
+	if (positional[0] === "templates") {
+		positional[0] = "template";
+		if (positional.length === 1) positional.push("list");
+	}
 	const first = positional[0];
 	// `hobo-code platform --help` keeps verb=platform (subcommand help).
 	// Bare `--help` / `help` → top-level help.
@@ -520,6 +537,8 @@ function helpTextPlain(): string {
 		"",
 		"Session & status:",
 		"  status     Session / agent panes in plain words (dense glyphs with --dense)",
+		"  resources  Session topology + real endpoints for this login × env",
+		"  dashboard  Local Aspire SPA + OTel + start/stop (ADR-0111)",
 		"  session    Isolation session + handback",
 		"  attach     Dev-terminal attach (tmux/mosh/Tailscale-shaped)",
 		"  tasks      Background task board (Grok Build–shaped)",
@@ -559,7 +578,7 @@ function helpTextPlain(): string {
 		"  hobo-code auth login --agent       # human-free agent path",
 		'  hobo-code "add a settings page"    # dispatch (default verb)',
 		"  hobo-code config | agent           # setup + agent-native inventory",
-		"  hobo-code status | tasks | attach | cost | harness | edit",
+		"  hobo-code status | resources | tasks | attach | cost | harness | edit",
 		"  hobo-code isolate my-run && hobo-code promote my-run",
 		"",
 		"Examples:",
@@ -646,7 +665,55 @@ const VERB_HELP_PLAIN: Record<
 		"  --json              Machine-readable status + herdr capabilities",
 		"  --help, -h          Show this help",
 		"",
-		"See also: hobo-code session · hobo-code auth status",
+		"See also: hobo-code session · hobo-code auth status · hobo-code resources",
+	],
+	resources: [
+		"hobo-code resources — session topology + real endpoints",
+		"",
+		"Shows every station, junction, yard, camp, and bindle in the current",
+		"logged-in Station occupancy for HOBO_ENV, with named URLs, backend",
+		"listen URLs, and resolved network addresses. Read-only.",
+		"",
+		"Usage:",
+		"  hobo-code resources",
+		"  hobo-code resources --kind bindle",
+		"  hobo-code resources --json",
+		"",
+		"What you see:",
+		"  · Occupied Station header (not a topology parent)",
+		"  · In-scope junctions / yards / camps / bindles",
+		"  · Endpoints: preferred URL · resolved addresses · fidelity · freshness",
+		"  · Missing layers named with a next step (never silently omitted)",
+		"",
+		"Flags:",
+		"  --kind <kind>      Filter: station | junction | yard | camp | bindle",
+		"  --json              Same projection as the TUI /resources pane",
+		"  --help, -h          Show this help",
+		"",
+		"Env:",
+		"  HOBO_ENV / HOBO_PROJECT / HOBO_BRANCH   Occupancy filter",
+		"",
+		"See also: hobo-code auth · hobo-code dev · hobo-code dashboard",
+	],
+	dashboard: [
+		"hobo-code dashboard — local Aspire-style resource board",
+		"",
+		"Co-launches the ADR-0111 local SPA (default http://127.0.0.1:8787)",
+		"over the session occupancy projection, plus OTLP ingest :4317/:4318.",
+		"Start/stop/restart and Ready=healthy live here. Fleet is camp-deferred",
+		"without a Camp connection.",
+		"",
+		"Usage:",
+		"  hobo-code dashboard",
+		"  hobo-code dashboard --once --json",
+		"",
+		"Flags:",
+		"  --port <n>          Dashboard listen port (HOBO_DEV_DASHBOARD_PORT)",
+		"  --once              Bind, print URLs, close",
+		"  --json              Machine-readable listen envelope",
+		"  --help, -h          Show this help",
+		"",
+		"See also: hobo-code resources · hobo-code dev",
 	],
 	session: [
 		"hobo-code session — resident tmux agent sessions + durable handback",
@@ -904,6 +971,7 @@ const VERB_HELP_PLAIN: Record<
 		"hobo-code template — local pattern search/render (zero LLM tokens)",
 		"",
 		"Usage:",
+		"  hobo-code template            # same as list",
 		"  hobo-code template list",
 		"  hobo-code template search <query>",
 		"  hobo-code template show <pattern-id>",
@@ -1274,6 +1342,8 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 		const tails: Record<string, string> = {
 			dispatch: "★d",
 			status: "st",
+			resources: "rs",
+			dashboard: "db",
 			session: "se",
 			attach: "at",
 			tasks: "tk",
@@ -1859,6 +1929,73 @@ export async function runHoboCodeCli(
 			dense,
 			platform,
 			dogfood: dogfoodSummary(platform.station.stationId),
+		});
+	}
+
+	if (verb === "resources") {
+		const inventory = await assembleSessionResources({
+			hoboHome,
+			env,
+		});
+		const kindRaw = (
+			typeof flags.kind === "string" ? flags.kind : args[0]
+		)?.toLowerCase();
+		const kinds: readonly ResourceKind[] = [
+			"station",
+			"junction",
+			"yard",
+			"camp",
+			"bindle",
+		];
+		const kind = kinds.find((row) => row === kindRaw);
+		const filtered = kind ? filterSessionResources(inventory, kind) : inventory;
+		const text = formatSessionResources(filtered);
+		return {
+			...ok("HOBO_CODE_RESOURCES", text, {
+				inventory: filtered,
+				text,
+			}),
+			ok: filtered.ok,
+			status: filtered.ok ? "ok" : "failed",
+			exitCode: filtered.ok ? 0 : 1,
+		};
+	}
+
+	if (verb === "dashboard") {
+		const port = Number(flags.port ?? env.HOBO_DEV_DASHBOARD_PORT ?? 8787);
+		const dash = await startLocalDashboard({
+			hoboHome,
+			env,
+			...(Number.isInteger(port) ? { port } : {}),
+		});
+		const once = flags.once === true;
+		if (once) await dash.close();
+		else if (deps.onDevSession) {
+			/* keep listening for tests via process lifetime */
+		} else {
+			const stop = (): void => {
+				void dash.close();
+			};
+			process.once("SIGINT", stop);
+			process.once("SIGTERM", stop);
+		}
+		const text = panel("◎ dashboard", [
+			`spa · ${dash.url}`,
+			`otlp-http · ${dash.otlpHttpUrl}`,
+			`otlp-grpc · 127.0.0.1:${dash.otlpGrpcPort}`,
+			`env · ${env.HOBO_ENV ?? "local-dev"}`,
+			once ? "probe · bound; stopped" : "live · Ctrl-C to stop",
+		]);
+		return ok("HOBO_CODE_DASHBOARD", text, {
+			dashboard: {
+				url: dash.url,
+				port: dash.port,
+				otlpHttpUrl: dash.otlpHttpUrl,
+				otlpHttpPort: dash.otlpHttpPort,
+				otlpGrpcPort: dash.otlpGrpcPort,
+				stopped: once,
+			},
+			text,
 		});
 	}
 
@@ -2457,11 +2594,12 @@ export async function runHoboCodeCli(
 			});
 			const deployed = session;
 			const fetchUrl = deps.fetch ?? globalThis.fetch;
-			const [appProbe, controlsProbe] = await Promise.all([
+			const [appProbe, debugProbe, controlsProbe] = await Promise.all([
 				fetchUrl(deployed.appUrl),
+				fetchUrl(debugViewUrl(deployed.appUrl)),
 				fetchUrl(deployed.controlsUrl),
 			]);
-			const probes = [appProbe, controlsProbe];
+			const probes = [appProbe, debugProbe, controlsProbe];
 			if (probes.some((probe) => !probe.ok)) {
 				throw new Error(
 					`Bindle deployment probe failed (${probes.map((probe) => probe.status).join("/")})`,
@@ -2481,14 +2619,43 @@ export async function runHoboCodeCli(
 				process.once("SIGINT", () => stop(130));
 				process.once("SIGTERM", () => stop(143));
 			}
+			try {
+				recordDevDeployment({
+					hoboHome,
+					scope: {
+						stationId: station.stationId,
+						tenant: station.tenant,
+						environment: station.environment,
+						...(station.project ? { project: station.project } : {}),
+						...(station.branch ? { branch: station.branch } : {}),
+					},
+					bindleName:
+						resolveRunnableProject(projectDir)?.split(/[/\\]/u).at(-1) ??
+						"app",
+					appUrl: deployed.appUrl,
+					debugUrl: deployed.debugUrl,
+					controlsUrl: deployed.controlsUrl,
+					reportUrl: deployed.reportUrl,
+					...(deployed.namedUrl !== undefined
+						? { namedUrl: deployed.namedUrl }
+						: {}),
+				});
+			} catch {
+				// Last-seen persist must never abort a live serve.
+			}
 			const text = panel("◎ dev", [
-				`bindle · ${deployed.appUrl}`,
-				...(deployed.namedUrl ? [`named · ${deployed.namedUrl}`] : []),
-				`debug · ${deployed.debugUrl}`,
-				`controls · ${deployed.controlsUrl}`,
-				`report · ${deployed.reportUrl}`,
-				`station · ${station.stationId}`,
-				`env · ${station.environment}`,
+				...liveEndpointLines({
+					appUrl: deployed.appUrl,
+					debugUrl: deployed.debugUrl,
+					controlsUrl: deployed.controlsUrl,
+					reportUrl: deployed.reportUrl,
+					...(deployed.namedUrl !== undefined
+						? { namedUrl: deployed.namedUrl }
+						: {}),
+					stationId: station.stationId,
+					environment: station.environment,
+					emphasis: "run",
+				}),
 				`tenant · ${station.tenant}`,
 				`yard · local`,
 				`evidence · ${displayPath(deployed.evidencePath, { hoboHome, cwd: projectDir })}`,
@@ -2512,7 +2679,7 @@ export async function runHoboCodeCli(
 					evidencePath: deployed.evidencePath,
 					served: {
 						appStatus: appProbe.status,
-						debugStatus: appProbe.status,
+						debugStatus: debugProbe.status,
 						controlsStatus: controlsProbe.status,
 					},
 					stopped: once,
@@ -2528,7 +2695,8 @@ export async function runHoboCodeCli(
 				]),
 				[
 					"ensure the project has src/bindle.ts or dist/bindle.js",
-					"ensure the hobo CLI is on PATH (or set HOBO_CODE_HOBO_BIN)",
+					"ensure the hobo CLI is on PATH, or run from this repo (workspace packages/hobo/dist/bin/hobo.js is used automatically)",
+					"or set HOBO_CODE_HOBO_BIN to the composed hobo binary",
 					"choose free ports with --port and --debug-port",
 				],
 			);

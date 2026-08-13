@@ -3,8 +3,8 @@
  *
  * Architecture (ADR note in ARCHITECTURE.md):
  * - **This module owns chrome** (header/Bo, chat, tasks, slash, footer).
- * - Rendering rides pi-tui's differential renderer (`@earendil-works/pi-tui`)
- *   as a library — HoBo still owns every visible line; Pi is not the product UI.
+ * - Chrome is a retained semantic TUI tree (`tui-tree` + React-style
+ *   `tui-components.tsx`). `pi-tui` is only the differential framebuffer.
  * - Frames repaint only when state changes; idle Bo ticks that resolve to the
  *   same sprite frame request no render at all.
  *
@@ -23,14 +23,11 @@ import {
 import { inspectCost } from "./cost.js";
 import { buildTasksSurface } from "./grok-build-parity.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
+import { type AccentName, titleCard } from "./rubberhose.js";
 import {
-	type AccentName,
-	fitCells,
-	INK,
-	inkCard,
-	statusStripe,
-	titleCard,
-} from "./rubberhose.js";
+	assembleSessionResources,
+	formatSessionResources,
+} from "./session-resources.js";
 import type {
 	EngineTurnEvent,
 	EngineTurnResult,
@@ -53,10 +50,21 @@ import {
 	formatStationStrap,
 } from "./station-session.js";
 import { buildMultiplexerStatus, createPane, renderStatusText } from "./tui.js";
+import { BROADCAST_INNER_INSET } from "./tui-broadcast.js";
+import {
+	ApprovalDialog,
+	ChatTranscript,
+	ShellChrome,
+	SlashPalette,
+	TextPane,
+} from "./tui-components.js";
+import { clearWrapCache, wrapMessage } from "./tui-layout.js";
+import { renderTuiTree } from "./tui-render.js";
+import type { TuiNode } from "./tui-tree.js";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
-export type ShellFocus = "chat" | "tasks" | "status" | "slash";
+export type ShellFocus = "chat" | "tasks" | "status" | "resources" | "slash";
 
 export type ShellAgentState = "idle" | "working" | "blocked" | "done";
 
@@ -69,6 +77,8 @@ export interface ShellMessage {
 export interface ShellSlashItem {
 	readonly name: string;
 	readonly description: string;
+	/** Extra names that resolve to this item (`/templates` → `/template`). */
+	readonly aliases?: readonly string[];
 	/** When set, shell invokes this CLI argv via the host callback. */
 	readonly argv?: readonly string[];
 	/** Built-in action id when not a CLI verb. */
@@ -109,6 +119,7 @@ export interface InteractiveShellState {
 	readonly inputRows: number;
 	readonly statusPlain: string;
 	readonly tasksPlain: string;
+	readonly resourcesPlain: string;
 	readonly footerHints: string;
 	readonly modelLabel: string;
 	readonly costLabel: string;
@@ -157,6 +168,16 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 	},
 	{ name: "status", description: "Session / agent panes", argv: ["status"] },
 	{
+		name: "resources",
+		description: "Session topology + real endpoints",
+		argv: ["resources"],
+	},
+	{
+		name: "dashboard",
+		description: "Local Aspire SPA + OTel + start/stop",
+		argv: ["dashboard"],
+	},
+	{
 		name: "sessions",
 		description: "Resident tmux sessions",
 		argv: ["session", "list"],
@@ -191,7 +212,8 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 	{ name: "clear", description: "Clear chat transcript", action: "clear" },
 	{
 		name: "template",
-		description: "Search/render HoBo patterns with zero LLM tokens",
+		aliases: ["templates"],
+		description: "List / search / render HoBo patterns (zero LLM)",
 		argv: ["template"],
 	},
 	{
@@ -224,65 +246,10 @@ function clamp(n: number, lo: number, hi: number): number {
 	return Math.max(lo, Math.min(hi, n));
 }
 
-function wrapText(text: string, width: number): string[] {
-	const w = Math.max(8, width);
-	const out: string[] = [];
-	for (const para of text.split("\n")) {
-		if (para.length === 0) {
-			out.push("");
-			continue;
-		}
-		let rest = para;
-		while (rest.length > w) {
-			let breakAt = rest.lastIndexOf(" ", w);
-			if (breakAt < w * 0.5) breakAt = w;
-			out.push(rest.slice(0, breakAt).trimEnd());
-			rest = rest.slice(breakAt).trimStart();
-		}
-		out.push(rest);
-	}
-	return out;
-}
+export { clearWrapCache, peekWrapCache } from "./tui-layout.js";
 
-/** Per-message wrap cache — messages are immutable, so re-wrapping the whole
- * transcript on every frame is pure waste. Keyed by message object. */
-let wrapCache = new WeakMap<
-	ShellMessage,
-	{ readonly width: number; readonly lines: readonly string[] }
->();
-
-function messagePrefix(role: ShellMessage["role"]): string {
-	return role === "user"
-		? "you · "
-		: role === "assistant"
-			? "Bo  · "
-			: role === "product"
-				? "··· · "
-				: "sys · ";
-}
-
-/** Drop every cached wrap — used when the renderer asks for a clean slate. */
-export function clearWrapCache(): void {
-	wrapCache = new WeakMap();
-}
-
-/** Test probe: is this message currently cached? Makes invalidation observable. */
-export function peekWrapCache(
-	message: ShellMessage,
-): { readonly width: number; readonly lines: readonly string[] } | undefined {
-	return wrapCache.get(message);
-}
-
-function wrapMessage(m: ShellMessage, width: number): readonly string[] {
-	const hit = wrapCache.get(m);
-	if (hit && hit.width === width) return hit.lines;
-	// Pre-rendered art (the title card) is already fitted — wrapping it would
-	// shred the frame. Detect it by its ink and pass it through untouched.
-	const lines = m.text.includes(INK.topLeft)
-		? m.text.split("\n").map((l) => fitCells(l, width))
-		: wrapText(messagePrefix(m.role) + m.text, width);
-	wrapCache.set(m, { width, lines });
-	return lines;
+function slashNames(item: ShellSlashItem): readonly string[] {
+	return item.aliases ? [item.name, ...item.aliases] : [item.name];
 }
 
 export function filterSlash(
@@ -291,20 +258,46 @@ export function filterSlash(
 ): ShellSlashItem[] {
 	const f = filter.trim().toLowerCase().replace(/^\//, "");
 	if (!f) return [...items];
-	return items.filter(
-		(i) => i.name.includes(f) || i.description.toLowerCase().includes(f),
+	return items.filter((item) => {
+		const names = slashNames(item);
+		return (
+			names.some(
+				(name) => name.includes(f) || f.startsWith(name) || name.startsWith(f),
+			) || item.description.toLowerCase().includes(f)
+		);
+	});
+}
+
+function slashItemByName(name: string): ShellSlashItem | undefined {
+	const key = name.toLowerCase();
+	return DEFAULT_SLASH_ITEMS.find((candidate) =>
+		slashNames(candidate).includes(key),
 	);
 }
 
-function slashItemForInput(text: string): ShellSlashItem | undefined {
+/** Bare `/template` (and `/templates`) lists; extra words search or subcommand. */
+export function resolveSlashArgv(
+	item: ShellSlashItem,
+	extraArgs: readonly string[] = [],
+): readonly string[] | undefined {
+	if (!item.argv) return undefined;
+	if (item.name === "sessions") {
+		return extraArgs.length > 0 ? ["session", ...extraArgs] : item.argv;
+	}
+	if (item.name === "template") {
+		return extraArgs.length > 0
+			? ["template", ...extraArgs]
+			: ["template", "list"];
+	}
+	return extraArgs.length > 0 ? [...item.argv, ...extraArgs] : item.argv;
+}
+
+export function slashItemForInput(text: string): ShellSlashItem | undefined {
 	const [name = "", ...args] = text.slice(1).trim().split(/\s+/);
-	const item = DEFAULT_SLASH_ITEMS.find(
-		(candidate) => candidate.name === name.toLowerCase(),
-	);
-	if (!item?.argv || args.length === 0) return item;
-	return item.name === "sessions"
-		? { ...item, argv: ["session", ...args] }
-		: { ...item, argv: [...item.argv, ...args] };
+	const item = slashItemByName(name);
+	if (!item) return undefined;
+	const argv = resolveSlashArgv(item, args);
+	return argv ? { ...item, argv } : item;
 }
 
 /**
@@ -433,6 +426,9 @@ export function createInitialShellState(
 		"  Regions: task-row · still-working · status-chip (keyboard focus now)",
 		"  Honest residual: fullscreen mouse TUI is not claimed complete yet",
 	].join("\n");
+	const resourcesPlain = formatSessionResources(
+		assembleSessionResources({ hoboHome, env }),
+	);
 
 	const welcome: ShellMessage[] =
 		options.welcome === false
@@ -440,15 +436,16 @@ export function createInitialShellState(
 			: [
 					{
 						role: "product",
-						text: [
-							titleCard(HOBO_LOGO_TUI, {
-								width: Math.min(width - 3, 70),
-								subtitle: "a coding harness that rides the rails",
-								flat: true,
-							}).join("\n"),
-							"",
-							"Type to talk to Bo. / for commands. Tab for tasks and status.",
-						].join("\n"),
+						text: titleCard(HOBO_LOGO_TUI, {
+							width: Math.min(width - BROADCAST_INNER_INSET, 70),
+							subtitle: "a coding harness that rides the rails",
+							flat: true,
+						}).join("\n"),
+						at: Date.now(),
+					},
+					{
+						role: "product",
+						text: "Type to talk to Bo. /templates lists patterns. Tab for tasks, status, and resources.",
 						at: Date.now(),
 					},
 				];
@@ -472,6 +469,7 @@ export function createInitialShellState(
 		inputRows: 1,
 		statusPlain,
 		tasksPlain,
+		resourcesPlain,
 		footerHints: "Tab focus · / slash · ? help · Ctrl+C quit",
 		modelLabel: ENGINE_NONE_LABEL,
 		costLabel: `$${cost.budget.spendUsd.toFixed(2)}/$${cost.budget.capUsd.toFixed(2)} · ${cost.budget.routingPolicy}`,
@@ -503,7 +501,7 @@ function boHeaderRows(state: InteractiveShellState): string[] {
 
 /**
  * Render one full-screen frame. Fixed structure for tests:
- * header (logo+Bo) · status line · body (chat|tasks|status|slash) · input · footer.
+ * header (logo+Bo) · status line · body (chat|tasks|status|resources|slash) · input · footer.
  * Geometry is stable for a given (width, height, dense) — animation frames
  * only change the Bo rows' bytes, never the line count.
  */
@@ -526,9 +524,7 @@ export function boMarker(state: InteractiveShellState): string {
 /** The one-line strap: who is thinking, on what, at what cost. */
 export function statusSegments(state: InteractiveShellState): string[] {
 	const modelChip =
-		state.modelLabel === ENGINE_NONE_LABEL
-			? "engine:none"
-			: state.modelLabel;
+		state.modelLabel === ENGINE_NONE_LABEL ? "engine:none" : state.modelLabel;
 	return [
 		`${boMarker(state)} hobo-code`,
 		state.stationLabel,
@@ -554,75 +550,48 @@ export function statusSegments(state: InteractiveShellState): string[] {
  * Every line is exactly `width` cells and the line count is stable for a
  * given (width, height), so the differential renderer sees no churn.
  */
-export function renderShellFrame(state: InteractiveShellState): string {
-	const w = state.width;
-	const lines: string[] = [];
-
-	// Bottom furniture: the status strap. The prompt is a real Editor
-	// component rendered beneath this frame, and it reports its own height.
+function viewportRows(state: InteractiveShellState): number {
 	const bodyRows = Math.max(3, state.height - 1 - state.inputRows);
-	// Card overhead: top rule + bottom rule + shadow row.
-	const inner = Math.max(1, bodyRows - 3);
-	const innerWidth = w - 3;
+	return Math.max(1, bodyRows - 4);
+}
 
-	let cardTitle: string;
+/** Retained semantic tree for the current frame (tests / evidence). */
+export function buildShellTree(state: InteractiveShellState) {
+	const inner = viewportRows(state);
+	const innerWidth = state.width - BROADCAST_INNER_INSET;
+	let title = "chat";
 	let accent: AccentName = "none";
-	let body: string[] = [];
+	let surface: TuiNode;
 
 	if (state.pendingApproval) {
-		// The gate owns the frame; vermillion is reserved for exactly this
-		// class of moment (a decision that can change the real tree).
-		cardTitle = `promote ${state.pendingApproval.runId}?`;
+		title = `promote ${state.pendingApproval.runId}?`;
 		accent = "spark";
-		const { changes, sandboxRoot } = state.pendingApproval;
-		body.push("The canonical tree is untouched until you say yes.");
-		body.push("");
-		const room = Math.max(1, inner - 6);
-		for (const change of changes.slice(0, room)) {
-			body.push(`  ${change.status.padEnd(2)} ${change.path}`);
-		}
-		if (changes.length > room) {
-			body.push(`  … ${changes.length - room} more file(s)`);
-		}
-		if (changes.length === 0) {
-			body.push("  (no file changes detected in the sandbox)");
-		}
-		body.push("");
-		body.push(`  ${APPROVAL_PROMPT}`);
-		body.push(`  squash-only, gated, audited · ${sandboxRoot}`);
+		surface = ApprovalDialog({
+			runId: state.pendingApproval.runId,
+			sandboxRoot: state.pendingApproval.sandboxRoot,
+			changes: state.pendingApproval.changes,
+			prompt: APPROVAL_PROMPT,
+		});
 	} else if (state.slashOpen) {
-		cardTitle = "commands";
+		title = "commands";
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
-		if (items.length === 0) {
-			body.push("  (nothing matches that)");
-		} else {
-			const visible = Math.max(1, inner - 1);
-			const start = clamp(
-				state.slashIndex - Math.floor((visible - 1) / 2),
-				0,
-				Math.max(0, items.length - visible),
-			);
-			const end = Math.min(items.length, start + visible);
-			for (let i = start; i < end; i += 1) {
-				const item = items[i]!;
-				const mark = i === state.slashIndex ? "▸" : " ";
-				body.push(`${mark} /${item.name.padEnd(9)} ${item.description}`);
-			}
-			if (items.length > visible) {
-				body.push(`  ${start + 1}-${end} of ${items.length}`);
-			}
-		}
+		surface = SlashPalette({
+			items,
+			selectedIndex: state.slashIndex,
+		});
 	} else if (state.focus === "tasks") {
-		cardTitle = "tasks";
-		body = wrapText(state.tasksPlain, innerWidth);
+		title = "tasks";
+		surface = TextPane({ id: "tasks-pane", text: state.tasksPlain });
 	} else if (state.focus === "status") {
-		cardTitle = "status";
-		body = wrapText(state.statusPlain, innerWidth);
+		title = "status";
+		surface = TextPane({ id: "status-pane", text: state.statusPlain });
+	} else if (state.focus === "resources") {
+		title = "resources";
+		surface = TextPane({ id: "resources-pane", text: state.resourcesPlain });
 	} else {
-		cardTitle = "chat";
 		const transcript: string[] = [];
-		for (const m of state.messages) {
-			for (const row of wrapMessage(m, innerWidth)) transcript.push(row);
+		for (const message of state.messages) {
+			transcript.push(...wrapMessage(message, innerWidth));
 			transcript.push("");
 		}
 		const scroll = clamp(
@@ -630,23 +599,30 @@ export function renderShellFrame(state: InteractiveShellState): string {
 			0,
 			Math.max(0, transcript.length - inner),
 		);
-		const end = transcript.length - scroll;
-		body = transcript.slice(Math.max(0, end - inner), end);
-		if (scroll > 0) cardTitle = `chat ↑${scroll}`;
+		if (scroll > 0) title = `chat ↑${scroll}`;
+		surface = ChatTranscript({
+			messages: state.messages,
+			width: innerWidth,
+			scroll,
+		});
 	}
 
-	while (body.length < inner) body.push("");
-	lines.push(
-		...inkCard(body.slice(0, inner), {
-			width: w,
-			title: cardTitle,
-			accent,
-		}),
-	);
+	const phase =
+		state.reducedMotion || state.agentState !== "working"
+			? 0
+			: Math.floor(state.tickMs / BO_IDLE_TICK_MS);
+	return ShellChrome({
+		title,
+		accent,
+		segments: statusSegments(state),
+		viewportRows: inner,
+		phase,
+		children: surface,
+	});
+}
 
-	lines.push(statusStripe(statusSegments(state), w));
-
-	return lines.join("\n");
+export function renderShellFrame(state: InteractiveShellState): string {
+	return renderTuiTree(buildShellTree(state), state.width);
 }
 
 /** Assert product identity tokens for persona hard gates. */
@@ -775,7 +751,7 @@ export function reduceShellKey(
 	}
 	// Tab — cycle focus
 	if (key === "\t") {
-		const order: ShellFocus[] = ["chat", "tasks", "status"];
+		const order: ShellFocus[] = ["chat", "tasks", "status", "resources"];
 		const i = order.indexOf(state.focus === "slash" ? "chat" : state.focus);
 		const next = order[(i + 1) % order.length]!;
 		return {
@@ -795,7 +771,7 @@ export function reduceShellKey(
 				"hobo-code shell help",
 				"  Type a prompt to queue a build task (see /about for what runs it).",
 				"  / opens the slash palette (↑/↓ to pick, Enter to run).",
-				"  Tab cycles Chat → Tasks → Status. ↑/↓ or PgUp/PgDn scroll chat.",
+				"  Tab cycles Chat → Tasks → Status → Resources. ↑/↓ or PgUp/PgDn scroll chat.",
 			].join("\n"),
 			at: Date.now(),
 		};
@@ -818,6 +794,7 @@ export function reduceShellKey(
 					},
 				};
 			}
+			const argv = resolveSlashArgv(item);
 			return {
 				state: {
 					...state,
@@ -828,7 +805,7 @@ export function reduceShellKey(
 					focus: "chat",
 					chatScroll: 0,
 				},
-				slash: item,
+				slash: argv ? { ...item, argv } : item,
 			};
 		}
 		const text = state.input.trim();
@@ -919,7 +896,7 @@ export function reduceShellKey(
 export function cycleFocus(
 	state: InteractiveShellState,
 ): InteractiveShellState {
-	const order: ShellFocus[] = ["chat", "tasks", "status"];
+	const order: ShellFocus[] = ["chat", "tasks", "status", "resources"];
 	const i = order.indexOf(state.focus === "slash" ? "chat" : state.focus);
 	return { ...state, focus: order[(i + 1) % order.length]! };
 }
@@ -1129,7 +1106,8 @@ export async function runInteractiveShell(
 			state = appendProduct(
 				state,
 				[
-					"Commands: type / and pick — /dev /hobo /ide /config /tasks /status /about /quit",
+					"Commands: type / and pick — /dev /templates /hobo /ide /config /tasks /status /resources /about /quit",
+					"Templates: /templates lists; /template <query> searches (zero LLM).",
 					"Resident control: /sessions <args> (plain /sessions lists).",
 					"HoBo control plane: /hobo <args> (for example /hobo yard status).",
 					"Chat: type a prompt and Enter — it is queued as a dispatch task (/about).",
@@ -1180,11 +1158,16 @@ export async function runInteractiveShell(
 
 	const onSubmit = async (prompt: string) => {
 		if (options.host.tryWorkspaceAction) {
-			const handled = await options.host.tryWorkspaceAction(prompt);
-			if (handled !== null) {
-				if (quit) return;
-				state = appendAssistant(state, handled.slice(0, 8000), "idle");
-				return;
+			turnInFlight = true;
+			try {
+				const handled = await options.host.tryWorkspaceAction(prompt);
+				if (handled !== null) {
+					if (quit) return;
+					state = appendAssistant(state, handled.slice(0, 8000), "idle");
+					return;
+				}
+			} finally {
+				turnInFlight = false;
 			}
 		}
 		if (options.host.streamTurn) {

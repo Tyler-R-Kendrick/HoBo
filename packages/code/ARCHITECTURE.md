@@ -4,7 +4,7 @@
 
 **Bare interactive `hobo-code` owns its chrome.** The default TTY path is
 `InteractiveShell` (`src/interactive-shell.ts`): HoBo logo + Bo, chat transcript,
-slash palette, tasks/status focus — **not** stock Pi Agent TUI.
+slash palette, tasks/status/resources focus — **not** stock Pi Agent TUI.
 
 | Mode | When |
 |---|---|
@@ -12,7 +12,7 @@ slash palette, tasks/status focus — **not** stock Pi Agent TUI.
 | **Pi TUI escape hatch** | `HOBO_CODE_TUI=pi` or `hobo-code --pi` only |
 | **One-shot verbs** | `help`, `status`, `dispatch`, `template`, … |
 
-`hobo-code template` / `/template` is the zero-LLM pattern route (`@hobo/patterns`, ADR-0153). It must not start a completion engine.
+`hobo-code template` / `/template` / `/templates` is the zero-LLM pattern route (`@hobo/patterns`, ADR-0153). It must not start a completion engine. Bare `/template` and `/templates` list the catalog; extra words search or run a subcommand (`render`, `apply`, …).
 
 Pi may still be used as a **completion engine** later; it must not be the
 product frame. Optimizexp / persona reviews that only score one-shot verbs
@@ -117,7 +117,7 @@ shell with a reason on stderr. The footer shows the model that actually runs
 ```
 hobo-code (standalone binary; dispatch default)
     │
-    ├─ InteractiveShell (default TTY)  Bo + chat + slash + tasks/status
+    ├─ InteractiveShell (default TTY)  Bo + chat + slash + tasks/status/resources
     ├─ Eve subagents            defineEveAgent / defineEveSubagent (filesystem-first)
     ├─ Secure sandbox stack     DeepAgents + OpenShell + MxC (planSecureSandbox)
     ├─ Workflow Worlds          Local World offline · Vercel World prod (worlds.ts)
@@ -172,6 +172,7 @@ raw DTOs. Invalid values throw at the boundary (parse-don't-validate).
 Presentation helpers stay pure and unit-tested:
 
 - **Default loading** — `renderDefaultLoadingScreen` (`splash.ts`): console **HoBo logo** + **Bo idle** from real `assets/bo-idle.png` via deterministic `sprite-tui.ts` half-block conversion (12 frames rest·bounce·blink). Generated frames in `_generated/bo-idle-tui-frames.ts`. **Fixed canvas** so frame advance never reflows. Empty standalone mux paints this instead of empty→★.
+- `tui-tree.ts` + `tui-components.tsx` + `tui-layout.ts` + `tui-render.ts` + `tui-broadcast.ts` — retained semantic TUI tree with React-style chrome. `ShellChrome` wraps the surface in `BroadcastFrame` (algorithmic CRT/film bezel) and composes `ChatTranscript`, `SlashPalette`, `ApprovalDialog`, `TextPane`, `CommandRail`, and `StatusStrap`. Every `tui-*` file is DESIGN.md-linted. `pi-tui` stays the Node framebuffer host; DESIGN.md tokens live in `tui-tokens.ts`.
 - `renderStatusText` / `renderStatusChip` — Herdr-style adaptive box: panes fold ≤4-wide; health glyphs; focus ▸; quiet omits default ★ next; chip omits herdr
 - `herdrMuxCapabilities` / `renderHerdrCapabilityFooter` — discoverable Herdr card (status footer + JSON); dense box stays quiet
 - `describeDevTerminalAttach` / `hobo-code attach` — tmux-like reattach + named endpoint; mosh optional; `--mode overlay` Tailscale-shaped (not control-plane admin)
@@ -185,7 +186,9 @@ Presentation helpers stay pure and unit-tested:
 - `renderOpenUiHtml` — dark shell + `1 · generate` rail + seal; lede `→edit|→lock|→codegen`; foot `Edit→lock|Lock→codegen|seal`
 - `formatHoboCodeResult` — closed panels: one-scan happy path is 3 lines (title · body · rule, soft omitted); FIX + code inline on fails
 - `atom-index.ts` — closed intent map first, then retrieve→Valibot→compose→**entity-aware merge**→emit (ADR-0152). Snippet bodies live in `@hobo/patterns` `atoms/` and are also listed by `hobo-code template`. `templates/intents/` owns phrases like "deploy to azure" / "same network". Snippet slots merge by entity; `@hobo.hole` emits `"use training"` / `training.define`, not invented logic. Derived cache `$HOBO_HOME/durable/code/template-index.sqlite`. High-confidence emits with zero inference; low-confidence refuses unless `allowEscalate`. Full `examples/` apps stay composition proofs.
-- `example-catalog.ts` + `workspace-actions.ts` + `station-session.ts` — Bo TUI turns "create a hello world app" / "run it" / "debug it" into emitted atoms plus live bindle/debug/controls/report URLs on the logged-in Station. The strap and Tab-status show station id/name/tenant and the occupancy environment (`HOBO_ENV` / isolation class). `hobo-code dev` forwards `HOBO_STATION` / `HOBO_TENANT` / `HOBO_ENV` to `hobo dev`.
+- `example-catalog.ts` + `workspace-actions.ts` + `station-session.ts` — Bo TUI turns "create a hello world app" / "run it" / "debug it" into emitted atoms plus live bindle/debug/controls/report URLs on the logged-in Station. Bindle/debug refer to the named endpoint (`debugViewUrl(namedUrl)`); `loopback ·` prints the `127.0.0.1` listen URL once. Yard serve always returns the Evidence workspace + Bo idle animation on `?__hobo_debug=1`, even when the Bindle is JSON. The strap and Tab-status show station id/name/tenant and the occupancy environment (`HOBO_ENV` / isolation class). `hobo-code dev` forwards `HOBO_STATION` / `HOBO_TENANT` / `HOBO_ENV` to `hobo dev`.
+- `session-resources.ts` — Aspire-style **session resource board** for the logged-in Station × `HOBO_ENV`. One projection (`assembleSessionResources`) feeds `/resources`, Tab-resources, `hobo-code resources [--json]`, and `hobo-code dashboard`. Station is occupancy header (ADR-0131), not a topology parent. Each endpoint carries named URL, backend listen URL, resolved addresses, fidelity, and freshness (`live` / `last-seen:<iso>`). Last-seen snapshots live at `HOBO_HOME/durable/code/sessions/<station>/<env>/endpoints.json` (written by `/dev`; persist never aborts a live serve). Cross-station peers require a grant. Local-mode remote backends fail closed. Loopback evidence URLs with `token=` are capability refs, not secrets.
+- `session-dashboard.ts` + `session-lifecycle.ts` + `session-otel.ts` — ADR-0111 **local** SPA on `:8787` (not `apps/dashboard`), OTLP ingest `:4317`/`:4318`, start/stop/restart, Ready only after a health probe passes, Plan 49 fleet as `camp-deferred` without a Camp.
 - `@hobo/patterns` — catalog source of truth; OpenUI starter plus atomic snippets. `hobo-code template list|search|render|explain|compose|apply` is the zero-LLM CLI (`0 LLM calls · 0 LLM tokens` on every receipt). Structural apply uses the TypeScript compiler API inside an isolation root. `hobo-code scaffold` remains the high-value starter adapter.
 - `review/` — durable review aggregate (ADR-0154). Commands `hobo.code.review-command/v1`; EventStore `hobo-code-reviews`. Coverage, threads, pending publish, exact-effect GitHub submit. Git workbench stays the mutation surface; review records what was inspected.
 - template `public/index.html` + `styles.css` — catalog starter first paint + matching step rail

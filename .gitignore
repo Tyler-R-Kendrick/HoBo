@@ -71,3 +71,6 @@ examples/wasp-opensaas/e2e-tests/
 .impeccable/config.local.json
 .impeccable/hook.cache.json
 **/.impeccable/hook.cache.json
+
+# Python bytecode (media/scripts, spriterrific runs)
+__pycache__/

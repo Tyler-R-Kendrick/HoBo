@@ -30,6 +30,13 @@ single source of truth.
 6. Atomic snippets live in `packages/patterns/atoms` and load through the
    catalog. `hobo-code template list|search|render` is the CLI. Chat emit
    (ADR-0152) reads the same trees.
+7. Structural TypeScript application uses the pinned TypeScript compiler API
+   (`typescript@^6`). **ts-morph was rejected:** it vendors its own TypeScript
+   compiler and lags the repo's TypeScript 6.0.3 toolchain, which would create
+   a second parser identity and a heavier production dependency. The applier
+   locates `bindle(...)` via the AST, inserts at node positions (so unrelated
+   comments survive), and re-parses the result. It never uses line-number
+   insertion or regular-expression source editing.
 
 ## Model2Vec rejection
 

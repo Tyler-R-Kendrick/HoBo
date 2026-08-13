@@ -338,6 +338,8 @@ const VALUE_FLAGS = new Set([
 	"kind",
 	"maturity",
 	"top-k",
+	"language",
+	"context",
 ]);
 
 /** Boolean flags (never consume the next token). */
@@ -358,6 +360,9 @@ const BOOL_FLAGS = new Set([
 	"approve",
 	"once",
 	"all",
+	"apply",
+	"explain",
+	"no-dense",
 ]);
 
 export class UnknownFlagError extends Error {
@@ -897,6 +902,11 @@ const VERB_HELP_PLAIN: Record<
 		"Usage:",
 		"  hobo-code template list",
 		"  hobo-code template search <query>",
+		"  hobo-code template show <pattern-id>",
+		"  hobo-code template render <pattern-id-or-query>",
+		"  hobo-code template explain <pattern-id-or-query>",
+		"  hobo-code template compose <query>",
+		"  hobo-code template apply <pattern-id-or-query> --out <isolation-root>",
 		"  hobo-code template --id bindle.web-only --json",
 		"  hobo-code template render bindle.web-api --name greeter",
 		'  hobo-code template "web frontend backed by an api"',
@@ -907,10 +917,20 @@ const VERB_HELP_PLAIN: Record<
 		"  --format <kind>     snippet|file|project|markdown|vscode|effects",
 		"  --params <json>     Typed render params",
 		"  --top-k <n>         Candidate cap",
+		"  --kind <kind>       Hard filter: concept|starter|guidance|transform",
+		"  --maturity <name>   Hard filter: stable|partial|experimental|legacy",
+		"  --language <id>     Hard filter",
+		"  --context <id>      Hard filter",
+		"  --target <path>     Isolation-relative apply path",
+		"  --out <dir>         Isolation root for apply",
+		"  --apply             Explicit mutation (still isolation-only)",
+		"  --explain           Channel evidence",
+		"  --no-dense          Disable optional dense retrieval",
 		"  --json              Machine-readable receipt",
 		"",
 		"Lists and renders reviewed catalog patterns and atomic snippets.",
 		"Does not start a model turn. Chat phrases stay on the session.",
+		"Zero-token means 0 LLM calls / input / output tokens, not zero CPU.",
 	],
 	review: [
 		"hobo-code review — durable local/PR/stack review (exact-effect publish)",

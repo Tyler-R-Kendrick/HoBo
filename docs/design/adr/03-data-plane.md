@@ -739,6 +739,7 @@ The first ADR-0152 emit path overwrote files in topo order. That made "add a sec
 3. **Zero-LLM guarantee is `hobo-code template` and `/template`.** Spies on model/dispatch seams stay at zero. Unprefixed chat is unchanged (#1087 create/run/debug stays).
 4. **`hobo new` and `hobo-code scaffold` are adapters.** Public output contracts stay.
 5. **Model2Vec is rejected** for this catalog size: would need install-time or committed weights. Ontology-vector + FTS/exact/RRF is enough.
+6. **Structural apply uses the pinned TypeScript compiler API**, not ts-morph (second compiler identity + TS 6 lag) and not regex/line-number edits. CLI starter bodies live in `patterns/starter/cli/<alias>/project/`.
 
 ### Consequences
 - **(+)** One package, proto+CUE, receipts, abstention, local SQLite index.

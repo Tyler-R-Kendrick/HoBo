@@ -123,6 +123,20 @@ function strings(value: unknown): string[] {
 	return value;
 }
 
+function csv(value: unknown): string[] {
+	if (value === undefined || value === "") return [];
+	if (typeof value === "string") {
+		return value
+			.split(",")
+			.map((item) => item.trim())
+			.filter(Boolean);
+	}
+	return strings(value)
+		.flatMap((item) => item.split(","))
+		.map((item) => item.trim())
+		.filter(Boolean);
+}
+
 function parseParameter(raw: unknown): PatternParameter {
 	if (typeof raw !== "object" || raw === null) {
 		throw new PatternParseError("parameter must be an object");
@@ -270,15 +284,28 @@ export function parsePatternQuery(input: unknown): PatternSearchRequest {
 		throw new PatternParseError("query must be a string or object");
 	}
 	const rec = input as Record<string, unknown>;
+	const topKRaw = rec.topK ?? rec.maxResults;
+	const topK =
+		typeof topKRaw === "number"
+			? topKRaw
+			: typeof topKRaw === "string"
+				? Number(topKRaw)
+				: 8;
+	const kinds = csv(rec.kind ?? rec.kinds);
+	const maturities = csv(rec.maturity ?? rec.maturities);
 	return create(PatternSearchRequestSchema, {
 		query: optStr(rec.query),
 		exactId: optStr(rec.id ?? rec.exactId),
-		maxResults: typeof rec.topK === "number" && rec.topK > 0 ? rec.topK : 8,
+		maxResults: Number.isFinite(topK) && topK > 0 ? topK : 8,
 		allowDense: rec.allowDense === true,
 		autoSelect: rec.autoSelect === true,
 		allowComposition: rec.compose === true,
 		languageFilter: optStr(rec.language),
 		contextFilter: optStr(rec.context),
+		kindFilter: kinds.map((item) => lookup(KIND, item, "kind")),
+		maturityFilter: maturities.map((item) =>
+			lookup(MATURITY, item, "maturity"),
+		),
 	});
 }
 

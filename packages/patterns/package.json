@@ -4,7 +4,7 @@
 	"license": "MIT",
 	"type": "module",
 	"private": true,
-	"files": ["dist", "LICENSE", "patterns", "vocabulary"],
+	"files": ["dist", "LICENSE", "patterns", "atoms", "vocabulary"],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -15,14 +15,15 @@
 		"@bufbuild/protobuf": "^2.12.1",
 		"@hobo/bindles": "workspace:*",
 		"@hobo/capability-profiles": "workspace:*",
-		"@hobo/storage-sqlite": "workspace:*"
+		"@hobo/storage-sqlite": "workspace:*",
+		"typescript": "^6.0.3"
 	},
 	"scripts": {
 		"codegen": "pnpm --dir ../.. exec node --import tsx packages/schema-tools/src/cli.ts --packages-root packages --filter patterns",
 		"prebuild": "pnpm --filter @hobo/bindles build && pnpm --filter @hobo/capability-profiles build && pnpm --filter @hobo/storage-sqlite build",
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
-		"lint": "biome check .",
+		"lint": "biome check src test scripts",
 		"pretest": "pnpm run build",
 		"test": "vitest run",
 		"eval": "node --import tsx scripts/run-evals.ts",

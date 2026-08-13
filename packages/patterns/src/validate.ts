@@ -1,4 +1,5 @@
 import { create } from "@bufbuild/protobuf";
+import * as ts from "typescript";
 
 import {
 	type PatternEvalCase,
@@ -76,6 +77,42 @@ export function validateRenderedPattern(input: {
 	for (const file of input.rendered.files) {
 		if (file.path.startsWith("/") || file.path.includes("..")) {
 			issues.push(`unsafe path ${file.path}`);
+		}
+		if (file.path.endsWith(".ts") || file.path.endsWith(".tsx")) {
+			const result = ts.transpileModule(file.contents, {
+				compilerOptions: {
+					target: ts.ScriptTarget.Latest,
+					module: ts.ModuleKind.ESNext,
+				},
+				fileName: file.path,
+				reportDiagnostics: true,
+			});
+			const first = result.diagnostics?.find(
+				(item) => item.category === ts.DiagnosticCategory.Error,
+			);
+			if (first) {
+				issues.push(
+					`${file.path}: ${ts.flattenDiagnosticMessageText(first.messageText, "\n")}`,
+				);
+			}
+			if (
+				input.pattern.id.startsWith("bindle.") &&
+				!input.pattern.id.includes("guidance") &&
+				!file.contents.includes("bindle(") &&
+				!file.contents.includes("b.api") &&
+				!file.contents.includes("b.web") &&
+				!file.contents.includes("b.kv") &&
+				!file.contents.includes("b.queue")
+			) {
+				issues.push(`${file.path}: missing Bindle authoring surface`);
+			}
+			if (
+				file.contents.includes("aws-") ||
+				file.contents.includes("provider:") ||
+				/sk-[A-Za-z0-9]{16,}/u.test(file.contents)
+			) {
+				issues.push(`${file.path}: prohibited provider pin or secret`);
+			}
 		}
 	}
 	return {

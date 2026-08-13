@@ -53,5 +53,14 @@ describe("hobo-code template", () => {
 		expect(result.ok).toBe(true);
 		const data = result.data as { llmCalls?: number };
 		expect(data.llmCalls).toBe(0);
+		expect(result.message).toContain("0 LLM calls · 0 LLM tokens");
+	});
+
+	it("prints a zero-token receipt on natural-language search", () => {
+		const result = runTemplateCommand({
+			args: ["web", "frontend", "backed", "by", "an", "api"],
+			flags: {},
+		});
+		expect(result.message).toContain("0 LLM calls · 0 LLM tokens");
 	});
 });

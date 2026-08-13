@@ -78,6 +78,13 @@ describe("ScaffoldingAgent atom path", () => {
 			appName: "demo",
 		});
 		expect(result.templateId).toBe(HIGH_VALUE_TEMPLATE_ID);
+		expect(() =>
+			scaffoldHighValueTemplate({
+				outputDir: join(out, "missing"),
+				appName: "demo",
+				templateId: "not-a-catalog-starter",
+			}),
+		).toThrow(/template not found/);
 		expect(result.openFeatureFlag).toBe("app.visual.primary");
 		expect(existsSync(join(out, "public", "index.html"))).toBe(true);
 		expect(existsSync(join(out, "features", "visual.feature"))).toBe(true);

@@ -186,12 +186,17 @@ package patterns
 }
 
 #PatternSearchRequest: {
-	query?:            string
-	exactId?:          string
-	maxResults:        int & >0
-	allowDense:        bool
-	autoSelect:        bool
-	allowComposition:  bool
+	query?:              string
+	exactId?:            string
+	kindFilter?: [...#PatternKind]
+	maturityFilter?: [...#PatternMaturity]
+	languageFilter?:     string
+	contextFilter?:      string
+	renderingFilter?:    #RenderingKind
+	maxResults:          int & >0
+	allowDense:          bool
+	autoSelect:          bool
+	allowComposition:    bool
 }
 
 #ChannelScore: {

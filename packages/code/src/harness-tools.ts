@@ -48,6 +48,24 @@ export const hoboScaffoldTool = defineTool({
 	run: async ({ input }) => runJson(["scaffold", input.name]),
 });
 
+/** Search or render a reviewed catalog pattern with zero LLM tokens. */
+export const hoboTemplateTool = defineTool({
+	name: "hobo_template",
+	description:
+		"Search or render a HoBo catalog pattern through hobo-code template. Zero LLM tokens. Does not start a model turn.",
+	input: v.object({
+		query: v.string(),
+		action: v.optional(
+			v.picklist(["search", "list", "render", "explain", "compose", "apply"]),
+		),
+	}),
+	run: async ({ input }) => {
+		if (input.action === "list") return runJson(["template", "list"]);
+		const action = input.action ?? "search";
+		return runJson(["template", action, ...input.query.trim().split(/\s+/)]);
+	},
+});
+
 /** Run the current Bindle on the local Yard and return live endpoints. */
 export const hoboDevTool = defineTool({
 	name: "hobo_dev",
@@ -68,5 +86,6 @@ export const HOBO_AGENT_TOOLS = [
 	hoboHiveStatusTool,
 	hoboDispatchTool,
 	hoboScaffoldTool,
+	hoboTemplateTool,
 	hoboDevTool,
 ];

@@ -23,8 +23,12 @@ single source of truth.
 3. Zero-LLM proof is owned by `hobo-code template` and `/template`. Ordinary
    chat is unchanged. Receipts record `llmCalls = 0`.
 4. `hobo new` and `hobo-code scaffold` are adapters. CLI starter file maps live
-   in this package (`renderCliStarterFiles`). The OpenUI starter moved to
-   `patterns/starter/code/openui-astryx-bindle/project/`.
+   in this package (`renderCliStarterFiles` walks catalog `project/` trees).
+   Exact `todo|api|agent|fullstack` queries select `starter.cli.*` via the
+   compatibility channel. The OpenUI starter moved to
+   `patterns/starter/code/openui-astryx-bindle/project/`. `hobo-code scaffold`
+   copies that catalog tree only — no leftover `templates/<id>` project
+   fallback.
 5. Application writes only inside a caller-supplied isolation root. Promotion
    stays `@hobo/code`.
 6. Atomic snippets live in `packages/patterns/atoms` and load through the

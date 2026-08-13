@@ -1,13 +1,18 @@
 # `@hobo/code` · binary **`hobo-code`**
 
-Atomic templates (ADR-0152) emit from the **interactive session**, not a
-retrieve verb. Start Bo and say the phrase:
+Catalog patterns and atomic snippets render through **`hobo-code template`**
+and **`/template`** (ADR-0153). That route is offline and records
+`0 LLM calls · 0 LLM tokens`. Known chat phrases (ADR-0152) still emit from
+the interactive session.
 
 ```bash
+hobo-code template list
+hobo-code template "web frontend backed by an api"
+hobo-code template render bindle.named --params '{"resourceName":"shop"}'
 hobo-code
-# then: create a hello world app
+# then: /template frontend backed by an api
+#        create a hello world app
 #        deploy to azure
-#        bundle apps in the same network
 #        /review
 ```
 

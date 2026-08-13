@@ -58,6 +58,11 @@ describe("@hobo/patterns", () => {
 			"starter.cli.agent",
 			"starter.cli.fullstack",
 			"starter.code.openui-astryx-bindle",
+			"bindle.web-api",
+			"bindle.web-only",
+			"http.api.hello",
+			"station.init",
+			"arch.proto-cue-pair",
 		]) {
 			expect(ids.has(id), id).toBe(true);
 		}

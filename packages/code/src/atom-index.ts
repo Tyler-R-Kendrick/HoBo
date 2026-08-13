@@ -602,7 +602,7 @@ export function renderAtomCatalogInstructions(
 		(item) => `- ${item.id}: ${item.description} ← ${item.atoms.join(" + ")}`,
 	);
 	return [
-		"Atomic templates load from this repo (templates/atoms). When the user says a known phrase in this chat session, emit them — do not invent a CLI verb and do not fetch. High-confidence hits emit with zero inference. Low-confidence refuses (or escalates only when allowed).",
+		"Atomic templates load from @hobo/patterns (packages/patterns/atoms). CLI: hobo-code template list|search|render. When the user says a known phrase in this chat session, emit them — do not invent a second verb and do not fetch. High-confidence hits emit with zero inference. Low-confidence refuses (or escalates only when allowed).",
 		"Compositions:",
 		...compositions,
 		"Atoms:",

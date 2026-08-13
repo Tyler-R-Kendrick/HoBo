@@ -702,7 +702,7 @@ hobo-code pins three external foundations as **composition contracts** (not vend
 Bo was emitting whole reference apps, or inventing Bindles with an LLM, for intents that already exist as literal snippets in `examples/`. A first atom slice used whole-file `atom.json` units and a process-local FTS5 index. That conflated topology, env injection, and handlers; skipped Tier-0 architecture-guard files; and left the embedder and confidence policy underspecified.
 
 ### Decision
-1. **Atoms are parameterized multi-line snippets** under `packages/code/templates/atoms/<id>/` (`meta.json` + `body/` + `acceptance.json`). Each atom declares `requires` / `provides` capability tags. They are not whole apps and not single lines.
+1. **Atoms are parameterized multi-line snippets** under `packages/patterns/atoms/<id>/` (`meta.json` + `body/` + `acceptance.json`). Each atom declares `requires` / `provides` capability tags. They are not whole apps and not single lines. `hobo-code template` lists/renders them; chat emit stays on the session.
 2. **Tier-0 architecture-guard atoms are mandatory:** konsistent layout, proto+CUE pair, Pact stub, package skeleton. Hello-world composition includes them so an emitted Bindle can pass architecture guards.
 3. **Source of truth is the committed corpus.** The SQLite file at `$HOBO_HOME/durable/code/template-index.sqlite` is a rebuildable derived cache (one writer, WAL, `file://` offline fallback; NATS JetStream Object Store remains the preferred replica *target* for Station stores, not a second source of truth for atoms).
 4. **Embedder pin:** `hobo-hashed-trigram-v1`, dim 256, n=3, FNV-1a, SHA-256 content hash of `id|dim|n|vocab`. Domain vocabulary includes bindle, campEnv, dependsOn, services__api__http__0, stationId, trail, junction, openFeature, litestream, NATS JetStream Object Store, konsistent, protobuf, cue, pact. `LocalEmbedder` is the ONNX/transformers.js swap slot. **No remote embedding API.**
@@ -743,7 +743,7 @@ The first ADR-0152 emit path overwrote files in topo order. That made "add a sec
 ### Consequences
 - **(+)** One package, proto+CUE, receipts, abstention, local SQLite index.
 - **(+)** `hobo new` and `hobo-code scaffold` stay public adapters; OpenUI starter lives in the catalog.
-- **(−)** Atoms under `packages/code/templates/atoms` remain ADR-0152 chat-emit fixtures until a dedicated delete.
+- **(+)** Atomic snippets live in the catalog (`packages/patterns/atoms`) and are first-class `hobo-code template` / `/template` results. Chat emit still uses the same bodies.
 - **(−)** Model2Vec rejected: no offline-packaged weights that clear no-download / no-native-compile gates.
 
 ### References

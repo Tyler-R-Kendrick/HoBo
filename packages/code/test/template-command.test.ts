@@ -24,6 +24,26 @@ describe("hobo-code template", () => {
 		expect(result.code).toBe("HOBO_CODE_TEMPLATE");
 	});
 
+	it("lists atomic snippets alongside catalog patterns", () => {
+		const result = runTemplateCommand({ args: ["list"], flags: {} });
+		expect(result.ok).toBe(true);
+		expect(result.message).toContain("bindle.web-only");
+		expect(result.message).toContain("station.init");
+		expect(result.message).toContain("bindle.named");
+	});
+
+	it("renders an atom snippet by exact id", () => {
+		const result = runTemplateCommand({
+			args: ["render", "bindle.web-only"],
+			flags: { name: "greeter" },
+		});
+		expect(result.ok).toBe(true);
+		expect(result.message).toContain("greeter");
+		const data = result.data as { llmCalls?: number; patternId?: string };
+		expect(data.llmCalls).toBe(0);
+		expect(data.patternId).toBe("bindle.web-only");
+	});
+
 	it("records zero LLM usage on apply into an isolation root", () => {
 		const out = mkdtempSync(join(tmpdir(), "hobo-template-"));
 		const result = runTemplateCommand({

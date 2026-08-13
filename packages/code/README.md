@@ -293,7 +293,7 @@ hobo-code "add a settings page to the bindle"
 hobo-code "hello world app"      # copy examples/hello-world — no hobo CLI
 # In the Bo TUI: "create a hello world app" · "run it" · "debug it"
 # replies with the live bindle / debug / controls / report URLs
-# Create fills local atomic templates (templates/atoms), not a web fetch.
+# Create fills local atomic templates (@hobo/patterns atoms). CLI: hobo-code template.
 hobo-code scaffold --name demo
 hobo-code dev --cwd demo          # run its Bindle on a local Yard + Evidence
 hobo-code status                 # plain English session hierarchy (default)

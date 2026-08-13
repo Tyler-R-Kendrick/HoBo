@@ -4,6 +4,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { PatternManifest } from "./_generated/patterns_pb.js";
+import { parseAtomAsPattern } from "./atoms.js";
 import { canonicalJson, parsePatternManifest } from "./parse.js";
 
 export type PatternCatalog = {
@@ -12,14 +13,14 @@ export type PatternCatalog = {
 	readonly patterns: readonly PatternManifest[];
 };
 
-function walk(dir: string): string[] {
+function walkNamed(dir: string, fileName: string): string[] {
 	const out: string[] = [];
 	if (!existsSync(dir)) return out;
 	for (const name of readdirSync(dir).sort()) {
 		const full = join(dir, name);
 		if (statSync(full).isDirectory()) {
-			out.push(...walk(full));
-		} else if (name === "pattern.json") {
+			out.push(...walkNamed(full, fileName));
+		} else if (name === fileName) {
 			out.push(full);
 		}
 	}
@@ -28,6 +29,10 @@ function walk(dir: string): string[] {
 
 export function defaultCatalogRoot(): string {
 	return join(dirname(fileURLToPath(import.meta.url)), "..", "patterns");
+}
+
+export function defaultAtomsRoot(): string {
+	return join(dirname(fileURLToPath(import.meta.url)), "..", "atoms");
 }
 
 export function openUiStarterRoot(): string {
@@ -40,37 +45,56 @@ export function openUiStarterRoot(): string {
 	);
 }
 
+function finalizePattern(
+	file: string,
+	parsed: PatternManifest,
+): PatternManifest {
+	const dir = dirname(file);
+	for (const rendering of parsed.renderings) {
+		const body = join(dir, rendering.sourcePath);
+		if (!existsSync(body)) {
+			throw new Error(
+				`${parsed.id}: missing rendering ${rendering.sourcePath}`,
+			);
+		}
+		rendering.contentDigest = createHash("sha256")
+			.update(readFileSync(body))
+			.digest("hex");
+	}
+	parsed.contentDigest = createHash("sha256")
+		.update(
+			canonicalJson({
+				id: parsed.id,
+				version: parsed.version,
+				renderings: parsed.renderings.map((item) => item.contentDigest),
+			}),
+		)
+		.digest("hex");
+	return parsed;
+}
+
 export function loadPatternCatalog(
-	options: { readonly root?: string } = {},
+	options: { readonly root?: string; readonly atomsRoot?: string } = {},
 ): PatternCatalog {
 	const root = options.root ?? defaultCatalogRoot();
-	const files = walk(root);
-	const patterns = files.map((file) => {
-		const raw = JSON.parse(readFileSync(file, "utf8")) as unknown;
-		const parsed = parsePatternManifest(raw);
-		const dir = dirname(file);
-		for (const rendering of parsed.renderings) {
-			const body = join(dir, rendering.sourcePath);
-			if (!existsSync(body)) {
-				throw new Error(
-					`${parsed.id}: missing rendering ${rendering.sourcePath}`,
-				);
-			}
-			rendering.contentDigest = createHash("sha256")
-				.update(readFileSync(body))
-				.digest("hex");
-		}
-		parsed.contentDigest = createHash("sha256")
-			.update(
-				canonicalJson({
-					id: parsed.id,
-					version: parsed.version,
-					renderings: parsed.renderings.map((item) => item.contentDigest),
-				}),
-			)
-			.digest("hex");
-		return parsed;
-	});
+	const atomsRoot = options.atomsRoot ?? defaultAtomsRoot();
+	const patterns = [
+		...walkNamed(root, "pattern.json").map((file) =>
+			finalizePattern(
+				file,
+				parsePatternManifest(JSON.parse(readFileSync(file, "utf8")) as unknown),
+			),
+		),
+		...walkNamed(atomsRoot, "meta.json").map((file) =>
+			finalizePattern(
+				file,
+				parseAtomAsPattern(
+					JSON.parse(readFileSync(file, "utf8")) as unknown,
+					relative(atomsRoot, dirname(file)),
+				),
+			),
+		),
+	].sort((a, b) => a.id.localeCompare(b.id) || b.version - a.version);
 	const digest = createHash("sha256")
 		.update(
 			canonicalJson(
@@ -96,14 +120,18 @@ export function readRenderingBody(
 	if (!rendering) {
 		throw new Error(`${pattern.id}: unknown rendering ${renderingId}`);
 	}
-	const file = walk(catalog.root).find((path) => {
-		const dir = dirname(path);
-		return (
-			existsSync(join(dir, rendering.sourcePath)) &&
-			relative(catalog.root, dir).split("/").every(Boolean) &&
-			JSON.parse(readFileSync(path, "utf8")).id === pattern.id
-		);
-	});
+	const roots = [catalog.root, defaultAtomsRoot()];
+	const file = roots
+		.flatMap((root) => [
+			...walkNamed(root, "pattern.json"),
+			...walkNamed(root, "meta.json"),
+		])
+		.find((path) => {
+			const dir = dirname(path);
+			if (!existsSync(join(dir, rendering.sourcePath))) return false;
+			const raw = JSON.parse(readFileSync(path, "utf8")) as { id?: unknown };
+			return raw.id === pattern.id;
+		});
 	if (!file) {
 		throw new Error(`${pattern.id}: catalog file missing`);
 	}

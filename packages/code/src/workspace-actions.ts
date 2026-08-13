@@ -83,16 +83,22 @@ export function formatLiveEndpoints(options: {
 	readonly controlsUrl: string;
 	readonly reportUrl: string;
 	readonly namedUrl?: string;
+	readonly stationId?: string;
+	readonly environment?: string;
 	readonly emphasis: "run" | "debug";
 }): string {
 	const named = options.namedUrl ? [`named · ${options.namedUrl}`] : [];
+	const station = options.stationId ? [`station · ${options.stationId}`] : [];
+	const environment = options.environment
+		? [`env · ${options.environment}`]
+		: [];
 	const bindle = `bindle · ${options.appUrl}`;
 	const debug = `debug · ${options.debugUrl}`;
 	const controls = `controls · ${options.controlsUrl}`;
 	const report = `report · ${options.reportUrl}`;
 	return (
 		options.emphasis === "debug"
-			? [debug, controls, report, bindle, ...named]
-			: [bindle, ...named, debug, controls, report]
+			? [debug, controls, report, bindle, ...named, ...station, ...environment]
+			: [bindle, ...named, debug, controls, report, ...station, ...environment]
 	).join("\n");
 }

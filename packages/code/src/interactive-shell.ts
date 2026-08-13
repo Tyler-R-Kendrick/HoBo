@@ -47,6 +47,11 @@ import {
 	renderBoIdleFrame,
 	selectBoIdleFrame,
 } from "./splash.js";
+import {
+	describeAuthedStationSession,
+	formatStationStatusBlock,
+	formatStationStrap,
+} from "./station-session.js";
 import { buildMultiplexerStatus, createPane, renderStatusText } from "./tui.js";
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -108,6 +113,10 @@ export interface InteractiveShellState {
 	readonly modelLabel: string;
 	readonly costLabel: string;
 	readonly hermeticLabel: string;
+	/** Logged-in Station chip (`station:local` or `auth:out`). */
+	readonly stationLabel: string;
+	/** Occupancy environment chip (`env:local-dev`). Empty when logged out. */
+	readonly envLabel: string;
 	readonly productTitle: string;
 	/** Hard product identity — must never be stock Pi chrome. */
 	readonly engineLabel: "hobo-shell";
@@ -187,7 +196,8 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 	},
 	{
 		name: "review",
-		description: "Durable review session (coverage, threads, exact-effect publish)",
+		description:
+			"Durable review session (coverage, threads, exact-effect publish)",
 		argv: ["review"],
 	},
 	{ name: "quit", description: "Exit hobo-code shell", action: "quit" },
@@ -385,17 +395,34 @@ export function createInitialShellState(
 		env,
 	});
 	const cost = inspectCost(env);
+	const station = describeAuthedStationSession({ hoboHome, env });
+	const stationChips = formatStationStrap(station);
 
 	const panes = [
 		createPane("coord", "idle", ""),
-		createPane("station", "done", ""),
-		createPane("auth", "idle", "login"),
+		createPane(
+			"station",
+			station.loggedIn ? "done" : "blocked",
+			station.loggedIn ? station.displayName : "login",
+		),
+		createPane(
+			"auth",
+			station.loggedIn ? "done" : "idle",
+			station.loggedIn
+				? station.mode === "local"
+					? ""
+					: station.displayName
+				: "login",
+		),
 	];
 	const mux = buildMultiplexerStatus(panes, {
 		remoteReady: true,
 		theme: "herdr",
 	});
-	const statusPlain = renderStatusText(mux, { plain: true });
+	const statusPlain = [
+		formatStationStatusBlock(station),
+		renderStatusText(mux, { plain: true }),
+	].join("\n");
 	const tasks = buildTasksSurface({ hoboHome, panes: mux.panes });
 	const tasksPlain = [
 		"Tasks · keyboard-first (Tab → Tasks) · clickable mouse residual later",
@@ -449,6 +476,8 @@ export function createInitialShellState(
 		modelLabel: ENGINE_NONE_LABEL,
 		costLabel: `$${cost.budget.spendUsd.toFixed(2)}/$${cost.budget.capUsd.toFixed(2)} · ${cost.budget.routingPolicy}`,
 		hermeticLabel: hermeticEnvSummary(hermetic).split("\n")[0] ?? "env",
+		stationLabel: stationChips[0] ?? "auth:out",
+		envLabel: stationChips[1] ?? "",
 		productTitle: "hobo-code",
 		engineLabel: "hobo-shell",
 	};
@@ -496,9 +525,15 @@ export function boMarker(state: InteractiveShellState): string {
 
 /** The one-line strap: who is thinking, on what, at what cost. */
 export function statusSegments(state: InteractiveShellState): string[] {
+	const modelChip =
+		state.modelLabel === ENGINE_NONE_LABEL
+			? "engine:none"
+			: state.modelLabel;
 	return [
 		`${boMarker(state)} hobo-code`,
-		state.modelLabel,
+		state.stationLabel,
+		state.envLabel,
+		modelChip,
 		state.usageLabel || state.costLabel,
 		state.agentState,
 	];
@@ -1026,6 +1061,17 @@ export async function runInteractiveShell(
 		"isTTY" in stdout &&
 		(stdout as NodeJS.WriteStream).isTTY === true;
 
+	const shellEnv = options.env ?? process.env;
+	const shellHome =
+		options.hoboHome ??
+		(typeof shellEnv.HOBO_HOME === "string" && shellEnv.HOBO_HOME
+			? shellEnv.HOBO_HOME
+			: `${shellEnv.HOME ?? "/tmp"}/.hobo`);
+	describeAuthedStationSession({
+		hoboHome: shellHome,
+		env: shellEnv,
+		ensureLocalLogin: true,
+	});
 	let state = createInitialShellState({
 		width:
 			"columns" in stdout &&
@@ -1042,8 +1088,8 @@ export async function runInteractiveShell(
 			? { reducedMotion: options.reducedMotion }
 			: {}),
 		...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
-		...(options.hoboHome !== undefined ? { hoboHome: options.hoboHome } : {}),
-		...(options.env !== undefined ? { env: options.env } : {}),
+		hoboHome: shellHome,
+		env: shellEnv,
 	});
 	if (options.host.engineLabel) {
 		state = { ...state, modelLabel: options.host.engineLabel };

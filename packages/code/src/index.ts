@@ -343,6 +343,15 @@ export {
 	type ResidentSessionRuntimeOptions,
 	residentSessionTmuxName,
 } from "./resident-session-runtime.js";
+export { runReviewCommand } from "./review/review-command.js";
+export {
+	parseReviewCommand,
+	parseReviewSnapshot,
+	REVIEW_COMMAND_SCHEMA,
+	REVIEW_SNAPSHOT_SCHEMA,
+} from "./review/review-contract.js";
+export { createReviewRuntime } from "./review/review-runtime.js";
+export { renderReviewPane } from "./review/review-terminal.js";
 export {
 	assertMediatedOnly,
 	assertNoVendoredTokenTools,
@@ -380,15 +389,6 @@ export {
 	type CodeSessionOptions,
 	startCodeSession,
 } from "./session.js";
-export {
-	REVIEW_COMMAND_SCHEMA,
-	REVIEW_SNAPSHOT_SCHEMA,
-	parseReviewCommand,
-	parseReviewSnapshot,
-} from "./review/review-contract.js";
-export { createReviewRuntime } from "./review/review-runtime.js";
-export { runReviewCommand } from "./review/review-command.js";
-export { renderReviewPane } from "./review/review-terminal.js";
 export {
 	parseSessionCommand,
 	parseSessionSnapshot,
@@ -455,6 +455,13 @@ export {
 	spriteStripToTuiFrames,
 	type TuiSpriteMode,
 } from "./sprite-tui.js";
+export {
+	type AuthedStationView,
+	describeAuthedStationSession,
+	formatStationStatusBlock,
+	formatStationStrap,
+	stationDevEnv,
+} from "./station-session.js";
 export {
 	buildMultiplexerStatus,
 	copyOnHighlight,

@@ -65,6 +65,8 @@ describe("Bo workspace actions", () => {
 			hoboHome: join(root, ".hobo"),
 			startDevSession: async (options) => {
 				created.push(options.projectDir);
+				expect(options.stationId).toBe("station:local");
+				expect(options.env?.HOBO_STATION).toBe("station:local");
 				return {
 					sessionId: "dev-live",
 					appUrl: "http://127.0.0.1:48211/",
@@ -93,6 +95,8 @@ describe("Bo workspace actions", () => {
 		const runText = await host.tryWorkspaceAction?.("run it");
 		expect(runText).toContain("http://127.0.0.1:48211/");
 		expect(runText).toContain("https://web.hello-world.local.hobo.localhost");
+		expect(runText).toContain("station · station:local");
+		expect(runText).toContain("env · local-dev");
 		expect(created.at(-1)).toContain("hello-world");
 
 		const debugText = await host.tryWorkspaceAction?.("debug it");
@@ -102,6 +106,7 @@ describe("Bo workspace actions", () => {
 		expect(debugText).toContain(
 			"http://127.0.0.1:48212/__hobo/evidence?report=live",
 		);
+		expect(debugText).toContain("station · station:local");
 		await host.dispose?.();
 	});
 

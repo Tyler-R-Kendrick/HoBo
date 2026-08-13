@@ -80,7 +80,12 @@ describe("hobo-code Bindle development bridge", () => {
 			appPort: 0,
 			debugPort: 0,
 			sessionId: "dev-test",
+			stationId: "station:local",
+			environment: "local-dev",
+			tenant: "local",
 		});
+		expect(session.stationId).toBe("station:local");
+		expect(session.environment).toBe("local-dev");
 		try {
 			const app = await fetch(session.appUrl);
 			expect(app.status).toBe(200);
@@ -129,6 +134,8 @@ describe("hobo-code Bindle development bridge", () => {
 			data: {
 				deployment: {
 					mode: "local-bindle",
+					stationId: "station:local",
+					environment: "local-dev",
 					served: { appStatus: 200, controlsStatus: 200 },
 					stopped: true,
 				},

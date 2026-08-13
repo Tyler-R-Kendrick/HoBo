@@ -118,11 +118,15 @@ import {
 	type RemoteSessionServe,
 	runResidentSessionCli,
 } from "./resident-session-cli.js";
+import { runReviewCommand } from "./review/review-command.js";
 import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
 import { startCodeSession } from "./session.js";
-import { runReviewCommand } from "./review/review-command.js";
+import {
+	describeAuthedStationSession,
+	stationDevEnv,
+} from "./station-session.js";
 import { runTemplateCommand } from "./template-command.js";
 import {
 	buildMultiplexerStatus,
@@ -952,7 +956,8 @@ const VERB_HELP_PLAIN: Record<
 		"  hobo-code dev --once --json       # bounded deployment probe",
 		"",
 		"This delegates to hobo dev: the project's Bindle is placed on a local Yard",
-		"and its real web endpoint receives Evidence controls and session replay.",
+		"bound to the Station you are logged into (hobo-code auth login).",
+		"Its real web endpoint receives Evidence controls and session replay.",
 		"",
 		"Flags:",
 		"  --cwd <app>         HoBo project root (src/bindle.ts or dist/bindle.js)",
@@ -1817,9 +1822,8 @@ export async function runHoboCodeCli(
 			createPane(
 				"station",
 				platform.station.present ? "done" : "blocked",
-				// Present happy path: empty summary (✓station glyph alone).
 				platform.station.present
-					? ""
+					? `${platform.station.stationId.replace(/^station:/, "")}${authSession ? ` · ${authSession.tenant}` : ""}`
 					: (platform.station.remediation ?? "miss"),
 			),
 			createPane(
@@ -2429,12 +2433,27 @@ export async function runHoboCodeCli(
 		}
 		let session: DevBrowserSession | undefined;
 		try {
+			const station = describeAuthedStationSession({
+				hoboHome,
+				env,
+				ensureLocalLogin: true,
+			});
+			if (!station.loggedIn) {
+				return fail(
+					"HOBO_CODE_DEV_AUTH",
+					panel("✕ dev", ["not logged into a Station", station.message]),
+					["hobo-code auth login"],
+				);
+			}
 			session = await (deps.startDevSession ?? startDevBrowserSession)({
 				projectDir,
 				hoboHome,
 				appPort: port,
 				debugPort,
-				env,
+				env: { ...env, ...stationDevEnv(station) },
+				stationId: station.stationId,
+				tenant: station.tenant,
+				environment: station.environment,
 			});
 			const deployed = session;
 			const fetchUrl = deps.fetch ?? globalThis.fetch;
@@ -2468,6 +2487,9 @@ export async function runHoboCodeCli(
 				`debug · ${deployed.debugUrl}`,
 				`controls · ${deployed.controlsUrl}`,
 				`report · ${deployed.reportUrl}`,
+				`station · ${station.stationId}`,
+				`env · ${station.environment}`,
+				`tenant · ${station.tenant}`,
 				`yard · local`,
 				`evidence · ${displayPath(deployed.evidencePath, { hoboHome, cwd: projectDir })}`,
 				...(once ? ["probe · passed; stopped"] : ["live · Ctrl-C to stop"]),
@@ -2481,6 +2503,9 @@ export async function runHoboCodeCli(
 					debugUrl: deployed.debugUrl,
 					controlsUrl: deployed.controlsUrl,
 					reportUrl: deployed.reportUrl,
+					stationId: station.stationId,
+					environment: station.environment,
+					tenant: station.tenant,
 					...(deployed.namedUrl !== undefined
 						? { namedUrl: deployed.namedUrl }
 						: {}),

@@ -1,5 +1,8 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 /** Visible text only — accents must never change what a test sees. */
 const plain = (frame: string): string =>
@@ -11,6 +14,7 @@ const widths = (frame: string): number[] =>
 		.split("\n")
 		.map((l) => l.length);
 
+import { authLogin } from "../src/auth.js";
 import {
 	APPROVAL_PROMPT,
 	appendAssistant,
@@ -500,5 +504,46 @@ describe("approval gate rendering", () => {
 			expect(inert.state.input).toBe("");
 		}
 		expect(reduceShellKey(base, "\u0003").quit).toBe(true);
+	});
+});
+
+describe("interactive shell station occupancy chrome", () => {
+	const homes: string[] = [];
+	afterEach(() => {
+		for (const home of homes) rmSync(home, { recursive: true, force: true });
+		homes.length = 0;
+	});
+
+	it("puts the logged-in station and environment on the strap and status pane", () => {
+		const hoboHome = mkdtempSync(join(tmpdir(), "hobo-code-shell-station-"));
+		homes.push(hoboHome);
+		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		const state = createInitialShellState({
+			width: 80,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+			hoboHome,
+			env: { HOBO_HOME: hoboHome, HOBO_ENV: "staging" },
+		});
+		const frame = plain(renderShellFrame(state));
+		expect(frame).toContain("local@staging");
+		expect(state.statusPlain).toContain("station:local");
+		expect(state.statusPlain).toContain("tenant   camp-west");
+		expect(state.statusPlain).toContain("env      staging");
+	});
+
+	it("shows auth:out on the strap when the coding agent has no session", () => {
+		const hoboHome = mkdtempSync(join(tmpdir(), "hobo-code-shell-anon-"));
+		homes.push(hoboHome);
+		const state = createInitialShellState({
+			width: 80,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+			hoboHome,
+			env: { HOBO_HOME: hoboHome },
+		});
+		expect(plain(renderShellFrame(state))).toContain("auth:out");
 	});
 });

@@ -47,7 +47,12 @@ work from Bill's turnaround is precisely how Bo stops being Bo.
 `reference/bo-pixel-sprites.png` (native 1×, 56×56 cells) put Bo on a 48px
 pixel grid: four facings, one walk stride each way, the idle hop, the stand
 breath, and an integer scale ramp. Flat black and white on transparency — the
-character lock's palette, now literally two colors.
+character lock's palette, now literally two colors — plus a 1px dual rim:
+white around the black fur so he reads on dark grounds (he is solid ink and
+vanishes there otherwise), black around exposed white so the bundle keeps an
+outline on paper. The rim is 8-neighbour; a 4-neighbour rim breaks into dashes
+along the diagonal fur edges and reads as noise instead of a contour. The
+sheet's grounds strip shows the same sprite on paper, slate and night.
 
 No generation model is involved. Every sprite is a deterministic
 downscale-and-quantize of the shipped sheets in `site/public/parallax/`,

@@ -105,7 +105,7 @@ export const BO_PIXEL_SHEETS: Reference[] = [
 		title: "Pixel reference",
 		file: "reference/bo-pixel-reference.png",
 		wide: true,
-		note: "Bo on a 48px grid — four facings, a walk stride each way, idle hop, stand breath, and an integer scale ramp. Derived from the shipped sheets, so the pixel Bo cannot drift from the real one.",
+		note: "Bo on a 48px grid — four facings, a walk stride each way, idle hop, stand breath, and a scale-and-grounds ramp. Derived from the shipped sheets, so the pixel Bo cannot drift from the real one. A 1px dual rim (white against the fur, black against the bundle) keeps him readable on any ground — he is solid ink and would vanish on dark otherwise.",
 	},
 	{
 		key: "bo-pixel-sprites",

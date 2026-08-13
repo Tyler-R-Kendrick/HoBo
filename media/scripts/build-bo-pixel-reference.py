@@ -33,10 +33,14 @@ FONT_PATH = (
     ROOT / "packages" / "pixel-village" / "assets" / "fonts" / "kenney" / "KenneyPixel.ttf"
 )
 
-# Pixel grid: sprites are 48px tall, flat black/white/transparent.
+# Pixel grid: sprites are 48px tall, flat black/white/transparent, plus a 1px rim.
 TARGET_H = 48
 ALPHA_THR = 0.30  # box-averaged coverage below this drops the pixel (keeps 1px limbs)
-GREY_THR = 128  # ink vs paper split on alpha-weighted mean grey
+# Source grey is trimodal: ink 0-64, the pole's light greys 96-160, paper 192-255.
+# A pixel is white by *coverage* of light source pixels, not by cell mean — the
+# mean dilutes a thin white pole with its own black outline and shreds it.
+WHITE_SRC_THR = 96  # source grey at or above this counts as light
+WHITE_COV_THR = 0.35  # fraction of the cell that must be light to quantize white
 
 # HoBo Pixel palette (packages/pixel-village/DESIGN.md) for the sheet chrome only;
 # the sprites themselves stay flat black and white, per the character lock.
@@ -73,20 +77,19 @@ def pixelize(frame: np.ndarray, target_h: int = TARGET_H) -> np.ndarray:
     alpha = frame[:, :, 1].astype(np.float64) / 255.0
     h, w = alpha.shape
     tw = max(1, round(w * target_h / h))
-    a_ds = (
-        np.asarray(
-            Image.fromarray((alpha * 255).astype(np.uint8)).resize((tw, target_h), Image.BOX)
-        ).astype(np.float64)
-        / 255.0
-    )
-    g_ds = np.asarray(Image.fromarray(grey * alpha).resize((tw, target_h), Image.BOX))
-    g_mean = np.where(a_ds > 0.01, g_ds / np.maximum(a_ds, 1e-6), 255.0)
+
+    def box(mask: np.ndarray) -> np.ndarray:
+        img = Image.fromarray((mask * 255).astype(np.uint8)).resize((tw, target_h), Image.BOX)
+        return np.asarray(img).astype(np.float64) / 255.0
+
+    a_ds = box(alpha)
+    w_cov = box((grey >= WHITE_SRC_THR) & (alpha > 0.5))
     opaque = a_ds >= ALPHA_THR
-    white = g_mean >= GREY_THR
+    white = opaque & (w_cov >= WHITE_COV_THR)
     out = np.zeros((target_h, tw, 4), np.uint8)
     out[opaque & ~white] = (0, 0, 0, 255)
-    out[opaque & white] = (255, 255, 255, 255)
-    return despeckle(out)
+    out[white] = (255, 255, 255, 255)
+    return clean(despeckle(out))
 
 
 def despeckle(px: np.ndarray) -> np.ndarray:
@@ -101,6 +104,92 @@ def despeckle(px: np.ndarray) -> np.ndarray:
     )
     px[a & (neighbours == 0)] = 0
     return px
+
+
+def clean(px: np.ndarray) -> np.ndarray:
+    """Two targeted repairs, both conservative by design.
+
+    - Drop white fuzz: white components under 4px that touch transparency are
+      quantization noise off the silhouette edge, never drawn detail. Interior
+      white stays untouched however small — the free arm ends in a deliberate
+      one-dot hand, and the stand blink's inner sliver is 1-2px.
+    - Fill sack pinholes: black components up to 3px enclosed entirely by
+      *exterior* white (white that reaches the silhouette edge — the bundle and
+      pole, never the eyes) are the sack's own outline averaging through; ink
+      them white. Pupils live inside enclosed white, so they cannot match.
+    """
+    opaque = px[:, :, 3] > 0
+    white = opaque & (px[:, :, 0] > 128)
+    transparent = ~opaque
+    pad_t = np.pad(transparent, 1)
+    near_edge = pad_t[:-2, 1:-1] | pad_t[2:, 1:-1] | pad_t[1:-1, :-2] | pad_t[1:-1, 2:]
+
+    w_labels = components(white)
+    exterior = {
+        lab
+        for lab in range(1, w_labels.max() + 1)
+        if ((w_labels == lab) & near_edge).any()
+    }
+    for lab in range(1, w_labels.max() + 1):
+        comp = w_labels == lab
+        if lab in exterior and comp.sum() < 4:
+            px[comp] = 0  # edge fuzz off the silhouette
+
+    white = (px[:, :, 3] > 0) & (px[:, :, 0] > 128)
+    w_labels = components(white)
+    black = (px[:, :, 3] > 0) & ~white
+    b_labels = components(black)
+    for lab in range(1, b_labels.max() + 1):
+        comp = b_labels == lab
+        if comp.sum() > 3:
+            continue
+        ys, xs = np.nonzero(comp)
+        ring_labels = set()
+        enclosed = True
+        for y, x in zip(ys, xs):
+            for ny, nx_ in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                if not (0 <= ny < comp.shape[0] and 0 <= nx_ < comp.shape[1]):
+                    enclosed = False
+                    break
+                if comp[ny, nx_]:
+                    continue
+                if not white[ny, nx_]:
+                    enclosed = False
+                    break
+                ring_labels.add(int(w_labels[ny, nx_]))
+            if not enclosed:
+                break
+        if enclosed and ring_labels and ring_labels <= exterior:
+            px[comp] = (255, 255, 255, 255)
+    return px
+
+
+def add_rim(px: np.ndarray) -> np.ndarray:
+    """1px dual rim so the sprite reads on any ground: white against the black
+    fur (he is solid ink and vanishes on dark otherwise), black against exposed
+    white (so the bundle keeps an outline on paper). 8-neighbour: a 4-neighbour
+    rim breaks into dashes along the diagonal fur edges, which reads as noise
+    on a dark ground rather than a contour."""
+    h, w = px.shape[:2]
+    out = np.zeros((h + 2, w + 2, 4), np.uint8)
+    out[1:-1, 1:-1] = px
+    opaque = out[:, :, 3] > 0
+    black = opaque & (out[:, :, 0] < 128)
+    white = opaque & ~black
+
+    def spread(mask: np.ndarray) -> np.ndarray:
+        p = np.pad(mask, 1)
+        return (
+            p[:-2, :-2] | p[:-2, 1:-1] | p[:-2, 2:]
+            | p[1:-1, :-2] | p[1:-1, 2:]
+            | p[2:, :-2] | p[2:, 1:-1] | p[2:, 2:]
+        )
+
+    rim_white = ~opaque & spread(black)
+    rim_black = ~opaque & spread(white) & ~rim_white
+    out[rim_white] = (255, 255, 255, 255)
+    out[rim_black] = (0, 0, 0, 255)
+    return out
 
 
 def components(mask: np.ndarray) -> np.ndarray:
@@ -187,6 +276,14 @@ def main() -> None:
     west_stand = pixelize(walk_w[narrowest_stance(walk_w, range(36))])
     north = derive_north(px_stand[0])
 
+    # Rim last: the north derivation needs the raw sprite (a rim would read as
+    # an exterior-touching white component and confuse the enclosure test).
+    px_stand = {k: add_rim(v) for k, v in px_stand.items()}
+    px_idle = {k: add_rim(v) for k, v in px_idle.items()}
+    px_walk_e = {k: add_rim(v) for k, v in px_walk_e.items()}
+    px_walk_w = {k: add_rim(v) for k, v in px_walk_w.items()}
+    east_stand, west_stand, north = add_rim(east_stand), add_rim(west_stand), add_rim(north)
+
     sections = [
         (
             "DIRECTIONS",
@@ -270,7 +367,7 @@ def write_presentation_sheet(sections, scale_sprite: np.ndarray) -> None:
     draw.text((pad, pad - 6), "BO - PIXEL REFERENCE", font=h1, fill=OUTLINE)
     draw.text(
         (pad, pad + 44),
-        f"{TARGET_H}px grid - flat black + white on transparency - "
+        f"{TARGET_H}px grid + 1px rim - flat black + white on transparency - "
         "derived from site/public/parallax (identity: HoBo Rubberhose lock)",
         font=small,
         fill=MUTE,
@@ -299,25 +396,29 @@ def write_presentation_sheet(sections, scale_sprite: np.ndarray) -> None:
             draw.text((x + (cell - lw) // 2, y + cell + 4), label, font=small, fill=OUTLINE)
         y += cell + label_h + 14
 
-    draw.text((pad, y), "SCALE", font=h2, fill=OUTLINE)
+    draw.text((pad, y), "SCALE + GROUNDS", font=h2, fill=OUTLINE)
     draw.text(
-        (pad + draw.textlength("SCALE", font=h2) + 16, y + 7),
-        "integer scaling only, nearest-neighbour - palette: #000000 ink, #ffffff paper, transparent ground",
+        (pad + draw.textlength("SCALE + GROUNDS", font=h2) + 16, y + 7),
+        "integer scaling only, nearest-neighbour - the 1px rim keeps him readable on any ground",
         font=small,
         fill=MUTE,
     )
     y += section_head
     x = pad
-    base_y = y + TARGET_H * 4  # shared baseline for the ramp
+    base_y = y + (TARGET_H + 2) * 4  # shared baseline for the ramp (rim included)
     for s in (1, 2, 3, 4):
         w, h = scale_sprite.shape[1] * s, scale_sprite.shape[0] * s
         blit_sprite(scale_sprite, x, base_y - h, s)
         draw.text((x + (w - draw.textlength(f"{s}x", font=small)) // 2, base_y + 6), f"{s}x", font=small, fill=OUTLINE)
         x += w + 28
-    for i, (name, col) in enumerate([("ink", (0, 0, 0)), ("paper", (255, 255, 255))]):
-        sx = x + 40 + i * 120
-        draw.rectangle([sx, base_y - 40, sx + 40, base_y], fill=col, outline=OUTLINE, width=2)
-        draw.text((sx + 48, base_y - 34), name, font=small, fill=OUTLINE)
+    # ground swatches: the same 2x sprite on paper, slate and night
+    for name, col in (("paper", (255, 255, 255)), ("slate", CELL_BG), ("night", (26, 20, 32))):
+        w, h = scale_sprite.shape[1] * 2, scale_sprite.shape[0] * 2
+        bw = w + 24
+        draw.rectangle([x, base_y - h - 24, x + bw, base_y], fill=col, outline=OUTLINE, width=2)
+        blit_sprite(scale_sprite, x + 12, base_y - h - 6, 2)
+        draw.text((x + (bw - draw.textlength(name, font=small)) // 2, base_y + 6), name, font=small, fill=OUTLINE)
+        x += bw + 20
 
     draw.text(
         (pad, height - 44),

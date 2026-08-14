@@ -473,6 +473,16 @@ export {
 	type ExperimentSidecarServer,
 } from "./experiment-sidecar-server.js";
 export {
+	KMS_CRYPTO_PORT,
+	KMS_SECRETS_PORT,
+	KMS_SIDECAR_HOSTING,
+	KMS_SIDECAR_NAME,
+	startKmsSidecar,
+	StationKms,
+	STATION_KMS_KEY,
+	type KmsSidecarServer,
+} from "./kms-sidecar-server.js";
+export {
 	assembleSessionResources,
 	formatSessionResources,
 	looksLikeSecretMaterial,

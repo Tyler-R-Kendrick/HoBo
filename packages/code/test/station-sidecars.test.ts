@@ -119,6 +119,17 @@ describe("station occupancy sidecars", () => {
 			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(
 				/experiment:experiment\.code\./,
 			);
+			expect(sidecars.kmsUrl).toMatch(/kms\.code\..*\.hobo\.localhost/);
+			expect(sidecars.kmsUrl).not.toMatch(/127\.0\.0\.1/);
+			const kms = await fetch(loopbackFetchUrl(sidecars.kmsUrl ?? ""));
+			expect(kms.status).toBe(200);
+			expect(await kms.json()).toMatchObject({
+				name: "kms",
+				hosting: "station",
+				live: true,
+				engine: "StationKms",
+			});
+			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(/kms:kms\.code\./);
 		} finally {
 			await sidecars.close();
 		}

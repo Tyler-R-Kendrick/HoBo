@@ -106,8 +106,13 @@ describe("session resource inventory", () => {
 			inventory.capabilities.find((row) => row.kind === "rollout"),
 		).toMatchObject({
 			available: true,
-			fidelity: "real",
 		});
+		expect(
+			inventory.capabilities.find((row) => row.kind === "secret")?.available,
+		).toBe(true);
+		expect(
+			inventory.capabilities.find((row) => row.kind === "crypto")?.available,
+		).toBe(true);
 		expect(inventory.capabilities.map((row) => row.kind)).not.toContain(
 			"experiment",
 		);
@@ -115,6 +120,7 @@ describe("session resource inventory", () => {
 			"golden",
 		);
 		expect(text).toMatch(/capabilities/);
+		expect(text.indexOf("station:local")).toBeLessThan(text.indexOf("capabilities"));
 		expect(inventory.evals?.defaultSuite.source).toBe("trainable-exact-match");
 		expect(inventory.evals?.campId).toBe("camp:code");
 		expect(inventory.managed.find((row) => row.id === "evals")).toMatchObject({
@@ -143,6 +149,7 @@ describe("session resource inventory", () => {
 					otlpHttpUrl: "http://127.0.0.1:4318/v1/logs",
 					rolloutUrl: "http://127.0.0.1:8790/",
 					experimentUrl: "http://127.0.0.1:8791/",
+					kmsUrl: "http://127.0.0.1:8792/",
 					startedAt: "2026-08-14T12:00:00.000Z",
 				},
 				null,
@@ -162,6 +169,9 @@ describe("session resource inventory", () => {
 				"otlp",
 				"rollout",
 				"experiment",
+				"kms",
+				"secret",
+				"crypto",
 			]),
 		);
 		const evidence = inventory.endpoints.find(
@@ -189,6 +199,7 @@ describe("session resource inventory", () => {
 				"otlp",
 				"rollout",
 				"experiment",
+				"kms",
 			]),
 		);
 		expect(
@@ -278,6 +289,10 @@ describe("session resource inventory", () => {
 		const text = formatSessionResources(inventory);
 		expect(text).toMatch(/yard:local:flow/);
 		expect(text).toMatch(/kv/);
+		expect(text.indexOf("yard:local")).toBeLessThan(text.indexOf("camp:hello-world"));
+		expect(text.indexOf("camp:hello-world")).toBeLessThan(
+			text.indexOf("bindle:hello-world"),
+		);
 		expect(inventory.evals?.defaultSuite.source).toBe("trainable-exact-match");
 		expect(inventory.evals?.campId).toBe("camp:hello-world");
 		expect(byId.evals).toMatchObject({

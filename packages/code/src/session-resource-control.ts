@@ -17,10 +17,11 @@ import {
 	type DevBrowserSessionOptions,
 	startDevBrowserSession,
 } from "./dev-browser.js";
+import { isStationOccupancyEndpoint } from "./occupancy-endpoints.js";
 import {
-	campsInYard,
-	CODE_CAMP_ID,
 	CODE_BINDLE_ID,
+	CODE_CAMP_ID,
+	campsInYard,
 	recordDevDeployment,
 	userCampId,
 } from "./session-resources.js";
@@ -129,15 +130,7 @@ const HOST_STATION_REFUSED =
 	"Stations can't shut themselves down — the hosting Station, camp:code, and bindle:code stay up";
 
 export function isOccupancySidecar(id: string): boolean {
-	return (
-		id === "controls" ||
-		id === "report" ||
-		id === "otlp" ||
-		id === "dashboard" ||
-		id === "evidence" ||
-		id === "rollout" ||
-		id === "experiment"
-	);
+	return isStationOccupancyEndpoint(id);
 }
 
 export function controlsBindleProcess(id: string): boolean {
@@ -433,6 +426,7 @@ export function createOccupancyController(options: {
 					await options.sidecar?.start("evidence");
 					await options.sidecar?.start("rollout");
 					await options.sidecar?.start("experiment");
+					await options.sidecar?.start("kms");
 				}
 				return;
 			}
@@ -609,6 +603,7 @@ export function createOccupancyController(options: {
 					await options.sidecar?.stop("evidence");
 					await options.sidecar?.stop("rollout");
 					await options.sidecar?.stop("experiment");
+					await options.sidecar?.stop("kms");
 					return;
 				}
 				await options.sidecar?.stop(id);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	isStationOccupancyEndpoint,
 	loopbackFetchUrl,
 	occupancyNamedOrigin,
 	occupancySidecarEndpoints,
@@ -26,6 +27,9 @@ describe("occupancy named endpoints", () => {
 		);
 		expect(occupancyNamedOrigin("experiment", 8791)).toBe(
 			"http://experiment.code.local.hobo.localhost:8791",
+		);
+		expect(occupancyNamedOrigin("kms", 8792)).toBe(
+			"http://kms.code.local.hobo.localhost:8792",
 		);
 	});
 
@@ -61,6 +65,7 @@ describe("occupancy named endpoints", () => {
 			evalsUrl: "http://127.0.0.1:8789/",
 			rolloutUrl: "http://127.0.0.1:8790/",
 			experimentUrl: "http://127.0.0.1:8791/",
+			kmsUrl: "http://127.0.0.1:8792/",
 		});
 		expect(rows.map((row) => row.resourceName)).toEqual([
 			"dashboard",
@@ -70,8 +75,14 @@ describe("occupancy named endpoints", () => {
 			"evals",
 			"rollout",
 			"experiment",
+			"kms",
+			"secret",
+			"crypto",
 		]);
 		expect(rows.every((row) => row.fidelity === "real")).toBe(true);
+		expect(isStationOccupancyEndpoint("dashboard")).toBe(true);
+		expect(isStationOccupancyEndpoint("kms")).toBe(true);
+		expect(isStationOccupancyEndpoint("web")).toBe(false);
 		expect(
 			rows.every((row) => row.preferredUrl.includes(".hobo.localhost")),
 		).toBe(true);

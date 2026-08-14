@@ -33,74 +33,37 @@ export const BINDLE_RESOURCE_KINDS = [
 
 export type BindleResourceKind = (typeof BINDLE_RESOURCE_KINDS)[number];
 
-export type LocalCapabilityFidelity = "real" | "mocked" | "camp-only";
-
 export interface LocalBindleCapability {
 	readonly kind: BindleResourceKind;
 	readonly available: boolean;
-	readonly fidelity: LocalCapabilityFidelity;
-	readonly note: string;
 }
 
 type CatalogBindleKind = Exclude<BindleResourceKind, "experiment">;
 
-/** ADR-0042 local fidelity. Station-hosted kinds are real, not simulated. */
-const LOCAL_CAPABILITY: Record<
-	CatalogBindleKind,
-	{ readonly fidelity: LocalCapabilityFidelity; readonly note: string }
-> = {
-	api: {
-		fidelity: "real",
-		note: "Station-local HTTP via runtime-local / hobo dev",
-	},
-	web: {
-		fidelity: "real",
-		note: "Station-local HTTP via runtime-local / hobo dev",
-	},
-	service: {
-		fidelity: "real",
-		note: "Station-local HTTP via runtime-local / hobo dev",
-	},
-	ui: { fidelity: "real", note: "served on the Station-local HTTP listener" },
-	websocket: {
-		fidelity: "real",
-		note: "Station-local upgrade on the HTTP listener",
-	},
-	kv: { fidelity: "real", note: "Station-local key-value (runtime-local)" },
-	bucket: { fidelity: "real", note: "Station-local object store directory" },
-	queue: { fidelity: "real", note: "Station-local queue (runtime-local)" },
-	topic: { fidelity: "real", note: "Station-local pub/sub (runtime-local)" },
-	data: { fidelity: "real", note: "Station-local SQLite EventStore" },
-	schedule: { fidelity: "real", note: "Station-local timers (runtime-local)" },
-	job: { fidelity: "real", note: "Station-local workers (runtime-local)" },
-	flag: {
-		fidelity: "real",
-		note: "Station-local FeatureFlagStore (hobo:feature-flag)",
-	},
-	auth: { fidelity: "real", note: "Station-local policy/auth engine" },
-	"wasm-component": {
-		fidelity: "real",
-		note: "Station-local component host (runtime-local)",
-	},
-	secret: { fidelity: "mocked", note: "local stub / .env — not a real KMS" },
-	notify: { fidelity: "mocked", note: "logged locally; no provider delivery" },
-	crypto: { fidelity: "mocked", note: "local stub — not a brokered KMS" },
-	guardrail: {
-		fidelity: "mocked",
-		note: "local policy seam; Camp for live packs",
-	},
-	external: {
-		fidelity: "mocked",
-		note: "contract stub unless hobo dev --connect",
-	},
-	container: {
-		fidelity: "camp-only",
-		note: "needs a local container engine; not assumed",
-	},
-	rollout: {
-		fidelity: "real",
-		note: "Station-local OpenDelivery (hobo:delivery) sidecar",
-	},
+/** Station-hosted kinds are available. Everything else is unavailable — no mocks. */
+const LOCAL_CAPABILITY: Record<CatalogBindleKind, boolean> = {
+	api: true,
+	web: true,
+	service: true,
+	ui: true,
+	websocket: true,
+	kv: true,
+	bucket: true,
+	queue: true,
+	topic: true,
+	data: true,
+	schedule: true,
+	job: true,
+	flag: true,
+	auth: true,
+	"wasm-component": true,
+	secret: true,
+	notify: false,
+	crypto: true,
+	guardrail: false,
+	external: false,
+	container: false,
+	rollout: true,
 };
 
 /** Station-hosted engines — occupancy sidecars, not catalog rows. */
@@ -109,15 +72,10 @@ const STATION_HOSTED_KINDS = new Set<BindleResourceKind>(["experiment"]);
 export function localBindleCapabilities(): readonly LocalBindleCapability[] {
 	return BINDLE_RESOURCE_KINDS.filter(
 		(kind): kind is CatalogBindleKind => !STATION_HOSTED_KINDS.has(kind),
-	).map((kind) => {
-		const row = LOCAL_CAPABILITY[kind];
-		return {
-			kind,
-			available: row.fidelity !== "camp-only",
-			fidelity: row.fidelity,
-			note: row.note,
-		};
-	});
+	).map((kind) => ({
+		kind,
+		available: LOCAL_CAPABILITY[kind],
+	}));
 }
 
 export interface InspectedBindleResource {

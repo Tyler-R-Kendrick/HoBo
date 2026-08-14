@@ -80,23 +80,34 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
   Experiments are not a catalog row: occupancy always starts the
   Station-local OpenExperiment sidecar
   (`http://experiment.code.local.hobo.localhost`) that runs the real
-  `hobo:experiment` engine.
+  `hobo:experiment` engine. Residual secret and crypto Bindle kinds
+  use a Station-local KMS sidecar
+  (`http://kms.code.local.hobo.localhost`) — real RSA-2048 + AES-256-GCM
+  on the occupancy host, persisted under the Station home.
   A local Station
   auto-seeds `yard:local` with `camp:code` / `bindle:code` (the hosting
   Station's occupancy bindle — not stoppable from the dashboard). Developing an app writes
   `camp:<app>` / `bindle:<app>` under that yard. Station, Yard, and Camp
   are primitives with their own managed children that start and stop
   independently. Stopping a yard stops camps in that yard, not other yards.
-  The Endpoints table lists occupancy sidecars that are actually listening
-  (dashboard, Evidence, controls, OTLP, evals, rollout, experiment) even before a Bindle `/dev`.
+  Occupancy endpoint cards list sidecars that are actually listening
+  (dashboard, Evidence, controls, OTLP, evals, rollout, experiment, kms/secret/crypto) even before a Bindle `/dev`.
   Each endpoint is a new-tab link with a copy button and shows the loopback
   listen address next to the named `*.hobo.localhost` URL — the only surface
   that prints IP addresses.
-  Capabilities lists every Bindle kind from the catalog with honest local
-  fidelity (real / mocked / camp-only — Station-hosted kinds are real,
-  never simulated). OTel lists every occupancy
-  service and deployed Bindle against the local collector (`exporting` vs
-  `silent`). Stopping Yard flow on the dashboard actually halts Bindle
+  The dashboard features the Station as the primary pane: occupancy
+  endpoints (dashboard, Evidence, OTLP, evals, rollout, experiment, KMS)
+  sit as three occupancy doors (dashboard / Evidence / OTLP) with named
+  + listen URLs; other sidecars fold closed. Buttons are 44px ink planks
+  (play/stop toggle, Bindle restart, copy, lock) — not Start/Stop labels.
+  Chewy, grain, night inversion, and a spark focus ring match Evidence.
+  Pane titles are glyphs. The Yard card nests Yard ⊃ Camp ⊃ Bindle and
+  hangs bindle endpoints on their bindle. Capabilities nest under the
+  Station as a collapsible grid and list every Bindle kind as available
+  or unavailable — no fidelity or notes column, no mocked row.
+  Unavailable means we do not host it. OTel is lamp + log/trace/metric
+  counts against the local collector (`exporting` vs `silent`). Stopping
+  Yard flow on the dashboard actually halts Bindle
   traffic until you start it again; camps in other yards stay up.
   `/dev` writes Camp + Bindle fulfillment that
   matches the deployed Bindle (api/web/kv/data/… as named endpoints).

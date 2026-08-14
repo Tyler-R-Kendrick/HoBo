@@ -101,6 +101,7 @@ export {
 	cursorGuide,
 	renderCursorGuideText,
 } from "./cursor-guide.js";
+export { resolveHoboBin, resolveHoboSpawn } from "./dev-browser.js";
 export {
 	COMPUTE_ISOLATION_CLASSES,
 	COMPUTE_NODE_SCHEMA,
@@ -163,7 +164,9 @@ export {
 	exportEvidenceRecordingAutomation,
 } from "./evidence-automation.js";
 export {
+	debugViewUrl,
 	EVIDENCE_OVERLAY_BO_PATH,
+	EVIDENCE_OVERLAY_DEBUG_PARAM,
 	type EvidenceOverlayBridgeOptions,
 	type EvidenceOverlayControlsOptions,
 	type EvidenceOverlayMessage,
@@ -265,18 +268,21 @@ export {
 export {
 	appendAssistant,
 	appendProduct,
+	buildShellTree,
 	createInitialShellState,
 	DEFAULT_SLASH_ITEMS,
 	type InteractiveShellState,
 	PRODUCT_NOT_PI,
 	reduceShellKey,
 	renderShellFrame,
+	resolveSlashArgv,
 	runInteractiveShell,
 	type ShellFocus,
 	type ShellHost,
 	type ShellMessage,
 	type ShellSlashItem,
 	shellFrameIdentity,
+	slashItemForInput,
 } from "./interactive-shell.js";
 export {
 	type CleanupResult,
@@ -413,6 +419,30 @@ export {
 	type SessionProcessRunner,
 	sessionProcessRunner,
 } from "./session-orchestrator.js";
+export {
+	assembleSessionResources,
+	formatSessionResources,
+	looksLikeSecretMaterial,
+	recordDevDeployment,
+	recordSessionResources,
+	SESSION_RESOURCES_SCHEMA,
+	type SessionResourceInventory,
+} from "./session-resources.js";
+export {
+	createResourceLifecycle,
+	type LifecycleSnapshot,
+} from "./session-lifecycle.js";
+export { createOtelSink, fleetView } from "./session-otel.js";
+export { startLocalDashboard } from "./session-dashboard.js";
+export {
+	formatSidecarStrap,
+	readStationSidecars,
+	sidecarsEnabled,
+	attachStationSidecars,
+	startStationSidecars,
+	stopStationSidecars,
+	STATION_SIDECARS_SCHEMA,
+} from "./station-sidecars.js";
 export { createDefaultShellHost } from "./shell-host.js";
 export {
 	BO_CELL_HEIGHT,
@@ -477,6 +507,32 @@ export {
 	setPaneState,
 } from "./tui.js";
 export {
+	ApprovalDialog,
+	BroadcastFrame,
+	ChatTranscript,
+	CommandRail,
+	InkCard,
+	ShellChrome,
+	SlashPalette,
+	StatusStrap,
+	TextPane,
+} from "./tui-components.js";
+export {
+	BROADCAST,
+	BROADCAST_CHROME_ROWS,
+	BROADCAST_INNER_INSET,
+	broadcastFrame,
+} from "./tui-broadcast.js";
+export { renderTuiTree } from "./tui-render.js";
+export { TUI_TOKENS } from "./tui-tokens.js";
+export {
+	findDescendantById,
+	getChildren,
+	query,
+	queryAll,
+	type TuiNode,
+} from "./tui-tree.js";
+export {
 	type AgentPaneState,
 	type AgentSemanticState,
 	CODE_EVIDENCE_SCHEMA,
@@ -507,8 +563,11 @@ export {
 } from "./visual.js";
 export {
 	formatLiveEndpoints,
+	type LiveEndpointLines,
+	liveEndpointLines,
 	matchWorkspaceAction,
 	resolveRunnableProject,
+	retargetUrl,
 	type WorkspaceAction,
 } from "./workspace-actions.js";
 export {

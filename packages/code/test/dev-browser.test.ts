@@ -2,6 +2,7 @@ import {
 	chmodSync,
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -12,12 +13,20 @@ import { afterEach, describe, expect, it } from "vitest";
 import { runHoboCodeCli } from "../src/cli.js";
 import {
 	type DevBrowserSession,
+	resolveHoboBin,
 	startDevBrowserSession,
 } from "../src/dev-browser.js";
+import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
+import { stopStationSidecars } from "../src/station-sidecars.js";
 
 const roots: string[] = [];
-afterEach(() => {
-	for (const root of roots) rmSync(root, { recursive: true, force: true });
+afterEach(async () => {
+	for (const root of roots) {
+		await stopStationSidecars(join(root, "home"), "station:local").catch(
+			() => {},
+		);
+		rmSync(root, { recursive: true, force: true });
+	}
 	roots.length = 0;
 });
 
@@ -48,6 +57,7 @@ const server = createServer((_request, response) => {
 server.listen(port, "127.0.0.1", () => {
   const address = server.address();
   process.stderr.write(\`hobo dev: listening on http://127.0.0.1:\${address.port}/ (Ctrl-C to stop)\\n\`);
+  process.stderr.write(\`hobo dev: Camp injected discovery [] bindle-env [] named=http://web.app.local.hobo.localhost:\${address.port}\\n\`);
 });
 const close = () => server.close(() => process.exit(0));
 process.on("SIGINT", close);
@@ -62,7 +72,7 @@ function fakeSession(): DevBrowserSession {
 	return {
 		sessionId: "dev-test",
 		appUrl: "http://127.0.0.1:4173/",
-		debugUrl: "http://127.0.0.1:4173/",
+		debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
 		controlsUrl: "http://127.0.0.1:4174/controls/test",
 		reportUrl: "http://127.0.0.1:4174/report",
 		evidencePath: "/tmp/evidence",
@@ -71,6 +81,86 @@ function fakeSession(): DevBrowserSession {
 }
 
 describe("hobo-code Bindle development bridge", () => {
+	it("resolves the workspace hobo CLI when PATH has no hobo", () => {
+		const { hoboBin } = fixture();
+		expect(
+			resolveHoboBin({
+				env: { PATH: "/no/such/bin" },
+				from: hoboBin,
+			}),
+		).toBe("hobo");
+
+		const root = mkdtempSync(join(tmpdir(), "hobo-code-workspace-hobo-"));
+		roots.push(root);
+		const workspaceBin = join(
+			root,
+			"packages",
+			"hobo",
+			"dist",
+			"bin",
+			"hobo.js",
+		);
+		mkdirSync(join(root, "packages", "hobo", "dist", "bin"), {
+			recursive: true,
+		});
+		writeFileSync(workspaceBin, "#!/usr/bin/env node\n");
+		expect(
+			resolveHoboBin({
+				env: { PATH: "/no/such/bin" },
+				from: join(root, "packages", "code", "src"),
+			}),
+		).toBe(workspaceBin);
+		expect(
+			resolveHoboBin({
+				env: { HOBO_CODE_HOBO_BIN: hoboBin, PATH: "/no/such/bin" },
+				from: join(root, "packages", "code", "src"),
+			}),
+		).toBe(hoboBin);
+
+		const shipped = resolveHoboBin({ env: { PATH: "/no/such/bin" } });
+		expect(
+			shipped.endsWith(join("packages", "hobo", "dist", "bin", "hobo.js")),
+		).toBe(true);
+	});
+
+	it("starts a Bindle session from the workspace hobo when PATH is empty", async () => {
+		const { projectDir, hoboHome, hoboBin } = fixture();
+		const root = mkdtempSync(join(tmpdir(), "hobo-code-workspace-dev-"));
+		roots.push(root);
+		const workspaceBin = join(
+			root,
+			"packages",
+			"hobo",
+			"dist",
+			"bin",
+			"hobo.js",
+		);
+		mkdirSync(join(root, "packages", "hobo", "dist", "bin"), {
+			recursive: true,
+		});
+		writeFileSync(workspaceBin, readFileSync(hoboBin, "utf8"));
+		chmodSync(workspaceBin, 0o755);
+
+		const session = await startDevBrowserSession({
+			projectDir,
+			hoboHome,
+			appPort: 0,
+			debugPort: 0,
+			sessionId: "dev-workspace-bin",
+			env: { PATH: join(root, "empty-path") },
+			from: join(root, "packages", "code", "src"),
+			stationId: "station:local",
+			environment: "local-dev",
+			tenant: "local",
+		});
+		try {
+			const app = await fetch(session.appUrl);
+			expect(app.status).toBe(200);
+		} finally {
+			await session.close();
+		}
+	}, 15_000);
+
 	it("runs the project through hobo dev without requiring public/index.html", async () => {
 		const { projectDir, hoboHome, hoboBin } = fixture();
 		const session = await startDevBrowserSession({
@@ -92,14 +182,47 @@ describe("hobo-code Bindle development bridge", () => {
 			const html = await app.text();
 			expect(html).toContain("Bindle app");
 			expect(html).toContain("/__hobo/evidence/controls/");
-			expect(session.debugUrl).toBe(session.appUrl);
+			const appPort = new URL(session.appUrl).port;
+			expect(session.namedUrl).toBe(
+				`http://web.app.local.hobo.localhost:${appPort}`,
+			);
+			expect(session.debugUrl).toBe(
+				`http://web.app.local.hobo.localhost:${appPort}/?__hobo_debug=1`,
+			);
+			expect(session.appUrl).toMatch(/^http:\/\/127\.0\.0\.1:/u);
 
-			const controls = await fetch(session.controlsUrl);
+			expect(session.controlsUrl).toMatch(
+				/evidence\.code\..*\.hobo\.localhost/,
+			);
+			const controls = await fetch(loopbackFetchUrl(session.controlsUrl));
 			expect(controls.status).toBe(200);
 			expect(await controls.text()).toContain("Evidence desk");
 		} finally {
 			await session.close();
 		}
+	}, 15_000);
+
+	it("leaves Station Evidence running after the Bindle session closes", async () => {
+		const { projectDir, hoboHome, hoboBin } = fixture();
+		const session = await startDevBrowserSession({
+			projectDir,
+			hoboHome,
+			hoboBin,
+			appPort: 0,
+			debugPort: 0,
+			sessionId: "dev-evidence-lifetime",
+			stationId: "station:local",
+			environment: "local-dev",
+			tenant: "local",
+		});
+		const evidenceUrl = session.reportUrl;
+		expect(evidenceUrl).toMatch(/__hobo\/evidence/);
+		expect(evidenceUrl).toMatch(/evidence\.code\..*\.hobo\.localhost/);
+		await session.close();
+		const still = await fetch(loopbackFetchUrl(evidenceUrl));
+		expect(still.status).toBe(200);
+		await stopStationSidecars(hoboHome, "station:local");
+		await expect(fetch(loopbackFetchUrl(evidenceUrl))).rejects.toThrow();
 	}, 15_000);
 
 	it("exposes /dev as a bounded Bindle/Yard probe", async () => {

@@ -26,6 +26,17 @@
 			"linter": {
 				"enabled": true
 			}
+		},
+		{
+			"includes": ["packages/code/src/tui-components.tsx"],
+			"linter": {
+				"rules": {
+					"a11y": "off",
+					"correctness": {
+						"noUnusedImports": "off"
+					}
+				}
+			}
 		}
 	]
 }

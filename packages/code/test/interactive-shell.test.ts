@@ -26,10 +26,47 @@ import {
 	renderShellFrame,
 	runInteractiveShell,
 	shellFrameIdentity,
+	slashItemForInput,
 	splitKeySequences,
 } from "../src/interactive-shell.js";
 
 describe("hobo-code InteractiveShell (product chrome)", () => {
+	it("wraps a long template list inside the card without chopping words", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = {
+			...state,
+			messages: [
+				{
+					role: "product",
+					text: [
+						"templates · 2",
+						"bindle.web-only",
+						"  a very long intent that must wrap on spaces instead of being sliced mid-word by the dock",
+						"station.init",
+						"  initialize a local station",
+						"0 LLM calls · 0 LLM tokens",
+					].join("\n"),
+					at: 0,
+				},
+			],
+		};
+		const frame = plain(renderShellFrame(state));
+		expect(frame).toContain("bindle.web-only");
+		expect(frame).toContain("station.init");
+		expect(frame).toContain("0 LLM calls");
+		const card = frame
+			.split("\n")
+			.filter((line) => line.includes("┃"))
+			.join("\n");
+		expect(card).not.toMatch(/\w…/);
+		expect(frame.split("\n").every((line) => line.length === 72)).toBe(true);
+	});
+
 	it("initial frame carries product identity without branding spam", () => {
 		const state = createInitialShellState({
 			width: 80,
@@ -157,7 +194,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(state.input).toBe("add a button with two lines");
 	});
 
-	it("Tab cycles chat → tasks → status focus", () => {
+	it("Tab cycles chat → tasks → status → resources focus", () => {
 		let state = createInitialShellState({
 			width: 72,
 			height: 24,
@@ -173,6 +210,11 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(state.focus).toBe("status");
 		const statusFrame = renderShellFrame(state);
 		expect(statusFrame).toMatch(/session status|Agents:/i);
+		state = reduceShellKey(state, "\t").state;
+		expect(state.focus).toBe("resources");
+		const resourcesFrame = renderShellFrame(state);
+		expect(resourcesFrame).toMatch(/resources/);
+		expect(resourcesFrame).toMatch(/auth:out|station:/);
 	});
 
 	it("Enter on a prompt appends user message and marks working", () => {
@@ -252,6 +294,42 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(splitKeySequences("\x1bOP")).toEqual(["\x1bOP"]);
 	});
 
+	it("starts Station dashboard and Evidence sidecars for a live session", async () => {
+		const { authLogin } = await import("../src/auth.js");
+		const { readStationSidecars } = await import("../src/station-sidecars.js");
+		const home = mkdtempSync(join(tmpdir(), "hobo-code-shell-sidecars-"));
+		authLogin({ hoboHome: home, autoInitLocal: true });
+		try {
+			await runInteractiveShell({
+				stdin: new PassThrough(),
+				stdout: new Writable({ write: (_chunk, _encoding, done) => done() }),
+				host: {
+					runVerb: async () => "ok",
+					complete: async () => "unused",
+				},
+				hoboHome: home,
+				sidecars: true,
+				reducedMotion: true,
+				scriptedKeys: "\u0003",
+			});
+			const { stopStationSidecars } = await import(
+				"../src/station-sidecars.js"
+			);
+			const disk = readStationSidecars(home, "station:local");
+			expect(disk?.evidenceUrl).toMatch(
+				/evidence\.code\..*\.hobo\.localhost/,
+			);
+			const { loopbackFetchUrl } = await import(
+				"../src/occupancy-endpoints.js"
+			);
+			const still = await fetch(loopbackFetchUrl(disk?.evidenceUrl ?? ""));
+			expect(still.status).toBe(200);
+			await stopStationSidecars(home, "station:local");
+		} finally {
+			rmSync(home, { recursive: true, force: true });
+		}
+	});
+
 	it("passes typed /sessions arguments through the resident session verb", async () => {
 		const calls: string[][] = [];
 		await runInteractiveShell({
@@ -306,6 +384,111 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 			["template", "web", "frontend", "backed", "by", "an", "api"],
 		]);
 		expect(streamTurns).toBe(0);
+	});
+
+	it("lists templates from /templates and bare /template", async () => {
+		const verbs: string[][] = [];
+		await runInteractiveShell({
+			stdin: new PassThrough(),
+			stdout: new Writable({ write: (_chunk, _encoding, done) => done() }),
+			host: {
+				runVerb: async (argv) => {
+					verbs.push([...argv]);
+					return "templates · 1\n  bindle.web-only";
+				},
+				complete: async () => "unused",
+			},
+			reducedMotion: true,
+			scriptedKeys: "/templates\r",
+		});
+		expect(verbs).toEqual([["template", "list"]]);
+
+		verbs.length = 0;
+		await runInteractiveShell({
+			stdin: new PassThrough(),
+			stdout: new Writable({ write: (_chunk, _encoding, done) => done() }),
+			host: {
+				runVerb: async (argv) => {
+					verbs.push([...argv]);
+					return "templates · 1\n  bindle.web-only";
+				},
+				complete: async () => "unused",
+			},
+			reducedMotion: true,
+			scriptedKeys: "/template\r",
+		});
+		expect(verbs).toEqual([["template", "list"]]);
+	});
+
+	it("matches /templates in the slash palette filter", () => {
+		const items = filterSlash(DEFAULT_SLASH_ITEMS, "templates");
+		expect(items.map((item) => item.name)).toContain("template");
+	});
+
+	it("resolves every palette command, including /templates, through the shipped resolver", () => {
+		for (const item of DEFAULT_SLASH_ITEMS) {
+			const hit = slashItemForInput(`/${item.name}`);
+			expect(hit, `/${item.name} should resolve`).toBeDefined();
+			expect(
+				hit?.action ?? hit?.argv,
+				`/${item.name} needs an action or argv`,
+			).toBeTruthy();
+		}
+		expect(slashItemForInput("/templates")?.argv).toEqual(["template", "list"]);
+		expect(slashItemForInput("/template")?.argv).toEqual(["template", "list"]);
+		expect(slashItemForInput("/help")?.action).toBe("help");
+		expect(slashItemForInput("/about")?.action).toBe("about");
+		expect(slashItemForInput("/status")?.argv).toEqual(["status"]);
+		expect(slashItemForInput("/resources")?.argv).toEqual(["resources"]);
+		expect(slashItemForInput("/auth")?.argv).toEqual(["auth", "status"]);
+		expect(slashItemForInput("/sessions")?.argv).toEqual(["session", "list"]);
+	});
+
+	it("runs inspect slashes as product replies, never a model turn", async () => {
+		const verbs: string[][] = [];
+		let output = "";
+		const host = {
+			runVerb: async (argv: readonly string[]) => {
+				verbs.push([...argv]);
+				return `${argv.join(" ")} · ok`;
+			},
+			streamTurn: async () => {
+				throw new Error("inspect slashes must not start a model turn");
+			},
+			complete: async () => "unused",
+		};
+		const sink = new Writable({
+			write: (chunk: Buffer, _encoding, done) => {
+				output += chunk.toString();
+				done();
+			},
+		});
+		for (const keys of [
+			"/help\r",
+			"/about\r",
+			"/status\r",
+			"/auth\r",
+			"/sessions\r",
+			"/templates\r",
+		]) {
+			await runInteractiveShell({
+				stdin: new PassThrough(),
+				stdout: sink,
+				host,
+				reducedMotion: true,
+				scriptedKeys: keys,
+			});
+		}
+		expect(verbs).toEqual([
+			["status"],
+			["auth", "status"],
+			["session", "list"],
+			["template", "list"],
+		]);
+		expect(plain(output)).toContain("Commands:");
+		expect(plain(output)).toContain(PRODUCT_NOT_PI);
+		expect(plain(output)).not.toContain("HOBO_CODE_TEMPLATE_INDEX_INVALID");
+		expect(plain(output)).not.toContain("template needs a query");
 	});
 
 	it("passes typed /hobo arguments through to the HoBo control plane", async () => {

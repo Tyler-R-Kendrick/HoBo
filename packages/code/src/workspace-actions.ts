@@ -6,6 +6,9 @@ import {
 	type ExampleCatalogEntry,
 	matchExampleRequest,
 } from "./example-catalog.js";
+import { preferNamedEndpoint, retargetUrl } from "./occupancy-endpoints.js";
+
+export { retargetUrl } from "./occupancy-endpoints.js";
 
 export type WorkspaceAction =
 	| {
@@ -77,7 +80,7 @@ export function resolveRunnableProject(
 	return undefined;
 }
 
-export function formatLiveEndpoints(options: {
+export interface LiveEndpointLines {
 	readonly appUrl: string;
 	readonly debugUrl: string;
 	readonly controlsUrl: string;
@@ -86,19 +89,39 @@ export function formatLiveEndpoints(options: {
 	readonly stationId?: string;
 	readonly environment?: string;
 	readonly emphasis: "run" | "debug";
-}): string {
-	const named = options.namedUrl ? [`named · ${options.namedUrl}`] : [];
+}
+
+/** Bindle/debug/Evidence lines use named endpoints; loopback IP is shown once. */
+export function liveEndpointLines(options: LiveEndpointLines): string[] {
+	const publicApp = options.namedUrl ?? options.appUrl;
+	const publicDebug = options.namedUrl
+		? retargetUrl(options.debugUrl, options.namedUrl)
+		: options.debugUrl;
+	const scope = {
+		...(options.environment !== undefined
+			? { environment: options.environment }
+			: {}),
+	};
+	const controls = `controls · ${preferNamedEndpoint(options.controlsUrl, "evidence", scope)}`;
+	const report = `report · ${preferNamedEndpoint(options.reportUrl, "evidence", scope)}`;
+	const bindle = `bindle · ${publicApp}`;
+	const debug = `debug · ${publicDebug}`;
+	const loopback =
+		options.namedUrl !== undefined &&
+		new URL(options.namedUrl).host !== new URL(options.appUrl).host
+			? [`loopback · ${options.appUrl}`]
+			: [];
 	const station = options.stationId ? [`station · ${options.stationId}`] : [];
 	const environment = options.environment
 		? [`env · ${options.environment}`]
 		: [];
-	const bindle = `bindle · ${options.appUrl}`;
-	const debug = `debug · ${options.debugUrl}`;
-	const controls = `controls · ${options.controlsUrl}`;
-	const report = `report · ${options.reportUrl}`;
-	return (
+	const core =
 		options.emphasis === "debug"
-			? [debug, controls, report, bindle, ...named, ...station, ...environment]
-			: [bindle, ...named, debug, controls, report, ...station, ...environment]
-	).join("\n");
+			? [debug, controls, report, bindle]
+			: [bindle, debug, controls, report];
+	return [...core, ...loopback, ...station, ...environment];
+}
+
+export function formatLiveEndpoints(options: LiveEndpointLines): string {
+	return liveEndpointLines(options).join("\n");
 }

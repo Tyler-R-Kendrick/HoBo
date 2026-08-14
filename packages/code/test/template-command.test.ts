@@ -32,6 +32,16 @@ describe("hobo-code template", () => {
 		expect(result.message).toContain("bindle.named");
 	});
 
+	it("lists templates when given no query, --id, or list", () => {
+		const result = runTemplateCommand({ args: [], flags: {} });
+		expect(result.ok).toBe(true);
+		expect(result.code).toBe("HOBO_CODE_TEMPLATE");
+		expect(result.message).toContain("bindle.web-only");
+		expect(result.message).toContain("station.init");
+		expect(result.message).not.toContain("template needs a query");
+		expect(result.code).not.toBe("HOBO_CODE_TEMPLATE_INDEX_INVALID");
+	});
+
 	it("renders an atom snippet by exact id", () => {
 		const result = runTemplateCommand({
 			args: ["render", "bindle.web-only"],

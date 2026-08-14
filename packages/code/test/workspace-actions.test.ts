@@ -6,7 +6,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { runInteractiveShell } from "../src/interactive-shell.js";
 import { createDefaultShellHost } from "../src/shell-host.js";
-import { matchWorkspaceAction } from "../src/workspace-actions.js";
+import {
+	formatLiveEndpoints,
+	matchWorkspaceAction,
+} from "../src/workspace-actions.js";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -57,6 +60,31 @@ describe("Bo workspace actions", () => {
 		expect(matchWorkspaceAction("refine the openui bindle")).toBeUndefined();
 	});
 
+	it("refers to named endpoints and shows the loopback IP once", () => {
+		const text = formatLiveEndpoints({
+			appUrl: "http://127.0.0.1:48211/",
+			debugUrl: "http://127.0.0.1:48211/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:48212/__hobo/evidence/controls/live",
+			reportUrl: "http://127.0.0.1:48212/__hobo/evidence?report=live",
+			namedUrl: "http://web.hello-world.local.hobo.localhost:48211",
+			stationId: "station:local",
+			environment: "local-dev",
+			emphasis: "run",
+		});
+		expect(text).toBe(
+			[
+				"bindle · http://web.hello-world.local.hobo.localhost:48211",
+				"debug · http://web.hello-world.local.hobo.localhost:48211/?__hobo_debug=1",
+				"controls · http://evidence.code.local.hobo.localhost:48212/__hobo/evidence/controls/live",
+				"report · http://evidence.code.local.hobo.localhost:48212/__hobo/evidence?report=live",
+				"loopback · http://127.0.0.1:48211/",
+				"station · station:local",
+				"env · local-dev",
+			].join("\n"),
+		);
+		expect(text.match(/127\.0\.0\.1:48211/g)).toEqual(["127.0.0.1:48211"]);
+	});
+
 	it("creates then runs with real endpoints from the live session", async () => {
 		const root = temp("hc-bo-ws-");
 		const created: string[] = [];
@@ -74,7 +102,7 @@ describe("Bo workspace actions", () => {
 					controlsUrl: "http://127.0.0.1:48212/__hobo/evidence/controls/live",
 					reportUrl: "http://127.0.0.1:48212/__hobo/evidence?report=live",
 					evidencePath: join(root, ".hobo", "durable", "code", "evidence"),
-					namedUrl: "https://web.hello-world.local.hobo.localhost",
+					namedUrl: "http://web.hello-world.local.hobo.localhost:48211",
 					close: async () => {},
 				};
 			},
@@ -93,18 +121,29 @@ describe("Bo workspace actions", () => {
 		expect(azureText).not.toMatch(/hobo-code atoms/i);
 
 		const runText = await host.tryWorkspaceAction?.("run it");
-		expect(runText).toContain("http://127.0.0.1:48211/");
-		expect(runText).toContain("https://web.hello-world.local.hobo.localhost");
+		expect(runText).toContain(
+			"bindle · http://web.hello-world.local.hobo.localhost:48211",
+		);
+		expect(runText).toContain(
+			"debug · http://web.hello-world.local.hobo.localhost:48211/?__hobo_debug=1",
+		);
+		expect(runText).toContain("loopback · http://127.0.0.1:48211/");
+		expect(runText).not.toMatch(/^bindle · http:\/\/127\.0\.0\.1/m);
+		expect(runText).not.toContain("named ·");
 		expect(runText).toContain("station · station:local");
 		expect(runText).toContain("env · local-dev");
 		expect(created.at(-1)).toContain("hello-world");
 
 		const debugText = await host.tryWorkspaceAction?.("debug it");
 		expect(debugText).toContain(
-			"http://127.0.0.1:48212/__hobo/evidence/controls/live",
+			"debug · http://web.hello-world.local.hobo.localhost:48211/?__hobo_debug=1",
+		);
+		expect(debugText).toContain("loopback · http://127.0.0.1:48211/");
+		expect(debugText).toContain(
+			"http://evidence.code.local.hobo.localhost:48212/__hobo/evidence/controls/live",
 		);
 		expect(debugText).toContain(
-			"http://127.0.0.1:48212/__hobo/evidence?report=live",
+			"http://evidence.code.local.hobo.localhost:48212/__hobo/evidence?report=live",
 		);
 		expect(debugText).toContain("station · station:local");
 		await host.dispose?.();

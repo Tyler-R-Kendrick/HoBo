@@ -62,6 +62,7 @@ describe("@hobo/code platform integration", () => {
 			projectRoot: project,
 			hoboHome: home,
 			autoInitStation: true,
+			sidecars: false,
 		});
 		expect(session.platform.station.present).toBe(true);
 		expect(session.isolation.stationId).toBe(

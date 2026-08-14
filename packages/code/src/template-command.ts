@@ -27,15 +27,23 @@ export function runTemplateCommand(input: {
 	const query =
 		(typeof input.flags.id === "string" && input.flags.id) || rest.join(" ");
 	const action = resolveAction(sub, input.flags);
-	if (
-		action === "list" ||
-		(action === "search" && !query && input.flags.all === true)
-	) {
+	if (action === "list" || (action === "search" && !query)) {
+		const rows = catalog.patterns.map((item) => {
+			const label = item.intent || item.title || "";
+			return label ? `  ${item.id.padEnd(28)} ${label}` : `  ${item.id}`;
+		});
 		const ids = catalog.patterns.map((item) => item.id);
 		return {
 			ok: true,
 			code: "HOBO_CODE_TEMPLATE",
-			message: `${ids.join("\n")}\n\n0 LLM calls · 0 LLM tokens`,
+			message: [
+				`templates · ${ids.length}`,
+				"",
+				...rows,
+				"",
+				"/template <id> to preview · /template apply <id> --out <dir>",
+				"0 LLM calls · 0 LLM tokens",
+			].join("\n"),
 			data: {
 				ids,
 				count: ids.length,
@@ -48,7 +56,7 @@ export function runTemplateCommand(input: {
 	if (!query) {
 		return {
 			ok: false,
-			code: "HOBO_CODE_TEMPLATE_INDEX_INVALID",
+			code: "HOBO_CODE_TEMPLATE_USAGE",
 			message:
 				"template needs a query, --id, or list\n\n0 LLM calls · 0 LLM tokens",
 			data: { llmCalls: 0, llmInputTokens: 0, llmOutputTokens: 0 },

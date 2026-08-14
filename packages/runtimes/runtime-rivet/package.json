@@ -1,0 +1,36 @@
+{
+	"name": "@hobo/runtime-rivet",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "Optional Camp runtime realizing ActorHost over a HoBo-owned actor-local journal. RivetKit is the preferred engine; node:sqlite is the local/oracle driver.",
+	"type": "module",
+	"private": true,
+	"files": [
+		"LICENSE",
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@hobo/core": "workspace:*",
+		"@rivetkit/rivetkit-wasm": "2.3.10",
+		"rivetkit": "2.3.10"
+	},
+	"devDependencies": {
+		"@types/node": ">=24.0.0"
+	},
+	"scripts": {
+		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run"
+	}
+}

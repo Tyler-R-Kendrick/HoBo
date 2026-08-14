@@ -19,11 +19,14 @@ export interface ResolveActorPlacementInput {
 	readonly campRuntimeRequirements?: readonly string[];
 	readonly nativeHost: ActorHost;
 	readonly daprHost?: ActorHost;
+	readonly rivetHost?: ActorHost;
+	readonly celldHost?: ActorHost;
 }
 
 /**
  * Resolve which ActorHost backs defineActor for this Camp.
- * Default: native (ADR-0031). Dapr only when Camp asks for it or explicit mode.
+ * Default: native (ADR-0031). Dapr / Rivet only when Camp asks or explicit mode.
+ * Explicit pins fail closed when the matching host is missing.
  */
 export function resolveActorPlacement(
 	input: ResolveActorPlacementInput,
@@ -38,10 +41,59 @@ export function resolveActorPlacement(
 			}
 			return { mode: "dapr", host: input.daprHost, source: "explicit" };
 		}
+		if (mode === "rivet") {
+			if (!input.rivetHost) {
+				throw new Error(
+					"actor placement mode 'rivet' requires a Rivet-backed ActorHost",
+				);
+			}
+			return { mode: "rivet", host: input.rivetHost, source: "explicit" };
+		}
+		if (mode === "celld") {
+			if (!input.celldHost) {
+				throw new Error(
+					"actor placement mode 'celld' requires a celld-backed ActorHost",
+				);
+			}
+			return { mode: "celld", host: input.celldHost, source: "explicit" };
+		}
 		return { mode: "native", host: input.nativeHost, source: "explicit" };
 	}
 
-	const wantsDapr = (input.campRuntimeRequirements ?? []).some(
+	const requirements = input.campRuntimeRequirements ?? [];
+	const wantsCelld = requirements.some(
+		(r) => r === "celld" || r === "runtime-celld" || r.startsWith("celld:"),
+	);
+	if (wantsCelld) {
+		if (!input.celldHost) {
+			throw new Error(
+				"Camp runtimeRequirements include celld but no celld ActorHost was injected",
+			);
+		}
+		return {
+			mode: "celld",
+			host: input.celldHost,
+			source: "camp-runtime",
+		};
+	}
+
+	const wantsRivet = requirements.some(
+		(r) => r === "rivet" || r === "runtime-rivet" || r.startsWith("rivet:"),
+	);
+	if (wantsRivet) {
+		if (!input.rivetHost) {
+			throw new Error(
+				"Camp runtimeRequirements include rivet but no Rivet ActorHost was injected",
+			);
+		}
+		return {
+			mode: "rivet",
+			host: input.rivetHost,
+			source: "camp-runtime",
+		};
+	}
+
+	const wantsDapr = requirements.some(
 		(r) => r === "dapr" || r === "runtime-dapr" || r.startsWith("dapr:"),
 	);
 	if (wantsDapr) {

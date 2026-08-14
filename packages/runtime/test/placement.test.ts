@@ -26,6 +26,8 @@ function stubHost(label: string): ActorHost {
 describe("resolveActorPlacement", () => {
 	const native = stubHost("native");
 	const dapr = stubHost("dapr");
+	const rivet = stubHost("rivet");
+	const celld = stubHost("celld");
 
 	it("defaults to native (ADR-0031)", () => {
 		const r = resolveActorPlacement({ nativeHost: native });
@@ -45,14 +47,65 @@ describe("resolveActorPlacement", () => {
 		expect(r.source).toBe("camp-runtime");
 	});
 
-	it("explicit native wins over camp dapr", () => {
+	it("selects rivet from camp runtime requirements", () => {
+		const r = resolveActorPlacement({
+			nativeHost: native,
+			rivetHost: rivet,
+			campRuntimeRequirements: ["runtime-rivet"],
+		});
+		expect(r.mode).toBe("rivet");
+		expect(r.host).toBe(rivet);
+		expect(r.source).toBe("camp-runtime");
+	});
+
+	it("prefers rivet over dapr when both appear in requirements", () => {
+		const r = resolveActorPlacement({
+			nativeHost: native,
+			daprHost: dapr,
+			rivetHost: rivet,
+			campRuntimeRequirements: ["dapr", "rivet"],
+		});
+		expect(r.mode).toBe("rivet");
+		expect(r.host).toBe(rivet);
+	});
+
+	it("explicit native wins over camp rivet", () => {
 		const r = resolveActorPlacement({
 			explicit: "native",
 			nativeHost: native,
-			daprHost: dapr,
-			campRuntimeRequirements: ["dapr"],
+			rivetHost: rivet,
+			campRuntimeRequirements: ["rivet"],
 		});
 		expect(r.mode).toBe("native");
+		expect(r.host).toBe(native);
+	});
+
+	it("selects celld from camp runtime requirements", () => {
+		const r = resolveActorPlacement({
+			nativeHost: native,
+			celldHost: celld,
+			campRuntimeRequirements: ["runtime-celld"],
+		});
+		expect(r.mode).toBe("celld");
+		expect(r.host).toBe(celld);
+	});
+
+	it("explicit celld fails closed when host missing", () => {
+		expect(() =>
+			resolveActorPlacement({
+				explicit: "celld",
+				nativeHost: native,
+			}),
+		).toThrow(/celld-backed ActorHost/);
+	});
+
+	it("explicit rivet fails closed when host missing", () => {
+		expect(() =>
+			resolveActorPlacement({
+				explicit: "rivet",
+				nativeHost: native,
+			}),
+		).toThrow(/Rivet-backed ActorHost/);
 	});
 
 	it("fails closed when dapr required but host missing", () => {

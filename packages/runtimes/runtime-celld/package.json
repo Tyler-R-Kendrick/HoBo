@@ -1,0 +1,28 @@
+{
+	"name": "@hobo/runtime-celld",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "Experimental Durable Objects dialect adapter for celld. Not a WASM Component Model host. One fleet per trust boundary.",
+	"type": "module",
+	"private": true,
+	"files": ["LICENSE", "dist"],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"dependencies": {
+		"@hobo/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": ">=24.0.0"
+	},
+	"scripts": {
+		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run"
+	}
+}

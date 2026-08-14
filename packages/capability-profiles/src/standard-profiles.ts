@@ -320,6 +320,73 @@ const KV: readonly CapabilityProfileDescriptor[] = [
 		refines: ["kv.key-value/v1"],
 		guarantees: [bool("singleWriter", "One active writer per object identity.")],
 	}),
+	profile({
+		id: "kv.durable-object.event-journal/v1",
+		primitive: "kv",
+		displayName: "Durable object event journal",
+		description:
+			"Append-only actor-local fact stream with expected-revision CAS inside one transaction.",
+		refines: ["kv.durable-object/v1"],
+		guarantees: [
+			bool("appendOnlyFacts", "Facts are immutable after commit."),
+			bool("expectedRevisionCas", "Append compares expected revision atomically."),
+		],
+		sourceRefs: [
+			hoboSource(
+				"docs/design/adr/03-data-plane-sqlite-default.md",
+				"Actor-local journal mirrors ADR-0135 stream-head CAS; not a global EventStore",
+			),
+		],
+	}),
+	profile({
+		id: "kv.durable-object.durable-inbox/v1",
+		primitive: "kv",
+		displayName: "Durable object command inbox",
+		description:
+			"Accepted commands persist before acknowledgement and survive receive-loss of an engine mailbox.",
+		refines: ["kv.durable-object.event-journal/v1"],
+		guarantees: [
+			bool(
+				"acceptedCommandDurable",
+				"A successful accept implies an inbox row that wake/restart can recover.",
+			),
+		],
+		sourceRefs: [
+			{
+				url: "https://rivet.dev/docs/actors/queues/",
+				checkedAt: "2026-08-13",
+				note: "Rivet removes queue messages on receive; HoBo inbox is the authority",
+			},
+		],
+	}),
+	profile({
+		id: "kv.durable-object.transactional-outbox/v1",
+		primitive: "kv",
+		displayName: "Durable object transactional outbox",
+		description:
+			"Effects stage in the same actor-local transaction as facts; dispatch runs after commit.",
+		refines: ["kv.durable-object.event-journal/v1"],
+		guarantees: [
+			bool(
+				"effectsStagedWithFacts",
+				"Outbox rows commit atomically with the facts that decided them.",
+			),
+		],
+	}),
+	profile({
+		id: "kv.durable-object.exportable-state/v1",
+		primitive: "kv",
+		displayName: "Exportable durable object state",
+		description:
+			"Logical export/import of journal, inbox, outbox, and timers for Trails. Not a physical SQLite copy.",
+		refines: ["kv.durable-object.event-journal/v1"],
+		guarantees: [
+			bool(
+				"logicalExport",
+				"Export is a content-addressed logical record independent of engine files.",
+			),
+		],
+	}),
 ];
 
 /** bucket */

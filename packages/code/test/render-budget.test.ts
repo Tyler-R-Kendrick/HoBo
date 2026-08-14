@@ -143,18 +143,29 @@ describe("InteractiveShell render budget (differential rendering)", () => {
 		let afterPaint = 0;
 		let beforeQuit = 0;
 		let terminalRef: StreamTerminal | undefined;
-		const snapshots = new Promise<void>((resolve) => {
-			setTimeout(() => {
-				afterPaint = terminalRef?.bytesWritten ?? -1;
-			}, 120);
-			setTimeout(() => {
-				beforeQuit = terminalRef?.bytesWritten ?? -1;
-				resolve();
-			}, 340);
+		const snapshots = new Promise<void>((resolve, reject) => {
+			const started = Date.now();
+			const waitForPaint = (): void => {
+				const written = terminalRef?.bytesWritten ?? 0;
+				if (written > 64) {
+					afterPaint = written;
+					setTimeout(() => {
+						beforeQuit = terminalRef?.bytesWritten ?? -1;
+						resolve();
+					}, 200);
+					return;
+				}
+				if (Date.now() - started > 800) {
+					reject(new Error("first paint never landed"));
+					return;
+				}
+				setTimeout(waitForPaint, 40);
+			};
+			setTimeout(waitForPaint, 40);
 		});
 		const { terminal } = await runShell({
 			reducedMotion: true,
-			maxMs: 420,
+			maxMs: 900,
 			onTerminal: (t) => {
 				terminalRef = t;
 			},

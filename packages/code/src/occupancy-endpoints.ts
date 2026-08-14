@@ -7,7 +7,13 @@ import { getNamedEndpoint, LOCAL_DEFAULT_TENANT_ID } from "@hobo/core";
 // public-contract: occupancy sidecar app label on named endpoints
 export const OCCUPANCY_NAMED_APP = "code" as const;
 
-export type OccupancyNamedResource = "evidence" | "dashboard" | "otlp";
+export type OccupancyNamedResource =
+	| "evidence"
+	| "dashboard"
+	| "otlp"
+	| "evals"
+	| "rollout"
+	| "experiment";
 
 export interface OccupancyNameScope {
 	readonly tenant?: string;
@@ -90,17 +96,27 @@ export interface OccupancySidecarUrls {
 	readonly evidenceReportUrl?: string;
 	readonly evidenceControlsUrl?: string;
 	readonly otlpHttpUrl?: string;
+	readonly evalsUrl?: string;
+	readonly rolloutUrl?: string;
+	readonly experimentUrl?: string;
 }
 
 export interface OccupancySidecarEndpoint {
-	readonly resourceName: "dashboard" | "evidence" | "controls" | "otlp";
+	readonly resourceName:
+		| "dashboard"
+		| "evidence"
+		| "controls"
+		| "otlp"
+		| "evals"
+		| "rollout"
+		| "experiment";
 	readonly kind: "http" | "otlp";
 	readonly backendUrl: string;
 	readonly namedUrl: string;
 	readonly hostname?: string;
 	readonly mode: "local";
 	readonly preferredUrl: string;
-	readonly fidelity: "simulated";
+	readonly fidelity: "real";
 }
 
 /** Named occupancy sidecar URLs that are actually listening. */
@@ -125,7 +141,7 @@ export function occupancySidecarEndpoints(
 			...(hostname ? { hostname } : {}),
 			mode: "local",
 			preferredUrl: named,
-			fidelity: "simulated",
+			fidelity: "real",
 		});
 	};
 	add("dashboard", urls.dashboardUrl, "dashboard", "http");
@@ -137,6 +153,9 @@ export function occupancySidecarEndpoints(
 	);
 	add("controls", urls.evidenceControlsUrl, "evidence", "http");
 	add("otlp", urls.otlpHttpUrl, "otlp", "otlp");
+	add("evals", urls.evalsUrl, "evals", "http");
+	add("rollout", urls.rolloutUrl, "rollout", "http");
+	add("experiment", urls.experimentUrl, "experiment", "http");
 	return rows;
 }
 

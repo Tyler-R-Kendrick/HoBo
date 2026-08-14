@@ -28,6 +28,10 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 		}
 		return [centerLine(chips.join("  "), width)];
 	}
+	const scrollOf = (target: TuiNode): number =>
+		typeof target.props.scroll === "number" ? target.props.scroll : 0;
+	const originOf = (target: TuiNode): "end" | "start" =>
+		target.props.scrollOrigin === "start" ? "start" : "end";
 	if (
 		node.classList.includes("ink-card") ||
 		node.classList.includes("broadcast-frame")
@@ -62,10 +66,17 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 				renderNode(child, Math.max(12, cardWidth - 2)),
 			);
 			const maxBody = Math.max(3, glass - 4);
-			const card = inkCard(raw.slice(-maxBody), {
-				width: cardWidth,
-				title: "btw",
-			});
+			const overlayScroll = overlays.reduce(
+				(max, child) => Math.max(max, scrollOf(child)),
+				0,
+			);
+			const card = inkCard(
+				padLines(raw, maxBody, overlayScroll, "end"),
+				{
+					width: cardWidth,
+					title: "btw",
+				},
+			);
 			const clipped =
 				card.length > glass ? card.slice(card.length - glass) : card;
 			const col = Math.max(0, innerWidth - cardWidth);
@@ -90,9 +101,9 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 			lines.push(...renderNode(child, width));
 			lines.push("");
 		}
-		const scroll =
-			typeof node.props.scroll === "number" ? node.props.scroll : 0;
-		return height === undefined ? lines : padLines(lines, height, scroll);
+		return height === undefined
+			? lines
+			: padLines(lines, height, scrollOf(node), originOf(node));
 	}
 	if (node.classList.includes("slash-palette")) {
 		const items = node.children.flatMap((child) => renderNode(child, width));
@@ -105,29 +116,9 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 	}
 	if (node.classList.includes("approval")) {
 		const lines = node.children.flatMap((child) => renderNode(child, width));
-		if (height === undefined || lines.length <= height) {
-			return height === undefined ? lines : padLines(lines, height);
-		}
-		const changeLines = node.children
-			.filter((child) => child.classList.includes("change"))
-			.flatMap((child) => renderNode(child, width));
-		const prefix: string[] = [];
-		const suffix: string[] = [];
-		let seenChange = false;
-		for (const child of node.children) {
-			const chunk = renderNode(child, width);
-			if (child.classList.includes("change")) {
-				seenChange = true;
-				continue;
-			}
-			if (seenChange) suffix.push(...chunk);
-			else prefix.push(...chunk);
-		}
-		const room = Math.max(1, height - prefix.length - suffix.length - 1);
-		const shown = changeLines.slice(0, room);
-		const hidden = changeLines.length - shown.length;
-		const extra = hidden > 0 ? [`  … ${hidden} more file(s)`] : [];
-		return padLines([...prefix, ...shown, ...extra, ...suffix], height);
+		return height === undefined
+			? lines
+			: padLines(lines, height, scrollOf(node), "start");
 	}
 	if (node.classList.includes("ink-table")) {
 		const lines = node.children.flatMap((child) => renderNode(child, width));
@@ -135,7 +126,9 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 	}
 	if (node.classList.includes("chat-surface")) {
 		const lines = node.children.flatMap((child) => renderNode(child, width));
-		return height === undefined ? lines : padLines(lines, height);
+		return height === undefined
+			? lines
+			: padLines(lines, height, scrollOf(node), originOf(node));
 	}
 	if (node.classList.includes("btw-aside")) {
 		const lines = node.children.flatMap((child) =>
@@ -146,7 +139,9 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 	}
 	if (node.classList.includes("text-pane")) {
 		const lines = wrapText(collectText(node).join("\n"), width);
-		return height === undefined ? lines : padLines(lines, height);
+		return height === undefined
+			? lines
+			: padLines(lines, height, scrollOf(node), originOf(node));
 	}
 	if (node.type === "strap" || node.classList.includes("status-strap")) {
 		return [statusStripe(collectText(node), width)];

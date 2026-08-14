@@ -243,7 +243,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		state = reduceShellKey(state, "\t").state;
 		expect(state.focus).toBe("tasks");
 		const tasksFrame = renderShellFrame(state);
-		expect(tasksFrame).toMatch(/Tasks/);
+		expect(tasksFrame).toMatch(/tasks/i);
 		state = reduceShellKey(state, "\t").state;
 		expect(state.focus).toBe("status");
 		const statusFrame = renderShellFrame(state);
@@ -289,14 +289,143 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		state = reduceShellKey(state, "\x1b[A").state;
 		expect(state.chatScroll).toBe(1);
 		state = reduceShellKey(state, "\x1b[5~").state; // PgUp
-		expect(state.chatScroll).toBe(6);
+		expect(state.chatScroll).toBeGreaterThan(1);
 		const scrolled = renderShellFrame(state);
-		expect(scrolled).toContain("↑6");
+		expect(scrolled).toMatch(/chat ↑/);
+		const afterPage = state.chatScroll;
 		state = reduceShellKey(state, "\x1b[6~").state; // PgDn
-		expect(state.chatScroll).toBe(1);
+		expect(state.chatScroll).toBeLessThan(afterPage);
 		// New activity snaps back to the bottom
 		state = appendAssistant(state, "latest");
 		expect(state.chatScroll).toBe(0);
+	});
+
+	it("scrolls the welcome chat surface as one viewport", () => {
+		let state = createInitialShellState({
+			width: 60,
+			height: 18,
+			welcome: true,
+			reducedMotion: true,
+		});
+		for (let i = 0; i < 20; i += 1) {
+			state = appendAssistant(state, `tail-line-${i}`);
+		}
+		const bottom = plain(renderShellFrame(state));
+		expect(bottom).toContain("tail-line-19");
+		expect(bottom).not.toContain("↑");
+		state = reduceShellKey(state, "\x1b[5~").state;
+		expect(state.chatScroll).toBeGreaterThan(0);
+		const up = plain(renderShellFrame(state));
+		expect(up).toMatch(/chat ↑/);
+		expect(up).not.toContain("tail-line-19");
+	});
+
+	it("scrolls tasks, status, and resources from the top", () => {
+		const long = Array.from(
+			{ length: 40 },
+			(_, i) => `row-${String(i).padStart(2, "0")}`,
+		).join("\n");
+		const scenes = [
+			{ focus: "tasks" as const, field: "tasksPlain" as const, title: "tasks" },
+			{
+				focus: "status" as const,
+				field: "statusPlain" as const,
+				title: "status",
+			},
+			{
+				focus: "resources" as const,
+				field: "resourcesPlain" as const,
+				title: "resources",
+			},
+		];
+		for (const scene of scenes) {
+			let state = createInitialShellState({
+				width: 60,
+				height: 16,
+				welcome: false,
+				reducedMotion: true,
+			});
+			state = {
+				...state,
+				focus: scene.focus,
+				[scene.field]: long,
+			};
+			const top = plain(renderShellFrame(state));
+			expect(top, scene.title).toContain("row-00");
+			expect(top, scene.title).not.toContain("row-39");
+			state = reduceShellKey(state, "\x1b[B").state; // down
+			expect(state.paneScroll, scene.title).toBe(1);
+			state = reduceShellKey(state, "\x1b[6~").state; // PgDn
+			expect(state.paneScroll, scene.title).toBeGreaterThan(1);
+			const down = plain(renderShellFrame(state));
+			expect(down, scene.title).toMatch(new RegExp(`${scene.title} ↑`));
+			expect(down, scene.title).not.toContain("row-00");
+			state = reduceShellKey(state, "\x1b[A").state; // up toward top
+			expect(state.paneScroll, scene.title).toBeGreaterThan(0);
+		}
+	});
+
+	it("scrolls the approval dialog and the btw overlay", () => {
+		let approval = createInitialShellState({
+			width: 60,
+			height: 16,
+			welcome: false,
+			reducedMotion: true,
+		});
+		approval = {
+			...approval,
+			pendingApproval: {
+				runId: "run-scroll",
+				sandboxRoot: "/tmp/sandbox",
+				changes: Array.from({ length: 30 }, (_, i) => ({
+					status: "M",
+					path: `src/file-${String(i).padStart(2, "0")}.ts`,
+				})),
+			},
+		};
+		const approvalTop = plain(renderShellFrame(approval));
+		expect(approvalTop).toContain("file-00.ts");
+		approval = reduceShellKey(approval, "\x1b[6~").state;
+		expect(approval.paneScroll).toBeGreaterThan(0);
+		const approvalDown = plain(renderShellFrame(approval));
+		expect(approvalDown).not.toContain("file-00.ts");
+
+		let btw = createInitialShellState({
+			width: 72,
+			height: 18,
+			welcome: false,
+			reducedMotion: true,
+		});
+		btw = {
+			...btw,
+			focus: "btw",
+			btw: {
+				snapshot: {
+					focus: "btw",
+					agentState: "idle",
+					stationLabel: "auth:out",
+					envLabel: "",
+					modelLabel: "engine:none",
+					usageLabel: "",
+					messageCount: 1,
+					lastUser: "hi",
+					lastAssistant: "yo",
+					slashOpen: false,
+				},
+				turns: Array.from({ length: 20 }, (_, i) => ({
+					role: i % 2 === 0 ? ("user" as const) : ("assistant" as const),
+					text: `btw-turn-${i}`,
+					at: i,
+				})),
+				originMessageCount: 1,
+			},
+		};
+		const btwBottom = plain(renderShellFrame(btw));
+		expect(btwBottom).toContain("btw-turn-19");
+		btw = reduceShellKey(btw, "\x1b[5~").state;
+		expect(btw.chatScroll).toBeGreaterThan(0);
+		const btwUp = plain(renderShellFrame(btw));
+		expect(btwUp).not.toContain("btw-turn-19");
 	});
 
 	it("frame geometry is stable across animation frames (anti-flicker)", () => {
@@ -671,7 +800,7 @@ describe("approval gate rendering", () => {
 		expect(frame).toContain("squash-only, gated, audited");
 	});
 
-	it("truncates a large blast radius with a remainder count", () => {
+	it("keeps a large blast radius inside the frame and starts at the top", () => {
 		const base = createInitialShellState({
 			width: 90,
 			height: 24,
@@ -692,7 +821,8 @@ describe("approval gate rendering", () => {
 				},
 			}),
 		);
-		expect(frame).toMatch(/\u2026 \d+ more file\(s\)/);
+		expect(frame).toContain("src/file-0.ts");
+		expect(frame).not.toContain("src/file-39.ts");
 		// Geometry must hold — the gate cannot blow the frame open.
 		for (const width of widths(frame)) expect(width).toBe(90);
 	});

@@ -158,9 +158,6 @@ export function guardrail(name: string): ResourceHandle<"guardrail"> {
 export function ui(name: string): ResourceHandle<"ui"> {
 	return createHandle("ui", name);
 }
-export function golden(name: string): ResourceHandle<"golden"> {
-	return createHandle("golden", name);
-}
 export function experiment(name: string): ResourceHandle<"experiment"> {
 	return createHandle("experiment", name);
 }

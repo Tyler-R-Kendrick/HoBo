@@ -16,13 +16,20 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { FeatureFlagStore } from "@hobo/identity";
+
+import { inspectBindleProject } from "./bindle-inspect.js";
+import { startEvalSidecar } from "./eval-sidecar-server.js";
+import { startExperimentSidecar } from "./experiment-sidecar-server.js";
 import {
 	loopbackFetchUrl,
 	type OccupancyNameScope,
 	preferNamedEndpoint,
 } from "./occupancy-endpoints.js";
+import { startRolloutSidecar } from "./rollout-sidecar-server.js";
 import { startSessionControlServer } from "./session-control-server.js";
 import { startLocalDashboard } from "./session-dashboard.js";
+import { CODE_CAMP_ID, userCampId } from "./session-resources.js";
 import {
 	type AuthedStationView,
 	describeAuthedStationSession,
@@ -41,6 +48,9 @@ export interface StationSidecarSnapshot {
 	readonly evidenceControlsUrl: string;
 	readonly evidencePid?: number;
 	readonly otlpHttpUrl: string;
+	readonly evalsUrl?: string;
+	readonly rolloutUrl?: string;
+	readonly experimentUrl?: string;
 	readonly startedAt: string;
 }
 
@@ -67,6 +77,9 @@ export interface StartStationSidecarsOptions {
 	readonly evidencePort?: number;
 	readonly otlpHttpPort?: number;
 	readonly otlpGrpcPort?: number;
+	readonly evalsPort?: number;
+	readonly rolloutPort?: number;
+	readonly experimentPort?: number;
 	readonly ensureLocalLogin?: boolean;
 	/**
 	 * Detach Evidence as a Station occupancy process. Default on for TTY /
@@ -182,6 +195,29 @@ function publishSidecarUrls(
 		otlpHttpUrl: snapshot.otlpHttpUrl
 			? preferNamedEndpoint(snapshot.otlpHttpUrl, "otlp", scope)
 			: snapshot.otlpHttpUrl,
+		...(snapshot.evalsUrl
+			? {
+					evalsUrl: preferNamedEndpoint(snapshot.evalsUrl, "evals", scope),
+				}
+			: {}),
+		...(snapshot.rolloutUrl
+			? {
+					rolloutUrl: preferNamedEndpoint(
+						snapshot.rolloutUrl,
+						"rollout",
+						scope,
+					),
+				}
+			: {}),
+		...(snapshot.experimentUrl
+			? {
+					experimentUrl: preferNamedEndpoint(
+						snapshot.experimentUrl,
+						"experiment",
+						scope,
+					),
+				}
+			: {}),
 	};
 }
 
@@ -413,9 +449,19 @@ export async function startStationSidecars(
 		...options,
 		persistEvidence: persist,
 	});
+	const evidencePid =
+		"pid" in evidence && typeof evidence.pid === "number" && evidence.pid > 0
+			? evidence.pid
+			: undefined;
 	let dashboardUrl = "";
 	let otlpHttpUrl = "";
+	let evalsUrl: string | undefined;
+	let rolloutUrl: string | undefined;
+	let experimentUrl: string | undefined;
 	let closeDashboard: () => Promise<void> = async () => {};
+	let closeEvals: () => Promise<void> = async () => {};
+	let closeRollout: () => Promise<void> = async () => {};
+	let closeExperiment: () => Promise<void> = async () => {};
 	try {
 		const dashboard = await startLocalDashboard({
 			hoboHome: options.hoboHome,
@@ -423,6 +469,22 @@ export async function startStationSidecars(
 			port: options.dashboardPort ?? 8787,
 			otlpHttpPort: options.otlpHttpPort ?? 0,
 			otlpGrpcPort: options.otlpGrpcPort ?? 0,
+			evidenceControl: {
+				async stop() {
+					killEvidencePid(evidencePid);
+					await waitForEvidenceDown(evidence.url, evidencePid);
+				},
+				async start() {
+					const disk = readStationSidecars(options.hoboHome, view.stationId);
+					if (await isStationEvidenceLive(disk)) {
+						return;
+					}
+					await startEvidenceServer({
+						...options,
+						persistEvidence: persist,
+					});
+				},
+			},
 			...(options.projectRoot !== undefined
 				? { projectRoot: options.projectRoot }
 				: {}),
@@ -434,10 +496,46 @@ export async function startStationSidecars(
 		// Evidence still runs.
 	}
 
-	const evidencePid =
-		"pid" in evidence && typeof evidence.pid === "number" && evidence.pid > 0
-			? evidence.pid
-			: undefined;
+	try {
+		const inspected =
+			options.projectRoot !== undefined
+				? inspectBindleProject(options.projectRoot)
+				: undefined;
+		const evals = await startEvalSidecar({
+			campId: inspected ? userCampId(inspected.name) : CODE_CAMP_ID,
+			port: options.evalsPort ?? 0,
+			...(options.projectRoot !== undefined
+				? { projectDir: options.projectRoot }
+				: {}),
+		});
+		evalsUrl = evals.url;
+		closeEvals = () => evals.close();
+	} catch {
+		// Default suite still exists on the inventory; listener is best-effort.
+	}
+
+	try {
+		const flags = new FeatureFlagStore();
+		const rollout = await startRolloutSidecar({
+			store: flags,
+			port: options.rolloutPort ?? 0,
+		});
+		rolloutUrl = rollout.url;
+		closeRollout = () => rollout.close();
+		const experiment = await startExperimentSidecar({
+			store: flags,
+			port: options.experimentPort ?? 0,
+		});
+		experimentUrl = experiment.url;
+		closeExperiment = () => experiment.close();
+	} catch (error) {
+		await closeDashboard();
+		await closeEvals();
+		await closeRollout();
+		await closeExperiment();
+		throw error;
+	}
+
 	const snapshot = publishSidecarUrls(
 		{
 			schema: STATION_SIDECARS_SCHEMA,
@@ -449,6 +547,9 @@ export async function startStationSidecars(
 			evidenceControlsUrl: evidence.controlsUrlTemplate,
 			...(evidencePid !== undefined ? { evidencePid } : {}),
 			otlpHttpUrl,
+			...(evalsUrl !== undefined ? { evalsUrl } : {}),
+			...(rolloutUrl !== undefined ? { rolloutUrl } : {}),
+			...(experimentUrl !== undefined ? { experimentUrl } : {}),
 			startedAt: new Date().toISOString(),
 		},
 		occupancyScope(view),
@@ -464,6 +565,9 @@ export async function startStationSidecars(
 			if (held.refs > 0) return;
 			running.delete(key);
 			await closeDashboard();
+			await closeEvals();
+			await closeRollout();
+			await closeExperiment();
 			if (persist) return;
 			const path = stationSidecarsPath(options.hoboHome, view.stationId);
 			await evidence.close();
@@ -554,6 +658,15 @@ export function formatSidecarStrap(
 	}
 	if (sidecars.evidenceUrl) {
 		chips.push(`evidence:${new URL(sidecars.evidenceUrl).host}`);
+	}
+	if (sidecars.evalsUrl) {
+		chips.push(`evals:${new URL(sidecars.evalsUrl).host}`);
+	}
+	if (sidecars.rolloutUrl) {
+		chips.push(`rollout:${new URL(sidecars.rolloutUrl).host}`);
+	}
+	if (sidecars.experimentUrl) {
+		chips.push(`experiment:${new URL(sidecars.experimentUrl).host}`);
 	}
 	return chips;
 }

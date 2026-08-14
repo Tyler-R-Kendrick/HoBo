@@ -539,8 +539,8 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.ok).toBe(true);
 		expect(r.code).toBe("HOBO_CODE_TASKS");
 		expect(r.message).toMatch(/▣ tasks/);
-		expect(r.message).toMatch(/grok-build · click · tasks · workflows/);
-		expect(r.message).toMatch(/click · task-row/);
+		expect(r.message).toMatch(/same work as Evidence/);
+		expect(r.message).toMatch(/Evidence: visual report of this board/);
 		const data = r.data as {
 			grokBuild: {
 				mouseInteractive: boolean;
@@ -657,7 +657,10 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 
 	it("auth login binds local station; control-plane verbs are not product surface", async () => {
 		const home = temp("hc-auth-bind-");
-		const login = await runHoboCodeCli(["auth", "login"], { hoboHome: home });
+		const login = await runHoboCodeCli(["auth", "login", "--agent"], {
+			hoboHome: home,
+			env: { ...process.env, HOBO_CODE_SIDECARS: "0" },
+		});
 		expect(login.ok).toBe(true);
 		expect(login.code).toBe("HOBO_CODE_AUTH");
 		for (const verb of [
@@ -897,9 +900,14 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(payload.inventory?.scope?.environment).toBe("preview");
 		expect(payload.inventory?.missing).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ kind: "bindle" }),
+				expect.objectContaining({ kind: "junction" }),
 			]),
 		);
+		expect(
+			(payload.inventory?.missing as { kind?: string }[] | undefined)?.some(
+				(row) => row.kind === "bindle",
+			),
+		).toBe(false);
 
 		const dash = await runHoboCodeCli(["dashboard", "--once", "--port", "0"], {
 			hoboHome: home,

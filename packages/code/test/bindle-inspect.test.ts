@@ -81,11 +81,20 @@ export default bindle("hello-world", (b) => {
 describe("local Bindle capability catalog", () => {
 	it("covers the Bindle kind list with honest local fidelity", () => {
 		const rows = localBindleCapabilities();
-		expect(rows.map((row) => row.kind)).toEqual([...BINDLE_RESOURCE_KINDS]);
+		expect(rows.map((row) => row.kind)).toEqual(
+			BINDLE_RESOURCE_KINDS.filter((kind) => kind !== "experiment"),
+		);
+		expect(rows.map((row) => row.kind)).not.toContain("experiment");
 		expect(rows.find((row) => row.kind === "web")).toEqual(
 			expect.objectContaining({
 				available: true,
-				fidelity: "simulated",
+				fidelity: "real",
+			}),
+		);
+		expect(rows.find((row) => row.kind === "kv")).toEqual(
+			expect.objectContaining({
+				available: true,
+				fidelity: "real",
 			}),
 		);
 		expect(rows.find((row) => row.kind === "secret")).toEqual(
@@ -100,5 +109,12 @@ describe("local Bindle capability catalog", () => {
 				fidelity: "camp-only",
 			}),
 		);
+		expect(rows.find((row) => row.kind === "rollout")).toEqual(
+			expect.objectContaining({
+				available: true,
+				fidelity: "real",
+			}),
+		);
+		expect(rows.map((row) => row.kind)).not.toContain("golden");
 	});
 });

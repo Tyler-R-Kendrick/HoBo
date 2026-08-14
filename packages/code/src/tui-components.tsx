@@ -198,11 +198,19 @@ export interface ApprovalDialogProps {
 	readonly sandboxRoot: string;
 	readonly changes: readonly ApprovalChange[];
 	readonly prompt: string;
+	readonly scroll?: number;
 }
 
 export function ApprovalDialog(props: ApprovalDialogProps): TuiNode {
 	return (
-		<box id="approval" role="dialog" className="approval" runId={props.runId}>
+		<box
+			id="approval"
+			role="dialog"
+			className="approval"
+			runId={props.runId}
+			scroll={props.scroll ?? 0}
+			scrollOrigin="start"
+		>
 			<text>The canonical tree is untouched until you say yes.</text>
 			<text></text>
 			{props.changes.map((change) => (
@@ -231,6 +239,7 @@ export interface BtwAsideProps {
 	readonly turns: readonly BtwTurnView[];
 	readonly parentLatest?: string;
 	readonly newFromParent?: number;
+	readonly scroll?: number;
 }
 
 /** Live overlay side-chat. Tracks the parent thread; does not join it. */
@@ -241,7 +250,12 @@ export function BtwAside(props: BtwAsideProps): TuiNode {
 			? `btw · live · +${extra} new · Esc dismisses`
 			: "btw · live · Esc dismisses";
 	return (
-		<box id="btw-aside" role="region" className="btw-aside overlay">
+		<box
+			id="btw-aside"
+			role="region"
+			className="btw-aside overlay"
+			scroll={props.scroll ?? 0}
+		>
 			<text className="btw-kicker">{kicker}</text>
 			{props.parentLatest ? (
 				<text className="btw-parent">{`parent · ${props.parentLatest}`}</text>
@@ -282,11 +296,18 @@ export function InkTable(props: InkTableProps): TuiNode {
 export interface TextPaneProps {
 	readonly id: string;
 	readonly text: string;
+	readonly scroll?: number;
 }
 
 export function TextPane(props: TextPaneProps): TuiNode {
 	return (
-		<box id={props.id} role="region" className="text-pane">
+		<box
+			id={props.id}
+			role="region"
+			className="text-pane"
+			scroll={props.scroll ?? 0}
+			scrollOrigin="start"
+		>
 			<text>{props.text}</text>
 		</box>
 	);

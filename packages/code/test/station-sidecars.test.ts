@@ -80,6 +80,45 @@ describe("station occupancy sidecars", () => {
 			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(
 				/evidence:evidence\.code\./,
 			);
+			expect(sidecars.evalsUrl).toMatch(/evals\.code\..*\.hobo\.localhost/);
+			const evals = await fetch(loopbackFetchUrl(sidecars.evalsUrl ?? ""));
+			expect(evals.status).toBe(200);
+			expect(await evals.json()).toMatchObject({
+				name: "evals",
+				live: true,
+			});
+			expect(sidecars.rolloutUrl).toMatch(/rollout\.code\..*\.hobo\.localhost/);
+			expect(sidecars.rolloutUrl).not.toMatch(/127\.0\.0\.1/);
+			const rollout = await fetch(loopbackFetchUrl(sidecars.rolloutUrl ?? ""));
+			expect(rollout.status).toBe(200);
+			expect(await rollout.json()).toMatchObject({
+				name: "rollout",
+				hosting: "station",
+				live: true,
+				fidelity: "real",
+				engine: "OpenDeliveryEngine",
+			});
+			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(
+				/rollout:rollout\.code\./,
+			);
+			expect(sidecars.experimentUrl).toMatch(
+				/experiment\.code\..*\.hobo\.localhost/,
+			);
+			expect(sidecars.experimentUrl).not.toMatch(/127\.0\.0\.1/);
+			const experiment = await fetch(
+				loopbackFetchUrl(sidecars.experimentUrl ?? ""),
+			);
+			expect(experiment.status).toBe(200);
+			expect(await experiment.json()).toMatchObject({
+				name: "experiment",
+				hosting: "station",
+				live: true,
+				fidelity: "real",
+				engine: "OpenExperimentEngine",
+			});
+			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(
+				/experiment:experiment\.code\./,
+			);
 		} finally {
 			await sidecars.close();
 		}

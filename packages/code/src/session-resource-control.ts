@@ -1,7 +1,7 @@
 /**
  * Dashboard start/stop. Station/Yard/Camp are primitives; children are the
- * managed units. Yard flow gates traffic. Camp children start/stop alone.
- * Bindle HTTP buttons launch/kill `/dev`. Station sidecars stay up.
+ * managed units. Yard stop takes camps in that yard. Occupancy sidecars
+ * (bindle:code in camp:code) start/stop. Bindle HTTP launches `/dev`.
  */
 import {
 	existsSync,
@@ -17,7 +17,13 @@ import {
 	type DevBrowserSessionOptions,
 	startDevBrowserSession,
 } from "./dev-browser.js";
-import { recordDevDeployment } from "./session-resources.js";
+import {
+	campsInYard,
+	CODE_CAMP_ID,
+	CODE_BINDLE_ID,
+	recordDevDeployment,
+	userCampId,
+} from "./session-resources.js";
 import { describeAuthedStationSession } from "./station-session.js";
 import { resolveRunnableProject } from "./workspace-actions.js";
 
@@ -29,6 +35,11 @@ export interface OccupancyController {
 	start(id: string): Promise<void>;
 	stop(id: string): Promise<void>;
 	isLive(): boolean;
+}
+
+export interface SidecarControl {
+	start(id: string): Promise<void>;
+	stop(id: string): Promise<void>;
 }
 
 interface RunRecord {
@@ -105,13 +116,27 @@ export function isStationResource(id: string): boolean {
 	return id.startsWith("station:");
 }
 
+/** Hosting station plus its occupancy camp/bindle. Cannot self-stop. */
+export function isHostStationStack(id: string): boolean {
+	return (
+		isStationResource(id) ||
+		id === CODE_CAMP_ID ||
+		id === CODE_BINDLE_ID
+	);
+}
+
+const HOST_STATION_REFUSED =
+	"Stations can't shut themselves down — the hosting Station, camp:code, and bindle:code stay up";
+
 export function isOccupancySidecar(id: string): boolean {
 	return (
 		id === "controls" ||
 		id === "report" ||
 		id === "otlp" ||
 		id === "dashboard" ||
-		id === "evidence"
+		id === "evidence" ||
+		id === "rollout" ||
+		id === "experiment"
 	);
 }
 
@@ -226,13 +251,24 @@ export function occupancyCampIsActive(
 	hoboHome: string,
 	stationId: string,
 	environment: string,
+	campId: string = CODE_CAMP_ID,
 ): boolean {
-	return isManagedResourceEnabled(
-		hoboHome,
-		stationId,
-		environment,
-		"camp:local",
-	);
+	return isManagedResourceEnabled(hoboHome, stationId, environment, campId);
+}
+
+function campIdForResource(id: string): string {
+	if (isOccupancySidecar(id) || id === CODE_BINDLE_ID || id === CODE_CAMP_ID) {
+		return CODE_CAMP_ID;
+	}
+	if (id.startsWith("bindle:")) {
+		return userCampId(id.slice("bindle:".length));
+	}
+	if (id.startsWith("camp:")) return id;
+	return userCampId(id);
+}
+
+function isCodeOccupancyTarget(id: string): boolean {
+	return isOccupancySidecar(id);
 }
 
 // public-contract: local yard/camp traffic gate for the Aspire board
@@ -308,6 +344,7 @@ export function createOccupancyController(options: {
 	readonly env?: NodeJS.ProcessEnv;
 	readonly projectRoot?: string;
 	readonly startDevSession?: StartDevSession;
+	readonly sidecar?: SidecarControl;
 }): OccupancyController {
 	const env = options.env ?? process.env;
 	const startDev = options.startDevSession ?? startDevBrowserSession;
@@ -329,15 +366,8 @@ export function createOccupancyController(options: {
 			return live.has(keyOf());
 		},
 		async start(id) {
-			if (isStationResource(id)) {
-				throw new Error(
-					"Station occupancy is not start/stoppable from the dashboard",
-				);
-			}
-			if (isOccupancySidecar(id)) {
-				throw new Error(
-					"Evidence controls stay up for the Station session — stop them with logout",
-				);
+			if (isHostStationStack(id)) {
+				throw new Error(HOST_STATION_REFUSED);
 			}
 			const station = view();
 			if (!station.loggedIn) {
@@ -350,6 +380,23 @@ export function createOccupancyController(options: {
 					station.environment,
 					true,
 				);
+				const yardId = id.endsWith(":flow")
+					? id.slice(0, -":flow".length)
+					: id;
+				for (const campId of campsInYard(
+					options.hoboHome,
+					station.stationId,
+					station.environment,
+					yardId,
+				)) {
+					setManagedResourceEnabled(
+						options.hoboHome,
+						station.stationId,
+						station.environment,
+						campId,
+						true,
+					);
+				}
 				if (id.endsWith(":flow")) {
 					setManagedResourceEnabled(
 						options.hoboHome,
@@ -358,6 +405,34 @@ export function createOccupancyController(options: {
 						id,
 						true,
 					);
+				}
+				return;
+			}
+			if (isCodeOccupancyTarget(id)) {
+				setManagedResourceEnabled(
+					options.hoboHome,
+					station.stationId,
+					station.environment,
+					id,
+					true,
+				);
+				if (id === CODE_CAMP_ID) {
+					setManagedResourceEnabled(
+						options.hoboHome,
+						station.stationId,
+						station.environment,
+						CODE_CAMP_ID,
+						true,
+					);
+				}
+				await options.sidecar?.start(
+					id === CODE_CAMP_ID || id === CODE_BINDLE_ID ? "dashboard" : id,
+				);
+				if (id === CODE_CAMP_ID || id === CODE_BINDLE_ID) {
+					await options.sidecar?.start("otlp");
+					await options.sidecar?.start("evidence");
+					await options.sidecar?.start("rollout");
+					await options.sidecar?.start("experiment");
 				}
 				return;
 			}
@@ -392,15 +467,17 @@ export function createOccupancyController(options: {
 					"Yard flow is halted — start yard:local:flow to resume traffic",
 				);
 			}
+			const campId = campIdForResource(id);
 			if (
 				!occupancyCampIsActive(
 					options.hoboHome,
 					station.stationId,
 					station.environment,
+					campId,
 				)
 			) {
 				throw new Error(
-					"Camp is halted — start camp:local to run Bindle resources",
+					`Camp is halted — start ${campId} to run Bindle resources`,
 				);
 			}
 			setManagedResourceEnabled(
@@ -473,15 +550,8 @@ export function createOccupancyController(options: {
 			});
 		},
 		async stop(id) {
-			if (isStationResource(id)) {
-				throw new Error(
-					"Station occupancy is not start/stoppable from the dashboard",
-				);
-			}
-			if (isOccupancySidecar(id)) {
-				throw new Error(
-					"Evidence controls stay up for the Station session — stop them with logout",
-				);
+			if (isHostStationStack(id)) {
+				throw new Error(HOST_STATION_REFUSED);
 			}
 			const station = view();
 			if (controlsOccupancyFlow(id)) {
@@ -491,6 +561,24 @@ export function createOccupancyController(options: {
 					station.environment,
 					false,
 				);
+				const yardId = id.endsWith(":flow")
+					? id.slice(0, -":flow".length)
+					: id;
+				for (const campId of campsInYard(
+					options.hoboHome,
+					station.stationId,
+					station.environment,
+					yardId,
+				)) {
+					if (campId === CODE_CAMP_ID) continue;
+					setManagedResourceEnabled(
+						options.hoboHome,
+						station.stationId,
+						station.environment,
+						campId,
+						false,
+					);
+				}
 				if (id.endsWith(":flow")) {
 					setManagedResourceEnabled(
 						options.hoboHome,
@@ -507,6 +595,25 @@ export function createOccupancyController(options: {
 				);
 				return;
 			}
+			if (isCodeOccupancyTarget(id)) {
+				setManagedResourceEnabled(
+					options.hoboHome,
+					station.stationId,
+					station.environment,
+					id,
+					false,
+				);
+				if (id === CODE_CAMP_ID || id === CODE_BINDLE_ID) {
+					await options.sidecar?.stop("dashboard");
+					await options.sidecar?.stop("otlp");
+					await options.sidecar?.stop("evidence");
+					await options.sidecar?.stop("rollout");
+					await options.sidecar?.stop("experiment");
+					return;
+				}
+				await options.sidecar?.stop(id);
+				return;
+			}
 			if (controlsNamedEndpointPlane(id) || controlsCampPlane(id)) {
 				setManagedResourceEnabled(
 					options.hoboHome,
@@ -515,7 +622,7 @@ export function createOccupancyController(options: {
 					id,
 					false,
 				);
-				if (controlsCampPlane(id)) {
+				if (controlsCampPlane(id) && id !== CODE_CAMP_ID) {
 					await stopBindleProcess(
 						options.hoboHome,
 						station.stationId,

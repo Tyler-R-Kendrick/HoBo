@@ -30,6 +30,8 @@
 		"@earendil-works/pi-tui": "^0.83.0",
 		"@flue/runtime": "1.0.0-beta.9",
 		"@hobo/core": "workspace:*",
+		"@hobo/evals": "workspace:*",
+		"@hobo/identity": "workspace:*",
 		"@hobo/patterns": "workspace:*",
 		"@hobo/rift": "workspace:*",
 		"@hobo/replay": "workspace:*",

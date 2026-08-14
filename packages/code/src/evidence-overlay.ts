@@ -44,7 +44,7 @@ export interface EvidenceOverlayControlsOptions {
 
 // public-contract: stable same-origin route shared by browser-debug hosts.
 export const EVIDENCE_OVERLAY_BO_PATH = "/__hobo/evidence/bo-idle.png";
-/** Query that pins the dedicated debug view with the Bo idle launcher. */
+// public-contract: query that pins the dedicated debug view with the Bo idle launcher.
 export const EVIDENCE_OVERLAY_DEBUG_PARAM = "__hobo_debug";
 
 /** App URL → debug-view URL that always paints the Bo idle overlay. */

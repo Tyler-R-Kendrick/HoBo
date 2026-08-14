@@ -18,7 +18,11 @@ export const EVALS_RUBRIC_REPORT_SCHEMA = "hobo.evals.rubric-report/v1";
 // public-contract: promotion verdict schema id the Gatekeeper evals dimension pins.
 export const EVALS_PROMOTION_VERDICT_SCHEMA = "hobo.evals.promotion-verdict/v1";
 // public-contract: default golden suite for trainable code (exact-match)
-export const GOLDEN_DEFAULT_SUITE_ID = "hobo.evals.trainable-golden/v1" as const;
+export const GOLDEN_DEFAULT_SUITE_ID =
+	"hobo.evals.trainable-golden/v1" as const;
+// public-contract: default silver suite for trainable code (property/fuzz)
+export const SILVER_DEFAULT_SUITE_ID =
+	"hobo.evals.trainable-silver/v1" as const;
 
 export type ScoringKind = "boolean" | "scale" | "golden-match";
 
@@ -642,9 +646,7 @@ export function defineTrainableGoldenRubric(
 			"trainable region methodRef must be a non-empty string",
 		);
 	}
-	const scored = region.cases.filter((row) =>
-		Object.hasOwn(row, "actual"),
-	);
+	const scored = region.cases.filter((row) => Object.hasOwn(row, "actual"));
 	return defineRubric({
 		id: `${GOLDEN_DEFAULT_SUITE_ID}:${region.methodRef}`,
 		passThreshold: 1,
@@ -697,10 +699,182 @@ export function scoreTrainableGoldenSuite(
 	readonly reports: readonly RubricReport[];
 } {
 	const reports = regions.map((region) =>
-		scoreRubric(defineTrainableGoldenRubric(region), observeTrainableGolden(region)),
+		scoreRubric(
+			defineTrainableGoldenRubric(region),
+			observeTrainableGolden(region),
+		),
 	);
 	return {
 		ok: reports.every((report) => report.ok),
 		reports,
 	};
+}
+
+export interface TrainableSilverEvidence {
+	readonly methodRef: string;
+	readonly grounded: boolean;
+	readonly hasExamples: boolean;
+	readonly deterministic: boolean;
+	readonly failClosed: boolean;
+	readonly noPollution: boolean;
+	readonly seedHolds: boolean;
+	readonly bounded: boolean;
+}
+
+/**
+ * Silver suite for one trainable region: property/fuzz oracles over the
+ * same gold seeds. Exact-match stays on the gold suite.
+ */
+export function defineTrainableSilverRubric(
+	evidence: TrainableSilverEvidence,
+): Rubric {
+	if (
+		typeof evidence.methodRef !== "string" ||
+		evidence.methodRef.length === 0
+	) {
+		throw new RubricParseError(
+			"trainable region methodRef must be a non-empty string",
+		);
+	}
+	return defineRubric({
+		id: `${SILVER_DEFAULT_SUITE_ID}:${evidence.methodRef}`,
+		passThreshold: 1,
+		criteria: [
+			{
+				id: "spec.examples",
+				description:
+					"silver fuzz has gold seeds (examples or traces) to mutate",
+				weight: 1,
+				kind: "boolean",
+				required: true,
+			},
+			{
+				id: "training.grounded",
+				description: "trainable region is grounded so fuzz hits real code",
+				weight: 1,
+				kind: "boolean",
+				required: true,
+			},
+			{
+				id: "fuzz.seed-holds",
+				description: "blessed gold seeds still hold under the trainable",
+				weight: 1,
+				kind: "boolean",
+				required: true,
+			},
+			{
+				id: "fuzz.deterministic",
+				description: "same input produces the same output",
+				weight: 1,
+				kind: "boolean",
+				required: true,
+			},
+			{
+				id: "fuzz.no-pollution",
+				description: "seeds and outputs have no prototype injection",
+				weight: 1,
+				kind: "boolean",
+				required: true,
+			},
+			{
+				id: "fuzz.fail-closed",
+				description: "malformed input does not pollute or explode",
+				weight: 1,
+				kind: "boolean",
+				required: true,
+			},
+			{
+				id: "fuzz.bounded",
+				description: "outputs stay under the silver size bound",
+				weight: 1,
+				kind: "boolean",
+				required: true,
+			},
+		],
+	});
+}
+
+export function observeTrainableSilver(
+	evidence: TrainableSilverEvidence,
+): RubricObservationInput[] {
+	return [
+		{ criterionId: "spec.examples", passed: evidence.hasExamples },
+		{ criterionId: "training.grounded", passed: evidence.grounded },
+		{ criterionId: "fuzz.seed-holds", passed: evidence.seedHolds },
+		{ criterionId: "fuzz.deterministic", passed: evidence.deterministic },
+		{ criterionId: "fuzz.no-pollution", passed: evidence.noPollution },
+		{ criterionId: "fuzz.fail-closed", passed: evidence.failClosed },
+		{ criterionId: "fuzz.bounded", passed: evidence.bounded },
+	];
+}
+
+export function scoreTrainableSilverSuite(
+	evidence: readonly TrainableSilverEvidence[],
+): {
+	readonly ok: boolean;
+	readonly reports: readonly RubricReport[];
+} {
+	const reports = evidence.map((row) =>
+		scoreRubric(defineTrainableSilverRubric(row), observeTrainableSilver(row)),
+	);
+	return {
+		ok: reports.every((report) => report.ok),
+		reports,
+	};
+}
+
+export function silverEvidenceFromRegion(
+	region: TrainableGoldenRegion,
+	fuzz?: {
+		readonly deterministic: boolean;
+		readonly failClosed: boolean;
+		readonly noPollution: boolean;
+		readonly seedHolds: boolean;
+		readonly bounded: boolean;
+	},
+): TrainableSilverEvidence {
+	const scored = region.cases.filter((row) => Object.hasOwn(row, "actual"));
+	const corpusClean = region.cases.every(
+		(row) => !isPolluted(row.expected) && !isPolluted(row.actual),
+	);
+	const seedHolds = scored.every(
+		(row) => canonicalJson(row.expected) === canonicalJson(row.actual),
+	);
+	return {
+		methodRef: region.methodRef,
+		grounded: region.grounded,
+		hasExamples: region.cases.length > 0,
+		deterministic: fuzz?.deterministic ?? true,
+		failClosed: fuzz?.failClosed ?? true,
+		noPollution: fuzz?.noPollution ?? corpusClean,
+		seedHolds: fuzz?.seedHolds ?? seedHolds,
+		bounded: fuzz?.bounded ?? true,
+	};
+}
+
+export function scoreTrainableGoldSilverSuites(input: {
+	readonly regions: readonly TrainableGoldenRegion[];
+	readonly silver?: readonly TrainableSilverEvidence[];
+}): {
+	readonly ok: boolean;
+	readonly gold: ReturnType<typeof scoreTrainableGoldenSuite>;
+	readonly silver: ReturnType<typeof scoreTrainableSilverSuite>;
+} {
+	const gold = scoreTrainableGoldenSuite(input.regions);
+	const silver = scoreTrainableSilverSuite(
+		input.silver ??
+			input.regions.map((region) => silverEvidenceFromRegion(region)),
+	);
+	return { ok: gold.ok && silver.ok, gold, silver };
+}
+
+function isPolluted(value: unknown): boolean {
+	if (!value || typeof value !== "object") return false;
+	if (
+		Object.hasOwn(value, "__proto__") ||
+		Object.hasOwn(value, "constructor")
+	) {
+		return true;
+	}
+	return Object.values(value as Record<string, unknown>).some(isPolluted);
 }

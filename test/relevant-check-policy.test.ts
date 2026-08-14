@@ -435,6 +435,32 @@ function architectureGuardCheck(check: Check) {
 	);
 }
 
+test("bindle manifest changes select bounded property oracles", () => {
+	const { checks, workspaces } = plan(
+		["packages/bindles/src/manifest/manifest.ts"],
+		{ workspacePackageExists: () => true },
+	);
+
+	assert.deepEqual(workspaces, ["packages/bindles"]);
+	assert.equal(
+		checks.some((check) => check.args.join(" ") === "run test:property"),
+		true,
+	);
+});
+
+test("fuzz package changes rely on workspace tests instead of a second property lane", () => {
+	const { checks, workspaces } = plan(["packages/fuzz/src/model.ts"], {
+		workspacePackageExists: () => true,
+	});
+
+	assert.deepEqual(workspaces, ["packages/fuzz"]);
+	assert.equal(turboTestSelects(checks, "packages/fuzz"), true);
+	assert.equal(
+		checks.some((check) => check.args.join(" ") === "run test:property"),
+		false,
+	);
+});
+
 test("production package source changes select architecture guard and workspace tests", () => {
 	const { checks, workspaces } = plan(["packages/core/src/index.ts"], {
 		workspacePackageExists: () => true,

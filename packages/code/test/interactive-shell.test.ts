@@ -111,10 +111,10 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 			"focus",
 		]);
 		expect(state.welcomeTable.map((row) => row.value).join("\n")).toMatch(
-			/Type to talk to Bo/,
+			/Type\+Enter · seated Codex\/Claude writes app/,
 		);
 		const frame = plain(renderShellFrame(state));
-		expect(frame).toMatch(/talk\s+Type to talk to Bo/);
+		expect(frame).toMatch(/talk\s+Type\+Enter · seated Codex\/Claude writes app/);
 		expect(frame).toMatch(/patterns\s+\/templates/);
 		expect(frame).toMatch(/focus\s+Tab/);
 		expect(findDescendantById(buildShellTree(state), "welcome-table")?.id).toBe(
@@ -232,7 +232,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(state.input).toBe("add a button with two lines");
 	});
 
-	it("Tab cycles chat → tasks → status → resources focus", () => {
+	it("Tab cycles chat → panes → tasks → status → resources focus", () => {
 		let state = createInitialShellState({
 			width: 72,
 			height: 24,
@@ -240,6 +240,9 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 			reducedMotion: true,
 		});
 		expect(state.focus).toBe("chat");
+		state = reduceShellKey(state, "\t").state;
+		expect(state.focus).toBe("panes");
+		expect(renderShellFrame(state)).toMatch(/panes|agent CLI/i);
 		state = reduceShellKey(state, "\t").state;
 		expect(state.focus).toBe("tasks");
 		const tasksFrame = renderShellFrame(state);
@@ -253,6 +256,113 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		const resourcesFrame = renderShellFrame(state);
 		expect(resourcesFrame).toMatch(/resources/);
 		expect(resourcesFrame).toMatch(/auth:out|station:|local@/);
+	});
+
+	it("Enter sends coding prompts to the seated Codex pane", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = {
+			...state,
+			livePanes: {
+				session: "hobo",
+				windows: [
+					{ name: "hobo-code", target: "%0", kind: "harness" },
+					{ name: "codex", target: "%1", kind: "coding-agent" },
+				],
+				focused: 1,
+				capture: "codex ›",
+				note: "in-session",
+				tmux: true,
+			},
+		};
+		for (const ch of "add a login form") {
+			state = reduceShellKey(state, ch).state;
+		}
+		const sent = reduceShellKey(state, "\r");
+		expect(sent.toAgent).toEqual({
+			agent: "codex",
+			text: "add a login form",
+		});
+		expect(sent.submit).toBeUndefined();
+		expect(sent.state.focus).toBe("panes");
+	});
+
+	it("[ and ] cycle seated panes without leaving the TTY", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = {
+			...state,
+			livePanes: {
+				session: "hobo",
+				windows: [
+					{ name: "codex", target: "%1", kind: "coding-agent" },
+					{ name: "claude", target: "%2", kind: "coding-agent" },
+				],
+				focused: 0,
+				capture: "",
+				note: "in-session",
+				tmux: true,
+			},
+		};
+		state = reduceShellKey(state, "]").state;
+		expect(state.focus).toBe("panes");
+		expect(state.livePanes?.windows[state.livePanes.focused]?.name).toBe(
+			"claude",
+		);
+		state = reduceShellKey(state, "[").state;
+		expect(state.livePanes?.windows[state.livePanes.focused]?.name).toBe(
+			"codex",
+		);
+	});
+
+	it("/panes focuses the in-session capture scene", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		for (const ch of "/panes") {
+			state = reduceShellKey(state, ch).state;
+		}
+		const next = reduceShellKey(state, "\r");
+		expect(next.slash).toBeUndefined();
+		expect(next.state.focus).toBe("panes");
+		expect(slashItemForInput("/panes")?.action).toBe("panes");
+	});
+
+	it("keeps run-it / debug-it on Bo even when Codex is seated", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = {
+			...state,
+			livePanes: {
+				session: "hobo",
+				windows: [{ name: "codex", target: "%1", kind: "coding-agent" }],
+				focused: 0,
+				capture: "",
+				note: "in-session",
+				tmux: true,
+			},
+		};
+		for (const ch of "run it") {
+			state = reduceShellKey(state, ch).state;
+		}
+		const sent = reduceShellKey(state, "\r");
+		expect(sent.toAgent).toBeUndefined();
+		expect(sent.submit).toBe("run it");
 	});
 
 	it("Enter on a prompt appends user message and marks working", () => {
@@ -607,8 +717,13 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(slashItemForInput("/about")?.action).toBe("about");
 		expect(slashItemForInput("/status")?.argv).toEqual(["status"]);
 		expect(slashItemForInput("/resources")?.argv).toEqual(["resources"]);
+		expect(slashItemForInput("/history")?.argv).toEqual(["history"]);
+		expect(slashItemForInput("/alias")?.argv).toEqual(["alias"]);
 		expect(slashItemForInput("/auth")?.argv).toEqual(["auth", "status"]);
 		expect(slashItemForInput("/sessions")?.argv).toEqual(["session", "list"]);
+		expect(slashItemForInput("/panes")?.action).toBe("panes");
+		expect(slashItemForInput("/agents")?.argv).toEqual(["agents"]);
+		expect(slashItemForInput("/agents init")?.argv).toEqual(["agents", "init"]);
 	});
 
 	it("runs inspect slashes as product replies, never a model turn", async () => {

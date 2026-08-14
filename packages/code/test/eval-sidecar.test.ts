@@ -1,9 +1,8 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { GOLDEN_DEFAULT_SUITE_ID, SILVER_DEFAULT_SUITE_ID } from "@hobo/evals";
 import { afterEach, describe, expect, it } from "vitest";
-
-import { GOLDEN_DEFAULT_SUITE_ID } from "@hobo/evals";
 
 import {
 	campEvalSidecar,
@@ -36,6 +35,10 @@ describe("always-on evals sidecar", () => {
 			defaultSuite: {
 				id: GOLDEN_DEFAULT_SUITE_ID,
 				source: "trainable-exact-match",
+			},
+			silverSuite: {
+				id: SILVER_DEFAULT_SUITE_ID,
+				source: "trainable-property-fuzz",
 			},
 			trainable: [],
 		});

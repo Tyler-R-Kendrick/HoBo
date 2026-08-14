@@ -52,6 +52,7 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/trails",
 	"packages/agent-skills",
 	"packages/evals",
+	"packages/fuzz",
 	"packages/patterns",
 	"packages/pixel-village",
 	"packages/registry",

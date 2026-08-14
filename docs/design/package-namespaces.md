@@ -78,6 +78,7 @@ backs ADR-0087 and gives docs, generators, and boundary lint one table to check.
 | Component host: multi-cloud registry (`componentHost=cloud-native`) | `@hobo/runtime-cloud-native` | Camp hosts | Mock provider for parity; cloud providers stubbed until certified. |
 | MCP server (tool surface parity with CLI verbs) | `@hobo/mcp` | agents | Deny-by-default auth; same canonical verb registry as CLI. |
 | Port/provider conformance suites | `@hobo/conformance` | adapters + CI | Certifies engines/providers claiming a port. |
+| Property oracles, Jazzer harnesses, Schemathesis/RESTler wrappers | `@hobo/fuzz` | CI + tests | OSS-Fuzz-style control-plane invariants over simulators; never live clouds ([fuzzing.md](./fuzzing.md)). |
 | PACT harness (inventory/mock/verify/subset) | `@hobo/contract-harness` | tests | Contract fixtures and verification tooling. |
 | Capability implementation profiles, refinement graph, requirement parsing, hard-gate + lexicographic selection | `@hobo/capability-profiles` | cloud + providers + recipes | ADR-0151 semantic layer between Bindle primitives and products; imports no provider package. |
 | Portable capability bindings, binding profiles, connectivity registry, `SecretRef` locators | `@hobo/bindings` | providers + runtimes + recipes | ADR-0151; refs only — a resolved secret value is unrepresentable in a binding record. |

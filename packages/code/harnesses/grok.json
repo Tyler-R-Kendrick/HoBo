@@ -1,0 +1,15 @@
+{
+	"id": "grok",
+	"label": "Grok Build",
+	"kind": "coding-agent",
+	"binaries": ["grok"],
+	"configPaths": [".grok"],
+	"command": "grok",
+	"seat": 15,
+	"config": {
+		"format": "toml-append",
+		"path": ".grok/config.toml",
+		"configuredWhen": ["[model.hobo]", "HOBO_CODE_SESSION_REF"],
+		"block": "[model.hobo]\nmodel = \"hobo\"\nname = \"HoBo Station\"\nenv_key = \"{{envKey}}\"\nbase_url = \"{{openaiUrl}}\"\n"
+	}
+}

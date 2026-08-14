@@ -1,12 +1,14 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { GOLDEN_DEFAULT_SUITE_ID, SILVER_DEFAULT_SUITE_ID } from "@hobo/evals";
 import { afterEach, describe, expect, it } from "vitest";
-
-import { GOLDEN_DEFAULT_SUITE_ID } from "@hobo/evals";
-
+import { campEvalSidecar } from "../src/eval-sidecar.js";
+import {
+	runEvalSidecarSuite,
+	startEvalSidecar,
+} from "../src/eval-sidecar-server.js";
 import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
-import { startEvalSidecar } from "../src/eval-sidecar-server.js";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -30,16 +32,23 @@ describe("evals sidecar server", () => {
 		});
 		try {
 			expect(server.url).toMatch(/evals\.code\..*\.hobo\.localhost/);
-			const health = await (
+			const health = (await (
 				await fetch(loopbackFetchUrl(server.url))
-			).json() as { live: boolean; suite: { defaultSuite: { id: string } } };
+			).json()) as {
+				live: boolean;
+				suite: {
+					defaultSuite: { id: string };
+					silverSuite: { id: string };
+				};
+			};
 			expect(health.live).toBe(true);
 			expect(health.suite.defaultSuite.id).toBe(GOLDEN_DEFAULT_SUITE_ID);
-			const run = await (
+			expect(health.suite.silverSuite.id).toBe(SILVER_DEFAULT_SUITE_ID);
+			const run = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
 				})
-			).json() as {
+			).json()) as {
 				ok: boolean;
 				reports: unknown[];
 			};
@@ -77,7 +86,7 @@ export async function classify(input: { text: string }) {
 			port: 0,
 		});
 		try {
-			const miss = await (
+			const miss = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
@@ -85,9 +94,9 @@ export async function classify(input: { text: string }) {
 						actuals: { "shop.classify": [{ label: "shipping" }] },
 					}),
 				})
-			).json() as { ok: boolean };
+			).json()) as { ok: boolean };
 			expect(miss.ok).toBe(false);
-			const hit = await (
+			const hit = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
@@ -95,10 +104,53 @@ export async function classify(input: { text: string }) {
 						actuals: { "shop.classify": [{ label: "billing" }] },
 					}),
 				})
-			).json() as { ok: boolean };
+			).json()) as { ok: boolean; silver: { ok: boolean } };
 			expect(hit.ok).toBe(true);
+			expect(hit.silver.ok).toBe(true);
 		} finally {
 			await server.close();
 		}
+	});
+
+	it("runs silver fuzz against a live trainable function", () => {
+		const suite = campEvalSidecar("camp:shop", {
+			trainable: [
+				{
+					methodRef: "shop.classify",
+					file: "src/classify.ts",
+					form: "directive",
+					grounded: true,
+					examples: [
+						{
+							input: { text: "invoice overdue" },
+							output: { label: "billing" },
+						},
+					],
+				},
+			],
+		});
+		const pass = runEvalSidecarSuite({
+			suite,
+			invokers: {
+				"shop.classify": (input) => {
+					const text =
+						input && typeof input === "object" && "text" in input
+							? String((input as { text?: unknown }).text ?? "")
+							: "";
+					return { label: text.includes("invoice") ? "billing" : "other" };
+				},
+			},
+		});
+		expect(pass.ok).toBe(true);
+		expect(pass.gold.ok).toBe(true);
+		expect(pass.silver.ok).toBe(true);
+		const drift = runEvalSidecarSuite({
+			suite,
+			invokers: {
+				"shop.classify": () => ({ label: "shipping" }),
+			},
+		});
+		expect(drift.silver.ok).toBe(false);
+		expect(drift.ok).toBe(false);
 	});
 });

@@ -23,8 +23,17 @@
 
 import { Bash, MountableFs, OverlayFs, ReadWriteFs } from "just-bash";
 
+import { discoverEveAgentTrees } from "./agent-harness-init.js";
+
 // public-contract: where a workspace is mounted inside the virtual filesystem.
 export const VIRTUAL_WORKSPACE = "/workspace";
+/** Where registered Eve agents appear inside the virtual filesystem. */
+export const VIRTUAL_AGENTS = "/agents";
+
+export interface AgentVfsMount {
+	readonly id: string;
+	readonly path: string;
+}
 
 /**
  * Commands an agent gets by default.
@@ -122,6 +131,10 @@ export interface VirtualShellOptions {
 	readonly env?: Readonly<Record<string, string>>;
 	/** Ceiling on a single command's runtime. */
 	readonly timeoutMs?: number;
+	/** Explicit Eve/agent trees to mount at `/agents/<id>`. */
+	readonly agentMounts?: readonly AgentVfsMount[];
+	/** Discover `agent/` under the workspace (default true). */
+	readonly mountEve?: boolean;
 }
 
 /**
@@ -167,6 +180,16 @@ function baseEnv(
 	};
 }
 
+function resolveAgentMounts(
+	options: VirtualShellOptions,
+): readonly AgentVfsMount[] {
+	if (options.agentMounts) return options.agentMounts;
+	if (options.mountEve === false) return [];
+	const trees = discoverEveAgentTrees(options.workspace);
+	const root = trees.find((tree) => tree.id === "agent");
+	return root ? [{ id: "", path: root.path }] : [];
+}
+
 export function createVirtualShell(options: VirtualShellOptions): VirtualShell {
 	const commands = [...(options.commands ?? DEFAULT_COMMANDS)];
 	const writable = options.writable === true;
@@ -188,16 +211,38 @@ export function createVirtualShell(options: VirtualShellOptions): VirtualShell {
 	// points outside it. Mounting the repository root instead of the package
 	// is the thing that actually helps, so the option is deliberately not
 	// exposed rather than offered as a fix that is not one.
-	const fs = writable
-		? new MountableFs({
-				mounts: [
-					{
-						mountPoint: VIRTUAL_WORKSPACE,
-						filesystem: new ReadWriteFs({ root: options.workspace }),
-					},
-				],
-			})
-		: new OverlayFs({ root: options.workspace, mountPoint: VIRTUAL_WORKSPACE });
+	const agentMounts = resolveAgentMounts(options);
+	const fs =
+		agentMounts.length === 0 && !writable
+			? new OverlayFs({
+					root: options.workspace,
+					mountPoint: VIRTUAL_WORKSPACE,
+				})
+			: new MountableFs({
+					mounts: [
+						{
+							mountPoint: VIRTUAL_WORKSPACE,
+							filesystem: writable
+								? new ReadWriteFs({ root: options.workspace })
+								: new OverlayFs({
+										root: options.workspace,
+										mountPoint: "/",
+									}),
+						},
+						...agentMounts.map((mount) => {
+							const mountPoint = mount.id
+								? `${VIRTUAL_AGENTS}/${mount.id}`
+								: VIRTUAL_AGENTS;
+							return {
+								mountPoint,
+								filesystem: new OverlayFs({
+									root: mount.path,
+									mountPoint: "/",
+								}),
+							};
+						}),
+					],
+				});
 	const bash = new Bash({
 		fs,
 		cwd: VIRTUAL_WORKSPACE,

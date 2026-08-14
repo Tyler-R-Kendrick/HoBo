@@ -33,9 +33,34 @@ describe("hobo-code bin launcher", () => {
 		expect(pkg.scripts?.build).toMatch(/tsc/);
 		const launcherSrc = readFileSync(launcher, "utf8");
 		expect(launcherSrc).toMatch(/tsc/);
+		expect(launcherSrc).toMatch(/running src\/ via tsx/);
 		expect(launcherSrc).not.toMatch(/--filter\s+@hobo\/core/);
 		expect(launcherSrc).not.toMatch(/pnpm", \["run", "build"\]/);
 	});
+
+	it("tsc failure does not block the CLI — falls back to src via tsx", () => {
+		const fakeTsc = join(
+			mkdtempSync(join(tmpdir(), "hobo-code-tsc-")),
+			"fail-tsc.mjs",
+		);
+		writeFileSync(
+			fakeTsc,
+			"process.stderr.write('fake tsc boom\\n'); process.exit(1);\n",
+		);
+		const r = spawnSync(process.execPath, [launcher, "agents", "--help"], {
+			cwd: pkgRoot,
+			encoding: "utf8",
+			env: {
+				...process.env,
+				HOBO_CODE_FORCE_STALE_REBUILD: "1",
+				HOBO_CODE_TSC: fakeTsc,
+			},
+		});
+		expect(r.status).toBe(0);
+		expect(r.stderr).toMatch(/tsc failed — running src\/ via tsx/);
+		expect(r.stdout).toMatch(/hobo-code agents/);
+		expect(r.stdout).toMatch(/agents init/i);
+	}, 30_000);
 
 	it("forced stale rebuild is tsc-only and does not rebuild @hobo/core", () => {
 		const started = Date.now();

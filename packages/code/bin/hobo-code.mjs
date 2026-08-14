@@ -2,10 +2,11 @@
 /**
  * hobo-code entry (package bin).
  *
- * Always prefer this over calling dist/bin directly in a monorepo: optimizexp
- * and agent edits land in `src/`, but the published binary is compiled `dist/`.
- * If dist is missing or older than src, rebuild before running so the *installed*
- * CLI matches the source under review.
+ * Prefer this over calling dist/bin directly in a monorepo: edits land in
+ * `src/`, the published binary is compiled `dist/`. When dist is missing or
+ * older than src, try `tsc` — but never block the CLI on an unrelated type
+ * error. Fall back to `src/bin/hobo-code.ts` via tsx so `hobo-code agents`
+ * stays runnable while dist is dirty.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, existsSync, readdirSync, statSync } from "node:fs";
@@ -15,6 +16,7 @@ import { fileURLToPath } from "node:url";
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const distCli = join(pkgRoot, "dist", "cli.js");
 const distBin = join(pkgRoot, "dist", "bin", "hobo-code.js");
+const srcBin = join(pkgRoot, "src", "bin", "hobo-code.ts");
 const srcRoot = join(pkgRoot, "src");
 
 function maxSrcMtime(dir) {
@@ -53,15 +55,15 @@ function distIsStale() {
 }
 
 function tscPath() {
+	if (typeof process.env.HOBO_CODE_TSC === "string" && process.env.HOBO_CODE_TSC) {
+		return process.env.HOBO_CODE_TSC;
+	}
 	const local = join(pkgRoot, "node_modules", "typescript", "bin", "tsc");
 	if (existsSync(local)) return local;
 	return join(pkgRoot, "..", "..", "node_modules", "typescript", "bin", "tsc");
 }
 
-if (
-	process.env.HOBO_CODE_SKIP_STALE_REBUILD !== "1" &&
-	(process.env.HOBO_CODE_FORCE_STALE_REBUILD === "1" || distIsStale())
-) {
+function tryRebuildDist() {
 	process.stderr.write(
 		"hobo-code: dist is stale (src newer than dist) — tsc @hobo/code only…\n",
 	);
@@ -78,32 +80,73 @@ if (
 				env: process.env,
 				shell: process.platform === "win32",
 			});
-	if ((build.status ?? 1) !== 0) {
-		process.stderr.write(
-			"hobo-code: tsc failed. If deps are missing, run: pnpm exec turbo run build --filter=@hobo/code\n",
-		);
-		process.exit(build.status ?? 1);
+	if ((build.status ?? 1) === 0) {
+		try {
+			chmodSync(distBin, 0o755);
+			chmodSync(join(pkgRoot, "bin", "hobo-code.mjs"), 0o755);
+		} catch {
+			/* postbuild chmod is best-effort after a successful tsc */
+		}
+		return true;
 	}
-	try {
-		chmodSync(distBin, 0o755);
-		chmodSync(join(pkgRoot, "bin", "hobo-code.mjs"), 0o755);
-	} catch {
-		/* postbuild chmod is best-effort after a successful tsc */
-	}
-}
-
-if (!existsSync(distBin)) {
 	process.stderr.write(
-		"hobo-code: missing dist/bin/hobo-code.js — run: pnpm --filter @hobo/code build\n",
+		"hobo-code: tsc failed — running src/ via tsx (dist not required to test)\n",
 	);
-	process.exit(1);
+	return false;
 }
 
-const run = spawn(process.execPath, [distBin, ...process.argv.slice(2)], {
-	stdio: "inherit",
-	env: process.env,
-	detached: process.platform !== "win32",
-});
+function runFromSource() {
+	if (!existsSync(srcBin)) {
+		process.stderr.write(
+			"hobo-code: missing src/bin/hobo-code.ts — cannot fall back from stale dist\n",
+		);
+		process.exit(1);
+	}
+	return spawn(
+		process.execPath,
+		["--import", "tsx", srcBin, ...process.argv.slice(2)],
+		{
+			stdio: "inherit",
+			env: process.env,
+			cwd: pkgRoot,
+			detached: process.platform !== "win32",
+		},
+	);
+}
+
+const forceSource = process.env.HOBO_CODE_FROM_SOURCE === "1";
+const skipRebuild = process.env.HOBO_CODE_SKIP_STALE_REBUILD === "1";
+const wantRebuild =
+	!skipRebuild &&
+	(process.env.HOBO_CODE_FORCE_STALE_REBUILD === "1" || distIsStale());
+
+let useSource = forceSource;
+if (!useSource && wantRebuild) {
+	const rebuilt = tryRebuildDist();
+	useSource = !rebuilt;
+}
+
+if (!useSource && !existsSync(distBin)) {
+	if (existsSync(srcBin)) {
+		process.stderr.write(
+			"hobo-code: missing dist/bin/hobo-code.js — running src/ via tsx\n",
+		);
+		useSource = true;
+	} else {
+		process.stderr.write(
+			"hobo-code: missing dist/bin/hobo-code.js — run: pnpm --filter @hobo/code build\n",
+		);
+		process.exit(1);
+	}
+}
+
+const run = useSource
+	? runFromSource()
+	: spawn(process.execPath, [distBin, ...process.argv.slice(2)], {
+			stdio: "inherit",
+			env: process.env,
+			detached: process.platform !== "win32",
+		});
 const interrupt = () => run.kill("SIGINT");
 const terminate = () => run.kill("SIGTERM");
 process.on("SIGINT", interrupt);

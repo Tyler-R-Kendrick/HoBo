@@ -1,0 +1,10 @@
+{
+	"id": "eve",
+	"label": "Eve agent tree",
+	"kind": "eve-agent",
+	"binaries": ["eve"],
+	"cwdMarkers": ["agent"],
+	"config": {
+		"format": "eve-vfs"
+	}
+}

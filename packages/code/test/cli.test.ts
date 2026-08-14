@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -37,12 +37,15 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(HOBO_CODE_VERBS).toContain("review");
 		expect(HOBO_CODE_VERBS).toContain("cost");
 		expect(HOBO_CODE_VERBS).toContain("resources");
+		expect(HOBO_CODE_VERBS).toContain("history");
+		expect(HOBO_CODE_VERBS).toContain("alias");
 		expect(HOBO_CODE_VERBS).toContain("dashboard");
 		expect(HOBO_CODE_VERBS).toContain("harness");
 		expect(HOBO_CODE_VERBS).toContain("edit");
 		expect(HOBO_CODE_VERBS).toContain("config");
 		// agent = protocol-native AX inventory (MCP/ACP), not hive join/rooms
 		expect(HOBO_CODE_VERBS).toContain("agent");
+		expect(HOBO_CODE_VERBS).toContain("agents");
 		expect(HOBO_CODE_VERBS).toContain("resume");
 		expect(HOBO_CODE_VERBS).toContain("compact");
 		expect(HOBO_CODE_VERBS).not.toContain("remote");
@@ -251,6 +254,73 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 
 		const help = await runHoboCodeCli(["agent", "--help"]);
 		expect(help.message).toMatch(/MCP|ACP|elicitation|human-free/i);
+	});
+
+	it("agents init dry-run plans Codex without writing secrets", async () => {
+		const home = temp("hobo-code-agents-");
+		const help = await runHoboCodeCli(["agents", "--help"]);
+		expect(help.message).toMatch(/agents init/i);
+		expect(help.message).toMatch(/never mints|env_key|Eve/i);
+
+		const missing = await runHoboCodeCli(["agents", "init", "codex", "--dry-run"], {
+			env: {
+				...process.env,
+				HOBO_HOME: home,
+				HOME: home,
+				PATH: "/empty",
+				OPENAI_BASE_URL: "",
+				HOBO_CODE_LOCAL_BASE_URL: "",
+				OLLAMA_HOST: "",
+				HOBO_CODE_AGENTS_PROBE: "0",
+			},
+			hoboHome: home,
+		});
+		expect(missing.ok).toBe(false);
+		expect(missing.message).toMatch(/no model listen/i);
+		expect(JSON.stringify(missing)).not.toMatch(/sk-[a-zA-Z0-9]{8,}/);
+
+		const planned = await runHoboCodeCli(["agents", "init", "codex", "--dry-run"], {
+			env: {
+				...process.env,
+				HOBO_HOME: home,
+				HOME: home,
+				PATH: "/empty",
+				OPENAI_BASE_URL: "http://127.0.0.1:11434/v1",
+				OPENAI_API_KEY: "sk-secret-must-not-leak",
+			},
+			hoboHome: home,
+		});
+		expect(planned.ok).toBe(true);
+		expect(planned.code).toBe("HOBO_CODE_AGENTS_PLAN");
+		expect(planned.message).toMatch(/codex/i);
+		expect(planned.message).not.toMatch(/sk-secret-must-not-leak/);
+	});
+
+	it("agents init --non-interactive writes Codex without a second --yes", async () => {
+		const home = temp("hobo-code-agents-ni-");
+		mkdirSync(join(home, ".codex"), { recursive: true });
+		writeFileSync(join(home, ".codex", "config.toml"), "model = \"gpt-5\"\n");
+		const wrote = await runHoboCodeCli(
+			["agents", "init", "codex", "--non-interactive"],
+			{
+				env: {
+					...process.env,
+					HOBO_HOME: home,
+					HOME: home,
+					PATH: "/empty",
+					OPENAI_BASE_URL: "http://127.0.0.1:11434/v1",
+					OPENAI_API_KEY: "sk-secret-must-not-leak",
+				},
+				hoboHome: home,
+			},
+		);
+		expect(wrote.ok).toBe(true);
+		expect(wrote.code).toBe("HOBO_CODE_AGENTS");
+		expect(wrote.message).toMatch(/wrote|already configured/i);
+		expect(wrote.message).not.toMatch(/sk-secret-must-not-leak/);
+		expect(readFileSync(join(home, ".codex", "config.toml"), "utf8")).toMatch(
+			/model_provider\s*=\s*"hobo"/,
+		);
 	});
 
 	it("config inventories env/flags by stack without secret values", async () => {

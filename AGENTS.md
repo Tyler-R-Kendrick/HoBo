@@ -410,15 +410,20 @@ Use these lanes instead:
 - `pnpm test:behavior` for Gherkin/Cucumber or Playwright-driven behavior specs with Pact-derived mocks.
 - `pnpm test:visual` for deterministic visual state regression.
 - `pnpm eval:agent:mock` for deterministic agent evals.
+- `pnpm test:property` for fast-check control-plane oracles in `@hobo/fuzz` (simulators only).
+- `pnpm test:fuzz` for Jazzer-shaped serialized-input smoke (does not start a long campaign).
+- `pnpm test:fuzz:nightly` for the docker-gated RESTler/Toxiproxy/Testcontainers plan. Skip without Docker. Never live Azure/AWS/GCP/paid SaaS.
 
-Live service checks and `pnpm eval:agent:live` are manual/release-only lanes. Default PR and agent checks must not require live external services.
+Live service checks and `pnpm eval:agent:live` are manual/release-only lanes. Default PR and agent checks must not require live external services. Default `agent:check` must not run long Jazzer campaigns, RESTler, or Toxiproxy.
 
-Run the smallest sufficient lane through `pnpm agent:check`; no-arg mode validates the latest commit, `--staged` validates staged files, and `--base=origin/main` validates the whole PR branch. It never selects E2E, avoids broad unit/contract sweeps unless final/all validation explicitly asks for them, and escalates only to schema, contract, UI, behavior, visual, or mock-agent eval lanes based on changed files.
+Run the smallest sufficient lane through `pnpm agent:check`; no-arg mode validates the latest commit, `--staged` validates staged files, and `--base=origin/main` validates the whole PR branch. It never selects E2E, avoids broad unit/contract sweeps unless final/all validation explicitly asks for them, and escalates only to schema, contract, UI, behavior, visual, mock-agent eval, or bounded property lanes based on changed files.
 
 ## Cursor Cloud specific instructions
 
 Durable, non-obvious notes for this environment. The startup update script already runs `corepack enable pnpm` + `pnpm install --frozen-lockfile`, so dependencies are ready; do not re-add install steps here.
 
+- **No sudo.** `sudo` is never available and never allowed. Do not run it, do not ask the user to run it, do not suggest root apt/system Docker installs. Prefer `$HOME/.local/bin`, npx/pnpm, remote anon APIs. Host is **aarch64** — download ARM64 binaries only. No `/var/run/docker.sock` here.
+- **Examples Temporary = browser-only.** End users never run CLI setup (docker/wrangler/openpouch/crane). Ship is browser → same-origin `/api/cf-temp/*` → remote HTTPS APIs. Do not treat local CLI image push/deploy as a product fallback.
 - **No server/GUI.** This is a design-docs + executable proof/contract repo (see README "Current state"). "Running the app" means the validation/lint/test tooling, not a web/backend service. Verify the environment with `pnpm run doctor`, `pnpm run lint`, `pnpm run standards:check`, `pnpm test`, and the doc validators listed in `README.md` "How to work in this repo".
 - **Node version.** Local Node 22 satisfies `engines` (`>=22`); CI uses Node 24. Optional Windows bins are not fetched on Linux (`pnpm.supportedArchitectures.os` is `current`).
 - **Developer inner loop for a single proof package:** `pnpm exec turbo run test --filter ./src/draft/<kind>/<slug>` (see `src/draft/AGENTS.md`). The turbo "no output files found" warning on `test` is expected (no build outputs) and not a failure.

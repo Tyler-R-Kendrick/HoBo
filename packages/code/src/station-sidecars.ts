@@ -21,6 +21,7 @@ import { FeatureFlagStore } from "@hobo/identity";
 import { inspectBindleProject } from "./bindle-inspect.js";
 import { startEvalSidecar } from "./eval-sidecar-server.js";
 import { startExperimentSidecar } from "./experiment-sidecar-server.js";
+import { startHistorySidecar } from "./history-sidecar-server.js";
 import { startKmsSidecar } from "./kms-sidecar-server.js";
 import {
 	loopbackFetchUrl,
@@ -53,6 +54,7 @@ export interface StationSidecarSnapshot {
 	readonly rolloutUrl?: string;
 	readonly experimentUrl?: string;
 	readonly kmsUrl?: string;
+	readonly historyUrl?: string;
 	readonly startedAt: string;
 }
 
@@ -83,6 +85,7 @@ export interface StartStationSidecarsOptions {
 	readonly rolloutPort?: number;
 	readonly experimentPort?: number;
 	readonly kmsPort?: number;
+	readonly historyPort?: number;
 	readonly ensureLocalLogin?: boolean;
 	/**
 	 * Detach Evidence as a Station occupancy process. Default on for TTY /
@@ -224,6 +227,15 @@ function publishSidecarUrls(
 		...(snapshot.kmsUrl
 			? {
 					kmsUrl: preferNamedEndpoint(snapshot.kmsUrl, "kms", scope),
+				}
+			: {}),
+		...(snapshot.historyUrl
+			? {
+					historyUrl: preferNamedEndpoint(
+						snapshot.historyUrl,
+						"history",
+						scope,
+					),
 				}
 			: {}),
 	};
@@ -467,11 +479,13 @@ export async function startStationSidecars(
 	let rolloutUrl: string | undefined;
 	let experimentUrl: string | undefined;
 	let kmsUrl: string | undefined;
+	let historyUrl: string | undefined;
 	let closeDashboard: () => Promise<void> = async () => {};
 	let closeEvals: () => Promise<void> = async () => {};
 	let closeRollout: () => Promise<void> = async () => {};
 	let closeExperiment: () => Promise<void> = async () => {};
 	let closeKms: () => Promise<void> = async () => {};
+	let closeHistory: () => Promise<void> = async () => {};
 	try {
 		const dashboard = await startLocalDashboard({
 			hoboHome: options.hoboHome,
@@ -549,12 +563,21 @@ export async function startStationSidecars(
 		});
 		kmsUrl = kms.url;
 		closeKms = () => kms.close();
+		const history = await startHistorySidecar({
+			hoboHome: options.hoboHome,
+			stationId: view.stationId,
+			environment: view.environment,
+			port: options.historyPort ?? 0,
+		});
+		historyUrl = history.url;
+		closeHistory = () => history.close();
 	} catch (error) {
 		await closeDashboard();
 		await closeEvals();
 		await closeRollout();
 		await closeExperiment();
 		await closeKms();
+		await closeHistory();
 		throw error;
 	}
 
@@ -573,6 +596,7 @@ export async function startStationSidecars(
 			...(rolloutUrl !== undefined ? { rolloutUrl } : {}),
 			...(experimentUrl !== undefined ? { experimentUrl } : {}),
 			...(kmsUrl !== undefined ? { kmsUrl } : {}),
+			...(historyUrl !== undefined ? { historyUrl } : {}),
 			startedAt: new Date().toISOString(),
 		},
 		occupancyScope(view),
@@ -592,6 +616,7 @@ export async function startStationSidecars(
 			await closeRollout();
 			await closeExperiment();
 			await closeKms();
+			await closeHistory();
 			if (persist) return;
 			const path = stationSidecarsPath(options.hoboHome, view.stationId);
 			await evidence.close();
@@ -694,6 +719,9 @@ export function formatSidecarStrap(
 	}
 	if (sidecars.kmsUrl) {
 		chips.push(`kms:${new URL(sidecars.kmsUrl).host}`);
+	}
+	if (sidecars.historyUrl) {
+		chips.push(`history:${new URL(sidecars.historyUrl).host}`);
 	}
 	return chips;
 }

@@ -121,13 +121,17 @@ describe("hobo-code TUI semantic tree", () => {
 		expect(collectText(dialog).join(" ")).toMatch(/y promote/);
 	});
 
-	it("exposes tasks, status, and resources as dedicated panes", () => {
+	it("exposes panes, tasks, status, and resources as dedicated panes", () => {
 		let state = createInitialShellState({
 			width: 80,
 			height: 24,
 			welcome: false,
 			reducedMotion: true,
 		});
+		state = reduceShellKey(state, "\t").state;
+		expect(findDescendantById(buildShellTree(state), "agent-panes")?.id).toBe(
+			"agent-panes",
+		);
 		state = reduceShellKey(state, "\t").state;
 		expect(findDescendantById(buildShellTree(state), "tasks-pane")?.id).toBe(
 			"tasks-pane",

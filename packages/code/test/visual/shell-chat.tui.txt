@@ -7,9 +7,9 @@
  █▌                                                                  ▐█▒
  █▌              a coding harness that rides the rails               ▐█▒
  █▌                                                                  ▐█▒
- █▌talk      Type to talk to Bo                                      ▐█▒
+ █▌talk      Type+Enter · seated Codex/Claude writes app             ▐█▒
  █▌patterns  /templates lists patterns                               ▐█▒
- █▌focus     Tab · tasks / status / resources                        ▐█▒
+ █▌focus     Tab · panes / tasks / status / resources                ▐█▒
  █▌     [ /dev ]  [ /templates ]  [ /btw ]  [ /hobo ]  [ /auth ]     ▐█▒
  ▀█▄    ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▄█▀▒
   ▀▀▀██████████████████████████████████████████████████████████████▀▀▀ ▒

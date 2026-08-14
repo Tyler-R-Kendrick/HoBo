@@ -272,6 +272,38 @@ export {
 	estimateTokens,
 } from "./compact.js";
 export {
+	AGENTS_INIT_SCHEMA,
+	AGENTS_REGISTRY_SCHEMA,
+	type AgentsInitPlan,
+	agentsRegistryPath,
+	applyAgentsInit,
+	discoverEveAgentTrees,
+	formatAgentsInitPlan,
+	planAgentsInit,
+	resolveAgentsDestination,
+	runAgentsCli,
+} from "./agent-harness-init.js";
+export {
+	loadHarnessCatalog,
+	registerHarness,
+	resetRegisteredHarnesses,
+	type HarnessSpec,
+} from "./agent-harness-catalog.js";
+export {
+	classifyWindowName,
+	cycleInSessionWindow,
+	emptyInSessionPanes,
+	ensureInSessionPanes,
+	IN_SESSION_MUX,
+	type InSessionPanes,
+	type InSessionWindow,
+	isProductPrompt,
+	pickCodingWindow,
+	pickSendWindow,
+	refreshInSessionPanes,
+	sendToInSessionPane,
+} from "./in-session-panes.js";
+export {
 	formatShellCloseout,
 	listChatSessions,
 	loadChatSession,
@@ -293,6 +325,7 @@ export {
 	renderShellFrame,
 	resolveSlashArgv,
 	runInteractiveShell,
+	SHELL_FOCUS_ORDER,
 	type ShellFocus,
 	type ShellHost,
 	type ShellMessage,
@@ -472,6 +505,24 @@ export {
 	startExperimentSidecar,
 	type ExperimentSidecarServer,
 } from "./experiment-sidecar-server.js";
+export {
+	HISTORY_SIDECAR_HOSTING,
+	HISTORY_SIDECAR_NAME,
+	startHistorySidecar,
+	type HistorySidecarServer,
+} from "./history-sidecar-server.js";
+export {
+	openSessionShellStore,
+	SESSION_SHELL_SCHEMA,
+	sessionShellStorePath,
+	type CommandEvent,
+	type SessionShellStore,
+} from "./session-shell-store.js";
+export {
+	classifyCommand,
+	redactCommand,
+	type CommandSensitivity,
+} from "./command-redaction.js";
 export {
 	KMS_CRYPTO_PORT,
 	KMS_SECRETS_PORT,

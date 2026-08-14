@@ -1,0 +1,9 @@
+{
+	"id": "hobo-code",
+	"label": "hobo-code",
+	"kind": "harness",
+	"host": true,
+	"binaries": ["hobo-code"],
+	"configPaths": [".hobo"],
+	"command": "hobo-code"
+}

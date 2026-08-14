@@ -360,6 +360,26 @@ export function createDefaultShellHost(
 			devSessions.clear();
 		},
 		tryWorkspaceAction,
+		async sendToAgent(agent, text) {
+			const { IN_SESSION_MUX, sendToInSessionPane } = await import(
+				"./in-session-panes.js"
+			);
+			const { tmuxRunner } = await import("./mux.js");
+			const runner = tmuxRunner();
+			const listed = await runner.run([
+				"list-windows",
+				"-t",
+				`${IN_SESSION_MUX}:`,
+				"-F",
+				"#{window_name}\t#{pane_id}",
+			]);
+			const line = listed.stdout
+				.split("\n")
+				.find((row) => row.startsWith(`${agent}\t`));
+			const target = line?.split("\t")[1]?.trim() || `${IN_SESSION_MUX}:${agent}`;
+			await sendToInSessionPane(runner, target, text);
+			return `sent to ${agent} in this session — stay here, Tab to panes to watch it work`;
+		},
 		async complete(prompt) {
 			const handled = await tryWorkspaceAction(prompt);
 			if (handled !== null) return handled;

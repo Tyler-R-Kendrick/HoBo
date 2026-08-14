@@ -391,6 +391,18 @@ export function selectRelevantChecks(
 			args: ["run", "test:visual"],
 			reason: "visual/story state changed",
 		});
+	const propertyOracleChanged = touchedAny([
+		/^packages\/bindles\/src\/manifest\//u,
+		/^packages\/control-api\/src\//u,
+	]);
+	if (propertyOracleChanged && !workspaces.includes("packages/fuzz")) {
+		checks.push({
+			command: "pnpm",
+			args: ["run", "test:property"],
+			reason:
+				"Bindle canonicalization or control-api surface changed; run bounded fast-check oracles",
+		});
+	}
 	if (agentEvalChanged)
 		checks.push({
 			command: "pnpm",

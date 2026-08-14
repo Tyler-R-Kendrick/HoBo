@@ -4,7 +4,7 @@
  * App-building agent CLI (not a control-plane management tool).
  *   dispatch (default) | status | resources | session | attach | tasks | guide |
  *   scaffold | template | dev | isolate | promote | env | auth | models | cost | harness |
- *   edit | config | agent | help
+ *   edit | config | agent | agents | help
  *
  * Binary name: hobo-code (dash permitted).
  */
@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
+import { runAgentsCli } from "./agent-harness-init.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
 import { allocateAgentWorkspaces } from "./agent-workspaces.js";
 import {
@@ -134,6 +135,7 @@ import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
 import { startCodeSession } from "./session.js";
 import { startLocalDashboard } from "./session-dashboard.js";
+import { runAliasCli, runHistoryCli } from "./history-cli.js";
 import {
 	occupancyFlowIsActive,
 	persistOccupancyRun,
@@ -181,6 +183,8 @@ export const HOBO_CODE_VERBS = [
 	"machines",
 	"status",
 	"resources",
+	"history",
+	"alias",
 	"dashboard",
 	"session",
 	"attach",
@@ -203,6 +207,7 @@ export const HOBO_CODE_VERBS = [
 	"edit",
 	"config",
 	"agent",
+	"agents",
 	"help",
 ] as const;
 
@@ -410,6 +415,8 @@ const VALUE_FLAGS = new Set([
 	"format",
 	"params",
 	"kind",
+	"author",
+	"exit",
 	"maturity",
 	"top-k",
 	"language",
@@ -433,7 +440,11 @@ const BOOL_FLAGS = new Set([
 	"virtual",
 	"approve",
 	"once",
+	"failed",
 	"all",
+	"yes",
+	"non-interactive",
+	"reconfigure",
 	"apply",
 	"explain",
 	"no-dense",
@@ -473,6 +484,14 @@ function parseArgv(argv: readonly string[]): {
 		}
 		if (a === "--help" || a === "-h") {
 			flags.help = true;
+			continue;
+		}
+		if (a === "--yes" || a === "-y") {
+			flags.yes = true;
+			continue;
+		}
+		if (a === "--non-interactive") {
+			flags["non-interactive"] = true;
 			continue;
 		}
 		if (a.startsWith("--") && a.includes("=")) {
@@ -595,6 +614,8 @@ function helpTextPlain(): string {
 		"Session & status:",
 		"  status     Session / agent panes in plain words (dense glyphs with --dense)",
 		"  resources  Session topology + real endpoints for this login × env",
+		"  history    Station-scoped command search (SQLite sidecar)",
+		"  alias      Station aliases + env vars (dotfiles export)",
 		"  dashboard  Local Aspire SPA + OTel + start/stop (ADR-0111)",
 		"  session    Isolation session + handback",
 		"  attach     Dev-terminal attach (tmux/mosh/Tailscale-shaped)",
@@ -614,6 +635,7 @@ function helpTextPlain(): string {
 		"",
 		"Agent & harness:",
 		"  agent      Agent-native: human-free auth, MCP/ACP, unattended",
+		"  agents     Register coding harnesses (Vercel-shaped init + Eve VFS)",
 		"  harness    Pi/Flue dual surface, skills, self-improve, brain",
 		"  env        Hermetic shell + durable vs sandbox layout",
 		"",
@@ -659,7 +681,7 @@ function helpTextPlain(): string {
 		"  · Bare TTY opens HoBo InteractiveShell (Bo + chat + slash) — not stock Pi UI.",
 		"  · Escape hatch only: HOBO_CODE_TUI=pi or hobo-code --pi (engine experiments).",
 		"  · Setup: hobo-code config (stacks: agent-native, cost-budget, editor-vim, …).",
-		"  · Agents: hobo-code agent (MCP/ACP, human-free auth, no-elicitation).",
+		"  · Agents: hobo-code agents init (register CLIs + Eve). Inventory: hobo-code agent.",
 		"  · Maps: guide · edit (nvim) · tasks · attach · status · cost · harness · models.",
 		"  · CLI-native: prefer keyboard verbs; nvim bridge: packages/code/editor/hobo-code.nvim",
 		"  · Nix/devenv optional (never monorepo IaC). Full payloads: hobo-code help --json",
@@ -754,6 +776,37 @@ const VERB_HELP_PLAIN: Record<
 		"  HOBO_ENV / HOBO_PROJECT / HOBO_BRANCH   Occupancy filter",
 		"",
 		"See also: hobo-code auth · hobo-code dev · hobo-code dashboard",
+	],
+	history: [
+		"hobo-code history — Station-scoped command search",
+		"",
+		"SQLite memory on the occupied Station (not Atuin, not synced off-box).",
+		"Records and ranks commands with frecency (recency + frequency + cwd).",
+		"",
+		"Usage:",
+		"  hobo-code history [query]",
+		"  hobo-code history record <command>",
+		"  hobo-code history --failed --author agent",
+		"  hobo-code history --json",
+		"",
+		"See also: hobo-code alias · hobo-code resources",
+	],
+	alias: [
+		"hobo-code alias — Station aliases + env (dotfiles)",
+		"",
+		"Occupancy-scoped aliases and environment variables. Export a shell",
+		"snippet; secrets are refused. Not a general dotfile manager.",
+		"",
+		"Usage:",
+		"  hobo-code alias",
+		"  hobo-code alias set gs git status",
+		"  hobo-code alias rm gs",
+		"  hobo-code alias env",
+		"  hobo-code alias env set HOBO_THEME ink",
+		"  hobo-code alias env rm HOBO_THEME",
+		"  hobo-code alias export",
+		"",
+		"See also: hobo-code history · hobo-code env",
 	],
 	dashboard: [
 		"hobo-code dashboard — local Aspire-style resource board",
@@ -972,7 +1025,7 @@ const VERB_HELP_PLAIN: Record<
 		"Detection is evidence-based: a binary on PATH and/or a known config",
 		"directory. See hobo-code agent for what was found and why.",
 		"",
-		"Join: tmux attach -t hobo",
+		"Stay in this TTY (hobo-code · Tab panes). Optional out-of-session: tmux attach -t hobo",
 	],
 	attach: [
 		"hobo-code attach — dev-terminal attach (tmux / mosh / Tailscale-shaped)",
@@ -1443,6 +1496,39 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"See also: hobo-code harness · hobo-code config --stack agent-native · auth",
 	],
+	agents: [
+		"hobo-code agents — register coding harnesses (Vercel-shaped)",
+		"",
+		"Analog of `vercel ai-gateway coding-agents setup`. Station occupancy is",
+		"the destination — no Vercel key, no minted secret. Writes env_key +",
+		"base URL into each harness's native config. Eve trees register at",
+		"/agents/<id> in the virtual filesystem.",
+		"",
+		"Usage:",
+		"  hobo-code agents                 # detected + registered",
+		"  hobo-code agents list",
+		"  hobo-code agents status",
+		"  hobo-code agents init            # TTY: check/uncheck then write",
+		"  hobo-code agents init --dry-run",
+		"  hobo-code agents init --yes",
+		"  hobo-code agents init --non-interactive",
+		"  hobo-code agents init --all --yes",
+		"  hobo-code agents init codex eve",
+		"",
+		"Flags:",
+		"  --yes, -y            Write without a checklist (never mints a cloud key)",
+		"  --non-interactive    Same as --yes — scripts/CI default write",
+		"  --dry-run            Show the plan only; never write",
+		"  --all            Include every known harness, not just detected",
+		"  --reconfigure    Rewrite even when already configured",
+		"  --base <url>     Override destination listen URL",
+		"  --json           Machine-readable envelope",
+		"",
+		"Destination ladder: --base → HOBO_CODE_LOCAL_BASE_URL → OPENAI_BASE_URL",
+		"→ OLLAMA_HOST → live probe of http://127.0.0.1:11434. No listen URL → refuse.",
+		"",
+		"See also: hobo-code agent · hobo-code models · hobo-code mux",
+	],
 };
 
 function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
@@ -1453,6 +1539,8 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 			dispatch: "★d",
 			status: "st",
 			resources: "rs",
+			history: "hi",
+			alias: "al",
 			dashboard: "db",
 			session: "se",
 			attach: "at",
@@ -1474,6 +1562,7 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 			edit: "ed",
 			config: "cfg",
 			agent: "ag",
+			agents: "ags",
 		};
 		const t = tails[verb] ?? verb;
 		return [
@@ -1775,6 +1864,20 @@ export async function runHoboCodeCli(
 		const body = agentHumanSummary(status);
 		const text = panel("◈ agent", body.split("\n"));
 		return ok("HOBO_CODE_AGENT", text, { agent: status, text });
+	}
+
+	if (verb === "agents") {
+		const result = await runAgentsCli({
+			hoboHome,
+			cwd: projectDir,
+			env,
+			args,
+			flags,
+			tty: process.stdin.isTTY === true && process.stdout.isTTY === true,
+		});
+		return result.ok
+			? ok(result.code, result.message, result.data)
+			: fail(result.code, result.message, undefined, result.data);
 	}
 
 	if (verb === "edit") {
@@ -2081,6 +2184,30 @@ export async function runHoboCodeCli(
 			status: filtered.ok ? "ok" : "failed",
 			exitCode: filtered.ok ? 0 : 1,
 		};
+	}
+
+	if (verb === "history") {
+		const result = runHistoryCli({
+			hoboHome,
+			env,
+			args,
+			flags,
+			cwd: projectDir,
+		});
+		return result.ok
+			? ok(result.code, result.message, result.data)
+			: fail(result.code, result.message, undefined, result.data);
+	}
+
+	if (verb === "alias") {
+		const result = runAliasCli({
+			hoboHome,
+			env,
+			args,
+		});
+		return result.ok
+			? ok(result.code, result.message, result.data)
+			: fail(result.code, result.message, undefined, result.data);
 	}
 
 	if (verb === "dashboard") {
@@ -2566,7 +2693,9 @@ export async function runHoboCodeCli(
 					(a) =>
 						`  ${a.id} · ${workspaceFor.get(a.id)?.path ?? workspace.path}`,
 				),
-				`join · ${attachCommand(plan.session, host)}`,
+				host
+					? `out-of-session · ${attachCommand(plan.session, host)}`
+					: `in-session · stay in hobo-code · Tab panes · optional ${attachCommand(plan.session)}`,
 			]);
 			return applied.ok
 				? ok("HOBO_CODE_MUX", text, {

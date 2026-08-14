@@ -241,7 +241,7 @@ const SPA = `<!doctype html>
       return name === "dashboard" || name === "evidence" || name === "controls" ||
         name === "report" || name === "otlp" || name === "evals" ||
         name === "rollout" || name === "experiment" || name === "kms" ||
-        name === "secret" || name === "crypto";
+        name === "secret" || name === "crypto" || name === "history";
     }
     function isOccupancyDoor(name) {
       return name === "dashboard" || name === "evidence" || name === "otlp";

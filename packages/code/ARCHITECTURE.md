@@ -39,10 +39,26 @@ closed with the sandbox intact. Gates are executed (`src/promotion-gates.ts`),
 not asserted — they were once hardcoded `pass: true`, which made "gated,
 audited" decoration over a literal.
 
-**Panes are real (`src/mux.ts`, `src/agent-registry.ts`).** The multiplexer
+**Harness plugins (`harnesses/*.json`, `src/agent-harness-catalog.ts`).**
+Agents are data, not switch cases. Bundled descriptors live in
+`packages/code/harnesses/`. Drop another `*.json` in
+`$HOBO_HOME/durable/code/harnesses/` or `<cwd>/.hobo/harnesses/` (or call
+`registerHarness`) and init/detect/seat pick it up. Config writers dispatch on
+*format* (`toml-append`, `json-env`, `note`, `eve-vfs`, `sdk-env`) never on
+agent id. `hobo-code agents init` is the analog of
+`vercel ai-gateway coding-agents setup`. Host specs (`host: true`, hobo-code)
+are never seated. Apply refuses when no listen URL exists. Registry snapshot:
+`$HOBO_HOME/durable/code/agents/registry.json`. `hobo-code agent` stays the
+AX inventory.
+
+**Panes are real (`src/mux.ts`, `src/agent-registry.ts`, `src/in-session-panes.ts`).** The multiplexer
 used to draw three hardcoded panes that mapped to nothing. Agents are now
 auto-detected from evidence (binary on PATH and/or config directory) and each
-is seated in its own tmux window. `applyMux` is idempotent — an existing
+coding CLI is seated in its own tmux window. The InteractiveShell **stays
+in-session**: it `capture-pane`s the focused window and `send-keys` coding
+prompts into Codex/Claude/cursor-agent. `tmux attach` is optional
+out-of-session, not the product path. The harness pane is this TTY — seating
+never nests another `hobo-code`. `applyMux` is idempotent — an existing
 session is reused and only missing windows added, never killed. The
 load-bearing abstraction is the **uniform target**: local, local-inference and
 ssh are all just a command in a pane, so a locally spawned inference session
@@ -200,6 +216,7 @@ Presentation helpers stay pure and unit-tested:
 - `rollout-sidecar-server.ts` — HTTP front for Station-local OpenDelivery. Not a Camp capability and not a mock.
 - `experiment-sidecar-server.ts` — HTTP front for Station-local OpenExperiment. Always on; not listed as a Bindle capability.
 - `kms-sidecar-server.ts` — Station-local KMS for residual secret/crypto Bindle kinds. Real `node:crypto`, not a fixture.
+- `session-shell-store.ts` + `history-sidecar-server.ts` — Station SQLite command history, aliases, and env vars (`history.code.local.hobo.localhost`). Frecency search. Secrets refused/redacted. Not an Atuin deploy.
 - `@hobo/patterns` — catalog source of truth; OpenUI starter plus atomic snippets. `hobo-code template list|search|render|explain|compose|apply` is the zero-LLM CLI (`0 LLM calls · 0 LLM tokens` on every receipt). Structural apply uses the TypeScript compiler API inside an isolation root. `hobo-code scaffold` remains the high-value starter adapter.
 - `review/` — durable review aggregate (ADR-0154). Commands `hobo.code.review-command/v1`; EventStore `hobo-code-reviews`. Coverage, threads, pending publish, exact-effect GitHub submit. Git workbench stays the mutation surface; review records what was inspected.
 - template `public/index.html` + `styles.css` — catalog starter first paint + matching step rail

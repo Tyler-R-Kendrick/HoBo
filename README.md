@@ -47,7 +47,7 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 
 | Path | What it is |
 |---|---|
-| [`packages/`](./packages/) | The production TypeScript workspace — 68 package manifests (core/runtime/control-plane/providers/iac/runtimes/connectors/adapters); authoritative package ownership in [`docs/design/package-namespaces.md`](./docs/design/package-namespaces.md). |
+| [`packages/`](./packages/) | The production TypeScript workspace — 69 package manifests (core/runtime/control-plane/providers/iac/runtimes/connectors/adapters); authoritative package ownership in [`docs/design/package-namespaces.md`](./docs/design/package-namespaces.md). |
 | [`examples/`](./examples/README.md) | Runnable examples (hello-bindle, multi-cloud-shop, ci-runner-balancing, durable-agent, self-host-yard, try-site). |
 | [`scripts/`](./scripts/) | Repo gates and tooling (architecture guard, standards/docs checks, staging cutover demo, codegen). |
 | [`docs/`](./docs/index.md) | OKF bundle root for HoBo docs; `index.md` files provide directory listings and concept docs carry OKF frontmatter. |
@@ -174,6 +174,7 @@ GitHub Actions run three primary lanes:
 - [`HoBo CI Fixture Lanes`](./.github/workflows/fixtures.yml): label/schedule/manual cost-gated multi-cloud fixture jobs (multi-cloud-shop, S4 drill) so label adds do not re-run the whole PR gate.
 - [`HoBo Examples E2E`](./.github/workflows/examples-e2e.yml): the hello-bindle fixture lanes (simulate-mode, `packages/ci-guard` runners), also label/schedule/manual gated.
 - [`HoBo Runner Rebalance`](./.github/workflows/rebalance-runners.yml): daily/manual dogfood of [`examples/ci-runner-balancing`](./examples/ci-runner-balancing/README.md) — CI jobs consume `vars.HOBO_RUNNER_LINUX_SMALL` (falling back to `ubuntu-latest`), and this lane rebalances that variable across runner providers to maximize free credits and minimize paid minutes (record: [`docs/design/ci-runner-balancing-example.md`](./docs/design/ci-runner-balancing-example.md)).
+- [`HoBo fuzz nightly`](./.github/workflows/fuzz-nightly.yml): bounded fast-check oracles plus docker-gated RESTler/Toxiproxy/Schemathesis against simulators only ([`docs/design/fuzzing.md`](./docs/design/fuzzing.md)). Never live Azure/AWS/GCP.
 - Manual live-deploy lanes (`workflow_dispatch` + repo secrets): [`deploy-hello-bindle-vercel.yml`](./.github/workflows/deploy-hello-bindle-vercel.yml) (Vercel CLI) and [`deploy-hello-bindle-pulumi.yml`](./.github/workflows/deploy-hello-bindle-pulumi.yml) (the real pinned Pulumi CLI engine behind the same `@hobo/iac-pulumi` adapter the composed deploy path uses; `HOBO_PULUMI_LIVE=1` selects it locally).
 
 The website is **not** CI-deployed: [`site/`](./site/README.md) is built locally and pushed to the `gh-pages` branch directly (GitHub Pages serves that branch), so publishing works even when Actions runs are unavailable.
@@ -195,7 +196,7 @@ Important rules for agents and humans:
 
 ## Status summary
 
-- **Product implementation:** **68** package manifests under `packages/` (~159k non-test TypeScript LOC under `packages/*/src`). All **40** canonical `hobo` CLI verbs are registered in `@hobo/cli` and composed by `@hobo/hobo` against the local lane. Default IaC is an **in-memory Pulumi stand-in** (not live cloud apply); see `HONEST SCOPE` in `packages/hobo/src/compose.ts`. Live-cloud lanes are credential- or engine-gated (`VERCEL_TOKEN`, Cloudflare tokens, `HOBO_PULUMI_LIVE=1`).
+- **Product implementation:** **69** package manifests under `packages/` (~159k non-test TypeScript LOC under `packages/*/src`). All **40** canonical `hobo` CLI verbs are registered in `@hobo/cli` and composed by `@hobo/hobo` against the local lane. Default IaC is an **in-memory Pulumi stand-in** (not live cloud apply); see `HONEST SCOPE` in `packages/hobo/src/compose.ts`. Live-cloud lanes are credential- or engine-gated (`VERCEL_TOKEN`, Cloudflare tokens, `HOBO_PULUMI_LIVE=1`).
 - **Pre-release / distribution:** `@hobo/*` packages are **not published to npm** (workspace `0.0.1`). Prefer installing from this monorepo until a publish allowlist and CI-proven release path land.
 - **Componentize honesty:** `@hobo/componentize` has two lanes — the offline default builds **synthetic wasm contract bytes** (`buildWasmContractBytes`), and `HOBO_COMPONENTIZE_REAL=1` drives the **real jco/`componentize-js` pipeline** (toolchain-gated, fail-closed, real component-model binaries validated for wasm magic + component layer).
 - **Migration & upgrade engine:** live executors ship in `@hobo/trails` (upgrade preflight evidence, expand→backfill→contract over a real SQLite store, pooled→siloed zero-loss tenant move, CDC data-dual ports) with the `migration.*` event family pinned in `@hobo/events`' append-only golden-replay corpus + upcaster-totality gate. See [`docs/design/upgrade-migration-engine.md`](./docs/design/upgrade-migration-engine.md).

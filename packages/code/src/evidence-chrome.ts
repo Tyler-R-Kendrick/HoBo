@@ -22,7 +22,7 @@ const GRAIN =
 
 let fontFace = "";
 
-function chewyFontFace(): string {
+export function chewyFontFace(): string {
 	if (fontFace === "") {
 		const bytes = readFileSync(
 			new URL("../assets/Chewy-Regular.ttf", import.meta.url),

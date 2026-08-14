@@ -77,15 +77,45 @@ describe("local Aspire dashboard listener", () => {
 			expect(page.status).toBe(200);
 			expect(html).toMatch(/hobo-code · resources/);
 			expect(html).toMatch(/\/api\/resources/);
-			expect(html).toMatch(/station ·/);
-			expect(html).toMatch(/yard ·/);
-			expect(html).toMatch(/named-endpoints/);
+			expect(html).toMatch(/id="station-card"/);
+			expect(html).toMatch(/class="card featured"/);
+			expect(html).toMatch(/isStationEndpoint/);
+			expect(html).toMatch(/tree-node tree-/);
+			expect(html).toMatch(/function yardHtml/);
+			expect(html).toMatch(/function campHtml/);
+			expect(html).toMatch(/function bindleHtml/);
+			expect(html).toMatch(/\.tree-camp/);
+			expect(html).toMatch(/\.tree-bindle/);
 			expect(html).toMatch(/target='_blank'/);
 			expect(html).toMatch(/rel='noopener noreferrer'/);
 			expect(html).toMatch(/data-copy=/);
+			expect(html).toMatch(/data-act=/);
+			expect(html).toMatch(/icoAct\("play"/);
+			expect(html).toMatch(/icoAct\("stop"/);
+			expect(html).not.toMatch(/>start</);
+			expect(html).not.toMatch(/>stop</);
+			expect(html).toMatch(/class='lamp /);
 			expect(html).toMatch(/navigator\.clipboard/);
-			expect(html).toMatch(/<th>named<\/th>/);
-			expect(html).toMatch(/<th>listen<\/th>/);
+			expect(html).toMatch(/id='station-capabilities'/);
+			expect(html).toMatch(/aria-label='capabilities'/);
+			expect(html).toMatch(/id='station-sidecars'/);
+			expect(html).toMatch(/isOccupancyDoor/);
+			expect(html).toMatch(/:focus-visible/);
+			expect(html).toMatch(/@font-face/);
+			expect(html).toMatch(/role="alert"/);
+			expect(html).not.toMatch(/window\.alert/);
+			expect(html).toMatch(/aria-label="yard"/);
+			expect(html).toMatch(/aria-label="otel"/);
+			expect(html).toMatch(/aria-label="fleet"/);
+			expect(html).toMatch(/class='sig'/);
+			expect(html).not.toMatch(/<h3>Capabilities<\/h3>/);
+			expect(html).not.toMatch(/<h2>Yard<\/h2>/);
+			expect(html).not.toMatch(/<h2>OTel<\/h2>/);
+			expect(html).not.toMatch(/<h2>Fleet<\/h2>/);
+			expect(html).not.toMatch(/<th>fidelity<\/th>/);
+			expect(html).not.toMatch(/<th>service<\/th>/);
+			expect(html).not.toMatch(/<th>note<\/th>/);
+			expect(html).not.toMatch(/Capabilities/);
 
 			const resources = await fetch(new URL("/api/resources", listen));
 			const inventory = (await resources.json()) as {
@@ -167,7 +197,6 @@ describe("local Aspire dashboard listener", () => {
 			expect(life?.find((row) => row.id === "station:local")?.state).toBe(
 				"ready",
 			);
-			expect(html).toMatch(/Capabilities/);
 			const tel = (await (
 				await fetch(new URL("/api/telemetry", listen))
 			).json()) as {
@@ -248,7 +277,6 @@ describe("local Aspire dashboard listener", () => {
 				capabilities: {
 					kind: string;
 					available: boolean;
-					fidelity: string;
 				}[];
 			};
 			expect(full.capabilities.map((row) => row.kind)).toEqual(
@@ -261,6 +289,14 @@ describe("local Aspire dashboard listener", () => {
 			expect(
 				full.capabilities.find((row) => row.kind === "container")?.available,
 			).toBe(false);
+			expect(
+				full.capabilities.find((row) => row.kind === "secret")?.available,
+			).toBe(true);
+			expect(
+				full.capabilities.every(
+					(row) => !("fidelity" in row) && !("note" in row),
+				),
+			).toBe(true);
 			const tel = (await (
 				await fetch(new URL("/api/telemetry", listen))
 			).json()) as {

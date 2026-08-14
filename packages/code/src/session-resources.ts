@@ -21,6 +21,7 @@ import { assembleCampEvalSidecar } from "./eval-sidecar-server.js";
 import {
 	OCCUPANCY_NAMED_APP,
 	occupancyNamedOrigin,
+	isStationOccupancyEndpoint,
 	occupancySidecarEndpoints,
 	preferNamedEndpoint,
 	retargetUrl,
@@ -507,6 +508,7 @@ function loadSidecarSnapshot(
 	readonly evalsUrl?: string;
 	readonly rolloutUrl?: string;
 	readonly experimentUrl?: string;
+	readonly kmsUrl?: string;
 } {
 	const path = sidecarSnapshotPath(hoboHome, stationId);
 	if (!existsSync(path)) return {};
@@ -528,6 +530,7 @@ function loadSidecarSnapshot(
 		const evalsUrl = text("evalsUrl");
 		const rolloutUrl = text("rolloutUrl");
 		const experimentUrl = text("experimentUrl");
+		const kmsUrl = text("kmsUrl");
 		return {
 			...(dashboardUrl !== undefined ? { dashboardUrl } : {}),
 			...(evidenceUrl !== undefined ? { evidenceUrl } : {}),
@@ -537,6 +540,7 @@ function loadSidecarSnapshot(
 			...(evalsUrl !== undefined ? { evalsUrl } : {}),
 			...(rolloutUrl !== undefined ? { rolloutUrl } : {}),
 			...(experimentUrl !== undefined ? { experimentUrl } : {}),
+			...(kmsUrl !== undefined ? { kmsUrl } : {}),
 		};
 	} catch {
 		return {};
@@ -960,6 +964,7 @@ const STATION_SIDECARS = new Set([
 	"otlp",
 	"rollout",
 	"experiment",
+	"kms",
 ]);
 
 function projectManagedResources(input: {
@@ -1132,6 +1137,25 @@ export function formatSessionResources(
 		)) {
 			lines.push(formatManaged(child));
 		}
+		const stationEndpoints = inventory.endpoints.filter((row) =>
+			isStationOccupancyEndpoint(row.resourceName),
+		);
+		if (stationEndpoints.length > 0) {
+			lines.push("   endpoints");
+			for (const row of stationEndpoints) {
+				lines.push(
+					`     ${row.resourceName}  ${row.preferredUrl || row.namedUrl || preferNamedEndpoint(row.backendUrl, row.resourceName)}`,
+				);
+			}
+		}
+		if (inventory.capabilities.length > 0) {
+			lines.push("   capabilities");
+			for (const row of inventory.capabilities) {
+				lines.push(
+					`     ${row.kind.padEnd(16)} ${row.available ? "available" : "unavailable"}`,
+				);
+			}
+		}
 	}
 	if (inventory.camp) {
 		lines.push(
@@ -1140,27 +1164,53 @@ export function formatSessionResources(
 	}
 	for (const row of inventory.peers) lines.push(formatNode(row));
 	for (const row of inventory.junctions) lines.push(formatNode(row));
-	for (const row of inventory.yards) {
-		lines.push(formatNode(row));
+	const yardIds = new Set(inventory.yards.map((row) => row.id));
+	const campIds = new Set(inventory.camps.map((row) => row.id));
+	const nestedBindles = new Set<string>();
+	const formatOwned = (ownerId: string, depth: number): void => {
+		const pad = "  ".repeat(depth);
 		for (const child of inventory.managed.filter(
-			(item) => item.ownerId === row.id,
+			(item) =>
+				item.ownerId === ownerId &&
+				item.kind !== "bindle" &&
+				!isStationOccupancyEndpoint(item.id),
 		)) {
-			lines.push(formatManaged(child));
+			lines.push(`${pad}${formatManaged(child).trimStart()}`);
+		}
+	};
+	for (const yard of inventory.yards) {
+		lines.push(formatNode(yard));
+		formatOwned(yard.id, 1);
+		for (const camp of inventory.camps.filter(
+			(row) => row.parentId === yard.id,
+		)) {
+			lines.push(`   ${formatNode(camp).trimStart()}`);
+			formatOwned(camp.id, 2);
+			for (const bindle of inventory.bindles.filter(
+				(row) => row.parentId === camp.id,
+			)) {
+				nestedBindles.add(bindle.id);
+				lines.push(`     ${formatNode(bindle).trimStart()}`);
+				formatOwned(bindle.id, 3);
+			}
 		}
 	}
-	const shown = new Set(
-		inventory.managed.filter((row) => row.kind === "bindle").map((row) => row.id),
-	);
-	for (const row of inventory.camps) {
-		lines.push(formatNode(row));
-		for (const child of inventory.managed.filter(
-			(item) => item.ownerId === row.id,
+	for (const camp of inventory.camps.filter(
+		(row) => !row.parentId || !yardIds.has(row.parentId),
+	)) {
+		lines.push(formatNode(camp));
+		formatOwned(camp.id, 1);
+		for (const bindle of inventory.bindles.filter(
+			(row) => row.parentId === camp.id,
 		)) {
-			lines.push(formatManaged(child));
+			nestedBindles.add(bindle.id);
+			lines.push(`   ${formatNode(bindle).trimStart()}`);
 		}
 	}
-	for (const row of inventory.bindles) {
-		if (!shown.has(row.id)) lines.push(formatNode(row));
+	for (const bindle of inventory.bindles) {
+		if (nestedBindles.has(bindle.id)) continue;
+		if (bindle.parentId && campIds.has(bindle.parentId)) continue;
+		lines.push(formatNode(bindle));
 	}
 	if (inventory.missing.length > 0) {
 		lines.push(" missing");
@@ -1168,20 +1218,15 @@ export function formatSessionResources(
 			lines.push(`  ${row.kind.padEnd(9)} ${row.reason}`);
 		}
 	}
-	if (inventory.endpoints.length > 0) {
-		lines.push(" endpoints");
-		for (const row of inventory.endpoints) {
+	const bindleEndpoints = inventory.endpoints.filter(
+		(row) => !isStationOccupancyEndpoint(row.resourceName),
+	);
+	if (bindleEndpoints.length > 0) {
+		lines.push(" bindle endpoints");
+		for (const row of bindleEndpoints) {
 			const reason = row.unresolvedReason ? `  ${row.unresolvedReason}` : "";
 			lines.push(
-				`  ${row.resourceName}  ${row.preferredUrl || row.namedUrl || preferNamedEndpoint(row.backendUrl, row.resourceName)}  ${row.fidelity}  ${row.freshness}${reason}`,
-			);
-		}
-	}
-	if (inventory.capabilities.length > 0) {
-		lines.push(" capabilities");
-		for (const row of inventory.capabilities) {
-			lines.push(
-				`  ${row.kind.padEnd(16)} ${row.available ? "available" : "unavailable"}  ${row.fidelity}  ${row.note}`,
+				`  ${row.resourceName}  ${row.preferredUrl || row.namedUrl || preferNamedEndpoint(row.backendUrl, row.resourceName)}  ${row.freshness}${reason}`,
 			);
 		}
 	}

@@ -206,9 +206,24 @@ endpoint (new tab + copy) and also shows the loopback listen address.
 Occupancy deploys the real OpenDelivery engine next to the Station
 (`rollout.code.local.hobo.localhost`) and the real OpenExperiment
 engine (`experiment.code.local.hobo.localhost`). Experiments are an
-always-on Station sidecar, not a Capabilities-table row. Station-hosted
-Bindle kinds (HTTP, kv, data, queue, flag, rollout, …) are real local
-hosts, never `simulated`. Tests query those controls by id/role/class. Every
+always-on Station sidecar, not a Capabilities-table row. Residual
+secret/crypto kinds use the Station-local KMS sidecar
+(`kms.code.local.hobo.localhost`). The dashboard leads with a featured
+Station plaque (id + ready lamp + env) and three occupancy doors
+(dashboard / Evidence / OTLP). Other Station sidecars and the capability
+grid sit in closed disclosures. Pane titles are glyphs (circle Station,
+slab Yard, wave OTel, triad Fleet) — not localized words. Chewy is
+embedded like Evidence; cream ground, paper cards, grain, night
+inversion, spark 2.5px focus. Icons are 44px chamfered planks with
+hang-and-bounce. The Yard card nests Yard ⊃ Camp ⊃ Bindle with an ink
+rail; bindle endpoints hang off their bindle. Start/stop is a single
+play/square toggle; restart is Bindle-only. Copy flashes go on success
+and spark on refuse — never a lying success. Errors are an inline
+banner, never `alert()`. Stopped lamps stay paper, not vermillion.
+Long URLs ellipsize so cards do not bleed. OTel is lamp + signal
+counts. Fleet appears only when peer Stations exist. A kind is
+available or it is not. Tests query those controls by id/role/class.
+Every
 `tui-*` source is in DESIGN.md lint scope (`tui-design-lint.test.ts`). Evidence
 HTML chrome is in the same scope (`evidence-design-lint.test.ts`). Bare
 `/template` and `/templates` list the local pattern catalog (zero LLM).

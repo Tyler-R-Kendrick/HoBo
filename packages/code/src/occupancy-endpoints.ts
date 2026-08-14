@@ -13,7 +13,10 @@ export type OccupancyNamedResource =
 	| "otlp"
 	| "evals"
 	| "rollout"
-	| "experiment";
+	| "experiment"
+	| "kms"
+	| "secret"
+	| "crypto";
 
 export interface OccupancyNameScope {
 	readonly tenant?: string;
@@ -99,6 +102,25 @@ export interface OccupancySidecarUrls {
 	readonly evalsUrl?: string;
 	readonly rolloutUrl?: string;
 	readonly experimentUrl?: string;
+	readonly kmsUrl?: string;
+}
+
+export const STATION_OCCUPANCY_RESOURCES = [
+	"dashboard",
+	"evidence",
+	"controls",
+	"report",
+	"otlp",
+	"evals",
+	"rollout",
+	"experiment",
+	"kms",
+	"secret",
+	"crypto",
+] as const;
+
+export function isStationOccupancyEndpoint(name: string): boolean {
+	return (STATION_OCCUPANCY_RESOURCES as readonly string[]).includes(name);
 }
 
 export interface OccupancySidecarEndpoint {
@@ -109,7 +131,10 @@ export interface OccupancySidecarEndpoint {
 		| "otlp"
 		| "evals"
 		| "rollout"
-		| "experiment";
+		| "experiment"
+		| "kms"
+		| "secret"
+		| "crypto";
 	readonly kind: "http" | "otlp";
 	readonly backendUrl: string;
 	readonly namedUrl: string;
@@ -156,6 +181,9 @@ export function occupancySidecarEndpoints(
 	add("evals", urls.evalsUrl, "evals", "http");
 	add("rollout", urls.rolloutUrl, "rollout", "http");
 	add("experiment", urls.experimentUrl, "experiment", "http");
+	add("kms", urls.kmsUrl, "kms", "http");
+	add("secret", urls.kmsUrl, "secret", "http");
+	add("crypto", urls.kmsUrl, "crypto", "http");
 	return rows;
 }
 

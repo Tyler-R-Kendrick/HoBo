@@ -79,41 +79,35 @@ export default bindle("hello-world", (b) => {
 });
 
 describe("local Bindle capability catalog", () => {
-	it("covers the Bindle kind list with honest local fidelity", () => {
+	it("covers the Bindle kind list as available or unavailable", () => {
 		const rows = localBindleCapabilities();
 		expect(rows.map((row) => row.kind)).toEqual(
 			BINDLE_RESOURCE_KINDS.filter((kind) => kind !== "experiment"),
 		);
 		expect(rows.map((row) => row.kind)).not.toContain("experiment");
 		expect(rows.find((row) => row.kind === "web")).toEqual(
-			expect.objectContaining({
-				available: true,
-				fidelity: "real",
-			}),
+			expect.objectContaining({ available: true }),
 		);
 		expect(rows.find((row) => row.kind === "kv")).toEqual(
-			expect.objectContaining({
-				available: true,
-				fidelity: "real",
-			}),
+			expect.objectContaining({ available: true }),
 		);
 		expect(rows.find((row) => row.kind === "secret")).toEqual(
-			expect.objectContaining({
-				available: true,
-				fidelity: "mocked",
-			}),
+			expect.objectContaining({ available: true }),
+		);
+		expect(rows.find((row) => row.kind === "crypto")).toEqual(
+			expect.objectContaining({ available: true }),
+		);
+		expect(rows.find((row) => row.kind === "notify")).toEqual(
+			expect.objectContaining({ available: false }),
 		);
 		expect(rows.find((row) => row.kind === "container")).toEqual(
-			expect.objectContaining({
-				available: false,
-				fidelity: "camp-only",
-			}),
+			expect.objectContaining({ available: false }),
 		);
 		expect(rows.find((row) => row.kind === "rollout")).toEqual(
-			expect.objectContaining({
-				available: true,
-				fidelity: "real",
-			}),
+			expect.objectContaining({ available: true }),
+		);
+		expect(rows.every((row) => !("fidelity" in row) && !("note" in row))).toBe(
+			true,
 		);
 		expect(rows.map((row) => row.kind)).not.toContain("golden");
 	});

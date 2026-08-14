@@ -22,6 +22,11 @@ Non-goal: model hosting — evaluators are ports.
 - `matchGolden(expected, actual)` / `canonicalJson(value)` — golden-match
   scoring over expected/actual pairs by canonical (key-sorted) JSON, with
   the first diverging path reported the way conformance golden checks do.
+- `defineTrainableGoldenRubric(region)` / `observeTrainableGolden(region)` /
+  `scoreTrainableGoldenSuite(regions)` — the default golden suite
+  (`hobo.evals.trainable-golden/v1`). Exact-match over contract examples
+  and recorded traces for `"use training"` regions (ADR-0025). Not
+  occupancy or Bindle health, and not a Bindle capability.
 - `evaluatePromotionGate({rubricReport, thresholds})` — the gate verdict:
   structurally the same `{ok, reasons: [{code, message}]}` shape as the
   contracts package's `ResidencyGateVerdict`/`CanMigrateGateVerdict`

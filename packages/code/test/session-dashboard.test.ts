@@ -7,7 +7,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { authLogin } from "../src/auth.js";
 import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
 import { startLocalDashboard } from "../src/session-dashboard.js";
-import { recordDevDeployment } from "../src/session-resources.js";
+import {
+	recordDevDeployment,
+	recordSessionResources,
+} from "../src/session-resources.js";
 
 const homes: string[] = [];
 afterEach(() => {
@@ -77,6 +80,12 @@ describe("local Aspire dashboard listener", () => {
 			expect(html).toMatch(/station ·/);
 			expect(html).toMatch(/yard ·/);
 			expect(html).toMatch(/named-endpoints/);
+			expect(html).toMatch(/target='_blank'/);
+			expect(html).toMatch(/rel='noopener noreferrer'/);
+			expect(html).toMatch(/data-copy=/);
+			expect(html).toMatch(/navigator\.clipboard/);
+			expect(html).toMatch(/<th>named<\/th>/);
+			expect(html).toMatch(/<th>listen<\/th>/);
 
 			const resources = await fetch(new URL("/api/resources", listen));
 			const inventory = (await resources.json()) as {
@@ -136,7 +145,10 @@ describe("local Aspire dashboard listener", () => {
 				reason?: string;
 			};
 			expect(fleetBody.scope).toBe("local");
-			expect(inventory.camps.some((row) => row.id === "camp:local")).toBe(true);
+			expect(inventory.camps.some((row) => row.id === "camp:code")).toBe(true);
+			expect(
+				inventory.camps.some((row) => row.id === "camp:hello-world"),
+			).toBe(true);
 			expect(inventory.yards.some((row) => row.id === "yard:local")).toBe(true);
 			const life = (
 				inventory as {
@@ -148,7 +160,10 @@ describe("local Aspire dashboard listener", () => {
 				}
 			).lifecycle;
 			expect(life?.find((row) => row.id === "yard:local")?.state).toBe("ready");
-			expect(life?.find((row) => row.id === "camp:local")?.state).toBe("ready");
+			expect(life?.find((row) => row.id === "camp:code")?.state).toBe("ready");
+			expect(life?.find((row) => row.id === "camp:hello-world")?.state).toBe(
+				"ready",
+			);
 			expect(life?.find((row) => row.id === "station:local")?.state).toBe(
 				"ready",
 			);
@@ -239,6 +254,7 @@ describe("local Aspire dashboard listener", () => {
 			expect(full.capabilities.map((row) => row.kind)).toEqual(
 				expect.arrayContaining(["web", "api", "kv", "data", "container"]),
 			);
+			expect(full.capabilities.map((row) => row.kind)).not.toContain("golden");
 			expect(
 				full.capabilities.find((row) => row.kind === "web")?.available,
 			).toBe(true);
@@ -346,6 +362,23 @@ describe("local Aspire dashboard listener", () => {
 				{ method: "POST" },
 			);
 			expect(refused.status).toBe(409);
+			const stationStop = await fetch(
+				new URL("/api/resources/station:local/stop", listen),
+				{ method: "POST" },
+			);
+			expect(stationStop.status).toBe(409);
+			const campStop = await fetch(
+				new URL("/api/resources/camp:code/stop", listen),
+				{ method: "POST" },
+			);
+			expect(campStop.status).toBe(409);
+			const campBody = (await campStop.json()) as { error?: string };
+			expect(campBody.error).toMatch(/shut themselves down|not start\/stoppable/i);
+			const bindleStop = await fetch(
+				new URL("/api/resources/bindle:code/stop", listen),
+				{ method: "POST" },
+			);
+			expect(bindleStop.status).toBe(409);
 
 			const started = await fetch(
 				new URL("/api/resources/bindle:hello-world/start", listen),
@@ -454,7 +487,10 @@ describe("local Aspire dashboard listener", () => {
 				before.lifecycle.find((row) => row.id === "yard:local")?.ready,
 			).toBe(true);
 			expect(
-				before.lifecycle.find((row) => row.id === "camp:local")?.ready,
+				before.lifecycle.find((row) => row.id === "camp:hello-world")?.ready,
+			).toBe(true);
+			expect(
+				before.lifecycle.find((row) => row.id === "camp:code")?.ready,
 			).toBe(true);
 
 			const started = await fetch(
@@ -487,7 +523,10 @@ describe("local Aspire dashboard listener", () => {
 				after.lifecycle.find((row) => row.id === "yard:local:flow")?.state,
 			).toBe("stopped");
 			expect(
-				after.lifecycle.find((row) => row.id === "camp:local")?.state,
+				after.lifecycle.find((row) => row.id === "camp:hello-world")?.state,
+			).toBe("stopped");
+			expect(
+				after.lifecycle.find((row) => row.id === "camp:code")?.state,
 			).toBe("ready");
 
 			const refused = await fetch(
@@ -633,6 +672,121 @@ describe("local Aspire dashboard listener", () => {
 			expect(listening).toBeDefined();
 		} finally {
 			await listening?.close().catch(() => {});
+			await dash.close();
+		}
+	});
+
+	it("starts and stops occupancy sidecars, and yard stop leaves other yards alone", async () => {
+		const hoboHome = tempHome();
+		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		recordSessionResources({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			nodes: [
+				{
+					kind: "yard",
+					id: "yard:local",
+					name: "local",
+					environment: "local-dev",
+					status: "serving",
+					fidelity: "simulated",
+					scopeLabel: "local",
+				},
+				{
+					kind: "camp",
+					id: "camp:hello-world",
+					name: "hello-world",
+					environment: "local-dev",
+					parentId: "yard:local",
+					status: "serving",
+					fidelity: "simulated",
+					scopeLabel: "local",
+				},
+				{
+					kind: "yard",
+					id: "yard:other",
+					name: "other",
+					environment: "local-dev",
+					status: "serving",
+					fidelity: "simulated",
+					scopeLabel: "local",
+				},
+				{
+					kind: "camp",
+					id: "camp:other",
+					name: "other",
+					environment: "local-dev",
+					parentId: "yard:other",
+					status: "serving",
+					fidelity: "simulated",
+					scopeLabel: "local",
+				},
+			],
+			endpoints: [],
+		});
+		const dash = await startLocalDashboard({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			port: 0,
+			otlpHttpPort: 0,
+			otlpGrpcPort: 0,
+		});
+		const listen = loopbackFetchUrl(dash.url);
+		const otlpListen = loopbackFetchUrl(dash.otlpHttpUrl);
+		try {
+			const otlpOk = await fetch(new URL("/v1/logs", otlpListen), {
+				method: "POST",
+				body: "{}",
+			});
+			expect(otlpOk.status).toBe(200);
+
+			const stopped = await fetch(
+				new URL("/api/resources/otlp/stop", listen),
+				{ method: "POST" },
+			);
+			expect(stopped.status).toBe(200);
+			await expect(
+				fetch(new URL("/v1/logs", otlpListen), {
+					method: "POST",
+					body: "{}",
+				}),
+			).rejects.toThrow();
+
+			const started = await fetch(
+				new URL("/api/resources/otlp/start", listen),
+				{ method: "POST" },
+			);
+			expect(started.status).toBe(200);
+			const otlpAgain = await fetch(new URL("/v1/logs", otlpListen), {
+				method: "POST",
+				body: "{}",
+			});
+			expect(otlpAgain.status).toBe(200);
+
+			const yardStop = await fetch(
+				new URL("/api/resources/yard:local/stop", listen),
+				{ method: "POST" },
+			);
+			expect(yardStop.status).toBe(200);
+			const after = (await (
+				await fetch(new URL("/api/resources", listen))
+			).json()) as {
+				lifecycle: { id: string; state: string }[];
+			};
+			expect(
+				after.lifecycle.find((row) => row.id === "camp:hello-world")?.state,
+			).toBe("stopped");
+			expect(
+				after.lifecycle.find((row) => row.id === "camp:other")?.state,
+			).toBe("ready");
+			expect(
+				after.lifecycle.find((row) => row.id === "camp:code")?.state,
+			).toBe("ready");
+		} finally {
 			await dash.close();
 		}
 	});

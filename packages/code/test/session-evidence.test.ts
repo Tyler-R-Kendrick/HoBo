@@ -7,7 +7,12 @@ import { saveChatSession } from "../src/chat-sessions.js";
 import { createEvidencePort } from "../src/evidence-port.js";
 import { renderEvidenceJournalHtml } from "../src/evidence-report.js";
 import {
+	buildTasksSurface,
+	renderTasksBoardText,
+} from "../src/grok-build-parity.js";
+import {
 	projectSessionEvidenceJournal,
+	projectSessionWorkLedger,
 	readCurrentSessionContext,
 	recordSessionDecision,
 	writeCurrentSessionContext,
@@ -117,7 +122,7 @@ describe("session evidence journal", () => {
 		).toBe(false);
 	});
 
-	it("renders a live stream, not a sectioned static report", () => {
+	it("renders a live work report with provenance, not a Tests/ADRs checklist", () => {
 		const home = temp();
 		const port = createEvidencePort({
 			root: join(home, "durable", "code", "evidence"),
@@ -146,15 +151,57 @@ describe("session evidence journal", () => {
 			live: true,
 			journalHref: "/__hobo/evidence/journal?report=read",
 		});
-		expect(html).toContain('class="stream"');
+		expect(html).toContain("report-board");
+		expect(html).toContain("scoreboard");
 		expect(html).toContain("data-live");
 		expect(html).toContain("chat-stream99");
 		expect(html).toContain("Ship it.");
 		expect(html).toContain("fetch(");
+		expect(html).toMatch(/work report|provenance/i);
 		expect(html).not.toContain("No test run report submitted");
 		expect(html).not.toContain(
 			"Live report updates when this page is refreshed",
 		);
 		expect(html).not.toContain("<h2>Tests</h2>");
+	});
+
+	it("projects the same work ledger for Tasks and Evidence", () => {
+		const home = temp();
+		const port = createEvidencePort({
+			root: join(home, "durable", "code", "evidence"),
+			actor: "hobo-code:shell",
+			origin: "hobo-code:interactive-shell",
+			signingKey: "test",
+			now: () => "2026-08-14T12:01:00.000Z",
+		});
+		saveChatSession(home, {
+			id: "chat-ledger01",
+			cwd: "/proj",
+			messages: [{ role: "user", text: "Add a pay button.", at: 10 }],
+			createdAt: 10,
+			updatedAt: 10,
+		});
+		writeCurrentSessionContext(home, {
+			sessionId: "chat-ledger01",
+			cwd: "/proj",
+			stationLabel: "station:local",
+		});
+		const ledger = projectSessionWorkLedger({
+			hoboHome: home,
+			evidence: port,
+			generatedAt: "2026-08-14T12:03:00.000Z",
+		});
+		expect(ledger.items.map((row) => row.title)).toContain("You asked");
+		expect(ledger.items[0]?.provenance.reason).toContain("pay button");
+		const surface = buildTasksSurface({
+			hoboHome: home,
+			evidence: port,
+		});
+		expect(surface.rows.some((row) => row.summary.includes("pay button"))).toBe(
+			true,
+		);
+		const board = renderTasksBoardText(surface);
+		expect(board).toMatch(/pay button/i);
+		expect(board).toMatch(/Evidence/i);
 	});
 });

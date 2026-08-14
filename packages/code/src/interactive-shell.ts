@@ -21,7 +21,11 @@ import {
 	renderTurn as renderTurnView,
 } from "./agui.js";
 import { inspectCost } from "./cost.js";
-import { buildTasksSurface } from "./grok-build-parity.js";
+import {
+	buildTasksSurface,
+	renderTasksBoardText,
+} from "./grok-build-parity.js";
+
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
 import { type AccentName, centreBlock } from "./rubberhose.js";
 import {
@@ -85,6 +89,7 @@ import {
 } from "./chat-sessions.js";
 import { compactTranscript } from "./compact.js";
 import {
+	openSessionEvidencePort,
 	recordSessionDecision,
 	writeCurrentSessionContext,
 } from "./session-evidence.js";
@@ -153,8 +158,10 @@ export interface InteractiveShellState {
 	readonly slashOpen: boolean;
 	readonly slashFilter: string;
 	readonly slashIndex: number;
-	/** Lines scrolled up from the bottom of the chat transcript. */
+	/** Lines scrolled up from the bottom of the chat / btw transcript. */
 	readonly chatScroll: number;
+	/** Lines scrolled down from the top of tasks / status / resources / approval. */
+	readonly paneScroll: number;
 	/**
 	 * Promotion approval gate (ADR-0139): engine edits live in a mediated
 	 * sandbox and only reach the canonical tree through an explicit human
@@ -518,16 +525,12 @@ export function createInitialShellState(
 		formatStationStatusBlock(station),
 		renderStatusText(mux, { plain: true }),
 	].join("\n");
-	const tasks = buildTasksSurface({ hoboHome, panes: mux.panes });
-	const tasksPlain = [
-		"Tasks · keyboard-first (Tab → Tasks) · clickable mouse residual later",
-		...tasks.rows.map(
-			(r) =>
-				`  [${r.state}] ${r.kind}/${r.id}${r.summary ? ` — ${r.summary}` : ""}`,
-		),
-		"  Regions: task-row · still-working · status-chip (keyboard focus now)",
-		"  Honest residual: fullscreen mouse TUI is not claimed complete yet",
-	].join("\n");
+	const tasks = buildTasksSurface({
+		hoboHome,
+		panes: mux.panes,
+		evidence: openSessionEvidencePort(hoboHome),
+	});
+	const tasksPlain = renderTasksBoardText(tasks);
 	const resourcesPlain = formatSessionResources(
 		assembleSessionResources({
 			hoboHome,
@@ -580,6 +583,7 @@ export function createInitialShellState(
 		slashFilter: "",
 		slashIndex: 0,
 		chatScroll: 0,
+		paneScroll: 0,
 		pendingApproval: null,
 		btw: null,
 		usageLabel: "",
@@ -861,7 +865,9 @@ export function buildShellTree(state: InteractiveShellState) {
 			sandboxRoot: state.pendingApproval.sandboxRoot,
 			changes: state.pendingApproval.changes,
 			prompt: APPROVAL_PROMPT,
+			scroll: state.paneScroll,
 		});
+		if (state.paneScroll > 0) title = `promote ${state.pendingApproval.runId}? ↑${state.paneScroll}`;
 	} else if (state.slashOpen) {
 		title = "commands";
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
@@ -870,14 +876,27 @@ export function buildShellTree(state: InteractiveShellState) {
 			selectedIndex: state.slashIndex,
 		});
 	} else if (state.focus === "tasks") {
-		title = "tasks";
-		surface = TextPane({ id: "tasks-pane", text: state.tasksPlain });
+		title = state.paneScroll > 0 ? `tasks ↑${state.paneScroll}` : "tasks";
+		surface = TextPane({
+			id: "tasks-pane",
+			text: state.tasksPlain,
+			scroll: state.paneScroll,
+		});
 	} else if (state.focus === "status") {
-		title = "status";
-		surface = TextPane({ id: "status-pane", text: state.statusPlain });
+		title = state.paneScroll > 0 ? `status ↑${state.paneScroll}` : "status";
+		surface = TextPane({
+			id: "status-pane",
+			text: state.statusPlain,
+			scroll: state.paneScroll,
+		});
 	} else if (state.focus === "resources") {
-		title = "resources";
-		surface = TextPane({ id: "resources-pane", text: state.resourcesPlain });
+		title =
+			state.paneScroll > 0 ? `resources ↑${state.paneScroll}` : "resources";
+		surface = TextPane({
+			id: "resources-pane",
+			text: state.resourcesPlain,
+			scroll: state.paneScroll,
+		});
 	} else {
 		const transcript: string[] = [];
 		for (const message of state.messages) {
@@ -900,6 +919,7 @@ export function buildShellTree(state: InteractiveShellState) {
 					id: "chat-surface",
 					role: "region",
 					className: "chat-surface",
+					scroll,
 				},
 				ChatTranscript({
 					messages: [lead],
@@ -909,7 +929,6 @@ export function buildShellTree(state: InteractiveShellState) {
 				ChatTranscript({
 					messages: state.messages.slice(1),
 					width: innerWidth,
-					scroll,
 				}),
 			);
 		} else if (state.welcomeTable.length > 0) {
@@ -919,12 +938,12 @@ export function buildShellTree(state: InteractiveShellState) {
 					id: "chat-surface",
 					role: "region",
 					className: "chat-surface",
+					scroll,
 				},
 				InkTable({ id: "welcome-table", rows: state.welcomeTable }),
 				ChatTranscript({
 					messages: state.messages,
 					width: innerWidth,
-					scroll,
 				}),
 			);
 		} else {
@@ -945,6 +964,7 @@ export function buildShellTree(state: InteractiveShellState) {
 		state.btw && live
 			? BtwAside({
 					turns: state.btw.turns,
+					scroll: state.chatScroll,
 					...((live.lastAssistant ?? live.lastUser ?? live.lastProduct)
 						? {
 								parentLatest:
@@ -1031,6 +1051,25 @@ export function reduceShellKey(
 		) {
 			return { state: cleared, decline: pending };
 		}
+		if (matchesKey(key, "up") || matchesKey(key, "down")) {
+			return {
+				state: scrollFocused(
+					state,
+					matchesKey(key, "up") ? "up" : "down",
+					1,
+				),
+			};
+		}
+		if (matchesKey(key, "pageUp") || matchesKey(key, "pageDown")) {
+			const page = Math.max(3, viewportRows(state) - 1);
+			return {
+				state: scrollFocused(
+					state,
+					matchesKey(key, "pageUp") ? "up" : "down",
+					page,
+				),
+			};
+		}
 		return { state };
 	}
 	// Bracketed paste — insert content as one edit (newlines become spaces;
@@ -1072,7 +1111,7 @@ export function reduceShellKey(
 		}
 		return { state };
 	}
-	// Arrow up/down — slash palette navigation, or chat scroll
+	// Arrow up/down — slash palette, or scroll the focused scene
 	if (matchesKey(key, "up") || matchesKey(key, "down")) {
 		const dirUp = matchesKey(key, "up");
 		if (state.slashOpen) {
@@ -1081,22 +1120,30 @@ export function reduceShellKey(
 			const next = clamp(state.slashIndex + (dirUp ? -1 : 1), 0, count - 1);
 			return { state: { ...state, slashIndex: next } };
 		}
-		if (state.focus === "chat" && state.input.length === 0) {
-			return {
-				state: {
-					...state,
-					chatScroll: Math.max(0, state.chatScroll + (dirUp ? 1 : -1)),
-				},
-			};
+		if (state.focus === "chat" && state.input.length > 0) {
+			return { state };
 		}
-		return { state };
-	}
-	// PgUp/PgDn — chat scroll (clamped against content at render time)
-	if (matchesKey(key, "pageUp") || matchesKey(key, "pageDown")) {
-		if (state.focus !== "chat" || state.slashOpen) return { state };
-		const delta = matchesKey(key, "pageUp") ? 5 : -5;
 		return {
-			state: { ...state, chatScroll: Math.max(0, state.chatScroll + delta) },
+			state: scrollFocused(state, dirUp ? "up" : "down", 1),
+		};
+	}
+	// PgUp/PgDn — page the focused scene (slash jumps the palette)
+	if (matchesKey(key, "pageUp") || matchesKey(key, "pageDown")) {
+		const dirUp = matchesKey(key, "pageUp");
+		if (state.slashOpen) {
+			const count = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter).length;
+			if (count === 0) return { state };
+			const page = Math.max(3, viewportRows(state) - 1);
+			const next = clamp(
+				state.slashIndex + (dirUp ? -page : page),
+				0,
+				count - 1,
+			);
+			return { state: { ...state, slashIndex: next } };
+		}
+		const page = Math.max(3, viewportRows(state) - 1);
+		return {
+			state: scrollFocused(state, dirUp ? "up" : "down", page),
 		};
 	}
 	// Tab — cycle focus
@@ -1111,7 +1158,8 @@ export function reduceShellKey(
 				focus: next,
 				slashOpen: false,
 				btw: null,
-				footerHints: `focus:${next} · Tab cycle · / slash · btw aside · ? help`,
+				paneScroll: 0,
+				footerHints: `focus:${next} · Tab cycle · ↑/↓ scroll · / slash · ? help`,
 			},
 		};
 	}
@@ -1124,7 +1172,7 @@ export function reduceShellKey(
 				"  Type a prompt to queue a build task (see /about for what runs it).",
 				"  / opens the slash palette (↑/↓ to pick, Enter to run).",
 				"  btw <question> opens a temporary aside about this moment (Esc dismisses).",
-				"  Tab cycles Chat → Tasks → Status → Resources. ↑/↓ or PgUp/PgDn scroll chat.",
+				"  Tab cycles Chat → Tasks → Status → Resources. ↑/↓ or PgUp/PgDn scroll the focused pane.",
 			].join("\n"),
 			at: Date.now(),
 		};
@@ -1276,7 +1324,32 @@ export function cycleFocus(
 		...state,
 		focus: order[(i + 1) % order.length]!,
 		btw: null,
+		paneScroll: 0,
 	};
+}
+
+function isDocumentPane(state: InteractiveShellState): boolean {
+	return (
+		state.pendingApproval !== null ||
+		state.focus === "tasks" ||
+		state.focus === "status" ||
+		state.focus === "resources"
+	);
+}
+
+/** Scroll the focused scene. Up means older/top for chat, top for documents. */
+export function scrollFocused(
+	state: InteractiveShellState,
+	intent: "up" | "down",
+	amount: number,
+): InteractiveShellState {
+	const step = Math.max(0, amount);
+	if (isDocumentPane(state)) {
+		const delta = intent === "down" ? step : -step;
+		return { ...state, paneScroll: Math.max(0, state.paneScroll + delta) };
+	}
+	const delta = intent === "up" ? step : -step;
+	return { ...state, chatScroll: Math.max(0, state.chatScroll + delta) };
 }
 
 /** Positive scrolls back through the transcript, negative returns toward now. */
@@ -1284,7 +1357,7 @@ export function scrollChat(
 	state: InteractiveShellState,
 	delta: number,
 ): InteractiveShellState {
-	return { ...state, chatScroll: Math.max(0, state.chatScroll + delta) };
+	return scrollFocused(state, delta >= 0 ? "up" : "down", Math.abs(delta));
 }
 
 export function appendAssistant(
@@ -1941,17 +2014,25 @@ export async function runInteractiveShell(
 			return { consume: true };
 		}
 		if (matchesKey(data, "pageUp") || matchesKey(data, "pageDown")) {
-			state = scrollChat(state, matchesKey(data, "pageUp") ? 5 : -5);
+			state = scrollFocused(
+				state,
+				matchesKey(data, "pageUp") ? "up" : "down",
+				Math.max(3, viewportRows(state) - 1),
+			);
 			tui.requestRender();
 			return { consume: true };
 		}
-		// Scroll the transcript with the arrows only when the editor is empty,
+		// Scroll the focused pane with the arrows only when the editor is empty,
 		// so ↑ still means "previous prompt" while composing.
 		if (
 			input.text().length === 0 &&
 			(matchesKey(data, "up") || matchesKey(data, "down"))
 		) {
-			state = scrollChat(state, matchesKey(data, "up") ? 1 : -1);
+			state = scrollFocused(
+				state,
+				matchesKey(data, "up") ? "up" : "down",
+				1,
+			);
 			tui.requestRender();
 			return { consume: true };
 		}

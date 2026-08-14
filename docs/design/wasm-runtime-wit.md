@@ -199,13 +199,14 @@ A provider exports the subset it backs; conformance to the interface is the cont
 | `hobo:feature-flag` | runtime flags, OpenFeature-compatible — the **Harness** flags leg ([Plan 29](./contracts-policy-flags.md#plan-29)/[ADR-0044](./adr/02-identity-security.md#adr-0044)/[ADR-0083](./adr/02-identity-security.md#adr-0083)) | `eval(flag, ctx)` (bool/string/number/object, in-process deterministic), `change`/`target`; built-in store or OpenFeature provider |
 | `hobo:delivery` | the **Harness** delivery leg — canary/blue-green/rollouts/promotion-policies + automated rollback ("OpenDelivery", [ADR-0083](./adr/02-identity-security.md#adr-0083)) | `start(rollout)`, `step`, `analyze` (metric/SLO analysis), `promote`, `rollback`; built-in canary+blue/green ([Plan 5](./reliability-observability-cost.md#plan-05)), adapters Argo Rollouts/Flagger/Spinnaker; traffic via the `gateway`/`domain` flip |
 | `hobo:experiment` | the **Harness** experiment leg — assignment/exposure/metrics/statistical-analysis ("OpenExperiment", [ADR-0083](./adr/02-identity-security.md#adr-0083)) | `assign(unit)`, `expose`, `metric`, `analyze` (stats over OTEL + the event log); built-in default, adapters Statsig/GrowthBook/Optimizely/Eppo/Amplitude |
-| `hobo:golden` | the Golden Suite runner + golden-master comparator ([ADR-0082](./adr/02-identity-security.md#adr-0082)) | `run(suite, lane)` (orchestrate the pinned checks, deterministic, against a replay/fork lane), `bless(sample)` (accept a golden-master reference); built-in runner, orchestrates existing check ports — no new check engine |
 | `hobo:control/provisioning` | control-plane resource ops | `provision(spec)`, `deprovision(id)`, `refresh(id)` |
 | `hobo:control/observability` | metrics/traces/logs emit | `emit-metric`, `emit-trace` |
 | `hobo:control/config` | tenant/Camp config | `get`, `set` |
 | `hobo:capability-manifest` | Capability Manifest capability/auth manifest | `capabilities()`, `auth()`, `cost()` ([Plan 6](./ai-native-agent-auth.md#plan-06)) |
 
 > **`change-feed` is a capability, not a standalone port.** First defined on the `database` port ([Plan 32](./data-plane.md#plan-32)) to normalize a provider's change stream into `data.Changed`, it **generalizes to any projection sink** ([Plan 32](./data-plane.md#plan-32)): a sink that advertises `change-feed` makes its projection reactive; one that doesn't is `reactive: false`.
+
+> **Golden evals are not a WIT port.** Every Camp hosts an always-on `evals` sidecar whose default suite exact-matches trainable contract examples and traces ([ADR-0082](./adr/02-identity-security.md#adr-0082)). There is no `hobo:golden` interface.
 
 ### A contract drawn from the catalog
 Composing several of the ports above, a typical service's full interface contract reads:

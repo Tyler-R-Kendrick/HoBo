@@ -441,16 +441,51 @@ export {
 	localBindleCapabilities,
 } from "./bindle-inspect.js";
 export {
+	type CampEvalSidecar,
+	campEvalSidecar,
+	EVAL_SIDECAR_HOSTING,
+	EVAL_SIDECAR_NAME,
+	inspectProjectEvalTests,
+	inspectTrainableRegions,
+	type ProjectEvalTests,
+	type TrainableRegion,
+} from "./eval-sidecar.js";
+export {
+	assembleCampEvalSidecar,
+	runEvalSidecarSuite,
+	startEvalSidecar,
+	type EvalSidecarRun,
+	type EvalSidecarServer,
+} from "./eval-sidecar-server.js";
+export {
+	createStationRolloutEngine,
+	promoteStationRollout,
+	ROLLOUT_SIDECAR_HOSTING,
+	ROLLOUT_SIDECAR_NAME,
+	startRolloutSidecar,
+	type RolloutSidecarServer,
+} from "./rollout-sidecar-server.js";
+export {
+	createStationExperimentEngine,
+	EXPERIMENT_SIDECAR_HOSTING,
+	EXPERIMENT_SIDECAR_NAME,
+	startExperimentSidecar,
+	type ExperimentSidecarServer,
+} from "./experiment-sidecar-server.js";
+export {
 	assembleSessionResources,
 	formatSessionResources,
 	looksLikeSecretMaterial,
 	recordDevDeployment,
 	recordSessionResources,
 	SESSION_RESOURCES_SCHEMA,
+	CODE_BINDLE_ID,
+	CODE_CAMP_ID,
 	type OccupancyBindleManifest,
 	type OccupancyCampConfig,
 	type OccupancyManagedResource,
 	type SessionResourceInventory,
+	userCampId,
 } from "./session-resources.js";
 export {
 	createResourceLifecycle,
@@ -462,6 +497,11 @@ export {
 	projectOccupancyTelemetry,
 } from "./session-otel.js";
 export { startLocalDashboard } from "./session-dashboard.js";
+export {
+	dashboardListenUrl,
+	dashboardNamedUrl,
+	isDashboardOpenableUrl,
+} from "./dashboard-links.js";
 export {
 	createOccupancyController,
 	controlsBindleProcess,

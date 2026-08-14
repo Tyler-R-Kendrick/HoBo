@@ -95,6 +95,13 @@ form button{width:100%;margin-top:.75rem;background:var(--ink);color:var(--paper
 .journal .look img,.journal .look video{display:block;max-width:100%;border:3px solid var(--ink);border-radius:12px;box-shadow:4px 4px 0 var(--ink);background:var(--inset)}
 .journal .empty{color:var(--mute);border:3px dashed var(--ink);border-radius:18px;padding:1.2rem;background:var(--paper)}
 .journal[data-live] header h1::after{content:" live";color:var(--spark);font-size:1rem;letter-spacing:.08em}
+.scoreboard{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin:1rem 0 0}
+.scoreboard div{border:3px solid var(--ink);border-radius:12px;box-shadow:4px 4px 0 var(--ink);padding:.65rem .75rem;background:var(--inset);text-align:center}
+.scoreboard dt{font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-size:.75rem}
+.scoreboard dd{margin:.15rem 0 0;font-family:Chewy,system-ui,sans-serif;font-size:1.75rem;line-height:1}
+.report-board{max-width:52rem;margin:0 auto}
+.report-card .provenance{color:var(--mute);letter-spacing:.04em;text-transform:uppercase;font-size:.7rem;font-weight:700;margin:.15rem 0 .4rem}
+@media (max-width: 32rem){.scoreboard{grid-template-columns:repeat(2,minmax(0,1fr))}}
 body::after{content:"";position:fixed;inset:0;z-index:2147483646;pointer-events:none;opacity:.06;mix-blend-mode:multiply;background-image:url("${GRAIN}");background-size:240px 240px}
 *{scrollbar-color:var(--ink) var(--inset);scrollbar-width:thick}
 @media (max-width: 32rem){body{padding:.75rem}h1{font-size:1.6rem}}

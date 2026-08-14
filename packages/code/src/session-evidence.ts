@@ -65,6 +65,35 @@ export interface EvidenceJournal {
 	readonly events: readonly EvidenceJournalEvent[];
 }
 
+// public-contract: Tasks TUI and Evidence SPA share this work ledger
+export const SESSION_WORK_SCHEMA = "hobo.code.session-work/v1" as const;
+
+export interface WorkItemProvenance {
+	readonly actor: string;
+	readonly reason: string;
+	readonly at: string;
+	readonly artifacts: readonly EvidenceArtifact[];
+	readonly sourceId: string;
+}
+
+export interface SessionWorkItem {
+	readonly id: string;
+	readonly kind: EvidenceJournalKind;
+	readonly state: EvidenceState;
+	readonly title: string;
+	readonly summary: string;
+	readonly provenance: WorkItemProvenance;
+}
+
+export interface SessionWorkLedger {
+	readonly schemaVersion: typeof SESSION_WORK_SCHEMA;
+	readonly sessionId: string | null;
+	readonly cwd: string | null;
+	readonly occupancy: string | null;
+	readonly generatedAt: string;
+	readonly items: readonly SessionWorkItem[];
+}
+
 export function currentSessionPath(hoboHome: string): string {
 	return join(hoboHome, "runtime", "code", "current-session.json");
 }
@@ -205,6 +234,66 @@ export function projectSessionEvidenceJournal(options: {
 			: null,
 		generatedAt,
 		events,
+	};
+}
+
+export function projectSessionWorkLedger(options: {
+	readonly hoboHome: string;
+	readonly evidence?: {
+		readonly records: (kind?: EvidenceKind) => readonly StoredEvidenceRecord[];
+		readonly artifact: (id: string) =>
+			| {
+					readonly id: string;
+					readonly title: string;
+					readonly mediaType: string;
+					readonly path: string;
+					readonly sha256: string;
+			  }
+			| undefined;
+	};
+	readonly generatedAt?: string;
+}): SessionWorkLedger {
+	const journal = projectSessionEvidenceJournal({
+		hoboHome: options.hoboHome,
+		evidence: options.evidence ?? emptyEvidence(),
+		...(options.generatedAt !== undefined
+			? { generatedAt: options.generatedAt }
+			: {}),
+	});
+	return {
+		schemaVersion: SESSION_WORK_SCHEMA,
+		sessionId: journal.sessionId,
+		cwd: journal.cwd,
+		occupancy: journal.occupancy,
+		generatedAt: journal.generatedAt,
+		items: journal.events.map(workItemFromEvent),
+	};
+}
+
+function emptyEvidence(): {
+	readonly records: () => readonly StoredEvidenceRecord[];
+	readonly artifact: (id: string) => undefined;
+} {
+	return {
+		records: () => [],
+		artifact: () => undefined,
+	};
+}
+
+function workItemFromEvent(event: EvidenceJournalEvent): SessionWorkItem {
+	return {
+		id: event.id,
+		kind: event.kind,
+		state: event.state,
+		title: event.title,
+		summary: event.reason,
+		provenance: {
+			actor: event.actor,
+			reason: event.reason,
+			at: event.at,
+			artifacts: event.artifacts,
+			sourceId: event.id,
+		},
 	};
 }
 

@@ -170,10 +170,10 @@ tokens over hardcoded hex in new work. Terminal chrome lives in
 `tui-tokens.ts` (mapped 1:1 from the colors table below). The Evidence SPA
 (report, desk controls, wrapper/bridge) is the same ink-on-paper contract:
 shared CSS in `evidence-chrome.ts`, linted by `evidence-design-lint.test.ts`.
-No SaaS blues, 1px hairlines, or dark-terminal palettes. The live report is a
-**session journal** pinned to the running `hobo-code` chat (`current-session.json`)
-— a chronological stream of asks, decisions with reasons, impact, and what
-the agent looked at — not a sectioned static site.
+No SaaS blues, 1px hairlines, or dark-terminal palettes. The live report is the
+visual **Tasks** board with provenance, pinned to the running `hobo-code` chat
+(`current-session.json`) — same work items as Tab-tasks, laid out as a report
+with reasons, actors, and looks — not a Tests/ADRs checklist.
 
 ### Terminal translation
 
@@ -200,7 +200,15 @@ sticker** (`.overlay`) blitted lower-right on the glass so the parent
 transcript stays visible; it recaptures the parent thread on every answer and
 parent append. Title, rail, and welcome art are
 centered. The initial screen puts talk/patterns/focus plus occupancy endpoints
-in an `InkTable` (named `*.hobo.localhost` URLs, never loopback IPs). Tests query those controls by id/role/class. Every
+in an `InkTable` (named `*.hobo.localhost` URLs, never loopback IPs).
+The local resources dashboard is the one exception: it links each
+endpoint (new tab + copy) and also shows the loopback listen address.
+Occupancy deploys the real OpenDelivery engine next to the Station
+(`rollout.code.local.hobo.localhost`) and the real OpenExperiment
+engine (`experiment.code.local.hobo.localhost`). Experiments are an
+always-on Station sidecar, not a Capabilities-table row. Station-hosted
+Bindle kinds (HTTP, kv, data, queue, flag, rollout, …) are real local
+hosts, never `simulated`. Tests query those controls by id/role/class. Every
 `tui-*` source is in DESIGN.md lint scope (`tui-design-lint.test.ts`). Evidence
 HTML chrome is in the same scope (`evidence-design-lint.test.ts`). Bare
 `/template` and `/templates` list the local pattern catalog (zero LLM).

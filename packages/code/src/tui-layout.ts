@@ -134,17 +134,23 @@ export function peekWrapCache(
 	return wrapCache.get(message);
 }
 
+export type ScrollOrigin = "end" | "start";
+
 export function padLines(
 	lines: readonly string[],
 	height: number,
-	scrollFromEnd = 0,
+	scrollOffset = 0,
+	origin: ScrollOrigin = "end",
 ): string[] {
-	const scroll = Math.max(
-		0,
-		Math.min(scrollFromEnd, Math.max(0, lines.length - height)),
-	);
-	const end = lines.length - scroll;
-	const slice = lines.slice(Math.max(0, end - height), end);
+	const max = Math.max(0, lines.length - height);
+	const scroll = Math.max(0, Math.min(scrollOffset, max));
+	const slice =
+		origin === "start"
+			? lines.slice(scroll, scroll + height)
+			: lines.slice(
+					Math.max(0, lines.length - scroll - height),
+					lines.length - scroll,
+				);
 	const out = [...slice];
 	while (out.length < height) out.push("");
 	return out.slice(0, height);

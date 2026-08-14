@@ -77,11 +77,11 @@ describe("session resource inventory", () => {
 		expect(inventory.junctions).toEqual([]);
 		expect(inventory.yards.map((row) => row.id)).toEqual(["yard:local"]);
 		expect(inventory.yards[0]?.status).toBe("serving");
-		expect(inventory.camps).toEqual([]);
-		expect(inventory.bindles).toEqual([]);
+		expect(inventory.camps.map((row) => row.id)).toEqual(["camp:code"]);
+		expect(inventory.bindles.map((row) => row.id)).toEqual(["bindle:code"]);
+		expect(inventory.camps[0]?.parentId).toBe("yard:local");
+		expect(inventory.bindles[0]?.parentId).toBe("camp:code");
 		expect(inventory.missing.map((row) => row.kind).sort()).toEqual([
-			"bindle",
-			"camp",
 			"junction",
 		]);
 		for (const row of inventory.missing) {
@@ -102,7 +102,26 @@ describe("session resource inventory", () => {
 		expect(
 			inventory.capabilities.find((row) => row.kind === "container")?.available,
 		).toBe(false);
+		expect(
+			inventory.capabilities.find((row) => row.kind === "rollout"),
+		).toMatchObject({
+			available: true,
+			fidelity: "real",
+		});
+		expect(inventory.capabilities.map((row) => row.kind)).not.toContain(
+			"experiment",
+		);
+		expect(inventory.capabilities.map((row) => row.kind)).not.toContain(
+			"golden",
+		);
 		expect(text).toMatch(/capabilities/);
+		expect(inventory.evals?.defaultSuite.source).toBe("trainable-exact-match");
+		expect(inventory.evals?.campId).toBe("camp:code");
+		expect(inventory.managed.find((row) => row.id === "evals")).toMatchObject({
+			kind: "sidecar",
+			ownerKind: "camp",
+			ownerId: "camp:code",
+		});
 	});
 
 	it("lists occupancy sidecar endpoints from the Station snapshot", async () => {
@@ -122,6 +141,8 @@ describe("session resource inventory", () => {
 					evidenceControlsUrl:
 						"http://127.0.0.1:8788/__hobo/evidence/controls/cap",
 					otlpHttpUrl: "http://127.0.0.1:4318/v1/logs",
+					rolloutUrl: "http://127.0.0.1:8790/",
+					experimentUrl: "http://127.0.0.1:8791/",
 					startedAt: "2026-08-14T12:00:00.000Z",
 				},
 				null,
@@ -134,7 +155,14 @@ describe("session resource inventory", () => {
 		});
 		const names = inventory.endpoints.map((row) => row.resourceName);
 		expect(names).toEqual(
-			expect.arrayContaining(["dashboard", "evidence", "controls", "otlp"]),
+			expect.arrayContaining([
+				"dashboard",
+				"evidence",
+				"controls",
+				"otlp",
+				"rollout",
+				"experiment",
+			]),
 		);
 		const evidence = inventory.endpoints.find(
 			(row) => row.resourceName === "evidence",
@@ -151,14 +179,21 @@ describe("session resource inventory", () => {
 		expect(dash?.preferredUrl).toMatch(/dashboard\.code\..*\.hobo\.localhost/);
 		expect(
 			inventory.managed
-				.filter((row) => row.ownerKind === "station")
+				.filter((row) => row.ownerId === "camp:code")
 				.map((row) => row.id),
 		).toEqual(
-			expect.arrayContaining(["dashboard", "evidence", "controls", "otlp"]),
+			expect.arrayContaining([
+				"dashboard",
+				"evidence",
+				"controls",
+				"otlp",
+				"rollout",
+				"experiment",
+			]),
 		);
 		expect(
 			inventory.managed.find((row) => row.id === "dashboard")?.controllable,
-		).toBe(false);
+		).toBe(true);
 	});
 
 	it("projects Station, Yard, and Camp managed resources as individually owned children", async () => {
@@ -210,27 +245,94 @@ describe("session resource inventory", () => {
 			ownerId: "yard:local",
 			controllable: true,
 		});
+		expect(byId["bindle:code"]).toMatchObject({
+			kind: "bindle",
+			ownerKind: "camp",
+			ownerId: "camp:code",
+			controllable: false,
+		});
 		expect(byId["bindle:hello-world"]).toMatchObject({
 			kind: "bindle",
 			ownerKind: "camp",
-			ownerId: "camp:local",
+			ownerId: "camp:hello-world",
 			controllable: true,
 		});
 		expect(byId.kv).toMatchObject({
 			kind: "bindle-resource",
 			ownerKind: "camp",
-			ownerId: "camp:local",
+			ownerId: "camp:hello-world",
 			controllable: true,
 		});
 		expect(byId.web).toMatchObject({
 			kind: "bindle-resource",
 			ownerKind: "camp",
-			ownerId: "camp:local",
+			ownerId: "camp:hello-world",
+			controllable: true,
+		});
+		expect(byId.dashboard).toMatchObject({
+			kind: "sidecar",
+			ownerKind: "camp",
+			ownerId: "camp:code",
 			controllable: true,
 		});
 		const text = formatSessionResources(inventory);
 		expect(text).toMatch(/yard:local:flow/);
 		expect(text).toMatch(/kv/);
+		expect(inventory.evals?.defaultSuite.source).toBe("trainable-exact-match");
+		expect(inventory.evals?.campId).toBe("camp:hello-world");
+		expect(byId.evals).toMatchObject({
+			kind: "sidecar",
+			ownerKind: "camp",
+			ownerId: "camp:hello-world",
+		});
+	});
+
+	it("hosts project eval tests as a same-camp sidecar, not a capability", async () => {
+		const hoboHome = await loginHome();
+		const project = join(hoboHome, "hello-world");
+		mkdirSync(join(project, "src"), { recursive: true });
+		mkdirSync(join(project, "test"), { recursive: true });
+		writeFileSync(
+			join(project, "package.json"),
+			JSON.stringify({
+				name: "hello-world",
+				scripts: { "test:eval": "vitest run test/shop.eval.test.ts" },
+			}),
+		);
+		writeFileSync(join(project, "test", "shop.eval.test.ts"), "export {};\n");
+		writeFileSync(
+			join(project, "src", "bindle.ts"),
+			`export default bindle("hello-world", (b) => ({ web: b.web() }));\n`,
+		);
+		const inventory = assembleSessionResources({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			ensureLocalLogin: true,
+			projectDir: project,
+		});
+		expect(inventory.capabilities.map((row) => row.kind)).not.toContain(
+			"golden",
+		);
+		expect(inventory.evals).toMatchObject({
+			kind: "sidecar",
+			name: "evals",
+			hosting: "same-camp",
+			campId: "camp:hello-world",
+			defaultSuite: { source: "trainable-exact-match" },
+			project: {
+				source: "project-test-suite",
+				command: "pnpm run test:eval",
+				files: ["test/shop.eval.test.ts"],
+			},
+		});
+		expect(
+			inventory.managed.find((row) => row.id === "evals"),
+		).toMatchObject({
+			kind: "sidecar",
+			ownerKind: "camp",
+			ownerId: "camp:hello-world",
+			controllable: true,
+		});
 	});
 
 	it("filters last-seen facts to the current environment and tenant", async () => {
@@ -588,10 +690,18 @@ describe("session resource inventory", () => {
 		});
 		expect(inventory.missing.map((row) => row.kind)).toEqual(["junction"]);
 		expect(inventory.yards.map((row) => row.id)).toEqual(["yard:local"]);
-		expect(inventory.camps.map((row) => row.id)).toEqual(["camp:local"]);
-		expect(inventory.bindles.map((row) => row.id)).toEqual([
+		expect(inventory.camps.map((row) => row.id).sort()).toEqual([
+			"camp:code",
+			"camp:hello-world",
+		]);
+		expect(inventory.bindles.map((row) => row.id).sort()).toEqual([
+			"bindle:code",
 			"bindle:hello-world",
 		]);
+		expect(
+			inventory.bindles.find((row) => row.id === "bindle:hello-world")
+				?.parentId,
+		).toBe("camp:hello-world");
 		const names = inventory.endpoints.map((row) => row.resourceName);
 		expect(names).toEqual(
 			expect.arrayContaining(["web", "api", "debug", "controls", "report"]),

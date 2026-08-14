@@ -254,10 +254,23 @@ export function renderEvidenceJournalHtml(
 	const session = journal.sessionId ?? "unattached";
 	const occupancy = journal.occupancy ?? "occupancy unknown";
 	const cwd = journal.cwd ?? "cwd unknown";
+	const counts = journal.events.reduce(
+		(acc, event) => {
+			acc[event.kind] = (acc[event.kind] ?? 0) + 1;
+			return acc;
+		},
+		{} as Record<string, number>,
+	);
+	const scoreboard = (["ask", "decision", "look", "impact"] as const)
+		.map(
+			(kind) =>
+				`<div><dt>${kind}</dt><dd>${counts[kind] ?? 0}</dd></div>`,
+		)
+		.join("");
 	const events = journal.events.map(renderJournalEvent).join("\n");
 	const empty = journal.events.length
 		? ""
-		: '<li class="empty">Waiting for the first turn in this session.</li>';
+		: '<li class="empty">No session work yet. Tasks and Evidence fill as you talk and capture looks.</li>';
 	const actions =
 		live && options.controlsHref
 			? `<a class="action" href="${escapeHtml(options.controlsHref)}">Open session controls</a>`
@@ -296,13 +309,14 @@ setInterval(pull,1500);
 </head>
 <body class="report journal"${live ? " data-live" : ""}>
   <header>
-    <p class="eyebrow">HoBo evidence · ${live ? "live session journal" : "portable journal"}</p>
+    <p class="eyebrow">HoBo evidence · ${live ? "live work report" : "portable work report"}</p>
     <h1>${escapeHtml(session)}</h1>
     <p class="meta">${escapeHtml(occupancy)} · ${escapeHtml(cwd)}</p>
-    <p>A stream of what this hobo-code instance asked, decided, changed, and looked at.</p>
+    <p>Visual Tasks with provenance — why each step happened and what we looked at.</p>
+    <dl class="scoreboard trust">${scoreboard}</dl>
     <nav class="actions">${actions}</nav>
   </header>
-  <ol class="stream" id="journal">${events}${empty}</ol>
+  <ol class="stream report-board" id="journal">${events}${empty}</ol>
   ${poll}
 </body>
 </html>
@@ -330,10 +344,12 @@ function renderJournalEvent(event: EvidenceJournal["events"][number]): string {
 			return `<p class="artifact"><a href="${escapeHtml(artifact.path)}">${escapeHtml(artifact.label)}</a></p>`;
 		})
 		.join("");
-	return `<li class="event" data-id="${escapeHtml(event.id)}" data-kind="${event.kind}" data-state="${event.state}">
-  <p class="meta"><time datetime="${escapeHtml(event.at)}">${escapeHtml(formatJournalTime(event.at))}</time> · ${event.kind} · ${escapeHtml(event.actor)}</p>
+	const looks = event.artifacts.length;
+	return `<li class="event report-card" data-id="${escapeHtml(event.id)}" data-kind="${event.kind}" data-state="${event.state}">
+  <p class="meta"><time datetime="${escapeHtml(event.at)}">${escapeHtml(formatJournalTime(event.at))}</time> · ${event.kind} · ${escapeHtml(event.actor)} · ${event.state}</p>
   <h2>${escapeHtml(event.title)}</h2>
   <p class="reason">${escapeHtml(event.reason)}</p>
+  <p class="provenance">provenance · ${escapeHtml(event.actor)} · ${looks} look${looks === 1 ? "" : "s"} · ${escapeHtml(event.sourceKind ?? event.kind)}</p>
   ${media}
 </li>`;
 }

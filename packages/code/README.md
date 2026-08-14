@@ -71,23 +71,37 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
 - **Bo** rides the one-line status strap and squash-stretches only while a
   turn is in flight (reduced motion keeps him still).
 - **Station sidecars** start with the session: the Aspire dashboard
-  (`http://dashboard.code.local.hobo.localhost:8787`) and the Evidence SPA
-  (`http://evidence.code.local.hobo.localhost:8788`). A local Station
-  auto-seeds `yard:local` (and `camp:local` when a Bindle is present) as
-  **ready** so develop is not a stop board. Station, Yard, and Camp are
-  primitives with their own managed children (sidecars, flow /
-  named-endpoints, bindle resources) that start and stop independently.
+  (`http://dashboard.code.local.hobo.localhost:8787`), the Evidence SPA
+  (`http://evidence.code.local.hobo.localhost:8788`), the always-on
+  evals sidecar (`http://evals.code.local.hobo.localhost`) hosting the
+  default golden suite, and the Station-local OpenDelivery sidecar
+  (`http://rollout.code.local.hobo.localhost`) that runs the real
+  `hobo:delivery` engine — Bindle `rollout` is not a Camp/cloud mock.
+  Experiments are not a catalog row: occupancy always starts the
+  Station-local OpenExperiment sidecar
+  (`http://experiment.code.local.hobo.localhost`) that runs the real
+  `hobo:experiment` engine.
+  A local Station
+  auto-seeds `yard:local` with `camp:code` / `bindle:code` (the hosting
+  Station's occupancy bindle — not stoppable from the dashboard). Developing an app writes
+  `camp:<app>` / `bindle:<app>` under that yard. Station, Yard, and Camp
+  are primitives with their own managed children that start and stop
+  independently. Stopping a yard stops camps in that yard, not other yards.
   The Endpoints table lists occupancy sidecars that are actually listening
-  (dashboard, Evidence, controls, OTLP) even before a Bindle `/dev`.
+  (dashboard, Evidence, controls, OTLP, evals, rollout, experiment) even before a Bindle `/dev`.
+  Each endpoint is a new-tab link with a copy button and shows the loopback
+  listen address next to the named `*.hobo.localhost` URL — the only surface
+  that prints IP addresses.
   Capabilities lists every Bindle kind from the catalog with honest local
-  fidelity (simulated / mocked / camp-only). OTel lists every occupancy
+  fidelity (real / mocked / camp-only — Station-hosted kinds are real,
+  never simulated). OTel lists every occupancy
   service and deployed Bindle against the local collector (`exporting` vs
   `silent`). Stopping Yard flow on the dashboard actually halts Bindle
-  traffic until you start it again; Camp and sibling resources stay theirs.
+  traffic until you start it again; camps in other yards stay up.
   `/dev` writes Camp + Bindle fulfillment that
   matches the deployed Bindle (api/web/kv/data/… as named endpoints).
-  Evidence is a Station occupancy process — it stays up for the whole
-  coding session and paints a live rubberhose journal for **this**
+  Evidence is a child of `camp:code` and is stoppable; the hosting Station
+  and `camp:code` / `bindle:code` are not. It paints a live rubberhose journal for **this**
   `hobo-code` chat: asks, decisions with reasons, impact, and visual
   looks (screenshots/recordings), not a static sectioned site. `/dev`, Bindle stop,
   TTY quit, and `session.complete()` do not tear it down. Logout (or
@@ -418,12 +432,12 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **models** | Active model + BYOK env presence (open models; no secret values) |
 | status | Session / agent multiplexer chrome |
 | **resources** | Session topology + real endpoints (Station occupancy × `HOBO_ENV`) |
-| **dashboard** | Local Aspire SPA (also a default Station sidecar on session start). Station/Yard/Camp are primitives; start/stop their managed children (flow, named-endpoints, bindle resources). Bindle HTTP start/stop launch and kill `/dev`. |
+| **dashboard** | Local Aspire SPA (`camp:code` bindle). Hosting Station / `camp:code` / `bindle:code` refuse stop. Sidecars, other camps, and Bindle `/dev` start/stop. Yard stop takes camps in that yard only. |
 | session | Resident branch/worktree sessions: tmux tabs/panes, harness agents, checkpoints, attach/switch, approved Git/PR delivery, and loopback browser control (`session --help`) |
 | **attach** | Dev-terminal attach (tmux reattach · mosh? · Tailscale overlay named endpoint) |
 | **resume** | Reopen the last (or given) interactive chat; prefix ids work |
 | **compact** | Shrink the working pane; durable journal stays intact |
-| **tasks** | Background task board (Grok Build–shaped: click · tasks · workflows) |
+| **tasks** | Session work board — same ledger as Evidence. Dense TUI list; Evidence is the visual report with provenance. |
 | **guide** | Claude Code → hobo-code map (plain English for non-dev app builders) |
 | **cost** | Budget, $0 free/local path, savings scoreboard, cheapest-capable routing |
 | **harness** | Pi/Flue dual surface, skills, Eve subagents, self-improve, brain notes |

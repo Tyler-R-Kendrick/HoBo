@@ -16,7 +16,10 @@ import {
 	type LocalBindleCapability,
 	localBindleCapabilities,
 } from "./bindle-inspect.js";
+import { type CampEvalSidecar, EVAL_SIDECAR_NAME } from "./eval-sidecar.js";
+import { assembleCampEvalSidecar } from "./eval-sidecar-server.js";
 import {
+	OCCUPANCY_NAMED_APP,
 	occupancyNamedOrigin,
 	occupancySidecarEndpoints,
 	preferNamedEndpoint,
@@ -30,6 +33,17 @@ import {
 // public-contract: last-seen snapshot schema for the session resource board
 export const SESSION_RESOURCES_SCHEMA =
 	"hobo.code.session-resources/v1" as const;
+
+/** Occupancy camp for the hobo-code bindle (dashboard / Evidence / OTLP). */
+export const CODE_CAMP_ID = `camp:${OCCUPANCY_NAMED_APP}` as const;
+/** Occupancy bindle living in the local yard's code camp. */
+export const CODE_BINDLE_ID = `bindle:${OCCUPANCY_NAMED_APP}` as const;
+
+export function userCampId(bindleName: string): string {
+	return bindleName === OCCUPANCY_NAMED_APP
+		? CODE_CAMP_ID
+		: `camp:${bindleName}`;
+}
 
 export type ResourceKind = "station" | "junction" | "yard" | "camp" | "bindle";
 
@@ -153,6 +167,7 @@ export interface SessionResourceInventory {
 	readonly managed: readonly OccupancyManagedResource[];
 	readonly camp?: OccupancyCampConfig;
 	readonly bindleManifest?: OccupancyBindleManifest;
+	readonly evals?: CampEvalSidecar;
 }
 
 export interface RecordSessionResourcesInput {
@@ -397,6 +412,25 @@ function loadSnapshot(
 	}
 }
 
+/** Camps whose parent is this yard. Occupancy `camp:code` is always in the local yard. */
+export function campsInYard(
+	hoboHome: string,
+	stationId: string,
+	environment: string,
+	yardId: string,
+): readonly string[] {
+	const ids = new Set<string>();
+	if (yardId === "yard:local") ids.add(CODE_CAMP_ID);
+	const snapshot = loadSnapshot(hoboHome, stationId, environment);
+	for (const node of snapshot?.nodes ?? []) {
+		if (node.kind !== "camp") continue;
+		if (node.parentId === yardId || (node.parentId === undefined && yardId === "yard:local")) {
+			ids.add(node.id);
+		}
+	}
+	return [...ids];
+}
+
 export function recordSessionResources(
 	input: RecordSessionResourcesInput,
 ): void {
@@ -470,6 +504,9 @@ function loadSidecarSnapshot(
 	readonly evidenceReportUrl?: string;
 	readonly evidenceControlsUrl?: string;
 	readonly otlpHttpUrl?: string;
+	readonly evalsUrl?: string;
+	readonly rolloutUrl?: string;
+	readonly experimentUrl?: string;
 } {
 	const path = sidecarSnapshotPath(hoboHome, stationId);
 	if (!existsSync(path)) return {};
@@ -488,12 +525,18 @@ function loadSidecarSnapshot(
 		const evidenceReportUrl = text("evidenceReportUrl");
 		const evidenceControlsUrl = text("evidenceControlsUrl");
 		const otlpHttpUrl = text("otlpHttpUrl");
+		const evalsUrl = text("evalsUrl");
+		const rolloutUrl = text("rolloutUrl");
+		const experimentUrl = text("experimentUrl");
 		return {
 			...(dashboardUrl !== undefined ? { dashboardUrl } : {}),
 			...(evidenceUrl !== undefined ? { evidenceUrl } : {}),
 			...(evidenceReportUrl !== undefined ? { evidenceReportUrl } : {}),
 			...(evidenceControlsUrl !== undefined ? { evidenceControlsUrl } : {}),
 			...(otlpHttpUrl !== undefined ? { otlpHttpUrl } : {}),
+			...(evalsUrl !== undefined ? { evalsUrl } : {}),
+			...(rolloutUrl !== undefined ? { rolloutUrl } : {}),
+			...(experimentUrl !== undefined ? { experimentUrl } : {}),
 		};
 	} catch {
 		return {};
@@ -520,14 +563,53 @@ function localYardNode(environment: string): TopologyNode {
 	};
 }
 
+function occupancyCampNode(environment: string): TopologyNode {
+	return {
+		kind: "camp",
+		id: CODE_CAMP_ID,
+		name: OCCUPANCY_NAMED_APP,
+		environment,
+		parentId: "yard:local",
+		status: "serving",
+		fidelity: "simulated",
+		scopeLabel: "local",
+	};
+}
+
+function occupancyBindleNode(environment: string): TopologyNode {
+	return {
+		kind: "bindle",
+		id: CODE_BINDLE_ID,
+		name: OCCUPANCY_NAMED_APP,
+		environment,
+		parentId: CODE_CAMP_ID,
+		status: "serving",
+		fidelity: "simulated",
+		scopeLabel: "local",
+	};
+}
+
+function userCampNode(
+	bindleName: string,
+	environment: string,
+	status: ResourceStatus = "declared",
+): TopologyNode {
+	return {
+		kind: "camp",
+		id: userCampId(bindleName),
+		name: bindleName,
+		environment,
+		parentId: "yard:local",
+		status,
+		fidelity: "simulated",
+		scopeLabel: "local",
+	};
+}
+
 function localOccupancySeed(
 	view: AuthedStationView,
 	projectDir: string | undefined,
-	present: {
-		readonly hasYard: boolean;
-		readonly hasCamp: boolean;
-		readonly hasBindle: boolean;
-	},
+	existingIds: ReadonlySet<string>,
 ): {
 	readonly nodes: readonly TopologyNode[];
 	readonly camp?: OccupancyCampConfig;
@@ -536,34 +618,37 @@ function localOccupancySeed(
 	if (view.mode !== "local") {
 		return { nodes: [] };
 	}
-	const nodes: TopologyNode[] = present.hasYard
-		? []
-		: [localYardNode(view.environment)];
+	const nodes: TopologyNode[] = [];
+	const hasYard = [...existingIds].some((id) => id.startsWith("yard:"));
+	if (!hasYard) {
+		nodes.push(localYardNode(view.environment));
+	}
+	const localYard = existingIds.has("yard:local") || !hasYard;
+	if (localYard && !existingIds.has(CODE_CAMP_ID)) {
+		nodes.push(occupancyCampNode(view.environment));
+	}
+	if (localYard && !existingIds.has(CODE_BINDLE_ID)) {
+		nodes.push(occupancyBindleNode(view.environment));
+	}
 	const inspected =
 		projectDir !== undefined ? inspectBindleProject(projectDir) : undefined;
 	if (!inspected) {
 		return { nodes };
 	}
-	const camp = campConfigFor(inspected, view.environment);
-	if (!present.hasCamp) {
-		nodes.push({
-			kind: "camp",
-			id: "camp:local",
-			name: "local",
-			environment: view.environment,
-			parentId: "yard:local",
-			status: "declared",
-			fidelity: "simulated",
-			scopeLabel: "local",
-		});
+	const campId = existingIds.has("camp:local")
+		? "camp:local"
+		: userCampId(inspected.name);
+	if (!existingIds.has(campId)) {
+		nodes.push(userCampNode(inspected.name, view.environment));
 	}
-	if (!present.hasBindle) {
+	const bindleId = `bindle:${inspected.name}`;
+	if (!existingIds.has(bindleId)) {
 		nodes.push({
 			kind: "bindle",
-			id: `bindle:${inspected.name}`,
+			id: bindleId,
 			name: inspected.name,
 			environment: view.environment,
-			parentId: "camp:local",
+			parentId: campId,
 			status: "declared",
 			fidelity: "simulated",
 			scopeLabel: "local",
@@ -571,7 +656,7 @@ function localOccupancySeed(
 	}
 	return {
 		nodes,
-		camp,
+		camp: campConfigFor(inspected, view.environment),
 		bindleManifest: bindleManifestFor(inspected, projectDir),
 	};
 }
@@ -581,7 +666,7 @@ function campConfigFor(
 	environment: string,
 ): OccupancyCampConfig {
 	return {
-		name: "local",
+		name: inspected.name,
 		envType:
 			environment === "local-dev" || environment === "local"
 				? "development"
@@ -756,11 +841,11 @@ export function assembleSessionResources(
 
 	const station = occupiedStation(view);
 	const existing = mergeNodes([...snapshotNodes, ...injected]);
-	const seeded = localOccupancySeed(view, options.projectDir, {
-		hasYard: existing.some((row) => row.kind === "yard"),
-		hasCamp: existing.some((row) => row.kind === "camp"),
-		hasBindle: existing.some((row) => row.kind === "bindle"),
-	});
+	const seeded = localOccupancySeed(
+		view,
+		options.projectDir,
+		new Set(existing.map((row) => row.id)),
+	);
 	const peers: TopologyNode[] = [];
 	const kept: TopologyNode[] = [];
 	for (const row of mergeNodes([...seeded.nodes, ...existing])) {
@@ -830,6 +915,13 @@ export function assembleSessionResources(
 	const yards = byKind("yard");
 	const camps = byKind("camp");
 	const bindles = byKind("bindle");
+	const appCampId =
+		bindles.find((row) => row.id !== CODE_BINDLE_ID)?.parentId ??
+		camps.find((row) => row.id !== CODE_CAMP_ID)?.id;
+	const evals = assembleCampEvalSidecar(
+		appCampId ?? CODE_CAMP_ID,
+		options.projectDir,
+	);
 	return {
 		ok: true,
 		code: "HOBO_OK",
@@ -853,13 +945,22 @@ export function assembleSessionResources(
 			endpoints: endpointRows,
 			...(bindleManifest !== undefined ? { bindleManifest } : {}),
 			...(view.railHash !== undefined ? { railHash: view.railHash } : {}),
+			evals,
 		}),
 		...(camp ? { camp } : {}),
 		...(bindleManifest ? { bindleManifest } : {}),
+		evals,
 	};
 }
 
-const STATION_SIDECARS = new Set(["dashboard", "evidence", "controls", "otlp"]);
+const STATION_SIDECARS = new Set([
+	"dashboard",
+	"evidence",
+	"controls",
+	"otlp",
+	"rollout",
+	"experiment",
+]);
 
 function projectManagedResources(input: {
 	readonly station?: TopologyNode;
@@ -869,28 +970,32 @@ function projectManagedResources(input: {
 	readonly endpoints: readonly EndpointRow[];
 	readonly bindleManifest?: OccupancyBindleManifest;
 	readonly railHash?: string;
+	readonly evals?: CampEvalSidecar;
 }): OccupancyManagedResource[] {
 	const rows: OccupancyManagedResource[] = [];
-	if (input.station) {
+	if (input.station && input.railHash) {
+		rows.push({
+			id: `rail:${input.railHash}`,
+			name: "rail",
+			kind: "rail",
+			ownerKind: "station",
+			ownerId: input.station.id,
+			controllable: false,
+		});
+	}
+	const sidecarOwner = input.camps.some((row) => row.id === CODE_CAMP_ID)
+		? CODE_CAMP_ID
+		: input.station?.id;
+	if (sidecarOwner) {
 		for (const endpoint of input.endpoints) {
 			if (!STATION_SIDECARS.has(endpoint.resourceName)) continue;
 			rows.push({
 				id: endpoint.resourceName,
 				name: endpoint.resourceName,
 				kind: "sidecar",
-				ownerKind: "station",
-				ownerId: input.station.id,
-				controllable: false,
-			});
-		}
-		if (input.railHash) {
-			rows.push({
-				id: `rail:${input.railHash}`,
-				name: "rail",
-				kind: "rail",
-				ownerKind: "station",
-				ownerId: input.station.id,
-				controllable: false,
+				ownerKind: sidecarOwner === CODE_CAMP_ID ? "camp" : "station",
+				ownerId: sidecarOwner,
+				controllable: true,
 			});
 		}
 	}
@@ -912,19 +1017,39 @@ function projectManagedResources(input: {
 			controllable: true,
 		});
 	}
-	const campId = input.camps[0]?.id;
-	if (campId) {
-		for (const bindle of input.bindles) {
+	const codeCamp = input.camps.find((row) => row.id === CODE_CAMP_ID);
+	if (codeCamp) {
+		const seenSidecars = new Set(rows.map((row) => row.id));
+		for (const name of STATION_SIDECARS) {
+			if (seenSidecars.has(name)) continue;
 			rows.push({
-				id: bindle.id,
-				name: bindle.name,
-				kind: "bindle",
+				id: name,
+				name,
+				kind: "sidecar",
 				ownerKind: "camp",
-				ownerId: campId,
+				ownerId: CODE_CAMP_ID,
 				controllable: true,
 			});
 		}
-		const seen = new Set(input.bindles.map((row) => row.id));
+	}
+	for (const bindle of input.bindles) {
+		const ownerId = bindle.parentId ?? input.camps[0]?.id;
+		if (!ownerId) continue;
+		rows.push({
+			id: bindle.id,
+			name: bindle.name,
+			kind: "bindle",
+			ownerKind: "camp",
+			ownerId,
+			controllable: bindle.id !== CODE_BINDLE_ID,
+		});
+	}
+	const seen = new Set(rows.map((row) => row.id));
+	const userBindle = input.bindles.find((row) => row.id !== CODE_BINDLE_ID);
+	const userCampIdForResources =
+		userBindle?.parentId ??
+		input.camps.find((row) => row.id !== CODE_CAMP_ID)?.id;
+	if (userCampIdForResources) {
 		for (const resource of input.bindleManifest?.resources ?? []) {
 			if (seen.has(resource.name)) continue;
 			seen.add(resource.name);
@@ -933,10 +1058,20 @@ function projectManagedResources(input: {
 				name: resource.name,
 				kind: "bindle-resource",
 				ownerKind: "camp",
-				ownerId: campId,
+				ownerId: userCampIdForResources,
 				controllable: true,
 			});
 		}
+	}
+	if (input.evals && !seen.has(EVAL_SIDECAR_NAME)) {
+		rows.push({
+			id: EVAL_SIDECAR_NAME,
+			name: EVAL_SIDECAR_NAME,
+			kind: "sidecar",
+			ownerKind: "camp",
+			ownerId: input.evals.campId,
+			controllable: true,
+		});
 	}
 	return rows;
 }
@@ -975,6 +1110,7 @@ export function filterSessionResources(
 		...(inventory.bindleManifest
 			? { bindleManifest: inventory.bindleManifest }
 			: {}),
+		...(inventory.evals ? { evals: inventory.evals } : {}),
 	};
 }
 
@@ -1109,7 +1245,7 @@ export function recordDevDeployment(input: {
 			...(hostname !== undefined ? { hostname } : {}),
 			mode: "local",
 			preferredUrl: named,
-			fidelity: "simulated",
+			fidelity: "real",
 		},
 		{
 			resourceName: "debug",
@@ -1118,7 +1254,7 @@ export function recordDevDeployment(input: {
 			namedUrl: namedDebug,
 			mode: "local",
 			preferredUrl: namedDebug,
-			fidelity: "simulated",
+			fidelity: "real",
 		},
 		{
 			resourceName: "controls",
@@ -1127,7 +1263,7 @@ export function recordDevDeployment(input: {
 			namedUrl: namedControls,
 			mode: "local",
 			preferredUrl: namedControls,
-			fidelity: "simulated",
+			fidelity: "real",
 		},
 		{
 			resourceName: "report",
@@ -1136,7 +1272,7 @@ export function recordDevDeployment(input: {
 			namedUrl: namedReport,
 			mode: "local",
 			preferredUrl: namedReport,
-			fidelity: "simulated",
+			fidelity: "real",
 		},
 		...bindleResourceEndpoints(inspected, {
 			appUrl: input.appUrl,
@@ -1151,7 +1287,7 @@ export function recordDevDeployment(input: {
 	const camp = inspected
 		? campConfigFor(inspected, input.scope.environment)
 		: {
-				name: "local",
+				name: bindleName,
 				envType: "development",
 				require: ["managed-http-runtime"],
 				labels: { bindle: bindleName },
@@ -1175,27 +1311,21 @@ export function recordDevDeployment(input: {
 	);
 	writeJsonFile(join(dir, "camp.json"), camp);
 	writeJsonFile(join(dir, "bindle.json"), bindleManifest);
+	const appCampId = userCampId(bindleName);
 	recordSessionResources({
 		hoboHome: input.hoboHome,
 		scope: input.scope,
 		nodes: [
 			localYardNode(input.scope.environment),
-			{
-				kind: "camp",
-				id: "camp:local",
-				name: "local",
-				environment: input.scope.environment,
-				parentId: "yard:local",
-				status: "serving",
-				fidelity: "simulated",
-				scopeLabel: "local",
-			},
+			occupancyCampNode(input.scope.environment),
+			occupancyBindleNode(input.scope.environment),
+			userCampNode(bindleName, input.scope.environment, "serving"),
 			{
 				kind: "bindle",
 				id: `bindle:${bindleName}`,
 				name: bindleName,
 				environment: input.scope.environment,
-				parentId: "camp:local",
+				parentId: appCampId,
 				status: "serving",
 				fidelity: "simulated",
 				scopeLabel: "local",
@@ -1231,7 +1361,7 @@ function bindleResourceEndpoints(
 					environment: options.environment,
 					app: options.bindleName,
 				}),
-				fidelity: "simulated",
+				fidelity: "real",
 			},
 		];
 	}
@@ -1253,7 +1383,7 @@ function bindleResourceEndpoints(
 			namedUrl: named,
 			mode: "local" as const,
 			preferredUrl: named,
-			fidelity: "simulated" as const,
+			fidelity: "real" as const,
 		};
 	});
 }

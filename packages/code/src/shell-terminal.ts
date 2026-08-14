@@ -19,6 +19,12 @@ export interface StreamTerminalOptions {
 	readonly rows?: number;
 	/** Enable raw mode + bracketed paste on start (real TTY only). */
 	readonly rawMode?: boolean;
+	/**
+	 * Use the xterm alternate screen (CSI ?1049). Live TTY sessions set this
+	 * so quit restores the prior buffer instead of leaving the frame in
+	 * scrollback. Capture / scripted streams leave it off.
+	 */
+	readonly alternateScreen?: boolean;
 }
 
 interface MaybeTtyReadable extends Readable {
@@ -38,6 +44,7 @@ export class StreamTerminal implements Terminal {
 	private readonly fallbackColumns: number;
 	private readonly fallbackRows: number;
 	private readonly rawMode: boolean;
+	private readonly alternateScreen: boolean;
 	private wasRaw = false;
 	private stdinBuffer?: StdinBuffer;
 	private dataHandler?: (chunk: Buffer | string) => void;
@@ -53,6 +60,7 @@ export class StreamTerminal implements Terminal {
 		this.fallbackColumns = options.columns ?? 80;
 		this.fallbackRows = options.rows ?? 24;
 		this.rawMode = options.rawMode === true;
+		this.alternateScreen = options.alternateScreen === true;
 	}
 
 	get kittyProtocolActive(): boolean {
@@ -72,6 +80,9 @@ export class StreamTerminal implements Terminal {
 	}
 
 	start(onInput: (data: string) => void, onResize: () => void): void {
+		if (this.alternateScreen) {
+			this.write("\x1b[?1049h");
+		}
 		if (this.rawMode && typeof this.stdin.setRawMode === "function") {
 			this.wasRaw = this.stdin.isRaw === true;
 			this.stdin.setRawMode(true);
@@ -99,6 +110,10 @@ export class StreamTerminal implements Terminal {
 		if (this.rawMode && typeof this.stdin.setRawMode === "function") {
 			this.write("\x1b[?2004l");
 			this.stdin.setRawMode(this.wasRaw);
+		}
+		if (this.alternateScreen) {
+			this.write("\x1b[?25h");
+			this.write("\x1b[?1049l");
 		}
 		if (typeof this.stdin.pause === "function") this.stdin.pause();
 	}

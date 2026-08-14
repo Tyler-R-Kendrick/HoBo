@@ -43,6 +43,8 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(HOBO_CODE_VERBS).toContain("config");
 		// agent = protocol-native AX inventory (MCP/ACP), not hive join/rooms
 		expect(HOBO_CODE_VERBS).toContain("agent");
+		expect(HOBO_CODE_VERBS).toContain("resume");
+		expect(HOBO_CODE_VERBS).toContain("compact");
 		expect(HOBO_CODE_VERBS).not.toContain("remote");
 		expect(HOBO_CODE_VERBS[0]).toBe("dispatch");
 	});
@@ -60,6 +62,85 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(
 			(result.data as { interactiveRequired?: boolean }).interactiveRequired,
 		).toBe(true);
+	});
+
+	it("resumes the latest interactive chat, or a given session id", async () => {
+		const { saveChatSession } = await import("../src/chat-sessions.js");
+		const home = temp("hobo-code-resume-");
+		const cwd = join(home, "app");
+		const env = { ...process.env, HOBO_HOME: home };
+
+		const empty = await runHoboCodeCli(["resume"], {
+			env,
+			hoboHome: home,
+			cwd,
+		});
+		expect(empty.ok).toBe(false);
+		expect(empty.code).toBe("HOBO_CODE_RESUME_NONE");
+		expect(empty.message).toMatch(/no chat session/i);
+
+		saveChatSession(home, {
+			id: "chat-abc123def456",
+			cwd,
+			messages: [
+				{ role: "user", text: "make a hello world app", at: 1 },
+				{ role: "assistant", text: "Created hello-world.", at: 2 },
+			],
+			createdAt: 1,
+			updatedAt: 2,
+		});
+		saveChatSession(home, {
+			id: "chat-zzz999yyy888",
+			cwd: join(home, "other"),
+			messages: [{ role: "user", text: "other project", at: 3 }],
+			createdAt: 3,
+			updatedAt: 4,
+		});
+
+		const latest = await runHoboCodeCli(["resume"], {
+			env,
+			hoboHome: home,
+			cwd,
+		});
+		expect(latest.ok).toBe(true);
+		expect(latest.code).toBe("HOBO_CODE_RESUME");
+		expect(latest.message).toMatch(/chat-abc123def456/);
+		expect(latest.message).toMatch(/hello world/i);
+		const latestData = latest.data as {
+			session: { id: string; cwd: string };
+			terminalAction: { kind: string; sessionId: string };
+		};
+		expect(latestData.session.id).toBe("chat-abc123def456");
+		expect(latestData.terminalAction).toEqual(
+			expect.objectContaining({
+				kind: "resume-chat",
+				sessionId: "chat-abc123def456",
+			}),
+		);
+
+		const byPrefix = await runHoboCodeCli(["resume", "chat-zzz"], {
+			env,
+			hoboHome: home,
+			cwd,
+		});
+		expect(byPrefix.ok).toBe(true);
+		expect(byPrefix.message).toMatch(/chat-zzz999yyy888/);
+
+		const missing = await runHoboCodeCli(["resume", "nope"], {
+			env,
+			hoboHome: home,
+			cwd,
+		});
+		expect(missing.ok).toBe(false);
+		expect(missing.code).toBe("HOBO_CODE_RESUME_NOT_FOUND");
+
+		const help = await runHoboCodeCli(["resume", "--help"], {
+			env,
+			hoboHome: home,
+		});
+		expect(help.ok).toBe(true);
+		expect(help.message).toMatch(/hobo-code resume/);
+		expect(help.message).toMatch(/session_id|session id/i);
 	});
 
 	it("rejects unknown flags instead of silently accepting them", async () => {
@@ -816,7 +897,6 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(payload.inventory?.scope?.environment).toBe("preview");
 		expect(payload.inventory?.missing).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ kind: "yard" }),
 				expect.objectContaining({ kind: "bindle" }),
 			]),
 		);

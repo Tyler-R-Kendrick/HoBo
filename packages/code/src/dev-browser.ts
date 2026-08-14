@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import { debugViewUrl } from "./evidence-overlay.js";
 import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
+import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import { attachStationSidecars } from "./station-sidecars.js";
 
 export interface DevBrowserSessionOptions {
@@ -35,6 +36,7 @@ export interface DevBrowserSession {
 	readonly namedUrl?: string;
 	readonly stationId?: string;
 	readonly environment?: string;
+	readonly pid?: number;
 	readonly close: () => Promise<void>;
 }
 
@@ -306,8 +308,10 @@ export async function startDevBrowserSession(
 			child,
 			options.startupTimeoutMs ?? 60_000,
 		);
+		const publicApp =
+			started.namedUrl ?? preferNamedEndpoint(started.appUrl, "web");
 		const controlsUrl = evidence.controlsUrl(
-			new URL(started.appUrl).origin,
+			new URL(publicApp).origin,
 			sessionId,
 		);
 		let closed = false;
@@ -321,6 +325,7 @@ export async function startDevBrowserSession(
 			...(started.namedUrl !== undefined ? { namedUrl: started.namedUrl } : {}),
 			...(stationId ? { stationId } : {}),
 			...(environment ? { environment } : {}),
+			...(child.pid !== undefined ? { pid: child.pid } : {}),
 			close: async () => {
 				if (closed) return;
 				closed = true;

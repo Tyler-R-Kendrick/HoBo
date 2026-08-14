@@ -18,6 +18,8 @@ import { authLogin } from "../src/auth.js";
 import {
 	APPROVAL_PROMPT,
 	appendAssistant,
+	buildShellTree,
+	buildWelcomeTable,
 	createInitialShellState,
 	DEFAULT_SLASH_ITEMS,
 	filterSlash,
@@ -29,6 +31,7 @@ import {
 	slashItemForInput,
 	splitKeySequences,
 } from "../src/interactive-shell.js";
+import { findDescendantById } from "../src/tui-tree.js";
 
 describe("hobo-code InteractiveShell (product chrome)", () => {
 	it("wraps a long template list inside the card without chopping words", () => {
@@ -102,9 +105,44 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		const welcome = state.messages.map((m) => m.text).join("\n");
 		expect(welcome).toMatch(/[█▄▀]/);
 		expect(welcome).toMatch(/rides the rails/);
-		expect(welcome).toMatch(/Type to talk to Bo/);
+		expect(state.welcomeTable.map((row) => row.label)).toEqual([
+			"talk",
+			"patterns",
+			"focus",
+		]);
+		expect(state.welcomeTable.map((row) => row.value).join("\n")).toMatch(
+			/Type to talk to Bo/,
+		);
+		const frame = plain(renderShellFrame(state));
+		expect(frame).toMatch(/talk\s+Type to talk to Bo/);
+		expect(frame).toMatch(/patterns\s+\/templates/);
+		expect(frame).toMatch(/focus\s+Tab/);
+		expect(findDescendantById(buildShellTree(state), "welcome-table")?.id).toBe(
+			"welcome-table",
+		);
 		// Engine honesty now lives on the always-visible strap.
-		expect(plain(renderShellFrame(state))).toContain("engine:none");
+		expect(frame).toContain("engine:none");
+	});
+
+	it("puts occupancy endpoints in the welcome table as named hosts", () => {
+		const rows = buildWelcomeTable({
+			dashboardUrl: "http://127.0.0.1:8787/",
+			evidenceUrl: "http://127.0.0.1:8788/__hobo/evidence",
+		});
+		expect(rows.map((row) => row.label)).toEqual([
+			"talk",
+			"patterns",
+			"focus",
+			"dashboard",
+			"evidence",
+		]);
+		expect(rows.at(-2)?.value).toBe(
+			"http://dashboard.code.local.hobo.localhost:8787/",
+		);
+		expect(rows.at(-1)?.value).toBe(
+			"http://evidence.code.local.hobo.localhost:8788/__hobo/evidence",
+		);
+		expect(rows.map((row) => row.value).join("\n")).not.toMatch(/127\.0\.0\.1/);
 	});
 
 	it("slash palette lists product journeys", () => {
@@ -214,7 +252,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(state.focus).toBe("resources");
 		const resourcesFrame = renderShellFrame(state);
 		expect(resourcesFrame).toMatch(/resources/);
-		expect(resourcesFrame).toMatch(/auth:out|station:/);
+		expect(resourcesFrame).toMatch(/auth:out|station:|local@/);
 	});
 
 	it("Enter on a prompt appends user message and marks working", () => {

@@ -5,12 +5,29 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-import { preferNamedEndpoint } from "./occupancy-endpoints.js";
+import {
+	occupancySidecarEndpoints,
+	preferNamedEndpoint,
+} from "./occupancy-endpoints.js";
 import {
 	createResourceLifecycle,
 	type ResourceLifecycle,
 } from "./session-lifecycle.js";
-import { createOtelSink, fleetView, type OtelSink } from "./session-otel.js";
+import {
+	createOtelSink,
+	fleetView,
+	type OtelSink,
+	projectOccupancyTelemetry,
+} from "./session-otel.js";
+import {
+	createOccupancyController,
+	isManagedResourceEnabled,
+	isOccupancySidecar,
+	type OccupancyController,
+	occupancyCampIsActive,
+	occupancyFlowIsActive,
+	type StartDevSession,
+} from "./session-resource-control.js";
 import {
 	assembleSessionResources,
 	type SessionResourceInventory,
@@ -61,8 +78,8 @@ const SPA = `<!doctype html>
 <body>
   <header><h1>hobo-code · resources</h1><p class="muted" id="scope">loading occupancy…</p></header>
   <main>
-    <section class="card" id="resources-card"><h2>Resources</h2><div id="resources">loading</div></section>
-    <section class="card" id="telemetry-card"><h2>OTel</h2><pre id="telemetry">loading</pre></section>
+    <section class="card" id="resources-card"><h2>Resources</h2><p class="muted">station · yard · camp — manage each child (flow, named-endpoints, bindle resources)</p><div id="resources">loading</div></section>
+    <section class="card" id="telemetry-card"><h2>OTel</h2><div id="telemetry">loading</div></section>
     <section class="card" id="fleet-card"><h2>Fleet</h2><pre id="fleet">loading</pre></section>
   </main>
   <script>
@@ -71,7 +88,10 @@ const SPA = `<!doctype html>
       return res.json();
     }
     async function act(id, verb) {
-      await api("/api/resources/" + encodeURIComponent(id) + "/" + verb, { method: "POST" });
+      const result = await api("/api/resources/" + encodeURIComponent(id) + "/" + verb, { method: "POST" });
+      if (result && result.error) {
+        window.alert(result.error);
+      }
       await render();
     }
     async function render() {
@@ -82,37 +102,94 @@ const SPA = `<!doctype html>
       scope.textContent = inv.ok
         ? (inv.scope.stationId + " × " + inv.scope.environment)
         : (inv.message || "auth:out");
-      const nodes = []
+      const primitives = []
         .concat(inv.station ? [inv.station] : [])
         .concat(inv.peers || [])
         .concat(inv.junctions || [])
         .concat(inv.yards || [])
-        .concat(inv.camps || [])
-        .concat(inv.bindles || []);
+        .concat(inv.camps || []);
       const life = inv.lifecycle || [];
-      const rows = nodes.map((n) => {
+      const occupancy = { dashboard:1, evidence:1, controls:1, report:1, otlp:1 };
+      function actions(id, locked) {
+        return locked
+          ? "<span class='muted'>occupancy</span>"
+          : "<button onclick='act(" + JSON.stringify(id) + ",\\"start\\")'>start</button> " +
+            "<button onclick='act(" + JSON.stringify(id) + ",\\"stop\\")'>stop</button> " +
+            "<button onclick='act(" + JSON.stringify(id) + ",\\"restart\\")'>restart</button>";
+      }
+      function rowHtml(kind, id, state, extra, locked, ready) {
+        return "<tr><td>" + kind + "</td><td>" + id + "</td><td class='" +
+          (ready ? "ready" : "not-ready") + "'>" + state +
+          "</td><td>" + (extra || "") + "</td><td>" + actions(id, locked) + "</td></tr>";
+      }
+      const groups = primitives.map((n) => {
         const snap = life.find((s) => s.id === n.id);
         const ready = snap && snap.ready;
-        return "<tr><td>" + n.kind + "</td><td>" + n.id + "</td><td class='" +
-          (ready ? "ready" : "not-ready") + "'>" +
-          (snap ? snap.state : n.status) +
-          "</td><td>" + (n.environment || "") +
-          "</td><td><button onclick='act(" + JSON.stringify(n.id) + ",\\"start\\")'>start</button> " +
-          "<button onclick='act(" + JSON.stringify(n.id) + ",\\"stop\\")'>stop</button> " +
-          "<button onclick='act(" + JSON.stringify(n.id) + ",\\"restart\\")'>restart</button></td></tr>";
+        const children = (inv.managed || []).filter((m) => m.ownerId === n.id);
+        const childRows = children.map((m) => {
+          const child = life.find((s) => s.id === m.id);
+          const childReady = occupancy[m.id] || (child && child.ready);
+          return rowHtml(
+            m.kind,
+            m.id,
+            occupancy[m.id] ? "ready" : (child ? child.state : n.status),
+            m.ownerKind,
+            occupancy[m.id] || m.controllable === false,
+            childReady
+          );
+        }).join("");
+        return "<h3>" + n.kind + " · " + n.id + "</h3><table><thead><tr><th>kind</th><th>id</th><th>state</th><th></th><th></th></tr></thead><tbody>" +
+          rowHtml(n.kind, n.id, snap ? snap.state : n.status, n.environment || "", n.kind === "station", ready) +
+          (childRows || "") +
+          "</tbody></table>";
       }).join("");
-      const eps = (inv.endpoints || []).map((e) =>
-        "<tr><td>" + e.resourceName + "</td><td>" + (e.namedUrl || "") +
-        "</td><td>" + (e.backendUrl || "") +
-        "</td><td>" + ((e.resolvedAddresses || []).join(", ")) + "</td></tr>"
+      const eps = (inv.endpoints || []).map((e) => {
+        const snap = life.find((s) => s.id === e.resourceName);
+        const ready = occupancy[e.resourceName] || (snap && snap.ready);
+        const actions = occupancy[e.resourceName]
+          ? "<span class='muted'>occupancy</span>"
+          : "<button onclick='act(" + JSON.stringify(e.resourceName) + ",\\"start\\")'>start</button> " +
+            "<button onclick='act(" + JSON.stringify(e.resourceName) + ",\\"stop\\")'>stop</button> " +
+            "<button onclick='act(" + JSON.stringify(e.resourceName) + ",\\"restart\\")'>restart</button>";
+        return "<tr><td>" + e.resourceName + "</td><td>" + e.kind + "</td><td>" +
+        (e.preferredUrl || e.namedUrl || "") +
+        "</td><td class='" + (ready ? "ready" : "not-ready") + "'>" +
+        (occupancy[e.resourceName] ? "ready" : (snap ? snap.state : "stopped")) +
+        "</td><td>" + actions + "</td></tr>";
+      }).join("");
+      const caps = (inv.capabilities || []).map((r) =>
+        "<tr><td>" + r.kind + "</td><td class='" +
+        (r.available ? "ready" : "not-ready") + "'>" +
+        (r.available ? "available" : "unavailable") +
+        "</td><td>" + r.fidelity + "</td><td>" + (r.note || "") + "</td></tr>"
       ).join("");
+      const camp = inv.camp
+        ? ("<p>camp " + inv.camp.name + " · require " + (inv.camp.require || []).join(", ") +
+           " · env " + ((inv.bindleManifest && inv.bindleManifest.envKeys) || []).join(", ") + "</p>")
+        : "";
       document.getElementById("resources").innerHTML =
-        "<table><thead><tr><th>kind</th><th>id</th><th>state</th><th>env</th><th></th></tr></thead><tbody>" +
-        (rows || "<tr><td colspan=5>no resources</td></tr>") +
-        "</tbody></table>" +
-        "<h3>Endpoints</h3><table><thead><tr><th>name</th><th>named</th><th>backend</th><th>resolved</th></tr></thead><tbody>" +
-        (eps || "<tr><td colspan=4>none</td></tr>") + "</tbody></table>";
-      document.getElementById("telemetry").textContent = JSON.stringify(tel, null, 2);
+        camp +
+        (groups || "<p>no resources</p>") +
+        "<h3>Endpoints</h3><table><thead><tr><th>name</th><th>kind</th><th>url</th><th>state</th><th></th></tr></thead><tbody>" +
+        (eps || "<tr><td colspan=5>none</td></tr>") + "</tbody></table>" +
+        "<h3>Capabilities</h3><table><thead><tr><th>kind</th><th>local</th><th>fidelity</th><th>note</th></tr></thead><tbody>" +
+        (caps || "<tr><td colspan=4>none</td></tr>") + "</tbody></table>";
+      const collector = tel.collector
+        ? ("<p>collector " + (tel.collector.httpUrl || "") +
+           " · grpc :" + (tel.collector.grpcPort || "") +
+           " · " + (tel.collector.status || "unknown") + "</p>")
+        : "";
+      const otelRows = (tel.resources || []).map((r) =>
+        "<tr><td>" + r.resourceName + "</td><td>" + r.kind + "</td><td class='" +
+        (r.export === "exporting" ? "ready" : "not-ready") + "'>" + r.export +
+        "</td><td>" + (r.logs || 0) + "</td><td>" + (r.traces || 0) + "</td><td>" +
+        (r.metrics || 0) + "</td><td class='muted'>" + (r.note || "") + "</td></tr>"
+      ).join("");
+      document.getElementById("telemetry").innerHTML =
+        collector +
+        "<table><thead><tr><th>service</th><th>kind</th><th>export</th><th>logs</th><th>traces</th><th>metrics</th><th>note</th></tr></thead><tbody>" +
+        (otelRows || "<tr><td colspan=7>no services</td></tr>") +
+        "</tbody></table>";
       document.getElementById("fleet").textContent = JSON.stringify(fleet, null, 2);
     }
     render().catch((err) => {
@@ -163,6 +240,55 @@ function listen(
 	});
 }
 
+function relatedLifecycleIds(
+	id: string,
+	inventory: SessionResourceInventory,
+): readonly string[] {
+	const managed = inventory.managed ?? [];
+	const childrenOf = (ownerId: string): string[] =>
+		managed.filter((row) => row.ownerId === ownerId).map((row) => row.id);
+	const httpIds = inventory.endpoints
+		.filter((row) => row.kind === "http")
+		.map((row) => row.resourceName);
+	if (/^yard:[^:]+$/.test(id)) {
+		return [id, ...childrenOf(id)];
+	}
+	if (/^camp:[^:]+$/.test(id)) {
+		return [id, ...childrenOf(id)];
+	}
+	if (id.startsWith("bindle:") || httpIds.includes(id)) {
+		return [
+			id,
+			...inventory.bindles.map((row) => row.id),
+			...httpIds.filter((name) => !isOccupancySidecar(name)),
+		];
+	}
+	return [id];
+}
+
+function isLocalTopology(kind: string): boolean {
+	return kind === "station" || kind === "yard" || kind === "camp";
+}
+
+function otelSubjects(
+	inventory: SessionResourceInventory,
+): { id: string; kind: string }[] {
+	const rows: { id: string; kind: string }[] = [];
+	const seen = new Set<string>();
+	const add = (id: string, kind: string): void => {
+		if (seen.has(id)) return;
+		seen.add(id);
+		rows.push({ id, kind });
+	};
+	for (const endpoint of inventory.endpoints) {
+		add(endpoint.resourceName, endpoint.kind);
+	}
+	for (const bindle of inventory.bindles) {
+		add(bindle.id, "bindle");
+	}
+	return rows;
+}
+
 export async function startLocalDashboard(options: {
 	readonly hoboHome: string;
 	readonly env?: NodeJS.ProcessEnv;
@@ -172,15 +298,59 @@ export async function startLocalDashboard(options: {
 	readonly sink?: OtelSink;
 	readonly lifecycle?: ResourceLifecycle;
 	readonly campConnected?: boolean;
+	readonly projectRoot?: string;
+	readonly startDevSession?: StartDevSession;
+	readonly controller?: OccupancyController;
 }): Promise<LocalDashboard> {
 	const env = options.env ?? process.env;
 	const sink = options.sink ?? createOtelSink();
 	const lifecycle = options.lifecycle ?? createResourceLifecycle();
+	const controller =
+		options.controller ??
+		createOccupancyController({
+			hoboHome: options.hoboHome,
+			env,
+			...(options.projectRoot !== undefined
+				? { projectRoot: options.projectRoot }
+				: {}),
+			...(options.startDevSession !== undefined
+				? { startDevSession: options.startDevSession }
+				: {}),
+		});
+	const liveOccupancy = {
+		dashboardUrl: "",
+		otlpHttpUrl: "",
+	};
+	const liveCollector = { httpUrl: "", grpcPort: 0 };
 	const load = (): SessionResourceInventory => {
 		const inventory = assembleSessionResources({
 			hoboHome: options.hoboHome,
 			env,
+			...(options.projectRoot !== undefined
+				? { projectDir: options.projectRoot }
+				: {}),
+			liveEndpoints: occupancySidecarEndpoints({
+				...(liveOccupancy.dashboardUrl
+					? { dashboardUrl: liveOccupancy.dashboardUrl }
+					: {}),
+				...(liveOccupancy.otlpHttpUrl
+					? { otlpHttpUrl: liveOccupancy.otlpHttpUrl }
+					: {}),
+			}),
 		});
+		const appHealth =
+			inventory.endpoints.find((row) => row.resourceName === "web")
+				?.backendUrl ?? inventory.endpoints[0]?.backendUrl;
+		const flowActive = occupancyFlowIsActive(
+			options.hoboHome,
+			inventory.scope.stationId,
+			inventory.scope.environment,
+		);
+		const campActive = occupancyCampIsActive(
+			options.hoboHome,
+			inventory.scope.stationId,
+			inventory.scope.environment,
+		);
 		for (const node of [
 			...(inventory.station ? [inventory.station] : []),
 			...inventory.peers,
@@ -189,21 +359,49 @@ export async function startLocalDashboard(options: {
 			...inventory.camps,
 			...inventory.bindles,
 		]) {
+			const topology = isLocalTopology(node.kind);
+			const started =
+				node.kind === "camp"
+					? campActive
+					: node.kind === "yard" || node.kind === "station"
+						? flowActive || node.kind === "station"
+						: false;
 			lifecycle.register({
 				id: node.id,
 				kind: node.kind,
 				provisioned: node.status === "declared" || node.status === "serving",
-				...(inventory.endpoints[0]?.backendUrl
-					? { healthUrl: inventory.endpoints[0].backendUrl }
-					: {}),
+				...(topology ? { initiallyStarted: started } : {}),
+				...(!topology && appHealth ? { healthUrl: appHealth } : {}),
 			});
 		}
 		for (const endpoint of inventory.endpoints) {
+			const occupancy = isOccupancySidecar(endpoint.resourceName);
 			lifecycle.register({
 				id: endpoint.resourceName,
 				kind: endpoint.kind,
-				healthUrl: endpoint.backendUrl,
 				provisioned: true,
+				...(occupancy
+					? { initiallyStarted: true }
+					: { healthUrl: endpoint.backendUrl }),
+			});
+		}
+		for (const resource of inventory.managed) {
+			const enabled = isManagedResourceEnabled(
+				options.hoboHome,
+				inventory.scope.stationId,
+				inventory.scope.environment,
+				resource.id,
+			);
+			const flowChild = resource.kind === "flow";
+			lifecycle.register({
+				id: resource.id,
+				kind: resource.kind,
+				provisioned: true,
+				initiallyStarted: resource.controllable
+					? flowChild
+						? flowActive && enabled
+						: enabled
+					: true,
 			});
 		}
 		return inventory;
@@ -229,14 +427,30 @@ export async function startLocalDashboard(options: {
 			return;
 		}
 		if (method === "GET" && url.pathname === "/api/telemetry") {
-			json(response, 200, { resources: sink.list() });
-			return;
-		}
-		if (method === "GET" && url.pathname === "/api/fleet") {
+			const inventory = load();
 			json(
 				response,
 				200,
-				fleetView({ campConnected: options.campConnected === true }),
+				projectOccupancyTelemetry({
+					resources: otelSubjects(inventory),
+					sink,
+					collector: {
+						httpUrl: liveCollector.httpUrl,
+						grpcPort: liveCollector.grpcPort,
+					},
+				}),
+			);
+			return;
+		}
+		if (method === "GET" && url.pathname === "/api/fleet") {
+			const inventory = load();
+			json(
+				response,
+				200,
+				fleetView({
+					campConnected:
+						options.campConnected === true || inventory.camps.length > 0,
+				}),
 			);
 			return;
 		}
@@ -259,13 +473,55 @@ export async function startLocalDashboard(options: {
 		if (method === "POST" && actionMatch) {
 			const id = decodeURIComponent(actionMatch[1] ?? "");
 			const verb = actionMatch[2];
-			load();
-			const snap =
-				verb === "start"
-					? await lifecycle.start(id)
-					: verb === "stop"
-						? await lifecycle.stop(id)
-						: await lifecycle.restart(id);
+			try {
+				if (verb === "stop" || verb === "restart") {
+					await controller.stop(id);
+				}
+				if (verb === "start" || verb === "restart") {
+					await controller.start(id);
+				}
+			} catch (error) {
+				json(response, 409, {
+					error: error instanceof Error ? error.message : String(error),
+					id,
+					verb,
+				});
+				return;
+			}
+			const inventory = load();
+			if (verb === "stop" || verb === "restart") {
+				for (const relatedId of relatedLifecycleIds(id, inventory)) {
+					try {
+						await lifecycle.stop(relatedId);
+					} catch {
+						// id may not be registered
+					}
+				}
+			}
+			if (verb === "start" || verb === "restart") {
+				for (const relatedId of relatedLifecycleIds(id, inventory)) {
+					try {
+						await lifecycle.start(relatedId);
+					} catch {
+						// id may not be registered
+					}
+				}
+			}
+			const snap = (() => {
+				try {
+					return lifecycle.snapshot(id);
+				} catch {
+					return {
+						id,
+						kind: "unknown",
+						state: verb === "stop" ? "stopped" : "started",
+						ready: verb !== "stop",
+						provisioned: true,
+						started: verb !== "stop",
+						healthy: verb !== "stop",
+					};
+				}
+			})();
 			json(response, 200, snap);
 			return;
 		}
@@ -347,14 +603,47 @@ export async function startLocalDashboard(options: {
 		...(view.project !== undefined ? { project: view.project } : {}),
 		...(view.branch !== undefined ? { branch: view.branch } : {}),
 	};
+	liveOccupancy.dashboardUrl = preferNamedEndpoint(
+		`http://127.0.0.1:${port}/`,
+		"dashboard",
+		scope,
+	);
+	liveOccupancy.otlpHttpUrl = preferNamedEndpoint(
+		`http://127.0.0.1:${otlpHttpPort}/v1/logs`,
+		"otlp",
+		scope,
+	);
+	liveCollector.httpUrl = liveOccupancy.otlpHttpUrl;
+	liveCollector.grpcPort = otlpGrpcPort;
+	const startedAt = new Date().toISOString();
+	sink.ingestLog({
+		resourceName: "dashboard",
+		body: "dashboard listening",
+		severity: "INFO",
+		time: startedAt,
+	});
+	sink.ingestMetric({
+		resourceName: "dashboard",
+		name: "up",
+		value: 1,
+		time: startedAt,
+	});
+	sink.ingestLog({
+		resourceName: "otlp",
+		body: "otlp http listening",
+		severity: "INFO",
+		time: startedAt,
+	});
+	sink.ingestMetric({
+		resourceName: "otlp",
+		name: "up",
+		value: 1,
+		time: startedAt,
+	});
 	return {
-		url: preferNamedEndpoint(`http://127.0.0.1:${port}/`, "dashboard", scope),
+		url: liveOccupancy.dashboardUrl,
 		port,
-		otlpHttpUrl: preferNamedEndpoint(
-			`http://127.0.0.1:${otlpHttpPort}/v1/logs`,
-			"otlp",
-			scope,
-		),
+		otlpHttpUrl: liveOccupancy.otlpHttpUrl,
 		otlpHttpPort,
 		otlpGrpcPort,
 		inventory: load,

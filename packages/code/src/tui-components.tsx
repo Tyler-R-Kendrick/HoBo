@@ -1,5 +1,5 @@
 import type { AccentName } from "./rubberhose.js";
-import { wrapMessage } from "./tui-layout.js";
+import { formatInkTable, type InkTableRow, wrapMessage } from "./tui-layout.js";
 import { TUI_TOKENS } from "./tui-tokens.js";
 import { h, type TuiChild, type TuiNode } from "./tui-tree.js";
 
@@ -229,21 +229,52 @@ export interface BtwTurnView {
 
 export interface BtwAsideProps {
 	readonly turns: readonly BtwTurnView[];
+	readonly parentLatest?: string;
+	readonly newFromParent?: number;
 }
 
-/** Temporary side-chat. Borrowed snapshot; does not join the main transcript. */
+/** Live overlay side-chat. Tracks the parent thread; does not join it. */
 export function BtwAside(props: BtwAsideProps): TuiNode {
+	const extra = props.newFromParent ?? 0;
+	const kicker =
+		extra > 0
+			? `btw · live · +${extra} new · Esc dismisses`
+			: "btw · live · Esc dismisses";
 	return (
-		<box id="btw-aside" role="region" className="btw-aside">
-			<text className="btw-kicker">
-				btw · borrowed snapshot · Esc dismisses
-			</text>
+		<box id="btw-aside" role="region" className="btw-aside overlay">
+			<text className="btw-kicker">{kicker}</text>
+			{props.parentLatest ? (
+				<text className="btw-parent">{`parent · ${props.parentLatest}`}</text>
+			) : undefined}
 			{props.turns.map((turn, index) => (
 				<text
 					id={`btw-${index}`}
 					className={`btw-turn btw-${turn.role}`}
 				>{`${turn.role === "user" ? "you · " : "btw · "}${turn.text}`}</text>
 			))}
+		</box>
+	);
+}
+
+export interface InkTableProps {
+	readonly id?: string;
+	readonly rows: readonly InkTableRow[];
+}
+
+/** Two-column label/value table for welcome + occupancy endpoints. */
+export function InkTable(props: InkTableProps): TuiNode {
+	return (
+		<box
+			id={props.id ?? "ink-table"}
+			role="table"
+			className="ink-table"
+		>
+			{formatInkTable(props.rows)
+				.split("\n")
+				.filter((line) => line.length > 0)
+				.map((line) => (
+					<text className="ink-row">{line}</text>
+				))}
 		</box>
 	);
 }
@@ -268,6 +299,7 @@ export interface ShellChromeProps {
 	readonly commands?: readonly string[];
 	readonly viewportRows: number;
 	readonly phase?: number;
+	readonly overlay?: TuiChild;
 	readonly children?: TuiChild;
 }
 
@@ -288,6 +320,7 @@ export function ShellChrome(props: ShellChromeProps): TuiNode {
 						? { commands: props.commands }
 						: {})}
 				/>
+				{props.overlay}
 			</BroadcastFrame>
 			<StatusStrap segments={props.segments} />
 		</box>

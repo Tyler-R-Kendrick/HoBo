@@ -7,6 +7,7 @@ export type TuiRole =
 	| "list"
 	| "listitem"
 	| "dialog"
+	| "table"
 	| "text";
 
 export interface TuiStyle {

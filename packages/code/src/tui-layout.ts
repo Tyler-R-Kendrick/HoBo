@@ -1,6 +1,19 @@
 import { cellWidth, centreBlock, fitCells, INK } from "./rubberhose.js";
 
 /** Centre a single line in `width` cells. Overflow truncates with an ellipsis. */
+export interface InkTableRow {
+	readonly label: string;
+	readonly value: string;
+}
+
+/** Two-column ink table. Space gutters only — never hairline rules. */
+export function formatInkTable(rows: readonly InkTableRow[]): string {
+	const labelWidth = Math.max(0, ...rows.map((row) => row.label.length));
+	return rows
+		.map((row) => `${row.label.padEnd(labelWidth)}  ${row.value}`.trimEnd())
+		.join("\n");
+}
+
 export function centerLine(text: string, width: number): string {
 	const ink = text.trim();
 	const visible = cellWidth(ink);
@@ -135,6 +148,38 @@ export function padLines(
 	const out = [...slice];
 	while (out.length < height) out.push("");
 	return out.slice(0, height);
+}
+
+/** Overwrite a rectangular sticker onto a padded cell grid. */
+export function blitBlock(
+	dest: readonly string[],
+	src: readonly string[],
+	row: number,
+	col: number,
+	destWidth: number,
+): string[] {
+	const width = Math.max(0, destWidth);
+	const out = dest.map((line) =>
+		line.length >= width
+			? line.slice(0, width)
+			: `${line}${" ".repeat(width - line.length)}`,
+	);
+	for (let i = 0; i < src.length; i += 1) {
+		const y = row + i;
+		if (y < 0 || y >= out.length) continue;
+		const piece = src[i] ?? "";
+		const line = out[y] ?? " ".repeat(width);
+		const left = line.slice(0, Math.max(0, col));
+		const mid = piece;
+		const rightStart = Math.max(0, col) + mid.length;
+		const right = line.slice(rightStart);
+		const merged = `${left}${mid}${right}`;
+		out[y] =
+			merged.length >= width
+				? merged.slice(0, width)
+				: `${merged}${" ".repeat(width - merged.length)}`;
+	}
+	return out;
 }
 
 export function windowAround(

@@ -109,6 +109,20 @@ export function claudeCodeGuide(): ClaudeCodeGuide {
 				status: "supported",
 			},
 			{
+				claudeCode: "resume / continue",
+				hoboCode:
+					"hobo-code resume [session_id] reopens the last interactive chat (prefix ok); resident tmux sessions attach when the id matches",
+				try: "hobo-code resume · hobo-code resume chat-abc",
+				status: "supported",
+			},
+			{
+				claudeCode: "/compact",
+				hoboCode:
+					"deterministic /compact: keep last user turns + operational briefing; durable journal is never rewritten (no auto mid-turn LLM recap)",
+				try: "/compact · /compact keep the named URL · hobo-code compact",
+				status: "supported",
+			},
+			{
 				claudeCode: "login / identity",
 				hoboCode: "auth login (local Station auto, or remote tenant+domain)",
 				try: "hobo-code auth login · hobo-code auth status",
@@ -135,7 +149,7 @@ export function claudeCodeGuide(): ClaudeCodeGuide {
 		],
 		legend: "claude-code map · plain English · next steps",
 		latestNotes: [
-			"Claude Code advanced users often chase: workflows, remote connect, channels, routines, automated/ultrareview, Chrome browser control, deep-research, fork, btw.",
+			"Claude Code advanced users often chase: workflows, remote connect, channels, routines, automated/ultrareview, Chrome browser control, deep-research, fork, btw, resume.",
 			"hobo-code maps those ideas to attach/tasks/session/isolate/promote/scaffold — honest partial/residual status in guide --json.",
 			"Non-developer path: auth → scaffold → prompt → session/tasks → promote.",
 		],

@@ -1,6 +1,12 @@
 import { inkCard, statusStripe } from "./rubberhose.js";
 import { BROADCAST_INNER_INSET, broadcastFrame } from "./tui-broadcast.js";
-import { centerLine, padLines, windowAround, wrapText } from "./tui-layout.js";
+import {
+	blitBlock,
+	centerLine,
+	padLines,
+	windowAround,
+	wrapText,
+} from "./tui-layout.js";
 import { collectText, type TuiNode } from "./tui-tree.js";
 
 function renderNode(node: TuiNode, width: number, height?: number): string[] {
@@ -33,14 +39,40 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 		const rail = node.children.filter((child) =>
 			child.classList.includes("command-rail"),
 		);
+		const overlays = node.children.filter((child) =>
+			child.classList.includes("overlay"),
+		);
 		const rest = node.children.filter(
-			(child) => !child.classList.includes("command-rail"),
+			(child) =>
+				!child.classList.includes("command-rail") &&
+				!child.classList.includes("overlay"),
 		);
+		const innerWidth = width - inset;
 		const body = rest.flatMap((child) =>
-			renderNode(child, width - inset, viewport),
+			renderNode(child, innerWidth, viewport),
 		);
-		const padded = viewport === undefined ? body : padLines(body, viewport);
-		const railLines = rail.flatMap((child) => renderNode(child, width - inset));
+		let padded = viewport === undefined ? body : padLines(body, viewport);
+		if (overlays.length > 0) {
+			const glass = viewport ?? padded.length;
+			const cardWidth = Math.min(
+				42,
+				Math.max(24, Math.floor(innerWidth * 0.58)),
+			);
+			const raw = overlays.flatMap((child) =>
+				renderNode(child, Math.max(12, cardWidth - 2)),
+			);
+			const maxBody = Math.max(3, glass - 4);
+			const card = inkCard(raw.slice(-maxBody), {
+				width: cardWidth,
+				title: "btw",
+			});
+			const clipped =
+				card.length > glass ? card.slice(card.length - glass) : card;
+			const col = Math.max(0, innerWidth - cardWidth);
+			const row = Math.max(0, padded.length - clipped.length);
+			padded = blitBlock(padded, clipped, row, col, innerWidth);
+		}
+		const railLines = rail.flatMap((child) => renderNode(child, innerWidth));
 		const chrome = {
 			width,
 			...(node.style.title !== undefined ? { title: node.style.title } : {}),
@@ -97,10 +129,19 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 		const extra = hidden > 0 ? [`  … ${hidden} more file(s)`] : [];
 		return padLines([...prefix, ...shown, ...extra, ...suffix], height);
 	}
+	if (node.classList.includes("ink-table")) {
+		const lines = node.children.flatMap((child) => renderNode(child, width));
+		return height === undefined ? lines : padLines(lines, height);
+	}
+	if (node.classList.includes("chat-surface")) {
+		const lines = node.children.flatMap((child) => renderNode(child, width));
+		return height === undefined ? lines : padLines(lines, height);
+	}
 	if (node.classList.includes("btw-aside")) {
 		const lines = node.children.flatMap((child) =>
 			wrapText(collectText(child).join(" "), width),
 		);
+		if (node.classList.includes("overlay")) return lines;
 		return height === undefined ? lines : padLines(lines, height);
 	}
 	if (node.classList.includes("text-pane")) {

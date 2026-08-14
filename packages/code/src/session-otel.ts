@@ -155,9 +155,8 @@ export function createOtelSink(): OtelSink {
 					const resourceName = resourceFromOtlp(
 						(group as { resource?: unknown }).resource,
 					);
-					const scopeMetrics = (
-						group as { scopeMetrics?: readonly unknown[] }
-					).scopeMetrics;
+					const scopeMetrics = (group as { scopeMetrics?: readonly unknown[] })
+						.scopeMetrics;
 					if (!Array.isArray(scopeMetrics)) continue;
 					for (const scope of scopeMetrics) {
 						const metricRows = (scope as { metrics?: readonly unknown[] })
@@ -200,6 +199,80 @@ export function createOtelSink(): OtelSink {
 			]);
 			return [...names].sort().map((name) => this.forResource(name));
 		},
+	};
+}
+
+export type OtelExportStatus = "exporting" | "silent";
+
+export interface OccupancyOtelSubject {
+	readonly id: string;
+	readonly kind: string;
+}
+
+export interface OccupancyOtelResource {
+	readonly resourceName: string;
+	readonly kind: string;
+	readonly export: OtelExportStatus;
+	readonly logs: number;
+	readonly traces: number;
+	readonly metrics: number;
+	readonly lastSignalAt?: string;
+	readonly note: string;
+}
+
+export interface OccupancyOtelView {
+	readonly collector: {
+		readonly httpUrl: string;
+		readonly grpcPort: number;
+		readonly status: "listening";
+	};
+	readonly resources: readonly OccupancyOtelResource[];
+}
+
+/** One OTel row per known service/Bindle. Empty sink is silent, not hidden. */
+export function projectOccupancyTelemetry(input: {
+	readonly resources: readonly OccupancyOtelSubject[];
+	readonly sink: Pick<OtelSink, "forResource">;
+	readonly collector: { readonly httpUrl: string; readonly grpcPort: number };
+}): OccupancyOtelView {
+	const seen = new Set<string>();
+	const resources: OccupancyOtelResource[] = [];
+	for (const subject of input.resources) {
+		if (seen.has(subject.id)) continue;
+		seen.add(subject.id);
+		const tel = input.sink.forResource(subject.id);
+		const logs = tel.logs.length;
+		const traces = tel.traces.length;
+		const metrics = tel.metrics.length;
+		const last = [
+			...tel.logs.map((row) => row.time),
+			...tel.traces.map((row) => row.startTime),
+			...tel.metrics.map((row) => row.time),
+		]
+			.filter((value) => value.length > 0)
+			.sort()
+			.at(-1);
+		const exporting = logs + traces + metrics > 0;
+		resources.push({
+			resourceName: subject.id,
+			kind: subject.kind,
+			export: exporting ? "exporting" : "silent",
+			logs,
+			traces,
+			metrics,
+			...(last ? { lastSignalAt: last } : {}),
+			note: exporting
+				? "signals received at the local collector"
+				: "collector is listening; no logs/spans/metrics received",
+		});
+	}
+	return {
+		collector: {
+			httpUrl: input.collector.httpUrl,
+			grpcPort: input.collector.grpcPort,
+			status: "listening",
+		},
+		resources,
 	};
 }
 

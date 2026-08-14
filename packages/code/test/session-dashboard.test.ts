@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -73,13 +74,24 @@ describe("local Aspire dashboard listener", () => {
 			expect(page.status).toBe(200);
 			expect(html).toMatch(/hobo-code · resources/);
 			expect(html).toMatch(/\/api\/resources/);
+			expect(html).toMatch(/station ·/);
+			expect(html).toMatch(/yard ·/);
+			expect(html).toMatch(/named-endpoints/);
 
 			const resources = await fetch(new URL("/api/resources", listen));
 			const inventory = (await resources.json()) as {
 				ok: boolean;
 				scope: { environment: string };
+				yards: { id: string }[];
+				camps: { id: string }[];
 				bindles: { id: string }[];
-				endpoints: { backendUrl: string; resolvedAddresses: string[] }[];
+				managed: { id: string; ownerKind: string; ownerId: string }[];
+				endpoints: {
+					backendUrl: string;
+					resolvedAddresses: string[];
+					resourceName: string;
+					preferredUrl?: string;
+				}[];
 			};
 			expect(inventory.ok).toBe(true);
 			expect(inventory.scope.environment).toBe("local-dev");
@@ -114,20 +126,513 @@ describe("local Aspire dashboard listener", () => {
 			const started = await fetch(new URL("/api/resources/web/start", listen), {
 				method: "POST",
 			});
-			const startBody = (await started.json()) as {
-				ready: boolean;
-				started: boolean;
-			};
-			expect(startBody.started).toBe(true);
+			expect(started.status).toBe(409);
+			const startBody = (await started.json()) as { error?: string };
+			expect(startBody.error).toMatch(/No Bindle to start/i);
 
 			const fleet = await fetch(new URL("/api/fleet", listen));
 			const fleetBody = (await fleet.json()) as {
 				scope: string;
 				reason?: string;
 			};
-			expect(fleetBody.scope).toBe("camp-deferred");
-			expect(fleetBody.reason).toMatch(/Camp/i);
+			expect(fleetBody.scope).toBe("local");
+			expect(inventory.camps.some((row) => row.id === "camp:local")).toBe(true);
+			expect(inventory.yards.some((row) => row.id === "yard:local")).toBe(true);
+			const life = (
+				inventory as {
+					lifecycle?: {
+						id: string;
+						state: string;
+						ready: boolean;
+					}[];
+				}
+			).lifecycle;
+			expect(life?.find((row) => row.id === "yard:local")?.state).toBe("ready");
+			expect(life?.find((row) => row.id === "camp:local")?.state).toBe("ready");
+			expect(life?.find((row) => row.id === "station:local")?.state).toBe(
+				"ready",
+			);
+			expect(html).toMatch(/Capabilities/);
+			const tel = (await (
+				await fetch(new URL("/api/telemetry", listen))
+			).json()) as {
+				resources: { resourceName: string; export: string }[];
+			};
+			expect(tel.resources.map((row) => row.resourceName)).toEqual(
+				expect.arrayContaining([
+					"dashboard",
+					"otlp",
+					"web",
+					"bindle:hello-world",
+				]),
+			);
+			expect(
+				tel.resources.find((row) => row.resourceName === "web")?.export,
+			).toBe("exporting");
+			expect(
+				tel.resources.find((row) => row.resourceName === "bindle:hello-world")
+					?.export,
+			).toBe("silent");
+			const occupancy = inventory.endpoints.map((row) => row.resourceName);
+			expect(occupancy).toEqual(expect.arrayContaining(["dashboard", "otlp"]));
+			expect(
+				inventory.endpoints.find((row) => row.resourceName === "dashboard")
+					?.preferredUrl,
+			).toMatch(/dashboard\.code\..*\.hobo\.localhost/);
+			expect(
+				inventory.managed.some((row) => row.id === "yard:local:flow"),
+			).toBe(true);
+			expect(
+				inventory.managed.find((row) => row.id === "web")?.ownerKind,
+			).toBe("camp");
 		} finally {
+			await dash.close();
+		}
+	});
+
+	it("lists dashboard and OTLP even when no Bindle has been deployed", async () => {
+		const hoboHome = tempHome();
+		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		const dash = await startLocalDashboard({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			port: 0,
+			otlpHttpPort: 0,
+			otlpGrpcPort: 0,
+		});
+		try {
+			const listen = loopbackFetchUrl(dash.url);
+			const resources = await fetch(new URL("/api/resources", listen));
+			const inventory = (await resources.json()) as {
+				endpoints: {
+					resourceName: string;
+					preferredUrl: string;
+					kind: string;
+				}[];
+				lifecycle: { id: string; state: string; ready: boolean }[];
+			};
+			expect(inventory.endpoints.map((row) => row.resourceName)).toEqual(
+				expect.arrayContaining(["dashboard", "otlp"]),
+			);
+			expect(
+				inventory.endpoints.some((row) => row.resourceName === "web"),
+			).toBe(false);
+			expect(
+				inventory.endpoints.find((row) => row.resourceName === "dashboard")
+					?.preferredUrl,
+			).toMatch(/dashboard\.code\..*\.hobo\.localhost/);
+			expect(
+				inventory.lifecycle.find((row) => row.id === "dashboard")?.ready,
+			).toBe(true);
+			expect(inventory.lifecycle.find((row) => row.id === "otlp")?.ready).toBe(
+				true,
+			);
+			const full = (await (
+				await fetch(new URL("/api/resources", listen))
+			).json()) as {
+				capabilities: {
+					kind: string;
+					available: boolean;
+					fidelity: string;
+				}[];
+			};
+			expect(full.capabilities.map((row) => row.kind)).toEqual(
+				expect.arrayContaining(["web", "api", "kv", "data", "container"]),
+			);
+			expect(
+				full.capabilities.find((row) => row.kind === "web")?.available,
+			).toBe(true);
+			expect(
+				full.capabilities.find((row) => row.kind === "container")?.available,
+			).toBe(false);
+			const tel = (await (
+				await fetch(new URL("/api/telemetry", listen))
+			).json()) as {
+				collector: { status: string; httpUrl: string };
+				resources: {
+					resourceName: string;
+					export: string;
+					logs: number;
+				}[];
+			};
+			expect(tel.collector.status).toBe("listening");
+			expect(tel.collector.httpUrl).toMatch(/otlp\.code\..*\.hobo\.localhost/);
+			expect(tel.resources.map((row) => row.resourceName)).toEqual(
+				expect.arrayContaining(["dashboard", "otlp"]),
+			);
+			expect(
+				tel.resources.find((row) => row.resourceName === "dashboard")?.export,
+			).toBe("exporting");
+			expect(
+				tel.resources.find((row) => row.resourceName === "otlp")?.logs,
+			).toBeGreaterThan(0);
+		} finally {
+			await dash.close();
+		}
+	});
+
+	it("start and stop actually launch and kill the Bindle process", async () => {
+		const hoboHome = tempHome();
+		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		const project = join(hoboHome, "hello-world");
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "bindle.ts"),
+			`export default bindle("hello-world", (b) => ({ web: b.web() }));\n`,
+		);
+		recordDevDeployment({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			bindleName: "hello-world",
+			projectDir: project,
+			appUrl: "http://127.0.0.1:1/",
+			debugUrl: "http://127.0.0.1:1/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:1/controls",
+			reportUrl: "http://127.0.0.1:1/report",
+		});
+
+		let listening: { url: string; close: () => Promise<void> } | undefined;
+		const dash = await startLocalDashboard({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			projectRoot: project,
+			port: 0,
+			otlpHttpPort: 0,
+			otlpGrpcPort: 0,
+			startDevSession: async () => {
+				const server = createServer((_request, response) => {
+					response.writeHead(200, { "content-type": "text/html" });
+					response.end("<h1>ok</h1>");
+				});
+				await new Promise<void>((resolve, reject) => {
+					server.once("error", reject);
+					server.listen(0, "127.0.0.1", () => resolve());
+				});
+				const address = server.address();
+				if (!address || typeof address === "string") {
+					throw new Error("no port");
+				}
+				const url = `http://127.0.0.1:${address.port}/`;
+				listening = {
+					url,
+					close: () =>
+						new Promise<void>((resolve) => {
+							server.close(() => resolve());
+						}),
+				};
+				return {
+					sessionId: "dev-live",
+					appUrl: url,
+					debugUrl: `${url}?__hobo_debug=1`,
+					controlsUrl: `${url}controls`,
+					reportUrl: `${url}report`,
+					evidencePath: join(hoboHome, "evidence"),
+					namedUrl: `http://web.hello-world.local.hobo.localhost:${address.port}/`,
+					close: async () => {
+						await listening?.close();
+						listening = undefined;
+					},
+				};
+			},
+		});
+		const listen = loopbackFetchUrl(dash.url);
+		try {
+			const refused = await fetch(
+				new URL("/api/resources/station:local/start", listen),
+				{ method: "POST" },
+			);
+			expect(refused.status).toBe(409);
+
+			const started = await fetch(
+				new URL("/api/resources/bindle:hello-world/start", listen),
+				{ method: "POST" },
+			);
+			expect(started.status).toBe(200);
+			const startBody = (await started.json()) as {
+				started: boolean;
+				ready?: boolean;
+			};
+			expect(startBody.started).toBe(true);
+			const appUrl = listening?.url ?? "";
+			expect(appUrl).toMatch(/^http:\/\/127\.0\.0\.1:/);
+			const app = await fetch(appUrl);
+			expect(app.status).toBe(200);
+			expect(await app.text()).toContain("ok");
+
+			const stopped = await fetch(new URL("/api/resources/web/stop", listen), {
+				method: "POST",
+			});
+			expect(stopped.status).toBe(200);
+			expect(listening).toBeUndefined();
+			await expect(fetch(appUrl)).rejects.toThrow();
+		} finally {
+			await listening?.close().catch(() => {});
+			await dash.close();
+		}
+	});
+
+	it("keeps local yard and camp ready, and halt actually stops Bindle traffic", async () => {
+		const hoboHome = tempHome();
+		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		const project = join(hoboHome, "hello-world");
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "bindle.ts"),
+			`export default bindle("hello-world", (b) => ({ web: b.web() }));\n`,
+		);
+		recordDevDeployment({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			bindleName: "hello-world",
+			projectDir: project,
+			appUrl: "http://127.0.0.1:1/",
+			debugUrl: "http://127.0.0.1:1/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:1/controls",
+			reportUrl: "http://127.0.0.1:1/report",
+		});
+
+		let listening: { url: string; close: () => Promise<void> } | undefined;
+		const dash = await startLocalDashboard({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			projectRoot: project,
+			port: 0,
+			otlpHttpPort: 0,
+			otlpGrpcPort: 0,
+			startDevSession: async () => {
+				const server = createServer((_request, response) => {
+					response.writeHead(200, { "content-type": "text/html" });
+					response.end("<h1>ok</h1>");
+				});
+				await new Promise<void>((resolve, reject) => {
+					server.once("error", reject);
+					server.listen(0, "127.0.0.1", () => resolve());
+				});
+				const address = server.address();
+				if (!address || typeof address === "string") {
+					throw new Error("no port");
+				}
+				const url = `http://127.0.0.1:${address.port}/`;
+				listening = {
+					url,
+					close: () =>
+						new Promise<void>((resolve) => {
+							server.close(() => resolve());
+						}),
+				};
+				return {
+					sessionId: "dev-flow",
+					appUrl: url,
+					debugUrl: `${url}?__hobo_debug=1`,
+					controlsUrl: `${url}controls`,
+					reportUrl: `${url}report`,
+					evidencePath: join(hoboHome, "evidence"),
+					namedUrl: `http://web.hello-world.local.hobo.localhost:${address.port}/`,
+					close: async () => {
+						await listening?.close();
+						listening = undefined;
+					},
+				};
+			},
+		});
+		const listen = loopbackFetchUrl(dash.url);
+		try {
+			const before = (await (
+				await fetch(new URL("/api/resources", listen))
+			).json()) as {
+				lifecycle: { id: string; state: string; ready: boolean }[];
+			};
+			expect(
+				before.lifecycle.find((row) => row.id === "yard:local")?.ready,
+			).toBe(true);
+			expect(
+				before.lifecycle.find((row) => row.id === "camp:local")?.ready,
+			).toBe(true);
+
+			const started = await fetch(
+				new URL("/api/resources/bindle:hello-world/start", listen),
+				{ method: "POST" },
+			);
+			expect(started.status).toBe(200);
+			const appUrl = listening?.url ?? "";
+			expect((await fetch(appUrl)).status).toBe(200);
+
+			const halted = await fetch(
+				new URL("/api/resources/yard:local/stop", listen),
+				{ method: "POST" },
+			);
+			expect(halted.status).toBe(200);
+			const haltBody = (await halted.json()) as { state?: string };
+			expect(haltBody.state).toBe("stopped");
+			expect(listening).toBeUndefined();
+			await expect(fetch(appUrl)).rejects.toThrow();
+
+			const after = (await (
+				await fetch(new URL("/api/resources", listen))
+			).json()) as {
+				lifecycle: { id: string; state: string }[];
+			};
+			expect(
+				after.lifecycle.find((row) => row.id === "yard:local")?.state,
+			).toBe("stopped");
+			expect(
+				after.lifecycle.find((row) => row.id === "yard:local:flow")?.state,
+			).toBe("stopped");
+			expect(
+				after.lifecycle.find((row) => row.id === "camp:local")?.state,
+			).toBe("ready");
+
+			const refused = await fetch(
+				new URL("/api/resources/bindle:hello-world/start", listen),
+				{ method: "POST" },
+			);
+			expect(refused.status).toBe(409);
+			const refusedBody = (await refused.json()) as { error?: string };
+			expect(refusedBody.error).toMatch(/halted|yard|camp/i);
+
+			const resumed = await fetch(
+				new URL("/api/resources/yard:local/start", listen),
+				{ method: "POST" },
+			);
+			expect(resumed.status).toBe(200);
+			const resumeBody = (await resumed.json()) as { state?: string };
+			expect(resumeBody.state).toBe("ready");
+			const liveAgain = await fetch(
+				new URL("/api/resources/bindle:hello-world/start", listen),
+				{ method: "POST" },
+			);
+			expect(liveAgain.status).toBe(200);
+		} finally {
+			await listening?.close().catch(() => {});
+			await dash.close();
+		}
+	});
+
+	it("starts and stops Camp resources without taking siblings with them", async () => {
+		const hoboHome = tempHome();
+		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		const project = join(hoboHome, "hello-world");
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "bindle.ts"),
+			`export default bindle("hello-world", (b) => ({ web: b.web(), kv: b.kv() }));\n`,
+		);
+		recordDevDeployment({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			bindleName: "hello-world",
+			projectDir: project,
+			appUrl: "http://127.0.0.1:4173/",
+			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
+			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+		});
+		let listening:
+			| { url: string; close: () => Promise<void> }
+			| undefined;
+		const dash = await startLocalDashboard({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			port: 0,
+			otlpHttpPort: 0,
+			otlpGrpcPort: 0,
+			projectRoot: project,
+			startDevSession: async () => {
+				const server = createServer((_request, response) => {
+					response.writeHead(200, { "content-type": "text/html" });
+					response.end("<h1>ok</h1>");
+				});
+				await new Promise<void>((resolve, reject) => {
+					server.once("error", reject);
+					server.listen(0, "127.0.0.1", () => resolve());
+				});
+				const address = server.address();
+				if (!address || typeof address === "string") {
+					throw new Error("no port");
+				}
+				const url = `http://127.0.0.1:${address.port}/`;
+				listening = {
+					url,
+					close: () =>
+						new Promise<void>((resolve) => {
+							server.close(() => resolve());
+						}),
+				};
+				return {
+					sessionId: "dev-siblings",
+					appUrl: url,
+					debugUrl: `${url}?__hobo_debug=1`,
+					controlsUrl: `${url}controls`,
+					reportUrl: `${url}report`,
+					evidencePath: join(hoboHome, "evidence"),
+					namedUrl: `http://web.hello-world.local.hobo.localhost:${address.port}/`,
+					close: async () => {
+						await listening?.close();
+						listening = undefined;
+					},
+				};
+			},
+		});
+		const listen = loopbackFetchUrl(dash.url);
+		try {
+			const started = await fetch(
+				new URL("/api/resources/bindle:hello-world/start", listen),
+				{ method: "POST" },
+			);
+			expect(started.status).toBe(200);
+			expect(listening).toBeDefined();
+
+			const kvStop = await fetch(new URL("/api/resources/kv/stop", listen), {
+				method: "POST",
+			});
+			expect(kvStop.status).toBe(200);
+			expect(listening).toBeDefined();
+			const afterKv = (await (
+				await fetch(new URL("/api/resources", listen))
+			).json()) as { lifecycle: { id: string; state: string }[] };
+			expect(afterKv.lifecycle.find((row) => row.id === "kv")?.state).toBe(
+				"stopped",
+			);
+			expect(
+				afterKv.lifecycle.find((row) => row.id === "bindle:hello-world")
+					?.state,
+			).not.toBe("stopped");
+			expect(
+				afterKv.lifecycle.find((row) => row.id === "yard:local:flow")?.state,
+			).toBe("ready");
+
+			const namedStop = await fetch(
+				new URL("/api/resources/yard:local:named-endpoints/stop", listen),
+				{ method: "POST" },
+			);
+			expect(namedStop.status).toBe(200);
+			const afterNamed = (await (
+				await fetch(new URL("/api/resources", listen))
+			).json()) as { lifecycle: { id: string; state: string }[] };
+			expect(
+				afterNamed.lifecycle.find(
+					(row) => row.id === "yard:local:named-endpoints",
+				)?.state,
+			).toBe("stopped");
+			expect(
+				afterNamed.lifecycle.find((row) => row.id === "yard:local:flow")
+					?.state,
+			).toBe("ready");
+			expect(listening).toBeDefined();
+		} finally {
+			await listening?.close().catch(() => {});
 			await dash.close();
 		}
 	});

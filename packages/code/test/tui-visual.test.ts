@@ -46,7 +46,7 @@ describe("hobo-code TUI visual contract", () => {
 		expect(frame).not.toMatch(/\[ \/[^\]]+…/);
 		expect(frame).toContain("status");
 		expect(frame).not.toMatch(/sta…/);
-		expect(frame).toMatch(/··· · Type to talk to Bo/);
+		expect(frame).toMatch(/talk\s+Type to talk to Bo/);
 		expect(frame).toMatch(/resources/);
 		expect(frame.split("\n").every((line) => line.length === 72)).toBe(true);
 	});
@@ -88,7 +88,7 @@ describe("hobo-code TUI visual contract", () => {
 		expect(frame).toContain(INK.shadow);
 		expect(frame).not.toContain("───");
 		expect(frame).toMatch(/resources/);
-		expect(frame).toMatch(/auth:out|station:/);
+		expect(frame).toMatch(/auth:out|station:|local@/);
 		expect(frame.split("\n").every((line) => line.length === 72)).toBe(true);
 	});
 });

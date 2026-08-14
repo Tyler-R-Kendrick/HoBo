@@ -423,6 +423,9 @@ export async function startStationSidecars(
 			port: options.dashboardPort ?? 8787,
 			otlpHttpPort: options.otlpHttpPort ?? 0,
 			otlpGrpcPort: options.otlpGrpcPort ?? 0,
+			...(options.projectRoot !== undefined
+				? { projectRoot: options.projectRoot }
+				: {}),
 		});
 		dashboardUrl = dashboard.url;
 		otlpHttpUrl = dashboard.otlpHttpUrl;

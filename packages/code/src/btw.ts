@@ -30,6 +30,8 @@ export interface BtwSnapshot {
 export interface BtwSession {
 	readonly snapshot: BtwSnapshot;
 	readonly turns: readonly BtwTurn[];
+	/** Parent message count when the aside opened. Used for the +N live badge. */
+	readonly originMessageCount: number;
 }
 
 const BTW_PREFIX = /^(?:\/)?btw(?:\s+|$)/iu;
@@ -127,8 +129,22 @@ export function answerBtw(
 	return [
 		describeMoment(snapshot),
 		"",
-		`This aside only sees the borrowed snapshot — it will not run "${asked}" as a main-chat turn. Esc dismisses.`,
+		`This aside tracks the live parent thread — it will not run "${asked}" as a main-chat turn. Esc dismisses.`,
 	].join("\n");
+}
+
+export function parentDelta(session: BtwSession): number {
+	return Math.max(
+		0,
+		session.snapshot.messageCount - session.originMessageCount,
+	);
+}
+
+export function refreshBtwSnapshot(
+	session: BtwSession,
+	snapshot: BtwSnapshot,
+): BtwSession {
+	return { ...session, snapshot };
 }
 
 function isStatusQuestion(asked: string): boolean {

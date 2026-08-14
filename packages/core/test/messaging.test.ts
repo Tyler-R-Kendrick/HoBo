@@ -4,10 +4,11 @@ import {
 	assertDeliverySupported,
 	createInMemoryMessaging,
 	MESSAGING_WIT_INTERFACE,
+	PORTABLE_MESSAGING_CAPABILITIES,
+	parseActorPlacementMode,
 	parseDeliveryGuarantee,
 	parseMessagingSpec,
 	parseTopicSpec,
-	PORTABLE_MESSAGING_CAPABILITIES,
 	tenantScopedTopicName,
 } from "../src/ports/messaging.js";
 
@@ -57,20 +58,26 @@ describe("@hobo/core messaging port", () => {
 			tenantId: "t1" as never,
 			delivery: "at-least-once",
 		});
-		const pub = await bus.publish("events" as never, { hello: "world" }, {
-			idempotencyKey: "k1",
-		});
+		const pub = await bus.publish(
+			"events" as never,
+			{ hello: "world" },
+			{
+				idempotencyKey: "k1",
+			},
+		);
 		expect(pub.deduped).toBe(false);
-		const dedup = await bus.publish("events" as never, { hello: "world" }, {
-			idempotencyKey: "k1",
-		});
+		const dedup = await bus.publish(
+			"events" as never,
+			{ hello: "world" },
+			{
+				idempotencyKey: "k1",
+			},
+		);
 		expect(dedup.deduped).toBe(true);
 
-		const consumed = await bus.consume(
-			"events" as never,
-			"workers" as never,
-			{ maxMessages: 10 },
-		);
+		const consumed = await bus.consume("events" as never, "workers" as never, {
+			maxMessages: 10,
+		});
 		expect(consumed).toHaveLength(1);
 		expect(consumed[0]?.body).toEqual({ hello: "world" });
 		bus.ack(consumed[0]!.messageId, consumed[0]!.leaseId);
@@ -104,7 +111,9 @@ describe("@hobo/core messaging port", () => {
 		});
 		expect(r2.deadLettered).toBe(1);
 		expect(
-			bus.events().some((e) => e.type === "messaging.delivery.permanent_failure"),
+			bus
+				.events()
+				.some((e) => e.type === "messaging.delivery.permanent_failure"),
 		).toBe(true);
 	});
 
@@ -113,5 +122,18 @@ describe("@hobo/core messaging port", () => {
 			assertDeliverySupported(PORTABLE_MESSAGING_CAPABILITIES, "exactly-once"),
 		).toThrow(/does not support/);
 		expect(parseDeliveryGuarantee("at-least-once")).toBe("at-least-once");
+	});
+
+	it("parses actor placement modes including rivet", () => {
+		expect(parseActorPlacementMode("native")).toBe("native");
+		expect(parseActorPlacementMode("dapr")).toBe("dapr");
+		expect(parseActorPlacementMode("rivet")).toBe("rivet");
+		expect(parseActorPlacementMode("celld")).toBe("celld");
+		expect(() => parseActorPlacementMode("flux")).toThrow(
+			/actorPlacementMode/,
+		);
+		expect(() => parseActorPlacementMode("Rivet")).toThrow(
+			/actorPlacementMode/,
+		);
 	});
 });

@@ -225,6 +225,46 @@ export {
 	REGION_JURISDICTIONS,
 	TRANSFER_MECHANISMS,
 } from "./ports/jurisdiction.js";
+export {
+	CELLD_ACTOR_CAPABILITIES,
+	NATIVE_ACTOR_CAPABILITIES,
+	RIVET_ACTOR_CAPABILITIES,
+	ActorRequirementsParseError,
+	evaluateActorResolver,
+	parseActorRequirements,
+} from "./ports/actor-requirements.js";
+export type {
+	ActorCommit,
+	ActorConcurrency,
+	ActorInbox,
+	ActorPlacementRequirement,
+	ActorRequirements,
+	ActorResolverCapabilities,
+	ActorResolverDecision,
+	ActorResolverFamily,
+	ActorResolverRejection,
+	ActorTenantIsolation,
+	ActorWebsocketHibernation,
+} from "./ports/actor-requirements.js";
+export {
+	ACTOR_IDENTITY_PREFIX,
+	MAX_ACTOR_KEY_SEGMENTS,
+	MAX_ACTOR_KEY_SEGMENT_BYTES,
+	MAX_ACTOR_TYPE_BYTES,
+	ActorIdentityParseError,
+	actorCommandDigest,
+	actorCompoundKey,
+	parseActorCompoundKey,
+	parseLogicalActorIdentity,
+} from "./ports/actor-identity.js";
+export type {
+	ActorCommandDigestInput,
+	ActorKeySegment,
+	ActorTypeId,
+	CommandDigest,
+	LogicalActorIdentity,
+	LogicalTenantId,
+} from "./ports/actor-identity.js";
 export type {
 	ActorPlacementMode,
 	ConsumedMessage,

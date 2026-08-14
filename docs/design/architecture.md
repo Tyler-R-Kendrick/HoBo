@@ -180,11 +180,14 @@ packages/
     runtime-postgres   @hobo/runtime-postgres  (design / later)
     runtime-temporal   @hobo/runtime-temporal  (design / later)
     runtime-restate    @hobo/runtime-restate   (design / later)
+    runtime-rivet      @hobo/runtime-rivet      (preferred compatible ActorHost resolver — actor-local journal + inbox; CJS hosts must dynamic-import rivetkit)
+    runtime-celld      @hobo/runtime-celld      (experimental Durable Objects dialect; overlay + CAS bucket; not Component Model WASM; live binary missing = fail)
     runtime-cloudflare @hobo/runtime-cloudflare  (Durable Objects — design / later)
   providers/
     provider-aws       @hobo/provider-aws
     provider-azure     @hobo/provider-azure
     provider-gcp       @hobo/provider-gcp
+    provider-flux        @hobo/provider-flux     (Orbit = git mode; OCI digest production; not an actor runtime)
     provider-cloudflare  @hobo/provider-cloudflare
     provider-convex      @hobo/provider-convex   (Convex deploy-target CloudProvider — thin SaaS adapter w/ typed impedance, ADR-0144)
     provider-lakebed     @hobo/provider-lakebed  (deploy-driver style, ADR-0127)

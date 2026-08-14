@@ -40,6 +40,29 @@ describe("profile ids", () => {
 		expect(parsed.path).toEqual(["data", "postgres"]);
 	});
 
+	it("registers durable-object journal refinements under kv", () => {
+		const registry = standard();
+		for (const id of [
+			"kv.durable-object/v1",
+			"kv.durable-object.event-journal/v1",
+			"kv.durable-object.durable-inbox/v1",
+			"kv.durable-object.transactional-outbox/v1",
+			"kv.durable-object.exportable-state/v1",
+		] as const) {
+			expect(parseProfileId(id).primitive).toBe("kv");
+			expect(registry.get(id)?.id).toBe(id);
+		}
+		expect(
+			registry.closureOf("kv.durable-object.durable-inbox/v1"),
+		).toEqual(
+			expect.arrayContaining([
+				"kv.key-value/v1",
+				"kv.durable-object/v1",
+				"kv.durable-object.event-journal/v1",
+			]),
+		);
+	});
+
 	it("maps the realtime family onto the webhook primitive", () => {
 		expect(parseProfileId("realtime.websocket/v1").primitive).toBe("webhook");
 	});

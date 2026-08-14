@@ -21,6 +21,10 @@ enum ActorPlacementMode {
   ACTOR_PLACEMENT_MODE_NATIVE = 1;
   // Dapr virtual actors + placement service.
   ACTOR_PLACEMENT_MODE_DAPR = 2;
+  // Rivet actor resolver (local library or self-hosted engine).
+  ACTOR_PLACEMENT_MODE_RIVET = 3;
+  // Experimental Durable Objects dialect (celld). Not a WASM component host.
+  ACTOR_PLACEMENT_MODE_CELLD = 4;
 }
 
 message TopicSpec {

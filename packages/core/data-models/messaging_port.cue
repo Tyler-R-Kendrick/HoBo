@@ -5,7 +5,7 @@ package hobo
 
 #DeliveryGuarantee: "at-least-once" | "exactly-once" | "at-most-once"
 
-#ActorPlacementMode: "native" | "dapr"
+#ActorPlacementMode: "native" | "dapr" | "rivet" | "celld"
 
 #TopicSpec: {
 	name:               string & !=""

@@ -23,6 +23,14 @@ export {
 	parseControlEvidencePack,
 } from "./control-evidence-pack.js";
 export {
+	COMMUNITY_FLUX_POLICY_PACK_ID,
+	DEFAULT_COMMUNITY_FLUX_POLICY_PACK,
+	evaluateCommunityFluxPolicy,
+	type CommunityFluxPolicyEvaluation,
+	type CommunityFluxPolicyInput,
+	type CommunityFluxPolicyPack,
+} from "./community-flux-policy-pack.js";
+export {
 	DEFAULT_MESSAGING_POLICY_PACK,
 	evaluateMessagingPolicy,
 	MESSAGING_POLICY_PACK_ID,

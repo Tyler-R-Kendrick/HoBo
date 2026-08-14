@@ -24,7 +24,7 @@ export type DeliveryGuarantee =
 	| "exactly-once"
 	| "at-most-once";
 
-export type ActorPlacementMode = "native" | "dapr";
+export type ActorPlacementMode = "native" | "dapr" | "rivet" | "celld";
 
 export type TopicName = string & { readonly __brand: "TopicName" };
 export type ConsumerGroupId = string & { readonly __brand: "ConsumerGroupId" };
@@ -271,8 +271,19 @@ export function parseDeliveryGuarantee(value: unknown): DeliveryGuarantee {
 }
 
 export function parseActorPlacementMode(value: unknown): ActorPlacementMode {
-	if (value === "native" || value === "dapr") return value;
-	throw new MessagingParseError("actorPlacementMode", "native|dapr", value);
+	if (
+		value === "native" ||
+		value === "dapr" ||
+		value === "rivet" ||
+		value === "celld"
+	) {
+		return value;
+	}
+	throw new MessagingParseError(
+		"actorPlacementMode",
+		"native|dapr|rivet|celld",
+		value,
+	);
 }
 
 export function tenantScopedTopicName(

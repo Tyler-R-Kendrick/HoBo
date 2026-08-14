@@ -268,6 +268,7 @@ export {
 export {
 	appendAssistant,
 	appendProduct,
+	applyBtwPrompt,
 	buildShellTree,
 	createInitialShellState,
 	DEFAULT_SLASH_ITEMS,
@@ -509,6 +510,7 @@ export {
 export {
 	ApprovalDialog,
 	BroadcastFrame,
+	BtwAside,
 	ChatTranscript,
 	CommandRail,
 	InkCard,
@@ -517,6 +519,13 @@ export {
 	StatusStrap,
 	TextPane,
 } from "./tui-components.js";
+export {
+	answerBtw,
+	captureBtwSnapshot,
+	matchBtwInput,
+	type BtwSession,
+	type BtwSnapshot,
+} from "./btw.js";
 export {
 	BROADCAST,
 	BROADCAST_CHROME_ROWS,

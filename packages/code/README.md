@@ -418,6 +418,10 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | env | Optional hermetic shell + durable layout |
 | help | Plain help (or `--dense` glyph idioms) |
 
+Type `btw what's going on` or `/btw` for a temporary side-chat that borrows
+this session's snapshot (station, last turns, gate, agent state). Esc
+dismisses. The main transcript is unchanged and no workspace action runs.
+
 Bare `hobo-code` paints through `buildShellTree` → `ShellChrome` inside a
 `BroadcastFrame` (algorithmic old-TV / film-broadcast bezel). Chat, slash,
 approval, and tasks/status/resources are queryable TUI components

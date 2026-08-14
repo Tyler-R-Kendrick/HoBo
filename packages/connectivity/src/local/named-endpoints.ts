@@ -147,11 +147,21 @@ export async function attachNamedEndpoints(options: {
 		};
 
 		const hostname = getNamedEndpointHost(params);
-		// Local external: https named URL (portless). Private: https overlay form for mesh DNS.
-		const url = getNamedEndpoint({
-			...params,
-			scheme: "https",
-		});
+		// Portless terminates TLS on :443 as https://hostname.
+		// Without it, local external names ride the real loopback port as
+		// http — https://hostname (implied :443) has nothing listening.
+		const usePortlessHttps =
+			endpoint.external && portless.enabled && Boolean(portless.binPath);
+		const backendPort = listenPortOf(endpoint.backendUrl);
+		const url = !endpoint.external
+			? getNamedEndpoint({ ...params, scheme: "https" })
+			: usePortlessHttps
+				? getNamedEndpoint({ ...params, scheme: "https" })
+				: getNamedEndpoint({
+						...params,
+						scheme: "http",
+						...(backendPort !== undefined ? { port: backendPort } : {}),
+					});
 
 		let backendUrl = endpoint.backendUrl;
 		if (endpoint.external && portless.enabled && portless.binPath) {
@@ -286,4 +296,19 @@ export function createNamedPreferringBindingResolver(options: {
 
 export function resourceId(name: string): ResourceId {
 	return parseResourceId(name);
+}
+
+function listenPortOf(backendUrl: string): number | undefined {
+	try {
+		const parsed = new URL(backendUrl);
+		if (parsed.port) {
+			const port = Number(parsed.port);
+			return Number.isInteger(port) && port > 0 ? port : undefined;
+		}
+		if (parsed.protocol === "https:") return 443;
+		if (parsed.protocol === "http:") return 80;
+		return undefined;
+	} catch {
+		return undefined;
+	}
 }

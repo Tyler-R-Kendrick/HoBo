@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	debugViewUrl,
 	parseEvidenceOverlayMessage,
 	renderEvidenceOverlayBridge,
 	renderEvidenceOverlayControls,
@@ -177,6 +178,23 @@ describe("evidence overlay privileged controls", () => {
 	});
 });
 
+describe("evidence overlay debug view URL", () => {
+	it("pins the debug view on the app origin with the idle-animation query", () => {
+		expect(debugViewUrl("http://127.0.0.1:4173/")).toBe(
+			"http://127.0.0.1:4173/?__hobo_debug=1",
+		);
+		expect(debugViewUrl("http://127.0.0.1:4173/app?name=bo")).toBe(
+			"http://127.0.0.1:4173/app?name=bo&__hobo_debug=1",
+		);
+	});
+
+	it("prefers the named endpoint over the loopback listen URL", () => {
+		expect(
+			debugViewUrl("http://web.hello-world.local.hobo.localhost:48211"),
+		).toBe("http://web.hello-world.local.hobo.localhost:48211/?__hobo_debug=1");
+	});
+});
+
 describe("evidence overlay iframe-wrapper fallback", () => {
 	it("keeps the application and privileged controls on separate origins", () => {
 		const html = renderEvidenceOverlayWrapper({
@@ -188,6 +206,9 @@ describe("evidence overlay iframe-wrapper fallback", () => {
 		expect(html).toContain('title="HoBo evidence controls"');
 		expect(html).toContain('aria-label="Open Evidence"');
 		expect(html).toContain('class="bo"');
+		expect(html).toContain("/__hobo/evidence/bo-idle.png");
+		expect(html).toContain("@keyframes hobo-bo-idle");
+		expect(html).toContain("animation:hobo-bo-idle");
 		expect(html).toContain(".launcher[hidden]{display:none}");
 		expect(html).toContain("allow-popups");
 		expect(html).not.toContain("allow-popups-to-escape-sandbox");

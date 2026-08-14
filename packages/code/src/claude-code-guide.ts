@@ -104,8 +104,8 @@ export function claudeCodeGuide(): ClaudeCodeGuide {
 			{
 				claudeCode: "btw (aside / tip)",
 				hoboCode:
-					"guide asides + help notes; dense power-user chrome is opt-in (--dense)",
-				try: "hobo-code guide · hobo-code help",
+					"temporary side-chat that borrows this moment's snapshot; Esc dismisses; main transcript stays put",
+				try: 'btw what\'s going on · /btw',
 				status: "supported",
 			},
 			{

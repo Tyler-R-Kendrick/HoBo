@@ -28,9 +28,9 @@ export function runTemplateCommand(input: {
 		(typeof input.flags.id === "string" && input.flags.id) || rest.join(" ");
 	const action = resolveAction(sub, input.flags);
 	if (action === "list" || (action === "search" && !query)) {
-		const rows = catalog.patterns.map((item) => {
-			const label = item.intent || item.title || "";
-			return label ? `  ${item.id.padEnd(28)} ${label}` : `  ${item.id}`;
+		const rows = catalog.patterns.flatMap((item) => {
+			const label = (item.intent || item.title || "").trim();
+			return label ? [item.id, `  ${label}`] : [item.id];
 		});
 		const ids = catalog.patterns.map((item) => item.id);
 		return {

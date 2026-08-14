@@ -223,8 +223,12 @@ function evidenceWorkerEntry(): {
 	readonly ts: boolean;
 } {
 	const here = dirname(fileURLToPath(import.meta.url));
-	const compiled = join(here, "evidence-sidecar-main.js");
-	if (existsSync(compiled)) return { entry: compiled, ts: false };
+	const sibling = join(here, "evidence-sidecar-main.js");
+	if (existsSync(sibling)) return { entry: sibling, ts: false };
+	// Vitest loads this module from src/; prefer pretest's compiled worker
+	// so occupancy tests do not spawn a tsx compile per sidecar.
+	const pkgDist = join(here, "..", "dist", "evidence-sidecar-main.js");
+	if (existsSync(pkgDist)) return { entry: pkgDist, ts: false };
 	return { entry: join(here, "evidence-sidecar-main.ts"), ts: true };
 }
 

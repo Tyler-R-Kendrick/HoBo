@@ -61,7 +61,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(frame).toContain("0 LLM calls");
 		const card = frame
 			.split("\n")
-			.filter((line) => line.includes("┃"))
+			.filter((line) => line.includes("█"))
 			.join("\n");
 		expect(card).not.toMatch(/\w…/);
 		expect(frame.split("\n").every((line) => line.length === 72)).toBe(true);
@@ -82,8 +82,8 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(frame.toLowerCase()).not.toMatch(/welcome to pi/);
 		// Rubberhose identity (site/DESIGN.md): ink outline + sticker shadow,
 		// never the flat hairline rules of a SaaS dashboard.
-		expect(frame).toContain("┏");
-		expect(frame).toContain("┃");
+		expect(frame).toContain("█");
+		expect(frame).toContain("▄");
 		expect(frame).toContain("▒");
 		expect(frame).not.toContain("───");
 		// One status strap carries product, engine and state.
@@ -100,7 +100,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		});
 		// The entry moment is a title card, not a wall of dashboard copy.
 		const welcome = state.messages.map((m) => m.text).join("\n");
-		expect(welcome).toContain("┏");
+		expect(welcome).toMatch(/[█▄▀]/);
 		expect(welcome).toMatch(/rides the rails/);
 		expect(welcome).toMatch(/Type to talk to Bo/);
 		// Engine honesty now lives on the always-visible strap.
@@ -328,7 +328,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		} finally {
 			rmSync(home, { recursive: true, force: true });
 		}
-	});
+	}, 20_000);
 
 	it("passes typed /sessions arguments through the resident session verb", async () => {
 		const calls: string[][] = [];

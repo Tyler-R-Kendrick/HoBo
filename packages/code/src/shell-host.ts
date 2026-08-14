@@ -12,13 +12,17 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { emitFromAtoms } from "./atom-index.js";
+import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
 import {
 	formatHoboCodeResult,
 	type HoboCodeCliDeps,
 	type HoboCodeCliResult,
 	runHoboCodeCli,
 } from "./cli.js";
-import type { DevBrowserSession } from "./dev-browser.js";
+import {
+	type DevBrowserSession,
+	resolveHoboSpawn,
+} from "./dev-browser.js";
 import { materializeExample } from "./example-catalog.js";
 import type { PendingApproval, ShellHost } from "./interactive-shell.js";
 import { formatUsage, type ShellEngine } from "./shell-engine.js";
@@ -84,9 +88,9 @@ async function runHoboCommand(
 	deps: DefaultShellHostOptions,
 ): Promise<string> {
 	const env = { ...process.env, ...deps.env };
-	const command = env.HOBO_CODE_HOBO_BIN ?? env.HOBO_BIN ?? "hobo";
+	const spawned = resolveHoboSpawn({ env, argv });
 	return new Promise((resolve, reject) => {
-		const child = spawn(command, [...argv], {
+		const child = spawn(spawned.command, [...spawned.args], {
 			cwd: deps.cwd ?? process.cwd(),
 			env,
 			stdio: ["ignore", "pipe", "pipe"],
@@ -97,7 +101,18 @@ async function runHoboCommand(
 		};
 		child.stdout.on("data", append);
 		child.stderr.on("data", append);
-		child.once("error", reject);
+		child.once("error", (error) => {
+			const err = error as NodeJS.ErrnoException;
+			if (err.code === "ENOENT") {
+				reject(
+					new Error(
+						`hobo CLI not found (${err.path ?? spawned.bin}). Set HOBO_CODE_HOBO_BIN or use this repo's packages/hobo/dist/bin/hobo.js`,
+					),
+				);
+				return;
+			}
+			reject(error);
+		});
 		child.once("exit", (code, signal) => {
 			const text = output.trimEnd();
 			if (code === 0) resolve(text || `hobo ${argv.join(" ")} completed`);
@@ -235,6 +250,7 @@ export function createDefaultShellHost(
 				params: { name: action.exampleId.replace(/[^a-z0-9-]+/giu, "-") },
 			});
 			if (emitted.ok) {
+				linkGeneratedAppRuntime(outputDir);
 				lastProjectDir = outputDir;
 				if (action.kind === "create") {
 					return formatSessionCreateReply({
@@ -251,6 +267,7 @@ export function createDefaultShellHost(
 					appName: action.exampleId,
 					intent: action.prompt,
 				});
+				linkGeneratedAppRuntime(copied.outputDir);
 				lastProjectDir = copied.outputDir;
 				if (action.kind === "create") {
 					return formatSessionCreateReply({

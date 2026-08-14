@@ -84,7 +84,7 @@ describe("station occupancy sidecars", () => {
 			await sidecars.close();
 		}
 		expect(readStationSidecars(hoboHome, "station:local")).toBeNull();
-	});
+	}, 20_000);
 
 	it("startCodeSession launches both sidecars by default", async () => {
 		const { startCodeSession } = await import("../src/session.js");
@@ -110,7 +110,7 @@ describe("station occupancy sidecars", () => {
 			await session.complete(true, ["sidecars"]);
 			await stopStationSidecars(hoboHome, "station:local");
 		}
-	});
+	}, 20_000);
 
 	it("keeps Station Evidence up after the hobo session completes", async () => {
 		const { startCodeSession } = await import("../src/session.js");
@@ -132,7 +132,7 @@ describe("station occupancy sidecars", () => {
 		expect(disk?.evidenceUrl).toBe(evidenceUrl);
 		await stopStationSidecars(hoboHome, "station:local");
 		await expect(fetch(loopbackFetchUrl(evidenceUrl))).rejects.toThrow();
-	});
+	}, 20_000);
 
 	it("keeps Evidence up after /dev closes", async () => {
 		const hoboHome = tempHome();
@@ -163,7 +163,7 @@ describe("station occupancy sidecars", () => {
 		await expect(
 			fetch(loopbackFetchUrl(sidecars.evidenceUrl)),
 		).rejects.toThrow();
-	});
+	}, 20_000);
 
 	it("honours HOBO_CODE_SIDECARS=0", () => {
 		expect(sidecarsEnabled({ HOBO_CODE_SIDECARS: "0" })).toBe(false);

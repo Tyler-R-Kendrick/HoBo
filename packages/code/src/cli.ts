@@ -117,15 +117,27 @@ import {
 	shortNamedHost,
 } from "./remote.js";
 import {
+	resolveChatSession,
+	saveChatSession,
+	type ChatSessionRecord,
+} from "./chat-sessions.js";
+import { compactTranscript } from "./compact.js";
+import { createLocalSessionControl } from "./local-session-control.js";
+import {
 	type RemoteSessionServe,
 	runResidentSessionCli,
 } from "./resident-session-cli.js";
+import { residentSessionTmuxName } from "./resident-session-runtime.js";
 import { runReviewCommand } from "./review/review-command.js";
 import { type PromotionGate, promoteIsolation } from "./sandbox-promote.js";
 import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
 import { startCodeSession } from "./session.js";
 import { startLocalDashboard } from "./session-dashboard.js";
+import {
+	occupancyFlowIsActive,
+	persistOccupancyRun,
+} from "./session-resource-control.js";
 import {
 	assembleSessionResources,
 	filterSessionResources,
@@ -172,6 +184,8 @@ export const HOBO_CODE_VERBS = [
 	"dashboard",
 	"session",
 	"attach",
+	"resume",
+	"compact",
 	"mux",
 	"tasks",
 	"guide",
@@ -215,6 +229,44 @@ function panel(title: string, rows: readonly string[]): string {
 }
 
 export type HoboCodeVerb = (typeof HOBO_CODE_VERBS)[number];
+
+function chatPreview(session: ChatSessionRecord): readonly string[] {
+	const lines: string[] = [];
+	const lastOf = (role: "user" | "assistant"): string | undefined => {
+		for (let i = session.messages.length - 1; i >= 0; i -= 1) {
+			const message = session.messages[i];
+			if (message?.role !== role) continue;
+			const oneLine = message.text.replace(/\s+/gu, " ").trim();
+			if (oneLine.length === 0) continue;
+			return oneLine.length > 72 ? `${oneLine.slice(0, 71)}…` : oneLine;
+		}
+		return undefined;
+	};
+	const user = lastOf("user");
+	const assistant = lastOf("assistant");
+	if (user) lines.push(`you · ${user}`);
+	if (assistant) lines.push(`Bo · ${assistant}`);
+	return lines;
+}
+
+async function resolveResidentResume(
+	hoboHome: string,
+	wanted: string,
+): Promise<{ sessionId: string; sessionName: string } | undefined> {
+	const control = createLocalSessionControl({ hoboHome });
+	try {
+		const sessions = await control.list();
+		const hits = sessions.filter((snapshot) => {
+			const id = snapshot.session?.id;
+			return id === wanted || (id !== undefined && id.startsWith(wanted));
+		});
+		const id = hits.length === 1 ? hits[0]?.session?.id : undefined;
+		if (!id) return undefined;
+		return { sessionId: id, sessionName: residentSessionTmuxName(id) };
+	} finally {
+		control.close();
+	}
+}
 
 const VERB_SET = new Set<string>(HOBO_CODE_VERBS);
 
@@ -546,6 +598,8 @@ function helpTextPlain(): string {
 		"  dashboard  Local Aspire SPA + OTel + start/stop (ADR-0111)",
 		"  session    Isolation session + handback",
 		"  attach     Dev-terminal attach (tmux/mosh/Tailscale-shaped)",
+		"  resume     Reopen the last (or given) interactive chat",
+		"  compact    Shrink working context; keep the durable journal",
 		"  tasks      Background task board (Grok Build–shaped)",
 		"",
 		"Craft & cost:",
@@ -578,6 +632,7 @@ function helpTextPlain(): string {
 		"",
 		"First run:",
 		"  hobo-code                         # bare TTY → InteractiveShell (Bo + chat + /)",
+		"  hobo-code resume [session_id]      # reopen the last (or given) chat",
 		"  hobo-code guide | guide --cursor   # Claude Code / Cursor maps",
 		"  hobo-code auth login               # Station identity (local auto)",
 		"  hobo-code auth login --agent       # human-free agent path",
@@ -705,8 +760,8 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"Co-launches the ADR-0111 local SPA (default http://dashboard.code.local.hobo.localhost:8787)",
 		"over the session occupancy projection, plus OTLP ingest :4317/:4318.",
-		"Start/stop/restart and Ready=healthy live here. Fleet is camp-deferred",
-		"without a Camp connection.",
+		"Start/stop/restart launch and kill the Bindle /dev process. Ready means",
+		"the health probe passed. Fleet is local once a Camp exists.",
 		"",
 		"Usage:",
 		"  hobo-code dashboard",
@@ -951,6 +1006,56 @@ const VERB_HELP_PLAIN: Record<
 		"  hobo-code session   # open work on the box, then re-attach later",
 		"",
 		"See also: hobo-code session · hobo-code status · hobo-code auth",
+	],
+	resume: [
+		"hobo-code resume — reopen a previous interactive chat",
+		"",
+		"Usage:",
+		"  hobo-code resume",
+		"  hobo-code resume <session_id>",
+		"  hobo-code resume --json",
+		"",
+		"  No id resumes the latest chat for this working directory",
+		"  (then the latest chat overall). A prefix is enough when unique.",
+		"  On a TTY the InteractiveShell reopens with that transcript.",
+		"  If the id matches a resident tmux session instead, attach to it.",
+		"",
+		"Flags:",
+		"  --json              Session record + resume action",
+		"  --home <path>       Override HOBO_HOME",
+		"  --cwd <path>        Prefer chats from this project root",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code resume",
+		"  hobo-code resume chat-abc123",
+		"  hobo-code resume --json",
+		"",
+		"See also: hobo-code attach · hobo-code session · hobo-code help",
+	],
+	compact: [
+		"hobo-code compact — shrink working context, keep the journal",
+		"",
+		"Usage:",
+		"  hobo-code compact",
+		"  hobo-code compact <session_id> [focus…]",
+		"  hobo-code compact --json",
+		"",
+		"  Deterministic extract (no LLM). Cuts on user-turn boundaries.",
+		"  The durable journal is never rewritten; only the working pane shrinks.",
+		"  Optional focus words pin what the briefing must keep.",
+		"",
+		"Flags:",
+		"  --json              Compact plan + session record",
+		"  --home <path>       Override HOBO_HOME",
+		"  --cwd <path>        Prefer chats from this project root",
+		"  --help, -h          Show this help",
+		"",
+		"Examples:",
+		"  hobo-code compact",
+		"  hobo-code compact chat-abc keep the named URL",
+		"",
+		"See also: hobo-code resume · hobo-code session",
 	],
 	scaffold: [
 		"hobo-code scaffold — copy a shipped repo example (hello-world, barebones, …)",
@@ -1351,6 +1456,8 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 			dashboard: "db",
 			session: "se",
 			attach: "at",
+			resume: "re",
+			compact: "cp",
 			tasks: "tk",
 			guide: "gd",
 			scaffold: "sc",
@@ -1403,6 +1510,7 @@ export function applyDenseChrome(message: string): string {
 		"▣ pl": "▣ pl",
 		"◎ re": "◎ re",
 		"◎ attach": "◎ at",
+		"◎ resume": "◎ re",
 		"▣ tasks": "▣ tk",
 		"▣ guide": "▣ gd",
 		"◈ b": "◈ b",
@@ -1949,6 +2057,7 @@ export async function runHoboCodeCli(
 		const inventory = await assembleSessionResources({
 			hoboHome,
 			env,
+			projectDir,
 		});
 		const kindRaw = (
 			typeof flags.kind === "string" ? flags.kind : args[0]
@@ -1979,6 +2088,7 @@ export async function runHoboCodeCli(
 		const dash = await startLocalDashboard({
 			hoboHome,
 			env,
+			projectRoot: projectDir,
 			...(Number.isInteger(port) ? { port } : {}),
 		});
 		const once = flags.once === true;
@@ -2526,6 +2636,126 @@ export async function runHoboCodeCli(
 		});
 	}
 
+	if (verb === "resume") {
+		const wanted = typeof args[0] === "string" ? args[0].trim() : "";
+		const chat = resolveChatSession(hoboHome, {
+			cwd: projectDir,
+			...(wanted.length > 0 ? { id: wanted } : {}),
+		});
+		if (chat) {
+			const text = panel("◎ resume", [
+				chat.id,
+				`cwd · ${chat.cwd}`,
+				`${chat.messages.length} turn(s)`,
+				...chatPreview(chat),
+				"next · interactive shell",
+			]);
+			return ok("HOBO_CODE_RESUME", text, {
+				session: chat,
+				text,
+				terminalAction: {
+					kind: "resume-chat",
+					sessionId: chat.id,
+					messages: chat.workingMessages ?? chat.messages,
+					...(chat.workingMessages !== undefined
+						? { journal: chat.messages }
+						: {}),
+					cwd: chat.cwd,
+					hoboHome,
+				},
+			});
+		}
+		if (wanted.length > 0) {
+			const resident = await resolveResidentResume(hoboHome, wanted);
+			if (resident) {
+				const text = panel("◎ resume", [
+					resident.sessionId,
+					"resident tmux session",
+					`next · attach ${resident.sessionName}`,
+				]);
+				return ok("HOBO_CODE_RESUME", text, {
+					sessionId: resident.sessionId,
+					text,
+					terminalAction: {
+						kind: "attach-session",
+						sessionName: resident.sessionName,
+					},
+				});
+			}
+			return fail(
+				"HOBO_CODE_RESUME_NOT_FOUND",
+				panel("✕ resume", [
+					`no session · ${wanted}`,
+					"try · hobo-code resume",
+					"or · hobo-code session list",
+				]),
+				["hobo-code resume", "hobo-code session list"],
+				{ wanted },
+			);
+		}
+		return fail(
+			"HOBO_CODE_RESUME_NONE",
+			panel("✕ resume", [
+				"no chat session to resume",
+				"start · hobo-code",
+				"or · hobo-code session list",
+			]),
+			["hobo-code", "hobo-code session list"],
+		);
+	}
+
+	if (verb === "compact") {
+		const wanted = typeof args[0] === "string" ? args[0].trim() : "";
+		const looksLikeId = /^chat-[0-9a-f]+/iu.test(wanted);
+		const focus = (looksLikeId ? args.slice(1) : args).join(" ").trim();
+		const chat = resolveChatSession(hoboHome, {
+			cwd: projectDir,
+			...(looksLikeId ? { id: wanted } : {}),
+		});
+		if (!chat) {
+			return fail(
+				"HOBO_CODE_COMPACT_NONE",
+				panel("✕ compact", [
+					"no chat session to compact",
+					"start · hobo-code",
+					"or · hobo-code resume",
+				]),
+				["hobo-code", "hobo-code resume"],
+			);
+		}
+		const plan = compactTranscript({
+			messages: chat.messages,
+			...(focus ? { focus } : {}),
+			...(chat.stationLabel ? { stationLabel: chat.stationLabel } : {}),
+			...(chat.envLabel ? { envLabel: chat.envLabel } : {}),
+			sessionId: chat.id,
+		});
+		const saved = saveChatSession(hoboHome, {
+			id: chat.id,
+			cwd: chat.cwd,
+			messages: chat.messages,
+			...(plan.droppedCount > 0
+				? { workingMessages: plan.working }
+				: {}),
+			...(chat.stationLabel !== undefined
+				? { stationLabel: chat.stationLabel }
+				: {}),
+			...(chat.envLabel !== undefined ? { envLabel: chat.envLabel } : {}),
+			...(chat.modelLabel !== undefined ? { modelLabel: chat.modelLabel } : {}),
+		});
+		const text = panel("◎ compact", plan.briefing.split("\n"));
+		return ok("HOBO_CODE_COMPACT", text, {
+			session: saved,
+			plan: {
+				droppedCount: plan.droppedCount,
+				tokensBefore: plan.tokensBefore,
+				tokensAfter: plan.tokensAfter,
+				keptFromIndex: plan.keptFromIndex,
+			},
+			text,
+		});
+	}
+
 	if (verb === "env") {
 		// Nix-terminal parity: inspect hermetic shell + durable layout without activating Nix.
 		const summary = hermeticEnvSummary(hermetic);
@@ -2595,6 +2825,22 @@ export async function runHoboCodeCli(
 					["hobo-code auth login"],
 				);
 			}
+			if (
+				!occupancyFlowIsActive(
+					hoboHome,
+					station.stationId,
+					station.environment,
+				)
+			) {
+				return fail(
+					"HOBO_CODE_DEV_HALTED",
+					panel("✕ dev", [
+						"Yard/Camp flow is halted",
+						"start yard:local on the dashboard to resume traffic",
+					]),
+					["open the Aspire dashboard and start yard:local"],
+				);
+			}
 			session = await (deps.startDevSession ?? startDevBrowserSession)({
 				projectDir,
 				hoboHome,
@@ -2636,6 +2882,8 @@ export async function runHoboCodeCli(
 				process.once("SIGTERM", () => stop(143));
 			}
 			try {
+				const bindleName =
+					resolveRunnableProject(projectDir)?.split(/[/\\]/u).at(-1) ?? "app";
 				recordDevDeployment({
 					hoboHome,
 					scope: {
@@ -2645,8 +2893,8 @@ export async function runHoboCodeCli(
 						...(station.project ? { project: station.project } : {}),
 						...(station.branch ? { branch: station.branch } : {}),
 					},
-					bindleName:
-						resolveRunnableProject(projectDir)?.split(/[/\\]/u).at(-1) ?? "app",
+					bindleName,
+					projectDir,
 					appUrl: deployed.appUrl,
 					debugUrl: deployed.debugUrl,
 					controlsUrl: deployed.controlsUrl,
@@ -2654,6 +2902,15 @@ export async function runHoboCodeCli(
 					...(deployed.namedUrl !== undefined
 						? { namedUrl: deployed.namedUrl }
 						: {}),
+				});
+				persistOccupancyRun({
+					hoboHome,
+					stationId: station.stationId,
+					environment: station.environment,
+					projectDir,
+					bindleName,
+					...(deployed.pid !== undefined ? { pid: deployed.pid } : {}),
+					sessionId: deployed.sessionId,
 				});
 			} catch {
 				// Last-seen persist must never abort a live serve.

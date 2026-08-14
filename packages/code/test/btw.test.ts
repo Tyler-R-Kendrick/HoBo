@@ -1,3 +1,6 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +10,7 @@ import {
 	matchBtwInput,
 } from "../src/btw.js";
 import {
+	appendAssistant,
 	buildShellTree,
 	createInitialShellState,
 	DEFAULT_SLASH_ITEMS,
@@ -15,6 +19,12 @@ import {
 	slashItemForInput,
 } from "../src/interactive-shell.js";
 import { findDescendantById, query } from "../src/tui-tree.js";
+
+const overlayFixture = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"visual",
+	"shell-btw-overlay.tui.txt",
+);
 
 function plain(frame: string): string {
 	return frame.replace(
@@ -85,8 +95,9 @@ describe("btw side-chat", () => {
 		const tree = buildShellTree(state);
 		expect(findDescendantById(tree, "btw-aside")?.id).toBe("btw-aside");
 		expect(query(tree, ".btw-aside")).toBeDefined();
+		expect(findDescendantById(tree, "transcript")?.id).toBe("transcript");
 		expect(plain(renderShellFrame(state))).toMatch(/btw/);
-		expect(plain(renderShellFrame(state))).toMatch(/snapshot|Esc/i);
+		expect(plain(renderShellFrame(state))).toMatch(/live|Esc/i);
 
 		state = reduceShellKey(state, "\u001b").state;
 		expect(state.btw).toBeNull();
@@ -94,6 +105,81 @@ describe("btw side-chat", () => {
 		expect(
 			findDescendantById(buildShellTree(state), "btw-aside"),
 		).toBeUndefined();
+	});
+
+	it("answers from live parent updates after the aside opens", () => {
+		let state = createInitialShellState({
+			width: 80,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		for (const key of "btw what's going on") {
+			state = reduceShellKey(state, key).state;
+		}
+		state = reduceShellKey(state, "\r").state;
+		const originCount = state.btw?.originMessageCount ?? 0;
+		expect(originCount).toBe(state.messages.length);
+
+		state = appendAssistant(state, "Created hello-world bindle.");
+		expect(
+			state.messages.some((message) => /hello-world/u.test(message.text)),
+		).toBe(true);
+		expect(state.btw).not.toBeNull();
+		expect(state.btw?.snapshot.lastAssistant).toMatch(/hello-world/);
+		expect(state.btw?.snapshot.messageCount).toBeGreaterThan(originCount);
+
+		for (const key of "what did you just do") {
+			state = reduceShellKey(state, key).state;
+		}
+		state = reduceShellKey(state, "\r").state;
+		const lastAside = [...(state.btw?.turns ?? [])]
+			.reverse()
+			.find((turn) => turn.role === "assistant");
+		expect(lastAside?.text).toMatch(/hello-world/);
+		expect(
+			state.messages.some((message) => message.text.includes("hello-world")),
+		).toBe(true);
+	});
+
+	it("paints btw as an overlay so the parent thread stays visible", () => {
+		let state = createInitialShellState({
+			width: 80,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = {
+			...state,
+			messages: [
+				{
+					role: "user",
+					text: "make a hello world app",
+					at: 1,
+				},
+				{
+					role: "assistant",
+					text: "Created hello-world.",
+					at: 2,
+				},
+			],
+		};
+		for (const key of "btw what's going on") {
+			state = reduceShellKey(state, key).state;
+		}
+		state = reduceShellKey(state, "\r").state;
+		const tree = buildShellTree(state);
+		expect(findDescendantById(tree, "transcript")?.id).toBe("transcript");
+		expect(findDescendantById(tree, "btw-aside")?.id).toBe("btw-aside");
+		expect(query(tree, ".overlay")).toBeDefined();
+		const frame = plain(renderShellFrame(state));
+		mkdirSync(dirname(overlayFixture), { recursive: true });
+		writeFileSync(overlayFixture, `${frame}\n`, "utf8");
+		expect(frame).toMatch(/hello world/i);
+		expect(frame).toMatch(/btw/);
+		expect(frame).toMatch(/live/i);
+		const overlay = findDescendantById(tree, "btw-aside");
+		expect(overlay?.classList).toContain("overlay");
 	});
 
 	it("exposes /btw on the slash palette", () => {

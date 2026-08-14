@@ -11,6 +11,18 @@ import { dirname, join } from "node:path";
 import { isHoboHierarchicalName } from "@hobo/core";
 
 import {
+	type InspectedBindle,
+	inspectBindleProject,
+	type LocalBindleCapability,
+	localBindleCapabilities,
+} from "./bindle-inspect.js";
+import {
+	occupancyNamedOrigin,
+	occupancySidecarEndpoints,
+	preferNamedEndpoint,
+	retargetUrl,
+} from "./occupancy-endpoints.js";
+import {
 	type AuthedStationView,
 	describeAuthedStationSession,
 } from "./station-session.js";
@@ -20,6 +32,25 @@ export const SESSION_RESOURCES_SCHEMA =
 	"hobo.code.session-resources/v1" as const;
 
 export type ResourceKind = "station" | "junction" | "yard" | "camp" | "bindle";
+
+export type PrimitiveKind = "station" | "yard" | "camp";
+
+export type ManagedResourceKind =
+	| "sidecar"
+	| "rail"
+	| "flow"
+	| "named-endpoint"
+	| "bindle"
+	| "bindle-resource";
+
+export interface OccupancyManagedResource {
+	readonly id: string;
+	readonly name: string;
+	readonly kind: ManagedResourceKind;
+	readonly ownerKind: PrimitiveKind;
+	readonly ownerId: string;
+	readonly controllable: boolean;
+}
 
 export type ResourceStatus =
 	| "declared"
@@ -83,6 +114,27 @@ export interface MissingLayer {
 	readonly reason: string;
 }
 
+export interface OccupancyCampConfig {
+	readonly name: string;
+	readonly envType: string;
+	readonly require: readonly string[];
+	readonly labels: Readonly<Record<string, string>>;
+	readonly runtimeRequirements: readonly string[];
+}
+
+export interface OccupancyBindleManifest {
+	readonly name: string;
+	readonly resources: readonly {
+		readonly kind: string;
+		readonly name: string;
+		readonly dependsOn: readonly string[];
+		readonly allow: readonly string[];
+	}[];
+	readonly envKeys: readonly string[];
+	readonly requirements: readonly string[];
+	readonly projectDir?: string;
+}
+
 export interface SessionResourceInventory {
 	readonly ok: boolean;
 	readonly code: string;
@@ -97,6 +149,10 @@ export interface SessionResourceInventory {
 	readonly bindles: readonly TopologyNode[];
 	readonly endpoints: readonly EndpointRow[];
 	readonly missing: readonly MissingLayer[];
+	readonly capabilities: readonly LocalBindleCapability[];
+	readonly managed: readonly OccupancyManagedResource[];
+	readonly camp?: OccupancyCampConfig;
+	readonly bindleManifest?: OccupancyBindleManifest;
 }
 
 export interface RecordSessionResourcesInput {
@@ -114,6 +170,7 @@ export interface AssembleSessionResourcesOptions {
 	readonly topology?: readonly TopologyNode[];
 	readonly liveEndpoints?: readonly EndpointRecord[];
 	readonly grantedStationIds?: readonly string[];
+	readonly projectDir?: string;
 	readonly lookupHost?: (hostname: string) => readonly string[];
 	readonly now?: string;
 }
@@ -129,8 +186,8 @@ const TOPOLOGY_KINDS: readonly ResourceKind[] = [
 const REMEDIATION: Record<ResourceKind, string> = {
 	station: "no occupied Station — run: hobo-code auth login",
 	junction: "no junction in this occupancy — none federated",
-	yard: "no yard history — run hobo-code dev or hobo up",
-	camp: "no camp history — run hobo-code dev or hobo up",
+	yard: "no yard history — local Station should auto-seed yard:local",
+	camp: "no camp history — run hobo-code dev so the Bindle can fulfill a Camp",
 	bindle: "no bindle in this occupancy — run hobo-code dev",
 };
 
@@ -153,7 +210,7 @@ function safeLabel(value: string): string {
 	return value.replace(/[^a-zA-Z0-9._-]+/g, "_");
 }
 
-function sessionSnapshotPath(
+function sessionDir(
 	hoboHome: string,
 	stationId: string,
 	environment: string,
@@ -165,8 +222,15 @@ function sessionSnapshotPath(
 		"sessions",
 		safeLabel(stationId),
 		safeLabel(environment),
-		"endpoints.json",
 	);
+}
+
+function sessionSnapshotPath(
+	hoboHome: string,
+	stationId: string,
+	environment: string,
+): string {
+	return join(sessionDir(hoboHome, stationId, environment), "endpoints.json");
 }
 
 function emptyScope(view: AuthedStationView): SessionScope {
@@ -374,6 +438,178 @@ export function recordSessionResources(
 	writeFileSync(path, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
 }
 
+function readJsonFile<T>(path: string): T | undefined {
+	if (!existsSync(path)) return undefined;
+	try {
+		return JSON.parse(readFileSync(path, "utf8")) as T;
+	} catch {
+		return undefined;
+	}
+}
+
+function writeJsonFile(path: string, value: unknown): void {
+	mkdirSync(dirname(path), { recursive: true });
+	writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function sidecarSnapshotPath(hoboHome: string, stationId: string): string {
+	return join(
+		hoboHome,
+		"stations",
+		stationId.replace(/[^a-zA-Z0-9._-]+/g, "_"),
+		"sidecars.json",
+	);
+}
+
+function loadSidecarSnapshot(
+	hoboHome: string,
+	stationId: string,
+): {
+	readonly dashboardUrl?: string;
+	readonly evidenceUrl?: string;
+	readonly evidenceReportUrl?: string;
+	readonly evidenceControlsUrl?: string;
+	readonly otlpHttpUrl?: string;
+} {
+	const path = sidecarSnapshotPath(hoboHome, stationId);
+	if (!existsSync(path)) return {};
+	try {
+		const parsed = JSON.parse(readFileSync(path, "utf8")) as Record<
+			string,
+			unknown
+		>;
+		if (parsed.schema !== "hobo.code.station-sidecars/v1") return {};
+		const text = (key: string): string | undefined =>
+			typeof parsed[key] === "string" && parsed[key].length > 0
+				? (parsed[key] as string)
+				: undefined;
+		const dashboardUrl = text("dashboardUrl");
+		const evidenceUrl = text("evidenceUrl");
+		const evidenceReportUrl = text("evidenceReportUrl");
+		const evidenceControlsUrl = text("evidenceControlsUrl");
+		const otlpHttpUrl = text("otlpHttpUrl");
+		return {
+			...(dashboardUrl !== undefined ? { dashboardUrl } : {}),
+			...(evidenceUrl !== undefined ? { evidenceUrl } : {}),
+			...(evidenceReportUrl !== undefined ? { evidenceReportUrl } : {}),
+			...(evidenceControlsUrl !== undefined ? { evidenceControlsUrl } : {}),
+			...(otlpHttpUrl !== undefined ? { otlpHttpUrl } : {}),
+		};
+	} catch {
+		return {};
+	}
+}
+
+function mergeEndpointRecords(
+	rows: readonly EndpointRecord[],
+): EndpointRecord[] {
+	const byName = new Map<string, EndpointRecord>();
+	for (const row of rows) byName.set(row.resourceName, row);
+	return [...byName.values()];
+}
+
+function localYardNode(environment: string): TopologyNode {
+	return {
+		kind: "yard",
+		id: "yard:local",
+		name: "local",
+		environment,
+		status: "serving",
+		fidelity: "simulated",
+		scopeLabel: "local",
+	};
+}
+
+function localOccupancySeed(
+	view: AuthedStationView,
+	projectDir: string | undefined,
+	present: {
+		readonly hasYard: boolean;
+		readonly hasCamp: boolean;
+		readonly hasBindle: boolean;
+	},
+): {
+	readonly nodes: readonly TopologyNode[];
+	readonly camp?: OccupancyCampConfig;
+	readonly bindleManifest?: OccupancyBindleManifest;
+} {
+	if (view.mode !== "local") {
+		return { nodes: [] };
+	}
+	const nodes: TopologyNode[] = present.hasYard
+		? []
+		: [localYardNode(view.environment)];
+	const inspected =
+		projectDir !== undefined ? inspectBindleProject(projectDir) : undefined;
+	if (!inspected) {
+		return { nodes };
+	}
+	const camp = campConfigFor(inspected, view.environment);
+	if (!present.hasCamp) {
+		nodes.push({
+			kind: "camp",
+			id: "camp:local",
+			name: "local",
+			environment: view.environment,
+			parentId: "yard:local",
+			status: "declared",
+			fidelity: "simulated",
+			scopeLabel: "local",
+		});
+	}
+	if (!present.hasBindle) {
+		nodes.push({
+			kind: "bindle",
+			id: `bindle:${inspected.name}`,
+			name: inspected.name,
+			environment: view.environment,
+			parentId: "camp:local",
+			status: "declared",
+			fidelity: "simulated",
+			scopeLabel: "local",
+		});
+	}
+	return {
+		nodes,
+		camp,
+		bindleManifest: bindleManifestFor(inspected, projectDir),
+	};
+}
+
+function campConfigFor(
+	inspected: InspectedBindle,
+	environment: string,
+): OccupancyCampConfig {
+	return {
+		name: "local",
+		envType:
+			environment === "local-dev" || environment === "local"
+				? "development"
+				: environment,
+		require: inspected.requirements,
+		labels: { bindle: inspected.name },
+		runtimeRequirements: ["local"],
+	};
+}
+
+function bindleManifestFor(
+	inspected: InspectedBindle,
+	projectDir?: string,
+): OccupancyBindleManifest {
+	return {
+		name: inspected.name,
+		resources: inspected.resources.map((row) => ({
+			kind: row.kind,
+			name: row.name,
+			dependsOn: row.dependsOn,
+			allow: row.allow,
+		})),
+		envKeys: inspected.envKeys,
+		requirements: inspected.requirements,
+		...(projectDir !== undefined ? { projectDir } : {}),
+	};
+}
+
 function occupiedStation(view: AuthedStationView): TopologyNode {
 	return {
 		kind: "station",
@@ -445,8 +681,15 @@ function toEndpointRow(
 		options.lookupHost,
 	);
 	const listenPort = listenPortOf(record.backendUrl);
+	const namedPreferred =
+		record.namedUrl ??
+		preferNamedEndpoint(record.backendUrl, record.resourceName, {
+			environment: options.environment,
+		});
 	const preferred =
-		record.mode === "local" ? record.backendUrl : record.preferredUrl;
+		record.mode === "local"
+			? namedPreferred
+			: (record.namedUrl ?? record.preferredUrl);
 	return {
 		...record,
 		preferredUrl: preferred,
@@ -490,6 +733,8 @@ export function assembleSessionResources(
 			camps: [],
 			bindles: [],
 			endpoints: [],
+			capabilities: [],
+			managed: [],
 			missing: TOPOLOGY_KINDS.map((kind) => ({
 				kind,
 				reason: REMEDIATION[kind],
@@ -510,9 +755,15 @@ export function assembleSessionResources(
 	);
 
 	const station = occupiedStation(view);
+	const existing = mergeNodes([...snapshotNodes, ...injected]);
+	const seeded = localOccupancySeed(view, options.projectDir, {
+		hasYard: existing.some((row) => row.kind === "yard"),
+		hasCamp: existing.some((row) => row.kind === "camp"),
+		hasBindle: existing.some((row) => row.kind === "bindle"),
+	});
 	const peers: TopologyNode[] = [];
 	const kept: TopologyNode[] = [];
-	for (const row of mergeNodes([...snapshotNodes, ...injected])) {
+	for (const row of mergeNodes([...seeded.nodes, ...existing])) {
 		if (row.kind === "station") {
 			if (row.id === view.stationId) continue;
 			if (!granted.has(row.id)) continue;
@@ -526,9 +777,15 @@ export function assembleSessionResources(
 	const byKind = (kind: ResourceKind): TopologyNode[] =>
 		nodes.filter((row) => row.kind === kind);
 
-	const liveKeys = new Set(
-		(options.liveEndpoints ?? []).map((row) => row.resourceName),
-	);
+	const occupancyLive = mergeEndpointRecords([
+		...occupancySidecarEndpoints(
+			loadSidecarSnapshot(options.hoboHome, view.stationId),
+		),
+		...(options.liveEndpoints ?? []),
+	]);
+	const liveKeys = new Set(occupancyLive.map((row) => row.resourceName));
+	if (liveKeys.has("evidence")) liveKeys.add("report");
+	if (liveKeys.has("controls")) liveKeys.add("controls");
 	const endpointRows: EndpointRow[] = [];
 	for (const record of snapshot?.endpoints ?? []) {
 		if (liveKeys.has(record.resourceName)) continue;
@@ -540,7 +797,7 @@ export function assembleSessionResources(
 			}),
 		);
 	}
-	for (const record of options.liveEndpoints ?? []) {
+	for (const record of occupancyLive) {
 		endpointRows.push(
 			toEndpointRow(record, {
 				environment: view.environment,
@@ -555,6 +812,24 @@ export function assembleSessionResources(
 		(kind) => kind !== "station" && !present.has(kind),
 	).map((kind) => ({ kind, reason: REMEDIATION[kind] }));
 
+	const camp =
+		readJsonFile<OccupancyCampConfig>(
+			join(
+				sessionDir(options.hoboHome, view.stationId, view.environment),
+				"camp.json",
+			),
+		) ?? seeded.camp;
+	const bindleManifest =
+		readJsonFile<OccupancyBindleManifest>(
+			join(
+				sessionDir(options.hoboHome, view.stationId, view.environment),
+				"bindle.json",
+			),
+		) ?? seeded.bindleManifest;
+
+	const yards = byKind("yard");
+	const camps = byKind("camp");
+	const bindles = byKind("bindle");
 	return {
 		ok: true,
 		code: "HOBO_OK",
@@ -564,16 +839,114 @@ export function assembleSessionResources(
 		station,
 		peers,
 		junctions: byKind("junction"),
-		yards: byKind("yard"),
-		camps: byKind("camp"),
-		bindles: byKind("bindle"),
+		yards,
+		camps,
+		bindles,
 		endpoints: endpointRows,
 		missing,
+		capabilities: view.mode === "local" ? localBindleCapabilities() : [],
+		managed: projectManagedResources({
+			station,
+			yards,
+			camps,
+			bindles,
+			endpoints: endpointRows,
+			...(bindleManifest !== undefined ? { bindleManifest } : {}),
+			...(view.railHash !== undefined ? { railHash: view.railHash } : {}),
+		}),
+		...(camp ? { camp } : {}),
+		...(bindleManifest ? { bindleManifest } : {}),
 	};
+}
+
+const STATION_SIDECARS = new Set(["dashboard", "evidence", "controls", "otlp"]);
+
+function projectManagedResources(input: {
+	readonly station?: TopologyNode;
+	readonly yards: readonly TopologyNode[];
+	readonly camps: readonly TopologyNode[];
+	readonly bindles: readonly TopologyNode[];
+	readonly endpoints: readonly EndpointRow[];
+	readonly bindleManifest?: OccupancyBindleManifest;
+	readonly railHash?: string;
+}): OccupancyManagedResource[] {
+	const rows: OccupancyManagedResource[] = [];
+	if (input.station) {
+		for (const endpoint of input.endpoints) {
+			if (!STATION_SIDECARS.has(endpoint.resourceName)) continue;
+			rows.push({
+				id: endpoint.resourceName,
+				name: endpoint.resourceName,
+				kind: "sidecar",
+				ownerKind: "station",
+				ownerId: input.station.id,
+				controllable: false,
+			});
+		}
+		if (input.railHash) {
+			rows.push({
+				id: `rail:${input.railHash}`,
+				name: "rail",
+				kind: "rail",
+				ownerKind: "station",
+				ownerId: input.station.id,
+				controllable: false,
+			});
+		}
+	}
+	for (const yard of input.yards) {
+		rows.push({
+			id: `${yard.id}:flow`,
+			name: "flow",
+			kind: "flow",
+			ownerKind: "yard",
+			ownerId: yard.id,
+			controllable: true,
+		});
+		rows.push({
+			id: `${yard.id}:named-endpoints`,
+			name: "named-endpoints",
+			kind: "named-endpoint",
+			ownerKind: "yard",
+			ownerId: yard.id,
+			controllable: true,
+		});
+	}
+	const campId = input.camps[0]?.id;
+	if (campId) {
+		for (const bindle of input.bindles) {
+			rows.push({
+				id: bindle.id,
+				name: bindle.name,
+				kind: "bindle",
+				ownerKind: "camp",
+				ownerId: campId,
+				controllable: true,
+			});
+		}
+		const seen = new Set(input.bindles.map((row) => row.id));
+		for (const resource of input.bindleManifest?.resources ?? []) {
+			if (seen.has(resource.name)) continue;
+			seen.add(resource.name);
+			rows.push({
+				id: resource.name,
+				name: resource.name,
+				kind: "bindle-resource",
+				ownerKind: "camp",
+				ownerId: campId,
+				controllable: true,
+			});
+		}
+	}
+	return rows;
 }
 
 function formatNode(row: TopologyNode): string {
 	return ` ${row.kind.padEnd(9)} ${row.id}  ${row.environment}  ${row.status}  ${row.fidelity}`;
+}
+
+function formatManaged(row: OccupancyManagedResource): string {
+	return `   ${row.kind.padEnd(16)} ${row.id}${row.controllable ? "" : "  occupancy"}`;
 }
 
 export function filterSessionResources(
@@ -595,7 +968,13 @@ export function filterSessionResources(
 		camps: kind === "camp" ? inventory.camps : [],
 		bindles: kind === "bindle" ? inventory.bindles : [],
 		endpoints: kind === "bindle" ? inventory.endpoints : [],
+		capabilities: inventory.capabilities,
+		managed: inventory.managed.filter((row) => row.ownerKind === kind),
 		missing: inventory.missing.filter((row) => row.kind === kind),
+		...(inventory.camp ? { camp: inventory.camp } : {}),
+		...(inventory.bindleManifest
+			? { bindleManifest: inventory.bindleManifest }
+			: {}),
 	};
 }
 
@@ -610,12 +989,43 @@ export function formatSessionResources(
 		` env       ${inventory.scope.environment}`,
 		` tenant    ${inventory.scope.tenant}`,
 	];
-	if (inventory.station) lines.push(formatNode(inventory.station));
+	if (inventory.station) {
+		lines.push(formatNode(inventory.station));
+		for (const child of inventory.managed.filter(
+			(row) => row.ownerId === inventory.station?.id,
+		)) {
+			lines.push(formatManaged(child));
+		}
+	}
+	if (inventory.camp) {
+		lines.push(
+			` camp      ${inventory.camp.name}  require:${inventory.camp.require.join(",") || "—"}`,
+		);
+	}
 	for (const row of inventory.peers) lines.push(formatNode(row));
 	for (const row of inventory.junctions) lines.push(formatNode(row));
-	for (const row of inventory.yards) lines.push(formatNode(row));
-	for (const row of inventory.camps) lines.push(formatNode(row));
-	for (const row of inventory.bindles) lines.push(formatNode(row));
+	for (const row of inventory.yards) {
+		lines.push(formatNode(row));
+		for (const child of inventory.managed.filter(
+			(item) => item.ownerId === row.id,
+		)) {
+			lines.push(formatManaged(child));
+		}
+	}
+	const shown = new Set(
+		inventory.managed.filter((row) => row.kind === "bindle").map((row) => row.id),
+	);
+	for (const row of inventory.camps) {
+		lines.push(formatNode(row));
+		for (const child of inventory.managed.filter(
+			(item) => item.ownerId === row.id,
+		)) {
+			lines.push(formatManaged(child));
+		}
+	}
+	for (const row of inventory.bindles) {
+		if (!shown.has(row.id)) lines.push(formatNode(row));
+	}
 	if (inventory.missing.length > 0) {
 		lines.push(" missing");
 		for (const row of inventory.missing) {
@@ -625,17 +1035,34 @@ export function formatSessionResources(
 	if (inventory.endpoints.length > 0) {
 		lines.push(" endpoints");
 		for (const row of inventory.endpoints) {
-			const resolved =
-				row.resolvedAddresses.length > 0
-					? row.resolvedAddresses.join(",")
-					: "unresolved";
 			const reason = row.unresolvedReason ? `  ${row.unresolvedReason}` : "";
 			lines.push(
-				`  ${row.resourceName}  ${row.preferredUrl || row.namedUrl || row.backendUrl}  ${resolved}  ${row.fidelity}  ${row.freshness}${reason}`,
+				`  ${row.resourceName}  ${row.preferredUrl || row.namedUrl || preferNamedEndpoint(row.backendUrl, row.resourceName)}  ${row.fidelity}  ${row.freshness}${reason}`,
+			);
+		}
+	}
+	if (inventory.capabilities.length > 0) {
+		lines.push(" capabilities");
+		for (const row of inventory.capabilities) {
+			lines.push(
+				`  ${row.kind.padEnd(16)} ${row.available ? "available" : "unavailable"}  ${row.fidelity}  ${row.note}`,
 			);
 		}
 	}
 	return lines.join("\n");
+}
+
+function retargetOrName(
+	source: string,
+	namedOrigin: string,
+	resource: string,
+	scope: { readonly environment?: string; readonly app?: string },
+): string {
+	try {
+		return retargetUrl(source, namedOrigin);
+	} catch {
+		return preferNamedEndpoint(source, resource, scope);
+	}
 }
 
 /** Persist the /dev serve graph so the board survives a shell restart. */
@@ -648,58 +1075,111 @@ export function recordDevDeployment(input: {
 	readonly controlsUrl: string;
 	readonly reportUrl: string;
 	readonly namedUrl?: string;
+	readonly projectDir?: string;
 }): void {
-	const namedHost = hostnameOf(input.namedUrl);
-	const named = input.namedUrl;
+	const scope = { environment: input.scope.environment };
+	const inspected =
+		input.projectDir !== undefined
+			? inspectBindleProject(input.projectDir, input.bindleName)
+			: undefined;
+	const bindleName = inspected?.name ?? input.bindleName;
+	const named =
+		input.namedUrl ??
+		preferNamedEndpoint(input.appUrl, "web", {
+			...scope,
+			app: bindleName,
+		});
+	const namedDebug = retargetOrName(input.debugUrl, named, "web", {
+		...scope,
+		app: bindleName,
+	});
+	const namedControls = preferNamedEndpoint(
+		input.controlsUrl,
+		"evidence",
+		scope,
+	);
+	const namedReport = preferNamedEndpoint(input.reportUrl, "evidence", scope);
+	const hostname = hostnameOf(named);
 	const endpoints: EndpointRecord[] = [
 		{
 			resourceName: "web",
 			kind: "http",
 			backendUrl: input.appUrl,
-			...(named ? { namedUrl: named } : {}),
-			...(namedHost ? { hostname: namedHost } : {}),
+			namedUrl: named,
+			...(hostname !== undefined ? { hostname } : {}),
 			mode: "local",
-			preferredUrl: input.appUrl,
+			preferredUrl: named,
 			fidelity: "simulated",
 		},
 		{
 			resourceName: "debug",
 			kind: "http",
 			backendUrl: input.debugUrl,
+			namedUrl: namedDebug,
 			mode: "local",
-			preferredUrl: input.debugUrl,
+			preferredUrl: namedDebug,
 			fidelity: "simulated",
 		},
 		{
 			resourceName: "controls",
 			kind: "http",
 			backendUrl: input.controlsUrl,
+			namedUrl: namedControls,
 			mode: "local",
-			preferredUrl: input.controlsUrl,
+			preferredUrl: namedControls,
 			fidelity: "simulated",
 		},
 		{
 			resourceName: "report",
 			kind: "http",
 			backendUrl: input.reportUrl,
+			namedUrl: namedReport,
 			mode: "local",
-			preferredUrl: input.reportUrl,
+			preferredUrl: namedReport,
 			fidelity: "simulated",
 		},
+		...bindleResourceEndpoints(inspected, {
+			appUrl: input.appUrl,
+			namedUrl: named,
+			environment: input.scope.environment,
+			bindleName,
+		}).filter(
+			(row) =>
+				!["web", "debug", "controls", "report"].includes(row.resourceName),
+		),
 	];
+	const camp = inspected
+		? campConfigFor(inspected, input.scope.environment)
+		: {
+				name: "local",
+				envType: "development",
+				require: ["managed-http-runtime"],
+				labels: { bindle: bindleName },
+				runtimeRequirements: ["local"],
+			};
+	const bindleManifest = inspected
+		? bindleManifestFor(inspected, input.projectDir)
+		: {
+				name: bindleName,
+				resources: [{ kind: "web", name: "web", dependsOn: [], allow: [] }],
+				envKeys: [],
+				requirements: ["managed-http-runtime"],
+				...(input.projectDir !== undefined
+					? { projectDir: input.projectDir }
+					: {}),
+			};
+	const dir = sessionDir(
+		input.hoboHome,
+		input.scope.stationId,
+		input.scope.environment,
+	);
+	writeJsonFile(join(dir, "camp.json"), camp);
+	writeJsonFile(join(dir, "bindle.json"), bindleManifest);
 	recordSessionResources({
 		hoboHome: input.hoboHome,
 		scope: input.scope,
 		nodes: [
-			{
-				kind: "yard",
-				id: "yard:local",
-				name: "local",
-				environment: input.scope.environment,
-				status: "serving",
-				fidelity: "simulated",
-				scopeLabel: "local",
-			},
+			localYardNode(input.scope.environment),
 			{
 				kind: "camp",
 				id: "camp:local",
@@ -712,8 +1192,8 @@ export function recordDevDeployment(input: {
 			},
 			{
 				kind: "bindle",
-				id: `bindle:${input.bindleName}`,
-				name: input.bindleName,
+				id: `bindle:${bindleName}`,
+				name: bindleName,
 				environment: input.scope.environment,
 				parentId: "camp:local",
 				status: "serving",
@@ -722,5 +1202,58 @@ export function recordDevDeployment(input: {
 			},
 		],
 		endpoints,
+	});
+}
+
+const HTTP_KINDS = new Set(["api", "web", "service", "websocket", "ui"]);
+
+function bindleResourceEndpoints(
+	inspected: InspectedBindle | undefined,
+	options: {
+		readonly appUrl: string;
+		readonly namedUrl: string;
+		readonly environment: string;
+		readonly bindleName: string;
+	},
+): EndpointRecord[] {
+	if (!inspected) {
+		return [
+			{
+				resourceName: "api",
+				kind: "http",
+				backendUrl: options.appUrl,
+				namedUrl: preferNamedEndpoint(options.appUrl, "api", {
+					environment: options.environment,
+					app: options.bindleName,
+				}),
+				mode: "local",
+				preferredUrl: preferNamedEndpoint(options.appUrl, "api", {
+					environment: options.environment,
+					app: options.bindleName,
+				}),
+				fidelity: "simulated",
+			},
+		];
+	}
+	return inspected.resources.map((resource) => {
+		const http = HTTP_KINDS.has(resource.kind);
+		const named = http
+			? preferNamedEndpoint(options.appUrl, resource.name, {
+					environment: options.environment,
+					app: options.bindleName,
+				})
+			: occupancyNamedOrigin(resource.kind, 0, {
+					environment: options.environment,
+					app: options.bindleName,
+				});
+		return {
+			resourceName: resource.name,
+			kind: http ? "http" : resource.kind,
+			backendUrl: http ? options.appUrl : named,
+			namedUrl: named,
+			mode: "local" as const,
+			preferredUrl: named,
+			fidelity: "simulated" as const,
+		};
 	});
 }

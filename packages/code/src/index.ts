@@ -201,6 +201,8 @@ export {
 	type PortableEvidenceAsset,
 	type PortableEvidenceReportExport,
 	projectEvidenceReport,
+	renderEvidenceJournalEventHtml,
+	renderEvidenceJournalHtml,
 	renderEvidenceReportExport,
 	renderEvidenceReportHtml,
 	type SignedEvidenceNote,
@@ -266,9 +268,22 @@ export {
 	inspectHermeticEnv,
 } from "./hermetic-env.js";
 export {
+	compactTranscript,
+	estimateTokens,
+} from "./compact.js";
+export {
+	formatShellCloseout,
+	listChatSessions,
+	loadChatSession,
+	resolveChatSession,
+	saveChatSession,
+	type ChatSessionRecord,
+} from "./chat-sessions.js";
+export {
 	appendAssistant,
 	appendProduct,
 	applyBtwPrompt,
+	applyCompact,
 	buildShellTree,
 	createInitialShellState,
 	DEFAULT_SLASH_ITEMS,
@@ -421,20 +436,36 @@ export {
 	sessionProcessRunner,
 } from "./session-orchestrator.js";
 export {
+	inspectBindleProject,
+	inspectBindleSource,
+	localBindleCapabilities,
+} from "./bindle-inspect.js";
+export {
 	assembleSessionResources,
 	formatSessionResources,
 	looksLikeSecretMaterial,
 	recordDevDeployment,
 	recordSessionResources,
 	SESSION_RESOURCES_SCHEMA,
+	type OccupancyBindleManifest,
+	type OccupancyCampConfig,
+	type OccupancyManagedResource,
 	type SessionResourceInventory,
 } from "./session-resources.js";
 export {
 	createResourceLifecycle,
 	type LifecycleSnapshot,
 } from "./session-lifecycle.js";
-export { createOtelSink, fleetView } from "./session-otel.js";
+export {
+	createOtelSink,
+	fleetView,
+	projectOccupancyTelemetry,
+} from "./session-otel.js";
 export { startLocalDashboard } from "./session-dashboard.js";
+export {
+	createOccupancyController,
+	controlsBindleProcess,
+} from "./session-resource-control.js";
 export {
 	formatSidecarStrap,
 	readStationSidecars,
@@ -514,6 +545,7 @@ export {
 	ChatTranscript,
 	CommandRail,
 	InkCard,
+	InkTable,
 	ShellChrome,
 	SlashPalette,
 	StatusStrap,

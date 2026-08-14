@@ -7,6 +7,7 @@ import {
 	matchExampleRequest,
 } from "./example-catalog.js";
 import { preferNamedEndpoint, retargetUrl } from "./occupancy-endpoints.js";
+import { formatInkTable } from "./tui-layout.js";
 
 export { retargetUrl } from "./occupancy-endpoints.js";
 
@@ -91,37 +92,52 @@ export interface LiveEndpointLines {
 	readonly emphasis: "run" | "debug";
 }
 
-/** Bindle/debug/Evidence lines use named endpoints; loopback IP is shown once. */
-export function liveEndpointLines(options: LiveEndpointLines): string[] {
-	const publicApp = options.namedUrl ?? options.appUrl;
-	const publicDebug = options.namedUrl
-		? retargetUrl(options.debugUrl, options.namedUrl)
-		: options.debugUrl;
+/** Bindle/debug/Evidence lines use named endpoints. Loopback IPs stay off-screen. */
+export function liveEndpointRows(
+	options: LiveEndpointLines,
+): { readonly label: string; readonly value: string }[] {
 	const scope = {
 		...(options.environment !== undefined
 			? { environment: options.environment }
 			: {}),
 	};
-	const controls = `controls · ${preferNamedEndpoint(options.controlsUrl, "evidence", scope)}`;
-	const report = `report · ${preferNamedEndpoint(options.reportUrl, "evidence", scope)}`;
-	const bindle = `bindle · ${publicApp}`;
-	const debug = `debug · ${publicDebug}`;
-	const loopback =
-		options.namedUrl !== undefined &&
-		new URL(options.namedUrl).host !== new URL(options.appUrl).host
-			? [`loopback · ${options.appUrl}`]
-			: [];
-	const station = options.stationId ? [`station · ${options.stationId}`] : [];
-	const environment = options.environment
-		? [`env · ${options.environment}`]
-		: [];
+	const publicApp = options.namedUrl
+		? options.namedUrl
+		: preferNamedEndpoint(options.appUrl, "web", scope);
+	const publicDebug = options.namedUrl
+		? retargetUrl(options.debugUrl, options.namedUrl)
+		: preferNamedEndpoint(options.debugUrl, "web", scope);
+	const controls = preferNamedEndpoint(options.controlsUrl, "evidence", scope);
+	const report = preferNamedEndpoint(options.reportUrl, "evidence", scope);
 	const core =
 		options.emphasis === "debug"
-			? [debug, controls, report, bindle]
-			: [bindle, debug, controls, report];
-	return [...core, ...loopback, ...station, ...environment];
+			? [
+					{ label: "debug", value: publicDebug },
+					{ label: "controls", value: controls },
+					{ label: "report", value: report },
+					{ label: "bindle", value: publicApp },
+				]
+			: [
+					{ label: "bindle", value: publicApp },
+					{ label: "debug", value: publicDebug },
+					{ label: "controls", value: controls },
+					{ label: "report", value: report },
+				];
+	return [
+		...core,
+		...(options.stationId
+			? [{ label: "station", value: options.stationId }]
+			: []),
+		...(options.environment
+			? [{ label: "env", value: options.environment }]
+			: []),
+	];
+}
+
+export function liveEndpointLines(options: LiveEndpointLines): string[] {
+	return formatInkTable(liveEndpointRows(options)).split("\n");
 }
 
 export function formatLiveEndpoints(options: LiveEndpointLines): string {
-	return liveEndpointLines(options).join("\n");
+	return formatInkTable(liveEndpointRows(options));
 }

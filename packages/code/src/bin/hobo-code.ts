@@ -25,7 +25,10 @@ import {
 	HOBO_AGENT_INSTRUCTIONS,
 	HOBO_AGENT_MODEL,
 } from "../harness-customization.js";
-import { runInteractiveShell } from "../interactive-shell.js";
+import {
+	runInteractiveShell,
+	type ShellMessage,
+} from "../interactive-shell.js";
 import { cleanupIsolation, createIsolationContext } from "../isolation.js";
 import { preferNamedEndpoint } from "../occupancy-endpoints.js";
 import {
@@ -59,6 +62,73 @@ const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
  * Legacy escape hatch: spawn stock Pi TUI with HoBo extension.
  * Not the product default — use only for engine experiments.
  */
+async function launchProductShell(options: {
+	readonly dense: boolean;
+	readonly cwd?: string;
+	readonly sessionId?: string;
+	readonly messages?: readonly ShellMessage[];
+	readonly journal?: readonly ShellMessage[];
+}): Promise<number> {
+	const hoboHome =
+		process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
+			? process.env.HOBO_HOME
+			: join(process.env.HOME ?? tmpdir(), ".hobo");
+	let engine: ShellEngine | null = null;
+	const isolation = await createIsolationContext({
+		projectRoot: options.cwd ?? process.cwd(),
+		hoboHome,
+	});
+	const resolved = await resolveShellEngine({
+		sandboxRoot: isolation.rootPath,
+		runId: isolation.runId,
+		modelSpec: HOBO_AGENT_MODEL,
+		instructions: HOBO_AGENT_INSTRUCTIONS,
+		env: process.env,
+	});
+	if (resolved.engine) {
+		engine = resolved.engine;
+	} else {
+		await cleanupIsolation(isolation.runId, {
+			hoboHome,
+			ok: true,
+			gates: ["engine:unavailable"],
+		});
+		process.stderr.write(
+			`hobo-code: no completion engine — ${resolved.reason} (dispatch-only shell)\n`,
+		);
+	}
+	const maxMs = Number.parseInt(process.env.HOBO_CODE_SHELL_MAX_MS ?? "", 10);
+	const scriptedKeys = process.env.HOBO_CODE_SHELL_KEYS
+		? process.env.HOBO_CODE_SHELL_KEYS.replace(/\\n/g, "\n")
+				.replace(/\\r/g, "\r")
+				.replace(/\\t/g, "\t")
+				.replace(/\\e/g, "\u001b")
+		: undefined;
+	const host = createDefaultShellHost({ dense: options.dense, engine });
+	const code = await runInteractiveShell({
+		host,
+		hoboHome,
+		cwd: options.cwd ?? process.cwd(),
+		dense: options.dense,
+		reducedMotion:
+			process.env.HOBO_CODE_REDUCED_MOTION === "1" ||
+			process.env.HOBO_CODE_REDUCED_MOTION === "true",
+		...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : {}),
+		...(scriptedKeys !== undefined ? { scriptedKeys } : {}),
+		...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}),
+		...(options.messages !== undefined ? { messages: options.messages } : {}),
+		...(options.journal !== undefined ? { journal: options.journal } : {}),
+	});
+	await host.dispose?.();
+	if (engine) {
+		await engine.dispose();
+		process.stdout.write(
+			`sandbox kept: ${engine.sandboxRoot}\npromote (audited): hobo-code promote --run ${engine.runId}\n`,
+		);
+	}
+	return code;
+}
+
 function launchPiHarness(): Promise<number> {
 	const piEntry = fileURLToPath(
 		import.meta.resolve("@earendil-works/pi-coding-agent"),
@@ -98,73 +168,7 @@ if (argv[0] === "_station-agent") {
 		);
 		process.exitCode = await launchPiHarness();
 	} else {
-		// Engine turns run in a mediated isolation sandbox (ADR-0139): the
-		// canonical tree stays read-only; promotion is the audited mutation path.
-		const hoboHome =
-			process.env.HOBO_HOME && process.env.HOBO_HOME.length > 0
-				? process.env.HOBO_HOME
-				: join(process.env.HOME ?? tmpdir(), ".hobo");
-		// Local first: a locally hosted SLM is the default engine so the shell
-		// thinks without a cloud account; BYOK is the fallback, not the price
-		// of entry. Turns run inside a mediated sandbox (ADR-0139).
-		let engine: ShellEngine | null = null;
-		const isolation = await createIsolationContext({
-			projectRoot: process.cwd(),
-			hoboHome,
-		});
-		const resolved = await resolveShellEngine({
-			sandboxRoot: isolation.rootPath,
-			runId: isolation.runId,
-			modelSpec: HOBO_AGENT_MODEL,
-			instructions: HOBO_AGENT_INSTRUCTIONS,
-			env: process.env,
-		});
-		if (resolved.engine) {
-			engine = resolved.engine;
-		} else {
-			await cleanupIsolation(isolation.runId, {
-				hoboHome,
-				ok: true,
-				gates: ["engine:unavailable"],
-			});
-			process.stderr.write(
-				`hobo-code: no completion engine — ${resolved.reason} (dispatch-only shell)\n`,
-			);
-		}
-
-		// Bounded session for evidence capture: a TUI claim needs a real TTY
-		// recording, and a recording needs the session to end through the normal
-		// quit path (not a kill mid-frame). Opt-in only; unset = runs until quit.
-		const maxMs = Number.parseInt(process.env.HOBO_CODE_SHELL_MAX_MS ?? "", 10);
-		// Scripted keys let interactive paths (slash palette, focus cycling) be
-		// captured as real recordings instead of being claimed without evidence.
-		// `\n`/`\t`/`\e` escapes are decoded so shells can pass them literally.
-		const scriptedKeys = process.env.HOBO_CODE_SHELL_KEYS
-			? process.env.HOBO_CODE_SHELL_KEYS.replace(/\\n/g, "\n")
-					.replace(/\\r/g, "\r")
-					.replace(/\\t/g, "\t")
-					.replace(/\\e/g, "\u001b")
-			: undefined;
-		const host = createDefaultShellHost({ dense, engine });
-		process.exitCode = await runInteractiveShell({
-			host,
-			hoboHome,
-			cwd: process.cwd(),
-			dense,
-			reducedMotion:
-				process.env.HOBO_CODE_REDUCED_MOTION === "1" ||
-				process.env.HOBO_CODE_REDUCED_MOTION === "true",
-			...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : {}),
-			...(scriptedKeys !== undefined ? { scriptedKeys } : {}),
-		});
-		await host.dispose?.();
-		if (engine) {
-			await engine.dispose();
-			// Sandbox stays open so un-promoted edits survive the session.
-			process.stdout.write(
-				`sandbox kept: ${engine.sandboxRoot}\npromote (audited): hobo-code promote --run ${engine.runId}\n`,
-			);
-		}
+		process.exitCode = await launchProductShell({ dense });
 	}
 } else {
 	const result = await runHoboCodeCli(argv, { json, dense });
@@ -177,6 +181,9 @@ if (argv[0] === "_station-agent") {
 							readonly kind?: string;
 							readonly sessionName?: string;
 							readonly sessionId?: string;
+							readonly messages?: readonly ShellMessage[];
+							readonly journal?: readonly ShellMessage[];
+							readonly cwd?: string;
 							readonly hoboHome?: string;
 							readonly projectRoot?: string;
 							readonly machine?: DevMachine;
@@ -191,7 +198,21 @@ if (argv[0] === "_station-agent") {
 					}
 				).terminalAction
 			: undefined;
-	if (result.ok && action?.kind === "attach-session" && action.sessionName) {
+	if (
+		result.ok &&
+		action?.kind === "resume-chat" &&
+		action.sessionId &&
+		interactive &&
+		!json
+	) {
+		process.exitCode = await launchProductShell({
+			dense,
+			sessionId: action.sessionId,
+			...(action.messages !== undefined ? { messages: action.messages } : {}),
+			...(action.journal !== undefined ? { journal: action.journal } : {}),
+			...(action.cwd !== undefined ? { cwd: action.cwd } : {}),
+		});
+	} else if (result.ok && action?.kind === "attach-session" && action.sessionName) {
 		const args = process.env.TMUX
 			? ["switch-client", "-t", action.sessionName]
 			: ["attach-session", "-t", action.sessionName];
@@ -229,7 +250,7 @@ if (argv[0] === "_station-agent") {
 	) {
 		const { machine, port } = action;
 		process.stdout.write(
-			`browser: http://127.0.0.1:${port}\nremote: ${machine.id} via Station-authorized SSH forwarding (${action.authorizationSessionId ?? "authorized"}; expires ${action.authorizationExpiresAt ?? "unknown"}; ${(action.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station authorization gates ${action.identityAgent}; no key or token is copied\n`,
+			`browser: ${preferNamedEndpoint(`http://127.0.0.1:${port}/`, "sessions")}\nremote: ${machine.id} via Station-authorized SSH forwarding (${action.authorizationSessionId ?? "authorized"}; expires ${action.authorizationExpiresAt ?? "unknown"}; ${(action.auditTypes ?? []).join(", ") || "audited"})\nssh authentication: Station authorization gates ${action.identityAgent}; no key or token is copied\n`,
 		);
 		try {
 			const leaseMs = authorizationLeaseDelay(

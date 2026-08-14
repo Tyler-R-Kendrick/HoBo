@@ -2,6 +2,7 @@
  * Local dashboard lifecycle. Ready means started + health probe pass.
  * Provisioned / IaC success is never Ready.
  */
+import { loopbackFetchUrl } from "./occupancy-endpoints.js";
 
 export type LifecycleState =
 	| "stopped"
@@ -15,6 +16,8 @@ export interface ManagedResource {
 	readonly kind: string;
 	readonly healthUrl?: string;
 	readonly provisioned?: boolean;
+	/** Local Yard/Camp/Station start ready so develop is not a stop board. */
+	readonly initiallyStarted?: boolean;
 }
 
 export interface HealthProbeResult {
@@ -33,7 +36,10 @@ export interface LifecycleSnapshot {
 	readonly lastError?: string;
 }
 
-export type HealthProbe = (id: string, healthUrl?: string) => Promise<HealthProbeResult>;
+export type HealthProbe = (
+	id: string,
+	healthUrl?: string,
+) => Promise<HealthProbeResult>;
 
 interface Internal extends ManagedResource {
 	started: boolean;
@@ -82,16 +88,16 @@ function toSnapshot(row: Internal): LifecycleSnapshot {
 	};
 }
 
-export function createResourceLifecycle(options: {
-	readonly probe?: HealthProbe;
-} = {}): ResourceLifecycle {
+export function createResourceLifecycle(
+	options: { readonly probe?: HealthProbe } = {},
+): ResourceLifecycle {
 	const resources = new Map<string, Internal>();
 	const probe: HealthProbe =
 		options.probe ??
 		(async (_id, healthUrl): Promise<HealthProbeResult> => {
 			if (!healthUrl) return { ok: true };
 			try {
-				const response = await fetch(healthUrl);
+				const response = await fetch(loopbackFetchUrl(healthUrl));
 				if (response.ok) return { ok: true };
 				return { ok: false, reason: `http ${response.status}` };
 			} catch (error) {
@@ -105,10 +111,11 @@ export function createResourceLifecycle(options: {
 	return {
 		register(resource) {
 			const existing = resources.get(resource.id);
+			const initial = resource.initiallyStarted === true;
 			resources.set(resource.id, {
 				...resource,
-				started: existing?.started ?? false,
-				healthy: existing?.healthy ?? false,
+				started: existing?.started ?? initial,
+				healthy: existing?.healthy ?? initial,
 				...(existing?.lastError ? { lastError: existing.lastError } : {}),
 			});
 		},

@@ -14,6 +14,8 @@ export interface OccupancyNameScope {
 	readonly environment?: string;
 	readonly project?: string;
 	readonly branch?: string;
+	/** Bindle/app label. Occupancy sidecars default to `code`. */
+	readonly app?: string;
 }
 
 /** Copy path/query from `source` onto another origin. */
@@ -49,16 +51,17 @@ function localEnvSegment(environment: string | undefined): string {
 }
 
 export function occupancyNamedOrigin(
-	resource: OccupancyNamedResource,
+	resource: string,
 	port: number,
 	scope: OccupancyNameScope = {},
 ): string {
 	const tenant = scope.tenant?.trim() ?? "";
 	const includeTenant =
 		tenant.length > 0 && tenant !== String(LOCAL_DEFAULT_TENANT_ID);
+	const app = scope.app?.trim() || OCCUPANCY_NAMED_APP;
 	return getNamedEndpoint({
 		resource,
-		app: OCCUPANCY_NAMED_APP,
+		app,
 		mode: "local",
 		scheme: "http",
 		port,
@@ -72,13 +75,69 @@ export function occupancyNamedOrigin(
 /** Named origin first. Loopback listen URLs are rewritten onto the occupancy name. */
 export function preferNamedEndpoint(
 	url: string,
-	resource: OccupancyNamedResource,
+	resource: string,
 	scope: OccupancyNameScope = {},
 ): string {
 	if (!isLoopbackHttpUrl(url)) return url;
 	const port = Number(new URL(url).port);
 	if (!Number.isInteger(port) || port <= 0) return url;
 	return retargetUrl(url, occupancyNamedOrigin(resource, port, scope));
+}
+
+export interface OccupancySidecarUrls {
+	readonly dashboardUrl?: string;
+	readonly evidenceUrl?: string;
+	readonly evidenceReportUrl?: string;
+	readonly evidenceControlsUrl?: string;
+	readonly otlpHttpUrl?: string;
+}
+
+export interface OccupancySidecarEndpoint {
+	readonly resourceName: "dashboard" | "evidence" | "controls" | "otlp";
+	readonly kind: "http" | "otlp";
+	readonly backendUrl: string;
+	readonly namedUrl: string;
+	readonly hostname?: string;
+	readonly mode: "local";
+	readonly preferredUrl: string;
+	readonly fidelity: "simulated";
+}
+
+/** Named occupancy sidecar URLs that are actually listening. */
+export function occupancySidecarEndpoints(
+	urls: OccupancySidecarUrls,
+): OccupancySidecarEndpoint[] {
+	const rows: OccupancySidecarEndpoint[] = [];
+	const add = (
+		resourceName: OccupancySidecarEndpoint["resourceName"],
+		url: string | undefined,
+		namedAs: OccupancyNamedResource,
+		kind: OccupancySidecarEndpoint["kind"],
+	): void => {
+		if (!url) return;
+		const named = preferNamedEndpoint(url, namedAs);
+		const hostname = new URL(named).hostname;
+		rows.push({
+			resourceName,
+			kind,
+			backendUrl: loopbackFetchUrl(url),
+			namedUrl: named,
+			...(hostname ? { hostname } : {}),
+			mode: "local",
+			preferredUrl: named,
+			fidelity: "simulated",
+		});
+	};
+	add("dashboard", urls.dashboardUrl, "dashboard", "http");
+	add(
+		"evidence",
+		urls.evidenceReportUrl ?? urls.evidenceUrl,
+		"evidence",
+		"http",
+	);
+	add("controls", urls.evidenceControlsUrl, "evidence", "http");
+	add("otlp", urls.otlpHttpUrl, "otlp", "otlp");
+	return rows;
 }
 
 /** Node fetch target for a public occupancy URL (named or loopback). */

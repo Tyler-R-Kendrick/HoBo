@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -75,22 +75,162 @@ describe("session resource inventory", () => {
 		expect(inventory.station?.kind).toBe("station");
 		expect(inventory.station?.environment).toBe("preview");
 		expect(inventory.junctions).toEqual([]);
-		expect(inventory.yards).toEqual([]);
+		expect(inventory.yards.map((row) => row.id)).toEqual(["yard:local"]);
+		expect(inventory.yards[0]?.status).toBe("serving");
 		expect(inventory.camps).toEqual([]);
 		expect(inventory.bindles).toEqual([]);
 		expect(inventory.missing.map((row) => row.kind).sort()).toEqual([
 			"bindle",
 			"camp",
 			"junction",
-			"yard",
 		]);
 		for (const row of inventory.missing) {
 			expect(row.reason.length).toBeGreaterThan(0);
 		}
 		const text = formatSessionResources(inventory);
 		expect(text).toMatch(/station:local/);
+		expect(text).toMatch(/yard:local/);
 		expect(text).toMatch(/preview/);
 		expect(text).toMatch(/no junction/i);
+		expect(text).not.toMatch(/no yard/i);
+		expect(inventory.capabilities.length).toBeGreaterThan(0);
+		expect(inventory.capabilities.map((row) => row.kind)).toContain("web");
+		expect(inventory.capabilities.map((row) => row.kind)).toContain("kv");
+		expect(
+			inventory.capabilities.find((row) => row.kind === "web")?.available,
+		).toBe(true);
+		expect(
+			inventory.capabilities.find((row) => row.kind === "container")?.available,
+		).toBe(false);
+		expect(text).toMatch(/capabilities/);
+	});
+
+	it("lists occupancy sidecar endpoints from the Station snapshot", async () => {
+		const hoboHome = await loginHome();
+		const path = join(hoboHome, "stations", "station_local", "sidecars.json");
+		mkdirSync(join(hoboHome, "stations", "station_local"), { recursive: true });
+		writeFileSync(
+			path,
+			`${JSON.stringify(
+				{
+					schema: "hobo.code.station-sidecars/v1",
+					stationId: "station:local",
+					environment: "local-dev",
+					dashboardUrl: "http://127.0.0.1:8787/",
+					evidenceUrl: "http://127.0.0.1:8788/",
+					evidenceReportUrl: "http://127.0.0.1:8788/__hobo/evidence",
+					evidenceControlsUrl:
+						"http://127.0.0.1:8788/__hobo/evidence/controls/cap",
+					otlpHttpUrl: "http://127.0.0.1:4318/v1/logs",
+					startedAt: "2026-08-14T12:00:00.000Z",
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		const inventory = assembleSessionResources({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+		});
+		const names = inventory.endpoints.map((row) => row.resourceName);
+		expect(names).toEqual(
+			expect.arrayContaining(["dashboard", "evidence", "controls", "otlp"]),
+		);
+		const evidence = inventory.endpoints.find(
+			(row) => row.resourceName === "evidence",
+		);
+		expect(evidence?.preferredUrl).toMatch(
+			/evidence\.code\..*\.hobo\.localhost/,
+		);
+		expect(evidence?.preferredUrl).not.toMatch(/127\.0\.0\.1/);
+		expect(evidence?.status).toBe("serving");
+		expect(evidence?.freshness).toBe("live");
+		const dash = inventory.endpoints.find(
+			(row) => row.resourceName === "dashboard",
+		);
+		expect(dash?.preferredUrl).toMatch(/dashboard\.code\..*\.hobo\.localhost/);
+		expect(
+			inventory.managed
+				.filter((row) => row.ownerKind === "station")
+				.map((row) => row.id),
+		).toEqual(
+			expect.arrayContaining(["dashboard", "evidence", "controls", "otlp"]),
+		);
+		expect(
+			inventory.managed.find((row) => row.id === "dashboard")?.controllable,
+		).toBe(false);
+	});
+
+	it("projects Station, Yard, and Camp managed resources as individually owned children", async () => {
+		const hoboHome = await loginHome();
+		const project = join(hoboHome, "hello-world");
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "bindle.ts"),
+			`export default bindle("hello-world", (b) => ({
+  api: b.api(),
+  web: b.web(),
+  kv: b.kv(),
+}));
+`,
+		);
+		recordDevDeployment({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			bindleName: "hello-world",
+			projectDir: project,
+			appUrl: "http://127.0.0.1:4173/",
+			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
+			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+			namedUrl: "http://web.hello-world.local.hobo.localhost:4173",
+		});
+		const inventory = assembleSessionResources({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			ensureLocalLogin: true,
+			projectDir: project,
+		});
+		const byId = Object.fromEntries(
+			inventory.managed.map((row) => [row.id, row]),
+		);
+		expect(byId["yard:local:flow"]).toMatchObject({
+			kind: "flow",
+			ownerKind: "yard",
+			ownerId: "yard:local",
+			controllable: true,
+		});
+		expect(byId["yard:local:named-endpoints"]).toMatchObject({
+			kind: "named-endpoint",
+			ownerKind: "yard",
+			ownerId: "yard:local",
+			controllable: true,
+		});
+		expect(byId["bindle:hello-world"]).toMatchObject({
+			kind: "bindle",
+			ownerKind: "camp",
+			ownerId: "camp:local",
+			controllable: true,
+		});
+		expect(byId.kv).toMatchObject({
+			kind: "bindle-resource",
+			ownerKind: "camp",
+			ownerId: "camp:local",
+			controllable: true,
+		});
+		expect(byId.web).toMatchObject({
+			kind: "bindle-resource",
+			ownerKind: "camp",
+			ownerId: "camp:local",
+			controllable: true,
+		});
+		const text = formatSessionResources(inventory);
+		expect(text).toMatch(/yard:local:flow/);
+		expect(text).toMatch(/kv/);
 	});
 
 	it("filters last-seen facts to the current environment and tenant", async () => {
@@ -315,14 +455,17 @@ describe("session resource inventory", () => {
 		expect(web).toBeDefined();
 		if (!web) throw new Error("missing web endpoint");
 		expect(web.freshness).toBe("live");
-		expect(web.preferredUrl).toBe("http://127.0.0.1:4173");
+		expect(web.preferredUrl).toBe(
+			"http://web.hello.local-dev.hobo.localhost:4173",
+		);
 		expect(web.resolvedAddresses).toContain("127.0.0.1");
 		expect(web.namedUrl).toContain(".hobo.localhost");
 		expect(web.namedUrl).not.toMatch(/\.hobo$/);
 		expect(web.unresolvedReason).toBeUndefined();
 		const text = formatSessionResources(inventory);
 		expect(text).toMatch(/bindle:hello/);
-		expect(text).toMatch(/127\.0\.0\.1/);
+		expect(text).toContain("web.hello.local-dev.hobo.localhost");
+		expect(text).not.toMatch(/127\.0\.0\.1/);
 	});
 
 	it("fails closed on a local-mode remote backend", async () => {
@@ -382,7 +525,8 @@ describe("session resource inventory", () => {
 	it("records loopback evidence URLs that carry a token= capability query", () => {
 		const hoboHome = tempHome();
 		const controls = "http://127.0.0.1:4174/?token=opaque-capability";
-		const report = "http://127.0.0.1:4174/__hobo/evidence?token=opaque-capability";
+		const report =
+			"http://127.0.0.1:4174/__hobo/evidence?token=opaque-capability";
 		expect(() =>
 			recordDevDeployment({
 				hoboHome,
@@ -407,5 +551,61 @@ describe("session resource inventory", () => {
 		expect(urls.some((url) => url.includes("127.0.0.1:4174"))).toBe(true);
 		expect(urls.some((url) => url.includes("__hobo/evidence"))).toBe(true);
 		expect(urls.some((url) => url.includes("4173"))).toBe(true);
+	});
+
+	it("fulfills a deployed hello-world bindle with camp, bindle, and declared resources", async () => {
+		const hoboHome = await loginHome();
+		const project = join(hoboHome, "hello-world");
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "bindle.ts"),
+			`export default bindle("hello-world", (b) => {
+  const a = b.api();
+  const w = b.web().dependsOn(a);
+  return { api: a, web: w };
+});
+`,
+		);
+		recordDevDeployment({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			bindleName: "hello-world",
+			projectDir: project,
+			appUrl: "http://127.0.0.1:4173/",
+			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
+			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+			namedUrl: "http://web.hello-world.local.hobo.localhost:4173",
+		});
+		const inventory = assembleSessionResources({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			ensureLocalLogin: true,
+		});
+		expect(inventory.missing.map((row) => row.kind)).toEqual(["junction"]);
+		expect(inventory.yards.map((row) => row.id)).toEqual(["yard:local"]);
+		expect(inventory.camps.map((row) => row.id)).toEqual(["camp:local"]);
+		expect(inventory.bindles.map((row) => row.id)).toEqual([
+			"bindle:hello-world",
+		]);
+		const names = inventory.endpoints.map((row) => row.resourceName);
+		expect(names).toEqual(
+			expect.arrayContaining(["web", "api", "debug", "controls", "report"]),
+		);
+		expect(
+			inventory.endpoints.find((row) => row.resourceName === "api")
+				?.preferredUrl,
+		).toMatch(/api\.hello-world\..*\.hobo\.localhost/);
+		expect(inventory.camp?.require).toContain("managed-http-runtime");
+		expect(inventory.bindleManifest?.resources.map((row) => row.kind)).toEqual(
+			expect.arrayContaining(["api", "web"]),
+		);
+		const text = formatSessionResources(inventory);
+		expect(text).not.toMatch(/no yard/i);
+		expect(text).toMatch(/api\.hello-world/);
 	});
 });

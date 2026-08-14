@@ -27,7 +27,6 @@ import {
 	GitWorkbenchActionKind,
 	GitWorkbenchActionRequestSchema,
 	GitWorkbenchSelectionKind,
-	SessionLifecycleState,
 } from "./_generated/code_harness_pb.js";
 import { parseBrowserRecording } from "./browser-recording.js";
 import { exportEvidenceRecordingAutomation } from "./evidence-automation.js";
@@ -39,8 +38,9 @@ import { createEvidencePort } from "./evidence-port.js";
 import {
 	type EvidenceFact,
 	projectEvidenceReport,
+	renderEvidenceJournalEventHtml,
+	renderEvidenceJournalHtml,
 	renderEvidenceReportExport,
-	renderEvidenceReportHtml,
 } from "./evidence-report.js";
 import {
 	type GitSelection,
@@ -54,6 +54,12 @@ import {
 	type LocalSessionControl,
 } from "./local-session-control.js";
 import { sessionSnapshotJson } from "./session-contract.js";
+import {
+	type EvidenceJournal,
+	projectSessionEvidenceJournal,
+	readCurrentSessionContext,
+	sessionEvidenceSubject,
+} from "./session-evidence.js";
 import {
 	SessionApprovalRequiredError,
 	sessionDeliveryApprovalDigest,
@@ -269,129 +275,83 @@ document.querySelector('#create').onsubmit=async e=>{e.preventDefault();const na
 document.querySelector('#send').onclick=()=>attempt(async()=>{const command=JSON.parse(document.querySelector('#command').value);const out=document.querySelector('#approved').checked?await approveCommand(command,'raw delivery command'):await send(command);if(out)result.textContent=JSON.stringify(out,null,2);await refresh()});refresh();setInterval(refresh,1000);</script></body></html>`;
 }
 
-async function currentEvidenceReport(
-	control: LocalSessionControl,
+function currentEvidenceJournal(
+	hoboHome: string,
+	evidence: ReturnType<typeof createEvidencePort>,
+	generatedAt = new Date().toISOString(),
+) {
+	return projectSessionEvidenceJournal({
+		hoboHome,
+		evidence,
+		generatedAt,
+	});
+}
+
+const RECORD_SECTIONS = {
+	status: "progress",
+	test: "tests",
+	feature: "features",
+	decision: "adrs",
+	diagram: "diagrams",
+	screenshot: "features",
+	recording: "features",
+	replay: "replay",
+	annotation: "features",
+	note: "progress",
+} as const;
+
+function journalSection(
+	event: EvidenceJournal["events"][number],
+): EvidenceFact["section"] {
+	if (event.sourceKind) return RECORD_SECTIONS[event.sourceKind];
+	if (event.kind === "ask" || event.kind === "status") return "session";
+	if (event.kind === "decision") return "adrs";
+	if (event.kind === "look") return "features";
+	return "progress";
+}
+
+function currentEvidenceReport(
+	hoboHome: string,
 	projectRoot: string,
 	evidence: ReturnType<typeof createEvidencePort>,
 ) {
-	const generatedAt = new Date().toISOString();
-	const sessions = await control.list();
-	const facts: EvidenceFact[] = sessions.flatMap((snapshot) => {
-		const session = snapshot.session;
-		if (!session) return [];
-		const state =
-			session.lifecycleState === SessionLifecycleState.FAILED
-				? "failed"
-				: session.lifecycleState === SessionLifecycleState.STOPPED
-					? "stopped"
-					: "running";
-		return [
-			{
-				id: `session:${session.id}`,
-				section: "session",
-				title: session.name,
-				detail: `${state} on ${session.branch}; ${snapshot.panes.length} panes, ${snapshot.agentRuns.length} agent runs`,
-				state: state === "failed" ? "stale" : "captured",
-				observedAt: generatedAt,
-			},
-			{
-				id: `progress:${session.id}`,
-				section: "progress",
-				title: `${session.name} progress`,
-				detail: `${snapshot.checkpoints.length} checkpoints; ${snapshot.deliveryState?.message || "delivery not started"}`,
-				state: "captured",
-				observedAt: generatedAt,
-			},
-		];
-	});
-	for (const snapshot of sessions) {
-		if (!snapshot.session) continue;
-		const git = await readGitWorkbenchSnapshot(
-			snapshot.session.worktreePath,
-			sessionProcessRunner(),
-		);
-		facts.push({
-			id: `git:${snapshot.session.id}`,
-			section: "git",
-			title: git.branch ?? "Detached worktree",
-			detail: `${git.files.length}${git.truncated.files ? "+" : ""} changed files; ${git.ahead} ahead, ${git.behind} behind`,
-			state: "captured",
-			observedAt: generatedAt,
-		});
-	}
-	const sections = {
-		status: "progress",
-		test: "tests",
-		feature: "features",
-		decision: "adrs",
-		diagram: "diagrams",
-		screenshot: "features",
-		recording: "features",
-		replay: "replay",
-		annotation: "features",
-		note: "progress",
-	} as const;
-	const records = evidence.records();
-	for (const record of records) {
-		if (record.kind === "note") continue;
-		facts.push({
-			id: `evidence:${record.id}`,
-			section: sections[record.kind],
-			title: record.title,
-			detail: `${record.summary} · ${record.actor} via ${record.origin}${record.sourceRef ? ` · ${record.sourceRef}` : ""}`,
-			state: record.verification,
-			observedAt: record.recordedAt,
-			artifacts: record.artifactRefs.flatMap((ref) => {
-				const artifact = evidence.artifact(ref);
-				return artifact
-					? [
-							{
-								id: artifact.id,
-								label: artifact.title,
-								mediaType: artifact.mediaType,
-								path: artifact.path,
-								sha256: artifact.sha256,
-							},
-						]
-					: [];
-			}),
-		});
-	}
-	for (const [section, title] of [
-		["tests", "No test run report submitted"],
-		["features", "No feature evidence submitted"],
-		["adrs", "No ADR evidence submitted"],
-		["diagrams", "No architecture diagram submitted"],
-		["replay", "No debug replay submitted"],
-	] as const) {
-		if (facts.some((fact) => fact.section === section)) continue;
-		facts.push({
-			id: `missing:${section}`,
-			section,
-			title,
-			detail:
-				"A producer must submit this evidence through the HoBo evidence port.",
-			state: "missing",
-			observedAt: generatedAt,
-		});
-	}
+	const journal = currentEvidenceJournal(hoboHome, evidence);
+	const facts: EvidenceFact[] = journal.events.map((event) => ({
+		id: event.id,
+		section: journalSection(event),
+		title: event.title,
+		detail: event.reason,
+		state: event.state,
+		observedAt: event.at,
+		...(event.artifacts.length > 0 ? { artifacts: event.artifacts } : {}),
+	}));
 	return projectEvidenceReport({
-		reportId: `project:${projectRoot}`,
-		title: "Current development evidence",
-		generatedAt,
+		reportId: journal.sessionId
+			? `session:${journal.sessionId}`
+			: `project:${projectRoot}`,
+		title: journal.sessionId
+			? `Session ${journal.sessionId}`
+			: "Current development evidence",
+		generatedAt: journal.generatedAt,
 		facts,
-		notes: records
-			.filter((record) => record.kind === "note")
-			.map((record, sequence) => ({
-				id: record.id,
-				sequence: sequence + 1,
-				section: sections[record.kind],
-				body: `${record.summary} · ${record.origin}${record.sourceRef ? ` · ${record.sourceRef}` : ""}`,
-				createdAt: record.recordedAt,
-				signer: record.actor,
-				signature: record.signature ?? "",
-			})),
+		notes: [],
 	});
+}
+
+function withArtifactQuery(
+	journal: EvidenceJournal,
+	artifactQuery: string,
+): EvidenceJournal {
+	return {
+		...journal,
+		events: journal.events.map((event) => ({
+			...event,
+			artifacts: event.artifacts.map((artifact) => ({
+				...artifact,
+				path: `${artifact.path}?${artifactQuery}`,
+			})),
+		})),
+	};
 }
 
 export async function startSessionControlServer(
@@ -481,12 +441,16 @@ export async function startSessionControlServer(
 					});
 					writer.write(bytes);
 					const actions = writer.finish();
+					const current = readCurrentSessionContext(options.hoboHome);
 					const id = evidence.submit({
 						kind: "recording",
 						title: manifest.title,
 						summary: `${manifest.actions.length} actions and ${manifest.checkpoints.length} state checkpoints captured over ${manifest.durationMs} ms.`,
-						subject: manifest.id,
+						subject: current
+							? sessionEvidenceSubject(current.sessionId)
+							: manifest.id,
 						artifactRefs: [body.videoArtifactRef, actions.id],
+						sourceRef: manifest.id,
 					});
 					json(response, 201, {
 						ok: true,
@@ -521,12 +485,16 @@ export async function startSessionControlServer(
 				});
 				writer.write(bytes);
 				const artifact = writer.finish();
+				const current = readCurrentSessionContext(options.hoboHome);
 				const id = evidence.submit({
 					kind: "screenshot",
 					title: "Browser screenshot",
-					summary: `Captured ${bytes.length} PNG bytes from the browser overlay.`,
-					subject,
+					summary: `Looked at ${subject} to validate the current work.`,
+					subject: current
+						? sessionEvidenceSubject(current.sessionId)
+						: subject,
 					artifactRefs: [artifact.id],
+					sourceRef: subject,
 				});
 				json(response, 201, { ok: true, id, artifactRef: artifact.id });
 				return;
@@ -543,30 +511,13 @@ export async function startSessionControlServer(
 				const artifactQuery = privilegedReport
 					? `token=${encodeURIComponent(token)}`
 					: `report=${encodeURIComponent(reportCapability)}`;
-				const report = await currentEvidenceReport(
-					control,
-					options.projectRoot,
-					evidence,
+				const journal = withArtifactQuery(
+					currentEvidenceJournal(options.hoboHome, evidence),
+					artifactQuery,
 				);
-				const liveReport = {
-					...report,
-					sections: report.sections.map((section) => ({
-						...section,
-						facts: section.facts.map((fact) => ({
-							...fact,
-							...(fact.artifacts
-								? {
-										artifacts: fact.artifacts.map((artifact) => ({
-											...artifact,
-											path: `${artifact.path}?${artifactQuery}`,
-										})),
-									}
-								: {}),
-						})),
-					})),
-				};
-				const html = renderEvidenceReportHtml(liveReport, {
+				const html = renderEvidenceJournalHtml(journal, {
 					live: true,
+					journalHref: `/__hobo/evidence/journal?${artifactQuery}`,
 					...(privilegedReport
 						? { controlsHref: `/?token=${encodeURIComponent(token)}` }
 						: {}),
@@ -574,12 +525,33 @@ export async function startSessionControlServer(
 				response.writeHead(200, {
 					"cache-control": "no-store",
 					"content-security-policy":
-						"default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; media-src 'self'; frame-ancestors 'none'",
+						"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; media-src 'self'; font-src data:; frame-ancestors 'none'",
 					"content-type": "text/html; charset=utf-8",
 					"referrer-policy": "no-referrer",
 					"x-content-type-options": "nosniff",
 				});
 				response.end(html);
+				return;
+			}
+			if (
+				request.method === "GET" &&
+				url.pathname === "/__hobo/evidence/journal" &&
+				(privilegedReport || readOnlyReport)
+			) {
+				const artifactQuery = privilegedReport
+					? `token=${encodeURIComponent(token)}`
+					: `report=${encodeURIComponent(reportCapability)}`;
+				const journal = withArtifactQuery(
+					currentEvidenceJournal(options.hoboHome, evidence),
+					artifactQuery,
+				);
+				json(response, 200, {
+					...journal,
+					events: journal.events.map((event) => ({
+						id: event.id,
+						html: renderEvidenceJournalEventHtml(event),
+					})),
+				});
 				return;
 			}
 			if (
@@ -626,6 +598,7 @@ export async function startSessionControlServer(
 					return;
 				}
 				if (message.type === "annotate" || message.type === "edit-request") {
+					const current = readCurrentSessionContext(options.hoboHome);
 					const id = evidence.submit({
 						kind: message.type === "annotate" ? "annotation" : "note",
 						title:
@@ -636,8 +609,11 @@ export async function startSessionControlServer(
 							message.type === "annotate"
 								? String(message.note ?? "")
 								: String(message.prompt ?? ""),
-						subject: message.selector,
+						subject: current
+							? sessionEvidenceSubject(current.sessionId)
+							: message.selector,
 						artifactRefs: [],
+						sourceRef: message.selector,
 					});
 					json(response, 202, { ok: true, id });
 					return;
@@ -847,7 +823,11 @@ export async function startSessionControlServer(
 				json(
 					response,
 					200,
-					await currentEvidenceReport(control, options.projectRoot, evidence),
+					currentEvidenceReport(
+						options.hoboHome,
+						options.projectRoot,
+						evidence,
+					),
 				);
 				return;
 			}
@@ -859,7 +839,11 @@ export async function startSessionControlServer(
 					response,
 					200,
 					renderEvidenceReportExport(
-						await currentEvidenceReport(control, options.projectRoot, evidence),
+						currentEvidenceReport(
+							options.hoboHome,
+							options.projectRoot,
+							evidence,
+						),
 						(id) => evidence.readArtifact(id).bytes,
 					),
 				);

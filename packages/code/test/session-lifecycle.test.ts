@@ -3,6 +3,20 @@ import { describe, expect, it } from "vitest";
 import { createResourceLifecycle } from "../src/session-lifecycle.js";
 
 describe("local resource lifecycle", () => {
+	it("can register a local topology resource as already started", () => {
+		const life = createResourceLifecycle();
+		life.register({
+			id: "yard:local",
+			kind: "yard",
+			provisioned: true,
+			initiallyStarted: true,
+		});
+		const snap = life.snapshot("yard:local");
+		expect(snap.started).toBe(true);
+		expect(snap.ready).toBe(true);
+		expect(snap.state).toBe("ready");
+	});
+
 	it("does not mark a provisioned-only resource Ready", () => {
 		const life = createResourceLifecycle();
 		life.register({
@@ -21,7 +35,11 @@ describe("local resource lifecycle", () => {
 		const life = createResourceLifecycle({
 			probe: async (id) => ({ ok: id === "web" }),
 		});
-		life.register({ id: "web", kind: "http", healthUrl: "http://127.0.0.1/health" });
+		life.register({
+			id: "web",
+			kind: "http",
+			healthUrl: "http://127.0.0.1/health",
+		});
 		await life.start("web");
 		const snap = life.snapshot("web");
 		expect(snap.started).toBe(true);

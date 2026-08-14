@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { loadBindleDefinition } from "../../cli/src/cloud/loader.js";
 import { extractListenUrl, resolveHoboSpawn } from "../src/dev-browser.js";
 import { debugViewUrl } from "../src/evidence-overlay.js";
+import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
 import { createDefaultShellHost } from "../src/shell-host.js";
 import { matchWorkspaceAction } from "../src/workspace-actions.js";
 
@@ -72,14 +73,13 @@ describe("happy path: make a hello world app then run it", () => {
 				/HOBO_CODE_DEV_FAILED|not_implemented|dev is not yet implemented|no loadable bindle|non-interactive terminal detected/i,
 			);
 			expect(run).toMatch(/https?:\/\//);
-			const namedDebug = /debug · (https?:\/\/\S+)/u.exec(run ?? "")?.[1];
+			expect(run).not.toMatch(/127\.0\.0\.1/);
+			const namedDebug = /debug\s+(https?:\/\/\S+)/u.exec(run ?? "")?.[1];
 			expect(namedDebug).toMatch(
 				/^http:\/\/web\.hello-world\.local\.hobo\.localhost:\d+\/\?__hobo_debug=1$/u,
 			);
-			const loopback = /loopback · (https?:\/\/\S+)/u.exec(run ?? "")?.[1];
-			expect(loopback).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/?$/u);
-			if (loopback === undefined) throw new Error("missing loopback URL");
-			const debugUrl = debugViewUrl(loopback);
+			if (namedDebug === undefined) throw new Error("missing named debug URL");
+			const debugUrl = loopbackFetchUrl(debugViewUrl(namedDebug));
 			const debugPage = await fetch(debugUrl);
 			expect(debugPage.status).toBe(200);
 			expect(debugPage.headers.get("content-type")).toMatch(/text\/html/);

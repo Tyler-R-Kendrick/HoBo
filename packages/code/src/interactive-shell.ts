@@ -64,6 +64,7 @@ import {
 	ApprovalDialog,
 	BtwAside,
 	ChatTranscript,
+	InkTable,
 	ShellChrome,
 	SlashPalette,
 	TextPane,
@@ -74,10 +75,24 @@ import {
 	captureBtwSnapshot,
 	isBtwDismiss,
 	matchBtwInput,
+	parentDelta,
+	refreshBtwSnapshot,
 } from "./btw.js";
+import {
+	formatShellCloseout,
+	newChatSessionId,
+	saveChatSession,
+} from "./chat-sessions.js";
+import { compactTranscript } from "./compact.js";
+import {
+	recordSessionDecision,
+	writeCurrentSessionContext,
+} from "./session-evidence.js";
 import { clearWrapCache, wrapMessage } from "./tui-layout.js";
 import { renderTuiTree } from "./tui-render.js";
-import type { TuiNode } from "./tui-tree.js";
+import { h, type TuiNode } from "./tui-tree.js";
+import { preferNamedEndpoint } from "./occupancy-endpoints.js";
+import type { InkTableRow } from "./tui-layout.js";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -105,7 +120,15 @@ export interface ShellSlashItem {
 	/** When set, shell invokes this CLI argv via the host callback. */
 	readonly argv?: readonly string[];
 	/** Built-in action id when not a CLI verb. */
-	readonly action?: "help" | "about" | "clear" | "quit" | "guide-hint" | "btw";
+	readonly action?:
+		| "help"
+		| "about"
+		| "clear"
+		| "quit"
+		| "guide-hint"
+		| "btw"
+		| "resume"
+		| "compact";
 }
 
 /** A promotion awaiting explicit approval — the sole audited mutation path. */
@@ -124,6 +147,8 @@ export interface InteractiveShellState {
 	readonly focus: ShellFocus;
 	readonly input: string;
 	readonly messages: readonly ShellMessage[];
+	/** Welcome + occupancy endpoints as a two-column ink table. */
+	readonly welcomeTable: readonly InkTableRow[];
 	readonly agentState: ShellAgentState;
 	readonly slashOpen: boolean;
 	readonly slashFilter: string;
@@ -158,6 +183,12 @@ export interface InteractiveShellState {
 	readonly productTitle: string;
 	/** Hard product identity — must never be stock Pi chrome. */
 	readonly engineLabel: "hobo-shell";
+	/** Durable interactive-chat id. Null until the first persistable turn. */
+	readonly sessionId: string | null;
+	readonly hoboHome: string;
+	readonly projectDir: string;
+	/** Full journal when the working pane has been compacted. */
+	readonly journal: readonly ShellMessage[] | null;
 }
 
 export interface RenderShellOptions {
@@ -254,6 +285,16 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		description: "Temporary side-chat about this moment",
 		action: "btw",
 	},
+	{
+		name: "resume",
+		description: "This chat id + how to reopen it later",
+		action: "resume",
+	},
+	{
+		name: "compact",
+		description: "Shrink working context; keep the durable journal",
+		action: "compact",
+	},
 	{ name: "quit", description: "Exit hobo-code shell", action: "quit" },
 ] as const;
 
@@ -329,6 +370,7 @@ export function slashItemForInput(text: string): ShellSlashItem | undefined {
 	const item = slashItemByName(name);
 	if (!item) return undefined;
 	if (item.action === "btw") return { ...item, argv: args };
+	if (item.action === "compact") return { ...item, argv: args };
 	const argv = resolveSlashArgv(item, args);
 	return argv ? { ...item, argv } : item;
 }
@@ -386,6 +428,30 @@ export function splitKeySequences(data: string): string[] {
 	return out;
 }
 
+export function buildWelcomeTable(occupancy?: {
+	readonly dashboardUrl?: string;
+	readonly evidenceUrl?: string;
+}): InkTableRow[] {
+	const rows: InkTableRow[] = [
+		{ label: "talk", value: "Type to talk to Bo" },
+		{ label: "patterns", value: "/templates lists patterns" },
+		{ label: "focus", value: "Tab · tasks / status / resources" },
+	];
+	if (occupancy?.dashboardUrl) {
+		rows.push({
+			label: "dashboard",
+			value: preferNamedEndpoint(occupancy.dashboardUrl, "dashboard"),
+		});
+	}
+	if (occupancy?.evidenceUrl) {
+		rows.push({
+			label: "evidence",
+			value: preferNamedEndpoint(occupancy.evidenceUrl, "evidence"),
+		});
+	}
+	return rows;
+}
+
 /**
  * Build initial shell state from env/cwd — pure enough for tests with overrides.
  */
@@ -399,6 +465,9 @@ export function createInitialShellState(
 		readonly hoboHome?: string;
 		readonly env?: NodeJS.ProcessEnv;
 		readonly welcome?: boolean;
+		readonly sessionId?: string;
+		readonly messages?: readonly ShellMessage[];
+		readonly journal?: readonly ShellMessage[];
 	} = {},
 ): InteractiveShellState {
 	const env = options.env ?? process.env;
@@ -460,13 +529,20 @@ export function createInitialShellState(
 		"  Honest residual: fullscreen mouse TUI is not claimed complete yet",
 	].join("\n");
 	const resourcesPlain = formatSessionResources(
-		assembleSessionResources({ hoboHome, env }),
+		assembleSessionResources({
+			hoboHome,
+			env,
+			projectDir: options.cwd ?? process.cwd(),
+		}),
 	);
 
+	const projectDir = options.cwd ?? process.cwd();
 	const welcome: ShellMessage[] =
-		options.welcome === false
-			? []
-			: [
+		options.messages !== undefined
+			? [...options.messages]
+			: options.welcome === false
+				? []
+				: [
 					{
 						role: "product",
 						text: [
@@ -484,11 +560,6 @@ export function createInitialShellState(
 						].join("\n"),
 						at: Date.now(),
 					},
-					{
-						role: "product",
-						text: "Type to talk to Bo. /templates lists patterns. Tab for tasks, status, and resources.",
-						at: Date.now(),
-					},
 				];
 
 	return {
@@ -500,6 +571,10 @@ export function createInitialShellState(
 		focus: "chat",
 		input: "",
 		messages: welcome,
+		welcomeTable:
+			options.messages !== undefined || options.welcome === false
+				? []
+				: buildWelcomeTable(),
 		agentState: "idle",
 		slashOpen: false,
 		slashFilter: "",
@@ -521,7 +596,104 @@ export function createInitialShellState(
 		sidecarChips: [],
 		productTitle: "hobo-code",
 		engineLabel: "hobo-shell",
+		sessionId: options.sessionId ?? null,
+		hoboHome,
+		projectDir,
+		journal: options.journal ?? null,
 	};
+}
+
+function persistShellChat(
+	state: InteractiveShellState,
+	force = false,
+): InteractiveShellState {
+	if (
+		!force &&
+		!state.messages.some(
+			(message) => message.role === "user" || message.role === "assistant",
+		)
+	) {
+		return state;
+	}
+	const journal = state.journal ?? state.messages;
+	const saved = saveChatSession(state.hoboHome, {
+		...(state.sessionId !== null ? { id: state.sessionId } : {}),
+		cwd: state.projectDir,
+		messages: journal,
+		...(state.journal
+			? {
+					workingMessages: state.messages.map((message) => ({
+						role: message.role,
+						text: message.text,
+						at: message.at,
+					})),
+				}
+			: {}),
+		...(state.stationLabel ? { stationLabel: state.stationLabel } : {}),
+		...(state.envLabel ? { envLabel: state.envLabel } : {}),
+		...(state.modelLabel ? { modelLabel: state.modelLabel } : {}),
+	});
+	const next =
+		state.sessionId === saved.id
+			? state
+			: { ...state, sessionId: saved.id };
+	writeCurrentSessionContext(next.hoboHome, {
+		sessionId: saved.id,
+		cwd: next.projectDir,
+		...(next.stationLabel ? { stationLabel: next.stationLabel } : {}),
+		...(next.envLabel ? { envLabel: next.envLabel } : {}),
+		...(next.modelLabel ? { modelLabel: next.modelLabel } : {}),
+	});
+	return next;
+}
+
+function appendWorking(
+	state: InteractiveShellState,
+	message: ShellMessage,
+): InteractiveShellState {
+	return {
+		...state,
+		messages: [...state.messages, message],
+		journal: state.journal ? [...state.journal, message] : state.journal,
+	};
+}
+
+export function applyCompact(
+	state: InteractiveShellState,
+	focus = "",
+): InteractiveShellState {
+	const journal = state.journal ?? state.messages;
+	const plan = compactTranscript({
+		messages: journal,
+		...(focus.trim() ? { focus: focus.trim() } : {}),
+		...(state.stationLabel ? { stationLabel: state.stationLabel } : {}),
+		...(state.envLabel ? { envLabel: state.envLabel } : {}),
+		...(state.sessionId !== null ? { sessionId: state.sessionId } : {}),
+	});
+	const next: InteractiveShellState = {
+		...state,
+		messages: plan.working.map((row) => ({
+			role: row.role,
+			text: row.text,
+			at: row.at,
+		})),
+		journal: plan.journal.map((row) => ({
+			role: row.role,
+			text: row.text,
+			at: row.at,
+		})),
+		input: "",
+		slashOpen: false,
+		slashFilter: "",
+		slashIndex: 0,
+		chatScroll: 0,
+		focus: "chat",
+		footerHints:
+			plan.droppedCount > 0
+				? "compact · journal intact · Esc/scroll still work"
+				: state.footerHints,
+	};
+	return persistShellChat(next, true);
 }
 
 /** Bo header rows for the current geometry: full sprite on tall terminals,
@@ -632,8 +804,10 @@ export function applyBtwPrompt(
 			footerHints: "Tab focus · / slash · btw aside · ? help · Ctrl+C quit",
 		};
 	}
-	const snapshot = state.btw?.snapshot ?? snapshotFromState(state);
+	const snapshot = snapshotFromState(state);
 	const prior = state.btw?.turns ?? [];
+	const originMessageCount =
+		state.btw?.originMessageCount ?? snapshot.messageCount;
 	const now = Date.now();
 	const asked = question.trim();
 	const userTurns =
@@ -645,10 +819,8 @@ export function applyBtwPrompt(
 		...state,
 		btw: {
 			snapshot,
-			turns: [
-				...userTurns,
-				{ role: "assistant", text: answer, at: now + 1 },
-			],
+			turns: [...userTurns, { role: "assistant", text: answer, at: now + 1 }],
+			originMessageCount,
 		},
 		focus: "btw",
 		input: "",
@@ -656,7 +828,15 @@ export function applyBtwPrompt(
 		slashFilter: "",
 		slashIndex: 0,
 		chatScroll: 0,
-		footerHints: "btw aside · Esc dismisses · main chat is unchanged",
+		footerHints: "btw overlay · Esc dismisses · parent thread stays visible",
+	};
+}
+
+function withLiveBtw(state: InteractiveShellState): InteractiveShellState {
+	if (!state.btw) return state;
+	return {
+		...state,
+		btw: refreshBtwSnapshot(state.btw, snapshotFromState(state)),
 	};
 }
 
@@ -682,9 +862,6 @@ export function buildShellTree(state: InteractiveShellState) {
 			changes: state.pendingApproval.changes,
 			prompt: APPROVAL_PROMPT,
 		});
-	} else if (state.btw) {
-		title = "btw";
-		surface = BtwAside({ turns: state.btw.turns });
 	} else if (state.slashOpen) {
 		title = "commands";
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
@@ -713,23 +890,80 @@ export function buildShellTree(state: InteractiveShellState) {
 			Math.max(0, transcript.length - inner),
 		);
 		if (scroll > 0) title = `chat ↑${scroll}`;
-		surface = ChatTranscript({
-			messages: state.messages,
-			width: innerWidth,
-			scroll,
-		});
+		const lead = state.messages[0];
+		const leadIsArt =
+			lead?.role === "product" && /[█▄▀]/.test(lead.text);
+		if (state.welcomeTable.length > 0 && leadIsArt) {
+			surface = h(
+				"box",
+				{
+					id: "chat-surface",
+					role: "region",
+					className: "chat-surface",
+				},
+				ChatTranscript({
+					messages: [lead],
+					width: innerWidth,
+				}),
+				InkTable({ id: "welcome-table", rows: state.welcomeTable }),
+				ChatTranscript({
+					messages: state.messages.slice(1),
+					width: innerWidth,
+					scroll,
+				}),
+			);
+		} else if (state.welcomeTable.length > 0) {
+			surface = h(
+				"box",
+				{
+					id: "chat-surface",
+					role: "region",
+					className: "chat-surface",
+				},
+				InkTable({ id: "welcome-table", rows: state.welcomeTable }),
+				ChatTranscript({
+					messages: state.messages,
+					width: innerWidth,
+					scroll,
+				}),
+			);
+		} else {
+			surface = ChatTranscript({
+				messages: state.messages,
+				width: innerWidth,
+				scroll,
+			});
+		}
 	}
 
 	const phase =
 		state.reducedMotion || state.agentState !== "working"
 			? 0
 			: Math.floor(state.tickMs / BO_IDLE_TICK_MS);
+	const live = state.btw ? snapshotFromState(state) : undefined;
+	const overlay =
+		state.btw && live
+			? BtwAside({
+					turns: state.btw.turns,
+					...((live.lastAssistant ?? live.lastUser ?? live.lastProduct)
+						? {
+								parentLatest:
+									live.lastAssistant ?? live.lastUser ?? live.lastProduct,
+							}
+						: {}),
+					newFromParent: parentDelta({
+						...state.btw,
+						snapshot: live,
+					}),
+				})
+			: undefined;
 	return ShellChrome({
 		title,
 		accent,
 		segments: statusSegments(state),
 		viewportRows: inner,
 		phase,
+		...(overlay !== undefined ? { overlay } : {}),
 		children: surface,
 	});
 }
@@ -917,6 +1151,10 @@ export function reduceShellKey(
 				const asked = matchBtwInput(state.input)?.question ?? "";
 				return { state: applyBtwPrompt(state, asked) };
 			}
+			if (item.action === "compact") {
+				const extra = state.input.trim().replace(/^\/?compact\s*/iu, "");
+				return { state: applyCompact(state, extra) };
+			}
 			const argv = resolveSlashArgv(item);
 			return {
 				state: {
@@ -944,6 +1182,11 @@ export function reduceShellKey(
 		}
 		if (text.startsWith("/")) {
 			const item = slashItemForInput(text);
+			if (item?.action === "compact") {
+				return {
+					state: applyCompact(state, (item.argv ?? []).join(" ")),
+				};
+			}
 			if (item) {
 				return {
 					state: {
@@ -968,13 +1211,12 @@ export function reduceShellKey(
 			};
 		}
 		return {
-			state: {
-				...state,
-				input: "",
-				chatScroll: 0,
-				messages: [...state.messages, { role: "user", text, at: Date.now() }],
-				agentState: "working",
-			},
+			state: persistShellChat(
+				appendWorking(
+					{ ...state, input: "", chatScroll: 0, agentState: "working" },
+					{ role: "user", text, at: Date.now() },
+				),
+			),
 			submit: text,
 		};
 	}
@@ -1050,23 +1292,28 @@ export function appendAssistant(
 	text: string,
 	agentState: ShellAgentState = "idle",
 ): InteractiveShellState {
-	return {
-		...state,
-		agentState,
-		chatScroll: 0,
-		messages: [...state.messages, { role: "assistant", text, at: Date.now() }],
-	};
+	return persistShellChat(
+		withLiveBtw(
+			appendWorking(
+				{ ...state, agentState, chatScroll: 0 },
+				{ role: "assistant", text, at: Date.now() },
+			),
+		),
+	);
 }
 
 export function appendProduct(
 	state: InteractiveShellState,
 	text: string,
 ): InteractiveShellState {
-	return {
-		...state,
-		chatScroll: 0,
-		messages: [...state.messages, { role: "product", text, at: Date.now() }],
-	};
+	return persistShellChat(
+		withLiveBtw(
+			appendWorking(
+				{ ...state, chatScroll: 0 },
+				{ role: "product", text, at: Date.now() },
+			),
+		),
+	);
 }
 
 /**
@@ -1083,15 +1330,25 @@ export function replaceLastAssistant(
 		const appended = appendAssistant(state, text, agentState);
 		return appended;
 	}
-	return {
-		...state,
-		agentState,
-		chatScroll: 0,
-		messages: [
-			...state.messages.slice(0, -1),
-			{ role: "assistant", text, at: last.at },
-		],
-	};
+	const replaced = { role: "assistant" as const, text, at: last.at };
+	const journal = state.journal;
+	let nextJournal = journal;
+	if (journal && journal.length > 0) {
+		const lastJournal = journal[journal.length - 1];
+		nextJournal =
+			lastJournal?.role === "assistant"
+				? [...journal.slice(0, -1), replaced]
+				: [...journal, replaced];
+	}
+	return persistShellChat(
+		withLiveBtw({
+			...state,
+			agentState,
+			chatScroll: 0,
+			messages: [...state.messages.slice(0, -1), replaced],
+			journal: nextJournal,
+		}),
+	);
 }
 
 // ── TTY driver ───────────────────────────────────────────────────────────
@@ -1156,6 +1413,9 @@ export interface RunInteractiveShellOptions {
 	 * unless HOBO_CODE_SIDECARS=0. Tests pass false to stay off-network.
 	 */
 	readonly sidecars?: boolean;
+	readonly sessionId?: string;
+	readonly messages?: readonly ShellMessage[];
+	readonly journal?: readonly ShellMessage[];
 }
 
 /**
@@ -1166,7 +1426,8 @@ export interface RunInteractiveShellOptions {
  *   or a Bo sprite frame that differs from the previous one);
  * - idle rest spans request no renders at all;
  * - unchanged lines are never rewritten (pi-tui line diff);
- * - the transcript survives exit — no alternate screen.
+ * - live TTY uses the alternate screen so quit does not leave the frame
+ *   in scrollback (Claude/Codex/Grok Build).
  */
 export async function runInteractiveShell(
 	options: RunInteractiveShellOptions,
@@ -1224,34 +1485,43 @@ export async function runInteractiveShell(
 		...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
 		hoboHome: shellHome,
 		env: shellEnv,
+		...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}),
+		...(options.messages !== undefined ? { messages: options.messages } : {}),
+		...(options.journal !== undefined ? { journal: options.journal } : {}),
 	});
 	if (options.host.engineLabel) {
 		state = { ...state, modelLabel: options.host.engineLabel };
 	}
+	const sessionId = state.sessionId ?? newChatSessionId();
+	if (state.sessionId !== sessionId) {
+		state = { ...state, sessionId };
+	}
+	writeCurrentSessionContext(state.hoboHome, {
+		sessionId,
+		cwd: state.projectDir,
+		...(state.stationLabel ? { stationLabel: state.stationLabel } : {}),
+		...(state.envLabel ? { envLabel: state.envLabel } : {}),
+		...(state.modelLabel ? { modelLabel: state.modelLabel } : {}),
+	});
 	if (sidecars) {
 		state = {
 			...state,
 			sidecarChips: [...formatSidecarStrap(sidecars)],
-			messages: [
-				...state.messages,
-				{
-					role: "product",
-					text: [
-						`dashboard · ${sidecars.dashboardUrl}`,
-						`evidence · ${sidecars.evidenceUrl}`,
-					].join("\n"),
-					at: Date.now(),
-				},
-			],
+			welcomeTable: buildWelcomeTable({
+				dashboardUrl: sidecars.dashboardUrl,
+				evidenceUrl: sidecars.evidenceUrl,
+			}),
 		};
 	}
 
+	const liveTty = isTty && options.scriptedKeys === undefined;
 	const terminal = new StreamTerminal({
 		stdin,
 		stdout,
 		columns: state.width,
 		rows: state.height,
-		rawMode: isTty && options.scriptedKeys === undefined,
+		rawMode: liveTty,
+		alternateScreen: liveTty,
 	});
 	options.onTerminal?.(terminal);
 	const tui = new TUI(terminal, false);
@@ -1281,6 +1551,20 @@ export async function runInteractiveShell(
 			state = applyBtwPrompt(state, asked);
 			return;
 		}
+		if (item.action === "resume") {
+			state = persistShellChat(state);
+			state = appendProduct(
+				state,
+				state.sessionId
+					? `This chat is ${state.sessionId}. Resume later: hobo-code resume ${state.sessionId}`
+					: "No persisted chat yet. Send a prompt first, then hobo-code resume.",
+			);
+			return;
+		}
+		if (item.action === "compact") {
+			state = applyCompact(state, (item.argv ?? []).join(" "));
+			return;
+		}
 		if (state.btw) {
 			state = { ...state, btw: null, focus: "chat" };
 		}
@@ -1288,8 +1572,10 @@ export async function runInteractiveShell(
 			state = appendProduct(
 				state,
 				[
-					"Commands: type / and pick — /dev /templates /hobo /ide /config /tasks /status /resources /btw /about /quit",
+					"Commands: type / and pick — /dev /templates /hobo /ide /config /tasks /status /resources /btw /resume /compact /about /quit",
 					"Aside: btw <question> borrows this moment without joining the main chat.",
+					"Resume: /resume prints this chat id · later `hobo-code resume [id]`.",
+					"Compact: /compact [focus] shrinks the working pane; the journal stays.",
 					"Templates: /templates lists; /template <query> searches (zero LLM).",
 					"Resident control: /sessions <args> (plain /sessions lists).",
 					"HoBo control plane: /hobo <args> (for example /hobo yard status).",
@@ -1446,6 +1732,18 @@ export async function runInteractiveShell(
 		approval: PendingApproval,
 		approved: boolean,
 	) => {
+		const impact = approval.changes
+			.map((change) => `${change.status} ${change.path}`)
+			.join("\n");
+		if (state.sessionId) {
+			recordSessionDecision(state.hoboHome, {
+				sessionId: state.sessionId,
+				title: approved ? "Promoted sandbox" : "Kept sandboxed",
+				reason: approved
+					? `Apply run ${approval.runId}.\n${impact || "No file changes listed."}`
+					: `Refused run ${approval.runId}. Work stays in ${approval.sandboxRoot}.\n${impact}`,
+			});
+		}
 		if (!approved) {
 			state = appendProduct(
 				state,
@@ -1507,12 +1805,12 @@ export async function runInteractiveShell(
 			tui.requestRender();
 			return;
 		}
-		state = {
-			...state,
-			chatScroll: 0,
-			messages: [...state.messages, { role: "user", text, at: Date.now() }],
-			agentState: "working",
-		};
+		state = persistShellChat(
+			appendWorking(
+				{ ...state, chatScroll: 0, agentState: "working" },
+				{ role: "user", text, at: Date.now() },
+			),
+		);
 		tui.requestRender();
 		void onSubmit(text)
 			.then(() => {
@@ -1717,11 +2015,13 @@ export async function runInteractiveShell(
 		if (maxMsTimer) clearTimeout(maxMsTimer);
 		process.removeListener("SIGTERM", onSignal);
 		process.removeListener("SIGHUP", onSignal);
-		// No alternate screen: TUI.stop() parks the cursor after the last frame,
-		// so the session's final view stays in the terminal scrollback. This
-		// runs even if the driver threw — a CLI that can strand a terminal in
-		// raw mode is not shippable.
+		// Leave the alternate screen (and raw mode) even if the driver threw —
+		// a CLI that can strand a terminal in raw mode is not shippable.
 		tui.stop();
+		state = persistShellChat(state, true);
+		if (state.sessionId) {
+			stdout.write(`${formatShellCloseout(state.sessionId)}\n`);
+		}
 		await sidecars?.close().catch(() => {});
 	}
 	return 0;

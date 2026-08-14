@@ -7,9 +7,9 @@
  █▌                                                                  ▐█▒
  █▌              a coding harness that rides the rails               ▐█▒
  █▌                                                                  ▐█▒
- █▌··· · Type to talk to Bo. /templates lists patterns. Tab for      ▐█▒
- █▌      tasks, status, and resources.                               ▐█▒
- █▌                                                                  ▐█▒
+ █▌talk      Type to talk to Bo                                      ▐█▒
+ █▌patterns  /templates lists patterns                               ▐█▒
+ █▌focus     Tab · tasks / status / resources                        ▐█▒
  █▌     [ /dev ]  [ /templates ]  [ /btw ]  [ /hobo ]  [ /auth ]     ▐█▒
  ▀█▄    ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▄█▀▒
   ▀▀▀██████████████████████████████████████████████████████████████▀▀▀ ▒

@@ -72,10 +72,26 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
   turn is in flight (reduced motion keeps him still).
 - **Station sidecars** start with the session: the Aspire dashboard
   (`http://dashboard.code.local.hobo.localhost:8787`) and the Evidence SPA
-  (`http://evidence.code.local.hobo.localhost:8788`). Evidence is a Station
-  occupancy process — it stays up for the whole coding session. `/dev`,
-  Bindle stop, TTY quit, and `session.complete()` do not tear it down.
-  Logout (or `stopStationSidecars`) does. Opt out with `HOBO_CODE_SIDECARS=0`.
+  (`http://evidence.code.local.hobo.localhost:8788`). A local Station
+  auto-seeds `yard:local` (and `camp:local` when a Bindle is present) as
+  **ready** so develop is not a stop board. Station, Yard, and Camp are
+  primitives with their own managed children (sidecars, flow /
+  named-endpoints, bindle resources) that start and stop independently.
+  The Endpoints table lists occupancy sidecars that are actually listening
+  (dashboard, Evidence, controls, OTLP) even before a Bindle `/dev`.
+  Capabilities lists every Bindle kind from the catalog with honest local
+  fidelity (simulated / mocked / camp-only). OTel lists every occupancy
+  service and deployed Bindle against the local collector (`exporting` vs
+  `silent`). Stopping Yard flow on the dashboard actually halts Bindle
+  traffic until you start it again; Camp and sibling resources stay theirs.
+  `/dev` writes Camp + Bindle fulfillment that
+  matches the deployed Bindle (api/web/kv/data/… as named endpoints).
+  Evidence is a Station occupancy process — it stays up for the whole
+  coding session and paints a live rubberhose journal for **this**
+  `hobo-code` chat: asks, decisions with reasons, impact, and visual
+  looks (screenshots/recordings), not a static sectioned site. `/dev`, Bindle stop,
+  TTY quit, and `session.complete()` do not tear it down. Logout (or
+  `stopStationSidecars`) does. Opt out with `HOBO_CODE_SIDECARS=0`.
 
 | Key | Does |
 |---|---|
@@ -402,9 +418,11 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **models** | Active model + BYOK env presence (open models; no secret values) |
 | status | Session / agent multiplexer chrome |
 | **resources** | Session topology + real endpoints (Station occupancy × `HOBO_ENV`) |
-| **dashboard** | Local Aspire SPA (also a default Station sidecar on session start) |
+| **dashboard** | Local Aspire SPA (also a default Station sidecar on session start). Station/Yard/Camp are primitives; start/stop their managed children (flow, named-endpoints, bindle resources). Bindle HTTP start/stop launch and kill `/dev`. |
 | session | Resident branch/worktree sessions: tmux tabs/panes, harness agents, checkpoints, attach/switch, approved Git/PR delivery, and loopback browser control (`session --help`) |
 | **attach** | Dev-terminal attach (tmux reattach · mosh? · Tailscale overlay named endpoint) |
+| **resume** | Reopen the last (or given) interactive chat; prefix ids work |
+| **compact** | Shrink the working pane; durable journal stays intact |
 | **tasks** | Background task board (Grok Build–shaped: click · tasks · workflows) |
 | **guide** | Claude Code → hobo-code map (plain English for non-dev app builders) |
 | **cost** | Budget, $0 free/local path, savings scoreboard, cheapest-capable routing |
@@ -418,15 +436,29 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | env | Optional hermetic shell + durable layout |
 | help | Plain help (or `--dense` glyph idioms) |
 
-Type `btw what's going on` or `/btw` for a temporary side-chat that borrows
-this session's snapshot (station, last turns, gate, agent state). Esc
-dismisses. The main transcript is unchanged and no workspace action runs.
+Type `btw what's going on` or `/btw` for a temporary overlay side-chat that
+stays live with the parent thread (station, last turns, gate, agent state).
+Esc dismisses. The overlay sits on the CRT glass so both threads stay
+visible; the main transcript is unchanged and no workspace action runs.
+
+`hobo-code resume` reopens the latest persisted InteractiveShell transcript
+for this working directory (`hobo-code resume <session_id>` for a specific
+one; a unique prefix is enough). Quit prints that command after leaving the
+alternate screen. `/compact` (or `hobo-code compact`) shrinks the working
+pane with a deterministic briefing and keeps the last user turns; the
+journal file is never rewritten. Chats live under
+`$HOBO_HOME/durable/code/chats`. If the id is a resident tmux session
+instead, resume attaches to that.
 
 Bare `hobo-code` paints through `buildShellTree` → `ShellChrome` inside a
-`BroadcastFrame` (algorithmic old-TV / film-broadcast bezel). Chat, slash,
-approval, and tasks/status/resources are queryable TUI components
-(`ChatTranscript`, `SlashPalette`, `ApprovalDialog`, `TextPane`), not pre-baked
-card strings. Every `tui-*` source is in DESIGN.md lint scope.
+`BroadcastFrame` (algorithmic old-TV / film-broadcast bezel). A live TTY
+uses the alternate screen so quit restores the prior terminal instead of
+leaving the CRT frame in scrollback. The initial
+screen is an `InkTable` of talk / patterns / focus plus occupancy named
+endpoints (`*.hobo.localhost`, never loopback IPs). Chat, slash, approval,
+and tasks/status/resources are queryable TUI components
+(`ChatTranscript`, `InkTable`, `SlashPalette`, `ApprovalDialog`, `TextPane`),
+not pre-baked card strings. Every `tui-*` source is in DESIGN.md lint scope.
 
 `dev` reuses the durable Evidence port, report, screenshot/recording capture,
 replay, and `.hobo/recordings` capability exporter. Its browser boundary is

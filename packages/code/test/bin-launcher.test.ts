@@ -5,6 +5,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -20,6 +21,40 @@ describe("hobo-code bin launcher", () => {
 	it("bin/hobo-code.mjs exists and is the package bin entry", () => {
 		expect(existsSync(launcher)).toBe(true);
 	});
+
+	it("stale rebuild compiles @hobo/code only and does not fan out @hobo/core", () => {
+		const pkg = JSON.parse(
+			readFileSync(join(pkgRoot, "package.json"), "utf8"),
+		) as { scripts?: Record<string, string> };
+		const prebuild = pkg.scripts?.prebuild ?? "";
+		expect(prebuild).not.toMatch(/@hobo\/core/);
+		expect(prebuild).not.toMatch(/@hobo\/stations/);
+		expect(prebuild).not.toMatch(/@hobo\/patterns/);
+		expect(pkg.scripts?.build).toMatch(/tsc/);
+		const launcherSrc = readFileSync(launcher, "utf8");
+		expect(launcherSrc).toMatch(/tsc/);
+		expect(launcherSrc).not.toMatch(/--filter\s+@hobo\/core/);
+		expect(launcherSrc).not.toMatch(/pnpm", \["run", "build"\]/);
+	});
+
+	it("forced stale rebuild is tsc-only and does not rebuild @hobo/core", () => {
+		const started = Date.now();
+		const r = spawnSync(process.execPath, [launcher, "help"], {
+			cwd: pkgRoot,
+			encoding: "utf8",
+			env: {
+				...process.env,
+				HOBO_CODE_FORCE_STALE_REBUILD: "1",
+			},
+		});
+		const elapsedMs = Date.now() - started;
+		expect(r.status).toBe(0);
+		expect(r.stderr).toMatch(/tsc @hobo\/code only/);
+		expect(r.stderr).not.toMatch(/@hobo\/core/);
+		expect(r.stderr).not.toMatch(/@hobo\/stations@/);
+		expect(r.stdout).toMatch(/hobo-code/);
+		expect(elapsedMs).toBeLessThan(60_000);
+	}, 60_000);
 
 	it("runs help via launcher with current dist (skip rebuild)", () => {
 		const r = spawnSync(process.execPath, [launcher, "help"], {

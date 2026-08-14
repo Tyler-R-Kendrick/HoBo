@@ -13,6 +13,7 @@ export interface TuiStyle {
 	readonly accent?: AccentName;
 	readonly title?: string;
 	readonly width?: number;
+	readonly height?: number;
 	readonly color?: string;
 	readonly backgroundColor?: string;
 }

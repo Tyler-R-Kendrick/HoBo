@@ -128,13 +128,23 @@ export function getNamedEndpointHost(params: NamedEndpointParams): string {
 
 /**
  * Build a full URL for a named endpoint (default scheme https).
+ * Pass `port` when the name is bound to a loopback listener that is not 80/443.
  */
 export function getNamedEndpoint(
-	params: NamedEndpointParams & { readonly scheme?: "http" | "https" },
+	params: NamedEndpointParams & {
+		readonly scheme?: "http" | "https";
+		readonly port?: number;
+	},
 ): string {
 	const host = getNamedEndpointHost(params);
 	const scheme = params.scheme ?? "https";
-	return `${scheme}://${host}`;
+	const port = params.port;
+	const omitPort =
+		port === undefined ||
+		port <= 0 ||
+		(scheme === "https" && port === 443) ||
+		(scheme === "http" && port === 80);
+	return omitPort ? `${scheme}://${host}` : `${scheme}://${host}:${port}`;
 }
 
 /** True when a hostname is a legal HoBo hierarchical name (ends with .hobo.<tld>). */

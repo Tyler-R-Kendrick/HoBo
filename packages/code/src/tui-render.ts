@@ -1,7 +1,9 @@
 import { inkCard, statusStripe } from "./rubberhose.js";
+import { BROADCAST_INNER_INSET, broadcastFrame } from "./tui-broadcast.js";
+import { centerLine, padLines, windowAround, wrapText } from "./tui-layout.js";
 import { collectText, type TuiNode } from "./tui-tree.js";
 
-function renderNode(node: TuiNode, width: number): string[] {
+function renderNode(node: TuiNode, width: number, height?: number): string[] {
 	if (node.type === "text" || node.role === "text") {
 		return node.text !== undefined
 			? [node.text]
@@ -18,23 +20,100 @@ function renderNode(node: TuiNode, width: number): string[] {
 			chips.push(chip);
 			used = next;
 		}
-		return [` ${chips.join("  ")}`];
+		return [centerLine(chips.join("  "), width)];
 	}
-	if (node.classList.includes("ink-card")) {
-		const body = node.children.flatMap((child) => renderNode(child, width - 3));
-		return inkCard(body, {
+	if (
+		node.classList.includes("ink-card") ||
+		node.classList.includes("broadcast-frame")
+	) {
+		const viewport = node.style.height ?? height;
+		const inset = node.classList.includes("broadcast-frame")
+			? BROADCAST_INNER_INSET
+			: 3;
+		const rail = node.children.filter((child) =>
+			child.classList.includes("command-rail"),
+		);
+		const rest = node.children.filter(
+			(child) => !child.classList.includes("command-rail"),
+		);
+		const body = rest.flatMap((child) =>
+			renderNode(child, width - inset, viewport),
+		);
+		const padded = viewport === undefined ? body : padLines(body, viewport);
+		const railLines = rail.flatMap((child) => renderNode(child, width - inset));
+		const chrome = {
 			width,
 			...(node.style.title !== undefined ? { title: node.style.title } : {}),
 			...(node.style.accent !== undefined ? { accent: node.style.accent } : {}),
-		});
+		};
+		if (node.classList.includes("broadcast-frame")) {
+			const phase = typeof node.props.phase === "number" ? node.props.phase : 0;
+			return broadcastFrame([...padded, ...railLines], { ...chrome, phase });
+		}
+		return inkCard([...padded, ...railLines], chrome);
+	}
+	if (node.classList.includes("transcript")) {
+		const lines: string[] = [];
+		for (const child of node.children) {
+			lines.push(...renderNode(child, width));
+			lines.push("");
+		}
+		const scroll =
+			typeof node.props.scroll === "number" ? node.props.scroll : 0;
+		return height === undefined ? lines : padLines(lines, height, scroll);
+	}
+	if (node.classList.includes("slash-palette")) {
+		const items = node.children.flatMap((child) => renderNode(child, width));
+		const selected =
+			typeof node.props.selectedIndex === "number"
+				? node.props.selectedIndex
+				: 0;
+		if (height === undefined) return items;
+		return [...windowAround(items, height, selected).lines];
+	}
+	if (node.classList.includes("approval")) {
+		const lines = node.children.flatMap((child) => renderNode(child, width));
+		if (height === undefined || lines.length <= height) {
+			return height === undefined ? lines : padLines(lines, height);
+		}
+		const changeLines = node.children
+			.filter((child) => child.classList.includes("change"))
+			.flatMap((child) => renderNode(child, width));
+		const prefix: string[] = [];
+		const suffix: string[] = [];
+		let seenChange = false;
+		for (const child of node.children) {
+			const chunk = renderNode(child, width);
+			if (child.classList.includes("change")) {
+				seenChange = true;
+				continue;
+			}
+			if (seenChange) suffix.push(...chunk);
+			else prefix.push(...chunk);
+		}
+		const room = Math.max(1, height - prefix.length - suffix.length - 1);
+		const shown = changeLines.slice(0, room);
+		const hidden = changeLines.length - shown.length;
+		const extra = hidden > 0 ? [`  … ${hidden} more file(s)`] : [];
+		return padLines([...prefix, ...shown, ...extra, ...suffix], height);
+	}
+	if (node.classList.includes("btw-aside")) {
+		const lines = node.children.flatMap((child) =>
+			wrapText(collectText(child).join(" "), width),
+		);
+		return height === undefined ? lines : padLines(lines, height);
+	}
+	if (node.classList.includes("text-pane")) {
+		const lines = wrapText(collectText(node).join("\n"), width);
+		return height === undefined ? lines : padLines(lines, height);
 	}
 	if (node.type === "strap" || node.classList.includes("status-strap")) {
 		return [statusStripe(collectText(node), width)];
 	}
 	if (node.type === "fragment") {
-		return node.children.flatMap((child) => renderNode(child, width));
+		return node.children.flatMap((child) => renderNode(child, width, height));
 	}
-	return node.children.flatMap((child) => renderNode(child, width));
+	return node.children.flatMap((child) => renderNode(child, width, height));
 }
 
 /** Paint a retained TUI tree to a fixed-width frame. */

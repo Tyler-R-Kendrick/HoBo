@@ -154,9 +154,23 @@ export function colourEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
  * Used for the Chewy title card and Bo.
  */
 export function centreBlock(art: readonly string[], width: number): string[] {
-	const widest = art.reduce((m, l) => Math.max(m, l.trimEnd().length), 0);
-	const pad = Math.max(0, Math.floor((width - widest) / 2));
-	return art.map((line) => fitCells(" ".repeat(pad) + line.trimEnd(), width));
+	const rows = art.map((line) => line.trimEnd());
+	let inkLeft = Number.POSITIVE_INFINITY;
+	let inkRight = 0;
+	for (const line of rows) {
+		const start = line.search(/\S/u);
+		if (start < 0) continue;
+		inkLeft = Math.min(inkLeft, start);
+		inkRight = Math.max(inkRight, line.length);
+	}
+	if (!Number.isFinite(inkLeft)) {
+		return rows.map((line) => fitCells(line, width));
+	}
+	const box = inkRight - inkLeft;
+	const pad = Math.max(0, Math.floor((width - box) / 2));
+	return rows.map((line) =>
+		fitCells(`${" ".repeat(pad)}${line.slice(inkLeft)}`, width),
+	);
 }
 
 /**
@@ -200,6 +214,7 @@ export function statusStripe(
 ): string {
 	const text = segments.filter((s) => s.length > 0).join("  ·  ");
 	const colour = colourEnabled();
-	const fitted = fitCells(` ${text}`, width);
+	const left = Math.max(0, Math.floor((width - cellWidth(text)) / 2));
+	const fitted = fitCells(`${" ".repeat(left)}${text}`, width);
 	return colour ? `\u001b[7m${fitted}\u001b[0m` : fitted;
 }

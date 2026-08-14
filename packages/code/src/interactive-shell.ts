@@ -23,7 +23,7 @@ import {
 import { inspectCost } from "./cost.js";
 import { buildTasksSurface } from "./grok-build-parity.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
-import { type AccentName, titleCard } from "./rubberhose.js";
+import { type AccentName, centreBlock } from "./rubberhose.js";
 import {
 	assembleSessionResources,
 	formatSessionResources,
@@ -56,21 +56,38 @@ import {
 	startStationSidecars,
 } from "./station-sidecars.js";
 import { buildMultiplexerStatus, createPane, renderStatusText } from "./tui.js";
-import { BROADCAST_INNER_INSET } from "./tui-broadcast.js";
+import {
+	BROADCAST_CHROME_ROWS,
+	BROADCAST_INNER_INSET,
+} from "./tui-broadcast.js";
 import {
 	ApprovalDialog,
+	BtwAside,
 	ChatTranscript,
 	ShellChrome,
 	SlashPalette,
 	TextPane,
 } from "./tui-components.js";
+import {
+	answerBtw,
+	type BtwSession,
+	captureBtwSnapshot,
+	isBtwDismiss,
+	matchBtwInput,
+} from "./btw.js";
 import { clearWrapCache, wrapMessage } from "./tui-layout.js";
 import { renderTuiTree } from "./tui-render.js";
 import type { TuiNode } from "./tui-tree.js";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
-export type ShellFocus = "chat" | "tasks" | "status" | "resources" | "slash";
+export type ShellFocus =
+	| "chat"
+	| "tasks"
+	| "status"
+	| "resources"
+	| "slash"
+	| "btw";
 
 export type ShellAgentState = "idle" | "working" | "blocked" | "done";
 
@@ -88,7 +105,7 @@ export interface ShellSlashItem {
 	/** When set, shell invokes this CLI argv via the host callback. */
 	readonly argv?: readonly string[];
 	/** Built-in action id when not a CLI verb. */
-	readonly action?: "help" | "about" | "clear" | "quit" | "guide-hint";
+	readonly action?: "help" | "about" | "clear" | "quit" | "guide-hint" | "btw";
 }
 
 /** A promotion awaiting explicit approval — the sole audited mutation path. */
@@ -119,6 +136,8 @@ export interface InteractiveShellState {
 	 * approval. Non-null means the shell is waiting on y/n.
 	 */
 	readonly pendingApproval: PendingApproval | null;
+	/** Temporary side-chat borrowed from this moment. Null when dismissed. */
+	readonly btw: BtwSession | null;
 	/** Live session token/cost accounting shown in the footer and /cost. */
 	readonly usageLabel: string;
 	/** Rows the Editor occupies, so the transcript can size around it. */
@@ -230,6 +249,11 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 			"Durable review session (coverage, threads, exact-effect publish)",
 		argv: ["review"],
 	},
+	{
+		name: "btw",
+		description: "Temporary side-chat about this moment",
+		action: "btw",
+	},
 	{ name: "quit", description: "Exit hobo-code shell", action: "quit" },
 ] as const;
 
@@ -304,6 +328,7 @@ export function slashItemForInput(text: string): ShellSlashItem | undefined {
 	const [name = "", ...args] = text.slice(1).trim().split(/\s+/);
 	const item = slashItemByName(name);
 	if (!item) return undefined;
+	if (item.action === "btw") return { ...item, argv: args };
 	const argv = resolveSlashArgv(item, args);
 	return argv ? { ...item, argv } : item;
 }
@@ -444,11 +469,19 @@ export function createInitialShellState(
 			: [
 					{
 						role: "product",
-						text: titleCard(HOBO_LOGO_TUI, {
-							width: Math.min(width - BROADCAST_INNER_INSET, 70),
-							subtitle: "a coding harness that rides the rails",
-							flat: true,
-						}).join("\n"),
+						text: [
+							...centreBlock(
+								HOBO_LOGO_TUI.split("\n").filter(
+									(line) => line.trim().length > 0,
+								),
+								Math.min(width - BROADCAST_INNER_INSET, 70),
+							),
+							"",
+							...centreBlock(
+								["a coding harness that rides the rails"],
+								Math.min(width - BROADCAST_INNER_INSET, 70),
+							),
+						].join("\n"),
 						at: Date.now(),
 					},
 					{
@@ -473,12 +506,13 @@ export function createInitialShellState(
 		slashIndex: 0,
 		chatScroll: 0,
 		pendingApproval: null,
+		btw: null,
 		usageLabel: "",
 		inputRows: 1,
 		statusPlain,
 		tasksPlain,
 		resourcesPlain,
-		footerHints: "Tab focus · / slash · ? help · Ctrl+C quit",
+		footerHints: "Tab focus · / slash · btw aside · ? help · Ctrl+C quit",
 		modelLabel: ENGINE_NONE_LABEL,
 		costLabel: `$${cost.budget.spendUsd.toFixed(2)}/$${cost.budget.capUsd.toFixed(2)} · ${cost.budget.routingPolicy}`,
 		hermeticLabel: hermeticEnvSummary(hermetic).split("\n")[0] ?? "env",
@@ -550,19 +584,85 @@ export function statusSegments(state: InteractiveShellState): string[] {
  *
  * Layout (site/DESIGN.md — ink and paper, never flat SaaS chrome):
  *
- *   ┏━ chat ━━━━━━━━━━━━━━━━━━┓     ← transcript is the surface, not a slit
- *   ┃ …                       ┃▒       (ink outline + hard sticker shadow)
- *   ┗━━━━━━━━━━━━━━━━━━━━━━━━━┛▒
- *    ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+ *     ▄▄▄████ chat ████▄▄▄         ← cartoon CRT / film bezel
+ *   ▄█▀ ▪     ▪     ▪     ▪ ▀█▄
+ *   █▌  …                      ▐█▒
+ *   ▀█▄ ▪     ▪     ▪     ▪ ▄█▀▒
+ *     ▀▀▀████████████████▀▀▀ ▒
+ *      ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
  *   ❯ prompt█
  *   [ (••) hobo-code · model · cost · state ]   ← one inverse strap
  *
  * Every line is exactly `width` cells and the line count is stable for a
  * given (width, height), so the differential renderer sees no churn.
  */
+function snapshotFromState(state: InteractiveShellState) {
+	return captureBtwSnapshot({
+		focus: state.focus,
+		agentState: state.agentState,
+		stationLabel: state.stationLabel,
+		envLabel: state.envLabel,
+		modelLabel: state.modelLabel,
+		usageLabel: state.usageLabel,
+		slashOpen: state.slashOpen,
+		messages: state.messages,
+		...(state.pendingApproval
+			? {
+					pendingApproval: {
+						runId: state.pendingApproval.runId,
+						changeCount: state.pendingApproval.changes.length,
+					},
+				}
+			: {}),
+	});
+}
+
+export function applyBtwPrompt(
+	state: InteractiveShellState,
+	question: string,
+): InteractiveShellState {
+	if (state.btw && (question.trim().length === 0 || isBtwDismiss(question))) {
+		return {
+			...state,
+			btw: null,
+			focus: "chat",
+			input: "",
+			slashOpen: false,
+			slashFilter: "",
+			footerHints: "Tab focus · / slash · btw aside · ? help · Ctrl+C quit",
+		};
+	}
+	const snapshot = state.btw?.snapshot ?? snapshotFromState(state);
+	const prior = state.btw?.turns ?? [];
+	const now = Date.now();
+	const asked = question.trim();
+	const userTurns =
+		asked.length === 0
+			? prior
+			: [...prior, { role: "user" as const, text: asked, at: now }];
+	const answer = answerBtw(snapshot, asked, prior);
+	return {
+		...state,
+		btw: {
+			snapshot,
+			turns: [
+				...userTurns,
+				{ role: "assistant", text: answer, at: now + 1 },
+			],
+		},
+		focus: "btw",
+		input: "",
+		slashOpen: false,
+		slashFilter: "",
+		slashIndex: 0,
+		chatScroll: 0,
+		footerHints: "btw aside · Esc dismisses · main chat is unchanged",
+	};
+}
+
 function viewportRows(state: InteractiveShellState): number {
 	const bodyRows = Math.max(3, state.height - 1 - state.inputRows);
-	return Math.max(1, bodyRows - 4);
+	return Math.max(1, bodyRows - (BROADCAST_CHROME_ROWS + 1));
 }
 
 /** Retained semantic tree for the current frame (tests / evidence). */
@@ -582,6 +682,9 @@ export function buildShellTree(state: InteractiveShellState) {
 			changes: state.pendingApproval.changes,
 			prompt: APPROVAL_PROMPT,
 		});
+	} else if (state.btw) {
+		title = "btw";
+		surface = BtwAside({ turns: state.btw.turns });
 	} else if (state.slashOpen) {
 		title = "commands";
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
@@ -718,6 +821,9 @@ export function reduceShellKey(
 	}
 	// Esc
 	if (key === "\u001b") {
+		if (state.btw) {
+			return { state: applyBtwPrompt(state, "done") };
+		}
 		if (state.slashOpen) {
 			return {
 				state: {
@@ -762,14 +868,16 @@ export function reduceShellKey(
 	// Tab — cycle focus
 	if (key === "\t") {
 		const order: ShellFocus[] = ["chat", "tasks", "status", "resources"];
-		const i = order.indexOf(state.focus === "slash" ? "chat" : state.focus);
+		const from = state.focus === "slash" || state.focus === "btw" ? "chat" : state.focus;
+		const i = order.indexOf(from);
 		const next = order[(i + 1) % order.length]!;
 		return {
 			state: {
 				...state,
 				focus: next,
 				slashOpen: false,
-				footerHints: `focus:${next} · Tab cycle · / slash · ? help`,
+				btw: null,
+				footerHints: `focus:${next} · Tab cycle · / slash · btw aside · ? help`,
 			},
 		};
 	}
@@ -781,6 +889,7 @@ export function reduceShellKey(
 				"hobo-code shell help",
 				"  Type a prompt to queue a build task (see /about for what runs it).",
 				"  / opens the slash palette (↑/↓ to pick, Enter to run).",
+				"  btw <question> opens a temporary aside about this moment (Esc dismisses).",
 				"  Tab cycles Chat → Tasks → Status → Resources. ↑/↓ or PgUp/PgDn scroll chat.",
 			].join("\n"),
 			at: Date.now(),
@@ -804,6 +913,10 @@ export function reduceShellKey(
 					},
 				};
 			}
+			if (item.action === "btw") {
+				const asked = matchBtwInput(state.input)?.question ?? "";
+				return { state: applyBtwPrompt(state, asked) };
+			}
 			const argv = resolveSlashArgv(item);
 			return {
 				state: {
@@ -819,7 +932,16 @@ export function reduceShellKey(
 			};
 		}
 		const text = state.input.trim();
-		if (!text) return { state };
+		if (!text) {
+			if (state.btw) return { state: applyBtwPrompt(state, "") };
+			return { state };
+		}
+		const aside = matchBtwInput(text);
+		if (aside !== undefined || state.btw) {
+			return {
+				state: applyBtwPrompt(state, aside?.question ?? text),
+			};
+		}
 		if (text.startsWith("/")) {
 			const item = slashItemForInput(text);
 			if (item) {
@@ -908,7 +1030,11 @@ export function cycleFocus(
 ): InteractiveShellState {
 	const order: ShellFocus[] = ["chat", "tasks", "status", "resources"];
 	const i = order.indexOf(state.focus === "slash" ? "chat" : state.focus);
-	return { ...state, focus: order[(i + 1) % order.length]! };
+	return {
+		...state,
+		focus: order[(i + 1) % order.length]!,
+		btw: null,
+	};
 }
 
 /** Positive scrolls back through the transcript, negative returns toward now. */
@@ -1150,11 +1276,20 @@ export async function runInteractiveShell(
 			state = { ...state, messages: [], chatScroll: 0 };
 			return;
 		}
+		if (item.action === "btw") {
+			const asked = (item.argv ?? []).join(" ");
+			state = applyBtwPrompt(state, asked);
+			return;
+		}
+		if (state.btw) {
+			state = { ...state, btw: null, focus: "chat" };
+		}
 		if (item.action === "help") {
 			state = appendProduct(
 				state,
 				[
-					"Commands: type / and pick — /dev /templates /hobo /ide /config /tasks /status /resources /about /quit",
+					"Commands: type / and pick — /dev /templates /hobo /ide /config /tasks /status /resources /btw /about /quit",
+					"Aside: btw <question> borrows this moment without joining the main chat.",
 					"Templates: /templates lists; /template <query> searches (zero LLM).",
 					"Resident control: /sessions <args> (plain /sessions lists).",
 					"HoBo control plane: /hobo <args> (for example /hobo yard status).",
@@ -1341,6 +1476,12 @@ export async function runInteractiveShell(
 	/** A completed line from the Editor: either a command or a prompt. */
 	const handleSubmitText = (text: string) => {
 		if (quit) return;
+		const aside = matchBtwInput(text);
+		if (aside !== undefined || (state.btw && !text.startsWith("/"))) {
+			state = applyBtwPrompt(state, aside?.question ?? text);
+			tui.requestRender();
+			return;
+		}
 		if (text.startsWith("/")) {
 			const item = slashItemForInput(text);
 			if (item) {
@@ -1553,7 +1694,9 @@ export async function runInteractiveShell(
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		}
 		// Drain any in-flight turn (bounded), then let the final render flush.
-		const drainDeadline = Date.now() + 2000;
+		// `run it` / `debug it` boot occupancy + named endpoints — 2s is
+		// not enough for the assistant reply to land before scripted quit.
+		const drainDeadline = Date.now() + 12_000;
 		while (turnInFlight && Date.now() < drainDeadline) {
 			await new Promise((resolve) => setTimeout(resolve, 10));
 		}

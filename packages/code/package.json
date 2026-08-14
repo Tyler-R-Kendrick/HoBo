@@ -46,7 +46,6 @@
 		"vitest": "^4.1.9"
 	},
 	"scripts": {
-		"prebuild": "pnpm --filter @hobo/core build && pnpm --filter @hobo/stations build && pnpm --filter @hobo/runtime-local build && pnpm --filter @hobo/patterns build",
 		"build": "tsc -p tsconfig.json",
 		"postbuild": "node -e \"require('node:fs').chmodSync('dist/bin/hobo-code.js', 0o755); require('node:fs').chmodSync('bin/hobo-code.mjs', 0o755)\"",
 		"typecheck": "tsc --noEmit -p tsconfig.json",

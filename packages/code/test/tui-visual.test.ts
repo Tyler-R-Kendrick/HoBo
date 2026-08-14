@@ -35,7 +35,8 @@ describe("hobo-code TUI visual contract", () => {
 		mkdirSync(dirname(fixturePath), { recursive: true });
 		writeFileSync(fixturePath, `${frame}\n`, "utf8");
 
-		expect(frame).toContain(INK.topLeft);
+		expect(frame).toContain("█");
+		expect(frame).toContain("▄");
 		expect(frame).toContain(INK.shadow);
 		expect(frame).not.toContain("───");
 		expect(frame).toContain("hobo-code");
@@ -60,8 +61,8 @@ describe("hobo-code TUI visual contract", () => {
 		state = reduceShellKey(state, "/").state;
 		const frame = plain(renderShellFrame(state));
 		expect(state.slashOpen).toBe(true);
-		expect(frame).toContain(INK.topLeft);
-		expect(frame).toContain(INK.bottomLeft);
+		expect(frame).toContain("█");
+		expect(frame).toContain("▀");
 		expect(frame).toContain(INK.shadow);
 		expect(frame).not.toContain("───");
 		expect(frame).toContain("hobo-code");
@@ -82,7 +83,8 @@ describe("hobo-code TUI visual contract", () => {
 		state = reduceShellKey(state, "\t").state;
 		expect(state.focus).toBe("resources");
 		const frame = plain(renderShellFrame(state));
-		expect(frame).toContain(INK.topLeft);
+		expect(frame).toContain("█");
+		expect(frame).toContain("▄");
 		expect(frame).toContain(INK.shadow);
 		expect(frame).not.toContain("───");
 		expect(frame).toMatch(/resources/);

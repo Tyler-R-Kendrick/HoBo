@@ -143,6 +143,8 @@ describe("helpers", () => {
 		const [line] = centreBlock(["xx"], 10);
 		expect(cellWidth(line!)).toBe(10);
 		expect(line).toBe("    xx    ");
+		const [shifted] = centreBlock(["   xx"], 10);
+		expect(shifted).toBe("    xx    ");
 	});
 });
 
@@ -158,8 +160,8 @@ describe("the frame as a whole obeys the contract", () => {
 		// Frame = transcript card + status strap; the Editor renders beneath it
 		// and reports its own height via state.inputRows.
 		expect(lines).toHaveLength(23);
-		const contentRows = lines.filter((l) => l.startsWith(INK.vertical)).length;
-		expect(contentRows).toBeGreaterThanOrEqual(17);
+		const contentRows = lines.filter((line) => line.includes("█▌")).length;
+		expect(contentRows).toBeGreaterThanOrEqual(15);
 	});
 
 	it("ends with a single status strap and leaves the prompt to the editor", () => {

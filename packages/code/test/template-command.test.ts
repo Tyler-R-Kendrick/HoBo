@@ -38,8 +38,15 @@ describe("hobo-code template", () => {
 		expect(result.code).toBe("HOBO_CODE_TEMPLATE");
 		expect(result.message).toContain("bindle.web-only");
 		expect(result.message).toContain("station.init");
+		expect(result.message).toContain("0 LLM calls · 0 LLM tokens");
 		expect(result.message).not.toContain("template needs a query");
 		expect(result.code).not.toBe("HOBO_CODE_TEMPLATE_INDEX_INVALID");
+		const idLine = result.message
+			.split("\n")
+			.find((line) => line.includes("bindle.web-only"));
+		expect(idLine?.startsWith("  ") || idLine === "bindle.web-only").toBe(
+			true,
+		);
 	});
 
 	it("renders an atom snippet by exact id", () => {

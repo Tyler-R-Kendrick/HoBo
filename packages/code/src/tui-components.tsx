@@ -1,4 +1,5 @@
 import type { AccentName } from "./rubberhose.js";
+import { wrapMessage } from "./tui-layout.js";
 import { TUI_TOKENS } from "./tui-tokens.js";
 import { h, type TuiChild, type TuiNode } from "./tui-tree.js";
 
@@ -6,7 +7,40 @@ export interface InkCardProps {
 	readonly id?: string;
 	readonly title: string;
 	readonly accent?: AccentName;
+	readonly viewportRows?: number;
 	readonly children?: TuiChild;
+}
+
+export interface BroadcastFrameProps {
+	readonly id?: string;
+	readonly title: string;
+	readonly accent?: AccentName;
+	readonly viewportRows?: number;
+	readonly phase?: number;
+	readonly children?: TuiChild;
+}
+
+/** Old-TV / film-broadcast bezel. Algorithmic sprockets + corner screws. */
+export function BroadcastFrame(props: BroadcastFrameProps): TuiNode {
+	return (
+		<box
+			id={props.id ?? "broadcast-frame"}
+			role="region"
+			className="broadcast-frame"
+			phase={props.phase ?? 0}
+			style={{
+				title: props.title,
+				accent: props.accent ?? "none",
+				backgroundColor: TUI_TOKENS.paper,
+				color: TUI_TOKENS.ink,
+				...(props.viewportRows !== undefined
+					? { height: props.viewportRows }
+					: {}),
+			}}
+		>
+			{props.children}
+		</box>
+	);
 }
 
 export function InkCard(props: InkCardProps): TuiNode {
@@ -20,6 +54,9 @@ export function InkCard(props: InkCardProps): TuiNode {
 				accent: props.accent ?? "none",
 				backgroundColor: TUI_TOKENS.paper,
 				color: TUI_TOKENS.ink,
+				...(props.viewportRows !== undefined
+					? { height: props.viewportRows }
+					: {}),
 			}}
 		>
 			{props.children}
@@ -51,6 +88,7 @@ export function StatusStrap(props: StatusStrapProps): TuiNode {
 export const SHELL_RAIL_COMMANDS = [
 	"dev",
 	"templates",
+	"btw",
 	"hobo",
 	"auth",
 	"status",
@@ -78,32 +116,179 @@ export function CommandRail(props: CommandRailProps): TuiNode {
 	);
 }
 
+export interface ChatMessage {
+	readonly role: "system" | "user" | "assistant" | "product";
+	readonly text: string;
+}
+
+export interface ChatTranscriptProps {
+	readonly messages: readonly ChatMessage[];
+	readonly width: number;
+	readonly scroll?: number;
+}
+
+export function ChatTranscript(props: ChatTranscriptProps): TuiNode {
+	return (
+		<box
+			id="transcript"
+			role="region"
+			className="transcript"
+			scroll={props.scroll ?? 0}
+		>
+			{props.messages.map((message, index) => (
+				<box
+					id={`message-${index}`}
+					role="region"
+					className={`message message-${message.role}`}
+				>
+					{wrapMessage(message, props.width).map((line) => (
+						<text>{line}</text>
+					))}
+				</box>
+			))}
+		</box>
+	);
+}
+
+export interface SlashItemView {
+	readonly name: string;
+	readonly description: string;
+}
+
+export interface SlashPaletteProps {
+	readonly items: readonly SlashItemView[];
+	readonly selectedIndex: number;
+}
+
+export function SlashPalette(props: SlashPaletteProps): TuiNode {
+	return (
+		<box
+			id="slash-palette"
+			role="list"
+			className="slash-palette"
+			selectedIndex={props.selectedIndex}
+		>
+			{props.items.length === 0 ? (
+				<text className="slash-empty">{"  (nothing matches that)"}</text>
+			) : (
+				props.items.map((item, index) => {
+					const selected = index === props.selectedIndex;
+					return (
+						<text
+							id={`slash-${item.name}`}
+							role="listitem"
+							className={selected ? "slash-item selected" : "slash-item"}
+							name={item.name}
+							selected={selected}
+						>{`${selected ? "▸" : " "} /${item.name.padEnd(9)} ${item.description}`}</text>
+					);
+				})
+			)}
+		</box>
+	);
+}
+
+export interface ApprovalChange {
+	readonly status: string;
+	readonly path: string;
+}
+
+export interface ApprovalDialogProps {
+	readonly runId: string;
+	readonly sandboxRoot: string;
+	readonly changes: readonly ApprovalChange[];
+	readonly prompt: string;
+}
+
+export function ApprovalDialog(props: ApprovalDialogProps): TuiNode {
+	return (
+		<box id="approval" role="dialog" className="approval" runId={props.runId}>
+			<text>The canonical tree is untouched until you say yes.</text>
+			<text></text>
+			{props.changes.map((change) => (
+				<text
+					className="change"
+					status={change.status}
+					path={change.path}
+				>{`  ${change.status.padEnd(2)} ${change.path}`}</text>
+			))}
+			{props.changes.length === 0 ? (
+				<text>{"  (no file changes detected in the sandbox)"}</text>
+			) : undefined}
+			<text></text>
+			<text>{`  ${props.prompt}`}</text>
+			<text>{`  squash-only, gated, audited · ${props.sandboxRoot}`}</text>
+		</box>
+	);
+}
+
+export interface BtwTurnView {
+	readonly role: "user" | "assistant";
+	readonly text: string;
+}
+
+export interface BtwAsideProps {
+	readonly turns: readonly BtwTurnView[];
+}
+
+/** Temporary side-chat. Borrowed snapshot; does not join the main transcript. */
+export function BtwAside(props: BtwAsideProps): TuiNode {
+	return (
+		<box id="btw-aside" role="region" className="btw-aside">
+			<text className="btw-kicker">
+				btw · borrowed snapshot · Esc dismisses
+			</text>
+			{props.turns.map((turn, index) => (
+				<text
+					id={`btw-${index}`}
+					className={`btw-turn btw-${turn.role}`}
+				>{`${turn.role === "user" ? "you · " : "btw · "}${turn.text}`}</text>
+			))}
+		</box>
+	);
+}
+
+export interface TextPaneProps {
+	readonly id: string;
+	readonly text: string;
+}
+
+export function TextPane(props: TextPaneProps): TuiNode {
+	return (
+		<box id={props.id} role="region" className="text-pane">
+			<text>{props.text}</text>
+		</box>
+	);
+}
+
 export interface ShellChromeProps {
 	readonly title: string;
 	readonly accent?: AccentName;
-	readonly body: readonly string[];
 	readonly segments: readonly string[];
 	readonly commands?: readonly string[];
+	readonly viewportRows: number;
+	readonly phase?: number;
+	readonly children?: TuiChild;
 }
 
-/** Product chrome: ink card + command rail + inverse strap. */
+/** Product chrome: broadcast bezel + command rail + inverse strap. */
 export function ShellChrome(props: ShellChromeProps): TuiNode {
 	return (
 		<box id="shell" role="application" className="hobo-shell">
-			<InkCard
+			<BroadcastFrame
 				title={props.title}
 				{...(props.accent !== undefined ? { accent: props.accent } : {})}
 				id="surface"
+				viewportRows={props.viewportRows}
+				phase={props.phase ?? 0}
 			>
-				{props.body.map((row) => (
-					<text>{row}</text>
-				))}
+				{props.children}
 				<CommandRail
 					{...(props.commands !== undefined
 						? { commands: props.commands }
 						: {})}
 				/>
-			</InkCard>
+			</BroadcastFrame>
 			<StatusStrap segments={props.segments} />
 		</box>
 	);

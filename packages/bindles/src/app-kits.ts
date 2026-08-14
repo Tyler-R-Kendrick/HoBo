@@ -54,7 +54,6 @@ export const INFRA_KIT_KINDS = Object.freeze([
 	"crypto",
 	"notify",
 	"guardrail",
-	"golden",
 	"experiment",
 	"rollout",
 ] as const satisfies readonly ResourceKind[]);

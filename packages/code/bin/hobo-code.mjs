@@ -8,7 +8,7 @@
  * CLI matches the source under review.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { chmodSync, existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,21 +52,43 @@ function distIsStale() {
 	return maxSrcMtime(srcRoot) > distM + 1000;
 }
 
-if (process.env.HOBO_CODE_SKIP_STALE_REBUILD !== "1" && distIsStale()) {
+function tscPath() {
+	const local = join(pkgRoot, "node_modules", "typescript", "bin", "tsc");
+	if (existsSync(local)) return local;
+	return join(pkgRoot, "..", "..", "node_modules", "typescript", "bin", "tsc");
+}
+
+if (
+	process.env.HOBO_CODE_SKIP_STALE_REBUILD !== "1" &&
+	(process.env.HOBO_CODE_FORCE_STALE_REBUILD === "1" || distIsStale())
+) {
 	process.stderr.write(
-		"hobo-code: dist is stale (src newer than dist) — rebuilding @hobo/code…\n",
+		"hobo-code: dist is stale (src newer than dist) — tsc @hobo/code only…\n",
 	);
-	const build = spawnSync("pnpm", ["run", "build"], {
-		cwd: pkgRoot,
-		stdio: "inherit",
-		env: process.env,
-		shell: process.platform === "win32",
-	});
+	const tsc = tscPath();
+	const build = existsSync(tsc)
+		? spawnSync(process.execPath, [tsc, "-p", "tsconfig.json"], {
+				cwd: pkgRoot,
+				stdio: "inherit",
+				env: process.env,
+			})
+		: spawnSync("pnpm", ["exec", "tsc", "-p", "tsconfig.json"], {
+				cwd: pkgRoot,
+				stdio: "inherit",
+				env: process.env,
+				shell: process.platform === "win32",
+			});
 	if ((build.status ?? 1) !== 0) {
 		process.stderr.write(
-			"hobo-code: rebuild failed. Run: pnpm --filter @hobo/code build\n",
+			"hobo-code: tsc failed. If deps are missing, run: pnpm exec turbo run build --filter=@hobo/code\n",
 		);
 		process.exit(build.status ?? 1);
+	}
+	try {
+		chmodSync(distBin, 0o755);
+		chmodSync(join(pkgRoot, "bin", "hobo-code.mjs"), 0o755);
+	} catch {
+		/* postbuild chmod is best-effort after a successful tsc */
 	}
 }
 

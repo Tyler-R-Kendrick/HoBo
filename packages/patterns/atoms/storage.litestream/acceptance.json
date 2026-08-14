@@ -1,0 +1,15 @@
+{
+	"params": {
+		"name": "Corpus"
+	},
+	"expectFiles": [
+		"src/storage.ts"
+	],
+	"expectContains": {
+		"src/storage.ts": [
+			"openCorpusStore",
+			"Litestream",
+			"JetStream"
+		]
+	}
+}

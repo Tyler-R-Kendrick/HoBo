@@ -43,10 +43,21 @@ export function createNodeSqliteDriver(
 	return wrapDatabaseSync(db, "node");
 }
 
-export function createMemoryNodeSqliteDriver(): SqliteDriver {
+export function createMemoryNodeSqliteDriver(
+	options: { readonly disableExtensions?: boolean } = {},
+): SqliteDriver {
 	const db = new DatabaseSync(":memory:", { readBigInts: true } as {
 		readBigInts?: boolean;
 	});
+	const maybe = db as unknown as {
+		enableLoadExtension?: (enabled: boolean) => void;
+	};
+	if (
+		options.disableExtensions !== false &&
+		typeof maybe.enableLoadExtension === "function"
+	) {
+		maybe.enableLoadExtension(false);
+	}
 	return wrapDatabaseSync(db, "memory");
 }
 

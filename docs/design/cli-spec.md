@@ -70,7 +70,7 @@ hobo-code [flags] [<verb>] [args]
 hobo-code [flags] <prompt...>   # default verb: dispatch
 ```
 
-Package: `@hobo/code` / composition-root bin from `@hobo/hobo`. Flat verbs: `dispatch` (default), `status`, `session`, `scaffold`, `isolate`, `promote`, `budget`, `remote`, `platform`, `join`, `agent`, `nodes`, `rooms`, `help`. Distributed compute (block/buzz-inspired hive) is folded into those verbs — there is **no** nested `buzz` verb. See [ADR-0139](./adr/03-data-plane.md#adr-0139) and [hobo-code-isolation-runbook.md](./hobo-code-isolation-runbook.md).
+Package: `@hobo/code` / composition-root bin from `@hobo/hobo`. Flat verbs: `dispatch` (default), `status`, `session`, `scaffold`, `template`, `isolate`, `promote`, `budget`, `remote`, `platform`, `join`, `agent`, `nodes`, `rooms`, `help`. Distributed compute (block/buzz-inspired hive) is folded into those verbs — there is **no** nested `buzz` verb. `hobo-code template` / `/template` is the zero-LLM pattern route ([ADR-0153](./adr/03-data-plane.md#adr-0153)). Known chat phrases still emit via the session ([ADR-0152](./adr/03-data-plane.md#adr-0152)). See [ADR-0139](./adr/03-data-plane.md#adr-0139) and [hobo-code-isolation-runbook.md](./hobo-code-isolation-runbook.md).
 
 ## Station context resolution
 

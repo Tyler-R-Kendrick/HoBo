@@ -10,7 +10,6 @@ import {
 	data,
 	experiment,
 	flag,
-	golden,
 	guardrail,
 	job,
 	kv,
@@ -77,7 +76,6 @@ const expectedCatalog = [
 	{ factory: "notify", portRef: ["hobo:notify"], verbs: ["send"] },
 	{ factory: "guardrail", portRef: ["hobo:guardrail"], verbs: ["check"] },
 	{ factory: "ui", portRef: ["hobo:ui-render"], verbs: ["render", "drive"] },
-	{ factory: "golden", portRef: ["hobo:golden"], verbs: ["run", "bless"] },
 	{
 		factory: "experiment",
 		portRef: ["hobo:experiment"],
@@ -104,13 +102,13 @@ const factories = {
 	notify,
 	guardrail,
 	ui,
-	golden,
 	experiment,
 };
 
 describe("resource catalog", () => {
 	it("has exactly one factory per catalog row", () => {
 		// Plan 21 base factories plus external/container/wasm-component (+ optional).
+		expect(catalogFactoryNames()).not.toContain("golden");
 		expect(CATALOG.length).toBeGreaterThanOrEqual(20);
 		expect(catalogFactoryNames()).toHaveLength(CATALOG.length);
 		expect(new Set(catalogFactoryNames()).size).toBe(CATALOG.length);

@@ -36,6 +36,19 @@ describe("getNamedEndpoint", () => {
 		).toBe("https://web.myapp.local.hobo.localhost");
 	});
 
+	it("includes a non-default listen port on the named URL", () => {
+		expect(
+			getNamedEndpoint({
+				resource: "web",
+				app: "hello-world",
+				env: "local",
+				mode: "local",
+				scheme: "http",
+				port: 48211,
+			}),
+		).toBe("http://web.hello-world.local.hobo.localhost:48211");
+	});
+
 	it("omits prod env on overlay", () => {
 		expect(
 			getNamedEndpoint({

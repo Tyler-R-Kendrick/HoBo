@@ -160,3 +160,6 @@
 | 0149 | HoBo Rubberhose is the product identity; the pixel-RPG is a separate game project (`@hobo/pixel-village`) | [portability-extensibility](07-portability-extensibility.md#adr-0149) |
 | 0150 | HoBo Yard game-first control-plane UI (renumbered from a colliding 0135 section) | [portability-extensibility](07-portability-extensibility.md#adr-0150) |
 | 0151 | Capability implementation profiles, Resource Definition vNext, portable bindings, guest leases + claim bundles: anonymous and claimable Bindle hosting | [portability-extensibility](07-portability-extensibility.md#adr-0151) |
+| 0152 | Atomic templates + local SQLite hybrid retrieval for zero-inference emission | [data-plane](03-data-plane.md#adr-0152) |
+| 0153 | Canonical `@hobo/patterns` catalog + ontology-vector + `hobo-code template` | [data-plane](03-data-plane.md#adr-0153) |
+| 0154 | Durable HoBo Code review aggregate | [data-plane](03-data-plane.md#adr-0154) |

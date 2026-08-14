@@ -70,7 +70,6 @@ export const CATALOG_ROWS = [
 		portRef: ["hobo:ui-render"],
 		allowVerbs: ["render", "drive"],
 	},
-	{ factory: "golden", portRef: ["hobo:golden"], allowVerbs: ["run", "bless"] },
 	{
 		factory: "experiment",
 		portRef: ["hobo:experiment"],
@@ -107,7 +106,6 @@ export type AllowVerbsByKind = {
 	notify: "send";
 	guardrail: "check";
 	ui: "render" | "drive";
-	golden: "run" | "bless";
 	experiment: "assign" | "expose" | "analyze";
 	rollout: "start" | "step" | "promote" | "rollback";
 };
@@ -318,7 +316,6 @@ export interface BindleBuilder {
 	notify(): BindleResource<"notify">;
 	guardrail(): BindleResource<"guardrail">;
 	ui(binding?: ComponentBinding): BindleResource<"ui">;
-	golden(): BindleResource<"golden">;
 	experiment(): BindleResource<"experiment">;
 	rollout(): BindleResource<"rollout">;
 	connector<D extends ConnectorDefinition>(symbol: ConnectorSymbol<D>): ConnectorBinding<D>;

@@ -10,6 +10,10 @@
  * live multi-agent progress, subagents, headless -p, ACP, plan mode.
  */
 
+import {
+	projectSessionWorkLedger,
+	type SessionWorkItem,
+} from "./session-evidence.js";
 import type { AgentPaneState, AgentSemanticState } from "./types.js";
 import {
 	describeCodeWorlds,
@@ -17,7 +21,6 @@ import {
 	type CodeWorldDescriptor,
 	type DurableWorkflowRun,
 } from "./worlds.js";
-import { createPane } from "./tui.js";
 
 export interface GrokBuildCompare {
 	readonly grokBuild: string;
@@ -64,10 +67,11 @@ export interface GrokBuildParity {
 
 export interface TaskBoardRow {
 	readonly id: string;
-	readonly kind: "subagent" | "task" | "watcher";
-	readonly state: AgentSemanticState;
+	readonly kind: "subagent" | "task" | "watcher" | "ask" | "look" | "impact";
+	readonly state: AgentSemanticState | SessionWorkItem["state"];
 	readonly summary: string;
 	readonly clickable: true;
+	readonly provenance?: SessionWorkItem["provenance"];
 }
 
 export interface TasksSurface {
@@ -162,19 +166,26 @@ export function buildTasksSurface(options: {
 	readonly hoboHome: string;
 	readonly runId?: string;
 	readonly panes?: readonly AgentPaneState[];
+	readonly evidence?: Parameters<typeof projectSessionWorkLedger>[0]["evidence"];
 }): TasksSurface {
 	const parity = grokBuildParity();
 	const worlds = describeCodeWorlds(options.hoboHome);
 	const world = worlds.localDefault;
 	const runId = options.runId ?? "tasks-preview";
-	const panes =
-		options.panes ??
-		([
-			createPane("coord", "working", "dispatch"),
-			createPane("worker", "idle", "standby"),
-			createPane("watcher", "idle", "monitor"),
-		] as const);
-	const rows: TaskBoardRow[] = panes.map((p) => {
+	const ledger = projectSessionWorkLedger({
+		hoboHome: options.hoboHome,
+		...(options.evidence !== undefined ? { evidence: options.evidence } : {}),
+	});
+	const workRows: TaskBoardRow[] = ledger.items.map((item) => ({
+		id: item.id,
+		kind: workKind(item.kind),
+		state: item.state,
+		summary: item.summary,
+		clickable: true as const,
+		provenance: item.provenance,
+	}));
+	const panes = options.panes ?? [];
+	const paneRows: TaskBoardRow[] = panes.map((p) => {
 		let kind: TaskBoardRow["kind"] = "task";
 		if (p.agentId.includes("watch")) kind = "watcher";
 		else if (
@@ -192,6 +203,7 @@ export function buildTasksSurface(options: {
 			clickable: true as const,
 		};
 	});
+	const rows = workRows.length > 0 ? [...workRows, ...paneRows] : paneRows;
 	const workflow = planDurableWorkflowRun({
 		runId,
 		world,
@@ -207,46 +219,61 @@ export function buildTasksSurface(options: {
 	};
 }
 
-const STATE_GLYPH: Record<AgentSemanticState, string> = {
+function workKind(kind: SessionWorkItem["kind"]): TaskBoardRow["kind"] {
+	if (kind === "ask") return "ask";
+	if (kind === "look") return "look";
+	if (kind === "impact") return "impact";
+	return "task";
+}
+
+const STATE_GLYPH: Record<string, string> = {
 	idle: "○",
 	working: "●",
 	blocked: "▲",
 	done: "✓",
+	claimed: "○",
+	captured: "●",
+	verified: "✓",
+	stale: "▲",
+	missing: "?",
 };
 
-/** Dense human task board (Grok Build tasks-pane analogue). */
+/** Dense human task board — same work ledger as the Evidence report. */
 export function renderTasksBoardText(surface: TasksSurface): string {
 	const title = "▣ tasks";
-	const fold = surface.rows
-		.map((r) => {
-			const g = STATE_GLYPH[r.state];
-			const focus = r.state === "working" ? "▸" : "";
-			const short =
-				r.id === "coord" || r.id === "coordinator"
-					? "co"
-					: r.id === "worker"
-						? "wk"
-						: r.id === "watcher"
-							? "wch"
-							: r.id.length > 6
-								? `${r.id.slice(0, 5)}…`
-								: r.id;
-			return `${focus}${g}${short}`;
-		})
-		.join("·");
+	const work = surface.rows.filter((row) => row.provenance);
+	const live = surface.rows.filter((row) => !row.provenance);
+	const lines: string[] = [title, "same work as Evidence · provenance in the report"];
+	if (work.length === 0 && live.length === 0) {
+		lines.push(" no session work yet");
+	}
+	for (const row of work) {
+		const glyph = STATE_GLYPH[row.state] ?? "·";
+		const why = row.provenance?.reason.replace(/\s+/gu, " ").slice(0, 72);
+		lines.push(` ${glyph} ${row.kind.padEnd(7)} ${row.summary.slice(0, 48)}`);
+		if (why && why !== row.summary) {
+			lines.push(`   ${row.provenance?.actor ?? "·"} · ${why}`);
+		} else if (row.provenance) {
+			lines.push(`   ${row.provenance.actor} · ${row.kind}`);
+		}
+	}
+	if (live.length > 0) {
+		const fold = live
+			.map((r) => {
+				const g = STATE_GLYPH[String(r.state)] ?? "·";
+				const focus = r.state === "working" ? "▸" : "";
+				const short =
+					r.id.length > 6 ? `${r.id.slice(0, 5)}…` : r.id;
+				return `${focus}${g}${short}`;
+			})
+			.join("·");
+		lines.push(` live ${fold}`);
+	}
 	const wf =
 		surface.workflow.steps.length > 0
 			? `wf · ${surface.workflow.steps.length} steps · ${surface.world.kind}`
 			: `wf · ${surface.world.kind}`;
-	const soft = "·".repeat(20);
-	const rule = "─".repeat(20);
-	return [
-		title,
-		soft,
-		` ${fold}`,
-		` ${surface.legend}`,
-		` ${wf}`,
-		` click · task-row · still-running`,
-		rule,
-	].join("\n");
+	lines.push(` ${wf}`);
+	lines.push(" Evidence: visual report of this board");
+	return lines.join("\n");
 }

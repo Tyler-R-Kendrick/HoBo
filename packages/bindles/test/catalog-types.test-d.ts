@@ -53,7 +53,6 @@ bindle("builder-verbs", (b) => ({
 	signer: b.crypto().allow("encrypt", "decrypt", "sign", "verify"),
 	alerts: b.notify().allow("send"),
 	safety: b.guardrail().allow("check"),
-	baseline: b.golden().allow("run", "bless"),
 	ab: b.experiment().allow("assign", "expose", "analyze"),
 	deploy: b.rollout().allow("start", "step", "promote", "rollback"),
 	realtime: b.websocket().allow("accept", "send", "broadcast"),

@@ -4,13 +4,17 @@
 
 **Bare interactive `hobo-code` owns its chrome.** The default TTY path is
 `InteractiveShell` (`src/interactive-shell.ts`): HoBo logo + Bo, chat transcript,
-slash palette, tasks/status focus — **not** stock Pi Agent TUI.
+slash palette, tasks/status/resources focus — **not** stock Pi Agent TUI.
+↑/↓ and PgUp/PgDn scroll the focused scene (chat and btw from the latest line;
+tasks/status/resources/approval from the top). Tab resets document-pane scroll.
 
 | Mode | When |
 |---|---|
 | **HoBo shell (default)** | TTY + bare / `chat` |
 | **Pi TUI escape hatch** | `HOBO_CODE_TUI=pi` or `hobo-code --pi` only |
-| **One-shot verbs** | `help`, `status`, `dispatch`, … |
+| **One-shot verbs** | `help`, `status`, `dispatch`, `template`, … |
+
+`hobo-code template` / `/template` / `/templates` is the zero-LLM pattern route (`@hobo/patterns`, ADR-0153). It must not start a completion engine. Bare `/template` and `/templates` list the catalog; extra words search or run a subcommand (`render`, `apply`, …).
 
 Pi may still be used as a **completion engine** later; it must not be the
 product frame. Optimizexp / persona reviews that only score one-shot verbs
@@ -20,10 +24,13 @@ while bare TTY is stock Pi are **invalid**.
 draws ink cards with hard sticker shadows, a Chewy title card on entry, one
 inverse status strap, and a transcript that owns the viewport. Strict B&W;
 vermillion is reserved for a decision that can mutate the real tree and green
-for done. `test/rubberhose.test.ts` fails the build on hairline rules, rainbow
-accents, geometry drift, or a shrinking content area — the first version of
-this shell was a flicker-free *SaaS dashboard* and nothing in the suite could
-tell, so nothing objected.
+for done. The Evidence SPA (report + desk) is the same contract in HTML —
+`evidence-chrome.ts` + `test/evidence-design-lint.test.ts`. Live Evidence is the
+visual work report of the Tasks ledger (`session-evidence.ts`): same items,
+plus provenance and looks — not a Tests/ADRs checklist. `test/rubberhose.test.ts`
+fails the build on hairline rules, rainbow accents, geometry drift, or a
+shrinking content area — the first version of this shell was a flicker-free
+*SaaS dashboard* and nothing in the suite could tell, so nothing objected.
 
 **Promotion applies before it cleans (`src/sandbox-promote.ts`).** The gate
 carries the sandbox diff into the canonical tree with `git apply --3way
@@ -89,7 +96,7 @@ chrome. Render-economy contract (pinned by `test/render-budget.test.ts`):
 - unchanged lines are never rewritten (line diff); no full-screen erases;
 - input is decoded as atomic sequences (arrows, bracketed paste, resize);
 - isolation/dispatch runs on async spawn so the loop never blocks a turn;
-- no alternate screen — the transcript survives exit;
+- live TTY uses the alternate screen (CSI ?1049) so quit restores the prior buffer instead of leaving the frame in scrollback;
 - replies are honest: without an engine, a turn *records a compute task*,
   the footer says `engine:none · dispatch-only`, and no reply claims an
   agent acted.
@@ -115,13 +122,13 @@ shell with a reason on stderr. The footer shows the model that actually runs
 ```
 hobo-code (standalone binary; dispatch default)
     │
-    ├─ InteractiveShell (default TTY)  Bo + chat + slash + tasks/status
+    ├─ InteractiveShell (default TTY)  Bo + chat + slash + tasks/status/resources
     ├─ Eve subagents            defineEveAgent / defineEveSubagent (filesystem-first)
     ├─ Secure sandbox stack     DeepAgents + OpenShell + MxC (planSecureSandbox)
     ├─ Workflow Worlds          Local World offline · Vercel World prod (worlds.ts)
     ├─ IsolationAgent surface   createIsolationContext / cleanupIsolation / promoteIsolation
     ├─ HarnessCoreAgent surface createHarnessCore + Rhai subset + Local World checkpoints
-    ├─ ScaffoldingAgent surface scaffoldHighValueTemplate + tsAutocodeConventions
+    ├─ ScaffoldingAgent surface scaffoldHighValueTemplate + scaffoldFromIntent/Atoms + tsAutocodeConventions
     ├─ VisualEvidenceAgent      createOpenUiSession / lockVisualArtifact / emitEvidenceTriple
     ├─ TUIMultiplexerAgent      buildMultiplexerStatus / copyOnHighlight · splash logo+Bo
     ├─ FinOpsMonetizationAgent  createBudgetTracker / sponsoredWaitState
@@ -170,10 +177,13 @@ raw DTOs. Invalid values throw at the boundary (parse-don't-validate).
 Presentation helpers stay pure and unit-tested:
 
 - **Default loading** — `renderDefaultLoadingScreen` (`splash.ts`): console **HoBo logo** + **Bo idle** from real `assets/bo-idle.png` via deterministic `sprite-tui.ts` half-block conversion (12 frames rest·bounce·blink). Generated frames in `_generated/bo-idle-tui-frames.ts`. **Fixed canvas** so frame advance never reflows. Empty standalone mux paints this instead of empty→★.
+- `tui-tree.ts` + `tui-components.tsx` + `tui-layout.ts` + `tui-render.ts` + `tui-broadcast.ts` — retained semantic TUI tree with React-style chrome. `ShellChrome` wraps the surface in `BroadcastFrame` (algorithmic CRT/film bezel) and composes `ChatTranscript`, `InkTable`, `SlashPalette`, `ApprovalDialog`, `BtwAside`, `TextPane`, `CommandRail`, and `StatusStrap`. The initial screen is an `InkTable` of talk/patterns/focus plus occupancy named endpoints (`*.hobo.localhost`, never loopback IPs). `btw` / `/btw` opens a live overlay (`btw.ts`) that recaptures the parent thread and never joins the main transcript; the renderer blits `BtwAside` onto the CRT glass so both threads stay visible. Every `tui-*` file is DESIGN.md-linted. `pi-tui` stays the Node framebuffer host; DESIGN.md tokens live in `tui-tokens.ts`.
 - `renderStatusText` / `renderStatusChip` — Herdr-style adaptive box: panes fold ≤4-wide; health glyphs; focus ▸; quiet omits default ★ next; chip omits herdr
 - `herdrMuxCapabilities` / `renderHerdrCapabilityFooter` — discoverable Herdr card (status footer + JSON); dense box stays quiet
 - `describeDevTerminalAttach` / `hobo-code attach` — tmux-like reattach + named endpoint; mosh optional; `--mode overlay` Tailscale-shaped (not control-plane admin)
-- `grokBuildParity` / `hobo-code tasks` — Grok Build–shaped tasks board + clickable/workflows/subagents compare card (not a Grok Build clone)
+- `chat-sessions.ts` / `hobo-code resume [session_id]` — persist InteractiveShell transcripts under `$HOBO_HOME/durable/code/chats`; no-id resumes the latest chat for this cwd; a unique prefix is enough; resident tmux ids fall through to `session attach`. Quit closeout (after leaving the alternate screen) prints `hobo-code resume <session_id>`.
+- `compact.ts` / `/compact` / `hobo-code compact` — journal-preserving compact skill. Deterministic extract (goal, files, errors, station) plus last user-turn slice; no mid-turn LLM recap. Durable `messages` stay intact; only `workingMessages` shrinks.
+- `grokBuildParity` / `hobo-code tasks` — Tasks board and Evidence SPA share `projectSessionWorkLedger`. Tasks is the dense keyboard board; Evidence is the visual work report with provenance (reason, actor, looks). Grok Build compare card remains residual discoverability, not a clone.
 - `claudeCodeGuide` / `hobo-code guide` — plain-English Claude Code → hobo-code map for non-dev app builders
 - `cursorGuide` / `hobo-code guide --cursor` — Cursor Agent/Composer/Background/BugBot → hobo-code map
 - `inspectCost` / `hobo-code cost` — $0 path, budget bar, savings vs frontier, free/local routing, token-tool stack
@@ -182,7 +192,17 @@ Presentation helpers stay pure and unit-tested:
 - session uses `title` override — 4-line box: brand · run · handback LED · next (LED implies live/final)
 - `renderOpenUiHtml` — dark shell + `1 · generate` rail + seal; lede `→edit|→lock|→codegen`; foot `Edit→lock|Lock→codegen|seal`
 - `formatHoboCodeResult` — closed panels: one-scan happy path is 3 lines (title · body · rule, soft omitted); FIX + code inline on fails
-- template `public/index.html` + `styles.css` — scaffold first paint + matching step rail
+- `atom-index.ts` — closed intent map first, then retrieve→Valibot→compose→**entity-aware merge**→emit (ADR-0152). Snippet bodies live in `@hobo/patterns` `atoms/` and are also listed by `hobo-code template`. `templates/intents/` owns phrases like "deploy to azure" / "same network". Snippet slots merge by entity; `@hobo.hole` emits `"use training"` / `training.define`, not invented logic. Derived cache `$HOBO_HOME/durable/code/template-index.sqlite`. High-confidence emits with zero inference; low-confidence refuses unless `allowEscalate`. Full `examples/` apps stay composition proofs.
+- `example-catalog.ts` + `workspace-actions.ts` + `station-session.ts` — Bo TUI turns "create a hello world app" / "run it" / "debug it" into emitted atoms plus live bindle/debug/controls/report URLs on the logged-in Station. Bindle/debug refer to the named endpoint (`debugViewUrl(namedUrl)`); `loopback ·` prints the `127.0.0.1` listen URL once. Yard serve always returns the Evidence workspace + Bo idle animation on `?__hobo_debug=1`, even when the Bindle is JSON. The strap and Tab-status show station id/name/tenant and the occupancy environment (`HOBO_ENV` / isolation class). `hobo-code dev` forwards `HOBO_STATION` / `HOBO_TENANT` / `HOBO_ENV` to `hobo dev`.
+- `session-resources.ts` — Aspire-style **session resource board** for the logged-in Station × `HOBO_ENV`. One projection (`assembleSessionResources`) feeds `/resources`, Tab-resources, `hobo-code resources [--json]`, and `hobo-code dashboard`. Station is occupancy header (ADR-0131), not a topology parent. Bindle ⊂ Camp ⊂ Yard ⊂ Junction. The local yard always carries `camp:code` / `bindle:code` (dashboard, Evidence, OTLP — stoppable). Developing an app writes `camp:<app>` / `bindle:<app>` under that yard. Yard stop takes camps whose `parentId` is that yard, not camps in other yards. Occupancy sidecars that are actually listening appear as named endpoints without waiting for a user Bindle `/dev`. `/dev` writes Camp + Bindle fulfillment (`camp.json` / `bindle.json`) that match the deployed Bindle's resources, env keys, and required capabilities. Each Bindle resource (api/web/kv/data/…) appears as a named endpoint. Local occupancy lists every Bindle kind from the capability catalog as a collapsible Station property (available or unavailable — no fidelity or notes column, no mocked stand-in). Station-hosted kinds (HTTP, kv, data, queue, topic, flag, auth, wasm, rollout, secret, crypto, …) are available. Residual secret/crypto are served by the Station KMS sidecar. Bindle `rollout` deploys the `@hobo/identity` OpenDelivery engine as a Station sidecar (`rollout.code.local.hobo.localhost`) that owns start/step/promote/rollback. Experiments are not a Bindle capability row — occupancy always starts the Station-local OpenExperiment sidecar (`experiment.code.local.hobo.localhost`). Golden evals are not a Bindle capability. Occupancy always starts an `evals` sidecar (`evals.code.local.hobo.localhost`) that hosts the default trainable golden suite from `@hobo/evals` — exact-match over contract examples and traces for `"use training"` regions. Optional project eval tests add more training cases on the same sidecar. Last-seen snapshots live at `HOBO_HOME/durable/code/sessions/<station>/<env>/endpoints.json` (written by `/dev`; persist never aborts a live serve). Cross-station peers require a grant. Local-mode remote backends fail closed. Loopback evidence URLs with `token=` are capability refs, not secrets.
+- `session-dashboard.ts` + `session-lifecycle.ts` + `session-otel.ts` + `session-resource-control.ts` — ADR-0111 **local** SPA at `dashboard.code.local.hobo.localhost:8787` (not `apps/dashboard`), OTLP ingest on `otlp.code.local.hobo.localhost:4317`/`:4318`. Local `yard:local` / `camp:code` / `camp:<app>` / Station start **ready** so the board is a develop surface, not a stop board. The SPA groups managed children under each primitive. Stopping `yard:local` stops camps in that yard (not `camp:code` occupancy listeners, not camps in other yards) and kills user Bindle `/dev`. The hosting Station plus `camp:code` / `bindle:code` refuse start/stop (a Station cannot shut itself down). Occupancy sidecars (dashboard/OTLP/Evidence) start/stop for real. Stopping `kv` does not take `web` with it. Bindle/web/api start/stop launch and kill `hobo dev` only while Yard flow and that app's Camp are active. Bindle Ready only after a health probe passes. OTel lists every occupancy service and deployed Bindle against the local collector: `exporting` when signals arrived, `silent` when the collector is up but nothing was received — never a blank panel. Fleet is `local` once a Camp exists, otherwise `camp-deferred`. Public URLs are named endpoints. The dashboard leads with a featured Station pane of occupancy endpoints (not yard Bindle URLs). Chrome is visual: play/stop toggle, Bindle-only restart, copy, and lock icons on 44px chamfered planks; glyph pane titles; Chewy + grain + night inversion + spark focus matching Evidence; OTel lamps + signal counts instead of English tables. Occupancy doors (dashboard / Evidence / OTLP) stay on the Station plaque; other sidecars and capabilities start closed. Fleet hides until a peer Station exists. Errors are an inline banner. The Yard card nests Bindle ⊂ Camp ⊂ Yard with bindle endpoints on the owning bindle. It is the only IP surface: each endpoint is a `target=_blank` link plus copy, with the loopback listen URL beside the named handle.
+- `station-sidecars.ts` — a coding session occupies a Station and **starts dashboard + Evidence + evals + OpenDelivery + OpenExperiment + KMS as occupancy sidecars**. Evidence is a detached Station process (`evidence-sidecar-main`) so it outlives Bindle `/dev`, `startCodeSession.complete()`, and TTY quit. The rollout sidecar hosts the real `OpenDeliveryEngine` (`hobo:delivery`) in-process with occupancy. The experiment sidecar hosts the real `OpenExperimentEngine` (`hobo:experiment`) — not a Capabilities-table row. The KMS sidecar is the default local `hobo:crypto` / `hobo:secrets` host (RSA-2048 + AES-256-GCM, persist under `HOBO_HOME/stations/<id>/kms/`). Public Evidence/dashboard/OTLP/evals/rollout/experiment/kms URLs are `*.hobo.localhost` named endpoints. `/dev` only attaches. Occupancy teardown is `stopStationSidecars` / `hobo-code auth logout`. Discovery: `HOBO_HOME/stations/<id>/sidecars.json`. Opt out: `HOBO_CODE_SIDECARS=0`.
+- `rollout-sidecar-server.ts` — HTTP front for Station-local OpenDelivery. Not a Camp capability and not a mock.
+- `experiment-sidecar-server.ts` — HTTP front for Station-local OpenExperiment. Always on; not listed as a Bindle capability.
+- `kms-sidecar-server.ts` — Station-local KMS for residual secret/crypto Bindle kinds. Real `node:crypto`, not a fixture.
+- `@hobo/patterns` — catalog source of truth; OpenUI starter plus atomic snippets. `hobo-code template list|search|render|explain|compose|apply` is the zero-LLM CLI (`0 LLM calls · 0 LLM tokens` on every receipt). Structural apply uses the TypeScript compiler API inside an isolation root. `hobo-code scaffold` remains the high-value starter adapter.
+- `review/` — durable review aggregate (ADR-0154). Commands `hobo.code.review-command/v1`; EventStore `hobo-code-reviews`. Coverage, threads, pending publish, exact-effect GitHub submit. Git workbench stays the mutation surface; review records what was inspected.
+- template `public/index.html` + `styles.css` — catalog starter first paint + matching step rail
 - product binary `hobo-code`: flat verbs, dispatch default, no nested buzz
 
 ## Runtime foundations (pinned)

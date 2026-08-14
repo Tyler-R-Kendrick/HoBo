@@ -77,6 +77,7 @@ async function runShell(options: RunOptions): Promise<{
 		stdout: out.stream,
 		host: options.host ?? stubHost,
 		reducedMotion: options.reducedMotion ?? true,
+		sidecars: false,
 		env: { ...process.env, HOBO_HOME: temp("hc-shell-home-") },
 		...(options.scriptedKeys !== undefined
 			? { scriptedKeys: options.scriptedKeys }
@@ -89,6 +90,42 @@ async function runShell(options: RunOptions): Promise<{
 	});
 	return { exitCode, bytes: out.bytes(), terminal };
 }
+
+describe("InteractiveShell TTY close", () => {
+	it("enters and leaves the alternate screen so the frame does not stay in history", async () => {
+		const chunks: string[] = [];
+		const stdin = new PassThrough() as PassThrough & { isTTY?: boolean };
+		stdin.isTTY = true;
+		const stdout = new Writable({
+			write(chunk, _enc, cb) {
+				chunks.push(String(chunk));
+				cb();
+			},
+		}) as Writable & { isTTY?: boolean; columns?: number; rows?: number };
+		stdout.isTTY = true;
+		stdout.columns = 80;
+		stdout.rows = 24;
+		await runInteractiveShell({
+			stdin,
+			stdout,
+			host: stubHost,
+			reducedMotion: true,
+			maxMs: 80,
+			sidecars: false,
+			env: { ...process.env, HOBO_HOME: temp("hc-altscreen-") },
+		});
+		const out = chunks.join("");
+		expect(out).toContain("\u001b[?1049h");
+		expect(out).toContain("\u001b[?1049l");
+		expect(out.indexOf("\u001b[?1049h")).toBeLessThan(
+			out.lastIndexOf("\u001b[?1049l"),
+		);
+		expect(out).toMatch(/hobo-code resume chat-[0-9a-f]+/u);
+		expect(out.lastIndexOf("\u001b[?1049l")).toBeLessThan(
+			out.search(/hobo-code resume chat-/u),
+		);
+	});
+});
 
 describe("InteractiveShell render budget (differential rendering)", () => {
 	it("typing N keys costs far less than N full-frame repaints", async () => {
@@ -106,18 +143,29 @@ describe("InteractiveShell render budget (differential rendering)", () => {
 		let afterPaint = 0;
 		let beforeQuit = 0;
 		let terminalRef: StreamTerminal | undefined;
-		const snapshots = new Promise<void>((resolve) => {
-			setTimeout(() => {
-				afterPaint = terminalRef?.bytesWritten ?? -1;
-			}, 120);
-			setTimeout(() => {
-				beforeQuit = terminalRef?.bytesWritten ?? -1;
-				resolve();
-			}, 340);
+		const snapshots = new Promise<void>((resolve, reject) => {
+			const started = Date.now();
+			const waitForPaint = (): void => {
+				const written = terminalRef?.bytesWritten ?? 0;
+				if (written > 64) {
+					afterPaint = written;
+					setTimeout(() => {
+						beforeQuit = terminalRef?.bytesWritten ?? -1;
+						resolve();
+					}, 200);
+					return;
+				}
+				if (Date.now() - started > 800) {
+					reject(new Error("first paint never landed"));
+					return;
+				}
+				setTimeout(waitForPaint, 40);
+			};
+			setTimeout(waitForPaint, 40);
 		});
 		const { terminal } = await runShell({
 			reducedMotion: true,
-			maxMs: 420,
+			maxMs: 900,
 			onTerminal: (t) => {
 				terminalRef = t;
 			},
@@ -214,6 +262,67 @@ describe("default shell host honesty", () => {
 });
 
 describe("StreamTerminal contract", () => {
+	it("uses the alternate screen on a live TTY so quit does not bloat scrollback", () => {
+		const chunks: string[] = [];
+		const stdin = new PassThrough() as PassThrough & {
+			isTTY?: boolean;
+			isRaw?: boolean;
+			setRawMode?: (raw: boolean) => void;
+		};
+		stdin.isTTY = true;
+		stdin.setRawMode = () => {};
+		const stdout = new Writable({
+			write(chunk, _enc, cb) {
+				chunks.push(String(chunk));
+				cb();
+			},
+		}) as Writable & { isTTY?: boolean };
+		stdout.isTTY = true;
+		const t = new StreamTerminal({
+			stdin,
+			stdout,
+			columns: 80,
+			rows: 24,
+			rawMode: true,
+			alternateScreen: true,
+		});
+		t.start(
+			() => {},
+			() => {},
+		);
+		const started = chunks.join("");
+		expect(started).toContain("\u001b[?1049h");
+		expect(started.indexOf("\u001b[?1049h")).toBeLessThan(
+			started.indexOf("\u001b[?2004h"),
+		);
+		t.stop();
+		const all = chunks.join("");
+		expect(all).toContain("\u001b[?1049l");
+		expect(all.lastIndexOf("\u001b[?2004l")).toBeLessThan(
+			all.lastIndexOf("\u001b[?1049l"),
+		);
+	});
+
+	it("does not enter the alternate screen unless asked — capture streams keep frames", () => {
+		const chunks: string[] = [];
+		const t = new StreamTerminal({
+			stdin: new PassThrough(),
+			stdout: new Writable({
+				write(chunk, _enc, cb) {
+					chunks.push(String(chunk));
+					cb();
+				},
+			}),
+		});
+		t.start(
+			() => {},
+			() => {},
+		);
+		t.stop();
+		expect(chunks.join("")).not.toContain("\u001b[?1049h");
+		expect(chunks.join("")).not.toContain("\u001b[?1049l");
+	});
+
 	it("accounts every byte it writes and implements progress signalling", () => {
 		const out = collector();
 		const t = new StreamTerminal({

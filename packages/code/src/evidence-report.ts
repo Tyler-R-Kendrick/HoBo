@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
 
+import { evidenceDocumentCss } from "./evidence-chrome.js";
+import type { EvidenceJournal } from "./session-evidence.js";
+
 // public-contract: deterministic portable evidence-report schema identifier.
 export const EVIDENCE_REPORT_SCHEMA = "hobo.code.evidence-report/v1" as const;
 
@@ -89,6 +92,12 @@ export interface PortableEvidenceAsset {
 export interface EvidenceReportHtmlOptions {
 	readonly live?: boolean;
 	readonly controlsHref?: string;
+}
+
+export interface EvidenceJournalHtmlOptions {
+	readonly live?: boolean;
+	readonly controlsHref?: string;
+	readonly journalHref?: string;
 }
 
 const SECTION_TITLES: Record<EvidenceReportSectionId, string> = {
@@ -196,58 +205,153 @@ export function renderEvidenceReportHtml(
 			},
 			{ claimed: 0, captured: 0, verified: 0, stale: 0, missing: 0 },
 		);
+	const actions =
+		live && options.controlsHref
+			? `<a class="action" href="${escapeHtml(options.controlsHref)}">Open session controls</a>`
+			: '<button class="action" type="button" disabled aria-disabled="true">Live controls unavailable in export</button>';
 	return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'">
   <title>${escapeHtml(report.title)}</title>
-  <style>
-    :root { color-scheme: dark; font: 16px/1.5 ui-monospace, monospace; background: #171512; color: #f2eadb; }
-    body { margin: 0 auto; max-width: 76rem; padding: 2rem; }
-    header, section { border: 2px solid #756954; border-radius: .4rem; margin: 0 0 1rem; padding: 1rem; box-shadow: .35rem .35rem 0 #0c0b09; }
-    h1, h2, h3, p { margin-top: 0; }
-    ol, ul { padding-left: 1.4rem; }
-    article, aside { border-top: 1px dashed #756954; padding-top: .8rem; }
-    [data-state] { border-left: .4rem dashed #f2eadb; padding-left: .8rem; }
-    [data-state="captured"] { border-left-style: solid; border-color: #d7a84b; }
-    [data-state="verified"] { border-color: #7ecb79; }
-    [data-state="stale"] { border-style: dotted; border-color: #d7a84b; }
-    [data-state="missing"] { border-style: double; border-color: #df6b57; }
-    .state { text-transform: uppercase; }
-    .trust { display: grid; grid-template-columns: repeat(auto-fit,minmax(13rem,1fr)); gap: .5rem; margin: 1rem 0 0; }
-    .trust div { border-left: .35rem solid #f2eadb; padding-left: .6rem; }
-    .trust div:nth-child(2) { border-color: #d7a84b; }
-    .trust div:nth-child(3) { border-color: #7ecb79; }
-    .trust div:nth-child(4) { border-color: #d7a84b; }
-    .trust div:nth-child(5) { border-color: #df6b57; }
-    .trust dt { font-weight: 800; text-transform: uppercase; }
-    .trust dd { margin: .15rem 0 0; }
-    a { color: #9bc7ff; }
-    button { font: inherit; padding: .5rem .75rem; }
-  </style>
+  <style>${evidenceDocumentCss()}</style>
 </head>
-<body>
+<body class="report">
   <header>
-    <p>HoBo evidence report · ${live ? "live projection" : "portable export"}</p>
+    <p class="eyebrow">HoBo evidence report · ${live ? "live projection" : "portable export"}</p>
     <h1>${escapeHtml(report.title)}</h1>
-    <p>Generated <time datetime="${escapeHtml(report.generatedAt)}">${escapeHtml(report.generatedAt)}</time></p>
+    <p class="meta">Generated <time datetime="${escapeHtml(report.generatedAt)}">${escapeHtml(report.generatedAt)}</time></p>
     <p><strong>Trust summary:</strong> ${counts.verified} verified · ${counts.captured} captured · ${counts.claimed} claimed · ${counts.stale} stale · ${counts.missing} missing</p>
     <dl class="trust" aria-label="Evidence trust states">
-      <div><dt>Claimed</dt><dd>Submitted assertion; not independently checked.</dd></div>
-      <div><dt>Captured</dt><dd>Content-addressed artifact recorded by the host.</dd></div>
-      <div><dt>Verified</dt><dd>Acceptance evidence passed against this state.</dd></div>
-      <div><dt>Stale</dt><dd>Evidence predates the current state.</dd></div>
-      <div><dt>Missing</dt><dd>Required evidence has not been supplied.</dd></div>
+      <div data-state="claimed"><dt>Claimed</dt><dd>Submitted assertion; not independently checked.</dd></div>
+      <div data-state="captured"><dt>Captured</dt><dd>Content-addressed artifact recorded by the host.</dd></div>
+      <div data-state="verified"><dt>Verified</dt><dd>Acceptance evidence passed against this state.</dd></div>
+      <div data-state="stale"><dt>Stale</dt><dd>Evidence predates the current state.</dd></div>
+      <div data-state="missing"><dt>Missing</dt><dd>Required evidence has not been supplied.</dd></div>
     </dl>
-    ${live && options.controlsHref ? `<a href="${escapeHtml(options.controlsHref)}">Open session controls</a>` : '<button type="button" disabled aria-disabled="true">Live controls unavailable in export</button>'}
-    ${live ? '<a href="">Refresh evidence</a><span> · Live report updates when this page is refreshed.</span>' : ""}
+    <nav class="actions">${actions}${live ? '<a class="action" href="">Refresh evidence</a>' : ""}</nav>
+    ${live ? '<p class="meta">Live report updates when this page is refreshed.</p>' : ""}
   </header>
   <main>${sections}</main>
 </body>
 </html>
 `;
+}
+
+export function renderEvidenceJournalEventHtml(
+	event: EvidenceJournal["events"][number],
+): string {
+	return renderJournalEvent(event);
+}
+
+export function renderEvidenceJournalHtml(
+	journal: EvidenceJournal,
+	options: EvidenceJournalHtmlOptions = {},
+): string {
+	const live = options.live === true;
+	const session = journal.sessionId ?? "unattached";
+	const occupancy = journal.occupancy ?? "occupancy unknown";
+	const cwd = journal.cwd ?? "cwd unknown";
+	const counts = journal.events.reduce(
+		(acc, event) => {
+			acc[event.kind] = (acc[event.kind] ?? 0) + 1;
+			return acc;
+		},
+		{} as Record<string, number>,
+	);
+	const scoreboard = (["ask", "decision", "look", "impact"] as const)
+		.map(
+			(kind) =>
+				`<div><dt>${kind}</dt><dd>${counts[kind] ?? 0}</dd></div>`,
+		)
+		.join("");
+	const events = journal.events.map(renderJournalEvent).join("\n");
+	const empty = journal.events.length
+		? ""
+		: '<li class="empty">No session work yet. Tasks and Evidence fill as you talk and capture looks.</li>';
+	const actions =
+		live && options.controlsHref
+			? `<a class="action" href="${escapeHtml(options.controlsHref)}">Open session controls</a>`
+			: '<button class="action" type="button" disabled aria-disabled="true">Live controls unavailable in export</button>';
+	const poll =
+		live && options.journalHref
+			? `<script>
+const journalHref=${JSON.stringify(options.journalHref)};
+const stream=document.getElementById("journal");
+const seen=new Set([...stream.querySelectorAll("[data-id]")].map((node)=>node.getAttribute("data-id")));
+const render=(event)=>{
+  if(seen.has(event.id))return;
+  seen.add(event.id);
+  stream.insertAdjacentHTML("beforeend",event.html);
+  if(!document.body.dataset.hold)stream.lastElementChild?.scrollIntoView({block:"end"});
+};
+const pull=async()=>{
+  try{
+    const response=await fetch(journalHref,{headers:{accept:"application/json"}});
+    if(!response.ok)return;
+    const body=await response.json();
+    for(const event of body.events||[])render(event);
+  }catch{}
+};
+setInterval(pull,1500);
+</script>`
+			: "";
+	return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; font-src data:; base-uri 'none'; form-action 'none'">
+  <title>Evidence · ${escapeHtml(session)}</title>
+  <style>${evidenceDocumentCss()}</style>
+</head>
+<body class="report journal"${live ? " data-live" : ""}>
+  <header>
+    <p class="eyebrow">HoBo evidence · ${live ? "live work report" : "portable work report"}</p>
+    <h1>${escapeHtml(session)}</h1>
+    <p class="meta">${escapeHtml(occupancy)} · ${escapeHtml(cwd)}</p>
+    <p>Visual Tasks with provenance — why each step happened and what we looked at.</p>
+    <dl class="scoreboard trust">${scoreboard}</dl>
+    <nav class="actions">${actions}</nav>
+  </header>
+  <ol class="stream report-board" id="journal">${events}${empty}</ol>
+  ${poll}
+</body>
+</html>
+`;
+}
+
+function formatJournalTime(value: string): string {
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return value;
+	return date
+		.toISOString()
+		.replace("T", " ")
+		.replace(/\.\d{3}Z$/u, " UTC");
+}
+
+function renderJournalEvent(event: EvidenceJournal["events"][number]): string {
+	const media = event.artifacts
+		.map((artifact) => {
+			if (artifact.mediaType.startsWith("image/")) {
+				return `<figure class="look"><img src="${escapeHtml(artifact.path)}" alt="${escapeHtml(artifact.label)}"></figure>`;
+			}
+			if (artifact.mediaType.startsWith("video/")) {
+				return `<figure class="look"><video controls src="${escapeHtml(artifact.path)}"></video></figure>`;
+			}
+			return `<p class="artifact"><a href="${escapeHtml(artifact.path)}">${escapeHtml(artifact.label)}</a></p>`;
+		})
+		.join("");
+	const looks = event.artifacts.length;
+	return `<li class="event report-card" data-id="${escapeHtml(event.id)}" data-kind="${event.kind}" data-state="${event.state}">
+  <p class="meta"><time datetime="${escapeHtml(event.at)}">${escapeHtml(formatJournalTime(event.at))}</time> · ${event.kind} · ${escapeHtml(event.actor)} · ${event.state}</p>
+  <h2>${escapeHtml(event.title)}</h2>
+  <p class="reason">${escapeHtml(event.reason)}</p>
+  <p class="provenance">provenance · ${escapeHtml(event.actor)} · ${looks} look${looks === 1 ? "" : "s"} · ${escapeHtml(event.sourceKind ?? event.kind)}</p>
+  ${media}
+</li>`;
 }
 
 function renderSection(section: EvidenceReportSection): string {

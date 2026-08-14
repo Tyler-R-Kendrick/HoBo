@@ -176,7 +176,6 @@ function createBuilder(): BindleBuilder {
 		guardrail: () => createBindleResource("guardrail"),
 		ui: (binding?: ComponentBinding) =>
 			createBindleResource("ui", toHandler(binding)),
-		golden: () => createBindleResource("golden"),
 		experiment: () => createBindleResource("experiment"),
 		rollout: () => createBindleResource("rollout"),
 		external: (options: ExternalDependencyOptions = {}) =>

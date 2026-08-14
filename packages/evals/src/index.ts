@@ -17,6 +17,8 @@ export const EVALS_RUBRIC_SCHEMA = "hobo.evals.rubric/v1";
 export const EVALS_RUBRIC_REPORT_SCHEMA = "hobo.evals.rubric-report/v1";
 // public-contract: promotion verdict schema id the Gatekeeper evals dimension pins.
 export const EVALS_PROMOTION_VERDICT_SCHEMA = "hobo.evals.promotion-verdict/v1";
+// public-contract: default golden suite for trainable code (exact-match)
+export const GOLDEN_DEFAULT_SUITE_ID = "hobo.evals.trainable-golden/v1" as const;
 
 export type ScoringKind = "boolean" | "scale" | "golden-match";
 
@@ -614,4 +616,91 @@ function deepFreeze<T>(value: T): T {
 		}
 	}
 	return value;
+}
+
+export interface TrainableGoldenCase {
+	readonly id: string;
+	readonly expected: unknown;
+	readonly actual?: unknown;
+}
+
+export interface TrainableGoldenRegion {
+	readonly methodRef: string;
+	readonly grounded: boolean;
+	readonly cases: readonly TrainableGoldenCase[];
+}
+
+/**
+ * Default golden suite for one trainable region: exact-match over
+ * contract examples and recorded traces (ADR-0025). Not occupancy state.
+ */
+export function defineTrainableGoldenRubric(
+	region: TrainableGoldenRegion,
+): Rubric {
+	if (typeof region.methodRef !== "string" || region.methodRef.length === 0) {
+		throw new RubricParseError(
+			"trainable region methodRef must be a non-empty string",
+		);
+	}
+	const scored = region.cases.filter((row) =>
+		Object.hasOwn(row, "actual"),
+	);
+	return defineRubric({
+		id: `${GOLDEN_DEFAULT_SUITE_ID}:${region.methodRef}`,
+		passThreshold: 1,
+		criteria: [
+			{
+				id: "spec.examples",
+				description:
+					"trainable region has contract examples or traces to train against",
+				weight: 1,
+				kind: "boolean",
+				required: true,
+			},
+			{
+				id: "training.grounded",
+				description:
+					"trainable region has intent + shaped contract so the engine can rewrite it",
+				weight: 1,
+				kind: "boolean",
+				required: true,
+			},
+			...scored.map((row) => ({
+				id: row.id,
+				description: `exact-match blessed output for ${row.id}`,
+				weight: 1,
+				kind: "golden-match" as const,
+				expected: row.expected,
+			})),
+		],
+	});
+}
+
+export function observeTrainableGolden(
+	region: TrainableGoldenRegion,
+): RubricObservationInput[] {
+	const scored = region.cases.filter((row) => Object.hasOwn(row, "actual"));
+	return [
+		{ criterionId: "spec.examples", passed: region.cases.length > 0 },
+		{ criterionId: "training.grounded", passed: region.grounded },
+		...scored.map((row) => ({
+			criterionId: row.id,
+			actual: row.actual,
+		})),
+	];
+}
+
+export function scoreTrainableGoldenSuite(
+	regions: readonly TrainableGoldenRegion[],
+): {
+	readonly ok: boolean;
+	readonly reports: readonly RubricReport[];
+} {
+	const reports = regions.map((region) =>
+		scoreRubric(defineTrainableGoldenRubric(region), observeTrainableGolden(region)),
+	);
+	return {
+		ok: reports.every((report) => report.ok),
+		reports,
+	};
 }

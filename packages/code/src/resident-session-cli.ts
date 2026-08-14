@@ -9,6 +9,7 @@ import {
 	SessionLifecycleState,
 } from "./_generated/code_harness_pb.js";
 import type { DevMachine } from "./dev-machines.js";
+import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import { sshDestination } from "./dev-machines.js";
 import {
 	createLocalSessionControl,
@@ -356,7 +357,7 @@ export async function runResidentSessionCli(input: {
 	if (operation === "serve") {
 		if (input.remoteServe) {
 			return {
-				message: `forwarding resident browser from ${input.remoteServe.machine.id} at http://127.0.0.1:${input.remoteServe.port}; Station authorization gates a lease-bound local SSH agent`,
+				message: `forwarding resident browser from ${input.remoteServe.machine.id} at ${preferNamedEndpoint(`http://127.0.0.1:${input.remoteServe.port}/`, "sessions")}; Station authorization gates a lease-bound local SSH agent`,
 				data: {
 					terminalAction: {
 						kind: "forward-sessions",

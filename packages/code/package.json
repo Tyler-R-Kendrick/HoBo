@@ -12,6 +12,7 @@
 		"dist",
 		"bin",
 		"templates",
+		"examples",
 		"assets"
 	],
 	"exports": {
@@ -29,6 +30,9 @@
 		"@earendil-works/pi-tui": "^0.83.0",
 		"@flue/runtime": "1.0.0-beta.9",
 		"@hobo/core": "workspace:*",
+		"@hobo/evals": "workspace:*",
+		"@hobo/identity": "workspace:*",
+		"@hobo/patterns": "workspace:*",
 		"@hobo/rift": "workspace:*",
 		"@hobo/replay": "workspace:*",
 		"@hobo/runtime-local": "workspace:*",
@@ -44,7 +48,6 @@
 		"vitest": "^4.1.9"
 	},
 	"scripts": {
-		"prebuild": "pnpm --filter @hobo/core build && pnpm --filter @hobo/stations build && pnpm --filter @hobo/runtime-local build",
 		"build": "tsc -p tsconfig.json",
 		"postbuild": "node -e \"require('node:fs').chmodSync('dist/bin/hobo-code.js', 0o755); require('node:fs').chmodSync('bin/hobo-code.mjs', 0o755)\"",
 		"typecheck": "tsc --noEmit -p tsconfig.json",

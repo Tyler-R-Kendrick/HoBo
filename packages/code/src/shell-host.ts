@@ -10,21 +10,65 @@
  * - every reply teaches the equivalent one-shot command.
  */
 import { spawn } from "node:child_process";
-
+import { join } from "node:path";
+import { emitFromAtoms } from "./atom-index.js";
+import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
 import {
 	formatHoboCodeResult,
 	type HoboCodeCliDeps,
 	type HoboCodeCliResult,
 	runHoboCodeCli,
 } from "./cli.js";
+import {
+	type DevBrowserSession,
+	resolveHoboSpawn,
+} from "./dev-browser.js";
+import { materializeExample } from "./example-catalog.js";
 import type { PendingApproval, ShellHost } from "./interactive-shell.js";
 import { formatUsage, type ShellEngine } from "./shell-engine.js";
+import {
+	formatLiveEndpoints,
+	matchWorkspaceAction,
+	resolveRunnableProject,
+} from "./workspace-actions.js";
 
 interface DispatchedTaskShape {
 	readonly taskId?: string;
 	readonly status?: string;
 	readonly handbackPath?: string;
 	readonly error?: string;
+}
+
+function formatSessionCreateReply(options: {
+	readonly id: string;
+	readonly outputDir: string;
+	readonly files: readonly string[];
+	readonly holes: readonly string[];
+}): string {
+	const preview = [...options.files]
+		.filter((file) => !file.endsWith(".gitkeep"))
+		.sort((left, right) => {
+			const rank = (file: string): number => {
+				if (/(?:^|\/)(?:bindle|yard)\.ts$/u.test(file)) return 0;
+				if (file.startsWith("src/")) return 1;
+				return 2;
+			};
+			return rank(left) - rank(right);
+		})
+		.slice(0, 8)
+		.join(", ");
+	const hole =
+		options.holes.length > 0
+			? `Trainable holes (${options.holes.join(", ")}) are "use training" skeletons — not invented logic.`
+			: undefined;
+	return [
+		`Created ${options.id} at ${options.outputDir}.`,
+		preview.length > 0 ? `Wrote ${preview}.` : undefined,
+		hole,
+		'Say "run it" or "debug it" when you want live endpoints.',
+	]
+		.filter((line): line is string => line !== undefined)
+		.join("\n");
 }
 
 function dispatchedTask(result: HoboCodeCliResult): DispatchedTaskShape | null {
@@ -37,6 +81,49 @@ function dispatchedTask(result: HoboCodeCliResult): DispatchedTaskShape | null {
 function oneShotHint(prompt: string): string {
 	const compact = prompt.length > 48 ? `${prompt.slice(0, 47)}…` : prompt;
 	return `One-shot equivalent: hobo-code "${compact.replace(/"/g, '\\"')}"`;
+}
+
+async function runHoboCommand(
+	argv: readonly string[],
+	deps: DefaultShellHostOptions,
+): Promise<string> {
+	const env = { ...process.env, ...deps.env };
+	const spawned = resolveHoboSpawn({ env, argv });
+	return new Promise((resolve, reject) => {
+		const child = spawn(spawned.command, [...spawned.args], {
+			cwd: deps.cwd ?? process.cwd(),
+			env,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+		let output = "";
+		const append = (chunk: Buffer): void => {
+			output = `${output}${chunk.toString("utf8")}`.slice(-64 * 1024);
+		};
+		child.stdout.on("data", append);
+		child.stderr.on("data", append);
+		child.once("error", (error) => {
+			const err = error as NodeJS.ErrnoException;
+			if (err.code === "ENOENT") {
+				reject(
+					new Error(
+						`hobo CLI not found (${err.path ?? spawned.bin}). Set HOBO_CODE_HOBO_BIN or use this repo's packages/hobo/dist/bin/hobo.js`,
+					),
+				);
+				return;
+			}
+			reject(error);
+		});
+		child.once("exit", (code, signal) => {
+			const text = output.trimEnd();
+			if (code === 0) resolve(text || `hobo ${argv.join(" ")} completed`);
+			else
+				reject(
+					new Error(
+						`${text ? `${text}\n` : ""}hobo exited with ${signal ?? code ?? "unknown status"}`,
+					),
+				);
+		});
+	});
 }
 
 async function executeResidentTerminalAction(
@@ -84,6 +171,16 @@ export function createDefaultShellHost(
 	deps: DefaultShellHostOptions = {},
 ): ShellHost {
 	const engine = deps.engine ?? null;
+	const workspaceRoot = deps.cwd ?? process.cwd();
+	let lastProjectDir: string | undefined;
+	const devSessions = new Set<DevBrowserSession>();
+	const cliDeps: DefaultShellHostOptions = {
+		...deps,
+		onDevSession: (session) => {
+			devSessions.add(session);
+			deps.onDevSession?.(session);
+		},
+	};
 	const engineExtras: Partial<ShellHost> = engine
 		? {
 				engineLabel: `${engine.id} · ${engine.modelLabel}`,
@@ -142,11 +239,113 @@ export function createDefaultShellHost(
 				},
 			}
 		: {};
+	const tryWorkspaceAction = async (prompt: string): Promise<string | null> => {
+		const action = matchWorkspaceAction(prompt);
+		if (!action) return null;
+		if (action.kind === "create" || action.kind === "create-and-run") {
+			const outputDir = join(workspaceRoot, action.exampleId);
+			const emitted = emitFromAtoms({
+				intent: action.prompt,
+				outputDir,
+				params: { name: action.exampleId.replace(/[^a-z0-9-]+/giu, "-") },
+			});
+			if (emitted.ok) {
+				linkGeneratedAppRuntime(outputDir);
+				lastProjectDir = outputDir;
+				if (action.kind === "create") {
+					return formatSessionCreateReply({
+						id: emitted.compositionId ?? action.exampleId,
+						outputDir,
+						files: emitted.files,
+						holes: emitted.holes,
+					});
+				}
+			} else {
+				const copied = materializeExample({
+					exampleId: action.exampleId,
+					outputDir,
+					appName: action.exampleId,
+					intent: action.prompt,
+				});
+				linkGeneratedAppRuntime(copied.outputDir);
+				lastProjectDir = copied.outputDir;
+				if (action.kind === "create") {
+					return formatSessionCreateReply({
+						id: copied.templateId,
+						outputDir: copied.outputDir,
+						files: copied.files,
+						holes: [],
+					});
+				}
+			}
+		}
+		const projectDir = resolveRunnableProject(workspaceRoot, lastProjectDir);
+		if (projectDir === undefined) {
+			return 'No Bindle to run. Say "create a hello world app" first.';
+		}
+		const result = await runHoboCodeCli(
+			["dev", "--cwd", projectDir, "--port", "0", "--debug-port", "0"],
+			{ ...cliDeps, json: false },
+		);
+		if (!result.ok) {
+			return formatHoboCodeResult(result, {
+				json: false,
+				dense: deps.dense === true,
+			});
+		}
+		const deployment =
+			result.data && typeof result.data === "object"
+				? (
+						result.data as {
+							readonly deployment?: {
+								readonly appUrl?: string;
+								readonly debugUrl?: string;
+								readonly controlsUrl?: string;
+								readonly reportUrl?: string;
+								readonly namedUrl?: string;
+								readonly stationId?: string;
+								readonly environment?: string;
+							};
+						}
+					).deployment
+				: undefined;
+		if (
+			!deployment?.appUrl ||
+			!deployment.debugUrl ||
+			!deployment.controlsUrl ||
+			!deployment.reportUrl
+		) {
+			return formatHoboCodeResult(result, {
+				json: false,
+				dense: deps.dense === true,
+			});
+		}
+		return formatLiveEndpoints({
+			appUrl: deployment.appUrl,
+			debugUrl: deployment.debugUrl,
+			controlsUrl: deployment.controlsUrl,
+			reportUrl: deployment.reportUrl,
+			...(deployment.namedUrl !== undefined
+				? { namedUrl: deployment.namedUrl }
+				: {}),
+			...(deployment.stationId !== undefined
+				? { stationId: deployment.stationId }
+				: {}),
+			...(deployment.environment !== undefined
+				? { environment: deployment.environment }
+				: {}),
+			emphasis: action.kind === "debug" ? "debug" : "run",
+		});
+	};
 	return {
 		...engineExtras,
 		async runVerb(argv) {
-			const result = await runHoboCodeCli([...argv], {
-				...deps,
+			if (argv[0] === "hobo" && argv[1] !== "dev") {
+				return runHoboCommand(argv.slice(1), deps);
+			}
+			const codeArgv = argv[0] === "hobo" ? argv.slice(1) : argv;
+			const result = await runHoboCodeCli([...codeArgv], {
+				...cliDeps,
 				json: false,
 			});
 			const text = formatHoboCodeResult(result, {
@@ -156,7 +355,14 @@ export function createDefaultShellHost(
 			await executeResidentTerminalAction(result, deps.env ?? process.env);
 			return text;
 		},
+		dispose: async () => {
+			await Promise.all([...devSessions].map((session) => session.close()));
+			devSessions.clear();
+		},
+		tryWorkspaceAction,
 		async complete(prompt) {
+			const handled = await tryWorkspaceAction(prompt);
+			if (handled !== null) return handled;
 			const result = await runHoboCodeCli([prompt], {
 				...deps,
 				json: false,

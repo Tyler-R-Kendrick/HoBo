@@ -313,7 +313,13 @@ describe("named endpoints + portless (pure)", () => {
 		});
 
 		expect(named.primaryNamedUrl).toBe(
-			"https://web.myapp.local.hobo.localhost",
+			"http://web.myapp.local.hobo.localhost:7071",
+		);
+		expect(named.namedEndpoints[0]?.url).toBe(
+			"http://web.myapp.local.hobo.localhost:7071",
+		);
+		expect(named.namedEndpoints[1]?.url).toBe(
+			"https://api.myapp.local.hobo.test",
 		);
 		expect(named.namedEndpoints[0]?.hostname).toMatch(/\.hobo\.localhost$/);
 		expect(named.namedEndpoints[0]?.hostname.endsWith(".hobo")).toBe(false);

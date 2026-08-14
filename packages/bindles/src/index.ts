@@ -26,7 +26,6 @@ export {
 	data,
 	experiment,
 	flag,
-	golden,
 	guardrail,
 	job,
 	kv,

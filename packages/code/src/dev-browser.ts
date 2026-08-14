@@ -1,14 +1,14 @@
+import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
-import { createServer, type IncomingMessage, type Server } from "node:http";
-import { extname, join, relative, resolve, sep } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { createServer } from "node:net";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import {
-	EVIDENCE_OVERLAY_BO_PATH,
-	evidenceOverlayBoIdleResponse,
-	renderEvidenceOverlayBridge,
-} from "./evidence-overlay.js";
-import { startSessionControlServer } from "./session-control-server.js";
+import { debugViewUrl } from "./evidence-overlay.js";
+import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
+import { preferNamedEndpoint } from "./occupancy-endpoints.js";
+import { attachStationSidecars } from "./station-sidecars.js";
 
 export interface DevBrowserSessionOptions {
 	readonly projectDir: string;
@@ -16,6 +16,14 @@ export interface DevBrowserSessionOptions {
 	readonly appPort?: number;
 	readonly debugPort?: number;
 	readonly sessionId?: string;
+	readonly hoboBin?: string;
+	/** Walk-up start for workspace `hobo` discovery. Tests pass a fake tree. */
+	readonly from?: string;
+	readonly env?: NodeJS.ProcessEnv;
+	readonly stationId?: string;
+	readonly tenant?: string;
+	readonly environment?: string;
+	readonly startupTimeoutMs?: number;
 }
 
 export interface DevBrowserSession {
@@ -25,182 +33,309 @@ export interface DevBrowserSession {
 	readonly controlsUrl: string;
 	readonly reportUrl: string;
 	readonly evidencePath: string;
+	readonly namedUrl?: string;
+	readonly stationId?: string;
+	readonly environment?: string;
+	readonly pid?: number;
 	readonly close: () => Promise<void>;
 }
 
-const MIME: Readonly<Record<string, string>> = {
-	".css": "text/css; charset=utf-8",
-	".html": "text/html; charset=utf-8",
-	".ico": "image/x-icon",
-	".js": "text/javascript; charset=utf-8",
-	".json": "application/json; charset=utf-8",
-	".png": "image/png",
-	".svg": "image/svg+xml",
-	".wasm": "application/wasm",
-	".webp": "image/webp",
-};
-
-function portOf(server: Server): number {
-	const address = server.address();
-	if (address === null || typeof address === "string") {
-		throw new Error("hobo-code dev server did not bind a TCP port");
+/**
+ * Locate the composed `hobo` CLI. Env wins, then the sibling
+ * `packages/hobo/dist/bin/hobo.js` in this checkout, then PATH.
+ */
+export function resolveHoboBin(
+	options: { readonly env?: NodeJS.ProcessEnv; readonly from?: string } = {},
+): string {
+	const env = options.env ?? process.env;
+	const override = [env.HOBO_CODE_HOBO_BIN, env.HOBO_BIN]
+		.map((value) => (typeof value === "string" ? value.trim() : ""))
+		.find((value) => value.length > 0);
+	if (override) return override;
+	let dir = options.from ?? dirname(fileURLToPath(import.meta.url));
+	for (let i = 0; i < 10; i += 1) {
+		const candidates = [
+			join(dir, "hobo", "dist", "bin", "hobo.js"),
+			join(dir, "packages", "hobo", "dist", "bin", "hobo.js"),
+		];
+		for (const candidate of candidates) {
+			if (existsSync(candidate)) return candidate;
+		}
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
 	}
-	return address.port;
+	return "hobo";
 }
 
-function listen(server: Server, port: number): Promise<void> {
-	return new Promise((resolveListen, reject) => {
+/** How the shipped `/dev` and `run it` paths spawn `hobo`. */
+export function resolveHoboSpawn(options: {
+	readonly env?: NodeJS.ProcessEnv;
+	readonly from?: string;
+	readonly hoboBin?: string;
+	readonly argv?: readonly string[];
+}): {
+	readonly command: string;
+	readonly args: readonly string[];
+	readonly bin: string;
+} {
+	const bin =
+		options.hoboBin ??
+		resolveHoboBin({
+			...(options.env !== undefined ? { env: options.env } : {}),
+			...(options.from !== undefined ? { from: options.from } : {}),
+		});
+	const argv = options.argv ?? [];
+	if (spawnsViaNode(bin)) {
+		const tsx = resolveTsxLoader(bin);
+		const prefix = tsx !== undefined ? ["--import", tsx] : [];
+		return { command: process.execPath, args: [...prefix, bin, ...argv], bin };
+	}
+	return { command: bin, args: argv, bin };
+}
+
+function resolveTsxLoader(hoboBin: string): string | undefined {
+	let dir = dirname(hoboBin);
+	for (let i = 0; i < 8; i += 1) {
+		const loader = join(dir, "node_modules", "tsx", "dist", "loader.mjs");
+		if (existsSync(loader)) return loader;
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	const repo = dirname(fileURLToPath(import.meta.url));
+	let walk = repo;
+	for (let i = 0; i < 8; i += 1) {
+		const loader = join(walk, "node_modules", "tsx", "dist", "loader.mjs");
+		if (existsSync(loader)) return loader;
+		const parent = dirname(walk);
+		if (parent === walk) break;
+		walk = parent;
+	}
+	return undefined;
+}
+
+function spawnsViaNode(bin: string): boolean {
+	if (/\.(m?js|cjs)$/u.test(bin)) return true;
+	if (!bin.includes("/") && !bin.includes("\\")) return false;
+	if (!existsSync(bin)) return false;
+	try {
+		return /^#!.*\bnode\b/u.test(readFileSync(bin, "utf8").slice(0, 80));
+	} catch {
+		return false;
+	}
+}
+
+/** Exported for tests: never accept a :0 listen URL as a real endpoint. */
+export function extractListenUrl(output: string): string | undefined {
+	const candidates = [
+		...output.matchAll(/hobo dev: listening on (https?:\/\/[^\s)]+)/gu),
+		...output.matchAll(/Yard exposed \S+ at (https?:\/\/127\.0\.0\.1:\d+)/gu),
+		...output.matchAll(/at (https?:\/\/127\.0\.0\.1:[1-9]\d*)/gu),
+	].map((match) => match[1]);
+	return candidates.find(
+		(url) => url !== undefined && !/:0(?:\/|$)/u.test(url),
+	);
+}
+
+async function allocateLoopbackPort(): Promise<number> {
+	return new Promise((resolvePort, reject) => {
+		const server = createServer();
 		server.once("error", reject);
-		server.listen(port, "127.0.0.1", () => {
-			server.off("error", reject);
-			resolveListen();
+		server.listen(0, "127.0.0.1", () => {
+			const address = server.address();
+			const port =
+				address !== null && typeof address === "object" ? address.port : 0;
+			server.close((error) => {
+				if (error) reject(error);
+				else if (port <= 0)
+					reject(new Error("could not allocate a loopback port"));
+				else resolvePort(port);
+			});
 		});
 	});
 }
 
-function close(server: Server): Promise<void> {
-	if (!server.listening) return Promise.resolve();
-	return new Promise((resolveClose, reject) => {
-		server.close((error) => (error ? reject(error) : resolveClose()));
-	});
-}
-
-function publicFile(publicDir: string, pathname: string): string | null {
-	let decoded: string;
-	try {
-		decoded = decodeURIComponent(pathname);
-	} catch {
-		return null;
-	}
-	const requested =
-		decoded === "/" ? "index.html" : decoded.replace(/^\/+/, "");
-	const candidate = resolve(publicDir, requested);
-	if (candidate !== publicDir && !candidate.startsWith(`${publicDir}${sep}`)) {
-		return null;
-	}
-	if (!existsSync(candidate)) return null;
-	const canonicalRoot = realpathSync(publicDir);
-	const canonical = realpathSync(candidate);
-	if (
-		canonical !== canonicalRoot &&
-		!canonical.startsWith(`${canonicalRoot}${sep}`)
-	) {
-		return null;
-	}
-	const served = statSync(canonical).isDirectory()
-		? join(canonical, "index.html")
-		: canonical;
-	if (!existsSync(served)) return null;
-	const canonicalServed = realpathSync(served);
-	return canonicalServed === canonicalRoot ||
-		canonicalServed.startsWith(`${canonicalRoot}${sep}`)
-		? canonicalServed
-		: null;
-}
-
-function serveStatic(publicDir: string, request: IncomingMessage): Response {
-	if (request.method !== "GET" && request.method !== "HEAD") {
-		return new Response("Method not allowed", { status: 405 });
-	}
-	const url = new URL(request.url ?? "/", "http://127.0.0.1");
-	const path = publicFile(publicDir, url.pathname);
-	if (path === null || !existsSync(path))
-		return new Response("Not found", { status: 404 });
-	let bytes: Buffer | null =
-		request.method === "HEAD" ? null : readFileSync(path);
-	if (
-		bytes &&
-		url.searchParams.has("__hobo_debug") &&
-		extname(path) === ".html"
-	) {
-		const html = bytes.toString("utf8");
-		const script = '<script src="/__hobo/evidence/bridge.js"></script>';
-		bytes = Buffer.from(
-			html.includes("</body>")
-				? html.replace("</body>", `${script}</body>`)
-				: `${html}${script}`,
+function waitForAppUrl(
+	child: ChildProcessWithoutNullStreams,
+	timeoutMs: number,
+): Promise<{ readonly appUrl: string; readonly namedUrl?: string }> {
+	return new Promise((resolveUrl, reject) => {
+		let output = "";
+		let settled = false;
+		let appUrl: string | undefined;
+		let namedUrl: string | undefined;
+		let grace: ReturnType<typeof setTimeout> | undefined;
+		const finish = (
+			error?: Error,
+			urls?: { readonly appUrl: string; readonly namedUrl?: string },
+		): void => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			if (grace) clearTimeout(grace);
+			if (error) reject(error);
+			else if (urls) resolveUrl(urls);
+			else reject(new Error("hobo dev did not report a URL"));
+		};
+		const maybeFinish = (): void => {
+			if (!appUrl) return;
+			if (namedUrl) finish(undefined, { appUrl, namedUrl });
+			else {
+				grace ??= setTimeout(() => {
+					if (!appUrl) return;
+					finish(undefined, namedUrl ? { appUrl, namedUrl } : { appUrl });
+				}, 400);
+			}
+		};
+		const inspect = (chunk: Buffer): void => {
+			output = `${output}${chunk.toString("utf8")}`.slice(-8192);
+			const listen = extractListenUrl(output);
+			if (listen) appUrl = listen;
+			const named = /named=(https?:\/\/[^\s)]+)/u.exec(output);
+			if (named?.[1] && !/:0(?:\/|$)/u.test(named[1])) namedUrl = named[1];
+			maybeFinish();
+		};
+		child.stdout.on("data", inspect);
+		child.stderr.on("data", inspect);
+		child.once("error", (error) => {
+			const err = error as NodeJS.ErrnoException;
+			if (err.code === "ENOENT") {
+				finish(
+					new Error(
+						`hobo CLI not found (${err.path ?? "hobo"}). Set HOBO_CODE_HOBO_BIN or use this repo's packages/hobo/dist/bin/hobo.js`,
+					),
+				);
+				return;
+			}
+			finish(error);
+		});
+		child.once("exit", (code, signal) =>
+			finish(
+				new Error(
+					`hobo dev exited before serving (${signal ?? code ?? "unknown"})${output.trim() ? `: ${output.trim()}` : ""}`,
+				),
+			),
 		);
-	}
-	return new Response(bytes ? new Uint8Array(bytes) : null, {
-		headers: {
-			"cache-control": "no-store",
-			"content-type":
-				MIME[extname(path).toLowerCase()] ?? "application/octet-stream",
-		},
+		const timer = setTimeout(
+			() =>
+				finish(
+					new Error(
+						`hobo dev did not start within ${timeoutMs}ms${output.trim() ? `: ${output.trim()}` : ""}`,
+					),
+				),
+			timeoutMs,
+		);
 	});
 }
 
-async function send(
-	nodeResponse: import("node:http").ServerResponse,
-	response: Response,
-): Promise<void> {
-	nodeResponse.writeHead(response.status, Object.fromEntries(response.headers));
-	nodeResponse.end(Buffer.from(await response.arrayBuffer()));
+async function stop(child: ChildProcessWithoutNullStreams): Promise<void> {
+	if (child.exitCode !== null || child.signalCode !== null) return;
+	await new Promise<void>((resolveExit) => {
+		const force = setTimeout(() => child.kill("SIGKILL"), 2_000);
+		child.once("exit", () => {
+			clearTimeout(force);
+			resolveExit();
+		});
+		child.kill("SIGTERM");
+	});
 }
 
-/** Serve an in-development app with the existing evidence controls injected on demand. */
+/** Run the project's real Bindle on its local Yard and attach Evidence controls. */
 export async function startDevBrowserSession(
 	options: DevBrowserSessionOptions,
 ): Promise<DevBrowserSession> {
-	const publicDir = resolve(options.projectDir, "public");
-	const indexPath = join(publicDir, "index.html");
-	if (!existsSync(indexPath)) {
-		throw new Error(
-			`hobo-code dev needs ${relative(options.projectDir, indexPath)}`,
-		);
-	}
 	const sessionId = options.sessionId ?? `dev-${randomUUID()}`;
 	if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/u.test(sessionId)) {
 		throw new Error("hobo-code dev session id is invalid");
 	}
-
-	let bridge = "";
-	const appServer = createServer((request, response) => {
-		const url = new URL(request.url ?? "/", "http://127.0.0.1");
-		const result =
-			(request.method === "GET" || request.method === "HEAD") &&
-			url.pathname === EVIDENCE_OVERLAY_BO_PATH
-				? evidenceOverlayBoIdleResponse(request.method === "HEAD")
-				: request.method === "GET" &&
-						url.pathname === "/__hobo/evidence/bridge.js"
-					? new Response(bridge, {
-							headers: {
-								"cache-control": "no-store",
-								"content-type": "text/javascript; charset=utf-8",
-							},
-						})
-					: serveStatic(publicDir, request);
-		void send(response, result).catch((error) =>
-			response.destroy(error as Error),
-		);
+	const projectDir = resolve(options.projectDir);
+	linkGeneratedAppRuntime(projectDir);
+	const occupied = await attachStationSidecars({
+		hoboHome: options.hoboHome,
+		projectRoot: projectDir,
+		...(options.env !== undefined ? { env: options.env } : {}),
+		...(options.debugPort !== undefined
+			? { evidencePort: options.debugPort }
+			: {}),
 	});
-	await listen(appServer, options.appPort ?? 4173);
-	const appUrl = `http://127.0.0.1:${portOf(appServer)}/`;
+	const evidence = {
+		port: Number(new URL(occupied.evidenceUrl).port),
+		token: "",
+		url: occupied.evidenceUrl,
+		reportUrl: occupied.evidenceReportUrl,
+		controlsUrlTemplate: occupied.evidenceControlsUrl,
+		controlsUrl: (parentOrigin: string, sid?: string) => {
+			const url = new URL(occupied.evidenceControlsUrl);
+			url.searchParams.set("parentOrigin", parentOrigin);
+			if (sid) url.searchParams.set("sessionId", sid);
+			return url.href;
+		},
+		close: async () => {},
+	};
+	const controlsTemplate = new URL(evidence.controlsUrlTemplate);
+	controlsTemplate.searchParams.set("sessionId", sessionId);
+	const env = { ...process.env, ...options.env };
+	const stationId = options.stationId ?? env.HOBO_STATION;
+	const tenant = options.tenant ?? env.HOBO_TENANT;
+	const environment = options.environment ?? env.HOBO_ENV;
+	const appPort =
+		options.appPort !== undefined && options.appPort > 0
+			? options.appPort
+			: await allocateLoopbackPort();
+	const spawned = resolveHoboSpawn({
+		env,
+		...(options.hoboBin !== undefined ? { hoboBin: options.hoboBin } : {}),
+		...(options.from !== undefined ? { from: options.from } : {}),
+		argv: ["dev", "--cwd", projectDir, "--port", String(appPort)],
+	});
+	const child = spawn(spawned.command, [...spawned.args], {
+		cwd: projectDir,
+		env: {
+			...env,
+			HOBO_HOME: options.hoboHome,
+			HOBO_CODE_DEV_BRIDGE: "1",
+			HOBO_CODE_EVIDENCE_CONTROLS_URL: controlsTemplate.href,
+			...(stationId ? { HOBO_STATION: stationId } : {}),
+			...(tenant ? { HOBO_TENANT: tenant } : {}),
+			...(environment ? { HOBO_ENV: environment } : {}),
+		},
+		stdio: ["pipe", "pipe", "pipe"],
+	});
 
 	try {
-		const evidence = await startSessionControlServer({
-			hoboHome: options.hoboHome,
-			projectRoot: options.projectDir,
-			port: options.debugPort ?? 4174,
-		});
-		const controlsUrl = evidence.controlsUrl(new URL(appUrl).origin, sessionId);
-		bridge = renderEvidenceOverlayBridge({ controlsUrl });
+		const started = await waitForAppUrl(
+			child,
+			options.startupTimeoutMs ?? 60_000,
+		);
+		const publicApp =
+			started.namedUrl ?? preferNamedEndpoint(started.appUrl, "web");
+		const controlsUrl = evidence.controlsUrl(
+			new URL(publicApp).origin,
+			sessionId,
+		);
 		let closed = false;
 		return {
 			sessionId,
-			appUrl,
-			debugUrl: `${appUrl}?__hobo_debug=1`,
+			appUrl: started.appUrl,
+			debugUrl: debugViewUrl(started.namedUrl ?? started.appUrl),
 			controlsUrl,
 			reportUrl: evidence.reportUrl,
 			evidencePath: join(options.hoboHome, "durable", "code", "evidence"),
+			...(started.namedUrl !== undefined ? { namedUrl: started.namedUrl } : {}),
+			...(stationId ? { stationId } : {}),
+			...(environment ? { environment } : {}),
+			...(child.pid !== undefined ? { pid: child.pid } : {}),
 			close: async () => {
 				if (closed) return;
 				closed = true;
-				await Promise.all([evidence.close(), close(appServer)]);
+				await stop(child);
+				await evidence.close();
 			},
 		};
 	} catch (error) {
-		await close(appServer);
+		await stop(child);
+		await evidence.close();
 		throw error;
 	}
 }

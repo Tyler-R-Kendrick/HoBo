@@ -61,7 +61,9 @@ conflicting content fails closed.
 import { getNamedEndpoint } from "@hobo/connectivity";
 
 getNamedEndpoint({ resource: "web", app: "myapp", env: "local", mode: "local" });
-// → https://web.myapp.local.hobo.localhost
+// → https://web.myapp.local.hobo.localhost  (canonical name)
+// Live local serve without portless uses http + backend port:
+// → http://web.myapp.local.hobo.localhost:4173
 
 getNamedEndpoint({ resource: "web", app: "myapp", env: "prod", mode: "overlay" });
 // → https://web.myapp.hobo.test  (prod segment omitted)
@@ -89,6 +91,9 @@ pnpm --filter @hobo/hobo exec hobo dev --once --json
 ```
 
 `DevServeResult` / serve results include `namedEndpoints` and `primaryNamedUrl`.  
+Without portless, the named URL is `http://{resource}.{app}.local.hobo.localhost:{backendPort}`
+so it hits the same loopback listener as `127.0.0.1` (browsers resolve `*.localhost`).
+`https://…hobo.localhost` (implied :443) is only advertised when portless is bound.  
 MCP discovers them via `hobo inspect` (`data.namedEndpoints` / `primaryNamedUrl`).
 
 ### 3. Overlay mode (junction / laptop)

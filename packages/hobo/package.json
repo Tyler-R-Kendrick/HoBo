@@ -70,7 +70,8 @@
 		"@hobo/trails": "workspace:*",
 		"@hobo/trust": "workspace:*",
 		"@hobo/yards": "workspace:*",
-		"esbuild": "^0.25.0"
+		"esbuild": "^0.25.0",
+		"tsx": "4.22.4"
 	},
 	"devDependencies": {
 		"@hobo/contract-harness": "workspace:*"

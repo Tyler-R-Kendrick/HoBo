@@ -16,7 +16,7 @@ pnpm exec turbo run build --filter @hobo/adapter-hono --filter @hobo/code --filt
 pnpm --filter @hobo/code exec hobo-code
 ```
 
-That starts the session. From there, **talk**. Ask for a hello-world Bindle, “deploy to azure”, or “bundle these apps on the same network”. Bo emits files in the workspace. There is no `hobo-code atoms` verb and no extra retrieve CLI — retrieval is a chat turn after the session is up.
+That starts the session. From there, **talk** for hello-world / run / debug. Zero-LLM pattern lookup is explicit: `hobo-code template …` or `/template web frontend backed by an api` (ADR-0153). Ordinary chat is not silently intercepted for arbitrary queries.
 
 ## What belongs where
 
@@ -24,6 +24,7 @@ That starts the session. From there, **talk**. Ask for a hello-world Bindle, “
 |---|---|
 | Plan / converge / tear down an existing Bindle | `hobo plan` / `hobo up` / `hobo down` / `hobo dev` |
 | Author or extend an app by talking | `hobo-code` session |
+| Search/render a pattern with no model | `hobo-code template` or `/template` |
 | Agent tool calls over the same verbs | `hobo-mcp` — see [the MCP surface](/HoBo/agents/mcp/) |
 
 ## Honest limits

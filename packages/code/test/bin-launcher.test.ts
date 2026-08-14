@@ -1,6 +1,14 @@
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +21,40 @@ describe("hobo-code bin launcher", () => {
 	it("bin/hobo-code.mjs exists and is the package bin entry", () => {
 		expect(existsSync(launcher)).toBe(true);
 	});
+
+	it("stale rebuild compiles @hobo/code only and does not fan out @hobo/core", () => {
+		const pkg = JSON.parse(
+			readFileSync(join(pkgRoot, "package.json"), "utf8"),
+		) as { scripts?: Record<string, string> };
+		const prebuild = pkg.scripts?.prebuild ?? "";
+		expect(prebuild).not.toMatch(/@hobo\/core/);
+		expect(prebuild).not.toMatch(/@hobo\/stations/);
+		expect(prebuild).not.toMatch(/@hobo\/patterns/);
+		expect(pkg.scripts?.build).toMatch(/tsc/);
+		const launcherSrc = readFileSync(launcher, "utf8");
+		expect(launcherSrc).toMatch(/tsc/);
+		expect(launcherSrc).not.toMatch(/--filter\s+@hobo\/core/);
+		expect(launcherSrc).not.toMatch(/pnpm", \["run", "build"\]/);
+	});
+
+	it("forced stale rebuild is tsc-only and does not rebuild @hobo/core", () => {
+		const started = Date.now();
+		const r = spawnSync(process.execPath, [launcher, "help"], {
+			cwd: pkgRoot,
+			encoding: "utf8",
+			env: {
+				...process.env,
+				HOBO_CODE_FORCE_STALE_REBUILD: "1",
+			},
+		});
+		const elapsedMs = Date.now() - started;
+		expect(r.status).toBe(0);
+		expect(r.stderr).toMatch(/tsc @hobo\/code only/);
+		expect(r.stderr).not.toMatch(/@hobo\/core/);
+		expect(r.stderr).not.toMatch(/@hobo\/stations@/);
+		expect(r.stdout).toMatch(/hobo-code/);
+		expect(elapsedMs).toBeLessThan(60_000);
+	}, 60_000);
 
 	it("runs help via launcher with current dist (skip rebuild)", () => {
 		const r = spawnSync(process.execPath, [launcher, "help"], {
@@ -37,14 +79,39 @@ describe("hobo-code bin launcher", () => {
 	});
 
 	it("forwards a PID-only termination signal to a live dev child", async () => {
-		const hoboHome = mkdtempSync(join(tmpdir(), "hobo-code-launcher-signal-"));
+		const root = mkdtempSync(join(tmpdir(), "hobo-code-launcher-signal-"));
+		const hoboHome = join(root, "home");
+		const projectDir = join(root, "app");
+		const hoboBin = join(root, "hobo");
+		mkdirSync(join(projectDir, "src"), { recursive: true });
+		writeFileSync(join(projectDir, "src", "bindle.ts"), "export default {};\n");
+		writeFileSync(
+			hoboBin,
+			`#!/usr/bin/env node
+import { createServer } from "node:http";
+const portAt = process.argv.indexOf("--port");
+const port = portAt >= 0 ? Number(process.argv[portAt + 1]) : 4173;
+const server = createServer((_request, response) => {
+  response.writeHead(200, { "content-type": "text/html" });
+  response.end("<h1>Bindle app</h1>");
+});
+server.listen(port, "127.0.0.1", () => {
+  const address = server.address();
+  process.stderr.write(\`hobo dev: listening on http://127.0.0.1:\${address.port}/ (Ctrl-C to stop)\\n\`);
+});
+const close = () => server.close(() => process.exit(0));
+process.on("SIGINT", close);
+process.on("SIGTERM", close);
+`,
+		);
+		chmodSync(hoboBin, 0o755);
 		const child = spawn(
 			process.execPath,
 			[
 				launcher,
 				"dev",
 				"--cwd",
-				join(pkgRoot, "templates", "openui-astryx-bindle"),
+				projectDir,
 				"--port",
 				"0",
 				"--debug-port",
@@ -57,6 +124,7 @@ describe("hobo-code bin launcher", () => {
 					...process.env,
 					HOBO_CODE_SKIP_STALE_REBUILD: "1",
 					HOBO_HOME: hoboHome,
+					HOBO_CODE_HOBO_BIN: hoboBin,
 				},
 			},
 		);
@@ -68,7 +136,7 @@ describe("hobo-code bin launcher", () => {
 				);
 				child.once("error", reject);
 				child.stdout?.on("data", (chunk) => {
-					if (!String(chunk).includes("browser")) return;
+					if (!String(chunk).includes("bindle")) return;
 					clearTimeout(timeout);
 					resolve();
 				});
@@ -83,7 +151,7 @@ describe("hobo-code bin launcher", () => {
 			expect(status).toBe(143);
 		} finally {
 			if (child.exitCode === null) child.kill("SIGKILL");
-			rmSync(hoboHome, { recursive: true, force: true });
+			rmSync(root, { recursive: true, force: true });
 		}
 	}, 10_000);
 });

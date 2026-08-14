@@ -33,12 +33,18 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(HOBO_CODE_VERBS).toContain("attach");
 		expect(HOBO_CODE_VERBS).toContain("tasks");
 		expect(HOBO_CODE_VERBS).toContain("guide");
+		expect(HOBO_CODE_VERBS).toContain("template");
+		expect(HOBO_CODE_VERBS).toContain("review");
 		expect(HOBO_CODE_VERBS).toContain("cost");
+		expect(HOBO_CODE_VERBS).toContain("resources");
+		expect(HOBO_CODE_VERBS).toContain("dashboard");
 		expect(HOBO_CODE_VERBS).toContain("harness");
 		expect(HOBO_CODE_VERBS).toContain("edit");
 		expect(HOBO_CODE_VERBS).toContain("config");
 		// agent = protocol-native AX inventory (MCP/ACP), not hive join/rooms
 		expect(HOBO_CODE_VERBS).toContain("agent");
+		expect(HOBO_CODE_VERBS).toContain("resume");
+		expect(HOBO_CODE_VERBS).toContain("compact");
 		expect(HOBO_CODE_VERBS).not.toContain("remote");
 		expect(HOBO_CODE_VERBS[0]).toBe("dispatch");
 	});
@@ -56,6 +62,85 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(
 			(result.data as { interactiveRequired?: boolean }).interactiveRequired,
 		).toBe(true);
+	});
+
+	it("resumes the latest interactive chat, or a given session id", async () => {
+		const { saveChatSession } = await import("../src/chat-sessions.js");
+		const home = temp("hobo-code-resume-");
+		const cwd = join(home, "app");
+		const env = { ...process.env, HOBO_HOME: home };
+
+		const empty = await runHoboCodeCli(["resume"], {
+			env,
+			hoboHome: home,
+			cwd,
+		});
+		expect(empty.ok).toBe(false);
+		expect(empty.code).toBe("HOBO_CODE_RESUME_NONE");
+		expect(empty.message).toMatch(/no chat session/i);
+
+		saveChatSession(home, {
+			id: "chat-abc123def456",
+			cwd,
+			messages: [
+				{ role: "user", text: "make a hello world app", at: 1 },
+				{ role: "assistant", text: "Created hello-world.", at: 2 },
+			],
+			createdAt: 1,
+			updatedAt: 2,
+		});
+		saveChatSession(home, {
+			id: "chat-zzz999yyy888",
+			cwd: join(home, "other"),
+			messages: [{ role: "user", text: "other project", at: 3 }],
+			createdAt: 3,
+			updatedAt: 4,
+		});
+
+		const latest = await runHoboCodeCli(["resume"], {
+			env,
+			hoboHome: home,
+			cwd,
+		});
+		expect(latest.ok).toBe(true);
+		expect(latest.code).toBe("HOBO_CODE_RESUME");
+		expect(latest.message).toMatch(/chat-abc123def456/);
+		expect(latest.message).toMatch(/hello world/i);
+		const latestData = latest.data as {
+			session: { id: string; cwd: string };
+			terminalAction: { kind: string; sessionId: string };
+		};
+		expect(latestData.session.id).toBe("chat-abc123def456");
+		expect(latestData.terminalAction).toEqual(
+			expect.objectContaining({
+				kind: "resume-chat",
+				sessionId: "chat-abc123def456",
+			}),
+		);
+
+		const byPrefix = await runHoboCodeCli(["resume", "chat-zzz"], {
+			env,
+			hoboHome: home,
+			cwd,
+		});
+		expect(byPrefix.ok).toBe(true);
+		expect(byPrefix.message).toMatch(/chat-zzz999yyy888/);
+
+		const missing = await runHoboCodeCli(["resume", "nope"], {
+			env,
+			hoboHome: home,
+			cwd,
+		});
+		expect(missing.ok).toBe(false);
+		expect(missing.code).toBe("HOBO_CODE_RESUME_NOT_FOUND");
+
+		const help = await runHoboCodeCli(["resume", "--help"], {
+			env,
+			hoboHome: home,
+		});
+		expect(help.ok).toBe(true);
+		expect(help.message).toMatch(/hobo-code resume/);
+		expect(help.message).toMatch(/session_id|session id/i);
 	});
 
 	it("rejects unknown flags instead of silently accepting them", async () => {
@@ -454,8 +539,8 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.ok).toBe(true);
 		expect(r.code).toBe("HOBO_CODE_TASKS");
 		expect(r.message).toMatch(/▣ tasks/);
-		expect(r.message).toMatch(/grok-build · click · tasks · workflows/);
-		expect(r.message).toMatch(/click · task-row/);
+		expect(r.message).toMatch(/same work as Evidence/);
+		expect(r.message).toMatch(/Evidence: visual report of this board/);
 		const data = r.data as {
 			grokBuild: {
 				mouseInteractive: boolean;
@@ -572,7 +657,10 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 
 	it("auth login binds local station; control-plane verbs are not product surface", async () => {
 		const home = temp("hc-auth-bind-");
-		const login = await runHoboCodeCli(["auth", "login"], { hoboHome: home });
+		const login = await runHoboCodeCli(["auth", "login", "--agent"], {
+			hoboHome: home,
+			env: { ...process.env, HOBO_CODE_SIDECARS: "0" },
+		});
 		expect(login.ok).toBe(true);
 		expect(login.code).toBe("HOBO_CODE_AUTH");
 		for (const verb of [
@@ -784,6 +872,53 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/prompt ·/);
 		expect(r.message).not.toMatch(/^✓ ★/m);
 		expect(r.exitCode).toBe(1);
+	});
+
+	it("resources is the same projection as JSON and names login when logged out", async () => {
+		const home = temp("hc-resources-");
+		const loggedOut = await runHoboCodeCli(["resources"], { hoboHome: home });
+		expect(loggedOut.ok).toBe(false);
+		expect(loggedOut.code).toBe("HOBO_CODE_RESOURCES");
+		expect(loggedOut.message).toMatch(/auth:out/);
+		expect(loggedOut.message).toMatch(/hobo-code auth login/);
+		expect(loggedOut.exitCode).toBe(1);
+
+		const login = await runHoboCodeCli(["auth", "login", "--agent"], {
+			hoboHome: home,
+		});
+		expect(login.ok).toBe(true);
+		const board = await runHoboCodeCli(["resources", "--json"], {
+			hoboHome: home,
+			env: { ...process.env, HOBO_HOME: home, HOBO_ENV: "preview" },
+		});
+		expect(board.ok).toBe(true);
+		expect(board.message).toMatch(/station:local/);
+		expect(board.message).toMatch(/preview/);
+		const payload = board.data as {
+			inventory?: { scope?: { environment?: string }; missing?: unknown[] };
+		};
+		expect(payload.inventory?.scope?.environment).toBe("preview");
+		expect(payload.inventory?.missing).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ kind: "junction" }),
+			]),
+		);
+		expect(
+			(payload.inventory?.missing as { kind?: string }[] | undefined)?.some(
+				(row) => row.kind === "bindle",
+			),
+		).toBe(false);
+
+		const dash = await runHoboCodeCli(["dashboard", "--once", "--port", "0"], {
+			hoboHome: home,
+			env: { ...process.env, HOBO_HOME: home, HOBO_ENV: "preview" },
+		});
+		expect(dash.ok).toBe(true);
+		expect(dash.message).toMatch(
+			/spa · http:\/\/dashboard\.code\..*\.hobo\.localhost:/,
+		);
+		expect(dash.message).not.toMatch(/spa · http:\/\/127\.0\.0\.1:/);
+		expect(dash.message).toMatch(/otlp-http · http:\/\/otlp\.code\./);
 	});
 
 	it("plain status uses English hierarchy; dense keeps glyph box", async () => {

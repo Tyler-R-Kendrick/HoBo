@@ -13,6 +13,11 @@
 import { existsSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
+import {
+	knownAgentsFrom,
+	loadHarnessCatalog,
+} from "./agent-harness-catalog.js";
+
 export type AgentKind = "coding-agent" | "inference" | "harness";
 
 export interface KnownAgent {
@@ -28,88 +33,20 @@ export interface KnownAgent {
 }
 
 // public-contract: agents hobo-code knows how to seat in a pane.
-export const KNOWN_AGENTS: readonly KnownAgent[] = [
-	{
-		id: "hobo-code",
-		label: "hobo-code",
-		kind: "harness",
-		binaries: ["hobo-code"],
-		configPaths: [".hobo"],
-		command: "hobo-code",
+// Derived from `packages/code/harnesses/*.json` — add a file, do not edit this list.
+export function getKnownAgents(): readonly KnownAgent[] {
+	return knownAgentsFrom(loadHarnessCatalog());
+}
+
+export const KNOWN_AGENTS: readonly KnownAgent[] = new Proxy([] as KnownAgent[], {
+	get(_target, prop) {
+		const list = getKnownAgents();
+		const value = Reflect.get(list, prop, list);
+		return typeof value === "function"
+			? (value as (...args: unknown[]) => unknown).bind(list)
+			: value;
 	},
-	{
-		id: "claude",
-		label: "Claude Code",
-		kind: "coding-agent",
-		binaries: ["claude"],
-		configPaths: [".claude"],
-		command: "claude",
-	},
-	{
-		id: "codex",
-		label: "Codex",
-		kind: "coding-agent",
-		binaries: ["codex"],
-		configPaths: [".codex"],
-		command: "codex",
-	},
-	{
-		id: "cursor",
-		label: "Cursor Agent",
-		kind: "coding-agent",
-		binaries: ["cursor-agent"],
-		configPaths: [".cursor"],
-		command: "cursor-agent",
-	},
-	{
-		id: "copilot",
-		label: "GitHub Copilot CLI",
-		kind: "coding-agent",
-		binaries: ["copilot"],
-		configPaths: [".config/gh-copilot"],
-		command: "copilot",
-	},
-	{
-		id: "gemini",
-		label: "Gemini CLI",
-		kind: "coding-agent",
-		binaries: ["gemini"],
-		configPaths: [".gemini"],
-		command: "gemini",
-	},
-	{
-		id: "opencode",
-		label: "opencode",
-		kind: "coding-agent",
-		binaries: ["opencode"],
-		configPaths: [".config/opencode"],
-		command: "opencode",
-	},
-	{
-		id: "aider",
-		label: "aider",
-		kind: "coding-agent",
-		binaries: ["aider"],
-		configPaths: [".aider.conf.yml"],
-		command: "aider",
-	},
-	{
-		id: "goose",
-		label: "goose",
-		kind: "coding-agent",
-		binaries: ["goose"],
-		configPaths: [".config/goose"],
-		command: "goose",
-	},
-	{
-		id: "ollama",
-		label: "local inference",
-		kind: "inference",
-		binaries: ["ollama"],
-		configPaths: [".ollama"],
-		command: "ollama serve",
-	},
-];
+});
 
 export interface DetectedAgent {
 	readonly id: string;

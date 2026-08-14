@@ -1,0 +1,34 @@
+{
+	"id": "pi",
+	"label": "Pi",
+	"kind": "coding-agent",
+	"binaries": ["pi"],
+	"configPaths": [".pi"],
+	"command": "pi",
+	"seat": 25,
+	"config": {
+		"format": "json-merge",
+		"path": ".pi/agent/models.json",
+		"configuredWhen": ["\"hobo\""],
+		"merge": {
+			"providers": {
+				"hobo": {
+					"baseUrl": "{{openaiUrl}}",
+					"api": "openai-completions",
+					"apiKey": "{{envRef}}",
+					"authHeader": true,
+					"compat": {
+						"supportsDeveloperRole": false,
+						"supportsReasoningEffort": false
+					},
+					"models": [
+						{
+							"id": "hobo",
+							"name": "HoBo Station"
+						}
+					]
+				}
+			}
+		}
+	}
+}

@@ -82,10 +82,32 @@ export const hoboDevTool = defineTool({
 		),
 });
 
+/** Search Station-scoped command history. */
+export const hoboHistoryTool = defineTool({
+	name: "hobo_history",
+	description:
+		"Search commands recorded for this Station × env. Read-only. Secrets are redacted.",
+	input: v.object({
+		q: v.optional(v.string()),
+		failedOnly: v.optional(v.boolean()),
+		author: v.optional(v.picklist(["human", "agent", "automation", "any"])),
+	}),
+	run: async ({ input }) => {
+		const argv = ["history"];
+		if (input.failedOnly === true) argv.push("--failed");
+		if (input.author && input.author !== "any") {
+			argv.push("--author", input.author);
+		}
+		if (input.q) argv.push(input.q);
+		return runJson(argv);
+	},
+});
+
 export const HOBO_AGENT_TOOLS = [
 	hoboHiveStatusTool,
 	hoboDispatchTool,
 	hoboScaffoldTool,
 	hoboTemplateTool,
 	hoboDevTool,
+	hoboHistoryTool,
 ];

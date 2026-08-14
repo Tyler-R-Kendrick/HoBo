@@ -23,10 +23,17 @@ Non-goal: model hosting — evaluators are ports.
   scoring over expected/actual pairs by canonical (key-sorted) JSON, with
   the first diverging path reported the way conformance golden checks do.
 - `defineTrainableGoldenRubric(region)` / `observeTrainableGolden(region)` /
-  `scoreTrainableGoldenSuite(regions)` — the default golden suite
+  `scoreTrainableGoldenSuite(regions)` — the default **gold** suite
   (`hobo.evals.trainable-golden/v1`). Exact-match over contract examples
   and recorded traces for `"use training"` regions (ADR-0025). Not
   occupancy or Bindle health, and not a Bindle capability.
+- `defineTrainableSilverRubric(evidence)` / `observeTrainableSilver` /
+  `scoreTrainableSilverSuite` / `scoreTrainableGoldSilverSuites` — the
+  default **silver** suite (`hobo.evals.trainable-silver/v1`). Property/fuzz
+  oracles (seed-holds, deterministic, fail-closed, no pollution, bounded)
+  over the same trainable gold seeds. Live functions run through
+  `@hobo/fuzz` `fuzzTrainable`; the sidecar falls back to corpus evidence
+  when no invoker is supplied.
 - `evaluatePromotionGate({rubricReport, thresholds})` — the gate verdict:
   structurally the same `{ok, reasons: [{code, message}]}` shape as the
   contracts package's `ResidencyGateVerdict`/`CanMigrateGateVerdict`

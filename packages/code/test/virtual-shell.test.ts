@@ -25,6 +25,7 @@ import {
 	DELETION_CAPABLE,
 	isAllowed,
 	mountFor,
+	VIRTUAL_AGENTS,
 	VIRTUAL_WORKSPACE,
 } from "../src/virtual-shell.js";
 
@@ -255,5 +256,33 @@ describe("which directory a rift workspace contributes", () => {
 		for (const tier of ["reflink", "hardlink", "copy"]) {
 			expect(mountFor({ path: "/ws/a", tier, source: "/src" })).toBe("/ws/a");
 		}
+	});
+});
+
+describe("Eve agents in the virtual filesystem", () => {
+	it("lists registered Eve trees under /agents without escaping the overlay", async () => {
+		const root = mkdtempSync(join(tmpdir(), "hobo-vfs-eve-"));
+		mkdirSync(join(root, "src"), { recursive: true });
+		writeFileSync(join(root, "src", "app.ts"), "export const n = 1\n");
+		mkdirSync(join(root, "agent", "subagents", "implementer"), {
+			recursive: true,
+		});
+		writeFileSync(
+			join(root, "agent", "subagents", "implementer", "instructions.md"),
+			"write the app\n",
+		);
+		const secret = join(root, "..", "outside-secret.txt");
+		writeFileSync(secret, "AKIA-NOT-IN-VFS\n");
+		const shell = createVirtualShell({ workspace: root });
+		const listed = await shell.run(`ls ${VIRTUAL_AGENTS}/subagents/implementer`);
+		expect(listed.exitCode).toBe(0);
+		expect(listed.stdout).toMatch(/instructions\.md/);
+		const read = await shell.run(
+			`cat ${VIRTUAL_AGENTS}/subagents/implementer/instructions.md`,
+		);
+		expect(read.stdout).toContain("write the app");
+		const escape = await shell.run(`cat ${secret}`);
+		expect(escape.exitCode).not.toBe(0);
+		expect(escape.stdout).not.toContain("AKIA");
 	});
 });

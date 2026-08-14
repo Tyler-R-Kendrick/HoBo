@@ -427,6 +427,7 @@ export function createOccupancyController(options: {
 					await options.sidecar?.start("rollout");
 					await options.sidecar?.start("experiment");
 					await options.sidecar?.start("kms");
+					await options.sidecar?.start("history");
 				}
 				return;
 			}
@@ -604,6 +605,7 @@ export function createOccupancyController(options: {
 					await options.sidecar?.stop("rollout");
 					await options.sidecar?.stop("experiment");
 					await options.sidecar?.stop("kms");
+					await options.sidecar?.stop("history");
 					return;
 				}
 				await options.sidecar?.stop(id);

@@ -78,6 +78,11 @@ const categories: Record<string, string[]> = {
 	component: ["tests/component/**/*test.ts", "test/component/**/*test.ts"],
 	behavior: ["tests/behavior/**/*test.ts", "features/**/*.feature"],
 	visual: ["tests/visual/**/*test.ts"],
+	property: ["packages/fuzz/test/property/**/*test.ts"],
+	fuzz: [
+		"packages/fuzz/test/harness/**/*test.ts",
+		"packages/fuzz/test/api/**/*test.ts",
+	],
 	"agent-mock": ["evals/**/*.mock.test.ts", "test/evals/**/*.mock.test.ts"],
 	"agent-live": ["evals/**/*.live.test.ts", "test/evals/**/*.live.test.ts"],
 };

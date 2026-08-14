@@ -150,6 +150,7 @@ describe("session resource inventory", () => {
 					rolloutUrl: "http://127.0.0.1:8790/",
 					experimentUrl: "http://127.0.0.1:8791/",
 					kmsUrl: "http://127.0.0.1:8792/",
+					historyUrl: "http://127.0.0.1:8793/",
 					startedAt: "2026-08-14T12:00:00.000Z",
 				},
 				null,
@@ -172,6 +173,7 @@ describe("session resource inventory", () => {
 				"kms",
 				"secret",
 				"crypto",
+				"history",
 			]),
 		);
 		const evidence = inventory.endpoints.find(
@@ -200,6 +202,7 @@ describe("session resource inventory", () => {
 				"rollout",
 				"experiment",
 				"kms",
+				"history",
 			]),
 		);
 		expect(

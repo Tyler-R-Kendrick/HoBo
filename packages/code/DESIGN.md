@@ -207,7 +207,9 @@ Occupancy deploys the real OpenDelivery engine next to the Station
 (`rollout.code.local.hobo.localhost`) and the real OpenExperiment
 engine (`experiment.code.local.hobo.localhost`). Experiments are an
 always-on Station sidecar, not a Capabilities-table row. Residual
-secret/crypto kinds use the Station-local KMS sidecar
+secret/crypto kinds use the Station-local KMS sidecar. Command history,
+aliases, and env vars live in a Station SQLite sidecar — ink search in
+`hobo-code history`, not an Atuin TUI.
 (`kms.code.local.hobo.localhost`). The dashboard leads with a featured
 Station plaque (id + ready lamp + env) and three occupancy doors
 (dashboard / Evidence / OTLP). Other Station sidecars and the capability

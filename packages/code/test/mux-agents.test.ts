@@ -72,6 +72,22 @@ describe("agent auto-detection", () => {
 		const ollama = KNOWN_AGENTS.find((a) => a.id === "ollama")!;
 		expect(ollama.kind).toBe("inference");
 	});
+
+	it("detects Grok Build from the grok binary or ~/.grok", () => {
+		const home = tmp();
+		mkdirSync(join(home, ".grok"), { recursive: true });
+		const found = detectAgents({
+			which: (b) => (b === "grok" ? "/home/you/.local/bin/grok" : null),
+			exists: (p) => p === join(home, ".grok"),
+			home,
+		});
+		const grok = found.find((row) => row.id === "grok");
+		expect(grok?.label).toBe("Grok Build");
+		expect(grok?.kind).toBe("coding-agent");
+		expect(grok?.command).toBe("grok");
+		expect(grok?.evidence.some((row) => row.startsWith("bin:"))).toBe(true);
+		expect(KNOWN_AGENTS.some((row) => row.id === "grok")).toBe(true);
+	});
 });
 
 describe("uniform mux targets", () => {

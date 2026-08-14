@@ -98,16 +98,36 @@ import { renderTuiTree } from "./tui-render.js";
 import { h, type TuiNode } from "./tui-tree.js";
 import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import type { InkTableRow } from "./tui-layout.js";
+import {
+	cycleInSessionWindow,
+	emptyInSessionPanes,
+	ensureInSessionPanes,
+	type InSessionPanes,
+	isProductPrompt,
+	pickSendWindow,
+	refreshInSessionPanes,
+} from "./in-session-panes.js";
+import { tmuxRunner } from "./mux.js";
+import { matchWorkspaceAction } from "./workspace-actions.js";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
 export type ShellFocus =
 	| "chat"
+	| "panes"
 	| "tasks"
 	| "status"
 	| "resources"
 	| "slash"
 	| "btw";
+
+export const SHELL_FOCUS_ORDER: readonly ShellFocus[] = [
+	"chat",
+	"panes",
+	"tasks",
+	"status",
+	"resources",
+];
 
 export type ShellAgentState = "idle" | "working" | "blocked" | "done";
 
@@ -133,7 +153,8 @@ export interface ShellSlashItem {
 		| "guide-hint"
 		| "btw"
 		| "resume"
-		| "compact";
+		| "compact"
+		| "panes";
 }
 
 /** A promotion awaiting explicit approval — the sole audited mutation path. */
@@ -177,6 +198,8 @@ export interface InteractiveShellState {
 	readonly statusPlain: string;
 	readonly tasksPlain: string;
 	readonly resourcesPlain: string;
+	/** Live tmux agent panes captured into this TTY. Null until seated. */
+	readonly livePanes: InSessionPanes | null;
 	readonly footerHints: string;
 	readonly modelLabel: string;
 	readonly costLabel: string;
@@ -210,6 +233,11 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		action: "about",
 	},
 	{
+		name: "panes",
+		description: "In-session agent CLIs (Codex, Claude, …)",
+		action: "panes",
+	},
+	{
 		name: "ide",
 		description: "Open your editor on this session (neovim by default)",
 		argv: ["edit"],
@@ -236,6 +264,21 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		name: "resources",
 		description: "Session topology + real endpoints",
 		argv: ["resources"],
+	},
+	{
+		name: "history",
+		description: "Station command search",
+		argv: ["history"],
+	},
+	{
+		name: "alias",
+		description: "Station aliases + env",
+		argv: ["alias"],
+	},
+	{
+		name: "agents",
+		description: "Register coding harnesses (init / list / status)",
+		argv: ["agents"],
 	},
 	{
 		name: "dashboard",
@@ -378,6 +421,7 @@ export function slashItemForInput(text: string): ShellSlashItem | undefined {
 	if (!item) return undefined;
 	if (item.action === "btw") return { ...item, argv: args };
 	if (item.action === "compact") return { ...item, argv: args };
+	if (item.action === "panes") return item;
 	const argv = resolveSlashArgv(item, args);
 	return argv ? { ...item, argv } : item;
 }
@@ -440,9 +484,9 @@ export function buildWelcomeTable(occupancy?: {
 	readonly evidenceUrl?: string;
 }): InkTableRow[] {
 	const rows: InkTableRow[] = [
-		{ label: "talk", value: "Type to talk to Bo" },
+		{ label: "talk", value: "Type+Enter · seated Codex/Claude writes app" },
 		{ label: "patterns", value: "/templates lists patterns" },
-		{ label: "focus", value: "Tab · tasks / status / resources" },
+		{ label: "focus", value: "Tab · panes / tasks / status / resources" },
 	];
 	if (occupancy?.dashboardUrl) {
 		rows.push({
@@ -591,6 +635,7 @@ export function createInitialShellState(
 		statusPlain,
 		tasksPlain,
 		resourcesPlain,
+		livePanes: null,
 		footerHints: "Tab focus · / slash · btw aside · ? help · Ctrl+C quit",
 		modelLabel: ENGINE_NONE_LABEL,
 		costLabel: `$${cost.budget.spendUsd.toFixed(2)}/$${cost.budget.capUsd.toFixed(2)} · ${cost.budget.routingPolicy}`,
@@ -875,6 +920,29 @@ export function buildShellTree(state: InteractiveShellState) {
 			items,
 			selectedIndex: state.slashIndex,
 		});
+	} else if (state.focus === "panes") {
+		const panes = state.livePanes;
+		const current = panes?.windows[panes.focused];
+		title = current
+			? `pane ${current.name}${state.paneScroll > 0 ? ` ↑${state.paneScroll}` : ""}`
+			: "panes";
+		accent = "go";
+		const body = panes
+			? [
+					panes.note,
+					panes.windows
+						.map((row, i) => (i === panes.focused ? `▸ ${row.name}` : `  ${row.name}`))
+						.join("   "),
+					"",
+					panes.capture ||
+						"(agent CLI is seated in this session — type a prompt and Enter to send it here)",
+				].join("\n")
+			: "no agent panes yet · install codex on PATH · tmux required";
+		surface = TextPane({
+			id: "agent-panes",
+			text: body,
+			scroll: state.paneScroll,
+		});
 	} else if (state.focus === "tasks") {
 		title = state.paneScroll > 0 ? `tasks ↑${state.paneScroll}` : "tasks";
 		surface = TextPane({
@@ -1028,6 +1096,7 @@ export function reduceShellKey(
 	readonly slash?: ShellSlashItem;
 	readonly approve?: PendingApproval;
 	readonly decline?: PendingApproval;
+	readonly toAgent?: { readonly agent: string; readonly text: string };
 } {
 	// Ctrl+C
 	if (key === "\u0003") {
@@ -1148,7 +1217,7 @@ export function reduceShellKey(
 	}
 	// Tab — cycle focus
 	if (key === "\t") {
-		const order: ShellFocus[] = ["chat", "tasks", "status", "resources"];
+		const order = SHELL_FOCUS_ORDER;
 		const from = state.focus === "slash" || state.focus === "btw" ? "chat" : state.focus;
 		const i = order.indexOf(from);
 		const next = order[(i + 1) % order.length]!;
@@ -1159,7 +1228,26 @@ export function reduceShellKey(
 				slashOpen: false,
 				btw: null,
 				paneScroll: 0,
-				footerHints: `focus:${next} · Tab cycle · ↑/↓ scroll · / slash · ? help`,
+				footerHints: `focus:${next} · Tab cycle · [ ] agents · ↑/↓ scroll · / slash · ? help`,
+			},
+		};
+	}
+	if (
+		(key === "[" || key === "]") &&
+		state.input.length === 0 &&
+		!state.slashOpen &&
+		state.livePanes &&
+		state.livePanes.windows.length > 0
+	) {
+		return {
+			state: {
+				...state,
+				livePanes: cycleInSessionWindow(
+					state.livePanes,
+					key === "]" ? 1 : -1,
+				),
+				focus: "panes",
+				paneScroll: 0,
 			},
 		};
 	}
@@ -1172,7 +1260,9 @@ export function reduceShellKey(
 				"  Type a prompt to queue a build task (see /about for what runs it).",
 				"  / opens the slash palette (↑/↓ to pick, Enter to run).",
 				"  btw <question> opens a temporary aside about this moment (Esc dismisses).",
-				"  Tab cycles Chat → Tasks → Status → Resources. ↑/↓ or PgUp/PgDn scroll the focused pane.",
+				"  Tab cycles Chat → Panes → Tasks → Status → Resources.",
+				"  [ and ] cycle agent CLIs (Codex, Claude) without leaving this TTY.",
+				"  Coding prompts go to the focused agent pane, not Bo.",
 			].join("\n"),
 			at: Date.now(),
 		};
@@ -1202,6 +1292,19 @@ export function reduceShellKey(
 			if (item.action === "compact") {
 				const extra = state.input.trim().replace(/^\/?compact\s*/iu, "");
 				return { state: applyCompact(state, extra) };
+			}
+			if (item.action === "panes") {
+				return {
+					state: {
+						...state,
+						slashOpen: false,
+						slashFilter: "",
+						slashIndex: 0,
+						input: "",
+						focus: "panes",
+						paneScroll: 0,
+					},
+				};
 			}
 			const argv = resolveSlashArgv(item);
 			return {
@@ -1235,6 +1338,20 @@ export function reduceShellKey(
 					state: applyCompact(state, (item.argv ?? []).join(" ")),
 				};
 			}
+			if (item?.action === "panes") {
+				return {
+					state: {
+						...state,
+						input: "",
+						slashOpen: false,
+						slashFilter: "",
+						slashIndex: 0,
+						focus: "panes",
+						paneScroll: 0,
+						chatScroll: 0,
+					},
+				};
+			}
 			if (item) {
 				return {
 					state: {
@@ -1256,6 +1373,34 @@ export function reduceShellKey(
 					chatScroll: 0,
 				},
 				submit: text,
+			};
+		}
+		const seated = state.livePanes
+			? pickSendWindow(state.livePanes)
+			: undefined;
+		if (
+			seated &&
+			!isProductPrompt(text) &&
+			matchWorkspaceAction(text) === undefined
+		) {
+			return {
+				state: persistShellChat(
+					appendWorking(
+						{
+							...state,
+							input: "",
+							chatScroll: 0,
+							focus: "panes",
+							agentState: "working",
+						},
+						{
+							role: "user",
+							text: `→ ${seated.name}: ${text}`,
+							at: Date.now(),
+						},
+					),
+				),
+				toAgent: { agent: seated.name, text },
 			};
 		}
 		return {
@@ -1318,8 +1463,10 @@ export function reduceShellKey(
 export function cycleFocus(
 	state: InteractiveShellState,
 ): InteractiveShellState {
-	const order: ShellFocus[] = ["chat", "tasks", "status", "resources"];
-	const i = order.indexOf(state.focus === "slash" ? "chat" : state.focus);
+	const order = SHELL_FOCUS_ORDER;
+	const i = order.indexOf(
+		state.focus === "slash" || state.focus === "btw" ? "chat" : state.focus,
+	);
 	return {
 		...state,
 		focus: order[(i + 1) % order.length]!,
@@ -1331,6 +1478,7 @@ export function cycleFocus(
 function isDocumentPane(state: InteractiveShellState): boolean {
 	return (
 		state.pendingApproval !== null ||
+		state.focus === "panes" ||
 		state.focus === "tasks" ||
 		state.focus === "status" ||
 		state.focus === "resources"
@@ -1431,6 +1579,11 @@ export interface ShellHost {
 	readonly runVerb: (argv: readonly string[]) => Promise<string>;
 	/** Handle a user chat prompt; return assistant text. */
 	readonly complete: (prompt: string) => Promise<string>;
+	/** Send a coding prompt into the focused in-session agent CLI pane. */
+	readonly sendToAgent?: (
+		agent: string,
+		text: string,
+	) => Promise<string>;
 	/**
 	 * Deterministic create / run / debug turns. When this returns text, the
 	 * shell must not send the prompt to the completion engine.
@@ -1586,6 +1739,28 @@ export async function runInteractiveShell(
 			}),
 		};
 	}
+	if (isTty) {
+		try {
+			const seated = await ensureInSessionPanes({
+				cwd: options.cwd ?? process.cwd(),
+				env: shellEnv,
+			});
+			state = {
+				...state,
+				livePanes: seated,
+				focus: seated.windows.length > 0 ? "panes" : state.focus,
+				footerHints:
+					seated.windows.length > 0
+						? "Tab panes · [ ] agents · type+Enter sends to the focused CLI"
+						: state.footerHints,
+			};
+		} catch {
+			state = {
+				...state,
+				livePanes: emptyInSessionPanes("could not seat agent panes"),
+			};
+		}
+	}
 
 	const liveTty = isTty && options.scriptedKeys === undefined;
 	const terminal = new StreamTerminal({
@@ -1638,6 +1813,10 @@ export async function runInteractiveShell(
 			state = applyCompact(state, (item.argv ?? []).join(" "));
 			return;
 		}
+		if (item.action === "panes") {
+			state = { ...state, focus: "panes", paneScroll: 0 };
+			return;
+		}
 		if (state.btw) {
 			state = { ...state, btw: null, focus: "chat" };
 		}
@@ -1652,17 +1831,18 @@ export async function runInteractiveShell(
 					"Templates: /templates lists; /template <query> searches (zero LLM).",
 					"Resident control: /sessions <args> (plain /sessions lists).",
 					"HoBo control plane: /hobo <args> (for example /hobo yard status).",
-					"Chat: type a prompt and Enter — it is queued as a dispatch task (/about).",
-					"Keys: Tab panes · ↑/↓ pick + scroll · PgUp/PgDn scroll · Ctrl+C quit",
+					"Chat: coding prompts go to the focused agent pane (Codex/Claude).",
+					"HoBo verbs stay on Bo: /dev /resources /history /alias.",
+					"Keys: Tab panes · [ ] cycle agents · ↑/↓ scroll · Ctrl+C quit",
 				].join("\n"),
 			);
 			return;
 		}
 		if (item.action === "about") {
 			const engineLines = options.host.aboutLines ?? [
-				"Prompts queue dispatch tasks; no completion engine is wired",
-				"(footer shows engine:none). Pi TUI remains an opt-in escape hatch",
-				"via `hobo-code --pi` — never the product UI.",
+				"Coding prompts go to seated agent CLIs (Codex/Claude) in this TTY.",
+				"HoBo verbs stay on Bo: /dev /resources /history /alias.",
+				"Pi TUI remains an opt-in escape hatch via `hobo-code --pi`.",
 			];
 			state = appendProduct(
 				state,
@@ -1878,6 +2058,47 @@ export async function runInteractiveShell(
 			tui.requestRender();
 			return;
 		}
+		const seated = state.livePanes
+			? pickSendWindow(state.livePanes)
+			: undefined;
+		if (
+			seated &&
+			!isProductPrompt(text) &&
+			matchWorkspaceAction(text) === undefined &&
+			options.host.sendToAgent
+		) {
+			state = persistShellChat(
+				appendWorking(
+					{
+						...state,
+						chatScroll: 0,
+						focus: "panes",
+						agentState: "working",
+					},
+					{ role: "user", text: `→ ${seated.name}: ${text}`, at: Date.now() },
+				),
+			);
+			tui.requestRender();
+			void options.host
+				.sendToAgent(seated.name, text)
+				.then((reply) => {
+					if (quit) return;
+					state = appendProduct(state, reply);
+					state = { ...state, agentState: "idle" };
+				})
+				.catch((err: unknown) => {
+					if (quit) return;
+					state = appendProduct(
+						state,
+						`pane ${seated.name} refused: ${err instanceof Error ? err.message : String(err)}`,
+					);
+					state = { ...state, agentState: "blocked" };
+				})
+				.then(() => {
+					if (!quit) tui.requestRender();
+				});
+			return;
+		}
 		state = persistShellChat(
 			appendWorking(
 				{ ...state, chatScroll: 0, agentState: "working" },
@@ -1926,6 +2147,25 @@ export async function runInteractiveShell(
 					if (!quit) tui.requestRender();
 				})
 				.catch(() => {});
+		} else if (result.toAgent && options.host.sendToAgent) {
+			void options.host
+				.sendToAgent(result.toAgent.agent, result.toAgent.text)
+				.then((reply) => {
+					if (quit) return;
+					state = appendProduct(state, reply);
+					state = { ...state, agentState: "idle" };
+				})
+				.catch((err: unknown) => {
+					if (quit) return;
+					state = appendProduct(
+						state,
+						`pane ${result.toAgent?.agent} refused: ${err instanceof Error ? err.message : String(err)}`,
+					);
+					state = { ...state, agentState: "blocked" };
+				})
+				.then(() => {
+					if (!quit) tui.requestRender();
+				});
 		} else if (result.submit) {
 			// One turn at a time: two overlapping streams would interleave into
 			// the same transcript entry and leave cancel pointing at the wrong
@@ -2013,6 +2253,24 @@ export async function runInteractiveShell(
 			tui.requestRender();
 			return { consume: true };
 		}
+		if (
+			(data === "[" || data === "]") &&
+			input.text().length === 0 &&
+			state.livePanes &&
+			state.livePanes.windows.length > 0
+		) {
+			state = {
+				...state,
+				livePanes: cycleInSessionWindow(
+					state.livePanes,
+					data === "]" ? 1 : -1,
+				),
+				focus: "panes",
+				paneScroll: 0,
+			};
+			tui.requestRender();
+			return { consume: true };
+		}
 		if (matchesKey(data, "pageUp") || matchesKey(data, "pageDown")) {
 			state = scrollFocused(
 				state,
@@ -2058,6 +2316,18 @@ export async function runInteractiveShell(
 		tui.requestRender();
 	}, BO_IDLE_TICK_MS);
 	tick.unref?.();
+	const paneTick = setInterval(() => {
+		if (quit || state.focus !== "panes" || !state.livePanes?.tmux) return;
+		void refreshInSessionPanes(state.livePanes, tmuxRunner())
+			.then((next) => {
+				if (quit) return;
+				if (next.capture === state.livePanes?.capture) return;
+				state = { ...state, livePanes: next };
+				tui.requestRender();
+			})
+			.catch(() => {});
+	}, 400);
+	paneTick.unref?.();
 
 	let maxMsTimer: NodeJS.Timeout | undefined;
 	if (options.maxMs !== undefined) {
@@ -2093,6 +2363,7 @@ export async function runInteractiveShell(
 		await done;
 	} finally {
 		clearInterval(tick);
+		clearInterval(paneTick);
 		if (maxMsTimer) clearTimeout(maxMsTimer);
 		process.removeListener("SIGTERM", onSignal);
 		process.removeListener("SIGHUP", onSignal);

@@ -31,6 +31,9 @@ describe("occupancy named endpoints", () => {
 		expect(occupancyNamedOrigin("kms", 8792)).toBe(
 			"http://kms.code.local.hobo.localhost:8792",
 		);
+		expect(occupancyNamedOrigin("history", 8793)).toBe(
+			"http://history.code.local.hobo.localhost:8793",
+		);
 	});
 
 	it("rewrites loopback Evidence paths onto the named origin", () => {
@@ -66,6 +69,7 @@ describe("occupancy named endpoints", () => {
 			rolloutUrl: "http://127.0.0.1:8790/",
 			experimentUrl: "http://127.0.0.1:8791/",
 			kmsUrl: "http://127.0.0.1:8792/",
+			historyUrl: "http://127.0.0.1:8793/",
 		});
 		expect(rows.map((row) => row.resourceName)).toEqual([
 			"dashboard",
@@ -78,6 +82,7 @@ describe("occupancy named endpoints", () => {
 			"kms",
 			"secret",
 			"crypto",
+			"history",
 		]);
 		expect(rows.every((row) => row.fidelity === "real")).toBe(true);
 		expect(isStationOccupancyEndpoint("dashboard")).toBe(true);

@@ -1,11 +1,12 @@
 /**
- * Evals sidecar: always-on same-Camp host for the default golden suite.
+ * Evals sidecar: always-on same-Camp host for gold (exact-match) and
+ * silver (property/fuzz) suites over trainable regions.
  * Project eval tests and trainable-region overlays are optional extras.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import { GOLDEN_DEFAULT_SUITE_ID } from "@hobo/evals";
+import { GOLDEN_DEFAULT_SUITE_ID, SILVER_DEFAULT_SUITE_ID } from "@hobo/evals";
 
 // public-contract: occupancy name of the always-on trainable evals sidecar
 export const EVAL_SIDECAR_NAME = "evals" as const;
@@ -64,12 +65,18 @@ export interface GoldenDefaultSuiteRef {
 	readonly source: "trainable-exact-match";
 }
 
+export interface SilverDefaultSuiteRef {
+	readonly id: typeof SILVER_DEFAULT_SUITE_ID;
+	readonly source: "trainable-property-fuzz";
+}
+
 export interface CampEvalSidecar {
 	readonly kind: "sidecar";
 	readonly name: typeof EVAL_SIDECAR_NAME;
 	readonly hosting: typeof EVAL_SIDECAR_HOSTING;
 	readonly campId: string;
 	readonly defaultSuite: GoldenDefaultSuiteRef;
+	readonly silverSuite: SilverDefaultSuiteRef;
 	readonly trainable: readonly TrainableRegion[];
 	readonly project?: ProjectEvalTests;
 }
@@ -129,6 +136,10 @@ export function campEvalSidecar(
 		defaultSuite: {
 			id: GOLDEN_DEFAULT_SUITE_ID,
 			source: "trainable-exact-match",
+		},
+		silverSuite: {
+			id: SILVER_DEFAULT_SUITE_ID,
+			source: "trainable-property-fuzz",
 		},
 		trainable,
 		...(project !== undefined ? { project } : {}),

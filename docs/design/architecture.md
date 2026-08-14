@@ -214,6 +214,7 @@ packages/
   contracts/         @hobo/contracts    HoBo Contract IR + compatibility/can-deploy engine (built-in)  [Plan 29]
   policy/            @hobo/policy        policy decision model + built-in TypeScript engine + residency policy pack + control→evidence packs (ADR-0146)  [Plan 29]
   evals/ ✱           @hobo/evals         rubrics + promotion gates for semantic functions             [Plan 23]
+  fuzz/              @hobo/fuzz          property oracles + serialized-input harnesses (simulators only)
   training/ ✱        @hobo/training      training-engine port + built-in OPTO optimizer + OpenInference capture (INTERNAL; not on the SDK surface)  [Plan 23]
     provider-pact ✱           @hobo/provider-pact             (optional) Pact/Broker adapter behind contract-engine
     provider-opa ✱            @hobo/provider-opa              (optional) OPA/Rego adapter behind policy-engine

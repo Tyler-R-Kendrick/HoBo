@@ -130,6 +130,15 @@ describe("station occupancy sidecars", () => {
 				engine: "StationKms",
 			});
 			expect(formatSidecarStrap(sidecars).join(" ")).toMatch(/kms:kms\.code\./);
+			expect(sidecars.historyUrl).toMatch(/history\.code\..*\.hobo\.localhost/);
+			const history = await fetch(loopbackFetchUrl(sidecars.historyUrl ?? ""));
+			expect(history.status).toBe(200);
+			expect(await history.json()).toMatchObject({
+				name: "history",
+				hosting: "station",
+				live: true,
+				engine: "SessionShellStore",
+			});
 		} finally {
 			await sidecars.close();
 		}

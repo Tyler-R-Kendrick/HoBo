@@ -1,6 +1,6 @@
 /**
- * Always-on Camp evals sidecar. Hosts the default trainable golden suite
- * (exact-match over contract examples and traces).
+ * Always-on Camp evals sidecar. Hosts gold (exact-match) and silver
+ * (property/fuzz) suites over trainable regions.
  */
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -9,9 +9,17 @@ import {
 	evaluatePromotionGate,
 	GOLDEN_DEFAULT_SUITE_ID,
 	type RubricReport,
-	scoreTrainableGoldenSuite,
+	SILVER_DEFAULT_SUITE_ID,
+	scoreTrainableGoldSilverSuites,
+	silverEvidenceFromRegion,
 	type TrainableGoldenRegion,
+	type TrainableSilverEvidence,
 } from "@hobo/evals";
+import {
+	fuzzTrainable,
+	type TrainableFn,
+	type TrainableFuzzSeed,
+} from "@hobo/fuzz";
 
 import {
 	type CampEvalSidecar,
@@ -38,9 +46,18 @@ export interface StartEvalSidecarOptions {
 export interface EvalSidecarRun {
 	readonly ok: boolean;
 	readonly reports: readonly RubricReport[];
+	readonly gold: {
+		readonly ok: boolean;
+		readonly reports: readonly RubricReport[];
+	};
+	readonly silver: {
+		readonly ok: boolean;
+		readonly reports: readonly RubricReport[];
+	};
 	readonly trainable: readonly {
 		readonly methodRef: string;
 		readonly report: RubricReport;
+		readonly silver?: RubricReport;
 	}[];
 	readonly project?: CampEvalSidecar["project"];
 	readonly gate: ReturnType<typeof evaluatePromotionGate>;
@@ -62,28 +79,62 @@ export function assembleCampEvalSidecar(
 export function runEvalSidecarSuite(input: {
 	readonly suite: CampEvalSidecar;
 	readonly actuals?: Readonly<Record<string, readonly unknown[]>>;
+	readonly invokers?: Readonly<Record<string, TrainableFn>>;
 }): EvalSidecarRun {
 	const regions = input.suite.trainable.map((region) =>
 		toGoldenRegion(region, input.actuals?.[region.methodRef] ?? []),
 	);
-	const scored = scoreTrainableGoldenSuite(regions);
-	const trainable = scored.reports.map((report, index) => ({
+	const silverEvidence = input.suite.trainable.map((region, index) =>
+		toSilverEvidence(
+			region,
+			regions[index] ?? {
+				methodRef: region.methodRef,
+				grounded: region.grounded,
+				cases: [],
+			},
+			input.invokers?.[region.methodRef],
+		),
+	);
+	const scored = scoreTrainableGoldSilverSuites({
+		regions,
+		silver: silverEvidence,
+	});
+	const trainable = scored.gold.reports.map((report, index) => ({
 		methodRef: regions[index]?.methodRef ?? report.rubricId,
 		report,
+		...(scored.silver.reports[index]
+			? { silver: scored.silver.reports[index] }
+			: {}),
 	}));
-	const gate =
-		scored.reports[0] !== undefined
-			? evaluatePromotionGate({ rubricReport: scored.reports[0] })
-			: { ok: true, reasons: [] };
+	const gate = composePromotionGates([
+		...scored.gold.reports,
+		...scored.silver.reports,
+	]);
 	return {
 		ok: scored.ok,
-		reports: scored.reports,
+		reports: scored.gold.reports,
+		gold: scored.gold,
+		silver: scored.silver,
 		trainable,
 		...(input.suite.project !== undefined
 			? { project: input.suite.project }
 			: {}),
 		gate,
 	};
+}
+
+function composePromotionGates(
+	reports: readonly RubricReport[],
+): ReturnType<typeof evaluatePromotionGate> {
+	if (reports.length === 0) return { ok: true, reasons: [] };
+	const reasons: Array<
+		ReturnType<typeof evaluatePromotionGate>["reasons"][number]
+	> = [];
+	for (const report of reports) {
+		const next = evaluatePromotionGate({ rubricReport: report });
+		reasons.push(...next.reasons);
+	}
+	return { ok: reasons.length === 0, reasons };
 }
 
 function toGoldenRegion(
@@ -104,6 +155,20 @@ function toGoldenRegion(
 	};
 }
 
+function toSilverEvidence(
+	region: TrainableRegion,
+	golden: TrainableGoldenRegion,
+	fn?: TrainableFn,
+): TrainableSilverEvidence {
+	if (!fn) return silverEvidenceFromRegion(golden);
+	const seeds: TrainableFuzzSeed[] = region.examples.map((example) => ({
+		input: example.input,
+		output: example.output,
+	}));
+	const fuzz = fuzzTrainable(fn, seeds, { methodRef: region.methodRef });
+	return silverEvidenceFromRegion(golden, fuzz);
+}
+
 export async function startEvalSidecar(
 	options: StartEvalSidecarOptions,
 ): Promise<EvalSidecarServer> {
@@ -121,8 +186,14 @@ export async function startEvalSidecar(
 		}
 		if (request.method === "GET" && path === "/suite") {
 			writeJson(response, 200, {
-				id: GOLDEN_DEFAULT_SUITE_ID,
-				kind: "trainable-exact-match",
+				gold: {
+					id: GOLDEN_DEFAULT_SUITE_ID,
+					kind: "trainable-exact-match",
+				},
+				silver: {
+					id: SILVER_DEFAULT_SUITE_ID,
+					kind: "trainable-property-fuzz",
+				},
 				suite,
 			});
 			return;

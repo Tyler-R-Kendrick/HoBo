@@ -1,10 +1,8 @@
   ▄▄▄████████████████████████████████ chat ████████████████████████████████▄▄▄  
  ▄█▀    ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▀█▄ 
  █▌you · make a hello world app                                              ▐█▒
- █▌                                                                          ▐█▒
- █▌Bo  · Created hello-world.                                                ▐█▒
  █▌                                ┏━ btw ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ ▐█▒
- █▌                                ┃btw · live · Esc dismisses             ┃▒▐█▒
+ █▌Bo  · Created hello-world.      ┃btw · live · Esc dismisses             ┃▒▐█▒
  █▌                                ┃parent · Created hello-world.          ┃▒▐█▒
  █▌                                ┃you · what's going on                  ┃▒▐█▒
  █▌                                ┃btw · btw · idle · focus chat          ┃▒▐█▒
@@ -14,6 +12,8 @@
  █▌                                ┃Bo · Created hello-world.              ┃▒▐█▒
  █▌                                ┃2 main-chat message(s) borrowed. Esc   ┃▒▐█▒
  █▌                                ┃dismisses.                             ┃▒▐█▒
+ █▌                                ┃                                       ┃▒▐█▒
+ █▌                                ┃                                       ┃▒▐█▒
  █▌                                ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛▒▐█▒
  █▌                                 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▐█▒
  █▌  [ /dev ]  [ /templates ]  [ /btw ]  [ /hobo ]  [ /auth ]  [ /status ]   ▐█▒

@@ -39,10 +39,13 @@ The installed binary is **compiled** (`dist/`). Source lives in `src/`.
 | Link bin: `pnpm --filter @hobo/code link --global` (uses `bin/hobo-code.mjs`) | Symlink straight at `dist/bin/hobo-code.js` and forget rebuilds |
 | Evidence / optimizexp: exercise the **installed** `hobo-code` after build | Capture only via `node --import tsx src/bin/…` (can pass while dist is stale) |
 
-`bin/hobo-code.mjs` **auto-rebuilds** when `src/` is newer than `dist/` by
-running `tsc` for `@hobo/code` only (no nested `@hobo/core` / stations
-prebuild fan-out). Skip with `HOBO_CODE_SKIP_STALE_REBUILD=1`. If dependency
-`dist/` is missing, run `pnpm exec turbo run build --filter=@hobo/code`.
+`bin/hobo-code.mjs` **tries** to rebuild when `src/` is newer than `dist/`
+(`tsc` for `@hobo/code` only — no nested `@hobo/core` / stations prebuild
+fan-out). A type error in an unrelated file **does not block the CLI**: the
+launcher falls back to `src/bin/hobo-code.ts` via tsx so you can still run
+`hobo-code agents init`. Skip rebuild with `HOBO_CODE_SKIP_STALE_REBUILD=1`.
+Force source with `HOBO_CODE_FROM_SOURCE=1`. If even src cannot load, run
+`pnpm exec turbo run build --filter=@hobo/code`.
 
 | Binary | Product |
 |---|---|
@@ -84,6 +87,9 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
   use a Station-local KMS sidecar
   (`http://kms.code.local.hobo.localhost`) — real RSA-2048 + AES-256-GCM
   on the occupancy host, persisted under the Station home.
+  Command history, aliases, and env vars live in a Station SQLite sidecar
+  (`http://history.code.local.hobo.localhost`) — frecency search, no Atuin
+  binary, no off-box sync. `hobo-code history` / `hobo-code alias`.
   A local Station
   auto-seeds `yard:local` with `camp:code` / `bindle:code` (the hosting
   Station's occupancy bindle — not stoppable from the dashboard). Developing an app writes
@@ -91,7 +97,7 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
   are primitives with their own managed children that start and stop
   independently. Stopping a yard stops camps in that yard, not other yards.
   Occupancy endpoint cards list sidecars that are actually listening
-  (dashboard, Evidence, controls, OTLP, evals, rollout, experiment, kms/secret/crypto) even before a Bindle `/dev`.
+  (dashboard, Evidence, controls, OTLP, evals, rollout, experiment, kms/secret/crypto, history) even before a Bindle `/dev`.
   Each endpoint is a new-tab link with a copy button and shows the loopback
   listen address next to the named `*.hobo.localhost` URL — the only surface
   that prints IP addresses.
@@ -235,9 +241,43 @@ prompt. Machine callers should branch on `code` and consume `remediation[]`.
 | `/templates` `/template` | `hobo-code template` · `hobo-code templates` (bare = list) |
 | `/agent` `/config` `/cost` `/harness` | `hobo-code agent` · `config` · `cost` · `harness` |
 | `/status` `/resources` `/guide` `/tasks` `/login` | `hobo-code status` · `resources` · `guide` · `tasks` · `auth login --agent` |
+| `/panes` | In-session Codex/Claude capture — stay in this TTY |
+| `/agents` `/agents init` | `hobo-code agents` · `hobo-code agents init` |
 | `/help` | keys + map · outside: `hobo-code help` |
 
-### Multi-pane agent sessions (`hobo-code mux`)
+### In-session agent panes (Herdr / T3-shaped)
+
+`hobo-code` on a TTY **stays the session**. Detected harness CLIs (Codex,
+Claude, cursor-agent, …) are seated in tmux windows behind this process.
+The product shell captures the focused pane and feeds it with type+Enter.
+You do **not** `tmux attach` to write app code. Bo keeps HoBo verbs
+(`/dev`, `/resources`, `/history`, `/alias`, `run it` / `debug it`).
+Tab focuses **Panes**; `[` / `]` cycle agents; `/panes` jumps there.
+
+```bash
+hobo-code                         # seat CLIs, stay here, type+Enter
+# Tab → panes · [ ] cycle · coding prompts go to Codex/Claude
+```
+
+Register harnesses first (Vercel `coding-agents setup` analog — Station
+occupancy, not a minted key). Each agent is a JSON plugin under
+`packages/code/harnesses/` (or `$HOBO_HOME/durable/code/harnesses/`):
+
+```bash
+hobo-code agents init                # TTY: check/uncheck harnesses, then write
+hobo-code agents init --dry-run
+hobo-code agents init --yes          # write without a checklist
+hobo-code agents init --non-interactive
+hobo-code agents init codex eve
+```
+
+Eve agent trees (`agent/` + `agent/subagents/`) register at `/agents/<id>` in
+the virtual filesystem. A seated CLI can `ls /agents`. Bo still does not write
+app code.
+
+`hobo-code mux` is the same seating, useful for dry-run / remote / virtual
+trees. Join stays in-session (`hobo-code` · Tab panes). `tmux attach -t hobo`
+is the optional out-of-session escape, not the product path.
 
 The resident-session core stores versioned snapshots and events in HoBo's
 SQLite EventStore while tmux owns the PTYs. A process restart reloads the same
@@ -268,17 +308,16 @@ hobo-code mux                     # detect agents, create/reuse session "hobo"
 hobo-code mux --dry-run           # show the plan without touching tmux
 hobo-code mux --session work      # name it
 hobo-code mux --host box.example  # same panes, over ssh
-tmux attach -t hobo               # join
+# stay in hobo-code — Tab panes. optional: tmux attach -t hobo
 ```
 
 ```
 ✓ mux
  created hobo with 6 window(s)
-  hobo-code · harness      · bin:/home/you/.local/bin/hobo-code
   claude    · coding-agent · bin:/home/you/.local/bin/claude
   codex     · coding-agent · bin:/home/you/.local/bin/codex
   ollama    · inference    · bin:/usr/local/bin/ollama
- join · tmux attach -t hobo
+ in-session · stay in hobo-code · Tab panes · optional tmux attach -t hobo
 ```
 
 Re-running is idempotent: an existing session is reused and only missing
@@ -443,6 +482,8 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **models** | Active model + BYOK env presence (open models; no secret values) |
 | status | Session / agent multiplexer chrome |
 | **resources** | Session topology + real endpoints (Station occupancy × `HOBO_ENV`) |
+| **history** | Station SQLite command search (frecency). Not Atuin. |
+| **alias** | Station aliases + env vars; `alias export` prints a shell snippet |
 | **dashboard** | Local Aspire SPA (`camp:code` bindle). Hosting Station / `camp:code` / `bindle:code` refuse stop. Sidecars, other camps, and Bindle `/dev` start/stop. Yard stop takes camps in that yard only. |
 | session | Resident branch/worktree sessions: tmux tabs/panes, harness agents, checkpoints, attach/switch, approved Git/PR delivery, and loopback browser control (`session --help`) |
 | **attach** | Dev-terminal attach (tmux reattach · mosh? · Tailscale overlay named endpoint) |

@@ -509,6 +509,7 @@ function loadSidecarSnapshot(
 	readonly rolloutUrl?: string;
 	readonly experimentUrl?: string;
 	readonly kmsUrl?: string;
+	readonly historyUrl?: string;
 } {
 	const path = sidecarSnapshotPath(hoboHome, stationId);
 	if (!existsSync(path)) return {};
@@ -531,6 +532,7 @@ function loadSidecarSnapshot(
 		const rolloutUrl = text("rolloutUrl");
 		const experimentUrl = text("experimentUrl");
 		const kmsUrl = text("kmsUrl");
+		const historyUrl = text("historyUrl");
 		return {
 			...(dashboardUrl !== undefined ? { dashboardUrl } : {}),
 			...(evidenceUrl !== undefined ? { evidenceUrl } : {}),
@@ -541,6 +543,7 @@ function loadSidecarSnapshot(
 			...(rolloutUrl !== undefined ? { rolloutUrl } : {}),
 			...(experimentUrl !== undefined ? { experimentUrl } : {}),
 			...(kmsUrl !== undefined ? { kmsUrl } : {}),
+			...(historyUrl !== undefined ? { historyUrl } : {}),
 		};
 	} catch {
 		return {};
@@ -965,6 +968,7 @@ const STATION_SIDECARS = new Set([
 	"rollout",
 	"experiment",
 	"kms",
+	"history",
 ]);
 
 function projectManagedResources(input: {

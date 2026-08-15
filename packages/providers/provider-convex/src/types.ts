@@ -1,78 +1,36 @@
+// The canonical CloudProvider contract lives in @hobo/core (ADR-0155,
+// packages/core/src/ports/cloud-provider.ts); this module re-exports it so
+// existing `@hobo/provider-convex` imports keep working. Package-local
+// narrowings (DriverProgram, PublishedManifestDocuments) stay in their own
+// modules.
+import type {
+	CapabilityPortKind,
+	CloudProvider as CoreCloudProvider,
+	ResourcePlan,
+} from "@hobo/core";
 import type { DriverProgram } from "./driver-program.js";
-import type { PublishedManifestDocuments } from "./manifest.js";
 
-// Capability port kind as used by the control-plane CloudProvider contract
-// (control-plane.md "Port & provider interfaces"): "compute" | "kv" |
-// "objectStore" | ... — distinct from @hobo/core's structural PortKind
-// ("runtime" | "provider" | "port").
-export type PortKind = string;
+export type {
+	Capability,
+	CapabilityManifest,
+	CostSignal,
+	Match,
+	Outputs,
+	PortRequest,
+	ProviderClient,
+	ResourcePlan,
+} from "@hobo/core";
 
-export type Outputs = Record<string, unknown>;
+// Back-compat alias: the canonical name is @hobo/core's `CapabilityPortKind`
+// (core's own `PortKind` is the structural port classification).
+export type PortKind = CapabilityPortKind;
 
-/** Requested capability shape a provider must satisfy/negotiate. */
-export interface PortRequest {
-	port: PortKind;
-	features?: string[];
-	negotiation?: "prefer" | "require";
-	region?: string;
-}
-
-/** Capability-negotiation verdict: full | partial(missing) | none. */
-export type Match =
-	| { kind: "full" }
-	| { kind: "partial"; missing: string[] }
-	| { kind: "none" };
-
-/** Plan-time marginal-cost signal the Dispatcher ranks candidates by. */
-export interface CostSignal {
-	currency: string;
-	sku: string;
-	unit: string;
-	marginalPrice: string;
-	freeTier: { unit: string; included: number; reset: string };
-}
-
-export interface Capability {
-	port: PortKind;
-	satisfies(req: PortRequest): Match;
-	estimateCost(req: PortRequest): CostSignal;
-}
-
-/** Machine-readable capability manifest handle (control-plane.md Plan 6). */
-export interface CapabilityManifest {
-	providerId: string;
-	published: PublishedManifestDocuments;
-	capabilities: Record<string, unknown>;
-	auth: Record<string, unknown>;
-	cost: Record<string, unknown>;
-}
-
-/** Runtime binding client returned for `ctx.bindings`. */
-export interface ProviderClient {
-	port: PortKind;
-	resourceClass: string;
-	providerService: string;
-	bindings: Outputs;
-}
-
-export interface CloudProvider {
-	id: string;
-	regions: string[];
-	capabilities: Capability[];
+/**
+ * Driver-program variant of core's CloudProvider port: identical contract
+ * except `realize()` emits a deploy-driver program (ADR-0127 — the closed
+ * BaaS exposes a deploy surface, not infrastructure state) instead of core's
+ * `RealizedResources` IaC program.
+ */
+export interface CloudProvider extends Omit<CoreCloudProvider, "realize"> {
 	realize(plan: ResourcePlan): { driver: DriverProgram };
-	capabilityManifest(): CapabilityManifest;
-	client(port: PortKind, outputs: Outputs): ProviderClient;
-}
-
-// Provider-neutral resource emitted by the Planner (control-plane.md Plan 8:
-// ResourcePlan{ name, port, provider, options, deps, strategy }).
-export interface ResourcePlan {
-	name: string;
-	port: PortKind;
-	provider: string;
-	options?: Record<string, unknown>[];
-	deps?: string[];
-	strategy?: string;
-	region?: string;
-	deploymentId?: string;
 }

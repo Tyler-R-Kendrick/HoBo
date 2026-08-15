@@ -15,12 +15,15 @@ export const AZURE_PROVIDER_ID = "@hobo/provider-azure";
 
 export const DEFAULT_REGIONS = ["eastus", "westus2", "westeurope"];
 
-export interface PublishedManifestDocuments {
+// A `type` alias (not an interface) so it keeps an implicit index signature
+// and stays assignable to @hobo/core's `PublishedManifestDocuments`
+// (Record<string, string>) on CapabilityManifest.published (ADR-0155).
+export type PublishedManifestDocuments = {
 	"/.well-known/capability-manifest/index.json": string;
 	"/.well-known/capability-manifest/capabilities.json": string;
 	"/.well-known/capability-manifest/auth.json": string;
 	"/.well-known/capability-manifest/cost.json": string;
-}
+};
 
 // Declared marginal-cost facts per equivalence class — REAL public list-price
 // magnitudes (representative SKUs, declared-provider source), so min-cost

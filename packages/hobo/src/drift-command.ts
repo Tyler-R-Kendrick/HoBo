@@ -10,11 +10,8 @@ import {
 	deploymentViewProjection,
 	type IacProgram,
 } from "@hobo/cloud";
-import type { EventInput, PrincipalRef } from "@hobo/core";
-import {
-	type CloudProvider,
-	createCloudflareProvider,
-} from "@hobo/provider-cloudflare";
+import type { CloudProvider, EventInput, PrincipalRef } from "@hobo/core";
+import { createCloudflareProvider } from "@hobo/provider-cloudflare";
 
 import type { CloudflareFetch } from "./cloudflare-client.js";
 import {

@@ -17,9 +17,14 @@ import { collectStream } from "../store/index.js";
 // (2) a PlannerRegistry the pure Planner consults for context-matching + live
 // capability negotiation.
 
-// Structural shapes of a registrable CloudProvider — declared locally so `src/`
-// never imports the provider adapter (inward-only deps; provider-cloudflare is a
-// test-only dependency exercised from test/).
+// Structural shapes of a registrable CloudProvider — a declared narrowing of
+// @hobo/core's canonical `CloudProvider` port (ADR-0155), not a locally
+// invented contract: the registry consumes only the manifest/capability face
+// of that port, so these types pick exactly the members it folds. Assignability
+// of core's `CloudProvider` is proven by the compile-time assertion below
+// `RegistrableProvider`. Kept structural so `src/` never imports a provider
+// adapter (inward-only deps; provider-cloudflare is a test-only dependency
+// exercised from test/).
 export interface RegistrableCapability {
 	port: string;
 	satisfies(req: { port: string; features?: string[] }): {
@@ -37,13 +42,24 @@ export interface RegistrableProvider {
 	id: string;
 	regions: string[];
 	capabilities: RegistrableCapability[];
+	// `capabilities`/`cost` stay as opaque records — matching core's
+	// CapabilityManifest — and are narrowed to their document shapes
+	// (`{ capabilities?: [...] }` / `{ facts?: [...] }`) in definitionsFor.
 	capabilityManifest(): {
 		providerId: string;
 		published: Record<string, string>;
-		capabilities: { capabilities?: Array<Record<string, unknown>> };
-		cost: { facts?: Array<Record<string, unknown>> };
+		capabilities: Record<string, unknown>;
+		cost: Record<string, unknown>;
 	};
 }
+
+// Compile-time proof (ADR-0155): every @hobo/core `CloudProvider` is a
+// `RegistrableProvider` as-is. If this stops compiling, the narrowing above
+// has drifted from the canonical port.
+const _coreCloudProviderIsRegistrable = (
+	provider: import("@hobo/core").CloudProvider,
+): RegistrableProvider => provider;
+void _coreCloudProviderIsRegistrable;
 
 // A default Resource Definition candidate (control-plane.md: a provider's
 // equivalence mappings are its default Resource Definitions, one per capability).
@@ -107,8 +123,13 @@ export function definitionsFor(
 	provider: RegistrableProvider,
 ): ResourceDefinition[] {
 	const manifest = provider.capabilityManifest();
-	const capsArray = manifest.capabilities.capabilities ?? [];
-	const costFacts = manifest.cost.facts ?? [];
+	// Narrow the opaque manifest records to the published document shapes the
+	// catalog folds (capabilities.json entries / cost.json facts).
+	const capsArray =
+		(manifest.capabilities as { capabilities?: Array<Record<string, unknown>> })
+			.capabilities ?? [];
+	const costFacts =
+		(manifest.cost as { facts?: Array<Record<string, unknown>> }).facts ?? [];
 
 	return provider.capabilities.map((capability) => {
 		const manifestEntry = capsArray.find(

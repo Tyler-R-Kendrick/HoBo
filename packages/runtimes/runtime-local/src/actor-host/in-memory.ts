@@ -1,36 +1,13 @@
+import type { ActorHost, ActorLease, ActorStateHandle } from "@hobo/core";
+
 export const ACTOR_HOST_RUNTIME_PORT_VERSION =
 	"hobo.actor-host-runtime-port/v1";
 
-export interface ActorHostLease {
-	readonly key: string;
-	readonly holderId: string;
-	readonly fenceToken: bigint;
-	readonly expiresAt: string;
-	release(): void;
-}
-
-export interface ActorHostState<S = unknown> {
-	append(
-		lease: ActorHostLease,
-		event: { type: string; [key: string]: unknown },
-	): {
-		streamId: string;
-		seq: number;
-		fenceToken: bigint;
-	};
-	read(): { streamId: string; seq: number; state: S };
-}
-
-export interface ActorHostPort {
-	acquire(key: string, request: { holderId: string }): ActorHostLease;
-	state<S>(
-		key: string,
-		request: {
-			initialState: S;
-			fold: (state: S, event: { type: string; [key: string]: unknown }) => S;
-		},
-	): ActorHostState<S>;
-}
+// The port implemented here is the canonical `@hobo/core` actor-host port
+// (ADR-0155); the historical exported names stay as aliases.
+export type ActorHostLease = ActorLease;
+export type ActorHostState<S = unknown> = ActorStateHandle<S>;
+export type ActorHostPort = ActorHost;
 
 export class LeaseConflictError extends Error {
 	constructor(message: string) {

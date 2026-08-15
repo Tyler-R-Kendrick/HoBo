@@ -2,7 +2,7 @@
  * HoBo-owned interactive product shell for bare `hobo-code` TTY.
  *
  * Architecture (ADR note in ARCHITECTURE.md):
- * - **This module owns chrome** (header/Bo, chat, tasks, slash, footer).
+ * - **This module owns chrome** (header/Bo, chat, agents+tasks, slash, footer).
  * - Chrome is a retained semantic TUI tree (`tui-tree` + React-style
  *   `tui-components.tsx`). `pi-tui` is only the differential framebuffer.
  * - Frames repaint only when state changes; idle Bo ticks that resolve to the
@@ -15,19 +15,51 @@
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
 import { HOBO_LOGO_TUI } from "./_generated/hobo-logo-tui.js";
+import type { AgentWorkBoard } from "./agent-work.js";
 import {
 	EMPTY_TURN,
 	reduceTurn,
 	renderTurn as renderTurnView,
 } from "./agui.js";
+import {
+	answerBtw,
+	type BtwSession,
+	captureBtwSnapshot,
+	isBtwDismiss,
+	matchBtwInput,
+	parentDelta,
+	refreshBtwSnapshot,
+} from "./btw.js";
+import {
+	formatShellCloseout,
+	newChatSessionId,
+	saveChatSession,
+} from "./chat-sessions.js";
+import { compactTranscript } from "./compact.js";
 import { inspectCost } from "./cost.js";
 import {
 	buildTasksSurface,
 	renderTasksBoardText,
+	type TaskBoardRow,
 } from "./grok-build-parity.js";
-
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
+import {
+	cycleInSessionWindow,
+	emptyInSessionPanes,
+	ensureInSessionPanes,
+	type InSessionPanes,
+	isProductPrompt,
+	pickSendWindow,
+	refreshInSessionPanes,
+} from "./in-session-panes.js";
+import { tmuxRunner } from "./mux.js";
+import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import { type AccentName, centreBlock } from "./rubberhose.js";
+import {
+	openSessionEvidencePort,
+	recordSessionDecision,
+	writeCurrentSessionContext,
+} from "./session-evidence.js";
 import {
 	assembleSessionResources,
 	formatSessionResources,
@@ -65,57 +97,26 @@ import {
 	BROADCAST_INNER_INSET,
 } from "./tui-broadcast.js";
 import {
+	AgentPanes,
 	ApprovalDialog,
 	BtwAside,
 	ChatTranscript,
-	InkTable,
 	ShellChrome,
 	SlashPalette,
 	TextPane,
+	WelcomeSurface,
 } from "./tui-components.js";
-import {
-	answerBtw,
-	type BtwSession,
-	captureBtwSnapshot,
-	isBtwDismiss,
-	matchBtwInput,
-	parentDelta,
-	refreshBtwSnapshot,
-} from "./btw.js";
-import {
-	formatShellCloseout,
-	newChatSessionId,
-	saveChatSession,
-} from "./chat-sessions.js";
-import { compactTranscript } from "./compact.js";
-import {
-	openSessionEvidencePort,
-	recordSessionDecision,
-	writeCurrentSessionContext,
-} from "./session-evidence.js";
+import type { InkTableRow } from "./tui-layout.js";
 import { clearWrapCache, wrapMessage } from "./tui-layout.js";
 import { renderTuiTree } from "./tui-render.js";
-import { h, type TuiNode } from "./tui-tree.js";
-import { preferNamedEndpoint } from "./occupancy-endpoints.js";
-import type { InkTableRow } from "./tui-layout.js";
-import {
-	cycleInSessionWindow,
-	emptyInSessionPanes,
-	ensureInSessionPanes,
-	type InSessionPanes,
-	isProductPrompt,
-	pickSendWindow,
-	refreshInSessionPanes,
-} from "./in-session-panes.js";
-import { tmuxRunner } from "./mux.js";
+import type { TuiNode } from "./tui-tree.js";
 import { matchWorkspaceAction } from "./workspace-actions.js";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
 export type ShellFocus =
 	| "chat"
-	| "panes"
-	| "tasks"
+	| "agents"
 	| "status"
 	| "resources"
 	| "slash"
@@ -123,8 +124,7 @@ export type ShellFocus =
 
 export const SHELL_FOCUS_ORDER: readonly ShellFocus[] = [
 	"chat",
-	"panes",
-	"tasks",
+	"agents",
 	"status",
 	"resources",
 ];
@@ -154,7 +154,7 @@ export interface ShellSlashItem {
 		| "btw"
 		| "resume"
 		| "compact"
-		| "panes";
+		| "agents";
 }
 
 /** A promotion awaiting explicit approval — the sole audited mutation path. */
@@ -181,7 +181,7 @@ export interface InteractiveShellState {
 	readonly slashIndex: number;
 	/** Lines scrolled up from the bottom of the chat / btw transcript. */
 	readonly chatScroll: number;
-	/** Lines scrolled down from the top of tasks / status / resources / approval. */
+	/** Lines scrolled down from the top of agents / status / resources / approval. */
 	readonly paneScroll: number;
 	/**
 	 * Promotion approval gate (ADR-0139): engine edits live in a mediated
@@ -197,9 +197,12 @@ export interface InteractiveShellState {
 	readonly inputRows: number;
 	readonly statusPlain: string;
 	readonly tasksPlain: string;
+	readonly agentBoard: AgentWorkBoard<TaskBoardRow>;
 	readonly resourcesPlain: string;
 	/** Live tmux agent panes captured into this TTY. Null until seated. */
 	readonly livePanes: InSessionPanes | null;
+	/** True after a subagent turn starts — unlocks the agents tab. */
+	readonly agentWork: boolean;
 	readonly footerHints: string;
 	readonly modelLabel: string;
 	readonly costLabel: string;
@@ -233,9 +236,10 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		action: "about",
 	},
 	{
-		name: "panes",
-		description: "In-session agent CLIs (Codex, Claude, …)",
-		action: "panes",
+		name: "agents",
+		aliases: ["panes", "tasks", "task"],
+		description: "Subagents and the tasks they claimed",
+		action: "agents",
 	},
 	{
 		name: "ide",
@@ -275,11 +279,7 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		description: "Station aliases + env",
 		argv: ["alias"],
 	},
-	{
-		name: "agents",
-		description: "Register coding harnesses (init / list / status)",
-		argv: ["agents"],
-	},
+
 	{
 		name: "dashboard",
 		description: "Local Aspire SPA + OTel + start/stop",
@@ -290,7 +290,6 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 		description: "Resident tmux sessions",
 		argv: ["session", "list"],
 	},
-	{ name: "tasks", description: "Background task board", argv: ["tasks"] },
 	{
 		name: "env",
 		description: "Hermetic shell + durable layout",
@@ -421,7 +420,9 @@ export function slashItemForInput(text: string): ShellSlashItem | undefined {
 	if (!item) return undefined;
 	if (item.action === "btw") return { ...item, argv: args };
 	if (item.action === "compact") return { ...item, argv: args };
-	if (item.action === "panes") return item;
+	if (item.action === "agents") {
+		return args.length > 0 ? { ...item, argv: ["agents", ...args] } : item;
+	}
 	const argv = resolveSlashArgv(item, args);
 	return argv ? { ...item, argv } : item;
 }
@@ -484,9 +485,15 @@ export function buildWelcomeTable(occupancy?: {
 	readonly evidenceUrl?: string;
 }): InkTableRow[] {
 	const rows: InkTableRow[] = [
-		{ label: "talk", value: "Type+Enter · seated Codex/Claude writes app" },
+		{
+			label: "talk",
+			value: "Type+Enter stays in chat · Tab into a working subagent to steer",
+		},
 		{ label: "patterns", value: "/templates lists patterns" },
-		{ label: "focus", value: "Tab · panes / tasks / status / resources" },
+		{
+			label: "focus",
+			value: "Tab · chat first · agents hold claimed tasks",
+		},
 	];
 	if (occupancy?.dashboardUrl) {
 		rows.push({
@@ -575,6 +582,7 @@ export function createInitialShellState(
 		evidence: openSessionEvidencePort(hoboHome),
 	});
 	const tasksPlain = renderTasksBoardText(tasks);
+	const agentBoard = tasks.board;
 	const resourcesPlain = formatSessionResources(
 		assembleSessionResources({
 			hoboHome,
@@ -590,24 +598,24 @@ export function createInitialShellState(
 			: options.welcome === false
 				? []
 				: [
-					{
-						role: "product",
-						text: [
-							...centreBlock(
-								HOBO_LOGO_TUI.split("\n").filter(
-									(line) => line.trim().length > 0,
+						{
+							role: "product",
+							text: [
+								...centreBlock(
+									HOBO_LOGO_TUI.split("\n").filter(
+										(line) => line.trim().length > 0,
+									),
+									Math.min(width - BROADCAST_INNER_INSET, 70),
 								),
-								Math.min(width - BROADCAST_INNER_INSET, 70),
-							),
-							"",
-							...centreBlock(
-								["a coding harness that rides the rails"],
-								Math.min(width - BROADCAST_INNER_INSET, 70),
-							),
-						].join("\n"),
-						at: Date.now(),
-					},
-				];
+								"",
+								...centreBlock(
+									["a coding harness that rides the rails"],
+									Math.min(width - BROADCAST_INNER_INSET, 70),
+								),
+							].join("\n"),
+							at: Date.now(),
+						},
+					];
 
 	return {
 		width,
@@ -634,8 +642,10 @@ export function createInitialShellState(
 		inputRows: 1,
 		statusPlain,
 		tasksPlain,
+		agentBoard,
 		resourcesPlain,
 		livePanes: null,
+		agentWork: false,
 		footerHints: "Tab focus · / slash · btw aside · ? help · Ctrl+C quit",
 		modelLabel: ENGINE_NONE_LABEL,
 		costLabel: `$${cost.budget.spendUsd.toFixed(2)}/$${cost.budget.capUsd.toFixed(2)} · ${cost.budget.routingPolicy}`,
@@ -683,9 +693,7 @@ function persistShellChat(
 		...(state.modelLabel ? { modelLabel: state.modelLabel } : {}),
 	});
 	const next =
-		state.sessionId === saved.id
-			? state
-			: { ...state, sessionId: saved.id };
+		state.sessionId === saved.id ? state : { ...state, sessionId: saved.id };
 	writeCurrentSessionContext(next.hoboHome, {
 		sessionId: saved.id,
 		cwd: next.projectDir,
@@ -765,7 +773,7 @@ function boHeaderRows(state: InteractiveShellState): string[] {
 
 /**
  * Render one full-screen frame. Fixed structure for tests:
- * header (logo+Bo) · status line · body (chat|tasks|status|resources|slash) · input · footer.
+ * header (logo+Bo) · status line · body (chat|agents|status|resources|slash) · input · footer.
  * Geometry is stable for a given (width, height, dense) — animation frames
  * only change the Bo rows' bytes, never the line count.
  */
@@ -912,7 +920,8 @@ export function buildShellTree(state: InteractiveShellState) {
 			prompt: APPROVAL_PROMPT,
 			scroll: state.paneScroll,
 		});
-		if (state.paneScroll > 0) title = `promote ${state.pendingApproval.runId}? ↑${state.paneScroll}`;
+		if (state.paneScroll > 0)
+			title = `promote ${state.pendingApproval.runId}? ↑${state.paneScroll}`;
 	} else if (state.slashOpen) {
 		title = "commands";
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
@@ -920,34 +929,20 @@ export function buildShellTree(state: InteractiveShellState) {
 			items,
 			selectedIndex: state.slashIndex,
 		});
-	} else if (state.focus === "panes") {
+	} else if (state.focus === "agents") {
 		const panes = state.livePanes;
 		const current = panes?.windows[panes.focused];
 		title = current
-			? `pane ${current.name}${state.paneScroll > 0 ? ` ↑${state.paneScroll}` : ""}`
-			: "panes";
-		accent = "go";
-		const body = panes
-			? [
-					panes.note,
-					panes.windows
-						.map((row, i) => (i === panes.focused ? `▸ ${row.name}` : `  ${row.name}`))
-						.join("   "),
-					"",
-					panes.capture ||
-						"(agent CLI is seated in this session — type a prompt and Enter to send it here)",
-				].join("\n")
-			: "no agent panes yet · install codex on PATH · tmux required";
-		surface = TextPane({
-			id: "agent-panes",
-			text: body,
-			scroll: state.paneScroll,
-		});
-	} else if (state.focus === "tasks") {
-		title = state.paneScroll > 0 ? `tasks ↑${state.paneScroll}` : "tasks";
-		surface = TextPane({
-			id: "tasks-pane",
-			text: state.tasksPlain,
+			? `agent ${current.name}${state.paneScroll > 0 ? ` ↑${state.paneScroll}` : ""}`
+			: "agents";
+		surface = AgentPanes({
+			windows: agentPaneRows(state),
+			unclaimed: unclaimedTaskRows(state),
+			parent: parentChatContext(state),
+			empty:
+				"no subagent work · chat stays first · a dispatch unlocks this tab",
+			...(panes?.note ? { note: panes.note } : {}),
+			...(panes?.capture ? { capture: panes.capture } : {}),
 			scroll: state.paneScroll,
 		});
 	} else if (state.focus === "status") {
@@ -978,42 +973,15 @@ export function buildShellTree(state: InteractiveShellState) {
 		);
 		if (scroll > 0) title = `chat ↑${scroll}`;
 		const lead = state.messages[0];
-		const leadIsArt =
-			lead?.role === "product" && /[█▄▀]/.test(lead.text);
-		if (state.welcomeTable.length > 0 && leadIsArt) {
-			surface = h(
-				"box",
-				{
-					id: "chat-surface",
-					role: "region",
-					className: "chat-surface",
-					scroll,
-				},
-				ChatTranscript({
-					messages: [lead],
-					width: innerWidth,
-				}),
-				InkTable({ id: "welcome-table", rows: state.welcomeTable }),
-				ChatTranscript({
-					messages: state.messages.slice(1),
-					width: innerWidth,
-				}),
-			);
-		} else if (state.welcomeTable.length > 0) {
-			surface = h(
-				"box",
-				{
-					id: "chat-surface",
-					role: "region",
-					className: "chat-surface",
-					scroll,
-				},
-				InkTable({ id: "welcome-table", rows: state.welcomeTable }),
-				ChatTranscript({
-					messages: state.messages,
-					width: innerWidth,
-				}),
-			);
+		const leadIsArt = lead?.role === "product" && /[█▄▀]/.test(lead.text);
+		if (state.welcomeTable.length > 0) {
+			surface = WelcomeSurface({
+				...(leadIsArt && lead ? { art: lead } : {}),
+				rows: state.welcomeTable,
+				rest: leadIsArt ? state.messages.slice(1) : state.messages,
+				width: innerWidth,
+				scroll,
+			});
 		} else {
 			surface = ChatTranscript({
 				messages: state.messages,
@@ -1122,11 +1090,7 @@ export function reduceShellKey(
 		}
 		if (matchesKey(key, "up") || matchesKey(key, "down")) {
 			return {
-				state: scrollFocused(
-					state,
-					matchesKey(key, "up") ? "up" : "down",
-					1,
-				),
+				state: scrollFocused(state, matchesKey(key, "up") ? "up" : "down", 1),
 			};
 		}
 		if (matchesKey(key, "pageUp") || matchesKey(key, "pageDown")) {
@@ -1217,36 +1181,21 @@ export function reduceShellKey(
 	}
 	// Tab — cycle focus
 	if (key === "\t") {
-		const order = SHELL_FOCUS_ORDER;
-		const from = state.focus === "slash" || state.focus === "btw" ? "chat" : state.focus;
-		const i = order.indexOf(from);
-		const next = order[(i + 1) % order.length]!;
-		return {
-			state: {
-				...state,
-				focus: next,
-				slashOpen: false,
-				btw: null,
-				paneScroll: 0,
-				footerHints: `focus:${next} · Tab cycle · [ ] agents · ↑/↓ scroll · / slash · ? help`,
-			},
-		};
+		return { state: cycleFocus({ ...state, slashOpen: false }) };
 	}
 	if (
 		(key === "[" || key === "]") &&
 		state.input.length === 0 &&
 		!state.slashOpen &&
+		hasAgentWork(state) &&
 		state.livePanes &&
 		state.livePanes.windows.length > 0
 	) {
 		return {
 			state: {
 				...state,
-				livePanes: cycleInSessionWindow(
-					state.livePanes,
-					key === "]" ? 1 : -1,
-				),
-				focus: "panes",
+				livePanes: cycleInSessionWindow(state.livePanes, key === "]" ? 1 : -1),
+				focus: "agents",
 				paneScroll: 0,
 			},
 		};
@@ -1260,9 +1209,9 @@ export function reduceShellKey(
 				"  Type a prompt to queue a build task (see /about for what runs it).",
 				"  / opens the slash palette (↑/↓ to pick, Enter to run).",
 				"  btw <question> opens a temporary aside about this moment (Esc dismisses).",
-				"  Tab cycles Chat → Panes → Tasks → Status → Resources.",
-				"  [ and ] cycle agent CLIs (Codex, Claude) without leaving this TTY.",
-				"  Coding prompts go to the focused agent pane, not Bo.",
+				"  Tab cycles Chat → Agents → Status → Resources (Agents while a subagent or claimed task exists).",
+				"  [ and ] cycle working subagents without leaving this TTY.",
+				"  Type+Enter in chat stays on Bo. Tab into Agents to steer a subagent and see its tasks.",
 			].join("\n"),
 			at: Date.now(),
 		};
@@ -1293,18 +1242,8 @@ export function reduceShellKey(
 				const extra = state.input.trim().replace(/^\/?compact\s*/iu, "");
 				return { state: applyCompact(state, extra) };
 			}
-			if (item.action === "panes") {
-				return {
-					state: {
-						...state,
-						slashOpen: false,
-						slashFilter: "",
-						slashIndex: 0,
-						input: "",
-						focus: "panes",
-						paneScroll: 0,
-					},
-				};
+			if (item.action === "agents" && (item.argv?.length ?? 0) <= 1) {
+				return { state: openAgentsSurface(state) };
 			}
 			const argv = resolveSlashArgv(item);
 			return {
@@ -1338,19 +1277,8 @@ export function reduceShellKey(
 					state: applyCompact(state, (item.argv ?? []).join(" ")),
 				};
 			}
-			if (item?.action === "panes") {
-				return {
-					state: {
-						...state,
-						input: "",
-						slashOpen: false,
-						slashFilter: "",
-						slashIndex: 0,
-						focus: "panes",
-						paneScroll: 0,
-						chatScroll: 0,
-					},
-				};
+			if (item?.action === "agents" && (item.argv?.length ?? 0) <= 1) {
+				return { state: openAgentsSurface(state) };
 			}
 			if (item) {
 				return {
@@ -1375,9 +1303,10 @@ export function reduceShellKey(
 				submit: text,
 			};
 		}
-		const seated = state.livePanes
-			? pickSendWindow(state.livePanes)
-			: undefined;
+		const seated =
+			state.focus === "agents" && state.livePanes
+				? pickSendWindow(state.livePanes)
+				: undefined;
 		if (
 			seated &&
 			!isProductPrompt(text) &&
@@ -1390,7 +1319,8 @@ export function reduceShellKey(
 							...state,
 							input: "",
 							chatScroll: 0,
-							focus: "panes",
+							focus: "agents",
+							agentWork: true,
 							agentState: "working",
 						},
 						{
@@ -1459,27 +1389,148 @@ export function reduceShellKey(
 	return { state };
 }
 
-/** Tab cycles the transcript pane. */
+export function hasAgentWork(state: InteractiveShellState): boolean {
+	if (state.agentWork === true || state.focus === "agents") return true;
+	return state.agentBoard.groups.some((group) => group.claims.length > 0);
+}
+
+export function visibleFocusOrder(
+	state: InteractiveShellState,
+): readonly ShellFocus[] {
+	const order: ShellFocus[] = ["chat"];
+	if (hasAgentWork(state)) order.push("agents");
+	order.push("status", "resources");
+	return order;
+}
+
+function taskRowsForAgent(
+	state: InteractiveShellState,
+	agentId: string,
+): readonly {
+	readonly summary: string;
+	readonly state?: string;
+	readonly branch?: string;
+	readonly isolation?: string;
+}[] {
+	const group = state.agentBoard.groups.find((row) => row.agentId === agentId);
+	if (!group) return [];
+	return group.tasks.map((row) => {
+		const claim = group.claims.find((entry) => entry.taskId === row.id);
+		return {
+			summary: row.summary,
+			state: String(row.state),
+			...(claim ? { branch: claim.branch, isolation: claim.isolation } : {}),
+		};
+	});
+}
+
+function agentPaneRows(state: InteractiveShellState): readonly {
+	readonly name: string;
+	readonly focused?: boolean;
+	readonly tasks?: readonly {
+		readonly summary: string;
+		readonly state?: string;
+		readonly branch?: string;
+		readonly isolation?: string;
+	}[];
+}[] {
+	const panes = state.livePanes?.windows ?? [];
+	if (panes.length > 0) {
+		return panes.map((row, index) => ({
+			name: row.name,
+			focused: index === state.livePanes?.focused,
+			tasks: taskRowsForAgent(state, row.name),
+		}));
+	}
+	return state.agentBoard.groups.map((group) => ({
+		name: group.agentId,
+		tasks: taskRowsForAgent(state, group.agentId),
+	}));
+}
+
+function unclaimedTaskRows(state: InteractiveShellState): readonly {
+	readonly summary: string;
+	readonly state?: string;
+}[] {
+	return state.agentBoard.unclaimed.map((row) => ({
+		summary: row.summary,
+		state: String(row.state),
+	}));
+}
+
+export function parentChatContext(
+	state: InteractiveShellState,
+	limit = 4,
+): readonly string[] {
+	return state.messages
+		.filter((row) => row.role !== "system")
+		.slice(-limit)
+		.map((row) => {
+			const text = row.text.replace(/\s+/gu, " ").trim();
+			const clipped = text.length > 72 ? `${text.slice(0, 69)}…` : text;
+			return `${row.role}: ${clipped}`;
+		});
+}
+
+export function openAgentsSurface(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	const windows = state.livePanes?.windows ?? [];
+	const seated = windows.some(
+		(row) => row.kind === "coding-agent" || row.kind === "harness",
+	);
+	const claimed =
+		state.agentBoard.groups.some((group) => group.tasks.length > 0) ||
+		state.agentBoard.unclaimed.length > 0;
+	if (!seated && !state.agentWork && !claimed) {
+		return appendProduct(
+			{
+				...state,
+				slashOpen: false,
+				slashFilter: "",
+				slashIndex: 0,
+				input: "",
+				focus: "chat",
+			},
+			"no subagent work yet — chat stays first until a subagent claims a task",
+		);
+	}
+	return {
+		...state,
+		slashOpen: false,
+		slashFilter: "",
+		slashIndex: 0,
+		input: "",
+		focus: "agents",
+		agentWork: true,
+		paneScroll: 0,
+		footerHints:
+			"agents · type+Enter steers the focused subagent · Tab back to chat",
+	};
+}
+
+/** Tab cycles the visible transcript panes. Agents only while work exists. */
 export function cycleFocus(
 	state: InteractiveShellState,
 ): InteractiveShellState {
-	const order = SHELL_FOCUS_ORDER;
-	const i = order.indexOf(
-		state.focus === "slash" || state.focus === "btw" ? "chat" : state.focus,
-	);
+	const order = visibleFocusOrder(state);
+	const from =
+		state.focus === "slash" || state.focus === "btw" ? "chat" : state.focus;
+	const i = order.indexOf(from);
+	const next = order[(i < 0 ? 0 : i + 1) % order.length]!;
 	return {
 		...state,
-		focus: order[(i + 1) % order.length]!,
+		focus: next,
 		btw: null,
 		paneScroll: 0,
+		footerHints: `focus:${next} · Tab cycle · [ ] agents · ↑/↓ scroll · / slash · ? help`,
 	};
 }
 
 function isDocumentPane(state: InteractiveShellState): boolean {
 	return (
 		state.pendingApproval !== null ||
-		state.focus === "panes" ||
-		state.focus === "tasks" ||
+		state.focus === "agents" ||
 		state.focus === "status" ||
 		state.focus === "resources"
 	);
@@ -1580,10 +1631,7 @@ export interface ShellHost {
 	/** Handle a user chat prompt; return assistant text. */
 	readonly complete: (prompt: string) => Promise<string>;
 	/** Send a coding prompt into the focused in-session agent CLI pane. */
-	readonly sendToAgent?: (
-		agent: string,
-		text: string,
-	) => Promise<string>;
+	readonly sendToAgent?: (agent: string, text: string) => Promise<string>;
 	/**
 	 * Deterministic create / run / debug turns. When this returns text, the
 	 * shell must not send the prompt to the completion engine.
@@ -1711,7 +1759,9 @@ export async function runInteractiveShell(
 		...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
 		hoboHome: shellHome,
 		env: shellEnv,
-		...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}),
+		...(options.sessionId !== undefined
+			? { sessionId: options.sessionId }
+			: {}),
 		...(options.messages !== undefined ? { messages: options.messages } : {}),
 		...(options.journal !== undefined ? { journal: options.journal } : {}),
 	});
@@ -1743,15 +1793,16 @@ export async function runInteractiveShell(
 		try {
 			const seated = await ensureInSessionPanes({
 				cwd: options.cwd ?? process.cwd(),
+				hoboHome: shellHome,
 				env: shellEnv,
 			});
 			state = {
 				...state,
 				livePanes: seated,
-				focus: seated.windows.length > 0 ? "panes" : state.focus,
+				focus: "chat",
 				footerHints:
 					seated.windows.length > 0
-						? "Tab panes · [ ] agents · type+Enter sends to the focused CLI"
+						? "chat first · Tab agents for claimed tasks · type+Enter stays here"
 						: state.footerHints,
 			};
 		} catch {
@@ -1813,8 +1864,8 @@ export async function runInteractiveShell(
 			state = applyCompact(state, (item.argv ?? []).join(" "));
 			return;
 		}
-		if (item.action === "panes") {
-			state = { ...state, focus: "panes", paneScroll: 0 };
+		if (item.action === "agents" && (item.argv?.length ?? 0) <= 1) {
+			state = openAgentsSurface(state);
 			return;
 		}
 		if (state.btw) {
@@ -1824,23 +1875,25 @@ export async function runInteractiveShell(
 			state = appendProduct(
 				state,
 				[
-					"Commands: type / and pick — /dev /templates /hobo /ide /config /tasks /status /resources /btw /resume /compact /about /quit",
+					"Commands: /dev /templates /hobo /ide /config /status /resources /agents /quit",
 					"Aside: btw <question> borrows this moment without joining the main chat.",
 					"Resume: /resume prints this chat id · later `hobo-code resume [id]`.",
 					"Compact: /compact [focus] shrinks the working pane; the journal stays.",
 					"Templates: /templates lists; /template <query> searches (zero LLM).",
 					"Resident control: /sessions <args> (plain /sessions lists).",
 					"HoBo control plane: /hobo <args> (for example /hobo yard status).",
-					"Chat: coding prompts go to the focused agent pane (Codex/Claude).",
+					"Chat stays first. Tab into Agents to see claimed tasks under each subagent.",
+					"Harness CLIs are subagents on that same Agents screen, not a separate view.",
 					"HoBo verbs stay on Bo: /dev /resources /history /alias.",
-					"Keys: Tab panes · [ ] cycle agents · ↑/↓ scroll · Ctrl+C quit",
+					"Keys: Tab chat first · [ ] cycle working agents · ↑/↓ scroll · Ctrl+C quit",
 				].join("\n"),
 			);
 			return;
 		}
 		if (item.action === "about") {
 			const engineLines = options.host.aboutLines ?? [
-				"Coding prompts go to seated agent CLIs (Codex/Claude) in this TTY.",
+				"Chat is first. Subagent work and the tasks they claimed live on Agents.",
+				"Tab into a working subagent to steer it without losing this chat.",
 				"HoBo verbs stay on Bo: /dev /resources /history /alias.",
 				"Pi TUI remains an opt-in escape hatch via `hobo-code --pi`.",
 			];
@@ -2058,9 +2111,10 @@ export async function runInteractiveShell(
 			tui.requestRender();
 			return;
 		}
-		const seated = state.livePanes
-			? pickSendWindow(state.livePanes)
-			: undefined;
+		const seated =
+			state.focus === "agents" && state.livePanes
+				? pickSendWindow(state.livePanes)
+				: undefined;
 		if (
 			seated &&
 			!isProductPrompt(text) &&
@@ -2072,7 +2126,8 @@ export async function runInteractiveShell(
 					{
 						...state,
 						chatScroll: 0,
-						focus: "panes",
+						focus: "agents",
+						agentWork: true,
 						agentState: "working",
 					},
 					{ role: "user", text: `→ ${seated.name}: ${text}`, at: Date.now() },
@@ -2256,16 +2311,14 @@ export async function runInteractiveShell(
 		if (
 			(data === "[" || data === "]") &&
 			input.text().length === 0 &&
+			hasAgentWork(state) &&
 			state.livePanes &&
 			state.livePanes.windows.length > 0
 		) {
 			state = {
 				...state,
-				livePanes: cycleInSessionWindow(
-					state.livePanes,
-					data === "]" ? 1 : -1,
-				),
-				focus: "panes",
+				livePanes: cycleInSessionWindow(state.livePanes, data === "]" ? 1 : -1),
+				focus: "agents",
 				paneScroll: 0,
 			};
 			tui.requestRender();
@@ -2286,11 +2339,7 @@ export async function runInteractiveShell(
 			input.text().length === 0 &&
 			(matchesKey(data, "up") || matchesKey(data, "down"))
 		) {
-			state = scrollFocused(
-				state,
-				matchesKey(data, "up") ? "up" : "down",
-				1,
-			);
+			state = scrollFocused(state, matchesKey(data, "up") ? "up" : "down", 1);
 			tui.requestRender();
 			return { consume: true };
 		}
@@ -2317,7 +2366,7 @@ export async function runInteractiveShell(
 	}, BO_IDLE_TICK_MS);
 	tick.unref?.();
 	const paneTick = setInterval(() => {
-		if (quit || state.focus !== "panes" || !state.livePanes?.tmux) return;
+		if (quit || state.focus !== "agents" || !state.livePanes?.tmux) return;
 		void refreshInSessionPanes(state.livePanes, tmuxRunner())
 			.then((next) => {
 				if (quit) return;

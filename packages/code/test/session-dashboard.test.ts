@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { authLogin } from "../src/auth.js";
 import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
 import { startLocalDashboard } from "../src/session-dashboard.js";
+import { persistOccupancyRun } from "../src/session-resource-control.js";
 import {
 	recordDevDeployment,
 	recordSessionResources,
@@ -44,6 +45,7 @@ describe("local Aspire dashboard listener", () => {
 		const dash = await startLocalDashboard({
 			hoboHome,
 			env: { HOBO_ENV: "local-dev" },
+			projectRoot: hoboHome,
 			port: 0,
 			otlpHttpPort: 0,
 			otlpGrpcPort: 0,
@@ -98,6 +100,18 @@ describe("local Aspire dashboard listener", () => {
 			expect(html).toMatch(/navigator\.clipboard/);
 			expect(html).toMatch(/id='station-capabilities'/);
 			expect(html).toMatch(/aria-label='capabilities'/);
+			expect(html).toMatch(/class='station-listing'/);
+			expect(html).toMatch(/class='station-nest'/);
+			expect(html).toMatch(
+				/station-nest[\s\S]*id='station-capabilities'[\s\S]*capabilities/,
+			);
+			expect(html).toMatch(/class='fold station-caps'/);
+			expect(html).toMatch(/var capsOpen = false/);
+			expect(html).toMatch(
+				/class='fold station-caps'" \+\s*\(open \? " open" : ""\)/,
+			);
+			expect(html).not.toMatch(/id="telemetry-card"/);
+			expect(html).not.toMatch(/pane-title">signals</);
 			expect(html).toMatch(/id='station-sidecars'/);
 			expect(html).toMatch(/isOccupancyDoor/);
 			expect(html).toMatch(/:focus-visible/);
@@ -105,9 +119,18 @@ describe("local Aspire dashboard listener", () => {
 			expect(html).toMatch(/role="alert"/);
 			expect(html).not.toMatch(/window\.alert/);
 			expect(html).toMatch(/aria-label="yard"/);
-			expect(html).toMatch(/aria-label="otel"/);
 			expect(html).toMatch(/aria-label="fleet"/);
-			expect(html).toMatch(/class='sig'/);
+			expect(html).toMatch(/class="pane-title">yard</);
+			expect(html).not.toMatch(/aria-label="otel"/);
+			expect(html).toMatch(/--ink:#101010/);
+			expect(html).toMatch(/--spark:#c5301c/);
+			expect(html).toContain("theme-toggle");
+			expect(html).toContain("hobo-theme");
+			expect(html).toContain("prefers-color-scheme: dark");
+			expect(html).toContain("data-theme");
+			expect(html).toContain("occupancyLocked");
+			expect(html).not.toMatch(/linear-gradient\(var\(--ink\)/);
+			expect(html).toMatch(/button\.ico:hover \{ background: var\(--ink\)/);
 			expect(html).not.toMatch(/<h3>Capabilities<\/h3>/);
 			expect(html).not.toMatch(/<h2>Yard<\/h2>/);
 			expect(html).not.toMatch(/<h2>OTel<\/h2>/);
@@ -176,9 +199,9 @@ describe("local Aspire dashboard listener", () => {
 			};
 			expect(fleetBody.scope).toBe("local");
 			expect(inventory.camps.some((row) => row.id === "camp:code")).toBe(true);
-			expect(
-				inventory.camps.some((row) => row.id === "camp:hello-world"),
-			).toBe(true);
+			expect(inventory.camps.some((row) => row.id === "camp:hello-world")).toBe(
+				true,
+			);
 			expect(inventory.yards.some((row) => row.id === "yard:local")).toBe(true);
 			const life = (
 				inventory as {
@@ -226,9 +249,9 @@ describe("local Aspire dashboard listener", () => {
 			expect(
 				inventory.managed.some((row) => row.id === "yard:local:flow"),
 			).toBe(true);
-			expect(
-				inventory.managed.find((row) => row.id === "web")?.ownerKind,
-			).toBe("camp");
+			expect(inventory.managed.find((row) => row.id === "web")?.ownerKind).toBe(
+				"camp",
+			);
 		} finally {
 			await dash.close();
 		}
@@ -409,7 +432,9 @@ describe("local Aspire dashboard listener", () => {
 			);
 			expect(campStop.status).toBe(409);
 			const campBody = (await campStop.json()) as { error?: string };
-			expect(campBody.error).toMatch(/shut themselves down|not start\/stoppable/i);
+			expect(campBody.error).toMatch(
+				/shut themselves down|not start\/stoppable/i,
+			);
 			const bindleStop = await fetch(
 				new URL("/api/resources/bindle:code/stop", listen),
 				{ method: "POST" },
@@ -561,9 +586,9 @@ describe("local Aspire dashboard listener", () => {
 			expect(
 				after.lifecycle.find((row) => row.id === "camp:hello-world")?.state,
 			).toBe("stopped");
-			expect(
-				after.lifecycle.find((row) => row.id === "camp:code")?.state,
-			).toBe("ready");
+			expect(after.lifecycle.find((row) => row.id === "camp:code")?.state).toBe(
+				"ready",
+			);
 
 			const refused = await fetch(
 				new URL("/api/resources/bindle:hello-world/start", listen),
@@ -614,9 +639,7 @@ describe("local Aspire dashboard listener", () => {
 			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
 			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
 		});
-		let listening:
-			| { url: string; close: () => Promise<void> }
-			| undefined;
+		let listening: { url: string; close: () => Promise<void> } | undefined;
 		const dash = await startLocalDashboard({
 			hoboHome,
 			env: { HOBO_ENV: "local-dev" },
@@ -681,8 +704,7 @@ describe("local Aspire dashboard listener", () => {
 				"stopped",
 			);
 			expect(
-				afterKv.lifecycle.find((row) => row.id === "bindle:hello-world")
-					?.state,
+				afterKv.lifecycle.find((row) => row.id === "bindle:hello-world")?.state,
 			).not.toBe("stopped");
 			expect(
 				afterKv.lifecycle.find((row) => row.id === "yard:local:flow")?.state,
@@ -702,8 +724,7 @@ describe("local Aspire dashboard listener", () => {
 				)?.state,
 			).toBe("stopped");
 			expect(
-				afterNamed.lifecycle.find((row) => row.id === "yard:local:flow")
-					?.state,
+				afterNamed.lifecycle.find((row) => row.id === "yard:local:flow")?.state,
 			).toBe("ready");
 			expect(listening).toBeDefined();
 		} finally {
@@ -712,7 +733,87 @@ describe("local Aspire dashboard listener", () => {
 		}
 	});
 
-	it("starts and stops occupancy sidecars, and yard stop leaves other yards alone", async () => {
+	it("marks a live /dev bindle ready and keeps api off the public web port", async () => {
+		const hoboHome = tempHome();
+		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		const project = join(hoboHome, "shop");
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "bindle.ts"),
+			`export default bindle("hello-world", (b) => ({
+  api: b.api(),
+  web: b.web(),
+}));
+`,
+		);
+		recordDevDeployment({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			bindleName: "shop",
+			projectDir: project,
+			appUrl: "http://127.0.0.1:4173/",
+			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
+			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+		});
+		persistOccupancyRun({
+			hoboHome,
+			stationId: "station:local",
+			environment: "local-dev",
+			projectDir: project,
+			bindleName: "hello-world",
+			pid: process.pid,
+			sessionId: "dev-live-board",
+		});
+		const dash = await startLocalDashboard({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			projectRoot: project,
+			port: 0,
+			otlpHttpPort: 0,
+			otlpGrpcPort: 0,
+		});
+		try {
+			const body = (await (
+				await fetch(new URL("/api/resources", loopbackFetchUrl(dash.url)))
+			).json()) as {
+				bindles: { id: string; name: string }[];
+				bindleManifest?: { name: string };
+				endpoints: {
+					resourceName: string;
+					backendUrl: string;
+					preferredUrl: string;
+				}[];
+				lifecycle: { id: string; ready: boolean; started: boolean }[];
+			};
+			expect(body.bindleManifest?.name).toBe("hello-world");
+			expect(body.bindles.map((row) => row.id)).toContain("bindle:hello-world");
+			expect(body.bindles.map((row) => row.id)).not.toContain("bindle:shop");
+			const web = body.endpoints.find((row) => row.resourceName === "web");
+			const api = body.endpoints.find((row) => row.resourceName === "api");
+			expect(web?.backendUrl).toContain("4173");
+			expect(api?.backendUrl).toBe("http://hello-world.hobo.internal/api");
+			expect(api?.preferredUrl).toBe("http://hello-world.hobo.internal/api");
+			expect(api?.backendUrl).not.toBe(web?.backendUrl);
+			expect(
+				body.lifecycle.find((row) => row.id === "bindle:hello-world")?.started,
+			).toBe(true);
+			expect(body.lifecycle.find((row) => row.id === "web")?.started).toBe(
+				true,
+			);
+			expect(body.lifecycle.find((row) => row.id === "api")?.started).toBe(
+				true,
+			);
+		} finally {
+			await dash.close();
+		}
+	});
+
+	it("refuses to stop Station occupancy sidecars, and yard stop leaves other yards alone", async () => {
 		const hoboHome = tempHome();
 		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
 		recordSessionResources({
@@ -780,23 +881,25 @@ describe("local Aspire dashboard listener", () => {
 			});
 			expect(otlpOk.status).toBe(200);
 
-			const stopped = await fetch(
-				new URL("/api/resources/otlp/stop", listen),
-				{ method: "POST" },
+			const stopped = await fetch(new URL("/api/resources/otlp/stop", listen), {
+				method: "POST",
+			});
+			expect(stopped.status).toBe(409);
+			const stopBody = (await stopped.json()) as { error?: string };
+			expect(stopBody.error).toMatch(
+				/occupancy sidecars|stay up with the Station/i,
 			);
-			expect(stopped.status).toBe(200);
-			await expect(
-				fetch(new URL("/v1/logs", otlpListen), {
-					method: "POST",
-					body: "{}",
-				}),
-			).rejects.toThrow();
+			const stillUp = await fetch(new URL("/v1/logs", otlpListen), {
+				method: "POST",
+				body: "{}",
+			});
+			expect(stillUp.status).toBe(200);
 
 			const started = await fetch(
 				new URL("/api/resources/otlp/start", listen),
 				{ method: "POST" },
 			);
-			expect(started.status).toBe(200);
+			expect(started.status).toBe(409);
 			const otlpAgain = await fetch(new URL("/v1/logs", otlpListen), {
 				method: "POST",
 				body: "{}",
@@ -819,9 +922,9 @@ describe("local Aspire dashboard listener", () => {
 			expect(
 				after.lifecycle.find((row) => row.id === "camp:other")?.state,
 			).toBe("ready");
-			expect(
-				after.lifecycle.find((row) => row.id === "camp:code")?.state,
-			).toBe("ready");
+			expect(after.lifecycle.find((row) => row.id === "camp:code")?.state).toBe(
+				"ready",
+			);
 		} finally {
 			await dash.close();
 		}

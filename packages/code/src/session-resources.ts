@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { isHoboHierarchicalName } from "@hobo/core";
+import { isHoboHierarchicalName, sanitizeDnsLabel } from "@hobo/core";
 
 import {
 	type InspectedBindle,
@@ -19,9 +19,9 @@ import {
 import { type CampEvalSidecar, EVAL_SIDECAR_NAME } from "./eval-sidecar.js";
 import { assembleCampEvalSidecar } from "./eval-sidecar-server.js";
 import {
+	isStationOccupancyEndpoint,
 	OCCUPANCY_NAMED_APP,
 	occupancyNamedOrigin,
-	isStationOccupancyEndpoint,
 	occupancySidecarEndpoints,
 	preferNamedEndpoint,
 	retargetUrl,
@@ -425,7 +425,10 @@ export function campsInYard(
 	const snapshot = loadSnapshot(hoboHome, stationId, environment);
 	for (const node of snapshot?.nodes ?? []) {
 		if (node.kind !== "camp") continue;
-		if (node.parentId === yardId || (node.parentId === undefined && yardId === "yard:local")) {
+		if (
+			node.parentId === yardId ||
+			(node.parentId === undefined && yardId === "yard:local")
+		) {
 			ids.add(node.id);
 		}
 	}
@@ -1385,6 +1388,23 @@ export function recordDevDeployment(input: {
 }
 
 const HTTP_KINDS = new Set(["api", "web", "service", "websocket", "ui"]);
+const PUBLIC_HTTP_KINDS = new Set(["web", "ui", "websocket"]);
+
+// public-contract: private api/service stay on <bindle>.hobo.internal/<name>
+const INTERNAL_MESH_ZONE = "hobo.internal";
+
+export function bindleMeshUrl(
+	bindleName: string,
+	resourceName: string,
+): string {
+	const app = sanitizeDnsLabel(bindleName);
+	const resource = sanitizeDnsLabel(resourceName);
+	return `http://${app}.${INTERNAL_MESH_ZONE}/${resource}`;
+}
+
+function isPublicHttpKind(kind: string): boolean {
+	return PUBLIC_HTTP_KINDS.has(kind);
+}
 
 function bindleResourceEndpoints(
 	inspected: InspectedBindle | undefined,
@@ -1395,40 +1415,42 @@ function bindleResourceEndpoints(
 		readonly bindleName: string;
 	},
 ): EndpointRecord[] {
+	const scope = {
+		environment: options.environment,
+		app: options.bindleName,
+	};
 	if (!inspected) {
+		const mesh = bindleMeshUrl(options.bindleName, "api");
 		return [
 			{
 				resourceName: "api",
 				kind: "http",
-				backendUrl: options.appUrl,
-				namedUrl: preferNamedEndpoint(options.appUrl, "api", {
-					environment: options.environment,
-					app: options.bindleName,
-				}),
+				backendUrl: mesh,
+				namedUrl: mesh,
 				mode: "local",
-				preferredUrl: preferNamedEndpoint(options.appUrl, "api", {
-					environment: options.environment,
-					app: options.bindleName,
-				}),
+				preferredUrl: mesh,
 				fidelity: "real",
 			},
 		];
 	}
 	return inspected.resources.map((resource) => {
 		const http = HTTP_KINDS.has(resource.kind);
-		const named = http
-			? preferNamedEndpoint(options.appUrl, resource.name, {
-					environment: options.environment,
-					app: options.bindleName,
-				})
-			: occupancyNamedOrigin(resource.kind, 0, {
-					environment: options.environment,
-					app: options.bindleName,
-				});
+		const publicHttp = http && isPublicHttpKind(resource.kind);
+		const mesh = bindleMeshUrl(options.bindleName, resource.name);
+		const backend = publicHttp
+			? options.appUrl
+			: http
+				? mesh
+				: occupancyNamedOrigin(resource.kind, 0, scope);
+		const named = publicHttp
+			? preferNamedEndpoint(options.appUrl, resource.name, scope)
+			: http
+				? mesh
+				: occupancyNamedOrigin(resource.kind, 0, scope);
 		return {
 			resourceName: resource.name,
 			kind: http ? "http" : resource.kind,
-			backendUrl: http ? options.appUrl : named,
+			backendUrl: backend,
 			namedUrl: named,
 			mode: "local" as const,
 			preferredUrl: named,

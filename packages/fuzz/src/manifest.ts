@@ -50,15 +50,20 @@ export function parseOrReject(input: unknown): ManifestV1 | "rejected" {
 	}
 }
 
-export function hasPrototypePollution(value: unknown): boolean {
+export function hasPrototypePollution(
+	value: unknown,
+	seen: WeakSet<object> = new WeakSet(),
+): boolean {
 	if (!value || typeof value !== "object") return false;
+	if (seen.has(value)) return false;
+	seen.add(value);
 	if (
 		Object.hasOwn(value, "__proto__") ||
 		Object.hasOwn(value, "constructor")
 	) {
 		return true;
 	}
-	return Object.values(value as Record<string, unknown>).some(
-		hasPrototypePollution,
+	return Object.values(value as Record<string, unknown>).some((entry) =>
+		hasPrototypePollution(entry, seen),
 	);
 }

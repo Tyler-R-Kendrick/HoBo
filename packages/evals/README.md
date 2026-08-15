@@ -33,7 +33,9 @@ Non-goal: model hosting — evaluators are ports.
   oracles (seed-holds, deterministic, fail-closed, no pollution, bounded)
   over the same trainable gold seeds. Live functions run through
   `@hobo/fuzz` `fuzzTrainable`; the sidecar falls back to corpus evidence
-  when no invoker is supplied.
+  when no invoker is supplied. Unobserved gold seeds fail silver
+  `seedHolds`. `canonicalJson` / `matchGolden` fail closed on circular and
+  bigint values instead of throwing.
 - `evaluatePromotionGate({rubricReport, thresholds})` — the gate verdict:
   structurally the same `{ok, reasons: [{code, message}]}` shape as the
   contracts package's `ResidencyGateVerdict`/`CanMigrateGateVerdict`

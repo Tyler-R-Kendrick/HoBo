@@ -146,7 +146,7 @@ export function silverEvidenceFromCorpus(seeds: readonly TrainableFuzzSeed[]): {
 				!hasPrototypePollution(seed.input) &&
 				!hasPrototypePollution(seed.output),
 		),
-		seedHolds: true,
+		seedHolds: false,
 		bounded: seeds.every((seed) => withinBound(seed.output)),
 	};
 }
@@ -184,7 +184,7 @@ function isThenable(value: unknown): boolean {
 function withinBound(value: unknown): boolean {
 	if (value === undefined) return true;
 	try {
-		return JSON.stringify(value).length <= TRAINABLE_OUTPUT_BOUND;
+		return stable(value).length <= TRAINABLE_OUTPUT_BOUND;
 	} catch {
 		return false;
 	}
@@ -215,13 +215,47 @@ function same(left: unknown, right: unknown): boolean {
 	return stable(left) === stable(right);
 }
 
-function stable(value: unknown): string {
+function stable(value: unknown, seen: WeakSet<object> = new WeakSet()): string {
 	if (value === undefined) return "undefined";
-	if (value === null || typeof value !== "object") return JSON.stringify(value);
-	if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
+	const kind = typeof value;
+	if (kind === "bigint") return `${value}n`;
+	if (kind === "symbol") return String(value);
+	if (kind === "function") {
+		return `fn:${(value as { name?: string }).name ?? "anonymous"}`;
+	}
+	if (kind === "number") {
+		if (Number.isNaN(value)) return "NaN";
+		if (Object.is(value, -0)) return "-0";
+		if (!Number.isFinite(value)) return String(value);
+	}
+	if (value === null || kind !== "object") {
+		try {
+			return JSON.stringify(value);
+		} catch {
+			return kind;
+		}
+	}
+	if (seen.has(value)) return '"[Cycle]"';
+	seen.add(value);
+	if (value instanceof Date) {
+		return `Date:${Number.isNaN(value.getTime()) ? "Invalid" : value.toISOString()}`;
+	}
+	if (value instanceof RegExp) return String(value);
+	if (value instanceof Map) {
+		const entries = [...value.entries()].map(
+			([key, entry]) => `${stable(key, seen)}=>${stable(entry, seen)}`,
+		);
+		return `Map:{${entries.join(",")}}`;
+	}
+	if (value instanceof Set) {
+		return `Set:[${[...value].map((entry) => stable(entry, seen)).join(",")}]`;
+	}
+	if (Array.isArray(value)) {
+		return `[${value.map((entry) => stable(entry, seen)).join(",")}]`;
+	}
 	const rec = value as Record<string, unknown>;
 	return `{${Object.keys(rec)
 		.sort()
-		.map((key) => `${JSON.stringify(key)}:${stable(rec[key])}`)
+		.map((key) => `${JSON.stringify(key)}:${stable(rec[key], seen)}`)
 		.join(",")}}`;
 }

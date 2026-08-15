@@ -44,10 +44,10 @@ describe("hobo-code TUI visual contract", () => {
 		expect(frame).toContain("/dev");
 		expect(frame).toContain("[ /templates ]");
 		expect(frame).not.toMatch(/\[ \/[^\]]+…/);
-		expect(frame).toContain("status");
+		expect(frame).toContain("chat first");
 		expect(frame).not.toMatch(/sta…/);
-		expect(frame).toMatch(/talk\s+Type\+Enter · seated Codex\/Claude writes app/);
-		expect(frame).toMatch(/resources/);
+		expect(frame).toMatch(/talk\s+Type\+Enter stays in chat/);
+		expect(frame).toMatch(/chat first/);
 		expect(frame.split("\n").every((line) => line.length === 72)).toBe(true);
 	});
 
@@ -78,8 +78,6 @@ describe("hobo-code TUI visual contract", () => {
 			welcome: false,
 			reducedMotion: true,
 		});
-		state = reduceShellKey(state, "\t").state;
-		state = reduceShellKey(state, "\t").state;
 		state = reduceShellKey(state, "\t").state;
 		state = reduceShellKey(state, "\t").state;
 		expect(state.focus).toBe("resources");

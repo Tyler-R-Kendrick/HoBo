@@ -2,6 +2,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { BrokerCatalog } from "@hobo/broker";
+import { initStation } from "@hobo/stations";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createBrokerCommand } from "../src/broker-command.js";
 
@@ -44,7 +45,17 @@ beforeAll(async () => {
 	dir = await mkdtemp(join(tmpdir(), "hobo-broker-cli-"));
 	policiesPath = join(dir, "policies.json");
 	await writeFile(policiesPath, JSON.stringify(policies));
+	initStation({ hoboHome: dir, name: "local", tenant: "t1" });
 });
+
+function stationFlags(hoboHome: string): Record<string, string> {
+	const { stationId } = initStation({
+		hoboHome,
+		name: "local",
+		tenant: "t1",
+	});
+	return { home: hoboHome, station: stationId };
+}
 
 function runContext(
 	flags: Record<string, string>,
@@ -52,7 +63,7 @@ function runContext(
 ) {
 	return {
 		args,
-		flags,
+		flags: { ...stationFlags(dir), ...flags },
 		context: { cwd: dir },
 		emitProgress: () => {},
 	} as never;
@@ -109,7 +120,7 @@ describe("hobo broker — the Conductor on the CLI", () => {
 		const command = createBrokerCommand({ catalog });
 		const result = await command.run({
 			args: ["up"],
-			flags: { cwd: bare },
+			flags: { cwd: bare, ...stationFlags(bare) },
 			context: { cwd: bare },
 			emitProgress: () => {},
 		} as never);
@@ -158,7 +169,7 @@ describe("hobo broker — the Conductor on the CLI", () => {
 		const command = createBrokerCommand({ catalog });
 		const result = await command.run({
 			args: ["up"],
-			flags: { cwd: project },
+			flags: { cwd: project, ...stationFlags(project) },
 			context: { cwd: project, projectDir: project },
 			emitProgress: () => {},
 		} as never);
@@ -262,7 +273,7 @@ describe("hobo broker — the Conductor on the CLI", () => {
 
 		const up = await command.run({
 			args: ["up"],
-			flags: { cwd: project },
+			flags: { cwd: project, ...stationFlags(project) },
 			context: { cwd: project, projectDir: project },
 			emitProgress: () => {},
 		} as never);

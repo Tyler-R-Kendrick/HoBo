@@ -2,6 +2,7 @@ import { createServer, type Server } from "node:http";
 
 import type { BindleDefinition } from "@hobo/bindles";
 import { loadBindleDefinition } from "@hobo/cli";
+import { sanitizeDnsLabel } from "@hobo/core";
 import type { Yard } from "@hobo/yards";
 
 import {
@@ -13,9 +14,9 @@ import {
 import {
 	type FetchHandler,
 	isExternalComponent,
+	type ListServableEntrypointsResult,
 	listServableEntrypoints,
 	listServableEntrypointsWithReplay,
-	type ListServableEntrypointsResult,
 	type ServableEntrypoint,
 } from "./servable-entrypoints.js";
 
@@ -27,25 +28,33 @@ import {
 //   - Only components marked *external* open a public TCP listener.
 //   - By default `web` is external; `api` / `service` stay private.
 //   - Private components are reached only via mesh URLs injected as
-//     services__<name>__http__0 = http://hobo.internal/<name>
+//     services__<name>__http__0 = http://<bindle>.hobo.internal/<name>
 //   - The Yard/Camp intermediary keeps private surfaces off the public wire.
 //
 // Session Replay (ADR-0137): listServableEntrypoints wraps Bindle `web`
 // handlers — see servable-entrypoints.ts.
 
-export type {
-	FetchHandler,
-	ListServableEntrypointsResult,
-	ServableEntrypoint,
-};
+export type { FetchHandler, ListServableEntrypointsResult, ServableEntrypoint };
 export {
 	isExternalComponent,
 	listServableEntrypoints,
 	listServableEntrypointsWithReplay,
 };
 
-// public-contract: reserved hostname for in-mesh hops between components.
+// public-contract: reserved zone for in-mesh hops between components.
 export const INTERNAL_MESH_HOST = "hobo.internal";
+
+export function internalMeshHost(bindleName: string): string {
+	const label = sanitizeDnsLabel(bindleName);
+	return label.length > 0
+		? `${label}.${INTERNAL_MESH_HOST}`
+		: INTERNAL_MESH_HOST;
+}
+
+export function isInternalMeshHostname(hostname: string): boolean {
+	const host = hostname.toLowerCase();
+	return host === INTERNAL_MESH_HOST || host.endsWith(`.${INTERNAL_MESH_HOST}`);
+}
 
 /**
  * HTTP header prefix HoBo mesh uses to inject bindle env into private hops
@@ -74,7 +83,7 @@ export function applyHoboMeshEnvHeaders(
 export interface ComponentEndpoint {
 	readonly resourceName: string;
 	readonly kind: string;
-	/** Discovery URL (public http://127.0.0.1:port or private http://hobo.internal/name). */
+	/** Discovery URL (public http://127.0.0.1:port or private http://<bindle>.hobo.internal/name). */
 	readonly url: string;
 	/** Public TCP port when external; null when private (no listener). */
 	readonly port: number | null;
@@ -122,8 +131,12 @@ export function serviceDiscoveryKey(
 	return `services__${resourceName}__${endpointName}__${index}`;
 }
 
-export function internalMeshBase(resourceName: string): string {
-	return `http://${INTERNAL_MESH_HOST}/${resourceName}`;
+export function internalMeshBase(
+	bindleName: string,
+	resourceName: string,
+): string {
+	const resource = sanitizeDnsLabel(resourceName);
+	return `http://${internalMeshHost(bindleName)}/${resource}`;
 }
 
 /**
@@ -152,8 +165,9 @@ export function collectBindleEnvInjections(
 }
 
 /**
- * Install a process-wide fetch interceptor that routes http://hobo.internal/<name>/...
- * to private component handlers. Restores the previous fetch on dispose.
+ * Install a process-wide fetch interceptor that routes
+ * http://<bindle>.hobo.internal/<name>/... to private component handlers.
+ * Restores the previous fetch on dispose.
  *
  * When `bindleEnv` is provided, HoBo injects those values onto the mesh hop as
  * `x-hobo-env-*` / `x-hobo-bindle-env` headers so isolated-wasm sandboxes receive
@@ -163,10 +177,15 @@ export function installInternalMesh(
 	privateHandlers: ReadonlyMap<string, FetchHandler>,
 	options: {
 		readonly bindleEnv?: Readonly<Record<string, string>>;
+		readonly bindleName?: string;
 	} = {},
 ): () => void {
 	const previous = globalThis.fetch;
 	const bindleEnv = options.bindleEnv ?? {};
+	const expectedHost =
+		options.bindleName !== undefined
+			? internalMeshHost(options.bindleName)
+			: undefined;
 	const meshFetch: typeof fetch = async (input, init) => {
 		const raw =
 			typeof input === "string"
@@ -180,7 +199,14 @@ export function installInternalMesh(
 		} catch {
 			return previous(input as RequestInfo, init);
 		}
-		if (url.hostname !== INTERNAL_MESH_HOST) {
+		if (!isInternalMeshHostname(url.hostname)) {
+			return previous(input as RequestInfo, init);
+		}
+		if (
+			expectedHost !== undefined &&
+			url.hostname !== expectedHost &&
+			url.hostname !== INTERNAL_MESH_HOST
+		) {
 			return previous(input as RequestInfo, init);
 		}
 		const segments = url.pathname.split("/").filter(Boolean);
@@ -353,13 +379,15 @@ export async function serveProjectOnBareMetalYard(options: {
 	for (const entry of privateEntries) {
 		privateHandlers.set(entry.name, entry.handler);
 	}
-	const uninstallMesh = installInternalMesh(privateHandlers);
+	const uninstallMesh = installInternalMesh(privateHandlers, {
+		bindleName: definition.name,
+	});
 
 	const endpoints: ComponentEndpoint[] = [];
 	const serviceDiscovery: Record<string, string> = {};
 
 	for (const entry of privateEntries) {
-		const url = internalMeshBase(entry.name);
+		const url = internalMeshBase(definition.name, entry.name);
 		const key = serviceDiscoveryKey(entry.name);
 		endpoints.push({
 			resourceName: entry.name,

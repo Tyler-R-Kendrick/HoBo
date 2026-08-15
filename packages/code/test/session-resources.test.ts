@@ -120,7 +120,9 @@ describe("session resource inventory", () => {
 			"golden",
 		);
 		expect(text).toMatch(/capabilities/);
-		expect(text.indexOf("station:local")).toBeLessThan(text.indexOf("capabilities"));
+		expect(text.indexOf("station:local")).toBeLessThan(
+			text.indexOf("capabilities"),
+		);
 		expect(inventory.evals?.defaultSuite.source).toBe("trainable-exact-match");
 		expect(inventory.evals?.campId).toBe("camp:code");
 		expect(inventory.managed.find((row) => row.id === "evals")).toMatchObject({
@@ -292,7 +294,9 @@ describe("session resource inventory", () => {
 		const text = formatSessionResources(inventory);
 		expect(text).toMatch(/yard:local:flow/);
 		expect(text).toMatch(/kv/);
-		expect(text.indexOf("yard:local")).toBeLessThan(text.indexOf("camp:hello-world"));
+		expect(text.indexOf("yard:local")).toBeLessThan(
+			text.indexOf("camp:hello-world"),
+		);
 		expect(text.indexOf("camp:hello-world")).toBeLessThan(
 			text.indexOf("bindle:hello-world"),
 		);
@@ -343,9 +347,7 @@ describe("session resource inventory", () => {
 				files: ["test/shop.eval.test.ts"],
 			},
 		});
-		expect(
-			inventory.managed.find((row) => row.id === "evals"),
-		).toMatchObject({
+		expect(inventory.managed.find((row) => row.id === "evals")).toMatchObject({
 			kind: "sidecar",
 			ownerKind: "camp",
 			ownerId: "camp:hello-world",
@@ -727,13 +729,114 @@ describe("session resource inventory", () => {
 		expect(
 			inventory.endpoints.find((row) => row.resourceName === "api")
 				?.preferredUrl,
-		).toMatch(/api\.hello-world\..*\.hobo\.localhost/);
+		).toBe("http://hello-world.hobo.internal/api");
 		expect(inventory.camp?.require).toContain("managed-http-runtime");
 		expect(inventory.bindleManifest?.resources.map((row) => row.kind)).toEqual(
 			expect.arrayContaining(["api", "web"]),
 		);
 		const text = formatSessionResources(inventory);
 		expect(text).not.toMatch(/no yard/i);
-		expect(text).toMatch(/api\.hello-world/);
+		expect(text).toMatch(/hello-world\.hobo\.internal\/api/);
+		const web = inventory.endpoints.find((row) => row.resourceName === "web");
+		const api = inventory.endpoints.find((row) => row.resourceName === "api");
+		expect(web?.backendUrl).toMatch(/127\.0\.0\.1:4173/);
+		expect(api?.backendUrl).not.toBe(web?.backendUrl);
+		expect(api?.backendUrl).toBe("http://hello-world.hobo.internal/api");
+		expect(api?.preferredUrl).toBe("http://hello-world.hobo.internal/api");
+		expect(inventory.bindleManifest?.name).toBe("hello-world");
+		expect(inventory.bindles.map((row) => row.name)).toContain("hello-world");
+		expect(inventory.bindles.map((row) => row.name)).not.toContain("shop");
+	});
+
+	it("names the bindle from bindle() even when the folder is unrelated", async () => {
+		const hoboHome = await loginHome();
+		const project = join(hoboHome, "shop");
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "bindle.ts"),
+			`export default bindle("hello-world", (b) => ({
+  api: b.api(),
+  web: b.web(),
+}));
+`,
+		);
+		recordDevDeployment({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			bindleName: "shop",
+			projectDir: project,
+			appUrl: "http://127.0.0.1:4173/",
+			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
+			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+		});
+		const inventory = assembleSessionResources({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			ensureLocalLogin: true,
+			projectDir: project,
+		});
+		expect(inventory.bindleManifest?.name).toBe("hello-world");
+		expect(inventory.bindles.map((row) => row.id)).toContain(
+			"bindle:hello-world",
+		);
+		expect(inventory.bindles.map((row) => row.id)).not.toContain("bindle:shop");
+		expect(
+			inventory.endpoints.find((row) => row.resourceName === "web")
+				?.preferredUrl,
+		).toMatch(/web\.hello-world\./);
+		expect(
+			inventory.endpoints.find((row) => row.resourceName === "api")
+				?.preferredUrl,
+		).toBe("http://hello-world.hobo.internal/api");
+	});
+
+	it("gives each api on a bindle its own mesh path", async () => {
+		const hoboHome = await loginHome();
+		const project = join(hoboHome, "shop");
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "bindle.ts"),
+			`export default bindle("shop", (b) => ({
+  billing: b.api(),
+  users: b.api(),
+  web: b.web(),
+}));
+`,
+		);
+		recordDevDeployment({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			bindleName: "shop",
+			projectDir: project,
+			appUrl: "http://127.0.0.1:4173/",
+			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
+			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+		});
+		const inventory = assembleSessionResources({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			ensureLocalLogin: true,
+			projectDir: project,
+		});
+		const billing = inventory.endpoints.find(
+			(row) => row.resourceName === "billing",
+		);
+		const users = inventory.endpoints.find(
+			(row) => row.resourceName === "users",
+		);
+		expect(billing?.backendUrl).toBe("http://shop.hobo.internal/billing");
+		expect(users?.backendUrl).toBe("http://shop.hobo.internal/users");
+		expect(billing?.preferredUrl).toBe("http://shop.hobo.internal/billing");
+		expect(users?.preferredUrl).toBe("http://shop.hobo.internal/users");
 	});
 });

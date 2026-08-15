@@ -125,7 +125,7 @@ export function describeDevTerminalAttach(options: {
 		sessionLink: "hobo-code session --json → remote + persistence",
 	};
 	const compare: DevTerminalCompare = {
-		tmux: "in-session ≈ hobo-code Tab panes; attach ≈ optional tmux attach after disconnect; handback under $HOBO_HOME",
+		tmux: "in-session ≈ hobo-code chat first, Agents hold claimed tasks under each subagent; attach ≈ optional tmux attach after disconnect; handback under $HOBO_HOME",
 		cmux: "status/session panes ≈ concurrent mux focus; Herdr theme is the in-process mux",
 		mosh: "optional UDP roaming on lossy mobile; not required for local or stable TCP",
 		tailscale:

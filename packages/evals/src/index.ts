@@ -440,9 +440,58 @@ export function matchGolden(
 }
 
 /** Canonical JSON encoding: recursively key-sorted, so comparison is order-independent. */
-export function canonicalJson(value: unknown): string {
-	const text = JSON.stringify(sortKeysDeep(value));
-	return text === undefined ? "undefined" : text;
+export function canonicalJson(
+	value: unknown,
+	seen: WeakSet<object> = new WeakSet(),
+): string {
+	if (value === undefined) return "undefined";
+	const kind = typeof value;
+	if (kind === "bigint") return `${value}n`;
+	if (kind === "symbol") return JSON.stringify(String(value));
+	if (kind === "function") {
+		return JSON.stringify(
+			`fn:${(value as { name?: string }).name || "anonymous"}`,
+		);
+	}
+	if (kind === "number") {
+		if (Number.isNaN(value)) return "NaN";
+		if (Object.is(value, -0)) return "-0";
+		if (!Number.isFinite(value)) return String(value);
+	}
+	if (value === null || kind !== "object") {
+		try {
+			const text = JSON.stringify(value);
+			return text === undefined ? "undefined" : text;
+		} catch {
+			return kind;
+		}
+	}
+	if (seen.has(value)) return '"[Cycle]"';
+	seen.add(value);
+	if (value instanceof Date) {
+		return JSON.stringify(
+			Number.isNaN(value.getTime()) ? "Invalid Date" : value.toISOString(),
+		);
+	}
+	if (value instanceof RegExp) return JSON.stringify(value.toString());
+	if (value instanceof Map) {
+		const entries = [...value.entries()].map(
+			([key, entry]) =>
+				`[${canonicalJson(key, seen)},${canonicalJson(entry, seen)}]`,
+		);
+		return `[${entries.join(",")}]`;
+	}
+	if (value instanceof Set) {
+		return `[${[...value].map((entry) => canonicalJson(entry, seen)).join(",")}]`;
+	}
+	if (Array.isArray(value)) {
+		return `[${value.map((entry) => canonicalJson(entry, seen)).join(",")}]`;
+	}
+	const rec = value as Record<string, unknown>;
+	return `{${Object.keys(rec)
+		.sort()
+		.map((key) => `${JSON.stringify(key)}:${canonicalJson(rec[key], seen)}`)
+		.join(",")}}`;
 }
 
 /**
@@ -532,25 +581,11 @@ function parseUnitInterval(
 	return value;
 }
 
-function sortKeysDeep(value: unknown): unknown {
-	if (Array.isArray(value)) {
-		return value.map(sortKeysDeep);
-	}
-	if (value !== null && typeof value === "object") {
-		const record = value as Record<string, unknown>;
-		const sorted: Record<string, unknown> = {};
-		for (const key of Object.keys(record).sort()) {
-			sorted[key] = sortKeysDeep(record[key]);
-		}
-		return sorted;
-	}
-	return value;
-}
-
 function firstDiff(
 	expected: unknown,
 	actual: unknown,
 	path = "$",
+	seen: WeakSet<object> = new WeakSet(),
 ): ValueDiff | null {
 	if (Object.is(expected, actual)) {
 		return null;
@@ -566,6 +601,11 @@ function firstDiff(
 		if (!Array.isArray(expected) || !Array.isArray(actual)) {
 			return { path, expected, actual };
 		}
+		if (seen.has(expected) || seen.has(actual)) {
+			return { path, expected: "[Cycle]", actual: "[Cycle]" };
+		}
+		seen.add(expected);
+		seen.add(actual);
 		const length = Math.max(expected.length, actual.length);
 		for (let index = 0; index < length; index += 1) {
 			if (index >= expected.length || index >= actual.length) {
@@ -579,6 +619,7 @@ function firstDiff(
 				expected[index],
 				actual[index],
 				`${path}[${index}]`,
+				seen,
 			);
 			if (diff) {
 				return diff;
@@ -587,6 +628,11 @@ function firstDiff(
 		return null;
 	}
 	if (typeof expected === "object") {
+		if (seen.has(expected) || seen.has(actual as object)) {
+			return { path, expected: "[Cycle]", actual: "[Cycle]" };
+		}
+		seen.add(expected);
+		if (actual && typeof actual === "object") seen.add(actual);
 		const keys = new Set([
 			...Object.keys(expected as object),
 			...Object.keys(actual as object),
@@ -596,6 +642,7 @@ function firstDiff(
 				(expected as Record<string, unknown>)[key],
 				(actual as Record<string, unknown>)[key],
 				joinPath(path, key),
+				seen,
 			);
 			if (diff) {
 				return diff;
@@ -612,11 +659,14 @@ function joinPath(path: string, key: string): string {
 		: `${path}[${JSON.stringify(key)}]`;
 }
 
-function deepFreeze<T>(value: T): T {
-	if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+function deepFreeze<T>(value: T, seen: WeakSet<object> = new WeakSet()): T {
+	if (value === null || typeof value !== "object") return value;
+	if (seen.has(value)) return value;
+	seen.add(value);
+	if (!Object.isFrozen(value)) {
 		Object.freeze(value);
 		for (const entry of Object.values(value)) {
-			deepFreeze(entry);
+			deepFreeze(entry, seen);
 		}
 	}
 	return value;
@@ -837,9 +887,14 @@ export function silverEvidenceFromRegion(
 	const corpusClean = region.cases.every(
 		(row) => !isPolluted(row.expected) && !isPolluted(row.actual),
 	);
-	const seedHolds = scored.every(
+	const matches = scored.every(
 		(row) => canonicalJson(row.expected) === canonicalJson(row.actual),
 	);
+	const observed = fuzz !== undefined || scored.length === region.cases.length;
+	const seedHolds =
+		region.cases.length === 0
+			? true
+			: observed && matches && (fuzz?.seedHolds ?? true);
 	return {
 		methodRef: region.methodRef,
 		grounded: region.grounded,
@@ -847,7 +902,7 @@ export function silverEvidenceFromRegion(
 		deterministic: fuzz?.deterministic ?? true,
 		failClosed: fuzz?.failClosed ?? true,
 		noPollution: fuzz?.noPollution ?? corpusClean,
-		seedHolds: fuzz?.seedHolds ?? seedHolds,
+		seedHolds,
 		bounded: fuzz?.bounded ?? true,
 	};
 }
@@ -868,13 +923,20 @@ export function scoreTrainableGoldSilverSuites(input: {
 	return { ok: gold.ok && silver.ok, gold, silver };
 }
 
-function isPolluted(value: unknown): boolean {
+function isPolluted(
+	value: unknown,
+	seen: WeakSet<object> = new WeakSet(),
+): boolean {
 	if (!value || typeof value !== "object") return false;
+	if (seen.has(value)) return false;
+	seen.add(value);
 	if (
 		Object.hasOwn(value, "__proto__") ||
 		Object.hasOwn(value, "constructor")
 	) {
 		return true;
 	}
-	return Object.values(value as Record<string, unknown>).some(isPolluted);
+	return Object.values(value as Record<string, unknown>).some((entry) =>
+		isPolluted(entry, seen),
+	);
 }

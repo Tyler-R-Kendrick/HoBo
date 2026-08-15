@@ -45,8 +45,11 @@ A **skill + always-on rule** that compresses the agent's **output** (~65–87% f
 A **design skill** for AI harnesses (npm `impeccable`, v3.5.0, homepage
 [impeccable.style](https://impeccable.style)). 23 commands spanning the design
 workflow — `shape`, `critique`, `audit`, `polish`, plus dials like `bolder`,
-`quieter`, `colorize`. **No API keys**, but it is **not** offline — see egress
-below.
+`quieter`, `colorize`. **Standing duty on visual work** (TUI, dashboard,
+Evidence, `site/`, any package `DESIGN.md`): run `critique` then `audit`
+(and `polish` on P0/P1) and `pnpm run design:lint` without being asked.
+See `AGENTS.md` “Design system + lint”. **No API keys**, but it is **not**
+offline — see egress below.
 - **Network egress (three paths, one of them automatic):**
   - `scripts/context.mjs` calls `impeccable.style/api/version` when it is run
     **as a command** (`node scripts/context.mjs`, i.e. the skill's context

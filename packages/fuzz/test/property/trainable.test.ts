@@ -52,6 +52,6 @@ describe("trainable silver fuzz", () => {
 			{ input: { text: "invoice overdue" }, output: { label: "billing" } },
 		]);
 		expect(evidence.noPollution).toBe(true);
-		expect(evidence.seedHolds).toBe(true);
+		expect(evidence.seedHolds).toBe(false);
 	});
 });

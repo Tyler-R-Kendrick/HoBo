@@ -10,6 +10,7 @@ import {
 	EVAL_SIDECAR_NAME,
 	inspectProjectEvalTests,
 	inspectTrainableRegions,
+	loadTrainableInvokers,
 } from "../src/eval-sidecar.js";
 
 const roots: string[] = [];
@@ -101,6 +102,97 @@ export async function classify(input: { text: string }) {
 			project: tests,
 			trainable,
 		});
+	});
+
+	it("loads a sibling JS invoker when the trainable region is TypeScript", async () => {
+		const root = tempProject();
+		mkdirSync(join(root, "src"), { recursive: true });
+		writeFileSync(
+			join(root, "src", "classify.ts"),
+			`
+export async function classify(input: { text: string }) {
+  "use training";
+  return training(async (body) => body, {
+    methodRef: "shop.classify",
+    intent: "label the ticket",
+    contract: {
+      examples: [
+        { input: { text: "invoice overdue" }, output: { label: "billing" } },
+      ],
+    },
+  });
+}
+`,
+		);
+		writeFileSync(
+			join(root, "src", "classify.js"),
+			`
+export function classify(input) {
+  const text = input && input.text ? String(input.text) : "";
+  return { label: text.includes("invoice") ? "billing" : "other" };
+}
+`,
+		);
+		const trainable = inspectTrainableRegions(root);
+		const tsRegion = trainable.find((row) => row.methodRef === "shop.classify");
+		expect(tsRegion?.file).toBe("src/classify.ts");
+		const invokers = await loadTrainableInvokers(root, trainable);
+		expect(typeof invokers["shop.classify"]).toBe("function");
+		expect(invokers["shop.classify"]?.({ text: "invoice overdue" })).toEqual({
+			label: "billing",
+		});
+	});
+
+	it("loads a live JS invoker so silver can fuzz trainable code", async () => {
+		const root = tempProject();
+		mkdirSync(join(root, "src"), { recursive: true });
+		writeFileSync(
+			join(root, "src", "classify.js"),
+			`
+export function classify(input) {
+  const text = input && input.text ? String(input.text) : "";
+  return { label: text.includes("invoice") ? "billing" : "other" };
+}
+`,
+		);
+		writeFileSync(
+			join(root, "src", "bindle.ts"),
+			`
+export async function classify(input) {
+  "use training";
+  return training(async (body) => body, {
+    methodRef: "shop.classify",
+    intent: "label the ticket",
+    contract: {
+      examples: [
+        { input: { text: "invoice overdue" }, output: { label: "billing" } },
+      ],
+    },
+  });
+}
+`,
+		);
+		const trainable = inspectTrainableRegions(root);
+		const jsRegion = {
+			methodRef: "shop.classify",
+			file: "src/classify.js",
+			form: "directive" as const,
+			grounded: true,
+			examples: [
+				{
+					input: { text: "invoice overdue" },
+					output: { label: "billing" },
+				},
+			],
+		};
+		const invokers = await loadTrainableInvokers(root, [jsRegion]);
+		expect(typeof invokers["shop.classify"]).toBe("function");
+		expect(invokers["shop.classify"]?.({ text: "invoice overdue" })).toEqual({
+			label: "billing",
+		});
+		expect(trainable.some((row) => row.methodRef === "shop.classify")).toBe(
+			true,
+		);
 	});
 
 	it("finds no project overlay when the suite is only the golden default", () => {

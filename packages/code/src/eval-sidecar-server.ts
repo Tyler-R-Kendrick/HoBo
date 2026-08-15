@@ -26,6 +26,7 @@ import {
 	campEvalSidecar,
 	inspectProjectEvalTests,
 	inspectTrainableRegions,
+	loadTrainableInvokers,
 	type TrainableRegion,
 } from "./eval-sidecar.js";
 import { occupancyNamedOrigin } from "./occupancy-endpoints.js";
@@ -82,7 +83,11 @@ export function runEvalSidecarSuite(input: {
 	readonly invokers?: Readonly<Record<string, TrainableFn>>;
 }): EvalSidecarRun {
 	const regions = input.suite.trainable.map((region) =>
-		toGoldenRegion(region, input.actuals?.[region.methodRef] ?? []),
+		toGoldenRegion(
+			region,
+			input.actuals?.[region.methodRef] ?? [],
+			input.invokers?.[region.methodRef],
+		),
 	);
 	const silverEvidence = input.suite.trainable.map((region, index) =>
 		toSilverEvidence(
@@ -140,19 +145,45 @@ function composePromotionGates(
 function toGoldenRegion(
 	region: TrainableRegion,
 	actuals: readonly unknown[],
+	fn?: TrainableFn,
 ): TrainableGoldenRegion {
 	return {
 		methodRef: region.methodRef,
 		grounded: region.grounded,
 		cases: region.examples.map((example, index) => {
-			const actual = actuals[index];
+			const posted = Object.hasOwn(actuals, index);
+			if (!posted && !fn) {
+				return {
+					id: `example.${index}`,
+					expected: example.output,
+				};
+			}
 			return {
 				id: `example.${index}`,
 				expected: example.output,
-				...(actual !== undefined ? { actual } : {}),
+				actual: posted
+					? actuals[index]
+					: invokeForGold(fn as TrainableFn, example.input),
 			};
 		}),
 	};
+}
+
+function invokeForGold(fn: TrainableFn, input: unknown): unknown {
+	try {
+		const output = fn(input);
+		if (
+			output &&
+			typeof output === "object" &&
+			"then" in output &&
+			typeof (output as { then?: unknown }).then === "function"
+		) {
+			return undefined;
+		}
+		return output;
+	} catch {
+		return undefined;
+	}
 }
 
 function toSilverEvidence(
@@ -199,17 +230,31 @@ export async function startEvalSidecar(
 			return;
 		}
 		if (request.method === "POST" && path === "/run") {
-			void readJsonBody(request).then((body) => {
-				const actuals = parseActuals(body);
-				writeJson(
-					response,
-					200,
-					runEvalSidecarSuite({
-						suite,
-						...(actuals !== undefined ? { actuals } : {}),
-					}),
-				);
-			});
+			void readJsonBody(request)
+				.then(async (body) => {
+					const actuals = parseActuals(body);
+					const loaded = options.projectDir
+						? await loadTrainableInvokers(options.projectDir, suite.trainable)
+						: {};
+					const invokers = Object.keys(loaded).length > 0 ? loaded : undefined;
+					writeJson(
+						response,
+						200,
+						runEvalSidecarSuite({
+							suite,
+							...(actuals !== undefined ? { actuals } : {}),
+							...(invokers !== undefined ? { invokers } : {}),
+						}),
+					);
+				})
+				.catch(() => {
+					if (!response.headersSent) {
+						writeJson(response, 500, {
+							ok: false,
+							error: "eval-run-failed",
+						});
+					}
+				});
 			return;
 		}
 		writeJson(response, 404, { ok: false, error: "not found" });
@@ -228,12 +273,29 @@ function writeJson(
 	status: number,
 	body: unknown,
 ): void {
-	const payload = `${JSON.stringify(body)}\n`;
+	const payload = `${safeJson(body)}\n`;
 	response.writeHead(status, {
 		"content-type": "application/json; charset=utf-8",
 		"content-length": Buffer.byteLength(payload),
 	});
 	response.end(payload);
+}
+
+function safeJson(body: unknown): string {
+	const seen = new WeakSet<object>();
+	try {
+		return JSON.stringify(body, (_key, value: unknown) => {
+			if (typeof value === "bigint") return `${value}n`;
+			if (typeof value === "number" && Number.isNaN(value)) return "NaN";
+			if (value && typeof value === "object") {
+				if (seen.has(value)) return "[Cycle]";
+				seen.add(value);
+			}
+			return value;
+		});
+	} catch {
+		return JSON.stringify({ ok: false, error: "eval-unserializable" });
+	}
 }
 
 function listen(server: Server, port: number): Promise<number> {

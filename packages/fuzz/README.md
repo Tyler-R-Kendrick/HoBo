@@ -21,8 +21,11 @@ The in-process API surface is described by
 
 Trainable gold/silver: `fuzzTrainable(fn, seeds)` runs seed-holds,
 determinism, fail-closed, pollution, and bound checks against a live
-`"use training"` function. `@hobo/evals` scores that as the silver suite;
-the evals sidecar runs gold + silver on every `/run`.
+`"use training"` function. Outputs may be circular, bigint, `Date`, or
+`NaN` — the harness serializes them instead of crashing. Corpus-only
+`silverEvidenceFromCorpus` does not claim `seedHolds` (no live function
+ran). `@hobo/evals` scores that as the silver suite; the evals sidecar
+runs gold + silver on every `/run`.
 
 Jazzer.js is the coverage-guided entry
 [`src/jazzer-entry.ts`](./src/jazzer-entry.ts). PR smoke calls the same

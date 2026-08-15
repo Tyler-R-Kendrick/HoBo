@@ -76,8 +76,10 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
 - **Station sidecars** start with the session: the Aspire dashboard
   (`http://dashboard.code.local.hobo.localhost:8787`), the Evidence SPA
   (`http://evidence.code.local.hobo.localhost:8788`), the always-on
-  evals sidecar (`http://evals.code.local.hobo.localhost`) hosting the
-  default golden suite, and the Station-local OpenDelivery sidecar
+  evals sidecar (`http://evals.code.local.hobo.localhost`) hosting gold
+  exact-match and silver property/fuzz suites (`POST /run` loads live
+  `.js` / `.mjs` / `.cjs` invokers, including a sibling next to a
+  TypeScript `"use training"` region), and the Station-local OpenDelivery sidecar
   (`http://rollout.code.local.hobo.localhost`) that runs the real
   `hobo:delivery` engine — Bindle `rollout` is not a Camp/cloud mock.
   Experiments are not a catalog row: occupancy always starts the
@@ -106,13 +108,16 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
   sit as three occupancy doors (dashboard / Evidence / OTLP) with named
   + listen URLs; other sidecars fold closed. Buttons are 44px ink planks
   (play/stop toggle, Bindle restart, copy, lock) — not Start/Stop labels.
-  Chewy, grain, night inversion, and a spark focus ring match Evidence.
+  Chewy, grain, and a spark focus ring match Evidence. Day/night follows
+  the system setting and a moon/sun toggle (`hobo-theme`); Station occupancy
+  sidecars (dashboard, Evidence, OTLP, …) cannot be stopped from the board.
   Pane titles are glyphs. The Yard card nests Yard ⊃ Camp ⊃ Bindle and
-  hangs bindle endpoints on their bindle. Capabilities nest under the
-  Station as a collapsible grid and list every Bindle kind as available
-  or unavailable — no fidelity or notes column, no mocked row.
-  Unavailable means we do not host it. OTel is lamp + log/trace/metric
-  counts against the local collector (`exporting` vs `silent`). Stopping
+  hangs bindle endpoints on their bindle. The Station plaque ends with
+  a labeled **capabilities** fold (collapsed by default) listing every
+  Bindle kind as ready or off. There is no independent capabilities
+  card and no look-alike “signals” board. Unavailable means we do not
+  host it.
+  Stopping
   Yard flow on the dashboard actually halts Bindle
   traffic until you start it again; camps in other yards stay up.
   `/dev` writes Camp + Bindle fulfillment that
@@ -241,22 +246,28 @@ prompt. Machine callers should branch on `code` and consume `remediation[]`.
 | `/templates` `/template` | `hobo-code template` · `hobo-code templates` (bare = list) |
 | `/agent` `/config` `/cost` `/harness` | `hobo-code agent` · `config` · `cost` · `harness` |
 | `/status` `/resources` `/guide` `/tasks` `/login` | `hobo-code status` · `resources` · `guide` · `tasks` · `auth login --agent` |
-| `/panes` | In-session Codex/Claude capture — stay in this TTY |
-| `/agents` `/agents init` | `hobo-code agents` · `hobo-code agents init` |
+| `/agents` | Tab into working subagent chats without leaving this session (`/panes` alias) |
+| `/agents init` | `hobo-code agents init` — register harness plugins |
 | `/help` | keys + map · outside: `hobo-code help` |
 
-### In-session agent panes (Herdr / T3-shaped)
+### In-session agent chats (Herdr / T3-shaped)
 
-`hobo-code` on a TTY **stays the session**. Detected harness CLIs (Codex,
-Claude, cursor-agent, …) are seated in tmux windows behind this process.
-The product shell captures the focused pane and feeds it with type+Enter.
-You do **not** `tmux attach` to write app code. Bo keeps HoBo verbs
-(`/dev`, `/resources`, `/history`, `/alias`, `run it` / `debug it`).
-Tab focuses **Panes**; `[` / `]` cycle agents; `/panes` jumps there.
+`hobo-code` on a TTY **stays the session**. Chat is the first tab.
+Detected harness CLIs (Codex, Claude, cursor-agent, …) are **subagents**
+on one Agents screen — not a separate harness view and not the first tab.
+Claimed tasks nest under the subagent that took them. That subagent gets
+its own rift or git worktree branch and lands work with incremental
+checkins, stacked PRs, and squash-merge. The Agents tab appears while a
+subagent is working or a task is claimed. `/tasks` opens the same screen.
+Tab into an agent chat without losing the parent transcript, then
+type+Enter to steer that subagent. You do **not** `tmux attach` to write
+app code. Bo keeps HoBo verbs (`/dev`, `/resources`, `/history`, `/alias`,
+`run it` / `debug it`).
 
 ```bash
-hobo-code                         # seat CLIs, stay here, type+Enter
-# Tab → panes · [ ] cycle · coding prompts go to Codex/Claude
+hobo-code                         # chat first
+# Tab → chat · (agents if a subagent or claimed task exists) · status · resources
+# [ ] cycle working subagents · type in Agents to steer
 ```
 
 Register harnesses first (Vercel `coding-agents setup` analog — Station
@@ -276,7 +287,7 @@ the virtual filesystem. A seated CLI can `ls /agents`. Bo still does not write
 app code.
 
 `hobo-code mux` is the same seating, useful for dry-run / remote / virtual
-trees. Join stays in-session (`hobo-code` · Tab panes). `tmux attach -t hobo`
+trees. Join stays in-session (`hobo-code` · Tab chat, then Agents when work starts). `tmux attach -t hobo`
 is the optional out-of-session escape, not the product path.
 
 The resident-session core stores versioned snapshots and events in HoBo's
@@ -308,7 +319,7 @@ hobo-code mux                     # detect agents, create/reuse session "hobo"
 hobo-code mux --dry-run           # show the plan without touching tmux
 hobo-code mux --session work      # name it
 hobo-code mux --host box.example  # same panes, over ssh
-# stay in hobo-code — Tab panes. optional: tmux attach -t hobo
+# stay in hobo-code — chat first. optional: tmux attach -t hobo
 ```
 
 ```
@@ -317,7 +328,7 @@ hobo-code mux --host box.example  # same panes, over ssh
   claude    · coding-agent · bin:/home/you/.local/bin/claude
   codex     · coding-agent · bin:/home/you/.local/bin/codex
   ollama    · inference    · bin:/usr/local/bin/ollama
- in-session · stay in hobo-code · Tab panes · optional tmux attach -t hobo
+ in-session · stay in hobo-code · chat first · optional tmux attach -t hobo
 ```
 
 Re-running is idempotent: an existing session is reused and only missing

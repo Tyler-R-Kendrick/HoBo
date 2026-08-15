@@ -608,9 +608,10 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		const r = await runHoboCodeCli(["tasks"], { hoboHome: home });
 		expect(r.ok).toBe(true);
 		expect(r.code).toBe("HOBO_CODE_TASKS");
-		expect(r.message).toMatch(/▣ tasks/);
-		expect(r.message).toMatch(/same work as Evidence/);
+		expect(r.message).toMatch(/▣ agents/);
+		expect(r.message).toMatch(/tasks nest under the subagent/);
 		expect(r.message).toMatch(/Evidence: visual report of this board/);
+		expect(r.message).toMatch(/incremental checkins · stacked PRs · squash-merge/);
 		const data = r.data as {
 			grokBuild: {
 				mouseInteractive: boolean;

@@ -11,7 +11,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-
+import { inspectBindleProject } from "./bindle-inspect.js";
 import {
 	type DevBrowserSession,
 	type DevBrowserSessionOptions,
@@ -99,6 +99,22 @@ function readBindleProjectDir(
 	}
 }
 
+export function occupancyRunIsLive(
+	hoboHome: string,
+	stationId: string,
+	environment: string,
+): boolean {
+	const record = readRun(runPath(hoboHome, stationId, environment));
+	if (!record) return false;
+	if (record.pid === undefined) return false;
+	try {
+		process.kill(record.pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function readRun(path: string): RunRecord | undefined {
 	if (!existsSync(path)) return undefined;
 	try {
@@ -119,15 +135,14 @@ export function isStationResource(id: string): boolean {
 
 /** Hosting station plus its occupancy camp/bindle. Cannot self-stop. */
 export function isHostStationStack(id: string): boolean {
-	return (
-		isStationResource(id) ||
-		id === CODE_CAMP_ID ||
-		id === CODE_BINDLE_ID
-	);
+	return isStationResource(id) || id === CODE_CAMP_ID || id === CODE_BINDLE_ID;
 }
 
 const HOST_STATION_REFUSED =
 	"Stations can't shut themselves down — the hosting Station, camp:code, and bindle:code stay up";
+
+const HOST_STATION_SIDECAR_REFUSED =
+	"Stations can't stop their own occupancy sidecars — dashboard, Evidence, OTLP, and the rest stay up with the Station";
 
 export function isOccupancySidecar(id: string): boolean {
 	return isStationOccupancyEndpoint(id);
@@ -362,6 +377,9 @@ export function createOccupancyController(options: {
 			if (isHostStationStack(id)) {
 				throw new Error(HOST_STATION_REFUSED);
 			}
+			if (isOccupancySidecar(id)) {
+				throw new Error(HOST_STATION_SIDECAR_REFUSED);
+			}
 			const station = view();
 			if (!station.loggedIn) {
 				throw new Error(station.message);
@@ -373,9 +391,7 @@ export function createOccupancyController(options: {
 					station.environment,
 					true,
 				);
-				const yardId = id.endsWith(":flow")
-					? id.slice(0, -":flow".length)
-					: id;
+				const yardId = id.endsWith(":flow") ? id.slice(0, -":flow".length) : id;
 				for (const campId of campsInYard(
 					options.hoboHome,
 					station.stationId,
@@ -496,9 +512,11 @@ export function createOccupancyController(options: {
 					'No Bindle to start. Say "create a hello world app" first.',
 				);
 			}
-			const bindleName = id.startsWith("bindle:")
-				? id.slice("bindle:".length)
-				: (projectDir.split(/[/\\]/u).at(-1) ?? "app");
+			const bindleName =
+				inspectBindleProject(projectDir)?.name ??
+				(id.startsWith("bindle:")
+					? id.slice("bindle:".length)
+					: (projectDir.split(/[/\\]/u).at(-1) ?? "app"));
 			const session = await startDev({
 				projectDir,
 				hoboHome: options.hoboHome,
@@ -548,6 +566,9 @@ export function createOccupancyController(options: {
 			if (isHostStationStack(id)) {
 				throw new Error(HOST_STATION_REFUSED);
 			}
+			if (isOccupancySidecar(id)) {
+				throw new Error(HOST_STATION_SIDECAR_REFUSED);
+			}
 			const station = view();
 			if (controlsOccupancyFlow(id)) {
 				setOccupancyFlowActive(
@@ -556,9 +577,7 @@ export function createOccupancyController(options: {
 					station.environment,
 					false,
 				);
-				const yardId = id.endsWith(":flow")
-					? id.slice(0, -":flow".length)
-					: id;
+				const yardId = id.endsWith(":flow") ? id.slice(0, -":flow".length) : id;
 				for (const campId of campsInYard(
 					options.hoboHome,
 					station.stationId,

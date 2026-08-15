@@ -1,10 +1,7 @@
-import { describe, expect, it } from "vitest";
-
-import type { MuxRunner } from "../src/mux.js";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
+import { describe, expect, it } from "vitest";
 import {
 	classifyWindowName,
 	cycleInSessionWindow,
@@ -14,6 +11,7 @@ import {
 	pickCodingWindow,
 	pickSendWindow,
 } from "../src/in-session-panes.js";
+import type { MuxRunner } from "../src/mux.js";
 
 function fakeRunner(script: {
 	readonly versionOk?: boolean;
@@ -29,7 +27,10 @@ function fakeRunner(script: {
 				return { code: 0, stdout: "" };
 			}
 			if (args[0] === "list-windows") {
-				return { code: 0, stdout: script.windows ?? "codex\t%1\nhobo-code\t%0\n" };
+				return {
+					code: 0,
+					stdout: script.windows ?? "codex\t%1\nhobo-code\t%0\n",
+				};
 			}
 			if (args[0] === "capture-pane") {
 				return { code: 0, stdout: "codex › ready\n" };
@@ -95,7 +96,7 @@ describe("in-session panes", () => {
 		expect(panes.note).toMatch(/no agent CLI/i);
 	});
 
-	it("does not send to the harness pane even when it is focused", () => {
+	it("treats a focused harness as a steerable subagent", () => {
 		const target = pickSendWindow({
 			session: "hobo",
 			windows: [
@@ -107,7 +108,7 @@ describe("in-session panes", () => {
 			note: "",
 			tmux: true,
 		});
-		expect(target?.name).toBe("codex");
+		expect(target?.name).toBe("hobo-code");
 	});
 
 	it("seats detected coding CLIs and skips the harness", async () => {

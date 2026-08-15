@@ -168,6 +168,41 @@ describe("session replay deep bindle serve integration", () => {
 		expect(html).not.toContain("data-hobo-replay");
 	});
 
+	it("serves the Bo idle-animation overlay on the debug view even when the app is not HTML", async () => {
+		const definition = bindle("json-app", (b) => ({
+			web: b.web(
+				() => async () =>
+					new Response('{"ok":true}', {
+						headers: { "content-type": "application/json" },
+					}),
+			),
+		}));
+		const [web] = listServableEntrypoints(definition, {
+			env: { HOBO_REPLAY: "0" },
+			evidenceControlsUrl: "http://127.0.0.1:4319/__hobo/evidence/controls",
+		});
+
+		const debug = await web!.handler(
+			new Request("http://127.0.0.1:4000/?__hobo_debug=1"),
+		);
+		const html = await debug.text();
+		expect(debug.status).toBe(200);
+		expect(debug.headers.get("content-type")).toMatch(/text\/html/);
+		expect(debug.headers.get("cache-control")).toBe("no-store");
+		expect(debug.headers.get("x-hobo-evidence-overlay")).toBe("debug");
+		expect(html).toContain('class="bo"');
+		expect(html).toContain("/__hobo/evidence/bo-idle.png");
+		expect(html).toContain("@keyframes hobo-bo-idle");
+		expect(html).toContain("animation:hobo-bo-idle");
+		expect(html).toContain("HoBo evidence workspace");
+		expect(html).toContain("__hobo_evidence_raw=1");
+		expect(html).not.toContain("__hobo_debug=1");
+
+		const app = await web!.handler(new Request("http://127.0.0.1:4000/"));
+		expect(await app.text()).toBe('{"ok":true}');
+		expect(app.headers.get("x-hobo-evidence-overlay")).toBeNull();
+	});
+
 	it("composes the separate-origin evidence bridge after replay for HTML only", async () => {
 		const definition = bindle("evidence-app", (b) => ({
 			web: b.web(

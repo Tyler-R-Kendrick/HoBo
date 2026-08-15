@@ -288,6 +288,24 @@ describe("matchGolden / canonicalJson", () => {
 			diff: { path: "$[2]", expected: undefined, actual: 3 },
 		});
 	});
+
+	it("does not crash on circular or bigint values", () => {
+		const left: Record<string, unknown> = { label: "billing" };
+		left.self = left;
+		const right: Record<string, unknown> = { label: "billing" };
+		right.self = right;
+		expect(() => canonicalJson(left)).not.toThrow();
+		expect(canonicalJson(left)).toBe(canonicalJson(right));
+		expect(canonicalJson(1n)).toBe("1n");
+		expect(matchGolden(1n, 1n)).toEqual({ equal: true });
+		expect(matchGolden(1n, 1).equal).toBe(false);
+		expect(matchGolden(left, right)).toEqual({ equal: true });
+		expect(matchGolden(Number.NaN, null).equal).toBe(false);
+		expect(
+			matchGolden(new Date("2020-01-01T00:00:00.000Z"), new Date("2021-01-01"))
+				.equal,
+		).toBe(false);
+	});
 });
 
 describe("evaluatePromotionGate", () => {

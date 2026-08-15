@@ -43,7 +43,7 @@ import {
 // This path is the default local Yard realization:
 //   - composes a real Camp under the local Yard
 //   - external components only open public TCP (default: web)
-//   - private components (default: api) on hobo.internal mesh only
+//   - private components (default: api) on <bindle>.hobo.internal/<name> only
 //   - services__* + bindle env injection
 //
 // Process-local mesh is intentional (not sealed isolation). For isolate-per-
@@ -272,13 +272,15 @@ export async function serveBindleOnLocalYard(options: {
 			return httpResponseToWeb(httpRes);
 		});
 	}
-	const uninstallMesh = installInternalMesh(privateHandlers);
+	const uninstallMesh = installInternalMesh(privateHandlers, {
+		bindleName: definition.name,
+	});
 
 	const endpoints: ComponentEndpoint[] = [];
 	const serviceDiscovery: Record<string, string> = {};
 
 	for (const entry of privateEntries) {
-		const url = internalMeshBase(entry.name);
+		const url = internalMeshBase(definition.name, entry.name);
 		const key = serviceDiscoveryKey(entry.name);
 		endpoints.push({
 			resourceName: entry.name,

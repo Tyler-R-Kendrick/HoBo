@@ -137,6 +137,12 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 		if (node.classList.includes("overlay")) return lines;
 		return height === undefined ? lines : padLines(lines, height);
 	}
+	if (node.classList.includes("pane-list")) {
+		const lines = node.children.flatMap((child) => renderNode(child, width));
+		return height === undefined
+			? lines
+			: padLines(lines, height, scrollOf(node), originOf(node));
+	}
 	if (node.classList.includes("text-pane")) {
 		const lines = wrapText(collectText(node).join("\n"), width);
 		return height === undefined

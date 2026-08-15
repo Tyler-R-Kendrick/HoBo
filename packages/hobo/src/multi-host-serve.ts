@@ -259,7 +259,8 @@ export async function serveProjectOnHost(options: {
 			record.kind === "api" ||
 			record.kind === "service"
 		) {
-			resolved.httpUrl = resolved.httpUrl ?? internalMeshBase(name);
+			resolved.httpUrl =
+				resolved.httpUrl ?? internalMeshBase(definition.name, name);
 		}
 		const discovery = discoveryEnvForDependency(name, config, resolved);
 		Object.assign(bindleEnv, discovery);
@@ -295,13 +296,16 @@ export async function serveProjectOnHost(options: {
 	}
 
 	const privateHandlers = new Map<string, FetchHandler>(privateServe.handlers);
-	const uninstallMesh = installInternalMesh(privateHandlers, { bindleEnv });
+	const uninstallMesh = installInternalMesh(privateHandlers, {
+		bindleEnv,
+		bindleName: definition.name,
+	});
 
 	const endpoints: ComponentEndpoint[] = [];
 	const serviceDiscovery: Record<string, string> = {};
 
 	for (const entry of privateEntries) {
-		const url = internalMeshBase(entry.name);
+		const url = internalMeshBase(definition.name, entry.name);
 		const key = serviceDiscoveryKey(entry.name);
 		endpoints.push({
 			resourceName: entry.name,

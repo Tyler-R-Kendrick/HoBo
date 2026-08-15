@@ -15,6 +15,8 @@ const {
 	borderStrong,
 	inset,
 	codeBg,
+	nightBg,
+	nightRaised,
 } = DESIGN_COLOR_TOKENS;
 
 const GRAIN =
@@ -104,10 +106,43 @@ form button{width:100%;margin-top:.75rem;background:var(--ink);color:var(--paper
 @media (max-width: 32rem){.scoreboard{grid-template-columns:repeat(2,minmax(0,1fr))}}
 body::after{content:"";position:fixed;inset:0;z-index:2147483646;pointer-events:none;opacity:.06;mix-blend-mode:multiply;background-image:url("${GRAIN}");background-size:240px 240px}
 *{scrollbar-color:var(--ink) var(--inset);scrollbar-width:thick}
-@media (max-width: 32rem){body{padding:.75rem}h1{font-size:1.6rem}}
+@media (max-width: 32rem){body{padding:.75rem}h1{font-size:1.5rem}}
 @media (max-width: 20rem){.desk .actions{grid-template-columns:1fr}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important;transition-delay:0s!important;scroll-behavior:auto!important}h1,button,.action{transform:none}button:active,.action:active{transform:none}body::after{opacity:0}}
+${rubberhoseDayNightCss()}
 `;
+}
+
+/** Day/night inversion. OS preference until the user picks; `data-theme` wins. */
+export function rubberhoseDayNightCss(): string {
+	return `
+html{color-scheme:light dark}
+:root,:root[data-theme="light"]{color-scheme:light;--ink:${ink};--paper:${paper};--cream:${cream};--mute:${mute};--faint:${faint};--spark:${spark};--go:${go};--soot:${soot};--border:${border};--border-strong:${borderStrong};--inset:${inset};--code-bg:${codeBg}}
+:root[data-theme="dark"]{--ink:${cream};--paper:${nightRaised};--cream:${nightBg};--mute:${borderStrong};--faint:${border};--spark:${spark};--go:${go};--soot:${cream};--border:${mute};--border-strong:${mute};--inset:${nightRaised};--code-bg:${nightRaised}}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:${cream};--paper:${nightRaised};--cream:${nightBg};--mute:${borderStrong};--faint:${border};--spark:${spark};--go:${go};--soot:${cream};--border:${mute};--border-strong:${mute};--inset:${nightRaised};--code-bg:${nightRaised}}}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) body::after{mix-blend-mode:screen;opacity:.08}}
+:root[data-theme="dark"] body::after{mix-blend-mode:screen;opacity:.08}
+.chrome-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.theme-toggle{flex:0 0 auto}
+.theme-toggle .sun{display:none}
+.theme-toggle .moon{display:block}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .theme-toggle .sun{display:block}:root:not([data-theme="light"]) .theme-toggle .moon{display:none}}
+`;
+}
+
+/** Runs in <head> before paint so OS / stored night does not flash day. */
+export function rubberhoseThemeBootScript(): string {
+	return `(function(){try{var s=localStorage.getItem("hobo-theme");var t=s==="light"||s==="dark"?s:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`;
+}
+
+export function rubberhoseThemeToggleMarkup(): string {
+	return `<button type="button" class="theme-toggle action" id="theme-toggle" aria-label="night" title="night" aria-pressed="false"><svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>`;
+}
+
+export function rubberhoseThemeToggleScript(): string {
+	return `(function(){var root=document.documentElement;var btn=document.getElementById("theme-toggle");var media=matchMedia("(prefers-color-scheme: dark)");var sync=function(){var night=root.getAttribute("data-theme")==="dark";if(btn){btn.setAttribute("aria-pressed",String(night));btn.setAttribute("aria-label",night?"day":"night");btn.setAttribute("title",night?"day":"night");}};sync();btn&&btn.addEventListener("click",function(){var next=root.getAttribute("data-theme")==="dark"?"light":"dark";root.setAttribute("data-theme",next);try{localStorage.setItem("hobo-theme",next);}catch(e){}sync();});media.addEventListener("change",function(){try{if(localStorage.getItem("hobo-theme"))return;}catch(e){}root.setAttribute("data-theme",media.matches?"dark":"light");sync();});})();`;
 }
 
 /** Overlay launcher + panel — same tokens, no SaaS elevation. */

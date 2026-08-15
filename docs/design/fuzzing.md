@@ -85,8 +85,17 @@ code uses the same oracles via `fuzzTrainable` — the silver eval suite
 (`hobo.evals.trainable-silver/v1`) scores those verdicts next to the gold
 exact-match suite. The evals sidecar promotion gate folds **every** gold and
 silver report, so a silver miss cannot hide behind a green gold score.
-Identity/echo trainables fail silver fail-closed because they replay
-polluted probes. Thenable (async) trainables need a sync wrapper.
+A `/run` with gold seeds but no actuals and no invoker is a silver miss,
+not a vacuous pass. Circular, bigint, `NaN`, `Date`, and `Map` values must
+not crash gold `canonicalJson` or the silver harness — they serialize with
+cycle marks / `1n` / `NaN` and fail closed on mismatch. Corpus-only
+evidence (`silverEvidenceFromCorpus`) cannot claim `seedHolds`. Live
+`.js` / `.mjs` / `.cjs` exports load as invokers, including a compiled
+sibling next to a TypeScript `"use training"` region. A live invoker fills
+unposted gold actuals so exact-match is real. Identity/echo trainables
+fail silver fail-closed because they replay polluted probes. Thenable
+(async) trainables need a sync wrapper. TypeScript-only regions still need
+posted actuals or an in-process invokers map.
 Later packages import the same `fuzz*` entrypoints rather than growing a
 second fuzzer stack.
 

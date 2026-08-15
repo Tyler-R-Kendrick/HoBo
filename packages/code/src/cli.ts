@@ -12,8 +12,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { runAgentsCli } from "./agent-harness-init.js";
+import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
 import { allocateAgentWorkspaces } from "./agent-workspaces.js";
 import {
@@ -24,10 +24,17 @@ import {
 	readAuthSession,
 	resolveAuthenticatedStationId,
 } from "./auth.js";
+import { inspectBindleProject } from "./bindle-inspect.js";
+import {
+	type ChatSessionRecord,
+	resolveChatSession,
+	saveChatSession,
+} from "./chat-sessions.js";
 import {
 	claudeCodeGuide,
 	renderClaudeCodeGuideText,
 } from "./claude-code-guide.js";
+import { compactTranscript } from "./compact.js";
 import {
 	type ConfigStackId,
 	configHumanSummary,
@@ -63,7 +70,6 @@ import {
 } from "./editor-bridge.js";
 import { describeEveSubagentSurface } from "./eve.js";
 import { debugViewUrl } from "./evidence-overlay.js";
-import { loopbackFetchUrl } from "./occupancy-endpoints.js";
 import { matchExampleRequest, materializeExample } from "./example-catalog.js";
 import {
 	createBudgetTracker,
@@ -81,11 +87,13 @@ import {
 	inspectHarnessSurface,
 } from "./harness-surface.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
+import { runAliasCli, runHistoryCli } from "./history-cli.js";
 import {
 	cleanupIsolation,
 	createIsolationContext,
 	listSandboxOrphans,
 } from "./isolation.js";
+import { createLocalSessionControl } from "./local-session-control.js";
 import {
 	brokerPaneSession,
 	brokerPanes,
@@ -104,6 +112,7 @@ import {
 	safeWindowName,
 	tmuxRunner,
 } from "./mux.js";
+import { loopbackFetchUrl } from "./occupancy-endpoints.js";
 import {
 	CODE_FEATURE_DEFAULTS,
 	CODE_FEATURE_FLAGS,
@@ -118,13 +127,6 @@ import {
 	shortNamedHost,
 } from "./remote.js";
 import {
-	resolveChatSession,
-	saveChatSession,
-	type ChatSessionRecord,
-} from "./chat-sessions.js";
-import { compactTranscript } from "./compact.js";
-import { createLocalSessionControl } from "./local-session-control.js";
-import {
 	type RemoteSessionServe,
 	runResidentSessionCli,
 } from "./resident-session-cli.js";
@@ -135,7 +137,6 @@ import { describeSecureSandboxStack } from "./sandbox-stack.js";
 import { scaffoldHighValueTemplate } from "./scaffolding.js";
 import { startCodeSession } from "./session.js";
 import { startLocalDashboard } from "./session-dashboard.js";
-import { runAliasCli, runHistoryCli } from "./history-cli.js";
 import {
 	occupancyFlowIsActive,
 	persistOccupancyRun,
@@ -621,7 +622,7 @@ function helpTextPlain(): string {
 		"  attach     Dev-terminal attach (tmux/mosh/Tailscale-shaped)",
 		"  resume     Reopen the last (or given) interactive chat",
 		"  compact    Shrink working context; keep the durable journal",
-		"  tasks      Background task board (Grok Build–shaped)",
+		"  tasks      Claimed work under each subagent (Agents board)",
 		"",
 		"Craft & cost:",
 		"  scaffold   Copy a shipped repo example (hello-world, barebones, …)",
@@ -914,7 +915,7 @@ const VERB_HELP_PLAIN: Record<
 		"See also: hobo-code help · hobo-code scaffold · hobo-code tasks · hobo-code isolate",
 	],
 	tasks: [
-		"hobo-code tasks — background task board (Grok Build–shaped)",
+		"hobo-code tasks — claimed work under each subagent (same Agents board)",
 		"",
 		"Usage:",
 		"  hobo-code tasks",
@@ -923,8 +924,9 @@ const VERB_HELP_PLAIN: Record<
 		"For AI-native Grok Build users:",
 		"  · Grok Build: fullscreen mouse TUI, tasks pane, click still-running,",
 		"    workflows overlay, subagents, headless -p, Plan Mode",
-		"  · hobo-code tasks: agent task board + clickable task-row story,",
-		"    durable Local World workflow steps, grokBuild parity JSON card",
+		"  · hobo-code tasks: Agents board with tasks nested under the claiming",
+		"    subagent, clickable task-row story, durable Local World workflow steps,",
+		"    grokBuild parity JSON card",
 		"",
 		"What you see:",
 		"  · Subagent/task/watcher rows with semantic glyphs (○ idle · ● work · …)",
@@ -1025,7 +1027,7 @@ const VERB_HELP_PLAIN: Record<
 		"Detection is evidence-based: a binary on PATH and/or a known config",
 		"directory. See hobo-code agent for what was found and why.",
 		"",
-		"Stay in this TTY (hobo-code · Tab panes). Optional out-of-session: tmux attach -t hobo",
+		"Stay in this TTY (hobo-code · chat first). Optional out-of-session: tmux attach -t hobo",
 	],
 	attach: [
 		"hobo-code attach — dev-terminal attach (tmux / mosh / Tailscale-shaped)",
@@ -1600,6 +1602,7 @@ export function applyDenseChrome(message: string): string {
 		"◎ re": "◎ re",
 		"◎ attach": "◎ at",
 		"◎ resume": "◎ re",
+		"▣ agents": "▣ ag",
 		"▣ tasks": "▣ tk",
 		"▣ guide": "▣ gd",
 		"◈ b": "◈ b",
@@ -2695,7 +2698,7 @@ export async function runHoboCodeCli(
 				),
 				host
 					? `out-of-session · ${attachCommand(plan.session, host)}`
-					: `in-session · stay in hobo-code · Tab panes · optional ${attachCommand(plan.session)}`,
+					: `in-session · stay in hobo-code · chat first · optional ${attachCommand(plan.session)}`,
 			]);
 			return applied.ok
 				? ok("HOBO_CODE_MUX", text, {
@@ -2863,9 +2866,7 @@ export async function runHoboCodeCli(
 			id: chat.id,
 			cwd: chat.cwd,
 			messages: chat.messages,
-			...(plan.droppedCount > 0
-				? { workingMessages: plan.working }
-				: {}),
+			...(plan.droppedCount > 0 ? { workingMessages: plan.working } : {}),
 			...(chat.stationLabel !== undefined
 				? { stationLabel: chat.stationLabel }
 				: {}),
@@ -2955,11 +2956,7 @@ export async function runHoboCodeCli(
 				);
 			}
 			if (
-				!occupancyFlowIsActive(
-					hoboHome,
-					station.stationId,
-					station.environment,
-				)
+				!occupancyFlowIsActive(hoboHome, station.stationId, station.environment)
 			) {
 				return fail(
 					"HOBO_CODE_DEV_HALTED",
@@ -3011,8 +3008,11 @@ export async function runHoboCodeCli(
 				process.once("SIGTERM", () => stop(143));
 			}
 			try {
+				const resolved = resolveRunnableProject(projectDir) ?? projectDir;
 				const bindleName =
-					resolveRunnableProject(projectDir)?.split(/[/\\]/u).at(-1) ?? "app";
+					inspectBindleProject(resolved)?.name ??
+					resolved.split(/[/\\]/u).at(-1) ??
+					"app";
 				recordDevDeployment({
 					hoboHome,
 					scope: {
@@ -3023,7 +3023,7 @@ export async function runHoboCodeCli(
 						...(station.branch ? { branch: station.branch } : {}),
 					},
 					bindleName,
-					projectDir,
+					projectDir: resolved,
 					appUrl: deployed.appUrl,
 					debugUrl: deployed.debugUrl,
 					controlsUrl: deployed.controlsUrl,

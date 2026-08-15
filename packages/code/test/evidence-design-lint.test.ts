@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -107,9 +110,33 @@ describe("Evidence SPA follows DESIGN.md tokens", () => {
 		expect(reportHtml).toContain("box-shadow:4px 4px 0");
 		expect(reportHtml).toMatch(/border:\s*3px solid/u);
 		expect(reportHtml).toContain("prefers-reduced-motion: reduce");
-		expect(reportHtml).not.toContain("color-scheme: dark");
+		expect(reportHtml).toContain("prefers-color-scheme: dark");
+		expect(reportHtml).toContain("data-theme");
+		expect(reportHtml).toContain("theme-toggle");
+		expect(reportHtml).toContain("hobo-theme");
 		expect(reportHtml).toContain("system-ui");
 		expect(liveReportHtml).toContain('class="action"');
+	});
+
+	it("keeps the occupancy dashboard on DESIGN.md tokens", () => {
+		const source = readFileSync(
+			join(dirname(fileURLToPath(import.meta.url)), "../src/session-dashboard.ts"),
+			"utf8",
+		);
+		expect(source).toContain("evidenceDocumentCss");
+		expect(source).toContain("rubberhoseThemeBootScript");
+		expect(source).toContain("theme-toggle");
+		expect(source).toContain(":focus-visible");
+		expect(source).not.toContain("window.alert");
+		for (const hex of TUI_FORBIDDEN_HEX) {
+			expect(source, `dashboard must not use ${hex}`).not.toContain(hex);
+		}
+		for (const hex of hexLiterals(source)) {
+			expect(
+				DESIGN_COLOR_VALUES.has(expandHex(hex)),
+				`dashboard hex ${hex} must be a DESIGN.md token`,
+			).toBe(true);
+		}
 	});
 
 	it("paints the desk with thick ink and Chewy signage", () => {

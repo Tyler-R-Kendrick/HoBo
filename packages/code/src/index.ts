@@ -1,4 +1,22 @@
 export {
+	type HarnessSpec,
+	loadHarnessCatalog,
+	registerHarness,
+	resetRegisteredHarnesses,
+} from "./agent-harness-catalog.js";
+export {
+	AGENTS_INIT_SCHEMA,
+	AGENTS_REGISTRY_SCHEMA,
+	type AgentsInitPlan,
+	agentsRegistryPath,
+	applyAgentsInit,
+	discoverEveAgentTrees,
+	formatAgentsInitPlan,
+	planAgentsInit,
+	resolveAgentsDestination,
+	runAgentsCli,
+} from "./agent-harness-init.js";
+export {
 	type AgentAuthModeCard,
 	type AgentProtocolCard,
 	type AgentSurfaceStatus,
@@ -6,6 +24,16 @@ export {
 	CODE_AGENT_SCHEMA,
 	inspectAgentSurface,
 } from "./agent-surface.js";
+export {
+	type AgentWorkBoard,
+	CLAIMED_WORK_DELIVERY,
+	claimedWorkDeliveryPlan,
+	claimTaskForAgent,
+	groupTasksUnderAgents,
+	listWorkClaims,
+	type WorkClaim,
+	workspaceForAgent,
+} from "./agent-work.js";
 export {
 	ATOM_EMBEDDER_DIM,
 	ATOM_EMBEDDER_HASH,
@@ -51,6 +79,11 @@ export {
 	resolveStationTarget,
 } from "./auth.js";
 export {
+	inspectBindleProject,
+	inspectBindleSource,
+	localBindleCapabilities,
+} from "./bindle-inspect.js";
+export {
 	BROWSER_RECORDING_SCHEMA,
 	type BrowserRecordingAction,
 	type BrowserRecordingCheckpoint,
@@ -58,6 +91,21 @@ export {
 	type CompletedBrowserRecording,
 	parseBrowserRecording,
 } from "./browser-recording.js";
+export {
+	answerBtw,
+	type BtwSession,
+	type BtwSnapshot,
+	captureBtwSnapshot,
+	matchBtwInput,
+} from "./btw.js";
+export {
+	type ChatSessionRecord,
+	formatShellCloseout,
+	listChatSessions,
+	loadChatSession,
+	resolveChatSession,
+	saveChatSession,
+} from "./chat-sessions.js";
 export {
 	type ClaudeCodeFeatureMapRow,
 	type ClaudeCodeGuide,
@@ -76,6 +124,15 @@ export {
 	runHoboCodeCli,
 	suggestVerbTypo,
 } from "./cli.js";
+export {
+	type CommandSensitivity,
+	classifyCommand,
+	redactCommand,
+} from "./command-redaction.js";
+export {
+	compactTranscript,
+	estimateTokens,
+} from "./compact.js";
 export {
 	CODE_CONFIG_SCHEMA,
 	CONFIG_STACK_IDS,
@@ -101,6 +158,11 @@ export {
 	cursorGuide,
 	renderCursorGuideText,
 } from "./cursor-guide.js";
+export {
+	dashboardListenUrl,
+	dashboardNamedUrl,
+	isDashboardOpenableUrl,
+} from "./dashboard-links.js";
 export { resolveHoboBin, resolveHoboSpawn } from "./dev-browser.js";
 export {
 	COMPUTE_ISOLATION_CLASSES,
@@ -140,6 +202,23 @@ export {
 	inspectEditorBridge,
 	type PaneLayout,
 } from "./editor-bridge.js";
+export {
+	type CampEvalSidecar,
+	campEvalSidecar,
+	EVAL_SIDECAR_HOSTING,
+	EVAL_SIDECAR_NAME,
+	inspectProjectEvalTests,
+	inspectTrainableRegions,
+	type ProjectEvalTests,
+	type TrainableRegion,
+} from "./eval-sidecar.js";
+export {
+	assembleCampEvalSidecar,
+	type EvalSidecarRun,
+	type EvalSidecarServer,
+	runEvalSidecarSuite,
+	startEvalSidecar,
+} from "./eval-sidecar-server.js";
 export {
 	type DefineEveAgentInput,
 	defaultHoboCodeEveAgents,
@@ -217,6 +296,13 @@ export {
 	renderExampleCatalogInstructions,
 } from "./example-catalog.js";
 export {
+	createStationExperimentEngine,
+	EXPERIMENT_SIDECAR_HOSTING,
+	EXPERIMENT_SIDECAR_NAME,
+	type ExperimentSidecarServer,
+	startExperimentSidecar,
+} from "./experiment-sidecar-server.js";
+export {
 	type BudgetPolicy,
 	createBudgetTracker,
 	DEFAULT_BUDGET_POLICY,
@@ -268,27 +354,11 @@ export {
 	inspectHermeticEnv,
 } from "./hermetic-env.js";
 export {
-	compactTranscript,
-	estimateTokens,
-} from "./compact.js";
-export {
-	AGENTS_INIT_SCHEMA,
-	AGENTS_REGISTRY_SCHEMA,
-	type AgentsInitPlan,
-	agentsRegistryPath,
-	applyAgentsInit,
-	discoverEveAgentTrees,
-	formatAgentsInitPlan,
-	planAgentsInit,
-	resolveAgentsDestination,
-	runAgentsCli,
-} from "./agent-harness-init.js";
-export {
-	loadHarnessCatalog,
-	registerHarness,
-	resetRegisteredHarnesses,
-	type HarnessSpec,
-} from "./agent-harness-catalog.js";
+	HISTORY_SIDECAR_HOSTING,
+	HISTORY_SIDECAR_NAME,
+	type HistorySidecarServer,
+	startHistorySidecar,
+} from "./history-sidecar-server.js";
 export {
 	classifyWindowName,
 	cycleInSessionWindow,
@@ -304,22 +374,17 @@ export {
 	sendToInSessionPane,
 } from "./in-session-panes.js";
 export {
-	formatShellCloseout,
-	listChatSessions,
-	loadChatSession,
-	resolveChatSession,
-	saveChatSession,
-	type ChatSessionRecord,
-} from "./chat-sessions.js";
-export {
 	appendAssistant,
 	appendProduct,
 	applyBtwPrompt,
 	applyCompact,
 	buildShellTree,
 	createInitialShellState,
+	cycleFocus,
 	DEFAULT_SLASH_ITEMS,
+	hasAgentWork,
 	type InteractiveShellState,
+	openAgentsSurface,
 	PRODUCT_NOT_PI,
 	reduceShellKey,
 	renderShellFrame,
@@ -343,6 +408,16 @@ export {
 	readHandback,
 	resetIsolationRegistry,
 } from "./isolation.js";
+export {
+	KMS_CRYPTO_PORT,
+	KMS_SECRETS_PORT,
+	KMS_SIDECAR_HOSTING,
+	KMS_SIDECAR_NAME,
+	type KmsSidecarServer,
+	STATION_KMS_KEY,
+	StationKms,
+	startKmsSidecar,
+} from "./kms-sidecar-server.js";
 export {
 	createLocalSessionControl,
 	type LocalSessionControl,
@@ -408,6 +483,14 @@ export {
 export { createReviewRuntime } from "./review/review-runtime.js";
 export { renderReviewPane } from "./review/review-terminal.js";
 export {
+	createStationRolloutEngine,
+	promoteStationRollout,
+	ROLLOUT_SIDECAR_HOSTING,
+	ROLLOUT_SIDECAR_NAME,
+	type RolloutSidecarServer,
+	startRolloutSidecar,
+} from "./rollout-sidecar-server.js";
+export {
 	assertMediatedOnly,
 	assertNoVendoredTokenTools,
 	EXTERNAL_TOKEN_TOOLS,
@@ -458,6 +541,11 @@ export {
 	type SessionControlServerOptions,
 	startSessionControlServer,
 } from "./session-control-server.js";
+export { startLocalDashboard } from "./session-dashboard.js";
+export {
+	createResourceLifecycle,
+	type LifecycleSnapshot,
+} from "./session-lifecycle.js";
 export {
 	createSessionOrchestrator,
 	type SessionDeliveryApproval,
@@ -469,113 +557,39 @@ export {
 	sessionProcessRunner,
 } from "./session-orchestrator.js";
 export {
-	inspectBindleProject,
-	inspectBindleSource,
-	localBindleCapabilities,
-} from "./bindle-inspect.js";
-export {
-	type CampEvalSidecar,
-	campEvalSidecar,
-	EVAL_SIDECAR_HOSTING,
-	EVAL_SIDECAR_NAME,
-	inspectProjectEvalTests,
-	inspectTrainableRegions,
-	type ProjectEvalTests,
-	type TrainableRegion,
-} from "./eval-sidecar.js";
-export {
-	assembleCampEvalSidecar,
-	runEvalSidecarSuite,
-	startEvalSidecar,
-	type EvalSidecarRun,
-	type EvalSidecarServer,
-} from "./eval-sidecar-server.js";
-export {
-	createStationRolloutEngine,
-	promoteStationRollout,
-	ROLLOUT_SIDECAR_HOSTING,
-	ROLLOUT_SIDECAR_NAME,
-	startRolloutSidecar,
-	type RolloutSidecarServer,
-} from "./rollout-sidecar-server.js";
-export {
-	createStationExperimentEngine,
-	EXPERIMENT_SIDECAR_HOSTING,
-	EXPERIMENT_SIDECAR_NAME,
-	startExperimentSidecar,
-	type ExperimentSidecarServer,
-} from "./experiment-sidecar-server.js";
-export {
-	HISTORY_SIDECAR_HOSTING,
-	HISTORY_SIDECAR_NAME,
-	startHistorySidecar,
-	type HistorySidecarServer,
-} from "./history-sidecar-server.js";
-export {
-	openSessionShellStore,
-	SESSION_SHELL_SCHEMA,
-	sessionShellStorePath,
-	type CommandEvent,
-	type SessionShellStore,
-} from "./session-shell-store.js";
-export {
-	classifyCommand,
-	redactCommand,
-	type CommandSensitivity,
-} from "./command-redaction.js";
-export {
-	KMS_CRYPTO_PORT,
-	KMS_SECRETS_PORT,
-	KMS_SIDECAR_HOSTING,
-	KMS_SIDECAR_NAME,
-	startKmsSidecar,
-	StationKms,
-	STATION_KMS_KEY,
-	type KmsSidecarServer,
-} from "./kms-sidecar-server.js";
-export {
-	assembleSessionResources,
-	formatSessionResources,
-	looksLikeSecretMaterial,
-	recordDevDeployment,
-	recordSessionResources,
-	SESSION_RESOURCES_SCHEMA,
-	CODE_BINDLE_ID,
-	CODE_CAMP_ID,
-	type OccupancyBindleManifest,
-	type OccupancyCampConfig,
-	type OccupancyManagedResource,
-	type SessionResourceInventory,
-	userCampId,
-} from "./session-resources.js";
-export {
-	createResourceLifecycle,
-	type LifecycleSnapshot,
-} from "./session-lifecycle.js";
-export {
 	createOtelSink,
 	fleetView,
 	projectOccupancyTelemetry,
 } from "./session-otel.js";
-export { startLocalDashboard } from "./session-dashboard.js";
 export {
-	dashboardListenUrl,
-	dashboardNamedUrl,
-	isDashboardOpenableUrl,
-} from "./dashboard-links.js";
-export {
-	createOccupancyController,
 	controlsBindleProcess,
+	createOccupancyController,
+	occupancyRunIsLive,
+	persistOccupancyRun,
 } from "./session-resource-control.js";
 export {
-	formatSidecarStrap,
-	readStationSidecars,
-	sidecarsEnabled,
-	attachStationSidecars,
-	startStationSidecars,
-	stopStationSidecars,
-	STATION_SIDECARS_SCHEMA,
-} from "./station-sidecars.js";
+	assembleSessionResources,
+	bindleMeshUrl,
+	CODE_BINDLE_ID,
+	CODE_CAMP_ID,
+	formatSessionResources,
+	looksLikeSecretMaterial,
+	type OccupancyBindleManifest,
+	type OccupancyCampConfig,
+	type OccupancyManagedResource,
+	recordDevDeployment,
+	recordSessionResources,
+	SESSION_RESOURCES_SCHEMA,
+	type SessionResourceInventory,
+	userCampId,
+} from "./session-resources.js";
+export {
+	type CommandEvent,
+	openSessionShellStore,
+	SESSION_SHELL_SCHEMA,
+	type SessionShellStore,
+	sessionShellStorePath,
+} from "./session-shell-store.js";
 export { createDefaultShellHost } from "./shell-host.js";
 export {
 	BO_CELL_HEIGHT,
@@ -626,6 +640,15 @@ export {
 	stationDevEnv,
 } from "./station-session.js";
 export {
+	attachStationSidecars,
+	formatSidecarStrap,
+	readStationSidecars,
+	STATION_SIDECARS_SCHEMA,
+	sidecarsEnabled,
+	startStationSidecars,
+	stopStationSidecars,
+} from "./station-sidecars.js";
+export {
 	buildMultiplexerStatus,
 	copyOnHighlight,
 	createPane,
@@ -640,6 +663,13 @@ export {
 	setPaneState,
 } from "./tui.js";
 export {
+	BROADCAST,
+	BROADCAST_CHROME_ROWS,
+	BROADCAST_INNER_INSET,
+	broadcastFrame,
+} from "./tui-broadcast.js";
+export {
+	AgentPanes,
 	ApprovalDialog,
 	BroadcastFrame,
 	BtwAside,
@@ -651,20 +681,8 @@ export {
 	SlashPalette,
 	StatusStrap,
 	TextPane,
+	WelcomeSurface,
 } from "./tui-components.js";
-export {
-	answerBtw,
-	captureBtwSnapshot,
-	matchBtwInput,
-	type BtwSession,
-	type BtwSnapshot,
-} from "./btw.js";
-export {
-	BROADCAST,
-	BROADCAST_CHROME_ROWS,
-	BROADCAST_INNER_INSET,
-	broadcastFrame,
-} from "./tui-broadcast.js";
 export { renderTuiTree } from "./tui-render.js";
 export { TUI_TOKENS } from "./tui-tokens.js";
 export {

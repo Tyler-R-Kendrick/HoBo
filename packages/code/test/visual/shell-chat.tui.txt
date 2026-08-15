@@ -7,9 +7,9 @@
  █▌                                                                  ▐█▒
  █▌              a coding harness that rides the rails               ▐█▒
  █▌                                                                  ▐█▒
- █▌talk      Type+Enter · seated Codex/Claude writes app             ▐█▒
+ █▌talk      Type+Enter stays in chat · Tab into a working subagent …▐█▒
  █▌patterns  /templates lists patterns                               ▐█▒
- █▌focus     Tab · panes / tasks / status / resources                ▐█▒
+ █▌focus     Tab · chat first · agents hold claimed tasks            ▐█▒
  █▌     [ /dev ]  [ /templates ]  [ /btw ]  [ /hobo ]  [ /auth ]     ▐█▒
  ▀█▄    ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▄█▀▒
   ▀▀▀██████████████████████████████████████████████████████████████▀▀▀ ▒

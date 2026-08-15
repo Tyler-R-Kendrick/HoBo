@@ -8,7 +8,7 @@ This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub
 | **gh-stack** (repo-local) | skill + CLI ext | Non-interactive rules for official `github/gh-stack` (`gh extension install github/gh-stack`). | `gh stack init\|add\|submit\|sync\|merge` |
 | **improve** (`shadcn/improve`) | skill (read-only) | Audits the codebase and writes prioritized implementation **plans** to `docs/plans/` for other agents to execute. Never edits source. | `/improve`, `/improve quick`, `/improve security`, `/improve execute <plan>` |
 | **superpowers** (`obra/Superpowers`) | plugin (skills library) | A development **methodology**: structured **brainstorming**, plan-writing, TDD, systematic debugging, subagent-driven dev, and code-review workflows. No keys. | `brainstorming`, `writing-plans`, `requesting-code-review`, `subagent-driven-development`, `systematic-debugging`, … (14 skills) |
-| **impeccable** (`pbakaus/impeccable`) | skill (design) | A **design language** for AI harnesses: 23 commands from `shape`/`critique`/`audit`/`polish` to dials like `bolder`/`quieter`/`colorize`. No keys, but not offline: a daily update check to `impeccable.style` from `scripts/context.mjs` run as a command — the per-edit hook does **not** fetch (disabled here by `IMPECCABLE_NO_UPDATE_CHECK=1` in `.claude/settings.json`, which covers Claude Code; the config-file opt-out is cwd-relative), and image/concept commands reach `api.openai.com` / `impeccable.style` when invoked. Installs an always-on per-edit hook for Codex/Cursor/Copilot (not Claude Code). `/impeccable init` writes `PRODUCT.md` only — `site/DESIGN.md` stays the design authority (ADR-0149). | `impeccable`, `/impeccable shape`, `/impeccable critique`, `/impeccable polish`, … (23) |
+| **impeccable** (`pbakaus/impeccable`) | skill (design) | A **design language** for AI harnesses: 23 commands from `shape`/`critique`/`audit`/`polish` to dials like `bolder`/`quieter`/`colorize`. **Always-on for UI/TUI/dashboard work** — do not wait for the user to invoke it (see **Design system + lint** below). No keys, but not offline: a daily update check to `impeccable.style` from `scripts/context.mjs` run as a command — the hook does **not** fetch (disabled here by `IMPECCABLE_NO_UPDATE_CHECK=1` in `.claude/settings.json`). `/impeccable init` writes `PRODUCT.md` only — `site/DESIGN.md` stays the design authority (ADR-0149). | automatic on visual surfaces; `impeccable critique` / `audit` / `polish` |
 | **Higgsfield MCP** (`mcp.higgsfield.ai`) | MCP (hosted, official) | Image/video generation across 30+ models. Account **OAuth**, no API key stored in-repo; project-scoped so it needs human approval before use. Sends prompts to Higgsfield. | `mcp__higgsfield__*` |
 | **mattpocock/skills** (`mattpocock/skills`) | skills collection | Engineering disciplines: **`grill-with-docs`** (relentless design interview that writes ADRs + glossary), `domain-modeling`, `codebase-design`, `diagnosing-bugs`, `tdd`, `to-prd`, `to-issues`, `prototype`, … No keys. | `/grill-with-docs`, `/ask-matt`, `/domain-modeling`, `/setup-matt-pocock-skills` (one-time config) |
 | **caveman** (`JuliusBrussee/caveman`) | skill + rules | Compresses **agent output** (~65–87% fewer tokens) while keeping technical accuracy. | active by default (see below); `/caveman [lite\|full\|ultra\|wenyan]`, `/caveman-commit`, `/caveman-review`, `/caveman-stats` |
@@ -21,7 +21,7 @@ This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub
 | **gbrain** (`garrytan/gbrain`) | MCP server | Knowledge-graph **memory**: capture notes, hybrid search + synthesis. Fail-closed launcher `scripts/agent-mcp-gbrain.sh` (AUTH.md remediation when binary/key missing). | MCP tools after `gbrain init` + embedding key; CLI `gbrain capture/search/query` |
 | **SkillOpt** (`microsoft/SkillOpt`) | optimizer / research harness | Trains reusable markdown skills from scored rollouts and exports `best_skill.md` artifacts for multiple harnesses. Optional, not runtime config. | `skillopt-train`; `scripts/skillopt-sleep.sh status|dry-run|run|adopt`; installed from microsoft/SkillOpt |
 
-How they fit together: **Serena** gives agents semantic code tools, **superpowers** + **mattpocock/skills** supply the *workflow & rigor* (brainstorm → grill-with-docs → plan → build/TDD → review), **improve** decides *what* to do, **ponytail** keeps the code itself minimal (YAGNI / stdlib-first), **headroom** + **RTK** + **caveman** keep token use down (context-in, shell-output, and agent-output — complementary), **gbrain** remembers across sessions, and **SkillOpt** is reserved for offline improvement of reusable skills when we have scored tasks.
+How they fit together: **Serena** gives agents semantic code tools, **superpowers** + **mattpocock/skills** supply the *workflow & rigor* (brainstorm → grill-with-docs → plan → build/TDD → review), **improve** decides *what* to do, **ponytail** keeps the code itself minimal (YAGNI / stdlib-first), **impeccable** + `pnpm run design:lint` are the standing visual quality loop (not opt-in), **headroom** + **RTK** + **caveman** keep token use down (context-in, shell-output, and agent-output — complementary), **gbrain** remembers across sessions, and **SkillOpt** is reserved for offline improvement of reusable skills when we have scored tasks.
 
 ## Repo-local repo skill
 
@@ -227,6 +227,44 @@ These rules are harness-neutral and apply to Claude Code, Cursor, Codex, Copilot
 
 Canonical detail lives in [`docs/design/technical-standards.md`](docs/design/technical-standards.md).
 
+## Design system + lint (always-on)
+
+Visual work is a first-class gate, same as typecheck and PACT. **Do not wait for the user to say “run design lint” or “use /impeccable.”** If you touch a visual surface, apply the design system while editing and run the linters before you claim the work is done.
+
+A change is visual when it touches any of: `site/`, `packages/code` TUI/dashboard/Evidence HTML, `packages/control-yard`, `packages/pixel-village`, a package `DESIGN.md`, CSS/HTML chrome, `tui-*.ts(x)`, `interactive-shell.ts`, `session-dashboard.ts`, `evidence-chrome.ts`, or rendered copy/color/layout/motion.
+
+### Authority
+
+| Surface | Binding DESIGN.md | Implementation |
+|---|---|---|
+| Public site | [`site/DESIGN.md`](site/DESIGN.md) | `site/src/styles/` |
+| `hobo-code` TUI + occupancy dashboard + Evidence | [`packages/code/DESIGN.md`](packages/code/DESIGN.md) | `tui-tokens.ts`, `tui-components.tsx`, `evidence-chrome.ts` |
+| Control-yard | [`packages/control-yard/DESIGN.md`](packages/control-yard/DESIGN.md) | that package only |
+| Pixel village | [`packages/pixel-village/DESIGN.md`](packages/pixel-village/DESIGN.md) | that package only (ADR-0149) |
+
+`site/DESIGN.md` is the product identity (ADR-0149). Do not run `/impeccable document` at the repo root. Do not invent a fourth identity.
+
+### While editing
+
+1. Read the owning `DESIGN.md` **before** the first visual edit.
+2. Use the package design system: `TUI_TOKENS` / `DESIGN_COLOR_TOKENS`, Evidence chrome helpers, and React-style TUI components (`ShellChrome`, `BroadcastFrame`, `InkTable`, `WelcomeSurface`, `AgentPanes`, `TextPane`, …). Do not hand-roll hex, SaaS blues, extra accents, or ANSI color outside `rubberhose.ts` `ACCENT`.
+3. New TUI chrome is a component in `tui-components.tsx` (or a sibling `tui-*.tsx`), then composed. Do not assemble the main screen from raw `h()` strings or `TextPane` dumps when a component exists.
+4. Spark (`#c5301c`) and go (`#14672c`) stay rare. Never paint a whole frame, hover-every-control, or night-collapse cards into the ground.
+5. After visual edits, run impeccable `critique` then `audit` (and `polish` if they find P0/P1) on the files you changed. That is part of the implementation loop, not a later favor.
+
+### Before you say done
+
+```bash
+pnpm run design:lint
+```
+
+Plus the package lints that actually cover the files you touched:
+
+- `@hobo/code` TUI: `packages/code/test/tui-design-lint.test.ts` (includes `interactive-shell.ts`)
+- Evidence + dashboard HTML: `packages/code/test/evidence-design-lint.test.ts`
+- Visual fixtures: `packages/code/test/tui-visual.test.ts` / `lookfeel.test.ts` when chrome geometry changed
+
+`pnpm agent:check -- --staged` already selects `design:lint` when UI/`DESIGN.md` files change. That is not a reason to skip the explicit lint or to skip impeccable on a visual diff. A change that fails `design:lint` or the package design-lint tests is not complete.
 
 ## JavaScript-family implementation file policy
 

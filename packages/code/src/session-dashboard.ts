@@ -4,7 +4,12 @@
  */
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-
+import {
+	evidenceDocumentCss,
+	rubberhoseThemeBootScript,
+	rubberhoseThemeToggleMarkup,
+	rubberhoseThemeToggleScript,
+} from "./evidence-chrome.js";
 import {
 	occupancySidecarEndpoints,
 	preferNamedEndpoint,
@@ -26,6 +31,7 @@ import {
 	type OccupancyController,
 	occupancyCampIsActive,
 	occupancyFlowIsActive,
+	occupancyRunIsLive,
 	type SidecarControl,
 	type StartDevSession,
 } from "./session-resource-control.js";
@@ -35,7 +41,6 @@ import {
 	CODE_CAMP_ID,
 	type SessionResourceInventory,
 } from "./session-resources.js";
-import { chewyFontFace } from "./evidence-chrome.js";
 import { describeAuthedStationSession } from "./station-session.js";
 
 // public-contract: ADR-0111 local dashboard listen port
@@ -57,54 +62,45 @@ export interface LocalDashboard {
 	close(): Promise<void>;
 }
 
-const GRAIN =
-	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E";
-
 const SPA = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
   <title>hobo-code · resources</title>
+  <script>${rubberhoseThemeBootScript()}</script>
   <style>
-    ${chewyFontFace()}
-    :root {
-      color-scheme: light;
-      --ink:#101010; --paper:#ffffff; --cream:#f2f1ec; --go:#14672c; --spark:#c5301c;
-      --mute:#4a4a46; --inset:#f4f4f2; --border:#e3e2de;
-      --ease: cubic-bezier(.22,1,.36,1); --ease-boing: cubic-bezier(.34,1.56,.64,1);
-    }
-    * { box-sizing: border-box; }
+    ${evidenceDocumentCss()}
     html, body { max-width: 100%; overflow-x: hidden; }
-    body {
-      margin:0; background: var(--cream); color: var(--ink);
-      font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-    }
-    body::after {
-      content:""; position:fixed; inset:0; z-index:2147483646; pointer-events:none;
-      opacity:.06; mix-blend-mode:multiply;
-      background-image:url("${GRAIN}"); background-size:240px 240px;
-    }
+    body { padding: 0; max-width: none; margin: 0; }
     .skip { position:absolute; left:-999px; top:8px; background:var(--paper); color:var(--ink);
-      border:3px solid var(--ink); padding:8px 12px; z-index:2; }
+      border:3px solid var(--ink); padding:8px 12px; z-index:2; font-family: Chewy, system-ui, sans-serif; }
     .skip:focus { left:8px; }
-    header { border-bottom: 3px solid var(--ink); padding: 16px 24px; background: var(--paper); }
-    h1, h2 { font-family: Chewy, "Arial Rounded MT Bold", system-ui, sans-serif; font-weight: 400; }
+    header.dash-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+      border-radius:0; margin:0; padding:16px 24px; }
+    header.dash-head .theme-toggle { min-width:44px; min-height:44px; padding:0; width:44px; height:44px; }
+    h1, h2, .pane-title, .ep-urls strong, button.ico { font-family: Chewy, "Arial Rounded MT Bold", system-ui, sans-serif; font-weight: 400; }
     h1 { margin: 0; font-size: 2.25rem; line-height: 1.1; letter-spacing: .01em;
       transform: rotate(-1deg); text-shadow: 3px 3px 0 var(--border);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 72rem; }
     #scope { margin: 6px 0 0; max-width: 72rem; }
-    main { padding: 20px 24px 48px; max-width: 72rem; }
+    main { padding: 24px 24px 56px; max-width: 72rem; display:flex; flex-direction:column; gap: 24px; }
     .card { border: 3px solid var(--ink); border-radius: 18px; box-shadow: 4px 4px 0 var(--ink);
-      padding: 16px 18px; margin: 0 0 20px; overflow: hidden; min-width: 0; background: var(--paper); }
-    .featured { padding: 22px 22px 24px; box-shadow: 6px 6px 0 var(--ink); }
-    .pane-head { display:flex; align-items:center; gap:10px; margin: 0 0 12px; min-height: 28px; }
+      padding: 20px 22px; margin: 0; overflow: hidden; min-width: 0; background: var(--paper); }
+    .featured { padding: 24px 24px 28px; box-shadow: 6px 6px 0 var(--ink); }
+    .pane-head { display:flex; align-items:center; gap:12px; margin: 0 0 16px; min-height: 32px; }
     .pane-head svg { width:24px; height:24px; fill: currentColor; }
-    .station-head { display:grid; grid-template-columns: auto auto minmax(0,1fr) auto; gap:10px; align-items:center; min-width:0; }
-    .station-head h2 { margin: 0; font-size: 1.5rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .scope-line { margin: 8px 0 14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pane-title { font-size: 1.5rem; line-height: 1.2; letter-spacing: .01em; }
+    .station-head { display:grid; grid-template-columns: auto auto minmax(0,1fr) auto; gap:12px; align-items:center; min-width:0; }
+    .station-titles { min-width:0; }
+    .station-head h2 { margin: 0; font-size: 1.5rem; line-height: 1.1; }
+    .station-caps { margin: 12px 0 0; padding: 8px 0 0; border-top: 3px solid var(--border); }
+    .station-id { margin: 2px 0 0; color: var(--mute); font-family: ui-monospace, monospace; font-size: .75rem;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .scope-line { margin: 10px 0 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .muted { color: var(--mute); }
-    #banner { margin: 0 24px 0; max-width: 72rem; padding: 10px 14px; border: 3px solid var(--ink);
+    #banner { margin: 0 24px; max-width: 72rem; padding: 10px 14px; border: 3px solid var(--ink);
       background: var(--paper); box-shadow: 4px 4px 0 var(--spark); }
     #banner[hidden] { display: none !important; }
     .ico { display:inline-grid; place-items:center; width:44px; height:44px; padding:0;
@@ -112,10 +108,10 @@ const SPA = `<!doctype html>
       color: var(--ink); clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px); }
     .ico svg { width:18px; height:18px; fill: currentColor; }
     button.ico { cursor: pointer; transition: transform 120ms var(--ease-boing), box-shadow 120ms var(--ease), background 120ms var(--ease); }
-    button.ico:hover { background: var(--spark); color: var(--paper); transform: translateY(-2px) rotate(-2deg); }
+    button.ico:hover { background: var(--ink); color: var(--paper); transform: translateY(-2px) rotate(-2deg); }
     button.ico:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
     button.ico.on { background: var(--ink); color: var(--paper); }
-    button.ico.on:hover { background: var(--spark); }
+    button.ico.on:hover { background: var(--ink); color: var(--paper); }
     button.ico.copied { background: var(--go); color: var(--paper); }
     button.ico.failed { background: var(--spark); color: var(--paper); }
     button.ico:disabled, button.ico[aria-disabled="true"] { opacity:.45; cursor:not-allowed; box-shadow:none; transform:none; }
@@ -128,33 +124,39 @@ const SPA = `<!doctype html>
       background: var(--paper); flex: 0 0 auto; }
     .lamp.ready, .lamp.go { background: var(--go); }
     .lamp.not-ready, .lamp.off { background: var(--paper); }
-    .ep-list, .item-list { display:flex; flex-direction:column; gap:10px; min-width:0; }
-    .ep-card { display:grid; grid-template-columns: auto minmax(0,1fr) auto; gap:10px; align-items:center;
-      border: 3px solid var(--ink); border-radius: 12px; padding:10px; min-width:0; background: var(--inset); }
-    .item-row { display:grid; grid-template-columns: auto auto minmax(0,1fr) auto; gap:10px; align-items:center;
-      border: 3px solid var(--ink); border-radius: 12px; padding:10px; min-width:0; background: var(--inset); }
+    .ep-list, .item-list { display:flex; flex-direction:column; gap:8px; min-width:0; }
+    .ep-card, .item-row { display:grid; gap:10px; align-items:center; min-width:0;
+      padding: 10px 0; border-bottom: 3px solid var(--border); background: transparent; }
+    .ep-card { grid-template-columns: auto minmax(0,1fr) auto; }
+    .item-row { grid-template-columns: auto auto minmax(0,1fr) auto; }
+    .ep-card:last-child, .item-row:last-child { border-bottom: 0; }
     .ep-urls, .item-id { min-width:0; overflow:hidden; }
-    .item-id, .ep-link, .ep-line span { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .875rem; }
+    .ep-urls strong { display:block; font-size: 1.125rem; line-height: 1.15; margin: 0 0 4px; }
+    .item-id, .ep-link, .ep-line span { font-family: ui-monospace, monospace; font-size: .875rem; }
     .ep-line { display:grid; grid-template-columns: minmax(0,1fr) auto; gap:6px; align-items:center; min-width:0; }
     .ep-urls a, .ep-urls span, .ep-line a, .ep-line > span, .item-id { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     a.ep-link { color: var(--ink); font-weight: 700; text-underline-offset: 3px; }
     a.ep-link:hover { color: var(--spark); }
     .listen a, .listen span { font-size: 12px; color: var(--mute); font-weight: 400; }
-    details.fold { margin: 12px 0 0; min-width:0; }
+    .station-listing { min-width:0; }
+    .station-nest { margin: 8px 0 0; padding: 0 0 0 16px; min-width:0; }
+    details.fold { margin: 8px 0 0; min-width:0; }
     details.fold > summary { cursor: pointer; list-style: none; display:flex; align-items:center;
       gap:10px; min-height: 44px; width: max-content; }
     details.fold > summary::-webkit-details-marker { display:none; }
-    .caps-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap:8px; margin-top:10px; }
-    .cap { display:grid; grid-template-columns: auto minmax(0,1fr); gap:6px; align-items:center;
-      border: 3px solid var(--ink); border-radius: 12px; padding:8px; min-width:0; }
-    .cap span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family: ui-monospace, monospace; font-size: .8rem; }
-    .tree-node { margin: 12px 0; padding: 8px 0 4px 18px; min-width:0;
-      background: linear-gradient(var(--ink), var(--ink)) 0 0 / 3px calc(100% - 8px) no-repeat; }
-    .tree-camp { margin-left: 14px; }
-    .tree-bindle { margin-left: 14px; }
+    details.fold > summary .pane-title { font-size: 1.125rem; }
+    .caps-list { margin: 0; padding: 0; }
+    .cap { display:grid; grid-template-columns: auto minmax(0,1fr) auto; gap:8px; align-items:center;
+      padding: 8px 0; border-bottom: 3px solid var(--border); min-width:0; }
+    .cap:last-child { border-bottom: 0; }
+    .cap span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family: ui-monospace, monospace; font-size: .875rem; }
+    .cap .cap-state { color: var(--mute); font-size: .75rem; }
+    .tree-node { margin: 12px 0 4px; padding: 0 0 0 16px; min-width:0; }
+    .tree-camp { margin-left: 16px; }
+    .tree-bindle { margin-left: 16px; }
     .tree-head { display:flex; flex-wrap:wrap; gap: 8px; align-items:center; margin: 0 0 8px; min-width:0; }
     .tree-head strong { flex: 1 1 8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-      font-family: ui-monospace, monospace; font-size: .95rem; }
+      font-family: Chewy, "Arial Rounded MT Bold", system-ui, sans-serif; font-size: 1.15rem; font-weight: 400; }
     .tree-head .acts { margin-left: auto; }
     .tree-kind { flex:0 0 auto; width:18px; height:18px; border:3px solid var(--ink); background: var(--paper); }
     .tree-kind.yard { width:22px; height:12px; }
@@ -163,39 +165,30 @@ const SPA = `<!doctype html>
     .tree-kind.station { border-radius:50%; }
     .tree-kind.junction { width:18px; height:8px; }
     .sigs { display:inline-flex; gap:8px; flex: 0 0 auto; }
-    .sig { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-variant-numeric: tabular-nums; }
+    .sig { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-variant-numeric: tabular-nums; color: var(--mute); }
     .sig svg { width:14px; height:14px; fill: currentColor; }
     * { scrollbar-color: var(--ink) var(--inset); scrollbar-width: thick; }
     @media (max-width: 640px) {
-      h1 { font-size: 1.6rem; }
+      h1 { font-size: 1.5rem; }
       main, header { padding-left: 14px; padding-right: 14px; }
       .item-row, .ep-card { grid-template-columns: auto auto minmax(0,1fr); }
       .ep-card { grid-template-columns: auto minmax(0,1fr); }
       .item-row .acts, .item-row .sigs, .ep-card .acts { grid-column: 1 / -1; justify-self: end; }
     }
-    @media (prefers-color-scheme: dark) {
-      :root { color-scheme: dark; --ink:#f2f1ec; --paper:#0a0a0a; --cream:#0a0a0a;
-        --inset:#111111; --mute:#c9c8c2; --border:#4a4a46; }
-      body::after { mix-blend-mode: screen; opacity:.08; }
-    }
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important;
-        transition-duration: .01ms !important; transition-delay: 0s !important; }
-      h1, button.ico { transform: none; }
+      button.ico { transform: none; }
       button.ico:hover, button.ico:active { transform: none; }
-      body::after { opacity: 0; }
     }
   </style>
 </head>
 <body>
   <a class="skip" href="#station-card">station</a>
-  <header><h1>hobo-code · resources</h1><p class="muted" id="scope" role="status"></p></header>
+  <header class="dash-head"><div><h1>hobo-code · resources</h1><p class="muted" id="scope" role="status"></p></div>${rubberhoseThemeToggleMarkup()}</header>
   <p id="banner" role="alert" hidden></p>
   <main>
     <section class="card featured" id="station-card" aria-labelledby="station-heading"><div id="station-pane"></div></section>
-    <section class="card" id="resources-card"><h2 class="pane-head" aria-label="yard"><span class="tree-kind yard"></span></h2><div id="resources"></div></section>
-    <section class="card" id="telemetry-card"><h2 class="pane-head" aria-label="otel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8c2-4 3 4 5 0s3 4 5 0 3 4 5 0" fill="none" stroke="currentColor" stroke-width="2"/></svg></h2><div id="telemetry"></div></section>
-    <section class="card" id="fleet-card" hidden><h2 class="pane-head" aria-label="fleet"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="4" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="12" r="2"/></svg></h2><div id="fleet"></div></section>
+    <section class="card" id="resources-card"><h2 class="pane-head" aria-label="yard"><span class="tree-kind yard"></span><span class="pane-title">yard</span></h2><div id="resources"></div></section>
+    <section class="card" id="fleet-card" hidden><h2 class="pane-head" aria-label="fleet"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="4" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="12" r="2"/></svg><span class="pane-title">peers</span></h2><div id="fleet"></div></section>
   </main>
   <script>
     async function api(path, opt) {
@@ -282,10 +275,7 @@ const SPA = `<!doctype html>
       restart: svg("<path d='M3 8a5 5 0 0 1 9-3l1-2v6H7l2-2a3.5 3.5 0 1 0 1 4'/>"),
       copy: svg("<rect x='5' y='5' width='8' height='8'/><rect x='3' y='3' width='8' height='8' fill='none' stroke='currentColor' stroke-width='2'/>"),
       lock: svg("<rect x='4' y='7' width='8' height='7'/><path d='M6 7V5a2 2 0 0 1 4 0v2' fill='none' stroke='currentColor' stroke-width='2'/>"),
-      grid: svg("<rect x='2' y='2' width='5' height='5'/><rect x='9' y='2' width='5' height='5'/><rect x='2' y='9' width='5' height='5'/><rect x='9' y='9' width='5' height='5'/>"),
-      log: svg("<rect x='3' y='2' width='10' height='12'/><path d='M5 5h6M5 8h6M5 11h4' stroke='var(--paper)' stroke-width='1.5'/>"),
-      trace: svg("<path d='M3 3h4v4H3zM9 9h4v4H9z'/><path d='M7 5h2v2H8v2' fill='none' stroke='currentColor' stroke-width='2'/>"),
-      metric: svg("<rect x='3' y='9' width='3' height='5'/><rect x='7' y='5' width='3' height='9'/><rect x='11' y='3' width='3' height='11'/>")
+      grid: svg("<rect x='2' y='2' width='5' height='5'/><rect x='9' y='2' width='5' height='5'/><rect x='2' y='9' width='5' height='5'/><rect x='9' y='9' width='5' height='5'/>")
     };
     function ico(verb, extra, label) {
       return "<span class='ico " + (extra || "") + "' role='img' aria-label='" + esc(label) + "' title='" + esc(label) + "'>" + (ICO[verb] || "") + "</span>";
@@ -337,7 +327,6 @@ const SPA = `<!doctype html>
       var existingSidecars = document.getElementById("station-sidecars");
       if (existingSidecars) sidecarsOpen = existingSidecars.open;
       const inv = await api("/api/resources");
-      const tel = await api("/api/telemetry");
       const scope = document.getElementById("scope");
       scope.textContent = inv.ok
         ? (inv.scope.stationId + " × " + inv.scope.environment)
@@ -348,8 +337,11 @@ const SPA = `<!doctype html>
           esc(actName) + "' data-id='" + esc(id) + "' aria-label='" + esc(label) +
           "' title='" + esc(label) + "'>" + (ICO[verb] || "") + "</button>";
       }
+      function occupancyLocked(id) {
+        return isStationEndpoint(id);
+      }
       function actions(id, locked, ready) {
-        if (locked) {
+        if (locked || occupancyLocked(id)) {
           return "<span class='acts'>" + ico("lock", "", "locked") + "</span>";
         }
         if (ready) {
@@ -370,21 +362,17 @@ const SPA = `<!doctype html>
           "<span class='item-id' title='" + esc(id) + "'>" + esc(id) + "</span>" +
           actions(id, locked, ready) + "</div>";
       }
-      function sig(icon, count, label) {
-        return "<span class='sig' aria-label='" + esc(label) + " " + count + "'>" +
-          icon + "<b>" + count + "</b></span>";
-      }
       function capsHtml(rows, open) {
         if (!rows.length) return "";
         const body = rows.map((r) =>
           "<div class='cap'>" + lamp(r.available) + "<span title='" + esc(r.kind) + "'>" +
-          esc(r.kind) + "</span></div>"
+          esc(r.kind) + "</span><span class='cap-state'>" +
+          (r.available ? "ready" : "off") + "</span></div>"
         ).join("");
-        return "<details id='station-capabilities' class='fold'" +
+        return "<details id='station-capabilities' class='fold station-caps'" +
           (open ? " open" : "") +
-          "><summary aria-label='capabilities'>" + ICO.grid + "</summary><div class='caps-grid'>" +
-          body +
-          "</div></details>";
+          "><summary aria-label='capabilities'><span class='pane-title'>capabilities</span></summary>" +
+          "<div class='item-list caps-list'>" + body + "</div></details>";
       }
       function endpointRows(list) {
         return list.map((e) => {
@@ -410,20 +398,24 @@ const SPA = `<!doctype html>
       } else {
         var folded = sidecarEps.length
           ? "<details id='station-sidecars' class='fold'" + (sidecarsOpen ? " open" : "") +
-            "><summary aria-label='sidecars'>" + ICO.grid + "</summary><div class='ep-list'>" +
+            "><summary aria-label='sidecars'>" + ICO.grid +
+            "<span class='pane-title'>hosts</span></summary><div class='ep-list'>" +
             endpointRows(sidecarEps) + "</div></details>"
           : "";
         stationPane.innerHTML =
-          "<div class='station-head'>" + lamp(stationReady) +
+          "<div class='station-listing'><div class='station-head'>" + lamp(stationReady) +
           "<span class='tree-kind station' aria-hidden='true'></span>" +
-          "<h2 id='station-heading' title='" + esc(station.id) + "'>" + esc(station.id) + "</h2>" +
+          "<div class='station-titles'><h2 id='station-heading'>station</h2>" +
+          "<p class='station-id' title='" + esc(station.id) + "'>" + esc(station.id) + "</p></div>" +
           actions(station.id, true, stationReady) + "</div>" +
           "<p class='muted scope-line' title='" +
           esc((inv.scope.environment || "") + " · " + (inv.scope.tenant || "")) + "'>" +
           esc(inv.scope.environment || "") + " · " + esc(inv.scope.tenant || "") + "</p>" +
-          "<div class='ep-list'>" + endpointRows(doorEps) + "</div>" +
+          "<div class='station-nest'><div class='ep-list'>" + endpointRows(doorEps) + "</div>" +
           folded +
-          capsHtml(inv.capabilities || [], capsOpen);
+          "</div>" +
+          capsHtml(inv.capabilities || [], capsOpen) +
+          "</div>";
       }
       const yards = inv.yards || [];
       const camps = inv.camps || [];
@@ -524,30 +516,6 @@ const SPA = `<!doctype html>
         (leftover.length
           ? "<div class='ep-list'>" + endpointRows(leftover) + "</div>"
           : "");
-      const otlp = (inv.endpoints || []).find((e) => e.resourceName === "otlp") || {};
-      const grpcListen = tel.collector && tel.collector.grpcPort
-        ? ("http://127.0.0.1:" + tel.collector.grpcPort + "/")
-        : "";
-      const collector = tel.collector
-        ? ("<div class='ep-card'>" + lamp(tel.collector.status === "listening") +
-           "<div class='ep-urls'>" +
-           linkHtml(tel.collector.httpUrl || namedUrl(otlp), "named") +
-           linkHtml(listenUrl(otlp), "listen") +
-           (grpcListen ? linkHtml(grpcListen, "listen") : "") +
-           "</div></div>")
-        : "";
-      const otelRows = (tel.resources || []).map((r) =>
-        "<div class='item-row'>" + lamp(r.export === "exporting") +
-        "<span class='tree-kind " + esc(r.kind || "") + "' aria-hidden='true'></span>" +
-        "<span class='item-id' title='" + esc(r.resourceName) + "'>" + esc(r.resourceName) + "</span>" +
-        "<span class='sigs'>" +
-        sig(ICO.log, r.logs || 0, "logs") +
-        sig(ICO.trace, r.traces || 0, "traces") +
-        sig(ICO.metric, r.metrics || 0, "metrics") +
-        "</span></div>"
-      ).join("");
-      document.getElementById("telemetry").innerHTML =
-        collector + "<div class='item-list'>" + otelRows + "</div>";
       var fleetCard = document.getElementById("fleet-card");
       var fleetPeers = inv.peers || [];
       if (!fleetPeers.length) {
@@ -574,6 +542,7 @@ const SPA = `<!doctype html>
     render().catch((err) => {
       showError(String(err));
     });
+    ${rubberhoseThemeToggleScript()}
   </script>
 </body>
 </html>
@@ -662,6 +631,15 @@ function isLocalTopology(kind: string): boolean {
 	return kind === "station" || kind === "yard" || kind === "camp";
 }
 
+function isMeshBackend(url: string): boolean {
+	try {
+		const host = new URL(url).hostname.toLowerCase();
+		return host === "hobo.internal" || host.endsWith(".hobo.internal");
+	} catch {
+		return false;
+	}
+}
+
 function otelSubjects(
 	inventory: SessionResourceInventory,
 ): { id: string; kind: string }[] {
@@ -744,6 +722,13 @@ export async function startLocalDashboard(options: {
 			inventory.scope.stationId,
 			inventory.scope.environment,
 		);
+		const bindleLive =
+			controller.isLive() ||
+			occupancyRunIsLive(
+				options.hoboHome,
+				inventory.scope.stationId,
+				inventory.scope.environment,
+			);
 		for (const node of [
 			...(inventory.station ? [inventory.station] : []),
 			...inventory.peers,
@@ -753,6 +738,7 @@ export async function startLocalDashboard(options: {
 			...inventory.bindles,
 		]) {
 			const topology = isLocalTopology(node.kind);
+			const userBindle = node.kind === "bindle" && node.id !== CODE_BINDLE_ID;
 			const started =
 				node.kind === "camp"
 					? occupancyCampIsActive(
@@ -763,12 +749,14 @@ export async function startLocalDashboard(options: {
 						)
 					: node.kind === "yard" || node.kind === "station"
 						? flowActive || node.kind === "station"
-						: false;
+						: userBindle
+							? bindleLive
+							: false;
 			lifecycle.register({
 				id: node.id,
 				kind: node.kind,
 				provisioned: node.status === "declared" || node.status === "serving",
-				...(topology ? { initiallyStarted: started } : {}),
+				...(topology || userBindle ? { initiallyStarted: started } : {}),
 				...(!topology && appHealth ? { healthUrl: appHealth } : {}),
 			});
 		}
@@ -780,13 +768,19 @@ export async function startLocalDashboard(options: {
 				inventory.scope.environment,
 				endpoint.resourceName,
 			);
+			const mesh = isMeshBackend(endpoint.backendUrl);
 			lifecycle.register({
 				id: endpoint.resourceName,
 				kind: endpoint.kind,
 				provisioned: true,
 				...(occupancy
 					? { initiallyStarted: enabled }
-					: { healthUrl: endpoint.backendUrl }),
+					: bindleLive
+						? {
+								initiallyStarted: true,
+								...(!mesh ? { healthUrl: endpoint.backendUrl } : {}),
+							}
+						: { healthUrl: endpoint.backendUrl }),
 			});
 		}
 		for (const resource of inventory.managed) {

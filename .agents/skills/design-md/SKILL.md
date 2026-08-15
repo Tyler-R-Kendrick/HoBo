@@ -7,18 +7,25 @@ description: Google DESIGN.md visual identity for coding agents. HoBo truth is s
 
 ## When to use
 
+**Always, without being asked**, when the change is visual:
+
 - Editing `site/` UI, CSS, scenes, or components
+- Editing `hobo-code` TUI, occupancy dashboard, or Evidence HTML (`packages/code`)
 - Generating UI that must match the public Pages aesthetic
 - Changing design tokens or theme (light/dark inversion)
 - Adding a new web UI package (must ship `DESIGN.md`)
+
+Do not wait for “run design lint” or “use /impeccable”. Read the owning `DESIGN.md`, use its tokens/components, then run `pnpm run design:lint` plus the package design-lint tests before claiming done. Full standing rule: repo-root `AGENTS.md` → **Design system + lint**.
 
 ## Source of truth
 
 | Artifact | Role |
 |---|---|
-| **`site/DESIGN.md`** | Agent-facing Google [DESIGN.md](https://github.com/google-labs-code/design.md) contract |
-| **`site/src/styles/global.css`** | Runtime CSS tokens implementation |
-| **`pnpm run design:lint`** | Repo-wide gate — every web UI `DESIGN.md` (pre-commit) |
+| **`site/DESIGN.md`** | Public product identity (ADR-0149) |
+| **`packages/code/DESIGN.md`** | `hobo-code` TUI, dashboard, Evidence |
+| **`packages/control-yard/DESIGN.md`** | Control-yard only |
+| **`packages/pixel-village/DESIGN.md`** | Pixel village only (separate identity) |
+| **`pnpm run design:lint`** | Repo-wide gate — every web UI `DESIGN.md` (pre-commit + agent done-check) |
 
 ## Aesthetic (non-negotiable)
 
@@ -63,10 +70,11 @@ Package: `@google/design.md` (bins `designmd` / `design.md`).
 
 ## Workflow
 
-1. Read `site/DESIGN.md` (or the package’s DESIGN.md) front matter + Overview.
-2. Edit CSS/components using those tokens (or update DESIGN.md first, then CSS).
-3. Run `pnpm run design:lint` before PR — pre-commit will re-run via `check:relevant:staged`.
-4. Site content still follows `site/README.md` (base `/HoBo/`, no raw `docs/design/` links in prose).
+1. Read the **owning** `DESIGN.md` front matter + Overview before the first visual edit.
+2. Use that package’s tokens and shared components (`TUI_TOKENS`, `tui-components.tsx`, `evidence-chrome.ts` for `@hobo/code`). Do not invent hex or skip the component tree.
+3. Run impeccable `critique` then `audit` on the files you changed (polish if P0/P1).
+4. Run `pnpm run design:lint` and the package design-lint tests (`tui-design-lint`, `evidence-design-lint` when those surfaces moved). Pre-commit re-runs via `check:relevant:staged`; that does not replace the explicit lint.
+5. Site content still follows `site/README.md` (base `/HoBo/`, no raw `docs/design/` links in prose).
 
 ## Spec
 

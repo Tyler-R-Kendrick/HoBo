@@ -83,5 +83,26 @@ describe("TUI components follow DESIGN.md tokens", () => {
 		}
 		expect(designMd).toContain("BroadcastFrame");
 		expect(designMd).toContain("broadcast-frame");
+		expect(designMd).toContain("WelcomeSurface");
+		expect(designMd).toContain("AgentPanes");
+	});
+
+	it("keeps interactive-shell on TUI components and DESIGN.md tokens", () => {
+		const source = readFileSync(join(srcRoot, "interactive-shell.ts"), "utf8");
+		expect(source).toContain("from \"./tui-components.js\"");
+		expect(source).toContain("WelcomeSurface");
+		expect(source).toContain("AgentPanes");
+		expect(source).not.toContain("accent = \"go\"");
+		for (const hex of TUI_FORBIDDEN_HEX) {
+			expect(source, `interactive-shell must not use ${hex}`).not.toContain(
+				hex,
+			);
+		}
+		for (const hex of hexLiterals(source)) {
+			expect(
+				TUI_TOKEN_VALUES.has(hex.toLowerCase()) || TUI_TOKEN_VALUES.has(hex),
+				`interactive-shell hex ${hex} must be a TUI_TOKENS value`,
+			).toBe(true);
+		}
 	});
 });

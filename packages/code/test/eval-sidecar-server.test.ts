@@ -107,6 +107,214 @@ export async function classify(input: { text: string }) {
 			).json()) as { ok: boolean; silver: { ok: boolean } };
 			expect(hit.ok).toBe(true);
 			expect(hit.silver.ok).toBe(true);
+			const unseen = (await (
+				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
+					method: "POST",
+				})
+			).json()) as {
+				ok: boolean;
+				silver: { ok: boolean };
+				gate: { ok: boolean };
+			};
+			expect(unseen.silver.ok).toBe(false);
+			expect(unseen.ok).toBe(false);
+			expect(unseen.gate.ok).toBe(false);
+		} finally {
+			await server.close();
+		}
+	});
+
+	it("loads a sibling JS invoker over HTTP when the region file is TypeScript", async () => {
+		const project = mkdtempSync(join(tmpdir(), "hobo-eval-sibling-"));
+		roots.push(project);
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "classify.ts"),
+			`
+export async function classify(input: { text: string }) {
+  "use training";
+  return training(async (body) => body, {
+    methodRef: "shop.classify",
+    intent: "label the ticket",
+    contract: {
+      examples: [
+        { input: { text: "invoice overdue" }, output: { label: "billing" } },
+      ],
+    },
+  });
+}
+`,
+		);
+		writeFileSync(
+			join(project, "src", "classify.js"),
+			`
+export function classify(input) {
+  const text = input && input.text ? String(input.text) : "";
+  return { label: text.includes("invoice") ? "billing" : "other" };
+}
+`,
+		);
+		const server = await startEvalSidecar({
+			campId: "camp:shop",
+			projectDir: project,
+			port: 0,
+		});
+		try {
+			const live = (await (
+				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
+					method: "POST",
+				})
+			).json()) as {
+				ok: boolean;
+				gold: { ok: boolean };
+				silver: { ok: boolean };
+				gate: { ok: boolean };
+			};
+			expect(live.silver.ok).toBe(true);
+			expect(live.gold.ok).toBe(true);
+			expect(live.ok).toBe(true);
+			expect(live.gate.ok).toBe(true);
+		} finally {
+			await server.close();
+		}
+	});
+
+	it("fails HTTP /run when the sibling JS invoker drifts", async () => {
+		const project = mkdtempSync(join(tmpdir(), "hobo-eval-drift-js-"));
+		roots.push(project);
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "classify.ts"),
+			`
+export async function classify(input: { text: string }) {
+  "use training";
+  return training(async (body) => body, {
+    methodRef: "shop.classify",
+    intent: "label the ticket",
+    contract: {
+      examples: [
+        { input: { text: "invoice overdue" }, output: { label: "billing" } },
+      ],
+    },
+  });
+}
+`,
+		);
+		writeFileSync(
+			join(project, "src", "classify.js"),
+			`
+export function classify() {
+  return { label: "shipping" };
+}
+`,
+		);
+		const server = await startEvalSidecar({
+			campId: "camp:shop",
+			projectDir: project,
+			port: 0,
+		});
+		try {
+			const live = (await (
+				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
+					method: "POST",
+				})
+			).json()) as {
+				ok: boolean;
+				gold: { ok: boolean };
+				silver: { ok: boolean };
+				gate: { ok: boolean };
+			};
+			expect(live.gold.ok).toBe(false);
+			expect(live.silver.ok).toBe(false);
+			expect(live.ok).toBe(false);
+			expect(live.gate.ok).toBe(false);
+		} finally {
+			await server.close();
+		}
+	});
+
+	it("loads a CommonJS invoker over HTTP", async () => {
+		const project = mkdtempSync(join(tmpdir(), "hobo-eval-cjs-"));
+		roots.push(project);
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "route.cjs"),
+			`
+function route(input) {
+  "use training";
+  const path = input && input.path ? String(input.path) : "";
+  return { dest: path === "/" ? "home" : "other" };
+}
+const _meta = {
+  methodRef: "shop.route",
+  intent: "route the request",
+  contract: {
+    examples: [{ input: { path: "/" }, output: { dest: "home" } }],
+  },
+};
+module.exports = { route };
+`,
+		);
+		const server = await startEvalSidecar({
+			campId: "camp:shop",
+			projectDir: project,
+			port: 0,
+		});
+		try {
+			const live = (await (
+				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
+					method: "POST",
+				})
+			).json()) as { ok: boolean; silver: { ok: boolean } };
+			expect(live.silver.ok).toBe(true);
+			expect(live.ok).toBe(true);
+		} finally {
+			await server.close();
+		}
+	});
+
+	it("returns JSON for a malformed /run body instead of hanging", async () => {
+		const project = mkdtempSync(join(tmpdir(), "hobo-eval-bad-json-"));
+		roots.push(project);
+		mkdirSync(join(project, "src"), { recursive: true });
+		writeFileSync(
+			join(project, "src", "classify.ts"),
+			`
+export function classify(input: { text: string }) {
+  "use training";
+  return training((body) => body, {
+    methodRef: "shop.classify",
+    intent: "label the ticket",
+    contract: {
+      examples: [
+        { input: { text: "invoice overdue" }, output: { label: "billing" } },
+      ],
+    },
+  });
+}
+`,
+		);
+		const server = await startEvalSidecar({
+			campId: "camp:shop",
+			projectDir: project,
+			port: 0,
+		});
+		try {
+			const response = await fetch(
+				new URL("/run", loopbackFetchUrl(server.url)),
+				{
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: "{not-json",
+				},
+			);
+			expect(response.headers.get("content-type")).toMatch(/json/);
+			const body = (await response.json()) as {
+				ok: boolean;
+				silver: { ok: boolean };
+			};
+			expect(body.ok).toBe(false);
+			expect(body.silver.ok).toBe(false);
 		} finally {
 			await server.close();
 		}

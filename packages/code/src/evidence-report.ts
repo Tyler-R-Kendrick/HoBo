@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 
-import { evidenceDocumentCss } from "./evidence-chrome.js";
+import {
+	evidenceDocumentCss,
+	rubberhoseThemeBootScript,
+	rubberhoseThemeToggleMarkup,
+	rubberhoseThemeToggleScript,
+} from "./evidence-chrome.js";
 import type { EvidenceJournal } from "./session-evidence.js";
 
 // public-contract: deterministic portable evidence-report schema identifier.
@@ -214,13 +219,14 @@ export function renderEvidenceReportHtml(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'">
   <title>${escapeHtml(report.title)}</title>
+  <script>${rubberhoseThemeBootScript()}</script>
   <style>${evidenceDocumentCss()}</style>
 </head>
 <body class="report">
   <header>
-    <p class="eyebrow">HoBo evidence report · ${live ? "live projection" : "portable export"}</p>
+    <div class="chrome-bar"><p class="eyebrow">HoBo evidence report · ${live ? "live projection" : "portable export"}</p>${rubberhoseThemeToggleMarkup()}</div>
     <h1>${escapeHtml(report.title)}</h1>
     <p class="meta">Generated <time datetime="${escapeHtml(report.generatedAt)}">${escapeHtml(report.generatedAt)}</time></p>
     <p><strong>Trust summary:</strong> ${counts.verified} verified · ${counts.captured} captured · ${counts.claimed} claimed · ${counts.stale} stale · ${counts.missing} missing</p>
@@ -235,6 +241,7 @@ export function renderEvidenceReportHtml(
     ${live ? '<p class="meta">Live report updates when this page is refreshed.</p>' : ""}
   </header>
   <main>${sections}</main>
+  <script>${rubberhoseThemeToggleScript()}</script>
 </body>
 </html>
 `;
@@ -305,11 +312,12 @@ setInterval(pull,1500);
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; font-src data:; base-uri 'none'; form-action 'none'">
   <title>Evidence · ${escapeHtml(session)}</title>
+  <script>${rubberhoseThemeBootScript()}</script>
   <style>${evidenceDocumentCss()}</style>
 </head>
 <body class="report journal"${live ? " data-live" : ""}>
   <header>
-    <p class="eyebrow">HoBo evidence · ${live ? "live work report" : "portable work report"}</p>
+    <div class="chrome-bar"><p class="eyebrow">HoBo evidence · ${live ? "live work report" : "portable work report"}</p>${rubberhoseThemeToggleMarkup()}</div>
     <h1>${escapeHtml(session)}</h1>
     <p class="meta">${escapeHtml(occupancy)} · ${escapeHtml(cwd)}</p>
     <p>Visual Tasks with provenance — why each step happened and what we looked at.</p>
@@ -318,6 +326,7 @@ setInterval(pull,1500);
   </header>
   <ol class="stream report-board" id="journal">${events}${empty}</ol>
   ${poll}
+  <script>${rubberhoseThemeToggleScript()}</script>
 </body>
 </html>
 `;

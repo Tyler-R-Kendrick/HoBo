@@ -16,8 +16,9 @@ Keep the loop narrow and evidence-driven.
 2. Read the minimum files needed to understand the change.
 3. Make scoped edits only in directly related files.
 4. Update matching docs when changing code, automation, package metadata, CI, hooks, or agent tooling.
-5. Run the smallest relevant check.
-6. Broaden validation only when the change crosses package, contract, or tooling boundaries.
+5. If the change is visual (TUI, dashboard, Evidence, `site/`, a `DESIGN.md`), apply the owning design system and run `pnpm run design:lint` plus impeccable critique/audit — do not wait to be asked. See repo-root `AGENTS.md` “Design system + lint”.
+6. Run the smallest relevant check.
+7. Broaden validation only when the change crosses package, contract, or tooling boundaries.
 
 ## Scope Control
 

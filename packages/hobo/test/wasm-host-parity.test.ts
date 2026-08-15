@@ -122,7 +122,7 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		expect(serve.exposedEndpoints[0]?.resourceName).toBe("web");
 		const api = serve.endpoints.find((e) => e.resourceName === "api");
 		expect(api?.port).toBeNull();
-		expect(api?.url).toContain(INTERNAL_MESH_HOST);
+		expect(api?.url).toBe(`http://hello-bindle.${INTERNAL_MESH_HOST}/api`);
 
 		const html = await (await fetch(`${serve.primaryUrl}/?name=Local`)).text();
 		// Bindle injects GREETING_PREFIX/APP_TITLE via env() — proves apps are live.

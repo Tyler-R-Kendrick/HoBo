@@ -102,20 +102,9 @@ export function inspectBindleSource(
 	fallbackName = "app",
 ): InspectedBindle {
 	const name = BINDLE_NAME.exec(source)?.[1]?.trim() || fallbackName;
-	const counts = new Map<string, number>();
-	const resources: InspectedBindleResource[] = [];
-	for (const match of source.matchAll(FACTORY_CALL)) {
-		const kind = match[1];
-		if (!kind || !KIND_SET.has(kind)) continue;
-		const used = (counts.get(kind) ?? 0) + 1;
-		counts.set(kind, used);
-		resources.push({
-			kind: kind as BindleResourceKind,
-			name: used === 1 ? kind : `${kind}-${used}`,
-			dependsOn: [],
-			allow: [],
-		});
-	}
+	const named = resourcesFromReturnedBindle(source);
+	const resources: InspectedBindleResource[] =
+		named.length > 0 ? named : resourcesFromFactoryCalls(source);
 
 	const envBody = ENV_OBJECT.exec(source)?.[1] ?? "";
 	const envKeys = [...envBody.matchAll(/([A-Z][A-Z0-9_]*)\s*:/gu)].map(
@@ -231,6 +220,86 @@ function inspectBindleJson(
 		envKeys: [],
 		requirements: inferRequirements(resources),
 	};
+}
+
+function resourcesFromFactoryCalls(source: string): InspectedBindleResource[] {
+	const counts = new Map<string, number>();
+	const resources: InspectedBindleResource[] = [];
+	for (const match of source.matchAll(FACTORY_CALL)) {
+		const kind = match[1];
+		if (!kind || !KIND_SET.has(kind)) continue;
+		const used = (counts.get(kind) ?? 0) + 1;
+		counts.set(kind, used);
+		resources.push({
+			kind: kind as BindleResourceKind,
+			name: used === 1 ? kind : `${kind}-${used}`,
+			dependsOn: [],
+			allow: [],
+		});
+	}
+	return resources;
+}
+
+function resourcesFromReturnedBindle(
+	source: string,
+): InspectedBindleResource[] {
+	const assigned = new Map<string, BindleResourceKind>();
+	const assign =
+		/(?:const|let|var)\s+([A-Za-z_]\w*)\s*=\s*[A-Za-z_]\w*\.([A-Za-z_]\w*)\s*\(/gu;
+	for (const match of source.matchAll(assign)) {
+		const ident = match[1];
+		const kind = match[2];
+		if (!ident || !kind || !KIND_SET.has(kind)) continue;
+		assigned.set(ident, kind as BindleResourceKind);
+	}
+	const block =
+		/return\s*\{([\s\S]*?)\}/u.exec(source)?.[1] ??
+		/=>\s*\(\s*\{([\s\S]*?)\}/u.exec(source)?.[1];
+	if (block === undefined) return [];
+	const resources: InspectedBindleResource[] = [];
+	for (const part of splitObjectEntries(block)) {
+		const inline =
+			/^([A-Za-z_]\w*)\s*:\s*[A-Za-z_]\w*\.([A-Za-z_]\w*)\s*\(/u.exec(part);
+		const aliased = /^([A-Za-z_]\w*)\s*:\s*([A-Za-z_]\w*)\s*$/u.exec(part);
+		const short = /^([A-Za-z_]\w*)\s*$/u.exec(part);
+		let name: string | undefined;
+		let kind: BindleResourceKind | undefined;
+		if (inline?.[1] && inline[2] && KIND_SET.has(inline[2])) {
+			name = inline[1];
+			kind = inline[2] as BindleResourceKind;
+		} else if (aliased?.[1] && aliased[2]) {
+			name = aliased[1];
+			kind = assigned.get(aliased[2]);
+		} else if (short?.[1]) {
+			name = short[1];
+			kind = assigned.get(short[1]);
+		}
+		if (!name || !kind) continue;
+		resources.push({
+			kind,
+			name,
+			dependsOn: [],
+			allow: [],
+		});
+	}
+	return resources;
+}
+
+function splitObjectEntries(body: string): string[] {
+	const parts: string[] = [];
+	let start = 0;
+	let depth = 0;
+	for (let index = 0; index < body.length; index += 1) {
+		const char = body[index];
+		if (char === "(" || char === "{" || char === "[") depth += 1;
+		else if (char === ")" || char === "}" || char === "]") depth -= 1;
+		else if (char === "," && depth === 0) {
+			parts.push(body.slice(start, index));
+			start = index + 1;
+		}
+	}
+	parts.push(body.slice(start));
+	return parts.map((part) => part.trim()).filter((part) => part.length > 0);
 }
 
 function inferRequirements(

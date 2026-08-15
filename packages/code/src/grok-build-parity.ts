@@ -11,15 +11,21 @@
  */
 
 import {
+	type AgentWorkBoard,
+	groupTasksUnderAgents,
+	listWorkClaims,
+	type WorkClaim,
+} from "./agent-work.js";
+import {
 	projectSessionWorkLedger,
 	type SessionWorkItem,
 } from "./session-evidence.js";
 import type { AgentPaneState, AgentSemanticState } from "./types.js";
 import {
-	describeCodeWorlds,
-	planDurableWorkflowRun,
 	type CodeWorldDescriptor,
 	type DurableWorkflowRun,
+	describeCodeWorlds,
+	planDurableWorkflowRun,
 } from "./worlds.js";
 
 export interface GrokBuildCompare {
@@ -78,6 +84,8 @@ export interface TasksSurface {
 	readonly schema: "hobo.code.tasks/v1";
 	readonly grokBuild: GrokBuildParity;
 	readonly rows: readonly TaskBoardRow[];
+	readonly board: AgentWorkBoard<TaskBoardRow>;
+	readonly claims: readonly WorkClaim[];
 	readonly workflow: DurableWorkflowRun;
 	readonly world: CodeWorldDescriptor;
 	readonly legend: string;
@@ -139,8 +147,7 @@ export function grokBuildParity(): GrokBuildParity {
 				"Grok Build workflows default-on + live multi-agent progress. hobo-code World model + planDurableWorkflowRun steps on tasks --json.",
 			subagents:
 				"Grok Build spawn_subagent types. hobo-code multi-pane status/session + Eve define surface.",
-			headless:
-				"Grok -p vs hobo-code --json envelopes for automation.",
+			headless: "Grok -p vs hobo-code --json envelopes for automation.",
 			planMode:
 				"Grok /plan markdown vs hobo-code isolate/promote gated plan-apply.",
 		},
@@ -166,7 +173,9 @@ export function buildTasksSurface(options: {
 	readonly hoboHome: string;
 	readonly runId?: string;
 	readonly panes?: readonly AgentPaneState[];
-	readonly evidence?: Parameters<typeof projectSessionWorkLedger>[0]["evidence"];
+	readonly evidence?: Parameters<
+		typeof projectSessionWorkLedger
+	>[0]["evidence"];
 }): TasksSurface {
 	const parity = grokBuildParity();
 	const worlds = describeCodeWorlds(options.hoboHome);
@@ -204,6 +213,12 @@ export function buildTasksSurface(options: {
 		};
 	});
 	const rows = workRows.length > 0 ? [...workRows, ...paneRows] : paneRows;
+	const claims = listWorkClaims(options.hoboHome);
+	const board = groupTasksUnderAgents({
+		agents: uniqueAgents(panes, claims),
+		tasks: workRows,
+		claims,
+	});
 	const workflow = planDurableWorkflowRun({
 		runId,
 		world,
@@ -213,10 +228,31 @@ export function buildTasksSurface(options: {
 		schema: "hobo.code.tasks/v1",
 		grokBuild: parity,
 		rows,
+		board,
+		claims,
 		workflow,
 		world,
 		legend: parity.legend,
 	};
+}
+
+function uniqueAgents(
+	panes: readonly AgentPaneState[],
+	claims: readonly WorkClaim[],
+): readonly { readonly agentId: string }[] {
+	const seen = new Set<string>();
+	const agents: { agentId: string }[] = [];
+	for (const pane of panes) {
+		if (seen.has(pane.agentId)) continue;
+		seen.add(pane.agentId);
+		agents.push({ agentId: pane.agentId });
+	}
+	for (const claim of claims) {
+		if (seen.has(claim.agentId)) continue;
+		seen.add(claim.agentId);
+		agents.push({ agentId: claim.agentId });
+	}
+	return agents;
 }
 
 function workKind(kind: SessionWorkItem["kind"]): TaskBoardRow["kind"] {
@@ -238,42 +274,48 @@ const STATE_GLYPH: Record<string, string> = {
 	missing: "?",
 };
 
-/** Dense human task board — same work ledger as the Evidence report. */
+/** Dense human board — tasks nest under the subagent that claimed them. */
 export function renderTasksBoardText(surface: TasksSurface): string {
-	const title = "▣ tasks";
-	const work = surface.rows.filter((row) => row.provenance);
-	const live = surface.rows.filter((row) => !row.provenance);
-	const lines: string[] = [title, "same work as Evidence · provenance in the report"];
-	if (work.length === 0 && live.length === 0) {
+	const lines: string[] = [
+		"▣ agents",
+		"tasks nest under the subagent that claimed them · same work as Evidence",
+	];
+	if (
+		surface.board.groups.length === 0 &&
+		surface.board.unclaimed.length === 0
+	) {
 		lines.push(" no session work yet");
 	}
-	for (const row of work) {
-		const glyph = STATE_GLYPH[row.state] ?? "·";
-		const why = row.provenance?.reason.replace(/\s+/gu, " ").slice(0, 72);
-		lines.push(` ${glyph} ${row.kind.padEnd(7)} ${row.summary.slice(0, 48)}`);
-		if (why && why !== row.summary) {
-			lines.push(`   ${row.provenance?.actor ?? "·"} · ${why}`);
-		} else if (row.provenance) {
-			lines.push(`   ${row.provenance.actor} · ${row.kind}`);
+	for (const group of surface.board.groups) {
+		lines.push(` ${group.agentId}`);
+		if (group.tasks.length === 0) {
+			lines.push("   (no claimed tasks)");
+			continue;
+		}
+		for (const row of group.tasks) {
+			const claim = group.claims.find((entry) => entry.taskId === row.id);
+			lines.push(formatClaimedTask(row, claim));
 		}
 	}
-	if (live.length > 0) {
-		const fold = live
-			.map((r) => {
-				const g = STATE_GLYPH[String(r.state)] ?? "·";
-				const focus = r.state === "working" ? "▸" : "";
-				const short =
-					r.id.length > 6 ? `${r.id.slice(0, 5)}…` : r.id;
-				return `${focus}${g}${short}`;
-			})
-			.join("·");
-		lines.push(` live ${fold}`);
+	if (surface.board.unclaimed.length > 0) {
+		lines.push(" unclaimed");
+		for (const row of surface.board.unclaimed) {
+			lines.push(formatClaimedTask(row));
+		}
 	}
 	const wf =
 		surface.workflow.steps.length > 0
 			? `wf · ${surface.workflow.steps.length} steps · ${surface.world.kind}`
 			: `wf · ${surface.world.kind}`;
 	lines.push(` ${wf}`);
+	lines.push(" incremental checkins · stacked PRs · squash-merge");
 	lines.push(" Evidence: visual report of this board");
 	return lines.join("\n");
+}
+
+function formatClaimedTask(row: TaskBoardRow, claim?: WorkClaim): string {
+	const glyph = STATE_GLYPH[String(row.state)] ?? "·";
+	const summary = row.summary.slice(0, 48);
+	if (!claim) return `   ${glyph} ${summary}`;
+	return `   ${glyph} ${summary} · ${claim.branch} · ${claim.isolation} · incremental · stacked · squash`;
 }

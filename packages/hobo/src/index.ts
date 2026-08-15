@@ -23,7 +23,9 @@ export {
 	INTERNAL_MESH_HOST,
 	installInternalMesh,
 	internalMeshBase,
+	internalMeshHost,
 	isExternalComponent,
+	isInternalMeshHostname,
 	listServableEntrypoints,
 	listServableEntrypointsWithReplay,
 	type NamedEndpointInfo,
@@ -119,44 +121,17 @@ export {
 } from "./claim-command.js";
 export {
 	type ApplyClaimCommandResult,
+	applyClaimCommand,
 	CLAIM_COMMAND_EVENT,
 	CLAIM_FACT_PREFIX,
 	type ClaimItemView,
 	type ClaimPlaneSnapshot,
 	type ClaimStatusView,
-	applyClaimCommand,
 	claimStatusView,
 	claimStreamFor,
 	rebuildClaimState,
 	requireItem,
 } from "./claim-plane.js";
-export {
-	type FileOneTimeActionStoreOptions,
-	createFileOneTimeActionStore,
-} from "./one-time-action-store-file.js";
-export {
-	type BuildRecipeContextInput,
-	EVIDENCE_DIRECTORY,
-	type RecipeCatalogSnapshot,
-	type RecipeContext,
-	RecipePlaneError,
-	type RecipeSummary,
-	buildRecipeContext,
-	compileTopology,
-	definitionsOf,
-	deploymentRequestFromBindle,
-	isAcceptedCompilation,
-	listRecipeSummaries,
-	loadTrustEvidence,
-	projectCatalog,
-	requireRecipe,
-	summarizeRecipe,
-} from "./recipe-plane.js";
-export { createRecipesCommand } from "./recipes-command.js";
-export {
-	type OfferCommandDeps,
-	createOfferCommand,
-} from "./offer-command.js";
 export {
 	type ComposedHoboCliOptions,
 	createComposedHoboCli,
@@ -338,6 +313,10 @@ export {
 	verifyOcsfBatchSignature,
 } from "./ocsf-export.js";
 export {
+	createOfferCommand,
+	type OfferCommandDeps,
+} from "./offer-command.js";
+export {
 	DEFAULT_OIDC_CLIENT_ID,
 	DEVICE_CODE_GRANT_TYPE,
 	DeviceGrantError,
@@ -352,10 +331,33 @@ export {
 	runDeviceCodeGrant,
 } from "./oidc-device-grant.js";
 export {
+	createFileOneTimeActionStore,
+	type FileOneTimeActionStoreOptions,
+} from "./one-time-action-store-file.js";
+export {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
 	type PulumiBackedIacProviderOptions,
 } from "./pulumi-iac-provider.js";
+export {
+	type BuildRecipeContextInput,
+	buildRecipeContext,
+	compileTopology,
+	definitionsOf,
+	deploymentRequestFromBindle,
+	EVIDENCE_DIRECTORY,
+	isAcceptedCompilation,
+	listRecipeSummaries,
+	loadTrustEvidence,
+	projectCatalog,
+	type RecipeCatalogSnapshot,
+	type RecipeContext,
+	RecipePlaneError,
+	type RecipeSummary,
+	requireRecipe,
+	summarizeRecipe,
+} from "./recipe-plane.js";
+export { createRecipesCommand } from "./recipes-command.js";
 export {
 	createRegistryCommand,
 	type RegistryCommandDeps,

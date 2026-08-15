@@ -5,6 +5,7 @@
  */
 import { loadHarnessCatalog, seatingOrder } from "./agent-harness-catalog.js";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
+import { workspaceForAgent } from "./agent-work.js";
 import {
 	applyMux,
 	type MuxRunner,
@@ -47,13 +48,20 @@ export function pickCodingWindow(
 	return windows.find((row) => row.kind === "coding-agent");
 }
 
-/** Focused coding CLI, else the preferred coding window. Never the harness. */
+function isSteerable(row: InSessionWindow): boolean {
+	return row.kind === "coding-agent" || row.kind === "harness";
+}
+
+/** Focused subagent (coding CLI or harness), else the preferred coding window. */
 export function pickSendWindow(
 	panes: InSessionPanes,
 ): InSessionWindow | undefined {
 	const focused = panes.windows[panes.focused];
-	if (focused?.kind === "coding-agent") return focused;
-	return pickCodingWindow(panes.windows);
+	if (focused && isSteerable(focused)) return focused;
+	return (
+		pickCodingWindow(panes.windows) ??
+		panes.windows.find((row) => row.kind === "harness")
+	);
 }
 
 export function isProductPrompt(text: string): boolean {
@@ -74,9 +82,7 @@ export function emptyInSessionPanes(note: string): InSessionPanes {
 	};
 }
 
-export function classifyWindowName(
-	name: string,
-): InSessionWindow["kind"] {
+export function classifyWindowName(name: string): InSessionWindow["kind"] {
 	const spec = loadHarnessCatalog().find((row) => row.id === name);
 	if (!spec) return "unknown";
 	if (spec.host === true || spec.kind === "harness") return "harness";
@@ -138,6 +144,7 @@ export async function sendToInSessionPane(
 
 export async function ensureInSessionPanes(options: {
 	readonly cwd?: string;
+	readonly hoboHome?: string;
 	readonly env?: NodeJS.ProcessEnv;
 	readonly runner?: MuxRunner;
 	readonly session?: string;
@@ -164,7 +171,7 @@ export async function ensureInSessionPanes(options: {
 		name: agent.id,
 		kind: agent.kind === "inference" ? "local-inference" : "local",
 		command: agent.command,
-		cwd,
+		cwd: workspaceForAgent(options.hoboHome ?? "", agent.id) ?? cwd,
 	}));
 	const applied = await applyMux(planMux(session, targets), runner);
 	if (!applied.ok) {
@@ -176,7 +183,10 @@ export async function ensureInSessionPanes(options: {
 	const windows = await listInSessionWindows(runner, session);
 	const coding = pickCodingWindow(windows);
 	const focused = coding
-		? Math.max(0, windows.findIndex((row) => row.name === coding.name))
+		? Math.max(
+				0,
+				windows.findIndex((row) => row.name === coding.name),
+			)
 		: 0;
 	const focusedWindow = windows[focused];
 	const capture = focusedWindow
@@ -212,7 +222,6 @@ export function cycleInSessionWindow(
 ): InSessionPanes {
 	if (current.windows.length === 0) return current;
 	const next =
-		(current.focused + delta + current.windows.length) %
-		current.windows.length;
+		(current.focused + delta + current.windows.length) % current.windows.length;
 	return { ...current, focused: next, capture: "" };
 }

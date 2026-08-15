@@ -5,6 +5,7 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { GOLDEN_DEFAULT_SUITE_ID, SILVER_DEFAULT_SUITE_ID } from "@hobo/evals";
 
@@ -97,6 +98,72 @@ export function inspectProjectEvalTests(
 		command: command ?? `pnpm test -- ${files.join(" ")}`,
 		files,
 	};
+}
+
+export async function loadTrainableInvokers(
+	projectDir: string,
+	regions: readonly TrainableRegion[],
+): Promise<Readonly<Record<string, (input: unknown) => unknown>>> {
+	const invokers: Record<string, (input: unknown) => unknown> = {};
+	for (const region of regions) {
+		const short = region.methodRef.split(".").pop() ?? region.methodRef;
+		for (const file of invokerCandidateFiles(region.file)) {
+			const abs = join(projectDir, file);
+			if (!existsSync(abs)) continue;
+			try {
+				const mod = (await import(pathToFileURL(abs).href)) as Record<
+					string,
+					unknown
+				>;
+				const candidate = pickInvokerExport(mod, short);
+				if (candidate) {
+					invokers[region.methodRef] = (input: unknown) => candidate(input);
+					break;
+				}
+			} catch {
+				// Try the next compiled sibling; silver stays fail-closed if none load.
+			}
+		}
+	}
+	return invokers;
+}
+
+function invokerCandidateFiles(file: string): readonly string[] {
+	const out: string[] = [];
+	const push = (next: string) => {
+		if (!out.includes(next)) out.push(next);
+	};
+	if (/\.[cm]?js$/u.test(file)) push(file);
+	const base = file.replace(/\.[cm]?[jt]sx?$/u, "");
+	for (const ext of [".js", ".mjs", ".cjs"]) push(`${base}${ext}`);
+	if (/^src[/\\]/u.test(base)) {
+		const distBase = `dist/${base.slice(4)}`;
+		for (const ext of [".js", ".mjs", ".cjs"]) push(`${distBase}${ext}`);
+	}
+	return out;
+}
+
+function pickInvokerExport(
+	mod: Record<string, unknown>,
+	short: string,
+): ((input: unknown) => unknown) | undefined {
+	const named = mod[short];
+	if (typeof named === "function") {
+		return named as (input: unknown) => unknown;
+	}
+	const fallbacks = [mod.default, mod.fn, mod];
+	for (const value of fallbacks) {
+		if (typeof value === "function") {
+			return value as (input: unknown) => unknown;
+		}
+		if (value && typeof value === "object") {
+			const nested = (value as Record<string, unknown>)[short];
+			if (typeof nested === "function") {
+				return nested as (input: unknown) => unknown;
+			}
+		}
+	}
+	return undefined;
 }
 
 export function inspectTrainableRegions(

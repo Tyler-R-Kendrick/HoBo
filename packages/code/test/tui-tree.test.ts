@@ -121,7 +121,7 @@ describe("hobo-code TUI semantic tree", () => {
 		expect(collectText(dialog).join(" ")).toMatch(/y promote/);
 	});
 
-	it("exposes panes, tasks, status, and resources as dedicated panes", () => {
+	it("exposes agents only after subagent work, then status and resources", () => {
 		let state = createInitialShellState({
 			width: 80,
 			height: 24,
@@ -129,12 +129,25 @@ describe("hobo-code TUI semantic tree", () => {
 			reducedMotion: true,
 		});
 		state = reduceShellKey(state, "\t").state;
+		expect(findDescendantById(buildShellTree(state), "status-pane")?.id).toBe(
+			"status-pane",
+		);
+		state = {
+			...state,
+			focus: "chat",
+			agentWork: true,
+			livePanes: {
+				session: "hobo",
+				windows: [{ name: "codex", target: "%1", kind: "coding-agent" }],
+				focused: 0,
+				capture: "codex ›",
+				note: "in-session",
+				tmux: true,
+			},
+		};
+		state = reduceShellKey(state, "\t").state;
 		expect(findDescendantById(buildShellTree(state), "agent-panes")?.id).toBe(
 			"agent-panes",
-		);
-		state = reduceShellKey(state, "\t").state;
-		expect(findDescendantById(buildShellTree(state), "tasks-pane")?.id).toBe(
-			"tasks-pane",
 		);
 		state = reduceShellKey(state, "\t").state;
 		expect(findDescendantById(buildShellTree(state), "status-pane")?.id).toBe(

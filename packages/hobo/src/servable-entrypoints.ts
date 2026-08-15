@@ -12,6 +12,7 @@ import { join } from "node:path";
 import type { BindleDefinition } from "@hobo/bindles";
 import {
 	EVIDENCE_OVERLAY_BO_PATH,
+	EVIDENCE_OVERLAY_DEBUG_PARAM,
 	evidenceOverlayBoIdleResponse,
 	renderEvidenceOverlayBridge,
 	renderEvidenceOverlayWrapper,
@@ -180,6 +181,41 @@ function applyEvidenceOverlay(
 				controls.searchParams.set("parentOrigin", requestUrl.origin);
 			}
 			const resolvedControlsUrl = controls.href;
+			if (
+				(request.method === "GET" || request.method === "HEAD") &&
+				requestUrl.searchParams.has(EVIDENCE_OVERLAY_DEBUG_PARAM)
+			) {
+				if (requestUrl.origin === controls.origin) {
+					return responseWithEvidenceHeader(
+						new Response(
+							"evidence overlay controls require a separate origin",
+							{
+								status: 409,
+								headers: { "content-type": "text/plain; charset=utf-8" },
+							},
+						),
+						"refused-same-origin",
+					);
+				}
+				requestUrl.searchParams.delete(EVIDENCE_OVERLAY_DEBUG_PARAM);
+				requestUrl.searchParams.set(EVIDENCE_RAW_PARAM, "1");
+				const wrapper = renderEvidenceOverlayWrapper({
+					appUrl: requestUrl.href,
+					controlsUrl: resolvedControlsUrl,
+				});
+				return new Response(request.method === "HEAD" ? null : wrapper, {
+					status: 200,
+					headers: {
+						"cache-control": "no-store",
+						"content-type": "text/html; charset=utf-8",
+						"x-hobo-evidence-overlay": "debug",
+						"content-security-policy": evidenceWrapperCsp(
+							requestUrl.origin,
+							controls.origin,
+						),
+					},
+				});
+			}
 			const bridge = `<script data-hobo-evidence-overlay-bridge="1">${renderEvidenceOverlayBridge({ controlsUrl: resolvedControlsUrl })}</script>`;
 			if (
 				request.method === "GET" &&
@@ -232,7 +268,7 @@ function applyEvidenceOverlay(
 			headers.delete("content-security-policy-report-only");
 			headers.set(
 				"content-security-policy",
-				`default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src ${requestUrl.origin}; frame-src ${requestUrl.origin} ${controls.origin}`,
+				evidenceWrapperCsp(requestUrl.origin, controls.origin),
 			);
 			return new Response(wrapper, responseInit(response, headers));
 		},
@@ -249,6 +285,10 @@ function discoveredEvidenceControlsUrl(
 	if (!existsSync(path)) return undefined;
 	const value = readFileSync(path, "utf8").trim();
 	return value || undefined;
+}
+
+function evidenceWrapperCsp(appOrigin: string, controlsOrigin: string): string {
+	return `default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src ${appOrigin}; frame-src ${appOrigin} ${controlsOrigin}`;
 }
 
 function cspAllowsEvidenceBridge(

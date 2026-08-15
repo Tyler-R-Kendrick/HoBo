@@ -35,6 +35,19 @@ export default bindle("hello-world", (b) => {
 		expect(inspected.requirements).toContain("managed-http-runtime");
 	});
 
+	it("keeps distinct names when a bindle declares more than one api", () => {
+		const inspected = inspectBindleSource(`
+export default bindle("shop", (b) => ({
+  billing: b.api(),
+  users: b.api(),
+  web: b.web(),
+}));
+`);
+		expect(inspected.resources.map((row) => `${row.kind}:${row.name}`)).toEqual(
+			["api:billing", "api:users", "web:web"],
+		);
+	});
+
 	it("reads backing capabilities from a JSON bindle project", () => {
 		const root = mkdtempSync(join(tmpdir(), "bindle-inspect-"));
 		roots.push(root);

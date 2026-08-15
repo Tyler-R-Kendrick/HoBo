@@ -278,11 +278,7 @@ export interface InkTableProps {
 /** Two-column label/value table for welcome + occupancy endpoints. */
 export function InkTable(props: InkTableProps): TuiNode {
 	return (
-		<box
-			id={props.id ?? "ink-table"}
-			role="table"
-			className="ink-table"
-		>
+		<box id={props.id ?? "ink-table"} role="table" className="ink-table">
 			{formatInkTable(props.rows)
 				.split("\n")
 				.filter((line) => line.length > 0)
@@ -311,6 +307,141 @@ export function TextPane(props: TextPaneProps): TuiNode {
 			<text>{props.text}</text>
 		</box>
 	);
+}
+
+export interface WelcomeSurfaceProps {
+	readonly art?: ChatMessage;
+	readonly rows: readonly InkTableRow[];
+	readonly rest?: readonly ChatMessage[];
+	readonly width: number;
+	readonly scroll?: number;
+}
+
+/** Welcome art + occupancy table + later chat, one retained surface. */
+export function WelcomeSurface(props: WelcomeSurfaceProps): TuiNode {
+	return (
+		<box
+			id="chat-surface"
+			role="region"
+			className="chat-surface"
+			scroll={props.scroll ?? 0}
+		>
+			{props.art ? (
+				<ChatTranscript messages={[props.art]} width={props.width} />
+			) : undefined}
+			<InkTable id="welcome-table" rows={props.rows} />
+			{props.rest && props.rest.length > 0 ? (
+				<ChatTranscript messages={props.rest} width={props.width} />
+			) : undefined}
+		</box>
+	);
+}
+
+export interface AgentTaskRow {
+	readonly summary: string;
+	readonly state?: string;
+	readonly branch?: string;
+	readonly isolation?: string;
+}
+
+export interface AgentPaneRow {
+	readonly name: string;
+	readonly focused?: boolean;
+	readonly tasks?: readonly AgentTaskRow[];
+}
+
+export interface AgentPanesProps {
+	readonly note?: string;
+	readonly windows: readonly AgentPaneRow[];
+	readonly unclaimed?: readonly AgentTaskRow[];
+	readonly capture?: string;
+	readonly empty?: string;
+	readonly scroll?: number;
+	readonly parent?: readonly string[];
+}
+
+/** In-session agent windows as a list, not a dumped TextPane blob. */
+export function AgentPanes(props: AgentPanesProps): TuiNode {
+	const unclaimed = props.unclaimed ?? [];
+	if (props.windows.length === 0 && unclaimed.length === 0) {
+		return (
+			<box
+				id="agent-panes"
+				role="region"
+				className="text-pane pane-list"
+				scroll={props.scroll ?? 0}
+				scrollOrigin="start"
+			>
+				<text>
+					{props.empty ??
+						"no agent panes yet · install a coding CLI on PATH · tmux required"}
+				</text>
+			</box>
+		);
+	}
+	return (
+		<box
+			id="agent-panes"
+			role="list"
+			className="pane-list"
+			scroll={props.scroll ?? 0}
+			scrollOrigin="start"
+		>
+			{props.note ? <text className="pane-note">{props.note}</text> : undefined}
+			{props.parent && props.parent.length > 0 ? (
+				<text className="pane-note">{`parent · ${props.parent.join(" · ")}`}</text>
+			) : undefined}
+			{props.windows.map((row) => (
+				<box role="list" className="agent-group">
+					<text
+						role="listitem"
+						className={row.focused ? "pane-item selected" : "pane-item"}
+						selected={row.focused === true}
+					>{`${row.focused ? "▸" : " "} ${row.name}`}</text>
+					{(row.tasks ?? []).map((task) => (
+						<text role="listitem" className="pane-task">
+							{formatAgentTask(task)}
+						</text>
+					))}
+					{(row.tasks ?? []).length === 0 ? (
+						<text className="pane-task">{"    (no claimed tasks)"}</text>
+					) : undefined}
+				</box>
+			))}
+			{unclaimed.length > 0 ? (
+				<box role="list" className="agent-group">
+					<text role="listitem" className="pane-item">
+						{"  unclaimed"}
+					</text>
+					{unclaimed.map((task) => (
+						<text role="listitem" className="pane-task">
+							{formatAgentTask(task)}
+						</text>
+					))}
+				</box>
+			) : undefined}
+			<text></text>
+			<text className="pane-capture">
+				{props.capture ||
+					"(type to steer this subagent · Tab back to chat keeps context)"}
+			</text>
+		</box>
+	);
+}
+
+function formatAgentTask(task: AgentTaskRow): string {
+	const glyph =
+		task.state === "working" || task.state === "captured"
+			? "●"
+			: task.state === "done" || task.state === "verified"
+				? "✓"
+				: task.state === "blocked" || task.state === "stale"
+					? "▲"
+					: "○";
+	const extra = [task.branch, task.isolation].filter(Boolean).join(" · ");
+	return extra
+		? `    ${glyph} ${task.summary} · ${extra}`
+		: `    ${glyph} ${task.summary}`;
 }
 
 export interface ShellChromeProps {

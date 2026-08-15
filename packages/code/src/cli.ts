@@ -2,7 +2,7 @@
  * `hobo-code` CLI — coding harness + multi-node compute (ADR-0139).
  *
  * App-building agent CLI (not a control-plane management tool).
- *   dispatch (default) | status | resources | session | attach | tasks | guide |
+ *   dispatch (default) | init | status | resources | session | attach | tasks | guide |
  *   scaffold | template | dev | isolate | promote | env | auth | models | cost | harness |
  *   edit | config | agent | agents | help
  *
@@ -12,6 +12,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { initStation, persistStationCapabilityManifest } from "@hobo/stations";
 import { runAgentsCli } from "./agent-harness-init.js";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
@@ -54,6 +55,11 @@ import {
 	resolveMachine,
 	sshDestination,
 } from "./dev-machines.js";
+import {
+	codeDevStation,
+	isCodeDevScenario,
+	stationInitArgsFromDeclaration,
+} from "./dev-stations.js";
 import { defaultDevenvProbes, devenvSummary, inspectDevenv } from "./devenv.js";
 import {
 	computeTaskPath,
@@ -94,6 +100,13 @@ import {
 	listSandboxOrphans,
 } from "./isolation.js";
 import { createLocalSessionControl } from "./local-session-control.js";
+import {
+	defaultMachineProbes,
+	discoverMachine,
+	type MachineDiscoveryProbes,
+	matchMachineToStation,
+	persistMachineDiscoveryReport,
+} from "./machine-discovery.js";
 import {
 	brokerPaneSession,
 	brokerPanes,
@@ -180,6 +193,7 @@ import { describeCodeWorlds } from "./worlds.js";
 
 export const HOBO_CODE_VERBS = [
 	"dispatch",
+	"init",
 	"vshell",
 	"machines",
 	"status",
@@ -362,6 +376,8 @@ export interface HoboCodeCliDeps {
 		context: Parameters<typeof openStationGateway>[0],
 	) => Promise<OpenedGateway>;
 	readonly muxRunner?: MuxRunner;
+	/** Injectable machine probes for `init` discovery (tests / harnesses). */
+	readonly machineProbes?: MachineDiscoveryProbes;
 	readonly startDevSession?: typeof startDevBrowserSession;
 	readonly onDevSession?: (session: DevBrowserSession) => void;
 	readonly fetch?: typeof globalThis.fetch;
@@ -422,6 +438,7 @@ const VALUE_FLAGS = new Set([
 	"top-k",
 	"language",
 	"context",
+	"scenario",
 ]);
 
 /** Boolean flags (never consume the next token). */
@@ -719,6 +736,36 @@ const VERB_HELP_PLAIN: Record<
 		'  hobo-code dispatch "refine the openui scaffold"',
 		"",
 		"See also: hobo-code auth · hobo-code scaffold · hobo-code session",
+	],
+	init: [
+		"hobo-code init — machine discovery + Station occupancy seed",
+		"",
+		"Inspects the machine hobo-code is running on and matches the evidence",
+		"against the default localhost capability set declared on the dev-scenario",
+		"Station (ADR-0155). Required capabilities gate init (fail-closed);",
+		"optional ones degrade with a remediation line. Writes the discovery",
+		"report and the matched capability manifest beside the Station data.",
+		"",
+		"Usage:",
+		"  hobo-code init                   # discover, match, init station:local",
+		"  hobo-code init --dry-run         # discover + match only; write nothing",
+		"  hobo-code init --scenario ephemeral",
+		"  hobo-code init --json",
+		"",
+		"What is probed (evidence-based, auditable):",
+		"  · Node.js version · git · isolation platform matrix (rift/worktree)",
+		"  · local model server (ollama) · devenv/nix toolchain",
+		"  · installed coding harnesses (same detection as `agents`)",
+		"",
+		"Flags:",
+		"  --scenario <id>     Dev scenario: local-dev (default) | ephemeral | preview",
+		"  --dry-run           Discover and match only; never write",
+		"  --station <id>      Explicit station id (default from scenario)",
+		"  --tenant <id>       Tenant recorded on the Station (default local)",
+		"  --json              Machine-readable envelope",
+		"  --help, -h          Show this help",
+		"",
+		"See also: hobo-code agents init · hobo-code status · hobo station init",
 	],
 	status: [
 		"hobo-code status — session / agent multiplexer chrome",
@@ -1539,6 +1586,7 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 		// Compact one-liner pointer + plain block would thrash; keep short.
 		const tails: Record<string, string> = {
 			dispatch: "★d",
+			init: "in",
 			status: "st",
 			resources: "rs",
 			history: "hi",
@@ -1684,7 +1732,11 @@ export async function runHoboCodeCli(
 	const platform = composeCodePlatform({
 		hoboHome,
 		...(resolvedStation !== undefined ? { stationId: resolvedStation } : {}),
-		autoInitStation: !(verb === "session" && typeof flags.host === "string"),
+		// `init` owns Station creation explicitly (discovery-gated, ADR-0155);
+		// composing the snapshot must not pre-empt it with a silent auto-init.
+		autoInitStation:
+			verb !== "init" &&
+			!(verb === "session" && typeof flags.host === "string"),
 		tenant: resolvedTenant,
 		features,
 	});
@@ -1881,6 +1933,108 @@ export async function runHoboCodeCli(
 		return result.ok
 			? ok(result.code, result.message, result.data)
 			: fail(result.code, result.message, undefined, result.data);
+	}
+
+	if (verb === "init") {
+		const dryRun = flags["dry-run"] === true;
+		const scenarioRaw =
+			typeof flags.scenario === "string" ? flags.scenario : "local-dev";
+		if (!isCodeDevScenario(scenarioRaw)) {
+			return fail(
+				"HOBO_CODE_INIT_SCENARIO",
+				panel("✕ init", [
+					`unknown scenario · ${scenarioRaw}`,
+					"known · local-dev | ephemeral | preview",
+				]),
+				["hobo-code init --scenario local-dev"],
+			);
+		}
+		const declaration = codeDevStation(scenarioRaw, {
+			...(resolvedStation !== undefined
+				? { name: resolvedStation.replace(/^station:/, "") }
+				: {}),
+			tenant: resolvedTenant,
+		});
+		const probes = deps.machineProbes ?? defaultMachineProbes(env);
+		const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+		const report = await discoverMachine({
+			probes,
+			packageRoot,
+			hoboHome,
+			cwd: projectDir,
+		});
+		const manifest = matchMachineToStation({
+			stationId: declaration.id,
+			report,
+			declared: declaration.capabilities,
+			env,
+		});
+		const capabilityRows = manifest.capabilities.map((row) => {
+			const mark =
+				row.status === "present" ? "✓" : row.capability.required ? "✕" : "·";
+			const tail =
+				row.status === "present"
+					? (row.evidence[0] ?? "")
+					: (row.capability.remediation ?? "missing");
+			return `${mark} ${row.capability.kind}:${row.capability.slug} · ${tail}`;
+		});
+		if (!manifest.ok) {
+			// Fail closed (ADR-0131 §7 / ADR-0155): a machine missing required
+			// localhost capabilities does not get durable Station state.
+			return fail(
+				"HOBO_CODE_INIT_CAPABILITY",
+				panel("✕ init", [
+					`station · ${declaration.id} (${scenarioRaw}) — not seeded`,
+					...capabilityRows,
+					"required capabilities missing — nothing written",
+				]),
+				manifest.remediation,
+				{ report, manifest, dryRun: true },
+			);
+		}
+		if (dryRun) {
+			return ok(
+				"HOBO_CODE_INIT_DRY_RUN",
+				panel("▣ init", [
+					`station · ${declaration.id} (${scenarioRaw}) — dry-run`,
+					...capabilityRows,
+					"nothing written · re-run without --dry-run to seed",
+				]),
+				{ report, manifest, dryRun: true },
+			);
+		}
+		const seeded = initStation({
+			hoboHome,
+			...stationInitArgsFromDeclaration(declaration),
+		});
+		const manifestPath = persistStationCapabilityManifest(
+			hoboHome,
+			seeded.stationId,
+			manifest,
+		);
+		const reportPath = persistMachineDiscoveryReport(hoboHome, report);
+		return ok(
+			"HOBO_CODE_INIT",
+			panel("✓ init", [
+				`station · ${seeded.stationId} (${scenarioRaw}) · ${seeded.created ? "created" : "already present"}`,
+				...capabilityRows,
+				`manifest · ${manifestPath}`,
+				`report · ${reportPath}`,
+				"next · hobo-code status",
+			]),
+			{
+				report,
+				manifest,
+				station: {
+					stationId: seeded.stationId,
+					created: seeded.created,
+					dataDir: seeded.dataDir,
+					bootstrapActive: seeded.occupancy.bootstrapActive,
+				},
+				paths: { manifest: manifestPath, report: reportPath },
+				dryRun: false,
+			},
+		);
 	}
 
 	if (verb === "edit") {

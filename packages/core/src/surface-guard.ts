@@ -50,6 +50,18 @@ export const CORE_API_SNAPSHOT = deepFreeze({
 		"TemporaryEnvironmentStationResult",
 		"assertTemporaryEnvironmentStationResult",
 		"temporaryStationToAnonymousSessionShape",
+		// ADR-0155 Plugin SPI surface.
+		"CloudProvider",
+		"CapabilityPortKind",
+		"ActorHost",
+		"ActorLease",
+		"createExtensionRegistry",
+		"parseExtensionPointId",
+		"ExtensionRegistryError",
+		"PLUGIN_MANIFEST_SCHEMA",
+		"parsePluginManifest",
+		"parsePluginPackageJson",
+		"PluginManifestParseError",
 	],
 });
 

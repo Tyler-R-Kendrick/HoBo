@@ -37,6 +37,16 @@ export {
 	PortDescriptorParseError,
 } from "./errors.js";
 export type {
+	ExtensionPointId,
+	ExtensionRegistry,
+	ExtensionRegistryOptions,
+} from "./extension-registry.js";
+export {
+	createExtensionRegistry,
+	ExtensionRegistryError,
+	parseExtensionPointId,
+} from "./extension-registry.js";
+export type {
 	CapabilityManifestBundle,
 	ParseCapabilityManifestOptions,
 } from "./manifest.js";
@@ -58,6 +68,70 @@ export {
 	isHoboHierarchicalName,
 	sanitizeDnsLabel,
 } from "./naming.js";
+export type {
+	HoboPluginManifest,
+	PluginExtensionDeclaration,
+	PluginPackageManifest,
+} from "./plugin-manifest.js";
+export {
+	isPluginPackageJson,
+	PLUGIN_MANIFEST_SCHEMA,
+	PluginManifestParseError,
+	parsePluginManifest,
+	parsePluginPackageJson,
+} from "./plugin-manifest.js";
+export type {
+	ActorHost,
+	ActorLease,
+	ActorLeaseHost,
+	ActorStateHandle,
+	FoldEvent,
+} from "./ports/actor-host.js";
+export {
+	ACTOR_HOST_EXTENSION_POINT,
+	ACTOR_HOST_PORT_DESCRIPTOR,
+	ACTOR_HOST_PORT_INTERFACE,
+} from "./ports/actor-host.js";
+export type {
+	ActorCommandDigestInput,
+	ActorKeySegment,
+	ActorTypeId,
+	CommandDigest,
+	LogicalActorIdentity,
+	LogicalTenantId,
+} from "./ports/actor-identity.js";
+export {
+	ACTOR_IDENTITY_PREFIX,
+	ActorIdentityParseError,
+	actorCommandDigest,
+	actorCompoundKey,
+	MAX_ACTOR_KEY_SEGMENT_BYTES,
+	MAX_ACTOR_KEY_SEGMENTS,
+	MAX_ACTOR_TYPE_BYTES,
+	parseActorCompoundKey,
+	parseLogicalActorIdentity,
+} from "./ports/actor-identity.js";
+export type {
+	ActorCommit,
+	ActorConcurrency,
+	ActorInbox,
+	ActorPlacementRequirement,
+	ActorRequirements,
+	ActorResolverCapabilities,
+	ActorResolverDecision,
+	ActorResolverFamily,
+	ActorResolverRejection,
+	ActorTenantIsolation,
+	ActorWebsocketHibernation,
+} from "./ports/actor-requirements.js";
+export {
+	ActorRequirementsParseError,
+	CELLD_ACTOR_CAPABILITIES,
+	evaluateActorResolver,
+	NATIVE_ACTOR_CAPABILITIES,
+	parseActorRequirements,
+	RIVET_ACTOR_CAPABILITIES,
+} from "./ports/actor-requirements.js";
 export type {
 	BindingResolverPort,
 	BindingSource,
@@ -96,6 +170,31 @@ export {
 	parseScheduleId,
 	parseTimerId,
 } from "./ports/clock.js";
+export type {
+	BuildSpec as ProviderBuildSpec,
+	Capability,
+	CapabilityManifest,
+	CapabilityPortKind,
+	CloudProvider,
+	CostSignal,
+	IacProgramDocument,
+	IacResource,
+	Match,
+	Outputs,
+	PortRequest,
+	ProviderClient,
+	PublishedManifestDocuments,
+	RealizedResources,
+	ResourcePlan,
+	TypedOptionBlock,
+} from "./ports/cloud-provider.js";
+export {
+	CLOUD_PROVIDER_EXTENSION_POINT,
+	CLOUD_PROVIDER_PORT_DESCRIPTOR,
+	CLOUD_PROVIDER_PORT_INTERFACE,
+	IAC_PROGRAM_API_VERSION,
+	IAC_PROGRAM_KIND,
+} from "./ports/cloud-provider.js";
 export type {
 	BoundaryMode,
 	ComponentDescriptor,
@@ -225,46 +324,6 @@ export {
 	REGION_JURISDICTIONS,
 	TRANSFER_MECHANISMS,
 } from "./ports/jurisdiction.js";
-export {
-	CELLD_ACTOR_CAPABILITIES,
-	NATIVE_ACTOR_CAPABILITIES,
-	RIVET_ACTOR_CAPABILITIES,
-	ActorRequirementsParseError,
-	evaluateActorResolver,
-	parseActorRequirements,
-} from "./ports/actor-requirements.js";
-export type {
-	ActorCommit,
-	ActorConcurrency,
-	ActorInbox,
-	ActorPlacementRequirement,
-	ActorRequirements,
-	ActorResolverCapabilities,
-	ActorResolverDecision,
-	ActorResolverFamily,
-	ActorResolverRejection,
-	ActorTenantIsolation,
-	ActorWebsocketHibernation,
-} from "./ports/actor-requirements.js";
-export {
-	ACTOR_IDENTITY_PREFIX,
-	MAX_ACTOR_KEY_SEGMENTS,
-	MAX_ACTOR_KEY_SEGMENT_BYTES,
-	MAX_ACTOR_TYPE_BYTES,
-	ActorIdentityParseError,
-	actorCommandDigest,
-	actorCompoundKey,
-	parseActorCompoundKey,
-	parseLogicalActorIdentity,
-} from "./ports/actor-identity.js";
-export type {
-	ActorCommandDigestInput,
-	ActorKeySegment,
-	ActorTypeId,
-	CommandDigest,
-	LogicalActorIdentity,
-	LogicalTenantId,
-} from "./ports/actor-identity.js";
 export type {
 	ActorPlacementMode,
 	ConsumedMessage,
@@ -445,6 +504,19 @@ export {
 	StreamerParseError,
 } from "./ports/streamer.js";
 export type {
+	TemporaryEnvironmentStationInput,
+	TemporaryEnvironmentStationResult,
+	TemporaryStationAnonymousSessionShape,
+} from "./ports/temporary-station.js";
+export {
+	assertTemporaryEnvironmentStationResult,
+	TEMPORARY_ENVIRONMENT_STATION_SCHEMA,
+	TEMPORARY_STATION_TTL_MS,
+	temporaryStationExpiresAt,
+	temporaryStationToAnonymousSessionShape,
+	temporaryStationTtlSeconds,
+} from "./ports/temporary-station.js";
+export type {
 	ProjectId,
 	Tenant,
 	TenantContext,
@@ -608,19 +680,6 @@ export type {
 	RuntimePort,
 } from "./ports.js";
 export { createPortDescriptor } from "./ports.js";
-export type {
-	TemporaryEnvironmentStationInput,
-	TemporaryEnvironmentStationResult,
-	TemporaryStationAnonymousSessionShape,
-} from "./ports/temporary-station.js";
-export {
-	assertTemporaryEnvironmentStationResult,
-	TEMPORARY_ENVIRONMENT_STATION_SCHEMA,
-	TEMPORARY_STATION_TTL_MS,
-	temporaryStationExpiresAt,
-	temporaryStationToAnonymousSessionShape,
-	temporaryStationTtlSeconds,
-} from "./ports/temporary-station.js";
 export type { PublicTypeSurfaceResult } from "./surface-guard.js";
 export {
 	assertCoreApiSnapshot,

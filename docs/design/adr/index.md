@@ -163,3 +163,4 @@
 | 0152 | Atomic templates + local SQLite hybrid retrieval for zero-inference emission | [data-plane](03-data-plane.md#adr-0152) |
 | 0153 | Canonical `@hobo/patterns` catalog + ontology-vector + `hobo-code template` | [data-plane](03-data-plane.md#adr-0153) |
 | 0154 | Durable HoBo Code review aggregate | [data-plane](03-data-plane.md#adr-0154) |
+| 0155 | The Plugin SPI: one extension-point model, core-owned provider/actor ports, manifest-declared external plugins (`hobo.plugin/v1`) | [portability-extensibility](07-portability-extensibility.md#adr-0155) |

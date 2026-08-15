@@ -27,6 +27,12 @@ export {
 	generateProvider,
 } from "./generate-provider.js";
 export {
+	assertPluginExports,
+	type DefinePluginSpec,
+	definePlugin,
+	type SdkPluginDeclaration,
+} from "./plugin.js";
+export {
 	policyPack,
 	rule,
 	type SdkPolicyPack,
@@ -53,6 +59,7 @@ export {
 	CHAOS_SCHEMA,
 	DISPATCHER_DECLARATION_SCHEMA,
 	GENERATE_PROVIDER_SCHEMA,
+	PLUGIN_DECLARATION_SCHEMA,
 	POLICY_PACK_SCHEMA,
 	RESOURCE_DEFINITION_SCHEMA,
 	RUNBOOK_SCHEMA,

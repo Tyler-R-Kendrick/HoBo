@@ -60,3 +60,16 @@ package sdk
 	list_unit_cost: number & >=0
 	switching_cost: number & >=0
 }
+
+#PluginExtensionEntry: {
+	point:       string & =~"^hobo\\.[a-z0-9][a-z0-9.-]*\\/v[0-9]+$"
+	export_name: string & !=""
+	id?:         string & !=""
+}
+
+#PluginDeclaration: {
+	schema:       "hobo.sdk/v1.plugin"
+	package_name: string & !=""
+	entry:        string & =~"^\\./.+"
+	extensions: [...#PluginExtensionEntry] & [_, ...]
+}

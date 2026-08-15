@@ -28,6 +28,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Component host | Camp capability that executes components; Wasmtime locally and wasm-in-container as the v1 production floor. |
 | Conductor | Product branding for the HoBo Broker on user-facing surfaces; technical docs, code, and wire contracts keep the term "broker" ([hobo-broker.md](./hobo-broker.md)). The Conductor is a **pure runtime**: it mounts a Station client + active Rail(s), runs resolve/scale/deliver, and emits receipts that pin `stationId` + `railHash` + `catalogHash` + `policyHash`. It owns no durable Connections or policy packs. |
 | Config and secrets | Secretless-first app configuration resolved through `ctx.config` to Camp-specific references rather than plaintext values. |
+| Extension point | Named, versioned seam (`hobo.<name>/v<major>`) where a package other than the seam's owner supplies behavior; the normative catalog (one row per mechanism: owner, registration semantics, discovery, gate) is [extension-points.md](./extension-points.md) ([ADR-0155](./adr/07-portability-extensibility.md#adr-0155)). |
 | Config capability | Linked `wasi:config/store` provider for non-secret deploy variance (value-ref + sensitivity); import-optional; not a residual vault ([ADR-0142](./adr/02-identity-security.md#adr-0142)). |
 | Config sensitivity | Classification `public` \| `internal` \| `sensitive` controlling materialization; sensitive fields use delegated refs only ([ADR-0142](./adr/02-identity-security.md#adr-0142)). |
 | Residual secrets | Optional classical secret stores (`hobo:secrets`, SecretsPort, optional OpenBao adapter) after federation/`fromBinding`; never default ambient env ([ADR-0027](./adr/02-identity-security.md#adr-0027), [ADR-0142](./adr/02-identity-security.md#adr-0142)). |
@@ -102,13 +103,14 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Resolution Receipt | Broker-issued evidence artifact proving a Contract Manifest was resolved against a specific Broker Environment and catalog snapshot. |
 | Resolution Rejection | Broker-issued evidence artifact naming why resolution failed, such as stale, incompatible, ambiguous, or unsupported mapping state. |
 | Resource Definition | Rule for realizing a port in a context, including provider, driver, and options. |
+| Plugin (HoBo) | External package declaring a `hobo` key (`hobo.plugin/v1`) in its package.json: an entry module plus the `{point, export}` extensions it provides. Parsed by `@hobo/core`, authored via `@hobo/sdk` `definePlugin`, loaded by explicit specifier at the composition root; provider plugins go through the normal `provider.Registered`/`provider.Approved` lifecycle ([ADR-0155](./adr/07-portability-extensibility.md#adr-0155)). |
 | Resource Pack | Shareable signed bundle of Resource Definitions. |
 | ResourceActor | Controller-style grain that reconciles one resource's desired and actual state. |
 | ResourceIntent | Provider-neutral infrastructure request that enters the FinOps routing pipeline as its canonical input, before candidate generation; the router core must not see provider names, SKUs, regions, account IDs, or backend API names. |
 | Run | One durable workflow or agent execution represented by a `run.*` event stream. |
 | Rightsizing | Advisory recommendation to shrink or scale-to-zero an over-provisioned workload, derived from observed utilization versus the provisioned Workload Profile and applied only through gated proposals. |
 | Runtime | Reused term for the SDK primitives package, the `Runtime` interface, or a runtime backend; context names which one. |
-| Runtime ports | Durable substrate ports a Camp provides: EventStore, Queue, Streamer, ActorHost, and Clock. |
+| Runtime ports | Durable substrate ports a Camp provides: EventStore, Queue, Streamer, ActorHost, and Clock. Since [ADR-0155](./adr/07-portability-extensibility.md#adr-0155) each is a declared `@hobo/core` port — ActorHost included (`ports/actor-host.ts`), ending its per-package re-declaration. |
 | Scope listing | Bindle, Camp, Yard, or Junction distributed as an npm package or structured git repo that exports the constructed scope. |
 | SVID | SPIFFE-style workload identity issued by the Yard for keyless auth. |
 | Stub | Typed recording placeholder behind a WIT port so an app runs before a real implementation exists. |

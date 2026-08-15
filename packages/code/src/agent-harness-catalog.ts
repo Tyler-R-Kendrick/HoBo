@@ -12,19 +12,38 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-	type AgentKind,
-	type DetectProbes,
-	type KnownAgent,
-} from "./agent-registry.js";
-import {
 	type AdapterContext,
 	applyHarnessConfig,
-	type HarnessKind,
 	type HarnessHunk,
+	type HarnessKind,
 	type HarnessSpec,
 } from "./agent-harness-adapters.js";
+import type { DetectProbes, KnownAgent } from "./agent-registry.js";
+import {
+	agentKindOf,
+	harnessKindOf,
+	isHostSpec,
+	parseHarnessSpec,
+} from "./harness-spec.js";
 
 export type { HarnessSpec } from "./agent-harness-adapters.js";
+export {
+	agentKindOf,
+	HARNESS_CONFIG_FORMATS,
+	HARNESS_SPEC_KINDS,
+	HARNESS_SPEC_SCHEMA,
+	type HarnessSpecKind,
+	HarnessSpecParseError,
+	harnessKindOf,
+	isHostSpec,
+	parseHarnessSpec,
+} from "./harness-spec.js";
+
+/** One skipped plugin file: which file, and why parsing rejected it. */
+export interface HarnessCatalogDiagnostic {
+	readonly file: string;
+	readonly message: string;
+}
 
 const extras: HarnessSpec[] = [];
 
@@ -43,28 +62,36 @@ export function bundledHarnessDir(): string {
 	return join(here, "..", "harnesses");
 }
 
-function readJsonSpecs(dir: string): HarnessSpec[] {
+function readJsonSpecs(
+	dir: string,
+	onDiagnostic: (diagnostic: HarnessCatalogDiagnostic) => void,
+): HarnessSpec[] {
 	if (!existsSync(dir)) return [];
 	const out: HarnessSpec[] = [];
 	for (const name of readdirSync(dir)) {
 		if (!name.endsWith(".json")) continue;
+		const file = join(dir, name);
 		try {
-			const raw = JSON.parse(
-				readFileSync(join(dir, name), "utf8"),
-			) as Partial<HarnessSpec>;
-			if (typeof raw.id !== "string" || raw.id.length === 0) continue;
-			if (typeof raw.label !== "string" || typeof raw.kind !== "string") {
-				continue;
-			}
-			out.push(raw as HarnessSpec);
-		} catch {
-			/* skip unparseable plugin */
+			out.push(parseHarnessSpec(JSON.parse(readFileSync(file, "utf8"))));
+		} catch (error) {
+			onDiagnostic({
+				file,
+				message: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 	return out;
 }
 
-function mergeSpecs(layers: readonly (readonly HarnessSpec[])[]): HarnessSpec[] {
+function warnHarnessDiagnostic(diagnostic: HarnessCatalogDiagnostic): void {
+	process.stderr.write(
+		`hobo-code: skipped harness spec ${diagnostic.file} — ${diagnostic.message}\n`,
+	);
+}
+
+function mergeSpecs(
+	layers: readonly (readonly HarnessSpec[])[],
+): HarnessSpec[] {
 	const byId = new Map<string, HarnessSpec>();
 	for (const layer of layers) {
 		for (const spec of layer) byId.set(spec.id, spec);
@@ -72,52 +99,54 @@ function mergeSpecs(layers: readonly (readonly HarnessSpec[])[]): HarnessSpec[] 
 	return [...byId.values()];
 }
 
-export function loadHarnessCatalog(options: {
-	readonly hoboHome?: string;
-	readonly cwd?: string;
-} = {}): readonly HarnessSpec[] {
+export function loadHarnessCatalog(
+	options: {
+		readonly hoboHome?: string;
+		readonly cwd?: string;
+		/** Skipped plugin files land here; defaults to a one-line stderr warning. */
+		readonly onDiagnostic?: (diagnostic: HarnessCatalogDiagnostic) => void;
+	} = {},
+): readonly HarnessSpec[] {
+	const onDiagnostic = options.onDiagnostic ?? warnHarnessDiagnostic;
 	const user =
 		options.hoboHome !== undefined
-			? readJsonSpecs(join(options.hoboHome, "durable", "code", "harnesses"))
+			? readJsonSpecs(
+					join(options.hoboHome, "durable", "code", "harnesses"),
+					onDiagnostic,
+				)
 			: [];
 	const project =
 		options.cwd !== undefined
-			? readJsonSpecs(join(options.cwd, ".hobo", "harnesses"))
+			? readJsonSpecs(join(options.cwd, ".hobo", "harnesses"), onDiagnostic)
 			: [];
-	return mergeSpecs([readJsonSpecs(bundledHarnessDir()), user, project, extras]);
+	return mergeSpecs([
+		readJsonSpecs(bundledHarnessDir(), onDiagnostic),
+		user,
+		project,
+		extras,
+	]);
 }
 
-export function knownAgentsFrom(
-	specs: readonly HarnessSpec[],
-): KnownAgent[] {
-	return specs
-		.filter(
-			(spec) =>
-				spec.kind === "coding-agent" ||
-				spec.kind === "inference" ||
-				spec.kind === "harness",
-		)
-		.map((spec) => ({
+export function knownAgentsFrom(specs: readonly HarnessSpec[]): KnownAgent[] {
+	const known: KnownAgent[] = [];
+	for (const spec of specs) {
+		const kind = agentKindOf(spec);
+		if (kind === null) continue;
+		known.push({
 			id: spec.id,
 			label: spec.label,
-			kind: spec.kind as AgentKind,
+			kind,
 			binaries: spec.binaries ?? [],
 			configPaths: spec.configPaths ?? [],
 			command: spec.command ?? spec.id,
-		}));
+		});
+	}
+	return known;
 }
 
-export function pickKindFromSpec(spec: HarnessSpec): HarnessKind {
-	if (spec.host === true || spec.kind === "harness") return "acp";
-	if (spec.kind === "inference") return "inference";
-	if (spec.kind === "eve-agent") return "eve-agent";
-	if (spec.kind === "sdk") return "sdk";
-	return "coding-cli";
-}
-
-export function isHostSpec(spec: HarnessSpec): boolean {
-	return spec.host === true || spec.kind === "harness";
-}
+/** Back-compat alias for the picks/init kind derivation. */
+export const pickKindFromSpec: (spec: HarnessSpec) => HarnessKind =
+	harnessKindOf;
 
 export function seatingOrder(specs: readonly HarnessSpec[]): readonly string[] {
 	return specs
@@ -185,7 +214,7 @@ export function planSpecHunks(
 	readonly hunks: readonly HarnessHunk[];
 	readonly notes: readonly string[];
 } {
-	const kind = pickKindFromSpec(spec);
+	const kind = harnessKindOf(spec);
 	if (isHostSpec(spec)) {
 		return {
 			kind,

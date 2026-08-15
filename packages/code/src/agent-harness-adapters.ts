@@ -5,7 +5,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import type { AgentKind } from "./agent-registry.js";
+import type { HarnessSpecKind } from "./harness-spec.js";
 
 export type HarnessConfigFormat =
 	| "toml-append"
@@ -31,7 +31,7 @@ export interface HarnessConfigSpec {
 export interface HarnessSpec {
 	readonly id: string;
 	readonly label: string;
-	readonly kind: AgentKind | "eve-agent" | "sdk";
+	readonly kind: HarnessSpecKind;
 	readonly host?: boolean;
 	readonly binaries?: readonly string[];
 	readonly configPaths?: readonly string[];
@@ -53,7 +53,12 @@ export function interpolateDest(
 		.replaceAll("{{envRef}}", `\${${dest.envKey}}`);
 }
 
-export type HarnessKind = "coding-cli" | "eve-agent" | "inference" | "acp" | "sdk";
+export type HarnessKind =
+	| "coding-cli"
+	| "eve-agent"
+	| "inference"
+	| "acp"
+	| "sdk";
 
 export interface HarnessHunk {
 	readonly path: string;
@@ -176,14 +181,20 @@ function interpolateDeep(value: unknown, dest: AgentsInitDestination): unknown {
 }
 
 function deepMerge(base: unknown, overlay: unknown): unknown {
-	if (Array.isArray(overlay) || overlay === null || typeof overlay !== "object") {
+	if (
+		Array.isArray(overlay) ||
+		overlay === null ||
+		typeof overlay !== "object"
+	) {
 		return overlay;
 	}
 	const root =
 		base && typeof base === "object" && !Array.isArray(base)
 			? { ...(base as Record<string, unknown>) }
 			: {};
-	for (const [key, child] of Object.entries(overlay as Record<string, unknown>)) {
+	for (const [key, child] of Object.entries(
+		overlay as Record<string, unknown>,
+	)) {
 		root[key] = deepMerge(root[key], child);
 	}
 	return root;
@@ -243,8 +254,7 @@ function noteHunk(
 				spec.config?.summary ??
 				`set ${spec.label} OpenAI-compatible base URL to the Station surface`,
 			after: interpolateDest(
-				spec.config?.after ??
-					`base_url={{openaiUrl}}\nenv_key={{envKey}}`,
+				spec.config?.after ?? `base_url={{openaiUrl}}\nenv_key={{envKey}}`,
 				ctx.dest,
 			),
 		},

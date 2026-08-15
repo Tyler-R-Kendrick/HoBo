@@ -165,6 +165,14 @@ export {
 } from "./dashboard-links.js";
 export { resolveHoboBin, resolveHoboSpawn } from "./dev-browser.js";
 export {
+	CODE_DEV_SCENARIOS,
+	type CodeDevScenario,
+	codeDevStation,
+	DEFAULT_LOCALHOST_CAPABILITIES,
+	isCodeDevScenario,
+	stationInitArgsFromDeclaration,
+} from "./dev-stations.js";
+export {
 	COMPUTE_ISOLATION_CLASSES,
 	COMPUTE_NODE_SCHEMA,
 	COMPUTE_POOL_SCHEMA,
@@ -424,6 +432,19 @@ export {
 	type LocalSessionControlOptions,
 	sessionCommandEnvelope,
 } from "./local-session-control.js";
+export {
+	defaultMachineProbes,
+	discoverMachine,
+	MACHINE_DISCOVERY_SCHEMA,
+	type MachineDiscoveryProbes,
+	type MachineDiscoveryReport,
+	MIN_NODE_MAJOR,
+	type ModelServerProbeResult,
+	machineDiscoveryPath,
+	matchMachineToStation,
+	observationsFromMachineReport,
+	persistMachineDiscoveryReport,
+} from "./machine-discovery.js";
 export {
 	BYOK_ENV_NAMES,
 	type ByokEnvPresence,

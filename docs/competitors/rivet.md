@@ -1,3 +1,10 @@
+---
+type: Competitive Reference
+title: "Rivet — competitor reference"
+description: "Rivet actors as the preferred compatible ActorHost resolver — not a topology primitive and not an app authoring model."
+tags: [hobo, competitors]
+---
+
 # Rivet
 
 **Checked:** 2026-08-13  

@@ -38,6 +38,37 @@ export const acme = station("acme-platform", {
 ```
 
 CLI (ops/setup, not lifecycle verbs): `hobo station init|up|down|status|rails *`.
+
+## Station capabilities (ADR-0155)
+
+`stationCapability()` declares a schema-versioned facility a Station offers its
+occupants (`hobo.station-capability/v1`; closed kind vocabulary; provenance
+`default | discovered | declared`); declarations attach via
+`station(..., { capabilities })`. `matchStationCapabilities()` matches a
+declared set against host observations **fail-closed** (declared-but-unobserved
+is missing) and produces a `hobo.station-capability-manifest/v1`, persisted
+beside the Station data (`stationCapabilitiesPath` →
+`HOBO_HOME/stations/<id>/capabilities.json`). Consumed by `hobo-code init`
+machine discovery — see `docs/design/stations.md`.
+
+```ts
+import { matchStationCapabilities, stationCapability } from "@hobo/stations";
+
+const git = stationCapability({
+  kind: "vcs",
+  slug: "git",
+  title: "git on PATH",
+  required: true,
+  remediation: "install git",
+});
+const manifest = matchStationCapabilities({
+  stationId: "station:local",
+  declared: [git],
+  observations: [
+    { capabilityId: git.id, present: true, evidence: ["bin:/usr/bin/git"] },
+  ],
+});
+```
 Missing Station fails closed — run `hobo station init`. See
 [`examples/self-host-station`](../../examples/self-host-station/README.md).
 

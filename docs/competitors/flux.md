@@ -1,3 +1,10 @@
+---
+type: Competitive Reference
+title: "Flux / Orbit — competitor reference"
+description: "Flux Orbit as a compute target for @hobo/provider-flux; Orbit is Git-to-Flux mode, not its own provider."
+tags: [hobo, competitors]
+---
+
 # Flux / Orbit
 
 **Checked:** 2026-08-14  

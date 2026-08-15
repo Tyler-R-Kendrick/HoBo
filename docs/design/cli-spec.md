@@ -72,6 +72,8 @@ hobo-code [flags] <prompt...>   # default verb: dispatch
 
 Package: `@hobo/code` / composition-root bin from `@hobo/hobo`. Flat verbs: `dispatch` (default), `status`, `session`, `scaffold`, `template`, `isolate`, `promote`, `budget`, `remote`, `platform`, `join`, `agent`, `nodes`, `rooms`, `help`. Distributed compute (block/buzz-inspired hive) is folded into those verbs — there is **no** nested `buzz` verb. `hobo-code template` / `/template` is the zero-LLM pattern route ([ADR-0153](./adr/03-data-plane.md#adr-0153)). Known chat phrases still emit via the session ([ADR-0152](./adr/03-data-plane.md#adr-0152)). See [ADR-0139](./adr/03-data-plane.md#adr-0139) and [hobo-code-isolation-runbook.md](./hobo-code-isolation-runbook.md).
 
+`hobo-code init` ([ADR-0155](./adr/01-architecture-core.md#adr-0155)) is the **discovery-gated dev seed**, distinct from operator `hobo station init`: it inspects the machine (Node, git, isolation platform matrix, local model server, devenv/nix, harnesses) and matches the evidence against the default localhost capability set declared on the dev-scenario Station (`--scenario local-dev|ephemeral|preview`). Required-missing fails closed with remediation and writes nothing; `--dry-run` reports only. See [stations.md](./stations.md).
+
 ## Station context resolution
 
 For `station`, `broker`, `connection`, `up`, and `login --station`:

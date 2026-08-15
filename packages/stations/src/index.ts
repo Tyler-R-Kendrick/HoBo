@@ -1,4 +1,25 @@
 export {
+	loadStationCapabilityManifest,
+	type MatchedStationCapability,
+	matchStationCapabilities,
+	persistStationCapabilityManifest,
+	STATION_CAPABILITY_MANIFEST_SCHEMA,
+	STATION_CAPABILITY_SCHEMA,
+	type StationCapability,
+	type StationCapabilityKind,
+	type StationCapabilityManifest,
+	type StationCapabilityObservation,
+	type StationCapabilityProvenance,
+	type StationCapabilitySpec,
+	type StationCapabilityStatus,
+	stationCapabilitiesPath,
+	stationCapability,
+} from "./capabilities.js";
+export {
+	createStationBindleRuntimeContext,
+	type StationConnectionResolver,
+} from "./connector-context.js";
+export {
 	STATION_AUDIT_RETENTION,
 	STATION_EVENT_SCHEMA,
 	STATION_EVENTS,
@@ -6,10 +27,6 @@ export {
 	type StationEventType,
 	stationEvent,
 } from "./events.js";
-export {
-	createStationBindleRuntimeContext,
-	type StationConnectionResolver,
-} from "./connector-context.js";
 export {
 	type CreateStationOfferingRegistryOptions,
 	createStationOfferingRegistry,

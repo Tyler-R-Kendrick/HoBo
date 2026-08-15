@@ -631,3 +631,23 @@ Nine mechanisms independently attach operational behavior to resources/component
 - **(+)** Agents and humans get one name and one map for "attach behavior without touching code"; OAM-fluent adopters get a direct translation.
 - **(+)** New behavior-attachment proposals must classify themselves as a trait kind (or argue a new kind) instead of inventing mechanism #10 unnamed.
 - **(−)** "Trait" now means the HoBo concept; OAM's narrower CRD sense must be qualified when discussing KubeVela/wadm.
+
+## ADR-0155
+**Station capabilities as a typed manifest; localhost capability discovery gates `hobo-code init`; hobo-code dev scenarios dogfood `station()` declarations.**
+
+### Context
+ADR-0131 made Station the control-plane occupancy primitive, but "Station capability" stayed prose: PAM is "an optional Station capability / Rail profile" (ADR-0133), Session Replay a "default-supplied Station capability" (ADR-0137), dashboards/Evidence/evals "Station sidecars" — with no type, registry, or manifest behind any of it. Meanwhile hobo-code auto-inited its Station from ad-hoc literals in `bindCodeStation` (in tension with ADR-0131 §7's "no silent durable auto-init"), shipped no `init` verb, and had no way to state what a dev machine must offer before occupancy makes sense: platform-matrix CoW detection was an acknowledged TODO, and ollama/devenv/harness probes existed as disconnected inspections.
+
+### Decision
+1. **StationCapability is a typed declaration** (`hobo.station-capability/v1`, `@hobo/stations`): `capability:<kind>:<slug>` over a closed kind vocabulary (`runtime | vcs | isolation-backend | model-server | toolchain | harness | sidecar | pam | replay`), with provenance `default` (platform-supplied; present unless observed absent) | `discovered` (evidence-only) | `declared`, a `required` bit, and remediation text. Declarations attach on the Station via `station(..., { capabilities })`.
+2. **Matching is fail-closed and audited** (`hobo.station-capability-manifest/v1`): declared-but-unobserved `discovered`/`declared` capabilities are missing, never assumed; every present row carries evidence (`bin:…`, `http:…`, `matrix:…`); the manifest persists at `HOBO_HOME/stations/<id>/capabilities.json` (discovery parallel of `sidecars.json`).
+3. **`hobo-code init` is the discovery-gated seed** for dev-scenario occupancy: injectable machine probes (Node version, git, ADR-0139 isolation platform matrix, ollama loopback probe, devenv/nix, harness detection) produce a `hobo.code.machine-discovery/v1` report matched against the Station's declared capability set. Required-missing refuses to write durable state (remediation instead); `--dry-run` never writes; the report persists under `HOBO_HOME/durable/code/machine-discovery.json`.
+4. **hobo-code dogfoods `station()` for dev scenarios**: `local-dev` / `ephemeral` / `preview` are authored declarations (`codeDevStation`) carrying isolation class, trust domain, and the default localhost capability set; `hobo-code init` and session auto-init both derive `initStation` arguments from the declaration. `local-dev` keeps the historical `station:local` identity.
+5. **`isolationClass` is declared, never defaulted**: `station()` passes the ADR-0133 class through verbatim; an absent class stays visibly absent.
+6. **Scope honesty**: session-path auto-init stays ungated for compatibility (declaration-derived, not discovery-gated); `hobo station init` (operator path) is unchanged; Station residency normalization (ADR-0146 parity) and federation membership remain open.
+
+### Consequences
+- **(+)** "Station capability" is now diffable, testable surface — the PAM/Replay/sidecar prose has a type, and dev machines get an auditable yes/no with remediation instead of a shrug.
+- **(+)** The durable state hobo-code creates is authored in one reviewable declaration; drift between docs and auto-init literals can no longer happen silently.
+- **(−)** Two init verbs coexist (`hobo station init` operator seed, `hobo-code init` discovery-gated dev seed); docs must keep the distinction crisp.
+- **(−)** The capability kind vocabulary is closed; new facility families require an ADR amendment rather than an ad-hoc string.

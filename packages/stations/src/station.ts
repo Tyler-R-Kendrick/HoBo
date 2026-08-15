@@ -30,7 +30,10 @@ function deepFreeze<T>(value: T): T {
  * Declare a Station Bindle shape. Full dogfood parallel to yard()/junction().
  * Connections and Rails remain Station aggregates (not Bindle graph resources).
  */
-export function station(name: string, config: StationConfig = { isolation: {} }): Station {
+export function station(
+	name: string,
+	config: StationConfig = { isolation: {} },
+): Station {
 	requireName("station name", name);
 	if (!config || typeof config !== "object") {
 		throw new TypeError("station config must be an object");
@@ -41,8 +44,14 @@ export function station(name: string, config: StationConfig = { isolation: {} })
 		residency: iso.residency ?? "local",
 		airgap: iso.airgap === true,
 		trustDomain: iso.trustDomain ?? `${name}.hobo.local`,
+		// ADR-0133: exactly-one-class is the declaration's commitment; no
+		// default is invented here — an absent class stays absent.
+		...(iso.isolationClass !== undefined
+			? { isolationClass: iso.isolationClass }
+			: {}),
 	});
 	const railRefs = Object.freeze([...(config.rails ?? [])]);
+	const capabilities = Object.freeze([...(config.capabilities ?? [])]);
 	const metadata = Object.freeze({ ...(config.metadata ?? {}) });
 	return deepFreeze({
 		kind: "station" as const,
@@ -53,6 +62,7 @@ export function station(name: string, config: StationConfig = { isolation: {} })
 		isolation,
 		status: "open" as const,
 		railRefs,
+		capabilities,
 		metadata,
 	});
 }

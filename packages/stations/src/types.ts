@@ -1,16 +1,15 @@
+import type { StationCapability } from "./capabilities.js";
+
 // public-contract: wire schema / event catalog constant.
 export const STATION_SCHEMA_VERSION = "hobo.station/v1" as const;
 // public-contract: wire schema / event catalog constant.
 export const RAIL_SCHEMA_VERSION = "hobo.rail/v1" as const;
 // public-contract: wire schema / event catalog constant.
-export const STATION_CONTRACT_VERSION = "hobo.control-plane-occupancy/v1" as const;
+export const STATION_CONTRACT_VERSION =
+	"hobo.control-plane-occupancy/v1" as const;
 
 export type StationStatus = "open" | "closed";
-export type RailActivationStatus =
-	| "draft"
-	| "approved"
-	| "active"
-	| "retired";
+export type RailActivationStatus = "draft" | "approved" | "active" | "retired";
 
 export type StationIsolation = Readonly<{
 	tenant: string;
@@ -88,6 +87,12 @@ export type Station = Readonly<{
 	status: StationStatus;
 	/** Optional rail refs declared on the Station Bindle; ownership stays on Station. */
 	railRefs: readonly string[];
+	/**
+	 * Capabilities this Station declaration expects its occupying host to
+	 * offer (ADR-0155). Matching against host evidence produces a
+	 * StationCapabilityManifest; declared-but-unobserved is missing (fail-closed).
+	 */
+	capabilities: readonly StationCapability[];
 	metadata: Readonly<Record<string, string>>;
 }>;
 
@@ -97,8 +102,11 @@ export type StationConfig = Readonly<{
 		residency?: string;
 		airgap?: boolean;
 		trustDomain?: string;
+		/** ADR-0133 isolation class the declaration commits to (passed through verbatim). */
+		isolationClass?: StationIsolation["isolationClass"];
 	};
 	rails?: readonly string[];
+	capabilities?: readonly StationCapability[];
 	metadata?: Readonly<Record<string, string>>;
 }>;
 

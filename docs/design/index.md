@@ -30,6 +30,8 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`adr/yard-first-placement.md`](./adr/yard-first-placement.md) | Yard-first placement: Yard owns provider selection; Camp provider-neutral until attached; Camps movable via Trails | — |
 | [`devx-devenv-nix.md`](./devx-devenv-nix.md) | DevX: devenv-first local shells; Nix optional IaC only — never default multi-cloud path ([ADR-0006](./adr/01-architecture-core.md#adr-0006)) | — |
 | [`adr/01-architecture-core.md`](./adr/01-architecture-core.md#adr-0131) | **ADR-0131** — Station occupancy (hard control-plane isolation; Rails; pure Conductor) | — |
+| [`stations.md`](./stations.md) | Station narrative home: occupancy, capabilities (`hobo.station-capability/v1`), localhost discovery (`hobo-code init`), dev-scenario dogfooding (ADR-0131/0155) | — |
+| [`adr/01-architecture-core.md`](./adr/01-architecture-core.md#adr-0155) | **ADR-0155** — Station capabilities typed manifest; discovery-gated `hobo-code init`; dogfooded dev-scenario `station()` declarations | — |
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0132) | **ADR-0132** — Continuous identity migration (dual-path; zero Bindle config) | — |
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0134) | **ADR-0134** — HoBo Trails (app-owned continuous migration recipes; composes `identity.continuous`) | — |
 | [`adr/07-portability-extensibility.md`](./adr/07-portability-extensibility.md#adr-0130) | **ADR-0130** — Hierarchical DNS-valid naming (`.hobo.localhost` / `.hobo.test`; never bare `.hobo`) | — |

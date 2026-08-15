@@ -34,6 +34,35 @@ package stations
 	published_at:         string & !=""
 }
 
+#StationCapabilityRecord: {
+	schema:      "hobo.station-capability/v1"
+	id:          =~"^capability:[a-z-]+:[a-z0-9][a-z0-9.-]*$"
+	kind:        "runtime" | "vcs" | "isolation-backend" | "model-server" | "toolchain" | "harness" | "sidecar" | "pam" | "replay"
+	slug:        =~"^[a-z0-9][a-z0-9.-]*$"
+	title:       string & !=""
+	provenance:  "default" | "discovered" | "declared"
+	required:    bool
+	remediation?: string
+	metadata: {[string]: string}
+}
+
+#MatchedStationCapabilityRecord: {
+	capability: #StationCapabilityRecord
+	status:     "present" | "missing"
+	evidence: [...string]
+	detail?: string
+}
+
+#StationCapabilityManifestRecord: {
+	schema:     "hobo.station-capability-manifest/v1"
+	station_id: string & !=""
+	ok:         bool
+	capabilities: [...#MatchedStationCapabilityRecord]
+	missing_required: [...string]
+	remediation: [...string]
+	generated_at: string & !=""
+}
+
 #StationCreatedEventData: {
 	station_id:          string & !=""
 	name:                string & !=""

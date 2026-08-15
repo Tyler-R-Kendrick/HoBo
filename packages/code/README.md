@@ -388,6 +388,14 @@ hermetic shell you cannot enter.
 # 0) Optional map if you know Claude Code more than git
 hobo-code guide
 
+# 0.5) Discovery-gated seed (ADR-0155): inspect this machine, match it against
+# the default localhost capability set on the declared dev-scenario Station
+# (Node/git/isolation matrix required; ollama/devenv/harnesses degrade with
+# remediation), then seed station:local. Required-missing writes nothing.
+hobo-code init
+hobo-code init --dry-run              # discover + match only
+hobo-code init --scenario ephemeral   # station:code-ephemeral
+
 # 1) Login to a Station
 hobo-code auth login
 # Local Station is auto-resolved (station:local / only local station; auto-init).

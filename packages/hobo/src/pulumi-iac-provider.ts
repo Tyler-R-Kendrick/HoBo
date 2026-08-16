@@ -9,9 +9,8 @@ import {
 	type IacProvider,
 	type ResourcePlan,
 } from "@hobo/cloud";
-import type { EventEnvelope, EventStore } from "@hobo/core";
+import type { CloudProvider, EventEnvelope, EventStore } from "@hobo/core";
 import { createPulumiAutomationAdapter } from "@hobo/iac-pulumi";
-import type { CloudProvider } from "@hobo/provider-cloudflare";
 
 // ---------------------------------------------------------------------------
 // The REAL IaC backend on the deploy path (S0-01 integration gap closed).

@@ -1,4 +1,7 @@
 import {
+	type ActorHost,
+	type ActorLease,
+	type ActorStateHandle,
 	actorCommandDigest,
 	actorCompoundKey,
 	type LogicalActorIdentity,
@@ -8,34 +11,19 @@ import {
 import type { ActorLocalJournal } from "./journal.js";
 import { RivetJournalError } from "./types.js";
 
-export interface RivetActorLease {
-	readonly key: string;
-	readonly holderId: string;
-	readonly fenceToken: bigint;
-	readonly expiresAt: string;
+/** Core `ActorLease` (ADR-0156) tagged with the Rivet placement. */
+export interface RivetActorLease extends ActorLease {
 	readonly placement: "rivet";
-	release(): void;
 }
 
-export interface RivetActorStateHandle<S> {
-	append(
-		lease: RivetActorLease,
-		event: { type: string; [key: string]: unknown },
-	): { streamId: string; seq: number; fenceToken: bigint };
-	read(): { streamId: string; seq: number; state: S };
-}
+/** The canonical `@hobo/core` state handle (ADR-0156), under its Rivet name. */
+export type RivetActorStateHandle<S> = ActorStateHandle<S>;
 
-export interface RivetActorHost {
+/** The core ActorHost port (ADR-0156) plus Rivet-specific journal members. */
+export interface RivetActorHost extends ActorHost {
 	readonly placementMode: "rivet";
 	readonly fidelity: "local-sqlite" | "rivetkit";
 	acquire(key: string, request: { holderId: string }): RivetActorLease;
-	state<S>(
-		key: string,
-		request: {
-			initialState: S;
-			fold: (state: S, event: { type: string; [key: string]: unknown }) => S;
-		},
-	): RivetActorStateHandle<S>;
 	accept(input: {
 		identity: unknown;
 		commandId: string;

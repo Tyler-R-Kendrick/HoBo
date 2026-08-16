@@ -1,7 +1,7 @@
 /**
  * Interactive checklist + write policy for `hobo-code agents init`.
  */
-import { defaultProbes } from "./agent-registry.js";
+
 import type { HarnessKind } from "./agent-harness-adapters.js";
 import {
 	isHostSpec,
@@ -9,8 +9,13 @@ import {
 	pickKindFromSpec,
 	specEvidence,
 } from "./agent-harness-catalog.js";
+import { defaultProbes } from "./agent-registry.js";
 
-export type AgentPickKind = HarnessKind | "acp" | "sdk";
+/**
+ * Back-compat alias: the former extra members ("acp" | "sdk") were already in
+ * HarnessKind, so the union was a no-op.
+ */
+export type AgentPickKind = HarnessKind;
 
 export interface AgentPick {
 	readonly id: string;
@@ -153,8 +158,7 @@ export function repaintAgentChecklist(
 ): { readonly write: string; readonly lines: number } {
 	const body = frame.endsWith("\n") ? frame : `${frame}\n`;
 	const lines = checklistLineCount(body.replace(/\n$/u, ""));
-	const rewind =
-		previousLines > 0 ? `\x1b[${previousLines}F\x1b[J` : "";
+	const rewind = previousLines > 0 ? `\x1b[${previousLines}F\x1b[J` : "";
 	return { write: `${rewind}\x1b[?25l${body}`, lines };
 }
 

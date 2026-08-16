@@ -1,3 +1,10 @@
+---
+type: Competitive Reference
+title: "celld — competitor reference"
+description: "Deno's celld as a future independent Durable Objects resolver; pinned image and honest role notes."
+tags: [hobo, competitors]
+---
+
 # celld
 
 **Checked:** 2026-08-14  

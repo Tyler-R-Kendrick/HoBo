@@ -13,12 +13,15 @@ export const COST_SCHEMA = "hobo.cost/v1";
 // public-contract: the provider id every published document carries.
 export const CLOUDFLARE_PROVIDER_ID = "@hobo/provider-cloudflare";
 
-export interface PublishedManifestDocuments {
+// A `type` alias (not an interface) so it keeps an implicit index signature
+// and stays assignable to @hobo/core's `PublishedManifestDocuments`
+// (Record<string, string>) on CapabilityManifest.published (ADR-0156).
+export type PublishedManifestDocuments = {
 	"/.well-known/capability-manifest/index.json": string;
 	"/.well-known/capability-manifest/capabilities.json": string;
 	"/.well-known/capability-manifest/auth.json": string;
 	"/.well-known/capability-manifest/cost.json": string;
-}
+};
 
 export interface CloudflareManifestInput {
 	providerId?: string;

@@ -22,6 +22,7 @@ import {
 	registerProviderFact,
 } from "@hobo/cloud";
 import type {
+	CloudProvider,
 	ComponentHostEvent,
 	EventStore,
 	InterfaceId,
@@ -34,10 +35,7 @@ import {
 	createPulumiAutomationApiEngine,
 	createPulumiCliAutomationEngine,
 } from "@hobo/iac-pulumi";
-import {
-	type CloudProvider,
-	createCloudflareProvider,
-} from "@hobo/provider-cloudflare";
+import { createCloudflareProvider } from "@hobo/provider-cloudflare";
 import {
 	createLocalStreamer,
 	createManualClock,

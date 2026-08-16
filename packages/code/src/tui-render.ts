@@ -1,4 +1,4 @@
-import { inkCard, statusStripe } from "./rubberhose.js";
+import { fitCells, inkCard, statusStripe } from "./rubberhose.js";
 import { BROADCAST_INNER_INSET, broadcastFrame } from "./tui-broadcast.js";
 import {
 	blitBlock,
@@ -16,6 +16,14 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 			: node.children.flatMap((child) => renderNode(child, width));
 	}
 	if (node.classList.includes("command-rail")) {
+		if (node.classList.includes("agents-legend")) {
+			const legend = node.children
+				.flatMap((child) => collectText(child))
+				.join(" ")
+				.trim();
+			if (legend.length <= width) return [centerLine(legend, width)];
+			return [legend.slice(0, Math.max(0, width - 1)) + "…"];
+		}
 		const chips: string[] = [];
 		let used = 1;
 		for (const name of node.children.flatMap((child) => collectText(child))) {
@@ -138,7 +146,13 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 		return height === undefined ? lines : padLines(lines, height);
 	}
 	if (node.classList.includes("pane-list")) {
-		const lines = node.children.flatMap((child) => renderNode(child, width));
+		const lines = node.children.flatMap((child) =>
+			renderNode(child, width).flatMap((line) => {
+				// Pre-shaped split / capture rows — fitCells only. wrapText would
+				// break │ columns when a line is one cell over the glass width.
+				return [fitCells(line, width)];
+			}),
+		);
 		return height === undefined
 			? lines
 			: padLines(lines, height, scrollOf(node), originOf(node));

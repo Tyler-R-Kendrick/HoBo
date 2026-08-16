@@ -1,4 +1,8 @@
 import type { AccentName } from "./rubberhose.js";
+import {
+	formatHarnessSessionLines,
+	type HarnessSessionView,
+} from "./harness-session-view.js";
 import { formatInkTable, type InkTableRow, wrapMessage } from "./tui-layout.js";
 import { TUI_TOKENS } from "./tui-tokens.js";
 import { h, type TuiChild, type TuiNode } from "./tui-tree.js";
@@ -95,13 +99,88 @@ export const SHELL_RAIL_COMMANDS = [
 	"help",
 ] as const;
 
-export interface CommandRailProps {
-	readonly commands?: readonly string[];
+/**
+ * Pinned Agents legend — one fixed line on the command rail (not in scroll body).
+ * Keep ≤60 cells so CRT inset still shows every token.
+ */
+export const AGENTS_KEY_LEGEND =
+	"Enter attach · PgUp/Dn scroll · [ ] focus · Ctrl+\\ leave";
+
+export interface AgentPanesProps {
+	readonly view: HarnessSessionView;
+	readonly empty?: string;
+	readonly scroll?: number;
+	readonly note?: string;
+	/** Keys are forwarded to the focused tmux pane. */
+	readonly attached?: boolean;
+	/** Glass content width for split column layout. */
+	readonly contentWidth?: number;
 }
 
-/** Always-on command dock so slash verbs are visible, not just typed. */
+/**
+ * Herdr-shaped Agents surface: Session → Tab → Pane, live capture, prompt.
+ * Nav keys live in the shell reducer — this component only paints.
+ */
+export function AgentPanes(props: AgentPanesProps): TuiNode {
+	const lines =
+		props.view.sessions.length === 0
+			? [
+					props.empty ??
+						"no harness sessions · seat agents (mux) or hobo-code session create",
+				]
+			: [
+					...formatHarnessSessionLines(props.view, {
+						...(props.attached !== undefined
+							? { attached: props.attached }
+							: {}),
+						...(props.contentWidth !== undefined
+							? { contentWidth: props.contentWidth }
+							: {}),
+					}),
+				];
+	if (props.note && props.view.sessions.length > 0 && props.attached !== true) {
+		lines.splice(1, 0, props.note);
+	}
+	return (
+		<box
+			id="agent-panes"
+			role="region"
+			className="pane-list"
+			scroll={props.scroll ?? 0}
+			scrollOrigin="end"
+		>
+			{lines.map((line) => (
+				<text className="pane-line">{line}</text>
+			))}
+		</box>
+	);
+}
+
+export interface CommandRailProps {
+	readonly commands?: readonly string[];
+	/** Raw chips (no `/` prefix). */
+	readonly chips?: readonly string[];
+	/** Single pinned legend line (Agents). Takes precedence over chips/commands. */
+	readonly legend?: string;
+}
+
+/** Always-on command dock so slash verbs / Agents keys stay pinned and visible. */
 export function CommandRail(props: CommandRailProps): TuiNode {
-	const commands = props.commands ?? SHELL_RAIL_COMMANDS;
+	if (props.legend !== undefined) {
+		return (
+			<box
+				id="command-rail"
+				role="note"
+				className="command-rail agents-legend"
+				style={{ color: TUI_TOKENS.ink, backgroundColor: TUI_TOKENS.paper }}
+			>
+				<text className="command-legend">{props.legend}</text>
+			</box>
+		);
+	}
+	const chips =
+		props.chips ??
+		(props.commands ?? SHELL_RAIL_COMMANDS).map((name) => `/${name}`);
 	return (
 		<box
 			id="command-rail"
@@ -109,8 +188,10 @@ export function CommandRail(props: CommandRailProps): TuiNode {
 			className="command-rail"
 			style={{ color: TUI_TOKENS.ink, backgroundColor: TUI_TOKENS.paper }}
 		>
-			{commands.map((name) => (
-				<text className="command-chip" role="listitem">{`/${name}`}</text>
+			{chips.map((label) => (
+				<text className="command-chip" role="listitem">
+					{label}
+				</text>
 			))}
 		</box>
 	);
@@ -125,6 +206,7 @@ export interface ChatTranscriptProps {
 	readonly messages: readonly ChatMessage[];
 	readonly width: number;
 	readonly scroll?: number;
+	readonly scrollOrigin?: "start" | "end";
 }
 
 export function ChatTranscript(props: ChatTranscriptProps): TuiNode {
@@ -134,6 +216,9 @@ export function ChatTranscript(props: ChatTranscriptProps): TuiNode {
 			role="region"
 			className="transcript"
 			scroll={props.scroll ?? 0}
+			{...(props.scrollOrigin !== undefined
+				? { scrollOrigin: props.scrollOrigin }
+				: {})}
 		>
 			{props.messages.map((message, index) => (
 				<box
@@ -181,6 +266,64 @@ export function SlashPalette(props: SlashPaletteProps): TuiNode {
 							name={item.name}
 							selected={selected}
 						>{`${selected ? "▸" : " "} /${item.name.padEnd(9)} ${item.description}`}</text>
+					);
+				})
+			)}
+		</box>
+	);
+}
+
+export interface AgentsCatalogRowView {
+	readonly id: string;
+	readonly label: string;
+	readonly depth: number;
+	readonly expandable: boolean;
+	readonly expanded: boolean;
+}
+
+export interface AgentsCatalogProps {
+	readonly rows: readonly AgentsCatalogRowView[];
+	readonly cursor: number;
+	readonly scroll: number;
+	readonly viewportRows: number;
+}
+
+/** Navigable harness / subagent tree for `/agents`. */
+export function AgentsCatalog(props: AgentsCatalogProps): TuiNode {
+	const view = Math.max(1, props.viewportRows);
+	const slice = props.rows.slice(props.scroll, props.scroll + view);
+	return (
+		<box
+			id="agents-catalog"
+			role="tree"
+			className="agents-catalog"
+			selectedIndex={props.cursor}
+		>
+			{slice.length === 0 ? (
+				<text className="agents-catalog-empty">
+					{"  (no harnesses registered)"}
+				</text>
+			) : (
+				slice.map((row, index) => {
+					const absolute = props.scroll + index;
+					const selected = absolute === props.cursor;
+					const indent = "  ".repeat(Math.max(0, row.depth));
+					const twisty = row.expandable
+						? row.expanded
+							? "▾ "
+							: "▸ "
+						: "· ";
+					return (
+						<text
+							id={`agents-catalog-${row.id}`}
+							role="treeitem"
+							className={
+								selected
+									? "agents-catalog-item selected"
+									: "agents-catalog-item"
+							}
+							selected={selected}
+						>{`${selected ? "▸" : " "} ${indent}${twisty}${row.label}`}</text>
 					);
 				})
 			)}
@@ -337,118 +480,13 @@ export function WelcomeSurface(props: WelcomeSurfaceProps): TuiNode {
 	);
 }
 
-export interface AgentTaskRow {
-	readonly summary: string;
-	readonly state?: string;
-	readonly branch?: string;
-	readonly isolation?: string;
-}
-
-export interface AgentPaneRow {
-	readonly name: string;
-	readonly focused?: boolean;
-	readonly tasks?: readonly AgentTaskRow[];
-}
-
-export interface AgentPanesProps {
-	readonly note?: string;
-	readonly windows: readonly AgentPaneRow[];
-	readonly unclaimed?: readonly AgentTaskRow[];
-	readonly capture?: string;
-	readonly empty?: string;
-	readonly scroll?: number;
-	readonly parent?: readonly string[];
-}
-
-/** In-session agent windows as a list, not a dumped TextPane blob. */
-export function AgentPanes(props: AgentPanesProps): TuiNode {
-	const unclaimed = props.unclaimed ?? [];
-	if (props.windows.length === 0 && unclaimed.length === 0) {
-		return (
-			<box
-				id="agent-panes"
-				role="region"
-				className="text-pane pane-list"
-				scroll={props.scroll ?? 0}
-				scrollOrigin="start"
-			>
-				<text>
-					{props.empty ??
-						"no agent panes yet · install a coding CLI on PATH · tmux required"}
-				</text>
-			</box>
-		);
-	}
-	return (
-		<box
-			id="agent-panes"
-			role="list"
-			className="pane-list"
-			scroll={props.scroll ?? 0}
-			scrollOrigin="start"
-		>
-			{props.note ? <text className="pane-note">{props.note}</text> : undefined}
-			{props.parent && props.parent.length > 0 ? (
-				<text className="pane-note">{`parent · ${props.parent.join(" · ")}`}</text>
-			) : undefined}
-			{props.windows.map((row) => (
-				<box role="list" className="agent-group">
-					<text
-						role="listitem"
-						className={row.focused ? "pane-item selected" : "pane-item"}
-						selected={row.focused === true}
-					>{`${row.focused ? "▸" : " "} ${row.name}`}</text>
-					{(row.tasks ?? []).map((task) => (
-						<text role="listitem" className="pane-task">
-							{formatAgentTask(task)}
-						</text>
-					))}
-					{(row.tasks ?? []).length === 0 ? (
-						<text className="pane-task">{"    (no claimed tasks)"}</text>
-					) : undefined}
-				</box>
-			))}
-			{unclaimed.length > 0 ? (
-				<box role="list" className="agent-group">
-					<text role="listitem" className="pane-item">
-						{"  unclaimed"}
-					</text>
-					{unclaimed.map((task) => (
-						<text role="listitem" className="pane-task">
-							{formatAgentTask(task)}
-						</text>
-					))}
-				</box>
-			) : undefined}
-			<text></text>
-			<text className="pane-capture">
-				{props.capture ||
-					"(type to steer this subagent · Tab back to chat keeps context)"}
-			</text>
-		</box>
-	);
-}
-
-function formatAgentTask(task: AgentTaskRow): string {
-	const glyph =
-		task.state === "working" || task.state === "captured"
-			? "●"
-			: task.state === "done" || task.state === "verified"
-				? "✓"
-				: task.state === "blocked" || task.state === "stale"
-					? "▲"
-					: "○";
-	const extra = [task.branch, task.isolation].filter(Boolean).join(" · ");
-	return extra
-		? `    ${glyph} ${task.summary} · ${extra}`
-		: `    ${glyph} ${task.summary}`;
-}
-
 export interface ShellChromeProps {
 	readonly title: string;
 	readonly accent?: AccentName;
 	readonly segments: readonly string[];
 	readonly commands?: readonly string[];
+	readonly railChips?: readonly string[];
+	readonly railLegend?: string;
 	readonly viewportRows: number;
 	readonly phase?: number;
 	readonly overlay?: TuiChild;
@@ -468,9 +506,13 @@ export function ShellChrome(props: ShellChromeProps): TuiNode {
 			>
 				{props.children}
 				<CommandRail
-					{...(props.commands !== undefined
-						? { commands: props.commands }
-						: {})}
+					{...(props.railLegend !== undefined
+						? { legend: props.railLegend }
+						: props.railChips !== undefined
+							? { chips: props.railChips }
+							: props.commands !== undefined
+								? { commands: props.commands }
+								: {})}
 				/>
 				{props.overlay}
 			</BroadcastFrame>

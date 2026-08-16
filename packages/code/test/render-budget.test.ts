@@ -23,6 +23,7 @@ import {
 } from "../src/interactive-shell.js";
 import { createDefaultShellHost } from "../src/shell-host.js";
 import { StreamTerminal } from "../src/shell-terminal.js";
+import { cellWidth } from "../src/rubberhose.js";
 
 const WIDTH = 80;
 const HEIGHT = 24;
@@ -344,6 +345,73 @@ describe("StreamTerminal contract", () => {
 		// Falls back to declared geometry when the stream carries none.
 		expect(t.columns).toBe(80);
 		expect(t.rows).toBe(24);
+	});
+});
+
+describe("terminal resize redraw", () => {
+	it("clears and reflows to the new size without over-wide lines", async () => {
+		class FakeStdout extends Writable {
+			columns = 80;
+			rows = 24;
+			chunks: string[] = [];
+			override _write(
+				chunk: Buffer | string,
+				_enc: BufferEncoding,
+				cb: (error?: Error | null) => void,
+			): void {
+				this.chunks.push(String(chunk));
+				cb();
+			}
+			resize(cols: number, rows: number): void {
+				this.columns = cols;
+				this.rows = rows;
+				this.emit("resize");
+			}
+		}
+		const stdin = new PassThrough();
+		const stdout = new FakeStdout();
+		let terminal!: StreamTerminal;
+		const done = runInteractiveShell({
+			stdin,
+			stdout: stdout as unknown as NodeJS.WriteStream,
+			host: stubHost,
+			reducedMotion: true,
+			sidecars: false,
+			onTerminal: (t) => {
+				terminal = t;
+			},
+		});
+		await new Promise((r) => setTimeout(r, 60));
+		stdout.chunks = [];
+		stdout.resize(60, 20);
+		await new Promise((r) => setTimeout(r, 60));
+		const after = stdout.chunks.join("");
+		expect(after).toContain("\u001b[2J");
+		expect(terminal.columns).toBe(60);
+		expect(terminal.rows).toBe(20);
+		// Strip CSI / OSC so we can measure painted cells.
+		const plain = after
+			.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "")
+			.replace(/\u001b\][^\u0007]*\u0007/g, "");
+		const over = plain.split(/\r?\n/).filter((line) => line.length > 60);
+		expect(over).toEqual([]);
+		stdin.write("\u0003");
+		await Promise.race([done, new Promise((r) => setTimeout(r, 800))]);
+	});
+
+	it("layout width follows the TTY — never paints wider than columns", () => {
+		for (const w of [30, 48, 80]) {
+			const state = createInitialShellState({
+				width: w,
+				height: 18,
+				welcome: false,
+				reducedMotion: true,
+			});
+			const lines = renderShellFrame(state).split("\n");
+			for (const line of lines) {
+				expect(cellWidth(line)).toBe(w);
+			}
+		}
 	});
 });
 

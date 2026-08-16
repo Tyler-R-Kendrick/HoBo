@@ -65,12 +65,29 @@ export function fitCells(text: string, width: number): string {
 	const visible = cellWidth(text);
 	if (visible === w) return text;
 	if (visible < w) return text + " ".repeat(w - visible);
-	if (w <= 1) return text.slice(0, w);
-	// Truncating coloured text is not worth the escape bookkeeping — callers
-	// pass plain text for anything that can overflow.
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: strip before cutting
-	const plain = text.replace(/\u001b\[[0-9;]*m/g, "");
-	return `${plain.slice(0, w - 1)}…`;
+	if (w === 0) return "";
+	// Keep SGR while cutting visible cells so tmux capture colours survive.
+	const keep = w <= 1 ? w : w - 1;
+	let out = "";
+	let cells = 0;
+	let i = 0;
+	while (i < text.length && cells < keep) {
+		if (text[i] === "\u001b" && text[i + 1] === "[") {
+			const rest = text.slice(i);
+			const match = rest.match(/^\u001b\[[0-9;]*m/u);
+			if (match) {
+				out += match[0];
+				i += match[0].length;
+				continue;
+			}
+		}
+		out += text[i]!;
+		cells += 1;
+		i += 1;
+	}
+	if (w <= 1) return out;
+	const reset = text.includes("\u001b[") ? "\u001b[0m" : "";
+	return `${out}…${reset}`;
 }
 
 function paint(text: string, accent: AccentName, enabled: boolean): string {

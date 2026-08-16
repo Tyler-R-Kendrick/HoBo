@@ -8,7 +8,10 @@ export type TuiRole =
 	| "listitem"
 	| "dialog"
 	| "table"
-	| "text";
+	| "text"
+	| "note"
+	| "tree"
+	| "treeitem";
 
 export interface TuiStyle {
 	readonly accent?: AccentName;

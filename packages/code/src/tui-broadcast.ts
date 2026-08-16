@@ -128,17 +128,13 @@ function glassRow(
 	accent: AccentName,
 	colour: boolean,
 ): string {
-	const row = cells(outer, " ");
-	row[1] = BROADCAST.block;
-	row[2] = BROADCAST.glassLeft;
-	row[outer - 3] = BROADCAST.glassRight;
-	row[outer - 2] = BROADCAST.block;
-	row[outer - 1] = "▒";
 	const inner = Math.max(0, outer - BROADCAST_INNER_INSET);
-	stamp(row, 3, fitCells(content, inner));
-	const raw = row.join("");
-	if (!colour || accent === "none") return raw;
-	return paint(raw, accent, true);
+	// Do NOT stamp ANSI into a cell array — escape bytes would overwrite ▐█▒.
+	const left = ` ${BROADCAST.block}${BROADCAST.glassLeft}`;
+	const right = `${BROADCAST.glassRight}${BROADCAST.block}▒`;
+	const raw = `${left}${fitCells(content, inner)}${right}`;
+	if (!colour || accent === "none") return fitCells(raw, outer);
+	return paint(fitCells(raw, outer), accent, true);
 }
 
 function chinRow(outer: number): string {

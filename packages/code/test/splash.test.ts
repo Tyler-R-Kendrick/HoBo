@@ -187,7 +187,7 @@ describe("hobo-code title screen (Chewy logo + animated Bo)", () => {
 		for (const l of lines) expect(l).toHaveLength(TITLE_CANVAS_WIDTH);
 		// Logo block letters present (Chewy-derived half-blocks).
 		expect(text).toMatch(/█{6,}/);
-		expect(text).toMatch(/press key|\/agent|\/config|\/verbs/i);
+		expect(text).toMatch(/press key|\/config|\/agents|\/verbs/i);
 	});
 
 	it("animates: distinct Bo frames at fixed geometry", async () => {

@@ -177,7 +177,7 @@
       "driver": "tui",
       "slashCommands": [
         "/verbs",
-        "/agent",
+        "/agents",
         "/config",
         "/help"
       ]

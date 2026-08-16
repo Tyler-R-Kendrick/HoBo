@@ -7,9 +7,20 @@
  * older than src, try `tsc` — but never block the CLI on an unrelated type
  * error. Fall back to `src/bin/hobo-code.ts` via tsx so `hobo-code agents`
  * stays runnable while dist is dirty.
+ *
+ * Workspace deps that export only `dist/` (e.g. `@hobo/stations`) can go
+ * stale after a fast-forward while `@hobo/code` dist stays fresh. Rebuild
+ * those with `tsc -p` only — never `pnpm run build` / prebuild fan-out.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, readdirSync, statSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	readFileSync,
+	readdirSync,
+	statSync,
+} from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -61,6 +72,74 @@ function tscPath() {
 	const local = join(pkgRoot, "node_modules", "typescript", "bin", "tsc");
 	if (existsSync(local)) return local;
 	return join(pkgRoot, "..", "..", "node_modules", "typescript", "bin", "tsc");
+}
+
+function resolveStationsRoot() {
+	try {
+		const require = createRequire(join(pkgRoot, "package.json"));
+		const resolved = require.resolve("@hobo/stations");
+		return join(dirname(resolved), "..");
+	} catch {
+		const linked = join(pkgRoot, "node_modules", "@hobo", "stations");
+		return existsSync(linked) ? linked : null;
+	}
+}
+
+/** @param {string} p */
+function mtimeOrNull(p) {
+	try {
+		return statSync(p).mtimeMs;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * `@hobo/stations` package.json exports only dist/. After a pull that lands
+ * new src exports, Node still loads the old dist and fails on named imports
+ * (e.g. stationCapability). Detect that and tsc the package in-place.
+ */
+function stationsDistIsStale(stationsRoot) {
+	const srcIndex = join(stationsRoot, "src", "index.ts");
+	const distIndex = join(stationsRoot, "dist", "index.js");
+	if (!existsSync(srcIndex)) return false;
+	if (!existsSync(distIndex)) return true;
+	const srcText = readFileSync(srcIndex, "utf8");
+	const distText = readFileSync(distIndex, "utf8");
+	const required = ["stationCapability", "persistStationCapabilityManifest"];
+	for (const name of required) {
+		if (srcText.includes(name) && !distText.includes(name)) return true;
+	}
+	const srcM = maxSrcMtime(join(stationsRoot, "src"));
+	const distM = mtimeOrNull(distIndex);
+	return distM != null && srcM > distM + 1000;
+}
+
+function tryRebuildStationsDist() {
+	if (process.env.HOBO_CODE_SKIP_STATIONS_REBUILD === "1") return;
+	const stationsRoot = resolveStationsRoot();
+	if (!stationsRoot || !stationsDistIsStale(stationsRoot)) return;
+	process.stderr.write(
+		"hobo-code: @hobo/stations dist is stale — tsc stations only…\n",
+	);
+	const tsc = tscPath();
+	const build = existsSync(tsc)
+		? spawnSync(process.execPath, [tsc, "-p", "tsconfig.json"], {
+				cwd: stationsRoot,
+				stdio: "inherit",
+				env: process.env,
+			})
+		: spawnSync("pnpm", ["exec", "tsc", "-p", "tsconfig.json"], {
+				cwd: stationsRoot,
+				stdio: "inherit",
+				env: process.env,
+				shell: process.platform === "win32",
+			});
+	if ((build.status ?? 1) !== 0) {
+		process.stderr.write(
+			"hobo-code: stations tsc failed — run: pnpm --filter @hobo/stations exec tsc -p tsconfig.json\n",
+		);
+	}
 }
 
 function tryRebuildDist() {
@@ -119,6 +198,10 @@ const skipRebuild = process.env.HOBO_CODE_SKIP_STALE_REBUILD === "1";
 const wantRebuild =
 	!skipRebuild &&
 	(process.env.HOBO_CODE_FORCE_STALE_REBUILD === "1" || distIsStale());
+
+if (!skipRebuild) {
+	tryRebuildStationsDist();
+}
 
 let useSource = forceSource;
 if (!useSource && wantRebuild) {

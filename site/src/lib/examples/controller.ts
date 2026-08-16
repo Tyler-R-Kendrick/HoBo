@@ -32,6 +32,7 @@ import {
 	createBridgeStationHost,
 	deployViaLocalBridge,
 	probeLocalBridge,
+	provisionStationViaLocalBridge,
 } from "./local-bridge-client.js";
 import { browserWitRuntimeAvailable } from "./runtime/browser-station.js";
 import { shipOpenSaasViaTemporaryAccounts } from "./opensaas-temporary-ship.js";
@@ -109,6 +110,45 @@ export const SHIP_RUNTIME_MISSING_LINE =
 
 export function shipStationsReady(stationCount: number): boolean {
 	return stationCount > 0;
+}
+
+/** Targets whose Environment Station hosts fully in-page on a static site. */
+export const IN_PAGE_STATION_TARGETS = ["browser-wasm"] as const;
+
+/** Static hosts (GitHub Pages) have no same-origin temp API; browser-wasm
+ * stations still host in-page when the WIT runtime assets are published. */
+export function canHostStationInPage(
+	targetId: string,
+	witRuntimeAvailable: boolean,
+): boolean {
+	return (
+		(IN_PAGE_STATION_TARGETS as readonly string[]).includes(targetId) &&
+		witRuntimeAvailable
+	);
+}
+
+/** Pool outcome after per-target isolation: partial provision is success —
+ * remote yards failing on a static host must not block in-page stations. */
+export function poolDeployOutcome(
+	provisionedCount: number,
+	failedTargetIds: readonly string[],
+): { readonly state: "stations-ready" | "failed"; readonly line: string } {
+	if (provisionedCount === 0) {
+		return {
+			state: "failed",
+			line: `✗ no Environment Stations provisioned (${failedTargetIds.length} target(s) failed) — see remediation above`,
+		};
+	}
+	if (failedTargetIds.length === 0) {
+		return {
+			state: "stations-ready",
+			line: `✓ ${provisionedCount} Environment Station(s) ready · ship apps next`,
+		};
+	}
+	return {
+		state: "stations-ready",
+		line: `✓ ${provisionedCount} Environment Station(s) ready · ${failedTargetIds.length} target(s) unavailable on this host (${failedTargetIds.join(", ")}) · ship apps next`,
+	};
 }
 
 export function preferShipExampleId(
@@ -527,6 +567,56 @@ export async function bootExamplesConsole(): Promise<void> {
 			revokeAnonymousStations();
 			const createdAt = new Date().toISOString();
 			const nextStations: DeployedStation[] = [];
+			const failedTargetIds: string[] = [];
+			/** Static-host fallbacks when the same-origin temp API is absent:
+			 * in-page browser station first (browser-wasm), then the optional
+			 * local bridge (`?bridge=`) for docker/CLI-backed targets. */
+			const provisionStationFallback = async (
+				target: StationTarget,
+				stationId: string,
+			): Promise<{
+				readonly endpointUrl?: string;
+				readonly claimUrl?: string;
+				readonly expiresAt?: string;
+			} | null> => {
+				const pack = packFor(target.id);
+				if (witRuntimeReady === null) {
+					witRuntimeReady = await browserWitRuntimeAvailable(
+						`${base}examples/runtime`,
+					);
+				}
+				if (canHostStationInPage(target.id, witRuntimeReady === true)) {
+					await writeTerminal(
+						ui.terminal,
+						"success",
+						`✓ in-page browser Environment Station ${stationId} · ${pack.label} (static host — WIT runtime served by this site)`,
+					);
+					return {};
+				}
+				const health = await probeLocalBridge();
+				if (!health.ok) return null;
+				try {
+					const provisioned = await provisionStationViaLocalBridge({
+						stationId,
+						targetId: target.id,
+						yardId: target.yardId,
+						homeStationId: registry.homeStationId,
+					});
+					await writeTerminal(
+						ui.terminal,
+						"success",
+						`✓ local-bridge Environment Station ${stationId} · ${pack.label}`,
+					);
+					await writeTerminal(
+						ui.terminal,
+						"system",
+						`→ stationUrl ${provisioned.endpointUrl}`,
+					);
+					return { endpointUrl: provisioned.endpointUrl };
+				} catch {
+					return null;
+				}
+			};
 			for (const { target } of stationPlan.provision) {
 				const pack = packFor(target.id);
 				const stationId = `${registry.homeStationId}:${target.id}`;
@@ -538,6 +628,7 @@ export async function bootExamplesConsole(): Promise<void> {
 				let endpointUrl: string | undefined;
 				let claimUrl: string | undefined;
 				let expiresAt: string | undefined;
+				try {
 				if (target.id === "cloudflare") {
 					// Real Cloudflare Temporary Account via same-origin /api/cf-temp
 					// (astro dev) or configured Temporary Accounts CORS relay.
@@ -675,6 +766,21 @@ export async function bootExamplesConsole(): Promise<void> {
 						`✓ local station ready ${stationId} · ${pack.label}`,
 					);
 				}
+				} catch (error) {
+					const fallback = await provisionStationFallback(target, stationId);
+					if (fallback === null) {
+						failedTargetIds.push(target.id);
+						await writeTerminal(
+							ui.terminal,
+							"stderr",
+							`✗ ${target.id}: ${error instanceof Error ? error.message : String(error)}`,
+						);
+						continue;
+					}
+					endpointUrl = fallback.endpointUrl;
+					claimUrl = fallback.claimUrl;
+					expiresAt = fallback.expiresAt;
+				}
 				nextStations.push({
 					id: stationId,
 					targetId: target.id,
@@ -690,12 +796,13 @@ export async function bootExamplesConsole(): Promise<void> {
 			}
 			registry = { homeStationId: registry.homeStationId, stations: nextStations };
 			persist();
+			const outcome = poolDeployOutcome(nextStations.length, failedTargetIds);
 			await writeTerminal(
 				ui.terminal,
-				"success",
-				`✓ ${nextStations.length} Environment Station(s) ready · ship apps next`,
+				outcome.state === "failed" ? "stderr" : "success",
+				outcome.line,
 			);
-			ui.deployState.textContent = "stations-ready";
+			ui.deployState.textContent = outcome.state;
 		} catch (error) {
 			await writeTerminal(
 				ui.terminal,

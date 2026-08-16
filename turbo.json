@@ -7,7 +7,15 @@
     "tsconfig.base.json"
   ],
   "envMode": "strict",
-  "globalPassThroughEnv": ["CI", "HOBO_*", "TMPDIR", "TMP", "TEMP", "SOURCE_DATE_EPOCH"],
+  "globalPassThroughEnv": [
+    "CI",
+    "HOBO_*",
+    "PLAYWRIGHT_*",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    "SOURCE_DATE_EPOCH"
+  ],
   "tasks": {
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
     "typecheck": { "dependsOn": ["^build"], "outputs": [] },

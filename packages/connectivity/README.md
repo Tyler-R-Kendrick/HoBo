@@ -81,7 +81,7 @@ Schema: `{resource}.{app}.{env?}.{branch?}.{project?}.{tenant?}.hobo.{tld}`
 
 ```bash
 # Port-based default (unchanged when portless is absent):
-pnpm --filter @hobo/hobo exec hobo dev --once --json
+pnpm hobo dev --once --json
 
 # Optional named HTTPS front-end:
 #   1. Install vercel-labs/portless

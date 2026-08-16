@@ -761,7 +761,14 @@ describe("resident session loopback server", () => {
 			"approved\n",
 		);
 
-		const browser = await chromium.launch({ headless: true });
+		// PLAYWRIGHT_CHROMIUM_PATH: hosts whose installed browser revision does
+		// not match this playwright version (e.g. /opt/pw-browsers/chromium).
+		const browser = await chromium.launch({
+			headless: true,
+			...(process.env.PLAYWRIGHT_CHROMIUM_PATH
+				? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
+				: {}),
+		});
 		try {
 			const page = await browser.newPage();
 			page.setDefaultTimeout(3_000);

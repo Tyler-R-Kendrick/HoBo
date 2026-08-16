@@ -279,8 +279,8 @@ cancel, or re-request Action runners for gates or promote. Checkin gates stay
 local: `.githooks` + `pnpm agent:check`.
 
 ```sh
-pnpm run site:deploy              # build, then publish
-pnpm run site:deploy -- --dry-run # build and report what would publish
+pnpm run site:deploy              # build deps + site, verify dist, publish
+pnpm run site:deploy -- --dry-run # same, but stop before the push
 ```
 
 [`scripts/deploy-site.mts`](../scripts/deploy-site.mts) automates the steps below and
@@ -321,15 +321,22 @@ Notes:
   single-commit history, never a source branch.
 - One-time repo setting if Pages isn't already serving: **Settings → Pages →
   Source → Deploy from a branch → `gh-pages` / `(root)`**.
-- **`examples/runtime/` WIT wasm is omitted from `gh-pages`.** Pages builds
-  fail or hang when the ~25MB bundle is included. Deploy writes
-  `examples/runtime/PAGES.md` instead. The Examples console probes
-  `examples/runtime/manifest.json` and **routes Ship to local-bridge apps**
-  (OpenSaaS / Swaghaus). Working Pages path: run
-  `pnpm --filter hobo-site run examples:bridge` then open
-  `/HoBo/examples/?bridge=http://127.0.0.1:8787`. Browser-WIT hello-world
-  stays on local `pnpm --filter hobo-site run dev`. Catalog
-  HTML + `index.json` still ship.
+- **`examples/runtime/` WIT wasm ships with the deploy** so hello-world /
+  todo-api run fully in-page on Pages (in-page `browser-wasm` station, no
+  same-origin API needed). The deploy refuses to publish if the runtime is
+  missing from the build. The old "Pages builds fail / hang on the wasm"
+  belief traced to runner starvation on 2026-08-06 (jobs cancelled at 15m
+  with no runner assigned), not payload size — and a failed branch build
+  keeps the previous deployment live. `HOBO_PAGES_STRIP_WIT=1` restores the
+  strip as an escape hatch.
+- **`pnpm --filter hobo-site run examples:verify-dist`** serves `dist/` over
+  plain static HTTP and drives the console end-to-end in a real browser
+  (catalog → pool → ship → live WIT invoke). `site:deploy` runs it before
+  every publish; `HOBO_SKIP_DIST_VERIFY=1` skips it.
+- OpenSaaS / Swaghaus (docker/CLI-backed) still ship via the optional local
+  bridge: `pnpm --filter hobo-site run examples:bridge`, then open
+  `/HoBo/examples/?bridge=http://127.0.0.1:8787`. The bridge also provisions
+  webernetes/lakebed stations for the Pool.
 
 ## Design audit (interactive)
 

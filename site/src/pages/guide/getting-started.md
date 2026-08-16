@@ -24,16 +24,29 @@ Time to leave home. This guide takes you from an empty directory to an app that 
 ## Run the local lane (clone — not npm)
 
 ```sh
-git clone https://github.com/Tyler-R-Kendrick/HoBo.git
+git clone --recurse-submodules https://github.com/Tyler-R-Kendrick/HoBo.git
 cd HoBo
 pnpm install
-pnpm exec turbo run build --filter @hobo/adapter-hono --filter @hobo/hobo
-pnpm --filter @hobo/hobo exec hobo doctor --cwd examples/hello-bindle
-pnpm --filter @hobo/hobo exec hobo plan --cwd examples/hello-bindle
-pnpm --filter @hobo/hobo exec hobo up --cwd examples/hello-bindle
+pnpm hobo doctor --cwd examples/hello-bindle
+pnpm hobo plan --cwd examples/hello-bindle
+pnpm hobo up --cwd examples/hello-bindle
+pnpm hobo dev --cwd examples/hello-bindle   # serves a live local URL
 ```
 
-Do **not** run `npx hobo`. Use the composed `@hobo/hobo` binary from this workspace. A half-built tree will fail to import `@hobo/adapter-hono` (and used to look like “no Bindle”). `hobo new` exists on that binary only; it is not a public npm scaffold.
+`pnpm hobo` is the supported invocation — it builds `@hobo/hobo` and
+`@hobo/adapter-hono` on first use, so there is no separate build step to
+forget. (`pnpm --filter @hobo/hobo exec hobo …` does **not** work: pnpm never
+links a package's own bin into its own `node_modules/.bin`.)
+
+Do **not** run `npx hobo`. Use the composed `@hobo/hobo` binary from this workspace via `pnpm hobo`. `hobo new` exists on that binary only; it is not a public npm scaffold.
+
+The same commands deploy the apps the [Examples console](/HoBo/examples/)
+shows — they share one catalog:
+
+```sh
+pnpm hobo up --cwd examples/try-site/apps/hello-world
+pnpm hobo plan --cwd examples/try-site/apps/todo-api
+```
 
 ## Step 1 — Pack your bindle
 

@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
-import { tsImport } from "tsx/esm/api";
+import { register } from "tsx/esm/api";
 
 import type { BindleDefinition } from "@hobo/bindles";
 
@@ -33,8 +33,48 @@ const DEFAULT_REPO_ROOT = fileURLToPath(
 );
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
-export async function loadExamplesCatalog(
+// One process-wide tsx loader + module memo. `tsImport()` per app is a trap:
+// every call registers ANOTHER namespaced ESM loader, resolution cost
+// compounds per registered loader (measured 0.6s → 6s → 76s → minutes for
+// successive app imports — 16 CPU-hours of spin in a pre-commit hook), and
+// on Node 22.22 the namespaced-loader path can deadlock outright. So:
+// register() the tsx loader exactly once and use plain dynamic import; the
+// site vitest config marks the app modules external so the runner leaves
+// these imports to the native loader too.
+let tsLoaderRegistered = false;
+const appModuleCache = new Map<string, Promise<unknown>>();
+
+function importAppModule(appPath: string): Promise<unknown> {
+	const cached = appModuleCache.get(appPath);
+	if (cached) return cached;
+	if (!tsLoaderRegistered) {
+		register();
+		tsLoaderRegistered = true;
+	}
+	const loaded = import(/* @vite-ignore */ pathToFileURL(appPath).href);
+	appModuleCache.set(appPath, loaded);
+	return loaded;
+}
+
+// The catalog itself is deterministic per repoRoot within one process —
+// every test file and prerender path shares one load.
+const catalogCache = new Map<
+	string,
+	Promise<readonly ExampleCatalogEntry[]>
+>();
+
+export function loadExamplesCatalog(
 	repoRoot = DEFAULT_REPO_ROOT,
+): Promise<readonly ExampleCatalogEntry[]> {
+	const cached = catalogCache.get(repoRoot);
+	if (cached) return cached;
+	const loaded = loadExamplesCatalogUncached(repoRoot);
+	catalogCache.set(repoRoot, loaded);
+	return loaded;
+}
+
+async function loadExamplesCatalogUncached(
+	repoRoot: string,
 ): Promise<readonly ExampleCatalogEntry[]> {
 	const trySiteRoot = path.join(repoRoot, "examples", "try-site");
 	const examplesRoot = path.join(trySiteRoot, "apps");
@@ -74,7 +114,7 @@ export async function loadExamplesCatalog(
 		} catch (error) {
 			if (!isMissingFile(error)) throw error;
 		}
-		const appModule = (await tsImport(appPath, import.meta.url)) as {
+		const appModule = (await importAppModule(appPath)) as {
 			readonly default?: unknown;
 			readonly runtime?: unknown;
 		};

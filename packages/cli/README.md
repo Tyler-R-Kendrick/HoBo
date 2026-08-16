@@ -64,9 +64,8 @@ node packages/cli/dist/bin/hobo.js new my-app -t api
 Product composition (recommended for end-to-end local lane):
 
 ```bash
-pnpm exec turbo run build --filter @hobo/hobo
-node packages/hobo/dist/bin/hobo.js --help
-# or: pnpm --filter @hobo/hobo exec hobo --help
+pnpm hobo --help          # root script: builds @hobo/hobo on first use
+# or: node packages/hobo/dist/bin/hobo.js --help
 ```
 
 **Pre-release:** `@hobo/*` is **not published to npm** as a stable external

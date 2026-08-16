@@ -67,7 +67,9 @@ describe("hobo-code example catalog", () => {
 			/bindle\(/,
 		);
 		expect(existsSync(join(out, "node_modules"))).toBe(false);
-		expect(result.source).toBe("atoms");
+		// A named catalog example copies verbatim (deployable via hobo up/dev);
+		// atoms compositions serve free-form intents only.
+		expect(result.source).toBe("repo");
 	});
 
 	it("bakes the repo catalog into Bo so the agent does not fetch state", () => {

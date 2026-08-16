@@ -32,12 +32,16 @@ Cloud/Vercel deploy defaults ship as package fixtures under `packages/hobo/fixtu
 
 ## Run
 
-This example **does** `hobo up` / `hobo dev` on the local lane. Build the adapter and composition root first — a half-built tree used to look like “no Bindle”.
+This example **does** `hobo up` / `hobo dev` on the local lane. `pnpm hobo`
+(the root script) builds `@hobo/hobo` + `@hobo/adapter-hono` on first use, so
+from a fresh clone this is the whole flow:
 
 ```bash
-pnpm exec turbo run build --filter @hobo/adapter-hono --filter @hobo/hobo
+pnpm hobo up --cwd examples/hello-bindle
+pnpm hobo dev --cwd examples/hello-bindle
 pnpm --filter @hobo/example-hello-bindle test
-pnpm --filter @hobo/hobo exec hobo yard init
-pnpm --filter @hobo/hobo exec hobo up --cwd examples/hello-bindle
-pnpm --filter @hobo/hobo exec hobo dev --cwd examples/hello-bindle
 ```
+
+(`hobo yard init` is not needed — the composed lane initializes its own Yard.
+`pnpm --filter @hobo/hobo exec hobo …` does **not** work: pnpm never links a
+package's own bin into its own `node_modules/.bin`.)

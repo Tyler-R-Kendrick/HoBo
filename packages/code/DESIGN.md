@@ -213,7 +213,9 @@ aliases, and env vars live in a Station SQLite sidecar — ink search in
 `hobo-code history`, not an Atuin TUI.
 (`kms.code.local.hobo.localhost`). The dashboard is a **control plane, not a
 poster**: Azure-portal drill-down with Aspire-style resource tables, in
-rubberhose skin. Three hash-routed views, never an always-expanded tree:
+rubberhose skin. Hash-routed views mirror the topology — **station ⊃ yards ⊃
+camps ⊃ bindles ⊃ resources** — one level per view, never an always-expanded
+tree:
 
 - **Overview (`#/`)** — the featured Station plaque (Chewy “station” + mute id
   + ready lamp, location as flat chips: environment · tenant · scope, three
@@ -223,20 +225,28 @@ rubberhose skin. Three hash-routed views, never an always-expanded tree:
   yard as one summary row: lamp, yard glyph, name link, flat rollup chips
   (camp/bindle glyph counts, running x/y dot, signal counts). Peers appear
   only when peer Stations exist.
-- **Yard (`#/yard/<id>`)** — a flat, aligned resources table (uppercase
-  `thead`: resource / endpoint / signals; fixed-width action column so planks
-  hang in one rail) of the yard's camps, bindles, managed resources, and
-  endpoints. Endpoint rows show the primary named link in the endpoint
-  column.
-- **Resource (`#/resource/<id>`)** — facts as a `.trust` plaque (kind, owner,
-  env, state, fidelity, scope, freshness, export), endpoint links (named +
-  quiet loopback + copy plank), and the real signals: logs / traces / metrics
-  tabs as icon planks (active plank inverted) fed by
-  `/api/resources/:id/logs|traces|metrics`.
+- **Yard (`#/yard/<id>`)** — lists the yard's **camps** as summary rows
+  (bindle count, running x/y, signal rollups) plus the yard's own managed
+  resources. Web/api/kv belong to bindles, never to the yard listing.
+- **Camp (`#/camp/<id>`)** — lists the camp's **bindles** as summary rows
+  (resource count, running x/y, signal rollups) plus camp-owned managed
+  resources that are not bindle resources.
+- **Bindle (`#/bindle/<id>`)** — the bindle's **resources** as a flat aligned
+  table (uppercase `thead`: resource / endpoint / signals; fixed-width action
+  column so planks hang in one rail), endpoint rows carrying the primary
+  named link.
+- **Resource (`#/resource/<id>`)** — endpoint links (named + quiet loopback +
+  copy plank) beneath the facts.
 
-Breadcrumbs (station › yard › resource — ink chips with drawn chevron marks)
-carry navigation and browser back works; row names are links, which is the
-drill-down affordance. Every listing uses **one row grammar** — `lamp · kind
+Every scope view — yard, camp, bindle, resource — carries its **own** facts
+plaque (`.trust`: kind, owner, env, state, fidelity, scope, freshness,
+export, last signal) and its **own** signals: logs / traces / metrics tabs as
+icon planks (active plank inverted) fed by
+`/api/resources/:id/logs|traces|metrics`.
+
+Breadcrumbs (station › yard › camp › bindle › resource — ink chips with drawn
+chevron marks) carry navigation and browser back works; row names are links,
+which is the drill-down affordance. Every listing uses **one row grammar** — `lamp · kind
 glyph · name · (endpoint) · signal counts · actions` — with per-table fixed
 grid columns. There is no sibling “signals” / OTel card — OTel is lamp +
 per-row signal counts (log/trace/metric glyph chips fed by `/api/telemetry`),

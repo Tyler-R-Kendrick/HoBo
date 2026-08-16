@@ -114,13 +114,14 @@ const SPA = `<!doctype html>
     .row.r-ep .ep-cell { grid-column:4; }
     .row.r-ep .sigs { grid-column:5; }
     .row.r-ep .acts { grid-column:6; }
-    .row.r-sum { grid-template-columns:14px 20px minmax(0,1fr) auto 3.4rem; }
+    .row.r-sum { grid-template-columns:14px 20px minmax(0,1fr) auto 6.9rem; }
     .row.r-sum .sums { grid-column:4; }
     .row.r-sum .acts { grid-column:5; }
     .row.cap { grid-template-columns:auto minmax(0,1fr); }
     .thead { display:grid; grid-template-columns:14px 18px minmax(7rem,1.1fr) minmax(0,1.6fr) 8.5rem 9.9rem;
       gap:12px; padding:0 0 6px; border-bottom:3px solid var(--border); color:var(--mute);
       font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+    .group-cap { margin:16px 0 2px; }
     .row-main { min-width:0; overflow:hidden; }
     .row-name { display:block; font-size:1rem; font-weight:700; line-height:1.25;
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -231,7 +232,7 @@ const SPA = `<!doctype html>
       .row.r-ep .sigs { grid-column:3 / -1; grid-row:3; }
       .row.r-ep .acts { grid-column:4; grid-row:1; }
       .row.r-ep .copy { display:none; }
-      .row.r-sum { grid-template-columns:14px 20px minmax(0,1fr) 3.4rem; }
+      .row.r-sum { grid-template-columns:14px 20px minmax(0,1fr) 6.9rem; }
       .row.r-sum .sums { grid-column:3 / -1; grid-row:2; }
       .row.r-sum .acts { grid-column:4; grid-row:1; }
       .tel-row { grid-template-columns:6.5rem minmax(0,1fr); }
@@ -390,9 +391,23 @@ const SPA = `<!doctype html>
     function yardHref(id) {
       return "#/yard/" + encodeURIComponent(id);
     }
-    function resLink(id, extraClass) {
-      return "<a class='res-link " + (extraClass || "") + "' href='" + resHref(id) +
-        "' title='" + esc(id) + "'>" + esc(id) + "</a>";
+    function campHref(id) {
+      return "#/camp/" + encodeURIComponent(id);
+    }
+    function bindleHref(id) {
+      return "#/bindle/" + encodeURIComponent(id);
+    }
+    function hrefFor(kind, id) {
+      if (kind === "yard") return yardHref(id);
+      if (kind === "camp") return campHref(id);
+      if (kind === "bindle") return bindleHref(id);
+      return resHref(id);
+    }
+    function drillLink(kind, id) {
+      return "<a class='res-link' href='" + hrefFor(kind, id) + "' title='" + esc(id) + "'>" + esc(id) + "</a>";
+    }
+    function resLink(id) {
+      return drillLink("resource", id);
     }
     var telemetry = {};
     function sigHtml(icon, count, label) {
@@ -438,6 +453,10 @@ const SPA = `<!doctype html>
       var hash = location.hash || "#/";
       var yardMatch = /^#\\/yard\\/(.+)$/.exec(hash);
       if (yardMatch) return { view: "yard", id: decodeURIComponent(yardMatch[1]) };
+      var campMatch = /^#\\/camp\\/(.+)$/.exec(hash);
+      if (campMatch) return { view: "camp", id: decodeURIComponent(campMatch[1]) };
+      var bindleMatch = /^#\\/bindle\\/(.+)$/.exec(hash);
+      if (bindleMatch) return { view: "bindle", id: decodeURIComponent(bindleMatch[1]) };
       var resMatch = /^#\\/resource\\/(.+)$/.exec(hash);
       if (resMatch) return { view: "resource", id: decodeURIComponent(resMatch[1]) };
       return { view: "overview" };
@@ -526,7 +545,11 @@ const SPA = `<!doctype html>
       } else {
         renderCrumbs(inv, view);
         if (view.view === "yard") {
-          renderYard(inv, view.id);
+          await renderYard(inv, view.id);
+        } else if (view.view === "camp") {
+          await renderCamp(inv, view.id);
+        } else if (view.view === "bindle") {
+          await renderBindle(inv, view.id);
         } else {
           await renderResource(inv, view.id);
         }
@@ -554,6 +577,18 @@ const SPA = `<!doctype html>
         return m.ownerId === ownerId && m.kind !== "bindle" && !isStationEndpoint(m.id);
       });
     }
+    function campById(inv, id) {
+      return (inv.camps || []).find(function (c) { return c.id === id; });
+    }
+    function bindleById(inv, id) {
+      return (inv.bindles || []).find(function (b) { return b.id === id; });
+    }
+    function campsOf(inv, yardId) {
+      return (inv.camps || []).filter(function (c) { return c.parentId === yardId; });
+    }
+    function bindlesOf(inv, campId) {
+      return (inv.bindles || []).filter(function (b) { return b.parentId === campId; });
+    }
     function bindleEndpointNames(inv, bindle) {
       var names = {};
       if (inv.bindleManifest && inv.bindleManifest.name === bindle.name) {
@@ -564,59 +599,65 @@ const SPA = `<!doctype html>
       });
       return names;
     }
-    function yardMembers(inv, yardId) {
-      var campsIn = (inv.camps || []).filter(function (c) { return c.parentId === yardId; });
-      var campIds = {};
-      campsIn.forEach(function (c) { campIds[c.id] = true; });
-      var bindlesIn = (inv.bindles || []).filter(function (b) { return campIds[b.parentId]; });
-      var epNames = {};
-      bindlesIn.forEach(function (b) {
-        var names = bindleEndpointNames(inv, b);
-        Object.keys(names).forEach(function (n) { epNames[n] = true; });
+    function claimingBindle(inv, name) {
+      return (inv.bindles || []).find(function (b) {
+        return bindleEndpointNames(inv, b)[name];
       });
-      var endpointsIn = (inv.endpoints || []).filter(function (e) {
-        return !isStationEndpoint(e.resourceName) && epNames[e.resourceName];
-      });
-      var managedIn = [];
-      [yardId].concat(campsIn.map(function (c) { return c.id; }))
-        .concat(bindlesIn.map(function (b) { return b.id; }))
-        .forEach(function (ownerId) {
-          managedOf(inv, ownerId).forEach(function (m) { managedIn.push(m); });
-        });
-      return { camps: campsIn, bindles: bindlesIn, endpoints: endpointsIn, managed: managedIn };
     }
-    function yardOfResource(inv, id) {
-      if (id.indexOf("yard:") === 0) return id;
-      var campById = {};
-      (inv.camps || []).forEach(function (c) { campById[c.id] = c; });
-      var camp = campById[id];
-      if (camp) return camp.parentId;
-      var bindle = (inv.bindles || []).find(function (b) { return b.id === id; });
-      if (bindle && campById[bindle.parentId]) return campById[bindle.parentId].parentId;
-      var managed = (inv.managed || []).find(function (m) { return m.id === id; });
-      if (managed) return yardOfResource(inv, managed.ownerId);
-      var claimed = (inv.bindles || []).find(function (b) {
-        return bindleEndpointNames(inv, b)[id];
-      });
-      if (claimed && campById[claimed.parentId]) return campById[claimed.parentId].parentId;
-      return "";
+    function bindleResourceIds(inv, bindle) {
+      return Object.keys(bindleEndpointNames(inv, bindle));
+    }
+    function chainFor(inv, view) {
+      var yardId = "";
+      var campId = "";
+      var bindleId = "";
+      if (view.view === "yard") yardId = view.id;
+      if (view.view === "camp") campId = view.id;
+      if (view.view === "bindle") bindleId = view.id;
+      if (view.view === "resource") {
+        var claimed = claimingBindle(inv, view.id);
+        if (claimed) {
+          bindleId = claimed.id;
+        } else {
+          var managed = (inv.managed || []).find(function (m) { return m.id === view.id; });
+          if (managed) {
+            if (managed.ownerId.indexOf("bindle:") === 0) bindleId = managed.ownerId;
+            else if (managed.ownerId.indexOf("camp:") === 0) campId = managed.ownerId;
+            else if (managed.ownerId.indexOf("yard:") === 0) yardId = managed.ownerId;
+          }
+        }
+      }
+      if (bindleId && !campId) {
+        var bindle = bindleById(inv, bindleId);
+        if (bindle && bindle.parentId) campId = bindle.parentId;
+      }
+      if (campId && !yardId) {
+        var camp = campById(inv, campId);
+        if (camp && camp.parentId) yardId = camp.parentId;
+      }
+      return { yardId: yardId, campId: campId, bindleId: bindleId };
     }
     function renderCrumbs(inv, view) {
+      var chain = chainFor(inv, view);
       var parts = ["<a href='#/'>" + kindMark("station") + "<span>station</span></a>"];
-      var yardId = view.view === "yard" ? view.id : yardOfResource(inv, view.id);
-      if (view.view === "resource" && yardId) {
+      [["yard", chain.yardId], ["camp", chain.campId], ["bindle", chain.bindleId]].forEach(function (level) {
+        if (!level[1] || view.view === level[0]) return;
         parts.push(mark("chev", "in"));
-        parts.push("<a href='" + yardHref(yardId) + "'>" + kindMark("yard") + "<span>" + esc(yardId) + "</span></a>");
-      }
+        parts.push("<a href='" + hrefFor(level[0], level[1]) + "'>" + kindMark(level[0]) +
+          "<span>" + esc(level[1]) + "</span></a>");
+      });
       parts.push(mark("chev", "in"));
-      var hereKind = view.view === "yard" ? "yard" : "";
+      var hereKind = view.view === "resource" ? "" : view.view;
       parts.push("<span class='here' aria-current='page'>" +
         (hereKind ? kindMark(hereKind) : "") + "<span>" + esc(view.id) + "</span></span>");
       document.getElementById("crumbs").innerHTML = parts.join("");
     }
-    function theadHtml() {
-      return "<div class='thead' aria-hidden='true'><span></span><span></span><span>resource</span>" +
-        "<span>endpoint</span><span>signals</span><span></span></div>";
+    function theadHtml(label) {
+      return "<div class='thead' aria-hidden='true'><span></span><span></span><span>" + esc(label) +
+        "</span><span>endpoint</span><span>signals</span><span></span></div>";
+    }
+    function groupCap(label) {
+      return "<p class='eyebrow group-cap'>" + esc(label) + "</p>";
     }
     function endpointCell(e) {
       if (!e) return "<span class='ep-cell'></span>";
@@ -645,6 +686,51 @@ const SPA = `<!doctype html>
       return list.map(function (e) {
         return resourceRow(inv, { id: e.resourceName, kind: e.kind || "endpoint", endpoint: e });
       }).join("");
+    }
+    function countChip(kind, count, label) {
+      return "<span class='sum' role='img' aria-label='" + esc(count + " " + label) + "'>" +
+        "<span class='tree-kind " + esc(kind) + "'></span>" + esc(count) + "</span>";
+    }
+    function runningChip(running, total) {
+      return "<span class='sum' role='img' aria-label='" + esc(running + " of " + total + " running") + "'>" +
+        "<span class='dot'></span>" + esc(running) + "/" + esc(total) + "</span>";
+    }
+    function summaryRow(inv, opts) {
+      var ready = readyOf(inv, opts.id);
+      return "<div class='row r-sum'>" + lamp(ready) + kindMark(opts.kind) +
+        "<span class='row-main'><span class='row-name mono'>" + drillLink(opts.kind, opts.id) +
+        "</span></span><span class='sums'>" + (opts.sums || "") + "</span>" +
+        actsHtml(actionsInner(opts.id, opts.locked === true, ready)) +
+        "</div>";
+    }
+    function campRollupIds(inv, camp) {
+      var ids = [camp.id];
+      bindlesOf(inv, camp.id).forEach(function (bindle) {
+        ids.push(bindle.id);
+        bindleResourceIds(inv, bindle).forEach(function (name) { ids.push(name); });
+      });
+      managedOf(inv, camp.id).forEach(function (m) {
+        if (m.kind !== "bindle-resource") ids.push(m.id);
+      });
+      return ids;
+    }
+    function campSummaryRow(inv, camp) {
+      var bindles = bindlesOf(inv, camp.id);
+      var ids = campRollupIds(inv, camp);
+      var running = ids.filter(function (id) { return readyOf(inv, id); }).length;
+      return summaryRow(inv, {
+        kind: "camp", id: camp.id, locked: camp.id === "camp:code",
+        sums: countChip("bindle", bindles.length, "bindles") + runningChip(running, ids.length) + sigsRollup(ids)
+      });
+    }
+    function bindleSummaryRow(inv, bindle) {
+      var resources = bindleResourceIds(inv, bindle);
+      var ids = [bindle.id].concat(resources);
+      var running = ids.filter(function (id) { return readyOf(inv, id); }).length;
+      return summaryRow(inv, {
+        kind: "bindle", id: bindle.id, locked: bindle.id === "bindle:code",
+        sums: countChip("endpoint", resources.length, "resources") + runningChip(running, ids.length) + sigsRollup(ids)
+      });
     }
     function capsHtml(rows, open) {
       if (!rows.length) return "";
@@ -685,26 +771,21 @@ const SPA = `<!doctype html>
       }
       const yards = inv.yards || [];
       function yardSummaryRow(yard) {
-        var members = yardMembers(inv, yard.id);
-        var memberIds = members.camps.map(function (c) { return c.id; })
-          .concat(members.bindles.map(function (b) { return b.id; }))
-          .concat(members.managed.map(function (m) { return m.id; }))
-          .concat(members.endpoints.map(function (e) { return e.resourceName; }));
-        var running = memberIds.filter(function (id) { return readyOf(inv, id); }).length;
-        var sums = "<span class='sums'>" +
-          "<span class='sum' role='img' aria-label='" + members.camps.length + " camps'>" +
-          "<span class='tree-kind camp'></span>" + members.camps.length + "</span>" +
-          "<span class='sum' role='img' aria-label='" + members.bindles.length + " bindles'>" +
-          "<span class='tree-kind bindle'></span>" + members.bindles.length + "</span>" +
-          "<span class='sum' role='img' aria-label='" + running + " of " + memberIds.length + " running'>" +
-          "<span class='dot'></span>" + running + "/" + memberIds.length + "</span>" +
-          sigsRollup(memberIds.concat([yard.id])) + "</span>";
-        return "<div class='row r-sum'>" + lamp(readyOf(inv, yard.id)) + kindMark("yard") +
-          "<span class='row-main'><span class='row-name mono'><a class='res-link' href='" +
-          yardHref(yard.id) + "' title='" + esc(yard.id) + "'>" + esc(yard.id) + "</a></span></span>" +
-          sums +
-          actsHtml(actionsInner(yard.id, false, readyOf(inv, yard.id))) +
-          "</div>";
+        var camps = campsOf(inv, yard.id);
+        var ids = [yard.id];
+        camps.forEach(function (camp) {
+          campRollupIds(inv, camp).forEach(function (id) { ids.push(id); });
+        });
+        managedOf(inv, yard.id).forEach(function (m) { ids.push(m.id); });
+        var bindleCount = camps.reduce(function (sum, camp) {
+          return sum + bindlesOf(inv, camp.id).length;
+        }, 0);
+        var running = ids.filter(function (id) { return readyOf(inv, id); }).length;
+        return summaryRow(inv, {
+          kind: "yard", id: yard.id,
+          sums: countChip("camp", camps.length, "camps") + countChip("bindle", bindleCount, "bindles") +
+            runningChip(running, ids.length) + sigsRollup(ids)
+        });
       }
       const junctions = (inv.junctions || []).map(function (n) {
         return "<div class='row r-sum'>" + lamp(readyOf(inv, n.id)) + kindMark("junction") +
@@ -715,12 +796,7 @@ const SPA = `<!doctype html>
       const yardIds = {};
       yards.forEach(function (y) { yardIds[y.id] = true; });
       const orphanCamps = (inv.camps || []).filter(function (c) { return !c.parentId || !yardIds[c.parentId]; });
-      const orphans = orphanCamps.map(function (c) {
-        return "<div class='row r-sum'>" + lamp(readyOf(inv, c.id)) + kindMark("camp") +
-          "<span class='row-main'><span class='row-name mono'>" + resLink(c.id) + "</span></span>" +
-          "<span class='sums'></span>" +
-          actsHtml(actionsInner(c.id, c.id === "camp:code", readyOf(inv, c.id))) + "</div>";
-      }).join("");
+      const orphans = orphanCamps.map(function (c) { return campSummaryRow(inv, c); }).join("");
       const board = junctions + yards.map(yardSummaryRow).join("") + orphans;
       document.getElementById("yards").innerHTML = board ||
         "<p class='empty'>no yards on this station yet — <code>hobo-code dev</code> lays one down</p>";
@@ -732,70 +808,23 @@ const SPA = `<!doctype html>
             esc(n.id) + "</span></span><span class='sums'></span><span class='acts'></span></div>";
         }).join("");
     }
-    function renderYard(inv, yardId) {
-      const detail = document.getElementById("detail");
-      const yard = (inv.yards || []).find(function (y) { return y.id === yardId; });
-      if (!yard) {
-        detail.innerHTML = "<p class='empty'>no such yard — <a class='res-link' href='#/'>back to the station</a></p>";
-        return;
-      }
-      const members = yardMembers(inv, yardId);
-      const claimedEps = {};
-      var rows = "";
-      members.managed.filter(function (m) { return m.ownerId === yardId; }).forEach(function (m) {
-        rows += resourceRow(inv, { id: m.id, kind: m.kind, locked: m.controllable === false });
-      });
-      members.camps.forEach(function (camp) {
-        rows += resourceRow(inv, { id: camp.id, kind: "camp", locked: camp.id === "camp:code" });
-        members.managed.filter(function (m) { return m.ownerId === camp.id; }).forEach(function (m) {
-          var ep = members.endpoints.find(function (e) { return e.resourceName === (m.name || m.id); });
-          if (ep) claimedEps[ep.resourceName] = true;
-          rows += resourceRow(inv, {
-            id: m.id, kind: m.kind, locked: m.controllable === false,
-            endpoint: ep
-          });
-        });
-        (inv.bindles || []).filter(function (b) { return b.parentId === camp.id; }).forEach(function (bindle) {
-          rows += resourceRow(inv, { id: bindle.id, kind: "bindle", locked: bindle.id === "bindle:code" });
-          members.endpoints.forEach(function (e) {
-            if (claimedEps[e.resourceName]) return;
-            if (!bindleEndpointNames(inv, bindle)[e.resourceName]) return;
-            claimedEps[e.resourceName] = true;
-            rows += resourceRow(inv, { id: e.resourceName, kind: e.kind || "endpoint", endpoint: e });
-          });
-        });
-      });
-      (inv.endpoints || []).filter(function (e) {
-        return !isStationEndpoint(e.resourceName) && !claimedEps[e.resourceName];
-      }).forEach(function (e) {
-        rows += resourceRow(inv, { id: e.resourceName, kind: e.kind || "endpoint", endpoint: e });
-      });
-      detail.innerHTML =
-        "<div class='detail-head'>" + lamp(readyOf(inv, yardId)) + kindMark("yard") +
-        "<h2 title='" + esc(yardId) + "'>" + esc(yardId) + "</h2>" +
-        actsHtml(actionsInner(yardId, false, readyOf(inv, yardId))) + "</div>" +
-        (rows ? theadHtml() + rows
-          : "<p class='empty'>nothing camped on this yard yet — <code>hobo-code dev</code> puts a bindle here</p>");
+    function factsHtml(facts) {
+      if (!facts.length) return "";
+      return "<dl class='trust'>" + facts.map(function (f) {
+        return "<div><dt>" + esc(f[0]) + "</dt><dd title='" + esc(f[1]) + "'>" + esc(f[1]) + "</dd></div>";
+      }).join("") + "</dl>";
     }
-    async function renderResource(inv, id) {
-      const detail = document.getElementById("detail");
-      const node = [].concat(inv.yards || [], inv.camps || [], inv.bindles || [], inv.junctions || [])
-        .find(function (n) { return n.id === id; });
-      const managed = (inv.managed || []).find(function (m) { return m.id === id; });
-      const endpoint = (inv.endpoints || []).find(function (e) { return e.resourceName === id; });
-      const snap = snapOf(inv, id);
-      if (!node && !managed && !endpoint && !snap) {
-        detail.innerHTML = "<p class='empty'>no such resource — <a class='res-link' href='#/'>back to the station</a></p>";
-        return;
+    function nodeFacts(inv, id, node, endpoint) {
+      var facts = [];
+      var snap = snapOf(inv, id);
+      var kind = endpoint ? (endpoint.kind || "endpoint") : node ? node.kind : "";
+      if (kind) facts.push(["kind", kind]);
+      if (node && node.parentId) {
+        facts.push(["owner", node.parentId]);
+      } else {
+        var managed = (inv.managed || []).find(function (m) { return m.id === id; });
+        if (managed) facts.push(["owner", managed.ownerId]);
       }
-      const ready = snap && snap.ready;
-      const kind = endpoint ? (endpoint.kind || "endpoint") : node ? node.kind : managed ? managed.kind : "endpoint";
-      const locked = (node && (id === "camp:code" || id === "bindle:code")) ||
-        (managed && managed.controllable === false);
-      const facts = [];
-      facts.push(["kind", kind]);
-      if (managed) facts.push(["owner", managed.ownerId]);
-      if (node && node.parentId) facts.push(["owner", node.parentId]);
       if (node && node.environment) facts.push(["env", node.environment]);
       if (snap) facts.push(["state", snap.state]);
       var fidelity = endpoint ? endpoint.fidelity : node ? node.fidelity : "";
@@ -805,9 +834,133 @@ const SPA = `<!doctype html>
       var tel = telemetry[id];
       if (tel && tel.lastSignalAt) facts.push(["last signal", tel.lastSignalAt.slice(11, 19)]);
       if (tel && tel.export) facts.push(["export", tel.export]);
-      const factsHtml = "<dl class='trust'>" + facts.map(function (f) {
-        return "<div><dt>" + esc(f[0]) + "</dt><dd title='" + esc(f[1]) + "'>" + esc(f[1]) + "</dd></div>";
-      }).join("") + "</dl>";
+      return facts;
+    }
+    function telemetryTabs(id) {
+      var tel = telemetry[id];
+      var counts = { logs: tel ? tel.logs : 0, traces: tel ? tel.traces : 0, metrics: tel ? tel.metrics : 0 };
+      function tabBtn(name) {
+        var label = name + " (" + (counts[name] || 0) + ")";
+        return "<button type='button' class='ico" + (detailTab === name ? " on" : "") +
+          "' data-tab='" + name + "' aria-label='" + esc(label) + "' title='" + esc(label) +
+          "' aria-pressed='" + (detailTab === name) + "'>" + ICO[name] + "</button>";
+      }
+      return "<div class='tel-head'>" + tabBtn("logs") + tabBtn("traces") + tabBtn("metrics") +
+        "<span class='sig'>" + (counts[detailTab] || 0) + "</span></div><div id='tel-body'></div>";
+    }
+    async function fillTelemetry(id) {
+      const body = document.getElementById("tel-body");
+      if (!body) return;
+      try {
+        const tabData = await api("/api/resources/" + encodeURIComponent(id) + "/" + detailTab);
+        const list = (tabData && tabData[detailTab]) || [];
+        const recent = list.slice(-50).reverse();
+        if (!recent.length) {
+          body.innerHTML = "<p class='empty'>no " + esc(detailTab) + " yet</p>";
+          return;
+        }
+        body.innerHTML = recent.map(function (row) {
+          var when = String(row.time || row.startTime || "").slice(11, 19);
+          if (detailTab === "logs") {
+            return "<div class='tel-row'><span>" + esc(when) + "</span><span>" + esc(row.severity || "") +
+              "</span><span title='" + esc(row.body || "") + "'>" + esc(row.body || "") + "</span></div>";
+          }
+          if (detailTab === "traces") {
+            return "<div class='tel-row'><span>" + esc(when) + "</span><span>" + esc(row.name || "") +
+              "</span><span title='" + esc(row.traceId || "") + "'>" + esc(row.traceId || "") + "</span></div>";
+          }
+          return "<div class='tel-row'><span>" + esc(when) + "</span><span>" + esc(row.name || "") +
+            "</span><span>" + esc(row.value) + "</span></div>";
+        }).join("");
+      } catch (err) {
+        body.innerHTML = "<p class='empty'>signals unavailable</p>";
+      }
+    }
+    function scopeHead(inv, kind, id, locked) {
+      var ready = readyOf(inv, id);
+      return "<div class='detail-head'>" + lamp(ready) + kindMark(kind) +
+        "<h2 title='" + esc(id) + "'>" + esc(id) + "</h2>" +
+        actsHtml(actionsInner(id, locked === true, ready)) + "</div>";
+    }
+    function missingScope(detail) {
+      detail.innerHTML = "<p class='empty'>nothing here — <a class='res-link' href='#/'>back to the station</a></p>";
+    }
+    async function renderYard(inv, yardId) {
+      const detail = document.getElementById("detail");
+      const yard = (inv.yards || []).find(function (y) { return y.id === yardId; });
+      if (!yard) return missingScope(detail);
+      const camps = campsOf(inv, yardId);
+      const campsHtml = camps.length
+        ? groupCap("camps") + camps.map(function (c) { return campSummaryRow(inv, c); }).join("")
+        : "<p class='empty'>no camps on this yard yet — <code>hobo-code dev</code> pitches one</p>";
+      const ownRows = managedOf(inv, yardId).map(function (m) {
+        return resourceRow(inv, { id: m.id, kind: m.kind, locked: m.controllable === false });
+      }).join("");
+      const ownHtml = ownRows ? groupCap("resources") + theadHtml("resource") + ownRows : "";
+      detail.innerHTML = scopeHead(inv, "yard", yardId, false) +
+        factsHtml(nodeFacts(inv, yardId, yard)) + campsHtml + ownHtml + telemetryTabs(yardId);
+      await fillTelemetry(yardId);
+    }
+    async function renderCamp(inv, campId) {
+      const detail = document.getElementById("detail");
+      const camp = campById(inv, campId);
+      if (!camp) return missingScope(detail);
+      const bindles = bindlesOf(inv, campId);
+      const bindlesHtml = bindles.length
+        ? groupCap("bindles") + bindles.map(function (b) { return bindleSummaryRow(inv, b); }).join("")
+        : "<p class='empty'>no bindles camped here yet — <code>hobo-code dev</code> rolls one out</p>";
+      const ownRows = managedOf(inv, campId).filter(function (m) {
+        return m.kind !== "bindle-resource";
+      }).map(function (m) {
+        return resourceRow(inv, { id: m.id, kind: m.kind, locked: m.controllable === false });
+      }).join("");
+      const ownHtml = ownRows ? groupCap("resources") + theadHtml("resource") + ownRows : "";
+      detail.innerHTML = scopeHead(inv, "camp", campId, campId === "camp:code") +
+        factsHtml(nodeFacts(inv, campId, camp)) + bindlesHtml + ownHtml + telemetryTabs(campId);
+      await fillTelemetry(campId);
+    }
+    async function renderBindle(inv, bindleId) {
+      const detail = document.getElementById("detail");
+      const bindle = bindleById(inv, bindleId);
+      if (!bindle) return missingScope(detail);
+      const names = bindleResourceIds(inv, bindle);
+      const claimed = {};
+      names.forEach(function (n) { claimed[n] = true; });
+      var rows = names.map(function (name) {
+        var endpoint = (inv.endpoints || []).find(function (e) { return e.resourceName === name; });
+        var managed = (inv.managed || []).find(function (m) { return m.id === name; });
+        var kind = endpoint ? (endpoint.kind || "endpoint") : managed ? managed.kind : "endpoint";
+        return resourceRow(inv, {
+          id: name, kind: kind,
+          locked: managed ? managed.controllable === false : false,
+          endpoint: endpoint
+        });
+      }).join("");
+      (inv.endpoints || []).filter(function (e) {
+        return !isStationEndpoint(e.resourceName) && !claimed[e.resourceName] &&
+          !claimingBindle(inv, e.resourceName);
+      }).forEach(function (e) {
+        rows += resourceRow(inv, { id: e.resourceName, kind: e.kind || "endpoint", endpoint: e });
+      });
+      const rowsHtml = rows
+        ? groupCap("resources") + theadHtml("resource") + rows
+        : "<p class='empty'>this bindle declares no resources yet</p>";
+      detail.innerHTML = scopeHead(inv, "bindle", bindleId, bindleId === "bindle:code") +
+        factsHtml(nodeFacts(inv, bindleId, bindle)) + rowsHtml + telemetryTabs(bindleId);
+      await fillTelemetry(bindleId);
+    }
+    async function renderResource(inv, id) {
+      const detail = document.getElementById("detail");
+      const node = [].concat(inv.yards || [], inv.camps || [], inv.bindles || [], inv.junctions || [])
+        .find(function (n) { return n.id === id; });
+      const managed = (inv.managed || []).find(function (m) { return m.id === id; });
+      const endpoint = (inv.endpoints || []).find(function (e) { return e.resourceName === id; });
+      const snap = snapOf(inv, id);
+      if (!node && !managed && !endpoint && !snap) return missingScope(detail);
+      const ready = snap && snap.ready;
+      const kind = endpoint ? (endpoint.kind || "endpoint") : node ? node.kind : managed ? managed.kind : "endpoint";
+      const locked = (node && (id === "camp:code" || id === "bindle:code")) ||
+        (managed && managed.controllable === false);
       var epHtml = "";
       if (endpoint) {
         var named = namedUrl(endpoint);
@@ -829,45 +982,12 @@ const SPA = `<!doctype html>
           "<span class='ep-cell'>" + lines + "</span>" + sigsHtml(id) +
           actsHtml(copyBtn(primary)) + "</div>";
       }
-      const counts = { logs: tel ? tel.logs : 0, traces: tel ? tel.traces : 0, metrics: tel ? tel.metrics : 0 };
-      function tabBtn(name) {
-        var label = name + " (" + (counts[name] || 0) + ")";
-        return "<button type='button' class='ico" + (detailTab === name ? " on" : "") +
-          "' data-tab='" + name + "' aria-label='" + esc(label) + "' title='" + esc(label) +
-          "' aria-pressed='" + (detailTab === name) + "'>" + ICO[name] + "</button>";
-      }
-      const telHead = "<div class='tel-head'>" + tabBtn("logs") + tabBtn("traces") + tabBtn("metrics") +
-        "<span class='sig'>" + (counts[detailTab] || 0) + "</span></div>";
       detail.innerHTML =
         "<div class='detail-head'>" + lamp(ready) + kindMark(kind) +
         "<h2 title='" + esc(id) + "'>" + esc(id) + "</h2>" +
         actsHtml(actionsInner(id, locked === true, ready)) + "</div>" +
-        factsHtml + epHtml + telHead + "<div id='tel-body'></div>";
-      const body = document.getElementById("tel-body");
-      try {
-        const tabData = await api("/api/resources/" + encodeURIComponent(id) + "/" + detailTab);
-        const list = (tabData && tabData[detailTab]) || [];
-        const recent = list.slice(-50).reverse();
-        if (!recent.length) {
-          body.innerHTML = "<p class='empty'>no " + esc(detailTab) + " yet</p>";
-        } else {
-          body.innerHTML = recent.map(function (row) {
-            var when = String(row.time || row.startTime || "").slice(11, 19);
-            if (detailTab === "logs") {
-              return "<div class='tel-row'><span>" + esc(when) + "</span><span>" + esc(row.severity || "") +
-                "</span><span title='" + esc(row.body || "") + "'>" + esc(row.body || "") + "</span></div>";
-            }
-            if (detailTab === "traces") {
-              return "<div class='tel-row'><span>" + esc(when) + "</span><span>" + esc(row.name || "") +
-                "</span><span title='" + esc(row.traceId || "") + "'>" + esc(row.traceId || "") + "</span></div>";
-            }
-            return "<div class='tel-row'><span>" + esc(when) + "</span><span>" + esc(row.name || "") +
-              "</span><span>" + esc(row.value) + "</span></div>";
-          }).join("");
-        }
-      } catch (err) {
-        body.innerHTML = "<p class='empty'>signals unavailable</p>";
-      }
+        factsHtml(nodeFacts(inv, id, node, endpoint)) + epHtml + telemetryTabs(id);
+      await fillTelemetry(id);
     }
     render().catch(function (err) {
       showError(String(err));

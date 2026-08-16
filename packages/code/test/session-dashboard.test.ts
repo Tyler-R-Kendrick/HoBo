@@ -84,9 +84,16 @@ describe("local Aspire dashboard listener", () => {
 			expect(html).toMatch(/isStationEndpoint/);
 			expect(html).toMatch(/function renderOverview/);
 			expect(html).toMatch(/function renderYard/);
+			expect(html).toMatch(/function renderCamp/);
+			expect(html).toMatch(/function renderBindle/);
 			expect(html).toMatch(/function renderResource/);
 			expect(html).toMatch(/#\/yard\//);
+			expect(html).toMatch(/#\/camp\//);
+			expect(html).toMatch(/#\/bindle\//);
 			expect(html).toMatch(/#\/resource\//);
+			expect(html).toMatch(/campSummaryRow/);
+			expect(html).toMatch(/bindleSummaryRow/);
+			expect(html).toMatch(/fillTelemetry/);
 			expect(html).toMatch(/hashchange/);
 			expect(html).toMatch(/id="detail-card"/);
 			expect(html).toMatch(/id="crumbs"/);

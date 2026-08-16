@@ -29,6 +29,14 @@ export const BINDLE_SOURCE_CANDIDATES = [
 	"src/bindle.mjs",
 	"src/bindle.ts",
 	"src/bindle.mts",
+	// The try-site catalog convention (examples/try-site/apps/<id>/app.ts):
+	// same `export default bindle(...)` shape, so the CLI deploys the exact
+	// apps the GitHub Pages Examples console shows. bindle.* stays preferred.
+	"dist/app.js",
+	"app.js",
+	"app.mjs",
+	"app.ts",
+	"app.mts",
 ] as const;
 
 export const DEFAULT_COMPONENT_HOST = {

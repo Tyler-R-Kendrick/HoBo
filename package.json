@@ -27,6 +27,7 @@
     "docs:okf": "node --import tsx scripts/check-okf-docs.mts",
     "docs:site-nav": "node --import tsx scripts/check-site-nav.mts",
     "site:deploy": "node --import tsx scripts/deploy-site.mts",
+    "hobo": "node --import tsx scripts/hobo-cli.ts",
     "design:lint": "node --import tsx scripts/check-design-md.mts",
     "docs:register-check": "node --import tsx scripts/check-gaps-register-lag.ts",
     "case:check": "node --import tsx scripts/check-case-collisions.ts",

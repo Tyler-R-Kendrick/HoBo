@@ -178,12 +178,30 @@ async function provisionAnonymousStation(input: {
 		}
 	}
 
-	const remoteTargets = new Set(["railway", "netlify", "vercel"]);
-	if (!remoteTargets.has(input.targetId)) {
+	const bridgeTargets = new Set([
+		"railway",
+		"netlify",
+		"vercel",
+		"webernetes",
+		"lakebed",
+	]);
+	if (!bridgeTargets.has(input.targetId)) {
 		return {
 			ok: false,
-			error: `target ${input.targetId} is not an anonymous-remote station`,
-			remediation: "Use cloudflare, railway, netlify, or vercel for bridge station provision",
+			error: `target ${input.targetId} is not a bridge-hosted station`,
+			remediation:
+				"Use cloudflare, railway, netlify, vercel, webernetes, or lakebed for bridge station provision",
+		};
+	}
+	if (
+		(input.targetId === "webernetes" || input.targetId === "lakebed") &&
+		!(await dockerAvailable())
+	) {
+		return {
+			ok: false,
+			error: "Docker is not available",
+			remediation:
+				"Webernetes/Lakebed bridge stations realize OpenSaaS via docker compose — install Docker, then redeploy stations",
 		};
 	}
 

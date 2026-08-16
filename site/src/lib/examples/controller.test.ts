@@ -304,6 +304,30 @@ describe("Examples Home Station", () => {
 		expect(focus?.source).not.toContain("@trainable");
 	});
 
+	it("hosts browser-wasm stations in-page on static hosts with the WIT runtime", async () => {
+		const { canHostStationInPage, IN_PAGE_STATION_TARGETS } = await import(
+			"./controller.js"
+		);
+		expect(IN_PAGE_STATION_TARGETS).toEqual(["browser-wasm"]);
+		expect(canHostStationInPage("browser-wasm", true)).toBe(true);
+		// No runtime assets (stripped Pages deploy) → no in-page station.
+		expect(canHostStationInPage("browser-wasm", false)).toBe(false);
+		// Remote yards never host in-page — fail closed toward remediation.
+		expect(canHostStationInPage("cloudflare", true)).toBe(false);
+		expect(canHostStationInPage("webernetes", true)).toBe(false);
+	});
+
+	it("treats partial Pool provision as success, zero stations as failure", async () => {
+		const { poolDeployOutcome } = await import("./controller.js");
+		expect(poolDeployOutcome(1, []).state).toBe("stations-ready");
+		const partial = poolDeployOutcome(1, ["cloudflare", "vercel"]);
+		expect(partial.state).toBe("stations-ready");
+		expect(partial.line).toContain("cloudflare, vercel");
+		const failed = poolDeployOutcome(0, ["cloudflare"]);
+		expect(failed.state).toBe("failed");
+		expect(failed.line).toContain("no Environment Stations");
+	});
+
 	it("hard-locks Ship until registry.stations.length > 0", async () => {
 		const catalog = await loadExamplesCatalog();
 		const hello = catalog.find(({ id }) => id === "hello-world")!;

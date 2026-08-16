@@ -64,6 +64,15 @@ function assertClean(): string {
 }
 
 function build(): void {
+	// The Examples catalog build imports workspace packages (@hobo/bindles,
+	// @hobo/wasp, …) through their built dist/, so a fresh clone must compile
+	// them first — otherwise `prebuild` dies on the first example app.
+	console.log("building site workspace dependencies…");
+	execFileSync(
+		"pnpm",
+		["exec", "turbo", "run", "build", "--filter", "hobo-site^..."],
+		{ cwd: REPO_ROOT, stdio: "inherit" },
+	);
 	console.log("building site…");
 	execFileSync("pnpm", ["run", "build"], { cwd: SITE_DIR, stdio: "inherit" });
 	if (!existsSync(DIST_DIR) || readdirSync(DIST_DIR).length === 0) {
@@ -78,6 +87,19 @@ function build(): void {
 	execFileSync("pnpm", ["run", "build"], { cwd: MEDIA_DIR, stdio: "inherit" });
 	if (!existsSync(MEDIA_DIST) || readdirSync(MEDIA_DIST).length === 0) {
 		throw new Error(`media build produced no output at ${MEDIA_DIST}`);
+	}
+
+	// Gate the publish on the artifact actually working as deployed: serve
+	// dist/ statically (what Pages does) and drive the Examples console
+	// end-to-end in a real browser. Skippable only explicitly.
+	if (process.env.HOBO_SKIP_DIST_VERIFY === "1") {
+		console.log("skipping dist verification (HOBO_SKIP_DIST_VERIFY=1)…");
+	} else {
+		console.log("verifying built site (examples run as deployed)…");
+		execFileSync("pnpm", ["run", "examples:verify-dist"], {
+			cwd: SITE_DIR,
+			stdio: "inherit",
+		});
 	}
 }
 
@@ -100,32 +122,41 @@ function publish(sha: string): void {
 		// this file GitHub silently drops every `_astro/*` asset.
 		run("touch", [join(staging, ".nojekyll")], staging);
 
-		// GitHub Pages legacy builds fail / hang when the orphan commit includes
-		// the browser WIT runtime (~25MB wasm, or even station.js alone after
-		// wasm is stripped). Ship the Examples catalog + UI; full runtime stays
-		// local via `astro dev` / `examples:runtime`.
-		const runtimeDir = join(staging, "examples/runtime");
-		if (existsSync(runtimeDir)) {
-			rmSync(runtimeDir, { recursive: true, force: true });
-			mkdirSync(runtimeDir, { recursive: true });
-			writeFileSync(
-				join(runtimeDir, "PAGES.md"),
-				[
-					"# Browser WIT runtime on GitHub Pages",
-					"",
-					"The `examples/runtime/` WIT bundle is omitted from `gh-pages` —",
-					"Pages legacy builds fail or hang when it is included (~25MB",
-					"wasm, and `station.js` alone also stalls the builder).",
-					"",
-					"Examples HTML + `index.json` still ship. Working Pages path:",
-					"`pnpm --filter hobo-site run examples:bridge` then open",
-					"`/HoBo/examples/?bridge=http://127.0.0.1:8787` (OpenSaaS /",
-					"Swaghaus). Browser-WIT hello-world needs local",
-					"`pnpm --filter hobo-site run dev` (prebuild runs",
-					"`examples:runtime`).",
-					"",
-				].join("\n"),
-				"utf8",
+		// The browser WIT runtime (~25MB wasm) ships by default: it is what lets
+		// visitors actually run hello-world / todo-api in-page on Pages. The
+		// earlier "Pages legacy builds fail / hang on the wasm" belief traced to
+		// runner starvation on 2026-08-06 (build jobs cancelled at 15m with no
+		// runner assigned, runner_id=0), not to payload size — and a failed
+		// branch build leaves the previous deployment live, so shipping it is
+		// safe to attempt. HOBO_PAGES_STRIP_WIT=1 restores the old strip as an
+		// escape hatch if a Pages build ever genuinely chokes on it.
+		if (process.env.HOBO_PAGES_STRIP_WIT === "1") {
+			const runtimeDir = join(staging, "examples/runtime");
+			if (existsSync(runtimeDir)) {
+				rmSync(runtimeDir, { recursive: true, force: true });
+				mkdirSync(runtimeDir, { recursive: true });
+				writeFileSync(
+					join(runtimeDir, "PAGES.md"),
+					[
+						"# Browser WIT runtime stripped from this deploy",
+						"",
+						"This deploy ran with HOBO_PAGES_STRIP_WIT=1, so the",
+						"`examples/runtime/` WIT bundle (~25MB wasm) is omitted.",
+						"",
+						"Examples HTML + `index.json` still ship. Working Pages path:",
+						"`pnpm --filter hobo-site run examples:bridge` then open",
+						"`/HoBo/examples/?bridge=http://127.0.0.1:8787` (OpenSaaS /",
+						"Swaghaus). Browser-WIT hello-world needs local",
+						"`pnpm --filter hobo-site run dev` (prebuild runs",
+						"`examples:runtime`).",
+						"",
+					].join("\n"),
+					"utf8",
+				);
+			}
+		} else if (!existsSync(join(staging, "examples/runtime/manifest.json"))) {
+			throw new Error(
+				"examples/runtime/manifest.json missing from the built site — the browser WIT runtime did not build; refusing to publish a demo site whose examples cannot run (set HOBO_PAGES_STRIP_WIT=1 to publish without it deliberately)",
 			);
 		}
 

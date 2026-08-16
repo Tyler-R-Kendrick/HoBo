@@ -15,6 +15,7 @@
     "codegen:check": "pnpm --dir .. exec node --import tsx packages/schema-tools/src/cli.ts --check --packages-root . --filter site",
     "examples:runtime": "node --import tsx scripts/build-browser-wit-runtime.mts",
     "examples:bridge": "node --import tsx scripts/examples-local-bridge.mts",
+    "examples:verify-dist": "node --import tsx scripts/examples-verify-dist.mts --dist dist",
     "examples:regression": "node --import tsx scripts/examples-console-regression.mts",
     "examples:regression:opensaas": "node --import tsx scripts/examples-opensaas-cloudflare-regression.mts",
     "examples:regression:anon": "node --import tsx scripts/examples-anon-providers-regression.mts",

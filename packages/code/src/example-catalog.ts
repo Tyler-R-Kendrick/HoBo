@@ -303,9 +303,77 @@ function walkFiles(dir: string, base = dir): string[] {
 	return out;
 }
 
+/** A catalog example that carries a real Bindle is copied verbatim — a
+ * scaffold of a named example must BE that example (deployable via
+ * `hobo up`/`dev`), never an atoms approximation under the same name. */
+function deployableCatalogEntry(
+	exampleId: string,
+	catalog: readonly ExampleCatalogEntry[],
+): ExampleCatalogEntry | undefined {
+	const entry = catalog.find((item) => item.id === exampleId);
+	if (!entry) return undefined;
+	const hasBindle = ["src/bindle.ts", "app.ts", "src/bindle.js", "app.js"].some(
+		(marker) => existsSync(join(entry.sourceDir, marker)),
+	);
+	return hasBindle ? entry : undefined;
+}
+
 export function materializeExample(
 	options: MaterializeExampleOptions,
 ): MaterializeExampleResult {
+	const catalogForCopy = options.catalog ?? loadExampleCatalog();
+	const verbatim = deployableCatalogEntry(options.exampleId, catalogForCopy);
+	if (verbatim) {
+		mkdirSync(options.outputDir, { recursive: true });
+		cpSync(verbatim.sourceDir, options.outputDir, {
+			recursive: true,
+			filter: (source) =>
+				!source.split(/[/\\]/u).some((part) => SKIP_COPY.has(part)),
+		});
+		const packageJsonPath = join(options.outputDir, "package.json");
+		if (existsSync(packageJsonPath)) {
+			const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as Record<
+				string,
+				unknown
+			>;
+			pkg.name = `@hobo/app-${options.appName}`;
+			writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, "\t")}\n`);
+		} else {
+			// try-site app dirs lean on their parent package for deps; a scaffold
+			// stands alone, so declare what app.ts actually imports.
+			writeFileSync(
+				packageJsonPath,
+				`${JSON.stringify(
+					{
+						name: `@hobo/app-${options.appName}`,
+						private: true,
+						type: "module",
+						dependencies: { "@hobo/bindles": "workspace:*" },
+					},
+					null,
+					"\t",
+				)}\n`,
+			);
+		}
+		writeFileSync(
+			join(options.outputDir, "hobo.scaffold.json"),
+			`${JSON.stringify(
+				{
+					templateId: verbatim.id,
+					appName: options.appName,
+					source: "repo",
+				},
+				null,
+				2,
+			)}\n`,
+		);
+		return {
+			templateId: verbatim.id,
+			outputDir: options.outputDir,
+			files: walkFiles(options.outputDir),
+			source: "repo",
+		};
+	}
 	const fromAtoms = emitFromAtoms({
 		intent: options.intent ?? `${options.exampleId} ${options.appName} app`,
 		outputDir: options.outputDir,

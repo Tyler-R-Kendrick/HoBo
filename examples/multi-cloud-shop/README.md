@@ -43,11 +43,13 @@ bytes. The cost-gated CI lanes in
 ## Run it
 
 ```bash
-pnpm exec turbo run build --filter @hobo/hobo
+pnpm hobo plan --cwd examples/multi-cloud-shop
+pnpm hobo up --cwd examples/multi-cloud-shop
 pnpm --filter @hobo/example-multi-cloud-shop test
-pnpm --filter @hobo/hobo exec hobo plan --cwd examples/multi-cloud-shop
-pnpm --filter @hobo/hobo exec hobo up --cwd examples/multi-cloud-shop
 ```
+
+(`pnpm hobo` builds `@hobo/hobo` on first use; `pnpm --filter @hobo/hobo exec
+hobo …` does not work because pnpm never self-links a package's own bin.)
 
 If `hobo plan` still exits `HOBO_PLAN_REJECTED`, the printed remediations name
 the unsatisfied port. The local Yard must advertise `kv` and `queue` (see

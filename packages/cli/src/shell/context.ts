@@ -16,6 +16,12 @@ const markers = [
 	"src/bindle.js",
 	"src/bindle.mjs",
 	"dist/bindle.js",
+	// try-site catalog apps (examples/try-site/apps/<id>/app.ts) are Bindle
+	// projects too — the loader falls back cleanly if app.ts is not a bindle.
+	"app.ts",
+	"app.mts",
+	"app.js",
+	"app.mjs",
 	".hobo",
 ] as const;
 

@@ -98,16 +98,37 @@ const SPA = `<!doctype html>
     .pane-head { display:flex; align-items:center; gap:10px; margin:0 0 12px; min-height:32px; }
     .pane-head svg { width:22px; height:22px; fill:currentColor; }
     .pane-title { font-size:1.5rem; line-height:1.2; letter-spacing:.01em; }
-    /* one row grammar everywhere: lamp · kind · name+meta · signals · actions */
-    .row { display:grid; grid-template-columns:auto auto minmax(0,1fr) auto auto; gap:12px;
-      align-items:center; min-width:0; padding:10px 0; border-bottom:2px solid var(--border); }
+    /* breadcrumbs: station › yard › resource */
+    .crumbs { display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0; }
+    .crumbs a, .crumbs .here { display:inline-flex; align-items:center; gap:6px; max-width:22rem;
+      border:2px solid var(--border-strong); border-radius:999px; padding:4px 12px;
+      font-family:ui-monospace,monospace; font-size:.75rem; color:var(--ink); text-decoration:none; }
+    .crumbs a span, .crumbs .here span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .crumbs a:hover { border-color:var(--spark); color:var(--spark); }
+    .crumbs .here { border-color:var(--ink); font-weight:700; }
+    /* one row grammar; per-table fixed columns so planks align in a column */
+    .row { display:grid; gap:12px; align-items:center; min-width:0; padding:10px 0;
+      border-bottom:2px solid var(--border); }
     .row:last-child { border-bottom:0; }
+    .row.r-ep { grid-template-columns:14px 18px minmax(7rem,1.1fr) minmax(0,1.6fr) 8.5rem 9.9rem; }
+    .row.r-ep .ep-cell { grid-column:4; }
+    .row.r-ep .sigs { grid-column:5; }
+    .row.r-ep .acts { grid-column:6; }
+    .row.r-sum { grid-template-columns:14px 20px minmax(0,1fr) auto 3.4rem; }
+    .row.r-sum .sums { grid-column:4; }
+    .row.r-sum .acts { grid-column:5; }
     .row.cap { grid-template-columns:auto minmax(0,1fr); }
+    .thead { display:grid; grid-template-columns:14px 18px minmax(7rem,1.1fr) minmax(0,1.6fr) 8.5rem 9.9rem;
+      gap:12px; padding:0 0 6px; border-bottom:3px solid var(--border); color:var(--mute);
+      font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
     .row-main { min-width:0; overflow:hidden; }
     .row-name { display:block; font-size:1rem; font-weight:700; line-height:1.25;
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .row-name.mono { font-weight:400; font-size:.875rem; }
-    .ep-line { display:block; margin:2px 0 0; min-width:0; }
+    a.res-link { color:var(--ink); text-underline-offset:3px; }
+    a.res-link:hover { color:var(--spark); }
+    .ep-cell { min-width:0; overflow:hidden; }
+    .ep-line { display:block; min-width:0; }
     .ep-line a, .ep-line span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     a.ep-link, span.ep-link { font-family:ui-monospace,monospace; font-size:.875rem; color:var(--ink);
       text-underline-offset:3px; }
@@ -129,13 +150,21 @@ const SPA = `<!doctype html>
     .tree-kind.junction { width:16px; height:7px; }
     .mark { display:inline-grid; place-items:center; width:24px; height:24px; color:var(--mute); }
     .mark svg { width:16px; height:16px; fill:currentColor; }
-    .sigs { display:inline-flex; gap:10px; flex:0 0 auto; }
+    .sigs { display:inline-flex; gap:10px; flex:0 0 auto; justify-self:end; }
     .sigs:empty { display:none; }
     .sig { display:inline-flex; align-items:center; gap:4px; font-size:.75rem;
       font-variant-numeric:tabular-nums; font-family:ui-monospace,monospace; color:var(--mute); }
     .sig svg { width:13px; height:13px; fill:currentColor; }
+    .sums { display:inline-flex; gap:14px; justify-self:end; }
+    .sum { display:inline-flex; align-items:center; gap:6px; font-family:ui-monospace,monospace;
+      font-size:.75rem; color:var(--mute); font-variant-numeric:tabular-nums; }
+    .sum .tree-kind { width:12px; height:12px; border-width:2.5px; }
+    .sum .tree-kind.yard { width:15px; height:8px; }
+    .sum .tree-kind.camp { border-left-width:7px; border-right-width:7px; border-bottom-width:12px; }
+    .sum .tree-kind.bindle { width:9px; height:9px; }
+    .sum .dot { width:10px; height:10px; border-radius:50%; border:2.5px solid var(--ink); background:var(--go); }
     /* pressable = raised: only real controls wear the plank + sticker shadow */
-    .acts { display:inline-flex; align-items:center; gap:8px; flex:0 0 auto; justify-content:flex-end; }
+    .acts { display:flex; align-items:center; gap:8px; justify-content:flex-end; justify-self:stretch; }
     button.ico { display:inline-grid; place-items:center; width:44px; height:44px; padding:0;
       border:3px solid var(--ink); background:var(--paper); color:var(--ink); cursor:pointer;
       clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
@@ -179,20 +208,34 @@ const SPA = `<!doctype html>
       transform:rotate(45deg); transition: transform 120ms var(--ease); }
     details.fold[open] > summary::after { margin:2px 0 0; transform:rotate(225deg); }
     details.fold > summary svg { width:18px; height:18px; fill:currentColor; }
-    .tree-node { min-width:0; }
-    .tree-kids { margin-left:26px; min-width:0; }
-    .tree-camp { min-width:0; }
-    .tree-bindle { min-width:0; }
+    .detail-head { display:grid; grid-template-columns:auto auto minmax(0,1fr) auto; gap:12px;
+      align-items:center; min-width:0; margin:0 0 12px; }
+    .detail-head h2 { margin:0; font-size:1.5rem; line-height:1.1;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .trust { margin:0 0 4px; }
+    .trust dd { font-family:ui-monospace,monospace; font-size:.8rem; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; }
+    .tel-head { display:flex; align-items:center; gap:10px; margin:18px 0 4px; }
+    .tel-row { display:grid; grid-template-columns:6.5rem 8rem minmax(0,1fr); gap:12px; padding:6px 0;
+      border-bottom:2px solid var(--border); font-family:ui-monospace,monospace; font-size:.75rem; min-width:0; }
+    .tel-row:last-child { border-bottom:0; }
+    .tel-row span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .empty { margin:0; padding:14px 16px; border:3px dashed var(--border-strong); border-radius:12px;
       color:var(--mute); }
     @media (max-width: 640px) {
       header.dash-head, main { padding-left:14px; padding-right:14px; }
       #banner { margin:8px 14px 0; }
-      .row { grid-template-columns:auto auto minmax(0,1fr) auto; }
-      .row.cap { grid-template-columns:auto minmax(0,1fr); }
-      .row .acts { order:4; }
-      .row .sigs { order:5; grid-column:1 / -1; justify-self:end; }
-      .tree-kids { margin-left:14px; }
+      .thead { display:none; }
+      .row.r-ep { grid-template-columns:14px 18px minmax(0,1fr) 6.6rem; }
+      .row.r-ep .ep-cell { grid-column:3 / -1; grid-row:2; }
+      .row.r-ep .sigs { grid-column:3 / -1; grid-row:3; }
+      .row.r-ep .acts { grid-column:4; grid-row:1; }
+      .row.r-ep .copy { display:none; }
+      .row.r-sum { grid-template-columns:14px 20px minmax(0,1fr) 3.4rem; }
+      .row.r-sum .sums { grid-column:3 / -1; grid-row:2; }
+      .row.r-sum .acts { grid-column:4; grid-row:1; }
+      .tel-row { grid-template-columns:6.5rem minmax(0,1fr); }
+      .tel-row span:nth-child(3) { grid-column:1 / -1; }
     }
     @media (prefers-reduced-motion: reduce) {
       button.ico, details.fold > summary::after { transition:none; }
@@ -201,13 +244,15 @@ const SPA = `<!doctype html>
   </style>
 </head>
 <body>
-  <a class="skip" href="#station-card">station</a>
+  <a class="skip" href="#main">station</a>
   <header class="dash-head"><div class="dash-title"><h1>hobo-code · resources</h1><p class="muted" id="scope" role="status"></p></div>${rubberhoseThemeToggleMarkup()}</header>
   <p id="banner" role="alert" hidden></p>
-  <main>
+  <main id="main">
+    <nav id="crumbs" class="crumbs" aria-label="path" hidden></nav>
     <section class="card featured" id="station-card" aria-labelledby="station-heading"><div id="station-pane"></div></section>
-    <section class="card" id="resources-card"><h2 class="pane-head" aria-label="yard"><span class="tree-kind yard" aria-hidden="true"></span><span class="pane-title">yard</span></h2><div id="resources"></div></section>
+    <section class="card" id="yards-card"><h2 class="pane-head" aria-label="yards"><span class="tree-kind yard" aria-hidden="true"></span><span class="pane-title">yards</span></h2><div id="yards"></div></section>
     <section class="card" id="fleet-card" hidden><h2 class="pane-head" aria-label="fleet"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="4" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="12" r="2"/></svg><span class="pane-title">peers</span></h2><div id="fleet"></div></section>
+    <section class="card" id="detail-card" hidden><div id="detail"></div></section>
   </main>
   <script>
     var POLL_MS = 5000;
@@ -227,6 +272,7 @@ const SPA = `<!doctype html>
     }
     var focusKey = "";
     var flashUntil = 0;
+    var detailTab = "logs";
     async function act(id, verb) {
       const result = await api("/api/resources/" + encodeURIComponent(id) + "/" + verb, { method: "POST" });
       if (result && result.error) {
@@ -300,6 +346,7 @@ const SPA = `<!doctype html>
       copy: svg("<rect x='5' y='5' width='8' height='8'/><rect x='3' y='3' width='8' height='8' fill='none' stroke='currentColor' stroke-width='2'/>"),
       lock: svg("<rect x='4' y='7' width='8' height='7'/><path d='M6 7V5a2 2 0 0 1 4 0v2' fill='none' stroke='currentColor' stroke-width='2'/>"),
       grid: svg("<rect x='2' y='2' width='5' height='5'/><rect x='9' y='2' width='5' height='5'/><rect x='2' y='9' width='5' height='5'/><rect x='9' y='9' width='5' height='5'/>"),
+      chev: svg("<path d='M5 2l6 6-6 6' fill='none' stroke='currentColor' stroke-width='2.5'/>"),
       logs: svg("<path d='M2 4h12M2 8h12M2 12h8' fill='none' stroke='currentColor' stroke-width='2'/>"),
       traces: svg("<rect x='2' y='3' width='8' height='2'/><rect x='5' y='7' width='8' height='2'/><rect x='8' y='11' width='6' height='2'/>"),
       metrics: svg("<path d='M1 10h3l2-6 3 9 2-6h4' fill='none' stroke='currentColor' stroke-width='2'/>")
@@ -337,19 +384,42 @@ const SPA = `<!doctype html>
       return "<button type='button' class='ico copy' data-copy='" + encodeURIComponent(url) +
         "' aria-label='copy' title='copy'>" + ICO.copy + "</button>";
     }
+    function resHref(id) {
+      return "#/resource/" + encodeURIComponent(id);
+    }
+    function yardHref(id) {
+      return "#/yard/" + encodeURIComponent(id);
+    }
+    function resLink(id, extraClass) {
+      return "<a class='res-link " + (extraClass || "") + "' href='" + resHref(id) +
+        "' title='" + esc(id) + "'>" + esc(id) + "</a>";
+    }
     var telemetry = {};
     function sigHtml(icon, count, label) {
       var text = count + " " + label;
       return "<span class='sig' role='img' aria-label='" + esc(text) + "' title='" + esc(text) + "'>" +
         ICO[icon] + "<span>" + esc(count) + "</span></span>";
     }
-    function sigsHtml(id) {
-      var t = telemetry[id];
+    function sigParts(t) {
       var parts = [];
       if (t && t.logs > 0) parts.push(sigHtml("logs", t.logs, "logs"));
       if (t && t.traces > 0) parts.push(sigHtml("traces", t.traces, "traces"));
       if (t && t.metrics > 0) parts.push(sigHtml("metrics", t.metrics, "metrics"));
-      return "<span class='sigs'>" + parts.join("") + "</span>";
+      return parts.join("");
+    }
+    function sigsHtml(id) {
+      return "<span class='sigs'>" + sigParts(telemetry[id]) + "</span>";
+    }
+    function sigsRollup(ids) {
+      var total = { logs: 0, traces: 0, metrics: 0 };
+      ids.forEach(function (id) {
+        var t = telemetry[id];
+        if (!t) return;
+        total.logs += t.logs || 0;
+        total.traces += t.traces || 0;
+        total.metrics += t.metrics || 0;
+      });
+      return "<span class='sigs'>" + sigParts(total) + "</span>";
     }
     function chipsHtml(inv) {
       var chips = [];
@@ -364,9 +434,25 @@ const SPA = `<!doctype html>
           esc(chip[1]) + "'>" + esc(chip[1]) + "</span></li>";
       }).join("") + "</ul>";
     }
+    function route() {
+      var hash = location.hash || "#/";
+      var yardMatch = /^#\\/yard\\/(.+)$/.exec(hash);
+      if (yardMatch) return { view: "yard", id: decodeURIComponent(yardMatch[1]) };
+      var resMatch = /^#\\/resource\\/(.+)$/.exec(hash);
+      if (resMatch) return { view: "resource", id: decodeURIComponent(resMatch[1]) };
+      return { view: "overview" };
+    }
     var capsOpen = false;
     var sidecarsOpen = false;
     document.addEventListener("click", function (event) {
+      var tabButton = event.target.closest("[data-tab]");
+      if (tabButton) {
+        event.preventDefault();
+        detailTab = tabButton.getAttribute("data-tab") || "logs";
+        focusKey = "tab:" + detailTab;
+        render().catch(function () {});
+        return;
+      }
       var copyButton = event.target.closest("[data-copy]");
       if (copyButton) {
         event.preventDefault();
@@ -426,54 +512,156 @@ const SPA = `<!doctype html>
       scope.textContent = inv.ok
         ? (inv.scope.stationId + " × " + inv.scope.environment)
         : (inv.message || "auth:out");
-      const life = inv.lifecycle || [];
-      function snapOf(id) {
-        return life.find(function (s) { return s.id === id; });
+      const view = route();
+      const overview = view.view === "overview";
+      document.getElementById("station-card").hidden = !overview;
+      document.getElementById("yards-card").hidden = !overview;
+      document.getElementById("detail-card").hidden = overview;
+      document.getElementById("crumbs").hidden = overview;
+      const fleetCard = document.getElementById("fleet-card");
+      const fleetPeers = inv.peers || [];
+      fleetCard.hidden = !overview || !fleetPeers.length;
+      if (overview) {
+        renderOverview(inv);
+      } else {
+        renderCrumbs(inv, view);
+        if (view.view === "yard") {
+          renderYard(inv, view.id);
+        } else {
+          await renderResource(inv, view.id);
+        }
       }
-      function capsHtml(rows, open) {
-        if (!rows.length) return "";
-        const body = rows.map(function (r) {
-          return "<div class='row cap'>" + lamp(r.available) +
-            "<span class='row-main'><span class='row-name mono' title='" + esc(r.kind) + "'>" +
-            esc(r.kind) + "</span></span></div>";
-        }).join("");
-        return "<details id='station-capabilities' class='fold station-caps'" + (open ? " open" : "") +
-          "><summary aria-label='capabilities'><span class='pane-title'>capabilities</span></summary>" +
-          "<div class='caps-list'>" + body + "</div></details>";
+      if (focusKey) {
+        var needle = focusKey.split(":");
+        var restore = needle[0] === "copy"
+          ? document.querySelector("[data-copy='" + focusKey.slice(5) + "']")
+          : needle[0] === "tab"
+            ? document.querySelector("[data-tab='" + needle[1] + "']")
+            : document.querySelector("[data-act='" + needle[1] + "'][data-id='" + needle.slice(2).join(":") + "']");
+        if (restore) restore.focus();
+        focusKey = "";
       }
-      function endpointRows(list) {
-        return list.map(function (e) {
-          const snap = snapOf(e.resourceName);
-          const ready = snap && snap.ready;
-          const named = namedUrl(e);
-          const listen = listenUrl(e);
-          const primary = named || listen;
-          var lines = "";
-          if (primary) {
-            lines += "<span class='ep-line'>" + (openable(primary)
-              ? "<a class='ep-link' href='" + esc(primary) + "' target='_blank' rel='noopener noreferrer' title='" + esc(primary) + "'>" + esc(primary) + "</a>"
-              : "<span class='ep-link' title='" + esc(primary) + "'>" + esc(primary) + "</span>") + "</span>";
-          }
-          if (listen && listen !== primary) {
-            lines += "<span class='ep-line'>" + (openable(listen)
-              ? "<a class='listen-link' href='" + esc(listen) + "' target='_blank' rel='noopener noreferrer' title='" + esc(listen) + "'>" + esc(listen) + "</a>"
-              : "<span class='listen-addr' title='" + esc(listen) + "'>" + esc(listen) + "</span>") + "</span>";
-          }
-          return "<div class='row'>" + lamp(ready) + kindMark(e.kind || "endpoint") +
-            "<span class='row-main'><span class='row-name' title='" + esc(e.resourceName) + "'>" +
-            esc(e.resourceName) + "</span>" + lines + "</span>" +
-            sigsHtml(e.resourceName) +
-            actsHtml(copyBtn(primary) + actionsInner(e.resourceName, false, ready)) +
-            "</div>";
-        }).join("");
+    }
+    function snapOf(inv, id) {
+      return (inv.lifecycle || []).find(function (s) { return s.id === id; });
+    }
+    function readyOf(inv, id) {
+      var snap = snapOf(inv, id);
+      return snap && snap.ready;
+    }
+    function managedOf(inv, ownerId) {
+      return (inv.managed || []).filter(function (m) {
+        return m.ownerId === ownerId && m.kind !== "bindle" && !isStationEndpoint(m.id);
+      });
+    }
+    function bindleEndpointNames(inv, bindle) {
+      var names = {};
+      if (inv.bindleManifest && inv.bindleManifest.name === bindle.name) {
+        (inv.bindleManifest.resources || []).forEach(function (r) { names[r.name] = true; });
       }
+      managedOf(inv, bindle.parentId).forEach(function (m) {
+        if (m.kind === "bindle-resource") names[m.name || m.id] = true;
+      });
+      return names;
+    }
+    function yardMembers(inv, yardId) {
+      var campsIn = (inv.camps || []).filter(function (c) { return c.parentId === yardId; });
+      var campIds = {};
+      campsIn.forEach(function (c) { campIds[c.id] = true; });
+      var bindlesIn = (inv.bindles || []).filter(function (b) { return campIds[b.parentId]; });
+      var epNames = {};
+      bindlesIn.forEach(function (b) {
+        var names = bindleEndpointNames(inv, b);
+        Object.keys(names).forEach(function (n) { epNames[n] = true; });
+      });
+      var endpointsIn = (inv.endpoints || []).filter(function (e) {
+        return !isStationEndpoint(e.resourceName) && epNames[e.resourceName];
+      });
+      var managedIn = [];
+      [yardId].concat(campsIn.map(function (c) { return c.id; }))
+        .concat(bindlesIn.map(function (b) { return b.id; }))
+        .forEach(function (ownerId) {
+          managedOf(inv, ownerId).forEach(function (m) { managedIn.push(m); });
+        });
+      return { camps: campsIn, bindles: bindlesIn, endpoints: endpointsIn, managed: managedIn };
+    }
+    function yardOfResource(inv, id) {
+      if (id.indexOf("yard:") === 0) return id;
+      var campById = {};
+      (inv.camps || []).forEach(function (c) { campById[c.id] = c; });
+      var camp = campById[id];
+      if (camp) return camp.parentId;
+      var bindle = (inv.bindles || []).find(function (b) { return b.id === id; });
+      if (bindle && campById[bindle.parentId]) return campById[bindle.parentId].parentId;
+      var managed = (inv.managed || []).find(function (m) { return m.id === id; });
+      if (managed) return yardOfResource(inv, managed.ownerId);
+      var claimed = (inv.bindles || []).find(function (b) {
+        return bindleEndpointNames(inv, b)[id];
+      });
+      if (claimed && campById[claimed.parentId]) return campById[claimed.parentId].parentId;
+      return "";
+    }
+    function renderCrumbs(inv, view) {
+      var parts = ["<a href='#/'>" + kindMark("station") + "<span>station</span></a>"];
+      var yardId = view.view === "yard" ? view.id : yardOfResource(inv, view.id);
+      if (view.view === "resource" && yardId) {
+        parts.push(mark("chev", "in"));
+        parts.push("<a href='" + yardHref(yardId) + "'>" + kindMark("yard") + "<span>" + esc(yardId) + "</span></a>");
+      }
+      parts.push(mark("chev", "in"));
+      var hereKind = view.view === "yard" ? "yard" : "";
+      parts.push("<span class='here' aria-current='page'>" +
+        (hereKind ? kindMark(hereKind) : "") + "<span>" + esc(view.id) + "</span></span>");
+      document.getElementById("crumbs").innerHTML = parts.join("");
+    }
+    function theadHtml() {
+      return "<div class='thead' aria-hidden='true'><span></span><span></span><span>resource</span>" +
+        "<span>endpoint</span><span>signals</span><span></span></div>";
+    }
+    function endpointCell(e) {
+      if (!e) return "<span class='ep-cell'></span>";
+      var named = namedUrl(e);
+      var listen = listenUrl(e);
+      var primary = named || listen;
+      var lines = "";
+      if (primary) {
+        lines += "<span class='ep-line'>" + (openable(primary)
+          ? "<a class='ep-link' href='" + esc(primary) + "' target='_blank' rel='noopener noreferrer' title='" + esc(primary) + "'>" + esc(primary) + "</a>"
+          : "<span class='ep-link' title='" + esc(primary) + "'>" + esc(primary) + "</span>") + "</span>";
+      }
+      return "<span class='ep-cell'>" + lines + "</span>";
+    }
+    function resourceRow(inv, opts) {
+      var ready = readyOf(inv, opts.id);
+      var primary = opts.endpoint ? (namedUrl(opts.endpoint) || listenUrl(opts.endpoint)) : "";
+      return "<div class='row r-ep'>" + lamp(ready) + kindMark(opts.kind) +
+        "<span class='row-main'><span class='row-name mono'>" + resLink(opts.id) + "</span></span>" +
+        endpointCell(opts.endpoint) +
+        sigsHtml(opts.id) +
+        actsHtml((opts.endpoint ? copyBtn(primary) : "") + actionsInner(opts.id, opts.locked === true, ready)) +
+        "</div>";
+    }
+    function doorRows(inv, list) {
+      return list.map(function (e) {
+        return resourceRow(inv, { id: e.resourceName, kind: e.kind || "endpoint", endpoint: e });
+      }).join("");
+    }
+    function capsHtml(rows, open) {
+      if (!rows.length) return "";
+      const body = rows.map(function (r) {
+        return "<div class='row cap'>" + lamp(r.available) +
+          "<span class='row-main'><span class='row-name mono' title='" + esc(r.kind) + "'>" +
+          esc(r.kind) + "</span></span></div>";
+      }).join("");
+      return "<details id='station-capabilities' class='fold station-caps'" + (open ? " open" : "") +
+        "><summary aria-label='capabilities'><span class='pane-title'>capabilities</span></summary>" +
+        "<div class='caps-list'>" + body + "</div></details>";
+    }
+    function renderOverview(inv) {
       const stationEps = (inv.endpoints || []).filter(function (e) { return isStationEndpoint(e.resourceName); });
       const doorEps = stationEps.filter(function (e) { return isOccupancyDoor(e.resourceName); });
       const sidecarEps = stationEps.filter(function (e) { return !isOccupancyDoor(e.resourceName); });
-      const bindleEps = (inv.endpoints || []).filter(function (e) { return !isStationEndpoint(e.resourceName); });
       const station = inv.station;
-      const stationSnap = station ? snapOf(station.id) : undefined;
-      const stationReady = stationSnap && stationSnap.ready;
       const stationPane = document.getElementById("station-pane");
       if (!station) {
         stationPane.innerHTML = "<p class='muted'>" + esc(inv.message || "no station") + "</p>";
@@ -482,123 +670,210 @@ const SPA = `<!doctype html>
           ? "<details id='station-sidecars' class='fold'" + (sidecarsOpen ? " open" : "") +
             "><summary aria-label='hosts'>" + ICO.grid +
             "<span class='pane-title'>hosts</span></summary>" +
-            endpointRows(sidecarEps) + "</details>"
+            doorRows(inv, sidecarEps) + "</details>"
           : "";
         stationPane.innerHTML =
-          "<div class='station-listing'><div class='station-head'>" + lamp(stationReady) +
+          "<div class='station-listing'><div class='station-head'>" + lamp(readyOf(inv, station.id)) +
           kindMark("station") +
           "<div class='station-titles'><h2 id='station-heading'>station</h2>" +
           "<p class='station-id' title='" + esc(station.id) + "'>" + esc(station.id) + "</p></div>" +
-          actsHtml(actionsInner(station.id, true, stationReady)) + "</div>" +
+          actsHtml(actionsInner(station.id, true, readyOf(inv, station.id))) + "</div>" +
           chipsHtml(inv) +
-          "<div class='station-nest'>" + endpointRows(doorEps) + folded + "</div>" +
+          "<div class='station-nest'>" + doorRows(inv, doorEps) + folded + "</div>" +
           capsHtml(inv.capabilities || [], capsOpen) +
           "</div>";
       }
       const yards = inv.yards || [];
-      const camps = inv.camps || [];
-      const bindles = inv.bindles || [];
-      const claimed = {};
-      function managedOf(ownerId) {
-        return (inv.managed || []).filter(function (m) {
-          return m.ownerId === ownerId && m.kind !== "bindle" && !isStationEndpoint(m.id);
-        });
-      }
-      function nodeReady(n) {
-        const snap = snapOf(n.id);
-        return { snap: snap, ready: snap && snap.ready };
-      }
-      function managedTable(ownerId) {
-        const rows = managedOf(ownerId);
-        if (!rows.length) return "";
-        return rows.map(function (m) {
-          const child = snapOf(m.id);
-          return "<div class='row'>" + lamp(child && child.ready) + kindMark(m.kind) +
-            "<span class='row-main'><span class='row-name mono' title='" + esc(m.id) + "'>" +
-            esc(m.id) + "</span></span>" +
-            sigsHtml(m.id) +
-            actsHtml(actionsInner(m.id, m.controllable === false, child && child.ready)) +
-            "</div>";
-        }).join("");
-      }
-      function endpointsForBindle(bindle) {
-        const names = {};
-        if (inv.bindleManifest && inv.bindleManifest.name === bindle.name) {
-          (inv.bindleManifest.resources || []).forEach(function (r) { names[r.name] = true; });
-        }
-        managedOf(bindle.parentId).forEach(function (m) {
-          if (m.kind === "bindle-resource") names[m.name || m.id] = true;
-        });
-        return bindleEps.filter(function (e) {
-          if (!names[e.resourceName] || claimed[e.resourceName]) return false;
-          claimed[e.resourceName] = true;
-          return true;
-        });
-      }
-      function treeBlock(kind, node, inner) {
-        const st = nodeReady(node);
-        const locked = node.id === "camp:code" || node.id === "bindle:code";
-        return "<div class='tree-node tree-" + kind + "'>" +
-          "<div class='row'>" + lamp(st.ready) + kindMark(kind) +
-          "<span class='row-main'><span class='row-name mono' title='" + esc(node.id) + "'>" +
-          esc(node.id) + "</span></span>" +
-          sigsHtml(node.id) +
-          actsHtml(actionsInner(node.id, locked, st.ready)) + "</div>" +
-          (inner ? "<div class='tree-kids'>" + inner + "</div>" : "") +
+      function yardSummaryRow(yard) {
+        var members = yardMembers(inv, yard.id);
+        var memberIds = members.camps.map(function (c) { return c.id; })
+          .concat(members.bindles.map(function (b) { return b.id; }))
+          .concat(members.managed.map(function (m) { return m.id; }))
+          .concat(members.endpoints.map(function (e) { return e.resourceName; }));
+        var running = memberIds.filter(function (id) { return readyOf(inv, id); }).length;
+        var sums = "<span class='sums'>" +
+          "<span class='sum' role='img' aria-label='" + members.camps.length + " camps'>" +
+          "<span class='tree-kind camp'></span>" + members.camps.length + "</span>" +
+          "<span class='sum' role='img' aria-label='" + members.bindles.length + " bindles'>" +
+          "<span class='tree-kind bindle'></span>" + members.bindles.length + "</span>" +
+          "<span class='sum' role='img' aria-label='" + running + " of " + memberIds.length + " running'>" +
+          "<span class='dot'></span>" + running + "/" + memberIds.length + "</span>" +
+          sigsRollup(memberIds.concat([yard.id])) + "</span>";
+        return "<div class='row r-sum'>" + lamp(readyOf(inv, yard.id)) + kindMark("yard") +
+          "<span class='row-main'><span class='row-name mono'><a class='res-link' href='" +
+          yardHref(yard.id) + "' title='" + esc(yard.id) + "'>" + esc(yard.id) + "</a></span></span>" +
+          sums +
+          actsHtml(actionsInner(yard.id, false, readyOf(inv, yard.id))) +
           "</div>";
       }
-      function bindleHtml(bindle) {
-        const eps = endpointsForBindle(bindle);
-        return treeBlock("bindle", bindle, managedTable(bindle.id) + endpointRows(eps));
-      }
-      function campHtml(campNode) {
-        const kids = bindles.filter(function (b) { return b.parentId === campNode.id; });
-        return treeBlock("camp", campNode, managedTable(campNode.id) + kids.map(bindleHtml).join(""));
-      }
-      function yardHtml(yard) {
-        const kids = camps.filter(function (c) { return c.parentId === yard.id; });
-        return treeBlock("yard", yard, managedTable(yard.id) + kids.map(campHtml).join(""));
-      }
+      const junctions = (inv.junctions || []).map(function (n) {
+        return "<div class='row r-sum'>" + lamp(readyOf(inv, n.id)) + kindMark("junction") +
+          "<span class='row-main'><span class='row-name mono' title='" + esc(n.id) + "'>" + esc(n.id) +
+          "</span></span><span class='sums'></span>" +
+          actsHtml(actionsInner(n.id, false, readyOf(inv, n.id))) + "</div>";
+      }).join("");
       const yardIds = {};
       yards.forEach(function (y) { yardIds[y.id] = true; });
-      const campIds = {};
-      camps.forEach(function (c) { campIds[c.id] = true; });
-      const orphanCamps = camps.filter(function (c) { return !c.parentId || !yardIds[c.parentId]; });
-      const orphanBindles = bindles.filter(function (b) { return !b.parentId || !campIds[b.parentId]; });
-      const junctions = (inv.junctions || []).map(function (n) {
-        return treeBlock("junction", n, "");
+      const orphanCamps = (inv.camps || []).filter(function (c) { return !c.parentId || !yardIds[c.parentId]; });
+      const orphans = orphanCamps.map(function (c) {
+        return "<div class='row r-sum'>" + lamp(readyOf(inv, c.id)) + kindMark("camp") +
+          "<span class='row-main'><span class='row-name mono'>" + resLink(c.id) + "</span></span>" +
+          "<span class='sums'></span>" +
+          actsHtml(actionsInner(c.id, c.id === "camp:code", readyOf(inv, c.id))) + "</div>";
       }).join("");
-      const tree = yards.map(yardHtml).join("") + orphanCamps.map(campHtml).join("") +
-        orphanBindles.map(bindleHtml).join("");
-      const leftover = bindleEps.filter(function (e) { return !claimed[e.resourceName]; });
-      const board = junctions + tree + (leftover.length ? endpointRows(leftover) : "");
-      document.getElementById("resources").innerHTML = board ||
-        "<p class='empty'>no bindles on this yard yet — <code>hobo-code dev</code> puts one here</p>";
-      var fleetCard = document.getElementById("fleet-card");
-      var fleetPeers = inv.peers || [];
-      if (!fleetPeers.length) {
-        fleetCard.hidden = true;
-        document.getElementById("fleet").innerHTML = "";
-      } else {
-        fleetCard.hidden = false;
-        document.getElementById("fleet").innerHTML =
-          fleetPeers.map(function (n) {
-            return "<div class='row'>" + lamp(true) + kindMark("station") +
-              "<span class='row-main'><span class='row-name mono' title='" + esc(n.id) + "'>" +
-              esc(n.id) + "</span></span><span class='sigs'></span><span class='acts'></span></div>";
-          }).join("");
+      const board = junctions + yards.map(yardSummaryRow).join("") + orphans;
+      document.getElementById("yards").innerHTML = board ||
+        "<p class='empty'>no yards on this station yet — <code>hobo-code dev</code> lays one down</p>";
+      const fleetPeers = inv.peers || [];
+      document.getElementById("fleet").innerHTML =
+        fleetPeers.map(function (n) {
+          return "<div class='row r-sum'>" + lamp(true) + kindMark("station") +
+            "<span class='row-main'><span class='row-name mono' title='" + esc(n.id) + "'>" +
+            esc(n.id) + "</span></span><span class='sums'></span><span class='acts'></span></div>";
+        }).join("");
+    }
+    function renderYard(inv, yardId) {
+      const detail = document.getElementById("detail");
+      const yard = (inv.yards || []).find(function (y) { return y.id === yardId; });
+      if (!yard) {
+        detail.innerHTML = "<p class='empty'>no such yard — <a class='res-link' href='#/'>back to the station</a></p>";
+        return;
       }
-      if (focusKey) {
-        var needle = focusKey.split(":");
-        var restore = needle[0] === "copy"
-          ? document.querySelector("[data-copy='" + focusKey.slice(5) + "']")
-          : document.querySelector("[data-act='" + needle[1] + "'][data-id='" + needle.slice(2).join(":") + "']");
-        if (restore) restore.focus();
-        focusKey = "";
+      const members = yardMembers(inv, yardId);
+      const claimedEps = {};
+      var rows = "";
+      members.managed.filter(function (m) { return m.ownerId === yardId; }).forEach(function (m) {
+        rows += resourceRow(inv, { id: m.id, kind: m.kind, locked: m.controllable === false });
+      });
+      members.camps.forEach(function (camp) {
+        rows += resourceRow(inv, { id: camp.id, kind: "camp", locked: camp.id === "camp:code" });
+        members.managed.filter(function (m) { return m.ownerId === camp.id; }).forEach(function (m) {
+          var ep = members.endpoints.find(function (e) { return e.resourceName === (m.name || m.id); });
+          if (ep) claimedEps[ep.resourceName] = true;
+          rows += resourceRow(inv, {
+            id: m.id, kind: m.kind, locked: m.controllable === false,
+            endpoint: ep
+          });
+        });
+        (inv.bindles || []).filter(function (b) { return b.parentId === camp.id; }).forEach(function (bindle) {
+          rows += resourceRow(inv, { id: bindle.id, kind: "bindle", locked: bindle.id === "bindle:code" });
+          members.endpoints.forEach(function (e) {
+            if (claimedEps[e.resourceName]) return;
+            if (!bindleEndpointNames(inv, bindle)[e.resourceName]) return;
+            claimedEps[e.resourceName] = true;
+            rows += resourceRow(inv, { id: e.resourceName, kind: e.kind || "endpoint", endpoint: e });
+          });
+        });
+      });
+      (inv.endpoints || []).filter(function (e) {
+        return !isStationEndpoint(e.resourceName) && !claimedEps[e.resourceName];
+      }).forEach(function (e) {
+        rows += resourceRow(inv, { id: e.resourceName, kind: e.kind || "endpoint", endpoint: e });
+      });
+      detail.innerHTML =
+        "<div class='detail-head'>" + lamp(readyOf(inv, yardId)) + kindMark("yard") +
+        "<h2 title='" + esc(yardId) + "'>" + esc(yardId) + "</h2>" +
+        actsHtml(actionsInner(yardId, false, readyOf(inv, yardId))) + "</div>" +
+        (rows ? theadHtml() + rows
+          : "<p class='empty'>nothing camped on this yard yet — <code>hobo-code dev</code> puts a bindle here</p>");
+    }
+    async function renderResource(inv, id) {
+      const detail = document.getElementById("detail");
+      const node = [].concat(inv.yards || [], inv.camps || [], inv.bindles || [], inv.junctions || [])
+        .find(function (n) { return n.id === id; });
+      const managed = (inv.managed || []).find(function (m) { return m.id === id; });
+      const endpoint = (inv.endpoints || []).find(function (e) { return e.resourceName === id; });
+      const snap = snapOf(inv, id);
+      if (!node && !managed && !endpoint && !snap) {
+        detail.innerHTML = "<p class='empty'>no such resource — <a class='res-link' href='#/'>back to the station</a></p>";
+        return;
+      }
+      const ready = snap && snap.ready;
+      const kind = endpoint ? (endpoint.kind || "endpoint") : node ? node.kind : managed ? managed.kind : "endpoint";
+      const locked = (node && (id === "camp:code" || id === "bindle:code")) ||
+        (managed && managed.controllable === false);
+      const facts = [];
+      facts.push(["kind", kind]);
+      if (managed) facts.push(["owner", managed.ownerId]);
+      if (node && node.parentId) facts.push(["owner", node.parentId]);
+      if (node && node.environment) facts.push(["env", node.environment]);
+      if (snap) facts.push(["state", snap.state]);
+      var fidelity = endpoint ? endpoint.fidelity : node ? node.fidelity : "";
+      if (fidelity) facts.push(["fidelity", fidelity]);
+      if (node && node.scopeLabel) facts.push(["scope", node.scopeLabel]);
+      if (endpoint && endpoint.freshness) facts.push(["freshness", endpoint.freshness]);
+      var tel = telemetry[id];
+      if (tel && tel.lastSignalAt) facts.push(["last signal", tel.lastSignalAt.slice(11, 19)]);
+      if (tel && tel.export) facts.push(["export", tel.export]);
+      const factsHtml = "<dl class='trust'>" + facts.map(function (f) {
+        return "<div><dt>" + esc(f[0]) + "</dt><dd title='" + esc(f[1]) + "'>" + esc(f[1]) + "</dd></div>";
+      }).join("") + "</dl>";
+      var epHtml = "";
+      if (endpoint) {
+        var named = namedUrl(endpoint);
+        var listen = listenUrl(endpoint);
+        var primary = named || listen;
+        var lines = "";
+        if (primary) {
+          lines += "<span class='ep-line'>" + (openable(primary)
+            ? "<a class='ep-link' href='" + esc(primary) + "' target='_blank' rel='noopener noreferrer' title='" + esc(primary) + "'>" + esc(primary) + "</a>"
+            : "<span class='ep-link' title='" + esc(primary) + "'>" + esc(primary) + "</span>") + "</span>";
+        }
+        if (listen && listen !== primary) {
+          lines += "<span class='ep-line'>" + (openable(listen)
+            ? "<a class='listen-link' href='" + esc(listen) + "' target='_blank' rel='noopener noreferrer' title='" + esc(listen) + "'>" + esc(listen) + "</a>"
+            : "<span class='listen-addr' title='" + esc(listen) + "'>" + esc(listen) + "</span>") + "</span>";
+        }
+        epHtml = "<div class='row r-ep'>" + lamp(ready) + kindMark(kind) +
+          "<span class='row-main'><span class='row-name'>" + esc(id) + "</span></span>" +
+          "<span class='ep-cell'>" + lines + "</span>" + sigsHtml(id) +
+          actsHtml(copyBtn(primary)) + "</div>";
+      }
+      const counts = { logs: tel ? tel.logs : 0, traces: tel ? tel.traces : 0, metrics: tel ? tel.metrics : 0 };
+      function tabBtn(name) {
+        var label = name + " (" + (counts[name] || 0) + ")";
+        return "<button type='button' class='ico" + (detailTab === name ? " on" : "") +
+          "' data-tab='" + name + "' aria-label='" + esc(label) + "' title='" + esc(label) +
+          "' aria-pressed='" + (detailTab === name) + "'>" + ICO[name] + "</button>";
+      }
+      const telHead = "<div class='tel-head'>" + tabBtn("logs") + tabBtn("traces") + tabBtn("metrics") +
+        "<span class='sig'>" + (counts[detailTab] || 0) + "</span></div>";
+      detail.innerHTML =
+        "<div class='detail-head'>" + lamp(ready) + kindMark(kind) +
+        "<h2 title='" + esc(id) + "'>" + esc(id) + "</h2>" +
+        actsHtml(actionsInner(id, locked === true, ready)) + "</div>" +
+        factsHtml + epHtml + telHead + "<div id='tel-body'></div>";
+      const body = document.getElementById("tel-body");
+      try {
+        const tabData = await api("/api/resources/" + encodeURIComponent(id) + "/" + detailTab);
+        const list = (tabData && tabData[detailTab]) || [];
+        const recent = list.slice(-50).reverse();
+        if (!recent.length) {
+          body.innerHTML = "<p class='empty'>no " + esc(detailTab) + " yet</p>";
+        } else {
+          body.innerHTML = recent.map(function (row) {
+            var when = String(row.time || row.startTime || "").slice(11, 19);
+            if (detailTab === "logs") {
+              return "<div class='tel-row'><span>" + esc(when) + "</span><span>" + esc(row.severity || "") +
+                "</span><span title='" + esc(row.body || "") + "'>" + esc(row.body || "") + "</span></div>";
+            }
+            if (detailTab === "traces") {
+              return "<div class='tel-row'><span>" + esc(when) + "</span><span>" + esc(row.name || "") +
+                "</span><span title='" + esc(row.traceId || "") + "'>" + esc(row.traceId || "") + "</span></div>";
+            }
+            return "<div class='tel-row'><span>" + esc(when) + "</span><span>" + esc(row.name || "") +
+              "</span><span>" + esc(row.value) + "</span></div>";
+          }).join("");
+        }
+      } catch (err) {
+        body.innerHTML = "<p class='empty'>signals unavailable</p>";
       }
     }
     render().catch(function (err) {
       showError(String(err));
+    });
+    window.addEventListener("hashchange", function () {
+      render().catch(function () {});
     });
     setInterval(function () {
       if (document.hidden) return;

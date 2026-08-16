@@ -212,19 +212,37 @@ secret/crypto kinds use the Station-local KMS sidecar. Command history,
 aliases, and env vars live in a Station SQLite sidecar — ink search in
 `hobo-code history`, not an Atuin TUI.
 (`kms.code.local.hobo.localhost`). The dashboard is a **control plane, not a
-poster**: an Aspire-style resources board in rubberhose skin. Every listing —
-station, yard ⊃ camp ⊃ bindle tree, endpoint, host, capability, peer — uses
-**one row grammar**: `lamp · kind glyph · name+meta · signal counts · actions`.
-The dashboard leads with a featured Station plaque (Chewy “station” + mute id
-+ ready lamp) whose location reads as flat chips (environment · tenant ·
-scope), then three occupancy doors (dashboard / Evidence / OTLP). Other
-Station hosts fold as `hosts`. **capabilities** is a labeled `<details>` at
-the **bottom** of the Station plaque (collapsed by default) listing every
-Bindle kind ready or off. There is no sibling “signals” / OTel card — OTel is
-lamp + per-row signal counts (log/trace/metric glyph chips fed by
-`/api/telemetry`), and the board re-projects itself every few seconds while
-the tab is visible (a control plane never shows stale state). Pane titles pair
-a glyph with a Chewy caption (yard / peers). Chewy is embedded like Evidence
+poster**: Azure-portal drill-down with Aspire-style resource tables, in
+rubberhose skin. Three hash-routed views, never an always-expanded tree:
+
+- **Overview (`#/`)** — the featured Station plaque (Chewy “station” + mute id
+  + ready lamp, location as flat chips: environment · tenant · scope, three
+  occupancy doors dashboard / Evidence / OTLP; other Station hosts fold as
+  `hosts`; **capabilities** is a labeled `<details>` at the **bottom** of the
+  plaque, collapsed, as a columnar grid) plus a **yards** card listing *every*
+  yard as one summary row: lamp, yard glyph, name link, flat rollup chips
+  (camp/bindle glyph counts, running x/y dot, signal counts). Peers appear
+  only when peer Stations exist.
+- **Yard (`#/yard/<id>`)** — a flat, aligned resources table (uppercase
+  `thead`: resource / endpoint / signals; fixed-width action column so planks
+  hang in one rail) of the yard's camps, bindles, managed resources, and
+  endpoints. Endpoint rows show the primary named link in the endpoint
+  column.
+- **Resource (`#/resource/<id>`)** — facts as a `.trust` plaque (kind, owner,
+  env, state, fidelity, scope, freshness, export), endpoint links (named +
+  quiet loopback + copy plank), and the real signals: logs / traces / metrics
+  tabs as icon planks (active plank inverted) fed by
+  `/api/resources/:id/logs|traces|metrics`.
+
+Breadcrumbs (station › yard › resource — ink chips with drawn chevron marks)
+carry navigation and browser back works; row names are links, which is the
+drill-down affordance. Every listing uses **one row grammar** — `lamp · kind
+glyph · name · (endpoint) · signal counts · actions` — with per-table fixed
+grid columns. There is no sibling “signals” / OTel card — OTel is lamp +
+per-row signal counts (log/trace/metric glyph chips fed by `/api/telemetry`),
+and the board re-projects itself every few seconds while the tab is visible
+(a control plane never shows stale state). Pane titles pair a glyph with a
+Chewy caption (yards / peers). Chewy is embedded like Evidence
 (`evidenceDocumentCss`). Day/night is OS `prefers-color-scheme` until the user
 picks; `data-theme` + `hobo-theme` storage and a moon/sun plank toggle match
 the site. Night inverts paper/ink onto `night-bg` / `night-raised`. Spark
@@ -239,9 +257,7 @@ and **icon verbs** — action buttons carry drawn monochrome glyphs
 only in `aria-label`/`title`, never as the button face.
 `evidence-design-lint.test.ts` enforces both.
 
-The Yard card nests Yard ⊃ Camp ⊃ Bindle with indent, not a 3px side tab;
-bindle endpoints hang off their bindle as plank rows, not nested cards. An
-empty yard teaches (`hobo-code dev` hint), never a blank pane.
+An empty station or yard teaches (`hobo-code dev` hint), never a blank pane.
 Start/stop is a single
 play/square toggle; restart is Bindle-only. Copy flashes go on success
 and spark on refuse — never a lying success. Errors are an inline

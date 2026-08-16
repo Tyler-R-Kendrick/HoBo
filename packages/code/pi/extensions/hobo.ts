@@ -29,11 +29,6 @@ const SURFACE_COMMANDS: readonly {
 		argv: ["session"],
 	},
 	{
-		name: "agent",
-		description: "Agent-native: human-free auth, MCP/ACP, unattended",
-		argv: ["agent"],
-	},
-	{
 		name: "config",
 		description: "Env/flags inventory by stack (setup critique)",
 		argv: ["config"],
@@ -130,7 +125,7 @@ async function buildHoboHeaderLines(
 			"",
 			dim("  hobo-code — not plain Pi · slash commands map CLI surfaces"),
 			dim(
-				"  /agent /config /cost /harness /status /guide /tasks /login /verbs",
+				"  /config /cost /harness /status /agents /guide /tasks /login /verbs",
 			),
 			dim("  outside TUI: hobo-code help · hobo-code <verb> --help"),
 			"",
@@ -138,7 +133,7 @@ async function buildHoboHeaderLines(
 	} catch {
 		return [
 			"",
-			dim("  hobo-code — /agent /config /cost /harness /status /verbs · /exit"),
+			dim("  hobo-code — /config /agents /cost /verbs · /exit"),
 			"",
 		];
 	}
@@ -171,7 +166,7 @@ export default function (pi: ExtensionAPI) {
 		ctx.ui.setTitle("hobo-code");
 		ctx.ui.setStatus(
 			"hobo",
-			"(••)/@ hobo-code · /agent · /config · /verbs",
+			"(••)/@ hobo-code · /config · /agents · /verbs",
 		);
 		ctx.ui.setHeader((tui, theme) => {
 			let lines: string[] | undefined;
@@ -193,7 +188,7 @@ export default function (pi: ExtensionAPI) {
 			[
 				"Bo online — this is hobo-code (HoBo app-building harness), not stock Pi Agent.",
 				"Slash commands (same as CLI verbs):",
-				"  /agent  /config  /cost  /harness  /status  /session  /guide  /cursor",
+				"  /config  /cost  /harness  /status  /session  /guide  /cursor  /agents",
 				"  /tasks  /attach  /models  /auth  /login  /env  /edit  /verbs  /hive  /bo",
 				"One-shot outside TUI: hobo-code help · hobo-code agent · hobo-code config",
 				"(Binary is hobo-code — plain `hobo` is the control-plane CLI, different product.)",

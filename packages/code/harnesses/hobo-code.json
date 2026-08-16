@@ -1,6 +1,6 @@
 {
 	"id": "hobo-code",
-	"label": "hobo-code",
+	"label": "Hobo Bo",
 	"kind": "harness",
 	"host": true,
 	"binaries": ["hobo-code"],

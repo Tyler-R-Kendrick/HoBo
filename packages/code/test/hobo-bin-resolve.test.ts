@@ -143,22 +143,22 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 		).toBe(workspaceBin);
 	});
 
-	it("falls back to the PATH name when the tree has no composed hobo.js", () => {
+	it("refuses a bare PATH name when the tree has no composed hobo.js", () => {
 		const root = temp("hobo-bin-missing-");
 		mkdirSync(join(root, "packages", "hobo"), { recursive: true });
-		expect(
+		expect(() =>
 			resolveHoboBin({
 				env: { PATH: "/no/such/bin" },
 				from: join(root, "packages", "code", "src"),
 			}),
-		).toBe("hobo");
-		expect(
+		).toThrow(/does not require `hobo` on PATH/u);
+		expect(() =>
 			resolveHoboSpawn({
 				env: { PATH: "/no/such/bin" },
 				from: join(root, "packages", "code", "src"),
 				argv: ["dev"],
 			}),
-		).toEqual({ command: "hobo", args: ["dev"], bin: "hobo" });
+		).toThrow(/does not require `hobo` on PATH/u);
 	});
 
 	it("spawns a non-.js override as the command itself", () => {
@@ -204,7 +204,7 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 		).rejects.toSatisfy((error: unknown) => {
 			const message = error instanceof Error ? error.message : String(error);
 			return (
-				/hobo CLI not found/u.test(message) &&
+				/hobo override binary not found|not found/u.test(message) &&
 				!/spawn hobo ENOENT/u.test(message)
 			);
 		});
@@ -335,12 +335,12 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 
 	it("does not let an isolated tree pick up this checkout's hobo.js", () => {
 		const root = temp("hobo-bin-isolate-");
-		expect(
+		expect(() =>
 			resolveHoboBin({
 				env: { PATH: "/no/such/bin" },
 				from: join(root, "packages", "code", "src"),
 			}),
-		).toBe("hobo");
+		).toThrow(/composed @hobo\/hobo not found/u);
 	});
 
 	it("default resolveHoboBin points at a real file in this checkout", () => {

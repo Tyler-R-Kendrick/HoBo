@@ -286,7 +286,7 @@ export function renderTitleScreen(options: TitleScreenOptions = {}): string {
 		BO_CELL_HEIGHT,
 	).map((l) => centerIn(l.trimEnd(), TITLE_CANVAS_WIDTH));
 	const cue = centerIn(
-		options.cue ?? "hobo-code · press key · then /agent /config /verbs",
+		options.cue ?? "hobo-code · press key · then /config /agents /verbs",
 		TITLE_CANVAS_WIDTH,
 	);
 	const rows = [...logoLines, ...boLines, cue, centerIn("", TITLE_CANVAS_WIDTH)];

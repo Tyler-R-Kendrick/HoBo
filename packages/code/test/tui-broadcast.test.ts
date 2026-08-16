@@ -63,6 +63,25 @@ describe("broadcast frame (cartoon CRT / film bezel)", () => {
 		expect(still[1]).not.toBe(advanced[1]);
 	});
 
+	it("keeps the right glass bezel when body lines carry tmux ANSI", () => {
+		const ansi =
+			"\x1b[38;2;138;190;183mTrust project folder?\x1b[39m";
+		const lines = broadcastFrame([ansi, "plain"], {
+			width: 48,
+			title: "Pi",
+		});
+		for (const line of lines) {
+			expect(cellWidth(line)).toBe(48);
+			const plainLine = plain(line);
+			if (plainLine.includes(BROADCAST.glassLeft)) {
+				expect(plainLine).toContain(BROADCAST.glassRight);
+				expect(plainLine.endsWith("▒") || plainLine.includes("▐█▒")).toBe(
+					true,
+				);
+			}
+		}
+	});
+
 	it("keeps every line exactly the requested width and a stable row count", () => {
 		for (const width of [24, 40, 72, 100]) {
 			const lines = broadcastFrame(["short", "a".repeat(200)], {

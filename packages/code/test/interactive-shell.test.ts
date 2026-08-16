@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
@@ -21,16 +21,21 @@ import {
 	buildShellTree,
 	buildWelcomeTable,
 	createInitialShellState,
+	cycleFocus,
 	DEFAULT_SLASH_ITEMS,
 	filterSlash,
+	openAgentsCatalog,
 	PRODUCT_NOT_PI,
 	reduceShellKey,
 	renderShellFrame,
 	runInteractiveShell,
 	shellFrameIdentity,
+	shellModalOwnsInput,
 	slashItemForInput,
 	splitKeySequences,
+	statusSegments,
 } from "../src/interactive-shell.js";
+import { scrollFocused } from "../src/shell-scroll.js";
 import { findDescendantById } from "../src/tui-tree.js";
 
 describe("hobo-code InteractiveShell (product chrome)", () => {
@@ -162,6 +167,8 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(frame).toMatch(/\/about/);
 		// One extensible editor command, not one command per harness.
 		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "ide")).toBe(true);
+		expect(DEFAULT_SLASH_ITEMS.some((i) => i.name === "agent")).toBe(false);
+		expect(slashItemForInput("/agent")).toBeUndefined();
 		expect(
 			DEFAULT_SLASH_ITEMS.find((i) => i.name === "sessions")?.argv,
 		).toEqual(["session", "list"]);
@@ -321,7 +328,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		).toBe(true);
 	});
 
-	it("[ and ] cycle working subagents without leaving the TTY", () => {
+	it("[ and ] cycle working subagents only while Agents is focused", () => {
 		let state = createInitialShellState({
 			width: 72,
 			height: 24,
@@ -330,7 +337,9 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		});
 		state = {
 			...state,
+			focus: "agents",
 			agentWork: true,
+			input: "",
 			livePanes: {
 				session: "hobo",
 				windows: [
@@ -352,6 +361,35 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(state.livePanes?.windows[state.livePanes.focused]?.name).toBe(
 			"codex",
 		);
+	});
+
+	it("[ and ] do not steal chat when Agents is not focused", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = {
+			...state,
+			focus: "chat",
+			agentWork: true,
+			input: "",
+			livePanes: {
+				session: "hobo",
+				windows: [
+					{ name: "codex", target: "%1", kind: "coding-agent" },
+					{ name: "claude", target: "%2", kind: "coding-agent" },
+				],
+				focused: 0,
+				capture: "",
+				note: "in-session",
+				tmux: true,
+			},
+		};
+		state = reduceShellKey(state, "]").state;
+		expect(state.focus).toBe("chat");
+		expect(state.livePanes?.focused).toBe(0);
 	});
 
 	it("[ and ] do not open agents when no subagent work exists", () => {
@@ -376,7 +414,73 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(state.focus).toBe("chat");
 	});
 
-	it("/agents opens the agents screen when a subagent is seated", () => {
+	it("/agents opens the harness catalog (Hobo Bo first)", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		for (const ch of "/agents") {
+			state = reduceShellKey(state, ch).state;
+		}
+		const next = reduceShellKey(state, "\r");
+		expect(next.slash).toBeUndefined();
+		expect(next.state.focus).toBe("agents-catalog");
+		expect(next.state.agentsCatalog?.roots[0]?.label).toBe("Hobo Bo");
+		expect(slashItemForInput("/agents")?.action).toBe("agents");
+		expect(slashItemForInput("/panes")).toBeUndefined();
+		expect(slashItemForInput("/tasks")?.argv).toEqual(["tasks"]);
+	});
+
+	it("/mux opens live agent terminal TV (not configure catalog)", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = {
+			...state,
+			livePanes: {
+				session: "hobo",
+				windows: [{ name: "codex", target: "%1", kind: "coding-agent" }],
+				focused: 0,
+				capture: "",
+				note: "in-session",
+				tmux: true,
+			},
+			agentWork: true,
+		};
+		for (const ch of "/mux") {
+			state = reduceShellKey(state, ch).state;
+		}
+		const next = reduceShellKey(state, "\r");
+		expect(next.slash).toBeUndefined();
+		expect(next.state.focus).toBe("agents");
+		expect(next.state.agentsCatalog).toBeNull();
+		expect(next.state.footerHints).toMatch(/^mux ·/);
+		expect(slashItemForInput("/mux")?.action).toBe("mux");
+	});
+
+	it("/agents catalog Enter on Hobo Bo opens configure (not chat)", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		for (const ch of "/agents") {
+			state = reduceShellKey(state, ch).state;
+		}
+		state = reduceShellKey(state, "\r").state;
+		expect(state.focus).toBe("agents-catalog");
+		const picked = reduceShellKey(state, "\r");
+		expect(picked.state.agentsConfigure?.target.kind).toBe("hobo-bo");
+		expect(picked.state.agentsCatalog).not.toBeNull();
+	});
+
+	it("/agents catalog Enter on seated harness opens configure form", () => {
 		let state = createInitialShellState({
 			width: 72,
 			height: 24,
@@ -397,12 +501,247 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		for (const ch of "/agents") {
 			state = reduceShellKey(state, ch).state;
 		}
-		const next = reduceShellKey(state, "\r");
-		expect(next.slash).toBeUndefined();
-		expect(next.state.focus).toBe("agents");
-		expect(slashItemForInput("/agents")?.action).toBe("agents");
-		expect(slashItemForInput("/panes")?.action).toBe("agents");
-		expect(slashItemForInput("/tasks")?.action).toBe("agents");
+		state = reduceShellKey(state, "\r").state;
+		expect(state.focus).toBe("agents-catalog");
+		const roots = state.agentsCatalog?.roots ?? [];
+		const codexIndex = roots.findIndex((row) => row.harnessId === "codex");
+		expect(codexIndex).toBeGreaterThan(0);
+		for (let i = 0; i < codexIndex; i += 1) {
+			state = reduceShellKey(state, "\x1b[B").state;
+		}
+		const picked = reduceShellKey(state, "\r");
+		expect(picked.state.agentsConfigure?.target.kind).toBe("harness");
+		expect(
+			picked.state.agentsConfigure?.target.kind === "harness"
+				? picked.state.agentsConfigure.target.harnessId
+				: "",
+		).toBe("codex");
+		expect(picked.state.focus).toBe("agents-catalog");
+	});
+
+	it("configure Esc returns to catalog; Enter saves settings", () => {
+		const home = mkdtempSync(join(tmpdir(), "hobo-cfg-"));
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+			hoboHome: home,
+		});
+		state = openAgentsCatalog(state);
+		state = reduceShellKey(state, "\r").state;
+		expect(state.agentsConfigure).not.toBeNull();
+		expect(state.agentsCatalog).not.toBeNull();
+		state = reduceShellKey(state, "\x1b").state;
+		expect(state.agentsConfigure).toBeNull();
+		expect(state.focus).toBe("agents-catalog");
+		expect(state.agentsCatalog).not.toBeNull();
+
+		state = reduceShellKey(state, "\r").state;
+		// Replace default model with a short id.
+		state = {
+			...state,
+			agentsConfigure: state.agentsConfigure
+				? { ...state.agentsConfigure, model: "", dirty: true }
+				: null,
+		};
+		for (const ch of "ollama/test") {
+			state = reduceShellKey(state, ch).state;
+		}
+		state = reduceShellKey(state, "\t").state;
+		state = reduceShellKey(state, "\x1b[C").state;
+		const saved = reduceShellKey(state, "\r");
+		expect(saved.state.agentsConfigure).toBeNull();
+		expect(saved.state.messages.at(-1)?.text).toMatch(/saved hobo-code/);
+		expect(saved.state.messages.at(-1)?.text).toMatch(/ollama\/test/);
+		rmSync(home, { recursive: true, force: true });
+	});
+
+	it("Tab while /agents modal open never cycleFocus-wipes configure", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = openAgentsCatalog(state);
+		state = reduceShellKey(state, "\r").state;
+		expect(state.agentsConfigure?.target.kind).toBe("hobo-bo");
+		expect(shellModalOwnsInput(state)).toBe(true);
+
+		// Live bug: Tab hit cycleFocus and cleared agentsConfigure.
+		const tabbed = reduceShellKey(state, "\t");
+		expect(tabbed.state.agentsConfigure).not.toBeNull();
+		expect(tabbed.state.agentsCatalog).not.toBeNull();
+		expect(tabbed.state.focus).toBe("agents-catalog");
+		expect(tabbed.state.agentsConfigure?.field).toBe("effort");
+
+		const cycled = cycleFocus(tabbed.state);
+		expect(cycled.agentsConfigure).not.toBeNull();
+		expect(cycled.agentsCatalog).not.toBeNull();
+		expect(cycled.focus).toBe("agents-catalog");
+	});
+
+	it("HoBo Bo → Eve subagent → Esc returns to HoBo Bo (not chat)", () => {
+		const root = mkdtempSync(join(tmpdir(), "hobo-eve-flow-"));
+		const agentDir = join(root, ".hobo", "agents", "investigator");
+		mkdirSync(agentDir, { recursive: true });
+		writeFileSync(
+			join(agentDir, "instructions.md"),
+			"# investigator\n",
+			"utf8",
+		);
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+			cwd: root,
+			hoboHome: join(root, ".hobo-home"),
+		});
+		state = openAgentsCatalog(state);
+		state = reduceShellKey(state, "\r").state; // configure HoBo Bo
+		expect(state.agentsConfigure?.target.kind).toBe("hobo-bo");
+		expect(
+			state.agentsConfigure?.target.kind === "hobo-bo"
+				? state.agentsConfigure.target.eveAgents.length
+				: 0,
+		).toBeGreaterThan(0);
+		state = reduceShellKey(state, "\t").state; // effort
+		state = reduceShellKey(state, "\t").state; // eve-list
+		expect(state.agentsConfigure?.field).toBe("eve-list");
+		state = reduceShellKey(state, "\r").state; // open Eve
+		expect(state.agentsConfigure?.target.kind).toBe("eve");
+		expect(state.agentsConfigure?.parent?.target.kind).toBe("hobo-bo");
+		expect(state.focus).toBe("agents-catalog");
+		expect(shellModalOwnsInput(state)).toBe(true);
+
+		state = reduceShellKey(state, "\x1b").state; // Esc → parent
+		expect(state.agentsConfigure?.target.kind).toBe("hobo-bo");
+		expect(state.agentsConfigure?.field).toBe("eve-list");
+		expect(state.focus).toBe("agents-catalog");
+		expect(state.agentsCatalog).not.toBeNull();
+
+		state = reduceShellKey(state, "\x1b").state; // Esc → catalog
+		expect(state.agentsConfigure).toBeNull();
+		expect(state.focus).toBe("agents-catalog");
+
+		state = reduceShellKey(state, "\x1b").state; // Esc → chat
+		expect(state.focus).toBe("chat");
+		expect(state.agentsCatalog).toBeNull();
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	it("catalog expand HoBo Bo lands on Eve child; Enter keeps modal control", () => {
+		const root = mkdtempSync(join(tmpdir(), "hobo-cat-eve-"));
+		const agentDir = join(root, ".hobo", "agents", "investigator");
+		mkdirSync(agentDir, { recursive: true });
+		writeFileSync(
+			join(agentDir, "instructions.md"),
+			"# investigator\n",
+			"utf8",
+		);
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+			cwd: root,
+			hoboHome: join(root, ".hobo-home"),
+		});
+		state = openAgentsCatalog(state);
+		state = reduceShellKey(state, " ").state; // expand → land on child
+		const rowId = state.agentsCatalog
+			? // flatten via reduce path: cursor should be on eve child
+				state.agentsCatalog.cursor
+			: -1;
+		expect(rowId).toBeGreaterThan(0);
+		state = reduceShellKey(state, "\r").state;
+		expect(state.agentsConfigure?.target.kind).toBe("eve");
+		expect(shellModalOwnsInput(state)).toBe(true);
+		state = reduceShellKey(state, "\t").state;
+		expect(state.agentsConfigure?.field).toBe("effort");
+		state = reduceShellKey(state, "\x1b").state;
+		expect(state.agentsConfigure).toBeNull();
+		expect(state.focus).toBe("agents-catalog");
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	it("HoBo Bo empty Eve list can create subagent e2e on disk", () => {
+		const root = mkdtempSync(join(tmpdir(), "hobo-create-eve-"));
+		mkdirSync(join(root, ".hobo"), { recursive: true });
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+			cwd: root,
+			hoboHome: join(root, ".hobo-home"),
+		});
+		state = openAgentsCatalog(state);
+		state = reduceShellKey(state, "\r").state; // HoBo Bo configure
+		expect(state.agentsConfigure?.target.kind).toBe("hobo-bo");
+		expect(plain(renderShellFrame(state))).toMatch(/\+ create subagent/);
+		expect(plain(renderShellFrame(state))).toMatch(/none yet/);
+		state = reduceShellKey(state, "\t").state; // effort
+		state = reduceShellKey(state, "\t").state; // eve-list (create row)
+		expect(state.agentsConfigure?.field).toBe("eve-list");
+		state = reduceShellKey(state, "\r").state; // start create
+		expect(state.agentsConfigure?.field).toBe("create-id");
+		expect(plain(renderShellFrame(state))).toMatch(/\+ create/);
+		for (const ch of "worker") {
+			state = reduceShellKey(state, ch).state;
+		}
+		expect(plain(renderShellFrame(state))).toMatch(/worker/);
+		state = reduceShellKey(state, "\r").state; // commit create
+		expect(state.agentsConfigure?.target.kind).toBe("eve");
+		expect(
+			state.agentsConfigure?.target.kind === "eve"
+				? state.agentsConfigure.target.id
+				: "",
+		).toBe("worker");
+		expect(state.agentsConfigure?.parent?.target.kind).toBe("hobo-bo");
+		const instructions = join(
+			root,
+			".hobo",
+			"agents",
+			"worker",
+			"instructions.md",
+		);
+		expect(existsSync(instructions)).toBe(true);
+		expect(readFileSync(instructions, "utf8")).toMatch(/^# worker/m);
+		expect(state.messages.at(-1)?.text).toMatch(/created subagent · worker/);
+		// Esc back to HoBo Bo should list the new agent
+		state = reduceShellKey(state, "\x1b").state;
+		expect(state.agentsConfigure?.target.kind).toBe("hobo-bo");
+		if (state.agentsConfigure?.target.kind === "hobo-bo") {
+			expect(
+				state.agentsConfigure.target.eveAgents.map((row) => row.id),
+			).toContain("worker");
+		}
+		expect(plain(renderShellFrame(state))).toMatch(/worker/);
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	it("catalog owns live TTY keys — empty-composer scroll must not steal ↑↓", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = openAgentsCatalog(state);
+		expect(shellModalOwnsInput(state)).toBe(true);
+		// Broken live path used scrollFocused for empty-composer ↑↓ — catalog
+		// cursor never moved. Guard: scroll must not be the catalog nav path.
+		const scrolled = scrollFocused(state, "down", 1);
+		expect(scrolled.agentsCatalog?.cursor ?? 0).toBe(0);
+		const navigated = reduceShellKey(state, "\x1b[B");
+		expect(navigated.state.agentsCatalog?.cursor).toBe(1);
+		const left = reduceShellKey(navigated.state, "\x1b");
+		expect(left.state.focus).toBe("chat");
+		expect(left.state.agentsCatalog).toBeNull();
+		expect(shellModalOwnsInput(left.state)).toBe(false);
 	});
 
 	it("keeps run-it / debug-it on Bo even when Codex is seated", () => {
@@ -471,9 +810,40 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		const afterPage = state.chatScroll;
 		state = reduceShellKey(state, "\x1b[6~").state; // PgDn
 		expect(state.chatScroll).toBeLessThan(afterPage);
-		// New activity snaps back to the bottom
+		// New activity while reviewing preserves offset (no yank)
+		const reviewing = state.chatScroll;
 		state = appendAssistant(state, "latest");
+		expect(state.chatScroll).toBe(reviewing);
+		// End snaps back to live
+		state = reduceShellKey(state, "\x1b[F").state;
 		expect(state.chatScroll).toBe(0);
+	});
+
+	it("Ctrl+O opens less-mode; j/k scroll; q exits without typing into composer", () => {
+		let state = createInitialShellState({
+			width: 60,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		for (let i = 0; i < 30; i += 1) {
+			state = appendAssistant(state, `hist-${i}`);
+		}
+		state = reduceShellKey(state, "\x0f").state; // Ctrl+O
+		expect(state.transcriptMode).not.toBeNull();
+		const frame = plain(renderShellFrame(state));
+		expect(frame).toMatch(/transcript · less/);
+		// Entering from live pins to the end; k then j proves the less key context.
+		const atEnd = state.transcriptMode?.offset ?? 0;
+		state = reduceShellKey(state, "k").state;
+		expect(state.transcriptMode?.offset ?? 0).toBeLessThan(atEnd);
+		const before = state.transcriptMode?.offset ?? 0;
+		state = reduceShellKey(state, "j").state;
+		expect(state.transcriptMode?.offset ?? 0).toBeGreaterThan(before);
+		state = reduceShellKey(state, "x").state; // printable must not hit composer
+		expect(state.input).toBe("");
+		state = reduceShellKey(state, "q").state;
+		expect(state.transcriptMode).toBeNull();
 	});
 
 	it("scrolls the welcome chat surface as one viewport", () => {
@@ -496,7 +866,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(up).not.toContain("tail-line-19");
 	});
 
-	it("nests claimed tasks under the focused subagent on Agents", () => {
+	it("Agents shows herdr session chrome plus the focused harness capture", () => {
 		let state = createInitialShellState({
 			width: 72,
 			height: 24,
@@ -510,71 +880,123 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 			livePanes: {
 				session: "hobo",
 				windows: [
-					{ name: "implementer", target: "%1", kind: "coding-agent" },
-					{ name: "reviewer", target: "%2", kind: "coding-agent" },
+					{ name: "hobo-code", target: "%0", kind: "harness" },
+					{ name: "codex", target: "%1", kind: "coding-agent" },
+					{ name: "pi", target: "%2", kind: "coding-agent" },
 				],
-				focused: 0,
-				capture: "implementer ›",
+				focused: 1,
+				capture: [
+					"codex › reading auth.ts",
+					"I'll add OAuth to the login form.",
+					"tool: edit packages/app/login.ts",
+				].join("\n"),
 				note: "in-session",
 				tmux: true,
 			},
-			agentBoard: {
-				schema: "hobo.code.agent-work/v1",
-				groups: [
-					{
-						agentId: "implementer",
-						tasks: [
-							{
-								id: "task-login",
-								kind: "task",
-								state: "working",
-								summary: "implement login",
-								clickable: true,
-							},
-						],
-						claims: [
-							{
-								schema: "hobo.code.work-claim/v1",
-								taskId: "task-login",
-								agentId: "implementer",
-								runId: "claim-implementer-task-login",
-								branch: "code/implementer/task-login",
-								rootPath: "/tmp/impl",
-								isolation: "worktree",
-								delivery: {
-									checkins: "incremental",
-									pullRequests: "stacked",
-									merge: "squash",
-								},
-								claimedAt: "2026-08-14T00:00:00.000Z",
-							},
-						],
-					},
-					{
-						agentId: "reviewer",
-						tasks: [],
-						claims: [],
-					},
-				],
-				unclaimed: [
-					{
-						id: "task-shot",
-						kind: "look",
-						state: "captured",
-						summary: "capture screenshot",
-						clickable: true,
-					},
-				],
-			},
 		};
 		const frame = plain(renderShellFrame(state));
-		expect(frame).toContain("implementer");
-		expect(frame).toContain("implement login");
-		expect(frame).toContain("code/implementer/task-login");
-		expect(frame).toContain("reviewer");
-		expect(frame).toContain("no claimed tasks");
-		expect(frame).toContain("unclaimed");
-		expect(frame).toContain("capture screenshot");
+		expect(frame).toContain("Detach · Stop session · New tab");
+		expect(frame).toContain("New pane");
+		expect(frame).toMatch(/focused/);
+		expect(frame).toContain("I'll add OAuth to the login form.");
+		expect(frame).toContain("tool: edit packages/app/login.ts");
+		expect(frame).toContain("[ ] focus");
+		expect(frame).toContain("Enter attach");
+		expect(frame).toContain("Ctrl+\\");
+		expect(frame).toContain("PgUp/Dn scroll");
+		expect(frame).not.toMatch(/roster/);
+		expect(frame).not.toMatch(/unclaimed/);
+		expect(frame).toMatch(/Codex/);
+		expect(statusSegments(state).some((s) => /Codex/u.test(s))).toBe(true);
+	});
+
+	it("↑/↓ on Agents scrolls capture; [ ] switches harness and updates strap", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 24,
+			welcome: false,
+			reducedMotion: true,
+		});
+		state = {
+			...state,
+			focus: "agents",
+			agentWork: true,
+			input: "",
+			livePanes: {
+				session: "hobo",
+				windows: [
+					{ name: "hobo-code", target: "%0", kind: "harness" },
+					{ name: "codex", target: "%1", kind: "coding-agent" },
+					{ name: "pi", target: "%2", kind: "coding-agent" },
+				],
+				focused: 1,
+				capture: [
+					"line-0",
+					"line-1",
+					"line-2",
+					"line-3",
+					"line-4",
+					"line-5",
+					"line-6",
+					"line-7",
+					"line-8",
+					"line-9",
+					"line-10",
+					"line-11",
+					"line-12",
+					"line-13",
+					"line-14",
+					"line-15",
+					"line-16",
+					"line-17",
+					"line-18",
+					"line-19",
+				].join("\n"),
+				note: "in-session",
+				tmux: true,
+			},
+		};
+		expect(statusSegments(state).join(" ")).toMatch(/Codex/);
+		const beforeScroll = state.paneScroll;
+		state = reduceShellKey(state, "\x1b[B").state; // down scrolls, does not switch
+		expect(state.livePanes?.focused).toBe(1);
+		expect(state.paneScroll).toBeGreaterThanOrEqual(beforeScroll);
+		state = reduceShellKey(state, "]").state; // leaf → Pi
+		expect(state.livePanes?.focused).toBe(2);
+		expect(statusSegments(state).join(" ")).toMatch(/\bPi\b/);
+		expect(plain(renderShellFrame(state))).toMatch(/\[Pi\]|Pi · focused|· Pi ·/);
+		state = reduceShellKey(state, "[").state; // back → Codex
+		expect(state.livePanes?.focused).toBe(1);
+		expect(statusSegments(state).join(" ")).toMatch(/Codex/);
+		// Mid-draft does not steal [ ] for pane switch
+		state = { ...state, input: "half typed" };
+		state = reduceShellKey(state, "]").state;
+		expect(state.livePanes?.focused).toBe(1);
+	});
+
+	it("chat focus strap defaults to Hobo Bo; Agents focus shows selected harness", () => {
+		let state = createInitialShellState({
+			width: 72,
+			height: 20,
+			welcome: false,
+			reducedMotion: true,
+		});
+		expect(statusSegments(state).join(" ")).toMatch(/Hobo Bo/);
+		state = {
+			...state,
+			focus: "agents",
+			agentWork: true,
+			livePanes: {
+				session: "hobo",
+				windows: [{ name: "codex", target: "%1", kind: "coding-agent" }],
+				focused: 0,
+				capture: "working…",
+				note: "in-session",
+				tmux: true,
+			},
+		};
+		expect(statusSegments(state).join(" ")).toMatch(/Codex/);
+		expect(statusSegments(state).join(" ")).not.toMatch(/Hobo Bo/);
 	});
 
 	it("scrolls agents, status, and resources from the top", () => {
@@ -865,9 +1287,12 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(slashItemForInput("/alias")?.argv).toEqual(["alias"]);
 		expect(slashItemForInput("/auth")?.argv).toEqual(["auth", "status"]);
 		expect(slashItemForInput("/sessions")?.argv).toEqual(["session", "list"]);
-		expect(slashItemForInput("/panes")?.action).toBe("agents");
+		expect(slashItemForInput("/panes")).toBeUndefined();
+		expect(slashItemForInput("/mux")?.action).toBe("mux");
+		expect(slashItemForInput("/mux tab")?.action).toBe("session-tab");
 		expect(slashItemForInput("/agents")?.action).toBe("agents");
 		expect(slashItemForInput("/agents init")?.argv).toEqual(["agents", "init"]);
+		expect(slashItemForInput("/tasks")?.argv).toEqual(["tasks"]);
 	});
 
 	it("runs inspect slashes as product replies, never a model turn", async () => {

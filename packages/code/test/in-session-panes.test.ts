@@ -115,14 +115,78 @@ describe("in-session panes", () => {
 		const bin = mkdtempSync(join(tmpdir(), "hobo-panes-"));
 		writeFileSync(join(bin, "codex"), "");
 		writeFileSync(join(bin, "hobo-code"), "");
+		const commands: string[] = [];
+		const runner: MuxRunner = {
+			run: async (args) => {
+				if (args[0] === "-V") return { code: 0, stdout: "tmux 3.4" };
+				if (args[0] === "has-session") return { code: 0, stdout: "" };
+				if (args[0] === "list-windows") {
+					return { code: 0, stdout: "codex\t%1\n" };
+				}
+				if (args[0] === "capture-pane") {
+					return { code: 0, stdout: ">_ OpenAI Codex\n" };
+				}
+				if (args[0] === "new-session" || args[0] === "new-window") {
+					commands.push(args.at(-1) ?? "");
+					return { code: 0, stdout: "%1\n" };
+				}
+				return { code: 0, stdout: "" };
+			},
+		};
 		const panes = await ensureInSessionPanes({
-			runner: fakeRunner({ windows: "codex\t%1\n" }),
+			runner,
 			env: { PATH: bin, HOME: bin },
 			cwd: bin,
+			hoboHome: join(bin, ".hobo"),
 		});
 		expect(panes.tmux).toBe(true);
 		expect(panes.windows.map((row) => row.name)).toContain("codex");
 		expect(panes.windows.map((row) => row.name)).not.toContain("hobo-code");
 		expect(panes.note).toMatch(/in-session · codex/i);
+		expect(panes.note).toMatch(/Enter attach|\[ \] panes/i);
+		// Existing window: no new-window, but respawn path may capture only.
+		// Force a stale respawn case separately below.
+	});
+
+	it("respawns a dead Codex seat with isolated CODEX_HOME", async () => {
+		const bin = mkdtempSync(join(tmpdir(), "hobo-panes-respawn-"));
+		writeFileSync(join(bin, "codex"), "");
+		const commands: string[] = [];
+		let captures = 0;
+		const runner: MuxRunner = {
+			run: async (args) => {
+				if (args[0] === "-V") return { code: 0, stdout: "tmux 3.4" };
+				if (args[0] === "has-session") return { code: 0, stdout: "" };
+				if (args[0] === "list-windows") {
+					return { code: 0, stdout: "codex\t%1\n" };
+				}
+				if (args[0] === "capture-pane") {
+					captures += 1;
+					// First respawn probe is stale; later list capture is healthy.
+					return {
+						code: 0,
+						stdout:
+							captures === 1
+								? "Error: failed to start embedded app server\n[codex exited 1 — press enter to close]"
+								: ">_ OpenAI Codex\n",
+					};
+				}
+				if (args[0] === "kill-window") return { code: 0, stdout: "" };
+				if (args[0] === "new-window") {
+					commands.push(args.at(-1) ?? "");
+					return { code: 0, stdout: "%9\n" };
+				}
+				return { code: 0, stdout: "" };
+			},
+		};
+		const panes = await ensureInSessionPanes({
+			runner,
+			env: { PATH: bin, HOME: bin },
+			cwd: bin,
+			hoboHome: join(bin, ".hobo"),
+		});
+		expect(commands.length).toBeGreaterThan(0);
+		expect(commands.some((c) => c.includes("CODEX_HOME="))).toBe(true);
+		expect(panes.windows.map((w) => w.name)).toContain("codex");
 	});
 });

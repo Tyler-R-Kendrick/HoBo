@@ -54,10 +54,13 @@ export function resolveEquivalence(port: string) {
 
 /** Merge only Lakebed-owned option blocks; foreign provider blocks drop. */
 export function mergeLakebedOptions(
-	options: TypedOptionBlock[] = [],
+	// Core's ResourcePlan carries opaque option blocks (ADR-0156); every HoBo
+	// `.with(...)` builder emits the shared TypedOptionBlock shape, and
+	// foreign-provider blocks drop below by providerId.
+	options: ResourcePlan["options"] = [],
 ): Record<string, unknown> {
 	const merged: Record<string, unknown> = {};
-	for (const block of options) {
+	for (const block of options as TypedOptionBlock[]) {
 		if (block.providerId !== LAKEBED_PROVIDER_TARGET) {
 			continue;
 		}

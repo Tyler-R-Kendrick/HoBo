@@ -1,12 +1,15 @@
 export const CLOUDFLARE_PROVIDER_TARGET = "cloudflare";
 
-export interface TypedOptionBlock {
+// A `type` alias (not an interface) so it keeps an implicit index signature
+// and stays assignable to @hobo/core's opaque `TypedOptionBlock`
+// (Record<string, unknown>) on ResourcePlan.options (ADR-0156).
+export type TypedOptionBlock = {
 	providerId: string;
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
 	options: Record<string, unknown>;
-}
+};
 
 export const cloudflare = {
 	with: {

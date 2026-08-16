@@ -9,6 +9,9 @@
  */
 
 import {
+	type ActorHost,
+	type ActorLease,
+	type ActorStateHandle,
 	createUsageEvent,
 	type MeteringBus,
 	type TenantId,
@@ -17,35 +20,20 @@ import {
 import type { DaprSidecarClient } from "./dapr-client.js";
 import type { DaprRuntimeConfig } from "./types.js";
 
-export interface DaprActorLease {
-	readonly key: string;
-	readonly holderId: string;
-	readonly fenceToken: bigint;
-	readonly expiresAt: string;
+/** Core `ActorLease` (ADR-0156) tagged with the Dapr placement. */
+export interface DaprActorLease extends ActorLease {
 	readonly placement: "dapr";
-	release(): void;
 }
 
-export interface DaprActorStateHandle<S> {
-	append(
-		lease: DaprActorLease,
-		event: { type: string; [key: string]: unknown },
-	): { streamId: string; seq: number; fenceToken: bigint };
-	read(): { streamId: string; seq: number; state: S };
-}
+/** The canonical `@hobo/core` state handle (ADR-0156), under its Dapr name. */
+export type DaprActorStateHandle<S> = ActorStateHandle<S>;
 
-export interface DaprActorHost {
+/** The core ActorHost port (ADR-0156) plus Dapr-specific members. */
+export interface DaprActorHost extends ActorHost {
 	readonly placementMode: "dapr";
 	/** `live` when a daprd client was injected for reminders/invoke. */
 	readonly fidelity: "simulated" | "live";
 	acquire(key: string, request: { holderId: string }): DaprActorLease;
-	state<S>(
-		key: string,
-		request: {
-			initialState: S;
-			fold: (state: S, event: { type: string; [key: string]: unknown }) => S;
-		},
-	): DaprActorStateHandle<S>;
 	/** Reminder registration (maps to Dapr actor reminders). */
 	registerReminder(
 		key: string,
@@ -120,15 +108,16 @@ export function createDaprActorHost(
 		string,
 		{
 			initial: unknown;
-			fold: (s: unknown, e: { type: string; [key: string]: unknown }) => unknown;
+			fold: (
+				s: unknown,
+				e: { type: string; [key: string]: unknown },
+			) => unknown;
 		}
 	>();
 	const lifecycle: DaprActorLifecycleEvent[] = [];
 	let reminderSeq = 0;
 
-	const emit = (
-		e: Omit<DaprActorLifecycleEvent, "at" | "placement">,
-	) => {
+	const emit = (e: Omit<DaprActorLifecycleEvent, "at" | "placement">) => {
 		lifecycle.push(
 			Object.freeze({
 				...e,

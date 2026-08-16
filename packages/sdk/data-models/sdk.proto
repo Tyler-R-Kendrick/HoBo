@@ -66,3 +66,16 @@ message RunnerDeclaration {
   double list_unit_cost = 6;
   double switching_cost = 7;
 }
+
+message PluginExtensionEntry {
+  string point = 1; // hobo.<name>/v<major>
+  string export_name = 2;
+  string id = 3; // optional stable registration id
+}
+
+message PluginDeclaration {
+  string schema = 1; // hobo.sdk/v1.plugin
+  string package_name = 2;
+  string entry = 3; // package-relative, starts with ./
+  repeated PluginExtensionEntry extensions = 4;
+}

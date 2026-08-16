@@ -1,4 +1,6 @@
 import type {
+	ActorHost,
+	ActorStateHandle,
 	EventEnvelope,
 	EventStore,
 	FoldHandlers,
@@ -10,36 +12,11 @@ import type {
 export const RUNTIME_PORT_CONFORMANCE_VERSION =
 	"hobo.runtime-port-conformance/v1";
 
-export interface ActorHostLease {
-	readonly key: string;
-	readonly holderId: string;
-	readonly fenceToken: bigint;
-	readonly expiresAt: string;
-	release(): void;
-}
-
-export interface ActorHostState<S = unknown> {
-	append(
-		lease: ActorHostLease,
-		event: { type: string; [key: string]: unknown },
-	): {
-		streamId: string;
-		seq: number;
-		fenceToken: bigint;
-	};
-	read(): { streamId: string; seq: number; state: S };
-}
-
-export interface ActorHostPort {
-	acquire(key: string, request: { holderId: string }): ActorHostLease;
-	state<S>(
-		key: string,
-		request: {
-			initialState: S;
-			fold: (state: S, event: { type: string; [key: string]: unknown }) => S;
-		},
-	): ActorHostState<S>;
-}
+// The ActorHost seam under test is the canonical `@hobo/core` port (ADR-0156);
+// the suite keeps its historical exported names as aliases.
+export type { ActorLease as ActorHostLease } from "@hobo/core";
+export type ActorHostState<S = unknown> = ActorStateHandle<S>;
+export type { ActorHost as ActorHostPort } from "@hobo/core";
 
 export interface ConformanceEventStore extends EventStore {
 	fold<S>(
@@ -53,7 +30,7 @@ export interface RuntimeDurabilityBackend {
 	readonly eventStore: ConformanceEventStore;
 	readonly queue: Queue;
 	readonly clock: VirtualClock;
-	readonly actorHost: ActorHostPort;
+	readonly actorHost: ActorHost;
 }
 
 // domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).

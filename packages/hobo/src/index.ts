@@ -335,6 +335,15 @@ export {
 	type FileOneTimeActionStoreOptions,
 } from "./one-time-action-store-file.js";
 export {
+	type LoadedPluginExtension,
+	type LoadedPluginReport,
+	type LoadPluginOptions,
+	loadHoboPlugin,
+	type PluginHostHooks,
+	PluginLoadError,
+	registerPluginExtensions,
+} from "./plugin-loader.js";
+export {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
 	type PulumiBackedIacProviderOptions,

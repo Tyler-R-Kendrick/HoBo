@@ -24,3 +24,6 @@ export const POLICY_PACK_SCHEMA = "hobo.sdk/v1.policy-pack";
 
 // public-contract: schema id of a frozen resource-definition declaration.
 export const RESOURCE_DEFINITION_SCHEMA = "hobo.sdk/v1.resource-definition";
+
+// public-contract: definePlugin declaration schema (the manifest inside it is core's hobo.plugin/v1).
+export const PLUGIN_DECLARATION_SCHEMA = "hobo.sdk/v1.plugin";

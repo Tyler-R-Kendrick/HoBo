@@ -1,9 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+	type HarnessCatalogDiagnostic,
 	loadHarnessCatalog,
 	planSpecHunks,
 	registerHarness,
@@ -57,7 +58,8 @@ describe("harness catalog", () => {
 					format: "toml-append",
 					path: ".newbot/config.toml",
 					configuredWhen: ["[model.hobo]"],
-					block: "[model.hobo]\nbase_url = \"{{openaiUrl}}\"\nenv_key = \"{{envKey}}\"\n",
+					block:
+						'[model.hobo]\nbase_url = "{{openaiUrl}}"\nenv_key = "{{envKey}}"\n',
 				},
 			}),
 			"utf8",
@@ -105,5 +107,61 @@ describe("harness catalog", () => {
 			},
 		});
 		expect(planned.hunks[0]?.after).toBe("base_url=http://x/v1");
+	});
+
+	it("reports a diagnostic per bad plugin file while the rest still load", () => {
+		const home = tmp();
+		const pluginDir = join(home, "durable", "code", "harnesses");
+		mkdirSync(pluginDir, { recursive: true });
+		writeFileSync(join(pluginDir, "broken.json"), "{ not json", "utf8");
+		writeFileSync(
+			join(pluginDir, "typo.json"),
+			JSON.stringify({ id: "typo", label: "Typo", kind: "coding-agnet" }),
+			"utf8",
+		);
+		writeFileSync(
+			join(pluginDir, "good.json"),
+			JSON.stringify({
+				id: "goodbot",
+				label: "Good Bot",
+				kind: "coding-agent",
+			}),
+			"utf8",
+		);
+		const diagnostics: HarnessCatalogDiagnostic[] = [];
+		const specs = loadHarnessCatalog({
+			hoboHome: home,
+			onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+		});
+		expect(specs.some((spec) => spec.id === "goodbot")).toBe(true);
+		expect(specs.some((spec) => spec.id === "typo")).toBe(false);
+		expect(diagnostics).toHaveLength(2);
+		expect(diagnostics.some((diag) => diag.file.endsWith("broken.json"))).toBe(
+			true,
+		);
+		const typo = diagnostics.find((diag) => diag.file.endsWith("typo.json"));
+		expect(typo?.message).toContain("kind");
+		expect(typo?.message).toContain("coding-agnet");
+	});
+
+	it("defaults to a one-line stderr warning naming the bad file", () => {
+		const home = tmp();
+		const pluginDir = join(home, "durable", "code", "harnesses");
+		mkdirSync(pluginDir, { recursive: true });
+		writeFileSync(join(pluginDir, "oops.json"), "{ not json", "utf8");
+		const write = vi
+			.spyOn(process.stderr, "write")
+			.mockImplementation(() => true);
+		try {
+			loadHarnessCatalog({ hoboHome: home });
+			const warning = write.mock.calls
+				.map(([chunk]) => String(chunk))
+				.find((line) => line.includes("oops.json"));
+			expect(warning).toBeDefined();
+			expect(warning).toMatch(/^hobo-code: skipped harness spec .*oops\.json/);
+			expect(warning?.trimEnd()).not.toContain("\n");
+		} finally {
+			write.mockRestore();
+		}
 	});
 });

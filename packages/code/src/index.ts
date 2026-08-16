@@ -1,6 +1,16 @@
 export {
+	agentKindOf,
+	HARNESS_CONFIG_FORMATS,
+	HARNESS_SPEC_KINDS,
+	HARNESS_SPEC_SCHEMA,
+	type HarnessCatalogDiagnostic,
 	type HarnessSpec,
+	type HarnessSpecKind,
+	HarnessSpecParseError,
+	harnessKindOf,
+	isHostSpec,
 	loadHarnessCatalog,
+	parseHarnessSpec,
 	registerHarness,
 	resetRegisteredHarnesses,
 } from "./agent-harness-catalog.js";

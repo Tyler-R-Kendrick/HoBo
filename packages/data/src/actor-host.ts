@@ -1,21 +1,20 @@
 // The aggregate's consistency boundary is realized as an actor: a single-writer
 // lease with a monotonic fencing token (data-plane.md "Two folds, one log"). The
-// port is defined here (there is no actor-host port in @hobo/core) so the kernel
-// depends inward only; a runtime supplies the real, durable implementation and
-// the in-memory host below is the deterministic default for tests and `hobo dev`.
+// port is the canonical `@hobo/core` actor-host port (ADR-0156): `AggregateLease`
+// is core's `ActorLease` and this package's `ActorHost` is core's lease-only
+// `ActorLeaseHost` narrowing, so the kernel keeps depending inward only; a
+// runtime supplies the real, durable implementation and the in-memory host below
+// is the deterministic default for tests and `hobo dev`.
 
-export interface AggregateLease {
-	readonly key: string;
-	readonly holderId: string;
-	// Strictly increasing per key; a stale holder is fenced out by comparison.
-	readonly fenceToken: bigint;
-	readonly expiresAt: string;
-	release(): void;
-}
+import type {
+	ActorLeaseHost as ActorHost,
+	ActorLease as AggregateLease,
+} from "@hobo/core";
 
-export interface ActorHost {
-	acquire(key: string, request: { holderId: string }): AggregateLease;
-}
+export type {
+	ActorLease as AggregateLease,
+	ActorLeaseHost as ActorHost,
+} from "@hobo/core";
 
 export class LeaseConflictError extends Error {
 	readonly code = "LEASE_CONFLICT" as const;

@@ -78,119 +78,139 @@ const SPA = `<!doctype html>
       border:3px solid var(--ink); padding:8px 12px; z-index:2; font-family: Chewy, system-ui, sans-serif; }
     .skip:focus { left:8px; }
     header.dash-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
-      border-radius:0; margin:0; padding:16px 24px; }
-    header.dash-head .theme-toggle { min-width:44px; min-height:44px; padding:0; width:44px; height:44px; }
-    h1, h2, .pane-title, .ep-urls strong, button.ico { font-family: Chewy, "Arial Rounded MT Bold", system-ui, sans-serif; font-weight: 400; }
-    h1 { margin: 0; font-size: 2.25rem; line-height: 1.1; letter-spacing: .01em;
-      transform: rotate(-1deg); text-shadow: 3px 3px 0 var(--border);
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 72rem; }
-    #scope { margin: 6px 0 0; max-width: 72rem; }
-    main { padding: 24px 24px 56px; max-width: 72rem; display:flex; flex-direction:column; gap: 24px; }
-    .card { border: 3px solid var(--ink); border-radius: 18px; box-shadow: 4px 4px 0 var(--ink);
-      padding: 20px 22px; margin: 0; overflow: hidden; min-width: 0; background: var(--paper); }
-    .featured { padding: 24px 24px 28px; box-shadow: 6px 6px 0 var(--ink); }
-    .pane-head { display:flex; align-items:center; gap:12px; margin: 0 0 16px; min-height: 32px; }
-    .pane-head svg { width:24px; height:24px; fill: currentColor; }
-    .pane-title { font-size: 1.5rem; line-height: 1.2; letter-spacing: .01em; }
-    .station-head { display:grid; grid-template-columns: auto auto minmax(0,1fr) auto; gap:12px; align-items:center; min-width:0; }
-    .station-titles { min-width:0; }
-    .station-head h2 { margin: 0; font-size: 1.5rem; line-height: 1.1; }
-    .station-caps { margin: 12px 0 0; padding: 8px 0 0; border-top: 3px solid var(--border); }
-    .station-id { margin: 2px 0 0; color: var(--mute); font-family: ui-monospace, monospace; font-size: .75rem;
+      background:transparent; border:0; box-shadow:none; border-radius:0;
+      max-width:72rem; margin:0 auto; padding:20px 24px 4px; }
+    header.dash-head .theme-toggle { min-width:44px; min-height:44px; width:44px; height:44px; padding:0; }
+    .dash-title { min-width:0; }
+    h1, h2, .pane-title { font-family: Chewy, "Arial Rounded MT Bold", system-ui, sans-serif; font-weight: 400; }
+    h1 { margin:0; font-size:1.75rem; line-height:1.1; letter-spacing:.01em;
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .scope-line { margin: 10px 0 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #scope { margin:4px 0 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      font-family: ui-monospace, monospace; font-size:.75rem; }
+    #banner { margin:8px 24px 0; max-width:72rem; padding:10px 14px; border:3px solid var(--ink);
+      background:var(--paper); box-shadow:4px 4px 0 var(--spark); }
+    #banner[hidden] { display:none !important; }
+    main { max-width:72rem; margin:0 auto; padding:16px 24px 56px; display:flex; flex-direction:column; gap:20px; }
+    .card { margin:0; overflow:hidden; min-width:0; }
+    .featured { box-shadow:6px 6px 0 var(--ink); }
     .muted { color: var(--mute); }
-    #banner { margin: 0 24px; max-width: 72rem; padding: 10px 14px; border: 3px solid var(--ink);
-      background: var(--paper); box-shadow: 4px 4px 0 var(--spark); }
-    #banner[hidden] { display: none !important; }
-    .ico { display:inline-grid; place-items:center; width:44px; height:44px; padding:0;
-      border:3px solid var(--ink); background: var(--paper); box-shadow: 4px 4px 0 var(--ink);
-      color: var(--ink); clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px); }
-    .ico svg { width:18px; height:18px; fill: currentColor; }
-    button.ico { cursor: pointer; transition: transform 120ms var(--ease-boing), box-shadow 120ms var(--ease), background 120ms var(--ease); }
+    .mono { font-family: ui-monospace, monospace; }
+    .pane-head { display:flex; align-items:center; gap:10px; margin:0 0 12px; min-height:32px; }
+    .pane-head svg { width:22px; height:22px; fill:currentColor; }
+    .pane-title { font-size:1.5rem; line-height:1.2; letter-spacing:.01em; }
+    /* one row grammar everywhere: lamp · kind · name+meta · signals · actions */
+    .row { display:grid; grid-template-columns:auto auto minmax(0,1fr) auto auto; gap:12px;
+      align-items:center; min-width:0; padding:10px 0; border-bottom:2px solid var(--border); }
+    .row:last-child { border-bottom:0; }
+    .row.cap { grid-template-columns:auto minmax(0,1fr); }
+    .row-main { min-width:0; overflow:hidden; }
+    .row-name { display:block; font-size:1rem; font-weight:700; line-height:1.25;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .row-name.mono { font-weight:400; font-size:.875rem; }
+    .ep-line { display:block; margin:2px 0 0; min-width:0; }
+    .ep-line a, .ep-line span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    a.ep-link, span.ep-link { font-family:ui-monospace,monospace; font-size:.875rem; color:var(--ink);
+      text-underline-offset:3px; }
+    a.ep-link:hover { color: var(--spark); }
+    a.listen-link, span.listen-addr { font-family:ui-monospace,monospace; font-size:.75rem;
+      color:var(--mute); text-underline-offset:3px; }
+    a.listen-link:hover { color: var(--spark); }
+    /* inert markers are flat ink — no shadow, no chamfer, no costume */
+    .lamp { display:inline-block; width:14px; height:14px; border:3px solid var(--ink); border-radius:50%;
+      background:var(--paper); flex:0 0 auto; }
+    .lamp.ready, .lamp.go { background: var(--go); }
+    .lamp.not-ready, .lamp.off { background: var(--paper); }
+    .tree-kind { flex:0 0 auto; width:16px; height:16px; border:3px solid var(--ink); background:var(--paper); }
+    .tree-kind.yard { width:20px; height:11px; }
+    .tree-kind.camp { width:0; height:0; border:0; border-left:9px solid transparent;
+      border-right:9px solid transparent; border-bottom:15px solid var(--ink); background:transparent; }
+    .tree-kind.bindle { width:11px; height:11px; transform:rotate(45deg); }
+    .tree-kind.station { border-radius:50%; }
+    .tree-kind.junction { width:16px; height:7px; }
+    .mark { display:inline-grid; place-items:center; width:24px; height:24px; color:var(--mute); }
+    .mark svg { width:16px; height:16px; fill:currentColor; }
+    .sigs { display:inline-flex; gap:10px; flex:0 0 auto; }
+    .sigs:empty { display:none; }
+    .sig { display:inline-flex; align-items:center; gap:4px; font-size:.75rem;
+      font-variant-numeric:tabular-nums; font-family:ui-monospace,monospace; color:var(--mute); }
+    .sig svg { width:13px; height:13px; fill:currentColor; }
+    /* pressable = raised: only real controls wear the plank + sticker shadow */
+    .acts { display:inline-flex; align-items:center; gap:8px; flex:0 0 auto; justify-content:flex-end; }
+    button.ico { display:inline-grid; place-items:center; width:44px; height:44px; padding:0;
+      border:3px solid var(--ink); background:var(--paper); color:var(--ink); cursor:pointer;
+      clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+      filter: drop-shadow(3px 3px 0 var(--ink));
+      transition: transform 120ms var(--ease-boing), filter 120ms var(--ease), background 120ms var(--ease); }
+    button.ico svg { width:18px; height:18px; fill:currentColor; }
     button.ico:hover { background: var(--ink); color: var(--paper); transform: translateY(-2px) rotate(-2deg); }
-    button.ico:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+    button.ico:active { transform: translate(3px, 3px); filter: drop-shadow(0 0 0 var(--ink)); }
     button.ico.on { background: var(--ink); color: var(--paper); }
     button.ico.on:hover { background: var(--ink); color: var(--paper); }
     button.ico.copied { background: var(--go); color: var(--paper); }
     button.ico.failed { background: var(--spark); color: var(--paper); }
-    button.ico:disabled, button.ico[aria-disabled="true"] { opacity:.45; cursor:not-allowed; box-shadow:none; transform:none; }
-    span.ico { cursor: default; }
-    .ico:focus-visible, a.ep-link:focus-visible, summary:focus-visible, .skip:focus-visible {
+    button.ico:disabled, button.ico[aria-disabled="true"] { opacity:.45; cursor:not-allowed; filter:none; transform:none; }
+    button.ico:focus-visible, a:focus-visible, summary:focus-visible, .skip:focus-visible {
       outline: 2.5px solid var(--spark); outline-offset: 3px;
     }
-    .acts { display:inline-flex; gap:8px; flex: 0 0 auto; }
-    .lamp { display:inline-block; width:14px; height:14px; border:3px solid var(--ink); border-radius:50%;
-      background: var(--paper); flex: 0 0 auto; }
-    .lamp.ready, .lamp.go { background: var(--go); }
-    .lamp.not-ready, .lamp.off { background: var(--paper); }
-    .ep-list, .item-list { display:flex; flex-direction:column; gap:8px; min-width:0; }
-    .ep-card, .item-row { display:grid; gap:10px; align-items:center; min-width:0;
-      padding: 10px 0; border-bottom: 3px solid var(--border); background: transparent; }
-    .ep-card { grid-template-columns: auto minmax(0,1fr) auto; }
-    .item-row { grid-template-columns: auto auto minmax(0,1fr) auto; }
-    .ep-card:last-child, .item-row:last-child { border-bottom: 0; }
-    .ep-urls, .item-id { min-width:0; overflow:hidden; }
-    .ep-urls strong { display:block; font-size: 1.125rem; line-height: 1.15; margin: 0 0 4px; }
-    .item-id, .ep-link, .ep-line span { font-family: ui-monospace, monospace; font-size: .875rem; }
-    .ep-line { display:grid; grid-template-columns: minmax(0,1fr) auto; gap:6px; align-items:center; min-width:0; }
-    .ep-urls a, .ep-urls span, .ep-line a, .ep-line > span, .item-id { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    a.ep-link { color: var(--ink); font-weight: 700; text-underline-offset: 3px; }
-    a.ep-link:hover { color: var(--spark); }
-    .listen a, .listen span { font-size: 12px; color: var(--mute); font-weight: 400; }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 0; padding:0; list-style:none; }
+    .chips li { display:inline-flex; align-items:center; gap:6px; border:2px solid var(--border-strong);
+      border-radius:999px; padding:3px 10px; font-size:.75rem; color:var(--mute); min-width:0; }
+    .chips .chip-k { text-transform:uppercase; letter-spacing:.06em; font-weight:700; font-size:.7rem; }
+    .chips .mono { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.75rem; }
     .station-listing { min-width:0; }
-    .station-nest { margin: 8px 0 0; padding: 0 0 0 16px; min-width:0; }
-    details.fold { margin: 8px 0 0; min-width:0; }
-    details.fold > summary { cursor: pointer; list-style: none; display:flex; align-items:center;
-      gap:10px; min-height: 44px; width: max-content; }
+    .station-head { display:grid; grid-template-columns:auto auto minmax(0,1fr) auto; gap:12px;
+      align-items:center; min-width:0; }
+    .station-head h2 { margin:0; font-size:1.5rem; line-height:1.1; }
+    .station-titles { min-width:0; }
+    .station-id { margin:2px 0 0; color:var(--mute); font-family:ui-monospace,monospace; font-size:.75rem;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .station-nest { margin:12px 0 0; min-width:0; }
+    .station-caps { margin:14px 0 0; padding:10px 0 0; border-top:3px solid var(--border); }
+    .caps-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(10rem, 1fr)); column-gap:24px; }
+    .caps-list .row { border-bottom:0; padding:6px 0; }
+    details.fold { margin:8px 0 0; min-width:0; }
+    details.fold > summary { cursor:pointer; list-style:none; display:flex; align-items:center;
+      gap:10px; min-height:44px; width:max-content; padding:0 4px; }
     details.fold > summary::-webkit-details-marker { display:none; }
-    details.fold > summary .pane-title { font-size: 1.125rem; }
-    .caps-list { margin: 0; padding: 0; }
-    .cap { display:grid; grid-template-columns: auto minmax(0,1fr) auto; gap:8px; align-items:center;
-      padding: 8px 0; border-bottom: 3px solid var(--border); min-width:0; }
-    .cap:last-child { border-bottom: 0; }
-    .cap span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family: ui-monospace, monospace; font-size: .875rem; }
-    .cap .cap-state { color: var(--mute); font-size: .75rem; }
-    .tree-node { margin: 12px 0 4px; padding: 0 0 0 16px; min-width:0; }
-    .tree-camp { margin-left: 16px; }
-    .tree-bindle { margin-left: 16px; }
-    .tree-head { display:flex; flex-wrap:wrap; gap: 8px; align-items:center; margin: 0 0 8px; min-width:0; }
-    .tree-head strong { flex: 1 1 8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-      font-family: Chewy, "Arial Rounded MT Bold", system-ui, sans-serif; font-size: 1.15rem; font-weight: 400; }
-    .tree-head .acts { margin-left: auto; }
-    .tree-kind { flex:0 0 auto; width:18px; height:18px; border:3px solid var(--ink); background: var(--paper); }
-    .tree-kind.yard { width:22px; height:12px; }
-    .tree-kind.camp { width:0; height:0; border:0; border-left:10px solid transparent; border-right:10px solid transparent; border-bottom:16px solid var(--ink); background:transparent; }
-    .tree-kind.bindle { width:12px; height:12px; transform:rotate(45deg); }
-    .tree-kind.station { border-radius:50%; }
-    .tree-kind.junction { width:18px; height:8px; }
-    .sigs { display:inline-flex; gap:8px; flex: 0 0 auto; }
-    .sig { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-variant-numeric: tabular-nums; color: var(--mute); }
-    .sig svg { width:14px; height:14px; fill: currentColor; }
-    * { scrollbar-color: var(--ink) var(--inset); scrollbar-width: thick; }
+    details.fold > summary:hover { color: var(--spark); }
+    details.fold > summary .pane-title { font-size:1.125rem; }
+    details.fold > summary::after { content:""; width:9px; height:9px; margin:-4px 0 0;
+      border-right:3px solid currentColor; border-bottom:3px solid currentColor;
+      transform:rotate(45deg); transition: transform 120ms var(--ease); }
+    details.fold[open] > summary::after { margin:2px 0 0; transform:rotate(225deg); }
+    details.fold > summary svg { width:18px; height:18px; fill:currentColor; }
+    .tree-node { min-width:0; }
+    .tree-kids { margin-left:26px; min-width:0; }
+    .tree-camp { min-width:0; }
+    .tree-bindle { min-width:0; }
+    .empty { margin:0; padding:14px 16px; border:3px dashed var(--border-strong); border-radius:12px;
+      color:var(--mute); }
     @media (max-width: 640px) {
-      h1 { font-size: 1.5rem; }
-      main, header { padding-left: 14px; padding-right: 14px; }
-      .item-row, .ep-card { grid-template-columns: auto auto minmax(0,1fr); }
-      .ep-card { grid-template-columns: auto minmax(0,1fr); }
-      .item-row .acts, .item-row .sigs, .ep-card .acts { grid-column: 1 / -1; justify-self: end; }
+      header.dash-head, main { padding-left:14px; padding-right:14px; }
+      #banner { margin:8px 14px 0; }
+      .row { grid-template-columns:auto auto minmax(0,1fr) auto; }
+      .row.cap { grid-template-columns:auto minmax(0,1fr); }
+      .row .acts { order:4; }
+      .row .sigs { order:5; grid-column:1 / -1; justify-self:end; }
+      .tree-kids { margin-left:14px; }
     }
     @media (prefers-reduced-motion: reduce) {
-      button.ico { transform: none; }
-      button.ico:hover, button.ico:active { transform: none; }
+      button.ico, details.fold > summary::after { transition:none; }
+      button.ico:hover, button.ico:active { transform:none; }
     }
   </style>
 </head>
 <body>
   <a class="skip" href="#station-card">station</a>
-  <header class="dash-head"><div><h1>hobo-code · resources</h1><p class="muted" id="scope" role="status"></p></div>${rubberhoseThemeToggleMarkup()}</header>
+  <header class="dash-head"><div class="dash-title"><h1>hobo-code · resources</h1><p class="muted" id="scope" role="status"></p></div>${rubberhoseThemeToggleMarkup()}</header>
   <p id="banner" role="alert" hidden></p>
   <main>
     <section class="card featured" id="station-card" aria-labelledby="station-heading"><div id="station-pane"></div></section>
-    <section class="card" id="resources-card"><h2 class="pane-head" aria-label="yard"><span class="tree-kind yard"></span><span class="pane-title">yard</span></h2><div id="resources"></div></section>
+    <section class="card" id="resources-card"><h2 class="pane-head" aria-label="yard"><span class="tree-kind yard" aria-hidden="true"></span><span class="pane-title">yard</span></h2><div id="resources"></div></section>
     <section class="card" id="fleet-card" hidden><h2 class="pane-head" aria-label="fleet"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="4" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="12" r="2"/></svg><span class="pane-title">peers</span></h2><div id="fleet"></div></section>
   </main>
   <script>
+    var POLL_MS = 5000;
     async function api(path, opt) {
       const res = await fetch(path, opt);
       return res.json();
@@ -206,6 +226,7 @@ const SPA = `<!doctype html>
       banner.textContent = message;
     }
     var focusKey = "";
+    var flashUntil = 0;
     async function act(id, verb) {
       const result = await api("/api/resources/" + encodeURIComponent(id) + "/" + verb, { method: "POST" });
       if (result && result.error) {
@@ -238,6 +259,9 @@ const SPA = `<!doctype html>
     }
     function isOccupancyDoor(name) {
       return name === "dashboard" || name === "evidence" || name === "otlp";
+    }
+    function occupancyLocked(id) {
+      return isStationEndpoint(id);
     }
     function canRestart(id) {
       return id.indexOf("bindle:") === 0 || id === "web" || id === "api";
@@ -275,38 +299,91 @@ const SPA = `<!doctype html>
       restart: svg("<path d='M3 8a5 5 0 0 1 9-3l1-2v6H7l2-2a3.5 3.5 0 1 0 1 4'/>"),
       copy: svg("<rect x='5' y='5' width='8' height='8'/><rect x='3' y='3' width='8' height='8' fill='none' stroke='currentColor' stroke-width='2'/>"),
       lock: svg("<rect x='4' y='7' width='8' height='7'/><path d='M6 7V5a2 2 0 0 1 4 0v2' fill='none' stroke='currentColor' stroke-width='2'/>"),
-      grid: svg("<rect x='2' y='2' width='5' height='5'/><rect x='9' y='2' width='5' height='5'/><rect x='2' y='9' width='5' height='5'/><rect x='9' y='9' width='5' height='5'/>")
+      grid: svg("<rect x='2' y='2' width='5' height='5'/><rect x='9' y='2' width='5' height='5'/><rect x='2' y='9' width='5' height='5'/><rect x='9' y='9' width='5' height='5'/>"),
+      logs: svg("<path d='M2 4h12M2 8h12M2 12h8' fill='none' stroke='currentColor' stroke-width='2'/>"),
+      traces: svg("<rect x='2' y='3' width='8' height='2'/><rect x='5' y='7' width='8' height='2'/><rect x='8' y='11' width='6' height='2'/>"),
+      metrics: svg("<path d='M1 10h3l2-6 3 9 2-6h4' fill='none' stroke='currentColor' stroke-width='2'/>")
     };
-    function ico(verb, extra, label) {
-      return "<span class='ico " + (extra || "") + "' role='img' aria-label='" + esc(label) + "' title='" + esc(label) + "'>" + (ICO[verb] || "") + "</span>";
+    function mark(name, label) {
+      return "<span class='mark' role='img' aria-label='" + esc(label) + "' title='" + esc(label) + "'>" + (ICO[name] || "") + "</span>";
     }
-    function linkHtml(url, kind) {
+    function kindMark(kind) {
+      return "<span class='tree-kind " + esc(kind) + "' role='img' aria-label='" + esc(kind) + "' title='" + esc(kind) + "'></span>";
+    }
+    function lamp(ready) {
+      return "<i class='lamp " + (ready ? "ready" : "not-ready") +
+        "' role='img' aria-label='" + (ready ? "ready" : "stopped") + "'></i>";
+    }
+    function icoAct(verb, extra, label, id, actName) {
+      return "<button type='button' class='ico " + (extra || "") + "' data-act='" +
+        esc(actName) + "' data-id='" + esc(id) + "' aria-label='" + esc(label) +
+        "' title='" + esc(label) + "'>" + (ICO[verb] || "") + "</button>";
+    }
+    function actionsInner(id, locked, ready) {
+      if (locked || occupancyLocked(id)) {
+        return mark("lock", "locked");
+      }
+      if (ready) {
+        return icoAct("stop", "on", "stop", id, "stop") +
+          (canRestart(id) ? icoAct("restart", "", "restart", id, "restart") : "");
+      }
+      return icoAct("play", "", "start", id, "start");
+    }
+    function actsHtml(inner) {
+      return "<span class='acts'>" + inner + "</span>";
+    }
+    function copyBtn(url) {
       if (!url) return "";
-      var label = esc(url);
-      var open = openable(url)
-        ? "<a class='ep-link' href='" + label + "' target='_blank' rel='noopener noreferrer'>" + label + "</a>"
-        : "<span>" + label + "</span>";
-      return "<span class='ep-line " + (kind || "") + "'>" + open +
-        "<button type='button' class='ico copy' data-copy='" + encodeURIComponent(url) + "' aria-label='copy' title='copy'>" + ICO.copy + "</button></span>";
+      return "<button type='button' class='ico copy' data-copy='" + encodeURIComponent(url) +
+        "' aria-label='copy' title='copy'>" + ICO.copy + "</button>";
+    }
+    var telemetry = {};
+    function sigHtml(icon, count, label) {
+      var text = count + " " + label;
+      return "<span class='sig' role='img' aria-label='" + esc(text) + "' title='" + esc(text) + "'>" +
+        ICO[icon] + "<span>" + esc(count) + "</span></span>";
+    }
+    function sigsHtml(id) {
+      var t = telemetry[id];
+      var parts = [];
+      if (t && t.logs > 0) parts.push(sigHtml("logs", t.logs, "logs"));
+      if (t && t.traces > 0) parts.push(sigHtml("traces", t.traces, "traces"));
+      if (t && t.metrics > 0) parts.push(sigHtml("metrics", t.metrics, "metrics"));
+      return "<span class='sigs'>" + parts.join("") + "</span>";
+    }
+    function chipsHtml(inv) {
+      var chips = [];
+      if (inv.scope.environment) chips.push(["env", inv.scope.environment]);
+      if (inv.scope.tenant) chips.push(["tenant", inv.scope.tenant]);
+      if (inv.station && inv.station.scopeLabel) chips.push(["scope", inv.station.scopeLabel]);
+      if (inv.scope.project) chips.push(["project", inv.scope.project]);
+      if (inv.scope.branch) chips.push(["branch", inv.scope.branch]);
+      if (!chips.length) return "";
+      return "<ul class='chips'>" + chips.map(function (chip) {
+        return "<li><span class='chip-k'>" + esc(chip[0]) + "</span><span class='mono' title='" +
+          esc(chip[1]) + "'>" + esc(chip[1]) + "</span></li>";
+      }).join("") + "</ul>";
     }
     var capsOpen = false;
     var sidecarsOpen = false;
     document.addEventListener("click", function (event) {
-      var copyBtn = event.target.closest("[data-copy]");
-      if (copyBtn) {
+      var copyButton = event.target.closest("[data-copy]");
+      if (copyButton) {
         event.preventDefault();
-        focusKey = "copy:" + (copyBtn.getAttribute("data-copy") || "");
-        var text = decodeURIComponent(copyBtn.getAttribute("data-copy") || "");
+        focusKey = "copy:" + (copyButton.getAttribute("data-copy") || "");
+        var text = decodeURIComponent(copyButton.getAttribute("data-copy") || "");
         var ok = function () {
-          copyBtn.classList.remove("failed");
-          copyBtn.classList.add("copied");
-          setTimeout(function () { copyBtn.classList.remove("copied"); }, 1200);
+          copyButton.classList.remove("failed");
+          copyButton.classList.add("copied");
+          flashUntil = Date.now() + 1300;
+          setTimeout(function () { copyButton.classList.remove("copied"); }, 1200);
         };
         var fail = function () {
-          copyBtn.classList.remove("copied");
-          copyBtn.classList.add("failed");
+          copyButton.classList.remove("copied");
+          copyButton.classList.add("failed");
+          flashUntil = Date.now() + 1700;
           showError("clipboard refused");
-          setTimeout(function () { copyBtn.classList.remove("failed"); }, 1600);
+          setTimeout(function () { copyButton.classList.remove("failed"); }, 1600);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(text).then(ok).catch(fail);
@@ -315,82 +392,87 @@ const SPA = `<!doctype html>
         fail();
         return;
       }
-      var actBtn = event.target.closest("[data-act]");
-      if (!actBtn || actBtn.getAttribute("aria-disabled") === "true") return;
+      var actButton = event.target.closest("[data-act]");
+      if (!actButton || actButton.getAttribute("aria-disabled") === "true") return;
       event.preventDefault();
-      focusKey = "act:" + (actBtn.getAttribute("data-act") || "") + ":" + (actBtn.getAttribute("data-id") || "");
-      act(actBtn.getAttribute("data-id") || "", actBtn.getAttribute("data-act") || "");
+      focusKey = "act:" + (actButton.getAttribute("data-act") || "") + ":" + (actButton.getAttribute("data-id") || "");
+      act(actButton.getAttribute("data-id") || "", actButton.getAttribute("data-act") || "");
     });
+    var rendering = false;
     async function render() {
+      if (rendering) return;
+      rendering = true;
+      try {
+        await renderOnce();
+      } finally {
+        rendering = false;
+      }
+    }
+    async function renderOnce() {
       var existingCaps = document.getElementById("station-capabilities");
       if (existingCaps) capsOpen = existingCaps.open;
       var existingSidecars = document.getElementById("station-sidecars");
       if (existingSidecars) sidecarsOpen = existingSidecars.open;
-      const inv = await api("/api/resources");
+      const results = await Promise.all([
+        api("/api/resources"),
+        api("/api/telemetry").catch(function () { return null; })
+      ]);
+      const inv = results[0];
+      telemetry = {};
+      if (results[1] && results[1].resources) {
+        results[1].resources.forEach(function (row) { telemetry[row.resourceName] = row; });
+      }
       const scope = document.getElementById("scope");
       scope.textContent = inv.ok
         ? (inv.scope.stationId + " × " + inv.scope.environment)
         : (inv.message || "auth:out");
       const life = inv.lifecycle || [];
-      function icoAct(verb, extra, label, id, actName) {
-        return "<button type='button' class='ico " + (extra || "") + "' data-act='" +
-          esc(actName) + "' data-id='" + esc(id) + "' aria-label='" + esc(label) +
-          "' title='" + esc(label) + "'>" + (ICO[verb] || "") + "</button>";
-      }
-      function occupancyLocked(id) {
-        return isStationEndpoint(id);
-      }
-      function actions(id, locked, ready) {
-        if (locked || occupancyLocked(id)) {
-          return "<span class='acts'>" + ico("lock", "", "locked") + "</span>";
-        }
-        if (ready) {
-          return "<span class='acts'>" +
-            icoAct("stop", "on", "stop", id, "stop") +
-            (canRestart(id) ? icoAct("restart", "", "restart", id, "restart") : "") +
-            "</span>";
-        }
-        return "<span class='acts'>" + icoAct("play", "", "start", id, "start") + "</span>";
-      }
-      function lamp(ready) {
-        return "<i class='lamp " + (ready ? "ready" : "not-ready") +
-          "' role='img' aria-label='" + (ready ? "ready" : "stopped") + "'></i>";
-      }
-      function rowHtml(kind, id, state, extra, locked, ready) {
-        return "<div class='item-row'>" + lamp(ready) +
-          "<span class='tree-kind " + esc(kind) + "' aria-hidden='true'></span>" +
-          "<span class='item-id' title='" + esc(id) + "'>" + esc(id) + "</span>" +
-          actions(id, locked, ready) + "</div>";
+      function snapOf(id) {
+        return life.find(function (s) { return s.id === id; });
       }
       function capsHtml(rows, open) {
         if (!rows.length) return "";
-        const body = rows.map((r) =>
-          "<div class='cap'>" + lamp(r.available) + "<span title='" + esc(r.kind) + "'>" +
-          esc(r.kind) + "</span><span class='cap-state'>" +
-          (r.available ? "ready" : "off") + "</span></div>"
-        ).join("");
-        return "<details id='station-capabilities' class='fold station-caps'" +
-          (open ? " open" : "") +
+        const body = rows.map(function (r) {
+          return "<div class='row cap'>" + lamp(r.available) +
+            "<span class='row-main'><span class='row-name mono' title='" + esc(r.kind) + "'>" +
+            esc(r.kind) + "</span></span></div>";
+        }).join("");
+        return "<details id='station-capabilities' class='fold station-caps'" + (open ? " open" : "") +
           "><summary aria-label='capabilities'><span class='pane-title'>capabilities</span></summary>" +
-          "<div class='item-list caps-list'>" + body + "</div></details>";
+          "<div class='caps-list'>" + body + "</div></details>";
       }
       function endpointRows(list) {
-        return list.map((e) => {
-          const snap = life.find((s) => s.id === e.resourceName);
+        return list.map(function (e) {
+          const snap = snapOf(e.resourceName);
           const ready = snap && snap.ready;
-          return "<div class='ep-card'>" + lamp(ready) +
-            "<div class='ep-urls'><strong title='" + esc(e.resourceName) + "'>" + esc(e.resourceName) +
-            "</strong>" + linkHtml(namedUrl(e), "named") +
-            linkHtml(listenUrl(e), "listen") + "</div>" +
-            actions(e.resourceName, false, ready) + "</div>";
+          const named = namedUrl(e);
+          const listen = listenUrl(e);
+          const primary = named || listen;
+          var lines = "";
+          if (primary) {
+            lines += "<span class='ep-line'>" + (openable(primary)
+              ? "<a class='ep-link' href='" + esc(primary) + "' target='_blank' rel='noopener noreferrer' title='" + esc(primary) + "'>" + esc(primary) + "</a>"
+              : "<span class='ep-link' title='" + esc(primary) + "'>" + esc(primary) + "</span>") + "</span>";
+          }
+          if (listen && listen !== primary) {
+            lines += "<span class='ep-line'>" + (openable(listen)
+              ? "<a class='listen-link' href='" + esc(listen) + "' target='_blank' rel='noopener noreferrer' title='" + esc(listen) + "'>" + esc(listen) + "</a>"
+              : "<span class='listen-addr' title='" + esc(listen) + "'>" + esc(listen) + "</span>") + "</span>";
+          }
+          return "<div class='row'>" + lamp(ready) + kindMark(e.kind || "endpoint") +
+            "<span class='row-main'><span class='row-name' title='" + esc(e.resourceName) + "'>" +
+            esc(e.resourceName) + "</span>" + lines + "</span>" +
+            sigsHtml(e.resourceName) +
+            actsHtml(copyBtn(primary) + actionsInner(e.resourceName, false, ready)) +
+            "</div>";
         }).join("");
       }
-      const stationEps = (inv.endpoints || []).filter((e) => isStationEndpoint(e.resourceName));
-      const doorEps = stationEps.filter((e) => isOccupancyDoor(e.resourceName));
-      const sidecarEps = stationEps.filter((e) => !isOccupancyDoor(e.resourceName));
-      const bindleEps = (inv.endpoints || []).filter((e) => !isStationEndpoint(e.resourceName));
+      const stationEps = (inv.endpoints || []).filter(function (e) { return isStationEndpoint(e.resourceName); });
+      const doorEps = stationEps.filter(function (e) { return isOccupancyDoor(e.resourceName); });
+      const sidecarEps = stationEps.filter(function (e) { return !isOccupancyDoor(e.resourceName); });
+      const bindleEps = (inv.endpoints || []).filter(function (e) { return !isStationEndpoint(e.resourceName); });
       const station = inv.station;
-      const stationSnap = station ? life.find((s) => s.id === station.id) : undefined;
+      const stationSnap = station ? snapOf(station.id) : undefined;
       const stationReady = stationSnap && stationSnap.ready;
       const stationPane = document.getElementById("station-pane");
       if (!station) {
@@ -398,22 +480,18 @@ const SPA = `<!doctype html>
       } else {
         var folded = sidecarEps.length
           ? "<details id='station-sidecars' class='fold'" + (sidecarsOpen ? " open" : "") +
-            "><summary aria-label='sidecars'>" + ICO.grid +
-            "<span class='pane-title'>hosts</span></summary><div class='ep-list'>" +
-            endpointRows(sidecarEps) + "</div></details>"
+            "><summary aria-label='hosts'>" + ICO.grid +
+            "<span class='pane-title'>hosts</span></summary>" +
+            endpointRows(sidecarEps) + "</details>"
           : "";
         stationPane.innerHTML =
           "<div class='station-listing'><div class='station-head'>" + lamp(stationReady) +
-          "<span class='tree-kind station' aria-hidden='true'></span>" +
+          kindMark("station") +
           "<div class='station-titles'><h2 id='station-heading'>station</h2>" +
           "<p class='station-id' title='" + esc(station.id) + "'>" + esc(station.id) + "</p></div>" +
-          actions(station.id, true, stationReady) + "</div>" +
-          "<p class='muted scope-line' title='" +
-          esc((inv.scope.environment || "") + " · " + (inv.scope.tenant || "")) + "'>" +
-          esc(inv.scope.environment || "") + " · " + esc(inv.scope.tenant || "") + "</p>" +
-          "<div class='station-nest'><div class='ep-list'>" + endpointRows(doorEps) + "</div>" +
-          folded +
-          "</div>" +
+          actsHtml(actionsInner(station.id, true, stationReady)) + "</div>" +
+          chipsHtml(inv) +
+          "<div class='station-nest'>" + endpointRows(doorEps) + folded + "</div>" +
           capsHtml(inv.capabilities || [], capsOpen) +
           "</div>";
       }
@@ -427,29 +505,21 @@ const SPA = `<!doctype html>
         });
       }
       function nodeReady(n) {
-        const snap = life.find(function (s) { return s.id === n.id; });
-        return {
-          snap: snap,
-          ready: snap && snap.ready,
-          state: snap ? snap.state : n.status
-        };
+        const snap = snapOf(n.id);
+        return { snap: snap, ready: snap && snap.ready };
       }
-      function managedTable(ownerId, fallbackState) {
+      function managedTable(ownerId) {
         const rows = managedOf(ownerId);
         if (!rows.length) return "";
-        return "<div class='item-list'>" +
-          rows.map(function (m) {
-            const child = life.find(function (s) { return s.id === m.id; });
-            return rowHtml(
-              m.kind,
-              m.id,
-              child ? child.state : fallbackState,
-              m.ownerKind,
-              m.controllable === false,
-              child && child.ready
-            );
-          }).join("") +
-          "</div>";
+        return rows.map(function (m) {
+          const child = snapOf(m.id);
+          return "<div class='row'>" + lamp(child && child.ready) + kindMark(m.kind) +
+            "<span class='row-main'><span class='row-name mono' title='" + esc(m.id) + "'>" +
+            esc(m.id) + "</span></span>" +
+            sigsHtml(m.id) +
+            actsHtml(actionsInner(m.id, m.controllable === false, child && child.ready)) +
+            "</div>";
+        }).join("");
       }
       function endpointsForBindle(bindle) {
         const names = {};
@@ -469,35 +539,25 @@ const SPA = `<!doctype html>
         const st = nodeReady(node);
         const locked = node.id === "camp:code" || node.id === "bindle:code";
         return "<div class='tree-node tree-" + kind + "'>" +
-          "<div class='tree-head'>" + lamp(st.ready) +
-          "<span class='tree-kind " + kind + "' aria-hidden='true'></span><strong title='" +
-          esc(node.id) + "'>" + esc(node.id) + "</strong>" +
-          actions(node.id, locked, st.ready) + "</div>" +
-          (inner || "") +
+          "<div class='row'>" + lamp(st.ready) + kindMark(kind) +
+          "<span class='row-main'><span class='row-name mono' title='" + esc(node.id) + "'>" +
+          esc(node.id) + "</span></span>" +
+          sigsHtml(node.id) +
+          actsHtml(actionsInner(node.id, locked, st.ready)) + "</div>" +
+          (inner ? "<div class='tree-kids'>" + inner + "</div>" : "") +
           "</div>";
       }
       function bindleHtml(bindle) {
         const eps = endpointsForBindle(bindle);
-        const epTable = eps.length
-          ? "<div class='ep-list'>" + endpointRows(eps) + "</div>"
-          : "";
-        return treeBlock("bindle", bindle, managedTable(bindle.id, bindle.status) + epTable);
+        return treeBlock("bindle", bindle, managedTable(bindle.id) + endpointRows(eps));
       }
       function campHtml(campNode) {
         const kids = bindles.filter(function (b) { return b.parentId === campNode.id; });
-        return treeBlock(
-          "camp",
-          campNode,
-          managedTable(campNode.id, campNode.status) + kids.map(bindleHtml).join("")
-        );
+        return treeBlock("camp", campNode, managedTable(campNode.id) + kids.map(bindleHtml).join(""));
       }
       function yardHtml(yard) {
         const kids = camps.filter(function (c) { return c.parentId === yard.id; });
-        return treeBlock(
-          "yard",
-          yard,
-          managedTable(yard.id, yard.status) + kids.map(campHtml).join("")
-        );
+        return treeBlock("yard", yard, managedTable(yard.id) + kids.map(campHtml).join(""));
       }
       const yardIds = {};
       yards.forEach(function (y) { yardIds[y.id] = true; });
@@ -511,11 +571,9 @@ const SPA = `<!doctype html>
       const tree = yards.map(yardHtml).join("") + orphanCamps.map(campHtml).join("") +
         orphanBindles.map(bindleHtml).join("");
       const leftover = bindleEps.filter(function (e) { return !claimed[e.resourceName]; });
-      document.getElementById("resources").innerHTML =
-        junctions + tree +
-        (leftover.length
-          ? "<div class='ep-list'>" + endpointRows(leftover) + "</div>"
-          : "");
+      const board = junctions + tree + (leftover.length ? endpointRows(leftover) : "");
+      document.getElementById("resources").innerHTML = board ||
+        "<p class='empty'>no bindles on this yard yet — <code>hobo-code dev</code> puts one here</p>";
       var fleetCard = document.getElementById("fleet-card");
       var fleetPeers = inv.peers || [];
       if (!fleetPeers.length) {
@@ -524,12 +582,11 @@ const SPA = `<!doctype html>
       } else {
         fleetCard.hidden = false;
         document.getElementById("fleet").innerHTML =
-          "<div class='item-list'>" +
           fleetPeers.map(function (n) {
-            return "<div class='item-row'>" + lamp(true) +
-              "<span class='tree-kind station' aria-hidden='true'></span>" +
-              "<span class='item-id' title='" + esc(n.id) + "'>" + esc(n.id) + "</span></div>";
-          }).join("") + "</div>";
+            return "<div class='row'>" + lamp(true) + kindMark("station") +
+              "<span class='row-main'><span class='row-name mono' title='" + esc(n.id) + "'>" +
+              esc(n.id) + "</span></span><span class='sigs'></span><span class='acts'></span></div>";
+          }).join("");
       }
       if (focusKey) {
         var needle = focusKey.split(":");
@@ -537,10 +594,19 @@ const SPA = `<!doctype html>
           ? document.querySelector("[data-copy='" + focusKey.slice(5) + "']")
           : document.querySelector("[data-act='" + needle[1] + "'][data-id='" + needle.slice(2).join(":") + "']");
         if (restore) restore.focus();
+        focusKey = "";
       }
     }
-    render().catch((err) => {
+    render().catch(function (err) {
       showError(String(err));
+    });
+    setInterval(function () {
+      if (document.hidden) return;
+      if (Date.now() < flashUntil) return;
+      render().catch(function () {});
+    }, POLL_MS);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) render().catch(function () {});
     });
     ${rubberhoseThemeToggleScript()}
   </script>

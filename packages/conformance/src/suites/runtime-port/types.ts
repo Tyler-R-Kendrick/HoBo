@@ -12,7 +12,7 @@ import type {
 export const RUNTIME_PORT_CONFORMANCE_VERSION =
 	"hobo.runtime-port-conformance/v1";
 
-// The ActorHost seam under test is the canonical `@hobo/core` port (ADR-0155);
+// The ActorHost seam under test is the canonical `@hobo/core` port (ADR-0156);
 // the suite keeps its historical exported names as aliases.
 export type { ActorLease as ActorHostLease } from "@hobo/core";
 export type ActorHostState<S = unknown> = ActorStateHandle<S>;

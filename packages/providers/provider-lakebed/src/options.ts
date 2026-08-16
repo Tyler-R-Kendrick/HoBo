@@ -3,7 +3,7 @@ export const LAKEBED_PROVIDER_TARGET = "lakebed";
 
 // A `type` alias (not an interface) so it keeps an implicit index signature
 // and stays assignable to @hobo/core's opaque `TypedOptionBlock`
-// (Record<string, unknown>) on ResourcePlan.options (ADR-0155).
+// (Record<string, unknown>) on ResourcePlan.options (ADR-0156).
 export type TypedOptionBlock = {
 	providerId: string;
 	port: string;

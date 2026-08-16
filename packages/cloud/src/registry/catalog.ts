@@ -18,7 +18,7 @@ import { collectStream } from "../store/index.js";
 // capability negotiation.
 
 // Structural shapes of a registrable CloudProvider — a declared narrowing of
-// @hobo/core's canonical `CloudProvider` port (ADR-0155), not a locally
+// @hobo/core's canonical `CloudProvider` port (ADR-0156), not a locally
 // invented contract: the registry consumes only the manifest/capability face
 // of that port, so these types pick exactly the members it folds. Assignability
 // of core's `CloudProvider` is proven by the compile-time assertion below
@@ -53,7 +53,7 @@ export interface RegistrableProvider {
 	};
 }
 
-// Compile-time proof (ADR-0155): every @hobo/core `CloudProvider` is a
+// Compile-time proof (ADR-0156): every @hobo/core `CloudProvider` is a
 // `RegistrableProvider` as-is. If this stops compiling, the narrowing above
 // has drifted from the canonical port.
 const _coreCloudProviderIsRegistrable = (

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package hobo.core.v1;
 
-// hobo.plugin/v1 wire records (ADR-0155): the plugin manifest a package
+// hobo.plugin/v1 wire records (ADR-0156): the plugin manifest a package
 // declares under its package.json "hobo" key, plus registry duplicate
 // policy vocabulary for the extension-registry primitive.
 

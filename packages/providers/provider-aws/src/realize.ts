@@ -67,7 +67,7 @@ export function resolveEquivalence(port: string) {
 
 /** Merge only AWS-owned option blocks; foreign provider blocks drop. */
 export function mergeAwsOptions(
-	// Core's ResourcePlan carries opaque option blocks (ADR-0155); every HoBo
+	// Core's ResourcePlan carries opaque option blocks (ADR-0156); every HoBo
 	// `.with(...)` builder emits the shared TypedOptionBlock shape, and
 	// foreign-provider blocks drop below by providerId.
 	options: ResourcePlan["options"] = [],

@@ -1,6 +1,6 @@
 // Port shapes the authoring runtime runs on. These are the seams the engine is
 // injected with — never reinvented here. The ActorHost seam is the canonical
-// `@hobo/core` port (ADR-0155), re-exported so the engine and its consumers
+// `@hobo/core` port (ADR-0156), re-exported so the engine and its consumers
 // keep importing it from `./ports.js`. In production a Camp supplies the
 // implementations; in tests the `@hobo/runtime-local` in-memory implementations
 // are injected (its `ActorHostPort` / `ActorHostLease` / `ManualClock` are

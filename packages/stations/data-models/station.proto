@@ -39,6 +39,38 @@ message RailRecord {
   string published_at = 10;
 }
 
+// Declared Station capability (ADR-0155). id = capability:<kind>:<slug>.
+message StationCapabilityRecord {
+  string schema = 1; // hobo.station-capability/v1
+  string id = 2;
+  string kind = 3; // runtime | vcs | isolation-backend | model-server | toolchain | harness | sidecar | pam | replay
+  string slug = 4;
+  string title = 5;
+  string provenance = 6; // default | discovered | declared
+  bool required = 7;
+  string remediation = 8;
+  map<string, string> metadata = 9;
+}
+
+// One declared capability matched against host evidence (fail-closed).
+message MatchedStationCapabilityRecord {
+  StationCapabilityRecord capability = 1;
+  string status = 2; // present | missing
+  repeated string evidence = 3;
+  string detail = 4;
+}
+
+// Audited match of a declared capability set against the occupying host.
+message StationCapabilityManifestRecord {
+  string schema = 1; // hobo.station-capability-manifest/v1
+  string station_id = 2;
+  bool ok = 3; // every required capability present
+  repeated MatchedStationCapabilityRecord capabilities = 4;
+  repeated string missing_required = 5;
+  repeated string remediation = 6;
+  string generated_at = 7;
+}
+
 message StationCreatedEventData {
   string station_id = 1;
   string name = 2;

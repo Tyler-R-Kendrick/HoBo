@@ -9,13 +9,20 @@ import {
 	type StationClient,
 } from "@hobo/stations";
 
+import {
+	codeDevStation,
+	stationInitArgsFromDeclaration,
+} from "./dev-stations.js";
 import { codeImprovementTrails, cqReflectHook } from "./dogfood.js";
 
 /** OpenFeature-shaped flag evaluation port (ADR-0044 / ADR-0083). */
 export interface CodeFeaturePort {
 	readonly evaluateBoolean: (
 		key: string,
-		context: { targetingKey: string; attributes?: Readonly<Record<string, string>> },
+		context: {
+			targetingKey: string;
+			attributes?: Readonly<Record<string, string>>;
+		},
 	) => { value: boolean; reason: string; variant: string };
 	readonly listKeys: () => readonly string[];
 }
@@ -158,7 +165,11 @@ export function bindCodeStation(options: {
 
 	const tryOccupancy = (
 		id: string,
-	): { stationId: string; railHash?: string; bootstrapActive: boolean } | null => {
+	): {
+		stationId: string;
+		railHash?: string;
+		bootstrapActive: boolean;
+	} | null => {
 		try {
 			const client: StationClient = createStationClient({
 				hoboHome: options.hoboHome,
@@ -180,14 +191,17 @@ export function bindCodeStation(options: {
 	let bound = tryOccupancy(stationId);
 	if (!bound && options.autoInit !== false) {
 		const name = stationId.replace(/^station:/, "") || "local";
-		const id = stationId.startsWith("station:") ? stationId : `station:${name}`;
+		// Dogfood (ADR-0155): auto-init derives its arguments from the
+		// declared dev-scenario Station instead of ad-hoc literals.
+		const declaration = codeDevStation("local-dev", {
+			name,
+			...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
+		});
 		initStation({
 			hoboHome: options.hoboHome,
-			name,
-			tenant: options.tenant ?? "local",
-			id,
+			...stationInitArgsFromDeclaration(declaration),
 		});
-		bound = tryOccupancy(id);
+		bound = tryOccupancy(declaration.id);
 		if (bound) stationId = bound.stationId;
 	}
 
@@ -240,7 +254,9 @@ export function composeCodePlatform(options: {
 }): CodePlatformSnapshot {
 	const station = bindCodeStation({
 		hoboHome: options.hoboHome,
-		...(options.stationId !== undefined ? { stationId: options.stationId } : {}),
+		...(options.stationId !== undefined
+			? { stationId: options.stationId }
+			: {}),
 		autoInit: options.autoInitStation !== false,
 		...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
 	});
@@ -310,9 +326,7 @@ export function createMemoryFeaturePort(
 		evaluateBoolean(key) {
 			const value =
 				flags[key] ??
-				CODE_FEATURE_DEFAULTS[
-					key as keyof typeof CODE_FEATURE_DEFAULTS
-				] ??
+				CODE_FEATURE_DEFAULTS[key as keyof typeof CODE_FEATURE_DEFAULTS] ??
 				true;
 			return {
 				value,

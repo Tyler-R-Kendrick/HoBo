@@ -1,6 +1,6 @@
 import { createPortDescriptor, type PortDescriptor } from "../ports.js";
 
-// The canonical ActorHost port (ADR-0155). Before ADR-0155 this seam was
+// The canonical ActorHost port (ADR-0156). Before ADR-0156 this seam was
 // re-declared, structurally identically, in @hobo/runtime, @hobo/data,
 // @hobo/conformance, and each actor-capable runtime adapter — compatible by
 // accident, not by contract. glossary.md always listed ActorHost among the

@@ -1,7 +1,7 @@
 import { createPortDescriptor, type PortDescriptor } from "../ports.js";
 
-// The canonical CloudProvider port (ADR-0155, control-plane.md "Port &
-// provider interfaces"). Until ADR-0155 this contract was copy-pasted into
+// The canonical CloudProvider port (ADR-0156, control-plane.md "Port &
+// provider interfaces"). Until ADR-0156 this contract was copy-pasted into
 // each provider package because the boundary lint forbids adapter→adapter
 // imports; core is the one package adapters may import, so the port lives
 // here and provider packages re-export it. Wire form:

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package hobo.core.v1;
 
-// Canonical CloudProvider port wire records (ADR-0155). The behavioral
+// Canonical CloudProvider port wire records (ADR-0156). The behavioral
 // interface (satisfies/estimateCost/realize/client) is TypeScript-only in
 // src/ports/cloud-provider.ts; these are the record shapes that cross the
 // boundary. "Record" suffix per core convention to keep generated wire

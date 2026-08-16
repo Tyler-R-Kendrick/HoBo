@@ -4,7 +4,7 @@ export const ACTOR_HOST_RUNTIME_PORT_VERSION =
 	"hobo.actor-host-runtime-port/v1";
 
 // The port implemented here is the canonical `@hobo/core` actor-host port
-// (ADR-0155); the historical exported names stay as aliases.
+// (ADR-0156); the historical exported names stay as aliases.
 export type ActorHostLease = ActorLease;
 export type ActorHostState<S = unknown> = ActorStateHandle<S>;
 export type ActorHostPort = ActorHost;

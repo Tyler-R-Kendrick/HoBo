@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package hobo.core.v1;
 
-// Canonical ActorHost port wire records (ADR-0155). The behavioral host
+// Canonical ActorHost port wire records (ADR-0156). The behavioral host
 // interface (acquire/state/append/read) is TypeScript-only in
 // src/ports/actor-host.ts; these are the lease/fold record shapes.
 // Fence tokens ride as decimal strings (bigint-safe).

@@ -12,7 +12,7 @@ import {
 import { PLUGIN_DECLARATION_SCHEMA } from "./schema.js";
 
 // `definePlugin` is the authoring factory for hobo.plugin/v1 packages
-// (ADR-0155 §4, extension-points.md §Packaging). The manifest TYPES and the
+// (ADR-0156 §4, extension-points.md §Packaging). The manifest TYPES and the
 // pure parser live in @hobo/core; this factory is the operator-SDK
 // ergonomics: declare once in code, emit the exact package.json `hobo`
 // fragment, and self-check the plugin entry's exports in the plugin's own

@@ -11,7 +11,7 @@ import {
 	requiredArray,
 } from "./parse-utils.js";
 
-// hobo.plugin/v1 (ADR-0155 §4, extension-points.md §Packaging): the `hobo`
+// hobo.plugin/v1 (ADR-0156 §4, extension-points.md §Packaging): the `hobo`
 // key an external plugin package declares in its package.json — the entry
 // module plus the `{point, export}` extensions it provides. This module is
 // the PURE half (parse-don't-validate); the effectful loader that imports

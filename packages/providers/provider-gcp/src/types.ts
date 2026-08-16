@@ -1,4 +1,4 @@
-// The canonical CloudProvider contract lives in @hobo/core (ADR-0155,
+// The canonical CloudProvider contract lives in @hobo/core (ADR-0156,
 // packages/core/src/ports/cloud-provider.ts); this module re-exports it so
 // existing `@hobo/provider-gcp` imports keep working. Package-local
 // narrowings (IacProgram, BuildSpec, PublishedManifestDocuments,

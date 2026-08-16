@@ -17,7 +17,7 @@ export const DEFAULT_REGIONS = ["us-central1", "us-east1", "europe-west1"];
 
 // A `type` alias (not an interface) so it keeps an implicit index signature
 // and stays assignable to @hobo/core's `PublishedManifestDocuments`
-// (Record<string, string>) on CapabilityManifest.published (ADR-0155).
+// (Record<string, string>) on CapabilityManifest.published (ADR-0156).
 export type PublishedManifestDocuments = {
 	"/.well-known/capability-manifest/index.json": string;
 	"/.well-known/capability-manifest/capabilities.json": string;

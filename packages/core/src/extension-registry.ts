@@ -1,7 +1,7 @@
 import { CoreParseError } from "./errors.js";
 import { deepFreeze, nonEmptyString } from "./parse-utils.js";
 
-// The one registry primitive (ADR-0155 §3, extension-points.md). HoBo's
+// The one registry primitive (ADR-0156 §3, extension-points.md). HoBo's
 // registries diverged into mutable `register()` maps, constructor-frozen
 // sets, and const arrays — each with its own (often unstated) duplicate-id
 // policy. This module is the single registration algebra those surfaces are

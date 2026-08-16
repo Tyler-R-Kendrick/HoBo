@@ -20,15 +20,15 @@ import {
 import type { DaprSidecarClient } from "./dapr-client.js";
 import type { DaprRuntimeConfig } from "./types.js";
 
-/** Core `ActorLease` (ADR-0155) tagged with the Dapr placement. */
+/** Core `ActorLease` (ADR-0156) tagged with the Dapr placement. */
 export interface DaprActorLease extends ActorLease {
 	readonly placement: "dapr";
 }
 
-/** The canonical `@hobo/core` state handle (ADR-0155), under its Dapr name. */
+/** The canonical `@hobo/core` state handle (ADR-0156), under its Dapr name. */
 export type DaprActorStateHandle<S> = ActorStateHandle<S>;
 
-/** The core ActorHost port (ADR-0155) plus Dapr-specific members. */
+/** The core ActorHost port (ADR-0156) plus Dapr-specific members. */
 export interface DaprActorHost extends ActorHost {
 	readonly placementMode: "dapr";
 	/** `live` when a daprd client was injected for reminders/invoke. */

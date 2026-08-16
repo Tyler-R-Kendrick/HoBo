@@ -762,7 +762,7 @@ A research provider matrix also existed, ranking providers by a weighted scalar 
 - **(−)** Claim flows are multi-step and visibly so. A user may face two deadlines and a mandatory rotation where a less honest design would have shown one green check.
 - **(−)** Live conformance is a real operational obligation. Evidence expires, and expiry silently narrows what the resolver will pick until someone re-runs the guarded harness.
 
-## ADR-0155
+## ADR-0156
 **The Plugin SPI: one extension-point model, a core-owned provider port, and manifest-declared external plugins.**
 
 ### Context

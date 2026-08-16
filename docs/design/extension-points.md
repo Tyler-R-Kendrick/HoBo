@@ -7,7 +7,7 @@ tags: [hobo, design]
 
 # Extension Points
 
-This note is the normative catalog backing [ADR-0155](./adr/07-portability-extensibility.md#adr-0155).
+This note is the normative catalog backing [ADR-0156](./adr/07-portability-extensibility.md#adr-0156).
 An **extension point** is a named, versioned seam (`hobo.<name>/v<major>`) where a
 package other than the seam's owner supplies behavior. Every mechanism that lets
 code plug into HoBo has a row here; a new mechanism must add a row (the
@@ -68,7 +68,7 @@ between "registered" and "selected".
 
 | Extension point | Seam owner | Reg. semantics | Discovery | Gate | Status |
 |---|---|---|---|---|---|
-| `hobo.code.harness-spec/v1` — agent-harness plugins | `@hobo/code` (`agent-harness-catalog.ts`) | 4 layers, later id wins: bundled JSON → `$HOBO_HOME/durable/code/harnesses/` → `<cwd>/.hobo/harnesses/` → in-process `registerHarness()` | **filesystem JSON discovery** (the only one in the repo besides patterns) | parse-don't-validate spec with surfaced diagnostics (was: silent `catch { }`) | schema landed with ADR-0155; kind-enum collapse landed |
+| `hobo.code.harness-spec/v1` — agent-harness plugins | `@hobo/code` (`agent-harness-catalog.ts`) | 4 layers, later id wins: bundled JSON → `$HOBO_HOME/durable/code/harnesses/` → `<cwd>/.hobo/harnesses/` → in-process `registerHarness()` | **filesystem JSON discovery** (the only one in the repo besides patterns) | parse-don't-validate spec with surfaced diagnostics (was: silent `catch { }`) | schema landed with ADR-0156; kind-enum collapse landed |
 | `hobo.conformance-suite/v1` / `hobo.conformance-adapter/v1` | `@hobo/conformance` `src/registry.ts` | mutable `register`; duplicate id: throw; suites list id-sorted | passed by host; live CLI dynamic-imports `--adapter <module>` (the one pre-existing dynamic-load seam) | the suites *are* the gate | catalog row |
 | `hobo.pattern/v1` — scaffolding patterns | `@hobo/patterns` | filesystem walk from catalog root; content-digested | directory convention | `parsePatternManifest` | catalog row |
 | `hobo.skill-manifest/v1` — agent skills | `@hobo/agent-skills` (`hobo.agent-skills-manifest/v1`) | frontmatter parse of `SKILL.md` | directory convention | `checkSkillsConformance` | **orphaned**: `packages/code/src/harness.ts` re-implements discovery inline and never runs conformance — see Follow-ups |

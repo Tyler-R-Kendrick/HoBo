@@ -15,7 +15,7 @@ import {
 
 import { registerInstallable } from "./add-command.js";
 
-// The effectful half of the hobo.plugin/v1 story (ADR-0155 §4,
+// The effectful half of the hobo.plugin/v1 story (ADR-0156 §4,
 // extension-points.md §Packaging). `@hobo/core` owns the PURE manifest
 // parser; this module — the composition root — owns dynamic import and
 // registration. Discovery is by EXPLICIT specifier only (config/CLI), never

@@ -15,6 +15,27 @@
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
 import { HOBO_LOGO_TUI } from "./_generated/hobo-logo-tui.js";
+import { harnessDisplayLabel, loadHarnessCatalog } from "./agent-harness-catalog.js";
+import {
+	AGENTS_CATALOG_KEY_LEGEND,
+	type AgentsCatalogPick,
+	type AgentsCatalogState,
+	buildAgentsCatalog,
+	discoverProjectEveAgents,
+	flattenVisible,
+	reduceAgentsCatalogKey,
+} from "./agents-catalog.js";
+import {
+	AGENTS_CONFIGURE_KEY_LEGEND,
+	type AgentsConfigureCatalogOptions,
+	type AgentsConfigureState,
+	formatAgentsConfigureLines,
+	openEveConfigure,
+	openEveConfigureFromParent,
+	openHarnessConfigure,
+	openHoboBoConfigure,
+	reduceAgentsConfigureKey,
+} from "./agents-configure.js";
 import type { AgentWorkBoard } from "./agent-work.js";
 import {
 	EMPTY_TURN,
@@ -44,14 +65,45 @@ import {
 } from "./grok-build-parity.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
 import {
-	cycleInSessionWindow,
+	DEFAULT_OLLAMA_HOST,
+	probeOllama,
+} from "./ollama-engine.js";
+import {
 	emptyInSessionPanes,
 	ensureInSessionPanes,
+	focusInSessionLeaf,
 	type InSessionPanes,
 	isProductPrompt,
 	pickSendWindow,
 	refreshInSessionPanes,
+	sendKeysRawToInSessionPane,
 } from "./in-session-panes.js";
+import {
+	attachTmuxFullscreen,
+	AGENTS_ATTACH_HINT,
+	isPaneInteractDetach,
+	PANE_INTERACT_HINT,
+} from "./pane-interact.js";
+import {
+	cycleHarnessFocus,
+	cycleHarnessLeaf,
+	emptyHarnessSessionView,
+	focusedHarnessAgentId,
+	focusedHarnessPane,
+	formatHarnessSessionLines,
+	harnessViewFromLivePanes,
+	harnessViewFromSnapshot,
+	type HarnessSessionView,
+	mergeHarnessSessions,
+	syncLivePanesFocus,
+} from "./harness-session-view.js";
+import {
+	executeHarnessChromeAction,
+	HARNESS_CHROME_KEY_HINT,
+	type HarnessChromeAction,
+	harnessActionFromSlash,
+} from "./harness-session-actions.js";
+import { createLocalSessionControl } from "./local-session-control.js";
 import { tmuxRunner } from "./mux.js";
 import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import { type AccentName, centreBlock } from "./rubberhose.js";
@@ -70,6 +122,18 @@ import type {
 	SandboxChange,
 } from "./shell-engine.js";
 import { createShellInput } from "./shell-input.js";
+import {
+	clampScrollState,
+	followingLive,
+	halfPageStep,
+	maxTranscriptOffset,
+	pageStep,
+	scrollFocused as scrollFocusedPure,
+	scrollHistoryFooterHint,
+	scrollToHome,
+	scrollToLive,
+	shellViewportRows,
+} from "./shell-scroll.js";
 import { StreamTerminal } from "./shell-terminal.js";
 import {
 	BO_CELL_HEIGHT,
@@ -92,12 +156,11 @@ import {
 	startStationSidecars,
 } from "./station-sidecars.js";
 import { buildMultiplexerStatus, createPane, renderStatusText } from "./tui.js";
-import {
-	BROADCAST_CHROME_ROWS,
-	BROADCAST_INNER_INSET,
-} from "./tui-broadcast.js";
+import { BROADCAST_INNER_INSET } from "./tui-broadcast.js";
 import {
 	AgentPanes,
+	AGENTS_KEY_LEGEND,
+	AgentsCatalog,
 	ApprovalDialog,
 	BtwAside,
 	ChatTranscript,
@@ -117,6 +180,7 @@ import { matchWorkspaceAction } from "./workspace-actions.js";
 export type ShellFocus =
 	| "chat"
 	| "agents"
+	| "agents-catalog"
 	| "status"
 	| "resources"
 	| "slash"
@@ -154,7 +218,14 @@ export interface ShellSlashItem {
 		| "btw"
 		| "resume"
 		| "compact"
-		| "agents";
+		| "agents"
+		| "mux"
+		| "pane-attach"
+		| "session-detach"
+		| "session-stop"
+		| "session-tab"
+		| "session-pane"
+		| "session-focus";
 }
 
 /** A promotion awaiting explicit approval — the sole audited mutation path. */
@@ -181,8 +252,18 @@ export interface InteractiveShellState {
 	readonly slashIndex: number;
 	/** Lines scrolled up from the bottom of the chat / btw transcript. */
 	readonly chatScroll: number;
-	/** Lines scrolled down from the top of agents / status / resources / approval. */
+	/**
+	 * Agents: lines up from live end (end-origin, like chatScroll).
+	 * Status/resources/approval: lines down from the top (start-origin).
+	 */
 	readonly paneScroll: number;
+	/** Cached Agents body line count for scroll clamping. */
+	readonly agentsBodyLines: number;
+	/**
+	 * Full-buffer transcript review (Claude Ctrl+O less-mode). Null = inline
+	 * chat viewport. Offset is start-origin lines into the transcript.
+	 */
+	readonly transcriptMode: { readonly offset: number } | null;
 	/**
 	 * Promotion approval gate (ADR-0139): engine edits live in a mediated
 	 * sandbox and only reach the canonical tree through an explicit human
@@ -201,6 +282,31 @@ export interface InteractiveShellState {
 	readonly resourcesPlain: string;
 	/** Live tmux agent panes captured into this TTY. Null until seated. */
 	readonly livePanes: InSessionPanes | null;
+	/**
+	 * Herdr-shaped Agents model: Session → Tab → Pane.
+	 * Driven from live mux seating and/or resident session snapshots.
+	 */
+	readonly harnessView: HarnessSessionView;
+	/**
+	 * When true on Agents, keystrokes forward to the focused tmux pane
+	 * (interactive menus). Ctrl+] leaves without quitting the shell.
+	 */
+	readonly paneInteract: boolean;
+	/**
+	 * `/agents` harness catalog (picker + browse). Null when closed.
+	 */
+	readonly agentsCatalog: AgentsCatalogState | null;
+	/**
+	 * `/agents` configure form (model/effort). Opened via Enter on a catalog row.
+	 */
+	readonly agentsConfigure: AgentsConfigureState | null;
+	/**
+	 * Cached local ollama tags for the Bo model catalog (refreshed on /agents).
+	 */
+	readonly boOllama: {
+		readonly host: string;
+		readonly models: readonly string[];
+	} | null;
 	/** True after a subagent turn starts — unlocks the agents tab. */
 	readonly agentWork: boolean;
 	readonly footerHints: string;
@@ -237,19 +343,25 @@ export const DEFAULT_SLASH_ITEMS: readonly ShellSlashItem[] = [
 	},
 	{
 		name: "agents",
-		aliases: ["panes", "tasks", "task"],
-		description: "Subagents and the tasks they claimed",
+		description: "Configure harnesses + subagents (model / effort)",
 		action: "agents",
+	},
+	{
+		name: "mux",
+		description:
+			"Connect to agent terminal sessions (TV · attach · tab · pane · stop)",
+		action: "mux",
+	},
+	{
+		name: "tasks",
+		aliases: ["task"],
+		description: "Session work board (claimed tasks)",
+		argv: ["tasks"],
 	},
 	{
 		name: "ide",
 		description: "Open your editor on this session (neovim by default)",
 		argv: ["edit"],
-	},
-	{
-		name: "agent",
-		description: "Agent-native readiness (auth, protocols, unattended)",
-		argv: ["agent"],
 	},
 	{ name: "config", description: "Setup / stack inventory", argv: ["config"] },
 	{ name: "cost", description: "$0 path + budget + savings", argv: ["cost"] },
@@ -414,12 +526,61 @@ export function resolveSlashArgv(
 	return extraArgs.length > 0 ? [...item.argv, ...extraArgs] : item.argv;
 }
 
+/** Mux subcommands under `/mux` — not separate top-level slash rows. */
+const MUX_SUBCOMMANDS: Readonly<
+	Record<string, NonNullable<ShellSlashItem["action"]>>
+> = {
+	tab: "session-tab",
+	"new-tab": "session-tab",
+	pane: "session-pane",
+	"new-pane": "session-pane",
+	split: "session-pane",
+	detach: "session-detach",
+	stop: "session-stop",
+	"stop-session": "session-stop",
+	focus: "session-focus",
+	"focus-pane": "session-focus",
+	attach: "pane-attach",
+	interact: "pane-attach",
+};
+
+export const MUX_SLASH_HELP = [
+	"/mux          open live agent terminal sessions (TV)",
+	"/mux tab      new tab named after the focused agent",
+	"/mux pane     split pane under the focused tab",
+	"/mux attach   keys → focused pane in TV (Ctrl+\\ leave)",
+	"/mux focus    select focused pane in the mux",
+	"/mux detach   return to chat (session keeps running)",
+	"/mux stop     stop focused harness window/session",
+	"Configure model/effort: /agents (not /mux)",
+].join("\n");
+
+function resolveMuxSlash(
+	item: ShellSlashItem,
+	args: readonly string[],
+): ShellSlashItem {
+	const sub = (args[0] ?? "").toLowerCase();
+	if (!sub) {
+		return { ...item, action: "mux" };
+	}
+	const action = MUX_SUBCOMMANDS[sub];
+	if (!action) {
+		return { ...item, action: "mux", argv: args };
+	}
+	return {
+		...item,
+		action,
+		description: `${item.description} · ${sub}`,
+	};
+}
+
 export function slashItemForInput(text: string): ShellSlashItem | undefined {
 	const [name = "", ...args] = text.slice(1).trim().split(/\s+/);
 	const item = slashItemByName(name);
 	if (!item) return undefined;
 	if (item.action === "btw") return { ...item, argv: args };
 	if (item.action === "compact") return { ...item, argv: args };
+	if (item.action === "mux") return resolveMuxSlash(item, args);
 	if (item.action === "agents") {
 		return args.length > 0 ? { ...item, argv: ["agents", ...args] } : item;
 	}
@@ -529,8 +690,8 @@ export function createInitialShellState(
 	} = {},
 ): InteractiveShellState {
 	const env = options.env ?? process.env;
-	const width = clamp(options.width ?? 80, 40, 200);
-	const height = clamp(options.height ?? 24, 12, 80);
+	const width = clamp(options.width ?? 80, 16, 500);
+	const height = clamp(options.height ?? 24, 8, 200);
 	const dense = options.dense === true;
 	const reducedMotion =
 		options.reducedMotion === true ||
@@ -636,6 +797,8 @@ export function createInitialShellState(
 		slashIndex: 0,
 		chatScroll: 0,
 		paneScroll: 0,
+		agentsBodyLines: 0,
+		transcriptMode: null,
 		pendingApproval: null,
 		btw: null,
 		usageLabel: "",
@@ -645,6 +808,11 @@ export function createInitialShellState(
 		agentBoard,
 		resourcesPlain,
 		livePanes: null,
+		harnessView: emptyHarnessSessionView(),
+		paneInteract: false,
+		agentsCatalog: null,
+		agentsConfigure: null,
+		boOllama: null,
 		agentWork: false,
 		footerHints: "Tab focus · / slash · btw aside · ? help · Ctrl+C quit",
 		modelLabel: ENGINE_NONE_LABEL,
@@ -793,12 +961,28 @@ export function boMarker(state: InteractiveShellState): string {
 	return BO_MARKERS[tick % BO_MARKERS.length]!;
 }
 
+/** Active harness chat label for the status strap (Hobo Bo / Codex / Pi / …). */
+export function activeAgentLabel(state: InteractiveShellState): string {
+	const ready = ensureHarnessView(state);
+	if (ready.focus === "agents") {
+		const pane = focusedHarnessPane(ready.harnessView);
+		if (pane?.agentLabel) return pane.agentLabel;
+		if (pane?.agent) return harnessDisplayLabel(pane.agent);
+		const window = ready.livePanes?.windows[ready.livePanes.focused];
+		if (window) return harnessDisplayLabel(window.name);
+	}
+	return "Hobo Bo";
+}
+
 /** The one-line strap: who is thinking, on what, at what cost. */
 export function statusSegments(state: InteractiveShellState): string[] {
 	const modelChip =
 		state.modelLabel === ENGINE_NONE_LABEL ? "engine:none" : state.modelLabel;
+	const scrollHint = scrollHistoryFooterHint(state);
 	return [
 		`${boMarker(state)} hobo-code`,
+		activeAgentLabel(state),
+		...(scrollHint ? [scrollHint] : []),
 		state.stationLabel,
 		state.envLabel,
 		...state.sidecarChips,
@@ -898,19 +1082,29 @@ function withLiveBtw(state: InteractiveShellState): InteractiveShellState {
 }
 
 function viewportRows(state: InteractiveShellState): number {
-	const bodyRows = Math.max(3, state.height - 1 - state.inputRows);
-	return Math.max(1, bodyRows - (BROADCAST_CHROME_ROWS + 1));
+	return shellViewportRows(state);
 }
 
 /** Retained semantic tree for the current frame (tests / evidence). */
 export function buildShellTree(state: InteractiveShellState) {
+	state = ensureHarnessView(state);
 	const inner = viewportRows(state);
 	const innerWidth = state.width - BROADCAST_INNER_INSET;
 	let title = "chat";
 	let accent: AccentName = "none";
 	let surface: TuiNode;
 
-	if (state.pendingApproval) {
+	if (state.transcriptMode) {
+		title = "transcript · less";
+		const max = maxTranscriptOffset(state);
+		const offset = Math.max(0, Math.min(state.transcriptMode.offset, max));
+		surface = ChatTranscript({
+			messages: state.messages,
+			width: innerWidth,
+			scroll: offset,
+			scrollOrigin: "start",
+		});
+	} else if (state.pendingApproval) {
 		title = `promote ${state.pendingApproval.runId}?`;
 		accent = "spark";
 		surface = ApprovalDialog({
@@ -929,22 +1123,59 @@ export function buildShellTree(state: InteractiveShellState) {
 			items,
 			selectedIndex: state.slashIndex,
 		});
-	} else if (state.focus === "agents") {
-		const panes = state.livePanes;
-		const current = panes?.windows[panes.focused];
-		title = current
-			? `agent ${current.name}${state.paneScroll > 0 ? ` ↑${state.paneScroll}` : ""}`
-			: "agents";
-		surface = AgentPanes({
-			windows: agentPaneRows(state),
-			unclaimed: unclaimedTaskRows(state),
-			parent: parentChatContext(state),
-			empty:
-				"no subagent work · chat stays first · a dispatch unlocks this tab",
-			...(panes?.note ? { note: panes.note } : {}),
-			...(panes?.capture ? { capture: panes.capture } : {}),
-			scroll: state.paneScroll,
+	} else if (state.focus === "agents-catalog" && state.agentsConfigure) {
+		title = "configure";
+		surface = TextPane({
+			id: "agents-configure",
+			text: formatAgentsConfigureLines(state.agentsConfigure).join("\n"),
+			scroll: 0,
 		});
+	} else if (state.focus === "agents-catalog" && state.agentsCatalog) {
+		title =
+			state.agentsCatalog.scroll > 0
+				? `agents ↑${state.agentsCatalog.scroll}`
+				: "agents";
+		const rows = flattenVisible(state.agentsCatalog);
+		surface = AgentsCatalog({
+			rows,
+			cursor: state.agentsCatalog.cursor,
+			scroll: state.agentsCatalog.scroll,
+			viewportRows: inner,
+		});
+	} else if (state.focus === "agents") {
+		state = syncAgentsBodyLines(state);
+		const pane = focusedHarnessPane(state.harnessView);
+		const label = pane?.agentLabel ?? pane?.title ?? "agents";
+		title =
+			state.paneScroll > 0 ? `${label} ↑${state.paneScroll}` : label;
+		const agentId = focusedHarnessAgentId(state.harnessView);
+		const focusedTasks = agentId ? taskRowsForAgent(state, agentId) : [];
+		const taskHint =
+			focusedTasks[0] !== undefined
+				? focusedTasks
+						.map((row) => row.summary)
+						.slice(0, 1)
+						.join("")
+				: undefined;
+		const noteParts = [
+			state.livePanes?.note,
+			taskHint ? `task · ${taskHint}` : undefined,
+		].filter((row): row is string => Boolean(row));
+		surface = AgentPanes({
+			view: state.harnessView,
+			empty:
+				"no harness sessions yet · chat stays first · a seated coding CLI unlocks this tab",
+			...(noteParts.length > 0 ? { note: noteParts.join(" · ") } : {}),
+			scroll: state.paneScroll,
+			attached: state.paneInteract,
+			contentWidth: Math.max(24, innerWidth),
+		});
+		if (state.paneInteract) {
+			title =
+				state.paneScroll > 0
+					? `${label} · attached ↑${state.paneScroll}`
+					: `${label} · attached`;
+		}
 	} else if (state.focus === "status") {
 		title = state.paneScroll > 0 ? `status ↑${state.paneScroll}` : "status";
 		surface = TextPane({
@@ -1019,6 +1250,19 @@ export function buildShellTree(state: InteractiveShellState) {
 		segments: statusSegments(state),
 		viewportRows: inner,
 		phase,
+		...(state.focus === "agents"
+			? {
+					railLegend: state.paneInteract
+						? PANE_INTERACT_HINT
+						: AGENTS_KEY_LEGEND,
+				}
+			: state.focus === "agents-catalog"
+				? {
+						railLegend: state.agentsConfigure
+							? AGENTS_CONFIGURE_KEY_LEGEND
+							: AGENTS_CATALOG_KEY_LEGEND,
+					}
+				: {}),
 		...(overlay !== undefined ? { overlay } : {}),
 		children: surface,
 	});
@@ -1065,17 +1309,153 @@ export function reduceShellKey(
 	readonly approve?: PendingApproval;
 	readonly decline?: PendingApproval;
 	readonly toAgent?: { readonly agent: string; readonly text: string };
+	readonly sessionAction?: HarnessChromeAction;
+	/** Raw TTY chunk to forward to the focused tmux pane (steer fallback). */
+	readonly forwardPaneKey?: string;
+	/** Hand the TTY to tmux attach (exact CLI parity). */
+	readonly fullscreenAttach?: boolean;
 } {
+	state = ensureHarnessView(state);
+	// `/agents` catalog + configure — modal; keys must not hit the Editor or Tab cycle.
+	if (agentsModalActive(state)) {
+		state = pinAgentsModalFocus(state);
+		if (state.agentsConfigure) {
+			return { state: reduceAgentsConfigureShell(state, key) };
+		}
+		const viewRows = viewportRows(state);
+		const result = reduceAgentsCatalogKey(
+			state.agentsCatalog!,
+			key,
+			viewRows,
+		);
+		let next: InteractiveShellState = {
+			...state,
+			agentsCatalog: result.state,
+			footerHints: AGENTS_CATALOG_KEY_LEGEND,
+		};
+		if (result.close) {
+			next = {
+				...next,
+				agentsCatalog: null,
+				agentsConfigure: null,
+				focus: "chat",
+				footerHints: "Tab focus · / slash · btw aside · ? help · Ctrl+C quit",
+			};
+			if (result.openSlash) {
+				next = {
+					...next,
+					slashOpen: true,
+					slashFilter: "",
+					slashIndex: 0,
+					focus: "slash",
+					input: "/",
+				};
+			}
+		}
+		if (result.pick) {
+			return applyAgentsCatalogPick(next, result.pick);
+		}
+		return { state: next };
+	}
+	// Soft attach: keys → focused leaf inside TV chrome. Ctrl+]/Ctrl+\ leave.
+	// [ ] still cycles panes while attached (herdr multi-pane).
+	// PgUp/PgDn/Home/End scroll the TV capture instead of the nested CLI.
+	if (state.paneInteract && state.focus === "agents") {
+		if (isPaneInteractDetach(key)) {
+			return { state: leavePaneInteract(state) };
+		}
+		if (key === "[" || key === "]") {
+			return {
+				state: applyHarnessNav(state, "leaf", key === "]" ? 1 : -1),
+			};
+		}
+		if (matchesKey(key, "pageUp") || matchesKey(key, "pageDown")) {
+			state = syncAgentsBodyLines(state);
+			return {
+				state: scrollFocused(
+					state,
+					matchesKey(key, "pageUp") ? "up" : "down",
+					pageStep(viewportRows(state)),
+				),
+			};
+		}
+		if (matchesKey(key, "home")) {
+			return { state: scrollToHome(syncAgentsBodyLines(state)) };
+		}
+		if (matchesKey(key, "end")) {
+			return { state: scrollToLive(syncAgentsBodyLines(state)) };
+		}
+		return { state, forwardPaneKey: key };
+	}
 	// Ctrl+C
 	if (key === "\u0003") {
 		return { state, quit: true };
+	}
+	// Transcript less-mode owns the key context (Claude Ctrl+O).
+	if (state.transcriptMode) {
+		if (
+			matchesKey(key, "ctrl+o") ||
+			key === "q" ||
+			key === "Q" ||
+			key === "\u001b"
+		) {
+			return { state: exitTranscriptLess(state) };
+		}
+		if (key === "j" || matchesKey(key, "down")) {
+			return { state: scrollTranscriptLess(state, 1) };
+		}
+		if (key === "k" || matchesKey(key, "up")) {
+			return { state: scrollTranscriptLess(state, -1) };
+		}
+		if (matchesKey(key, "pageUp") || key === "{") {
+			return {
+				state: scrollTranscriptLess(state, -pageStep(viewportRows(state))),
+			};
+		}
+		if (matchesKey(key, "pageDown") || key === "}") {
+			return {
+				state: scrollTranscriptLess(state, pageStep(viewportRows(state))),
+			};
+		}
+		if (matchesKey(key, "ctrl+u")) {
+			return {
+				state: scrollTranscriptLess(state, -halfPageStep(viewportRows(state))),
+			};
+		}
+		if (matchesKey(key, "ctrl+d")) {
+			return {
+				state: scrollTranscriptLess(state, halfPageStep(viewportRows(state))),
+			};
+		}
+		if (matchesKey(key, "home") || key === "g") {
+			return {
+				state: clampScrollState({
+					...state,
+					transcriptMode: { offset: 0 },
+				}),
+			};
+		}
+		if (matchesKey(key, "end") || key === "G") {
+			return {
+				state: clampScrollState({
+					...state,
+					transcriptMode: { offset: maxTranscriptOffset(state) },
+				}),
+			};
+		}
+		// Printable / other keys do not reach the composer.
+		return { state };
 	}
 	// The approval gate is modal: while it is up, no key may reach the input
 	// line or a verb. Only an explicit y/n (Esc/Enter decline) resolves it, so
 	// a promotion can never be triggered by a stray keystroke.
 	if (state.pendingApproval) {
 		const pending = state.pendingApproval;
-		const cleared = { ...state, pendingApproval: null, chatScroll: 0 };
+		const cleared = {
+			...state,
+			pendingApproval: null,
+			chatScroll: followingLive(state) ? 0 : state.chatScroll,
+		};
 		if (key === "y" || key === "Y") {
 			return { state: cleared, approve: pending };
 		}
@@ -1094,7 +1474,7 @@ export function reduceShellKey(
 			};
 		}
 		if (matchesKey(key, "pageUp") || matchesKey(key, "pageDown")) {
-			const page = Math.max(3, viewportRows(state) - 1);
+			const page = pageStep(viewportRows(state));
 			return {
 				state: scrollFocused(
 					state,
@@ -1102,6 +1482,12 @@ export function reduceShellKey(
 					page,
 				),
 			};
+		}
+		if (matchesKey(key, "home")) {
+			return { state: scrollToHome(state) };
+		}
+		if (matchesKey(key, "end")) {
+			return { state: scrollToLive(state) };
 		}
 		return { state };
 	}
@@ -1144,7 +1530,7 @@ export function reduceShellKey(
 		}
 		return { state };
 	}
-	// Arrow up/down — slash palette, or scroll the focused scene
+	// Arrow up/down — slash palette or scroll (never steal Agents harness focus)
 	if (matchesKey(key, "up") || matchesKey(key, "down")) {
 		const dirUp = matchesKey(key, "up");
 		if (state.slashOpen) {
@@ -1156,17 +1542,20 @@ export function reduceShellKey(
 		if (state.focus === "chat" && state.input.length > 0) {
 			return { state };
 		}
+		if (state.focus === "agents") {
+			state = syncAgentsBodyLines(state);
+		}
 		return {
 			state: scrollFocused(state, dirUp ? "up" : "down", 1),
 		};
 	}
-	// PgUp/PgDn — page the focused scene (slash jumps the palette)
+	// PgUp/PgDn — half-viewport page (Claude fullscreen convention)
 	if (matchesKey(key, "pageUp") || matchesKey(key, "pageDown")) {
 		const dirUp = matchesKey(key, "pageUp");
 		if (state.slashOpen) {
 			const count = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter).length;
 			if (count === 0) return { state };
-			const page = Math.max(3, viewportRows(state) - 1);
+			const page = pageStep(viewportRows(state));
 			const next = clamp(
 				state.slashIndex + (dirUp ? -page : page),
 				0,
@@ -1174,30 +1563,79 @@ export function reduceShellKey(
 			);
 			return { state: { ...state, slashIndex: next } };
 		}
-		const page = Math.max(3, viewportRows(state) - 1);
+		if (state.focus === "agents") {
+			state = syncAgentsBodyLines(state);
+		}
+		const page = pageStep(viewportRows(state));
 		return {
 			state: scrollFocused(state, dirUp ? "up" : "down", page),
 		};
 	}
-	// Tab — cycle focus
+	// Home / End — oldest vs live (chat + Agents) or top vs bottom (documents)
+	if (matchesKey(key, "home")) {
+		if (state.focus === "agents") state = syncAgentsBodyLines(state);
+		return { state: scrollToHome(state) };
+	}
+	if (matchesKey(key, "end")) {
+		if (state.focus === "agents") state = syncAgentsBodyLines(state);
+		return { state: scrollToLive(state) };
+	}
+	// Ctrl+U / Ctrl+D — half-page scroll
+	if (matchesKey(key, "ctrl+u")) {
+		return {
+			state: scrollFocused(state, "up", halfPageStep(viewportRows(state))),
+		};
+	}
+	if (matchesKey(key, "ctrl+d")) {
+		return {
+			state: scrollFocused(state, "down", halfPageStep(viewportRows(state))),
+		};
+	}
+	// Ctrl+O — enter transcript less-mode
+	if (matchesKey(key, "ctrl+o") && !state.slashOpen) {
+		return { state: enterTranscriptLess(state) };
+	}
+	// Tab — cycle focus (never while /agents modal owns the keyboard)
 	if (key === "\t") {
+		if (agentsModalActive(state)) {
+			return { state: pinAgentsModalFocus(state) };
+		}
 		return { state: cycleFocus({ ...state, slashOpen: false }) };
 	}
 	if (
 		(key === "[" || key === "]") &&
+		state.focus === "agents" &&
 		state.input.length === 0 &&
 		!state.slashOpen &&
 		hasAgentWork(state) &&
-		state.livePanes &&
-		state.livePanes.windows.length > 0
+		state.harnessView.sessions.length > 0
 	) {
 		return {
-			state: {
-				...state,
-				livePanes: cycleInSessionWindow(state.livePanes, key === "]" ? 1 : -1),
-				focus: "agents",
-				paneScroll: 0,
-			},
+			state: applyHarnessNav(state, "leaf", key === "]" ? 1 : -1),
+		};
+	}
+	if (
+		(key === "{" || key === "}") &&
+		state.focus === "agents" &&
+		state.input.length === 0 &&
+		!state.slashOpen &&
+		hasAgentWork(state) &&
+		state.harnessView.sessions.length > 0
+	) {
+		return {
+			state: applyHarnessNav(state, "tab", key === "}" ? 1 : -1),
+		};
+	}
+	if (
+		(key === "," || key === ".") &&
+		state.focus === "agents" &&
+		state.input.length === 0 &&
+		!state.slashOpen &&
+		hasAgentWork(state) &&
+		state.harnessView.sessions.length > 1
+	) {
+		return {
+			state: applyHarnessNav(state, "session", key === "." ? 1 : -1),
 		};
 	}
 	// ?
@@ -1209,21 +1647,39 @@ export function reduceShellKey(
 				"  Type a prompt to queue a build task (see /about for what runs it).",
 				"  / opens the slash palette (↑/↓ to pick, Enter to run).",
 				"  btw <question> opens a temporary aside about this moment (Esc dismisses).",
-				"  Tab cycles Chat → Agents → Status → Resources (Agents while a subagent or claimed task exists).",
-				"  [ and ] cycle working subagents without leaving this TTY.",
-				"  Type+Enter in chat stays on Bo. Tab into Agents to steer a subagent and see its tasks.",
+				"  Tab cycles Chat → Mux (live agent TV) → Status → Resources (Mux while a subagent or claimed task exists).",
+				"  /agents configures harness model/effort · /mux opens + steers terminal sessions.",
+				"  Mux TV is herdr-shaped: Session → Tab → Pane.",
+				"  Enter attaches keys to the focused pane · Ctrl+] leaves (shell nav resumes).",
+				"  [ ] pane · { } tab (redundant when single-pane) · , . session · ↑↓ scroll.",
+				"  Session ops via /mux · /mux <tab|pane|attach|focus|detach|stop> — never steal chat keys.",
+				"  ↑/↓ on Mux scrolls capture only — never steals harness focus (unless attached).",
+				"  Status strap shows the focused pane agent (Hobo Bo on chat; Codex/Pi on Mux).",
+				"  Scroll: ↑/↓ line (chat/status/mux) · PgUp/PgDn half-page · Ctrl+U/D · Home/End · End = live.",
+				"  Ctrl+O opens transcript less-mode (j/k · q/Esc exit). Wheel not wired — keyboard-complete.",
+				"  Type+Enter in chat stays on Bo. On Mux, type+Enter steers; empty Enter fullscreen-attaches.",
 			].join("\n"),
 			at: Date.now(),
 		};
 		return {
-			state: { ...state, messages: [...state.messages, help], chatScroll: 0 },
+			state: clampScrollState({
+				...state,
+				messages: [...state.messages, help],
+				chatScroll: followingLive(state) ? 0 : state.chatScroll,
+			}),
 		};
 	}
-	// Enter
-	if (key === "\r" || key === "\n") {
+	// Enter (legacy \r/\n or Kitty CSI-u)
+	if (matchesKey(key, "enter") || key === "\r" || key === "\n") {
 		if (state.slashOpen) {
 			const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
-			const item = items[state.slashIndex] ?? items[0];
+			const typed = state.input.trim();
+			const item =
+				(typed.startsWith("/")
+					? slashItemForInput(typed)
+					: undefined) ??
+				items[state.slashIndex] ??
+				items[0];
 			if (!item) {
 				return {
 					state: {
@@ -1242,8 +1698,55 @@ export function reduceShellKey(
 				const extra = state.input.trim().replace(/^\/?compact\s*/iu, "");
 				return { state: applyCompact(state, extra) };
 			}
-			if (item.action === "agents" && (item.argv?.length ?? 0) <= 1) {
+			if (item.action === "mux") {
+				const unknown = (item.argv ?? []).join(" ");
+				if (unknown) {
+					return {
+						state: appendProduct(
+							{
+								...state,
+								input: "",
+								slashOpen: false,
+								slashFilter: "",
+								slashIndex: 0,
+							},
+							`Unknown /mux ${unknown}.\n${MUX_SLASH_HELP}`,
+						),
+					};
+				}
 				return { state: openAgentsSurface(state) };
+			}
+			if (item.action === "agents" && (item.argv?.length ?? 0) <= 1) {
+				return { state: openAgentsCatalog(state) };
+			}
+			if (item.action === "pane-attach") {
+				return {
+					state: enterPaneInteract({
+						...state,
+						input: "",
+						slashOpen: false,
+						slashFilter: "",
+						slashIndex: 0,
+						focus: "agents",
+						agentWork: true,
+					}),
+				};
+			}
+			const sessionAction = harnessActionFromSlash(item.action);
+			if (sessionAction) {
+				return {
+					state: {
+						...state,
+						input: "",
+						slashOpen: false,
+						slashFilter: "",
+						slashIndex: 0,
+						focus: "agents",
+						agentWork: true,
+						footerHints: `agents · ${HARNESS_CHROME_KEY_HINT}`,
+					},
+					sessionAction,
+				};
 			}
 			const argv = resolveSlashArgv(item);
 			return {
@@ -1262,6 +1765,9 @@ export function reduceShellKey(
 		const text = state.input.trim();
 		if (!text) {
 			if (state.btw) return { state: applyBtwPrompt(state, "") };
+			if (canEnterPaneInteract(state)) {
+				return { state: enterPaneInteract(state) };
+			}
 			return { state };
 		}
 		const aside = matchBtwInput(text);
@@ -1277,8 +1783,52 @@ export function reduceShellKey(
 					state: applyCompact(state, (item.argv ?? []).join(" ")),
 				};
 			}
-			if (item?.action === "agents" && (item.argv?.length ?? 0) <= 1) {
+			if (item?.action === "mux") {
+				const unknown = (item.argv ?? []).join(" ");
+				if (unknown) {
+					return {
+						state: appendProduct(
+							{
+								...state,
+								input: "",
+								slashOpen: false,
+								slashFilter: "",
+							},
+							`Unknown /mux ${unknown}.\n${MUX_SLASH_HELP}`,
+						),
+					};
+				}
 				return { state: openAgentsSurface(state) };
+			}
+			if (item?.action === "agents" && (item.argv?.length ?? 0) <= 1) {
+				return { state: openAgentsCatalog(state) };
+			}
+			if (item?.action === "pane-attach") {
+				return {
+					state: enterPaneInteract({
+						...state,
+						input: "",
+						slashOpen: false,
+						slashFilter: "",
+						focus: "agents",
+						agentWork: true,
+					}),
+				};
+			}
+			const sessionAction = harnessActionFromSlash(item?.action);
+			if (sessionAction) {
+				return {
+					state: {
+						...state,
+						input: "",
+						slashOpen: false,
+						slashFilter: "",
+						focus: "agents",
+						agentWork: true,
+						footerHints: `agents · ${HARNESS_CHROME_KEY_HINT}`,
+					},
+					sessionAction,
+				};
 			}
 			if (item) {
 				return {
@@ -1426,7 +1976,9 @@ function taskRowsForAgent(
 
 function agentPaneRows(state: InteractiveShellState): readonly {
 	readonly name: string;
+	readonly label: string;
 	readonly focused?: boolean;
+	readonly kind?: string;
 	readonly tasks?: readonly {
 		readonly summary: string;
 		readonly state?: string;
@@ -1438,24 +1990,196 @@ function agentPaneRows(state: InteractiveShellState): readonly {
 	if (panes.length > 0) {
 		return panes.map((row, index) => ({
 			name: row.name,
+			label: harnessDisplayLabel(row.name),
+			kind: row.kind,
 			focused: index === state.livePanes?.focused,
 			tasks: taskRowsForAgent(state, row.name),
 		}));
 	}
-	return state.agentBoard.groups.map((group) => ({
+	return state.agentBoard.groups.map((group, index) => ({
 		name: group.agentId,
+		label: harnessDisplayLabel(group.agentId),
+		kind: "agent",
+		focused: index === 0,
 		tasks: taskRowsForAgent(state, group.agentId),
 	}));
 }
 
-function unclaimedTaskRows(state: InteractiveShellState): readonly {
-	readonly summary: string;
-	readonly state?: string;
-}[] {
-	return state.agentBoard.unclaimed.map((row) => ({
-		summary: row.summary,
-		state: String(row.state),
-	}));
+/** Rebuild herdr view from seated mux windows, preserving focus when possible. */
+export function withHarnessFromLivePanes(
+	state: InteractiveShellState,
+	livePanes: InSessionPanes,
+): InteractiveShellState {
+	const harnessView = harnessViewFromLivePanes(livePanes);
+	const next = {
+		...state,
+		livePanes,
+		harnessView,
+	};
+	return syncAgentsBodyLines(next);
+}
+
+/** Count Agents glass lines so paneScroll clamps against real capture height. */
+export function syncAgentsBodyLines(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	const ready = ensureHarnessView(state);
+	const agentsBodyLines = formatHarnessSessionLines(ready.harnessView, {
+		attached: ready.paneInteract,
+		contentWidth: Math.max(24, ready.width - BROADCAST_INNER_INSET),
+	}).length;
+	if (agentsBodyLines === state.agentsBodyLines) {
+		return clampScrollState(ready);
+	}
+	return clampScrollState({ ...ready, agentsBodyLines });
+}
+
+/**
+ * Tests and partial state updates often set livePanes without harnessView.
+ * Derive the herdr model so Agents stays interactive.
+ */
+export function ensureHarnessView(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	if (state.harnessView.sessions.length > 0) return state;
+	if (!state.livePanes || state.livePanes.windows.length === 0) return state;
+	return withHarnessFromLivePanes(state, state.livePanes);
+}
+
+/** Seated mux panes ready for key-forward attach. */
+export function canEnterPaneInteract(state: InteractiveShellState): boolean {
+	return (
+		state.focus === "agents" &&
+		Boolean(state.livePanes?.tmux) &&
+		(state.livePanes?.windows.length ?? 0) > 0
+	);
+}
+
+/** Prefer focused harness pane id (`%N`) when it is a live tmux pane. */
+export function resolvePaneInteractTarget(
+	state: InteractiveShellState,
+): string | undefined {
+	const focused = focusedHarnessPane(state.harnessView);
+	if (focused?.id.startsWith("%")) return focused.id;
+	return state.livePanes ? pickSendWindow(state.livePanes)?.target : undefined;
+}
+
+/** Forward keys to the focused tmux pane until Ctrl+] leaves. */
+export function enterPaneInteract(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	const ready = ensureHarnessView(state);
+	if (!canEnterPaneInteract(ready)) return ready;
+	return {
+		...ready,
+		paneInteract: true,
+		slashOpen: false,
+		slashFilter: "",
+		slashIndex: 0,
+		input: "",
+		footerHints: PANE_INTERACT_HINT,
+	};
+}
+
+/** Resume Agents shell nav after attach. */
+export function leavePaneInteract(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	if (!state.paneInteract) return state;
+	return {
+		...state,
+		paneInteract: false,
+		footerHints:
+			"mux · Enter attach · [ ] pane · { } tab · , . · ↑↓ · /agents configure",
+	};
+}
+
+/**
+ * Merge durable resident sessions (persist/auto-resume) with in-session mux
+ * seating — herdr workspace list shape.
+ */
+export async function hydrateHarnessSessions(
+	state: InteractiveShellState,
+): Promise<InteractiveShellState> {
+	const liveNodes =
+		state.livePanes && state.livePanes.windows.length > 0
+			? [...harnessViewFromLivePanes(state.livePanes).sessions]
+			: [];
+	let residentNodes: ReturnType<typeof harnessViewFromSnapshot>["sessions"] =
+		[];
+	try {
+		const control = createLocalSessionControl({ hoboHome: state.hoboHome });
+		try {
+			const snapshots = await control.list();
+			residentNodes = snapshots.flatMap(
+				(snapshot) => harnessViewFromSnapshot(snapshot).sessions,
+			);
+		} finally {
+			control.close();
+		}
+	} catch {
+		residentNodes = [];
+	}
+	const nodes = [...liveNodes, ...residentNodes];
+	if (nodes.length === 0) return state;
+	const focusAgent = focusedHarnessAgentId(state.harnessView);
+	let focusedSession = 0;
+	let focusedTab = 0;
+	let focusedPane = 0;
+	if (focusAgent) {
+		outer: for (const [si, session] of nodes.entries()) {
+			for (const [ti, tab] of session.tabs.entries()) {
+				for (const [pi, pane] of tab.panes.entries()) {
+					if (pane.agent === focusAgent) {
+						focusedSession = si;
+						focusedTab = ti;
+						focusedPane = pi;
+						break outer;
+					}
+				}
+			}
+		}
+	} else if (liveNodes.length > 0) {
+		focusedTab = state.livePanes?.focused ?? 0;
+	}
+	return {
+		...state,
+		harnessView: mergeHarnessSessions(nodes, {
+			session: focusedSession,
+			tab: focusedTab,
+			pane: focusedPane,
+		}),
+	};
+}
+
+export function applyHarnessNav(
+	state: InteractiveShellState,
+	axis: "leaf" | "tab" | "session",
+	delta: 1 | -1,
+): InteractiveShellState {
+	const ready = ensureHarnessView(state);
+	if (ready.harnessView.sessions.length === 0) return ready;
+	const nextView =
+		axis === "leaf"
+			? cycleHarnessLeaf(ready.harnessView, delta)
+			: cycleHarnessFocus(ready.harnessView, axis, delta);
+	const livePanes = ready.livePanes
+		? syncLivePanesFocus(ready.livePanes, nextView)
+		: ready.livePanes;
+	const stayAttached = ready.paneInteract && axis === "leaf";
+	return {
+		...ready,
+		harnessView: nextView,
+		livePanes,
+		focus: "agents",
+		agentWork: true,
+		paneScroll: 0,
+		// [ ] while attached keeps key-forward on the newly focused leaf.
+		paneInteract: stayAttached,
+		footerHints: stayAttached
+			? PANE_INTERACT_HINT
+			: "mux · Enter attach · [ ] pane · { } tab · , . · ↑↓ · /agents configure",
+	};
 }
 
 export function parentChatContext(
@@ -1470,6 +2194,268 @@ export function parentChatContext(
 			const clipped = text.length > 72 ? `${text.slice(0, 69)}…` : text;
 			return `${row.role}: ${clipped}`;
 		});
+}
+
+/**
+ * True when the Agents catalog (or other shell modal) must consume keys
+ * before pi-tui's Editor. Live TTY routes through `tui.addInputListener`;
+ * unit tests that only call `reduceShellKey` miss this gate.
+ */
+export function agentsModalActive(state: InteractiveShellState): boolean {
+	return state.agentsCatalog !== null || state.agentsConfigure !== null;
+}
+
+export function pinAgentsModalFocus(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	if (!agentsModalActive(state)) return state;
+	if (state.focus === "agents-catalog") return state;
+	return { ...state, focus: "agents-catalog" };
+}
+
+export function shellModalOwnsInput(state: InteractiveShellState): boolean {
+	if (state.pendingApproval) return true;
+	if (state.transcriptMode) return true;
+	if (state.paneInteract && state.focus === "agents") return true;
+	if (agentsModalActive(state)) return true;
+	return false;
+}
+
+export function openAgentsCatalog(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	const specs = loadHarnessCatalog({
+		cwd: state.projectDir,
+		hoboHome: state.hoboHome,
+	});
+	const eveTrees = discoverProjectEveAgents(state.projectDir);
+	const catalog = buildAgentsCatalog(specs, eveTrees);
+	return {
+		...state,
+		slashOpen: false,
+		slashFilter: "",
+		slashIndex: 0,
+		input: "",
+		focus: "agents-catalog",
+		agentsCatalog: catalog,
+		agentsConfigure: null,
+		paneInteract: false,
+		footerHints: AGENTS_CATALOG_KEY_LEGEND,
+	};
+}
+
+function boCatalogOptions(
+	state: InteractiveShellState,
+): AgentsConfigureCatalogOptions {
+	return {
+		env: process.env,
+		...(state.boOllama
+			? { ollama: state.boOllama }
+			: {
+					ollama: {
+						host: process.env.OLLAMA_HOST ?? DEFAULT_OLLAMA_HOST,
+						models: [],
+					},
+				}),
+	};
+}
+
+/** Probe local ollama and stash tags for the Bo model picker. */
+export async function refreshBoOllama(
+	state: InteractiveShellState,
+): Promise<InteractiveShellState> {
+	const host = process.env.OLLAMA_HOST ?? DEFAULT_OLLAMA_HOST;
+	const probe = await probeOllama(host, 1200);
+	if (!probe.ok) {
+		return {
+			...state,
+			boOllama: { host, models: state.boOllama?.models ?? [] },
+		};
+	}
+	return { ...state, boOllama: { host, models: probe.models } };
+}
+
+function applyAgentsCatalogPick(
+	state: InteractiveShellState,
+	pick: AgentsCatalogPick,
+): {
+	readonly state: InteractiveShellState;
+} {
+	const base = {
+		...state,
+		slashOpen: false,
+		slashFilter: "",
+		slashIndex: 0,
+		input: "",
+		focus: "agents-catalog" as const,
+		footerHints: AGENTS_CONFIGURE_KEY_LEGEND,
+	};
+	const catalog = boCatalogOptions(state);
+	if (pick.kind === "configure-hobo-bo") {
+		const eveAgents = discoverProjectEveAgents(state.projectDir);
+		return {
+			state: {
+				...base,
+				agentsConfigure: openHoboBoConfigure(
+					state.hoboHome,
+					eveAgents,
+					catalog,
+				),
+			},
+		};
+	}
+	if (pick.kind === "configure-harness") {
+		return {
+			state: {
+				...base,
+				agentsConfigure: openHarnessConfigure(
+					state.hoboHome,
+					pick.harnessId,
+					pick.label,
+					catalog,
+				),
+			},
+		};
+	}
+	return {
+		state: {
+			...base,
+			agentsConfigure: openEveConfigure(
+				state.hoboHome,
+				{
+					id: pick.id,
+					path: pick.path,
+					source: "hobo-agents",
+					...(pick.description !== undefined
+						? { description: pick.description }
+						: {}),
+					children: [],
+				},
+				catalog,
+			),
+		},
+	};
+}
+
+function reduceAgentsConfigureShell(
+	state: InteractiveShellState,
+	key: string,
+): InteractiveShellState {
+	if (!state.agentsConfigure) return state;
+	const result = reduceAgentsConfigureKey(
+		state.agentsConfigure,
+		key,
+		state.hoboHome,
+		state.projectDir,
+	);
+	if (result.kind === "back") {
+		if (result.toParent) {
+			return {
+				...state,
+				focus: "agents-catalog",
+				agentsConfigure: result.toParent,
+				footerHints: AGENTS_CONFIGURE_KEY_LEGEND,
+			};
+		}
+		return {
+			...state,
+			focus: "agents-catalog",
+			agentsConfigure: null,
+			footerHints: AGENTS_CATALOG_KEY_LEGEND,
+		};
+	}
+	if (result.kind === "created") {
+		const specs = loadHarnessCatalog({
+			cwd: state.projectDir,
+			hoboHome: state.hoboHome,
+		});
+		const eveAgents = discoverProjectEveAgents(state.projectDir);
+		const catalog = boCatalogOptions(state);
+		const rebuilt = openHoboBoConfigure(state.hoboHome, eveAgents, catalog);
+		const current = state.agentsConfigure;
+		const parent = {
+			...rebuilt,
+			...(current
+				? {
+						model: current.model,
+						modelPurl: current.modelPurl,
+						effort: current.effort,
+						modelOffers: current.modelOffers,
+						modelCursor: current.modelCursor,
+					}
+				: {}),
+			field: "eve-list" as const,
+			eveCursor: Math.max(
+				0,
+				eveAgents.findIndex((row) => row.id === result.agent.id),
+			),
+		};
+		return appendProduct(
+			{
+				...state,
+				focus: "agents-catalog",
+				agentsCatalog: buildAgentsCatalog(specs, eveAgents),
+				agentsConfigure: openEveConfigureFromParent(
+					state.hoboHome,
+					result.agent,
+					parent,
+				),
+				footerHints: AGENTS_CONFIGURE_KEY_LEGEND,
+			},
+			`created subagent · ${result.agent.id}\n  ${result.agent.path}`,
+		);
+	}
+	if (result.kind === "open-eve") {
+		return {
+			...state,
+			focus: "agents-catalog",
+			agentsConfigure: openEveConfigureFromParent(
+				state.hoboHome,
+				result.agent,
+				state.agentsConfigure,
+			),
+			footerHints: AGENTS_CONFIGURE_KEY_LEGEND,
+		};
+	}
+	if (result.kind === "saved") {
+		const note =
+			result.scope === "eve"
+				? `saved subagent · ${result.settings.id} · model ${result.settings.model || "(unset)"}${result.settings.modelPurl ? ` · ${result.settings.modelPurl}` : ""} · effort ${result.settings.effort}`
+				: `saved ${result.settings.id} · model ${result.settings.model || "(unset)"}${result.settings.modelPurl ? ` · ${result.settings.modelPurl}` : ""} · effort ${result.settings.effort}`;
+		const modelLabel =
+			result.scope === "harness" &&
+			result.settings.id === "hobo-code" &&
+			result.settings.model.trim().length > 0
+				? result.settings.model.trim()
+				: state.modelLabel;
+		if (result.returnTo) {
+			return appendProduct(
+				{
+					...state,
+					focus: "agents-catalog",
+					agentsConfigure: result.returnTo,
+					footerHints: AGENTS_CONFIGURE_KEY_LEGEND,
+					modelLabel,
+				},
+				`${note}\n  ${result.path}`,
+			);
+		}
+		return appendProduct(
+			{
+				...state,
+				focus: "agents-catalog",
+				agentsConfigure: null,
+				footerHints: AGENTS_CATALOG_KEY_LEGEND,
+				modelLabel,
+			},
+			`${note}\n  ${result.path}`,
+		);
+	}
+	return {
+		...state,
+		focus: "agents-catalog",
+		agentsConfigure: result.state,
+	};
 }
 
 export function openAgentsSurface(
@@ -1492,7 +2478,7 @@ export function openAgentsSurface(
 				input: "",
 				focus: "chat",
 			},
-			"no subagent work yet — chat stays first until a subagent claims a task",
+			"no subagent terminals yet — /agents configures harnesses; /mux connects once a seat exists",
 		);
 	}
 	return {
@@ -1504,36 +2490,83 @@ export function openAgentsSurface(
 		focus: "agents",
 		agentWork: true,
 		paneScroll: 0,
+		paneInteract: false,
+		harnessView:
+			state.livePanes && state.livePanes.windows.length > 0
+				? harnessViewFromLivePanes(state.livePanes)
+				: state.harnessView,
 		footerHints:
-			"agents · type+Enter steers the focused subagent · Tab back to chat",
+			"mux · Enter attach · [ ] pane · { } tab · , . · ↑↓ · /agents configure",
 	};
 }
 
-/** Tab cycles the visible transcript panes. Agents only while work exists. */
+/** Tab cycles the visible transcript panes. Agents TV only while work exists. */
 export function cycleFocus(
 	state: InteractiveShellState,
 ): InteractiveShellState {
+	// Never steal /agents configure or catalog — that is the focus-loss bug.
+	if (agentsModalActive(state)) {
+		return pinAgentsModalFocus(state);
+	}
 	const order = visibleFocusOrder(state);
 	const from =
-		state.focus === "slash" || state.focus === "btw" ? "chat" : state.focus;
+		state.focus === "slash" ||
+		state.focus === "btw" ||
+		state.focus === "agents-catalog"
+			? "chat"
+			: state.focus;
 	const i = order.indexOf(from);
 	const next = order[(i < 0 ? 0 : i + 1) % order.length]!;
 	return {
 		...state,
 		focus: next,
 		btw: null,
+		agentsCatalog: null,
+		agentsConfigure: null,
 		paneScroll: 0,
+		paneInteract: false,
 		footerHints: `focus:${next} · Tab cycle · [ ] agents · ↑/↓ scroll · / slash · ? help`,
 	};
 }
 
-function isDocumentPane(state: InteractiveShellState): boolean {
-	return (
-		state.pendingApproval !== null ||
-		state.focus === "agents" ||
-		state.focus === "status" ||
-		state.focus === "resources"
-	);
+function enterTranscriptLess(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	const max = maxTranscriptOffset(state);
+	const offset = followingLive(state)
+		? max
+		: Math.max(0, max - state.chatScroll);
+	return clampScrollState({
+		...state,
+		transcriptMode: { offset },
+		slashOpen: false,
+		slashFilter: "",
+		slashIndex: 0,
+	});
+}
+
+function exitTranscriptLess(
+	state: InteractiveShellState,
+): InteractiveShellState {
+	const max = maxTranscriptOffset(state);
+	const offset = state.transcriptMode?.offset ?? max;
+	return clampScrollState({
+		...state,
+		transcriptMode: null,
+		chatScroll: Math.max(0, max - offset),
+	});
+}
+
+function scrollTranscriptLess(
+	state: InteractiveShellState,
+	delta: number,
+): InteractiveShellState {
+	const mode = state.transcriptMode;
+	if (!mode) return state;
+	return clampScrollState({
+		...state,
+		transcriptMode: { offset: Math.max(0, mode.offset + delta) },
+	});
 }
 
 /** Scroll the focused scene. Up means older/top for chat, top for documents. */
@@ -1542,13 +2575,7 @@ export function scrollFocused(
 	intent: "up" | "down",
 	amount: number,
 ): InteractiveShellState {
-	const step = Math.max(0, amount);
-	if (isDocumentPane(state)) {
-		const delta = intent === "down" ? step : -step;
-		return { ...state, paneScroll: Math.max(0, state.paneScroll + delta) };
-	}
-	const delta = intent === "up" ? step : -step;
-	return { ...state, chatScroll: Math.max(0, state.chatScroll + delta) };
+	return scrollFocusedPure(state, intent, amount);
 }
 
 /** Positive scrolls back through the transcript, negative returns toward now. */
@@ -1559,6 +2586,12 @@ export function scrollChat(
 	return scrollFocused(state, delta >= 0 ? "up" : "down", Math.abs(delta));
 }
 
+function followPreservedChatScroll(
+	state: InteractiveShellState,
+): number {
+	return followingLive(state) ? 0 : state.chatScroll;
+}
+
 export function appendAssistant(
 	state: InteractiveShellState,
 	text: string,
@@ -1566,9 +2599,15 @@ export function appendAssistant(
 ): InteractiveShellState {
 	return persistShellChat(
 		withLiveBtw(
-			appendWorking(
-				{ ...state, agentState, chatScroll: 0 },
-				{ role: "assistant", text, at: Date.now() },
+			clampScrollState(
+				appendWorking(
+					{
+						...state,
+						agentState,
+						chatScroll: followPreservedChatScroll(state),
+					},
+					{ role: "assistant", text, at: Date.now() },
+				),
 			),
 		),
 	);
@@ -1580,9 +2619,14 @@ export function appendProduct(
 ): InteractiveShellState {
 	return persistShellChat(
 		withLiveBtw(
-			appendWorking(
-				{ ...state, chatScroll: 0 },
-				{ role: "product", text, at: Date.now() },
+			clampScrollState(
+				appendWorking(
+					{
+						...state,
+						chatScroll: followPreservedChatScroll(state),
+					},
+					{ role: "product", text, at: Date.now() },
+				),
 			),
 		),
 	);
@@ -1613,13 +2657,15 @@ export function replaceLastAssistant(
 				: [...journal, replaced];
 	}
 	return persistShellChat(
-		withLiveBtw({
-			...state,
-			agentState,
-			chatScroll: 0,
-			messages: [...state.messages.slice(0, -1), replaced],
-			journal: nextJournal,
-		}),
+		withLiveBtw(
+			clampScrollState({
+				...state,
+				agentState,
+				chatScroll: followPreservedChatScroll(state),
+				messages: [...state.messages.slice(0, -1), replaced],
+				journal: nextJournal,
+			}),
+		),
 	);
 }
 
@@ -1796,13 +2842,14 @@ export async function runInteractiveShell(
 				hoboHome: shellHome,
 				env: shellEnv,
 			});
+			state = withHarnessFromLivePanes(state, seated);
+			state = await hydrateHarnessSessions(state);
 			state = {
 				...state,
-				livePanes: seated,
 				focus: "chat",
 				footerHints:
 					seated.windows.length > 0
-						? "chat first · Tab agents for claimed tasks · type+Enter stays here"
+						? "chat first · /mux for agent terminals · /agents configure · Tab when work exists"
 						: state.footerHints,
 			};
 		} catch {
@@ -1836,6 +2883,10 @@ export async function runInteractiveShell(
 		resolveDone();
 	};
 
+	let attachBusy = false;
+	/** Set after the Editor exists — Enter / /mux attach call this. */
+	let runFullscreenAttach: () => Promise<void> = async () => {};
+
 	const applySlash = async (item: ShellSlashItem) => {
 		if (item.action === "quit") {
 			requestQuit();
@@ -1864,8 +2915,75 @@ export async function runInteractiveShell(
 			state = applyCompact(state, (item.argv ?? []).join(" "));
 			return;
 		}
-		if (item.action === "agents" && (item.argv?.length ?? 0) <= 1) {
+		if (item.action === "mux") {
+			const unknown = (item.argv ?? []).join(" ");
+			if (unknown) {
+				state = appendProduct(
+					state,
+					`Unknown /mux ${unknown}.\n${MUX_SLASH_HELP}`,
+				);
+				return;
+			}
 			state = openAgentsSurface(state);
+			input.clear();
+			tui.requestRender();
+			return;
+		}
+		if (item.action === "agents" && (item.argv?.length ?? 0) <= 1) {
+			state = openAgentsCatalog(state);
+			state = await refreshBoOllama(state);
+			input.clear();
+			tui.requestRender();
+			return;
+		}
+		if (item.action === "pane-attach") {
+			state = enterPaneInteract({
+				...state,
+				focus: "agents",
+				agentWork: true,
+				slashOpen: false,
+				slashFilter: "",
+				input: "",
+			});
+			tui.requestRender();
+			return;
+		}
+		const sessionAction = harnessActionFromSlash(item.action);
+		if (sessionAction) {
+			state = {
+				...state,
+				focus: "agents",
+				agentWork: true,
+				slashOpen: false,
+				slashFilter: "",
+				input: "",
+				footerHints: `agents · ${HARNESS_CHROME_KEY_HINT}`,
+			};
+			try {
+				const outcome = await executeHarnessChromeAction(
+					{
+						hoboHome: state.hoboHome,
+						harnessView: state.harnessView,
+						livePanes: state.livePanes,
+						runner: tmuxRunner(),
+					},
+					sessionAction,
+				);
+				state = {
+					...state,
+					harnessView: outcome.harnessView,
+					livePanes: outcome.livePanes,
+					focus: outcome.focus ?? state.focus,
+					paneScroll: 0,
+					footerHints: `agents · ${outcome.note}`,
+				};
+				state = appendProduct(state, outcome.note);
+			} catch (err) {
+				state = appendProduct(
+					state,
+					`${sessionAction.kind} failed: ${err instanceof Error ? err.message : String(err)}`,
+				);
+			}
 			return;
 		}
 		if (state.btw) {
@@ -1875,25 +2993,26 @@ export async function runInteractiveShell(
 			state = appendProduct(
 				state,
 				[
-					"Commands: /dev /templates /hobo /ide /config /status /resources /agents /quit",
+					"Commands: /dev /templates /hobo /ide /config /status /resources /agents /mux /quit",
+					"  /agents = configure harnesses (model/effort) · /mux = connect to their terminals",
 					"Aside: btw <question> borrows this moment without joining the main chat.",
 					"Resume: /resume prints this chat id · later `hobo-code resume [id]`.",
 					"Compact: /compact [focus] shrinks the working pane; the journal stays.",
 					"Templates: /templates lists; /template <query> searches (zero LLM).",
 					"Resident control: /sessions <args> (plain /sessions lists).",
 					"HoBo control plane: /hobo <args> (for example /hobo yard status).",
-					"Chat stays first. Tab into Agents to see claimed tasks under each subagent.",
-					"Harness CLIs are subagents on that same Agents screen, not a separate view.",
+					"Chat stays first. /mux (or Tab when work exists) opens live agent terminals.",
+					"Harness CLIs are subagents on the mux TV, not a separate view.",
 					"HoBo verbs stay on Bo: /dev /resources /history /alias.",
-					"Keys: Tab chat first · [ ] cycle working agents · ↑/↓ scroll · Ctrl+C quit",
+					"Keys: Tab chat · /mux · Enter attach · Ctrl+] leave · [ ]/{ }/, . · ↑/↓ · Ctrl+C quit",
 				].join("\n"),
 			);
 			return;
 		}
 		if (item.action === "about") {
 			const engineLines = options.host.aboutLines ?? [
-				"Chat is first. Subagent work and the tasks they claimed live on Agents.",
-				"Tab into a working subagent to steer it without losing this chat.",
+				"Chat is first. /agents configures harnesses; /mux connects to their terminals.",
+				"Tab into mux when a subagent has work — steer without losing this chat.",
 				"HoBo verbs stay on Bo: /dev /resources /history /alias.",
 				"Pi TUI remains an opt-in escape hatch via `hobo-code --pi`.",
 			];
@@ -2189,6 +3308,38 @@ export async function runInteractiveShell(
 			requestQuit();
 			return;
 		}
+		if (result.fullscreenAttach) {
+			void runFullscreenAttach();
+			return;
+		}
+		if (result.forwardPaneKey && state.livePanes) {
+			const target = resolvePaneInteractTarget(state);
+			if (target) {
+				void sendKeysRawToInSessionPane(
+					tmuxRunner(),
+					target,
+					result.forwardPaneKey,
+				)
+					.then(() =>
+						refreshInSessionPanes(state.livePanes!, tmuxRunner()),
+					)
+					.then((next) => {
+						if (quit || !next) return;
+						state = withHarnessFromLivePanes(state, next);
+						tui.requestRender();
+					})
+					.catch((err: unknown) => {
+						if (quit) return;
+						state = {
+							...state,
+							footerHints: `attach send failed: ${err instanceof Error ? err.message : String(err)}`,
+						};
+						tui.requestRender();
+					});
+			}
+			tui.requestRender();
+			return;
+		}
 		if (result.approve || result.decline) {
 			const approval = (result.approve ?? result.decline)!;
 			void resolveApproval(approval, Boolean(result.approve))
@@ -2217,6 +3368,40 @@ export async function runInteractiveShell(
 						`pane ${result.toAgent?.agent} refused: ${err instanceof Error ? err.message : String(err)}`,
 					);
 					state = { ...state, agentState: "blocked" };
+				})
+				.then(() => {
+					if (!quit) tui.requestRender();
+				});
+		} else if (result.sessionAction) {
+			const action = result.sessionAction;
+			void executeHarnessChromeAction(
+				{
+					hoboHome: state.hoboHome,
+					harnessView: state.harnessView,
+					livePanes: state.livePanes,
+					runner: tmuxRunner(),
+				},
+				action,
+			)
+				.then((outcome) => {
+					if (quit) return;
+					state = {
+						...state,
+						harnessView: outcome.harnessView,
+						livePanes: outcome.livePanes,
+						focus: outcome.focus ?? state.focus,
+						agentWork: true,
+						paneScroll: 0,
+						footerHints: `agents · ${outcome.note}`,
+					};
+					state = appendProduct(state, outcome.note);
+				})
+				.catch((err: unknown) => {
+					if (quit) return;
+					state = appendProduct(
+						state,
+						`${action.kind} failed: ${err instanceof Error ? err.message : String(err)}`,
+					);
 				})
 				.then(() => {
 					if (!quit) tui.requestRender();
@@ -2250,15 +3435,94 @@ export async function runInteractiveShell(
 		onSubmit: (text) => handleSubmitText(text),
 	});
 
+	/**
+	 * Exact CLI parity: stop the product TUI, hand this TTY to tmux attach on
+	 * the focused agent window, Ctrl+] detaches back here.
+	 */
+	runFullscreenAttach = async () => {
+		if (quit || attachBusy) return;
+		const ready = ensureHarnessView(state);
+		if (!canEnterPaneInteract(ready) || !ready.livePanes) {
+			state = appendProduct(
+				ready,
+				"no seated tmux pane to attach — install codex/pi and reopen hobo-code",
+			);
+			tui.requestRender();
+			return;
+		}
+		const seated = pickSendWindow(ready.livePanes);
+		if (!seated) {
+			state = appendProduct(ready, "no steerable agent window focused");
+			tui.requestRender();
+			return;
+		}
+		attachBusy = true;
+		state = {
+			...ready,
+			focus: "agents",
+			agentWork: true,
+			footerHints: AGENTS_ATTACH_HINT,
+		};
+		tui.requestRender();
+		// Leave alt-screen + raw mode so tmux owns the real TTY.
+		tui.stop();
+		try {
+			const outcome = await attachTmuxFullscreen({
+				session: ready.livePanes.session,
+				window: seated.name,
+				pane: seated.target,
+				runner: tmuxRunner(),
+			});
+			if (!quit) {
+				state = appendProduct(
+					{ ...state, paneInteract: false },
+					outcome.detail,
+				);
+			}
+		} catch (err) {
+			if (!quit) {
+				state = appendProduct(
+					{ ...state, paneInteract: false },
+					`attach failed: ${err instanceof Error ? err.message : String(err)}`,
+				);
+			}
+		}
+		if (quit) {
+			attachBusy = false;
+			return;
+		}
+		try {
+			const next = await refreshInSessionPanes(
+				state.livePanes ?? ready.livePanes,
+				tmuxRunner(),
+			);
+			state = withHarnessFromLivePanes(state, next);
+		} catch {
+			// preview refresh is best-effort after detach
+		}
+		tui.start();
+		tui.setFocus(input.editor);
+		attachBusy = false;
+		tui.requestRender();
+	};
+
 	const view: Component = {
 		render(width: number): string[] {
-			const w = clamp(width, 40, 200);
-			const h = clamp(terminal.rows, 12, 80);
+			// Never invent a width wider than the TTY — clamp(40,…) used to paint
+			// 40-cell lines into a 30-col terminal and leave wrapped garbage.
+			const w = Math.max(16, width);
+			const h = Math.max(8, terminal.rows);
 			// The Editor grows with wrapped input; the transcript gives up rows
 			// to match so the frame never overflows the screen.
-			const rows = input.height(w);
+			const rows = Math.max(1, input.height(w));
 			if (w !== state.width || h !== state.height || rows !== state.inputRows) {
-				state = { ...state, width: w, height: h, inputRows: rows };
+				state = clampScrollState({
+					...state,
+					width: w,
+					height: h,
+					inputRows: rows,
+				});
+				clearWrapCache();
 			}
 			return renderShellFrame(state).split("\n");
 		},
@@ -2280,6 +3544,90 @@ export async function runInteractiveShell(
 	// would not otherwise need them.
 	tui.addInputListener((data) => {
 		if (quit) return undefined;
+		// Attach: keys → focused leaf inside TV; Ctrl+]/Ctrl+\ leave; [ ] cycle panes.
+		// PgUp/PgDn/Home/End scroll the TV capture (do not forward — otherwise
+		// multi-turn conversations stay stuck off-screen with no way to peek).
+		if (state.paneInteract && state.focus === "agents") {
+			if (isPaneInteractDetach(data)) {
+				state = leavePaneInteract(state);
+				tui.requestRender();
+				return { consume: true };
+			}
+			if (data === "[" || data === "]") {
+				state = applyHarnessNav(state, "leaf", data === "]" ? 1 : -1);
+				if (state.livePanes) {
+					void focusInSessionLeaf(
+						state.livePanes,
+						tmuxRunner(),
+						state.livePanes.focusedPane ?? 0,
+					)
+						.then((next) => {
+							if (quit || !next) return;
+							state = withHarnessFromLivePanes(
+								{ ...state, paneInteract: true },
+								next,
+							);
+							tui.requestRender();
+						})
+						.catch(() => {});
+				}
+				tui.requestRender();
+				return { consume: true };
+			}
+			if (matchesKey(data, "pageUp") || matchesKey(data, "pageDown")) {
+				state = syncAgentsBodyLines(state);
+				state = scrollFocused(
+					state,
+					matchesKey(data, "pageUp") ? "up" : "down",
+					pageStep(viewportRows(state)),
+				);
+				tui.requestRender();
+				return { consume: true };
+			}
+			if (matchesKey(data, "home")) {
+				state = syncAgentsBodyLines(state);
+				state = scrollToHome(state);
+				tui.requestRender();
+				return { consume: true };
+			}
+			if (matchesKey(data, "end")) {
+				state = syncAgentsBodyLines(state);
+				state = scrollToLive(state);
+				tui.requestRender();
+				return { consume: true };
+			}
+			const target = resolvePaneInteractTarget(state);
+			if (target) {
+				void sendKeysRawToInSessionPane(tmuxRunner(), target, data)
+					.then(() =>
+						refreshInSessionPanes(state.livePanes!, tmuxRunner()),
+					)
+					.then((next) => {
+						if (quit || !next) return;
+						state = withHarnessFromLivePanes(
+							{ ...state, paneInteract: true },
+							next,
+						);
+						tui.requestRender();
+					})
+					.catch((err: unknown) => {
+						if (quit) return;
+						state = {
+							...state,
+							footerHints: `attach send failed: ${err instanceof Error ? err.message : String(err)}`,
+						};
+						tui.requestRender();
+					});
+			} else {
+				state = {
+					...state,
+					footerHints:
+						"attach · no tmux pane — leave with Ctrl+] or Ctrl+\\",
+				};
+				tui.requestRender();
+			}
+			return { consume: true };
+		}
 		if (data === "\u0003") {
 			requestQuit();
 			return { consume: true };
@@ -2288,6 +3636,30 @@ export async function runInteractiveShell(
 			// Modal: the gate must see every key so a mutation cannot be
 			// approved by something falling through to the editor.
 			handleKey(data);
+			return { consume: true };
+		}
+		if (shellModalOwnsInput(state)) {
+			// Pin + consume every key while /agents modal is open — including Tab.
+			// Requiring focus==="agents-catalog" previously let Tab hit cycleFocus
+			// and wipe the catalog/configure stack (focus loss).
+			if (agentsModalActive(state)) {
+				state = pinAgentsModalFocus(state);
+			}
+			handleKey(data);
+			if (agentsModalActive(state) && input.text().length > 0) {
+				input.clear();
+			}
+			return { consume: true };
+		}
+		if (
+			matchesKey(data, "enter") &&
+			state.focus === "agents" &&
+			input.text().length === 0 &&
+			!state.slashOpen &&
+			canEnterPaneInteract(state)
+		) {
+			state = enterPaneInteract(state);
+			tui.requestRender();
 			return { consume: true };
 		}
 		if (data === "\u001b") {
@@ -2304,42 +3676,128 @@ export async function runInteractiveShell(
 			return { consume: true };
 		}
 		if (data === "\t") {
+			if (agentsModalActive(state)) {
+				state = pinAgentsModalFocus(state);
+				handleKey(data);
+				if (input.text().length > 0) input.clear();
+				tui.requestRender();
+				return { consume: true };
+			}
 			state = cycleFocus(state);
 			tui.requestRender();
 			return { consume: true };
 		}
 		if (
 			(data === "[" || data === "]") &&
+			state.focus === "agents" &&
 			input.text().length === 0 &&
 			hasAgentWork(state) &&
-			state.livePanes &&
-			state.livePanes.windows.length > 0
+			state.harnessView.sessions.length > 0
 		) {
-			state = {
-				...state,
-				livePanes: cycleInSessionWindow(state.livePanes, data === "]" ? 1 : -1),
-				focus: "agents",
-				paneScroll: 0,
-			};
+			state = applyHarnessNav(state, "leaf", data === "]" ? 1 : -1);
+			if (state.livePanes) {
+				void focusInSessionLeaf(
+					state.livePanes,
+					tmuxRunner(),
+					state.livePanes.focusedPane ?? 0,
+				)
+					.then((next) => {
+						if (quit || !next) return;
+						state = withHarnessFromLivePanes(state, next);
+						tui.requestRender();
+					})
+					.catch(() => {});
+			}
+			tui.requestRender();
+			return { consume: true };
+		}
+		if (
+			(data === "{" || data === "}") &&
+			state.focus === "agents" &&
+			input.text().length === 0 &&
+			hasAgentWork(state) &&
+			state.harnessView.sessions.length > 0
+		) {
+			state = applyHarnessNav(state, "tab", data === "}" ? 1 : -1);
+			tui.requestRender();
+			return { consume: true };
+		}
+		if (
+			(data === "," || data === ".") &&
+			state.focus === "agents" &&
+			input.text().length === 0 &&
+			hasAgentWork(state) &&
+			state.harnessView.sessions.length > 1
+		) {
+			state = applyHarnessNav(state, "session", data === "." ? 1 : -1);
 			tui.requestRender();
 			return { consume: true };
 		}
 		if (matchesKey(data, "pageUp") || matchesKey(data, "pageDown")) {
+			if (state.focus === "agents") state = syncAgentsBodyLines(state);
 			state = scrollFocused(
 				state,
 				matchesKey(data, "pageUp") ? "up" : "down",
-				Math.max(3, viewportRows(state) - 1),
+				pageStep(viewportRows(state)),
 			);
 			tui.requestRender();
 			return { consume: true };
 		}
-		// Scroll the focused pane with the arrows only when the editor is empty,
-		// so ↑ still means "previous prompt" while composing.
+		if (matchesKey(data, "home")) {
+			if (state.focus === "agents") state = syncAgentsBodyLines(state);
+			state = scrollToHome(state);
+			tui.requestRender();
+			return { consume: true };
+		}
+		if (matchesKey(data, "end")) {
+			if (state.focus === "agents") state = syncAgentsBodyLines(state);
+			state = scrollToLive(state);
+			tui.requestRender();
+			return { consume: true };
+		}
+		if (matchesKey(data, "ctrl+u")) {
+			if (state.focus === "agents") state = syncAgentsBodyLines(state);
+			state = scrollFocused(
+				state,
+				"up",
+				halfPageStep(viewportRows(state)),
+			);
+			tui.requestRender();
+			return { consume: true };
+		}
+		if (matchesKey(data, "ctrl+d")) {
+			if (state.focus === "agents") state = syncAgentsBodyLines(state);
+			state = scrollFocused(
+				state,
+				"down",
+				halfPageStep(viewportRows(state)),
+			);
+			tui.requestRender();
+			return { consume: true };
+		}
+		if (matchesKey(data, "ctrl+o")) {
+			state = state.transcriptMode
+				? exitTranscriptLess(state)
+				: enterTranscriptLess(state);
+			tui.requestRender();
+			return { consume: true };
+		}
+		if (state.transcriptMode) {
+			handleKey(data);
+			return { consume: true };
+		}
+		// ↑/↓ always scroll when composer empty — Agents focus stays on [ ] / { }
+		// Agents catalog owns ↑↓ via shellModalOwnsInput (consumed above).
 		if (
 			input.text().length === 0 &&
+			!shellModalOwnsInput(state) &&
 			(matchesKey(data, "up") || matchesKey(data, "down"))
 		) {
-			state = scrollFocused(state, matchesKey(data, "up") ? "up" : "down", 1);
+			state = scrollFocused(
+				state,
+				matchesKey(data, "up") ? "up" : "down",
+				1,
+			);
 			tui.requestRender();
 			return { consume: true };
 		}
@@ -2347,6 +3805,37 @@ export async function runInteractiveShell(
 	});
 	tui.setFocus(input.editor);
 	tui.start();
+
+	// pi-tui's resize hook only requestRender()s. Force a full clear + invalidate
+	// so width/height changes never leave differential leftovers (WSL/WT especially).
+	const onTerminalResize = () => {
+		if (quit) return;
+		const nextW = Math.max(16, terminal.columns);
+		const nextH = Math.max(8, terminal.rows);
+		state = clampScrollState({
+			...state,
+			width: nextW,
+			height: nextH,
+			inputRows: Math.max(1, input.height(nextW)),
+		});
+		tui.invalidate();
+		tui.requestRender(true);
+		if (state.focus === "agents" && state.livePanes?.tmux) {
+			void refreshInSessionPanes(state.livePanes, tmuxRunner())
+				.then((next) => {
+					if (quit) return;
+					state = withHarnessFromLivePanes(state, next);
+					tui.requestRender();
+				})
+				.catch(() => {});
+		}
+	};
+	const resizeStream = stdout as NodeJS.WriteStream & {
+		on?: (event: string, listener: () => void) => void;
+		off?: (event: string, listener: () => void) => void;
+		removeListener?: (event: string, listener: () => void) => void;
+	};
+	resizeStream.on?.("resize", onTerminalResize);
 
 	// Idle animation: request a repaint only when the sprite frame actually
 	// changes. Rest spans (15 of 26 ticks) request nothing.
@@ -2371,11 +3860,11 @@ export async function runInteractiveShell(
 			.then((next) => {
 				if (quit) return;
 				if (next.capture === state.livePanes?.capture) return;
-				state = { ...state, livePanes: next };
+				state = withHarnessFromLivePanes(state, next);
 				tui.requestRender();
 			})
 			.catch(() => {});
-	}, 400);
+	}, 200);
 	paneTick.unref?.();
 
 	let maxMsTimer: NodeJS.Timeout | undefined;
@@ -2416,6 +3905,8 @@ export async function runInteractiveShell(
 		if (maxMsTimer) clearTimeout(maxMsTimer);
 		process.removeListener("SIGTERM", onSignal);
 		process.removeListener("SIGHUP", onSignal);
+		resizeStream.off?.("resize", onTerminalResize);
+		resizeStream.removeListener?.("resize", onTerminalResize);
 		// Leave the alternate screen (and raw mode) even if the driver threw —
 		// a CLI that can strand a terminal in raw mode is not shippable.
 		tui.stop();

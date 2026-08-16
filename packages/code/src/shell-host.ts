@@ -20,6 +20,10 @@ import {
 	runHoboCodeCli,
 } from "./cli.js";
 import {
+	explicitHoboBinOverride,
+	runComposedHobo,
+} from "./composed-hobo.js";
+import {
 	type DevBrowserSession,
 	resolveHoboSpawn,
 } from "./dev-browser.js";
@@ -88,7 +92,24 @@ async function runHoboCommand(
 	deps: DefaultShellHostOptions,
 ): Promise<string> {
 	const env = { ...process.env, ...deps.env };
-	const spawned = resolveHoboSpawn({ env, argv });
+	const override = explicitHoboBinOverride(env);
+	if (override === undefined) {
+		const result = await runComposedHobo(argv, {
+			cwd: deps.cwd ?? process.cwd(),
+			env,
+		});
+		const text = [result.progress.join("\n"), result.stdout, result.stderr]
+			.filter((part) => part.trim().length > 0)
+			.join("\n")
+			.trimEnd();
+		if (result.exitCode === 0) {
+			return text || `hobo ${argv.join(" ")} completed`;
+		}
+		throw new Error(
+			`${text ? `${text}\n` : ""}hobo exited with ${result.exitCode}`,
+		);
+	}
+	const spawned = resolveHoboSpawn({ env, argv, hoboBin: override });
 	return new Promise((resolve, reject) => {
 		const child = spawn(spawned.command, [...spawned.args], {
 			cwd: deps.cwd ?? process.cwd(),
@@ -106,7 +127,7 @@ async function runHoboCommand(
 			if (err.code === "ENOENT") {
 				reject(
 					new Error(
-						`hobo CLI not found (${err.path ?? spawned.bin}). Set HOBO_CODE_HOBO_BIN or use this repo's packages/hobo/dist/bin/hobo.js`,
+						`hobo override binary not found (${err.path ?? spawned.bin}). Set HOBO_CODE_HOBO_BIN to a real composed binary, or unset it to use in-process @hobo/hobo`,
 					),
 				);
 				return;

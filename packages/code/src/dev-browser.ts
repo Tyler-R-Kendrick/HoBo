@@ -5,10 +5,17 @@ import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+	explicitHoboBinOverride,
+	loadServeProjectOnLocalYard,
+	resolveHoboBin,
+} from "./composed-hobo.js";
 import { debugViewUrl } from "./evidence-overlay.js";
 import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
 import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import { attachStationSidecars } from "./station-sidecars.js";
+
+export { resolveHoboBin } from "./composed-hobo.js";
 
 export interface DevBrowserSessionOptions {
 	readonly projectDir: string;
@@ -41,34 +48,10 @@ export interface DevBrowserSession {
 }
 
 /**
- * Locate the composed `hobo` CLI. Env wins, then the sibling
- * `packages/hobo/dist/bin/hobo.js` in this checkout, then PATH.
+ * How the rare child-process escape hatch spawns composed `hobo`.
+ * Prefer in-process `serveProjectOnLocalYard` / `runComposedHobo` — spawn only
+ * when `HOBO_CODE_HOBO_BIN` / `HOBO_BIN` / `hoboBin` is set explicitly.
  */
-export function resolveHoboBin(
-	options: { readonly env?: NodeJS.ProcessEnv; readonly from?: string } = {},
-): string {
-	const env = options.env ?? process.env;
-	const override = [env.HOBO_CODE_HOBO_BIN, env.HOBO_BIN]
-		.map((value) => (typeof value === "string" ? value.trim() : ""))
-		.find((value) => value.length > 0);
-	if (override) return override;
-	let dir = options.from ?? dirname(fileURLToPath(import.meta.url));
-	for (let i = 0; i < 10; i += 1) {
-		const candidates = [
-			join(dir, "hobo", "dist", "bin", "hobo.js"),
-			join(dir, "packages", "hobo", "dist", "bin", "hobo.js"),
-		];
-		for (const candidate of candidates) {
-			if (existsSync(candidate)) return candidate;
-		}
-		const parent = dirname(dir);
-		if (parent === dir) break;
-		dir = parent;
-	}
-	return "hobo";
-}
-
-/** How the shipped `/dev` and `run it` paths spawn `hobo`. */
 export function resolveHoboSpawn(options: {
 	readonly env?: NodeJS.ProcessEnv;
 	readonly from?: string;
@@ -203,7 +186,7 @@ function waitForAppUrl(
 			if (err.code === "ENOENT") {
 				finish(
 					new Error(
-						`hobo CLI not found (${err.path ?? "hobo"}). Set HOBO_CODE_HOBO_BIN or use this repo's packages/hobo/dist/bin/hobo.js`,
+						`hobo override binary not found (${err.path ?? "hobo"}). Unset HOBO_CODE_HOBO_BIN to use in-process @hobo/hobo, or point it at a real binary`,
 					),
 				);
 				return;
@@ -283,6 +266,25 @@ export async function startDevBrowserSession(
 		options.appPort !== undefined && options.appPort > 0
 			? options.appPort
 			: await allocateLoopbackPort();
+	const forceSpawn =
+		options.hoboBin !== undefined ||
+		explicitHoboBinOverride(env) !== undefined;
+
+	if (!forceSpawn) {
+		return startDevBrowserSessionInProcess({
+			sessionId,
+			projectDir,
+			appPort,
+			env,
+			options,
+			evidence,
+			controlsTemplateHref: controlsTemplate.href,
+			...(stationId ? { stationId } : {}),
+			...(tenant ? { tenant } : {}),
+			...(environment ? { environment } : {}),
+		});
+	}
+
 	const spawned = resolveHoboSpawn({
 		env,
 		...(options.hoboBin !== undefined ? { hoboBin: options.hoboBin } : {}),
@@ -337,5 +339,112 @@ export async function startDevBrowserSession(
 		await stop(child);
 		await evidence.close();
 		throw error;
+	}
+}
+
+async function startDevBrowserSessionInProcess(input: {
+	readonly sessionId: string;
+	readonly projectDir: string;
+	readonly appPort: number;
+	readonly env: NodeJS.ProcessEnv;
+	readonly options: DevBrowserSessionOptions;
+	readonly evidence: {
+		readonly reportUrl: string;
+		readonly controlsUrl: (parentOrigin: string, sid?: string) => string;
+		readonly close: () => Promise<void>;
+	};
+	readonly controlsTemplateHref: string;
+	readonly stationId?: string;
+	readonly tenant?: string;
+	readonly environment?: string;
+}): Promise<DevBrowserSession> {
+	const previous = { ...process.env };
+	Object.assign(process.env, {
+		...input.env,
+		HOBO_HOME: input.options.hoboHome,
+		HOBO_CODE_DEV_BRIDGE: "1",
+		HOBO_CODE_EVIDENCE_CONTROLS_URL: input.controlsTemplateHref,
+		...(input.stationId ? { HOBO_STATION: input.stationId } : {}),
+		...(input.tenant ? { HOBO_TENANT: input.tenant } : {}),
+		...(input.environment ? { HOBO_ENV: input.environment } : {}),
+	});
+	try {
+		const serveProjectOnLocalYard = await loadServeProjectOnLocalYard(
+			input.options.from,
+		);
+		const timeoutMs = input.options.startupTimeoutMs ?? 60_000;
+		const serve = await Promise.race([
+			serveProjectOnLocalYard({
+				projectDir: input.projectDir,
+				port: input.appPort,
+				hoboHome: input.options.hoboHome,
+				emitProgress: () => {},
+			}),
+			new Promise<never>((_, reject) => {
+				setTimeout(
+					() =>
+						reject(
+							new Error(
+								`hobo-code dev (in-process serve) did not start within ${timeoutMs}ms`,
+							),
+						),
+					timeoutMs,
+				);
+			}),
+		]);
+		const namedCandidate =
+			typeof serve.primaryNamedUrl === "string" &&
+			serve.primaryNamedUrl.length > 0 &&
+			!/:0(?:\/|$)/u.test(serve.primaryNamedUrl)
+				? serve.primaryNamedUrl
+				: serve.namedEndpoints?.find((row) => row.external)?.url;
+		const namedUrl =
+			namedCandidate !== undefined && !/:0(?:\/|$)/u.test(namedCandidate)
+				? namedCandidate
+				: undefined;
+		const appUrl = serve.primaryUrl;
+		if (!appUrl || /:0(?:\/|$)/u.test(appUrl)) {
+			await serve.close();
+			await input.evidence.close();
+			throw new Error(
+				`hobo-code dev serve returned an invalid URL (${appUrl ?? "missing"})`,
+			);
+		}
+		const publicApp = namedUrl ?? preferNamedEndpoint(appUrl, "web");
+		const controlsUrl = input.evidence.controlsUrl(
+			new URL(publicApp).origin,
+			input.sessionId,
+		);
+		let closed = false;
+		return {
+			sessionId: input.sessionId,
+			appUrl,
+			debugUrl: debugViewUrl(namedUrl ?? appUrl),
+			controlsUrl,
+			reportUrl: input.evidence.reportUrl,
+			evidencePath: join(
+				input.options.hoboHome,
+				"durable",
+				"code",
+				"evidence",
+			),
+			...(namedUrl !== undefined ? { namedUrl } : {}),
+			...(input.stationId ? { stationId: input.stationId } : {}),
+			...(input.environment ? { environment: input.environment } : {}),
+			close: async () => {
+				if (closed) return;
+				closed = true;
+				await serve.close();
+				await input.evidence.close();
+			},
+		};
+	} catch (error) {
+		await input.evidence.close();
+		throw error;
+	} finally {
+		for (const key of Object.keys(process.env)) {
+			if (!(key in previous)) delete process.env[key];
+		}
+		Object.assign(process.env, previous);
 	}
 }

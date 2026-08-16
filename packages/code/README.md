@@ -41,10 +41,14 @@ The installed binary is **compiled** (`dist/`). Source lives in `src/`.
 
 `bin/hobo-code.mjs` **tries** to rebuild when `src/` is newer than `dist/`
 (`tsc` for `@hobo/code` only — no nested `@hobo/core` / stations prebuild
-fan-out). A type error in an unrelated file **does not block the CLI**: the
-launcher falls back to `src/bin/hobo-code.ts` via tsx so you can still run
-`hobo-code agents init`. Skip rebuild with `HOBO_CODE_SKIP_STALE_REBUILD=1`.
-Force source with `HOBO_CODE_FROM_SOURCE=1`. If even src cannot load, run
+fan-out). If workspace `@hobo/stations` `dist/` is missing exports that its
+`src/` already has (common after a fast-forward), the launcher also runs
+`tsc -p` in that package only — still no `pnpm run build` prebuild fan-out.
+Skip stations refresh with `HOBO_CODE_SKIP_STATIONS_REBUILD=1`. A type error
+in an unrelated file **does not block the CLI**: the launcher falls back to
+`src/bin/hobo-code.ts` via tsx so you can still run `hobo-code agents init`.
+Skip code rebuild with `HOBO_CODE_SKIP_STALE_REBUILD=1`. Force source with
+`HOBO_CODE_FROM_SOURCE=1`. If even src cannot load, run
 `pnpm exec turbo run build --filter=@hobo/code`.
 
 | Binary | Product |
@@ -133,10 +137,43 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
 |---|---|
 | type | talk to the model |
 | `/` | commands (`↑`/`↓` to pick, Enter to run) |
-| Tab | cycle chat → tasks → status → resources |
-| `↑`/`↓`, PgUp/PgDn | scroll the transcript |
+| Tab | cycle chat → mux (when work) → status → resources (resets pane scroll; leaves attach) |
+| `↑`/`↓` | scroll focused surface (Mux detached: capture; while attached, keys go to the pane) |
+| PgUp / PgDn | scroll Mux TV capture (works while attached too) |
+| Home / End | oldest / live (chat + Mux) |
+| Enter (empty, Mux) | **attach** — keys → focused split pane; TV chrome stays |
+| Ctrl+\ (or Ctrl+]) | leave attach |
+| `/mux` | open live agent terminal TV (connect / steer) |
+| `/mux attach` | same as Enter attach |
+| `[` / `]` | focus other split pane (both stay visible) |
+| `/mux pane` | split focused tab (tmux + side-by-side in TV) |
+| `{` / `}` | Mux only (detached): cycle tabs (redundant with `[`/`]` on single-pane seats) |
+| `,` / `.` | Mux only (detached): cycle sessions when more than one exists |
+| `/agents` | configure harnesses (model/effort); not session attach |
+| `/mux …` | tab · pane · attach · focus · detach · stop — slash only, never bare letters |
+| PgUp/PgDn, Ctrl+U/D | half-page scroll |
+| Home / End | oldest / live follow (chat); top / bottom (document panes) |
+| Ctrl+O | transcript less-mode (`j`/`k`, PgUp/Dn, `q`/Esc/`Ctrl+O` exit) |
 | Esc | cancel the turn in flight |
 | Ctrl+C | quit |
+
+Mux is herdr-shaped (Session → Tab → Pane): session line, Detach/Stop/New tab,
+tab strip, pane headers with focused + Focus/Prompt/Split/Close/Start agent,
+live ANSI capture preview (`tmux capture-pane -e`) for every leaf in the focused
+tab (herdr multi-pane). **Enter** attaches **inside the TV bezel** — keys forward
+to the focused leaf while chrome stays; **Ctrl+]** or **Ctrl+\** leaves.
+`[`]` cycles panes while attached. `/mux pane` splits the focused tab. Window resize
+force-clears and reflows the bezel (no stale differential cells). type+Enter
+steers without attaching. Codex seats under `$HOBO_HOME/durable/code/seats/codex`
+(auth/config linked from `~/.codex`) so a nested TUI does not fight an IDE /
+Windows Codex app-server on the shared home. Status strap leads with the
+active agent — `Hobo Bo` on chat, `Codex` / `Pi` when that pane is focused.
+
+Scroll is app-owned (alternate screen), not terminal scrollback. Agents capture
+pins to the newest lines (`paneScroll === 0`); **PgUp/PgDn** (and Home/End)
+scroll the TV — including while attached. Streaming preserves a non-zero
+`chatScroll` so reviewing history does not yank to live. Mouse-wheel CSI is
+not decoded yet — scroll is **keyboard-complete**.
 
 ### The model is local by default
 
@@ -244,9 +281,10 @@ prompt. Machine callers should branch on `code` and consume `remediation[]`.
 | Shell slash | One-shot CLI |
 |---|---|
 | `/templates` `/template` | `hobo-code template` · `hobo-code templates` (bare = list) |
-| `/agent` `/config` `/cost` `/harness` | `hobo-code agent` · `config` · `cost` · `harness` |
+| `/config` `/cost` `/harness` | `hobo-code config` · `cost` · `harness` |
 | `/status` `/resources` `/guide` `/tasks` `/login` | `hobo-code status` · `resources` · `guide` · `tasks` · `auth login --agent` |
-| `/agents` | Tab into working subagent chats without leaving this session (`/panes` alias) |
+| `/agents` | Configure harnesses (Hobo Bo first; subagents under Bo). Enter → model/effort. Esc closes. Not the live terminal TV |
+| `/mux` | Connect to agent terminal sessions (TV). Bare `/mux` opens the mux; subcommands: `tab` · `pane` · `attach` · `focus` · `detach` · `stop`. Tab also opens mux when work exists |
 | `/agents init` | `hobo-code agents init` — register harness plugins |
 | `/help` | keys + map · outside: `hobo-code help` |
 
@@ -257,17 +295,19 @@ Detected harness CLIs (Codex, Claude, cursor-agent, …) are **subagents**
 on one Agents screen — not a separate harness view and not the first tab.
 Claimed tasks nest under the subagent that took them. That subagent gets
 its own rift or git worktree branch and lands work with incremental
-checkins, stacked PRs, and squash-merge. The Agents tab appears while a
-subagent is working or a task is claimed. `/tasks` opens the same screen.
-Tab into an agent chat without losing the parent transcript, then
-type+Enter to steer that subagent. You do **not** `tmux attach` to write
+checkins, stacked PRs, and squash-merge. The Agents TV tab appears while a
+subagent is working or a task is claimed (Tab or `/mux`). `/agents` configures
+harnesses (Hobo Bo first; expandable subagents under `.hobo/agents`) — model and
+effort, not attach. `/tasks` runs the session work board CLI. `/mux` opens the
+live agent terminal TV; type+Enter steers; empty Enter attaches inside the bezel. You do **not** `tmux attach` to write
 app code. Bo keeps HoBo verbs (`/dev`, `/resources`, `/history`, `/alias`,
 `run it` / `debug it`).
 
 ```bash
 hobo-code                         # chat first
-# Tab → chat · (agents if a subagent or claimed task exists) · status · resources
-# [ ] cycle working subagents · type in Agents to steer
+# /agents → configure harnesses · /mux → live terminals
+# Tab → chat · (mux if a subagent or claimed task exists) · status · resources
+# [ ] cycle working subagents · type in Mux to steer
 ```
 
 Register harnesses first (Vercel `coding-agents setup` analog — Station
@@ -282,9 +322,16 @@ hobo-code agents init --non-interactive
 hobo-code agents init codex eve
 ```
 
-Eve agent trees (`agent/` + `agent/subagents/`) register at `/agents/<id>` in
-the virtual filesystem. A seated CLI can `ls /agents`. Bo still does not write
-app code.
+Bo subagents live under `.hobo/agents/<id>/` (instructions + optional nested
+`subagents/`) and optionally legacy `agent/` + `agent/subagents/`. `/agents`
+lists them under Hobo Bo. HoBo Bo configure always shows `+ create subagent`
+(even when the list is empty) — Enter, type a lowercase id, Enter again writes
+`.hobo/agents/<id>/instructions.md` and opens that agent. Model pick for Bo /
+subagents uses the Bo catalog (local ollama tags, configured harness models,
+BYOK seeds, `OPENAI_BASE_URL` locals). Each offer has a Package-URL (`pkg:…`) so
+`gpt-5` via Codex ≠ `gpt-5` via Azure. ←→ cycles offers; type for custom.
+They also register at `/agents/<id>` in the virtual filesystem. A seated CLI
+can `ls /agents`. Bo still does not write app code.
 
 `hobo-code mux` is the same seating, useful for dry-run / remote / virtual
 trees. Join stays in-session (`hobo-code` · Tab chat, then Agents when work starts). `tmux attach -t hobo`
@@ -453,13 +500,15 @@ when the complete changed-file set cannot be reviewed.
 
 Inside the interactive shell, `/dev` (or saying `run it` / `debug it`) runs the
 current project's Bindle through the same local Yard as `hobo dev`; it does
-not invent a static-site server. The child is piped (no TTY): hobo-code sets
-`HOBO_CODE_DEV_BRIDGE=1`, starts Node with `--import tsx`, and links generated
-app deps (`@hobo/adapter-hono`, `@hobo/bindles`, `hono`) so `src/bindle.ts`
-loads without `pnpm install`. When `hobo` is not on PATH, it uses
-`packages/hobo/dist/bin/hobo.js`. Override with `HOBO_CODE_HOBO_BIN`.
-Use `/hobo <args>` for the full control plane, for example
-`/hobo yard status` or `/hobo plan`.
+not invent a static-site server. Default path is **in-process**: hobo-code
+loads sibling `@hobo/hobo` and calls `serveProjectOnLocalYard` (same function
+the composed `hobo` binary wires). No `hobo` on PATH. It sets
+`HOBO_CODE_DEV_BRIDGE=1`, attaches Evidence controls, and links generated app
+deps (`@hobo/adapter-hono`, `@hobo/bindles`, `hono`) so `src/bindle.ts` loads
+without `pnpm install`. Set `HOBO_CODE_HOBO_BIN` only for an explicit
+child-process override (tests). Use `/hobo <args>` for the full control plane
+(also in-process via `createComposedHoboCli`), for example `/hobo yard status`
+or `/hobo plan`.
 
 | lazygit workflow | HoBo Code workbench |
 |---|---|
@@ -511,7 +560,7 @@ hobo-code help --dense                 # power-user glyph strip (opt-in)
 | **tasks** | Session work board — same ledger as Evidence. Dense TUI list; Evidence is the visual report with provenance. |
 | **guide** | Claude Code → hobo-code map (plain English for non-dev app builders) |
 | **cost** | Budget, $0 free/local path, savings scoreboard, cheapest-capable routing |
-| **harness** | Pi/Flue dual surface, skills, Eve subagents, self-improve, brain notes |
+| **harness** | Pi/Flue dual surface, skills, Bo subagents, self-improve, brain notes |
 | **edit** | Open [neo]vim in managed harness pane (tmux/stdio bridge + hobo-code.nvim) |
 | **config** | Env/flags inventory by stack (setup critique; secrets presence-only) |
 | **agent** | Agent-native readiness: human-free auth, MCP/ACP, unattended/no-elicitation |
@@ -592,7 +641,7 @@ Dense pane chrome stays quiet; discoverability lives in the status footer, verb 
 | Tasks pane / still-running | `hobo-code tasks` board + working panes |
 | Workflows + multi-agent progress | Local World + `planDurableWorkflowRun` on `tasks --json` |
 | Headless `-p` | `--json` envelopes |
-| Subagents | Multi-pane status/session + Eve surface |
+| Subagents | Multi-pane status/session + Bo subagent surface |
 
 Honest parity language only — hobo-code is HoBo app-building, not a Grok Build reimplementation.
 
@@ -631,7 +680,7 @@ Stack that multiplies savings (repo agent tooling): **RTK** (shell noise) · **h
 
 ```bash
 hobo-code harness              # dual surface inventory
-hobo-code harness --json       # skills · Eve · self-improve · brain
+hobo-code harness --json       # skills · subagents · self-improve · brain
 # Interactive Pi loads project skills, including Impeccable for web-app debugging.
 # Interactive Pi path shares instructions with:
 #   flue run hobo-code --input '{"message":"…"}'

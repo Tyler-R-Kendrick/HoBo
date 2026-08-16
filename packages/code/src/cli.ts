@@ -3250,8 +3250,8 @@ export async function runHoboCodeCli(
 				]),
 				[
 					"ensure the project has src/bindle.ts or dist/bindle.js",
-					"ensure the hobo CLI is on PATH, or run from this repo (workspace packages/hobo/dist/bin/hobo.js is used automatically)",
-					"or set HOBO_CODE_HOBO_BIN to the composed hobo binary",
+					"build workspace @hobo/hobo (hobo-code calls serveProjectOnLocalYard / createComposedHoboCli in-process — no `hobo` on PATH)",
+					"or set HOBO_CODE_HOBO_BIN only when you need an explicit child-process override",
 					"choose free ports with --port and --debug-port",
 				],
 			);

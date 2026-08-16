@@ -156,6 +156,17 @@ export function seatingOrder(specs: readonly HarnessSpec[]): readonly string[] {
 		.map((spec) => spec.id);
 }
 
+/** Human label for a seated harness id (Codex, Pi, Hobo Bo, …). */
+export function harnessDisplayLabel(
+	id: string,
+	specs: readonly HarnessSpec[] = loadHarnessCatalog(),
+): string {
+	const hit = specs.find((row) => row.id === id);
+	if (hit?.label) return hit.label;
+	if (id === "hobo-code") return "Hobo Bo";
+	return id;
+}
+
 export function packageNamesPresent(
 	cwd: string,
 	names: readonly string[],

@@ -85,10 +85,9 @@ describe("hobo-code Bindle development bridge", () => {
 		const { hoboBin } = fixture();
 		expect(
 			resolveHoboBin({
-				env: { PATH: "/no/such/bin" },
-				from: hoboBin,
+				env: { HOBO_CODE_HOBO_BIN: hoboBin, PATH: "/no/such/bin" },
 			}),
-		).toBe("hobo");
+		).toBe(hoboBin);
 
 		const root = mkdtempSync(join(tmpdir(), "hobo-code-workspace-hobo-"));
 		roots.push(root);
@@ -144,6 +143,7 @@ describe("hobo-code Bindle development bridge", () => {
 		const session = await startDevBrowserSession({
 			projectDir,
 			hoboHome,
+			hoboBin: workspaceBin,
 			appPort: 0,
 			debugPort: 0,
 			sessionId: "dev-workspace-bin",

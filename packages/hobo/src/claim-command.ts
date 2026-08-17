@@ -1,5 +1,5 @@
-import type { CommandModule, YardRuntime } from "@hobo/cli";
 import type { ClaimBundle } from "@hobo/claims";
+import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { DEFAULT_TENANT, deploymentIdFor } from "@hobo/cli";
 import {
 	currentFenceToken,
@@ -7,25 +7,24 @@ import {
 	deploymentViewProjection,
 } from "@hobo/cloud";
 import type { PrincipalRef } from "@hobo/core";
-
+import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
-	createBrokerDiscoveryClient,
 	type BrokerDiscoveryClient,
+	createBrokerDiscoveryClient,
 } from "./broker-discovery.js";
 import {
 	createMockRemoteBrokerState,
 	createRemoteBrokerClient,
-	RemoteBrokerClientError,
 	type MockRemoteBrokerState,
 	type RemoteBrokerClient,
+	RemoteBrokerClientError,
 } from "./broker-remote-client.js";
 import { resolveBrokerUriFromFlags } from "./broker-target.js";
-import { defaultHoboHome } from "./bare-metal-yard.js";
-import { runClaimCeremony } from "./claim-ceremony.js";
 import type { ClaimOwnershipVerifier } from "./claim-ceremony.js";
+import { runClaimCeremony } from "./claim-ceremony.js";
 import {
-	createCredentialPresenter,
 	type CredentialPresenter,
+	createCredentialPresenter,
 } from "./credential-presenter.js";
 
 export interface ClaimCommandDeps {
@@ -54,9 +53,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 	return {
 		run: async ({ context, flags, args }) => {
 			const env =
-				deps.env ??
-				(context as { env?: NodeJS.ProcessEnv }).env ??
-				process.env;
+				deps.env ?? (context as { env?: NodeJS.ProcessEnv }).env ?? process.env;
 
 			// The multi-step ownership ceremony (ADR-0151): a bundle can hold two
 			// providers with two clocks, so it gets verbs of its own rather than

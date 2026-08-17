@@ -198,7 +198,9 @@ export function createVerifyCommand(
 					}
 				}
 				residency =
-					reasons.length > 0 ? { ok: false, reasons } : { ok: true, reasons: [] };
+					reasons.length > 0
+						? { ok: false, reasons }
+						: { ok: true, reasons: [] };
 			}
 
 			const decision = evaluateGatekeeper({

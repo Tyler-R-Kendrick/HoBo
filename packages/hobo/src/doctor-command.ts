@@ -13,13 +13,13 @@ import {
 } from "@hobo/trails";
 
 import { defaultHoboHome } from "./bare-metal-yard.js";
+import { buildBindingDeliveryDoctorSection } from "./binding-delivery-doctor.js";
 import { describeCodeHarnessHealth } from "./code-health.js";
 import {
 	type DeployTargetDescription,
 	describeDeployTarget,
 } from "./deploy-preflight.js";
 import { loadHoboProfile } from "./hobo-profile.js";
-import { buildBindingDeliveryDoctorSection } from "./binding-delivery-doctor.js";
 import { buildMessagingDoctorSection } from "./messaging-doctor.js";
 
 export interface DoctorCommandDeps {
@@ -104,7 +104,9 @@ export function createDoctorCommand(
 
 			const remediation = remediationFor(target);
 			if (!stationReport.present) {
-				remediation.push("Run `hobo station init` for Station occupancy setup.");
+				remediation.push(
+					"Run `hobo station init` for Station occupancy setup.",
+				);
 			} else if (stationReport.bootstrapActive === true) {
 				remediation.push(
 					"Bootstrap Rail still active — publish/activate a non-bootstrap Rail for production posture.",

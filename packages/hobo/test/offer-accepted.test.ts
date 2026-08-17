@@ -6,9 +6,8 @@ import path from "node:path";
 import { NETLIFY_ANONYMOUS_STATIC_SITE_DEFINITION_ID } from "@hobo/provider-netlify";
 import { computeEvidenceDigest } from "@hobo/trust";
 import { afterEach, describe, expect, it } from "vitest";
-
-import { createOfferCommand } from "../src/offer-command.js";
 import { FIRST_PARTY_DEFINITIONS } from "../src/first-party-catalog.js";
+import { createOfferCommand } from "../src/offer-command.js";
 import { EVIDENCE_DIRECTORY } from "../src/recipe-plane.js";
 import { TRUST_ROOTS_DIRECTORY } from "../src/trust-root.js";
 

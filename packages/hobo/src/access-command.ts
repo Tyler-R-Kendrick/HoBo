@@ -10,9 +10,9 @@ import {
 	BreakGlassService,
 	CrossEnvGrantStore,
 	EnvMembershipService,
+	type IsolationClass,
 	mintElevatedAccessCapability,
 	parseIsolationClass,
-	type IsolationClass,
 } from "@hobo/connectivity";
 
 export interface AccessCommandDeps {
@@ -50,8 +50,7 @@ export function createAccessCommand(
 			const now = deps.now ?? (() => new Date().toISOString());
 			const membership =
 				deps.membership ?? new EnvMembershipService({ tenant, now });
-			const crossEnv =
-				deps.crossEnv ?? new CrossEnvGrantStore({ tenant, now });
+			const crossEnv = deps.crossEnv ?? new CrossEnvGrantStore({ tenant, now });
 			const breakGlass =
 				deps.breakGlass ?? new BreakGlassService({ tenant, now });
 
@@ -109,16 +108,14 @@ export function createAccessCommand(
 			}
 
 			const reason =
-				(typeof f.reason === "string" && f.reason) ||
-				"operator access request";
+				(typeof f.reason === "string" && f.reason) || "operator access request";
 			const subject =
 				(typeof f.subject === "string" && f.subject) ||
 				env.HOBO_SUBJECT ||
 				"user:local";
 			const duration = parseDurationSeconds(f.duration, 1800);
 			const actor =
-				(typeof f.actor === "string" && f.actor) ||
-				"control-plane:operator";
+				(typeof f.actor === "string" && f.actor) || "control-plane:operator";
 
 			if (sub === "break-glass") {
 				const requested = breakGlass.request({
@@ -166,7 +163,9 @@ export function createAccessCommand(
 						},
 					};
 				}
-				emitProgress(`break-glass requested ${requested.id} (awaiting dual approval)`);
+				emitProgress(
+					`break-glass requested ${requested.id} (awaiting dual approval)`,
+				);
 				return {
 					ok: true,
 					status: "requested",

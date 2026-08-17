@@ -63,7 +63,9 @@ function resolveStationId(
 	return "station:local";
 }
 
-export function createStationCommand(deps: StationCommandDeps = {}): CommandModule {
+export function createStationCommand(
+	deps: StationCommandDeps = {},
+): CommandModule {
 	return {
 		implemented: true,
 		async run({ args, flags }) {

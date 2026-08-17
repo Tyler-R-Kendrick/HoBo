@@ -1,18 +1,18 @@
-import type { YardRuntime } from "@hobo/cli";
-import { DEFAULT_TENANT } from "@hobo/cli";
 import {
+	assertNoSecrets,
+	attachBundle,
 	type ClaimBundle,
 	type ClaimCommand,
 	type ClaimCoordinatorState,
+	ClaimError,
 	type ClaimEvent,
 	type ClaimItem,
-	ClaimError,
-	assertNoSecrets,
-	attachBundle,
 	initialState,
 	outstandingObligations,
 	reduce,
 } from "@hobo/claims";
+import type { YardRuntime } from "@hobo/cli";
+import { DEFAULT_TENANT } from "@hobo/cli";
 import { collectStream } from "@hobo/cloud";
 
 // The durable side of the claim plane.
@@ -37,7 +37,10 @@ export function claimStreamFor(deploymentRef: string): string {
 	return `claim:${deploymentRef}`;
 }
 
-type StoredCommand = { readonly command: ClaimCommand; readonly fencingToken: string };
+type StoredCommand = {
+	readonly command: ClaimCommand;
+	readonly fencingToken: string;
+};
 
 export interface ClaimPlaneSnapshot {
 	readonly state: ClaimCoordinatorState;

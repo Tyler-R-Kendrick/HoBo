@@ -16,7 +16,7 @@
         "status": 200,
         "body": {
           "provider": "azure",
-          "regions": ["eastus", "westeurope"],
+          "regions": ["eastus", "westus2", "westeurope"],
           "bindings": [
             {
               "profile": "data.postgres/v1",
@@ -25,7 +25,7 @@
             },
             {
               "profile": "web.hosted/v1",
-              "productId": "azure.aks-deployment/v1",
+              "productId": "azure.aks/v1",
               "properties": {}
             },
             {
@@ -39,7 +39,7 @@
               "properties": {}
             },
             {
-              "profile": "web.hosted/v1",
+              "profile": "web.static/v1",
               "productId": "azure.static-web-apps/v1",
               "properties": {}
             }

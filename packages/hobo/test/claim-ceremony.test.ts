@@ -164,14 +164,22 @@ describe("durable claim plane", () => {
 	it("rehydrates a claim bundle from its durable attachment command", async () => {
 		const runtime = createDefaultYardRuntime();
 		stores.push(runtime.store as RuntimeLocalEventStore);
-		const first = await rebuildClaimState(runtime, "deployment-1", "deployment-1:0");
+		const first = await rebuildClaimState(
+			runtime,
+			"deployment-1",
+			"deployment-1:0",
+		);
 		const attached = await applyClaimCommand(runtime, first, {
 			kind: "AttachClaimBundle",
 			bundle: bundle([item()]),
 		});
 
 		expect(attached.state.bundle?.id).toBe("bundle-1");
-		const rebuilt = await rebuildClaimState(runtime, "deployment-1", "deployment-1:0");
+		const rebuilt = await rebuildClaimState(
+			runtime,
+			"deployment-1",
+			"deployment-1:0",
+		);
 		expect(rebuilt.state.bundle?.items).toHaveLength(1);
 		expect(rebuilt.state.bundle?.items[0]?.id).toBe("item-db");
 	});
@@ -201,7 +209,11 @@ describe("durable claim plane", () => {
 	it("refuses a command from a stale fence", async () => {
 		const runtime = createDefaultYardRuntime();
 		stores.push(runtime.store as RuntimeLocalEventStore);
-		const snapshot = await rebuildClaimState(runtime, "deployment-1", "fence-a");
+		const snapshot = await rebuildClaimState(
+			runtime,
+			"deployment-1",
+			"fence-a",
+		);
 		const stale = {
 			...snapshot,
 			state: { ...snapshot.state, fencingToken: "fence-a" },

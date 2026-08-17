@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import {
-	PRODUCT_DEFINITION_DIGEST,
-	REFERENCE_ANONYMOUS_PORTS,
 	digestOf,
 	emitAnonymousTrustEvidence,
+	PRODUCT_DEFINITION_DIGEST,
+	REFERENCE_ANONYMOUS_PORTS,
 	runAnonymousConformance,
 } from "@hobo/conformance";
 import { afterEach, describe, expect, it } from "vitest";

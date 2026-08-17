@@ -1,8 +1,8 @@
 import type { CommandModule } from "@hobo/cli";
 
 import {
-	RecipePlaneError,
 	listRecipeSummaries,
+	RecipePlaneError,
 	requireRecipe,
 	summarizeRecipe,
 } from "./recipe-plane.js";
@@ -38,7 +38,9 @@ export function createRecipesCommand(): CommandModule {
 						status: "usage",
 						code: "HOBO_RECIPES_USAGE",
 						message: "hobo recipes show <recipe-id>",
-						remediation: ["Run `hobo recipes list` to see registered recipe ids."],
+						remediation: [
+							"Run `hobo recipes list` to see registered recipe ids.",
+						],
 					};
 				}
 				try {
@@ -97,7 +99,9 @@ export function createRecipesCommand(): CommandModule {
 							status: "unknown-recipe",
 							code: "HOBO_RECIPES_UNKNOWN",
 							message: error.message,
-							remediation: ["Run `hobo recipes list` to see registered recipe ids."],
+							remediation: [
+								"Run `hobo recipes list` to see registered recipe ids.",
+							],
 						};
 					}
 					throw error;
@@ -109,7 +113,9 @@ export function createRecipesCommand(): CommandModule {
 				status: "usage",
 				code: "HOBO_RECIPES_USAGE",
 				message: `hobo recipes: unknown subcommand "${subcommand}"`,
-				remediation: ["Use `hobo recipes list` or `hobo recipes show <recipe-id>`."],
+				remediation: [
+					"Use `hobo recipes list` or `hobo recipes show <recipe-id>`.",
+				],
 			};
 		},
 	};

@@ -10,8 +10,8 @@ import { type Yard, yard } from "@hobo/yards";
 
 import { createDefaultYardRuntime } from "./compose.js";
 import {
-	createBareMetalProvider,
 	BARE_METAL_PROVIDER_ID,
+	createBareMetalProvider,
 } from "./local-provider.js";
 
 // Local Yard: provider-specific control plane on the operator's machine

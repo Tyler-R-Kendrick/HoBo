@@ -4,10 +4,7 @@
  */
 import { createServer, type Server } from "node:http";
 
-import {
-	discoveryEnvForDependency,
-	readDependencyConfig,
-} from "@hobo/bindles";
+import { discoveryEnvForDependency, readDependencyConfig } from "@hobo/bindles";
 import { loadBindleDefinition } from "@hobo/cli";
 import {
 	attachNamedEndpoints,
@@ -30,8 +27,8 @@ import {
 	type BareMetalServeResult,
 	type ComponentEndpoint,
 	collectBindleEnvInjections,
-	installInternalMesh,
 	INTERNAL_MESH_HOST,
+	installInternalMesh,
 	internalMeshBase,
 	listServableEntrypoints,
 	serviceDiscoveryKey,
@@ -188,9 +185,7 @@ export async function serveProjectOnHost(options: {
 	const kind = normalizeComponentHostKind(options.componentHost);
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const ownedYard =
-		options.yard === undefined
-			? openBareMetalYard({ hoboHome })
-			: null;
+		options.yard === undefined ? openBareMetalYard({ hoboHome }) : null;
 	const yardHandle = options.yard ?? ownedYard!;
 	const basePort =
 		options.port ?? yardHandle.config.defaultPort ?? DEFAULT_DEV_PORT;
@@ -236,9 +231,7 @@ export async function serveProjectOnHost(options: {
 	for (const [name, record] of Object.entries(definition.resources)) {
 		const depConfig = readDependencyConfig(record.annotations);
 		if (depConfig === null && record.kind !== "external") continue;
-		const config =
-			depConfig ??
-			(record.kind === "external" ? {} : null);
+		const config = depConfig ?? (record.kind === "external" ? {} : null);
 		if (config === null) continue;
 		const resolved: { httpUrl?: string; connectionString?: string } = {};
 		if (typeof config.connectionString === "string") {

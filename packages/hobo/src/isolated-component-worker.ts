@@ -7,7 +7,7 @@ import { parentPort, workerData } from "node:worker_threads";
 
 import { loadBindleDefinition } from "@hobo/cli";
 
-import { isExternalComponent, type FetchHandler } from "./bare-metal-host.js";
+import { type FetchHandler, isExternalComponent } from "./bare-metal-host.js";
 
 interface BootData {
 	readonly projectDir: string;

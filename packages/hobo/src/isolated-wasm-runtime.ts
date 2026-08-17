@@ -2,11 +2,12 @@
  * Isolated-wasm Camp component host — thin wrapper over multi-host serve
  * with `componentHost=wasm` (legacy name: isolated-wasm).
  */
+
+import type { INTERNAL_MESH_HOST } from "./bare-metal-host.js";
 import type { BareMetalYard } from "./bare-metal-yard.js";
-import { INTERNAL_MESH_HOST } from "./bare-metal-host.js";
 import {
-	serveProjectOnHost,
 	type MultiHostServeResult,
+	serveProjectOnHost,
 } from "./multi-host-serve.js";
 
 export type IsolatedWasmServeResult = MultiHostServeResult & {

@@ -195,13 +195,15 @@ export const FIRST_PARTY_CANDIDATES: readonly SelectionCandidate[] =
 
 /** Trust evidence refs the catalog expects to find published. */
 export function firstPartyEvidenceRefs(): readonly string[] {
-	return Object.freeze([
-		...new Set(
-			FIRST_PARTY_DEFINITIONS.flatMap((definition) =>
-				definition.semantics === undefined
-					? []
-					: [definition.semantics.trustEvidenceRef],
+	return Object.freeze(
+		[
+			...new Set(
+				FIRST_PARTY_DEFINITIONS.flatMap((definition) =>
+					definition.semantics === undefined
+						? []
+						: [definition.semantics.trustEvidenceRef],
+				),
 			),
-		),
-	].sort());
+		].sort(),
+	);
 }

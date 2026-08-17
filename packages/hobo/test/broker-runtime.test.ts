@@ -2,10 +2,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
-
 import { loadBindleDefinition } from "@hobo/cli";
-
+import { afterEach, describe, expect, it } from "vitest";
+import { initBareMetalYard } from "../src/bare-metal-yard.js";
 import { createComposedHoboCli } from "../src/cli.js";
 import {
 	collectExplicitProviderPins,
@@ -13,7 +12,6 @@ import {
 	resolveBindlePlacement,
 	WASM_SANDBOX_PROVIDER_ID,
 } from "../src/index.js";
-import { initBareMetalYard } from "../src/bare-metal-yard.js";
 
 const helloBindleDir = fileURLToPath(
 	new URL("../../../examples/hello-bindle", import.meta.url),
@@ -143,9 +141,11 @@ describe("embedded broker-runtime", () => {
 		}
 		if (envelope.data.providerId !== undefined) {
 			expect(
-				[WASM_SANDBOX_PROVIDER_ID, "@hobo/provider-local-host", "local"].includes(
-					envelope.data.providerId,
-				),
+				[
+					WASM_SANDBOX_PROVIDER_ID,
+					"@hobo/provider-local-host",
+					"local",
+				].includes(envelope.data.providerId),
 			).toBe(true);
 		}
 	}, 180_000);

@@ -9,14 +9,13 @@ import {
 	runIacBackendConformance,
 	validateIacProgram,
 } from "@hobo/iac-pulumi";
-import { describe, it } from "vitest";
-
 import {
 	createCloudflareProvider,
 	createHelloBindlePlan,
 	type ResourcePlan,
 	realizeHelloBindle,
 } from "@hobo/provider-cloudflare";
+import { describe, it } from "vitest";
 
 const PORTS: Array<{ port: string; name: string }> = [
 	{ port: "compute", name: "web" },

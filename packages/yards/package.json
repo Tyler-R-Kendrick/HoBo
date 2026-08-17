@@ -20,7 +20,8 @@
 	},
 	"devDependencies": {
 		"@hobo/bindles": "workspace:*",
-		"@types/node": "^22.15.29"
+		"@types/node": "^22.15.29",
+		"fast-check": "^4.3.0"
 	},
 	"scripts": {
 		"prebuild": "pnpm --filter @hobo/camps build",

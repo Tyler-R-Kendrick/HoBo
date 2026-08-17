@@ -42,6 +42,7 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/bindles",
 	"packages/camps",
 	"packages/yards",
+	"packages/cloud-providers",
 	"packages/junctions",
 	"packages/runtime",
 	"packages/componentize",

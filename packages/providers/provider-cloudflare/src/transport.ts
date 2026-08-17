@@ -24,8 +24,8 @@
  */
 
 import {
-	type HttpTransport,
 	guardTransport,
+	type HttpTransport,
 	type TransportGuardPolicy,
 } from "@hobo/core";
 
@@ -47,6 +47,7 @@ export const CLOUDFLARE_API_ALLOWED_PATH_PREFIXES = Object.freeze([
 ] as const);
 
 /** Base every resolver path is appended to. */
+// public-contract: the base every resolver path is appended to, and half of the transport path allowlist.
 export const CLOUDFLARE_API_BASE_PATH = "/client/v4";
 
 /**
@@ -75,7 +76,9 @@ export function cloudflareTransportPolicy(): TransportGuardPolicy {
  * transport the resolvers should ever be handed; passing an unguarded one is
  * legal TypeScript and a security defect.
  */
-export function guardedCloudflareTransport(inner: HttpTransport): HttpTransport {
+export function guardedCloudflareTransport(
+	inner: HttpTransport,
+): HttpTransport {
 	return guardTransport(inner, cloudflareTransportPolicy());
 }
 

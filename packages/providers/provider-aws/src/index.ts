@@ -1,4 +1,12 @@
 export {
+	AWS_DEFAULT_BINDINGS,
+	type AwsSlotCatalog,
+	type AwsYardBindingRow,
+	type AwsYardSpec,
+	type AwsYardSpecOptions,
+	awsYardSpec,
+} from "./default-yard.js";
+export {
 	EQUIVALENCE_CLASSES,
 	equivalenceForPort,
 	INITIAL_CAPABILITY_PORTS,

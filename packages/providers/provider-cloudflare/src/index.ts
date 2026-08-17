@@ -24,6 +24,18 @@ export {
 	CORS_RELAY_WORKER_MODULE,
 } from "./cors-relay-source.js";
 export {
+	CLOUDFLARE_DEFAULT_BINDINGS,
+	CLOUDFLARE_DEFAULT_REGIONS,
+	CLOUDFLARE_DEFAULT_YARD_NAME,
+	type CloudflareYardBindingRow,
+	type CloudflareYardCatalog,
+	type CloudflareYardOfferings,
+	type CloudflareYardOptions,
+	type CloudflareYardSpec,
+	cloudflareYard,
+	cloudflareYardSpec,
+} from "./default-yard.js";
+export {
 	cloudflareNativePorts,
 	EQUIVALENCE_CLASSES,
 	equivalenceForPort,
@@ -76,6 +88,19 @@ export {
 	resolveEquivalence,
 	toResourcePlans,
 } from "./realize.js";
+export {
+	CLOUDFLARE_D1_PRODUCT_ID,
+	CLOUDFLARE_KV_PRODUCT_ID,
+	CLOUDFLARE_PAGES_PRODUCT_ID,
+	CLOUDFLARE_QUEUES_PRODUCT_ID,
+	CLOUDFLARE_R2_PRODUCT_ID,
+	CLOUDFLARE_RESOLVED_PRODUCT_IDS,
+	CLOUDFLARE_WORKERS_PRODUCT_ID,
+	type CloudflareResolverOptions,
+	cloudflareResolverRegistry,
+	cloudflareResolvers,
+	redactCloudflareText,
+} from "./resolvers.js";
 export {
 	type D1Options,
 	d1,
@@ -226,6 +251,17 @@ export {
 	CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS,
 	CLOUDFLARE_TRAFFIC_ROUTING_PROFILE,
 } from "./traffic-routing-offerings.js";
+export {
+	CLOUDFLARE_API_ALLOWED_HOSTS,
+	CLOUDFLARE_API_ALLOWED_PATH_PREFIXES,
+	CLOUDFLARE_API_BASE_PATH,
+	CLOUDFLARE_API_ORIGIN,
+	CLOUDFLARE_MAX_RESPONSE_BYTES,
+	CLOUDFLARE_MAX_TIMEOUT_MS,
+	cloudflareApiUrl,
+	cloudflareTransportPolicy,
+	guardedCloudflareTransport,
+} from "./transport.js";
 export type {
 	Capability,
 	CapabilityManifest,

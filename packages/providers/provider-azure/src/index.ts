@@ -1,4 +1,12 @@
 export {
+	AZURE_DEFAULT_BINDINGS,
+	type AzureSlotCatalog,
+	type AzureYardBindingRow,
+	type AzureYardSpec,
+	type AzureYardSpecOptions,
+	azureYardSpec,
+} from "./default-yard.js";
+export {
 	EQUIVALENCE_CLASSES,
 	equivalenceForPort,
 	INITIAL_CAPABILITY_PORTS,
@@ -45,6 +53,63 @@ export {
 	realizeResourcePlans,
 	resolveEquivalence,
 } from "./realize.js";
+export {
+	AKS_SERVICE_TYPES,
+	type AksOptions,
+	type AksResourceQuantities,
+	type AksServiceType,
+	type ApiManagementOptions,
+	type AppServiceOptions,
+	aks,
+	apiManagement,
+	appService,
+	BLOB_ACCESS_TIERS,
+	BLOB_REDUNDANCY,
+	type BlobAccessTier,
+	type BlobRedundancy,
+	type BlobStorageOptions,
+	blobStorage,
+	CONTAINER_APPS_INGRESS,
+	COSMOS_CONSISTENCY_LEVELS,
+	COSMOS_THROUGHPUT_MODES,
+	type ContainerAppsIngress,
+	type ContainerAppsOptions,
+	type ContainerAppsServiceOptions,
+	type CosmosConsistencyLevel,
+	type CosmosDbOptions,
+	type CosmosTableOptions,
+	type CosmosThroughputMode,
+	containerApps,
+	containerAppsService,
+	cosmosDb,
+	cosmosTable,
+	FUNCTIONS_PLANS,
+	type FunctionsOptions,
+	type FunctionsPlan,
+	functions,
+	type KeyVaultOptions,
+	keyVault,
+	type PostgresFlexibleOptions,
+	postgresFlexible,
+	type RedisCacheOptions,
+	redisCache,
+	type ServiceBusQueueOptions,
+	type ServiceBusTopicOptions,
+	type SqlDatabaseOptions,
+	STATIC_WEB_APPS_SKUS,
+	type StaticWebAppsOptions,
+	type StaticWebAppsSku,
+	type StorageQueueOptions,
+	serviceBusQueue,
+	serviceBusTopic,
+	sqlDatabase,
+	staticWebApps,
+	storageQueue,
+} from "./slots.js";
+export {
+	AZURE_TRAFFIC_ROUTING_OFFERING_IDS,
+	AZURE_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
 export type {
 	Capability,
 	CapabilityManifest,
@@ -58,10 +123,6 @@ export type {
 	ResourcePlan,
 } from "./types.js";
 export {
-	AZURE_TRAFFIC_ROUTING_OFFERING_IDS,
-	AZURE_TRAFFIC_ROUTING_PROFILE,
-} from "./traffic-routing-offerings.js";
-export {
 	AZURE_YARD_GENERATOR_CONNECTOR_ID,
 	AZURE_YARD_RUNTIME_ID,
 	azureDefaultResolverPins,
@@ -69,8 +130,8 @@ export {
 } from "./yard-defaults.js";
 export {
 	AZURE_EVENT_STORE_RESOLVER_ID,
-	azureEventStoreFoldDescriptor,
-	normalizeAzureYardSignal,
 	type AzureProviderNativeSignal,
 	type AzureYardEvent,
+	azureEventStoreFoldDescriptor,
+	normalizeAzureYardSignal,
 } from "./yard-event-fold.js";

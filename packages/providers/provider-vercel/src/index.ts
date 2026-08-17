@@ -8,6 +8,18 @@ export {
 	storeClaimAction,
 } from "./claim-action.js";
 export {
+	VERCEL_DEFAULT_BINDINGS,
+	VERCEL_DEFAULT_REGIONS,
+	type VercelSlotCatalog,
+	type VercelYardBindingRow,
+	type VercelYardSpec,
+	VercelYardSpecError,
+	type VercelYardSpecOptions,
+	vercelSlotCatalog,
+	vercelYardRows,
+	vercelYardSpec,
+} from "./default-yard.js";
+export {
 	createVercelClaimDeploymentDefinition,
 	createVercelSponsoredApiDefinition,
 	createVercelSponsoredWebDefinition,
@@ -88,6 +100,14 @@ export {
 	VercelProviderError,
 } from "./provider-errors.js";
 export {
+	VERCEL_RESOLVER_PATH_PREFIXES,
+	VERCEL_RESOLVER_TRANSPORT_POLICY,
+	VERCEL_UNRESOLVED_PRODUCT_IDS,
+	type VercelResolverOptions,
+	vercelResolverRegistry,
+	vercelResolvers,
+} from "./resolvers.js";
+export {
 	type PlacementConstraint,
 	type ProviderResourceDefinitionData,
 	type ProviderSourceRef,
@@ -96,6 +116,25 @@ export {
 	type ResourceDefinitionSemanticsData,
 	semanticsToSelectionCandidate,
 } from "./resource-definition.js";
+export {
+	blob,
+	edgeConfig,
+	edgeFunction,
+	project,
+	VERCEL_BLOB_PRODUCT_ID,
+	VERCEL_BLOB_PROFILE,
+	VERCEL_EDGE_CONFIG_PRODUCT_ID,
+	VERCEL_EDGE_CONFIG_PROFILE,
+	VERCEL_EDGE_FUNCTION_PRODUCT_ID,
+	VERCEL_EDGE_FUNCTION_PROFILE,
+	VERCEL_PROJECT_PRODUCT_ID,
+	VERCEL_PROJECT_PROFILE,
+	type VercelBlobSlotOptions,
+	type VercelEdgeConfigSlotOptions,
+	type VercelEdgeFunctionSlotOptions,
+	type VercelProjectSlotOptions,
+	vercelSlots,
+} from "./slots.js";
 export {
 	assertSponsorBudget,
 	type BootstrapDisclosure,

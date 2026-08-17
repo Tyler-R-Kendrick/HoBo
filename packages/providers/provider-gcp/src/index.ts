@@ -1,4 +1,12 @@
 export {
+	GCP_DEFAULT_BINDINGS,
+	type GcpSlotCatalog,
+	type GcpYardBindingRow,
+	type GcpYardSpec,
+	type GcpYardSpecOptions,
+	gcpYardSpec,
+} from "./default-yard.js";
+export {
 	EQUIVALENCE_CLASSES,
 	equivalenceForPort,
 	INITIAL_CAPABILITY_PORTS,
@@ -41,6 +49,52 @@ export {
 	realizeResourcePlans,
 	resolveEquivalence,
 } from "./realize.js";
+export {
+	type ApiGatewayOptions,
+	type AppEngineOptions,
+	apiGateway,
+	appEngine,
+	CLOUD_FUNCTIONS_GENERATIONS,
+	CLOUD_RUN_INGRESS,
+	CLOUD_STORAGE_CLASSES,
+	type CloudFunctionsGeneration,
+	type CloudFunctionsOptions,
+	type CloudRunIngress,
+	type CloudRunJobOptions,
+	type CloudRunOptions,
+	type CloudSqlMysqlOptions,
+	type CloudSqlPostgresOptions,
+	type CloudStorageClass,
+	type CloudStorageOptions,
+	type CloudStorageSiteOptions,
+	type CloudTasksOptions,
+	cloudFunctions,
+	cloudRun,
+	cloudRunJob,
+	cloudSqlMysql,
+	cloudSqlPostgres,
+	cloudStorage,
+	cloudStorageSite,
+	cloudTasks,
+	FIRESTORE_MODES,
+	type FirestoreMode,
+	type FirestoreOptions,
+	firestore,
+	MEMORYSTORE_TIERS,
+	type MemorystoreRedisOptions,
+	type MemorystoreTier,
+	memorystoreRedis,
+	type PubsubOptions,
+	pubsub,
+	SECRET_MANAGER_REPLICATION,
+	type SecretManagerOptions,
+	type SecretManagerReplication,
+	secretManager,
+} from "./slots.js";
+export {
+	GCP_TRAFFIC_ROUTING_OFFERING_IDS,
+	GCP_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
 export type {
 	Capability,
 	CapabilityManifest,
@@ -54,10 +108,6 @@ export type {
 	ResourcePlan,
 } from "./types.js";
 export {
-	GCP_TRAFFIC_ROUTING_OFFERING_IDS,
-	GCP_TRAFFIC_ROUTING_PROFILE,
-} from "./traffic-routing-offerings.js";
-export {
 	GCP_YARD_GENERATOR_CONNECTOR_ID,
 	GCP_YARD_RUNTIME_ID,
 	gcpDefaultResolverPins,
@@ -65,8 +115,8 @@ export {
 } from "./yard-defaults.js";
 export {
 	GCP_EVENT_STORE_RESOLVER_ID,
-	gcpEventStoreFoldDescriptor,
-	normalizeGcpYardSignal,
 	type GcpProviderNativeSignal,
 	type GcpYardEvent,
+	gcpEventStoreFoldDescriptor,
+	normalizeGcpYardSignal,
 } from "./yard-event-fold.js";

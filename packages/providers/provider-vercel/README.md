@@ -13,6 +13,11 @@ Vercel CloudProvider for HoBo Examples OOB yards.
 - **Sponsor-backed claim strategy `vercel.sponsored-project-transfer/v1`** — HoBo
   owns and pays for the project until a human accepts a project transfer request.
   See below.
+- **Direct-HTTPS deployment path (the default)** — typed slot factories
+  (`project()`, `edgeFunction()`, `blob()`, `edgeConfig()`), REST resource
+  resolvers (`vercelResolvers` / `vercelResolverRegistry`), and the default Yard
+  catalog (`vercelYardSpec`). No IaC engine, no CLI. See
+  [Direct-HTTPS deployment path](#direct-https-deployment-path).
 
 ```sh
 pnpm --filter @hobo/provider-vercel test
@@ -138,6 +143,136 @@ bootstrap cannot double-create.
 Tests are offline. Fixtures under `test/fixtures/` carry obviously fake
 credentials (`FAKE-…`).
 
+## Direct-HTTPS deployment path
+
+HoBo's default way to put a resource on Vercel is to call Vercel's documented
+REST API over an injected, guarded transport. There is no infrastructure-as-code
+engine holding a state file, no plan/apply round trip, and no shelling out to
+`vercel`. Three modules make that path:
+
+| Module | Exports | What it is |
+| --- | --- | --- |
+| `src/slots.ts` | `project`, `edgeFunction`, `blob`, `edgeConfig`, `vercelSlots` | Typed factories that emit `SlotBinding` records through core's parse boundary |
+| `src/resolvers.ts` | `vercelResolvers`, `vercelResolverRegistry`, `VERCEL_RESOLVER_TRANSPORT_POLICY`, `VERCEL_UNRESOLVED_PRODUCT_IDS` | `ResourceResolver` implementations that converge a resource against the REST API |
+| `src/default-yard.ts` | `vercelYardSpec`, `vercelSlotCatalog`, `vercelYardRows`, `VERCEL_DEFAULT_BINDINGS` | The default Yard catalog as raw, canonically-sorted rows |
+
+### Slot factories
+
+Each factory has its own options type — never `Record<string, unknown>` in the
+signature — and returns `slotBinding({…})` from `@hobo/core`, so credential
+screening, JSON-safety, key sorting, and freezing all happen at core's parse
+boundary rather than here.
+
+| Factory | Slot | Profile | Product id |
+| --- | --- | --- | --- |
+| `project(options?)` | `web` | `web.hosted/v1` | `vercel.project/v1` |
+| `edgeFunction(options?)` | `service` | `service.worker/v1` | `vercel.edge-function/v1` |
+| `blob(options?)` | `bucket` | `bucket.object/v1` | `vercel.blob/v1` |
+| `edgeConfig(options?)` | `kv` | `kv.key-value/v1` | `vercel.edge-config/v1` |
+
+The whole option bag is forwarded minus `undefined` values, so an undeclared key
+is **screened** by core rather than silently dropped — a swallowed `apiKey` is
+worse than a refusal. No defaults are invented for provider settings: absent
+means absent, and the Resource Definition decides what an unset `framework` or
+`access` means.
+
+### The default Yard
+
+A Yard declares what **can** be allocated on a provider. It is not a mapping,
+not a pool, and not a record of what an app uses, which is why the catalog holds
+an array per slot: a slot may list several offerings and selection (ADR-0151)
+picks among them later. `vercelYardSpec()` returns
+`{ provider: "vercel", regions, bindings }` where `bindings` is the flat row
+array sorted by `(profile, productId, connectivityId)` — the same canonical
+order `@hobo/yards` imposes, so the hand-off is byte-stable. This is a layer-2
+adapter: it emits raw rows and never imports `@hobo/yards`.
+
+`regions` defaults to Vercel's documented default function region (`iad1`). An
+empty or malformed region list is refused (`VERCEL_YARD_REGIONS_EMPTY`,
+`VERCEL_YARD_REGION_INVALID`) rather than silently replaced with the default.
+
+### Resolvers
+
+`reconcile` is convergent and idempotent: it looks the resource up first — by
+`ref.physicalId` when the caller has one, otherwise by the deterministic name
+derived from the request — and only then creates. Running it twice yields one
+resource and the same `physicalId`; the second run reports `adopt` (the resource
+exists and the request did not name it) or `noop` (the request named it and
+nothing differs). `delete` treats a 404 as success. `read` powers adoption and
+state recovery. `replace` is never emitted: nothing here deletes and re-creates
+a resource behind the caller's back.
+
+**Endpoints covered.**
+
+| Product id | Endpoints |
+| --- | --- |
+| `vercel.project/v1` | `POST /v9/projects`, `GET /v9/projects/{idOrName}`, `PATCH /v9/projects/{idOrName}`, `DELETE /v9/projects/{idOrName}` |
+| `vercel.edge-config/v1` | `POST /v1/global-config`, `GET /v1/global-config`, `GET /v1/global-config/{edgeConfigId}`, `PUT /v1/global-config/{edgeConfigId}`, `DELETE /v1/global-config/{edgeConfigId}` |
+
+Vercel renamed the Edge Config REST surface to `/v1/global-config` (the path
+parameter is still `edgeConfigId`); the product id keeps the `edge-config` name
+the catalog fixes, and the resolver calls the current documented path.
+
+**Endpoints deliberately absent** (`VERCEL_UNRESOLVED_PRODUCT_IDS`):
+
+| Product id | Why there is no resolver |
+| --- | --- |
+| `vercel.edge-function/v1` | A function is produced by a deployment. Vercel documents no endpoint that creates one as a standalone resource, so there is nothing to converge against. |
+| `vercel.blob/v1` | `POST /storage/stores/blob`, `GET /storage/stores/{id}` and `DELETE /storage/stores/blob/{id}` are documented, but **no documented endpoint lists stores by name**. Without name lookup, `reconcile` could not discover an existing store and would create a second one on every retry. A silently non-convergent resolver is worse than an absent one. |
+
+Both product ids stay in the Yard catalog — a Yard declares what can be
+allocated, and expressing an offering is not the same claim as deploying it. The
+test suite asserts that the set of catalogued rows without a resolver is
+*exactly* `VERCEL_UNRESOLVED_PRODUCT_IDS`, so adding a row without a resolver
+fails unless the gap is declared.
+
+### Credentials, transport, errors
+
+`credentialRef` is a **locator**, never material. It is parsed with
+`parseSecretRef`, so a raw token, a connection string, or an unregistered scheme
+is refused with `RESOLVER_CREDENTIAL_NOT_A_REF` and never echoed into the error
+message. The value comes from the injected
+`resolveCredential(ref) => Promise<string>`; a locator custody cannot answer for
+raises `RESOLVER_CREDENTIAL_MISSING` with remediation. The resolved value lives
+in a `SecretValue` and is exposed only by the `authorization` header builder.
+
+Every call goes through core's `guardTransport` with
+`VERCEL_RESOLVER_TRANSPORT_POLICY`: HTTPS only, `api.vercel.com` only, the two
+allowlisted path prefixes above, no redirect chasing, bounded body and timeout.
+The guard generalizes this package's own `createGuardedTransport` and
+additionally speaks the PATCH that a project update requires. Nothing in this
+package reaches for a global `fetch`.
+
+A Vercel error body (`{ error: { code, message } }`) becomes
+`RESOLVER_PROVIDER_REJECTED` with the provider's message passed through
+`redactProviderText`, so a token echoed back in an error cannot reach a log. A
+response that is not JSON, or is missing a documented field, becomes
+`RESOLVER_OUTPUT_UNPARSEABLE`. A `desired` setting of the wrong type is refused
+with `RESOLVER_PRODUCT_UNSUPPORTED` rather than dropped — a silently ignored
+setting is a deployment that does not match what was asked for.
+
+## HONEST SCOPE
+
+- **Nothing here proves a live deploy.** The resolvers are exercised only
+  against an injected fake transport in `test/resolvers.test.ts`. No test in this
+  repo has contacted `api.vercel.com`. A live deploy additionally needs real
+  credentials, network egress, and a Vercel account, and none of that is
+  demonstrated by a green suite. Treat the endpoint tables above as "written
+  against the documented contract", not as "verified against the running API".
+- **Product ids are what the factories emit.** Whether a product id is
+  registered in a catalog and matches the Yard's provider is checked at
+  resolution time, in the selection path — not here, and not by a naming
+  convention (ADR-0144 forbids inferring a provider from an id prefix).
+- **Two of the four catalogued offerings cannot be deployed by this package**
+  (`vercel.blob/v1`, `vercel.edge-function/v1`), for the reasons tabled above. A
+  deploy that selects them fails closed at resolution with no registered
+  resolver, rather than appearing to work.
+- **No `replace` path.** A change to a field this package treats as stable is
+  not handled by delete-and-recreate; only in-place `PATCH`/`PUT` deltas are
+  applied.
+- The Drop and sponsored-transfer paths above are unchanged and independent of
+  this deployment path.
+
 ## Contracts and data models
 
 - `data-models/provider_vercel.proto` — the records this package exchanges at
@@ -176,7 +311,11 @@ checks the HMAC before it reads a field, `buildClaimAction` rejects a non-HTTPS
 `returnUrl`, and `rotateAssociatedResourceBinding` builds its binding through
 `parseCapabilityBinding` + `parseSecretRef`. Downstream functions take those
 derived domain types, so there is no second place where a raw payload is
-re-checked.
+re-checked. The direct-HTTPS path adds three more boundaries and no exceptions:
+the slot factories return `slotBinding(…)`, every resolver entry point re-parses
+its input with `parseResolveRequest`, and a REST body becomes a derived
+`ProjectView` / `EdgeConfigView` or a typed `RESOLVER_OUTPUT_UNPARSEABLE`
+refusal — never a half-parsed record.
 
 ## Event architecture
 

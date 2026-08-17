@@ -316,6 +316,20 @@ export {
 	UnsupportedSchemaVersionError,
 } from "./ports/eventstore.js";
 export type {
+	HttpTransport,
+	TransportGuardErrorCode,
+	TransportGuardPolicy,
+	TransportMethod,
+	TransportRequest,
+	TransportResponse,
+} from "./ports/http-transport.js";
+export {
+	guardTransport,
+	TRANSPORT_GUARD_ERROR_CODES,
+	TRANSPORT_METHODS,
+	TransportGuardError,
+} from "./ports/http-transport.js";
+export type {
 	DataClassification,
 	JurisdictionId,
 	JurisdictionRecord,
@@ -488,6 +502,23 @@ export {
 	REALIZATION_RESULT_SCHEMA,
 	RealizationResultParseError,
 } from "./ports/realization-result.js";
+export type {
+	ResolvedResourceRef,
+	ResolveOutcome,
+	ResolveRequest,
+	ResolverAction,
+	ResolverErrorCode,
+	ResourceResolver,
+} from "./ports/resource-resolver.js";
+export {
+	createResolverRegistry,
+	parseResolveOutcome,
+	parseResolveRequest,
+	RESOLVER_ACTIONS,
+	RESOLVER_CONTRACT,
+	RESOLVER_ERROR_CODES,
+	ResolverError,
+} from "./ports/resource-resolver.js";
 export type {
 	FetchHandler,
 	HoboRuntimeHost,

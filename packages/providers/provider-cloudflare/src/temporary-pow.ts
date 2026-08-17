@@ -20,7 +20,8 @@ const MAX_WORK = 64_000_000;
 
 function decodeBase64Url(input: string): Uint8Array {
 	const padded = input.replace(/-/gu, "+").replace(/_/gu, "/");
-	const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
+	const pad =
+		padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
 	const binary = atob(padded + pad);
 	const out = new Uint8Array(binary.length);
 	for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
@@ -67,7 +68,11 @@ export async function solvePreviewChallenge(
 
 	const flat = new Uint8Array((k + 1) * CHECKPOINT_BYTES);
 	for (let i = 0; i < checkpoints.length; i++) {
-		flat.set(checkpoints[i]!, i * CHECKPOINT_BYTES);
+		const checkpoint = checkpoints[i];
+		if (checkpoint === undefined) {
+			throw new Error(`checkpoint ${i} missing`);
+		}
+		flat.set(checkpoint, i * CHECKPOINT_BYTES);
 	}
 
 	return {
@@ -83,6 +88,7 @@ export async function verifyPreviewChallengeSolution(
 	challenge: PreviewChallenge,
 	checkpointsBase64: string,
 ): Promise<boolean> {
-	const expected = (await solvePreviewChallenge(challenge)).solution.checkpoints;
+	const expected = (await solvePreviewChallenge(challenge)).solution
+		.checkpoints;
 	return expected === checkpointsBase64;
 }

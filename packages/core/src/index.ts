@@ -143,6 +143,18 @@ export {
 	RESOURCE_ID_PATTERN,
 } from "./ports/binding-resolver.js";
 export type {
+	CapabilitySlot,
+	SlotBinding,
+	SlotBindingErrorCode,
+	SlotBindingInput,
+} from "./ports/capability-slot.js";
+export {
+	CAPABILITY_SLOTS,
+	SLOT_BINDING_CONTRACT,
+	SlotBindingError,
+	slotBinding,
+} from "./ports/capability-slot.js";
+export type {
 	ClockReplayResult,
 	ClockTraceEntry,
 	CronSchedule,

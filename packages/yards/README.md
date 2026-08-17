@@ -44,6 +44,14 @@ const shape = yardToShape(y); // shape.bindings is the canonical row set
 | `parseYardBindings(rows, options?)` | parse | Row-set parse boundary; canonicalizes and refuses |
 | `YardBindingError` / `YardBindingErrorCode` | error | Typed refusal carrying `code` and the offending `profile` |
 | `YardBinding` / `YardBindingInput` | type | Parsed row and its authoring input |
+| `defineYard(name, config)` | compile | Slot-keyed authoring; compiles slots to rows and returns a `Yard` via `yard()` |
+| `slotOf(yard, profile)` | pure fn | Which capability slot a row's profile belongs to, for diagnostics |
+| `YardSlots` / `DefineYardConfig` | type | Slot map and the slot-keyed authoring input |
+| `YardDefineError` / `YardDefineErrorCode` | error | `SLOT_PROFILE_MISMATCH`, `SLOT_KEY_MISMATCH`, `YARD_REGION_CONFLICT` |
+| `defineStation(name, config)` | compile | Station **registration** manifest (never containment — ADR-0131) |
+| `STATION_MANIFEST_CONTRACT` | const | `"hobo.station-manifest/v1"` |
+| `DefineStationConfig` / `StationManifest` | type | Station registration input and manifest |
+| `StationDefineError` / `StationDefineErrorCode` | error | `STATION_NO_YARDS`, `STATION_DUPLICATE_YARD` |
 | `LOCALHOST_YARD_NAME` / `LOCALHOST_PROVIDER_ID` | const | `"yard:local"` / `"local"` |
 | `seedLocalhostYard(observations)` | pure fn | Builds the localhost Yard seed from host capability observations |
 | `LocalhostCapabilityObservation` / `LocalhostYardSeed` | type | Seed input and output |
@@ -74,6 +82,79 @@ Refusal codes: `YARD_BINDING_PROFILE_INVALID`, `YARD_BINDING_EMPTY_CONSTRAINT`,
 `YARD_BINDING_PIN_CONFLICT`. A row is never silently dropped: a dropped row is a
 portability lie.
 
+## Slot authoring — `defineYard` (rows are a compile target)
+
+Binding rows are the planner's IR. They are the right thing to *store* and the
+wrong thing to *type*: authoring one by hand means typing a capability-profile
+string, a product id, and an untyped property bag — no autocomplete, no slot
+vocabulary, nothing that notices when a row lands under the wrong capability.
+
+**Before** — raw rows, all strings:
+
+```ts
+const y = yard("aws-prod", {
+	provider: "aws",
+	regions: ["us-east-1"],
+	bindings: [
+		{
+			profile: "data.postgres/v1",
+			productId: "aws.rds-postgres/v1",
+			properties: { "aws.engineVersion": "16" },
+		},
+		{ profile: "bucket.s3-compatible/v1", productId: "aws.s3/v1" },
+	],
+});
+```
+
+**After** — slots, typed end to end. The provider package emits the
+`SlotBinding` records (`@hobo/core`'s `slotBinding()` parse boundary), so the
+profile string is never typed by an operator:
+
+```ts
+import { defineYard, slotOf } from "@hobo/yards";
+import { postgres, s3 } from "@hobo/provider-aws";
+
+const y = defineYard("aws-prod", {
+	provider: "aws",
+	region: "us-east-1", // sugar for regions: ["us-east-1"]
+	data: postgres({ engineVersion: "16" }),
+	bucket: s3(),
+});
+
+slotOf(y, "data.postgres/v1"); // "data"
+```
+
+Both produce the **same** `Yard`: `defineYard` compiles slots to
+`YardBindingInput` rows and hands them to the existing `yard()`, so
+canonicalization, credential screening, duplicate and pin-conflict refusal, and
+deep freezing all still happen in one place. It adds exactly three refusals of
+its own:
+
+| Code | When |
+|---|---|
+| `SLOT_PROFILE_MISMATCH` | The profile's family disagrees with its slot (`bucket: data.postgres/v1`), or the family is outside the slot vocabulary. The family is the profile's first dot-segment, with the ADR-0151 aliases `secret-ref`→`secretRef` and `realtime`→`webhook`. |
+| `SLOT_KEY_MISMATCH` | A binding is filed under a slot key other than the one it declares. |
+| `YARD_REGION_CONFLICT` | `region` and `regions` are both authored and disagree. |
+
+One slot may carry several bindings (`bucket: [s3(), glacier()]`); the existing
+`YARD_BINDING_DUPLICATE` still catches two that collapse to the same row.
+Slots are compiled in the fixed `CAPABILITY_SLOTS` order, never in object-key
+order, so **authoring order cannot change the resulting Yard**.
+
+### `defineStation` — registration, not containment
+
+A Station is control-plane **occupancy** and is never a parent of a Yard
+(ADR-0131 fixes `Bindle ⊂ Camp ⊂ Yard ⊂ Junction` as the containment axis;
+Station is not on it). `defineStation(name, { yards })` therefore emits a
+`StationManifest` describing what a Station's conductor **brokers** — sorted
+`yardRefs` plus the Yards themselves — with `station()`'s isolation defaults
+(`tenant = name`, `residency = "local"`, `airgap = false`,
+`trustDomain = "<name>.hobo.local"`). The composition root hands the manifest to
+`station()`; this package does not import `@hobo/stations`, so Stations stay
+free of Yard coupling. An empty `yards` array (`STATION_NO_YARDS`) and a
+duplicate Yard name (`STATION_DUPLICATE_YARD`) are refused — a Station brokering
+nothing is an authoring mistake, not an empty default.
+
 ## The localhost seed
 
 `seedLocalhostYard(observations)` maps the Bindle catalog primitives
@@ -99,6 +180,8 @@ and no partially-valid record.
 | `yard(name, config)` | `YardConfig` | `Yard` (deep-frozen; string lists deduped+sorted; credential-shaped property keys refused) |
 | `parseYardBindings(rows, options?)` | `readonly YardBindingInput[] \| undefined` | `readonly YardBinding[]` (canonical set; typed `YardBindingError` with a `code` on refusal) |
 | `seedLocalhostYard(observations)` | `readonly LocalhostCapabilityObservation[]` | `LocalhostYardSeed` (frozen; malformed `capability:<kind>:<slug>` ids are refused) |
+| `defineYard(name, config)` | `DefineYardConfig` | `Yard` — a **compile** step, not a second parse: it checks slot/profile agreement and region coherence, then delegates every other rule to `yard()` |
+| `defineStation(name, config)` | `DefineStationConfig` | `StationManifest` (frozen; sorted refs; empty or duplicate registrations refused with a `code`) |
 
 Failures throw rather than returning a degraded value, and the negative tests
 assert the error **`code`**, not the message.
@@ -140,6 +223,14 @@ resolution time.
   built-in table yields `"default"` (needs nothing from the host) or
   `"discovered"` (justified by an observation); `"declared"` exists for
   operator-declared rows a future authoring path will supply.
+- **`defineYard` proves slot hygiene, not deployability.** Slot/profile
+  agreement says the row is filed under the capability it claims; it says
+  nothing about whether the product exists, belongs to this provider, or
+  survives selection — same resolution-time gates as any hand-written row.
+- **`defineStation` emits a manifest, it does not run a Station.** Nothing here
+  registers, brokers, or reaches `@hobo/stations`; the composition root hands
+  the manifest to `station()`. `yardRefs` is registration (ADR-0131), never a
+  containment claim.
 - **No YardRuntime, planner, or live cloud here.** Topology authoring only — do
   not equate "`@hobo/yards` exists" with "hosted Yard product".
 
@@ -147,6 +238,8 @@ resolution time.
 |---|---|
 | Topology authoring (`yard()`) | Implemented |
 | Binding row parse + canonicalization | Implemented |
+| Slot authoring (`defineYard`, `slotOf`) | Implemented (compiles to rows; no new parse rules) |
+| Station registration manifest (`defineStation`) | Implemented (manifest only; no Station runtime) |
 | Binding resolution / provider coherence | **Not** this package — `@hobo/cloud`, `@hobo/bindings` |
 | Localhost seed | Implemented (pure; fidelity declared, not probed) |
 | Full YardRuntime / planner / live cloud | **Not** this package — see `@hobo/cloud`, `@hobo/hobo` compose |

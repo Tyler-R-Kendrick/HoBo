@@ -106,8 +106,13 @@ describe("hello-bindle realizes end-to-end", () => {
 		assert.deepEqual(
 			bindings.map((bind) => bind.ref),
 			[
+				// Not template literals: these are the literal output-reference strings
+				// the IaC program emits (`resources.<name>.outputs.<output>`), which is
+				// exactly what this assertion pins.
+				// biome-ignore-start lint/suspicious/noTemplateCurlyInString: literal IaC output refs
 				"${resources.assets.outputs.binding}",
 				"${resources.sessions.outputs.binding}",
+				// biome-ignore-end lint/suspicious/noTemplateCurlyInString: literal IaC output refs
 			],
 		);
 		assert.equal(build?.artifacts[0]?.id, "hello-bindle-wasm");

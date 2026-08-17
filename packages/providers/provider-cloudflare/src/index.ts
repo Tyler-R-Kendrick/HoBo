@@ -1,6 +1,31 @@
 export {
-	EQUIVALENCE_CLASSES,
+	type BootstrapCorsRelayInput,
+	type BootstrapCorsRelayResult,
+	bootstrapCorsRelayViaTemporaryAccounts,
+	materializeCorsRelayModule,
+} from "./bootstrap-cors-relay.js";
+export {
+	assertCloudflareContainersSupportedForConvex,
+	CONVEX_API_PORT,
+	CONVEX_BACKEND_OCI_IMAGE,
+	CONVEX_HTTP_ACTIONS_PORT,
+	ConvexCloudflareContainersError,
+	type ConvexCloudflareSpawn,
+	type ConvexCloudflareSpawnResult,
+	materializeConvexCloudflareBackendScaffold,
+	type ProvisionConvexBackendOnCloudflareInput,
+	type ProvisionConvexBackendOnCloudflareResult,
+	parseWorkersDevUrl,
+	provisionConvexBackendOnCloudflare,
+} from "./convex-backend-container.js";
+export {
+	assertCorsRelayIsAnonymousOnly,
+	CORS_RELAY_SCRIPT_NAME,
+	CORS_RELAY_WORKER_MODULE,
+} from "./cors-relay-source.js";
+export {
 	cloudflareNativePorts,
+	EQUIVALENCE_CLASSES,
 	equivalenceForPort,
 	INITIAL_CAPABILITY_PORTS,
 	type InitialCapabilityPort,
@@ -51,47 +76,27 @@ export {
 	resolveEquivalence,
 	toResourcePlans,
 } from "./realize.js";
-export type {
-	Capability,
-	CapabilityManifest,
-	CloudProvider,
-	CostSignal,
-	Match,
-	Outputs,
-	PortKind,
-	PortRequest,
-	ProviderClient,
-	ResourcePlan,
-} from "./types.js";
 export {
-	CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS,
-	CLOUDFLARE_TRAFFIC_ROUTING_PROFILE,
-} from "./traffic-routing-offerings.js";
+	type D1Options,
+	d1,
+	type KvOptions,
+	kv,
+	type PagesOptions,
+	pages,
+	type QueuesOptions,
+	queues,
+	R2_JURISDICTIONS,
+	type R2Jurisdiction,
+	type R2Options,
+	r2,
+	type WorkersOptions,
+	workers,
+} from "./slots.js";
 export {
 	assertStationWorkerHasNoAppCode,
 	ENVIRONMENT_STATION_WORKER_MODULE,
 	ENVIRONMENT_STATION_WORKER_NAME_PREFIX,
 } from "./station-worker-source.js";
-export {
-	solvePreviewChallenge,
-	verifyPreviewChallengeSolution,
-	type PreviewChallenge,
-	type PreviewChallengeSolution,
-} from "./temporary-pow.js";
-export {
-	CF_API_BASE,
-	CF_PRIVACY_URL,
-	CF_TERMS_URL,
-	CLOUDFLARE_TEMPORARY_PROVIDER_ID,
-	createCloudflareTemporaryAccountTransport,
-	provisionTemporaryEnvironmentStation,
-	solveAndProvisionAccount,
-	TEMPORARY_STATION_TTL_MS,
-	type TemporaryAccountTransport,
-	type TemporaryEnvironmentStationInput,
-	type TemporaryEnvironmentStationResult,
-	type TemporaryPreviewAccount,
-} from "./temporary-station.js";
 export {
 	assertLeaseActive,
 	CLOUDFLARE_TEMPORARY_ACCOUNT_ALLOWED_HOSTS,
@@ -99,17 +104,16 @@ export {
 	CLOUDFLARE_TEMPORARY_ACCOUNT_YARD_ID,
 	createInMemoryTemporaryAccountRegistry,
 	DEFAULT_REQUEST_TIMEOUT_MS,
+	type GuestLease,
 	isLeaseActive,
 	MAX_PROVIDER_RESPONSE_BYTES,
 	MAX_REQUEST_TIMEOUT_MS,
+	type ObserveAndAdoptInput,
 	observeAndAdoptTemporaryAccount,
+	type ProvisionTemporaryAccountYardInput,
 	parsePreviewAccountResponse,
 	parsePreviewChallengeResponse,
 	provisionTemporaryAccountYard,
-	temporaryAccountProvisionedEvent,
-	type GuestLease,
-	type ObserveAndAdoptInput,
-	type ProvisionTemporaryAccountYardInput,
 	type TemporaryAccountAttempt,
 	type TemporaryAccountHttpRequest,
 	type TemporaryAccountHttpResponse,
@@ -118,38 +122,39 @@ export {
 	type TemporaryAccountRegistryPort,
 	type TemporaryAccountTransportPort,
 	type TemporaryAccountYardReceipt,
+	temporaryAccountProvisionedEvent,
 } from "./temporary-account.js";
 export {
 	assertManagementAuthorized,
-	claimCompletedEvent,
-	completeTemporaryAccountClaim,
-	redeemClaimAction,
 	type ClaimCompletedEvent,
 	type ClaimCompletion,
 	type ClaimVerificationPort,
 	type CompleteClaimInput,
+	claimCompletedEvent,
+	completeTemporaryAccountClaim,
 	type OwnershipObservation,
 	type ReauthorizationCeremonyPort,
 	type ReauthorizationGrant,
+	redeemClaimAction,
 } from "./temporary-account-claim.js";
 export {
 	CLOUDFLARE_PRIVACY_URL,
 	CLOUDFLARE_TERMS_URL,
 	CONSENT_ACCEPTANCE_METHODS,
-	createInMemoryConsentLedger,
-	parseConsentEvidence,
 	type ConsentAcceptanceMethod,
 	type ConsentEvidence,
 	type ConsentEvidenceInput,
 	type ConsentLedgerPort,
 	type ConsentRecord,
+	createInMemoryConsentLedger,
+	parseConsentEvidence,
 } from "./temporary-account-consent.js";
 export {
 	createInMemoryOneTimeActionVault,
 	createInMemorySecretCustody,
 	depositOrFailClosed,
-	SENSITIVE_ACTION_KINDS,
 	type OneTimeActionVaultPort,
+	SENSITIVE_ACTION_KINDS,
 	type SecretCustodyPort,
 	type SecretDeposit,
 	type SensitiveActionDescriptor,
@@ -176,9 +181,9 @@ export {
 	isTemporaryAccountError,
 	TEMPORARY_ACCOUNT_ERROR_CODES,
 	TemporaryAccountError,
-	temporaryAccountErrorForStatus,
 	type TemporaryAccountErrorCode,
 	type TemporaryAccountErrorOptions,
+	temporaryAccountErrorForStatus,
 } from "./temporary-account-errors.js";
 export {
 	assertTemporaryAccountResourceAllowed,
@@ -198,32 +203,43 @@ export {
 	type TemporaryAccountResourceRequest,
 } from "./temporary-account-resources.js";
 export {
+	type PreviewChallenge,
+	type PreviewChallengeSolution,
+	solvePreviewChallenge,
+	verifyPreviewChallengeSolution,
+} from "./temporary-pow.js";
+export {
+	CF_API_BASE,
+	CF_PRIVACY_URL,
+	CF_TERMS_URL,
+	CLOUDFLARE_TEMPORARY_PROVIDER_ID,
+	createCloudflareTemporaryAccountTransport,
+	provisionTemporaryEnvironmentStation,
+	solveAndProvisionAccount,
+	TEMPORARY_STATION_TTL_MS,
+	type TemporaryAccountTransport,
+	type TemporaryEnvironmentStationInput,
+	type TemporaryEnvironmentStationResult,
+	type TemporaryPreviewAccount,
+} from "./temporary-station.js";
+export {
+	CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS,
+	CLOUDFLARE_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
+export type {
+	Capability,
+	CapabilityManifest,
+	CloudProvider,
+	CostSignal,
+	Match,
+	Outputs,
+	PortKind,
+	PortRequest,
+	ProviderClient,
+	ResourcePlan,
+} from "./types.js";
+export {
 	deployTemporaryWithWrangler,
 	parseWranglerTemporaryOutput,
 	type WranglerTemporaryDeployInput,
 } from "./wrangler-temporary.js";
-export {
-	assertCloudflareContainersSupportedForConvex,
-	CONVEX_API_PORT,
-	CONVEX_BACKEND_OCI_IMAGE,
-	CONVEX_HTTP_ACTIONS_PORT,
-	ConvexCloudflareContainersError,
-	materializeConvexCloudflareBackendScaffold,
-	parseWorkersDevUrl,
-	provisionConvexBackendOnCloudflare,
-	type ConvexCloudflareSpawn,
-	type ConvexCloudflareSpawnResult,
-	type ProvisionConvexBackendOnCloudflareInput,
-	type ProvisionConvexBackendOnCloudflareResult,
-} from "./convex-backend-container.js";
-export {
-	assertCorsRelayIsAnonymousOnly,
-	CORS_RELAY_SCRIPT_NAME,
-	CORS_RELAY_WORKER_MODULE,
-} from "./cors-relay-source.js";
-export {
-	bootstrapCorsRelayViaTemporaryAccounts,
-	materializeCorsRelayModule,
-	type BootstrapCorsRelayInput,
-	type BootstrapCorsRelayResult,
-} from "./bootstrap-cors-relay.js";

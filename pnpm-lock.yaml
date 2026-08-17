@@ -2190,6 +2190,9 @@ importers:
       '@hobo/camps':
         specifier: workspace:*
         version: link:../camps
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@hobo/bindles':
         specifier: workspace:*

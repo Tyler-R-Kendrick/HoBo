@@ -15,7 +15,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@hobo/camps": "workspace:*"
+		"@hobo/camps": "workspace:*",
+		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {
 		"@hobo/bindles": "workspace:*",

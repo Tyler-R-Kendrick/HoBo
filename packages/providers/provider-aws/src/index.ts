@@ -41,6 +41,33 @@ export {
 	realizeResourcePlans,
 	resolveEquivalence,
 } from "./realize.js";
+export {
+	DYNAMODB_BILLING_MODES,
+	type DynamodbBillingMode,
+	type DynamodbOptions,
+	dynamodb,
+	EKS_SERVICE_TYPES,
+	type EksDeploymentOptions,
+	type EksResourceQuantities,
+	type EksServiceType,
+	eks,
+	LAMBDA_ARCHITECTURES,
+	type LambdaArchitecture,
+	type LambdaOptions,
+	lambda,
+	type RdsPostgresOptions,
+	rds,
+	S3_STORAGE_CLASSES,
+	type S3Options,
+	type S3StorageClass,
+	type SqsOptions,
+	s3,
+	sqs,
+} from "./slots.js";
+export {
+	AWS_TRAFFIC_ROUTING_OFFERING_IDS,
+	AWS_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
 export type {
 	Capability,
 	CapabilityManifest,
@@ -54,10 +81,6 @@ export type {
 	ResourcePlan,
 } from "./types.js";
 export {
-	AWS_TRAFFIC_ROUTING_OFFERING_IDS,
-	AWS_TRAFFIC_ROUTING_PROFILE,
-} from "./traffic-routing-offerings.js";
-export {
 	AWS_YARD_GENERATOR_CONNECTOR_ID,
 	AWS_YARD_RUNTIME_ID,
 	awsDefaultResolverPins,
@@ -65,8 +88,8 @@ export {
 } from "./yard-defaults.js";
 export {
 	AWS_EVENT_STORE_RESOLVER_ID,
-	awsEventStoreFoldDescriptor,
-	normalizeAwsYardSignal,
 	type AwsProviderNativeSignal,
 	type AwsYardEvent,
+	awsEventStoreFoldDescriptor,
+	normalizeAwsYardSignal,
 } from "./yard-event-fold.js";

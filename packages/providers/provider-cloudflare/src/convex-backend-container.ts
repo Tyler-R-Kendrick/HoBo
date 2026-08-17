@@ -291,17 +291,19 @@ async function resolveWorkersDevUrl(input: {
 }): Promise<string> {
 	if (input.fallbackFromDeploy) return input.fallbackFromDeploy;
 
-	await input.fetchImpl(
-		`${CF_API_BASE}/accounts/${input.accountId}/workers/scripts/${input.scriptName}/subdomain`,
-		{
-			method: "POST",
-			headers: {
-				authorization: `Bearer ${input.apiToken}`,
-				"content-type": "application/json",
+	await input
+		.fetchImpl(
+			`${CF_API_BASE}/accounts/${input.accountId}/workers/scripts/${input.scriptName}/subdomain`,
+			{
+				method: "POST",
+				headers: {
+					authorization: `Bearer ${input.apiToken}`,
+					"content-type": "application/json",
+				},
+				body: JSON.stringify({ enabled: true }),
 			},
-			body: JSON.stringify({ enabled: true }),
-		},
-	).catch(() => undefined);
+		)
+		.catch(() => undefined);
 
 	const account = await input.fetchImpl(
 		`${CF_API_BASE}/accounts/${input.accountId}/workers/subdomain`,
@@ -376,7 +378,9 @@ async function waitForVersion(input: {
 }
 
 function stripAnsi(text: string): string {
-	return text.replace(/\u001b\[[0-9;]*m/gu, "");
+	// `\p{Cc}` instead of a literal ESC byte: identical CSI match, without an
+	// unprintable control character in source (biome noControlCharactersInRegex).
+	return text.replace(/\p{Cc}\[[0-9;]*m/gu, "");
 }
 
 function containersApiForbidden(stdout: string, stderr: string): boolean {

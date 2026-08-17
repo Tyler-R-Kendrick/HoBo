@@ -8,6 +8,20 @@ export {
 	type YardBindingInput,
 } from "./binding.js";
 export {
+	type DefineStationConfig,
+	type DefineYardConfig,
+	defineStation,
+	defineYard,
+	STATION_MANIFEST_CONTRACT,
+	StationDefineError,
+	type StationDefineErrorCode,
+	type StationManifest,
+	slotOf,
+	YardDefineError,
+	type YardDefineErrorCode,
+	type YardSlots,
+} from "./define.js";
+export {
 	LOCALHOST_PROVIDER_ID,
 	LOCALHOST_YARD_NAME,
 	type LocalhostCapabilityObservation,

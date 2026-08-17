@@ -36,7 +36,26 @@
 import type { CapabilitySlot, SlotBinding } from "@hobo/core";
 
 import { DEFAULT_REGIONS } from "./manifest.js";
-import { dynamodb, eks, lambda, rds, s3, sqs } from "./slots.js";
+import {
+	amplifyHosting,
+	apiGateway,
+	appRunner,
+	auroraServerlessPostgres,
+	cloudfrontSite,
+	dynamodb,
+	dynamodbDocument,
+	ecs,
+	eks,
+	elasticacheRedis,
+	lambda,
+	rds,
+	s3,
+	secretsManager,
+	sns,
+	sqs,
+	sqsFifo,
+	ssmParameterStore,
+} from "./slots.js";
 
 /** Allocatable options per capability slot; a slot may hold several. */
 export type AwsSlotCatalog = Readonly<
@@ -63,17 +82,39 @@ export interface AwsYardSpecOptions {
 }
 
 /**
- * Everything the landed AWS factories can allocate, grouped by slot. Each slot
- * is a list because a slot may declare alternatives; AWS declares one per slot
- * today only because that is how many factories exist.
+ * Everything the AWS factories can allocate, grouped by slot. Several entries
+ * per slot are the normal case, not a conflict to be resolved here: AWS really
+ * does host a web capability on App Runner, ECS, EKS and Amplify, and really
+ * does satisfy `data` with RDS, Aurora and DynamoDB. Collapsing a slot to one
+ * entry would quietly make this module the selector, which is exactly the
+ * decision the Yard is not allowed to take.
+ *
+ * `web` mixes two profiles on purpose. `cloudfrontSite()` satisfies the
+ * narrower `web.static/v1`, the other four satisfy `web.hosted/v1`; a workload
+ * that only needs static hosting can match either, and one that needs a running
+ * server matches only the hosted rows. Selection sorts that out per resource.
  */
 export const AWS_DEFAULT_BINDINGS: AwsSlotCatalog = Object.freeze({
-	web: Object.freeze([eks.deployment()]),
-	service: Object.freeze([lambda()]),
-	data: Object.freeze([rds.postgres()]),
-	kv: Object.freeze([dynamodb()]),
+	web: Object.freeze([
+		appRunner(),
+		ecs.service(),
+		eks.deployment(),
+		amplifyHosting(),
+		cloudfrontSite(),
+	]),
+	api: Object.freeze([apiGateway()]),
+	service: Object.freeze([lambda(), ecs.task()]),
+	data: Object.freeze([
+		rds.postgres(),
+		rds.mysql(),
+		auroraServerlessPostgres(),
+		dynamodbDocument(),
+	]),
+	kv: Object.freeze([dynamodb(), elasticacheRedis()]),
 	bucket: Object.freeze([s3()]),
-	queue: Object.freeze([sqs()]),
+	queue: Object.freeze([sqs(), sqsFifo()]),
+	topic: Object.freeze([sns()]),
+	secretRef: Object.freeze([secretsManager(), ssmParameterStore()]),
 });
 
 /**

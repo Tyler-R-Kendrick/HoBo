@@ -61,6 +61,6 @@ None of the `aws.*` / `azure.*` / `gcp.*` product ids these factories emit is
 registered in the definition catalog. That is a deliberate fail-closed gap, not
 a silent one: a deploy refuses rather than half-applying.
 
-The AWS catalog additionally **under-declares** what AWS can allocate — one
-entry per slot, because only six slot factories exist. That is a gap in the
-factory set, not a selection the Yard made.
+No catalog enumerates all of its provider. Each declares the offerings that have
+typed factories; a missing alternative is a gap in the factory set, not a
+selection the Yard made.

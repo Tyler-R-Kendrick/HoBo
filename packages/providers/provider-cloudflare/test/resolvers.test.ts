@@ -671,6 +671,26 @@ describe("mutable deltas are applied, immutable drift is only reported", () => {
 		expect(second.diagnostics.join(" ")).toMatch(/immutable/u);
 	});
 
+	/**
+	 * R2 accepts `locationHint` lowercase and reports `location` uppercase, so a
+	 * case-sensitive compare would report drift on a bucket that is exactly
+	 * where it was asked to be — a diagnostic firing on every reconcile teaches
+	 * operators to ignore diagnostics.
+	 */
+	it("r2 does not report drift when the location differs only by case", async () => {
+		const fake = fakeTransport(r2Double());
+		const resolver = resolverFor(CLOUDFLARE_R2_PRODUCT_ID);
+		await resolver.reconcile(
+			request(CLOUDFLARE_R2_PRODUCT_ID, { desired: { locationHint: "wnam" } }),
+			fake.transport,
+		);
+		const second = await resolver.reconcile(
+			request(CLOUDFLARE_R2_PRODUCT_ID, { desired: { locationHint: "WNAM" } }),
+			fake.transport,
+		);
+		expect(second.diagnostics.join(" ")).not.toMatch(/immutable/u);
+	});
+
 	it("kv reports that ttlSeconds is a per-write setting", async () => {
 		const fake = fakeTransport(kvDouble());
 		const created = await resolverFor(CLOUDFLARE_KV_PRODUCT_ID).reconcile(

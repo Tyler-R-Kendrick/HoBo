@@ -46,21 +46,26 @@ states.
 
 | Slot | Declared alternatives |
 |---|---|
-| `web` | EKS Deployment (`web.hosted/v1`) |
-| `service` | Lambda (`service.worker/v1`) |
-| `data` | RDS for PostgreSQL (`data.postgres/v1`) |
-| `kv` | DynamoDB (`kv.key-value/v1`) |
+| `web` | App Runner, ECS service, EKS Deployment, Amplify Hosting (`web.hosted/v1`); S3 + CloudFront (`web.static/v1`) |
+| `api` | API Gateway (`api.http/v1`) |
+| `service` | Lambda (`service.worker/v1`); ECS task (`service.batch/v1`) |
+| `data` | RDS for PostgreSQL, Aurora Serverless v2 (`data.postgres/v1`); RDS for MySQL (`data.mysql/v1`); DynamoDB (`data.document/v1`) |
+| `kv` | DynamoDB (`kv.key-value/v1`); ElastiCache (`kv.redis-compatible/v1`) |
 | `bucket` | S3 (`bucket.s3-compatible/v1`) |
-| `queue` | SQS (`queue.at-least-once/v1`) |
+| `queue` | SQS (`queue.at-least-once/v1`); SQS FIFO (`queue.fifo/v1`) |
+| `topic` | SNS (`topic.pubsub/v1`) |
+| `secretRef` | Secrets Manager, SSM Parameter Store (`secret-ref.locator/v1`) |
 
-The catalog is built strictly from the typed factories `src/slots.ts` already
-ships (`s3`, `rds.postgres`, `dynamodb`, `sqs`, `eks.deployment`, `lambda`), so
-every slot holds exactly one entry today. AWS plainly offers more than one way
-to host a web app or store a document; those alternatives are simply not
-authored yet. The catalog therefore **under-declares** AWS — a missing
-alternative is a gap in the factory set, not a choice made by the Yard, and the
-slot is a list precisely so an alternative can join it without any other code
-changing.
+The catalog is built strictly from the typed factories in `src/slots.ts`. Most
+slots hold several entries, because AWS genuinely hosts a web capability four
+ways and satisfies `data` with three different engines. Which one a given
+workload gets is decided at resolution time by ADR-0151 selection, against the
+requirements the app states — never here. Adding a fifth `web` option is a
+catalog edit, not a deployment change.
+
+The catalog still does not enumerate all of AWS. Lightsail, Elastic Beanstalk,
+Kinesis, MSK, Neptune, and others are not authored yet; a missing alternative is
+a gap in the factory set, not a choice made by the Yard.
 
 `awsYardSpec({ regions })` returns raw row-shaped data — `{ provider, regions,
 bindings }` — because a provider package is a layer-2 adapter and may not

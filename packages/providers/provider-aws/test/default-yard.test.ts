@@ -54,16 +54,34 @@ describe("the AWS Yard is an allocatable catalog", () => {
 		expect(entries.map((entry) => entry.productId)).toContain(productId);
 	});
 
-	/**
-	 * HONEST SCOPE: `slots.ts` ships six factories, so every slot here holds
-	 * exactly one entry. That is a gap in the authored factory set, not a
-	 * selection made by this catalog — the slot is a list precisely so an
-	 * alternative can join it without any other code changing.
-	 */
-	it("holds a list per slot, today one entry deep", () => {
+	it("holds a non-empty list per slot", () => {
 		for (const entries of Object.values(AWS_DEFAULT_BINDINGS)) {
 			expect(Array.isArray(entries)).toBe(true);
-			expect(entries).toHaveLength(1);
+			expect(entries.length).toBeGreaterThan(0);
+		}
+	});
+
+	/**
+	 * The catalog states what AWS *can* allocate, so a capability AWS serves
+	 * several ways lists all of them. Collapsing `web` to one entry would make
+	 * this module the selector — the decision ADR-0157 reserves for resolution
+	 * time.
+	 */
+	it("declares every way AWS can host a web capability", () => {
+		expect(slotEntries("web").map((entry) => entry.productId)).toEqual(
+			expect.arrayContaining([
+				"aws.app-runner/v1",
+				"aws.ecs-service/v1",
+				"aws.eks-deployment/v1",
+				"aws.amplify-hosting/v1",
+				"aws.cloudfront-site/v1",
+			]),
+		);
+	});
+
+	it("offers alternatives on every capability AWS serves more than one way", () => {
+		for (const slot of ["web", "service", "data", "kv", "queue", "secretRef"]) {
+			expect(slotEntries(slot).length).toBeGreaterThanOrEqual(2);
 		}
 	});
 

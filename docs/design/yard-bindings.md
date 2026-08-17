@@ -77,10 +77,35 @@ One surface, two provenances (`default` vs `declared`) — first-run and product
 
 The harness's honesty rule is load-bearing: `runtime-local` does not execute real `.wasm` bytes today, so the in-process lane boots the collected graph with local binding resolution and simulated resources, and **every handle carries an ADR-0042 fidelity attestation** (`real | simulated | mocked | camp-only`). A suite resting on `mocked` handles reports a coverage split, never a bare green tick — anything else would re-commit the overclaim GAP-026 exists to prevent. The ephemeral-Camp lane requires an explicit Yard plus credentials and **fails closed** rather than degrading into the in-process lane. Local-dev inner-loop latency and dashboard depth stay owned by [Plan 7](./developer-experience.md#plan-07)/ADR-0109; estate state stays the event-sourced control plane (ADR-0135) — Alchemy's remote state store (DO+SQLite, encrypted, CI-friendly) is noted in the capture as the bar for a hosted state backend, already satisfied structurally by pluggable `EventStore` adapters gated by conformance.
 
-## 6. OOB defaults
+## 6. Default Yards and the direct-HTTP resolver plane
+
+The Yard vocabulary above is authored through one import per cloud. `@hobo/cloud-providers` exposes a namespace per provider, each with a `Yard()` returning that provider's full allocatable catalog, alongside the typed slot factories the catalog is built from:
+
+```ts
+import { aws, azure, cloudflare } from "@hobo/cloud-providers";
+import { defineStation } from "@hobo/yards";
+
+export default defineStation("acme", {
+  yards: [aws.Yard(), azure.Yard(), cloudflare.Yard({ regions: ["weur"] })],
+});
+```
+
+The package exists because of a layering fact rather than a design preference: a provider package is a layer-2 adapter and may import `@hobo/core` and nothing else HoBo, while `yard()` lives at layer 3. Providers therefore publish catalogs as *data* (`awsYardSpec()`), and this layer-3 package parses it. It **decides nothing** — `composeYard` hands rows to `yard()` untouched, so canonical ordering, duplicate rejection, and credential screening stay `@hobo/yards` refusals with `@hobo/yards` codes. Filtering rows here would create a second, unversioned selection point, which is the decision [ADR-0157](./adr/07-portability-extensibility.md#adr-0157) reserves for resolution time.
+
+Catalog depth follows what each provider actually offers: AWS declares five `web` offerings (App Runner, ECS, EKS, Amplify, and S3+CloudFront on the narrower `web.static/v1`), Azure four, GCP three, Vercel one — the last being an accurate catalog rather than an abridged one, because Vercel ships one product per capability.
+
+**Deployment is direct HTTPS to the provider API, not an engine.** Matching Alchemy's engine-less posture, a `ResourceResolver` (`@hobo/core`) talks to the provider's published REST API over a guarded `HttpTransport`: allowlisted hosts and path prefixes, no redirect chasing, bounded body and time, and a policy breach **refuses rather than clamps** — a silently downgraded timeout is a lie about the guarantee. Credentials are locators (`scheme://path`), never material; a raw token in a `ResolveRequest` is a token in the event log, so it is refused at the parse boundary in both directions.
+
+Convergence is the property that makes removing the engine safe. Every `reconcile()` is read-or-create: it asks the provider whether the deterministically-named resource exists *before* creating anything, then applies only mutable deltas. Running it twice yields one resource and the same `physicalId`, so a crashed half-apply is safe to re-run rather than something an operator reconciles by hand; `delete()` treats "already gone" as success. Destructive `replace` is never emitted — drift on an immutable field is a diagnostic left for a human.
+
+**Relationship to the existing app-layer clients.** `packages/hobo` already carries real Cloudflare and Vercel deploy clients, and they are *not* superseded yet: they implement the `IacProvider` port (`preview`/`apply`/`destroy`/`refresh` over an `IacProgram`) that the `@hobo/cloud` Executor drives, and `hobo up` still routes through them. The resolver plane is the per-product replacement for that engine hop, and today it stands beside the engine path rather than behind `hobo up`. Wiring the Executor onto resolvers is deliberately not part of this tranche.
+
+**HONEST SCOPE.** Cloudflare and Vercel ship resolvers; AWS, Azure, and GCP are catalog-only. Resolvers are proven against an *injected fake transport* with real request and response shapes — no live deploy is proven anywhere in this repo, which additionally needs real credentials and network egress. The AWS, Azure and GCP product ids those factories emit are not registered in the definition catalog, so a deploy against those Yards **fails closed** at resolution (`YARD_BINDING_PRODUCT_UNKNOWN`) rather than half-applying. Vercel's `edge-function` and `blob` products are in the catalog but deliberately have no resolver: neither exposes a documented list-by-name, so `reconcile` could not discover an existing resource and would duplicate on every retry — a non-convergent resolver is worse than none, and the gap is asserted by test rather than left implicit.
+
+## 7. OOB defaults
 
 [ADR-0160](./adr/03-data-plane.md#adr-0160): `drizzle-kit` becomes the default relational schema-diff engine behind the migration port — deploy-owned generation at plan phase (reviewable `migration.Planned` + content-addressed SQL), apply unchanged (ADR-0032 expand→backfill→contract, forward-only), Drizzle schema modules accepted as authoring input via a thin parse-don't-validate adapter. [ADR-0161](./adr/02-identity-security.md#adr-0161): Better Auth becomes the default *self-hosted full-featured* `hobo:auth` adapter, packaged as an auth bundle over existing ports — relational store via `hobo:data/relational` + gated migrations, signing secret brokered (never state-persisted), routes mounted on `api()`/`web()`, host-portable through the membrane rather than per-platform layers.
 
-## 7. What this deliberately does not change
+## 8. What this deliberately does not change
 
 Selection algebra (ADR-0151 hard gates + lexicographic, no weighted scores); Bindle provider-agnosticism (`bindle-provider-selection-forbidden`); the ADR-0131 two-axis Station/topology model (the Station *seeds* `yard:local`, it does not contain it); the no-Effect-TS public surface (ADR-0136); the fidelity-honesty rules (ADR-0042); forward-only migrations (ADR-0032); the federate+verify auth model (ADR-0038).

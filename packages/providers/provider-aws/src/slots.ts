@@ -92,8 +92,89 @@ function rdsPostgres(options?: RdsPostgresOptions): SlotBinding {
 	});
 }
 
+export interface RdsMysqlOptions {
+	readonly instanceClass?: string;
+	readonly multiAz?: boolean;
+	readonly storageGb?: number;
+	readonly engineVersion?: string;
+}
+
+/** Amazon RDS for MySQL — slot `data`, profile `data.mysql/v1`. */
+function rdsMysql(options?: RdsMysqlOptions): SlotBinding {
+	return slotBinding({
+		slot: "data",
+		profile: "data.mysql/v1",
+		productId: "aws.rds-mysql/v1",
+		properties: present(options ?? {}),
+	});
+}
+
 /** RDS engine namespace, so the call site reads `rds.postgres({ … })`. */
-export const rds = Object.freeze({ postgres: rdsPostgres });
+export const rds = Object.freeze({ postgres: rdsPostgres, mysql: rdsMysql });
+
+export interface AuroraServerlessOptions {
+	readonly minCapacity?: number;
+	readonly maxCapacity?: number;
+	readonly engineVersion?: string;
+}
+
+/**
+ * Aurora Serverless v2 (PostgreSQL-compatible) — slot `data`, profile
+ * `data.postgres/v1`. It satisfies the same profile as RDS PostgreSQL and sits
+ * beside it in the catalog rather than replacing it: which one a workload gets
+ * is a selection decision, not a catalog one.
+ */
+export function auroraServerlessPostgres(
+	options?: AuroraServerlessOptions,
+): SlotBinding {
+	return slotBinding({
+		slot: "data",
+		profile: "data.postgres/v1",
+		productId: "aws.aurora-serverless-postgres/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/**
+ * Amazon DynamoDB as a document store — slot `data`, profile
+ * `data.document/v1`. Same product as the `kv` entry below, reached through a
+ * different capability profile; rows key on `(profile, productId)`, so both
+ * coexist without colliding.
+ */
+export function dynamodbDocument(options?: DynamodbOptions): SlotBinding {
+	return slotBinding({
+		slot: "data",
+		profile: "data.document/v1",
+		productId: "aws.dynamodb/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/** ElastiCache engines this factory can request. */
+export const ELASTICACHE_ENGINES = Object.freeze(["redis", "valkey"] as const);
+
+export type ElasticacheEngine = (typeof ELASTICACHE_ENGINES)[number];
+
+export interface ElasticacheRedisOptions {
+	readonly nodeType?: string;
+	readonly engine?: ElasticacheEngine;
+	readonly replicas?: number;
+}
+
+/**
+ * Amazon ElastiCache (Redis/Valkey) — slot `kv`, profile
+ * `kv.redis-compatible/v1`.
+ */
+export function elasticacheRedis(
+	options?: ElasticacheRedisOptions,
+): SlotBinding {
+	return slotBinding({
+		slot: "kv",
+		profile: "kv.redis-compatible/v1",
+		productId: "aws.elasticache-redis/v1",
+		properties: present(options ?? {}),
+	});
+}
 
 /** DynamoDB billing modes this factory can request. */
 export const DYNAMODB_BILLING_MODES = Object.freeze([
@@ -188,6 +269,214 @@ export function lambda(options?: LambdaOptions): SlotBinding {
 		slot: "service",
 		profile: "service.worker/v1",
 		productId: "aws.lambda/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/** How an App Runner service accepts traffic. */
+export const APP_RUNNER_EGRESS = Object.freeze(["default", "vpc"] as const);
+
+export type AppRunnerEgress = (typeof APP_RUNNER_EGRESS)[number];
+
+export interface AppRunnerOptions {
+	readonly cpu?: string;
+	readonly memory?: string;
+	readonly egress?: AppRunnerEgress;
+	readonly image?: string;
+}
+
+/** AWS App Runner service — slot `web`, profile `web.hosted/v1`. */
+export function appRunner(options?: AppRunnerOptions): SlotBinding {
+	return slotBinding({
+		slot: "web",
+		profile: "web.hosted/v1",
+		productId: "aws.app-runner/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/** ECS launch types this factory can request. */
+export const ECS_LAUNCH_TYPES = Object.freeze(["fargate", "ec2"] as const);
+
+export type EcsLaunchType = (typeof ECS_LAUNCH_TYPES)[number];
+
+export interface EcsServiceOptions {
+	readonly launchType?: EcsLaunchType;
+	readonly desiredCount?: number;
+	readonly cpu?: string;
+	readonly memory?: string;
+	readonly image?: string;
+}
+
+/** Amazon ECS service — slot `web`, profile `web.hosted/v1`. */
+function ecsService(options?: EcsServiceOptions): SlotBinding {
+	return slotBinding({
+		slot: "web",
+		profile: "web.hosted/v1",
+		productId: "aws.ecs-service/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+export interface EcsTaskOptions {
+	readonly launchType?: EcsLaunchType;
+	readonly cpu?: string;
+	readonly memory?: string;
+	readonly image?: string;
+}
+
+/** Amazon ECS one-shot task — slot `service`, profile `service.batch/v1`. */
+function ecsTask(options?: EcsTaskOptions): SlotBinding {
+	return slotBinding({
+		slot: "service",
+		profile: "service.batch/v1",
+		productId: "aws.ecs-task/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/** ECS workload namespace, so the call site reads `ecs.service({ … })`. */
+export const ecs = Object.freeze({ service: ecsService, task: ecsTask });
+
+export interface AmplifyHostingOptions {
+	readonly branch?: string;
+	readonly framework?: string;
+}
+
+/** AWS Amplify Hosting — slot `web`, profile `web.hosted/v1`. */
+export function amplifyHosting(options?: AmplifyHostingOptions): SlotBinding {
+	return slotBinding({
+		slot: "web",
+		profile: "web.hosted/v1",
+		productId: "aws.amplify-hosting/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/** CloudFront price classes this factory can request. */
+export const CLOUDFRONT_PRICE_CLASSES = Object.freeze([
+	"all",
+	"200",
+	"100",
+] as const);
+
+export type CloudfrontPriceClass = (typeof CLOUDFRONT_PRICE_CLASSES)[number];
+
+export interface CloudfrontSiteOptions {
+	readonly priceClass?: CloudfrontPriceClass;
+	readonly defaultRootObject?: string;
+	readonly compress?: boolean;
+}
+
+/**
+ * S3 origin behind CloudFront — slot `web`, profile `web.static/v1`. A static
+ * site is a narrower profile than `web.hosted/v1`, so this sits beside the
+ * hosted options rather than competing with them.
+ */
+export function cloudfrontSite(options?: CloudfrontSiteOptions): SlotBinding {
+	return slotBinding({
+		slot: "web",
+		profile: "web.static/v1",
+		productId: "aws.cloudfront-site/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/** API Gateway protocols this factory can request. */
+export const API_GATEWAY_PROTOCOLS = Object.freeze(["http", "rest"] as const);
+
+export type ApiGatewayProtocol = (typeof API_GATEWAY_PROTOCOLS)[number];
+
+export interface ApiGatewayOptions {
+	readonly protocol?: ApiGatewayProtocol;
+	readonly stage?: string;
+	readonly throttleBurst?: number;
+	readonly throttleRate?: number;
+}
+
+/** Amazon API Gateway — slot `api`, profile `api.http/v1`. */
+export function apiGateway(options?: ApiGatewayOptions): SlotBinding {
+	return slotBinding({
+		slot: "api",
+		profile: "api.http/v1",
+		productId: "aws.api-gateway/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/**
+ * Amazon SQS FIFO queue — slot `queue`, profile `queue.fifo/v1`. Ordered
+ * delivery is a different capability profile from `sqs()`'s at-least-once, so
+ * it is its own catalog row rather than an option on that one.
+ */
+export function sqsFifo(options?: SqsOptions): SlotBinding {
+	return slotBinding({
+		slot: "queue",
+		profile: "queue.fifo/v1",
+		productId: "aws.sqs-fifo/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+export interface SnsOptions {
+	readonly fifo?: boolean;
+	readonly contentBasedDeduplication?: boolean;
+}
+
+/** Amazon SNS topic — slot `topic`, profile `topic.pubsub/v1`. */
+export function sns(options?: SnsOptions): SlotBinding {
+	return slotBinding({
+		slot: "topic",
+		profile: "topic.pubsub/v1",
+		productId: "aws.sns/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+export interface SecretsManagerOptions {
+	readonly rotationDays?: number;
+	readonly kmsKeyRef?: string;
+}
+
+/**
+ * AWS Secrets Manager — slot `secretRef`, profile `secret-ref.locator/v1`.
+ * The row names where secrets live; it never carries material, and a
+ * credential-shaped option is refused at the core parse boundary.
+ */
+export function secretsManager(options?: SecretsManagerOptions): SlotBinding {
+	return slotBinding({
+		slot: "secretRef",
+		profile: "secret-ref.locator/v1",
+		productId: "aws.secrets-manager/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/** SSM parameter tiers this factory can request. */
+export const SSM_PARAMETER_TIERS = Object.freeze([
+	"standard",
+	"advanced",
+] as const);
+
+export type SsmParameterTier = (typeof SSM_PARAMETER_TIERS)[number];
+
+export interface SsmParameterStoreOptions {
+	readonly tier?: SsmParameterTier;
+	readonly kmsKeyRef?: string;
+}
+
+/**
+ * AWS Systems Manager Parameter Store — slot `secretRef`, profile
+ * `secret-ref.locator/v1`. A cheaper locator than Secrets Manager for the same
+ * capability, so both are declared and selection picks.
+ */
+export function ssmParameterStore(
+	options?: SsmParameterStoreOptions,
+): SlotBinding {
+	return slotBinding({
+		slot: "secretRef",
+		profile: "secret-ref.locator/v1",
+		productId: "aws.ssm-parameter-store/v1",
 		properties: present(options ?? {}),
 	});
 }

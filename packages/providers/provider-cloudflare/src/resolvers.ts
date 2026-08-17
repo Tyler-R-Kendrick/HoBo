@@ -621,7 +621,15 @@ function r2Diagnostics(
 	const wanted = optionalString(context.desired, "locationHint");
 	const actual =
 		observed === undefined ? undefined : optionalString(observed, "location");
-	if (wanted !== undefined && actual !== undefined && wanted !== actual) {
+	// R2 takes `locationHint` lowercase ("weur") and reports `location`
+	// uppercase ("WEUR"), so a case-sensitive compare reports permanent drift on
+	// a bucket that is exactly where it was asked to be. A diagnostic that fires
+	// every reconcile teaches operators to ignore diagnostics.
+	if (
+		wanted !== undefined &&
+		actual !== undefined &&
+		wanted.toLowerCase() !== actual.toLowerCase()
+	) {
 		diagnostics.push(
 			`bucket location is ${actual} but locationHint asks for ${wanted}; R2 location is immutable and this resolver never replaces a bucket, so the drift is reported rather than corrected`,
 		);

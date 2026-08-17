@@ -18,6 +18,7 @@ import {
 	startDevBrowserSession,
 } from "./dev-browser.js";
 import { isStationOccupancyEndpoint } from "./occupancy-endpoints.js";
+import { isOccupancyRunProcessLive } from "./occupancy-live.js";
 import {
 	CODE_BINDLE_ID,
 	CODE_CAMP_ID,
@@ -104,15 +105,7 @@ export function occupancyRunIsLive(
 	stationId: string,
 	environment: string,
 ): boolean {
-	const record = readRun(runPath(hoboHome, stationId, environment));
-	if (!record) return false;
-	if (record.pid === undefined) return false;
-	try {
-		process.kill(record.pid, 0);
-		return true;
-	} catch {
-		return false;
-	}
+	return isOccupancyRunProcessLive(hoboHome, stationId, environment);
 }
 
 function readRun(path: string): RunRecord | undefined {

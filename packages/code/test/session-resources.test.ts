@@ -1,4 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -13,15 +15,63 @@ import {
 } from "../src/session-resources.js";
 
 const homes: string[] = [];
-afterEach(() => {
+const servers: Server[] = [];
+afterEach(async () => {
 	for (const home of homes) rmSync(home, { recursive: true, force: true });
 	homes.length = 0;
+	await Promise.all(
+		servers.splice(0).map(
+			(server) =>
+				new Promise<void>((resolve, reject) => {
+					server.close((error) => (error ? reject(error) : resolve()));
+				}),
+		),
+	);
 });
 
 function tempHome(): string {
 	const home = mkdtempSync(join(tmpdir(), "hobo-code-session-resources-"));
 	homes.push(home);
 	return home;
+}
+
+async function openListen(): Promise<string> {
+	const server = createServer((_req, res) => {
+		res.writeHead(200);
+		res.end("ok");
+	});
+	servers.push(server);
+	await new Promise<void>((resolve) => {
+		server.listen(0, "127.0.0.1", () => resolve());
+	});
+	const addr = server.address() as AddressInfo;
+	return `http://127.0.0.1:${addr.port}/`;
+}
+
+function markBindleLive(
+	hoboHome: string,
+	projectDir: string,
+	bindleName: string,
+	environment = "local-dev",
+): void {
+	const dir = join(
+		hoboHome,
+		"durable",
+		"code",
+		"sessions",
+		"station_local",
+		environment,
+	);
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(
+		join(dir, "run.json"),
+		`${JSON.stringify({
+			projectDir,
+			bindleName,
+			pid: process.pid,
+			sessionId: "test-live",
+		})}\n`,
+	);
 }
 
 async function loginHome(tenant = "camp-west"): Promise<string> {
@@ -76,11 +126,14 @@ describe("session resource inventory", () => {
 		expect(inventory.station?.environment).toBe("preview");
 		expect(inventory.junctions).toEqual([]);
 		expect(inventory.yards.map((row) => row.id)).toEqual(["yard:local"]);
-		expect(inventory.yards[0]?.status).toBe("serving");
+		expect(inventory.yards[0]?.status).toBe("declared");
 		expect(inventory.camps.map((row) => row.id)).toEqual(["camp:code"]);
 		expect(inventory.bindles.map((row) => row.id)).toEqual(["bindle:code"]);
+		expect(inventory.camps[0]?.status).toBe("declared");
+		expect(inventory.bindles[0]?.status).toBe("declared");
 		expect(inventory.camps[0]?.parentId).toBe("yard:local");
 		expect(inventory.bindles[0]?.parentId).toBe("camp:code");
+		expect(inventory.endpoints).toEqual([]);
 		expect(inventory.missing.map((row) => row.kind).sort()).toEqual([
 			"junction",
 		]);
@@ -132,8 +185,15 @@ describe("session resource inventory", () => {
 		});
 	});
 
-	it("lists occupancy sidecar endpoints from the Station snapshot", async () => {
+	it("lists occupancy sidecar endpoints from the Station snapshot only when listening", async () => {
 		const hoboHome = await loginHome();
+		const dash = await openListen();
+		const evidence = await openListen();
+		const otlp = await openListen();
+		const rollout = await openListen();
+		const experiment = await openListen();
+		const kms = await openListen();
+		const history = await openListen();
 		const path = join(hoboHome, "stations", "station_local", "sidecars.json");
 		mkdirSync(join(hoboHome, "stations", "station_local"), { recursive: true });
 		writeFileSync(
@@ -143,16 +203,15 @@ describe("session resource inventory", () => {
 					schema: "hobo.code.station-sidecars/v1",
 					stationId: "station:local",
 					environment: "local-dev",
-					dashboardUrl: "http://127.0.0.1:8787/",
-					evidenceUrl: "http://127.0.0.1:8788/",
-					evidenceReportUrl: "http://127.0.0.1:8788/__hobo/evidence",
-					evidenceControlsUrl:
-						"http://127.0.0.1:8788/__hobo/evidence/controls/cap",
-					otlpHttpUrl: "http://127.0.0.1:4318/v1/logs",
-					rolloutUrl: "http://127.0.0.1:8790/",
-					experimentUrl: "http://127.0.0.1:8791/",
-					kmsUrl: "http://127.0.0.1:8792/",
-					historyUrl: "http://127.0.0.1:8793/",
+					dashboardUrl: dash,
+					evidenceUrl: evidence,
+					evidenceReportUrl: `${evidence}__hobo/evidence`,
+					evidenceControlsUrl: `${evidence}__hobo/evidence/controls/cap`,
+					otlpHttpUrl: `${otlp}v1/logs`,
+					rolloutUrl: rollout,
+					experimentUrl: experiment,
+					kmsUrl: kms,
+					historyUrl: history,
 					startedAt: "2026-08-14T12:00:00.000Z",
 				},
 				null,
@@ -178,19 +237,25 @@ describe("session resource inventory", () => {
 				"history",
 			]),
 		);
-		const evidence = inventory.endpoints.find(
+		expect(inventory.camps.find((row) => row.id === "camp:code")?.status).toBe(
+			"serving",
+		);
+		expect(
+			inventory.bindles.find((row) => row.id === "bindle:code")?.status,
+		).toBe("serving");
+		const evidenceRow = inventory.endpoints.find(
 			(row) => row.resourceName === "evidence",
 		);
-		expect(evidence?.preferredUrl).toMatch(
+		expect(evidenceRow?.preferredUrl).toMatch(
 			/evidence\.code\..*\.hobo\.localhost/,
 		);
-		expect(evidence?.preferredUrl).not.toMatch(/127\.0\.0\.1/);
-		expect(evidence?.status).toBe("serving");
-		expect(evidence?.freshness).toBe("live");
-		const dash = inventory.endpoints.find(
+		expect(evidenceRow?.preferredUrl).not.toMatch(/127\.0\.0\.1/);
+		expect(evidenceRow?.status).toBe("serving");
+		expect(evidenceRow?.freshness).toBe("live");
+		const dashRow = inventory.endpoints.find(
 			(row) => row.resourceName === "dashboard",
 		);
-		expect(dash?.preferredUrl).toMatch(/dashboard\.code\..*\.hobo\.localhost/);
+		expect(dashRow?.preferredUrl).toMatch(/dashboard\.code\..*\.hobo\.localhost/);
 		expect(
 			inventory.managed
 				.filter((row) => row.ownerId === "camp:code")
@@ -212,6 +277,36 @@ describe("session resource inventory", () => {
 		).toBe(true);
 	});
 
+	it("keeps dead last-seen endpoints visible with links, not serving", async () => {
+		const hoboHome = await loginHome();
+		recordDevDeployment({
+			hoboHome,
+			scope: {
+				stationId: "station:local",
+				tenant: "camp-west",
+				environment: "local-dev",
+			},
+			bindleName: "stale-app",
+			appUrl: "http://127.0.0.1:45999/",
+			debugUrl: "http://127.0.0.1:45999/?__hobo_debug=1",
+			controlsUrl: "http://127.0.0.1:45998/?token=opaque",
+			reportUrl: "http://127.0.0.1:45998/__hobo/evidence?token=opaque",
+		});
+		const inventory = assembleSessionResources({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			ensureLocalLogin: true,
+		});
+		const web = inventory.endpoints.find((row) => row.resourceName === "web");
+		expect(web).toBeDefined();
+		expect(web?.preferredUrl).toMatch(/web\.stale-app\./);
+		expect(web?.freshness.startsWith("last-seen:")).toBe(true);
+		expect(web?.status).toBe("last-seen");
+		expect(
+			inventory.bindles.find((row) => row.id === "bindle:stale-app")?.status,
+		).toBe("declared");
+	});
+
 	it("projects Station, Yard, and Camp managed resources as individually owned children", async () => {
 		const hoboHome = await loginHome();
 		const project = join(hoboHome, "hello-world");
@@ -225,6 +320,8 @@ describe("session resource inventory", () => {
 }));
 `,
 		);
+		const appUrl = await openListen();
+		const evidenceUrl = await openListen();
 		recordDevDeployment({
 			hoboHome,
 			scope: {
@@ -234,11 +331,11 @@ describe("session resource inventory", () => {
 			},
 			bindleName: "hello-world",
 			projectDir: project,
-			appUrl: "http://127.0.0.1:4173/",
-			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
-			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
-			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
-			namedUrl: "http://web.hello-world.local.hobo.localhost:4173",
+			appUrl,
+			debugUrl: `${appUrl}?__hobo_debug=1`,
+			controlsUrl: `${evidenceUrl}?token=opaque`,
+			reportUrl: `${evidenceUrl}__hobo/evidence?token=opaque`,
+			namedUrl: `http://web.hello-world.local.hobo.localhost:${new URL(appUrl).port}`,
 		});
 		const inventory = assembleSessionResources({
 			hoboHome,
@@ -357,6 +454,9 @@ describe("session resource inventory", () => {
 
 	it("filters last-seen facts to the current environment and tenant", async () => {
 		const hoboHome = await loginHome();
+		const previewApp = await openListen();
+		const previewPort = new URL(previewApp).port;
+		const previewBackend = previewApp.replace(/\/$/u, "");
 		recordSessionResources({
 			hoboHome,
 			scope: {
@@ -389,11 +489,11 @@ describe("session resource inventory", () => {
 				{
 					resourceName: "web",
 					kind: "http",
-					backendUrl: "http://127.0.0.1:4173",
-					namedUrl: "http://web.hello.preview.hobo.localhost:4173",
+					backendUrl: previewBackend,
+					namedUrl: `http://web.hello.preview.hobo.localhost:${previewPort}`,
 					hostname: "web.hello.preview.hobo.localhost",
 					mode: "local",
-					preferredUrl: "http://127.0.0.1:4173",
+					preferredUrl: previewBackend,
 					fidelity: "simulated",
 				},
 			],
@@ -439,11 +539,9 @@ describe("session resource inventory", () => {
 		expect(preview.yards.map((row) => row.id)).toEqual(["yard:preview"]);
 		expect(preview.bindles.map((row) => row.id)).toEqual(["bindle:hello"]);
 		expect(preview.endpoints.map((row) => row.backendUrl)).toEqual([
-			"http://127.0.0.1:4173",
+			previewBackend,
 		]);
-		expect(preview.endpoints[0]?.freshness).toBe(
-			"last-seen:2026-08-13T12:00:00.000Z",
-		);
+		expect(preview.endpoints[0]?.freshness).toBe("live");
 		expect(preview.endpoints[0]?.resolvedAddresses).toContain("127.0.0.1");
 
 		const prod = await assembleSessionResources({
@@ -452,9 +550,9 @@ describe("session resource inventory", () => {
 		});
 		expect(prod.yards.map((row) => row.id)).toEqual(["yard:prod"]);
 		expect(prod.bindles).toEqual([]);
-		expect(prod.endpoints.some((row) => row.backendUrl.includes("4173"))).toBe(
-			false,
-		);
+		expect(
+			prod.endpoints.some((row) => row.backendUrl.includes(previewPort)),
+		).toBe(false);
 	});
 
 	it("refuses a federated station without a grant", async () => {
@@ -644,11 +742,13 @@ describe("session resource inventory", () => {
 		expect(SESSION_RESOURCES_SCHEMA).toBe("hobo.code.session-resources/v1");
 	});
 
-	it("records loopback evidence URLs that carry a token= capability query", () => {
+	it("records loopback evidence URLs that carry a token= capability query", async () => {
 		const hoboHome = tempHome();
-		const controls = "http://127.0.0.1:4174/?token=opaque-capability";
-		const report =
-			"http://127.0.0.1:4174/__hobo/evidence?token=opaque-capability";
+		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		const appUrl = await openListen();
+		const evidenceUrl = await openListen();
+		const controls = `${evidenceUrl}?token=opaque-capability`;
+		const report = `${evidenceUrl}__hobo/evidence?token=opaque-capability`;
 		expect(() =>
 			recordDevDeployment({
 				hoboHome,
@@ -658,8 +758,8 @@ describe("session resource inventory", () => {
 					environment: "local-dev",
 				},
 				bindleName: "hello-world",
-				appUrl: "http://127.0.0.1:4173/",
-				debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
+				appUrl,
+				debugUrl: `${appUrl}?__hobo_debug=1`,
 				controlsUrl: controls,
 				reportUrl: report,
 			}),
@@ -670,9 +770,11 @@ describe("session resource inventory", () => {
 			ensureLocalLogin: true,
 		});
 		const urls = inventory.endpoints.map((row) => row.backendUrl);
-		expect(urls.some((url) => url.includes("127.0.0.1:4174"))).toBe(true);
+		expect(urls.some((url) => url.includes(new URL(evidenceUrl).port))).toBe(
+			true,
+		);
 		expect(urls.some((url) => url.includes("__hobo/evidence"))).toBe(true);
-		expect(urls.some((url) => url.includes("4173"))).toBe(true);
+		expect(urls.some((url) => url.includes(new URL(appUrl).port))).toBe(true);
 	});
 
 	it("fulfills a deployed hello-world bindle with camp, bindle, and declared resources", async () => {
@@ -688,6 +790,8 @@ describe("session resource inventory", () => {
 });
 `,
 		);
+		const appUrl = await openListen();
+		const evidenceUrl = await openListen();
 		recordDevDeployment({
 			hoboHome,
 			scope: {
@@ -697,11 +801,11 @@ describe("session resource inventory", () => {
 			},
 			bindleName: "hello-world",
 			projectDir: project,
-			appUrl: "http://127.0.0.1:4173/",
-			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
-			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
-			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
-			namedUrl: "http://web.hello-world.local.hobo.localhost:4173",
+			appUrl,
+			debugUrl: `${appUrl}?__hobo_debug=1`,
+			controlsUrl: `${evidenceUrl}?token=opaque`,
+			reportUrl: `${evidenceUrl}__hobo/evidence?token=opaque`,
+			namedUrl: `http://web.hello-world.local.hobo.localhost:${new URL(appUrl).port}`,
 		});
 		const inventory = assembleSessionResources({
 			hoboHome,
@@ -722,24 +826,41 @@ describe("session resource inventory", () => {
 			inventory.bindles.find((row) => row.id === "bindle:hello-world")
 				?.parentId,
 		).toBe("camp:hello-world");
+		// Without a live /dev pid, user bindle is declared; loopback endpoints
+		// still appear while their backends answer. Mesh api needs a live pid.
+		expect(
+			inventory.bindles.find((row) => row.id === "bindle:hello-world")
+				?.status,
+		).toBe("declared");
 		const names = inventory.endpoints.map((row) => row.resourceName);
 		expect(names).toEqual(
+			expect.arrayContaining(["web", "debug", "controls", "report"]),
+		);
+		markBindleLive(hoboHome, project, "hello-world");
+		const live = assembleSessionResources({
+			hoboHome,
+			env: { HOBO_ENV: "local-dev" },
+			ensureLocalLogin: true,
+		});
+		expect(
+			live.bindles.find((row) => row.id === "bindle:hello-world")?.status,
+		).toBe("serving");
+		expect(live.endpoints.map((row) => row.resourceName)).toEqual(
 			expect.arrayContaining(["web", "api", "debug", "controls", "report"]),
 		);
 		expect(
-			inventory.endpoints.find((row) => row.resourceName === "api")
-				?.preferredUrl,
+			live.endpoints.find((row) => row.resourceName === "api")?.preferredUrl,
 		).toBe("http://hello-world.hobo.internal/api");
 		expect(inventory.camp?.require).toContain("managed-http-runtime");
 		expect(inventory.bindleManifest?.resources.map((row) => row.kind)).toEqual(
 			expect.arrayContaining(["api", "web"]),
 		);
-		const text = formatSessionResources(inventory);
+		const text = formatSessionResources(live);
 		expect(text).not.toMatch(/no yard/i);
 		expect(text).toMatch(/hello-world\.hobo\.internal\/api/);
-		const web = inventory.endpoints.find((row) => row.resourceName === "web");
-		const api = inventory.endpoints.find((row) => row.resourceName === "api");
-		expect(web?.backendUrl).toMatch(/127\.0\.0\.1:4173/);
+		const web = live.endpoints.find((row) => row.resourceName === "web");
+		const api = live.endpoints.find((row) => row.resourceName === "api");
+		expect(web?.backendUrl).toContain("127.0.0.1");
 		expect(api?.backendUrl).not.toBe(web?.backendUrl);
 		expect(api?.backendUrl).toBe("http://hello-world.hobo.internal/api");
 		expect(api?.preferredUrl).toBe("http://hello-world.hobo.internal/api");
@@ -760,6 +881,8 @@ describe("session resource inventory", () => {
 }));
 `,
 		);
+		const appUrl = await openListen();
+		const evidenceUrl = await openListen();
 		recordDevDeployment({
 			hoboHome,
 			scope: {
@@ -769,11 +892,12 @@ describe("session resource inventory", () => {
 			},
 			bindleName: "shop",
 			projectDir: project,
-			appUrl: "http://127.0.0.1:4173/",
-			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
-			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
-			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+			appUrl,
+			debugUrl: `${appUrl}?__hobo_debug=1`,
+			controlsUrl: `${evidenceUrl}?token=opaque`,
+			reportUrl: `${evidenceUrl}__hobo/evidence?token=opaque`,
 		});
+		markBindleLive(hoboHome, project, "hello-world");
 		const inventory = assembleSessionResources({
 			hoboHome,
 			env: { HOBO_ENV: "local-dev" },
@@ -808,6 +932,8 @@ describe("session resource inventory", () => {
 }));
 `,
 		);
+		const appUrl = await openListen();
+		const evidenceUrl = await openListen();
 		recordDevDeployment({
 			hoboHome,
 			scope: {
@@ -817,26 +943,29 @@ describe("session resource inventory", () => {
 			},
 			bindleName: "shop",
 			projectDir: project,
-			appUrl: "http://127.0.0.1:4173/",
-			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
-			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
-			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+			appUrl,
+			debugUrl: `${appUrl}?__hobo_debug=1`,
+			controlsUrl: `${evidenceUrl}?token=opaque`,
+			reportUrl: `${evidenceUrl}__hobo/evidence?token=opaque`,
 		});
+		markBindleLive(hoboHome, project, "shop");
 		const inventory = assembleSessionResources({
 			hoboHome,
 			env: { HOBO_ENV: "local-dev" },
 			ensureLocalLogin: true,
 			projectDir: project,
 		});
-		const billing = inventory.endpoints.find(
-			(row) => row.resourceName === "billing",
-		);
-		const users = inventory.endpoints.find(
-			(row) => row.resourceName === "users",
-		);
-		expect(billing?.backendUrl).toBe("http://shop.hobo.internal/billing");
-		expect(users?.backendUrl).toBe("http://shop.hobo.internal/users");
-		expect(billing?.preferredUrl).toBe("http://shop.hobo.internal/billing");
-		expect(users?.preferredUrl).toBe("http://shop.hobo.internal/users");
+		expect(
+			inventory.endpoints.find((row) => row.resourceName === "billing")
+				?.preferredUrl,
+		).toBe("http://shop.hobo.internal/billing");
+		expect(
+			inventory.endpoints.find((row) => row.resourceName === "users")
+				?.preferredUrl,
+		).toBe("http://shop.hobo.internal/users");
+		expect(
+			inventory.endpoints.find((row) => row.resourceName === "web")
+				?.preferredUrl,
+		).toMatch(/web\.shop\./);
 	});
 });

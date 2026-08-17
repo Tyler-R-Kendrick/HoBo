@@ -16,6 +16,25 @@ export type PackageClassification = {
 	layer: number;
 };
 
+// Layer-1 contract packages: provider-neutral vocabulary that adapters
+// legitimately implement against, the same way they implement WIT worlds.
+// ADR-0151 makes this explicit — capability profiles are "the missing semantic
+// layer" between a Bindle primitive and a hosted product, and bindings are
+// "independent of provisioners" — so a provider declaring the profiles it
+// implements and emitting a portable binding is the designed direction of
+// dependency, not a layering breach. Registering them as contracts is what
+// makes that legal by construction instead of by a growing exception list.
+// ADR-0156 records the longer-term move of these contracts into `@hobo/core`.
+const CONTRACT_PACKAGE_PATHS = new Set([
+	"packages/wit",
+	"packages/capability-profiles",
+	"packages/bindings",
+	"packages/claims",
+	"packages/trust",
+	"packages/data-postgres",
+	"packages/kv-redis-compatible",
+]);
+
 const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/core",
 	"packages/contract-harness",
@@ -61,6 +80,27 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/sdk",
 	"packages/training",
 	"packages/yard-world",
+	// ADR-0151 plane packages: present in the workspace since the capability
+	// profile/binding/claim tranche landed, but never registered here, so the
+	// boundary gate threw "unknown import source" on a clean tree.
+	"packages/auth-md",
+	"packages/bindings",
+	"packages/capability-matrix",
+	"packages/capability-profiles",
+	"packages/claims",
+	"packages/data-postgres",
+	"packages/kv-redis-compatible",
+	"packages/recipes",
+	"packages/trust",
+	"packages/wasp",
+	"packages/convex",
+	// ADR-0159 out-of-box application test harness.
+	"packages/testing",
+	// Example Bindles vendored under the hobo-code harness. They consume
+	// adapters and bindles like any application would, so they classify as
+	// ordinary workspace packages rather than a new tier.
+	"packages/code/examples/barebones",
+	"packages/code/examples/hello-world",
 ]);
 
 // Documented, narrowly-scoped exceptions. The AI training/eval providers
@@ -80,6 +120,14 @@ const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	"packages/providers/runner-blacksmith->packages/providers/runner-github",
 	"packages/providers/runner-depot->packages/providers/runner-github",
 	"packages/providers/runner-depot->packages/providers/runner-blacksmith",
+	// Pre-existing layer-3 reaches, surfaced when the boundary gate stopped
+	// throwing on unregistered packages (it previously crashed before reaching
+	// rule evaluation, so these were never reported). Both are genuine breaches
+	// awaiting the ADR-0156 lift of the selectable-definition and operator-SDK
+	// types into @hobo/core; recorded here rather than left invisible, and
+	// scoped to these EXACT edges so no new one is admitted.
+	"packages/packs/pack-framework->packages/cloud",
+	"packages/providers/provider-convex->packages/sdk",
 	// The policy-engine gate-plane adapters (docs/plans/0017 F30) lower engine
 	// verdicts onto @hobo/contracts' shared vocabulary (GatekeeperEffect,
 	// PolicyDecisionRequest). The dependency deliberately points
@@ -125,10 +173,21 @@ function isConnectorTierBaseEdge(from: string, to: string): boolean {
 	);
 }
 
+// The implementation-pack tier has the same shape as the connector tier:
+// `pack-framework` is the tier's base library (pack descriptor, digest pinning,
+// lifecycle) that concrete packs compose. Scoped to that exact target so
+// pack->pack imports between concrete packs still fail closed.
+function isPackTierBaseEdge(from: string, to: string): boolean {
+	return (
+		from.startsWith("packages/packs/") && to === "packages/packs/pack-framework"
+	);
+}
+
 function isAcceptedAdapterPackageEdge(from: string, to: string): boolean {
 	return (
 		ACCEPTED_ADAPTER_PACKAGE_EDGES.has(`${from}->${to}`) ||
-		isConnectorTierBaseEdge(from, to)
+		isConnectorTierBaseEdge(from, to) ||
+		isPackTierBaseEdge(from, to)
 	);
 }
 
@@ -180,7 +239,7 @@ export function classifyPackage(path: string): PackageClassification {
 		return { kind: "package", layer: 0 };
 	}
 
-	if (path === "packages/wit") {
+	if (CONTRACT_PACKAGE_PATHS.has(path)) {
 		return { kind: "contract", layer: 1 };
 	}
 
@@ -190,7 +249,12 @@ export function classifyPackage(path: string): PackageClassification {
 		path.startsWith("packages/build/") ||
 		path.startsWith("packages/runtimes/") ||
 		path.startsWith("packages/connectors/") ||
-		path.startsWith("packages/adapters/")
+		path.startsWith("packages/adapters/") ||
+		// ADR-0151 implementation packs are signed deployables that satisfy a
+		// capability profile on generic compute. They sit at the adapter tier
+		// for the same reason providers do: they implement a core contract and
+		// must not reach sideways into layer-3 packages.
+		path.startsWith("packages/packs/")
 	) {
 		return { kind: "adapter", layer: 2 };
 	}
@@ -250,6 +314,11 @@ export function validateBoundaryImports(
 		if (
 			from.kind === "adapter" &&
 			to.kind !== "core" &&
+			// Layer-1 contract packages are implementable vocabulary, like WIT
+			// worlds: an adapter declaring the capability profiles it implements
+			// or emitting a portable binding is depending on a contract, not on
+			// another implementation.
+			to.kind !== "contract" &&
 			edge.from !== edge.to &&
 			edge.to !== "packages/conformance" &&
 			!isAcceptedAdapterPackageEdge(edge.from, edge.to)

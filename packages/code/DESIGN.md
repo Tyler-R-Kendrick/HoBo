@@ -225,25 +225,71 @@ always-on Station sidecar, not a Capabilities-table row. Residual
 secret/crypto kinds use the Station-local KMS sidecar. Command history,
 aliases, and env vars live in a Station SQLite sidecar — ink search in
 `hobo-code history`, not an Atuin TUI.
-(`kms.code.local.hobo.localhost`). The dashboard leads with a featured
-Station plaque (Chewy “station” + mute id + ready lamp + env) and three occupancy doors
-(dashboard / Evidence / OTLP). Other Station hosts fold as `hosts`. **capabilities** is a labeled
-`<details>` at the **bottom** of the Station plaque (collapsed by default)
-listing every Bindle kind ready or off. There is no sibling “signals” / OTel card. Pane titles pair a glyph with a Chewy caption
-(yard / signals / peers). Chewy is
-embedded like Evidence (`evidenceDocumentCss`). Day/night is OS
-`prefers-color-scheme` until the user picks; `data-theme` + `hobo-theme`
-storage and a moon/sun plank toggle match the site. Night inverts
-paper/ink onto `night-bg` / `night-raised`. Spark 2.5px focus. Icons are 44px chamfered planks with
-hang-and-bounce; hover inverts ink/paper and spark stays on focus/fail.
-The Yard card nests Yard ⊃ Camp ⊃ Bindle with indent, not a 3px side tab;
-bindle endpoints hang off their bindle as plank rows, not nested cards.
+(`kms.code.local.hobo.localhost`). The dashboard is a **control plane, not a
+poster**: Azure-portal drill-down with Aspire-style resource tables, in
+rubberhose skin. Hash-routed views mirror the topology — **station ⊃ yards ⊃
+camps ⊃ bindles ⊃ resources** — one level per view, never an always-expanded
+tree:
+
+- **Overview (`#/`)** — the featured Station plaque (Chewy “station” + mute id
+  + ready lamp, location as flat chips: environment · tenant · scope, three
+  occupancy doors dashboard / Evidence / OTLP; other Station hosts fold as
+  `hosts`; **capabilities** is a labeled `<details>` at the **bottom** of the
+  plaque, collapsed, as a columnar grid) plus a **yards** card listing *every*
+  yard as one summary row: lamp, yard glyph, name link, flat rollup chips
+  (camp/bindle glyph counts, running x/y dot, signal counts). Peers appear
+  only when peer Stations exist.
+- **Yard (`#/yard/<id>`)** — lists the yard's **camps** as summary rows
+  (bindle count, running x/y, signal rollups) plus the yard's own managed
+  resources. Web/api/kv belong to bindles, never to the yard listing.
+- **Camp (`#/camp/<id>`)** — lists the camp's **bindles** as summary rows
+  (resource count, running x/y, signal rollups) plus camp-owned managed
+  resources that are not bindle resources.
+- **Bindle (`#/bindle/<id>`)** — the bindle's **resources** as a flat aligned
+  table (uppercase `thead`: resource / endpoint / signals; fixed-width action
+  column so planks hang in one rail), endpoint rows carrying the primary
+  named link.
+- **Resource (`#/resource/<id>`)** — endpoint links (named + quiet loopback +
+  copy plank) beneath the facts.
+
+Every scope view — yard, camp, bindle, resource — carries its **own** facts
+plaque (`.trust`: kind, owner, env, state, fidelity, scope, freshness,
+export, last signal) and its **own** signals: logs / traces / metrics tabs as
+icon planks (active plank inverted) fed by
+`/api/resources/:id/logs|traces|metrics`.
+
+Breadcrumbs (station › yard › camp › bindle › resource — ink chips with drawn
+chevron marks) carry navigation and browser back works; row names are links,
+which is the drill-down affordance. Every listing uses **one row grammar** — `lamp · kind
+glyph · name · (endpoint) · signal counts · actions` — with per-table fixed
+grid columns. There is no sibling “signals” / OTel card — OTel is lamp +
+per-row signal counts (log/trace/metric glyph chips fed by `/api/telemetry`),
+and the board re-projects itself every few seconds while the tab is visible
+(a control plane never shows stale state). Pane titles pair a glyph with a
+Chewy caption (yards / peers). Chewy is embedded like Evidence
+(`evidenceDocumentCss`). Day/night is OS `prefers-color-scheme` until the user
+picks; `data-theme` + `hobo-theme` storage and a moon/sun plank toggle match
+the site. Night inverts paper/ink onto `night-bg` / `night-raised`. Spark
+2.5px focus.
+
+Two affordance laws bind this chrome (mirrored in `site/DESIGN.md` Buttons):
+**pressable = raised** — only real controls wear the 44px chamfered plank with
+ink rim, hard sticker shadow, and hang-and-bounce hover invert; inert markers
+(lamps, kind glyphs, lock badges, signal chips) are flat ink with no shadow —
+and **icon verbs** — action buttons carry drawn monochrome glyphs
+(play/stop/restart/copy/sun/moon), locale-independent, with the localized word
+only in `aria-label`/`title`, never as the button face.
+`evidence-design-lint.test.ts` enforces both.
+
+An empty station or yard teaches (`hobo-code dev` hint), never a blank pane.
 Start/stop is a single
 play/square toggle; restart is Bindle-only. Copy flashes go on success
 and spark on refuse — never a lying success. Errors are an inline
 banner, never `alert()`. Stopped lamps stay paper, not vermillion.
-Long URLs ellipsize so cards do not bleed. OTel is lamp + signal
-counts. Fleet appears only when peer Stations exist. A kind is
+Endpoints show one primary named link plus a single copy plank; the loopback
+listen address is a quiet mono footnote, not a second link block.
+Long URLs ellipsize so cards do not bleed. Fleet appears only when peer
+Stations exist. A kind is
 available or it is not. Tests query those controls by id/role/class.
 Every
 `tui-*` source plus `interactive-shell.ts` is in DESIGN.md lint scope (`tui-design-lint.test.ts`). Evidence

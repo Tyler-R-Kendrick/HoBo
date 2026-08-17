@@ -442,6 +442,15 @@ Buttons are **roadside / tavern sign boards**, not soft ellipses or Material CTA
 - **Ghost:** paper/board fill, ink rim, reads as an unpainted plank.
 - **Motion:** hang-and-bounce on hover (`translate` + slight `rotate`); press flattens the sticker shadow.
 - **Shadow:** hard offset sticker depth only — no soft blur elevation.
+- **Pressable = raised.** The plank costume (chamfer + ink rim + sticker shadow
+  + hang-and-bounce) is reserved for things you can press. Inert markers —
+  status lamps, kind glyphs, lock badges — are flat ink, no shadow, no chamfer.
+  If a sticker shadow ever decorates something inert, the affordance is broken.
+- **Icon verbs.** On operational chrome (dashboards, Evidence, controls),
+  action buttons speak in drawn monochrome glyphs — play, stop, restart, copy,
+  sun/moon — not locale-dependent words. The localized verb lives only in
+  `aria-label`/`title`. Marketing signage may keep Chewy lettering; controls
+  that *do* things stay language-free.
 
 ### Cards
 

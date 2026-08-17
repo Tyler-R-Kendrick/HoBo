@@ -139,6 +139,36 @@ describe("Evidence SPA follows DESIGN.md tokens", () => {
 		}
 	});
 
+	it("enforces pressable-raised and icon-verb affordance laws on the dashboard", () => {
+		const source = readFileSync(
+			join(dirname(fileURLToPath(import.meta.url)), "../src/session-dashboard.ts"),
+			"utf8",
+		);
+		// pressable = raised: only button.ico wears the plank costume.
+		expect(source).toContain("filter: drop-shadow(3px 3px 0 var(--ink))");
+		expect(
+			source,
+			"the plank sticker shadow must be scoped to button.ico, never span.ico",
+		).not.toMatch(/span\.ico/u);
+		const inertBlocks = [".lamp {", ".mark {", ".tree-kind {", ".sig {"];
+		for (const opener of inertBlocks) {
+			const start = source.indexOf(opener);
+			expect(start, `${opener} rule must exist`).toBeGreaterThan(-1);
+			const block = source.slice(start, source.indexOf("}", start));
+			expect(
+				block,
+				`${opener} is an inert marker and must stay flat (no shadow)`,
+			).not.toMatch(/shadow/u);
+		}
+		// icon verbs: action buttons speak in glyphs; words live in aria-label/title.
+		expect(source).toMatch(/data-act='[^']*'[^>]*aria-label='/u);
+		expect(source).toMatch(/aria-label='" \+ esc\(label\)/u);
+		expect(source).not.toMatch(/>(start|stop|restart|copy|play)</u);
+		// control-plane liveness: signal counts + re-projection, not a static page.
+		expect(source).toContain("/api/telemetry");
+		expect(source).toContain("visibilitychange");
+	});
+
 	it("paints the desk with thick ink and Chewy signage", () => {
 		expect(controlsHtml).toContain("font-family:Chewy");
 		expect(controlsHtml).toContain("Evidence desk");

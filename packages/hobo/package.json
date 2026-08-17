@@ -74,7 +74,8 @@
 		"tsx": "4.22.4"
 	},
 	"devDependencies": {
-		"@hobo/contract-harness": "workspace:*"
+		"@hobo/contract-harness": "workspace:*",
+		"@hobo/testing": "workspace:*"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",

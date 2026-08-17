@@ -1,4 +1,12 @@
 export {
+	CHAOS_FAULTS,
+	type ChaosFault,
+	type ChaosInjection,
+	ChaosPlanError,
+	type ChaosTransport,
+	chaosTransport,
+} from "./chaos.js";
+export {
 	isTestHarnessError,
 	TEST_HARNESS_ERROR_CODES,
 	TestHarnessError,

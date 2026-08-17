@@ -23,13 +23,15 @@ HoBo now has three binding-adjacent nouns, deliberately distinct and now jointly
 
 | Noun | What it is | Owner |
 |---|---|---|
-| **Yard binding** | A Yard-scoped mapping row — the *policy fact* that this Yard satisfies a capability with this offering, **configured this way**: `{profile → product and/or connectivity, + provider-native realization parameters}` | [ADR-0157](./adr/07-portability-extensibility.md#adr-0157), `yard()` authoring |
+| **Yard binding** | A row in the Yard's **allocatable catalog** — the fact that this Yard *can* satisfy a capability with this offering, **configured this way**: `{profile → product and/or connectivity, + provider-native realization parameters}`. A capability commonly has several rows; declaring one allocates nothing | [ADR-0157](./adr/07-portability-extensibility.md#adr-0157), `yard()` / `defineYard()` authoring |
 | **Capability binding** | The portable connection record a *product* emits for consumers (endpoints as non-secret refs, credential `secretRef`s) | [ADR-0151](./adr/07-portability-extensibility.md#adr-0151), `@hobo/bindings` |
 | **Binding membrane** | The only delivery path: WIT import → link → provider export → generated `ctx.bindings.*` | [ADR-0141](./adr/02-identity-security.md#adr-0141) |
 
 The pipeline: a Bindle's `.allow()` names the **contract** (what, least-privilege) → the **Yard binding** rows constrain which product/connectivity may satisfy it (how, per Yard) → ADR-0151 selection runs its hard gates + lexicographic ranking under those constraints (`binding.Resolved`) → the product's **Capability binding** is projected through the chosen connectivity implementation into the workload (`binding.Projected`, deploy-time wiring only) → the **membrane** delivers the derived typed client at `ctx.bindings.<alias>` at `init`. Failure anywhere is fail-closed at plan phase (`binding.Unavailable`, composing with the existing `NO_COMPATIBLE_BINDING`/`BINDING_UNAVAILABLE` codes) — HoBo's polyglot answer to Alchemy's "this Layer only works on Workers" type error.
 
-Three rules keep the rows honest, each a correction applied during design review:
+**A Yard is a catalog, not an inventory.** Rows say what this Yard *is able to* allocate — they are not a selection, a mapping, a pool, or a record of anything running. So several rows per capability is the normal case, not an ambiguity to resolve at authoring time: on Azure, `web` legitimately lists Static Web Apps, App Service, Container Apps and AKS, and selection picks among them per resource. Adding a fifth option is a catalog edit, not a deployment change.
+
+Three further rules keep the rows honest, each a correction applied during design review:
 
 - **Rows are a set, not a preference order.** An ordered list would smuggle preference into ranking, which ADR-0151 decision 11 forbids; rows are canonicalized by sort, and duplicate `(profile, productId, connectivityId)` triples are rejected.
 - **Provider coherence is resolution-time, not parse-time.** Inferring a product's provider from its id prefix would make a naming convention load-bearing — precisely the external-spec dependency ADR-0144 forbids. Parse checks grammar, shape, credential-shaped properties, and pin/row conflicts; the catalog check happens where the catalog exists.

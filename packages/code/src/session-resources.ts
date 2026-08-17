@@ -27,6 +27,10 @@ import {
 	retargetUrl,
 } from "./occupancy-endpoints.js";
 import {
+	isOccupancyRunProcessLive,
+	listeningByUrl,
+} from "./occupancy-live.js";
+import {
 	type AuthedStationView,
 	describeAuthedStationSession,
 } from "./station-session.js";
@@ -39,6 +43,9 @@ export const SESSION_RESOURCES_SCHEMA =
 export const CODE_CAMP_ID = `camp:${OCCUPANCY_NAMED_APP}` as const;
 /** Occupancy bindle living in the local yard's code camp. */
 export const CODE_BINDLE_ID = `bindle:${OCCUPANCY_NAMED_APP}` as const;
+
+// public-contract: private api/service stay on <bindle>.hobo.internal/<name>
+const INTERNAL_MESH_ZONE = "hobo.internal";
 
 export function userCampId(bindleName: string): string {
 	return bindleName === OCCUPANCY_NAMED_APP
@@ -307,7 +314,9 @@ export function assertLocalBackend(
 			host === "[::1]" ||
 			host === "0.0.0.0" ||
 			host.endsWith(".hobo.localhost") ||
-			host.endsWith(".localhost");
+			host.endsWith(".localhost") ||
+			host === INTERNAL_MESH_ZONE ||
+			host.endsWith(`.${INTERNAL_MESH_ZONE}`);
 		if (!local) {
 			return {
 				ok: false,
@@ -561,39 +570,48 @@ function mergeEndpointRecords(
 	return [...byName.values()];
 }
 
-function localYardNode(environment: string): TopologyNode {
+function localYardNode(
+	environment: string,
+	status: ResourceStatus = "declared",
+): TopologyNode {
 	return {
 		kind: "yard",
 		id: "yard:local",
 		name: "local",
 		environment,
-		status: "serving",
+		status,
 		fidelity: "simulated",
 		scopeLabel: "local",
 	};
 }
 
-function occupancyCampNode(environment: string): TopologyNode {
+function occupancyCampNode(
+	environment: string,
+	status: ResourceStatus = "declared",
+): TopologyNode {
 	return {
 		kind: "camp",
 		id: CODE_CAMP_ID,
 		name: OCCUPANCY_NAMED_APP,
 		environment,
 		parentId: "yard:local",
-		status: "serving",
+		status,
 		fidelity: "simulated",
 		scopeLabel: "local",
 	};
 }
 
-function occupancyBindleNode(environment: string): TopologyNode {
+function occupancyBindleNode(
+	environment: string,
+	status: ResourceStatus = "declared",
+): TopologyNode {
 	return {
 		kind: "bindle",
 		id: CODE_BINDLE_ID,
 		name: OCCUPANCY_NAMED_APP,
 		environment,
 		parentId: CODE_CAMP_ID,
-		status: "serving",
+		status,
 		fidelity: "simulated",
 		scopeLabel: "local",
 	};
@@ -731,6 +749,46 @@ function mergeNodes(rows: readonly TopologyNode[]): TopologyNode[] {
 	return [...byId.values()];
 }
 
+/**
+ * Snapshot / seed may say "serving"; the board only does when the process or
+ * occupancy sidecars are actually live.
+ */
+function withLiveTopologyStatus(
+	row: TopologyNode,
+	facts: {
+		readonly bindleLive: boolean;
+		readonly occupancyServing: boolean;
+	},
+): TopologyNode {
+	if (row.kind === "station") return row;
+	if (row.id === CODE_CAMP_ID || row.id === CODE_BINDLE_ID) {
+		return {
+			...row,
+			status: facts.occupancyServing ? "serving" : "declared",
+		};
+	}
+	if (row.kind === "camp" || row.kind === "bindle") {
+		const userApp = row.id !== CODE_CAMP_ID && row.id !== CODE_BINDLE_ID;
+		if (userApp) {
+			return {
+				...row,
+				status: facts.bindleLive ? "serving" : "declared",
+			};
+		}
+	}
+	if (row.kind === "yard") {
+		return {
+			...row,
+			status:
+				facts.bindleLive || facts.occupancyServing ? "serving" : "declared",
+		};
+	}
+	return {
+		...row,
+		status: row.status === "serving" ? "declared" : row.status,
+	};
+}
+
 function toEndpointRow(
 	record: EndpointRecord,
 	options: {
@@ -771,10 +829,12 @@ function toEndpointRow(
 		};
 	}
 	const backendHost = hostnameOf(record.backendUrl);
-	const resolved = resolveAddresses(
-		[backendHost, hostname],
-		options.lookupHost,
-	);
+	const mesh =
+		backendHost === INTERNAL_MESH_ZONE ||
+		(backendHost?.endsWith(`.${INTERNAL_MESH_ZONE}`) ?? false);
+	const resolved = mesh
+		? []
+		: resolveAddresses([backendHost, hostname], options.lookupHost);
 	const listenPort = listenPortOf(record.backendUrl);
 	const namedPreferred =
 		record.namedUrl ??
@@ -785,18 +845,19 @@ function toEndpointRow(
 		record.mode === "local"
 			? namedPreferred
 			: (record.namedUrl ?? record.preferredUrl);
+	const dnsMissing = !mesh && resolved.length === 0;
 	return {
 		...record,
 		preferredUrl: preferred,
-		status: options.freshness.startsWith("last-seen:")
-			? "last-seen"
-			: "serving",
+		status: dnsMissing
+			? "unresolved"
+			: options.freshness.startsWith("last-seen:")
+				? "last-seen"
+				: "serving",
 		freshness: options.freshness,
 		resolvedAddresses: resolved,
 		...(listenPort !== undefined ? { listenPort } : {}),
-		...(resolved.length === 0
-			? { unresolvedReason: "nxdomain", status: "unresolved" as const }
-			: {}),
+		...(dnsMissing ? { unresolvedReason: "nxdomain" } : {}),
 	};
 }
 
@@ -868,39 +929,88 @@ export function assembleSessionResources(
 		kept.push(row);
 	}
 
-	const nodes = mergeNodes([station, ...peers, ...kept]);
-	const byKind = (kind: ResourceKind): TopologyNode[] =>
-		nodes.filter((row) => row.kind === kind);
+	const nodesRaw = mergeNodes([station, ...peers, ...kept]);
+
+	const bindleLive = isOccupancyRunProcessLive(
+		options.hoboHome,
+		view.stationId,
+		view.environment,
+	);
+
+	const sidecarCandidates = occupancySidecarEndpoints(
+		loadSidecarSnapshot(options.hoboHome, view.stationId),
+	);
+	// Explicit liveEndpoints are asserted by the caller (current process).
+	const probeUrls = [
+		...sidecarCandidates.map((row) => row.backendUrl),
+		...(snapshot?.endpoints ?? []).map((row) => row.backendUrl),
+	];
+	const listening = listeningByUrl(probeUrls);
 
 	const occupancyLive = mergeEndpointRecords([
-		...occupancySidecarEndpoints(
-			loadSidecarSnapshot(options.hoboHome, view.stationId),
-		),
+		...sidecarCandidates,
 		...(options.liveEndpoints ?? []),
 	]);
 	const liveKeys = new Set(occupancyLive.map((row) => row.resourceName));
 	if (liveKeys.has("evidence")) liveKeys.add("report");
 	if (liveKeys.has("controls")) liveKeys.add("controls");
+
 	const endpointRows: EndpointRow[] = [];
+	// Always keep registered URLs so the board can link to them. Probe only
+	// sets freshness/status — never drops the row.
 	for (const record of snapshot?.endpoints ?? []) {
 		if (liveKeys.has(record.resourceName)) continue;
+		const mesh = record.backendUrl.includes(`.${INTERNAL_MESH_ZONE}/`);
+		const alive = mesh
+			? bindleLive
+			: listening.get(record.backendUrl) === true;
 		endpointRows.push(
 			toEndpointRow(record, {
 				environment: view.environment,
-				freshness: `last-seen:${snapshot?.recordedAt ?? "unknown"}`,
+				freshness: alive
+					? "live"
+					: `last-seen:${snapshot?.recordedAt ?? "unknown"}`,
 				lookupHost,
 			}),
 		);
 	}
 	for (const record of occupancyLive) {
+		const fromCaller = (options.liveEndpoints ?? []).some(
+			(row) => row.resourceName === record.resourceName,
+		);
+		const mesh = record.backendUrl.includes(`.${INTERNAL_MESH_ZONE}/`);
+		const alive =
+			fromCaller ||
+			(mesh
+				? bindleLive
+				: listening.get(record.backendUrl) === true);
 		endpointRows.push(
 			toEndpointRow(record, {
 				environment: view.environment,
-				freshness: "live",
+				freshness: alive
+					? "live"
+					: `last-seen:${snapshot?.recordedAt ?? "unknown"}`,
 				lookupHost,
 			}),
 		);
 	}
+
+	const occupancyServing = occupancyLive.some((row) => {
+		if (!isStationOccupancyEndpoint(row.resourceName)) return false;
+		const fromCaller = (options.liveEndpoints ?? []).some(
+			(r) => r.resourceName === row.resourceName,
+		);
+		if (fromCaller) return true;
+		return listening.get(row.backendUrl) === true;
+	});
+	const nodes = nodesRaw.map((row) =>
+		withLiveTopologyStatus(row, {
+			bindleLive,
+			occupancyServing,
+		}),
+	);
+	const byKind = (kind: ResourceKind): TopologyNode[] =>
+		nodes.filter((row) => row.kind === kind);
 
 	const present = new Set(nodes.map((row) => row.kind));
 	const missing: MissingLayer[] = TOPOLOGY_KINDS.filter(
@@ -1389,9 +1499,6 @@ export function recordDevDeployment(input: {
 
 const HTTP_KINDS = new Set(["api", "web", "service", "websocket", "ui"]);
 const PUBLIC_HTTP_KINDS = new Set(["web", "ui", "websocket"]);
-
-// public-contract: private api/service stay on <bindle>.hobo.internal/<name>
-const INTERNAL_MESH_ZONE = "hobo.internal";
 
 export function bindleMeshUrl(
 	bindleName: string,

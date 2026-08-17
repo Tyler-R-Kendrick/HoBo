@@ -115,7 +115,10 @@ TUI component tree (queryable by id/role/class); `pi-tui` only paints frames:
   Chewy, grain, and a spark focus ring match Evidence. Day/night follows
   the system setting and a moon/sun toggle (`hobo-theme`); Station occupancy
   sidecars (dashboard, Evidence, OTLP, …) cannot be stopped from the board.
-  Pane titles are glyphs. The Yard card nests Yard ⊃ Camp ⊃ Bindle and
+  Pane titles are glyphs. Yard / camp / bindle / resource detail panes
+  open with a lifecycle lamp strap, a compact identity/endpoint facts plaque,
+  then (on resources) labeled named / listen / backend links; scope and
+  manifest fold closed. The Yard card nests Yard ⊃ Camp ⊃ Bindle and
   hangs bindle endpoints on their bindle. The Station plaque ends with
   a labeled **capabilities** fold (collapsed by default) listing every
   Bindle kind as ready or off. There is no independent capabilities

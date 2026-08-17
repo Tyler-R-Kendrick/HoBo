@@ -1,5 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -14,9 +15,18 @@ import {
 } from "../src/session-resources.js";
 
 const homes: string[] = [];
-afterEach(() => {
+const servers: Server[] = [];
+afterEach(async () => {
 	for (const home of homes) rmSync(home, { recursive: true, force: true });
 	homes.length = 0;
+	await Promise.all(
+		servers.splice(0).map(
+			(server) =>
+				new Promise<void>((resolve, reject) => {
+					server.close((error) => (error ? reject(error) : resolve()));
+				}),
+		),
+	);
 });
 
 function tempHome(): string {
@@ -25,10 +35,25 @@ function tempHome(): string {
 	return home;
 }
 
+async function openListen(): Promise<string> {
+	const server = createServer((_req, res) => {
+		res.writeHead(200);
+		res.end("ok");
+	});
+	servers.push(server);
+	await new Promise<void>((resolve) => {
+		server.listen(0, "127.0.0.1", () => resolve());
+	});
+	const addr = server.address() as AddressInfo;
+	return `http://127.0.0.1:${addr.port}/`;
+}
+
 describe("local Aspire dashboard listener", () => {
 	it("serves SPA plus inventory, telemetry, fleet, and lifecycle bodies", async () => {
 		const hoboHome = tempHome();
 		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
+		const appUrl = await openListen();
+		const evidenceUrl = await openListen();
 		recordDevDeployment({
 			hoboHome,
 			scope: {
@@ -37,10 +62,10 @@ describe("local Aspire dashboard listener", () => {
 				environment: "local-dev",
 			},
 			bindleName: "hello-world",
-			appUrl: "http://127.0.0.1:4173/",
-			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
-			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
-			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+			appUrl,
+			debugUrl: `${appUrl}?__hobo_debug=1`,
+			controlsUrl: `${evidenceUrl}?token=opaque`,
+			reportUrl: `${evidenceUrl}__hobo/evidence?token=opaque`,
 		});
 		const dash = await startLocalDashboard({
 			hoboHome,
@@ -87,6 +112,21 @@ describe("local Aspire dashboard listener", () => {
 			expect(html).toMatch(/function renderCamp/);
 			expect(html).toMatch(/function renderBindle/);
 			expect(html).toMatch(/function renderResource/);
+			expect(html).toMatch(/function detailFacts/);
+			expect(html).toMatch(/function lifeStrap/);
+			expect(html).toMatch(/pushFact\(identity, "kind"/);
+			expect(html).toMatch(/pushFact\(identity, "owner"/);
+			expect(html).toMatch(/pushFact\(epMeta, "freshness"/);
+			expect(html).not.toMatch(/pushFact\(epMeta, "named"/);
+			expect(html).not.toMatch(/pushFact\(signals,/);
+			expect(html).toMatch(/pushFact\(manifest, "depends on"/);
+			expect(html).toMatch(/class='ep-detail'/);
+			expect(html).toMatch(/class='life-strap'/);
+			expect(html).toMatch(/class='fact-fold'/);
+			expect(html).toMatch(/class='manifest-list'/);
+			expect(html).toMatch(/epLine\("named"/);
+			expect(html).toMatch(/overflow-wrap:anywhere/);
+			expect(html).toMatch(/listen-addr/);
 			expect(html).toMatch(/#\/yard\//);
 			expect(html).toMatch(/#\/camp\//);
 			expect(html).toMatch(/#\/bindle\//);
@@ -175,7 +215,9 @@ describe("local Aspire dashboard listener", () => {
 				inventory.bindles.some((row) => row.id.includes("hello-world")),
 			).toBe(true);
 			expect(
-				inventory.endpoints.some((row) => row.backendUrl.includes("4173")),
+				inventory.endpoints.some((row) =>
+					row.backendUrl.includes(new URL(appUrl).port),
+				),
 			).toBe(true);
 			expect(
 				inventory.endpoints.some((row) =>
@@ -760,6 +802,8 @@ describe("local Aspire dashboard listener", () => {
 }));
 `,
 		);
+		const appUrl = await openListen();
+		const evidenceUrl = await openListen();
 		recordDevDeployment({
 			hoboHome,
 			scope: {
@@ -769,10 +813,10 @@ describe("local Aspire dashboard listener", () => {
 			},
 			bindleName: "shop",
 			projectDir: project,
-			appUrl: "http://127.0.0.1:4173/",
-			debugUrl: "http://127.0.0.1:4173/?__hobo_debug=1",
-			controlsUrl: "http://127.0.0.1:4174/?token=opaque",
-			reportUrl: "http://127.0.0.1:4174/__hobo/evidence?token=opaque",
+			appUrl,
+			debugUrl: `${appUrl}?__hobo_debug=1`,
+			controlsUrl: `${evidenceUrl}?token=opaque`,
+			reportUrl: `${evidenceUrl}__hobo/evidence?token=opaque`,
 		});
 		persistOccupancyRun({
 			hoboHome,
@@ -809,7 +853,7 @@ describe("local Aspire dashboard listener", () => {
 			expect(body.bindles.map((row) => row.id)).not.toContain("bindle:shop");
 			const web = body.endpoints.find((row) => row.resourceName === "web");
 			const api = body.endpoints.find((row) => row.resourceName === "api");
-			expect(web?.backendUrl).toContain("4173");
+			expect(web?.backendUrl).toContain(new URL(appUrl).port);
 			expect(api?.backendUrl).toBe("http://hello-world.hobo.internal/api");
 			expect(api?.preferredUrl).toBe("http://hello-world.hobo.internal/api");
 			expect(api?.backendUrl).not.toBe(web?.backendUrl);

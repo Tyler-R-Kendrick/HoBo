@@ -120,7 +120,7 @@ const SPA = `<!doctype html>
     .row.cap { grid-template-columns:auto minmax(0,1fr); }
     .thead { display:grid; grid-template-columns:14px 18px minmax(7rem,1.1fr) minmax(0,1.6fr) 8.5rem 9.9rem;
       gap:12px; padding:0 0 6px; border-bottom:3px solid var(--border); color:var(--mute);
-      font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+      font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
     .group-cap { margin:16px 0 2px; }
     .row-main { min-width:0; overflow:hidden; }
     .row-name { display:block; font-size:1rem; font-weight:700; line-height:1.25;
@@ -130,7 +130,17 @@ const SPA = `<!doctype html>
     a.res-link:hover { color:var(--spark); }
     .ep-cell { min-width:0; overflow:hidden; }
     .ep-line { display:block; min-width:0; }
-    .ep-line a, .ep-line span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ep-cell .ep-line a, .ep-cell .ep-line > span.ep-link,
+    .ep-cell .ep-line > span.listen-addr { display:block; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; }
+    .ep-detail { display:flex; flex-direction:column; gap:8px; margin:0 0 12px; min-width:0; }
+    .ep-detail .ep-line { display:grid; grid-template-columns:4.5rem minmax(0,1fr) auto;
+      gap:8px; align-items:center; }
+    .ep-detail .ep-k { font-size:.75rem; font-weight:700; letter-spacing:.06em;
+      text-transform:uppercase; color:var(--mute); }
+    .ep-detail .ep-line a, .ep-detail .ep-line > span.ep-link,
+    .ep-detail .ep-line > span.listen-addr { display:block; min-width:0; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; }
     a.ep-link, span.ep-link { font-family:ui-monospace,monospace; font-size:.875rem; color:var(--ink);
       text-underline-offset:3px; }
     a.ep-link:hover { color: var(--spark); }
@@ -185,7 +195,7 @@ const SPA = `<!doctype html>
     .chips { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 0; padding:0; list-style:none; }
     .chips li { display:inline-flex; align-items:center; gap:6px; border:2px solid var(--border-strong);
       border-radius:999px; padding:3px 10px; font-size:.75rem; color:var(--mute); min-width:0; }
-    .chips .chip-k { text-transform:uppercase; letter-spacing:.06em; font-weight:700; font-size:.7rem; }
+    .chips .chip-k { text-transform:uppercase; letter-spacing:.06em; font-weight:700; font-size:.75rem; }
     .chips .mono { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.75rem; }
     .station-listing { min-width:0; }
     .station-head { display:grid; grid-template-columns:auto auto minmax(0,1fr) auto; gap:12px;
@@ -213,9 +223,41 @@ const SPA = `<!doctype html>
       align-items:center; min-width:0; margin:0 0 12px; }
     .detail-head h2 { margin:0; font-size:1.5rem; line-height:1.1;
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .trust { margin:0 0 4px; }
-    .trust dd { font-family:ui-monospace,monospace; font-size:.8rem; overflow:hidden;
-      text-overflow:ellipsis; white-space:nowrap; }
+    .trust { margin:0 0 12px; }
+    .trust dd { font-family:ui-monospace,monospace; font-size:.875rem;
+      overflow-wrap:anywhere; word-break:break-word; white-space:normal; }
+    .fact-group { margin:0 0 10px; }
+    .fact-group > .group-cap { margin:10px 0 4px; }
+    .fact-group:first-child > .group-cap { margin-top:0; }
+    details.fact-fold { margin:8px 0 0; }
+    details.fact-fold > summary { cursor:pointer; list-style:none; font-size:.75rem;
+      font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--mute);
+      min-height:44px; display:inline-flex; align-items:center; gap:8px; }
+    details.fact-fold > summary::-webkit-details-marker { display:none; }
+    details.fact-fold > summary:hover { color:var(--spark); }
+    details.fact-fold > summary::after { content:""; width:7px; height:7px; margin-top:-2px;
+      border-right:2px solid currentColor; border-bottom:2px solid currentColor;
+      transform:rotate(45deg); }
+    details.fact-fold[open] > summary::after { margin-top:2px; transform:rotate(225deg); }
+    .life-strap { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center;
+      margin:0 0 12px; min-width:0; }
+    .life-strap .life-bit { display:inline-flex; align-items:center; gap:6px; min-width:0;
+      font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+      color:var(--mute); }
+    .life-strap .life-bit .mono { font-weight:400; letter-spacing:0; text-transform:none;
+      font-size:.875rem; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      max-width:18rem; }
+    .life-strap .life-err { color:var(--spark); text-transform:none; letter-spacing:0; font-weight:700;
+      font-family:ui-monospace,monospace; font-size:.875rem; }
+    .manifest-list { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
+    .manifest-list li { display:grid; grid-template-columns:5.5rem minmax(0,1fr); gap:8px;
+      border:3px solid var(--ink); border-radius:12px; box-shadow:4px 4px 0 var(--ink);
+      padding:8px 10px; background:var(--inset); min-width:0; }
+    .manifest-list .mk { font-size:.75rem; font-weight:700; letter-spacing:.06em;
+      text-transform:uppercase; color:var(--mute); }
+    .manifest-list .mv { font-family:ui-monospace,monospace; font-size:.875rem; min-width:0;
+      overflow-wrap:anywhere; word-break:break-word; }
+    .manifest-list .mv .dep, .manifest-list .mv .allow { display:block; color:var(--mute); font-size:.75rem; }
     .tel-head { display:flex; align-items:center; gap:10px; margin:18px 0 4px; }
     .tel-row { display:grid; grid-template-columns:6.5rem 8rem minmax(0,1fr); gap:12px; padding:6px 0;
       border-bottom:2px solid var(--border); font-family:ui-monospace,monospace; font-size:.75rem; min-width:0; }
@@ -361,6 +403,26 @@ const SPA = `<!doctype html>
     function lamp(ready) {
       return "<i class='lamp " + (ready ? "ready" : "not-ready") +
         "' role='img' aria-label='" + (ready ? "ready" : "stopped") + "'></i>";
+    }
+    function lifeBit(label, on, value) {
+      return "<span class='life-bit'>" + lamp(on === true) +
+        "<span>" + esc(label) + "</span>" +
+        (value ? "<span class='mono' title='" + esc(value) + "'>" + esc(value) + "</span>" : "") +
+        "</span>";
+    }
+    function lifeStrap(inv, id) {
+      var snap = snapOf(inv, id);
+      if (!snap) return "";
+      var bits = lifeBit("ready", snap.ready) +
+        lifeBit("started", snap.started) +
+        lifeBit("healthy", snap.healthy) +
+        "<span class='life-bit'><span>state</span><span class='mono' title='" +
+        esc(snap.state) + "'>" + esc(snap.state) + "</span></span>";
+      if (snap.lastError) {
+        bits += "<span class='life-bit life-err' title='" + esc(snap.lastError) + "'>" +
+          esc(snap.lastError) + "</span>";
+      }
+      return "<div class='life-strap' role='status' aria-label='lifecycle'>" + bits + "</div>";
     }
     function icoAct(verb, extra, label, id, actName) {
       return "<button type='button' class='ico " + (extra || "") + "' data-act='" +
@@ -670,6 +732,10 @@ const SPA = `<!doctype html>
           ? "<a class='ep-link' href='" + esc(primary) + "' target='_blank' rel='noopener noreferrer' title='" + esc(primary) + "'>" + esc(primary) + "</a>"
           : "<span class='ep-link' title='" + esc(primary) + "'>" + esc(primary) + "</span>") + "</span>";
       }
+      if (listen && listen !== primary) {
+        lines += "<span class='ep-line'><span class='listen-addr' title='" + esc(listen) + "'>" +
+          esc(listen) + "</span></span>";
+      }
       return "<span class='ep-cell'>" + lines + "</span>";
     }
     function resourceRow(inv, opts) {
@@ -808,33 +874,164 @@ const SPA = `<!doctype html>
             esc(n.id) + "</span></span><span class='sums'></span><span class='acts'></span></div>";
         }).join("");
     }
-    function factsHtml(facts) {
-      if (!facts.length) return "";
-      return "<dl class='trust'>" + facts.map(function (f) {
-        return "<div><dt>" + esc(f[0]) + "</dt><dd title='" + esc(f[1]) + "'>" + esc(f[1]) + "</dd></div>";
-      }).join("") + "</dl>";
+    function factsHtml(groups) {
+      if (!groups || !groups.length) return "";
+      return groups.map(function (group) {
+        var plaque = "";
+        if (group.facts && group.facts.length) {
+          plaque += "<dl class='trust'>" + group.facts.map(function (f) {
+            var state = f[2] ? " data-state='" + esc(f[2]) + "'" : "";
+            return "<div" + state + "><dt>" + esc(f[0]) + "</dt><dd title='" +
+              esc(f[1]) + "'>" + esc(f[1]) + "</dd></div>";
+          }).join("") + "</dl>";
+        }
+        if (group.listHtml) plaque += group.listHtml;
+        if (!plaque) return "";
+        var body = group.fold
+          ? "<details class='fact-fold'><summary>" + esc(group.title) + "</summary>" +
+            plaque + "</details>"
+          : (group.title ? groupCap(group.title) : "") + plaque;
+        return "<div class='fact-group'>" + body + "</div>";
+      }).join("");
     }
-    function nodeFacts(inv, id, node, endpoint) {
-      var facts = [];
+    function pushFact(facts, label, value, state) {
+      if (value === undefined || value === null || value === "") return;
+      facts.push(state ? [label, String(value), state] : [label, String(value)]);
+    }
+    function manifestResourceList(resources) {
+      if (!resources || !resources.length) return "";
+      return "<ul class='manifest-list'>" + resources.map(function (r) {
+        var extra = "";
+        if (r.dependsOn && r.dependsOn.length) {
+          extra += "<span class='dep'>depends on " + esc(r.dependsOn.join(", ")) + "</span>";
+        }
+        if (r.allow && r.allow.length) {
+          extra += "<span class='allow'>allow " + esc(r.allow.join(", ")) + "</span>";
+        }
+        return "<li><span class='mk'>" + esc(r.kind) + "</span><span class='mv'>" +
+          esc(r.name) + extra + "</span></li>";
+      }).join("") + "</ul>";
+    }
+    function detailFacts(inv, id, node, endpoint, managed) {
+      var identity = [];
+      var epMeta = [];
+      var scope = [];
+      var manifest = [];
+      var listHtml = "";
       var snap = snapOf(inv, id);
-      var kind = endpoint ? (endpoint.kind || "endpoint") : node ? node.kind : "";
-      if (kind) facts.push(["kind", kind]);
-      if (node && node.parentId) {
-        facts.push(["owner", node.parentId]);
-      } else {
-        var managed = (inv.managed || []).find(function (m) { return m.id === id; });
-        if (managed) facts.push(["owner", managed.ownerId]);
+      var rowManaged = managed || (inv.managed || []).find(function (m) { return m.id === id; });
+      var kind = endpoint ? (endpoint.kind || "endpoint")
+        : node ? node.kind
+          : rowManaged ? rowManaged.kind : "";
+      var displayName = (node && node.name) || (rowManaged && rowManaged.name) ||
+        (endpoint && endpoint.resourceName) || "";
+      pushFact(identity, "id", id);
+      if (displayName && displayName !== id && ("bindle:" + displayName) !== id &&
+          ("camp:" + displayName) !== id && ("yard:" + displayName) !== id) {
+        pushFact(identity, "name", displayName);
       }
-      if (node && node.environment) facts.push(["env", node.environment]);
-      if (snap) facts.push(["state", snap.state]);
+      pushFact(identity, "kind", kind);
+      if (node && node.parentId) {
+        pushFact(identity, "owner", node.parentId);
+      } else if (rowManaged) {
+        pushFact(identity, "owner", rowManaged.ownerId);
+        pushFact(identity, "owner kind", rowManaged.ownerKind);
+      }
+      if (rowManaged && rowManaged.controllable === false) {
+        pushFact(identity, "controllable", "no");
+      }
+      var status = endpoint ? endpoint.status : node ? node.status : "";
+      pushFact(identity, "status", status,
+        status === "serving" ? "verified" : status === "last-seen" ? "stale"
+          : status === "unresolved" ? "missing" : undefined);
       var fidelity = endpoint ? endpoint.fidelity : node ? node.fidelity : "";
-      if (fidelity) facts.push(["fidelity", fidelity]);
-      if (node && node.scopeLabel) facts.push(["scope", node.scopeLabel]);
-      if (endpoint && endpoint.freshness) facts.push(["freshness", endpoint.freshness]);
-      var tel = telemetry[id];
-      if (tel && tel.lastSignalAt) facts.push(["last signal", tel.lastSignalAt.slice(11, 19)]);
-      if (tel && tel.export) facts.push(["export", tel.export]);
-      return facts;
+      pushFact(identity, "fidelity", fidelity);
+      pushFact(identity, "scope", node && node.scopeLabel);
+      if (snap && snap.provisioned !== undefined) {
+        pushFact(identity, "provisioned", snap.provisioned ? "yes" : "no");
+      }
+      if (endpoint) {
+        pushFact(epMeta, "mode", endpoint.mode);
+        pushFact(epMeta, "freshness", endpoint.freshness,
+          endpoint.freshness === "live" ? "verified"
+            : endpoint.freshness === "last-seen" ? "stale" : undefined);
+        pushFact(epMeta, "hostname", endpoint.hostname);
+        if (endpoint.listenPort) pushFact(epMeta, "listen port", endpoint.listenPort);
+        if (endpoint.resolvedAddresses && endpoint.resolvedAddresses.length) {
+          pushFact(epMeta, "resolved", endpoint.resolvedAddresses.join(", "));
+        }
+        pushFact(epMeta, "unresolved", endpoint.unresolvedReason, "missing");
+      }
+      pushFact(scope, "env", (node && node.environment) || (inv.scope && inv.scope.environment));
+      pushFact(scope, "tenant", inv.scope && inv.scope.tenant);
+      pushFact(scope, "station", inv.scope && inv.scope.stationId);
+      pushFact(scope, "project", inv.scope && inv.scope.project);
+      pushFact(scope, "branch", inv.scope && inv.scope.branch);
+      pushFact(scope, "rail", inv.scope && inv.scope.railHash);
+      pushFact(scope, "occupancy", inv.scope && inv.scope.occupancyStatus);
+      if (node && node.kind === "camp" && inv.camp &&
+          (inv.camp.name === node.name || ("camp:" + inv.camp.name) === node.id)) {
+        pushFact(manifest, "camp env", inv.camp.envType);
+        if (inv.camp.require && inv.camp.require.length) {
+          pushFact(manifest, "require", inv.camp.require.join(", "));
+        }
+        if (inv.camp.runtimeRequirements && inv.camp.runtimeRequirements.length) {
+          pushFact(manifest, "runtime", inv.camp.runtimeRequirements.join(", "));
+        }
+        if (inv.camp.labels) {
+          Object.keys(inv.camp.labels).forEach(function (key) {
+            pushFact(manifest, "label." + key, inv.camp.labels[key]);
+          });
+        }
+      }
+      if (node && node.kind === "bindle" && inv.bindleManifest &&
+          (inv.bindleManifest.name === node.name ||
+            ("bindle:" + inv.bindleManifest.name) === node.id)) {
+        var man = inv.bindleManifest;
+        pushFact(manifest, "manifest", man.name);
+        pushFact(manifest, "project dir", man.projectDir);
+        if (man.requirements && man.requirements.length) {
+          pushFact(manifest, "requirements", man.requirements.join(", "));
+        }
+        if (man.envKeys && man.envKeys.length) {
+          pushFact(manifest, "env keys", man.envKeys.join(", "));
+        }
+        listHtml = manifestResourceList(man.resources);
+      }
+      if (inv.bindleManifest && inv.bindleManifest.resources) {
+        var declName = endpoint ? endpoint.resourceName
+          : rowManaged ? rowManaged.name : "";
+        var decl = declName
+          ? inv.bindleManifest.resources.find(function (r) { return r.name === declName; })
+          : null;
+        if (decl) {
+          pushFact(manifest, "declared kind", decl.kind);
+          if (decl.dependsOn && decl.dependsOn.length) {
+            pushFact(manifest, "depends on", decl.dependsOn.join(", "));
+          }
+          if (decl.allow && decl.allow.length) {
+            pushFact(manifest, "allow", decl.allow.join(", "));
+          }
+        }
+      }
+      if (inv.missing && inv.missing.length && node) {
+        var miss = inv.missing.filter(function (m) { return m.kind === node.kind; });
+        if (miss.length) {
+          pushFact(identity, "missing", miss.map(function (m) { return m.reason; }).join("; "), "missing");
+        }
+      }
+      return [
+        { title: "identity", facts: identity, primary: true },
+        { title: "endpoint", facts: epMeta, primary: true },
+        { title: "scope", facts: scope, fold: true },
+        { title: "manifest", facts: manifest, listHtml: listHtml, fold: true }
+      ].filter(function (g) { return (g.facts && g.facts.length) || g.listHtml; });
+    }
+    function primaryFacts(groups) {
+      return (groups || []).filter(function (g) { return g.primary; });
+    }
+    function foldedFacts(groups) {
+      return (groups || []).filter(function (g) { return !g.primary; });
     }
     function telemetryTabs(id) {
       var tel = telemetry[id];
@@ -897,8 +1094,13 @@ const SPA = `<!doctype html>
         return resourceRow(inv, { id: m.id, kind: m.kind, locked: m.controllable === false });
       }).join("");
       const ownHtml = ownRows ? groupCap("resources") + theadHtml("resource") + ownRows : "";
+      var yardFacts = detailFacts(inv, yardId, yard);
       detail.innerHTML = scopeHead(inv, "yard", yardId, false) +
-        factsHtml(nodeFacts(inv, yardId, yard)) + campsHtml + ownHtml + telemetryTabs(yardId);
+        lifeStrap(inv, yardId) +
+        factsHtml(primaryFacts(yardFacts)) +
+        campsHtml + ownHtml +
+        factsHtml(foldedFacts(yardFacts)) +
+        telemetryTabs(yardId);
       await fillTelemetry(yardId);
     }
     async function renderCamp(inv, campId) {
@@ -915,8 +1117,13 @@ const SPA = `<!doctype html>
         return resourceRow(inv, { id: m.id, kind: m.kind, locked: m.controllable === false });
       }).join("");
       const ownHtml = ownRows ? groupCap("resources") + theadHtml("resource") + ownRows : "";
+      var campFacts = detailFacts(inv, campId, camp);
       detail.innerHTML = scopeHead(inv, "camp", campId, campId === "camp:code") +
-        factsHtml(nodeFacts(inv, campId, camp)) + bindlesHtml + ownHtml + telemetryTabs(campId);
+        lifeStrap(inv, campId) +
+        factsHtml(primaryFacts(campFacts)) +
+        bindlesHtml + ownHtml +
+        factsHtml(foldedFacts(campFacts)) +
+        telemetryTabs(campId);
       await fillTelemetry(campId);
     }
     async function renderBindle(inv, bindleId) {
@@ -945,13 +1152,19 @@ const SPA = `<!doctype html>
       const rowsHtml = rows
         ? groupCap("resources") + theadHtml("resource") + rows
         : "<p class='empty'>this bindle declares no resources yet</p>";
+      var bindleFacts = detailFacts(inv, bindleId, bindle);
       detail.innerHTML = scopeHead(inv, "bindle", bindleId, bindleId === "bindle:code") +
-        factsHtml(nodeFacts(inv, bindleId, bindle)) + rowsHtml + telemetryTabs(bindleId);
+        lifeStrap(inv, bindleId) +
+        factsHtml(primaryFacts(bindleFacts)) +
+        rowsHtml +
+        factsHtml(foldedFacts(bindleFacts)) +
+        telemetryTabs(bindleId);
       await fillTelemetry(bindleId);
     }
     async function renderResource(inv, id) {
       const detail = document.getElementById("detail");
-      const node = [].concat(inv.yards || [], inv.camps || [], inv.bindles || [], inv.junctions || [])
+      const node = [].concat(inv.yards || [], inv.camps || [], inv.bindles || [], inv.junctions || [],
+        inv.station ? [inv.station] : [], inv.peers || [])
         .find(function (n) { return n.id === id; });
       const managed = (inv.managed || []).find(function (m) { return m.id === id; });
       const endpoint = (inv.endpoints || []).find(function (e) { return e.resourceName === id; });
@@ -960,33 +1173,37 @@ const SPA = `<!doctype html>
       const ready = snap && snap.ready;
       const kind = endpoint ? (endpoint.kind || "endpoint") : node ? node.kind : managed ? managed.kind : "endpoint";
       const locked = (node && (id === "camp:code" || id === "bindle:code")) ||
-        (managed && managed.controllable === false);
+        (managed && managed.controllable === false) ||
+        occupancyLocked(id);
       var epHtml = "";
       if (endpoint) {
         var named = namedUrl(endpoint);
         var listen = listenUrl(endpoint);
-        var primary = named || listen;
+        var backend = endpoint.backendUrl || "";
         var lines = "";
-        if (primary) {
-          lines += "<span class='ep-line'>" + (openable(primary)
-            ? "<a class='ep-link' href='" + esc(primary) + "' target='_blank' rel='noopener noreferrer' title='" + esc(primary) + "'>" + esc(primary) + "</a>"
-            : "<span class='ep-link' title='" + esc(primary) + "'>" + esc(primary) + "</span>") + "</span>";
+        function epLine(label, url, cls) {
+          if (!url) return "";
+          var link = openable(url)
+            ? "<a class='" + cls + "' href='" + esc(url) + "' target='_blank' rel='noopener noreferrer' title='" + esc(url) + "'>" + esc(url) + "</a>"
+            : "<span class='" + cls + "' title='" + esc(url) + "'>" + esc(url) + "</span>";
+          return "<span class='ep-line'><span class='ep-k'>" + esc(label) + "</span> " + link +
+            copyBtn(url) + "</span>";
         }
-        if (listen && listen !== primary) {
-          lines += "<span class='ep-line'>" + (openable(listen)
-            ? "<a class='listen-link' href='" + esc(listen) + "' target='_blank' rel='noopener noreferrer' title='" + esc(listen) + "'>" + esc(listen) + "</a>"
-            : "<span class='listen-addr' title='" + esc(listen) + "'>" + esc(listen) + "</span>") + "</span>";
+        lines += epLine("named", named, "ep-link");
+        if (listen && listen !== named) lines += epLine("listen", listen, "listen-link");
+        if (backend && backend !== named && backend !== listen) {
+          lines += epLine("backend", backend, "ep-link");
         }
-        epHtml = "<div class='row r-ep'>" + lamp(ready) + kindMark(kind) +
-          "<span class='row-main'><span class='row-name'>" + esc(id) + "</span></span>" +
-          "<span class='ep-cell'>" + lines + "</span>" + sigsHtml(id) +
-          actsHtml(copyBtn(primary)) + "</div>";
+        epHtml = "<div class='ep-detail'>" + lines + "</div>";
       }
+      var groups = detailFacts(inv, id, node, endpoint, managed);
       detail.innerHTML =
         "<div class='detail-head'>" + lamp(ready) + kindMark(kind) +
         "<h2 title='" + esc(id) + "'>" + esc(id) + "</h2>" +
         actsHtml(actionsInner(id, locked === true, ready)) + "</div>" +
-        factsHtml(nodeFacts(inv, id, node, endpoint)) + epHtml + telemetryTabs(id);
+        lifeStrap(inv, id) +
+        factsHtml(primaryFacts(groups)) + epHtml +
+        factsHtml(foldedFacts(groups)) + telemetryTabs(id);
       await fillTelemetry(id);
     }
     render().catch(function (err) {
@@ -1230,18 +1447,14 @@ export async function startLocalDashboard(options: {
 				endpoint.resourceName,
 			);
 			const mesh = isMeshBackend(endpoint.backendUrl);
+			const live =
+				endpoint.freshness === "live" && endpoint.status === "serving";
 			lifecycle.register({
 				id: endpoint.resourceName,
 				kind: endpoint.kind,
 				provisioned: true,
-				...(occupancy
-					? { initiallyStarted: enabled }
-					: bindleLive
-						? {
-								initiallyStarted: true,
-								...(!mesh ? { healthUrl: endpoint.backendUrl } : {}),
-							}
-						: { healthUrl: endpoint.backendUrl }),
+				initiallyStarted: occupancy ? enabled && live : live,
+				...(!mesh && live ? { healthUrl: endpoint.backendUrl } : {}),
 			});
 		}
 		for (const resource of inventory.managed) {

@@ -249,14 +249,19 @@ tree:
   table (uppercase `thead`: resource / endpoint / signals; fixed-width action
   column so planks hang in one rail), endpoint rows carrying the primary
   named link.
-- **Resource (`#/resource/<id>`)** — endpoint links (named + quiet loopback +
-  copy plank) beneath the facts.
+- **Resource (`#/resource/<id>`)** — labeled named / listen / backend links with
+  copy planks beneath the facts.
 
-Every scope view — yard, camp, bindle, resource — carries its **own** facts
-plaque (`.trust`: kind, owner, env, state, fidelity, scope, freshness,
-export, last signal) and its **own** signals: logs / traces / metrics tabs as
-icon planks (active plank inverted) fed by
-`/api/resources/:id/logs|traces|metrics`.
+Every scope view — yard, camp, bindle, resource — opens with a **lifecycle
+strap** (ready / started / healthy lamps + state, matching listing grammar),
+then a compact primary `.trust` plaque (identity + endpoint probe meta —
+mode / freshness / hostname / listen port / resolved / unresolved, **not**
+URL strings). Scope and manifest sit in progressive `<details class="fact-fold">`
+folds; bindle resources render as a structured `.manifest-list`, not a mega
+string. Signal counts stay on the logs / traces / metrics icon planks (active
+plank inverted) fed by `/api/resources/:id/logs|traces|metrics` — not duplicated
+in the plaque. Resource panes keep open/copy URLs only in labeled `.ep-detail`
+rows (named / listen / backend) between primary facts and folds.
 
 Breadcrumbs (station › yard › camp › bindle › resource — ink chips with drawn
 chevron marks) carry navigation and browser back works; row names are links,
@@ -286,8 +291,11 @@ Start/stop is a single
 play/square toggle; restart is Bindle-only. Copy flashes go on success
 and spark on refuse — never a lying success. Errors are an inline
 banner, never `alert()`. Stopped lamps stay paper, not vermillion.
-Endpoints show one primary named link plus a single copy plank; the loopback
-listen address is a quiet mono footnote, not a second link block.
+Endpoints on listing rows show one primary named link plus a single copy plank;
+the loopback listen address is a quiet mono footnote, not a second link block.
+Resource detail (`#/resource/<id>`) is the drill-down exception: labeled named /
+listen / backend rows with per-URL copy, while the facts plaque keeps probe meta
+only (no duplicated URL strings).
 Long URLs ellipsize so cards do not bleed. Fleet appears only when peer
 Stations exist. A kind is
 available or it is not. Tests query those controls by id/role/class.

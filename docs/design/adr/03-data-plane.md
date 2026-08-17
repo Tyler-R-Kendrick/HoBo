@@ -772,3 +772,25 @@ Git workbench snapshots are mutation surfaces. "Reviewed index" meant authorizin
 ### Consequences
 - **(+)** Terminal, CLI, and browser share one parse-don't-validate contract.
 - **(−)** GitHub CLI (`gh`) is the live provider; tests use a fake provider plus a real temporary Git repository.
+
+## ADR-0160
+**`drizzle-kit` is the default relational schema-diff engine behind the migration port — deploy-owned generation, HoBo-gated apply.**
+
+**Status:** Accepted — implements the diff engine [ADR-0032](#adr-0032) decision 1 specifies for the `hobo:data/relational` Postgres reference; consistent with the `POSTGRES_MIGRATION_TOOLS` product-claim axis in `@hobo/data-postgres`; informed by the [Alchemy capture](../../competitors/alchemy.md#feature-surface) Drizzle workflow.
+
+### Context
+ADR-0032 commits to declarative desired-schema + auto-diff with a reviewable migration plan and gated expand→backfill→contract apply — but names no diff engine, so the decision's primary surface has no default implementation. `drizzle-kit` already appears in HoBo as a *product-claim* capability flag ("Migration tools whose compatibility is a product claim, not an inference"), and Alchemy's Drizzle integration demonstrates the ergonomic bar: a plain TypeScript schema module drives both typed queries and migration generation, and generation is **deploy-owned** — `Drizzle.Schema` "diffs your schema module against the latest snapshot," with "No CI generation step — the deploy owns it" and ordering falling out of the dependency graph.
+
+### Decision
+1. **`drizzle-kit` is the default implementation of the relational schema-diff engine** for `hobo:data/relational` (Postgres reference). It is an internal dependency of the migration-engine adapter — never public API, never a runtime dependency of the data path (`hobo:data` clients stay port-generated; no `drizzle-orm` in handlers). Alternative engines (`atlas`, `prisma-migrate`, raw SQL escape hatch) remain swappable adapters, and the `POSTGRES_MIGRATION_TOOLS` product claims gate which engines may run against which endpoints — a serverless HTTP-only Postgres that cannot run a tool refuses it structurally.
+2. **Deploy-owned generation, HoBo-gated apply.** The diff runs at the `plan` phase (ADR-0158) against the schema live in the target Camp, emitting the reviewable migration plan (`migration.Planned`) and generated SQL as a content-addressed artifact — no separate CI generation step, matching the Alchemy bar. Apply is where HoBo deliberately diverges: not a direct transactional apply, but the ADR-0032 **expand → backfill → contract** gated saga, forward-only, snapshot-before-contract. Deploy-owned generation composes with gated application; the ergonomics come from the former, the safety from the latter.
+3. **Drizzle schema modules are an accepted authoring input.** HoBo's declarative schema stays canonical; a Drizzle schema module is parsed (parse-don't-validate) into the canonical schema IR by a thin adapter so existing Drizzle users adopt without rewriting. Impedance is documented per the ADR-0144 rule — constructs that don't map (dialect-specific column tricks) are named, not silently dropped.
+
+### Non-goals
+- No MySQL default in this ADR (the Postgres reference is the ADR-0032 v1 scope).
+- No ORM endorsement in the runtime data path; this is a migration-engine decision only.
+
+### Consequences
+- **(+)** ADR-0032's diff engine ships with a battle-tested default instead of a bespoke differ; the OOB story matches the best shipping DX while keeping gated, forward-only apply.
+- **(+)** Drizzle-native teams onboard with their existing schema modules.
+- **(−)** An external tool sits behind a core port: version pinning and output canonicalization (deterministic artifacts from a third-party generator) become HoBo's responsibility.

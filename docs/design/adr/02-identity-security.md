@@ -995,3 +995,26 @@ Residency was typed but hollow: `residency` fields on Yards/Stations were never 
 - **(+)** Residency conflicts become evaluable, attributable plan-time verdicts with remediation, feeding existing gates without new event families.
 - **(+)** "Which controls does this deployment satisfy?" is a computable coverage report over real evidence streams.
 - **(−)** The jurisdiction catalog is a curated platform artifact that must track legal reality; unmapped-region fail-closed means new provider regions require a mapping entry before regulated workloads can land there — deliberate friction.
+
+## ADR-0161
+**Better Auth is the default self-hosted, full-featured `hobo:auth` adapter, shipped as an auth bundle over existing ports.**
+
+**Status:** Accepted — extends [ADR-0038](#adr-0038) (federate + verify port; named adapter set) and [ADR-0073](07-portability-extensibility.md#adr-0073) (registered adapters, swap rules); consumes [ADR-0113](#adr-0113) brokered secrets and [ADR-0160](03-data-plane.md#adr-0160) migrations; informed by the [Alchemy capture](../../competitors/alchemy.md#feature-surface) Better Auth integration.
+
+### Context
+ADR-0038's adapter spectrum has hosted IdPs (WorkOS · Auth0 · Supabase Auth · Entra ID · Google/GitHub/Clerk/customJwt) at one end and the thin built-in (passkey / email magic-link) for zero-config dev and air-gap at the other. Between them is a real gap: a **full-featured, self-hostable, framework-agnostic** auth stack — organizations, plugins, OAuth providers, session management — with no SaaS dependency. Better Auth is the TypeScript ecosystem's standard answer, and Alchemy's integration proves the packaging shape: one declaration whose deployment "handles database provisioning, schema migrations, secret generation, and route serving," host-portable ("same handler runs on Cloudflare Workers and AWS Lambda unchanged").
+
+### Decision
+1. **Better Auth joins the ADR-0038 named adapter set** as the default *self-hosted full-featured* option, sitting between the thin built-in and the hosted IdPs. It is selected per Camp/Yard by Matching like every registered adapter; nothing about ADR-0038's federate + verify model changes — Better Auth is an **issuer** adapter, and verification stays the existing JWKS/OIDC path with the unified principal model.
+2. **Shipped as an auth bundle over existing ports** (Resource Pack packaging, ADR-0062/ADR-0144): declaring `auth()` with the Better Auth adapter (a) provisions its relational store through `hobo:data/relational`, with schema evolution as ADR-0160 gated migrations — not adapter-private DDL; (b) provisions the signing secret as **brokered material** per ADR-0113 — the app never holds it, deliberately diverging from Alchemy's state-persisted `Alchemy.Random` resource; (c) mounts its routes on the declared `api()`/`web()` surface under a configured base path.
+3. **Host-portable by the membrane, not by per-platform layers.** The bundle's handler consumes only ports (`ctx.bindings`), so one bundle runs on any Camp host — meeting Alchemy's Workers/Lambda-unchanged bar through ADR-0141 rather than N platform-specific implementations.
+4. **Swap rules apply unchanged.** ADR-0073 governs replacing it on a live Yard (prior-issuer session invalidation, versioned conformance-tested claims mapping); ADR-0036 air-gap minimal profiles keep the thin built-in — Better Auth is a default, not a floor.
+
+### Non-goals
+- Not a hosted IdP and not an ADR-0038 replacement; the port, principal model, and policy-plane authz are unchanged.
+- No commitment to Better Auth plugin parity — plugins surface where they compose with the port; gaps are documented impedance (ADR-0144), not shims.
+
+### Consequences
+- **(+)** Self-hosters get real auth (orgs, OAuth, sessions) with zero SaaS dependency and zero pasted secrets, one declaration away.
+- **(+)** Auth data joins the governed data plane: its schema evolves through the same gated migrations as app data.
+- **(−)** A third-party framework's release cadence now sits inside a default bundle; version pinning and upgrade testing are platform obligations.

@@ -329,9 +329,18 @@ lists them under Hobo Bo. HoBo Bo configure always shows `+ create subagent`
 `.hobo/agents/<id>/instructions.md` and opens that agent. Model pick for Bo /
 subagents uses the Bo catalog (local ollama tags, saved harness models as
 provenance, `OPENAI_BASE_URL` locals). Coding harnesses (Codex, Claude, …)
-use a **separate** per-provider catalog of real CLI model ids — never ollama
-tags or invented BYOK seeds. Each offer has a Package-URL (`pkg:…`) so
-provenance stays explicit. ←→ cycles offers; type for custom.
+use a **separate** per-harness catalog of real CLI model ids for every
+bundled coding-agent / sdk harness (Codex, Claude, Cursor, Copilot, Gemini,
+Grok, OpenCode, Aider, Goose, SDK) — never Bo’s ollama dump. **Pi** shares
+the Bo catalog. Codex / SDK also list OpenAI-compatible endpoints
+(`OPENAI_BASE_URL`, `HOBO_CODE_OPENAI_COMPAT_URLS`); Claude lists
+Anthropic-compatible endpoints (`ANTHROPIC_BASE_URL`,
+`HOBO_CODE_ANTHROPIC_COMPAT_URLS`). Cursor / OpenCode / Grok merge live
+`list-models` / `models` CLI output when the binary is present. Mux seating
+launches each CLI with the configured `api_endpoint` (env), model, and
+effort from `/agents`. Each offer uses a LiteLLM-style `provider/model` id
+plus optional `via` / `baseUrl` fields so provenance stays explicit. ←→ cycles
+offers; type for custom.
 They also register at `/agents/<id>` in the virtual filesystem. A seated CLI
 can `ls /agents`. Bo still does not write app code.
 

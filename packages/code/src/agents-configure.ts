@@ -1,7 +1,8 @@
 /**
  * `/agents` configure form — model + effort for a harness or Bo subagent.
- * HoBo Bo / subagents pick from the Bo model catalog; coding harnesses pick
- * from per-provider catalogs (`harness-model-catalog`).
+ * HoBo Bo / subagents / Pi pick from the Bo model catalog; other coding
+ * harnesses pick from per-provider catalogs (`harness-model-catalog`), with
+ * OpenAI-/Anthropic-compatible endpoints merged for Codex / Claude.
  */
 import {
 	createProjectEveAgent,
@@ -51,13 +52,18 @@ export type AgentsConfigureField =
 export type AgentsConfigureCatalogOptions = Omit<
 	ListBoModelOffersInput,
 	"hoboHome"
->;
+> & {
+	/** Forwarded to harness model catalog (default: on outside Vitest). */
+	readonly live?: boolean;
+};
 
 export interface AgentsConfigureState {
 	readonly target: AgentsConfigureTarget;
 	readonly model: string;
-	/** Package-URL when selected from modelOffers. */
-	readonly modelPurl: string;
+	/** LiteLLM-style `provider/model` when selected from modelOffers. */
+	readonly modelId: string;
+	readonly via: string;
+	readonly apiEndpoint: string;
 	readonly effort: EffortLevel;
 	readonly field: AgentsConfigureField;
 	/** Cursor into subagent list (+ create row) when field === "eve-list". */
@@ -112,40 +118,89 @@ function loadBoOffers(
 function withModelSelection(
 	base: Omit<
 		AgentsConfigureState,
-		"modelCursor" | "modelPurl" | "modelOffers"
+		"modelCursor" | "modelId" | "via" | "apiEndpoint" | "modelOffers"
 	> & {
 		readonly modelOffers: readonly BoModelOffer[];
-		readonly modelPurl?: string;
+		readonly modelId?: string;
+		readonly via?: string;
+		readonly apiEndpoint?: string;
 	},
 ): AgentsConfigureState {
-	const modelPurl = base.modelPurl ?? "";
-	const modelCursor = findOfferIndex(base.modelOffers, base.model, modelPurl);
+	const modelId = base.modelId ?? "";
+	const via = base.via ?? "";
+	const apiEndpoint = base.apiEndpoint ?? "";
+	const modelCursor = findOfferIndex(
+		base.modelOffers,
+		base.model,
+		modelId || undefined,
+		via || undefined,
+		apiEndpoint || undefined,
+	);
 	const offer = base.modelOffers[modelCursor];
+	const matched =
+		offer &&
+		(modelId
+			? offer.id === modelId
+			: offer.runtimeId === base.model);
 	return clampConfigureState({
 		...base,
 		modelCursor,
-		modelPurl:
-			modelPurl ||
-			(offer && offer.runtimeId === base.model ? offer.purl : ""),
+		modelId: modelId || (matched ? offer.id : ""),
+		via: via || (matched ? (offer.via ?? "") : ""),
+		apiEndpoint:
+			apiEndpoint || (matched ? (offer.baseUrl ?? "") : ""),
 	});
+}
+
+function selectionFromLoaded(loaded: HarnessSettings): {
+	readonly modelId?: string;
+	readonly via?: string;
+	readonly apiEndpoint?: string;
+} {
+	return {
+		...(loaded.modelId !== undefined ? { modelId: loaded.modelId } : {}),
+		...(loaded.via !== undefined ? { via: loaded.via } : {}),
+		...(loaded.apiEndpoint !== undefined
+			? { apiEndpoint: loaded.apiEndpoint }
+			: {}),
+	};
+}
+
+function selectionFromOffer(offer: BoModelOffer): {
+	readonly modelId: string;
+	readonly via: string;
+	readonly apiEndpoint: string;
+} {
+	return {
+		modelId: offer.id,
+		via: offer.via ?? "",
+		apiEndpoint: offer.baseUrl ?? "",
+	};
 }
 
 export function openHarnessConfigure(
 	hoboHome: string,
 	harnessId: string,
 	label: string,
-	_catalog?: AgentsConfigureCatalogOptions,
+	catalog?: AgentsConfigureCatalogOptions,
 ): AgentsConfigureState {
 	const loaded = loadHarnessSettings(hoboHome, harnessId, "harness");
+	const modelOffers =
+		harnessId === "pi"
+			? loadBoOffers(hoboHome, catalog)
+			: listHarnessModelOffers(harnessId, {
+					hoboHome,
+					...(catalog?.env !== undefined ? { env: catalog.env } : {}),
+					...(catalog?.live !== undefined ? { live: catalog.live } : {}),
+				});
 	return withModelSelection({
 		target: { kind: "harness", harnessId, label },
 		model: loaded.model,
-		...(loaded.modelPurl !== undefined ? { modelPurl: loaded.modelPurl } : {}),
+		...selectionFromLoaded(loaded),
 		effort: loaded.effort,
 		field: "model",
 		eveCursor: 0,
-		// Provider-real models only — never the Bo/ollama catalog.
-		modelOffers: listHarnessModelOffers(harnessId),
+		modelOffers,
 		dirty: false,
 		createDraft: "",
 		createError: "",
@@ -166,7 +221,7 @@ export function openEveConfigure(
 			path: agent.path,
 		},
 		model: loaded.model,
-		...(loaded.modelPurl !== undefined ? { modelPurl: loaded.modelPurl } : {}),
+		...selectionFromLoaded(loaded),
 		effort: loaded.effort,
 		field: "model",
 		eveCursor: 0,
@@ -186,7 +241,7 @@ export function openHoboBoConfigure(
 	return withModelSelection({
 		target: { kind: "hobo-bo", label: "Hobo Bo", eveAgents },
 		model: loaded.model,
-		...(loaded.modelPurl !== undefined ? { modelPurl: loaded.modelPurl } : {}),
+		...selectionFromLoaded(loaded),
 		effort: loaded.effort,
 		field: "model",
 		eveCursor: 0,
@@ -250,10 +305,18 @@ export function formatAgentsConfigureLines(
 	const offer = ready.modelOffers[ready.modelCursor];
 	const modelLine = `${modelMark} model   ${ready.model || "(unset)"}`;
 	const lines = [title, "", modelLine];
-	if (ready.modelPurl) {
-		lines.push(`          ${ready.modelPurl}`);
+	if (ready.modelId) {
+		const bits = [ready.modelId];
+		if (ready.via) bits.push(`via=${ready.via}`);
+		lines.push(`          ${bits.join(" · ")}`);
 	} else if (ready.field === "model" && offer) {
-		lines.push(`          ${offer.purl}`);
+		const bits = [offer.id];
+		if (offer.via) bits.push(`via=${offer.via}`);
+		lines.push(`          ${bits.join(" · ")}`);
+	}
+	const endpointHint = ready.apiEndpoint || offer?.baseUrl || "";
+	if (endpointHint) {
+		lines.push(`          api_endpoint ${endpointHint}`);
 	}
 	if (ready.field === "model" && ready.modelOffers.length > 0) {
 		const scope =
@@ -301,7 +364,7 @@ export function formatAgentsConfigureLines(
 			lines.push(`${createMark} + create subagent`);
 		}
 		lines.push("");
-		lines.push("  model = Bo catalog (ollama · harness · BYOK) via pkg: PURL");
+		lines.push("  model = Bo catalog (ollama · harness · openai-compatible)");
 	}
 	lines.push("");
 	if (ready.field === "create-id") {
@@ -403,7 +466,7 @@ export function reduceAgentsConfigureKey(
 					...ready,
 					modelCursor: cycled.index,
 					model: cycled.offer.runtimeId,
-					modelPurl: cycled.offer.purl,
+					...selectionFromOffer(cycled.offer),
 					dirty: true,
 				}),
 			};
@@ -450,7 +513,9 @@ export function reduceAgentsConfigureKey(
 				state: {
 					...ready,
 					model: ready.model.slice(0, -1),
-					modelPurl: "",
+					modelId: "",
+					via: "",
+					apiEndpoint: "",
 					dirty: true,
 				},
 			};
@@ -461,7 +526,9 @@ export function reduceAgentsConfigureKey(
 				state: {
 					...ready,
 					model: `${ready.model}${key}`,
-					modelPurl: "",
+					modelId: "",
+					via: "",
+					apiEndpoint: "",
 					dirty: true,
 				},
 			};
@@ -544,13 +611,20 @@ function saveConfigure(
 				? state.target.id
 				: "hobo-code";
 	const scope = state.target.kind === "eve" ? "eve" : "harness";
+	const modelId =
+		state.modelId.trim().length > 0 ? state.modelId.trim() : undefined;
+	const via = state.via.trim().length > 0 ? state.via.trim() : undefined;
+	const apiEndpoint =
+		state.apiEndpoint.trim().length > 0
+			? state.apiEndpoint.trim()
+			: undefined;
 	const settings: HarnessSettings = {
 		schema: "hobo.code.harness-settings/v1",
 		id,
 		model: state.model.trim(),
-		...(state.modelPurl.trim().length > 0
-			? { modelPurl: state.modelPurl.trim() }
-			: {}),
+		...(modelId !== undefined ? { modelId } : {}),
+		...(via !== undefined ? { via } : {}),
+		...(apiEndpoint !== undefined ? { apiEndpoint } : {}),
 		effort: state.effort,
 	};
 	const path = saveHarnessSettings(hoboHome, settings, scope);
@@ -587,7 +661,7 @@ export function openEveConfigureFromParent(
 			path: agent.path,
 		},
 		model: loaded.model,
-		...(loaded.modelPurl !== undefined ? { modelPurl: loaded.modelPurl } : {}),
+		...selectionFromLoaded(loaded),
 		effort: loaded.effort,
 		field: "model",
 		eveCursor: 0,

@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-	buildOllamaModelPurl,
-	buildProviderModelPurl,
+	buildModelId,
 	listBoModelOffers,
-	parseModelPurl,
-	runtimeModelFromPurl,
+	makeModelOffer,
+	offerKey,
+	parseModelId,
 } from "../src/bo-model-catalog.js";
 import { saveHarnessSettings } from "../src/harness-settings.js";
 
@@ -24,37 +24,47 @@ function tmp(): string {
 	return dir;
 }
 
-describe("bo-model-catalog purl", () => {
-	it("builds distinct PURLs for openai via codex vs azure", () => {
-		const codex = buildProviderModelPurl({
-			type: "openai",
-			name: "gpt-5",
+describe("bo-model-catalog identity", () => {
+	it("uses provider/model ids that stay distinct by via", () => {
+		const codex = makeModelOffer({
+			provider: "openai",
+			model: "gpt-5",
+			runtimeId: "gpt-5",
+			label: "gpt-5 · codex",
+			source: "harness",
 			via: "codex",
+			harnessId: "codex",
 		});
-		const azure = buildProviderModelPurl({
-			type: "openai",
-			name: "gpt-5",
+		const azure = makeModelOffer({
+			provider: "openai",
+			model: "gpt-5",
+			runtimeId: "gpt-5",
+			label: "gpt-5 · azure",
+			source: "harness",
 			via: "azure",
+			harnessId: "azure",
 		});
-		expect(codex).toBe("pkg:openai/gpt-5?via=codex");
-		expect(azure).toBe("pkg:openai/gpt-5?via=azure");
-		expect(codex).not.toBe(azure);
+		expect(codex.id).toBe("openai/gpt-5");
+		expect(azure.id).toBe("openai/gpt-5");
+		expect(offerKey(codex)).not.toBe(offerKey(azure));
+		expect(buildModelId("openai", "gpt-5")).toBe("openai/gpt-5");
+		expect(parseModelId("openai/gpt-5")).toEqual({
+			provider: "openai",
+			model: "gpt-5",
+		});
 	});
 
-	it("builds ollama purl with host qualifier", () => {
-		const purl = buildOllamaModelPurl({
-			tag: "qwen2.5-coder:7b",
-			host: "http://127.0.0.1:11434",
+	it("builds ollama id with host qualifier in offerKey", () => {
+		const offer = makeModelOffer({
+			provider: "ollama",
+			model: "qwen2.5-coder:7b",
+			runtimeId: "ollama/qwen2.5-coder:7b",
+			label: "qwen · ollama",
+			source: "ollama",
+			host: "127.0.0.1:11434",
 		});
-		expect(purl).toBe(
-			"pkg:ollama/qwen2.5-coder@7b?host=127.0.0.1%3A11434",
-		);
-		expect(runtimeModelFromPurl(purl)).toBe("ollama/qwen2.5-coder:7b");
-		const parsed = parseModelPurl(purl);
-		expect(parsed?.type).toBe("ollama");
-		expect(parsed?.name).toBe("qwen2.5-coder");
-		expect(parsed?.version).toBe("7b");
-		expect(parsed?.qualifiers.host).toBe("127.0.0.1:11434");
+		expect(offer.id).toBe("ollama/qwen2.5-coder:7b");
+		expect(offerKey(offer)).toContain("host=127.0.0.1:11434");
 	});
 });
 
@@ -73,36 +83,27 @@ describe("listBoModelOffers", () => {
 			model: "claude-sonnet-5",
 			effort: "high",
 		});
-
 		const offers = listBoModelOffers({
 			hoboHome: home,
-			env: {
-				HOBO_CODE_MODEL: "ollama/qwen2.5-coder:1.5b",
-				OPENAI_API_KEY: "sk-test",
-				AZURE_OPENAI_API_KEY: "az-test",
-			},
+			env: { HOBO_CODE_MODEL: "ollama/qwen2.5-coder:1.5b" },
 			ollama: {
 				host: "http://127.0.0.1:11434",
 				models: ["qwen2.5-coder:7b", "llama3.2:3b"],
 			},
 		});
-
-		const purls = offers.map((row) => row.purl);
-		expect(purls).toContain(
-			"pkg:ollama/qwen2.5-coder@7b?host=127.0.0.1%3A11434",
+		const ids = offers.map((row) => offerKey(row));
+		expect(ids.some((k) => k.startsWith("ollama/qwen2.5-coder:7b"))).toBe(
+			true,
 		);
-		expect(purls).toContain(
-			"pkg:ollama/llama3.2@3b?host=127.0.0.1%3A11434",
-		);
-		expect(purls).toContain("pkg:openai/gpt-5.6-sol?via=codex");
-		expect(purls).toContain("pkg:anthropic/claude-sonnet-5?via=claude");
-		expect(purls).toContain(
-			"pkg:ollama/qwen2.5-coder@1.5b?via=env&host=active",
-		);
-		// Invented BYOK seeds must not appear
-		expect(purls.some((p) => p.includes("via=byok"))).toBe(false);
-		expect(purls.some((p) => p.includes("via=azure"))).toBe(false);
-		expect(new Set(purls).size).toBe(purls.length);
+		expect(ids.some((k) => k.startsWith("ollama/llama3.2:3b"))).toBe(true);
+		expect(ids).toContain("openai/gpt-5.6-sol|via=codex");
+		expect(ids).toContain("anthropic/claude-sonnet-5|via=claude");
+		expect(
+			ids.some((k) => k.includes("ollama/qwen2.5-coder:1.5b") && k.includes("via=env")),
+		).toBe(true);
+		expect(ids.some((k) => k.includes("via=byok"))).toBe(false);
+		expect(ids.some((k) => k.includes("via=azure"))).toBe(false);
+		expect(new Set(ids).size).toBe(ids.length);
 	});
 
 	it("includes OPENAI_BASE_URL local openai-compatible endpoint", () => {
@@ -111,13 +112,11 @@ describe("listBoModelOffers", () => {
 			hoboHome: home,
 			env: {
 				OPENAI_BASE_URL: "http://127.0.0.1:8080/v1",
-				HOBO_CODE_MODEL: "local-coder",
 			},
 			ollama: { host: "http://127.0.0.1:11434", models: [] },
 		});
 		const local = offers.find((row) => row.source === "openai-compatible");
-		expect(local?.purl).toMatch(/^pkg:openai\/local-coder\?/);
-		expect(local?.purl).toContain("base_url=");
-		expect(local?.runtimeId).toBe("local-coder");
+		expect(local?.id).toBe("openai/local-coder");
+		expect(local?.baseUrl).toBe("http://127.0.0.1:8080/v1");
 	});
 });

@@ -27,75 +27,10 @@ export {
 	runAgentsCli,
 } from "./agent-harness-init.js";
 export {
-	AGENTS_CATALOG_KEY_LEGEND,
-	type AgentsCatalogFlatRow,
-	type AgentsCatalogNode,
-	type AgentsCatalogPick,
-	type AgentsCatalogState,
-	type ProjectEveAgent,
-	buildAgentsCatalog,
-	createProjectEveAgent,
-	discoverProjectEveAgents,
-	flattenVisible,
-	formatEveInspectPick,
-	isValidEveAgentId,
-	reduceAgentsCatalogKey,
-} from "./agents-catalog.js";
-export {
-	AGENTS_CONFIGURE_KEY_LEGEND,
-	type AgentsConfigureCatalogOptions,
-	type AgentsConfigureState,
-	type AgentsConfigureTarget,
-	clampConfigureState,
-	eveListCreateIndex,
-	eveListRowCount,
-	flattenEveAgents,
-	formatAgentsConfigureLines,
-	openEveConfigure,
-	openEveConfigureFromParent,
-	openHarnessConfigure,
-	openHoboBoConfigure,
-	reduceAgentsConfigureKey,
-} from "./agents-configure.js";
-export {
-	BO_MODEL_CATALOG_SCHEMA,
-	type BoModelOffer,
-	type BoModelSource,
-	type ListBoModelOffersInput,
-	buildModelId,
-	cycleBoModelOffer,
-	findOfferIndex,
-	listBoModelOffers,
-	makeModelOffer,
-	offerKey,
-	parseModelId,
-} from "./bo-model-catalog.js";
-export {
-	clearHarnessModelProbeCache,
-	listAnthropicCompatibleOffers,
-	listConfigurableHarnessIds,
-	listHarnessModelOffers,
-	listOpenAiCompatibleOffers,
-	listPiModelOffersFromFile,
-	parseCursorListModelsOutput,
-	parseGrokModelsOutput,
-	parseOpencodeModelsOutput,
-	type ListHarnessModelOffersOptions,
-} from "./harness-model-catalog.js";
-export {
-	EFFORT_LEVELS,
-	type EffortLevel,
-	type HarnessSettings,
-	HARNESS_SETTINGS_SCHEMA,
-	applySettingsToSeatCommand,
-	cycleEffort,
-	defaultHarnessSettings,
-	loadHarnessSettings,
-	migrateLegacyModelPurl,
-	resolveHarnessApiEndpoint,
-	saveHarnessSettings,
-	seatEnvForHarness,
-} from "./harness-settings.js";
+	codexSeatHome,
+	isStaleSeatCapture,
+	seatShellCommand,
+} from "./agent-seat.js";
 export {
 	type AgentAuthModeCard,
 	type AgentProtocolCard,
@@ -114,6 +49,37 @@ export {
 	type WorkClaim,
 	workspaceForAgent,
 } from "./agent-work.js";
+export {
+	AGENTS_CATALOG_KEY_LEGEND,
+	type AgentsCatalogFlatRow,
+	type AgentsCatalogNode,
+	type AgentsCatalogPick,
+	type AgentsCatalogState,
+	buildAgentsCatalog,
+	createProjectEveAgent,
+	discoverProjectEveAgents,
+	flattenVisible,
+	formatEveInspectPick,
+	isValidEveAgentId,
+	type ProjectEveAgent,
+	reduceAgentsCatalogKey,
+} from "./agents-catalog.js";
+export {
+	AGENTS_CONFIGURE_KEY_LEGEND,
+	type AgentsConfigureCatalogOptions,
+	type AgentsConfigureState,
+	type AgentsConfigureTarget,
+	clampConfigureState,
+	eveListCreateIndex,
+	eveListRowCount,
+	flattenEveAgents,
+	formatAgentsConfigureLines,
+	openEveConfigure,
+	openEveConfigureFromParent,
+	openHarnessConfigure,
+	openHoboBoConfigure,
+	reduceAgentsConfigureKey,
+} from "./agents-configure.js";
 export {
 	ATOM_EMBEDDER_DIM,
 	ATOM_EMBEDDER_HASH,
@@ -163,6 +129,19 @@ export {
 	inspectBindleSource,
 	localBindleCapabilities,
 } from "./bindle-inspect.js";
+export {
+	BO_MODEL_CATALOG_SCHEMA,
+	type BoModelOffer,
+	type BoModelSource,
+	buildModelId,
+	cycleBoModelOffer,
+	findOfferIndex,
+	type ListBoModelOffersInput,
+	listBoModelOffers,
+	makeModelOffer,
+	offerKey,
+	parseModelId,
+} from "./bo-model-catalog.js";
 export {
 	BROWSER_RECORDING_SCHEMA,
 	type BrowserRecordingAction,
@@ -214,6 +193,13 @@ export {
 	estimateTokens,
 } from "./compact.js";
 export {
+	explicitHoboBinOverride,
+	loadCreateComposedHoboCli,
+	loadServeProjectOnLocalYard,
+	resolveHoboPackageRoot,
+	runComposedHobo,
+} from "./composed-hobo.js";
+export {
 	CODE_CONFIG_SCHEMA,
 	CONFIG_STACK_IDS,
 	type ConfigKnob,
@@ -244,13 +230,6 @@ export {
 	isDashboardOpenableUrl,
 } from "./dashboard-links.js";
 export { resolveHoboBin, resolveHoboSpawn } from "./dev-browser.js";
-export {
-	explicitHoboBinOverride,
-	loadCreateComposedHoboCli,
-	loadServeProjectOnLocalYard,
-	resolveHoboPackageRoot,
-	runComposedHobo,
-} from "./composed-hobo.js";
 export {
 	CODE_DEV_SCENARIOS,
 	type CodeDevScenario,
@@ -434,6 +413,62 @@ export {
 	type SkillName,
 } from "./harness.js";
 export {
+	clearHarnessModelProbeCache,
+	type ListHarnessModelOffersOptions,
+	listAnthropicCompatibleOffers,
+	listConfigurableHarnessIds,
+	listHarnessModelOffers,
+	listOpenAiCompatibleOffers,
+	listPiModelOffersFromFile,
+	parseCursorListModelsOutput,
+	parseGrokModelsOutput,
+	parseOpencodeModelsOutput,
+} from "./harness-model-catalog.js";
+export {
+	applyHarnessDetach,
+	executeHarnessChromeAction,
+	HARNESS_CHROME_KEY_HINT,
+	type HarnessChromeAction,
+	type HarnessChromeActionKind,
+	harnessActionFromSlash,
+	isMuxHarnessSession,
+	nextAgentTabName,
+	parseHarnessChromeKey,
+} from "./harness-session-actions.js";
+export {
+	cycleHarnessFocus,
+	cycleHarnessLeaf,
+	emptyHarnessSessionView,
+	focusedHarnessAgentId,
+	focusedHarnessPane,
+	formatHarnessSessionLines,
+	type HarnessAgentStatus,
+	type HarnessPaneView,
+	type HarnessSessionNode,
+	type HarnessSessionView,
+	type HarnessTabView,
+	HERDR_SESSION_CHROME_TOKENS,
+	harnessViewFromHerdrApiSnapshot,
+	harnessViewFromLivePanes,
+	harnessViewFromSnapshot,
+	mergeHarnessSessions,
+	syncLivePanesFocus,
+} from "./harness-session-view.js";
+export {
+	applySettingsToSeatCommand,
+	cycleEffort,
+	defaultHarnessSettings,
+	EFFORT_LEVELS,
+	type EffortLevel,
+	HARNESS_SETTINGS_SCHEMA,
+	type HarnessSettings,
+	loadHarnessSettings,
+	migrateLegacyModelPurl,
+	resolveHarnessApiEndpoint,
+	saveHarnessSettings,
+	seatEnvForHarness,
+} from "./harness-settings.js";
+export {
 	CODE_HARNESS_SURFACE_SCHEMA,
 	type HarnessBrainNote,
 	type HarnessSkillRoot,
@@ -474,22 +509,7 @@ export {
 	sendToInSessionPane,
 } from "./in-session-panes.js";
 export {
-	attachTmuxFullscreen,
-	AGENTS_ATTACH_HINT,
-	isPaneInteractDetach,
-	PANE_INTERACT_DETACH,
-	PANE_INTERACT_DETACH_ALT,
-	PANE_INTERACT_HINT,
-	sendKeysToPane,
-	tmuxKeyArgvForInput,
-	type FullscreenAttachOptions,
-} from "./pane-interact.js";
-export {
-	codexSeatHome,
-	isStaleSeatCapture,
-	seatShellCommand,
-} from "./agent-seat.js";
-export {
+	agentsModalActive,
 	appendAssistant,
 	appendProduct,
 	applyBtwPrompt,
@@ -506,9 +526,11 @@ export {
 	hydrateHarnessSessions,
 	type InteractiveShellState,
 	leavePaneInteract,
+	MUX_SLASH_HELP,
 	openAgentsCatalog,
 	openAgentsSurface,
 	PRODUCT_NOT_PI,
+	pinAgentsModalFocus,
 	reduceShellKey,
 	renderShellFrame,
 	resolvePaneInteractTarget,
@@ -520,43 +542,10 @@ export {
 	type ShellMessage,
 	type ShellSlashItem,
 	shellFrameIdentity,
-	agentsModalActive,
-	pinAgentsModalFocus,
 	shellModalOwnsInput,
 	slashItemForInput,
-	MUX_SLASH_HELP,
 	withHarnessFromLivePanes,
 } from "./interactive-shell.js";
-export {
-	cycleHarnessFocus,
-	cycleHarnessLeaf,
-	emptyHarnessSessionView,
-	focusedHarnessAgentId,
-	focusedHarnessPane,
-	formatHarnessSessionLines,
-	harnessViewFromHerdrApiSnapshot,
-	harnessViewFromLivePanes,
-	harnessViewFromSnapshot,
-	HERDR_SESSION_CHROME_TOKENS,
-	type HarnessAgentStatus,
-	type HarnessPaneView,
-	type HarnessSessionNode,
-	type HarnessSessionView,
-	type HarnessTabView,
-	mergeHarnessSessions,
-	syncLivePanesFocus,
-} from "./harness-session-view.js";
-export {
-	applyHarnessDetach,
-	executeHarnessChromeAction,
-	HARNESS_CHROME_KEY_HINT,
-	type HarnessChromeAction,
-	type HarnessChromeActionKind,
-	harnessActionFromSlash,
-	isMuxHarnessSession,
-	nextAgentTabName,
-	parseHarnessChromeKey,
-} from "./harness-session-actions.js";
 export {
 	type CleanupResult,
 	type CreateIsolationOptions,
@@ -604,6 +593,17 @@ export {
 	type ModelsStatus,
 	modelsHumanSummary,
 } from "./models.js";
+export {
+	AGENTS_ATTACH_HINT,
+	attachTmuxFullscreen,
+	type FullscreenAttachOptions,
+	isPaneInteractDetach,
+	PANE_INTERACT_DETACH,
+	PANE_INTERACT_DETACH_ALT,
+	PANE_INTERACT_HINT,
+	sendKeysToPane,
+	tmuxKeyArgvForInput,
+} from "./pane-interact.js";
 export {
 	parseEvidenceTriple,
 	parseGuestEvidenceSubmission,
@@ -820,6 +820,15 @@ export {
 	startStationSidecars,
 	stopStationSidecars,
 } from "./station-sidecars.js";
+export {
+	evaluateStationStatus,
+	STATUS_SIDECAR_HOSTING,
+	STATUS_SIDECAR_NAME,
+	type StartStatusSidecarOptions,
+	type StatusProbe,
+	type StatusSidecarServer,
+	startStatusSidecar,
+} from "./status-sidecar-server.js";
 export {
 	buildMultiplexerStatus,
 	copyOnHighlight,

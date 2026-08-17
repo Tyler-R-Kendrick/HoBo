@@ -260,3 +260,30 @@ pnpm --filter @hobo/yards build
 - `@hobo/junctions` — cross-Yard federation topology (thin)
 - `@hobo/cloud` — control-plane runtime (private)
 - `examples/self-host-yard` — disk-backed Yard composition example
+
+## Builder authoring (`buildStation` / `buildYard` / `buildCamp`)
+
+`builder.ts` adds a callback-and-chaining front end over `defineStation`,
+`defineYard` and `camp()`, giving Station, Yard and Camp the shape `bindle()`
+already has. It is **additive**: `yard()`, `camp()`, `defineYard` and
+`defineStation` keep working exactly as they do now.
+
+The three entry points are named `buildStation` / `buildYard` / `buildCamp`
+here because `yard` and `camp` in this workspace already name the parse
+boundaries the builders compile into. `@hobo/cloud-providers` re-exports them as
+`station` / `yard` / `camp`, which is the intended authoring import — see that
+package's README for the full surface and its worked example.
+
+The load-bearing property is that this is a front end, not a second parser:
+every builder terminates in the existing functions, so `SLOT_KEY_MISMATCH`,
+`SLOT_PROFILE_MISMATCH`, `SLOT_BINDING_CREDENTIAL_PROPERTY`,
+`YARD_BINDING_DUPLICATE`, `YARD_BINDING_EMPTY_CONSTRAINT`, `STATION_NO_YARDS`,
+`STATION_DUPLICATE_YARD`, `camp-provider-selection-forbidden` and
+`camp-bindle-ownership-forbidden` still fire unchanged.
+`test/builder.test.ts` drives each of them through the builder and pins builder
+output to the `defineYard` / `defineStation` authoring of the same topology.
+
+Determinism is preserved the same way `defineYard` preserves it: slots compile
+in `CAPABILITY_SLOTS` order (the ten slot methods are installed from that
+constant, so the surface cannot drift from the vocabulary), nested Camps sort by
+id before reaching `yard()`, and `defineStation` already sorts its Yards.

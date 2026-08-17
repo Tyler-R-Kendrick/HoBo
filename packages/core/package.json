@@ -11,6 +11,10 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./aws-sigv4": {
+			"types": "./dist/ports/aws-sigv4.d.ts",
+			"default": "./dist/ports/aws-sigv4.js"
 		}
 	},
 	"publishConfig": {

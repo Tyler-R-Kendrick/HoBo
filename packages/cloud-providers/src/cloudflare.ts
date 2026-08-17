@@ -40,6 +40,16 @@ export {
 	workers,
 } from "@hobo/provider-cloudflare";
 
+/**
+ * This namespace's provider id, for `y.on(cloudflare)`.
+ *
+ * A provider is stated, never inferred: without this the builder would have
+ * to guess one from a Yard name or a product-id prefix, which is exactly the
+ * load-bearing naming convention ADR-0144 forbids.
+ */
+// public-contract: the provider id the authoring surface reads off this namespace; changing it repoints every Yard built with y.on(cloudflare).
+export const PROVIDER_ID = "cloudflare";
+
 /** Yard name used when the caller does not supply one. */
 // public-contract: the name every default Cloudflare Yard is registered under; changing it renames them all.
 export const DEFAULT_CLOUDFLARE_YARD_NAME = "cloudflare";

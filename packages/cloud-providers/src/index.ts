@@ -46,7 +46,23 @@
  */
 export * as aws from "./aws.js";
 export * as azure from "./azure.js";
+export {
+	BuilderError,
+	type BuilderErrorCode,
+	type CampBuilder,
+	camp,
+	type ProviderNamespaceRef,
+	type ProviderRef,
+	providerIdOf,
+	type StationBuilder,
+	type StationManifest,
+	station,
+	type YardBuilder,
+	type YardSlotMethods,
+	yard,
+} from "./builders.js";
 export * as cloudflare from "./cloudflare.js";
+
 export {
 	type CatalogRow,
 	type ComposedYardOptions,

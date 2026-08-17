@@ -8,6 +8,20 @@ export {
 	type YardBindingInput,
 } from "./binding.js";
 export {
+	BuilderError,
+	type BuilderErrorCode,
+	buildCamp,
+	buildStation,
+	buildYard,
+	type CampBuilder,
+	type ProviderNamespaceRef,
+	type ProviderRef,
+	providerIdOf,
+	type StationBuilder,
+	type YardBuilder,
+	type YardSlotMethods,
+} from "./builder.js";
+export {
 	type DefineStationConfig,
 	type DefineYardConfig,
 	defineStation,
@@ -38,4 +52,5 @@ export {
 	yardToShape,
 } from "./yard.js";
 
+// public-contract: package identity for boundary contracts.
 export const HOBO_YARDS_PACKAGE = "@hobo/yards";

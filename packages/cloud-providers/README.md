@@ -64,3 +64,94 @@ a silent one: a deploy refuses rather than half-applying.
 No catalog enumerates all of its provider. Each declares the offerings that have
 typed factories; a missing alternative is a gap in the factory set, not a
 selection the Yard made.
+
+## Builder authoring: `station` / `yard` / `camp`
+
+`station`, `yard` and `camp` are re-exported here from `@hobo/yards`
+(`buildStation` / `buildYard` / `buildCamp`) so one import line gets both the
+noun and the offerings that fill it. They give Station, Yard and Camp the same
+shape `bindle()` already has: a name plus a builder callback.
+
+```ts
+import { station, yard, camp, azure, cloudflare } from "@hobo/cloud-providers";
+
+export default station("acme", (s) => {
+	s.tenant("acme").residency("eu").trustDomain("acme.hobo.internal");
+
+	s.yard("prod-eu", (y) => {
+		y.on(azure).region("westeurope").residency("eu").label("tier", "public");
+
+		// Slot methods are variadic — several offerings per capability is normal.
+		y.web(azure.containerApps({ ingress: "external" }), azure.appService({ sku: "P1v3" }));
+		y.data(azure.postgresFlexible({ tier: "GeneralPurpose" }));
+		y.bucket(azure.blobStorage({ accessTier: "hot" }));
+
+		// Camps nest inside the Yard, so the Yard's id and provider are already
+		// known and never re-supplied by hand.
+		y.camp("api", (c) => c.production().label("exposure", "public"));
+		y.camp("preview", (c) => c.preview().require("ephemeral").label("ttl", "72h"));
+	});
+
+	s.yard(cloudflare.Yard()); // a prebuilt catalog Yard — same method, overloaded
+});
+```
+
+The rules, and why each one is there:
+
+- **One verb per noun** — `station`, `yard`, `camp`, and `bindle` in
+  `@hobo/bindles`. No `define*`, no `attach*`.
+- **Nesting replaces attachment.** `y.camp(…)` does what `attachCampToYard` did,
+  deriving `yardId` and `providerId` from the enclosing Yard. Handing a Yard
+  back its own two identifiers was never information the author had.
+- **Callback for containers, chaining for scalars** — the split `bindle()`
+  already uses.
+- **Slot methods are variadic and accumulate.** One method per `CapabilitySlot`
+  (`web api service data kv bucket queue topic secretRef webhook`), installed
+  from `CAPABILITY_SLOTS` in `@hobo/core` so the surface cannot drift from the
+  vocabulary. `y.web(a)` then `y.web(b)` declares two offerings; silently
+  dropping the first would be a portability lie.
+- **`y.on(provider)` states a provider, never infers one.** It accepts a
+  namespace object (reading its `PROVIDER_ID`), a provider id string, or
+  `{ id }`.
+- **Order is not information.** Slots compile in `CAPABILITY_SLOTS` order,
+  Camps sort by id, Yards sort by name, and every string list is canonicalized.
+  Two builders declaring the same things in different orders are deep-equal.
+
+### It is a front end, not a fork
+
+Every builder terminates in the code that already ships — `defineYard`,
+`defineStation`, `camp()` and, through `yard()`, `attachCampToYard`. So
+`SLOT_KEY_MISMATCH`, `SLOT_PROFILE_MISMATCH`, `SLOT_BINDING_CREDENTIAL_PROPERTY`,
+`YARD_BINDING_DUPLICATE`, `YARD_BINDING_EMPTY_CONSTRAINT`, `STATION_NO_YARDS`,
+`STATION_DUPLICATE_YARD`, `camp-provider-selection-forbidden` and
+`camp-bindle-ownership-forbidden` all still fire with their existing codes and
+messages. `test/builders.test.ts` pins the example above to the `defineStation`
+authoring of the same topology, and `packages/yards/test/builder.test.ts` drives
+each refusal through the builder path.
+
+### Additive, not a migration
+
+`defineYard`, `defineStation`, `yard()` and `camp()` keep working exactly as
+they do now. Nothing needs rewriting.
+
+### Bindle stays in `@hobo/bindles`
+
+`bindle()` is not re-exported here and is not wrapped. App authoring and ops
+configuration are different lifecycles with different owners and different
+review paths; folding them into one import would make a single surface out of
+two unrelated jobs, which is a worse surface, not a better one.
+
+### Known limits
+
+- `station(…)` returns the `StationManifest` that `defineStation` returns — the
+  registration record a composition root hands to `station()` in
+  `@hobo/stations`. A Station registers Yards; it never parents them
+  ([ADR-0131](../../docs/design/adr/07-portability-extensibility.md)).
+- The Yard builder has exactly `defineYard`'s expressive range. `require`,
+  `prefer`, `isolation`, `network`, `properties`, `runtimeId` and
+  `resolverDefaults` are Yard fields `defineYard` does not accept either;
+  authoring those still goes through `yard()` directly. Widening the builder
+  past its compile target would mean bypassing it.
+- `c.provider(…)` and `c.bindle(…)` exist on the Camp builder only to be
+  refused, so the two old mistakes get their existing remediation instead of an
+  "unknown method".

@@ -111,6 +111,14 @@ export {
 	parseActorCompoundKey,
 	parseLogicalActorIdentity,
 } from "./ports/actor-identity.js";
+// `./ports/aws-sigv4.js` is deliberately NOT re-exported here. `@hobo/core`'s
+// flagship surface is provider-neutral, and `validatePublicTypeSurface` fails
+// closed on a provider symbol or a provider credential field name reaching
+// `dist/index.d.ts` — `AwsCredentials.accessKeyId` is exactly what that guard
+// exists to catch. The SigV4 primitive is reached through the narrow
+// `@hobo/core/aws-sigv4` subpath declared in this package's `exports` instead,
+// so one copy of the algorithm serves `@hobo/connectivity` and the layer-2
+// AWS adapter without widening the neutral surface.
 export type {
 	ActorCommit,
 	ActorConcurrency,

@@ -14,6 +14,9 @@ import {
 	RESOURCE_DEFINITION_VNEXT_SCHEMA,
 	type ResourceDefinitionSemantics,
 	type ResourceDefinitionVNext,
+	type YardBindingContext,
+	type YardBindingRow,
+	yardBindingRowKey,
 } from "../src/index.js";
 
 const profiles = createCapabilityProfileRegistry(STANDARD_CAPABILITY_PROFILES);
@@ -61,7 +64,11 @@ function semantics(
 		creatorAuthorityAfterClaim: "rotatable",
 		claimAtomicity: "single-resource",
 		claimActionCount: 1,
-		continuity: { endpoint: "preserved", data: "preserved", credentials: "rotated" },
+		continuity: {
+			endpoint: "preserved",
+			data: "preserved",
+			credentials: "rotated",
+		},
 		supportsExport: true,
 		supportsRotation: true,
 		supportsRevocation: true,
@@ -156,13 +163,17 @@ describe("profile-aware matching", () => {
 		});
 		expect(outcome.ok).toBe(false);
 		if (outcome.ok) return;
-		expect(outcome.rejections.map((r) => r.code)).toContain("PROFILE_INCOMPATIBLE");
+		expect(outcome.rejections.map((r) => r.code)).toContain(
+			"PROFILE_INCOMPATIBLE",
+		);
 		expect(outcome.remediation.code).toBe("capability.profile-unsatisfiable");
 	});
 
 	it("satisfies a relational requirement through the refinement graph", () => {
 		const relational = parseCapabilityRequirement({
-			requiredProfiles: [{ profileId: "data.relational/v1", versionRange: ">=1" }],
+			requiredProfiles: [
+				{ profileId: "data.relational/v1", versionRange: ">=1" },
+			],
 		});
 		const outcome = matchCapabilityRequirement({
 			resourceName: "db",
@@ -299,6 +310,27 @@ describe("profile-aware matching", () => {
 		).toBeUndefined();
 	});
 
+	it("keeps the accepted outcome shape unchanged when no Yard supplies rows", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: [d1, neon],
+			policy,
+			nowMs: NOW,
+		});
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(Object.keys(outcome).sort()).toEqual([
+			"catalogHash",
+			"definition",
+			"ok",
+			"ranking",
+			"rejections",
+			"tie",
+		]);
+	});
+
 	it("refuses a definition that declares semantics but names no executor", () => {
 		expect(() =>
 			definition(
@@ -311,5 +343,376 @@ describe("profile-aware matching", () => {
 				}),
 			),
 		).toThrow(/names no executor/u);
+	});
+});
+
+// --- Yard binding rows (ADR-0157) -------------------------------------------
+// Rows are a hard filter in front of the ADR-0151 gate sequence. They remove
+// candidates; they never reorder survivors and never rescue a gated candidate.
+
+const pooled = definition(
+	"neon.pooled-postgres/v1",
+	"neon",
+	semantics({
+		productId: "neon.pooled-postgres",
+		implementsProfiles: neon.semantics?.implementsProfiles ?? [],
+		claimActionCount: 2,
+		claimAtomicity: "best-effort-saga",
+	}),
+);
+
+// Provider-coherent with the Yard, but semantically ineligible: it exists to
+// prove a row cannot admit a candidate another gate refuses.
+const neonSqlite = definition(
+	"neon.sqlite-shim/v1",
+	"neon",
+	semantics({
+		productId: "neon.sqlite-shim",
+		implementsProfiles: d1.semantics?.implementsProfiles ?? [],
+	}),
+);
+
+const neonStale = definition(
+	"neon.stale-postgres/v1",
+	"neon",
+	semantics({
+		productId: "neon.stale-postgres",
+		implementsProfiles: neon.semantics?.implementsProfiles ?? [],
+		evidenceExpiresAtMs: NOW - 1,
+	}),
+);
+
+function yardContext(
+	bindings: readonly YardBindingRow[],
+	overrides: Partial<Omit<YardBindingContext, "bindings">> = {},
+): YardBindingContext {
+	return {
+		yardId: "yard:prod",
+		providerId: "neon",
+		bindings,
+		...overrides,
+	};
+}
+
+const CATALOG = [d1, neon, neonSqlite, neonStale, pooled];
+
+describe("yard binding rows in profile matching", () => {
+	it("builds a canonical row key from the sort tuple", () => {
+		expect(
+			yardBindingRowKey({ profile: "data.postgres/v1", productId: "p" }),
+		).toBe("data.postgres/v1|p|");
+		expect(
+			yardBindingRowKey({ profile: "data.postgres/v1", connectivityId: "c" }),
+		).toBe("data.postgres/v1||c");
+	});
+
+	it("narrows the catalog to the products the rows name", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{ profile: "data.postgres/v1", productId: "neon.pooled-postgres" },
+			]),
+		});
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(outcome.ranking).toEqual(["neon.pooled-postgres/v1"]);
+		expect(outcome.definition.id).toBe("neon.pooled-postgres/v1");
+	});
+
+	it("records the applied rows on the accepted outcome for the audit trail", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{ profile: "data.postgres/v1", productId: "neon.pooled-postgres" },
+				{ profile: "data.postgres/v1", productId: "neon.claimable-postgres" },
+				{ profile: "kv.redis/v1", productId: "somebody.redis" },
+			]),
+		});
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		const resolution = outcome.bindingResolution;
+		expect(resolution).toBeDefined();
+		if (resolution === undefined) return;
+		expect(resolution.contract).toBe("hobo.binding-resolution/v1");
+		expect(resolution.yardId).toBe("yard:prod");
+		expect(resolution.profile).toBe("data.postgres/v1");
+		expect(resolution.productId).toBe("neon.claimable-postgres");
+		expect(resolution.realization).toBe("native");
+		expect(resolution.consideredCount).toBe(CATALOG.length);
+		// Only rows for a profile this requirement names are applied, sorted.
+		expect(resolution.appliedRows).toEqual([
+			"data.postgres/v1|neon.claimable-postgres|",
+			"data.postgres/v1|neon.pooled-postgres|",
+		]);
+		expect(Object.isFrozen(resolution)).toBe(true);
+	});
+
+	it("pins the connectivity implementation when exactly one row names it", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{
+					profile: "data.postgres/v1",
+					productId: "neon.claimable-postgres",
+					connectivityId: "cloudflare.postgres.hyperdrive/v1",
+				},
+			]),
+		});
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(outcome.bindingResolution?.connectivityId).toBe(
+			"cloudflare.postgres.hyperdrive/v1",
+		);
+	});
+
+	it("treats the row set as a set: authoring order changes nothing", () => {
+		const rows: readonly YardBindingRow[] = [
+			{ profile: "data.postgres/v1", productId: "neon.claimable-postgres" },
+			{ profile: "data.postgres/v1", productId: "neon.pooled-postgres" },
+		];
+		const forward = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext(rows),
+		});
+		const reverse = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([...rows].reverse()),
+		});
+		expect(forward).toEqual(reverse);
+	});
+
+	it("filters without reordering: survivor order is identical with and without rows", () => {
+		const withoutRows = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+		});
+		const withRows = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				// Deliberately authored lowest-ranked first: if rows influenced
+				// ordering at all, `neon.pooled-postgres` would surface first.
+				{ profile: "data.postgres/v1", productId: "neon.pooled-postgres" },
+				{ profile: "data.postgres/v1", productId: "neon.claimable-postgres" },
+			]),
+		});
+		expect(withoutRows.ok && withRows.ok).toBe(true);
+		if (!withoutRows.ok || !withRows.ok) return;
+		const survivors = new Set(withRows.ranking);
+		// Every surviving candidate keeps its relative position from the
+		// unconstrained ranking — rows subtract, they never promote.
+		expect(withRows.ranking).toEqual(
+			withoutRows.ranking.filter((id) => survivors.has(id)),
+		);
+		expect(withRows.ranking).toEqual([
+			"neon.claimable-postgres/v1",
+			"neon.pooled-postgres/v1",
+		]);
+		expect(withRows.definition.id).toBe(withoutRows.definition.id);
+	});
+
+	it("fails closed when a row names a product absent from the catalog", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{ profile: "data.postgres/v1", productId: "acme.not-registered" },
+			]),
+		});
+		expect(outcome.ok).toBe(false);
+		if (outcome.ok) return;
+		expect(outcome.rejections.map((r) => r.code)).toEqual([
+			"YARD_BINDING_PRODUCT_UNKNOWN",
+		]);
+		expect(outcome.remediation.code).toBe(
+			"capability.yard-binding-unsatisfiable",
+		);
+		expect(outcome.bindingUnavailable?.code).toBe(
+			"YARD_BINDING_PRODUCT_UNKNOWN",
+		);
+		expect(outcome.bindingUnavailable?.remediation.length).toBeGreaterThan(0);
+		expect(outcome.bindingUnavailable?.yardId).toBe("yard:prod");
+	});
+
+	it("fails closed when a row names a product published by another provider", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{ profile: "data.postgres/v1", productId: "cloudflare.temporary-d1" },
+			]),
+		});
+		expect(outcome.ok).toBe(false);
+		if (outcome.ok) return;
+		expect(outcome.rejections.map((r) => r.code)).toEqual([
+			"YARD_BINDING_PROVIDER_MISMATCH",
+		]);
+		expect(outcome.rejections[0]?.definitionId).toBe(
+			"cloudflare.temporary-d1/v1",
+		);
+		expect(outcome.bindingUnavailable?.code).toBe(
+			"YARD_BINDING_PROVIDER_MISMATCH",
+		);
+	});
+
+	it("names the rows when they exclude every otherwise-eligible candidate", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{ profile: "data.postgres/v1", productId: "neon.sqlite-shim" },
+			]),
+		});
+		expect(outcome.ok).toBe(false);
+		if (outcome.ok) return;
+		const excluded = outcome.rejections.filter(
+			(rejection) => rejection.code === "YARD_BINDING_EXCLUDED_ALL",
+		);
+		expect(excluded.map((rejection) => rejection.definitionId)).toEqual([
+			"cloudflare.temporary-d1/v1",
+			"neon.claimable-postgres/v1",
+			"neon.pooled-postgres/v1",
+			"neon.stale-postgres/v1",
+		]);
+		// The admitted candidate still failed its own gate; the row did not save it.
+		expect(outcome.rejections.map((r) => r.code)).toContain(
+			"PROFILE_INCOMPATIBLE",
+		);
+		expect(outcome.bindingUnavailable?.code).toBe("YARD_BINDING_EXCLUDED_ALL");
+	});
+
+	it("never admits a candidate that failed another gate", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{ profile: "data.postgres/v1", productId: "neon.stale-postgres" },
+			]),
+		});
+		expect(outcome.ok).toBe(false);
+		if (outcome.ok) return;
+		expect(outcome.rejections.map((r) => r.code)).toContain("EVIDENCE_STALE");
+		expect(
+			outcome.rejections.some(
+				(r) => r.definitionId === "neon.stale-postgres/v1",
+			),
+		).toBe(true);
+	});
+
+	it("ignores rows for profiles this requirement does not name", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{ profile: "kv.redis/v1", productId: "acme.not-registered" },
+			]),
+		});
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(outcome.definition.id).toBe("neon.claimable-postgres/v1");
+		expect(outcome.bindingResolution?.appliedRows).toEqual([]);
+	});
+
+	it("regression guard: omitting the Yard leaves the outcome byte-identical", () => {
+		const baseline = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+		});
+		const emptyYard = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([]),
+		});
+		expect(baseline.ok && emptyYard.ok).toBe(true);
+		if (!baseline.ok || !emptyYard.ok) return;
+		// Same ranking, same rejections, same hash, same winner — the only
+		// difference is the audit record the Yard's presence adds.
+		expect(emptyYard.ranking).toEqual(baseline.ranking);
+		expect(emptyYard.rejections).toEqual(baseline.rejections);
+		expect(emptyYard.catalogHash).toEqual(baseline.catalogHash);
+		expect(emptyYard.definition.id).toEqual(baseline.definition.id);
+		expect(emptyYard.tie).toEqual(baseline.tie);
+		expect(baseline.bindingResolution).toBeUndefined();
+		expect("bindingResolution" in baseline).toBe(false);
+	});
+
+	it("regression guard: a refusal without a Yard carries no binding fact", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: [d1],
+			policy,
+			nowMs: NOW,
+		});
+		expect(outcome.ok).toBe(false);
+		if (outcome.ok) return;
+		expect(Object.keys(outcome).sort()).toEqual([
+			"catalogHash",
+			"ok",
+			"rejections",
+			"remediation",
+		]);
 	});
 });

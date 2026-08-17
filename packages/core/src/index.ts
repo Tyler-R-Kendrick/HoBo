@@ -400,6 +400,27 @@ export type {
 	OverlayProviderKind,
 } from "./ports/overlay.js";
 export type {
+	DeploymentPhase,
+	PhaseScope,
+	PhaseScopedCapability,
+} from "./ports/phase.js";
+export {
+	assertCapabilityPhase,
+	DEPLOYMENT_PHASES,
+	HOBO_DEV_ENV,
+	HOBO_DEV_VALUES,
+	HOBO_PHASE_ENV,
+	INIT_SCOPED_CAPABILITIES,
+	PHASE_SCOPED_CAPABILITIES,
+	PhaseParseError,
+	PhaseViolationError,
+	parseDeploymentPhase,
+	parsePhaseScope,
+	parsePhaseScopeFromEnv,
+	phaseForCapability,
+	REQUEST_SCOPED_CAPABILITIES,
+} from "./ports/phase.js";
+export type {
 	PolicyDecision,
 	PolicyDecisionEffect,
 	PolicyEngine,
@@ -479,6 +500,30 @@ export {
 	SCHEDULER_PORT_INTERFACE,
 	SchedulerParseError,
 } from "./ports/scheduler.js";
+export type {
+	MigrationPhaseName,
+	MigrationPlan,
+	MigrationStep,
+	MigrationStepKind,
+	SchemaColumn,
+	SchemaDiffEngine,
+	SchemaIndex,
+	SchemaIr,
+	SchemaTable,
+} from "./ports/schema-diff.js";
+export {
+	CANONICAL_SCHEMA_DIFF_ENGINE,
+	CANONICAL_SCHEMA_DIFF_ENGINE_ID,
+	CANONICAL_SCHEMA_DIFF_ENGINE_VERSION,
+	classifyTypeChange,
+	diffSchemaIr,
+	MIGRATION_PHASES,
+	MIGRATION_PLAN_CONTRACT,
+	MIGRATION_STEP_KINDS,
+	parseSchemaIr,
+	SCHEMA_IR_CONTRACT,
+	SchemaIrParseError,
+} from "./ports/schema-diff.js";
 export type {
 	RunId,
 	Seq,

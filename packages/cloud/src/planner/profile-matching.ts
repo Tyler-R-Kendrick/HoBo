@@ -60,6 +60,28 @@ import {
 } from "../registry/resource-definition-vnext.js";
 
 /**
+ * Two Yard binding rows set the same realization parameter to different values.
+ *
+ * Thrown rather than resolved: rows are a set, so no precedence rule exists to
+ * appeal to, and picking one silently would make realization depend on
+ * iteration order.
+ */
+export class YardBindingParameterConflictError extends Error {
+	readonly code = "YARD_BINDING_PARAMETER_CONFLICT" as const;
+	readonly parameter: string;
+	readonly rows: readonly string[];
+
+	constructor(parameter: string, firstRow: string, secondRow: string) {
+		super(
+			`yard binding rows disagree on realization parameter "${parameter}": ${firstRow} and ${secondRow}. Rows are a set with no precedence — give the parameter one value, or split the profiles.`,
+		);
+		this.name = "YardBindingParameterConflictError";
+		this.parameter = parameter;
+		this.rows = Object.freeze([firstRow, secondRow].sort());
+	}
+}
+
+/**
  * Bridge a Bindle's provider-neutral requirement block into a capability
  * requirement.
  *
@@ -158,6 +180,26 @@ export type ProfileMatchAccepted = {
 	 * Present only when a Yard supplied binding authority (ADR-0033 audit trail).
 	 */
 	readonly appliedRows?: readonly string[];
+	/**
+	 * Yard-scoped, provider-native realization parameters merged from the applied
+	 * rows' `properties` (ADR-0157). This is the configuration half of a Yard
+	 * binding: the row selects *which* product realizes the profile, and these
+	 * parameterize *how* it is realized in this Yard — replica counts, resource
+	 * limits, service class. The realization *shape* stays in the versioned
+	 * Resource Definition; only its parameters live here, so a Yard cannot fork a
+	 * second configuration system (ADR-0145).
+	 *
+	 * Provider-native by construction, so it is a non-portable surface: present
+	 * parameters are reported to the PortabilityReport (ADR-0024/ADR-0144) rather
+	 * than passed through silently. Absent when no applied row carried any.
+	 */
+	readonly realizationParameters?: Readonly<Record<string, unknown>>;
+	/**
+	 * Canonical keys of the applied rows that contributed realization parameters.
+	 * The portability scorer needs to name *which* row made a Yard non-portable,
+	 * not merely that something did.
+	 */
+	readonly nonPortableRows?: readonly string[];
 	/** Present only when the rows pinned the connectivity implementation too. */
 	readonly bindingResolved?: BindingResolvedEvent;
 };
@@ -282,6 +324,63 @@ function resolveYardBindingGate(
 		...(pinsProduct ? { admitted } : {}),
 		rejections,
 		fatal,
+	};
+}
+
+/**
+ * Merges the applied rows' `properties` into the Yard-scoped realization
+ * parameter block (ADR-0157) — the configuration half of a Yard binding.
+ *
+ * Conflicts are refused rather than resolved by precedence: rows are a SET, so
+ * there is no "later row wins" to appeal to, and silently picking one would make
+ * the winner depend on iteration order — exactly the nondeterminism ADR-0151
+ * decision 11 and ADR-0144's catalog-hash attribution exist to prevent. Two rows
+ * setting the same key to different values is an authoring defect, and the
+ * caller surfaces it as one.
+ */
+function mergeRealizationParameters(rows: readonly YardBindingRow[]):
+	| {
+			readonly parameters: Readonly<Record<string, unknown>>;
+			readonly rows: readonly string[];
+	  }
+	| undefined {
+	const merged = new Map<string, { value: unknown; row: string }>();
+	const contributing = new Set<string>();
+	for (const row of rows) {
+		const properties = row.properties;
+		if (properties === undefined) {
+			continue;
+		}
+		const entries = Object.entries(properties);
+		if (entries.length === 0) {
+			continue;
+		}
+		const key = yardBindingRowKey(row);
+		contributing.add(key);
+		for (const [name, value] of entries) {
+			const existing = merged.get(name);
+			if (
+				existing !== undefined &&
+				JSON.stringify(existing.value) !== JSON.stringify(value)
+			) {
+				throw new YardBindingParameterConflictError(name, existing.row, key);
+			}
+			merged.set(name, { value, row: key });
+		}
+	}
+	if (merged.size === 0) {
+		return undefined;
+	}
+	const parameters: Record<string, unknown> = {};
+	for (const name of [...merged.keys()].sort()) {
+		const entry = merged.get(name);
+		if (entry !== undefined) {
+			parameters[name] = entry.value;
+		}
+	}
+	return {
+		parameters: Object.freeze(parameters),
+		rows: Object.freeze([...contributing].sort()),
 	};
 }
 
@@ -542,11 +641,18 @@ export function matchCapabilityRequirement(
 			result.winner.sponsorExposureMinorUnits;
 
 	let appliedRows: readonly string[] | undefined;
+	let realizationParameters: Readonly<Record<string, unknown>> | undefined;
+	let nonPortableRows: readonly string[] | undefined;
 	let resolved: BindingResolvedEvent | undefined;
 	if (gate !== undefined && yard !== undefined) {
 		appliedRows = Object.freeze(
 			gate.applicableRows.map((row) => yardBindingRowKey(row)).sort(),
 		);
+		const merged = mergeRealizationParameters(gate.applicableRows);
+		if (merged !== undefined) {
+			realizationParameters = merged.parameters;
+			nonPortableRows = merged.rows;
+		}
 		// A `BindingResolution` names the connectivity implementation, so the fact
 		// is only constructible here when the rows pinned exactly one. With none
 		// pinned (or several admitted) the connectivity step downstream owns it —
@@ -577,6 +683,8 @@ export function matchCapabilityRequirement(
 		catalogHash,
 		tie,
 		...(appliedRows !== undefined ? { appliedRows } : {}),
+		...(realizationParameters !== undefined ? { realizationParameters } : {}),
+		...(nonPortableRows !== undefined ? { nonPortableRows } : {}),
 		...(resolved !== undefined ? { bindingResolved: resolved } : {}),
 	};
 }

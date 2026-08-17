@@ -150,7 +150,9 @@ export function parseCapabilityBinding(
 	const credentialRef =
 		rawCredentialRef !== undefined ? parseRef(rawCredentialRef).ref : undefined;
 	const certificateRef =
-		rawCertificateRef !== undefined ? parseRef(rawCertificateRef).ref : undefined;
+		rawCertificateRef !== undefined
+			? parseRef(rawCertificateRef).ref
+			: undefined;
 
 	// Endpoints are canonically ordered so two equivalent bindings hash alike.
 	const endpoints = [...input.endpoints].sort(
@@ -189,7 +191,10 @@ export type ConnectivityImplementation = {
 		| "wasi-config"
 		| "in-process";
 	readonly requiresProviderResource?: string;
-	readonly sourceRefs: readonly { readonly url: string; readonly checkedAt: string }[];
+	readonly sourceRefs: readonly {
+		readonly url: string;
+		readonly checkedAt: string;
+	}[];
 };
 
 export type ConnectivityRegistry = {
@@ -223,10 +228,15 @@ export function createConnectivityRegistry(
 		},
 		resolve(query) {
 			return ordered.filter((implementation) => {
-				if (!implementation.consumesBindingProfiles.includes(query.bindingProfileRef)) {
+				if (
+					!implementation.consumesBindingProfiles.includes(
+						query.bindingProfileRef,
+					)
+				) {
 					return false;
 				}
-				if (!implementation.runtimeModels.includes(query.runtimeModel)) return false;
+				if (!implementation.runtimeModels.includes(query.runtimeModel))
+					return false;
 				// A provider-scoped implementation only applies inside its own Yard.
 				if (
 					implementation.providerId !== undefined &&

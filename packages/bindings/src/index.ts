@@ -1,57 +1,22 @@
 export {
-	SECRET_REF_SCHEMES,
-	SecretRefError,
-	SecretValue,
-	parseSecretRef,
-	redactSecretRef,
-	tryParseSecretRef,
-	type ParsedSecretRef,
-	type SecretRef,
-	type SecretRefScheme,
-} from "./secret-ref.js";
-
-export {
 	BINDING_PROTOCOLS,
-	CapabilityBindingError,
-	STANDARD_BINDING_PROFILES,
-	createConnectivityRegistry,
-	parseCapabilityBinding,
 	type BindingEndpoint,
 	type BindingProtocol,
 	type CapabilityBinding,
+	CapabilityBindingError,
 	type CapabilityBindingInput,
 	type ConnectivityImplementation,
 	type ConnectivityRegistry,
+	createConnectivityRegistry,
 	type NonSecretEndpointRef,
+	parseCapabilityBinding,
+	STANDARD_BINDING_PROFILES,
 } from "./binding.js";
-
-export { STANDARD_CONNECTIVITY } from "./standard-connectivity.js";
-
 export {
-	BINDING_REALIZATIONS,
-	BINDING_RECORD_ERROR_CODES,
-	BINDING_RESOLUTION_CONTRACT,
-	BINDING_UNAVAILABLE_CODES,
-	BindingRecordError,
-	canonicalizeAppliedRows,
-	compareCanonical,
-	parseBindingResolution,
-	parseYardBindingRowKey,
-	yardBindingRowKey,
-	type BindingRealization,
-	type BindingRecordErrorCode,
-	type BindingResolution,
-	type BindingUnavailableCode,
-} from "./resolution.js";
-
-export {
-	BINDING_EVENTS,
 	BINDING_EVENT_SCHEMA_VERSION,
+	BINDING_EVENTS,
 	BINDING_PROJECTIONS,
 	BINDING_UNAVAILABLE_REMEDIATION,
-	bindingProjected,
-	bindingResolved,
-	bindingUnavailable,
 	type BindingEvent,
 	type BindingEventName,
 	type BindingFact,
@@ -61,4 +26,35 @@ export {
 	type BindingResolvedEvent,
 	type BindingUnavailableData,
 	type BindingUnavailableEvent,
+	bindingProjected,
+	bindingResolved,
+	bindingUnavailable,
 } from "./events.js";
+export {
+	BINDING_REALIZATIONS,
+	BINDING_RECORD_ERROR_CODES,
+	BINDING_RESOLUTION_CONTRACT,
+	BINDING_UNAVAILABLE_CODES,
+	type BindingRealization,
+	BindingRecordError,
+	type BindingRecordErrorCode,
+	type BindingResolution,
+	type BindingUnavailableCode,
+	canonicalizeAppliedRows,
+	compareCanonical,
+	parseBindingResolution,
+	parseYardBindingRowKey,
+	yardBindingRowKey,
+} from "./resolution.js";
+export {
+	type ParsedSecretRef,
+	parseSecretRef,
+	redactSecretRef,
+	SECRET_REF_SCHEMES,
+	type SecretRef,
+	SecretRefError,
+	type SecretRefScheme,
+	SecretValue,
+	tryParseSecretRef,
+} from "./secret-ref.js";
+export { STANDARD_CONNECTIVITY } from "./standard-connectivity.js";

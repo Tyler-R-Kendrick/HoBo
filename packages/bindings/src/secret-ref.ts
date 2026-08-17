@@ -76,7 +76,10 @@ const PLAINTEXT_MARKERS: readonly RegExp[] = [
 	/^ey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./u,
 ];
 
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/u;
+// `\p{Cc}` rather than an explicit escape range: it also covers the C1 block
+// (U+0080-U+009F), so terminal-escape smuggling is rejected on the same path
+// as the C0 log-forging characters this guard already caught.
+const CONTROL_CHARS = /\p{Cc}/u;
 
 function assertNoPlaintext(input: string): void {
 	for (const marker of PLAINTEXT_MARKERS) {
@@ -222,7 +225,9 @@ export function tryParseSecretRef(input: string): ParsedSecretRef | undefined {
  * A reference is not itself a secret, but its full path can disclose tenant
  * layout, so everything past the first path segment is elided.
  */
-export function redactSecretRef(ref: ParsedSecretRef | SecretRef | string): string {
+export function redactSecretRef(
+	ref: ParsedSecretRef | SecretRef | string,
+): string {
 	const parsed = typeof ref === "string" ? tryParseSecretRef(ref) : ref;
 	if (parsed === undefined) return "<redacted-secret-ref>";
 	const head = parsed.path[0] ?? "";

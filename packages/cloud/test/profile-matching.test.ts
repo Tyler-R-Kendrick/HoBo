@@ -415,6 +415,130 @@ describe("yard binding rows in profile matching", () => {
 		expect(outcome.definition.id).toBe("neon.pooled-postgres/v1");
 	});
 
+	it("carries the row's provider-native realization parameters onto the outcome", () => {
+		// The configuration half of a Yard binding (ADR-0157): the row selects the
+		// product, these parameterize how it is realized in this Yard. Without
+		// this, a Yard could say "use this product" but not "configured this way",
+		// which is the mapping an ops manager actually writes.
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{
+					profile: "data.postgres/v1",
+					productId: "neon.pooled-postgres",
+					properties: { replicas: 2, instanceClass: "db.r6g.large" },
+				},
+			]),
+		});
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(outcome.realizationParameters).toEqual({
+			instanceClass: "db.r6g.large",
+			replicas: 2,
+		});
+		// Provider-native parameters make the Yard non-portable, and the scorer
+		// must be able to name WHICH row did it, not merely that something did.
+		expect(outcome.nonPortableRows).toEqual([
+			"data.postgres/v1|neon.pooled-postgres|",
+		]);
+	});
+
+	it("omits the parameter block entirely when no applied row carries properties", () => {
+		const outcome = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([
+				{ profile: "data.postgres/v1", productId: "neon.pooled-postgres" },
+			]),
+		});
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		// Absent, not an empty object: "this Yard added no provider-native
+		// configuration" and "it added an empty one" are different claims.
+		expect("realizationParameters" in outcome).toBe(false);
+		expect("nonPortableRows" in outcome).toBe(false);
+	});
+
+	it("refuses two rows that disagree on the same realization parameter", () => {
+		// Rows are a set, so there is no precedence rule to appeal to. Picking one
+		// silently would make realization depend on iteration order.
+		expect(() =>
+			matchCapabilityRequirement({
+				resourceName: "db",
+				requirement: postgresRequirement,
+				profiles,
+				definitions: CATALOG,
+				policy,
+				nowMs: NOW,
+				yard: yardContext([
+					{
+						profile: "data.postgres/v1",
+						productId: "neon.pooled-postgres",
+						properties: { replicas: 2 },
+					},
+					{
+						profile: "data.postgres/v1",
+						productId: "neon.claimable-postgres",
+						properties: { replicas: 5 },
+					},
+				]),
+			}),
+		).toThrow(/disagree on realization parameter "replicas"/u);
+	});
+
+	it("merges compatible parameters from several rows deterministically", () => {
+		const rows = [
+			{
+				profile: "data.postgres/v1",
+				productId: "neon.pooled-postgres",
+				properties: { replicas: 2 },
+			},
+			{
+				profile: "data.postgres/v1",
+				productId: "neon.claimable-postgres",
+				properties: { backupWindow: "03:00-04:00" },
+			},
+		];
+		const forward = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext(rows),
+		});
+		const reversed = matchCapabilityRequirement({
+			resourceName: "db",
+			requirement: postgresRequirement,
+			profiles,
+			definitions: CATALOG,
+			policy,
+			nowMs: NOW,
+			yard: yardContext([...rows].reverse()),
+		});
+		expect(forward.ok && reversed.ok).toBe(true);
+		if (!forward.ok || !reversed.ok) return;
+		expect(forward.realizationParameters).toEqual({
+			backupWindow: "03:00-04:00",
+			replicas: 2,
+		});
+		// Authoring order must not change the realization.
+		expect(reversed.realizationParameters).toEqual(
+			forward.realizationParameters,
+		);
+		expect(reversed.nonPortableRows).toEqual(forward.nonPortableRows);
+	});
+
 	it("records the applied rows on the accepted outcome for the audit trail", () => {
 		const outcome = matchCapabilityRequirement({
 			resourceName: "db",

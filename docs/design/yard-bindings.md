@@ -23,7 +23,7 @@ HoBo now has three binding-adjacent nouns, deliberately distinct and now jointly
 
 | Noun | What it is | Owner |
 |---|---|---|
-| **Yard binding** | A Yard-scoped mapping row `{profile → product and/or connectivity}` — the *policy fact* that this Yard satisfies a capability with this offering | [ADR-0157](./adr/07-portability-extensibility.md#adr-0157), `yard()` authoring |
+| **Yard binding** | A Yard-scoped mapping row — the *policy fact* that this Yard satisfies a capability with this offering, **configured this way**: `{profile → product and/or connectivity, + provider-native realization parameters}` | [ADR-0157](./adr/07-portability-extensibility.md#adr-0157), `yard()` authoring |
 | **Capability binding** | The portable connection record a *product* emits for consumers (endpoints as non-secret refs, credential `secretRef`s) | [ADR-0151](./adr/07-portability-extensibility.md#adr-0151), `@hobo/bindings` |
 | **Binding membrane** | The only delivery path: WIT import → link → provider export → generated `ctx.bindings.*` | [ADR-0141](./adr/02-identity-security.md#adr-0141) |
 
@@ -48,14 +48,22 @@ yard("prod-east", {
   provider: "aws",
   regions: ["us-east-1"],
   bindings: [
-    { profile: "data.postgres/v1", productId: "aws.rds-postgres/v1" },
-    { profile: "kv.redis-compatible/v1", productId: "aws.elasticache-valkey/v1" },
+    // Selection: which offering realizes the profile here.
+    { profile: "data.postgres/v1", productId: "aws.rds-postgres/v1",
+      // Configuration: how it is realized here (provider-native, scored as
+      // non-portable surface — never passed through silently).
+      properties: { instanceClass: "db.r6g.large", multiAz: true } },
+    { profile: "web.hosted/v1", productId: "aws.eks-deployment/v1",
+      properties: { replicas: 2, serviceType: "LoadBalancer",
+        resources: { limits: { cpu: "250m", memory: "128Mi" } } } },
     { profile: "binding.postgresql/v1", connectivityId: "oci.service-binding-files/v1" },
   ],
 })
 ```
 
 One surface, two provenances (`default` vs `declared`) — first-run and production authoring are the same language.
+
+**Both halves matter, and the split is deliberate.** Alchemy's EKS example maps a workload onto a `Kubernetes.Deployment` *with* its image, replicas, ports and resource limits; a row that could only name the product would push that configuration somewhere else and leave the Yard's stated responsibility half-discharged. So a row carries selection **and** parameters — but the realization *shape* (which provider resources exist, the compiler and executor) stays in the versioned, catalog-hashed **Resource Definition**, and only its *parameters* live on the row. A Yard therefore parameterizes a definition instead of forking a second configuration system (ADR-0145's "no unnamed mechanism #10"), and because those parameters are provider-native by construction they are scored into the **PortabilityReport** with the specific responsible rows named — which is what keeps "unedited Bindle on N clouds" honest. Rows are a set, so two rows disagreeing on one parameter is refused at plan time (`YARD_BINDING_PARAMETER_CONFLICT`) rather than settled by iteration order.
 
 ## 4. Phases
 

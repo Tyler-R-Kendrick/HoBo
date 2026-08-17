@@ -319,9 +319,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 					{
 						seq: event.seq,
 						type: event.type,
-						...(data.grantId !== undefined
-							? { grantId: data.grantId }
-							: {}),
+						...(data.grantId !== undefined ? { grantId: data.grantId } : {}),
 					},
 				];
 				return next;

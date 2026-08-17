@@ -1,7 +1,7 @@
 {
 	"recipeId": "recipe.cloudflare.claimable-generated-report/v1",
 	"topologyDigest": "sha256:9608b5ed6f62a60859396f905a03854d4ae1fa215952d17f85a394f6ebc7435c",
-	"resolutionDigest": "sha256:b4e8f7703dd6bfb3ec0e287dc3a74395357cf148108963f44062cf0cc2258a24",
+	"resolutionDigest": "sha256:d5d8f6cc06924fce27199dd8437a2a33576c04b06dadb158cdfbb83bd4db8c52",
 	"topology": {
 		"schemaVersion": "hobo.resolved-topology/v1",
 		"recipeId": "recipe.cloudflare.claimable-generated-report/v1",

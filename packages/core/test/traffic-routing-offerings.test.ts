@@ -13,8 +13,18 @@ function cloudflareProfile(): TrafficRoutingProviderProfile {
 	return parseTrafficRoutingProviderProfile({
 		provider: "cloudflare",
 		offerings: [
-			{ id: "lb.lifecycle", stability: "stable", fidelity: "real", features: [] },
-			{ id: "lb.weighted", stability: "stable", fidelity: "real", features: [] },
+			{
+				id: "lb.lifecycle",
+				stability: "stable",
+				fidelity: "real",
+				features: [],
+			},
+			{
+				id: "lb.weighted",
+				stability: "stable",
+				fidelity: "real",
+				features: [],
+			},
 		],
 		fallbacks: ["inprocess.weighted"],
 	});
@@ -45,10 +55,10 @@ test("resolve picks first non-none profile", () => {
 		offerings: [offering("inprocess.weighted")],
 		fallbacks: [],
 	};
-	const resolved = resolveTrafficRouting(
-		[cloudflareProfile(), simple],
-		{ features: ["inprocess.weighted"], negotiation: "prefer" },
-	);
+	const resolved = resolveTrafficRouting([cloudflareProfile(), simple], {
+		features: ["inprocess.weighted"],
+		negotiation: "prefer",
+	});
 	assert.equal(resolved.kind, "resolved");
 	if (resolved.kind !== "resolved") return;
 	assert.equal(resolved.provider, "cloudflare");

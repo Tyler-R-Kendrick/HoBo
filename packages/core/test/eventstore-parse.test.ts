@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
 	eventPositionToText,
-	fenceTokenToText,
 	FENCING_COMPAT,
+	fenceTokenToText,
+	OptimisticSequenceConflictError,
 	parseEventPosition,
 	parseFenceToken,
 	StaleFenceError,
-	OptimisticSequenceConflictError,
 } from "../src/index.js";
 
 describe("eventstore position/fence parse", () => {

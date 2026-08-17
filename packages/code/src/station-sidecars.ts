@@ -36,6 +36,7 @@ import {
 	type AuthedStationView,
 	describeAuthedStationSession,
 } from "./station-session.js";
+import { startStatusSidecar } from "./status-sidecar-server.js";
 
 // public-contract: Station sidecar discovery snapshot
 export const STATION_SIDECARS_SCHEMA = "hobo.code.station-sidecars/v1" as const;
@@ -55,6 +56,7 @@ export interface StationSidecarSnapshot {
 	readonly experimentUrl?: string;
 	readonly kmsUrl?: string;
 	readonly historyUrl?: string;
+	readonly statusUrl?: string;
 	readonly startedAt: string;
 }
 
@@ -86,6 +88,7 @@ export interface StartStationSidecarsOptions {
 	readonly experimentPort?: number;
 	readonly kmsPort?: number;
 	readonly historyPort?: number;
+	readonly statusPort?: number;
 	readonly ensureLocalLogin?: boolean;
 	/**
 	 * Detach Evidence as a Station occupancy process. Default on for TTY /
@@ -236,6 +239,11 @@ function publishSidecarUrls(
 						"history",
 						scope,
 					),
+				}
+			: {}),
+		...(snapshot.statusUrl
+			? {
+					statusUrl: preferNamedEndpoint(snapshot.statusUrl, "status", scope),
 				}
 			: {}),
 	};
@@ -480,12 +488,14 @@ export async function startStationSidecars(
 	let experimentUrl: string | undefined;
 	let kmsUrl: string | undefined;
 	let historyUrl: string | undefined;
+	let statusUrl: string | undefined;
 	let closeDashboard: () => Promise<void> = async () => {};
 	let closeEvals: () => Promise<void> = async () => {};
 	let closeRollout: () => Promise<void> = async () => {};
 	let closeExperiment: () => Promise<void> = async () => {};
 	let closeKms: () => Promise<void> = async () => {};
 	let closeHistory: () => Promise<void> = async () => {};
+	let closeStatus: () => Promise<void> = async () => {};
 	try {
 		const dashboard = await startLocalDashboard({
 			hoboHome: options.hoboHome,
@@ -581,6 +591,22 @@ export async function startStationSidecars(
 		throw error;
 	}
 
+	// Status page is default-on but best-effort: a broken status listener must
+	// never take the occupancy down (ADR-0077 default sidecar, opt-out via
+	// HOBO_CODE_SIDECARS=0 with the rest of the fleet).
+	try {
+		const status = await startStatusSidecar({
+			hoboHome: options.hoboHome,
+			stationId: view.stationId,
+			environment: view.environment,
+			port: options.statusPort ?? 0,
+		});
+		statusUrl = status.url;
+		closeStatus = () => status.close();
+	} catch {
+		// The fleet still runs without its status page.
+	}
+
 	const snapshot = publishSidecarUrls(
 		{
 			schema: STATION_SIDECARS_SCHEMA,
@@ -597,6 +623,7 @@ export async function startStationSidecars(
 			...(experimentUrl !== undefined ? { experimentUrl } : {}),
 			...(kmsUrl !== undefined ? { kmsUrl } : {}),
 			...(historyUrl !== undefined ? { historyUrl } : {}),
+			...(statusUrl !== undefined ? { statusUrl } : {}),
 			startedAt: new Date().toISOString(),
 		},
 		occupancyScope(view),
@@ -617,6 +644,7 @@ export async function startStationSidecars(
 			await closeExperiment();
 			await closeKms();
 			await closeHistory();
+			await closeStatus();
 			if (persist) return;
 			const path = stationSidecarsPath(options.hoboHome, view.stationId);
 			await evidence.close();
@@ -722,6 +750,9 @@ export function formatSidecarStrap(
 	}
 	if (sidecars.historyUrl) {
 		chips.push(`history:${new URL(sidecars.historyUrl).host}`);
+	}
+	if (sidecars.statusUrl) {
+		chips.push(`status:${new URL(sidecars.statusUrl).host}`);
 	}
 	return chips;
 }

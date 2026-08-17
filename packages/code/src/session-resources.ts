@@ -26,10 +26,7 @@ import {
 	preferNamedEndpoint,
 	retargetUrl,
 } from "./occupancy-endpoints.js";
-import {
-	isOccupancyRunProcessLive,
-	listeningByUrl,
-} from "./occupancy-live.js";
+import { isOccupancyRunProcessLive, listeningByUrl } from "./occupancy-live.js";
 import {
 	type AuthedStationView,
 	describeAuthedStationSession,
@@ -961,9 +958,7 @@ export function assembleSessionResources(
 	for (const record of snapshot?.endpoints ?? []) {
 		if (liveKeys.has(record.resourceName)) continue;
 		const mesh = record.backendUrl.includes(`.${INTERNAL_MESH_ZONE}/`);
-		const alive = mesh
-			? bindleLive
-			: listening.get(record.backendUrl) === true;
+		const alive = mesh ? bindleLive : listening.get(record.backendUrl) === true;
 		endpointRows.push(
 			toEndpointRow(record, {
 				environment: view.environment,
@@ -981,9 +976,7 @@ export function assembleSessionResources(
 		const mesh = record.backendUrl.includes(`.${INTERNAL_MESH_ZONE}/`);
 		const alive =
 			fromCaller ||
-			(mesh
-				? bindleLive
-				: listening.get(record.backendUrl) === true);
+			(mesh ? bindleLive : listening.get(record.backendUrl) === true);
 		endpointRows.push(
 			toEndpointRow(record, {
 				environment: view.environment,
@@ -1082,6 +1075,7 @@ const STATION_SIDECARS = new Set([
 	"experiment",
 	"kms",
 	"history",
+	"status",
 ]);
 
 function projectManagedResources(input: {

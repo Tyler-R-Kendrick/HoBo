@@ -15,7 +15,11 @@ export {
 	isForbiddenSecretEnvKey,
 	looksLikeSecretEnvValue,
 } from "./binding-delivery.js";
-export { bindle, DEFAULT_BINDLE_NAME, inferRequirementsFromResources } from "./bindle.js";
+export {
+	bindle,
+	DEFAULT_BINDLE_NAME,
+	inferRequirementsFromResources,
+} from "./bindle.js";
 export {
 	api,
 	auth,
@@ -109,12 +113,6 @@ export {
 	readDependencyConfig,
 	wasmComponentDependencyAnnotation,
 } from "./dependencies.js";
-export {
-	isWebAppAnnotation,
-	WASP_WEBAPP_METADATA,
-	WEBAPP_OPTION,
-	webAppAnnotationFromBinding,
-} from "./webapp.js";
 export { env } from "./env.js";
 export {
 	BINDLE_FEATURES_SCHEMA,
@@ -151,6 +149,13 @@ export {
 	type SessionReplayBindleConfig,
 	sessionReplay,
 } from "./session-replay.js";
+export {
+	isStatusPageAnnotation,
+	readStatusPageConfig,
+	STATUS_PAGE_OPTION,
+	type StatusPageBindleConfig,
+	statusPage,
+} from "./status-page.js";
 export type {
 	AllowVerbsFor,
 	BindleBuilder,
@@ -178,6 +183,12 @@ export type {
 	SecretRef,
 	WasmComponentDependencyOptions,
 } from "./types.js";
+export {
+	isWebAppAnnotation,
+	WASP_WEBAPP_METADATA,
+	WEBAPP_OPTION,
+	webAppAnnotationFromBinding,
+} from "./webapp.js";
 export type {
 	BindingMeta,
 	ComponentHandle,

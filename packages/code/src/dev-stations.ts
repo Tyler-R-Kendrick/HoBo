@@ -82,6 +82,12 @@ export const DEFAULT_LOCALHOST_CAPABILITIES: readonly StationCapability[] = [
 		provenance: "default",
 	}),
 	stationCapability({
+		kind: "sidecar",
+		slug: "status",
+		title: "Station status page (ADR-0077, default-on)",
+		provenance: "default",
+	}),
+	stationCapability({
 		kind: "replay",
 		slug: "session-replay",
 		title: "Session Replay (ADR-0137, privacy-first)",

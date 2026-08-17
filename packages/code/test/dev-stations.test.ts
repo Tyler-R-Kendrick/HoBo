@@ -46,6 +46,7 @@ describe("dev-station declarations (ADR-0155 dogfood)", () => {
 		).map((c) => c.id);
 		expect(supplied).toEqual([
 			"capability:sidecar:dashboard",
+			"capability:sidecar:status",
 			"capability:replay:session-replay",
 		]);
 	});

@@ -75,6 +75,11 @@ package hobo
 	reason:        string & !=""
 }
 
+// Anything that reads as a secret value rather than a locator. Realization
+// parameters are provider-native configuration, so a credential-shaped key
+// there would put material into a content-addressed plan.
+#CloudCredentialKeyPattern: "(?i)(secret|password|token|credential|private[_-]?key|api[_-]?key)"
+
 #MatchDecided: {
 	deploymentId: string & !=""
 	resource:     string & !=""
@@ -91,6 +96,12 @@ package hobo
 	region?:      string
 	rationale:    string
 	catalogHash:  string & !=""
+	// ADR-0157 Yard binding authority. Absent means no Yard constrained the
+	// decision, never "any product will do".
+	productId?: string & !=""
+	appliedRows?: [...string & !=""]
+	realizationParameters?: {[!~#CloudCredentialKeyPattern]: string}
+	nonPortableRows?: [...string & !=""]
 }
 
 #ResourcePlan: {
@@ -101,6 +112,15 @@ package hobo
 	strategy?:     string
 	region?:       string
 	deploymentId?: string
+	// The offering this node resolves to. A deployment driver keys its resolver
+	// lookup on it; absent means "not decided here" and the driver fails closed
+	// rather than inferring a product from the port (ADR-0144).
+	productId?: string & !=""
+	// Provider-native realization parameters. Locators only, never values: a
+	// credential-shaped key is rejected, matching the parse boundary that builds
+	// the Yard binding rows these are merged from.
+	realizationParameters?: {[!~#CloudCredentialKeyPattern]: string}
+	nonPortableRows?: [...string & !=""]
 }
 
 #DeploymentPlan: {

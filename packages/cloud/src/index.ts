@@ -186,6 +186,7 @@ export {
 	type MatchRejected,
 	matchResource,
 	type PlacementContext,
+	type PlanBindingAuthority,
 	type PlanConfig,
 	type PlanRejection,
 	type PlanResult,

@@ -59,18 +59,18 @@ describe("bo-model-catalog purl", () => {
 });
 
 describe("listBoModelOffers", () => {
-	it("includes local ollama tags and configured harness models with unique purls", () => {
+	it("includes local ollama tags and saved harness models — not invented BYOK seeds", () => {
 		const home = tmp();
 		saveHarnessSettings(home, {
 			schema: "hobo.code.harness-settings/v1",
 			id: "codex",
-			model: "gpt-5",
+			model: "gpt-5.6-sol",
 			effort: "medium",
 		});
 		saveHarnessSettings(home, {
 			schema: "hobo.code.harness-settings/v1",
 			id: "claude",
-			model: "claude-sonnet-4-6",
+			model: "claude-sonnet-5",
 			effort: "high",
 		});
 
@@ -94,14 +94,14 @@ describe("listBoModelOffers", () => {
 		expect(purls).toContain(
 			"pkg:ollama/llama3.2@3b?host=127.0.0.1%3A11434",
 		);
-		expect(purls).toContain("pkg:openai/gpt-5?via=codex");
-		expect(purls).toContain("pkg:anthropic/claude-sonnet-4-6?via=claude");
+		expect(purls).toContain("pkg:openai/gpt-5.6-sol?via=codex");
+		expect(purls).toContain("pkg:anthropic/claude-sonnet-5?via=claude");
 		expect(purls).toContain(
 			"pkg:ollama/qwen2.5-coder@1.5b?via=env&host=active",
 		);
-		// Same logical model name, different provenance
-		expect(purls).toContain("pkg:openai/gpt-5?via=byok");
-		expect(purls).toContain("pkg:openai/gpt-5?via=azure");
+		// Invented BYOK seeds must not appear
+		expect(purls.some((p) => p.includes("via=byok"))).toBe(false);
+		expect(purls.some((p) => p.includes("via=azure"))).toBe(false);
 		expect(new Set(purls).size).toBe(purls.length);
 	});
 

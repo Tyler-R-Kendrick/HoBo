@@ -70,6 +70,11 @@ export {
 	runtimeModelFromPurl,
 } from "./bo-model-catalog.js";
 export {
+	listHarnessModelOffers,
+	listPiModelOffersFromFile,
+	type ListHarnessModelOffersOptions,
+} from "./harness-model-catalog.js";
+export {
 	EFFORT_LEVELS,
 	type EffortLevel,
 	type HarnessSettings,

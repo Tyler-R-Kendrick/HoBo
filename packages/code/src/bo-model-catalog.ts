@@ -1,8 +1,10 @@
 /**
- * Models available to HoBo Bo (and Eve under Bo).
+ * Models available to HoBo Bo (and Bo subagents).
  *
  * Each offer carries a Package-URL (`pkg:…`) so the same display name from
- * different providers/harnesses stays distinct (gpt-5 via Codex ≠ gpt-5 via Azure).
+ * different providers/harnesses stays distinct (saved Codex model ≠ local ollama).
+ *
+ * Coding harness configure uses `harness-model-catalog` instead — never this list.
  */
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -205,64 +207,6 @@ function listSavedHarnessIds(hoboHome: string): string[] {
 	}
 }
 
-const BYOK_SEEDS: readonly {
-	readonly env: string;
-	readonly type: string;
-	readonly name: string;
-	readonly via: string;
-	readonly runtimeId: string;
-}[] = [
-	{
-		env: "OPENAI_API_KEY",
-		type: "openai",
-		name: "gpt-5",
-		via: "byok",
-		runtimeId: "openai/gpt-5",
-	},
-	{
-		env: "AZURE_OPENAI_API_KEY",
-		type: "openai",
-		name: "gpt-5",
-		via: "azure",
-		runtimeId: "openai/gpt-5",
-	},
-	{
-		env: "ANTHROPIC_API_KEY",
-		type: "anthropic",
-		name: "claude-sonnet-4-6",
-		via: "byok",
-		runtimeId: "anthropic/claude-sonnet-4-6",
-	},
-	{
-		env: "GOOGLE_API_KEY",
-		type: "google",
-		name: "gemini-2.5-pro",
-		via: "byok",
-		runtimeId: "google/gemini-2.5-pro",
-	},
-	{
-		env: "GEMINI_API_KEY",
-		type: "google",
-		name: "gemini-2.5-pro",
-		via: "byok-gemini",
-		runtimeId: "google/gemini-2.5-pro",
-	},
-	{
-		env: "XAI_API_KEY",
-		type: "xai",
-		name: "grok-3",
-		via: "byok",
-		runtimeId: "xai/grok-3",
-	},
-	{
-		env: "OPENROUTER_API_KEY",
-		type: "openrouter",
-		name: "free",
-		via: "byok",
-		runtimeId: "openrouter/free",
-	},
-];
-
 export interface ListBoModelOffersInput {
 	readonly hoboHome: string;
 	readonly env?: NodeJS.ProcessEnv;
@@ -275,8 +219,9 @@ export interface ListBoModelOffersInput {
 }
 
 /**
- * Aggregate every model Bo can reach: local ollama tags, saved harness
- * settings, HOBO_CODE_MODEL, BYOK seed models, and openai-compatible locals.
+ * Aggregate models Bo can reach: live ollama tags, saved harness settings
+ * (provenance for Bo routing), HOBO_CODE_MODEL, and openai-compatible locals.
+ * Does **not** invent BYOK seed models — harness pickers use harness-model-catalog.
  */
 export function listBoModelOffers(
 	input: ListBoModelOffersInput,
@@ -337,22 +282,6 @@ export function listBoModelOffers(
 				source: "env",
 			});
 		}
-	}
-
-	for (const seed of BYOK_SEEDS) {
-		const value = env[seed.env];
-		if (!value || String(value).length === 0) continue;
-		add({
-			schema: BO_MODEL_CATALOG_SCHEMA,
-			purl: buildProviderModelPurl({
-				type: seed.type,
-				name: seed.name,
-				via: seed.via,
-			}),
-			label: `${seed.name} · ${seed.via}`,
-			runtimeId: seed.runtimeId,
-			source: "byok",
-		});
 	}
 
 	const baseUrl =

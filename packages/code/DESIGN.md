@@ -377,8 +377,10 @@ The InteractiveShell owns its viewport (alt-screen). Conventions:
   effort); HoBo Bo configure also lists subagents plus always `+ create
   subagent` (empty workspace still selectable; writes
   `.hobo/agents/<id>/instructions.md`). Bo/subagent model field cycles the Bo
-  catalog (ollama · saved harness models · BYOK · openai-compatible) with
-  Package-URL identity (`pkg:openai/gpt-5?via=codex` vs `?via=azure`). Cursor
+  catalog (ollama · saved harness provenance · openai-compatible). Coding
+  harness configure uses a separate per-provider catalog of real CLI model ids
+  (Codex `gpt-5.6-sol`, Claude `claude-sonnet-5`, …) — never the Bo/ollama list.
+  Package-URL identity (`pkg:openai/gpt-5.6-sol?via=codex`). Cursor
   indexes clamp — no past-end / negative selection. ↑↓ navigate, →/Space
   expand, Esc close (from a subagent under HoBo Bo, Esc returns to HoBo Bo form
   first; create-id Esc cancels). Live terminal connect is **`/mux`** (or Tab

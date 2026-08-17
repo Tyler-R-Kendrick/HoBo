@@ -193,8 +193,6 @@ export {
 	plan,
 } from "./planner/index.js";
 export {
-	type BindingResolutionFact,
-	type BindingUnavailableFact,
 	capabilityRequirementFromBindleRequirements,
 	matchCapabilityRequirement,
 	type ProfileMatchAccepted,
@@ -203,12 +201,10 @@ export {
 	type ProfileMatchRejected,
 	type ProfileMatchRejectionRecord,
 	profileCatalogHash,
-	YARD_BINDING_REJECTION_CODES,
 	type YardBindingContext,
 	type YardBindingRejection,
 	type YardBindingRejectionCode,
 	type YardBindingRow,
-	yardBindingRowKey,
 } from "./planner/profile-matching.js";
 export {
 	type CompactionResult,

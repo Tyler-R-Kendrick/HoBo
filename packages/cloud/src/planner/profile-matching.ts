@@ -19,8 +19,26 @@
  * the catalog knows which provider publishes a product, and inferring it from
  * an id prefix would make a naming convention load-bearing (forbidden by
  * ADR-0144).
+ *
+ * HONEST SCOPE: this step resolves the *product*, not the connectivity
+ * implementation — that needs the connectivity registry plus the consuming
+ * workload's runtime model, neither of which selection holds. A complete
+ * `binding.Resolved` fact is therefore emitted only when the applied rows pin
+ * exactly one `connectivityId`; otherwise the accepted outcome carries
+ * `appliedRows` for the audit trail and the fact is emitted downstream, where
+ * connectivity is actually resolved. `binding.Unavailable` has no such
+ * dependency and is always emitted on a Yard-scoped refusal.
  */
 import { createHash } from "node:crypto";
+import {
+	BINDING_UNAVAILABLE_REMEDIATION,
+	type BindingResolvedEvent,
+	type BindingUnavailableCode,
+	type BindingUnavailableEvent,
+	bindingResolved,
+	bindingUnavailable,
+	yardBindingRowKey,
+} from "@hobo/bindings";
 import type { BindleRequirements } from "@hobo/bindles";
 import {
 	type CapabilityProfileRegistry,
@@ -94,17 +112,14 @@ export type YardBindingContext = {
 };
 
 /**
- * Row-caused refusal reasons (§ADR-0157). A row that matches nothing is never
- * silently dropped — a silently dropped row is a portability lie.
+ * Row-caused refusal reasons (ADR-0157). A row that matches nothing is never
+ * silently dropped — a silently dropped row is a portability lie. Derived from
+ * `@hobo/bindings`' vocabulary rather than restated, so the two cannot drift.
  */
-export const YARD_BINDING_REJECTION_CODES = Object.freeze([
-	"YARD_BINDING_EXCLUDED_ALL",
-	"YARD_BINDING_PRODUCT_UNKNOWN",
-	"YARD_BINDING_PROVIDER_MISMATCH",
-] as const);
-
-export type YardBindingRejectionCode =
-	(typeof YARD_BINDING_REJECTION_CODES)[number];
+export type YardBindingRejectionCode = Exclude<
+	BindingUnavailableCode,
+	"NO_COMPATIBLE_BINDING"
+>;
 
 /** `SelectionRejection`-shaped so row refusals join the same rejection surface. */
 export type YardBindingRejection = {
@@ -116,32 +131,6 @@ export type YardBindingRejection = {
 export type ProfileMatchRejectionRecord =
 	| SelectionRejection
 	| YardBindingRejection;
-
-/**
- * Body of the `binding.Resolved` fact (`BindingResolution`, owned by
- * `@hobo/bindings`). Produced here and carried on the accepted outcome so the
- * ADR-0033 audit trail can name which rows constrained the decision.
- */
-export type BindingResolutionFact = {
-	readonly contract: "hobo.binding-resolution/v1";
-	readonly yardId: string;
-	readonly profile: string;
-	readonly productId: string;
-	readonly connectivityId: string;
-	readonly realization: "native" | "pack" | "bridge";
-	/** Canonical row keys that constrained this decision, sorted. */
-	readonly appliedRows: readonly string[];
-	readonly consideredCount: number;
-};
-
-/** Body of the `binding.Unavailable` fact. `remediation` names what to change. */
-export type BindingUnavailableFact = {
-	readonly yardId: string;
-	readonly profile: string;
-	readonly code: YardBindingRejectionCode | "NO_COMPATIBLE_BINDING";
-	readonly remediation: string;
-	readonly consideredCount: number;
-};
 
 export type ProfileMatchInput = {
 	readonly resourceName: string;
@@ -164,8 +153,13 @@ export type ProfileMatchAccepted = {
 	readonly catalogHash: string;
 	/** True when the top two survivors are separated only by the id tiebreak. */
 	readonly tie: boolean;
-	/** Present only when a Yard supplied binding authority. */
-	readonly bindingResolution?: BindingResolutionFact;
+	/**
+	 * Canonical keys of the Yard binding rows that constrained this decision.
+	 * Present only when a Yard supplied binding authority (ADR-0033 audit trail).
+	 */
+	readonly appliedRows?: readonly string[];
+	/** Present only when the rows pinned the connectivity implementation too. */
+	readonly bindingResolved?: BindingResolvedEvent;
 };
 
 export type ProfileMatchRejected = {
@@ -174,7 +168,7 @@ export type ProfileMatchRejected = {
 	readonly rejections: readonly ProfileMatchRejectionRecord[];
 	readonly catalogHash: string;
 	/** Present only when a Yard supplied binding authority. */
-	readonly bindingUnavailable?: BindingUnavailableFact;
+	readonly bindingUnavailable?: BindingUnavailableEvent;
 };
 
 export type ProfileMatchOutcome = ProfileMatchAccepted | ProfileMatchRejected;
@@ -196,11 +190,6 @@ export function profileCatalogHash(
 		definitions: entries,
 	});
 	return `sha256:${createHash("sha256").update(payload).digest("hex")}`;
-}
-
-/** Canonical key of a row: the same tuple `parseYardBindings` sorts by. */
-export function yardBindingRowKey(row: YardBindingRow): string {
-	return `${row.profile}|${row.productId ?? ""}|${row.connectivityId ?? ""}`;
 }
 
 type AttributedRejection = {
@@ -232,10 +221,13 @@ function resolveYardBindingGate(
 	definitions: readonly ResourceDefinitionVNext[],
 ): YardBindingGate {
 	const wanted = new Set(requiredProfileIds);
+	// Codepoint ordering, matching `@hobo/bindings`' canonical row-key order:
+	// an audit trail must not depend on the host's collation locale.
 	const applicableRows = yard.bindings
 		.filter((row) => wanted.has(row.profile))
-		.slice()
-		.sort((a, b) => yardBindingRowKey(a).localeCompare(yardBindingRowKey(b)));
+		.map((row) => [yardBindingRowKey(row), row] as const)
+		.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+		.map(([, row]) => row);
 
 	const byProduct = new Map<string, ResourceDefinitionVNext[]>();
 	for (const definition of definitions) {
@@ -345,13 +337,21 @@ function sortRejections(
 	);
 }
 
+/**
+ * Build the `binding.Unavailable` fact for a refusal.
+ *
+ * The remediation text is `@hobo/bindings`' canonical per-code string rather
+ * than a second copy written here: the fail-closed contract says the refusal
+ * names what to change, and one authority for that wording keeps the operator
+ * reading the same sentence wherever the refusal surfaces. The refusal's
+ * resource-specific detail stays on `PlanRemediation`.
+ */
 function unavailableFact(
 	yard: YardBindingContext,
 	attributed: readonly AttributedRejection[],
 	fallbackProfile: string,
-	remediation: string,
 	consideredCount: number,
-): BindingUnavailableFact {
+): BindingUnavailableEvent {
 	const ranked = [...attributed].sort(
 		(a, b) =>
 			UNAVAILABLE_CODE_PRECEDENCE.indexOf(a.rejection.code) -
@@ -360,11 +360,13 @@ function unavailableFact(
 			a.rejection.definitionId.localeCompare(b.rejection.definitionId),
 	);
 	const first = ranked[0];
-	return Object.freeze({
+	const code: BindingUnavailableCode =
+		first?.rejection.code ?? "NO_COMPATIBLE_BINDING";
+	return bindingUnavailable({
 		yardId: yard.yardId,
 		profile: first?.profile ?? fallbackProfile,
-		code: first?.rejection.code ?? "NO_COMPATIBLE_BINDING",
-		remediation,
+		code,
+		remediation: BINDING_UNAVAILABLE_REMEDIATION[code],
 		consideredCount,
 	});
 }
@@ -401,7 +403,7 @@ export function matchCapabilityRequirement(
 
 	// Fail closed before ranking: a row naming a product this catalog cannot
 	// resolve is an authoring defect, and continuing would hide it.
-	if (yard !== undefined && gate !== undefined && gate.fatal) {
+	if (gate?.fatal === true && yard !== undefined) {
 		const rejections = sortRejections(
 			gate.rejections.map((entry) => entry.rejection),
 		);
@@ -430,7 +432,6 @@ export function matchCapabilityRequirement(
 				yard,
 				gate.rejections,
 				fallbackProfile,
-				remediation,
 				consideredCount,
 			),
 		};
@@ -517,7 +518,6 @@ export function matchCapabilityRequirement(
 							yard,
 							exclusions,
 							fallbackProfile,
-							remediation,
 							consideredCount,
 						),
 					}
@@ -541,24 +541,32 @@ export function matchCapabilityRequirement(
 		runnerUp.sponsorExposureMinorUnits ===
 			result.winner.sponsorExposureMinorUnits;
 
-	let bindingResolution: BindingResolutionFact | undefined;
-	if (yard !== undefined && gate !== undefined) {
+	let appliedRows: readonly string[] | undefined;
+	let resolved: BindingResolvedEvent | undefined;
+	if (gate !== undefined && yard !== undefined) {
+		appliedRows = Object.freeze(
+			gate.applicableRows.map((row) => yardBindingRowKey(row)).sort(),
+		);
+		// A `BindingResolution` names the connectivity implementation, so the fact
+		// is only constructible here when the rows pinned exactly one. With none
+		// pinned (or several admitted) the connectivity step downstream owns it —
+		// emitting a fact with a guessed connectivity id would be a false record.
 		const connectivity = pinnedConnectivity(gate.applicableRows);
-		bindingResolution = Object.freeze({
-			contract: "hobo.binding-resolution/v1" as const,
-			yardId: yard.yardId,
-			profile: fallbackProfile,
-			productId: winner.semantics?.productId ?? "",
-			// Empty when the rows pin no single connectivity implementation: the
-			// connectivity registry resolves it at projection time.
-			connectivityId:
-				connectivity.length === 1 ? (connectivity[0] as string) : "",
-			realization: realizationFor(winner, requiredProfileIds, input.profiles),
-			appliedRows: Object.freeze(
-				gate.applicableRows.map((row) => yardBindingRowKey(row)).sort(),
-			),
-			consideredCount,
-		});
+		const connectivityId =
+			connectivity.length === 1 ? connectivity[0] : undefined;
+		const productId = winner.semantics?.productId;
+		if (connectivityId !== undefined && productId !== undefined) {
+			resolved = bindingResolved({
+				contract: "hobo.binding-resolution/v1",
+				yardId: yard.yardId,
+				profile: fallbackProfile,
+				productId,
+				connectivityId,
+				realization: realizationFor(winner, requiredProfileIds, input.profiles),
+				appliedRows,
+				consideredCount,
+			});
+		}
 	}
 
 	return {
@@ -568,6 +576,7 @@ export function matchCapabilityRequirement(
 		rejections: result.rejections,
 		catalogHash,
 		tie,
-		...(bindingResolution !== undefined ? { bindingResolution } : {}),
+		...(appliedRows !== undefined ? { appliedRows } : {}),
+		...(resolved !== undefined ? { bindingResolved: resolved } : {}),
 	};
 }

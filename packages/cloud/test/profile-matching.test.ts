@@ -1,3 +1,4 @@
+import { BINDING_UNAVAILABLE_REMEDIATION } from "@hobo/bindings";
 import {
 	createCapabilityProfileRegistry,
 	parseCapabilityRequirement,
@@ -16,7 +17,6 @@ import {
 	type ResourceDefinitionVNext,
 	type YardBindingContext,
 	type YardBindingRow,
-	yardBindingRowKey,
 } from "../src/index.js";
 
 const profiles = createCapabilityProfileRegistry(STANDARD_CAPABILITY_PROFILES);
@@ -397,15 +397,6 @@ function yardContext(
 const CATALOG = [d1, neon, neonSqlite, neonStale, pooled];
 
 describe("yard binding rows in profile matching", () => {
-	it("builds a canonical row key from the sort tuple", () => {
-		expect(
-			yardBindingRowKey({ profile: "data.postgres/v1", productId: "p" }),
-		).toBe("data.postgres/v1|p|");
-		expect(
-			yardBindingRowKey({ profile: "data.postgres/v1", connectivityId: "c" }),
-		).toBe("data.postgres/v1||c");
-	});
-
 	it("narrows the catalog to the products the rows name", () => {
 		const outcome = matchCapabilityRequirement({
 			resourceName: "db",
@@ -440,21 +431,14 @@ describe("yard binding rows in profile matching", () => {
 		});
 		expect(outcome.ok).toBe(true);
 		if (!outcome.ok) return;
-		const resolution = outcome.bindingResolution;
-		expect(resolution).toBeDefined();
-		if (resolution === undefined) return;
-		expect(resolution.contract).toBe("hobo.binding-resolution/v1");
-		expect(resolution.yardId).toBe("yard:prod");
-		expect(resolution.profile).toBe("data.postgres/v1");
-		expect(resolution.productId).toBe("neon.claimable-postgres");
-		expect(resolution.realization).toBe("native");
-		expect(resolution.consideredCount).toBe(CATALOG.length);
-		// Only rows for a profile this requirement names are applied, sorted.
-		expect(resolution.appliedRows).toEqual([
+		// Only rows for a profile this requirement names are applied, and they are
+		// recorded in canonical order so the audit trail is order-independent.
+		expect(outcome.appliedRows).toEqual([
 			"data.postgres/v1|neon.claimable-postgres|",
 			"data.postgres/v1|neon.pooled-postgres|",
 		]);
-		expect(Object.isFrozen(resolution)).toBe(true);
+		// No row pinned connectivity, so no complete resolution fact is emitted.
+		expect(outcome.bindingResolved).toBeUndefined();
 	});
 
 	it("pins the connectivity implementation when exactly one row names it", () => {
@@ -475,9 +459,22 @@ describe("yard binding rows in profile matching", () => {
 		});
 		expect(outcome.ok).toBe(true);
 		if (!outcome.ok) return;
-		expect(outcome.bindingResolution?.connectivityId).toBe(
-			"cloudflare.postgres.hyperdrive/v1",
-		);
+		const fact = outcome.bindingResolved;
+		expect(fact).toBeDefined();
+		if (fact === undefined) return;
+		expect(fact.type).toBe("binding.Resolved");
+		expect(fact.data.contract).toBe("hobo.binding-resolution/v1");
+		expect(fact.data.yardId).toBe("yard:prod");
+		expect(fact.data.profile).toBe("data.postgres/v1");
+		expect(fact.data.productId).toBe("neon.claimable-postgres");
+		expect(fact.data.connectivityId).toBe("cloudflare.postgres.hyperdrive/v1");
+		expect(fact.data.realization).toBe("native");
+		expect(fact.data.consideredCount).toBe(CATALOG.length);
+		expect(fact.data.appliedRows).toEqual([
+			"data.postgres/v1|neon.claimable-postgres|cloudflare.postgres.hyperdrive/v1",
+		]);
+		expect(Object.isFrozen(fact)).toBe(true);
+		expect(Object.isFrozen(fact.data)).toBe(true);
 	});
 
 	it("treats the row set as a set: authoring order changes nothing", () => {
@@ -564,11 +561,14 @@ describe("yard binding rows in profile matching", () => {
 		expect(outcome.remediation.code).toBe(
 			"capability.yard-binding-unsatisfiable",
 		);
-		expect(outcome.bindingUnavailable?.code).toBe(
+		expect(outcome.bindingUnavailable?.type).toBe("binding.Unavailable");
+		expect(outcome.bindingUnavailable?.data.code).toBe(
 			"YARD_BINDING_PRODUCT_UNKNOWN",
 		);
-		expect(outcome.bindingUnavailable?.remediation.length).toBeGreaterThan(0);
-		expect(outcome.bindingUnavailable?.yardId).toBe("yard:prod");
+		expect(outcome.bindingUnavailable?.data.remediation).toBe(
+			BINDING_UNAVAILABLE_REMEDIATION.YARD_BINDING_PRODUCT_UNKNOWN,
+		);
+		expect(outcome.bindingUnavailable?.data.yardId).toBe("yard:prod");
 	});
 
 	it("fails closed when a row names a product published by another provider", () => {
@@ -591,7 +591,7 @@ describe("yard binding rows in profile matching", () => {
 		expect(outcome.rejections[0]?.definitionId).toBe(
 			"cloudflare.temporary-d1/v1",
 		);
-		expect(outcome.bindingUnavailable?.code).toBe(
+		expect(outcome.bindingUnavailable?.data.code).toBe(
 			"YARD_BINDING_PROVIDER_MISMATCH",
 		);
 	});
@@ -623,7 +623,12 @@ describe("yard binding rows in profile matching", () => {
 		expect(outcome.rejections.map((r) => r.code)).toContain(
 			"PROFILE_INCOMPATIBLE",
 		);
-		expect(outcome.bindingUnavailable?.code).toBe("YARD_BINDING_EXCLUDED_ALL");
+		expect(outcome.bindingUnavailable?.data.code).toBe(
+			"YARD_BINDING_EXCLUDED_ALL",
+		);
+		expect(outcome.bindingUnavailable?.data.consideredCount).toBe(
+			CATALOG.length,
+		);
 	});
 
 	it("never admits a candidate that failed another gate", () => {
@@ -663,7 +668,7 @@ describe("yard binding rows in profile matching", () => {
 		expect(outcome.ok).toBe(true);
 		if (!outcome.ok) return;
 		expect(outcome.definition.id).toBe("neon.claimable-postgres/v1");
-		expect(outcome.bindingResolution?.appliedRows).toEqual([]);
+		expect(outcome.appliedRows).toEqual([]);
 	});
 
 	it("regression guard: omitting the Yard leaves the outcome byte-identical", () => {
@@ -693,8 +698,9 @@ describe("yard binding rows in profile matching", () => {
 		expect(emptyYard.catalogHash).toEqual(baseline.catalogHash);
 		expect(emptyYard.definition.id).toEqual(baseline.definition.id);
 		expect(emptyYard.tie).toEqual(baseline.tie);
-		expect(baseline.bindingResolution).toBeUndefined();
-		expect("bindingResolution" in baseline).toBe(false);
+		expect("appliedRows" in baseline).toBe(false);
+		expect("bindingResolved" in baseline).toBe(false);
+		expect(emptyYard.appliedRows).toEqual([]);
 	});
 
 	it("regression guard: a refusal without a Yard carries no binding fact", () => {

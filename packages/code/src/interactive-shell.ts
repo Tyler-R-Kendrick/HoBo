@@ -2378,7 +2378,9 @@ function reduceAgentsConfigureShell(
 			...(current
 				? {
 						model: current.model,
-						modelPurl: current.modelPurl,
+						modelId: current.modelId,
+						via: current.via,
+						apiEndpoint: current.apiEndpoint,
 						effort: current.effort,
 						modelOffers: current.modelOffers,
 						modelCursor: current.modelCursor,
@@ -2420,8 +2422,8 @@ function reduceAgentsConfigureShell(
 	if (result.kind === "saved") {
 		const note =
 			result.scope === "eve"
-				? `saved subagent · ${result.settings.id} · model ${result.settings.model || "(unset)"}${result.settings.modelPurl ? ` · ${result.settings.modelPurl}` : ""} · effort ${result.settings.effort}`
-				: `saved ${result.settings.id} · model ${result.settings.model || "(unset)"}${result.settings.modelPurl ? ` · ${result.settings.modelPurl}` : ""} · effort ${result.settings.effort}`;
+				? `saved subagent · ${result.settings.id} · model ${result.settings.model || "(unset)"}${result.settings.modelId ? ` · ${result.settings.modelId}` : ""}${result.settings.apiEndpoint ? ` · ${result.settings.apiEndpoint}` : ""} · effort ${result.settings.effort}`
+				: `saved ${result.settings.id} · model ${result.settings.model || "(unset)"}${result.settings.modelId ? ` · ${result.settings.modelId}` : ""}${result.settings.apiEndpoint ? ` · ${result.settings.apiEndpoint}` : ""} · effort ${result.settings.effort}`;
 		const modelLabel =
 			result.scope === "harness" &&
 			result.settings.id === "hobo-code" &&

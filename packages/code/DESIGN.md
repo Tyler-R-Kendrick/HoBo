@@ -377,10 +377,14 @@ The InteractiveShell owns its viewport (alt-screen). Conventions:
   effort); HoBo Bo configure also lists subagents plus always `+ create
   subagent` (empty workspace still selectable; writes
   `.hobo/agents/<id>/instructions.md`). Bo/subagent model field cycles the Bo
-  catalog (ollama · saved harness provenance · openai-compatible). Coding
-  harness configure uses a separate per-provider catalog of real CLI model ids
+  catalog (ollama · saved harness provenance · openai-compatible). **Pi** uses
+  that same Bo catalog. Other coding harnesses use per-harness CLI catalogs;
+  Codex merges OpenAI-compatible endpoints, Claude merges Anthropic-compatible
+  endpoints; Cursor / OpenCode / Grok also live-probe when the CLI can list
+  models. Mux panes launch with configured api_endpoint + model + effort.
   (Codex `gpt-5.6-sol`, Claude `claude-sonnet-5`, …) — never the Bo/ollama list.
-  Package-URL identity (`pkg:openai/gpt-5.6-sol?via=codex`). Cursor
+  Identity is LiteLLM-style `provider/model` plus `via` / `baseUrl`
+  (`openai/gpt-5.6-sol` via codex). Cursor
   indexes clamp — no past-end / negative selection. ↑↓ navigate, →/Space
   expand, Esc close (from a subagent under HoBo Bo, Esc returns to HoBo Bo form
   first; create-id Esc cancels). Live terminal connect is **`/mux`** (or Tab

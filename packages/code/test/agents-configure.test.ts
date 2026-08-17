@@ -21,6 +21,7 @@ import {
 	reduceAgentsConfigureKey,
 } from "../src/agents-configure.js";
 import { loadHarnessSettings, saveHarnessSettings } from "../src/harness-settings.js";
+import { listConfigurableHarnessIds } from "../src/harness-model-catalog.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -277,7 +278,7 @@ describe("agents-configure", () => {
 		expect(state.createDraft).toBe("");
 	});
 
-	it("←→ on Bo/Eve model field cycles Bo catalog by PURL", () => {
+	it("←→ on Bo/Eve model field cycles Bo catalog by model id", () => {
 		const project = tmp();
 		const home = join(project, ".hobo-home");
 		saveHarnessSettings(home, {
@@ -297,11 +298,13 @@ describe("agents-configure", () => {
 		expect(state.field).toBe("model");
 		const first = state.modelOffers[state.modelCursor]!;
 		state = press(state, "\x1b[C", home, project);
-		expect(state.modelPurl).not.toBe(first.purl);
+		expect(state.modelId).not.toBe(first.id);
 		expect(state.model).toBe(
 			state.modelOffers[state.modelCursor]!.runtimeId,
 		);
-		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(/pkg:/);
+		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(
+			/\w+\/[\w.:-]+/,
+		);
 
 		// Create subagent then open — same Bo catalog for subagent configure
 		state = press(state, "\t", home, project);
@@ -319,13 +322,13 @@ describe("agents-configure", () => {
 		});
 		expect(eve.modelOffers.length).toBeGreaterThan(0);
 		expect(eve.field).toBe("model");
-		const before = eve.modelPurl;
+		const before = eve.modelId;
 		const cycled = press(eve, "\x1b[C", home, project);
-		expect(cycled.modelPurl).not.toBe(before);
+		expect(cycled.modelId).not.toBe(before);
 		const saved = reduceAgentsConfigureKey(cycled, "\r", home, project);
 		expect(saved.kind).toBe("saved");
 		if (saved.kind === "saved") {
-			expect(saved.settings.modelPurl).toMatch(/^pkg:/);
+			expect(saved.settings.modelId).toMatch(/\w+\/.+/);
 			expect(saved.settings.model.length).toBeGreaterThan(0);
 		}
 	});
@@ -335,7 +338,7 @@ describe("agents-configure", () => {
 		let state = openHarnessConfigure(home, "codex", "Codex");
 		expect(state.modelOffers.length).toBeGreaterThan(0);
 		expect(
-			state.modelOffers.every((row) => !row.purl.startsWith("pkg:ollama/")),
+			state.modelOffers.every((row) => row.provider !== "ollama"),
 		).toBe(true);
 		expect(
 			state.modelOffers.some((row) => row.runtimeId === "gpt-5.6-sol"),
@@ -343,10 +346,70 @@ describe("agents-configure", () => {
 		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(
 			/Codex models/,
 		);
-		const first = state.modelOffers[state.modelCursor]!.purl;
+		const first = state.modelOffers[state.modelCursor]!.id;
 		state = press(state, "\x1b[C", home);
-		expect(state.modelPurl).not.toBe(first);
-		expect(state.modelPurl).toContain("via=codex");
+		expect(state.modelId).not.toBe(first);
+		expect(state.via).toBe("codex");
+	});
+
+	it("every configurable harness opens with selectable models", () => {
+		const home = tmp();
+		for (const id of listConfigurableHarnessIds()) {
+			if (id === "pi") continue; // Pi uses Bo catalog — tested separately
+			const state = openHarnessConfigure(home, id, id, { live: false });
+			expect(state.modelOffers.length, id).toBeGreaterThan(0);
+			expect(
+				state.modelOffers.every((row) => row.harnessId === id),
+				id,
+			).toBe(true);
+		}
+	});
+
+	it("Pi configure uses the Bo model catalog", () => {
+		const home = tmp();
+		const state = openHarnessConfigure(home, "pi", "Pi", {
+			ollama: { host: "http://127.0.0.1:11434", models: ["qwen2.5-coder:7b"] },
+			env: {},
+		});
+		expect(state.modelOffers.some((row) => row.source === "ollama")).toBe(
+			true,
+		);
+		expect(
+			state.modelOffers.some((row) =>
+				row.runtimeId.includes("qwen2.5-coder:7b"),
+			),
+		).toBe(true);
+	});
+
+	it("Codex configure includes OpenAI-compatible endpoint and saves apiEndpoint", () => {
+		const home = tmp();
+		let state = openHarnessConfigure(home, "codex", "Codex", {
+			env: {
+				OPENAI_BASE_URL: "http://127.0.0.1:8080/v1",
+				HOBO_CODE_MODEL: "local-coder",
+			},
+		});
+		const idx = state.modelOffers.findIndex(
+			(row) => row.baseUrl === "http://127.0.0.1:8080/v1",
+		);
+		expect(idx).toBeGreaterThanOrEqual(0);
+		const offer = state.modelOffers[idx]!;
+		state = {
+			...state,
+			model: offer.runtimeId,
+			modelId: offer.id,
+			via: offer.via ?? "",
+			apiEndpoint: offer.baseUrl ?? "",
+			modelCursor: idx,
+			dirty: true,
+		};
+		const saved = reduceAgentsConfigureKey(state, "\r", home);
+		expect(saved.kind).toBe("saved");
+		if (saved.kind === "saved") {
+			expect(saved.settings.apiEndpoint).toBe("http://127.0.0.1:8080/v1");
+			expect(saved.settings.model).toBe("local-coder");
+			expect(saved.settings.modelId).toBe("openai/local-coder");
+		}
 	});
 
 	it("saved harness model appears in Bo catalog with via=harness provenance", () => {
@@ -363,7 +426,7 @@ describe("agents-configure", () => {
 		});
 		expect(
 			state.modelOffers.some(
-				(row) => row.purl === "pkg:openai/gpt-5.6-sol?via=codex",
+				(row) => row.id === "openai/gpt-5.6-sol" && row.via === "codex",
 			),
 		).toBe(true);
 	});

@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { initStation, persistStationCapabilityManifest } from "@hobo/stations";
 import { runAgentsCli } from "./agent-harness-init.js";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
+import { seatShellCommand } from "./agent-seat.js";
 import { agentHumanSummary, inspectAgentSurface } from "./agent-surface.js";
 import { allocateAgentWorkspaces } from "./agent-workspaces.js";
 import {
@@ -94,6 +95,10 @@ import {
 } from "./harness-surface.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
 import { runAliasCli, runHistoryCli } from "./history-cli.js";
+import {
+	applySettingsToSeatCommand,
+	loadHarnessSettings,
+} from "./harness-settings.js";
 import {
 	cleanupIsolation,
 	createIsolationContext,
@@ -2737,12 +2742,22 @@ export async function runHoboCodeCli(
 			// audit event. That was worse than before the placement filter existed.
 			const targets: MuxTarget[] = placeable.map((a) => {
 				const allocated = workspaceFor.get(a.id);
+				const baseCommand = virtualPanes
+					? virtualPaneCommand(a.id, allocated?.path ?? workspace.path)
+					: a.command;
+				const seated = virtualPanes
+					? baseCommand
+					: seatShellCommand({
+							agentId: a.id,
+							command: baseCommand,
+							hoboHome,
+							userHome: env.HOME ?? "",
+						});
+				const settings = loadHarnessSettings(hoboHome, a.id, "harness");
 				return {
 					name: a.id,
 					kind: a.kind === "inference" ? "local-inference" : "local",
-					command: virtualPanes
-						? virtualPaneCommand(a.id, allocated?.path ?? workspace.path)
-						: a.command,
+					command: applySettingsToSeatCommand(a.id, seated, settings),
 					cwd: allocated?.path ?? workspace.path,
 					// Namespace-mounted workspaces are unreachable by cd alone.
 					...(allocated?.exec ? { exec: allocated.exec } : {}),

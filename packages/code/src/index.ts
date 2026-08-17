@@ -61,17 +61,25 @@ export {
 	BO_MODEL_CATALOG_SCHEMA,
 	type BoModelOffer,
 	type BoModelSource,
-	buildOllamaModelPurl,
-	buildProviderModelPurl,
+	type ListBoModelOffersInput,
+	buildModelId,
 	cycleBoModelOffer,
 	findOfferIndex,
 	listBoModelOffers,
-	parseModelPurl,
-	runtimeModelFromPurl,
+	makeModelOffer,
+	offerKey,
+	parseModelId,
 } from "./bo-model-catalog.js";
 export {
+	clearHarnessModelProbeCache,
+	listAnthropicCompatibleOffers,
+	listConfigurableHarnessIds,
 	listHarnessModelOffers,
+	listOpenAiCompatibleOffers,
 	listPiModelOffersFromFile,
+	parseCursorListModelsOutput,
+	parseGrokModelsOutput,
+	parseOpencodeModelsOutput,
 	type ListHarnessModelOffersOptions,
 } from "./harness-model-catalog.js";
 export {
@@ -83,7 +91,10 @@ export {
 	cycleEffort,
 	defaultHarnessSettings,
 	loadHarnessSettings,
+	migrateLegacyModelPurl,
+	resolveHarnessApiEndpoint,
 	saveHarnessSettings,
+	seatEnvForHarness,
 } from "./harness-settings.js";
 export {
 	type AgentAuthModeCard,

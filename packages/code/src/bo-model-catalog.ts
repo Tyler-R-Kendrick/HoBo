@@ -1,10 +1,10 @@
 /**
  * Models available to HoBo Bo (and Bo subagents).
  *
- * Each offer carries a Package-URL (`pkg:…`) so the same display name from
- * different providers/harnesses stays distinct (saved Codex model ≠ local ollama).
- *
- * Coding harness configure uses `harness-model-catalog` instead — never this list.
+ * Each offer uses a LiteLLM-style `provider/model` id plus optional routing
+ * fields (`via`, `baseUrl`, `host`) so the same model from different harnesses
+ * or endpoints stays distinct. Coding harness configure uses
+ * `harness-model-catalog` instead — never this list for Codex/Claude/etc.
  */
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -24,25 +24,53 @@ export type BoModelSource =
 
 export interface BoModelOffer {
 	readonly schema: typeof BO_MODEL_CATALOG_SCHEMA;
-	/** Unique Package-URL identity. */
-	readonly purl: string;
+	/**
+	 * Stable LiteLLM / OpenCode-style identity: `provider/model`
+	 * (e.g. `openai/gpt-5.6-sol`, `ollama/qwen2.5-coder:7b`).
+	 */
+	readonly id: string;
+	readonly provider: string;
+	/** Model name within the provider (may include `:tag` for ollama). */
+	readonly model: string;
 	/** Short label for the picker. */
 	readonly label: string;
 	/** Runtime / CLI model id stored in harness-settings.model. */
 	readonly runtimeId: string;
 	readonly source: BoModelSource;
+	/** Harness / seat path that reaches this model (codex, env, …). */
+	readonly via?: string;
+	/** OpenAI-/Anthropic-compatible API base URL when applicable. */
+	readonly baseUrl?: string;
+	/** Ollama (or similar) host when applicable. */
+	readonly host?: string;
 	readonly harnessId?: string;
 }
 
-export interface ParsedModelPurl {
-	readonly type: string;
-	readonly name: string;
-	readonly version?: string;
-	readonly qualifiers: Readonly<Record<string, string>>;
+/** Unique key for dedupe / cursor restore — not a URI scheme. */
+export function offerKey(
+	offer: Pick<BoModelOffer, "id" | "via" | "baseUrl" | "host">,
+): string {
+	const parts = [offer.id];
+	if (offer.via) parts.push(`via=${offer.via}`);
+	if (offer.baseUrl) parts.push(`baseUrl=${offer.baseUrl}`);
+	if (offer.host) parts.push(`host=${offer.host}`);
+	return parts.join("|");
 }
 
-function encodeQualifier(value: string): string {
-	return encodeURIComponent(value);
+export function buildModelId(provider: string, model: string): string {
+	return `${provider}/${model}`;
+}
+
+export function parseModelId(
+	id: string,
+): { readonly provider: string; readonly model: string } | null {
+	const trimmed = id.trim();
+	const i = trimmed.indexOf("/");
+	if (i <= 0 || i === trimmed.length - 1) return null;
+	return {
+		provider: trimmed.slice(0, i).toLowerCase(),
+		model: trimmed.slice(i + 1),
+	};
 }
 
 function hostQualifier(host: string): string {
@@ -51,85 +79,7 @@ function hostQualifier(host: string): string {
 		.replace(/\/$/u, "");
 }
 
-function splitOllamaTag(tag: string): { name: string; version?: string } {
-	const trimmed = tag.trim();
-	const colon = trimmed.lastIndexOf(":");
-	if (colon <= 0) return { name: trimmed };
-	return {
-		name: trimmed.slice(0, colon),
-		version: trimmed.slice(colon + 1),
-	};
-}
-
-export function buildOllamaModelPurl(input: {
-	readonly tag: string;
-	readonly host?: string;
-	readonly via?: string;
-}): string {
-	const { name, version } = splitOllamaTag(input.tag);
-	const host = hostQualifier(input.host ?? DEFAULT_OLLAMA_HOST);
-	const q: string[] = [];
-	if (input.via) q.push(`via=${encodeQualifier(input.via)}`);
-	q.push(`host=${encodeQualifier(host)}`);
-	const namePath = version ? `${name}@${version}` : name;
-	return `pkg:ollama/${namePath}?${q.join("&")}`;
-}
-
-export function buildProviderModelPurl(input: {
-	readonly type: string;
-	readonly name: string;
-	readonly version?: string;
-	readonly via: string;
-	readonly extra?: Readonly<Record<string, string>>;
-}): string {
-	const namePath = input.version
-		? `${input.name}@${input.version}`
-		: input.name;
-	const q = [`via=${encodeQualifier(input.via)}`];
-	if (input.extra) {
-		for (const [key, value] of Object.entries(input.extra)) {
-			q.push(`${key}=${encodeQualifier(value)}`);
-		}
-	}
-	return `pkg:${input.type}/${namePath}?${q.join("&")}`;
-}
-
-export function parseModelPurl(purl: string): ParsedModelPurl | null {
-	const m = /^pkg:([a-z0-9][a-z0-9.-]*)\/([^?@]+)(?:@([^?]+))?(?:\?(.*))?$/iu.exec(
-		purl.trim(),
-	);
-	if (!m) return null;
-	const qualifiers: Record<string, string> = {};
-	if (m[4]) {
-		for (const part of m[4].split("&")) {
-			const eq = part.indexOf("=");
-			if (eq <= 0) continue;
-			qualifiers[decodeURIComponent(part.slice(0, eq))] = decodeURIComponent(
-				part.slice(eq + 1),
-			);
-		}
-	}
-	return {
-		type: m[1]!.toLowerCase(),
-		name: decodeURIComponent(m[2]!),
-		...(m[3] ? { version: decodeURIComponent(m[3]) } : {}),
-		qualifiers,
-	};
-}
-
-/** Map a stored PURL back to the runtime model id used by engines / seat CLIs. */
-export function runtimeModelFromPurl(purl: string): string {
-	const parsed = parseModelPurl(purl);
-	if (!parsed) return purl;
-	const tag =
-		parsed.version !== undefined
-			? `${parsed.name}:${parsed.version}`
-			: parsed.name;
-	if (parsed.type === "ollama") return `ollama/${tag}`;
-	return tag;
-}
-
-function guessPurlType(runtimeId: string): string {
+function guessProvider(runtimeId: string): string {
 	const lower = runtimeId.toLowerCase();
 	if (lower.startsWith("ollama/")) return "ollama";
 	if (lower.startsWith("anthropic/") || lower.startsWith("claude")) {
@@ -140,6 +90,8 @@ function guessPurlType(runtimeId: string): string {
 	if (lower.startsWith("openrouter/")) return "openrouter";
 	if (lower.startsWith("azure/")) return "openai";
 	if (lower.startsWith("openai/")) return "openai";
+	if (lower.startsWith("cursor/")) return "cursor";
+	if (lower.startsWith("copilot/")) return "copilot";
 	return "openai";
 }
 
@@ -158,11 +110,42 @@ function stripProviderPrefix(runtimeId: string): string {
 			"openrouter",
 			"azure",
 			"local",
+			"cursor",
+			"copilot",
+			"opencode",
 		].includes(prefix)
 	) {
 		return runtimeId.slice(i + 1);
 	}
 	return runtimeId;
+}
+
+export function makeModelOffer(input: {
+	readonly provider: string;
+	readonly model: string;
+	readonly runtimeId: string;
+	readonly label: string;
+	readonly source: BoModelSource;
+	readonly via?: string;
+	readonly baseUrl?: string;
+	readonly host?: string;
+	readonly harnessId?: string;
+}): BoModelOffer {
+	const provider = input.provider.toLowerCase();
+	const model = input.model;
+	return {
+		schema: BO_MODEL_CATALOG_SCHEMA,
+		id: buildModelId(provider, model),
+		provider,
+		model,
+		label: input.label,
+		runtimeId: input.runtimeId,
+		source: input.source,
+		...(input.via !== undefined ? { via: input.via } : {}),
+		...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl } : {}),
+		...(input.host !== undefined ? { host: input.host } : {}),
+		...(input.harnessId !== undefined ? { harnessId: input.harnessId } : {}),
+	};
 }
 
 function offerFromHarness(
@@ -173,27 +156,27 @@ function offerFromHarness(
 	if (!trimmed) return null;
 	if (trimmed.toLowerCase().startsWith("ollama/")) {
 		const tag = trimmed.slice("ollama/".length);
-		const purl = buildOllamaModelPurl({ tag, via: harnessId });
-		return {
-			schema: BO_MODEL_CATALOG_SCHEMA,
-			purl,
-			label: `${tag} · ${harnessId}`,
+		return makeModelOffer({
+			provider: "ollama",
+			model: tag,
 			runtimeId: trimmed,
+			label: `${tag} · ${harnessId}`,
 			source: "harness",
+			via: harnessId,
 			harnessId,
-		};
+		});
 	}
-	const name = stripProviderPrefix(trimmed);
-	const type = guessPurlType(trimmed);
-	const purl = buildProviderModelPurl({ type, name, via: harnessId });
-	return {
-		schema: BO_MODEL_CATALOG_SCHEMA,
-		purl,
-		label: `${name} · ${harnessId}`,
+	const model = stripProviderPrefix(trimmed);
+	const provider = guessProvider(trimmed);
+	return makeModelOffer({
+		provider,
+		model,
 		runtimeId: trimmed,
+		label: `${model} · ${harnessId}`,
 		source: "harness",
+		via: harnessId,
 		harnessId,
-	};
+	});
 }
 
 function listSavedHarnessIds(hoboHome: string): string[] {
@@ -227,22 +210,26 @@ export function listBoModelOffers(
 	input: ListBoModelOffersInput,
 ): readonly BoModelOffer[] {
 	const env = input.env ?? process.env;
-	const byPurl = new Map<string, BoModelOffer>();
+	const byKey = new Map<string, BoModelOffer>();
 	const add = (offer: BoModelOffer | null | undefined) => {
 		if (!offer) return;
-		if (!byPurl.has(offer.purl)) byPurl.set(offer.purl, offer);
+		const key = offerKey(offer);
+		if (!byKey.has(key)) byKey.set(key, offer);
 	};
 
 	const ollamaHost = input.ollama?.host ?? env.OLLAMA_HOST ?? DEFAULT_OLLAMA_HOST;
+	const ollamaHostKey = hostQualifier(ollamaHost);
 	for (const tag of input.ollama?.models ?? []) {
-		const purl = buildOllamaModelPurl({ tag, host: ollamaHost });
-		add({
-			schema: BO_MODEL_CATALOG_SCHEMA,
-			purl,
-			label: `${tag} · ollama`,
-			runtimeId: `ollama/${tag}`,
-			source: "ollama",
-		});
+		add(
+			makeModelOffer({
+				provider: "ollama",
+				model: tag,
+				runtimeId: `ollama/${tag}`,
+				label: `${tag} · ollama`,
+				source: "ollama",
+				host: ollamaHostKey,
+			}),
+		);
 	}
 
 	const harnessIds = new Set([
@@ -260,27 +247,30 @@ export function listBoModelOffers(
 	if (active) {
 		if (active.toLowerCase().startsWith("ollama/")) {
 			const tag = active.slice("ollama/".length);
-			add({
-				schema: BO_MODEL_CATALOG_SCHEMA,
-				purl: buildOllamaModelPurl({
-					tag,
+			add(
+				makeModelOffer({
+					provider: "ollama",
+					model: tag,
+					runtimeId: active,
+					label: `${tag} · HOBO_CODE_MODEL`,
+					source: "env",
+					via: "env",
 					host: "active",
+				}),
+			);
+		} else {
+			const model = stripProviderPrefix(active);
+			const provider = guessProvider(active);
+			add(
+				makeModelOffer({
+					provider,
+					model,
+					runtimeId: active,
+					label: `${model} · HOBO_CODE_MODEL`,
+					source: "env",
 					via: "env",
 				}),
-				label: `${tag} · HOBO_CODE_MODEL`,
-				runtimeId: active,
-				source: "env",
-			});
-		} else {
-			const name = stripProviderPrefix(active);
-			const type = guessPurlType(active);
-			add({
-				schema: BO_MODEL_CATALOG_SCHEMA,
-				purl: buildProviderModelPurl({ type, name, via: "env" }),
-				label: `${name} · HOBO_CODE_MODEL`,
-				runtimeId: active,
-				source: "env",
-			});
+			);
 		}
 	}
 
@@ -294,32 +284,42 @@ export function listBoModelOffers(
 			active && !active.toLowerCase().startsWith("ollama/")
 				? active
 				: "local-coder";
-		const name = stripProviderPrefix(runtimeId);
-		add({
-			schema: BO_MODEL_CATALOG_SCHEMA,
-			purl: buildProviderModelPurl({
-				type: "openai",
-				name,
+		const model = stripProviderPrefix(runtimeId);
+		add(
+			makeModelOffer({
+				provider: "openai",
+				model,
+				runtimeId,
+				label: `${model} · ${hostQualifier(baseUrl)}`,
+				source: "openai-compatible",
 				via: "openai-compatible",
-				extra: { base_url: baseUrl },
+				baseUrl,
 			}),
-			label: `${name} · ${hostQualifier(baseUrl)}`,
-			runtimeId,
-			source: "openai-compatible",
-		});
+		);
 	}
 
-	return [...byPurl.values()].sort((a, b) => a.purl.localeCompare(b.purl));
+	return [...byKey.values()].sort((a, b) =>
+		offerKey(a).localeCompare(offerKey(b)),
+	);
 }
 
 export function findOfferIndex(
 	offers: readonly BoModelOffer[],
 	model: string,
-	modelPurl?: string,
+	modelId?: string,
+	via?: string,
+	baseUrl?: string,
 ): number {
-	if (modelPurl) {
-		const byPurl = offers.findIndex((row) => row.purl === modelPurl);
-		if (byPurl >= 0) return byPurl;
+	if (modelId) {
+		const byId = offers.findIndex(
+			(row) =>
+				row.id === modelId &&
+				(via === undefined || row.via === via) &&
+				(baseUrl === undefined || row.baseUrl === baseUrl),
+		);
+		if (byId >= 0) return byId;
+		const byIdOnly = offers.findIndex((row) => row.id === modelId);
+		if (byIdOnly >= 0) return byIdOnly;
 	}
 	const trimmed = model.trim();
 	if (!trimmed) return 0;

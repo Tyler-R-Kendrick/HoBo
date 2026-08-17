@@ -1013,6 +1013,7 @@ ADR-0038's adapter spectrum has hosted IdPs (WorkOS · Auth0 · Supabase Auth ·
 ### Non-goals
 - Not a hosted IdP and not an ADR-0038 replacement; the port, principal model, and policy-plane authz are unchanged.
 - No commitment to Better Auth plugin parity — plugins surface where they compose with the port; gaps are documented impedance (ADR-0144), not shims.
+- **Not a vendored auth server.** The adapter's implementable surface is the registered adapter descriptor, config parse (parse-don't-validate), the versioned claims→principal mapping, the declared port requirements (relational store, brokered secret, route mount), and the conformance suite that proves the mapping. Executing Better Auth's runtime is declared by the bundle and gated on the dependency being present — it fails closed with remediation rather than degrading, and this ADR must not be read as shipping a running auth service.
 
 ### Consequences
 - **(+)** Self-hosters get real auth (orgs, OAuth, sessions) with zero SaaS dependency and zero pasted secrets, one declaration away.

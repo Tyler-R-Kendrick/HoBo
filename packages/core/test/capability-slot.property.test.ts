@@ -103,7 +103,7 @@ const hiddenCredentialArb = fc
 		for (const [key, insideArray] of wrappers) {
 			node = insideArray ? { [key]: [null, node] } : { [key]: node };
 		}
-		return node as Record<string, unknown>;
+		return { credentialKey, properties: node as Record<string, unknown> };
 	});
 
 const inputArb = fc
@@ -153,12 +153,13 @@ function reverseKeyOrder(value: unknown): unknown {
 	return out;
 }
 
-function codeOf(fn: () => unknown): string {
+function refusalOf(fn: () => unknown): { code: string; message: string } {
 	try {
 		fn();
-		return "NO_THROW";
+		return { code: "NO_THROW", message: "" };
 	} catch (error) {
-		return (error as { code?: string }).code ?? "NO_CODE";
+		const failure = error as { code?: string; message?: string };
+		return { code: failure.code ?? "NO_CODE", message: failure.message ?? "" };
 	}
 }
 
@@ -177,18 +178,25 @@ describe("slotBinding is a total, canonical parse boundary", () => {
 
 	it("refuses a credential-shaped key at any depth", () => {
 		fc.assert(
-			fc.property(slotArb, hiddenCredentialArb, (slot, properties) => {
-				expect(
-					codeOf(() =>
+			fc.property(
+				slotArb,
+				hiddenCredentialArb,
+				(slot, { credentialKey, properties }) => {
+					const { code, message } = refusalOf(() =>
 						slotBinding({
 							slot,
 							profile: "data.postgres/v1",
 							productId: "aws.rds-postgres/v1",
 							properties,
 						}),
-					),
-				).toBe("SLOT_BINDING_CREDENTIAL_PROPERTY");
-			}),
+					);
+					expect(code).toBe("SLOT_BINDING_CREDENTIAL_PROPERTY");
+					// The refusal must name the offending key and the fix, not
+					// just fail: a code with an empty message is not remediation.
+					expect(message).toContain(credentialKey);
+					expect(message).toContain("secretRef");
+				},
+			),
 			{ seed: SEED, numRuns: RUNS },
 		);
 	});

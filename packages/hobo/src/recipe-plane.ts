@@ -268,6 +268,13 @@ export function listRecipeSummaries(): readonly RecipeSummary[] {
 	return STANDARD_SOLUTION_RECIPES.map(summarizeRecipe);
 }
 
+/**
+ * Re-exported so callers that must name the type — a `let` awaiting a
+ * `requireRecipe` call inside a try, for instance — can do so without
+ * reaching past this plane into `@hobo/recipes` directly.
+ */
+export type { SolutionRecipe };
+
 export function requireRecipe(recipeId: string): SolutionRecipe {
 	const recipe = findStandardRecipe(recipeId);
 	if (recipe === undefined) {

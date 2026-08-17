@@ -13,10 +13,10 @@ import { describe, expect, it } from "vitest";
 
 import {
 	CAPABILITY_SLOTS,
-	RESOLVER_ACTIONS,
-	RESOLVER_CONTRACT,
 	parseResolveOutcome,
 	parseResolveRequest,
+	RESOLVER_ACTIONS,
+	RESOLVER_CONTRACT,
 } from "../src/index.js";
 
 /** Fixed seed: a counterexample found here is reproducible verbatim. */
@@ -94,7 +94,7 @@ const hiddenCredentialBagArb = fc
 		for (const [key, insideArray] of wrappers) {
 			node = insideArray ? { [key]: [null, node] } : { [key]: node };
 		}
-		return node as Record<string, unknown>;
+		return { credentialKey, bag: node as Record<string, unknown> };
 	});
 
 const refArb = fc.record({
@@ -206,9 +206,13 @@ describe("the resolver credential law holds over generated input", () => {
 	it("refuses every value-shaped credentialRef", () => {
 		fc.assert(
 			fc.property(refusedLocatorArb, ({ value }) => {
-				expect(refusalOf(() => parseResolveRequest(request({ credentialRef: value }))).code).toBe(
-					"RESOLVER_CREDENTIAL_NOT_A_REF",
+				const { code, message } = refusalOf(() =>
+					parseResolveRequest(request({ credentialRef: value })),
 				);
+				expect(code).toBe("RESOLVER_CREDENTIAL_NOT_A_REF");
+				// The refusal names the fix without naming the material.
+				expect(message).toContain("credentialRef");
+				expect(message).toContain("locator");
 			}),
 			{ seed: SEED, numRuns: RUNS },
 		);
@@ -232,13 +236,16 @@ describe("the resolver credential law holds over generated input", () => {
 			fc.property(
 				hiddenCredentialBagArb,
 				fc.boolean(),
-				(bag, inObserved) => {
+				({ credentialKey, bag }, inObserved) => {
 					const overrides = inObserved
 						? { desired: {}, observed: bag }
 						: { desired: bag };
-					expect(
-						refusalOf(() => parseResolveRequest(request(overrides))).code,
-					).toBe("RESOLVER_CREDENTIAL_NOT_A_REF");
+					const { code, message } = refusalOf(() =>
+						parseResolveRequest(request(overrides)),
+					);
+					expect(code).toBe("RESOLVER_CREDENTIAL_NOT_A_REF");
+					expect(message).toContain(credentialKey);
+					expect(message).toContain(inObserved ? "observed" : "desired");
 				},
 			),
 			{ seed: SEED, numRuns: RUNS },
@@ -250,11 +257,13 @@ describe("the resolver credential law holds over generated input", () => {
 			fc.property(
 				hiddenCredentialBagArb,
 				fc.constantFrom(...RESOLVER_ACTIONS),
-				(outputs, action) => {
-					expect(
-						refusalOf(() => parseResolveOutcome(outcome({ action, outputs })))
-							.code,
-					).toBe("RESOLVER_CREDENTIAL_NOT_A_REF");
+				({ credentialKey, bag }, action) => {
+					const { code, message } = refusalOf(() =>
+						parseResolveOutcome(outcome({ action, outputs: bag })),
+					);
+					expect(code).toBe("RESOLVER_CREDENTIAL_NOT_A_REF");
+					expect(message).toContain(credentialKey);
+					expect(message).toContain("outputs");
 				},
 			),
 			{ seed: SEED, numRuns: RUNS },

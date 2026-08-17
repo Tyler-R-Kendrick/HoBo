@@ -19,13 +19,13 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import {
+	guardTransport,
 	type HttpTransport,
-	type TransportGuardPolicy,
 	TRANSPORT_GUARD_ERROR_CODES,
 	TRANSPORT_METHODS,
 	TransportGuardError,
+	type TransportGuardPolicy,
 	type TransportRequest,
-	guardTransport,
 } from "../src/index.js";
 
 /** Fixed seed: a counterexample found here is reproducible verbatim. */
@@ -391,9 +391,7 @@ describe("guardTransport never reaches an origin the policy forbids", () => {
 						).toBe(true);
 					}
 					expect(timeoutMs).toBeLessThanOrEqual(POLICY.maxTimeoutMs);
-					expect(maxResponseBytes).toBeLessThanOrEqual(
-						POLICY.maxResponseBytes,
-					);
+					expect(maxResponseBytes).toBeLessThanOrEqual(POLICY.maxResponseBytes);
 				},
 			),
 			{ seed: SEED, numRuns: RUNS },

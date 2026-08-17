@@ -30,6 +30,7 @@ import {
 } from "./bare-metal-yard.js";
 import {
 	type BrokerDiscoveryClient,
+	type BrokerDiscoveryDocument,
 	BrokerDiscoveryError,
 	createBrokerDiscoveryClient,
 } from "./broker-discovery.js";
@@ -201,7 +202,7 @@ export function createBrokerAwareUpCommand(
 									{}),
 					});
 
-				let discovery;
+				let discovery: BrokerDiscoveryDocument;
 				try {
 					discovery = await client.discover();
 				} catch (error) {

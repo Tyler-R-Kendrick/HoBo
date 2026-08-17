@@ -15,10 +15,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import {
-	parseYardBindings,
-	type YardBindingInput,
-} from "../src/index.js";
+import { parseYardBindings, type YardBindingInput } from "../src/index.js";
 
 /** Fixed seed: a counterexample found here is reproducible verbatim. */
 const SEED = 20260817;
@@ -105,12 +102,13 @@ function grammarAccepts(value: string): boolean {
 	return true;
 }
 
-function codeOf(fn: () => unknown): string {
+function refusalOf(fn: () => unknown): { code: string; message: string } {
 	try {
 		fn();
-		return "NO_THROW";
+		return { code: "NO_THROW", message: "" };
 	} catch (error) {
-		return (error as { code?: string }).code ?? "NO_CODE";
+		const failure = error as { code?: string; message?: string };
+		return { code: failure.code ?? "NO_CODE", message: failure.message ?? "" };
 	}
 }
 
@@ -161,9 +159,12 @@ describe("parseYardBindings treats rows as a set", () => {
 					};
 					const withDuplicate = [...rows];
 					withDuplicate.splice(insertSeed % (rows.length + 1), 0, duplicate);
-					expect(codeOf(() => parseYardBindings(withDuplicate))).toBe(
-						"YARD_BINDING_DUPLICATE",
+					const { code, message } = refusalOf(() =>
+						parseYardBindings(withDuplicate),
 					);
+					expect(code).toBe("YARD_BINDING_DUPLICATE");
+					// A refusal that does not name the colliding row is not a fix.
+					expect(message).toContain(source.profile);
 				},
 			),
 			{ seed: SEED, numRuns: RUNS },
@@ -176,9 +177,10 @@ describe("parseYardBindings treats rows as a set", () => {
 				const empty: YardBindingInput = { profile };
 				const withEmpty = [...rows];
 				withEmpty.splice(at % (rows.length + 1), 0, empty);
-				expect(codeOf(() => parseYardBindings(withEmpty))).toBe(
-					"YARD_BINDING_EMPTY_CONSTRAINT",
-				);
+				const { code, message } = refusalOf(() => parseYardBindings(withEmpty));
+				expect(code).toBe("YARD_BINDING_EMPTY_CONSTRAINT");
+				expect(message).toContain(profile);
+				expect(message).toContain("productId");
 			}),
 			{ seed: SEED, numRuns: RUNS },
 		);
@@ -203,7 +205,7 @@ describe("parseYardBindings treats rows as a set", () => {
 		let refusedCount = 0;
 		fc.assert(
 			fc.property(profileArb, (profile) => {
-				const code = codeOf(() =>
+				const { code, message } = refusalOf(() =>
 					parseYardBindings([{ profile, productId: "aws:rds-postgres" }]),
 				);
 				if (grammarAccepts(profile)) {
@@ -212,6 +214,7 @@ describe("parseYardBindings treats rows as a set", () => {
 				} else {
 					refusedCount += 1;
 					expect(code).toBe("YARD_BINDING_PROFILE_INVALID");
+					expect(message).toContain(JSON.stringify(profile));
 				}
 			}),
 			{ seed: SEED, numRuns: RUNS },

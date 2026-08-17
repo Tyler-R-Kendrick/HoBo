@@ -16,11 +16,12 @@
 		<p>This web app is bound to the API. Ask it for a greeting at <code>/hello</code>.</p>
 		<p>
 			<input id="name" placeholder="your name" />
-			<button onclick="greet()">greet</button>
+			<button type="button" onclick="greet()">greet</button>
 		</p>
 		<div id="out"></div>
 		<p style="margin-top:2rem;color:#888;font-size:0.85rem">Deployed by HoBo — the app's provider-agnostic bindle, realized on Vercel.</p>
 		<script>
+			// biome-ignore lint/correctness/noUnusedVariables: invoked by the button's onclick attribute above, which the linter cannot link.
 			async function greet() {
 				const name = document.getElementById('name').value;
 				const r = await fetch('/hello' + (name ? ('?name=' + encodeURIComponent(name)) : ''));

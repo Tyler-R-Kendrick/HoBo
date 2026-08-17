@@ -1,7 +1,7 @@
 /**
  * `/agents` configure form — model + effort for a harness or Bo subagent.
- * HoBo Bo / subagents pick from the Bo model catalog (PURL identity); harness
- * rows stay free-text unless offers are injected.
+ * HoBo Bo / subagents pick from the Bo model catalog; coding harnesses pick
+ * from per-provider catalogs (`harness-model-catalog`).
  */
 import {
 	createProjectEveAgent,
@@ -14,6 +14,7 @@ import {
 	listBoModelOffers,
 	type ListBoModelOffersInput,
 } from "./bo-model-catalog.js";
+import { listHarnessModelOffers } from "./harness-model-catalog.js";
 import {
 	type EffortLevel,
 	cycleEffort,
@@ -133,7 +134,7 @@ export function openHarnessConfigure(
 	hoboHome: string,
 	harnessId: string,
 	label: string,
-	catalog?: AgentsConfigureCatalogOptions,
+	_catalog?: AgentsConfigureCatalogOptions,
 ): AgentsConfigureState {
 	const loaded = loadHarnessSettings(hoboHome, harnessId, "harness");
 	return withModelSelection({
@@ -143,7 +144,8 @@ export function openHarnessConfigure(
 		effort: loaded.effort,
 		field: "model",
 		eveCursor: 0,
-		modelOffers: loadBoOffers(hoboHome, catalog),
+		// Provider-real models only — never the Bo/ollama catalog.
+		modelOffers: listHarnessModelOffers(harnessId),
 		dirty: false,
 		createDraft: "",
 		createError: "",
@@ -254,8 +256,14 @@ export function formatAgentsConfigureLines(
 		lines.push(`          ${offer.purl}`);
 	}
 	if (ready.field === "model" && ready.modelOffers.length > 0) {
+		const scope =
+			ready.target.kind === "harness"
+				? ready.target.label
+				: ready.target.kind === "hobo-bo"
+					? "Bo"
+					: "subagent";
 		lines.push(
-			`          ←→ ${ready.modelCursor + 1}/${ready.modelOffers.length} Bo models`,
+			`          ←→ ${ready.modelCursor + 1}/${ready.modelOffers.length} ${scope} models`,
 		);
 	}
 	lines.push(`${effortMark} effort  ${ready.effort}`);

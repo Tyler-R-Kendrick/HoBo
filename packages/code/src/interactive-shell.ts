@@ -2312,7 +2312,6 @@ function applyAgentsCatalogPick(
 					state.hoboHome,
 					pick.harnessId,
 					pick.label,
-					catalog,
 				),
 			},
 		};

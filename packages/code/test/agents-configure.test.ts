@@ -283,17 +283,17 @@ describe("agents-configure", () => {
 		saveHarnessSettings(home, {
 			schema: "hobo.code.harness-settings/v1",
 			id: "codex",
-			model: "gpt-5",
+			model: "gpt-5.6-sol",
 			effort: "medium",
 		});
 		let state = openHoboBoConfigure(home, [], {
-			env: { OPENAI_API_KEY: "sk", AZURE_OPENAI_API_KEY: "az" },
+			env: {},
 			ollama: {
 				host: "http://127.0.0.1:11434",
 				models: ["qwen2.5-coder:7b"],
 			},
 		});
-		expect(state.modelOffers.length).toBeGreaterThan(2);
+		expect(state.modelOffers.length).toBeGreaterThan(0);
 		expect(state.field).toBe("model");
 		const first = state.modelOffers[state.modelCursor]!;
 		state = press(state, "\x1b[C", home, project);
@@ -303,7 +303,7 @@ describe("agents-configure", () => {
 		);
 		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(/pkg:/);
 
-		// Create Eve then open — same catalog for Eve configure
+		// Create subagent then open — same Bo catalog for subagent configure
 		state = press(state, "\t", home, project);
 		state = press(state, "\t", home, project);
 		state = press(state, "\r", home, project);
@@ -330,24 +330,41 @@ describe("agents-configure", () => {
 		}
 	});
 
-	it("gpt-5 via codex and via azure stay distinct selectable purls", () => {
+	it("Codex harness configure uses Codex models — never ollama", () => {
+		const home = tmp();
+		let state = openHarnessConfigure(home, "codex", "Codex");
+		expect(state.modelOffers.length).toBeGreaterThan(0);
+		expect(
+			state.modelOffers.every((row) => !row.purl.startsWith("pkg:ollama/")),
+		).toBe(true);
+		expect(
+			state.modelOffers.some((row) => row.runtimeId === "gpt-5.6-sol"),
+		).toBe(true);
+		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(
+			/Codex models/,
+		);
+		const first = state.modelOffers[state.modelCursor]!.purl;
+		state = press(state, "\x1b[C", home);
+		expect(state.modelPurl).not.toBe(first);
+		expect(state.modelPurl).toContain("via=codex");
+	});
+
+	it("saved harness model appears in Bo catalog with via=harness provenance", () => {
 		const home = tmp();
 		saveHarnessSettings(home, {
 			schema: "hobo.code.harness-settings/v1",
 			id: "codex",
-			model: "gpt-5",
+			model: "gpt-5.6-sol",
 			effort: "medium",
 		});
 		const state = openHoboBoConfigure(home, [], {
-			env: { AZURE_OPENAI_API_KEY: "az" },
+			env: {},
 			ollama: { host: "http://127.0.0.1:11434", models: [] },
 		});
-		const gpt = state.modelOffers.filter((row) =>
-			row.purl.includes("pkg:openai/gpt-5"),
-		);
-		expect(gpt.map((row) => row.purl).sort()).toEqual([
-			"pkg:openai/gpt-5?via=azure",
-			"pkg:openai/gpt-5?via=codex",
-		]);
+		expect(
+			state.modelOffers.some(
+				(row) => row.purl === "pkg:openai/gpt-5.6-sol?via=codex",
+			),
+		).toBe(true);
 	});
 });

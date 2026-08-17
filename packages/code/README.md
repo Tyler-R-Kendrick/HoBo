@@ -327,9 +327,11 @@ Bo subagents live under `.hobo/agents/<id>/` (instructions + optional nested
 lists them under Hobo Bo. HoBo Bo configure always shows `+ create subagent`
 (even when the list is empty) — Enter, type a lowercase id, Enter again writes
 `.hobo/agents/<id>/instructions.md` and opens that agent. Model pick for Bo /
-subagents uses the Bo catalog (local ollama tags, configured harness models,
-BYOK seeds, `OPENAI_BASE_URL` locals). Each offer has a Package-URL (`pkg:…`) so
-`gpt-5` via Codex ≠ `gpt-5` via Azure. ←→ cycles offers; type for custom.
+subagents uses the Bo catalog (local ollama tags, saved harness models as
+provenance, `OPENAI_BASE_URL` locals). Coding harnesses (Codex, Claude, …)
+use a **separate** per-provider catalog of real CLI model ids — never ollama
+tags or invented BYOK seeds. Each offer has a Package-URL (`pkg:…`) so
+provenance stays explicit. ←→ cycles offers; type for custom.
 They also register at `/agents/<id>` in the virtual filesystem. A seated CLI
 can `ls /agents`. Bo still does not write app code.
 

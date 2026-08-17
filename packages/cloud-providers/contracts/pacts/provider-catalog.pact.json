@@ -57,12 +57,12 @@
         "status": 200,
         "body": {
           "provider": "azure",
-          "count": 4,
+          "profile": "web.hosted/v1",
+          "count": 3,
           "productIds": [
-            "azure.aks-deployment/v1",
+            "azure.aks/v1",
             "azure.app-service/v1",
-            "azure.container-apps/v1",
-            "azure.static-web-apps/v1"
+            "azure.container-apps/v1"
           ]
         }
       }
@@ -151,7 +151,7 @@
       "response": {
         "status": 422,
         "body": {
-          "code": "SLOT_BINDING_CREDENTIAL_PROPERTY",
+          "code": "YARD_BINDING_CREDENTIAL_PROPERTY",
           "remediation": "properties carry provider-native locators only; store the material in secret custody and reference it"
         }
       }

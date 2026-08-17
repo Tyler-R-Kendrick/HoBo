@@ -161,7 +161,9 @@ describe("provider-catalog pact (consumer: @hobo/cloud-providers)", () => {
 			};
 			expect(interaction.request.method).toBe("GET");
 			expect(interaction.response.status).toBe(200);
-			expect(interaction.request.path).toContain(`/providers/${body.provider}/`);
+			expect(interaction.request.path).toContain(
+				`/providers/${body.provider}/`,
+			);
 
 			const named = PROVIDERS[body.provider];
 			expect(
@@ -225,7 +227,10 @@ describe("provider-catalog pact (consumer: @hobo/cloud-providers)", () => {
 			expect(interaction.request.path).toContain(`profile=${body.profile}`);
 
 			const named = PROVIDERS[body.provider];
-			expect(named, `pact pins unknown provider "${body.provider}"`).toBeDefined();
+			expect(
+				named,
+				`pact pins unknown provider "${body.provider}"`,
+			).toBeDefined();
 			if (named === undefined) return;
 
 			const rows = named

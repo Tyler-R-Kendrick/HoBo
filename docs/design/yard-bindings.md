@@ -77,6 +77,20 @@ One surface, two provenances (`default` vs `declared`) — first-run and product
 
 The harness's honesty rule is load-bearing: `runtime-local` does not execute real `.wasm` bytes today, so the in-process lane boots the collected graph with local binding resolution and simulated resources, and **every handle carries an ADR-0042 fidelity attestation** (`real | simulated | mocked | camp-only`). A suite resting on `mocked` handles reports a coverage split, never a bare green tick — anything else would re-commit the overclaim GAP-026 exists to prevent. The ephemeral-Camp lane requires an explicit Yard plus credentials and **fails closed** rather than degrading into the in-process lane. Local-dev inner-loop latency and dashboard depth stay owned by [Plan 7](./developer-experience.md#plan-07)/ADR-0109; estate state stays the event-sourced control plane (ADR-0135) — Alchemy's remote state store (DO+SQLite, encrypted, CI-friendly) is noted in the capture as the bar for a hosted state backend, already satisfied structurally by pluggable `EventStore` adapters gated by conformance.
 
+### 5.1 Test depth, measured rather than asserted
+
+The fidelity rule above says how honest a *handle* is. It says nothing about how honest the *suite* is, and those are different claims. Two measurements were added to answer the second one, because neither existed:
+
+**Coverage.** `coverage` was disabled repo-wide with no provider installed, so no coverage number existed to cite. With one installed, the parse boundaries this tranche added measure 95.6% statements / 92.0% branches in `@hobo/core`, 93.9%/80.0% for the Cloudflare resolver plane, and 90.1%/87.3% for `@hobo/yards`. `pnpm run test:coverage` reproduces it.
+
+**Mutation.** There was no mutation tooling anywhere in the repo. `pnpm run test:mutation` now runs Stryker against the three parse boundaries that guard credentials, transport reach, and canonical ordering, and the first run scored **64.2%** — `capability-slot.ts` 77.6%, `resource-resolver.ts` 64.6%, `http-transport.ts` 51.6%.
+
+That gap is the point. Line coverage says a test *executed* a line; a mutation score says a test would *notice* if that line changed, and 95% against 64% means a substantial share of these lines are executed without being asserted on. The survivors were specific and actionable rather than diffuse: the transport guard's own policy validation could be deleted wholesale without a failure (nothing exercised a malformed policy), its UTF-8 byte counter could have its arithmetic negated and its surrogate branches removed (so the `maxResponseBytes` bound was unverified for any non-ASCII body), and error codes could be replaced with empty strings throughout — the suites asserted *that* a refusal happened, not *what* it carried, in a codebase whose whole refusal contract is that every refusal names a code and a remediation.
+
+Scope is deliberate on both: mutating all of `@hobo/core` takes far longer than a developer will wait, and a gate nobody runs is not a gate. The break threshold is set at the score already achieved rather than at an aspiration, for the same reason — a threshold nobody can pass gets deleted, not met.
+
+**What is still absent, stated plainly.** There is no chaos-testing lane: `@hobo/sdk`'s `chaos()` is an authoring factory for chaos *declarations*, not a suite that injects failure into this code. And the root `test:contract` script globs only `src/draft/**`, so no `packages/**` contract test is reachable from it even where one exists.
+
 ## 6. Default Yards and the direct-HTTP resolver plane
 
 The Yard vocabulary above is authored through one import per cloud. `@hobo/cloud-providers` exposes a namespace per provider, each with a `Yard()` returning that provider's full allocatable catalog, alongside the typed slot factories the catalog is built from:

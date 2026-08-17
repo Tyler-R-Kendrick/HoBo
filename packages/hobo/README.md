@@ -32,6 +32,7 @@ a live cloud apply. Selection lives in `src/compose.ts` (`selectIacProvider`):
 |---|---|
 | In-memory Pulumi stand-in | **Default** (no special env) |
 | Real Pulumi Automation/CLI | `HOBO_PULUMI_LIVE=1` (engine- and credential-gated) |
+| Direct-HTTP resolver plane | a cloud credential **plus** `HOBO_DEPLOY_RESOLVERS=1` (opt-in) |
 | Live Cloudflare Workers | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
 | Live Vercel | `VERCEL_TOKEN` |
 
@@ -131,3 +132,113 @@ Discovery reports **evidence**, not working capability. Specifically:
 - **No substrate row means HoBo executes there.** Only the `process`/`wsl2` rows
   (inherited from the seed) are backed by an executor in this repo; everything
   else is `simulated` or `camp-only` on purpose.
+
+## Resolver-backed deploy lane (`src/resolver-iac-provider.ts`)
+
+`@hobo/core`'s `hobo.resource-resolver/v1` plane calls provider REST APIs
+directly — no IaC engine, no state file. Until this module existed it stood
+*beside* the deploy path rather than behind it: `cloudflareResolverRegistry()`
+and `vercelResolverRegistry()` were reachable from a test and from nothing else.
+`createResolverBackedIacProvider()` puts the plane behind `@hobo/cloud`'s
+`IacProvider` port, so `hobo up` / `down` / `drift` can drive it.
+
+```ts
+import {
+  createFetchHttpTransport,
+  createResolverBackedIacProvider,
+} from "@hobo/hobo";
+import {
+  cloudflareResolverRegistry,
+  guardedCloudflareTransport,
+} from "@hobo/provider-cloudflare";
+
+const iac = createResolverBackedIacProvider({
+  store,                        // the durable store holding `deployment.Planned`
+  registry: cloudflareResolverRegistry({ accountId, resolveCredential }),
+  transport: guardedCloudflareTransport(
+    createFetchHttpTransport(globalThis.fetch),
+  ),
+  credentialRef: "hobo-token://cloudflare/api-token", // a LOCATOR, never material
+});
+```
+
+`IacProgram` is a thin execution descriptor and carries no desired state, so —
+exactly like `src/pulumi-iac-provider.ts` — desired state is **recovered from the
+durable `deployment.Planned` fact**, never fabricated: the plan node's
+`productId` keys the resolver lookup (ADR-0157) and its `realizationParameters`
+become `ResolveRequest.desired`.
+
+### Selection precedence (`selectIacProvider`)
+
+1. an explicit Pulumi `adapter` override, or `HOBO_PULUMI_LIVE=1` → the Pulumi
+   lane (unchanged);
+2. no cloud credential at all → the in-memory Pulumi stand-in (unchanged);
+3. a cloud credential **plus `HOBO_DEPLOY_RESOLVERS=1`** → the resolver plane
+   (Cloudflare when `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` are set,
+   else Vercel when `VERCEL_TOKEN` is);
+4. otherwise → today's Cloudflare Workers / Vercel deploy providers (unchanged).
+
+The lane is **opt-in and sits inside the cred-gated bracket**: it can only
+replace the two bespoke deploy providers, never the Pulumi lanes and never the
+credential-free default. Silently swapping someone's deploy backend on an
+upgrade is a behaviour change nobody asked for, so the env switch is required.
+
+### Fail-closed refusals (`ResolverIacError`, each with a `remediation`)
+
+| Code | Fires when |
+|---|---|
+| `RESOLVER_IAC_PLAN_MISSING` | the deployment stream carries no `deployment.Planned` fact |
+| `RESOLVER_IAC_RESOURCE_UNPLANNED` | the stored plan has no resource by that name |
+| `RESOLVER_IAC_PRODUCT_UNDECIDED` | the plan node carries no `productId` |
+| `RESOLVER_IAC_SLOT_UNDECIDED` | the node's capability port is outside the slot vocabulary |
+| `RESOLVER_IAC_PRODUCT_UNREGISTERED` | no resolver is registered for that product |
+| `RESOLVER_IAC_OUTPUT_RESERVED_KEY` | a resolver output would collide with the `hobo.resolver.` namespace |
+
+`productId` and `realizationParameters` exist only on plans built with Yard
+binding authority. **Absent means "not decided here", never "any product will
+do"**, so a node without one is refused — the product is never inferred from the
+port or the provider id, which is the naming-convention inference ADR-0144
+forbids.
+
+### Outputs, diff, and drift
+
+`ResolveOutcome.outputs` land in `IacOutputs` under their own keys (non-string
+JSON values are JSON-encoded rather than dropped; encoding is deterministic
+because `parseResolveOutcome` sorts keys by code unit). The outcome's own
+metadata lands under a reserved `hobo.resolver.` namespace:
+`…contract`, `…action`, `…physicalId`, and `…diagnostics` (a JSON array, present
+only when the resolver emitted any). A resolver output inside that namespace is
+refused rather than shadowed.
+
+### HONEST SCOPE (resolver deploy lane)
+
+- **Nothing here has run against a live provider.** The whole module is proven
+  against an *injected fake* transport modelling a provider account. A live
+  deploy additionally needs real credentials, real network egress, and a real
+  account — none of which a unit test supplies.
+- **`preview` never claims zero changes it did not verify.** `IacDiff.changes`
+  is a bare count with no "unknown", so a preview that could not look reports
+  `RESOLVER_PREVIEW_UNDETERMINED` (`-1`) and says so in the summary. It reports
+  `0` only when every declared parameter was observed *and* matched. A resolver
+  with no `read()` is always undetermined; so is a declared parameter the
+  provider's read surface has no counterpart for (the change count is then a
+  lower bound, and the summary says so).
+- **`refresh` errs toward drift.** `IacDriftReport.drift` is a boolean with no
+  "unknown" and `drift: false` is the claim "I looked and it matches", so
+  anything unverified is reported as drift with
+  `hobo.resolver.drift.determined = "false"` and a reason.
+- **No state of its own.** This driver threads no `physicalId`, so convergence
+  rests entirely on each resolver's deterministic-name lookup. The visible
+  consequence is that a re-apply reports `adopt` rather than `noop` — honest,
+  since the run neither created the resource nor knew its id.
+- **`destroy` refuses what it cannot route.** "Already gone" at the provider is
+  success (the resolvers treat a 404 that way), but a teardown whose plan cannot
+  be recovered throws rather than reporting a green no-op over a real, billed
+  resource.
+- **No credential material anywhere.** `credentialRef` is a locator the host
+  resolves at call time; provider error text is redacted by the resolvers
+  themselves (`redactCloudflareText` and the Vercel equivalent) and re-raised
+  here rather than re-redacted.
+- **`describeDeployTarget` (`src/deploy-preflight.ts`) does not yet know about
+  this lane** and still reports `cloudflare`/`vercel`/`in-memory` only; that file
+  was outside this change.

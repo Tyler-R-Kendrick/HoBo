@@ -5,13 +5,13 @@
 import type { ConfigSchema, SecretSourceRank } from "./config-types.js";
 import {
 	assertNoPlaintextInEvent,
+	type ConfigSecretEvent,
 	createConfigResolvedEvent,
 	createSecretAccessedEvent,
-	type ConfigSecretEvent,
 } from "./secrets-events.js";
 import {
-	resolveConfigEntry,
 	type ResolvedConfigEntry,
+	resolveConfigEntry,
 	type SecretsPort,
 } from "./secrets-port.js";
 

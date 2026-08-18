@@ -8,7 +8,7 @@ import {
 	type ProviderNativeSignal,
 	type YardEventStoreFoldResolver,
 } from "./event-store-resolvers.js";
-import { type YardEvent, yardEvent, YARD_EVENTS } from "./events.js";
+import { YARD_EVENTS, type YardEvent, yardEvent } from "./events.js";
 import {
 	emptyYardEventStoreState,
 	foldYardEventStore,
@@ -21,10 +21,7 @@ import {
 	planYardGeneration,
 	type YardGenerationConnector,
 } from "./generation.js";
-import {
-	createYardRuntimeCatalog,
-	localYardInstance,
-} from "./inventory.js";
+import { createYardRuntimeCatalog, localYardInstance } from "./inventory.js";
 import { matchYard } from "./matching.js";
 import {
 	buildExecutionUnits,
@@ -35,14 +32,14 @@ import {
 import {
 	BINDLE_DEPLOYMENT_REQUEST_SCHEMA,
 	type BindleDeploymentRequest,
-	contentHashOf,
 	type ContentHash,
+	contentHashOf,
 	emptyYardShape,
 	parseYardShape,
+	YARD_PLACEMENT_RECEIPT_SCHEMA,
 	type YardGenerationPolicy,
 	type YardPlacementReceipt,
 	type YardPlacementRequest,
-	YARD_PLACEMENT_RECEIPT_SCHEMA,
 } from "./types.js";
 
 export interface YardFirstPlacementDeps {
@@ -155,8 +152,7 @@ export async function resolveBindleDeployment(
 		deps.seedLocalYard !== false &&
 		Object.keys(foldState.yards).length === 0
 	) {
-		const providerId =
-			request.yard.requestedShape.providerId ?? "local";
+		const providerId = request.yard.requestedShape.providerId ?? "local";
 		const yard = localYardInstance({
 			yardId: request.yard.requestedYardId ?? `yard:local-${providerId}`,
 			ownerTenantId,
@@ -236,8 +232,7 @@ export async function resolveBindleDeployment(
 			}),
 		);
 
-		const connectors =
-			deps.connectors ?? defaultYardGenerationConnectors();
+		const connectors = deps.connectors ?? defaultYardGenerationConnectors();
 		const saga = createYardGenerationSaga({ connectors });
 		append(
 			yardEvent(YARD_EVENTS.GenerationStarted, {
@@ -284,9 +279,7 @@ export async function resolveBindleDeployment(
 				yardEvent(YARD_EVENTS.PlacementRejected, {
 					requestId: request.requestId,
 					code: genResult.failure?.code ?? "yard-generation-failed",
-					reasonCodes: [
-						genResult.failure?.code ?? "yard-generation-failed",
-					],
+					reasonCodes: [genResult.failure?.code ?? "yard-generation-failed"],
 				}),
 			);
 			return rejectResult(
@@ -299,7 +292,10 @@ export async function resolveBindleDeployment(
 		}
 
 		// If connector did not emit ready via signals, complete attestation path.
-		if (!foldState.yards[genResult.yardId]?.status || foldState.yards[genResult.yardId]?.status !== "ready") {
+		if (
+			!foldState.yards[genResult.yardId]?.status ||
+			foldState.yards[genResult.yardId]?.status !== "ready"
+		) {
 			const providerId = genDecision.plan.providerId;
 			append(
 				yardEvent(YARD_EVENTS.Registered, {
@@ -396,7 +392,7 @@ export async function resolveBindleDeployment(
 
 	const workingSnapshot = inventorySnapshotFromFold(foldState);
 	const yard = workingSnapshot.yards.find((y) => y.yardId === selectedYardId);
-	if (!yard || yard.status !== "ready") {
+	if (yard?.status !== "ready") {
 		append(
 			yardEvent(YARD_EVENTS.PlacementRejected, {
 				requestId: request.requestId,
@@ -471,9 +467,7 @@ export async function resolveBindleDeployment(
 		selectedYardId: yard.yardId,
 		selectedProviderId: yard.providerId,
 		selectedCampId: campId,
-		...(generationAttemptId !== undefined
-			? { generationAttemptId }
-			: {}),
+		...(generationAttemptId !== undefined ? { generationAttemptId } : {}),
 		match: {
 			...match,
 			...(selectedYardId !== match.winnerYardId
@@ -500,9 +494,7 @@ export async function resolveBindleDeployment(
 			selectedYardId: yard.yardId,
 			selectedProviderId: yard.providerId,
 			selectedCampId: campId,
-			...(generationAttemptId !== undefined
-				? { generationAttemptId }
-				: {}),
+			...(generationAttemptId !== undefined ? { generationAttemptId } : {}),
 			receiptHash: receipt.contentHash,
 			receipt,
 		}),
@@ -562,7 +554,8 @@ export function parseBindleDeploymentRequest(
 		requestedShape: parseYardShape(yardRaw.requestedShape ?? emptyYardShape()),
 		bindleManifestHash: asHash(yardRaw.bindleManifestHash ?? raw.manifestHash),
 		bindleRequirementsHash: asHash(
-			yardRaw.bindleRequirementsHash ?? contentHashOf(raw.bindleRequirements ?? {}),
+			yardRaw.bindleRequirementsHash ??
+				contentHashOf(raw.bindleRequirements ?? {}),
 		),
 		allowGenerationRequested: yardRaw.allowGenerationRequested === true,
 	});
@@ -603,8 +596,7 @@ export function parseBindleDeploymentRequest(
 							(raw.camp as Record<string, unknown>).selectionMode ??
 								"compatible",
 						),
-						...(typeof (raw.camp as Record<string, unknown>).campId ===
-						"string"
+						...(typeof (raw.camp as Record<string, unknown>).campId === "string"
 							? {
 									campId: (raw.camp as Record<string, unknown>)
 										.campId as string,
@@ -612,35 +604,42 @@ export function parseBindleDeploymentRequest(
 							: {}),
 						shape: Object.freeze({
 							require: list(
-								((raw.camp as Record<string, unknown>).shape as Record<
-									string,
-									unknown
-								>)?.require,
+								(
+									(raw.camp as Record<string, unknown>).shape as Record<
+										string,
+										unknown
+									>
+								)?.require,
 							),
 							prefer: list(
-								((raw.camp as Record<string, unknown>).shape as Record<
-									string,
-									unknown
-								>)?.prefer,
+								(
+									(raw.camp as Record<string, unknown>).shape as Record<
+										string,
+										unknown
+									>
+								)?.prefer,
 							),
 							labels: stringMap(
-								((raw.camp as Record<string, unknown>).shape as Record<
-									string,
-									unknown
-								>)?.labels,
+								(
+									(raw.camp as Record<string, unknown>).shape as Record<
+										string,
+										unknown
+									>
+								)?.labels,
 							),
 							runtimeRequirements: list(
-								((raw.camp as Record<string, unknown>).shape as Record<
-									string,
-									unknown
-								>)?.runtimeRequirements,
+								(
+									(raw.camp as Record<string, unknown>).shape as Record<
+										string,
+										unknown
+									>
+								)?.runtimeRequirements,
 							),
 						}),
 					}),
 				}
 			: {}),
-		objective:
-			typeof raw.objective === "string" ? raw.objective : "min-cost",
+		objective: typeof raw.objective === "string" ? raw.objective : "min-cost",
 		spendEstimateUsd:
 			typeof raw.spendEstimateUsd === "number" ? raw.spendEstimateUsd : 0,
 		ownerTenantId:

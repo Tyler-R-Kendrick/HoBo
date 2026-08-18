@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	ClaimError,
 	attachBundle,
-	claimAtomicityOf,
-	initialState,
-	reduce,
 	type ClaimBundle,
 	type ClaimCommand,
 	type ClaimCoordinatorState,
+	type ClaimError,
 	type ClaimItem,
+	claimAtomicityOf,
 	type GuestLease,
+	initialState,
+	reduce,
 } from "../src/index.js";
 
 const FENCE = "fence-1";
@@ -25,7 +25,11 @@ function item(overrides: Partial<ClaimItem> = {}): ClaimItem {
 		claimStrategyRef: "claim.cloudflare.temporary-account/v1",
 		mode: "account-claim",
 		deadline: NOW + 60 * 60 * 1000,
-		continuity: { endpoint: "preserved", data: "preserved", credentials: "reauthorized" },
+		continuity: {
+			endpoint: "preserved",
+			data: "preserved",
+			credentials: "reauthorized",
+		},
 		creatorAuthorityAfterClaim: "reauthorization-required",
 		verificationRef: "verify.cloudflare.account-ownership/v1",
 		postClaimActions: [],
@@ -81,10 +85,23 @@ function run(
 
 function provisioned(items: readonly ClaimItem[]): ClaimCoordinatorState {
 	const base = run(initialState("deployment-1", FENCE), [
-		{ kind: "CompileDeploymentOffer", deploymentRef: "deployment-1", offerId: "offer-1" },
-		{ kind: "AcceptDeploymentOffer", offerId: "offer-1", offerDigest: "sha256:abc", acceptedAt: NOW },
+		{
+			kind: "CompileDeploymentOffer",
+			deploymentRef: "deployment-1",
+			offerId: "offer-1",
+		},
+		{
+			kind: "AcceptDeploymentOffer",
+			offerId: "offer-1",
+			offerDigest: "sha256:abc",
+			acceptedAt: NOW,
+		},
 		{ kind: "ReserveGuestLease", lease },
-		{ kind: "StartGuestDeployment", deploymentRef: "deployment-1", idempotencyKey: "k1" },
+		{
+			kind: "StartGuestDeployment",
+			deploymentRef: "deployment-1",
+			idempotencyKey: "k1",
+		},
 		{
 			kind: "RecordProvisionedSubject",
 			subjectRef: "yard://cloudflare/temp-1",
@@ -99,12 +116,20 @@ function provisioned(items: readonly ClaimItem[]): ClaimCoordinatorState {
 describe("offer and provisioning", () => {
 	it("cannot start a deployment before the offer is accepted", () => {
 		const state = run(initialState("deployment-1", FENCE), [
-			{ kind: "CompileDeploymentOffer", deploymentRef: "deployment-1", offerId: "offer-1" },
+			{
+				kind: "CompileDeploymentOffer",
+				deploymentRef: "deployment-1",
+				offerId: "offer-1",
+			},
 		]);
 		expect(() =>
 			reduce(
 				state,
-				{ kind: "StartGuestDeployment", deploymentRef: "deployment-1", idempotencyKey: "k1" },
+				{
+					kind: "StartGuestDeployment",
+					deploymentRef: "deployment-1",
+					idempotencyKey: "k1",
+				},
 				{ fencingToken: FENCE },
 			),
 		).toThrow(/offer must be accepted/u);
@@ -123,16 +148,22 @@ describe("offer and provisioning", () => {
 			},
 			{ fencingToken: FENCE },
 		);
-		expect(again.state.provisionedSubjects).toEqual(["yard://cloudflare/temp-1"]);
+		expect(again.state.provisionedSubjects).toEqual([
+			"yard://cloudflare/temp-1",
+		]);
 		expect(again.events).toEqual([]);
 	});
 
 	it("rejects a stale fence", () => {
 		const state = provisioned([item()]);
 		expect(() =>
-			reduce(state, { kind: "BeginClaimItem", itemId: "item-cf", at: NOW }, {
-				fencingToken: "fence-old",
-			}),
+			reduce(
+				state,
+				{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
+				{
+					fencingToken: "fence-old",
+				},
+			),
 		).toThrow(/fencing token/u);
 	});
 });
@@ -142,13 +173,22 @@ describe("verification gates completion", () => {
 		const state = run(provisioned([item()]), [
 			{ kind: "BeginClaimBundle", bundleId: "bundle-1", at: NOW },
 			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-			{ kind: "ObserveClaimItem", itemId: "item-cf", observedStatus: "claimed", at: NOW },
+			{
+				kind: "ObserveClaimItem",
+				itemId: "item-cf",
+				observedStatus: "claimed",
+				at: NOW,
+			},
 		]);
 		expect(state.bundle?.items[0]?.status).toBe("observed");
 		expect(() =>
-			reduce(state, { kind: "CompleteClaimItem", itemId: "item-cf", at: NOW }, {
-				fencingToken: FENCE,
-			}),
+			reduce(
+				state,
+				{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
+				{
+					fencingToken: FENCE,
+				},
+			),
 		).toThrow(/independently verified/u);
 	});
 
@@ -156,7 +196,12 @@ describe("verification gates completion", () => {
 		const state = run(provisioned([item()]), [
 			{ kind: "BeginClaimBundle", bundleId: "bundle-1", at: NOW },
 			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-			{ kind: "ObserveClaimItem", itemId: "item-cf", observedStatus: "claimed", at: NOW },
+			{
+				kind: "ObserveClaimItem",
+				itemId: "item-cf",
+				observedStatus: "claimed",
+				at: NOW,
+			},
 			{
 				kind: "VerifyOwnership",
 				itemId: "item-cf",
@@ -187,9 +232,13 @@ describe("verification gates completion", () => {
 		expect(state.lifecycle).toBe("ClaimedNeedsRotation");
 		const error = (() => {
 			try {
-				reduce(state, { kind: "CompleteClaimItem", itemId: "item-cf", at: NOW }, {
-					fencingToken: FENCE,
-				});
+				reduce(
+					state,
+					{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
+					{
+						fencingToken: FENCE,
+					},
+				);
 				return undefined;
 			} catch (caught) {
 				return caught as ClaimError;
@@ -199,7 +248,9 @@ describe("verification gates completion", () => {
 	});
 
 	it("blocks completion while bootstrap authority remains", () => {
-		const withRevocation = item({ postClaimActions: ["revoke-bootstrap-authority"] });
+		const withRevocation = item({
+			postClaimActions: ["revoke-bootstrap-authority"],
+		});
 		const state = run(provisioned([withRevocation]), [
 			{
 				kind: "VerifyOwnership",
@@ -211,9 +262,13 @@ describe("verification gates completion", () => {
 		]);
 		const error = (() => {
 			try {
-				reduce(state, { kind: "CompleteClaimItem", itemId: "item-cf", at: NOW }, {
-					fencingToken: FENCE,
-				});
+				reduce(
+					state,
+					{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
+					{
+						fencingToken: FENCE,
+					},
+				);
 				return undefined;
 			} catch (caught) {
 				return caught as ClaimError;
@@ -223,7 +278,9 @@ describe("verification gates completion", () => {
 	});
 
 	it("clears creator authority once bootstrap authority is revoked", () => {
-		const withRevocation = item({ postClaimActions: ["revoke-bootstrap-authority"] });
+		const withRevocation = item({
+			postClaimActions: ["revoke-bootstrap-authority"],
+		});
 		const state = run(provisioned([withRevocation]), [
 			{
 				kind: "VerifyOwnership",
@@ -232,7 +289,11 @@ describe("verification gates completion", () => {
 				evidenceRef: "e",
 				creatorAuthorityAfterClaim: "retained",
 			},
-			{ kind: "RevokeBootstrapAuthority", itemId: "item-cf", evidenceRef: "revoked-1" },
+			{
+				kind: "RevokeBootstrapAuthority",
+				itemId: "item-cf",
+				evidenceRef: "revoked-1",
+			},
 			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
 		]);
 		expect(state.bundle?.items[0]?.creatorAuthorityAfterClaim).toBe("absent");
@@ -321,7 +382,12 @@ describe("multi-provider bundles", () => {
 				creatorAuthorityAfterClaim: "absent",
 			},
 			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-			{ kind: "ObserveClaimItem", itemId: "item-neon", observedStatus: "expired", at: NOW },
+			{
+				kind: "ObserveClaimItem",
+				itemId: "item-neon",
+				observedStatus: "expired",
+				at: NOW,
+			},
 		]);
 		expect(state.bundle?.status).toBe("partially-claimed");
 		expect(state.lifecycle).toBe("RepairableFailure");
@@ -340,9 +406,13 @@ describe("multi-provider bundles", () => {
 		]);
 		const error = (() => {
 			try {
-				reduce(state, { kind: "CompleteClaimBundle", bundleId: "bundle-1", at: NOW }, {
-					fencingToken: FENCE,
-				});
+				reduce(
+					state,
+					{ kind: "CompleteClaimBundle", bundleId: "bundle-1", at: NOW },
+					{
+						fencingToken: FENCE,
+					},
+				);
 				return undefined;
 			} catch (caught) {
 				return caught as ClaimError;
@@ -368,9 +438,13 @@ describe("independent identity planes", () => {
 		expect(state.agentAuthorized).toBe(false);
 		// The obligation is still outstanding, so the item cannot silently close.
 		expect(() =>
-			reduce(state, { kind: "CompleteClaimItem", itemId: "item-cf", at: NOW }, {
-				fencingToken: FENCE,
-			}),
+			reduce(
+				state,
+				{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
+				{
+					fencingToken: FENCE,
+				},
+			),
 		).toThrow();
 	});
 
@@ -394,14 +468,25 @@ describe("independent identity planes", () => {
 
 describe("migration cutover", () => {
 	it("refuses connector cutover before the destination is verified", () => {
-		const state = run(provisioned([item({ postClaimActions: ["migrate-data"] })]), [
-			{ kind: "BeginResourceMigration", itemId: "item-cf", migrationProfileRef: "migration.convex.snapshot/v1" },
-		]);
+		const state = run(
+			provisioned([item({ postClaimActions: ["migrate-data"] })]),
+			[
+				{
+					kind: "BeginResourceMigration",
+					itemId: "item-cf",
+					migrationProfileRef: "migration.convex.snapshot/v1",
+				},
+			],
+		);
 		const error = (() => {
 			try {
 				reduce(
 					state,
-					{ kind: "CommitConnectorCutover", itemId: "item-cf", connectorRef: "connector-1" },
+					{
+						kind: "CommitConnectorCutover",
+						itemId: "item-cf",
+						connectorRef: "connector-1",
+					},
 					{ fencingToken: FENCE },
 				);
 				return undefined;
@@ -413,17 +498,24 @@ describe("migration cutover", () => {
 	});
 
 	it("commits cutover once the destination is verified", () => {
-		const state = run(provisioned([item({ postClaimActions: ["migrate-data"] })]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "absent",
-			},
-			{ kind: "CommitConnectorCutover", itemId: "item-cf", connectorRef: "connector-1" },
-			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-		]);
+		const state = run(
+			provisioned([item({ postClaimActions: ["migrate-data"] })]),
+			[
+				{
+					kind: "VerifyOwnership",
+					itemId: "item-cf",
+					verified: true,
+					evidenceRef: "e",
+					creatorAuthorityAfterClaim: "absent",
+				},
+				{
+					kind: "CommitConnectorCutover",
+					itemId: "item-cf",
+					connectorRef: "connector-1",
+				},
+				{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
+			],
+		);
 		expect(state.bundle?.items[0]?.status).toBe("completed");
 	});
 });
@@ -459,7 +551,12 @@ describe("restart safety", () => {
 		const commands: readonly ClaimCommand[] = [
 			{ kind: "BeginClaimBundle", bundleId: "bundle-1", at: NOW },
 			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-			{ kind: "ObserveClaimItem", itemId: "item-cf", observedStatus: "claimed", at: NOW },
+			{
+				kind: "ObserveClaimItem",
+				itemId: "item-cf",
+				observedStatus: "claimed",
+				at: NOW,
+			},
 			{
 				kind: "VerifyOwnership",
 				itemId: "item-cf",
@@ -477,7 +574,9 @@ describe("restart safety", () => {
 		const once = run(provisioned([item()]), [
 			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
 		]);
-		const twice = run(once, [{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW }]);
+		const twice = run(once, [
+			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
+		]);
 		expect(JSON.stringify(twice.bundle)).toBe(JSON.stringify(once.bundle));
 	});
 });

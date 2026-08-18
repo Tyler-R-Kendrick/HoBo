@@ -2,12 +2,13 @@
  * Contract-asserted dual fixtures for continuous identity migration (ADR-0070 extension).
  * Offline `hobo dev` / tests exercise source, target, and dual paths without real IdPs.
  */
+
+import type { AdapterClaims } from "./dual-adapter.js";
 import {
 	applyClaimTransform,
 	defaultContinuousMappingSpec,
 	type MappingSpec,
 } from "./mapping-spec.js";
-import type { AdapterClaims } from "./dual-adapter.js";
 
 // public-contract: dual fixture fidelity labels.
 export const DUAL_FIXTURE_FIDELITY = Object.freeze({

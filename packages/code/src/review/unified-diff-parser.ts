@@ -11,7 +11,10 @@ import {
 } from "../_generated/code_review_pb.js";
 
 export function sanitizeDisplay(text: string): string {
-	return text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu, "\uFFFD");
+	return text.replace(
+		/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu,
+		"\uFFFD",
+	);
 }
 
 export function hashText(text: string): string {
@@ -21,16 +24,17 @@ export function hashText(text: string): string {
 export function parseUnifiedDiff(text: string): ReviewHunk[] {
 	const hunks: ReviewHunk[] = [];
 	const lines = text.split(/\n/u);
-	let current: {
-		header: string;
-		oldStart: number;
-		oldCount: number;
-		newStart: number;
-		newCount: number;
-		body: ReviewDiffLine[];
-	} | undefined;
-	const hunkHeader =
-		/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$/u;
+	let current:
+		| {
+				header: string;
+				oldStart: number;
+				oldCount: number;
+				newStart: number;
+				newCount: number;
+				body: ReviewDiffLine[];
+		  }
+		| undefined;
+	const hunkHeader = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$/u;
 	const flush = () => {
 		if (!current) return;
 		const fingerprint = hashText(
@@ -69,7 +73,12 @@ export function parseUnifiedDiff(text: string): ReviewHunk[] {
 			continue;
 		}
 		if (!current) continue;
-		if (raw.startsWith("diff ") || raw.startsWith("index ") || raw.startsWith("--- ") || raw.startsWith("+++ ")) {
+		if (
+			raw.startsWith("diff ") ||
+			raw.startsWith("index ") ||
+			raw.startsWith("--- ") ||
+			raw.startsWith("+++ ")
+		) {
 			continue;
 		}
 		let kind = ReviewLineKind.CONTEXT;

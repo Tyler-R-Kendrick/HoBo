@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import {
 	classifyWindowName,
 	cycleInSessionWindow,
-	emptyInSessionPanes,
 	ensureInSessionPanes,
 	isProductPrompt,
 	pickCodingWindow,

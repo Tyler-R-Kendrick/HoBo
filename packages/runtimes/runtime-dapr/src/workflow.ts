@@ -23,7 +23,9 @@ export interface DaprWorkflowMapping {
 	readonly fullEngineParity: false;
 }
 
-export function mapWorkflowToDapr(workflow: HoboWorkflowLike): DaprWorkflowMapping {
+export function mapWorkflowToDapr(
+	workflow: HoboWorkflowLike,
+): DaprWorkflowMapping {
 	return Object.freeze({
 		workflowName: workflow.name,
 		activities: workflow.steps.map((step) =>

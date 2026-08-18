@@ -142,7 +142,10 @@ describe("createConnectorRegistry", () => {
 				settings: { accountId: "acct-1" },
 			},
 		]);
-		const broker = createBroker({ stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({
+			stationId: "station:test",
+			railHash:
+				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			policies: {
 				schemaVersion: "hobo.broker/v1",
 				brokerId: "broker:yard-1",

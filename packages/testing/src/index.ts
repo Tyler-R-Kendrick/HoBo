@@ -7,6 +7,14 @@ export {
 	chaosTransport,
 } from "./chaos.js";
 export {
+	AMBIGUOUS_FAULTS,
+	type ChaosScenarioResult,
+	type ChaosSubject,
+	type ChaosSubjectRun,
+	chaosViolations,
+	runChaosConformance,
+} from "./chaos-conformance.js";
+export {
 	isTestHarnessError,
 	TEST_HARNESS_ERROR_CODES,
 	TestHarnessError,

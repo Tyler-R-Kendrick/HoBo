@@ -47,7 +47,8 @@ export interface CompactInput {
 	readonly sessionId?: string;
 }
 
-const FILE_RE = /(?<![A-Za-z0-9_])(?:[\w.-]+\/)*[\w.-]+\.(?:ts|tsx|js|mjs|mts|json|md|cue|proto|css)(?![A-Za-z0-9_])/gu;
+const FILE_RE =
+	/(?<![A-Za-z0-9_])(?:[\w.-]+\/)*[\w.-]+\.(?:ts|tsx|js|mjs|mts|json|md|cue|proto|css)(?![A-Za-z0-9_])/gu;
 const ERROR_RE =
 	/\b(?:error|fail(?:ed|ure)?|enoent|not_implemented|refused|blocked|denied)\b/iu;
 
@@ -158,18 +159,15 @@ export function compactTranscript(input: CompactInput): CompactPlan {
 	const userTurns = journal.filter((row) => row.role === "user").length;
 	if (userTurns <= keepUserTurns || journal.length < 4) {
 		return {
-			briefing: formatCompactBriefing(
-				extractCompactFacts(journal, input),
-				{
-					droppedCount: 0,
-					keptCount: journal.length,
-					tokensBefore,
-					tokensAfter: tokensBefore,
-					...(input.sessionId !== undefined
-						? { sessionId: input.sessionId }
-						: {}),
-				},
-			),
+			briefing: formatCompactBriefing(extractCompactFacts(journal, input), {
+				droppedCount: 0,
+				keptCount: journal.length,
+				tokensBefore,
+				tokensAfter: tokensBefore,
+				...(input.sessionId !== undefined
+					? { sessionId: input.sessionId }
+					: {}),
+			}),
 			working: journal,
 			journal,
 			droppedCount: 0,

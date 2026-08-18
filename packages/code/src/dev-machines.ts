@@ -102,11 +102,15 @@ export function parseDevMachine(
 	// Hostnames only: an ssh destination is a command-line argument, and a
 	// host containing a space, quote or `$` is a way to smuggle one.
 	if (!/^[A-Za-z0-9][A-Za-z0-9.-]*$/u.test(host)) {
-		return { problem: { machine: id, problem: `host "${host}" is not a hostname` } };
+		return {
+			problem: { machine: id, problem: `host "${host}" is not a hostname` },
+		};
 	}
 	const user = typeof value.user === "string" ? value.user.trim() : undefined;
 	if (user !== undefined && !/^[A-Za-z0-9._-]+$/u.test(user)) {
-		return { problem: { machine: id, problem: `user "${user}" is not a username` } };
+		return {
+			problem: { machine: id, problem: `user "${user}" is not a username` },
+		};
 	}
 	const isolationClass = value.isolationClass;
 	if (
@@ -154,7 +158,9 @@ export function loadDevMachines(
 			path,
 			declared: true,
 			machines: [],
-			rejected: [{ machine: DEV_MACHINES_FILE, problem: `unreadable: ${String(error)}` }],
+			rejected: [
+				{ machine: DEV_MACHINES_FILE, problem: `unreadable: ${String(error)}` },
+			],
 		};
 	}
 	if (!isRecord(parsed) || !Array.isArray(parsed.machines)) {
@@ -220,7 +226,10 @@ export function machinesForAgent(
 	agentId: string,
 ): readonly DevMachine[] {
 	return machines.filter(
-		(m) => m.agents === undefined || m.agents.length === 0 || m.agents.includes(agentId),
+		(m) =>
+			m.agents === undefined ||
+			m.agents.length === 0 ||
+			m.agents.includes(agentId),
 	);
 }
 

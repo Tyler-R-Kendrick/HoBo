@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	DEFAULT_TRUST_REQUIREMENT,
 	computeEvidenceDigest,
+	DEFAULT_TRUST_REQUIREMENT,
+	type EvidenceVerifier,
 	evaluateTrust,
 	parseTrustEvidence,
 	parseTrustRequirement,
-	type EvidenceVerifier,
 	type TrustEvidenceInput,
 	type TrustReasonCode,
 } from "../src/index.js";
@@ -25,7 +25,9 @@ const invalidVerifier: EvidenceVerifier = {
 	verify: () => "invalid",
 };
 
-const input = (overrides: Partial<TrustEvidenceInput> = {}): TrustEvidenceInput => {
+const input = (
+	overrides: Partial<TrustEvidenceInput> = {},
+): TrustEvidenceInput => {
 	const draft: TrustEvidenceInput = {
 		schemaVersion: "hobo.trust-evidence/v1",
 		providerId: "cloudflare",
@@ -43,10 +45,14 @@ const input = (overrides: Partial<TrustEvidenceInput> = {}): TrustEvidenceInput 
 		claimActionCount: 1,
 		realizations: ["native"],
 		sponsorBacked: false,
-		evidenceDigest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+		evidenceDigest:
+			"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		signature: "sig:test",
 		sourceRefs: [
-			{ url: "https://developers.cloudflare.com/workers/", checkedAt: "2026-08-08" },
+			{
+				url: "https://developers.cloudflare.com/workers/",
+				checkedAt: "2026-08-08",
+			},
 		],
 		...overrides,
 	};
@@ -271,19 +277,25 @@ describe("evaluateTrust", () => {
 			allowPack: false,
 			allowSponsor: false,
 		});
-		const { realizations: _realizations, sponsorBacked: _sponsorBacked, ...bare } = input();
+		const {
+			realizations: _realizations,
+			sponsorBacked: _sponsorBacked,
+			...bare
+		} = input();
 		const silent = parseTrustEvidence({
 			...bare,
 			evidenceDigest: computeEvidenceDigest(bare),
 		});
-		const reasons = codes(evaluateTrust(silent, requirement, NOW, validVerifier).reasons);
+		const reasons = codes(
+			evaluateTrust(silent, requirement, NOW, validVerifier).reasons,
+		);
 		expect(reasons).toContain("REALIZATION_DENIED");
 		expect(reasons).toContain("BOOTSTRAP_POLICY_DENIED");
 
 		const packed = evidence({ realizations: ["pack"] });
-		expect(codes(evaluateTrust(packed, requirement, NOW, validVerifier).reasons)).toContain(
-			"REALIZATION_DENIED",
-		);
+		expect(
+			codes(evaluateTrust(packed, requirement, NOW, validVerifier).reasons),
+		).toContain("REALIZATION_DENIED");
 
 		const sponsored = evidence({ sponsorBacked: true });
 		expect(

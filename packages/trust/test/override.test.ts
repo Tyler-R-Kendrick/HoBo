@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	DEFAULT_TRUST_REQUIREMENT,
-	MAXIMUM_OVERRIDE_WINDOW_MS,
-	OperatorOverrideError,
 	applyOperatorOverride,
 	computeEvidenceDigest,
+	DEFAULT_TRUST_REQUIREMENT,
+	type EvidenceVerifier,
 	evaluateTrust,
 	isOverriddenTrustVerdict,
-	parseTrustEvidence,
-	type EvidenceVerifier,
+	MAXIMUM_OVERRIDE_WINDOW_MS,
+	OperatorOverrideError,
 	type OperatorOverrideInput,
+	parseTrustEvidence,
 	type TrustEvidenceInput,
 } from "../src/index.js";
 
@@ -18,7 +18,10 @@ const TESTED_AT = Date.UTC(2026, 7, 1);
 const NOW = Date.UTC(2026, 7, 8);
 const DAY = 24 * 60 * 60 * 1000;
 
-const validVerifier: EvidenceVerifier = { id: "test.valid/v1", verify: () => "valid" };
+const validVerifier: EvidenceVerifier = {
+	id: "test.valid/v1",
+	verify: () => "valid",
+};
 
 const evidence = (overrides: Partial<TrustEvidenceInput> = {}) => {
 	const draft: TrustEvidenceInput = {
@@ -38,12 +41,18 @@ const evidence = (overrides: Partial<TrustEvidenceInput> = {}) => {
 		claimActionCount: 1,
 		realizations: ["native"],
 		sponsorBacked: false,
-		evidenceDigest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+		evidenceDigest:
+			"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		signature: "sig:test",
-		sourceRefs: [{ url: "https://upstash.com/docs/redis", checkedAt: "2026-08-08" }],
+		sourceRefs: [
+			{ url: "https://upstash.com/docs/redis", checkedAt: "2026-08-08" },
+		],
 		...overrides,
 	};
-	return parseTrustEvidence({ ...draft, evidenceDigest: computeEvidenceDigest(draft) });
+	return parseTrustEvidence({
+		...draft,
+		evidenceDigest: computeEvidenceDigest(draft),
+	});
 };
 
 const denied = () =>
@@ -91,7 +100,9 @@ describe("applyOperatorOverride", () => {
 		);
 		const overridden = applyOperatorOverride(verdict, override());
 		expect(overridden.manuallyAuthorized).toBe(false);
-		expect(overridden.override.unwaivedCodes).toEqual(["TOO_MANY_CLAIM_ACTIONS"]);
+		expect(overridden.override.unwaivedCodes).toEqual([
+			"TOO_MANY_CLAIM_ACTIONS",
+		]);
 	});
 
 	it("does not authorize outside the override window", () => {
@@ -113,15 +124,15 @@ describe("applyOperatorOverride", () => {
 
 	it("refuses a blanket override, a thin reason, an anonymous operator, and a bad window", () => {
 		const verdict = denied();
-		expect(() => applyOperatorOverride(verdict, override({ waivedCodes: [] }))).toThrow(
-			OperatorOverrideError,
-		);
-		expect(() => applyOperatorOverride(verdict, override({ reason: "because" }))).toThrow(
-			OperatorOverrideError,
-		);
-		expect(() => applyOperatorOverride(verdict, override({ operatorId: "  " }))).toThrow(
-			OperatorOverrideError,
-		);
+		expect(() =>
+			applyOperatorOverride(verdict, override({ waivedCodes: [] })),
+		).toThrow(OperatorOverrideError);
+		expect(() =>
+			applyOperatorOverride(verdict, override({ reason: "because" })),
+		).toThrow(OperatorOverrideError);
+		expect(() =>
+			applyOperatorOverride(verdict, override({ operatorId: "  " })),
+		).toThrow(OperatorOverrideError);
 		expect(() =>
 			applyOperatorOverride(
 				verdict,
@@ -147,7 +158,9 @@ describe("applyOperatorOverride", () => {
 			validVerifier,
 		);
 		expect(clean.selectable).toBe(true);
-		expect(() => applyOperatorOverride(clean, override())).toThrow(OperatorOverrideError);
+		expect(() => applyOperatorOverride(clean, override())).toThrow(
+			OperatorOverrideError,
+		);
 	});
 
 	it("is deterministic: the same override over the same verdict digests identically", () => {

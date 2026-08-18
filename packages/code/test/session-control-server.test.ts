@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdtempSync,
+	readdirSync,
 	readFileSync,
 	rmSync,
 	symlinkSync,
@@ -761,13 +762,10 @@ describe("resident session loopback server", () => {
 			"approved\n",
 		);
 
-		// PLAYWRIGHT_CHROMIUM_PATH: hosts whose installed browser revision does
-		// not match this playwright version (e.g. /opt/pw-browsers/chromium).
+		const executablePath = resolveChromiumExecutable();
 		const browser = await chromium.launch({
 			headless: true,
-			...(process.env.PLAYWRIGHT_CHROMIUM_PATH
-				? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
-				: {}),
+			...(executablePath ? { executablePath } : {}),
 		});
 		try {
 			const page = await browser.newPage();
@@ -880,3 +878,41 @@ describe("resident session loopback server", () => {
 		}
 	}, 20_000);
 });
+
+/**
+ * Finds a Chromium that is actually installed, rather than the revision this
+ * Playwright build happens to pin.
+ *
+ * Playwright resolves its browser by exact revision — `chromium_headless_shell-1234`
+ * — and hard-fails with "run npx playwright install" when the host has a
+ * different one. Plenty of hosts deliberately ship a pinned browser they do not
+ * want re-downloaded (this repo's own container installs revision 1194 under
+ * /opt/pw-browsers and sets PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD), so the pin makes
+ * the test fail for a reason that has nothing to do with the code under test.
+ *
+ * The previous escape hatch was an env var nobody sets, which is the same as no
+ * escape hatch. This looks for whatever is on disk instead, preferring the
+ * headless shell because that is what `headless: true` wants. An explicit
+ * PLAYWRIGHT_CHROMIUM_PATH still wins, and finding nothing returns undefined so
+ * Playwright's own resolution — and its own error message — still apply.
+ */
+function resolveChromiumExecutable(): string | undefined {
+	const override = process.env.PLAYWRIGHT_CHROMIUM_PATH;
+	if (override && existsSync(override)) return override;
+
+	const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? "/opt/pw-browsers";
+	if (!existsSync(root)) return undefined;
+
+	const candidates: string[] = [];
+	for (const entry of readdirSync(root).sort().reverse()) {
+		if (entry.startsWith("chromium_headless_shell")) {
+			candidates.push(join(root, entry, "chrome-linux", "headless_shell"));
+		}
+	}
+	for (const entry of readdirSync(root).sort().reverse()) {
+		if (entry.startsWith("chromium-")) {
+			candidates.push(join(root, entry, "chrome-linux", "chrome"));
+		}
+	}
+	return candidates.find((candidate) => existsSync(candidate));
+}

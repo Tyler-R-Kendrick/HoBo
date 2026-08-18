@@ -4,7 +4,13 @@
  * interesting behaviour is what it *answers*, and a pane that refused nothing
  * would look identical from the inside until it was too late.
  */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Readable } from "node:stream";
@@ -67,16 +73,24 @@ describe("driving a virtual pane", () => {
 
 	it("cannot reach outside the mounted workspace", async () => {
 		const { root, outside } = workspace();
-		const out = await drive(root, `cat ${outside}\ncat ../credentials.txt\nexit\n`);
+		const out = await drive(
+			root,
+			`cat ${outside}\ncat ../credentials.txt\nexit\n`,
+		);
 		expect(out).not.toContain("AKIA");
 		expect(readFileSync(outside, "utf8")).toContain("AKIA");
 	});
 
 	it("keeps writes off the checkout", async () => {
 		const { root } = workspace();
-		const out = await drive(root, "echo probe >> src/app.ts\ncat src/app.ts\nexit\n");
+		const out = await drive(
+			root,
+			"echo probe >> src/app.ts\ncat src/app.ts\nexit\n",
+		);
 		expect(out).toContain("probe");
-		expect(readFileSync(join(root, "src", "app.ts"), "utf8")).not.toContain("probe");
+		expect(readFileSync(join(root, "src", "app.ts"), "utf8")).not.toContain(
+			"probe",
+		);
 	});
 
 	it("lists what exists here, and the banner counts it", async () => {
@@ -153,7 +167,9 @@ describe("the command tmux is given", () => {
 		// The composed pane command passes through `hobo-rift exec`, which
 		// reassembles its argv; the end-to-end property is pinned in
 		// packages/rift's exec tests, because that is where it was broken.
-		expect(virtualPaneCommand("a", "/ws/o'brien")).toContain("'/ws/o'\\''brien'");
+		expect(virtualPaneCommand("a", "/ws/o'brien")).toContain(
+			"'/ws/o'\\''brien'",
+		);
 	});
 });
 

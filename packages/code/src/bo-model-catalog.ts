@@ -74,9 +74,7 @@ export function parseModelId(
 }
 
 function hostQualifier(host: string): string {
-	return host
-		.replace(/^https?:\/\//u, "")
-		.replace(/\/$/u, "");
+	return host.replace(/^https?:\/\//u, "").replace(/\/$/u, "");
 }
 
 function guessProvider(runtimeId: string): string {
@@ -85,7 +83,8 @@ function guessProvider(runtimeId: string): string {
 	if (lower.startsWith("anthropic/") || lower.startsWith("claude")) {
 		return "anthropic";
 	}
-	if (lower.startsWith("google/") || lower.startsWith("gemini")) return "google";
+	if (lower.startsWith("google/") || lower.startsWith("gemini"))
+		return "google";
 	if (lower.startsWith("xai/") || lower.startsWith("grok")) return "xai";
 	if (lower.startsWith("openrouter/")) return "openrouter";
 	if (lower.startsWith("azure/")) return "openai";
@@ -217,7 +216,8 @@ export function listBoModelOffers(
 		if (!byKey.has(key)) byKey.set(key, offer);
 	};
 
-	const ollamaHost = input.ollama?.host ?? env.OLLAMA_HOST ?? DEFAULT_OLLAMA_HOST;
+	const ollamaHost =
+		input.ollama?.host ?? env.OLLAMA_HOST ?? DEFAULT_OLLAMA_HOST;
 	const ollamaHostKey = hostQualifier(ollamaHost);
 	for (const tag of input.ollama?.models ?? []) {
 		add(

@@ -378,7 +378,7 @@ function replaySleep(
 	runId: string,
 ): TimerRef {
 	const recorded = replayTimers.entries[replayTimers.index++];
-	if (!recorded || recorded.type !== "timer.scheduled") {
+	if (recorded?.type !== "timer.scheduled") {
 		throw new ReplayDivergenceError({
 			runId,
 			liveState: {},

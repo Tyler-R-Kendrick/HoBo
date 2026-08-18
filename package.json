@@ -9,7 +9,7 @@
 		"architecture:guard": "node scripts/check-architecture-guardrails.mjs",
 		"architecture:guard:all": "node scripts/check-architecture-guardrails.mjs --all",
 		"architecture:guard:staged": "node scripts/check-architecture-guardrails.mjs --staged",
-		"build": "turbo run build --filter \"./packages/*\"",
+		"build": "turbo run build --filter \"./packages/**\"",
 		"build:packages": "pnpm run lint:boundaries && turbo run build --filter \"./packages/*\"",
 		"case:check": "node --import tsx scripts/check-case-collisions.ts",
 		"check:all": "pnpm run lint:boundaries && pnpm run architecture:guard:all && pnpm run konsistent && pnpm run lint:docs && pnpm run design:lint && pnpm run draft:artifacts && pnpm run draft:cascade && pnpm run skills:mirror-check && pnpm run promotions:check && pnpm run case:check && pnpm run test:schema && pnpm run test:unit && pnpm run test:behavior && pnpm run standards:check && pnpm run licenses:check && pnpm run docs:coverage && pnpm run docs:freshness",
@@ -87,13 +87,15 @@
 		"test:ship-gap-closure": "node --import tsx --test scripts/test/check-ship-gap-closure.test.ts",
 		"test:smoke": "vitest run --no-isolate --passWithNoTests",
 		"test:types": "node --import tsx scripts/run-tests.ts --category=types",
+		"pretest:unit": "turbo run build --filter \"./packages/**\" --filter \"./src/draft/**\"",
 		"test:unit": "node --import tsx scripts/run-tests.ts --category=unit",
 		"test:unit:quiet": "node --import tsx scripts/run-tests.ts --category=unit --quiet --no-artifacts",
 		"test:visual": "node --import tsx scripts/run-tests.ts --category=visual",
 		"typecheck": "turbo run typecheck --filter \"./packages/*\"",
 		"typecheck:root": "tsc -p tsconfig.json",
 		"validate:final": "pnpm run standards:check -- --base=origin/main && node --import tsx scripts/run-tests.ts --final",
-		"validate:local": "node --import tsx scripts/validate-local.mts"
+		"validate:local": "node --import tsx scripts/validate-local.mts",
+		"lint:budget": "node --experimental-strip-types scripts/check-biome-budget.mts"
 	},
 	"devDependencies": {
 		"@ast-grep/cli": "^0.44.0",

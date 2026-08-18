@@ -1,25 +1,29 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	ClaimError,
-	assertNoSecrets,
-	createOneTimeActionStore,
 	type ActionCipher,
+	assertNoSecrets,
+	ClaimError,
 	type ClaimEvent,
+	createOneTimeActionStore,
 	type PutOneTimeActionInput,
 } from "../src/index.js";
 
 // A reversible stand-in for the real secret infrastructure. The test cares that
 // nothing stores the plaintext, not about the algorithm.
 const cipher: ActionCipher = {
-	seal: (plaintext) => `sealed:${Buffer.from(plaintext, "utf8").toString("base64")}`,
-	open: (sealed) => Buffer.from(sealed.replace(/^sealed:/u, ""), "base64").toString("utf8"),
+	seal: (plaintext) =>
+		`sealed:${Buffer.from(plaintext, "utf8").toString("base64")}`,
+	open: (sealed) =>
+		Buffer.from(sealed.replace(/^sealed:/u, ""), "base64").toString("utf8"),
 };
 
 const NOW = Date.UTC(2026, 7, 8, 12);
 const CLAIM_URL = "https://dash.cloudflare.com/claim?token=abc123def456";
 
-const put = (overrides: Partial<PutOneTimeActionInput> = {}): PutOneTimeActionInput => ({
+const put = (
+	overrides: Partial<PutOneTimeActionInput> = {},
+): PutOneTimeActionInput => ({
 	id: "action-1",
 	value: CLAIM_URL,
 	tenantId: "tenant-a",
@@ -65,7 +69,9 @@ describe("one-time action store", () => {
 			now: NOW,
 		};
 		await store.redeem(scope);
-		const error = await store.redeem(scope).catch((caught: ClaimError) => caught);
+		const error = await store
+			.redeem(scope)
+			.catch((caught: ClaimError) => caught);
 		expect((error as ClaimError).code).toBe("ONE_TIME_ACTION_REPLAYED");
 	});
 
@@ -170,12 +176,45 @@ describe("event secret guard", () => {
 	});
 
 	it.each([
-		["a claim url with a token", { type: "ClaimStatusObserved", itemId: "i", observedStatus: CLAIM_URL }],
-		["a connection string", { type: "ClaimStatusObserved", itemId: "i", observedStatus: "postgresql://u:p@h/db" }],
-		["a bearer token", { type: "ClaimStatusObserved", itemId: "i", observedStatus: "Bearer abcdefghijkl" }],
-		["a private key", { type: "ClaimStatusObserved", itemId: "i", observedStatus: "-----BEGIN RSA PRIVATE KEY-----" }],
-		["an admin key assignment", { type: "ClaimStatusObserved", itemId: "i", observedStatus: "adminKey=convex-abc" }],
+		[
+			"a claim url with a token",
+			{ type: "ClaimStatusObserved", itemId: "i", observedStatus: CLAIM_URL },
+		],
+		[
+			"a connection string",
+			{
+				type: "ClaimStatusObserved",
+				itemId: "i",
+				observedStatus: "postgresql://u:p@h/db",
+			},
+		],
+		[
+			"a bearer token",
+			{
+				type: "ClaimStatusObserved",
+				itemId: "i",
+				observedStatus: "Bearer abcdefghijkl",
+			},
+		],
+		[
+			"a private key",
+			{
+				type: "ClaimStatusObserved",
+				itemId: "i",
+				observedStatus: "-----BEGIN RSA PRIVATE KEY-----",
+			},
+		],
+		[
+			"an admin key assignment",
+			{
+				type: "ClaimStatusObserved",
+				itemId: "i",
+				observedStatus: "adminKey=convex-abc",
+			},
+		],
 	])("refuses to append an event carrying %s", (_label, event) => {
-		expect(() => assertNoSecrets(event as ClaimEvent)).toThrow(/refusing to append/u);
+		expect(() => assertNoSecrets(event as ClaimEvent)).toThrow(
+			/refusing to append/u,
+		);
 	});
 });

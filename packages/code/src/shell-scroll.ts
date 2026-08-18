@@ -160,9 +160,7 @@ export function clampScrollState<T extends ScrollShellState>(state: T): T {
 		...state,
 		chatScroll,
 		paneScroll,
-		...(state.transcriptMode !== undefined
-			? { transcriptMode: nextMode }
-			: {}),
+		...(state.transcriptMode !== undefined ? { transcriptMode: nextMode } : {}),
 	};
 }
 
@@ -250,7 +248,9 @@ export function withFollowPreservedScroll<T extends ScrollShellState>(
 	});
 }
 
-export function scrollHistoryFooterHint(state: ScrollShellState): string | null {
+export function scrollHistoryFooterHint(
+	state: ScrollShellState,
+): string | null {
 	if (state.transcriptMode != null) return "less · q exit · j/k scroll";
 	if (agentsEndOrigin(state) && state.paneScroll > 0) {
 		return "history · End live";

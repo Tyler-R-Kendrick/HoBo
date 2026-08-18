@@ -111,7 +111,11 @@ function requireString(value: unknown, field: string): string {
 	return value;
 }
 
-function requireBool(value: unknown, field: string, fallback: boolean): boolean {
+function requireBool(
+	value: unknown,
+	field: string,
+	fallback: boolean,
+): boolean {
 	if (value === undefined) return fallback;
 	if (typeof value !== "boolean") {
 		throw new ReplayParseError(
@@ -125,10 +129,7 @@ function requireBool(value: unknown, field: string, fallback: boolean): boolean 
 function stringList(value: unknown): readonly string[] {
 	if (value === undefined) return Object.freeze([]);
 	if (!Array.isArray(value) || !value.every((x) => typeof x === "string")) {
-		throw new ReplayParseError(
-			"replay-parse-invalid",
-			"expected string array",
-		);
+		throw new ReplayParseError("replay-parse-invalid", "expected string array");
 	}
 	return Object.freeze([...value]);
 }
@@ -155,11 +156,7 @@ export function defaultPrivacyPolicy(
 			]),
 		]),
 		blockAttributes: Object.freeze([
-			...(overrides?.blockAttributes ?? [
-				"value",
-				"data-ssn",
-				"data-pii",
-			]),
+			...(overrides?.blockAttributes ?? ["value", "data-ssn", "data-pii"]),
 		]),
 		captureNetwork: overrides?.captureNetwork ?? true,
 		captureConsole: overrides?.captureConsole ?? true,
@@ -184,12 +181,8 @@ export function parsePrivacyPolicy(raw: unknown): PrivacyPolicy {
 		),
 		maskEmails: requireBool(o.maskEmails ?? o.mask_emails, "maskEmails", true),
 		maskTel: requireBool(o.maskTel ?? o.mask_tel, "maskTel", true),
-		maskSelectors: [
-			...stringList(o.maskSelectors ?? o.mask_selectors),
-		],
-		blockAttributes: [
-			...stringList(o.blockAttributes ?? o.block_attributes),
-		],
+		maskSelectors: [...stringList(o.maskSelectors ?? o.mask_selectors)],
+		blockAttributes: [...stringList(o.blockAttributes ?? o.block_attributes)],
 		captureNetwork: requireBool(
 			o.captureNetwork ?? o.capture_network,
 			"captureNetwork",
@@ -267,9 +260,7 @@ export function parseSessionCorrelation(raw: unknown): SessionCorrelation {
 		...(typeof (o.errorId ?? o.error_id) === "string"
 			? { errorId: String(o.errorId ?? o.error_id) }
 			: {}),
-		harnessFlagKeys: stringList(
-			o.harnessFlagKeys ?? o.harness_flag_keys ?? [],
-		),
+		harnessFlagKeys: stringList(o.harnessFlagKeys ?? o.harness_flag_keys ?? []),
 		isolationClass: isolation,
 		tenant: requireString(o.tenant ?? "local", "tenant"),
 		env: requireString(o.env ?? "local-dev", "env"),
@@ -284,13 +275,11 @@ export function parseSessionRecord(raw: unknown): SessionRecord {
 		);
 	}
 	const o = raw as Record<string, unknown>;
-	const status = requireString(o.status ?? "recording", "status") as SessionStatus;
-	const allowed: SessionStatus[] = [
-		"recording",
-		"ended",
-		"retained",
-		"erased",
-	];
+	const status = requireString(
+		o.status ?? "recording",
+		"status",
+	) as SessionStatus;
+	const allowed: SessionStatus[] = ["recording", "ended", "retained", "erased"];
 	if (!allowed.includes(status)) {
 		throw new ReplayParseError(
 			"replay-parse-invalid",

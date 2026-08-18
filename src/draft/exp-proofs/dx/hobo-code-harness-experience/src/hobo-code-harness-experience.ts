@@ -2,7 +2,7 @@
  * DX experience proof for `hobo code` / `@hobo/code` (ADR-0139).
  * Exercises: high-value template, visual lock-in, isolation + cleanup.
  */
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -96,11 +96,29 @@ export async function runHoboCodeHarnessExperience(): Promise<ExperienceResult> 
 			"Primary surface renders and is lockable",
 			"app.visual.primary",
 		);
+		// `emitEvidenceTriple` requires the capture media to already exist — it
+		// refuses to fabricate evidence, which is the behaviour worth having. This
+		// proof runs headlessly and drives no browser, so it stands in the two
+		// captures a real Playwright run would have produced. They are structurally
+		// valid (an mp4 `ftyp` box, a PNG signature) and nothing more: this proof
+		// demonstrates that the harness wires the triple together, NOT that any
+		// real recording or screenshot was ever taken.
+		const captureDir = mkdtempSync(join(tmpdir(), "hobo-dx-capture-"));
+		const recordingMp4Path = join(captureDir, "recording.mp4");
+		const screenshotPath = join(captureDir, "primary.png");
+		writeFileSync(recordingMp4Path, Buffer.from("\0\0\0\u0018ftypisom"));
+		writeFileSync(
+			screenshotPath,
+			Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]),
+		);
+
 		const triple = emitEvidenceTriple({
 			durableRoot: session.isolation.durableRoot,
 			flagKey: link.flagKey,
 			scenario: link.scenario,
 			passed: true,
+			recordingMp4Path,
+			screenshotPaths: [screenshotPath],
 			htmlPath: locked.htmlPath,
 		});
 		const evidenceOk = assertEvidenceTripleComplete(triple);

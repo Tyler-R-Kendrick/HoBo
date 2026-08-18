@@ -120,7 +120,10 @@ describe("Evidence SPA follows DESIGN.md tokens", () => {
 
 	it("keeps the occupancy dashboard on DESIGN.md tokens", () => {
 		const source = readFileSync(
-			join(dirname(fileURLToPath(import.meta.url)), "../src/session-dashboard.ts"),
+			join(
+				dirname(fileURLToPath(import.meta.url)),
+				"../src/session-dashboard.ts",
+			),
 			"utf8",
 		);
 		expect(source).toContain("evidenceDocumentCss");
@@ -141,7 +144,10 @@ describe("Evidence SPA follows DESIGN.md tokens", () => {
 
 	it("enforces pressable-raised and icon-verb affordance laws on the dashboard", () => {
 		const source = readFileSync(
-			join(dirname(fileURLToPath(import.meta.url)), "../src/session-dashboard.ts"),
+			join(
+				dirname(fileURLToPath(import.meta.url)),
+				"../src/session-dashboard.ts",
+			),
 			"utf8",
 		);
 		// pressable = raised: only button.ico wears the plank costume.

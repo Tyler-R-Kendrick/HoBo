@@ -89,7 +89,11 @@ export function sponsoredWaitState(options: {
 }
 
 export function routeProvider(
-	candidates: readonly { provider: string; costUsd: number; capable: boolean }[],
+	candidates: readonly {
+		provider: string;
+		costUsd: number;
+		capable: boolean;
+	}[],
 	policy: BudgetPolicy,
 	pinned?: string,
 ): string | null {
@@ -102,5 +106,7 @@ export function routeProvider(
 		return capable[0]?.provider ?? null;
 	}
 	// cheapest-capable
-	return [...capable].sort((a, b) => a.costUsd - b.costUsd)[0]?.provider ?? null;
+	return (
+		[...capable].sort((a, b) => a.costUsd - b.costUsd)[0]?.provider ?? null
+	);
 }

@@ -144,7 +144,9 @@ export function cursorGuide(): CursorGuide {
 }
 
 /** Human panel for cursor guide. */
-export function renderCursorGuideText(guide: CursorGuide = cursorGuide()): string {
+export function renderCursorGuideText(
+	guide: CursorGuide = cursorGuide(),
+): string {
 	const rows: string[] = [
 		"▣ guide · cursor",
 		"····················",

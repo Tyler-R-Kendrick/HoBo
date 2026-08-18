@@ -343,7 +343,10 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 	// traversal primitive, not just bad input.
 	const parsed = parseWorkspaceName(options.name);
 	if (!parsed.ok) {
-		return { workspace: null, reason: `invalid workspace name: ${parsed.reason}` };
+		return {
+			workspace: null,
+			reason: `invalid workspace name: ${parsed.reason}`,
+		};
 	}
 	const name: WorkspaceName = parsed.value;
 	if (!existsSync(join(root, RIFT_DIR))) initRoot(root);
@@ -403,7 +406,8 @@ export function createWorkspace(options: CreateOptions): CreateResult {
 		const upper = join(base, "upper");
 		const work = join(base, "work");
 		const merged = join(base, "merged");
-		for (const dir of [upper, work, merged]) mkdirSync(dir, { recursive: true });
+		for (const dir of [upper, work, merged])
+			mkdirSync(dir, { recursive: true });
 		const made: WorkspaceRecord = {
 			name,
 			path: merged,
@@ -601,10 +605,7 @@ export function quoteVector(argv: readonly string[]): string {
 	return argv.map((a) => shellQuote(a)).join(" ");
 }
 
-export function execCommand(
-	record: WorkspaceRecord,
-	command: string,
-): string {
+export function execCommand(record: WorkspaceRecord, command: string): string {
 	if (record.tier !== "overlayfs") {
 		return `cd ${shellQuote(record.path)} && ${command}`;
 	}

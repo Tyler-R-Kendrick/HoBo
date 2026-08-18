@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { LockedVisualArtifact } from "./types.js";
@@ -261,11 +261,7 @@ export function renderOpenUiHtml(input: {
 }): string {
 	const status = input.status;
 	const badgeState =
-		input.locked === true
-			? "locked"
-			: status === "draft"
-				? "draft"
-				: "ready";
+		input.locked === true ? "locked" : status === "draft" ? "draft" : "ready";
 	const rawBadge =
 		input.locked === true ? "locked" : status === "draft" ? "draft" : status;
 	// Keep badge scannable — long edit strings truncate in the chrome chip.
@@ -299,32 +295,28 @@ ${OPENUI_STYLES}
       <p class="seal" data-testid="seal">◎ locked</p>
       <h1 data-testid="title">${escapeHtml(input.prompt)}</h1>
       <p class="lede" data-testid="lede">${
-		// Steps rail already shows generate/edit/lock — lede is outcome only.
-		input.locked === true
-			? "→codegen"
-			: status === "draft"
-				? "→edit"
-				: "→lock"
-	}</p>
+				// Steps rail already shows generate/edit/lock — lede is outcome only.
+				input.locked === true
+					? "→codegen"
+					: status === "draft"
+						? "→edit"
+						: "→lock"
+			}</p>
       <p data-testid="status" hidden>${escapeHtml(status)}</p>
       <div class="meta" data-testid="meta">
         <span class="chip" data-testid="loop-chip">${
-					input.locked === true
-						? "done"
-						: status === "draft"
-							? "edit"
-							: "lock"
+					input.locked === true ? "done" : status === "draft" ? "edit" : "lock"
 				}</span>
       </div>
     </main>
     <p class="foot" data-testid="foot">${
-		// Foot is action/outcome only — no twin of lede or steps.
-		input.locked === true
-			? "seal"
-			: status === "draft"
-				? "Edit→lock"
-				: "Lock→codegen"
-	}</p>
+			// Foot is action/outcome only — no twin of lede or steps.
+			input.locked === true
+				? "seal"
+				: status === "draft"
+					? "Edit→lock"
+					: "Lock→codegen"
+		}</p>
   </div>
 </body>
 </html>
@@ -381,7 +373,9 @@ export function lockVisualArtifact(
 ): LockedVisualArtifact {
 	const dir = join(session.durableRoot, "visual", session.id);
 	const status =
-		session.edits.length > 0 ? session.edits[session.edits.length - 1]! : "draft";
+		session.edits.length > 0
+			? session.edits[session.edits.length - 1]!
+			: "draft";
 	const html = renderOpenUiHtml({
 		prompt: session.prompt,
 		status,

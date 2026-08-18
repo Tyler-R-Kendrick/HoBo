@@ -20,8 +20,8 @@ import {
 	bundledRiftBinary,
 	createRiftWorkspace,
 	probeRift,
-	resolveRiftBinary,
 	type RiftRunner,
+	resolveRiftBinary,
 	riftRunner,
 	speaksContract,
 } from "./rift.js";
@@ -122,8 +122,7 @@ export async function allocateAgentWorkspaces(
 		return {
 			backend: "shared",
 			reason:
-				options.sharedReason ??
-				"--shared: every agent uses the workspace root",
+				options.sharedReason ?? "--shared: every agent uses the workspace root",
 			workspaces: agentIds.map((agentId) => ({
 				agentId,
 				path: workspaceRoot,

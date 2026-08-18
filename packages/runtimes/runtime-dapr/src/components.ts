@@ -55,11 +55,7 @@ export function generateDaprComponentYaml(
 	spec: DaprComponentSpec,
 ): DaprComponentYaml {
 	if (!spec.name || !spec.type) {
-		throw new MessagingParseError(
-			"component",
-			"name+type",
-			spec,
-		);
+		throw new MessagingParseError("component", "name+type", spec);
 	}
 	const metaLines = Object.entries(spec.metadata)
 		.map(([k, v]) => `    - name: ${k}\n      value: "${v}"`)

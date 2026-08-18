@@ -115,7 +115,9 @@ async function launchProductShell(options: {
 			process.env.HOBO_CODE_REDUCED_MOTION === "true",
 		...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : {}),
 		...(scriptedKeys !== undefined ? { scriptedKeys } : {}),
-		...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}),
+		...(options.sessionId !== undefined
+			? { sessionId: options.sessionId }
+			: {}),
 		...(options.messages !== undefined ? { messages: options.messages } : {}),
 		...(options.journal !== undefined ? { journal: options.journal } : {}),
 	});
@@ -212,7 +214,11 @@ if (argv[0] === "_station-agent") {
 			...(action.journal !== undefined ? { journal: action.journal } : {}),
 			...(action.cwd !== undefined ? { cwd: action.cwd } : {}),
 		});
-	} else if (result.ok && action?.kind === "attach-session" && action.sessionName) {
+	} else if (
+		result.ok &&
+		action?.kind === "attach-session" &&
+		action.sessionName
+	) {
 		const args = process.env.TMUX
 			? ["switch-client", "-t", action.sessionName]
 			: ["attach-session", "-t", action.sessionName];

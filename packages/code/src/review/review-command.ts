@@ -49,7 +49,10 @@ export async function runReviewCommand(input: {
 				data: snapshot,
 			};
 		}
-		const kindName = typeof input.flags.target === "string" ? input.flags.target : "working-tree";
+		const kindName =
+			typeof input.flags.target === "string"
+				? input.flags.target
+				: "working-tree";
 		const kind =
 			kindName === "index"
 				? "REVIEW_TARGET_KIND_INDEX"
@@ -68,19 +71,26 @@ export async function runReviewCommand(input: {
 		};
 		if (action === "start") {
 			envelope.startReview = {
-				sessionId: typeof input.flags.session === "string" ? input.flags.session : "",
+				sessionId:
+					typeof input.flags.session === "string" ? input.flags.session : "",
 				target: {
 					kind,
 					repositoryId: cwd,
 					repositoryRoot: cwd,
-					baseCommitOid: typeof input.flags.base === "string" ? input.flags.base : "",
-					headCommitOid: typeof input.flags.head === "string" ? input.flags.head : "",
+					baseCommitOid:
+						typeof input.flags.base === "string" ? input.flags.base : "",
+					headCommitOid:
+						typeof input.flags.head === "string" ? input.flags.head : "",
 				},
 			};
 		} else if (action === "mark") {
 			envelope.markReviewCoverage = {
 				state: "REVIEW_COVERAGE_STATE_REVIEWED",
-				unit: { kind: "file", fileId: input.args[2] ?? "", contentIdentity: "" },
+				unit: {
+					kind: "file",
+					fileId: input.args[2] ?? "",
+					contentIdentity: "",
+				},
 			};
 		} else if (action === "thread") {
 			envelope.createReviewThread = {

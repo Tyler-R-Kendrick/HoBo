@@ -11,23 +11,20 @@ import {
 	wrapBindleWebHandler,
 } from "../../src/bindle-integration.js";
 import { buildCorrelation } from "../../src/correlation.js";
-import { buildEvidencePack } from "../../src/evidence.js";
 import { createReplayEvent, REPLAY_EVENTS } from "../../src/events.js";
+import { buildEvidencePack } from "../../src/evidence.js";
 import {
 	createReplayHttpSurface,
 	REPLAY_BOUNDARIES,
 	seedReplayFixture,
 } from "../../src/http-surface.js";
-import {
-	createMemoryMeterSink,
-	meterIngest,
-} from "../../src/metering.js";
+import { createMemoryMeterSink, meterIngest } from "../../src/metering.js";
 import { evaluateRecordingPolicy } from "../../src/policy.js";
 import { maskRrwebEvents } from "../../src/privacy.js";
 import { applyRetention } from "../../src/retention.js";
 import { createReplayService } from "../../src/service.js";
 import { createMemoryDualFixtures } from "../../src/storage.js";
-import { createTracker, createFixtureRecordEngine } from "../../src/tracker.js";
+import { createFixtureRecordEngine, createTracker } from "../../src/tracker.js";
 import { defaultPrivacyPolicy, parseSessionRecord } from "../../src/types.js";
 
 describe("consumer boundaries (real APIs ↔ HTTP surface)", () => {
@@ -126,9 +123,9 @@ describe("consumer boundaries (real APIs ↔ HTTP surface)", () => {
 		expect(
 			evaluateRecordingPolicy({ isolationClass: "local-dev" }).enabled,
 		).toBe(true);
-		expect(
-			evaluateRecordingPolicy({ env: { HOBO_REPLAY: "0" } }).enabled,
-		).toBe(false);
+		expect(evaluateRecordingPolicy({ env: { HOBO_REPLAY: "0" } }).enabled).toBe(
+			false,
+		);
 
 		const session = parseSessionRecord({
 			id: "sess-1",

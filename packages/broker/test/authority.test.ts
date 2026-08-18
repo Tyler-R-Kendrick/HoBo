@@ -77,7 +77,12 @@ describe("broker environments — admin controls", () => {
 	});
 
 	it("rejects resolutions against an unapproved environment", async () => {
-		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({
+			policies: basePolicies,
+			catalog,
+			stationId: "station:test",
+			railHash:
+				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			environment: parseBrokerEnvironment({
 				environmentId: "env-prod",
 				approvedProviders: [],
@@ -90,7 +95,12 @@ describe("broker environments — admin controls", () => {
 	});
 
 	it("rejects when the pinned catalog snapshot is stale", async () => {
-		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({
+			policies: basePolicies,
+			catalog,
+			stationId: "station:test",
+			railHash:
+				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			environment: parseBrokerEnvironment({
 				environmentId: "env-prod",
 				approved: true,
@@ -103,7 +113,12 @@ describe("broker environments — admin controls", () => {
 	});
 
 	it("bounds placement eligibility to the environment's approved providers", async () => {
-		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const broker = createBroker({
+			policies: basePolicies,
+			catalog,
+			stationId: "station:test",
+			railHash:
+				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			environment: parseBrokerEnvironment({
 				environmentId: "env-prod",
 				approved: true,
@@ -123,7 +138,13 @@ describe("broker environments — admin controls", () => {
 
 describe("hosted authority surface (HTTP)", () => {
 	it("serves resolve/scale/rejection-matrix over a real node:http server", async () => {
-		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
+		const broker = createBroker({
+			policies: basePolicies,
+			catalog,
+			stationId: "station:test",
+			railHash:
+				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		});
 		const server = serveBroker(broker, { port: 0 });
 		await new Promise<void>((resolve) => server.once("listening", resolve));
 		const address = server.address();
@@ -170,7 +191,13 @@ describe("hosted authority surface (HTTP)", () => {
 	});
 
 	it("maps billing rejections to 402 through the pure handler", async () => {
-		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
+		const broker = createBroker({
+			policies: basePolicies,
+			catalog,
+			stationId: "station:test",
+			railHash:
+				"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		});
 		const handle = createBrokerHttpHandler(broker);
 		const response = await handle({
 			method: "POST",

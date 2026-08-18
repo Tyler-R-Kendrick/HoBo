@@ -234,7 +234,10 @@ describe("listHarnessModelOffers", () => {
 			"utf8",
 		);
 		const offers = listHarnessModelOffers("pi", { homeDir: home });
-		expect(offers.map((row) => row.runtimeId).sort()).toEqual(["gpt-4.1", "o3"]);
+		expect(offers.map((row) => row.runtimeId).sort()).toEqual([
+			"gpt-4.1",
+			"o3",
+		]);
 		expect(offers.every((row) => row.via === "pi")).toBe(true);
 	});
 });

@@ -4,16 +4,16 @@
  */
 import { YARD_EVENTS, type YardEvent } from "./events.js";
 import {
-	contentHashOf,
 	type ContentHash,
+	contentHashOf,
+	YARD_INSTANCE_SCHEMA,
+	YARD_INVENTORY_SCHEMA,
 	type YardGenerationResult,
 	type YardInstanceRegistration,
 	type YardInstanceStatus,
 	type YardInventorySnapshot,
 	type YardMatchDecision,
 	type YardPlacementReceipt,
-	YARD_INSTANCE_SCHEMA,
-	YARD_INVENTORY_SCHEMA,
 } from "./types.js";
 
 export interface YardGenerationAttemptRow {
@@ -22,7 +22,11 @@ export interface YardGenerationAttemptRow {
 	readonly providerId: string;
 	readonly runtimeId: string;
 	readonly expectedYardId: string;
-	readonly status: YardGenerationResult["status"] | "reserved" | "approval-required" | "compensated";
+	readonly status:
+		| YardGenerationResult["status"]
+		| "reserved"
+		| "approval-required"
+		| "compensated";
 	readonly yardId?: string;
 	readonly externalRefs: Readonly<Record<string, string>>;
 	readonly failure?: {
@@ -121,9 +125,7 @@ export function foldYardEventStore(
 				[requestId]: {
 					requestId,
 					outcome: prior?.outcome ?? "pending",
-					...(match.winnerYardId
-						? { selectedYardId: match.winnerYardId }
-						: {}),
+					...(match.winnerYardId ? { selectedYardId: match.winnerYardId } : {}),
 					matchOutcome: match.outcome,
 					reasonCodes: Object.freeze(
 						match.outcome === "rejected"
@@ -158,7 +160,12 @@ export function foldYardEventStore(
 		return upsertAttempt(state, seq, data, "started");
 	}
 	if (type === YARD_EVENTS.GenerationProgressed) {
-		return upsertAttempt(state, seq, data, str(data.status) as YardGenerationAttemptRow["status"] || "started");
+		return upsertAttempt(
+			state,
+			seq,
+			data,
+			(str(data.status) as YardGenerationAttemptRow["status"]) || "started",
+		);
 	}
 	if (type === YARD_EVENTS.GenerationProvisioned) {
 		return upsertAttempt(state, seq, data, "provisioned");
@@ -313,9 +320,7 @@ export function foldYardEventStore(
 					...(prior?.selectedYardId
 						? { selectedYardId: prior.selectedYardId }
 						: {}),
-					...(prior?.matchOutcome
-						? { matchOutcome: prior.matchOutcome }
-						: {}),
+					...(prior?.matchOutcome ? { matchOutcome: prior.matchOutcome } : {}),
 				},
 			},
 		});
@@ -407,7 +412,11 @@ function upsertAttempt(
 	) {
 		const winnerId = state.generationByIdempotency[idempotencyKey]!;
 		const winner = state.generationAttempts[winnerId];
-		if (winner && winner.status !== "failed" && winner.status !== "compensated") {
+		if (
+			winner &&
+			winner.status !== "failed" &&
+			winner.status !== "compensated"
+		) {
 			return withSeq(state, seq);
 		}
 	}
@@ -433,8 +442,7 @@ function upsertAttempt(
 		idempotencyKey: idempotencyKey || prior?.idempotencyKey || attemptId,
 		providerId: str(data.providerId) || prior?.providerId || "",
 		runtimeId: str(data.runtimeId) || prior?.runtimeId || "",
-		expectedYardId:
-			str(data.expectedYardId) || prior?.expectedYardId || "",
+		expectedYardId: str(data.expectedYardId) || prior?.expectedYardId || "",
 		status,
 		externalRefs: Object.freeze(externalRefs),
 		contributingEvents: Object.freeze([

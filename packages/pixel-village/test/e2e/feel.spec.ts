@@ -20,7 +20,6 @@ import { fileURLToPath } from "node:url";
 
 import { type Harness, startHarness } from "../../scripts/demo-harness.mjs";
 import type { ZoneId } from "../../src/layout.js";
-import { SCENARIOS } from "../../src/scenarios/index.js";
 import {
 	canvasPng,
 	diffPct,

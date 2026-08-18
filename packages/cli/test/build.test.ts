@@ -1,8 +1,7 @@
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 import { runCodegen } from "../src/codegen/run-codegen.js";
 import {
 	BUILD_MANIFEST_PATH,

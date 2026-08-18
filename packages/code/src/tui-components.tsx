@@ -1,8 +1,8 @@
-import type { AccentName } from "./rubberhose.js";
 import {
 	formatHarnessSessionLines,
 	type HarnessSessionView,
 } from "./harness-session-view.js";
+import type { AccentName } from "./rubberhose.js";
 import { formatInkTable, type InkTableRow, wrapMessage } from "./tui-layout.js";
 import { TUI_TOKENS } from "./tui-tokens.js";
 import { h, type TuiChild, type TuiNode } from "./tui-tree.js";
@@ -308,11 +308,7 @@ export function AgentsCatalog(props: AgentsCatalogProps): TuiNode {
 					const absolute = props.scroll + index;
 					const selected = absolute === props.cursor;
 					const indent = "  ".repeat(Math.max(0, row.depth));
-					const twisty = row.expandable
-						? row.expanded
-							? "▾ "
-							: "▸ "
-						: "· ";
+					const twisty = row.expandable ? (row.expanded ? "▾ " : "▸ ") : "· ";
 					return (
 						<text
 							id={`agents-catalog-${row.id}`}

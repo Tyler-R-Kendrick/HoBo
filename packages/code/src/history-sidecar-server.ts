@@ -78,7 +78,9 @@ async function handle(
 						? { cwd: url.searchParams.get("cwd") ?? "" }
 						: {}),
 					failedOnly: url.searchParams.get("failed") === "1",
-					...(author === "human" || author === "agent" || author === "automation"
+					...(author === "human" ||
+					author === "agent" ||
+					author === "automation"
 						? { authorKind: author }
 						: {}),
 				}),

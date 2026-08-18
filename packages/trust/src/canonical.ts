@@ -30,7 +30,9 @@ export function canonicalize(value: CanonicalValue): string {
 	if (typeof value === "boolean") return value ? "true" : "false";
 	if (typeof value === "number") {
 		if (!Number.isFinite(value)) {
-			throw new CanonicalizationError("non-finite numbers are not canonicalizable");
+			throw new CanonicalizationError(
+				"non-finite numbers are not canonicalizable",
+			);
 		}
 		return JSON.stringify(value);
 	}
@@ -40,12 +42,17 @@ export function canonicalize(value: CanonicalValue): string {
 			.map((entry) => canonicalize(entry))
 			.join(",")}]`;
 	}
-	const record = value as { readonly [key: string]: CanonicalValue | undefined };
+	const record = value as {
+		readonly [key: string]: CanonicalValue | undefined;
+	};
 	const keys = Object.keys(record)
 		.filter((key) => record[key] !== undefined)
 		.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 	return `{${keys
-		.map((key) => `${JSON.stringify(key)}:${canonicalize(record[key] as CanonicalValue)}`)
+		.map(
+			(key) =>
+				`${JSON.stringify(key)}:${canonicalize(record[key] as CanonicalValue)}`,
+		)
 		.join(",")}}`;
 }
 

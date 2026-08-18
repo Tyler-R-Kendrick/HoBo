@@ -12,16 +12,16 @@ import {
 	type BoModelOffer,
 	cycleBoModelOffer,
 	findOfferIndex,
-	listBoModelOffers,
 	type ListBoModelOffersInput,
+	listBoModelOffers,
 } from "./bo-model-catalog.js";
 import { listHarnessModelOffers } from "./harness-model-catalog.js";
 import {
-	type EffortLevel,
 	cycleEffort,
+	type EffortLevel,
+	type HarnessSettings,
 	loadHarnessSettings,
 	saveHarnessSettings,
-	type HarnessSettings,
 } from "./harness-settings.js";
 
 export type AgentsConfigureTarget =
@@ -138,17 +138,13 @@ function withModelSelection(
 	);
 	const offer = base.modelOffers[modelCursor];
 	const matched =
-		offer &&
-		(modelId
-			? offer.id === modelId
-			: offer.runtimeId === base.model);
+		offer && (modelId ? offer.id === modelId : offer.runtimeId === base.model);
 	return clampConfigureState({
 		...base,
 		modelCursor,
 		modelId: modelId || (matched ? offer.id : ""),
 		via: via || (matched ? (offer.via ?? "") : ""),
-		apiEndpoint:
-			apiEndpoint || (matched ? (offer.baseUrl ?? "") : ""),
+		apiEndpoint: apiEndpoint || (matched ? (offer.baseUrl ?? "") : ""),
 	});
 }
 
@@ -615,9 +611,7 @@ function saveConfigure(
 		state.modelId.trim().length > 0 ? state.modelId.trim() : undefined;
 	const via = state.via.trim().length > 0 ? state.via.trim() : undefined;
 	const apiEndpoint =
-		state.apiEndpoint.trim().length > 0
-			? state.apiEndpoint.trim()
-			: undefined;
+		state.apiEndpoint.trim().length > 0 ? state.apiEndpoint.trim() : undefined;
 	const settings: HarnessSettings = {
 		schema: "hobo.code.harness-settings/v1",
 		id,
@@ -649,9 +643,7 @@ export function openEveConfigureFromParent(
 ): AgentsConfigureState {
 	const loaded = loadHarnessSettings(hoboHome, agent.id, "eve");
 	const offers =
-		parent.modelOffers.length > 0
-			? parent.modelOffers
-			: loadBoOffers(hoboHome);
+		parent.modelOffers.length > 0 ? parent.modelOffers : loadBoOffers(hoboHome);
 	const { parent: _ignored, ...rest } = parent;
 	return withModelSelection({
 		target: {

@@ -10,6 +10,14 @@ export {
 	rebuildAgentGuardrailState,
 } from "./agent-guardrails.js";
 export {
+	COMMUNITY_FLUX_POLICY_PACK_ID,
+	type CommunityFluxPolicyEvaluation,
+	type CommunityFluxPolicyInput,
+	type CommunityFluxPolicyPack,
+	DEFAULT_COMMUNITY_FLUX_POLICY_PACK,
+	evaluateCommunityFluxPolicy,
+} from "./community-flux-policy-pack.js";
+export {
 	CONTROL_EVIDENCE_PACK_SCHEMA,
 	type ControlCoverageReport,
 	type ControlEvidenceKind,
@@ -22,14 +30,6 @@ export {
 	NIST_800_53_SEED_PACK,
 	parseControlEvidencePack,
 } from "./control-evidence-pack.js";
-export {
-	COMMUNITY_FLUX_POLICY_PACK_ID,
-	DEFAULT_COMMUNITY_FLUX_POLICY_PACK,
-	evaluateCommunityFluxPolicy,
-	type CommunityFluxPolicyEvaluation,
-	type CommunityFluxPolicyInput,
-	type CommunityFluxPolicyPack,
-} from "./community-flux-policy-pack.js";
 export {
 	DEFAULT_MESSAGING_POLICY_PACK,
 	evaluateMessagingPolicy,

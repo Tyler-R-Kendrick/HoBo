@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -55,9 +61,7 @@ describe("harness-settings", () => {
 		expect(loaded.modelId).toBe("openai/local-coder");
 		expect(loaded.via).toBe("codex");
 		expect(loaded.apiEndpoint).toBe("http://127.0.0.1:8080/v1");
-		expect(resolveHarnessApiEndpoint(loaded)).toBe(
-			"http://127.0.0.1:8080/v1",
-		);
+		expect(resolveHarnessApiEndpoint(loaded)).toBe("http://127.0.0.1:8080/v1");
 	});
 
 	it("migrates legacy modelPurl on load", () => {
@@ -88,11 +92,9 @@ describe("harness-settings", () => {
 		expect(loaded.modelId).toBe("openai/local-coder");
 		expect(loaded.via).toBe("codex");
 		expect(loaded.apiEndpoint).toBe("http://127.0.0.1:8080/v1");
-		expect(
-			migrateLegacyModelPurl(
-				"pkg:openai/gpt-5?via=codex",
-			)?.modelId,
-		).toBe("openai/gpt-5");
+		expect(migrateLegacyModelPurl("pkg:openai/gpt-5?via=codex")?.modelId).toBe(
+			"openai/gpt-5",
+		);
 	});
 
 	it("cycles effort levels", () => {

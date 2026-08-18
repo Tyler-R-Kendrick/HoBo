@@ -11,7 +11,6 @@ import {
 } from "../src/index.ts";
 import {
 	goldenAndTraceDriftAdapter,
-	goldenIrDriftAdapter,
 	languageLeakAdapter,
 	missingFunctionAdapter,
 	nondeterministicAdapter,

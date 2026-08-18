@@ -9,8 +9,8 @@
  * instant the rest of resolution uses.
  */
 
-import { ClaimError } from "./types.js";
 import type { BootstrapClass, Instant } from "./types.js";
+import { ClaimError } from "./types.js";
 
 export type AnonymousAdmissionCode =
 	| "ANONYMOUS_QUOTA_EXCEEDED"
@@ -159,12 +159,17 @@ export function admitAnonymousDeployment(input: {
 
 	// A risk bucket only counts inside its window; an expired window is a fresh
 	// budget, which is why the start time travels with the counter.
-	const windowActive = nowMs - usage.riskBucketWindowStartMs < policy.riskBucketWindowMs;
-	if (windowActive && usage.riskBucketDeployments >= policy.maxDeploymentsPerRiskBucketPerWindow) {
+	const windowActive =
+		nowMs - usage.riskBucketWindowStartMs < policy.riskBucketWindowMs;
+	if (
+		windowActive &&
+		usage.riskBucketDeployments >= policy.maxDeploymentsPerRiskBucketPerWindow
+	) {
 		refusals.push({
 			code: "ANONYMOUS_QUOTA_EXCEEDED",
 			detail: `risk bucket exhausted (${usage.riskBucketDeployments}/${policy.maxDeploymentsPerRiskBucketPerWindow})`,
-			retryAfterMs: usage.riskBucketWindowStartMs + policy.riskBucketWindowMs - nowMs,
+			retryAfterMs:
+				usage.riskBucketWindowStartMs + policy.riskBucketWindowMs - nowMs,
 		});
 	}
 
@@ -199,7 +204,10 @@ export function admitAnonymousDeployment(input: {
 		});
 	}
 
-	if (request.requestedTtlMs <= 0 || request.requestedTtlMs > policy.maxLeaseTtlMs) {
+	if (
+		request.requestedTtlMs <= 0 ||
+		request.requestedTtlMs > policy.maxLeaseTtlMs
+	) {
 		refusals.push({
 			code: "TTL_OUT_OF_BOUNDS",
 			detail: `requested TTL ${request.requestedTtlMs}ms is outside (0, ${policy.maxLeaseTtlMs}]`,
@@ -242,7 +250,8 @@ export function admitAnonymousDeployment(input: {
 		refusals.push({
 			code: "PROVIDER_RATE_LIMITED",
 			detail: "poll interval below the configured minimum",
-			retryAfterMs: usage.lastPollAtMs + policy.minPollIntervalMs - request.pollAtMs,
+			retryAfterMs:
+				usage.lastPollAtMs + policy.minPollIntervalMs - request.pollAtMs,
 		});
 	}
 
@@ -260,7 +269,8 @@ export function assertAnonymousAdmission(admission: AnonymousAdmission): void {
 	const first = admission.refusals[0];
 	if (first === undefined) return;
 	const extra = admission.refusals.length - 1;
-	const detail = extra === 0 ? first.detail : `${first.detail} (+${extra} more)`;
+	const detail =
+		extra === 0 ? first.detail : `${first.detail} (+${extra} more)`;
 	throw new ClaimError(
 		first.code === "SPONSOR_BUDGET_EXCEEDED"
 			? "SPONSOR_BUDGET_EXCEEDED"

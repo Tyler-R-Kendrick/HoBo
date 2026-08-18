@@ -3,9 +3,8 @@
  * Never expose raw engine objects.
  */
 import type { YardProjectionSnapshot } from "@hobo/management";
-
-import type { ZoneId } from "./layout.js";
 import type { YardVisualState } from "./entity-state.js";
+import type { ZoneId } from "./layout.js";
 
 export type YardTestState = Readonly<{
 	scene: string;

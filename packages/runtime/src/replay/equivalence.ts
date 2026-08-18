@@ -4,7 +4,6 @@ import crypto from "node:crypto";
 import { createDeterministicContext } from "./context.js";
 import { ReplayDivergenceError } from "./divergence.js";
 import type {
-	DeterministicContext,
 	EventEnvelope,
 	FoldFn,
 	ReplayMode,

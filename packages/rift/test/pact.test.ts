@@ -7,7 +7,14 @@
  * response the contract promises.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,8 +38,15 @@ interface Interaction {
 }
 
 const pact = JSON.parse(
-	readFileSync(join(pkg, "contracts", "pacts", "rift-workspace-boundary.pact.json"), "utf8"),
-) as { consumer: { name: string }; provider: { name: string }; interactions: Interaction[] };
+	readFileSync(
+		join(pkg, "contracts", "pacts", "rift-workspace-boundary.pact.json"),
+		"utf8",
+	),
+) as {
+	consumer: { name: string };
+	provider: { name: string };
+	interactions: Interaction[];
+};
 
 let root: string;
 
@@ -50,7 +64,9 @@ function run(argv: readonly string[]) {
 beforeAll(() => {
 	// The contract is against the shipped artifact, not the sources.
 	if (!existsSync(cli)) {
-		throw new Error(`build packages/rift before verifying the pact: ${cli} missing`);
+		throw new Error(
+			`build packages/rift before verifying the pact: ${cli} missing`,
+		);
 	}
 	root = mkdtempSync(join(tmpdir(), "rift-pact-"));
 	mkdirSync(join(root, "src"), { recursive: true });
@@ -96,7 +112,9 @@ describe(`${pact.consumer.name} → ${pact.provider.name}`, () => {
 	}
 
 	it("leaves nothing behind after the removal interaction", () => {
-		expect(existsSync(join(root, ".hobo-rift", "workspaces", "claude"))).toBe(false);
+		expect(existsSync(join(root, ".hobo-rift", "workspaces", "claude"))).toBe(
+			false,
+		);
 		rmSync(root, { recursive: true, force: true });
 	});
 });

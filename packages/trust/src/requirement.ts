@@ -68,7 +68,9 @@ const AUTHORITY_REQUIREMENTS: readonly CreatorAuthorityRequirement[] = [
 	"may-be-retained",
 ];
 
-export function parseTrustRequirement(input: TrustRequirementInput): TrustRequirement {
+export function parseTrustRequirement(
+	input: TrustRequirementInput,
+): TrustRequirement {
 	if (!PROVIDER_CLASSES.includes(input.minimumProviderClass)) {
 		throw new TrustRequirementError(
 			`unknown provider class ${JSON.stringify(input.minimumProviderClass)}`,
@@ -79,16 +81,28 @@ export function parseTrustRequirement(input: TrustRequirementInput): TrustRequir
 			`unknown creator authority requirement ${JSON.stringify(input.creatorAuthorityAfterClaim)}`,
 		);
 	}
-	if (!Number.isInteger(input.maximumClaimActions) || input.maximumClaimActions < 0) {
-		throw new TrustRequirementError("maximumClaimActions must be a non-negative integer");
+	if (
+		!Number.isInteger(input.maximumClaimActions) ||
+		input.maximumClaimActions < 0
+	) {
+		throw new TrustRequirementError(
+			"maximumClaimActions must be a non-negative integer",
+		);
 	}
-	if (!Number.isInteger(input.maximumEvidenceAgeMs) || input.maximumEvidenceAgeMs <= 0) {
-		throw new TrustRequirementError("maximumEvidenceAgeMs must be a positive integer");
+	if (
+		!Number.isInteger(input.maximumEvidenceAgeMs) ||
+		input.maximumEvidenceAgeMs <= 0
+	) {
+		throw new TrustRequirementError(
+			"maximumEvidenceAgeMs must be a positive integer",
+		);
 	}
 	const requiredChecks = [...(input.requiredChecks ?? [])];
 	for (const key of requiredChecks) {
 		if (typeof key !== "string" || key.trim().length === 0) {
-			throw new TrustRequirementError("requiredChecks entries must be non-empty strings");
+			throw new TrustRequirementError(
+				"requiredChecks entries must be non-empty strings",
+			);
 		}
 	}
 
@@ -104,17 +118,20 @@ export function parseTrustRequirement(input: TrustRequirementInput): TrustRequir
 		allowSponsor: input.allowSponsor ?? false,
 		allowPack: input.allowPack ?? true,
 		allowBridge: input.allowBridge ?? false,
-		requiredChecks: [...new Set(requiredChecks)].sort((a, b) => a.localeCompare(b)),
+		requiredChecks: [...new Set(requiredChecks)].sort((a, b) =>
+			a.localeCompare(b),
+		),
 		// The brand is a type-level witness that this value passed the parser.
 	} as unknown as TrustRequirement;
 }
 
 /** The requirement HoBo applies when an operator states nothing else. */
-export const DEFAULT_TRUST_REQUIREMENT: TrustRequirement = parseTrustRequirement({
-	minimumProviderClass: "verified-emerging",
-	requireOfficialBootstrapContract: true,
-	requireDocumentedClaimContract: true,
-	creatorAuthorityAfterClaim: "must-be-rotatable",
-	maximumClaimActions: 2,
-	maximumEvidenceAgeMs: 30 * 24 * 60 * 60 * 1000,
-});
+export const DEFAULT_TRUST_REQUIREMENT: TrustRequirement =
+	parseTrustRequirement({
+		minimumProviderClass: "verified-emerging",
+		requireOfficialBootstrapContract: true,
+		requireDocumentedClaimContract: true,
+		creatorAuthorityAfterClaim: "must-be-rotatable",
+		maximumClaimActions: 2,
+		maximumEvidenceAgeMs: 30 * 24 * 60 * 60 * 1000,
+	});

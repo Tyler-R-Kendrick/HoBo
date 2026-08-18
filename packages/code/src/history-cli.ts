@@ -1,15 +1,16 @@
 /**
  * hobo-code history + alias/dotfiles verbs. Station SQLite, not Atuin.
  */
+
 import {
-	describeAuthedStationSession,
-	type AuthedStationView,
-} from "./station-session.js";
-import {
-	openSessionShellStore,
 	type CommandActorKind,
+	openSessionShellStore,
 	type SessionShellStore,
 } from "./session-shell-store.js";
+import {
+	type AuthedStationView,
+	describeAuthedStationSession,
+} from "./station-session.js";
 
 export interface HistoryCliResult {
 	readonly ok: boolean;
@@ -98,7 +99,8 @@ export function runHistoryCli(input: {
 			};
 		}
 		const q = (sub === "search" ? rest.join(" ") : input.args.join(" ")).trim();
-		const author = typeof input.flags.author === "string" ? input.flags.author : "";
+		const author =
+			typeof input.flags.author === "string" ? input.flags.author : "";
 		const events = store.search({
 			...(q.length > 0 ? { q } : {}),
 			cwd: input.cwd,
@@ -180,9 +182,10 @@ export function runAliasCli(input: {
 				message:
 					envVars.length === 0
 						? "▣ env\n (empty)"
-						: ["▣ env", ...envVars.map((row) => ` ${row.name}=${row.value}`)].join(
-								"\n",
-							),
+						: [
+								"▣ env",
+								...envVars.map((row) => ` ${row.name}=${row.value}`),
+							].join("\n"),
 				data: { env: envVars },
 			};
 		}

@@ -19,67 +19,252 @@ import type {
 } from "./types.js";
 
 export type ClaimCommand =
-	| { readonly kind: "CompileDeploymentOffer"; readonly deploymentRef: string; readonly offerId: string }
-	| { readonly kind: "AcceptDeploymentOffer"; readonly offerId: string; readonly offerDigest: string; readonly acceptedAt: Instant }
+	| {
+			readonly kind: "CompileDeploymentOffer";
+			readonly deploymentRef: string;
+			readonly offerId: string;
+	  }
+	| {
+			readonly kind: "AcceptDeploymentOffer";
+			readonly offerId: string;
+			readonly offerDigest: string;
+			readonly acceptedAt: Instant;
+	  }
 	| { readonly kind: "ReserveGuestLease"; readonly lease: GuestLease }
-	| { readonly kind: "StartGuestDeployment"; readonly deploymentRef: string; readonly idempotencyKey: string }
-	| { readonly kind: "RecordProvisionedSubject"; readonly subjectRef: string; readonly subjectKind: ClaimSubjectKind; readonly providerId: string; readonly idempotencyKey: string }
+	| {
+			readonly kind: "StartGuestDeployment";
+			readonly deploymentRef: string;
+			readonly idempotencyKey: string;
+	  }
+	| {
+			readonly kind: "RecordProvisionedSubject";
+			readonly subjectRef: string;
+			readonly subjectKind: ClaimSubjectKind;
+			readonly providerId: string;
+			readonly idempotencyKey: string;
+	  }
 	| { readonly kind: "AttachClaimBundle"; readonly bundle: ClaimBundle }
-	| { readonly kind: "RecordClaimAction"; readonly itemId: string; readonly oneTimeActionRef: string; readonly deadline?: Instant }
-	| { readonly kind: "BeginClaimBundle"; readonly bundleId: string; readonly at: Instant }
-	| { readonly kind: "BeginClaimItem"; readonly itemId: string; readonly at: Instant }
-	| { readonly kind: "ObserveClaimItem"; readonly itemId: string; readonly observedStatus: "pending" | "claimed" | "expired"; readonly at: Instant }
-	| { readonly kind: "VerifyOwnership"; readonly itemId: string; readonly verified: boolean; readonly evidenceRef: string; readonly creatorAuthorityAfterClaim: CreatorAuthorityAfterClaim }
-	| { readonly kind: "RotateCapabilityBinding"; readonly itemId: string; readonly bindingId: string }
-	| { readonly kind: "RevokeBootstrapAuthority"; readonly itemId: string; readonly evidenceRef: string }
-	| { readonly kind: "AuthorizePostClaimAgent"; readonly itemId: string; readonly granted: boolean }
-	| { readonly kind: "BeginResourceMigration"; readonly itemId: string; readonly migrationProfileRef: string }
-	| { readonly kind: "RecordMigrationCheckpoint"; readonly itemId: string; readonly checkpoint: string }
-	| { readonly kind: "CommitConnectorCutover"; readonly itemId: string; readonly connectorRef: string }
-	| { readonly kind: "CompleteClaimItem"; readonly itemId: string; readonly at: Instant }
-	| { readonly kind: "CompleteClaimBundle"; readonly bundleId: string; readonly at: Instant }
-	| { readonly kind: "ExpireGuestLease"; readonly leaseId: string; readonly at: Instant }
-	| { readonly kind: "CompensateFailedClaim"; readonly bundleId: string; readonly reason: string }
+	| {
+			readonly kind: "RecordClaimAction";
+			readonly itemId: string;
+			readonly oneTimeActionRef: string;
+			readonly deadline?: Instant;
+	  }
+	| {
+			readonly kind: "BeginClaimBundle";
+			readonly bundleId: string;
+			readonly at: Instant;
+	  }
+	| {
+			readonly kind: "BeginClaimItem";
+			readonly itemId: string;
+			readonly at: Instant;
+	  }
+	| {
+			readonly kind: "ObserveClaimItem";
+			readonly itemId: string;
+			readonly observedStatus: "pending" | "claimed" | "expired";
+			readonly at: Instant;
+	  }
+	| {
+			readonly kind: "VerifyOwnership";
+			readonly itemId: string;
+			readonly verified: boolean;
+			readonly evidenceRef: string;
+			readonly creatorAuthorityAfterClaim: CreatorAuthorityAfterClaim;
+	  }
+	| {
+			readonly kind: "RotateCapabilityBinding";
+			readonly itemId: string;
+			readonly bindingId: string;
+	  }
+	| {
+			readonly kind: "RevokeBootstrapAuthority";
+			readonly itemId: string;
+			readonly evidenceRef: string;
+	  }
+	| {
+			readonly kind: "AuthorizePostClaimAgent";
+			readonly itemId: string;
+			readonly granted: boolean;
+	  }
+	| {
+			readonly kind: "BeginResourceMigration";
+			readonly itemId: string;
+			readonly migrationProfileRef: string;
+	  }
+	| {
+			readonly kind: "RecordMigrationCheckpoint";
+			readonly itemId: string;
+			readonly checkpoint: string;
+	  }
+	| {
+			readonly kind: "CommitConnectorCutover";
+			readonly itemId: string;
+			readonly connectorRef: string;
+	  }
+	| {
+			readonly kind: "CompleteClaimItem";
+			readonly itemId: string;
+			readonly at: Instant;
+	  }
+	| {
+			readonly kind: "CompleteClaimBundle";
+			readonly bundleId: string;
+			readonly at: Instant;
+	  }
+	| {
+			readonly kind: "ExpireGuestLease";
+			readonly leaseId: string;
+			readonly at: Instant;
+	  }
+	| {
+			readonly kind: "CompensateFailedClaim";
+			readonly bundleId: string;
+			readonly reason: string;
+	  }
 	| { readonly kind: "DestroyGuestDeployment"; readonly deploymentRef: string }
-	| { readonly kind: "RetryRepairableClaim"; readonly itemId: string; readonly at: Instant };
+	| {
+			readonly kind: "RetryRepairableClaim";
+			readonly itemId: string;
+			readonly at: Instant;
+	  };
 
 export type ClaimEvent =
-	| { readonly type: "DeploymentOfferCompiled"; readonly offerId: string; readonly offerDigest: string }
-	| { readonly type: "DeploymentOfferAccepted"; readonly offerId: string; readonly offerDigest: string; readonly at: Instant }
-	| { readonly type: "GuestLeaseReserved"; readonly leaseId: string; readonly expiresAt?: Instant; readonly claimBy?: Instant }
+	| {
+			readonly type: "DeploymentOfferCompiled";
+			readonly offerId: string;
+			readonly offerDigest: string;
+	  }
+	| {
+			readonly type: "DeploymentOfferAccepted";
+			readonly offerId: string;
+			readonly offerDigest: string;
+			readonly at: Instant;
+	  }
+	| {
+			readonly type: "GuestLeaseReserved";
+			readonly leaseId: string;
+			readonly expiresAt?: Instant;
+			readonly claimBy?: Instant;
+	  }
 	| { readonly type: "GuestDeploymentStarted"; readonly deploymentRef: string }
-	| { readonly type: "ProviderSubjectProvisioned"; readonly subjectRef: string; readonly subjectKind: ClaimSubjectKind; readonly providerId: string }
-	| { readonly type: "ClaimActionSecured"; readonly itemId: string; readonly oneTimeActionRef: string; readonly deadline?: Instant }
+	| {
+			readonly type: "ProviderSubjectProvisioned";
+			readonly subjectRef: string;
+			readonly subjectKind: ClaimSubjectKind;
+			readonly providerId: string;
+	  }
+	| {
+			readonly type: "ClaimActionSecured";
+			readonly itemId: string;
+			readonly oneTimeActionRef: string;
+			readonly deadline?: Instant;
+	  }
 	| { readonly type: "ClaimBundleStarted"; readonly bundleId: string }
 	| { readonly type: "ClaimItemStarted"; readonly itemId: string }
-	| { readonly type: "ClaimStatusObserved"; readonly itemId: string; readonly observedStatus: string }
-	| { readonly type: "OwnershipVerified"; readonly itemId: string; readonly evidenceRef: string }
-	| { readonly type: "CapabilityBindingRotationRequired"; readonly itemId: string }
-	| { readonly type: "CapabilityBindingRotated"; readonly itemId: string; readonly bindingId: string }
-	| { readonly type: "BootstrapAuthorityRevoked"; readonly itemId: string; readonly evidenceRef: string }
-	| { readonly type: "PostClaimAgentAuthorizationRequested"; readonly itemId: string }
+	| {
+			readonly type: "ClaimStatusObserved";
+			readonly itemId: string;
+			readonly observedStatus: string;
+	  }
+	| {
+			readonly type: "OwnershipVerified";
+			readonly itemId: string;
+			readonly evidenceRef: string;
+	  }
+	| {
+			readonly type: "CapabilityBindingRotationRequired";
+			readonly itemId: string;
+	  }
+	| {
+			readonly type: "CapabilityBindingRotated";
+			readonly itemId: string;
+			readonly bindingId: string;
+	  }
+	| {
+			readonly type: "BootstrapAuthorityRevoked";
+			readonly itemId: string;
+			readonly evidenceRef: string;
+	  }
+	| {
+			readonly type: "PostClaimAgentAuthorizationRequested";
+			readonly itemId: string;
+	  }
 	| { readonly type: "PostClaimAgentAuthorized"; readonly itemId: string }
-	| { readonly type: "ResourceMigrationStarted"; readonly itemId: string; readonly migrationProfileRef: string }
-	| { readonly type: "ResourceMigrationCheckpointRecorded"; readonly itemId: string; readonly checkpoint: string }
+	| {
+			readonly type: "ResourceMigrationStarted";
+			readonly itemId: string;
+			readonly migrationProfileRef: string;
+	  }
+	| {
+			readonly type: "ResourceMigrationCheckpointRecorded";
+			readonly itemId: string;
+			readonly checkpoint: string;
+	  }
 	| { readonly type: "ResourceMigrationVerified"; readonly itemId: string }
-	| { readonly type: "LogicalConnectorCutoverCommitted"; readonly itemId: string; readonly connectorRef: string }
-	| { readonly type: "ClaimItemCompleted"; readonly itemId: string; readonly at: Instant }
-	| { readonly type: "ClaimBundleCompleted"; readonly bundleId: string; readonly at: Instant }
-	| { readonly type: "GuestLeaseExpired"; readonly leaseId: string; readonly at: Instant }
-	| { readonly type: "ClaimCompensationStarted"; readonly bundleId: string; readonly reason: string }
+	| {
+			readonly type: "LogicalConnectorCutoverCommitted";
+			readonly itemId: string;
+			readonly connectorRef: string;
+	  }
+	| {
+			readonly type: "ClaimItemCompleted";
+			readonly itemId: string;
+			readonly at: Instant;
+	  }
+	| {
+			readonly type: "ClaimBundleCompleted";
+			readonly bundleId: string;
+			readonly at: Instant;
+	  }
+	| {
+			readonly type: "GuestLeaseExpired";
+			readonly leaseId: string;
+			readonly at: Instant;
+	  }
+	| {
+			readonly type: "ClaimCompensationStarted";
+			readonly bundleId: string;
+			readonly reason: string;
+	  }
 	| { readonly type: "ClaimCompensationCompleted"; readonly bundleId: string }
-	| { readonly type: "GuestDeploymentDestroyed"; readonly deploymentRef: string }
-	| { readonly type: "ClaimRepairRequested"; readonly itemId: string; readonly failureCode: string };
+	| {
+			readonly type: "GuestDeploymentDestroyed";
+			readonly deploymentRef: string;
+	  }
+	| {
+			readonly type: "ClaimRepairRequested";
+			readonly itemId: string;
+			readonly failureCode: string;
+	  };
 
 /** Patterns that must never reach a durable event payload. */
-const FORBIDDEN_IN_EVENTS: readonly { readonly label: string; readonly pattern: RegExp }[] = [
-	{ label: "connection string", pattern: /\b(?:postgres(?:ql)?|mysql|rediss?|mongodb(?:\+srv)?|amqps?):\/\//iu },
+const FORBIDDEN_IN_EVENTS: readonly {
+	readonly label: string;
+	readonly pattern: RegExp;
+}[] = [
+	{
+		label: "connection string",
+		pattern:
+			/\b(?:postgres(?:ql)?|mysql|rediss?|mongodb(?:\+srv)?|amqps?):\/\//iu,
+	},
 	{ label: "bearer token", pattern: /\bBearer\s+[A-Za-z0-9._-]{8,}/iu },
 	{ label: "private key", pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/u },
 	{ label: "jwt", pattern: /\bey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./u },
-	{ label: "api key", pattern: /\b(?:sk|pk|ghp|gho|xox[abpsr])[-_][A-Za-z0-9_-]{12,}/u },
-	{ label: "password assignment", pattern: /\b(?:password|passwd|secret|admin_key|adminKey)\s*[:=]\s*\S/iu },
-	{ label: "claim url", pattern: /https?:\/\/\S*\b(?:claim|transfer)\b\S*[?#]\S*(?:token|code|key)=/iu },
+	{
+		label: "api key",
+		pattern: /\b(?:sk|pk|ghp|gho|xox[abpsr])[-_][A-Za-z0-9_-]{12,}/u,
+	},
+	{
+		label: "password assignment",
+		pattern: /\b(?:password|passwd|secret|admin_key|adminKey)\s*[:=]\s*\S/iu,
+	},
+	{
+		label: "claim url",
+		pattern:
+			/https?:\/\/\S*\b(?:claim|transfer)\b\S*[?#]\S*(?:token|code|key)=/iu,
+	},
 ];
 
 export class EventSecretLeakError extends Error {
@@ -109,7 +294,9 @@ export function assertNoSecrets(event: ClaimEvent): void {
 }
 
 /** Post-claim obligations that must finish before an item may complete. */
-export function outstandingObligations(item: ClaimItem): readonly PostClaimAction[] {
+export function outstandingObligations(
+	item: ClaimItem,
+): readonly PostClaimAction[] {
 	const done = new Set(item.completedPostClaimActions);
 	return item.postClaimActions.filter((action) => !done.has(action));
 }

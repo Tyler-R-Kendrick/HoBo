@@ -8,7 +8,7 @@
  * These tests encode the identity so that failure mode is now loud.
  */
 import { describe, expect, it } from "vitest";
-import { HOBO_LOGO_TUI } from "../src/_generated/hobo-logo-tui.js";
+import { HOBO_LOGO_TUI } from "../src/_generated-art/hobo-logo-tui.js";
 import {
 	createInitialShellState,
 	renderShellFrame,
@@ -82,7 +82,9 @@ describe("strict black & white with rare accents", () => {
 		const noColor = process.env.NO_COLOR;
 		delete process.env.NO_COLOR;
 		try {
-			const spark = inkCard(["body"], { width: 30, accent: "spark" }).join("\n");
+			const spark = inkCard(["body"], { width: 30, accent: "spark" }).join(
+				"\n",
+			);
 			const go = inkCard(["body"], { width: 30, accent: "go" }).join("\n");
 			expect(spark).toContain(ACCENT.spark);
 			expect(spark).not.toContain(ACCENT.go);

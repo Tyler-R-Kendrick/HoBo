@@ -2,6 +2,9 @@
  * Ensure a kubectl client binary under HOBO_HOME (offline equip path).
  * Cluster reachability is separate — ensure makes the client equippable.
  */
+
+import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import {
 	chmodSync,
 	existsSync,
@@ -12,8 +15,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
 
 // public-contract: pinned kubectl client for oci host ensure.
 export const PINNED_KUBECTL_VERSION = "1.31.0" as const;
@@ -67,12 +68,14 @@ function tryKubectl(bin: string): { version: string } | null {
 /**
  * Resolve kubectl meeting pinned floor, downloading into $HOBO_HOME/tools/kubectl.
  */
-export async function ensureKubectlBinary(options: {
-	readonly hoboHome: string;
-	readonly env?: NodeJS.ProcessEnv;
-	readonly download?: boolean;
-	readonly emitProgress?: (message: string) => void;
-} = { hoboHome: "" }): Promise<KubectlBinary> {
+export async function ensureKubectlBinary(
+	options: {
+		readonly hoboHome: string;
+		readonly env?: NodeJS.ProcessEnv;
+		readonly download?: boolean;
+		readonly emitProgress?: (message: string) => void;
+	} = { hoboHome: "" },
+): Promise<KubectlBinary> {
 	const env = options.env ?? process.env;
 	const hoboHome = options.hoboHome || env.HOBO_HOME || join(tmpdir(), "hobo");
 	const download = options.download ?? true;
@@ -123,7 +126,9 @@ export async function ensureKubectlBinary(options: {
 	mkdirSync(staging, { recursive: true });
 	const archivePath = join(staging, "kubectl");
 
-	emit(`hobo: downloading kubectl ${version} (${triple}) into ${toolsDir(hoboHome)}`);
+	emit(
+		`hobo: downloading kubectl ${version} (${triple}) into ${toolsDir(hoboHome)}`,
+	);
 	const curl = spawnSync("curl", ["-fsSL", "-o", archivePath, url], {
 		encoding: "utf8",
 		timeout: 120_000,
@@ -156,9 +161,15 @@ export function kubectlToolsPath(hoboHome: string): string {
 	return join(toolsDir(hoboHome), "kubectl");
 }
 
-export function isKubectlPresent(hoboHome: string, env?: NodeJS.ProcessEnv): boolean {
+export function isKubectlPresent(
+	hoboHome: string,
+	env?: NodeJS.ProcessEnv,
+): boolean {
 	const e = env ?? process.env;
-	if (typeof e.HOBO_KUBECTL_BIN === "string" && existsSync(e.HOBO_KUBECTL_BIN)) {
+	if (
+		typeof e.HOBO_KUBECTL_BIN === "string" &&
+		existsSync(e.HOBO_KUBECTL_BIN)
+	) {
 		return true;
 	}
 	if (existsSync(kubectlToolsPath(hoboHome))) return true;

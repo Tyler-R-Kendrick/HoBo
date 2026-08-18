@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { bindle } from "@hobo/bindles";
+import { describe, expect, it } from "vitest";
 import {
 	discoverWaspEnv,
 	isWaspWebAppAnnotation,
@@ -18,9 +18,7 @@ describe("@hobo/wasp", () => {
 	it("waspApp(root) is a thin marker; bindle attaches webapp annotation", () => {
 		const definition = bindle((b) => {
 			const db = b.container({ image: "postgres:16-alpine" });
-			const web = b
-				.web(waspApp("examples/wasp-opensaas/app"))
-				.dependsOn(db);
+			const web = b.web(waspApp("examples/wasp-opensaas/app")).dependsOn(db);
 			return { db, web };
 		});
 		const root = waspRootFromAnnotations(definition.resources.web!.annotations);

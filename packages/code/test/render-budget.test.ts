@@ -21,9 +21,9 @@ import {
 	runInteractiveShell,
 	type ShellHost,
 } from "../src/interactive-shell.js";
+import { cellWidth } from "../src/rubberhose.js";
 import { createDefaultShellHost } from "../src/shell-host.js";
 import { StreamTerminal } from "../src/shell-terminal.js";
-import { cellWidth } from "../src/rubberhose.js";
 
 const WIDTH = 80;
 const HEIGHT = 24;

@@ -24,7 +24,7 @@
 			// biome-ignore lint/correctness/noUnusedVariables: invoked by the button's onclick attribute above, which the linter cannot link.
 			async function greet() {
 				const name = document.getElementById('name').value;
-				const r = await fetch('/hello' + (name ? ('?name=' + encodeURIComponent(name)) : ''));
+				const r = await fetch(`/hello${name ? (`?name=${encodeURIComponent(name)}`) : ''}`);
 				const j = await r.json();
 				document.getElementById('out').textContent = j.message;
 			}

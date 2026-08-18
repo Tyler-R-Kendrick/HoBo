@@ -22,7 +22,8 @@ const METADATA_SYMBOL =
 /** DeclaredComponent for Bindle — only stamps `root` (repo-relative Convex app dir). */
 export function convexApp(root: string): new () => object {
 	const trimmed = typeof root === "string" ? root.trim() : "";
-	if (!trimmed) throw new TypeError("convexApp(root) requires a non-empty path");
+	if (!trimmed)
+		throw new TypeError("convexApp(root) requires a non-empty path");
 
 	const meta: ConvexWebAppMeta = Object.freeze({
 		framework: "convex",

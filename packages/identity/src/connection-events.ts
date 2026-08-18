@@ -270,6 +270,8 @@ export function validateConnectionEvent(event: ConnectionEvent): void {
 	}
 }
 
-export function isConnectionEventType(type: string): type is ConnectionEventType {
+export function isConnectionEventType(
+	type: string,
+): type is ConnectionEventType {
 	return (Object.values(CONNECTION_EVENTS) as string[]).includes(type);
 }

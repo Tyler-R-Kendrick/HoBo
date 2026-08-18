@@ -267,6 +267,42 @@ Plus the package lints that actually cover the files you touched:
 
 `pnpm agent:check -- --staged` already selects `design:lint` when UI/`DESIGN.md` files change. That is not a reason to skip the explicit lint or to skip impeccable on a visual diff. A change that fails `design:lint` or the package design-lint tests is not complete.
 
+## Lint budget (ratchet)
+
+The repo carries a standing biome backlog — the kind that accumulates when the
+lint gate is package-scoped and nobody looks at the whole tree. It is bounded by
+a ratchet rather than cleared in one sweep, because a sweep of that size buries
+every reviewable diff and several findings need reading one at a time.
+
+```bash
+pnpm run lint:budget            # fails when findings rise above the recorded budget
+pnpm run lint:budget -- --update # lowers the budget after you fix some
+```
+
+`scripts/biome-budget.json` holds the counts. `--update` **lowers** the budget
+and refuses to raise it — a ratchet you can loosen with a flag is not a ratchet.
+So new code cannot add findings, and the backlog is paid down opportunistically
+by whoever is already in the file.
+
+Do not mass-apply `--unsafe` fixes for `lint/style/noNonNullAssertion`. Biome
+rewrites `x!.y` to `x?.y`, which turns a throw into an `undefined` — a silent
+behaviour change. Read each one: two found that way (in DPoP's `htu` check and
+the bindles regex parser) were concealing real invariant gaps, not documenting
+them.
+
+## Building before a repo-wide test run
+
+`pnpm run build` covers `./packages/**` — every nested package, not just direct
+children of `packages/`. `pnpm run test` builds first via `pretest:unit` (~14s
+warm) because the repo-wide vitest sweep imports built dists from workspace
+packages, and without it a suite fails on whichever package happened to be
+stale rather than on anything real.
+
+Generated output belongs to exactly one generator. `packages/code/src/_generated`
+is the protobuf codegen pipeline's; TUI art from `gen-logo-tui.mts` /
+`gen-bo-idle-tui.mts` lives in `_generated-art`. Two generators sharing a
+directory makes the drift check report the other's output as unexpected.
+
 ## JavaScript-family implementation file policy
 
 This repo requires new JavaScript-family implementation files to be TypeScript-family files.

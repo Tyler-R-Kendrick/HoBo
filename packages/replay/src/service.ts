@@ -3,13 +3,13 @@
  */
 import { evaluateReplayAccess } from "./access.js";
 import { buildCorrelation } from "./correlation.js";
+import { REPLAY_BOUNDARIES } from "./http-surface.js";
 import { loadPlayerPayload, summarizeSession } from "./player.js";
 import {
 	applyRetention,
 	eraseSessionById,
 	type RetentionPolicy,
 } from "./retention.js";
-import { REPLAY_BOUNDARIES } from "./http-surface.js";
 import {
 	createFilesystemDualFixtures,
 	createMemoryDualFixtures,
@@ -47,9 +47,9 @@ export type ReplayService = Readonly<{
 		| { ok: false; code: string; message: string }
 	>;
 	summarize: (sessionId: string) => Promise<string | undefined>;
-	retention: (policy?: RetentionPolicy) => Promise<
-		Awaited<ReturnType<typeof applyRetention>>
-	>;
+	retention: (
+		policy?: RetentionPolicy,
+	) => Promise<Awaited<ReturnType<typeof applyRetention>>>;
 	erase: (sessionId: string) => Promise<SessionRecord | undefined>;
 	doctor: () => Readonly<{
 		package: string;

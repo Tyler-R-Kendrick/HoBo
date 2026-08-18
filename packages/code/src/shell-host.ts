@@ -12,22 +12,16 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { emitFromAtoms } from "./atom-index.js";
-import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
 import {
 	formatHoboCodeResult,
 	type HoboCodeCliDeps,
 	type HoboCodeCliResult,
 	runHoboCodeCli,
 } from "./cli.js";
-import {
-	explicitHoboBinOverride,
-	runComposedHobo,
-} from "./composed-hobo.js";
-import {
-	type DevBrowserSession,
-	resolveHoboSpawn,
-} from "./dev-browser.js";
+import { explicitHoboBinOverride, runComposedHobo } from "./composed-hobo.js";
+import { type DevBrowserSession, resolveHoboSpawn } from "./dev-browser.js";
 import { materializeExample } from "./example-catalog.js";
+import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
 import type { PendingApproval, ShellHost } from "./interactive-shell.js";
 import { formatUsage, type ShellEngine } from "./shell-engine.js";
 import {
@@ -397,7 +391,8 @@ export function createDefaultShellHost(
 			const line = listed.stdout
 				.split("\n")
 				.find((row) => row.startsWith(`${agent}\t`));
-			const target = line?.split("\t")[1]?.trim() || `${IN_SESSION_MUX}:${agent}`;
+			const target =
+				line?.split("\t")[1]?.trim() || `${IN_SESSION_MUX}:${agent}`;
 			await sendToInSessionPane(runner, target, text);
 			return `sent to ${agent} in this session — stay here, Tab to panes to watch it work`;
 		},

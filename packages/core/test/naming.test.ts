@@ -18,7 +18,7 @@ describe("sanitizeDnsLabel", () => {
 	});
 
 	it("respects max length without trailing dash", () => {
-		const label = sanitizeDnsLabel("a".repeat(80) + "-x", 10);
+		const label = sanitizeDnsLabel(`${"a".repeat(80)}-x`, 10);
 		expect(label.length).toBeLessThanOrEqual(10);
 		expect(label.endsWith("-")).toBe(false);
 	});

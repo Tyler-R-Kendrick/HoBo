@@ -133,7 +133,7 @@ afterEach(() => {
 });
 
 async function placeOrder(
-	s: RuntimeLocalEventStore,
+	_s: RuntimeLocalEventStore,
 	deps: {
 		store: RuntimeLocalEventStore;
 		actorHost: ReturnType<typeof createInMemoryActorHost>;

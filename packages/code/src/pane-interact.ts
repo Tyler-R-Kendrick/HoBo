@@ -6,11 +6,7 @@
  * tmux attach remains an escape hatch only (`attachTmuxFullscreen`).
  */
 import { spawn } from "node:child_process";
-import {
-	isKeyRelease,
-	matchesKey,
-	parseKey,
-} from "@earendil-works/pi-tui";
+import { isKeyRelease, matchesKey, parseKey } from "@earendil-works/pi-tui";
 import type { MuxRunner } from "./mux.js";
 
 /** Ctrl+] — leave pane interact without quitting the shell. */
@@ -85,7 +81,9 @@ const TMUX_NAMED: Readonly<Record<string, string>> = {
  * Map a raw TTY key chunk to tmux `send-keys` argv tails (steer / tests).
  * Kitty CSI-u is normalized — nested CLIs do not speak Kitty.
  */
-export function tmuxKeyArgvForInput(data: string): readonly (readonly string[])[] {
+export function tmuxKeyArgvForInput(
+	data: string,
+): readonly (readonly string[])[] {
 	if (data.length === 0 || isPaneInteractDetach(data)) return [];
 	if (isKeyRelease(data)) return [];
 

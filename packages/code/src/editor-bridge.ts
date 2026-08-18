@@ -156,15 +156,17 @@ function packageEditorRoot(): string {
 /**
  * Build editor bridge status for CLI `edit` and nvim extension.
  */
-export function inspectEditorBridge(options: {
-	readonly env?: NodeJS.ProcessEnv;
-	readonly path?: string | null;
-	readonly editor?: string;
-	readonly layout?: PaneLayout;
-	readonly bridge?: BridgeMode;
-	readonly isolationRoot?: string | null;
-	readonly runId?: string | null;
-} = {}): EditorBridgeStatus {
+export function inspectEditorBridge(
+	options: {
+		readonly env?: NodeJS.ProcessEnv;
+		readonly path?: string | null;
+		readonly editor?: string;
+		readonly layout?: PaneLayout;
+		readonly bridge?: BridgeMode;
+		readonly isolationRoot?: string | null;
+		readonly runId?: string | null;
+	} = {},
+): EditorBridgeStatus {
 	const env = options.env ?? process.env;
 	const candidates = detectEditors(env);
 	const preferred = pickPreferred(candidates, options.editor);
@@ -172,10 +174,7 @@ export function inspectEditorBridge(options: {
 	const targetPath = options.path ? resolve(options.path) : null;
 	const isolationRoot = options.isolationRoot ?? null;
 	const runId = options.runId ?? null;
-	const openTarget =
-		targetPath ??
-		isolationRoot ??
-		".";
+	const openTarget = targetPath ?? isolationRoot ?? ".";
 
 	const pkg = packageEditorRoot();
 	const extRel = "editor/hobo-code.nvim";
@@ -225,13 +224,13 @@ export function inspectEditorBridge(options: {
 			description:
 				"Agent Client Protocol–shaped bridge (editor as ACP client; residual host support).",
 			openCommand: `hobo-code edit --bridge acp${targetPath ? ` -- ${JSON.stringify(targetPath)}` : ""}`,
-			listenHint: "ACP stdio session; partial — prefer tmux-send or stdio-jsonrpc today",
+			listenHint:
+				"ACP stdio session; partial — prefer tmux-send or stdio-jsonrpc today",
 		},
 	];
 
 	const activeBridge: BridgeMode =
-		options.bridge ??
-		(which("tmux", env) ? "tmux-send" : "direct-exec");
+		options.bridge ?? (which("tmux", env) ? "tmux-send" : "direct-exec");
 
 	return {
 		schema: CODE_EDITOR_BRIDGE_SCHEMA,
@@ -268,9 +267,7 @@ export function inspectEditorBridge(options: {
 }
 
 /** Human panel for hobo-code edit. */
-export function editorBridgeHumanSummary(
-	status: EditorBridgeStatus,
-): string {
+export function editorBridgeHumanSummary(status: EditorBridgeStatus): string {
 	const pref = status.preferred;
 	const det = pref.detected ? "●" : "○";
 	const bridge = status.bridges.find((b) => b.mode === status.activeBridge);

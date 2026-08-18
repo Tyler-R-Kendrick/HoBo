@@ -69,7 +69,9 @@ describe("trainable golden suite", () => {
 			observeTrainableGolden(region),
 		);
 		expect(report.ok).toBe(false);
-		expect(report.failures.map((row) => row.criterionId)).toContain("example.0");
+		expect(report.failures.map((row) => row.criterionId)).toContain(
+			"example.0",
+		);
 	});
 
 	it("fails a region that cannot be trained — no examples and no grounding", () => {

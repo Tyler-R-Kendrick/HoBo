@@ -28,7 +28,7 @@
  * environment reads.
  */
 
-import { capability, type SlotBinding, slotBinding } from "@hobo/core";
+import { type SlotBinding, slotBinding } from "@hobo/core";
 
 // public-contract: product ids the Vercel catalog registers for these offerings.
 export const VERCEL_PROJECT_PRODUCT_ID = "vercel.project/v1";

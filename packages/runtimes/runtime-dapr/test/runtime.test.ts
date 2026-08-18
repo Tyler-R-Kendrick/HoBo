@@ -46,15 +46,12 @@ describe("@hobo/runtime-dapr", () => {
 		);
 		const state = host.state<{ n: number }>("Cart/1", {
 			initialState: { n: 0 },
-			fold: (s, e) =>
-				e.type === "inc" ? { n: s.n + 1 } : s,
+			fold: (s, e) => (e.type === "inc" ? { n: s.n + 1 } : s),
 		});
 		state.append(lease, { type: "inc" });
 		expect(state.read().state.n).toBe(1);
 		lease.release();
-		expect(host.events().some((e) => e.type === "actor.Passivated")).toBe(
-			true,
-		);
+		expect(host.events().some((e) => e.type === "actor.Passivated")).toBe(true);
 	});
 
 	it("stale fence rejects append after reacquire", () => {
@@ -62,7 +59,7 @@ describe("@hobo/runtime-dapr", () => {
 			config: createDaprRuntimeHost({ tenantId: "t", campId: "c" }).config,
 			leaseTtlMs: 1000,
 			nowMs: (() => {
-				let t = 1_000_000;
+				const t = 1_000_000;
 				return () => t;
 			})(),
 		});

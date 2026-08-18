@@ -19,9 +19,9 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import {
+	type HarnessSpec,
 	isHostSpec,
 	loadHarnessCatalog,
-	type HarnessSpec,
 } from "./agent-harness-catalog.js";
 import {
 	type BoModelOffer,
@@ -40,9 +40,7 @@ export interface ListHarnessModelOffersOptions {
 	 */
 	readonly live?: boolean;
 	/** Inject live stdout for tests / custom discovery. */
-	readonly runProbe?: (
-		harnessId: string,
-	) => string | null | undefined;
+	readonly runProbe?: (harnessId: string) => string | null | undefined;
 }
 
 function splitCompatUrls(
@@ -143,7 +141,6 @@ export function listAnthropicCompatibleOffers(
 		}),
 	);
 }
-
 
 type CuratedEntry = {
 	readonly type: string;
@@ -303,10 +300,7 @@ const CURATED: Readonly<Record<string, readonly CuratedEntry[]>> = {
 	sdk: SDK_MODELS,
 };
 
-function offerFor(
-	harnessId: string,
-	entry: CuratedEntry,
-): BoModelOffer {
+function offerFor(harnessId: string, entry: CuratedEntry): BoModelOffer {
 	const slash = entry.runtimeId.indexOf("/");
 	const provider =
 		slash > 0 && /^[a-z][a-z0-9-]*$/iu.test(entry.runtimeId.slice(0, slash))
@@ -483,10 +477,7 @@ export function listPiModelOffersFromFile(
 	if (!existsSync(modelsJsonPath)) return [];
 	try {
 		const raw = JSON.parse(readFileSync(modelsJsonPath, "utf8")) as {
-			providers?: Record<
-				string,
-				{ models?: { id?: string; name?: string }[] }
-			>;
+			providers?: Record<string, { models?: { id?: string; name?: string }[] }>;
 		};
 		const out: BoModelOffer[] = [];
 		const seen = new Set<string>();
@@ -551,20 +542,15 @@ export function listHarnessModelOffers(
 		// Prefer Bo catalog via openHarnessConfigure; keep models.json as a
 		// secondary source when callers hit this helper directly.
 		const home = options.homeDir ?? homedir();
-		return listPiModelOffersFromFile(
-			join(home, ".pi", "agent", "models.json"),
-		);
+		return listPiModelOffersFromFile(join(home, ".pi", "agent", "models.json"));
 	}
 
 	const curated = CURATED[id];
-	let offers: readonly BoModelOffer[] = curated
-		? fromCurated(id, curated)
-		: [];
+	let offers: readonly BoModelOffer[] = curated ? fromCurated(id, curated) : [];
 
 	// Default on interactively; off under Vitest. Explicit runProbe implies live.
 	const wantLive =
-		options.live ??
-		(options.runProbe !== undefined || !process.env.VITEST);
+		options.live ?? (options.runProbe !== undefined || !process.env.VITEST);
 	if (wantLive) {
 		const run = options.runProbe ?? defaultRunProbe;
 		const stdout = run(id);
@@ -576,16 +562,10 @@ export function listHarnessModelOffers(
 
 	const env = options.env ?? process.env;
 	if (id === "codex" || id === "sdk") {
-		offers = mergeOffers(
-			offers,
-			listOpenAiCompatibleOffers(id, { env }),
-		);
+		offers = mergeOffers(offers, listOpenAiCompatibleOffers(id, { env }));
 	}
 	if (id === "claude") {
-		offers = mergeOffers(
-			offers,
-			listAnthropicCompatibleOffers(id, { env }),
-		);
+		offers = mergeOffers(offers, listAnthropicCompatibleOffers(id, { env }));
 	}
 
 	return offers;

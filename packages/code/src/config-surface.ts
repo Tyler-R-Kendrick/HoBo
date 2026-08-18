@@ -105,7 +105,8 @@ const KNOB_DEFS: readonly KnobDef[] = [
 		name: "HOBO_CODE_AGENT",
 		kind: "env",
 		stacks: ["agent-native", "auth", "core"],
-		purpose: "Unattended agent contract (no elicitation; prefer human-free auth)",
+		purpose:
+			"Unattended agent contract (no elicitation; prefer human-free auth)",
 		example: "1",
 		secret: false,
 	},
@@ -165,7 +166,8 @@ const KNOB_DEFS: readonly KnobDef[] = [
 		name: "OPENAI_BASE_URL",
 		kind: "env",
 		stacks: ["models-byok", "cost-budget"],
-		purpose: "Local OpenAI-compatible endpoint (Ollama/LM Studio/OrnithAI-class)",
+		purpose:
+			"Local OpenAI-compatible endpoint (Ollama/LM Studio/OrnithAI-class)",
 		example: "http://127.0.0.1:11434/v1",
 		secret: false,
 	},
@@ -304,7 +306,8 @@ const KNOB_DEFS: readonly KnobDef[] = [
 		secret: false,
 		detect: (_env, cwd) => {
 			const present =
-				existsSync(join(cwd, "devenv.nix")) || existsSync(join(cwd, "flake.nix"));
+				existsSync(join(cwd, "devenv.nix")) ||
+				existsSync(join(cwd, "flake.nix"));
 			return {
 				present,
 				valueHint: present ? "hermetic markers in cwd" : null,
@@ -317,8 +320,7 @@ const KNOB_DEFS: readonly KnobDef[] = [
 		stacks: ["harness-pi-flue", "core", "agent-native"],
 		purpose: "MCP servers (Serena, headroom, gbrain) for agent tooling",
 		secret: false,
-		detect: (_env, cwd) =>
-			walkHas(cwd, [".mcp.json", ".cursor/mcp.json"]),
+		detect: (_env, cwd) => walkHas(cwd, [".mcp.json", ".cursor/mcp.json"]),
 	},
 	{
 		name: "AGENTS.md|.agents/skills",
@@ -326,8 +328,7 @@ const KNOB_DEFS: readonly KnobDef[] = [
 		stacks: ["harness-pi-flue", "core"],
 		purpose: "Repo agent conventions + skills roots",
 		secret: false,
-		detect: (_env, cwd) =>
-			walkHas(cwd, ["AGENTS.md", ".agents/skills"]),
+		detect: (_env, cwd) => walkHas(cwd, ["AGENTS.md", ".agents/skills"]),
 	},
 	{
 		name: "editor/hobo-code.nvim",
@@ -338,7 +339,11 @@ const KNOB_DEFS: readonly KnobDef[] = [
 		detect: () => {
 			try {
 				const here = dirname(fileURLToPath(import.meta.url));
-				const p = join(here, "..", "editor/hobo-code.nvim/lua/hobo-code/init.lua");
+				const p = join(
+					here,
+					"..",
+					"editor/hobo-code.nvim/lua/hobo-code/init.lua",
+				);
 				return {
 					present: existsSync(p),
 					valueHint: existsSync(p)
@@ -370,7 +375,8 @@ const KNOB_DEFS: readonly KnobDef[] = [
 		name: "--home|--cwd|--dense|--json",
 		kind: "flag",
 		stacks: ["core", "chrome-dense", "hermetic-nix"],
-		purpose: "Universal CLI flags for home, project root, dense, machine output",
+		purpose:
+			"Universal CLI flags for home, project root, dense, machine output",
 		example: "hobo-code env --cwd . --home /tmp/h --json",
 		secret: false,
 		detect: () => ({ present: true, valueHint: "always available" }),
@@ -453,13 +459,19 @@ export function inspectConfigSurface(
 			"no model path yet — HOBO_CODE_MODEL, free-local OLLAMA_HOST/OPENAI_BASE_URL, or BYOK key (values never printed)",
 		);
 	}
-	tip("HOBO_CODE_MONETIZATION", "set HOBO_CODE_MONETIZATION=0 to disable sponsored wait");
+	tip(
+		"HOBO_CODE_MONETIZATION",
+		"set HOBO_CODE_MONETIZATION=0 to disable sponsored wait",
+	);
 	tip(
 		"nvim|vim|tmux PATH",
 		"install nvim (or vim) + tmux on PATH for edit/attach stacks",
 	);
 	tip("EDITOR", "export EDITOR=nvim (or VISUAL) for edit fallback");
-	tip("AGENTS.md|.agents/skills", "repo AGENTS.md / .agents/skills for harness skills");
+	tip(
+		"AGENTS.md|.agents/skills",
+		"repo AGENTS.md / .agents/skills for harness skills",
+	);
 
 	return {
 		schema: CODE_CONFIG_SCHEMA,

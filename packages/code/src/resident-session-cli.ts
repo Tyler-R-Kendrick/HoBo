@@ -9,13 +9,13 @@ import {
 	SessionLifecycleState,
 } from "./_generated/code_harness_pb.js";
 import type { DevMachine } from "./dev-machines.js";
-import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import { sshDestination } from "./dev-machines.js";
 import {
 	createLocalSessionControl,
 	type LocalSessionControl,
 	sessionCommandEnvelope,
 } from "./local-session-control.js";
+import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import { residentSessionTmuxName } from "./resident-session-runtime.js";
 import {
 	type SessionSnapshot,

@@ -1,13 +1,13 @@
 import {
 	type ContentHash,
 	contentHashOf,
+	YARD_GENERATION_PLAN_SCHEMA,
 	type YardGenerationPlan,
 	type YardGenerationPolicy,
 	type YardGenerationResult,
 	type YardRuntimeCatalogSnapshot,
 	type YardRuntimeRegistration,
 	type YardShape,
-	YARD_GENERATION_PLAN_SCHEMA,
 } from "./types.js";
 
 export const DEFAULT_YARD_GENERATION_POLICY: YardGenerationPolicy =
@@ -53,7 +53,11 @@ export function planYardGeneration(options: {
 	readonly attemptId: string;
 	readonly brokerEnvironmentId?: string;
 }):
-	| { readonly allowed: false; readonly reason: string; readonly policyId: string }
+	| {
+			readonly allowed: false;
+			readonly reason: string;
+			readonly policyId: string;
+	  }
 	| {
 			readonly allowed: true;
 			readonly plan: YardGenerationPlan;
@@ -172,9 +176,7 @@ export function planYardGeneration(options: {
 export function createYardGenerationSaga(options: {
 	readonly connectors: ReadonlyMap<string, YardGenerationConnector>;
 }): {
-	readonly run: (
-		plan: YardGenerationPlan,
-	) => Promise<YardGenerationResult>;
+	readonly run: (plan: YardGenerationPlan) => Promise<YardGenerationResult>;
 	readonly inspect: (
 		idempotencyKey: string,
 	) => YardGenerationResult | undefined;
@@ -219,7 +221,10 @@ export function createYardGenerationSaga(options: {
 				attemptId: plan.attemptId,
 				status: "started",
 				externalRefs: Object.freeze({}),
-				outputHash: contentHashOf({ attemptId: plan.attemptId, status: "started" }),
+				outputHash: contentHashOf({
+					attemptId: plan.attemptId,
+					status: "started",
+				}),
 			});
 			attempts.set(plan.idempotencyKey, { plan, result: started });
 

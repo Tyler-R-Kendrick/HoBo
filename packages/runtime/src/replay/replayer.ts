@@ -65,7 +65,7 @@ export async function replayRun<S, A>(
 				mode: "replay",
 				eventKey: `${streamId}:orchestration:${label}`,
 			}).random(label),
-		async step<T>(name: string, fn: () => Promise<T> | T): Promise<T> {
+		async step<T>(name: string, _fn: () => Promise<T> | T): Promise<T> {
 			const stepId = `${name}:${stepCounter}`;
 			const completed = events.find(
 				(event) =>
@@ -95,7 +95,7 @@ export async function replayRun<S, A>(
 				throw new Error("sleep schedule diverged");
 			}
 		},
-		resumeHook<T>(payload: T) {
+		resumeHook<T>(_payload: T) {
 			const resumed = events.find((event) => event.type === "run.HookResumed");
 			if (!resumed) {
 				throw new Error("missing run.HookResumed");

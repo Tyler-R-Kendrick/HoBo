@@ -219,3 +219,54 @@ globally so a genuinely hung test elsewhere still fails fast. Falsified at 1ms: 
 The second failure was `docs:freshness` — code changed with no documentation change. Earlier
 layers passed it incidentally because they touched this file; this section is the fix.
 
+
+## Layer 05b — the assertions were not running
+
+Two more defects, and the second one explains why the first survived a green suite.
+
+**`subset` never asserted anything.** It was parsed, validated, and accepted by the case format;
+the runner then ignored it. Seventeen cases across four converted suites were inert — they read
+like assertions and checked nothing.
+
+**A `throws` case that returned normally still passed.** The guard was
+`expect.unreachable("expected a throw matching " + row.throws)` *inside* the same `try` as the
+call, so it was caught by that block's own `catch`, which then matched the thrown message against
+`row.throws` — and the message contains `row.throws` by construction. The guard defeated itself.
+
+Both are the same root cause: the assertions lived inside the try/catch that wrapped the call, so
+they could not be observed without running a whole suite, and the suite could not tell a failure
+of the subject from a failure of an assertion. `assertCase(row, outcome)` is now split out over a
+finished call — `{returned}` or `{threw}` — and is directly falsifiable. Fourteen new cases cover
+it, one per way an assertion could fail to fire.
+
+**And the reason I first reported the seventeen as "correct but unverified":** consuming packages
+import `@hobo/contract-harness` through `dist`, not `src`. The harness's own tests import `src`
+and went green immediately; every converted suite was still running the pre-fix build. Rebuilding
+the package and re-running found a real wrong expectation — `sdk/resource` pinned
+`hobo.resource-definition/v1` where the SDK emits `hobo.sdk/v1.resource-definition`. **A local
+verification of a suite that imports a workspace package is not evidence until that package is
+rebuilt.**
+
+### Conversions (this layer)
+
+| Suite | Before | After |
+|---|---|---|
+| `packs/pack-framework/manifest` | 318 | 51 + 27 cases |
+| `trust/evaluate` | 347 | 122 + 27 cases |
+| `capability-profiles/selection` | 405 | 138 + 32 cases |
+
+Two of these got *stronger* in the move, because a data format makes the weak assertion obvious:
+
+- `trust/evaluate` asserted reasons with `toContain`, which stays green when an unrelated rule also
+  fires. The cases pin the whole sorted reason set. Verified two ways before landing: every code
+  the old suite asserted is still present, and the four hand-rebuilt `parseTrustRequirement`
+  literals turned out to equal `DEFAULT_TRUST_REQUIREMENT` exactly — thirty lines of duplicated
+  policy that only had to name the field under test.
+- `pack-framework/manifest` asserted canonical ordering as `order(a) === order(b)`, which holds
+  just as well if the parser sorts nothing. The cases name the expected order.
+
+### Where it stops — added this layer
+
+- `bindles/bindle` builds its graph through a **callback DSL** (`bindle("shop", b => …)`). Making
+  that JSON would mean inventing a serialised builder language, which is a bigger thing than the
+  suite it replaces. Stays hand-written.

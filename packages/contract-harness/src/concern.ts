@@ -132,6 +132,55 @@ export interface ConcernOptions<T extends object> {
 	readonly uncovered?: Readonly<Record<string, string>>;
 }
 
+/**
+ * What one call did: returned a value, or threw.
+ *
+ * Separating this from the assertions is what makes them testable at all. The
+ * previous shape ran the checks inside the same `try` that wrapped the call, so
+ * the catch could not tell a failure of the subject from a failure of an
+ * assertion — and the "expected a throw" guard was caught by its own catch and
+ * then matched by its own regex, which is how a `throws` case that returned
+ * normally passed green.
+ */
+export type CaseOutcome =
+	| { readonly returned: unknown }
+	| { readonly threw: unknown };
+
+/** Every assertion the format can express, in one place, over a finished call. */
+export function assertCase(row: ConcernCase, outcome: CaseOutcome): void {
+	const wantsThrow = row.throws !== undefined || row.throwsSubset !== undefined;
+	if ("threw" in outcome) {
+		const error = outcome.threw;
+		if (!wantsThrow) throw error;
+		if (row.throws !== undefined)
+			expect((error as Error).message).toMatch(new RegExp(row.throws, "u"));
+		if (
+			row.throwsSubset !== undefined &&
+			!isRecursiveSubset(row.throwsSubset, error)
+		)
+			expect.unreachable(
+				`thrown error mismatch at ${subsetMismatchPath(row.throwsSubset, error)} — got ${(error as Error).name}: ${(error as Error).message}`,
+			);
+		return;
+	}
+	const actual = outcome.returned;
+	if (wantsThrow)
+		expect.unreachable(
+			`expected a throw matching ${row.throws ?? JSON.stringify(row.throwsSubset)}, got ${JSON.stringify(actual)}`,
+		);
+	if (row.match !== undefined)
+		// Objects are stringified so a case can match into a returned errors
+		// array without needing a path expression.
+		expect(
+			typeof actual === "string" ? actual : JSON.stringify(actual),
+		).toMatch(new RegExp(row.match, "u"));
+	if (row.subset !== undefined && !isRecursiveSubset(row.subset, actual))
+		expect.unreachable(
+			`result mismatch at ${subsetMismatchPath(row.subset, actual)} — got ${JSON.stringify(actual)}`,
+		);
+	if (row.expect !== undefined) expect(actual).toEqual(row.expect);
+}
+
 export function describeConcern<T extends object>(
 	name: string,
 	options: ConcernOptions<T>,
@@ -166,44 +215,24 @@ export function describeConcern<T extends object>(
 				rows.map((r) => [r.name ?? JSON.stringify(r.input ?? []), r]),
 			)(`${method} %s`, async (_label, row) => {
 				const subject = await options.subject();
+				let outcome: CaseOutcome;
 				try {
 					const member = (subject as Record<string, unknown>)[method];
-					const actual =
-						typeof member === "function"
-							? await (member as (...a: unknown[]) => unknown).apply(subject, [
-									...(row.input ?? []),
-								])
-							: member;
-					// Without this a `throwsSubset` case that returned normally would
-					// pass silently — a guard that does not guard.
-					if (row.throws !== undefined || row.throwsSubset !== undefined)
-						expect.unreachable(
-							`expected a throw matching ${row.throws ?? JSON.stringify(row.throwsSubset)}`,
-						);
-					if (row.match !== undefined)
-						// Objects are stringified so a case can match into a returned
-						// errors array without needing a path expression.
-						expect(
-							typeof actual === "string" ? actual : JSON.stringify(actual),
-						).toMatch(new RegExp(row.match, "u"));
-					if (row.expect !== undefined) expect(actual).toEqual(row.expect);
+					outcome = {
+						returned:
+							typeof member === "function"
+								? await (member as (...a: unknown[]) => unknown).apply(
+										subject,
+										[...(row.input ?? [])],
+									)
+								: member,
+					};
 				} catch (error) {
-					if (row.throws === undefined && row.throwsSubset === undefined)
-						throw error;
-					if (row.throws !== undefined)
-						expect((error as Error).message).toMatch(
-							new RegExp(row.throws, "u"),
-						);
-					if (
-						row.throwsSubset !== undefined &&
-						!isRecursiveSubset(row.throwsSubset, error)
-					)
-						expect.unreachable(
-							`thrown error mismatch at ${subsetMismatchPath(row.throwsSubset, error)} — got ${(error as Error).name}: ${(error as Error).message}`,
-						);
+					outcome = { threw: error };
 				} finally {
 					await options.teardown?.(subject);
 				}
+				assertCase(row, outcome);
 			});
 	});
 }

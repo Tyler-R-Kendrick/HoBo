@@ -4,12 +4,17 @@
  * Everything below is a way `describeConcern` could pass while checking
  * nothing, which is the only failure mode that matters in a test harness: a
  * broken assertion library reports green and takes every suite built on it with
- * it. `parseConcernCases` and `callableMembers` are exercised directly because
- * `describeConcern` itself can only be observed by running a suite.
+ * it. The three pieces are exercised directly — `assertCase` is split out of
+ * the runner precisely so the assertions can be falsified here rather than only
+ * by running a nested suite, which is what let two of them ship inert.
  */
 import { describe, expect, it } from "vitest";
 
-import { callableMembers, parseConcernCases } from "../src/concern.js";
+import {
+	assertCase,
+	callableMembers,
+	parseConcernCases,
+} from "../src/concern.js";
 
 const row = (extra: string) => `{"method":"f",${extra}}`;
 
@@ -83,5 +88,84 @@ describe("callableMembers", () => {
 			fn: { get: () => () => undefined, enumerable: true },
 		}) as object;
 		expect(callableMembers(namespace)).toEqual(["fn"]);
+	});
+});
+
+describe("assertCase", () => {
+	const returned = (value: unknown) => ({ returned: value });
+	const threw = (error: unknown) => ({ threw: error });
+
+	it.each([
+		[
+			"a throws case that returned instead",
+			{ method: "f", throws: "not found" },
+			returned("not found"),
+		],
+		[
+			"a throwsSubset case that returned instead",
+			{ method: "f", throwsSubset: { code: "E" } },
+			returned({ code: "E" }),
+		],
+		[
+			"a subset the result does not contain",
+			{ method: "f", subset: { a: 1, b: 2 } },
+			returned({ a: 1, b: 3 }),
+		],
+		[
+			"a subset against a missing key",
+			{ method: "f", subset: { a: 1 } },
+			returned({}),
+		],
+		["an expect that differs", { method: "f", expect: 1 }, returned(2)],
+		["a match that misses", { method: "f", match: "^ok$" }, returned("nope")],
+		[
+			"a throw whose message misses",
+			{ method: "f", throws: "not found" },
+			threw(new Error("boom")),
+		],
+		[
+			"a throw whose fields miss",
+			{ method: "f", throwsSubset: { code: "A" } },
+			threw(Object.assign(new Error("boom"), { code: "B" })),
+		],
+	])("fails %s", (_label, row, outcome) => {
+		expect(() => assertCase(row, outcome)).toThrow();
+	});
+
+	it.each([
+		[
+			"a subset the result contains",
+			{ method: "f", subset: { a: 1 } },
+			returned({ a: 1, b: 2 }),
+		],
+		["an exact expect", { method: "f", expect: [1, 2] }, returned([1, 2])],
+		[
+			"a match on a stringified object",
+			{ method: "f", match: "needle" },
+			returned({ errors: ["a needle"] }),
+		],
+		[
+			"a throw whose message matches",
+			{ method: "f", throws: "boom" },
+			threw(new Error("kaboom")),
+		],
+		[
+			"a throw whose fields match",
+			{ method: "f", throwsSubset: { name: "PackError", code: "A" } },
+			threw(Object.assign(new Error("x"), { name: "PackError", code: "A" })),
+		],
+	])("passes %s", (_label, row, outcome) => {
+		expect(() => assertCase(row, outcome)).not.toThrow();
+	});
+
+	it("rethrows an unexpected throw rather than swallowing it", () => {
+		// A case asserting a value must not absorb a crash in the subject:
+		// that would turn every broken method into a green "no assertion ran".
+		expect(() =>
+			assertCase(
+				{ method: "f", expect: 1 },
+				threw(new Error("subject blew up")),
+			),
+		).toThrow(/subject blew up/u);
 	});
 });

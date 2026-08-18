@@ -1,4 +1,6 @@
 export {
+	assertCase,
+	type CaseOutcome,
 	type ConcernCase,
 	type ConcernOptions,
 	callableMembers,

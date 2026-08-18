@@ -142,7 +142,9 @@ export function azureOperationUrl(
 		return undefined;
 	}
 	if (parsed.protocol !== "https:") return undefined;
-	if (!(AZURE_ARM_ALLOWED_HOSTS as readonly string[]).includes(parsed.hostname)) {
+	if (
+		!(AZURE_ARM_ALLOWED_HOSTS as readonly string[]).includes(parsed.hostname)
+	) {
 		return undefined;
 	}
 	if (!parsed.pathname.startsWith(AZURE_ARM_ALLOWED_PATH_PREFIXES[0])) {

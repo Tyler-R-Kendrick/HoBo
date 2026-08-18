@@ -76,3 +76,135 @@ what Azure *can* allocate; attempting to deploy against it **fails closed at
 resolution** — `YARD_BINDING_PRODUCT_UNKNOWN`, or no registered resolver —
 until Resource Definitions and resolvers land. Nothing in this section should
 be read as evidence that an Azure deployment works.
+
+## Deployment resolvers (ARM) — supersedes the "catalog only" note above
+
+The section above predates this package's `ResourceResolver` layer and is now
+correct only for the products in `AZURE_UNRESOLVED_PRODUCT_IDS`. `src/resolvers.ts`
+implements convergent Azure Resource Manager resolvers for **seven** of the
+sixteen catalogued `azure.*` product ids, over an injected, guarded
+`HttpTransport` (`src/transport.ts`). There is still no IaC engine, no state
+file, and no plan/apply round trip.
+
+```ts
+import { azureResolverRegistry } from "@hobo/provider-azure";
+
+const registry = azureResolverRegistry({
+  subscriptionId: "…-…-…",           // GUID; refused if malformed
+  resourceGroup: "hobo-rg",
+  resolveCredential: (ref) => host.resolve(ref), // locator in, ARM bearer token out
+  pollBudget: 20,                    // long-running-operation polls, bounded
+  waitBetweenPolls: (attempt) => host.backoff(attempt), // injected: no clock here
+});
+```
+
+### Endpoints and pinned api-versions
+
+Every ARM call carries an explicitly pinned `api-version`; `azureArmUrl()` takes
+it as a required argument, because ARM refuses a call without one and silently
+serializes a *different* resource model for the wrong one.
+
+| Product id | ARM resource id | `api-version` |
+|---|---|---|
+| `azure.blob-storage/v1` | `…/Microsoft.Storage/storageAccounts/{account}/blobServices/default/containers/{name}` | `2023-05-01` |
+| `azure.storage-queue/v1` | `…/Microsoft.Storage/storageAccounts/{account}/queueServices/default/queues/{name}` | `2023-05-01` |
+| `azure.service-bus-queue/v1` | `…/Microsoft.ServiceBus/namespaces/{ns}/queues/{name}` | `2021-11-01` |
+| `azure.service-bus-topic/v1` | `…/Microsoft.ServiceBus/namespaces/{ns}/topics/{name}` | `2021-11-01` |
+| `azure.key-vault/v1` | `…/Microsoft.KeyVault/vaults/{name}` | `2023-07-01` |
+| `azure.cosmos-db/v1` | `…/Microsoft.DocumentDB/databaseAccounts/{name}` | `2024-05-15` |
+| `azure.container-apps/v1` | `…/Microsoft.App/containerApps/{name}` | `2024-03-01` |
+
+All ids are `/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/…`,
+and that full id is the `physicalId` every outcome reports — constructed, not
+read back, so it is a pure function of (subscription, group, name).
+
+### Parents this package requires but never creates
+
+`azure.blob-storage/v1` and `azure.storage-queue/v1` need `desired.storageAccount`;
+`azure.service-bus-queue/v1` and `azure.service-bus-topic/v1` need
+`desired.namespace`; `azure.container-apps/v1` needs `desired.managedEnvironmentId`.
+Each parent is read first and a missing one is a typed refusal naming what to
+create. Creating the parent here would mean choosing a globally unique name, a
+sku and a region nobody declared — and then owning the deletion question for
+every sibling resource inside it.
+
+### Convergence
+
+Every `reconcile()` is read-or-create: `GET` the deterministically named id
+(`desired.name`, else `ref.logicalId` — never generated), `PUT` only when
+absent, then apply only the mutable deltas. ARM's `PUT` is declarative and
+idempotent, which genuinely helps — but *only* because the name is
+deterministic, so the second `PUT` addresses the same id as the first. Running
+reconcile twice yields the same `physicalId`, one resource, and exactly one
+create call. `delete()` treats 404 as success.
+
+`"replace"` is never emitted. Immutable drift — Service Bus `requiresSession`,
+duplicate detection, partitioning; Cosmos capacity mode; Key Vault tenant; any
+resource's location; a Container App's managed environment — is reported as a
+diagnostic for a human, because correcting it would mean destroying data.
+
+### Long-running operations
+
+Most ARM writes do not finish when the response arrives. This package never
+reports a `202` as a completed create. `settleWrite()` handles all three shapes
+ARM answers with, and every path is exercised by a test:
+
+- `202` + `Azure-AsyncOperation` → poll the operation document to a terminal
+  `status`, then re-read the resource.
+- `202` + `Location` → poll the location until it answers with the resource.
+- `200`/`201` with a non-terminal `properties.provisioningState` → poll the
+  resource itself.
+- `200`/`201` with a terminal or absent `provisioningState` → already done (a
+  blob container and a Service Bus queue have no provisioning phase at all).
+
+Polling is bounded by the injected `pollBudget` and spaced by the injected
+`waitBetweenPolls`; there is no clock read and no unbounded loop. When the
+budget runs out with the operation still running, or ARM answers `202` with no
+operation header, or the operation URL points off `management.azure.com`, the
+outcome carries a diagnostic that says **"accepted but it is NOT confirmed
+complete"** — it never reads as done. `delete()` has no diagnostics channel, so
+an unconfirmed delete *raises* with the same wording rather than returning.
+
+### Credentials
+
+`credentialRef` is a locator (`env://AZURE_ARM_ACCESS_TOKEN`,
+`secret://camp/azure-arm-token`), enforced against the same grammar core's
+`parseResolveRequest` uses; a token-shaped value is refused with
+`RESOLVER_CREDENTIAL_NOT_A_REF`. The resolved bearer token is written to exactly
+one place — the `authorization` request header — and never to a URL, a body, an
+output bag, a diagnostic, or a message. ARM error text is redacted
+(`redactAzureText`) before it reaches any of those, because ARM echoes request
+context that has carried subscription GUIDs and token fragments.
+
+### Products deliberately left unresolved
+
+`AZURE_UNRESOLVED_PRODUCT_IDS` names the nine catalogued ids with no resolver,
+and a test asserts the uncovered set is exactly that list. The reasons are on
+the declaration in `src/resolvers.ts`; in short: `azure.aks/v1` describes
+Kubernetes objects rather than ARM resources; `azure.api-management/v1` is a
+30–45 minute operation no deploy-call poll budget can honestly follow;
+`azure.postgres-flexible/v1` and `azure.sql-database/v1` need an administrator
+login and password in the request body, which a `ResolveRequest` may not carry;
+`azure.app-service/v1` and `azure.functions/v1` name no parent plan;
+`azure.cache-for-redis/v1`, `azure.cosmos-table/v1` and
+`azure.static-web-apps/v1` are coverage gaps rather than design limits. A
+non-convergent resolver is worse than an absent one, so the absences are
+declared rather than discovered at deploy time.
+
+### HONEST SCOPE — what is and is not proven
+
+**Proven:** the request and response shapes this package composes and accepts,
+against an injected fake transport that models one subscription — convergence
+(reconcile twice ⇒ one resource, one `physicalId`, one create call), delete and
+delete-when-absent, long-running-operation following *and* the honest
+unconfirmed report, redaction of provider error text, refusal of non-locator
+credential refs, and the pinned `api-version` on every call.
+
+**Not proven:** nothing here has made a live Azure call. There are no real
+credentials, no network egress, no subscription and no resource group behind
+these tests. The pinned `api-version` values were written from Azure's published
+REST documentation and have **not** been verified against the running service.
+The guard constrains the request this package composes and the response it
+accepts; it cannot prove the injected transport honours `timeoutMs`, refuses a
+302 itself, or terminates TLS against the real ARM certificate. Passing this
+package's tests is not evidence that an Azure deployment works.

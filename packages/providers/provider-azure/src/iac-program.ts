@@ -95,7 +95,7 @@ function assertOutputReference(
 	const resourceName = match[1] as string;
 	const outputName = match[2] as string;
 	const resource = resources.get(resourceName);
-	if (!resource || !resource.outputs.includes(outputName)) {
+	if (!resource?.outputs.includes(outputName)) {
 		throw new Error(
 			`unresolved output reference resources.${resourceName}.outputs.${outputName}`,
 		);

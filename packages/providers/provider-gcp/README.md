@@ -74,3 +74,111 @@ what GCP *can* allocate; attempting to deploy against it **fails closed at
 resolution** — `YARD_BINDING_PRODUCT_UNKNOWN`, or no registered resolver —
 until Resource Definitions and resolvers land. Nothing in this section should
 be read as evidence that a GCP deployment works.
+
+## Deployment resolvers (`src/resolvers.ts`, `src/transport.ts`)
+
+The catalog above is no longer the whole story: `gcpResolvers({ projectId,
+resolveCredential })` and `gcpResolverRegistry(…)` implement core's
+`ResourceResolver` contract for **eight** of the fourteen catalogued products,
+calling Google's REST APIs directly over an injected, guarded `HttpTransport` —
+no IaC engine, no state file. The six products with no convergent path ship no
+resolver at all and are declared in `GCP_UNRESOLVED_PRODUCT_IDS`.
+
+### Endpoints covered
+
+| Product id | Host | Read | Create | Update | Delete |
+| --- | --- | --- | --- | --- | --- |
+| `gcp.cloud-storage/v1` | `storage.googleapis.com` | `GET /storage/v1/b/{bucket}` | `POST /storage/v1/b?project=` | `PATCH /storage/v1/b/{bucket}` | `DELETE /storage/v1/b/{bucket}` |
+| `gcp.pubsub-topic/v1` | `pubsub.googleapis.com` | `GET /v1/projects/{p}/topics/{t}` | `PUT /v1/projects/{p}/topics/{t}` | `PATCH …?updateMask=messageRetentionDuration` | `DELETE /v1/projects/{p}/topics/{t}` |
+| `gcp.secret-manager/v1` | `secretmanager.googleapis.com` | `GET /v1/projects/{p}/secrets/{id}` | `POST /v1/projects/{p}/secrets?secretId=` | — (replication is immutable) | `DELETE /v1/projects/{p}/secrets/{id}` |
+| `gcp.cloud-tasks/v1` | `cloudtasks.googleapis.com` | `GET /v2/projects/{p}/locations/{l}/queues/{q}` | `POST …/queues` | `PATCH …/queues/{q}?updateMask=` | `DELETE …/queues/{q}` |
+| `gcp.cloud-sql-postgres/v1`, `gcp.cloud-sql-mysql/v1` | `sqladmin.googleapis.com` | `GET /v1/projects/{p}/instances/{i}` | `POST /v1/projects/{p}/instances` → Operation | `PATCH …/instances/{i}` → Operation | `DELETE …/instances/{i}` → Operation |
+| `gcp.cloud-run/v1` | `run.googleapis.com` | `GET /v2/projects/{p}/locations/{l}/services/{s}` | `POST …/services?serviceId=` → Operation | `PATCH …/services/{s}` → Operation | `DELETE …/services/{s}` → Operation |
+| `gcp.cloud-run-job/v1` | `run.googleapis.com` | `GET …/jobs/{j}` | `POST …/jobs?jobId=` → Operation | `PATCH …/jobs/{j}` → Operation | `DELETE …/jobs/{j}` → Operation |
+
+Operations are polled at `GET /v1/projects/{p}/operations/{op}` (Cloud SQL) and
+`GET /v2/{operation.name}` (Cloud Run).
+
+**Endpoints deliberately absent** (`GCP_UNRESOLVED_PRODUCT_IDS`):
+
+| Product id | Why there is no resolver |
+| --- | --- |
+| `gcp.api-gateway/v1` | A gateway needs an `api` + an `apiConfig` + a `gateway`, and an `apiConfig` is immutable — changing the OpenAPI document means minting a *new* config id. `reconcile` would have to invent names to converge. |
+| `gcp.app-engine/v1` | A service exists only once a *version* is deployed; versions carry server-assigned ids and the artifact is staged outside this record. There is no deterministically named resource to read before creating. |
+| `gcp.cloud-functions/v1` | Deploying requires uploading source to a signed URL minted per call by `generateUploadUrl`. The URL is not deterministic and the source bytes are not in `desired`. |
+| `gcp.cloud-storage-site/v1` | The bucket half is convergent, but the product is a *served site*: `cdn: true` also needs a backend bucket, URL map, target proxy and forwarding rule on `compute.googleapis.com`. Shipping the bucket half alone would silently under-deliver the product. |
+| `gcp.firestore/v1` | Id, location and mode are fixed at creation, and deletion is gated on an etag plus a delete-protection override this package does not model — only half the lifecycle would be expressible. |
+| `gcp.memorystore-redis/v1` | A **coverage** gap, not a convergence one: `redis.googleapis.com` is a seventh service host this unit did not allowlist. The surface is long-running in the same way Cloud SQL's is and can be resolved the same way later. |
+
+`test/resolvers.test.ts` asserts the set of catalogued products *without* a
+resolver is exactly `GCP_UNRESOLVED_PRODUCT_IDS`, so adding a catalog row
+without a resolver fails unless the gap is declared.
+
+### Convergence
+
+Every `reconcile()` is read-or-create: GET the deterministically named resource,
+create only when it is absent, then apply the mutable deltas. Running it twice
+yields the same `physicalId`, one resource and exactly one create call — the
+tests assert that per product. `delete()` treats 404 as success, so re-running a
+teardown is safe. **`"replace"` is never emitted**: drift on an immutable field
+(a bucket's location, a Cloud SQL region or major version, a secret's
+replication) is reported as a diagnostic for a human rather than "fixed" by
+destroying data.
+
+Pub/Sub, Secret Manager and Cloud Tasks answer a second create with
+`409 ALREADY_EXISTS`. That is used as a convergence signal only *after* a GET
+missed and only by **re-reading** — a bare create-and-swallow-409 would hide a
+real conflict behind a shrug.
+
+### Long-running Operations, handled honestly
+
+Cloud SQL and Cloud Run answer a create with an `Operation` whose `done` is
+`false`; the resource is not ready. This package never reads that as a finished
+create. It polls the operation to a terminal state through the same injected
+transport under a **bounded, injected** budget (`operationPoll: { attempts,
+beforeAttempt }` — no clock, no unbounded loop), and when the budget runs out
+without a terminal answer the outcome carries `operationConfirmed: false` plus a
+diagnostic saying the resource is *not* confirmed ready. An operation that
+finishes with an error becomes `RESOLVER_PROVIDER_REJECTED`. A `delete()` that
+cannot be confirmed **raises** rather than returning quietly: on that path
+silence is the success report and there is no diagnostics channel to qualify it.
+
+### Credentials, transport, errors
+
+`credentialRef` is a **locator**, never material — the same `scheme://…` grammar
+core's `parseResolveRequest` enforces. A token-shaped value is refused with
+`RESOLVER_CREDENTIAL_NOT_A_REF` and never echoed; the material comes from the
+injected `resolveCredential(ref)` and reaches exactly one place, the
+`authorization: Bearer …` header. It is never logged, never placed in `outputs`,
+and Google's error text is redacted (`redactGcpText`) before it reaches any
+message or diagnostic.
+
+Every call goes through core's `guardTransport` with a **per-service** policy
+(`gcpTransportPolicy(service)`): HTTPS only, one exact host, one path prefix, no
+redirect chasing, 20 s and 512 KiB caps, refuse rather than clamp.
+`*.googleapis.com` is deliberately *not* allowlisted — a wildcard would readmit
+every Google API at once — and a per-service policy means a Cloud SQL path
+cannot be sent to the Cloud Storage host.
+
+### HONEST SCOPE — resolvers
+
+This supersedes the "catalog only" note above for the eight products listed
+here, and only for them.
+
+- The resolvers are exercised against an **injected fake transport**. There is
+  no live GCP call, no real credential, no network egress and no Google Cloud
+  project anywhere in this package's tests. Passing tests prove the request
+  shapes, the convergence property and the refusal behaviour — not that a deploy
+  works.
+- Endpoint paths, request bodies and response field names are written from
+  Google's published REST documentation and have **not** been replayed against
+  the running services. A field Google has since renamed would fail at deploy
+  time, not here.
+- Coverage is a slice of each product's API — enough to allocate, observe,
+  converge and remove. IAM bindings, Cloud Run traffic splits, Cloud SQL users
+  and databases, Pub/Sub subscriptions and Secret Manager *versions* are all out
+  of scope; the secret resolver deliberately creates the container only and
+  never writes material.
+- Whether a matching Resource Definition is registered for these `gcp.*` product
+  ids is still checked at resolution time (`YARD_BINDING_PRODUCT_UNKNOWN`), not
+  here.

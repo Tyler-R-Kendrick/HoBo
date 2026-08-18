@@ -49,17 +49,32 @@ hard gates and lexicographic ranking, never here.
 
 ## HONEST SCOPE
 
-| Namespace | Resolvers | What a deploy does today |
+| Namespace | Products with a resolver | What a deploy does today |
 |---|---|---|
-| `cloudflare` | yes — Cloudflare API v4 drivers | Drivers are proven against an **injected fake transport**. No live deploy is proven in this repo: that additionally needs real credentials and network egress. |
-| `vercel` | yes — Vercel API drivers | Same: fake-transport proof only. |
-| `aws` | **no** | Catalog only. Fails closed at resolution (`YARD_BINDING_PRODUCT_UNKNOWN`, or no registered resolver). |
-| `azure` | **no** | Catalog only, same failure mode. |
-| `gcp` | **no** | Catalog only, same failure mode. |
+| `cloudflare` | all — Cloudflare API v4 drivers | Drivers are proven against an **injected fake transport**. No live deploy is proven in this repo: that additionally needs real credentials and network egress. |
+| `vercel` | all — Vercel API drivers | Same: fake-transport proof only. |
+| `gcp` | **8 of 14** — Google REST drivers | Same: fake-transport proof only. The other 6 fail closed. See `GCP_RESOLVED_PRODUCT_IDS` / `GCP_UNRESOLVED_PRODUCT_IDS`. |
+| `azure` | **7 of 16** — ARM drivers | Same: fake-transport proof only. The other 9 fail closed. See `AZURE_RESOLVED_PRODUCT_IDS` / `AZURE_UNRESOLVED_PRODUCT_IDS`. |
+| `aws` | **none yet** | Catalog only. Fails closed at resolution (`YARD_BINDING_PRODUCT_UNKNOWN`, or no registered resolver). |
 
-None of the `aws.*` / `azure.*` / `gcp.*` product ids these factories emit is
-registered in the definition catalog. That is a deliberate fail-closed gap, not
-a silent one: a deploy refuses rather than half-applying.
+Two limits apply to every row above, including the ones marked "all":
+
+1. **No `aws.*` / `azure.*` / `gcp.*` product id is registered in the definition
+   catalog.** So even a product with a working resolver refuses at resolution
+   today. That is a deliberate fail-closed gap, not a silent one: a deploy
+   refuses rather than half-applying.
+2. **"Has a resolver" is not "deploys."** Every resolver in this repo is proven
+   against an injected fake transport modelling the provider's API. No live
+   call has been made against any provider. Pinned API versions and request
+   body field names are documentation-derived and have not been verified
+   against a running service.
+
+An unresolved product is not always a coverage gap. Some are design limits the
+provider's own API imposes — `azure.postgres-flexible/v1` cannot ship a resolver
+because its create call requires an administrator password in the request body,
+and a `desired` record may not carry credential-shaped keys. The
+`*_UNRESOLVED_PRODUCT_IDS` declarations carry the reason per id, and distinguish
+the two cases.
 
 No catalog enumerates all of its provider. Each declares the offerings that have
 typed factories; a missing alternative is a gap in the factory set, not a

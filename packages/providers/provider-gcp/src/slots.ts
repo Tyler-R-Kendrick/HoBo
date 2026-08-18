@@ -23,11 +23,14 @@
  * is simply absent from `properties` and the Resource Definition decides.
  *
  * HONEST SCOPE: the `productId` values below are the ids these factories
- * *emit*. None of them is registered in the definition catalog today, and this
- * package ships no deployment resolver — GCP is catalog-only. Whether a
- * matching Resource Definition exists is checked at resolution time
- * (`YARD_BINDING_PRODUCT_UNKNOWN`), not here, so a successful call is not
- * evidence that anything can be deployed.
+ * *emit*. None of them is registered in the definition catalog today. This
+ * package now ships Google REST deployment resolvers, but for only 8 of the 14
+ * ids here — see `GCP_RESOLVED_PRODUCT_IDS` / `GCP_UNRESOLVED_PRODUCT_IDS` in
+ * `./resolvers.js` for the authoritative split and the per-id reason. Those
+ * resolvers are proven against an injected fake transport, never a live
+ * project. Whether a matching Resource Definition exists is checked at
+ * resolution time (`YARD_BINDING_PRODUCT_UNKNOWN`), not here, so a successful
+ * call to a factory below is not evidence that anything can be deployed.
  */
 import { type SlotBinding, slotBinding } from "@hobo/core";
 

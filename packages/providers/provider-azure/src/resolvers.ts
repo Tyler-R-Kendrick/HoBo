@@ -361,9 +361,7 @@ function optionalInteger(
 	key: string,
 ): number | undefined {
 	const value = optionalNumber(record, key);
-	return value !== undefined && Number.isSafeInteger(value)
-		? value
-		: undefined;
+	return value !== undefined && Number.isSafeInteger(value) ? value : undefined;
 }
 
 function nestedRecord(
@@ -575,7 +573,10 @@ function provisioningState(
 	body: Record<string, unknown> | undefined,
 ): string | undefined {
 	if (body === undefined) return undefined;
-	const state = optionalString(nestedRecord(body, "properties"), "provisioningState");
+	const state = optionalString(
+		nestedRecord(body, "properties"),
+		"provisioningState",
+	);
 	return state?.toLowerCase();
 }
 
@@ -740,7 +741,12 @@ async function pollUntilTerminal(
 			}
 			if (isTerminalSuccess(state)) {
 				return {
-					body: await readResourceBody(context, resourcePath, apiVersion, label),
+					body: await readResourceBody(
+						context,
+						resourcePath,
+						apiVersion,
+						label,
+					),
 					diagnostics: [],
 					confirmed: true,
 				};
@@ -1174,9 +1180,7 @@ function blobContainerOutputs(
  * *not* mapped to a public level: "do not block" states no requirement, and
  * turning a private container public is not something to infer.
  */
-function wantedPublicAccess(
-	context: AzureResolverContext,
-): string | undefined {
+function wantedPublicAccess(context: AzureResolverContext): string | undefined {
 	return optionalBoolean(context.desired, "publicAccessBlocked") === true
 		? "None"
 		: undefined;
@@ -1319,7 +1323,9 @@ function storageQueueDiagnostics(
 	context: AzureResolverContext,
 ): readonly string[] {
 	const diagnostics: string[] = [];
-	if (optionalInteger(context.desired, "visibilityTimeoutSeconds") !== undefined) {
+	if (
+		optionalInteger(context.desired, "visibilityTimeoutSeconds") !== undefined
+	) {
 		diagnostics.push(
 			"visibilityTimeoutSeconds is declared but not applied: Azure Storage queue visibility timeout is a per-message data-plane parameter, not a property of the queue resource",
 		);
@@ -1710,7 +1716,10 @@ function serviceBusTopicDiagnostics(
 	properties: Readonly<Record<string, unknown>>,
 ): readonly string[] {
 	const diagnostics: string[] = [];
-	const wantedDuplicates = optionalBoolean(context.desired, "duplicateDetection");
+	const wantedDuplicates = optionalBoolean(
+		context.desired,
+		"duplicateDetection",
+	);
 	const actualDuplicates = optionalBoolean(
 		properties,
 		"requiresDuplicateDetection",
@@ -1909,7 +1918,10 @@ function keyVaultOutputs(
 function keyVaultDeltas(
 	context: AzureResolverContext,
 	properties: Readonly<Record<string, unknown>>,
-): { readonly patch: Record<string, unknown>; readonly diagnostics: readonly string[] } {
+): {
+	readonly patch: Record<string, unknown>;
+	readonly diagnostics: readonly string[];
+} {
 	const patch: Record<string, unknown> = {};
 	const diagnostics: string[] = [];
 
@@ -2043,10 +2055,12 @@ const KEY_VAULT_SPEC: Omit<AzureResolverSpec, "productId"> = {
 					`skuName was not declared, and ARM requires one: the vault was created at the ${KEY_VAULT_FALLBACK_SKU} tier. Declare skuName to choose deliberately — this resolver never changes an existing vault's tier`,
 				);
 			}
-			return outcome("create", id, keyVaultOutputs(context.name, created.body), [
-				...diagnostics,
-				...created.diagnostics,
-			]);
+			return outcome(
+				"create",
+				id,
+				keyVaultOutputs(context.name, created.body),
+				[...diagnostics, ...created.diagnostics],
+			);
 		}
 
 		const properties = nestedRecord(observed, "properties");
@@ -2585,9 +2599,7 @@ const CONTAINER_APPS_SPEC: Omit<AzureResolverSpec, "productId"> = {
 						properties: {
 							managedEnvironmentId,
 							template,
-							...(ingress === undefined
-								? {}
-								: { configuration: { ingress } }),
+							...(ingress === undefined ? {} : { configuration: { ingress } }),
 						},
 					},
 				),

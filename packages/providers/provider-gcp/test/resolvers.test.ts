@@ -21,6 +21,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
+	GCP_API_ALLOWED_HOSTS,
 	GCP_CLOUD_RUN_JOB_PRODUCT_ID,
 	GCP_CLOUD_RUN_PRODUCT_ID,
 	GCP_CLOUD_SQL_MYSQL_PRODUCT_ID,
@@ -1390,6 +1391,20 @@ describe("gcp guarded transport", () => {
 		maxResponseBytes: 1_024,
 	};
 	const inner: HttpTransport = async () => json(200, { name: "hobo-assets" });
+
+	it("allowlists exactly the six service hosts it calls, never a wildcard", () => {
+		expect([...GCP_API_ALLOWED_HOSTS]).toEqual([
+			"cloudtasks.googleapis.com",
+			"pubsub.googleapis.com",
+			"run.googleapis.com",
+			"secretmanager.googleapis.com",
+			"sqladmin.googleapis.com",
+			"storage.googleapis.com",
+		]);
+		for (const host of GCP_API_ALLOWED_HOSTS) {
+			expect(host).not.toContain("*");
+		}
+	});
 
 	it("allows the service's own host and path", async () => {
 		const guarded = guardedGcpTransport(inner, "cloudStorage");

@@ -20,11 +20,14 @@
  * Determinism: no clock, no randomness, no environment reads. Two calls with
  * the same options are deep-equal.
  *
- * HONEST SCOPE: this is the catalog only. This package registers no Resource
- * Definitions for the `gcp.*` product ids below and ships no deployment
- * resolver, so nothing here deploys. A deploy attempted against this Yard
- * fails closed at resolution (`YARD_BINDING_PRODUCT_UNKNOWN`, or no registered
- * resolver) until definitions and resolvers land.
+ * HONEST SCOPE: this is the catalog — what GCP is *able* to allocate
+ * (ADR-0157 decision 1), not what is allocated. This package registers no
+ * Resource Definitions for the `gcp.*` product ids below, so a deploy still
+ * fails closed at resolution (`YARD_BINDING_PRODUCT_UNKNOWN`) until definitions
+ * land. It does now ship Google REST resolvers, but for 8 of the 14 ids only
+ * (`GCP_RESOLVED_PRODUCT_IDS`), and those are proven against an injected fake
+ * transport, never a live project. A row in this Yard is not a promise that
+ * the row deploys.
  */
 import type { CapabilitySlot, SlotBinding } from "@hobo/core";
 

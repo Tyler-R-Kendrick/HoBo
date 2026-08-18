@@ -53,8 +53,8 @@ hard gates and lexicographic ranking, never here.
 |---|---|---|
 | `cloudflare` | all — Cloudflare API v4 drivers | Drivers are proven against an **injected fake transport**. No live deploy is proven in this repo: that additionally needs real credentials and network egress. |
 | `vercel` | all — Vercel API drivers | Same: fake-transport proof only. |
-| `gcp` | **8 of 14** — Google REST drivers | Same: fake-transport proof only. The other 6 fail closed. See `GCP_RESOLVED_PRODUCT_IDS` / `GCP_UNRESOLVED_PRODUCT_IDS`. |
-| `azure` | **7 of 16** — ARM drivers | Same: fake-transport proof only. The other 9 fail closed. See `AZURE_RESOLVED_PRODUCT_IDS` / `AZURE_UNRESOLVED_PRODUCT_IDS`. |
+| `gcp` | **9 of 14** — Google REST drivers | Same: fake-transport proof only. The other 5 fail closed. See `GCP_RESOLVED_PRODUCT_IDS` / `GCP_UNRESOLVED_PRODUCT_IDS`. |
+| `azure` | **9 of 16** — ARM drivers | Same: fake-transport proof only. The other 7 fail closed. See `AZURE_RESOLVED_PRODUCT_IDS` / `AZURE_UNRESOLVED_PRODUCT_IDS`. |
 | `aws` | **7 of 19** — SigV4-signed drivers | Same: fake-transport proof only. The other 12 fail closed. See `AWS_RESOLVED_PRODUCT_IDS` / `AWS_UNRESOLVED_PRODUCT_IDS`. |
 
 Two limits apply to every row above, including the ones marked "all":

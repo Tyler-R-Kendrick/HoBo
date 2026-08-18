@@ -42,6 +42,7 @@ export const GCP_API_SERVICES = Object.freeze([
 	"cloudSql",
 	"cloudStorage",
 	"cloudTasks",
+	"memorystore",
 	"pubsub",
 	"secretManager",
 ] as const);
@@ -78,6 +79,10 @@ export const GCP_API_ENDPOINTS: Readonly<
 	cloudTasks: Object.freeze({
 		host: "cloudtasks.googleapis.com",
 		pathPrefix: "/v2/projects/",
+	}),
+	memorystore: Object.freeze({
+		host: "redis.googleapis.com",
+		pathPrefix: "/v1/projects/",
 	}),
 	pubsub: Object.freeze({
 		host: "pubsub.googleapis.com",

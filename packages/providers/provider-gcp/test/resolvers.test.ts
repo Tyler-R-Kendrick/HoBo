@@ -29,6 +29,7 @@ import {
 	GCP_CLOUD_STORAGE_PRODUCT_ID,
 	GCP_CLOUD_TASKS_PRODUCT_ID,
 	GCP_DEFAULT_BINDINGS,
+	GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
 	GCP_PUBSUB_TOPIC_PRODUCT_ID,
 	GCP_RESOLVED_PRODUCT_IDS,
 	GCP_SECRET_MANAGER_PRODUCT_ID,
@@ -399,6 +400,81 @@ function sqlApi(config: SqlApiConfig = {}) {
 	};
 }
 
+const REDIS_COLLECTION =
+	"/v1/projects/hobo-demo/locations/us-central1/instances";
+const REDIS_PATH = `${REDIS_COLLECTION}/session-cache`;
+const REDIS_OPERATION_PATH =
+	"/v1/projects/hobo-demo/locations/us-central1/operations/op-redis-1";
+const REDIS_OPERATION_NAME =
+	"projects/hobo-demo/locations/us-central1/operations/op-redis-1";
+
+interface RedisApiConfig {
+	/** How many operation reads it takes to reach `done`. 0 = done immediately. */
+	readonly pollsUntilDone?: number;
+	readonly instance?: Rec;
+	/** When set, the operation name is this instead of the documented shape. */
+	readonly operationName?: string;
+}
+
+function redisApi(config: RedisApiConfig = {}) {
+	const pollsUntilDone = config.pollsUntilDone ?? 0;
+	let instance = config.instance;
+	let polls = 0;
+	let pending: "create" | "patch" | "delete" | undefined;
+	let sent: Rec = {};
+
+	function operation(): TransportResponse {
+		const done = polls >= pollsUntilDone;
+		if (done && pending === "create") {
+			instance = {
+				name: "projects/hobo-demo/locations/us-central1/instances/session-cache",
+				tier: sent.tier ?? "BASIC",
+				memorySizeGb: sent.memorySizeGb ?? 1,
+				redisVersion: sent.redisVersion ?? "REDIS_7_0",
+				locationId: "us-central1-a",
+				host: "10.0.0.3",
+				port: 6379,
+				state: "READY",
+			};
+		}
+		if (done && pending === "patch") {
+			instance = { ...(instance ?? {}), ...sent };
+		}
+		if (done && pending === "delete") instance = undefined;
+		return json(200, {
+			name: config.operationName ?? REDIS_OPERATION_NAME,
+			done,
+			...(done ? { response: instance ?? {} } : {}),
+		});
+	}
+
+	return (call: RecordedCall): TransportResponse => {
+		if (call.method === "GET" && call.path === REDIS_PATH) {
+			return instance === undefined ? notFound() : json(200, instance);
+		}
+		if (call.method === "POST" && call.path === REDIS_COLLECTION) {
+			pending = "create";
+			sent = bodyOf(call);
+			return operation();
+		}
+		if (call.method === "PATCH" && call.path === REDIS_PATH) {
+			pending = "patch";
+			sent = bodyOf(call);
+			return operation();
+		}
+		if (call.method === "DELETE" && call.path === REDIS_PATH) {
+			if (instance === undefined) return notFound();
+			pending = "delete";
+			return operation();
+		}
+		if (call.method === "GET" && call.path === REDIS_OPERATION_PATH) {
+			polls += 1;
+			return operation();
+		}
+		return unexpected(call);
+	};
+}
+
 const RUN_COLLECTION = "/v2/projects/hobo-demo/locations/us-central1/services";
 const RUN_PATH = `${RUN_COLLECTION}/storefront`;
 const RUN_OPERATION_PATH =
@@ -536,6 +612,18 @@ const SQL_REQUEST = request({
 		tier: "db-custom-1-3840",
 		storageGb: 20,
 		engineVersion: "POSTGRES_15",
+	},
+});
+
+const REDIS_REQUEST = request({
+	slot: "kv",
+	productId: GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+	logicalId: "session-cache",
+	desired: {
+		location: "us-central1",
+		memoryGb: 1,
+		tier: "basic",
+		engineVersion: "REDIS_7_0",
 	},
 });
 
@@ -1236,6 +1324,291 @@ describe("cloud run resolvers", () => {
 // Credentials, redaction, transport reach
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Memorystore for Redis
+// ---------------------------------------------------------------------------
+
+describe("memorystore redis resolver", () => {
+	it("creates through a terminal operation and converges", async () => {
+		const fake = fakeTransport(redisApi());
+		const resolver = resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID);
+
+		const first = checked(
+			await resolver.reconcile(REDIS_REQUEST, fake.transport),
+		);
+		expect(first.action).toBe("create");
+		expect(first.physicalId).toBe(
+			"projects/hobo-demo/locations/us-central1/instances/session-cache",
+		);
+		expect(first.outputs.host).toBe("10.0.0.3");
+		expect(first.outputs.port).toBe(6379);
+		expect(first.outputs.operationConfirmed).toBe(true);
+
+		const second = checked(
+			await resolver.reconcile(REDIS_REQUEST, fake.transport),
+		);
+		expect(second.action).toBe("adopt");
+		expect(second.physicalId).toBe(first.physicalId);
+		// The property the resolver exists to have: two reconciles, one create.
+		expect(fake.countOf("POST", REDIS_COLLECTION)).toBe(1);
+	});
+
+	it("names the instance through instanceId, which is what makes the read converge", async () => {
+		const fake = fakeTransport(redisApi());
+		await resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID).reconcile(
+			REDIS_REQUEST,
+			fake.transport,
+		);
+		const create = fake.calls.find(
+			(call) => call.method === "POST" && call.path === REDIS_COLLECTION,
+		);
+		expect(create?.search).toBe("?instanceId=session-cache");
+		expect(bodyOf(create as RecordedCall)).toEqual({
+			memorySizeGb: 1,
+			tier: "BASIC",
+			redisVersion: "REDIS_7_0",
+		});
+	});
+
+	it("reports an unfinished create as not confirmed rather than as done", async () => {
+		const fake = fakeTransport(redisApi({ pollsUntilDone: 99 }));
+		const outcome = checked(
+			await resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID, {
+				operationPoll: { attempts: 2 },
+			}).reconcile(REDIS_REQUEST, fake.transport),
+		);
+		expect(outcome.action).toBe("create");
+		expect(outcome.outputs.operationConfirmed).toBe(false);
+		expect(outcome.diagnostics.join(" ")).toMatch(/NOT confirmed ready/u);
+		// It did not invent provider outputs it never read.
+		expect(outcome.outputs.host).toBeUndefined();
+	});
+
+	it("scales memory through the documented updateMask and nothing else", async () => {
+		const fake = fakeTransport(
+			redisApi({
+				instance: {
+					name: "projects/hobo-demo/locations/us-central1/instances/session-cache",
+					tier: "BASIC",
+					memorySizeGb: 1,
+					redisVersion: "REDIS_7_0",
+					locationId: "us-central1-a",
+					host: "10.0.0.3",
+					port: 6379,
+					state: "READY",
+				},
+			}),
+		);
+		const outcome = checked(
+			await resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID).reconcile(
+				request({
+					slot: "kv",
+					productId: GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+					logicalId: "session-cache",
+					desired: {
+						location: "us-central1",
+						memoryGb: 5,
+						tier: "basic",
+						engineVersion: "REDIS_7_0",
+					},
+				}),
+				fake.transport,
+			),
+		);
+		expect(outcome.action).toBe("update");
+		expect(outcome.outputs.memorySizeGb).toBe(5);
+		const patch = fake.calls.find((call) => call.method === "PATCH");
+		expect(patch?.search).toBe("?updateMask=memorySizeGb");
+		expect(bodyOf(patch as RecordedCall)).toEqual({ memorySizeGb: 5 });
+	});
+
+	it("reports tier and version drift instead of applying it", async () => {
+		// Memorystore's updateMask covers memorySizeGb, displayName, labels,
+		// redisConfig and replicaCount. Tier is fixed for the instance's life and
+		// a version move is the separate upgrade method, which restarts the node.
+		const fake = fakeTransport(
+			redisApi({
+				instance: {
+					name: "projects/hobo-demo/locations/us-central1/instances/session-cache",
+					tier: "BASIC",
+					memorySizeGb: 1,
+					redisVersion: "REDIS_6_X",
+					locationId: "europe-west1-b",
+					host: "10.0.0.3",
+					port: 6379,
+					state: "READY",
+				},
+			}),
+		);
+		const outcome = checked(
+			await resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID).reconcile(
+				request({
+					slot: "kv",
+					productId: GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+					logicalId: "session-cache",
+					desired: {
+						location: "us-central1",
+						memoryGb: 1,
+						tier: "standard-ha",
+						engineVersion: "REDIS_7_0",
+					},
+				}),
+				fake.transport,
+			),
+		);
+		expect(outcome.action).toBe("adopt");
+		const text = outcome.diagnostics.join(" | ");
+		expect(text).toMatch(/tier is BASIC/u);
+		expect(text).toMatch(/redisVersion is REDIS_6_X/u);
+		expect(text).toMatch(/locationId is europe-west1-b/u);
+		// Reported, never "fixed": no write went out at all.
+		expect(fake.calls.every((call) => call.method === "GET")).toBe(true);
+	});
+
+	it("refuses to guess the size, the tier vocabulary, or the version enum", async () => {
+		const fake = fakeTransport(redisApi());
+		const resolver = resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID);
+		const sizeless = request({
+			slot: "kv",
+			productId: GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+			logicalId: "session-cache",
+			desired: { location: "us-central1" },
+		});
+		expect(
+			await messageOf(() => resolver.reconcile(sizeless, fake.transport)),
+		).toMatch(/memorySizeGb at creation/u);
+		expect(
+			await messageOf(() =>
+				resolver.reconcile(
+					request({
+						slot: "kv",
+						productId: GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+						logicalId: "session-cache",
+						desired: {
+							location: "us-central1",
+							memoryGb: 1,
+							tier: "STANDARD_HA",
+						},
+					}),
+					fake.transport,
+				),
+			),
+		).toMatch(/is not one of basic, standard-ha/u);
+		expect(
+			await messageOf(() =>
+				resolver.reconcile(
+					request({
+						slot: "kv",
+						productId: GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+						logicalId: "session-cache",
+						desired: {
+							location: "us-central1",
+							memoryGb: 1,
+							engineVersion: "7.0",
+						},
+					}),
+					fake.transport,
+				),
+			),
+		).toMatch(/redisVersion enum/u);
+	});
+
+	it("refuses to place the instance in a region nobody asked for", async () => {
+		const fake = fakeTransport(redisApi());
+		expect(
+			await messageOf(() =>
+				resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID).reconcile(
+					request({
+						slot: "kv",
+						productId: GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+						logicalId: "session-cache",
+						desired: { memoryGb: 1 },
+					}),
+					fake.transport,
+				),
+			),
+		).toMatch(/names no location/u);
+	});
+
+	it("says so when the tier fell back to Google's own default", async () => {
+		const fake = fakeTransport(redisApi());
+		const outcome = checked(
+			await resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID).reconcile(
+				request({
+					slot: "kv",
+					productId: GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+					logicalId: "session-cache",
+					desired: { location: "us-central1", memoryGb: 1 },
+				}),
+				fake.transport,
+			),
+		);
+		expect(outcome.diagnostics.join(" ")).toMatch(/tier was not declared/u);
+	});
+
+	it("deletes idempotently and refuses to report an unconfirmed delete as done", async () => {
+		const fake = fakeTransport(
+			redisApi({
+				instance: {
+					name: "projects/hobo-demo/locations/us-central1/instances/session-cache",
+					tier: "BASIC",
+					memorySizeGb: 1,
+				},
+			}),
+		);
+		const resolver = resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID);
+		await expect(
+			resolver.delete(REDIS_REQUEST, fake.transport),
+		).resolves.toBeUndefined();
+		// "Already gone" is success, which is what makes a re-run safe.
+		await expect(
+			resolver.delete(REDIS_REQUEST, fake.transport),
+		).resolves.toBeUndefined();
+
+		const stuck = fakeTransport(
+			redisApi({
+				pollsUntilDone: 99,
+				instance: {
+					name: "projects/hobo-demo/locations/us-central1/instances/session-cache",
+				},
+			}),
+		);
+		expect(
+			await codeOf(() =>
+				resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID, {
+					operationPoll: { attempts: 1 },
+				}).delete(REDIS_REQUEST, stuck.transport),
+			),
+		).toBe("RESOLVER_PROVIDER_REJECTED");
+	});
+
+	it("refuses an operation name that is not the documented shape", async () => {
+		// The name is what the next poll URL is built from. An undocumented one
+		// leaves the outcome unknown, and unknown is refused rather than assumed.
+		const fake = fakeTransport(
+			redisApi({ pollsUntilDone: 1, operationName: "op-redis-1" }),
+		);
+		expect(
+			await codeOf(() =>
+				resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID).reconcile(
+					REDIS_REQUEST,
+					fake.transport,
+				),
+			),
+		).toBe("RESOLVER_OUTPUT_UNPARSEABLE");
+	});
+
+	it("reads an absent instance as absent, not as an error", async () => {
+		const fake = fakeTransport(redisApi());
+		expect(
+			await resolverFor(GCP_MEMORYSTORE_REDIS_PRODUCT_ID).read(
+				REDIS_REQUEST,
+				fake.transport,
+			),
+		).toBeUndefined();
+	});
+});
+
 describe("gcp resolver credentials", () => {
 	it("refuses a credentialRef that carries material rather than a locator", async () => {
 		const fake = fakeTransport(bucketApi());
@@ -1392,10 +1765,11 @@ describe("gcp guarded transport", () => {
 	};
 	const inner: HttpTransport = async () => json(200, { name: "hobo-assets" });
 
-	it("allowlists exactly the six service hosts it calls, never a wildcard", () => {
+	it("allowlists exactly the seven service hosts it calls, never a wildcard", () => {
 		expect([...GCP_API_ALLOWED_HOSTS]).toEqual([
 			"cloudtasks.googleapis.com",
 			"pubsub.googleapis.com",
+			"redis.googleapis.com",
 			"run.googleapis.com",
 			"secretmanager.googleapis.com",
 			"sqladmin.googleapis.com",

@@ -95,9 +95,19 @@ resolver at all and are declared in `GCP_UNRESOLVED_PRODUCT_IDS`.
 | `gcp.cloud-sql-postgres/v1`, `gcp.cloud-sql-mysql/v1` | `sqladmin.googleapis.com` | `GET /v1/projects/{p}/instances/{i}` | `POST /v1/projects/{p}/instances` → Operation | `PATCH …/instances/{i}` → Operation | `DELETE …/instances/{i}` → Operation |
 | `gcp.cloud-run/v1` | `run.googleapis.com` | `GET /v2/projects/{p}/locations/{l}/services/{s}` | `POST …/services?serviceId=` → Operation | `PATCH …/services/{s}` → Operation | `DELETE …/services/{s}` → Operation |
 | `gcp.cloud-run-job/v1` | `run.googleapis.com` | `GET …/jobs/{j}` | `POST …/jobs?jobId=` → Operation | `PATCH …/jobs/{j}` → Operation | `DELETE …/jobs/{j}` → Operation |
+| `gcp.memorystore-redis/v1` | `redis.googleapis.com` | `GET /v1/projects/{p}/locations/{l}/instances/{i}` | `POST …/instances?instanceId=` → Operation | `PATCH …/instances/{i}?updateMask=memorySizeGb` → Operation | `DELETE …/instances/{i}` → Operation |
 
-Operations are polled at `GET /v1/projects/{p}/operations/{op}` (Cloud SQL) and
-`GET /v2/{operation.name}` (Cloud Run).
+Operations are polled at `GET /v1/projects/{p}/operations/{op}` (Cloud SQL),
+`GET /v2/{operation.name}` (Cloud Run) and `GET /v1/{operation.name}`
+(Memorystore).
+
+Memorystore's documented `updateMask` covers `displayName`, `labels`,
+`memorySizeGb`, `redisConfig` and `replicaCount`. Of what the binding names,
+only `memoryGb` is in that set — `tier` is fixed for the instance's life and a
+`redisVersion` move is the separate `upgrade` method, which restarts the node —
+so both are reported as drift rather than applied. The size itself is never
+guessed: the tier minimum differs (1 GB Basic, 5 GB Standard HA), so a missing
+`memoryGb` is a refusal.
 
 **Endpoints deliberately absent** (`GCP_UNRESOLVED_PRODUCT_IDS`):
 
@@ -108,7 +118,6 @@ Operations are polled at `GET /v1/projects/{p}/operations/{op}` (Cloud SQL) and
 | `gcp.cloud-functions/v1` | Deploying requires uploading source to a signed URL minted per call by `generateUploadUrl`. The URL is not deterministic and the source bytes are not in `desired`. |
 | `gcp.cloud-storage-site/v1` | The bucket half is convergent, but the product is a *served site*: `cdn: true` also needs a backend bucket, URL map, target proxy and forwarding rule on `compute.googleapis.com`. Shipping the bucket half alone would silently under-deliver the product. |
 | `gcp.firestore/v1` | Id, location and mode are fixed at creation, and deletion is gated on an etag plus a delete-protection override this package does not model — only half the lifecycle would be expressible. |
-| `gcp.memorystore-redis/v1` | A **coverage** gap, not a convergence one: `redis.googleapis.com` is a seventh service host this unit did not allowlist. The surface is long-running in the same way Cloud SQL's is and can be resolved the same way later. |
 
 `test/resolvers.test.ts` asserts the set of catalogued products *without* a
 resolver is exactly `GCP_UNRESOLVED_PRODUCT_IDS`, so adding a catalog row

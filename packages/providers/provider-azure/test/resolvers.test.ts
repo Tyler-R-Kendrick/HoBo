@@ -21,12 +21,15 @@ import { describe, expect, it } from "vitest";
 
 import {
 	AZURE_BLOB_STORAGE_PRODUCT_ID,
+	AZURE_CACHE_API_VERSION,
 	AZURE_CONTAINER_APPS_API_VERSION,
 	AZURE_CONTAINER_APPS_PRODUCT_ID,
 	AZURE_COSMOS_API_VERSION,
 	AZURE_COSMOS_DB_PRODUCT_ID,
+	AZURE_COSMOS_TABLE_PRODUCT_ID,
 	AZURE_KEY_VAULT_API_VERSION,
 	AZURE_KEY_VAULT_PRODUCT_ID,
+	AZURE_REDIS_CACHE_PRODUCT_ID,
 	AZURE_RESOLVED_PRODUCT_IDS,
 	AZURE_SERVICE_BUS_API_VERSION,
 	AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
@@ -339,6 +342,29 @@ const SERVICE_BUS_SEED: Readonly<Record<string, Record<string, unknown>>> =
 		},
 	});
 
+/** A Table API account: the capability is fixed at account creation, and the
+ *  table resolver refuses an account that does not carry it. */
+const TABLE_ACCOUNT = "hobo-tables";
+const TABLE_ACCOUNT_PATH = `${GROUP_PREFIX}/providers/Microsoft.DocumentDB/databaseAccounts/${TABLE_ACCOUNT}`;
+
+function cosmosAccountSeed(
+	capabilities: readonly string[],
+): Readonly<Record<string, Record<string, unknown>>> {
+	return Object.freeze({
+		[TABLE_ACCOUNT_PATH]: {
+			id: TABLE_ACCOUNT_PATH,
+			name: TABLE_ACCOUNT,
+			location: "eastus",
+			properties: {
+				capabilities: capabilities.map((name) => ({ name })),
+				provisioningState: "Succeeded",
+			},
+		},
+	});
+}
+
+const TABLE_ACCOUNT_SEED = cosmosAccountSeed(["EnableTable"]);
+
 const CASES: readonly ProductCase[] = Object.freeze([
 	{
 		label: "blob container",
@@ -406,6 +432,26 @@ const CASES: readonly ProductCase[] = Object.freeze([
 		desired: { consistencyLevel: "session", location: "eastus" },
 		resourcePath: `${GROUP_PREFIX}/providers/Microsoft.DocumentDB/databaseAccounts/hobo-cosmos`,
 		apiVersion: AZURE_COSMOS_API_VERSION,
+		seed: {},
+	},
+	{
+		label: "cosmos table",
+		productId: AZURE_COSMOS_TABLE_PRODUCT_ID,
+		slot: "kv",
+		logicalId: "sessions",
+		desired: { databaseAccount: TABLE_ACCOUNT, throughputRu: 400 },
+		resourcePath: `${TABLE_ACCOUNT_PATH}/tables/sessions`,
+		apiVersion: AZURE_COSMOS_API_VERSION,
+		seed: TABLE_ACCOUNT_SEED,
+	},
+	{
+		label: "redis cache",
+		productId: AZURE_REDIS_CACHE_PRODUCT_ID,
+		slot: "kv",
+		logicalId: "hobo-cache",
+		desired: { capacity: 1, location: "eastus", skuName: "Standard" },
+		resourcePath: `${GROUP_PREFIX}/providers/Microsoft.Cache/redis/hobo-cache`,
+		apiVersion: AZURE_CACHE_API_VERSION,
 		seed: {},
 	},
 	{
@@ -1096,6 +1142,367 @@ describe("deltas and drift", () => {
 // ---------------------------------------------------------------------------
 // Transport guard
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Azure Cache for Redis
+// ---------------------------------------------------------------------------
+
+const REDIS = CASES.find(
+	(entry) => entry.productId === AZURE_REDIS_CACHE_PRODUCT_ID,
+) as ProductCase;
+
+function jsonBody(call: RecordedCall): Record<string, unknown> {
+	return call.body === undefined
+		? {}
+		: (JSON.parse(call.body) as Record<string, unknown>);
+}
+
+describe("azure cache for redis", () => {
+	it("sends the sku family that goes with the tier, not the tier's first letter", async () => {
+		// Basic and Standard are both family C; only Premium is P. A family
+		// derived by initial letter would send "S" and ARM would reject it in a
+		// way that does not say which field was wrong.
+		for (const [skuName, family] of [
+			["Basic", "C"],
+			["Standard", "C"],
+			["Premium", "P"],
+		] as const) {
+			const arm = createArm();
+			await resolverFor(REDIS.productId).reconcile(
+				requestFor(REDIS, {
+					desired: { capacity: 1, location: "eastus", skuName },
+				}),
+				arm.transport,
+			);
+			const put = arm.calls.find((call) => call.method === "PUT");
+			const properties = jsonBody(put as RecordedCall).properties as Record<
+				string,
+				unknown
+			>;
+			expect(properties.sku).toEqual({ capacity: 1, family, name: skuName });
+		}
+	});
+
+	it("refuses to choose a tier, and says why", async () => {
+		const arm = createArm();
+		const message = await messageOf(() =>
+			resolverFor(REDIS.productId).reconcile(
+				requestFor(REDIS, { desired: { location: "eastus" } }),
+				arm.transport,
+			),
+		);
+		expect(message).toContain("desired.skuName is required");
+		expect(message).toMatch(/differ by an order of magnitude/u);
+	});
+
+	it("defaults capacity within the named tier, visibly", async () => {
+		// The tier is the bill decision and is refused above; the size *within*
+		// a tier the caller already chose has a documented floor, so it defaults
+		// and says so rather than refusing a second time.
+		const arm = createArm();
+		const outcome = await resolverFor(REDIS.productId).reconcile(
+			requestFor(REDIS, {
+				desired: { location: "eastus", skuName: "Standard" },
+			}),
+			arm.transport,
+		);
+		expect(outcome.diagnostics.join(" ")).toMatch(/capacity was not declared/u);
+		const put = arm.calls.find((call) => call.method === "PUT");
+		expect(
+			(jsonBody(put as RecordedCall).properties as Record<string, unknown>).sku,
+		).toEqual({ capacity: 0, family: "C", name: "Standard" });
+	});
+
+	it("refuses an unknown tier rather than passing it through", async () => {
+		const arm = createArm();
+		expect(
+			await messageOf(() =>
+				resolverFor(REDIS.productId).reconcile(
+					requestFor(REDIS, {
+						desired: { location: "eastus", skuName: "Enterprise" },
+					}),
+					arm.transport,
+				),
+			),
+		).toMatch(/is not one of Basic, Premium, Standard/u);
+	});
+
+	it("refuses clustering on a tier that cannot host it", async () => {
+		const arm = createArm();
+		expect(
+			await messageOf(() =>
+				resolverFor(REDIS.productId).reconcile(
+					requestFor(REDIS, {
+						desired: { clustered: true, location: "eastus", skuName: "Basic" },
+					}),
+					arm.transport,
+				),
+			),
+		).toMatch(/only on the Premium tier/u);
+		expect(arm.calls.some((call) => call.method === "PUT")).toBe(false);
+	});
+
+	it("scales capacity within the observed tier and reports a tier change instead of making one", async () => {
+		const arm = createArm();
+		const resolver = resolverFor(REDIS.productId);
+		await resolver.reconcile(
+			requestFor(REDIS, {
+				desired: { capacity: 1, location: "eastus", skuName: "Standard" },
+			}),
+			arm.transport,
+		);
+		const scaled = await resolver.reconcile(
+			requestFor(REDIS, {
+				desired: { capacity: 3, location: "eastus", skuName: "Premium" },
+			}),
+			arm.transport,
+		);
+		expect(scaled.action).toBe("update");
+		const patch = arm.calls.find((call) => call.method === "PATCH");
+		// Scaled within Standard — the declared Premium is *not* applied, because
+		// a tier change is a migration with a service interruption.
+		expect(
+			(jsonBody(patch as RecordedCall).properties as Record<string, unknown>)
+				.sku,
+		).toEqual({ capacity: 3, family: "C", name: "Standard" });
+		expect(scaled.diagnostics.join(" ")).toMatch(
+			/on the Standard tier but skuName asks for Premium/u,
+		);
+	});
+
+	it("reports un-clustering as impossible rather than attempting it", async () => {
+		const arm = createArm();
+		const resolver = resolverFor(REDIS.productId);
+		await resolver.reconcile(
+			requestFor(REDIS, {
+				desired: {
+					capacity: 1,
+					clustered: true,
+					location: "eastus",
+					skuName: "Premium",
+				},
+			}),
+			arm.transport,
+		);
+		const outcome = await resolver.reconcile(
+			requestFor(REDIS, {
+				desired: {
+					capacity: 1,
+					clustered: false,
+					location: "eastus",
+					skuName: "Premium",
+				},
+			}),
+			arm.transport,
+		);
+		expect(outcome.action).not.toBe("replace");
+		expect(outcome.diagnostics.join(" ")).toMatch(/no path back/u);
+	});
+
+	it("reports a location change rather than moving the cache", async () => {
+		const arm = createArm();
+		const resolver = resolverFor(REDIS.productId);
+		await resolver.reconcile(
+			requestFor(REDIS, {
+				desired: { capacity: 1, location: "eastus", skuName: "Standard" },
+			}),
+			arm.transport,
+		);
+		const outcome = await resolver.reconcile(
+			requestFor(REDIS, {
+				desired: { capacity: 1, location: "westeurope", skuName: "Standard" },
+			}),
+			arm.transport,
+		);
+		expect(outcome.diagnostics.join(" ")).toMatch(
+			/location is immutable and this resolver never replaces a cache/u,
+		);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Cosmos DB Table API
+// ---------------------------------------------------------------------------
+
+const TABLE = CASES.find(
+	(entry) => entry.productId === AZURE_COSMOS_TABLE_PRODUCT_ID,
+) as ProductCase;
+
+const TABLE_THROUGHPUT_PATH = `${TABLE_ACCOUNT_PATH}/tables/sessions/throughputSettings/default`;
+
+describe("azure cosmos table", () => {
+	it("refuses an account that does not exist rather than creating one", async () => {
+		const arm = createArm();
+		const message = await messageOf(() =>
+			resolverFor(TABLE.productId).reconcile(requestFor(TABLE), arm.transport),
+		);
+		expect(message).toMatch(/does not exist in resource group/u);
+		expect(message).toMatch(/never creates an account/u);
+		expect(arm.calls.some((call) => call.method === "PUT")).toBe(false);
+	});
+
+	it("refuses an account without the EnableTable capability", async () => {
+		// Capabilities are fixed at account creation, so this is not something a
+		// resolver can fix — and without the check the table PUT fails at ARM with
+		// an error that does not say which of the two resources is wrong.
+		const arm = createArm({ seed: cosmosAccountSeed([]) });
+		const message = await messageOf(() =>
+			resolverFor(TABLE.productId).reconcile(requestFor(TABLE), arm.transport),
+		);
+		expect(message).toMatch(/does not carry the EnableTable capability/u);
+		expect(arm.calls.some((call) => call.method === "PUT")).toBe(false);
+	});
+
+	it("refuses to guess which account the table lives in", async () => {
+		const arm = createArm({ seed: TABLE_ACCOUNT_SEED });
+		expect(
+			await messageOf(() =>
+				resolverFor(TABLE.productId).reconcile(
+					requestFor(TABLE, { desired: {} }),
+					arm.transport,
+				),
+			),
+		).toContain("desired.databaseAccount is required");
+	});
+
+	it("sends the table id and the declared throughput on the create", async () => {
+		const arm = createArm({ seed: TABLE_ACCOUNT_SEED });
+		await resolverFor(TABLE.productId).reconcile(
+			requestFor(TABLE),
+			arm.transport,
+		);
+		const put = arm.calls.find(
+			(call) => call.method === "PUT" && call.path === TABLE.resourcePath,
+		);
+		expect(jsonBody(put as RecordedCall)).toEqual({
+			properties: {
+				options: { throughput: 400 },
+				resource: { id: "sessions" },
+			},
+		});
+	});
+
+	it("omits options entirely on a serverless account", async () => {
+		// An empty options bag is not the same as no options: ARM rejects a
+		// throughput on an account that has none.
+		const arm = createArm({
+			seed: cosmosAccountSeed(["EnableTable", "EnableServerless"]),
+		});
+		await resolverFor(TABLE.productId).reconcile(
+			requestFor(TABLE, { desired: { databaseAccount: TABLE_ACCOUNT } }),
+			arm.transport,
+		);
+		const put = arm.calls.find(
+			(call) => call.method === "PUT" && call.path === TABLE.resourcePath,
+		);
+		expect(jsonBody(put as RecordedCall)).toEqual({
+			properties: { resource: { id: "sessions" } },
+		});
+	});
+
+	it("refuses a throughput on a serverless account", async () => {
+		const arm = createArm({
+			seed: cosmosAccountSeed(["EnableTable", "EnableServerless"]),
+		});
+		expect(
+			await messageOf(() =>
+				resolverFor(TABLE.productId).reconcile(
+					requestFor(TABLE),
+					arm.transport,
+				),
+			),
+		).toMatch(/the account is serverless/u);
+	});
+
+	it("refuses serverless mode on an account that is not serverless", async () => {
+		const arm = createArm({ seed: TABLE_ACCOUNT_SEED });
+		expect(
+			await messageOf(() =>
+				resolverFor(TABLE.productId).reconcile(
+					requestFor(TABLE, {
+						desired: {
+							databaseAccount: TABLE_ACCOUNT,
+							throughputMode: "serverless",
+						},
+					}),
+					arm.transport,
+				),
+			),
+		).toMatch(/fixed at creation, so it cannot be set per table/u);
+	});
+
+	it("scales through throughputSettings/default, never by re-PUTting the table", async () => {
+		const arm = createArm({
+			seed: {
+				...TABLE_ACCOUNT_SEED,
+				[TABLE.resourcePath]: {
+					id: TABLE.resourcePath,
+					name: "sessions",
+					properties: { resource: { id: "sessions" } },
+				},
+				[TABLE_THROUGHPUT_PATH]: {
+					id: TABLE_THROUGHPUT_PATH,
+					name: "default",
+					properties: { resource: { throughput: 400 } },
+				},
+			},
+		});
+		const outcome = await resolverFor(TABLE.productId).reconcile(
+			requestFor(TABLE, {
+				desired: { databaseAccount: TABLE_ACCOUNT, throughputRu: 1000 },
+			}),
+			arm.transport,
+		);
+		expect(outcome.action).toBe("update");
+		expect(outcome.outputs.throughput).toBe(1000);
+		expect(arm.countOf("PUT", TABLE_THROUGHPUT_PATH)).toBe(1);
+		// The table definition itself is untouched: re-PUTting it to change a
+		// throughput would rewrite the table.
+		expect(arm.countOf("PUT", TABLE.resourcePath)).toBe(0);
+		expect(outcome.diagnostics.join(" ")).toMatch(/1000 RU\/s \(was 400\)/u);
+	});
+
+	it("reports a declared throughput it cannot compare against, rather than writing it every run", async () => {
+		// A blind PUT with nothing to compare to is a PUT on every reconcile,
+		// which is exactly the non-convergence this module refuses.
+		const arm = createArm({
+			seed: {
+				...TABLE_ACCOUNT_SEED,
+				[TABLE.resourcePath]: {
+					id: TABLE.resourcePath,
+					name: "sessions",
+					properties: { resource: { id: "sessions" } },
+				},
+			},
+		});
+		const outcome = await resolverFor(TABLE.productId).reconcile(
+			requestFor(TABLE),
+			arm.transport,
+		);
+		expect(outcome.action).toBe("adopt");
+		expect(arm.calls.every((call) => call.method === "GET")).toBe(true);
+		expect(outcome.diagnostics.join(" ")).toMatch(
+			/no throughputSettings\/default for this table/u,
+		);
+	});
+
+	it("refuses a throughputMode outside the binding's vocabulary", async () => {
+		const arm = createArm({ seed: TABLE_ACCOUNT_SEED });
+		expect(
+			await messageOf(() =>
+				resolverFor(TABLE.productId).reconcile(
+					requestFor(TABLE, {
+						desired: {
+							databaseAccount: TABLE_ACCOUNT,
+							throughputMode: "autoscale",
+						},
+					}),
+					arm.transport,
+				),
+			),
+		).toMatch(/is not one of provisioned, serverless/u);
+	});
+});
 
 describe("azure transport guard", () => {
 	it("refuses a host that is not management.azure.com", async () => {

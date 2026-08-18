@@ -132,6 +132,9 @@ export const AZURE_KEY_VAULT_API_VERSION = "2023-07-01";
 // public-contract: pinned ARM api-version for Microsoft.DocumentDB; the 2024-05-15 stable release serializes databaseAccounts with consistencyPolicy, capabilities and enableMultipleWriteLocations, the properties this resolver either applies or reports as immutable drift.
 export const AZURE_COSMOS_API_VERSION = "2024-05-15";
 
+// public-contract: pinned ARM api-version for Microsoft.Cache; the 2023-08-01 stable release serializes redis resources with sku (name/family/capacity), shardCount and the hostName/sslPort this resolver reports, and pinning it is what stops a declared sku field from quietly ceasing to apply.
+export const AZURE_CACHE_API_VERSION = "2023-08-01";
+
 // public-contract: pinned ARM api-version for Microsoft.App; the 2024-03-01 stable release serializes containerApps with managedEnvironmentId, configuration.ingress and template.containers/scale, which is the whole shape this resolver owns.
 export const AZURE_CONTAINER_APPS_API_VERSION = "2024-03-01";
 
@@ -177,6 +180,14 @@ export const AZURE_CONTAINER_APPS_PRODUCT_ID = productIdOf(
 	containerApps(),
 	"containerApps",
 );
+export const AZURE_COSMOS_TABLE_PRODUCT_ID = productIdOf(
+	cosmosTable(),
+	"cosmosTable",
+);
+export const AZURE_REDIS_CACHE_PRODUCT_ID = productIdOf(
+	redisCache(),
+	"redisCache",
+);
 
 /** Every product this module resolves, id-sorted for a deterministic registry. */
 export const AZURE_RESOLVED_PRODUCT_IDS = Object.freeze(
@@ -184,7 +195,9 @@ export const AZURE_RESOLVED_PRODUCT_IDS = Object.freeze(
 		AZURE_BLOB_STORAGE_PRODUCT_ID,
 		AZURE_CONTAINER_APPS_PRODUCT_ID,
 		AZURE_COSMOS_DB_PRODUCT_ID,
+		AZURE_COSMOS_TABLE_PRODUCT_ID,
 		AZURE_KEY_VAULT_PRODUCT_ID,
+		AZURE_REDIS_CACHE_PRODUCT_ID,
 		AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
 		AZURE_SERVICE_BUS_TOPIC_PRODUCT_ID,
 		AZURE_STORAGE_QUEUE_PRODUCT_ID,
@@ -230,23 +243,18 @@ export const AZURE_RESOLVED_PRODUCT_IDS = Object.freeze(
  * material). The bindings name a plan sku but no plan, and inventing one would
  * make the resolver own a resource the request never described.
  *
- * `azure.cache-for-redis/v1`, `azure.cosmos-table/v1` and
- * `azure.static-web-apps/v1` — **coverage gaps, not design limits.** Each has a
- * convergent ARM surface this pass simply does not implement. Cosmos Table needs
- * an account with the `EnableTable` capability *plus* a `tables/{name}`
- * sub-resource — two resources from one binding — and a Static Web App created
- * without a repository and repository token is an empty site, which is a
- * half-truth this pass would rather not ship than ship silently.
+ * `azure.static-web-apps/v1` — **a coverage gap, not a design limit.** The ARM
+ * surface is convergent, but a Static Web App created without a repository and
+ * repository token is an empty site, which is a half-truth this package would
+ * rather not ship than ship silently.
  */
 export const AZURE_UNRESOLVED_PRODUCT_IDS = Object.freeze(
 	[
 		productIdOf(aks(), "aks"),
 		productIdOf(apiManagement(), "apiManagement"),
 		productIdOf(appService(), "appService"),
-		productIdOf(cosmosTable(), "cosmosTable"),
 		productIdOf(functions(), "functions"),
 		productIdOf(postgresFlexible(), "postgresFlexible"),
-		productIdOf(redisCache(), "redisCache"),
 		productIdOf(sqlDatabase(), "sqlDatabase"),
 		productIdOf(staticWebApps(), "staticWebApps"),
 	].sort(compareStrings),
@@ -2664,6 +2672,564 @@ const CONTAINER_APPS_SPEC: Omit<AzureResolverSpec, "productId"> = {
 };
 
 // ---------------------------------------------------------------------------
+// Azure Cache for Redis — Microsoft.Cache
+// ---------------------------------------------------------------------------
+
+function redisSuffix(name: string): string {
+	return `/providers/Microsoft.Cache/redis/${encodeURIComponent(name)}`;
+}
+
+/**
+ * The sku family each tier belongs to. ARM wants `name`, `family` and
+ * `capacity` as three separate fields, and the family is a function of the
+ * tier — but not one to compute by taking a first letter: `Basic` and
+ * `Standard` are both family `C`, and only `Premium` is `P`. Written as a map
+ * so an unrecognized tier is refused rather than silently sent with a family
+ * ARM will reject in a less legible way.
+ */
+const REDIS_FAMILY_BY_SKU: Readonly<Record<string, string>> = Object.freeze({
+	Basic: "C",
+	Premium: "P",
+	Standard: "C",
+});
+
+/** The sku tier as ARM spells it, from however the binding spelled it. */
+function redisSkuName(context: AzureResolverContext): string | undefined {
+	const value = optionalString(context.desired, "skuName");
+	if (value === undefined) return undefined;
+	const canonical = Object.keys(REDIS_FAMILY_BY_SKU).find(
+		(name) => name.toLowerCase() === value.toLowerCase(),
+	);
+	if (canonical === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${AZURE_REDIS_CACHE_PRODUCT_ID}: skuName ${JSON.stringify(value)} is not one of ${Object.keys(REDIS_FAMILY_BY_SKU).sort(compareStrings).join(", ")}`,
+			AZURE_REDIS_CACHE_PRODUCT_ID,
+		);
+	}
+	return canonical;
+}
+
+function redisOutputs(
+	name: string,
+	body: Record<string, unknown> | undefined,
+): Readonly<Record<string, unknown>> {
+	const properties = body === undefined ? {} : nestedRecord(body, "properties");
+	const sku = nestedRecord(properties, "sku");
+	const hostName = optionalString(properties, "hostName");
+	const sslPort = optionalInteger(properties, "sslPort");
+	const state = optionalString(properties, "provisioningState");
+	const skuName = optionalString(sku, "name");
+	const capacity = optionalInteger(sku, "capacity");
+	const shardCount = optionalInteger(properties, "shardCount");
+	const version = optionalString(properties, "redisVersion");
+	return {
+		cacheName: name,
+		...(hostName !== undefined ? { hostName } : {}),
+		...(sslPort !== undefined ? { sslPort } : {}),
+		...(state !== undefined ? { provisioningState: state } : {}),
+		...(skuName !== undefined ? { skuName } : {}),
+		...(capacity !== undefined ? { capacity } : {}),
+		...(shardCount !== undefined ? { shardCount } : {}),
+		...(version !== undefined ? { redisVersion: version } : {}),
+	};
+}
+
+/**
+ * Clustering is a Premium-only feature and it cannot be turned off once on, so
+ * both halves are refusals rather than silent no-ops: asking for a cluster on a
+ * tier that cannot host one would fail at ARM with a less legible message, and
+ * "un-clustering" is not something a PATCH can do.
+ */
+function redisShardCount(
+	context: AzureResolverContext,
+	skuName: string | undefined,
+): number | undefined {
+	if (optionalBoolean(context.desired, "clustered") !== true) return undefined;
+	if (skuName !== "Premium") {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${AZURE_REDIS_CACHE_PRODUCT_ID}: clustered asks for a clustered cache, but Azure offers clustering only on the Premium tier and this request names ${skuName === undefined ? "no skuName" : JSON.stringify(skuName)}. Set skuName to "Premium", or drop clustered`,
+			AZURE_REDIS_CACHE_PRODUCT_ID,
+		);
+	}
+	return 1;
+}
+
+/** Fields fixed when the cache was created, reported rather than corrected. */
+function redisImmutableDiagnostics(
+	context: AzureResolverContext,
+	body: Record<string, unknown>,
+): readonly string[] {
+	const diagnostics: string[] = [];
+	const properties = nestedRecord(body, "properties");
+	const sku = nestedRecord(properties, "sku");
+	const wantedSku = redisSkuName(context);
+	const actualSku = optionalString(sku, "name");
+	if (
+		wantedSku !== undefined &&
+		actualSku !== undefined &&
+		wantedSku !== actualSku
+	) {
+		diagnostics.push(
+			`the cache is on the ${actualSku} tier but skuName asks for ${wantedSku}; a tier change is a migration with a service interruption, not a field write, so it is reported for a human rather than applied here`,
+		);
+	}
+	const wantedLocation = optionalString(context.desired, "location");
+	const actualLocation = optionalString(body, "location");
+	if (
+		wantedLocation !== undefined &&
+		actualLocation !== undefined &&
+		wantedLocation.toLowerCase() !== actualLocation.toLowerCase()
+	) {
+		diagnostics.push(
+			`the cache is in ${actualLocation} but location asks for ${wantedLocation}; an Azure resource's location is immutable and this resolver never replaces a cache, so the drift is reported rather than corrected`,
+		);
+	}
+	if (
+		optionalBoolean(context.desired, "clustered") === false &&
+		(optionalInteger(properties, "shardCount") ?? 0) > 0
+	) {
+		diagnostics.push(
+			"clustered asks for false but the cache already has shards; Azure has no path back from a clustered Premium cache, so the drift is reported rather than corrected — recreating the cache is the only route, and this resolver never replaces one",
+		);
+	}
+	return diagnostics;
+}
+
+const REDIS_CACHE_SPEC: Omit<AzureResolverSpec, "productId"> = {
+	nameKeys: ["cacheName", "name"],
+	async read(context) {
+		const suffix = redisSuffix(context.name);
+		const observed = await armGet(
+			context,
+			groupPath(context, suffix),
+			AZURE_CACHE_API_VERSION,
+			`redis cache ${context.name}`,
+		);
+		if (observed === undefined) return undefined;
+		return outcome(
+			settledAction(context),
+			resourceId(context, suffix),
+			redisOutputs(context.name, observed),
+			redisImmutableDiagnostics(context, observed),
+		);
+	},
+	async reconcile(context) {
+		const suffix = redisSuffix(context.name);
+		const path = groupPath(context, suffix);
+		const id = resourceId(context, suffix);
+		const label = `redis cache ${context.name}`;
+
+		const observed = await armGet(
+			context,
+			path,
+			AZURE_CACHE_API_VERSION,
+			label,
+		);
+		if (observed === undefined) {
+			const location = requiredDesired(
+				context,
+				"location",
+				AZURE_REDIS_CACHE_PRODUCT_ID,
+				"ARM requires a location on a cache create and there is no safe default region",
+			);
+			// The tier is refused rather than defaulted: every Azure Cache tier is
+			// billed, they differ by an order of magnitude, and there is no free one
+			// to fall back to. The *capacity within* a named tier is a different
+			// question — the caller already chose the tier, and 0 is that tier's
+			// documented floor — so it defaults visibly instead.
+			const skuName = requiredDesired(
+				context,
+				"skuName",
+				AZURE_REDIS_CACHE_PRODUCT_ID,
+				'every Azure Cache for Redis tier is billed and they differ by an order of magnitude, so no tier is chosen here — set it to "Basic", "Standard" or "Premium"',
+			);
+			const canonicalSku = redisSkuName(context) ?? skuName;
+			const family = REDIS_FAMILY_BY_SKU[canonicalSku];
+			const capacity = optionalInteger(context.desired, "capacity");
+			const shardCount = redisShardCount(context, canonicalSku);
+			const created = await settleWrite(
+				context,
+				await callArm(
+					context,
+					"PUT",
+					azureArmUrl(path, AZURE_CACHE_API_VERSION),
+					{
+						location,
+						properties: {
+							sku: {
+								capacity: capacity ?? 0,
+								family,
+								name: canonicalSku,
+							},
+							...(shardCount !== undefined ? { shardCount } : {}),
+						},
+					},
+				),
+				path,
+				AZURE_CACHE_API_VERSION,
+				label,
+			);
+			const diagnostics: string[] = [];
+			if (capacity === undefined) {
+				diagnostics.push(
+					`capacity was not declared, and ARM requires one: the cache was created at capacity 0, the smallest size in the ${canonicalSku} tier. Declare capacity to size it deliberately`,
+				);
+			}
+			return outcome("create", id, redisOutputs(context.name, created.body), [
+				...diagnostics,
+				...created.diagnostics,
+			]);
+		}
+
+		const properties = nestedRecord(observed, "properties");
+		const sku = nestedRecord(properties, "sku");
+		const immutable = redisImmutableDiagnostics(context, observed);
+		const patch: Record<string, unknown> = {};
+
+		// Only a scale *within* the observed tier is applied. Sending the declared
+		// tier here would turn a drift check into a migration; the mismatch is in
+		// `immutable` instead.
+		const wantedCapacity = optionalInteger(context.desired, "capacity");
+		const observedSku = optionalString(sku, "name");
+		if (
+			wantedCapacity !== undefined &&
+			observedSku !== undefined &&
+			optionalInteger(sku, "capacity") !== wantedCapacity
+		) {
+			patch.sku = {
+				capacity: wantedCapacity,
+				family: REDIS_FAMILY_BY_SKU[observedSku] ?? "C",
+				name: observedSku,
+			};
+		}
+		if (
+			optionalBoolean(context.desired, "clustered") === true &&
+			observedSku === "Premium" &&
+			(optionalInteger(properties, "shardCount") ?? 0) === 0
+		) {
+			patch.shardCount = 1;
+		}
+
+		if (Object.keys(patch).length === 0) {
+			return outcome(
+				settledAction(context),
+				id,
+				redisOutputs(context.name, observed),
+				immutable,
+			);
+		}
+		const updated = await settleWrite(
+			context,
+			await callArm(
+				context,
+				"PATCH",
+				azureArmUrl(path, AZURE_CACHE_API_VERSION),
+				{ properties: patch },
+			),
+			path,
+			AZURE_CACHE_API_VERSION,
+			label,
+		);
+		return outcome("update", id, redisOutputs(context.name, updated.body), [
+			...immutable,
+			`cache properties updated: ${Object.keys(patch).sort(compareStrings).join(", ")}`,
+			...updated.diagnostics,
+		]);
+	},
+	async remove(context) {
+		await armDelete(
+			context,
+			groupPath(context, redisSuffix(context.name)),
+			AZURE_CACHE_API_VERSION,
+			`redis cache ${context.name}`,
+		);
+	},
+};
+
+// ---------------------------------------------------------------------------
+// Cosmos DB Table API — Microsoft.DocumentDB/databaseAccounts/…/tables
+// ---------------------------------------------------------------------------
+
+function cosmosTableSuffix(account: string, table: string): string {
+	return `${cosmosSuffix(account)}/tables/${encodeURIComponent(table)}`;
+}
+
+function cosmosTableThroughputSuffix(account: string, table: string): string {
+	return `${cosmosTableSuffix(account, table)}/throughputSettings/default`;
+}
+
+/** What the account's `capabilities` array actually says. */
+function accountCapabilities(body: Record<string, unknown>): readonly string[] {
+	const capabilities = nestedRecord(body, "properties").capabilities;
+	return Array.isArray(capabilities)
+		? capabilities
+				.filter(isPlainObject)
+				.map((entry) => optionalString(entry, "name"))
+				.filter((name): name is string => name !== undefined)
+		: [];
+}
+
+/**
+ * The database account is a *precondition*, not something this resolver
+ * creates — the same boundary the blob-container resolver draws around its
+ * storage account, and for the same reason: creating one would mean choosing a
+ * globally unique name, a consistency policy and a write region on the caller's
+ * behalf, and then owning the deletion question for every other table in it.
+ *
+ * The `EnableTable` check is not decoration. A Table API table can only exist
+ * on an account created with that capability, and capabilities are fixed at
+ * account creation; without the check the table PUT fails at ARM with an error
+ * that does not say which of the two resources is wrong.
+ */
+async function requireTableAccount(context: AzureResolverContext): Promise<{
+	readonly account: string;
+	readonly serverless: boolean;
+}> {
+	const account = requiredDesired(
+		context,
+		"databaseAccount",
+		AZURE_COSMOS_TABLE_PRODUCT_ID,
+		"this resolver owns the table inside a Cosmos DB account, not the account itself",
+	);
+	const observed = await armGet(
+		context,
+		groupPath(context, cosmosSuffix(account)),
+		AZURE_COSMOS_API_VERSION,
+		`cosmos account ${account}`,
+	);
+	if (observed === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PROVIDER_REJECTED",
+			`${AZURE_COSMOS_TABLE_PRODUCT_ID}: Cosmos DB account ${JSON.stringify(account)} does not exist in resource group ${JSON.stringify(context.resourceGroup)}. Create the account with the EnableTable capability (or point desired.databaseAccount at an existing one) before deploying; this resolver never creates an account, because it would then own every other table in it`,
+			AZURE_COSMOS_TABLE_PRODUCT_ID,
+		);
+	}
+	const capabilities = accountCapabilities(observed);
+	if (!capabilities.includes("EnableTable")) {
+		throw new ResolverError(
+			"RESOLVER_PROVIDER_REJECTED",
+			`${AZURE_COSMOS_TABLE_PRODUCT_ID}: Cosmos DB account ${JSON.stringify(account)} does not carry the EnableTable capability, so it cannot host a Table API table. Capabilities are fixed when an account is created, so this needs a Table-enabled account rather than a change to this one`,
+			AZURE_COSMOS_TABLE_PRODUCT_ID,
+		);
+	}
+	return { account, serverless: capabilities.includes("EnableServerless") };
+}
+
+function cosmosTableOutputs(
+	account: string,
+	table: string,
+	body: Record<string, unknown> | undefined,
+	throughput: number | undefined,
+): Readonly<Record<string, unknown>> {
+	const resource = nestedRecord(
+		nestedRecord(body ?? {}, "properties"),
+		"resource",
+	);
+	const tableId = optionalString(resource, "id");
+	return {
+		tableName: tableId ?? table,
+		databaseAccount: account,
+		...(throughput !== undefined ? { throughput } : {}),
+	};
+}
+
+/**
+ * The declared throughput, and the refusals around it.
+ *
+ * Serverless is an *account* capability, not a table option: a serverless
+ * account has no throughput to provision, so declaring RU against one is a
+ * request that cannot be honoured and is refused rather than dropped.
+ */
+function cosmosTableThroughput(
+	context: AzureResolverContext,
+	serverless: boolean,
+): number | undefined {
+	const mode = optionalString(context.desired, "throughputMode");
+	const ru = optionalInteger(context.desired, "throughputRu");
+	if (mode !== undefined && mode !== "provisioned" && mode !== "serverless") {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${AZURE_COSMOS_TABLE_PRODUCT_ID}: throughputMode ${JSON.stringify(mode)} is not one of provisioned, serverless`,
+			AZURE_COSMOS_TABLE_PRODUCT_ID,
+		);
+	}
+	if (serverless) {
+		if (ru !== undefined) {
+			throw new ResolverError(
+				"RESOLVER_PRODUCT_UNSUPPORTED",
+				`${AZURE_COSMOS_TABLE_PRODUCT_ID}: throughputRu is declared but the account is serverless, which has no provisioned throughput to set. Drop throughputRu, or point desired.databaseAccount at a provisioned account`,
+				AZURE_COSMOS_TABLE_PRODUCT_ID,
+			);
+		}
+		return undefined;
+	}
+	if (mode === "serverless") {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${AZURE_COSMOS_TABLE_PRODUCT_ID}: throughputMode asks for serverless but the account was created without the EnableServerless capability. Capacity mode is an account-level decision fixed at creation, so it cannot be set per table`,
+			AZURE_COSMOS_TABLE_PRODUCT_ID,
+		);
+	}
+	return ru;
+}
+
+/** The table's current provisioned RU, or `undefined` on a serverless account. */
+async function readTableThroughput(
+	context: AzureResolverContext,
+	account: string,
+): Promise<number | undefined> {
+	const observed = await armGet(
+		context,
+		groupPath(context, cosmosTableThroughputSuffix(account, context.name)),
+		AZURE_COSMOS_API_VERSION,
+		`cosmos table throughput ${context.name}`,
+	);
+	if (observed === undefined) return undefined;
+	return optionalInteger(
+		nestedRecord(nestedRecord(observed, "properties"), "resource"),
+		"throughput",
+	);
+}
+
+const COSMOS_TABLE_SPEC: Omit<AzureResolverSpec, "productId"> = {
+	nameKeys: ["tableName", "name"],
+	async read(context) {
+		const { account, serverless } = await requireTableAccount(context);
+		const suffix = cosmosTableSuffix(account, context.name);
+		const observed = await armGet(
+			context,
+			groupPath(context, suffix),
+			AZURE_COSMOS_API_VERSION,
+			`cosmos table ${context.name}`,
+		);
+		if (observed === undefined) return undefined;
+		const throughput = serverless
+			? undefined
+			: await readTableThroughput(context, account);
+		return outcome(
+			settledAction(context),
+			resourceId(context, suffix),
+			cosmosTableOutputs(account, context.name, observed, throughput),
+			[],
+		);
+	},
+	async reconcile(context) {
+		const { account, serverless } = await requireTableAccount(context);
+		const wantedRu = cosmosTableThroughput(context, serverless);
+		const suffix = cosmosTableSuffix(account, context.name);
+		const path = groupPath(context, suffix);
+		const id = resourceId(context, suffix);
+		const label = `cosmos table ${context.name}`;
+
+		const observed = await armGet(
+			context,
+			path,
+			AZURE_COSMOS_API_VERSION,
+			label,
+		);
+		if (observed === undefined) {
+			const created = await settleWrite(
+				context,
+				await callArm(
+					context,
+					"PUT",
+					azureArmUrl(path, AZURE_COSMOS_API_VERSION),
+					{
+						properties: {
+							resource: { id: context.name },
+							// `options` is omitted entirely on a serverless account: an
+							// empty options bag is not the same as no options, and ARM
+							// rejects a throughput on an account that has none.
+							...(wantedRu !== undefined
+								? { options: { throughput: wantedRu } }
+								: {}),
+						},
+					},
+				),
+				path,
+				AZURE_COSMOS_API_VERSION,
+				label,
+			);
+			return outcome(
+				"create",
+				id,
+				cosmosTableOutputs(account, context.name, created.body, wantedRu),
+				created.diagnostics,
+			);
+		}
+
+		const currentRu = serverless
+			? undefined
+			: await readTableThroughput(context, account);
+		if (wantedRu === undefined || wantedRu === currentRu) {
+			return outcome(
+				settledAction(context),
+				id,
+				cosmosTableOutputs(account, context.name, observed, currentRu),
+				[],
+			);
+		}
+		if (currentRu === undefined) {
+			// Never write a value there is nothing to compare against: a blind PUT
+			// here would be a PUT on *every* reconcile, which is exactly the
+			// non-convergence this module refuses. So it is reported instead.
+			return outcome(
+				settledAction(context),
+				id,
+				cosmosTableOutputs(account, context.name, observed, undefined),
+				[
+					`throughputRu asks for ${wantedRu} RU/s but ARM returned no throughputSettings/default for this table, so there is no current value to compare against; the declared throughput is reported rather than written, because a write with nothing to compare to would repeat on every reconcile`,
+				],
+			);
+		}
+		// Throughput lives on its own sub-resource, and re-PUTting the table to
+		// change it is not the documented path — it would also rewrite the table
+		// definition. So the scale is a write to `throughputSettings/default`.
+		const throughputPath = groupPath(
+			context,
+			cosmosTableThroughputSuffix(account, context.name),
+		);
+		const updated = await settleWrite(
+			context,
+			await callArm(
+				context,
+				"PUT",
+				azureArmUrl(throughputPath, AZURE_COSMOS_API_VERSION),
+				{ properties: { resource: { throughput: wantedRu } } },
+			),
+			throughputPath,
+			AZURE_COSMOS_API_VERSION,
+			`${label} throughput`,
+		);
+		return outcome(
+			"update",
+			id,
+			cosmosTableOutputs(account, context.name, observed, wantedRu),
+			[
+				`table throughput set to ${wantedRu} RU/s${currentRu === undefined ? "" : ` (was ${currentRu})`}`,
+				...updated.diagnostics,
+			],
+		);
+	},
+	async remove(context) {
+		const account = requiredDesired(
+			context,
+			"databaseAccount",
+			AZURE_COSMOS_TABLE_PRODUCT_ID,
+			"the table is addressed inside a named Cosmos DB account",
+		);
+		await armDelete(
+			context,
+			groupPath(context, cosmosTableSuffix(account, context.name)),
+			AZURE_COSMOS_API_VERSION,
+			`cosmos table ${context.name}`,
+		);
+	},
+};
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
@@ -2679,7 +3245,9 @@ export function azureResolvers(
 		{ productId: AZURE_BLOB_STORAGE_PRODUCT_ID, ...BLOB_STORAGE_SPEC },
 		{ productId: AZURE_CONTAINER_APPS_PRODUCT_ID, ...CONTAINER_APPS_SPEC },
 		{ productId: AZURE_COSMOS_DB_PRODUCT_ID, ...COSMOS_DB_SPEC },
+		{ productId: AZURE_COSMOS_TABLE_PRODUCT_ID, ...COSMOS_TABLE_SPEC },
 		{ productId: AZURE_KEY_VAULT_PRODUCT_ID, ...KEY_VAULT_SPEC },
+		{ productId: AZURE_REDIS_CACHE_PRODUCT_ID, ...REDIS_CACHE_SPEC },
 		{
 			productId: AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
 			...SERVICE_BUS_QUEUE_SPEC,

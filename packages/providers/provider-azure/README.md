@@ -112,6 +112,8 @@ serializes a *different* resource model for the wrong one.
 | `azure.service-bus-topic/v1` | `…/Microsoft.ServiceBus/namespaces/{ns}/topics/{name}` | `2021-11-01` |
 | `azure.key-vault/v1` | `…/Microsoft.KeyVault/vaults/{name}` | `2023-07-01` |
 | `azure.cosmos-db/v1` | `…/Microsoft.DocumentDB/databaseAccounts/{name}` | `2024-05-15` |
+| `azure.cosmos-table/v1` | `…/Microsoft.DocumentDB/databaseAccounts/{account}/tables/{name}` (and its `…/throughputSettings/default`) | `2024-05-15` |
+| `azure.cache-for-redis/v1` | `…/Microsoft.Cache/redis/{name}` | `2023-08-01` |
 | `azure.container-apps/v1` | `…/Microsoft.App/containerApps/{name}` | `2024-03-01` |
 
 All ids are `/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/…`,
@@ -122,9 +124,13 @@ read back, so it is a pure function of (subscription, group, name).
 
 `azure.blob-storage/v1` and `azure.storage-queue/v1` need `desired.storageAccount`;
 `azure.service-bus-queue/v1` and `azure.service-bus-topic/v1` need
-`desired.namespace`; `azure.container-apps/v1` needs `desired.managedEnvironmentId`.
+`desired.namespace`; `azure.cosmos-table/v1` needs `desired.databaseAccount`;
+`azure.container-apps/v1` needs `desired.managedEnvironmentId`.
 Each parent is read first and a missing one is a typed refusal naming what to
-create. Creating the parent here would mean choosing a globally unique name, a
+create. The Cosmos account is additionally checked for the `EnableTable`
+capability, because a Table API table cannot exist without it and capabilities
+are fixed at account creation — without the check, the table `PUT` fails at ARM
+with an error that does not say which of the two resources is wrong. Creating the parent here would mean choosing a globally unique name, a
 sku and a region nobody declared — and then owning the deletion question for
 every sibling resource inside it.
 
@@ -139,9 +145,19 @@ reconcile twice yields the same `physicalId`, one resource, and exactly one
 create call. `delete()` treats 404 as success.
 
 `"replace"` is never emitted. Immutable drift — Service Bus `requiresSession`,
-duplicate detection, partitioning; Cosmos capacity mode; Key Vault tenant; any
-resource's location; a Container App's managed environment — is reported as a
-diagnostic for a human, because correcting it would mean destroying data.
+duplicate detection, partitioning; Cosmos capacity mode; Key Vault tenant; a
+Redis tier or its shard count once clustered; any resource's location; a
+Container App's managed environment — is reported as a diagnostic for a human,
+because correcting it would mean destroying data.
+
+Two refusals in this group are worth naming because they are bill decisions, not
+convergence ones. `azure.cache-for-redis/v1` will not choose a `skuName`: every
+Azure Cache tier is billed and they differ by an order of magnitude. It *will*
+default `capacity` to 0 — the floor of a tier the caller already chose — and say
+so in `diagnostics`. And `azure.cosmos-table/v1` writes a throughput only when
+it could read the current one: a `PUT` with nothing to compare against would
+repeat on every reconcile, so a declared RU with no readable
+`throughputSettings/default` is reported instead of written.
 
 ### Long-running operations
 
@@ -178,18 +194,18 @@ context that has carried subscription GUIDs and token fragments.
 
 ### Products deliberately left unresolved
 
-`AZURE_UNRESOLVED_PRODUCT_IDS` names the nine catalogued ids with no resolver,
+`AZURE_UNRESOLVED_PRODUCT_IDS` names the seven catalogued ids with no resolver,
 and a test asserts the uncovered set is exactly that list. The reasons are on
 the declaration in `src/resolvers.ts`; in short: `azure.aks/v1` describes
 Kubernetes objects rather than ARM resources; `azure.api-management/v1` is a
 30–45 minute operation no deploy-call poll budget can honestly follow;
 `azure.postgres-flexible/v1` and `azure.sql-database/v1` need an administrator
 login and password in the request body, which a `ResolveRequest` may not carry;
-`azure.app-service/v1` and `azure.functions/v1` name no parent plan;
-`azure.cache-for-redis/v1`, `azure.cosmos-table/v1` and
-`azure.static-web-apps/v1` are coverage gaps rather than design limits. A
-non-convergent resolver is worse than an absent one, so the absences are
-declared rather than discovered at deploy time.
+`azure.app-service/v1` and `azure.functions/v1` name no parent plan; and
+`azure.static-web-apps/v1` is a coverage gap rather than a design limit — the
+ARM surface is convergent, but a Static Web App created without a repository and
+repository token is an empty site. A non-convergent resolver is worse than an
+absent one, so the absences are declared rather than discovered at deploy time.
 
 ### HONEST SCOPE — what is and is not proven
 

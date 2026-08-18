@@ -140,6 +140,10 @@ export const GCP_CLOUD_TASKS_PRODUCT_ID = productIdOf(
 	cloudTasks(),
 	"cloudTasks",
 );
+export const GCP_MEMORYSTORE_REDIS_PRODUCT_ID = productIdOf(
+	memorystoreRedis(),
+	"memorystoreRedis",
+);
 export const GCP_PUBSUB_TOPIC_PRODUCT_ID = productIdOf(pubsub(), "pubsub");
 export const GCP_SECRET_MANAGER_PRODUCT_ID = productIdOf(
 	secretManager(),
@@ -155,6 +159,7 @@ export const GCP_RESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
 		GCP_CLOUD_SQL_POSTGRES_PRODUCT_ID,
 		GCP_CLOUD_STORAGE_PRODUCT_ID,
 		GCP_CLOUD_TASKS_PRODUCT_ID,
+		GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
 		GCP_PUBSUB_TOPIC_PRODUCT_ID,
 		GCP_SECRET_MANAGER_PRODUCT_ID,
 	].sort(compareStrings),
@@ -189,11 +194,6 @@ export const GCP_RESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
  * `gcp.firestore/v1`: a database's id, location and mode are fixed at creation
  * and deletion is gated on an etag plus a delete-protection override this
  * package does not model, so only half the lifecycle would be expressible.
- *
- * `gcp.memorystore-redis/v1`: a coverage gap rather than a convergence one.
- * `redis.googleapis.com` is a seventh service host this unit did not allowlist;
- * the create/patch surface is long-running in the same way Cloud SQL's is and
- * could be resolved the same way later.
  */
 export const GCP_UNRESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
 	[
@@ -202,7 +202,6 @@ export const GCP_UNRESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
 		productIdOf(cloudFunctions(), "cloudFunctions"),
 		productIdOf(cloudStorageSite(), "cloudStorageSite"),
 		productIdOf(firestore(), "firestore"),
-		productIdOf(memorystoreRedis(), "memorystoreRedis"),
 	].sort(compareStrings),
 );
 
@@ -270,6 +269,10 @@ const RUN_OPERATION_NAME_PATTERN =
 
 /** A Cloud SQL operation name: one opaque segment, never a path. */
 const SQL_OPERATION_NAME_PATTERN = /^[A-Za-z0-9._~-]{1,120}$/u;
+
+/** A Memorystore operation name: `projects/…/locations/…/operations/…`. */
+const REDIS_OPERATION_NAME_PATTERN =
+	/^projects\/[A-Za-z0-9._~-]{1,120}\/locations\/[A-Za-z0-9._~-]{1,120}\/operations\/[A-Za-z0-9._~-]{1,120}$/u;
 
 /** Google's engine enum, e.g. `POSTGRES_15`. Never composed from a bare "15". */
 const DATABASE_VERSION_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/u;
@@ -2262,12 +2265,366 @@ function cloudRunSpec(
 }
 
 // ---------------------------------------------------------------------------
+// Memorystore for Redis — redis.googleapis.com/v1/projects/…
+// ---------------------------------------------------------------------------
+
+function redisCollectionPath(
+	context: GcpResolverContext,
+	location: string,
+): string {
+	return `/v1/projects/${encodeURIComponent(context.projectId)}/locations/${encodeURIComponent(location)}/instances`;
+}
+
+function redisInstancePath(
+	context: GcpResolverContext,
+	location: string,
+): string {
+	return `${redisCollectionPath(context, location)}/${encodeURIComponent(context.name)}`;
+}
+
+function redisResourceName(
+	context: GcpResolverContext,
+	location: string,
+): string {
+	return `projects/${context.projectId}/locations/${location}/instances/${context.name}`;
+}
+
+/** Memorystore operation names are full resource paths; `/v1/{name}` polls them. */
+function redisOperationPath(name: string): string {
+	return `/v1/${name}`;
+}
+
+/**
+ * The binding's tier vocabulary to Google's enum. Explicit rather than
+ * upper-cased, because `standard-ha` does not upper-case to `STANDARD_HA` and a
+ * silently mistranslated tier is a silently different availability guarantee.
+ */
+const REDIS_TIER_BY_BINDING: Readonly<Record<string, string>> = Object.freeze({
+	basic: "BASIC",
+	"standard-ha": "STANDARD_HA",
+});
+
+function redisTier(context: GcpResolverContext): string | undefined {
+	const value = optionalString(context.desired, "tier");
+	if (value === undefined) return undefined;
+	const mapped = REDIS_TIER_BY_BINDING[value];
+	if (mapped === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${GCP_MEMORYSTORE_REDIS_PRODUCT_ID}: desired.tier ${JSON.stringify(value)} is not one of ${Object.keys(REDIS_TIER_BY_BINDING).sort(compareStrings).join(", ")}`,
+		);
+	}
+	return mapped;
+}
+
+/** Google's engine enum, e.g. `REDIS_7_0`. Never composed from a bare "7". */
+function redisVersion(context: GcpResolverContext): string | undefined {
+	const value = optionalString(context.desired, "engineVersion");
+	if (value === undefined) return undefined;
+	if (!DATABASE_VERSION_PATTERN.test(value)) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${GCP_MEMORYSTORE_REDIS_PRODUCT_ID}: desired.engineVersion ${JSON.stringify(value)} is not a Memorystore redisVersion enum — pass the full enum, for example "REDIS_7_0"`,
+		);
+	}
+	return value;
+}
+
+/**
+ * The size, which Google requires and this resolver will not choose.
+ *
+ * A guessed `memorySizeGb` is a guessed bill *and* a guessed capacity ceiling,
+ * and the smallest legal value differs by tier (1 GB on Basic, 5 GB on
+ * Standard HA), so there is no single "harmless" default to fall back to.
+ */
+function redisMemoryGb(context: GcpResolverContext): number {
+	const value = optionalInteger(context.desired, "memoryGb");
+	if (value === undefined || value < 1) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${GCP_MEMORYSTORE_REDIS_PRODUCT_ID}: Memorystore requires memorySizeGb at creation — set desired.memoryGb to a whole number of gigabytes, for example 1. No size is chosen here, because a guessed size is a guessed bill and the tier's own minimum differs (1 GB Basic, 5 GB Standard HA)`,
+		);
+	}
+	return value;
+}
+
+function redisOutputs(
+	context: GcpResolverContext,
+	location: string,
+	record: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	const host = optionalString(record, "host");
+	const port = optionalInteger(record, "port");
+	const state = optionalString(record, "state");
+	const tier = optionalString(record, "tier");
+	const memorySizeGb = optionalInteger(record, "memorySizeGb");
+	const version = optionalString(record, "redisVersion");
+	return {
+		instanceId: context.name,
+		resourceName: redisResourceName(context, location),
+		...(host !== undefined ? { host } : {}),
+		...(port !== undefined ? { port } : {}),
+		...(state !== undefined ? { state } : {}),
+		...(tier !== undefined ? { tier } : {}),
+		...(memorySizeGb !== undefined ? { memorySizeGb } : {}),
+		...(version !== undefined ? { redisVersion: version } : {}),
+	};
+}
+
+/**
+ * The fields Google fixes at creation, reported rather than corrected.
+ *
+ * Memorystore's documented `updateMask` covers `displayName`, `labels`,
+ * `memorySizeGb`, `redisConfig` and `replicaCount` — and nothing else. `tier`
+ * and `redisVersion` are therefore *not* patchable: the tier is fixed for the
+ * instance's life, and a version move is the separate `upgrade` method, which
+ * restarts the instance and is not something to trigger from a drift check.
+ */
+function redisImmutableDiagnostics(
+	context: GcpResolverContext,
+	location: string,
+	record: Readonly<Record<string, unknown>>,
+): readonly string[] {
+	const diagnostics: string[] = [];
+	const wantedTier = redisTier(context);
+	const actualTier = optionalString(record, "tier");
+	if (
+		wantedTier !== undefined &&
+		actualTier !== undefined &&
+		wantedTier !== actualTier
+	) {
+		diagnostics.push(
+			`instance tier is ${actualTier} but the request asks for ${wantedTier}; Memorystore fixes the tier at creation and this resolver never replaces an instance, so the drift is reported for a human rather than "fixed" by destroying the cache`,
+		);
+	}
+	const wantedVersion = redisVersion(context);
+	const actualVersion = optionalString(record, "redisVersion");
+	if (
+		wantedVersion !== undefined &&
+		actualVersion !== undefined &&
+		wantedVersion !== actualVersion
+	) {
+		diagnostics.push(
+			`instance redisVersion is ${actualVersion} but the request asks for ${wantedVersion}; a version move is Memorystore's separate upgrade method and restarts the instance, so it is reported rather than applied`,
+		);
+	}
+	const actualLocation = optionalString(record, "locationId");
+	if (actualLocation !== undefined && !actualLocation.startsWith(location)) {
+		diagnostics.push(
+			`instance locationId is ${actualLocation} but the request places it in ${location}; a Memorystore instance cannot move and this resolver never replaces one, so the drift is reported for a human`,
+		);
+	}
+	return diagnostics;
+}
+
+async function readRedisInstance(
+	context: GcpResolverContext,
+	location: string,
+): Promise<Record<string, unknown> | undefined> {
+	const response = await send("memorystore", context, {
+		method: "GET",
+		path: redisInstancePath(context, location),
+	});
+	if (isNotFound(response)) return undefined;
+	return expectOk(response, `memorystore read instance ${context.name}`);
+}
+
+/** Run one Memorystore mutation and chase its operation within the budget. */
+async function runRedisOperation(
+	context: GcpResolverContext,
+	call: GcpCall,
+	label: string,
+): Promise<GcpOperation> {
+	const accepted = parseOperation(
+		expectOk(await send("memorystore", context, call), label),
+		label,
+		REDIS_OPERATION_NAME_PATTERN,
+	);
+	return awaitOperation(
+		"memorystore",
+		context,
+		accepted,
+		redisOperationPath,
+		REDIS_OPERATION_NAME_PATTERN,
+		label,
+	);
+}
+
+const MEMORYSTORE_REDIS_SPEC: Omit<GcpResolverSpec, "productId"> = {
+	async read(context) {
+		const location = requiredLocation(
+			context,
+			GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+		);
+		const observed = await readRedisInstance(context, location);
+		return observed === undefined
+			? undefined
+			: outcome(
+					settledAction(context),
+					redisResourceName(context, location),
+					redisOutputs(context, location, observed),
+					redisImmutableDiagnostics(context, location, observed),
+				);
+	},
+	async reconcile(context) {
+		const location = requiredLocation(
+			context,
+			GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+		);
+		const resourceName = redisResourceName(context, location);
+		const observed = await readRedisInstance(context, location);
+
+		if (observed === undefined) {
+			const label = `memorystore create instance ${context.name}`;
+			const tier = redisTier(context);
+			const version = redisVersion(context);
+			// `instanceId` is a query parameter, not a body field: Memorystore's
+			// create is `POST …/instances?instanceId={id}`, and the id is what makes
+			// the following GET address the same instance.
+			const operation = await runRedisOperation(
+				context,
+				{
+					method: "POST",
+					path: `${redisCollectionPath(context, location)}?instanceId=${encodeURIComponent(context.name)}`,
+					json: {
+						memorySizeGb: redisMemoryGb(context),
+						...(tier !== undefined ? { tier } : {}),
+						...(version !== undefined ? { redisVersion: version } : {}),
+					},
+				},
+				label,
+			);
+			const tierDiagnostic =
+				tier === undefined
+					? [
+							`tier was not declared, so Memorystore applied its own default (BASIC, a single node with no replica and no failover). Declare desired.tier to choose deliberately — the tier is fixed at creation and this resolver never replaces an instance`,
+						]
+					: [];
+			if (!operation.done) {
+				// Honest: the instance is not serving, so the outcome says so
+				// instead of reporting a create that has not finished.
+				return outcome(
+					"create",
+					resourceName,
+					{
+						instanceId: context.name,
+						resourceName,
+						operationConfirmed: false,
+					},
+					[...tierDiagnostic, unconfirmedDiagnostic(context, label)],
+				);
+			}
+			const created = await readRedisInstance(context, location);
+			return outcome(
+				"create",
+				resourceName,
+				created === undefined
+					? { instanceId: context.name, resourceName, operationConfirmed: true }
+					: {
+							...redisOutputs(context, location, created),
+							operationConfirmed: true,
+						},
+				created === undefined
+					? [
+							...tierDiagnostic,
+							`${label}: the operation completed but the instance read that follows it found nothing; the create is reported without provider outputs rather than with invented ones`,
+						]
+					: [
+							...tierDiagnostic,
+							...redisImmutableDiagnostics(context, location, created),
+						],
+			);
+		}
+
+		const immutable = redisImmutableDiagnostics(context, location, observed);
+		// `memorySizeGb` is the one field the binding names that Memorystore's
+		// updateMask accepts. Everything else the binding carries is either fixed
+		// at creation or a different API method, and is reported above.
+		const wantedMemory = optionalInteger(context.desired, "memoryGb");
+		if (
+			wantedMemory === undefined ||
+			wantedMemory === optionalInteger(observed, "memorySizeGb")
+		) {
+			return outcome(
+				settledAction(context),
+				resourceName,
+				redisOutputs(context, location, observed),
+				immutable,
+			);
+		}
+		const label = `memorystore update instance ${context.name}`;
+		const operation = await runRedisOperation(
+			context,
+			{
+				method: "PATCH",
+				path: `${redisInstancePath(context, location)}?updateMask=memorySizeGb`,
+				json: { memorySizeGb: wantedMemory },
+			},
+			label,
+		);
+		const applied = `applied instance settings: memorySizeGb`;
+		if (!operation.done) {
+			return outcome(
+				"update",
+				resourceName,
+				{
+					...redisOutputs(context, location, observed),
+					operationConfirmed: false,
+				},
+				[applied, unconfirmedDiagnostic(context, label), ...immutable],
+			);
+		}
+		const updated = (await readRedisInstance(context, location)) ?? observed;
+		return outcome(
+			"update",
+			resourceName,
+			{ ...redisOutputs(context, location, updated), operationConfirmed: true },
+			[applied, ...immutable],
+		);
+	},
+	async remove(context) {
+		const location = requiredLocation(
+			context,
+			GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+		);
+		const label = `memorystore delete instance ${context.name}`;
+		const response = await send("memorystore", context, {
+			method: "DELETE",
+			path: redisInstancePath(context, location),
+		});
+		if (isNotFound(response)) return;
+		const accepted = parseOperation(
+			expectOk(response, label),
+			label,
+			REDIS_OPERATION_NAME_PATTERN,
+		);
+		const operation = await awaitOperation(
+			"memorystore",
+			context,
+			accepted,
+			redisOperationPath,
+			REDIS_OPERATION_NAME_PATTERN,
+			label,
+		);
+		if (!operation.done) {
+			// `delete()` reports success by returning, and there is no diagnostics
+			// channel to qualify it — so an unconfirmed delete raises. Re-running is
+			// safe: a second delete of a removed instance is a 404, which is success.
+			throw new ResolverError(
+				"RESOLVER_PROVIDER_REJECTED",
+				`${label}: Google accepted the delete but the operation was still running after ${context.poll.attempts} poll(s). A delete reports success by returning, so an unconfirmed one is refused instead; re-run delete (a second delete of an already-removed instance succeeds) or raise the operationPoll budget`,
+			);
+		}
+	},
+};
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
 /**
  * Every GCP resolver, id-sorted so the list is a function of the code rather
- * than of construction order. The six catalogued products that are absent are
+ * than of construction order. The five catalogued products that are absent are
  * named in {@link GCP_UNRESOLVED_PRODUCT_IDS}, with the reason.
  */
 export function gcpResolvers(
@@ -2304,6 +2661,10 @@ export function gcpResolvers(
 		},
 		{ productId: GCP_CLOUD_STORAGE_PRODUCT_ID, ...CLOUD_STORAGE_SPEC },
 		{ productId: GCP_CLOUD_TASKS_PRODUCT_ID, ...CLOUD_TASKS_SPEC },
+		{
+			productId: GCP_MEMORYSTORE_REDIS_PRODUCT_ID,
+			...MEMORYSTORE_REDIS_SPEC,
+		},
 		{ productId: GCP_PUBSUB_TOPIC_PRODUCT_ID, ...PUBSUB_TOPIC_SPEC },
 		{ productId: GCP_SECRET_MANAGER_PRODUCT_ID, ...SECRET_MANAGER_SPEC },
 	];

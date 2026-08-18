@@ -160,8 +160,130 @@ const gcpBucket: ChaosSubject = {
 	},
 };
 
+/**
+ * A world that answers a write with a long-running Operation instead of the
+ * resource, which is what `redis.googleapis.com` (and Cloud SQL, and Cloud Run)
+ * actually does.
+ *
+ * This shape deserves its own chaos subject rather than riding on
+ * {@link fakeWorld}: an LRO resolver's create returns a *handle*, not the thing,
+ * so the "did my write land?" question the fault raises is answered one
+ * indirection further away. A resolver that reported the accepted operation as
+ * the resource would look fine against the direct-write world and duplicate
+ * here.
+ */
+function gcpOperationWorld() {
+	const resources = new Map<string, unknown>();
+	const creates: TransportRequest[] = [];
+	const operationName = "projects/proj-1/locations/us-central1/operations/op-1";
+
+	const transport: HttpTransport = async (request) => {
+		const url = new URL(request.url);
+
+		if (url.pathname === `/v1/${operationName}`) {
+			return json(200, { name: operationName, done: true });
+		}
+
+		if (request.method === "POST") {
+			creates.push(request);
+			// The id is the caller's `instanceId` query parameter, never one the
+			// provider mints — that pairing is what makes the retry converge.
+			const instanceId = url.searchParams.get("instanceId") ?? "unnamed";
+			const body = request.body ? JSON.parse(request.body) : {};
+			resources.set(`${url.pathname}/${instanceId}`, {
+				name: `projects/proj-1/locations/us-central1/instances/${instanceId}`,
+				host: "10.0.0.7",
+				port: 6379,
+				state: "READY",
+				...body,
+			});
+			return json(200, { name: operationName, done: true });
+		}
+
+		if (request.method === "DELETE") {
+			resources.delete(url.pathname);
+			return json(200, { name: operationName, done: true });
+		}
+
+		const found = resources.get(url.pathname);
+		return found === undefined
+			? json(404, { error: { message: "not found" } })
+			: json(200, found);
+	};
+
+	return {
+		transport,
+		countResources: () => resources.size,
+		countCreates: () => creates.length,
+	};
+}
+
+const azureRedisCache: ChaosSubject = {
+	label: "azure.cache-for-redis/v1",
+	create(wrap) {
+		const world = fakeWorld();
+		const registry = azureResolverRegistry({
+			subscriptionId: AZURE_SUBSCRIPTION,
+			resourceGroup: "rg-1",
+			resolveCredential: async () => "bearer-token",
+		});
+		const resolver = registry.get("azure.cache-for-redis/v1");
+		if (!resolver) throw new Error("azure.cache-for-redis/v1 resolver missing");
+		const transport = guardedAzureTransport(wrap(world.transport));
+		const request = parseResolveRequest({
+			ref: {
+				slot: "kv",
+				productId: "azure.cache-for-redis/v1",
+				logicalId: "cache",
+			},
+			desired: { capacity: 1, location: "westeurope", skuName: "Standard" },
+			credentialRef: "env://AZURE_TOKEN",
+		});
+		return {
+			reconcile: () => resolver.reconcile(request, transport),
+			countResources: world.countResources,
+			countCreates: world.countCreates,
+		};
+	},
+};
+
+const gcpMemorystore: ChaosSubject = {
+	label: "gcp.memorystore-redis/v1",
+	create(wrap) {
+		const world = gcpOperationWorld();
+		const registry = gcpResolverRegistry({
+			projectId: "proj-1",
+			resolveCredential: async () => "oauth-token",
+		});
+		const resolver = registry.get("gcp.memorystore-redis/v1");
+		if (!resolver) {
+			throw new Error("gcp.memorystore-redis/v1 resolver missing");
+		}
+		const transport = guardedGcpTransport(wrap(world.transport), "memorystore");
+		const request = parseResolveRequest({
+			ref: {
+				slot: "kv",
+				productId: "gcp.memorystore-redis/v1",
+				logicalId: "session-cache",
+			},
+			desired: { location: "us-central1", memoryGb: 1, tier: "basic" },
+			credentialRef: "env://GCP_TOKEN",
+		});
+		return {
+			reconcile: () => resolver.reconcile(request, transport),
+			countResources: world.countResources,
+			countCreates: world.countCreates,
+		};
+	},
+};
+
 describe("resolvers converge after an ambiguous failure", () => {
-	for (const subject of [azureKeyVault, gcpBucket]) {
+	for (const subject of [
+		azureKeyVault,
+		azureRedisCache,
+		gcpBucket,
+		gcpMemorystore,
+	]) {
 		it(`${subject.label} survives every ambiguous fault on the write`, async () => {
 			// Index 1: these resolvers read before they write, so call 0 is the
 			// existence probe and call 1 is the create. Faulting the read would

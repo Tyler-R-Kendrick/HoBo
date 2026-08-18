@@ -50,6 +50,23 @@ export {
 	resolveEquivalence,
 } from "./realize.js";
 export {
+	GCP_CLOUD_RUN_JOB_PRODUCT_ID,
+	GCP_CLOUD_RUN_PRODUCT_ID,
+	GCP_CLOUD_SQL_MYSQL_PRODUCT_ID,
+	GCP_CLOUD_SQL_POSTGRES_PRODUCT_ID,
+	GCP_CLOUD_STORAGE_PRODUCT_ID,
+	GCP_CLOUD_TASKS_PRODUCT_ID,
+	GCP_PUBSUB_TOPIC_PRODUCT_ID,
+	GCP_RESOLVED_PRODUCT_IDS,
+	GCP_SECRET_MANAGER_PRODUCT_ID,
+	GCP_UNRESOLVED_PRODUCT_IDS,
+	type GcpOperationPollBudget,
+	type GcpResolverOptions,
+	gcpResolverRegistry,
+	gcpResolvers,
+	redactGcpText,
+} from "./resolvers.js";
+export {
 	type ApiGatewayOptions,
 	type AppEngineOptions,
 	apiGateway,
@@ -95,6 +112,18 @@ export {
 	GCP_TRAFFIC_ROUTING_OFFERING_IDS,
 	GCP_TRAFFIC_ROUTING_PROFILE,
 } from "./traffic-routing-offerings.js";
+export {
+	GCP_API_ALLOWED_HOSTS,
+	GCP_API_ENDPOINTS,
+	GCP_API_SERVICES,
+	GCP_MAX_RESPONSE_BYTES,
+	GCP_MAX_TIMEOUT_MS,
+	type GcpApiEndpoint,
+	type GcpApiService,
+	gcpApiUrl,
+	gcpTransportPolicy,
+	guardedGcpTransport,
+} from "./transport.js";
 export type {
 	Capability,
 	CapabilityManifest,

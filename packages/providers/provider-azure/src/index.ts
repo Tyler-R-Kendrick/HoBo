@@ -54,6 +54,28 @@ export {
 	resolveEquivalence,
 } from "./realize.js";
 export {
+	AZURE_BLOB_STORAGE_PRODUCT_ID,
+	AZURE_CONTAINER_APPS_API_VERSION,
+	AZURE_CONTAINER_APPS_PRODUCT_ID,
+	AZURE_COSMOS_API_VERSION,
+	AZURE_COSMOS_DB_PRODUCT_ID,
+	AZURE_DEFAULT_POLL_BUDGET,
+	AZURE_KEY_VAULT_API_VERSION,
+	AZURE_KEY_VAULT_PRODUCT_ID,
+	AZURE_MAX_POLL_BUDGET,
+	AZURE_RESOLVED_PRODUCT_IDS,
+	AZURE_SERVICE_BUS_API_VERSION,
+	AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
+	AZURE_SERVICE_BUS_TOPIC_PRODUCT_ID,
+	AZURE_STORAGE_API_VERSION,
+	AZURE_STORAGE_QUEUE_PRODUCT_ID,
+	AZURE_UNRESOLVED_PRODUCT_IDS,
+	type AzureResolverOptions,
+	azureResolverRegistry,
+	azureResolvers,
+	redactAzureText,
+} from "./resolvers.js";
+export {
 	AKS_SERVICE_TYPES,
 	type AksOptions,
 	type AksResourceQuantities,
@@ -110,6 +132,18 @@ export {
 	AZURE_TRAFFIC_ROUTING_OFFERING_IDS,
 	AZURE_TRAFFIC_ROUTING_PROFILE,
 } from "./traffic-routing-offerings.js";
+export {
+	AZURE_ARM_ALLOWED_HOSTS,
+	AZURE_ARM_ALLOWED_PATH_PREFIXES,
+	AZURE_ARM_BASE_PATH,
+	AZURE_ARM_ORIGIN,
+	AZURE_MAX_RESPONSE_BYTES,
+	AZURE_MAX_TIMEOUT_MS,
+	azureArmUrl,
+	azureOperationUrl,
+	azureTransportPolicy,
+	guardedAzureTransport,
+} from "./transport.js";
 export type {
 	Capability,
 	CapabilityManifest,

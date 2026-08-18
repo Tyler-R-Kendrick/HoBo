@@ -270,3 +270,37 @@ Two of these got *stronger* in the move, because a data format makes the weak as
 - `bindles/bindle` builds its graph through a **callback DSL** (`bindle("shop", b => …)`). Making
   that JSON would mean inventing a serialised builder language, which is a bigger thing than the
   suite it replaces. Stays hand-written.
+
+## Layer 06 — three more, and one that barely paid
+
+| Suite | Before | After | Net |
+|---|---|---|---|
+| `claims/reducer` | 483 | 188 + 35 cases | −260 |
+| `status-page/projection` | 447 | 99 + 31 cases | −317 |
+| `yard-world/otel-mapper` | 360 | 239 + 24 cases | **−97** |
+
+`claims/reducer` is the cleanest fit in the repo so far, and says something about
+where this technique pays: a reducer's input **is** JSON — a command sequence
+written down is the test. Two things collapsed into the subject and stopped being
+copied: the five-command provisioning preamble every case restated, and the
+`try { reduce(…) } catch { return caught }` block used four times to read one
+error code. The `then` field is why one case can now pin both the state a
+sequence reaches and the refusal that follows it.
+
+`status-page/projection` is the same shape one level up — a fold over events —
+and converts almost mechanically. Two assertions got stricter on the way: the
+inverted-maintenance case now pins the whole row rather than
+`maintenances["MTN-2"] === undefined`, which was also satisfied by a row that
+never existed.
+
+**`otel-mapper` is the honest counter-example.** It converted, it is greener
+(21 cases against 13 tests, because multi-assertion tests split into one case
+each), but it only removed 97 lines. The reason is worth recording: its bulk is
+two OTLP payload *fixtures*, not repeated assertions, and a fixture has to live
+somewhere. Moving it into the subject does not delete it. **When a suite is long
+because of fixtures rather than because of repetition, this technique buys
+coverage and uniformity, not size** — and the conversion should be justified on
+those terms or skipped.
+
+Running total across layers 04–06: **twelve concerns converted**, roughly 3,200
+lines of test code down to 1,500 plus 260 case lines.

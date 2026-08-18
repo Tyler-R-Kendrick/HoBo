@@ -550,6 +550,9 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      '@hobo/contract-harness':
+        specifier: workspace:*
+        version: link:../contract-harness
       '@types/node':
         specifier: ^22.15.29
         version: 22.20.0
@@ -2070,6 +2073,9 @@ importers:
         specifier: workspace:*
         version: link:../data
     devDependencies:
+      '@hobo/contract-harness':
+        specifier: workspace:*
+        version: link:../contract-harness
       '@types/node':
         specifier: ^22.15.29
         version: 22.20.0
@@ -2196,6 +2202,9 @@ importers:
 
   packages/yard-world:
     devDependencies:
+      '@hobo/contract-harness':
+        specifier: workspace:*
+        version: link:../contract-harness
       '@types/node':
         specifier: ^22.15.29
         version: 22.20.0

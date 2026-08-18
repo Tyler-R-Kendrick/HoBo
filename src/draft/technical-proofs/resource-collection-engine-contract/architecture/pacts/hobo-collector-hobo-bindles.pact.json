@@ -35,7 +35,6 @@
             "notify",
             "guardrail",
             "ui",
-            "golden",
             "experiment"
           ],
           "catalog": [
@@ -227,16 +226,6 @@
               "allowVerbs": [
                 "render",
                 "drive"
-              ]
-            },
-            {
-              "factory": "golden",
-              "portRef": [
-                "hobo:golden"
-              ],
-              "allowVerbs": [
-                "run",
-                "bless"
               ]
             },
             {

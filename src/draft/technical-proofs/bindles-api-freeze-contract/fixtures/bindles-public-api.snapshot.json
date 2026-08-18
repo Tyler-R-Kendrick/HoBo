@@ -241,18 +241,6 @@
       ]
     },
     {
-      "name": "golden",
-      "kind": "resource-factory",
-      "signature": "golden(name: string): ResourceHandle<\"golden\", \"bless\" | \"run\">",
-      "portRef": [
-        "hobo:golden"
-      ],
-      "allowVerbs": [
-        "run",
-        "bless"
-      ]
-    },
-    {
       "name": "experiment",
       "kind": "resource-factory",
       "signature": "experiment(name: string): ResourceHandle<\"experiment\", \"analyze\" | \"assign\" | \"expose\">",

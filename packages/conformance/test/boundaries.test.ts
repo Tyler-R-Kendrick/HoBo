@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	canonicalWorkspaceEdges,
+	classifyPackage,
 	detectWorkspaceCycles,
 	parseWorkspaceEdge,
 	validateBoundaryImports,
@@ -90,5 +91,72 @@ describe("workspace-skeleton-boundary pact", () => {
 		expect(result.errors.join("\n")).toMatch(
 			/adapters must not import each other/,
 		);
+	});
+});
+
+/**
+ * Regression cover for a gate that was enforcing nothing.
+ *
+ * `parseWorkspaceEdge` *throws* on a workspace path it cannot classify. That is
+ * a defensible parse-don't-validate contract, but it meant a single stray
+ * `package.json` anywhere under `packages/` aborted the whole run — and an
+ * aborted gate is indistinguishable from a clean one in a pipeline that only
+ * checks the exit code of the surrounding script. On trunk, fifteen real
+ * packages plus eight nested non-packages were unclassified, so the boundary
+ * gate had never actually enforced a rule.
+ */
+describe("every workspace package is classifiable", () => {
+	it("classifies each pnpm workspace package under packages/", async () => {
+		const { readFileSync, readdirSync, statSync } = await import("node:fs");
+		const { join } = await import("node:path");
+		const root = new URL("../../..", import.meta.url).pathname;
+
+		const yaml = readFileSync(join(root, "pnpm-workspace.yaml"), "utf8");
+		const globs = yaml
+			.split("\n")
+			.slice(yaml.split("\n").findIndex((l) => /^packages:/u.test(l)) + 1)
+			.reduce<string[]>((acc, line) => {
+				if (/^\S/u.test(line)) return acc;
+				const m = /^\s+-\s+"?([^"\s]+)"?\s*$/u.exec(line);
+				if (m?.[1]?.startsWith("packages/")) acc.push(m[1]);
+				return acc;
+			}, []);
+
+		const unclassified: string[] = [];
+		for (const glob of globs) {
+			const base = join(root, glob.replace(/\/\*$/u, ""));
+			let names: string[] = [];
+			try {
+				names = glob.endsWith("/*") ? readdirSync(base) : [""];
+			} catch {
+				continue;
+			}
+			for (const name of names) {
+				const dir = name ? join(base, name) : base;
+				try {
+					if (!statSync(join(dir, "package.json")).isFile()) continue;
+				} catch {
+					continue;
+				}
+				const rel = dir.slice(root.length).replace(/^\/+/u, "");
+				if (classifyPackage(rel).kind === "unknown") unclassified.push(rel);
+			}
+		}
+
+		// Naming them is the point: a bare count tells whoever added a package
+		// nothing about which one, and this failing is the moment they find out.
+		expect(unclassified).toEqual([]);
+	});
+
+	it("still refuses a path it genuinely cannot place", () => {
+		// The throw is load-bearing — it must not be softened into a default
+		// layer, or an unplaced package would silently get whatever layer the
+		// default happened to be and import anything below it.
+		expect(() =>
+			parseWorkspaceEdge({
+				from: "packages/not-a-real-package",
+				to: "packages/core",
+			}),
+		).toThrow(/unknown import source/u);
 	});
 });

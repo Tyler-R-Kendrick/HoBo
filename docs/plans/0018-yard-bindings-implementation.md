@@ -640,7 +640,9 @@ Also include a `## HONEST SCOPE` section naming what is simulated, gated, or uni
 
 ### 5.7 Boundary registration (mandatory for new packages)
 
-`scripts/check-package-boundaries.mts` **throws** on an unknown package path. Any new package must be added to `KNOWN_PACKAGE_PATHS` in `packages/conformance/src/boundaries.ts`. **The coordinator owns that file** — it is already updated for `packages/testing`, `packages/adapters/adapter-drizzle`, and `packages/adapters/adapter-better-auth`. Do not edit it.
+`scripts/check-package-boundaries.mts` **throws** on an unknown package path. Any new package must be added to `KNOWN_PACKAGE_PATHS` in `packages/conformance/src/boundaries.ts`. **The coordinator owns that file** — it is already updated for `packages/testing`, `packages/status-page`, `packages/adapters/adapter-drizzle`, and `packages/adapters/adapter-better-auth`. Do not edit it.
+
+The throw is not advisory: a package that lands without its entry turns the gate red for *everyone*, on a tree that has nothing else wrong with it. `packages/status-page` (#1113) did exactly that, which is why it is named above.
 
 Layering rules you must respect:
 - `packages/core` may import **nothing** `@hobo/*` except `@hobo/contract-harness`.
@@ -661,3 +663,5 @@ Concretely: `@hobo/adapter-drizzle` and `@hobo/adapter-better-auth` may depend o
 ### 5.9 Known pre-existing repo state
 
 `pnpm run lint:boundaries` fails on a clean tree today because several existing packages (`packages/bindings`, `packages/capability-profiles`, `packages/claims`, `packages/trust`, `packages/wasp`, …) were never added to `KNOWN_PACKAGE_PATHS`. The coordinator is fixing that in the same change. If you see that error, it is not yours.
+
+The same gate had a second, subtler clean-tree failure: its import scan is a regex over source text, so a remediation message that *quotes* an import — `@hobo/identity` telling a human to write `import { createLocalStationOpenBaoSecretsPort } from "@hobo/adapter-openbao"` — was counted as a real dependency edge, inverting a one-way edge into a reported cycle between two packages where neither imports the other. Matches that begin inside a string literal are now skipped, and `scripts/test/check-package-boundaries.test.ts` (run by `pnpm run test:scripts`) pins both halves: the real edge must survive, the phantom one must not reappear.

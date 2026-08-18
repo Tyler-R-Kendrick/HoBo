@@ -97,6 +97,10 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/convex",
 	// ADR-0159 out-of-box application test harness.
 	"packages/testing",
+	// Default status-page sidecar (#1113). An ordinary layer-3 package: it
+	// projects station/project/bindle state into a page and reaches nothing
+	// below core.
+	"packages/status-page",
 	// Example Bindles vendored under the hobo-code harness. They consume
 	// adapters and bindles like any application would, so they classify as
 	// ordinary workspace packages rather than a new tier.

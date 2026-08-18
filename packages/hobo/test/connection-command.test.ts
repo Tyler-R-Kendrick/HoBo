@@ -40,8 +40,7 @@ describe("hobo connection command", () => {
 		});
 		expect(authorized.ok).toBe(true);
 		expect(
-			(authorized.data as { connection: { status: string } }).connection
-				.status,
+			(authorized.data as { connection: { status: string } }).connection.status,
 		).toBe("active");
 
 		const listed = await cmd.run({

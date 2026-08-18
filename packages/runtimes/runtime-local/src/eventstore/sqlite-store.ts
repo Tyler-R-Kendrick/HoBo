@@ -15,9 +15,9 @@ import {
 import type { ParsedAppendContext } from "./parse.js";
 
 export {
+	OptimisticSequenceConflictError as StaleSequenceError,
 	SnapshotAheadError,
 	StaleFenceError,
-	OptimisticSequenceConflictError as StaleSequenceError,
 } from "@hobo/core";
 
 export class SqliteEventStore {

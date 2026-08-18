@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-
+import { parseSkillName } from "../src/harness.js";
 import {
 	applyInContextEdit,
 	assertEvidenceTripleComplete,
@@ -51,7 +51,6 @@ import {
 	tsAutocodeConventions,
 	validateLockedVisual,
 } from "../src/index.js";
-import { parseSkillName } from "../src/harness.js";
 
 const temps: string[] = [];
 afterEach(() => {

@@ -191,8 +191,9 @@ export interface ConnectorDefinition<
 }
 
 /** Opaque value exported by connector packages and consumed by b.connector(). */
-export type ConnectorSymbol<D extends ConnectorDefinition = ConnectorDefinition> =
-	symbol & { readonly __hoboConnectorDefinition?: D };
+export type ConnectorSymbol<
+	D extends ConnectorDefinition = ConnectorDefinition,
+> = symbol & { readonly __hoboConnectorDefinition?: D };
 
 export type ConnectorCapability<D extends ConnectorDefinition> =
 	D["capabilities"][number];
@@ -203,7 +204,9 @@ export interface ConnectorBinding<
 	readonly kind: "connector";
 	readonly definition: D;
 	readonly declaredAllow: readonly ConnectorCapability<D>[];
-	allow<C extends ConnectorCapability<D>>(...capabilities: C[]): ConnectorBinding<D>;
+	allow<C extends ConnectorCapability<D>>(
+		...capabilities: C[]
+	): ConnectorBinding<D>;
 }
 
 export interface BindleConnectorRecord {
@@ -318,7 +321,9 @@ export interface BindleBuilder {
 	ui(binding?: ComponentBinding): BindleResource<"ui">;
 	experiment(): BindleResource<"experiment">;
 	rollout(): BindleResource<"rollout">;
-	connector<D extends ConnectorDefinition>(symbol: ConnectorSymbol<D>): ConnectorBinding<D>;
+	connector<D extends ConnectorDefinition>(
+		symbol: ConnectorSymbol<D>,
+	): ConnectorBinding<D>;
 	external(options?: ExternalDependencyOptions): BindleResource<"external">;
 	container(options: ContainerDependencyOptions): BindleResource<"container">;
 	wasmComponent(

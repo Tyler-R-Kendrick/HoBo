@@ -3,9 +3,9 @@
  * Kept separate from code-command so diagnostics stay injectable and thin.
  */
 import {
+	type CodeFeaturePort,
 	composeCodePlatform,
 	listSandboxOrphans,
-	type CodeFeaturePort,
 } from "@hobo/code";
 import { createContractAssertedHarnessFixtures } from "@hobo/identity";
 

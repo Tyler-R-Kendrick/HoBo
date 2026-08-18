@@ -82,7 +82,10 @@ export function parseProfileId(input: string): ParsedProfileId {
 		throw new ProfileIdError(String(input), "must be a non-empty string");
 	}
 	if (input !== input.trim()) {
-		throw new ProfileIdError(input, "must not have leading/trailing whitespace");
+		throw new ProfileIdError(
+			input,
+			"must not have leading/trailing whitespace",
+		);
 	}
 	if (input !== input.toLowerCase()) {
 		throw new ProfileIdError(input, "must be lowercase (canonical form)");
@@ -116,7 +119,8 @@ export function parseProfileId(input: string): ParsedProfileId {
 		}
 	}
 	const family = path[0] as string;
-	const primitive = PRIMITIVE_BY_SEGMENT.get(family) ?? PRIMITIVE_ALIASES.get(family);
+	const primitive =
+		PRIMITIVE_BY_SEGMENT.get(family) ?? PRIMITIVE_ALIASES.get(family);
 	if (primitive === undefined) {
 		throw new ProfileIdError(
 			input,

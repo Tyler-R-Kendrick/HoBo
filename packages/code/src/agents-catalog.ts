@@ -4,7 +4,14 @@
  * Top-level: registered harnesses (Hobo Bo / hobo-code first).
  * Children of Hobo Bo: Eve vfs agents under `.hobo/agents` (+ legacy `agent/`).
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { basename, join } from "node:path";
 
 import type { HarnessSpec } from "./agent-harness-adapters.js";
@@ -334,8 +341,7 @@ export function buildAgentsCatalog(
 	const roots: AgentsCatalogNode[] = [];
 	for (const spec of sortHarnesses(specs)) {
 		const id = `harness:${spec.id}`;
-		const label =
-			spec.id === "hobo-code" ? "Hobo Bo" : (spec.label || spec.id);
+		const label = spec.id === "hobo-code" ? "Hobo Bo" : spec.label || spec.id;
 		roots.push({
 			id,
 			kind: "harness",
@@ -458,10 +464,7 @@ export function reduceAgentsCatalogKey(
 	if (key === " " || key === "\x1b[C" || key === "l") {
 		if (current?.expandable) {
 			const wasExpanded = state.expanded.has(current.id);
-			let next = clampCatalog(
-				toggleExpanded(state, current.id),
-				viewportRows,
-			);
+			let next = clampCatalog(toggleExpanded(state, current.id), viewportRows);
 			// Expanding into children: land cursor on first child so ↓ isn't required
 			// to "find" subagents (common focus-loss complaint).
 			if (!wasExpanded) {

@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -29,7 +35,9 @@ describe("agents init destination", () => {
 		expect(dest.ok).toBe(false);
 		if (!dest.ok) {
 			expect(dest.reason).toMatch(/no model listen/i);
-			expect(dest.remediation.join("\n")).toMatch(/hobo-code models|OPENAI_BASE_URL|ollama/i);
+			expect(dest.remediation.join("\n")).toMatch(
+				/hobo-code models|OPENAI_BASE_URL|ollama/i,
+			);
 		}
 	});
 
@@ -64,7 +72,11 @@ describe("agents init plan", () => {
 	it("plans a Codex hunk that uses env_key, not a minted secret", async () => {
 		const home = tmp();
 		mkdirSync(join(home, ".codex"), { recursive: true });
-		writeFileSync(join(home, ".codex", "config.toml"), "model = \"gpt-5\"\n", "utf8");
+		writeFileSync(
+			join(home, ".codex", "config.toml"),
+			'model = "gpt-5"\n',
+			"utf8",
+		);
 		const plan = await planAgentsInit({
 			home,
 			cwd: home,
@@ -80,7 +92,9 @@ describe("agents init plan", () => {
 		const entry = plan.entries.find((row) => row.id === "codex");
 		expect(entry?.detected).toBe(true);
 		expect(entry?.hunks[0]?.after).toMatch(/model_provider\s*=\s*"hobo"/);
-		expect(entry?.hunks[0]?.after).toMatch(/env_key\s*=\s*"HOBO_CODE_SESSION_REF"/);
+		expect(entry?.hunks[0]?.after).toMatch(
+			/env_key\s*=\s*"HOBO_CODE_SESSION_REF"/,
+		);
 		expect(entry?.hunks.map((hunk) => hunk.after).join("\n")).not.toMatch(
 			/sk-|vck_|secret-must-not/i,
 		);
@@ -89,7 +103,10 @@ describe("agents init plan", () => {
 	it("plans a Grok Build model.hobo block with env_key, not a secret", async () => {
 		const home = tmp();
 		mkdirSync(join(home, ".grok"), { recursive: true });
-		writeFileSync(join(home, ".grok", "config.toml"), "[cli]\ninstaller = \"internal\"\n");
+		writeFileSync(
+			join(home, ".grok", "config.toml"),
+			'[cli]\ninstaller = "internal"\n',
+		);
 		const plan = await planAgentsInit({
 			home,
 			cwd: home,
@@ -103,8 +120,12 @@ describe("agents init plan", () => {
 		const entry = plan.entries.find((row) => row.id === "grok");
 		expect(entry?.detected).toBe(true);
 		expect(entry?.hunks[0]?.after).toMatch(/\[model\.hobo\]/);
-		expect(entry?.hunks[0]?.after).toMatch(/env_key\s*=\s*"HOBO_CODE_SESSION_REF"/);
-		expect(entry?.hunks[0]?.after).toMatch(/base_url\s*=\s*"http:\/\/127\.0\.0\.1:11434\/v1"/);
+		expect(entry?.hunks[0]?.after).toMatch(
+			/env_key\s*=\s*"HOBO_CODE_SESSION_REF"/,
+		);
+		expect(entry?.hunks[0]?.after).toMatch(
+			/base_url\s*=\s*"http:\/\/127\.0\.0\.1:11434\/v1"/,
+		);
 		expect(entry?.hunks.map((hunk) => hunk.after).join("\n")).not.toMatch(
 			/sk-|vck_|api_key\s*=/i,
 		);
@@ -140,8 +161,14 @@ describe("agents init plan", () => {
 
 	it("discovers an Eve agent tree for VFS registration", async () => {
 		const cwd = tmp();
-		mkdirSync(join(cwd, "agent", "subagents", "implementer"), { recursive: true });
-		writeFileSync(join(cwd, "agent", "instructions.md"), "coordinator\n", "utf8");
+		mkdirSync(join(cwd, "agent", "subagents", "implementer"), {
+			recursive: true,
+		});
+		writeFileSync(
+			join(cwd, "agent", "instructions.md"),
+			"coordinator\n",
+			"utf8",
+		);
 		writeFileSync(
 			join(cwd, "agent", "subagents", "implementer", "instructions.md"),
 			"implement\n",
@@ -161,9 +188,9 @@ describe("agents init plan", () => {
 		});
 		const eve = plan.entries.find((row) => row.id === "eve");
 		expect(eve?.kind).toBe("eve-agent");
-		expect(eve?.hunks.some((hunk) => hunk.after.includes("/agents/implementer"))).toBe(
-			true,
-		);
+		expect(
+			eve?.hunks.some((hunk) => hunk.after.includes("/agents/implementer")),
+		).toBe(true);
 	});
 });
 
@@ -172,7 +199,7 @@ describe("agents init apply", () => {
 		const home = tmp();
 		mkdirSync(join(home, ".codex"), { recursive: true });
 		const config = join(home, ".codex", "config.toml");
-		writeFileSync(config, "model = \"gpt-5\"\n", "utf8");
+		writeFileSync(config, 'model = "gpt-5"\n', "utf8");
 		const applied = await applyAgentsInit({
 			home,
 			cwd: home,
@@ -190,7 +217,7 @@ describe("agents init apply", () => {
 		expect(next).toMatch(/model_provider\s*=\s*"hobo"/);
 		expect(next).toMatch(/env_key\s*=\s*"HOBO_CODE_SESSION_REF"/);
 		expect(next).not.toMatch(/sk-|vck_/i);
-		expect(readFileSync(`${config}.bak`, "utf8")).toBe("model = \"gpt-5\"\n");
+		expect(readFileSync(`${config}.bak`, "utf8")).toBe('model = "gpt-5"\n');
 		const registry = readFileSync(
 			join(home, ".hobo", "durable", "code", "agents", "registry.json"),
 			"utf8",

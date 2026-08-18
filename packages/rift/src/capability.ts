@@ -75,7 +75,9 @@ export function probeReflink(dir: string): boolean {
 	const probe = mkdtempSync(join(dir, ".rift-probe-"));
 	try {
 		writeFileSync(join(probe, "a"), "x");
-		return run("cp", ["--reflink=always", join(probe, "a"), join(probe, "b")]) === 0;
+		return (
+			run("cp", ["--reflink=always", join(probe, "a"), join(probe, "b")]) === 0
+		);
 	} catch {
 		return false;
 	} finally {

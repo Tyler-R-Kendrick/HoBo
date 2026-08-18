@@ -7,15 +7,15 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdtemp, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import {
 	TEMPORARY_STATION_TTL_MS,
+	type TemporaryEnvironmentStationResult,
 	temporaryStationExpiresAt,
 	temporaryStationTtlSeconds,
-	type TemporaryEnvironmentStationResult,
 } from "@hobo/core";
 
 import { LAKEBED_PROVIDER_TARGET } from "./options.js";
@@ -27,7 +27,8 @@ const LAKEBED_CLAIM_HOST = "lakebed.dev";
 
 function requireLakebedUrl(value: string, kind: "station" | "claim"): string {
 	const parsed = new URL(value);
-	if (parsed.protocol !== "https:") throw new Error(`lakebed ${kind} URL must use https`);
+	if (parsed.protocol !== "https:")
+		throw new Error(`lakebed ${kind} URL must use https`);
 	if (kind === "station" && !LAKEBED_STATION_HOST.test(parsed.hostname)) {
 		throw new Error("lakebed station URL has an unexpected host");
 	}
@@ -75,7 +76,9 @@ export default capsule({
  * Parse `npx lakebed deploy` stdout for deploy URL / claim material.
  * Accepts JSON lines or plain URL lines — fail closed if neither present.
  */
-export function parseLakebedDeployOutput(stdout: string): LakebedAnonymousDeployResult {
+export function parseLakebedDeployOutput(
+	stdout: string,
+): LakebedAnonymousDeployResult {
 	const trimmed = stdout.trim();
 	if (!trimmed) {
 		throw new Error("lakebed deploy produced empty output");
@@ -99,10 +102,10 @@ export function parseLakebedDeployOutput(stdout: string): LakebedAnonymousDeploy
 			const claimUrl =
 				(typeof parsed.claimUrl === "string" && parsed.claimUrl) ||
 				(deployId ? `https://lakebed.dev/claim/${deployId}` : "");
-				if (stationUrl && claimUrl) {
-					requireLakebedUrl(stationUrl, "station");
-					requireLakebedUrl(claimUrl, "claim");
-					return {
+			if (stationUrl && claimUrl) {
+				requireLakebedUrl(stationUrl, "station");
+				requireLakebedUrl(claimUrl, "claim");
+				return {
 					deployId: deployId || new URL(stationUrl).hostname,
 					stationUrl,
 					claimUrl,
@@ -126,7 +129,10 @@ export function parseLakebedDeployOutput(stdout: string): LakebedAnonymousDeploy
 	return {
 		deployId,
 		stationUrl,
-		claimUrl: requireLakebedUrl(`https://lakebed.dev/claim/${deployId}`, "claim"),
+		claimUrl: requireLakebedUrl(
+			`https://lakebed.dev/claim/${deployId}`,
+			"claim",
+		),
 	};
 }
 
@@ -139,15 +145,11 @@ async function runLakebedCliDeploy(
 	delete env.LAKEBED_TOKEN_API;
 
 	const stdout = await new Promise<string>((resolve, reject) => {
-		const child = spawn(
-			"npx",
-			["--yes", "lakebed", "deploy", "--json"],
-			{
-				cwd: capsuleDir,
-				env,
-				stdio: ["ignore", "pipe", "pipe"],
-			},
-		);
+		const child = spawn("npx", ["--yes", "lakebed", "deploy", "--json"], {
+			cwd: capsuleDir,
+			env,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
 		let out = "";
 		let err = "";
 		child.stdout?.on("data", (chunk: Buffer) => {
@@ -232,8 +234,7 @@ export async function provisionTemporaryEnvironmentStation(
 				? { serverSource: input.capsuleServerSource }
 				: {}),
 		}));
-	const transport =
-		input.transport ?? createLakebedAnonymousCliTransport();
+	const transport = input.transport ?? createLakebedAnonymousCliTransport();
 	const deployed = await transport.deployAnonymous({
 		stationId: input.stationId,
 		capsuleDir,

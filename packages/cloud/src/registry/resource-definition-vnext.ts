@@ -24,7 +24,8 @@ import type {
 import type { ResourceDefinition } from "./catalog.js";
 
 // public-contract: versions the portable resource-definition schema.
-export const RESOURCE_DEFINITION_VNEXT_SCHEMA = "hobo.resource-definition/vNext" as const;
+export const RESOURCE_DEFINITION_VNEXT_SCHEMA =
+	"hobo.resource-definition/vNext" as const;
 
 export type PlacementConstraint = {
 	readonly key: string;
@@ -121,7 +122,10 @@ export function parseResourceDefinitionVNext(
 			"declares semantics but implements no capability profile",
 		);
 	}
-	if (semantics.claimActionCount < 0 || !Number.isInteger(semantics.claimActionCount)) {
+	if (
+		semantics.claimActionCount < 0 ||
+		!Number.isInteger(semantics.claimActionCount)
+	) {
 		throw new ResourceDefinitionMigrationError(
 			definition.id,
 			"claimActionCount must be a non-negative integer",

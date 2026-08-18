@@ -24,15 +24,23 @@ export type ReviewProviderSubmitResult = {
 export type ReviewProvider = {
 	readonly id: "github";
 	capabilities(): readonly string[];
-	submitReview(input: ReviewProviderSubmitInput): Promise<ReviewProviderSubmitResult>;
-	importPullRequest?(host: string, repository: string, number: number): Promise<{
+	submitReview(
+		input: ReviewProviderSubmitInput,
+	): Promise<ReviewProviderSubmitResult>;
+	importPullRequest?(
+		host: string,
+		repository: string,
+		number: number,
+	): Promise<{
 		readonly headOid: string;
 		readonly baseOid: string;
 		readonly threads: readonly { readonly id: string; readonly body: string }[];
 	}>;
 };
 
-export function reviewEffectDigest(input: Readonly<Record<string, unknown>>): string {
+export function reviewEffectDigest(
+	input: Readonly<Record<string, unknown>>,
+): string {
 	return createHash("sha256")
 		.update(
 			JSON.stringify(input, (_, value) =>
@@ -42,9 +50,9 @@ export function reviewEffectDigest(input: Readonly<Record<string, unknown>>): st
 		.digest("hex");
 }
 
-export function createFakeGithubProvider(store: {
-	submissions?: ReviewProviderSubmitResult[];
-} = {}): ReviewProvider {
+export function createFakeGithubProvider(
+	store: { submissions?: ReviewProviderSubmitResult[] } = {},
+): ReviewProvider {
 	const submissions = store.submissions ?? [];
 	return {
 		id: "github",
@@ -55,7 +63,9 @@ export function createFakeGithubProvider(store: {
 			"thread-resolve",
 		],
 		async submitReview(input) {
-			const existing = submissions.find((item) => item.submissionId === input.commandId);
+			const existing = submissions.find(
+				(item) => item.submissionId === input.commandId,
+			);
 			if (existing) return existing;
 			const receipt = {
 				submissionId: input.commandId,
@@ -76,14 +86,19 @@ export function createFakeGithubProvider(store: {
 	};
 }
 
-export function createGithubCliProvider(runner: SessionProcessRunner): ReviewProvider {
+export function createGithubCliProvider(
+	runner: SessionProcessRunner,
+): ReviewProvider {
 	return {
 		id: "github",
 		capabilities: () => ["pull-request-import", "review-submit"],
 		async submitReview(input) {
 			const target = input.snapshot.target;
 			if (!target?.number) {
-				throw new ReviewError(REVIEW_ERROR.UNSUPPORTED, "publish needs a pull-request target");
+				throw new ReviewError(
+					REVIEW_ERROR.UNSUPPORTED,
+					"publish needs a pull-request target",
+				);
 			}
 			const body = input.pending.summaryBody;
 			const event =
@@ -109,7 +124,10 @@ export function createGithubCliProvider(runner: SessionProcessRunner): ReviewPro
 				target.repositoryRoot || process.cwd(),
 			);
 			if (result.code !== 0) {
-				throw new ReviewError(REVIEW_ERROR.PROVIDER_DRIFT, result.stderr || "gh review submit failed");
+				throw new ReviewError(
+					REVIEW_ERROR.PROVIDER_DRIFT,
+					result.stderr || "gh review submit failed",
+				);
 			}
 			return {
 				submissionId: input.commandId,

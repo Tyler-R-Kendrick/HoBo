@@ -6,8 +6,8 @@ import {
 	parseEffectSpec,
 } from "./effects.js";
 import {
-	type ResilienceProfile,
 	parseResilienceProfile,
+	type ResilienceProfile,
 	validateResilienceAgainstEffects,
 } from "./resilience.js";
 
@@ -138,9 +138,7 @@ export function parseBoundaryContract(input: unknown): BoundaryContract {
 	);
 
 	const effects =
-		source.effects === undefined
-			? undefined
-			: parseEffectSpec(source.effects);
+		source.effects === undefined ? undefined : parseEffectSpec(source.effects);
 	const resilience =
 		source.resilience === undefined
 			? undefined

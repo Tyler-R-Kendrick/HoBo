@@ -86,8 +86,7 @@ export function createOpenBaoSecretsPort(options: {
 		const seed =
 			entry?.seeds[entry.seeds.length - 1] ??
 			createHmac("sha256", root).update(name).digest("base64url");
-		const vid =
-			entry?.versions[entry.versions.length - 1] ?? "ob-dynamic";
+		const vid = entry?.versions[entry.versions.length - 1] ?? "ob-dynamic";
 		const material = offlineMaterial(name, vid, seed);
 		return {
 			status: "ok",
@@ -99,14 +98,10 @@ export function createOpenBaoSecretsPort(options: {
 		};
 	}
 
-	function nsHeaders(
-		extra?: Record<string, string>,
-	): Record<string, string> {
+	function nsHeaders(extra?: Record<string, string>): Record<string, string> {
 		return {
 			"Content-Type": "application/json",
-			...(options.namespace
-				? { "X-Vault-Namespace": options.namespace }
-				: {}),
+			...(options.namespace ? { "X-Vault-Namespace": options.namespace } : {}),
 			...extra,
 		};
 	}
@@ -250,8 +245,7 @@ export function createOpenBaoSecretsPort(options: {
 		name: string,
 		value: string,
 	): Promise<
-		| { versionId: string }
-		| { status: "denied"; reason: string; code: string }
+		{ versionId: string } | { status: "denied"; reason: string; code: string }
 	> {
 		const login = await jwtLogin();
 		if (login.status === "denied") {
@@ -349,9 +343,7 @@ export function createOpenBaoSecretsPort(options: {
 				const live = await liveListVersions(name);
 				if (live && live.length > 0) return live;
 			}
-			return Object.freeze([
-				...(store.get(name)?.versions ?? ["ob-dynamic"]),
-			]);
+			return Object.freeze([...(store.get(name)?.versions ?? ["ob-dynamic"])]);
 		},
 	};
 }
@@ -387,8 +379,7 @@ export function createLocalStationOpenBaoSecretsPort(options?: {
 		(typeof env.HOBO_OPENBAO_ROLE === "string" && env.HOBO_OPENBAO_ROLE) ||
 		`hobo-station-${stationId}`;
 	const namespace =
-		typeof env.HOBO_OPENBAO_NAMESPACE === "string" &&
-		env.HOBO_OPENBAO_NAMESPACE
+		typeof env.HOBO_OPENBAO_NAMESPACE === "string" && env.HOBO_OPENBAO_NAMESPACE
 			? env.HOBO_OPENBAO_NAMESPACE
 			: undefined;
 	const mountPath =

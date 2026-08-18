@@ -92,14 +92,14 @@ describe("listBoModelOffers", () => {
 			},
 		});
 		const ids = offers.map((row) => offerKey(row));
-		expect(ids.some((k) => k.startsWith("ollama/qwen2.5-coder:7b"))).toBe(
-			true,
-		);
+		expect(ids.some((k) => k.startsWith("ollama/qwen2.5-coder:7b"))).toBe(true);
 		expect(ids.some((k) => k.startsWith("ollama/llama3.2:3b"))).toBe(true);
 		expect(ids).toContain("openai/gpt-5.6-sol|via=codex");
 		expect(ids).toContain("anthropic/claude-sonnet-5|via=claude");
 		expect(
-			ids.some((k) => k.includes("ollama/qwen2.5-coder:1.5b") && k.includes("via=env")),
+			ids.some(
+				(k) => k.includes("ollama/qwen2.5-coder:1.5b") && k.includes("via=env"),
+			),
 		).toBe(true);
 		expect(ids.some((k) => k.includes("via=byok"))).toBe(false);
 		expect(ids.some((k) => k.includes("via=azure"))).toBe(false);

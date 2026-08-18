@@ -39,11 +39,14 @@ export function materializeCorsRelayModule(input: {
 }): string {
 	assertCorsRelayIsAnonymousOnly(CORS_RELAY_WORKER_MODULE);
 	return CORS_RELAY_WORKER_MODULE.replace(
-		'__HOBO_TEMP_ACCOUNT_ID__',
+		"__HOBO_TEMP_ACCOUNT_ID__",
 		JSON.stringify(input.accountId).slice(1, -1),
 	)
-		.replace('__HOBO_TEMP_API_TOKEN__', JSON.stringify(input.apiToken).slice(1, -1))
-		.replace('__HOBO_CLAIM_URL__', JSON.stringify(input.claimUrl).slice(1, -1));
+		.replace(
+			"__HOBO_TEMP_API_TOKEN__",
+			JSON.stringify(input.apiToken).slice(1, -1),
+		)
+		.replace("__HOBO_CLAIM_URL__", JSON.stringify(input.claimUrl).slice(1, -1));
 }
 
 /**
@@ -68,7 +71,9 @@ export async function bootstrapCorsRelayViaTemporaryAccounts(
 		moduleSource.includes("__HOBO_TEMP_") ||
 		!moduleSource.includes(account.accountId)
 	) {
-		throw new Error("failed to materialize Temporary Account credentials into CORS relay");
+		throw new Error(
+			"failed to materialize Temporary Account credentials into CORS relay",
+		);
 	}
 
 	const deployed = await transport.deployWorkerScript({

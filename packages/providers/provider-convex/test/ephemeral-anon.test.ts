@@ -5,8 +5,8 @@ import {
 	CONVEX_BACKEND_OCI_IMAGE,
 	CONVEX_LOCAL_BACKEND_LINUX_X64_BIN_BYTES,
 	ConvexAnonBackendError,
-	OPENPOUCH_ANON_MEMORY_MAX_BYTES,
 	formatAnonConvexBackendUnavailableMessage,
+	OPENPOUCH_ANON_MEMORY_MAX_BYTES,
 	provisionConvexBackendAnonymous,
 } from "../src/ephemeral-anon.js";
 

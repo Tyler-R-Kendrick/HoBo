@@ -40,8 +40,8 @@ import {
 } from "../packages/connectivity/src/index.js";
 import {
 	allowDecision,
-	parseTenantId,
 	type PolicyDecision,
+	parseTenantId,
 	type RoutingPlan,
 	type RoutingPlanId,
 	type TrafficRoutingPort,

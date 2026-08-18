@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import {
 	existsSync,
 	mkdirSync,
-	readFileSync,
 	readdirSync,
+	readFileSync,
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -58,7 +58,11 @@ export interface HarnessCore {
 	readonly useTool: (name: string) => { name: string; mcp: boolean };
 	readonly listSkills: () => readonly LoadedSkill[];
 	readonly runRhaiWorkflow: (source: string) => RhaiWorkflowResult;
-	readonly checkpoint: (runId: string, step: number, data: string) => DurableWorldState;
+	readonly checkpoint: (
+		runId: string,
+		step: number,
+		data: string,
+	) => DurableWorldState;
 	readonly restore: (runId: string) => DurableWorldState | null;
 	readonly exposeMcp: () => {
 		readonly tools: readonly string[];
@@ -253,7 +257,9 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 		restore(runId: string) {
 			const path = join(worldRoot, runId, "state.json");
 			if (!existsSync(path)) return null;
-			const raw = JSON.parse(readFileSync(path, "utf8")) as Partial<DurableWorldState> &
+			const raw = JSON.parse(
+				readFileSync(path, "utf8"),
+			) as Partial<DurableWorldState> &
 				Pick<DurableWorldState, "worldId" | "runId" | "step" | "checkpoint">;
 			return {
 				worldId: raw.worldId,
@@ -262,7 +268,8 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 				checkpoint: raw.checkpoint,
 				survivingRestart: true as const,
 				updatedAt: raw.updatedAt ?? new Date().toISOString(),
-				worldKind: raw.worldKind === "vercel" ? ("vercel" as const) : ("local" as const),
+				worldKind:
+					raw.worldKind === "vercel" ? ("vercel" as const) : ("local" as const),
 			};
 		},
 		exposeMcp() {

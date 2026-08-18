@@ -324,7 +324,8 @@ describe("compileRecipe", () => {
 
 	it("fails closed on stale evidence rather than ranking it lower", () => {
 		const stale = EVIDENCE.filter(
-			(record) => record.productDefinitionId !== "cloudflare.temporary-workers-api/v1",
+			(record) =>
+				record.productDefinitionId !== "cloudflare.temporary-workers-api/v1",
 		);
 		const compilation = compileRecipe(
 			compileInputFor(inbox, { evidence: stale }),

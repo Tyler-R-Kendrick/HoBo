@@ -1,11 +1,11 @@
 import {
 	attachCampToYard,
 	type Camp,
-	campToShape,
 	type CampShape,
+	campToShape,
+	EMPTY_RESOLVER_CONFIG,
 	type JsonValue,
 	type PrimitiveResolverConfig,
-	EMPTY_RESOLVER_CONFIG,
 } from "@hobo/camps";
 
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1" as const;
@@ -144,9 +144,7 @@ export function yardToShape(yardObject: Yard): {
 	});
 }
 
-function normalizeProvider(
-	provider: string | { readonly id: string },
-): string {
+function normalizeProvider(provider: string | { readonly id: string }): string {
 	if (typeof provider === "string" && provider.length > 0) return provider;
 	if (
 		provider &&

@@ -161,9 +161,7 @@ export function realizeTrafficRoutingPlan(
 	options: { deploymentId?: string; capsule?: string } = {},
 ): { driver: DriverProgram } {
 	const deploymentId =
-		options.deploymentId?.trim() ||
-		sanitizeDriverId(plan.planId) ||
-		"traffic";
+		options.deploymentId?.trim() || sanitizeDriverId(plan.planId) || "traffic";
 	const capsule =
 		options.capsule?.trim() ||
 		`capsule/${sanitizeDriverId(plan.intent.service) || "service"}`;
@@ -204,7 +202,10 @@ export function realizeTrafficRoutingPlan(
 				backends: rule.backends.map((backend) => backend.id),
 			})),
 		},
-		outputs: OUTPUTS_BY_CLASS["lakebed:traffic-route"] ?? ["routeId", "binding"],
+		outputs: OUTPUTS_BY_CLASS["lakebed:traffic-route"] ?? [
+			"routeId",
+			"binding",
+		],
 	};
 	const driver: DriverProgram = {
 		apiVersion: DRIVER_PROGRAM_API_VERSION,

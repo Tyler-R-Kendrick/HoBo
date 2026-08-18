@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	CapabilityProfileError,
-	ProfileIdError,
-	STANDARD_CAPABILITY_PROFILES,
-	createCapabilityProfileRegistry,
-	parseProfileId,
 	type CapabilityProfileDescriptor,
+	CapabilityProfileError,
+	createCapabilityProfileRegistry,
+	ProfileIdError,
+	parseProfileId,
+	STANDARD_CAPABILITY_PROFILES,
 } from "../src/index.js";
 
-const standard = () => createCapabilityProfileRegistry(STANDARD_CAPABILITY_PROFILES);
+const standard = () =>
+	createCapabilityProfileRegistry(STANDARD_CAPABILITY_PROFILES);
 
 function stub(
 	id: string,
@@ -28,7 +29,9 @@ function stub(
 		features: [],
 		guarantees: [],
 		maturity: "experimental",
-		sourceRefs: [{ url: "https://example.invalid/spec", checkedAt: "2026-08-08" }],
+		sourceRefs: [
+			{ url: "https://example.invalid/spec", checkedAt: "2026-08-08" },
+		],
 	};
 }
 
@@ -52,9 +55,7 @@ describe("profile ids", () => {
 			expect(parseProfileId(id).primitive).toBe("kv");
 			expect(registry.get(id)?.id).toBe(id);
 		}
-		expect(
-			registry.closureOf("kv.durable-object.durable-inbox/v1"),
-		).toEqual(
+		expect(registry.closureOf("kv.durable-object.durable-inbox/v1")).toEqual(
 			expect.arrayContaining([
 				"kv.key-value/v1",
 				"kv.durable-object/v1",
@@ -87,7 +88,9 @@ describe("registry construction", () => {
 	});
 
 	it("produces a stable digest independent of registration order", () => {
-		const forward = createCapabilityProfileRegistry(STANDARD_CAPABILITY_PROFILES);
+		const forward = createCapabilityProfileRegistry(
+			STANDARD_CAPABILITY_PROFILES,
+		);
 		const reversed = createCapabilityProfileRegistry(
 			[...STANDARD_CAPABILITY_PROFILES].reverse(),
 		);
@@ -100,7 +103,9 @@ describe("registry construction", () => {
 				? { ...profile, conformanceSuiteRef: "conformance.changed" }
 				: profile,
 		);
-		expect(createCapabilityProfileRegistry(mutated).digest).not.toBe(standard().digest);
+		expect(createCapabilityProfileRegistry(mutated).digest).not.toBe(
+			standard().digest,
+		);
 	});
 
 	it("rejects a refinement cycle", () => {
@@ -114,13 +119,17 @@ describe("registry construction", () => {
 
 	it("rejects a self-refinement", () => {
 		expect(() =>
-			createCapabilityProfileRegistry([stub("data.loop/v1", "data", ["data.loop/v1"])]),
+			createCapabilityProfileRegistry([
+				stub("data.loop/v1", "data", ["data.loop/v1"]),
+			]),
 		).toThrow(CapabilityProfileError);
 	});
 
 	it("rejects refining an unregistered profile", () => {
 		expect(() =>
-			createCapabilityProfileRegistry([stub("data.child/v1", "data", ["data.ghost/v1"])]),
+			createCapabilityProfileRegistry([
+				stub("data.child/v1", "data", ["data.ghost/v1"]),
+			]),
 		).toThrow(/unregistered profile/u);
 	});
 
@@ -135,35 +144,54 @@ describe("registry construction", () => {
 
 	it("rejects duplicate ids", () => {
 		expect(() =>
-			createCapabilityProfileRegistry([stub("data.dup/v1", "data"), stub("data.dup/v1", "data")]),
+			createCapabilityProfileRegistry([
+				stub("data.dup/v1", "data"),
+				stub("data.dup/v1", "data"),
+			]),
 		).toThrow(/duplicate/u);
 	});
 
 	it("requires evidence sources with ISO dates", () => {
 		const bad = { ...stub("data.x/v1", "data"), sourceRefs: [] };
-		expect(() => createCapabilityProfileRegistry([bad])).toThrow(/evidence source/u);
+		expect(() => createCapabilityProfileRegistry([bad])).toThrow(
+			/evidence source/u,
+		);
 	});
 });
 
 describe("refinement satisfaction", () => {
 	it("satisfies ancestors but never descendants", () => {
 		const registry = standard();
-		expect(registry.satisfies("data.postgres/v1", "data.relational/v1")).toBe(true);
-		expect(registry.satisfies("data.relational/v1", "data.postgres/v1")).toBe(false);
+		expect(registry.satisfies("data.postgres/v1", "data.relational/v1")).toBe(
+			true,
+		);
+		expect(registry.satisfies("data.relational/v1", "data.postgres/v1")).toBe(
+			false,
+		);
 	});
 
 	it("keeps sqlite and postgres siblings, not substitutes", () => {
 		const registry = standard();
-		expect(registry.satisfies("data.sqlite/v1", "data.relational/v1")).toBe(true);
-		expect(registry.satisfies("data.sqlite/v1", "data.postgres/v1")).toBe(false);
-		expect(registry.satisfies("data.postgres/v1", "data.sqlite/v1")).toBe(false);
+		expect(registry.satisfies("data.sqlite/v1", "data.relational/v1")).toBe(
+			true,
+		);
+		expect(registry.satisfies("data.sqlite/v1", "data.postgres/v1")).toBe(
+			false,
+		);
+		expect(registry.satisfies("data.postgres/v1", "data.sqlite/v1")).toBe(
+			false,
+		);
 	});
 
 	it("treats convex as a document backend, not a SQL one", () => {
 		const registry = standard();
 		expect(registry.satisfies("data.convex/v1", "data.document/v1")).toBe(true);
-		expect(registry.satisfies("data.convex/v1", "data.postgres/v1")).toBe(false);
-		expect(registry.satisfies("data.convex/v1", "data.relational/v1")).toBe(false);
+		expect(registry.satisfies("data.convex/v1", "data.postgres/v1")).toBe(
+			false,
+		);
+		expect(registry.satisfies("data.convex/v1", "data.relational/v1")).toBe(
+			false,
+		);
 	});
 
 	it("chains valkey through redis-compatible to key-value", () => {
@@ -178,30 +206,44 @@ describe("refinement satisfaction", () => {
 
 	it("never lets a redis-compatible store imply queue or topic", () => {
 		const registry = standard();
-		expect(registry.satisfies("kv.redis-compatible/v1", "queue.at-least-once/v1")).toBe(
-			false,
-		);
-		expect(registry.satisfies("kv.redis-compatible/v1", "topic.pubsub/v1")).toBe(false);
+		expect(
+			registry.satisfies("kv.redis-compatible/v1", "queue.at-least-once/v1"),
+		).toBe(false);
+		expect(
+			registry.satisfies("kv.redis-compatible/v1", "topic.pubsub/v1"),
+		).toBe(false);
 	});
 
 	it("requires postgres alongside pgvector rather than implying it", () => {
 		const registry = standard();
 		const pgvector = registry.require("data.vector.pgvector/v1");
 		expect(pgvector.requires).toContain("data.postgres/v1");
-		expect(registry.satisfies("data.vector.pgvector/v1", "data.vector/v1")).toBe(true);
-		expect(registry.satisfies("data.vector.pgvector/v1", "data.postgres/v1")).toBe(false);
+		expect(
+			registry.satisfies("data.vector.pgvector/v1", "data.vector/v1"),
+		).toBe(true);
+		expect(
+			registry.satisfies("data.vector.pgvector/v1", "data.postgres/v1"),
+		).toBe(false);
 	});
 
 	it("inherits guarantee keys through refinement", () => {
 		const registry = standard();
 		expect(registry.guaranteeKeys("data.postgres/v1")).toEqual(
-			expect.arrayContaining(["transactions", "constraints", "postgresWireProtocol"]),
+			expect.arrayContaining([
+				"transactions",
+				"constraints",
+				"postgresWireProtocol",
+			]),
 		);
 	});
 
 	it("routes websocket through the realtime parent", () => {
 		const registry = standard();
-		expect(registry.satisfies("realtime.websocket/v1", "webhook.realtime/v1")).toBe(true);
-		expect(registry.satisfies("realtime.sse/v1", "realtime.websocket/v1")).toBe(false);
+		expect(
+			registry.satisfies("realtime.websocket/v1", "webhook.realtime/v1"),
+		).toBe(true);
+		expect(registry.satisfies("realtime.sse/v1", "realtime.websocket/v1")).toBe(
+			false,
+		);
 	});
 });

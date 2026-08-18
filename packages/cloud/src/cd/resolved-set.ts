@@ -6,8 +6,8 @@ import { createHash } from "node:crypto";
 
 import {
 	DEPLOYMENT_PLAN_SCHEMA,
-	hashDeploymentPlan,
 	type DeploymentPlan,
+	hashDeploymentPlan,
 	type ResourcePlan,
 } from "../plan-types.js";
 
@@ -121,7 +121,9 @@ export function providerForResource(
 	return planNode?.provider ?? "unknown";
 }
 
-export function listResources(set: ResolvedDeploymentSet): readonly ResourcePlan[] {
+export function listResources(
+	set: ResolvedDeploymentSet,
+): readonly ResourcePlan[] {
 	return set.plan.resources;
 }
 

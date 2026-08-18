@@ -6,12 +6,12 @@
 import { join } from "node:path";
 import { loadHarnessCatalog, seatingOrder } from "./agent-harness-catalog.js";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
-import { seatShellCommand, isStaleSeatCapture } from "./agent-seat.js";
+import { isStaleSeatCapture, seatShellCommand } from "./agent-seat.js";
+import { workspaceForAgent } from "./agent-work.js";
 import {
 	applySettingsToSeatCommand,
 	loadHarnessSettings,
 } from "./harness-settings.js";
-import { workspaceForAgent } from "./agent-work.js";
 import {
 	applyMux,
 	type MuxRunner,
@@ -388,10 +388,7 @@ export async function refreshInSessionPanes(
 	if (!window) return current;
 	let focusedPane = current.focusedPane ?? 0;
 	if (window.panes && window.panes.length > 0) {
-		focusedPane = Math.max(
-			0,
-			Math.min(focusedPane, window.panes.length - 1),
-		);
+		focusedPane = Math.max(0, Math.min(focusedPane, window.panes.length - 1));
 	} else {
 		focusedPane = 0;
 	}

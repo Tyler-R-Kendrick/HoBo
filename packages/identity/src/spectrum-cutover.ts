@@ -3,19 +3,21 @@
  * Suspend → drain → dual identity migration → export → import → fence → Resume.
  * Does NOT reimplement fencing — callers supply fence/export/import ports.
  */
+
+import {
+	createDualAdapterPair,
+	verifyDualAdapters,
+} from "./identity-adapter-port.js";
+import type { MappingSpec } from "./mapping-spec.js";
 import { IdentityMigrationService } from "./migration-aggregate.js";
 import {
 	decideIdentityMigration,
 	type MatchingMigrationInput,
 } from "./migration-matching.js";
-import type { MappingSpec } from "./mapping-spec.js";
-import {
-	createDualAdapterPair,
-	verifyDualAdapters,
-} from "./identity-adapter-port.js";
 
 // public-contract: spectrum cutover protocol schema.
-export const SPECTRUM_CUTOVER_SCHEMA = "hobo.spectrum-identity-cutover/v1" as const;
+export const SPECTRUM_CUTOVER_SCHEMA =
+	"hobo.spectrum-identity-cutover/v1" as const;
 
 export type TenantLifecyclePhase =
 	| "idle"

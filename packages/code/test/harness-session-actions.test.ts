@@ -8,13 +8,13 @@ import {
 } from "../src/harness-session-actions.js";
 import { harnessViewFromLivePanes } from "../src/harness-session-view.js";
 import type { InSessionPanes } from "../src/in-session-panes.js";
-import type { MuxRunner } from "../src/mux.js";
 import {
 	createInitialShellState,
 	reduceShellKey,
 	renderShellFrame,
 	slashItemForInput,
 } from "../src/interactive-shell.js";
+import type { MuxRunner } from "../src/mux.js";
 import { AGENTS_KEY_LEGEND } from "../src/tui-components.js";
 
 function plain(frame: string): string {
@@ -108,9 +108,9 @@ describe("harness-session-actions", () => {
 		const newWindow = runner.calls.find((row) => row[0] === "new-window");
 		expect(newWindow?.includes("codex-2")).toBe(true);
 		expect(result.note).toMatch(/codex-2/);
-		expect(result.livePanes?.windows.some((row) => row.name === "codex-2")).toBe(
-			true,
-		);
+		expect(
+			result.livePanes?.windows.some((row) => row.name === "codex-2"),
+		).toBe(true);
 	});
 
 	it("chat focus never steals [ ] or letter keys for harness ops", () => {

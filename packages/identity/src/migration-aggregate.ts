@@ -5,11 +5,11 @@
 import { randomUUID } from "node:crypto";
 
 import {
-	dualVerifyClaims,
-	mintDualAudienceGrant,
 	type AdapterClaims,
 	type DualAudienceGrant,
 	type DualVerifyResult,
+	dualVerifyClaims,
+	mintDualAudienceGrant,
 } from "./dual-adapter.js";
 import type { MappingSpec } from "./mapping-spec.js";
 import {
@@ -141,7 +141,12 @@ export class IdentityMigrationService {
 
 	/** Matching/policy starts continuous migration — no Bindle fields required. */
 	start(input: StartMigrationInput): IdentityMigrationRecord {
-		if (this.record && !["cutover", "compensated", "aborted", "failed", "idle"].includes(this.record.state)) {
+		if (
+			this.record &&
+			!["cutover", "compensated", "aborted", "failed", "idle"].includes(
+				this.record.state,
+			)
+		) {
 			throw Object.assign(
 				new Error(`migration already active: ${this.record.id}`),
 				{ code: "migration-already-active" },
@@ -181,7 +186,11 @@ export class IdentityMigrationService {
 	linkPrincipal(input: {
 		readonly sourceClaims: AdapterClaims;
 		readonly targetClaims: AdapterClaims;
-		readonly scope?: Readonly<{ port: string; resource: string; action: string }>;
+		readonly scope?: Readonly<{
+			port: string;
+			resource: string;
+			action: string;
+		}>;
 	}): {
 		verify: DualVerifyResult;
 		grant?: DualAudienceGrant;
@@ -219,7 +228,11 @@ export class IdentityMigrationService {
 				time: t,
 			});
 			this.append(check);
-			if (this.record && this.record.failedChecks >= 3 && this.record.state === "ramping") {
+			if (
+				this.record &&
+				this.record.failedChecks >= 3 &&
+				this.record.state === "ramping"
+			) {
 				this.abort({
 					reason: "dual-consistency oracle failed closed",
 					code: "dual-consistency-failed",
@@ -267,7 +280,7 @@ export class IdentityMigrationService {
 			migrationId: rec.id,
 			tenant: this.tenant,
 			ok: true,
-			checked: (this.record?.linkedPrincipals ?? 0),
+			checked: this.record?.linkedPrincipals ?? 0,
 			failed: this.record?.failedChecks ?? 0,
 			seq: this.nextSeq(),
 			time: t,
@@ -311,9 +324,12 @@ export class IdentityMigrationService {
 	markMigrated(principalRef: string): IdentityMigrationRecord {
 		const rec = this.requireActive();
 		if (!rec.links[principalRef]) {
-			throw Object.assign(new Error(`principal not dual-linked: ${principalRef}`), {
-				code: "principal-not-linked",
-			});
+			throw Object.assign(
+				new Error(`principal not dual-linked: ${principalRef}`),
+				{
+					code: "principal-not-linked",
+				},
+			);
 		}
 		const evt = createMigratedEvent({
 			migrationId: rec.id,
@@ -334,10 +350,9 @@ export class IdentityMigrationService {
 	cutover(): IdentityMigrationRecord {
 		const rec = this.requireActive();
 		if (rec.rampPercent < 100) {
-			throw Object.assign(
-				new Error("cutover requires rampPercent=100"),
-				{ code: "ramp-incomplete" },
-			);
+			throw Object.assign(new Error("cutover requires rampPercent=100"), {
+				code: "ramp-incomplete",
+			});
 		}
 		if (rec.failedChecks > 0) {
 			throw Object.assign(
@@ -511,7 +526,9 @@ export class IdentityMigrationService {
 			case "identity.MigrationProgressed": {
 				if (!this.record) break;
 				const ramp =
-					typeof d.rampPercent === "number" ? d.rampPercent : this.record.rampPercent;
+					typeof d.rampPercent === "number"
+						? d.rampPercent
+						: this.record.rampPercent;
 				this.record = Object.freeze({
 					...this.record,
 					rampPercent: ramp,

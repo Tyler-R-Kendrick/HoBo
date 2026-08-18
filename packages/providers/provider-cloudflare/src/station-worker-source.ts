@@ -30,7 +30,12 @@ export const ENVIRONMENT_STATION_WORKER_MODULE = `export default {
 
 /** Reject Bindle/app packaging strings in station Worker source. */
 export function assertStationWorkerHasNoAppCode(source: string): void {
-	const banned = [/\bwaspApp\b/u, /bindle\s*\(/iu, /try-site\/apps\//u, /opensaas/iu];
+	const banned = [
+		/\bwaspApp\b/u,
+		/bindle\s*\(/iu,
+		/try-site\/apps\//u,
+		/opensaas/iu,
+	];
 	for (const pattern of banned) {
 		if (pattern.test(source)) {
 			throw new Error(

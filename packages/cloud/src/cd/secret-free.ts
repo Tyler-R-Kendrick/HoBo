@@ -67,7 +67,10 @@ export function toSecretFreeOutputs(
 				: typeof raw === "string"
 					? raw
 					: JSON.stringify(raw);
-		if (SECRET_KEY_PATTERN.test(key) || PLAINTEXT_SECRET_PATTERN.test(asString)) {
+		if (
+			SECRET_KEY_PATTERN.test(key) ||
+			PLAINTEXT_SECRET_PATTERN.test(asString)
+		) {
 			const ref = makeSecretRef(key, asString);
 			out[key] = Object.freeze({ ref, kind: "secretRef" as const });
 			refs.push(ref);
@@ -108,9 +111,7 @@ export function createSecretFreeDiff(input: {
 			...(c.before !== undefined
 				? { before: scrubValue(c.path, c.before) }
 				: {}),
-			...(c.after !== undefined
-				? { after: scrubValue(c.path, c.after) }
-				: {}),
+			...(c.after !== undefined ? { after: scrubValue(c.path, c.after) } : {}),
 		});
 	});
 	const body = {
@@ -150,10 +151,7 @@ export function createSecretFreeStatus(input: {
  * Assert a projection/event payload contains no plaintext secrets.
  * Throws if a known secret pattern is found in string leaves.
  */
-export function assertSecretFree(
-	value: unknown,
-	path = "$",
-): void {
+export function assertSecretFree(value: unknown, path = "$"): void {
 	if (typeof value === "string") {
 		if (PLAINTEXT_SECRET_PATTERN.test(value)) {
 			throw Object.assign(
@@ -196,7 +194,10 @@ export function assertSecretFree(
 function scrubValue(path: string, value: unknown): string | SecretRef {
 	const asString =
 		typeof value === "string" ? value : JSON.stringify(value ?? null);
-	if (SECRET_KEY_PATTERN.test(path) || PLAINTEXT_SECRET_PATTERN.test(asString)) {
+	if (
+		SECRET_KEY_PATTERN.test(path) ||
+		PLAINTEXT_SECRET_PATTERN.test(asString)
+	) {
 		return Object.freeze({
 			ref: makeSecretRef(path, asString),
 			kind: "secretRef" as const,

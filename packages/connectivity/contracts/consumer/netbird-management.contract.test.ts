@@ -3,9 +3,8 @@ import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
 import { parseTenantId } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
-import { createNetbirdApiClient } from "../../src/overlay/netbird-api.js";
 import { createNetbirdOverlay } from "../../src/overlay/netbird.js";
+import { createNetbirdApiClient } from "../../src/overlay/netbird-api.js";
 import { createPactFetch } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(

@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { bindle } from "@hobo/bindles";
+import { describe, expect, it } from "vitest";
 import {
 	convexApp,
 	convexRootFromAnnotations,

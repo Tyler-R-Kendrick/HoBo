@@ -14,16 +14,16 @@
  *  - the human can own the infrastructure while the agent stays revoked.
  */
 import {
+	assertNoSecrets,
 	type ClaimCommand,
 	type ClaimEvent,
-	assertNoSecrets,
 	claimAtomicityOf,
 	outstandingObligations,
 } from "./events.js";
 import {
-	ClaimError,
 	type ClaimBundle,
 	type ClaimBundleStatus,
+	ClaimError,
 	type ClaimItem,
 	type ClaimItemStatus,
 	type GuestDeploymentState,
@@ -78,15 +78,22 @@ function replaceItem(
 		return update(item);
 	});
 	if (!found) {
-		throw new ClaimError("CLAIM_REPAIR_REQUIRED", `unknown claim item ${itemId}`);
+		throw new ClaimError(
+			"CLAIM_REPAIR_REQUIRED",
+			`unknown claim item ${itemId}`,
+		);
 	}
 	return { ...bundle, items };
 }
 
 /** Earliest deadline is derived, never stored independently. */
-function deriveEarliestDeadline(items: readonly ClaimItem[]): Instant | undefined {
+function deriveEarliestDeadline(
+	items: readonly ClaimItem[],
+): Instant | undefined {
 	const deadlines = items
-		.filter((item) => item.status !== "completed" && item.deadline !== undefined)
+		.filter(
+			(item) => item.status !== "completed" && item.deadline !== undefined,
+		)
 		.map((item) => item.deadline as Instant);
 	return deadlines.length === 0 ? undefined : Math.min(...deadlines);
 }
@@ -94,7 +101,8 @@ function deriveEarliestDeadline(items: readonly ClaimItem[]): Instant | undefine
 function deriveBundleStatus(bundle: ClaimBundle): ClaimBundleStatus {
 	const statuses = bundle.items.map((item) => item.status);
 	if (statuses.every((status) => status === "completed")) return "complete";
-	if (statuses.some((status) => status === "compensating")) return "compensating";
+	if (statuses.some((status) => status === "compensating"))
+		return "compensating";
 	if (statuses.some((status) => status === "failed")) return "failed";
 	if (statuses.some((status) => status === "repairable-failure")) {
 		return "claimed-needs-remediation";
@@ -105,7 +113,8 @@ function deriveBundleStatus(bundle: ClaimBundle): ClaimBundleStatus {
 			? "partially-claimed"
 			: "expired";
 	}
-	if (statuses.some((status) => status === "completed")) return "partially-claimed";
+	if (statuses.some((status) => status === "completed"))
+		return "partially-claimed";
 	if (statuses.some((status) => status !== "pending")) return "in-progress";
 	return "pending";
 }
@@ -116,14 +125,21 @@ function deriveLifecycle(
 	agentAuthorized: boolean,
 ): GuestDeploymentState {
 	if (bundle === undefined) return previous;
-	if (previous === "Expired" || previous === "Destroyed" || previous === "Compensating") {
+	if (
+		previous === "Expired" ||
+		previous === "Destroyed" ||
+		previous === "Compensating"
+	) {
 		return previous;
 	}
 	const status = bundle.status;
 	if (status === "complete") {
 		return agentAuthorized ? "OwnerAndAgentControlled" : "OwnerControlled";
 	}
-	if (status === "claimed-needs-remediation" || status === "partially-claimed") {
+	if (
+		status === "claimed-needs-remediation" ||
+		status === "partially-claimed"
+	) {
 		return "RepairableFailure";
 	}
 	if (status === "compensating") return "Compensating";
@@ -162,7 +178,11 @@ function refreshBundle(
 	return {
 		...state,
 		bundle: finalBundle,
-		lifecycle: deriveLifecycle(state.lifecycle, finalBundle, state.agentAuthorized),
+		lifecycle: deriveLifecycle(
+			state.lifecycle,
+			finalBundle,
+			state.agentAuthorized,
+		),
 	};
 }
 
@@ -232,7 +252,9 @@ export function reduce(
 				...(command.lease.expiresAt !== undefined
 					? { expiresAt: command.lease.expiresAt }
 					: {}),
-				...(command.lease.claimBy !== undefined ? { claimBy: command.lease.claimBy } : {}),
+				...(command.lease.claimBy !== undefined
+					? { claimBy: command.lease.claimBy }
+					: {}),
 			});
 			break;
 		}
@@ -247,7 +269,10 @@ export function reduce(
 			next = {
 				...state,
 				lifecycle: "Provisioning",
-				appliedIdempotencyKeys: [...state.appliedIdempotencyKeys, command.idempotencyKey],
+				appliedIdempotencyKeys: [
+					...state.appliedIdempotencyKeys,
+					command.idempotencyKey,
+				],
 			};
 			emit(events, {
 				type: "GuestDeploymentStarted",
@@ -260,7 +285,10 @@ export function reduce(
 			next = {
 				...state,
 				lifecycle: "UnclaimedActive",
-				appliedIdempotencyKeys: [...state.appliedIdempotencyKeys, command.idempotencyKey],
+				appliedIdempotencyKeys: [
+					...state.appliedIdempotencyKeys,
+					command.idempotencyKey,
+				],
 				provisionedSubjects: [...state.provisionedSubjects, command.subjectRef],
 			};
 			emit(events, {
@@ -281,14 +309,18 @@ export function reduce(
 			const updated = replaceItem(bundle, command.itemId, (item) => ({
 				...item,
 				oneTimeActionRef: command.oneTimeActionRef,
-				...(command.deadline !== undefined ? { deadline: command.deadline } : {}),
+				...(command.deadline !== undefined
+					? { deadline: command.deadline }
+					: {}),
 			}));
 			next = refreshBundle(state, updated);
 			emit(events, {
 				type: "ClaimActionSecured",
 				itemId: command.itemId,
 				oneTimeActionRef: command.oneTimeActionRef,
-				...(command.deadline !== undefined ? { deadline: command.deadline } : {}),
+				...(command.deadline !== undefined
+					? { deadline: command.deadline }
+					: {}),
 			});
 			break;
 		}
@@ -363,7 +395,10 @@ export function reduce(
 				evidenceRef: command.evidenceRef,
 			});
 			const item = updated.items.find((entry) => entry.id === command.itemId);
-			if (item !== undefined && outstandingObligations(item).includes("rotate-binding")) {
+			if (
+				item !== undefined &&
+				outstandingObligations(item).includes("rotate-binding")
+			) {
 				emit(events, {
 					type: "CapabilityBindingRotationRequired",
 					itemId: command.itemId,
@@ -405,7 +440,10 @@ export function reduce(
 			);
 			// Declining is a valid terminal outcome: the human owns the work and
 			// the agent stays revoked.
-			next = { ...refreshBundle(state, updated), agentAuthorized: command.granted };
+			next = {
+				...refreshBundle(state, updated),
+				agentAuthorized: command.granted,
+			};
 			next = refreshBundle(next, updated);
 			emit(events, {
 				type: command.granted
@@ -437,7 +475,10 @@ export function reduce(
 			const bundle = requireBundle(state);
 			const item = bundle.items.find((entry) => entry.id === command.itemId);
 			if (item === undefined) {
-				throw new ClaimError("CLAIM_REPAIR_REQUIRED", `unknown claim item ${command.itemId}`);
+				throw new ClaimError(
+					"CLAIM_REPAIR_REQUIRED",
+					`unknown claim item ${command.itemId}`,
+				);
 			}
 			// Cutover before destination verification would strand the source.
 			if (item.status !== "verified" && item.status !== "needs-rotation") {
@@ -461,7 +502,10 @@ export function reduce(
 			const bundle = requireBundle(state);
 			const item = bundle.items.find((entry) => entry.id === command.itemId);
 			if (item === undefined) {
-				throw new ClaimError("CLAIM_REPAIR_REQUIRED", `unknown claim item ${command.itemId}`);
+				throw new ClaimError(
+					"CLAIM_REPAIR_REQUIRED",
+					`unknown claim item ${command.itemId}`,
+				);
 			}
 			if (item.status === "completed") break;
 			if (item.status !== "verified" && item.status !== "needs-rotation") {
@@ -484,7 +528,11 @@ export function reduce(
 				status: "completed" satisfies ClaimItemStatus,
 			}));
 			next = refreshBundle(state, updated);
-			emit(events, { type: "ClaimItemCompleted", itemId: command.itemId, at: command.at });
+			emit(events, {
+				type: "ClaimItemCompleted",
+				itemId: command.itemId,
+				at: command.at,
+			});
 			break;
 		}
 		case "CompleteClaimBundle": {
@@ -505,7 +553,10 @@ export function reduce(
 			break;
 		}
 		case "ExpireGuestLease": {
-			if (state.lifecycle === "OwnerControlled" || state.lifecycle === "OwnerAndAgentControlled") {
+			if (
+				state.lifecycle === "OwnerControlled" ||
+				state.lifecycle === "OwnerAndAgentControlled"
+			) {
 				// Expiring a lease must not disturb work the human already owns.
 				break;
 			}
@@ -513,9 +564,15 @@ export function reduce(
 			next = {
 				...state,
 				lifecycle: "Expired",
-				...(lease !== undefined ? { lease: { ...lease, status: "expired" as const } } : {}),
+				...(lease !== undefined
+					? { lease: { ...lease, status: "expired" as const } }
+					: {}),
 			};
-			emit(events, { type: "GuestLeaseExpired", leaseId: command.leaseId, at: command.at });
+			emit(events, {
+				type: "GuestLeaseExpired",
+				leaseId: command.leaseId,
+				at: command.at,
+			});
 			break;
 		}
 		case "CompensateFailedClaim": {
@@ -568,7 +625,9 @@ function markObligationDone(
 	if (!item.postClaimActions.includes(action)) return item;
 	if (item.completedPostClaimActions.includes(action)) return item;
 	const completed = [...item.completedPostClaimActions, action];
-	const stillPending = item.postClaimActions.filter((entry) => !completed.includes(entry));
+	const stillPending = item.postClaimActions.filter(
+		(entry) => !completed.includes(entry),
+	);
 	return {
 		...item,
 		completedPostClaimActions: completed,

@@ -222,7 +222,9 @@ export function tryParseSecretRef(input: string): ParsedSecretRef | undefined {
  * A reference is not itself a secret, but its full path can disclose tenant
  * layout, so everything past the first path segment is elided.
  */
-export function redactSecretRef(ref: ParsedSecretRef | SecretRef | string): string {
+export function redactSecretRef(
+	ref: ParsedSecretRef | SecretRef | string,
+): string {
 	const parsed = typeof ref === "string" ? tryParseSecretRef(ref) : ref;
 	if (parsed === undefined) return "<redacted-secret-ref>";
 	const head = parsed.path[0] ?? "";

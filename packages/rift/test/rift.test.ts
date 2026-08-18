@@ -17,16 +17,16 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+import { CowTier as CowTierPb } from "../src/_generated/rift_workspace_pb.js";
 import { detectCapability, probeOverlayfs } from "../src/capability.js";
 import { projectWorkspaces, readEvents } from "../src/journal.js";
 import { parseWorkspaceName } from "../src/names.js";
-import { CowTier as CowTierPb } from "../src/_generated/rift_workspace_pb.js";
 import {
 	capabilityToWire,
 	tierFromWire,
@@ -36,17 +36,17 @@ import {
 import {
 	createWorkspace,
 	deriveContract,
-	listDebris,
-	pruneDebris,
-	quoteVector,
-	rebuildRegistry,
 	entriesToClone,
 	execCommand,
 	initRoot,
-	readRegistry,
+	listDebris,
+	pruneDebris,
+	quoteVector,
 	REGENERABLE,
-	removeWorkspace,
 	RIFT_DIR,
+	readRegistry,
+	rebuildRegistry,
+	removeWorkspace,
 	shellQuote,
 } from "../src/workspace.js";
 
@@ -303,7 +303,9 @@ describe.runIf(probeOverlayfs())("overlayfs isolation", () => {
 		const root = source();
 		const made = createWorkspace({ root, name: "agent" });
 		expect(made.workspace!.tier).toBe("overlayfs");
-		execSync(`sh -c ${JSON.stringify(execCommand(made.workspace!, "echo EDIT >> src/app.ts"))}`);
+		execSync(
+			`sh -c ${JSON.stringify(execCommand(made.workspace!, "echo EDIT >> src/app.ts"))}`,
+		);
 		// An append is exactly what hardlinks leak; the source must be intact.
 		expect(readFileSync(join(root, "src", "app.ts"), "utf8")).toBe(
 			"original content\n",
@@ -387,7 +389,9 @@ describe("registry is a projection of the journal", () => {
 		// The crash shape: a half-written snapshot. It must cost time, not data.
 		writeFileSync(join(root, RIFT_DIR, "registry.json"), '{"root":"/x","works');
 		expect(readRegistry(root).workspaces.map((w) => w.name)).toEqual(["alive"]);
-		expect(rebuildRegistry(root).workspaces.map((w) => w.name)).toEqual(["alive"]);
+		expect(rebuildRegistry(root).workspaces.map((w) => w.name)).toEqual([
+			"alive",
+		]);
 		// And the snapshot is valid again afterwards.
 		expect(
 			JSON.parse(readFileSync(join(root, RIFT_DIR, "registry.json"), "utf8"))
@@ -399,10 +403,13 @@ describe("registry is a projection of the journal", () => {
 		const root = source();
 		createWorkspace({ root, name: "kept" });
 		const journal = join(root, RIFT_DIR, "events.jsonl");
-		writeFileSync(journal, `${readFileSync(journal, "utf8")}{"type":"Workspace`);
-		expect(projectWorkspaces(readEvents(join(root, RIFT_DIR))).map((w) => w.name)).toEqual([
-			"kept",
-		]);
+		writeFileSync(
+			journal,
+			`${readFileSync(journal, "utf8")}{"type":"Workspace`,
+		);
+		expect(
+			projectWorkspaces(readEvents(join(root, RIFT_DIR))).map((w) => w.name),
+		).toEqual(["kept"]);
 	});
 });
 
@@ -462,10 +469,11 @@ describe("crash windows", () => {
 		const stale = readFileSync(join(root, RIFT_DIR, "registry.json"), "utf8");
 		createWorkspace({ root, name: "beta" });
 		writeFileSync(join(root, RIFT_DIR, "registry.json"), stale);
-		expect(readRegistry(root).workspaces.map((w) => w.name).sort()).toEqual([
-			"alpha",
-			"beta",
-		]);
+		expect(
+			readRegistry(root)
+				.workspaces.map((w) => w.name)
+				.sort(),
+		).toEqual(["alpha", "beta"]);
 	});
 
 	it("clears debris from a creation that never finished", () => {
@@ -761,10 +769,24 @@ describe("exec reassembles its argv without losing quoting", () => {
 	// shellQuote itself would pass with the bug restored.
 	const bin = join(here, "..", "dist", "bin", "hobo-rift.js");
 
-	function printCmd(root: string, name: string, argv: readonly string[]): string {
+	function printCmd(
+		root: string,
+		name: string,
+		argv: readonly string[],
+	): string {
 		const r = spawnSync(
 			process.execPath,
-			[bin, "exec", "--root", root, "--name", name, "--print-cmd", "--", ...argv],
+			[
+				bin,
+				"exec",
+				"--root",
+				root,
+				"--name",
+				name,
+				"--print-cmd",
+				"--",
+				...argv,
+			],
 			{ encoding: "utf8" },
 		);
 		return `${r.stdout}${r.stderr}`;
@@ -773,7 +795,11 @@ describe("exec reassembles its argv without losing quoting", () => {
 	it("keeps a path containing a space as one argument", () => {
 		const root = source();
 		createWorkspace({ root, name: "a" });
-		const out = printCmd(root, "a", ["cmd", "--workspace", "/ws/my repo/merged"]);
+		const out = printCmd(root, "a", [
+			"cmd",
+			"--workspace",
+			"/ws/my repo/merged",
+		]);
 		expect(out).toContain("'/ws/my repo/merged'");
 	});
 
@@ -782,7 +808,11 @@ describe("exec reassembles its argv without losing quoting", () => {
 		// namespace — before the workspace command ran at all.
 		const root = source();
 		createWorkspace({ root, name: "b" });
-		const out = printCmd(root, "b", ["cmd", "--workspace", "/tmp/pj;touch $SP/x"]);
+		const out = printCmd(root, "b", [
+			"cmd",
+			"--workspace",
+			"/tmp/pj;touch $SP/x",
+		]);
 		expect(out).toContain("'/tmp/pj;touch $SP/x'");
 	});
 
@@ -794,7 +824,17 @@ describe("exec reassembles its argv without losing quoting", () => {
 		createWorkspace({ root, name: "c" });
 		const r = spawnSync(
 			process.execPath,
-			[bin, "exec", "--root", root, "--name", "c", "--", "cat", "my marker.txt"],
+			[
+				bin,
+				"exec",
+				"--root",
+				root,
+				"--name",
+				"c",
+				"--",
+				"cat",
+				"my marker.txt",
+			],
 			{ encoding: "utf8" },
 		);
 		expect(r.stdout).toContain("vector-ok");
@@ -805,7 +845,16 @@ describe("exec reassembles its argv without losing quoting", () => {
 		createWorkspace({ root, name: "d" });
 		const r = spawnSync(
 			process.execPath,
-			[bin, "exec", "--root", root, "--name", "d", "--shell", "echo one; echo two"],
+			[
+				bin,
+				"exec",
+				"--root",
+				root,
+				"--name",
+				"d",
+				"--shell",
+				"echo one; echo two",
+			],
 			{ encoding: "utf8" },
 		);
 		expect(r.stdout).toContain("one");
@@ -815,9 +864,13 @@ describe("exec reassembles its argv without losing quoting", () => {
 	it("refuses when given neither form", () => {
 		const root = source();
 		createWorkspace({ root, name: "e" });
-		const r = spawnSync(process.execPath, [bin, "exec", "--root", root, "--name", "e"], {
-			encoding: "utf8",
-		});
+		const r = spawnSync(
+			process.execPath,
+			[bin, "exec", "--root", root, "--name", "e"],
+			{
+				encoding: "utf8",
+			},
+		);
 		expect(r.status).toBe(2);
 		expect(r.stderr).toMatch(/--shell/u);
 	});
@@ -843,7 +896,7 @@ describe("the namespace announces itself", () => {
 		);
 		// The outer sh -c wrapping re-escapes the quotes, so assert on the
 		// variable and its value rather than on a literal quoted form.
-		expect(cmd).toContain('HOBO_RIFT_WORKSPACE=');
+		expect(cmd).toContain("HOBO_RIFT_WORKSPACE=");
 		expect(cmd).toMatch(/HOBO_RIFT_WORKSPACE=\S*claude/u);
 	});
 
@@ -883,7 +936,9 @@ describe("the advertised contract is measured, not asserted", () => {
 		// Both flags trace to these two observations and nothing else.
 		expect(deriveContract()).toEqual({
 			execArgvVector: quoteVector(["a b"]) === "'a b'",
-			namespaceMarker: execCommand(overlay, "x").includes("HOBO_RIFT_WORKSPACE="),
+			namespaceMarker: execCommand(overlay, "x").includes(
+				"HOBO_RIFT_WORKSPACE=",
+			),
 		});
 	});
 

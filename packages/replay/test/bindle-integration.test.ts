@@ -4,9 +4,9 @@ import {
 	applySessionReplayToEntrypoints,
 	deriveBindleSessionReplayPlan,
 	isResourceReplayable,
+	SESSION_REPLAY_PATH_PREFIX,
 	sessionReplayAnnotation,
 	wrapBindleWebHandler,
-	SESSION_REPLAY_PATH_PREFIX,
 } from "../src/bindle-integration.js";
 import { injectSessionReplayBootstrap } from "../src/browser-bootstrap.js";
 
@@ -50,9 +50,7 @@ describe("bindle session-replay integration", () => {
 		// service is an App Kit even without annotation (default-on by kind)
 		expect(isResourceReplayable(sampleDefinition.resources.worker)).toBe(true);
 		expect(isResourceReplayable(sampleDefinition.resources.kv)).toBe(false);
-		expect(isResourceReplayable(sampleDefinition.resources.optOut)).toBe(
-			false,
-		);
+		expect(isResourceReplayable(sampleDefinition.resources.optOut)).toBe(false);
 	});
 
 	it("derive plan enables local default when any App Kit exists", () => {
@@ -84,9 +82,7 @@ describe("bindle session-replay integration", () => {
 			resourceName: "storefront",
 			enabled: true,
 		});
-		const page = await surface.handler(
-			new Request("http://127.0.0.1:4000/"),
-		);
+		const page = await surface.handler(new Request("http://127.0.0.1:4000/"));
 		const html = await page.text();
 		expect(html).toContain('data-hobo-replay="1"');
 		expect(html).toContain('pagehide",function(){flush();stopped=true;}');

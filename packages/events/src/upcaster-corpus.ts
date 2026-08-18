@@ -8,9 +8,9 @@
  * can-deploy).
  */
 import {
+	type CorpusBaseline,
 	createCorpusBaseline,
 	createCorpusEntry,
-	type CorpusBaseline,
 	type EventEvolutionContract,
 	eventSchema,
 	stringField,

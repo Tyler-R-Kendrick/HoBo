@@ -15,14 +15,16 @@ import { createLocalRuntimeHost } from "@hobo/runtime-local";
 import { createOciRuntimeHost } from "@hobo/runtime-oci";
 import {
 	createWasmRuntimeHost,
-	preparePrivateWasmComponent,
 	ensureIsolatedWasmToolchain,
+	preparePrivateWasmComponent,
 } from "@hobo/runtime-wasm";
 
 import type { ComponentHostKind } from "./bare-metal-yard.js";
 import { normalizeComponentHostKind } from "./bare-metal-yard.js";
 
-export function toRuntimeHostKind(kind: ComponentHostKind): HoboRuntimeHostKind {
+export function toRuntimeHostKind(
+	kind: ComponentHostKind,
+): HoboRuntimeHostKind {
 	return kind;
 }
 
@@ -51,7 +53,8 @@ export async function ensureAllRuntimeHosts(options: {
 	readonly emitProgress?: (message: string) => void;
 	readonly kinds?: readonly ComponentHostKind[];
 }): Promise<readonly RuntimeEnsureResult[]> {
-	const kinds = options.kinds ?? (["local", "wasm", "oci", "cloud-native"] as const);
+	const kinds =
+		options.kinds ?? (["local", "wasm", "oci", "cloud-native"] as const);
 	const results: RuntimeEnsureResult[] = [];
 	for (const kind of kinds) {
 		const host = getRuntimeHost(kind);
@@ -93,7 +96,9 @@ export async function buildPrivateComponentSpecs(options: {
 			resourceName: entry.name,
 			projectDir: options.projectDir,
 			handler: entry.handler,
-			...(entry.modulePath !== undefined ? { modulePath: entry.modulePath } : {}),
+			...(entry.modulePath !== undefined
+				? { modulePath: entry.modulePath }
+				: {}),
 		}));
 	}
 
@@ -108,7 +113,9 @@ export async function buildPrivateComponentSpecs(options: {
 			projectDir: options.projectDir,
 			resourceName: entry.name,
 			hoboHome: options.hoboHome,
-			...(entry.modulePath !== undefined ? { modulePath: entry.modulePath } : {}),
+			...(entry.modulePath !== undefined
+				? { modulePath: entry.modulePath }
+				: {}),
 			emitProgress: emit,
 		});
 		if (kind === "wasm") {
@@ -162,7 +169,9 @@ export async function servePrivateOnHost(options: {
 		hoboHome: options.hoboHome,
 		projectDir: options.projectDir,
 		privateComponents,
-		...(options.bindleEnv !== undefined ? { bindleEnv: options.bindleEnv } : {}),
+		...(options.bindleEnv !== undefined
+			? { bindleEnv: options.bindleEnv }
+			: {}),
 		...(options.emitProgress !== undefined
 			? { emitProgress: options.emitProgress }
 			: {}),

@@ -6,11 +6,11 @@ import {
 	createHash,
 	createPrivateKey,
 	createPublicKey,
-	generateKeyPairSync,
-	randomBytes,
 	sign as cryptoSign,
 	verify as cryptoVerify,
+	generateKeyPairSync,
 	type KeyObject,
+	randomBytes,
 } from "node:crypto";
 
 export interface DpopKeyPair {
@@ -84,10 +84,7 @@ export function generateDpopKeyPair(kid?: string): DpopKeyPair {
 	}
 	const derivedKid =
 		kid ??
-		createHash("sha256")
-			.update(`${jwk.x}.${jwk.y}`)
-			.digest("hex")
-			.slice(0, 16);
+		createHash("sha256").update(`${jwk.x}.${jwk.y}`).digest("hex").slice(0, 16);
 	return {
 		privateKey,
 		publicKey,
@@ -134,7 +131,9 @@ export function importDpopKeyPair(input: {
 	};
 }
 
-export function exportDpopPrivateJwk(keyPair: DpopKeyPair): Record<string, unknown> {
+export function exportDpopPrivateJwk(
+	keyPair: DpopKeyPair,
+): Record<string, unknown> {
 	const jwk = keyPair.privateKey.export({ format: "jwk" }) as Record<
 		string,
 		unknown

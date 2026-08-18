@@ -147,7 +147,9 @@ export function signAwsRequest(input: SignAwsRequestInput): SignedAwsRequest {
 }
 
 /** Default Route53 signer using built-in SigV4. */
-export function createRoute53SigV4Signer(credentials: AwsCredentials): (input: {
+export function createRoute53SigV4Signer(
+	credentials: AwsCredentials,
+): (input: {
 	readonly method: string;
 	readonly url: string;
 	readonly headers: Record<string, string>;

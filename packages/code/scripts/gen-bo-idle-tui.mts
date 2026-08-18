@@ -4,7 +4,7 @@
  *
  *   node --import tsx packages/code/scripts/gen-bo-idle-tui.mts
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {

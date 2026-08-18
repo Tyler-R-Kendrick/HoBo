@@ -27,10 +27,7 @@ import {
 	parseEventEnvelope,
 	SnapshotAheadError,
 } from "@hobo/core";
-import {
-	createNodeSqliteDriver,
-	SqliteJournal,
-} from "@hobo/storage-sqlite";
+import { createNodeSqliteDriver, SqliteJournal } from "@hobo/storage-sqlite";
 
 import {
 	type ParsedAppendContext,
@@ -389,5 +386,6 @@ export async function collectStream(
 
 // keep parse imports used for side-effect validation paths
 export type { ParsedAppendContext, ParsedEventInput };
+
 void parseEventEnvelope;
 void join;

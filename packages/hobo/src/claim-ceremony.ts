@@ -1,6 +1,11 @@
+import {
+	type ClaimBundle,
+	ClaimError,
+	type ClaimItem,
+	outstandingObligations,
+} from "@hobo/claims";
 import type { CliContext, CommandResult, YardRuntime } from "@hobo/cli";
 import { deploymentIdFor } from "@hobo/cli";
-import { ClaimError, outstandingObligations, type ClaimBundle, type ClaimItem } from "@hobo/claims";
 
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
@@ -70,7 +75,11 @@ export async function runClaimCeremony(
 	// The fence is the lease's, once a lease exists. Before then a rebuild
 	// establishes it, and a mismatch is what stops a stale worker from acting.
 	const bootstrapFence = `${deploymentRef}:0`;
-	let snapshot = await rebuildClaimState(runtime, deploymentRef, bootstrapFence);
+	let snapshot = await rebuildClaimState(
+		runtime,
+		deploymentRef,
+		bootstrapFence,
+	);
 	if (snapshot.state.bundle === undefined && input.deps.bundle !== undefined) {
 		const attached = await applyClaimCommand(runtime, snapshot, {
 			kind: "AttachClaimBundle",
@@ -113,14 +122,18 @@ export async function runClaimCeremony(
 			status: "repair_required",
 			code: "HOBO_CLAIM_BUNDLE_MISSING",
 			message: `hobo claim ${input.subcommand}: durable claim commands exist, but the claim bundle is missing.`,
-			remediation: ["Recreate the claim bundle from the deployment offer before continuing."],
+			remediation: [
+				"Recreate the claim bundle from the deployment offer before continuing.",
+			],
 			data: { command: "claim", subcommand: input.subcommand, deploymentRef },
 		};
 	}
 
 	if (input.subcommand === "status") {
 		const view = claimStatusView(snapshot.state);
-		const outstanding = view.items.filter((item) => item.status !== "completed");
+		const outstanding = view.items.filter(
+			(item) => item.status !== "completed",
+		);
 		return {
 			ok: true,
 			status: outstanding.length === 0 ? "complete" : "outstanding",
@@ -137,7 +150,8 @@ export async function runClaimCeremony(
 		};
 	}
 
-	if (itemId === undefined) throw new ClaimError("CLAIM_REPAIR_REQUIRED", "claim item id missing");
+	if (itemId === undefined)
+		throw new ClaimError("CLAIM_REPAIR_REQUIRED", "claim item id missing");
 
 	try {
 		const item = requireItem(snapshot.state, itemId);
@@ -152,8 +166,15 @@ export async function runClaimCeremony(
 					remediation:
 						item.status === "completed"
 							? ["This item is already complete."]
-							: ["Run `hobo claim status` to see what this item is waiting on."],
-					data: { command: "claim", subcommand: "open", itemId, status: item.status },
+							: [
+									"Run `hobo claim status` to see what this item is waiting on.",
+								],
+					data: {
+						command: "claim",
+						subcommand: "open",
+						itemId,
+						status: item.status,
+					},
 				};
 			}
 			if (item.deadline !== undefined && item.deadline <= nowMs) {
@@ -215,7 +236,9 @@ export async function runClaimCeremony(
 				status: "unavailable",
 				code: "HOBO_CLAIM_VERIFIER_UNAVAILABLE",
 				message: `hobo claim finalize: no independent provider verifier is configured for ${itemId}.`,
-				remediation: ["Configure the provider ownership verifier, then retry finalize."],
+				remediation: [
+					"Configure the provider ownership verifier, then retry finalize.",
+				],
 				data: { command: "claim", subcommand: "finalize", itemId },
 			};
 		}
@@ -269,7 +292,9 @@ export async function runClaimCeremony(
 				status: "claim_failed",
 				code: error.code,
 				message: `hobo claim ${input.subcommand}: ${error.message}`,
-				remediation: ["Run `hobo claim status` to see the current bundle state."],
+				remediation: [
+					"Run `hobo claim status` to see the current bundle state.",
+				],
 				data: { command: "claim", subcommand: input.subcommand, itemId },
 			};
 		}

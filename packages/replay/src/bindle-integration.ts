@@ -7,8 +7,8 @@
  * `/__hobo/replay/*` serves ingest.
  */
 import {
-	injectSessionReplayBootstrap,
 	type BrowserBootstrapConfig,
+	injectSessionReplayBootstrap,
 } from "./browser-bootstrap.js";
 import { createReplayEvent, REPLAY_EVENTS } from "./events.js";
 import {
@@ -133,7 +133,9 @@ export function readSessionReplayAnnotation(
 	return undefined;
 }
 
-export function isReplayableAppKitKind(kind: string): kind is ReplayableAppKitKind {
+export function isReplayableAppKitKind(
+	kind: string,
+): kind is ReplayableAppKitKind {
 	return (REPLAYABLE_APP_KIT_KINDS as readonly string[]).includes(kind);
 }
 
@@ -191,9 +193,7 @@ export function deriveBindleSessionReplayPlan(
 	});
 }
 
-export type FetchHandler = (
-	request: Request,
-) => Response | Promise<Response>;
+export type FetchHandler = (request: Request) => Response | Promise<Response>;
 
 export type WrapBindleWebHandlerOptions = Readonly<{
 	bindleName: string;
@@ -230,9 +230,7 @@ export function wrapBindleWebHandler(
 	const policy = evaluateRecordingPolicy({
 		env,
 		isolationClass: options.isolationClass ?? env.HOBO_ENV ?? "local-dev",
-		...(options.enabled !== undefined
-			? { flagEnabled: options.enabled }
-			: {}),
+		...(options.enabled !== undefined ? { flagEnabled: options.enabled } : {}),
 	});
 	const enabled = options.enabled ?? policy.enabled;
 	const store = options.store ?? createMemoryDualFixtures();
@@ -242,7 +240,10 @@ export function wrapBindleWebHandler(
 
 	const handler: FetchHandler = async (request) => {
 		const url = new URL(request.url);
-		if (url.pathname === pathPrefix || url.pathname.startsWith(`${pathPrefix}/`)) {
+		if (
+			url.pathname === pathPrefix ||
+			url.pathname.startsWith(`${pathPrefix}/`)
+		) {
 			return handleReplayControlPlane(request, url, {
 				store,
 				stationId,
@@ -313,10 +314,7 @@ export function applySessionReplayToEntrypoints<
 	readonly plan: BindleSessionReplayPlan;
 	readonly store: DualFixtureStore;
 } {
-	const plan = deriveBindleSessionReplayPlan(
-		definition,
-		options.env ?? {},
-	);
+	const plan = deriveBindleSessionReplayPlan(definition, options.env ?? {});
 	const store = options.store ?? createMemoryDualFixtures();
 	const replayable = new Set(plan.resourceNames);
 	const wrapped = entrypoints.map((entry) => {

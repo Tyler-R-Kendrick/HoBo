@@ -424,7 +424,9 @@ main {
 	position: absolute;
 	top: 18px;
 	right: 0;
-	font: 700 0.75rem/1 system-ui, sans-serif;
+	font:
+		700 0.75rem / 1 system-ui,
+		sans-serif;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	color: var(--ink);

@@ -1,4 +1,6 @@
-import path from "node:path";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path, { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	checkPactInventory,
@@ -6,15 +8,11 @@ import {
 	loadPactDirectory,
 } from "@hobo/contract-harness";
 import { describe, expect, it } from "vitest";
-
 import {
 	createKubectlKubernetesClient,
 	createOciRuntimeHost,
 } from "../../src/index.js";
 import { packWasmAsOci } from "../../src/oci-pack.js";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
 const contractsDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -72,7 +70,10 @@ describe("kubectl-cluster consumer contract (PACT mock)", () => {
 			namespace: "hobo-dev",
 			transport: mock,
 		});
-		const host = createOciRuntimeHost({ kubernetes: k8s, namespace: "hobo-dev" });
+		const host = createOciRuntimeHost({
+			kubernetes: k8s,
+			namespace: "hobo-dev",
+		});
 
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-oci-pact-"));
 		try {

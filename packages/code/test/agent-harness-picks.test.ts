@@ -27,9 +27,9 @@ function tmp(): string {
 
 describe("shouldWriteAgentsInit", () => {
 	it("writes for --yes, --non-interactive, CI, and non-TTY", () => {
-		expect(
-			shouldWriteAgentsInit({ flags: { yes: true }, tty: true }),
-		).toBe(true);
+		expect(shouldWriteAgentsInit({ flags: { yes: true }, tty: true })).toBe(
+			true,
+		);
 		expect(
 			shouldWriteAgentsInit({
 				flags: { "non-interactive": true },
@@ -142,16 +142,19 @@ describe("agent checklist", () => {
 		const opened = repaintAgentChecklist(0, first);
 		expect(opened.write).not.toMatch(/\x1b\[\d+F/);
 		expect(opened.lines).toBeGreaterThan(1);
-		const toggled = reduceChecklistKey(createChecklist([
-			{
-				id: "codex",
-				kind: "coding-cli",
-				label: "Codex",
-				detected: true,
-				selected: true,
-				note: "bin",
-			},
-		]), " ");
+		const toggled = reduceChecklistKey(
+			createChecklist([
+				{
+					id: "codex",
+					kind: "coding-cli",
+					label: "Codex",
+					detected: true,
+					selected: true,
+					note: "bin",
+				},
+			]),
+			" ",
+		);
 		const second = repaintAgentChecklist(
 			opened.lines,
 			renderAgentChecklist(toggled),

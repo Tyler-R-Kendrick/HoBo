@@ -5,9 +5,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-
 import { createMeteringBus, parseTenantId } from "@hobo/core";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
 	createBillingAggregator,
@@ -18,14 +17,17 @@ import {
 	createLedgerBillingProvider,
 	exportInvoiceStripeLines,
 } from "../../src/metering/billing-provider.js";
-import { createOpaPolicyEngine, SAMPLE_HOBO_AUTHZ_REGO } from "../../src/policy/opa-engine.js";
+import { createInMemoryMeteringSink } from "../../src/metering/sinks.js";
+import {
+	createOpaPolicyEngine,
+	SAMPLE_HOBO_AUTHZ_REGO,
+} from "../../src/policy/opa-engine.js";
 import {
 	evaluateRegoLite,
 	HOBO_DEFAULT_POLICY_DOCUMENT,
 	parseRegoLiteDocument,
 } from "../../src/policy/rego-lite.js";
 import { createTagAclPolicyEngine } from "../../src/policy/tag-acl-engine.js";
-import { createInMemoryMeteringSink } from "../../src/metering/sinks.js";
 
 const cleanups: Array<() => Promise<void>> = [];
 afterEach(async () => {

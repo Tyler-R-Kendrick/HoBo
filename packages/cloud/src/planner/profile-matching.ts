@@ -8,19 +8,18 @@
  * keeps the legacy path untouched.
  */
 import { createHash } from "node:crypto";
-
+import type { BindleRequirements } from "@hobo/bindles";
 import {
 	type CapabilityProfileRegistry,
 	type CapabilityRequirement,
-	type SelectionCandidate,
-	type SelectionRejection,
-	type TrustPolicy,
 	isBindleRuntime,
 	parseCapabilityRequirement,
+	type SelectionCandidate,
+	type SelectionRejection,
 	selectCapabilityImplementation,
+	type TrustPolicy,
 	tryParseProfileId,
 } from "@hobo/capability-profiles";
-import type { BindleRequirements } from "@hobo/bindles";
 
 import type { PlanRemediation } from "../plan-types.js";
 import {
@@ -48,7 +47,9 @@ export function capabilityRequirementFromBindleRequirements(
 	const preferred = requirements.prefer.filter(
 		(value) => tryParseProfileId(value) !== undefined,
 	);
-	const runtimes = requirements.runtimes.filter((value) => isBindleRuntime(value));
+	const runtimes = requirements.runtimes.filter((value) =>
+		isBindleRuntime(value),
+	);
 	return parseCapabilityRequirement({
 		requiredProfiles: required.map((profileId) => ({ profileId })),
 		preferredProfiles: preferred.map((profileId) => ({ profileId, weight: 1 })),
@@ -98,7 +99,10 @@ export function profileCatalogHash(
 		.map(semanticsDigestInput)
 		.filter((entry): entry is Record<string, unknown> => entry !== undefined)
 		.sort((a, b) => String(a.id).localeCompare(String(b.id)));
-	const payload = JSON.stringify({ profiles: profiles.digest, definitions: entries });
+	const payload = JSON.stringify({
+		profiles: profiles.digest,
+		definitions: entries,
+	});
 	return `sha256:${createHash("sha256").update(payload).digest("hex")}`;
 }
 
@@ -136,7 +140,10 @@ export function matchCapabilityRequirement(
 			result.rejections.length === 0
 				? `no registered product declares a capability profile for resource ${input.resourceName}`
 				: result.rejections
-						.map((rejection) => `${rejection.definitionId}: ${rejection.code} — ${rejection.detail}`)
+						.map(
+							(rejection) =>
+								`${rejection.definitionId}: ${rejection.code} — ${rejection.detail}`,
+						)
 						.join("; ");
 		return {
 			ok: false,
@@ -146,24 +153,30 @@ export function matchCapabilityRequirement(
 				resource: input.resourceName,
 				code: "capability.profile-unsatisfiable",
 				requiredPort: input.requirement.requiredProfiles[0]?.profileId ?? "",
-				requiredFeatures: input.requirement.features.map((feature) => feature.key),
+				requiredFeatures: input.requirement.features.map(
+					(feature) => feature.key,
+				),
 				missing: result.rejections.map((rejection) => rejection.code),
 				remediation: `no product satisfies ${required} for resource ${input.resourceName} under the active trust policy: ${detail}`,
 			},
 		};
 	}
 
-	const winner = byId.get(result.winner.definitionId) as ResourceDefinitionVNext;
+	const winner = byId.get(
+		result.winner.definitionId,
+	) as ResourceDefinitionVNext;
 	const runnerUp = result.ranked[1];
 	// A tie means only the stable id tiebreak separated them, which is worth
 	// recording: it is the case where a catalog addition can flip the winner.
 	const tie =
 		runnerUp !== undefined &&
-		runnerUp.creatorAuthorityAfterClaim === result.winner.creatorAuthorityAfterClaim &&
+		runnerUp.creatorAuthorityAfterClaim ===
+			result.winner.creatorAuthorityAfterClaim &&
 		runnerUp.claimAtomicity === result.winner.claimAtomicity &&
 		runnerUp.claimActionCount === result.winner.claimActionCount &&
 		runnerUp.providerClass === result.winner.providerClass &&
-		runnerUp.sponsorExposureMinorUnits === result.winner.sponsorExposureMinorUnits;
+		runnerUp.sponsorExposureMinorUnits ===
+			result.winner.sponsorExposureMinorUnits;
 
 	return {
 		ok: true,

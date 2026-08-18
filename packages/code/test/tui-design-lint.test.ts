@@ -89,10 +89,10 @@ describe("TUI components follow DESIGN.md tokens", () => {
 
 	it("keeps interactive-shell on TUI components and DESIGN.md tokens", () => {
 		const source = readFileSync(join(srcRoot, "interactive-shell.ts"), "utf8");
-		expect(source).toContain("from \"./tui-components.js\"");
+		expect(source).toContain('from "./tui-components.js"');
 		expect(source).toContain("WelcomeSurface");
 		expect(source).toContain("AgentPanes");
-		expect(source).not.toContain("accent = \"go\"");
+		expect(source).not.toContain('accent = "go"');
 		for (const hex of TUI_FORBIDDEN_HEX) {
 			expect(source, `interactive-shell must not use ${hex}`).not.toContain(
 				hex,

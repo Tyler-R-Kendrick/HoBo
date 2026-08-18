@@ -1,5 +1,7 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-
 import {
 	assertIntegrity,
 	createMemoryNodeSqliteDriver,
@@ -10,9 +12,6 @@ import {
 	SqliteJournal,
 	StreamIntegrityError,
 } from "../src/index.js";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
 const clock = { now: () => "2026-07-27T12:00:00.000Z" };
 

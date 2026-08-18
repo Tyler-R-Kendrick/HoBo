@@ -140,9 +140,7 @@ export function createFunnelTrafficRouting(
 								`Funnel gateway: ${published.gatewayHostname}`,
 							]
 						: [...published.notes, ...multiNote],
-					backends.length > 1
-						? ["weighted-backends"]
-						: ["weighted-backends"],
+					backends.length > 1 ? ["weighted-backends"] : ["weighted-backends"],
 				);
 				applied.set(plan.planId, { plan, result, primary });
 				await meter(
@@ -230,16 +228,12 @@ function unsupportedFeatures(
 	for (const [index, backend] of rule.backends.entries()) {
 		if (!backend.endpoint) unmet.push(`backends[${index}].endpoint`);
 		else if (!isLocalFunnelTarget(backend.endpoint)) {
-			// Non-local backends cannot be Funnel origins; multi may still select
-			// a local primary — only hard-fail when all backends are remote.
-			continue;
 		}
 	}
 	if (
 		rule.backends.length > 0 &&
 		rule.backends.every(
-			(backend) =>
-				!backend.endpoint || !isLocalFunnelTarget(backend.endpoint),
+			(backend) => !backend.endpoint || !isLocalFunnelTarget(backend.endpoint),
 		)
 	) {
 		unmet.push("backend-target");
@@ -301,7 +295,7 @@ function resultFor(
 	realized: "full" | "partial" | "none",
 	unmet: readonly string[],
 	notes: readonly string[],
-	capabilities: readonly ("weighted-backends")[] = ["weighted-backends"],
+	capabilities: readonly "weighted-backends"[] = ["weighted-backends"],
 ) {
 	return parseApplyResult({
 		planId: plan.planId,

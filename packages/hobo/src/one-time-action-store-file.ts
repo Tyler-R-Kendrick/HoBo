@@ -6,15 +6,15 @@ import {
 } from "node:crypto";
 import {
 	chmodSync,
-	linkSync,
 	existsSync,
+	linkSync,
 	mkdirSync,
-	readFileSync,
 	readdirSync,
+	readFileSync,
 	renameSync,
 	rmSync,
-	writeFileSync,
 	unlinkSync,
+	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 
@@ -24,8 +24,8 @@ import {
 	type OneTimeActionRef,
 	type OneTimeActionStore,
 	type PutOneTimeActionInput,
-	type RedeemOneTimeActionInput,
 	type RedeemedOneTimeAction,
+	type RedeemOneTimeActionInput,
 } from "@hobo/claims";
 
 // A one-time action that only exists in memory is a claim ceremony that cannot
@@ -191,7 +191,9 @@ export function createFileOneTimeActionStore(
 			};
 		},
 
-		async redeem(input: RedeemOneTimeActionInput): Promise<RedeemedOneTimeAction> {
+		async redeem(
+			input: RedeemOneTimeActionInput,
+		): Promise<RedeemedOneTimeAction> {
 			const path = pathFor(input.id);
 			// One denial for every failure mode. Distinguishing "never existed"
 			// from "belongs to another session" would turn this into an oracle.

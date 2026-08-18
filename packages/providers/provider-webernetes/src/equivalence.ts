@@ -3,15 +3,15 @@ export const EQUIVALENCE_CLASSES = Object.freeze({
 		port: "compute",
 		resourceClass: "webernetes:pod",
 		providerService: "Local Webernetes",
-		features: ["http","container"],
+		features: ["http", "container"],
 	},
-	"kv": {
+	kv: {
 		port: "kv",
 		resourceClass: "webernetes:kv",
 		providerService: "Local KV",
 		features: ["key-value"],
 	},
-	"queue": {
+	queue: {
 		port: "queue",
 		resourceClass: "webernetes:queue",
 		providerService: "Local queue",
@@ -30,7 +30,7 @@ export function equivalenceForPort(port: InitialCapabilityPort) {
 }
 
 export function webernetesNativePorts(): readonly string[] {
-	return Object.freeze(
-		[...new Set(Object.values(EQUIVALENCE_CLASSES).map((entry) => entry.port))],
-	);
+	return Object.freeze([
+		...new Set(Object.values(EQUIVALENCE_CLASSES).map((entry) => entry.port)),
+	]);
 }

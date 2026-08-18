@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import {
 	createBoundaryPamGateway,
 	createJumpServerPamGateway,
@@ -7,6 +5,7 @@ import {
 	mintElevatedAccessCapability,
 	PAM_RAIL_CAPABILITY,
 } from "@hobo/connectivity";
+import { describe, expect, it } from "vitest";
 
 import { railEnablesPam } from "../src/index.js";
 
@@ -143,9 +142,7 @@ describe("Privileged Access Gateway (full secretless)", () => {
 									id: "sess-1",
 									authorization_token: "at_test",
 									authorization_token_id: "sess-1",
-									expiration_time: new Date(
-										Date.now() + 600_000,
-									).toISOString(),
+									expiration_time: new Date(Date.now() + 600_000).toISOString(),
 								},
 							}),
 							{

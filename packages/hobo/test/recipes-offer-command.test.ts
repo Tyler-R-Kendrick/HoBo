@@ -1,8 +1,11 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { STANDARD_CAPABILITY_PROFILES, createCapabilityProfileRegistry } from "@hobo/capability-profiles";
+import {
+	createCapabilityProfileRegistry,
+	STANDARD_CAPABILITY_PROFILES,
+} from "@hobo/capability-profiles";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createOfferCommand } from "../src/offer-command.js";
@@ -91,9 +94,9 @@ describe("recipe summaries", () => {
 		const summaries = listRecipeSummaries();
 		const sponsored = summaries.filter((summary) => summary.sponsored);
 		// Vercel Claim Deployments are sponsor-backed, not provider-anonymous.
-		expect(sponsored.some((summary) => summary.providerIds.includes("vercel"))).toBe(
-			true,
-		);
+		expect(
+			sponsored.some((summary) => summary.providerIds.includes("vercel")),
+		).toBe(true);
 	});
 
 	it("counts one human ownership action for the single-provider default", () => {
@@ -134,9 +137,9 @@ describe("bindle to deployment request", () => {
 			credentialCustody: "hobo-held-then-rotated",
 		} as never);
 		expect(request.capabilities).toHaveLength(1);
-		expect(request.capabilities[0]?.requirement.requiredProfiles[0]?.profileId).toBe(
-			"data.relational/v1",
-		);
+		expect(
+			request.capabilities[0]?.requirement.requiredProfiles[0]?.profileId,
+		).toBe("data.relational/v1");
 	});
 
 	it("routes each declared profile to the resource of its own primitive", () => {
@@ -177,7 +180,9 @@ describe("bindle to deployment request", () => {
 		const byRef = new Map(
 			request.capabilities.map((capability) => [
 				capability.capabilityRef,
-				capability.requirement.requiredProfiles.map((profile) => profile.profileId),
+				capability.requirement.requiredProfiles.map(
+					(profile) => profile.profileId,
+				),
 			]),
 		);
 		expect(byRef.get("db")).toEqual(["data.postgres/v1"]);
@@ -191,7 +196,9 @@ describe("bindle to deployment request", () => {
 
 describe("catalog projection", () => {
 	it("does not promote a definition that declares no semantics", () => {
-		const registry = createCapabilityProfileRegistry(STANDARD_CAPABILITY_PROFILES);
+		const registry = createCapabilityProfileRegistry(
+			STANDARD_CAPABILITY_PROFILES,
+		);
 		const legacy = {
 			id: "legacy.kv/v1",
 			provider: "legacy",
@@ -213,21 +220,30 @@ describe("published trust evidence", () => {
 		const dir = path.join(home, "evidence");
 		await mkdir(dir, { recursive: true });
 		await writeFile(path.join(dir, "neon.json"), "{ not json");
-		await expect(loadTrustEvidence(dir)).rejects.toThrow(/evidence-unreadable/u);
+		await expect(loadTrustEvidence(dir)).rejects.toThrow(
+			/evidence-unreadable/u,
+		);
 	});
 
 	it("refuses an artifact that is not trust evidence", async () => {
 		const home = await tempDir("hobo-evidence-wrong-");
 		const dir = path.join(home, "evidence");
 		await mkdir(dir, { recursive: true });
-		await writeFile(path.join(dir, "neon.json"), JSON.stringify({ hello: "world" }));
+		await writeFile(
+			path.join(dir, "neon.json"),
+			JSON.stringify({ hello: "world" }),
+		);
 		await expect(loadTrustEvidence(dir)).rejects.toThrow(/evidence-invalid/u);
 	});
 });
 
 describe("hobo offer", () => {
 	const runtime = {
-		registry: { definitions: () => [], providers: () => [], catalogHash: "sha256:0" },
+		registry: {
+			definitions: () => [],
+			providers: () => [],
+			catalogHash: "sha256:0",
+		},
 	} as never;
 
 	it("asks for a recipe id rather than picking one", async () => {
@@ -271,16 +287,19 @@ describe("hobo offer", () => {
 				resources: { sessions: { type: "data.v1", port: "kv" } },
 			}),
 		);
-		const result = await createOfferCommand({ runtime, now: () => 1_754_700_000_000 }).run(
-			{
-				args: ["recipe.cloudflare.claimable-webhook-inbox/v1"],
-				flags: { home: dir } as never,
-				context: context(dir),
-			} as never,
-		);
+		const result = await createOfferCommand({
+			runtime,
+			now: () => 1_754_700_000_000,
+		}).run({
+			args: ["recipe.cloudflare.claimable-webhook-inbox/v1"],
+			flags: { home: dir } as never,
+			context: context(dir),
+		} as never);
 		// Either no Bindle source loads from JSON alone, or the empty catalog
 		// rejects — both are honest refusals, and neither provisions anything.
 		expect(result.ok).toBe(false);
-		expect(["HOBO_OFFER_NO_BINDLE", "HOBO_OFFER_REJECTED"]).toContain(result.code);
+		expect(["HOBO_OFFER_NO_BINDLE", "HOBO_OFFER_REJECTED"]).toContain(
+			result.code,
+		);
 	});
 });

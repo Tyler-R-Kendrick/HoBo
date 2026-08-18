@@ -67,7 +67,10 @@ export async function createBrowserEventStore(
 	}
 
 	// No real OPFS-backed journal: only open memory when explicitly allowed.
-	if (options.allowTransient === true || detection.mode === "transient-memory") {
+	if (
+		options.allowTransient === true ||
+		detection.mode === "transient-memory"
+	) {
 		const journal = new SqliteJournal(createMemoryNodeSqliteDriver(), {
 			nativePragmas: false,
 			partitionId: options.partitionId,

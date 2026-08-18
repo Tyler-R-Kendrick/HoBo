@@ -163,13 +163,23 @@ export default {
 
 /** Guard: relay source must not teach permanent API token bootstrap. */
 export function assertCorsRelayIsAnonymousOnly(source: string): void {
-	if (/CLOUDFLARE_API_TOKEN/u.test(source) || /CLOUDFLARE_ACCOUNT_ID/u.test(source)) {
-		throw new Error("CORS relay must not reference permanent Cloudflare API tokens");
+	if (
+		/CLOUDFLARE_API_TOKEN/u.test(source) ||
+		/CLOUDFLARE_ACCOUNT_ID/u.test(source)
+	) {
+		throw new Error(
+			"CORS relay must not reference permanent Cloudflare API tokens",
+		);
 	}
 	if (!/access-control-allow-origin/u.test(source)) {
 		throw new Error("CORS relay must set access-control-allow-origin");
 	}
-	if (!/__HOBO_TEMP_API_TOKEN__/u.test(source) || !/__HOBO_TEMP_ACCOUNT_ID__/u.test(source)) {
-		throw new Error("CORS relay template must include Temporary Account placeholders");
+	if (
+		!/__HOBO_TEMP_API_TOKEN__/u.test(source) ||
+		!/__HOBO_TEMP_ACCOUNT_ID__/u.test(source)
+	) {
+		throw new Error(
+			"CORS relay template must include Temporary Account placeholders",
+		);
 	}
 }

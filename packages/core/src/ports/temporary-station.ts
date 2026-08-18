@@ -127,8 +127,12 @@ export function assertTemporaryEnvironmentStationResult(
 		...(typeof obj.primaryUrl === "string"
 			? { primaryUrl: obj.primaryUrl }
 			: {}),
-		...(typeof obj.ttlSeconds === "number" ? { ttlSeconds: obj.ttlSeconds } : {}),
+		...(typeof obj.ttlSeconds === "number"
+			? { ttlSeconds: obj.ttlSeconds }
+			: {}),
 		...(typeof obj.accountId === "string" ? { accountId: obj.accountId } : {}),
-		...(typeof obj.scriptName === "string" ? { scriptName: obj.scriptName } : {}),
+		...(typeof obj.scriptName === "string"
+			? { scriptName: obj.scriptName }
+			: {}),
 	};
 }

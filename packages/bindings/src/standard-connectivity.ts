@@ -25,7 +25,10 @@ export const STANDARD_CONNECTIVITY: readonly ConnectivityImplementation[] = [
 	},
 	{
 		id: "cloudflare.postgres.neon-serverless/v1",
-		consumesBindingProfiles: ["binding.neon-serverless/v1", "binding.postgresql/v1"],
+		consumesBindingProfiles: [
+			"binding.neon-serverless/v1",
+			"binding.postgresql/v1",
+		],
 		runtimeModels: ["serverless_faas", "wasm"],
 		providerId: "cloudflare",
 		projection: "environment-secret-ref",
@@ -43,7 +46,10 @@ export const STANDARD_CONNECTIVITY: readonly ConnectivityImplementation[] = [
 		providerId: "cloudflare",
 		projection: "environment-secret-ref",
 		sourceRefs: [
-			{ url: "https://upstash.com/docs/redis/sdks/ts/getstarted", checkedAt: CHECKED },
+			{
+				url: "https://upstash.com/docs/redis/sdks/ts/getstarted",
+				checkedAt: CHECKED,
+			},
 		],
 	},
 	{
@@ -53,7 +59,10 @@ export const STANDARD_CONNECTIVITY: readonly ConnectivityImplementation[] = [
 		providerId: "vercel",
 		projection: "environment-secret-ref",
 		sourceRefs: [
-			{ url: "https://vercel.com/docs/environment-variables", checkedAt: CHECKED },
+			{
+				url: "https://vercel.com/docs/environment-variables",
+				checkedAt: CHECKED,
+			},
 		],
 	},
 	{

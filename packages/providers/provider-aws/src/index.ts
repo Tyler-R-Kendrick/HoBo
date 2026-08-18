@@ -41,6 +41,10 @@ export {
 	realizeResourcePlans,
 	resolveEquivalence,
 } from "./realize.js";
+export {
+	AWS_TRAFFIC_ROUTING_OFFERING_IDS,
+	AWS_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
 export type {
 	Capability,
 	CapabilityManifest,
@@ -54,10 +58,6 @@ export type {
 	ResourcePlan,
 } from "./types.js";
 export {
-	AWS_TRAFFIC_ROUTING_OFFERING_IDS,
-	AWS_TRAFFIC_ROUTING_PROFILE,
-} from "./traffic-routing-offerings.js";
-export {
 	AWS_YARD_GENERATOR_CONNECTOR_ID,
 	AWS_YARD_RUNTIME_ID,
 	awsDefaultResolverPins,
@@ -65,8 +65,8 @@ export {
 } from "./yard-defaults.js";
 export {
 	AWS_EVENT_STORE_RESOLVER_ID,
-	awsEventStoreFoldDescriptor,
-	normalizeAwsYardSignal,
 	type AwsProviderNativeSignal,
 	type AwsYardEvent,
+	awsEventStoreFoldDescriptor,
+	normalizeAwsYardSignal,
 } from "./yard-event-fold.js";

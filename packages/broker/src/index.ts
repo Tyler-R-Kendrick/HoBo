@@ -45,6 +45,25 @@ export {
 	brokerEvent,
 } from "./events.js";
 export {
+	assertGuestEvidenceMatchesOffer,
+	BOOTSTRAP_CLASSES,
+	type BootstrapClass,
+	CLAIM_ATOMICITIES,
+	CLEANUP_POLICIES,
+	type ClaimAtomicity,
+	type CleanupPolicy,
+	CREATOR_AUTHORITIES_AFTER_CLAIM,
+	type CreatorAuthorityAfterClaim,
+	type GuestPlacementEvidence,
+	type GuestResolutionEvidence,
+	type GuestResolutionInput,
+	parseGuestPlacementEvidence,
+	parseGuestResolutionEvidence,
+	parseGuestResolutionInput,
+	REALIZATIONS,
+	type Realization,
+} from "./guest-evidence.js";
+export {
 	type BrokerHttpRequest,
 	type BrokerHttpResponse,
 	createBrokerHttpHandler,
@@ -146,25 +165,6 @@ export {
 	type ScopeKind,
 	type TopologyScope,
 } from "./types.js";
-export {
-	assertGuestEvidenceMatchesOffer,
-	BOOTSTRAP_CLASSES,
-	type BootstrapClass,
-	CLAIM_ATOMICITIES,
-	type ClaimAtomicity,
-	CLEANUP_POLICIES,
-	type CleanupPolicy,
-	CREATOR_AUTHORITIES_AFTER_CLAIM,
-	type CreatorAuthorityAfterClaim,
-	type GuestPlacementEvidence,
-	type GuestResolutionEvidence,
-	type GuestResolutionInput,
-	parseGuestPlacementEvidence,
-	parseGuestResolutionEvidence,
-	parseGuestResolutionInput,
-	REALIZATIONS,
-	type Realization,
-} from "./guest-evidence.js";
 export {
 	BINDLE_DEPLOYMENT_REQUEST_SCHEMA,
 	type BindleDeploymentRequest,

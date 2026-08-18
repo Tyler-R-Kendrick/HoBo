@@ -137,7 +137,10 @@ describe("VercelTrafficRoutingApi consumer contract", () => {
 			provider: "vercel",
 			realized: "full",
 			appliedRules: 1,
-			capabilities: expect.arrayContaining(["path-prefix", "weighted-backends"]),
+			capabilities: expect.arrayContaining([
+				"path-prefix",
+				"weighted-backends",
+			]),
 		});
 		await expect(routing.status(plan.planId)).resolves.toMatchObject({
 			active: true,

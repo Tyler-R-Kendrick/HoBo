@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
 	attachCampToYard,
-	camp,
 	CAMP_BINDLE_OWNERSHIP_FORBIDDEN,
 	CAMP_MIGRATION_CODE,
+	camp,
 	providerSelection,
 	withResolvers,
 } from "../src/index.js";

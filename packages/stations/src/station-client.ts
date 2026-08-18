@@ -5,19 +5,18 @@
 import {
 	existsSync,
 	mkdirSync,
+	readdirSync,
 	readFileSync,
 	writeFileSync,
-	readdirSync,
 } from "node:fs";
 import { join } from "node:path";
-
+import type { StationEvent } from "./events.js";
 import { railFromBrokerConfig } from "./rail.js";
 import {
-	StationService,
 	foldStationEvents,
+	StationService,
 	type StationState,
 } from "./station-service.js";
-import type { StationEvent } from "./events.js";
 import type { Rail, StationIsolation, StationOccupancy } from "./types.js";
 
 export type StationPins = Readonly<{
@@ -71,17 +70,12 @@ export function persistStationEvents(
 	);
 }
 
-function requireState(
-	hoboHome: string,
-	stationId: string,
-): StationState {
+function requireState(hoboHome: string, stationId: string): StationState {
 	const events = loadStationEvents(hoboHome, stationId);
 	const state = foldStationEvents(events);
 	if (!state) {
 		throw Object.assign(
-			new Error(
-				`station ${stationId} not found — run hobo station init`,
-			),
+			new Error(`station ${stationId} not found — run hobo station init`),
 			{ code: "station-missing", remediation: "hobo station init" },
 		);
 	}
@@ -110,7 +104,10 @@ export function createStationClient(input: {
 					new Error(
 						`station ${stationId} has no active Rail — activate a Rail`,
 					),
-					{ code: "rail-inactive", remediation: "hobo station rails activate <hash>" },
+					{
+						code: "rail-inactive",
+						remediation: "hobo station rails activate <hash>",
+					},
 				);
 			}
 			const rail = state.rails[hash];
@@ -277,7 +274,10 @@ export function resolveStationContext(input: {
 		if (events.length > 0) {
 			return {
 				stationId: id,
-				client: createStationClient({ hoboHome: input.hoboHome, stationId: id }),
+				client: createStationClient({
+					hoboHome: input.hoboHome,
+					stationId: id,
+				}),
 			};
 		}
 	}
@@ -285,14 +285,21 @@ export function resolveStationContext(input: {
 	const ids = listStationIds(input.hoboHome);
 	if (ids.length === 1) {
 		const dirName = ids[0]!;
-		const eventsPath = join(input.hoboHome, "stations", dirName, "events.jsonl");
+		const eventsPath = join(
+			input.hoboHome,
+			"stations",
+			dirName,
+			"events.jsonl",
+		);
 		if (existsSync(eventsPath)) {
 			const events = loadStationEvents(
 				input.hoboHome,
 				// Prefer id from first event when directory is escaped.
-				(JSON.parse(
-					readFileSync(eventsPath, "utf8").split("\n").filter(Boolean)[0]!,
-				) as StationEvent).stationId ?? dirName,
+				(
+					JSON.parse(
+						readFileSync(eventsPath, "utf8").split("\n").filter(Boolean)[0]!,
+					) as StationEvent
+				).stationId ?? dirName,
 			);
 			if (events.length > 0) {
 				const realId = events[0]!.stationId;

@@ -1,4 +1,11 @@
-import { mkdtempSync, mkdirSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
@@ -964,7 +971,9 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		state = reduceShellKey(state, "]").state; // leaf → Pi
 		expect(state.livePanes?.focused).toBe(2);
 		expect(statusSegments(state).join(" ")).toMatch(/\bPi\b/);
-		expect(plain(renderShellFrame(state))).toMatch(/\[Pi\]|Pi · focused|· Pi ·/);
+		expect(plain(renderShellFrame(state))).toMatch(
+			/\[Pi\]|Pi · focused|· Pi ·/,
+		);
 		state = reduceShellKey(state, "[").state; // back → Codex
 		expect(state.livePanes?.focused).toBe(1);
 		expect(statusSegments(state).join(" ")).toMatch(/Codex/);

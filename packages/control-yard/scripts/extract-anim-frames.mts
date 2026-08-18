@@ -3,9 +3,9 @@
  * Measure-first: frame sizes come from assets_index.json only.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
 
 // Use sharp if available, else pure zlib PNG decode is hard — use child uv+pillow
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -25,7 +25,10 @@ const index = JSON.parse(
 			rows: number;
 			margin: number;
 			spacing: number;
-			animations: Record<string, { frames: number[] | "all"; frameCount?: number }>;
+			animations: Record<
+				string,
+				{ frames: number[] | "all"; frameCount?: number }
+			>;
 		}
 	>;
 };

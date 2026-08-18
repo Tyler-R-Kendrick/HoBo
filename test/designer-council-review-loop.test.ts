@@ -4,8 +4,8 @@ import { createHash } from "node:crypto";
 import {
 	mkdirSync,
 	mkdtempSync,
-	readFileSync,
 	readdirSync,
+	readFileSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -14,8 +14,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, test } from "vitest";
 import {
-	COUNCIL_PERSONAS,
 	advanceInvestment,
+	COUNCIL_PERSONAS,
 	type CouncilPersona,
 	type CouncilState,
 } from "../.agents/skills/optimizexp/harness/lib/design-council.mts";

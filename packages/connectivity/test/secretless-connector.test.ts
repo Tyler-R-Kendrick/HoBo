@@ -18,9 +18,9 @@ describe("secretless connector mediation", () => {
 		expect(lease.hasCredential).toBe(true);
 		// Credential never enumerable on public lease.
 		expect(JSON.stringify(lease)).not.toContain("super-secret-db-password");
-		expect(
-			Object.keys(lease).every((k) => k !== "credentialMaterial"),
-		).toBe(true);
+		expect(Object.keys(lease).every((k) => k !== "credentialMaterial")).toBe(
+			true,
+		);
 
 		const mediated = connector.mediate(lease.leaseId);
 		expect(mediated.ok).toBe(true);

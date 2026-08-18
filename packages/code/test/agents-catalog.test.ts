@@ -5,12 +5,12 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import type { HarnessSpec } from "../src/agent-harness-adapters.js";
 import {
+	type AgentsCatalogState,
 	buildAgentsCatalog,
 	createProjectEveAgent,
 	discoverProjectEveAgents,
 	flattenVisible,
 	reduceAgentsCatalogKey,
-	type AgentsCatalogState,
 } from "../src/agents-catalog.js";
 
 const dirs: string[] = [];
@@ -82,7 +82,11 @@ describe("agents catalog", () => {
 		const cwd = tmp();
 		const agentDir = join(cwd, ".hobo", "agents", "investigator");
 		mkdirSync(agentDir, { recursive: true });
-		writeFileSync(join(agentDir, "instructions.md"), "# Investigator\n", "utf8");
+		writeFileSync(
+			join(agentDir, "instructions.md"),
+			"# Investigator\n",
+			"utf8",
+		);
 		mkdirSync(join(agentDir, "subagents", "scout"), { recursive: true });
 		writeFileSync(
 			join(agentDir, "subagents", "scout", "instructions.md"),
@@ -96,9 +100,9 @@ describe("agents catalog", () => {
 
 		const catalog = buildAgentsCatalog(specs, trees);
 		const hobo = catalog.roots[0]!;
-		expect(hobo.children.some((child) => child.id.includes("investigator"))).toBe(
-			true,
-		);
+		expect(
+			hobo.children.some((child) => child.id.includes("investigator")),
+		).toBe(true);
 	});
 
 	it("prefers .hobo/agents over legacy agent/ for the same id", () => {
@@ -110,11 +114,7 @@ describe("agents catalog", () => {
 			"utf8",
 		);
 		mkdirSync(join(cwd, "agent", "subagents", "worker"), { recursive: true });
-		writeFileSync(
-			join(cwd, "agent", "instructions.md"),
-			"# legacy\n",
-			"utf8",
-		);
+		writeFileSync(join(cwd, "agent", "instructions.md"), "# legacy\n", "utf8");
 		writeFileSync(
 			join(cwd, "agent", "subagents", "worker", "instructions.md"),
 			"# legacy worker\n",
@@ -152,15 +152,20 @@ describe("agents catalog", () => {
 
 		state = reduceAgentsCatalogKey(state, " ", 8).state;
 		expect(state.expanded.has("harness:hobo-code")).toBe(true);
-		expect(flattenVisible(state).some((row) => row.id.includes("investigator"))).toBe(
-			true,
-		);
+		expect(
+			flattenVisible(state).some((row) => row.id.includes("investigator")),
+		).toBe(true);
 		// Expand lands on first child — no extra ↓ required.
 		expect(flattenVisible(state)[state.cursor]?.id).toMatch(/investigator/);
 
 		state = reduceAgentsCatalogKey(state, "\x1b[C", 8).state;
-		expect(state.expanded.has(flattenVisible(state)[state.cursor]!.id) || flattenVisible(state)[state.cursor]?.id.includes("scout")).toBe(true);
-		expect(flattenVisible(state).some((row) => row.id.includes("scout"))).toBe(true);
+		expect(
+			state.expanded.has(flattenVisible(state)[state.cursor]!.id) ||
+				flattenVisible(state)[state.cursor]?.id.includes("scout"),
+		).toBe(true);
+		expect(flattenVisible(state).some((row) => row.id.includes("scout"))).toBe(
+			true,
+		);
 		// Landed on scout after expanding investigator.
 		expect(flattenVisible(state)[state.cursor]?.id).toMatch(/scout/);
 
@@ -168,7 +173,10 @@ describe("agents catalog", () => {
 		state = reduceAgentsCatalogKey(state, "\x1b[D", 8).state;
 		expect(flattenVisible(state)[state.cursor]?.id).toMatch(/investigator/);
 		state = reduceAgentsCatalogKey(state, "\x1b[D", 8).state;
-		expect(state.expanded.has("harness:hobo-code") || flattenVisible(state)[state.cursor]?.id).toBeTruthy();
+		expect(
+			state.expanded.has("harness:hobo-code") ||
+				flattenVisible(state)[state.cursor]?.id,
+		).toBeTruthy();
 	});
 
 	it("scrolls when the visible tree overflows the viewport", () => {
@@ -187,10 +195,7 @@ describe("agents catalog", () => {
 		}
 		expect(state.cursor).toBeGreaterThanOrEqual(4);
 		expect(state.scroll).toBeGreaterThan(0);
-		const visible = flattenVisible(state).slice(
-			state.scroll,
-			state.scroll + 4,
-		);
+		const visible = flattenVisible(state).slice(state.scroll, state.scroll + 4);
 		expect(visible).toHaveLength(4);
 	});
 
@@ -232,9 +237,9 @@ describe("agents catalog", () => {
 		onCodex = reduceAgentsCatalogKey(onCodex, "\x1b[B", 8).state;
 		const seat = reduceAgentsCatalogKey(onCodex, "\r", 8);
 		expect(seat.pick?.kind).toBe("configure-harness");
-		expect(seat.pick && "harnessId" in seat.pick ? seat.pick.harnessId : "").toBe(
-			"codex",
-		);
+		expect(
+			seat.pick && "harnessId" in seat.pick ? seat.pick.harnessId : "",
+		).toBe("codex");
 	});
 
 	it("Enter on Eve vfs agent picks configure-eve", () => {
@@ -255,9 +260,9 @@ describe("agents catalog", () => {
 		state = reduceAgentsCatalogKey(state, "\x1b[B", 8).state;
 		const result = reduceAgentsCatalogKey(state, "\r", 8);
 		expect(result.pick?.kind).toBe("configure-eve");
-		expect(result.pick && "path" in result.pick ? result.pick.path : "").toContain(
-			"investigator",
-		);
+		expect(
+			result.pick && "path" in result.pick ? result.pick.path : "",
+		).toContain("investigator");
 	});
 
 	it("Esc closes the catalog", () => {

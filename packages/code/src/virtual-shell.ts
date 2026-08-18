@@ -275,7 +275,9 @@ export function createVirtualShell(options: VirtualShellOptions): VirtualShell {
 					// the same answer to the caller: that command does not exist here.
 					refused:
 						result.exitCode === 127 &&
-						/^bash: \S+: (command not found|command not available)/mu.test(stderr),
+						/^bash: \S+: (command not found|command not available)/mu.test(
+							stderr,
+						),
 				};
 			} catch (error) {
 				// A limit breach or a security violation throws rather than

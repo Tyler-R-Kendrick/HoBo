@@ -9,16 +9,16 @@ import { REJECTION_CODES, type RejectionCode } from "@hobo/capability-profiles";
 
 import { sha256Of } from "./canonical.js";
 import {
-	STANDARD_TRUST_CHECKS,
-	type EvidenceCheckOutcome,
-	type TrustEvidence,
 	computeEvidenceDigest,
+	type EvidenceCheckOutcome,
+	STANDARD_TRUST_CHECKS,
+	type TrustEvidence,
 } from "./evidence.js";
 import type { TrustRequirement } from "./requirement.js";
 import {
-	UNVERIFIED_EVIDENCE_VERIFIER,
 	type EvidenceVerificationOutcome,
 	type EvidenceVerifier,
+	UNVERIFIED_EVIDENCE_VERIFIER,
 } from "./verifier.js";
 
 /** Trust-specific reasons, on top of the shared selection rejection codes. */
@@ -33,7 +33,9 @@ export const TRUST_REASON_CODES = [
 	...TRUST_ONLY_REASON_CODES,
 ] as const;
 
-export type TrustReasonCode = RejectionCode | (typeof TRUST_ONLY_REASON_CODES)[number];
+export type TrustReasonCode =
+	| RejectionCode
+	| (typeof TRUST_ONLY_REASON_CODES)[number];
 
 // parallel-type-allowed: the in-memory reason with a TrustReasonCode union drawn from @hobo/capability-profiles' REJECTION_CODES; hobo.trust.v1.TrustReason widens the code to a string for the wire.
 export type TrustReason = {
@@ -116,7 +118,10 @@ function verdictDigestOf(
 		evidenceDigest: body.evidenceDigest,
 		evidenceAgeMs: body.evidenceAgeMs,
 		expiresAtMs: body.expiresAtMs,
-		reasons: body.reasons.map((reason) => ({ code: reason.code, detail: reason.detail })),
+		reasons: body.reasons.map((reason) => ({
+			code: reason.code,
+			detail: reason.detail,
+		})),
 	});
 }
 
@@ -310,10 +315,19 @@ export function evaluateTrust(
 			});
 		} else {
 			if (!requirement.allowPack && evidence.realizations.includes("pack")) {
-				push({ code: "REALIZATION_DENIED", detail: "pack realization is not allowed" });
+				push({
+					code: "REALIZATION_DENIED",
+					detail: "pack realization is not allowed",
+				});
 			}
-			if (!requirement.allowBridge && evidence.realizations.includes("bridge")) {
-				push({ code: "REALIZATION_DENIED", detail: "bridge realization is not allowed" });
+			if (
+				!requirement.allowBridge &&
+				evidence.realizations.includes("bridge")
+			) {
+				push({
+					code: "REALIZATION_DENIED",
+					detail: "bridge realization is not allowed",
+				});
 			}
 		}
 	}
@@ -327,7 +341,8 @@ export function evaluateTrust(
 		} else if (evidence.sponsorBacked) {
 			push({
 				code: "BOOTSTRAP_POLICY_DENIED",
-				detail: "sponsor-backed bootstrap is not allowed by the trust requirement",
+				detail:
+					"sponsor-backed bootstrap is not allowed by the trust requirement",
 			});
 		}
 	}

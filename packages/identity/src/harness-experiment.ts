@@ -5,9 +5,9 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import {
+	bucket,
 	type FeatureFlagStore,
 	type FlagEvalContext,
-	bucket,
 } from "./feature-flag-store.js";
 
 // public-contract: OpenExperiment port id.
@@ -120,9 +120,12 @@ export class OpenExperimentEngine {
 	): ExperimentAssignment {
 		const def = this.defs.get(experimentName);
 		if (!def) {
-			throw Object.assign(new Error(`experiment not defined: ${experimentName}`), {
-				code: "experiment-missing",
-			});
+			throw Object.assign(
+				new Error(`experiment not defined: ${experimentName}`),
+				{
+					code: "experiment-missing",
+				},
+			);
 		}
 		const subjectKey = context.targetingKey;
 		const mapKey = `${experimentName}::${subjectKey}`;
@@ -226,10 +229,7 @@ export class OpenExperimentEngine {
 	}
 }
 
-function pickVariant(
-	subjectKey: string,
-	def: ExperimentDefinition,
-): string {
+function pickVariant(subjectKey: string, def: ExperimentDefinition): string {
 	const weights = def.allocation?.weights;
 	if (weights && Object.keys(weights).length > 0) {
 		const b = bucket(subjectKey);

@@ -224,15 +224,17 @@ export function applyPolicyGatedDefine(
 	if (!decision.allowed && !input.approvalSatisfied) {
 		return { decision, defined: null };
 	}
-	if (
-		decision.effect === "require-approval" &&
-		!input.approvalSatisfied
-	) {
+	if (decision.effect === "require-approval" && !input.approvalSatisfied) {
 		return { decision, defined: null };
 	}
 
-	const { environment: _e, actor: _a, tenant: _t, approvalSatisfied: _ap, ...rest } =
-		input;
+	const {
+		environment: _e,
+		actor: _a,
+		tenant: _t,
+		approvalSatisfied: _ap,
+		...rest
+	} = input;
 	const defined = store.define(rest as Parameters<typeof store.define>[0]);
 	return { decision, defined };
 }

@@ -2,16 +2,15 @@
  * Step implementations for hobo-code hermetic + durable feature.
  * Uses package APIs in-process (sync) — offline, no live services.
  */
-import { existsSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { OptimizexpWorld } from "./world.ts";
-
 // Deep imports from package src (tests run after package build/pretest).
 import {
 	createIsolationContext,
 	inspectHermeticEnv,
 } from "../../../../src/index.js";
+import type { OptimizexpWorld } from "./world.ts";
 
 function findRepoRoot(): string {
 	let dir = process.cwd();
@@ -134,9 +133,7 @@ export function observeFailure(world: OptimizexpWorld): void {
 	world.statusClear = pure;
 	world.nextActionObvious = pure;
 	world.notes.push(
-		pure
-			? "isolate: durable root outside sandbox"
-			: "isolate purity failed",
+		pure ? "isolate: durable root outside sandbox" : "isolate purity failed",
 	);
 	try {
 		rmSync(project, { recursive: true, force: true });

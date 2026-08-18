@@ -3,15 +3,15 @@
  * Each connector emits structured progress suitable for provider fold resolvers.
  * No ambient credentials; no account farming.
  */
-import { contentHashOf } from "./types.js";
+
+import type { YardGenerationConnector } from "./generation.js";
 import type {
 	YardGenerationPlan,
 	YardGenerationResult,
 	YardRuntimeRegistration,
 	YardShape,
 } from "./types.js";
-import type { YardGenerationConnector } from "./generation.js";
-import { YARD_GENERATION_PLAN_SCHEMA } from "./types.js";
+import { contentHashOf, YARD_GENERATION_PLAN_SCHEMA } from "./types.js";
 
 function basePlan(input: {
 	readonly requestedShape: YardShape;

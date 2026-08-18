@@ -3,10 +3,7 @@
  * Implementation-specific SQLite handles never cross this boundary.
  */
 
-import type {
-	BrowserStorageRequest,
-	BrowserStorageResponse,
-} from "./types.js";
+import type { BrowserStorageRequest, BrowserStorageResponse } from "./types.js";
 
 export function parseBrowserStorageRequest(
 	value: unknown,

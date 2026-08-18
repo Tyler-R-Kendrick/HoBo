@@ -4,8 +4,8 @@
 import { describe, expect, it } from "vitest";
 import {
 	DISCOVERY_PRIMARY,
-	IMPLEMENTATION_STATUS,
 	exerciseSurface,
+	IMPLEMENTATION_STATUS,
 	observeConfigHelp,
 	observeConfigJson,
 	observeFailure,

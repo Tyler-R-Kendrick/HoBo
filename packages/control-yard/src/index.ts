@@ -1,79 +1,82 @@
 export {
-	YARD_LAYOUT,
-	YARD_WIDTH,
-	YARD_HEIGHT,
-	zoneAt,
-	zoneAnchor,
-	type ZoneId,
-	type ZoneLayout,
-	type Layout,
-} from "./layout.js";
-export {
-	loadAssetIndex,
-	resolveAnimation,
-	sheetAbsolutePath,
+	type AnimationDef,
+	type AssetIndex,
+	allAssetPaths,
+	animationFrameList,
 	assetsRoot,
 	expectedSheetPixelSize,
 	frameCount,
-	animationFrameList,
-	phaserSpritesheetConfigs,
-	allAssetPaths,
-	type AssetIndex,
-	type SpritesheetDef,
-	type AnimationDef,
 	type ImageDef,
+	loadAssetIndex,
+	phaserSpritesheetConfigs,
+	resolveAnimation,
+	type SpritesheetDef,
+	sheetAbsolutePath,
 } from "./assets-index.js";
 export {
-	buildBootLoadPlan,
-	type BootSceneDeps,
-} from "./phaser/boot-scene.js";
-export { yardPhaserConfig, type YardGameConfigOptions } from "./phaser/game-config.js";
-export {
-	createTestSeam,
-	seededRandom,
-	isTestMode,
-	type YardTestSeam,
-	type YardTestState,
-	type YardTestCommands,
-	type YardTestHost,
-} from "./test-seam.js";
-export {
+	type BoAnimState,
+	type ConnectionVisualState,
 	deriveYardVisualState,
+	type GuestVisualState,
+	type RailVisualState,
 	stepToward,
 	type YardVisualState,
-	type BoAnimState,
-	type RailVisualState,
-	type ConnectionVisualState,
-	type GuestVisualState,
 } from "./entity-state.js";
 export {
+	type Layout,
+	YARD_HEIGHT,
+	YARD_LAYOUT,
+	YARD_WIDTH,
+	type ZoneId,
+	type ZoneLayout,
+	zoneAnchor,
+	zoneAt,
+} from "./layout.js";
+export {
+	confirmSheet,
+	type GenerativeSheet,
+	type SheetConfirmHandlers,
+	type SheetKind,
+	sheetForConnectionAuthorize,
+	sheetForConnectionCreate,
+	sheetForCostBooth,
+	sheetForDoctor,
+	sheetForRailLifecycle,
+	streamSheet,
+} from "./openui/sheets.js";
+export {
+	type BootSceneDeps,
+	buildBootLoadPlan,
+} from "./phaser/boot-scene.js";
+export {
+	type YardGameConfigOptions,
+	yardPhaserConfig,
+} from "./phaser/game-config.js";
+export {
+	applyLoadManifest,
+	assertSheetFitsFrames,
+	boAnimationForVisual,
+	describeYardSceneLoad,
+	registerAnimations,
+	type YardLoadManifest,
+	yardSceneHud,
+} from "./scenes/yard-scene.js";
+export {
+	createTestSeam,
+	isTestMode,
+	seededRandom,
+	type YardTestCommands,
+	type YardTestHost,
+	type YardTestSeam,
+	type YardTestState,
+} from "./test-seam.js";
+export {
 	createYardEngine,
+	type Particle,
 	selectZoneWithSnapshot,
 	sheetForZone,
 	type YardEngine,
-	type Particle,
 } from "./yard-engine.js";
-export {
-	sheetForConnectionCreate,
-	sheetForConnectionAuthorize,
-	sheetForRailLifecycle,
-	sheetForCostBooth,
-	sheetForDoctor,
-	streamSheet,
-	confirmSheet,
-	type GenerativeSheet,
-	type SheetKind,
-	type SheetConfirmHandlers,
-} from "./openui/sheets.js";
-export {
-	describeYardSceneLoad,
-	applyLoadManifest,
-	registerAnimations,
-	yardSceneHud,
-	boAnimationForVisual,
-	assertSheetFitsFrames,
-	type YardLoadManifest,
-} from "./scenes/yard-scene.js";
 
 // public-contract
 export const HOBO_CONTROL_YARD_PACKAGE = "@hobo/control-yard";

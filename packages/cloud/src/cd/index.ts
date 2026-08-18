@@ -1,30 +1,30 @@
 export {
 	createBuiltinProgressiveAnalysis,
 	createResidualProgressiveAnalysis,
-	PROGRESSIVE_ANALYSIS_SCHEMA,
-	selectProgressiveAnalysis,
 	type FetchLike,
+	PROGRESSIVE_ANALYSIS_SCHEMA,
 	type ProgressiveAnalysisPort,
 	type ProgressiveAnalysisResult,
 	type ProgressiveAnalysisVerdict,
+	selectProgressiveAnalysis,
 } from "./analysis-adapter.js";
 export {
-	ATTESTED_APPLY_SCHEMA,
-	CD_APPLY_EVENTS,
-	createAttestedApplyWorker,
-	createContractAssertedApplyAttestation,
-	createOfflineIacProvider,
 	type ApplyStepResult,
+	ATTESTED_APPLY_SCHEMA,
 	type AttestedApplyResult,
 	type AttestedApplyWorkerOptions,
 	type AttestedPrincipal,
+	CD_APPLY_EVENTS,
 	type CdApplyEvent,
+	createAttestedApplyWorker,
+	createContractAssertedApplyAttestation,
+	createOfflineIacProvider,
 } from "./attested-apply.js";
 export {
 	CD_PLANE_SCHEMA,
-	createContinuousDeliveryPlane,
 	type ContinuousDeliveryPlane,
 	type ContinuousDeliveryResult,
+	createContinuousDeliveryPlane,
 	type RollbackResult,
 } from "./cd-plane.js";
 export {
@@ -32,13 +32,13 @@ export {
 	type LocalCdFixtures,
 } from "./fixtures.js";
 export {
+	type A2HHandoffPackage,
 	createDefaultSafetyEnvelope,
 	decideFailurePath,
-	INCIDENT_CD_SCHEMA,
-	INCIDENT_EVENTS,
-	type A2HHandoffPackage,
 	type FailureDisposition,
 	type FailureSignal,
+	INCIDENT_CD_SCHEMA,
+	INCIDENT_EVENTS,
 	type IncidentEvent,
 	type LaneGrant,
 	type ProposedDelta,
@@ -47,17 +47,17 @@ export {
 } from "./incident-a2h.js";
 export {
 	PROGRESSIVE_CD_SCHEMA,
-	runProgressiveComposition,
 	type ProgressiveCdResult,
+	runProgressiveComposition,
 	type SustainedEvidenceWindow,
 } from "./progressive-cd.js";
 export {
 	createResolvedDeploymentSet,
+	type GatekeeperApproval,
 	listResources,
+	type MatchSelection,
 	providerForResource,
 	RESOLVED_SET_SCHEMA,
-	type GatekeeperApproval,
-	type MatchSelection,
 	type ResolvedDeploymentSet,
 } from "./resolved-set.js";
 export {
@@ -65,8 +65,8 @@ export {
 	createSecretFreeDiff,
 	createSecretFreeStatus,
 	SECRET_FREE_SCHEMA,
-	toSecretFreeOutputs,
 	type SecretFreeDiff,
 	type SecretFreeStatus,
 	type SecretRef,
+	toSecretFreeOutputs,
 } from "./secret-free.js";

@@ -13,7 +13,7 @@ import type {
 	RealizationKind,
 } from "@hobo/capability-profiles";
 
-import { DIGEST_PATTERN, type CanonicalValue, sha256Of } from "./canonical.js";
+import { type CanonicalValue, DIGEST_PATTERN, sha256Of } from "./canonical.js";
 
 // public-contract: signed trust evidence schema identifier used across adapter boundaries.
 export const TRUST_EVIDENCE_SCHEMA_VERSION = "hobo.trust-evidence/v1";
@@ -72,7 +72,10 @@ export type TrustEvidenceInput = {
 declare const trustEvidenceBrand: unique symbol;
 
 /** Parsed evidence. Construct only through {@link parseTrustEvidence}. */
-export type TrustEvidence = Omit<TrustEvidenceInput, "realizations" | "sponsorBacked"> & {
+export type TrustEvidence = Omit<
+	TrustEvidenceInput,
+	"realizations" | "sponsorBacked"
+> & {
 	readonly realizations?: readonly RealizationKind[];
 	readonly sponsorBacked?: boolean;
 	readonly [trustEvidenceBrand]: "TrustEvidence";
@@ -87,7 +90,11 @@ export class TrustEvidenceError extends Error {
 	}
 }
 
-const CHECK_OUTCOMES: readonly EvidenceCheckOutcome[] = ["pass", "fail", "unknown"];
+const CHECK_OUTCOMES: readonly EvidenceCheckOutcome[] = [
+	"pass",
+	"fail",
+	"unknown",
+];
 const PROVIDER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:T[0-9:.]+Z)?$/u;
 const REALIZATIONS: readonly RealizationKind[] = ["native", "pack", "bridge"];
@@ -97,14 +104,22 @@ function requireText(value: unknown, field: string): string {
 		throw new TrustEvidenceError(`${field} must be a non-empty string`);
 	}
 	if (value !== value.trim()) {
-		throw new TrustEvidenceError(`${field} must not have surrounding whitespace`);
+		throw new TrustEvidenceError(
+			`${field} must not have surrounding whitespace`,
+		);
 	}
 	return value;
 }
 
 function requireInstant(value: unknown, field: string): number {
-	if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value)) {
-		throw new TrustEvidenceError(`${field} must be an integer epoch-millisecond instant`);
+	if (
+		typeof value !== "number" ||
+		!Number.isFinite(value) ||
+		!Number.isInteger(value)
+	) {
+		throw new TrustEvidenceError(
+			`${field} must be an integer epoch-millisecond instant`,
+		);
 	}
 	return value;
 }
@@ -127,7 +142,10 @@ export function evidenceDigestBody(
 		checks: sortedChecks(input.checks),
 		creatorAuthorityAfterClaim: input.creatorAuthorityAfterClaim,
 		claimActionCount: input.claimActionCount,
-		realizations: input.realizations === undefined ? undefined : [...input.realizations].sort(),
+		realizations:
+			input.realizations === undefined
+				? undefined
+				: [...input.realizations].sort(),
 		sponsorBacked: input.sponsorBacked,
 		sourceRefs: sortedSources(input.sourceRefs).map((source) => ({
 			url: source.url,
@@ -156,7 +174,8 @@ function sortedSources(
 	sources: readonly EvidenceSourceRef[],
 ): readonly EvidenceSourceRef[] {
 	return [...sources].sort(
-		(a, b) => a.url.localeCompare(b.url) || a.checkedAt.localeCompare(b.checkedAt),
+		(a, b) =>
+			a.url.localeCompare(b.url) || a.checkedAt.localeCompare(b.checkedAt),
 	);
 }
 
@@ -209,7 +228,9 @@ export function parseTrustEvidence(input: TrustEvidenceInput): TrustEvidence {
 		input.claimActionCount < 0 ||
 		input.claimActionCount > 32
 	) {
-		throw new TrustEvidenceError("claimActionCount must be an integer between 0 and 32");
+		throw new TrustEvidenceError(
+			"claimActionCount must be an integer between 0 and 32",
+		);
 	}
 
 	if (input.realizations !== undefined) {
@@ -225,7 +246,9 @@ export function parseTrustEvidence(input: TrustEvidenceInput): TrustEvidence {
 	const signature = requireText(input.signature, "signature");
 	const evidenceDigest = requireText(input.evidenceDigest, "evidenceDigest");
 	if (!DIGEST_PATTERN.test(evidenceDigest)) {
-		throw new TrustEvidenceError("evidenceDigest must be a lowercase sha256:<hex> digest");
+		throw new TrustEvidenceError(
+			"evidenceDigest must be a lowercase sha256:<hex> digest",
+		);
 	}
 
 	if (input.sourceRefs.length === 0) {
@@ -258,7 +281,9 @@ export function parseTrustEvidence(input: TrustEvidenceInput): TrustEvidence {
 		...(input.realizations !== undefined
 			? { realizations: [...input.realizations].sort() }
 			: {}),
-		...(input.sponsorBacked !== undefined ? { sponsorBacked: input.sponsorBacked } : {}),
+		...(input.sponsorBacked !== undefined
+			? { sponsorBacked: input.sponsorBacked }
+			: {}),
 		evidenceDigest,
 		signature,
 		sourceRefs: sortedSources(input.sourceRefs),

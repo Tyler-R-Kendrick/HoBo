@@ -12,12 +12,10 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-
-import { defaultProbes } from "./agent-registry.js";
-import {
-	type AgentsInitDestination,
-	type HarnessHunk,
-	type HarnessKind,
+import type {
+	AgentsInitDestination,
+	HarnessHunk,
+	HarnessKind,
 } from "./agent-harness-adapters.js";
 import {
 	isHostSpec,
@@ -27,17 +25,18 @@ import {
 	specEvidence,
 } from "./agent-harness-catalog.js";
 import {
+	type AgentPick,
 	buildAgentPicks,
-	isSelfHarness,
 	createChecklist,
 	eraseAgentChecklist,
+	isSelfHarness,
 	reduceChecklistKey,
 	renderAgentChecklist,
 	repaintAgentChecklist,
 	selectedPickIds,
 	shouldWriteAgentsInit,
-	type AgentPick,
 } from "./agent-harness-picks.js";
+import { defaultProbes } from "./agent-registry.js";
 import { readAuthSession } from "./auth.js";
 import { DEFAULT_OLLAMA_HOST, probeOllama } from "./ollama-engine.js";
 
@@ -62,7 +61,9 @@ export interface AgentsDestinationFail {
 	readonly remediation: readonly string[];
 }
 
-export type AgentsDestinationResult = AgentsDestinationOk | AgentsDestinationFail;
+export type AgentsDestinationResult =
+	| AgentsDestinationOk
+	| AgentsDestinationFail;
 
 export interface HarnessPlanEntry {
 	readonly id: string;
@@ -238,15 +239,15 @@ function detectedIds(options: AgentsInitOptions): Set<string> {
 	return ids;
 }
 
-function detectedKind(
-	options: AgentsInitOptions,
-	id: string,
-): HarnessKind {
+function detectedKind(options: AgentsInitOptions, id: string): HarnessKind {
 	const spec = catalogFor(options).find((row) => row.id === id);
 	return spec ? pickKindFromSpec(spec) : "coding-cli";
 }
 
-function selectedIds(options: AgentsInitOptions, detected: Set<string>): string[] {
+function selectedIds(
+	options: AgentsInitOptions,
+	detected: Set<string>,
+): string[] {
 	const specs = catalogFor(options);
 	if (options.all === true) {
 		return specs
@@ -268,7 +269,11 @@ function hunksFor(
 		readonly force?: boolean;
 		readonly hoboHome?: string;
 	},
-): { readonly kind: HarnessKind; readonly hunks: readonly HarnessHunk[]; readonly notes: readonly string[] } {
+): {
+	readonly kind: HarnessKind;
+	readonly hunks: readonly HarnessHunk[];
+	readonly notes: readonly string[];
+} {
 	const spec = loadHarnessCatalog({
 		cwd: ctx.cwd,
 		...(ctx.hoboHome !== undefined ? { hoboHome: ctx.hoboHome } : {}),
@@ -295,7 +300,9 @@ export async function planAgentsInit(
 ): Promise<AgentsInitPlan> {
 	const destResult = await resolveAgentsDestination({
 		env: options.env,
-		...(options.sidecarUrl !== undefined ? { sidecarUrl: options.sidecarUrl } : {}),
+		...(options.sidecarUrl !== undefined
+			? { sidecarUrl: options.sidecarUrl }
+			: {}),
 		...(options.probeOllamaHost !== undefined
 			? { probeOllamaHost: options.probeOllamaHost }
 			: {}),
@@ -336,7 +343,9 @@ export async function planAgentsInit(
 			...(options.reconfigure === true ? { force: true } : {}),
 			...(options.hoboHome !== undefined ? { hoboHome: options.hoboHome } : {}),
 		});
-		const skipped = planned.hunks.some((hunk) => hunk.summary.startsWith("skip"));
+		const skipped = planned.hunks.some((hunk) =>
+			hunk.summary.startsWith("skip"),
+		);
 		return {
 			id,
 			kind: planned.kind,
@@ -405,7 +414,9 @@ export async function applyAgentsInit(
 		};
 	}
 	const writable = plan.entries.flatMap((entry) =>
-		entry.hunks.filter((hunk) => hunk.action === "create" || hunk.action === "edit"),
+		entry.hunks.filter(
+			(hunk) => hunk.action === "create" || hunk.action === "edit",
+		),
 	);
 	if (writable.length === 0) {
 		return {
@@ -450,7 +461,8 @@ export async function applyAgentsInit(
 	return {
 		schema: AGENTS_INIT_SCHEMA,
 		ok: skipped.length === 0,
-		reason: written.length > 0 ? "coding_agents_configured" : "unparseable_config",
+		reason:
+			written.length > 0 ? "coding_agents_configured" : "unparseable_config",
 		written,
 		skipped,
 		plan,
@@ -596,10 +608,15 @@ export async function runAgentsCli(options: {
 			yes: dry ? false : writeNow || tty,
 		});
 		if (dry) {
-			const text = panelish("◎ agents init · dry-run", formatAgentsInitPlan(applied.plan));
+			const text = panelish(
+				"◎ agents init · dry-run",
+				formatAgentsInitPlan(applied.plan),
+			);
 			return {
 				ok: applied.plan.ok,
-				code: applied.plan.ok ? "HOBO_CODE_AGENTS_PLAN" : "HOBO_CODE_AGENTS_NO_DEST",
+				code: applied.plan.ok
+					? "HOBO_CODE_AGENTS_PLAN"
+					: "HOBO_CODE_AGENTS_NO_DEST",
 				message: text,
 				data: applied.plan,
 			};
@@ -638,7 +655,9 @@ export async function runAgentsCli(options: {
 	const plan = await planAgentsInit(common);
 	const registryPath = agentsRegistryPath(options.hoboHome);
 	const registered = existsSync(registryPath)
-		? (JSON.parse(readFileSync(registryPath, "utf8")) as { readonly agents?: unknown })
+		? (JSON.parse(readFileSync(registryPath, "utf8")) as {
+				readonly agents?: unknown;
+			})
 		: null;
 	const title = sub === "status" ? "◎ agents status" : "◎ agents";
 	return {
@@ -663,7 +682,9 @@ export async function runAgentsCli(options: {
 								})),
 							},
 				),
-				registered ? `registry · ${registryPath}` : "registry · none yet — hobo-code agents init",
+				registered
+					? `registry · ${registryPath}`
+					: "registry · none yet — hobo-code agents init",
 			].join("\n"),
 		),
 		data: { plan, registered },
@@ -672,14 +693,19 @@ export async function runAgentsCli(options: {
 
 function panelish(title: string, body: string): string {
 	const rows = body.split("\n").filter((row) => row.length > 0);
-	return [title, "·".repeat(16), ...rows.map((row) => ` ${row}`), "─".repeat(16)].join(
-		"\n",
-	);
+	return [
+		title,
+		"·".repeat(16),
+		...rows.map((row) => ` ${row}`),
+		"─".repeat(16),
+	].join("\n");
 }
 
 export function formatAgentsInitPlan(plan: AgentsInitPlan): string {
 	if (!plan.ok) {
-		return [plan.reason, ...plan.remediation.map((row) => `  ${row}`)].join("\n");
+		return [plan.reason, ...plan.remediation.map((row) => `  ${row}`)].join(
+			"\n",
+		);
 	}
 	const dest = plan.destination;
 	const lines = [

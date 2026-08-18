@@ -30,7 +30,14 @@ export function linkGeneratedAppRuntime(
 	if (!existsSync(honoDest)) {
 		const hono = firstExisting([
 			join(repoRoot, "node_modules", "hono"),
-			join(repoRoot, "packages", "adapters", "adapter-hono", "node_modules", "hono"),
+			join(
+				repoRoot,
+				"packages",
+				"adapters",
+				"adapter-hono",
+				"node_modules",
+				"hono",
+			),
 		]);
 		if (hono !== undefined) {
 			mkdirSync(join(projectDir, "node_modules"), { recursive: true });

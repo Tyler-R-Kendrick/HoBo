@@ -9,13 +9,13 @@
 import { detectCapability } from "../capability.js";
 import {
 	createWorkspace,
+	deriveContract,
 	execCommand,
 	initRoot,
-	deriveContract,
 	listDebris,
 	pruneDebris,
-	readRegistry,
 	quoteVector,
+	readRegistry,
 	rebuildRegistry,
 	removeWorkspace,
 	runInWorkspace,
@@ -60,7 +60,9 @@ const root = flag("root") ?? process.cwd();
 const json = ours.includes("--json");
 
 function emit(human: string, data: unknown): void {
-	process.stdout.write(json ? `${JSON.stringify(data, null, 2)}\n` : `${human}\n`);
+	process.stdout.write(
+		json ? `${JSON.stringify(data, null, 2)}\n` : `${human}\n`,
+	);
 }
 
 if (command === "capability") {
@@ -73,7 +75,10 @@ if (command === "capability") {
 	);
 } else if (command === "init") {
 	const result = initRoot(root);
-	emit(`${result.created ? "initialized" : "already registered"} ${result.root}`, result);
+	emit(
+		`${result.created ? "initialized" : "already registered"} ${result.root}`,
+		result,
+	);
 } else if (command === "create") {
 	const name = flag("name") ?? `ws-${Date.now()}`;
 	const created = createWorkspace({
@@ -123,7 +128,10 @@ if (command === "capability") {
 	// Rebuild the snapshot from the journal after a torn write.
 	const registry = rebuildRegistry(root);
 	if (registry.undecidable) process.stderr.write(`${registry.undecidable}\n`);
-	emit(`registry now lists ${registry.workspaces.length} workspace(s)`, registry);
+	emit(
+		`registry now lists ${registry.workspaces.length} workspace(s)`,
+		registry,
+	);
 } else if (command === "remove") {
 	const name = flag("name");
 	if (!name) {

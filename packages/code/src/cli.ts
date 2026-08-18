@@ -90,15 +90,15 @@ import {
 	renderTasksBoardText,
 } from "./grok-build-parity.js";
 import {
+	applySettingsToSeatCommand,
+	loadHarnessSettings,
+} from "./harness-settings.js";
+import {
 	harnessHumanSummary,
 	inspectHarnessSurface,
 } from "./harness-surface.js";
 import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
 import { runAliasCli, runHistoryCli } from "./history-cli.js";
-import {
-	applySettingsToSeatCommand,
-	loadHarnessSettings,
-} from "./harness-settings.js";
 import {
 	cleanupIsolation,
 	createIsolationContext,

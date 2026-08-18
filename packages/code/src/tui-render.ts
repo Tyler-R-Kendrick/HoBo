@@ -78,13 +78,10 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 				(max, child) => Math.max(max, scrollOf(child)),
 				0,
 			);
-			const card = inkCard(
-				padLines(raw, maxBody, overlayScroll, "end"),
-				{
-					width: cardWidth,
-					title: "btw",
-				},
-			);
+			const card = inkCard(padLines(raw, maxBody, overlayScroll, "end"), {
+				width: cardWidth,
+				title: "btw",
+			});
 			const clipped =
 				card.length > glass ? card.slice(card.length - glass) : card;
 			const col = Math.max(0, innerWidth - cardWidth);

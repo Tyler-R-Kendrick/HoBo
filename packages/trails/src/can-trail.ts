@@ -3,8 +3,8 @@
  * Offline-capable dry-run evidence.
  */
 import type { TrailDefinition } from "./definition.js";
-import { composeTrailWithRecipes, getPlatformRecipe } from "./recipes.js";
 import { orderTrailSteps } from "./definition.js";
+import { composeTrailWithRecipes, getPlatformRecipe } from "./recipes.js";
 
 // public-contract: can-trail dry-run schema version.
 export const CAN_TRAIL_SCHEMA_VERSION = "hobo.can-trail/v1" as const;
@@ -163,8 +163,7 @@ export function evaluateCanTrail(input: CanTrailInput): CanTrailResult {
 		// Informational evidence — not a failure.
 		reasons.push({
 			code: "identity-hands-off-ok",
-			message:
-				"continuous identity trail requires zero Bindle/Trail authoring",
+			message: "continuous identity trail requires zero Bindle/Trail authoring",
 		});
 	}
 

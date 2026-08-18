@@ -122,7 +122,9 @@ describe("evidence recording automation export", () => {
 		).toEqual(exported);
 	});
 
-	it("emits a Playwright bundle the installed compiler can load", { timeout: 30_000 }, () => {
+	it("emits a Playwright bundle the installed compiler can load", {
+		timeout: 30_000,
+	}, () => {
 		const exported = exportEvidenceRecordingAutomation(
 			recording([
 				{

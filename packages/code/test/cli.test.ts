@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -262,34 +269,40 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(help.message).toMatch(/agents init/i);
 		expect(help.message).toMatch(/never mints|env_key|Eve/i);
 
-		const missing = await runHoboCodeCli(["agents", "init", "codex", "--dry-run"], {
-			env: {
-				...process.env,
-				HOBO_HOME: home,
-				HOME: home,
-				PATH: "/empty",
-				OPENAI_BASE_URL: "",
-				HOBO_CODE_LOCAL_BASE_URL: "",
-				OLLAMA_HOST: "",
-				HOBO_CODE_AGENTS_PROBE: "0",
+		const missing = await runHoboCodeCli(
+			["agents", "init", "codex", "--dry-run"],
+			{
+				env: {
+					...process.env,
+					HOBO_HOME: home,
+					HOME: home,
+					PATH: "/empty",
+					OPENAI_BASE_URL: "",
+					HOBO_CODE_LOCAL_BASE_URL: "",
+					OLLAMA_HOST: "",
+					HOBO_CODE_AGENTS_PROBE: "0",
+				},
+				hoboHome: home,
 			},
-			hoboHome: home,
-		});
+		);
 		expect(missing.ok).toBe(false);
 		expect(missing.message).toMatch(/no model listen/i);
 		expect(JSON.stringify(missing)).not.toMatch(/sk-[a-zA-Z0-9]{8,}/);
 
-		const planned = await runHoboCodeCli(["agents", "init", "codex", "--dry-run"], {
-			env: {
-				...process.env,
-				HOBO_HOME: home,
-				HOME: home,
-				PATH: "/empty",
-				OPENAI_BASE_URL: "http://127.0.0.1:11434/v1",
-				OPENAI_API_KEY: "sk-secret-must-not-leak",
+		const planned = await runHoboCodeCli(
+			["agents", "init", "codex", "--dry-run"],
+			{
+				env: {
+					...process.env,
+					HOBO_HOME: home,
+					HOME: home,
+					PATH: "/empty",
+					OPENAI_BASE_URL: "http://127.0.0.1:11434/v1",
+					OPENAI_API_KEY: "sk-secret-must-not-leak",
+				},
+				hoboHome: home,
 			},
-			hoboHome: home,
-		});
+		);
 		expect(planned.ok).toBe(true);
 		expect(planned.code).toBe("HOBO_CODE_AGENTS_PLAN");
 		expect(planned.message).toMatch(/codex/i);
@@ -299,7 +312,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 	it("agents init --non-interactive writes Codex without a second --yes", async () => {
 		const home = temp("hobo-code-agents-ni-");
 		mkdirSync(join(home, ".codex"), { recursive: true });
-		writeFileSync(join(home, ".codex", "config.toml"), "model = \"gpt-5\"\n");
+		writeFileSync(join(home, ".codex", "config.toml"), 'model = "gpt-5"\n');
 		const wrote = await runHoboCodeCli(
 			["agents", "init", "codex", "--non-interactive"],
 			{
@@ -611,7 +624,9 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/▣ agents/);
 		expect(r.message).toMatch(/tasks nest under the subagent/);
 		expect(r.message).toMatch(/Evidence: visual report of this board/);
-		expect(r.message).toMatch(/incremental checkins · stacked PRs · squash-merge/);
+		expect(r.message).toMatch(
+			/incremental checkins · stacked PRs · squash-merge/,
+		);
 		const data = r.data as {
 			grokBuild: {
 				mouseInteractive: boolean;
@@ -970,9 +985,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		};
 		expect(payload.inventory?.scope?.environment).toBe("preview");
 		expect(payload.inventory?.missing).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ kind: "junction" }),
-			]),
+			expect.arrayContaining([expect.objectContaining({ kind: "junction" })]),
 		);
 		expect(
 			(payload.inventory?.missing as { kind?: string }[] | undefined)?.some(

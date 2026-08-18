@@ -23,7 +23,12 @@ export type FeatureDescriptor = {
 	readonly key: string;
 	readonly description: string;
 	/** Structured value domain so matching is not string comparison. */
-	readonly valueKind: "boolean" | "enum" | "integer" | "semver-range" | "string-set";
+	readonly valueKind:
+		| "boolean"
+		| "enum"
+		| "integer"
+		| "semver-range"
+		| "string-set";
 	readonly enumValues?: readonly string[];
 };
 

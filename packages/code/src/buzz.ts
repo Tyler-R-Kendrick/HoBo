@@ -9,17 +9,17 @@ export {
 	COMPUTE_ISOLATION_CLASSES as BUZZ_ISOLATION_CLASSES,
 	COMPUTE_POOL_SCHEMA as BUZZ_HIVE_SCHEMA,
 	COMPUTE_TASK_SCHEMA as BUZZ_TASK_SCHEMA,
-	describeDistributedCompute as describeBuzzDistributedCompute,
-	dispatchComputeTask as dispatchBuzzTask,
-	openComputePool as openBuzzHive,
-	registerComputeNode as registerBuzzNode,
 	type ComputeNode as BuzzNode,
 	type ComputeNodeClass as BuzzNodeClass,
 	type ComputePool as BuzzHive,
 	type ComputeTask as BuzzTask,
 	type DispatchComputeTaskInput as DispatchBuzzTaskInput,
 	type DispatchComputeTaskResult as DispatchBuzzTaskResult,
+	describeDistributedCompute as describeBuzzDistributedCompute,
+	dispatchComputeTask as dispatchBuzzTask,
 	type OpenComputePoolOptions as OpenBuzzHiveOptions,
+	openComputePool as openBuzzHive,
+	registerComputeNode as registerBuzzNode,
 } from "./distributed.js";
 
 /** @deprecated No agent/room hive identity — removed with buzz product surface. */

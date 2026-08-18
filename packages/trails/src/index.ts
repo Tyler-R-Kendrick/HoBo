@@ -20,51 +20,6 @@ export {
 	type SqliteDataDualWrite,
 } from "./data-dual-port.js";
 export {
-	type CompatGateEvidence,
-	type DataMigrationPlan,
-	type DataMigrationResult,
-	type DataMigrationStatus,
-	type ExecuteDataMigrationOptions,
-	executeDataMigration,
-	MIGRATION_EVENTS,
-	MIGRATION_EXECUTOR_SCHEMA,
-	type MigrationFact,
-} from "./migration-executor.js";
-export {
-	type CreateSqliteSchemaApplyPortOptions,
-	createSqliteSchemaApplyPort,
-	type SchemaApplyPort,
-	type SchemaPhase,
-	type SchemaPhaseResult,
-	type SchemaSnapshotRef,
-} from "./schema-apply-port.js";
-export {
-	type CreateSqliteTenantMovePortsOptions,
-	createSqliteTenantMovePorts,
-	type SqliteTenantMovePorts,
-	TENANT_MOVE_SCHEMA,
-	type TenantFencePort,
-	type TenantTransferPort,
-} from "./tenant-move-port.js";
-export {
-	assertUpgradeScopeBoundary,
-	classifyUpgradeDryRunDecision,
-	COMPATIBILITY_INPUT_MATRIX,
-	type CompatibilityInputs,
-	evaluateUpgradeDryRun,
-	parseCompatibilityInputs,
-	parseRollbackEvidence,
-	type RollbackEvidence,
-	stableDigest,
-	type SupportHandoffRecord,
-	UPGRADE_DRY_RUN_FIXTURES,
-	UPGRADE_DRY_RUN_SCHEMA,
-	UPGRADE_SCOPE_BOUNDARIES,
-	type UpgradeDryRunReport,
-	type UpgradeDryRunRequest,
-	UpgradePreflightParseError,
-} from "./upgrade-preflight.js";
-export {
 	applySchemaStep,
 	createContractAssertedDataDualFixtures,
 	DATA_DUAL_SCHEMA,
@@ -127,6 +82,17 @@ export {
 	type TrailIdentityProgress,
 } from "./identity-trail.js";
 export {
+	type CompatGateEvidence,
+	type DataMigrationPlan,
+	type DataMigrationResult,
+	type DataMigrationStatus,
+	type ExecuteDataMigrationOptions,
+	executeDataMigration,
+	MIGRATION_EVENTS,
+	MIGRATION_EXECUTOR_SCHEMA,
+	type MigrationFact,
+} from "./migration-executor.js";
+export {
 	composeTrailWithRecipes,
 	expandRecipes,
 	getPlatformRecipe,
@@ -143,6 +109,40 @@ export {
 	type TrailRunnerOptions,
 	type TrailRunResult,
 } from "./runner.js";
+export {
+	type CreateSqliteSchemaApplyPortOptions,
+	createSqliteSchemaApplyPort,
+	type SchemaApplyPort,
+	type SchemaPhase,
+	type SchemaPhaseResult,
+	type SchemaSnapshotRef,
+} from "./schema-apply-port.js";
+export {
+	type CreateSqliteTenantMovePortsOptions,
+	createSqliteTenantMovePorts,
+	type SqliteTenantMovePorts,
+	TENANT_MOVE_SCHEMA,
+	type TenantFencePort,
+	type TenantTransferPort,
+} from "./tenant-move-port.js";
+export {
+	assertUpgradeScopeBoundary,
+	COMPATIBILITY_INPUT_MATRIX,
+	type CompatibilityInputs,
+	classifyUpgradeDryRunDecision,
+	evaluateUpgradeDryRun,
+	parseCompatibilityInputs,
+	parseRollbackEvidence,
+	type RollbackEvidence,
+	type SupportHandoffRecord,
+	stableDigest,
+	UPGRADE_DRY_RUN_FIXTURES,
+	UPGRADE_DRY_RUN_SCHEMA,
+	UPGRADE_SCOPE_BOUNDARIES,
+	type UpgradeDryRunReport,
+	type UpgradeDryRunRequest,
+	UpgradePreflightParseError,
+} from "./upgrade-preflight.js";
 
 // public-contract: package id consumers assert against.
 export const HOBO_TRAILS_PACKAGE = "@hobo/trails";

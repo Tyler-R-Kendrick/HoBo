@@ -92,7 +92,9 @@ describe("CloudProvider.client", () => {
 describe("TrafficRouting offerings surface", () => {
 	it("declares lb.lifecycle and observe.health offerings", () => {
 		assert.ok(CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS.includes("lb.lifecycle"));
-		assert.ok(CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS.includes("observe.health"));
+		assert.ok(
+			CLOUDFLARE_TRAFFIC_ROUTING_OFFERING_IDS.includes("observe.health"),
+		);
 		assert.equal(CLOUDFLARE_TRAFFIC_ROUTING_PROFILE.provider, "cloudflare");
 	});
 });

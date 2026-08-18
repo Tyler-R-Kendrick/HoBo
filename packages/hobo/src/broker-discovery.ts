@@ -171,7 +171,7 @@ export function createBrokerDiscoveryClient(options?: {
 						typeof body === "object" &&
 						"schemaVersion" in (body as object)
 							? body
-							: (body as { hobo_broker?: unknown }).hobo_broker ?? body;
+							: ((body as { hobo_broker?: unknown }).hobo_broker ?? body);
 					return parseBrokerDiscoveryDocument(candidate);
 				} catch (error) {
 					errors.push(

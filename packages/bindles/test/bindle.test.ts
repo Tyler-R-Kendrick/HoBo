@@ -339,7 +339,8 @@ describe("declared components (Plan 2 Syntax 0)", () => {
 
 	it("instantiates @trainable classes bound to b.web", () => {
 		const METADATA_SYMBOL =
-			(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");
+			(Symbol as { metadata?: symbol }).metadata ??
+			Symbol.for("Symbol.metadata");
 		const TRAINABLE_METADATA = Symbol.for("hobo.trainable.metadata");
 		class Hello {
 			greet(name?: string): string {

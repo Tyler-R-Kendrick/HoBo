@@ -3,9 +3,8 @@ import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
 import { parseTenantId } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
-import { createTailscaleApiClient } from "../../src/overlay/tailscale-api.js";
 import { createTailscaleOverlay } from "../../src/overlay/tailscale.js";
+import { createTailscaleApiClient } from "../../src/overlay/tailscale-api.js";
 import { createPactFetch } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(

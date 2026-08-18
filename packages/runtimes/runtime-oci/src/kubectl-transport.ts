@@ -1,4 +1,4 @@
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 
 /**
@@ -307,13 +307,10 @@ export function createProcessKubectlTransport(
 					};
 				}
 				const target = `${forward.loopbackUrl}${reqPath.startsWith("/") ? reqPath : `/${reqPath}`}`;
-				const headers = (body.headers as Record<string, string> | undefined) ?? {};
+				const headers =
+					(body.headers as Record<string, string> | undefined) ?? {};
 				const init: RequestInit = { method, headers };
-				if (
-					body.body !== undefined &&
-					method !== "GET" &&
-					method !== "HEAD"
-				) {
+				if (body.body !== undefined && method !== "GET" && method !== "HEAD") {
 					init.body =
 						typeof body.body === "string"
 							? body.body

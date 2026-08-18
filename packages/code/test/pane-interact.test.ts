@@ -118,10 +118,7 @@ describe("pane-interact", () => {
 		);
 		expect(left.state.paneInteract).toBe(false);
 
-		const leftAlt = reduceShellKey(
-			{ ...state, paneInteract: true },
-			"\x1c",
-		);
+		const leftAlt = reduceShellKey({ ...state, paneInteract: true }, "\x1c");
 		expect(leftAlt.state.paneInteract).toBe(false);
 	});
 

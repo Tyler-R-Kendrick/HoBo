@@ -3,18 +3,19 @@
  * Application code uses this API only — never vendor SDKs.
  * We implement the OpenFeature client surface natively (no hard npm dependency).
  */
-import {
-	type DetailEvaluation,
-	type FeatureFlagStore,
-	type FlagEvalContext,
-	type FlagValue,
-	FEATURE_FLAG_PORT,
-} from "./feature-flag-store.js";
+
 import {
 	createDevEvaluationContext,
 	enrichEvaluationContext,
 	type HoBoScopeAttributes,
 } from "./evaluation-context.js";
+import {
+	type DetailEvaluation,
+	FEATURE_FLAG_PORT,
+	type FeatureFlagStore,
+	type FlagEvalContext,
+	type FlagValue,
+} from "./feature-flag-store.js";
 
 // public-contract: OpenFeature provider metadata.
 export const HOBO_OPENFEATURE_PROVIDER_NAME = "hobo-feature-flag" as const;
@@ -105,9 +106,7 @@ export class HoboOpenFeatureProvider {
 	): OpenFeatureResolutionDetails<Readonly<Record<string, unknown>>> {
 		const d = this.evaluateAs(flagKey, defaultValue, context);
 		const value =
-			d.value !== null &&
-			typeof d.value === "object" &&
-			!Array.isArray(d.value)
+			d.value !== null && typeof d.value === "object" && !Array.isArray(d.value)
 				? (d.value as Readonly<Record<string, unknown>>)
 				: defaultValue;
 		return Object.freeze({
@@ -138,10 +137,7 @@ export class HoboOpenFeatureProvider {
 export class HoboFeatureClient {
 	readonly provider: HoboOpenFeatureProvider;
 
-	constructor(
-		store: FeatureFlagStore,
-		scope: HoBoScopeAttributes = {},
-	) {
+	constructor(store: FeatureFlagStore, scope: HoBoScopeAttributes = {}) {
 		this.provider = new HoboOpenFeatureProvider(store, scope);
 	}
 
@@ -162,11 +158,8 @@ export class HoboFeatureClient {
 		defaultValue = "",
 		context?: FlagEvalContext | HoBoScopeAttributes,
 	): string {
-		return this.provider.resolveStringEvaluation(
-			flagKey,
-			defaultValue,
-			context,
-		).value;
+		return this.provider.resolveStringEvaluation(flagKey, defaultValue, context)
+			.value;
 	}
 
 	getNumberValue(
@@ -174,11 +167,8 @@ export class HoboFeatureClient {
 		defaultValue = 0,
 		context?: FlagEvalContext | HoBoScopeAttributes,
 	): number {
-		return this.provider.resolveNumberEvaluation(
-			flagKey,
-			defaultValue,
-			context,
-		).value;
+		return this.provider.resolveNumberEvaluation(flagKey, defaultValue, context)
+			.value;
 	}
 
 	getObjectValue(
@@ -186,11 +176,8 @@ export class HoboFeatureClient {
 		defaultValue: Readonly<Record<string, unknown>> = {},
 		context?: FlagEvalContext | HoBoScopeAttributes,
 	): Readonly<Record<string, unknown>> {
-		return this.provider.resolveObjectEvaluation(
-			flagKey,
-			defaultValue,
-			context,
-		).value;
+		return this.provider.resolveObjectEvaluation(flagKey, defaultValue, context)
+			.value;
 	}
 
 	getBooleanDetails(

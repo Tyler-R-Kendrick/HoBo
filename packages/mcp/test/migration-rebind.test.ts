@@ -1,9 +1,8 @@
-import { describe, expect, it } from "vitest";
-
 import {
 	IdentityMigrationControlPlane,
 	type IdentityMigrationEvent,
 } from "@hobo/identity";
+import { describe, expect, it } from "vitest";
 
 import { rebindAgentsOnMigrationEvents } from "../src/auth.js";
 

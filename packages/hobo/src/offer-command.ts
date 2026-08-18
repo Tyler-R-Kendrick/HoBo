@@ -7,13 +7,13 @@ import { assertOfferIsSecretFree, buildDeploymentOffer } from "@hobo/recipes";
 
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
-	EVIDENCE_DIRECTORY,
-	RecipePlaneError,
 	buildRecipeContext,
 	compileTopology,
 	definitionsOf,
 	deploymentRequestFromBindle,
+	EVIDENCE_DIRECTORY,
 	isAcceptedCompilation,
+	RecipePlaneError,
 	requireRecipe,
 } from "./recipe-plane.js";
 
@@ -48,7 +48,10 @@ function localOfferSigner(home: string) {
 		algorithm: "hmac-sha256",
 		keyId,
 		sign(payloadDigest: string): string {
-			return createHash("sha256").update(keyId).update(payloadDigest).digest("hex");
+			return createHash("sha256")
+				.update(keyId)
+				.update(payloadDigest)
+				.digest("hex");
 		},
 	};
 }
@@ -65,7 +68,9 @@ export function createOfferCommand(deps: OfferCommandDeps): CommandModule {
 					status: "usage",
 					code: "HOBO_OFFER_USAGE",
 					message: "hobo offer <recipe-id>",
-					remediation: ["Run `hobo recipes list` to see registered recipe ids."],
+					remediation: [
+						"Run `hobo recipes list` to see registered recipe ids.",
+					],
 				};
 			}
 
@@ -96,7 +101,9 @@ export function createOfferCommand(deps: OfferCommandDeps): CommandModule {
 						status: "unknown-recipe",
 						code: "HOBO_OFFER_UNKNOWN_RECIPE",
 						message: error.message,
-						remediation: ["Run `hobo recipes list` to see registered recipe ids."],
+						remediation: [
+							"Run `hobo recipes list` to see registered recipe ids.",
+						],
 					};
 				}
 				throw error;

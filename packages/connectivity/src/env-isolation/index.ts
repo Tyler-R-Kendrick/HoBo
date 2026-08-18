@@ -4,11 +4,16 @@ export {
 } from "./compose.js";
 export {
 	elevatedDeniedEvent,
-	mintElevatedAccessCapability,
 	type MintElevatedInput,
+	mintElevatedAccessCapability,
 	type VerifiedElevatedAccess,
 	verifyElevatedAccessCapability,
 } from "./elevated-capability.js";
+export {
+	type EnvIsolationEvalContext,
+	type EnvIsolationVerdict,
+	evaluateEnvIsolation,
+} from "./evaluate.js";
 export {
 	ACCESS_EVENT_SCHEMA_VERSION,
 	ACCESS_EVENTS,
@@ -17,17 +22,12 @@ export {
 	createAccessEvent,
 } from "./events.js";
 export {
-	evaluateEnvIsolation,
-	type EnvIsolationEvalContext,
-	type EnvIsolationVerdict,
-} from "./evaluate.js";
-export {
 	BREAK_GLASS_SCHEMA,
-	BreakGlassService,
 	type BreakGlassGrant,
+	BreakGlassService,
 	CROSS_ENV_GRANT_SCHEMA,
-	CrossEnvGrantStore,
 	type CrossEnvGrant,
+	CrossEnvGrantStore,
 	ELEVATED_ACCESS_SCHEMA,
 	type ElevatedAccessCapability,
 } from "./grants.js";
@@ -40,9 +40,9 @@ export {
 	recordOverlayJoinDenied,
 } from "./local-airgap.js";
 export {
+	type AssignMembershipInput,
 	assertMembershipIntegrity,
 	ENV_MEMBERSHIP_SCHEMA,
-	type AssignMembershipInput,
 	type EnvMembership,
 	EnvMembershipService,
 } from "./membership.js";
@@ -72,8 +72,8 @@ export {
 	ISOLATION_TIERS,
 	type IsolationClass,
 	type IsolationTier,
-	isolationClassTag,
 	isExpired,
+	isolationClassTag,
 	isShortLivedClass,
 	parseIsolationClass,
 	SHORT_LIVED_MEMBERSHIP_TTL_SECONDS,

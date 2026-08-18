@@ -5,18 +5,10 @@
  *
  * Event-sourced; auto-rollback is a durable obligation shape (policy.Decided-compatible).
  */
-import type { FeatureFlagStore } from "./feature-flag-store.js";
-import {
-	OpenDeliveryEngine,
-	type DeliveryHealthSignal,
-	type RolloutPolicy,
-	type RolloutState,
-} from "./harness-delivery.js";
-import {
-	OpenExperimentEngine,
-	type ExperimentDefinition,
-} from "./harness-experiment.js";
-import type { FlagEvalContext } from "./feature-flag-store.js";
+import type {
+	FeatureFlagStore,
+	FlagEvalContext,
+} from "./feature-flag-store.js";
 import {
 	applyRolloutToGatewayRouting,
 	type DomainRoutingEvent,
@@ -30,6 +22,16 @@ import {
 	type ExperimentAnalysisPort,
 	type ExperimentAnalysisResult,
 } from "./harness-adapters.js";
+import {
+	type DeliveryHealthSignal,
+	OpenDeliveryEngine,
+	type RolloutPolicy,
+	type RolloutState,
+} from "./harness-delivery.js";
+import {
+	type ExperimentDefinition,
+	OpenExperimentEngine,
+} from "./harness-experiment.js";
 
 // public-contract: harness facade schema.
 export const HARNESS_SCHEMA = "hobo.harness/v1" as const;
@@ -85,9 +87,7 @@ export class Harness {
 		this.experiment = new OpenExperimentEngine({
 			store: options.store,
 			...(options.now !== undefined ? { now: options.now } : {}),
-			...(options.emitOtel !== undefined
-				? { emitOtel: options.emitOtel }
-				: {}),
+			...(options.emitOtel !== undefined ? { emitOtel: options.emitOtel } : {}),
 		});
 		this.deliveryAdapter =
 			options.deliveryAdapter ?? createBuiltinDeliveryAdapter();
@@ -163,7 +163,11 @@ export class Harness {
 	): ExperimentAnalysisResult | null {
 		const analysis = this.analyzeExperiment(experimentName);
 		const v = verdict ?? analysis?.verdict ?? "inconclusive";
-		this.experiment.conclude(experimentName, v, analysis?.exportPayload.contentHash);
+		this.experiment.conclude(
+			experimentName,
+			v,
+			analysis?.exportPayload.contentHash,
+		);
 		return analysis;
 	}
 

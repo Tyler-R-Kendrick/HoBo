@@ -77,11 +77,15 @@ describe("@hobo/provider-kafka", () => {
 		await bus.publish("orders" as never, { id: 1 }, { key: "k1" });
 		const batch = await bus.consume("orders" as never, "cg" as never);
 		expect(batch).toHaveLength(1);
-		expect(events.some((e) => (e as { eventType: string }).eventType === "messaging.publish")).toBe(
-			true,
-		);
 		expect(
-			events.some((e) => (e as { tenantId: TenantId }).tenantId === ("t1" as TenantId)),
+			events.some(
+				(e) => (e as { eventType: string }).eventType === "messaging.publish",
+			),
+		).toBe(true);
+		expect(
+			events.some(
+				(e) => (e as { tenantId: TenantId }).tenantId === ("t1" as TenantId),
+			),
 		).toBe(true);
 	});
 

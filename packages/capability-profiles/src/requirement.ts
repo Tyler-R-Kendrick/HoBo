@@ -7,10 +7,10 @@
  */
 import {
 	type BindleRuntime,
-	type ProfileId,
-	type RealizationKind,
 	isBindleRuntime,
+	type ProfileId,
 	parseProfileId,
+	type RealizationKind,
 } from "./ids.js";
 
 export class CapabilityRequirementError extends Error {
@@ -35,7 +35,12 @@ export type WeightedPreferenceInput = ProfileConstraintInput & {
 
 export type StructuredFeatureRequirementInput = {
 	readonly key: string;
-	readonly operator: "equals" | "at-least" | "at-most" | "one-of" | "includes-all";
+	readonly operator:
+		| "equals"
+		| "at-least"
+		| "at-most"
+		| "one-of"
+		| "includes-all";
 	readonly value: boolean | number | string | readonly string[];
 	readonly necessity: "required" | "preferred";
 };
@@ -77,7 +82,9 @@ export type ProfileConstraint = {
 	readonly versionRange: string;
 };
 
-export type WeightedPreference = ProfileConstraint & { readonly weight: number };
+export type WeightedPreference = ProfileConstraint & {
+	readonly weight: number;
+};
 
 export type CapabilityRequirement = {
 	readonly requiredProfiles: readonly ProfileConstraint[];
@@ -100,7 +107,10 @@ const PROVIDER_SHAPED = /(provider|vendor|account|tenant)Id$/iu;
 function parseConstraint(input: ProfileConstraintInput): ProfileConstraint {
 	const parsed = parseProfileId(input.profileId);
 	const range = (input.versionRange ?? `>=${parsed.major}`).trim();
-	if (!/^(?:\*|[><]=?|=|\^|~)?\s*v?\d+(?:\.\d+){0,2}$/u.test(range) && range !== "*") {
+	if (
+		!/^(?:\*|[><]=?|=|\^|~)?\s*v?\d+(?:\.\d+){0,2}$/u.test(range) &&
+		range !== "*"
+	) {
 		throw new CapabilityRequirementError(
 			`invalid version range ${JSON.stringify(range)} for ${parsed.id}`,
 		);
@@ -108,16 +118,22 @@ function parseConstraint(input: ProfileConstraintInput): ProfileConstraint {
 	return { profileId: parsed.id, versionRange: range };
 }
 
-function sortConstraints<T extends ProfileConstraint>(values: readonly T[]): readonly T[] {
+function sortConstraints<T extends ProfileConstraint>(
+	values: readonly T[],
+): readonly T[] {
 	return [...values].sort((a, b) => a.profileId.localeCompare(b.profileId));
 }
 
-function parseRuntimes(values: readonly string[] | undefined): readonly BindleRuntime[] {
+function parseRuntimes(
+	values: readonly string[] | undefined,
+): readonly BindleRuntime[] {
 	if (values === undefined) return [];
 	const parsed: BindleRuntime[] = [];
 	for (const value of values) {
 		if (!isBindleRuntime(value)) {
-			throw new CapabilityRequirementError(`unknown runtime model ${JSON.stringify(value)}`);
+			throw new CapabilityRequirementError(
+				`unknown runtime model ${JSON.stringify(value)}`,
+			);
 		}
 		if (!parsed.includes(value)) parsed.push(value);
 	}
@@ -211,7 +227,8 @@ export function parseCapabilityRequirement(
 		features,
 		guarantees,
 		portability: {
-			requireStandardBinding: input.portability?.requireStandardBinding ?? false,
+			requireStandardBinding:
+				input.portability?.requireStandardBinding ?? false,
 			requireExportProfile: input.portability?.requireExportProfile ?? false,
 			requiredMigrationProfiles: [
 				...(input.portability?.requiredMigrationProfiles ?? []),

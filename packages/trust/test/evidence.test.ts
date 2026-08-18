@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	TrustEvidenceError,
 	canonicalize,
 	computeEvidenceDigest,
 	parseTrustEvidence,
-	tryParseTrustEvidence,
+	TrustEvidenceError,
 	type TrustEvidenceInput,
+	tryParseTrustEvidence,
 } from "../src/index.js";
 
 const TESTED_AT = Date.UTC(2026, 7, 1);
@@ -31,10 +31,14 @@ export const baseInput = (
 		claimActionCount: 1,
 		realizations: ["native"],
 		sponsorBacked: false,
-		evidenceDigest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+		evidenceDigest:
+			"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		signature: "sig:test",
 		sourceRefs: [
-			{ url: "https://developers.cloudflare.com/workers/", checkedAt: "2026-08-08" },
+			{
+				url: "https://developers.cloudflare.com/workers/",
+				checkedAt: "2026-08-08",
+			},
 		],
 		...overrides,
 	};
@@ -61,13 +65,16 @@ describe("parseTrustEvidence", () => {
 		expect(() =>
 			parseTrustEvidence({
 				...baseInput(),
-				schemaVersion: "hobo.trust-evidence/v2" as unknown as "hobo.trust-evidence/v1",
+				schemaVersion:
+					"hobo.trust-evidence/v2" as unknown as "hobo.trust-evidence/v1",
 			}),
 		).toThrow(TrustEvidenceError);
 	});
 
 	it("rejects evidence with no checks, no sources, or a non-https source", () => {
-		expect(() => parseTrustEvidence(baseInput({ checks: {} }))).toThrow(TrustEvidenceError);
+		expect(() => parseTrustEvidence(baseInput({ checks: {} }))).toThrow(
+			TrustEvidenceError,
+		);
 		expect(() => parseTrustEvidence(baseInput({ sourceRefs: [] }))).toThrow(
 			TrustEvidenceError,
 		);
@@ -99,6 +106,8 @@ describe("parseTrustEvidence", () => {
 	});
 
 	it("reports a parse failure as absent evidence rather than partial evidence", () => {
-		expect(tryParseTrustEvidence(baseInput({ claimActionCount: -1 }))).toBeUndefined();
+		expect(
+			tryParseTrustEvidence(baseInput({ claimActionCount: -1 })),
+		).toBeUndefined();
 	});
 });

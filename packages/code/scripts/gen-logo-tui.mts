@@ -8,7 +8,7 @@
  * site's display font (Chewy, see site/src/styles/global.css --font-display)
  * at 220px, 8-bit gray+alpha (PNG ct=4), dark ink on transparent.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {

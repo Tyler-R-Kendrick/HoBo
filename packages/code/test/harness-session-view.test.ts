@@ -3,10 +3,10 @@ import {
 	cycleHarnessFocus,
 	cycleHarnessLeaf,
 	formatHarnessSessionLines,
-	harnessViewFromLivePanes,
-	HERDR_SESSION_CHROME_TOKENS,
-	mergeHarnessSessions,
 	type HarnessSessionView,
+	HERDR_SESSION_CHROME_TOKENS,
+	harnessViewFromLivePanes,
+	mergeHarnessSessions,
 } from "../src/harness-session-view.js";
 import type { InSessionPanes } from "../src/in-session-panes.js";
 import { cellWidth } from "../src/rubberhose.js";
@@ -173,8 +173,11 @@ describe("harness-session-view", () => {
 		const snap = (json.result?.snapshot ?? json.snapshot ?? json) as Parameters<
 			typeof import("../src/harness-session-view.js").harnessViewFromHerdrApiSnapshot
 		>[0];
-		const { harnessViewFromHerdrApiSnapshot, formatHarnessSessionLines, HERDR_SESSION_CHROME_TOKENS } =
-			await import("../src/harness-session-view.js");
+		const {
+			harnessViewFromHerdrApiSnapshot,
+			formatHarnessSessionLines,
+			HERDR_SESSION_CHROME_TOKENS,
+		} = await import("../src/harness-session-view.js");
 		const view = harnessViewFromHerdrApiSnapshot(snap);
 		expect(view.sessions.length).toBeGreaterThan(0);
 		const lines = formatHarnessSessionLines(view).join("\n");

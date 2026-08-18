@@ -7,14 +7,13 @@
  */
 import {
 	createContractAssertedDualFixtures,
+	type DualIdentityFixtures,
 	dualVerifyClaims,
 	evaluateCanMigrate,
 	IdentityMigrationControlPlane,
-	type DualIdentityFixtures,
 } from "@hobo/identity";
-
-import { identityContinuousTrail } from "./recipes.js";
 import type { TrailDefinition } from "./definition.js";
+import { identityContinuousTrail } from "./recipes.js";
 
 // public-contract: identity trail composition schema.
 export const IDENTITY_TRAIL_SCHEMA = "hobo.identity-trail/v1" as const;
@@ -227,9 +226,7 @@ export function activateIdentityContinuousFromMatching(input: {
 		migrationId: migration?.id ?? null,
 		state: migration?.state ?? null,
 		rampPercent: migration?.rampPercent ?? 0,
-		dualOk: progress.status.present
-			? progress.status.failedChecks === 0
-			: true,
+		dualOk: progress.status.present ? progress.status.failedChecks === 0 : true,
 	});
 }
 
@@ -248,9 +245,7 @@ export function advanceIdentityTrailRamp(
 		migrationId: migration?.id ?? null,
 		state: migration?.state ?? null,
 		rampPercent: migration?.rampPercent ?? targetPercent,
-		dualOk: progress.status.present
-			? progress.status.failedChecks === 0
-			: true,
+		dualOk: progress.status.present ? progress.status.failedChecks === 0 : true,
 	});
 }
 

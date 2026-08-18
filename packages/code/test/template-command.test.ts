@@ -44,9 +44,7 @@ describe("hobo-code template", () => {
 		const idLine = result.message
 			.split("\n")
 			.find((line) => line.includes("bindle.web-only"));
-		expect(idLine?.startsWith("  ") || idLine === "bindle.web-only").toBe(
-			true,
-		);
+		expect(idLine?.startsWith("  ") || idLine === "bindle.web-only").toBe(true);
 	});
 
 	it("renders an atom snippet by exact id", () => {

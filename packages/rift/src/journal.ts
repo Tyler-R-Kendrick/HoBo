@@ -13,7 +13,11 @@ import { join } from "node:path";
 import type { WorkspaceRecord } from "./workspace.js";
 
 export type WorkspaceEvent =
-	| { readonly type: "RootInitialized"; readonly at: string; readonly root: string }
+	| {
+			readonly type: "RootInitialized";
+			readonly at: string;
+			readonly root: string;
+	  }
 	/**
 	 * Intent, written *before* any filesystem work. Cloning a large tree takes
 	 * seconds, and a crash inside it used to leave a directory nothing knew
@@ -31,7 +35,11 @@ export type WorkspaceEvent =
 			readonly at: string;
 			readonly workspace: WorkspaceRecord;
 	  }
-	| { readonly type: "WorkspaceRemoved"; readonly at: string; readonly name: string };
+	| {
+			readonly type: "WorkspaceRemoved";
+			readonly at: string;
+			readonly name: string;
+	  };
 
 export function journalPath(riftDir: string): string {
 	return join(riftDir, "events.jsonl");
@@ -78,4 +86,3 @@ export function projectWorkspaces(
 	}
 	return [...byName.values()];
 }
-

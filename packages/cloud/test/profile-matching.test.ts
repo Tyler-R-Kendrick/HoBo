@@ -61,7 +61,11 @@ function semantics(
 		creatorAuthorityAfterClaim: "rotatable",
 		claimAtomicity: "single-resource",
 		claimActionCount: 1,
-		continuity: { endpoint: "preserved", data: "preserved", credentials: "rotated" },
+		continuity: {
+			endpoint: "preserved",
+			data: "preserved",
+			credentials: "rotated",
+		},
 		supportsExport: true,
 		supportsRotation: true,
 		supportsRevocation: true,
@@ -156,13 +160,17 @@ describe("profile-aware matching", () => {
 		});
 		expect(outcome.ok).toBe(false);
 		if (outcome.ok) return;
-		expect(outcome.rejections.map((r) => r.code)).toContain("PROFILE_INCOMPATIBLE");
+		expect(outcome.rejections.map((r) => r.code)).toContain(
+			"PROFILE_INCOMPATIBLE",
+		);
 		expect(outcome.remediation.code).toBe("capability.profile-unsatisfiable");
 	});
 
 	it("satisfies a relational requirement through the refinement graph", () => {
 		const relational = parseCapabilityRequirement({
-			requiredProfiles: [{ profileId: "data.relational/v1", versionRange: ">=1" }],
+			requiredProfiles: [
+				{ profileId: "data.relational/v1", versionRange: ">=1" },
+			],
 		});
 		const outcome = matchCapabilityRequirement({
 			resourceName: "db",

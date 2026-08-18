@@ -83,9 +83,7 @@ describe("Planner: hello-bindle golden DeploymentPlan DAG", () => {
 			// Canonical shape (ADR-0033/0088): ranking (winner first), structured
 			// rejections mirroring the deprecated flat list, tie flag, and the
 			// catalog content-hash alias staying in lockstep.
-			expect(decision.ranking[0]?.providerId).toBe(
-				"@hobo/provider-cloudflare",
-			);
+			expect(decision.ranking[0]?.providerId).toBe("@hobo/provider-cloudflare");
 			expect(decision.rejectedCandidates.map((r) => r.definitionId)).toEqual(
 				decision.rejected,
 			);

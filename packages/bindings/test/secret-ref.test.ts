@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	SecretRefError,
-	SecretValue,
 	parseSecretRef,
 	redactSecretRef,
+	type SecretRefError,
+	SecretValue,
 } from "../src/index.js";
 
 describe("secret reference parsing", () => {
@@ -57,7 +57,9 @@ describe("secret reference parsing", () => {
 	});
 
 	it("requires an authority and at least one path segment", () => {
-		expect(() => parseSecretRef("vault://tenant")).toThrow(/at least one path segment/u);
+		expect(() => parseSecretRef("vault://tenant")).toThrow(
+			/at least one path segment/u,
+		);
 	});
 
 	it("rejects uppercase schemes rather than silently normalizing", () => {
@@ -65,7 +67,10 @@ describe("secret reference parsing", () => {
 	});
 
 	it.each([
-		["postgresql://user:pw@db.example.com:5432/app", "a postgres connection string"],
+		[
+			"postgresql://user:pw@db.example.com:5432/app",
+			"a postgres connection string",
+		],
 		["redis://default:token@fly-redis:6379", "a redis url"],
 		["Bearer eyJhbGciOiJIUzI1NiJ9.abc.def", "a bearer token"],
 		["-----BEGIN RSA PRIVATE KEY-----", "a private key"],
@@ -87,9 +92,9 @@ describe("secret reference parsing", () => {
 
 describe("redaction", () => {
 	it("elides everything past the first path segment", () => {
-		expect(redactSecretRef("vault://acme-tenant/db/primary/password#value")).toBe(
-			"vault://acme-tenant/db/…#…",
-		);
+		expect(
+			redactSecretRef("vault://acme-tenant/db/primary/password#value"),
+		).toBe("vault://acme-tenant/db/…#…");
 	});
 
 	it("redacts an unparseable input rather than echoing it", () => {

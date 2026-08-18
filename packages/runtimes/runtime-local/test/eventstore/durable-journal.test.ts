@@ -1,12 +1,8 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MissingFenceError, StaleFenceError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
-import {
-	MissingFenceError,
-	StaleFenceError,
-} from "@hobo/core";
 
 import {
 	createManualClock,
@@ -65,40 +61,28 @@ describe("durable journal integration", () => {
 	it("enforces fencing and rejects unfenced after fenced mode", async () => {
 		const { store, dataDir } = storeForTest();
 		try {
-			await store.append(
-				"actor:x",
-				[{ type: "actor.Opened", data: {} }],
-				{
-					expectedSeq: 0,
-					actor: { kind: "system", id: "test" },
-					tenant: "t",
-					fenceToken: 2n,
-				},
-			);
+			await store.append("actor:x", [{ type: "actor.Opened", data: {} }], {
+				expectedSeq: 0,
+				actor: { kind: "system", id: "test" },
+				tenant: "t",
+				fenceToken: 2n,
+			});
 
 			await expect(
-				store.append(
-					"actor:x",
-					[{ type: "actor.Stale", data: {} }],
-					{
-						expectedSeq: 1,
-						actor: { kind: "system", id: "test" },
-						tenant: "t",
-						fenceToken: 1n,
-					},
-				),
+				store.append("actor:x", [{ type: "actor.Stale", data: {} }], {
+					expectedSeq: 1,
+					actor: { kind: "system", id: "test" },
+					tenant: "t",
+					fenceToken: 1n,
+				}),
 			).rejects.toBeInstanceOf(StaleFenceError);
 
 			await expect(
-				store.append(
-					"actor:x",
-					[{ type: "actor.Unfenced", data: {} }],
-					{
-						expectedSeq: 1,
-						actor: { kind: "system", id: "test" },
-						tenant: "t",
-					},
-				),
+				store.append("actor:x", [{ type: "actor.Unfenced", data: {} }], {
+					expectedSeq: 1,
+					actor: { kind: "system", id: "test" },
+					tenant: "t",
+				}),
 			).rejects.toBeInstanceOf(MissingFenceError);
 		} finally {
 			store.close();
@@ -111,7 +95,10 @@ describe("durable journal integration", () => {
 		try {
 			await store.append(
 				"s",
-				[{ type: "a.A", data: {} }, { type: "a.B", data: {} }],
+				[
+					{ type: "a.A", data: {} },
+					{ type: "a.B", data: {} },
+				],
 				{
 					expectedSeq: 0,
 					actor: { kind: "system", id: "test" },

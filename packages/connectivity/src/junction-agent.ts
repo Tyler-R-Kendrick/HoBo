@@ -1,11 +1,11 @@
 import {
+	createUsageEvent,
 	type MeteringBus,
 	type OverlayNetwork,
 	type PolicyEngine,
 	type PublicDnsManager,
-	type TenantId,
-	createUsageEvent,
 	parseTenantId,
+	type TenantId,
 } from "@hobo/core";
 
 import {
@@ -14,9 +14,9 @@ import {
 	type JunctionDynamicDnsRegistrar,
 } from "./dns/dynamic-registrar.js";
 import {
+	type IsolationClass,
 	isolationClassTag,
 	parseIsolationClass,
-	type IsolationClass,
 } from "./env-isolation/types.js";
 
 export type JunctionAgentRole = "junction" | "broker";
@@ -88,9 +88,7 @@ export function createJunctionAgent(options: {
 					tenantId,
 					dns: options.publicDns,
 					overlay: options.overlay,
-					...(options.policy !== undefined
-						? { policy: options.policy }
-						: {}),
+					...(options.policy !== undefined ? { policy: options.policy } : {}),
 					...(options.metering !== undefined
 						? { metering: options.metering }
 						: {}),

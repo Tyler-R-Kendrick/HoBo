@@ -12,7 +12,12 @@ export interface TypedOptionBlock {
 export const railway = {
 	with: {
 		service(options: Record<string, unknown> = {}): TypedOptionBlock {
-			return optionBlock("compute", "service", {"runtime":"container"}, options);
+			return optionBlock(
+				"compute",
+				"service",
+				{ runtime: "container" },
+				options,
+			);
 		},
 		redis(options: Record<string, unknown> = {}): TypedOptionBlock {
 			return optionBlock("kv", "redis", {}, options);

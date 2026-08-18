@@ -31,7 +31,7 @@ export function equivalenceForPort(port: InitialCapabilityPort) {
 
 /** HoBo ports this provider can natively host (Matching / Examples truth). */
 export function cloudflareNativePorts(): readonly string[] {
-	return Object.freeze(
-		[...new Set(Object.values(EQUIVALENCE_CLASSES).map((entry) => entry.port))],
-	);
+	return Object.freeze([
+		...new Set(Object.values(EQUIVALENCE_CLASSES).map((entry) => entry.port)),
+	]);
 }

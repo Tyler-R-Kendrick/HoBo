@@ -34,7 +34,9 @@ describe("hobo-code bin launcher", () => {
 		const launcherSrc = readFileSync(launcher, "utf8");
 		expect(launcherSrc).toMatch(/tsc/);
 		expect(launcherSrc).toMatch(/running src\/ via tsx/);
-		expect(launcherSrc).toMatch(/stationsDistIsStale|@hobo\/stations dist is stale/);
+		expect(launcherSrc).toMatch(
+			/stationsDistIsStale|@hobo\/stations dist is stale/,
+		);
 		expect(launcherSrc).not.toMatch(/--filter\s+@hobo\/core/);
 		expect(launcherSrc).not.toMatch(/pnpm", \["run", "build"\]/);
 		expect(launcherSrc).not.toMatch(/pnpm", \["--filter"/);

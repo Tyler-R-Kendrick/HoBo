@@ -211,7 +211,9 @@ describe("what the shell carries", () => {
 		process.env.HOBO_TEST_SECRET = "must-not-leak";
 		try {
 			const shell = createVirtualShell({ workspace: root });
-			const env = await shell.run("echo $HOBO_TEST_SECRET; echo $PATH; echo $HOME");
+			const env = await shell.run(
+				"echo $HOBO_TEST_SECRET; echo $PATH; echo $HOME",
+			);
 			expect(env.stdout).not.toContain("must-not-leak");
 			expect(env.stdout).toContain(VIRTUAL_WORKSPACE);
 		} finally {
@@ -235,7 +237,16 @@ describe("the allow-list is the policy", () => {
 			expect(DEFAULT_COMMANDS).toContain(expected);
 		}
 		expect(DEFAULT_COMMANDS).toContain("pwd");
-		for (const forbidden of ["rm", "curl", "wget", "bash", "sh", "sudo", "chmod", "git"]) {
+		for (const forbidden of [
+			"rm",
+			"curl",
+			"wget",
+			"bash",
+			"sh",
+			"sudo",
+			"chmod",
+			"git",
+		]) {
 			expect(DEFAULT_COMMANDS).not.toContain(forbidden);
 		}
 	});
@@ -248,7 +259,11 @@ describe("which directory a rift workspace contributes", () => {
 		// shell that reports "No such file or directory" for every project file —
 		// which is exactly what happened before this rule existed.
 		expect(
-			mountFor({ path: "/ws/.hobo-rift/workspaces/a/merged", tier: "overlayfs", source: "/src" }),
+			mountFor({
+				path: "/ws/.hobo-rift/workspaces/a/merged",
+				tier: "overlayfs",
+				source: "/src",
+			}),
 		).toBe("/src");
 	});
 
@@ -274,7 +289,9 @@ describe("Eve agents in the virtual filesystem", () => {
 		const secret = join(root, "..", "outside-secret.txt");
 		writeFileSync(secret, "AKIA-NOT-IN-VFS\n");
 		const shell = createVirtualShell({ workspace: root });
-		const listed = await shell.run(`ls ${VIRTUAL_AGENTS}/subagents/implementer`);
+		const listed = await shell.run(
+			`ls ${VIRTUAL_AGENTS}/subagents/implementer`,
+		);
 		expect(listed.exitCode).toBe(0);
 		expect(listed.stdout).toMatch(/instructions\.md/);
 		const read = await shell.run(

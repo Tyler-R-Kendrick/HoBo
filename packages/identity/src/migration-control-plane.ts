@@ -3,40 +3,37 @@
  * Matching/policy decisions auto-start dual path; Harness flags ramp; dual oracle
  * health auto-aborts. Zero Bindle configuration required.
  */
-import {
-	dualVerifyClaims,
-	type AdapterClaims,
-} from "./dual-adapter.js";
+import { type AdapterClaims, dualVerifyClaims } from "./dual-adapter.js";
 import {
 	FeatureFlagStore,
-	migrationCohortFlagKey,
 	type FlagDefinition,
 	type FlagEvaluation,
+	migrationCohortFlagKey,
 } from "./feature-flag-store.js";
 import {
 	createDualAdapterPair,
-	verifyDualAdapters,
 	type DualAdapterPair,
 	type IdentityAdapter,
+	verifyDualAdapters,
 } from "./identity-adapter-port.js";
+import type { MappingSpec } from "./mapping-spec.js";
 import {
-	IdentityMigrationService,
 	type IdentityMigrationRecord,
+	IdentityMigrationService,
 	type MigrationReason,
 } from "./migration-aggregate.js";
+import type { IdentityMigrationEvent } from "./migration-events.js";
 import {
 	decideIdentityMigration,
 	type IdentityMigrationMatchDecision,
 	type MatchingMigrationInput,
 } from "./migration-matching.js";
 import {
-	agentActionsForMigrationEvents,
 	type AgentRebindAction,
-	migrationStatusView,
+	agentActionsForMigrationEvents,
 	type MigrationStatusView,
+	migrationStatusView,
 } from "./migration-observe.js";
-import type { MappingSpec } from "./mapping-spec.js";
-import type { IdentityMigrationEvent } from "./migration-events.js";
 
 // public-contract: control-plane match.Decided-style audit for identity migration.
 export const IDENTITY_MATCH_DECIDED = "match.Decided" as const;
@@ -108,9 +105,7 @@ export class IdentityMigrationControlPlane {
 	 * Matching / policy / yard-move entrypoint.
 	 * Continuous dual path starts automatically when decision says so.
 	 */
-	onMatchingDecision(
-		input: MatchingMigrationInput,
-	): ControlPlaneProgress {
+	onMatchingDecision(input: MatchingMigrationInput): ControlPlaneProgress {
 		const decision = decideIdentityMigration({
 			...input,
 			tenant: input.tenant || this.tenant,

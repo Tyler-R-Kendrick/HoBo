@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
 	assertConvexBackendReachableFromFrontend,
-	classifyConvexBackendUrl,
 	ConvexFrontendTopologyError,
+	classifyConvexBackendUrl,
 } from "../src/topology.js";
 
 describe("convex frontend topology", () => {
@@ -14,9 +14,9 @@ describe("convex frontend topology", () => {
 		expect(classifyConvexBackendUrl("http://localhost:3210").kind).toBe(
 			"loopback",
 		);
-		expect(classifyConvexBackendUrl("https://happy-animal-123.convex.cloud").kind).toBe(
-			"public",
-		);
+		expect(
+			classifyConvexBackendUrl("https://happy-animal-123.convex.cloud").kind,
+		).toBe("public");
 		expect(classifyConvexBackendUrl("https://convex.example.com").kind).toBe(
 			"public",
 		);

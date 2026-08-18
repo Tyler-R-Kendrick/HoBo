@@ -40,8 +40,16 @@ export type BootstrapClass =
 	| "preauthenticated-agent"
 	| "self-hosted-hobo";
 
-export type EndpointContinuity = "preserved" | "rebound" | "changed" | "not-applicable";
-export type DataContinuity = "preserved" | "migrated" | "discarded" | "not-applicable";
+export type EndpointContinuity =
+	| "preserved"
+	| "rebound"
+	| "changed"
+	| "not-applicable";
+export type DataContinuity =
+	| "preserved"
+	| "migrated"
+	| "discarded"
+	| "not-applicable";
 export type CredentialContinuity =
 	| "revoked"
 	| "rotated"
@@ -57,7 +65,10 @@ export type CreatorAuthorityAfterClaim =
 	| "retained"
 	| "unknown";
 
-export type ClaimAtomicity = "single-resource" | "provider-bundled" | "best-effort-saga";
+export type ClaimAtomicity =
+	| "single-resource"
+	| "provider-bundled"
+	| "best-effort-saga";
 
 export type GuestLeaseStatus =
 	| "provisioning"

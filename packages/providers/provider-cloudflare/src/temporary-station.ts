@@ -1,7 +1,7 @@
 import {
 	TEMPORARY_STATION_TTL_MS as CORE_TEMPORARY_STATION_TTL_MS,
-	temporaryStationExpiresAt,
 	type TemporaryEnvironmentStationResult as SharedTemporaryEnvironmentStationResult,
+	temporaryStationExpiresAt,
 } from "@hobo/core";
 
 import {
@@ -10,8 +10,8 @@ import {
 	ENVIRONMENT_STATION_WORKER_NAME_PREFIX,
 } from "./station-worker-source.js";
 import {
-	solvePreviewChallenge,
 	type PreviewChallenge,
+	solvePreviewChallenge,
 } from "./temporary-pow.js";
 
 export const CF_API_BASE = "https://api.cloudflare.com/client/v4"; // public-contract: Cloudflare API v4 base used by Temporary Accounts
@@ -75,12 +75,14 @@ type CfEnvelope<T> = {
 
 function sanitizeScriptName(stationId: string, override?: string): string {
 	if (override) {
-		return override
-			.replace(/[^a-z0-9-]/giu, "-")
-			.replace(/^-+|-+$/gu, "")
-			.slice(0, 63)
-			.toLowerCase()
-			.replace(/^-+|-+$/gu, "") || "hobo-env-station";
+		return (
+			override
+				.replace(/[^a-z0-9-]/giu, "-")
+				.replace(/^-+|-+$/gu, "")
+				.slice(0, 63)
+				.toLowerCase()
+				.replace(/^-+|-+$/gu, "") || "hobo-env-station"
+		);
 	}
 	// Stable short slug — long UUID stationIds truncated mid-hyphen and broke workers.dev.
 	const compact = stationId
@@ -93,15 +95,13 @@ function sanitizeScriptName(stationId: string, override?: string): string {
 	);
 }
 
-async function readCfJson<T>(
-	response: Response,
-	label: string,
-): Promise<T> {
+async function readCfJson<T>(response: Response, label: string): Promise<T> {
 	const body = (await response.json()) as CfEnvelope<T>;
 	if (!response.ok || !body.success || body.result === undefined) {
 		const detail =
-			body.errors?.map((entry) => entry.message ?? String(entry.code)).join("; ") ||
-			`HTTP ${response.status}`;
+			body.errors
+				?.map((entry) => entry.message ?? String(entry.code))
+				.join("; ") || `HTTP ${response.status}`;
 		throw new Error(`Cloudflare ${label} failed: ${detail}`);
 	}
 	return body.result;
@@ -161,8 +161,7 @@ export function createCloudflareTemporaryAccountTransport(
 				result.api_token ??
 				result.account?.apiToken ??
 				result.account?.api_token;
-			const claimUrl =
-				result.claimUrl ?? result.claim_url ?? result.claim?.url;
+			const claimUrl = result.claimUrl ?? result.claim_url ?? result.claim?.url;
 			if (!accountId || !apiToken || !claimUrl) {
 				throw new Error(
 					"Cloudflare preview account response missing accountId/apiToken/claimUrl",
@@ -202,10 +201,7 @@ export function createCloudflareTemporaryAccountTransport(
 				...(bindingList.length > 0 ? { bindings: bindingList } : {}),
 			});
 			const form = new FormData();
-			form.set(
-				"metadata",
-				new Blob([metadata], { type: "application/json" }),
-			);
+			form.set("metadata", new Blob([metadata], { type: "application/json" }));
 			form.set(
 				"station.js",
 				new File([moduleSource], "station.js", {
@@ -254,8 +250,7 @@ export function createCloudflareTemporaryAccountTransport(
 			).catch(() => ({ subdomain: undefined }));
 
 			const host =
-				accountSub.subdomain ??
-				(subResult as { subdomain?: string }).subdomain;
+				accountSub.subdomain ?? (subResult as { subdomain?: string }).subdomain;
 			if (!host) {
 				// Fallback shape used by workers.dev when subdomain lookup lags.
 				return {

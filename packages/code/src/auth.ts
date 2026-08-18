@@ -405,6 +405,8 @@ export function authStatus(hoboHome: string): {
 }
 
 /** Station id for coding session: auth session first, else local default. */
-export function resolveAuthenticatedStationId(hoboHome: string): string | undefined {
+export function resolveAuthenticatedStationId(
+	hoboHome: string,
+): string | undefined {
 	return readAuthSession(hoboHome)?.stationId;
 }

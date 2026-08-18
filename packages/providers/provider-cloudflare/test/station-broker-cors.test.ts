@@ -12,7 +12,9 @@ describe("station-broker CORS allowlist", () => {
 	it("allows localhost and github.io Origins", () => {
 		expect(ALLOWED_ORIGIN.test("http://localhost:4321")).toBe(true);
 		expect(ALLOWED_ORIGIN.test("http://127.0.0.1:4321")).toBe(true);
-		expect(ALLOWED_ORIGIN.test("https://tyler-r-kendrick.github.io")).toBe(true);
+		expect(ALLOWED_ORIGIN.test("https://tyler-r-kendrick.github.io")).toBe(
+			true,
+		);
 		expect(ALLOWED_ORIGIN.test("https://evil.example")).toBe(false);
 	});
 });

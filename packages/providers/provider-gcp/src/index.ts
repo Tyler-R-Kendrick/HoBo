@@ -41,6 +41,10 @@ export {
 	realizeResourcePlans,
 	resolveEquivalence,
 } from "./realize.js";
+export {
+	GCP_TRAFFIC_ROUTING_OFFERING_IDS,
+	GCP_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
 export type {
 	Capability,
 	CapabilityManifest,
@@ -54,10 +58,6 @@ export type {
 	ResourcePlan,
 } from "./types.js";
 export {
-	GCP_TRAFFIC_ROUTING_OFFERING_IDS,
-	GCP_TRAFFIC_ROUTING_PROFILE,
-} from "./traffic-routing-offerings.js";
-export {
 	GCP_YARD_GENERATOR_CONNECTOR_ID,
 	GCP_YARD_RUNTIME_ID,
 	gcpDefaultResolverPins,
@@ -65,8 +65,8 @@ export {
 } from "./yard-defaults.js";
 export {
 	GCP_EVENT_STORE_RESOLVER_ID,
-	gcpEventStoreFoldDescriptor,
-	normalizeGcpYardSignal,
 	type GcpProviderNativeSignal,
 	type GcpYardEvent,
+	gcpEventStoreFoldDescriptor,
+	normalizeGcpYardSignal,
 } from "./yard-event-fold.js";

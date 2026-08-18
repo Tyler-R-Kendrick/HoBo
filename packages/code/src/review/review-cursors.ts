@@ -24,17 +24,27 @@ export function decodeReviewCursor(
 ): ReviewCursorPayload {
 	const [body, mac] = cursor.split(".");
 	if (!body || !mac) {
-		throw new ReviewError(REVIEW_ERROR.MALFORMED, "cursor is not generation-bound");
+		throw new ReviewError(
+			REVIEW_ERROR.MALFORMED,
+			"cursor is not generation-bound",
+		);
 	}
-	const expected = createHmac("sha256", secret).update(body).digest("base64url");
+	const expected = createHmac("sha256", secret)
+		.update(body)
+		.digest("base64url");
 	const left = Buffer.from(mac);
 	const right = Buffer.from(expected);
 	if (left.length !== right.length || !timingSafeEqual(left, right)) {
 		throw new ReviewError(REVIEW_ERROR.MALFORMED, "cursor signature invalid");
 	}
-	const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as ReviewCursorPayload;
+	const payload = JSON.parse(
+		Buffer.from(body, "base64url").toString("utf8"),
+	) as ReviewCursorPayload;
 	if (payload.generationId !== generationId) {
-		throw new ReviewError(REVIEW_ERROR.STALE_GENERATION, "cursor generation mismatch");
+		throw new ReviewError(
+			REVIEW_ERROR.STALE_GENERATION,
+			"cursor generation mismatch",
+		);
 	}
 	return payload;
 }

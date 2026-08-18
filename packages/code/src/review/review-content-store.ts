@@ -23,14 +23,18 @@ export function createReviewContentStore(root: string) {
 
 	function pathFor(digest: string): string {
 		if (!/^[a-f0-9]{64}$/u.test(digest)) {
-			throw new ReviewError(REVIEW_ERROR.MALFORMED, "content digest is not sha256");
+			throw new ReviewError(
+				REVIEW_ERROR.MALFORMED,
+				"content digest is not sha256",
+			);
 		}
 		return join(dir, digest.slice(0, 2), digest.slice(2));
 	}
 
 	return {
 		put(bytes: Uint8Array | string): string {
-			const buffer = typeof bytes === "string" ? Buffer.from(bytes) : Buffer.from(bytes);
+			const buffer =
+				typeof bytes === "string" ? Buffer.from(bytes) : Buffer.from(bytes);
 			if (buffer.byteLength > MAX_BLOB) {
 				throw new ReviewError(REVIEW_ERROR.LIMIT, "review blob exceeds 8MiB");
 			}
@@ -43,7 +47,10 @@ export function createReviewContentStore(root: string) {
 			const verify = sha256Hex(readFileSync(tmp));
 			if (verify !== digest) {
 				unlinkSync(tmp);
-				throw new ReviewError(REVIEW_ERROR.CORRUPT, "content store write hash mismatch");
+				throw new ReviewError(
+					REVIEW_ERROR.CORRUPT,
+					"content store write hash mismatch",
+				);
 			}
 			renameSync(tmp, dest);
 			return digest;
@@ -55,7 +62,10 @@ export function createReviewContentStore(root: string) {
 			}
 			const bytes = readFileSync(dest);
 			if (sha256Hex(bytes) !== digest) {
-				throw new ReviewError(REVIEW_ERROR.CORRUPT, `blob ${digest} failed hash check`);
+				throw new ReviewError(
+					REVIEW_ERROR.CORRUPT,
+					`blob ${digest} failed hash check`,
+				);
 			}
 			return bytes;
 		},

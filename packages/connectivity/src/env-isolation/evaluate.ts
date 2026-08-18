@@ -3,7 +3,7 @@
  * Fail closed; network membership is a signal only.
  */
 import type { PolicyRequest } from "@hobo/core";
-
+import { verifyElevatedAccessCapability } from "./elevated-capability.js";
 import type { BreakGlassService, CrossEnvGrantStore } from "./grants.js";
 import type { EnvMembershipService } from "./membership.js";
 import { assertMembershipIntegrity } from "./membership.js";
@@ -16,7 +16,6 @@ import {
 	type IsolationClass,
 	parseIsolationClass,
 } from "./types.js";
-import { verifyElevatedAccessCapability } from "./elevated-capability.js";
 
 export type EnvIsolationEvalContext = Readonly<{
 	/** Control-plane membership service (optional; when absent, tag-only soft path with integrity fail for critical). */
@@ -64,7 +63,9 @@ export function evaluateEnvIsolation(
 		if (ctx.engineUnavailable === true) {
 			return {
 				allow: false,
-				reasons: ["policy engine / overlay control plane unavailable — fail closed"],
+				reasons: [
+					"policy engine / overlay control plane unavailable — fail closed",
+				],
 				subjectClass: null,
 				resourceClass: null,
 				code: "engine-unavailable",

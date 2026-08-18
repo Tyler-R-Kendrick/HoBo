@@ -50,7 +50,13 @@ export type ActionCipher = {
 
 export type OneTimeActionAudit = {
 	readonly id: string;
-	readonly outcome: "stored" | "redeemed" | "replayed" | "expired" | "revoked" | "denied";
+	readonly outcome:
+		| "stored"
+		| "redeemed"
+		| "replayed"
+		| "expired"
+		| "revoked"
+		| "denied";
 	readonly at: Instant;
 };
 
@@ -91,7 +97,9 @@ function constantTimeEquals(a: string, b: string): boolean {
  * Durable deployments swap the map for the event-store-backed table; the scope,
  * expiry, replay, and audit rules are identical and are what the tests pin.
  */
-export function createOneTimeActionStore(cipher: ActionCipher): OneTimeActionStore {
+export function createOneTimeActionStore(
+	cipher: ActionCipher,
+): OneTimeActionStore {
 	const actions = new Map<string, StoredAction>();
 	const auditLog: OneTimeActionAudit[] = [];
 
@@ -114,7 +122,11 @@ export function createOneTimeActionStore(cipher: ActionCipher): OneTimeActionSto
 				redeemed: false,
 			});
 			auditLog.push({ id: input.id, outcome: "stored", at: input.expiresAt });
-			return { id: input.id, audience: input.audience, expiresAt: input.expiresAt };
+			return {
+				id: input.id,
+				audience: input.audience,
+				expiresAt: input.expiresAt,
+			};
 		},
 
 		async redeem(input) {
@@ -143,7 +155,10 @@ export function createOneTimeActionStore(cipher: ActionCipher): OneTimeActionSto
 			if (stored.expiresAt <= input.now) {
 				actions.delete(input.id);
 				auditLog.push({ id: input.id, outcome: "expired", at: input.now });
-				throw new ClaimError("ONE_TIME_ACTION_EXPIRED", "one-time action has expired");
+				throw new ClaimError(
+					"ONE_TIME_ACTION_EXPIRED",
+					"one-time action has expired",
+				);
 			}
 			if (stored.singleUse && stored.redeemed) {
 				auditLog.push({ id: input.id, outcome: "replayed", at: input.now });

@@ -4,9 +4,9 @@
  * No parallel flag system.
  */
 import {
-	FeatureFlagStore,
-	migrationCohortFlagKey,
+	type FeatureFlagStore,
 	type FlagDefinition,
+	migrationCohortFlagKey,
 } from "./feature-flag-store.js";
 import type { IdentityMigrationService } from "./migration-aggregate.js";
 

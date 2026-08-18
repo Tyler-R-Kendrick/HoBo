@@ -104,7 +104,7 @@ describe("provisionTemporaryEnvironmentStation", () => {
 		await expect(
 			provisionTemporaryEnvironmentStation({
 				stationId: "bad",
-				workerModule: 'export default { waspApp: true, fetch() {} };',
+				workerModule: "export default { waspApp: true, fetch() {} };",
 				transport: {
 					requestChallenge: async () => {
 						throw new Error("unreachable");

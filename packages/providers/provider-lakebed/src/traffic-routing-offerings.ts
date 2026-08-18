@@ -1,7 +1,4 @@
-import {
-	offering,
-	type TrafficRoutingProviderProfile,
-} from "@hobo/core";
+import { offering, type TrafficRoutingProviderProfile } from "@hobo/core";
 
 /** Declared TrafficRouting offerings for Matching / custom-provider surface. */
 export const LAKEBED_TRAFFIC_ROUTING_PROFILE: TrafficRoutingProviderProfile = {

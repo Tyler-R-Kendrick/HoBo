@@ -13,15 +13,15 @@ import {
 	allocateAgentWorkspaces,
 	findGitRoot,
 } from "../src/agent-workspaces.js";
+import { placedCommand } from "../src/mux.js";
 import {
 	createRiftWorkspace,
 	parseCreatedPath,
-	speaksContract,
 	probeRift,
-	resolveRiftBinary,
 	type RiftRunner,
+	resolveRiftBinary,
+	speaksContract,
 } from "../src/rift.js";
-import { placedCommand } from "../src/mux.js";
 import { findWorkspaceRoot } from "../src/workspace.js";
 
 const dirs: string[] = [];
@@ -92,7 +92,12 @@ describe("rift capability", () => {
 				stderr: "Unable to locate the Rift binary for linux-arm64.",
 			}),
 		};
-		const cap = await probeRift("/ws", runner, { PATH: fakeRiftBin() }, () => null);
+		const cap = await probeRift(
+			"/ws",
+			runner,
+			{ PATH: fakeRiftBin() },
+			() => null,
+		);
 		expect(cap.usable).toBe(false);
 		expect(cap.reason).toMatch(/no binary for this platform/);
 	});
@@ -204,7 +209,9 @@ describe("sidecar preference", () => {
 	it("falls back to upstream rift when the sidecar is absent", () => {
 		const dir = mkdtempSync(join(tmpdir(), "riftbin-"));
 		writeFileSync(join(dir, "rift"), "#!/bin/sh\n", { mode: 0o755 });
-		expect(resolveRiftBinary({ PATH: dir }, () => null)?.flavor).toBe("upstream");
+		expect(resolveRiftBinary({ PATH: dir }, () => null)?.flavor).toBe(
+			"upstream",
+		);
 		rmSync(dir, { recursive: true, force: true });
 	});
 
@@ -250,7 +257,11 @@ describe("re-running mux in the same project", () => {
 			run: async (args) => {
 				if (args[0] === "init") return { code: 0, stdout: "", stderr: "" };
 				if (args[0] === "create") {
-					return { code: 1, stdout: "", stderr: 'workspace "claude" already exists' };
+					return {
+						code: 1,
+						stdout: "",
+						stderr: 'workspace "claude" already exists',
+					};
 				}
 				if (args[0] === "list") {
 					return {
@@ -259,7 +270,10 @@ describe("re-running mux in the same project", () => {
 						stdout: JSON.stringify({
 							root: "/ws",
 							workspaces: [
-								{ name: "claude", path: "/ws/.hobo-rift/workspaces/claude/merged" },
+								{
+									name: "claude",
+									path: "/ws/.hobo-rift/workspaces/claude/merged",
+								},
 							],
 						}),
 					};
@@ -302,7 +316,10 @@ describe("a sidecar that predates the contract", () => {
 					return {
 						code: 0,
 						stderr: "",
-						stdout: JSON.stringify({ tier: "overlayfs", available: ["overlayfs"] }),
+						stdout: JSON.stringify({
+							tier: "overlayfs",
+							available: ["overlayfs"],
+						}),
 					};
 				}
 				return { code: 0, stdout: "", stderr: "" };
@@ -324,7 +341,11 @@ describe("a sidecar that predates the contract", () => {
 					};
 				}
 				if (args[0] === "create") {
-					return { code: 0, stderr: "", stdout: "/ws/.hobo-rift/workspaces/a/merged\n" };
+					return {
+						code: 0,
+						stderr: "",
+						stdout: "/ws/.hobo-rift/workspaces/a/merged\n",
+					};
 				}
 				return { code: 0, stdout: "", stderr: "" };
 			},
@@ -361,7 +382,9 @@ describe("a sidecar that predates the contract", () => {
 		expect(speaksContract(undefined)).toBe(false);
 		expect(speaksContract({ execArgvVector: true })).toBe(false);
 		expect(speaksContract({ namespaceMarker: true })).toBe(false);
-		expect(speaksContract({ execArgvVector: true, namespaceMarker: true })).toBe(true);
+		expect(
+			speaksContract({ execArgvVector: true, namespaceMarker: true }),
+		).toBe(true);
 	});
 });
 

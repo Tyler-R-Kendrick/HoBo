@@ -64,8 +64,7 @@ describe("broadcast frame (cartoon CRT / film bezel)", () => {
 	});
 
 	it("keeps the right glass bezel when body lines carry tmux ANSI", () => {
-		const ansi =
-			"\x1b[38;2;138;190;183mTrust project folder?\x1b[39m";
+		const ansi = "\x1b[38;2;138;190;183mTrust project folder?\x1b[39m";
 		const lines = broadcastFrame([ansi, "plain"], {
 			width: 48,
 			title: "Pi",
@@ -75,9 +74,7 @@ describe("broadcast frame (cartoon CRT / film bezel)", () => {
 			const plainLine = plain(line);
 			if (plainLine.includes(BROADCAST.glassLeft)) {
 				expect(plainLine).toContain(BROADCAST.glassRight);
-				expect(plainLine.endsWith("▒") || plainLine.includes("▐█▒")).toBe(
-					true,
-				);
+				expect(plainLine.endsWith("▒") || plainLine.includes("▐█▒")).toBe(true);
 			}
 		}
 	});

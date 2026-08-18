@@ -132,6 +132,8 @@ describe("TrafficRouting offerings surface", () => {
 	it("declares lb.* features with inprocess fallback floor", () => {
 		assert.ok(GCP_TRAFFIC_ROUTING_OFFERING_IDS.includes("lb.lifecycle"));
 		assert.ok(GCP_TRAFFIC_ROUTING_OFFERING_IDS.includes("inprocess.weighted"));
-		assert.ok(GCP_TRAFFIC_ROUTING_PROFILE.fallbacks.includes("inprocess.weighted"));
+		assert.ok(
+			GCP_TRAFFIC_ROUTING_PROFILE.fallbacks.includes("inprocess.weighted"),
+		);
 	});
 });

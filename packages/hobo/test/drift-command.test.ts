@@ -4,8 +4,10 @@ import path from "node:path";
 import type { CliContext } from "@hobo/cli";
 import { deploymentIdFor } from "@hobo/cli";
 import { collectStream } from "@hobo/cloud";
-import { createInMemoryStateBackend } from "@hobo/iac-pulumi";
-import { createPulumiAutomationAdapter } from "@hobo/iac-pulumi";
+import {
+	createInMemoryStateBackend,
+	createPulumiAutomationAdapter,
+} from "@hobo/iac-pulumi";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
 

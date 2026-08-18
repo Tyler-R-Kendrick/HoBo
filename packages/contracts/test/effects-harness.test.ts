@@ -1,11 +1,4 @@
 import { describe, expect, it } from "vitest";
-
-import {
-	createBoundaryContract,
-	createResilienceProfile,
-	pureEffects,
-} from "../src/index.js";
-
 import {
 	captureContractEffects,
 	createEffectIsolation,
@@ -13,6 +6,11 @@ import {
 	filterPureContracts,
 	runResilienceFaultInjection,
 } from "../src/effects-harness.js";
+import {
+	createBoundaryContract,
+	createResilienceProfile,
+	pureEffects,
+} from "../src/index.js";
 
 describe("effect-aware harness", () => {
 	it("isolates pure contracts with zero infrastructure", () => {

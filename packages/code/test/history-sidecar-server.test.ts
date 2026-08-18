@@ -55,7 +55,9 @@ describe("history sidecar", () => {
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ body: "git status" }),
 			});
-			const aliases = (await (await fetch(new URL("/aliases", origin))).json()) as {
+			const aliases = (await (
+				await fetch(new URL("/aliases", origin))
+			).json()) as {
 				aliases: { name: string }[];
 			};
 			expect(aliases.aliases.map((row) => row.name)).toEqual(["gs"]);

@@ -3,15 +3,24 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { ReviewCoverageState, ReviewTargetKind } from "../src/_generated/code_review_pb.js";
-import { REVIEW_COMMAND_SCHEMA, parseReviewCommand } from "../src/review/review-contract.js";
+import {
+	ReviewCoverageState,
+	ReviewTargetKind,
+} from "../src/_generated/code_review_pb.js";
+import { reanchor } from "../src/review/review-anchors.js";
+import { createReviewContentStore } from "../src/review/review-content-store.js";
+import {
+	parseReviewCommand,
+	REVIEW_COMMAND_SCHEMA,
+} from "../src/review/review-contract.js";
+import {
+	decodeReviewCursor,
+	encodeReviewCursor,
+} from "../src/review/review-cursors.js";
 import { REVIEW_ERROR, ReviewError } from "../src/review/review-errors.js";
 import { createReviewRuntime } from "../src/review/review-runtime.js";
-import { parseUnifiedDiff } from "../src/review/unified-diff-parser.js";
-import { reanchor } from "../src/review/review-anchors.js";
-import { encodeReviewCursor, decodeReviewCursor } from "../src/review/review-cursors.js";
-import { createReviewContentStore } from "../src/review/review-content-store.js";
 import { renderReviewPane } from "../src/review/review-terminal.js";
+import { parseUnifiedDiff } from "../src/review/unified-diff-parser.js";
 import { sessionProcessRunner } from "../src/session-orchestrator.js";
 
 async function gitRepo(): Promise<string> {
@@ -63,7 +72,9 @@ describe("hobo-code review", () => {
 			"g2",
 			"f",
 		);
-		expect(outcome.kind === "exact" || outcome.kind === "unique-context").toBe(true);
+		expect(outcome.kind === "exact" || outcome.kind === "unique-context").toBe(
+			true,
+		);
 	});
 
 	it("stores content-addressed blobs and signed cursors", () => {
@@ -72,9 +83,14 @@ describe("hobo-code review", () => {
 		const digest = store.put("hello review");
 		expect(store.getText(digest)).toBe("hello review");
 		expect(() => store.get("0".repeat(64))).toThrow(/missing/);
-		const cursor = encodeReviewCursor({ generationId: "g", fileId: "f", offset: 2 }, "secret");
+		const cursor = encodeReviewCursor(
+			{ generationId: "g", fileId: "f", offset: 2 },
+			"secret",
+		);
 		expect(decodeReviewCursor(cursor, "secret", "g").offset).toBe(2);
-		expect(() => decodeReviewCursor(cursor, "secret", "other")).toThrow(ReviewError);
+		expect(() => decodeReviewCursor(cursor, "secret", "other")).toThrow(
+			ReviewError,
+		);
 	});
 
 	it("starts a durable review over a real git repository", async () => {

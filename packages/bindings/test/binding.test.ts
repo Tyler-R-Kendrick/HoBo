@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	STANDARD_CONNECTIVITY,
+	type CapabilityBindingInput,
 	createConnectivityRegistry,
 	parseCapabilityBinding,
 	parseSecretRef,
-	type CapabilityBindingInput,
+	STANDARD_CONNECTIVITY,
 } from "../src/index.js";
 
 const base: CapabilityBindingInput = {
@@ -19,7 +19,11 @@ const base: CapabilityBindingInput = {
 	endpoints: [
 		{
 			protocol: "postgresql",
-			addressRef: { host: "ep-cool.us-east-2.aws.neon.tech", port: 5432, tls: true },
+			addressRef: {
+				host: "ep-cool.us-east-2.aws.neon.tech",
+				port: 5432,
+				tls: true,
+			},
 			role: "primary",
 		},
 	],
@@ -82,7 +86,10 @@ describe("capability binding", () => {
 				{
 					...base,
 					endpoints: [
-						{ protocol: "postgresql", addressRef: { host: "db.example.com", port: 0, tls: true } },
+						{
+							protocol: "postgresql",
+							addressRef: { host: "db.example.com", port: 0, tls: true },
+						},
 					],
 				},
 				parseSecretRef,
@@ -97,8 +104,14 @@ describe("capability binding", () => {
 			role: "pooled",
 		};
 		const primary = base.endpoints[0] as (typeof base.endpoints)[number];
-		const a = parseCapabilityBinding({ ...base, endpoints: [primary, pooled] }, parseSecretRef);
-		const b = parseCapabilityBinding({ ...base, endpoints: [pooled, primary] }, parseSecretRef);
+		const a = parseCapabilityBinding(
+			{ ...base, endpoints: [primary, pooled] },
+			parseSecretRef,
+		);
+		const b = parseCapabilityBinding(
+			{ ...base, endpoints: [pooled, primary] },
+			parseSecretRef,
+		);
 		expect(JSON.stringify(a)).toBe(JSON.stringify(b));
 	});
 });
@@ -123,7 +136,9 @@ describe("connectivity resolution", () => {
 			(entry) => entry.id === "cloudflare.postgres.hyperdrive/v1",
 		);
 		expect(hyperdrive?.projection).toBe("provider-binding");
-		expect(hyperdrive?.consumesBindingProfiles).toEqual(["binding.postgresql/v1"]);
+		expect(hyperdrive?.consumesBindingProfiles).toEqual([
+			"binding.postgresql/v1",
+		]);
 	});
 
 	it("does not offer a Cloudflare projection inside a Vercel yard", () => {
@@ -142,18 +157,27 @@ describe("connectivity resolution", () => {
 			bindingProfileRef: "binding.postgresql/v1",
 			runtimeModel: "oci",
 		});
-		expect(resolved.map((entry) => entry.id)).toEqual(["oci.service-binding-files/v1"]);
+		expect(resolved.map((entry) => entry.id)).toEqual([
+			"oci.service-binding-files/v1",
+		]);
 	});
 
 	it("returns nothing when no projection exists for the runtime", () => {
 		expect(
-			registry.resolve({ bindingProfileRef: "binding.s3/v1", runtimeModel: "vm_iaas" }),
+			registry.resolve({
+				bindingProfileRef: "binding.s3/v1",
+				runtimeModel: "vm_iaas",
+			}),
 		).toEqual([]);
 	});
 
 	it("orders results deterministically regardless of registration order", () => {
-		const reversed = createConnectivityRegistry([...STANDARD_CONNECTIVITY].reverse());
-		expect(reversed.list().map((e) => e.id)).toEqual(registry.list().map((e) => e.id));
+		const reversed = createConnectivityRegistry(
+			[...STANDARD_CONNECTIVITY].reverse(),
+		);
+		expect(reversed.list().map((e) => e.id)).toEqual(
+			registry.list().map((e) => e.id),
+		);
 	});
 
 	it("rejects duplicate implementation ids", () => {

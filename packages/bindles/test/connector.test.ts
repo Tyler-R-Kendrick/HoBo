@@ -1,6 +1,6 @@
-import { bindle } from "../src/index.js";
-import { defineConnector } from "../src/connector.js";
 import { describe, expect, it } from "vitest";
+import { defineConnector } from "../src/connector.js";
+import { bindle } from "../src/index.js";
 
 const sample = defineConnector({
 	kind: "connector-definition",

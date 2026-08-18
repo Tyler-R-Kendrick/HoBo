@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	DEFAULT_ANONYMOUS_POLICY,
-	admitAnonymousDeployment,
-	assertAnonymousAdmission,
-	nextPollDelayMs,
 	type AnonymousRequest,
 	type AnonymousUsage,
+	admitAnonymousDeployment,
+	assertAnonymousAdmission,
+	DEFAULT_ANONYMOUS_POLICY,
+	nextPollDelayMs,
 } from "../src/index.js";
 
 const NOW = Date.UTC(2026, 7, 8, 12);
@@ -70,10 +70,15 @@ describe("anonymous admission", () => {
 	});
 
 	it("tells an exhausted bucket when to come back", () => {
-		const result = admit({ riskBucketDeployments: 20, riskBucketWindowStartMs: NOW });
+		const result = admit({
+			riskBucketDeployments: 20,
+			riskBucketWindowStartMs: NOW,
+		});
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
-		expect(result.refusals[0].retryAfterMs).toBe(DEFAULT_ANONYMOUS_POLICY.riskBucketWindowMs);
+		expect(result.refusals[0].retryAfterMs).toBe(
+			DEFAULT_ANONYMOUS_POLICY.riskBucketWindowMs,
+		);
 	});
 
 	it("counts the request against the sponsor budget before spending it", () => {
@@ -83,7 +88,9 @@ describe("anonymous admission", () => {
 		);
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
-		expect(result.refusals.map((r) => r.code)).toContain("SPONSOR_BUDGET_EXCEEDED");
+		expect(result.refusals.map((r) => r.code)).toContain(
+			"SPONSOR_BUDGET_EXCEEDED",
+		);
 	});
 
 	it("refuses a bootstrap class the operator has not allowed", () => {
@@ -95,7 +102,10 @@ describe("anonymous admission", () => {
 
 	it("honors the provider and recipe kill switches without a code change", () => {
 		const killed = admitAnonymousDeployment({
-			policy: { ...DEFAULT_ANONYMOUS_POLICY, disabledProviders: ["cloudflare"] },
+			policy: {
+				...DEFAULT_ANONYMOUS_POLICY,
+				disabledProviders: ["cloudflare"],
+			},
 			usage: cleanUsage,
 			request: cleanRequest,
 			nowMs: NOW,
@@ -142,9 +152,9 @@ describe("anonymous admission", () => {
 	});
 
 	it("throws a stable claim error code from the throwing variant", () => {
-		expect(() => assertAnonymousAdmission(admit({ sessionDeployments: 3 }))).toThrow(
-			/session already holds/u,
-		);
+		expect(() =>
+			assertAnonymousAdmission(admit({ sessionDeployments: 3 })),
+		).toThrow(/session already holds/u);
 		expect(() => assertAnonymousAdmission({ ok: true })).not.toThrow();
 	});
 

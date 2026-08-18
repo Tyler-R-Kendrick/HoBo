@@ -49,15 +49,15 @@ describe("compact skill", () => {
 		expect(plan.working[0]?.text).toMatch(/ENOENT/);
 		expect(plan.working[0]?.text).toMatch(/named URL/);
 		expect(plan.working[0]?.text).toMatch(/station:local/);
-		expect(plan.working.some((row) => row.text === "fix the named endpoint")).toBe(
-			true,
-		);
-		expect(plan.working.some((row) => row.text.includes("localhost:48211"))).toBe(
-			true,
-		);
-		expect(plan.working.some((row) => row.text === "make a hello world app")).toBe(
-			false,
-		);
+		expect(
+			plan.working.some((row) => row.text === "fix the named endpoint"),
+		).toBe(true);
+		expect(
+			plan.working.some((row) => row.text.includes("localhost:48211")),
+		).toBe(true);
+		expect(
+			plan.working.some((row) => row.text === "make a hello world app"),
+		).toBe(false);
 		expect(plan.working.length).toBeLessThan(plan.journal.length);
 		expect(estimateTokens("abcd")).toBe(1);
 		expect(slashItemForInput("/compact keep bindle.ts")?.action).toBe(
@@ -112,8 +112,8 @@ describe("compact skill", () => {
 		expect(state.messages[0]?.text).toMatch(/compact · /);
 		expect(state.messages[0]?.text).toMatch(/bindle\.ts/);
 		expect(state.journal?.length).toBe(before);
-		expect(state.journal?.some((row) => row.text === "make a hello world app")).toBe(
-			true,
-		);
+		expect(
+			state.journal?.some((row) => row.text === "make a hello world app"),
+		).toBe(true);
 	});
 });

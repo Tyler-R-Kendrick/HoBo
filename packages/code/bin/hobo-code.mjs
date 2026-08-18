@@ -16,8 +16,8 @@ import { spawn, spawnSync } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
-	readFileSync,
 	readdirSync,
+	readFileSync,
 	statSync,
 } from "node:fs";
 import { createRequire } from "node:module";
@@ -66,7 +66,10 @@ function distIsStale() {
 }
 
 function tscPath() {
-	if (typeof process.env.HOBO_CODE_TSC === "string" && process.env.HOBO_CODE_TSC) {
+	if (
+		typeof process.env.HOBO_CODE_TSC === "string" &&
+		process.env.HOBO_CODE_TSC
+	) {
 		return process.env.HOBO_CODE_TSC;
 	}
 	const local = join(pkgRoot, "node_modules", "typescript", "bin", "tsc");

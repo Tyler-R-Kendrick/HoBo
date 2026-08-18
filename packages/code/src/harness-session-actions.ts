@@ -15,11 +15,11 @@ import { randomUUID } from "node:crypto";
 
 import {
 	focusedHarnessPane,
+	type HarnessSessionNode,
+	type HarnessSessionView,
 	harnessViewFromLivePanes,
 	harnessViewFromSnapshot,
 	mergeHarnessSessions,
-	type HarnessSessionNode,
-	type HarnessSessionView,
 } from "./harness-session-view.js";
 import type { InSessionPanes } from "./in-session-panes.js";
 import {
@@ -30,7 +30,12 @@ import {
 	createLocalSessionControl,
 	sessionCommandEnvelope,
 } from "./local-session-control.js";
-import { type MuxRunner, safeWindowName, sessionTarget, tmuxRunner } from "./mux.js";
+import {
+	type MuxRunner,
+	safeWindowName,
+	sessionTarget,
+	tmuxRunner,
+} from "./mux.js";
 
 export type HarnessChromeActionKind =
 	| "detach"
@@ -113,7 +118,9 @@ function revision(snapshot: { revision?: bigint | undefined }): bigint {
 	return snapshot.revision ?? 0n;
 }
 
-function focusedSession(view: HarnessSessionView): HarnessSessionNode | undefined {
+function focusedSession(
+	view: HarnessSessionView,
+): HarnessSessionNode | undefined {
 	return view.sessions[view.focusedSession];
 }
 
@@ -200,9 +207,7 @@ async function executeMuxAction(
 		}
 		case "createTab": {
 			const agent =
-				window?.name ??
-				focusedHarnessPane(ctx.harnessView)?.agent ??
-				"agent";
+				window?.name ?? focusedHarnessPane(ctx.harnessView)?.agent ?? "agent";
 			const name = nextAgentTabName(panes.windows, agent);
 			const created = await runner.run([
 				"new-window",
@@ -374,7 +379,9 @@ async function executeDurableAction(
 			true,
 		);
 		const node = harnessViewFromSnapshot(next).sessions[0];
-		const others = ctx.harnessView.sessions.filter((row) => row.id !== session.id);
+		const others = ctx.harnessView.sessions.filter(
+			(row) => row.id !== session.id,
+		);
 		const view = node
 			? mergeHarnessSessions([...others, node], {
 					session: others.length,

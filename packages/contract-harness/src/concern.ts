@@ -14,16 +14,47 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { isRecursiveSubset, subsetMismatchPath } from "./subset.js";
+
 export interface ConcernCase {
 	readonly method: string;
 	readonly name?: string;
 	readonly input?: readonly unknown[];
 	readonly expect?: unknown;
+	/**
+	 * Assert a *subset* of the result rather than the whole value.
+	 *
+	 * This is the shape most existing tests are in: one call, several
+	 * assertions about different fields of what came back. Deep equality cannot
+	 * express that without restating every field the caller does not care
+	 * about, so `expect` alone forces those tests to stay hand-written.
+	 */
+	readonly subset?: unknown;
 	readonly match?: string;
 	readonly throws?: string;
+	/**
+	 * A subset match against the thrown error itself.
+	 *
+	 * Deliberately one key rather than `throwsCode`/`throwsName`/…: this repo
+	 * has two error idioms — some carry a `code`, others carry `name` plus
+	 * structured fields like `declaration`/`path` — and a subset covers both
+	 * without the format growing a key per field. Matching only the message
+	 * would pin prose that is meant to stay editable, while these are the parts
+	 * callers actually branch on.
+	 */
+	readonly throwsSubset?: Readonly<Record<string, unknown>>;
 }
 
-const KEYS = new Set(["method", "name", "input", "expect", "match", "throws"]);
+const KEYS = new Set([
+	"method",
+	"name",
+	"input",
+	"expect",
+	"subset",
+	"match",
+	"throws",
+	"throwsSubset",
+]);
 
 export function parseConcernCases(
 	text: string,
@@ -45,9 +76,14 @@ export function parseConcernCases(
 		if (unknownKey) throw new Error(`${at} has unknown key "${unknownKey}"`);
 		if (typeof row.method !== "string" || !row.method)
 			throw new Error(`${at} needs a non-empty "method"`);
-		if (row.throws !== undefined && (row.expect ?? row.match) !== undefined)
+		const asserts = [row.expect, row.subset, row.match].some(
+			(value) => value !== undefined,
+		);
+		if (row.throwsSubset !== undefined && asserts)
 			throw new Error(`${at} cannot assert both a throw and a value`);
-		if (row.throws === undefined && (row.expect ?? row.match) === undefined)
+		if (row.throws !== undefined && asserts)
+			throw new Error(`${at} cannot assert both a throw and a value`);
+		if (row.throws === undefined && row.throwsSubset === undefined && !asserts)
 			throw new Error(`${at} asserts nothing`);
 		return [row as unknown as ConcernCase];
 	});
@@ -138,8 +174,12 @@ export function describeConcern<T extends object>(
 									...(row.input ?? []),
 								])
 							: member;
-					if (row.throws !== undefined)
-						expect.unreachable(`expected a throw matching ${row.throws}`);
+					// Without this a `throwsSubset` case that returned normally would
+					// pass silently — a guard that does not guard.
+					if (row.throws !== undefined || row.throwsSubset !== undefined)
+						expect.unreachable(
+							`expected a throw matching ${row.throws ?? JSON.stringify(row.throwsSubset)}`,
+						);
 					if (row.match !== undefined)
 						// Objects are stringified so a case can match into a returned
 						// errors array without needing a path expression.
@@ -148,8 +188,19 @@ export function describeConcern<T extends object>(
 						).toMatch(new RegExp(row.match, "u"));
 					if (row.expect !== undefined) expect(actual).toEqual(row.expect);
 				} catch (error) {
-					if (row.throws === undefined) throw error;
-					expect((error as Error).message).toMatch(new RegExp(row.throws, "u"));
+					if (row.throws === undefined && row.throwsSubset === undefined)
+						throw error;
+					if (row.throws !== undefined)
+						expect((error as Error).message).toMatch(
+							new RegExp(row.throws, "u"),
+						);
+					if (
+						row.throwsSubset !== undefined &&
+						!isRecursiveSubset(row.throwsSubset, error)
+					)
+						expect.unreachable(
+							`thrown error mismatch at ${subsetMismatchPath(row.throwsSubset, error)} — got ${(error as Error).name}: ${(error as Error).message}`,
+						);
 				} finally {
 					await options.teardown?.(subject);
 				}

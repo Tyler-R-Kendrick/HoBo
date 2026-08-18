@@ -77,7 +77,7 @@ export function evaluateSecretlessConfigGate(
 
 	const reasons: ConfigGateReason[] = [];
 
-	if (!input.schema || input.schema.kind !== "config-schema") {
+	if (input.schema?.kind !== "config-schema") {
 		return {
 			ok: false,
 			dimension: "secretless-config",

@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import {
 	asHoboSecretsStore,
 	requireNoPlaintextConformance,
 	resolveConfigEntry,
 } from "@hobo/identity";
+import { describe, expect, it } from "vitest";
 
 import {
 	createLocalStationOpenBaoSecretsPort,

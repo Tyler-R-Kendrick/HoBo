@@ -527,7 +527,8 @@ export function createBindlesPublicApiSnapshot(
 			{
 				name: "isWebAppAnnotation",
 				kind: "webapp-helper",
-				signature: "isWebAppAnnotation(annotation: ProviderAnnotation): boolean",
+				signature:
+					"isWebAppAnnotation(annotation: ProviderAnnotation): boolean",
 			},
 			...extraExports,
 		],
@@ -542,7 +543,9 @@ function assertNoInternalCloudSymbols(snapshot: Record<string, unknown>): void {
 			return;
 		}
 		if (Array.isArray(value)) {
-			value.forEach((entry, index) => visit(entry, `${path}[${index}]`));
+			value.forEach((entry, index) => {
+				visit(entry, `${path}[${index}]`);
+			});
 			return;
 		}
 		if (value && typeof value === "object") {

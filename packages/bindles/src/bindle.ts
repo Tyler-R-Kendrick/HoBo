@@ -209,9 +209,7 @@ function toResourceRecord<K extends ResourceKind>(
 		),
 		dependsOn: Object.freeze(
 			[...internal.dependencies].map((dep) =>
-				isConnectorBinding(dep)
-					? `connector:${dep.definition.id}`
-					: dep.kind,
+				isConnectorBinding(dep) ? `connector:${dep.definition.id}` : dep.kind,
 			),
 		),
 	});
@@ -310,7 +308,8 @@ export function bindle(
 				continue;
 			}
 			const depName = resourceByName.get(dep);
-			if (depName) edges.push(Object.freeze({ from: resourceName, to: depName }));
+			if (depName)
+				edges.push(Object.freeze({ from: resourceName, to: depName }));
 		}
 	}
 

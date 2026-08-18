@@ -57,7 +57,13 @@ function targetFor(interaction: CollectInteraction): CollectionTarget {
 					);
 				} else if (resource.factory === "service") {
 					const bind = Object.fromEntries(
-						(resource.bind ?? []).map((id) => [id, handles[id]!]),
+						(resource.bind ?? []).map((id) => {
+							const handle = handles[id];
+							if (!handle) {
+								throw new Error(`fixture binds unknown resource "${id}"`);
+							}
+							return [id, handle];
+						}),
 					);
 					collect.service(resource.name, {
 						image: "oci://registry.example.com/api@sha256:abc123",

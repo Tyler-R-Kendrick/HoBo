@@ -75,13 +75,13 @@ export {
 } from "@hobo/provider-azure";
 
 /**
- * This namespace's provider id, for `y.on(azure)`.
+ * This namespace's provider id, read when it is passed to `yard(azure, …)`.
  *
  * A provider is stated, never inferred: without this the builder would have
  * to guess one from a Yard name or a product-id prefix, which is exactly the
  * load-bearing naming convention ADR-0144 forbids.
  */
-// public-contract: the provider id the authoring surface reads off this namespace; changing it repoints every Yard built with y.on(azure).
+// public-contract: the provider id the authoring surface reads off this namespace; changing it repoints every Yard opened with yard(azure, …).
 export const PROVIDER_ID = "azure";
 
 /** Yard name used when the caller does not supply one. */

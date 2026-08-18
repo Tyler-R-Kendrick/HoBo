@@ -3,14 +3,11 @@
  * This is the missing execute side of realize() (IR alone is not enough).
  */
 import {
-	deployConvexApp,
 	type ConvexSpawn,
 	type DeployConvexAppResult,
+	deployConvexApp,
 } from "./deploy.js";
-import {
-	assertDriverProgram,
-	type DriverProgram,
-} from "./driver-program.js";
+import { assertDriverProgram, type DriverProgram } from "./driver-program.js";
 
 export type ApplyConvexDriverInput = {
 	readonly program: DriverProgram;

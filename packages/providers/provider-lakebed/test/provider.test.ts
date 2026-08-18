@@ -107,8 +107,12 @@ describe("client: runtime binding client per port", () => {
 
 describe("TrafficRouting offerings surface", () => {
 	it("declares inprocess + driver.route-bind offerings", () => {
-		assert.ok(LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS.includes("inprocess.weighted"));
-		assert.ok(LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS.includes("driver.route-bind"));
+		assert.ok(
+			LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS.includes("inprocess.weighted"),
+		);
+		assert.ok(
+			LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS.includes("driver.route-bind"),
+		);
 		assert.equal(LAKEBED_TRAFFIC_ROUTING_PROFILE.provider, "lakebed");
 		assert.ok(LAKEBED_TRAFFIC_ROUTING_PROFILE.offerings.length >= 2);
 	});

@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-	ConvexDeployError,
-	deployConvexApp,
-} from "../src/deploy.js";
+import { ConvexDeployError, deployConvexApp } from "../src/deploy.js";
 import { ConvexCredentialsError } from "../src/management-api.js";
 import {
 	describeWorkOsAuthKit,
@@ -13,9 +10,9 @@ import {
 
 describe("deployConvexApp", () => {
 	it("fails closed without deploy key or self-host pair", async () => {
-		await expect(
-			deployConvexApp({ root: "/tmp/app" }),
-		).rejects.toBeInstanceOf(ConvexCredentialsError);
+		await expect(deployConvexApp({ root: "/tmp/app" })).rejects.toBeInstanceOf(
+			ConvexCredentialsError,
+		);
 	});
 
 	it("mock lane returns deterministic URL without spawn", async () => {

@@ -3,15 +3,15 @@ export const EQUIVALENCE_CLASSES = Object.freeze({
 		port: "compute",
 		resourceClass: "railway:service",
 		providerService: "Railway Service",
-		features: ["http","container","managed"],
+		features: ["http", "container", "managed"],
 	},
-	"kv": {
+	kv: {
 		port: "kv",
 		resourceClass: "railway:redis",
 		providerService: "Railway Redis",
-		features: ["key-value","durable"],
+		features: ["key-value", "durable"],
 	},
-	"queue": {
+	queue: {
 		port: "queue",
 		resourceClass: "railway:queue",
 		providerService: "Railway Queue",
@@ -30,7 +30,7 @@ export function equivalenceForPort(port: InitialCapabilityPort) {
 }
 
 export function railwayNativePorts(): readonly string[] {
-	return Object.freeze(
-		[...new Set(Object.values(EQUIVALENCE_CLASSES).map((entry) => entry.port))],
-	);
+	return Object.freeze([
+		...new Set(Object.values(EQUIVALENCE_CLASSES).map((entry) => entry.port)),
+	]);
 }

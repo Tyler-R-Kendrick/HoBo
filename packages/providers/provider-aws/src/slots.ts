@@ -24,7 +24,7 @@
  * successful call is not evidence that the product exists in the catalog
  * today, and several of these products are not registered yet.
  */
-import { type SlotBinding, slotBinding } from "@hobo/core";
+import { capability, type SlotBinding, slotBinding } from "@hobo/core";
 
 /**
  * Forwards the caller's option bag to the parse boundary, dropping only keys
@@ -69,7 +69,7 @@ export interface S3Options {
 export function s3(options?: S3Options): SlotBinding {
 	return slotBinding({
 		slot: "bucket",
-		profile: "bucket.s3-compatible/v1",
+		profile: capability.bucket.s3Compatible,
 		productId: "aws.s3/v1",
 		properties: present(options ?? {}),
 	});
@@ -86,7 +86,7 @@ export interface RdsPostgresOptions {
 function rdsPostgres(options?: RdsPostgresOptions): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.postgres/v1",
+		profile: capability.data.postgres,
 		productId: "aws.rds-postgres/v1",
 		properties: present(options ?? {}),
 	});
@@ -103,7 +103,7 @@ export interface RdsMysqlOptions {
 function rdsMysql(options?: RdsMysqlOptions): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.mysql/v1",
+		profile: capability.data.mysql,
 		productId: "aws.rds-mysql/v1",
 		properties: present(options ?? {}),
 	});
@@ -129,7 +129,7 @@ export function auroraServerlessPostgres(
 ): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.postgres/v1",
+		profile: capability.data.postgres,
 		productId: "aws.aurora-serverless-postgres/v1",
 		properties: present(options ?? {}),
 	});
@@ -144,7 +144,7 @@ export function auroraServerlessPostgres(
 export function dynamodbDocument(options?: DynamodbOptions): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.document/v1",
+		profile: capability.data.document,
 		productId: "aws.dynamodb/v1",
 		properties: present(options ?? {}),
 	});
@@ -170,7 +170,7 @@ export function elasticacheRedis(
 ): SlotBinding {
 	return slotBinding({
 		slot: "kv",
-		profile: "kv.redis-compatible/v1",
+		profile: capability.kv.redisCompatible,
 		productId: "aws.elasticache-redis/v1",
 		properties: present(options ?? {}),
 	});
@@ -194,7 +194,7 @@ export interface DynamodbOptions {
 export function dynamodb(options?: DynamodbOptions): SlotBinding {
 	return slotBinding({
 		slot: "kv",
-		profile: "kv.key-value/v1",
+		profile: capability.kv.keyValue,
 		productId: "aws.dynamodb/v1",
 		properties: present(options ?? {}),
 	});
@@ -210,7 +210,7 @@ export interface SqsOptions {
 export function sqs(options?: SqsOptions): SlotBinding {
 	return slotBinding({
 		slot: "queue",
-		profile: "queue.at-least-once/v1",
+		profile: capability.queue.atLeastOnce,
 		productId: "aws.sqs/v1",
 		properties: present(options ?? {}),
 	});
@@ -243,7 +243,7 @@ export interface EksDeploymentOptions {
 function eksDeployment(options?: EksDeploymentOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "aws.eks-deployment/v1",
 		properties: present(options ?? {}),
 	});
@@ -267,7 +267,7 @@ export interface LambdaOptions {
 export function lambda(options?: LambdaOptions): SlotBinding {
 	return slotBinding({
 		slot: "service",
-		profile: "service.worker/v1",
+		profile: capability.service.worker,
 		productId: "aws.lambda/v1",
 		properties: present(options ?? {}),
 	});
@@ -289,7 +289,7 @@ export interface AppRunnerOptions {
 export function appRunner(options?: AppRunnerOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "aws.app-runner/v1",
 		properties: present(options ?? {}),
 	});
@@ -312,7 +312,7 @@ export interface EcsServiceOptions {
 function ecsService(options?: EcsServiceOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "aws.ecs-service/v1",
 		properties: present(options ?? {}),
 	});
@@ -329,7 +329,7 @@ export interface EcsTaskOptions {
 function ecsTask(options?: EcsTaskOptions): SlotBinding {
 	return slotBinding({
 		slot: "service",
-		profile: "service.batch/v1",
+		profile: capability.service.batch,
 		productId: "aws.ecs-task/v1",
 		properties: present(options ?? {}),
 	});
@@ -347,7 +347,7 @@ export interface AmplifyHostingOptions {
 export function amplifyHosting(options?: AmplifyHostingOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "aws.amplify-hosting/v1",
 		properties: present(options ?? {}),
 	});
@@ -376,7 +376,7 @@ export interface CloudfrontSiteOptions {
 export function cloudfrontSite(options?: CloudfrontSiteOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.static/v1",
+		profile: capability.web.static,
 		productId: "aws.cloudfront-site/v1",
 		properties: present(options ?? {}),
 	});
@@ -398,7 +398,7 @@ export interface ApiGatewayOptions {
 export function apiGateway(options?: ApiGatewayOptions): SlotBinding {
 	return slotBinding({
 		slot: "api",
-		profile: "api.http/v1",
+		profile: capability.api.http,
 		productId: "aws.api-gateway/v1",
 		properties: present(options ?? {}),
 	});
@@ -412,7 +412,7 @@ export function apiGateway(options?: ApiGatewayOptions): SlotBinding {
 export function sqsFifo(options?: SqsOptions): SlotBinding {
 	return slotBinding({
 		slot: "queue",
-		profile: "queue.fifo/v1",
+		profile: capability.queue.fifo,
 		productId: "aws.sqs-fifo/v1",
 		properties: present(options ?? {}),
 	});
@@ -427,7 +427,7 @@ export interface SnsOptions {
 export function sns(options?: SnsOptions): SlotBinding {
 	return slotBinding({
 		slot: "topic",
-		profile: "topic.pubsub/v1",
+		profile: capability.topic.pubsub,
 		productId: "aws.sns/v1",
 		properties: present(options ?? {}),
 	});
@@ -446,7 +446,7 @@ export interface SecretsManagerOptions {
 export function secretsManager(options?: SecretsManagerOptions): SlotBinding {
 	return slotBinding({
 		slot: "secretRef",
-		profile: "secret-ref.locator/v1",
+		profile: capability.secretRef.locator,
 		productId: "aws.secrets-manager/v1",
 		properties: present(options ?? {}),
 	});
@@ -475,7 +475,7 @@ export function ssmParameterStore(
 ): SlotBinding {
 	return slotBinding({
 		slot: "secretRef",
-		profile: "secret-ref.locator/v1",
+		profile: capability.secretRef.locator,
 		productId: "aws.ssm-parameter-store/v1",
 		properties: present(options ?? {}),
 	});

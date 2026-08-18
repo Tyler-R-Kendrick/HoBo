@@ -66,18 +66,15 @@ describe("provider references", () => {
 			expect.unreachable("expected a refusal");
 		} catch (error) {
 			expect((error as BuilderError).code).toBe("PROVIDER_REF_UNRESOLVED");
-			expect((error as BuilderError).remediation).toContain("y.on(azure)");
+			expect((error as BuilderError).remediation).toContain("yard(azure");
 		}
 	});
 });
 
 describe("buildYard equivalence with defineYard", () => {
 	it("produces a Yard deep-equal to the defineYard authoring of the same thing", () => {
-		const built = buildYard("prod-eu", (y) => {
-			y.on({ PROVIDER_ID: "azure" })
-				.region("westeurope")
-				.residency("eu")
-				.label("tier", "public");
+		const built = buildYard({ PROVIDER_ID: "azure" }, "prod-eu", (y) => {
+			y.region("westeurope").residency("eu").label("tier", "public");
 			y.web(containerApps, appService);
 			y.data(postgres);
 			y.bucket(blob);
@@ -110,8 +107,7 @@ describe("buildYard equivalence with defineYard", () => {
 
 	it("compiles slot methods for exactly the CAPABILITY_SLOTS vocabulary", () => {
 		const seen: string[] = [];
-		buildYard("vocab", (y) => {
-			y.on("azure");
+		buildYard("azure", "vocab", (y) => {
 			for (const slot of CAPABILITY_SLOTS) {
 				expect(typeof (y as unknown as Record<string, unknown>)[slot]).toBe(
 					"function",
@@ -126,8 +122,8 @@ describe("buildYard equivalence with defineYard", () => {
 
 describe("nesting replaces attachment", () => {
 	it("derives yardId and providerId for a nested camp", () => {
-		const built = buildYard("prod-eu", (y) => {
-			y.on("azure").region("westeurope");
+		const built = buildYard("azure", "prod-eu", (y) => {
+			y.region("westeurope");
 			y.web(containerApps);
 			y.camp("api", (c) => c.production());
 		});
@@ -145,8 +141,7 @@ describe("nesting replaces attachment", () => {
 		expect(preview.id).toBe("preview");
 		expect(preview.derivedProviderId).toBeUndefined();
 
-		const built = buildYard("prod-eu", (y) => {
-			y.on("azure");
+		const built = buildYard("azure", "prod-eu", (y) => {
 			y.web(containerApps);
 			y.camp(preview);
 		});
@@ -157,8 +152,7 @@ describe("nesting replaces attachment", () => {
 
 describe("slot accumulation", () => {
 	it("accumulates repeated slot calls instead of replacing them", () => {
-		const built = buildYard("prod-eu", (y) => {
-			y.on("azure");
+		const built = buildYard("azure", "prod-eu", (y) => {
 			y.web(containerApps);
 			y.web(appService);
 		});
@@ -171,8 +165,7 @@ describe("slot accumulation", () => {
 
 	it("refuses a slot call that declares no offerings", () => {
 		try {
-			buildYard("prod-eu", (y) => {
-				y.on("azure");
+			buildYard("azure", "prod-eu", (y) => {
 				y.web();
 			});
 			expect.unreachable("expected a refusal");
@@ -185,8 +178,8 @@ describe("slot accumulation", () => {
 
 describe("determinism", () => {
 	it("does not let declaration order reach the Yard record", () => {
-		const forward = buildYard("prod-eu", (y) => {
-			y.on("azure").region("westeurope").region("northeurope");
+		const forward = buildYard("azure", "prod-eu", (y) => {
+			y.region("westeurope").region("northeurope");
 			y.web(containerApps, appService);
 			y.data(postgres);
 			y.bucket(blob);
@@ -194,7 +187,7 @@ describe("determinism", () => {
 			y.camp("api", (c) => c.production());
 			y.camp("preview", (c) => c.preview());
 		});
-		const backward = buildYard("prod-eu", (y) => {
+		const backward = buildYard("azure", "prod-eu", (y) => {
 			y.camp("preview", (c) => c.preview());
 			y.camp("api", (c) => c.production());
 			y.label("owner", "platform").label("tier", "public");
@@ -202,7 +195,7 @@ describe("determinism", () => {
 			y.data(postgres);
 			y.web(appService);
 			y.web(containerApps);
-			y.region("northeurope").region("westeurope").on("azure");
+			y.region("northeurope").region("westeurope");
 		});
 
 		expect(backward).toEqual(forward);
@@ -210,12 +203,10 @@ describe("determinism", () => {
 	});
 
 	it("does not let registration order reach the Station manifest", () => {
-		const yardA = buildYard("a", (y) => {
-			y.on("azure");
+		const yardA = buildYard("azure", "a", (y) => {
 			y.web(containerApps);
 		});
-		const yardB = buildYard("b", (y) => {
-			y.on("aws");
+		const yardB = buildYard("aws", "b", (y) => {
 			y.data(postgres);
 		});
 
@@ -245,8 +236,8 @@ describe("buildStation equivalence with defineStation", () => {
 
 		const built = buildStation("acme", (s) => {
 			s.tenant("acme").residency("eu").trustDomain("acme.hobo.internal");
-			s.yard("prod-eu", (y) => {
-				y.on("azure").region("westeurope").residency("eu");
+			s.yard("azure", "prod-eu", (y) => {
+				y.region("westeurope").residency("eu");
 				y.web(containerApps, appService);
 				y.data(postgres);
 				y.bucket(blob);
@@ -294,8 +285,7 @@ describe("buildStation equivalence with defineStation", () => {
 	});
 
 	it("defaults isolation exactly as defineStation does", () => {
-		const yardOnly = buildYard("a", (y) => {
-			y.on("azure");
+		const yardOnly = buildYard("azure", "a", (y) => {
 			y.web(containerApps);
 		});
 		const built = buildStation("acme", (s) => {
@@ -310,8 +300,7 @@ describe("buildStation equivalence with defineStation", () => {
 	});
 
 	it("carries an airgap declaration through", () => {
-		const yardOnly = buildYard("a", (y) => {
-			y.on("azure");
+		const yardOnly = buildYard("azure", "a", (y) => {
 			y.web(containerApps);
 		});
 		expect(
@@ -326,8 +315,7 @@ describe("buildStation equivalence with defineStation", () => {
 describe("every existing refusal still fires through the builder", () => {
 	it("SLOT_KEY_MISMATCH", () => {
 		try {
-			buildYard("prod-eu", (y) => {
-				y.on("azure");
+			buildYard("azure", "prod-eu", (y) => {
 				y.bucket(postgres);
 			});
 			expect.unreachable("expected a refusal");
@@ -346,8 +334,7 @@ describe("every existing refusal still fires through the builder", () => {
 			properties: {},
 		};
 		try {
-			buildYard("prod-eu", (y) => {
-				y.on("azure");
+			buildYard("azure", "prod-eu", (y) => {
 				y.bucket(misfiled);
 			});
 			expect.unreachable("expected a refusal");
@@ -358,8 +345,7 @@ describe("every existing refusal still fires through the builder", () => {
 
 	it("SLOT_BINDING_CREDENTIAL_PROPERTY", () => {
 		try {
-			buildYard("prod-eu", (y) => {
-				y.on("azure");
+			buildYard("azure", "prod-eu", (y) => {
 				y.bucket(
 					slotBinding({
 						slot: "bucket",
@@ -379,8 +365,7 @@ describe("every existing refusal still fires through the builder", () => {
 
 	it("YARD_BINDING_DUPLICATE", () => {
 		try {
-			buildYard("prod-eu", (y) => {
-				y.on("azure");
+			buildYard("azure", "prod-eu", (y) => {
 				y.web(containerApps);
 				y.web(containerApps);
 			});
@@ -401,8 +386,7 @@ describe("every existing refusal still fires through the builder", () => {
 			properties: {},
 		};
 		try {
-			buildYard("prod-eu", (y) => {
-				y.on("azure");
+			buildYard("azure", "prod-eu", (y) => {
 				y.bucket(unconstrained);
 			});
 			expect.unreachable("expected a refusal");
@@ -429,12 +413,10 @@ describe("every existing refusal still fires through the builder", () => {
 	it("STATION_DUPLICATE_YARD", () => {
 		try {
 			buildStation("acme", (s) => {
-				s.yard("prod-eu", (y) => {
-					y.on("azure");
+				s.yard("azure", "prod-eu", (y) => {
 					y.web(containerApps);
 				});
-				s.yard("prod-eu", (y) => {
-					y.on("azure");
+				s.yard("azure", "prod-eu", (y) => {
 					y.data(postgres);
 				});
 			});
@@ -447,8 +429,7 @@ describe("every existing refusal still fires through the builder", () => {
 
 	it("camp-provider-selection-forbidden", () => {
 		try {
-			buildYard("prod-eu", (y) => {
-				y.on("azure");
+			buildYard("azure", "prod-eu", (y) => {
 				y.web(containerApps);
 				y.camp("api", (c) => c.provider("aws"));
 			});
@@ -471,12 +452,26 @@ describe("every existing refusal still fires through the builder", () => {
 		}
 	});
 
-	it("leaves a missing provider to yard()'s own refusal", () => {
-		expect(() =>
-			buildYard("prod-eu", (y) => {
+	it("refuses an unusable provider before the callback body runs", () => {
+		// Under the old `y.on(provider)` shape a Yard could be half-authored
+		// against no provider at all, and the refusal arrived from yard() after
+		// every slot call had already been written. As an argument the provider
+		// is resolved first, so the refusal names the call that is wrong and the
+		// body never executes against a Yard that does not have one yet.
+		let bodyRan = false;
+		let raised: unknown;
+		try {
+			buildYard({} as never, "prod-eu", (y) => {
+				bodyRan = true;
 				y.web(containerApps);
-			}),
-		).toThrowError(/yard requires provider/u);
+			});
+		} catch (error) {
+			raised = error;
+		}
+
+		expect(raised).toBeInstanceOf(BuilderError);
+		expect((raised as BuilderError).code).toBe("PROVIDER_REF_UNRESOLVED");
+		expect(bodyRan, "the callback must not run without a provider").toBe(false);
 	});
 });
 

@@ -74,9 +74,7 @@ export async function deployConvexApp(
 	const deployKey = input.deployKey?.trim();
 	const selfHostedUrl = input.selfHostedUrl?.trim();
 	const selfHostedAdminKey = input.selfHostedAdminKey?.trim();
-	const cloud = hasConvexCloudCredentials(
-		deployKey ? { deployKey } : {},
-	);
+	const cloud = hasConvexCloudCredentials(deployKey ? { deployKey } : {});
 	const selfHosted = hasConvexSelfHostedCredentials(
 		selfHostedUrl && selfHostedAdminKey
 			? { selfHostedUrl, selfHostedAdminKey }
@@ -145,7 +143,8 @@ export async function deployConvexApp(
 		selfHostedUrl ??
 		`https://${deploymentName}.convex.cloud`;
 
-	const mode = selfHosted && !cloud ? ("self-hosted" as const) : ("cloud" as const);
+	const mode =
+		selfHosted && !cloud ? ("self-hosted" as const) : ("cloud" as const);
 
 	return Object.freeze({
 		ok: true as const,

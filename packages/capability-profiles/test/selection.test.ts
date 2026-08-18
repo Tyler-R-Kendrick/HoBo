@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	DEFAULT_TRUST_POLICY,
-	STANDARD_CAPABILITY_PROFILES,
 	createCapabilityProfileRegistry,
+	DEFAULT_TRUST_POLICY,
 	parseCapabilityRequirement,
-	selectCapabilityImplementation,
 	type SelectionCandidate,
+	STANDARD_CAPABILITY_PROFILES,
+	selectCapabilityImplementation,
 	type TrustPolicy,
 } from "../src/index.js";
 
@@ -37,7 +37,11 @@ function candidate(overrides: Partial<SelectionCandidate>): SelectionCandidate {
 		creatorAuthorityAfterClaim: "rotatable",
 		claimAtomicity: "single-resource",
 		claimActionCount: 1,
-		continuity: { endpoint: "preserved", data: "preserved", credentials: "rotated" },
+		continuity: {
+			endpoint: "preserved",
+			data: "preserved",
+			credentials: "rotated",
+		},
 		supportsExport: true,
 		supportsRotation: true,
 		supportsRevocation: true,
@@ -67,7 +71,9 @@ const run = (
 
 describe("hard gates", () => {
 	it("selects a conformant candidate", () => {
-		const result = run([candidate({ definitionId: "neon.claimable-postgres/v1" })]);
+		const result = run([
+			candidate({ definitionId: "neon.claimable-postgres/v1" }),
+		]);
 		expect(result.winner?.definitionId).toBe("neon.claimable-postgres/v1");
 		expect(result.rejections).toEqual([]);
 	});
@@ -106,9 +112,9 @@ describe("hard gates", () => {
 				},
 			],
 		});
-		expect(run([d1], DEFAULT_TRUST_POLICY, relational).winner?.definitionId).toBe(
-			"cloudflare.temporary-d1/v1",
-		);
+		expect(
+			run([d1], DEFAULT_TRUST_POLICY, relational).winner?.definitionId,
+		).toBe("cloudflare.temporary-d1/v1");
 	});
 
 	it("fails closed on unknown conformance", () => {
@@ -129,9 +135,18 @@ describe("hard gates", () => {
 	});
 
 	it("fails closed on absent, unsigned, and expired evidence", () => {
-		const noEvidence = candidate({ definitionId: "a", evidenceExpiresAtMs: undefined });
-		const unsigned = candidate({ definitionId: "b", evidenceSignatureValid: false });
-		const expired = candidate({ definitionId: "c", evidenceExpiresAtMs: NOW - 1 });
+		const noEvidence = candidate({
+			definitionId: "a",
+			evidenceExpiresAtMs: undefined,
+		});
+		const unsigned = candidate({
+			definitionId: "b",
+			evidenceSignatureValid: false,
+		});
+		const expired = candidate({
+			definitionId: "c",
+			evidenceExpiresAtMs: NOW - 1,
+		});
 		const result = run([noEvidence, unsigned, expired]);
 		expect(result.winner).toBeUndefined();
 		expect(result.rejections.map((r) => r.code)).toEqual([
@@ -142,15 +157,15 @@ describe("hard gates", () => {
 	});
 
 	it("rejects a candidate with no registered driver", () => {
-		expect(run([candidate({ hasRegisteredDriver: false })]).rejections[0]?.code).toBe(
-			"NO_REGISTERED_DRIVER",
-		);
+		expect(
+			run([candidate({ hasRegisteredDriver: false })]).rejections[0]?.code,
+		).toBe("NO_REGISTERED_DRIVER");
 	});
 
 	it("rejects when secret custody is unavailable", () => {
-		expect(run([candidate({ secretCustodyAvailable: false })]).rejections[0]?.code).toBe(
-			"SECRET_CUSTODY_UNAVAILABLE",
-		);
+		expect(
+			run([candidate({ secretCustodyAvailable: false })]).rejections[0]?.code,
+		).toBe("SECRET_CUSTODY_UNAVAILABLE");
 	});
 
 	it("requires an explicit policy opt-in for pack realization", () => {
@@ -168,7 +183,8 @@ describe("hard gates", () => {
 		});
 		expect(run([pack]).winner?.definitionId).toBe("postgres.oci-pack/v1");
 		expect(
-			run([pack], { ...DEFAULT_TRUST_POLICY, allowPack: false }).rejections[0]?.code,
+			run([pack], { ...DEFAULT_TRUST_POLICY, allowPack: false }).rejections[0]
+				?.code,
 		).toBe("REALIZATION_DENIED");
 	});
 
@@ -191,12 +207,18 @@ describe("hard gates", () => {
 
 	it("gates sponsor exposure against the budget", () => {
 		const sponsored = candidate({ sponsorExposureMinorUnits: 500 });
-		expect(run([sponsored]).rejections[0]?.code).toBe("SPONSOR_BUDGET_EXCEEDED");
+		expect(run([sponsored]).rejections[0]?.code).toBe(
+			"SPONSOR_BUDGET_EXCEEDED",
+		);
 		expect(
-			run([sponsored], { ...DEFAULT_TRUST_POLICY, allowSponsor: false }).rejections[0]?.code,
+			run([sponsored], { ...DEFAULT_TRUST_POLICY, allowSponsor: false })
+				.rejections[0]?.code,
 		).toBe("BOOTSTRAP_POLICY_DENIED");
 		expect(
-			run([sponsored], { ...DEFAULT_TRUST_POLICY, sponsorBudgetMinorUnits: 1000 }).winner,
+			run([sponsored], {
+				...DEFAULT_TRUST_POLICY,
+				sponsorBudgetMinorUnits: 1000,
+			}).winner,
 		).toBeDefined();
 	});
 
@@ -204,7 +226,9 @@ describe("hard gates", () => {
 		const result = selectCapabilityImplementation({
 			requirement: postgresRequirement,
 			registry,
-			candidates: [candidate({ producesBindingProfiles: ["binding.neon-serverless/v1"] })],
+			candidates: [
+				candidate({ producesBindingProfiles: ["binding.neon-serverless/v1"] }),
+			],
 			policy: DEFAULT_TRUST_POLICY,
 			nowMs: NOW,
 			consumableBindingProfiles: ["binding.postgresql/v1"],
@@ -215,11 +239,14 @@ describe("hard gates", () => {
 	it("rejects a missing required migration profile", () => {
 		const requirement = parseCapabilityRequirement({
 			requiredProfiles: [{ profileId: "data.postgres/v1" }],
-			portability: { requiredMigrationProfiles: ["migration.postgres.logical-copy/v1"] },
+			portability: {
+				requiredMigrationProfiles: ["migration.postgres.logical-copy/v1"],
+			},
 		});
-		expect(run([candidate({})], DEFAULT_TRUST_POLICY, requirement).rejections[0]?.code).toBe(
-			"MIGRATION_REQUIRED_BUT_UNAVAILABLE",
-		);
+		expect(
+			run([candidate({})], DEFAULT_TRUST_POLICY, requirement).rejections[0]
+				?.code,
+		).toBe("MIGRATION_REQUIRED_BUT_UNAVAILABLE");
 	});
 
 	it("rejects a prohibited profile", () => {
@@ -238,28 +265,41 @@ describe("hard gates", () => {
 				},
 			],
 		});
-		expect(run([sqlite], DEFAULT_TRUST_POLICY, requirement).rejections[0]?.code).toBe(
-			"PROFILE_PROHIBITED",
-		);
+		expect(
+			run([sqlite], DEFAULT_TRUST_POLICY, requirement).rejections[0]?.code,
+		).toBe("PROFILE_PROHIBITED");
 	});
 
 	it("enforces required structured features", () => {
 		const requirement = parseCapabilityRequirement({
 			requiredProfiles: [{ profileId: "data.postgres/v1" }],
 			features: [
-				{ key: "maxStorageBytes", operator: "at-least", value: 1_000_000_000, necessity: "required" },
+				{
+					key: "maxStorageBytes",
+					operator: "at-least",
+					value: 1_000_000_000,
+					necessity: "required",
+				},
 			],
 		});
 		expect(
 			run(
-				[candidate({ structuredCapabilities: { maxStorageBytes: 100_000_000 } })],
+				[
+					candidate({
+						structuredCapabilities: { maxStorageBytes: 100_000_000 },
+					}),
+				],
 				DEFAULT_TRUST_POLICY,
 				requirement,
 			).rejections[0]?.code,
 		).toBe("FEATURE_UNSATISFIED");
 		expect(
 			run(
-				[candidate({ structuredCapabilities: { maxStorageBytes: 10_000_000_000 } })],
+				[
+					candidate({
+						structuredCapabilities: { maxStorageBytes: 10_000_000_000 },
+					}),
+				],
 				DEFAULT_TRUST_POLICY,
 				requirement,
 			).winner,
@@ -271,9 +311,10 @@ describe("hard gates", () => {
 			requiredProfiles: [{ profileId: "data.postgres/v1" }],
 			runtime: { required: "oci" },
 		});
-		expect(run([candidate({})], DEFAULT_TRUST_POLICY, requirement).rejections[0]?.code).toBe(
-			"RUNTIME_UNSUPPORTED",
-		);
+		expect(
+			run([candidate({})], DEFAULT_TRUST_POLICY, requirement).rejections[0]
+				?.code,
+		).toBe("RUNTIME_UNSUPPORTED");
 	});
 });
 
@@ -305,7 +346,9 @@ describe("lexicographic ranking", () => {
 			claimActionCount: 2,
 			providerClass: "established",
 		});
-		expect(run([twoActions, oneAction]).winner?.definitionId).toBe("emerging.one/v1");
+		expect(run([twoActions, oneAction]).winner?.definitionId).toBe(
+			"emerging.one/v1",
+		);
 	});
 
 	it("prefers single-resource claims over a best-effort saga", () => {
@@ -324,7 +367,9 @@ describe("lexicographic ranking", () => {
 			candidate({ definitionId: "c/v1" }),
 		];
 		const forward = run(candidates).ranked.map((c) => c.definitionId);
-		const reversed = run([...candidates].reverse()).ranked.map((c) => c.definitionId);
+		const reversed = run([...candidates].reverse()).ranked.map(
+			(c) => c.definitionId,
+		);
 		expect(reversed).toEqual(forward);
 	});
 
@@ -380,17 +425,25 @@ describe("requirement parsing", () => {
 
 	it("canonically orders profiles so authoring order cannot change decisions", () => {
 		const a = parseCapabilityRequirement({
-			requiredProfiles: [{ profileId: "data.postgres/v1" }, { profileId: "data.vector/v1" }],
+			requiredProfiles: [
+				{ profileId: "data.postgres/v1" },
+				{ profileId: "data.vector/v1" },
+			],
 		});
 		const b = parseCapabilityRequirement({
-			requiredProfiles: [{ profileId: "data.vector/v1" }, { profileId: "data.postgres/v1" }],
+			requiredProfiles: [
+				{ profileId: "data.vector/v1" },
+				{ profileId: "data.postgres/v1" },
+			],
 		});
 		expect(JSON.stringify(a)).toBe(JSON.stringify(b));
 	});
 
 	it("rejects an unknown required profile id at parse time", () => {
 		expect(() =>
-			parseCapabilityRequirement({ requiredProfiles: [{ profileId: "not-a-profile" }] }),
+			parseCapabilityRequirement({
+				requiredProfiles: [{ profileId: "not-a-profile" }],
+			}),
 		).toThrow();
 	});
 
@@ -398,7 +451,11 @@ describe("requirement parsing", () => {
 		expect(() =>
 			parseCapabilityRequirement({
 				requiredProfiles: [{ profileId: "data.postgres/v1" }],
-				realization: { allowNative: false, allowPack: false, allowBridge: false },
+				realization: {
+					allowNative: false,
+					allowPack: false,
+					allowBridge: false,
+				},
 			}),
 		).toThrow(/at least one realization kind/u);
 	});

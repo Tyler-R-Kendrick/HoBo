@@ -32,7 +32,7 @@
  * resolution time (`YARD_BINDING_PRODUCT_UNKNOWN`), not here, so a successful
  * call to a factory below is not evidence that anything can be deployed.
  */
-import { type SlotBinding, slotBinding } from "@hobo/core";
+import { capability, type SlotBinding, slotBinding } from "@hobo/core";
 
 /**
  * Forwards the caller's option bag to the parse boundary, dropping only keys
@@ -76,7 +76,7 @@ export interface StaticWebAppsOptions {
 export function staticWebApps(options?: StaticWebAppsOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.static/v1",
+		profile: capability.web.static,
 		productId: "azure.static-web-apps/v1",
 		properties: present(options ?? {}),
 	});
@@ -93,7 +93,7 @@ export interface AppServiceOptions {
 export function appService(options?: AppServiceOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "azure.app-service/v1",
 		properties: present(options ?? {}),
 	});
@@ -121,7 +121,7 @@ export interface ContainerAppsOptions {
 export function containerApps(options?: ContainerAppsOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "azure.container-apps/v1",
 		properties: present(options ?? {}),
 	});
@@ -155,7 +155,7 @@ export interface AksOptions {
 export function aks(options?: AksOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "azure.aks/v1",
 		properties: present(options ?? {}),
 	});
@@ -171,7 +171,7 @@ export interface ApiManagementOptions {
 export function apiManagement(options?: ApiManagementOptions): SlotBinding {
 	return slotBinding({
 		slot: "api",
-		profile: "api.http/v1",
+		profile: capability.api.http,
 		productId: "azure.api-management/v1",
 		properties: present(options ?? {}),
 	});
@@ -197,7 +197,7 @@ export interface FunctionsOptions {
 export function functions(options?: FunctionsOptions): SlotBinding {
 	return slotBinding({
 		slot: "service",
-		profile: "service.worker/v1",
+		profile: capability.service.worker,
 		productId: "azure.functions/v1",
 		properties: present(options ?? {}),
 	});
@@ -222,7 +222,7 @@ export function containerAppsService(
 ): SlotBinding {
 	return slotBinding({
 		slot: "service",
-		profile: "service.worker/v1",
+		profile: capability.service.worker,
 		productId: "azure.container-apps/v1",
 		properties: present(options ?? {}),
 	});
@@ -244,7 +244,7 @@ export function postgresFlexible(
 ): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.postgres/v1",
+		profile: capability.data.postgres,
 		productId: "azure.postgres-flexible/v1",
 		properties: present(options ?? {}),
 	});
@@ -260,7 +260,7 @@ export interface SqlDatabaseOptions {
 export function sqlDatabase(options?: SqlDatabaseOptions): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.relational/v1",
+		profile: capability.data.relational,
 		productId: "azure.sql-database/v1",
 		properties: present(options ?? {}),
 	});
@@ -295,7 +295,7 @@ export interface CosmosDbOptions {
 export function cosmosDb(options?: CosmosDbOptions): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.document/v1",
+		profile: capability.data.document,
 		productId: "azure.cosmos-db/v1",
 		properties: present(options ?? {}),
 	});
@@ -310,7 +310,7 @@ export interface CosmosTableOptions {
 export function cosmosTable(options?: CosmosTableOptions): SlotBinding {
 	return slotBinding({
 		slot: "kv",
-		profile: "kv.key-value/v1",
+		profile: capability.kv.keyValue,
 		productId: "azure.cosmos-table/v1",
 		properties: present(options ?? {}),
 	});
@@ -328,7 +328,7 @@ export interface RedisCacheOptions {
 export function redisCache(options?: RedisCacheOptions): SlotBinding {
 	return slotBinding({
 		slot: "kv",
-		profile: "kv.redis-compatible/v1",
+		profile: capability.kv.redisCompatible,
 		productId: "azure.cache-for-redis/v1",
 		properties: present(options ?? {}),
 	});
@@ -364,7 +364,7 @@ export interface BlobStorageOptions {
 export function blobStorage(options?: BlobStorageOptions): SlotBinding {
 	return slotBinding({
 		slot: "bucket",
-		profile: "bucket.object/v1",
+		profile: capability.bucket.object,
 		productId: "azure.blob-storage/v1",
 		properties: present(options ?? {}),
 	});
@@ -381,7 +381,7 @@ export interface StorageQueueOptions {
 export function storageQueue(options?: StorageQueueOptions): SlotBinding {
 	return slotBinding({
 		slot: "queue",
-		profile: "queue.at-least-once/v1",
+		profile: capability.queue.atLeastOnce,
 		productId: "azure.storage-queue/v1",
 		properties: present(options ?? {}),
 	});
@@ -402,7 +402,7 @@ export interface ServiceBusQueueOptions {
 export function serviceBusQueue(options?: ServiceBusQueueOptions): SlotBinding {
 	return slotBinding({
 		slot: "queue",
-		profile: "queue.fifo/v1",
+		profile: capability.queue.fifo,
 		productId: "azure.service-bus-queue/v1",
 		properties: present(options ?? {}),
 	});
@@ -418,7 +418,7 @@ export interface ServiceBusTopicOptions {
 export function serviceBusTopic(options?: ServiceBusTopicOptions): SlotBinding {
 	return slotBinding({
 		slot: "topic",
-		profile: "topic.pubsub/v1",
+		profile: capability.topic.pubsub,
 		productId: "azure.service-bus-topic/v1",
 		properties: present(options ?? {}),
 	});
@@ -438,7 +438,7 @@ export interface KeyVaultOptions {
 export function keyVault(options?: KeyVaultOptions): SlotBinding {
 	return slotBinding({
 		slot: "secretRef",
-		profile: "secret-ref.locator/v1",
+		profile: capability.secretRef.locator,
 		productId: "azure.key-vault/v1",
 		properties: present(options ?? {}),
 	});

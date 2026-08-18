@@ -10,6 +10,15 @@
  * declared inside `y.camp(…)` cannot disagree with its Yard because it is never
  * told anything the Yard does not already know.
  *
+ * The provider is an *argument*, not a builder call. `yard(azure, "prod-eu", …)`
+ * establishes it before the callback runs, so there is no window in which slot
+ * calls are written against a Yard that has no provider yet, and no way for
+ * moving a line to change whether the code makes sense. Values authors would
+ * otherwise spell as bare strings — capability profiles and Camp environment
+ * types — come from the typed vocabulary in `@hobo/core` (`capability`,
+ * `ENV_TYPES`) so a typo is a compile error rather than a row that matches
+ * nothing.
+ *
  * Three properties are load-bearing:
  *
  * 1. **It is a front end, not a second parser.** Every builder terminates in
@@ -47,6 +56,9 @@ import { type Camp, camp, type ProviderSelection } from "@hobo/camps";
 import {
 	CAPABILITY_SLOTS,
 	type CapabilitySlot,
+	ENV_TYPES,
+	type EnvType,
+	isEnvType,
 	type SlotBinding,
 } from "@hobo/core";
 import {
@@ -57,7 +69,10 @@ import {
 } from "./define.js";
 import type { Yard } from "./yard.js";
 
-export type BuilderErrorCode = "PROVIDER_REF_UNRESOLVED" | "SLOT_CALL_EMPTY";
+export type BuilderErrorCode =
+	| "ENV_TYPE_UNKNOWN"
+	| "PROVIDER_REF_UNRESOLVED"
+	| "SLOT_CALL_EMPTY";
 
 /**
  * Refusal from the builder front end itself — a call the builder can see is
@@ -105,7 +120,7 @@ export function providerIdOf(provider: ProviderRef): string {
 	throw new BuilderError(
 		"PROVIDER_REF_UNRESOLVED",
 		`cannot resolve a provider id from ${JSON.stringify(provider)} — a provider is stated, never inferred`,
-		'Pass a provider namespace (y.on(azure)), a provider id string (y.on("azure")), or { id }.',
+		'Pass the provider as the first argument to yard(): yard(azure, "prod-eu", …). A namespace object is preferred; a provider id string or { id } is accepted for providers with no namespace package.',
 	);
 }
 
@@ -115,8 +130,6 @@ export type YardSlotMethods = {
 };
 
 export interface YardBuilder extends YardSlotMethods {
-	/** The Yard's provider. Yard is the only provider-selection point. */
-	on(provider: ProviderRef): YardBuilder;
 	region(...regions: string[]): YardBuilder;
 	residency(...residency: string[]): YardBuilder;
 	componentHost(...hosts: string[]): YardBuilder;
@@ -126,10 +139,12 @@ export interface YardBuilder extends YardSlotMethods {
 	/** Declares a Camp inside this Yard; yardId and providerId are derived. */
 	camp(name: string, build?: (builder: CampBuilder) => unknown): YardBuilder;
 	camp(existing: Camp): YardBuilder;
+	/** The provider id this Yard was opened with. Read-only: set at the call. */
+	readonly providerId: string;
 }
 
 export interface CampBuilder {
-	envType(envType: string): CampBuilder;
+	envType(envType: EnvType): CampBuilder;
 	production(): CampBuilder;
 	staging(): CampBuilder;
 	preview(): CampBuilder;
@@ -138,7 +153,7 @@ export interface CampBuilder {
 	prefer(...preferences: string[]): CampBuilder;
 	label(key: string, value: string): CampBuilder;
 	runtime(...requirements: string[]): CampBuilder;
-	pin(slot: string, resolverId: string): CampBuilder;
+	pin(slot: CapabilitySlot, resolverId: string): CampBuilder;
 	/**
 	 * Refused by `camp()` with `camp-provider-selection-forbidden`. It exists so
 	 * the mistake it names gets the existing remediation instead of an
@@ -157,8 +172,15 @@ export interface StationBuilder {
 	residency(residency: string): StationBuilder;
 	trustDomain(trustDomain: string): StationBuilder;
 	airgap(airgap?: boolean): StationBuilder;
-	/** Builds and registers a Yard. */
-	yard(name: string, build: (builder: YardBuilder) => unknown): StationBuilder;
+	/**
+	 * Builds and registers a Yard on a provider. The provider comes first
+	 * because it is the fact that determines what every later call may mean.
+	 */
+	yard(
+		provider: ProviderRef,
+		name: string,
+		build: (builder: YardBuilder) => unknown,
+	): StationBuilder;
 	/** Registers a Yard that already exists, e.g. `cloudflare.Yard()`. */
 	yard(existing: Yard): StationBuilder;
 }
@@ -173,12 +195,23 @@ export function buildCamp(
 	return draft.compile(name);
 }
 
-/** Authors a Yard. Compiles to `defineYard`, which compiles to `yard()`. */
+/**
+ * Authors a Yard on a provider. Compiles to `defineYard`, which compiles to
+ * `yard()`.
+ *
+ * The provider is an argument, not a builder call, because it is not one
+ * setting among many: it decides which offerings are even nameable in the
+ * callback. `y.on(azure)` let a Yard exist, briefly, with no provider — every
+ * slot call before it was written against nothing, and moving the line changed
+ * whether the code was sensible without changing the record. As an argument the
+ * provider is established before the callback can run, so that window closes.
+ */
 export function buildYard(
+	provider: ProviderRef,
 	name: string,
 	build: (builder: YardBuilder) => unknown,
 ): Yard {
-	const draft = new YardDraft();
+	const draft = new YardDraft(providerIdOf(provider));
 	// The ten slot methods are installed on the prototype from CAPABILITY_SLOTS,
 	// so they exist at runtime but not in the class declaration.
 	build(draft as unknown as YardBuilder);
@@ -212,7 +245,17 @@ class CampDraft implements CampBuilder {
 	#providerAuthored = false;
 	#bindleAuthored = false;
 
-	envType(envType: string): CampBuilder {
+	envType(envType: EnvType): CampBuilder {
+		// Typed at the signature, checked at runtime too: a JS caller, a JSON
+		// config, or an `as` cast all reach here, and a Camp whose envType is a
+		// typo silently loses every policy keyed on the real value.
+		if (!isEnvType(envType)) {
+			throw new BuilderError(
+				"ENV_TYPE_UNKNOWN",
+				`camp envType ${JSON.stringify(envType)} is not a declared environment type`,
+				`Use one of: ${ENV_TYPES.join(", ")} — or the named methods production() / staging() / preview() / development().`,
+			);
+		}
 		this.#envType = envType;
 		return this;
 	}
@@ -293,7 +336,9 @@ class CampDraft implements CampBuilder {
 }
 
 class YardDraft {
-	#provider: ProviderRef | undefined;
+	// Set once, at construction, from the provider argument. There is no setter:
+	// a Yard's provider is not a thing the callback may change midway.
+	readonly #provider: string;
 	readonly #regions: string[] = [];
 	readonly #residency: string[] = [];
 	readonly #componentHosts: string[] = [];
@@ -301,11 +346,13 @@ class YardDraft {
 	readonly #slots = new Map<CapabilitySlot, SlotBinding[]>();
 	readonly #camps: Camp[] = [];
 
-	on(provider: ProviderRef): this {
-		// Resolved eagerly so an unusable reference is named at the call that
-		// wrote it, not at compile time three statements later.
-		this.#provider = providerIdOf(provider);
-		return this;
+	constructor(providerId: string) {
+		this.#provider = providerId;
+	}
+
+	/** Readable inside the callback, so a slot method can reason about it. */
+	get providerId(): string {
+		return this.#provider;
 	}
 
 	region(...regions: string[]): this {
@@ -368,9 +415,7 @@ class YardDraft {
 		}
 		return defineYard(name, {
 			...slots,
-			// A Yard with no provider is refused by yard() itself; the builder
-			// forwards the absence rather than inventing a second refusal.
-			provider: this.#provider as string,
+			provider: this.#provider,
 			regions: [...this.#regions],
 			residency: [...this.#residency],
 			componentHosts: [...this.#componentHosts],
@@ -425,15 +470,25 @@ class StationDraft implements StationBuilder {
 	}
 
 	yard(
-		nameOrYard: string | Yard,
+		providerOrYard: ProviderRef | Yard,
+		name?: string,
 		build?: (builder: YardBuilder) => unknown,
 	): StationBuilder {
 		// Both spellings register through one path: a prebuilt catalog Yard and
-		// a hand-authored one are the same kind of registration.
+		// a hand-authored one are the same kind of registration. A prebuilt Yard
+		// is the one-argument form, so the presence of a name is what tells the
+		// two apart — never the shape of the first argument, which a Yard and a
+		// provider-id string could both satisfy.
+		if (name === undefined) {
+			this.#yards.push(providerOrYard as Yard);
+			return this;
+		}
 		this.#yards.push(
-			typeof nameOrYard === "string"
-				? buildYard(nameOrYard, build ?? (() => undefined))
-				: nameOrYard,
+			buildYard(
+				providerOrYard as ProviderRef,
+				name,
+				build ?? (() => undefined),
+			),
 		);
 		return this;
 	}

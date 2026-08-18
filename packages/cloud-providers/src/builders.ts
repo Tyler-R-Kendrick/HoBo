@@ -15,8 +15,8 @@
  * export default station("acme", (s) => {
  *   s.tenant("acme").residency("eu").trustDomain("acme.hobo.internal");
  *
- *   s.yard("prod-eu", (y) => {
- *     y.on(azure).region("westeurope").residency("eu").label("tier", "public");
+ *   s.yard(azure, "prod-eu", (y) => {
+ *     y.region("westeurope").residency("eu").label("tier", "public");
  *     y.web(azure.containerApps({ ingress: "external" }), azure.appService({ sku: "P1v3" }));
  *     y.data(azure.postgresFlexible({ tier: "GeneralPurpose" }));
  *     y.camp("api", (c) => c.production().label("exposure", "public"));

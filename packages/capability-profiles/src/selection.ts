@@ -37,7 +37,10 @@ export const REJECTION_CODES = [
 
 export type RejectionCode = (typeof REJECTION_CODES)[number];
 
-export type ProviderClass = "established" | "verified-emerging" | "experimental";
+export type ProviderClass =
+	| "established"
+	| "verified-emerging"
+	| "experimental";
 
 export type CreatorAuthorityAfterClaim =
 	| "absent"
@@ -54,7 +57,10 @@ export type ContinuityGrade =
 	| "discarded"
 	| "not-applicable";
 
-export type ClaimAtomicity = "single-resource" | "provider-bundled" | "best-effort-saga";
+export type ClaimAtomicity =
+	| "single-resource"
+	| "provider-bundled"
+	| "best-effort-saga";
 
 /** A profile implementation claim made by a hosted product or pack. */
 export type ProfileImplementation = {
@@ -235,8 +241,10 @@ function implementationFor(
 	registry: CapabilityProfileRegistry,
 ): ProfileImplementation | undefined {
 	for (const implementation of candidate.implementsProfiles) {
-		if (!registry.satisfies(implementation.profileId, requiredProfileId)) continue;
-		if (!rangeAdmits(requiredRange, majorOf(implementation.profileId))) continue;
+		if (!registry.satisfies(implementation.profileId, requiredProfileId))
+			continue;
+		if (!rangeAdmits(requiredRange, majorOf(implementation.profileId)))
+			continue;
 		if (!rangeAdmits(implementation.versionRange, majorOf(requiredProfileId))) {
 			continue;
 		}
@@ -306,7 +314,11 @@ export function selectCapabilityImplementation(
 
 	for (const candidate of ordered) {
 		if (!candidate.hasRegisteredDriver) {
-			reject(candidate, "NO_REGISTERED_DRIVER", "no effectful driver is registered");
+			reject(
+				candidate,
+				"NO_REGISTERED_DRIVER",
+				"no effectful driver is registered",
+			);
 			continue;
 		}
 		if (!candidate.secretCustodyAvailable) {
@@ -349,7 +361,11 @@ export function selectCapabilityImplementation(
 				implementation.realization === "pack" &&
 				(!requirement.realization.pack || !policy.allowPack)
 			) {
-				reject(candidate, "REALIZATION_DENIED", "pack realization is not allowed");
+				reject(
+					candidate,
+					"REALIZATION_DENIED",
+					"pack realization is not allowed",
+				);
 				gated = true;
 				break;
 			}
@@ -357,12 +373,23 @@ export function selectCapabilityImplementation(
 				implementation.realization === "bridge" &&
 				(!requirement.realization.bridge || !policy.allowBridge)
 			) {
-				reject(candidate, "REALIZATION_DENIED", "bridge realization is not allowed");
+				reject(
+					candidate,
+					"REALIZATION_DENIED",
+					"bridge realization is not allowed",
+				);
 				gated = true;
 				break;
 			}
-			if (implementation.realization === "native" && !requirement.realization.native) {
-				reject(candidate, "REALIZATION_DENIED", "native realization is not allowed");
+			if (
+				implementation.realization === "native" &&
+				!requirement.realization.native
+			) {
+				reject(
+					candidate,
+					"REALIZATION_DENIED",
+					"native realization is not allowed",
+				);
 				gated = true;
 				break;
 			}
@@ -452,7 +479,11 @@ export function selectCapabilityImplementation(
 
 		if (input.consumableBindingProfiles !== undefined) {
 			const consumable = new Set(input.consumableBindingProfiles);
-			if (!candidate.producesBindingProfiles.some((profile) => consumable.has(profile))) {
+			if (
+				!candidate.producesBindingProfiles.some((profile) =>
+					consumable.has(profile),
+				)
+			) {
 				reject(
 					candidate,
 					"BINDING_UNAVAILABLE",
@@ -476,7 +507,8 @@ export function selectCapabilityImplementation(
 		if (gated) continue;
 
 		if (
-			(requirement.portability.requireExportProfile || policy.requireExportProfile) &&
+			(requirement.portability.requireExportProfile ||
+				policy.requireExportProfile) &&
 			!candidate.supportsExport
 		) {
 			reject(candidate, "MIGRATION_REQUIRED_BUT_UNAVAILABLE", "no export path");
@@ -497,7 +529,11 @@ export function selectCapabilityImplementation(
 
 		// Fail closed: absent, unsigned, or expired evidence is not selectable.
 		if (!candidate.evidenceSignatureValid) {
-			reject(candidate, "EVIDENCE_STALE", "trust evidence signature is not valid");
+			reject(
+				candidate,
+				"EVIDENCE_STALE",
+				"trust evidence signature is not valid",
+			);
 			continue;
 		}
 		if (candidate.evidenceExpiresAtMs === undefined) {
@@ -549,10 +585,16 @@ export function selectCapabilityImplementation(
 
 		if (candidate.sponsorExposureMinorUnits > 0) {
 			if (!policy.allowSponsor) {
-				reject(candidate, "BOOTSTRAP_POLICY_DENIED", "sponsor-backed bootstrap is denied");
+				reject(
+					candidate,
+					"BOOTSTRAP_POLICY_DENIED",
+					"sponsor-backed bootstrap is denied",
+				);
 				continue;
 			}
-			if (candidate.sponsorExposureMinorUnits > policy.sponsorBudgetMinorUnits) {
+			if (
+				candidate.sponsorExposureMinorUnits > policy.sponsorBudgetMinorUnits
+			) {
 				reject(
 					candidate,
 					"SPONSOR_BUDGET_EXCEEDED",
@@ -571,7 +613,9 @@ export function selectCapabilityImplementation(
 		ranked,
 		...(winner !== undefined ? { winner } : {}),
 		rejections: [...rejections].sort(
-			(a, b) => a.definitionId.localeCompare(b.definitionId) || a.code.localeCompare(b.code),
+			(a, b) =>
+				a.definitionId.localeCompare(b.definitionId) ||
+				a.code.localeCompare(b.code),
 		),
 	};
 }
@@ -583,8 +627,12 @@ function compareCandidates(
 ): number {
 	// Fresher evidence first, bucketed by day so trivial clock differences do
 	// not reorder otherwise-equivalent candidates.
-	const freshnessA = Math.floor(((a.evidenceExpiresAtMs ?? nowMs) - nowMs) / 86_400_000);
-	const freshnessB = Math.floor(((b.evidenceExpiresAtMs ?? nowMs) - nowMs) / 86_400_000);
+	const freshnessA = Math.floor(
+		((a.evidenceExpiresAtMs ?? nowMs) - nowMs) / 86_400_000,
+	);
+	const freshnessB = Math.floor(
+		((b.evidenceExpiresAtMs ?? nowMs) - nowMs) / 86_400_000,
+	);
 	if (freshnessA !== freshnessB) return freshnessB - freshnessA;
 
 	const authority =
@@ -592,7 +640,8 @@ function compareCandidates(
 		AUTHORITY_RANK[b.creatorAuthorityAfterClaim];
 	if (authority !== 0) return authority;
 
-	const atomicity = ATOMICITY_RANK[a.claimAtomicity] - ATOMICITY_RANK[b.claimAtomicity];
+	const atomicity =
+		ATOMICITY_RANK[a.claimAtomicity] - ATOMICITY_RANK[b.claimAtomicity];
 	if (atomicity !== 0) return atomicity;
 
 	if (a.claimActionCount !== b.claimActionCount) {
@@ -600,14 +649,17 @@ function compareCandidates(
 	}
 
 	const endpoint =
-		CONTINUITY_RANK[a.continuity.endpoint] - CONTINUITY_RANK[b.continuity.endpoint];
+		CONTINUITY_RANK[a.continuity.endpoint] -
+		CONTINUITY_RANK[b.continuity.endpoint];
 	if (endpoint !== 0) return endpoint;
 
-	const data = CONTINUITY_RANK[a.continuity.data] - CONTINUITY_RANK[b.continuity.data];
+	const data =
+		CONTINUITY_RANK[a.continuity.data] - CONTINUITY_RANK[b.continuity.data];
 	if (data !== 0) return data;
 
 	const credentials =
-		CREDENTIAL_RANK[a.continuity.credentials] - CREDENTIAL_RANK[b.continuity.credentials];
+		CREDENTIAL_RANK[a.continuity.credentials] -
+		CREDENTIAL_RANK[b.continuity.credentials];
 	if (credentials !== 0) return credentials;
 
 	const portability = Number(b.supportsExport) - Number(a.supportsExport);

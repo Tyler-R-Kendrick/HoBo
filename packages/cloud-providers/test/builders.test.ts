@@ -40,8 +40,8 @@ describe("the target authoring surface", () => {
 	const acme = station("acme", (s) => {
 		s.tenant("acme").residency("eu").trustDomain("acme.hobo.internal");
 
-		s.yard("prod-eu", (y) => {
-			y.on(azure).region("westeurope").residency("eu").label("tier", "public");
+		s.yard(azure, "prod-eu", (y) => {
+			y.region("westeurope").residency("eu").label("tier", "public");
 
 			y.web(
 				azure.containerApps({ ingress: "external" }),
@@ -123,8 +123,8 @@ describe("the target authoring surface", () => {
 
 describe("standalone builders", () => {
 	it("yard() builds a Yard on a provider namespace", () => {
-		const built = yard("edge", (y) => {
-			y.on(cloudflare).region("weur");
+		const built = yard(cloudflare, "edge", (y) => {
+			y.region("weur");
 			y.service(cloudflare.workers({}));
 		});
 		expect(built.providerId).toBe("cloudflare");

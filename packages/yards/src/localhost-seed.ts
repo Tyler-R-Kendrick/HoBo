@@ -23,11 +23,15 @@
  *   showing a bare green tick.
  */
 
+import { capability } from "@hobo/core";
+
 import type { YardBindingInput } from "./binding.js";
 import { deepFreeze, isPlainObject } from "./canonical.js";
 import { type Yard, yard } from "./yard.js";
 
+// public-contract: the name the auto-discovered localhost Yard registers under; a Station's yard refs and every local placement decision resolve through it, so changing it orphans existing local topologies.
 export const LOCALHOST_YARD_NAME = "yard:local";
+// public-contract: the provider id stamped on every locally-discovered substrate row; resolvers and capability-coverage reports key on it, so changing it makes local Yards look like an unknown provider.
 export const LOCALHOST_PROVIDER_ID = "local";
 
 export type SeedProvenance = "default" | "discovered" | "declared";
@@ -86,7 +90,7 @@ const LOCALHOST_CANDIDATES: readonly SeedCandidate[] = Object.freeze([
 	{
 		kind: "local",
 		primitive: "api",
-		profile: "api.http/v1",
+		profile: capability.api.http,
 		productId: "local:node-http-server",
 		fidelity: "real",
 		requiresCapability: "capability:runtime:node",
@@ -94,7 +98,7 @@ const LOCALHOST_CANDIDATES: readonly SeedCandidate[] = Object.freeze([
 	{
 		kind: "local",
 		primitive: "bucket",
-		profile: "bucket.filesystem/v1",
+		profile: capability.bucket.filesystem,
 		productId: "local:filesystem-bucket",
 		fidelity: "real",
 		requiresCapability: "capability:runtime:node",
@@ -102,7 +106,7 @@ const LOCALHOST_CANDIDATES: readonly SeedCandidate[] = Object.freeze([
 	{
 		kind: "local",
 		primitive: "data",
-		profile: "data.relational/v1",
+		profile: capability.data.relational,
 		productId: "local:sqlite-file",
 		fidelity: "real",
 		requiresCapability: "capability:toolchain:sqlite",
@@ -110,7 +114,7 @@ const LOCALHOST_CANDIDATES: readonly SeedCandidate[] = Object.freeze([
 	{
 		kind: "local",
 		primitive: "data",
-		profile: "data.sqlite/v1",
+		profile: capability.data.sqlite,
 		productId: "local:sqlite-file",
 		fidelity: "real",
 		requiresCapability: "capability:toolchain:sqlite",
@@ -118,35 +122,35 @@ const LOCALHOST_CANDIDATES: readonly SeedCandidate[] = Object.freeze([
 	{
 		kind: "local",
 		primitive: "kv",
-		profile: "kv.key-value/v1",
+		profile: capability.kv.keyValue,
 		productId: "local:in-memory-kv",
 		fidelity: "simulated",
 	},
 	{
 		kind: "local",
 		primitive: "queue",
-		profile: "queue.at-least-once/v1",
+		profile: capability.queue.atLeastOnce,
 		productId: "local:in-memory-queue",
 		fidelity: "simulated",
 	},
 	{
 		kind: "local",
 		primitive: "secretRef",
-		profile: "secret-ref.locator/v1",
+		profile: capability.secretRef.locator,
 		productId: "local:in-memory-secret-locator",
 		fidelity: "simulated",
 	},
 	{
 		kind: "unsupported",
 		primitive: "secretRef",
-		profile: "secret-ref.dynamic-resolution/v1",
+		profile: capability.secretRef.dynamicResolution,
 		reason:
 			"no local implementation: nothing on a developer host mints short-lived per-identity credentials — bind secret-ref.dynamic-resolution/v1 on a provider Yard with a secrets service",
 	},
 	{
 		kind: "local",
 		primitive: "service",
-		profile: "service.worker/v1",
+		profile: capability.service.worker,
 		productId: "local:in-process-worker",
 		fidelity: "real",
 		requiresCapability: "capability:runtime:node",
@@ -154,21 +158,21 @@ const LOCALHOST_CANDIDATES: readonly SeedCandidate[] = Object.freeze([
 	{
 		kind: "local",
 		primitive: "topic",
-		profile: "topic.ephemeral-pubsub/v1",
+		profile: capability.topic.ephemeralPubsub,
 		productId: "local:in-memory-topic",
 		fidelity: "simulated",
 	},
 	{
 		kind: "unsupported",
 		primitive: "topic",
-		profile: "topic.durable-log/v1",
+		profile: capability.topic.durableLog,
 		reason:
 			"no local implementation: the local topic is in-memory fan-out with no retention, so it can never satisfy a durable log — bind topic.durable-log/v1 on a provider Yard",
 	},
 	{
 		kind: "local",
 		primitive: "web",
-		profile: "web.static/v1",
+		profile: capability.web.static,
 		productId: "local:static-file-server",
 		fidelity: "real",
 		requiresCapability: "capability:runtime:node",
@@ -176,7 +180,7 @@ const LOCALHOST_CANDIDATES: readonly SeedCandidate[] = Object.freeze([
 	{
 		kind: "local",
 		primitive: "webhook",
-		profile: "webhook.inbound-http/v1",
+		profile: capability.webhook.inboundHttp,
 		productId: "local:node-http-server",
 		fidelity: "real",
 		requiresCapability: "capability:runtime:node",

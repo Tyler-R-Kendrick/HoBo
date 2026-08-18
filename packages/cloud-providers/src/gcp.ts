@@ -62,13 +62,13 @@ export {
 } from "@hobo/provider-gcp";
 
 /**
- * This namespace's provider id, for `y.on(gcp)`.
+ * This namespace's provider id, read when it is passed to `yard(gcp, …)`.
  *
  * A provider is stated, never inferred: without this the builder would have
  * to guess one from a Yard name or a product-id prefix, which is exactly the
  * load-bearing naming convention ADR-0144 forbids.
  */
-// public-contract: the provider id the authoring surface reads off this namespace; changing it repoints every Yard built with y.on(gcp).
+// public-contract: the provider id the authoring surface reads off this namespace; changing it repoints every Yard opened with yard(gcp, …).
 export const PROVIDER_ID = "gcp";
 
 /** Yard name used when the caller does not supply one. */

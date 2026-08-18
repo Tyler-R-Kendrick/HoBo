@@ -23,7 +23,7 @@
  * successful call is not evidence that the product exists in the catalog
  * today, and several of these products are not registered yet.
  */
-import { type SlotBinding, slotBinding } from "@hobo/core";
+import { capability, type SlotBinding, slotBinding } from "@hobo/core";
 
 /**
  * Forwards the caller's option bag to the parse boundary, dropping only keys
@@ -63,7 +63,7 @@ export interface R2Options {
 export function r2(options?: R2Options): SlotBinding {
 	return slotBinding({
 		slot: "bucket",
-		profile: "bucket.s3-compatible/v1",
+		profile: capability.bucket.s3Compatible,
 		productId: "cloudflare.r2/v1",
 		properties: present(options ?? {}),
 	});
@@ -77,7 +77,7 @@ export interface D1Options {
 export function d1(options?: D1Options): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.sqlite/v1",
+		profile: capability.data.sqlite,
 		productId: "cloudflare.d1/v1",
 		properties: present(options ?? {}),
 	});
@@ -91,7 +91,7 @@ export interface KvOptions {
 export function kv(options?: KvOptions): SlotBinding {
 	return slotBinding({
 		slot: "kv",
-		profile: "kv.key-value/v1",
+		profile: capability.kv.keyValue,
 		productId: "cloudflare.kv/v1",
 		properties: present(options ?? {}),
 	});
@@ -106,7 +106,7 @@ export interface QueuesOptions {
 export function queues(options?: QueuesOptions): SlotBinding {
 	return slotBinding({
 		slot: "queue",
-		profile: "queue.at-least-once/v1",
+		profile: capability.queue.atLeastOnce,
 		productId: "cloudflare.queues/v1",
 		properties: present(options ?? {}),
 	});
@@ -121,7 +121,7 @@ export interface WorkersOptions {
 export function workers(options?: WorkersOptions): SlotBinding {
 	return slotBinding({
 		slot: "service",
-		profile: "service.worker/v1",
+		profile: capability.service.worker,
 		productId: "cloudflare.workers/v1",
 		properties: present(options ?? {}),
 	});
@@ -135,7 +135,7 @@ export interface PagesOptions {
 export function pages(options?: PagesOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "cloudflare.pages/v1",
 		properties: present(options ?? {}),
 	});

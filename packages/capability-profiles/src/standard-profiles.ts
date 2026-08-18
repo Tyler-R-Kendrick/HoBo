@@ -5,7 +5,10 @@
  * profiles through {@link createCapabilityProfileRegistry} without editing this
  * file. Every profile cites the source that justifies its semantics.
  */
-import type { CapabilityProfileDescriptor, EvidenceSourceRef } from "./descriptor.js";
+import type {
+	CapabilityProfileDescriptor,
+	EvidenceSourceRef,
+} from "./descriptor.js";
 
 const CHECKED = "2026-08-08";
 
@@ -117,7 +120,8 @@ const API: readonly CapabilityProfileDescriptor[] = [
 		id: "api.rpc/v1",
 		primitive: "api",
 		displayName: "RPC API",
-		description: "A typed remote-procedure surface over HTTP or another transport.",
+		description:
+			"A typed remote-procedure surface over HTTP or another transport.",
 		refines: ["api.http/v1"],
 	}),
 ];
@@ -128,7 +132,8 @@ const SERVICE: readonly CapabilityProfileDescriptor[] = [
 		id: "service.worker/v1",
 		primitive: "service",
 		displayName: "Background worker",
-		description: "Long-lived or invoked background compute with no public route.",
+		description:
+			"Long-lived or invoked background compute with no public route.",
 	}),
 	profile({
 		id: "service.batch/v1",
@@ -152,7 +157,9 @@ const SERVICE: readonly CapabilityProfileDescriptor[] = [
 		displayName: "Queue consumer",
 		description: "Compute driven by delivery from a queue primitive.",
 		refines: ["service.worker/v1"],
-		features: [integer("maxBatchSize", "Maximum messages delivered per invocation.")],
+		features: [
+			integer("maxBatchSize", "Maximum messages delivered per invocation."),
+		],
 	}),
 ];
 
@@ -196,7 +203,10 @@ const DATA: readonly CapabilityProfileDescriptor[] = [
 			bool("pooling", "Provider offers a pooled connection endpoint."),
 		],
 		guarantees: [
-			bool("postgresWireProtocol", "Speaks the PostgreSQL frontend/backend protocol."),
+			bool(
+				"postgresWireProtocol",
+				"Speaks the PostgreSQL frontend/backend protocol.",
+			),
 			bool("tls", "Requires TLS on the client connection."),
 		],
 		sourceRefs: [
@@ -213,7 +223,9 @@ const DATA: readonly CapabilityProfileDescriptor[] = [
 		displayName: "MySQL",
 		description: "MySQL/MariaDB wire protocol and behaviour.",
 		refines: ["data.relational/v1"],
-		guarantees: [bool("mysqlWireProtocol", "Speaks the MySQL client protocol.")],
+		guarantees: [
+			bool("mysqlWireProtocol", "Speaks the MySQL client protocol."),
+		],
 		sourceRefs: [
 			{
 				url: "https://dev.mysql.com/doc/dev/mysql-server/latest/PAGE_PROTOCOL.html",
@@ -228,13 +240,27 @@ const DATA: readonly CapabilityProfileDescriptor[] = [
 		description: "SQLite dialect and single-writer semantics.",
 		refines: ["data.relational/v1"],
 		guarantees: [bool("sqliteDialect", "Accepts the SQLite SQL dialect.")],
-		sourceRefs: [{ url: "https://www.sqlite.org/lang.html", checkedAt: CHECKED }],
+		sourceRefs: [
+			{ url: "https://www.sqlite.org/lang.html", checkedAt: CHECKED },
+		],
+	}),
+	profile({
+		id: "data.nosql/v1",
+		primitive: "data",
+		displayName: "Non-relational store",
+		description:
+			"Durable structured storage that is not a SQL engine. The umbrella every non-relational engine refines into, so an app that needs *a* non-relational store — and genuinely does not care which — can say so without naming one. It asserts nothing beyond persistence and keyed retrieval: no joins, no cross-entity transactions, no schema enforcement. An app that needs any of those wants data.relational/v1 instead.",
+		features: [bool("secondaryIndexes", "Supports secondary indexes.")],
+		guarantees: [
+			bool("durableWrites", "An acknowledged write survives a restart."),
+		],
 	}),
 	profile({
 		id: "data.document/v1",
 		primitive: "data",
 		displayName: "Document store",
 		description: "Schemaless or schema-flexible document persistence.",
+		refines: ["data.nosql/v1"],
 		features: [bool("secondaryIndexes", "Supports secondary indexes.")],
 	}),
 	profile({
@@ -242,13 +268,30 @@ const DATA: readonly CapabilityProfileDescriptor[] = [
 		primitive: "data",
 		displayName: "Graph store",
 		description: "Vertex/edge persistence with traversal queries.",
+		refines: ["data.nosql/v1"],
+	}),
+	profile({
+		id: "data.wide-column/v1",
+		primitive: "data",
+		displayName: "Wide-column store",
+		description:
+			"Row-keyed sparse columns at scale: a partition key selects a row, columns within it are addressed individually, and the column set varies per row. DynamoDB, Bigtable and Cassandra-class engines.",
+		refines: ["data.nosql/v1"],
+		features: [
+			bool("secondaryIndexes", "Supports secondary indexes."),
+			bool("rangeQueries", "Supports ordered range scans within a partition."),
+		],
 	}),
 	profile({
 		id: "data.vector/v1",
 		primitive: "data",
 		displayName: "Vector store",
-		description: "Dense-vector persistence with approximate nearest-neighbour search.",
-		features: [integer("maxDimensions", "Maximum supported vector dimensionality.")],
+		description:
+			"Dense-vector persistence with approximate nearest-neighbour search.",
+		refines: ["data.nosql/v1"],
+		features: [
+			integer("maxDimensions", "Maximum supported vector dimensionality."),
+		],
 	}),
 	profile({
 		id: "data.vector.pgvector/v1",
@@ -300,8 +343,12 @@ const KV: readonly CapabilityProfileDescriptor[] = [
 			bool("sortedSets", "Supports sorted-set commands."),
 			bool("restTransport", "Exposes an HTTP/REST command transport."),
 		],
-		guarantees: [bool("redisCommandSemantics", "Implements Redis command semantics.")],
-		sourceRefs: [{ url: "https://redis.io/docs/latest/commands/", checkedAt: CHECKED }],
+		guarantees: [
+			bool("redisCommandSemantics", "Implements Redis command semantics."),
+		],
+		sourceRefs: [
+			{ url: "https://redis.io/docs/latest/commands/", checkedAt: CHECKED },
+		],
 	}),
 	profile({
 		id: "kv.valkey/v1",
@@ -318,7 +365,9 @@ const KV: readonly CapabilityProfileDescriptor[] = [
 		description:
 			"Per-key single-threaded stateful object with transactional local storage.",
 		refines: ["kv.key-value/v1"],
-		guarantees: [bool("singleWriter", "One active writer per object identity.")],
+		guarantees: [
+			bool("singleWriter", "One active writer per object identity."),
+		],
 	}),
 	profile({
 		id: "kv.durable-object.event-journal/v1",
@@ -329,7 +378,10 @@ const KV: readonly CapabilityProfileDescriptor[] = [
 		refines: ["kv.durable-object/v1"],
 		guarantees: [
 			bool("appendOnlyFacts", "Facts are immutable after commit."),
-			bool("expectedRevisionCas", "Append compares expected revision atomically."),
+			bool(
+				"expectedRevisionCas",
+				"Append compares expected revision atomically.",
+			),
 		],
 		sourceRefs: [
 			hoboSource(
@@ -419,13 +471,16 @@ const BUCKET: readonly CapabilityProfileDescriptor[] = [
 		displayName: "Content-addressed storage",
 		description: "Digest-addressed immutable storage.",
 		refines: ["bucket.object/v1"],
-		guarantees: [bool("immutable", "Stored content cannot be mutated in place.")],
+		guarantees: [
+			bool("immutable", "Stored content cannot be mutated in place."),
+		],
 	}),
 	profile({
 		id: "bucket.file-storage/v1",
 		primitive: "bucket",
 		displayName: "Application file storage",
-		description: "Application-scoped file storage managed by a backend product.",
+		description:
+			"Application-scoped file storage managed by a backend product.",
 		refines: ["bucket.object/v1"],
 	}),
 ];
@@ -437,7 +492,9 @@ const QUEUE: readonly CapabilityProfileDescriptor[] = [
 		primitive: "queue",
 		displayName: "At-least-once queue",
 		description: "Work queue with at-least-once delivery.",
-		guarantees: [bool("atLeastOnce", "Each message is delivered at least once.")],
+		guarantees: [
+			bool("atLeastOnce", "Each message is delivered at least once."),
+		],
 	}),
 	profile({
 		id: "queue.fifo/v1",
@@ -485,7 +542,9 @@ const TOPIC: readonly CapabilityProfileDescriptor[] = [
 		displayName: "Durable log topic",
 		description: "Retained, offset-addressed append-only log.",
 		refines: ["topic.pubsub/v1"],
-		guarantees: [bool("retention", "Messages are retained for a declared window.")],
+		guarantees: [
+			bool("retention", "Messages are retained for a declared window."),
+		],
 	}),
 	profile({
 		id: "topic.consumer-groups/v1",
@@ -517,9 +576,15 @@ const SECRET_REF: readonly CapabilityProfileDescriptor[] = [
 		id: "secret-ref.dynamic-resolution/v1",
 		primitive: "secretRef",
 		displayName: "Dynamic secret resolution",
-		description: "Short-lived credentials minted per workload identity on demand.",
+		description:
+			"Short-lived credentials minted per workload identity on demand.",
 		refines: ["secret-ref.runtime-projection/v1"],
-		guarantees: [bool("rotationWithoutRedeploy", "Value rotates without changing the reference.")],
+		guarantees: [
+			bool(
+				"rotationWithoutRedeploy",
+				"Value rotates without changing the reference.",
+			),
+		],
 	}),
 ];
 
@@ -548,10 +613,15 @@ const WEBHOOK: readonly CapabilityProfileDescriptor[] = [
 		id: "realtime.websocket/v1",
 		primitive: "webhook",
 		displayName: "WebSocket",
-		description: "RFC 6455 WebSocket upgrade, framing, and reconnect behaviour.",
+		description:
+			"RFC 6455 WebSocket upgrade, framing, and reconnect behaviour.",
 		refines: ["webhook.realtime/v1"],
-		guarantees: [bool("bidirectional", "Client and server may both initiate frames.")],
-		sourceRefs: [{ url: "https://www.rfc-editor.org/rfc/rfc6455", checkedAt: CHECKED }],
+		guarantees: [
+			bool("bidirectional", "Client and server may both initiate frames."),
+		],
+		sourceRefs: [
+			{ url: "https://www.rfc-editor.org/rfc/rfc6455", checkedAt: CHECKED },
+		],
 	}),
 	profile({
 		id: "realtime.sse/v1",
@@ -569,15 +639,16 @@ const WEBHOOK: readonly CapabilityProfileDescriptor[] = [
 	}),
 ];
 
-export const STANDARD_CAPABILITY_PROFILES: readonly CapabilityProfileDescriptor[] = [
-	...WEB,
-	...API,
-	...SERVICE,
-	...DATA,
-	...KV,
-	...BUCKET,
-	...QUEUE,
-	...TOPIC,
-	...SECRET_REF,
-	...WEBHOOK,
-];
+export const STANDARD_CAPABILITY_PROFILES: readonly CapabilityProfileDescriptor[] =
+	[
+		...WEB,
+		...API,
+		...SERVICE,
+		...DATA,
+		...KV,
+		...BUCKET,
+		...QUEUE,
+		...TOPIC,
+		...SECRET_REF,
+		...WEBHOOK,
+	];

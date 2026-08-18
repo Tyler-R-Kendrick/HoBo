@@ -151,6 +151,18 @@ export {
 	RESOURCE_ID_PATTERN,
 } from "./ports/binding-resolver.js";
 export type {
+	CapabilityProfileId,
+	EnvType,
+	ProfileForSlot,
+} from "./ports/capability-catalog.js";
+export {
+	CAPABILITY_PROFILE_IDS,
+	capability,
+	ENV_TYPES,
+	isEnvType,
+	slotForProfile,
+} from "./ports/capability-catalog.js";
+export type {
 	CapabilitySlot,
 	SlotBinding,
 	SlotBindingErrorCode,

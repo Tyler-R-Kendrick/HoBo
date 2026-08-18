@@ -97,8 +97,8 @@ import { station, yard, camp, azure, cloudflare } from "@hobo/cloud-providers";
 export default station("acme", (s) => {
 	s.tenant("acme").residency("eu").trustDomain("acme.hobo.internal");
 
-	s.yard("prod-eu", (y) => {
-		y.on(azure).region("westeurope").residency("eu").label("tier", "public");
+	s.yard(azure, "prod-eu", (y) => {
+		y.region("westeurope").residency("eu").label("tier", "public");
 
 		// Slot methods are variadic — several offerings per capability is normal.
 		y.web(azure.containerApps({ ingress: "external" }), azure.appService({ sku: "P1v3" }));
@@ -129,9 +129,19 @@ The rules, and why each one is there:
   from `CAPABILITY_SLOTS` in `@hobo/core` so the surface cannot drift from the
   vocabulary. `y.web(a)` then `y.web(b)` declares two offerings; silently
   dropping the first would be a portability lie.
-- **`y.on(provider)` states a provider, never infers one.** It accepts a
-  namespace object (reading its `PROVIDER_ID`), a provider id string, or
-  `{ id }`.
+- **The provider is an argument, not a builder call.** `yard(azure, "prod-eu", …)`
+  establishes it before the callback runs, so there is no window in which slot
+  calls are written against a Yard with no provider yet, and moving a line
+  cannot change whether the code makes sense. It accepts a namespace object
+  (reading its `PROVIDER_ID`), a provider id string, or `{ id }` — and it is
+  still stated, never inferred, because inferring one from a Yard name or a
+  product-id prefix is the load-bearing naming convention ADR-0144 forbids.
+- **No bare strings where a vocabulary exists.** Capability profiles come from
+  `capability` in `@hobo/core` (`capability.data.postgres`, not
+  `"data.postgres/v1"`) and Camp environments from `ENV_TYPES`. A typo is a
+  compile error instead of a row that matches nothing, and `slot: "kv"` will not
+  accept a `data.*` profile — the `SLOT_PROFILE_MISMATCH` refusal still exists
+  for untyped callers, but typed ones can no longer reach it.
 - **Order is not information.** Slots compile in `CAPABILITY_SLOTS` order,
   Camps sort by id, Yards sort by name, and every string list is canonicalized.
   Two builders declaring the same things in different orders are deep-equal.

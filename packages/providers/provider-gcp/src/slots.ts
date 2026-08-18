@@ -32,7 +32,7 @@
  * resolution time (`YARD_BINDING_PRODUCT_UNKNOWN`), not here, so a successful
  * call to a factory below is not evidence that anything can be deployed.
  */
-import { type SlotBinding, slotBinding } from "@hobo/core";
+import { capability, type SlotBinding, slotBinding } from "@hobo/core";
 
 /**
  * Forwards the caller's option bag to the parse boundary, dropping only keys
@@ -81,7 +81,7 @@ export interface CloudRunOptions {
 export function cloudRun(options?: CloudRunOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "gcp.cloud-run/v1",
 		properties: present(options ?? {}),
 	});
@@ -98,7 +98,7 @@ export interface AppEngineOptions {
 export function appEngine(options?: AppEngineOptions): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.hosted/v1",
+		profile: capability.web.hosted,
 		productId: "gcp.app-engine/v1",
 		properties: present(options ?? {}),
 	});
@@ -121,7 +121,7 @@ export function cloudStorageSite(
 ): SlotBinding {
 	return slotBinding({
 		slot: "web",
-		profile: "web.static/v1",
+		profile: capability.web.static,
 		productId: "gcp.cloud-storage-site/v1",
 		properties: present(options ?? {}),
 	});
@@ -137,7 +137,7 @@ export interface ApiGatewayOptions {
 export function apiGateway(options?: ApiGatewayOptions): SlotBinding {
 	return slotBinding({
 		slot: "api",
-		profile: "api.http/v1",
+		profile: capability.api.http,
 		productId: "gcp.api-gateway/v1",
 		properties: present(options ?? {}),
 	});
@@ -163,7 +163,7 @@ export interface CloudFunctionsOptions {
 export function cloudFunctions(options?: CloudFunctionsOptions): SlotBinding {
 	return slotBinding({
 		slot: "service",
-		profile: "service.worker/v1",
+		profile: capability.service.worker,
 		productId: "gcp.cloud-functions/v1",
 		properties: present(options ?? {}),
 	});
@@ -181,7 +181,7 @@ export interface CloudRunJobOptions {
 export function cloudRunJob(options?: CloudRunJobOptions): SlotBinding {
 	return slotBinding({
 		slot: "service",
-		profile: "service.batch/v1",
+		profile: capability.service.batch,
 		productId: "gcp.cloud-run-job/v1",
 		properties: present(options ?? {}),
 	});
@@ -200,7 +200,7 @@ export function cloudSqlPostgres(
 ): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.postgres/v1",
+		profile: capability.data.postgres,
 		productId: "gcp.cloud-sql-postgres/v1",
 		properties: present(options ?? {}),
 	});
@@ -217,7 +217,7 @@ export interface CloudSqlMysqlOptions {
 export function cloudSqlMysql(options?: CloudSqlMysqlOptions): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.mysql/v1",
+		profile: capability.data.mysql,
 		productId: "gcp.cloud-sql-mysql/v1",
 		properties: present(options ?? {}),
 	});
@@ -238,7 +238,7 @@ export interface FirestoreOptions {
 export function firestore(options?: FirestoreOptions): SlotBinding {
 	return slotBinding({
 		slot: "data",
-		profile: "data.document/v1",
+		profile: capability.data.document,
 		productId: "gcp.firestore/v1",
 		properties: present(options ?? {}),
 	});
@@ -264,7 +264,7 @@ export function memorystoreRedis(
 ): SlotBinding {
 	return slotBinding({
 		slot: "kv",
-		profile: "kv.redis-compatible/v1",
+		profile: capability.kv.redisCompatible,
 		productId: "gcp.memorystore-redis/v1",
 		properties: present(options ?? {}),
 	});
@@ -291,7 +291,7 @@ export interface CloudStorageOptions {
 export function cloudStorage(options?: CloudStorageOptions): SlotBinding {
 	return slotBinding({
 		slot: "bucket",
-		profile: "bucket.object/v1",
+		profile: capability.bucket.object,
 		productId: "gcp.cloud-storage/v1",
 		properties: present(options ?? {}),
 	});
@@ -307,7 +307,7 @@ export interface CloudTasksOptions {
 export function cloudTasks(options?: CloudTasksOptions): SlotBinding {
 	return slotBinding({
 		slot: "queue",
-		profile: "queue.at-least-once/v1",
+		profile: capability.queue.atLeastOnce,
 		productId: "gcp.cloud-tasks/v1",
 		properties: present(options ?? {}),
 	});
@@ -323,7 +323,7 @@ export interface PubsubOptions {
 export function pubsub(options?: PubsubOptions): SlotBinding {
 	return slotBinding({
 		slot: "topic",
-		profile: "topic.pubsub/v1",
+		profile: capability.topic.pubsub,
 		productId: "gcp.pubsub-topic/v1",
 		properties: present(options ?? {}),
 	});
@@ -352,7 +352,7 @@ export interface SecretManagerOptions {
 export function secretManager(options?: SecretManagerOptions): SlotBinding {
 	return slotBinding({
 		slot: "secretRef",
-		profile: "secret-ref.locator/v1",
+		profile: capability.secretRef.locator,
 		productId: "gcp.secret-manager/v1",
 		properties: present(options ?? {}),
 	});

@@ -1,14 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { createLakebedProvider, lakebedNativePorts } from "../src/index.js";
 import {
-	createLakebedProvider,
-	lakebedNativePorts,
-} from "../src/index.js";
-import {
+	type LakebedAnonymousTransport,
 	parseLakebedDeployOutput,
 	provisionTemporaryEnvironmentStation,
 	supportsAnonymousTemporaryDeploy,
-	type LakebedAnonymousTransport,
 } from "../src/temporary-station.js";
 
 describe("lakebed anonymous temporary station", () => {

@@ -9,7 +9,7 @@
  * nothing here ranks or chooses.
  *
  * Why factories rather than hand-typed rows: a row is magic strings
- * (`{ profile: "web.hosted/v1", productId: "vercel.project/v1" }`) with no
+ * (`{ profile: capability.web.hosted, productId: "vercel.project/v1" }`) with no
  * autocomplete and no type checking on the property bag. Each factory below has
  * its **own** options type — never `Record<string, unknown>` in the signature —
  * so a typo is a compile error rather than a deploy-time surprise.
@@ -28,7 +28,7 @@
  * environment reads.
  */
 
-import { type SlotBinding, slotBinding } from "@hobo/core";
+import { capability, type SlotBinding, slotBinding } from "@hobo/core";
 
 // public-contract: product ids the Vercel catalog registers for these offerings.
 export const VERCEL_PROJECT_PRODUCT_ID = "vercel.project/v1";

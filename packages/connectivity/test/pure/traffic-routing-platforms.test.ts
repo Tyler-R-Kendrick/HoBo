@@ -218,7 +218,10 @@ describe("Vercel traffic routing (production)", () => {
 			}
 			if (url.includes("/rolling-release/start") && method === "POST") {
 				return Response.json({
-					rollingRelease: { state: "ACTIVE", canaryDeployment: { id: body.canaryDeploymentId } },
+					rollingRelease: {
+						state: "ACTIVE",
+						canaryDeployment: { id: body.canaryDeploymentId },
+					},
 				});
 			}
 			if (url.endsWith("/rolling-release") && method === "GET") {
@@ -404,9 +407,7 @@ describe("Lakebed traffic routing (production dual-layer)", () => {
 		expect(programs[0]).toMatchObject({
 			apiVersion: "hobo.driver-program/v1",
 			driver: "lakebed-deploy",
-			resources: [
-				expect.objectContaining({ type: "lakebed:traffic-route" }),
-			],
+			resources: [expect.objectContaining({ type: "lakebed:traffic-route" })],
 		});
 		expect(routing.driverProgram(routingPlan.planId)).toMatchObject({
 			capsule: "capsule/shop",

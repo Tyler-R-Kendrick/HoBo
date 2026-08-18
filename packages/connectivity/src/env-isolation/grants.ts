@@ -2,7 +2,11 @@
  * Cross-env grants, elevated access capabilities, and break-glass model.
  * Network membership is never sufficient alone for elevated/production access.
  */
-import { createAccessEvent, ACCESS_EVENTS, type AccessEvent } from "./events.js";
+import {
+	ACCESS_EVENTS,
+	type AccessEvent,
+	createAccessEvent,
+} from "./events.js";
 import {
 	BREAK_GLASS_TTL_SECONDS,
 	ELEVATED_CAPABILITY_TTL_SECONDS,
@@ -68,7 +72,10 @@ export class CrossEnvGrantStore {
 	private readonly now: () => string;
 	private readonly tenant: string;
 
-	constructor(options: { readonly tenant: string; readonly now?: () => string }) {
+	constructor(options: {
+		readonly tenant: string;
+		readonly now?: () => string;
+	}) {
 		this.tenant = options.tenant;
 		this.now = options.now ?? (() => new Date().toISOString());
 	}
@@ -131,10 +138,7 @@ export class CrossEnvGrantStore {
 		return grant;
 	}
 
-	getActive(
-		id: string,
-		now?: string,
-	): CrossEnvGrant | null {
+	getActive(id: string, now?: string): CrossEnvGrant | null {
 		const g = this.grants.get(id);
 		if (!g) return null;
 		if (isExpired(g.expiresAt, now ?? this.now())) {
@@ -184,7 +188,10 @@ export class BreakGlassService {
 	private readonly now: () => string;
 	private readonly tenant: string;
 
-	constructor(options: { readonly tenant: string; readonly now?: () => string }) {
+	constructor(options: {
+		readonly tenant: string;
+		readonly now?: () => string;
+	}) {
 		this.tenant = options.tenant;
 		this.now = options.now ?? (() => new Date().toISOString());
 	}
@@ -243,7 +250,7 @@ export class BreakGlassService {
 		readonly ttlSeconds?: number;
 	}): BreakGlassGrant {
 		const prev = this.grants.get(input.grantId);
-		if (!prev || prev.status !== "requested") {
+		if (prev?.status !== "requested") {
 			throw Object.assign(new Error("break-glass grant not requestable"), {
 				code: "break-glass-invalid",
 			});
@@ -293,7 +300,7 @@ export class BreakGlassService {
 
 	getActive(grantId: string, now?: string): BreakGlassGrant | null {
 		const g = this.grants.get(grantId);
-		if (!g || g.status !== "granted") return null;
+		if (g?.status !== "granted") return null;
 		if (isExpired(g.expiresAt, now ?? this.now())) {
 			const expired: BreakGlassGrant = Object.freeze({
 				...g,

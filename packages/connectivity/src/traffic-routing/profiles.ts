@@ -1,7 +1,4 @@
-import {
-	offering,
-	type TrafficRoutingProviderProfile,
-} from "@hobo/core";
+import { offering, type TrafficRoutingProviderProfile } from "@hobo/core";
 
 /** Portable offline floor. */
 export const SIMPLE_TRAFFIC_ROUTING_PROFILE: TrafficRoutingProviderProfile = {
@@ -11,19 +8,22 @@ export const SIMPLE_TRAFFIC_ROUTING_PROFILE: TrafficRoutingProviderProfile = {
 };
 
 /** Cloudflare Load Balancing — lifecycle create/update/delete + weighted. */
-export const CLOUDFLARE_TRAFFIC_ROUTING_PROFILE: TrafficRoutingProviderProfile = {
-	provider: "cloudflare",
-	offerings: [
-		offering("lb.lifecycle", { features: ["create-pool", "create-lb", "update", "delete"] }),
-		offering("lb.weighted", { features: ["random-steering"] }),
-		offering("lb.health", {
-			stability: "preview",
-			features: ["monitors-optional"],
-		}),
-		offering("observe.health", { stability: "preview" }),
-	],
-	fallbacks: ["dns.weighted", "inprocess.weighted"],
-};
+export const CLOUDFLARE_TRAFFIC_ROUTING_PROFILE: TrafficRoutingProviderProfile =
+	{
+		provider: "cloudflare",
+		offerings: [
+			offering("lb.lifecycle", {
+				features: ["create-pool", "create-lb", "update", "delete"],
+			}),
+			offering("lb.weighted", { features: ["random-steering"] }),
+			offering("lb.health", {
+				stability: "preview",
+				features: ["monitors-optional"],
+			}),
+			offering("observe.health", { stability: "preview" }),
+		],
+		fallbacks: ["dns.weighted", "inprocess.weighted"],
+	};
 
 /** Vercel edge canary + path/header routes. */
 export const VERCEL_TRAFFIC_ROUTING_PROFILE: TrafficRoutingProviderProfile = {

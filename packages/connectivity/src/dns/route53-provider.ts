@@ -5,10 +5,7 @@ import type {
 	TenantId,
 } from "@hobo/core";
 
-import {
-	createRoute53SigV4Signer,
-	type AwsCredentials,
-} from "./aws-sigv4.js";
+import { type AwsCredentials, createRoute53SigV4Signer } from "./aws-sigv4.js";
 import { createCloudflareDnsProvider } from "./cloudflare-provider.js";
 
 export interface Route53DnsProviderOptions {
@@ -50,10 +47,9 @@ export function createRoute53DnsProvider(
 	readonly kind: "route53";
 	readonly store: ReadonlyMap<string, DnsRecord>;
 } {
-	const endpoint = (options.endpoint ?? "https://route53.amazonaws.com").replace(
-		/\/$/,
-		"",
-	);
+	const endpoint = (
+		options.endpoint ?? "https://route53.amazonaws.com"
+	).replace(/\/$/, "");
 	const fetchImpl = options.fetchImpl ?? fetch;
 	const store = new Map<string, DnsRecord>();
 	const credentials: AwsCredentials = {
@@ -65,9 +61,7 @@ export function createRoute53DnsProvider(
 	};
 	const sign =
 		options.signRequest ??
-		(options.allowUnsigned
-			? null
-			: createRoute53SigV4Signer(credentials));
+		(options.allowUnsigned ? null : createRoute53SigV4Signer(credentials));
 
 	function key(tenantId: TenantId, zone: string, name: string, type: string) {
 		return `${tenantId}::${zone}::${name}::${type}`;
@@ -201,7 +195,9 @@ export function createRoute53DnsProvider(
 						r.name.startsWith(`${name}.`),
 				);
 				if (existing && existing.type !== type) {
-					existing = listed.find((r) => r.type === type && r.name.includes(name));
+					existing = listed.find(
+						(r) => r.type === type && r.name.includes(name),
+					);
 				}
 			}
 			if (!existing) {
@@ -222,8 +218,7 @@ export function createRoute53DnsProvider(
 				}
 				return remote;
 			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : String(error);
+				const message = error instanceof Error ? error.message : String(error);
 				// Never hide HTTP auth/permission failures behind an empty cache.
 				if (/failed \(\d{3}\)/.test(message) && !message.includes("(0)")) {
 					throw error;
@@ -249,14 +244,10 @@ function escapeXml(value: string): string {
 }
 
 /** Minimal XML parse for ListResourceRecordSetsResponse. */
-export function parseListResourceRecordSets(
-	xml: string,
-): readonly DnsRecord[] {
+export function parseListResourceRecordSets(xml: string): readonly DnsRecord[] {
 	const records: DnsRecord[] = [];
-	const setRe =
-		/<ResourceRecordSet>([\s\S]*?)<\/ResourceRecordSet>/g;
-	let match: RegExpExecArray | null;
-	while ((match = setRe.exec(xml)) !== null) {
+	const setRe = /<ResourceRecordSet>([\s\S]*?)<\/ResourceRecordSet>/g;
+	for (let match = setRe.exec(xml); match !== null; match = setRe.exec(xml)) {
 		const block = match[1] ?? "";
 		const name = textBetween(block, "Name")?.replace(/\.$/, "") ?? "";
 		const type = textBetween(block, "Type") as DnsRecordType | null;
@@ -323,8 +314,7 @@ export function createDnsProviderFromConfig(input: {
 			secretAccessKey,
 			...(creds.sessionToken || creds.AWS_SESSION_TOKEN
 				? {
-						sessionToken:
-							creds.sessionToken ?? creds.AWS_SESSION_TOKEN,
+						sessionToken: creds.sessionToken ?? creds.AWS_SESSION_TOKEN,
 					}
 				: {}),
 			...(creds.region ? { region: creds.region } : {}),

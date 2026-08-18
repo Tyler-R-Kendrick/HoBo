@@ -158,11 +158,7 @@ export function createCloudflareTrafficRouting(
 				return result;
 			}
 
-			const poolResolution = await resolveOrCreatePools(
-				rule,
-				options,
-				request,
-			);
+			const poolResolution = await resolveOrCreatePools(rule, options, request);
 			if (poolResolution.ok === false) {
 				const result = resultFor(
 					plan,
@@ -202,11 +198,7 @@ export function createCloudflareTrafficRouting(
 				}
 			}
 
-			if (
-				!externalId ||
-				!response.ok ||
-				!cloudflareSuccess(response.body)
-			) {
+			if (!externalId || !response.ok || !cloudflareSuccess(response.body)) {
 				const result = resultFor(
 					plan,
 					"none",
@@ -518,9 +510,7 @@ async function resolveOrCreatePools(
 	return { ok: true, poolIds, createdPoolIds };
 }
 
-function poolOrigin(
-	endpoint: string,
-): { readonly address: string } | null {
+function poolOrigin(endpoint: string): { readonly address: string } | null {
 	try {
 		const url = new URL(endpoint);
 		if (url.protocol !== "http:" && url.protocol !== "https:") return null;

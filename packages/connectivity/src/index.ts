@@ -1,70 +1,68 @@
+// Re-export pure naming / tenancy from core so consumers can depend on one package.
 export {
+	createMeteringBus,
+	createUsageEvent,
+	DEFAULT_LOCAL_TLD,
+	DEFAULT_OMITTED_ENV,
+	DEFAULT_OVERLAY_TLD,
+	getNamedEndpoint,
+	getNamedEndpointHost,
+	HOBO_ZONE_LABEL,
+	isHoboHierarchicalName,
+	LOCAL_DEFAULT_TENANT_ID,
+	parseTenantId,
+	sanitizeDnsLabel,
+	type TenantIsolationMode,
+	tenantContextFromEnv,
+} from "@hobo/core";
+export {
+	type ConnectivityConfig,
 	DEFAULT_CONNECTIVITY_CONFIG,
 	parseConnectivityConfig,
-	type ConnectivityConfig,
 } from "./config.js";
 export {
-	createSecretlessConnector,
-	openMysqlSecretlessLease,
-	openPostgresSecretlessLease,
-	openRedisSecretlessLease,
-	type IsolationTier,
-	type SecretlessConnector,
-	type SecretlessLease,
-	type SecretlessProtocol,
-} from "./secretless/connector.js";
-export {
-	createPluginRegistry,
-	mysqlPlugin,
-	postgresPlugin,
-	redisPlugin,
-	tcpPlugin,
-	type ProtocolPlugin,
-	type SecretlessProtocolId,
-} from "./secretless/plugins.js";
-export {
 	CONNECTIVITY_HOST_PROVIDER_NAME,
-	createConnectivityHostHandler,
 	type ConnectivityHostHandler,
 	type ConnectivityHostRequest,
 	type ConnectivityHostResponse,
+	createConnectivityHostHandler,
 } from "./connectivity-host.js";
 export {
 	accessTokenHash,
 	createDpopJtiCache,
+	type DpopJtiCache,
+	type DpopKeyPair,
 	exportDpopPrivateJwk,
 	generateDpopKeyPair,
 	importDpopKeyPair,
-	mintDpopProof,
-	verifyDpopProof,
-	type DpopJtiCache,
-	type DpopKeyPair,
 	type JsonWebKeyPublic,
 	type MintDpopProofInput,
+	mintDpopProof,
 	type VerifiedDpopProof,
+	verifyDpopProof,
 } from "./crypto/dpop.js";
 export {
 	DEFAULT_SVID_HMAC_SECRET,
 	generateSvidIssuerKeys,
+	type JwtSvidClaims,
+	type MintedJwtSvid,
 	mintJwtSvid,
 	resolveSvidHmacSecret,
 	spiffeIdForAgent,
 	verifyJwtSvid,
-	type JwtSvidClaims,
-	type MintedJwtSvid,
 } from "./crypto/jwt-svid.js";
 export {
+	type AwsCredentials,
 	createRoute53SigV4Signer,
 	hmac,
-	sha256Hex,
-	signAwsRequest,
-	type AwsCredentials,
 	type SignAwsRequestInput,
 	type SignedAwsRequest,
+	sha256Hex,
+	signAwsRequest,
 } from "./dns/aws-sigv4.js";
 export {
-	createCloudflareDnsProvider,
 	type CloudflareDnsProviderOptions,
+	createCloudflareDnsProvider,
 } from "./dns/cloudflare-provider.js";
 export {
 	createDnsControlProvider,
@@ -84,6 +82,8 @@ export {
 	parseListResourceRecordSets,
 	type Route53DnsProviderOptions,
 } from "./dns/route53-provider.js";
+// Environment network isolation + elevated access + break-glass (ADR-0133).
+export * from "./env-isolation/index.js";
 export {
 	createJunctionAgent,
 	type JunctionAgent,
@@ -95,41 +95,42 @@ export {
 	createNamedPreferringBindingResolver,
 	getNamedEndpointSession,
 	listNamedEndpointSessions,
-	resourceId,
 	type NamedEndpointEntry,
 	type NamedEndpointInput,
 	type NamedEndpointsResult,
+	resourceId,
 } from "./local/named-endpoints.js";
 export {
+	type PortlessMode,
+	type PortlessProbe,
 	probePortless,
 	registerPortlessRoute,
 	resolvePortlessMode,
-	type PortlessMode,
-	type PortlessProbe,
 } from "./local/portless.js";
 export {
-	createBillingAggregator,
-	invoiceToUsageEvents,
 	type BillingAggregator,
 	type BillingPeriodBucket,
+	createBillingAggregator,
 	type Invoice,
 	type InvoiceLine,
+	invoiceToUsageEvents,
 	type PriceBook,
 } from "./metering/billing-aggregator.js";
 export {
+	type BillingChargeResult,
+	type BillingChargeStatus,
+	type BillingProvider,
 	createFileInvoiceLedger,
 	createLedgerBillingProvider,
 	createStripeBillingProvider,
 	exportInvoiceStripeLines,
-	type BillingChargeResult,
-	type BillingChargeStatus,
-	type BillingProvider,
 	type InvoiceLedger,
 } from "./metering/billing-provider.js";
 export {
 	createInMemoryMeteringSink,
 	createLogMeteringSink,
 } from "./metering/sinks.js";
+export { createNetbirdOverlay } from "./overlay/netbird.js";
 export {
 	createNetbirdApiClient,
 	type NetbirdApiClient,
@@ -137,26 +138,28 @@ export {
 	type NetbirdDnsNameserverGroup,
 	type NetbirdPeer,
 } from "./overlay/netbird-api.js";
-export { createNetbirdOverlay } from "./overlay/netbird.js";
-export {
-	createTailscaleApiClient,
-	type TailscaleApiClient,
-	type TailscaleApiOptions,
-	type TailscaleSplitDnsMap,
-} from "./overlay/tailscale-api.js";
 export {
 	createTailscaleOverlay,
 	parseTenantTag,
 	type TailscaleRunner,
 } from "./overlay/tailscale.js";
 export {
+	createTailscaleApiClient,
+	type TailscaleApiClient,
+	type TailscaleApiOptions,
+	type TailscaleSplitDnsMap,
+} from "./overlay/tailscale-api.js";
+// Privileged Access Gateway (optional Station capability) — full secretless brokers.
+export * from "./pam/index.js";
+export {
 	createOpaPolicyEngine,
 	defaultRegoLikeEval,
 	OPA_POLICY_ENGINE_ID,
-	SAMPLE_HOBO_AUTHZ_REGO,
 	type OpaPolicyEngineOptions,
+	SAMPLE_HOBO_AUTHZ_REGO,
 } from "./policy/opa-engine.js";
 export {
+	ENV_NETWORK_ISOLATION_REGO_DOCUMENT,
 	evaluateRegoLite,
 	HOBO_DEFAULT_POLICY_DOCUMENT,
 	parseRegoLiteDocument,
@@ -170,22 +173,37 @@ export {
 	type TagAclPolicyEngineOptions,
 } from "./policy/tag-acl-engine.js";
 export {
+	createSecretlessConnector,
+	type IsolationTier,
+	openMysqlSecretlessLease,
+	openPostgresSecretlessLease,
+	openRedisSecretlessLease,
+	type SecretlessConnector,
+	type SecretlessLease,
+	type SecretlessProtocol,
+} from "./secretless/connector.js";
+export {
+	createPluginRegistry,
+	mysqlPlugin,
+	type ProtocolPlugin,
+	postgresPlugin,
+	redisPlugin,
+	type SecretlessProtocolId,
+	tcpPlugin,
+} from "./secretless/plugins.js";
+export {
 	createTenantIsolationRegistry,
-	tenantFromSlug,
 	type TenantControlPlanePartition,
 	type TenantIsolationRegistry,
 	type TenantIsolationRegistryOptions,
 	type TenantOverlayPlane,
+	tenantFromSlug,
 } from "./tenancy/isolation.js";
 export {
-	createCloudflareTrafficRouting,
 	type CloudflareTrafficRouting,
 	type CloudflareTrafficRoutingOptions,
+	createCloudflareTrafficRouting,
 } from "./traffic-routing/cloudflare.js";
-export {
-	createSimpleTrafficRouting,
-	type SimpleTrafficRouting,
-} from "./traffic-routing/simple.js";
 export {
 	createFunnelTrafficRouting,
 	type FunnelTrafficRouting,
@@ -200,12 +218,6 @@ export {
 	type LakebedTrafficRoutingOptions,
 } from "./traffic-routing/lakebed.js";
 export {
-	createVercelTrafficRouting,
-	type VercelTrafficMode,
-	type VercelTrafficRouting,
-	type VercelTrafficRoutingOptions,
-} from "./traffic-routing/vercel.js";
-export {
 	BUILTIN_TRAFFIC_ROUTING_PROFILES,
 	CLOUDFLARE_TRAFFIC_ROUTING_PROFILE,
 	FUNNEL_TRAFFIC_ROUTING_PROFILE,
@@ -213,29 +225,13 @@ export {
 	SIMPLE_TRAFFIC_ROUTING_PROFILE,
 	VERCEL_TRAFFIC_ROUTING_PROFILE,
 } from "./traffic-routing/profiles.js";
-
-// Environment network isolation + elevated access + break-glass (ADR-0133).
-export * from "./env-isolation/index.js";
 export {
-	ENV_NETWORK_ISOLATION_REGO_DOCUMENT,
-} from "./policy/rego-lite.js";
-// Privileged Access Gateway (optional Station capability) — full secretless brokers.
-export * from "./pam/index.js";
-
-// Re-export pure naming / tenancy from core so consumers can depend on one package.
+	createSimpleTrafficRouting,
+	type SimpleTrafficRouting,
+} from "./traffic-routing/simple.js";
 export {
-	DEFAULT_LOCAL_TLD,
-	DEFAULT_OMITTED_ENV,
-	DEFAULT_OVERLAY_TLD,
-	getNamedEndpoint,
-	getNamedEndpointHost,
-	HOBO_ZONE_LABEL,
-	isHoboHierarchicalName,
-	sanitizeDnsLabel,
-	createMeteringBus,
-	createUsageEvent,
-	LOCAL_DEFAULT_TENANT_ID,
-	parseTenantId,
-	tenantContextFromEnv,
-	type TenantIsolationMode,
-} from "@hobo/core";
+	createVercelTrafficRouting,
+	type VercelTrafficMode,
+	type VercelTrafficRouting,
+	type VercelTrafficRoutingOptions,
+} from "./traffic-routing/vercel.js";

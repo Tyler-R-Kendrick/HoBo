@@ -3,12 +3,12 @@ export {
 	type YardAuditAppender,
 } from "./audit.js";
 export {
+	type CreatePrivilegedAccessGatewayOptions,
 	createBoundaryPamGateway,
 	createJumpServerPamGateway,
 	createNativePamGateway,
 	createPrivilegedAccessGateway,
 	createTeleportPamGateway,
-	type CreatePrivilegedAccessGatewayOptions,
 	type PrivilegedAccessGatewayHandle,
 	railEnablesPam,
 } from "./gateway.js";
@@ -34,9 +34,9 @@ export {
 	type TailscaleAclGrant,
 } from "./tailscale-acl.js";
 export {
+	type AuditSink,
 	PAM_GATEWAY_SCHEMA,
 	PAM_RAIL_CAPABILITY,
-	type AuditSink,
 	type PamAuditEvent,
 	type PamKind,
 	type PamTransportConfig,

@@ -3,8 +3,9 @@
  * Complete clients — not stubs. When endpoint is unset, callers use local mint.
  * Never embeds JumpServer/Teleport/Boundary binaries (GPLv3/proprietary stay out-of-process).
  */
-import type { PamKind, SessionHandle, SessionRequest } from "./types.js";
+
 import type { IsolationClass } from "../env-isolation/types.js";
+import type { PamKind, SessionHandle } from "./types.js";
 
 export type RemoteSessionResult = Readonly<{
 	remoteSessionId: string;
@@ -127,14 +128,13 @@ export function createRemoteTransport(input: {
 							reason: req.reason,
 						},
 					);
-					const item = (body.item as Record<string, unknown> | undefined) ?? body;
+					const item =
+						(body.item as Record<string, unknown> | undefined) ?? body;
 					return {
 						remoteSessionId: String(
 							item.authorization_token_id ?? item.id ?? `bd-${Date.now()}`,
 						),
-						authorization: String(
-							item.authorization_token ?? item.token ?? "",
-						),
+						authorization: String(item.authorization_token ?? item.token ?? ""),
 						expiresAt: String(item.expiration_time ?? expiresAt),
 					};
 				}
@@ -151,7 +151,9 @@ export function createRemoteTransport(input: {
 						env: req.isolationClass,
 					});
 					return {
-						remoteSessionId: String(body.id ?? body.token ?? `js-${Date.now()}`),
+						remoteSessionId: String(
+							body.id ?? body.token ?? `js-${Date.now()}`,
+						),
 						authorization: String(body.value ?? body.token ?? body.id ?? ""),
 						expiresAt: String(body.date_expired ?? expiresAt),
 					};
@@ -166,7 +168,9 @@ export function createRemoteTransport(input: {
 						reason: req.reason,
 					});
 					return {
-						remoteSessionId: String(body.session_id ?? body.id ?? `nv-${Date.now()}`),
+						remoteSessionId: String(
+							body.session_id ?? body.id ?? `nv-${Date.now()}`,
+						),
 						authorization: String(body.token ?? body.authorization ?? ""),
 						expiresAt: String(body.expires_at ?? expiresAt),
 					};
@@ -176,12 +180,12 @@ export function createRemoteTransport(input: {
 		async revokeSession(remoteSessionId) {
 			switch (input.kind) {
 				case "teleport":
-					await del(`/v1/webapi/sessions/${encodeURIComponent(remoteSessionId)}`);
+					await del(
+						`/v1/webapi/sessions/${encodeURIComponent(remoteSessionId)}`,
+					);
 					return;
 				case "boundary":
-					await del(
-						`/v1/sessions/${encodeURIComponent(remoteSessionId)}`,
-					);
+					await del(`/v1/sessions/${encodeURIComponent(remoteSessionId)}`);
 					return;
 				case "jumpserver":
 					await del(

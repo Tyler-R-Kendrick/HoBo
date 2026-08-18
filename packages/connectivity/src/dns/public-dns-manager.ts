@@ -1,11 +1,11 @@
 import {
+	createUsageEvent,
 	type DnsProvider,
 	type DnsRecord,
 	type MeteringBus,
 	type PublicDnsConfig,
 	type PublicDnsManager,
 	type TenantId,
-	createUsageEvent,
 } from "@hobo/core";
 
 const DEFAULT_GATEWAY_SUFFIXES = [
@@ -40,8 +40,7 @@ export function createPublicDnsManager(options: {
 	readonly metering?: MeteringBus;
 }): PublicDnsManager {
 	const config = options.config;
-	const allowed =
-		config.allowedGatewaySuffixes ?? DEFAULT_GATEWAY_SUFFIXES;
+	const allowed = config.allowedGatewaySuffixes ?? DEFAULT_GATEWAY_SUFFIXES;
 	const metering = options.metering;
 
 	async function buildRecord(input: {

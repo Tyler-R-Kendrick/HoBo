@@ -132,9 +132,7 @@ export function createBillingAggregator(options?: {
 		},
 		snapshot(tenantId) {
 			const all = [...buckets.values()];
-			return tenantId
-				? all.filter((b) => b.tenantId === tenantId)
-				: all;
+			return tenantId ? all.filter((b) => b.tenantId === tenantId) : all;
 		},
 		closePeriod(input) {
 			const periodStartMs = Date.parse(input.periodStart);
@@ -177,9 +175,7 @@ export function createBillingAggregator(options?: {
 			const sourceBuckets =
 				periodBuckets.size > 0 || hasWindow
 					? [...periodBuckets.values()]
-					: [...buckets.values()].filter(
-							(b) => b.tenantId === input.tenantId,
-						);
+					: [...buckets.values()].filter((b) => b.tenantId === input.tenantId);
 
 			const lines: InvoiceLine[] = sourceBuckets
 				.map((b) => {

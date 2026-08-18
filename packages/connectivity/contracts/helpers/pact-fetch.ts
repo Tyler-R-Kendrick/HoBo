@@ -58,9 +58,7 @@ export function createFetchFromProvider(provider: ProviderStub): typeof fetch {
 			...(body !== undefined ? { body } : {}),
 		};
 		const response = await Promise.resolve(provider.handle(request));
-		const headers = new Headers(
-			response.headers as HeadersInit | undefined,
-		);
+		const headers = new Headers(response.headers as HeadersInit | undefined);
 		if (!headers.has("content-type") && response.body !== undefined) {
 			headers.set(
 				"content-type",
@@ -90,9 +88,7 @@ function headerValue(
 	if (!headers) return undefined;
 	if (headers instanceof Headers) return headers.get(name) ?? undefined;
 	if (Array.isArray(headers)) {
-		const hit = headers.find(
-			([k]) => k.toLowerCase() === name.toLowerCase(),
-		);
+		const hit = headers.find(([k]) => k.toLowerCase() === name.toLowerCase());
 		return hit?.[1];
 	}
 	const rec = headers as Record<string, string>;
@@ -100,4 +96,30 @@ function headerValue(
 		if (k.toLowerCase() === name.toLowerCase()) return v;
 	}
 	return undefined;
+}
+
+/**
+ * Finds the pact for a provider, or fails the test naming what was missing.
+ *
+ * The call sites previously spelled this `pacts.find(…)` followed by
+ * `expect(pact).toBeDefined()` and then a `!` on every later use. That reads
+ * as a narrowing but is not one — the assertion silences the type error while
+ * the runtime failure stays a `Cannot read properties of undefined`, several
+ * lines from the actual problem. Throwing here narrows for real and says which
+ * provider was not found and which ones were.
+ */
+export function requirePact(
+	pacts: readonly PactDocument[],
+	providerName: string,
+): PactDocument {
+	const pact = pacts.find((p) => p.provider.name === providerName);
+	if (!pact) {
+		const available = pacts.map((p) => p.provider.name).sort();
+		throw new Error(
+			`no pact for provider "${providerName}"; loaded providers: ${
+				available.length > 0 ? available.join(", ") : "(none)"
+			}`,
+		);
+	}
+	return pact;
 }

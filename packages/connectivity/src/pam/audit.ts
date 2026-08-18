@@ -2,7 +2,7 @@
  * Immutable PAM audit sink — streams off-box / into Yard event log immediately.
  * Local-only without drain is insufficient; callers must attach a Yard appender.
  */
-import type { PamAuditEvent, AuditSink } from "./types.js";
+import type { AuditSink, PamAuditEvent } from "./types.js";
 
 export type YardAuditAppender = (event: PamAuditEvent) => void | Promise<void>;
 

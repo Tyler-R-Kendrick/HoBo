@@ -25,7 +25,10 @@ export interface ConnectivityConfig {
 		readonly sinks: readonly ("memory" | "log" | "billing")[];
 	};
 	readonly tenancy: {
-		readonly defaultIsolationMode: "soft" | "hard-overlay" | "hard-control-plane";
+		readonly defaultIsolationMode:
+			| "soft"
+			| "hard-overlay"
+			| "hard-control-plane";
 	};
 	readonly policy: {
 		readonly engine: "tag-acl" | "opa";
@@ -63,9 +66,7 @@ export const DEFAULT_CONNECTIVITY_CONFIG: ConnectivityConfig = {
 	},
 };
 
-export function parseConnectivityConfig(
-	raw: unknown,
-): ConnectivityConfig {
+export function parseConnectivityConfig(raw: unknown): ConnectivityConfig {
 	if (raw === null || raw === undefined || typeof raw !== "object") {
 		return DEFAULT_CONNECTIVITY_CONFIG;
 	}

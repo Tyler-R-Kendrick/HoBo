@@ -50,6 +50,23 @@ export {
 	resolveEquivalence,
 } from "./realize.js";
 export {
+	AWS_DYNAMODB_PRODUCT_ID,
+	AWS_RESOLVED_PRODUCT_IDS,
+	AWS_S3_PRODUCT_ID,
+	AWS_SECRETS_MANAGER_PRODUCT_ID,
+	AWS_SNS_PRODUCT_ID,
+	AWS_SQS_FIFO_PRODUCT_ID,
+	AWS_SQS_PRODUCT_ID,
+	AWS_SSM_PARAMETER_PRODUCT_ID,
+	AWS_UNRESOLVED_PRODUCT_IDS,
+	type AwsResolverOptions,
+	awsResolverRegistry,
+	awsResolvers,
+	redactAwsText,
+	SNS_API_VERSION,
+	SQS_API_VERSION,
+} from "./resolvers.js";
+export {
 	type AmplifyHostingOptions,
 	API_GATEWAY_PROTOCOLS,
 	APP_RUNNER_EGRESS,
@@ -112,6 +129,21 @@ export {
 	AWS_TRAFFIC_ROUTING_OFFERING_IDS,
 	AWS_TRAFFIC_ROUTING_PROFILE,
 } from "./traffic-routing-offerings.js";
+export {
+	AWS_ALLOWED_PATH_PREFIXES,
+	AWS_ENDPOINT_SUFFIX,
+	AWS_MAX_RESPONSE_BYTES,
+	AWS_MAX_TIMEOUT_MS,
+	AWS_RESOLVER_SERVICES,
+	type AwsResolverService,
+	AwsTransportConfigError,
+	awsAllowedHosts,
+	awsServiceHost,
+	awsServiceUrl,
+	awsTransportPolicy,
+	guardedAwsTransport,
+	parseAwsRegion,
+} from "./transport.js";
 export type {
 	Capability,
 	CapabilityManifest,

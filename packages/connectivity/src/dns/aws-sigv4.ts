@@ -19,22 +19,24 @@
  */
 import {
 	type AwsCredentials,
-	signAwsRequest,
 	type SignAwsRequestInput,
 	type SignedAwsRequest,
+	signAwsRequest,
 } from "@hobo/core/aws-sigv4";
 
 export {
 	type AwsCredentials,
 	hmac,
-	sha256Hex,
-	signAwsRequest,
 	type SignAwsRequestInput,
 	type SignedAwsRequest,
+	sha256Hex,
+	signAwsRequest,
 } from "@hobo/core/aws-sigv4";
 
 /** Default Route53 signer using the shared SigV4 primitive. */
-export function createRoute53SigV4Signer(credentials: AwsCredentials): (input: {
+export function createRoute53SigV4Signer(
+	credentials: AwsCredentials,
+): (input: {
 	readonly method: string;
 	readonly url: string;
 	readonly headers: Record<string, string>;

@@ -129,9 +129,9 @@ export function awsServiceHost(
 /** Every host the resolvers may reach in one region, sorted for determinism. */
 export function awsAllowedHosts(region: string): readonly string[] {
 	return Object.freeze(
-		AWS_RESOLVER_SERVICES.map((service) => awsServiceHost(service, region)).sort(
-			(left, right) => (left < right ? -1 : left > right ? 1 : 0),
-		),
+		AWS_RESOLVER_SERVICES.map((service) =>
+			awsServiceHost(service, region),
+		).sort((left, right) => (left < right ? -1 : left > right ? 1 : 0)),
 	);
 }
 

@@ -32,7 +32,7 @@ tags: [hobo, design, providers, honesty]
 | `@hobo/provider-browser-wasm` | Yes | Local temporary | Examples same-origin `/api/anon/host/*` via `/api/provider-temp/browser-wasm` |
 | `@hobo/provider-webernetes` | Yes | Local temporary | Examples same-origin `/api/anon/host/*` via `/api/provider-temp/webernetes` |
 | `@hobo/provider-kubernetes` | Yes | Cred-gated / local | Package exists; **not** an Examples OOB station target |
-| `@hobo/provider-aws` | Yes | No default | IR only unless wired through live IaC engine; no HTTP `ResourceResolver` yet |
+| `@hobo/provider-aws` | Yes | No default | IR only unless wired through live IaC engine. Ships SigV4-signed `ResourceResolver`s for **7 of 19** catalog product ids (`AWS_RESOLVED_PRODUCT_IDS`) — **fake-transport proof only**, no live call, and no Resource Definitions registered, so a deploy still fails closed |
 | `@hobo/provider-gcp` | Yes | No default | IR only. Ships HTTP `ResourceResolver`s for **8 of 14** catalog product ids (`GCP_RESOLVED_PRODUCT_IDS`) — **fake-transport proof only**, no live call, and no Resource Definitions registered, so a deploy still fails closed |
 | `@hobo/provider-azure` | Yes | No default | IR only. Ships ARM `ResourceResolver`s for **7 of 16** catalog product ids (`AZURE_RESOLVED_PRODUCT_IDS`) — **fake-transport proof only**, no live call, and no Resource Definitions registered, so a deploy still fails closed |
 | `@hobo/provider-kafka` | Capability | N/A messaging | Not a full cloud Yard provider |

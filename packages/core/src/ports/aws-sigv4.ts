@@ -193,7 +193,9 @@ function canonicalQuery(search: string): string {
 		] as const;
 	});
 	return [...pairs]
-		.sort((left, right) => compare(left[0], right[0]) || compare(left[1], right[1]))
+		.sort(
+			(left, right) => compare(left[0], right[0]) || compare(left[1], right[1]),
+		)
 		.map(([name, value]) => `${name}=${value}`)
 		.join("&");
 }

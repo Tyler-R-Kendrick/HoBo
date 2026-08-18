@@ -27,11 +27,14 @@
  * Determinism: no clock, no randomness, no environment reads. Two calls with
  * the same options are deep-equal.
  *
- * HONEST SCOPE — what deploys: nothing. This package registers no Resource
- * Definitions for the `aws.*` product ids and ships no deployment resolver, so
- * a deploy attempted against this Yard fails closed at resolution
- * (`YARD_BINDING_PRODUCT_UNKNOWN`, or no registered resolver) until definitions
- * and resolvers land.
+ * HONEST SCOPE — what deploys: still nothing. This is the catalog, meaning
+ * what AWS is *able* to allocate (ADR-0157 decision 1), not what is allocated.
+ * This package registers no Resource Definitions for the `aws.*` product ids,
+ * so a deploy attempted against this Yard fails closed at resolution
+ * (`YARD_BINDING_PRODUCT_UNKNOWN`) until definitions land. It does now ship
+ * SigV4-signed resolvers, but for 7 of the 19 ids only
+ * (`AWS_RESOLVED_PRODUCT_IDS`), and those are proven against an injected fake
+ * transport — no live AWS call has been made from this repo.
  */
 import type { CapabilitySlot, SlotBinding } from "@hobo/core";
 

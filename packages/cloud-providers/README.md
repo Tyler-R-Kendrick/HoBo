@@ -55,7 +55,7 @@ hard gates and lexicographic ranking, never here.
 | `vercel` | all — Vercel API drivers | Same: fake-transport proof only. |
 | `gcp` | **8 of 14** — Google REST drivers | Same: fake-transport proof only. The other 6 fail closed. See `GCP_RESOLVED_PRODUCT_IDS` / `GCP_UNRESOLVED_PRODUCT_IDS`. |
 | `azure` | **7 of 16** — ARM drivers | Same: fake-transport proof only. The other 9 fail closed. See `AZURE_RESOLVED_PRODUCT_IDS` / `AZURE_UNRESOLVED_PRODUCT_IDS`. |
-| `aws` | **none yet** | Catalog only. Fails closed at resolution (`YARD_BINDING_PRODUCT_UNKNOWN`, or no registered resolver). |
+| `aws` | **7 of 19** — SigV4-signed drivers | Same: fake-transport proof only. The other 12 fail closed. See `AWS_RESOLVED_PRODUCT_IDS` / `AWS_UNRESOLVED_PRODUCT_IDS`. |
 
 Two limits apply to every row above, including the ones marked "all":
 
@@ -70,9 +70,13 @@ Two limits apply to every row above, including the ones marked "all":
    against a running service.
 
 An unresolved product is not always a coverage gap. Some are design limits the
-provider's own API imposes — `azure.postgres-flexible/v1` cannot ship a resolver
-because its create call requires an administrator password in the request body,
-and a `desired` record may not carry credential-shaped keys. The
+provider's own API imposes — neither `azure.postgres-flexible/v1` nor
+`aws.rds-postgres/v1` can ship a resolver, because each one's create call
+requires an administrator password in the request body, and a `desired` record
+may not carry credential-shaped keys. Others are identity limits:
+`aws.api-gateway/v1` mints a fresh random id per call with no name uniqueness,
+so a retry after a lost response would create a second API rather than
+converge. The
 `*_UNRESOLVED_PRODUCT_IDS` declarations carry the reason per id, and distinguish
 the two cases.
 

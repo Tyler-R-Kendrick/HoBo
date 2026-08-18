@@ -41,13 +41,16 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createCloudflareDnsProvider } from "@hobo/connectivity";
+import {
+	createCloudflareDnsProvider,
+	createCloudflareTrafficRouting,
+} from "@hobo/connectivity";
 import type { PactDocument } from "@hobo/contract-harness";
 import {
 	createMockProviderFromPact,
 	loadPactDirectory,
 } from "@hobo/contract-harness";
-import { parseTenantId } from "@hobo/core";
+import { parseRoutingPlan, parseTenantId } from "@hobo/core";
 import {
 	type PactChaosSubject,
 	type PactLifecycle,
@@ -56,6 +59,7 @@ import {
 	pactChaosViolations,
 	runPactChaosMatrix,
 	statelessPactAnswer,
+	WRITE_REACHING_FAULTS,
 } from "@hobo/testing";
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -276,6 +280,23 @@ describe("createCloudflareDnsProvider under the full failure matrix", () => {
 		).toBe(true);
 	});
 
+	it("keeps chaos and the world in step on the create call", async () => {
+		// Harness self-check rather than a driver claim. Call 1 is the create.
+		// A fault that corrupts only the response must leave the world created;
+		// one that aborts before the provider must not. If these ever disagree,
+		// chaos has stopped passing writes through to the inner transport, and
+		// every "the write landed" scenario above is testing nothing.
+		const results = await runPactChaosMatrix(subject());
+		for (const result of results.filter(
+			(r) => r.kind === "single" && r.at === 1,
+		)) {
+			expect(
+				result.writeLanded,
+				`${result.fault} on the create: writeLanded was ${result.writeLanded}`,
+			).toBe(WRITE_REACHING_FAULTS.includes(result.fault));
+		}
+	});
+
 	it("adopts rather than re-creating once the record exists", async () => {
 		const world = pactBackedTransport(dnsPact, { lifecycle: DNS_LIFECYCLE });
 		const run = subject().bind({
@@ -458,5 +479,201 @@ describe("fidelity classification", () => {
 		});
 		expect(world.state()).toBe("absent");
 		expect(world.fidelityViolations()).toEqual([]);
+	});
+});
+
+/**
+ * A second driver, on a different contract shape, because a matrix that only
+ * ever ran against one subject is a matrix tuned to one subject.
+ *
+ * The DNS contract creates with POST against a collection and reads through a
+ * filtered query. This one creates with **PUT against the same path it reads
+ * and deletes** — the idempotent shape — and records request headers, which the
+ * DNS contract does not. If the harness only worked for the first shape it
+ * would be a harness for one test.
+ *
+ * The driver also differs in a way that matters for chaos: its internal
+ * `request` swallows every transport error and returns `{ok: false}` rather
+ * than throwing, so `apply` always resolves. Left alone, `converge()` would
+ * never reject and every scenario would look like a success. The binding below
+ * turns a non-`full` realization into a rejection, which is what makes a
+ * degraded apply visible to the matrix at all.
+ */
+const ROUTING_PLAN = parseRoutingPlan({
+	planId: "plan:checkout:pact",
+	intent: {
+		service: "checkout.example.test",
+		tenantId: "tenant-a",
+		rules: [
+			{
+				backends: [
+					{
+						id: "backend:primary",
+						service: "checkout",
+						weight: 100,
+						endpoint: "https://checkout.example.test",
+					},
+				],
+				weightStrategy: "static",
+			},
+		],
+	},
+	backends: [
+		{
+			id: "backend:primary",
+			service: "checkout",
+			weight: 100,
+			endpoint: "https://checkout.example.test",
+		},
+	],
+	createdAt: "2026-08-03T15:00:00.000Z",
+});
+
+const LB_SELECTOR = "/client/v4/zones/zone-a/load_balancers/load-balancer-a";
+
+const LB_LIFECYCLE: PactLifecycle = {
+	initial: "absent",
+	created: "present",
+	creates: [`PUT ${LB_SELECTOR}`],
+	// The caller names the load balancer (`load-balancer-a`), so a repeated PUT
+	// lands on the same resource. This is the shape where re-issuing the write
+	// after a lost response is the correct recovery rather than a duplicate.
+	identity: "client-supplied",
+	answers: {},
+	transitions: {
+		[`PUT ${LB_SELECTOR}`]: "present",
+		[`DELETE ${LB_SELECTOR}`]: "absent",
+	},
+};
+
+function routingSubject(): PactChaosSubject {
+	return {
+		label: "cloudflare-lb/createCloudflareTrafficRouting",
+		lifecycle: LB_LIFECYCLE,
+		world: (lifecycle) => pactBackedTransport(lbPact, { lifecycle }),
+		bind: ({ fetchImpl }) => {
+			const routing = createCloudflareTrafficRouting({
+				apiToken: "test-token",
+				zoneId: "zone-a",
+				loadBalancerIdsByPlan: {
+					"plan:checkout:pact": "load-balancer-a",
+				},
+				poolIdsByBackend: { "backend:primary": "pool-primary" },
+				fetchImpl,
+			});
+			return {
+				converge: async () => {
+					const result = await routing.apply(ROUTING_PLAN);
+					if (result.realized !== "full") {
+						throw new Error(
+							`apply realized ${result.realized}: ${result.notes.join("; ")}`,
+						);
+					}
+				},
+				observe: async () => {
+					const status = await routing.status(ROUTING_PLAN.planId);
+					return status.active ? [status] : [];
+				},
+				remove: async () => {
+					const result = await routing.revoke(ROUTING_PLAN.planId);
+					if (!result.ok) {
+						throw new Error(`revoke failed: ${result.notes.join("; ")}`);
+					}
+				},
+			};
+		},
+	};
+}
+
+describe("createCloudflareTrafficRouting under the full failure matrix", () => {
+	it("converges and stays faithful to the contract in every scenario", async () => {
+		const results = await runPactChaosMatrix(routingSubject());
+		expect(pactChaosViolations(results)).toEqual([]);
+	});
+
+	it("actually ran the matrix it claims to have run", async () => {
+		const results = await runPactChaosMatrix(routingSubject());
+		expect(results.length).toBeGreaterThanOrEqual(24);
+		expect(new Set(results.map((r) => r.fault)).size).toBe(6);
+	});
+});
+
+describe("the matrix can go red", () => {
+	/**
+	 * A negative control. Every assertion above is of the form "no violations",
+	 * which a matrix that silently stopped checking would also satisfy. This
+	 * subject is deliberately non-convergent — it POSTs without ever looking
+	 * first — so the suite fails if the duplication rules stop firing.
+	 *
+	 * It is written against the *provider-minted* DNS lifecycle on purpose. That
+	 * is the shape where blind-writing is genuinely wrong, and it is also the
+	 * guard on `identity: "client-supplied"`: if that flag ever started
+	 * suppressing the rules unconditionally rather than per-lifecycle, this goes
+	 * green and the test fails.
+	 */
+	function blindWriter(): PactChaosSubject {
+		return {
+			label: "negative-control/blind-post",
+			lifecycle: DNS_LIFECYCLE,
+			world: (lifecycle) => pactBackedTransport(dnsPact, { lifecycle }),
+			bind: ({ transport }) => {
+				const base = {
+					headers: {},
+					timeoutMs: 5_000,
+					maxResponseBytes: 65_536,
+				};
+				return {
+					converge: async () => {
+						await transport({
+							method: "POST",
+							url: "https://api.cloudflare.com/v4/zones/zone-1/dns_records",
+							...base,
+							body: JSON.stringify({
+								type: "CNAME",
+								name: RECORD,
+								content: "funnel.ts.net",
+							}),
+						});
+					},
+					observe: async () => {
+						const res = await transport({
+							method: "GET",
+							url: "https://api.cloudflare.com/v4/zones/zone-1/dns_records?per_page=100",
+							...base,
+						});
+						const body = JSON.parse(res.body) as {
+							result?: readonly unknown[];
+						};
+						return body.result ?? [];
+					},
+				};
+			},
+		};
+	}
+
+	it("reports the driver that never looks before it writes", async () => {
+		const results = await runPactChaosMatrix(blindWriter());
+		const violations = pactChaosViolations(results);
+		expect(violations.length).toBeGreaterThan(0);
+		expect(violations.join("\n")).toMatch(
+			/read that showed the resource already present|read that failed/,
+		);
+	});
+
+	it("keeps the duplication rules scoped to provider-minted identities", async () => {
+		// The same blind writer, relabelled as client-supplied, must stop being
+		// reported — otherwise the flag is not doing what it says. Paired with
+		// the test above, this pins the gate in both directions.
+		const relabelled: PactChaosSubject = {
+			...blindWriter(),
+			lifecycle: { ...DNS_LIFECYCLE, identity: "client-supplied" },
+			world: (lifecycle) => pactBackedTransport(dnsPact, { lifecycle }),
+		};
+		const violations = pactChaosViolations(
+			await runPactChaosMatrix(relabelled),
+		);
+		expect(
+			violations.filter((v) => /another create|read that/.test(v)),
+		).toEqual([]);
 	});
 });

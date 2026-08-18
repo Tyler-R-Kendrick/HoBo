@@ -46,9 +46,12 @@ import type {
  * provider applied the write and the client never learned. Everything else
  * aborts before the provider sees anything.
  *
- * The matrix does not rely on this list to decide what to expect — it observes
- * the world's actual state instead — but it reports it so a failure says which
- * side of the write the fault landed on.
+ * The matrix never consults this list to decide what to expect: it reads the
+ * world's actual state through `writeLanded`, so a transport whose faults start
+ * behaving differently cannot silently weaken the check. The list is exported
+ * for callers that want to assert the two agree — a fault here landing on the
+ * create with `writeLanded` false means chaos stopped passing writes through,
+ * which is harness rot rather than a driver defect.
  */
 export const WRITE_REACHING_FAULTS: readonly ChaosFault[] = Object.freeze([
 	"truncated-body",
@@ -484,7 +487,17 @@ function finish(input: {
 			"the retry reported success but the provider holds nothing — the driver believes it converged and it did not",
 		);
 	}
-	if (input.writeLanded && createsAfterRetry > input.createsBeforeRetry) {
+	// The duplication rules only mean anything when the provider mints the id.
+	// Under a client-supplied identity a repeated write lands on the same
+	// resource, so re-issuing it after a failure is the correct recovery rather
+	// than a second create — and convergence is still asserted, by the observed
+	// count and the final state above.
+	const canDuplicate = subject.lifecycle.identity !== "client-supplied";
+	if (
+		canDuplicate &&
+		input.writeLanded &&
+		createsAfterRetry > input.createsBeforeRetry
+	) {
 		violations.push(
 			`the write landed before the fault but the retry issued another create (${input.createsBeforeRetry} -> ${createsAfterRetry}); it must read first and adopt`,
 		);
@@ -494,12 +507,12 @@ function finish(input: {
 			`the retry reported success but the world is in state ${JSON.stringify(world.state())}, not ${JSON.stringify(subject.lifecycle.created)}`,
 		);
 	}
-	if (input.seen.createsAfterFailedRead > 0) {
+	if (canDuplicate && input.seen.createsAfterFailedRead > 0) {
 		violations.push(
 			`issued ${input.seen.createsAfterFailedRead} create(s) straight after a read that failed — a failed lookup is not evidence the resource is absent, and treating it as one is how a retry duplicates`,
 		);
 	}
-	if (input.seen.createsAfterKnownPresent > 0) {
+	if (canDuplicate && input.seen.createsAfterKnownPresent > 0) {
 		violations.push(
 			`issued ${input.seen.createsAfterKnownPresent} create(s) after a read that showed the resource already present — the retry must adopt, not create`,
 		);

@@ -531,6 +531,23 @@ verified them, and they are not captured traffic. A chaos lane over a pact
 proves the driver honours the contract the repo agreed on. It is not evidence
 about the live API.
 
+**Duplication rules only apply when the provider mints the id.** A `PactLifecycle`
+declares `identity`. `provider-minted` (the default, and the stricter reading) is
+the dangerous shape — a POST to a collection, where issuing the write twice
+leaves two resources — and it is what every duplication rule in the matrix looks
+for. `client-supplied` is a PUT to a path the caller already named: repeating it
+after a lost response is not duplication, it is *the correct recovery*, and a
+matrix that flagged it would fail a driver for behaving properly. Convergence is
+still asserted there, by the observed result and the final state. Getting this
+wrong in the permissive direction is the dangerous one, so a lifecycle that says
+nothing gets the rules that can only produce false alarms.
+
+**Both lanes ship a negative control.** Every assertion is of the form "no
+violations", which a suite that quietly stopped checking also satisfies. The
+pact lane runs a deliberately blind-writing subject and asserts it *is* reported,
+plus the same subject relabelled `client-supplied` and asserts it is not — which
+pins the identity gate in both directions.
+
 Non-negotiables for either lane:
 
 - Faults must be observed to fire (`fired` non-empty). A scenario whose fault

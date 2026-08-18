@@ -38,6 +38,21 @@ export interface Route53DnsProviderOptions {
 }
 
 /**
+ * A response that arrived but could not be read to the end.
+ *
+ * Distinct from an HTTP failure and from a network failure, because it needs
+ * different handling from both: it must not fall back to the offline mirror,
+ * and it must not be reported as an empty zone.
+ */
+class Route53UnreadableResponse extends Error {
+	readonly code = "ROUTE53_UNREADABLE_RESPONSE";
+	constructor(message: string) {
+		super(message);
+		this.name = "Route53UnreadableResponse";
+	}
+}
+
+/**
  * Route53 DNS provider via ChangeResourceRecordSets.
  * Signs with AWS SigV4 by default (no SDK). Supports list via ListResourceRecordSets.
  */
@@ -164,6 +179,17 @@ export function createRoute53DnsProvider(
 			);
 		}
 		const xml = await res.text();
+		// A truncated body is the case this guards. `res.text()` has no parse
+		// step, so a response cut off mid-stream arrives as a perfectly valid
+		// string, and the scraper below simply finds no complete
+		// `<ResourceRecordSet>` block in it — reporting an empty zone for an
+		// answer we never finished reading. Route53 closes every list response
+		// with this tag, so its absence means the body is incomplete.
+		if (!xml.includes("</ListResourceRecordSetsResponse>")) {
+			throw new Route53UnreadableResponse(
+				"route53 list returned an incomplete ListResourceRecordSetsResponse; refusing to report a truncated body as an empty zone",
+			);
+		}
 		return parseListResourceRecordSets(xml);
 	}
 
@@ -219,6 +245,13 @@ export function createRoute53DnsProvider(
 				return remote;
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
+				// The offline mirror exists for *network* failures. An unreadable
+				// answer is not one: the request reached Route53 and came back, we
+				// just could not read what it said, and serving a stale mirror for
+				// that presents old state as current.
+				if (error instanceof Route53UnreadableResponse) {
+					throw error;
+				}
 				// Never hide HTTP auth/permission failures behind an empty cache.
 				if (/failed \(\d{3}\)/.test(message) && !message.includes("(0)")) {
 					throw error;

@@ -109,6 +109,25 @@ export interface PactLifecycle {
 	 */
 	readonly creates: readonly string[];
 	/**
+	 * Who chooses the resource's identity — and therefore whether repeating a
+	 * create can duplicate anything.
+	 *
+	 * `"provider-minted"` is the dangerous shape: a POST to a collection where
+	 * the provider allocates the id. Issue it twice and two resources exist,
+	 * which is what every duplication rule in the matrix is looking for.
+	 *
+	 * `"client-supplied"` is a PUT to a path the caller already named. Repeating
+	 * it is not duplication, it is *the* correct recovery — the second PUT lands
+	 * on the same resource as the first. A matrix that applied the duplication
+	 * rules here would fail a driver for doing exactly the right thing, so it
+	 * asserts convergence on the observed result and final state instead.
+	 *
+	 * Defaults to `"provider-minted"`, the stricter reading: a lifecycle that
+	 * forgets to say gets the rules that can only produce false alarms, never
+	 * false clearances.
+	 */
+	readonly identity?: "provider-minted" | "client-supplied";
+	/**
 	 * `state -> (selector -> description of the interaction whose response to serve)`.
 	 *
 	 * A selector absent here is answered by its own recorded interaction, which

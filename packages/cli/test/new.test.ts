@@ -8,6 +8,7 @@ import {
 	writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -280,13 +281,11 @@ function assertGeneratedProjectTypechecks(projectDir: string) {
 }
 
 function typescriptCliPath() {
-	return path.resolve(
-		process.cwd(),
-		"..",
-		"..",
-		"node_modules",
-		"typescript",
-		"bin",
-		"tsc",
-	);
+	// Resolved through the module graph rather than from `process.cwd()`.
+	// The old form walked two directories up from the working directory, which
+	// is the repo root only when the suite is run from `packages/cli` — the
+	// per-package turbo lane. Run from the repo root it resolved to
+	// `/home/node_modules/...` and every scaffold typecheck "failed" with a
+	// missing tsc rather than a type error.
+	return createRequire(import.meta.url).resolve("typescript/bin/tsc");
 }

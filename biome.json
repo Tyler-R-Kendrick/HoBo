@@ -5,6 +5,7 @@
 			"packages/**",
 			"scripts/**",
 			"test/**",
+			"!test/output/**",
 			"!**/dist/**",
 			"!**/node_modules/**",
 			"!**/generated/**",
@@ -22,13 +23,18 @@
 	},
 	"overrides": [
 		{
-			"includes": ["packages/**", "!packages/**/dist/**"],
+			"includes": [
+				"packages/**",
+				"!packages/**/dist/**"
+			],
 			"linter": {
 				"enabled": true
 			}
 		},
 		{
-			"includes": ["packages/code/src/tui-components.tsx"],
+			"includes": [
+				"packages/code/src/tui-components.tsx"
+			],
 			"linter": {
 				"rules": {
 					"a11y": "off",

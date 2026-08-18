@@ -125,6 +125,33 @@ function envelope(
 	};
 }
 
+/**
+ * Which chromium to launch, discovered rather than assumed.
+ *
+ * `PLAYWRIGHT_CHROMIUM_PATH` still wins, but relying on it alone meant this
+ * suite failed on any host whose installed browser revision does not match the
+ * pinned playwright version — the image here carries chromium 1194 while
+ * playwright looks for 1234, so the default launch died on a missing
+ * `chrome-headless-shell` and reported it as a test failure. The revision
+ * mismatch is real; refusing to run over it is not the same as a defect, and a
+ * red test that means "wrong browser build" teaches nobody anything.
+ */
+function chromiumExecutable(): { executablePath?: string } {
+	if (process.env.PLAYWRIGHT_CHROMIUM_PATH)
+		return { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH };
+	try {
+		// Present whenever the host's build matches this playwright version.
+		if (existsSync(chromium.executablePath())) return {};
+	} catch {
+		// executablePath() throws when no build is registered at all.
+	}
+	const fallback = join(
+		process.env.PLAYWRIGHT_BROWSERS_PATH ?? "/opt/pw-browsers",
+		"chromium",
+	);
+	return existsSync(fallback) ? { executablePath: fallback } : {};
+}
+
 describe("resident session loopback server", () => {
 	it("rejects a recording root symlink that escapes the project", () => {
 		const projectRoot = temp("hobo-session-recording-project-");
@@ -761,13 +788,9 @@ describe("resident session loopback server", () => {
 			"approved\n",
 		);
 
-		// PLAYWRIGHT_CHROMIUM_PATH: hosts whose installed browser revision does
-		// not match this playwright version (e.g. /opt/pw-browsers/chromium).
 		const browser = await chromium.launch({
 			headless: true,
-			...(process.env.PLAYWRIGHT_CHROMIUM_PATH
-				? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
-				: {}),
+			...chromiumExecutable(),
 		});
 		try {
 			const page = await browser.newPage();

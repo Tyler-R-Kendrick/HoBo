@@ -1,3 +1,10 @@
+---
+type: Plan
+title: "sdlc-state: consolidate-duplication"
+description: "Durable state for the duplication-consolidation stack: layer topology, corrections to my own estimates, per-layer findings, and the where-it-stops list."
+tags: [hobo, plan, testing]
+---
+
 # sdlc-state: consolidate-duplication
 
 **Phase:** dispatch (parent-implemented; no subagent offload authorised)

@@ -16,6 +16,7 @@ const PLATFORM_OPTIONS = new Set([
 	"env",
 	"dependency",
 	"session-replay",
+	"status-page",
 	"webapp",
 ]);
 

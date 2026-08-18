@@ -149,6 +149,13 @@ export {
 	type SessionReplayBindleConfig,
 	sessionReplay,
 } from "./session-replay.js";
+export {
+	isStatusPageAnnotation,
+	readStatusPageConfig,
+	STATUS_PAGE_OPTION,
+	type StatusPageBindleConfig,
+	statusPage,
+} from "./status-page.js";
 export type {
 	AllowVerbsFor,
 	BindleBuilder,

@@ -130,9 +130,13 @@ function createBindleResource<K extends ResourceKind>(
 		},
 		with(...annotations: ProviderAnnotation[]): BindleResource<K> {
 			for (const annotation of annotations) {
-				if (annotation.option === "session-replay") {
+				// Singleton platform traits: a later .with() replaces, not stacks.
+				if (
+					annotation.option === "session-replay" ||
+					annotation.option === "status-page"
+				) {
 					internal.annotations = internal.annotations.filter(
-						(a) => a.option !== "session-replay",
+						(a) => a.option !== annotation.option,
 					);
 				}
 				internal.annotations.push(annotation);

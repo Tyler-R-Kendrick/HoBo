@@ -821,6 +821,15 @@ export {
 	stopStationSidecars,
 } from "./station-sidecars.js";
 export {
+	evaluateStationStatus,
+	STATUS_SIDECAR_HOSTING,
+	STATUS_SIDECAR_NAME,
+	type StartStatusSidecarOptions,
+	type StatusProbe,
+	type StatusSidecarServer,
+	startStatusSidecar,
+} from "./status-sidecar-server.js";
+export {
 	buildMultiplexerStatus,
 	copyOnHighlight,
 	createPane,

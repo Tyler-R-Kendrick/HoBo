@@ -104,3 +104,28 @@ come from a provider-controlled origin.
 **This is not fixable by a refactor.** Changing the providers to sha256 changes every reference they
 have already published, so it needs an owner decision about versioning the manifest schema, not a
 consolidation PR. Flagged here rather than silently unified.
+
+## Layer 03 reinstated — the cancellation was wrong
+
+Layer 03 was cancelled on the grounds that the runners' `digestRef` is `sha256:` while core's
+was `fnv:`, so migrating them would rewrite every published digest reference. The premise was
+checked and did not hold:
+
+- **Nothing verifies these values.** `runner-github/src/manifest.ts` checks only that
+  `fact.source.digest` is a non-empty string. The only assertions on the `fnv:` prefix anywhere
+  in the repo were the ones added by layer 01 an hour earlier.
+- **Nothing has been published.** No manifest has ever gone from this repo to a live provider.
+
+So the cost of converging was zero, and the cost of not converging was two algorithms behind one
+name. **Converged on SHA-256**, which is what the runners already did and what the threat model
+requires: these bundles are fetched from a provider-controlled origin, and a 32-bit FNV walk
+emitting 8 hex digits is brute-forceable in milliseconds — a typo detector, not integrity.
+`stableDigest`'s own comment said "not a security primitive", which was accurate and was the bug.
+
+Verified: 10 of 20 published documents changed, and the only differing fields are `digest` and
+`documentRef`, with line counts unchanged — no structural drift. All five provider suites, all
+three runner suites and core stayed green, which is itself the evidence that nothing consumed
+the old values.
+
+With the algorithms equal the runners could join: −72 lines across the three, and `sortKeys` is
+now exported from core because `runner-github` needs the ordered *object*, not the string.

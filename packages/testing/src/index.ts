@@ -51,7 +51,27 @@ export {
 	destroyInProcess,
 	type InProcessDeployment,
 } from "./lanes/in-process.js";
-export { type PactWorld, pactBackedTransport } from "./pact-chaos.js";
+export {
+	PACT_FIDELITY_KINDS,
+	type PactFidelityKind,
+	type PactFidelityViolation,
+	type PactLifecycle,
+	PactLifecycleError,
+	type PactWorld,
+	pactBackedTransport,
+	statelessPactAnswer,
+} from "./pact-chaos.js";
+export {
+	baselineCallCount,
+	fetchFromTransport,
+	type PactChaosRun,
+	type PactChaosScenarioKind,
+	type PactChaosScenarioResult,
+	type PactChaosSubject,
+	pactChaosViolations,
+	runPactChaosMatrix,
+	WRITE_REACHING_FAULTS,
+} from "./pact-chaos-matrix.js";
 export {
 	classifyReadinessStatus,
 	createFetchReadinessProbe,

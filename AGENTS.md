@@ -494,30 +494,52 @@ Use these lanes instead:
 Two chaos suites exist and they are **not** interchangeable. Conflating them is
 how a suite ends up proving neither half.
 
-- **`packages/hobo/test/chaos-conformance.test.ts` owns the state machine.** Its
-  worlds are hand-written, so they can sequence a lifecycle — absent, created,
-  read back — which is what makes *convergence* assertable: a retry after an
-  ambiguous write must yield one resource, not two. What it cannot do is prove
-  the provider actually answers that way; the fake answers the way its author
-  believed.
-- **`packages/hobo/test/pact-chaos-conformance.test.ts` owns the response
-  shapes.** It drives `chaosTransport` over `pactBackedTransport(pact)`, so the
-  statuses, envelopes and ids come from a recorded, provider-verified contract
-  rather than from an invention. `countUnmatched()` must be zero — otherwise a
-  green run means every call fell through to `PACT_NO_INTERACTION` and the suite
-  tested the mock.
+- **`packages/hobo/test/chaos-conformance.test.ts` — breadth across providers.**
+  Its worlds are hand-written, which is what lets it cover every provider's
+  resolvers cheaply. What it cannot do is prove the provider actually answers
+  that way; the fake answers the way its author believed.
+- **`packages/hobo/test/pact-chaos-conformance.test.ts` — depth against the
+  contract.** It runs `runPactChaosMatrix` over `pactBackedTransport(pact, {
+  lifecycle })`: every fault at every call index, plus a double-fault scenario
+  and teardown-under-fault, driving the **shipped** driver rather than a
+  pattern reproduced in the test file. It asserts two properties — convergence
+  and fidelity — and both are computed from the pact.
 
-**A pact cannot currently prove convergence, and no suite should claim it does.**
-These pacts record request/response *pairs* for contract verification, not state
-sequences. `cloudflare-dns-api.pact.json` records the lookup-by-name only in its
-pre-create form (`result: []`), so a stateless replay always reports the record
-absent and always creates again — an assertion written there would pass for a
-non-convergent driver and fail for a convergent one. Closing that would mean
-recording a post-create read per lifecycle, which is a change to the corpus, not
-to the harness.
+**Both properties, or neither is worth much.** *Convergence* asks "did a retry
+land exactly one resource?". *Fidelity* asks "was every request you sent on the
+way there one the contract declares?" — recorded path, recorded body, recorded
+headers. A driver recovering from a lost response takes a branch its happy path
+never takes, and a convergence-only lane is blind to that branch talking
+nonsense. Ship it and it is a 400 on the first real retry.
 
-Both faults must be observed to fire (`fired` non-empty). A chaos scenario whose
-fault never landed is a green test about a situation that never happened.
+**A pact can prove convergence when the corpus records both states.** An earlier
+version of this section said it could not. That was wrong, and the way it was
+wrong is worth keeping: it generalised from *one interaction* — the name-filtered
+lookup, recorded only in its pre-create form (`result: []`) — to the *document*,
+which also records `list all zone records` holding `rec1`. Absent and present
+were both there; only the sequencing was missing. `PactLifecycle` supplies the
+sequence by naming which **recorded interaction** answers which request in which
+state, so no response body originates in the harness. Where a state
+substitution could quietly lie — answering a filtered read with a collection
+body — `assertFilterConsistency` refuses to build the world at all.
+
+**Say "hand-authored", not "provider-verified".** These pacts are consumer
+expectations written in this repo, reviewed and shared across every consumer of
+a provider. That is a real upgrade over a private fake per test — being wrong
+about the provider becomes visible to everybody at once — but no provider has
+verified them, and they are not captured traffic. A chaos lane over a pact
+proves the driver honours the contract the repo agreed on. It is not evidence
+about the live API.
+
+Non-negotiables for either lane:
+
+- Faults must be observed to fire (`fired` non-empty). A scenario whose fault
+  never landed is a green test about a situation that never happened.
+- `countUnmatched()` must be zero, and `fidelityViolations()` empty — otherwise
+  a green run means the calls fell through to `PACT_NO_INTERACTION` and the
+  suite tested the mock.
+- The matrix's own scenario count is asserted. A matrix that silently ran zero
+  scenarios satisfies "no violations".
 
 ### Which command is the repo-wide gate
 

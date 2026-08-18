@@ -12,6 +12,7 @@ export {
 	PactParseError,
 	parsePactDocument,
 } from "./pact.js";
+export { isRecursiveSubset, subsetMismatchPath } from "./subset.js";
 export type {
 	InteractionFailure,
 	ProviderStub,

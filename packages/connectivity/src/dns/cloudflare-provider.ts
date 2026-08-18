@@ -68,6 +68,22 @@ export function createCloudflareDnsProvider(
 		return id;
 	}
 
+	/**
+	 * Looks a record up, or refuses to answer.
+	 *
+	 * The `null` return means one specific thing — *the provider told us there
+	 * is no such record* — and it must not be reachable any other way. Every
+	 * caller treats `null` as licence to create, so any path that reaches it
+	 * without a readable answer turns a bad minute at Cloudflare into a
+	 * duplicate DNS record on every retry.
+	 *
+	 * Two ways that used to happen, both found by the pact chaos matrix. A
+	 * non-2xx (a 500, a 429) parses to an error envelope with no `result`, and
+	 * optional chaining read that as "no records". A 200 whose body was
+	 * truncated or corrupted fails `res.json()`, which `api` softens to `{}` —
+	 * also no `result`, also read as "no records". A response we could not read
+	 * is not evidence of absence, so both now throw and let the caller retry.
+	 */
 	async function findRecord(
 		zoneId: string,
 		name: string,
@@ -76,8 +92,18 @@ export function createCloudflareDnsProvider(
 		const res = await api(
 			`/zones/${zoneId}/dns_records?type=${type}&name=${encodeURIComponent(name)}`,
 		);
+		if (!res.ok) {
+			throw new Error(
+				`cloudflare: dns lookup for ${type} ${name} failed (${res.status})`,
+			);
+		}
 		const data = res.body as CfListResponse;
-		const hit = data.result?.[0];
+		if (!Array.isArray(data.result)) {
+			throw new Error(
+				`cloudflare: dns lookup for ${type} ${name} returned a body with no record list; refusing to treat an unreadable response as "record absent"`,
+			);
+		}
+		const hit = data.result[0];
 		return hit ? { id: hit.id } : null;
 	}
 
@@ -138,7 +164,15 @@ export function createCloudflareDnsProvider(
 			if (!res.ok) {
 				throw new Error(`cloudflare list failed (${res.status})`);
 			}
-			return (data.result ?? []).map((r) => ({
+			// Same rule as findRecord: an unreadable 200 is not an empty zone.
+			// `?? []` here would report "this zone has no records" to a caller
+			// that may well act on it.
+			if (!Array.isArray(data.result)) {
+				throw new Error(
+					"cloudflare list returned a body with no record list; refusing to report an unreadable response as an empty zone",
+				);
+			}
+			return data.result.map((r) => ({
 				name: r.name,
 				type: r.type as DnsRecordType,
 				content: r.content,

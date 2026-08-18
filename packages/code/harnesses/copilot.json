@@ -6,6 +6,7 @@
 	"configPaths": [".config/gh-copilot"],
 	"command": "copilot",
 	"seat": 40,
+	"runtime": { "adapter": "cli", "prompt": { "placement": "trailing-arg", "prefixArgs": ["-p"] } },
 	"config": {
 		"format": "note",
 		"path": ".config/gh-copilot",

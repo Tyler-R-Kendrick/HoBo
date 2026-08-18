@@ -6,6 +6,7 @@
 	"configPaths": [".gemini"],
 	"command": "gemini",
 	"seat": 50,
+	"runtime": { "adapter": "cli", "prompt": { "placement": "trailing-arg", "prefixArgs": ["-p"] } },
 	"config": {
 		"format": "note",
 		"path": ".gemini",

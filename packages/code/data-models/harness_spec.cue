@@ -2,6 +2,10 @@ package code
 
 #HarnessSpecKind: "coding-agent" | "inference" | "harness" | "eve-agent" | "sdk"
 #HarnessConfigFormat: "toml-append" | "json-env" | "json-merge" | "note" | "eve-vfs" | "sdk-env" | "skip"
+#HarnessRuntimeAdapter:
+	"claude-code" | "codex" | "pi" | "opencode" | "grok-build" | "cline" |
+	"deepagents" | "acp" | "cli" | "eve" | "sdk" | "skip"
+#HarnessCliPromptPlacement: "trailing-arg" | "stdin"
 
 #HarnessConfigSpecRecord: {
 	format:          #HarnessConfigFormat
@@ -13,6 +17,16 @@ package code
 	summary?: string & !=""
 	after?:   string & !=""
 	note?:    string & !=""
+}
+
+#HarnessRuntimeSpecRecord: {
+	adapter: #HarnessRuntimeAdapter
+	prompt?: #HarnessCliPromptSpecRecord
+}
+
+#HarnessCliPromptSpecRecord: {
+	placement:   #HarnessCliPromptPlacement
+	prefixArgs?: [...string & !=""]
 }
 
 #HarnessSpecRecord: {
@@ -28,4 +42,5 @@ package code
 	cwdMarkers?:   [...string & !=""]
 	packageNames?: [...string & !=""]
 	config?:       #HarnessConfigSpecRecord
+	runtime?:      #HarnessRuntimeSpecRecord
 }

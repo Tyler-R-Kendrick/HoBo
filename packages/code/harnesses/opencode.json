@@ -6,6 +6,7 @@
 	"configPaths": [".config/opencode"],
 	"command": "opencode",
 	"seat": 35,
+	"runtime": { "adapter": "opencode" },
 	"config": {
 		"format": "note",
 		"path": ".config/opencode",

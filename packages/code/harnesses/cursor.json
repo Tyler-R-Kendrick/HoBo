@@ -6,6 +6,7 @@
 	"configPaths": [".cursor"],
 	"command": "cursor-agent",
 	"seat": 30,
+	"runtime": { "adapter": "cli", "prompt": { "placement": "trailing-arg", "prefixArgs": ["-p"] } },
 	"config": {
 		"format": "note",
 		"path": ".cursor",

@@ -294,7 +294,7 @@
     {
       "name": "bindle",
       "kind": "topology-builder",
-      "signature": "bindle(nameOrBuild: string | ((b: BindleBuilder) => Record<string, BindleResource>), …): BindleDefinition"
+      "signature": "bindle(nameOrBuild: string | ((b: BindleBuilder) => Record<string, BindleResource>), \u2026): BindleDefinition"
     },
     {
       "name": "DEFAULT_BINDLE_NAME",
@@ -565,6 +565,26 @@
       "name": "defaultAppKitSessionReplayAnnotation",
       "kind": "session-replay-helper",
       "signature": "defaultAppKitSessionReplayAnnotation(): ProviderAnnotation"
+    },
+    {
+      "name": "statusPage",
+      "kind": "status-page-annotation",
+      "signature": "statusPage(config?: StatusPageBindleConfig): ProviderAnnotation"
+    },
+    {
+      "name": "STATUS_PAGE_OPTION",
+      "kind": "status-page-constant",
+      "signature": "const STATUS_PAGE_OPTION: \"status-page\""
+    },
+    {
+      "name": "isStatusPageAnnotation",
+      "kind": "status-page-helper",
+      "signature": "isStatusPageAnnotation(annotation: ProviderAnnotation): boolean"
+    },
+    {
+      "name": "readStatusPageConfig",
+      "kind": "status-page-helper",
+      "signature": "readStatusPageConfig(annotations: readonly ProviderAnnotation[]): StatusPageBindleConfig | null"
     },
     {
       "name": "APP_KIT_KINDS",

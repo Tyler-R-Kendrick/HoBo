@@ -108,6 +108,11 @@ export function createBindlesPublicApiSnapshot(
 		"SESSION_REPLAY_OPTION",
 		"isSessionReplayAnnotation",
 		"defaultAppKitSessionReplayAnnotation",
+		// Status page platform trait, read-side default-on (ADR-0077 / ADR-0145)
+		"statusPage",
+		"STATUS_PAGE_OPTION",
+		"isStatusPageAnnotation",
+		"readStatusPageConfig",
 		// App Kit taxonomy (prefer over "membrane types" at Bindle layer)
 		"APP_KIT_KINDS",
 		"HTTP_APP_KIT_KINDS",
@@ -475,6 +480,29 @@ export function createBindlesPublicApiSnapshot(
 				name: "defaultAppKitSessionReplayAnnotation",
 				kind: "session-replay-helper",
 				signature: "defaultAppKitSessionReplayAnnotation(): ProviderAnnotation",
+			},
+			{
+				name: "statusPage",
+				kind: "status-page-annotation",
+				signature:
+					"statusPage(config?: StatusPageBindleConfig): ProviderAnnotation",
+			},
+			{
+				name: "STATUS_PAGE_OPTION",
+				kind: "status-page-constant",
+				signature: 'const STATUS_PAGE_OPTION: "status-page"',
+			},
+			{
+				name: "isStatusPageAnnotation",
+				kind: "status-page-helper",
+				signature:
+					"isStatusPageAnnotation(annotation: ProviderAnnotation): boolean",
+			},
+			{
+				name: "readStatusPageConfig",
+				kind: "status-page-helper",
+				signature:
+					"readStatusPageConfig(annotations: readonly ProviderAnnotation[]): StatusPageBindleConfig | null",
 			},
 			{
 				name: "APP_KIT_KINDS",

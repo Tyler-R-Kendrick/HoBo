@@ -1075,6 +1075,7 @@ const STATION_SIDECARS = new Set([
 	"experiment",
 	"kms",
 	"history",
+	"status",
 ]);
 
 function projectManagedResources(input: {

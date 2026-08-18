@@ -1,0 +1,42 @@
+{
+	"name": "@hobo/status-page",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "HoBo status pages: event-sourced availability projection, scope derivation (station capabilities, primitives, project, bindle), Statuspage-v2-compatible JSON, redaction-gated publishing, and a static HoBo Rubberhose HTML renderer.",
+	"type": "module",
+	"files": [
+		"LICENSE",
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"hobo": {
+		"webUi": true
+	},
+	"dependencies": {
+		"@hobo/bindles": "workspace:*",
+		"@hobo/capability-profiles": "workspace:*",
+		"@hobo/core": "workspace:*",
+		"@hobo/data": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.29",
+		"vitest": "^4.1.9"
+	},
+	"scripts": {
+		"prebuild": "pnpm --filter @hobo/core --filter @hobo/data --filter @hobo/bindles --filter @hobo/capability-profiles build",
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run test/",
+		"test:unit": "vitest run test/"
+	}
+}

@@ -1,166 +1,25 @@
 /**
- * These are pinning tests, not behaviour tests.
+ * The whole suite is the case file beside this one.
  *
- * The codec they cover was moved out of eight provider packages verbatim. Every
- * published manifest digest is computed over `canonicalJson`'s exact bytes, so
- * the risk in a move like this is not that the code stops working — it is that
- * it keeps working while producing *different* bytes, invalidating references
- * that already exist. The literals below were captured from the pre-move
- * implementation, so drift fails here rather than at a consumer.
+ * `describeConcern` reads `capability-manifest.cases.jsonl`, groups by member,
+ * and emits one test per member — so adding a case is a one-line data diff
+ * rather than another copy of arrange-act-assert. It also fails if any exported
+ * member has no cases, which is the part a hand-written suite cannot do.
+ *
+ * The pinned digests are what stop the algorithm drifting back to something
+ * cheaper: these documents are fetched from a provider-controlled origin, so a
+ * reference that only detects accidental corruption is not integrity.
  */
-import { describe, expect, it } from "vitest";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describeConcern } from "@hobo/contract-harness";
 
-import {
-	AUTH_SCHEMA,
-	COST_SCHEMA,
-	canonicalJson,
-	digestRef,
-	MANIFEST_PATHS,
-	MANIFEST_SCHEMA,
-	parsePublishedManifest,
-	stableDigest,
-} from "../src/ports/capability-manifest.js";
+import * as capabilityManifest from "../src/ports/capability-manifest.js";
 
-const NESTED = { b: 1, a: { d: [3, { f: 1, e: 2 }], c: "x" } };
-
-describe("canonicalJson", () => {
-	it("emits the exact bytes the providers emitted before the move", () => {
-		expect(canonicalJson(NESTED)).toBe(
-			'{\n  "a": {\n    "c": "x",\n    "d": [\n      3,\n      {\n        "e": 2,\n        "f": 1\n      }\n    ]\n  },\n  "b": 1\n}\n',
-		);
-	});
-
-	it("sorts at every depth and keeps array order", () => {
-		// Arrays are sequences, not sets: sorting them would change meaning, and
-		// the capabilities document relies on port order being stable.
-		expect(canonicalJson({ z: [3, 1, 2] })).toBe(
-			'{\n  "z": [\n    3,\n    1,\n    2\n  ]\n}\n',
-		);
-	});
-
-	it("ends with a trailing newline", () => {
-		// Load-bearing: the digest is over JSON.stringify, but the *published*
-		// file is this string, and a missing newline is a diff on every publish.
-		expect(canonicalJson({})).toBe("{}\n");
-	});
-
-	it("is insensitive to the order keys were written in", () => {
-		expect(canonicalJson({ a: 1, b: 2 })).toBe(canonicalJson({ b: 2, a: 1 }));
-	});
-});
-
-describe("stableDigest", () => {
-	it("is SHA-256 over the canonical form", () => {
-		// Pinned so the algorithm cannot drift back to something cheaper. These
-		// are plain `sha256(JSON.stringify(sortKeys(value)))` and can be checked
-		// with `openssl dgst -sha256` against the canonical bytes.
-		expect(stableDigest(NESTED)).toBe(
-			"sha256:7d049f1b0daf959ec90d38211977ec0ffee8e2ef26a976f6b10a87abf61d127f",
-		);
-		expect(stableDigest({})).toBe(
-			"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-		);
-		expect(digestRef("cost:x")).toBe(
-			"sha256:3cadf1ccfb031ec836837d6cf68d30636f1331ecbf18d52ba14b276999ab9de7",
-		);
-	});
-
-	it("is collision-resistant, which is the whole reason it changed", () => {
-		// The old 32-bit FNV walk emitted 8 hex digits — about 4 billion values,
-		// brute-forceable in milliseconds. These documents come from an origin
-		// the provider controls, so that made the reference a typo detector
-		// rather than an integrity check. 64 hex digits is the fix.
-		expect(stableDigest(NESTED)).toMatch(/^sha256:[0-9a-f]{64}$/u);
-	});
-
-	it("agrees for documents that differ only in key order", () => {
-		expect(stableDigest({ a: 1, b: 2 })).toBe(stableDigest({ b: 2, a: 1 }));
-	});
-
-	it("changes when the document changes", () => {
-		expect(stableDigest({ a: 1 })).not.toBe(stableDigest({ a: 2 }));
-	});
-
-	it("is fixed-width for every input", () => {
-		for (const seed of ["", "a", "cost:aws.s3", "x".repeat(500)]) {
-			expect(stableDigest(seed)).toMatch(/^sha256:[0-9a-f]{64}$/u);
-		}
-	});
-});
-
-describe("parsePublishedManifest", () => {
-	function bundle(overrides: Record<string, unknown> = {}) {
-		const auth = {
-			schema: AUTH_SCHEMA,
-			staticSecrets: false,
-			...(overrides.auth as object),
-		};
-		return {
-			[MANIFEST_PATHS.index]: JSON.stringify({
-				manifestSchema: MANIFEST_SCHEMA,
-				...(overrides.index as object),
-			}),
-			[MANIFEST_PATHS.capabilities]: JSON.stringify({
-				capabilities: [{ port: "kv" }],
-				...(overrides.capabilities as object),
-			}),
-			[MANIFEST_PATHS.auth]: JSON.stringify(auth),
-			[MANIFEST_PATHS.cost]: JSON.stringify({
-				schema: COST_SCHEMA,
-				...(overrides.cost as object),
-			}),
-		};
-	}
-
-	it("accepts a well-formed bundle", () => {
-		const result = parsePublishedManifest(bundle());
-		expect(result.errors).toEqual([]);
-		expect(result.ok).toBe(true);
-	});
-
-	it.each([
-		[
-			"a published static key",
-			{ auth: { staticKey: "AKIA…" } },
-			/static secrets/,
-		],
-		[
-			"a published client secret",
-			{ auth: { clientSecret: "s3cr3t" } },
-			/static secrets/,
-		],
-		[
-			"staticSecrets not false",
-			{ auth: { staticSecrets: true } },
-			/keyless federation/,
-		],
-		[
-			"a wrong index schema",
-			{ index: { manifestSchema: "nope/v1" } },
-			/manifestSchema/,
-		],
-		["a wrong auth schema", { auth: { schema: "nope/v1" } }, /auth\.schema/],
-		["a wrong cost schema", { cost: { schema: "nope/v1" } }, /cost\.schema/],
-		["no capabilities", { capabilities: { capabilities: [] } }, /non-empty/],
-	])("refuses %s", (_label, overrides, expected) => {
-		const result = parsePublishedManifest(bundle(overrides));
-		expect(result.ok).toBe(false);
-		expect(result.errors.join(" ")).toMatch(expected);
-	});
-
-	it("reports every problem at once rather than the first", () => {
-		// A caller fixing one field at a time against a provider it cannot
-		// redeploy quickly is the case this serves.
-		const result = parsePublishedManifest(
-			bundle({ auth: { schema: "nope/v1", staticSecrets: true } }),
-		);
-		expect(result.errors.length).toBeGreaterThan(1);
-	});
-
-	it("does not throw on a bundle missing documents entirely", () => {
-		// Fetched from a provider-controlled origin, so "absent" is a real input.
-		const result = parsePublishedManifest({});
-		expect(result.ok).toBe(false);
-		expect(result.errors.length).toBeGreaterThan(0);
-	});
+describeConcern("capability-manifest codec", {
+	subject: () => capabilityManifest,
+	cases: path.join(
+		path.dirname(fileURLToPath(import.meta.url)),
+		"capability-manifest.cases.jsonl",
+	),
 });

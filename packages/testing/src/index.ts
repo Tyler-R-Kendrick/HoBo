@@ -63,7 +63,6 @@ export {
 } from "./pact-chaos.js";
 export {
 	baselineCallCount,
-	fetchFromTransport,
 	type PactChaosRun,
 	type PactChaosScenarioKind,
 	type PactChaosScenarioResult,

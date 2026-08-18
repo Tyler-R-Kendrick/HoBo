@@ -1,44 +1,21 @@
 /**
- * The full failure-state matrix, over a pact, against the driver that ships.
+ * The failure matrix over a pact, against the drivers that ship.
  *
- * Three things changed from the first version of this file, and each was a way
- * the old one could be green while being weak:
+ * Replaces a lane that faulted one call, drove a hand-written `upsert` rather
+ * than the product, and reported that a pact could not prove convergence. The
+ * last was my own wrong conclusion: it generalised from the name-filtered
+ * lookup (recorded only pre-create, `result: []`) to the whole document, which
+ * also records `list all zone records` holding `rec1`. Both states were there;
+ * only the sequencing was missing.
  *
- *  1. **It drove a hand-written `upsert`, not the product.** The assertion was
- *     about a *pattern* I reproduced in the test file. A pattern I wrote cannot
- *     fail in a way the shipped driver does. This drives
- *     `createCloudflareDnsProvider` — the function `hobo up` actually calls.
+ * Asserted, both computed from the pact: **convergence** (after a failure
+ * anywhere, a retry lands one record, never creates against a record shown to
+ * exist, never concludes "absent" from a read that failed) and **fidelity**
+ * (every request sent while recovering has a recorded path, body and headers).
  *
- *  2. **It faulted one call.** Index 1, the create. That is the highest-value
- *     single scenario and about a fifth of the failure surface: a run that dies
- *     on the lookup, or during teardown, or twice in a row, was never executed.
- *     The matrix sweeps every fault at every call index and adds the two shapes
- *     an index sweep cannot express.
- *
- *  3. **It could not prove convergence, and said so.** That was true of the
- *     *filtered* lookup interaction, which the contract records only in its
- *     pre-create form. It was not true of the document: the same pact records
- *     `list all zone records` holding `rec1` — the populated state — so absent
- *     and present are both recorded, and sequencing them proves convergence
- *     without inventing a response. The old file's "does NOT claim" test was
- *     therefore correct about the interaction it inspected and wrong about the
- *     conclusion it drew, and it is replaced here.
- *
- * What is asserted is two properties, both computed from the pact:
- *
- *  - **Convergence** — after any failure at any point, a retry lands exactly
- *    one record, never issues a second create against a record it has been
- *    shown exists, and never concludes "absent" from a read that failed.
- *  - **Fidelity** — every request issued while recovering is one the contract
- *    declares: recorded path, recorded body, recorded headers. A driver can
- *    converge while talking nonsense; that ships as a 400 on the first real
- *    retry, and only a fidelity check catches it here.
- *
- * The bound that remains: these pacts are hand-authored consumer expectations,
- * not traffic captured from Cloudflare. This proves the driver honours the
- * contract the repo agreed on. It is not evidence about the live API.
+ * Bound: these pacts are hand-authored consumer expectations. This proves the
+ * drivers honour the contract the repo agreed on, not that the live API matches.
  */
-
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -55,6 +32,7 @@ import {
 	type PactChaosSubject,
 	type PactLifecycle,
 	PactLifecycleError,
+	type PactWorld,
 	pactBackedTransport,
 	pactChaosViolations,
 	runPactChaosMatrix,
@@ -102,6 +80,23 @@ const DNS_LIFECYCLE: PactLifecycle = {
 		"DELETE /v4/zones/zone-1/dns_records/rec1": "absent",
 	},
 };
+
+/** The transport envelope every direct call in this file repeats. */
+function call(
+	world: PactWorld,
+	method: "GET" | "POST" | "PUT" | "DELETE",
+	url: string,
+	extra: { headers?: Readonly<Record<string, string>>; body?: string } = {},
+) {
+	return world.transport({
+		method,
+		url,
+		headers: extra.headers ?? {},
+		timeoutMs: 5_000,
+		maxResponseBytes: 65_536,
+		...(extra.body !== undefined ? { body: extra.body } : {}),
+	});
+}
 
 let dnsPact: PactDocument;
 let lbPact: PactDocument;
@@ -157,16 +152,14 @@ describe("the pact-backed world sequences states without inventing responses", (
 		for (const interaction of dnsPact.interactions) {
 			const world = pactBackedTransport(dnsPact, { lifecycle: DNS_LIFECYCLE });
 			const stateless = await statelessPactAnswer(dnsPact, interaction.request);
-			const stateful = await world.transport({
-				method: interaction.request.method,
-				url: `https://api.cloudflare.com${interaction.request.path}`,
-				headers: {},
-				timeoutMs: 5_000,
-				maxResponseBytes: 65_536,
-				...(interaction.request.body !== undefined
+			const stateful = await call(
+				world,
+				interaction.request.method,
+				`https://api.cloudflare.com${interaction.request.path}`,
+				interaction.request.body !== undefined
 					? { body: JSON.stringify(interaction.request.body) }
-					: {}),
-			});
+					: {},
+			);
 			// The two state-dependent reads are exactly the ones expected to differ.
 			const overridden =
 				DNS_LIFECYCLE.answers.absent?.[
@@ -243,71 +236,18 @@ describe("the pact-backed world sequences states without inventing responses", (
 
 	it("catches a request body the contract does not declare", async () => {
 		const world = pactBackedTransport(dnsPact, { lifecycle: DNS_LIFECYCLE });
-		await world.transport({
-			method: "POST",
-			url: "https://api.cloudflare.com/v4/zones/zone-1/dns_records",
-			headers: {},
-			timeoutMs: 5_000,
-			maxResponseBytes: 65_536,
-			body: JSON.stringify({ type: "CNAME", name: RECORD, content: "wrong" }),
-		});
+		await call(
+			world,
+			"POST",
+			"https://api.cloudflare.com/v4/zones/zone-1/dns_records",
+			{
+				body: JSON.stringify({ type: "CNAME", name: RECORD, content: "wrong" }),
+			},
+		);
 		const violations = world.fidelityViolations();
 		expect(violations).toHaveLength(1);
 		expect(violations[0]?.kind).toBe("body-mismatch");
 		expect(violations[0]?.detail).toContain("content");
-	});
-});
-
-describe("createCloudflareDnsProvider under the full failure matrix", () => {
-	it("converges and stays faithful to the contract in every scenario", async () => {
-		const results = await runPactChaosMatrix(subject());
-		expect(pactChaosViolations(results)).toEqual([]);
-	});
-
-	it("actually ran the matrix it claims to have run", async () => {
-		// A matrix that silently ran zero scenarios would satisfy the assertion
-		// above. 6 faults x (2 call indices + 1 double + 2 teardown) = 30.
-		const results = await runPactChaosMatrix(subject());
-		expect(results).toHaveLength(30);
-		expect(new Set(results.map((r) => r.fault)).size).toBe(6);
-		expect(new Set(results.map((r) => r.kind))).toEqual(
-			new Set(["single", "double", "teardown"]),
-		);
-		// And at least one scenario must have reached the state where the write
-		// landed but the client never learned — the case the lane exists for.
-		expect(
-			results.some((r) => r.writeLanded && r.firstRejected === false),
-		).toBe(true);
-	});
-
-	it("keeps chaos and the world in step on the create call", async () => {
-		// Harness self-check rather than a driver claim. Call 1 is the create.
-		// A fault that corrupts only the response must leave the world created;
-		// one that aborts before the provider must not. If these ever disagree,
-		// chaos has stopped passing writes through to the inner transport, and
-		// every "the write landed" scenario above is testing nothing.
-		const results = await runPactChaosMatrix(subject());
-		for (const result of results.filter(
-			(r) => r.kind === "single" && r.at === 1,
-		)) {
-			expect(
-				result.writeLanded,
-				`${result.fault} on the create: writeLanded was ${result.writeLanded}`,
-			).toBe(WRITE_REACHING_FAULTS.includes(result.fault));
-		}
-	});
-
-	it("adopts rather than re-creating once the record exists", async () => {
-		const world = pactBackedTransport(dnsPact, { lifecycle: DNS_LIFECYCLE });
-		const run = subject().bind({
-			transport: world.transport,
-			fetchImpl: world.fetchImpl,
-		});
-		await run.converge();
-		await run.converge();
-		await run.converge();
-		expect(world.countCreates()).toBe(1);
-		expect(await run.observe()).toHaveLength(1);
 	});
 });
 
@@ -392,12 +332,8 @@ describe("fidelity classification", () => {
 		world: ReturnType<typeof pactBackedTransport>,
 		headers: Readonly<Record<string, string>>,
 	) {
-		return world.transport({
-			method: "PUT",
-			url: LB_PUT,
+		return call(world, "PUT", LB_PUT, {
 			headers,
-			timeoutMs: 5_000,
-			maxResponseBytes: 65_536,
 			body: JSON.stringify(LB_BODY),
 		});
 	}
@@ -435,13 +371,11 @@ describe("fidelity classification", () => {
 
 	it("reports a path no interaction declares", async () => {
 		const world = pactBackedTransport(lbPact);
-		await world.transport({
-			method: "GET",
-			url: "https://api.cloudflare.com/client/v4/zones/zone-a/nothing_recorded",
-			headers: {},
-			timeoutMs: 5_000,
-			maxResponseBytes: 65_536,
-		});
+		await call(
+			world,
+			"GET",
+			"https://api.cloudflare.com/client/v4/zones/zone-a/nothing_recorded",
+		);
 		const violations = world.fidelityViolations();
 		expect(violations).toHaveLength(1);
 		expect(violations[0]?.kind).toBe("unmatched-path");
@@ -470,13 +404,7 @@ describe("fidelity classification", () => {
 		await put(world, RECORDED_HEADERS);
 		expect(world.state()).toBe("present");
 		expect(world.countCreates()).toBe(1);
-		await world.transport({
-			method: "DELETE",
-			url: LB_PUT,
-			headers: {},
-			timeoutMs: 5_000,
-			maxResponseBytes: 65_536,
-		});
+		await call(world, "DELETE", LB_PUT);
 		expect(world.state()).toBe("absent");
 		expect(world.fidelityViolations()).toEqual([]);
 	});
@@ -585,16 +513,64 @@ function routingSubject(): PactChaosSubject {
 	};
 }
 
-describe("createCloudflareTrafficRouting under the full failure matrix", () => {
+/**
+ * Both subjects get the same two assertions, because both claims are about the
+ * matrix rather than about one driver: it found nothing wrong, and it actually
+ * ran. The second is not ceremony — "no violations" is also what a matrix that
+ * silently ran zero scenarios reports.
+ */
+describe.each([
+	// 6 faults x (2 call indices + 1 double + 2 teardown) = 30.
+	{ name: "createCloudflareDnsProvider", make: () => subject(), scenarios: 30 },
+	// One call in its lifecycle, so 6 x (1 + 1 + 2) = 24.
+	{
+		name: "createCloudflareTrafficRouting",
+		make: () => routingSubject(),
+		scenarios: 24,
+	},
+])("$name under the full failure matrix", ({ make, scenarios }) => {
 	it("converges and stays faithful to the contract in every scenario", async () => {
-		const results = await runPactChaosMatrix(routingSubject());
-		expect(pactChaosViolations(results)).toEqual([]);
+		expect(pactChaosViolations(await runPactChaosMatrix(make()))).toEqual([]);
 	});
 
 	it("actually ran the matrix it claims to have run", async () => {
-		const results = await runPactChaosMatrix(routingSubject());
-		expect(results.length).toBeGreaterThanOrEqual(24);
+		const results = await runPactChaosMatrix(make());
+		expect(results).toHaveLength(scenarios);
 		expect(new Set(results.map((r) => r.fault)).size).toBe(6);
+		expect(new Set(results.map((r) => r.kind))).toEqual(
+			new Set(["single", "double", "teardown"]),
+		);
+		// At least one scenario must reach "the write landed, the client never
+		// learned" — the case the lane exists for.
+		expect(results.some((r) => r.writeLanded && !r.firstRejected)).toBe(true);
+	});
+});
+
+describe("what only the DNS subject can show", () => {
+	it("keeps chaos and the world in step on the create call", async () => {
+		// Harness self-check, not a driver claim: call 1 is the create, and a
+		// fault that corrupts only the response must leave the world created.
+		// If these disagree, chaos stopped passing writes through and every
+		// "write landed" scenario is testing nothing.
+		const results = await runPactChaosMatrix(subject());
+		for (const r of results.filter((x) => x.kind === "single" && x.at === 1)) {
+			expect(r.writeLanded, `${r.fault} on the create`).toBe(
+				WRITE_REACHING_FAULTS.includes(r.fault),
+			);
+		}
+	});
+
+	it("adopts rather than re-creating once the record exists", async () => {
+		const world = pactBackedTransport(dnsPact, { lifecycle: DNS_LIFECYCLE });
+		const run = subject().bind({
+			transport: world.transport,
+			fetchImpl: world.fetchImpl,
+		});
+		await run.converge();
+		await run.converge();
+		await run.converge();
+		expect(world.countCreates()).toBe(1);
+		expect(await run.observe()).toHaveLength(1);
 	});
 });
 

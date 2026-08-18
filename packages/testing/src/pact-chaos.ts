@@ -1,57 +1,23 @@
 /**
- * Chaos over a PACT, with the two things a chaos lane has to prove:
- * **convergence** (a retry after an ambiguous failure lands one resource, not
- * two) and **fidelity** (the requests it sends still match the contract while
- * it is recovering).
+ * A PACT replay that can *sequence* states, so chaos over it can prove
+ * convergence as well as fidelity.
  *
- * ## Why a pact rather than a fake
+ * Why not a hand-written fake: it answers the way its author believed the
+ * provider answers, so a green run can prove convergence against a fiction.
  *
- * `chaos-conformance.ts` drives resolvers through faults over hand-written
- * worlds. That is an honest test of a resolver's control flow and a weak test
- * of its reading of the provider, because the fake answers the way whoever
- * wrote it *believed* the provider answers. If that belief is wrong, a green
- * chaos run proves convergence against a fiction.
+ * Why state: convergence is a claim about a sequence — absent, then present, so
+ * a retry can look and adopt. `createMockProviderFromPact` replays one request
+ * to one response forever, so a retry always sees "absent" and always creates.
+ * A `PactLifecycle` says which *recorded interaction* answers which request in
+ * which state; every byte served is one the document already declares. Only the
+ * ordering is new, and ordering is the part a pact does not express.
  *
- * A pact is the other thing. To be exact about what these documents are —
- * because the word "recorded" invites an overclaim: the pacts in this repo are
- * **hand-authored consumer expectations**, reviewed and shared across every
- * consumer of that provider, not traffic captured from a live provider and not
- * verified by one. So the upgrade is real but bounded: one reviewed definition
- * of the contract instead of a private fake per test, and a single place where
- * being wrong about the provider is visible to everybody rather than to one
- * test file. It is not evidence about the live API. Closing *that* gap needs a
- * real account, and is tracked as the branch's irreducible gap.
- *
- * ## Why the world has to be stateful
- *
- * Convergence is a claim about a *sequence*: absent before the write, present
- * after it, so a retry can look and adopt. `createMockProviderFromPact` is a
- * stateless request/response replay — it answers a lookup identically forever,
- * so a replayed retry always sees absent and always creates again. Against
- * that mock a convergence assertion passes for a non-convergent driver and
- * fails for a convergent one, which is worse than having no assertion.
- *
- * This module adds the sequence *without inventing a single response byte*. A
- * `PactLifecycle` says which **recorded interaction** answers which request in
- * which state, and which requests move the world between states. Every body
- * served is a body some interaction in the document already declares. What is
- * new is only the ordering — and the ordering is the part a pact deliberately
- * does not express.
- *
- * The substitution that makes this work is also the one that could quietly
- * lie: answering a *filtered* read (`?type=CNAME&name=web…`) in the "present"
- * state with a *collection* interaction's body. `assertFilterConsistency`
- * refuses to build a world where that substitution would hand back a record
- * the query string excludes, so the shortcut cannot silently widen into a
- * wrong answer.
- *
- * ## What is still a model, not an observation
- *
- * The pact declares what the provider returns when things go well. It says
- * nothing about mid-failure behaviour, and no pact in this repo records any.
- * Replaying a recorded 200 and then truncating it models "the write landed,
- * the client never learned" — the exact ambiguity that matters — but it is a
- * model of that failure, not a recording of one.
+ * Two honesty limits. These pacts are hand-authored consumer expectations, not
+ * captured traffic and not provider-verified — so this proves a driver honours
+ * the contract the repo agreed on, not that the live API behaves that way. And
+ * the pact records only the happy path, so replaying a recorded 200 and then
+ * truncating it *models* "the write landed, the client never learned" rather
+ * than observing it.
  */
 import {
 	createMockProviderFromPact,
@@ -61,7 +27,11 @@ import {
 	type PactRequest,
 	subsetMismatchPath,
 } from "@hobo/contract-harness";
-import type { HttpTransport, TransportResponse } from "@hobo/core";
+import type {
+	HttpTransport,
+	TransportRequest,
+	TransportResponse,
+} from "@hobo/core";
 
 // public-contract: the ways a request can fail to honour the contract it is replayed against.
 export const PACT_FIDELITY_KINDS = Object.freeze([
@@ -85,11 +55,9 @@ export interface PactFidelityViolation {
 }
 
 /**
- * A lifecycle over interactions the document already contains.
- *
- * Selectors are `"METHOD /path?query"` — the exact path a recorded interaction
- * declares, so a typo is a construction-time refusal rather than a world that
- * silently degrades to stateless.
+ * A lifecycle over interactions the document already contains. Selectors are
+ * `"METHOD /path?query"`, matching a recorded interaction exactly — so a typo
+ * is refused at construction rather than degrading silently to stateless.
  */
 export interface PactLifecycle {
 	/** State the world starts in. */
@@ -97,41 +65,29 @@ export interface PactLifecycle {
 	/** The state meaning "the resource exists". */
 	readonly created: string;
 	/**
-	 * Selectors that **create** the resource, as opposed to updating one that
-	 * already exists.
-	 *
-	 * This has to be declared rather than inferred from the transitions, and the
-	 * distinction is the whole duplication check. A convergent driver that finds
-	 * its record present issues an *update* — `PUT /dns_records/rec1` — which
-	 * also lands in the `created` state. Inferring "anything that reaches
-	 * `created` is a create" would count that update as a second create and fail
-	 * the exact driver the lane exists to bless.
+	 * Selectors that **create**, as opposed to updating something that exists.
+	 * Declared, not inferred: a convergent driver's update (`PUT
+	 * /dns_records/rec1`) also lands in `created`, so "anything reaching
+	 * `created` is a create" would fail the very driver this lane blesses.
 	 */
 	readonly creates: readonly string[];
 	/**
-	 * Who chooses the resource's identity — and therefore whether repeating a
-	 * create can duplicate anything.
+	 * Whether repeating a create can duplicate anything.
 	 *
-	 * `"provider-minted"` is the dangerous shape: a POST to a collection where
-	 * the provider allocates the id. Issue it twice and two resources exist,
-	 * which is what every duplication rule in the matrix is looking for.
+	 * `provider-minted` (default) — POST to a collection, provider allocates the
+	 * id. Twice means two resources; this is what the duplication rules hunt.
+	 * `client-supplied` — PUT to a path the caller named. Repeating it lands on
+	 * the same resource, so it is the *correct* recovery and the duplication
+	 * rules would fail a driver for behaving properly.
 	 *
-	 * `"client-supplied"` is a PUT to a path the caller already named. Repeating
-	 * it is not duplication, it is *the* correct recovery — the second PUT lands
-	 * on the same resource as the first. A matrix that applied the duplication
-	 * rules here would fail a driver for doing exactly the right thing, so it
-	 * asserts convergence on the observed result and final state instead.
-	 *
-	 * Defaults to `"provider-minted"`, the stricter reading: a lifecycle that
-	 * forgets to say gets the rules that can only produce false alarms, never
-	 * false clearances.
+	 * The default is the strict one: forgetting to say can only cause false
+	 * alarms, never false clearances.
 	 */
 	readonly identity?: "provider-minted" | "client-supplied";
 	/**
-	 * `state -> (selector -> description of the interaction whose response to serve)`.
-	 *
-	 * A selector absent here is answered by its own recorded interaction, which
-	 * is why only the state-dependent reads need listing.
+	 * `state -> (selector -> which recorded interaction answers it)`. A selector
+	 * absent here is answered by its own interaction, so only state-dependent
+	 * reads need listing.
 	 */
 	readonly answers: Readonly<Record<string, Readonly<Record<string, string>>>>;
 	/** `selector -> state the world moves to when that call answers 2xx`. */
@@ -206,16 +162,10 @@ function lowerKeys(
 }
 
 /**
- * Refuses a world whose state substitution would answer a filtered read with a
- * record the filter excludes.
- *
- * This is the one place the lifecycle could quietly lie. Answering
- * `?type=CNAME&name=web.myapp…` in the "present" state with the body of the
- * unfiltered `?per_page=100` interaction is legitimate exactly when every
- * element of that body satisfies the query — and a mechanical check is
- * cheaper than trusting that it always will be. Query keys no element carries
- * (`per_page`, `status`) are paging and filtering concerns the body does not
- * express, so they are skipped rather than failed.
+ * The one place a lifecycle could quietly lie: answering a *filtered* read with
+ * an *unfiltered* collection's body. Legitimate only when every record in that
+ * body satisfies the query, so check it rather than trust it. Query keys no
+ * record carries (`per_page`, `status`) are paging, not filtering — skipped.
  */
 function assertFilterConsistency(
 	selector: string,
@@ -245,7 +195,7 @@ function assertFilterConsistency(
 	}
 }
 
-/** Every object inside any array in the body — the records a collection read returns. */
+/** The records a collection read returns: every object inside any array. */
 function collectionElements(
 	body: unknown,
 ): readonly Readonly<Record<string, unknown>>[] {
@@ -340,12 +290,45 @@ function assertLifecycle(pact: PactDocument, lifecycle: PactLifecycle): void {
 }
 
 /**
- * A world that answers from a pact's interactions and *sequences* them.
+ * The one place `fetch` is translated to an `HttpTransport` call.
  *
- * Without `lifecycle` this is a stateless replay whose answers are identical
- * to `createMockProviderFromPact` — deliberately, so the stateful path is a
- * strict extension of the repo's existing matching semantics rather than a
- * second, subtly different matcher. `pact-chaos.test.ts` pins that agreement.
+ * Both the pact world and the chaos matrix need to hand drivers a `fetch`, and
+ * writing that conversion twice is how the two quietly stop agreeing about
+ * headers or bodies.
+ */
+export function fetchFromTransport(transport: HttpTransport): typeof fetch {
+	return async (input, init) => {
+		const url =
+			typeof input === "string"
+				? input
+				: input instanceof URL
+					? input.toString()
+					: (input as Request).url;
+		const headers: Record<string, string> = {};
+		new Headers(init?.headers).forEach((value, key) => {
+			headers[key] = value;
+		});
+		const response = await transport({
+			method: (
+				init?.method ?? "GET"
+			).toUpperCase() as TransportRequest["method"],
+			url,
+			headers,
+			timeoutMs: 5_000,
+			maxResponseBytes: 256 * 1024,
+			...(typeof init?.body === "string" ? { body: init.body } : {}),
+		});
+		return new Response(response.body, {
+			status: response.status,
+			headers: response.headers as HeadersInit,
+		});
+	};
+}
+
+/**
+ * Answers from a pact's interactions and sequences them. Without `lifecycle`
+ * it is a stateless replay identical to `createMockProviderFromPact`, so the
+ * stateful path extends the repo's matching semantics rather than forking them.
  */
 export function pactBackedTransport(
 	pact: PactDocument,
@@ -484,35 +467,9 @@ export function pactBackedTransport(
 		});
 	};
 
-	const fetchImpl: typeof fetch = async (input, init) => {
-		const url = new URL(
-			typeof input === "string"
-				? input
-				: input instanceof URL
-					? input.toString()
-					: (input as Request).url,
-		);
-		const headers: Record<string, string> = {};
-		new Headers(init?.headers).forEach((value, key) => {
-			headers[key] = value;
-		});
-		const raw = typeof init?.body === "string" ? init.body : undefined;
-		const body = parseBody(raw);
-		const response = await handle({
-			method: (init?.method ?? "GET").toUpperCase() as PactRequest["method"],
-			path: `${url.pathname}${url.search}`,
-			headers,
-			...(body !== undefined ? { body } : {}),
-		});
-		return new Response(response.body, {
-			status: response.status,
-			headers: response.headers as HeadersInit,
-		});
-	};
-
 	return {
 		transport,
-		fetchImpl,
+		fetchImpl: fetchFromTransport(transport),
 		get calls() {
 			return Object.freeze([...calls]);
 		},
@@ -523,10 +480,7 @@ export function pactBackedTransport(
 	};
 }
 
-/**
- * The stateless answer `createMockProviderFromPact` would give, for the guard
- * that pins the two matchers together.
- */
+/** What `createMockProviderFromPact` would answer — for the agreement guard. */
 export async function statelessPactAnswer(
 	pact: PactDocument,
 	request: PactRequest,

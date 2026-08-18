@@ -489,6 +489,35 @@ Use these lanes instead:
 - `pnpm test:fuzz` for Jazzer-shaped serialized-input smoke (does not start a long campaign).
 - `pnpm test:fuzz:nightly` for the docker-gated RESTler/Toxiproxy/Testcontainers plan. Skip without Docker. Never live Azure/AWS/GCP/paid SaaS.
 
+### Which command is the repo-wide gate
+
+`pnpm run test:all` (turbo, one vitest config per package) is the only command
+that runs every suite the way its own package intends — with that package's
+environment, setup files and process isolation. `pnpm run test:unit` is the
+category runner and the default PR lane.
+
+`test:smoke` and `test:file` share one command (`vitest run --no-isolate`) and
+one root config. **They are single-target tools, not a full-repo gate.** Run bare
+over the whole worktree, the root config puts every package's suites in one
+process with `isolate: false`, so suites that pass alone interfere with each
+other — `site/src/lib/examples`, `packages/componentize`, and the
+`hobo-componentize` draft proofs all pass under their own configs and fail in a
+shared run. A red bare-root run is not by itself evidence of a regression;
+reproduce under the owning package before believing it.
+
+The root config excludes three things it cannot execute, each of which runs
+elsewhere: `external/` (vendored third-party source — `external/ts-autocode` is a
+git submodule with its own CI), `dist/` (build output, where every compiled
+`*.test.js` is a staler duplicate of a source test that already runs), and
+Playwright specs (`@playwright/test`, driven from `packages/pixel-village`'s own
+`playwright.config.ts`). Before that exclude existed a bare root run reported
+~40 failures on a clean tree, which is enough noise to hide a real one.
+
+Tests that require a binary or hardware **fail rather than skip** when it is
+absent — `packages/runtimes/runtime-celld/test/live-*.test.ts` says so in the
+error text. That is deliberate: a live lane that silently passes without its
+subject is worse than one that stops.
+
 Live service checks and `pnpm eval:agent:live` are manual/release-only lanes. Default PR and agent checks must not require live external services. Default `agent:check` must not run long Jazzer campaigns, RESTler, or Toxiproxy.
 
 Run the smallest sufficient lane through `pnpm agent:check`; no-arg mode validates the latest commit, `--staged` validates staged files, and `--base=origin/main` validates the whole PR branch. It never selects E2E, avoids broad unit/contract sweeps unless final/all validation explicitly asks for them, and escalates only to schema, contract, UI, behavior, visual, mock-agent eval, or bounded property lanes based on changed files.
@@ -502,6 +531,6 @@ Durable, non-obvious notes for this environment. The startup update script alrea
 - **No server/GUI.** This is a design-docs + executable proof/contract repo (see README "Current state"). "Running the app" means the validation/lint/test tooling, not a web/backend service. Verify the environment with `pnpm run doctor`, `pnpm run lint`, `pnpm run standards:check`, `pnpm test`, and the doc validators listed in `README.md` "How to work in this repo".
 - **Node version.** Local Node 22 satisfies `engines` (`>=22`); CI uses Node 24. Optional Windows bins are not fetched on Linux (`pnpm.supportedArchitectures.os` is `current`).
 - **Developer inner loop for a single proof package:** `pnpm exec turbo run test --filter ./src/draft/<kind>/<slug>` (see `src/draft/AGENTS.md`). The turbo "no output files found" warning on `test` is expected (no build outputs) and not a failure.
-- **`test:smoke` runs Vitest** (`vitest run --no-isolate`), same engine as `test:file`; there is no bun dependency.
+- **`test:smoke` runs Vitest** (`vitest run --no-isolate`), same engine as `test:file`; there is no bun dependency. Both are single-target tools — see "Which command is the repo-wide gate" above before reading a bare root run as a regression.
 - **`tgrep` is not installed**, so `pnpm run search` falls back to `rg`. Always pass explicit path args (e.g. `pnpm run search "pattern" src docs`); running it with no path scope over the full worktree can be very slow.
 - **All local gates pass clean on `main`** (`lint`, `standards:check`, `architecture:guard`, `docs:okf`, `docs:cli-lint`, `docs:design-lint`, `docs:coverage`, `docs:freshness`, SDK/deployment validators); treat any failure as caused by the change under test, not the environment.

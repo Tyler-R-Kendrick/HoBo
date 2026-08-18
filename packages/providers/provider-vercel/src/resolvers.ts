@@ -896,6 +896,22 @@ export const VERCEL_UNRESOLVED_PRODUCT_IDS = Object.freeze([
 ] as const);
 
 /**
+ * Every product this module resolves, id-sorted for a deterministic registry.
+ *
+ * Declared as data rather than left implicit in {@link vercelResolvers},
+ * because the other four provider packages all publish this pair and anything
+ * that reports coverage across providers — the live-provider matrix, a Station
+ * capability report, a reader counting what actually ships — has to enumerate
+ * one list per provider. Vercel exported only the *unresolved* half, so a
+ * caller reading the pair uniformly saw Vercel as zero-of-two rather than
+ * two-of-four, which understates it by exactly the products that do work.
+ */
+export const VERCEL_RESOLVED_PRODUCT_IDS = Object.freeze([
+	"vercel.edge-config/v1",
+	"vercel.project/v1",
+] as const);
+
+/**
  * Every Vercel product this package can resolve over the REST API, ordered by
  * product id so two builds of the registry are identical.
  *

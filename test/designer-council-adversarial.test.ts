@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import {
 	mkdirSync,
 	mkdtempSync,
-	readFileSync,
 	readdirSync,
+	readFileSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -11,10 +11,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, test } from "vitest";
 import {
-	COUNCIL_PERSONAS,
 	advanceInvestment,
-	stateDigest,
+	COUNCIL_PERSONAS,
 	type CouncilState,
+	stateDigest,
 } from "../.agents/skills/optimizexp/harness/lib/design-council.mts";
 import { runConsensusCommand } from "../.agents/skills/optimizexp/workflows/cross-agent/consensus-loop.mts";
 

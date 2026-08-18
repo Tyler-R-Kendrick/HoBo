@@ -7,6 +7,7 @@ import {
 	stat,
 	writeFile,
 } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -250,6 +251,27 @@ describe("hobo new scaffold", () => {
 	});
 });
 
+/**
+ * What the subprocess actually said.
+ *
+ * `expect(result.status).toBe(0)` alone reports "expected 1 to be +0" and
+ * throws away the compiler diagnostics or the failing test output that explain
+ * it — which turns a scaffold regression into a guessing game. The scaffold is
+ * generated, so the failure is never visible in a diff either; the subprocess
+ * output is the only evidence there is.
+ */
+function subprocessReport(
+	label: string,
+	result: { readonly stdout?: string; readonly stderr?: string },
+): string {
+	const parts = [result.stdout, result.stderr]
+		.map((part) => (part ?? "").trim())
+		.filter((part) => part.length > 0);
+	return parts.length === 0
+		? `${label} failed and produced no output`
+		: `${label} failed:\n${parts.join("\n")}`;
+}
+
 function assertGeneratedProjectRuns(projectDir: string) {
 	const result = spawnSync(
 		process.execPath,
@@ -261,7 +283,10 @@ function assertGeneratedProjectRuns(projectDir: string) {
 		},
 	);
 
-	expect(result.status).toBe(0);
+	expect(
+		result.status,
+		subprocessReport("generated project tests", result),
+	).toBe(0);
 }
 
 function assertGeneratedProjectTypechecks(projectDir: string) {
@@ -276,16 +301,33 @@ function assertGeneratedProjectTypechecks(projectDir: string) {
 	);
 
 	expect(result.error).toBeUndefined();
-	expect(result.status).toBe(0);
+	expect(result.status, subprocessReport("generated project tsc", result)).toBe(
+		0,
+	);
 }
 
+/**
+ * Where `tsc` actually is, asked of Node rather than guessed from the cwd.
+ *
+ * This used to be `path.resolve(process.cwd(), "..", "..", "node_modules", …)`,
+ * which encodes two assumptions that are both wrong often enough to matter: that
+ * the process cwd is this package's directory (it is when `pnpm --filter` runs
+ * the suite, and is not when vitest is pointed here with `--root` from the
+ * workspace root), and that `typescript` is hoisted to exactly two levels up
+ * (pnpm's layout is not a promise). When either slipped, the spawn failed with
+ * `MODULE_NOT_FOUND` for a path like `/home/node_modules/typescript/bin/tsc`
+ * and the assertion reported it as `expected 1 to be +0` — a scaffold
+ * regression indistinguishable from a broken test path.
+ *
+ * Resolving `typescript/package.json` and walking to its `bin/tsc` uses the
+ * same algorithm the runtime uses, so it is correct from any cwd and any
+ * hoisting depth. `package.json` is the entry to ask for because it is exported
+ * by convention even when a package restricts its `exports` map.
+ */
 function typescriptCliPath() {
-	return path.resolve(
-		process.cwd(),
-		"..",
-		"..",
-		"node_modules",
-		"typescript",
+	const require = createRequire(import.meta.url);
+	return path.join(
+		path.dirname(require.resolve("typescript/package.json")),
 		"bin",
 		"tsc",
 	);

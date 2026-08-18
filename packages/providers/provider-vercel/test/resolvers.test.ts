@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
 	VERCEL_EDGE_CONFIG_PRODUCT_ID,
 	VERCEL_PROJECT_PRODUCT_ID,
+	VERCEL_RESOLVED_PRODUCT_IDS,
 	VERCEL_RESOLVER_TRANSPORT_POLICY,
 	VERCEL_UNRESOLVED_PRODUCT_IDS,
 	vercelResolverRegistry,
@@ -219,6 +220,24 @@ describe("vercel resolver registry", () => {
 		expect(registry.get(VERCEL_PROJECT_PRODUCT_ID)?.providerId).toBe("vercel");
 		for (const productId of VERCEL_UNRESOLVED_PRODUCT_IDS) {
 			expect(registry.get(productId)).toBeUndefined();
+		}
+	});
+
+	it("declares the resolved half, and the declaration matches the registry", () => {
+		// The other four provider packages publish both halves, and anything
+		// reporting coverage across providers reads the pair uniformly. Vercel
+		// exported only the unresolved half, so such a reader saw it as
+		// zero-of-two instead of two-of-four. Asserting the declaration against
+		// the registry is what keeps the new constant from becoming a second,
+		// drifting answer to a question the registry already answers.
+		const listed = vercelResolverRegistry(options())
+			.list()
+			.map((entry) => entry.productId)
+			.sort();
+		expect([...VERCEL_RESOLVED_PRODUCT_IDS].sort()).toEqual(listed);
+		// Resolved and unresolved are disjoint and together cover the catalog.
+		for (const productId of VERCEL_RESOLVED_PRODUCT_IDS) {
+			expect(VERCEL_UNRESOLVED_PRODUCT_IDS).not.toContain(productId);
 		}
 	});
 

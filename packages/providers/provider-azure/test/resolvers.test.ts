@@ -37,6 +37,8 @@ import {
 	AZURE_STORAGE_API_VERSION,
 	AZURE_STORAGE_QUEUE_PRODUCT_ID,
 	AZURE_UNRESOLVED_PRODUCT_IDS,
+	azureArmUrl,
+	azureOperationUrl,
 	azureResolverRegistry,
 	azureResolvers,
 	azureYardSpec,
@@ -1501,6 +1503,87 @@ describe("azure cosmos table", () => {
 				),
 			),
 		).toMatch(/is not one of provisioned, serverless/u);
+	});
+});
+
+describe("azureOperationUrl: the one URL ARM chooses for us", () => {
+	// Every other URL in this package is composed from a subscription, a
+	// resource group and a name this repo controls. This one comes out of an
+	// `Azure-AsyncOperation` or `Location` *response header*, which makes the
+	// next URL the client calls attacker-influenced by construction — and it is
+	// called with the bearer token attached. Returning `undefined` is how the
+	// resolver refuses to follow; the resolver then reports the write as
+	// accepted-but-unconfirmed rather than chasing it.
+	const API_VERSION = "2023-05-01";
+
+	it("accepts an operation URL on the allowlisted ARM surface", () => {
+		const url = azureOperationUrl(
+			`https://management.azure.com${GROUP_PREFIX}/providers/Microsoft.Test/operations/op-1`,
+			API_VERSION,
+		);
+		expect(url).toContain("management.azure.com");
+		expect(url).toContain(`api-version=${API_VERSION}`);
+	});
+
+	it("refuses a foreign host, however plausible it looks", () => {
+		for (const hostile of [
+			"https://management.azure.com.evil.example/subscriptions/x",
+			"https://attacker.example.com/subscriptions/steal",
+			"https://management-azure.com/subscriptions/x",
+		]) {
+			expect(azureOperationUrl(hostile, API_VERSION)).toBeUndefined();
+		}
+	});
+
+	it("refuses plain http even on the right host", () => {
+		expect(
+			azureOperationUrl(
+				"http://management.azure.com/subscriptions/x/operations/op-1",
+				API_VERSION,
+			),
+		).toBeUndefined();
+	});
+
+	it("refuses a path off the subscription-scoped prefix", () => {
+		expect(
+			azureOperationUrl(
+				"https://management.azure.com/tenants/steal",
+				API_VERSION,
+			),
+		).toBeUndefined();
+	});
+
+	it("refuses text that is not a URL at all", () => {
+		for (const junk of [
+			"",
+			"not-a-url",
+			"//management.azure.com/subscriptions/x",
+		]) {
+			expect(azureOperationUrl(junk, API_VERSION)).toBeUndefined();
+		}
+	});
+
+	it("supplies the api-version ARM omitted, and keeps one it sent", () => {
+		const supplied = azureOperationUrl(
+			"https://management.azure.com/subscriptions/x/operations/op-1",
+			API_VERSION,
+		);
+		expect(supplied).toContain(`api-version=${API_VERSION}`);
+		const kept = azureOperationUrl(
+			"https://management.azure.com/subscriptions/x/operations/op-1?api-version=2021-01-01",
+			API_VERSION,
+		);
+		expect(kept).toContain("api-version=2021-01-01");
+		expect(kept).not.toContain(API_VERSION);
+	});
+
+	it("refuses to build an ARM url without an explicit api-version", () => {
+		// ARM serializes a *different* resource model for the wrong version, so
+		// a defaulted one is how a declared field quietly stops applying.
+		expect(() => azureArmUrl("/subscriptions/x", "")).toThrow(/api-version/u);
+		expect(() => azureArmUrl("/subscriptions/x", "   ")).toThrow(
+			/api-version/u,
+		);
 	});
 });
 

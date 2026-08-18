@@ -1,14 +1,23 @@
+import {
+	AUTH_SCHEMA,
+	CAPABILITIES_SCHEMA,
+	COST_SCHEMA,
+	canonicalJson,
+	digestRef,
+	MANIFEST_SCHEMA,
+	stableDigest,
+} from "@hobo/core";
 import type { InitialCapabilityPort } from "./equivalence.js";
 import { EQUIVALENCE_CLASSES } from "./equivalence.js";
 
-// public-contract: capability-manifest document schema ids (Plan 6 signs).
-export const MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
-// public-contract: capabilities document schema id.
-export const CAPABILITIES_SCHEMA = "hobo.capabilities/v1";
-// public-contract: auth document schema id.
-export const AUTH_SCHEMA = "hobo.provider-auth/v1";
-// public-contract: cost document schema id.
-export const COST_SCHEMA = "hobo.cost/v1";
+// The schema ids are platform contract, so they live in @hobo/core and are
+// re-exported here to keep this package's public surface unchanged.
+export {
+	AUTH_SCHEMA,
+	CAPABILITIES_SCHEMA,
+	COST_SCHEMA,
+	MANIFEST_SCHEMA,
+} from "@hobo/core";
 
 // public-contract: the provider id every published document carries.
 export const GCP_PROVIDER_ID = "@hobo/provider-gcp";
@@ -183,97 +192,5 @@ export function publishCapabilityManifest(
 	};
 }
 
-export interface PublishedManifestParseResult {
-	ok: boolean;
-	errors: string[];
-	index: Record<string, unknown>;
-	capabilities: Record<string, unknown>;
-	auth: Record<string, unknown>;
-	cost: Record<string, unknown>;
-}
-
-/**
- * Parse-don't-validate boundary: untrusted well-known manifest documents become
- * a parsed derived type or structured errors — no broad DTO checks downstream.
- */
-export function parsePublishedManifest(
-	documents: PublishedManifestDocuments,
-): PublishedManifestParseResult {
-	const index = JSON.parse(
-		documents["/.well-known/capability-manifest/index.json"],
-	);
-	const capabilities = JSON.parse(
-		documents["/.well-known/capability-manifest/capabilities.json"],
-	);
-	const auth = JSON.parse(
-		documents["/.well-known/capability-manifest/auth.json"],
-	);
-	const cost = JSON.parse(
-		documents["/.well-known/capability-manifest/cost.json"],
-	);
-	const errors: string[] = [];
-
-	if (index.manifestSchema !== MANIFEST_SCHEMA) {
-		errors.push(`index.manifestSchema must be ${MANIFEST_SCHEMA}`);
-	}
-	if (auth.schema !== AUTH_SCHEMA) {
-		errors.push(`auth.schema must be ${AUTH_SCHEMA}`);
-	}
-	if (cost.schema !== COST_SCHEMA) {
-		errors.push(`cost.schema must be ${COST_SCHEMA}`);
-	}
-	if ("staticKey" in auth || "clientSecret" in auth) {
-		errors.push("auth must not publish static secrets");
-	}
-	if (auth.staticSecrets !== false) {
-		errors.push("auth.staticSecrets must be false (keyless federation only)");
-	}
-	if (
-		!Array.isArray(capabilities.capabilities) ||
-		capabilities.capabilities.length === 0
-	) {
-		errors.push("capabilities.capabilities must be non-empty");
-	}
-
-	return {
-		ok: errors.length === 0,
-		errors,
-		index,
-		capabilities,
-		auth,
-		cost,
-	};
-}
-
-function canonicalJson(value: unknown): string {
-	return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
-}
-
-function sortKeys(value: unknown): unknown {
-	if (Array.isArray(value)) {
-		return value.map((item) => sortKeys(item));
-	}
-	if (value && typeof value === "object") {
-		return Object.fromEntries(
-			Object.entries(value as Record<string, unknown>)
-				.sort(([left], [right]) => left.localeCompare(right))
-				.map(([key, child]) => [key, sortKeys(child)]),
-		);
-	}
-	return value;
-}
-
-function stableDigest(value: unknown): string {
-	// Deterministic non-cryptographic digest for document integrity references
-	// inside the published bundle (the Registry hashes the index separately).
-	const text = JSON.stringify(sortKeys(value));
-	let hash = 0;
-	for (let index = 0; index < text.length; index += 1) {
-		hash = (hash * 31 + text.charCodeAt(index)) | 0;
-	}
-	return `fnv:${(hash >>> 0).toString(16).padStart(8, "0")}`;
-}
-
-function digestRef(seed: string): string {
-	return stableDigest({ seed });
-}
+export type { PublishedManifestParseResult } from "@hobo/core";
+export { parsePublishedManifest } from "@hobo/core";

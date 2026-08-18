@@ -22,8 +22,8 @@ Two of my own estimates were wrong. Both are recorded because the measurement is
 | # | Branch | Scope | State |
 |---|---|---|---|
 | 00 | `claude/consolidate-00-green-trunk-boundaries` | Make the boundary gate actually run | **done** — PR #1115 |
-| 01 | `claude/consolidate-01-core-manifest-utils` | Manifest codec into `@hobo/core` + pinning tests | **done** (PR pending) |
-| 02 | `claude/consolidate-02-migrate-provider-manifests` | aws/azure/gcp/lakebed/convex onto it (−275) | pending |
+| 01 | `claude/consolidate-01-core-manifest-utils` | Manifest codec into `@hobo/core` + pinning tests | **done** — PR #1116 |
+| 02 | `claude/consolidate-02-migrate-provider-manifests` | aws/azure/gcp/lakebed/convex onto it | **done** (−356) |
 | 03 | `claude/consolidate-03-migrate-runner-manifests` | blacksmith/depot/github (−46) | pending |
 
 ### Layer 00 — why it exists, and why it is the bottom
@@ -61,3 +61,7 @@ transports onto core's `guardTransport`.
   captured from the pre-move provider implementation so a "tidier" rewrite fails here rather than
   at a consumer. Baseline bytes for all five providers captured out-of-tree for layer 02 to diff
   against.
+- 02: five providers migrated, net −356 lines. Verified by capturing all 20 published documents
+  (5 providers x 4) before and after and diffing: **byte-identical**. The comparator was itself
+  falsified by perturbing one byte, which it detected. convex keeps its own parser (it genuinely
+  differs) and shares only the helpers.

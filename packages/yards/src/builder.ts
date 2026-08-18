@@ -52,12 +52,19 @@
  * boundaries the builder compiles into. `@hobo/cloud-providers` re-exports them
  * as `station` / `yard` / `camp`, which is the one-import authoring surface.
  */
-import { type Camp, camp, type ProviderSelection } from "@hobo/camps";
+import {
+	type Camp,
+	camp,
+	type ProviderSelection,
+	standardCamps,
+} from "@hobo/camps";
 import {
 	CAPABILITY_SLOTS,
+	type CampTier,
 	type CapabilitySlot,
 	ENV_TYPES,
 	type EnvType,
+	isCampTier,
 	isEnvType,
 	type SlotBinding,
 } from "@hobo/core";
@@ -70,6 +77,7 @@ import {
 import type { Yard } from "./yard.js";
 
 export type BuilderErrorCode =
+	| "CAMP_TIER_UNKNOWN"
 	| "ENV_TYPE_UNKNOWN"
 	| "PROVIDER_REF_UNRESOLVED"
 	| "SLOT_CALL_EMPTY";
@@ -139,6 +147,15 @@ export interface YardBuilder extends YardSlotMethods {
 	/** Declares a Camp inside this Yard; yardId and providerId are derived. */
 	camp(name: string, build?: (builder: CampBuilder) => unknown): YardBuilder;
 	camp(existing: Camp): YardBuilder;
+	/**
+	 * Declares the standard segmentation for one environment — `edge`, `app`,
+	 * `data` by default (Azure WAF SE:04, AWS WAF SEC05-BP01).
+	 *
+	 * This is the "what should exist by default" path: a Yard that says nothing
+	 * about segmentation gets three segments rather than one undifferentiated
+	 * Camp, which is the anti-pattern SEC05-BP01 names first.
+	 */
+	standardCamps(envType: EnvType, tiers?: readonly CampTier[]): YardBuilder;
 	/** The provider id this Yard was opened with. Read-only: set at the call. */
 	readonly providerId: string;
 }
@@ -149,6 +166,8 @@ export interface CampBuilder {
 	staging(): CampBuilder;
 	preview(): CampBuilder;
 	development(): CampBuilder;
+	/** Which standard segment this Camp is. Stated, never inferred from a name. */
+	tier(tier: CampTier): CampBuilder;
 	require(...requirements: string[]): CampBuilder;
 	prefer(...preferences: string[]): CampBuilder;
 	label(key: string, value: string): CampBuilder;
@@ -235,6 +254,7 @@ export function buildStation(
 
 class CampDraft implements CampBuilder {
 	#envType: string | undefined;
+	#tier: CampTier | undefined;
 	readonly #require: string[] = [];
 	readonly #prefer: string[] = [];
 	readonly #labels = new Map<string, string>();
@@ -274,6 +294,18 @@ class CampDraft implements CampBuilder {
 
 	development(): CampBuilder {
 		return this.envType("development");
+	}
+
+	tier(tier: CampTier): CampBuilder {
+		if (!isCampTier(tier)) {
+			throw new BuilderError(
+				"CAMP_TIER_UNKNOWN",
+				`camp tier ${JSON.stringify(tier)} is not a named tier`,
+				"Use a value from CAMP_TIERS (edge, app, data, untrusted, ops), or omit tier for a Camp that segments on some other axis.",
+			);
+		}
+		this.#tier = tier;
+		return this;
 	}
 
 	require(...requirements: string[]): CampBuilder {
@@ -321,6 +353,7 @@ class CampDraft implements CampBuilder {
 			.map(([slot, resolverId]) => ({ slot, resolverId }));
 		return camp(name, {
 			...(this.#envType !== undefined ? { envType: this.#envType } : {}),
+			...(this.#tier !== undefined ? { tier: this.#tier } : {}),
 			require: [...this.#require],
 			prefer: [...this.#prefer],
 			labels: sortedRecord(this.#labels),
@@ -389,6 +422,19 @@ class YardDraft {
 			this.#slots.set(slot, [...bindings]);
 		} else {
 			existing.push(...bindings);
+		}
+		return this;
+	}
+
+	standardCamps(envType: EnvType, tiers?: readonly CampTier[]): this {
+		// Delegates to @hobo/camps rather than re-deriving the set, so the
+		// vocabulary has exactly one implementation and the builder cannot drift
+		// from what standardCamps() produces elsewhere.
+		for (const built of standardCamps(
+			envType,
+			tiers === undefined ? {} : { tiers },
+		)) {
+			this.#camps.push(built);
 		}
 		return this;
 	}

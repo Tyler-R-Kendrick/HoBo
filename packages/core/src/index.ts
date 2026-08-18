@@ -150,6 +150,14 @@ export {
 	parseResourceId,
 	RESOURCE_ID_PATTERN,
 } from "./ports/binding-resolver.js";
+export type { CampTier } from "./ports/camp-tier.js";
+export {
+	CAMP_TIER_EGRESS,
+	CAMP_TIER_ORDER,
+	CAMP_TIERS,
+	DEFAULT_CAMP_TIERS,
+	isCampTier,
+} from "./ports/camp-tier.js";
 export type {
 	CapabilityProfileId,
 	EnvType,

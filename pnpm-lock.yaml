@@ -2138,6 +2138,9 @@ importers:
 
   packages/testing:
     dependencies:
+      '@hobo/contract-harness':
+        specifier: workspace:*
+        version: link:../contract-harness
       '@hobo/core':
         specifier: workspace:*
         version: link:../core

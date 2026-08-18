@@ -51,6 +51,7 @@ export {
 	destroyInProcess,
 	type InProcessDeployment,
 } from "./lanes/in-process.js";
+export { type PactWorld, pactBackedTransport } from "./pact-chaos.js";
 export {
 	classifyReadinessStatus,
 	createFetchReadinessProbe,

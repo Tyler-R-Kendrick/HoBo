@@ -489,6 +489,36 @@ Use these lanes instead:
 - `pnpm test:fuzz` for Jazzer-shaped serialized-input smoke (does not start a long campaign).
 - `pnpm test:fuzz:nightly` for the docker-gated RESTler/Toxiproxy/Testcontainers plan. Skip without Docker. Never live Azure/AWS/GCP/paid SaaS.
 
+### Chaos lanes, and which one proves what
+
+Two chaos suites exist and they are **not** interchangeable. Conflating them is
+how a suite ends up proving neither half.
+
+- **`packages/hobo/test/chaos-conformance.test.ts` owns the state machine.** Its
+  worlds are hand-written, so they can sequence a lifecycle — absent, created,
+  read back — which is what makes *convergence* assertable: a retry after an
+  ambiguous write must yield one resource, not two. What it cannot do is prove
+  the provider actually answers that way; the fake answers the way its author
+  believed.
+- **`packages/hobo/test/pact-chaos-conformance.test.ts` owns the response
+  shapes.** It drives `chaosTransport` over `pactBackedTransport(pact)`, so the
+  statuses, envelopes and ids come from a recorded, provider-verified contract
+  rather than from an invention. `countUnmatched()` must be zero — otherwise a
+  green run means every call fell through to `PACT_NO_INTERACTION` and the suite
+  tested the mock.
+
+**A pact cannot currently prove convergence, and no suite should claim it does.**
+These pacts record request/response *pairs* for contract verification, not state
+sequences. `cloudflare-dns-api.pact.json` records the lookup-by-name only in its
+pre-create form (`result: []`), so a stateless replay always reports the record
+absent and always creates again — an assertion written there would pass for a
+non-convergent driver and fail for a convergent one. Closing that would mean
+recording a post-create read per lifecycle, which is a change to the corpus, not
+to the harness.
+
+Both faults must be observed to fire (`fired` non-empty). A chaos scenario whose
+fault never landed is a green test about a situation that never happened.
+
 ### Which command is the repo-wide gate
 
 `pnpm run test:all` (turbo, one vitest config per package) is the only command

@@ -153,6 +153,7 @@ export {
 	MANIFEST_PATHS,
 	MANIFEST_SCHEMA,
 	parsePublishedManifest,
+	sortKeys,
 	stableDigest,
 } from "./ports/capability-manifest.js";
 export type {

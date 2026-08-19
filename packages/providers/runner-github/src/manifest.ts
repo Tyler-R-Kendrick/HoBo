@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { canonicalJson, sortKeys, stableDigest } from "@hobo/core";
 
 import {
 	BUILD_MACHINE_CATEGORY,
@@ -138,7 +138,7 @@ export function executionHostManifest(
 					},
 					source: {
 						type: "declared-provider",
-						digest: digestRef({
+						digest: stableDigest({
 							providerId,
 							category,
 							sku: fact.sku,
@@ -300,7 +300,7 @@ export function publishCapabilityManifest(
 				},
 				source: {
 					type: "declared-provider",
-					documentRef: digestRef({ providerId, sku: fact.sku }),
+					documentRef: stableDigest({ providerId, sku: fact.sku }),
 					...COST_SOURCE,
 				},
 			};
@@ -310,17 +310,17 @@ export function publishCapabilityManifest(
 		{
 			path: "/.well-known/capability-manifest/capabilities.json",
 			schema: CAPABILITIES_SCHEMA,
-			digest: digestRef(capabilitiesDocument),
+			digest: stableDigest(capabilitiesDocument),
 		},
 		{
 			path: "/.well-known/capability-manifest/auth.json",
 			schema: AUTH_SCHEMA,
-			digest: digestRef(authDocument),
+			digest: stableDigest(authDocument),
 		},
 		{
 			path: "/.well-known/capability-manifest/cost.json",
 			schema: COST_SCHEMA,
-			digest: digestRef(costDocument),
+			digest: stableDigest(costDocument),
 		},
 	];
 	const indexDocument = {
@@ -405,28 +405,4 @@ export function parsePublishedManifest(
 		auth,
 		cost,
 	};
-}
-
-function canonicalJson(value: unknown): string {
-	return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
-}
-
-function sortKeys<T>(value: T): T {
-	if (Array.isArray(value)) {
-		return value.map((item) => sortKeys(item)) as unknown as T;
-	}
-	if (value && typeof value === "object") {
-		return Object.fromEntries(
-			Object.entries(value as Record<string, unknown>)
-				.sort(([left], [right]) => left.localeCompare(right))
-				.map(([key, child]) => [key, sortKeys(child)]),
-		) as unknown as T;
-	}
-	return value;
-}
-
-function digestRef(value: unknown): string {
-	return `sha256:${createHash("sha256")
-		.update(JSON.stringify(sortKeys(value)))
-		.digest("hex")}`;
 }

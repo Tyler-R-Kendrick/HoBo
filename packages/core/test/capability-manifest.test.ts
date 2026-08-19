@@ -50,10 +50,27 @@ describe("canonicalJson", () => {
 });
 
 describe("stableDigest", () => {
-	it("reproduces the pre-move digests exactly", () => {
-		expect(stableDigest(NESTED)).toBe("fnv:754f6090");
-		expect(stableDigest({})).toBe("fnv:00000f62");
-		expect(digestRef("cost:x")).toBe("fnv:02e2d5b8");
+	it("is SHA-256 over the canonical form", () => {
+		// Pinned so the algorithm cannot drift back to something cheaper. These
+		// are plain `sha256(JSON.stringify(sortKeys(value)))` and can be checked
+		// with `openssl dgst -sha256` against the canonical bytes.
+		expect(stableDigest(NESTED)).toBe(
+			"sha256:7d049f1b0daf959ec90d38211977ec0ffee8e2ef26a976f6b10a87abf61d127f",
+		);
+		expect(stableDigest({})).toBe(
+			"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+		);
+		expect(digestRef("cost:x")).toBe(
+			"sha256:3cadf1ccfb031ec836837d6cf68d30636f1331ecbf18d52ba14b276999ab9de7",
+		);
+	});
+
+	it("is collision-resistant, which is the whole reason it changed", () => {
+		// The old 32-bit FNV walk emitted 8 hex digits — about 4 billion values,
+		// brute-forceable in milliseconds. These documents come from an origin
+		// the provider controls, so that made the reference a typo detector
+		// rather than an integrity check. 64 hex digits is the fix.
+		expect(stableDigest(NESTED)).toMatch(/^sha256:[0-9a-f]{64}$/u);
 	});
 
 	it("agrees for documents that differ only in key order", () => {
@@ -64,11 +81,9 @@ describe("stableDigest", () => {
 		expect(stableDigest({ a: 1 })).not.toBe(stableDigest({ a: 2 }));
 	});
 
-	it("is always eight hex digits behind the fnv: prefix", () => {
-		// The padStart is what makes references fixed-width; dropping it produces
-		// shorter digests for small hashes and breaks nothing until it does.
+	it("is fixed-width for every input", () => {
 		for (const seed of ["", "a", "cost:aws.s3", "x".repeat(500)]) {
-			expect(stableDigest(seed)).toMatch(/^fnv:[0-9a-f]{8}$/u);
+			expect(stableDigest(seed)).toMatch(/^sha256:[0-9a-f]{64}$/u);
 		}
 	});
 });

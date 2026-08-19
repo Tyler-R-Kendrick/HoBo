@@ -7,15 +7,28 @@
  * contract, not any one provider's concern — a provider that spells
  * `hobo.capabilities/v1` differently is broken, not customised.
  *
- * **These implementations were moved verbatim, deliberately.** The output of
- * `canonicalJson` is what every published digest is computed over, so a
- * "tidier" rewrite that reorders a key or drops the trailing newline silently
- * invalidates every manifest already published against it. `stableDigest` is
- * likewise a document-integrity reference and *not* a security primitive —
- * upgrading it to SHA-256 during a move would be a behaviour change wearing a
- * refactor's clothes. `capability-manifest.test.ts` pins both against the exact
- * bytes the providers produced before the move.
+ * `canonicalJson` was moved verbatim and must stay that way: its output is what
+ * every digest is computed over, so a "tidier" rewrite that reorders a key or
+ * drops the trailing newline changes every digest silently.
+ *
+ * `stableDigest` was **not** kept as-is, and the reasoning is worth recording
+ * because the previous comment here argued the opposite. It used to be a 32-bit
+ * FNV-ish walk emitting `fnv:` + 8 hex digits, described as "not a security
+ * primitive". That description was accurate and that was the problem: these
+ * documents are fetched from a **provider-controlled origin**, so a
+ * document-integrity reference an attacker can collide by brute force in
+ * milliseconds is not integrity, it is a typo detector. Three runner packages
+ * had already reached the same conclusion independently and used SHA-256.
+ *
+ * The reason given for keeping FNV — that changing it would invalidate
+ * published references — did not survive being checked. Nothing in the repo
+ * verifies these values (`runner-github` checks only that the field is a
+ * non-empty string), and no manifest has ever been published from here to a
+ * live provider. The cost of converging was zero and the cost of not
+ * converging was two algorithms behind one name.
  */
+
+import { createHash } from "node:crypto";
 
 // public-contract: capability-manifest document schema ids (Plan 6 signs).
 export const MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
@@ -41,37 +54,48 @@ export function canonicalJson(value: unknown): string {
 	return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
 }
 
-function sortKeys(value: unknown): unknown {
+/**
+ * Key-sorted at every depth, arrays left in order.
+ *
+ * Exported because it is the canonical form itself, not an implementation
+ * detail of the writer: a caller that wants a deterministically-ordered
+ * *object* (rather than a string) needs exactly this, and reimplementing it
+ * is how the two spellings drift apart.
+ */
+export function sortKeys<T>(value: T): T {
 	if (Array.isArray(value)) {
-		return value.map((item) => sortKeys(item));
+		return value.map((item) => sortKeys(item)) as unknown as T;
 	}
 	if (value && typeof value === "object") {
 		return Object.fromEntries(
 			Object.entries(value as Record<string, unknown>)
 				.sort(([left], [right]) => left.localeCompare(right))
 				.map(([key, child]) => [key, sortKeys(child)]),
-		);
+		) as unknown as T;
 	}
 	return value;
 }
 
 /**
- * Deterministic non-cryptographic digest for document integrity references
- * inside the published bundle (the Registry hashes the index separately).
+ * SHA-256 over the canonical form, for document-integrity references inside the
+ * published bundle (the Registry hashes the index separately).
  *
- * Not a security primitive. It exists so a bundle can name its own parts, and
- * changing it changes every published reference.
+ * Collision resistance is the point: the bundle is fetched from an origin the
+ * provider controls, so a reference that only detects accidental corruption
+ * lets a hostile origin serve a different document under the indexed digest.
  */
 export function stableDigest(value: unknown): string {
-	const text = JSON.stringify(sortKeys(value));
-	let hash = 0;
-	for (let index = 0; index < text.length; index += 1) {
-		hash = (hash * 31 + text.charCodeAt(index)) | 0;
-	}
-	return `fnv:${(hash >>> 0).toString(16).padStart(8, "0")}`;
+	return `sha256:${createHash("sha256")
+		.update(JSON.stringify(sortKeys(value)))
+		.digest("hex")}`;
 }
 
-/** A digest over a seed string, for cost-fact source references. */
+/**
+ * A digest over a seed string, for cost-fact source references.
+ *
+ * The wrapping object is kept because it is what the providers already emit;
+ * unwrapping it would change every reference for no gain.
+ */
 export function digestRef(seed: string): string {
 	return stableDigest({ seed });
 }

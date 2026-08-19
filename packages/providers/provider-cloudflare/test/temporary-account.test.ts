@@ -230,7 +230,15 @@ describe("consent", () => {
 
 	it("never sends acceptTermsOfService without a persisted record", async () => {
 		const { input, transport } = harness({ consent: undefined });
-		await expect(provisionTemporaryAccountYard(input)).rejects.toThrow();
+		// A bare `rejects.toThrow()` here proved only "something went wrong
+		// before the first request", which a harness typo satisfies just as
+		// well as the consent gate. Name the gate: CONSENT_REQUIRED/MISSING is
+		// the branch that must fire when no consent was supplied at all.
+		await expect(provisionTemporaryAccountYard(input)).rejects.toMatchObject({
+			name: "TemporaryAccountError",
+			code: "CONSENT_REQUIRED",
+			reason: "MISSING",
+		});
 		expect(transport.requests).toHaveLength(0);
 	});
 });
@@ -482,7 +490,18 @@ describe("idempotency and ambiguous-timeout adoption", () => {
 			createThrows: new Error("socket hang up"),
 		});
 		const { input, custody, actionVault } = harness({ registry, transport });
-		await expect(provisionTemporaryAccountYard(input)).rejects.toThrow();
+		// The stub fails the *create* call, and it is specifically the
+		// mutating-call-of-unknown-outcome branch — `PROVIDER_OPERATION_AMBIGUOUS`
+		// — that makes observe-and-adopt the right next move. A bare
+		// `rejects.toThrow()` could not tell that from `PROVIDER_UNAVAILABLE`
+		// on the non-mutating challenge call, which would mean the adoption
+		// path below was probing a state nothing had ever tried to create.
+		await expect(provisionTemporaryAccountYard(input)).rejects.toMatchObject({
+			name: "TemporaryAccountError",
+			code: "PROVIDER_OPERATION_AMBIGUOUS",
+			reason: "TRANSPORT_ERROR",
+			message: "cloudflare preview account transport failed",
+		});
 
 		const result = await observeAndAdoptTemporaryAccount({
 			transport,

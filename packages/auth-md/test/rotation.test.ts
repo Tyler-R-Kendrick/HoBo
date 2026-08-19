@@ -103,7 +103,9 @@ describe("rotation forced by infrastructure claim", () => {
 		expect(discloseSensitive(outcome.keyMaterial)).toBe(
 			FAKE_ROTATED_KEY_MATERIAL,
 		);
-		expect(() => discloseSensitive(current)).toThrow();
+		expect(() => discloseSensitive(current)).toThrow(
+			"sensitive material is not available for this reference",
+		);
 
 		expect(() =>
 			assertManagementAccess({
@@ -136,7 +138,9 @@ describe("revocation", () => {
 
 		expect(revoked.phase).toBe("revoked");
 		expect(port.revocations).toEqual([`${REGISTRATION_REF}:revocation`]);
-		expect(() => discloseSensitive(current)).toThrow();
+		expect(() => discloseSensitive(current)).toThrow(
+			"sensitive material is not available for this reference",
+		);
 	});
 
 	it("refuses management access for a revoked principal", async () => {

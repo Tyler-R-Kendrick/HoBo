@@ -36,9 +36,13 @@ describe("convex Cloudflare Containers provision (anon)", () => {
 		expect(wrangler).toContain(CONVEX_BACKEND_OCI_IMAGE);
 		expect(wrangler).toContain("ConvexBackend");
 		expect(wrangler).not.toContain("./Dockerfile");
+		// The claim is "no Dockerfile was written", so the assertion has to be
+		// ENOENT specifically: a bare `rejects.toThrow()` would also have been
+		// satisfied by EACCES, EISDIR, or a bad `workDir` — i.e. by the test
+		// looking in the wrong place.
 		await expect(
 			readFile(path.join(workDir, "Dockerfile"), "utf8"),
-		).rejects.toThrow();
+		).rejects.toMatchObject({ code: "ENOENT" });
 		expect(JSON.stringify(wrangler)).not.toMatch(/hobo\/convex/i);
 		const worker = await readFile(path.join(workDir, "src/index.ts"), "utf8");
 		expect(worker).toContain("generate_admin_key.sh");

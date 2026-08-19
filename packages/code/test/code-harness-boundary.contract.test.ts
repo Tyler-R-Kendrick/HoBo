@@ -129,19 +129,39 @@ describe("SessionControlPlane boundary pact", () => {
 				...input,
 				session: { ...input.session, lifecycleState: "running" },
 			}),
-		).toThrow();
+		).toThrow(
+			'cannot decode enum hobo.code.v1.SessionLifecycleState from JSON: "running"',
+		);
 		expect(() =>
 			parseSessionSnapshot({
 				...input,
 				session: { ...input.session, lifecycleState: 999 },
 			}),
 		).toThrow("session.lifecycleState is not a recognized lifecycle state");
-		for (const deliveryState of [
-			{ ...input.deliveryState, pullRequestNumber: "0" },
-			{ ...input.deliveryState, pullRequestUrl: "" },
-			{ ...input.deliveryState, stackParentBranch: "" },
-		]) {
-			expect(() => parseSessionSnapshot({ ...input, deliveryState })).toThrow();
+		// Three rows, three different refusals — and the bare `.toThrow()` this
+		// replaced could not tell them apart, nor tell any of them from a
+		// decode error raised before the contract checks ran at all.
+		const deliveryRefusals: readonly [
+			deliveryState: Record<string, unknown>,
+			message: string,
+		][] = [
+			[
+				{ ...input.deliveryState, pullRequestNumber: "0" },
+				"deliveryState.pullRequestNumber must be positive",
+			],
+			[
+				{ ...input.deliveryState, pullRequestUrl: "" },
+				"deliveryState.pullRequestUrl must not be empty",
+			],
+			[
+				{ ...input.deliveryState, stackParentBranch: "" },
+				"deliveryState.stackParentBranch must not be empty",
+			],
+		];
+		for (const [deliveryState, message] of deliveryRefusals) {
+			expect(() => parseSessionSnapshot({ ...input, deliveryState })).toThrow(
+				message,
+			);
 		}
 		expect(() =>
 			parseSessionSnapshot({

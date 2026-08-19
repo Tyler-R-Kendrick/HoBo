@@ -28,7 +28,11 @@
  * real certificate — those remain the host's obligations. Passing here is not
  * evidence that a live call was made.
  */
-import type { HttpTransport, TransportRequest } from "@hobo/core";
+import type {
+	HttpTransport,
+	TransportGuardErrorCode,
+	TransportRequest,
+} from "@hobo/core";
 import { guardedAwsTransport } from "@hobo/provider-aws";
 import { guardedAzureTransport } from "@hobo/provider-azure";
 import { guardedCloudflareTransport } from "@hobo/provider-cloudflare";
@@ -114,6 +118,34 @@ const CASES: readonly GuardCase[] = [
 	},
 ];
 
+/**
+ * Assert a guarded call was refused *for the stated reason*.
+ *
+ * The bare `rejects.toThrow()` these replaced was the §1.1 shape: every one of
+ * the six probes below went green on any rejection at all, so a guard that
+ * refused everything with one wrong code — an empty `allowedHosts`, say, which
+ * turns the http probe into a host refusal — read as six passing refusal tests.
+ * A refusal test that cannot tell one refusal from another is not testing the
+ * branch it names.
+ */
+async function expectRefusal(
+	call: Promise<unknown>,
+	code: TransportGuardErrorCode,
+	messageFragment: RegExp,
+): Promise<void> {
+	const error = await call.then(
+		() => undefined,
+		(reason: unknown) => reason,
+	);
+	expect(error, "guarded call resolved instead of refusing").toBeInstanceOf(
+		Error,
+	);
+	const thrown = error as Error & { code?: unknown };
+	expect(thrown.name).toBe("TransportGuardError");
+	expect(thrown.code).toBe(code);
+	expect(thrown.message).toMatch(messageFragment);
+}
+
 function request(
 	url: string,
 	overrides: Partial<TransportRequest> = {},
@@ -141,9 +173,11 @@ describe.each(CASES)("$label transport guard", (guard) => {
 	it("refuses plain http, and never sends", async () => {
 		const inner = spyInner();
 		const guarded = guard.wrap(inner.transport);
-		await expect(
+		await expectRefusal(
 			guarded(request(guard.allowed.replace("https://", "http://"))),
-		).rejects.toThrow();
+			"TRANSPORT_SCHEME_FORBIDDEN",
+			/must use https, got http/u,
+		);
 		expect(inner.reached()).toBe(0);
 	});
 
@@ -152,7 +186,11 @@ describe.each(CASES)("$label transport guard", (guard) => {
 		// at an origin that then receives the Authorization header.
 		const inner = spyInner();
 		const guarded = guard.wrap(inner.transport);
-		await expect(guarded(request(guard.foreignHost))).rejects.toThrow();
+		await expectRefusal(
+			guarded(request(guard.foreignHost)),
+			"TRANSPORT_HOST_FORBIDDEN",
+			/is not exactly one of the allowlisted provider hosts/u,
+		);
 		expect(inner.reached()).toBe(0);
 	});
 
@@ -164,12 +202,19 @@ describe.each(CASES)("$label transport guard", (guard) => {
 			// testing nothing.
 			const inner = spyInner();
 			const guarded = guard.wrap(inner.transport);
-			await expect(guarded(request(guard.allowed))).resolves.toBeDefined();
+			await expect(guarded(request(guard.allowed))).resolves.toMatchObject({
+				status: 200,
+			});
+			expect(inner.reached()).toBe(1);
 			return;
 		}
 		const inner = spyInner();
 		const guarded = guard.wrap(inner.transport);
-		await expect(guarded(request(foreignPath))).rejects.toThrow();
+		await expectRefusal(
+			guarded(request(foreignPath)),
+			"TRANSPORT_PATH_FORBIDDEN",
+			/is outside the allowlisted prefixes/u,
+		);
 		expect(inner.reached()).toBe(0);
 	});
 
@@ -179,22 +224,32 @@ describe.each(CASES)("$label transport guard", (guard) => {
 		// deploy that reports a timeout it never configured.
 		const inner = spyInner();
 		const guarded = guard.wrap(inner.transport);
-		await expect(
+		await expectRefusal(
 			guarded(request(guard.allowed, { timeoutMs: guard.maxTimeoutMs + 1 })),
-		).rejects.toThrow();
+			"TRANSPORT_TIMEOUT_EXCEEDED",
+			new RegExp(
+				`request timeoutMs ${guard.maxTimeoutMs + 1} exceeds the policy cap of ${guard.maxTimeoutMs}`,
+				"u",
+			),
+		);
 		expect(inner.reached()).toBe(0);
 	});
 
 	it("refuses an over-budget response cap rather than clamping it", async () => {
 		const inner = spyInner();
 		const guarded = guard.wrap(inner.transport);
-		await expect(
+		await expectRefusal(
 			guarded(
 				request(guard.allowed, {
 					maxResponseBytes: guard.maxResponseBytes + 1,
 				}),
 			),
-		).rejects.toThrow();
+			"TRANSPORT_BODY_TOO_LARGE",
+			new RegExp(
+				`request maxResponseBytes ${guard.maxResponseBytes + 1} exceeds the policy cap of ${guard.maxResponseBytes}`,
+				"u",
+			),
+		);
 		expect(inner.reached()).toBe(0);
 	});
 });

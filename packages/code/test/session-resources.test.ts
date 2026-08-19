@@ -720,6 +720,10 @@ describe("session resource inventory", () => {
 
 	it("does not persist connection strings or secret-looking values", () => {
 		const hoboHome = tempHome();
+		// `/secret|credential|password/i` matched the one generic refusal
+		// message this module emits, for every field, so it could not say
+		// *which* field was caught — and would have stayed green if the scan
+		// had been narrowed to a field this fixture does not use.
 		expect(() =>
 			recordSessionResources({
 				hoboHome,
@@ -740,7 +744,9 @@ describe("session resource inventory", () => {
 					},
 				],
 			}),
-		).toThrow(/secret|credential|password/i);
+		).toThrow(
+			"refusing to record endpoint.backendUrl: looks like a secret or credential",
+		);
 		expect(SESSION_RESOURCES_SCHEMA).toBe("hobo.code.session-resources/v1");
 	});
 

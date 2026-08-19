@@ -347,13 +347,46 @@ describe("Environment Network Isolation conformance", () => {
 		expect(pack.id).toBe(ENV_NETWORK_ISOLATION_POLICY_PACK_ID);
 		expect(pack.failClosed).toBe(true);
 		expect(pack.defaultDenyCrossEnv).toBe(true);
+		// `parseEnvNetworkIsolationPolicyPack` has three refusal branches and a
+		// bare `.toThrow()` could not tell them apart: a pack that lost its
+		// `failClosed` guard entirely would still have gone green here, refused
+		// one line earlier on the id. Each row names the branch it exercises.
 		expect(() =>
 			parseEnvNetworkIsolationPolicyPack({
 				id: ENV_NETWORK_ISOLATION_POLICY_PACK_ID,
 				failClosed: false,
 				defaultDenyCrossEnv: true,
 			}),
-		).toThrow();
+		).toThrow(
+			new TypeError(
+				"env isolation pack must keep failClosed and defaultDenyCrossEnv true",
+			),
+		);
+		expect(() =>
+			parseEnvNetworkIsolationPolicyPack({
+				id: ENV_NETWORK_ISOLATION_POLICY_PACK_ID,
+				failClosed: true,
+				defaultDenyCrossEnv: false,
+			}),
+		).toThrow(
+			new TypeError(
+				"env isolation pack must keep failClosed and defaultDenyCrossEnv true",
+			),
+		);
+		expect(() =>
+			parseEnvNetworkIsolationPolicyPack({
+				id: "hobo.policy.pack.someone-elses/v1",
+				failClosed: true,
+				defaultDenyCrossEnv: true,
+			}),
+		).toThrow(
+			new TypeError(
+				`policy pack id must be ${ENV_NETWORK_ISOLATION_POLICY_PACK_ID}`,
+			),
+		);
+		expect(() => parseEnvNetworkIsolationPolicyPack(null)).toThrow(
+			new TypeError("env network isolation policy pack must be an object"),
+		);
 	});
 
 	it("rego-lite env isolation document denies cross-env", () => {

@@ -95,41 +95,63 @@ describe("assertCase", () => {
 	const returned = (value: unknown) => ({ returned: value });
 	const threw = (error: unknown) => ({ threw: error });
 
+	// Every row here is a *different* assertion inside `assertCase`, and the
+	// bare `.toThrow()` this replaced could not distinguish them: an
+	// `assertCase` that rejected every row for one wrong reason — an unparsed
+	// field, a thrown TypeError on a shape it did not expect — would have gone
+	// green on all eight. This is the harness every PACT suite in the repo
+	// delegates to, so a false green here is a false green everywhere.
 	it.each([
 		[
 			"a throws case that returned instead",
 			{ method: "f", throws: "not found" },
 			returned("not found"),
+			'expected a throw matching not found, got "not found"',
 		],
 		[
 			"a throwsSubset case that returned instead",
 			{ method: "f", throwsSubset: { code: "E" } },
 			returned({ code: "E" }),
+			'expected a throw matching {"code":"E"}, got {"code":"E"}',
 		],
 		[
 			"a subset the result does not contain",
 			{ method: "f", subset: { a: 1, b: 2 } },
 			returned({ a: 1, b: 3 }),
+			'result mismatch at $.b — got {"a":1,"b":3}',
 		],
 		[
 			"a subset against a missing key",
 			{ method: "f", subset: { a: 1 } },
 			returned({}),
+			"result mismatch at $.a — got {}",
 		],
-		["an expect that differs", { method: "f", expect: 1 }, returned(2)],
-		["a match that misses", { method: "f", match: "^ok$" }, returned("nope")],
+		[
+			"an expect that differs",
+			{ method: "f", expect: 1 },
+			returned(2),
+			"expected 2 to deeply equal 1",
+		],
+		[
+			"a match that misses",
+			{ method: "f", match: "^ok$" },
+			returned("nope"),
+			"expected 'nope' to match /^ok$/u",
+		],
 		[
 			"a throw whose message misses",
 			{ method: "f", throws: "not found" },
 			threw(new Error("boom")),
+			"expected 'boom' to match /not found/u",
 		],
 		[
 			"a throw whose fields miss",
 			{ method: "f", throwsSubset: { code: "A" } },
 			threw(Object.assign(new Error("boom"), { code: "B" })),
+			"thrown error mismatch at $.code — got Error: boom",
 		],
-	])("fails %s", (_label, row, outcome) => {
-		expect(() => assertCase(row, outcome)).toThrow();
+	])("fails %s", (_label, row, outcome, message) => {
+		expect(() => assertCase(row, outcome)).toThrow(message);
 	});
 
 	it.each([

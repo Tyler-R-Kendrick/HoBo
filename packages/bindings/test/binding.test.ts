@@ -66,12 +66,27 @@ describe("capability binding", () => {
 	});
 
 	it("rejects a plaintext credential in credentialRef", () => {
-		expect(() =>
+		// `parseCapabilityBinding` refuses for a dozen unrelated reasons (bad
+		// schemaVersion, missing profile ref, out-of-range port). A bare
+		// `.toThrow()` here would have gone green on any of them, so it did not
+		// establish that the *secret-locator* rule is what rejects a
+		// connection string — the one property this test is named for.
+		let thrown: unknown;
+		try {
 			parseCapabilityBinding(
 				{ ...base, credentialRef: "postgresql://user:pw@host:5432/db" },
 				parseSecretRef,
-			),
-		).toThrow();
+			);
+		} catch (cause) {
+			thrown = cause;
+		}
+		expect(thrown, "plaintext credential was admitted").toBeInstanceOf(Error);
+		const error = thrown as Error & { code?: unknown };
+		expect(error.name).toBe("SecretRefError");
+		expect(error.code).toBe("SECRET_REFERENCE_EMBEDS_VALUE");
+		expect(error.message).toBe(
+			"value looks like a plaintext credential, not a secret locator; deposit it into secret custody and reference it instead",
+		);
 	});
 
 	it("rejects a binding with no endpoints", () => {

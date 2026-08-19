@@ -283,13 +283,36 @@ describe("secretless resolution ladder", () => {
 		expect(file.schemaVersion).toBe("hobo.local-config-override/v1");
 		const plain = decryptLocalOverrides(file, "dev-pass");
 		expect(plain.LOG_LEVEL).toBe("debug");
-		expect(() =>
+		// Two different refusals live behind this call — "key not in the
+		// non-sensitive allowlist" and "this value looks like a secret" — and
+		// the previous `/sensitive|not in non-sensitive/i` matched either, so
+		// it could not say which one fired. `API_KEY` *is* allowlisted here, so
+		// the branch under test is the looks-sensitive one; pin its code.
+		let sensitiveRefusal: unknown;
+		try {
 			encryptLocalOverrides({
 				values: { API_KEY: "sk-super-secret-value-12345" },
 				allowedKeys: ["API_KEY"],
 				passphrase: "x",
+			});
+		} catch (cause) {
+			sensitiveRefusal = cause;
+		}
+		expect(sensitiveRefusal).toBeInstanceOf(Error);
+		expect((sensitiveRefusal as { code?: unknown }).code).toBe(
+			"override-looks-sensitive",
+		);
+		expect((sensitiveRefusal as Error).message).toBe(
+			"local override API_KEY looks sensitive; only non-secret config allowed",
+		);
+		// The neighbouring branch, so the two can never be confused again.
+		expect(() =>
+			encryptLocalOverrides({
+				values: { LOG_LEVEL: "debug" },
+				allowedKeys: [],
+				passphrase: "x",
 			}),
-		).toThrow(/sensitive|not in non-sensitive/i);
+		).toThrow("local override key LOG_LEVEL is not in non-sensitive allowlist");
 
 		const conf = assertNoPlaintextConformance({
 			agentContext: { API_KEY: "[REDACTED:provider-federation:API_KEY]" },

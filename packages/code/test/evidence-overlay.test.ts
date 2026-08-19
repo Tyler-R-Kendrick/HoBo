@@ -38,31 +38,58 @@ describe("evidence overlay message boundary", () => {
 	});
 
 	it("rejects the wrong origin before inspecting the payload", () => {
-		expect(() =>
-			parseEvidenceOverlayMessage(
-				{ origin: "https://attacker.example", data: { type: "report" } },
-				controlsOrigin,
-			),
-		).toThrow(/origin/);
+		expect(
+			() =>
+				parseEvidenceOverlayMessage(
+					{ origin: "https://attacker.example", data: { type: "report" } },
+					controlsOrigin,
+				),
+			// `/origin/` also matches the parser's own vocabulary elsewhere;
+			// pin the origin check's own message.
+		).toThrow("evidence overlay message origin is not trusted");
 	});
 
+	// Nine payloads, eight distinct refusals. The previous matcher was
+	// `/message|type|field|length|capture|recording/`, and the literal string
+	// "evidence overlay message" opens *every* refusal this parser emits — so
+	// the first alternative alone matched all nine rows, and the table proved
+	// only "something was rejected". Whole checks could have been deleted with
+	// a neighbouring one absorbing the row, and it would still have been green.
 	it.each([
-		null,
-		{},
-		{ type: "delete-project" },
-		{ type: "report", extra: true },
-		{ type: "capture", kind: "screen-and-audio" },
-		{ type: "record", action: "pause" },
-		{ type: "save-capability", recordingId: "", name: "Checkout" },
-		{ type: "annotate", selector: "", note: "note" },
-		{ type: "edit-request", selector: "main", prompt: "x".repeat(8_193) },
-	])("rejects malformed or over-broad payloads", (data) => {
+		[null, "evidence overlay message must be an object"],
+		[{}, "evidence overlay message type is invalid"],
+		[{ type: "delete-project" }, "evidence overlay message type is invalid"],
+		[
+			{ type: "report", extra: true },
+			"evidence overlay message has invalid fields",
+		],
+		[
+			{ type: "capture", kind: "screen-and-audio" },
+			"evidence overlay capture kind is invalid",
+		],
+		[
+			{ type: "record", action: "pause" },
+			"evidence overlay recording action is invalid",
+		],
+		[
+			{ type: "save-capability", recordingId: "", name: "Checkout" },
+			"evidence overlay recordingId length is invalid",
+		],
+		[
+			{ type: "annotate", selector: "", note: "note" },
+			"evidence overlay selector length is invalid",
+		],
+		[
+			{ type: "edit-request", selector: "main", prompt: "x".repeat(8_193) },
+			"evidence overlay prompt length is invalid",
+		],
+	])("rejects malformed or over-broad payloads", (data, message) => {
 		expect(() =>
 			parseEvidenceOverlayMessage(
 				{ origin: controlsOrigin, data },
 				controlsOrigin,
 			),
-		).toThrow(/message|type|field|length|capture|recording/);
+		).toThrow(message);
 	});
 });
 

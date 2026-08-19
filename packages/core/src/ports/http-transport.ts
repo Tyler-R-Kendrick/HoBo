@@ -9,12 +9,14 @@
  * sponsoring provider token, so a driver that trusts its transport can be
  * pointed at an attacker's origin by one bad config value.
  *
- * The guard generalizes the hardened Vercel boundary: HTTPS only, exact-match
- * allowlisted hosts, allowlisted path prefixes, no redirect chasing, bounded
- * body, bounded time. Every violation is a `TransportGuardError` carrying its
- * own code — the guard never clamps, never falls back, and never silently
- * downgrades a request into a weaker one, because a downgrade that still
- * reaches the network has already spent the credential.
+ * The guard generalizes the hardened Vercel boundary: HTTPS only, allowlisted
+ * hosts — exact by default, optionally plus a dot-anchored parent domain for a
+ * provider whose per-tenant origin is minted at deploy time — allowlisted path
+ * prefixes, no redirect chasing, bounded body, bounded time. Every violation is
+ * a `TransportGuardError` carrying its own code — the guard never clamps, never
+ * falls back, and never silently downgrades a request into a weaker one,
+ * because a downgrade that still reaches the network has already spent the
+ * credential.
  *
  * Two normalization rules are deliberate and load-bearing:
  *
@@ -92,6 +94,26 @@ export interface TransportGuardPolicy {
 	readonly allowedPathPrefixes: readonly string[];
 	readonly maxTimeoutMs: number;
 	readonly maxResponseBytes: number;
+	/**
+	 * Dot-anchored parent domains, for providers whose per-tenant origins are
+	 * minted at deploy time and therefore cannot be written down in advance.
+	 * Upstash is the case that forced it: the data plane lives at
+	 * `<name>-<id>.upstash.io`, a host nobody knows until the database exists.
+	 *
+	 * Optional and empty by default, so every policy that does not set it is
+	 * evaluated exactly as before — the host must still match `allowedHosts`
+	 * exactly. When it is set the two are a union, never a replacement: an
+	 * entry here widens reach to one parent domain and nothing else.
+	 *
+	 * Each entry must start with `.` and carry at least one further dot, and an
+	 * entry that does not is refused before any URL is judged rather than
+	 * quietly narrowing or widening the policy. That check is the whole point
+	 * of the field being separate from `allowedHosts`: written as
+	 * `"upstash.io"`, the same `endsWith` test admits `evilupstash.io`, and
+	 * written as `".com"` it admits the registry. Both were reachable in the
+	 * hand-rolled copy this field replaces.
+	 */
+	readonly allowedHostSuffixes?: readonly string[];
 }
 
 // public-contract: every refusal a guarded transport can report.
@@ -219,14 +241,79 @@ export function assertAllowedEndpoint(
 			`request url must use the default https port, got ${parsed.port}`,
 		);
 	}
-	if (!policy.allowedHosts.includes(parsed.hostname)) {
-		throw new TransportGuardError(
-			"TRANSPORT_HOST_FORBIDDEN",
-			`host ${parsed.hostname} is not exactly one of the allowlisted provider hosts (${policy.allowedHosts.join(", ") || "none"})`,
-		);
-	}
+	assertAllowedHost(parsed, policy);
 	assertAllowedPath(parsed, policy);
 	return parsed;
+}
+
+/**
+ * An entry in `allowedHostSuffixes` is usable only if it is dot-anchored and
+ * names something below a registry level: `.upstash.io` yes, `.com` no,
+ * `upstash.io` no.
+ *
+ * This runs before any host is compared, so an unusable entry refuses every
+ * request rather than silently changing what the policy reaches. The two
+ * rejected forms are not hypothetical — `endsWith("upstash.io")` matches
+ * `evilupstash.io`, and `endsWith(".com")` matches the whole registry — and
+ * both were expressible in the per-provider copies that predate this field.
+ */
+function assertUsableHostSuffixes(suffixes: readonly string[]): void {
+	for (const suffix of suffixes) {
+		const labels = suffix.split(".");
+		const usable =
+			labels.length >= 3 &&
+			labels[0] === "" &&
+			labels.slice(1).every((label) => label.length > 0);
+		if (!usable) {
+			throw new TransportGuardError(
+				"TRANSPORT_HOST_FORBIDDEN",
+				`policy allowedHostSuffixes entry ${JSON.stringify(suffix)} must start with "." and carry at least one further dot: "upstash.io" would also match evilupstash.io, and ".com" would match the registry`,
+			);
+		}
+	}
+}
+
+/**
+ * True when `host` sits under `suffix` as a real child label.
+ *
+ * `endsWith` on its own is not that test, and the gap is reachable: WHATWG
+ * parses `https://.upstash.io/` to the hostname `.upstash.io` and
+ * `https://..upstash.io/` to `..upstash.io`, both of which end with
+ * `.upstash.io`. Neither names a child of the parent domain — they carry an
+ * empty label where the child should be — so what is required is that the part
+ * in front of the suffix exists and does not itself end in a dot.
+ *
+ * (The bare `upstash.io` never reaches this: it does not end with the
+ * dot-anchored suffix at all.)
+ */
+function isUnderParentDomain(host: string, suffix: string): boolean {
+	if (!host.endsWith(suffix)) return false;
+	const child = host.slice(0, host.length - suffix.length);
+	return child.length > 0 && !child.endsWith(".");
+}
+
+/**
+ * Exact match against `allowedHosts`, or a dot-anchored match against
+ * `allowedHostSuffixes`. The suffix arm requires a real child label, so
+ * `.upstash.io` admits neither the bare `upstash.io` nor the empty-label
+ * `.upstash.io`.
+ *
+ * The refusal message stays byte-identical to the pre-suffix one whenever no
+ * suffixes are configured; provider suites pin it anchored.
+ */
+function assertAllowedHost(parsed: URL, policy: TransportGuardPolicy): void {
+	const suffixes = policy.allowedHostSuffixes ?? [];
+	assertUsableHostSuffixes(suffixes);
+	const host = parsed.hostname;
+	if (policy.allowedHosts.includes(host)) return;
+	if (suffixes.some((suffix) => isUnderParentDomain(host, suffix))) return;
+	const exact = `host ${host} is not exactly one of the allowlisted provider hosts (${policy.allowedHosts.join(", ") || "none"})`;
+	throw new TransportGuardError(
+		"TRANSPORT_HOST_FORBIDDEN",
+		suffixes.length === 0
+			? exact
+			: `${exact} and is not under an allowlisted parent domain (${suffixes.join(", ")})`,
+	);
 }
 
 /**
@@ -238,10 +325,29 @@ export function assertAllowedEndpoint(
  * the provider, past every check. Their presence is the refusal.
  *
  * Exported as a predicate rather than folded into `assertAllowedEndpoint`
- * because three transports cannot use the whole guard — they match hosts by
- * suffix, or permit http on loopback, or require same-origin — but every one of
- * them needs *this*. Sharing the rule is what keeps the copies from drifting
- * again; sharing the whole guard would have cost them a security property.
+ * because two transports still cannot use `assertAllowedEndpoint` at all, but
+ * both need *this*. Sharing the rule is what keeps the copies from drifting
+ * again.
+ *
+ * The two, and what actually blocks them — measured, because an earlier
+ * version of this comment named the wrong reasons:
+ *
+ * - `provider-kubernetes` talks to the operator's own apiserver, so it has no
+ *   host allowlist to write down at all and reaches it on the cluster's port
+ *   (`:6443`, or `:8001` through `kubectl proxy`). `assertAllowedEndpoint`
+ *   refuses a non-443 port before it ever consults a host rule. Giving it an
+ *   `allowAnyHost` and an `allowedPorts` escape would delete the two checks
+ *   this guard exists for, for the benefit of one caller.
+ * - `provider-browser-wasm` fetches WebAssembly, so its response body is a
+ *   `Uint8Array`. `TransportResponse.body` here is a `string`, and routing
+ *   bundle bytes through it corrupts them: `0xff 0xfe 0x80` decodes to three
+ *   U+FFFD and re-encodes as nine bytes, which is also what the byte cap would
+ *   then be measuring.
+ *
+ * `provider-upstash` was the third and is no longer: `allowedHostSuffixes`
+ * expresses its data plane, and its URL check now runs here. Its response half
+ * stays local because it clamps an over-asking caller down to the policy where
+ * this guard refuses — a difference its own suite pins.
  */
 export function encodesPathSeparator(pathname: string): boolean {
 	return /%2e|%2f|%5c/iu.test(pathname);

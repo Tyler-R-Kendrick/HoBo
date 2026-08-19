@@ -10,6 +10,7 @@ import {
 	assertAllowedEndpoint,
 	createGuardedTransport,
 	UPSTASH_CONTROL_PLANE_POLICY,
+	UPSTASH_DATA_PLANE_HOST_SUFFIX,
 	UPSTASH_DATA_PLANE_POLICY,
 } from "../src/transport.js";
 import {
@@ -94,6 +95,49 @@ describe("assertAllowedEndpoint", () => {
 			);
 		});
 	}
+
+	it("refuses a data-plane policy whose suffix was written without the leading dot", () => {
+		// Measured before the URL check moved into core: this package applied
+		// the suffix with a bare `endsWith` and no shape check, so a policy
+		// written `upstash.io` rather than `.upstash.io` admitted
+		// `evilupstash.io` — a registration anyone can buy. Core refuses the
+		// policy itself now, before it judges any URL, so the hole is not
+		// reachable by a one-character authoring slip.
+		assert.throws(
+			() =>
+				assertAllowedEndpoint("https://evilupstash.io/get/key", {
+					...UPSTASH_DATA_PLANE_POLICY,
+					allowedHostSuffixes: ["upstash.io"],
+				}),
+			(error: unknown) =>
+				isProviderError(error) &&
+				error.code === "PROVIDER_CONTRACT_CHANGED" &&
+				/must start with "\." and carry at least one further dot/u.test(
+					error.message,
+				),
+		);
+	});
+
+	it("ships a dot-anchored data-plane suffix, which is what makes the suffix rule safe", () => {
+		assert.equal(UPSTASH_DATA_PLANE_HOST_SUFFIX, ".upstash.io");
+		assert.deepEqual(UPSTASH_DATA_PLANE_POLICY.allowedHostSuffixes, [
+			".upstash.io",
+		]);
+		// The sibling registration the leading dot is there to exclude.
+		assert.throws(
+			() =>
+				assertAllowedEndpoint(
+					"https://evilupstash.io/get/key",
+					UPSTASH_DATA_PLANE_POLICY,
+				),
+			(error: unknown) =>
+				isProviderError(error) &&
+				error.code === "PROVIDER_CONTRACT_CHANGED" &&
+				/host evilupstash\.io is not exactly one of the allowlisted/u.test(
+					error.message,
+				),
+		);
+	});
 
 	it("refuses the bare data-plane suffix with no database label in front", () => {
 		assert.throws(

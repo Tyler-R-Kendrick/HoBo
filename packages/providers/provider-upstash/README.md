@@ -313,10 +313,38 @@ promote or rename:
 
 `createGuardedTransport` wraps whatever you inject and enforces the policy before
 the request leaves: HTTPS only, an explicit host allowlist
-(`upstash.com` for the control plane, `*.upstash.io` for the data plane), a path
+(`upstash.com` for the control plane, `.upstash.io` for the data plane), a path
 prefix, no redirect following, a bounded body, and a timeout. A redirect is
 refused rather than followed — a 302 off the allowlist is exactly how a bearer
 token ends up somewhere else.
+
+### Where the URL check lives, and where it does not
+
+`assertAllowedEndpoint` is now `@hobo/core`'s, translated back into an
+`UpstashProviderError` at the boundary the way `provider-vercel` does it. The
+data plane is what needed core to grow anything: per-database origins are
+`<name>-<id>.upstash.io`, a host nobody can write down in advance, so core's
+policy gained `allowedHostSuffixes` — a union with `allowedHosts`, never a
+replacement.
+
+That move closed a hole the local copy carried. The copy applied its suffix with
+a bare `endsWith` and never checked the suffix's *shape*, so a policy written
+`upstash.io` instead of `.upstash.io` admitted `evilupstash.io`, and `.io`
+admitted the registry. Both were measured, not theorised. Core validates each
+entry before it judges any URL and refuses an unusable one outright, so the hole
+is no longer one character away.
+
+The response half of the guard deliberately stays here, because two behaviours
+differ from `guardTransport` and swapping it in would change what this driver
+does rather than share an implementation:
+
+| | this package | `guardTransport` |
+|---|---|---|
+| caller asks for more time or bytes than the policy allows | clamped to the policy | refused, by stated doctrine |
+| a 3xx carrying no `Location` (a 304) | refused | passed through as a cache answer |
+
+Reconciling either is a behaviour change to argue on its own merits. The clamp
+in particular is pinned by `test/transport.test.ts`.
 
 `createFetchTransport` is a minimal WHATWG-`fetch` adapter for production use.
 Nothing in `src/` reaches for a global.

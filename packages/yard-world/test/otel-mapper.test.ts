@@ -1,4 +1,14 @@
-import { describe, expect, it } from "vitest";
+/**
+ * Every case is a line in `otel-mapper.cases.jsonl`.
+ *
+ * Two payload fixtures live here rather than in the data: the single-span one
+ * that most cases vary a field of, and the cross-camp parent/child pair that
+ * the junction cases slice up. Everything else — which world to start from,
+ * whether a trace index is in play, which emitted events get folded back — is
+ * a field in the case.
+ */
+
+import { describeConcern } from "@hobo/contract-harness";
 import { applyEvent, emptyWorld, visibleCharacters } from "../src/model.js";
 import {
 	mapTracePayload,
@@ -7,15 +17,17 @@ import {
 } from "../src/otel-mapper.js";
 import { TraceIndex } from "../src/trace-index.js";
 
-function payload(overrides: {
-	station?: string;
-	service?: string;
-	primitive?: string;
-	kind?: number;
-	statusCode?: number;
-	spanAttrs?: { key: string; value: { stringValue: string } }[];
-}): OtlpTraceRequest {
-	const resourceAttrs = [
+interface PayloadOverrides {
+	readonly station?: string;
+	readonly service?: string;
+	readonly primitive?: string;
+	readonly kind?: number;
+	readonly statusCode?: number;
+	readonly spanAttrs?: { key: string; value: { stringValue: string } }[];
+}
+
+function onePayload(overrides: PayloadOverrides = {}): OtlpTraceRequest {
+	const attributes = [
 		{
 			key: "service.name",
 			value: { stringValue: overrides.service ?? "orders-api" },
@@ -27,16 +39,15 @@ function payload(overrides: {
 		{ key: "hobo.yard", value: { stringValue: "yard-1" } },
 		{ key: "hobo.camp", value: { stringValue: "camp-orders" } },
 	];
-	if (overrides.primitive !== undefined) {
-		resourceAttrs.push({
+	if (overrides.primitive !== undefined)
+		attributes.push({
 			key: "hobo.primitive",
 			value: { stringValue: overrides.primitive },
 		});
-	}
 	return {
 		resourceSpans: [
 			{
-				resource: { attributes: resourceAttrs },
+				resource: { attributes },
 				scopeSpans: [
 					{
 						spans: [
@@ -58,94 +69,20 @@ function payload(overrides: {
 	};
 }
 
-describe("spanKindFromOtlp", () => {
-	it("maps OTLP kind numbers", () => {
-		expect(spanKindFromOtlp(1)).toBe("internal");
-		expect(spanKindFromOtlp(2)).toBe("server");
-		expect(spanKindFromOtlp(3)).toBe("client");
-		expect(spanKindFromOtlp(4)).toBe("producer");
-		expect(spanKindFromOtlp(5)).toBe("consumer");
-		expect(spanKindFromOtlp(undefined)).toBe("internal");
-	});
+const resource = (service: string, camp: string) => ({
+	attributes: [
+		{ key: "service.name", value: { stringValue: service } },
+		{ key: "hobo.station", value: { stringValue: "s1" } },
+		{ key: "hobo.camp", value: { stringValue: camp } },
+	],
 });
 
-describe("mapTracePayload", () => {
-	it("server span (kind 2) drives the character to working", () => {
-		const state = emptyWorld();
-		const events = mapTracePayload(payload({}), state);
-		let next = state;
-		for (const event of events) next = applyEvent(next, event);
-		expect(next.characters["station-a/orders-api"]?.state).toBe("idle"); // ended cleanly
-		expect(events[0]).toMatchObject({
-			type: "span-started",
-			spanKind: "server",
-		});
-		const startedOnly = next.characters["station-a/orders-api"];
-		expect(startedOnly?.campId).toBe("camp-orders");
-	});
-
-	it("db client span maps to reading while open", () => {
-		const state = emptyWorld();
-		const events = mapTracePayload(
-			payload({
-				kind: 3,
-				spanAttrs: [{ key: "db.system", value: { stringValue: "postgresql" } }],
-			}),
-			state,
-		);
-		let next = state;
-		for (const event of events.filter((e) => e.type === "span-started")) {
-			next = applyEvent(next, event);
-		}
-		expect(next.characters["station-a/orders-api"]?.state).toBe("reading");
-	});
-
-	it("error status code 2 leaves the character stuck", () => {
-		const state = emptyWorld();
-		const events = mapTracePayload(payload({ statusCode: 2 }), state);
-		let next = state;
-		for (const event of events) next = applyEvent(next, event);
-		expect(next.characters["station-a/orders-api"]?.state).toBe("stuck");
-	});
-
-	it("station isolation: same service in two stations never mixes", () => {
-		const state = emptyWorld();
-		for (const event of mapTracePayload(
-			payload({ station: "station-a" }),
-			state,
-		)) {
-			applyEvent(state, event);
-		}
-		const eventsB = mapTracePayload(payload({ station: "station-b" }), state);
-		expect(eventsB[0]).toMatchObject({ characterId: "station-b/orders-api" });
-		const inA = visibleCharacters(state, "station-a").map((c) => c.id);
-		expect(inA).toContain("station-a/orders-api");
-		expect(inA).not.toContain("station-b/orders-api");
-	});
-
-	it("hobo.primitive selects crew/actor kinds", () => {
-		const state = emptyWorld();
-		mapTracePayload(payload({ service: "op-sam", primitive: "crew" }), state);
-		mapTracePayload(
-			payload({ service: "reconciler", primitive: "actor" }),
-			state,
-		);
-		expect(state.characters["station-a/op-sam"]?.kind).toBe("crew");
-		expect(state.characters["station-a/reconciler"]?.kind).toBe("actor");
-	});
-});
-
-function crossCampPayload(): OtlpTraceRequest {
+/** A client span in one camp and its server child in another. */
+function crossCampPayload(childCamp = "camp-b"): OtlpTraceRequest {
 	return {
 		resourceSpans: [
 			{
-				resource: {
-					attributes: [
-						{ key: "service.name", value: { stringValue: "web" } },
-						{ key: "hobo.station", value: { stringValue: "s1" } },
-						{ key: "hobo.camp", value: { stringValue: "camp-a" } },
-					],
-				},
+				resource: resource("web", "camp-a"),
 				scopeSpans: [
 					{
 						spans: [
@@ -163,13 +100,7 @@ function crossCampPayload(): OtlpTraceRequest {
 				],
 			},
 			{
-				resource: {
-					attributes: [
-						{ key: "service.name", value: { stringValue: "orders" } },
-						{ key: "hobo.station", value: { stringValue: "s1" } },
-						{ key: "hobo.camp", value: { stringValue: "camp-b" } },
-					],
-				},
+				resource: resource("orders", childCamp),
 				scopeSpans: [
 					{
 						spans: [
@@ -191,7 +122,18 @@ function crossCampPayload(): OtlpTraceRequest {
 	};
 }
 
-function stateWithCampsAndJunction() {
+const PRESETS: Record<string, () => OtlpTraceRequest> = {
+	"cross-camp": () => crossCampPayload(),
+	"cross-camp-same-camp": () => crossCampPayload("camp-a"),
+	"cross-camp-parent-only": () => ({
+		resourceSpans: crossCampPayload().resourceSpans?.slice(0, 1),
+	}),
+	"cross-camp-child-only": () => ({
+		resourceSpans: crossCampPayload().resourceSpans?.slice(1),
+	}),
+};
+
+function worldWithCampsAndJunction() {
 	const state = emptyWorld();
 	state.stations.s1 = { id: "s1", name: "s1" };
 	state.yards.y1 = { id: "y1", stationId: "s1", name: "y1" };
@@ -220,141 +162,88 @@ function stateWithCampsAndJunction() {
 	return state;
 }
 
-describe("trace-pair derivation (junction packets)", () => {
-	it("client span in camp A + server child in camp B emits packet-started", () => {
-		const state = stateWithCampsAndJunction();
-		const events = mapTracePayload(crossCampPayload(), state);
-		const packet = events.find((e) => e.type === "packet-started");
-		expect(packet).toMatchObject({
-			type: "packet-started",
-			traceId: "trace-x",
-			spanId: "child-1",
-			junctionId: "j1",
-			fromCampId: "camp-a",
-			toCampId: "camp-b",
-		});
-	});
+interface Submission {
+	readonly preset?: keyof typeof PRESETS;
+	readonly payload?: PayloadOverrides;
+	/** Spelled out where no fixture fits — a junction attribute with no parent. */
+	readonly raw?: OtlpTraceRequest;
+	readonly nowMs?: number;
+	/**
+	 * Which emitted events to fold back into the world.
+	 *
+	 * `except-ended` keeps a span open on purpose: a packet only exists while
+	 * its server span is still running, so folding `span-ended` would erase the
+	 * very thing the case is about.
+	 */
+	readonly apply?: "all" | "started" | "except-ended" | "none";
+}
 
-	it("no packet when parent and child are in the same camp", () => {
-		const state = stateWithCampsAndJunction();
-		const payload = crossCampPayload();
-		const second = payload.resourceSpans?.[1]?.resource?.attributes.find(
-			(a) => a.key === "hobo.camp",
+interface Ask {
+	readonly world?: "empty" | "camps-and-junction";
+	/** Present means a TraceIndex is threaded through every submission. */
+	readonly index?: { readonly ttlMs?: number; readonly sweepMs?: number };
+	readonly submissions: readonly Submission[];
+	/** Stations whose visible character ids the case asserts on. */
+	readonly visibleIn?: readonly string[];
+}
+
+function payloadOf(submission: Submission): OtlpTraceRequest {
+	if (submission.raw) return submission.raw;
+	if (submission.preset) return PRESETS[submission.preset]?.() ?? {};
+	return onePayload(submission.payload);
+}
+
+const KEEP: Record<string, (type: string) => boolean> = {
+	all: () => true,
+	started: (type) => type === "span-started",
+	"except-ended": (type) => type !== "span-ended",
+	none: () => false,
+};
+
+function run(ask: Ask) {
+	let state =
+		ask.world === "camps-and-junction"
+			? worldWithCampsAndJunction()
+			: emptyWorld();
+	const index =
+		ask.index === undefined
+			? undefined
+			: new TraceIndex(ask.index.ttlMs, ask.index.sweepMs);
+	let events: readonly { type: string }[] = [];
+	for (const submission of ask.submissions) {
+		events = mapTracePayload(
+			payloadOf(submission),
+			state,
+			submission.nowMs,
+			index,
 		);
-		if (second?.value.stringValue !== undefined)
-			second.value.stringValue = "camp-a";
-		const events = mapTracePayload(payload, state);
-		expect(events.some((e) => e.type === "packet-started")).toBe(false);
-	});
-
-	it("hobo.junction attribute emits a packet without a parent span", () => {
-		const state = stateWithCampsAndJunction();
-		const payload: OtlpTraceRequest = {
-			resourceSpans: [
-				{
-					resource: {
-						attributes: [
-							{ key: "service.name", value: { stringValue: "orders" } },
-							{ key: "hobo.station", value: { stringValue: "s1" } },
-							{ key: "hobo.camp", value: { stringValue: "camp-b" } },
-						],
-					},
-					scopeSpans: [
-						{
-							spans: [
-								{
-									traceId: "trace-y",
-									spanId: "sp-y",
-									name: "POST /orders",
-									kind: 2,
-									startTimeUnixNano: "1000000000",
-									endTimeUnixNano: "2000000000",
-									status: { code: 1 },
-									attributes: [
-										{ key: "hobo.junction", value: { stringValue: "j1" } },
-									],
-								},
-							],
-						},
-					],
-				},
-			],
-		};
-		const events = mapTracePayload(payload, state);
-		expect(events.find((e) => e.type === "packet-started")).toMatchObject({
-			junctionId: "j1",
-			fromCampId: "camp-a",
-			toCampId: "camp-b",
-		});
-	});
-
-	it("packet appears in state after reducing a cross-camp trace pair", () => {
-		const state = stateWithCampsAndJunction();
-		let next = state;
-		// Drop span-ended so the server span is still open when the packet starts.
-		for (const event of mapTracePayload(crossCampPayload(), state).filter(
-			(e) => e.type !== "span-ended",
-		)) {
-			next = applyEvent(next, event);
-		}
-		expect(next.packets["child-1"]).toBeDefined();
-	});
-});
-
-describe("cross-request pair derivation (trace index)", () => {
-	function parentOnlyPayload(): OtlpTraceRequest {
-		const full = crossCampPayload();
-		return { resourceSpans: full.resourceSpans?.slice(0, 1) };
+		const keep = KEEP[submission.apply ?? "all"] ?? KEEP.all;
+		for (const event of events)
+			if (keep(event.type)) state = applyEvent(state, event);
 	}
-	function childOnlyPayload(): OtlpTraceRequest {
-		const full = crossCampPayload();
-		return { resourceSpans: full.resourceSpans?.slice(1) };
-	}
+	return { state, events, index };
+}
 
-	it("parent and child in separate requests still emit a packet", () => {
-		const state = stateWithCampsAndJunction();
-		const index = new TraceIndex();
-		const parentEvents = mapTracePayload(
-			parentOnlyPayload(),
-			state,
-			1_000,
-			index,
-		);
-		expect(parentEvents.some((e) => e.type === "packet-started")).toBe(false);
-		expect(index.size).toBe(1);
-		const childEvents = mapTracePayload(
-			childOnlyPayload(),
-			state,
-			2_000,
-			index,
-		);
-		expect(childEvents.find((e) => e.type === "packet-started")).toMatchObject({
-			type: "packet-started",
-			traceId: "trace-x",
-			spanId: "child-1",
-			junctionId: "j1",
-			fromCampId: "camp-a",
-			toCampId: "camp-b",
-		});
-	});
-
-	it("no packet without an index when the parent is in another request", () => {
-		const state = stateWithCampsAndJunction();
-		mapTracePayload(parentOnlyPayload(), state);
-		const childEvents = mapTracePayload(childOnlyPayload(), state);
-		expect(childEvents.some((e) => e.type === "packet-started")).toBe(false);
-	});
-
-	it("an expired parent resolves to nothing (no packet)", () => {
-		const state = stateWithCampsAndJunction();
-		const index = new TraceIndex(10_000, 1_000);
-		mapTracePayload(parentOnlyPayload(), state, 1_000, index);
-		const childEvents = mapTracePayload(
-			childOnlyPayload(),
-			state,
-			5_000,
-			index,
-		);
-		expect(childEvents.some((e) => e.type === "packet-started")).toBe(false);
-	});
+describeConcern("otel mapper", {
+	cases: `${import.meta.dirname}/otel-mapper.cases.jsonl`,
+	subject: () => ({
+		spanKindFromOtlp,
+		/** The last submission's events plus the world they fold into. */
+		after: (ask: Ask) => {
+			const { state, events, index } = run(ask);
+			return {
+				events: events as readonly Record<string, unknown>[],
+				eventTypes: events.map((event) => event.type),
+				characters: state.characters,
+				packetIds: Object.keys(state.packets).sort(),
+				indexSize: index?.size ?? null,
+				visibleIn: Object.fromEntries(
+					(ask.visibleIn ?? []).map((station) => [
+						station,
+						visibleCharacters(state, station).map((character) => character.id),
+					]),
+				),
+			};
+		},
+	}),
 });

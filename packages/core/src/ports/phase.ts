@@ -69,9 +69,9 @@ const CAPABILITY_PHASES: Readonly<
 } as const);
 
 /** Environment-variable contract hosts use to publish the active phase. */
-export const HOBO_PHASE_ENV = "HOBO_PHASE";
+export const HOBO_PHASE_ENV = "HOBO_PHASE"; // public-contract: the env-var name hosts and guests agree on
 /** Environment-variable contract hosts use to publish dev mode: "1" | "0". */
-export const HOBO_DEV_ENV = "HOBO_DEV";
+export const HOBO_DEV_ENV = "HOBO_DEV"; // public-contract: the env-var name hosts and guests agree on
 export const HOBO_DEV_VALUES = Object.freeze(["0", "1"] as const);
 
 /**

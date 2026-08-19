@@ -48,7 +48,7 @@ import {
 import { deepFreeze, isPlainObject, requireName } from "./canonical.js";
 import { type Yard, yard } from "./yard.js";
 
-export const STATION_MANIFEST_CONTRACT = "hobo.station-manifest/v1";
+export const STATION_MANIFEST_CONTRACT = "hobo.station-manifest/v1"; // public-contract: contract id on every station manifest
 
 export type YardDefineErrorCode =
 	| "SLOT_PROFILE_MISMATCH"

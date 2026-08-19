@@ -53,7 +53,21 @@ Agents are data, not switch cases. Bundled descriptors live in
 `$HOBO_HOME/durable/code/harnesses/` or `<cwd>/.hobo/harnesses/` (or call
 `registerHarness`) and init/detect/seat pick it up. Config writers dispatch on
 *format* (`toml-append`, `json-env`, `note`, `eve-vfs`, `sdk-env`) never on
-agent id. `hobo-code agents init` is the analog of
+agent id. Programmatic runs go through AI SDK `HarnessV1`
+(`src/ai-sdk-harness-runtime.ts`): `runtime.adapter` picks a builtin
+`@ai-sdk/harness-*` package (Claude Code, Codex, Pi, OpenCode, Grok Build, …)
+or an in-repo custom adapter (`cli`, `eve`, `sdk`, `skip`) for harnesses the
+SDK does not ship yet. Custom `cli` plugins declare one-shot `runtime.prompt`
+argv (`cursor-agent -p`, `copilot -p`, `gemini -p`, `aider --yes --message`,
+`goose run -t`) so programmatic turns spawn the same CLIs mux used to seat.
+The `sdk` adapter takes `generateSdkText` (AI SDK `generateText` / ToolLoopAgent).
+`createHarnessAgent(spec)` wraps that `HarnessV1` in
+AI SDK `HarnessAgent`. Host-process adapters (`pi`, `cline`, `cli`, `eve`,
+`sdk`) default to `@ai-sdk/sandbox-just-bash`. Bridge adapters (`claude-code`,
+`codex`, `opencode`, `grok-build`, …) fail closed until a network sandbox
+(`@ai-sdk/sandbox-vercel`) is injected — local Station/rift is not a Vercel
+microVM. Missing builtin packages fail closed with the package
+name. `hobo-code agents init` is the analog of
 `vercel ai-gateway coding-agents setup`. Host specs (`host: true`, hobo-code)
 are never seated. Apply refuses when no listen URL exists. Registry snapshot:
 `$HOBO_HOME/durable/code/agents/registry.json`. `hobo-code agent` stays the

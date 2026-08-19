@@ -24,14 +24,14 @@ import {
 } from "@hobo/core";
 import { DrizzleAdapterError } from "./errors.js";
 
-export const DRIZZLE_ENGINE_ID = "drizzle-kit";
+export const DRIZZLE_ENGINE_ID = "drizzle-kit"; // public-contract: engine identity stamped into every migration plan
 
 /**
  * The drizzle-kit release this adapter's ingestion shape-reading was written
  * against. Hosts that run a different drizzle-kit MUST pass `version` so the
  * plan digest reflects the toolchain that will actually render the SQL.
  */
-export const DEFAULT_DRIZZLE_ENGINE_VERSION = "0.31.1";
+export const DEFAULT_DRIZZLE_ENGINE_VERSION = "0.31.1"; // public-contract: participates in the plan digest, per the note above
 
 export interface EmittedSqlStatement {
 	readonly step: MigrationStep;

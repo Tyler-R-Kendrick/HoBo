@@ -38,28 +38,98 @@ function workspaceRev(): string {
 	}
 }
 
-function listPackageJsonFiles(dir: string): string[] {
-	const entries: string[] = [];
-
-	for (const name of readdirSync(dir)) {
-		if (name === "node_modules") {
+/**
+ * The workspace globs from `pnpm-workspace.yaml`, which is the only authority on
+ * what a workspace package *is*.
+ *
+ * This used to be an unbounded recursive walk for any `package.json`, and that
+ * was the whole bug. It swept up things that are not workspace packages at all —
+ * `packages/code/examples/*`, `packages/hobo/fixtures/deploy/vercel`, the
+ * scaffolding templates under `packages/patterns/patterns/*` — and every one of
+ * them classified as `unknown`, which makes `parseWorkspaceEdge` **throw**.
+ *
+ * A throw here is not a failed check, it is *no* check: the process aborted on
+ * the first stray file, so the boundary gate reported nothing and passed
+ * nothing, and it looked exactly like a gate with no violations to find.
+ * Reading the globs means a newly added example cannot silently disable it again.
+ */
+function workspaceGlobs(): string[] {
+	const raw = readFileSync(join(repoRoot, "pnpm-workspace.yaml"), "utf8");
+	const globs: string[] = [];
+	let inPackages = false;
+	for (const line of raw.split("\n")) {
+		if (/^packages:/u.test(line)) {
+			inPackages = true;
 			continue;
 		}
-
-		const fullPath = join(dir, name);
-		const stats = statSync(fullPath);
-
-		if (stats.isDirectory()) {
-			entries.push(...listPackageJsonFiles(fullPath));
-			continue;
-		}
-
-		if (name === "package.json") {
-			entries.push(fullPath);
+		if (inPackages) {
+			const match = /^\s+-\s+"?([^"\s]+)"?\s*$/u.exec(line);
+			if (match?.[1]) {
+				globs.push(match[1]);
+				continue;
+			}
+			if (/^\S/u.test(line)) break;
 		}
 	}
+	return globs;
+}
 
-	return entries;
+/** Expand one workspace glob (only the `*` forms pnpm uses here) into directories. */
+function expandGlob(glob: string): string[] {
+	const parts = glob.split("/");
+	let candidates = [repoRoot];
+	for (const part of parts) {
+		const next: string[] = [];
+		for (const base of candidates) {
+			if (part === "*") {
+				let names: string[];
+				try {
+					names = readdirSync(base);
+				} catch {
+					continue;
+				}
+				for (const name of names) {
+					if (name === "node_modules") continue;
+					const full = join(base, name);
+					try {
+						if (statSync(full).isDirectory()) next.push(full);
+					} catch {
+						// A dangling symlink is not a package.
+					}
+				}
+				continue;
+			}
+			const full = join(base, part);
+			try {
+				if (statSync(full).isDirectory()) next.push(full);
+			} catch {
+				// Glob names a path that does not exist here; skip it.
+			}
+		}
+		candidates = next;
+	}
+	return candidates;
+}
+
+function listPackageJsonFiles(dir: string): string[] {
+	const entries: string[] = [];
+	// Scoped to the caller's root (`packages/`) exactly as before. The globs fix
+	// *how deep* discovery goes, not *how wide*: widening it to the whole
+	// workspace would pull in `src/draft/**`, which the classifier treats as
+	// external and would therefore report as outward dependencies.
+	const root = relative(repoRoot, dir).replaceAll("\\", "/");
+	for (const glob of workspaceGlobs()) {
+		if (root && !glob.startsWith(`${root}/`) && glob !== root) continue;
+		for (const dir of expandGlob(glob)) {
+			const candidate = join(dir, "package.json");
+			try {
+				if (statSync(candidate).isFile()) entries.push(candidate);
+			} catch {
+				// A workspace glob can match a directory without a manifest.
+			}
+		}
+	}
+	return [...new Set(entries)].sort();
 }
 
 function packagePathFromJson(packageJsonPath: string): string {

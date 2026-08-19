@@ -7,8 +7,10 @@
 		"openai",
 		"@anthropic-ai/sdk",
 		"@ai-sdk/openai",
-		"@ai-sdk/anthropic"
+		"@ai-sdk/anthropic",
+		"@ai-sdk/harness"
 	],
+	"runtime": { "adapter": "sdk" },
 	"config": {
 		"format": "sdk-env"
 	}

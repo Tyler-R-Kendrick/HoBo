@@ -20,7 +20,7 @@
 
 import { parseSecretRef, SecretRefError } from "./secret-ref.js";
 
-export const BINDING_RESOLUTION_CONTRACT = "hobo.binding-resolution/v1";
+export const BINDING_RESOLUTION_CONTRACT = "hobo.binding-resolution/v1"; // public-contract: contract id carried on every resolution record
 
 /**
  * How the capability is realized behind the binding: a first-class provider

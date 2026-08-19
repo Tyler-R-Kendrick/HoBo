@@ -17,7 +17,7 @@
 import { TestHarnessError } from "./../errors.js";
 
 /** Environment contract: names the brokered credential, never carries it. */
-export const CAMP_CREDENTIAL_ENV_VAR = "HOBO_TESTING_CAMP_CREDENTIAL_REF";
+export const CAMP_CREDENTIAL_ENV_VAR = "HOBO_TESTING_CAMP_CREDENTIAL_REF"; // public-contract: env-var name the camp lane brokers credentials through
 
 const SECRET_REF_PATTERN =
 	/^(?:vault|azure-kv|aws-sm|gcp-sm|op|infisical|hobo-secret|hobo-token):\/\/[^@\s]+$/u;

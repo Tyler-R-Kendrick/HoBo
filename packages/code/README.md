@@ -315,7 +315,16 @@ hobo-code                         # chat first
 
 Register harnesses first (Vercel `coding-agents setup` analog — Station
 occupancy, not a minted key). Each agent is a JSON plugin under
-`packages/code/harnesses/` (or `$HOBO_HOME/durable/code/harnesses/`):
+`packages/code/harnesses/` (or `$HOBO_HOME/durable/code/harnesses/`).
+`runtime.adapter` is the AI SDK harness id — builtin packages
+(`claude-code`, `codex`, `pi`, `opencode`, `grok-build`, …) load
+`@ai-sdk/harness-*`; `cli` / `eve` / `sdk` are in-repo HarnessV1 adapters
+for runtimes the SDK does not ship yet. CLI plugins carry `runtime.prompt`
+one-shot argv so Cursor/Copilot/Gemini/Aider/Goose still run without a
+builtin SDK package. TTY seating still uses mux.
+Programmatic turns use `createHarnessV1(spec)` or `createHarnessAgent(spec)`
+(AI SDK `HarnessAgent` + just-bash for host adapters; bridge adapters need
+an injected network sandbox).
 
 ```bash
 hobo-code agents init                # TTY: check/uncheck harnesses, then write

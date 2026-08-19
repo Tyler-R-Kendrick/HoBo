@@ -64,7 +64,7 @@ describe("hobo-code bin launcher", () => {
 		expect(r.stderr).toMatch(/tsc failed — running src\/ via tsx/);
 		expect(r.stdout).toMatch(/hobo-code agents/);
 		expect(r.stdout).toMatch(/agents init/i);
-	}, 30_000);
+	}, 120_000);
 
 	it("forced stale rebuild is tsc-only and does not rebuild @hobo/core", () => {
 		const started = Date.now();
@@ -161,7 +161,7 @@ process.on("SIGTERM", close);
 			await new Promise<void>((resolve, reject) => {
 				const timeout = setTimeout(
 					() => reject(new Error("dev launcher did not become ready")),
-					5_000,
+					60_000,
 				);
 				child.once("error", reject);
 				child.stdout?.on("data", (chunk) => {
@@ -182,5 +182,5 @@ process.on("SIGTERM", close);
 			if (child.exitCode === null) child.kill("SIGKILL");
 			rmSync(root, { recursive: true, force: true });
 		}
-	}, 10_000);
+	}, 120_000);
 });

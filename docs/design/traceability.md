@@ -449,7 +449,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0153 | [data-plane](./adr/03-data-plane.md#adr-0153) | `@hobo/patterns` catalog is source of truth; ontology-vector + explicit `hobo-code template` / `/template` zero-LLM route; Model2Vec rejected. | `packages/patterns` |
 | ADR-0154 | [data-plane](./adr/03-data-plane.md#adr-0154) | Durable `@hobo/code` review aggregate, generation-bound coverage, exact-effect GitHub publish. | `packages/code` |
 | ADR-0155 | [architecture-core](./adr/01-architecture-core.md#adr-0155) | Station capabilities as a typed manifest (`hobo.station-capability/v1`); localhost capability discovery gates `hobo-code init`; hobo-code dev scenarios dogfood `station()` declarations. | `packages/stations` · `packages/code` |
-| ADR-0156 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0156) | One extension-point model: core-owned `CloudProvider`/`ActorHost` ports, `createExtensionRegistry` primitive, `hobo.plugin/v1` manifest-declared external plugins, normative adapter packaging. | `packages/core` · — (SPI catalog) |
+| ADR-0156 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0156) | The Plugin SPI: one extension-point model with explicit registration semantics, core-owned `CloudProvider`/`ActorHost` ports so adapters import only core, and manifest-declared external plugins (`hobo.plugin/v1`). | `packages/core` · `packages/sdk` · `packages/hobo` |
 | ADR-0157 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0157) | Yard binding rows (`profile → product/connectivity`) as the Yard's capability-mapping authoring surface, hard-filter-only over ADR-0151 selection; bindings-are-the-SDK client derivation; `yard:local` seeded on Station init from discovered host capabilities. | — (yard binding authority) |
 | ADR-0158 | [architecture-core](./adr/01-architecture-core.md#adr-0158) | `plan`/`init`/`handle` phase vocabulary; `ctx.bindings` materialization at activation with determinism obligation; split WIT init/handler interfaces as the polyglot phase-safety floor. | — (phase model) |
 | ADR-0159 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0159) | `@hobo/testing` harness (in-process whole-graph + ephemeral-Camp lanes), provider scratch harness shared with generation-pipeline validation, credentials-as-code CI preview lanes; closes GAP-026/HOBO-705. | HOBO-705 |
@@ -458,7 +458,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 132 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 145 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.

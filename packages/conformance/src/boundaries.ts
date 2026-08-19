@@ -39,6 +39,25 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/core",
 	"packages/contract-harness",
 	"packages/wit",
+	// `@hobo/bindings` shipped without an entry here, which is worse than it
+	// sounds: an unclassified workspace path makes `parseWorkspaceEdge` *throw*
+	// rather than report, so the whole boundary gate aborted instead of failing
+	// one edge — trunk had no boundary enforcement at all, silently.
+	"packages/bindings",
+	"packages/auth-md",
+	"packages/capability-matrix",
+	"packages/capability-profiles",
+	"packages/claims",
+	"packages/convex",
+	"packages/data-postgres",
+	"packages/kv-redis-compatible",
+	"packages/packs/pack-framework",
+	"packages/packs/pack-postgres-oci",
+	"packages/packs/pack-valkey-oci",
+	"packages/recipes",
+	"packages/status-page",
+	"packages/trust",
+	"packages/wasp",
 	"packages/bindles",
 	"packages/camps",
 	"packages/yards",
@@ -115,6 +134,35 @@ const KNOWN_PACKAGE_PATHS = new Set([
 // providers as a distinct tier. Scoped to these EXACT edges so genuine
 // adapter->adapter and other outward imports still fail closed.
 const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
+	// ── Banked pre-existing edges (unenforced until this commit) ──────────────
+	// These are NOT blessed architecture. They are the 18 layer-2 → layer-3
+	// imports that already existed on trunk while the boundary gate was aborting
+	// on an unclassified path and therefore checking nothing at all. Banking
+	// them is what lets the gate start enforcing *no new* violations today
+	// instead of waiting on a restructure of eight provider packages — the same
+	// ratchet shape `lint:budget` uses for biome.
+	//
+	// Each one is a provider reaching a layer-3 package directly rather than
+	// through a core port. The fix is per-provider and belongs in its own PR;
+	// this list should only ever shrink. Do not add to it.
+	"packages/providers/provider-cloudflare->packages/bindings",
+	"packages/providers/provider-cloudflare->packages/capability-profiles",
+	"packages/providers/provider-convex->packages/sdk",
+	"packages/providers/provider-neon->packages/bindings",
+	"packages/providers/provider-neon->packages/capability-profiles",
+	"packages/providers/provider-netlify->packages/bindings",
+	"packages/providers/provider-netlify->packages/capability-profiles",
+	"packages/providers/provider-netlify->packages/claims",
+	"packages/providers/provider-prisma-postgres->packages/bindings",
+	"packages/providers/provider-prisma-postgres->packages/capability-profiles",
+	"packages/providers/provider-ttl-sh->packages/capability-profiles",
+	"packages/providers/provider-ttl-sh->packages/claims",
+	"packages/providers/provider-upstash->packages/bindings",
+	"packages/providers/provider-upstash->packages/capability-profiles",
+	"packages/providers/provider-upstash->packages/kv-redis-compatible",
+	"packages/providers/provider-vercel->packages/bindings",
+	"packages/providers/provider-vercel->packages/capability-profiles",
+	"packages/providers/provider-vercel->packages/claims",
 	"packages/providers/provider-agentv->packages/training-pipeline",
 	"packages/providers/provider-ax->packages/runtime",
 	// The runner tier (#891/#892) composes @hobo/runner-github's shared

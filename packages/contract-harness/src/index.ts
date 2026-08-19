@@ -1,3 +1,12 @@
+export {
+	assertCase,
+	type CaseOutcome,
+	type ConcernCase,
+	type ConcernOptions,
+	callableMembers,
+	describeConcern,
+	parseConcernCases,
+} from "./concern.js";
 export { checkPactInventory } from "./inventory.js";
 export { createMockProviderFromPact } from "./mock.js";
 export type {

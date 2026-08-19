@@ -36,7 +36,7 @@ import {
 	parseBindingResolution,
 } from "./resolution.js";
 
-export const BINDING_EVENT_SCHEMA_VERSION = "hobo.binding-events/v1";
+export const BINDING_EVENT_SCHEMA_VERSION = "hobo.binding-events/v1"; // public-contract: envelope version readers dispatch on
 
 export const BINDING_EVENTS = Object.freeze([
 	"binding.Resolved",

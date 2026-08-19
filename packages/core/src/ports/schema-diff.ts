@@ -35,9 +35,9 @@ export const SCHEMA_IR_CONTRACT = "hobo.schema-ir/v1";
 export const MIGRATION_PLAN_CONTRACT = "hobo.migration-plan/v1";
 
 /** The canonical differ's identity. Stamped into every plan it produces. */
-export const CANONICAL_SCHEMA_DIFF_ENGINE_ID = "hobo-canonical";
+export const CANONICAL_SCHEMA_DIFF_ENGINE_ID = "hobo-canonical"; // public-contract: differ identity stamped into every plan it produces
 /** Bump deliberately: the version participates in every plan digest. */
-export const CANONICAL_SCHEMA_DIFF_ENGINE_VERSION = "1.0.0";
+export const CANONICAL_SCHEMA_DIFF_ENGINE_VERSION = "1.0.0"; // public-contract: participates in every plan digest
 
 /** Unquoted SQL identifier, bounded by postgres' NAMEDATALEN (63 bytes). */
 const IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_$]*$/u;

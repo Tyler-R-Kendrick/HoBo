@@ -18,8 +18,8 @@ export const LANES: readonly string[] = Object.freeze([
 export type Lane = "in-process" | "ephemeral-camp";
 export type Fidelity = "real" | "simulated" | "mocked" | "camp-only";
 
-export const DEFAULT_LANE: Lane = "in-process";
-export const DEFAULT_STAGE = "test";
+export const DEFAULT_LANE: Lane = "in-process"; // public-contract: the lane authors get when none is declared
+export const DEFAULT_STAGE = "test"; // public-contract: the stage authors get when none is declared
 
 export interface TestHarnessOptions {
 	readonly lane?: Lane;

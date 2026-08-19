@@ -67,7 +67,7 @@ export const BETTER_AUTH_DESCRIPTOR: AuthAdapterDescriptor = Object.freeze({
 });
 
 /** The npm package the bundle needs in order to actually serve auth routes. */
-export const BETTER_AUTH_RUNTIME_MODULE = "better-auth";
+export const BETTER_AUTH_RUNTIME_MODULE = "better-auth"; // public-contract: the npm specifier emitted bundles import at runtime
 
 /**
  * Gate the declared-but-not-vendored runtime.

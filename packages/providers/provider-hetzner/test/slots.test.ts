@@ -62,7 +62,9 @@ const NO_ARG_FACTORIES = [
 		"volume",
 		() => volume(),
 		"bucket",
-		"bucket.file-storage/v1",
+		// A block device formatted ext4/xfs has path semantics, which is
+		// filesystem — distinct from a Storage Box's metadata-carrying share.
+		"bucket.filesystem/v1",
 		"hetzner.volume/v1",
 	],
 ] as const;

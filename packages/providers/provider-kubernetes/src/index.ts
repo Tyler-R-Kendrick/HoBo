@@ -124,12 +124,14 @@ export {
 } from "./resolver-transport.js";
 export {
 	KUBERNETES_CRONJOB_PRODUCT_ID,
+	KUBERNETES_DAEMONSET_PRODUCT_ID,
 	KUBERNETES_DEPLOYMENT_PRODUCT_ID,
 	KUBERNETES_INGRESS_PRODUCT_ID,
 	KUBERNETES_JOB_PRODUCT_ID,
 	KUBERNETES_PVC_PRODUCT_ID,
 	KUBERNETES_RESOLVED_PRODUCT_IDS,
 	KUBERNETES_SERVICE_PRODUCT_ID,
+	KUBERNETES_STATEFULSET_PRODUCT_ID,
 	KUBERNETES_UNRESOLVED_PRODUCT_IDS,
 	type KubernetesResolverOptions,
 	kubernetesResolverRegistry,
@@ -138,7 +140,9 @@ export {
 export {
 	type CronJobOptions,
 	cronJob,
+	type DaemonSetOptions,
 	type DeploymentOptions,
+	daemonSet,
 	deployment,
 	deploymentWorker,
 	type IngressOptions,
@@ -152,8 +156,11 @@ export {
 	type SecretOptions,
 	type ServiceOptions,
 	type ServiceType,
+	type StatefulSetOptions,
 	secret,
 	service,
+	statefulSet,
+	statefulSetWorker,
 } from "./slots.js";
 export {
 	provisionTemporaryEnvironmentStation,

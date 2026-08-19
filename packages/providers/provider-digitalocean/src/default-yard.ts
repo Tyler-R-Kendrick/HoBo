@@ -30,7 +30,7 @@
  * HONEST SCOPE — what deploys: this package registers no Resource Definitions
  * for the `digitalocean.*` product ids, so a deploy attempted against this Yard
  * fails closed at resolution (`YARD_BINDING_PRODUCT_UNKNOWN`) until definitions
- * land. It does ship bearer-token resolvers, but for 9 of the 14 ids only
+ * land. It does ship resolvers, but for 12 of the 16 ids only
  * (`DIGITALOCEAN_RESOLVED_PRODUCT_IDS`), and those are proven against an
  * injected fake transport — no live DigitalOcean call has been made from this
  * repo.
@@ -40,9 +40,11 @@ import type { CapabilitySlot, SlotBinding } from "@hobo/core";
 import { DEFAULT_REGIONS } from "./manifest.js";
 import {
 	appPlatform,
+	blockStorage,
 	droplet,
+	dropletWorker,
 	functions,
-	kubernetesWorkload,
+	kubernetesCluster,
 	loadBalancer,
 	managed,
 	managedValkey,
@@ -91,13 +93,14 @@ export const DIGITALOCEAN_DEFAULT_BINDINGS: DigitalOceanSlotCatalog =
 			appPlatform.service(),
 			appPlatform.staticSite(),
 			droplet(),
-			kubernetesWorkload(),
+			kubernetesCluster(),
 		]),
 		api: Object.freeze([loadBalancer()]),
 		service: Object.freeze([
 			appPlatform.worker(),
 			appPlatform.job(),
 			functions(),
+			dropletWorker(),
 		]),
 		data: Object.freeze([
 			managed.postgres(),
@@ -106,7 +109,7 @@ export const DIGITALOCEAN_DEFAULT_BINDINGS: DigitalOceanSlotCatalog =
 			managed.opensearch(),
 		]),
 		kv: Object.freeze([managedValkey()]),
-		bucket: Object.freeze([spaces()]),
+		bucket: Object.freeze([spaces(), blockStorage()]),
 	});
 
 /**

@@ -1,4 +1,4 @@
-import type { CapabilitySlot } from "@hobo/core";
+import { type CapabilitySlot, capability } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,33 +7,18 @@ import {
 	kubernetesYardSpec,
 } from "../src/index.js";
 
-/** Published ADR-0151 capability profiles a catalog row may name. */
-const REAL_PROFILES: readonly string[] = [
-	"web.static/v1",
-	"web.hosted/v1",
-	"web.ssr/v1",
-	"api.http/v1",
-	"service.worker/v1",
-	"service.batch/v1",
-	"service.scheduled/v1",
-	"service.queue-consumer/v1",
-	"data.relational/v1",
-	"data.postgres/v1",
-	"data.mysql/v1",
-	"data.sqlite/v1",
-	"data.document/v1",
-	"data.vector/v1",
-	"kv.key-value/v1",
-	"kv.redis-compatible/v1",
-	"bucket.object/v1",
-	"bucket.s3-compatible/v1",
-	"bucket.file-storage/v1",
-	"queue.at-least-once/v1",
-	"queue.fifo/v1",
-	"topic.pubsub/v1",
-	"secret-ref.locator/v1",
-	"webhook.inbound-http/v1",
-];
+/**
+ * Every published capability profile, derived from `@hobo/core`'s catalog
+ * rather than restated here.
+ *
+ * This used to be a hand-written list, and it drifted the moment a factory was
+ * pointed at a more specific profile — the test failed for the list's reason,
+ * not the catalog's. Deriving it means a profile the core vocabulary adds is
+ * automatically legal, and a profile it does not define still fails.
+ */
+const REAL_PROFILES: readonly string[] = Object.values(capability).flatMap(
+	(family) => Object.values(family),
+);
 
 /** Entries declared for one slot, or an empty list when the slot is absent. */
 function slotEntries(slot: CapabilitySlot) {
@@ -45,12 +30,8 @@ describe("the Kubernetes Yard is an allocatable catalog", () => {
 		["web", "web.hosted/v1", "kubernetes.deployment/v1"],
 		["api", "api.http/v1", "kubernetes.service/v1"],
 		["service", "service.batch/v1", "kubernetes.job/v1"],
-		[
-			"bucket",
-			"bucket.file-storage/v1",
-			"kubernetes.persistent-volume-claim/v1",
-		],
-		["secretRef", "secret-ref.locator/v1", "kubernetes.secret/v1"],
+		["bucket", "bucket.filesystem/v1", "kubernetes.persistent-volume-claim/v1"],
+		["secretRef", "secret-ref.runtime-projection/v1", "kubernetes.secret/v1"],
 	] as const)("declares %s from the landed factories", (slot, profile, productId) => {
 		const entries = slotEntries(slot);
 		expect(entries.map((entry) => entry.profile)).toContain(profile);
@@ -74,6 +55,30 @@ describe("the Kubernetes Yard is an allocatable catalog", () => {
 		for (const slot of ["data", "kv", "queue", "topic"] as const) {
 			expect(slotEntries(slot)).toEqual([]);
 		}
+	});
+
+	/**
+	 * A cluster offers several distinct controllers for the same capability and
+	 * a workload picks between them for reasons only it knows — stable identity
+	 * for a StatefulSet, one-pod-per-node for a DaemonSet. Every one of them is
+	 * a row.
+	 */
+	it("declares every built-in controller that satisfies a capability", () => {
+		expect(slotEntries("web").map((entry) => entry.productId)).toEqual(
+			expect.arrayContaining([
+				"kubernetes.deployment/v1",
+				"kubernetes.statefulset/v1",
+			]),
+		);
+		expect(slotEntries("service").map((entry) => entry.productId)).toEqual(
+			expect.arrayContaining([
+				"kubernetes.deployment/v1",
+				"kubernetes.statefulset/v1",
+				"kubernetes.daemonset/v1",
+				"kubernetes.job/v1",
+				"kubernetes.cronjob/v1",
+			]),
+		);
 	});
 
 	it("declares both ways a cluster can front an HTTP capability", () => {

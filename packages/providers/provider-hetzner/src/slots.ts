@@ -183,14 +183,19 @@ export interface VolumeOptions {
 }
 
 /**
- * Hetzner Volume — slot `bucket`, profile `bucket.file-storage/v1`. A block
- * volume attached to one server is filesystem storage, not an object store, and
- * saying so is what keeps a workload that needs S3 semantics from matching it.
+ * Hetzner Volume — slot `bucket`, profile `bucket.filesystem/v1`.
+ *
+ * A block device formatted ext4 or xfs and attached to one server has
+ * hierarchical path semantics, which is `bucket.filesystem/v1` — not
+ * `bucket.file-storage/v1`, which is the metadata-carrying user-facing share a
+ * Storage Box provides. Both refine `bucket.object/v1`, so a workload asking
+ * for the general profile matches either; a workload that actually needs a
+ * mounted filesystem now matches only this one.
  */
 export function volume(options?: VolumeOptions): SlotBinding {
 	return slotBinding({
 		slot: "bucket",
-		profile: capability.bucket.fileStorage,
+		profile: capability.bucket.filesystem,
 		productId: "hetzner.volume/v1",
 		properties: present(options ?? {}),
 	});

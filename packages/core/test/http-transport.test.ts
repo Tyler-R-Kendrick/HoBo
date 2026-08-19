@@ -68,6 +68,10 @@ describe("transport vocabularies", () => {
 	it("expose the closed method set, frozen", () => {
 		expect([...TRANSPORT_METHODS]).toEqual([
 			"GET",
+			// HEAD is how S3 asks whether a bucket exists (`HeadBucket`), which
+			// the S3-compatible providers inherit; a resolver without it would
+			// have to transfer a listing to learn one bit.
+			"HEAD",
 			"POST",
 			"PUT",
 			"PATCH",

@@ -26,11 +26,13 @@ import { describe, expect, it } from "vitest";
 
 import {
 	guardedHetznerTransport,
+	guardedObjectStorageTransport,
 	HETZNER_API_HOST,
 	HETZNER_CLOUD_SERVER_PRODUCT_ID,
 	HETZNER_DEFAULT_BINDINGS,
 	HETZNER_EXCLUDED_SURFACES,
 	HETZNER_LOAD_BALANCER_PRODUCT_ID,
+	HETZNER_OBJECT_STORAGE_PRODUCT_ID,
 	HETZNER_RESOLVED_PRODUCT_IDS,
 	HETZNER_UNRESOLVED_PRODUCT_IDS,
 	HETZNER_VOLUME_PRODUCT_ID,
@@ -131,10 +133,24 @@ function nameFilter(call: RecordedCall): string | null {
 	return new URLSearchParams(call.search).get("name");
 }
 
+/** An Object Storage key pair. Never the project token — that is the point. */
+const OBJECT_STORAGE_KEYS = Object.freeze({
+	accessKeyId: "FAKEHETZNEROBJACCESSKEY",
+	secretAccessKey: "fake-object-storage-secret-key-0123456789",
+});
+
+/** A fixed signing instant, so a SigV4 signature is reproducible in a test. */
+const NOW_MS = Date.parse("2026-08-19T12:00:00.000Z");
+
 function options(
 	overrides: Partial<HetznerResolverOptions> = {},
 ): HetznerResolverOptions {
-	return { resolveCredential: async () => TOKEN, ...overrides };
+	return {
+		resolveCredential: async () => TOKEN,
+		resolveObjectStorageCredential: async () => OBJECT_STORAGE_KEYS,
+		nowMs: NOW_MS,
+		...overrides,
+	};
 }
 
 function resolverFor(
@@ -349,21 +365,21 @@ describe("the registry covers exactly the products that can converge", () => {
 		}
 	});
 
-	it("registers nothing for a product on a non-allowlisted host", () => {
+	/**
+	 * A Storage Box is not on the Cloud API at all: `/v1/storage_boxes` answers
+	 * 404 where `/v1/volumes` answers 401, so the absence is the endpoint's and
+	 * not a permissions artifact. It is administered through Robot, behind the
+	 * account's web console password.
+	 */
+	it("registers nothing only for the product Robot administers", () => {
 		const registry = hetznerResolverRegistry(options());
 		for (const productId of HETZNER_UNRESOLVED_PRODUCT_IDS) {
 			expect(registry.get(productId)).toBeUndefined();
 		}
-		expect(HETZNER_UNRESOLVED_PRODUCT_IDS).toEqual([
-			"hetzner.object-storage/v1",
-			"hetzner.storage-box/v1",
-		]);
+		expect(HETZNER_UNRESOLVED_PRODUCT_IDS).toEqual(["hetzner.storage-box/v1"]);
 	});
 
-	it("names the credential each excluded surface would need", () => {
-		expect(HETZNER_EXCLUDED_SURFACES.objectStorage.credential).toContain(
-			"SigV4",
-		);
+	it("names the credential the excluded surface would need", () => {
 		expect(HETZNER_EXCLUDED_SURFACES.robot.credential).toContain("password");
 	});
 
@@ -865,5 +881,140 @@ describe("the transport guard bounds where a token can be sent", () => {
 			expect(call.host).toBe(HETZNER_API_HOST);
 			expect(call.path.startsWith("/v1/")).toBe(true);
 		}
+	});
+});
+
+describe("Object Storage is S3, on its own host with its own credential", () => {
+	const BUCKET = "/hobo-assets";
+
+	function objectStorageApi(
+		exists = false,
+	): (call: RecordedCall) => TransportResponse {
+		let present = exists;
+		return (call) => {
+			if (call.path !== BUCKET) return unexpected(call);
+			if (call.method === "HEAD") {
+				return present
+					? { status: 200, headers: {}, body: "" }
+					: { status: 404, headers: {}, body: "" };
+			}
+			if (call.method === "PUT") {
+				present = true;
+				return { status: 200, headers: {}, body: "" };
+			}
+			if (call.method === "DELETE") {
+				if (!present) return { status: 404, headers: {}, body: "" };
+				present = false;
+				return { status: 204, headers: {}, body: "" };
+			}
+			return unexpected(call);
+		};
+	}
+
+	const bucketRequest = {
+		slot: "bucket",
+		productId: HETZNER_OBJECT_STORAGE_PRODUCT_ID,
+		logicalId: "hobo-assets",
+		desired: { location: "fsn1" },
+	} as const;
+
+	it("creates a bucket that is absent, then makes no second create", async () => {
+		const fake = fakeTransport(objectStorageApi());
+		const resolver = resolverFor(HETZNER_OBJECT_STORAGE_PRODUCT_ID);
+		const first = checked(
+			await resolver.reconcile(request(bucketRequest), fake.transport),
+		);
+		const second = checked(
+			await resolver.reconcile(request(bucketRequest), fake.transport),
+		);
+		expect(first.action).toBe("create");
+		expect(second.action).toBe("adopt");
+		expect(second.physicalId).toBe(first.physicalId);
+		expect(fake.countOf("PUT", BUCKET)).toBe(1);
+	});
+
+	/**
+	 * The load-bearing separation: the S3 surface gets a SigV4 signature from
+	 * its own key pair, and the project API token appears nowhere on this path.
+	 */
+	it("signs with SigV4 and never sends the project token", async () => {
+		const fake = fakeTransport(objectStorageApi());
+		await resolverFor(HETZNER_OBJECT_STORAGE_PRODUCT_ID).reconcile(
+			request(bucketRequest),
+			fake.transport,
+		);
+		expect(fake.calls.length).toBeGreaterThan(0);
+		for (const call of fake.calls) {
+			expect(call.host).toBe("fsn1.your-objectstorage.com");
+			const auth = call.headers.authorization ?? "";
+			expect(auth).toContain("AWS4-HMAC-SHA256");
+			expect(auth).toContain(OBJECT_STORAGE_KEYS.accessKeyId);
+			expect(auth).not.toContain(TOKEN);
+			expect(auth).not.toContain(OBJECT_STORAGE_KEYS.secretAccessKey);
+		}
+	});
+
+	it("is byte-stable, because the signing clock is injected", async () => {
+		const run = async () => {
+			const fake = fakeTransport(objectStorageApi());
+			await resolverFor(HETZNER_OBJECT_STORAGE_PRODUCT_ID).reconcile(
+				request(bucketRequest),
+				fake.transport,
+			);
+			return fake.calls.map((call) => call.headers.authorization);
+		};
+		expect(await run()).toEqual(await run());
+	});
+
+	/**
+	 * The prerequisites are demanded on use, not on build: a registry is a
+	 * catalog, and constructing one to reconcile a Cloud Server must not fail
+	 * for want of an S3 key pair that will never be sent.
+	 */
+	it("refuses on first use, not at build, when prerequisites are missing", async () => {
+		const registry = hetznerResolverRegistry({
+			resolveCredential: async () => TOKEN,
+		});
+		expect(registry.get(HETZNER_CLOUD_SERVER_PRODUCT_ID)).toBeDefined();
+
+		const fake = fakeTransport(objectStorageApi());
+		const message = await messageOf(() =>
+			(
+				registry.get(HETZNER_OBJECT_STORAGE_PRODUCT_ID) as ResourceResolver
+			).reconcile(request(bucketRequest), fake.transport),
+		);
+		expect(message).toContain("nowMs");
+		expect(fake.calls).toHaveLength(0);
+	});
+
+	it("refuses to empty a bucket to make a delete succeed", async () => {
+		const fake = fakeTransport((call) =>
+			call.method === "DELETE"
+				? { status: 409, headers: {}, body: "" }
+				: { status: 200, headers: {}, body: "" },
+		);
+		const message = await messageOf(() =>
+			resolverFor(HETZNER_OBJECT_STORAGE_PRODUCT_ID).delete(
+				request(bucketRequest),
+				fake.transport,
+			),
+		);
+		expect(message).toContain("unbounded data loss");
+	});
+
+	it("refuses an Object Storage location the guard does not name", async () => {
+		const guarded = guardedObjectStorageTransport(
+			async () => ({ status: 200, headers: {}, body: "" }),
+			"fsn1",
+		);
+		await expect(
+			guarded({
+				method: "HEAD",
+				url: "https://hel1.your-objectstorage.com/hobo-assets",
+				headers: {},
+				timeoutMs: 1000,
+				maxResponseBytes: 1024,
+			}),
+		).rejects.toThrow();
 	});
 });

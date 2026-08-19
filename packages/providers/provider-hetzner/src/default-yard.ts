@@ -31,7 +31,7 @@
  * HONEST SCOPE — what deploys: this package registers no Resource Definitions
  * for the `hetzner.*` product ids, so a deploy attempted against this Yard
  * fails closed at resolution (`YARD_BINDING_PRODUCT_UNKNOWN`) until definitions
- * land. It does ship bearer-token resolvers, but for 3 of the 5 ids only
+ * land. It does ship resolvers, but for 4 of the 5 ids only
  * (`HETZNER_RESOLVED_PRODUCT_IDS`), and those are proven against an injected
  * fake transport — no live Hetzner call has been made from this repo.
  */
@@ -74,11 +74,13 @@ export interface HetznerYardSpecOptions {
 /**
  * Everything the Hetzner factories can allocate, grouped by slot.
  *
- * `bucket` holds three entries under two profiles on purpose. Object Storage
- * satisfies `bucket.s3-compatible/v1`; a Storage Box and a Volume both satisfy
- * the narrower `bucket.file-storage/v1`, and they are genuinely different
- * things (a network share versus a block device attached to one server), so
- * both are declared and selection picks.
+ * `bucket` holds three entries under three profiles on purpose, and each one is
+ * the most specific profile that is true of it: Object Storage is
+ * `bucket.s3-compatible/v1`, a Storage Box is the metadata-carrying share
+ * `bucket.file-storage/v1`, and a Volume is a mounted `bucket.filesystem/v1`.
+ * All three refine `bucket.object/v1`, so a workload asking for the general
+ * profile matches all three and selection picks; a workload that needs S3
+ * semantics matches only the first.
  */
 export const HETZNER_DEFAULT_BINDINGS: HetznerSlotCatalog = Object.freeze({
 	web: Object.freeze([cloudServer()]),

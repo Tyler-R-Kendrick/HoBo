@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
 	cronJob,
 	type DeploymentOptions,
+	daemonSet,
 	deployment,
 	deploymentWorker,
 	ingress,
@@ -11,6 +12,8 @@ import {
 	persistentVolumeClaim,
 	secret,
 	service,
+	statefulSet,
+	statefulSetWorker,
 } from "../src/index.js";
 
 /** The code core refused a call with, or undefined if it did not refuse. */
@@ -50,17 +53,38 @@ const NO_ARG_FACTORIES = [
 		"kubernetes.cronjob/v1",
 	],
 	[
+		"statefulSet",
+		() => statefulSet(),
+		"web",
+		"web.hosted/v1",
+		"kubernetes.statefulset/v1",
+	],
+	[
+		"statefulSetWorker",
+		() => statefulSetWorker(),
+		"service",
+		"service.worker/v1",
+		"kubernetes.statefulset/v1",
+	],
+	[
+		"daemonSet",
+		() => daemonSet(),
+		"service",
+		"service.worker/v1",
+		"kubernetes.daemonset/v1",
+	],
+	[
 		"persistentVolumeClaim",
 		() => persistentVolumeClaim(),
 		"bucket",
-		"bucket.file-storage/v1",
+		"bucket.filesystem/v1",
 		"kubernetes.persistent-volume-claim/v1",
 	],
 	[
 		"secret",
 		() => secret(),
 		"secretRef",
-		"secret-ref.locator/v1",
+		"secret-ref.runtime-projection/v1",
 		"kubernetes.secret/v1",
 	],
 ] as const;

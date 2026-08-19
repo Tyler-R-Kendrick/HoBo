@@ -76,6 +76,8 @@ import {
 	type TransportResponse,
 } from "@hobo/core";
 
+import { type AwsCredentials, signAwsRequest } from "@hobo/core/aws-sigv4";
+
 import { HETZNER_PROVIDER_TARGET } from "./options.js";
 import {
 	cloudServer,
@@ -86,9 +88,11 @@ import {
 } from "./slots.js";
 import {
 	guardedHetznerTransport,
+	guardedObjectStorageTransport,
 	HETZNER_MAX_RESPONSE_BYTES,
 	HETZNER_MAX_TIMEOUT_MS,
 	hetznerApiUrl,
+	objectStorageUrl,
 } from "./transport.js";
 
 // ---------------------------------------------------------------------------
@@ -116,37 +120,35 @@ export const HETZNER_LOAD_BALANCER_PRODUCT_ID = productIdOf(
 	"loadBalancer",
 );
 export const HETZNER_VOLUME_PRODUCT_ID = productIdOf(volume(), "volume");
+export const HETZNER_OBJECT_STORAGE_PRODUCT_ID = productIdOf(
+	objectStorage(),
+	"objectStorage",
+);
 
 /** Every product this module resolves, id-sorted for a deterministic registry. */
 export const HETZNER_RESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
 	[
 		HETZNER_CLOUD_SERVER_PRODUCT_ID,
 		HETZNER_LOAD_BALANCER_PRODUCT_ID,
+		HETZNER_OBJECT_STORAGE_PRODUCT_ID,
 		HETZNER_VOLUME_PRODUCT_ID,
 	].sort(compareStrings),
 );
 
 /**
- * Product ids this package catalogs but deliberately cannot resolve. Both are
- * the same shape: a surface on a different host, reached with a different
- * credential, which the transport guard does not allowlist. Resolving either
- * would mean widening where a secret can be sent — see
- * `HETZNER_EXCLUDED_SURFACES` in `./transport.ts`.
+ * The one product id this package catalogs and deliberately cannot resolve.
  *
- * `hetzner.object-storage/v1`: an S3 surface on
- * `<location>.your-objectstorage.com`, signed with SigV4 against a *separate*
- * access key pair rather than the project API token.
- *
- * `hetzner.storage-box/v1`: administered through the Robot API behind HTTP
- * Basic with the account's web console password. A resolver reaching that
- * surface would be sending a console password, which is a different and much
- * worse thing to hand a transport than a scoped project token.
+ * `hetzner.storage-box/v1`: a Storage Box is not on the Cloud API at all —
+ * `GET https://api.hetzner.cloud/v1/storage_boxes` answers 404, where
+ * `/v1/volumes` answers 401, so the absence is the endpoint's and not a
+ * permissions artifact. Storage Boxes are administered through the Robot API
+ * behind HTTP Basic with the account's *web console password*, and a resolver
+ * reaching that surface would be sending a console password through an
+ * injected transport — a different and much worse thing to hand out than a
+ * scoped project token. See `HETZNER_EXCLUDED_SURFACES` in `./transport.ts`.
  */
 export const HETZNER_UNRESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
-	[
-		productIdOf(objectStorage(), "objectStorage"),
-		productIdOf(storageBox(), "storageBox"),
-	].sort(compareStrings),
+	[productIdOf(storageBox(), "storageBox")].sort(compareStrings),
 );
 
 // ---------------------------------------------------------------------------
@@ -161,6 +163,29 @@ export interface HetznerResolverOptions {
 	 * secrets live.
 	 */
 	readonly resolveCredential: (ref: string) => Promise<string>;
+	/**
+	 * Resolves a credential *locator* to an Object Storage access key pair.
+	 * Separate from `resolveCredential` because Object Storage is a separate
+	 * credential: the project API token does not authenticate against
+	 * `<location>.your-objectstorage.com`, and letting one function serve both
+	 * would invite sending the wrong secret to the wrong origin. Required only
+	 * to build the Object Storage resolver.
+	 */
+	readonly resolveObjectStorageCredential?: (
+		ref: string,
+	) => Promise<ObjectStorageKeyPair>;
+	/**
+	 * SigV4 signing clock, injected. Reading `Date.now()` inside the resolver
+	 * would make a signed request untestable. Required only to build the
+	 * Object Storage resolver.
+	 */
+	readonly nowMs?: number | (() => number);
+}
+
+/** An Object Storage access key pair, as the host's custody hands it over. */
+export interface ObjectStorageKeyPair {
+	readonly accessKeyId: string;
+	readonly secretAccessKey: string;
 }
 
 /**
@@ -384,6 +409,10 @@ interface HetznerResolverContext {
 	readonly desired: Readonly<Record<string, unknown>>;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
+	/** Present only on the Object Storage path; undefined elsewhere. */
+	readonly objectStorageKeys: ObjectStorageKeyPair | undefined;
+	/** Injected SigV4 clock. Only the Object Storage path signs. */
+	readonly nowMs: () => number;
 }
 
 function outcome(
@@ -461,6 +490,70 @@ async function resolveToken(
 		);
 	}
 	return material.trim();
+}
+
+/**
+ * The Object Storage credential parse boundary. Same discipline as
+ * `resolveToken`: the ref must be a locator, the host resolves it, and a pair
+ * with an empty half is refused rather than sent as a half-signed request.
+ */
+async function resolveObjectStorageKeys(
+	request: ResolveRequest,
+	resolve: ((ref: string) => Promise<ObjectStorageKeyPair>) | undefined,
+): Promise<ObjectStorageKeyPair> {
+	if (typeof resolve !== "function") {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			"hetzner object storage resolver: no resolveObjectStorageCredential was injected",
+		);
+	}
+	const ref = request.credentialRef;
+	if (typeof ref !== "string" || ref.trim().length === 0) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			'hetzner object storage resolver: credentialRef is empty. Supply a locator such as "secret://camp/hetzner-object-storage-keys"; the resolver never accepts inline credential material',
+		);
+	}
+	const trimmed = ref.trim();
+	if (RAW_CREDENTIAL_PATTERN.test(trimmed)) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_NOT_A_REF",
+			"hetzner object storage resolver: credentialRef looks like credential material rather than a locator. Store the key pair with the host secret custody and pass its reference (scheme://path)",
+		);
+	}
+	if (!CREDENTIAL_REF_PATTERN.test(trimmed)) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_NOT_A_REF",
+			`hetzner object storage resolver: credentialRef ${JSON.stringify(redactHetznerText(trimmed, 60))} is not a locator. Expected "<scheme>://<path>"`,
+		);
+	}
+	let keys: ObjectStorageKeyPair;
+	try {
+		keys = await resolve(trimmed);
+	} catch (cause) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`hetzner object storage resolver: the host could not resolve credentialRef ${JSON.stringify(trimmed)}: ${redactHetznerText(
+				cause instanceof Error ? cause.message : String(cause),
+				160,
+			)}`,
+		);
+	}
+	if (
+		typeof keys?.accessKeyId !== "string" ||
+		keys.accessKeyId.trim().length === 0 ||
+		typeof keys.secretAccessKey !== "string" ||
+		keys.secretAccessKey.trim().length === 0
+	) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`hetzner object storage resolver: credentialRef ${JSON.stringify(trimmed)} resolved to an incomplete key pair. A half-populated pair would produce a signature that fails at Hetzner with a message about the wrong thing`,
+		);
+	}
+	return {
+		accessKeyId: keys.accessKeyId,
+		secretAccessKey: keys.secretAccessKey,
+	};
 }
 
 function resourceName(request: ResolveRequest, productId: string): string {
@@ -1062,6 +1155,174 @@ const VOLUME_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 };
 
 // ---------------------------------------------------------------------------
+// Object Storage — S3 on <location>.your-objectstorage.com, signed with SigV4
+// ---------------------------------------------------------------------------
+
+/**
+ * The one product here that does not speak to the Cloud API. It is an S3
+ * surface on its own host with its own key pair, so it has its own guard
+ * policy, its own credential, and its own send path — which is what makes
+ * "the project token cannot reach this origin" a property of construction
+ * rather than of care.
+ *
+ * Convergence is a plain read-or-create against S3's own documented existence
+ * check: `HEAD /{bucket}` answers 200 or 404, and 404 is the only signal that
+ * a create is needed.
+ */
+async function sendObjectStorage(
+	context: HetznerResolverContext,
+	call: {
+		readonly method: TransportMethod;
+		readonly path: string;
+		readonly body?: string;
+	},
+): Promise<TransportResponse> {
+	const location = requiredLocation(context, HETZNER_OBJECT_STORAGE_PRODUCT_ID);
+	const keys = context.objectStorageKeys;
+	if (keys === undefined) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`${HETZNER_OBJECT_STORAGE_PRODUCT_ID}: no Object Storage credential was resolved. Construct the resolvers with resolveObjectStorageCredential(ref) — Object Storage uses an access key pair, not the project API token, and this package will not send one where the other belongs`,
+		);
+	}
+	const url = objectStorageUrl(location, call.path);
+	const credentials: AwsCredentials = {
+		accessKeyId: keys.accessKeyId,
+		secretAccessKey: keys.secretAccessKey,
+	};
+	const signed = signAwsRequest({
+		method: call.method,
+		url,
+		...(call.body === undefined ? {} : { body: call.body }),
+		// Hetzner's S3 surface verifies a signature scoped to the location.
+		region: location,
+		service: "s3",
+		credentials,
+		now: new Date(context.nowMs()),
+	});
+	const guarded = guardedObjectStorageTransport(context.transport, location);
+	return guarded({
+		method: call.method,
+		url,
+		headers: lowerCaseHeaders(signed.headers),
+		...(call.body === undefined ? {} : { body: call.body }),
+		timeoutMs: HETZNER_MAX_TIMEOUT_MS,
+		maxResponseBytes: HETZNER_MAX_RESPONSE_BYTES,
+	});
+}
+
+/**
+ * Fold signed header names to lower case.
+ *
+ * `signAwsRequest` returns `Authorization` with its conventional casing and
+ * everything else lower; HTTP header names are case-insensitive, so both reach
+ * the provider identically. Folding here means every request this repo composes
+ * carries one convention, which is what lets a guard, a test, or a log line
+ * look for `authorization` without knowing which signer produced it.
+ */
+function lowerCaseHeaders(
+	headers: Readonly<Record<string, string>>,
+): Record<string, string> {
+	const out: Record<string, string> = {};
+	for (const [name, value] of Object.entries(headers)) {
+		out[name.toLowerCase()] = value;
+	}
+	return out;
+}
+
+function objectStorageOutputs(
+	context: HetznerResolverContext,
+	location: string,
+): Readonly<Record<string, unknown>> {
+	return {
+		bucketName: context.name,
+		location,
+		endpoint: `https://${context.name}.${location}.your-objectstorage.com`,
+		s3Endpoint: `https://${location}.your-objectstorage.com`,
+	};
+}
+
+const OBJECT_STORAGE_SPEC: Omit<HetznerResolverSpec, "productId"> = {
+	async read(context) {
+		const location = requiredLocation(
+			context,
+			HETZNER_OBJECT_STORAGE_PRODUCT_ID,
+		);
+		const response = await sendObjectStorage(context, {
+			method: "HEAD",
+			path: `/${encodeURIComponent(context.name)}`,
+		});
+		if (response.status === 404) return undefined;
+		if (response.status >= 400) {
+			throw providerRejection(
+				response,
+				`object storage read bucket ${context.name}`,
+			);
+		}
+		return outcome(
+			settledAction(context),
+			context.name,
+			objectStorageOutputs(context, location),
+			[],
+		);
+	},
+	async reconcile(context) {
+		const location = requiredLocation(
+			context,
+			HETZNER_OBJECT_STORAGE_PRODUCT_ID,
+		);
+		const path = `/${encodeURIComponent(context.name)}`;
+		const head = await sendObjectStorage(context, { method: "HEAD", path });
+		if (head.status !== 404) {
+			if (head.status >= 400) {
+				throw providerRejection(
+					head,
+					`object storage read bucket ${context.name}`,
+				);
+			}
+			return outcome(
+				settledAction(context),
+				context.name,
+				objectStorageOutputs(context, location),
+				[],
+			);
+		}
+		const label = `object storage create bucket ${context.name}`;
+		const created = await sendObjectStorage(context, { method: "PUT", path });
+		if (created.status === 409) {
+			throw new ResolverError(
+				"RESOLVER_PROVIDER_REJECTED",
+				`${label}: the bucket name is already taken. S3 bucket names are global within a location, so this is somebody else's bucket — it is reported rather than adopted, because adopting a bucket you do not own is worse than failing`,
+			);
+		}
+		if (created.status >= 400) throw providerRejection(created, label);
+		return outcome(
+			"create",
+			context.name,
+			objectStorageOutputs(context, location),
+			[
+				"the bucket was created private; this resolver sets no ACL, so a bucket meant to be public still needs one applied deliberately",
+			],
+		);
+	},
+	async remove(context) {
+		const label = `object storage delete bucket ${context.name}`;
+		const response = await sendObjectStorage(context, {
+			method: "DELETE",
+			path: `/${encodeURIComponent(context.name)}`,
+		});
+		if (response.status === 404) return;
+		if (response.status === 409) {
+			throw new ResolverError(
+				"RESOLVER_PROVIDER_REJECTED",
+				`${label}: the bucket is not empty. This resolver will not enumerate and delete objects to make a delete succeed — that is unbounded data loss dressed as cleanup. Empty the bucket deliberately, then reconcile`,
+			);
+		}
+		if (response.status >= 400) throw providerRejection(response, label);
+	},
+};
+
+// ---------------------------------------------------------------------------
 // Wrapper and registry
 // ---------------------------------------------------------------------------
 
@@ -1073,10 +1334,24 @@ interface HetznerResolverSpec {
 	remove(context: HetznerResolverContext): Promise<void>;
 }
 
+/**
+ * The SigV4 clock, refused rather than defaulted. A signer that reads the
+ * ambient clock cannot be pinned by a test.
+ */
+function clockOf(nowMs: HetznerResolverOptions["nowMs"]): () => number {
+	if (typeof nowMs === "function") return nowMs;
+	if (typeof nowMs === "number" && Number.isFinite(nowMs)) return () => nowMs;
+	throw new ResolverError(
+		"RESOLVER_PRODUCT_UNSUPPORTED",
+		"the hetzner object storage resolver needs an injected nowMs (a number or a () => number). SigV4 signs a timestamp, and reading the clock inside the resolver would make a signed request untestable",
+	);
+}
+
 function createResolver(
 	spec: HetznerResolverSpec,
 	options: HetznerResolverOptions,
 ): ResourceResolver {
+	const signsRequests = spec.productId === HETZNER_OBJECT_STORAGE_PRODUCT_ID;
 	if (typeof options.resolveCredential !== "function") {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
@@ -1095,7 +1370,23 @@ function createResolver(
 				spec.productId,
 			);
 		}
-		const token = await resolveToken(request, options.resolveCredential);
+		// The two credentials are mutually exclusive by construction: the S3
+		// path never resolves the project token, and the Cloud API path never
+		// resolves the S3 keys.
+		// The Object Storage prerequisites are demanded when that resolver is
+		// actually used, not when the registry is built. A registry is a
+		// catalog: building one to reconcile a Cloud Server must not fail for
+		// want of an S3 key pair that will never be sent.
+		const nowMs = signsRequests ? clockOf(options.nowMs) : () => 0;
+		const token = signsRequests
+			? ""
+			: await resolveToken(request, options.resolveCredential);
+		const objectStorageKeys = signsRequests
+			? await resolveObjectStorageKeys(
+					request,
+					options.resolveObjectStorageCredential,
+				)
+			: undefined;
 		return {
 			request,
 			transport,
@@ -1103,6 +1394,8 @@ function createResolver(
 			name: resourceName(request, spec.productId),
 			desired: request.desired,
 			knownPhysicalId: knownPhysicalId(request),
+			objectStorageKeys,
+			nowMs,
 		};
 	}
 
@@ -1133,6 +1426,10 @@ export function hetznerResolvers(
 		{ productId: HETZNER_CLOUD_SERVER_PRODUCT_ID, ...CLOUD_SERVER_SPEC },
 		{ productId: HETZNER_LOAD_BALANCER_PRODUCT_ID, ...LOAD_BALANCER_SPEC },
 		{ productId: HETZNER_VOLUME_PRODUCT_ID, ...VOLUME_SPEC },
+		{
+			productId: HETZNER_OBJECT_STORAGE_PRODUCT_ID,
+			...OBJECT_STORAGE_SPEC,
+		},
 	];
 	return Object.freeze(
 		[...specs]

@@ -33,11 +33,13 @@ import {
 	DIGITALOCEAN_MANAGED_POSTGRES_PRODUCT_ID,
 	DIGITALOCEAN_MANAGED_VALKEY_PRODUCT_ID,
 	DIGITALOCEAN_RESOLVED_PRODUCT_IDS,
+	DIGITALOCEAN_SPACES_PRODUCT_ID,
 	DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS,
 	type DigitalOceanResolverOptions,
 	digitaloceanResolverRegistry,
 	digitaloceanResolvers,
 	guardedDigitalOceanTransport,
+	guardedSpacesTransport,
 	redactDigitalOceanText,
 } from "../src/index.js";
 
@@ -126,11 +128,22 @@ function bodyOf(call: RecordedCall): Rec {
 	return call.body === undefined ? {} : (JSON.parse(call.body) as Rec);
 }
 
+/** A Spaces key pair. Never the control-plane token — that is the point. */
+const SPACES_KEYS = Object.freeze({
+	accessKeyId: "DO00FAKEACCESSKEYID12",
+	secretAccessKey: "fake-spaces-secret-access-key-0123456789",
+});
+
+/** A fixed signing instant, so a SigV4 signature is reproducible in a test. */
+const NOW_MS = Date.parse("2026-08-19T12:00:00.000Z");
+
 function options(
 	overrides: Partial<DigitalOceanResolverOptions> = {},
 ): DigitalOceanResolverOptions {
 	return {
 		resolveCredential: async () => TOKEN,
+		resolveSpacesCredential: async () => SPACES_KEYS,
+		nowMs: NOW_MS,
 		...overrides,
 	};
 }
@@ -405,6 +418,13 @@ describe("the registry covers exactly the products that can converge", () => {
 		for (const productId of DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS) {
 			expect(registry.get(productId)).toBeUndefined();
 		}
+		// The three that remain are the ones DigitalOcean's own API shape makes
+		// non-convergent, not ones this package declined to write.
+		expect(DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS).toEqual([
+			"digitalocean.app-platform-job/v1",
+			"digitalocean.app-platform-worker/v1",
+			"digitalocean.functions/v1",
+		]);
 	});
 
 	it("accounts for every catalogued product exactly once", () => {
@@ -1001,5 +1021,208 @@ describe("a bounded listing refuses rather than concluding 'absent'", () => {
 
 	it("refuses an unbounded page budget at construction time", () => {
 		expect(() => digitaloceanResolvers(options({ maxListPages: 0 }))).toThrow();
+	});
+});
+
+describe("Spaces is S3, on its own host with its own credential", () => {
+	const SPACES_BUCKET = "/hobo-assets";
+
+	/** A fake Spaces origin: HEAD answers presence, PUT creates, DELETE removes. */
+	function spacesApi(
+		exists = false,
+	): (call: RecordedCall) => TransportResponse {
+		let present = exists;
+		return (call) => {
+			if (call.path !== SPACES_BUCKET) return unexpected(call);
+			if (call.method === "HEAD") {
+				return present
+					? { status: 200, headers: {}, body: "" }
+					: { status: 404, headers: {}, body: "" };
+			}
+			if (call.method === "PUT") {
+				present = true;
+				return { status: 200, headers: {}, body: "" };
+			}
+			if (call.method === "DELETE") {
+				if (!present) return { status: 404, headers: {}, body: "" };
+				present = false;
+				return { status: 204, headers: {}, body: "" };
+			}
+			return unexpected(call);
+		};
+	}
+
+	const spacesRequest = {
+		slot: "bucket",
+		productId: DIGITALOCEAN_SPACES_PRODUCT_ID,
+		logicalId: "hobo-assets",
+		desired: { region: "nyc3" },
+	} as const;
+
+	it("creates a bucket that is absent, then makes no second create", async () => {
+		const fake = fakeTransport(spacesApi());
+		const resolver = resolverFor(DIGITALOCEAN_SPACES_PRODUCT_ID);
+		const first = checked(
+			await resolver.reconcile(request(spacesRequest), fake.transport),
+		);
+		const second = checked(
+			await resolver.reconcile(request(spacesRequest), fake.transport),
+		);
+		expect(first.action).toBe("create");
+		expect(second.action).toBe("adopt");
+		expect(second.physicalId).toBe(first.physicalId);
+		expect(fake.countOf("PUT", SPACES_BUCKET)).toBe(1);
+	});
+
+	/**
+	 * The load-bearing separation: Spaces gets a SigV4 signature computed from
+	 * its own key pair, and the control-plane personal access token appears
+	 * nowhere on this path.
+	 */
+	it("signs with SigV4 and never sends the control-plane token", async () => {
+		const fake = fakeTransport(spacesApi());
+		await resolverFor(DIGITALOCEAN_SPACES_PRODUCT_ID).reconcile(
+			request(spacesRequest),
+			fake.transport,
+		);
+		expect(fake.calls.length).toBeGreaterThan(0);
+		for (const call of fake.calls) {
+			expect(call.host).toBe("nyc3.digitaloceanspaces.com");
+			const auth = call.headers.authorization ?? "";
+			expect(auth).toContain("AWS4-HMAC-SHA256");
+			expect(auth).toContain(SPACES_KEYS.accessKeyId);
+			expect(auth).not.toContain(TOKEN);
+			expect(auth).not.toContain(SPACES_KEYS.secretAccessKey);
+			expect(call.headers["x-amz-content-sha256"]).toBeDefined();
+		}
+	});
+
+	it("is byte-stable, because the signing clock is injected", async () => {
+		const run = async () => {
+			const fake = fakeTransport(spacesApi());
+			await resolverFor(DIGITALOCEAN_SPACES_PRODUCT_ID).reconcile(
+				request(spacesRequest),
+				fake.transport,
+			);
+			return fake.calls.map((call) => call.headers.authorization);
+		};
+		expect(await run()).toEqual(await run());
+	});
+
+	/**
+	 * The prerequisites are demanded on use, not on build: a registry is a
+	 * catalog, and constructing one to reconcile a Postgres cluster must not
+	 * fail for want of an object-storage key pair that will never be sent.
+	 */
+	it("builds the registry even without Spaces prerequisites", () => {
+		const registry = digitaloceanResolverRegistry({
+			resolveCredential: async () => TOKEN,
+		});
+		expect(
+			registry.get(DIGITALOCEAN_MANAGED_POSTGRES_PRODUCT_ID),
+		).toBeDefined();
+		expect(registry.get(DIGITALOCEAN_SPACES_PRODUCT_ID)).toBeDefined();
+	});
+
+	it("refuses on first use without an injected clock", async () => {
+		const fake = fakeTransport(spacesApi());
+		const message = await messageOf(() =>
+			(
+				digitaloceanResolverRegistry({
+					resolveCredential: async () => TOKEN,
+					resolveSpacesCredential: async () => SPACES_KEYS,
+				}).get(DIGITALOCEAN_SPACES_PRODUCT_ID) as ResourceResolver
+			).reconcile(request(spacesRequest), fake.transport),
+		);
+		expect(message).toContain("nowMs");
+		expect(fake.calls).toHaveLength(0);
+	});
+
+	it("refuses on first use without a Spaces credential resolver", async () => {
+		const fake = fakeTransport(spacesApi());
+		const message = await messageOf(() =>
+			(
+				digitaloceanResolverRegistry({
+					resolveCredential: async () => TOKEN,
+					nowMs: NOW_MS,
+				}).get(DIGITALOCEAN_SPACES_PRODUCT_ID) as ResourceResolver
+			).reconcile(request(spacesRequest), fake.transport),
+		);
+		expect(message).toContain("resolveSpacesCredential");
+		expect(fake.calls).toHaveLength(0);
+	});
+
+	it("refuses an incomplete key pair rather than half-signing", async () => {
+		const fake = fakeTransport(spacesApi());
+		const code = await codeOf(() =>
+			resolverFor(DIGITALOCEAN_SPACES_PRODUCT_ID, {
+				resolveSpacesCredential: async () => ({
+					accessKeyId: "only-half",
+					secretAccessKey: "",
+				}),
+			}).reconcile(request(spacesRequest), fake.transport),
+		);
+		expect(code).toBe("RESOLVER_CREDENTIAL_MISSING");
+		expect(fake.calls).toHaveLength(0);
+	});
+
+	/**
+	 * Bucket names are global per region, so a 409 is somebody else's bucket.
+	 * Adopting it would be worse than failing.
+	 */
+	it("reports a taken bucket name rather than adopting it", async () => {
+		const fake = fakeTransport((call) =>
+			call.method === "HEAD"
+				? { status: 404, headers: {}, body: "" }
+				: { status: 409, headers: {}, body: "" },
+		);
+		const message = await messageOf(() =>
+			resolverFor(DIGITALOCEAN_SPACES_PRODUCT_ID).reconcile(
+				request(spacesRequest),
+				fake.transport,
+			),
+		);
+		expect(message).toContain("already taken");
+	});
+
+	it("refuses to empty a bucket to make a delete succeed", async () => {
+		const fake = fakeTransport((call) =>
+			call.method === "DELETE"
+				? { status: 409, headers: {}, body: "" }
+				: { status: 200, headers: {}, body: "" },
+		);
+		const message = await messageOf(() =>
+			resolverFor(DIGITALOCEAN_SPACES_PRODUCT_ID).delete(
+				request(spacesRequest),
+				fake.transport,
+			),
+		);
+		expect(message).toContain("unbounded data loss");
+	});
+
+	it("treats an already-gone bucket as a successful delete", async () => {
+		const fake = fakeTransport(spacesApi(false));
+		await expect(
+			resolverFor(DIGITALOCEAN_SPACES_PRODUCT_ID).delete(
+				request(spacesRequest),
+				fake.transport,
+			),
+		).resolves.toBeUndefined();
+	});
+
+	it("refuses a Spaces host the guard does not name", async () => {
+		const guarded = guardedSpacesTransport(
+			async () => ({ status: 200, headers: {}, body: "" }),
+			"nyc3",
+		);
+		await expect(
+			guarded({
+				method: "HEAD",
+				url: "https://ams3.digitaloceanspaces.com/hobo-assets",
+				headers: {},
+				timeoutMs: 1000,
+				maxResponseBytes: 1024,
+			}),
+		).rejects.toThrow();
 	});
 });

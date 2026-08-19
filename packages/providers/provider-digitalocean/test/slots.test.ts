@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 
 import {
 	appPlatform,
+	blockStorage,
 	droplet,
+	dropletWorker,
 	loadBalancer,
 	managed,
 	managedValkey,
@@ -62,8 +64,24 @@ const NO_ARG_FACTORIES = [
 		"managedValkey",
 		() => managedValkey(),
 		"kv",
-		"kv.redis-compatible/v1",
+		// The most specific true profile. It refines kv.redis-compatible, which
+		// refines kv.key-value, so a request for either ancestor still matches.
+		"kv.valkey/v1",
 		"digitalocean.managed-valkey/v1",
+	],
+	[
+		"dropletWorker",
+		() => dropletWorker(),
+		"service",
+		"service.worker/v1",
+		"digitalocean.droplet/v1",
+	],
+	[
+		"blockStorage",
+		() => blockStorage(),
+		"bucket",
+		"bucket.filesystem/v1",
+		"digitalocean.block-storage/v1",
 	],
 	[
 		"spaces",

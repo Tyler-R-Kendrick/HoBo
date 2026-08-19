@@ -10,11 +10,10 @@
  * cache, queue or topic — those arrive through operators, which are third-party
  * software an operator installs into a cluster — so those four slots carry no
  * rows, and a row for one would be a claim about somebody else's software.
- * `@hobo/provider-kubernetes` ships convergent resolvers for six of its seven
- * catalogued products, exercised against an injected fake apiserver; the
- * seventh is the Secret *locator* row, which ships no resolver because creating
- * a Secret means putting its contents in a record that is written to the event
- * log. No Resource Definitions are registered for the `kubernetes.*` product
+ * `@hobo/provider-kubernetes` ships convergent resolvers for eight of its nine
+ * catalogued products, exercised against an injected fake apiserver; the ninth
+ * is the Secret row, which ships no resolver because creating a Secret means
+ * putting its contents in a record that is written to the event log. No Resource Definitions are registered for the `kubernetes.*` product
  * ids, so a deploy routed through this Yard still fails closed at resolution.
  *
  * The `regions` option is topology labels for the cluster's nodes, not a
@@ -37,7 +36,9 @@ import {
 export {
 	type CronJobOptions,
 	cronJob,
+	type DaemonSetOptions,
 	type DeploymentOptions,
+	daemonSet,
 	deployment,
 	deploymentWorker,
 	type IngressOptions,
@@ -51,8 +52,11 @@ export {
 	type ServiceOptions,
 	type ServiceType,
 	type SlotResourceQuantities,
+	type StatefulSetOptions,
 	secret,
 	service,
+	statefulSet,
+	statefulSetWorker,
 } from "@hobo/provider-kubernetes";
 
 /**

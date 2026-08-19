@@ -36,8 +36,15 @@
  */
 
 // public-contract: the closed HTTP method vocabulary a resolver may issue.
+//
+// `HEAD` is here because it is how S3 asks "does this bucket exist" —
+// `HeadBucket` is the documented existence check, and the S3-compatible
+// providers (DigitalOcean Spaces, Hetzner Object Storage) inherit it. A
+// resolver forced to probe with a bodied `GET` instead would transfer a listing
+// it does not want in order to learn one bit.
 export const TRANSPORT_METHODS = Object.freeze([
 	"GET",
+	"HEAD",
 	"POST",
 	"PUT",
 	"PATCH",

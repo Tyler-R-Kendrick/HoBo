@@ -5,13 +5,14 @@
  * selection. Which offering a given resource gets is decided later, by ADR-0151
  * selection, against the requirements the app actually states.
  *
- * HONEST SCOPE: `@hobo/provider-digitalocean` ships bearer-token resolvers for
- * 9 of its 14 catalogued products, exercised against an injected fake
- * transport, and registers no Resource Definitions for the `digitalocean.*`
- * product ids — so a deploy against this Yard still fails closed at resolution
- * until definitions land. `queue`, `topic` and `secretRef` carry no rows,
- * because DigitalOcean sells no first-party queue and no first-party secret
- * store.
+ * HONEST SCOPE: `@hobo/provider-digitalocean` ships resolvers for 12 of its 15
+ * catalogued products, exercised against an injected fake transport, and
+ * registers no Resource Definitions for the `digitalocean.*` product ids — so a
+ * deploy against this Yard still fails closed at resolution until definitions
+ * land. The three without resolvers are the ones DigitalOcean's own API shape
+ * makes non-convergent, named in `DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS`.
+ * `queue`, `topic` and `secretRef` carry no rows at all, because DigitalOcean
+ * sells no first-party queue and no first-party secret store.
  */
 import {
 	type DigitalOceanYardSpecOptions,
@@ -33,12 +34,15 @@ export {
 	type AppPlatformStaticSiteOptions,
 	type AppPlatformWorkerOptions,
 	appPlatform,
+	type BlockStorageOptions,
+	blockStorage,
 	type DropletOptions,
 	droplet,
+	dropletWorker,
 	type FunctionsOptions,
 	functions,
 	type KubernetesNodePoolOptions,
-	kubernetesWorkload,
+	kubernetesCluster,
 	LOAD_BALANCER_ALGORITHMS,
 	type LoadBalancerAlgorithm,
 	type LoadBalancerOptions,

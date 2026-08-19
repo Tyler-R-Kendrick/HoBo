@@ -32,9 +32,15 @@ import type { HttpTransport, TransportRequest } from "@hobo/core";
 import { guardedAwsTransport } from "@hobo/provider-aws";
 import { guardedAzureTransport } from "@hobo/provider-azure";
 import { guardedCloudflareTransport } from "@hobo/provider-cloudflare";
-import { guardedDigitalOceanTransport } from "@hobo/provider-digitalocean";
+import {
+	guardedDigitalOceanTransport,
+	guardedSpacesTransport,
+} from "@hobo/provider-digitalocean";
 import { guardedGcpTransport } from "@hobo/provider-gcp";
-import { guardedHetznerTransport } from "@hobo/provider-hetzner";
+import {
+	guardedHetznerTransport,
+	guardedObjectStorageTransport,
+} from "@hobo/provider-hetzner";
 import { guardedHostingerTransport } from "@hobo/provider-hostinger";
 import { guardedKubernetesTransport } from "@hobo/provider-kubernetes";
 import { describe, expect, it } from "vitest";
@@ -146,6 +152,28 @@ const CASES: readonly GuardCase[] = [
 		// lists prefixes rather than the bare host: a resolver that could reach
 		// it could spend the account's money.
 		foreignPath: "https://developers.hostinger.com/api/billing/v1/orders",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		// The S3 surfaces are separate guards on purpose: a different host and a
+		// different credential from their provider's control plane, so the
+		// refusal matrix has to hold for them independently.
+		label: "digitalocean spaces (s3)",
+		wrap: (inner) => guardedSpacesTransport(inner, "nyc3"),
+		allowed: "https://nyc3.digitaloceanspaces.com/hobo-assets",
+		foreignHost: "https://ams3.digitaloceanspaces.com/hobo-assets",
+		// Whole-host policy: S3 addresses a bucket and key as the entire path.
+		foreignPath: undefined,
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "hetzner object storage (s3)",
+		wrap: (inner) => guardedObjectStorageTransport(inner, "fsn1"),
+		allowed: "https://fsn1.your-objectstorage.com/hobo-assets",
+		foreignHost: "https://hel1.your-objectstorage.com/hobo-assets",
+		foreignPath: undefined,
 		maxTimeoutMs: 20_000,
 		maxResponseBytes: 512 * 1024,
 	},

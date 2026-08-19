@@ -83,12 +83,15 @@ import {
 	type TransportResponse,
 } from "@hobo/core";
 
+import { type AwsCredentials, signAwsRequest } from "@hobo/core/aws-sigv4";
+
 import { DIGITALOCEAN_PROVIDER_TARGET } from "./options.js";
 import {
 	appPlatform,
+	blockStorage,
 	droplet,
 	functions,
-	kubernetesWorkload,
+	kubernetesCluster,
 	loadBalancer,
 	managed,
 	managedValkey,
@@ -99,6 +102,8 @@ import {
 	DIGITALOCEAN_MAX_TIMEOUT_MS,
 	digitaloceanApiUrl,
 	guardedDigitalOceanTransport,
+	guardedSpacesTransport,
+	spacesUrl,
 } from "./transport.js";
 
 // ---------------------------------------------------------------------------
@@ -153,6 +158,15 @@ export const DIGITALOCEAN_MANAGED_VALKEY_PRODUCT_ID = productIdOf(
 	managedValkey(),
 	"managedValkey",
 );
+export const DIGITALOCEAN_SPACES_PRODUCT_ID = productIdOf(spaces(), "spaces");
+export const DIGITALOCEAN_BLOCK_STORAGE_PRODUCT_ID = productIdOf(
+	blockStorage(),
+	"blockStorage",
+);
+export const DIGITALOCEAN_KUBERNETES_CLUSTER_PRODUCT_ID = productIdOf(
+	kubernetesCluster(),
+	"kubernetesCluster",
+);
 
 /** Every product this module resolves, id-sorted for a deterministic registry. */
 export const DIGITALOCEAN_RESOLVED_PRODUCT_IDS: readonly string[] =
@@ -167,6 +181,9 @@ export const DIGITALOCEAN_RESOLVED_PRODUCT_IDS: readonly string[] =
 			DIGITALOCEAN_MANAGED_OPENSEARCH_PRODUCT_ID,
 			DIGITALOCEAN_MANAGED_POSTGRES_PRODUCT_ID,
 			DIGITALOCEAN_MANAGED_VALKEY_PRODUCT_ID,
+			DIGITALOCEAN_SPACES_PRODUCT_ID,
+			DIGITALOCEAN_BLOCK_STORAGE_PRODUCT_ID,
+			DIGITALOCEAN_KUBERNETES_CLUSTER_PRODUCT_ID,
 		].sort(compareStrings),
 	);
 
@@ -175,26 +192,19 @@ export const DIGITALOCEAN_RESOLVED_PRODUCT_IDS: readonly string[] =
  * non-convergent resolver that duplicates a resource on every retry is worse
  * than an absent one, so these are absent and declared.
  *
- * `digitalocean.spaces/v1`: Spaces is an S3 surface on
- * `<region>.digitaloceanspaces.com`, signed with SigV4 against a *separate*
- * Spaces key pair — a different host, a different credential, and a host the
- * transport guard in `./transport.ts` deliberately does not allowlist.
- * Resolving it would mean widening the guard for the one product that does not
- * use the control-plane token.
- *
  * `digitalocean.app-platform-worker/v1` and `digitalocean.app-platform-job/v1`:
  * a worker and a job are *components inside* an App Platform app spec, not
  * standalone resources with their own ids. The app resolver owns the whole
- * spec; a second resolver mutating one component of it would race the first.
+ * spec and a second resolver mutating one component of it would race the
+ * first, so these are reached by putting the component in `desired.spec` of an
+ * `digitalocean.app-platform-service/v1` request rather than by a resolver of
+ * their own. The catalog rows stay, because a worker and a job really are
+ * distinct capabilities App Platform offers.
  *
  * `digitalocean.functions/v1`: deploying a function packages and uploads source
  * to a namespace-scoped endpoint minted per call. The upload is not
- * deterministic and the source bytes are not part of `desired`.
- *
- * `digitalocean.kubernetes-workload/v1`: the row names a DOKS node pool, and a
- * node pool is not the workload. The Deployment, Service and Job objects that
- * actually run belong to `@hobo/provider-kubernetes`, which resolves them
- * against the cluster's own apiserver.
+ * deterministic and the source bytes are not part of `desired`, so there is no
+ * convergent create to write.
  */
 export const DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS: readonly string[] =
 	Object.freeze(
@@ -202,8 +212,6 @@ export const DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS: readonly string[] =
 			productIdOf(appPlatform.job(), "appPlatform.job"),
 			productIdOf(appPlatform.worker(), "appPlatform.worker"),
 			productIdOf(functions(), "functions"),
-			productIdOf(kubernetesWorkload(), "kubernetesWorkload"),
-			productIdOf(spaces(), "spaces"),
 		].sort(compareStrings),
 	);
 
@@ -227,6 +235,27 @@ export interface DigitalOceanResolverOptions {
 	 * duplicate. Defaults to {@link DEFAULT_MAX_LIST_PAGES}.
 	 */
 	readonly maxListPages?: number;
+	/**
+	 * Resolves a credential *locator* to a Spaces access key pair. Separate
+	 * from `resolveCredential` because Spaces is a separate credential: the
+	 * control-plane personal access token does not authenticate against
+	 * `<region>.digitaloceanspaces.com`, and letting one function serve both
+	 * would invite sending the wrong secret to the wrong origin. Required only
+	 * to build the Spaces resolver.
+	 */
+	readonly resolveSpacesCredential?: (ref: string) => Promise<SpacesKeyPair>;
+	/**
+	 * SigV4 signing clock, injected. Reading `Date.now()` inside the resolver
+	 * would make a signed request untestable, which is the same reason the AWS
+	 * provider takes one. Required only to build the Spaces resolver.
+	 */
+	readonly nowMs?: number | (() => number);
+}
+
+/** A Spaces access key pair, as the host's custody hands it over. */
+export interface SpacesKeyPair {
+	readonly accessKeyId: string;
+	readonly secretAccessKey: string;
 }
 
 /** Twenty pages of 200 records: 4,000 resources before a listing refuses. */
@@ -457,6 +486,10 @@ interface DigitalOceanResolverContext {
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
 	readonly maxListPages: number;
+	/** Present only on the Spaces path; undefined elsewhere by construction. */
+	readonly spacesKeys: SpacesKeyPair | undefined;
+	/** Injected SigV4 clock. Only the Spaces path signs. */
+	readonly nowMs: () => number;
 }
 
 function outcome(
@@ -545,6 +578,70 @@ async function resolveToken(
 		);
 	}
 	return material.trim();
+}
+
+/**
+ * The Spaces credential parse boundary. Same discipline as `resolveToken`: the
+ * ref must be a locator, the host resolves it, and a pair with an empty half is
+ * refused rather than sent as a half-signed request.
+ */
+async function resolveSpacesKeys(
+	request: ResolveRequest,
+	resolve: ((ref: string) => Promise<SpacesKeyPair>) | undefined,
+): Promise<SpacesKeyPair> {
+	if (typeof resolve !== "function") {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			"digitalocean spaces resolver: no resolveSpacesCredential was injected",
+		);
+	}
+	const ref = request.credentialRef;
+	if (typeof ref !== "string" || ref.trim().length === 0) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			'digitalocean spaces resolver: credentialRef is empty. Supply a locator such as "secret://camp/digitalocean-spaces-keys"; the resolver never accepts inline credential material',
+		);
+	}
+	const trimmed = ref.trim();
+	if (RAW_CREDENTIAL_PATTERN.test(trimmed)) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_NOT_A_REF",
+			"digitalocean spaces resolver: credentialRef looks like credential material rather than a locator. Store the Spaces key pair with the host secret custody and pass its reference (scheme://path)",
+		);
+	}
+	if (!CREDENTIAL_REF_PATTERN.test(trimmed)) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_NOT_A_REF",
+			`digitalocean spaces resolver: credentialRef ${JSON.stringify(redactDigitalOceanText(trimmed, 60))} is not a locator. Expected "<scheme>://<path>"`,
+		);
+	}
+	let keys: SpacesKeyPair;
+	try {
+		keys = await resolve(trimmed);
+	} catch (cause) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`digitalocean spaces resolver: the host could not resolve credentialRef ${JSON.stringify(trimmed)}: ${redactDigitalOceanText(
+				cause instanceof Error ? cause.message : String(cause),
+				160,
+			)}`,
+		);
+	}
+	if (
+		typeof keys?.accessKeyId !== "string" ||
+		keys.accessKeyId.trim().length === 0 ||
+		typeof keys.secretAccessKey !== "string" ||
+		keys.secretAccessKey.trim().length === 0
+	) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`digitalocean spaces resolver: credentialRef ${JSON.stringify(trimmed)} resolved to an incomplete key pair. A half-populated pair would produce a signature that fails at Spaces with a message about the wrong thing`,
+		);
+	}
+	return {
+		accessKeyId: keys.accessKeyId,
+		secretAccessKey: keys.secretAccessKey,
+	};
 }
 
 function resourceName(request: ResolveRequest, productId: string): string {
@@ -1422,6 +1519,458 @@ function appPlatformSpec(
 }
 
 // ---------------------------------------------------------------------------
+// Spaces — S3 on <region>.digitaloceanspaces.com, signed with SigV4
+// ---------------------------------------------------------------------------
+
+/**
+ * Spaces is the one product here that does not speak to the v2 control plane.
+ * It is an S3 surface on its own host, authenticated with its own key pair and
+ * signed with SigV4 rather than carrying a bearer token — so it gets its own
+ * guard policy, its own credential, and its own send path. Folding it into the
+ * control-plane path would mean one bad config value could send a personal
+ * access token to a Spaces origin, or a Spaces key to the API.
+ *
+ * Convergence is a plain read-or-create: `HEAD /{bucket}` answers 200 or 404,
+ * and 404 is the only signal that a create is needed. Bucket names are global
+ * per region, so a 409 on create means somebody else owns the name — reported
+ * rather than adopted, because adopting a bucket you do not own is worse than
+ * failing.
+ */
+async function sendSpaces(
+	context: DigitalOceanResolverContext,
+	call: {
+		readonly method: TransportMethod;
+		readonly path: string;
+		readonly body?: string;
+	},
+): Promise<TransportResponse> {
+	const region = requiredRegion(context, DIGITALOCEAN_SPACES_PRODUCT_ID);
+	const keys = context.spacesKeys;
+	if (keys === undefined) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`${DIGITALOCEAN_SPACES_PRODUCT_ID}: no Spaces credential was resolved. Construct the resolvers with resolveSpacesCredential(ref) — Spaces uses an access key pair, not the control-plane personal access token, and this package will not send one where the other belongs`,
+		);
+	}
+	const url = spacesUrl(region, call.path);
+	const credentials: AwsCredentials = {
+		accessKeyId: keys.accessKeyId,
+		secretAccessKey: keys.secretAccessKey,
+	};
+	const signed = signAwsRequest({
+		method: call.method,
+		url,
+		...(call.body === undefined ? {} : { body: call.body }),
+		region,
+		// Spaces presents itself as S3; the signing service name is what makes
+		// the signature verify on their side.
+		service: "s3",
+		credentials,
+		now: new Date(context.nowMs()),
+	});
+	const guarded = guardedSpacesTransport(context.transport, region);
+	return guarded({
+		method: call.method,
+		url,
+		headers: lowerCaseHeaders(signed.headers),
+		...(call.body === undefined ? {} : { body: call.body }),
+		timeoutMs: DIGITALOCEAN_MAX_TIMEOUT_MS,
+		maxResponseBytes: DIGITALOCEAN_MAX_RESPONSE_BYTES,
+	});
+}
+
+/**
+ * Fold signed header names to lower case.
+ *
+ * `signAwsRequest` returns `Authorization` with its conventional casing and
+ * everything else lower; HTTP header names are case-insensitive, so both reach
+ * the provider identically. Folding here means every request this repo composes
+ * carries one convention, which is what lets a guard, a test, or a log line
+ * look for `authorization` without knowing which signer produced it.
+ */
+function lowerCaseHeaders(
+	headers: Readonly<Record<string, string>>,
+): Record<string, string> {
+	const out: Record<string, string> = {};
+	for (const [name, value] of Object.entries(headers)) {
+		out[name.toLowerCase()] = value;
+	}
+	return out;
+}
+
+/** The bucket path, path-style so one host serves every bucket in a region. */
+function bucketPath(context: DigitalOceanResolverContext): string {
+	return `/${encodeURIComponent(context.name)}`;
+}
+
+function spacesOutputs(
+	context: DigitalOceanResolverContext,
+	region: string,
+): Readonly<Record<string, unknown>> {
+	return {
+		bucketName: context.name,
+		region,
+		endpoint: `https://${context.name}.${region}.digitaloceanspaces.com`,
+		s3Endpoint: `https://${region}.digitaloceanspaces.com`,
+	};
+}
+
+const SPACES_SPEC: Omit<DigitalOceanResolverSpec, "productId"> = {
+	async read(context) {
+		const region = requiredRegion(context, DIGITALOCEAN_SPACES_PRODUCT_ID);
+		const response = await sendSpaces(context, {
+			method: "HEAD",
+			path: bucketPath(context),
+		});
+		if (response.status === 404) return undefined;
+		if (response.status >= 400) {
+			throw providerRejection(response, `spaces read bucket ${context.name}`);
+		}
+		return outcome(
+			settledAction(context),
+			context.name,
+			spacesOutputs(context, region),
+			[],
+		);
+	},
+	async reconcile(context) {
+		const region = requiredRegion(context, DIGITALOCEAN_SPACES_PRODUCT_ID);
+		const head = await sendSpaces(context, {
+			method: "HEAD",
+			path: bucketPath(context),
+		});
+		if (head.status !== 404) {
+			if (head.status >= 400) {
+				throw providerRejection(head, `spaces read bucket ${context.name}`);
+			}
+			return outcome(
+				settledAction(context),
+				context.name,
+				spacesOutputs(context, region),
+				[],
+			);
+		}
+		const label = `spaces create bucket ${context.name}`;
+		const created = await sendSpaces(context, {
+			method: "PUT",
+			path: bucketPath(context),
+		});
+		if (created.status === 409) {
+			throw new ResolverError(
+				"RESOLVER_PROVIDER_REJECTED",
+				`${label}: the bucket name is already taken. Spaces bucket names are global within a region, so this is somebody else's bucket — it is reported rather than adopted, because adopting a bucket you do not own is worse than failing`,
+			);
+		}
+		if (created.status >= 400) throw providerRejection(created, label);
+		return outcome("create", context.name, spacesOutputs(context, region), [
+			"the bucket was created with Spaces' default private ACL; this resolver does not set an ACL, so a bucket meant to be public still needs one applied deliberately",
+		]);
+	},
+	async remove(context) {
+		const label = `spaces delete bucket ${context.name}`;
+		const response = await sendSpaces(context, {
+			method: "DELETE",
+			path: bucketPath(context),
+		});
+		if (response.status === 404) return;
+		if (response.status === 409) {
+			throw new ResolverError(
+				"RESOLVER_PROVIDER_REJECTED",
+				`${label}: the bucket is not empty. This resolver will not enumerate and delete objects to make a delete succeed — that is unbounded data loss dressed as cleanup. Empty the bucket deliberately, then reconcile`,
+			);
+		}
+		if (response.status >= 400) throw providerRejection(response, label);
+	},
+};
+
+// ---------------------------------------------------------------------------
+// Block Storage volumes — /v2/volumes
+// ---------------------------------------------------------------------------
+
+const VOLUME_COLLECTION: Collection = Object.freeze({
+	path: "/v2/volumes",
+	listKey: "volumes",
+	itemKey: "volume",
+	nameOf: (record: Readonly<Record<string, unknown>>) =>
+		optionalString(record, "name"),
+});
+
+function volumeOutputs(
+	record: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	const size = optionalInteger(record, "size_gigabytes");
+	const region = optionalString(nestedRecord(record, "region"), "slug");
+	return {
+		...(optionalString(record, "name") !== undefined
+			? { name: optionalString(record, "name") }
+			: {}),
+		...(size !== undefined ? { sizeGigabytes: size } : {}),
+		...(region !== undefined ? { region } : {}),
+		...(optionalString(record, "filesystem_type") !== undefined
+			? { filesystemType: optionalString(record, "filesystem_type") }
+			: {}),
+	};
+}
+
+const BLOCK_STORAGE_SPEC: Omit<DigitalOceanResolverSpec, "productId"> = {
+	async read(context) {
+		const observed = await findByName(context, VOLUME_COLLECTION);
+		return observed === undefined
+			? undefined
+			: outcome(
+					settledAction(context),
+					identityOf(observed, `digitalocean read volume ${context.name}`),
+					volumeOutputs(observed),
+					[],
+				);
+	},
+	async reconcile(context) {
+		const productId = DIGITALOCEAN_BLOCK_STORAGE_PRODUCT_ID;
+		const observed = await findByName(context, VOLUME_COLLECTION);
+		if (observed === undefined) {
+			const size = optionalInteger(context.desired, "sizeGigabytes");
+			if (size === undefined) {
+				throw new ResolverError(
+					"RESOLVER_PRODUCT_UNSUPPORTED",
+					`${productId}: the request names no sizeGigabytes — set desired.sizeGigabytes, for example 10. A volume billed at a size nobody asked for is a cost incident, so no size is invented here`,
+				);
+			}
+			const label = `digitalocean create volume ${context.name}`;
+			const created = expectOk(
+				await send(context, {
+					method: "POST",
+					path: VOLUME_COLLECTION.path,
+					json: {
+						name: context.name,
+						size_gigabytes: size,
+						region: requiredRegion(context, productId),
+						...(optionalString(context.desired, "filesystemType") !== undefined
+							? {
+									filesystem_type: optionalString(
+										context.desired,
+										"filesystemType",
+									),
+								}
+							: {}),
+					},
+				}),
+				label,
+			);
+			const record = nestedRecord(created, VOLUME_COLLECTION.itemKey);
+			return outcome(
+				"create",
+				identityOf(record, label),
+				volumeOutputs(record),
+				[],
+			);
+		}
+		const id = identityOf(observed, `digitalocean read volume ${context.name}`);
+		const wanted = optionalInteger(context.desired, "sizeGigabytes");
+		const actual = optionalInteger(observed, "size_gigabytes");
+		if (wanted === undefined || actual === undefined || wanted <= actual) {
+			return outcome(settledAction(context), id, volumeOutputs(observed), [
+				...(wanted !== undefined && actual !== undefined && wanted < actual
+					? [
+							`volume is ${actual} GB but the request asks for ${wanted} GB; DigitalOcean volumes only grow, so shrinking is reported for a human rather than "fixed" by replacing the volume and destroying the data on it`,
+						]
+					: []),
+			]);
+		}
+		const label = `digitalocean resize volume ${context.name}`;
+		expectOk(
+			await send(context, {
+				method: "POST",
+				path: `${VOLUME_COLLECTION.path}/${encodeURIComponent(id)}/actions`,
+				json: {
+					type: "resize",
+					size_gigabytes: wanted,
+					region: requiredRegion(context, productId),
+				},
+			}),
+			label,
+		);
+		const refreshed =
+			(await findByName(context, VOLUME_COLLECTION)) ?? observed;
+		return outcome("update", id, volumeOutputs(refreshed), [
+			"resize accepted; DigitalOcean applies it asynchronously and this resolver does not poll, and a grown volume still needs its filesystem extended inside the guest",
+		]);
+	},
+	async remove(context) {
+		const observed = await findByName(context, VOLUME_COLLECTION);
+		if (observed === undefined) return;
+		const label = `digitalocean delete volume ${context.name}`;
+		const id = identityOf(observed, label);
+		const response = await send(context, {
+			method: "DELETE",
+			path: `${VOLUME_COLLECTION.path}/${encodeURIComponent(id)}`,
+		});
+		if (isNotFound(response)) return;
+		expectOk(response, label);
+	},
+};
+
+// ---------------------------------------------------------------------------
+// DOKS clusters — /v2/kubernetes/clusters
+// ---------------------------------------------------------------------------
+
+const CLUSTER_COLLECTION: Collection = Object.freeze({
+	path: "/v2/kubernetes/clusters",
+	listKey: "kubernetes_clusters",
+	itemKey: "kubernetes_cluster",
+	nameOf: (record: Readonly<Record<string, unknown>>) =>
+		optionalString(record, "name"),
+});
+
+function clusterOutputs(
+	record: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	const status = optionalString(nestedRecord(record, "status"), "state");
+	return {
+		...(optionalString(record, "name") !== undefined
+			? { name: optionalString(record, "name") }
+			: {}),
+		...(optionalString(record, "region") !== undefined
+			? { region: optionalString(record, "region") }
+			: {}),
+		...(optionalString(record, "version") !== undefined
+			? { version: optionalString(record, "version") }
+			: {}),
+		...(optionalString(record, "endpoint") !== undefined
+			? { endpoint: optionalString(record, "endpoint") }
+			: {}),
+		...(status !== undefined ? { status } : {}),
+	};
+}
+
+/**
+ * The cluster resolver allocates the *substrate*: a cluster and its node pool.
+ * It deliberately does not touch workload objects — those are
+ * `@hobo/provider-kubernetes`' business, resolved against this cluster's own
+ * apiserver, and the `endpoint` output is the handoff between the two.
+ */
+const KUBERNETES_CLUSTER_SPEC: Omit<DigitalOceanResolverSpec, "productId"> = {
+	async read(context) {
+		const observed = await findByName(context, CLUSTER_COLLECTION);
+		return observed === undefined
+			? undefined
+			: outcome(
+					settledAction(context),
+					identityOf(observed, `digitalocean read cluster ${context.name}`),
+					clusterOutputs(observed),
+					clusterDiagnostics(observed),
+				);
+	},
+	async reconcile(context) {
+		const productId = DIGITALOCEAN_KUBERNETES_CLUSTER_PRODUCT_ID;
+		const observed = await findByName(context, CLUSTER_COLLECTION);
+		if (observed === undefined) {
+			const label = `digitalocean create cluster ${context.name}`;
+			const created = expectOk(
+				await send(context, {
+					method: "POST",
+					path: CLUSTER_COLLECTION.path,
+					json: {
+						name: context.name,
+						region: requiredRegion(context, productId),
+						version: requiredString(
+							context,
+							"version",
+							productId,
+							"1.31.1-do.0",
+						),
+						node_pools: [
+							{
+								name: `${context.name}-pool`,
+								size: requiredString(context, "size", productId, "s-2vcpu-4gb"),
+								count: optionalInteger(context.desired, "nodeCount") ?? 1,
+								...(optionalBoolean(context.desired, "autoScale") !== undefined
+									? {
+											auto_scale: optionalBoolean(context.desired, "autoScale"),
+										}
+									: {}),
+							},
+						],
+					},
+				}),
+				label,
+			);
+			const record = nestedRecord(created, CLUSTER_COLLECTION.itemKey);
+			return outcome(
+				"create",
+				identityOf(record, label),
+				clusterOutputs(record),
+				clusterDiagnostics(record),
+			);
+		}
+		// A cluster's region and Kubernetes version upgrade path are not things
+		// to converge silently: an upgrade restarts every node. Drift is
+		// reported and left for a human, as everywhere else here.
+		return outcome(
+			settledAction(context),
+			identityOf(observed, `digitalocean read cluster ${context.name}`),
+			clusterOutputs(observed),
+			[
+				...clusterDiagnostics(observed),
+				...clusterDriftDiagnostics(context, observed),
+			],
+		);
+	},
+	async remove(context) {
+		const observed = await findByName(context, CLUSTER_COLLECTION);
+		if (observed === undefined) return;
+		const label = `digitalocean delete cluster ${context.name}`;
+		const id = identityOf(observed, label);
+		const response = await send(context, {
+			method: "DELETE",
+			path: `${CLUSTER_COLLECTION.path}/${encodeURIComponent(id)}`,
+		});
+		if (isNotFound(response)) return;
+		expectOk(response, label);
+	},
+};
+
+function clusterDiagnostics(
+	record: Readonly<Record<string, unknown>>,
+): readonly string[] {
+	const state = optionalString(nestedRecord(record, "status"), "state");
+	return state !== undefined && state !== "running"
+		? [
+				`cluster is ${state}, not running: DigitalOcean provisions asynchronously and this resolver does not poll, so the create is accepted, not confirmed`,
+			]
+		: [];
+}
+
+function clusterDriftDiagnostics(
+	context: DigitalOceanResolverContext,
+	record: Readonly<Record<string, unknown>>,
+): readonly string[] {
+	const diagnostics: string[] = [];
+	const wantedVersion = optionalString(context.desired, "version");
+	const actualVersion = optionalString(record, "version");
+	if (
+		wantedVersion !== undefined &&
+		actualVersion !== undefined &&
+		wantedVersion !== actualVersion
+	) {
+		diagnostics.push(
+			`cluster runs ${actualVersion} but the request asks for ${wantedVersion}; a version upgrade restarts every node, so this resolver reports it rather than triggering one`,
+		);
+	}
+	const wantedRegion = optionalString(context.desired, "region");
+	const actualRegion = optionalString(record, "region");
+	if (
+		wantedRegion !== undefined &&
+		actualRegion !== undefined &&
+		wantedRegion !== actualRegion
+	) {
+		diagnostics.push(
+			`cluster is in ${actualRegion} but the request asks for ${wantedRegion}; a cluster's region is immutable and this resolver never replaces one`,
+		);
+	}
+	return diagnostics;
+}
+
+// ---------------------------------------------------------------------------
 // Wrapper and registry
 // ---------------------------------------------------------------------------
 
@@ -1435,11 +1984,26 @@ interface DigitalOceanResolverSpec {
 	remove(context: DigitalOceanResolverContext): Promise<void>;
 }
 
+/**
+ * The SigV4 clock, refused rather than defaulted. A signer that reads the
+ * ambient clock cannot be pinned by a test, which is the same reason the AWS
+ * provider takes one.
+ */
+function clockOf(nowMs: DigitalOceanResolverOptions["nowMs"]): () => number {
+	if (typeof nowMs === "function") return nowMs;
+	if (typeof nowMs === "number" && Number.isFinite(nowMs)) return () => nowMs;
+	throw new ResolverError(
+		"RESOLVER_PRODUCT_UNSUPPORTED",
+		"the digitalocean spaces resolver needs an injected nowMs (a number or a () => number). SigV4 signs a timestamp, and reading the clock inside the resolver would make a signed request untestable",
+	);
+}
+
 function createResolver(
 	spec: DigitalOceanResolverSpec,
 	options: DigitalOceanResolverOptions,
 ): ResourceResolver {
 	const maxListPages = assertListPages(options.maxListPages);
+	const signsRequests = spec.productId === DIGITALOCEAN_SPACES_PRODUCT_ID;
 	if (typeof options.resolveCredential !== "function") {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
@@ -1458,7 +2022,21 @@ function createResolver(
 				spec.productId,
 			);
 		}
-		const token = await resolveToken(request, options.resolveCredential);
+		// The Spaces path never resolves the control-plane token, and the
+		// control-plane path never resolves the Spaces keys. Keeping the two
+		// exclusive is what makes "the wrong secret cannot reach this origin" a
+		// property of construction rather than of care.
+		// The Spaces prerequisites are demanded when the Spaces resolver is
+		// actually used, not when the registry is built. A registry is a
+		// catalog: building one to reconcile a Postgres cluster must not fail
+		// for want of an object-storage key pair that will never be sent.
+		const nowMs = signsRequests ? clockOf(options.nowMs) : () => 0;
+		const token = signsRequests
+			? ""
+			: await resolveToken(request, options.resolveCredential);
+		const spacesKeys = signsRequests
+			? await resolveSpacesKeys(request, options.resolveSpacesCredential)
+			: undefined;
 		return {
 			request,
 			transport,
@@ -1467,6 +2045,8 @@ function createResolver(
 			desired: request.desired,
 			knownPhysicalId: knownPhysicalId(request),
 			maxListPages,
+			spacesKeys,
+			nowMs,
 		};
 	}
 
@@ -1527,6 +2107,15 @@ export function digitaloceanResolvers(
 		{
 			productId: DIGITALOCEAN_MANAGED_VALKEY_PRODUCT_ID,
 			...databaseSpec(DIGITALOCEAN_MANAGED_VALKEY_PRODUCT_ID),
+		},
+		{ productId: DIGITALOCEAN_SPACES_PRODUCT_ID, ...SPACES_SPEC },
+		{
+			productId: DIGITALOCEAN_BLOCK_STORAGE_PRODUCT_ID,
+			...BLOCK_STORAGE_SPEC,
+		},
+		{
+			productId: DIGITALOCEAN_KUBERNETES_CLUSTER_PRODUCT_ID,
+			...KUBERNETES_CLUSTER_SPEC,
 		},
 	];
 	return Object.freeze(

@@ -18,9 +18,10 @@
  *
  *   - **Cloud API** (`api.hetzner.cloud/v1`) — project API token, allowlisted.
  *   - **Object Storage** (`<location>.your-objectstorage.com`) — an S3 surface
- *     signed with SigV4 against a *separate* access key pair. Different host,
- *     different credential; deliberately not allowlisted, which is why
- *     `hetzner.object-storage/v1` ships no resolver.
+ *     signed with SigV4 against a *separate* access key pair. It has its own
+ *     policy below (`objectStorageTransportPolicy`) rather than riding on the
+ *     Cloud API's, so a project token can never be sent to it and an S3 key can
+ *     never be sent to the Cloud API.
  *   - **Robot** (`robot-ws.your-server.de`) — dedicated-server and Storage Box
  *     administration behind HTTP Basic with the account's web credentials.
  *     Reaching it would mean sending a *console password* from a resolver, so
@@ -56,10 +57,6 @@ export const HETZNER_ALLOWED_PATH_PREFIXES = Object.freeze(["/v1/"] as const);
  */
 // public-contract: the named non-allowlisted Hetzner surfaces; widening the guard to any of them changes which credential can leave this package.
 export const HETZNER_EXCLUDED_SURFACES = Object.freeze({
-	objectStorage: Object.freeze({
-		hostPattern: "<location>.your-objectstorage.com",
-		credential: "a separate S3 access key pair, signed with SigV4",
-	}),
 	robot: Object.freeze({
 		hostPattern: "robot-ws.your-server.de",
 		credential: "HTTP Basic with the account's web console password",
@@ -93,6 +90,64 @@ export function hetznerTransportPolicy(): TransportGuardPolicy {
 		maxTimeoutMs: HETZNER_MAX_TIMEOUT_MS,
 		maxResponseBytes: HETZNER_MAX_RESPONSE_BYTES,
 	});
+}
+
+/** Object Storage locations, which are the Cloud locations that offer it. */
+export const OBJECT_STORAGE_LOCATIONS = Object.freeze([
+	"fsn1",
+	"nbg1",
+	"hel1",
+] as const);
+
+export type ObjectStorageLocation = (typeof OBJECT_STORAGE_LOCATIONS)[number];
+
+/**
+ * The Object Storage origin for one location.
+ *
+ * This is an S3 surface, not the Cloud API: a different host, a *different
+ * credential* (an Object Storage key pair), and SigV4 rather than a bearer
+ * token. It gets its own policy for exactly that reason — one policy covering
+ * both would let a project API token be sent to an Object Storage endpoint, or
+ * an S3 key to the Cloud API.
+ */
+export function objectStorageHost(location: string): string {
+	if (!(OBJECT_STORAGE_LOCATIONS as readonly string[]).includes(location)) {
+		throw new HetznerTransportConfigError(
+			`hetzner object storage location ${JSON.stringify(location)} is not one of ${OBJECT_STORAGE_LOCATIONS.join(", ")}; a location that does not parse would be interpolated into a hostname nobody allowlisted`,
+		);
+	}
+	return `${location}.your-objectstorage.com`;
+}
+
+/**
+ * The guard policy for one Object Storage location. One host, and the root
+ * prefix — S3 addresses a bucket and key as the whole path, so there is no
+ * narrower prefix that admits an ordinary object without admitting its
+ * siblings. The host list is what constrains reach here.
+ */
+export function objectStorageTransportPolicy(
+	location: string,
+): TransportGuardPolicy {
+	return Object.freeze({
+		allowedHosts: Object.freeze([objectStorageHost(location)]),
+		allowedPathPrefixes: Object.freeze(["/"]),
+		maxTimeoutMs: HETZNER_MAX_TIMEOUT_MS,
+		maxResponseBytes: HETZNER_MAX_RESPONSE_BYTES,
+	});
+}
+
+/** Wrap an injected transport with one Object Storage location's policy. */
+export function guardedObjectStorageTransport(
+	inner: HttpTransport,
+	location: string,
+): HttpTransport {
+	return guardTransport(inner, objectStorageTransportPolicy(location));
+}
+
+/** An absolute Object Storage URL. Callers pass an already-encoded path. */
+export function objectStorageUrl(location: string, path: string): string {
+	const suffix = path.startsWith("/") ? path : `/${path}`;
+	return `https://${objectStorageHost(location)}${suffix}`;
 }
 
 /**

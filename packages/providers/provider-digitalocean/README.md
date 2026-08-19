@@ -35,13 +35,15 @@ pnpm --filter @hobo/provider-digitalocean test
   *injected fake* transport modelling a DigitalOcean team. A real deploy
   additionally needs a real token, real network egress, and a real account,
   none of which a unit test supplies.
-- **9 of the 14 catalogued products have resolvers**
-  (`DIGITALOCEAN_RESOLVED_PRODUCT_IDS`). The other five are named in
-  `DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS` with the reason each one has no
-  convergent path — Spaces is an S3 surface on a different host with a
-  different credential; App Platform workers and jobs are components inside an
-  app spec rather than standalone resources; Functions needs a per-call source
-  upload; and a DOKS node pool is not the workload that runs on it.
+- **12 of the 15 catalogued products have resolvers**
+  (`DIGITALOCEAN_RESOLVED_PRODUCT_IDS`), including Spaces over SigV4 on its own
+  guarded host with its own key pair, Block Storage volumes, and DOKS clusters.
+  The three without resolvers are named in
+  `DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS`, and each is non-convergent by
+  DigitalOcean's own API shape rather than by omission: an App Platform worker
+  and job are *components inside* an app spec rather than standalone
+  resources, and Functions needs a per-call source upload whose bytes are not
+  part of `desired`.
 - **No Resource Definitions are registered** for the `digitalocean.*` product
   ids, so a deploy against this Yard still fails closed at resolution
   (`YARD_BINDING_PRODUCT_UNKNOWN`).
@@ -104,6 +106,9 @@ load-bearing. See [`ADR.md`](./ADR.md) for the full command/event walk.
 | `digitalocean.managed-{postgres,mysql,mongodb,opensearch,valkey}/v1` | `GET/POST/DELETE /v2/databases`, `PUT /v2/databases/{id}/resize` |
 | `digitalocean.droplet/v1` | `GET/POST/DELETE /v2/droplets` |
 | `digitalocean.load-balancer/v1` | `GET/POST/PUT/DELETE /v2/load_balancers` |
+| `digitalocean.block-storage/v1` | `GET/POST/DELETE /v2/volumes`, `POST …/actions` |
+| `digitalocean.kubernetes-cluster/v1` | `GET/POST/DELETE /v2/kubernetes/clusters` |
+| `digitalocean.spaces/v1` | `HEAD/PUT/DELETE /{bucket}` on `<region>.digitaloceanspaces.com` (SigV4) |
 
 Everything else in the catalog is listed in
 `DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS`.

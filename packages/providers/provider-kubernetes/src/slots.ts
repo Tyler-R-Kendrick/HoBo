@@ -92,6 +92,54 @@ export function deploymentWorker(options?: DeploymentOptions): SlotBinding {
 	});
 }
 
+export interface StatefulSetOptions extends DeploymentOptions {
+	readonly serviceName?: string;
+	readonly volumeClaimStorage?: string;
+}
+
+/**
+ * A StatefulSet fronting a web capability — slot `web`, `web.hosted/v1`. It is
+ * a distinct controller from a Deployment, not a variant of one: stable network
+ * identity and per-replica storage are what a workload picks it *for*, so it is
+ * its own catalog row and selection chooses between them.
+ */
+export function statefulSet(options?: StatefulSetOptions): SlotBinding {
+	return slotBinding({
+		slot: "web",
+		profile: capability.web.hosted,
+		productId: "kubernetes.statefulset/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+/** The same StatefulSet reached as a worker — `service.worker/v1`. */
+export function statefulSetWorker(options?: StatefulSetOptions): SlotBinding {
+	return slotBinding({
+		slot: "service",
+		profile: capability.service.worker,
+		productId: "kubernetes.statefulset/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+export interface DaemonSetOptions extends DeploymentOptions {
+	readonly nodeSelector?: Readonly<Record<string, string>>;
+}
+
+/**
+ * A DaemonSet — slot `service`, profile `service.worker/v1`. One pod per node
+ * is a real placement guarantee a log shipper or node agent needs, and no other
+ * controller here provides it.
+ */
+export function daemonSet(options?: DaemonSetOptions): SlotBinding {
+	return slotBinding({
+		slot: "service",
+		profile: capability.service.worker,
+		productId: "kubernetes.daemonset/v1",
+		properties: present(options ?? {}),
+	});
+}
+
 /** Service types a workload can be fronted with. */
 export const SERVICE_TYPES = Object.freeze([
 	"ClusterIP",
@@ -183,16 +231,19 @@ export interface PersistentVolumeClaimOptions {
 }
 
 /**
- * A PersistentVolumeClaim — slot `bucket`, profile `bucket.file-storage/v1`. A
- * PVC is a filesystem mounted into a pod, not an object store, and saying so is
- * what keeps a workload that needs S3 semantics from matching it.
+ * A PersistentVolumeClaim — slot `bucket`, profile `bucket.filesystem/v1`.
+ *
+ * A PVC is mounted into a pod at a path, so `bucket.filesystem/v1` is the most
+ * specific true profile; it refines `bucket.object/v1`, so a workload asking
+ * for the general profile still matches, while one that needs S3 semantics
+ * correctly does not.
  */
 export function persistentVolumeClaim(
 	options?: PersistentVolumeClaimOptions,
 ): SlotBinding {
 	return slotBinding({
 		slot: "bucket",
-		profile: capability.bucket.fileStorage,
+		profile: capability.bucket.filesystem,
 		productId: "kubernetes.persistent-volume-claim/v1",
 		properties: present(options ?? {}),
 	});
@@ -206,16 +257,24 @@ export interface SecretOptions {
 }
 
 /**
- * A Secret, as a *locator* — slot `secretRef`, profile
- * `secret-ref.locator/v1`. The row names where material lives; it never carries
- * material, and a credential-shaped option is refused at the core parse
- * boundary. This is also why the product ships no resolver: creating a Secret
- * would mean putting its contents in `desired`, and `desired` is recorded.
+ * A Secret — slot `secretRef`, profile `secret-ref.runtime-projection/v1`.
+ *
+ * The projection is the point: Kubernetes mounts a Secret into the pod's
+ * filesystem or environment at admission, so the workload reads material it
+ * never fetched and HoBo never handled. That is a stronger claim than
+ * `secret-ref.locator/v1`, which it refines — so a workload asking only for a
+ * locator still matches, and one that needs the material to arrive without a
+ * fetch matches only rows like this one.
+ *
+ * The row still never carries material: a credential-shaped option is refused
+ * at the core parse boundary, which is also why this product ships no resolver
+ * — creating a Secret would mean putting its contents in `desired`, and
+ * `desired` is recorded.
  */
 export function secret(options?: SecretOptions): SlotBinding {
 	return slotBinding({
 		slot: "secretRef",
-		profile: capability.secretRef.locator,
+		profile: capability.secretRef.runtimeProjection,
 		productId: "kubernetes.secret/v1",
 		properties: present(options ?? {}),
 	});

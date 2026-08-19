@@ -37,13 +37,15 @@
  * `kubernetes.*` product ids, so a deploy attempted through the *Yard* fails
  * closed at resolution (`YARD_BINDING_PRODUCT_UNKNOWN`) until they land, and
  * every test here runs against an injected fake transport rather than a live
- * cluster.
+ * cluster. Eight of the nine catalogued products have resolvers; the ninth is
+ * the Secret, for the reason `./slots.ts` gives.
  */
 import type { CapabilitySlot, SlotBinding } from "@hobo/core";
 
 import { DEFAULT_REGIONS } from "./manifest.js";
 import {
 	cronJob,
+	daemonSet,
 	deployment,
 	deploymentWorker,
 	ingress,
@@ -51,6 +53,8 @@ import {
 	persistentVolumeClaim,
 	secret,
 	service,
+	statefulSet,
+	statefulSetWorker,
 } from "./slots.js";
 
 /** Allocatable options per capability slot; a slot may hold several. */
@@ -80,17 +84,28 @@ export interface KubernetesYardSpecOptions {
 /**
  * Everything the Kubernetes factories can allocate, grouped by slot.
  *
- * `api` holds two entries on purpose: a Service and an Ingress both satisfy
- * `api.http/v1`, and they are genuinely different things — a Service is
- * in-cluster addressing that always works, an Ingress is external routing that
- * works only when a controller is installed. Selection sorts that out per
- * resource; this module does not.
+ * Several entries per slot is the normal case here, because a cluster really
+ * does offer several distinct controllers for the same capability and a
+ * workload picks between them for reasons only it knows. `web` holds a
+ * Deployment and a StatefulSet — stable network identity and per-replica
+ * storage are what a workload chooses the latter *for*. `service` holds five,
+ * including a DaemonSet, whose one-pod-per-node placement no other controller
+ * provides. `api` holds a Service and an Ingress: in-cluster addressing that
+ * always works, and external routing that works only when a controller is
+ * installed. Selection sorts all of that out per resource; this module does
+ * not.
  */
 export const KUBERNETES_DEFAULT_BINDINGS: KubernetesSlotCatalog = Object.freeze(
 	{
-		web: Object.freeze([deployment()]),
+		web: Object.freeze([deployment(), statefulSet()]),
 		api: Object.freeze([service(), ingress()]),
-		service: Object.freeze([deploymentWorker(), job(), cronJob()]),
+		service: Object.freeze([
+			deploymentWorker(),
+			statefulSetWorker(),
+			daemonSet(),
+			job(),
+			cronJob(),
+		]),
 		bucket: Object.freeze([persistentVolumeClaim()]),
 		secretRef: Object.freeze([secret()]),
 	},

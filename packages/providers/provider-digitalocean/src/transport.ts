@@ -76,6 +76,52 @@ export function digitaloceanTransportPolicy(): TransportGuardPolicy {
 }
 
 /**
+ * The Spaces origin for one region. Spaces is S3, not the v2 control plane: a
+ * different host, a different credential (a Spaces key pair), and SigV4 rather
+ * than a bearer token. It gets its own policy for exactly that reason — folding
+ * it into the control-plane policy would let a personal access token be sent to
+ * a Spaces endpoint and vice versa.
+ */
+export function spacesHost(region: string): string {
+	if (!/^[a-z]{2,4}[0-9]$/u.test(region)) {
+		throw new DigitalOceanTransportConfigError(
+			`digitalocean spaces region ${JSON.stringify(region)} is not a datacenter slug such as "nyc3"; a region that does not parse would be interpolated into a hostname nobody allowlisted`,
+		);
+	}
+	return `${region}.digitaloceanspaces.com`;
+}
+
+/**
+ * The guard policy for one Spaces region. One host, and the root prefix —
+ * S3 addresses a bucket and key as the whole path, so there is no narrower
+ * prefix that admits an ordinary object without admitting its siblings. The
+ * host list is what constrains reach here, and this comment says so rather
+ * than implying the path check is doing work it is not.
+ */
+export function spacesTransportPolicy(region: string): TransportGuardPolicy {
+	return Object.freeze({
+		allowedHosts: Object.freeze([spacesHost(region)]),
+		allowedPathPrefixes: Object.freeze(["/"]),
+		maxTimeoutMs: DIGITALOCEAN_MAX_TIMEOUT_MS,
+		maxResponseBytes: DIGITALOCEAN_MAX_RESPONSE_BYTES,
+	});
+}
+
+/** Wrap an injected transport with one Spaces region's policy. */
+export function guardedSpacesTransport(
+	inner: HttpTransport,
+	region: string,
+): HttpTransport {
+	return guardTransport(inner, spacesTransportPolicy(region));
+}
+
+/** An absolute Spaces URL. Callers pass an already-encoded bucket path. */
+export function spacesUrl(region: string, path: string): string {
+	const suffix = path.startsWith("/") ? path : `/${path}`;
+	return `https://${spacesHost(region)}${suffix}`;
+}
+
+/**
  * Wrap an injected transport with the DigitalOcean policy. This is the only
  * transport the resolvers should ever be handed; passing an unguarded one is
  * legal TypeScript and a security defect.

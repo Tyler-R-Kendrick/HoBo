@@ -87,12 +87,14 @@ import {
 } from "./resolver-transport.js";
 import {
 	cronJob,
+	daemonSet,
 	deployment,
 	ingress,
 	job,
 	persistentVolumeClaim,
 	secret,
 	service,
+	statefulSet,
 } from "./slots.js";
 
 // ---------------------------------------------------------------------------
@@ -116,6 +118,14 @@ export const KUBERNETES_DEPLOYMENT_PRODUCT_ID = productIdOf(
 	"deployment",
 );
 export const KUBERNETES_SERVICE_PRODUCT_ID = productIdOf(service(), "service");
+export const KUBERNETES_STATEFULSET_PRODUCT_ID = productIdOf(
+	statefulSet(),
+	"statefulSet",
+);
+export const KUBERNETES_DAEMONSET_PRODUCT_ID = productIdOf(
+	daemonSet(),
+	"daemonSet",
+);
 export const KUBERNETES_INGRESS_PRODUCT_ID = productIdOf(ingress(), "ingress");
 export const KUBERNETES_JOB_PRODUCT_ID = productIdOf(job(), "job");
 export const KUBERNETES_CRONJOB_PRODUCT_ID = productIdOf(cronJob(), "cronJob");
@@ -128,11 +138,13 @@ export const KUBERNETES_PVC_PRODUCT_ID = productIdOf(
 export const KUBERNETES_RESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
 	[
 		KUBERNETES_CRONJOB_PRODUCT_ID,
+		KUBERNETES_DAEMONSET_PRODUCT_ID,
 		KUBERNETES_DEPLOYMENT_PRODUCT_ID,
 		KUBERNETES_INGRESS_PRODUCT_ID,
 		KUBERNETES_JOB_PRODUCT_ID,
 		KUBERNETES_PVC_PRODUCT_ID,
 		KUBERNETES_SERVICE_PRODUCT_ID,
+		KUBERNETES_STATEFULSET_PRODUCT_ID,
 	].sort(compareStrings),
 );
 
@@ -283,6 +295,23 @@ const OBJECT_KINDS: Readonly<Record<string, ObjectKind>> = Object.freeze({
 		// rejects a patch that touches it, so drift is reported rather than
 		// attempted.
 		specImmutable: true,
+	}),
+	[KUBERNETES_STATEFULSET_PRODUCT_ID]: Object.freeze({
+		apiVersion: "apps/v1",
+		kind: "StatefulSet",
+		apiRoot: "/apis/apps/v1",
+		plural: "statefulsets",
+		// `volumeClaimTemplates` and `serviceName` are immutable, and a patch
+		// touching either is rejected by the apiserver. The whole spec is
+		// treated as fixed rather than guessing which half of a drift is safe.
+		specImmutable: true,
+	}),
+	[KUBERNETES_DAEMONSET_PRODUCT_ID]: Object.freeze({
+		apiVersion: "apps/v1",
+		kind: "DaemonSet",
+		apiRoot: "/apis/apps/v1",
+		plural: "daemonsets",
+		specImmutable: false,
 	}),
 	[KUBERNETES_CRONJOB_PRODUCT_ID]: Object.freeze({
 		apiVersion: "batch/v1",

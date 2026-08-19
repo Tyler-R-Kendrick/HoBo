@@ -162,6 +162,43 @@ export function droplet(options?: DropletOptions): SlotBinding {
 	});
 }
 
+/**
+ * The same Droplet product reached through the `service` slot as a
+ * long-running worker — slot `service`, profile `service.worker/v1`. Rows key
+ * on `(profile, productId)`, so both coexist without colliding, and a workload
+ * that needs a worker rather than a public origin matches only this one.
+ */
+export function dropletWorker(options?: DropletOptions): SlotBinding {
+	return slotBinding({
+		slot: "service",
+		profile: capability.service.worker,
+		productId: "digitalocean.droplet/v1",
+		properties: present(options ?? {}),
+	});
+}
+
+export interface BlockStorageOptions {
+	readonly sizeGigabytes?: number;
+	readonly filesystemType?: "ext4" | "xfs";
+	readonly snapshotId?: string;
+}
+
+/**
+ * Block Storage volume — slot `bucket`, profile `bucket.filesystem/v1`. A
+ * volume attached to one Droplet has hierarchical path semantics, which is a
+ * different profile from Spaces' object API and from a metadata-carrying file
+ * share; `bucket.filesystem/v1` refines `bucket.object/v1`, so a workload
+ * asking for the general profile still matches.
+ */
+export function blockStorage(options?: BlockStorageOptions): SlotBinding {
+	return slotBinding({
+		slot: "bucket",
+		profile: capability.bucket.filesystem,
+		productId: "digitalocean.block-storage/v1",
+		properties: present(options ?? {}),
+	});
+}
+
 /** Load balancer algorithms this factory can request. */
 export const LOAD_BALANCER_ALGORITHMS = Object.freeze([
 	"round_robin",
@@ -245,15 +282,19 @@ export const managed = Object.freeze({
 });
 
 /**
- * Managed Caching (Valkey) — slot `kv`, profile `kv.redis-compatible/v1`.
- * DigitalOcean renamed this product from Managed Redis; the wire engine slug
- * the API takes is `valkey`, and this factory says so rather than keeping the
- * old name alive in a product id.
+ * Managed Caching (Valkey) — slot `kv`, profile `kv.valkey/v1`.
+ *
+ * The profile is the *most specific* one that is true, not the most familiar.
+ * DigitalOcean renamed this product from Managed Redis and the wire engine slug
+ * the API takes is `valkey`, so `kv.valkey/v1` is the honest claim — and since
+ * it refines `kv.redis-compatible/v1`, which refines `kv.key-value/v1`, a
+ * workload asking for either of those still matches this row. Naming the parent
+ * instead would have thrown that precision away for nothing.
  */
 export function managedValkey(options?: ManagedDatabaseOptions): SlotBinding {
 	return slotBinding({
 		slot: "kv",
-		profile: capability.kv.redisCompatible,
+		profile: capability.kv.valkey,
 		productId: "digitalocean.managed-valkey/v1",
 		properties: present(options ?? {}),
 	});
@@ -307,18 +348,22 @@ export interface KubernetesNodePoolOptions {
 }
 
 /**
- * DOKS-hosted workload — slot `web`, profile `web.hosted/v1`. The row names the
- * managed Kubernetes lane; the workload objects themselves are
- * `@hobo/provider-kubernetes`' business, which is why this carries node-pool
- * shape and nothing about Deployments.
+ * A DOKS cluster — slot `web`, profile `web.hosted/v1`.
+ *
+ * The row is the *cluster*, which `/v2/kubernetes/clusters` really does
+ * allocate, and hosting a web capability is what a cluster is for. What lands
+ * inside it — Deployments, Services, Jobs — belongs to
+ * `@hobo/provider-kubernetes`, which resolves those against the cluster's own
+ * apiserver; that division is why this factory carries node-pool shape and
+ * nothing about workload objects.
  */
-export function kubernetesWorkload(
+export function kubernetesCluster(
 	options?: KubernetesNodePoolOptions,
 ): SlotBinding {
 	return slotBinding({
 		slot: "web",
 		profile: capability.web.hosted,
-		productId: "digitalocean.kubernetes-workload/v1",
+		productId: "digitalocean.kubernetes-cluster/v1",
 		properties: present(options ?? {}),
 	});
 }

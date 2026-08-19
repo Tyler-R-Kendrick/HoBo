@@ -38,10 +38,10 @@ pnpm --filter @hobo/provider-hetzner test
 - **No live deploy is proven here.** The resolvers are exercised against an
   *injected fake* transport modelling a Hetzner project. A real deploy
   additionally needs a real token, real network egress, and a real project.
-- **3 of the 5 catalogued products have resolvers**
-  (`HETZNER_RESOLVED_PRODUCT_IDS`): Cloud Servers, Load Balancers and Volumes.
-  The other two are on hosts this package deliberately does not allowlist — see
-  below.
+- **4 of the 5 catalogued products have resolvers**
+  (`HETZNER_RESOLVED_PRODUCT_IDS`): Cloud Servers, Load Balancers, Volumes, and
+  Object Storage — the last over SigV4 against its own host and its own key
+  pair, under its own guard policy. The fifth is the Storage Box; see below.
 - **No Resource Definitions are registered** for the `hetzner.*` product ids,
   so a deploy against this Yard still fails closed at resolution
   (`YARD_BINDING_PRODUCT_UNKNOWN`).
@@ -59,15 +59,24 @@ credentials, and the transport guard allowlists exactly one:
 | Surface | Host | Credential | Allowlisted |
 |---|---|---|---|
 | Cloud API | `api.hetzner.cloud/v1` | project API token | **yes** |
-| Object Storage | `<location>.your-objectstorage.com` | separate S3 key pair, SigV4 | no |
+| Object Storage | `<location>.your-objectstorage.com` | separate S3 key pair, SigV4 | **yes**, under its own policy |
 | Robot | `robot-ws.your-server.de` | HTTP Basic, web console password | no |
 
-That is why `hetzner.object-storage/v1` and `hetzner.storage-box/v1` ship no
-resolver. The Robot case is the sharper one: a resolver reaching that surface
-would be sending a *console password* through an injected transport, which is a
-different and much worse thing to hand out than a scoped project token. Both
-exclusions are exported as `HETZNER_EXCLUDED_SURFACES`, so widening the guard is
-an edit a reviewer sees.
+Object Storage gets its *own* guard policy rather than riding on the Cloud
+API's, which is what makes "a project token cannot reach the S3 origin, and an
+S3 key cannot reach the Cloud API" a property of construction rather than of
+care. The two credentials are mutually exclusive per resolver: the S3 path
+never resolves the project token and the Cloud API path never resolves the S3
+keys.
+
+Robot stays excluded, and it is the sharper case: a resolver reaching it would
+be sending the account's *web console password* through an injected transport,
+which is a different and much worse thing to hand out than a scoped project
+token. That is why `hetzner.storage-box/v1` ships no resolver — and the reason
+is the endpoint's, not a preference: `GET /v1/storage_boxes` on the Cloud API
+answers **404** where `/v1/volumes` answers **401**, so the Storage Box is
+genuinely absent from that surface. The exclusion is exported as
+`HETZNER_EXCLUDED_SURFACES`, so widening the guard is an edit a reviewer sees.
 
 ## Convergence, and what it costs
 
@@ -111,3 +120,4 @@ load-bearing. See [`ADR.md`](./ADR.md) for the full command/event walk.
 | `hetzner.cloud-server/v1` | `GET/POST/DELETE /v1/servers` |
 | `hetzner.load-balancer/v1` | `GET/POST/DELETE /v1/load_balancers`, `POST …/actions/change_algorithm` |
 | `hetzner.volume/v1` | `GET/POST/DELETE /v1/volumes`, `POST …/actions/resize` |
+| `hetzner.object-storage/v1` | `HEAD/PUT/DELETE /{bucket}` on `<location>.your-objectstorage.com` (SigV4) |

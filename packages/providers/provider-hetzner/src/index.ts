@@ -56,12 +56,14 @@ export {
 export {
 	HETZNER_CLOUD_SERVER_PRODUCT_ID,
 	HETZNER_LOAD_BALANCER_PRODUCT_ID,
+	HETZNER_OBJECT_STORAGE_PRODUCT_ID,
 	HETZNER_RESOLVED_PRODUCT_IDS,
 	HETZNER_UNRESOLVED_PRODUCT_IDS,
 	HETZNER_VOLUME_PRODUCT_ID,
 	type HetznerResolverOptions,
 	hetznerResolverRegistry,
 	hetznerResolvers,
+	type ObjectStorageKeyPair,
 	redactHetznerText,
 } from "./resolvers.js";
 export {
@@ -89,6 +91,7 @@ export {
 } from "./traffic-routing-offerings.js";
 export {
 	guardedHetznerTransport,
+	guardedObjectStorageTransport,
 	HETZNER_ALLOWED_PATH_PREFIXES,
 	HETZNER_API_HOST,
 	HETZNER_EXCLUDED_SURFACES,
@@ -97,6 +100,11 @@ export {
 	HetznerTransportConfigError,
 	hetznerApiUrl,
 	hetznerTransportPolicy,
+	OBJECT_STORAGE_LOCATIONS,
+	type ObjectStorageLocation,
+	objectStorageHost,
+	objectStorageTransportPolicy,
+	objectStorageUrl,
 } from "./transport.js";
 export type {
 	Capability,

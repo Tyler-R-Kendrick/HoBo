@@ -1,4 +1,4 @@
-import type { CapabilitySlot } from "@hobo/core";
+import { type CapabilitySlot, capability } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,33 +7,18 @@ import {
 	digitaloceanYardSpec,
 } from "../src/index.js";
 
-/** Published ADR-0151 capability profiles a catalog row may name. */
-const REAL_PROFILES: readonly string[] = [
-	"web.static/v1",
-	"web.hosted/v1",
-	"web.ssr/v1",
-	"api.http/v1",
-	"service.worker/v1",
-	"service.batch/v1",
-	"service.scheduled/v1",
-	"service.queue-consumer/v1",
-	"data.relational/v1",
-	"data.postgres/v1",
-	"data.mysql/v1",
-	"data.sqlite/v1",
-	"data.document/v1",
-	"data.vector/v1",
-	"kv.key-value/v1",
-	"kv.redis-compatible/v1",
-	"bucket.object/v1",
-	"bucket.s3-compatible/v1",
-	"bucket.file-storage/v1",
-	"queue.at-least-once/v1",
-	"queue.fifo/v1",
-	"topic.pubsub/v1",
-	"secret-ref.locator/v1",
-	"webhook.inbound-http/v1",
-];
+/**
+ * Every published capability profile, derived from `@hobo/core`'s catalog
+ * rather than restated here.
+ *
+ * This used to be a hand-written list, and it drifted the moment a factory was
+ * pointed at a more specific profile — the test failed for the list's reason,
+ * not the catalog's. Deriving it means a profile the core vocabulary adds is
+ * automatically legal, and a profile it does not define still fails.
+ */
+const REAL_PROFILES: readonly string[] = Object.values(capability).flatMap(
+	(family) => Object.values(family),
+);
 
 /** Entries declared for one slot, or an empty list when the slot is absent. */
 function slotEntries(slot: CapabilitySlot) {
@@ -46,7 +31,7 @@ describe("the DigitalOcean Yard is an allocatable catalog", () => {
 		["api", "api.http/v1", "digitalocean.load-balancer/v1"],
 		["service", "service.worker/v1", "digitalocean.app-platform-worker/v1"],
 		["data", "data.postgres/v1", "digitalocean.managed-postgres/v1"],
-		["kv", "kv.redis-compatible/v1", "digitalocean.managed-valkey/v1"],
+		["kv", "kv.valkey/v1", "digitalocean.managed-valkey/v1"],
 		["bucket", "bucket.s3-compatible/v1", "digitalocean.spaces/v1"],
 	] as const)("declares %s from the landed factories", (slot, profile, productId) => {
 		const entries = slotEntries(slot);
@@ -73,13 +58,38 @@ describe("the DigitalOcean Yard is an allocatable catalog", () => {
 				"digitalocean.app-platform-service/v1",
 				"digitalocean.app-platform-static-site/v1",
 				"digitalocean.droplet/v1",
-				"digitalocean.kubernetes-workload/v1",
+				"digitalocean.kubernetes-cluster/v1",
 			]),
 		);
 	});
 
+	/**
+	 * A Droplet hosts a worker as readily as it serves a public origin, and a
+	 * Managed Caching cluster is Valkey. Both are rows this catalog originally
+	 * missed — the first by omission, the second by naming a parent profile —
+	 * so they are pinned rather than left to drift back.
+	 */
+	it("reaches one product through every capability it satisfies", () => {
+		const rows = digitaloceanYardSpec().bindings.filter(
+			(row) => row.productId === "digitalocean.droplet/v1",
+		);
+		expect(rows.map((row) => row.profile).sort()).toEqual([
+			"service.worker/v1",
+			"web.hosted/v1",
+		]);
+	});
+
+	it("names the most specific true profile, not a familiar ancestor", () => {
+		const valkey = slotEntries("kv").find(
+			(entry) => entry.productId === "digitalocean.managed-valkey/v1",
+		);
+		// kv.valkey refines kv.redis-compatible refines kv.key-value, so the
+		// specific name still answers a request for either ancestor.
+		expect(valkey?.profile).toBe("kv.valkey/v1");
+	});
+
 	it("offers alternatives on every capability DigitalOcean serves more than one way", () => {
-		for (const slot of ["web", "service", "data"]) {
+		for (const slot of ["web", "service", "data", "bucket"]) {
 			expect(slotEntries(slot).length).toBeGreaterThanOrEqual(2);
 		}
 	});

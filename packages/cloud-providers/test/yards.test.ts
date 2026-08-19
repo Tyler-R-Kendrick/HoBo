@@ -11,7 +11,11 @@ import {
 	azure,
 	cloudflare,
 	composeYard,
+	digitalocean,
 	gcp,
+	hetzner,
+	hostinger,
+	kubernetes,
 	vercel,
 } from "../src/index.js";
 
@@ -21,6 +25,10 @@ const NAMESPACES = [
 	{ name: "gcp", ns: gcp, providerId: "gcp" },
 	{ name: "cloudflare", ns: cloudflare, providerId: "cloudflare" },
 	{ name: "vercel", ns: vercel, providerId: "vercel" },
+	{ name: "digitalocean", ns: digitalocean, providerId: "digitalocean" },
+	{ name: "hetzner", ns: hetzner, providerId: "hetzner" },
+	{ name: "hostinger", ns: hostinger, providerId: "hostinger" },
+	{ name: "kubernetes", ns: kubernetes, providerId: "kubernetes" },
 ] as const;
 
 describe("default Yards", () => {

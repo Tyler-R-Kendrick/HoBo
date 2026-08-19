@@ -36,13 +36,25 @@
  * happens at resolution time under ADR-0151's hard gates and lexicographic
  * ranking — never here.
  *
- * HONEST SCOPE, per provider:
- *   - **cloudflare**, **vercel** — ship HTTP deployment resolvers, exercised in
- *     tests against an injected fake transport. No live deploy is proven here:
- *     that additionally needs real credentials and network egress.
- *   - **aws**, **azure**, **gcp** — catalog only. No resolvers and no
- *     registered Resource Definitions for their product ids, so a deploy
- *     against these Yards fails closed at resolution rather than half-applying.
+ * HONEST SCOPE, per provider. No namespace here has registered Resource
+ * Definitions for its product ids, so a deploy against any of these Yards
+ * fails closed at resolution rather than half-applying; what differs is how
+ * much of a real API each provider package can already talk to, and every one
+ * of those is proven against an injected fake transport rather than a live
+ * account:
+ *   - **cloudflare**, **vercel** — HTTP deployment resolvers.
+ *   - **aws** (7/19), **gcp** (9/14), **azure** (9/16),
+ *     **digitalocean** (9/14), **hetzner** (3/5) — signed or bearer-token
+ *     resolvers for part of the catalog; each package names the products it
+ *     cannot converge and why.
+ *   - **kubernetes** (6/7) — convergent resolvers for built-in objects, plus a
+ *     placement driver that does reach a real apiserver. Its catalog is
+ *     built-ins only: databases, caches and queues arrive through operators,
+ *     which are software this package cannot see.
+ *   - **hostinger** (2/5) — the odd one out: allocation there is a *billing
+ *     order*, so its resolvers adopt and converge what you already bought and
+ *     refuse to purchase. Its transport guard does not allowlist the
+ *     order-placing namespace, so that refusal is enforced below the code.
  */
 export * as aws from "./aws.js";
 export * as azure from "./azure.js";
@@ -69,5 +81,9 @@ export {
 	composeYard,
 	type YardSpecLike,
 } from "./compose.js";
+export * as digitalocean from "./digitalocean.js";
 export * as gcp from "./gcp.js";
+export * as hetzner from "./hetzner.js";
+export * as hostinger from "./hostinger.js";
+export * as kubernetes from "./kubernetes.js";
 export * as vercel from "./vercel.js";

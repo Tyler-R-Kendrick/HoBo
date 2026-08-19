@@ -17,7 +17,17 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { aws, azure, cloudflare, gcp, vercel } from "../src/index.js";
+import {
+	aws,
+	azure,
+	cloudflare,
+	digitalocean,
+	gcp,
+	hetzner,
+	hostinger,
+	kubernetes,
+	vercel,
+} from "../src/index.js";
 
 /** A slot factory: zero-arg-callable, returns a parsed slot binding. */
 function productIdsFrom(namespace: Record<string, unknown>): Set<string> {
@@ -58,6 +68,10 @@ const NAMESPACES = [
 	{ name: "gcp", ns: gcp },
 	{ name: "cloudflare", ns: cloudflare },
 	{ name: "vercel", ns: vercel },
+	{ name: "digitalocean", ns: digitalocean },
+	{ name: "hetzner", ns: hetzner },
+	{ name: "hostinger", ns: hostinger },
+	{ name: "kubernetes", ns: kubernetes },
 ] as const;
 
 describe("namespace reaches everything its catalog declares", () => {

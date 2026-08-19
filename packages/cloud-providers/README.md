@@ -56,11 +56,14 @@ hard gates and lexicographic ranking, never here.
 | `gcp` | **9 of 14** — Google REST drivers | Same: fake-transport proof only. The other 5 fail closed. See `GCP_RESOLVED_PRODUCT_IDS` / `GCP_UNRESOLVED_PRODUCT_IDS`. |
 | `azure` | **9 of 16** — ARM drivers | Same: fake-transport proof only. The other 7 fail closed. See `AZURE_RESOLVED_PRODUCT_IDS` / `AZURE_UNRESOLVED_PRODUCT_IDS`. |
 | `aws` | **7 of 19** — SigV4-signed drivers | Same: fake-transport proof only. The other 12 fail closed. See `AWS_RESOLVED_PRODUCT_IDS` / `AWS_UNRESOLVED_PRODUCT_IDS`. |
+| `digitalocean` | **12 of 15** — v2 bearer-token drivers + Spaces over SigV4 | Same: fake-transport proof only. The 3 without drivers are non-convergent by DigitalOcean's API shape, not by omission. `queue`, `topic` and `secretRef` carry no rows at all, because DigitalOcean sells none of them. |
+| `kubernetes` | **8 of 9** — apiserver drivers | Same: fake-transport proof only. The 9th is the Secret, which ships no driver by design. This namespace also has a placement driver that does reach a real apiserver. Catalog is built-ins only: databases, caches and queues arrive through operators. |
+| `hetzner` | **4 of 5** — Cloud API drivers + Object Storage over SigV4 | Same: fake-transport proof only. The 5th is the Storage Box, which is not on the Cloud API at all (404 there, vs 401 for `/v1/volumes`) — it is Robot-administered behind a console password. Five slots carry no rows: Hetzner sells no managed database, cache, queue, topic or secret store. |
+| `hostinger` | **2 of 5** — adopt-and-converge drivers | The odd one out. On Hostinger allocation is a **billing order**, so these resolvers converge an instance you already bought and refuse to purchase one — a refusal the transport guard enforces by not allowlisting `/api/billing/v1/`. Fake-transport proof only. |
 
 Two limits apply to every row above, including the ones marked "all":
 
-1. **No `aws.*` / `azure.*` / `gcp.*` product id is registered in the definition
-   catalog.** So even a product with a working resolver refuses at resolution
+1. **No provider's product ids are registered in the definition catalog.** So even a product with a working resolver refuses at resolution
    today. That is a deliberate fail-closed gap, not a silent one: a deploy
    refuses rather than half-applying.
 2. **"Has a resolver" is not "deploys."** Every resolver in this repo is proven
@@ -76,7 +79,11 @@ requires an administrator password in the request body, and a `desired` record
 may not carry credential-shaped keys. Others are identity limits:
 `aws.api-gateway/v1` mints a fresh random id per call with no name uniqueness,
 so a retry after a lost response would create a second API rather than
-converge. The
+converge. And some are refusals this repo chose on purpose:
+`kubernetes.secret/v1` ships no resolver because creating a Secret means
+putting its contents in a `desired` record that is written to the event log,
+and `hostinger.vps/v1` will not place the billing order that would allocate
+one. The
 `*_UNRESOLVED_PRODUCT_IDS` declarations carry the reason per id, and distinguish
 the two cases.
 

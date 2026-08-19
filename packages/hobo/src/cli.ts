@@ -11,7 +11,11 @@ import {
 } from "@hobo/cli";
 import { createAwsProvider } from "@hobo/provider-aws";
 import { createAzureProvider } from "@hobo/provider-azure";
+import { createDigitalOceanProvider } from "@hobo/provider-digitalocean";
 import { createGcpProvider } from "@hobo/provider-gcp";
+import { createHetznerProvider } from "@hobo/provider-hetzner";
+import { createHostingerProvider } from "@hobo/provider-hostinger";
+import { createKubernetesProvider } from "@hobo/provider-kubernetes";
 import { createLakebedProvider } from "@hobo/provider-lakebed";
 import { createBlacksmithCatalogEntry } from "@hobo/runner-blacksmith";
 import { createDepotCatalogEntry } from "@hobo/runner-depot";
@@ -89,6 +93,24 @@ registerInstallable("azure", () =>
 	toRegistrableProvider(createAzureProvider()),
 );
 registerInstallable("gcp", () => toRegistrableProvider(createGcpProvider()));
+registerInstallable("digitalocean", () =>
+	toRegistrableProvider(createDigitalOceanProvider()),
+);
+// Hetzner declares two capability ports rather than six, and Hostinger two as
+// well: neither sells a managed database, cache or queue (Hostinger's MySQL
+// aside), so Matching answers `none` for the rest instead of a near-miss.
+registerInstallable("hetzner", () =>
+	toRegistrableProvider(createHetznerProvider()),
+);
+registerInstallable("hostinger", () =>
+	toRegistrableProvider(createHostingerProvider()),
+);
+// The cluster provider: `hobo add kubernetes` registers the compute port a
+// Deployment satisfies. Everything else a cluster can host arrives through
+// operators, which this adapter does not install or claim.
+registerInstallable("kubernetes", () =>
+	toRegistrableProvider(createKubernetesProvider()),
+);
 // The competitor deploy target registers HELD by default (ADR-0127): a second
 // `hobo add lakebed` records the explicit approval.
 registerInstallable(

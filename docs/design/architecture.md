@@ -187,13 +187,17 @@ packages/
     provider-aws       @hobo/provider-aws
     provider-azure     @hobo/provider-azure
     provider-gcp       @hobo/provider-gcp
+    provider-digitalocean @hobo/provider-digitalocean
+    provider-hetzner     @hobo/provider-hetzner  (VMs/networking/storage only — no managed data services)
+    provider-hostinger   @hobo/provider-hostinger (adopt-and-converge: allocation is a billing order)
     provider-flux        @hobo/provider-flux     (Orbit = git mode; OCI digest production; not an actor runtime)
     provider-cloudflare  @hobo/provider-cloudflare
     provider-convex      @hobo/provider-convex   (Convex deploy-target CloudProvider — thin SaaS adapter w/ typed impedance, ADR-0144)
     provider-lakebed     @hobo/provider-lakebed  (deploy-driver style, ADR-0127)
     provider-kafka / provider-ax / provider-agentv / provider-config
     runner-github / runner-blacksmith / runner-depot   (Dispatcher runner/build-machine candidates)
-    provider-fly / provider-kubernetes ✱
+    provider-fly ✱
+    provider-kubernetes  @hobo/provider-kubernetes (built-in objects + placement driver)
   iac/
     iac-pulumi         @hobo/iac-pulumi        (Automation API — first-party adapter; not sole primary)
     iac-terraform      @hobo/iac-terraform     (terraform/tofu CLI engine)

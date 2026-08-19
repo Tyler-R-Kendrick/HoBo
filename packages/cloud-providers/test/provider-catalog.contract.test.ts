@@ -31,7 +31,11 @@ import { fileURLToPath } from "node:url";
 import { awsYardSpec } from "@hobo/provider-aws";
 import { azureYardSpec } from "@hobo/provider-azure";
 import { cloudflareYardSpec } from "@hobo/provider-cloudflare";
+import { digitaloceanYardSpec } from "@hobo/provider-digitalocean";
 import { gcpYardSpec } from "@hobo/provider-gcp";
+import { hetznerYardSpec } from "@hobo/provider-hetzner";
+import { hostingerYardSpec } from "@hobo/provider-hostinger";
+import { kubernetesYardSpec } from "@hobo/provider-kubernetes";
 import { vercelYardSpec } from "@hobo/provider-vercel";
 import { describe, expect, it } from "vitest";
 
@@ -41,7 +45,11 @@ import {
 	type CatalogRow,
 	cloudflare,
 	composeYard,
+	digitalocean,
 	gcp,
+	hetzner,
+	hostinger,
+	kubernetes,
 	vercel,
 	type YardSpecLike,
 } from "../src/index.js";
@@ -94,7 +102,20 @@ const PROVIDERS: Readonly<
 		Yard: () => cloudflare.Yard(),
 		spec: () => cloudflareYardSpec(),
 	},
+	digitalocean: {
+		Yard: () => digitalocean.Yard(),
+		spec: () => digitaloceanYardSpec(),
+	},
 	gcp: { Yard: () => gcp.Yard(), spec: () => gcpYardSpec() },
+	hetzner: { Yard: () => hetzner.Yard(), spec: () => hetznerYardSpec() },
+	hostinger: {
+		Yard: () => hostinger.Yard(),
+		spec: () => hostingerYardSpec(),
+	},
+	kubernetes: {
+		Yard: () => kubernetes.Yard(),
+		spec: () => kubernetesYardSpec(),
+	},
 	vercel: { Yard: () => vercel.Yard(), spec: () => vercelYardSpec() },
 };
 

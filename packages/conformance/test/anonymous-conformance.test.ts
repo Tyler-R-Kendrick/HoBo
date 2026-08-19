@@ -4,6 +4,8 @@
 // check, and each specific dishonesty the suites exist to catch is actually
 // caught. A suite that only ever sees a passing adapter proves nothing.
 
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -236,6 +238,29 @@ describe("claim conformance catches a claim that never moved authority", () => {
 });
 
 describe("binding conformance catches a leaky or fake-portable binding", () => {
+	it("fails when the produced binding cannot survive its own parse boundary", async () => {
+		// The binding round-trip check was the one declared check in this module
+		// with no dishonesty case: it only ever saw the honest reference adapter,
+		// so nothing proved it catches anything. A binding whose id the boundary
+		// refuses is the cheapest way to be caught by it.
+		const report = await runAnonymousSuite(
+			BINDING_CONFORMANCE_SUITE,
+			mutate(referenceBindingExecutor, (outcome) =>
+				outcome.binding === undefined
+					? outcome
+					: {
+							...outcome,
+							binding: {
+								...(outcome.binding as Record<string, unknown>),
+								id: "",
+							},
+						},
+			),
+		);
+		expect(report.checks[BINDING_CHECKS.roundTrip]).toBe("fail");
+		expect(report.ok).toBe(false);
+	});
+
 	it("fails when a credential is inlined into the endpoint host", async () => {
 		const report = await runAnonymousSuite(
 			BINDING_CONFORMANCE_SUITE,
@@ -445,5 +470,33 @@ describe("the harness never turns an absent answer into a pass", () => {
 		}));
 		expect(report.cases[0]?.failureCode).toBe("executor.unparseable-outcome");
 		expect(report.ok).toBe(false);
+	});
+});
+
+describe("the suites cover every check they declare", () => {
+	// The binding round-trip check was declared with no dishonesty case: it only
+	// ever saw the honest reference adapter, so nothing proved it catches
+	// anything. A check nothing can fail is indistinguishable from a check that
+	// is not there, which is exactly what this module refuses in a *product* —
+	// the same standard has to apply to the suites themselves.
+	//
+	// This guard reads its own file, so nothing here may spell a check in
+	// `NAMESPACE.key` form: a comment doing so would satisfy the guard on the
+	// case's behalf. Falsifying it is what caught that.
+	it.each([
+		["BOOTSTRAP_CHECKS", BOOTSTRAP_CHECKS],
+		["CLAIM_CHECKS", CLAIM_CHECKS],
+		["BINDING_CHECKS", BINDING_CHECKS],
+		["MIGRATION_CHECKS", MIGRATION_CHECKS],
+	])("%s has a dishonesty case for every check", (namespace, checks) => {
+		const source = readFileSync(
+			new URL("./anonymous-conformance.test.ts", import.meta.url),
+			"utf8",
+		);
+		expect(
+			Object.keys(checks).filter(
+				(key) => !source.includes(`${namespace}.${key}`),
+			),
+		).toEqual([]);
 	});
 });

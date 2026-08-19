@@ -411,3 +411,37 @@ bare guarantees rather than the full base set — it speaks Postgres but has nev
 proven a migration tool. Deriving it from the base set instead made it pass a
 gate it exists to fail. Caught on the first run, fixed with an explicit
 `guaranteesOnly` flag rather than by adjusting the expectation.
+
+## Layer 10 — a declared check that nothing could fail
+
+`conformance/anonymous-conformance` is the fixture-heavy tier by the layer-09
+measure: its bulk is twenty-one mutation closures, one per dishonesty, and
+naming them in a map would not delete them. So this layer does **not** convert
+it. It does the thing that was actually worth doing to it.
+
+**`BINDING_CHECKS.roundTrip` had no dishonesty case.** Seventeen of the eighteen
+declared checks across the four dimensions were exercised by a mutation that
+proves they catch something; that one only ever saw the honest reference
+adapter. A check nothing can fail is indistinguishable from a check that is not
+there — which is precisely what this module exists to refuse in a *product*.
+
+Two additions:
+
+1. A dishonesty case for it — a produced binding whose id the parse boundary
+   refuses. Falsified by making the mutation a no-op: the check goes back to
+   `pass` and the case fails.
+2. A guard that every declared check in all four namespaces has a case, so the
+   gap cannot recur.
+
+### The guard defeated itself first
+
+Written with an explanatory comment that spelled the missing check in
+`NAMESPACE.key` form. The guard reads its own source, so the **comment**
+satisfied it on the case's behalf, and removing the case left it green.
+Falsification caught that; the comment is reworded and now carries the warning.
+This is the second time in this initiative that a fixture or comment has
+satisfied the assertion meant to police it — the first was a temp directory
+named `look-no-buzz-` matching a check for the word `buzz`.
+
+The lesson worth keeping: **a guard that reads its own file has to be falsified,
+not reasoned about.** Both failures looked correct on inspection.

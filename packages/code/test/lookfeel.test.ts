@@ -11,6 +11,7 @@ import {
 	createOpenUiSession,
 	createPane,
 	formatHoboCodeResult,
+	HOBO_CODE_VERBS,
 	lockVisualArtifact,
 	renderOpenUiHtml,
 	renderStatusChip,
@@ -450,30 +451,6 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(out).not.toMatch(/^Usage:/m);
 	});
 
-	it.skip("closed panel chrome uses soft title band and bottom rule", async () => {
-		const home = temp("look-panel-home-");
-		const project = temp("look-panel-proj-");
-		const dispatch = await runHoboCodeCli(["panel chrome"], {
-			hoboHome: home,
-			cwd: project,
-		});
-		const human = formatHoboCodeResult(dispatch, false);
-		// bare prompt → defaulted ★ title (dispatch implied)
-		expect(human).toContain("✓ ★");
-		// soft title underline (·) then body then bottom rule (─)
-		expect(human).toMatch(/✓ ★\n(?:·{10,}\n)?/);
-		expect(human).toMatch(/\n─{10,}\n?$/m);
-		const lines = human.trimEnd().split("\n");
-		const last = lines[lines.length - 1] ?? "";
-		expect(last).toMatch(/^─{10,}$/);
-		// platform also closed
-		const platform = await runHoboCodeCli(["platform"], { hoboHome: home });
-		const pOut = formatHoboCodeResult(platform, false);
-		expect(pOut).toMatch(/▣ pl\n(?:·{10,}\n)?/);
-		const pLines = pOut.trimEnd().split("\n");
-		expect(pLines[pLines.length - 1]).toMatch(/^─{10,}$/);
-	});
-
 	it("dispatch default verb explains itself in plain English", async () => {
 		const home = temp("look-dispatch-home-");
 		const project = temp("look-dispatch-proj-");
@@ -543,155 +520,6 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(result.code).toBe("HOBO_CODE_INTERACTIVE_REQUIRED");
 		expect(human).toContain("✕");
 		expect(human).toMatch(/needs a TTY|hobo-code help/i);
-	});
-
-	it.skip("nodes inventory is human-readable without buzz nesting", async () => {
-		const home = temp("look-nodes-home-");
-		const result = await runHoboCodeCli(["nodes"], { hoboHome: home });
-		const human = formatHoboCodeResult(result, false);
-		expect(result.ok).toBe(true);
-		expect(human).toContain("▣ n");
-		expect(human).not.toContain("hobo-code n");
-		// short class labels for scan (ep=endpoint lo=local); capacity glued
-		expect(human).toMatch(/●ep\d+|●lo\d+/);
-		// idle all-free: one nodes row (no table)
-		expect(human).toMatch(/\d+·●ep\d+·●lo\d+/);
-		expect(human).not.toMatch(/· 0 busy ·/);
-		expect(human).not.toMatch(/^ {2}summary\s+/m);
-		expect(human).not.toMatch(/CLASS\s+LOAD\s+RUN\/CAP/);
-		expect(human).not.toContain("BUSY");
-		expect(human).not.toMatch(/^ {2}cols\s+/m);
-		expect(human).toMatch(/●ep\d+|●lo\d+/);
-		expect(human).not.toMatch(/●endpoint|●local/);
-		expect(human).not.toMatch(/● on\s+endpoint|● on\s+local/);
-		// ★ dispatch next omitted (product default)
-		expect(human).not.toMatch(/·★/);
-		expect(human).not.toMatch(/next\s+dispatch/);
-		expect(human).not.toMatch(/next\s+hobo-code /);
-		expect(human).toMatch(/▣ n[^\n]*\n(?:·{10,}\n)?/);
-		expect(human).not.toMatch(/\bbuzz\b/);
-	});
-
-	it.skip("budget and platform human layouts are structured panels", async () => {
-		const home = temp("look-budget-home-");
-		const budget = await runHoboCodeCli(["budget"], { hoboHome: home });
-		const budgetOut = formatHoboCodeResult(budget, false);
-		expect(budgetOut).toContain("◈ b");
-		expect(budgetOut).not.toContain("hobo-code b");
-		// zero-spend: drop meter bar; off=0 default omitted (docs own disable)
-		// st next omitted (product default observe)
-		expect(budgetOut).toMatch(/\$0\/\$\d+(?:\.\d+)?·●mon(?!·st)/);
-		expect(budgetOut).not.toMatch(/●mon·st/);
-		expect(budgetOut).not.toContain("$5.00");
-		expect(budgetOut).not.toContain("priv");
-		expect(budgetOut).not.toContain("cheapest");
-		expect(budgetOut).not.toContain("mon·wait");
-		expect(budgetOut).not.toMatch(/^ spend · /m);
-		expect(budgetOut).not.toContain("never code");
-		expect(budgetOut).not.toContain("off=0");
-		expect(budgetOut).not.toContain("MONETIZATION=0");
-		expect(budgetOut).not.toMatch(/^ {2}meter\s+/m);
-		expect(budgetOut).not.toMatch(/^ {2}routing\s+/m);
-		expect(budgetOut).not.toMatch(/^ {2}monetize\s+/m);
-		expect(budgetOut).not.toMatch(/^ {2}privacy\s+/m);
-		expect(budgetOut).not.toMatch(/^ {2}sponsored\s+/m);
-		expect(budgetOut).not.toMatch(/^ {2}disable\s+/m);
-		// zero spend: no capacity bar chrome
-		expect(budgetOut).not.toMatch(/\[█|\[░/);
-		expect(budgetOut).not.toContain("never code/prompts");
-		expect(budgetOut).not.toContain("never inspects code");
-		expect(budgetOut).not.toContain("status wait");
-		expect(budgetOut).toMatch(/●mon|★|promo|◆|◇/);
-		expect(budgetOut).not.toContain("wait surface");
-		expect(budgetOut).not.toMatch(/^ {2}slot\s+/m);
-		expect(budgetOut).not.toContain("HOBO_CODE_MONETIZATION=0");
-		expect(budgetOut).not.toContain("feature code.monetization");
-		expect(budgetOut).not.toContain("feature set code.monetization");
-		expect(budgetOut).not.toContain("--percent");
-		expect(budgetOut).toMatch(/◈ b\n(?:·{10,}\n)?/);
-		const platform = await runHoboCodeCli(["platform"], { hoboHome: home });
-		const platformOut = formatHoboCodeResult(platform, false);
-		expect(platformOut).toContain("▣ pl");
-		expect(platformOut).not.toContain("hobo-code pl");
-		// rail LED/hash · next — all● is product default (omit on happy path)
-		expect(platformOut).toMatch(/●·\S+/);
-		expect(platformOut).not.toMatch(/●·\S+·st$/m);
-		expect(platformOut).not.toContain("all●");
-		expect(platformOut).not.toMatch(/^ station · /m);
-		expect(platformOut).not.toContain("● present");
-		expect(platformOut).not.toMatch(/^ {2}rail\s+/m);
-		expect(platformOut).not.toMatch(/^ {2}flags\s+/m);
-		// all-on happy path: all● omitted (product default); strip only when off
-		expect(platformOut).not.toContain("all●");
-		expect(platformOut).not.toContain("●monetize");
-		expect(platformOut).not.toContain("●mon");
-		expect(platformOut).not.toContain("●dist");
-		expect(platformOut).not.toContain("●monetization");
-		expect(platformOut).not.toContain("●distributed");
-		expect(platformOut).not.toContain("distributed");
-		expect(platformOut).not.toContain("all ON");
-		expect(platformOut).not.toContain("product default");
-		// default flue: omit provider row (happy path); never show composition noise
-		expect(platformOut).not.toContain("(composition)");
-		expect(platformOut).not.toContain("withastro/");
-		expect(platformOut).not.toMatch(/^ {2}provider\s+/m);
-		expect(platformOut).toMatch(/●·|▣ pl/);
-		// all-on: strip only — no redundant per-flag rows
-		expect(platformOut).not.toMatch(/harness\s+● on/);
-		expect(platformOut).not.toMatch(/evidence\s+● on/);
-		// single-line provider (no orphan packageHint row)
-		expect(platformOut).not.toMatch(/\n\s{10,}\S+\//);
-		// old parenthetical form is gone
-		expect(platformOut).not.toMatch(/station:local \(present\)/);
-
-		// any-off: fold into station row (no detail table)
-		const offPort = createMemoryFeaturePort({
-			[CODE_FEATURE_FLAGS.distributed]: false,
-		});
-		const offPlat = await runHoboCodeCli(["platform"], {
-			hoboHome: home,
-			features: offPort,
-		});
-		const offOut = formatHoboCodeResult(offPlat, false);
-		// strip shows ○dist; count only (no twin ○dist list / detail table)
-		expect(offOut).toMatch(/○dist·1○/);
-		expect(offOut).not.toMatch(/○dist·1○·st/);
-		expect(offOut).not.toMatch(/1 off · ○dist/);
-		expect(offOut).not.toMatch(/off · detail/);
-		expect(offOut).not.toMatch(/^ {2}flags\s+/m);
-		expect(offOut).not.toMatch(/^\s+dist\s+○ off/m);
-		const remote = await runHoboCodeCli(["remote"], { hoboHome: home });
-		const remoteOut = formatHoboCodeResult(remote, false);
-		expect(remoteOut).toContain("◎ re");
-		expect(remoteOut).not.toContain("hobo-code re");
-		// host folds reach + dns + mosh LED (no twin rows)
-		// code/mux default omitted when host brands it; title brands remote
-		// .hobo.localhost suffix dropped on scan line
-		// host brands mux — →mux twin omitted on happy path
-		expect(remoteOut).toMatch(/code\.mux/);
-		expect(remoteOut).not.toMatch(/code\.mux·st/);
-		expect(remoteOut).not.toContain("→mux");
-		expect(remoteOut).not.toContain("hobo.localhost");
-		expect(remoteOut).not.toContain("op→mux");
-		expect(remoteOut).not.toContain("op→named→mux");
-		expect(remoteOut).not.toMatch(/^ host · /m);
-		expect(remoteOut).not.toContain("code/mux");
-		expect(remoteOut).not.toMatch(/^ {2}reach\s+/m);
-		expect(remoteOut).not.toMatch(/^ {2}dns\s+/m);
-		expect(remoteOut).not.toMatch(/^ {2}mosh\s+/m);
-		expect(remoteOut).not.toMatch(/^ {2}resource\s+/m);
-		expect(remoteOut).not.toContain("named endpoint");
-		// ADR + mosh off live in docs — omit happy-path chrome twins
-		expect(remoteOut).not.toContain("ADR-0130");
-		expect(remoteOut).not.toContain("mosh ○");
-		// default local: omit mode/station noise; no redundant https://host url
-		expect(remoteOut).not.toMatch(/^ {2}mode\s+/m);
-		expect(remoteOut).not.toMatch(/^ {2}station\s+/m);
-		expect(remoteOut).not.toMatch(/^ {2}url\s+https:\/\//m);
-		expect(remoteOut).not.toContain("optional resilience");
-		expect(remoteOut).not.toContain("TCP detach fails");
-		expect(remoteOut).not.toContain("phone SSH");
-		expect(remoteOut).toMatch(/◎ re\n(?:·{10,}\n)?/);
 	});
 
 	it("scaffold human output highlights first-paint path", async () => {
@@ -895,19 +723,6 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(liveOut).not.toContain("HOBO_CODE_SESSION");
 	});
 
-	it.skip("join/rooms/agent verbs are removed (not a buzz hive product)", async () => {
-		const home = temp("look-no-hive-");
-		for (const verb of ["rooms", "join", "agent"] as const) {
-			const r = await runHoboCodeCli([verb, "x"], { hoboHome: home });
-			expect(r.code).not.toMatch(
-				/HOBO_CODE_JOIN|HOBO_CODE_AGENT|HOBO_CODE_HIVE|HOBO_CODE_ROOMS/,
-			);
-		}
-		const nodes = await runHoboCodeCli(["nodes"], { hoboHome: home });
-		expect(nodes.ok).toBe(true);
-		expect(nodes.code).toBe("HOBO_CODE_NODES");
-	});
-
 	it("promote missing run id uses structured usage panel", async () => {
 		const result = await runHoboCodeCli(["promote"]);
 		const human = formatHoboCodeResult(result, false);
@@ -994,4 +809,70 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(result.remediation?.length).toBeGreaterThan(0);
 		expect(human).not.toContain("undefined");
 	});
+	/**
+	 * What survived the look/feel redesign.
+	 *
+	 * Four tests here asserted a layout that no longer exists — a `▣ n` nodes
+	 * panel, a `◈ b` budget panel, an `▣ pl` platform verb — and were `it.skip`ped
+	 * rather than updated when the verbs were renamed (`budget` became `cost`,
+	 * `nodes`/`platform` stopped being verbs at all) and the panels were
+	 * rewritten. Reviving them would have meant restating today's exact bytes in
+	 * forty assertions, which is a change detector, not a design test. These
+	 * three keep the intent that outlived the layout.
+	 */
+	it.each([["cost"], ["machines"]])(
+		"%s renders closed panel chrome: title, body, bottom rule",
+		async (verb) => {
+			const home = temp(`look-chrome-${verb}-`);
+			const out = formatHoboCodeResult(
+				await runHoboCodeCli([verb], { hoboHome: home }),
+				false,
+			);
+			const lines = out.trimEnd().split("\n");
+			// Title first, bottom rule last: the panel is closed at both ends.
+			expect(lines[0]).toMatch(/^[◈✓▣◎] \S/u);
+			expect(lines[lines.length - 1]).toMatch(/^─{10,}$/u);
+			// A multi-row body carries the soft band under the title.
+			if (lines.length > 3) expect(lines[1]).toMatch(/^·{10,}$/u);
+		},
+		60_000,
+	);
+
+	it(
+		"human output carries no buzz-hive vocabulary",
+		async () => {
+			const home = temp("look-vocab-");
+			const project = temp("look-vocab-proj-");
+			// Fixture names must not contain the forbidden words: the dispatch
+			// panel echoes the temp path, so "look-no-buzz-XXXX" would match.
+			for (const argv of [["cost"], ["machines"], ["ship the first paint"]]) {
+				const out = formatHoboCodeResult(
+					await runHoboCodeCli(argv, { hoboHome: home, cwd: project }),
+					false,
+				);
+				expect(out).not.toMatch(/\bbuzz\b/iu);
+				expect(out).not.toMatch(/\bhive\b/iu);
+			}
+		},
+		60_000,
+	);
+
+	it(
+		"rooms and join are not verbs — they fall through to dispatch",
+		async () => {
+			// `agent` was in this list until it became a real verb; asserting its
+			// absence is what made the original test wrong rather than merely stale.
+			expect(HOBO_CODE_VERBS).toContain("agent");
+			const home = temp("look-verbset-");
+			for (const verb of ["rooms", "join"] as const) {
+				expect(HOBO_CODE_VERBS as readonly string[]).not.toContain(verb);
+				const r = await runHoboCodeCli([verb, "x"], { hoboHome: home });
+				expect(r.code).not.toMatch(
+					/HOBO_CODE_JOIN|HOBO_CODE_HIVE|HOBO_CODE_ROOMS/u,
+				);
+			}
+		},
+		60_000,
+	);
+
 });

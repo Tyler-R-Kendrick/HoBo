@@ -4,7 +4,6 @@ import {
 	type EnqueueOptions,
 	type EnqueueResult,
 	type HandleReport,
-	type IdempotencyKey,
 	type LeasedMessage,
 	type LeaseId,
 	type MessageId,
@@ -28,7 +27,6 @@ import {
 	normalizeNonNegativeInteger,
 	type QueueClockStore,
 	type QueueMessageRecord,
-	requireNonEmptyString,
 } from "./queue-clock-store.js";
 
 export function createLocalQueue(store: QueueClockStore): Queue {

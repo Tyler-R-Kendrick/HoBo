@@ -5,7 +5,6 @@ import {
 	createDownCommand,
 	createHoboCli,
 	createPlanCommand,
-	createUpCommand,
 	type DevRuntime,
 	type HoboCli,
 	type YardRuntime,

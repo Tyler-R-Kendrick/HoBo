@@ -215,7 +215,7 @@ export function runPromotionGates(gates: readonly PromotionGate[]): {
 	const failed: PromotionGate[] = [];
 	for (const required of REQUIRED_GATES) {
 		const gate = byName.get(required);
-		if (!gate || !gate.pass) {
+		if (!gate?.pass) {
 			failed.push(
 				gate ?? {
 					name: required,
@@ -240,7 +240,7 @@ export async function promoteIsolation(
 	request: PromotionRequest,
 	options: PromoteOptions,
 ): Promise<PromotionResult> {
-	assertMediatedOnly(options.agentMayWriteCanonical === true ? true : false);
+	assertMediatedOnly(options.agentMayWriteCanonical === true);
 
 	if (request.squashOnly !== true) {
 		return {

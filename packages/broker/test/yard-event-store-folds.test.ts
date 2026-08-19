@@ -133,7 +133,7 @@ describe("yard event-store folds + provider resolvers", () => {
 		]);
 		// First reservation wins the lease.
 		expect(state.generationByIdempotency["sha256:same"]).toBe("a1");
-		expect(state.generationAttempts["a1"]?.status).toBe("reserved");
+		expect(state.generationAttempts.a1?.status).toBe("reserved");
 	});
 
 	it("placement emits yard.* facts and fold agrees with receipt", async () => {

@@ -68,7 +68,11 @@ export async function solvePreviewChallenge(
 
 	const flat = new Uint8Array((k + 1) * CHECKPOINT_BYTES);
 	for (let i = 0; i < checkpoints.length; i++) {
-		flat.set(checkpoints[i]!, i * CHECKPOINT_BYTES);
+		const checkpoint = checkpoints[i];
+		if (checkpoint === undefined) {
+			throw new Error(`checkpoint ${i} missing`);
+		}
+		flat.set(checkpoint, i * CHECKPOINT_BYTES);
 	}
 
 	return {

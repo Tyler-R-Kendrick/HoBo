@@ -5,7 +5,7 @@ import { parseTenantId } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import { createCloudflareDnsProvider } from "../../src/dns/cloudflare-provider.js";
-import { createPactFetch } from "../helpers/pact-fetch.js";
+import { createPactFetch, requirePact } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -15,9 +15,8 @@ const contractsDir = path.resolve(
 describe("CloudflareDnsApi consumer contract", () => {
 	it("createCloudflareDnsProvider upserts via pact mock fetch", async () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
-		const pact = pacts.find((p) => p.provider.name === "CloudflareDnsApi");
-		expect(pact).toBeDefined();
-		const fetchImpl = createPactFetch(pact!);
+		const pact = requirePact(pacts, "CloudflareDnsApi");
+		const fetchImpl = createPactFetch(pact);
 
 		const provider = createCloudflareDnsProvider({
 			apiToken: "test-token",

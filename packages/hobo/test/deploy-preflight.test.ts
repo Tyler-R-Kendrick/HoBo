@@ -53,3 +53,46 @@ describe("describeDeployTarget", () => {
 		expect(d.backend).toBe("in-memory");
 	});
 });
+
+describe("resolver lane", () => {
+	// The lane is reported separately from the cloud because the two converge
+	// differently: a resolver re-run adopts an existing resource, where the
+	// bespoke clients re-upload. An operator reading only "cloudflare" would
+	// not know which behaviour they are about to get.
+	it("reports the bespoke client when the opt-in is absent", () => {
+		const target = describeDeployTarget({
+			CLOUDFLARE_API_TOKEN: "t",
+			CLOUDFLARE_ACCOUNT_ID: "a",
+		});
+		expect(target.backend).toBe("cloudflare");
+		expect(target.lane).toBe("deploy-provider");
+		expect(target.summary).toContain("HOBO_DEPLOY_RESOLVERS=1");
+	});
+
+	it("reports the resolver plane when opted in", () => {
+		const target = describeDeployTarget({
+			CLOUDFLARE_API_TOKEN: "t",
+			CLOUDFLARE_ACCOUNT_ID: "a",
+			HOBO_DEPLOY_RESOLVERS: "1",
+		});
+		expect(target.lane).toBe("resolver");
+		expect(target.summary).toContain("read-or-create");
+	});
+
+	it("switches Vercel onto the resolver plane too", () => {
+		expect(
+			describeDeployTarget({ VERCEL_TOKEN: "t", HOBO_DEPLOY_RESOLVERS: "1" })
+				.lane,
+		).toBe("resolver");
+	});
+
+	it("never engages the resolver lane without a credential", () => {
+		// The opt-in alone must not turn the credential-free default into a
+		// live deploy — it can only change WHICH driver a credentialed deploy
+		// uses, never whether one happens.
+		const target = describeDeployTarget({ HOBO_DEPLOY_RESOLVERS: "1" });
+		expect(target.backend).toBe("in-memory");
+		expect(target.lane).toBe("in-memory");
+		expect(target.live).toBe(false);
+	});
+});

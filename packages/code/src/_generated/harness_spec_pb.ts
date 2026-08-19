@@ -10,7 +10,51 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file harness_spec.proto.
  */
 export const file_harness_spec: GenFile = /*@__PURE__*/
-  fileDesc("ChJoYXJuZXNzX3NwZWMucHJvdG8SDGhvYm8uY29kZS52MSKMAwoXSGFybmVzc0NvbmZpZ1NwZWNSZWNvcmQSMQoGZm9ybWF0GAEgASgOMiEuaG9iby5jb2RlLnYxLkhhcm5lc3NDb25maWdGb3JtYXQSEQoEcGF0aBgCIAEoCUgAiAEBEhcKD2NvbmZpZ3VyZWRfd2hlbhgDIAMoCRISCgVibG9jaxgEIAEoCUgBiAEBEjsKA2VudhgFIAMoCzIuLmhvYm8uY29kZS52MS5IYXJuZXNzQ29uZmlnU3BlY1JlY29yZC5FbnZFbnRyeRIXCgptZXJnZV9qc29uGAYgASgJSAKIAQESFAoHc3VtbWFyeRgHIAEoCUgDiAEBEhIKBWFmdGVyGAggASgJSASIAQESEQoEbm90ZRgJIAEoCUgFiAEBGioKCEVudkVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCBwoFX3BhdGhCCAoGX2Jsb2NrQg0KC19tZXJnZV9qc29uQgoKCF9zdW1tYXJ5QggKBl9hZnRlckIHCgVfbm90ZSLwAgoRSGFybmVzc1NwZWNSZWNvcmQSEwoGc2NoZW1hGAEgASgJSACIAQESCgoCaWQYAiABKAkSDQoFbGFiZWwYAyABKAkSKwoEa2luZBgEIAEoDjIdLmhvYm8uY29kZS52MS5IYXJuZXNzU3BlY0tpbmQSEQoEaG9zdBgFIAEoCEgBiAEBEhAKCGJpbmFyaWVzGAYgAygJEhQKDGNvbmZpZ19wYXRocxgHIAMoCRIUCgdjb21tYW5kGAggASgJSAKIAQESEQoEc2VhdBgJIAEoDUgDiAEBEhMKC2N3ZF9tYXJrZXJzGAogAygJEhUKDXBhY2thZ2VfbmFtZXMYCyADKAkSOgoGY29uZmlnGAwgASgLMiUuaG9iby5jb2RlLnYxLkhhcm5lc3NDb25maWdTcGVjUmVjb3JkSASIAQFCCQoHX3NjaGVtYUIHCgVfaG9zdEIKCghfY29tbWFuZEIHCgVfc2VhdEIJCgdfY29uZmlnKtQBCg9IYXJuZXNzU3BlY0tpbmQSIQodSEFSTkVTU19TUEVDX0tJTkRfVU5TUEVDSUZJRUQQABIiCh5IQVJORVNTX1NQRUNfS0lORF9DT0RJTkdfQUdFTlQQARIfChtIQVJORVNTX1NQRUNfS0lORF9JTkZFUkVOQ0UQAhIdChlIQVJORVNTX1NQRUNfS0lORF9IQVJORVNTEAMSHwobSEFSTkVTU19TUEVDX0tJTkRfRVZFX0FHRU5UEAQSGQoVSEFSTkVTU19TUEVDX0tJTkRfU0RLEAUqswIKE0hhcm5lc3NDb25maWdGb3JtYXQSJQohSEFSTkVTU19DT05GSUdfRk9STUFUX1VOU1BFQ0lGSUVEEAASJQohSEFSTkVTU19DT05GSUdfRk9STUFUX1RPTUxfQVBQRU5EEAESIgoeSEFSTkVTU19DT05GSUdfRk9STUFUX0pTT05fRU5WEAISJAogSEFSTkVTU19DT05GSUdfRk9STUFUX0pTT05fTUVSR0UQAxIeChpIQVJORVNTX0NPTkZJR19GT1JNQVRfTk9URRAEEiEKHUhBUk5FU1NfQ09ORklHX0ZPUk1BVF9FVkVfVkZTEAUSIQodSEFSTkVTU19DT05GSUdfRk9STUFUX1NES19FTlYQBhIeChpIQVJORVNTX0NPTkZJR19GT1JNQVRfU0tJUBAHYgZwcm90bzM");
+  fileDesc("ChJoYXJuZXNzX3NwZWMucHJvdG8SDGhvYm8uY29kZS52MSKaAQoYSGFybmVzc1J1bnRpbWVTcGVjUmVjb3JkEjQKB2FkYXB0ZXIYASABKA4yIy5ob2JvLmNvZGUudjEuSGFybmVzc1J1bnRpbWVBZGFwdGVyEj0KBnByb21wdBgCIAEoCzIoLmhvYm8uY29kZS52MS5IYXJuZXNzQ2xpUHJvbXB0U3BlY1JlY29yZEgAiAEBQgkKB19wcm9tcHQibQoaSGFybmVzc0NsaVByb21wdFNwZWNSZWNvcmQSOgoJcGxhY2VtZW50GAEgASgOMicuaG9iby5jb2RlLnYxLkhhcm5lc3NDbGlQcm9tcHRQbGFjZW1lbnQSEwoLcHJlZml4X2FyZ3MYAiADKAkijAMKF0hhcm5lc3NDb25maWdTcGVjUmVjb3JkEjEKBmZvcm1hdBgBIAEoDjIhLmhvYm8uY29kZS52MS5IYXJuZXNzQ29uZmlnRm9ybWF0EhEKBHBhdGgYAiABKAlIAIgBARIXCg9jb25maWd1cmVkX3doZW4YAyADKAkSEgoFYmxvY2sYBCABKAlIAYgBARI7CgNlbnYYBSADKAsyLi5ob2JvLmNvZGUudjEuSGFybmVzc0NvbmZpZ1NwZWNSZWNvcmQuRW52RW50cnkSFwoKbWVyZ2VfanNvbhgGIAEoCUgCiAEBEhQKB3N1bW1hcnkYByABKAlIA4gBARISCgVhZnRlchgIIAEoCUgEiAEBEhEKBG5vdGUYCSABKAlIBYgBARoqCghFbnZFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQgcKBV9wYXRoQggKBl9ibG9ja0INCgtfbWVyZ2VfanNvbkIKCghfc3VtbWFyeUIICgZfYWZ0ZXJCBwoFX25vdGUiugMKEUhhcm5lc3NTcGVjUmVjb3JkEhMKBnNjaGVtYRgBIAEoCUgAiAEBEgoKAmlkGAIgASgJEg0KBWxhYmVsGAMgASgJEisKBGtpbmQYBCABKA4yHS5ob2JvLmNvZGUudjEuSGFybmVzc1NwZWNLaW5kEhEKBGhvc3QYBSABKAhIAYgBARIQCghiaW5hcmllcxgGIAMoCRIUCgxjb25maWdfcGF0aHMYByADKAkSFAoHY29tbWFuZBgIIAEoCUgCiAEBEhEKBHNlYXQYCSABKA1IA4gBARITCgtjd2RfbWFya2VycxgKIAMoCRIVCg1wYWNrYWdlX25hbWVzGAsgAygJEjoKBmNvbmZpZxgMIAEoCzIlLmhvYm8uY29kZS52MS5IYXJuZXNzQ29uZmlnU3BlY1JlY29yZEgEiAEBEjwKB3J1bnRpbWUYDSABKAsyJi5ob2JvLmNvZGUudjEuSGFybmVzc1J1bnRpbWVTcGVjUmVjb3JkSAWIAQFCCQoHX3NjaGVtYUIHCgVfaG9zdEIKCghfY29tbWFuZEIHCgVfc2VhdEIJCgdfY29uZmlnQgoKCF9ydW50aW1lKtQBCg9IYXJuZXNzU3BlY0tpbmQSIQodSEFSTkVTU19TUEVDX0tJTkRfVU5TUEVDSUZJRUQQABIiCh5IQVJORVNTX1NQRUNfS0lORF9DT0RJTkdfQUdFTlQQARIfChtIQVJORVNTX1NQRUNfS0lORF9JTkZFUkVOQ0UQAhIdChlIQVJORVNTX1NQRUNfS0lORF9IQVJORVNTEAMSHwobSEFSTkVTU19TUEVDX0tJTkRfRVZFX0FHRU5UEAQSGQoVSEFSTkVTU19TUEVDX0tJTkRfU0RLEAUqswIKE0hhcm5lc3NDb25maWdGb3JtYXQSJQohSEFSTkVTU19DT05GSUdfRk9STUFUX1VOU1BFQ0lGSUVEEAASJQohSEFSTkVTU19DT05GSUdfRk9STUFUX1RPTUxfQVBQRU5EEAESIgoeSEFSTkVTU19DT05GSUdfRk9STUFUX0pTT05fRU5WEAISJAogSEFSTkVTU19DT05GSUdfRk9STUFUX0pTT05fTUVSR0UQAxIeChpIQVJORVNTX0NPTkZJR19GT1JNQVRfTk9URRAEEiEKHUhBUk5FU1NfQ09ORklHX0ZPUk1BVF9FVkVfVkZTEAUSIQodSEFSTkVTU19DT05GSUdfRk9STUFUX1NES19FTlYQBhIeChpIQVJORVNTX0NPTkZJR19GT1JNQVRfU0tJUBAHKusDChVIYXJuZXNzUnVudGltZUFkYXB0ZXISJwojSEFSTkVTU19SVU5USU1FX0FEQVBURVJfVU5TUEVDSUZJRUQQABInCiNIQVJORVNTX1JVTlRJTUVfQURBUFRFUl9DTEFVREVfQ09ERRABEiEKHUhBUk5FU1NfUlVOVElNRV9BREFQVEVSX0NPREVYEAISHgoaSEFSTkVTU19SVU5USU1FX0FEQVBURVJfUEkQAxIkCiBIQVJORVNTX1JVTlRJTUVfQURBUFRFUl9PUEVOQ09ERRAEEiYKIkhBUk5FU1NfUlVOVElNRV9BREFQVEVSX0dST0tfQlVJTEQQBRIhCh1IQVJORVNTX1JVTlRJTUVfQURBUFRFUl9DTElORRAGEiYKIkhBUk5FU1NfUlVOVElNRV9BREFQVEVSX0RFRVBBR0VOVFMQBxIfChtIQVJORVNTX1JVTlRJTUVfQURBUFRFUl9BQ1AQCBIfChtIQVJORVNTX1JVTlRJTUVfQURBUFRFUl9DTEkQCRIfChtIQVJORVNTX1JVTlRJTUVfQURBUFRFUl9FVkUQChIfChtIQVJORVNTX1JVTlRJTUVfQURBUFRFUl9TREsQCxIgChxIQVJORVNTX1JVTlRJTUVfQURBUFRFUl9TS0lQEAwqoAEKGUhhcm5lc3NDbGlQcm9tcHRQbGFjZW1lbnQSLAooSEFSTkVTU19DTElfUFJPTVBUX1BMQUNFTUVOVF9VTlNQRUNJRklFRBAAEi0KKUhBUk5FU1NfQ0xJX1BST01QVF9QTEFDRU1FTlRfVFJBSUxJTkdfQVJHEAESJgoiSEFSTkVTU19DTElfUFJPTVBUX1BMQUNFTUVOVF9TVERJThACYgZwcm90bzM");
+
+/**
+ * @generated from message hobo.code.v1.HarnessRuntimeSpecRecord
+ */
+export type HarnessRuntimeSpecRecord = Message<"hobo.code.v1.HarnessRuntimeSpecRecord"> & {
+  /**
+   * @generated from field: hobo.code.v1.HarnessRuntimeAdapter adapter = 1;
+   */
+  adapter: HarnessRuntimeAdapter;
+
+  /**
+   * @generated from field: optional hobo.code.v1.HarnessCliPromptSpecRecord prompt = 2;
+   */
+  prompt?: HarnessCliPromptSpecRecord | undefined;
+};
+
+/**
+ * Describes the message hobo.code.v1.HarnessRuntimeSpecRecord.
+ * Use `create(HarnessRuntimeSpecRecordSchema)` to create a new message.
+ */
+export const HarnessRuntimeSpecRecordSchema: GenMessage<HarnessRuntimeSpecRecord> = /*@__PURE__*/
+  messageDesc(file_harness_spec, 0);
+
+/**
+ * @generated from message hobo.code.v1.HarnessCliPromptSpecRecord
+ */
+export type HarnessCliPromptSpecRecord = Message<"hobo.code.v1.HarnessCliPromptSpecRecord"> & {
+  /**
+   * @generated from field: hobo.code.v1.HarnessCliPromptPlacement placement = 1;
+   */
+  placement: HarnessCliPromptPlacement;
+
+  /**
+   * @generated from field: repeated string prefix_args = 2;
+   */
+  prefixArgs: string[];
+};
+
+/**
+ * Describes the message hobo.code.v1.HarnessCliPromptSpecRecord.
+ * Use `create(HarnessCliPromptSpecRecordSchema)` to create a new message.
+ */
+export const HarnessCliPromptSpecRecordSchema: GenMessage<HarnessCliPromptSpecRecord> = /*@__PURE__*/
+  messageDesc(file_harness_spec, 1);
 
 /**
  * Wire record for a harness plugin's config block ("Record" suffix: the TS
@@ -72,7 +116,7 @@ export type HarnessConfigSpecRecord = Message<"hobo.code.v1.HarnessConfigSpecRec
  * Use `create(HarnessConfigSpecRecordSchema)` to create a new message.
  */
 export const HarnessConfigSpecRecordSchema: GenMessage<HarnessConfigSpecRecord> = /*@__PURE__*/
-  messageDesc(file_harness_spec, 0);
+  messageDesc(file_harness_spec, 2);
 
 /**
  * Wire record for `harnesses/*.json` plugin files ("Record" suffix: the TS
@@ -142,6 +186,11 @@ export type HarnessSpecRecord = Message<"hobo.code.v1.HarnessSpecRecord"> & {
    * @generated from field: optional hobo.code.v1.HarnessConfigSpecRecord config = 12;
    */
   config?: HarnessConfigSpecRecord | undefined;
+
+  /**
+   * @generated from field: optional hobo.code.v1.HarnessRuntimeSpecRecord runtime = 13;
+   */
+  runtime?: HarnessRuntimeSpecRecord | undefined;
 };
 
 /**
@@ -149,7 +198,7 @@ export type HarnessSpecRecord = Message<"hobo.code.v1.HarnessSpecRecord"> & {
  * Use `create(HarnessSpecRecordSchema)` to create a new message.
  */
 export const HarnessSpecRecordSchema: GenMessage<HarnessSpecRecord> = /*@__PURE__*/
-  messageDesc(file_harness_spec, 1);
+  messageDesc(file_harness_spec, 3);
 
 /**
  * Agent-harness plugin spec kinds. Source of truth mirrored by
@@ -247,4 +296,108 @@ export enum HarnessConfigFormat {
  */
 export const HarnessConfigFormatSchema: GenEnum<HarnessConfigFormat> = /*@__PURE__*/
   enumDesc(file_harness_spec, 1);
+
+/**
+ * AI SDK HarnessV1 adapter. Dispatch is on adapter, never on agent id.
+ *
+ * @generated from enum hobo.code.v1.HarnessRuntimeAdapter
+ */
+export enum HarnessRuntimeAdapter {
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_CLAUDE_CODE = 1;
+   */
+  CLAUDE_CODE = 1,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_CODEX = 2;
+   */
+  CODEX = 2,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_PI = 3;
+   */
+  PI = 3,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_OPENCODE = 4;
+   */
+  OPENCODE = 4,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_GROK_BUILD = 5;
+   */
+  GROK_BUILD = 5,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_CLINE = 6;
+   */
+  CLINE = 6,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_DEEPAGENTS = 7;
+   */
+  DEEPAGENTS = 7,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_ACP = 8;
+   */
+  ACP = 8,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_CLI = 9;
+   */
+  CLI = 9,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_EVE = 10;
+   */
+  EVE = 10,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_SDK = 11;
+   */
+  SDK = 11,
+
+  /**
+   * @generated from enum value: HARNESS_RUNTIME_ADAPTER_SKIP = 12;
+   */
+  SKIP = 12,
+}
+
+/**
+ * Describes the enum hobo.code.v1.HarnessRuntimeAdapter.
+ */
+export const HarnessRuntimeAdapterSchema: GenEnum<HarnessRuntimeAdapter> = /*@__PURE__*/
+  enumDesc(file_harness_spec, 2);
+
+/**
+ * @generated from enum hobo.code.v1.HarnessCliPromptPlacement
+ */
+export enum HarnessCliPromptPlacement {
+  /**
+   * @generated from enum value: HARNESS_CLI_PROMPT_PLACEMENT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: HARNESS_CLI_PROMPT_PLACEMENT_TRAILING_ARG = 1;
+   */
+  TRAILING_ARG = 1,
+
+  /**
+   * @generated from enum value: HARNESS_CLI_PROMPT_PLACEMENT_STDIN = 2;
+   */
+  STDIN = 2,
+}
+
+/**
+ * Describes the enum hobo.code.v1.HarnessCliPromptPlacement.
+ */
+export const HarnessCliPromptPlacementSchema: GenEnum<HarnessCliPromptPlacement> = /*@__PURE__*/
+  enumDesc(file_harness_spec, 3);
 

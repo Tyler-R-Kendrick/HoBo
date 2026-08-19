@@ -225,7 +225,7 @@ export function parseCreatedPath(stdout: string): string | null {
 		.map((l) => l.trim())
 		.filter((l) => l.length > 0);
 	const last = lines[lines.length - 1];
-	return last && last.startsWith("/") ? last : null;
+	return last?.startsWith("/") ? last : null;
 }
 
 /**

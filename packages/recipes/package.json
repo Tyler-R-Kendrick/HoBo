@@ -24,6 +24,7 @@
 		"@hobo/trust": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/contract-harness": "workspace:*",
 		"@types/node": "^22.15.29",
 		"vitest": "^4.1.9"
 	},

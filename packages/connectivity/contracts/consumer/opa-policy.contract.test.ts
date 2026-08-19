@@ -5,7 +5,7 @@ import { parseTenantId } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import { createOpaPolicyEngine } from "../../src/policy/opa-engine.js";
-import { createPactFetch } from "../helpers/pact-fetch.js";
+import { createPactFetch, requirePact } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -15,9 +15,8 @@ const contractsDir = path.resolve(
 describe("OpaPolicyApi consumer contract", () => {
 	it("OPA engine evaluates allow/deny via pact mock HTTP", async () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
-		const pact = pacts.find((p) => p.provider.name === "OpaPolicyApi");
-		expect(pact).toBeDefined();
-		const fetchImpl = createPactFetch(pact!);
+		const pact = requirePact(pacts, "OpaPolicyApi");
+		const fetchImpl = createPactFetch(pact);
 
 		const engine = createOpaPolicyEngine({
 			opaUrl: "http://opa.local/v1/data/hobo/authz",

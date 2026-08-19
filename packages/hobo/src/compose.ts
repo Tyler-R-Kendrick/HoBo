@@ -25,6 +25,7 @@ import type {
 	CloudProvider,
 	ComponentHostEvent,
 	EventStore,
+	HttpTransport,
 	InterfaceId,
 	ParsedComponentDescriptor,
 	ProviderDescriptor,
@@ -35,7 +36,12 @@ import {
 	createPulumiAutomationApiEngine,
 	createPulumiCliAutomationEngine,
 } from "@hobo/iac-pulumi";
-import { createCloudflareProvider } from "@hobo/provider-cloudflare";
+import {
+	cloudflareResolverRegistry,
+	createCloudflareProvider,
+	guardedCloudflareTransport,
+} from "@hobo/provider-cloudflare";
+import { vercelResolverRegistry } from "@hobo/provider-vercel";
 import {
 	createLocalStreamer,
 	createManualClock,
@@ -49,6 +55,10 @@ import {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
 } from "./pulumi-iac-provider.js";
+import {
+	createFetchHttpTransport,
+	createResolverBackedIacProvider,
+} from "./resolver-iac-provider.js";
 import type { VercelFetch } from "./vercel-client.js";
 import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 
@@ -155,6 +165,11 @@ export interface SelectIacProviderDeps {
 	readonly vercelFetch?: VercelFetch;
 	// Optional injected transport for the Cloudflare client (tests mock the network).
 	readonly cloudflareFetch?: CloudflareFetch;
+	// Optional injected HTTP transport for the OPT-IN resolver-backed deploy lane
+	// (`HOBO_DEPLOY_RESOLVERS=1`). Defaults to a `globalThis.fetch` adapter. Inject
+	// a fake to drive the REAL resolvers over a modelled provider account without
+	// a live token or a real socket.
+	readonly resolverTransport?: HttpTransport;
 }
 
 // Per-store, per-lane Pulumi adapter memo. Sharing ONE adapter (and therefore
@@ -295,15 +310,94 @@ export function readPulumiEstate(
 	return estate.sort((a, b) => a.resource.localeCompare(b.resource));
 }
 
+// Credential LOCATORS for the resolver lane. The composition root is the host:
+// it read the env var, so it holds the material and hands the resolvers only a
+// name for it. These locators use the `hobo-token` scheme because that is what
+// `@hobo/bindings`' `parseSecretRef` (which the Vercel resolvers apply) accepts.
+const CLOUDFLARE_RESOLVER_CREDENTIAL_REF = "hobo-token://cloudflare/api-token";
+const VERCEL_RESOLVER_CREDENTIAL_REF = "hobo-token://vercel/deploy";
+
+// The host half of the credential law: resolve exactly one locator, and refuse
+// any other rather than serving the wrong token to whoever asked. The material
+// lives only in this closure — it never reaches a record, a plan, or a log.
+function hostCredentialResolver(
+	locator: string,
+	material: string,
+): (asked: string) => Promise<string> {
+	return async (asked: string): Promise<string> => {
+		if (asked !== locator) {
+			throw new Error(
+				`unknown credential locator ${JSON.stringify(asked)}: this host answers for ${JSON.stringify(locator)} only`,
+			);
+		}
+		return material;
+	};
+}
+
+// Build the OPT-IN resolver-backed deploy provider for whichever cloud the
+// environment has credentials for, or `undefined` when it has none. Cloudflare
+// resolvers take a transport the host must wrap in the Cloudflare guard policy;
+// the Vercel resolvers apply their own guard internally, so the raw transport is
+// handed over there and wrapped once rather than twice.
+function resolverBackedProviderFor(
+	deps: SelectIacProviderDeps,
+	env: Record<string, string | undefined>,
+): IacProvider | undefined {
+	const transport =
+		deps.resolverTransport ?? createFetchHttpTransport(globalThis.fetch);
+	const cloudflareToken = env.CLOUDFLARE_API_TOKEN;
+	const cloudflareAccountId = env.CLOUDFLARE_ACCOUNT_ID;
+	if (cloudflareToken && cloudflareAccountId) {
+		return createResolverBackedIacProvider({
+			store: deps.store,
+			registry: cloudflareResolverRegistry({
+				accountId: cloudflareAccountId,
+				resolveCredential: hostCredentialResolver(
+					CLOUDFLARE_RESOLVER_CREDENTIAL_REF,
+					cloudflareToken,
+				),
+			}),
+			transport: guardedCloudflareTransport(transport),
+			credentialRef: CLOUDFLARE_RESOLVER_CREDENTIAL_REF,
+		});
+	}
+	const vercelToken = env.VERCEL_TOKEN;
+	if (vercelToken) {
+		return createResolverBackedIacProvider({
+			store: deps.store,
+			registry: vercelResolverRegistry({
+				resolveCredential: hostCredentialResolver(
+					VERCEL_RESOLVER_CREDENTIAL_REF,
+					vercelToken,
+				),
+			}),
+			transport,
+			credentialRef: VERCEL_RESOLVER_CREDENTIAL_REF,
+		});
+	}
+	return undefined;
+}
+
 // Select the IaC backend on the deploy path by environment. This is HoBo's
 // thesis realized for the clouds actually reachable from its own pipeline, in
 // precedence order:
-//   - `HOBO_PULUMI_LIVE=1` -> the REAL pinned `pulumi` CLI engine behind the
-//     same adapter (binary- and credential-gated; docs/plans/0006 item 3-2).
+//   - a Pulumi `adapter` override, or `HOBO_PULUMI_LIVE=1` -> the REAL pinned
+//     Pulumi engine behind the same adapter (binary- and credential-gated;
+//     docs/plans/0006 item 3-2).
+//   - no cloud credential at all -> the in-memory Pulumi-backed provider.
+//   - a cloud credential PLUS `HOBO_DEPLOY_RESOLVERS=1` -> the direct-HTTP
+//     resolver plane (`hobo.resource-resolver/v1`) behind the IacProvider port.
 //   - `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` present -> the REAL
 //     Cloudflare Workers deploy provider (cred-gated).
 //   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
-//   - otherwise -> the in-memory Pulumi-backed provider (fallback).
+//
+// The resolver lane is OPT-IN and deliberately sits INSIDE the cred-gated
+// bracket: it can only replace the two bespoke deploy providers, never the
+// Pulumi lanes and never the credential-free default. Swapping a user's deploy
+// backend on an upgrade is a behaviour change nobody asked for, so
+// `HOBO_DEPLOY_RESOLVERS=1` is required and everything else behaves exactly as
+// it did before.
+//
 // A Pulumi `adapter` override always wins (it is a Pulumi adapter), keeping the
 // existing spy-adapter tests deterministic regardless of ambient env. Pulumi
 // lanes resolve through the SHARED per-store adapter memo (see
@@ -321,6 +415,10 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 			providers: deps.providers,
 			adapter: estateAdapter,
 		});
+	}
+	if (env.HOBO_DEPLOY_RESOLVERS === "1") {
+		const resolverBacked = resolverBackedProviderFor(deps, env);
+		if (resolverBacked !== undefined) return resolverBacked;
 	}
 	if (cloudflareToken && cloudflareAccountId) {
 		return createCloudflareDeployProvider({

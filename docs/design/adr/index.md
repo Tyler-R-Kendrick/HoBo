@@ -165,3 +165,8 @@
 | 0154 | Durable HoBo Code review aggregate | [data-plane](03-data-plane.md#adr-0154) |
 | 0155 | Station capabilities as a typed manifest; localhost capability discovery gates `hobo-code init`; hobo-code dev scenarios dogfood `station()` declarations | [architecture-core](01-architecture-core.md#adr-0155) |
 | 0156 | The Plugin SPI: one extension-point model, core-owned provider/actor ports, manifest-declared external plugins (`hobo.plugin/v1`) | [portability-extensibility](07-portability-extensibility.md#adr-0156) |
+| 0157 | Yard bindings: the Yard is the binding authority (capability→product mapping surface), bindings-are-the-SDK, seeded localhost Yard on Station init | [portability-extensibility](07-portability-extensibility.md#adr-0157) |
+| 0158 | Deployment phases: `plan` / `init` / `handle` — one program, three evaluations, phase-safe by contract | [architecture-core](01-architecture-core.md#adr-0158) |
+| 0159 | The developer loop: OOB app test harness (in-process whole-graph + ephemeral-Camp lanes), provider scratch harness, credentials-as-code CI preview lanes | [portability-extensibility](07-portability-extensibility.md#adr-0159) |
+| 0160 | `drizzle-kit` as the default relational schema-diff engine: deploy-owned generation, HoBo-gated expand/backfill/contract apply | [data-plane](03-data-plane.md#adr-0160) |
+| 0161 | Better Auth as the default self-hosted full-featured `hobo:auth` adapter, packaged as an auth bundle over existing ports | [identity-security](02-identity-security.md#adr-0161) |

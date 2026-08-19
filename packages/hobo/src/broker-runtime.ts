@@ -5,7 +5,7 @@
  * registered Yard (or generates one under policy), then a Camp inside that Yard,
  * then runs resolvers under the Yard provider. Bindle provider pins are rejected.
  */
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";

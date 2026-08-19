@@ -1,9 +1,7 @@
 import {
-	assertResourceName,
 	BindReferenceError,
 	type ComponentHandle,
 	createComponentHandle,
-	normalizeBindMap,
 	type ResourceHandle,
 } from "./bind-reference.js";
 
@@ -28,7 +26,10 @@ export function addContainer(
 		},
 	});
 
-	handle.withEndpoint = (endpoint) => {
+	// Bound to a local as well as the handle so `withHttpEndpoint` can call it
+	// directly. Reaching back through `handle.withEndpoint!` asserted away an
+	// optionality the type really does declare.
+	const withEndpoint: NonNullable<typeof handle.withEndpoint> = (endpoint) => {
 		const endpointName = endpoint.name ?? "http";
 		handle.endpoints[endpointName] = {
 			scheme: endpoint.scheme,
@@ -39,6 +40,7 @@ export function addContainer(
 		};
 		return handle;
 	};
+	handle.withEndpoint = withEndpoint;
 
 	handle.withEnvironment = (key, value) => {
 		handle.env[key] = value;
@@ -58,7 +60,7 @@ export function addContainer(
 	};
 
 	handle.withHttpEndpoint = (port, endpointOptions = {}) =>
-		handle.withEndpoint!({
+		withEndpoint({
 			name: endpointOptions.name ?? "http",
 			scheme: "http",
 			port,

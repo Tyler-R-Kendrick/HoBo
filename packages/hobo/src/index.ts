@@ -267,6 +267,28 @@ export {
 	createProviderFromPorts,
 } from "./local-provider.js";
 export {
+	defaultLocalSubstrateProbes,
+	discoverLocalSubstrates,
+	findSubstrate,
+	LOCAL_SUBSTRATE_KINDS,
+	LOCAL_SUBSTRATE_REPORT_CONTRACT,
+	LOCAL_SUBSTRATE_YARDS_CONTRACT,
+	LocalSubstrateError,
+	type LocalSubstrateErrorCode,
+	type LocalSubstrateFinding,
+	type LocalSubstrateKind,
+	type LocalSubstrateProbes,
+	type LocalSubstrateRegistration,
+	type LocalSubstrateReport,
+	type LocalSubstrateYardEntry,
+	type LocalSubstrateYardRow,
+	type LocalSubstrateYardSet,
+	localSubstrateYardName,
+	localSubstrateYards,
+	parseLocalSubstrateProbes,
+	registerLocalSubstrateYards,
+} from "./local-substrates.js";
+export {
 	type LocalCampServeResult,
 	type LocalYardServeResult,
 	serveBindleOnLocalYard,
@@ -375,6 +397,16 @@ export {
 	createReplayCommand,
 	type ReplayCommandDeps,
 } from "./replay-command.js";
+export {
+	createFetchHttpTransport,
+	createResolverBackedIacProvider,
+	RESOLVER_IAC_ERROR_CODES,
+	RESOLVER_PREVIEW_UNDETERMINED,
+	type ResolverBackedIacProviderOptions,
+	ResolverIacError,
+	type ResolverIacErrorCode,
+	type ResolverIacRegistry,
+} from "./resolver-iac-provider.js";
 export {
 	createRunbookCommand,
 	type RunbookCommandDeps,

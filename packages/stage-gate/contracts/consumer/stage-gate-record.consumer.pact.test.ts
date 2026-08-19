@@ -99,7 +99,7 @@ describe("stage-gate record consumer pact", () => {
 					},
 				],
 				artifact: {
-					digest_sha256: "sha256:" + "c".repeat(64),
+					digest_sha256: `sha256:${"c".repeat(64)}`,
 					byte_length: 1,
 					media_type: "application/octet-stream",
 				},

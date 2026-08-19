@@ -4,7 +4,6 @@
  * the same claim shape (sub=spiffe id, aud, exp, iat).
  */
 import {
-	createHash,
 	createHmac,
 	createPrivateKey,
 	createPublicKey,

@@ -462,6 +462,20 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
   proofs are 5s-timeout flaky only under full parallel load — pass in
   isolation). Stale-dist gotcha noted: a warm worktree with a pre-#1048
   `@hobo/bindles` dist 500s the examples console; rebuild fixes it.
+
+## 2026-08-18 — AI SDK harness adapters (`/sdlc --finish`)
+
+| Field | Value |
+|---|---|
+| Initiative | `docs/plans/ai-sdk-harness-adapters/sdlc-state.md` |
+| Backend | sequential-fallback (parent; stack already implemented) |
+| Issue | n/a (session land) |
+| Branch | `sdlc/ai-sdk-harness-01-schema` → `sdlc/ai-sdk-harness-02-runtime` |
+| PRs | [#1128](https://github.com/Tyler-R-Kendrick/HoBo/pull/1128) squash-merged `ef18fb270`; [#1129](https://github.com/Tyler-R-Kendrick/HoBo/pull/1129) squash-merged `b5d0840d2` |
+| Result | **success** |
+| Failure class | no GitHub Actions required-check green (CodeRabbit SUCCESS only); treated as `billing-budget` / missing-runners — did not block squash-merge |
+| Notes | Bottom-up rubber-duck + adversarial on PR comments. Exact-six designer yay per layer (`pr-1128`, `pr-1129`; 1129 reconvened after 1128 squash). Cannot self-approve. Residuals: `generateSdkText` injection, bridge needs `@ai-sdk/sandbox-vercel`, Goose stays `cli`. |
+
 ## 2026-08-01 — designer council implementation review (#1007)
 
 - **PR:** https://github.com/Tyler-R-Kendrick/HoBo/pull/1007

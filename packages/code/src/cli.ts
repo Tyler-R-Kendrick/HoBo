@@ -79,11 +79,6 @@ import { describeEveSubagentSurface } from "./eve.js";
 import { debugViewUrl } from "./evidence-overlay.js";
 import { matchExampleRequest, materializeExample } from "./example-catalog.js";
 import {
-	createBudgetTracker,
-	DEFAULT_BUDGET_POLICY,
-	sponsoredWaitState,
-} from "./finops.js";
-import {
 	buildTasksSurface,
 	grokBuildParity,
 	renderGrokBuildFooter,
@@ -283,7 +278,7 @@ async function resolveResidentResume(
 		const sessions = await control.list();
 		const hits = sessions.filter((snapshot) => {
 			const id = snapshot.session?.id;
-			return id === wanted || (id !== undefined && id.startsWith(wanted));
+			return id === wanted || id?.startsWith(wanted);
 		});
 		const id = hits.length === 1 ? hits[0]?.session?.id : undefined;
 		if (!id) return undefined;
@@ -4473,7 +4468,7 @@ export function formatHoboCodeResult(
 		const cur = lines[0] ?? "";
 		const rule = trailingRule ?? "─".repeat(16);
 		if (trailingRule !== null && cur.endsWith(trailingRule)) {
-			lines[0] = stripTrailingRule(cur) + `FIX  ${fixes}${codeBit}\n` + rule;
+			lines[0] = `${stripTrailingRule(cur)}FIX  ${fixes}${codeBit}\n${rule}`;
 		} else {
 			lines.push(`FIX  ${fixes}${codeBit}`);
 			lines.push(rule);
@@ -4494,7 +4489,7 @@ export function formatHoboCodeResult(
 			const rule = trailingRule ?? "─".repeat(16);
 			const withCode =
 				trailingRule !== null && body.endsWith(trailingRule)
-					? stripTrailingRule(body) + `✕ ${result.code}\n` + rule
+					? `${stripTrailingRule(body)}✕ ${result.code}\n${rule}`
 					: `${body}\n✕ ${result.code}`;
 			lines[0] = withCode;
 		}

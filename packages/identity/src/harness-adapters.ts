@@ -20,11 +20,7 @@ import {
 	type FlagEvalContext,
 	type FlagValue,
 } from "./feature-flag-store.js";
-import type {
-	OpenDeliveryEngine,
-	RolloutPolicy,
-	RolloutState,
-} from "./harness-delivery.js";
+import type { RolloutPolicy, RolloutState } from "./harness-delivery.js";
 import type {
 	ExperimentAssignment,
 	ExperimentDefinition,

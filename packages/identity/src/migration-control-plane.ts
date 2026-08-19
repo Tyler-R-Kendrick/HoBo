@@ -16,7 +16,6 @@ import {
 	type IdentityAdapter,
 	verifyDualAdapters,
 } from "./identity-adapter-port.js";
-import type { MappingSpec } from "./mapping-spec.js";
 import {
 	type IdentityMigrationRecord,
 	IdentityMigrationService,

@@ -7,6 +7,20 @@ import {
 	type JsonValue,
 	type PrimitiveResolverConfig,
 } from "@hobo/camps";
+import {
+	parseYardBindings,
+	type YardBinding,
+	type YardBindingInput,
+} from "./binding.js";
+import {
+	assertNoCredentials,
+	canonicalizeLabels,
+	canonicalizeProperties,
+	canonicalizeStringList,
+	deepFreeze,
+	isPlainObject,
+	requireName,
+} from "./canonical.js";
 
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1" as const;
 
@@ -33,6 +47,8 @@ export interface Yard {
 	/** Provider-native refs only (no credentials). */
 	readonly properties: Readonly<Record<string, JsonValue>>;
 	readonly resolverDefaults: PrimitiveResolverConfig;
+	/** Canonical set of capability-profile → provider-offering rows (ADR-0157). */
+	readonly bindings: readonly YardBinding[];
 	readonly camps: readonly Camp[];
 }
 
@@ -53,6 +69,8 @@ export interface YardConfig {
 	readonly labels?: Readonly<Record<string, string>>;
 	readonly properties?: Readonly<Record<string, JsonValue>>;
 	readonly resolverDefaults?: Partial<PrimitiveResolverConfig>;
+	/** Capability binding rows; order is not preserved — they parse into a set. */
+	readonly bindings?: readonly YardBindingInput[];
 	/** Zero or more declared Camp shapes (may be empty). */
 	readonly camps?: readonly Camp[];
 }
@@ -91,6 +109,14 @@ export function yard(name: string, config: YardConfig): Yard {
 	const properties = canonicalizeProperties(config.properties ?? {});
 	assertNoCredentials(properties);
 
+	// Resolver pins and capability rows bind the same subject by different
+	// mechanisms, so the pinned slots are handed to the row parser: authoring
+	// both for one slot is a conflict, not a merge.
+	const resolverDefaults = parseResolverDefaults(config.resolverDefaults);
+	const bindings = parseYardBindings(config.bindings, {
+		pinnedSlots: resolverDefaults.pins.map((pin) => pin.slot),
+	});
+
 	return deepFreeze({
 		kind: "yard" as const,
 		contract: TOPOLOGY_CONTRACT_VERSION,
@@ -106,7 +132,8 @@ export function yard(name: string, config: YardConfig): Yard {
 		componentHosts: canonicalizeStringList(config.componentHosts ?? []),
 		labels: canonicalizeLabels(config.labels ?? {}),
 		properties,
-		resolverDefaults: parseResolverDefaults(config.resolverDefaults),
+		resolverDefaults,
+		bindings,
 		camps: Object.freeze(attachedCamps),
 	});
 }
@@ -124,6 +151,7 @@ export function yardToShape(yardObject: Yard): {
 	readonly componentHosts: readonly string[];
 	readonly labels: Readonly<Record<string, string>>;
 	readonly properties: Readonly<Record<string, JsonValue>>;
+	readonly bindings: readonly YardBinding[];
 	readonly camps: readonly CampShape[];
 } {
 	return deepFreeze({
@@ -140,6 +168,9 @@ export function yardToShape(yardObject: Yard): {
 		componentHosts: yardObject.componentHosts,
 		labels: yardObject.labels,
 		properties: yardObject.properties,
+		// Structural: selection consumes rows from the planning shape without
+		// importing @hobo/yards.
+		bindings: yardObject.bindings,
 		camps: Object.freeze(yardObject.camps.map(campToShape)),
 	});
 }
@@ -180,90 +211,4 @@ function parseResolverDefaults(
 		),
 		labels: canonicalizeLabels(input.labels ?? {}),
 	});
-}
-
-function assertNoCredentials(
-	properties: Readonly<Record<string, JsonValue>>,
-): void {
-	const forbidden =
-		/(secret|password|token|credential|private[_-]?key|api[_-]?key)/i;
-	for (const key of Object.keys(properties)) {
-		if (forbidden.test(key)) {
-			throw new Error(
-				`yard properties must not contain credentials (forbidden key: ${key})`,
-			);
-		}
-	}
-}
-
-function canonicalizeStringList(values: readonly string[]): readonly string[] {
-	return Object.freeze(
-		[
-			...new Set(values.filter((v) => typeof v === "string" && v.length > 0)),
-		].sort(),
-	);
-}
-
-function canonicalizeLabels(
-	labels: Readonly<Record<string, string>>,
-): Readonly<Record<string, string>> {
-	const keys = Object.keys(labels).sort();
-	const out: Record<string, string> = {};
-	for (const key of keys) {
-		const value = labels[key];
-		if (typeof value !== "string") {
-			throw new TypeError(`label ${key} must be a string`);
-		}
-		out[key] = value;
-	}
-	return Object.freeze(out);
-}
-
-function canonicalizeProperties(
-	input: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, JsonValue>> {
-	const keys = Object.keys(input).sort();
-	const out: Record<string, JsonValue> = {};
-	for (const key of keys) {
-		out[key] = toJsonValue(input[key]);
-	}
-	return Object.freeze(out);
-}
-
-function toJsonValue(value: unknown): JsonValue {
-	if (
-		value === null ||
-		typeof value === "boolean" ||
-		typeof value === "number" ||
-		typeof value === "string"
-	) {
-		return value;
-	}
-	if (Array.isArray(value)) {
-		return Object.freeze(value.map(toJsonValue));
-	}
-	if (value && typeof value === "object") {
-		return canonicalizeProperties(value as Record<string, unknown>);
-	}
-	throw new TypeError("yard properties must be JSON-safe");
-}
-
-function requireName(label: string, value: string): void {
-	if (typeof value !== "string" || value.length === 0) {
-		throw new TypeError(`${label} must be a non-empty string`);
-	}
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-function deepFreeze<T>(value: T): T {
-	if (!value || typeof value !== "object" || Object.isFrozen(value)) {
-		return value;
-	}
-	for (const child of Object.values(value as object)) {
-		deepFreeze(child);
-	}
-	return Object.freeze(value);
 }

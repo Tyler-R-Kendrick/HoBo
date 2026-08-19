@@ -168,7 +168,7 @@ async function executeMuxAction(
 	action: HarnessChromeAction,
 ): Promise<HarnessActionResult> {
 	const panes = ctx.livePanes;
-	if (!panes || !panes.tmux) {
+	if (!panes?.tmux) {
 		return {
 			harnessView: ctx.harnessView,
 			livePanes: panes,

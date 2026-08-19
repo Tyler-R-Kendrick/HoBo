@@ -67,12 +67,11 @@ export function createOpenBaoSecretsPort(options: {
 		const entry = store.get(name);
 		if (versionId !== undefined) {
 			const idx = entry?.versions.indexOf(versionId) ?? -1;
+			// `seeds` is parallel to `versions`; if that invariant ever breaks,
+			// derive the seed rather than hand back `undefined` as a string.
 			const seed =
-				idx >= 0 && entry
-					? entry.seeds[idx]!
-					: createHmac("sha256", root)
-							.update(`${name}:${versionId}`)
-							.digest("hex");
+				(idx >= 0 ? entry?.seeds[idx] : undefined) ??
+				createHmac("sha256", root).update(`${name}:${versionId}`).digest("hex");
 			const material = offlineMaterial(name, versionId, seed);
 			return {
 				status: "ok",

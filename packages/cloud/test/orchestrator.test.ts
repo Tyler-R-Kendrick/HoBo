@@ -198,7 +198,8 @@ describe("ResourceActor: a resource provisions via the Executor", () => {
 		expect(row.revokeCount).toBe(1);
 		const grants = Object.values(row.grants);
 		expect(grants).toHaveLength(1);
-		const g = grants[0]!;
+		const g = grants[0];
+		if (g === undefined) throw new Error("expected a grant");
 		expect(g.status).toBe("revoked");
 		expect(g.grantedAt).toBeDefined();
 		expect(g.usedAt).toBeDefined();

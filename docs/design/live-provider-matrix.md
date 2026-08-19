@@ -32,9 +32,9 @@ tags: [hobo, design, providers, honesty]
 | `@hobo/provider-browser-wasm` | Yes | Local temporary | Examples same-origin `/api/anon/host/*` via `/api/provider-temp/browser-wasm` |
 | `@hobo/provider-webernetes` | Yes | Local temporary | Examples same-origin `/api/anon/host/*` via `/api/provider-temp/webernetes` |
 | `@hobo/provider-kubernetes` | Yes | Cred-gated / local | Package exists; **not** an Examples OOB station target |
-| `@hobo/provider-aws` | Yes | No default | IR only unless wired through live IaC engine |
-| `@hobo/provider-gcp` | Yes | No default | IR only |
-| `@hobo/provider-azure` | Yes | No default | IR only |
+| `@hobo/provider-aws` | Yes | No default | IR only unless wired through live IaC engine. Ships SigV4-signed `ResourceResolver`s for **7 of 19** catalog product ids (`AWS_RESOLVED_PRODUCT_IDS`) — **fake-transport proof only**, no live call, and no Resource Definitions registered, so a deploy still fails closed |
+| `@hobo/provider-gcp` | Yes | No default | IR only. Ships HTTP `ResourceResolver`s for **9 of 14** catalog product ids (`GCP_RESOLVED_PRODUCT_IDS`) — **fake-transport proof only**, no live call, and no Resource Definitions registered, so a deploy still fails closed |
+| `@hobo/provider-azure` | Yes | No default | IR only. Ships ARM `ResourceResolver`s for **9 of 16** catalog product ids (`AZURE_RESOLVED_PRODUCT_IDS`) — **fake-transport proof only**, no live call, and no Resource Definitions registered, so a deploy still fails closed |
 | `@hobo/provider-kafka` | Capability | N/A messaging | Not a full cloud Yard provider |
 | `@hobo/provider-convex` | Yes | Cred-gated + Examples | `realize` → `applyDriverProgram`; Cloudflare Examples frontend = Temporary Pages; **anon Temporary Convex self-host fail-closed** under zero project API keys (`provisionConvexBackendAnonymous` rejection matrix: Instanode no anon containers, OpenPouch anon 256MiB cgroup, CF Temporary Containers 403); mock via `HOBO_CONVEX_SWAGHAUS_MOCK=1`; escapes `HOBO_CONVEX_OCI_HOST=cloudflare` / `HOBO_CONVEX_ALLOW_CLOUD=1`; WorkOS AuthKit for swaghaus; `/api/cf-temp/swaghaus` |
 | `@hobo/provider-ax` / `agentv` | Eval | N/A | AI-eval adapters |

@@ -4,6 +4,7 @@
 	"kind": "eve-agent",
 	"binaries": ["eve"],
 	"cwdMarkers": ["agent"],
+	"runtime": { "adapter": "eve" },
 	"config": {
 		"format": "eve-vfs"
 	}

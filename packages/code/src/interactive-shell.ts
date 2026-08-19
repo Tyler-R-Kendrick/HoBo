@@ -14,7 +14,7 @@
 
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
-import { HOBO_LOGO_TUI } from "./_generated/hobo-logo-tui.js";
+import { HOBO_LOGO_TUI } from "./_generated-art/hobo-logo-tui.js";
 import {
 	harnessDisplayLabel,
 	loadHarnessCatalog,
@@ -138,7 +138,6 @@ import { StreamTerminal } from "./shell-terminal.js";
 import {
 	BO_CELL_HEIGHT,
 	BO_IDLE_TICK_MS,
-	HOBO_LOGO_CONSOLE,
 	HOBO_MARK_CONSOLE,
 	padLine,
 	renderBoIdleFrame,
@@ -2635,7 +2634,7 @@ export function replaceLastAssistant(
 	agentState: ShellAgentState = "working",
 ): InteractiveShellState {
 	const last = state.messages[state.messages.length - 1];
-	if (!last || last.role !== "assistant") {
+	if (last?.role !== "assistant") {
 		const appended = appendAssistant(state, text, agentState);
 		return appended;
 	}

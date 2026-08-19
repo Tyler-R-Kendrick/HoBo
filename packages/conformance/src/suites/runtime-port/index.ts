@@ -1,4 +1,3 @@
-import { proveCheckoutDurability } from "./checkout-proof.js";
 import { RUNTIME_PORT_CHECKS } from "./checks.js";
 import { parseRuntimePortReport } from "./parse.js";
 import {

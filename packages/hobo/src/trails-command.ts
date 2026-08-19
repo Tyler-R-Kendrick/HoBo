@@ -33,7 +33,7 @@ function resolveTenant(
 	flags: Record<string, unknown>,
 	env: NodeJS.ProcessEnv,
 ): string {
-	const flag = flags["tenant"];
+	const flag = flags.tenant;
 	if (typeof flag === "string" && flag.length > 0) return flag;
 	if (typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT.length > 0) {
 		return env.HOBO_TENANT;
@@ -45,7 +45,7 @@ function resolveTarget(
 	flags: Record<string, unknown>,
 	env: NodeJS.ProcessEnv,
 ): string {
-	const flag = flags["target"];
+	const flag = flags.target;
 	if (typeof flag === "string" && flag.length > 0) return flag;
 	if (
 		typeof env.HOBO_TRAIL_TARGET === "string" &&

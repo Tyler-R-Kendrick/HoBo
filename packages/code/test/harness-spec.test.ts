@@ -8,6 +8,7 @@ import {
 } from "../src/agent-harness-catalog.js";
 import {
 	agentKindOf,
+	HARNESS_RUNTIME_ADAPTERS,
 	HARNESS_SPEC_SCHEMA,
 	HarnessSpecParseError,
 	harnessKindOf,
@@ -147,6 +148,56 @@ describe("parseHarnessSpec", () => {
 			const raw = JSON.parse(readFileSync(join(dir, name), "utf8"));
 			expect(() => parseHarnessSpec(raw), name).not.toThrow();
 		}
+	});
+
+	it("parses runtime.prompt and rejects an unknown placement", () => {
+		const spec = parseHarnessSpec({
+			id: "cursor",
+			label: "Cursor",
+			kind: "coding-agent",
+			command: "cursor-agent",
+			runtime: {
+				adapter: "cli",
+				prompt: { placement: "trailing-arg", prefixArgs: ["-p"] },
+			},
+		});
+		expect(spec.runtime?.prompt).toEqual({
+			placement: "trailing-arg",
+			prefixArgs: ["-p"],
+		});
+		try {
+			parseHarnessSpec({
+				id: "cursor",
+				label: "Cursor",
+				kind: "coding-agent",
+				runtime: {
+					adapter: "cli",
+					prompt: { placement: "argv-tail" },
+				},
+			});
+			expect.unreachable("unknown placement must throw");
+		} catch (error) {
+			expect(error).toBeInstanceOf(HarnessSpecParseError);
+			expect((error as HarnessSpecParseError).path).toBe(
+				"runtime.prompt.placement",
+			);
+		}
+	});
+
+	it("keeps CUE closed vocabs aligned with the TypeScript constants", () => {
+		const cue = readFileSync(
+			join(import.meta.dirname, "..", "data-models", "harness_spec.cue"),
+			"utf8",
+		);
+		const adapterBlock = cue.split("#HarnessRuntimeAdapter:")[1]?.split("#")[0];
+		expect(adapterBlock).toBeDefined();
+		const adapters = [...(adapterBlock ?? "").matchAll(/"([^"]+)"/gu)].map(
+			(match) => match[1],
+		);
+		expect(adapters).toEqual([...HARNESS_RUNTIME_ADAPTERS]);
+		expect(cue).toMatch(
+			/#HarnessCliPromptPlacement:\s*"trailing-arg"\s*\|\s*"stdin"/u,
+		);
 	});
 });
 

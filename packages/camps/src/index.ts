@@ -12,6 +12,8 @@ export {
 	type ResolvedEnv,
 	resolveLocalBindings,
 } from "./resolve-local-bindings.js";
+export type { StandardCampsOptions } from "./standard-camps.js";
+export { standardCamps } from "./standard-camps.js";
 export {
 	type Camp,
 	type CampConfig,

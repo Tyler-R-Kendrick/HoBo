@@ -8,7 +8,7 @@
  * These tests encode the identity so that failure mode is now loud.
  */
 import { describe, expect, it } from "vitest";
-import { HOBO_LOGO_TUI } from "../src/_generated/hobo-logo-tui.js";
+import { HOBO_LOGO_TUI } from "../src/_generated-art/hobo-logo-tui.js";
 import {
 	createInitialShellState,
 	renderShellFrame,

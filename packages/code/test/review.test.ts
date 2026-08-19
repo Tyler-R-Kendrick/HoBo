@@ -2,11 +2,6 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-
-import {
-	ReviewCoverageState,
-	ReviewTargetKind,
-} from "../src/_generated/code_review_pb.js";
 import { reanchor } from "../src/review/review-anchors.js";
 import { createReviewContentStore } from "../src/review/review-content-store.js";
 import {

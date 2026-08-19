@@ -89,7 +89,6 @@ export function createSecretlessConnector(
 	options: SecretlessConnectorOptions = {},
 ): SecretlessConnector {
 	const localHost = options.localHost ?? "127.0.0.1";
-	const basePort = options.basePort ?? 15432;
 	const ttl = options.leaseTtlSeconds ?? 900;
 	const defaultIsolation = options.isolation ?? "shared";
 	const now = options.now ?? (() => new Date().toISOString());

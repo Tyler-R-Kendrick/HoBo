@@ -252,7 +252,7 @@ export function parseStageGateRecord(raw: unknown): StageGateRecord {
 		artifactIssues,
 		"artifact",
 	) ?? {
-		digestSha256: "sha256:" + "0".repeat(64),
+		digestSha256: `sha256:${"0".repeat(64)}`,
 		byteLength: 0,
 		mediaType: "application/octet-stream",
 	};

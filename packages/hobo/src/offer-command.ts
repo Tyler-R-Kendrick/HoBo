@@ -15,6 +15,7 @@ import {
 	isAcceptedCompilation,
 	RecipePlaneError,
 	requireRecipe,
+	type SolutionRecipe,
 } from "./recipe-plane.js";
 
 // `hobo offer` — compile the proposal a human is asked to consent to, before
@@ -91,7 +92,7 @@ export function createOfferCommand(deps: OfferCommandDeps): CommandModule {
 			const atFlag = (flags as Record<string, unknown>).at;
 			const nowMs = typeof atFlag === "number" ? atFlag : now();
 
-			let recipe;
+			let recipe: SolutionRecipe;
 			try {
 				recipe = requireRecipe(recipeId);
 			} catch (error) {

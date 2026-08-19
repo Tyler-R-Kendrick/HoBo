@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest";
+/**
+ * Every case is a line in `reducer.cases.jsonl`.
+ *
+ * A reducer is the easiest thing in the repo to drive from data — a command
+ * sequence *is* JSON — and the suite this replaced spent most of its length
+ * re-typing the same five provisioning commands and the same
+ * `try { reduce(…) } catch { return caught }` block to read one error code.
+ * Both live here once.
+ */
 
+import { describeConcern } from "@hobo/contract-harness";
 import {
 	attachBundle,
 	type ClaimBundle,
@@ -16,30 +25,46 @@ import {
 const FENCE = "fence-1";
 const NOW = Date.UTC(2026, 7, 8, 12);
 
-function item(overrides: Partial<ClaimItem> = {}): ClaimItem {
-	return {
-		id: "item-cf",
-		subjectRef: "yard://cloudflare/temp-1",
-		subjectKind: "yard",
-		providerId: "cloudflare",
-		claimStrategyRef: "claim.cloudflare.temporary-account/v1",
-		mode: "account-claim",
-		deadline: NOW + 60 * 60 * 1000,
-		continuity: {
-			endpoint: "preserved",
-			data: "preserved",
-			credentials: "reauthorized",
-		},
-		creatorAuthorityAfterClaim: "reauthorization-required",
-		verificationRef: "verify.cloudflare.account-ownership/v1",
-		postClaimActions: [],
-		completedPostClaimActions: [],
-		status: "pending",
-		...overrides,
-	};
-}
+const BASE_ITEM: ClaimItem = {
+	id: "item-cf",
+	subjectRef: "yard://cloudflare/temp-1",
+	subjectKind: "yard",
+	providerId: "cloudflare",
+	claimStrategyRef: "claim.cloudflare.temporary-account/v1",
+	mode: "account-claim",
+	deadline: NOW + 60 * 60 * 1000,
+	continuity: {
+		endpoint: "preserved",
+		data: "preserved",
+		credentials: "reauthorized",
+	},
+	creatorAuthorityAfterClaim: "reauthorization-required",
+	verificationRef: "verify.cloudflare.account-ownership/v1",
+	postClaimActions: [],
+	completedPostClaimActions: [],
+	status: "pending",
+};
 
-function bundle(items: readonly ClaimItem[]): ClaimBundle {
+const LEASE: GuestLease = {
+	schemaVersion: "hobo.guest-lease/v1",
+	id: "lease-1",
+	subjectRef: "yard://cloudflare/temp-1",
+	bootstrapStrategyRef: "bootstrap.cloudflare.temporary-account/v1",
+	bootstrapClass: "proof-of-work",
+	createdAt: NOW,
+	expiresAt: NOW + 60 * 60 * 1000,
+	claimBy: NOW + 60 * 60 * 1000,
+	renewable: false,
+	renewalCount: 0,
+	cleanupPolicy: "delete",
+	status: "active",
+	fencingToken: FENCE,
+};
+
+const toItems = (patches: readonly Partial<ClaimItem>[] = [{}]): ClaimItem[] =>
+	patches.map((patch) => ({ ...BASE_ITEM, ...patch }));
+
+function toBundle(items: readonly ClaimItem[]): ClaimBundle {
 	return {
 		schemaVersion: "hobo.claim-bundle/v1",
 		id: "bundle-1",
@@ -56,527 +81,115 @@ function bundle(items: readonly ClaimItem[]): ClaimBundle {
 	};
 }
 
-const lease: GuestLease = {
-	schemaVersion: "hobo.guest-lease/v1",
-	id: "lease-1",
-	subjectRef: "yard://cloudflare/temp-1",
-	bootstrapStrategyRef: "bootstrap.cloudflare.temporary-account/v1",
-	bootstrapClass: "proof-of-work",
-	createdAt: NOW,
-	expiresAt: NOW + 60 * 60 * 1000,
-	claimBy: NOW + 60 * 60 * 1000,
-	renewable: false,
-	renewalCount: 0,
-	cleanupPolicy: "delete",
-	status: "active",
-	fencingToken: FENCE,
-};
+/** The five commands every claim case used to restate before its own. */
+const PROVISIONING: readonly ClaimCommand[] = [
+	{
+		kind: "CompileDeploymentOffer",
+		deploymentRef: "deployment-1",
+		offerId: "offer-1",
+	},
+	{
+		kind: "AcceptDeploymentOffer",
+		offerId: "offer-1",
+		offerDigest: "sha256:abc",
+		acceptedAt: NOW,
+	},
+	{ kind: "ReserveGuestLease", lease: LEASE },
+	{
+		kind: "StartGuestDeployment",
+		deploymentRef: "deployment-1",
+		idempotencyKey: "k1",
+	},
+	{
+		kind: "RecordProvisionedSubject",
+		subjectRef: "yard://cloudflare/temp-1",
+		subjectKind: "yard",
+		providerId: "cloudflare",
+		idempotencyKey: "k2",
+	},
+];
 
-function run(
+interface Ask {
+	readonly items?: readonly Partial<ClaimItem>[];
+	/** Fold onto a bare initial state instead of a provisioned bundle. */
+	readonly bare?: boolean;
+	readonly commands?: readonly ClaimCommand[];
+	/**
+	 * One further command, applied last and allowed to throw.
+	 *
+	 * Split from `commands` so a single case can pin the state a sequence
+	 * reaches *and* the refusal that follows it, which the old suite needed a
+	 * local try/catch block to express.
+	 */
+	readonly then?: ClaimCommand;
+	readonly fencingToken?: string;
+}
+
+const fold = (
 	state: ClaimCoordinatorState,
 	commands: readonly ClaimCommand[],
-	fencingToken = FENCE,
-): ClaimCoordinatorState {
-	return commands.reduce(
+	fencingToken: string,
+) =>
+	commands.reduce(
 		(acc, command) => reduce(acc, command, { fencingToken }).state,
 		state,
 	);
+
+function start(ask: Ask): ClaimCoordinatorState {
+	const bare = initialState("deployment-1", FENCE);
+	if (ask.bare) return bare;
+	return attachBundle(
+		fold(bare, PROVISIONING, FENCE),
+		toBundle(toItems(ask.items)),
+	);
 }
 
-function provisioned(items: readonly ClaimItem[]): ClaimCoordinatorState {
-	const base = run(initialState("deployment-1", FENCE), [
-		{
-			kind: "CompileDeploymentOffer",
-			deploymentRef: "deployment-1",
-			offerId: "offer-1",
-		},
-		{
-			kind: "AcceptDeploymentOffer",
-			offerId: "offer-1",
-			offerDigest: "sha256:abc",
-			acceptedAt: NOW,
-		},
-		{ kind: "ReserveGuestLease", lease },
-		{
-			kind: "StartGuestDeployment",
-			deploymentRef: "deployment-1",
-			idempotencyKey: "k1",
-		},
-		{
-			kind: "RecordProvisionedSubject",
-			subjectRef: "yard://cloudflare/temp-1",
-			subjectKind: "yard",
-			providerId: "cloudflare",
-			idempotencyKey: "k2",
-		},
-	]);
-	return attachBundle(base, bundle(items));
+/** Only what the cases assert on, so a case reads as a claim about behaviour. */
+const project = (state: ClaimCoordinatorState, events: readonly unknown[]) => ({
+	lifecycle: state.lifecycle,
+	bundleStatus: state.bundle?.status ?? null,
+	earliestDeadline: state.bundle?.earliestDeadline ?? null,
+	agentAuthorized: state.agentAuthorized ?? null,
+	leaseStatus: state.lease?.status ?? null,
+	provisionedSubjects: state.provisionedSubjects,
+	items: (state.bundle?.items ?? []).map((item) => ({
+		id: item.id,
+		status: item.status,
+		creatorAuthorityAfterClaim: item.creatorAuthorityAfterClaim,
+		// Projected to null so a case can assert "cleared"; JSON has no undefined.
+		failureCode: item.failureCode ?? null,
+	})),
+	events: events.map((event) => (event as { kind: string }).kind),
+});
+
+function after(ask: Ask) {
+	const fencingToken = ask.fencingToken ?? FENCE;
+	const state = fold(start(ask), ask.commands ?? [], fencingToken);
+	if (!ask.then) return project(state, []);
+	const result = reduce(state, ask.then, { fencingToken });
+	return project(result.state, result.events);
 }
 
-describe("offer and provisioning", () => {
-	it("cannot start a deployment before the offer is accepted", () => {
-		const state = run(initialState("deployment-1", FENCE), [
-			{
-				kind: "CompileDeploymentOffer",
-				deploymentRef: "deployment-1",
-				offerId: "offer-1",
-			},
-		]);
-		expect(() =>
-			reduce(
-				state,
-				{
-					kind: "StartGuestDeployment",
-					deploymentRef: "deployment-1",
-					idempotencyKey: "k1",
-				},
-				{ fencingToken: FENCE },
-			),
-		).toThrow(/offer must be accepted/u);
-	});
-
-	it("treats a duplicate provisioning request as the same subject", () => {
-		const state = provisioned([item()]);
-		const again = reduce(
-			state,
-			{
-				kind: "RecordProvisionedSubject",
-				subjectRef: "yard://cloudflare/temp-1",
-				subjectKind: "yard",
-				providerId: "cloudflare",
-				idempotencyKey: "k2",
-			},
-			{ fencingToken: FENCE },
-		);
-		expect(again.state.provisionedSubjects).toEqual([
-			"yard://cloudflare/temp-1",
-		]);
-		expect(again.events).toEqual([]);
-	});
-
-	it("rejects a stale fence", () => {
-		const state = provisioned([item()]);
-		expect(() =>
-			reduce(
-				state,
-				{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-				{
-					fencingToken: "fence-old",
-				},
-			),
-		).toThrow(/fencing token/u);
-	});
-});
-
-describe("verification gates completion", () => {
-	it("does not complete a claim on a provider callback alone", () => {
-		const state = run(provisioned([item()]), [
-			{ kind: "BeginClaimBundle", bundleId: "bundle-1", at: NOW },
-			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-			{
-				kind: "ObserveClaimItem",
-				itemId: "item-cf",
-				observedStatus: "claimed",
-				at: NOW,
-			},
-		]);
-		expect(state.bundle?.items[0]?.status).toBe("observed");
-		expect(() =>
-			reduce(
-				state,
-				{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-				{
-					fencingToken: FENCE,
-				},
-			),
-		).toThrow(/independently verified/u);
-	});
-
-	it("completes after independent verification with no outstanding obligations", () => {
-		const state = run(provisioned([item()]), [
-			{ kind: "BeginClaimBundle", bundleId: "bundle-1", at: NOW },
-			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-			{
-				kind: "ObserveClaimItem",
-				itemId: "item-cf",
-				observedStatus: "claimed",
-				at: NOW,
-			},
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "evidence-1",
-				creatorAuthorityAfterClaim: "reauthorization-required",
-			},
-			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-			{ kind: "CompleteClaimBundle", bundleId: "bundle-1", at: NOW },
-		]);
-		expect(state.bundle?.status).toBe("complete");
-		expect(state.lifecycle).toBe("OwnerControlled");
-	});
-
-	it("blocks completion while a binding rotation is owed", () => {
-		const withRotation = item({ postClaimActions: ["rotate-binding"] });
-		const state = run(provisioned([withRotation]), [
-			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "evidence-1",
-				creatorAuthorityAfterClaim: "rotatable",
-			},
-		]);
-		expect(state.bundle?.items[0]?.status).toBe("needs-rotation");
-		expect(state.lifecycle).toBe("ClaimedNeedsRotation");
-		const error = (() => {
-			try {
-				reduce(
-					state,
-					{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-					{
-						fencingToken: FENCE,
-					},
-				);
-				return undefined;
-			} catch (caught) {
-				return caught as ClaimError;
-			}
-		})();
-		expect(error?.code).toBe("BINDING_ROTATION_REQUIRED");
-	});
-
-	it("blocks completion while bootstrap authority remains", () => {
-		const withRevocation = item({
-			postClaimActions: ["revoke-bootstrap-authority"],
-		});
-		const state = run(provisioned([withRevocation]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "retained",
-			},
-		]);
-		const error = (() => {
-			try {
-				reduce(
-					state,
-					{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-					{
-						fencingToken: FENCE,
-					},
-				);
-				return undefined;
-			} catch (caught) {
-				return caught as ClaimError;
-			}
-		})();
-		expect(error?.code).toBe("BOOTSTRAP_AUTHORITY_REMAINS");
-	});
-
-	it("clears creator authority once bootstrap authority is revoked", () => {
-		const withRevocation = item({
-			postClaimActions: ["revoke-bootstrap-authority"],
-		});
-		const state = run(provisioned([withRevocation]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "retained",
-			},
-			{
-				kind: "RevokeBootstrapAuthority",
-				itemId: "item-cf",
-				evidenceRef: "revoked-1",
-			},
-			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-		]);
-		expect(state.bundle?.items[0]?.creatorAuthorityAfterClaim).toBe("absent");
-		expect(state.bundle?.items[0]?.status).toBe("completed");
-	});
-
-	it("marks a failed verification repairable rather than failed", () => {
-		const state = run(provisioned([item()]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: false,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "unknown",
-			},
-		]);
-		expect(state.bundle?.items[0]?.status).toBe("repairable-failure");
-		expect(state.bundle?.status).toBe("claimed-needs-remediation");
-		expect(state.lifecycle).toBe("RepairableFailure");
-	});
-
-	it("retries a repairable item back into progress", () => {
-		const state = run(provisioned([item()]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: false,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "unknown",
-			},
-			{ kind: "RetryRepairableClaim", itemId: "item-cf", at: NOW },
-		]);
-		expect(state.bundle?.items[0]?.status).toBe("in-progress");
-		expect(state.bundle?.items[0]?.failureCode).toBeUndefined();
-	});
-});
-
-describe("multi-provider bundles", () => {
-	const cloudflare = item({ id: "item-cf", providerId: "cloudflare" });
-	const neon = item({
-		id: "item-neon",
-		providerId: "neon",
-		subjectRef: "resource://neon/db-1",
-		subjectKind: "resource",
-		mode: "resource-claim",
-		deadline: NOW + 72 * 60 * 60 * 1000,
-		creatorAuthorityAfterClaim: "rotatable",
-	});
-
-	it("classifies two providers as a best-effort saga", () => {
-		expect(claimAtomicityOf([cloudflare, neon])).toBe("best-effort-saga");
-	});
-
-	it("classifies one provider with two items as provider-bundled", () => {
-		expect(
-			claimAtomicityOf([cloudflare, { ...neon, providerId: "cloudflare" }]),
-		).toBe("provider-bundled");
-	});
-
-	it("derives the earliest deadline across open items", () => {
-		const state = provisioned([cloudflare, neon]);
-		expect(state.bundle?.earliestDeadline).toBe(cloudflare.deadline);
-	});
-
-	it("recomputes the earliest deadline as items complete", () => {
-		const state = run(provisioned([cloudflare, neon]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "absent",
-			},
-			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-		]);
-		expect(state.bundle?.earliestDeadline).toBe(neon.deadline);
-	});
-
-	it("reports one claimed and one expired subject as partially claimed", () => {
-		const state = run(provisioned([cloudflare, neon]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "absent",
-			},
-			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-			{
-				kind: "ObserveClaimItem",
-				itemId: "item-neon",
-				observedStatus: "expired",
-				at: NOW,
-			},
-		]);
-		expect(state.bundle?.status).toBe("partially-claimed");
-		expect(state.lifecycle).toBe("RepairableFailure");
-	});
-
-	it("refuses to report a partially claimed bundle as complete", () => {
-		const state = run(provisioned([cloudflare, neon]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "absent",
-			},
-			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-		]);
-		const error = (() => {
-			try {
-				reduce(
-					state,
-					{ kind: "CompleteClaimBundle", bundleId: "bundle-1", at: NOW },
-					{
-						fencingToken: FENCE,
-					},
-				);
-				return undefined;
-			} catch (caught) {
-				return caught as ClaimError;
-			}
-		})();
-		expect(error?.code).toBe("CLAIM_PARTIALLY_COMPLETED");
-	});
-});
-
-describe("independent identity planes", () => {
-	it("lets the human own the infrastructure while the agent stays revoked", () => {
-		const withAgent = item({ postClaimActions: ["reauthorize-agent"] });
-		const state = run(provisioned([withAgent]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "absent",
-			},
-			{ kind: "AuthorizePostClaimAgent", itemId: "item-cf", granted: false },
-		]);
-		expect(state.agentAuthorized).toBe(false);
-		// The obligation is still outstanding, so the item cannot silently close.
-		expect(() =>
-			reduce(
-				state,
-				{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-				{
-					fencingToken: FENCE,
-				},
-			),
-		).toThrow();
-	});
-
-	it("reaches owner-and-agent control only after explicit authorization", () => {
-		const withAgent = item({ postClaimActions: ["reauthorize-agent"] });
-		const state = run(provisioned([withAgent]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "absent",
-			},
-			{ kind: "AuthorizePostClaimAgent", itemId: "item-cf", granted: true },
-			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-			{ kind: "CompleteClaimBundle", bundleId: "bundle-1", at: NOW },
-		]);
-		expect(state.lifecycle).toBe("OwnerAndAgentControlled");
-	});
-});
-
-describe("migration cutover", () => {
-	it("refuses connector cutover before the destination is verified", () => {
-		const state = run(
-			provisioned([item({ postClaimActions: ["migrate-data"] })]),
-			[
-				{
-					kind: "BeginResourceMigration",
-					itemId: "item-cf",
-					migrationProfileRef: "migration.convex.snapshot/v1",
-				},
-			],
-		);
-		const error = (() => {
-			try {
-				reduce(
-					state,
-					{
-						kind: "CommitConnectorCutover",
-						itemId: "item-cf",
-						connectorRef: "connector-1",
-					},
-					{ fencingToken: FENCE },
-				);
-				return undefined;
-			} catch (caught) {
-				return caught as ClaimError;
-			}
-		})();
-		expect(error?.code).toBe("MIGRATION_VERIFICATION_FAILED");
-	});
-
-	it("commits cutover once the destination is verified", () => {
-		const state = run(
-			provisioned([item({ postClaimActions: ["migrate-data"] })]),
-			[
-				{
-					kind: "VerifyOwnership",
-					itemId: "item-cf",
-					verified: true,
-					evidenceRef: "e",
-					creatorAuthorityAfterClaim: "absent",
-				},
-				{
-					kind: "CommitConnectorCutover",
-					itemId: "item-cf",
-					connectorRef: "connector-1",
-				},
-				{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-			],
-		);
-		expect(state.bundle?.items[0]?.status).toBe("completed");
-	});
-});
-
-describe("expiry", () => {
-	it("expires an unclaimed deployment", () => {
-		const state = run(provisioned([item()]), [
-			{ kind: "ExpireGuestLease", leaseId: "lease-1", at: NOW + 7_200_000 },
-		]);
-		expect(state.lifecycle).toBe("Expired");
-		expect(state.lease?.status).toBe("expired");
-	});
-
-	it("does not disturb work the human already owns", () => {
-		const owned = run(provisioned([item()]), [
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "absent",
-			},
-			{ kind: "CompleteClaimItem", itemId: "item-cf", at: NOW },
-			{ kind: "CompleteClaimBundle", bundleId: "bundle-1", at: NOW },
-			{ kind: "ExpireGuestLease", leaseId: "lease-1", at: NOW + 7_200_000 },
-		]);
-		expect(owned.lifecycle).toBe("OwnerControlled");
-	});
-});
-
-describe("restart safety", () => {
-	it("replays to the same state from the same command sequence", () => {
-		const commands: readonly ClaimCommand[] = [
-			{ kind: "BeginClaimBundle", bundleId: "bundle-1", at: NOW },
-			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-			{
-				kind: "ObserveClaimItem",
-				itemId: "item-cf",
-				observedStatus: "claimed",
-				at: NOW,
-			},
-			{
-				kind: "VerifyOwnership",
-				itemId: "item-cf",
-				verified: true,
-				evidenceRef: "e",
-				creatorAuthorityAfterClaim: "absent",
-			},
-		];
-		const a = run(provisioned([item()]), commands);
-		const b = run(provisioned([item()]), commands);
-		expect(JSON.stringify(a)).toBe(JSON.stringify(b));
-	});
-
-	it("is idempotent when a command is redelivered", () => {
-		const once = run(provisioned([item()]), [
-			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-		]);
-		const twice = run(once, [
-			{ kind: "BeginClaimItem", itemId: "item-cf", at: NOW },
-		]);
-		expect(JSON.stringify(twice.bundle)).toBe(JSON.stringify(once.bundle));
-	});
+describeConcern("claim coordinator", {
+	cases: `${import.meta.dirname}/reducer.cases.jsonl`,
+	subject: () => ({
+		after,
+		/** Atomicity is a pure classification over the items alone. */
+		atomicityOf: (patches: readonly Partial<ClaimItem>[]) =>
+			claimAtomicityOf(toItems(patches)),
+		/** Restart safety: the same sequence from the same start must land identically. */
+		replaysIdentically: (ask: Ask) => {
+			// Two independent folds, not one value compared to itself: the point
+			// is that replaying a stream from scratch reconstructs the state.
+			const first = JSON.stringify(after(ask));
+			const second = JSON.stringify(after(ask));
+			return first === second;
+		},
+		/** Redelivery must not move the bundle. */
+		isIdempotentOn: (ask: Ask, command: ClaimCommand) => {
+			const once = fold(start(ask), ask.commands ?? [], FENCE);
+			const twice = fold(once, [command], FENCE);
+			return JSON.stringify(twice.bundle) === JSON.stringify(once.bundle);
+		},
+	}),
 });

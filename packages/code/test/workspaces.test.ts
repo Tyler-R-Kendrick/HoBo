@@ -407,7 +407,7 @@ describe("the runner follows the env it was given", () => {
 			// whatever this process's PATH happens to hold.
 			env: { PATH: staleDir },
 			bundled: () => null,
-			git: async (args, cwd) => {
+			git: async (_args, cwd) => {
 				seen.push(cwd);
 				return { code: 1, stderr: "no git" };
 			},

@@ -1,3 +1,4 @@
+import { type CampTier, isCampTier } from "@hobo/core";
 import {
 	type Camp,
 	type CampConfig,
@@ -61,6 +62,21 @@ export function camp(name: string, config: CampConfig = {}): Camp {
 		typeof config.envType === "string" && config.envType.length > 0
 			? config.envType
 			: inferEnvType(env);
+	// Stated, never inferred. envType is inferred from the Camp's name for
+	// backwards compatibility, but repeating that trick for tier would make a
+	// Camp called "data-migration" silently a data-tier segment.
+	if (config.tier !== undefined && !isCampTier(config.tier)) {
+		throw Object.assign(
+			new Error(`camp tier ${JSON.stringify(config.tier)} is not a named tier`),
+			{
+				code: "CAMP_TIER_UNKNOWN",
+				remediation:
+					"Use a value from CAMP_TIERS (edge, app, data, untrusted, ops), or omit tier for a Camp that segments on some other axis.",
+			},
+		);
+	}
+	const tier = config.tier as CampTier | undefined;
+
 	const require = canonicalizeStringList(
 		Array.isArray(config.require) ? config.require : [],
 	);
@@ -91,6 +107,7 @@ export function camp(name: string, config: CampConfig = {}): Camp {
 		name: id,
 		env,
 		envType,
+		...(tier !== undefined ? { tier } : {}),
 		require,
 		prefer,
 		labels,
@@ -448,7 +465,7 @@ function sanitizeCampId(env: string): string {
 		env
 			.replace(
 				/-(local|aws|azure|gcp|cloudflare|oci|wasm-sandbox)$/i,
-				(match, provider) => {
+				(match, _provider) => {
 					// Keep as-is if the whole name is just the provider (unlikely).
 					if (match.length === env.length) return env;
 					return "";

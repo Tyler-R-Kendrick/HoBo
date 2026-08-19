@@ -6,6 +6,7 @@
 	"configPaths": [".pi"],
 	"command": "pi",
 	"seat": 25,
+	"runtime": { "adapter": "pi" },
 	"config": {
 		"format": "json-merge",
 		"path": ".pi/agent/models.json",

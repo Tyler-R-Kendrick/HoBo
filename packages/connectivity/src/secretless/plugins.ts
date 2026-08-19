@@ -41,7 +41,7 @@ function hashHandshake(
 		.update(targetRef)
 		.update(credentialMaterial)
 		.digest();
-	return 32 + (h[0]! % 96);
+	return 32 + ((h[0] ?? 0) % 96);
 }
 
 export const postgresPlugin: ProtocolPlugin = Object.freeze({

@@ -75,8 +75,8 @@ describe("bind reference wiring", () => {
 		expect(() => service("api", { bind: { db }, camp: "prod-aws" })).toThrow(
 			/cross-Camp placement is resolved by enclosing scopes/,
 		);
-		expect(() =>
-			addContainer("api", "ghcr.io/acme/api:1").withDnsRecord!(),
-		).toThrow(/DNS is Yard-level/);
+		const container = addContainer("api", "ghcr.io/acme/api:1");
+		expect(container.withDnsRecord).toBeTypeOf("function");
+		expect(() => container.withDnsRecord?.()).toThrow(/DNS is Yard-level/);
 	});
 });

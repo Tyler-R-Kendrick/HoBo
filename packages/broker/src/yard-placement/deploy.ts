@@ -392,7 +392,7 @@ export async function resolveBindleDeployment(
 
 	const workingSnapshot = inventorySnapshotFromFold(foldState);
 	const yard = workingSnapshot.yards.find((y) => y.yardId === selectedYardId);
-	if (!yard || yard.status !== "ready") {
+	if (yard?.status !== "ready") {
 		append(
 			yardEvent(YARD_EVENTS.PlacementRejected, {
 				requestId: request.requestId,

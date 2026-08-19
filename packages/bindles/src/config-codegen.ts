@@ -7,6 +7,10 @@ import type { ConfigFieldDef, ConfigSchema } from "./config-schema.js";
 function tsTypeForField(field: ConfigFieldDef): string {
 	if (field.sensitive) {
 		// Sensitive material never materializes as a plain value type in agent/dev.
+		// This is emitted TypeScript source: a template-literal *type* in the
+		// generated .d.ts. A real template literal would interpolate at codegen
+		// time and emit the wrong type.
+		// biome-ignore lint/suspicious/noTemplateCurlyInString: emitted TS source, see above
 		return "`[REDACTED:${string}]` | string";
 	}
 	switch (field.type) {
@@ -45,9 +49,11 @@ export function generateCtxConfigSource(
 		"",
 		`export interface ${iface} {`,
 	];
-	const keys = Object.keys(schema.fields).sort();
-	for (const name of keys) {
-		const field = schema.fields[name]!;
+	const entries = Object.entries(schema.fields).sort(([a], [b]) =>
+		a < b ? -1 : a > b ? 1 : 0,
+	);
+	const keys = entries.map(([name]) => name);
+	for (const [name, field] of entries) {
 		const optional = field.required ? "" : "?";
 		const docs = field.docs
 			? `  /** ${field.docs.replace(/\*\//g, "*\\/")} */\n`

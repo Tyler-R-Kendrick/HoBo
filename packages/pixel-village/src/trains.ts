@@ -138,7 +138,7 @@ export function isPartialView(view: DeploymentsWireView | null): boolean {
  * projection is unavailable — an honest empty rail, never fabricated traffic.
  */
 export function deriveTrains(view: DeploymentsWireView | null): TrainView[] {
-	if (!view || !view.available) return [];
+	if (!view?.available) return [];
 	const rows = (view.deployments ?? []).slice(0, MAX_TRAINS);
 	const track = YARD_LAYOUT.zones.activeRailTrack;
 	const railY = track.y + 20 + RAIL_Y_OFFSET;

@@ -239,7 +239,7 @@ export async function assertPerceptualBudgetsSupported(
 	const stats = cast.analyzeCast(
 		`${JSON.stringify({ version: 2, width: 80, height: 24 })}\n${JSON.stringify([0.1, "o", "x"])}\n${JSON.stringify([0.4, "o", "y"])}\n`,
 	);
-	if (!stats || stats.firstOutputMs !== 100 || stats.maxSilentGapMs !== 300) {
+	if (stats?.firstOutputMs !== 100 || stats.maxSilentGapMs !== 300) {
 		throw new Error("cast analysis does not produce perceptual stats");
 	}
 	world.notes.push(

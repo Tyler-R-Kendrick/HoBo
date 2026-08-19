@@ -47,7 +47,6 @@ import {
 	readRegistry,
 	rebuildRegistry,
 	removeWorkspace,
-	shellQuote,
 } from "../src/workspace.js";
 
 const dirs: string[] = [];

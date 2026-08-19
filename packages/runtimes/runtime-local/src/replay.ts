@@ -6,8 +6,6 @@ import {
 	createClockReplayResult,
 	type FiredTimer,
 	NondeterministicClockError,
-	parseFireId,
-	parseIsoInstant,
 	parseRunId,
 	parseScheduleId,
 } from "@hobo/core";
@@ -48,7 +46,7 @@ export function replayClockTrace(
 	const entries = cloneRequiredArray(trace, "trace");
 	const started = entries.find((entry) => entry.type === "clock.started");
 
-	if (!started || started.type !== "clock.started") {
+	if (started?.type !== "clock.started") {
 		throw new NondeterministicClockError("trace is missing clock.started");
 	}
 	if (options.seed !== undefined && options.seed !== started.seed) {

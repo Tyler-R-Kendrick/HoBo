@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdtempSync,
+	readdirSync,
 	readFileSync,
 	rmSync,
 	symlinkSync,
@@ -123,33 +124,6 @@ function envelope(
 		expectedRevision: revision,
 		[command]: value,
 	};
-}
-
-/**
- * Which chromium to launch, discovered rather than assumed.
- *
- * `PLAYWRIGHT_CHROMIUM_PATH` still wins, but relying on it alone meant this
- * suite failed on any host whose installed browser revision does not match the
- * pinned playwright version — the image here carries chromium 1194 while
- * playwright looks for 1234, so the default launch died on a missing
- * `chrome-headless-shell` and reported it as a test failure. The revision
- * mismatch is real; refusing to run over it is not the same as a defect, and a
- * red test that means "wrong browser build" teaches nobody anything.
- */
-function chromiumExecutable(): { executablePath?: string } {
-	if (process.env.PLAYWRIGHT_CHROMIUM_PATH)
-		return { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH };
-	try {
-		// Present whenever the host's build matches this playwright version.
-		if (existsSync(chromium.executablePath())) return {};
-	} catch {
-		// executablePath() throws when no build is registered at all.
-	}
-	const fallback = join(
-		process.env.PLAYWRIGHT_BROWSERS_PATH ?? "/opt/pw-browsers",
-		"chromium",
-	);
-	return existsSync(fallback) ? { executablePath: fallback } : {};
 }
 
 describe("resident session loopback server", () => {
@@ -788,9 +762,10 @@ describe("resident session loopback server", () => {
 			"approved\n",
 		);
 
+		const executablePath = resolveChromiumExecutable();
 		const browser = await chromium.launch({
 			headless: true,
-			...chromiumExecutable(),
+			...(executablePath ? { executablePath } : {}),
 		});
 		try {
 			const page = await browser.newPage();
@@ -903,3 +878,41 @@ describe("resident session loopback server", () => {
 		}
 	}, 20_000);
 });
+
+/**
+ * Finds a Chromium that is actually installed, rather than the revision this
+ * Playwright build happens to pin.
+ *
+ * Playwright resolves its browser by exact revision — `chromium_headless_shell-1234`
+ * — and hard-fails with "run npx playwright install" when the host has a
+ * different one. Plenty of hosts deliberately ship a pinned browser they do not
+ * want re-downloaded (this repo's own container installs revision 1194 under
+ * /opt/pw-browsers and sets PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD), so the pin makes
+ * the test fail for a reason that has nothing to do with the code under test.
+ *
+ * The previous escape hatch was an env var nobody sets, which is the same as no
+ * escape hatch. This looks for whatever is on disk instead, preferring the
+ * headless shell because that is what `headless: true` wants. An explicit
+ * PLAYWRIGHT_CHROMIUM_PATH still wins, and finding nothing returns undefined so
+ * Playwright's own resolution — and its own error message — still apply.
+ */
+function resolveChromiumExecutable(): string | undefined {
+	const override = process.env.PLAYWRIGHT_CHROMIUM_PATH;
+	if (override && existsSync(override)) return override;
+
+	const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? "/opt/pw-browsers";
+	if (!existsSync(root)) return undefined;
+
+	const candidates: string[] = [];
+	for (const entry of readdirSync(root).sort().reverse()) {
+		if (entry.startsWith("chromium_headless_shell")) {
+			candidates.push(join(root, entry, "chrome-linux", "headless_shell"));
+		}
+	}
+	for (const entry of readdirSync(root).sort().reverse()) {
+		if (entry.startsWith("chromium-")) {
+			candidates.push(join(root, entry, "chrome-linux", "chrome"));
+		}
+	}
+	return candidates.find((candidate) => existsSync(candidate));
+}

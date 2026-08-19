@@ -3,7 +3,6 @@ import { deepFreeze, enumValue, expectObject } from "../parse-utils.js";
 import {
 	matchResourceOfferings,
 	type OfferingFidelity,
-	type OfferingNegotiation,
 	type OfferingStability,
 	type ResourceOffering,
 	type ResourceOfferingMatch,

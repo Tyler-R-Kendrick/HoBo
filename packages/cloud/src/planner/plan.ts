@@ -1,5 +1,9 @@
 import type { ManifestV1 } from "@hobo/bindles";
-
+import type {
+	CapabilityProfileRegistry,
+	CapabilityRequirement,
+	TrustPolicy,
+} from "@hobo/capability-profiles";
 import { lowerManifest } from "../intent.js";
 import {
 	DEPLOYMENT_PLAN_SCHEMA,
@@ -13,13 +17,63 @@ import {
 	type ResourcePlan,
 } from "../plan-types.js";
 import type { PlannerRegistry } from "../registry/catalog.js";
+import type { ResourceDefinitionVNext } from "../registry/resource-definition-vnext.js";
 import { matchResource } from "./matching.js";
 import { emptyPlacementContext } from "./placement.js";
+import {
+	matchCapabilityRequirement,
+	type YardBindingContext,
+} from "./profile-matching.js";
 
 // The Planner: a pure function `plan(bindle, config, registry) -> DeploymentPlan`
 // (control-plane.md "The Planner"). Easy to test, replayable, deterministic. It
 // never provisions anything — it emits the content-addressed plan (or a precise,
 // machine-readable rejection) and the per-resource match.Decided decisions.
+
+/**
+ * Yard binding authority for a planning pass (ADR-0157).
+ *
+ * Supplying this promotes planning from the legacy port-only path onto the
+ * ADR-0151 capability-profile pipeline for the resources it covers: the Yard's
+ * rows hard-filter which offering may satisfy each profile, and the winning
+ * product plus its Yard-scoped realization parameters land on the plan so a
+ * deployment driver can act on them. Without it the planner behaves exactly as
+ * before and plan nodes carry no `productId` — which a driver must read as
+ * "not decided here", never "any product will do".
+ *
+ * This is opt-in on purpose. Turning it on changes which offering a resource
+ * resolves to, so it is a decision an operator makes rather than a default
+ * that shifts under them.
+ */
+export interface PlanBindingAuthority {
+	/** The Yard whose rows constrain this pass, and the rows themselves. */
+	readonly yard: YardBindingContext;
+	/** The capability-profile registry the required profiles resolve against. */
+	readonly profiles: CapabilityProfileRegistry;
+	/** Profile-bearing definitions; legacy port-only definitions are ignored. */
+	readonly definitions: readonly ResourceDefinitionVNext[];
+	readonly policy: TrustPolicy;
+	/**
+	 * Canonical evaluation instant. Planning never reads a clock itself, so the
+	 * caller supplies it and two passes over the same inputs are byte-stable.
+	 */
+	readonly nowMs: number;
+	/**
+	 * Per-resource capability requirements, keyed by resource name. A resource
+	 * with no entry keeps the legacy port-only decision — absent means "this
+	 * pass says nothing about that resource", not "it has no requirements".
+	 */
+	readonly requirements: Readonly<Record<string, CapabilityRequirement>>;
+	readonly consumableBindingProfiles?: readonly string[];
+}
+
+/** What a Yard-bound match contributes to both the decision and the plan node. */
+type BoundOffering = {
+	readonly productId?: string;
+	readonly appliedRows?: readonly string[];
+	readonly realizationParameters?: Readonly<Record<string, unknown>>;
+	readonly nonPortableRows?: readonly string[];
+};
 
 export interface PlanConfig {
 	deploymentId: string;
@@ -28,6 +82,11 @@ export interface PlanConfig {
 	// E19: per-resource placement-constraint criteria, keyed by resource name.
 	// Attached to the lowered intents so the bindle manifest stays untouched.
 	placement?: Record<string, PlacementCriteria>;
+	/**
+	 * Optional Yard binding authority. See `PlanBindingAuthority` — absent keeps
+	 * the pre-existing port-only behaviour byte-for-byte.
+	 */
+	binding?: PlanBindingAuthority;
 }
 
 export interface PlanSuccess {
@@ -119,7 +178,55 @@ export function plan(
 			remediations.push(outcome.remediation);
 			continue;
 		}
-		const decision = { ...outcome.decision, deploymentId: config.deploymentId };
+		// Yard binding authority, when supplied for this resource: the rows
+		// hard-filter the offering and carry the realization parameters. A row
+		// set that admits nothing is a refusal, not a fall-through to the
+		// port-only winner — otherwise the Yard's authority would be advisory,
+		// and a Yard that cannot satisfy a capability would silently deploy
+		// something it never declared.
+		const requirement = config.binding?.requirements[intent.name];
+		let bound: BoundOffering | undefined;
+		if (config.binding !== undefined && requirement !== undefined) {
+			const authority = config.binding;
+			const profileOutcome = matchCapabilityRequirement({
+				resourceName: intent.name,
+				requirement,
+				profiles: authority.profiles,
+				definitions: authority.definitions,
+				policy: authority.policy,
+				nowMs: authority.nowMs,
+				yard: authority.yard,
+				...(authority.consumableBindingProfiles !== undefined
+					? {
+							consumableBindingProfiles: authority.consumableBindingProfiles,
+						}
+					: {}),
+			});
+			if (!profileOutcome.ok) {
+				remediations.push(profileOutcome.remediation);
+				continue;
+			}
+			bound = {
+				...(profileOutcome.definition.semantics?.productId !== undefined
+					? { productId: profileOutcome.definition.semantics.productId }
+					: {}),
+				...(profileOutcome.appliedRows !== undefined
+					? { appliedRows: profileOutcome.appliedRows }
+					: {}),
+				...(profileOutcome.realizationParameters !== undefined
+					? { realizationParameters: profileOutcome.realizationParameters }
+					: {}),
+				...(profileOutcome.nonPortableRows !== undefined
+					? { nonPortableRows: profileOutcome.nonPortableRows }
+					: {}),
+			};
+		}
+
+		const decision = {
+			...outcome.decision,
+			deploymentId: config.deploymentId,
+			...bound,
+		};
 		decisions.push(decision);
 		placementContext.placements.push({
 			resource: intent.name,
@@ -133,6 +240,16 @@ export function plan(
 			provider: decision.providerId,
 			deps: intent.deps,
 			strategy: "rolling-update",
+			// `appliedRows` stays on the decision (the audit trail) and off the
+			// plan node: the plan is content-addressed, and which rows were
+			// consulted does not change what gets built.
+			...(bound?.productId !== undefined ? { productId: bound.productId } : {}),
+			...(bound?.realizationParameters !== undefined
+				? { realizationParameters: bound.realizationParameters }
+				: {}),
+			...(bound?.nonPortableRows !== undefined
+				? { nonPortableRows: bound.nonPortableRows }
+				: {}),
 		};
 		if (outcome.region) node.region = outcome.region;
 		resources.push(node);

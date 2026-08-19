@@ -372,9 +372,9 @@ function visitStrings(
 		return;
 	}
 	if (Array.isArray(value)) {
-		value.forEach((item, index) =>
-			visitStrings(item, `${path}[${index}]`, visitor),
-		);
+		value.forEach((item, index) => {
+			visitStrings(item, `${path}[${index}]`, visitor);
+		});
 		return;
 	}
 	if (isRecord(value)) {

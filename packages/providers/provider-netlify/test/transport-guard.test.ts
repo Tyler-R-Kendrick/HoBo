@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { NetlifyProviderError } from "../src/provider-errors.js";
 import {
 	assertAllowedEndpoint,
 	createGuardedTransport,
@@ -7,6 +8,34 @@ import {
 	NETLIFY_ALLOWED_PATH_PREFIXES,
 	NETLIFY_API_ALLOWED_HOSTS,
 } from "../src/transport.js";
+
+/**
+ * Assert a refusal names the branch it came from.
+ *
+ * Every guard refusal reaches a caller as one `NetlifyProviderError` code —
+ * `PROVIDER_CONTRACT_CHANGED` — with the core guard's code carried in
+ * `detail.guard`. That detail is the only thing distinguishing "you asked for
+ * http" from "that host is not ours", so it is what these assertions pin.
+ */
+function expectRefusal(
+	call: () => unknown,
+	guard: string,
+	messageFragment: RegExp,
+): void {
+	let thrown: unknown;
+	try {
+		call();
+	} catch (cause) {
+		thrown = cause;
+	}
+	expect(thrown, "endpoint was admitted instead of refused").toBeInstanceOf(
+		NetlifyProviderError,
+	);
+	const error = thrown as NetlifyProviderError;
+	expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
+	expect(error.detail).toMatchObject({ guard });
+	expect(error.message).toMatch(messageFragment);
+}
 
 /**
  * The outbound guard had no tests of its own before this file, which is how it
@@ -29,28 +58,82 @@ describe("netlify outbound guard", () => {
 	});
 
 	it("refuses percent-encoded traversal out of the allowlisted prefix", () => {
-		for (const url of [
-			"https://api.netlify.com/api/v1/sites/%2e%2e/user",
-			"https://api.netlify.com/api/v1/sites/%2f%2e%2e%2faccounts",
-			"https://api.netlify.com/api/v1/sites/..%5cadmin",
-		]) {
-			expect(() =>
-				assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY),
-			).toThrow(/PROVIDER_CONTRACT_CHANGED|path/iu);
+		// These three are refused by *two different branches*, and the previous
+		// `/PROVIDER_CONTRACT_CHANGED|path/iu` could not tell them apart — it is
+		// the §1.1 matcher, and both alternatives match the ordinary prefix
+		// refusal, so this test went green whether or not the encoded-separator
+		// rule existed at all. Measured with `new URL(u).pathname`:
+		//
+		//   /api/v1/sites/%2e%2e/user        -> /api/v1/user
+		//   /api/v1/sites/%2f%2e%2e%2faccounts -> unchanged
+		//   /api/v1/sites/..%5cadmin         -> unchanged
+		//
+		// WHATWG treats `%2e` as a dot and collapses it during parsing, so the
+		// first URL never reaches the separator rule: the prefix check refuses
+		// it on its own merits. Only the last two exercise the rule this test
+		// is named for, and each row now says which one it is.
+		const cases: readonly [url: string, fragment: RegExp][] = [
+			[
+				"https://api.netlify.com/api/v1/sites/%2e%2e/user",
+				/^path \/api\/v1\/user is outside the allowlisted prefixes/u,
+			],
+			[
+				"https://api.netlify.com/api/v1/sites/%2f%2e%2e%2faccounts",
+				/percent-encodes a path separator or dot segment/u,
+			],
+			[
+				"https://api.netlify.com/api/v1/sites/..%5cadmin",
+				/percent-encodes a path separator or dot segment/u,
+			],
+		];
+		for (const [url, fragment] of cases) {
+			expectRefusal(
+				() => assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY),
+				"TRANSPORT_PATH_FORBIDDEN",
+				fragment,
+			);
 		}
 	});
 
 	it("refuses plain http, a lookalike host, userinfo, and an off-prefix path", () => {
-		for (const url of [
-			"http://api.netlify.com/api/v1/sites/site_1",
-			"https://api.netlify.com.attacker.example/api/v1/sites/site_1",
-			"https://user:pass@api.netlify.com/api/v1/sites/site_1",
-			"https://api.netlify.com/api/v1/undocumented/thing",
-			"not a url",
-		]) {
-			expect(() =>
-				assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY),
-			).toThrow(/PROVIDER|https|host|path|url/iu);
+		// Five distinct refusals. The previous matcher was
+		// `/PROVIDER|https|host|path|url/iu`, which every one of core's guard
+		// messages satisfies, so the five rows were interchangeable: the host
+		// check could have vanished entirely and this test would still have
+		// passed on the scheme refusal's wording.
+		const cases: readonly [url: string, guard: string, fragment: RegExp][] = [
+			[
+				"http://api.netlify.com/api/v1/sites/site_1",
+				"TRANSPORT_SCHEME_FORBIDDEN",
+				/^request url must use https, got http$/u,
+			],
+			[
+				"https://api.netlify.com.attacker.example/api/v1/sites/site_1",
+				"TRANSPORT_HOST_FORBIDDEN",
+				/^host api\.netlify\.com\.attacker\.example is not exactly one of the allowlisted provider hosts \(api\.netlify\.com\)$/u,
+			],
+			[
+				"https://user:pass@api.netlify.com/api/v1/sites/site_1",
+				"TRANSPORT_HOST_FORBIDDEN",
+				/must not embed userinfo/u,
+			],
+			[
+				"https://api.netlify.com/api/v1/undocumented/thing",
+				"TRANSPORT_PATH_FORBIDDEN",
+				/^path \/api\/v1\/undocumented\/thing is outside the allowlisted prefixes \(\/api\/v1\/sites\/\)$/u,
+			],
+			[
+				"not a url",
+				"TRANSPORT_SCHEME_FORBIDDEN",
+				/^request url is not a valid absolute URL$/u,
+			],
+		];
+		for (const [url, guard, fragment] of cases) {
+			expectRefusal(
+				() => assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY),
+				guard,
+				fragment,
+			);
 		}
 	});
 
@@ -72,6 +155,8 @@ describe("netlify outbound guard", () => {
 				timeoutMs: 1000,
 				maxResponseBytes: 1024,
 			}),
-		).rejects.toThrow(/redirect/u);
+		).rejects.toThrow(
+			/^provider returned a 302 redirect, which this transport never follows$/u,
+		);
 	});
 });

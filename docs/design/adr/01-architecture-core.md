@@ -678,3 +678,67 @@ ADR-0131 made Station the control-plane occupancy primitive, but "Station capabi
 - **(+)** Client-per-activation is the enforced performance posture; the accidental client-per-request anti-pattern becomes unrepresentable in generated typed surfaces.
 - **(+)** Phase misuse is detectable on every guest language — compile-time where the language allows, conformance-time everywhere.
 - **(−)** The WIT world split is real codegen and conformance work, and draft-proof `ctx.bindings` surfaces must migrate onto the split interfaces.
+
+## ADR-0162
+**Package tiering: "a tier base library" is legitimate only when the base package's whole public surface *is* the tier's vocabulary — otherwise the shared vocabulary lifts.**
+
+**Status:** Accepted — governs the banked-edge allowlist in `packages/conformance/src/boundaries.ts` deferred to "a future ADR" by [ADR-0151](07-portability-extensibility.md#adr-0151) (contract packages as implementable vocabulary), [ADR-0135](03-data-plane-sqlite-default.md) (portable SQLite EventStore), and [ADR-0156](07-portability-extensibility.md#adr-0156) (lifting layer-1 contracts into `@hobo/core`); constrains [ADR-0144](07-portability-extensibility.md#adr-0144) Bindle-first authoring by naming which cross-package reaches are permitted.
+
+### Context
+
+The boundary gate's layering rules say an adapter may import `@hobo/core`, a layer-1 contract package, or nothing. Fourteen edges are banked as accepted exceptions, and six comments in that file defer their justification to "a future ADR that classifies … as a distinct tier." Three tier *rules* already exist in code without an ADR behind them — `isConnectorTierBaseEdge` (`connector-acp`, `swe-shared`), `isPackTierBaseEdge` (`pack-framework`), and the dev-only harness exemption — so the concept is in production, unwritten, and growing by exception.
+
+**Reading the fourteen edges against the source changed the question.** Five of them are not runtime edges at all. `provider-agentv`, `provider-ax` and `runner-depot` import nothing but `@hobo/core` from `src/`; `pack-framework/src` imports only `@hobo/bindings` and `@hobo/capability-profiles`, and its two `@hobo/cloud` mentions are prose inside doc comments. In every case the dependency is a `devDependency` reached from `test/`:
+
+| Banked entry | src imports of the target | Real provenance |
+|---|---|---|
+| `provider-agentv -> training-pipeline` | none | devDependency, `test/live-eval-loop.test.ts`, `test/capture-grade.test.ts` |
+| `provider-ax -> runtime` | none | devDependency, `test/end-to-end.test.ts` |
+| `runner-depot -> runner-blacksmith` | none | devDependency, `test/dispatch-routing.test.ts` |
+| `pack-framework -> cloud` | none (doc-comment mentions only) | devDependency, `test/resource-definition-compat.test.ts` |
+| `provider-convex -> bindles` | none | devDependency, `test/golden-bindle.test.ts` |
+
+Two committed claims are therefore wrong and are corrected here rather than quietly carried forward. The allowlist's header says the AI training/eval providers "legitimately COMPOSE the SDK training/runtime packages instead of reaching them through a core port" — they compose nothing; the packages appear only in their test suites. And `pack-framework -> cloud` is annotated as a "genuine breach awaiting the ADR-0156 lift" when `semantics.ts` deliberately *infers* its return type so the package never re-declares `ResourceDefinitionSemantics`, and the test asserts structural assignability against the real type. That is the opposite of a breach: it is a compatibility check that keeps a duplicate definition honest.
+
+That leaves nine genuine runtime edges, and the question they pose is narrower than "is tiering legitimate." Every one of them is a package importing a *subset* of another package's exports. The exception, though, is granted per package pair, so it licenses the whole target surface. `provider-convex` needs one function from `@hobo/sdk` and is granted `@hobo/sdk`, which itself depends on `@hobo/cloud`, `@hobo/contracts` and `@hobo/dispatcher`. That gap between what is needed and what is permitted is where the tiering question actually lives.
+
+### Decision
+
+1. **The test for a legitimate tier base library is mechanical, not editorial.** A package may serve as a tier's base — reachable by every member of that tier, expressed as a `is<Tier>TierBaseEdge` rule rather than an edge list — when **both** hold:
+   - **(a) Surface identity.** The base package's entire public surface *is* the tier's shared vocabulary. If the tier needs a strict subset of what the package exports, the exception grants reach the tier does not need, and the vocabulary lifts instead.
+   - **(b) Depth.** The base package depends on nothing above `@hobo/core` and the layer-1 contract packages. A base that reaches an app package drags the whole tier through it transitively, which the gate cannot see because it evaluates one edge at a time.
+
+   `connector-acp` (nine exports, deps `@hobo/core` + the ACP SDK) and `pack-framework` (deps `@hobo/bindings` + `@hobo/capability-profiles`, both layer-1 contracts) satisfy both. They are the reason the concept exists and they stay.
+
+2. **Per-group verdicts for the nine runtime edges.**
+
+   | Group | Verdict | Why |
+   |---|---|---|
+   | `runner-blacksmith`/`runner-depot` → `runner-github` | **Split — lift half, keep half, rename the rest** | Fails (a) badly. What is imported is two different things: provider-neutral vocabulary (`EXECUTION_HOST_MANIFEST_SCHEMA`, `COST_SCHEMA`, `CATEGORY_SKUS`, `CATEGORY_PORTS`, `RUNNER_CATEGORY`, `BUILD_MACHINE_CATEGORY`, and the `RunnerProvider`/`BuildMachineProvider`/`ExecutionHostManifest`/`ProviderTerms`/`CostProvenance` types), and GitHub-Actions *protocol* surface (`GithubActionsClient`, `trackDispatchedRun`). The first half lifts to a contract package; nothing about a cost schema is GitHub-specific. The second half is not a tiering problem at all — Blacksmith and Depot **are** GitHub Actions runner replacements, so speaking the GitHub Actions protocol is their domain definition, the same shape as a SWE connector speaking ACP. Rename that residue from "runner-tier base library" to what it is: a protocol dependency. |
+   | `provider-opa`/`provider-cedar` → `@hobo/contracts` | **Lift. Do not wait for a tier.** | Two type-only names (`GatekeeperEffect`, `PolicyDecisionRequest`) across two packages. This is the cheapest fix on the list and needs no new concept. Reclassifying `@hobo/contracts` as layer-1 is *not* available: it depends on `@hobo/policy`, so a layer-1 `contracts` would immediately point outward. The two types move; the edge disappears. |
+   | `adapter-openbao` → `@hobo/identity` | **Lift. This is the defect, not the exception.** | The imports are `SecretsPort`, `SecretsAccessResult`, `FetchLike` — all type-only, and one of them is named *Port*. The layering rule is "adapters may import only core ports"; a port living outside `@hobo/core` does not create a tier, it creates an exception to a rule it should have satisfied. Straight ADR-0156 lift. |
+   | `provider-convex` → `@hobo/sdk` | **Lift `defineResource`; refuse the tier.** | One import, `defineResource`, against a package that depends on `@hobo/cloud`, `@hobo/contracts` and `@hobo/dispatcher`. Fails (a) and fails (b). "Any provider may import `@hobo/sdk`" is not the permission anyone wants; "any provider may import the resource-definition helper" is. The helper is a pure definition function and moves to the contract layer. |
+   | `connector-firecrawl` → `@hobo/bindles` | **Lift `defineConnector`; refuse the tier.** | Identical shape and identical verdict. The existing comment anticipates "future connector packages extend this list until the same future ADR classifies the connector tier" — this ADR declines to classify it, because the list would be growing against the *authoring* package's whole surface rather than against the connector vocabulary. Note this edge is a real runtime `dependencies` entry, unlike `provider-convex -> bindles`. |
+   | `runtime-local`/`runtime-browser` → `storage-sqlite` | **Legitimate — and the fix is classification, not an exception.** | The one group where the tier concept holds cleanly. `@hobo/storage-sqlite` depends on `@hobo/core` alone and its entire surface is the engine vocabulary (`SqliteJournal`, `SqliteDriver`, the codecs, the id generators) — it satisfies (a) and (b) exactly. ADR-0135 already sanctions the composition. Two named exceptions to express a package that is structurally a layer-1/2 engine is the wrong instrument: register `packages/storage-sqlite` for what it is and both entries retire with no rule change. |
+
+3. **The five dev-only entries retire through the `dev` marker, not through the allowlist.** `WorkspaceEdge.dev` already distinguishes a test-time edge from a runtime one, and the marker is now merged strictly — one runtime sighting of a pair withdraws it regardless of discovery order, so a package cannot keep a dev exemption by declaring a dependency under `devDependencies` and importing it from `src/` anyway. The layering rules key the harness exemption on `to === "packages/contract-harness"`; that condition widens to "the edge is dev-only," recorded as its own named exemption rather than by broadening the harness rule, so the two reasons stay separable in the source. What the layering rules govern is what a package depends on **to run**; a test suite reaching a sibling to assert compatibility is not a layering fact.
+
+4. **Nothing is added to `ACCEPTED_ADAPTER_PACKAGE_EDGES`.** Its own comment says the list should only ever shrink. This ADR is the retirement schedule for eleven of its fourteen entries, and the remaining three (the two runner→`runner-github` edges after the vocabulary lift, plus whatever survives as protocol dependency) become a tier rule with a written criterion behind it.
+
+5. **This ADR decides; it does not implement.** Each lift is a per-package change with its own blast radius and belongs in its own PR. The decisions above are the acceptance criteria those PRs are reviewed against, in the order cheapest-first: the two `@hobo/contracts` types, the `storage-sqlite` classification, `SecretsPort`, `defineResource`/`defineConnector`, then the execution-host vocabulary.
+
+### Non-goals
+
+- No new package layer and no fourth kind in `PackageKind`. Every verdict above is expressible with `core`, `contract`, `adapter`, `package` as they stand.
+- Not a claim that every cross-tier reach is debt. Two survive on their merits (storage engine, GitHub Actions protocol), and saying so is the point of deciding per group rather than issuing a blanket verdict.
+- No change to `CONTRACT_PACKAGE_PATHS` for `@hobo/contracts`, `@hobo/sdk`, `@hobo/identity`, `@hobo/cloud` or `@hobo/bindles`. Reclassifying an app package to silence an edge is the failure mode this ADR exists to refuse — each of them depends on something above layer 1, so the classification would be a lie the gate would then have to be taught to ignore.
+- No retroactive rewrite of ADR-0135 or ADR-0151; both stand. This ADR only decides how their sanctioned compositions are *expressed* in the boundary gate.
+
+### Consequences
+
+- **(+)** The banked list stops being a place where "we will explain this later" accumulates. Eleven of fourteen entries have a named retirement path and three have a written criterion.
+- **(+)** The tier test is checkable by a reviewer in two minutes — read the target's `package.json` deps and its `index.ts` export count — rather than being an argument about intent.
+- **(+)** Two false claims carried in committed source comments are corrected: the training/eval providers compose nothing, and `pack-framework -> cloud` is a compatibility assertion rather than a breach.
+- **(−)** Five lifts are real refactors touching packages owned by different work streams, and each one moves a public symbol between packages — a breaking change for anyone importing the old path, mitigated only by re-export shims that themselves need retiring.
+- **(−)** Widening the dev-only exemption beyond `contract-harness` weakens the guard against *test-time* coupling, which is a real signal even when it is not a layering fact. The mitigation is that the marker is now merged strictly rather than positionally; without that hardening this decision would not be safe to take.
+- **(−)** `runner-github` ends up as both a concrete provider and the origin of a protocol other providers speak. That is honest but confusing, and the rename in verdict 1 is load-bearing documentation, not cosmetics.

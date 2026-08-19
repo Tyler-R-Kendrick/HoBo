@@ -4,6 +4,8 @@
 
 package architecture_evidence
 
+import "list"
+
 #PlanAnnotationProofMode: "reference fixture" | "simulated" | "scope-out"
 
 #PlanAnnotationFixture: {
@@ -32,8 +34,8 @@ package architecture_evidence
 	phase:               "M1"
 	targetPackagePath:   "src/draft/exp-proofs/ux/vibe-plan-annotation-pseudocode"
 	proofNotePath:       "docs/design/proofs/vibe-plan-annotation-pseudocode/README.md"
-	designRefs:          [...string] & >0
-	annotations:         [...#PlanAnnotationFixture] & >=6
+	designRefs:          [...string] & list.MinItems(1)
+	annotations:         [...#PlanAnnotationFixture] & list.MinItems(6)
 	contractFixtures:    #PlanAnnotationContractFixtures
-	scopeOut:            [...string] & >0
+	scopeOut:            [...string] & list.MinItems(1)
 }

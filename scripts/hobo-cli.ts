@@ -50,6 +50,7 @@ if (!existsSync(HOBO_BIN)) {
 			"@hobo/hobo",
 			"--filter",
 			"@hobo/adapter-hono",
+			"--concurrency=100%",
 		],
 		{ cwd: REPO_ROOT, stdio: "inherit" },
 	);

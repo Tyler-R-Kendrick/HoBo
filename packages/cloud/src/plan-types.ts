@@ -6,82 +6,85 @@ import { createHash } from "node:crypto";
 // shapes with unions and required fields. Constructors here are the only way to
 // build a plan value, so downstream code never re-validates a raw record.
 
-export const DEPLOYMENT_PLAN_SCHEMA = "hobo.deployment-plan/v1" as const;
+// The plan schema discriminant, re-exported from the package that owns the
+// plan shape. It is hashed into every plan digest, so two declarations of it
+// would be two ways to change what the repo content-addresses; unlike the plan
+// *types* below, a bare string constant re-exports without friction, so there
+// is no reason for this one to be declared twice.
+//
+// `pnpm run standards:check` had never flagged the local declaration this
+// replaces, because the check runs over added and modified files only. The
+// constant has been exported without a `// public-contract:` marker since it
+// was written; touching this file is what surfaced it.
+import { DEPLOYMENT_PLAN_SCHEMA } from "@hobo/manifest-plan";
 
-export type Negotiation = "require" | "prefer";
-
-// ---- E19: placement-constraint vocabulary (HoBo-native; KubeFleet semantics
-// cited, shapes native — ADR-0107 non-goal: no Kubernetes types). The
-// vocabulary records what the Planner PLANS; spread/anti-affinity EXECUTION
-// stays delegated to wadm (adr/01-architecture-core.md:419).
-
-export type PlacementSelectorOp =
-	| "eq"
-	| "ne"
-	| "in"
-	| "not-in"
-	| "lt"
-	| "lte"
-	| "gt"
-	| "gte"
-	| "exists";
-
-// domain-view: parsed property selector; wire form is PlacementPropertySelector in data-models/cloud.proto.
-export interface PlacementPropertySelector {
-	/** "cost" | "region" | "provider" | "capacity" | "latency" | custom feature key. */
-	key: string;
-	op: PlacementSelectorOp;
-	values: string[];
-}
-
-export type PlacementAffinityMode = "affinity" | "anti-affinity";
-export type PlacementScope = "region" | "yard";
-
-// domain-view: parsed affinity/anti-affinity rule; wire form is PlacementAffinityRule in data-models/cloud.proto.
-export interface PlacementAffinityRule {
-	mode: PlacementAffinityMode;
-	/** The referenced resource class (capability port). */
-	targetPort: string;
-	scope: PlacementScope;
-}
-
-// domain-view: parsed spread directive; wire form is PlacementSpread in data-models/cloud.proto.
-export interface PlacementSpread {
-	dimension: PlacementScope;
-}
-
-// domain-view: parsed pickN cardinality; wire form is PlacementPickN in data-models/cloud.proto.
-export interface PlacementPickN {
-	/** Minimum distinct satisfying candidates matching must find (>= 1). */
-	count: number;
-}
-
-// domain-view: parsed placement-constraint set; wire form is PlacementCriteria in data-models/cloud.proto.
-export interface PlacementCriteria {
-	selectors: PlacementPropertySelector[];
-	affinities: PlacementAffinityRule[];
-	spread?: PlacementSpread;
-	pickN?: PlacementPickN;
-}
-
-// domain-view: parsed provider-neutral intent; wire form is ResourceIntent in data-models/cloud.proto.
-export interface ResourceIntent {
-	name: string;
-	port: string;
-	require: string[];
-	prefer: string[];
-	negotiation: Negotiation;
-	deps: string[];
-	region?: string;
-	objective: string;
-	placement?: PlacementCriteria;
-}
+// ── The declaration manifest, re-exported from its owner ────────────────────
+//
+// `ResourceIntent` and the placement vocabulary were declared here. They are
+// now `@hobo/manifest-declaration`'s, and re-exported so every consumer keeps
+// its import path. The types re-exported are the **authoring** ones: mutable,
+// unbranded, field-for-field what this file declared, because the Planner and
+// `src/intent.ts` build intents with object literals and assign `intent.region`
+// after construction — neither a brand nor a `readonly` admits that.
+// `ParsedResourceIntent` is the branded refinement, obtainable only from
+// `parseResourceIntent`; it is exported alongside rather than instead.
+export {
+	type Negotiation,
+	type ParsedPlacementAffinityRule,
+	type ParsedPlacementCriteria,
+	type ParsedPlacementPickN,
+	type ParsedPlacementPropertySelector,
+	type ParsedPlacementSpread,
+	type ParsedResourceIntent,
+	type PlacementAffinityMode,
+	type PlacementAffinityRule,
+	type PlacementCriteria,
+	type PlacementPickN,
+	type PlacementPropertySelector,
+	type PlacementScope,
+	type PlacementSelectorOp,
+	type PlacementSpread,
+	parseResourceIntent,
+	type ResourceIntent,
+	ResourceIntentError,
+	toResourceIntent,
+} from "@hobo/manifest-declaration";
+export { DEPLOYMENT_PLAN_SCHEMA };
 
 // domain-view: capability-negotiation verdict; wire form is CapabilityVerdict in data-models/cloud.proto.
 export type CapabilityVerdict =
 	| { kind: "full" }
 	| { kind: "partial"; missing: string[] }
 	| { kind: "none" };
+
+// ── Why the plan manifest is NOT re-exported here ───────────────────────────
+//
+// `ResourcePlan` and `DeploymentPlan` also live in `@hobo/manifest-plan`, and
+// the intent was to re-export them the same way the declaration shapes above
+// are. Measured, they cannot be — not because of the brand, which is
+// mechanically removable, but because of one field:
+//
+//   1. `@hobo/manifest-plan` exports only the branded, deeply-readonly parsed
+//      types. Re-exporting them directly fails 8 places in `src/` alone: the
+//      three object literals that build plans (`planner/plan.ts` twice,
+//      `cd/fixtures.ts`) and `plan.ts`'s `node.region = outcome.region`.
+//   2. Stripping the brand and the readonly modifiers with a mapped type
+//      leaves exactly one error, and it is a genuine divergence rather than a
+//      typing artifact: `@hobo/manifest-plan` narrows `realizationParameters`
+//      to `Record<string, PlanParameterValue>` (JSON values only, because a
+//      `Date`, a function or an `undefined` canonicalizes to something other
+//      than itself and would move the plan digest), while this package types
+//      it `Record<string, unknown>` all the way back through
+//      `planner/profile-matching.ts` to `@hobo/yards`' `BindingRow.properties`.
+//      `@hobo/yards`' own authoring surface (`yard.ts`) already says
+//      `Record<string, JsonValue>`; `binding.ts` is the outlier.
+//
+// Closing (2) is a three-file narrowing in `packages/cloud/src/planner/` and
+// `packages/yards/src/binding.ts` — outside the file ownership of the swarm
+// that wrote this note, so it is recorded rather than taken. Until it lands the
+// two declarations are kept in parity by
+// `packages/manifest-round-trip/test/upstream-parity.test.ts`, which reads both
+// files and fails on any field, optionality or value-type drift.
 
 // domain-view: resolved plan node; wire form is ResourcePlan in data-models/cloud.proto.
 export interface ResourcePlan {

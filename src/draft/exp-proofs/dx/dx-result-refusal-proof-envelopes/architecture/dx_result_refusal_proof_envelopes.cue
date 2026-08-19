@@ -8,9 +8,9 @@ package dx_result_refusal_proof_envelopes
   "non-reactive-sink" | "migration-blocked" | "rollback-available" | "support-handoff"
 
 #Audience: {
-  personas: [...=~"^.+$"] & {0: string}
-  accessibility_needs: [...=~"^.+$"] & {0: string}
-  success_criteria: [...=~"^.+$"] & {0: string}
+  personas: [...=~"^.+$"] & [_, ...]
+  accessibility_needs: [...=~"^.+$"] & [_, ...]
+  success_criteria: [...=~"^.+$"] & [_, ...]
 }
 
 #DxResultEnvelope: {
@@ -24,16 +24,16 @@ package dx_result_refusal_proof_envelopes
   trace_id: =~"^trace-dx-.+$"
   correlation_id: =~"^corr-dx-.+$"
   redaction_class: #RedactionClass
-  accessibility_notes: [...=~"^.+$"] & {0: string}
-  copy_notes: [...=~"^.+$"] & {0: string}
+  accessibility_notes: [...=~"^.+$"] & [_, ...]
+  copy_notes: [...=~"^.+$"] & [_, ...]
 }
 
 #DxResultRefusalProof: {
   issue: "HOBO-571"
   phase: "M1"
   audience: #Audience
-  mocked_boundaries: [...=~"^.+$"] & {0: string}
-  references: [...=~"^docs/design/.+\\.md$"] & {0: string}
+  mocked_boundaries: [...=~"^.+$"] & [_, ...]
+  references: [...=~"^docs/design/.+\\.md$"] & [_, ...]
   envelopes: [...#DxResultEnvelope]
 }
 

@@ -4,11 +4,14 @@ import { describe, expect, it } from "vitest";
 
 import { evaluateCelldBucketCas } from "../src/index.js";
 import { startS3CasServer } from "./helpers/s3-cas.js";
+import {
+	celldBinPath,
+	esbuildPath,
+	requireCelldBin,
+} from "./helpers/toolchain.js";
 
-const CELLD_BIN = process.env.CELLD_BIN ?? "/tmp/hobo-live/bin/celld";
-const ESBUILD =
-	process.env.CELLD_ESBUILD ??
-	"/home/codex/.herdr/worktrees/hobo/celld/node_modules/.pnpm/@esbuild+linux-arm64@0.25.12/node_modules/@esbuild/linux-arm64/bin/esbuild";
+const CELLD_BIN = celldBinPath();
+const ESBUILD = esbuildPath();
 
 async function runCelld(
 	args: string[],
@@ -49,14 +52,6 @@ async function runCelld(
 			resolve({ status, stdout, stderr });
 		});
 	});
-}
-
-function requireCelldBin(): void {
-	if (!existsSync(CELLD_BIN)) {
-		throw new Error(
-			`celld live test requires ${CELLD_BIN} (set CELLD_BIN). Missing binary is a failure.`,
-		);
-	}
 }
 
 describe("celld live baremetal", () => {

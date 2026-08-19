@@ -35,7 +35,6 @@
 		"@types/node": "^22.15.29"
 	},
 	"scripts": {
-		"prebuild": "pnpm --filter @hobo/core build",
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"typecheck:types": "tsc --noEmit -p tsconfig.types.json",

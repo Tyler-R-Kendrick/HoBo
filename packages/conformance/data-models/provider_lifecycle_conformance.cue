@@ -42,10 +42,8 @@ package conformance
 	suite_id: "hobo.conformance.provider-lifecycle/v1"
 	passed:   int & >=0 & <=6
 	failed: [...#ProviderLifecycleFailureRecord]
-}
 
-// Six cases, every one of them accounted for: a run that names the standard
-// suite neither invents passes nor loses failures.
-#ProviderLifecycleResultRecord: {
-	passed + len(failed) == 6
+	// Six cases, every one of them accounted for: a run that names the standard
+	// suite neither invents passes nor loses failures.
+	_everyCaseAccountedFor: true & (passed + len(failed) == 6)
 }

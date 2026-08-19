@@ -29,7 +29,7 @@ import {
 } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
-import { STANDARD_CAPABILITY_PROFILES } from "../src/standard-profiles.js";
+import { STANDARD_CAPABILITY_PROFILES } from "../src/index.js";
 
 /** The registry's own schema-version id is not a capability anyone can bind. */
 const NOT_A_CAPABILITY = new Set(["hobo.capability-profile/v1"]);

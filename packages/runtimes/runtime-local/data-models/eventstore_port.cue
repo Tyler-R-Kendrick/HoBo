@@ -1,7 +1,5 @@
 package data_models
 
-import "event_envelope.cue"
-
 #EventInput: {
 	type: string & =~"^[a-z][a-zA-Z0-9]*\\.[A-Z][A-Za-z0-9]*$"
 	v:    int & >0

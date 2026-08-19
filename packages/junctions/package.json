@@ -4,7 +4,10 @@
 	"license": "MIT",
 	"type": "module",
 	"private": true,
-	"files": ["LICENSE", "dist"],
+	"files": [
+		"LICENSE",
+		"dist"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -24,11 +27,10 @@
 		"@types/node": "^22.15.29"
 	},
 	"scripts": {
-		"prebuild": "pnpm --filter @hobo/yards build",
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm --filter @hobo/bindles build && pnpm --filter @hobo/camps build && pnpm --filter @hobo/yards build",
+		"pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts",
 		"test": "vitest run"
 	}
 }

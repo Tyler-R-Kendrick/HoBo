@@ -99,6 +99,31 @@ const request = () =>
 		credentialRef: CREDENTIAL_REF,
 	});
 
+/**
+ * The refusal each injected fault must produce.
+ *
+ * A bare `rejects.toThrow()` — what these rows carried before — proves only
+ * "the reconcile did not resolve", which every one of these cases satisfies
+ * for the wrong reason just as easily as the right one: a resolver that
+ * refused every faulted call with one generic error, or a harness that threw
+ * before the fault was even injected, read identically. Naming the refusal per
+ * fault is also how the *shape* of the guarantee becomes visible: a transport
+ * failure propagates verbatim, while a provider that answers with the wrong
+ * envelope is refused with the status it answered with.
+ */
+const REFUSAL: Readonly<Record<string, string>> = {
+	"network-error": "chaos: connection reset by peer",
+	timeout: "chaos: request exceeded 15000ms deadline",
+	"server-error":
+		'r2 create bucket assets: Cloudflare response has no boolean "success" field, so it is not the documented v4 envelope (status 500)',
+	"rate-limited":
+		'r2 create bucket assets: Cloudflare response has no boolean "success" field, so it is not the documented v4 envelope (status 429)',
+	"malformed-body":
+		"r2 create bucket assets: Cloudflare returned a status 200 body that is not JSON, so the outcome of the call is unknown and it is refused rather than assumed; retry, and if it repeats the API contract has changed",
+	"truncated-body":
+		"r2 create bucket assets: Cloudflare returned a status 200 body that is not JSON, so the outcome of the call is unknown and it is refused rather than assumed; retry, and if it repeats the API contract has changed",
+};
+
 describe("chaos: the resolver plane under fault", () => {
 	let real: ReturnType<typeof account>;
 	beforeEach(() => {
@@ -118,7 +143,9 @@ describe("chaos: the resolver plane under fault", () => {
 
 		// Call 0 is the existence GET; call 1 is the create POST.
 		const chaos = chaosTransport(real.transport, [{ at: 1, fault }]);
-		await expect(r2.reconcile(request(), chaos.transport)).rejects.toThrow();
+		await expect(r2.reconcile(request(), chaos.transport)).rejects.toThrow(
+			REFUSAL[fault],
+		);
 		expect(chaos.fired).toHaveLength(1);
 
 		// The retry runs against a clean transport, as a real re-run would.
@@ -137,7 +164,9 @@ describe("chaos: the resolver plane under fault", () => {
 		const chaos = chaosTransport(real.transport, [
 			{ at: 1, fault: "truncated-body" },
 		]);
-		await expect(r2.reconcile(request(), chaos.transport)).rejects.toThrow();
+		await expect(r2.reconcile(request(), chaos.transport)).rejects.toThrow(
+			REFUSAL["truncated-body"],
+		);
 
 		// The write really landed despite the caller's failure.
 		expect(real.buckets.size).toBe(1);
@@ -154,7 +183,9 @@ describe("chaos: the resolver plane under fault", () => {
 		if (r2 === undefined) return;
 		for (const fault of ["network-error", "server-error", "timeout"] as const) {
 			const chaos = chaosTransport(real.transport, [{ at: 1, fault }]);
-			await expect(r2.reconcile(request(), chaos.transport)).rejects.toThrow();
+			await expect(r2.reconcile(request(), chaos.transport)).rejects.toThrow(
+				REFUSAL[fault],
+			);
 		}
 		await r2.reconcile(request(), real.transport);
 		expect(real.buckets.size).toBe(1);

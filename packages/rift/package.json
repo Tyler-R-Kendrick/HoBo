@@ -23,7 +23,7 @@
 		"postbuild": "node -e \"require('node:fs').chmodSync('dist/bin/hobo-rift.js', 0o755)\"",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm run build",
+		"pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts",
 		"test": "vitest run"
 	},
 	"devDependencies": {

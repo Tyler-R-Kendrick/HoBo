@@ -170,3 +170,4 @@
 | 0159 | The developer loop: OOB app test harness (in-process whole-graph + ephemeral-Camp lanes), provider scratch harness, credentials-as-code CI preview lanes | [portability-extensibility](07-portability-extensibility.md#adr-0159) |
 | 0160 | `drizzle-kit` as the default relational schema-diff engine: deploy-owned generation, HoBo-gated expand/backfill/contract apply | [data-plane](03-data-plane.md#adr-0160) |
 | 0161 | Better Auth as the default self-hosted full-featured `hobo:auth` adapter, packaged as an auth bundle over existing ports | [identity-security](02-identity-security.md#adr-0161) |
+| 0162 | Package tiering: a tier base library is legitimate only when the base package's whole public surface *is* the tier's vocabulary; per-group verdicts retiring the banked-edge allowlist | [architecture-core](01-architecture-core.md#adr-0162) |

@@ -81,6 +81,28 @@ artifact digest equals its manifest digest, shared memory implying a
 cross-origin-isolated host, `released` requiring both halves of the teardown).
 The parsed types above are the executable view of that pair.
 
+## Why the asset guard is this package's own
+
+Eight provider transports in this repo delegate to `guardTransport` in
+`@hobo/core`. This one cannot, and the blocker is structural rather than a
+policy gap: `TransportResponse.body` in core is a `string`, and this transport's
+is a `Uint8Array` because one of its two routes returns WebAssembly.
+
+Routing bundle bytes through a string-bodied guard is not a typing
+inconvenience, it is corruption. The three bytes `ff fe 80` decode under UTF-8
+to three U+FFFD replacement characters and re-encode as nine — an 11-byte
+preamble becomes 17 — and `guardTransport`'s byte cap would then be measuring
+the corrupted length rather than the bundle's.
+
+Same-origin is a second difference, but a smaller one: it is an *additional*
+constraint on top of an allowlist, not a replacement for one, and it comes with
+a dev-server escape (`http://localhost:3000`) that core refuses on the port as
+well as the scheme.
+
+What is shared is the rule that actually drifted: `encodesPathSeparator` comes
+from `@hobo/core`, so the percent-encoded-separator refusal has one definition
+across every transport in the repo.
+
 ## Contracts
 
 `contracts/provider-browser-wasm-host-origin.pact.json` is the consumer-driven

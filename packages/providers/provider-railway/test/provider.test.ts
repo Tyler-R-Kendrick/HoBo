@@ -4,7 +4,10 @@ import {
 	railwayNativePorts,
 	supportsAnonymousTemporaryDeploy,
 } from "../src/index.js";
-import { provisionTemporaryEnvironmentStation } from "../src/temporary-station.js";
+import {
+	provisionTemporaryEnvironmentStation,
+	TemporaryProvisionUnavailableError,
+} from "../src/temporary-station.js";
 
 describe("@hobo/provider-railway", () => {
 	it("exposes Matching-honest native ports", () => {
@@ -20,8 +23,32 @@ describe("@hobo/provider-railway", () => {
 	});
 
 	it("temporary provision path", async () => {
-		await expect(
-			provisionTemporaryEnvironmentStation({ stationId: "st-1" }),
-		).rejects.toThrow(/fail closed|no password-free|Temporary/i);
+		// The previous `/fail closed|no password-free|Temporary/i` matched the
+		// word "Temporary" — which the *class name* and half the vocabulary in
+		// this package contain — so it could not distinguish this refusal from
+		// any other error thrown on the way. The refusal is structured data on
+		// purpose; assert the data, not a word in the prose.
+		const refused = await provisionTemporaryEnvironmentStation({
+			stationId: "st-1",
+		}).then(
+			() => undefined,
+			(cause: unknown) => cause,
+		);
+		expect(
+			refused,
+			"temporary provisioning resolved instead of refusing",
+		).toBeInstanceOf(TemporaryProvisionUnavailableError);
+		const error = refused as TemporaryProvisionUnavailableError;
+		// Literals, not `railwayTemporaryStationRefusal()`: comparing the
+		// refusal to the same function that produced it asserts nothing at all
+		// — it stays green through any change to the payload.
+		expect(error.code).toBe("HOBO_TEMP_PROVISION_UNAVAILABLE");
+		expect(error.refusal).toEqual({
+			providerId: "railway",
+			code: "HOBO_TEMP_PROVISION_UNAVAILABLE",
+			supportsAnonymousTemporaryDeploy: false,
+			reason:
+				"Railway has no password-free Temporary Accounts / agent provision API. Examples fail closed — no permanent tokens.",
+		});
 	});
 });

@@ -559,6 +559,12 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+      '@hobo/manifest-capability':
+        specifier: workspace:*
+        version: link:../manifest-capability
+      '@hobo/manifest-request':
+        specifier: workspace:*
+        version: link:../manifest-request
     devDependencies:
       '@hobo/contract-harness':
         specifier: workspace:*
@@ -664,6 +670,12 @@ importers:
       '@hobo/identity':
         specifier: workspace:*
         version: link:../identity
+      '@hobo/manifest-declaration':
+        specifier: workspace:*
+        version: link:../manifest-declaration
+      '@hobo/manifest-plan':
+        specifier: workspace:*
+        version: link:../manifest-plan
     devDependencies:
       '@hobo/contract-harness':
         specifier: workspace:*
@@ -1408,6 +1420,82 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(@vitest/coverage-v8@4.1.10(vitest@4.1.9))(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/manifest-capability:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(@vitest/coverage-v8@4.1.10(vitest@4.1.9))(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/manifest-declaration:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(@vitest/coverage-v8@4.1.10(vitest@4.1.9))(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/manifest-plan:
+    devDependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(@vitest/coverage-v8@4.1.10(vitest@4.1.9))(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/manifest-request:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(@vitest/coverage-v8@4.1.10(vitest@4.1.9))(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/manifest-round-trip:
+    dependencies:
+      '@hobo/manifest-capability':
+        specifier: workspace:*
+        version: link:../manifest-capability
+      '@hobo/manifest-declaration':
+        specifier: workspace:*
+        version: link:../manifest-declaration
+      '@hobo/manifest-plan':
+        specifier: workspace:*
+        version: link:../manifest-plan
+      '@hobo/manifest-request':
+        specifier: workspace:*
+        version: link:../manifest-request
+    devDependencies:
+      '@hobo/capability-profiles':
+        specifier: workspace:*
+        version: link:../capability-profiles
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
       vitest:
         specifier: ^4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(@vitest/coverage-v8@4.1.10(vitest@4.1.9))(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))

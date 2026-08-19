@@ -5,7 +5,10 @@
 	"description": "Experimental Durable Objects dialect adapter for celld. Not a WASM Component Model host. One fleet per trust boundary.",
 	"type": "module",
 	"private": true,
-	"files": ["LICENSE", "dist"],
+	"files": [
+		"LICENSE",
+		"dist"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -19,10 +22,11 @@
 		"@types/node": ">=24.0.0"
 	},
 	"scripts": {
-		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
+		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm run build",
+		"fetch:celld": "node --import tsx ../../../scripts/fetch-celld.mts",
+		"pretest": "node --experimental-strip-types ../../../scripts/ensure-built.mts && pnpm run fetch:celld",
 		"test": "vitest run"
 	}
 }

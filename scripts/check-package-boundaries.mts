@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import {
 	detectWorkspaceCycles,
+	mergeWorkspaceEdges,
 	parseWorkspaceEdge,
 	validateBoundaryImports,
 	type WorkspaceEdge,
@@ -342,20 +343,23 @@ function main(): void {
 		}
 	}
 
-	const edgeMap = new Map<string, WorkspaceEdge>();
+	const discovered: WorkspaceEdge[] = [];
 
 	for (const packageJsonPath of packageJsonFiles) {
 		const packageDir = dirname(packageJsonPath);
 
-		for (const edge of [
+		discovered.push(
 			...collectDeclaredEdges(packageJsonPath, packageMap),
 			...collectSourceEdges(packageDir, packageMap),
-		]) {
-			edgeMap.set(`${edge.from}->${edge.to}`, edge);
-		}
+		);
 	}
 
-	const edges = [...edgeMap.values()];
+	// Deduplication used to be a bare `Map.set` keyed on `from->to`, so the
+	// surviving edge — and with it the dev marker the harness exemption keys on
+	// — was whichever discovery happened to be spread in last. Merging takes the
+	// strictest provenance instead, which makes the outcome independent of the
+	// order these two collectors are called in.
+	const edges = mergeWorkspaceEdges(discovered);
 	const boundaryErrors = validateBoundaryImports(edges).errors;
 	const cycleErrors = detectWorkspaceCycles(edges).errors;
 	const allErrors = [...boundaryErrors, ...cycleErrors];

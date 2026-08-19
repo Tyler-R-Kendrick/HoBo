@@ -1,37 +1,16 @@
 package troubleshooting_guides_scope_acceptance
 
+import "list"
+
 TroubleshootingGuidesScope: {
 	issue: "HOBO-437"
 	project: "Troubleshooting Guides"
 	phase: "M0"
 	goal: =~"Troubleshooting Guides"
-	personas: [...Persona] & {
-		[0]: _
-		[1]: _
-		[2]: _
-		[3]: _
-		[4]: _
-	}
-	scope_in: [...string] & {
-		[0]: _
-		[1]: _
-		[2]: _
-		[3]: _
-		[4]: _
-	}
-	scope_out: [...string] & {
-		[0]: _
-		[1]: _
-		[2]: _
-		[3]: _
-		[4]: _
-	}
-	non_goals: [...string] & {
-		[0]: _
-		[1]: _
-		[2]: _
-		[3]: _
-	}
+	personas: [...Persona] & list.MinItems(5)
+	scope_in: [...string] & list.MinItems(5)
+	scope_out: [...string] & list.MinItems(5)
+	non_goals: [...string] & list.MinItems(4)
 	boundaries: BoundarySet
 	dependencies: [...Dependency]
 	initiative_dependencies: [...InitiativeDependency]

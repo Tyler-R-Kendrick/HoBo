@@ -158,6 +158,28 @@ parsers enforce (DNS-1123 labels, replica and port ranges, limit ≥ request,
 `available` implying an observed current generation, retention naming its
 reason). The parsed types above are the executable view of that pair.
 
+## Why the transport guard is this package's own
+
+Eight provider transports in this repo delegate to `guardTransport` in
+`@hobo/core`. This one does not, and the reason is not "different semantics" in
+the abstract — it is two of core's checks that an apiserver client cannot
+satisfy, measured against the real policy:
+
+| what core does | what an apiserver needs |
+|---|---|
+| `allowedHosts` must contain the hostname exactly | there is no host to write down: the apiserver is the operator's own, at an address only they know |
+| the port must be empty or `443` | clusters answer on `:6443`, and `kubectl proxy` on `:8001`; `https://cluster.example.test:6443/api/v1/namespaces` is refused by core on the port before any host rule is consulted |
+
+Expressing this package in core's policy would mean adding an `allowAnyHost` and
+an `allowedPorts` escape — that is, making the two checks the guard exists for
+optional, for the benefit of one caller. The `allowInsecureLoopback` flag here
+covers only the `kubectl proxy` cleartext case, which is the *smallest* of the
+differences, so lifting it alone would not have helped.
+
+What is shared is the rule that actually drifted: `encodesPathSeparator` comes
+from `@hobo/core`, so the percent-encoded-separator refusal has one definition
+across every transport in the repo.
+
 ## Contracts
 
 `contracts/provider-kubernetes-apiserver.pact.json` is the consumer-driven

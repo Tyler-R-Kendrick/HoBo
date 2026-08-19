@@ -40,8 +40,8 @@ package stage_gate
 
 	if status == "passed" {
 		checks: [#CheckResult & {status: "passed"}, ...]
-		signature.verified: true
-		artifact.digest_sha256: #DigestSha256
+		signature: verified: true
+		artifact: digest_sha256: #DigestSha256
 	}
 	if finished_at != "" && started_at != "" {
 		finished_at: string

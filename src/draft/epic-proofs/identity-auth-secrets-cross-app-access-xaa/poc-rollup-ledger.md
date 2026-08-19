@@ -34,6 +34,33 @@
 | Identity OCSF audit export | `src/draft/technical-proofs/identity-ocsf-export-contract` | HOBO-282 | SecOps reviewer | Identity/token/session facts export as linked OCSF records | Identity governance and observation | OCSFCollector | ocsf-siem-export | verified | implemented_in_reference_impl | Export is one-way and redacted. |
 | Token broker HA credential cache | `src/draft/technical-proofs/token-broker-ha-cache-contract` | HOBO-287 | Yard operator | Broker failover renews same-or-narrower credentials inside grace | Workload credential ladder | BrokerCredentialCache, ProviderSTS | broker-ha-cache, provider-sts | verified | implemented_in_reference_impl | Cache never bypasses revocation or scope widening checks. |
 
+## Cascade absorptions
+
+Changes to referenced experience proofs that this rollup has taken in.
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/exp-proofs/dx/svid-cross-tenant-guard-contract` | `data-models/proof.cue` | none |
+
+All of these are the same edit, applied across 58 draft proofs at once. Each
+ships a `data-models/proof.proto` declaring `message ProofIdentity { string
+slug = 1; string layer = 2; }` beside a `proof.cue` that defined a bare
+anonymous `slug`/`layer` record — a record with no name to tie it to the
+message it is supposed to constrain, which is what `architecture:guard`
+reports as `missing-cue-constraints`. The record is now the named definition
+`#ProofIdentity`, embedded at top level so the file still reads as the same
+concrete data.
+
+One constraint changed with it: `slug: string` became `slug: string & !=""`.
+The old form restated proto3's declared type and refused nothing, so a proof
+identifying itself with the empty string validated. Measured with cue v0.14.0,
+old against new: `slug: ""` goes 0 → 1 and nothing else moves — a well-formed
+record stays 0, `slug: 7` stays 1, `layer: "ux"` stays 1.
+
+No disposition, evidence path, Linear link, or acceptance claim in the table
+above moves. No proof in this epic identifies itself with an empty slug, so
+nothing that validated before stops validating.
+
 ## Adversarial Scope Review
 
 | Review area | Decision |

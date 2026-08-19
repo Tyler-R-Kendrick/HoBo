@@ -35,6 +35,6 @@ package architecture_evidence
 	ok:                       bool
 	checks:                   [...#Stage6AcceptanceCheck]
 	priorGates:               [...#PriorStageGateRecord]
-	governance:               [...#GovernanceEvidenceItem] & len(list) == 4
+	governance:               [...#GovernanceEvidenceItem] & [_, _, _, _]
 	v1GaChecklistComplete:    bool
 }

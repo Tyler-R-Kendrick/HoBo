@@ -14,6 +14,8 @@
 // Yard binding row state rides yard.Registered, so row state is never
 // duplicated across two streams.
 
+package bindings
+
 #BindingRealization: "native" | "pack" | "bridge"
 
 #BindingProjectionKind: "provider-binding" | "environment-secret-ref" | "service-binding-files" | "wasi-config" | "in-process"

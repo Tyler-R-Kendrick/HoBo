@@ -11,6 +11,12 @@ import {
 
 export type ProfileMaturity = "stable" | "preview" | "experimental";
 
+// data-models/capability_profile.proto, encoded by src/wire.ts) spells this
+// checked_at with an `optional string note`. This view is camelCase and uses
+// exactOptionalPropertyTypes, so an absent note and a note holding undefined
+// are different values here — a distinction proto3 can only express through
+// explicit presence, and one the round-trip tests assert byte-identically.
+// domain-view: the wire form (hobo.manifest.capability.v1.EvidenceSourceRef in
 export type EvidenceSourceRef = {
 	/** Official documentation / specification URL. */
 	readonly url: string;
@@ -19,6 +25,13 @@ export type EvidenceSourceRef = {
 	readonly note?: string;
 };
 
+// `string` on the wire, because the repo's data-models idiom closes such
+// vocabularies in CUE rather than in a proto enum (a proto3 enum would add an
+// UNSPECIFIED zero value that an unset field decodes to). enumValues is also
+// richer: optional here, a StringList presence wrapper on the wire, because a
+// bare `repeated` cannot tell absent from empty and that difference moves the
+// registry digest twelve golden offers carry.
+// domain-view: valueKind is a closed five-member union here and a plain
 export type FeatureDescriptor = {
 	readonly key: string;
 	readonly description: string;
@@ -32,6 +45,11 @@ export type FeatureDescriptor = {
 	readonly enumValues?: readonly string[];
 };
 
+// identical field names — valueKind is narrowed to three members, because
+// "semver-range" and "string-set" are shapes a product advertises, not promises
+// it can be conformance-tested against. The wire message is separate for the
+// same reason; collapsing the two would erase the narrowing.
+// domain-view: deliberately NOT the same type as FeatureDescriptor despite the
 export type GuaranteeDescriptor = {
 	readonly key: string;
 	readonly description: string;
@@ -43,6 +61,11 @@ export type GuaranteeDescriptor = {
 	readonly enumValues?: readonly string[];
 };
 
+// closed BindlePrimitive union, so an unsupported version or a primitive that
+// disagrees with the id is unrepresentable rather than merely refused. The wire
+// message carries both as `string`; parseCapabilityProfile is the boundary that
+// re-establishes the narrowing on the way in.
+// domain-view: schemaVersion is a pinned literal type and primitive is the
 export type CapabilityProfileDescriptor = {
 	readonly schemaVersion: "hobo.capability-profile/v1";
 	readonly id: string;

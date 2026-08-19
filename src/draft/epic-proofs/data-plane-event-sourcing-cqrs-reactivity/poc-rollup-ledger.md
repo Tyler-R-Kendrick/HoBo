@@ -35,6 +35,32 @@
 | Poison event quarantine | PR #351 / HOBO-291 evidence | HOBO-291 | Security reviewer | Bad event emits quarantine fact and deterministic skip | Adversarial data integrity | EventStore append, projection sink | eventstore-append-boundary, projection-sink-boundary | simulated | integrated | Behavior implemented from issue/PR evidence without taking over child PR. |
 | Crypto-shred erasure | `src/draft/technical-proofs/crypto-shred-erasure-contract` | HOBO-295 | Security reviewer | Forgettable fields tombstone without log rewrite | Adversarial data integrity | Governance/erasure | governance-erasure-boundary | verified | implemented_in_reference_impl | Crypto-shred log/keyring POC is executed. |
 
+## Cascade absorptions
+
+Changes to referenced technical proofs that this rollup has taken in, and what
+each one did or did not move.
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/deterministic-replay-engine` | `architecture/replay_report.cue` was unparseable — every line of every definition body carried a leading `#`, which is a definition sigil in CUE and not a comment, so the file had never been read by any tool that claims to check it. Repaired, and the divergence guard was then replaced. | No disposition, evidence path, or Linear link moves. The `Replay/live equivalence spike` row's `promoting_via_hobo_601` disposition and its `assertReplayEqualsLive` promotion target are unchanged. |
+
+The guard change is the part that is not merely cosmetic. `#ReplayDivergence`
+carried `if live_state_digest == replay_state_digest { _conflict: "divergence
+requires differing digests" }`, which reads as a refusal and enforces nothing:
+assigning a string to a hidden field nothing else defines can never conflict.
+Measured on a reduced case with `cue v0.14.0` — a divergence record whose two
+digests are byte-identical exits **0** under the old form and fails under the
+new `_divergent: true & (live_state_digest != replay_state_digest)` with
+`conflicting values false and true`; a record with genuinely differing digests
+exits 0 under both. This is the same form the production counterpart at
+`packages/runtime/data-models/replay/replay_report.cue` now carries.
+
+What this does **not** change is any claim in the table above. The
+`Snapshot/replay divergence` row's `simulated` disposition rests on the
+simulation's full-replay recovery assertion, not on this schema; nothing in
+`simulation/` or `reference-implementation.yaml` consumed the unenforced guard,
+because nothing could — the file did not parse.
+
 ## Adversarial Scope Review
 
 | Review area | Decision |

@@ -3,6 +3,8 @@
 
 package architecture_evidence
 
+import "list"
+
 #ControlPlaneApiProofMode: "reference-fixture" | "contract-fixture" | "projection-snapshot" | "support-safe-evidence"
 
 #ControlPlaneApiOperation: {
@@ -11,9 +13,9 @@ package architecture_evidence
 	cliCommand:           string & !=""
 	apiEndpoint:          =~"^/"
 	mcpTool:              =~"^hobo_"
-	requestShape:         [...string] & >0
-	responseShape:        [...string] & >0
-	domainTerms:          [...string] & >0
+	requestShape:         [...string] & list.MinItems(1)
+	responseShape:        [...string] & list.MinItems(1)
+	domainTerms:          [...string] & list.MinItems(1)
 	sharedResultEnvelope: true
 	fixtureId:            string & !=""
 }
@@ -38,9 +40,9 @@ package architecture_evidence
 	phase:              "M1"
 	targetPackage:      "src/draft/exp-proofs/api/control-plane-api-resource-lifecycle-shapes"
 	proofNote:          "docs/design/proofs/control-plane-api-resource-lifecycle-shapes/README.md"
-	designRefs:         [...string] & >0
-	operations:         [...#ControlPlaneApiOperation] & >=8
-	refusalEnvelopes:   [...#ControlPlaneApiRefusalEnvelope] & >=8
+	designRefs:         [...string] & list.MinItems(1)
+	operations:         [...#ControlPlaneApiOperation] & list.MinItems(8)
+	refusalEnvelopes:   [...#ControlPlaneApiRefusalEnvelope] & list.MinItems(8)
 	contractFixtures:   #ControlPlaneApiContractFixtures
-	scopeOut:           [...string] & >0
+	scopeOut:           [...string] & list.MinItems(1)
 }

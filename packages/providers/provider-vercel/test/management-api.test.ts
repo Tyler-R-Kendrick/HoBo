@@ -91,17 +91,67 @@ describe("outbound requests are pinned to the official API", () => {
 			).hostname,
 		).toBe("api.vercel.com");
 
-		for (const url of [
-			"http://api.vercel.com/v9/projects/prj_1",
-			"https://api.vercel.com.attacker.example/v9/projects/prj_1",
-			"https://user:pass@api.vercel.com/v9/projects/prj_1",
-			"https://api.vercel.com:8443/v9/projects/prj_1",
-			"https://api.vercel.com/v1/undocumented/thing",
-			"not a url",
-		]) {
-			expect(() =>
-				assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY),
-			).toThrow(/PROVIDER|https|host|path|url/iu);
+		// Six distinct refusals — scheme, lookalike host, userinfo, non-default
+		// port, off-prefix path, unparseable. The previous matcher was
+		// `/PROVIDER|https|host|path|url/iu`, which every one of core's guard
+		// messages satisfies, so the six rows were interchangeable: any single
+		// check could have been deleted and this loop would still have gone
+		// green on a neighbouring refusal's wording. Each row now names the
+		// guard branch it is here to exercise.
+		const refusals: readonly [url: string, guard: string, fragment: RegExp][] =
+			[
+				[
+					"http://api.vercel.com/v9/projects/prj_1",
+					"TRANSPORT_SCHEME_FORBIDDEN",
+					/^request url must use https, got http$/u,
+				],
+				[
+					"https://api.vercel.com.attacker.example/v9/projects/prj_1",
+					"TRANSPORT_HOST_FORBIDDEN",
+					/^host api\.vercel\.com\.attacker\.example is not exactly one of the allowlisted provider hosts \(api\.vercel\.com\)$/u,
+				],
+				[
+					"https://user:pass@api.vercel.com/v9/projects/prj_1",
+					"TRANSPORT_HOST_FORBIDDEN",
+					/must not embed userinfo/u,
+				],
+				[
+					"https://api.vercel.com:8443/v9/projects/prj_1",
+					"TRANSPORT_HOST_FORBIDDEN",
+					// Vercel names no extra port, so the allowed set is 443 alone.
+					// Anchored on both the set and the rejected port: a policy that
+					// silently widened would no longer match.
+					/^request url must use the default https port or one this policy allows \(443\), got 8443$/u,
+				],
+				[
+					"https://api.vercel.com/v1/undocumented/thing",
+					"TRANSPORT_PATH_FORBIDDEN",
+					/^path \/v1\/undocumented\/thing is outside the allowlisted prefixes \(/u,
+				],
+				[
+					"not a url",
+					"TRANSPORT_SCHEME_FORBIDDEN",
+					/^request url is not a valid absolute URL$/u,
+				],
+			];
+		for (const [url, guard, fragment] of refusals) {
+			let thrown: unknown;
+			try {
+				assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY);
+			} catch (cause) {
+				thrown = cause;
+			}
+			expect(isVercelProviderError(thrown), `${url} was admitted`).toBe(true);
+			const error = thrown as Error & {
+				code: string;
+				detail: Record<string, unknown>;
+			};
+			expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
+			// `detail.guard` carries core's own refusal code and is the only
+			// thing that distinguishes one refusal from another here: every
+			// guard failure surfaces as the same provider-level code.
+			expect(error.detail).toMatchObject({ guard });
+			expect(error.message).toMatch(fragment);
 		}
 	});
 

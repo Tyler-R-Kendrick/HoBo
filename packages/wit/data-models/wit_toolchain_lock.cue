@@ -1,5 +1,7 @@
 package data_models
 
+import "list"
+
 #GeneratorPin: {
 	name:    string & != ""
 	version: string & =~"^[0-9]+\\.[0-9]+\\.[0-9]+$"
@@ -32,7 +34,7 @@ package data_models
 	smoke_generators:     [...#GeneratorPin]
 	compat_floor:         #CompatFloor
 	wit_deps:             [...#InterfacePin]
-	guards:               list.UniqueItems[string, ...string]
+	guards:               [...string] & list.UniqueItems()
 }
 
 #FunctionSignature: {

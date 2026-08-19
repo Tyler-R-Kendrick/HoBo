@@ -1,5 +1,7 @@
 package dogfood_yard_release_candidate
 
+import "list"
+
 #EvidenceStatus: "accepted" | "accepted-risk" | "missing"
 #ProofMode: "design-record" | "reference-fixture" | "mocked-drill" | "manual-review" | "live-recording"
 #LaunchRiskEffect: "unchanged" | "increased" | "reduced"
@@ -68,26 +70,10 @@ package dogfood_yard_release_candidate
 	project:   "V1 Dogfood Yard & Hosted Operations"
 	phase:     "M3"
 	milestone: "M3 Release candidate"
-	evidence: [...#EvidenceItem] & {
-		if len(_) < 6 {
-			_|_: "at least six evidence items required"
-		}
-	}
-	blockers: [...#Blocker] & {
-		if len(_) < 2 {
-			_|_: "at least two blockers required"
-		}
-	}
-	accepted_risks: [...#AcceptedRisk] & {
-		if len(_) < 2 {
-			_|_: "at least two accepted risks required"
-		}
-	}
-	release_cutline_dependencies: [...#ReleaseCutlineDependency] & {
-		if len(_) < 4 {
-			_|_: "at least four cutline dependencies required"
-		}
-	}
+	evidence: [...#EvidenceItem] & list.MinItems(6)
+	blockers: [...#Blocker] & list.MinItems(2)
+	accepted_risks: [...#AcceptedRisk] & list.MinItems(2)
+	release_cutline_dependencies: [...#ReleaseCutlineDependency] & list.MinItems(4)
 	follow_ups:               [...#FollowUp]
 	initiative_status:        #InitiativeStatus
 	scope_out:                [...string]

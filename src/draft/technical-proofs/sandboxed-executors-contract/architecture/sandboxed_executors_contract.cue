@@ -2,6 +2,8 @@
 
 package architecture_evidence
 
+import "list"
+
 #SandboxedExecutorBackendKind: "unspecified" | "firecracker" | "container"
 #SandboxedExecutorJobKind: "unspecified" | "iac-pulumi" | "componentize"
 

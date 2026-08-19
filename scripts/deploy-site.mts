@@ -70,7 +70,15 @@ function build(): void {
 	console.log("building site workspace dependencies…");
 	execFileSync(
 		"pnpm",
-		["exec", "turbo", "run", "build", "--filter", "hobo-site^..."],
+		[
+			"exec",
+			"turbo",
+			"run",
+			"build",
+			"--filter",
+			"hobo-site^...",
+			"--concurrency=100%",
+		],
 		{ cwd: REPO_ROOT, stdio: "inherit" },
 	);
 	console.log("building site…");

@@ -6,14 +6,14 @@ package dapr_parity_anchor_audit
 #Row: {
 	feature:        #Feature
 	status:         #Status
-	designAnchors:  [...string] & >0
+	designAnchors:  [...string] & [_, ...]
 	notes:          string & =~"\\S"
 }
 
 #Audit: {
 	issue:     "HOBO-699"
 	targetDoc: "docs/competitors/dapr.md"
-	rows:      [...#Row] & ==2
+	rows:      [...#Row] & [_, _]
 }
 
 DaprParityAnchorAudit: #Audit

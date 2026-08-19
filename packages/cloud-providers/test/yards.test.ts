@@ -151,6 +151,9 @@ describe("composeYard decides nothing", () => {
 	});
 
 	it("still fails closed on a credential-shaped property", () => {
+		// `composeYard` refuses for many reasons; a bare `.toThrow()` did not
+		// establish that the *credential-property* rule is the one firing,
+		// which is the entire claim in this test's name.
 		expect(() =>
 			composeYard("y", {
 				provider: "aws",
@@ -163,7 +166,9 @@ describe("composeYard decides nothing", () => {
 					},
 				],
 			}),
-		).toThrow();
+		).toThrow(
+			"yard binding properties must not contain credentials (forbidden key: apiKey, profile web.hosted/v1) — reference secrets by locator instead",
+		);
 	});
 
 	it("still rejects a duplicate row", () => {
@@ -176,6 +181,8 @@ describe("composeYard decides nothing", () => {
 					{ profile: "web.hosted/v1", productId: "aws.example/v1" },
 				],
 			}),
-		).toThrow();
+		).toThrow(
+			"duplicate yard binding row for profile web.hosted/v1 (productId aws.example/v1, connectivityId -)",
+		);
 	});
 });

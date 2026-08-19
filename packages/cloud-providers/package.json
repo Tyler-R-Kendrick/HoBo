@@ -34,11 +34,10 @@
 		"@types/node": "^22.15.29"
 	},
 	"scripts": {
-		"prebuild": "pnpm --filter @hobo/yards --filter @hobo/provider-aws --filter @hobo/provider-azure --filter @hobo/provider-cloudflare --filter @hobo/provider-digitalocean --filter @hobo/provider-gcp --filter @hobo/provider-hetzner --filter @hobo/provider-hostinger --filter @hobo/provider-kubernetes --filter @hobo/provider-vercel build",
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm run build",
+		"pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts",
 		"test": "vitest run"
 	}
 }

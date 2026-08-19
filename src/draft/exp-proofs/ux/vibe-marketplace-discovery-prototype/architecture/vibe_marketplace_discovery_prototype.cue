@@ -1,5 +1,7 @@
 package vibe_marketplace_discovery_prototype
 
+import "list"
+
 #ListingState: "preview-only" | "limited-beta" | "installable" | "policy-blocked" | "deprecated" | "yanked"
 #Path: "happy-path" | "blocked-path" | "stale-or-unknown-evidence" | "support-handoff"
 #ProofMode: "live" | "simulated" | "reference fixture" | "scope-out"
@@ -49,8 +51,8 @@ package vibe_marketplace_discovery_prototype
 
 #DiscoveryPath: {
 	kind:               #Path
-	fixtureIds:         [...=~"^mdp-"] & >0
-	proofModes:         [...#ProofMode] & >0
+	fixtureIds:         [...=~"^mdp-"] & list.MinItems(1)
+	proofModes:         [...#ProofMode] & list.MinItems(1)
 	expectedUserSignal: string & =~"\\S"
 	supportHandoff:     string & =~"\\S"
 }
@@ -60,11 +62,11 @@ package vibe_marketplace_discovery_prototype
 	phase:         "M2"
 	targetPackage: "src/draft/exp-proofs/ux/vibe-marketplace-discovery-prototype"
 	proofNote:     "docs/design/proofs/vibe-marketplace-discovery-prototype/README.md"
-	designRefs:    [...string] & >0
-	sourceIssues:  [...#SourceIssue] & >=3
-	catalog:       [...#CatalogFixture] & >=6
-	paths:         [...#DiscoveryPath] & >=4
-	accessibilityNotes: [...string] & >=5
+	designRefs:    [...string] & list.MinItems(1)
+	sourceIssues:  [...#SourceIssue] & list.MinItems(3)
+	catalog:       [...#CatalogFixture] & list.MinItems(6)
+	paths:         [...#DiscoveryPath] & list.MinItems(4)
+	accessibilityNotes: [...string] & list.MinItems(5)
 	scopeOut: [
 		"No live storefront, browse/search service, marketplace service, or production UI.",
 		"No Registry storage, registry resolver, package hosting, signing, or install-time verification.",

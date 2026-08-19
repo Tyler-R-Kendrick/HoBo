@@ -14,7 +14,11 @@
  * bounded time — and two separate policies, because the control plane and the
  * data plane are different origins with different rules.
  */
-import { encodesPathSeparator } from "@hobo/core";
+import {
+	assertAllowedEndpoint as assertAllowedEndpointCore,
+	TransportGuardError,
+	type TransportGuardPolicy,
+} from "@hobo/core";
 import { redactProviderText, UpstashProviderError } from "./errors.js";
 
 export type TransportMethod = "GET" | "POST";
@@ -85,72 +89,51 @@ export const UPSTASH_DATA_PLANE_POLICY: TransportPolicy = {
 };
 
 /**
+ * This package's policy shape onto core's. Only the field names differ: the
+ * prefix is singular here and the timeout cap is `timeoutMs`.
+ */
+function corePolicy(policy: TransportPolicy): TransportGuardPolicy {
+	return {
+		allowedHosts: policy.allowedHosts,
+		allowedHostSuffixes: policy.allowedHostSuffixes,
+		allowedPathPrefixes: [policy.allowedPathPrefix],
+		maxResponseBytes: policy.maxResponseBytes,
+		maxTimeoutMs: policy.timeoutMs,
+	};
+}
+
+/**
+ * Core refuses with a `TransportGuardError`; this package's callers catch
+ * `UpstashProviderError`. Translating rather than re-throwing keeps the thrown
+ * type — and the `PROVIDER_CONTRACT_CHANGED` code every call site already
+ * matches on — exactly as it was before the URL check moved into core.
+ */
+function asProviderError(cause: unknown): unknown {
+	if (!(cause instanceof TransportGuardError)) return cause;
+	return new UpstashProviderError("PROVIDER_CONTRACT_CHANGED", cause.message, {
+		detail: { guard: cause.code },
+	});
+}
+
+/**
  * Parse an outbound URL against a policy. Returns the parsed URL so callers
  * cannot accidentally keep using the unchecked string.
+ *
+ * Every rule here now lives in `@hobo/core`, including the dot-anchored suffix
+ * match the data plane needs. The copy this replaced applied the suffix without
+ * checking its shape, so a policy written `"upstash.io"` rather than
+ * `".upstash.io"` admitted `evilupstash.io` — measured, not theorised. Core
+ * refuses that policy outright.
  */
 export function assertAllowedEndpoint(
 	url: string,
 	policy: TransportPolicy,
 ): URL {
-	let parsed: URL;
 	try {
-		parsed = new URL(url);
-	} catch {
-		throw new UpstashProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			"request url is not a valid URL",
-		);
+		return assertAllowedEndpointCore(url, corePolicy(policy));
+	} catch (cause) {
+		throw asProviderError(cause);
 	}
-	if (parsed.protocol !== "https:") {
-		throw new UpstashProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			`request url must use https, got ${parsed.protocol.replace(":", "")}`,
-		);
-	}
-	if (parsed.username !== "" || parsed.password !== "") {
-		throw new UpstashProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			"request url must not embed userinfo",
-		);
-	}
-	if (parsed.port !== "" && parsed.port !== "443") {
-		throw new UpstashProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			`request url must use the default https port, got ${parsed.port}`,
-		);
-	}
-	const host = parsed.hostname.toLowerCase();
-	const allowed =
-		policy.allowedHosts.includes(host) ||
-		policy.allowedHostSuffixes.some(
-			// `.upstash.io` alone is not a match: there has to be a label in
-			// front of it, or `evil.com/.upstash.io` style tricks get closer.
-			(suffix) => host.endsWith(suffix) && host.length > suffix.length,
-		);
-	if (!allowed) {
-		throw new UpstashProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			`host ${host} is not an allowlisted official provider host`,
-			{ detail: { host } },
-		);
-	}
-	// Percent-encoded separators survive WHATWG parsing and are decoded only by
-	// the origin, past every check here — so the prefix test below would pass a
-	// path that then climbs out of the prefix. Shared with core so the rule has
-	// one definition; the refusal stays this package's own error type.
-	if (encodesPathSeparator(parsed.pathname)) {
-		throw new UpstashProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			`path ${parsed.pathname} percent-encodes a path separator or dot segment, which this guard refuses rather than decodes`,
-		);
-	}
-	if (!parsed.pathname.startsWith(policy.allowedPathPrefix)) {
-		throw new UpstashProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			`path ${parsed.pathname} is outside the allowlisted ${policy.allowedPathPrefix} prefix`,
-		);
-	}
-	return parsed;
 }
 
 function headerValue(
@@ -170,6 +153,19 @@ function headerValue(
  * A 3xx is rejected rather than followed: this API documents no redirects, so
  * one is either a contract change or a hijack, and neither should silently
  * resolve into a successful-looking parse.
+ *
+ * The URL check above is core's. This response half deliberately is not, and
+ * the two differences are both ones where swapping in `guardTransport` would
+ * change observable behaviour rather than share an implementation:
+ *
+ * - A caller that asks for more time or more bytes than the policy allows is
+ *   *clamped* here and *refused* there. Core states the refusal as doctrine —
+ *   a clamp turns an authoring mistake into a mystery timeout — and this
+ *   package's suite pins the clamp. Reconciling them is a behaviour change to
+ *   argue on its own merits, not a side effect of consolidating a guard.
+ * - Any 3xx is refused here; core lets a `Location`-less 3xx (a 304) through
+ *   as an ordinary cache answer. Adopting core's rule would relax a refusal
+ *   this driver currently makes.
  */
 export function createGuardedTransport(
 	inner: UpstashTransport,

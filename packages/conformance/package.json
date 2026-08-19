@@ -54,10 +54,10 @@
 		"tsx": "^4.20.3"
 	},
 	"scripts": {
-		"build": "pnpm --filter @hobo/core build && pnpm --filter @hobo/runtime build && pnpm --filter @hobo/capability-profiles build && pnpm --filter @hobo/trust build && pnpm --filter @hobo/bindings build && pnpm --filter @hobo/claims build && tsc -p tsconfig.json",
+		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm --filter @hobo/core build && pnpm --filter @hobo/runtime build && pnpm --filter @hobo/runtime-local build && pnpm --filter @hobo/provider-kafka build && pnpm --filter @hobo/runtime-dapr build && pnpm --filter @hobo/capability-profiles build && pnpm --filter @hobo/trust build && pnpm --filter @hobo/bindings build && pnpm --filter @hobo/claims build",
+		"pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts",
 		"build-corpus": "node --import tsx src/corpus/record.ts",
 		"conformance:live": "node --import tsx src/live/cli.ts",
 		"test": "vitest run",

@@ -25,10 +25,10 @@
 		"@types/node": ">=24.0.0"
 	},
 	"scripts": {
-		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
+		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm run build && pnpm --filter @hobo/contract-harness build",
+		"pretest": "node --experimental-strip-types ../../../scripts/ensure-built.mts",
 		"test": "vitest run"
 	},
 	"license": "MIT"

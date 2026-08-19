@@ -82,3 +82,48 @@ describe("check-package-boundaries", () => {
 		assert.ok(report.edges.length > 200, "the edge graph collapsed");
 	});
 });
+
+/**
+ * The dev-only harness exemption, on the real workspace rather than a fixture.
+ *
+ * `packages/packs/pack-framework` is a layer-2 adapter that lists
+ * `@hobo/contract-harness` under `devDependencies` and imports it only from its
+ * test suite. Under the strict layering rules that edge is a violation; it is
+ * clean solely because the declared-dependency collector marks it `dev` and
+ * `isDevOnlyTestHarnessEdge` exempts it. Nothing tested that end to end, so the
+ * exemption could have been deleted, or the marker could have stopped being
+ * set, with the only symptom being a gate that stayed green for a different
+ * reason.
+ */
+describe("dev-only contract-harness edge", () => {
+	it("is discovered, and exempted rather than absent", () => {
+		const { status, report } = run();
+
+		assert.ok(
+			report.edges.some(
+				(edge) =>
+					edge.from_path === "packages/packs/pack-framework" &&
+					edge.to_path === "packages/contract-harness",
+			),
+			"pack-framework -> contract-harness is missing from the graph, so a clean run proves nothing about the dev exemption",
+		);
+		assert.deepEqual(report.violations, []);
+		assert.equal(status, 0);
+	});
+
+	it("reports one edge per package pair, so a dev sighting cannot be counted twice", () => {
+		const { report } = run();
+		const seen = new Set<string>();
+		const duplicates: string[] = [];
+		for (const edge of report.edges) {
+			const key = `${edge.from_path}->${edge.to_path}`;
+			if (seen.has(key)) duplicates.push(key);
+			seen.add(key);
+		}
+		assert.deepEqual(
+			duplicates,
+			[],
+			"mergeWorkspaceEdges must collapse the declared and source sightings of a pair into one edge; two rows means the dev marker is decided by whichever row a rule happens to read",
+		);
+	});
+});

@@ -11,6 +11,9 @@ type JsonValue =
 	| readonly JsonValue[]
 	| Readonly<{ readonly [key: string]: JsonValue }>;
 
+// public-contract: the event-store fold this provider is addressed by. Stored
+// events name the resolver that produced them, so a rename orphans every fact
+// already written under the old id.
 export const HETZNER_EVENT_STORE_RESOLVER_ID =
 	"hetzner.yard.event-store/v1" as const;
 

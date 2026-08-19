@@ -31,10 +31,28 @@
     "CELLD_ESBUILD"
   ],
   "tasks": {
-    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "!test/**",
+        "!tests/**",
+        "!contracts/**",
+        "!features/**",
+        "!__snapshots__/**",
+        "!**/*.test.ts",
+        "!**/*.spec.ts",
+        "!vitest.config.*",
+        "!vitest.*.config.*",
+        "!playwright.config.*"
+      ],
+      "outputs": ["dist/**"]
+    },
+    "@hobo/ci-guard#build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
     "typecheck": { "dependsOn": ["^build"], "outputs": [] },
     "lint": { "outputs": [] },
-    "test": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "test": { "dependsOn": ["build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
     "ts-autocode#test": { "dependsOn": ["build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
     "test:unit": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
     "test:schema": { "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },

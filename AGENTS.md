@@ -298,6 +298,48 @@ warm) because the repo-wide vitest sweep imports built dists from workspace
 packages, and without it a suite fails on whichever package happened to be
 stale rather than on anything real.
 
+### One build graph, not two
+
+Turbo owns the build graph. `tasks.build.dependsOn` is `["^build"]`, so a
+package's workspace dependencies are already built — and cached — before its
+own build runs, and `tasks.test.dependsOn` is `["build"]`, so a package's own
+dist is there before its tests run.
+
+Never build another workspace package from a package script. 47 packages used
+to carry `"prebuild": "pnpm --filter @hobo/core build"` and 100 carried a
+`pretest` that rebuilt themselves and their dependencies; those run *outside*
+turbo, so they never hit the cache and a full sweep paid roughly 150 cold `tsc`
+invocations underneath the cached graph it had just finished. `pnpm run
+standards:check` fails the tree if one comes back.
+
+A package that genuinely needs its own dist before tests — because someone runs
+`pnpm --filter <pkg> test` directly, outside turbo — uses the shim:
+
+```json
+"pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts"
+```
+
+`scripts/ensure-built.mts` exits immediately when `TURBO_HASH` is set (turbo
+injects it into every task process, `envMode: "strict"` included) and otherwise
+delegates to `turbo run build --filter=<self>`, so the standalone path is cached
+too.
+
+`tasks.build.inputs` excludes `test/**`, `contracts/**`, `**/*.test.ts`, and
+`**/*.md`. Every package's build tsconfig compiles `src` only — `@hobo/ci-guard`
+is the single exception and carries its own task override — so editing a test
+can no longer invalidate 124 builds and everything downstream of them.
+
+Every turbo invocation in this repo passes `--concurrency=100%` — one task per
+logical CPU. This is a **memory** limit, not a speed one, and the difference
+matters: on a fixed 224-task set, turbo's default of 10 and a cap of 4 finish
+within noise of each other (5m49s vs 5m36s on a four-core box), so capping costs
+nothing. What it buys is that a fully-cold 902-task sweep at the default OOM-kills
+`@hobo/example-self-host-yard` — exit 137, `SIGKILL`, not an assertion — because
+each turbo task is a `pnpm` plus a vitest plus its worker pool, and ten of those
+do not fit in 16 GB. Percentage rather than a fixed number so the cap scales with
+whatever machine it lands on.
+
+
 Generated output belongs to exactly one generator. `packages/code/src/_generated`
 is the protobuf codegen pipeline's; TUI art from `gen-logo-tui.mts` /
 `gen-bo-idle-tui.mts` lives in `_generated-art`. Two generators sharing a
@@ -356,6 +398,7 @@ All HoBo implementation work, including `src/draft/<kind>/<slug>` proof packages
 - Enforce every service boundary with PACT contracts. A boundary is not implemented until consumer/provider expectations, headers, payloads, and error envelopes are executable.
 - Define records, messages, data shapes, and domain objects in protobuf first. Runtime record types must be the **generated** ones: a package opts into codegen by adding `data-models/buf.yaml`, runs `pnpm run codegen` (`@hobo/schema-tools` → buf/protoc-gen-es), and imports its types from the checked-in `src/_generated/**_pb.ts` (reference consumer: `packages/core`). Hand-declaring a TS interface that duplicates a proto message is a violation; derived types must be brands/narrowings **of** the generated types. `pnpm run codegen:check` is the drift gate.
 - Attach CUE constraints for every protobuf type and keep them with the protobuf contract or proof package. Do not create a repository-wide `contracts/data-models` catalog; each project/package that defines a CUE-constrained type owns its own local `data-models/` folder.
+- **What the CUE gate actually checks, and what it does not.** `pnpm test:schema` runs two separate things. `scripts/check-cue-schemas.ts` is repo-wide: every `.cue` file must parse, resolve its references, and carry no type conflict that no data could satisfy (a list unified with a number, a func, or a struct). It groups files by directory and `package` clause, so a definition in a sibling file of the same package resolves. It deliberately ignores what `cue vet` says about a schema evaluated against *no* data — `invalid value [] (out of bound !=[])`, `some instances are incomplete`, and a hidden-field constraint reporting `conflicting values false and true` are artifacts of vetting a definition with no instance, not defects, and a check that reported them would flag hundreds of healthy files. `vetCueConstraints` in `@hobo/schema-tools` is the stronger check that evaluates constraints against real records — but it only runs for a package whose `data-models/` has both a `buf.yaml` and `fixtures/valid` + `fixtures/invalid` directories, which is 6 of 191 `data-models` directories. **A green `test:schema` therefore means your constraints are well-formed, not that they have ever been tested against a record.** Ship fixtures if you want the latter.
 - Parse, don't validate: do not pass broad primitive or DTO values after checking them. Introduce derived parsed types whose constructors apply protobuf and CUE constraints so invalid values are unrepresentable beyond the boundary.
 - Build flows on CQRS, event stores, materialized views, and actor models. Actors consume commands, emit events, and coordinate durable state; they do not mutate query read models directly.
 - Keep query surfaces event-driven: expose rx-style projections over materialized views, use cached snapshots for current reads, and persist historical snapshots in a read store.

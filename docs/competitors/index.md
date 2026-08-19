@@ -18,23 +18,23 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 
 | Category | Competitors |
 | -------- | ----------- |
-| [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Crossplane](crossplane.md) · [Facets.cloud](facets.md) · [Harness Platform](harness.md) · [Humanitec](humanitec.md) · [Mia-Platform](mia-platform.md) · [Nomad](nomad.md) · [Qovery](qovery.md) · [Radius](radius.md) |
-| [Portable Application Models & Control Planes](categories/portable-application-models.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [Crossplane](crossplane.md) · [Dapr](dapr.md) · [Facets.cloud](facets.md) · [Humanitec](humanitec.md) · [Nitric](nitric.md) · [Radius](radius.md) · [SST](sst.md) |
-| [Cloud Application Platforms](categories/cloud-application-platforms.md) | [Anonymous container hosts](anon-container-hosts.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [Flux Network](flux-network.md) · [Fly.io](flyio.md) · [Heroku](heroku.md) · [Lakebed](lakebed.md) · [Modal](modal.md) · [Netlify](netlify.md) · [Northflank](northflank.md) · [Qovery](qovery.md) · [Railway](railway.md) · [Render](render.md) · [Vercel](vercel.md) |
+| [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Facets.cloud](facets.md) · [Harness Platform](harness.md) · [Humanitec](humanitec.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [Nomad](nomad.md) · [Qovery](qovery.md) · [Radius](radius.md) |
+| [Portable Application Models & Control Planes](categories/portable-application-models.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [Crossplane](crossplane.md) · [Dapr](dapr.md) · [Facets.cloud](facets.md) · [Humanitec](humanitec.md) · [Massdriver](massdriver.md) · [Nitric](nitric.md) · [Radius](radius.md) · [SST](sst.md) |
+| [Cloud Application Platforms](categories/cloud-application-platforms.md) | [Anonymous container hosts](anon-container-hosts.md) · [AWS Amplify](aws-amplify.md) · [Control Plane](control-plane.md) · [Encore](encore.md) · [Flux Network](flux-network.md) · [Fly.io](flyio.md) · [Heroku](heroku.md) · [Lakebed](lakebed.md) · [Modal](modal.md) · [Netlify](netlify.md) · [Northflank](northflank.md) · [Qovery](qovery.md) · [Railway](railway.md) · [Render](render.md) · [Vercel](vercel.md) |
 | [Developer Portals & IDPs](categories/developer-portals-idps.md) | [Backstage](backstage.md) · [Harness Platform](harness.md) · [Mia-Platform](mia-platform.md) |
 | [Infrastructure-from-Code & Authoring](categories/infrastructure-from-code.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [Nitric](nitric.md) · [SST](sst.md) · [Wasp](wasp.md) · [Winglang](winglang.md) |
-| [Runtime & Distributed Application Substrates](categories/runtime-substrates.md) | [.NET Aspire](aspire.md) · [celld](celld.md) · [Dapr](dapr.md) · [Flux Network](flux-network.md) · [Modal](modal.md) · [Nomad](nomad.md) · [Rivet](rivet.md) · [Spin / Fermyon](spin-fermyon.md) · [Wasm host landscape](wasm-hosts.md) · [wasmCloud](wasmcloud.md) |
-| [Hybrid & Multicloud Enterprise Orchestration](categories/hybrid-multicloud-enterprise.md) | [Crossplane](crossplane.md) · [Facets.cloud](facets.md) · [Mia-Platform](mia-platform.md) |
+| [Runtime & Distributed Application Substrates](categories/runtime-substrates.md) | [.NET Aspire](aspire.md) · [celld](celld.md) · [Control Plane](control-plane.md) · [Dapr](dapr.md) · [Flux Network](flux-network.md) · [Modal](modal.md) · [Nomad](nomad.md) · [Rivet](rivet.md) · [Spin / Fermyon](spin-fermyon.md) · [Wasm host landscape](wasm-hosts.md) · [wasmCloud](wasmcloud.md) |
+| [Hybrid & Multicloud Enterprise Orchestration](categories/hybrid-multicloud-enterprise.md) | [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Facets.cloud](facets.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) |
 | [Self-Hosted PaaS & Server Deployment](categories/self-hosted-paas.md) | [Anonymous container hosts](anon-container-hosts.md) · [Northflank](northflank.md) · [ServerKit](serverkit.md) |
 | [Agentic Infrastructure & Operations](categories/agentic-infrastructure.md) | [Antimetal](antimetal.md) · [Harness Platform](harness.md) · [InsForge](insforge.md) · [Lakebed](lakebed.md) · [Vercel](vercel.md) |
 | [Backend & Data Application Platforms](categories/backend-data-platforms.md) | [AWS Amplify](aws-amplify.md) · [Convex](convex.md) · [InsForge](insforge.md) · [Supabase](supabase.md) · [Wasp](wasp.md) |
 | [Delivery, Release & GitOps](categories/delivery-release-gitops.md) | [Harness Platform](harness.md) · [Octopus Deploy](octopus-deploy.md) |
 | [FinOps, Governance & Placement](categories/finops-governance-placement.md) | [Antimetal](antimetal.md) · [Facets.cloud](facets.md) · [FinOps tooling cohort](finops-tooling.md) · [Harness Platform](harness.md) |
-| [Identity, Networking & Application Delivery](categories/identity-networking-delivery.md) | [NetScaler](netscaler.md) · [ServerKit](serverkit.md) · [shoo.dev](shoo.md) |
+| [Identity, Networking & Application Delivery](categories/identity-networking-delivery.md) | [Control Plane](control-plane.md) · [NetScaler](netscaler.md) · [ServerKit](serverkit.md) · [shoo.dev](shoo.md) |
 
 Categories are many-to-many: several products appear in more than one row above, with a single canonical capture behind each link.
 
-## Canonical captures (43)
+## Canonical captures (45)
 
 | Competitor | Capture | Primary category | Directness | Role relative to HoBo |
 | ---------- | ------- | ---------------- | ---------- | --------------------- |
@@ -45,6 +45,7 @@ Categories are many-to-many: several products appear in more than one row above,
 | **AWS Amplify** | [`aws-amplify.md`](aws-amplify.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | overlapping | Gen-2 code-first TypeScript fullstack backend on AWS CDK — IfC-in-TS analog, AWS-only |
 | **Backstage** | [`backstage.md`](backstage.md) | [`developer-portals-idps`](categories/developer-portals-idps.md) | complementary | CNCF developer portal framework — complementary front-end to a HoBo control plane |
 | **celld** | [`celld.md`](celld.md) | [`runtime-substrates`](categories/runtime-substrates.md) | adjacent | self-hosted Cloudflare Workers/Durable Objects daemon — experimental DO dialect and candidate ActorHost |
+| **Control Plane** | [`control-plane.md`](control-plane.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer |
 | **Convex** | [`convex.md`](convex.md) | [`backend-data-platforms`](categories/backend-data-platforms.md) | adjacent | reactive TypeScript backend-as-a-service — source of the live-query gap and a possible provider target |
 | **Crossplane** | [`crossplane.md`](crossplane.md) | [`portable-application-models`](categories/portable-application-models.md) | overlapping | CNCF Kubernetes control plane for infrastructure — borrow-source and pluggable IaC adapter |
 | **Dapr** | [`dapr.md`](dapr.md) | [`runtime-substrates`](categories/runtime-substrates.md) | overlapping | distributed-application runtime with portable building-block APIs — closest architectural analog to Bindle kinds |
@@ -58,6 +59,7 @@ Categories are many-to-many: several products appear in more than one row above,
 | **Humanitec** | [`humanitec.md`](humanitec.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | Platform Orchestrator for IDPs with dynamic configuration management — head-on orchestrator competitor |
 | **InsForge** | [`insforge.md`](insforge.md) | [`backend-data-platforms`](categories/backend-data-platforms.md) | adjacent | agent-native backend-as-a-service — agent-ops benchmark and possible provider target |
 | **Lakebed** | [`lakebed.md`](lakebed.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | direct | agent-native closed PaaS (Capsules, sync RPC, llms.txt) — named head-on competitor |
+| **Massdriver** | [`massdriver.md`](massdriver.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | bundle-and-artifact platform whose JSON-Schema connection contracts are the closest shipped analog to HoBo's typed capability wiring |
 | **Mia-Platform** | [`mia-platform.md`](mia-platform.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | enterprise platform orchestrator plus developer portal — owns the same application-to-environment span HoBo does, in one commercial suite |
 | **Modal** | [`modal.md`](modal.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | adjacent | Python-first serverless compute for AI/ML with agent Sandboxes — AI-native compute competitor |
 | **Netlify** | [`netlify.md`](netlify.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | composable-web platform (Functions/Edge, Blobs, Netlify DB) — frontend PaaS benchmark |
@@ -91,6 +93,8 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `amplify gen 2` | [AWS Amplify](aws-amplify.md) |
 | `citrix adc` | [NetScaler](netscaler.md) |
 | `clawdship` | [Anonymous container hosts](anon-container-hosts.md) |
+| `controlplane.com` | [Control Plane](control-plane.md) |
+| `cpln` | [Control Plane](control-plane.md) |
 | `dockup` | [Anonymous container hosts](anon-container-hosts.md) |
 | `dotnet aspire` | [.NET Aspire](aspire.md) |
 | `facets cloud` | [Facets.cloud](facets.md) |
@@ -101,6 +105,7 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `harness.io` | [Harness Platform](harness.md) |
 | `hashicorp nomad` | [Nomad](nomad.md) |
 | `kubecost cohort` | [FinOps tooling cohort](finops-tooling.md) |
+| `massdriver.cloud` | [Massdriver](massdriver.md) |
 | `mia platform` | [Mia-Platform](mia-platform.md) |
 | `miaplatform` | [Mia-Platform](mia-platform.md) |
 | `netscaler adc` | [NetScaler](netscaler.md) |

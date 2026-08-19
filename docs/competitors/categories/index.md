@@ -13,17 +13,17 @@ tags: [hobo, competitors, category]
 
 | Category | Competitors |
 | -------- | ----------- |
-| [Comprehensive Platform Orchestrators](platform-orchestrators.md) | 13 |
-| [Portable Application Models & Control Planes](portable-application-models.md) | 11 |
+| [Comprehensive Platform Orchestrators](platform-orchestrators.md) | 16 |
+| [Portable Application Models & Control Planes](portable-application-models.md) | 14 |
 | [Cloud Application Platforms](cloud-application-platforms.md) | 15 |
 | [Developer Portals & IDPs](developer-portals-idps.md) | 6 |
-| [Infrastructure-from-Code & Authoring](infrastructure-from-code.md) | 8 |
+| [Infrastructure-from-Code & Authoring](infrastructure-from-code.md) | 9 |
 | [Runtime & Distributed Application Substrates](runtime-substrates.md) | 11 |
 | [Hybrid & Multicloud Enterprise Orchestration](hybrid-multicloud-enterprise.md) | 7 |
 | [Self-Hosted PaaS & Server Deployment](self-hosted-paas.md) | 3 |
 | [Agentic Infrastructure & Operations](agentic-infrastructure.md) | 6 |
 | [Backend & Data Application Platforms](backend-data-platforms.md) | 5 |
-| [Delivery, Release & GitOps](delivery-release-gitops.md) | 3 |
+| [Delivery, Release & GitOps](delivery-release-gitops.md) | 5 |
 | [FinOps, Governance & Placement](finops-governance-placement.md) | 6 |
 | [Identity, Networking & Application Delivery](identity-networking-delivery.md) | 4 |
 

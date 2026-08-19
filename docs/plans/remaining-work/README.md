@@ -102,7 +102,33 @@ Statements in prose age badly. This repo has carried, in committed prose:
 Before you rely on a count, a claim, or a "this is deliberate", check it against
 the code. If it is wrong, correct it *and say so in your handback*.
 
-### 0.5 Registering a new package — read this before creating one
+### 0.5 Isolation, and the one thing that genuinely serialises
+
+Exclusive *file* ownership is not enough on its own. Nine agents in one working
+tree share a git index, and their commits interleave into an unreviewable
+history even when no two touch the same file. **Each swarm works in its own git
+worktree on its own branch** (`git worktree add ../hobo-<swarm-id>
+-b swarm/<swarm-id>`), commits there, and hands back. The coordinator
+integrates. Do not `git pull`, rebase onto another swarm's branch, or merge
+anything yourself.
+
+**The lockfile is the real serialisation point, and pretending otherwise wastes
+a run.** A new package is not resolvable until `pnpm install` links it, and
+`pnpm-lock.yaml` is coordinator-owned. So if you are E–H:
+
+- Run `pnpm install` locally. You need it for your own tests to resolve.
+- **Do not commit `pnpm-lock.yaml`.** Report in your handback that you added a
+  workspace package. The coordinator regenerates the lockfile once, after all
+  four land, because four independently-regenerated lockfiles conflict in ways
+  that are tedious and easy to resolve wrongly.
+- If your `pnpm install` reports peer warnings unrelated to your package, ignore
+  them; they pre-exist.
+
+This is the honest shape of the parallelism: design, implementation and testing
+all run concurrently, and exactly one integration step — the lockfile and the
+coordinator-owned files — does not.
+
+### 0.6 Registering a new package — read this before creating one
 
 **A new package that is not registered silently disables the entire boundary
 gate.** `parseWorkspaceEdge` *throws* on an unclassified workspace path rather
@@ -128,7 +154,7 @@ Two consequences bind Swarms E–H:
    registration has not landed — say so in your handback rather than editing C's
    file.
 
-### 0.6 Scope discipline
+### 0.7 Scope discipline
 
 Do exactly your swarm's deliverable. If you find a defect outside your file
 ownership, **report it in your handback; do not fix it.** Two agents editing one
@@ -138,7 +164,7 @@ If your deliverable turns out to be wrong, impossible, or already done, stop and
 say so. A swarm that reports "this premise is false, here is the evidence" has
 succeeded. One that invents work to look productive has not.
 
-### 0.7 Handback format
+### 0.8 Handback format
 
 Write `.sdlc/report-<swarm-id>.json`:
 

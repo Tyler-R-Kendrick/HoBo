@@ -20,7 +20,7 @@ function isAllPackageTurbo(check: Check) {
 	return (
 		check.command === "pnpm" &&
 		check.args.join(" ") ===
-			"exec turbo run build typecheck lint test --filter=[HEAD^...HEAD]"
+			"exec turbo run build typecheck lint test --filter=[HEAD^...HEAD] --concurrency=100%"
 	);
 }
 
@@ -506,7 +506,7 @@ test("site source changes select its workspace tests and typecheck", () => {
 			(check) =>
 				check.command === "pnpm" &&
 				check.args.join(" ") ===
-					"exec turbo run typecheck --filter=./site --output-logs=new-only",
+					"exec turbo run typecheck --filter=./site --output-logs=new-only --concurrency=100%",
 		),
 		true,
 	);

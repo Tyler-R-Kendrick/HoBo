@@ -312,9 +312,24 @@ curl -sS -H "Authorization: Bearer $T" \
   "https://ghcr.io/v2/denoland/celld/manifests/sha256:7a4380721b6400073f2a26afe70a828410169f658d31b5ef61383e648ca0c530"
 ```
 
-returns HTTP 200 and an OCI image index. Walk index → per-platform manifest
-(`linux/amd64`) → layers, pull each layer blob from
-`/v2/denoland/celld/blobs/<digest>`, untar, and locate the `celld` executable.
+returns HTTP 200 and an OCI image index. Walk index → per-platform manifest →
+layers, pull each layer blob from `/v2/denoland/celld/blobs/<digest>`, untar,
+and locate the `celld` executable.
+
+The index was resolved while writing this brief and contains **four** entries:
+
+```
+linux/amd64        sha256:8634eac20f69ffe9910…
+linux/arm64        sha256:27732fa9bdb243adec7…
+unknown/unknown    sha256:1a504b34123fa53b86a…
+unknown/unknown    sha256:62accb1efd72b9888d8…
+```
+
+The two `unknown/unknown` entries are attestation manifests, not images. Select
+by `platform.os === "linux"` and `platform.architecture` matching the host —
+do not index into the array positionally, and do not try to extract a binary
+from an attestation. Handle both amd64 and arm64; this environment is x86_64
+but the repo's own notes record an aarch64 host elsewhere.
 
 **Deliverable.**
 

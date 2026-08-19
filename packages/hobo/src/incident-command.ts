@@ -60,7 +60,7 @@ export function createIncidentCommand(
 					status: "ok",
 					code: "HOBO_INCIDENT_STATUS",
 					message: active
-						? `incident: active ${must(last!.failure).kind} ${must(last!.failure).incidentId}`
+						? `incident: active ${must(must(last, "last").failure).kind} ${must(must(last, "last").failure).incidentId}`
 						: "incident: no active CD incident",
 					data: {
 						command: "incident",
@@ -68,8 +68,8 @@ export function createIncidentCommand(
 						active,
 						...(active
 							? {
-									kind: must(last!.failure).kind,
-									incidentId: must(last!.failure).incidentId,
+									kind: must(must(last, "last").failure).kind,
+									incidentId: must(must(last, "last").failure).incidentId,
 								}
 							: {}),
 						defaultPath: "a2h",

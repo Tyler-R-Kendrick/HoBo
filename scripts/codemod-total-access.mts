@@ -236,6 +236,31 @@ function rewriteFile(file: string): { changed: number; skipped: number } {
 		applied += 1;
 	}
 
+	// Re-running over an already-converted file must not add a second import:
+	// biome merges the two lines and leaves `import { must, must }`, a parse
+	// error. Merge into the existing one instead.
+	const existing = new RegExp(
+		`import \\{([^}]*)\\} from "${importSpecifier(file).replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}";`,
+		"u",
+	).exec(out);
+	if (existing && !collides) {
+		const merged = [
+			...new Set([
+				...(existing[1] ?? "")
+					.split(",")
+					.map((n) => n.trim())
+					.filter(Boolean),
+				...names,
+			]),
+		].sort();
+		out = out.replace(
+			existing[0],
+			`import { ${merged.join(", ")} } from "${importSpecifier(file)}";`,
+		);
+		if (!DRY) writeFileSync(file, out);
+		return { changed: applied, skipped };
+	}
+
 	const importLine = collides
 		? `import * as totalAccess from "${importSpecifier(file)}";`
 		: `import { ${names.join(", ")} } from "${importSpecifier(file)}";`;

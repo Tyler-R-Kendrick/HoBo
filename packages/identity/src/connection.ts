@@ -3,7 +3,7 @@
  * Setup at most once; short-lived tokens thereafter. Secrets never leave vault.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { get } from "@hobo/core/total-access";
+import { mustGet } from "@hobo/core/total-access";
 import {
 	CONNECTION_EVENTS,
 	type ConnectionEvent,
@@ -231,7 +231,7 @@ export class ConnectionService {
 		validateConnectionEvent(event);
 		this.append(event);
 		return {
-			connection: get(this.byId, id),
+			connection: mustGet(this.byId, id),
 			events: Object.freeze([event]),
 		};
 	}
@@ -297,7 +297,7 @@ export class ConnectionService {
 		this.append(authorized);
 
 		return {
-			connection: get(this.byId, existing.id),
+			connection: mustGet(this.byId, existing.id),
 			events: Object.freeze([started, authorized]),
 		};
 	}
@@ -332,7 +332,7 @@ export class ConnectionService {
 		validateConnectionEvent(event);
 		this.append(event);
 		return {
-			connection: get(this.byId, existing.id),
+			connection: mustGet(this.byId, existing.id),
 			events: Object.freeze([event]),
 		};
 	}
@@ -380,7 +380,7 @@ export class ConnectionService {
 		validateConnectionEvent(event);
 		this.append(event);
 		return {
-			connection: get(this.byId, existing.id),
+			connection: mustGet(this.byId, existing.id),
 			events: Object.freeze([event]),
 		};
 	}
@@ -401,7 +401,7 @@ export class ConnectionService {
 		validateConnectionEvent(event);
 		this.append(event);
 		return {
-			connection: get(this.byId, existing.id),
+			connection: mustGet(this.byId, existing.id),
 			events: Object.freeze([event]),
 		};
 	}

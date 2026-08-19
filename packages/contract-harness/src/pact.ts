@@ -71,14 +71,19 @@ export function parsePactDocument(
 	const interactions = parseInteractions(record.interactions, issues);
 	parseMetadata(record.metadata, issues);
 
-	if (issues.length > 0) {
-		throw new PactParseError(issues, source);
+	if (issues.length > 0 || !consumer || !provider || !interactions) {
+		// The `!` variants relied on "issues is empty implies all three parsed",
+		// which is true today and invisible to the checker. Test the values.
+		throw new PactParseError(
+			issues.length > 0 ? issues : ["document is missing a required section"],
+			source,
+		);
 	}
 
 	return {
-		consumer: consumer!,
-		provider: provider!,
-		interactions: interactions!,
+		consumer,
+		provider,
+		interactions,
 		metadata: { pactSpecification: { version: "3.0.0" } },
 	};
 }

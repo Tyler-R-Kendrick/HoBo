@@ -4,7 +4,7 @@ import path from "node:path";
 import type { CliContext } from "@hobo/cli";
 import type { CredentialAuditRow } from "@hobo/cloud";
 import type { EventEnvelope } from "@hobo/core";
-import { first, get, must } from "@hobo/core/total-access";
+import { first, must, mustGet } from "@hobo/core/total-access";
 import { createInMemoryKms, JwtSvidIssuer } from "@hobo/identity";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
@@ -241,7 +241,7 @@ describe("auditEventsToOcsf (ADR-0046 §2 widening)", () => {
 			["erasure.Requested", 4, "Erasure Requested"],
 			["erasure.Completed", 5, "Erasure Completed"],
 		] as const) {
-			const record = get(byType, type);
+			const record = mustGet(byType, type);
 			expect(record.category_uid).toBe(5);
 			expect(record.class_uid).toBe(5019);
 			expect(record.class_name).toBe("Device Config State Change");

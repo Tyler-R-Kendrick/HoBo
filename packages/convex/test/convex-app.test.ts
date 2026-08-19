@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { bindle } from "@hobo/bindles";
@@ -14,6 +15,15 @@ const REPO_ROOT = path.resolve(
 	"../../..",
 );
 
+/** The `web` resource, asserted present — every definition under test declares one. */
+function webResource(definition: {
+	readonly resources: Record<string, { readonly annotations: unknown }>;
+}): { readonly annotations: Record<string, unknown> } {
+	const web = definition.resources.web;
+	assert(web, "definition is missing its web resource");
+	return web as { readonly annotations: Record<string, unknown> };
+}
+
 describe("@hobo/convex", () => {
 	it("convexApp(root) is a thin marker; bindle attaches webapp annotation", () => {
 		const definition = bindle((b) => {
@@ -26,9 +36,7 @@ describe("@hobo/convex", () => {
 				.dependsOn(backend, auth);
 			return { backend, auth, web };
 		});
-		const root = convexRootFromAnnotations(
-			definition.resources.web!.annotations,
-		);
+		const root = convexRootFromAnnotations(webResource(definition).annotations);
 		expect(root).toBe("examples/convex-swaghaus");
 		expect(
 			definition.resources.web?.annotations.some(isConvexWebAppAnnotation),

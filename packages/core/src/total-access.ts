@@ -11,11 +11,11 @@
  * Parse, don't validate — and don't lie to the type checker.
  */
 
-export class MissingValueError extends Error {
-	constructor(what?: string) {
-		super(what ? `missing required value: ${what}` : "missing required value");
-		this.name = "MissingValueError";
-	}
+/** eli5: one place to phrase "the thing that should have been here wasn't". */
+function missing(what: string | undefined): Error {
+	return new Error(
+		what ? `missing required value: ${what}` : "missing required value",
+	);
 }
 
 /**
@@ -27,7 +27,7 @@ export class MissingValueError extends Error {
  */
 export function must<T>(value: T | undefined | null, what?: string): T {
 	if (value === undefined || value === null) {
-		throw new MissingValueError(what);
+		throw missing(what);
 	}
 	return value;
 }
@@ -45,9 +45,7 @@ export type Indexed<T> = {
 export function at<T>(items: Indexed<T>, index: number, what?: string): T {
 	const value = items.at(index);
 	if (value === undefined) {
-		throw new MissingValueError(
-			`${what ?? "collection"}[${index}] (length ${items.length})`,
-		);
+		throw missing(`${what ?? "collection"}[${index}] (length ${items.length})`);
 	}
 	return value;
 }
@@ -63,10 +61,14 @@ export function last<T>(items: Indexed<T>, what?: string): T {
 }
 
 /** Value for `key`, or a named error naming the map and key. */
-export function get<K, V>(map: ReadonlyMap<K, V>, key: K, what?: string): V {
+export function mustGet<K, V>(
+	map: ReadonlyMap<K, V>,
+	key: K,
+	what?: string,
+): V {
 	const value = map.get(key);
 	if (value === undefined) {
-		throw new MissingValueError(`${what ?? "map"}[${String(key)}]`);
+		throw missing(`${what ?? "map"}[${String(key)}]`);
 	}
 	return value;
 }

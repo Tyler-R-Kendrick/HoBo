@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { RuntimeDurabilityBackend } from "@hobo/conformance/runtime-port";
-import { get, must } from "@hobo/core/total-access";
+import { must, mustGet } from "@hobo/core/total-access";
 import { createInMemoryActorHost } from "../../src/actor-host/in-memory.js";
 import {
 	createManualClock,
@@ -78,6 +78,9 @@ function createBrokenFenceActorHost() {
 			if (typeof request.fold !== "function") {
 				throw new TypeError("request.fold must be a function");
 			}
+			// Bind it here: the narrowing above does not survive into the nested
+			// closures below, which is what the assertion was papering over.
+			const fold = request.fold;
 			const stream = getBrokenStream(streams, actorKey);
 			const initialState = structuredClone(request.initialState);
 
@@ -96,7 +99,7 @@ function createBrokenFenceActorHost() {
 				read() {
 					let state = structuredClone(initialState) as { value: number };
 					for (const event of stream.events) {
-						state = request.fold!(state, structuredClone(event)) as {
+						state = fold(state, structuredClone(event)) as {
 							value: number;
 						};
 					}
@@ -118,7 +121,7 @@ function getBrokenStream(
 	if (!streams.has(key)) {
 		streams.set(key, { events: [] });
 	}
-	return get(streams, key);
+	return mustGet(streams, key);
 }
 
 function requireNonEmptyString(value: unknown, fieldName: string): string {

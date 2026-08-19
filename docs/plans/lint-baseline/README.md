@@ -185,3 +185,60 @@ gone. The 16 that carry real domain vocabulary stayed.
 (`handle.withEndpoint!({…})`, `request.fold!(…)`) because wrapping them changes
 meaning. The rest sit in packages that do not depend on `@hobo/core`, where the
 fix is to restructure rather than to add a dependency for a utility.
+
+## Pass 3 result: `noNonNullAssertion` reaches zero
+
+The remaining 77 were all hand fixes. The codemod could not take them: it skips
+call targets, because wrapping `obj.method!(...)` changes what is being called,
+and 14 of the packages involved have no `@hobo/core` dependency, where adding
+one for a utility is the wrong trade.
+
+**Optional methods** (`overlay.configureMagicDns!`, `store.claimSubscription!`,
+`host.streamTurn!`, `container.withDnsRecord!`) go through `node:assert`, which
+narrows via its `asserts` signature. No dependency, and a failure names the
+missing capability instead of throwing `undefined is not a function` a frame
+later.
+
+**Narrowing lost across a closure** — three sites had a correct guard whose
+effect did not reach the code that needed it. `replay/storage.ts` tested
+`query.harnessFlagKey` and then read it inside a `.filter()` arrow; both
+`request.fold` fixtures threw on a non-function and then lost that inside nested
+closures. All bound to a local first.
+
+**Guards that were wrong, not merely missing:**
+
+* `contract-harness/parsePactDocument` relied on "issues is empty implies all
+  three participants parsed" — true today, invisible to the checker, and false
+  the moment a parse helper returns undefined without recording an issue.
+* `adapter-openbao` justified `entry.seeds[idx]!` with `idx >= 0`, which holds
+  only while `seeds` and `versions` stay the same length.
+* `patterns/render.ts` fell back to `renderings[0]!`, i.e. `undefined`, for a
+  pattern with no renderings at all.
+* `wit/index.ts` asserted a `Map.get` whose guard above tested a *different*
+  lookup.
+
+**One rewrite reverted for changing behaviour.** `trails/definition.ts` drains a
+BFS queue with `q.shift()!`. An index cursor removes both the assertion and the
+O(n) shift — but the loop body calls `q.sort()`, which with a cursor re-orders
+entries the traversal has already passed. It is back to `shift()` with an
+explicit guard.
+
+The codemod was also **not idempotent**: a second pass added a second
+`import { must }`, which biome merged into `import { must, must }` — a parse
+error in four files. It now merges into the existing import.
+
+## `noTemplateCurlyInString` is off, deliberately
+
+All 31 findings were legitimate. `${...}` inside a plain string is a first-class
+grammar in this codebase, in four different dialects:
+
+* HoBo's own output-reference placeholders, `"${resources.db.outputs.url}"` —
+  there is a `parseOutputPlaceholder` whose whole job is to read them;
+* Terraform and Cloudflare HCL interpolation, `"${terraform_data.hello.id}"`;
+* shell parameter expansion inside generated scripts, `"${GREETING_PREFIX:-hello}"`;
+* one template-literal *type* emitted as source text.
+
+The rule exists to catch "you meant a template literal and typed quotes". Here
+it has no true positives available to it and will regrow false ones with every
+new provider adapter. Thirty-one suppressions would be worse than one policy
+line, so it is disabled in `biome.json` with this note as the rationale.

@@ -102,6 +102,19 @@ export class PayloadTooLargeError extends Error {
 	}
 }
 
+/**
+ * First capture of a route match. The routes below all have exactly one group,
+ * so a successful match always has it — this makes that explicit rather than
+ * asserting it away.
+ */
+function pathParam(match: RegExpMatchArray): string {
+	const value = match[1];
+	if (value === undefined) {
+		throw new Error(`route matched without its parameter: ${match[0]}`);
+	}
+	return value;
+}
+
 async function readJson(
 	req: IncomingMessage,
 ): Promise<Record<string, unknown>> {
@@ -509,7 +522,7 @@ async function dispatch(
 		return connectionGet(
 			ctx,
 			opt({
-				idOrAlias: decodeURIComponent(connGet[1]!),
+				idOrAlias: decodeURIComponent(pathParam(connGet)),
 				tenant: q.tenant,
 			}) as Parameters<typeof connectionGet>[1],
 		);
@@ -519,7 +532,7 @@ async function dispatch(
 		return connectionRevoke(
 			ctx,
 			opt({
-				idOrAlias: decodeURIComponent(connRevoke[1]!),
+				idOrAlias: decodeURIComponent(pathParam(connRevoke)),
 				tenant: str(body.tenant) ?? q.tenant,
 				reason: str(body.reason),
 			}) as Parameters<typeof connectionRevoke>[1],
@@ -530,7 +543,7 @@ async function dispatch(
 		return connectionRotate(
 			ctx,
 			opt({
-				idOrAlias: decodeURIComponent(connRotate[1]!),
+				idOrAlias: decodeURIComponent(pathParam(connRotate)),
 				tenant: str(body.tenant) ?? q.tenant,
 			}) as Parameters<typeof connectionRotate>[1],
 		);

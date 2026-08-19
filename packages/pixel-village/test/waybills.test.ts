@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { describe, expect, it } from "vitest";
 import {
 	baseSnapshot,
@@ -17,7 +18,8 @@ describe("deriveWaybills (reality is the level designer)", () => {
 	it("closed station → single station.open waybill with the init-up special", () => {
 		const waybills = deriveWaybills(baseSnapshot(closedStation));
 		expect(waybills).toHaveLength(1);
-		const w = waybills[0]!;
+		const [w] = waybills;
+		assert(w);
 		expect(w.kind).toBe("station.open");
 		expect(w.title).toBe("Open the Station");
 		expect(w.confirmOp).toBe("init-up");
@@ -41,7 +43,8 @@ describe("deriveWaybills (reality is the level designer)", () => {
 		expect(w?.confirmOp).toBe("connectionAuthorize");
 		expect(w?.blastRadius).toBe("connection");
 		expect(w?.values).toEqual({ idOrAlias: "work" });
-		const byName = Object.fromEntries(w!.fields.map((f) => [f.name, f.value]));
+		assert(w);
+		const byName = Object.fromEntries(w.fields.map((f) => [f.name, f.value]));
 		expect(byName.idOrAlias).toBe("work");
 		expect(byName.provider).toBe("asana");
 		expect(byName.scopes).toBe("tasks:read, tasks:write");
@@ -207,7 +210,9 @@ describe("spike ledger (SPIKE = deny, session-local)", () => {
 		});
 		const waybills = deriveWaybills(snap);
 		ledger.onSeq(3);
-		ledger.spike(waybills[0]!.id);
+		const [spiked] = waybills;
+		assert(spiked);
+		ledger.spike(spiked.id);
 		expect(ledger.filter(waybills)).toHaveLength(0);
 		// Same seq re-observed: spike holds.
 		ledger.onSeq(3);
@@ -225,7 +230,9 @@ describe("displaySheetForWaybill (STAMP grammar)", () => {
 		const snap = baseSnapshot({
 			connections: [makeConnection({ status: "pending" })],
 		});
-		const sheet = displaySheetForWaybill(deriveWaybills(snap)[0]!);
+		const [derived] = deriveWaybills(snap);
+		assert(derived);
+		const sheet = displaySheetForWaybill(derived);
 		expect(sheet.title).toBe("WAYBILL — Authorize Connection");
 		expect(sheet.description).toContain("Blast radius: connection.");
 		expect(sheet.waybill?.kind).toBe("connection.authorize");
@@ -236,9 +243,9 @@ describe("displaySheetForWaybill (STAMP grammar)", () => {
 	});
 
 	it("station.open maps to the init→up action pair, never a confirm op", () => {
-		const sheet = displaySheetForWaybill(
-			deriveWaybills(baseSnapshot(closedStation))[0]!,
-		);
+		const [openWaybill] = deriveWaybills(baseSnapshot(closedStation));
+		assert(openWaybill);
+		const sheet = displaySheetForWaybill(openWaybill);
 		expect(sheet.runActions).toEqual(["init", "up"]);
 		expect(sheet.confirmOp).toBe("noop");
 		expect(sheet.waybill?.id).toBe("waybill:station.open");

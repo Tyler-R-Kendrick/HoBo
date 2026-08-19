@@ -398,7 +398,10 @@ export class TrailRunner {
 		cutover: boolean;
 		compensated: boolean;
 	}): TrailRunResult {
-		const run = this.service.snapshot()!;
+		const run = this.service.snapshot();
+		if (run === null) {
+			throw new Error("trail run result requested before the run started");
+		}
 		// Derive terminal flags from aggregate state — never claim compensated
 		// while run.state is still cutover (or the reverse).
 		const compensated = run.state === "compensated";

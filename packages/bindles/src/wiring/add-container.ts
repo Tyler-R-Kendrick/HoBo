@@ -56,8 +56,14 @@ export function addContainer(
 		return handle;
 	};
 
+	const withEndpoint = handle.withEndpoint;
+	if (withEndpoint === undefined) {
+		throw new Error(
+			"addContainer: withEndpoint must be wired before withHttpEndpoint",
+		);
+	}
 	handle.withHttpEndpoint = (port, endpointOptions = {}) =>
-		handle.withEndpoint!({
+		withEndpoint({
 			name: endpointOptions.name ?? "http",
 			scheme: "http",
 			port,

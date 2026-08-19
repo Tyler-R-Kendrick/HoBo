@@ -132,9 +132,10 @@ export function createMemoryDualFixtures(seed?: {
 					(r) => r.correlation.principalRef === query.principalRef,
 				);
 			}
-			if (query.harnessFlagKey) {
+			const harnessFlagKey = query.harnessFlagKey;
+			if (harnessFlagKey) {
 				rows = rows.filter((r) =>
-					r.correlation.harnessFlagKeys.includes(query.harnessFlagKey!),
+					r.correlation.harnessFlagKeys.includes(harnessFlagKey),
 				);
 			}
 			if (query.isolationClass) {

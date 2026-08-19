@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { first } from "@hobo/core/total-access";
+import { first, must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
 import { createComposedHoboCli } from "../src/cli.js";
 import {
@@ -151,7 +151,11 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		expect(serve.isolation.privateSandboxes).toBe(1);
 		expect(serve.isolation.wasmtimeVersion).toMatch(/^\d+\.\d+\.\d+$/);
 		expect(serve.isolation.wasmPaths?.length).toBe(1);
-		expect(existsSync(first(serve.isolation.wasmPaths!))).toBe(true);
+		expect(
+			existsSync(
+				first(must(serve.isolation.wasmPaths, "serve.isolation.wasmPaths")),
+			),
+		).toBe(true);
 		expect(serve.exposedEndpoints).toHaveLength(1);
 		// Camp injects bindle env onto mesh hops into the wasm sandbox.
 		expect(serve.bindleEnv).toEqual({

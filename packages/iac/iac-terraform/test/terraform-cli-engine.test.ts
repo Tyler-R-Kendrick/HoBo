@@ -66,7 +66,12 @@ describe("renderTerraformJsonProgram (deterministic, golden)", () => {
 				outputs: ["namespaceId", "binding"],
 			},
 			{ accountId: "acct-1" },
-		) as Record<string, any>;
+		) as {
+			terraform: {
+				required_providers: Record<string, { source: string; version: string }>;
+			};
+			resource: Record<string, Record<string, Record<string, unknown>>>;
+		};
 		expect(document.terraform.required_providers.cloudflare).toEqual({
 			source: "cloudflare/cloudflare",
 			version: "~> 4.0",

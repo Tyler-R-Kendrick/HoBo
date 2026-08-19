@@ -6,7 +6,7 @@ import {
 	createMockProviderFromPact,
 	loadPactDirectory,
 } from "@hobo/contract-harness";
-import { get, must } from "@hobo/core/total-access";
+import { must, mustGet } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	createKubectlKubernetesClient,
@@ -75,7 +75,7 @@ describe("@hobo/runtime-oci (PACT-backed kubectl boundary)", () => {
 		});
 		cleanups.push(() => serve.close());
 		expect(serve.isolation.details?.client).toBe("kubectl");
-		const res = await get(
+		const res = await mustGet(
 			serve.handlers,
 			"api",
 			"serve.handlers",

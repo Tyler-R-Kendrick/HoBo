@@ -405,7 +405,8 @@ try {
 
 			const pixelSample = await page.evaluate(() => {
 				const c = document.getElementById("yard") as HTMLCanvasElement;
-				const ctx = c.getContext("2d")!;
+				const ctx = c.getContext("2d");
+				if (!ctx) throw new Error("yard canvas has no 2d context");
 				const st = (
 					window as unknown as {
 						__TEST__: { state: () => { bo: { x: number; y: number } } };
@@ -416,7 +417,10 @@ try {
 				const data = ctx.getImageData(x0, y0, 100, 130).data;
 				let dark = 0;
 				for (let i = 0; i < data.length; i += 4) {
-					if (data[i]! + data[i + 1]! + data[i + 2]! < 90) dark++;
+					// Channel reads are in-bounds by the loop condition; `?? 0` keeps
+					// that local instead of asserting three times per pixel.
+					const luma = (data[i] ?? 0) + (data[i + 1] ?? 0) + (data[i + 2] ?? 0);
+					if (luma < 90) dark++;
 				}
 				return { dark, bo: st.bo };
 			});

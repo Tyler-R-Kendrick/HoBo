@@ -16,7 +16,7 @@ import {
 	type MeteringBus,
 	type TenantId,
 } from "@hobo/core";
-import { get } from "@hobo/core/total-access";
+import { mustGet } from "@hobo/core/total-access";
 import type { DaprSidecarClient } from "./dapr-client.js";
 import type { DaprRuntimeConfig } from "./types.js";
 
@@ -236,7 +236,7 @@ export function createDaprActorHost(
 					if (rec.expiresAtMs <= nowMs()) {
 						throw new DaprStaleFenceError(`lease expired for ${key}`);
 					}
-					const stream = get(streams, key);
+					const stream = mustGet(streams, key);
 					stream.events.push(event);
 					emit({
 						type: "actor.StateAppended",

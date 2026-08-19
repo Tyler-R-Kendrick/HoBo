@@ -67,12 +67,12 @@ export function createOpenBaoSecretsPort(options: {
 		const entry = store.get(name);
 		if (versionId !== undefined) {
 			const idx = entry?.versions.indexOf(versionId) ?? -1;
+			// `idx >= 0` only guarantees a seed if `seeds` and `versions` are the
+			// same length. Read it and fall back rather than assert the pairing.
+			const storedSeed = idx >= 0 ? entry?.seeds[idx] : undefined;
 			const seed =
-				idx >= 0 && entry
-					? entry.seeds[idx]!
-					: createHmac("sha256", root)
-							.update(`${name}:${versionId}`)
-							.digest("hex");
+				storedSeed ??
+				createHmac("sha256", root).update(`${name}:${versionId}`).digest("hex");
 			const material = offlineMaterial(name, versionId, seed);
 			return {
 				status: "ok",

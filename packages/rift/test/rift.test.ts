@@ -7,6 +7,7 @@
  * and in particular the property that matters: an agent writing in place must
  * not reach the source.
  */
+import assert from "node:assert/strict";
 import { execSync, spawnSync } from "node:child_process";
 import {
 	existsSync,
@@ -63,6 +64,12 @@ function source(): string {
 	writeFileSync(join(d, "README.md"), "keep\n");
 	writeFileSync(join(d, "node_modules", "junk", "big.bin"), "x".repeat(50_000));
 	return d;
+}
+
+/** The overlay upper dir, asserted present — only overlayfs workspaces have one. */
+function upperOf(workspace: { readonly upper?: string }): string {
+	assert(workspace.upper, "expected an overlayfs workspace with an upper dir");
+	return workspace.upper;
 }
 
 describe("capability ladder", () => {
@@ -125,6 +132,7 @@ describe("workspace creation", () => {
 		expect(initRoot(root).created).toBe(true);
 		expect(initRoot(root).created).toBe(false);
 		const made = createWorkspace({ root, name: "claude" });
+		assert(made.workspace);
 		expect(made.workspace).not.toBeNull();
 		const registry = readRegistry(root);
 		expect(registry.workspaces.map((w) => w.name)).toEqual(["claude"]);
@@ -152,7 +160,8 @@ describe("workspace creation", () => {
 				isolatesInPlaceWrites: true,
 			},
 		});
-		const path = made.workspace!.path;
+		assert(made.workspace);
+		const path = made.workspace.path;
 		expect(existsSync(join(path, "src", "app.ts"))).toBe(true);
 		writeFileSync(join(path, "src", "app.ts"), "changed\n");
 		expect(readFileSync(join(root, "src", "app.ts"), "utf8")).toBe(
@@ -301,16 +310,17 @@ describe.runIf(probeOverlayfs())("overlayfs isolation", () => {
 	it("keeps an in-place write inside the workspace", () => {
 		const root = source();
 		const made = createWorkspace({ root, name: "agent" });
-		expect(made.workspace!.tier).toBe("overlayfs");
+		assert(made.workspace);
+		expect(made.workspace.tier).toBe("overlayfs");
 		execSync(
-			`sh -c ${JSON.stringify(execCommand(made.workspace!, "echo EDIT >> src/app.ts"))}`,
+			`sh -c ${JSON.stringify(execCommand(made.workspace, "echo EDIT >> src/app.ts"))}`,
 		);
 		// An append is exactly what hardlinks leak; the source must be intact.
 		expect(readFileSync(join(root, "src", "app.ts"), "utf8")).toBe(
 			"original content\n",
 		);
 		expect(
-			readFileSync(join(made.workspace!.upper!, "src", "app.ts"), "utf8"),
+			readFileSync(join(upperOf(made.workspace), "src", "app.ts"), "utf8"),
 		).toContain("EDIT");
 	});
 });
@@ -480,7 +490,8 @@ describe("crash windows", () => {
 		// nothing knew about but that blocked the name forever.
 		const root = source();
 		const made = createWorkspace({ root, name: "half" });
-		const path = made.workspace!.path;
+		assert(made.workspace);
+		const path = made.workspace.path;
 		expect(existsSync(path)).toBe(true);
 		// Rewind the journal to just the intent, as a crash mid-clone would.
 		const journal = join(root, RIFT_DIR, "events.jsonl");
@@ -491,6 +502,7 @@ describe("crash windows", () => {
 		expect(readRegistry(root).workspaces).toEqual([]);
 		// The name is reusable rather than poisoned.
 		const retry = createWorkspace({ root, name: "half" });
+		assert(retry.workspace);
 		expect(retry.workspace).not.toBeNull();
 		expect(retry.reason).toBeUndefined();
 	});
@@ -504,7 +516,8 @@ describe("a removal that dies mid-delete", () => {
 		// permanently, until a human deleted the directory by hand.
 		const root = source();
 		const made = createWorkspace({ root, name: "w" });
-		const path = made.workspace!.path;
+		assert(made.workspace);
+		const path = made.workspace.path;
 		const base = join(root, RIFT_DIR, "workspaces", "w");
 		// Record the removal, then leave the directory behind, as a crash would.
 		const journal = join(root, RIFT_DIR, "events.jsonl");
@@ -516,9 +529,10 @@ describe("a removal that dies mid-delete", () => {
 		expect(existsSync(base)).toBe(true);
 
 		const retry = createWorkspace({ root, name: "w" });
+		assert(retry.workspace);
 		expect(retry.reason).toBeUndefined();
 		expect(retry.workspace).not.toBeNull();
-		expect(existsSync(retry.workspace!.path)).toBe(true);
+		expect(existsSync(retry.workspace.path)).toBe(true);
 		expect(path).toBeDefined();
 	});
 });
@@ -543,6 +557,7 @@ describe("an externally truncated journal", () => {
 	it("repair does not resurrect a workspace whose directory is gone", () => {
 		const root = source();
 		const made = createWorkspace({ root, name: "gone" });
+		assert(made.workspace);
 		rmSync(join(root, RIFT_DIR, "workspaces", "gone"), {
 			recursive: true,
 			force: true,
@@ -568,7 +583,8 @@ describe("create never destroys what it cannot prove is dead", () => {
 		// loss of every agent's tree.
 		const root = source();
 		const made = createWorkspace({ root, name: "claude" });
-		const upper = made.workspace!.upper ?? made.workspace!.path;
+		assert(made.workspace);
+		const upper = made.workspace.upper ?? made.workspace.path;
 		writeFileSync(join(upper, "WORK.txt"), "UNCOMMITTED AGENT WORK\n");
 		// Lose the journal, exactly as external truncation would.
 		writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");
@@ -643,6 +659,7 @@ describe("debris only accumulates when there is work to keep", () => {
 	it("parks — and can prune — a directory that holds work", () => {
 		const root = source();
 		const made = createWorkspace({ root, name: "claude" });
+		assert(made.workspace);
 		writeFileSync(
 			join(made.workspace?.upper ?? made.workspace?.path ?? root, "w.txt"),
 			"work",
@@ -757,6 +774,7 @@ describe("two creates racing on one name", () => {
 		mkdirSync(join(root, RIFT_DIR, "workspaces"), { recursive: true });
 		writeFileSync(claim, "2147483646\n"); // no such pid
 		const made = createWorkspace({ root, name: "claude" });
+		assert(made.workspace);
 		expect(made.workspace).not.toBeNull();
 		expect(existsSync(claim)).toBe(false);
 	});

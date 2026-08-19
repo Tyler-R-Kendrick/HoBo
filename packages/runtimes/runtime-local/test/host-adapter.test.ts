@@ -1,4 +1,4 @@
-import { get } from "@hobo/core/total-access";
+import { mustGet } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { createLocalRuntimeHost } from "../src/host.js";
 
@@ -25,7 +25,7 @@ describe("createLocalRuntimeHost", () => {
 			],
 		});
 		const body = await (
-			await get(
+			await mustGet(
 				serve.handlers,
 				"api",
 				"serve.handlers",

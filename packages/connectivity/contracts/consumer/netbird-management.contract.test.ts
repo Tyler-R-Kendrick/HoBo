@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
@@ -49,7 +50,8 @@ describe("NetbirdManagementApi consumer contract", () => {
 		});
 		expect(join.ready).toBe(true);
 
-		const magic = await overlay.configureMagicDns!({
+		assert(overlay.configureMagicDns);
+		const magic = await overlay.configureMagicDns({
 			tenantId: parseTenantId("acme"),
 			domains: ["hobo.test"],
 			nameservers: ["100.100.100.100"],

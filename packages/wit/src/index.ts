@@ -455,7 +455,11 @@ export async function roundTripFixture(
 		throw new Error(`wasi_roundtrip.unlinked_interface: ${interfaceRef}`);
 	}
 
-	const input = clone(ROUND_TRIP_FIXTURES.get(interfaceRef)!);
+	const fixture = ROUND_TRIP_FIXTURES.get(interfaceRef);
+	if (fixture === undefined) {
+		throw new Error(`wasi_roundtrip.missing_fixture: ${interfaceRef}`);
+	}
+	const input = clone(fixture);
 	assertRoundTripFixtureShape(interfaceRef, input);
 	const encoded = canonicalJson(input);
 	const decoded = JSON.parse(encoded);

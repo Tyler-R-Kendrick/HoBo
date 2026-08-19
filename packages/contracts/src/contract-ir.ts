@@ -367,7 +367,7 @@ function semverMajor(version: string): number {
 	return Number(version.split(".")[0]);
 }
 
-function expectObject(input: unknown, path: string): Record<string, any> {
+function expectObject(input: unknown, path: string): Record<string, unknown> {
 	if (input === null || typeof input !== "object" || Array.isArray(input)) {
 		throw new ContractIrValidationError(
 			"expected-object",
@@ -375,7 +375,7 @@ function expectObject(input: unknown, path: string): Record<string, any> {
 			path,
 		);
 	}
-	return input as Record<string, any>;
+	return input as Record<string, unknown>;
 }
 
 function nonEmptyString(input: unknown, path: string): string {

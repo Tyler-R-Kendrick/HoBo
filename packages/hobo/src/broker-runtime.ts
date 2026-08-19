@@ -408,7 +408,8 @@ export async function ensureEmbeddedBroker(
 		...(loadHoboProfile(hoboHome)?.defaultStation?.id !== undefined
 			? {
 					profileStationId: must(
-						loadHoboProfile(hoboHome)!.defaultStation,
+						must(loadHoboProfile(hoboHome), "loadHoboProfile(hoboHome)")
+							.defaultStation,
 						"loadHoboProfile(hoboHome)!.defaultStation",
 					).id,
 				}

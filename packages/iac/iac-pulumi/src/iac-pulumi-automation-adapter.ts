@@ -38,7 +38,64 @@ export class PulumiStateError extends Error {
 	}
 }
 
-export function createTrivialIacProgram(overrides: any = {}) {
+/** Stored stack/workspace state as this module reads it. */
+interface StoredState {
+	readonly resources?: Record<string, ResourceOutcome>;
+	readonly [key: string]: unknown;
+}
+
+/** A resource in a realization outputs payload. */
+interface ResourceOutcome {
+	readonly id?: string;
+	readonly status?: string;
+	readonly outputs?: Record<string, unknown>;
+}
+
+/** Overrides accepted by the trivial fixture program. */
+interface ProgramOverrides {
+	readonly resources?: unknown;
+	readonly stackOutputs?: unknown;
+	readonly [key: string]: unknown;
+}
+
+/** Options for the Pulumi automation adapter. */
+interface AdapterOptions {
+	readonly stateBackend?: ReturnType<typeof createInMemoryStateBackend>;
+	readonly engine?: EngineLike;
+	readonly pulumiVersion?: string;
+}
+
+/** What an adapter actually calls on its engine — any lane may implement it. */
+interface EngineLike {
+	readonly pulumiVersion?: string;
+	snapshot?(): unknown;
+	preview(
+		program: unknown,
+	): Promise<{ changes: readonly unknown[] }> | { changes: readonly unknown[] };
+	apply(
+		program: unknown,
+		expected: readonly unknown[],
+	):
+		| Promise<{ appliedChanges?: readonly unknown[]; outputs?: unknown }>
+		| { appliedChanges?: readonly unknown[]; outputs?: unknown };
+	refresh(program: unknown): unknown;
+	destroy(program: unknown): unknown;
+}
+
+/** Options for the offline state backend. */
+interface StateBackendOptions {
+	readonly failOnWriteFor?: string;
+}
+
+/** Options for the offline automation engine. */
+interface EngineOptions {
+	readonly stateBackend?: ReturnType<typeof createInMemoryStateBackend>;
+	readonly divergeOnApply?: boolean;
+	readonly lockHolder?: string;
+	readonly failAfterResource?: string;
+}
+
+export function createTrivialIacProgram(overrides: ProgramOverrides = {}) {
 	const base = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: "iac-program",
@@ -72,7 +129,9 @@ export function createPerResourceStackKey(program, resourceName) {
 	return `${deploymentId}/${resourceName}`;
 }
 
-export function createStateBackendConfig(overrides: any = {}) {
+export function createStateBackendConfig(
+	overrides: Record<string, unknown> = {},
+) {
 	return deepFreeze({
 		kind: "memory",
 		lockHolder: null,
@@ -80,7 +139,7 @@ export function createStateBackendConfig(overrides: any = {}) {
 	});
 }
 
-export function createPulumiAutomationAdapter(options: any = {}) {
+export function createPulumiAutomationAdapter(options: AdapterOptions = {}) {
 	const stateBackend = options.stateBackend ?? createInMemoryStateBackend();
 	// ponytail: the local in-memory engine below is the default backend so this
 	// package stays offline. Swap `options.engine` for a real Pulumi Automation
@@ -152,7 +211,7 @@ export function createPulumiAutomationAdapter(options: any = {}) {
 	});
 }
 
-export function createInMemoryStateBackend(options: any = {}) {
+export function createInMemoryStateBackend(options: StateBackendOptions = {}) {
 	const stores = new Map();
 	const locks = new Map();
 
@@ -197,7 +256,7 @@ export function createInMemoryStateBackend(options: any = {}) {
 	};
 }
 
-export function createInMemoryAutomationEngine(options: any = {}) {
+export function createInMemoryAutomationEngine(options: EngineOptions = {}) {
 	// ponytail: local, deterministic stand-in for the Pulumi Automation API. A
 	// production engine would drive `pulumi preview/up/refresh/destroy` against a
 	// per-resource stack; the return shapes below are the contract that swap must
@@ -229,7 +288,7 @@ export function createInMemoryAutomationEngine(options: any = {}) {
 				}
 			}
 
-			for (const [stackKey, state] of Object.entries<any>(
+			for (const [stackKey, state] of Object.entries<StoredState>(
 				stateBackend.snapshot(),
 			)) {
 				const resourceName = stackKey.split("/").at(-1);
@@ -395,7 +454,7 @@ export function createInMemoryAutomationEngine(options: any = {}) {
 export function outputsToBindings(outputs) {
 	const bindings = {};
 
-	for (const [resourceName, resource] of Object.entries<any>(
+	for (const [resourceName, resource] of Object.entries<ResourceOutcome>(
 		outputs.resources ?? {},
 	)) {
 		for (const [outputName, value] of Object.entries(resource.outputs ?? {})) {
@@ -434,7 +493,7 @@ export async function runIacBackendConformance({ adapter, program }) {
 	const destroy = await adapter.destroy(program);
 	assertConformance(
 		destroy.kind === "outputs" &&
-			Object.values<any>(destroy.resources).every(
+			Object.values<ResourceOutcome>(destroy.resources).every(
 				(resource) => resource.status === "destroyed",
 			),
 		"destroy-clean",

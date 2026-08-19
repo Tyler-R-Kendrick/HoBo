@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -157,7 +158,8 @@ describe("@hobo/pixel-village", () => {
 		const snap = projectYardSnapshot(ctx, { stationId: "station:local" });
 		expect(snap.ok).toBe(true);
 		const engine = createYardEngine();
-		const visual = engine.applySnapshot(snap.data!);
+		assert(snap.data);
+		const visual = engine.applySnapshot(snap.data);
 		expect(visual.connections[0]?.visual).toBe("authorized");
 		expect(visual.traffic.rate).toBeGreaterThan(0);
 		// A fresh station still reports the bootstrap hazard, which outranks
@@ -167,7 +169,8 @@ describe("@hobo/pixel-village", () => {
 
 		engine.tick(0.1);
 		// particles may emit
-		const sheet = selectZoneWithSnapshot(engine, "connectionBay", snap.data!);
+		assert(snap.data);
+		const sheet = selectZoneWithSnapshot(engine, "connectionBay", snap.data);
 		expect(sheet?.kind).toMatch(/connection\./);
 
 		const createSheet = sheetForConnectionCreate(snap.data);

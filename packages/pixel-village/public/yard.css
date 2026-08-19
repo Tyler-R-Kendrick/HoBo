@@ -137,15 +137,6 @@ header h1 {
 	outline-offset: 2px;
 }
 
-#dev-drawer > #hud,
-#dev-drawer > #actions {
-	padding: 10px 12px 0;
-}
-
-#dev-drawer > #actions {
-	padding-bottom: 12px;
-}
-
 #hud {
 	display: flex;
 	flex-wrap: wrap;
@@ -176,6 +167,15 @@ header h1 {
 	flex-wrap: wrap;
 	gap: 8px;
 	margin-bottom: 14px;
+}
+
+#dev-drawer > #hud,
+#dev-drawer > #actions {
+	padding: 10px 12px 0;
+}
+
+#dev-drawer > #actions {
+	padding-bottom: 12px;
 }
 
 /* Cartoon sign boards — not Material pills */
@@ -281,7 +281,7 @@ main {
 }
 
 #sheet[hidden] {
-	display: none !important;
+	display: none;
 }
 
 #sheet header {
@@ -363,7 +363,7 @@ main {
 }
 
 #sheet-spike[hidden] {
-	display: none !important;
+	display: none;
 }
 
 #sheet-spike:hover {
@@ -386,7 +386,7 @@ main {
 }
 
 #newsreel[hidden] {
-	display: none !important;
+	display: none;
 }
 
 #newsreel h2 {

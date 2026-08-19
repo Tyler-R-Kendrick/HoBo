@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,6 +18,12 @@ import {
 	createTracker,
 } from "../src/tracker.js";
 import { REPLAY_SCHEMA_VERSION } from "../src/types.js";
+
+/** The ended session, asserted present — the test ends it on the line above. */
+function mustSession<T>(session: T | undefined): T {
+	assert(session, "expected the tracker to have ended a session");
+	return session;
+}
 
 describe("tracker + dual fixtures", () => {
 	it("local path records, stores, and ends with zero extra config", async () => {
@@ -175,7 +182,7 @@ describe("tracker + dual fixtures", () => {
 		expect(summary).toContain("err-42");
 
 		const pack = buildEvidencePack({
-			session: ended!,
+			session: mustSession(ended),
 			recording: [{ type: 2, timestamp: 10, data: { tagName: "div" } }],
 			playwrightRefs: ["trace.zip"],
 			assertionLog: ["checkout failed"],

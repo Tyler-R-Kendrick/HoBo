@@ -1,5 +1,5 @@
 import type { ActorHost, ActorLease, ActorStateHandle } from "@hobo/core";
-import { get } from "@hobo/core/total-access";
+import { mustGet } from "@hobo/core/total-access";
 
 export const ACTOR_HOST_RUNTIME_PORT_VERSION =
 	"hobo.actor-host-runtime-port/v1";
@@ -309,7 +309,7 @@ function getStream(streams: Map<string, ActorStream>, key: string) {
 	if (!streams.has(key)) {
 		streams.set(key, { events: [], snapshot: null });
 	}
-	return get(streams, key);
+	return mustGet(streams, key);
 }
 
 function normalizeEvent(event: { type: string; [key: string]: unknown }) {

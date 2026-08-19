@@ -110,10 +110,11 @@ export async function loadPlayerPayload(input: {
 	}
 
 	const jumpTargets: { label: string; timestamp: number }[] = [];
-	if (session.correlation.errorId && events.length > 0) {
+	const lastEvent = events.at(-1);
+	if (session.correlation.errorId && lastEvent) {
 		jumpTargets.push({
 			label: `error:${session.correlation.errorId}`,
-			timestamp: events[events.length - 1]!.timestamp,
+			timestamp: lastEvent.timestamp,
 		});
 	}
 	const debugTimeline = Object.freeze(

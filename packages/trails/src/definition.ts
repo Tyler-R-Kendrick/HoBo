@@ -286,7 +286,11 @@ export function orderTrailSteps(
 		.sort();
 	const out: TrailStep[] = [];
 	while (q.length > 0) {
-		const id = q.shift()!;
+		// `q.sort()` below re-orders the *remaining* queue, so this has to keep
+		// draining from the front; a cursor would sort already-visited entries
+		// back into play. `length > 0` does not narrow `shift()`, so guard it.
+		const id = q.shift();
+		if (id === undefined) break;
 		const step = byId.get(id);
 		if (step) out.push(step);
 		for (const n of adj.get(id) ?? []) {

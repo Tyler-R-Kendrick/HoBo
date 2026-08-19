@@ -44,7 +44,7 @@ function requireStationPins(flags: Record<string, unknown>): {
 		...(loadHoboProfile(home)?.defaultStation?.id !== undefined
 			? {
 					profileStationId: must(
-						loadHoboProfile(home)!.defaultStation,
+						must(loadHoboProfile(home), "loadHoboProfile(home)").defaultStation,
 						"loadHoboProfile(home)!.defaultStation",
 					).id,
 				}

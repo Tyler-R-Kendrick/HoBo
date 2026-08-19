@@ -14,7 +14,7 @@ import {
 	parseTopicName,
 	type TopicName,
 } from "@hobo/core";
-import { get } from "@hobo/core/total-access";
+import { mustGet } from "@hobo/core/total-access";
 
 export interface KafkaProduceRequest {
 	readonly topic: TopicName;
@@ -171,7 +171,7 @@ export function createInMemoryKafkaTransport(
 					? { idempotencyKey: request.idempotencyKey }
 					: {}),
 			};
-			get(logs, topic).push(entry);
+			mustGet(logs, topic).push(entry);
 			const result: KafkaProduceResult = Object.freeze({
 				messageId,
 				topic,

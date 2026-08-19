@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { must } from "@hobo/core/total-access";
+import { must, mustGet } from "@hobo/core/total-access";
 import { createDeterministicContext } from "./context.js";
 import { ReplayDivergenceError } from "./divergence.js";
 import type {
@@ -171,7 +171,7 @@ export function interleaveStreams(
 		if (streamId === undefined) {
 			throw new Error("interleaveStreams selected an unavailable stream");
 		}
-		interleaved.push(must(queues.get(streamId)!.shift()));
+		interleaved.push(must(mustGet(queues, streamId, "queues").shift()));
 	}
 
 	return interleaved;

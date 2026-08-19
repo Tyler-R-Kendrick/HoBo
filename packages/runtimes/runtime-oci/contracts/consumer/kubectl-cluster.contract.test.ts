@@ -7,7 +7,7 @@ import {
 	createMockProviderFromPact,
 	loadPactDirectory,
 } from "@hobo/contract-harness";
-import { get, must } from "@hobo/core/total-access";
+import { must, mustGet } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import {
 	createKubectlKubernetesClient,
@@ -101,7 +101,7 @@ describe("kubectl-cluster consumer contract (PACT mock)", () => {
 				],
 			});
 			const body = await (
-				await get(
+				await mustGet(
 					serve.handlers,
 					"api",
 					"serve.handlers",

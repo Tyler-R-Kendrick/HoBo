@@ -25,7 +25,12 @@
 		{
 			"includes": ["packages/**", "!packages/**/dist/**"],
 			"linter": {
-				"enabled": true
+				"enabled": true,
+				"rules": {
+					"suspicious": {
+						"noTemplateCurlyInString": "off"
+					}
+				}
 			}
 		},
 		{

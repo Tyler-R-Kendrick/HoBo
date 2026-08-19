@@ -303,7 +303,7 @@ export function renderBraille(bitmap: SampledBitmap): string {
 					const px = cx * 2 + dx;
 					const py = cy * 4 + dy;
 					if (px < bw && py < bh && bitmap.ink[py * bw + px] === 1) {
-						bits |= must(BRAILLE_DOT[dx]![dy]);
+						bits |= must(must(BRAILLE_DOT[dx], "BRAILLE_DOT[dx]")[dy]);
 					}
 				}
 			}

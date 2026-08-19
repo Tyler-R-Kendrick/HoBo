@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { get } from "@hobo/core/total-access";
+import { mustGet } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	createCloudNativeRuntimeHost,
@@ -67,7 +67,7 @@ describe("@hobo/runtime-cloud-native", () => {
 		cleanups.push(() => serve.close());
 		expect(serve.isolation.isolateBoundary).toBe("cloud_native");
 		const body = await (
-			await get(
+			await mustGet(
 				serve.handlers,
 				"api",
 				"serve.handlers",

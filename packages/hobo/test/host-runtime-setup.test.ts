@@ -6,7 +6,7 @@ import {
 	createMockProviderFromPact,
 	loadPactDirectory,
 } from "@hobo/contract-harness";
-import { get, must } from "@hobo/core/total-access";
+import { must, mustGet } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
 import { createComposedHoboCli } from "../src/cli.js";
 import {
@@ -146,7 +146,7 @@ describe("host runtime packages setup", () => {
 		});
 		cleanups.push(() => serve.close());
 		const body = await (
-			await get(
+			await mustGet(
 				serve.handlers,
 				"api",
 				"serve.handlers",

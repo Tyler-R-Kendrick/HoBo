@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -105,18 +106,21 @@ describe("durable journal integration", () => {
 					tenant: "t",
 				},
 			);
-			const lease = await store.claimSubscription!({
+			assert(store.claimSubscription);
+			const lease = await store.claimSubscription({
 				subscriptionId: "proj",
 				partitionId: "default",
 				holderId: "w1",
 			});
-			await store.commitCheckpoint!({
+			assert(store.commitCheckpoint);
+			await store.commitCheckpoint({
 				subscriptionId: "proj",
 				partitionId: "default",
 				position: 1n,
 				fenceToken: lease.fenceToken,
 			});
-			const cp = await store.loadCheckpoint!({
+			assert(store.loadCheckpoint);
+			const cp = await store.loadCheckpoint({
 				subscriptionId: "proj",
 				partitionId: "default",
 			});

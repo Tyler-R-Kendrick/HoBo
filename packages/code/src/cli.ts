@@ -301,16 +301,20 @@ function editDistance(a: string, b: string): number {
 	for (let i = 0; i <= m; i++) totalAccess.must(dp[i])[0] = i;
 	for (let j = 0; j <= n; j++) totalAccess.first(dp)[j] = j;
 	for (let i = 1; i <= m; i++) {
+		// Hoist both rows: the inner loop then indexes a row directly instead of
+		// walking `dp` twice per cell.
+		const prev = totalAccess.must(dp[i - 1]);
+		const cur = totalAccess.must(dp[i]);
 		for (let j = 1; j <= n; j++) {
 			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-			totalAccess.must(dp[i])[j] = Math.min(
-				totalAccess.must(dp[i - 1]![j]) + 1,
-				totalAccess.must(dp[i]![j - 1]) + 1,
-				totalAccess.must(dp[i - 1]![j - 1]) + cost,
+			cur[j] = Math.min(
+				totalAccess.must(prev[j]) + 1,
+				totalAccess.must(cur[j - 1]) + 1,
+				totalAccess.must(prev[j - 1]) + cost,
 			);
 		}
 	}
-	return totalAccess.must(dp[m]![n]);
+	return totalAccess.must(totalAccess.must(dp[m])[n]);
 }
 
 /**

@@ -127,10 +127,7 @@ test("ref-only rule: raw secret-looking values are rejected everywhere", () => {
 			],
 		},
 		{
-			bindings: [
-				// biome-ignore lint/suspicious/noTemplateCurlyInString: literal IaC placeholder key, not a template
-				{ key: "${resources.db.outputs.password}", value: "hunter2" },
-			],
+			bindings: [{ key: "${resources.db.outputs.password}", value: "hunter2" }],
 		},
 	];
 	for (const leak of leaks) {
@@ -237,7 +234,6 @@ test("fromIacOutputs maps the IaC triple onto the contract", () => {
 	assert.deepEqual(parsed.values, { region: "eu-west-1" });
 	assert.deepEqual(
 		parsed.bindings.map((binding) => binding.key),
-		// biome-ignore lint/suspicious/noTemplateCurlyInString: literal IaC placeholder key, not a template
 		["${resources.queue.outputs.url}", "queue.url", "stack.region"],
 	);
 	assert.deepEqual(parsed.secrets, {});

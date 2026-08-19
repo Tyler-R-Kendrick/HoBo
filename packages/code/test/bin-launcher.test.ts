@@ -66,8 +66,16 @@ describe("hobo-code bin launcher", () => {
 		expect(r.stdout).toMatch(/agents init/i);
 	}, 120_000);
 
+	// The three stderr assertions below *are* the "tsc-only" claim, and they
+	// prove it by name: the launcher announces what it compiles, so a
+	// regression that rebuilt `@hobo/core` would say so. There used to be a
+	// fourth, `elapsedMs < 60_000`, standing in for the same property by proxy
+	// — and it is the only one that can fail for a reason that has nothing to
+	// do with the launcher. Under a fully-forced 902-task `turbo run test` this
+	// spawn took 74s and the test failed at 74264 < 60000 while every
+	// behavioural assertion passed. A duration is not evidence about a build
+	// graph when the graph is already saying what it built.
 	it("forced stale rebuild is tsc-only and does not rebuild @hobo/core", () => {
-		const started = Date.now();
 		const r = spawnSync(process.execPath, [launcher, "help"], {
 			cwd: pkgRoot,
 			encoding: "utf8",
@@ -76,14 +84,12 @@ describe("hobo-code bin launcher", () => {
 				HOBO_CODE_FORCE_STALE_REBUILD: "1",
 			},
 		});
-		const elapsedMs = Date.now() - started;
 		expect(r.status).toBe(0);
 		expect(r.stderr).toMatch(/tsc @hobo\/code only/);
 		expect(r.stderr).not.toMatch(/@hobo\/core/);
 		expect(r.stderr).not.toMatch(/@hobo\/stations@/);
 		expect(r.stdout).toMatch(/hobo-code/);
-		expect(elapsedMs).toBeLessThan(60_000);
-	}, 60_000);
+	}, 180_000);
 
 	it("runs help via launcher with current dist (skip rebuild)", () => {
 		const r = spawnSync(process.execPath, [launcher, "help"], {

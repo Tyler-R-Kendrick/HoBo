@@ -4,8 +4,7 @@ import {
 	STANDARD_CAPABILITY_PROFILES,
 	type TrustPolicy,
 } from "@hobo/capability-profiles";
-import { describe, expect, it } from "vitest";
-
+import { describeConcern } from "@hobo/contract-harness";
 import {
 	capabilityRequirementFromBindleRequirements,
 	matchCapabilityRequirement,
@@ -61,7 +60,11 @@ function semantics(
 		creatorAuthorityAfterClaim: "rotatable",
 		claimAtomicity: "single-resource",
 		claimActionCount: 1,
-		continuity: { endpoint: "preserved", data: "preserved", credentials: "rotated" },
+		continuity: {
+			endpoint: "preserved",
+			data: "preserved",
+			credentials: "rotated",
+		},
 		supportsExport: true,
 		supportsRotation: true,
 		supportsRevocation: true,
@@ -130,186 +133,111 @@ const postgresRequirement = parseCapabilityRequirement({
 	requiredProfiles: [{ profileId: "data.postgres/v1", versionRange: ">=1" }],
 });
 
-describe("profile-aware matching", () => {
-	it("resolves a Postgres requirement to a conformant Postgres product", () => {
-		const outcome = matchCapabilityRequirement({
-			resourceName: "db",
-			requirement: postgresRequirement,
-			profiles,
-			definitions: [d1, neon],
-			policy,
-			nowMs: NOW,
-		});
-		expect(outcome.ok).toBe(true);
-		if (!outcome.ok) return;
-		expect(outcome.definition.id).toBe("neon.claimable-postgres/v1");
-	});
+const POSTGRES_CLAIM = [
+	{
+		profileId: "data.postgres/v1",
+		versionRange: ">=1",
+		realization: "native" as const,
+		conformanceRef: "conformance.postgres/v1",
+		conformance: "pass" as const,
+	},
+];
 
-	it("never lets D1 satisfy a PostgreSQL requirement", () => {
-		const outcome = matchCapabilityRequirement({
-			resourceName: "db",
-			requirement: postgresRequirement,
-			profiles,
-			definitions: [d1],
-			policy,
-			nowMs: NOW,
-		});
-		expect(outcome.ok).toBe(false);
-		if (outcome.ok) return;
-		expect(outcome.rejections.map((r) => r.code)).toContain("PROFILE_INCOMPATIBLE");
-		expect(outcome.remediation.code).toBe("capability.profile-unsatisfiable");
-	});
+const NAMED = { neon, d1 } as const;
 
-	it("satisfies a relational requirement through the refinement graph", () => {
-		const relational = parseCapabilityRequirement({
-			requiredProfiles: [{ profileId: "data.relational/v1", versionRange: ">=1" }],
-		});
-		const outcome = matchCapabilityRequirement({
-			resourceName: "db",
-			requirement: relational,
-			profiles,
-			definitions: [d1],
-			policy,
-			nowMs: NOW,
-		});
-		expect(outcome.ok).toBe(true);
-	});
+interface DefinitionSpec {
+	readonly id: string;
+	readonly providerId: string;
+	/** Merged into the semantics; `implementsProfiles` defaults to Postgres. */
+	readonly semantics?: Record<string, unknown>;
+}
 
-	it("fails closed on stale evidence rather than ranking it lower", () => {
-		const stale = definition(
-			"neon.stale/v1",
-			"neon",
-			semantics({
-				productId: "neon.stale",
-				implementsProfiles: neon.semantics?.implementsProfiles ?? [],
-				evidenceExpiresAtMs: NOW - 1,
-			}),
-		);
-		const outcome = matchCapabilityRequirement({
-			resourceName: "db",
-			requirement: postgresRequirement,
-			profiles,
-			definitions: [stale],
-			policy,
-			nowMs: NOW,
-		});
-		expect(outcome.ok).toBe(false);
-		if (outcome.ok) return;
-		expect(outcome.rejections.map((r) => r.code)).toContain("EVIDENCE_STALE");
-	});
-
-	it("prefers the candidate with fewer human claim actions, not the cheaper one", () => {
-		const twoActions = definition(
-			"prisma.claimable-postgres/v1",
-			"prisma",
-			semantics({
-				productId: "prisma.claimable-postgres",
-				implementsProfiles: neon.semantics?.implementsProfiles ?? [],
-				claimActionCount: 2,
-				claimAtomicity: "best-effort-saga",
-			}),
-		);
-		const outcome = matchCapabilityRequirement({
-			resourceName: "db",
-			requirement: postgresRequirement,
-			profiles,
-			definitions: [twoActions, neon],
-			policy,
-			nowMs: NOW,
-		});
-		expect(outcome.ok).toBe(true);
-		if (!outcome.ok) return;
-		expect(outcome.ranking[0]).toBe("neon.claimable-postgres/v1");
-	});
-
-	it("ranks identically regardless of catalog registration order", () => {
-		const forward = matchCapabilityRequirement({
-			resourceName: "db",
-			requirement: postgresRequirement,
-			profiles,
-			definitions: [neon, d1],
-			policy,
-			nowMs: NOW,
-		});
-		const reverse = matchCapabilityRequirement({
-			resourceName: "db",
-			requirement: postgresRequirement,
-			profiles,
-			definitions: [d1, neon],
-			policy,
-			nowMs: NOW,
-		});
-		expect(forward.ok && reverse.ok).toBe(true);
-		if (!forward.ok || !reverse.ok) return;
-		expect(forward.ranking).toEqual(reverse.ranking);
-		expect(forward.catalogHash).toEqual(reverse.catalogHash);
-	});
-
-	it("changes the catalog hash when a conformance result changes", () => {
-		const before = profileCatalogHash([neon], profiles);
-		const failed = definition(
-			"neon.claimable-postgres/v1",
-			"neon",
-			semantics({
-				productId: "neon.claimable-postgres",
-				implementsProfiles: [
-					{
-						profileId: "data.postgres/v1",
-						versionRange: ">=1",
-						realization: "native",
-						conformanceRef: "conformance.postgres/v1",
-						conformance: "fail",
-					},
-				],
-			}),
-		);
-		expect(profileCatalogHash([failed], profiles)).not.toEqual(before);
-	});
-
-	it("bridges Bindle-declared requirements into a capability requirement", () => {
-		const requirement = capabilityRequirementFromBindleRequirements({
-			require: ["data.postgres/v1"],
-			prefer: ["data.vector.pgvector/v1"],
-			runtimes: ["paas"],
-			labels: {},
-		});
-		expect(requirement).toBeDefined();
-		if (requirement === undefined) return;
-		const outcome = matchCapabilityRequirement({
-			resourceName: "db",
-			requirement,
-			profiles,
-			definitions: [d1, neon],
-			policy,
-			nowMs: NOW,
-		});
-		expect(outcome.ok).toBe(true);
-		if (!outcome.ok) return;
-		expect(outcome.definition.id).toBe("neon.claimable-postgres/v1");
-	});
-
-	it("leaves a bare port name to the legacy matcher instead of guessing a profile", () => {
-		expect(
-			capabilityRequirementFromBindleRequirements({
-				require: ["data"],
-				prefer: [],
-				runtimes: [],
-				labels: {},
-			}),
-		).toBeUndefined();
-	});
-
-	it("refuses a definition that declares semantics but names no executor", () => {
-		expect(() =>
-			definition(
-				"broken/v1",
-				"nobody",
+const resolve = (spec: keyof typeof NAMED | DefinitionSpec) =>
+	typeof spec === "string"
+		? NAMED[spec]
+		: definition(
+				spec.id,
+				spec.providerId,
 				semantics({
-					productId: "broken",
-					implementsProfiles: neon.semantics?.implementsProfiles ?? [],
-					executorRef: "",
-				}),
-			),
-		).toThrow(/names no executor/u);
+					productId: spec.id.split("/")[0] ?? spec.id,
+					implementsProfiles: POSTGRES_CLAIM,
+					...spec.semantics,
+				} as never),
+			);
+
+interface Ask {
+	readonly requirement?: Record<string, unknown>;
+	/** Built from Bindle-declared requirements instead of a parsed one. */
+	readonly fromBindle?: Record<string, unknown>;
+	readonly definitions: readonly (keyof typeof NAMED | DefinitionSpec)[];
+}
+
+function match(ask: Ask) {
+	const requirement = ask.fromBindle
+		? capabilityRequirementFromBindleRequirements(ask.fromBindle as never)
+		: parseCapabilityRequirement(
+				(ask.requirement ?? {
+					requiredProfiles: [
+						{ profileId: "data.postgres/v1", versionRange: ">=1" },
+					],
+				}) as never,
+			);
+	if (requirement === undefined) throw new Error("no capability requirement");
+	return matchCapabilityRequirement({
+		resourceName: "db",
+		requirement,
+		profiles,
+		definitions: ask.definitions.map(resolve),
+		policy,
+		nowMs: NOW,
 	});
+}
+
+describeConcern("profile-aware matching", {
+	cases: `${import.meta.dirname}/profile-matching.cases.jsonl`,
+	subject: () => ({
+		match: (ask: Ask) => {
+			const outcome = match(ask);
+			return outcome.ok
+				? {
+						ok: true,
+						definitionId: outcome.definition.id,
+						ranking: outcome.ranking,
+						rejections: [],
+						remediationCode: null,
+					}
+				: {
+						ok: false,
+						definitionId: null,
+						ranking: [],
+						rejections: outcome.rejections.map((r) => r.code).sort(),
+						remediationCode: outcome.remediation.code,
+					};
+		},
+		/** Registration order must decide nothing — neither ranking nor hash. */
+		isOrderIndependent: (ask: Ask) => {
+			const forward = match(ask);
+			const reverse = match({
+				...ask,
+				definitions: [...ask.definitions].reverse(),
+			});
+			if (!forward.ok || !reverse.ok) return false;
+			return (
+				JSON.stringify(forward.ranking) === JSON.stringify(reverse.ranking) &&
+				forward.catalogHash === reverse.catalogHash
+			);
+		},
+		/** A conformance result is part of the catalog's identity. */
+		catalogHashesDiffer: (
+			a: readonly (keyof typeof NAMED | DefinitionSpec)[],
+			b: readonly (keyof typeof NAMED | DefinitionSpec)[],
+		) =>
+			profileCatalogHash(a.map(resolve), profiles) !==
+			profileCatalogHash(b.map(resolve), profiles),
+		/** A bare port name belongs to the legacy matcher, not to a guess. */
+		bindleRequirement: (input: Record<string, unknown>) =>
+			capabilityRequirementFromBindleRequirements(input as never) ?? null,
+		/** Semantics without an executor is a refusal, not a warning. */
+		parseDefinition: (spec: DefinitionSpec) => resolve(spec).id,
+	}),
 });

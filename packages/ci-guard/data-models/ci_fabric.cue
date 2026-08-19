@@ -1,9 +1,9 @@
 package data_models
 
+import "list"
+
 #PullRequestGate: {
-	requiredChecks: [...string] & list.MinItems & {
-		"build", "typecheck", "lint", "unit", "conformance", ...
-	}
+	requiredChecks: ["build", "typecheck", "lint", "unit", "conformance", ...string]
 	blocksPullRequest: true
 }
 
@@ -14,7 +14,7 @@ package data_models
 }
 
 #CloudRole: {
-	allowedActions: [...=~"^deployments:(create|read|delete)$")]
+	allowedActions: [...=~"^deployments:(create|read|delete)$"]
 	// forbidden prefixes enforced in validate layer: iam:, billing:, secrets:, resources:admin
 }
 
@@ -33,7 +33,7 @@ package data_models
 }
 
 #E2eLane: {
-	gatedBy: [...string] & list.MinItems
+	gatedBy: [...string] & list.MinItems(1)
 	auth: #OidcFederation
 	teardown: #TeardownPolicy
 	quarantine: #QuarantinePolicy

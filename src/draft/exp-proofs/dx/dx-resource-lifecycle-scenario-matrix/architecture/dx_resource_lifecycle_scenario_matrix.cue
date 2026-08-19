@@ -1,5 +1,7 @@
 package dx_resource_lifecycle_scenario_matrix
 
+import "list"
+
 #RequiredRole: "app-developer" | "platform-engineer" | "gitops" | "secops" | "devops" | "sre" | "agent-mcp-caller"
 #RequiredPath: "happy-path" | "blocked-path" | "stale-or-unknown-evidence" | "migration-or-rollback" | "support-handoff"
 #ProofMode: "command-transcript" | "contract-fixture" | "projection-snapshot" | "support-safe-evidence"
@@ -8,15 +10,15 @@ package dx_resource_lifecycle_scenario_matrix
 	id:                  =~"^[a-z0-9][a-z0-9-]+$"
 	role:                #RequiredRole
 	intent:              string & =~"\\S"
-	commands:            [...string] & >0
-	sdkCalls:            [...string] & >0
-	apiCalls:            [...string] & >0
-	mcpTools:            [...string] & >0
-	expectedArtifacts:   [...string] & >0
+	commands:            [...string] & list.MinItems(1)
+	sdkCalls:            [...string] & list.MinItems(1)
+	apiCalls:            [...string] & list.MinItems(1)
+	mcpTools:            [...string] & list.MinItems(1)
+	expectedArtifacts:   [...string] & list.MinItems(1)
 	proofMode:           #ProofMode
-	fixtureRequirements: [...string] & >0
+	fixtureRequirements: [...string] & list.MinItems(1)
 	scenarioPaths:       [#RequiredPath, #RequiredPath, #RequiredPath, #RequiredPath, #RequiredPath]
-	designTerms:         [...string] & >0
+	designTerms:         [...string] & list.MinItems(1)
 }
 
 #DxResourceLifecycleScenarioMatrix: {
@@ -24,8 +26,8 @@ package dx_resource_lifecycle_scenario_matrix
 	phase:          "M1"
 	targetPackage:  "src/draft/exp-proofs/dx/dx-resource-lifecycle-scenario-matrix"
 	proofNote:      "docs/design/proofs/dx-resource-lifecycle-scenario-matrix/README.md"
-	designRefs:     [...string] & >0
-	designTerms:    [...string] & >0
+	designRefs:     [...string] & list.MinItems(1)
+	designTerms:    [...string] & list.MinItems(1)
 	scopeOut: [
 		"production CLI/API/SDK implementation",
 		"live providers",
@@ -33,5 +35,5 @@ package dx_resource_lifecycle_scenario_matrix
 		"customer data",
 		"visual mockups that invent resource behavior before the matrix exists",
 	]
-	journeys: [...#DxScenarioJourney] & >=7
+	journeys: [...#DxScenarioJourney] & list.MinItems(7)
 }

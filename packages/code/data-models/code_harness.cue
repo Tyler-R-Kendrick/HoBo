@@ -256,27 +256,27 @@ package code
 	actor_id:          string & !=""
 	session_id:        string & !=""
 	expected_revision: int & >=0
-	(create_session: #CreateSessionCommand) |
-	(detach_session: #DetachSessionCommand) |
-	(reattach_session: #ReattachSessionCommand) |
-	(focus_pane: #FocusPaneCommand) |
-	(stop_session: #StopSessionCommand) |
-	(create_tab: #CreateTabCommand) |
-	(create_pane: #CreatePaneCommand) |
-	(split_pane: #SplitPaneCommand) |
-	(close_pane: #ClosePaneCommand) |
-	(send_input: #SendInputCommand) |
-	(start_agent: #StartAgentCommand) |
-	(stop_agent: #StopAgentCommand) |
-	(create_checkpoint: #CreateCheckpointCommand) |
-	(restore_checkpoint: #RestoreCheckpointCommand) |
-	(commit: #CommitCommand) |
-	(push: #PushCommand) |
-	(open_pull_request: #OpenPullRequestCommand) |
-	(stack_pull_request: #StackPullRequestCommand) |
-	(merge_pull_request: #MergePullRequestCommand) |
-	(stage_paths: #StagePathsCommand) |
-	(unstage_paths: #UnstagePathsCommand)
+	{create_session: #CreateSessionCommand} |
+	{detach_session: #DetachSessionCommand} |
+	{reattach_session: #ReattachSessionCommand} |
+	{focus_pane: #FocusPaneCommand} |
+	{stop_session: #StopSessionCommand} |
+	{create_tab: #CreateTabCommand} |
+	{create_pane: #CreatePaneCommand} |
+	{split_pane: #SplitPaneCommand} |
+	{close_pane: #ClosePaneCommand} |
+	{send_input: #SendInputCommand} |
+	{start_agent: #StartAgentCommand} |
+	{stop_agent: #StopAgentCommand} |
+	{create_checkpoint: #CreateCheckpointCommand} |
+	{restore_checkpoint: #RestoreCheckpointCommand} |
+	{commit: #CommitCommand} |
+	{push: #PushCommand} |
+	{open_pull_request: #OpenPullRequestCommand} |
+	{stack_pull_request: #StackPullRequestCommand} |
+	{merge_pull_request: #MergePullRequestCommand} |
+	{stage_paths: #StagePathsCommand} |
+	{unstage_paths: #UnstagePathsCommand}
 }
 
 #SessionEventEnvelope: {
@@ -286,11 +286,11 @@ package code
 	sequence:       int & >0
 	occurred_at:    string & !=""
 	causation_id:   string & !=""
-	(session_created: #SessionCreatedEvent) |
-	(client_detached: #ClientDetachedEvent) |
-	(client_reattached: #ClientReattachedEvent) |
-	(pane_focused: #PaneFocusedEvent) |
-	(session_changed: #SessionChangedEvent)
+	{session_created: #SessionCreatedEvent} |
+	{client_detached: #ClientDetachedEvent} |
+	{client_reattached: #ClientReattachedEvent} |
+	{pane_focused: #PaneFocusedEvent} |
+	{session_changed: #SessionChangedEvent}
 }
 
 #SessionCommandResult: {

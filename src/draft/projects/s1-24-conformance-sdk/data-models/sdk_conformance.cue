@@ -35,11 +35,11 @@ package sdk_conformance
 	authorship:   "hand-authored" | "generated"
 	status:       #LaneStatus
 	corpus_claim: string & =~"bounded by the checked corpus"
-	lanes: [...#LaneReport] & {
-		{lane: "golden-ir-lowering-equivalence"}
-		{lane: "semantics-annex"}
-		...
-	}
+	lanes: [
+		#LaneReport & {lane: "golden-ir-lowering-equivalence"},
+		#LaneReport & {lane: "semantics-annex"},
+		...#LaneReport,
+	]
 }
 
 #AnnexCategory: "error-mapping" | "cancellation" | "async-ordering" | "ifc-side-effects"

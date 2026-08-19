@@ -1,5 +1,7 @@
 package vibe_workspace_project_states
 
+import "list"
+
 #WorkspaceProjectState: "empty" | "ready" | "blocked" | "recovering" | "failed" | "value-proven"
 #ProofMode: "live" | "simulated" | "reference fixture" | "scope-out"
 #JourneyCoverage: "happy path" | "blocked path" | "stale/unknown evidence path" | "support handoff" | "accessibility notes"
@@ -51,14 +53,14 @@ package vibe_workspace_project_states
 #Wireframe: {
 	surface:         string & =~"\\S"
 	caption:         string & =~"\\S"
-	regions:         [...string] & >0
+	regions:         [...string] & list.MinItems(1)
 	primaryStatus:   string & =~"\\S"
 	secondaryDetail: string & =~"\\S"
 }
 
 #ClaimPolicy: {
-	safeClaims:      [...string] & >0
-	forbiddenClaims: [...string] & >0
+	safeClaims:      [...string] & list.MinItems(1)
+	forbiddenClaims: [...string] & list.MinItems(1)
 }
 
 #WorkspaceProjectModeNote: {
@@ -77,10 +79,10 @@ package vibe_workspace_project_states
 	safeNextAction:              #SafeNextAction
 	evidenceLink:                #EvidenceLink
 	proofMode:                   #ProofMode
-	pathCoverage:                [...#JourneyCoverage] & >0
+	pathCoverage:                [...#JourneyCoverage] & list.MinItems(1)
 	missingPrerequisiteBehavior: #MissingPrerequisiteBehavior
 	supportHandoff:              #SupportHandoff
-	accessibilityNotes:          [...string] & >=2
+	accessibilityNotes:          [...string] & list.MinItems(2)
 	wireframe:                   #Wireframe
 	claimPolicy:                 #ClaimPolicy
 }
@@ -90,7 +92,7 @@ package vibe_workspace_project_states
 	phase:         "M1"
 	targetPackage: "src/draft/exp-proofs/ux/vibe-workspace-project-states"
 	proofNote:     "docs/design/proofs/vibe-workspace-project-states/README.md"
-	designRefs:    [...string] & >0
+	designRefs:    [...string] & list.MinItems(1)
 	scopeOut: [
 		"account service implementation",
 		"auth or billing flows",
@@ -99,6 +101,6 @@ package vibe_workspace_project_states
 		"customer data",
 		"launch claims without evidence",
 	]
-	modeNotes: [...#WorkspaceProjectModeNote] & >=4
-	fixtures:  [...#WorkspaceProjectStateFixture] & >=6
+	modeNotes: [...#WorkspaceProjectModeNote] & list.MinItems(4)
+	fixtures:  [...#WorkspaceProjectStateFixture] & list.MinItems(6)
 }

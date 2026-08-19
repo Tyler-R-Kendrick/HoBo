@@ -7,5 +7,5 @@ package architecture_evidence
 	fixture:          string & !=""
 	provider:         string & !=""
 	resume_budget_ms: int & >0 & <=30000
-	gate_arms:        [...string] & len(5)
+	gate_arms:        [...string] & [_, _, _, _, _]
 }

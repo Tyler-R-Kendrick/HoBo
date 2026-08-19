@@ -1,5 +1,7 @@
 package data_models
 
+import "list"
+
 #CapabilityDenialCode:
 	"capability.import-not-declared" |
 	"capability.export-not-found" |
@@ -22,11 +24,13 @@ package data_models
 	component_id:     string & !=""
 	import_interface: string & !=""
 	resource:         string & !=""
-	operations:       [...string & !=""] & list.UniqueItems & list.Sort
+	operations:       [...string & !=""] & list.UniqueItems()
+	_operationsAreSorted: true & list.IsSortedStrings(operations)
 }
 
 #CapabilityUsage: {
-	inferred: [...string & !=""] & list.UniqueItems & list.Sort
+	inferred: [...string & !=""] & list.UniqueItems()
+	_inferredAreSorted: true & list.IsSortedStrings(inferred)
 	source:   "static-analysis"
 }
 

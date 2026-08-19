@@ -25,7 +25,7 @@ package vibe_snapshop_launch_demo_storyboard
 	storyboardSteps: [...#SnapshopStoryboardStep]
 	assetMap: [...#SnapshopAssetMapEntry]
 	scenarioPaths: [...#SnapshopScenarioPath]
-	accessibilityNotes: [...=~"^.+$"] & {0: string}
+	accessibilityNotes: [...=~"^.+$"] & [_, ...]
 	scopeOut: [...string]
 }
 
@@ -62,9 +62,9 @@ package vibe_snapshop_launch_demo_storyboard
 #SnapshopScenarioPath: {
 	id: #SnapshopScenario
 	narrative: string & != ""
-	stepIds: [...#SnapshopStoryStep] & {0: string}
-	assetKinds: [...#SnapshopAssetKind] & {0: string}
-	proofModeLabels: [...#SnapshopProofMode] & {0: string}
+	stepIds: [...#SnapshopStoryStep] & [_, ...]
+	assetKinds: [...#SnapshopAssetKind] & [_, ...]
+	proofModeLabels: [...#SnapshopProofMode] & [_, ...]
 	accessibilityNote: string & != ""
 	supportHandoff: string & != ""
 	safeOutcome: string & != ""

@@ -1,5 +1,7 @@
 package role_journey_cli_mcp_transcripts
 
+import "list"
+
 #NonEmptyString: string & =~"\\S"
 #NonEmptyStringList: [#NonEmptyString, ...#NonEmptyString]
 #FixtureId: =~"^rlq-[a-z0-9-]+-v[0-9]+$"
@@ -18,7 +20,7 @@ package role_journey_cli_mcp_transcripts
 	sourceQuickstartProof: "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md"
 	designRefs:            #NonEmptyStringList
 	scopeOut:              #NonEmptyStringList
-	journeys:              [...#RoleJourney] & >=6
+	journeys:              [...#RoleJourney] & list.MinItems(6)
 }
 
 #RoleJourney: {
@@ -27,9 +29,9 @@ package role_journey_cli_mcp_transcripts
 	audience:                   #NonEmptyString
 	intent:                     #NonEmptyString
 	primaryQuickstartFixtureId: #FixtureId
-	coverage:                   [...#RoleJourneyCoverage] & >=1
-	negativePaths:              [...#RoleJourneyNegativePath] & >=2
-	sequence:                   [...#RoleJourneyStep] & >=3
+	coverage:                   [...#RoleJourneyCoverage] & list.MinItems(1)
+	negativePaths:              [...#RoleJourneyNegativePath] & list.MinItems(2)
+	sequence:                   [...#RoleJourneyStep] & list.MinItems(3)
 }
 
 #RoleJourneyStep: {

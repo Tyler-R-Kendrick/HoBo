@@ -80,8 +80,7 @@ import (
 	_class_matches_port: true & (
 		(port == "compute" && resource_class == "browser-wasm:guest") ||
 		(port == "kv" && resource_class == "browser-wasm:kv") ||
-		(port == "queue" && resource_class == "browser-wasm:queue")
-	)
+		(port == "queue" && resource_class == "browser-wasm:queue"))
 }
 
 #BrowserWasmGuestManifest: {

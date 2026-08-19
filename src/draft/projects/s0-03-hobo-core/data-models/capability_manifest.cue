@@ -1,5 +1,7 @@
 package data_models
 
+import "list"
+
 #Sha256Ref: string & =~"^sha256:[a-f0-9]{64}$"
 
 #ManifestSignature: {

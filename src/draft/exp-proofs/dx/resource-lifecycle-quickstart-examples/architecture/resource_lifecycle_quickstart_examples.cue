@@ -1,5 +1,7 @@
 package resource_lifecycle_quickstart_examples
 
+import "list"
+
 #QuickstartPhase: "define" | "collect" | "plan" | "deploy" | "inspect" | "manage" | "migrate" | "recover"
 #QuickstartChannel: "sdk" | "cli" | "api" | "mcp"
 #QuickstartProofMode: "reference-fixture" | "simulated" | "live" | "scope-out"
@@ -38,9 +40,9 @@ package resource_lifecycle_quickstart_examples
 #ResourceLifecycleQuickstartHandoff: {
 	consumer:     #QuickstartConsumer
 	use:          string & =~"\\S"
-	fixtureIds:   [...#FixtureId] & >0
+	fixtureIds:   [...#FixtureId] & list.MinItems(1)
 	handoffNote:  string & =~"\\S"
-	mustNotClaim: [...string] & >0
+	mustNotClaim: [...string] & list.MinItems(1)
 }
 
 #ResourceLifecycleQuickstartExamples: {
@@ -48,7 +50,7 @@ package resource_lifecycle_quickstart_examples
 	phase:         "M2"
 	targetPackage: "src/draft/exp-proofs/dx/resource-lifecycle-quickstart-examples"
 	proofNote:     "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md"
-	designRefs:    [...string] & >0
+	designRefs:    [...string] & list.MinItems(1)
 	scopeOut: [
 		"marketing copy not backed by transcripts",
 		"customer promises",
@@ -56,8 +58,8 @@ package resource_lifecycle_quickstart_examples
 		"production docs publication",
 		"enterprise dashboard feature tours",
 	]
-	safeClaims: [...string] & >0
-	modeNotes:  [...#ResourceLifecycleQuickstartModeNote] & >=4
-	steps:      [...#ResourceLifecycleQuickstartStep] & >=8
-	handoffs:   [...#ResourceLifecycleQuickstartHandoff] & >=7
+	safeClaims: [...string] & list.MinItems(1)
+	modeNotes:  [...#ResourceLifecycleQuickstartModeNote] & list.MinItems(4)
+	steps:      [...#ResourceLifecycleQuickstartStep] & list.MinItems(8)
+	handoffs:   [...#ResourceLifecycleQuickstartHandoff] & list.MinItems(7)
 }

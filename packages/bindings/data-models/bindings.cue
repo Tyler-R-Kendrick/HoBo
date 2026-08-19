@@ -5,6 +5,8 @@
 // userinfo, a connection string, a bearer token — is rejected at the parse
 // boundary, which is why these patterns are constraints and not documentation.
 
+package bindings
+
 #SecretRefScheme: "vault" | "azure-kv" | "aws-sm" | "gcp-sm" | "op" | "infisical" | "hobo-secret" | "hobo-token"
 
 // scheme://authority/path with no userinfo (no "@" before the first "/").

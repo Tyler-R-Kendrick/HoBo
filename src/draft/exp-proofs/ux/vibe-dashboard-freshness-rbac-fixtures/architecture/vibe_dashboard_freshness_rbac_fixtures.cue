@@ -11,16 +11,16 @@ package vibe_dashboard_freshness_rbac_fixtures
 	designRefs: [...string]
 	proofModeLabels: [...#DashboardProofMode]
 	coveragePaths: [...#DashboardFixtureCoveragePath]
-	accessibilityNotes: [...=~"^.+$"] & {0: string}
+	accessibilityNotes: [...=~"^.+$"] & [_, ...]
 	fixtures: [...#DashboardReadStateFixture]
 	scopeOut: [...string]
 }
 
 #DashboardFixtureCoveragePath: {
 	id: #DashboardCoveragePath
-	fixtureIds: [...=~"^hobo-545-dashboard-"] & {0: string}
+	fixtureIds: [...=~"^hobo-545-dashboard-"] & [_, ...]
 	accessibilityNote: =~"^.+$"
-	proofModeLabels: [...#DashboardProofMode] & {0: string}
+	proofModeLabels: [...#DashboardProofMode] & [_, ...]
 	safeOutcome: =~"^.+$"
 }
 

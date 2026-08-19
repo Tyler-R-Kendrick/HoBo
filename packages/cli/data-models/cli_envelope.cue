@@ -1,5 +1,7 @@
 package cli
 
+import "list"
+
 #CanonicalVerb: "up" | "down" | "dev" | "new" | "login" | "claim" | "plan" | "verify" | "can-deploy" | "inspect" | "logs" | "doctor" | "codegen" | "build" | "collect" | "stub" | "drift" | "add" | "registry" | "import" | "generate" | "sandbox" | "test" | "attest" | "erase" | "derivative" | "runbook"
 
 #CliClients: {

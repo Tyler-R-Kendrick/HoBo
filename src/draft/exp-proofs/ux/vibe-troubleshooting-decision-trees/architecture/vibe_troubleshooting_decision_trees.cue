@@ -5,22 +5,22 @@ package vibe_troubleshooting_decision_trees
 
 #RedactionEvidence: {
   redacted: true
-  visibleFields: [...string] & [..._, string]
-  withheldFields: [...string] & [..._, string]
+  visibleFields: [...string] & [_, ...]
+  withheldFields: [...string] & [_, ...]
 }
 
 #TroubleshootingDecisionCase: {
   caseId: string
   pathState: #PathState
   symptom: string
-  diagnosticEvidence: [...string] & [..._, string]
+  diagnosticEvidence: [...string] & [_, ...]
   owner: string
   safeNextAction: string
   customerSafeWording: string
   escalationRoute: string
   proofMode: #ProofMode
-  quickstartFixtureRefs: [...string] & [..._, string]
-  accessibilityNotes: [...string] & [..._, string]
+  quickstartFixtureRefs: [...string] & [_, ...]
+  accessibilityNotes: [...string] & [_, ...]
   redaction: #RedactionEvidence
 }
 
@@ -29,8 +29,8 @@ package vibe_troubleshooting_decision_trees
   phase: "M1"
   targetPackage: "src/draft/exp-proofs/ux/vibe-troubleshooting-decision-trees"
   proofNote: "docs/design/proofs/vibe-troubleshooting-decision-trees/README.md"
-  designRefs: [...string] & [..._, string]
+  designRefs: [...string] & [_, ...]
   proofModes: ["live", "simulated", "reference fixture", "scope-out"]
-  cases: [...#TroubleshootingDecisionCase] & [..._, _]
-  scopeOut: [...string] & [..._, string]
+  cases: [...#TroubleshootingDecisionCase] & [_, ...]
+  scopeOut: [...string] & [_, ...]
 }

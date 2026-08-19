@@ -22,9 +22,9 @@ package stage_gate
 	workflow_run_url:  string
 	recorded_at:       string & !=""
 	checks: [
-		{check_id: "runtime-port-conformance", ...#StageGateCheck},
-		{check_id: "offline-hello-bindle", duration_ms: uint & <=60000, ...#StageGateCheck},
-		{check_id: "replay-equals-live", ...#StageGateCheck},
+		#StageGateCheck & {check_id: "runtime-port-conformance"},
+		#StageGateCheck & {check_id: "offline-hello-bindle", duration_ms: uint & <=60000},
+		#StageGateCheck & {check_id: "replay-equals-live"},
 	]
 }
 

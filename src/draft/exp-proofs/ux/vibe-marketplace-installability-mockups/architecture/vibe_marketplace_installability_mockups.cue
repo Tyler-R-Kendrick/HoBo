@@ -17,7 +17,7 @@ package vibe_marketplace_installability_mockups
 	wireframes: [...#MarketplaceWireframe]
 	fixtures: [...#MarketplaceListingFixture]
 	scenarioPaths: [...#MarketplaceScenarioPath]
-	accessibilityNotes: [...=~"^.+$"] & {0: string}
+	accessibilityNotes: [...=~"^.+$"] & [_, ...]
 	scopeOut: [...string]
 }
 
@@ -33,9 +33,9 @@ package vibe_marketplace_installability_mockups
 	id: =~"^wf-marketplace-"
 	surface: #MarketplaceSurface
 	title: string & != ""
-	personas: [...#MarketplacePersona] & {0: string}
-	questionsAnswered: [...=~"^.{20,}$"] & {0: string}
-	fixtureIds: [...=~"^hobo-546-marketplace-"] & {0: string}
+	personas: [...#MarketplacePersona] & [_, ...]
+	questionsAnswered: [...=~"^.{20,}$"] & [_, ...]
+	fixtureIds: [...=~"^hobo-546-marketplace-"] & [_, ...]
 }
 
 #MarketplaceListingFixture: {
@@ -54,8 +54,8 @@ package vibe_marketplace_installability_mockups
 #MarketplaceScenarioPath: {
 	id: #MarketplaceScenario
 	narrative: string & != ""
-	fixtureIds: [...=~"^hobo-546-marketplace-"] & {0: string}
-	proofModeLabels: [...#MarketplaceProofMode] & {0: string}
+	fixtureIds: [...=~"^hobo-546-marketplace-"] & [_, ...]
+	proofModeLabels: [...#MarketplaceProofMode] & [_, ...]
 	accessibilityNote: string & != ""
 	safeOutcome: string & != ""
 }

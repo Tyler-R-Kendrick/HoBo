@@ -1,5 +1,7 @@
 package vibe_marketplace_trust_copy_states
 
+import "list"
+
 #ScenarioKind: "preview-warning" | "installable-with-evidence" | "policy-block" | "deprecated-guidance" | "yanked-support-route" | "hidden-listing"
 #ListingState: "not-visible" | "preview-only" | "limited-beta" | "installable" | "blocked-by-policy" | "deprecated" | "yanked"
 #Path: "happy" | "blocked" | "stale-or-unknown" | "support-handoff"
@@ -31,20 +33,20 @@ package vibe_marketplace_trust_copy_states
 	evidenceSource:     string & =~"\\S"
 	safeClaim:          string & =~"\\S"
 	copy:               #Copy
-	accessibilityNotes: [...#AccessibilityNote] & >=8
+	accessibilityNotes: [...#AccessibilityNote] & list.MinItems(8)
 }
 
 #Handoff: {
 	owner:      string & =~"\\S"
 	consumes:   string & =~"\\S"
-	mustNotOwn: [...string] & >0
+	mustNotOwn: [...string] & list.MinItems(1)
 }
 
 #QuickstartRef: {
 	sourceIssue:  "HOBO-577"
 	fixtureId:    #QuickstartFixtureId
 	proofMode:    #QuickstartProofMode
-	copyStates:   [...#ScenarioKind] & >0
+	copyStates:   [...#ScenarioKind] & list.MinItems(1)
 	trustCopyUse: string & =~"\\S"
 }
 
@@ -53,8 +55,8 @@ package vibe_marketplace_trust_copy_states
 	phase:         "M1"
 	targetPackage: "src/draft/exp-proofs/ux/vibe-marketplace-trust-copy-states"
 	proofNote:     "docs/design/proofs/vibe-marketplace-trust-copy-states/README.md"
-	designRefs:    [...string] & >0
-	quickstartFixtureRefs: [...#QuickstartRef] & >=5
+	designRefs:    [...string] & list.MinItems(1)
+	quickstartFixtureRefs: [...#QuickstartRef] & list.MinItems(5)
 	scopeOut: [
 		"production UI",
 		"publisher portal UI",
@@ -68,8 +70,8 @@ package vibe_marketplace_trust_copy_states
 		"real credentials",
 		"customer data",
 	]
-	scenarios: [...#Scenario] & >=6
-	handoffs:  [...#Handoff] & >=7
+	scenarios: [...#Scenario] & list.MinItems(6)
+	handoffs:  [...#Handoff] & list.MinItems(7)
 }
 
 MarketplaceTrustCopyStates: #MarketplaceTrustCopyStates

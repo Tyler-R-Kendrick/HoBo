@@ -3,6 +3,11 @@
 // validation constraints only and do not implement a browser grid or device lab.
 package supported_platform_matrix
 
+import (
+	"list"
+	"strings"
+)
+
 // Customer-facing support level.
 #SupportLevel: "supported" | "limited" | "unsupported"
 

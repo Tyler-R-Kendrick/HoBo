@@ -7,6 +7,7 @@ import {
 	canonicalWorkspaceEdges,
 	classifyPackage,
 	detectWorkspaceCycles,
+	mergeWorkspaceEdges,
 	parseWorkspaceEdge,
 	validateBoundaryImports,
 } from "../src/boundaries.js";
@@ -158,5 +159,180 @@ describe("every workspace package is classifiable", () => {
 				to: "packages/core",
 			}),
 		).toThrow(/unknown import source/u);
+	});
+});
+
+/**
+ * C1 — the tripwire the banked-list reduction was accused of removing.
+ *
+ * `ACCEPTED_ADAPTER_PACKAGE_EDGES` went from 31 entries to 14. The seventeen
+ * that went all named a target `CONTRACT_PACKAGE_PATHS` classifies as
+ * `contract`, which the adapter rule exempts outright, so no verdict changed.
+ *
+ * The adversarial reading was that they were also documentation and a second
+ * line of defence: reclassify one package and seventeen provider edges become
+ * violations at once, with nothing on record saying they were ever considered
+ * fine.
+ *
+ * Half of that is right and half of it is backwards, and the half that is
+ * backwards decides what to do about it. Measured, by removing
+ * `packages/bindings` from `CONTRACT_PACKAGE_PATHS` and running the real
+ * workspace graph through `validateBoundaryImports` twice:
+ *
+ *   with the seventeen deleted (today):  18 bindings violations
+ *   with the seventeen restored:          6 bindings violations
+ *
+ * The allowlist does not warn about a reclassification, it *absorbs* one. Each
+ * restored entry names an exact edge and exempts it from both the adapter rule
+ * and the outward rule, so twelve of the eighteen go quiet — the six that
+ * survive are the `packages/packs/*` reaches, which were never on the list.
+ * Restoring the entries would buy a partial silence, not a second line of
+ * defence.
+ *
+ * Two inherited claims also need correcting. "Seventeen provider edges become
+ * violations at once" describes no single edit: the seventeen span four
+ * targets, and reclassifying any one of them surfaces only its own share (six
+ * edges for `bindings`). And the surviving concern is not safety but
+ * diagnosability — loud violations with no written record of why the edges were
+ * ever acceptable.
+ *
+ * So this pins the *reason* rather than restoring the list. Each edge below is
+ * asserted permitted, and asserted permitted *because its target is contract
+ * vocabulary*. Reclassify a package and this fails by name, naming the edge and
+ * carrying the explanation, before anyone reaches the anonymous rule violations
+ * elsewhere.
+ */
+describe("banked edges retired into the contract-kind exemption", () => {
+	// Recovered from ed1061ca (the 18 deleted lines, one of which duplicated an
+	// entry that survives in the list today).
+	const RETIRED_BANKED_EDGES = [
+		["packages/providers/provider-cloudflare", "packages/bindings"],
+		["packages/providers/provider-cloudflare", "packages/capability-profiles"],
+		["packages/providers/provider-neon", "packages/bindings"],
+		["packages/providers/provider-neon", "packages/capability-profiles"],
+		["packages/providers/provider-netlify", "packages/bindings"],
+		["packages/providers/provider-netlify", "packages/capability-profiles"],
+		["packages/providers/provider-netlify", "packages/claims"],
+		["packages/providers/provider-prisma-postgres", "packages/bindings"],
+		[
+			"packages/providers/provider-prisma-postgres",
+			"packages/capability-profiles",
+		],
+		["packages/providers/provider-ttl-sh", "packages/capability-profiles"],
+		["packages/providers/provider-ttl-sh", "packages/claims"],
+		["packages/providers/provider-upstash", "packages/bindings"],
+		["packages/providers/provider-upstash", "packages/capability-profiles"],
+		["packages/providers/provider-upstash", "packages/kv-redis-compatible"],
+		["packages/providers/provider-vercel", "packages/bindings"],
+		["packages/providers/provider-vercel", "packages/capability-profiles"],
+		["packages/providers/provider-vercel", "packages/claims"],
+	] as const;
+
+	it("covers every entry the reduction deleted", () => {
+		expect(RETIRED_BANKED_EDGES).toHaveLength(17);
+	});
+
+	it.each(
+		RETIRED_BANKED_EDGES,
+	)("%s -> %s is permitted because the target is contract vocabulary", (from, to) => {
+		// The load-bearing half. If this flips, the edge is still "permitted"
+		// only until someone notices — say why it is permitted, here.
+		expect(
+			`${to} classified as ${classifyPackage(to).kind}`,
+			`${to} left CONTRACT_PACKAGE_PATHS. ${from} imports it, and that import was banked as acceptable pre-existing debt until the contract-kind exemption superseded the allowlist entry. Restore the classification, or restore "${from}->${to}" to ACCEPTED_ADAPTER_PACKAGE_EDGES with a written reason.`,
+		).toBe(`${to} classified as contract`);
+
+		expect(
+			validateBoundaryImports([parseWorkspaceEdge({ from, to })]).errors,
+		).toEqual([]);
+	});
+});
+
+/**
+ * C2 — the dev-marker hole, and why it was only closed by accident.
+ *
+ * `isDevOnlyTestHarnessEdge` exempts an edge from the layering rules on the
+ * strength of `edge.dev`. The case nobody had tested: a package that declares
+ * `@hobo/contract-harness` under `devDependencies` *and* imports it from
+ * `src/`. The declared-dependency collector marks that edge dev; the source
+ * scanner, which walks `src/` only and knows nothing about manifests, reports
+ * the same pair unmarked.
+ *
+ * Measured before changing anything: the guard did refuse it — but only because
+ * `check-package-boundaries.mts` deduplicated with a bare `Map.set` keyed on
+ * `from->to` and the source scan happened to be spread in second. Reversing two
+ * lines in one array literal produced `[]`. That is not a property, it is a
+ * coincidence, and nothing tested it.
+ */
+describe("dev-only marker survives only a genuinely dev-only edge", () => {
+	const from = "packages/runtimes/runtime-oci";
+	const to = "packages/contract-harness";
+	const declared = parseWorkspaceEdge({ from, to, dev: true });
+	const imported = parseWorkspaceEdge({ from, to });
+
+	it("keeps the marker when every sighting is dev-only", () => {
+		expect(mergeWorkspaceEdges([declared, declared])).toEqual([
+			{ from, to, dev: true },
+		]);
+		expect(validateBoundaryImports(mergeWorkspaceEdges([declared]))).toEqual({
+			errors: [],
+		});
+	});
+
+	it.each([
+		["declared-then-source", [declared, imported]],
+		["source-then-declared", [imported, declared]],
+	] as const)("withdraws the marker when src/ imports it too (%s)", (_order, edges) => {
+		expect(mergeWorkspaceEdges(edges)).toEqual([{ from, to }]);
+		expect(
+			validateBoundaryImports(mergeWorkspaceEdges(edges)).errors,
+		).toContain(
+			"adapters may import only core ports: packages/runtimes/runtime-oci -> packages/contract-harness",
+		);
+	});
+});
+
+/**
+ * C3 — the four manifest packages, pre-registered before they exist.
+ *
+ * Registering ahead of creation is deliberate: an unclassified workspace path
+ * makes `parseWorkspaceEdge` throw, which aborts the gate before it evaluates a
+ * rule, so the run that adds a package is the run with no enforcement.
+ */
+describe("manifest packages are pre-registered as contract vocabulary", () => {
+	const MANIFEST_PACKAGES = [
+		"packages/manifest-capability",
+		"packages/manifest-request",
+		"packages/manifest-declaration",
+		"packages/manifest-plan",
+	] as const;
+
+	it.each(MANIFEST_PACKAGES)("%s classifies as a layer-1 contract", (path) => {
+		expect(classifyPackage(path)).toEqual({ kind: "contract", layer: 1 });
+	});
+
+	it.each(
+		MANIFEST_PACKAGES,
+	)("%s is importable by the package that re-exports it and by adapters", (path) => {
+		expect(
+			validateBoundaryImports([
+				parseWorkspaceEdge({ from: "packages/capability-profiles", to: path }),
+				parseWorkspaceEdge({ from: "packages/cloud", to: path }),
+				parseWorkspaceEdge({
+					from: "packages/providers/provider-vercel",
+					to: path,
+				}),
+			]).errors,
+		).toEqual([]);
+	});
+
+	it.each(
+		MANIFEST_PACKAGES,
+	)("%s still fails closed if it grows a dependency past core", (path) => {
+		expect(
+			validateBoundaryImports([
+				parseWorkspaceEdge({ from: path, to: "packages/cloud" }),
+			]).errors,
+		).toEqual([`dependency points outward: ${path} -> packages/cloud`]);
 	});
 });

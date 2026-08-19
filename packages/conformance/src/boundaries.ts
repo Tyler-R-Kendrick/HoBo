@@ -45,6 +45,39 @@ const CONTRACT_PACKAGE_PATHS = new Set([
 	"packages/trust",
 	"packages/data-postgres",
 	"packages/kv-redis-compatible",
+	// The four manifest packages (decomposition of `CapabilityRequirement` /
+	// `SelectionCandidate` out of `@hobo/capability-profiles` and of
+	// `ResourceIntent` / `ResourcePlan` out of `@hobo/cloud`).
+	//
+	// DECIDED, not assumed. Contract is the *permissive* classification here —
+	// it lets any adapter import them with no allowlist entry — so the question
+	// is whether that is what we want, and it is, for two reasons that were
+	// measured rather than argued:
+	//
+	// 1. The alternative is unworkable. Registered only in
+	//    `KNOWN_PACKAGE_PATHS`, each lands at layer 3, and the re-export wiring
+	//    the decomposition requires — `@hobo/capability-profiles` re-exporting
+	//    the capability and request shapes so no consumer changes — becomes a
+	//    layer-1 package importing a layer-3 one. Measured:
+	//    `dependency points outward: packages/capability-profiles -> <layer-3>`.
+	//    Classifying them any other way would force a fresh allowlist entry for
+	//    a package whose entire purpose is to be depended upon.
+	// 2. It is the same case the set already exists for. These are
+	//    provider-neutral record shapes with no behaviour, mechanically
+	//    constrained to `@hobo/core` as their only workspace dependency, which
+	//    the outward rule keeps honest: a manifest package that grows a
+	//    dependency on an adapter or an app package fails this gate at layer 1
+	//    before anyone can lean on it.
+	//
+	// The widening this *does* buy is deliberate: a provider that needs
+	// `ResourcePlan` today has to import `@hobo/cloud`, a layer-3 app package —
+	// which is why `pack-framework->packages/cloud` sits in the banked list
+	// below. Making the plan shape a contract is the retirement path for that
+	// entry, not an unrelated concession.
+	"packages/manifest-capability",
+	"packages/manifest-request",
+	"packages/manifest-declaration",
+	"packages/manifest-plan",
 ]);
 
 const KNOWN_PACKAGE_PATHS = new Set([
@@ -137,6 +170,18 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	// ordinary workspace packages rather than a new tier.
 	"packages/code/examples/barebones",
 	"packages/code/examples/hello-world",
+	// Pre-registered before the directories exist. This set is never asserted
+	// against the filesystem, and registering ahead of creation is the point:
+	// an unclassified workspace path makes `parseWorkspaceEdge` *throw*, which
+	// aborts the gate before it evaluates a single rule, so the run that
+	// introduces a package is exactly the run with no boundary enforcement.
+	// `@hobo/bindings` already shipped that state once (see the note above).
+	// Their kind is decided in `CONTRACT_PACKAGE_PATHS`, which is checked
+	// first; these entries only keep the classifier total.
+	"packages/manifest-capability",
+	"packages/manifest-request",
+	"packages/manifest-declaration",
+	"packages/manifest-plan",
 ]);
 
 // Documented, narrowly-scoped exceptions. The AI training/eval providers
@@ -301,6 +346,54 @@ export function parseWorkspaceEdge(input: unknown): WorkspaceEdge {
 	}
 
 	return dev === undefined ? { from, to } : { from, to, dev };
+}
+
+/**
+ * Collapse the edges discovered for one workspace pair into the single edge the
+ * rules should judge, taking the *strictest* provenance of the inputs.
+ *
+ * The `dev` marker exempts an edge from the layering rules, so whether a
+ * package can reach the test harness turns entirely on which of two discoveries
+ * of the same pair survives deduplication. That was previously decided by
+ * position: `check-package-boundaries.mts` built a `Map` keyed on
+ * `from->to` and let the later write win, and the declared-dependency scan
+ * happened to run before the source scan.
+ *
+ * Measured, on the exact case the exemption was written for — a package that
+ * declares `@hobo/contract-harness` under `devDependencies` *and* imports it
+ * from `src/`:
+ *
+ *   declared-then-source: edge {from,to}          -> "adapters may import only core ports"
+ *   source-then-declared: edge {from,to,dev:true} -> []
+ *
+ * Both orders are one line apart in the same array literal. The rule that
+ * matters is not "the source scan runs second", it is "a runtime import is a
+ * runtime edge no matter what else also declares it", and stating it here means
+ * reordering the collection cannot quietly re-open the hole.
+ */
+export function mergeWorkspaceEdges(
+	edges: readonly WorkspaceEdge[],
+): WorkspaceEdge[] {
+	const merged = new Map<string, WorkspaceEdge>();
+
+	for (const edge of edges) {
+		const key = `${edge.from}->${edge.to}`;
+		const existing = merged.get(key);
+		// Dev-only is a claim about *every* discovery of the pair. One runtime
+		// sighting is enough to withdraw it, in either order.
+		const dev =
+			existing === undefined
+				? (edge.dev ?? false)
+				: (existing.dev ?? false) && (edge.dev ?? false);
+		merged.set(
+			key,
+			dev
+				? { from: edge.from, to: edge.to, dev: true }
+				: { from: edge.from, to: edge.to },
+		);
+	}
+
+	return [...merged.values()];
 }
 
 export function classifyPackage(path: string): PackageClassification {

@@ -27,6 +27,7 @@
 		"@hobo/dispatcher": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/contract-harness": "workspace:*",
 		"vitest": "^4.1.9"
 	},
 	"description": "HoBo operator SDK (ADR-0072): thin authoring factories over the dispatcher/policy/cloud engines plus frozen, parse-validated declarations for waiver/chaos/runbook/generateProvider/runner (docs/plans/0017 F23)."

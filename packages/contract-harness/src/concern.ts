@@ -14,16 +14,47 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { isRecursiveSubset, subsetMismatchPath } from "./subset.js";
+
 export interface ConcernCase {
 	readonly method: string;
 	readonly name?: string;
 	readonly input?: readonly unknown[];
 	readonly expect?: unknown;
+	/**
+	 * Assert a *subset* of the result rather than the whole value.
+	 *
+	 * This is the shape most existing tests are in: one call, several
+	 * assertions about different fields of what came back. Deep equality cannot
+	 * express that without restating every field the caller does not care
+	 * about, so `expect` alone forces those tests to stay hand-written.
+	 */
+	readonly subset?: unknown;
 	readonly match?: string;
 	readonly throws?: string;
+	/**
+	 * A subset match against the thrown error itself.
+	 *
+	 * Deliberately one key rather than `throwsCode`/`throwsName`/…: this repo
+	 * has two error idioms — some carry a `code`, others carry `name` plus
+	 * structured fields like `declaration`/`path` — and a subset covers both
+	 * without the format growing a key per field. Matching only the message
+	 * would pin prose that is meant to stay editable, while these are the parts
+	 * callers actually branch on.
+	 */
+	readonly throwsSubset?: Readonly<Record<string, unknown>>;
 }
 
-const KEYS = new Set(["method", "name", "input", "expect", "match", "throws"]);
+const KEYS = new Set([
+	"method",
+	"name",
+	"input",
+	"expect",
+	"subset",
+	"match",
+	"throws",
+	"throwsSubset",
+]);
 
 export function parseConcernCases(
 	text: string,
@@ -45,9 +76,14 @@ export function parseConcernCases(
 		if (unknownKey) throw new Error(`${at} has unknown key "${unknownKey}"`);
 		if (typeof row.method !== "string" || !row.method)
 			throw new Error(`${at} needs a non-empty "method"`);
-		if (row.throws !== undefined && (row.expect ?? row.match) !== undefined)
+		const asserts = [row.expect, row.subset, row.match].some(
+			(value) => value !== undefined,
+		);
+		if (row.throwsSubset !== undefined && asserts)
 			throw new Error(`${at} cannot assert both a throw and a value`);
-		if (row.throws === undefined && (row.expect ?? row.match) === undefined)
+		if (row.throws !== undefined && asserts)
+			throw new Error(`${at} cannot assert both a throw and a value`);
+		if (row.throws === undefined && row.throwsSubset === undefined && !asserts)
 			throw new Error(`${at} asserts nothing`);
 		return [row as unknown as ConcernCase];
 	});
@@ -96,6 +132,55 @@ export interface ConcernOptions<T extends object> {
 	readonly uncovered?: Readonly<Record<string, string>>;
 }
 
+/**
+ * What one call did: returned a value, or threw.
+ *
+ * Separating this from the assertions is what makes them testable at all. The
+ * previous shape ran the checks inside the same `try` that wrapped the call, so
+ * the catch could not tell a failure of the subject from a failure of an
+ * assertion — and the "expected a throw" guard was caught by its own catch and
+ * then matched by its own regex, which is how a `throws` case that returned
+ * normally passed green.
+ */
+export type CaseOutcome =
+	| { readonly returned: unknown }
+	| { readonly threw: unknown };
+
+/** Every assertion the format can express, in one place, over a finished call. */
+export function assertCase(row: ConcernCase, outcome: CaseOutcome): void {
+	const wantsThrow = row.throws !== undefined || row.throwsSubset !== undefined;
+	if ("threw" in outcome) {
+		const error = outcome.threw;
+		if (!wantsThrow) throw error;
+		if (row.throws !== undefined)
+			expect((error as Error).message).toMatch(new RegExp(row.throws, "u"));
+		if (
+			row.throwsSubset !== undefined &&
+			!isRecursiveSubset(row.throwsSubset, error)
+		)
+			expect.unreachable(
+				`thrown error mismatch at ${subsetMismatchPath(row.throwsSubset, error)} — got ${(error as Error).name}: ${(error as Error).message}`,
+			);
+		return;
+	}
+	const actual = outcome.returned;
+	if (wantsThrow)
+		expect.unreachable(
+			`expected a throw matching ${row.throws ?? JSON.stringify(row.throwsSubset)}, got ${JSON.stringify(actual)}`,
+		);
+	if (row.match !== undefined)
+		// Objects are stringified so a case can match into a returned errors
+		// array without needing a path expression.
+		expect(
+			typeof actual === "string" ? actual : JSON.stringify(actual),
+		).toMatch(new RegExp(row.match, "u"));
+	if (row.subset !== undefined && !isRecursiveSubset(row.subset, actual))
+		expect.unreachable(
+			`result mismatch at ${subsetMismatchPath(row.subset, actual)} — got ${JSON.stringify(actual)}`,
+		);
+	if (row.expect !== undefined) expect(actual).toEqual(row.expect);
+}
+
 export function describeConcern<T extends object>(
 	name: string,
 	options: ConcernOptions<T>,
@@ -130,29 +215,24 @@ export function describeConcern<T extends object>(
 				rows.map((r) => [r.name ?? JSON.stringify(r.input ?? []), r]),
 			)(`${method} %s`, async (_label, row) => {
 				const subject = await options.subject();
+				let outcome: CaseOutcome;
 				try {
 					const member = (subject as Record<string, unknown>)[method];
-					const actual =
-						typeof member === "function"
-							? await (member as (...a: unknown[]) => unknown).apply(subject, [
-									...(row.input ?? []),
-								])
-							: member;
-					if (row.throws !== undefined)
-						expect.unreachable(`expected a throw matching ${row.throws}`);
-					if (row.match !== undefined)
-						// Objects are stringified so a case can match into a returned
-						// errors array without needing a path expression.
-						expect(
-							typeof actual === "string" ? actual : JSON.stringify(actual),
-						).toMatch(new RegExp(row.match, "u"));
-					if (row.expect !== undefined) expect(actual).toEqual(row.expect);
+					outcome = {
+						returned:
+							typeof member === "function"
+								? await (member as (...a: unknown[]) => unknown).apply(
+										subject,
+										[...(row.input ?? [])],
+									)
+								: member,
+					};
 				} catch (error) {
-					if (row.throws === undefined) throw error;
-					expect((error as Error).message).toMatch(new RegExp(row.throws, "u"));
+					outcome = { threw: error };
 				} finally {
 					await options.teardown?.(subject);
 				}
+				assertCase(row, outcome);
 			});
 	});
 }

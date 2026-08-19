@@ -159,3 +159,114 @@ Two harness bugs were found by using it rather than by reading it: `match` compa
 expose every export as a getter, so constants were being demanded as "members needing cases".
 Module namespaces now cover functions only — a constant is pinned by the cases that use it.
 
+## Layer 05 — the sweep, and where it stops
+
+Measured before converting anything: **900 of 3,711 `it` bodies in this repo are single-expect,
+and only 13 files are wholly so** (561 lines, mostly trivial). A mechanical codemod would have
+converted nothing worth having. The dominant shape is *several assertions about one call*, which
+the harness could not express — so the harness was the blocker, not the tests.
+
+Two additions, both reusing what the repo already had rather than inventing matching semantics:
+
+- **`subset`** — assert part of a result. Built on `isRecursiveSubset`, which the pact matcher
+  already depended on.
+- **`throwsSubset`** — assert against the thrown error. Deliberately one key rather than
+  `throwsCode` + `throwsName` + whatever comes next: this repo has two error idioms (some carry a
+  `code`, others a `name` plus structured fields like `declaration`/`path`), and a subset covers
+  both without the format growing a key per field. `throwsCode` was written first and withdrawn
+  when `SdkDeclarationError` turned out to carry no `code`.
+
+| Suite | Before | After |
+|---|---|---|
+| `capability-manifest` | 166 | 56 |
+| `naming` | 119 | 33 |
+| `plugin-manifest` | 102 | 41 |
+| `sdk/resource` | 94 | 39 + cases (two concerns: the factory, and what it returns) |
+| `sdk/dispatcher` | 91 | 64 + cases |
+| `registry/ingest` | 96 | 51 + cases |
+
+### Findings
+
+- **Two harness defects, both found by using it rather than reading it.** A `throwsSubset` case
+  whose call returned normally passed *silently* — the "expected a throw" guard only knew about
+  `throws`. And the catch branch never handled `throwsSubset` at all, because the edit landed on
+  the parse side only, so those cases re-threw and read as ordinary failures.
+- **The harness had no tests.** For an assertion library that is the one gap that takes every
+  suite built on it down quietly. It has 14 now, each about a way it could report green while
+  checking nothing.
+- **Adoption costs a `@hobo/contract-harness` devDependency per package**, and a lockfile entry.
+
+### Where it stops — recorded, not forced
+
+- `capability-matrix/validate` filters findings out of **one shared computed matrix**: analysis
+  over a single value, not input/output per case.
+- `provider-neon/api` takes fixture *files* and asserts on error internals.
+- `dispatcher()`'s positive case refuses candidates it cannot see were authored by `runner.*`, so
+  its input must be built rather than written down. The refusals are data; that one is not.
+
+Each stays hand-written beside its cases. ~100 pure-ish candidates (~18k lines) remain; the shape
+is proven and repeatable, and continuing is mechanical rather than novel.
+
+### Boy-scout, and the reason two commits failed before this one
+
+`test/designer-council-review-loop.test.ts` seeds a real git repository per test and spawns **32
+git subprocesses**, against the global `testTimeout: 10_000`. Alone it runs in ~959ms; inside the
+full pre-commit turbo matrix, competing with every package build for CPU and disk, it crosses ten
+seconds and fails for want of a machine rather than a defect — the worst kind of red, because the
+apparent fix is "re-run it". Sixty seconds on that `describe`, set there rather than raised
+globally so a genuinely hung test elsewhere still fails fast. Falsified at 1ms: all eight time out.
+
+The second failure was `docs:freshness` — code changed with no documentation change. Earlier
+layers passed it incidentally because they touched this file; this section is the fix.
+
+
+## Layer 05b — the assertions were not running
+
+Two more defects, and the second one explains why the first survived a green suite.
+
+**`subset` never asserted anything.** It was parsed, validated, and accepted by the case format;
+the runner then ignored it. Seventeen cases across four converted suites were inert — they read
+like assertions and checked nothing.
+
+**A `throws` case that returned normally still passed.** The guard was
+`expect.unreachable("expected a throw matching " + row.throws)` *inside* the same `try` as the
+call, so it was caught by that block's own `catch`, which then matched the thrown message against
+`row.throws` — and the message contains `row.throws` by construction. The guard defeated itself.
+
+Both are the same root cause: the assertions lived inside the try/catch that wrapped the call, so
+they could not be observed without running a whole suite, and the suite could not tell a failure
+of the subject from a failure of an assertion. `assertCase(row, outcome)` is now split out over a
+finished call — `{returned}` or `{threw}` — and is directly falsifiable. Fourteen new cases cover
+it, one per way an assertion could fail to fire.
+
+**And the reason I first reported the seventeen as "correct but unverified":** consuming packages
+import `@hobo/contract-harness` through `dist`, not `src`. The harness's own tests import `src`
+and went green immediately; every converted suite was still running the pre-fix build. Rebuilding
+the package and re-running found a real wrong expectation — `sdk/resource` pinned
+`hobo.resource-definition/v1` where the SDK emits `hobo.sdk/v1.resource-definition`. **A local
+verification of a suite that imports a workspace package is not evidence until that package is
+rebuilt.**
+
+### Conversions (this layer)
+
+| Suite | Before | After |
+|---|---|---|
+| `packs/pack-framework/manifest` | 318 | 51 + 27 cases |
+| `trust/evaluate` | 347 | 122 + 27 cases |
+| `capability-profiles/selection` | 405 | 138 + 32 cases |
+
+Two of these got *stronger* in the move, because a data format makes the weak assertion obvious:
+
+- `trust/evaluate` asserted reasons with `toContain`, which stays green when an unrelated rule also
+  fires. The cases pin the whole sorted reason set. Verified two ways before landing: every code
+  the old suite asserted is still present, and the four hand-rebuilt `parseTrustRequirement`
+  literals turned out to equal `DEFAULT_TRUST_REQUIREMENT` exactly — thirty lines of duplicated
+  policy that only had to name the field under test.
+- `pack-framework/manifest` asserted canonical ordering as `order(a) === order(b)`, which holds
+  just as well if the parser sorts nothing. The cases name the expected order.
+
+### Where it stops — added this layer
+
+- `bindles/bindle` builds its graph through a **callback DSL** (`bindle("shop", b => …)`). Making
+  that JSON would mean inventing a serialised builder language, which is a bigger thing than the
+  suite it replaces. Stays hand-written.

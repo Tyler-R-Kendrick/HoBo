@@ -303,12 +303,12 @@ export function selectRelevantChecks(
 			args: [
 				"exec",
 				"turbo",
-				"--concurrency=100%",
 				"run",
 				"test",
 				...workspaces.map((workspace) => `--filter=./${workspace}`),
 				"--continue",
 				"--output-logs=new-only",
+				"--concurrency=100%",
 			],
 			reason: `workspace tests for ${workspaces.length} changed package(s) via Turbo; strict env strips harness NODE_OPTIONS and warm runs replay from cache`,
 		});
@@ -320,11 +320,11 @@ export function selectRelevantChecks(
 			args: [
 				"exec",
 				"turbo",
-				"--concurrency=100%",
 				"run",
 				"typecheck",
 				"--filter=./site",
 				"--output-logs=new-only",
+				"--concurrency=100%",
 			],
 			reason: "site browser code must stay type-clean",
 		});
@@ -516,13 +516,13 @@ export function selectRelevantChecks(
 			args: [
 				"exec",
 				"turbo",
-				"--concurrency=100%",
 				"run",
 				"build",
 				"typecheck",
 				"lint",
 				"test",
 				"--filter=[HEAD^...HEAD]",
+				"--concurrency=100%",
 			],
 			reason: "explicit build-impact check requested",
 		});

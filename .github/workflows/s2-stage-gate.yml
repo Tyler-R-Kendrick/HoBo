@@ -53,7 +53,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Build Yard control plane + governance and dependencies
-        run: pnpm exec turbo --concurrency=100% run build --filter @hobo/cloud... --filter @hobo/contracts...
+        run: pnpm exec turbo run build --filter @hobo/cloud... --filter @hobo/contracts... --concurrency=100%
       - name: Yard crash-resume + compensation rehearsal (mocked, no cloud)
         run: pnpm --filter @hobo/cloud test
       - name: Gatekeeper denies a seeded unsafe change with an explainable reason
@@ -82,7 +82,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Build Yard control plane and dependencies
-        run: pnpm exec turbo --concurrency=100% run build --filter @hobo/cloud...
+        run: pnpm exec turbo run build --filter @hobo/cloud... --concurrency=100%
       - name: Deploy hello-bindle to the real cloud through the Yard (HELD)
         run: |
           echo "S2 live-cloud lane is HELD: no live Cloudflare Yard wiring exists yet."

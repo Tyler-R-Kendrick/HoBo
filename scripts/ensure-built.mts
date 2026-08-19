@@ -32,7 +32,7 @@ if (!name) {
 
 const result = spawnSync(
 	"pnpm",
-	["exec", "turbo", "--concurrency=100%", "run", "build", `--filter=${name}`],
+	["exec", "turbo", "run", "build", `--filter=${name}`, "--concurrency=100%"],
 	{ stdio: "inherit", shell: false, cwd: process.cwd() },
 );
 process.exit(result.status ?? 1);

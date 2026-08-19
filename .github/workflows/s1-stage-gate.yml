@@ -59,7 +59,7 @@ jobs:
       - name: Build @hobo/cli and the injected runtime-local Camp (before the network is cut)
         # The dev-verb test injects @hobo/runtime-local, which is not a declared
         # @hobo/cli dependency, so build its closure explicitly too.
-        run: pnpm exec turbo --concurrency=100% run build --filter @hobo/cli... --filter @hobo/runtime-local...
+        run: pnpm exec turbo run build --filter @hobo/cli... --filter @hobo/runtime-local... --concurrency=100%
       - name: Offline hobo dev on hello-bindle (no network, no credentials)
         run: |
           docker run --rm \

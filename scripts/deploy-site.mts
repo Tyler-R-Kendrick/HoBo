@@ -73,11 +73,11 @@ function build(): void {
 		[
 			"exec",
 			"turbo",
-			"--concurrency=100%",
 			"run",
 			"build",
 			"--filter",
 			"hobo-site^...",
+			"--concurrency=100%",
 		],
 		{ cwd: REPO_ROOT, stdio: "inherit" },
 	);

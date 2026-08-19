@@ -347,3 +347,32 @@ Both conversions had wrong expectations on the first run — guessed gate names,
 guessed emitted event types. Both were corrected against actual output rather
 than by loosening the assertion, and both were falsified afterwards by flipping
 one expected value and confirming a precise mismatch path.
+
+## Layer 08 — widening, and a guard that was not guarding
+
+`recipes/widening` 431 -> 221 + 30 cases; **12 tests -> 24 cases**.
+
+Every downgrade in that module is a two-part rule — refused without an explicit
+policy allowance, *and* still disclosed in the offer when allowed — and the old
+suite asserted both halves inside one `it`. They are separate cases now, so a
+refusal that stops refusing and a disclosure that goes quiet are two different
+red lines instead of one.
+
+**The meta-test was weaker than its own comment.** It carried the note "a new
+kind added without a case here is the silent widening this module exists to
+prevent" while asserting only that `WIDENING_KINDS` still held the same ten
+strings. It never checked that any kind was *exercised*. `kindsWithoutCases`
+now reads the case file and returns the kinds no case mentions, so the
+assertion is `[]` and adding a kind without a case is red. Falsified by
+corrupting one kind name in the cases file: the guard names it.
+
+The declared-set assertion is kept alongside it, because the new guard catches
+an *added* kind and the old one catches a *removed* one.
+
+### Corrected against the original rather than guessed
+
+Three cases were wrong on the first run because the setups are not uniform: the
+credential lane rewrites what the **recipe delivers** while the request keeps
+asking for the original, and the bootstrap lane uses a different recipe and
+budget than the neighbouring ones. Both were read from the original and fixed,
+not smoothed over by relaxing the assertion.

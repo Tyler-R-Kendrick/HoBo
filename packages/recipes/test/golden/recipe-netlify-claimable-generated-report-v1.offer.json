@@ -1,12 +1,12 @@
 {
 	"schemaVersion": "hobo.deployment-offer/v1",
-	"offerId": "offer/0173ed1b5f463ba5d9980e9c311db97fc93cf437d894d7da67c7d4a48e2223fc",
+	"offerId": "offer/79ec5c8e88dfedecf5f94039b734f666451d13435be3953129c5dcbb900e9e68",
 	"recipeId": "recipe.netlify.claimable-generated-report/v1",
 	"deploymentRef": "junction/recipe-netlify-claimable-generated-report-v1",
 	"topologyDigest": "sha256:7388540bc67d2d122fb5f8820bfe8a12d8e148564d163aa71b0b496b30212fd2",
-	"resolutionDigest": "sha256:06b536da25a9d9bf1ac0559d27cf7f3e327f5e6d14b2976130f9d86e7de9c3ee",
+	"resolutionDigest": "sha256:0b6e8e69712eca2ec856be18d949ce2a6c7c248df643eb6ccfb03d0f3c754d34",
 	"catalogDigest": "sha256:891553d43ffb3f1d80a58f35c14df4500216e82df0e5f0ce617008df67f3caec",
-	"profileRegistryDigest": "sha256:8563a93440edc3276f6ea66c498d0d0484dfaad8e3ff475541d3b1948094b216",
+	"profileRegistryDigest": "sha256:57c0d599e3bce3c5c632f13efc4fb04d1ab8af3f8728eaca858bdc597018f172",
 	"placements": [
 		{
 			"placementId": "report",
@@ -81,7 +81,7 @@
 	"signature": {
 		"algorithm": "test.detached-digest/v1",
 		"keyId": "test-key-1",
-		"payloadDigest": "sha256:c7c3421776da779b17120f13b22678df2654964ed714dea319fae9c386117e9f",
-		"signature": "sig:c7c3421776da779b"
+		"payloadDigest": "sha256:102405a8747bfd01e2fea987df56ac2161ae945398f72d853ab671880bc8c6ee",
+		"signature": "sig:102405a8747bfd01"
 	}
 }

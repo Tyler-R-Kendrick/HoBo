@@ -1,19 +1,32 @@
-import { describe, expect, it } from "vitest";
+/**
+ * Every case is a line in `gatekeeper.cases.jsonl`.
+ *
+ * `evaluateGatekeeper` takes one options object and every gate input in it is
+ * already JSON — except `policyPack`, whose rules are closures. Those are the
+ * only thing that cannot be written down, so they live here as a named set and
+ * a case selects one by name. Everything else is data.
+ */
 
-import { createBoundaryContract } from "../src/contract-ir.js";
-import { evaluateGatekeeper } from "../src/gatekeeper.js";
-import { definePolicyRule, type PolicyPack } from "../src/policy-pack.js";
+import { describeConcern } from "@hobo/contract-harness";
+import {
+	createBoundaryContract,
+	definePolicyRule,
+	evaluateGatekeeper,
+	type PolicyPack,
+} from "../src/index.js";
 
-const deployedContract = createBoundaryContract({
+const edge = {
+	kind: "event",
+	producer: "checkout-api@1.2.0",
+	consumer: "checkout-worker@1.7.0",
+	channel: "orders.http",
+	operation: "order.created",
+} as const;
+
+const DEPLOYED = createBoundaryContract({
 	id: "contract-orders-http",
 	version: "1.2.0",
-	edge: {
-		kind: "event",
-		producer: "checkout-api@1.2.0",
-		consumer: "checkout-worker@1.7.0",
-		channel: "orders.http",
-		operation: "order.created",
-	},
+	edge,
 	requiredShape: {
 		format: "json-schema",
 		requiredFields: ["id", "tenantId", "total"],
@@ -21,16 +34,11 @@ const deployedContract = createBoundaryContract({
 	},
 });
 
-const compatibleCandidate = createBoundaryContract({
+/** Adds a field: widening, so the consumer keeps working. */
+const COMPATIBLE = createBoundaryContract({
 	id: "contract-orders-http",
 	version: "1.3.0",
-	edge: {
-		kind: "event",
-		producer: "checkout-api@2.4.0",
-		consumer: "checkout-worker@1.7.0",
-		channel: "orders.http",
-		operation: "order.created",
-	},
+	edge: { ...edge, producer: "checkout-api@2.4.0" },
 	requiredShape: {
 		format: "json-schema",
 		requiredFields: ["id", "tenantId", "total"],
@@ -38,16 +46,11 @@ const compatibleCandidate = createBoundaryContract({
 	},
 });
 
-const breakingCandidate = createBoundaryContract({
+/** Drops `tenantId`: the removal the contracts gate exists to catch. */
+const BREAKING = createBoundaryContract({
 	id: "contract-orders-http",
 	version: "3.0.0",
-	edge: {
-		kind: "event",
-		producer: "checkout-api@3.0.0",
-		consumer: "checkout-worker@1.7.0",
-		channel: "orders.http",
-		operation: "order.created",
-	},
+	edge: { ...edge, producer: "checkout-api@3.0.0" },
 	requiredShape: {
 		format: "json-schema",
 		requiredFields: ["id", "total"],
@@ -55,298 +58,102 @@ const breakingCandidate = createBoundaryContract({
 	},
 });
 
-const baseRequest = {
+const CONTRACTS = { compatible: COMPATIBLE, breaking: BREAKING };
+
+const pack = (
+	id: string,
+	decide: () => ReturnType<Parameters<typeof definePolicyRule>[0]["decide"]>,
+): PolicyPack => ({
+	id,
+	version: "1.0.0",
+	rules: [
+		definePolicyRule({
+			id: `${id}-rule`,
+			when: (request) => request.action === "hobo:delta:promote",
+			decide,
+		}),
+	],
+});
+
+/** The closures, which are the one thing a case cannot spell out. */
+const PACKS: Record<string, PolicyPack | undefined> = {
+	none: undefined,
+	freeze: pack("yard-prod-freeze", () => ({
+		effect: "deny",
+		reason: "prod deploys are frozen by mandatory policy",
+		violations: ["deploy-freeze-active"],
+	})),
+	approval: pack("yard-prod-governance", () => ({
+		effect: "require-approval",
+		reason: "production deploy requires approval",
+		obligations: [
+			{
+				id: "obl:approval:checkout-prod",
+				kind: "require-approval",
+				satisfied: false,
+			},
+		],
+	})),
+};
+
+const REQUEST = {
 	subject: { kind: "agent", id: "spiffe://tenant-a/yard/prod/agent/deployer" },
 	action: "hobo:delta:promote",
 	resource: { kind: "deployment", id: "deployment:checkout-prod" },
 	phase: "apply",
 	context: { target: "prod" },
 };
-
-const plan = {
+const PLAN = {
 	objective: "cost",
 	resources: [{ name: "checkout-api", port: "hobo:http/handler" }],
 };
-const goodQuota = { quota: "deployments/day", used: 7, limit: 20 };
+const GOOD_QUOTA = { quota: "deployments/day", used: 7, limit: 20 };
 
-describe("Gatekeeper composition", () => {
-	it("allows a compatible deploy under a permissive default pack and STILL records policy.Decided", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: goodQuota,
-		});
+interface Ask {
+	readonly candidate?: keyof typeof CONTRACTS;
+	readonly pack?: keyof typeof PACKS;
+	readonly costQuota?: unknown;
+	readonly obligations?: readonly unknown[];
+	readonly secretlessConfig?: unknown;
+	readonly bindingDelivery?: unknown;
+	readonly canMigrate?: unknown;
+	readonly residency?: unknown;
+}
 
-		expect(result.decision).toBe("allow");
-		expect(result.reasons).toEqual([]);
-		// governed-by-default: a policy.Decided is emitted even on allow
-		expect(result.policyDecided.type).toBe("policy.Decided");
-		expect(result.policyDecided.data.effect).toBe("allow");
-		expect(result.canDeploy.ok).toBe(true);
-		expect(result.costQuota.ok).toBe(true);
-		expect(
-			result.events.some((event) => event.type === "gatekeeper.Decided"),
-		).toBe(true);
-	});
-
-	it("DENIES a seeded breaking contract change with an explainable machine-readable reason", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [breakingCandidate] },
-			costQuota: goodQuota,
-		});
-
-		expect(result.decision).toBe("deny");
-		const contractReason = result.reasons.find(
-			(reason) => reason.gate === "contracts",
-		);
-		expect(contractReason?.code).toBe("required-field-removed");
-		expect(contractReason?.details?.fields).toContain("tenantId");
-		// still audited
-		expect(result.policyDecided.type).toBe("policy.Decided");
-	});
-
-	it("DENIES when a policy pack denies the action", () => {
-		const denyPack: PolicyPack = {
-			id: "yard-prod-freeze",
-			version: "1.0.0",
-			rules: [
-				definePolicyRule({
-					id: "freeze-prod-deploys",
-					when: (request) => request.action === "hobo:delta:promote",
-					decide: () => ({
-						effect: "deny",
-						reason: "prod deploys are frozen by mandatory policy",
-						violations: ["deploy-freeze-active"],
-					}),
-				}),
-			],
-		};
-
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			policyPack: denyPack,
-			costQuota: goodQuota,
-		});
-
-		expect(result.decision).toBe("deny");
-		const policyReason = result.reasons.find(
-			(reason) => reason.gate === "policy",
-		);
-		expect(policyReason?.code).toBe("policy-denied");
-		expect(policyReason?.message).toMatch(/frozen/);
-	});
-
-	it("DENIES when the cost quota is exceeded", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: { quota: "deployments/day", used: 20, limit: 20 },
-		});
-
-		expect(result.decision).toBe("deny");
-		const costReason = result.reasons.find((reason) => reason.gate === "cost");
-		expect(costReason?.code).toBe("quota-exceeded");
-	});
-
-	it("requires approval when a policy obligation is pending", () => {
-		const approvalPack: PolicyPack = {
-			id: "yard-prod-governance",
-			version: "1.0.0",
-			rules: [
-				definePolicyRule({
-					id: "prod-deploy-requires-approval",
-					when: (request) => request.action === "hobo:delta:promote",
-					decide: () => ({
-						effect: "require-approval",
-						reason: "production deploy requires approval",
-						obligations: [
-							{
-								id: "obl:approval:checkout-prod",
-								kind: "require-approval",
-								satisfied: false,
-							},
-						],
-					}),
-				}),
-			],
-		};
-
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			policyPack: approvalPack,
-			costQuota: goodQuota,
-		});
-
-		expect(result.decision).toBe("require-approval");
-		expect(
-			result.obligations.some(
-				(obligation) => obligation.id === "obl:approval:checkout-prod",
-			),
-		).toBe(true);
-		expect(result.reasons.some((reason) => reason.gate === "obligations")).toBe(
-			true,
-		);
-	});
-
-	it("allows once the obligation is satisfied", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			obligations: [
-				{
-					id: "obl:canary:checkout-prod",
-					kind: "require-canary",
-					satisfied: true,
-				},
-			],
-			costQuota: goodQuota,
-		});
-		expect(result.decision).toBe("allow");
-	});
-});
-
-it("DENIES when secretless-config ranking gate fails (ADR-0027)", () => {
-	const result = evaluateGatekeeper({
-		request: baseRequest,
-		deployedState: { contracts: [deployedContract] },
-		candidate: { plan, contracts: [compatibleCandidate] },
-		costQuota: goodQuota,
-		secretlessConfig: {
-			ok: false,
-			reasons: [
-				{
-					code: "static-escape-forbidden",
-					message: "field LEGACY source static-escape exceeds policy ceiling",
-					field: "LEGACY",
-				},
-			],
+describeConcern("gatekeeper", {
+	cases: `${import.meta.dirname}/gatekeeper.cases.jsonl`,
+	subject: () => ({
+		decide: (ask: Ask = {}) => {
+			const {
+				candidate = "compatible",
+				pack: packName = "none",
+				...rest
+			} = ask;
+			const result = evaluateGatekeeper({
+				request: REQUEST,
+				deployedState: { contracts: [DEPLOYED] },
+				candidate: { plan: PLAN, contracts: [CONTRACTS[candidate]] },
+				costQuota: GOOD_QUOTA,
+				...(PACKS[packName] ? { policyPack: PACKS[packName] } : {}),
+				...rest,
+			} as never);
+			return {
+				decision: result.decision,
+				// Sorted and whole: a `find(gate === …)` assertion stays green when
+				// an unrelated gate also fires, which is what this replaces.
+				reasons: result.reasons
+					.map((reason) => `${reason.gate}:${reason.code}`)
+					.sort(),
+				detailsByCode: Object.fromEntries(
+					result.reasons.map((reason) => [reason.code, reason.details ?? null]),
+				),
+				policyDecidedType: result.policyDecided.type,
+				policyEffect: result.policyDecided.data.effect,
+				canDeployOk: result.canDeploy.ok,
+				costQuotaOk: result.costQuota.ok,
+				obligationIds: result.obligations.map((o) => o.id).sort(),
+				eventTypes: [...new Set(result.events.map((e) => e.type))].sort(),
+			};
 		},
-	});
-	expect(result.decision).toBe("deny");
-	expect(
-		result.reasons.some(
-			(r) => r.code === "secretless-config:static-escape-forbidden",
-		),
-	).toBe(true);
-});
-
-it("DENIES when binding-delivery gate fails (ADR-0141)", () => {
-	const result = evaluateGatekeeper({
-		request: baseRequest,
-		deployedState: { contracts: [deployedContract] },
-		candidate: { plan, contracts: [compatibleCandidate] },
-		costQuota: goodQuota,
-		bindingDelivery: {
-			ok: false,
-			reasons: [
-				{
-					code: "connection-strings-env",
-					message: "forbidden ConnectionStrings__* env",
-					path: "resources.api.env.ConnectionStrings__db",
-				},
-			],
-		},
-	});
-	expect(result.decision).toBe("deny");
-	expect(
-		result.reasons.some(
-			(r) => r.code === "binding-delivery:connection-strings-env",
-		),
-	).toBe(true);
-});
-
-it("DENIES when can-migrate dimension fails (continuous identity migration)", () => {
-	const result = evaluateGatekeeper({
-		request: baseRequest,
-		deployedState: { contracts: [deployedContract] },
-		candidate: { plan, contracts: [compatibleCandidate] },
-		costQuota: goodQuota,
-		canMigrate: {
-			ok: false,
-			summary: "can-migrate:blocked (mapping-spec-missing)",
-			reasons: [
-				{
-					code: "mapping-spec-missing",
-					message: "MappingSpec missing",
-				},
-			],
-			evidence: {
-				continuousDefault: true,
-				dryRun: true,
-				rollbackPosture: "compensate-to-source",
-			},
-		},
-	});
-	expect(result.decision).toBe("deny");
-	expect(
-		result.reasons.some((r) => r.code === "can-migrate:mapping-spec-missing"),
-	).toBe(true);
-});
-
-it("allows when can-migrate is ok (zero Bindle config continuous path)", () => {
-	const result = evaluateGatekeeper({
-		request: baseRequest,
-		deployedState: { contracts: [deployedContract] },
-		candidate: { plan, contracts: [compatibleCandidate] },
-		costQuota: goodQuota,
-		canMigrate: {
-			ok: true,
-			summary: "can-migrate:ok continuous dual-path ready",
-			reasons: [],
-			evidence: { continuousDefault: true, dryRun: true },
-		},
-	});
-	expect(result.decision).toBe("allow");
-});
-
-describe("residency dimension (ADR-0146)", () => {
-	it("denies with gate:'residency' reasons when the precomputed verdict conflicts", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: goodQuota,
-			residency: {
-				ok: false,
-				reasons: [
-					{
-						code: "jurisdiction-not-allowed",
-						message:
-							'region "us-east-1" (us) is outside allowed jurisdictions [eu]',
-						region: "us-east-1",
-						jurisdictions: ["us"],
-					},
-				],
-			},
-		});
-
-		expect(result.decision).toBe("deny");
-		const reason = result.reasons.find((entry) => entry.gate === "residency");
-		expect(reason?.code).toBe("jurisdiction-not-allowed");
-		expect(reason?.details?.region).toBe("us-east-1");
-		expect(reason?.details?.jurisdictions).toEqual(["us"]);
-		// still audited
-		expect(result.policyDecided.type).toBe("policy.Decided");
-	});
-
-	it("allows unchanged when the residency verdict is ok", () => {
-		const result = evaluateGatekeeper({
-			request: baseRequest,
-			deployedState: { contracts: [deployedContract] },
-			candidate: { plan, contracts: [compatibleCandidate] },
-			costQuota: goodQuota,
-			residency: { ok: true, reasons: [] },
-		});
-		expect(result.decision).toBe("allow");
-		expect(result.reasons).toEqual([]);
-	});
+	}),
 });

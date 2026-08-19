@@ -912,6 +912,10 @@ importers:
       '@hobo/policy':
         specifier: workspace:*
         version: link:../policy
+    devDependencies:
+      '@hobo/contract-harness':
+        specifier: workspace:*
+        version: link:../contract-harness
 
   packages/control-api:
     dependencies:

@@ -311,3 +311,39 @@ those terms or skipped.
 
 Running total across layers 04–06: **twelve concerns converted**, roughly 3,200
 lines of test code down to 1,500 plus 260 case lines.
+
+## Layer 07 — two more, and both got stronger
+
+| Suite | Before | After | Cases |
+|---|---|---|---|
+| `contracts/gatekeeper` | 352 | 154 + 19 | 12 tests → 13 |
+| `core/realization-result` | 335 | 98 + 40 | 11 tests → **34** |
+
+Net −376 lines for +24 assertions, which is the shape worth wanting: the old
+suites packed loops into single tests, and a loop is a case list that cannot be
+named. `realization-result` had one test asserting nine heuristic boundaries and
+another looping nine malformed inputs; those are eighteen lines of data now, each
+individually named and individually red when it breaks.
+
+### What the conversions exposed
+
+- **`gatekeeper` gate labels are inconsistent.** `secretless-config`,
+  `binding-delivery` and `can-migrate` reasons all report under
+  `gate: "contracts"`, while `residency` gets its own gate. The old assertions
+  only checked `code`, so nothing noticed. Recorded, not changed — it is
+  existing behaviour and fixing it is a contract change, not a test change.
+- **Redaction is now asserted rather than assumed.** `realization-result`'s
+  fail-closed rule has two halves — the right rejection code, and the secret
+  staying out of the message. The second half was a negated substring check
+  buried in an `assert.throws` predicate. `parseRejection` returns `leaks`, so
+  `"leaks": []` is the assertion and a regression names the secret it leaked.
+- **The harness caught a dead member immediately.** A `parseRaw` helper written
+  and then not used failed `covers every member` on the first run. That is the
+  gap a hand-written suite cannot have, working as designed.
+
+### Method note
+
+Both conversions had wrong expectations on the first run — guessed gate names,
+guessed emitted event types. Both were corrected against actual output rather
+than by loosening the assertion, and both were falsified afterwards by flipping
+one expected value and confirming a precise mismatch path.

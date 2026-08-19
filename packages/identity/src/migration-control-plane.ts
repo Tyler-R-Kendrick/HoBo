@@ -16,7 +16,6 @@ import {
 	type IdentityAdapter,
 	verifyDualAdapters,
 } from "./identity-adapter-port.js";
-import type { MappingSpec } from "./mapping-spec.js";
 import {
 	type IdentityMigrationRecord,
 	IdentityMigrationService,
@@ -99,6 +98,11 @@ export class IdentityMigrationControlPlane {
 
 	get matchDecidedAudits(): readonly IdentityMatchDecidedAudit[] {
 		return this.matchAudits;
+	}
+
+	/** Most recent matching decision, or null before the first one. */
+	get lastMatchDecision(): IdentityMigrationMatchDecision | null {
+		return this.lastMatch;
 	}
 
 	/**

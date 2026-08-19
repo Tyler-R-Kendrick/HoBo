@@ -5,7 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 
-import { checkCompetitorDocs } from "../scripts/check-competitor-docs.js";
+import {
+	CATEGORIES,
+	checkCompetitorDocs,
+} from "../scripts/check-competitor-docs.js";
 
 const repoRoot = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -52,13 +55,19 @@ const CATEGORY_PAGE = [
 	"",
 ].join("\n");
 
-const MATRIX = [
-	"# Matrix",
-	"",
-	"<!-- BEGIN GENERATED: competitor-matrix -->",
-	"<!-- END GENERATED: competitor-matrix -->",
-	"",
-].join("\n");
+function generated(name: string, title: string) {
+	return [
+		`# ${title}`,
+		"",
+		`<!-- BEGIN GENERATED: ${name} -->`,
+		`<!-- END GENERATED: ${name} -->`,
+		"",
+	].join("\n");
+}
+
+const MATRIX = generated("competitor-matrix", "Matrix");
+const CORPUS_INDEX = generated("competitor-index", "Index");
+const CATEGORY_INDEX = generated("category-index", "Categories");
 
 async function withCorpus(
 	files: Record<string, string>,
@@ -70,8 +79,16 @@ async function withCorpus(
 			recursive: true,
 		});
 		const all = {
-			"docs/competitors/index.md": "# Index\n",
+			"docs/competitors/index.md": CORPUS_INDEX,
 			"docs/competitors/matrix.md": MATRIX,
+			"docs/competitors/categories/index.md": CATEGORY_INDEX,
+			// The vocabulary is closed, so every category needs a page even when empty.
+			...Object.fromEntries(
+				CATEGORIES.map((category) => [
+					`docs/competitors/categories/${category}.md`,
+					`# ${category}\n`,
+				]),
+			),
 			"docs/competitors/acme.md": capture(),
 			"docs/competitors/categories/infrastructure-from-code.md": CATEGORY_PAGE,
 			...files,
@@ -164,7 +181,10 @@ test("rejects duplicate aliases across captures", async () => {
 				"| [Acme](../acme.md) |",
 				"| [Acme](../acme.md) |\n| [Other](../other.md) |",
 			),
-		"docs/competitors/index.md": "# Index\n\nacme-corp\n",
+		"docs/competitors/index.md": CORPUS_INDEX.replace(
+			"# Index",
+			"# Index\n\nacme-corp",
+		),
 	});
 	assert.ok(found.some((message) => message.includes("is already claimed by")));
 });
@@ -188,16 +208,40 @@ test("rejects a category page row for a non-member", async () => {
 	);
 });
 
-test("requires aliases to be discoverable from the index", async () => {
-	const found = await messages({
-		"docs/competitors/acme.md": capture({ aliases: "[acme-corp]" }),
+test("generates an alias entry so old names stay discoverable", async () => {
+	await withCorpus(
+		{ "docs/competitors/acme.md": capture({ aliases: "[acme-corp]" }) },
+		async (root) => {
+			await checkCompetitorDocs({ root, fix: true });
+			const index = await readFile(
+				path.join(root, "docs/competitors/index.md"),
+				"utf8",
+			);
+			assert.match(index, /`acme-corp` \| \[Acme\]\(acme\.md\)/);
+		},
+	);
+});
+
+test("requires a page for every category in the closed vocabulary", async () => {
+	await withCorpus({}, async (root) => {
+		await rm(
+			path.join(root, "docs/competitors/categories/runtime-substrates.md"),
+		);
+		const { problems } = await checkCompetitorDocs({ root });
+		assert.ok(
+			problems.some((problem) =>
+				problem.message.includes("missing category index"),
+			),
+		);
 	});
-	assert.ok(found.some((message) => message.includes("is not discoverable")));
 });
 
 test("reports broken relative links", async () => {
 	const found = await messages({
-		"docs/competitors/index.md": "# Index\n\n[gone](./nope.md)\n",
+		"docs/competitors/index.md": CORPUS_INDEX.replace(
+			"# Index",
+			"# Index\n\n[gone](./nope.md)",
+		),
 	});
 	assert.ok(found.some((message) => message.includes("broken relative link")));
 });
@@ -238,7 +282,7 @@ test("detects matrix drift without --fix", async () => {
 		const { problems } = await checkCompetitorDocs({ root });
 		assert.ok(
 			problems.some((problem) =>
-				problem.message.includes("generated matrix is out of date"),
+				problem.message.includes("generated competitor-matrix is out of date"),
 			),
 		);
 	});

@@ -556,12 +556,11 @@ export async function checkCompetitorDocs(options: {
 		try {
 			text = readFileSync(path.join(categoryDir, `${category}.md`), "utf8");
 		} catch {
-			if (members.length > 0)
-				problems.push({
-					file: rel,
-					line: 1,
-					message: `missing category index; ${members.length} competitor(s) declare this category`,
-				});
+			problems.push({
+				file: rel,
+				line: 1,
+				message: `missing category index (the vocabulary is closed: every category has a page)`,
+			});
 			continue;
 		}
 		checkLinks(root, rel, text, problems);
@@ -674,25 +673,6 @@ export async function checkCompetitorDocs(options: {
 		() => renderCategoryIndex(competitors),
 		"missing category index",
 	);
-
-	// Alias discoverability: every alias must be findable from the corpus index.
-	try {
-		const index = readFileSync(path.join(dir, "index.md"), "utf8");
-		for (const competitor of competitors)
-			for (const alias of competitor.aliases)
-				if (!index.includes(alias))
-					problems.push({
-						file: "docs/competitors/index.md",
-						line: 1,
-						message: `alias "${alias}" (${competitor.slug}) is not discoverable from the index`,
-					});
-	} catch {
-		problems.push({
-			file: "docs/competitors/index.md",
-			line: 1,
-			message: "missing corpus index",
-		});
-	}
 
 	return { problems, competitors };
 }

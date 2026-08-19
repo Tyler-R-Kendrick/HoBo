@@ -31,6 +31,7 @@ import {
 	DIGITALOCEAN_APP_WORKER_PRODUCT_ID,
 	DIGITALOCEAN_DEFAULT_BINDINGS,
 	DIGITALOCEAN_DROPLET_PRODUCT_ID,
+	DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
 	DIGITALOCEAN_LOAD_BALANCER_PRODUCT_ID,
 	DIGITALOCEAN_MANAGED_POSTGRES_PRODUCT_ID,
 	DIGITALOCEAN_MANAGED_VALKEY_PRODUCT_ID,
@@ -702,6 +703,293 @@ describe("App Platform components converge inside the app that owns them", () =>
 	});
 });
 
+// ---------------------------------------------------------------------------
+// Functions
+// ---------------------------------------------------------------------------
+
+const NAMESPACE_ID = "cccccccc-dddd-eeee-ffff-000000000000";
+const NAMESPACE = "fn-cccccccc-dddd-eeee-ffff-000000000000";
+const FAAS_HOST = "faas-nyc1-2ef2e6cc.doserverless.co";
+const NAMESPACE_PATH = `/v2/functions/namespaces/${NAMESPACE_ID}`;
+const ACTION_PATH = `/api/v1/namespaces/${NAMESPACE}/actions/greet`;
+/** The namespace key is material: it belongs in one header and nowhere else. */
+const NAMESPACE_KEY = "d1zcd455h01mqjfs4s2eaewyejehi5f2uj4etqq3h7cera8iwkub";
+
+const ACTION = Object.freeze({
+	exec: Object.freeze({
+		kind: "nodejs:default",
+		code: "function main(){return{body:'hi'}}",
+	}),
+	limits: Object.freeze({ timeout: 3000, memory: 256 }),
+	annotations: Object.freeze([
+		Object.freeze({ key: "web-export", value: true }),
+	]),
+});
+
+function namespaceRecord(): Rec {
+	return {
+		namespace: {
+			api_host: `https://${FAAS_HOST}`,
+			namespace: NAMESPACE,
+			uuid: NAMESPACE_ID,
+			key: NAMESPACE_KEY,
+			label: "prod",
+			region: "nyc1",
+		},
+	};
+}
+
+/** What OpenWhisk answers with: what was sent, plus fields it owns. */
+function actionRecord(sent: Rec): Rec {
+	return {
+		name: "greet",
+		namespace: NAMESPACE,
+		version: "0.0.1",
+		publish: false,
+		updated: 1_755_600_000_000,
+		exec: sent.exec,
+		limits: sent.limits,
+		parameters: [],
+		annotations: [
+			...((sent.annotations as Rec[] | undefined) ?? []),
+			// Platform-added: must not read as drift.
+			{ key: "exec", value: "nodejs:20" },
+			{ key: "provide-api-key", value: false },
+		],
+	};
+}
+
+function functionRequest(desired: Rec = {}): ResolveRequest {
+	return request({
+		slot: "service",
+		productId: DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
+		logicalId: "greet",
+		desired: { namespaceId: NAMESPACE_ID, action: ACTION, ...desired },
+	});
+}
+
+/** A namespace that starts with no action and keeps whatever is PUT to it. */
+function functionsWorld(): Fake {
+	let stored: Rec | undefined;
+	return fakeTransport((call) => {
+		if (call.method === "GET" && call.path === NAMESPACE_PATH) {
+			return json(200, namespaceRecord());
+		}
+		if (call.method === "GET" && call.path === ACTION_PATH) {
+			return stored === undefined
+				? json(404, { error: "The requested resource does not exist." })
+				: json(200, stored);
+		}
+		if (call.method === "PUT" && call.path === ACTION_PATH) {
+			stored = actionRecord(bodyOf(call));
+			return json(200, stored);
+		}
+		if (call.method === "DELETE" && call.path === ACTION_PATH) {
+			stored = undefined;
+			return json(200, { name: "greet" });
+		}
+		return unexpected(call);
+	});
+}
+
+describe("the Functions resolver converges an action on its namespace host", () => {
+	it("creates a function that is not there", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(functionRequest(), fake.transport),
+		);
+		expect(outcome.action).toBe("create");
+		expect(outcome.physicalId).toBe(`${NAMESPACE}/greet`);
+		expect(outcome.outputs.runtime).toBe("nodejs:default");
+		expect(outcome.outputs.url).toContain(`https://${FAAS_HOST}/api/v1/web/`);
+	});
+
+	/**
+	 * The property the whole design exists to have, and the one an earlier
+	 * revision said was unobtainable here. `PUT ?overwrite=true` is
+	 * create-or-replace, so the second pass finds the action equal and writes
+	 * nothing.
+	 */
+	it("reconciles twice into one function and one write", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		const first = await resolver.reconcile(functionRequest(), fake.transport);
+		const second = parseResolveOutcome(
+			await resolver.reconcile(functionRequest(), fake.transport),
+		);
+		expect(first.action).toBe("create");
+		expect(second.action).toBe("adopt");
+		expect(fake.countOf("PUT", ACTION_PATH)).toBe(1);
+	});
+
+	it("writes with overwrite=true, which is what makes the PUT convergent", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		await resolver.reconcile(functionRequest(), fake.transport);
+		const put = fake.calls.find((call) => call.method === "PUT");
+		expect(
+			new URLSearchParams((put as RecordedCall).search).get("overwrite"),
+		).toBe("true");
+	});
+
+	/**
+	 * The two credentials never cross. The personal access token addresses the
+	 * control plane; the namespace key addresses the namespace host.
+	 */
+	it("keeps the control-plane token off the namespace host, and the key off the control plane", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		await resolver.reconcile(functionRequest(), fake.transport);
+		const controlPlane = fake.calls.filter(
+			(call) => call.host === "api.digitalocean.com",
+		);
+		const namespaceHost = fake.calls.filter((call) => call.host === FAAS_HOST);
+		expect(controlPlane.length).toBeGreaterThan(0);
+		expect(namespaceHost.length).toBeGreaterThan(0);
+		for (const call of controlPlane) {
+			expect(call.headers.authorization).toBe(`Bearer ${TOKEN}`);
+			expect(JSON.stringify(call)).not.toContain(NAMESPACE_KEY);
+		}
+		for (const call of namespaceHost) {
+			expect(call.headers.authorization).toMatch(/^Basic /u);
+			expect(call.headers.authorization).not.toContain(TOKEN);
+		}
+	});
+
+	it("never publishes the namespace key", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(functionRequest(), fake.transport),
+		);
+		expect(JSON.stringify(outcome.outputs)).not.toContain(NAMESPACE_KEY);
+		expect(JSON.stringify(outcome.diagnostics)).not.toContain(NAMESPACE_KEY);
+		for (const call of fake.calls) {
+			expect(`${call.path}${call.search}`).not.toContain(NAMESPACE_KEY);
+		}
+	});
+
+	/** Platform-added annotations are not drift, or every pass would re-PUT. */
+	it("does not read the platform's own annotations as drift", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		await resolver.reconcile(functionRequest(), fake.transport);
+		await resolver.reconcile(functionRequest(), fake.transport);
+		await resolver.reconcile(functionRequest(), fake.transport);
+		expect(fake.countOf("PUT", ACTION_PATH)).toBe(1);
+	});
+
+	it("rewrites the action when the code actually changed", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		await resolver.reconcile(functionRequest(), fake.transport);
+		const changed = parseResolveOutcome(
+			await resolver.reconcile(
+				functionRequest({
+					action: {
+						...ACTION,
+						exec: {
+							...ACTION.exec,
+							code: "function main(){return{body:'yo'}}",
+						},
+					},
+				}),
+				fake.transport,
+			),
+		);
+		expect(changed.action).toBe("update");
+		expect(fake.countOf("PUT", ACTION_PATH)).toBe(2);
+	});
+
+	it("refuses a request that names no namespace", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		const bare = request({
+			slot: "service",
+			productId: DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
+			logicalId: "greet",
+			desired: { action: ACTION },
+		});
+		expect(await codeOf(() => resolver.reconcile(bare, fake.transport))).toBe(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+		);
+		expect(fake.calls).toHaveLength(0);
+	});
+
+	it("refuses a request that carries no exec block", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		expect(
+			await codeOf(() =>
+				resolver.reconcile(
+					functionRequest({ action: { limits: { memory: 256 } } }),
+					fake.transport,
+				),
+			),
+		).toBe("RESOLVER_PRODUCT_UNSUPPORTED");
+		expect(fake.calls.filter((call) => call.method === "PUT")).toHaveLength(0);
+	});
+
+	it("refuses to create the namespace it would live in", async () => {
+		const fake = fakeTransport((call) =>
+			call.method === "GET" && call.path === NAMESPACE_PATH
+				? json(404, { id: "not_found", message: "namespace not found" })
+				: unexpected(call),
+		);
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		const message = await messageOf(() =>
+			resolver.reconcile(functionRequest(), fake.transport),
+		);
+		expect(message).toContain("billed and region-pinned");
+		expect(fake.calls.filter((call) => call.method !== "GET")).toHaveLength(0);
+	});
+
+	/**
+	 * The namespace host is not a constant, so the guard cannot allowlist it
+	 * ahead of time. It comes from DigitalOcean's own control plane, and a host
+	 * that is not shaped like a Functions host is refused rather than dialled
+	 * with the namespace's credentials.
+	 */
+	it("refuses a control-plane answer pointing somewhere that is not a Functions host", async () => {
+		const fake = fakeTransport((call) =>
+			call.method === "GET" && call.path === NAMESPACE_PATH
+				? json(200, {
+						namespace: {
+							...(namespaceRecord().namespace as Rec),
+							api_host: "https://evil.example.com",
+						},
+					})
+				: unexpected(call),
+		);
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		await expect(
+			resolver.reconcile(functionRequest(), fake.transport),
+		).rejects.toThrow(/doserverless/u);
+		expect(
+			fake.calls.every((call) => call.host === "api.digitalocean.com"),
+		).toBe(true);
+	});
+
+	it("treats an already-absent function as a successful delete", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		await expect(
+			resolver.delete(functionRequest(), fake.transport),
+		).resolves.toBeUndefined();
+	});
+
+	it("deletes a function it created, and reads back absent afterwards", async () => {
+		const fake = functionsWorld();
+		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
+		await resolver.reconcile(functionRequest(), fake.transport);
+		await resolver.delete(functionRequest(), fake.transport);
+		expect(
+			await resolver.read(functionRequest(), fake.transport),
+		).toBeUndefined();
+	});
+});
+
 describe("the registry covers exactly the products that can converge", () => {
 	it("registers a resolver for every resolved product id", () => {
 		const registry = digitaloceanResolverRegistry(options());
@@ -715,12 +1003,7 @@ describe("the registry covers exactly the products that can converge", () => {
 		for (const productId of DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS) {
 			expect(registry.get(productId)).toBeUndefined();
 		}
-		// The one that remains is the API's absence, not a choice: DigitalOcean's
-		// v2 API has no function resource at all — only namespaces, their
-		// triggers and their keys.
-		expect(DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS).toEqual([
-			"digitalocean.functions/v1",
-		]);
+		expect(DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS).toEqual([]);
 	});
 
 	it("accounts for every catalogued product exactly once", () => {

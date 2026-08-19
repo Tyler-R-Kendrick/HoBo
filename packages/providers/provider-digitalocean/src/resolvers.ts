@@ -101,7 +101,9 @@ import {
 	DIGITALOCEAN_MAX_RESPONSE_BYTES,
 	DIGITALOCEAN_MAX_TIMEOUT_MS,
 	digitaloceanApiUrl,
+	functionsUrl,
 	guardedDigitalOceanTransport,
+	guardedFunctionsTransport,
 	guardedSpacesTransport,
 	spacesUrl,
 } from "./transport.js";
@@ -137,6 +139,10 @@ export const DIGITALOCEAN_APP_WORKER_PRODUCT_ID = productIdOf(
 export const DIGITALOCEAN_APP_JOB_PRODUCT_ID = productIdOf(
 	appPlatform.job(),
 	"appPlatform.job",
+);
+export const DIGITALOCEAN_FUNCTIONS_PRODUCT_ID = productIdOf(
+	functions(),
+	"functions",
 );
 export const DIGITALOCEAN_DROPLET_PRODUCT_ID = productIdOf(
 	droplet(),
@@ -194,28 +200,23 @@ export const DIGITALOCEAN_RESOLVED_PRODUCT_IDS: readonly string[] =
 			DIGITALOCEAN_KUBERNETES_CLUSTER_PRODUCT_ID,
 			DIGITALOCEAN_APP_WORKER_PRODUCT_ID,
 			DIGITALOCEAN_APP_JOB_PRODUCT_ID,
+			DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
 		].sort(compareStrings),
 	);
 
 /**
- * The one product id this package catalogs and cannot resolve.
+ * Product ids this package catalogs but does not resolve.
  *
- * `digitalocean.functions/v1`. This one is the API's absence, not a choice:
- * DigitalOcean's v2 API has no function resource. The whole Functions surface
- * is `/v2/functions/namespaces`, its `triggers`, and its `keys` — a namespace
- * is a place to put functions, not a function, and a catalog row that claimed
- * `service.worker/v1` because a namespace exists would be claiming a running
- * workload where there is an empty container for one. Deploying the function
- * itself packages source and uploads it to a per-namespace OpenWhisk host,
- * which is a build pipeline rather than a convergent create: the same request
- * twice produces two different uploads, so there is nothing for `reconcile` to
- * be idempotent about.
+ * Empty. Every product in the DigitalOcean catalog has a convergent path.
  *
- * The catalog row stays, because Functions really is a capability DigitalOcean
- * sells and a Yard that hid it would be lying in the other direction.
+ * It is exported anyway, and the tests still assert that resolved + unresolved
+ * accounts for the catalog exactly once. The list existing and being empty is a
+ * different claim from the list not existing: a product added to `./slots.ts`
+ * without a resolver has to be named here, and that is a decision a reviewer
+ * sees rather than a gap nobody counted.
  */
 export const DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS: readonly string[] =
-	Object.freeze([productIdOf(functions(), "functions")]);
+	Object.freeze([]);
 
 // ---------------------------------------------------------------------------
 // Construction
@@ -1521,6 +1522,331 @@ function appPlatformSpec(
 }
 
 // ---------------------------------------------------------------------------
+// Functions — an OpenWhisk action inside a namespace, on the namespace's host
+// ---------------------------------------------------------------------------
+
+/**
+ * DigitalOcean Functions has two layers, and only the outer one is on the v2
+ * control plane.
+ *
+ * `/v2/functions/namespaces` manages *namespaces*, and a namespace record
+ * carries an `api_host` plus a `key`. That host serves an OpenWhisk-compatible
+ * API where an individual function is an addressable resource:
+ *
+ *   GET    /api/v1/namespaces/{namespace}/actions/{name}?code=true
+ *   PUT    /api/v1/namespaces/{namespace}/actions/{name}?overwrite=true
+ *   DELETE /api/v1/namespaces/{namespace}/actions/{name}
+ *
+ * An earlier revision of this package concluded there was no convergent create
+ * here, on the grounds that deploying a function is a non-deterministic source
+ * upload. That describes `doctl serverless deploy`, which builds an archive
+ * from a source tree — a build step in the CLI, not the API. The API takes an
+ * action body, and `PUT ?overwrite=true` is create-or-replace: idempotent by
+ * construction, which is the only property `reconcile` has to have. The wrong
+ * layer was inspected, and the conclusion did not survive looking at the right
+ * one.
+ *
+ * This resolver deploys an action that is *already built*. Producing the code
+ * or the archive is a build concern and stays outside: `desired.action.exec`
+ * carries what the provider stores, the same way the App Platform resolvers
+ * forward a spec rather than assembling one.
+ */
+interface FunctionsNamespace {
+	readonly apiHost: string;
+	/** The `fn-…` namespace string the action paths are scoped to. */
+	readonly namespace: string;
+	/** `uuid:key`, for OpenWhisk's HTTP Basic. Material — never published. */
+	readonly basic: string;
+}
+
+/** The namespace this function lives in. Required: it is not derivable. */
+function namespaceIdOf(context: DigitalOceanResolverContext): string {
+	const namespaceId = optionalString(context.desired, "namespaceId");
+	if (namespaceId === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${DIGITALOCEAN_FUNCTIONS_PRODUCT_ID}: the request names no namespaceId — set desired.namespaceId to the Functions namespace UUID this function belongs to (GET /v2/functions/namespaces lists them). A namespace is a billed, region-pinned container and this resolver will neither create one nor pick one, because picking would place the workload in a region nobody asked for`,
+			DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
+		);
+	}
+	return namespaceId;
+}
+
+/**
+ * Read the namespace from the *control plane* to learn where its functions
+ * live and how to authenticate to them.
+ *
+ * The host comes from DigitalOcean rather than from `desired` deliberately: a
+ * host in a property bag is a host an author could point anywhere, and the
+ * namespace credential would go with it. `functionsUrl` still refuses anything
+ * not shaped like a Functions host, so a compromised or surprising control-plane
+ * answer is refused rather than dialled.
+ */
+async function functionsNamespace(
+	context: DigitalOceanResolverContext,
+): Promise<FunctionsNamespace> {
+	const namespaceId = namespaceIdOf(context);
+	const label = `digitalocean read functions namespace ${namespaceId}`;
+	const response = await send(context, {
+		method: "GET",
+		path: `/v2/functions/namespaces/${encodeURIComponent(namespaceId)}`,
+	});
+	if (isNotFound(response)) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${DIGITALOCEAN_FUNCTIONS_PRODUCT_ID}: no Functions namespace ${JSON.stringify(namespaceId)} exists. Create the namespace deliberately — it is billed and region-pinned — and reconcile this function afterwards`,
+			DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
+		);
+	}
+	const record = nestedRecord(expectOk(response, label), "namespace");
+	const apiHost = optionalString(record, "api_host");
+	const namespace = optionalString(record, "namespace");
+	const uuid = optionalString(record, "uuid");
+	const key = optionalString(record, "key");
+	if (
+		apiHost === undefined ||
+		namespace === undefined ||
+		uuid === undefined ||
+		key === undefined
+	) {
+		throw new ResolverError(
+			"RESOLVER_OUTPUT_UNPARSEABLE",
+			// Deliberately does not echo the record: it carries the key.
+			`${label}: the namespace record is missing one of api_host, namespace, uuid or key, so this resolver cannot address or authenticate to the namespace's function API`,
+			DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
+		);
+	}
+	return { apiHost, namespace, basic: `${uuid}:${key}` };
+}
+
+/**
+ * Send one call to a namespace's function API.
+ *
+ * A separate send path from the control plane's, for the same reason Spaces has
+ * one: a different origin and a different credential. The personal access token
+ * never reaches `doserverless.co`, and the namespace key never reaches
+ * `api.digitalocean.com`.
+ */
+async function sendFunctions(
+	context: DigitalOceanResolverContext,
+	ns: FunctionsNamespace,
+	call: {
+		readonly method: TransportMethod;
+		readonly path: string;
+		readonly json?: unknown;
+	},
+): Promise<TransportResponse> {
+	const body = call.json === undefined ? undefined : JSON.stringify(call.json);
+	const guarded = guardedFunctionsTransport(context.transport, ns.apiHost);
+	return guarded({
+		method: call.method,
+		url: functionsUrl(ns.apiHost, call.path),
+		headers: {
+			accept: "application/json",
+			// OpenWhisk authenticates with HTTP Basic over uuid:key.
+			authorization: `Basic ${base64Utf8(ns.basic)}`,
+			...(body !== undefined ? { "content-type": "application/json" } : {}),
+		},
+		...(body !== undefined ? { body } : {}),
+		timeoutMs: DIGITALOCEAN_MAX_TIMEOUT_MS,
+		maxResponseBytes: DIGITALOCEAN_MAX_RESPONSE_BYTES,
+	});
+}
+
+/**
+ * Base64 of the UTF-8 bytes. `btoa` alone is latin1 and would corrupt a
+ * non-ASCII credential; built on globals rather than `node:buffer` so this
+ * package keeps working outside Node.
+ */
+function base64Utf8(value: string): string {
+	const bytes = new TextEncoder().encode(value);
+	let binary = "";
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary);
+}
+
+/** `/api/v1/namespaces/{ns}/actions/{name}`, every segment encoded. */
+function actionPath(ns: FunctionsNamespace, name: string): string {
+	return `/api/v1/namespaces/${encodeURIComponent(ns.namespace)}/actions/${name
+		.split("/")
+		.map((segment) => encodeURIComponent(segment))
+		.join("/")}`;
+}
+
+/** The action body the caller authored, with the name forced to ours. */
+function actionBody(
+	context: DigitalOceanResolverContext,
+): Record<string, unknown> {
+	const action = context.desired.action;
+	if (!isPlainObject(action)) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${DIGITALOCEAN_FUNCTIONS_PRODUCT_ID}: the request carries no desired.action. A function is defined by its exec block (runtime kind plus code, or a base64 archive), its limits and its parameters; this resolver forwards the action you authored and owns only its name. Building the code or the archive is a build step and stays outside this resolver, the same way the App Platform resolvers forward a spec rather than assembling one`,
+			DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
+		);
+	}
+	if (!isPlainObject(action.exec)) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${DIGITALOCEAN_FUNCTIONS_PRODUCT_ID}: desired.action carries no exec block. OpenWhisk needs at least { kind, code } — for example { kind: "nodejs:default", code: "…" } — and a function deployed without one would be accepted and fail at invoke time instead`,
+			DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
+		);
+	}
+	return { ...action, name: context.name };
+}
+
+/**
+ * The parts of an action this resolver authored, for the drift compare.
+ *
+ * OpenWhisk answers with fields it owns — `version`, `publish`, `updated`, and
+ * platform annotations such as `exec` provenance — so comparing whole records
+ * would report drift on every read and re-PUT forever. Comparing only what was
+ * sent is what makes the second reconcile a no-op.
+ */
+function authoredAction(
+	action: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+	const exec = isPlainObject(action.exec) ? action.exec : {};
+	return {
+		exec: {
+			kind: exec.kind ?? null,
+			code: exec.code ?? null,
+			binary: exec.binary ?? null,
+			main: exec.main ?? null,
+			image: exec.image ?? null,
+		},
+		limits: isPlainObject(action.limits) ? action.limits : {},
+		parameters: Array.isArray(action.parameters) ? action.parameters : [],
+		annotations: Array.isArray(action.annotations) ? action.annotations : [],
+	};
+}
+
+/**
+ * Annotations the platform adds on its own. They are not drift, and treating
+ * them as drift would mean a re-PUT on every reconcile.
+ */
+const PLATFORM_ANNOTATION_KEYS = Object.freeze([
+	"exec",
+	"provide-api-key",
+	"binary",
+]);
+
+function withoutPlatformAnnotations(
+	action: Record<string, unknown>,
+): Record<string, unknown> {
+	const annotations = (action.annotations as unknown[]).filter(
+		(item) =>
+			!isPlainObject(item) ||
+			!PLATFORM_ANNOTATION_KEYS.includes(optionalString(item, "key") ?? ""),
+	);
+	return { ...action, annotations };
+}
+
+function functionOutputs(
+	context: DigitalOceanResolverContext,
+	ns: FunctionsNamespace,
+	observed: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	const exec = isPlainObject(observed.exec) ? observed.exec : {};
+	const web = (
+		Array.isArray(observed.annotations) ? observed.annotations : []
+	).some(
+		(item) =>
+			isPlainObject(item) &&
+			optionalString(item, "key") === "web-export" &&
+			item.value === true,
+	);
+	return {
+		functionName: context.name,
+		namespace: ns.namespace,
+		// The host, not the key. `basic` never leaves this module.
+		apiHost: ns.apiHost,
+		...(typeof exec.kind === "string" ? { runtime: exec.kind } : {}),
+		...(typeof observed.version === "string"
+			? { version: observed.version }
+			: {}),
+		...(web
+			? {
+					url: `https://${ns.apiHost.replace(/^https:\/\//u, "")}/api/v1/web/${ns.namespace}/default/${context.name}`,
+				}
+			: {}),
+	};
+}
+
+const FUNCTIONS_SPEC: Omit<DigitalOceanResolverSpec, "productId"> = {
+	async read(context) {
+		const ns = await functionsNamespace(context);
+		const response = await sendFunctions(context, ns, {
+			method: "GET",
+			path: `${actionPath(ns, context.name)}?code=true`,
+		});
+		if (isNotFound(response)) return undefined;
+		const observed = expectOk(
+			response,
+			`digitalocean read function ${context.name}`,
+		);
+		return outcome(
+			settledAction(context),
+			`${ns.namespace}/${context.name}`,
+			functionOutputs(context, ns, observed),
+			[],
+		);
+	},
+	async reconcile(context) {
+		const ns = await functionsNamespace(context);
+		const wanted = actionBody(context);
+		const existing = await sendFunctions(context, ns, {
+			method: "GET",
+			path: `${actionPath(ns, context.name)}?code=true`,
+		});
+		const observed = isNotFound(existing)
+			? undefined
+			: expectOk(existing, `digitalocean read function ${context.name}`);
+		if (
+			observed !== undefined &&
+			stableJson(withoutPlatformAnnotations(authoredAction(observed))) ===
+				stableJson(withoutPlatformAnnotations(authoredAction(wanted)))
+		) {
+			return outcome(
+				settledAction(context),
+				`${ns.namespace}/${context.name}`,
+				functionOutputs(context, ns, observed),
+				[],
+			);
+		}
+		// `overwrite=true` makes this create-or-replace, which is what lets the
+		// same request run twice and leave one function behind.
+		const label = `digitalocean put function ${context.name}`;
+		const written = expectOk(
+			await sendFunctions(context, ns, {
+				method: "PUT",
+				path: `${actionPath(ns, context.name)}?overwrite=true`,
+				json: wanted,
+			}),
+			label,
+		);
+		return outcome(
+			observed === undefined ? "create" : "update",
+			`${ns.namespace}/${context.name}`,
+			functionOutputs(context, ns, written),
+			[
+				"the action was accepted by the namespace; OpenWhisk warms a container on first invoke, so the function exists but has not been proven to run",
+				"the code or archive in desired.action.exec is deployed as authored: building it from a source tree is a build step this resolver does not perform, which is what keeps the same request producing the same function twice",
+			],
+		);
+	},
+	async remove(context) {
+		const ns = await functionsNamespace(context);
+		const response = await sendFunctions(context, ns, {
+			method: "DELETE",
+			path: actionPath(ns, context.name),
+		});
+		if (isNotFound(response)) return;
+		expectOk(response, `digitalocean delete function ${context.name}`);
+	},
+};
+
+// ---------------------------------------------------------------------------
 // App Platform components — read-modify-write on the app that owns them
 // ---------------------------------------------------------------------------
 
@@ -2345,6 +2671,7 @@ export function digitaloceanResolvers(
 			productId: DIGITALOCEAN_APP_WORKER_PRODUCT_ID,
 			...appComponentSpec("workers", DIGITALOCEAN_APP_WORKER_PRODUCT_ID),
 		},
+		{ productId: DIGITALOCEAN_FUNCTIONS_PRODUCT_ID, ...FUNCTIONS_SPEC },
 		{
 			productId: DIGITALOCEAN_APP_JOB_PRODUCT_ID,
 			...appComponentSpec("jobs", DIGITALOCEAN_APP_JOB_PRODUCT_ID),

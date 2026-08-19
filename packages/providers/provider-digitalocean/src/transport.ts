@@ -122,6 +122,73 @@ export function spacesUrl(region: string, path: string): string {
 }
 
 /**
+ * A Functions namespace's own API host.
+ *
+ * DigitalOcean Functions has two layers, and only the outer one lives on
+ * `api.digitalocean.com`. `/v2/functions/namespaces` manages *namespaces*, and
+ * each namespace record carries an `api_host` of the form
+ * `faas-<region>-<id>.doserverless.co` serving an OpenWhisk-compatible API —
+ * that is where an individual function is created, read and deleted.
+ *
+ * The host is therefore not a constant this package can allowlist ahead of
+ * time. It is still an *exact* host at call time: the resolver reads it from
+ * DigitalOcean's own control plane rather than from `desired`, this function
+ * refuses anything that is not shaped like a Functions host, and the policy
+ * built from it names that one host and nothing else. A pattern decides whether
+ * a host is admissible; the guard still enforces one literal host per request.
+ */
+const FUNCTIONS_HOST_PATTERN =
+	/^faas-[a-z]{2,4}[0-9]{1,2}-[0-9a-f]{4,32}\.doserverless\.co$/u;
+
+// public-contract: the path allowlist for a Functions namespace transport guard.
+export const DIGITALOCEAN_FUNCTIONS_ALLOWED_PATH_PREFIXES = Object.freeze([
+	"/api/v1/namespaces/",
+] as const);
+
+/** Parse a namespace `api_host` (URL or bare host) into a bare host. */
+export function functionsHost(apiHost: string): string {
+	const bare = apiHost.startsWith("https://")
+		? apiHost.slice("https://".length).replace(/\/+$/u, "")
+		: apiHost.replace(/\/+$/u, "");
+	if (!FUNCTIONS_HOST_PATTERN.test(bare)) {
+		throw new DigitalOceanTransportConfigError(
+			`digitalocean functions api_host ${JSON.stringify(apiHost)} is not shaped like a Functions namespace host (faas-<region>-<id>.doserverless.co); a host that does not parse would be dialled with the namespace's credentials on the strength of whatever returned it`,
+		);
+	}
+	return bare;
+}
+
+/**
+ * The guard policy for one Functions namespace host. One exact host, and the
+ * namespace prefix — a function is addressed as
+ * `/api/v1/namespaces/{namespace}/actions/{name}`.
+ */
+export function functionsTransportPolicy(
+	apiHost: string,
+): TransportGuardPolicy {
+	return Object.freeze({
+		allowedHosts: Object.freeze([functionsHost(apiHost)]),
+		allowedPathPrefixes: DIGITALOCEAN_FUNCTIONS_ALLOWED_PATH_PREFIXES,
+		maxTimeoutMs: DIGITALOCEAN_MAX_TIMEOUT_MS,
+		maxResponseBytes: DIGITALOCEAN_MAX_RESPONSE_BYTES,
+	});
+}
+
+/** Wrap an injected transport with one Functions namespace's policy. */
+export function guardedFunctionsTransport(
+	inner: HttpTransport,
+	apiHost: string,
+): HttpTransport {
+	return guardTransport(inner, functionsTransportPolicy(apiHost));
+}
+
+/** An absolute Functions URL. Callers pass an already-encoded path. */
+export function functionsUrl(apiHost: string, path: string): string {
+	const suffix = path.startsWith("/") ? path : `/${path}`;
+	return `https://${functionsHost(apiHost)}${suffix}`;
+}
+
+/**
  * Wrap an injected transport with the DigitalOcean policy. This is the only
  * transport the resolvers should ever be handed; passing an unguarded one is
  * legal TypeScript and a security defect.

@@ -35,24 +35,41 @@ pnpm --filter @hobo/provider-digitalocean test
   *injected fake* transport modelling a DigitalOcean team. A real deploy
   additionally needs a real token, real network egress, and a real account,
   none of which a unit test supplies.
-- **14 of the 15 catalogued products have resolvers**
+- **All 15 catalogued products have resolvers**
   (`DIGITALOCEAN_RESOLVED_PRODUCT_IDS`), including Spaces over SigV4 on its own
-  guarded host with its own key pair, Block Storage volumes, DOKS clusters, and
-  App Platform workers and jobs. A worker and a job really are *components
+  guarded host with its own key pair, Block Storage volumes, DOKS clusters,
+  Functions, and App Platform workers and jobs. A worker and a job really are *components
   inside* an app spec rather than standalone resources — but that shapes the
   resolver rather than preventing it: `PUT /v2/apps/{id}` replaces the whole
   spec, so a component converges by read-modify-write, which is idempotent. Two
   rules keep that safe, and both are tested: the component resolver never
   creates the app (that would race the resolver that owns it), and every part of
   the spec it does not own is carried through the write.
-- **The one product without a resolver is Functions**, named in
-  `DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS`. This one is the API's absence rather
-  than a choice: DigitalOcean's v2 API has no function resource at all — the
-  whole surface is `/v2/functions/namespaces`, its triggers and its keys — and a
-  namespace is a place to put functions, not a function. Deploying one packages
-  source and uploads it to a per-namespace host, which is a build pipeline
-  rather than a convergent create: the same request twice produces two different
-  uploads, so there is nothing for `reconcile` to be idempotent about.
+- **Functions has two layers, and only the outer one is on the v2 API.** An
+  earlier revision of this README said there was no function resource at all.
+  That was inspecting the wrong layer: `/v2/functions/namespaces` manages
+  namespaces, and each namespace record carries an `api_host` serving an
+  OpenWhisk-compatible API where a function *is* addressable —
+  `GET|PUT|DELETE /api/v1/namespaces/{ns}/actions/{name}`, with
+  `PUT ?overwrite=true` being create-or-replace and therefore idempotent. The
+  non-determinism the old note described belongs to `doctl serverless deploy`,
+  which builds an archive from a source tree; that is a build step in the CLI,
+  not the API. `DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS` is now empty, and stays
+  exported so that stops being true loudly rather than quietly.
+- **The Functions namespace host is not a constant, and is still guarded
+  exactly.** It is read from DigitalOcean's own control plane rather than from
+  `desired` — a host in a property bag is a host an author could point anywhere,
+  and the namespace credential would go with it — then checked against the
+  `faas-<region>-<id>.doserverless.co` shape, and only then turned into a
+  one-host policy. The conformance matrix probes a *different* namespace host as
+  the foreign-host case, which is exactly what a shape check alone would wave
+  through. The two credentials never cross: the personal access token addresses
+  the control plane, the namespace's Basic credential addresses the namespace
+  host, and neither appears in an output or a diagnostic.
+- **This resolver deploys a function that is already built.** Producing the code
+  or the archive stays outside it, the same way the App Platform resolvers
+  forward a spec rather than assembling one — which is also what keeps the same
+  request producing the same function twice.
 - **No Resource Definitions are registered** for the `digitalocean.*` product
   ids, so a deploy against this Yard still fails closed at resolution
   (`YARD_BINDING_PRODUCT_UNKNOWN`).
@@ -122,6 +139,6 @@ load-bearing. See [`ADR.md`](./ADR.md) for the full command/event walk.
 | `digitalocean.app-platform-worker/v1` | `GET /v2/apps` + `PUT /v2/apps/{id}` (read-modify-write on `spec.workers`) |
 | `digitalocean.app-platform-job/v1` | `GET /v2/apps` + `PUT /v2/apps/{id}` (read-modify-write on `spec.jobs`) |
 
-`digitalocean.functions/v1` is the one entry left in
-`DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS`, for the reason in the honest-scope list
-above.
+| `digitalocean.functions/v1` | `GET /v2/functions/namespaces/{id}` for the host and credential, then `GET|PUT|DELETE /api/v1/namespaces/{ns}/actions/{name}` on `faas-*.doserverless.co` |
+
+`DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS` is empty.

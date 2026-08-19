@@ -34,6 +34,7 @@ import { guardedAzureTransport } from "@hobo/provider-azure";
 import { guardedCloudflareTransport } from "@hobo/provider-cloudflare";
 import {
 	guardedDigitalOceanTransport,
+	guardedFunctionsTransport,
 	guardedSpacesTransport,
 } from "@hobo/provider-digitalocean";
 import { guardedGcpTransport } from "@hobo/provider-gcp";
@@ -140,6 +141,25 @@ const CASES: readonly GuardCase[] = [
 		// different host with a different credential entirely.
 		foreignHost: "https://fsn1.your-objectstorage.com/v1/servers",
 		foreignPath: "https://api.hetzner.cloud/v2/servers",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		// A DigitalOcean Functions namespace's own host. Unlike every other row
+		// here the host is not a constant: it comes from the namespace record on
+		// the control plane, is checked against the Functions host shape, and
+		// then becomes an exact-host policy like any other. The foreignHost probe
+		// is a *different* Functions namespace, which is the case a shape check
+		// alone would wave through.
+		label: "digitalocean (functions namespace)",
+		wrap: (inner) =>
+			guardedFunctionsTransport(inner, "faas-nyc1-2ef2e6cc.doserverless.co"),
+		allowed:
+			"https://faas-nyc1-2ef2e6cc.doserverless.co/api/v1/namespaces/fn-1/actions/greet",
+		foreignHost:
+			"https://faas-lon1-9999aaaa.doserverless.co/api/v1/namespaces/fn-1/actions/greet",
+		foreignPath:
+			"https://faas-nyc1-2ef2e6cc.doserverless.co/api/v1/activations",
 		maxTimeoutMs: 20_000,
 		maxResponseBytes: 512 * 1024,
 	},

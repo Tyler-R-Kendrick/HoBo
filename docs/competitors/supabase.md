@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Supabase — competitor reference"
 description: "Supabase is the leading **open-source Firebase alternative** — a **Postgres-centric backend-as-a-service** that gives every project a dedicated PostgreSQL database wrapped in an integrated suite (Auth, REST/GraphQL, Realtime, Storage, Edge Functions, pgvect"
 tags: [hobo, competitors]
+competitor:
+  slug: supabase
+  name: "Supabase"
+  primary_category: backend-data-platforms
+  categories: [backend-data-platforms]
+  directness: adjacent
+  role: "open-source Postgres BaaS — adjacent platform and possible provider target"
+  posture: [provider-target, benchmark]
+  hobo_surface: [typed-contracts, identity-secrets]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://supabase.com/docs
+    - https://github.com/supabase/supabase
 ---
 
 # Supabase — competitor reference

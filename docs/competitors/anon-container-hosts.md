@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Anon / temporary container hosts — Competitor Reference"
 description: "OpenPouch-class anonymous temporary hosting competitors for Examples Temporary (zero project API keys): Clawdship, APPISH, ZeroDeploy, SSHGrid, ttl.sh, Dockup, and blacklisted Instanode."
 tags: [hobo, competitors]
+competitor:
+  slug: anon-container-hosts
+  name: "Anonymous container hosts"
+  aliases: ["openpouch", "clawdship", "ttl.sh", "zerodeploy", "dockup"]
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms, self-hosted-paas]
+  directness: adjacent
+  role: "cohort capture of zero-key temporary container hosts used as the Examples Temporary host matrix"
+  posture: [benchmark, provider-target]
+  hobo_surface: [provider-matching, delivery]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://clawdship.dev/
+    - https://ttl.sh/
 ---
 
 # Anon / temporary container hosts — Competitor Reference

@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Nitric — Competitor Reference"
 description: "- **Tagline:** *\"Build cloud backends that run anywhere, fast.\"*"
 tags: [hobo, competitors]
+competitor:
+  slug: nitric
+  name: "Nitric"
+  aliases: ["nitrictech"]
+  primary_category: infrastructure-from-code
+  categories: [infrastructure-from-code, portable-application-models]
+  directness: overlapping
+  role: "cloud-agnostic infrastructure-from-code framework — authoring analog for typed resource declaration"
+  posture: [borrow, benchmark]
+  hobo_surface: [authoring, typed-contracts, provider-matching, runtime-portability]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://nitric.io/docs
+    - https://github.com/nitrictech/nitric
 ---
 
 # Nitric — Competitor Reference

@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Wasp — Competitor Reference"
 description: "Wasp (wasp.sh) — a Rails-like full-stack framework for React/Node.js/Prisma driven by a declarative .wasp config; captured as App-Kit inspiration and a packaging path, not a runtime target."
 tags: [hobo, competitors]
+competitor:
+  slug: wasp
+  name: "Wasp"
+  aliases: ["open saas", "opensaas"]
+  primary_category: infrastructure-from-code
+  categories: [infrastructure-from-code, backend-data-platforms]
+  directness: adjacent
+  role: "Rails-like full-stack framework driven by a declarative .wasp spec — App-Kit inspiration and packaging path"
+  posture: [borrow, benchmark]
+  hobo_surface: [authoring, app-graph]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://wasp.sh/docs
+    - https://github.com/wasp-lang/wasp
 ---
 
 # Wasp — Competitor Reference

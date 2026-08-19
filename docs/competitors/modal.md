@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Modal — competitor reference"
 description: "Modal is a **serverless compute platform for AI, ML, and data** — positioned as *\"The production cloud for AI\"* and *\"AI infrastructure that developers love.\"* You write ordinary **P"
 tags: [hobo, competitors]
+competitor:
+  slug: modal
+  name: "Modal"
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms, runtime-substrates]
+  directness: adjacent
+  role: "Python-first serverless compute for AI/ML with agent Sandboxes — AI-native compute competitor"
+  posture: [provider-target, benchmark]
+  hobo_surface: [runtime-portability, provider-matching]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://modal.com/docs/guide
+    - https://modal.com/
 ---
 
 # Modal — competitor reference

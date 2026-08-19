@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Fly.io — competitor reference"
 description: "Fly.io is a **developer-first public cloud / PaaS** that runs your app as **Firecracker microVMs** (\"Fly Machines\") on **its own hardware** across global regions, fronted by a **global A"
 tags: [hobo, competitors]
+competitor:
+  slug: flyio
+  name: "Fly.io"
+  aliases: ["fly"]
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms]
+  directness: overlapping
+  role: "global app platform on Firecracker microVMs — edge PaaS competitor and provider target"
+  posture: [provider-target, benchmark]
+  hobo_surface: [environments, runtime-portability, delivery]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://fly.io/docs/
+    - https://fly.io/docs/machines/
 ---
 
 # Fly.io — competitor reference

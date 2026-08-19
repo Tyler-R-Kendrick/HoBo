@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "AWS Amplify — competitor reference"
 description: "AWS Amplify is **AWS's fullstack app platform**; since **Amplify Gen 2** (GA May 2024) its backend is a *\"TypeScript-based, code-first developer experience (DX) for defining backends\"* — declare auth, data, storage, and fun"
 tags: [hobo, competitors]
+competitor:
+  slug: aws-amplify
+  name: "AWS Amplify"
+  aliases: ["amplify gen 2"]
+  primary_category: infrastructure-from-code
+  categories: [infrastructure-from-code, backend-data-platforms, cloud-application-platforms]
+  directness: overlapping
+  role: "Gen-2 code-first TypeScript fullstack backend on AWS CDK — IfC-in-TS analog, AWS-only"
+  posture: [benchmark]
+  hobo_surface: [authoring, typed-contracts, wiring]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://docs.amplify.aws/
+    - https://aws.amazon.com/amplify/
 ---
 
 # AWS Amplify — competitor reference

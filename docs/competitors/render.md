@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Render — competitor reference"
 description: "Render is a **single-vendor managed cloud platform** (the Heroku-successor push-to-deploy PaaS): connect a Git repo and Render builds, deploys, autoscales, and operates web services, static sites, workers, cron jobs, and private services plus managed Postgres and Key Value — all on Render's own infrastructure, optionally declared via `render.yaml` Blueprints."
 tags: [hobo, competitors]
+competitor:
+  slug: render
+  name: "Render"
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms]
+  directness: overlapping
+  role: "unified managed cloud with render.yaml Blueprints — Heroku-successor PaaS benchmark"
+  posture: [benchmark]
+  hobo_surface: [authoring, environments, delivery]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://render.com/docs
+    - https://render.com/
 ---
 
 # Render — competitor reference

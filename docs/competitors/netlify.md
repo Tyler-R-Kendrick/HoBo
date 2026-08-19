@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Netlify — competitor reference"
 description: "Netlify is a **frontend cloud / composable-web platform** — a hosted, Git-driven pipeline that builds your frontend on every push, deploys it to a **global edge network (100+ locations)**, and layers on serverless **Functions** (AWS L"
 tags: [hobo, competitors]
+competitor:
+  slug: netlify
+  name: "Netlify"
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms]
+  directness: overlapping
+  role: "composable-web platform (Functions/Edge, Blobs, Netlify DB) — frontend PaaS benchmark"
+  posture: [benchmark, provider-target]
+  hobo_surface: [delivery, environments]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://docs.netlify.com/
+    - https://www.netlify.com/
 ---
 
 # Netlify — competitor reference

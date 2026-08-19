@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Crossplane — competitor reference"
 description: "Crossplane is an **open-source, CNCF-graduated control-plane framework** (Apache-2.0) for **platform engineering** — it extends **Kubernetes** with custom resources and controllers so platform teams provision and **continuously reconc"
 tags: [hobo, competitors]
+competitor:
+  slug: crossplane
+  name: "Crossplane"
+  primary_category: portable-application-models
+  categories: [portable-application-models, platform-orchestrators, hybrid-multicloud-enterprise]
+  directness: overlapping
+  role: "CNCF Kubernetes control plane for infrastructure — borrow-source and pluggable IaC adapter"
+  posture: [borrow, integrate]
+  hobo_surface: [typed-contracts, provider-matching, reconciliation, extensibility]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://docs.crossplane.io/
+    - https://github.com/crossplane/crossplane
 ---
 
 # Crossplane — competitor reference

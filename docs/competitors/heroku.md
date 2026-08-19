@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Heroku — competitor reference"
 description: "Heroku is the **original developer-first PaaS** (Salesforce-owned since 2010) that popularized `git push heroku main` → a running app, **dynos**, **buildpacks**, **add-ons**, and **config vars**, and authored the **Twelve-Factor App** — now an **AI PaaS** (Managed Inference and Agents, MCP) with a next-gen Kubernetes-based **Fir** generation, but placed in **\"sustaining engineering\"** by Salesforce in Feb 2026."
 tags: [hobo, competitors]
+competitor:
+  slug: heroku
+  name: "Heroku"
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms]
+  directness: overlapping
+  role: "the original app-centric PaaS (dynos, buildpacks, add-ons) — the mainstream 'just deploy my app' benchmark"
+  posture: [benchmark]
+  hobo_surface: [authoring, environments, delivery, ecosystem]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://devcenter.heroku.com/
+    - https://www.heroku.com/
 ---
 
 # Heroku — competitor reference

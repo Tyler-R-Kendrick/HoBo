@@ -3,6 +3,20 @@ type: Competitive Reference
 title: "ServerKit — competitor reference"
 description: "ServerKit is an open-source (MIT), self-hosted server control panel — apps (PHP/WordPress, Python, Node, Docker), databases, DNS, SSL, a full mail stack, firewall/WAF, backups, and monitoring for a VPS or dedicated box, plus a cross-platform Go agent fleet for multi-server management. Adjacent to HoBo: it operates the hosts you already own rather than abstracting app topology across providers, so it is head-on pressure on HoBo's self-host and developer-experience stories but a level below the meta-cloud abstraction."
 tags: [hobo, competitors]
+competitor:
+  slug: serverkit
+  name: "ServerKit"
+  primary_category: self-hosted-paas
+  categories: [self-hosted-paas, identity-networking-delivery]
+  directness: adjacent
+  role: "self-hosted open-source server control panel with a Go agent fleet — node-attach/Relay reference"
+  posture: [benchmark, borrow]
+  hobo_surface: [delivery, observability, identity-secrets]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://github.com/jhd3197/ServerKit
 ---
 
 # ServerKit — competitor reference

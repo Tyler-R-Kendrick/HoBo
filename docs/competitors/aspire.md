@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Aspire — Competitor Reference"
 description: "**Aspire** (`aspire.dev`, `github.com/dotnet/aspire`) is a code-first, opinionated framework for composing and orchestrating distributed applications. You describe a whole app's to"
 tags: [hobo, competitors]
+competitor:
+  slug: aspire
+  name: ".NET Aspire"
+  aliases: ["dotnet aspire"]
+  primary_category: infrastructure-from-code
+  categories: [infrastructure-from-code, portable-application-models, runtime-substrates]
+  directness: direct
+  role: "code-first app composition, local orchestration and deploy — closest authoring analog outside TypeScript"
+  posture: [borrow, benchmark]
+  hobo_surface: [authoring, app-graph, wiring, environments]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://learn.microsoft.com/dotnet/aspire/
+    - https://github.com/dotnet/aspire
 ---
 
 # Aspire — Competitor Reference

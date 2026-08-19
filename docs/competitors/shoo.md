@@ -3,6 +3,20 @@ type: Competitive Reference
 title: "shoo.dev — Competitor Reference"
 description: "**shoo.dev** is a **minimal auth broker for Google sign-in** — *\"AUTH IN 2LOC\"* (auth in two lines of code). It strips the usual Google-OAuth friction (dashboard registration, clie"
 tags: [hobo, competitors]
+competitor:
+  slug: shoo
+  name: "shoo.dev"
+  primary_category: identity-networking-delivery
+  categories: [identity-networking-delivery]
+  directness: complementary
+  role: "zero-config Google sign-in auth broker (PKCE + ES256/JWKS) — identity integration target"
+  posture: [integrate, provider-target]
+  hobo_surface: [identity-secrets]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://shoo.dev
 ---
 
 # shoo.dev — Competitor Reference

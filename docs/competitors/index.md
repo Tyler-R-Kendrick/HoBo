@@ -1,55 +1,130 @@
 # HoBo — Competitor references
 
-> Faithful captures of competing/adjacent products, plus a HoBo parity/mapping tracker for each. These ground the design suite ([`../design/`](../design/index.md)) in what already exists.
+> Source-backed captures of competing and adjacent products, each with a HoBo parity/mapping section. These ground the design suite ([`../design/`](../design/index.md)) in what already exists.
 
-| Competitor             | What it is                                                                                                                      | Reference                        | HoBo mapping                               |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------ |
-| **Nitric**             | Cloud-agnostic "infrastructure from code" framework                                                                             | [`nitric.md`](nitric.md)         | [HoBo mapping](nitric.md#hobo-mapping)     |
-| **Nomad + Nomad Pack** | Workload scheduler/orchestrator + reusable jobspec packaging (HashiCorp) — _direct scheduler/control-plane competitor_          | [`nomad.md`](nomad.md)           | [HoBo mapping](nomad.md#hobo-mapping)      |
-| **Humanitec**          | Platform Orchestrator for Internal Developer Platforms (dynamic configuration management)                                       | [`humanitec.md`](humanitec.md)   | [HoBo mapping](humanitec.md#hobo-mapping)  |
-| **Aspire**             | Code-first app composition + local orchestration + deploy (Microsoft; MIT) — _most detailed capture_                            | [`aspire.md`](aspire.md)         | [HoBo mapping](aspire.md#hobo-mapping)     |
-| **Convex**             | Reactive TypeScript backend-as-a-service (DB + functions + sync) — _adjacent; possible HoBo provider_                           | [`convex.md`](convex.md)         | [HoBo mapping](convex.md#hobo-mapping)     |
-| **InsForge**           | Agent-native backend-as-a-service (Postgres/auth/storage/realtime/functions/sites/AI gateway) — _adjacent; agent-ops benchmark_  | [`insforge.md`](insforge.md)     | [HoBo mapping](insforge.md#hobo-mapping)   |
-| **Antimetal**          | AI-native production-operations layer (world model, RCA, fixes, MCP/coding-agent handoff) — _adjacent; SRE/operator benchmark_   | [`antimetal.md`](antimetal.md)   | [HoBo mapping](antimetal.md#hobo-mapping)  |
-| **shoo.dev**           | Zero-config Google-sign-in auth broker (PKCE + ES256/JWKS) — _adjacent; identity_                                               | [`shoo.md`](shoo.md)             | [HoBo mapping](shoo.md#hobo-mapping)       |
-| **Dapr**               | Distributed-application runtime: portable building-block APIs + pluggable components (sidecar) — _closest architectural analog_ | [`dapr.md`](dapr.md)             | [HoBo mapping](dapr.md#hobo-mapping)       |
-| **Rivet**              | Open-source Durable Objects / actor runtime (RivetKit + optional self-hosted engine, per-actor SQLite) — _preferred compatible ActorHost resolver_ | [`rivet.md`](rivet.md) | [HoBo mapping](rivet.md#hobo-mapping) |
-| **celld**              | Self-hosted Cloudflare Workers/Durable Objects daemon (V8 + per-cell SQLite + S3 CAS) — _experimental DO dialect_ | [`celld.md`](celld.md) | [HoBo mapping](celld.md#hobo-mapping) |
-| **Flux / Orbit**       | Decentralized container host; Orbit is Git-to-Flux deploy UX — _compute provider, not an actor runtime_ | [`flux.md`](flux.md) | [HoBo mapping](flux.md#hobo-mapping) |
-| **Encore**             | Infrastructure-from-code for TS/Go (declare resources in code → provision AWS/GCP) — _closest product analog_                   | [`encore.md`](encore.md)         | [HoBo mapping](encore.md#hobo-mapping)     |
-| **Lakebed**            | Agent-native closed PaaS (Capsules, sync RPC, llms.txt) — _named head-on competitor_                                            | [`lakebed.md`](lakebed.md)       | [HoBo mapping](lakebed.md#hobo-mapping)    |
-| **Wasm hosts**         | The wasm component-hosting landscape (Wasmtime · Spin/SpinKube · wasmCloud) — _grounds ADR-0031's `component-host` adapters_    | [`wasm-hosts.md`](wasm-hosts.md) | [HoBo mapping](wasm-hosts.md#hobo-mapping) |
-| **FinOps tooling**     | Cost allocation/estimation/optimization landscape (Kubecost/OpenCost · Infracost · Vantage · Cast.ai) — _adjacent; showback/FinOps benchmark_ | [`finops-tooling.md`](finops-tooling.md) | [HoBo mapping](finops-tooling.md#hobo-mapping) |
-| **NetScaler**          | Application delivery controller (L4-L7 LB/GSLB/SSL/WAF/gateway) + its IaC surface ("NetScaler as Code": Terraform/Ansible/StyleBooks/Next-Gen API) and the `nsconf2iac` config→IaC migration utility — _adjacent; candidate `gateway` provider + `hobo import` analog_ | [`netscaler.md`](netscaler.md) | [HoBo mapping](netscaler.md#hobo-mapping) |
-| **Heroku** | The original app-centric PaaS (dynos, buildpacks, add-on marketplace; Salesforce-owned; Fir/CNB next-gen) — _mainstream "just deploy my app" competitor_ | [`heroku.md`](heroku.md) | [HoBo mapping](heroku.md#hobo-mapping) |
-| **Render** | Unified managed cloud (web/static/workers/cron + managed Postgres/Key-Value, `render.yaml` Blueprints) — _Heroku-successor PaaS_ | [`render.md`](render.md) | [HoBo mapping](render.md#hobo-mapping) |
-| **Railway** | Instant-deploy PaaS with a visual canvas, templates, and Railway Metal — _mainstream PaaS_ | [`railway.md`](railway.md) | [HoBo mapping](railway.md#hobo-mapping) |
-| **Fly.io** | Global app platform on Firecracker microVMs + Anycast (`fly.toml`, Machines) — _edge PaaS competitor (distinct from the raw-provider seed)_ | [`flyio.md`](flyio.md) | [HoBo mapping](flyio.md#hobo-mapping) |
-| **Vercel** | Frontend cloud + durable Workflow SDK + AI stack (v0 / AI SDK / AI Gateway) — _borrow-source promoted to full parity capture_ | [`vercel.md`](vercel.md) | [HoBo mapping](vercel.md#hobo-mapping) |
-| **Netlify** | Composable-web / Jamstack platform (Functions/Edge, Blobs, Netlify DB) — _frontend PaaS_ | [`netlify.md`](netlify.md) | [HoBo mapping](netlify.md#hobo-mapping) |
-| **Modal** | Python-first serverless compute for AI/ML + serverless GPU + agent Sandboxes — _AI-native compute competitor_ | [`modal.md`](modal.md) | [HoBo mapping](modal.md#hobo-mapping) |
-| **AWS Amplify** | Gen-2 code-first TypeScript fullstack backend on AWS CDK — _IfC-in-TS analog, AWS-only_ | [`aws-amplify.md`](aws-amplify.md) | [HoBo mapping](aws-amplify.md#hobo-mapping) |
-| **wasmCloud** | CNCF wasm component runtime (lattice, wRPC, capability providers) — _adopted substrate (HoBo's default host), not a rival_ | [`wasmcloud.md`](wasmcloud.md) | [HoBo mapping](wasmcloud.md#hobo-mapping) |
-| **Spin / Fermyon** | Wasm serverless framework + hosts (SpinKube / Fermyon; Akamai) — _wasm-host landscape; SpinKube is a HoBo `component-host` adapter_ | [`spin-fermyon.md`](spin-fermyon.md) | [HoBo mapping](spin-fermyon.md#hobo-mapping) |
-| **Winglang** | Cloud-oriented language (preflight/inflight → Terraform) — _authoring analog + cautionary tale (Wing Cloud shut down 2025)_ | [`winglang.md`](winglang.md) | [HoBo mapping](winglang.md#hobo-mapping) |
-| **Qovery** | BYOC internal developer platform (deploy into your cloud; OSS Rust engine) — _PaaS/IDP competitor_ | [`qovery.md`](qovery.md) | [HoBo mapping](qovery.md#hobo-mapping) |
-| **Northflank** | Full-stack PaaS (services/jobs/DBs/pipelines, BYOC, GPU) — _mature container PaaS_ | [`northflank.md`](northflank.md) | [HoBo mapping](northflank.md#hobo-mapping) |
-| **Backstage** | CNCF developer portal / IDP framework (catalog, scaffolder, plugins) — _complementary portal, not head-on_ | [`backstage.md`](backstage.md) | [HoBo mapping](backstage.md#hobo-mapping) |
-| **Crossplane** | CNCF Kubernetes control plane for infra (Compositions/XRDs, providers) — _borrow-source + pluggable IaC adapter_ | [`crossplane.md`](crossplane.md) | [HoBo mapping](crossplane.md#hobo-mapping) |
-| **Radius** | CNCF cloud-native app platform (app graph, Recipes, connections) — _borrow-source (recipes + app model)_ | [`radius.md`](radius.md) | [HoBo mapping](radius.md#hobo-mapping) |
-| **Supabase** | Open-source Postgres BaaS (Auth/RLS/Realtime+Presence/Storage/Edge Fns/pgvector) — _adjacent BaaS + possible provider target_ | [`supabase.md`](supabase.md) | [HoBo mapping](supabase.md#hobo-mapping) |
-| **ServerKit**          | Self-hosted, open-source (MIT) server control panel — apps (PHP/WordPress·Python·Node·Docker), DB, DNS, SSL, full mail stack, WAF/security suite, backups, monitoring, + a cross-platform Go **agent fleet** (pairing, remote Docker, WireGuard tunnels, drift-detecting templates) — _adjacent; self-host & developer-experience benchmark; node-attach/Relay reference_ | [`serverkit.md`](serverkit.md) | [HoBo mapping](serverkit.md#hobo-mapping) |
-| **SST**                | Infrastructure-from-Code full-stack framework (one `sst.config.ts`); v3 "Ion" engine on **Pulumi + Terraform** (150+ providers), typed resource **Linking**, **Live** local dev, optional **Console** — _close product analog; AWS-centric IfC/IaC_ | [`sst.md`](sst.md)             | [HoBo mapping](sst.md#hobo-mapping)        |
-| **Wasp**               | Rails-like full-stack framework (React/Node/Prisma) driven by a declarative `.wasp` spec; Open-SaaS starter kit — _adjacent; App-Kit inspiration + packaging path ([ADR-0144](../design/adr/07-portability-extensibility.md#adr-0144))_ | [`wasp.md`](wasp.md)           | [HoBo mapping](wasp.md#hobo-mapping)       |
-| **Anon container hosts** | OpenPouch-class anonymous temporary hosting (Clawdship · APPISH · ZeroDeploy · SSHGrid · ttl.sh · Dockup; Instanode blacklisted) — _Examples Temporary zero-key host matrix_ | [`anon-container-hosts.md`](anon-container-hosts.md) | [HoBo mapping](anon-container-hosts.md#hobo-mapping) |
-| **Octopus Deploy**     | Release-orchestration & deployment automation (environments, lifecycles, tenants, runbooks, manual interventions) — _delivery-domain lesson source for promotion/stage-gate/runbook surfaces_ | [`octopus-deploy.md`](octopus-deploy.md) | [HoBo mapping](octopus-deploy.md#hobo-mapping) |
-| **Alchemy**            | TypeScript-native **engine-less** IaC (v2 "Infrastructure-as-Effects" on Effect; v1 async-function resources; direct-API reconcile providers, LLM-authored ecosystem) — _direct competitor on the authoring/provisioning core **and** candidate `iac-alchemy` engine adapter_ | [`alchemy.md`](alchemy.md) | [HoBo mapping](alchemy.md#hobo-mapping) |
+This page is **navigation**. The corpus has three layers, and each fact lives in exactly one of them:
 
-Each competitor is **one consolidated doc**: positioning, the feature surface (with quoted excerpts of factual API/CLI/config surface where it matters), differentiators, and gaps a competitor could exploit, ending with a `#hobo-mapping` section that shows HoBo's equivalent for every feature and where HoBo deliberately goes further. Some entries (Convex, shoo.dev) are **adjacent** rather than head-on — captured because they inform HoBo's design or could compose with it.
+| Layer | Where | What it holds |
+| ----- | ----- | ------------- |
+| Canonical capture | `docs/competitors/<slug>.md` | All research on one product. One file per product, no matter how many categories it belongs to. |
+| Category index | [`categories/`](categories/index.md) | Category boundary, why HoBo competes there, and one standardized comparison row per member. No research. |
+| Derived views | [`matrix.md`](matrix.md) · [`gap-analysis.md`](gap-analysis.md) | Generated cross-category matrix and freshness ledger; cross-competitor synthesis. |
 
-➡️ **Cross-competitor [gap analysis](./gap-analysis.md)** — a synthesis of where HoBo's design leads / matches / falls short of the captured set, with a comparison matrix, prioritized gaps (the standout: a **reactive/live-query model**, à la Convex), and recommended next design moves. New gaps are filed as [open questions #21–23](../design/generated-stack.md#historical-open-question-ledger) (all since resolved — see the ledger).
+Membership, aliases, posture and freshness are declared once, in each capture's `competitor:` front matter, and validated by `pnpm run docs:competitors`. The schema and canonical path rules are normative in [`metadata-contract.md`](metadata-contract.md).
 
-Some entries are captured as **adjacent components** whose IaC/authoring tooling informs HoBo (NetScaler — an ADC appliance and candidate `gateway` provider, notable for its `nsconf2iac` config→IaC migration utility as a `hobo import` analog). **The 2026-07-03 expansion added the mainstream developer-PaaS cohort** — Heroku, Render, Railway, Fly.io, Vercel, Netlify, Modal, AWS Amplify (what an end user actually compares "just deploy my app" against) — **and cleared the future-competitor backlog**: wasmCloud, Spin/Fermyon, Winglang, SST, Qovery, Northflank, Backstage, Crossplane, Radius, Supabase (and ServerKit) are all now captured (several are adopted substrates or borrow-sources rather than head-on rivals — noted per row above). Pattern for any further competitor: add a sibling `<vendor>.md` doc with the same section layout (overview → feature surface → differentiators → `## hobo-mapping`).
+## Categories (13)
+
+| Category | Competitors |
+| -------- | ----------- |
+| [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Crossplane](crossplane.md) · [Humanitec](humanitec.md) · [Nomad](nomad.md) · [Qovery](qovery.md) · [Radius](radius.md) |
+| [Portable Application Models & Control Planes](categories/portable-application-models.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [Crossplane](crossplane.md) · [Dapr](dapr.md) · [Humanitec](humanitec.md) · [Nitric](nitric.md) · [Radius](radius.md) · [SST](sst.md) |
+| [Cloud Application Platforms](categories/cloud-application-platforms.md) | [Anonymous container hosts](anon-container-hosts.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [Flux Network](flux-network.md) · [Fly.io](flyio.md) · [Heroku](heroku.md) · [Lakebed](lakebed.md) · [Modal](modal.md) · [Netlify](netlify.md) · [Northflank](northflank.md) · [Qovery](qovery.md) · [Railway](railway.md) · [Render](render.md) · [Vercel](vercel.md) |
+| [Developer Portals & IDPs](categories/developer-portals-idps.md) | [Backstage](backstage.md) |
+| [Infrastructure-from-Code & Authoring](categories/infrastructure-from-code.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [Nitric](nitric.md) · [SST](sst.md) · [Wasp](wasp.md) · [Winglang](winglang.md) |
+| [Runtime & Distributed Application Substrates](categories/runtime-substrates.md) | [.NET Aspire](aspire.md) · [celld](celld.md) · [Dapr](dapr.md) · [Flux Network](flux-network.md) · [Modal](modal.md) · [Nomad](nomad.md) · [Rivet](rivet.md) · [Spin / Fermyon](spin-fermyon.md) · [Wasm host landscape](wasm-hosts.md) · [wasmCloud](wasmcloud.md) |
+| [Hybrid & Multicloud Enterprise Orchestration](categories/hybrid-multicloud-enterprise.md) | [Crossplane](crossplane.md) |
+| [Self-Hosted PaaS & Server Deployment](categories/self-hosted-paas.md) | [Anonymous container hosts](anon-container-hosts.md) · [Northflank](northflank.md) · [ServerKit](serverkit.md) |
+| [Agentic Infrastructure & Operations](categories/agentic-infrastructure.md) | [Antimetal](antimetal.md) · [InsForge](insforge.md) · [Lakebed](lakebed.md) · [Vercel](vercel.md) |
+| [Backend & Data Application Platforms](categories/backend-data-platforms.md) | [AWS Amplify](aws-amplify.md) · [Convex](convex.md) · [InsForge](insforge.md) · [Supabase](supabase.md) · [Wasp](wasp.md) |
+| [Delivery, Release & GitOps](categories/delivery-release-gitops.md) | [Octopus Deploy](octopus-deploy.md) |
+| [FinOps, Governance & Placement](categories/finops-governance-placement.md) | [Antimetal](antimetal.md) · [FinOps tooling cohort](finops-tooling.md) |
+| [Identity, Networking & Application Delivery](categories/identity-networking-delivery.md) | [NetScaler](netscaler.md) · [ServerKit](serverkit.md) · [shoo.dev](shoo.md) |
+
+Categories are many-to-many: several products appear in more than one row above, with a single canonical capture behind each link.
+
+## Canonical captures (40)
+
+| Competitor | Capture | Primary category | Directness | HoBo mapping |
+| ---------- | ------- | ---------------- | ---------- | ------------ |
+| **.NET Aspire** | [`aspire.md`](aspire.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | direct | code-first app composition, local orchestration and deploy — closest authoring analog outside TypeScript |
+| **Alchemy** | [`alchemy.md`](alchemy.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | direct | TypeScript-native engine-less IaC — competes on the authoring/provisioning core and is a candidate iac-alchemy adapter |
+| **Anonymous container hosts** | [`anon-container-hosts.md`](anon-container-hosts.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | adjacent | cohort capture of zero-key temporary container hosts used as the Examples Temporary host matrix |
+| **Antimetal** | [`antimetal.md`](antimetal.md) | [`agentic-infrastructure`](categories/agentic-infrastructure.md) | adjacent | AI-native production-operations layer (world model, RCA, agent handoff) — SRE/operator benchmark |
+| **AWS Amplify** | [`aws-amplify.md`](aws-amplify.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | overlapping | Gen-2 code-first TypeScript fullstack backend on AWS CDK — IfC-in-TS analog, AWS-only |
+| **Backstage** | [`backstage.md`](backstage.md) | [`developer-portals-idps`](categories/developer-portals-idps.md) | complementary | CNCF developer portal framework — complementary front-end to a HoBo control plane |
+| **celld** | [`celld.md`](celld.md) | [`runtime-substrates`](categories/runtime-substrates.md) | adjacent | self-hosted Cloudflare Workers/Durable Objects daemon — experimental DO dialect and candidate ActorHost |
+| **Convex** | [`convex.md`](convex.md) | [`backend-data-platforms`](categories/backend-data-platforms.md) | adjacent | reactive TypeScript backend-as-a-service — source of the live-query gap and a possible provider target |
+| **Crossplane** | [`crossplane.md`](crossplane.md) | [`portable-application-models`](categories/portable-application-models.md) | overlapping | CNCF Kubernetes control plane for infrastructure — borrow-source and pluggable IaC adapter |
+| **Dapr** | [`dapr.md`](dapr.md) | [`runtime-substrates`](categories/runtime-substrates.md) | overlapping | distributed-application runtime with portable building-block APIs — closest architectural analog to Bindle kinds |
+| **Encore** | [`encore.md`](encore.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | direct | infrastructure-from-code for TS/Go that provisions into your cloud — closest product analog |
+| **FinOps tooling cohort** | [`finops-tooling.md`](finops-tooling.md) | [`finops-governance-placement`](categories/finops-governance-placement.md) | adjacent | cohort capture of cost allocation/estimation/optimization tooling; superseded per product as individual captures land |
+| **Flux Network** | [`flux-network.md`](flux-network.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | adjacent | decentralized container host with a Git-to-Flux deploy UX (Orbit) — compute provider target, not an actor runtime |
+| **Fly.io** | [`flyio.md`](flyio.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | global app platform on Firecracker microVMs — edge PaaS competitor and provider target |
+| **Heroku** | [`heroku.md`](heroku.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | the original app-centric PaaS (dynos, buildpacks, add-ons) — the mainstream 'just deploy my app' benchmark |
+| **Humanitec** | [`humanitec.md`](humanitec.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | Platform Orchestrator for IDPs with dynamic configuration management — head-on orchestrator competitor |
+| **InsForge** | [`insforge.md`](insforge.md) | [`backend-data-platforms`](categories/backend-data-platforms.md) | adjacent | agent-native backend-as-a-service — agent-ops benchmark and possible provider target |
+| **Lakebed** | [`lakebed.md`](lakebed.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | direct | agent-native closed PaaS (Capsules, sync RPC, llms.txt) — named head-on competitor |
+| **Modal** | [`modal.md`](modal.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | adjacent | Python-first serverless compute for AI/ML with agent Sandboxes — AI-native compute competitor |
+| **Netlify** | [`netlify.md`](netlify.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | composable-web platform (Functions/Edge, Blobs, Netlify DB) — frontend PaaS benchmark |
+| **NetScaler** | [`netscaler.md`](netscaler.md) | [`identity-networking-delivery`](categories/identity-networking-delivery.md) | complementary | application delivery controller plus its IaC surface — candidate gateway provider and hobo-import analog |
+| **Nitric** | [`nitric.md`](nitric.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | overlapping | cloud-agnostic infrastructure-from-code framework — authoring analog for typed resource declaration |
+| **Nomad** | [`nomad.md`](nomad.md) | [`runtime-substrates`](categories/runtime-substrates.md) | overlapping | workload scheduler/orchestrator plus jobspec packaging — direct scheduler/control-plane competitor and provider target |
+| **Northflank** | [`northflank.md`](northflank.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | full-stack PaaS with BYOC and GPU support — mature container PaaS benchmark |
+| **Octopus Deploy** | [`octopus-deploy.md`](octopus-deploy.md) | [`delivery-release-gitops`](categories/delivery-release-gitops.md) | overlapping | release orchestration and deployment automation — lesson source for promotion, stage gates and runbooks |
+| **Qovery** | [`qovery.md`](qovery.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | direct | BYOC internal developer platform deploying into your own cloud — PaaS/IDP competitor |
+| **Radius** | [`radius.md`](radius.md) | [`portable-application-models`](categories/portable-application-models.md) | overlapping | CNCF cloud-native application platform (app graph, Recipes, connections) — borrow-source for recipes and app model |
+| **Railway** | [`railway.md`](railway.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | instant-deploy PaaS with a visual canvas and Railway Metal — mainstream PaaS benchmark |
+| **Render** | [`render.md`](render.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | unified managed cloud with render.yaml Blueprints — Heroku-successor PaaS benchmark |
+| **Rivet** | [`rivet.md`](rivet.md) | [`runtime-substrates`](categories/runtime-substrates.md) | adjacent | open-source Durable Objects / actor runtime — preferred compatible ActorHost resolver |
+| **ServerKit** | [`serverkit.md`](serverkit.md) | [`self-hosted-paas`](categories/self-hosted-paas.md) | adjacent | self-hosted open-source server control panel with a Go agent fleet — node-attach/Relay reference |
+| **shoo.dev** | [`shoo.md`](shoo.md) | [`identity-networking-delivery`](categories/identity-networking-delivery.md) | complementary | zero-config Google sign-in auth broker (PKCE + ES256/JWKS) — identity integration target |
+| **Spin / Fermyon** | [`spin-fermyon.md`](spin-fermyon.md) | [`runtime-substrates`](categories/runtime-substrates.md) | adjacent | wasm serverless framework and hosts — SpinKube is a HoBo component-host adapter |
+| **SST** | [`sst.md`](sst.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | direct | infrastructure-from-code full-stack framework on Pulumi/Terraform with typed Linking — close product analog |
+| **Supabase** | [`supabase.md`](supabase.md) | [`backend-data-platforms`](categories/backend-data-platforms.md) | adjacent | open-source Postgres BaaS — adjacent platform and possible provider target |
+| **Vercel** | [`vercel.md`](vercel.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | frontend cloud plus durable Workflow SDK and AI stack — borrow-source promoted to full parity capture |
+| **Wasm host landscape** | [`wasm-hosts.md`](wasm-hosts.md) | [`runtime-substrates`](categories/runtime-substrates.md) | adjacent | cohort capture of the wasm component-hosting landscape grounding ADR-0031 component-host adapters |
+| **wasmCloud** | [`wasmcloud.md`](wasmcloud.md) | [`runtime-substrates`](categories/runtime-substrates.md) | adjacent | CNCF wasm component runtime (lattice, wRPC, capability providers) — adopted substrate, HoBo's default host |
+| **Wasp** | [`wasp.md`](wasp.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | adjacent | Rails-like full-stack framework driven by a declarative .wasp spec — App-Kit inspiration and packaging path |
+| **Winglang** | [`winglang.md`](winglang.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | adjacent | cloud-oriented language compiling to Terraform — authoring analog and cautionary tale (Wing Cloud shut down 2025) |
+
+## Alias index
+
+Renamed, acquired, and commonly-abbreviated products resolve to one canonical capture. There are no stub files for old names — look them up here.
+
+| Alias / former name | Canonical capture |
+| ------------------- | ----------------- |
+| `amplify gen 2` | [AWS Amplify](aws-amplify.md) |
+| `citrix adc` | [NetScaler](netscaler.md) |
+| `clawdship` | [Anonymous container hosts](anon-container-hosts.md) |
+| `dockup` | [Anonymous container hosts](anon-container-hosts.md) |
+| `dotnet aspire` | [.NET Aspire](aspire.md) |
+| `fermyon` | [Spin / Fermyon](spin-fermyon.md) |
+| `flux` | [Flux Network](flux-network.md) |
+| `fly` | [Fly.io](flyio.md) |
+| `hashicorp nomad` | [Nomad](nomad.md) |
+| `kubecost cohort` | [FinOps tooling cohort](finops-tooling.md) |
+| `netscaler adc` | [NetScaler](netscaler.md) |
+| `nitrictech` | [Nitric](nitric.md) |
+| `nomad pack` | [Nomad](nomad.md) |
+| `octopus` | [Octopus Deploy](octopus-deploy.md) |
+| `open saas` | [Wasp](wasp.md) |
+| `openpouch` | [Anonymous container hosts](anon-container-hosts.md) |
+| `opensaas` | [Wasp](wasp.md) |
+| `orbit` | [Flux Network](flux-network.md) |
+| `radapp` | [Radius](radius.md) |
+| `rivetkit` | [Rivet](rivet.md) |
+| `runonflux` | [Flux Network](flux-network.md) |
+
+| `spin` | [Spin / Fermyon](spin-fermyon.md) |
+| `spinkube` | [Spin / Fermyon](spin-fermyon.md) |
+| `spotify backstage` | [Backstage](backstage.md) |
+| `sst ion` | [SST](sst.md) |
+| `ttl.sh` | [Anonymous container hosts](anon-container-hosts.md) |
+| `wasmtime cohort` | [Wasm host landscape](wasm-hosts.md) |
+| `wing` | [Winglang](winglang.md) |
+| `zerodeploy` | [Anonymous container hosts](anon-container-hosts.md) |
+
+> `flux` historically pointed at Flux Network (the decentralized container host). It is now an alias, because [Flux CD](categories/delivery-release-gitops.md) is a different product in a different category. Always link the canonical slug.
+
+## What a capture contains
+
+Each capture follows the **HoBo Competitive Research Contract**: what it is · core primitives · feature surface · architecture · how it competes with HoBo · primitive mapping · where the competitor is stronger · where HoBo is stronger or intentionally different · adversarial critique · better-together posture · threats and lessons · sources. Captures rewritten to that shape are marked `v1` in the [matrix](matrix.md); earlier captures are real, source-backed research queued for rewrite by their own research issue.
+
+Some entries are **cohort** captures (`anon-container-hosts`, `wasm-hosts`, `finops-tooling`) covering a landscape rather than one product; they are superseded section by section as per-product captures land.
+
+HoBo mappings distinguish **implemented** behaviour in `packages/` from **proof/draft** and **design-only** intent. A category row may never imply parity the repository does not have.
+
+➡️ **Cross-competitor [gap analysis](./gap-analysis.md)** — synthesis of where HoBo's design leads, matches, or falls short, with prioritized gaps and recommended design moves.
 
 ## Sources & fair use
 

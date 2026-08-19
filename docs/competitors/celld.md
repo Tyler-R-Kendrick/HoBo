@@ -3,6 +3,20 @@ type: Competitive Reference
 title: "celld — competitor reference"
 description: "Deno's celld as a future independent Durable Objects resolver; pinned image and honest role notes."
 tags: [hobo, competitors]
+competitor:
+  slug: celld
+  name: "celld"
+  primary_category: runtime-substrates
+  categories: [runtime-substrates]
+  directness: adjacent
+  role: "self-hosted Cloudflare Workers/Durable Objects daemon — experimental DO dialect and candidate ActorHost"
+  posture: [adopt, provider-target]
+  hobo_surface: [runtime-portability, reconciliation]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-15
+  sources:
+    - https://github.com/denoland/celld
 ---
 
 # celld

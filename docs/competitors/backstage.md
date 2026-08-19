@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Backstage — competitor reference"
 description: "Backstage is an **open-source framework for building developer portals** (Spotify, CNCF Incubating; Apache-2.0) — a **software catalog, software templates (scaffolder), TechDocs, and a plugin system** you assemble and self-host as a React/Node app. It is an **adjacent** categor"
 tags: [hobo, competitors]
+competitor:
+  slug: backstage
+  name: "Backstage"
+  aliases: ["spotify backstage"]
+  primary_category: developer-portals-idps
+  categories: [developer-portals-idps]
+  directness: complementary
+  role: "CNCF developer portal framework — complementary front-end to a HoBo control plane"
+  posture: [integrate, borrow]
+  hobo_surface: [governance, ecosystem, extensibility]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://backstage.io/docs/overview/what-is-backstage/
+    - https://github.com/backstage/backstage
 ---
 
 # Backstage — competitor reference

@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Dapr — competitor reference"
 description: "Dapr is a **CNCF-graduated, open-source (Apache-2.0) distributed-application runtime**. It exposes a set of **building blocks** — standard HTTP/gRPC APIs for the hard parts of dist"
 tags: [hobo, competitors]
+competitor:
+  slug: dapr
+  name: "Dapr"
+  primary_category: runtime-substrates
+  categories: [runtime-substrates, portable-application-models]
+  directness: overlapping
+  role: "distributed-application runtime with portable building-block APIs — closest architectural analog to Bindle kinds"
+  posture: [borrow, standard, integrate]
+  hobo_surface: [typed-contracts, runtime-portability, wiring, identity-secrets]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://docs.dapr.io/concepts/building-blocks-concept/
+    - https://github.com/dapr/dapr
 ---
 
 # Dapr — competitor reference

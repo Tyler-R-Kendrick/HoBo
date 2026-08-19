@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Northflank — competitor reference"
 description: "Northflank is a **full-stack, self-service PaaS / cloud platform**: deploy services, jobs, cron, build pipelines, and managed databases (Postgres/MySQL/MongoDB/Redis/…) from one Kubernetes-native control plane — in Northflank's cloud **or bring-your-own-cloud** (AWS/GCP/Azure/Oracle/CoreWeave/Civo/on-prem) — with preview environments, JSON templates + bidirectional GitOps, a `northflank` CLI/API, and first-class GPU/AI workloads."
 tags: [hobo, competitors]
+competitor:
+  slug: northflank
+  name: "Northflank"
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms, self-hosted-paas]
+  directness: overlapping
+  role: "full-stack PaaS with BYOC and GPU support — mature container PaaS benchmark"
+  posture: [benchmark]
+  hobo_surface: [environments, delivery, governance]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://northflank.com/docs
+    - https://northflank.com/features/platform
 ---
 
 # Northflank — competitor reference

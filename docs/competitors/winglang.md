@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Winglang — competitor reference"
 description: "Winglang (Wing) is an **open-source, cloud-oriented programming language** (MIT) by Elad Ben-Israel (creator of AWS CDK) and the Wing Cloud team — a *new language* that unifies infrastructure and"
 tags: [hobo, competitors]
+competitor:
+  slug: winglang
+  name: "Winglang"
+  aliases: ["wing"]
+  primary_category: infrastructure-from-code
+  categories: [infrastructure-from-code]
+  directness: adjacent
+  role: "cloud-oriented language compiling to Terraform — authoring analog and cautionary tale (Wing Cloud shut down 2025)"
+  posture: [borrow, benchmark]
+  hobo_surface: [authoring, typed-contracts]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://www.winglang.io/docs/
+    - https://github.com/winglang/wing
 ---
 
 # Winglang — competitor reference

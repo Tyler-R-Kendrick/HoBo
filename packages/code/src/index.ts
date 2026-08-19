@@ -64,6 +64,17 @@ export {
 	workspaceForAgent,
 } from "./agent-work.js";
 export {
+	type CreateHarnessAgentOptions,
+	type CreateHarnessV1Options,
+	cliPromptInvocation,
+	createHarnessAgent,
+	createHarnessV1,
+	type HarnessAgentLike,
+	type HarnessV1,
+	type HarnessV1Event,
+	type HarnessV1Session,
+} from "./ai-sdk-harness-runtime.js";
+export {
 	AGENTS_CATALOG_KEY_LEGEND,
 	type AgentsCatalogFlatRow,
 	type AgentsCatalogNode,

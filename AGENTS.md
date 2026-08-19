@@ -587,6 +587,29 @@ absent — `packages/runtimes/runtime-celld/test/live-*.test.ts` says so in the
 error text. That is deliberate: a live lane that silently passes without its
 subject is worse than one that stops.
 
+`turbo.json` runs `envMode: "strict"`, so a task sees only what
+`globalPassThroughEnv` lists. Two consequences worth knowing before diagnosing a
+lane as flaky:
+
+- **TLS and proxy settings are passed through.** Behind a TLS-intercepting
+  proxy the certificate chain terminates in the proxy's own root, so without
+  `NODE_EXTRA_CA_CERTS` (and the `SSL_CERT_*` / `*_PROXY` family) every
+  network-touching task fails `SELF_SIGNED_CERT_IN_CHAIN` while the identical
+  command run outside turbo succeeds. That discrepancy reads as a flaky network
+  test and is not one. `NODE_TLS_REJECT_UNAUTHORIZED` is deliberately **not**
+  passed through: the fix for an untrusted chain is to trust the right root,
+  never to stop checking.
+- **A live lane's own configuration must be listed too.** `CELLD_BIN` and
+  `CELLD_ESBUILD` are passed through, because the celld lane's README and its
+  failure message both tell you to set `CELLD_BIN` — and under strict mode that
+  instruction silently did nothing. If you add a live lane that reads an
+  environment variable, add it here or the escape hatch you documented will not
+  exist.
+
+Credentials are **not** passed through, and the provider tests do not need them
+to be: `CLOUDFLARE_API_TOKEN`, `VERCEL_TOKEN` and friends are saved, set, and
+restored by the tests themselves rather than read from the ambient environment.
+
 Live service checks and `pnpm eval:agent:live` are manual/release-only lanes. Default PR and agent checks must not require live external services. Default `agent:check` must not run long Jazzer campaigns, RESTler, or Toxiproxy.
 
 Run the smallest sufficient lane through `pnpm agent:check`; no-arg mode validates the latest commit, `--staged` validates staged files, and `--base=origin/main` validates the whole PR branch. It never selects E2E, avoids broad unit/contract sweeps unless final/all validation explicitly asks for them, and escalates only to schema, contract, UI, behavior, visual, mock-agent eval, or bounded property lanes based on changed files.

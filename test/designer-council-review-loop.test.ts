@@ -378,6 +378,19 @@ function councilMissing(
 	);
 }
 
+/**
+ * Sixty seconds, not the global ten.
+ *
+ * Every test here seeds a real git repository in a temp dir, and this suite
+ * alone spawns 32 git subprocesses. Run alone that is about a second; run
+ * inside the full pre-commit turbo matrix, competing with every package build
+ * for CPU and disk, it crosses ten and the suite fails for want of a machine
+ * rather than for a defect — which is the worst kind of red, because the fix
+ * looks like "re-run it".
+ *
+ * The timeout is set here rather than raised globally on purpose: a genuinely
+ * hung test elsewhere should still fail in ten seconds.
+ */
 describe("OptimizeXP review-loop designer council integration", () => {
 	test("validate-bus accepts persisted council history and rejects malformed council entries", async () => {
 		const validRoot = seedRepo();
@@ -619,4 +632,4 @@ describe("OptimizeXP review-loop designer council integration", () => {
 		const result = await runReviewLoop(root, "assert-complete");
 		assert.deepEqual(councilMissing(result), [], result.text);
 	});
-});
+}, 60_000);

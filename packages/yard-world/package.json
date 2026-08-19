@@ -4,7 +4,9 @@
 	"license": "MIT",
 	"type": "module",
 	"private": true,
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -23,6 +25,7 @@
 		"test": "vitest run"
 	},
 	"devDependencies": {
+		"@hobo/contract-harness": "workspace:*",
 		"@types/node": "^22.15.29",
 		"vitest": "^4.1.9"
 	},

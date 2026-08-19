@@ -4,7 +4,7 @@
  * Bo idle frames are a **deterministic conversion** of the 2D sprite strip
  * `assets/bo-idle.png` (same art as site `public/parallax/bo-idle.png`) via
  * `sprite-tui.ts` (half-block Unicode paint — Grok/TUI-style fixed cell grid).
- * Generated frames live in `_generated/bo-idle-tui-frames.ts` (re-run
+ * Generated frames live in `_generated-art/bo-idle-tui-frames.ts` (re-run
  * `scripts/gen-bo-idle-tui.mts` after sprite changes).
  *
  * Anti-flicker: every paint is a **fixed canvas** — changing only frame/tickMs
@@ -17,13 +17,13 @@ import {
 	BO_IDLE_TUI_FRAMES,
 	BO_IDLE_TUI_ROWS,
 	BO_IDLE_TUI_SOURCE,
-} from "./_generated/bo-idle-tui-frames.js";
+} from "./_generated-art/bo-idle-tui-frames.js";
 import {
 	HOBO_LOGO_TUI,
 	HOBO_LOGO_TUI_COLS,
 	HOBO_LOGO_TUI_ROWS,
 	HOBO_LOGO_TUI_SOURCE,
-} from "./_generated/hobo-logo-tui.js";
+} from "./_generated-art/hobo-logo-tui.js";
 
 /** Cadence from bo-idle export (~95ms/frame on site BoIdle.astro). */
 export const BO_IDLE_TICK_MS = 95;

@@ -347,7 +347,7 @@ export function createMockRemoteBrokerState(options?: {
 						"HOBO_CLAIM_TOKEN_INVALID",
 					);
 				}
-				const dep = mustGet(deployments, deploymentId);
+				const dep = mustGet(deployments, deploymentId, "deployments");
 				if (dep.expiresAt < now()) {
 					throw new RemoteBrokerClientError(
 						"anonymous claim token expired",
@@ -406,7 +406,7 @@ export function createMockRemoteBrokerState(options?: {
 					"HOBO_CLAIM_TOKEN_INVALID",
 				);
 			}
-			const dep = mustGet(deployments, deploymentId);
+			const dep = mustGet(deployments, deploymentId, "deployments");
 			if (dep.expiresAt < now() && dep.owner === null) {
 				throw new RemoteBrokerClientError(
 					"claim token expired",

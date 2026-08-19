@@ -53,7 +53,21 @@ Agents are data, not switch cases. Bundled descriptors live in
 `$HOBO_HOME/durable/code/harnesses/` or `<cwd>/.hobo/harnesses/` (or call
 `registerHarness`) and init/detect/seat pick it up. Config writers dispatch on
 *format* (`toml-append`, `json-env`, `note`, `eve-vfs`, `sdk-env`) never on
-agent id. `hobo-code agents init` is the analog of
+agent id. Programmatic runs go through AI SDK `HarnessV1`
+(`src/ai-sdk-harness-runtime.ts`): `runtime.adapter` picks a builtin
+`@ai-sdk/harness-*` package (Claude Code, Codex, Pi, OpenCode, Grok Build, …)
+or an in-repo custom adapter (`cli`, `eve`, `sdk`, `skip`) for harnesses the
+SDK does not ship yet. Custom `cli` plugins declare one-shot `runtime.prompt`
+argv (`cursor-agent -p`, `copilot -p`, `gemini -p`, `aider --yes --message`,
+`goose run -t`) so programmatic turns spawn the same CLIs mux used to seat.
+The `sdk` adapter takes `generateSdkText` (AI SDK `generateText` / ToolLoopAgent).
+`createHarnessAgent(spec)` wraps that `HarnessV1` in
+AI SDK `HarnessAgent`. Host-process adapters (`pi`, `cline`, `cli`, `eve`,
+`sdk`) default to `@ai-sdk/sandbox-just-bash`. Bridge adapters (`claude-code`,
+`codex`, `opencode`, `grok-build`, …) fail closed until a network sandbox
+(`@ai-sdk/sandbox-vercel`) is injected — local Station/rift is not a Vercel
+microVM. Missing builtin packages fail closed with the package
+name. `hobo-code agents init` is the analog of
 `vercel ai-gateway coding-agents setup`. Host specs (`host: true`, hobo-code)
 are never seated. Apply refuses when no listen URL exists. Registry snapshot:
 `$HOBO_HOME/durable/code/agents/registry.json`. `hobo-code agent` stays the
@@ -200,7 +214,7 @@ raw DTOs. Invalid values throw at the boundary (parse-don't-validate).
 
 Presentation helpers stay pure and unit-tested:
 
-- **Default loading** — `renderDefaultLoadingScreen` (`splash.ts`): console **HoBo logo** + **Bo idle** from real `assets/bo-idle.png` via deterministic `sprite-tui.ts` half-block conversion (12 frames rest·bounce·blink). Generated frames in `_generated/bo-idle-tui-frames.ts`. **Fixed canvas** so frame advance never reflows. Empty standalone mux paints this instead of empty→★.
+- **Default loading** — `renderDefaultLoadingScreen` (`splash.ts`): console **HoBo logo** + **Bo idle** from real `assets/bo-idle.png` via deterministic `sprite-tui.ts` half-block conversion (12 frames rest·bounce·blink). Generated frames in `_generated-art/bo-idle-tui-frames.ts`. **Fixed canvas** so frame advance never reflows. Empty standalone mux paints this instead of empty→★.
 - `tui-tree.ts` + `tui-components.tsx` + `tui-layout.ts` + `tui-render.ts` + `tui-broadcast.ts` — retained semantic TUI tree with React-style chrome. `ShellChrome` wraps the surface in `BroadcastFrame` (algorithmic CRT/film bezel) and composes `ChatTranscript`, `InkTable`, `SlashPalette`, `ApprovalDialog`, `BtwAside`, `TextPane`, `CommandRail`, and `StatusStrap`. The initial screen is an `InkTable` of talk/patterns/focus plus occupancy named endpoints (`*.hobo.localhost`, never loopback IPs). `btw` / `/btw` opens a live overlay (`btw.ts`) that recaptures the parent thread and never joins the main transcript; the renderer blits `BtwAside` onto the CRT glass so both threads stay visible. Every `tui-*` file is DESIGN.md-linted. `pi-tui` stays the Node framebuffer host; DESIGN.md tokens live in `tui-tokens.ts`.
 - `renderStatusText` / `renderStatusChip` — Herdr-style adaptive box: panes fold ≤4-wide; health glyphs; focus ▸; quiet omits default ★ next; chip omits herdr
 - `herdrMuxCapabilities` / `renderHerdrCapabilityFooter` — discoverable Herdr card (status footer + JSON); dense box stays quiet

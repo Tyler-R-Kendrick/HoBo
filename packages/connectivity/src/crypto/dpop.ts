@@ -12,7 +12,6 @@ import {
 	type KeyObject,
 	randomBytes,
 } from "node:crypto";
-import { must } from "@hobo/core/total-access";
 
 export interface DpopKeyPair {
 	readonly privateKey: KeyObject;
@@ -270,11 +269,16 @@ export function verifyDpopProof(input: {
 	if (payload.htm?.toUpperCase() !== input.htm.toUpperCase()) {
 		throw new Error("dpop: htm mismatch");
 	}
-	if (normalizeHtu(payload.htu ?? "") !== normalizeHtu(input.htu)) {
+	// Bound to locals so the checks below actually narrow. The previous
+	// `payload.htu ?? ""` also let an absent htu pass whenever input.htu
+	// normalized to the empty string; requiring presence closes that.
+	const htu = payload.htu;
+	if (htu === undefined || normalizeHtu(htu) !== normalizeHtu(input.htu)) {
 		throw new Error("dpop: htu mismatch");
 	}
 	const expectedAth = accessTokenHash(input.accessToken);
-	if (payload.ath !== expectedAth) {
+	const ath = payload.ath;
+	if (ath === undefined || ath !== expectedAth) {
 		throw new Error("dpop: ath mismatch");
 	}
 	const now = input.now ?? Math.floor(Date.now() / 1000);
@@ -317,8 +321,8 @@ export function verifyDpopProof(input: {
 
 	return {
 		htm: payload.htm,
-		htu: must(payload.htu),
-		ath: must(payload.ath),
+		htu,
+		ath,
 		jti: payload.jti,
 		iat: payload.iat,
 		kid,

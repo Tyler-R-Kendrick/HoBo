@@ -20,6 +20,32 @@ Deliberately not here: no port has a production backend in this package — the
 helpers; implementations live in runtime/provider packages. No I/O, no network,
 no persistence.
 
+### HONEST SCOPE — deployment phases and schema diff
+
+`ports/phase.ts` (ADR-0158) ships **vocabulary, parse boundaries, and the
+`assertCapabilityPhase` enforcement primitive only**. There is no handler
+pipeline and no `ctx.bindings` here: nothing in this package intercepts a
+capability access, so enforcement happens where a host calls
+`assertCapabilityPhase` — a host that never calls it is never protected.
+
+`ports/schema-diff.ts` (ADR-0160) owns the canonical schema IR and the
+forward-only expand/backfill/contract differ. What it deliberately does **not**
+do: it emits **no SQL** (`CANONICAL_SCHEMA_DIFF_ENGINE` has no `emitSql`; SQL
+emission belongs to toolchain adapters such as `@hobo/adapter-drizzle`, which
+fail closed when the toolchain is missing); it models **postgres only** and
+refuses any other `dialect` rather than pretending to model it; it models
+tables, columns and indexes, so foreign keys, check constraints, enums,
+sequences, partitions, views, triggers, and column ordinal position are **not**
+represented and a schema that relies on them is under-described rather than
+mis-described; the type-widening lattice is a small documented set
+(`smallint→integer→bigint→numeric`, `real→double precision`,
+`char→varchar→text`, plus parameter growth like `varchar(32)→varchar(64)`) and
+every conversion outside it is classified as a **narrowing** — conservative on
+purpose, because calling an unknown conversion safe is how an expand phase
+loses data. Redefining an index in place (same name, different columns or
+uniqueness) yields both an `expand` add and a `contract` drop of that name; the
+differ does not model index renames, so distinct names are expected.
+
 ## Commands
 
 ```bash
@@ -40,6 +66,17 @@ Untrusted input crosses named parser boundaries and becomes frozen derived types
 functions. Failures throw typed errors (`EnvelopeParseError`, `CapabilityParseError`,
 `QueueParseError`, …) — parse, don't validate. Wire forms live in `data-models/*.proto`
 with CUE constraints alongside.
+
+The deployment-phase and schema-diff ports follow the same boundary:
+`parseDeploymentPhase` / `parsePhaseScope` / `parsePhaseScopeFromEnv` →
+`DeploymentPhase` and `PhaseScope` (an unknown `HOBO_PHASE` or `HOBO_DEV` value
+is refused, never defaulted), and `parseSchemaIr` → a deeply frozen,
+name-sorted `SchemaIr` whose derived types `diffSchemaIr` turns into a
+`MigrationPlan` — a pure, deterministic, forward-only expand/backfill/contract
+plan whose `digest` covers the engine id and version, so an engine upgrade is a
+visible plan change. Refusals carry `SchemaIrParseError` /
+`PhaseParseError` codes; a phase-scoped capability touched outside its phase
+raises `PhaseViolationError` with `code: "PHASE_VIOLATION"`.
 
 Traffic routing follows the same boundary: `parseRoutingPlan` produces a deeply
 frozen `RoutingPlan` with branded plan/backend/Station identifiers, while

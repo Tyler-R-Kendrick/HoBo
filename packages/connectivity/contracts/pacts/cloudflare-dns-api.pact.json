@@ -30,6 +30,22 @@
 			}
 		},
 		{
+			"description": "update cname dns record",
+			"request": {
+				"method": "PUT",
+				"path": "/v4/zones/zone-1/dns_records/rec1",
+				"body": {
+					"type": "CNAME",
+					"name": "web.myapp.hobo.example.com",
+					"content": "funnel.ts.net"
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": { "success": true, "result": { "id": "rec1" } }
+			}
+		},
+		{
 			"description": "list all zone records",
 			"request": {
 				"method": "GET",

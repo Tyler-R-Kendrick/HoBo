@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { create } from "@bufbuild/protobuf";
+
 import {
 	type ReviewDiffLine,
 	ReviewDiffLineSchema,
@@ -8,8 +9,10 @@ import {
 	ReviewHunkSchema,
 	ReviewLineKind,
 } from "../_generated/code_review_pb.js";
+
 import { sanitizeDisplay } from "../ansi.js";
 
+// Re-exported: this module was the original home, and callers still import it here.
 export { sanitizeDisplay };
 
 export function hashText(text: string): string {

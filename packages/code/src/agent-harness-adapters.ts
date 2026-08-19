@@ -16,6 +16,33 @@ export type HarnessConfigFormat =
 	| "sdk-env"
 	| "skip";
 
+/** AI SDK HarnessV1 adapter id. Dispatch on this, never on agent id. */
+export type HarnessRuntimeAdapter =
+	| "claude-code"
+	| "codex"
+	| "pi"
+	| "opencode"
+	| "grok-build"
+	| "cline"
+	| "deepagents"
+	| "acp"
+	| "cli"
+	| "eve"
+	| "sdk"
+	| "skip";
+
+export type HarnessCliPromptPlacement = "trailing-arg" | "stdin";
+
+export interface HarnessCliPromptSpec {
+	readonly placement: HarnessCliPromptPlacement;
+	readonly prefixArgs?: readonly string[];
+}
+
+export interface HarnessRuntimeSpec {
+	readonly adapter: HarnessRuntimeAdapter;
+	readonly prompt?: HarnessCliPromptSpec;
+}
+
 export interface HarnessConfigSpec {
 	readonly format: HarnessConfigFormat;
 	readonly path?: string;
@@ -40,6 +67,7 @@ export interface HarnessSpec {
 	readonly cwdMarkers?: readonly string[];
 	readonly packageNames?: readonly string[];
 	readonly config?: HarnessConfigSpec;
+	readonly runtime?: HarnessRuntimeSpec;
 }
 
 export function interpolateDest(

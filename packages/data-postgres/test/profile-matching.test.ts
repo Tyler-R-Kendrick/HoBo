@@ -1,9 +1,11 @@
 /**
  * The gate that matters: a relational database is not a PostgreSQL database.
+ * Every case is a line in `profile-matching.cases.jsonl`.
  *
- * Candidates here are shaped like real products but constructed locally — this
+ * Candidates are shaped like real products but constructed locally — this
  * package must never import a provider, and a test that did would make the
- * provider-neutrality claim untestable.
+ * provider-neutrality claim untestable. A case names a candidate, or patches
+ * one, so the shapes stay here and the scenarios stay data.
  */
 import {
 	createCapabilityProfileRegistry,
@@ -12,10 +14,8 @@ import {
 	selectCapabilityImplementation,
 	type TrustPolicy,
 } from "@hobo/capability-profiles";
-import { describe, expect, it } from "vitest";
-
+import { describeConcern } from "@hobo/contract-harness";
 import {
-	type database,
 	POSTGRES_REQUIRED_GUARANTEE_KEYS,
 	postgres,
 	postgresConformanceRef,
@@ -41,6 +41,27 @@ const GUARANTEED = Object.fromEntries(
 	POSTGRES_REQUIRED_GUARANTEE_KEYS.map((key) => [key, true]),
 );
 
+const BASE_CAPABILITIES = {
+	...GUARANTEED,
+	serverVersion: ">=17",
+	serverVersionMajor: 17,
+	jsonDocuments: true,
+	jsonb: true,
+	preparedStatements: true,
+	pooling: true,
+	isolationLevels: ["read-committed", "repeatable-read", "serializable"],
+	migrationToolCompatibility: [
+		"pg-dump",
+		"pg-restore",
+		"psql",
+		"prisma-migrate",
+	],
+	connectivityTransports: ["tcp", "tls-tcp"],
+	exportSupported: true,
+	importSupported: true,
+	credentialRotation: "provider-console",
+};
+
 function candidate(
 	overrides: Partial<SelectionCandidate> & {
 		definitionId: string;
@@ -61,26 +82,7 @@ function candidate(
 			},
 		],
 		runtimeModels: ["paas", "serverless_faas", "oci"],
-		structuredCapabilities: {
-			...GUARANTEED,
-			serverVersion: ">=17",
-			serverVersionMajor: 17,
-			jsonDocuments: true,
-			jsonb: true,
-			preparedStatements: true,
-			pooling: true,
-			isolationLevels: ["read-committed", "repeatable-read", "serializable"],
-			migrationToolCompatibility: [
-				"pg-dump",
-				"pg-restore",
-				"psql",
-				"prisma-migrate",
-			],
-			connectivityTransports: ["tcp", "tls-tcp"],
-			exportSupported: true,
-			importSupported: true,
-			credentialRotation: "provider-console",
-		},
+		structuredCapabilities: BASE_CAPABILITIES,
 		producesBindingProfiles: ["binding.postgresql/v1"],
 		migrationProfiles: ["migration.postgres.pg-dump/v1"],
 		providerClass: "verified-emerging",
@@ -101,16 +103,15 @@ function candidate(
 		hasRegisteredDriver: true,
 		secretCustodyAvailable: true,
 		...overrides,
-	};
+	} as SelectionCandidate;
 }
 
-/** Shaped like Neon Claimable Postgres: real Postgres, pooled, exportable. */
-const neonShaped = candidate({
+/** Neon Claimable Postgres: real Postgres, pooled, exportable. */
+const neon = candidate({
 	definitionId: "neon.claimable-postgres/v1",
 	providerId: "neon",
 	structuredCapabilities: {
-		...candidate({ definitionId: "x/v1", providerId: "x" })
-			.structuredCapabilities,
+		...BASE_CAPABILITIES,
 		extensions: ["vector", "pg_trgm"],
 		logicalReplication: true,
 		maxStorageBytes: 100 * 1024 * 1024,
@@ -121,19 +122,14 @@ const neonShaped = candidate({
 	],
 });
 
-/** Shaped like Prisma's create-db temporary Postgres. */
-const prismaShaped = candidate({
+/** Prisma's create-db temporary Postgres. Never declares `extensions`. */
+const prisma = candidate({
 	definitionId: "prisma.claimable-postgres/v1",
 	providerId: "prisma",
-	claimActionCount: 1,
-	claimAtomicity: "single-resource",
 });
 
-/**
- * Shaped like a D1 / SQLite-class product: relational, transactional, and not
- * PostgreSQL. This is the candidate the profile graph exists to reject.
- */
-const sqliteShaped = candidate({
+/** A D1 / SQLite-class product: relational, transactional, not PostgreSQL. */
+const sqlite = candidate({
 	definitionId: "cloudflare.temporary-d1/v1",
 	providerId: "cloudflare",
 	implementsProfiles: [
@@ -156,160 +152,70 @@ const sqliteShaped = candidate({
 	migrationProfiles: [],
 });
 
-function select(
-	requirement: ReturnType<typeof database>,
-	candidates: readonly SelectionCandidate[],
-) {
-	return selectCapabilityImplementation({
-		requirement,
-		registry,
-		candidates,
-		policy,
-		nowMs: NOW,
-	});
-}
+const NAMED = { neon, prisma, sqlite } as const;
 
-describe("postgres.database() requirements", () => {
-	it("never lets a SQLite/D1-shaped candidate satisfy data.postgres/v1", () => {
-		const outcome = select(postgres.database(), [sqliteShaped]);
-		expect(outcome.winner).toBeUndefined();
-		expect(outcome.rejections.map((rejection) => rejection.code)).toContain(
-			"PROFILE_INCOMPATIBLE",
-		);
-	});
+type CandidateSpec =
+	| keyof typeof NAMED
+	| {
+			readonly definitionId: string;
+			readonly providerId: string;
+			/** Merged over the base capability set, or over a named candidate's. */
+			readonly from?: keyof typeof NAMED;
+			/**
+			 * Start from the bare guarantees instead of the full base set, for a
+			 * product that speaks Postgres but has never proven a migration tool.
+			 */
+			readonly guaranteesOnly?: boolean;
+			readonly structuredCapabilities?: Record<string, unknown>;
+	  };
 
-	it("admits Neon-shaped and Prisma-shaped candidates", () => {
-		const outcome = select(postgres.database({ version: ">=16" }), [
-			sqliteShaped,
-			prismaShaped,
-			neonShaped,
-		]);
-		expect(outcome.ranked.map((entry) => entry.definitionId).sort()).toEqual([
-			"neon.claimable-postgres/v1",
-			"prisma.claimable-postgres/v1",
-		]);
-	});
+const resolve = (spec: CandidateSpec): SelectionCandidate =>
+	typeof spec === "string"
+		? NAMED[spec]
+		: candidate({
+				definitionId: spec.definitionId,
+				providerId: spec.providerId,
+				structuredCapabilities: {
+					...(spec.guaranteesOnly
+						? GUARANTEED
+						: spec.from
+							? NAMED[spec.from].structuredCapabilities
+							: BASE_CAPABILITIES),
+					...spec.structuredCapabilities,
+				},
+			} as never);
 
-	it("gates on the server major version rather than on a version string", () => {
-		const tooOld = candidate({
-			definitionId: "legacy.postgres/v1",
-			providerId: "legacy",
-			structuredCapabilities: {
-				...neonShaped.structuredCapabilities,
-				serverVersion: ">=13",
-				serverVersionMajor: 13,
-			},
-		});
-		const outcome = select(postgres.database({ version: ">=16" }), [
-			tooOld,
-			neonShaped,
-		]);
-		expect(outcome.winner?.definitionId).toBe("neon.claimable-postgres/v1");
-		expect(
-			outcome.rejections.filter(
-				(rejection) => rejection.code === "FEATURE_UNSATISFIED",
-			),
-		).toHaveLength(1);
-	});
-
-	it("treats an unadvertised extension as a failure, not as a maybe", () => {
-		// prismaShaped never declares `extensions`; absent must not pass.
-		const outcome = select(postgres.database({ extensions: ["vector"] }), [
-			prismaShaped,
-			neonShaped,
-		]);
-		expect(outcome.winner?.definitionId).toBe("neon.claimable-postgres/v1");
-		expect(outcome.rejections).toContainEqual(
-			expect.objectContaining({
-				definitionId: "prisma.claimable-postgres/v1",
-				code: "FEATURE_UNSATISFIED",
-			}),
-		);
-	});
-
-	it("gates on a migration profile the product does not implement", () => {
-		const outcome = select(
-			postgres.database({
-				migration: { profiles: ["migration.postgres.logical-copy/v1"] },
-			}),
-			[prismaShaped, neonShaped],
-		);
-		expect(outcome.winner?.definitionId).toBe("neon.claimable-postgres/v1");
-		expect(outcome.rejections).toContainEqual(
-			expect.objectContaining({ code: "MIGRATION_REQUIRED_BUT_UNAVAILABLE" }),
-		);
-	});
-
-	it("gates on a migration tool claim rather than inferring it from the protocol", () => {
-		const wireOnly = candidate({
-			definitionId: "wire.only-postgres/v1",
-			providerId: "wireonly",
-			structuredCapabilities: {
-				...GUARANTEED,
-				serverVersionMajor: 17,
-				// Speaks Postgres, has never proven a migration tool works.
-			},
-		});
-		const outcome = select(
-			postgres.database({ migration: { tools: ["prisma-migrate"] } }),
-			[wireOnly],
-		);
-		expect(outcome.winner).toBeUndefined();
-		expect(outcome.rejections.map((rejection) => rejection.code)).toContain(
-			"FEATURE_UNSATISFIED",
-		);
-	});
-
-	it("requires every Postgres guarantee, so a product missing DDL loses", () => {
-		const noDdl = candidate({
-			definitionId: "readonly.postgres/v1",
-			providerId: "readonly",
-			structuredCapabilities: {
-				...neonShaped.structuredCapabilities,
-				ddl: false,
-			},
-		});
-		const outcome = select(postgres.database(), [noDdl]);
-		expect(outcome.winner).toBeUndefined();
-		expect(outcome.rejections.map((rejection) => rejection.code)).toContain(
-			"GUARANTEE_UNSATISFIED",
-		);
-	});
-
-	it("produces an identical requirement regardless of authoring order", () => {
-		const a = postgres.database({
-			version: ">=16",
-			extensions: ["vector", "pg_trgm"],
-			isolation: ["serializable", "read-committed"],
-		});
-		const b = postgres.database({
-			isolation: ["read-committed", "serializable"],
-			extensions: ["pg_trgm", "vector"],
-			version: ">=16",
-		});
-		expect(a).toEqual(b);
-	});
-
-	it("refuses an option that names placement instead of capability", () => {
-		expect(() =>
-			// @ts-expect-error deliberately passing a provider-shaped option
-			postgres.database({ providerId: "neon" }),
-		).toThrow(/provider-neutral|unknown postgres.database option/u);
-		expect(() =>
-			// @ts-expect-error deliberately passing a region pin
-			postgres.database({ region: "us-east-1" }),
-		).toThrow(/provider-neutral|unknown postgres.database option/u);
-	});
-
-	it("rejects a version range it cannot reduce to a major", () => {
-		expect(() => postgres.database({ version: "latest" })).toThrow(
-			/must be a major version/u,
-		);
-	});
-
-	it("rejects an extension name that is not a plain identifier", () => {
-		expect(() =>
-			postgres.database({ extensions: ["vector; DROP DATABASE x"] }),
-		).toThrow(/plain PostgreSQL extension name/u);
-	});
+describeConcern("postgres profile matching", {
+	cases: `${import.meta.dirname}/profile-matching.cases.jsonl`,
+	subject: () => ({
+		select: (ask: {
+			readonly options?: Record<string, unknown>;
+			readonly candidates: readonly CandidateSpec[];
+		}) => {
+			const outcome = selectCapabilityImplementation({
+				requirement: postgres.database(ask.options as never),
+				registry,
+				candidates: ask.candidates.map(resolve),
+				policy,
+				nowMs: NOW,
+			});
+			return {
+				winner: outcome.winner?.definitionId ?? null,
+				ranked: outcome.ranked.map((entry) => entry.definitionId).sort(),
+				rejections: outcome.rejections
+					.map((rejection) => `${rejection.definitionId}:${rejection.code}`)
+					.sort(),
+			};
+		},
+		/** The parsed requirement, for the authoring-order and refusal lanes. */
+		requirement: (options?: Record<string, unknown>) =>
+			JSON.stringify(postgres.database(options as never)),
+		/** Authoring order must not change the requirement. */
+		isOrderIndependent: (
+			a: Record<string, unknown>,
+			b: Record<string, unknown>,
+		) =>
+			JSON.stringify(postgres.database(a as never)) ===
+			JSON.stringify(postgres.database(b as never)),
+	}),
 });

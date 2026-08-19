@@ -4,7 +4,9 @@
 	"license": "MIT",
 	"type": "module",
 	"private": true,
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -25,6 +27,7 @@
 		"@hobo/identity": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/contract-harness": "workspace:*",
 		"@hobo/provider-cloudflare": "workspace:*",
 		"@hobo/runtime-local": "workspace:*"
 	},

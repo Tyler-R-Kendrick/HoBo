@@ -6,7 +6,7 @@ import {
 	BO_IDLE_TUI_COLS,
 	BO_IDLE_TUI_FRAMES,
 	BO_IDLE_TUI_ROWS,
-} from "../src/_generated/bo-idle-tui-frames.js";
+} from "../src/_generated-art/bo-idle-tui-frames.js";
 import {
 	decodeGrayAlphaPng,
 	extractSpriteFrame,

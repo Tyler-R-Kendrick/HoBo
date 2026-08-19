@@ -186,7 +186,7 @@ export async function serveProjectOnHost(options: {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const ownedYard =
 		options.yard === undefined ? openBareMetalYard({ hoboHome }) : null;
-	const yardHandle = options.yard ?? must(ownedYard);
+	const yardHandle = options.yard ?? must(ownedYard, "ownedYard");
 	const basePort =
 		options.port ?? yardHandle.config.defaultPort ?? DEFAULT_DEV_PORT;
 
@@ -374,7 +374,7 @@ export async function serveProjectOnHost(options: {
 	);
 
 	const exposedEndpoints = endpoints.filter((e) => e.external);
-	const primary = first(exposedEndpoints);
+	const primary = first(exposedEndpoints, "exposedEndpoints");
 	let probe: { status: number; body: string };
 	try {
 		const response = await fetch(`${primary.url}/`);

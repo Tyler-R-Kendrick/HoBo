@@ -27,7 +27,10 @@ export function addContainer(
 		},
 	});
 
-	handle.withEndpoint = (endpoint) => {
+	// Bound to a local as well as the handle so `withHttpEndpoint` can call it
+	// directly. Reaching back through `handle.withEndpoint!` asserted away an
+	// optionality the type really does declare.
+	const withEndpoint: NonNullable<typeof handle.withEndpoint> = (endpoint) => {
 		const endpointName = endpoint.name ?? "http";
 		handle.endpoints[endpointName] = {
 			scheme: endpoint.scheme,
@@ -38,6 +41,7 @@ export function addContainer(
 		};
 		return handle;
 	};
+	handle.withEndpoint = withEndpoint;
 
 	handle.withEnvironment = (key, value) => {
 		handle.env[key] = value;
@@ -56,12 +60,6 @@ export function addContainer(
 		return handle;
 	};
 
-	const withEndpoint = handle.withEndpoint;
-	if (withEndpoint === undefined) {
-		throw new Error(
-			"addContainer: withEndpoint must be wired before withHttpEndpoint",
-		);
-	}
 	handle.withHttpEndpoint = (port, endpointOptions = {}) =>
 		withEndpoint({
 			name: endpointOptions.name ?? "http",

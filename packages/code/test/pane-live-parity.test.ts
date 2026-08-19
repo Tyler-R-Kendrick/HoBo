@@ -66,7 +66,9 @@ describe("live multi-pane TV attach parity", () => {
 
 		let live: InSessionPanes = {
 			session: "hobo",
-			windows: [{ name: "pi", target: first(ids), kind: "coding-agent" }],
+			windows: [
+				{ name: "pi", target: first(ids, "ids"), kind: "coding-agent" },
+			],
 			focused: 0,
 			focusedPane: 0,
 			capture: "",

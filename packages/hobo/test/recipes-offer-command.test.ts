@@ -63,7 +63,7 @@ describe("hobo recipes", () => {
 	it("shows a recipe's Yards, placements, and required consents", async () => {
 		const [first] = listRecipeSummaries();
 		const result = await createRecipesCommand().run({
-			args: ["show", must(first).recipeId],
+			args: ["show", must(first, "first").recipeId],
 			flags: NO_FLAGS,
 			context: context(process.cwd()),
 		} as never);

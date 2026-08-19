@@ -99,7 +99,7 @@ describe("agents catalog", () => {
 		expect(trees[0]?.children.map((row) => row.id)).toEqual(["scout"]);
 
 		const catalog = buildAgentsCatalog(specs, trees);
-		const hobo = first(catalog.roots);
+		const hobo = first(catalog.roots, "catalog.roots");
 		expect(
 			hobo.children.some((child) => child.id.includes("investigator")),
 		).toBe(true);

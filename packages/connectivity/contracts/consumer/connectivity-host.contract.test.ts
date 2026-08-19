@@ -6,9 +6,10 @@ import {
 	loadPactDirectory,
 	verifyPact,
 } from "@hobo/contract-harness";
-import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
+
 import { createConnectivityHostHandler } from "../../src/connectivity-host.js";
+import { requirePact } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -18,11 +19,10 @@ const contractsDir = path.resolve(
 describe("ConnectivityHost consumer contract (PACT)", () => {
 	it("drives host through pact mock and real host satisfies pact", async () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
-		const pact = pacts.find((p) => p.provider.name === "ConnectivityHost");
-		expect(pact).toBeDefined();
+		const pact = requirePact(pacts, "ConnectivityHost");
 
 		// Consumer: mock provider returns contracted responses.
-		const mock = createMockProviderFromPact(must(pact));
+		const mock = createMockProviderFromPact(pact);
 		const named = await mock.handle({
 			method: "GET",
 			path: "/named-endpoints/local?resource=web&app=myapp&env=local",
@@ -34,7 +34,7 @@ describe("ConnectivityHost consumer contract (PACT)", () => {
 
 		// Real host implements the same paths (provider verification path).
 		const host = createConnectivityHostHandler();
-		const report = await verifyPact(must(pact), {
+		const report = await verifyPact(pact, {
 			name: host.name,
 			handle: (req) => host.handle(req),
 		});

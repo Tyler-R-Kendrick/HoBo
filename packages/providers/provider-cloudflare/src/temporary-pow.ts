@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { must } from "@hobo/core/total-access";
 
 /** Cloudflare temporary-account preview challenge (claim-deployments PoW). */
 export type PreviewChallenge = {
@@ -69,7 +68,11 @@ export async function solvePreviewChallenge(
 
 	const flat = new Uint8Array((k + 1) * CHECKPOINT_BYTES);
 	for (let i = 0; i < checkpoints.length; i++) {
-		flat.set(must(checkpoints[i]), i * CHECKPOINT_BYTES);
+		const checkpoint = checkpoints[i];
+		if (checkpoint === undefined) {
+			throw new Error(`checkpoint ${i} missing`);
+		}
+		flat.set(checkpoint, i * CHECKPOINT_BYTES);
 	}
 
 	return {

@@ -24,7 +24,7 @@ function allowUnion(verbs: readonly string[]): string {
 		.join(" | ");
 }
 
-function createBindlesPublicApiSnapshot(
+export function createBindlesPublicApiSnapshot(
 	module: typeof bindles = bindles,
 ): Record<string, unknown> {
 	const factoryNames = CATALOG.map((entry) => entry.factory);
@@ -571,9 +571,9 @@ function assertNoInternalCloudSymbols(snapshot: Record<string, unknown>): void {
 			return;
 		}
 		if (Array.isArray(value)) {
-			for (const [index, entry] of value.entries()) {
+			value.forEach((entry, index) => {
 				visit(entry, `${path}[${index}]`);
-			}
+			});
 			return;
 		}
 		if (value && typeof value === "object") {

@@ -252,7 +252,8 @@ describe("createDriftCommand", () => {
 				resources: Record<string, { specHash?: string }>;
 			};
 			expect(held.resources.service).toBeDefined();
-			must(held.resources.service).specHash = "sha256:tampered-out-of-band";
+			must(held.resources.service, "held.resources.service").specHash =
+				"sha256:tampered-out-of-band";
 			stateBackend.write(stackKey, held);
 
 			const command = createDriftCommand({ runtime, adapter });

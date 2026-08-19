@@ -1,5 +1,5 @@
 /**
- * Generate packages/code/src/_generated/hobo-logo-tui.ts from the Chewy
+ * Generate packages/code/src/_generated-art/hobo-logo-tui.ts from the Chewy
  * "HoBo" wordmark PNG via the shipped sprite→TUI converter.
  *
  *   node --import tsx packages/code/scripts/gen-logo-tui.mts
@@ -21,7 +21,7 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(here, "..");
 const pngPath = join(pkgRoot, "assets", "hobo-logo.png");
-const outPath = join(pkgRoot, "src", "_generated", "hobo-logo-tui.ts");
+const outPath = join(pkgRoot, "src", "_generated-art", "hobo-logo-tui.ts");
 
 const COLS = 64;
 const ROWS = 15;

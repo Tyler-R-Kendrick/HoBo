@@ -237,7 +237,10 @@ const literalConstOffenders: string[] = [];
 for (const file of changedFiles(["A", "M"])) {
 	if (
 		!/^packages\/.+\/src\//.test(file) ||
-		/(^|\/)_generated(\/|$)/.test(file) ||
+		// `_generated`, and suffixed siblings like `_generated-art`, are written
+		// by generators that stamp "do not hand-edit" — a marker added here
+		// would be dropped the next time the generator runs.
+		/(^|\/)_generated[\w-]*(\/|$)/.test(file) ||
 		!file.endsWith(".ts") ||
 		!existsSync(file)
 	) {

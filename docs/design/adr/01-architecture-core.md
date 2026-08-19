@@ -651,3 +651,30 @@ ADR-0131 made Station the control-plane occupancy primitive, but "Station capabi
 - **(+)** The durable state hobo-code creates is authored in one reviewable declaration; drift between docs and auto-init literals can no longer happen silently.
 - **(−)** Two init verbs coexist (`hobo station init` operator seed, `hobo-code init` discovery-gated dev seed); docs must keep the distinction crisp.
 - **(−)** The capability kind vocabulary is closed; new facility families require an ADR amendment rather than an ad-hoc string.
+
+## ADR-0158
+**Deployment phases: `plan` / `init` / `handle` — one program, three evaluations, phase-safe by contract.**
+
+**Status:** Accepted — names the phase axis already implicit in plan-time vocabulary (PortabilityReport, plan-time cost estimate, "plan-time placement is necessary but not sufficient — runtime replication is gated too"); composes with [ADR-0157](07-portability-extensibility.md#adr-0157) binding resolution and [ADR-0136](03-data-plane-effects-resiliency.md) contract effects; informed by the [Alchemy capture](../../competitors/alchemy.md#phases--one-program-plantime--runtime) phase model.
+
+### Context
+"Plan-time" is established HoBo vocabulary, but it has no counterpart: the runtime side has no named split between per-activation initialization and per-request handling, `ctx.bindings` materialization has no defined moment, and "cold start" is already taken twice (generation-pipeline cold-start; wasm cold-start latency). Alchemy demonstrates the value of naming the axis: "every alchemy program runs in two phases — plantime builds the plan, runtime serves requests," with the init Effect running at plantime *and again at cold start*, the request body running per request, and phase misuse rejected by the type system (`RuntimeContext` is runtime-exclusive). HoBo's run-to-collect authoring already evaluates one program twice; the phases exist — they are just unnamed and unenforced.
+
+### Decision
+1. **Three named phases per workload program.** **`plan`** — `hobo plan|up|dev` collection: manifest IR, Matching, ADR-0157 binding resolution (`binding.Resolved`), PortabilityReport, cost estimate; no effectful provider call outside a `DeploymentOffer`. **`init`** — per component **activation** (the reserved word; never "cold start"): projected bindings materialize into the typed `ctx.bindings` clients exactly once per activation (`binding.Projected`), before any request is served. **`handle`** — per request/event/step: the handler body, with request-scoped context. Deploy-time one-off work (seeding, notifications) is not a fourth phase — it is already workflow steps and saga machinery.
+2. **One program, two evaluations.** The same component module is evaluated at `plan` (run-to-collect: declare resources, `.allow()`, binds) and at `init` (build clients from projections). Phase is exposed as `ctx.phase` and as a `hobo:runtime` phase interface for non-TS guests. `hobo dev` is a plan+init loop with a **separate dev flag** — dev is a mode, not a phase (mirroring Alchemy's `ALCHEMY_DEV` vs `ALCHEMY_PHASE` distinction), so "am I local" and "am I serving" stay independent questions.
+3. **Phase safety is contract-typed, with a polyglot floor.** The generated WIT surface splits instance-init interfaces from request-handler interfaces: request-scoped capabilities (incoming request, per-request principal, reply) exist only on the handler context type, and init-scope construction APIs are absent from handler scope. In typed guest languages phase misuse is a compile error against `_generated/` bindings; everywhere else it is a named conformance assertion — the polyglot equivalent of Alchemy's `RuntimeContext` coloring. Phases are orthogonal to ADR-0136 `EffectSpec`: effects say *what* an edge may do, phases say *when* code runs; neither substitutes for the other.
+4. **Determinism obligations per phase.** `init` must be deterministic given the projected bindings (replay of an activation is byte-equivalent); `handle` remains the replayed unit of record. A nondeterministic `init` is a conformance failure, which is what makes activation replay and the ADR-0135 journal composable.
+5. **No new event families, and no per-activation control-plane writes.** `plan` rides `deployment.*`; `init` rides `actor.Activated` only — client construction at activation emits nothing, since a per-activation fact in the deploy log is a hot-path write with no audit value (`binding.Projected` is deploy-time wiring, ADR-0157); `handle` rides existing runtime facts.
+6. **Implementation scope is the vocabulary and its enforcement primitives, not a handler pipeline.** `@hobo/runtime` today ships training and replay; `ctx.bindings` exists in draft proofs, not in a shipped handler surface. This ADR therefore lands as: the closed phase vocabulary and parse in `@hobo/core`, the phase-scoped context *types* the eventual handler surface must consume, the dev-mode-vs-phase separation, and the conformance assertions that make phase misuse detectable. Wiring an executing handler pipeline to these types is downstream work and must not be claimed as delivered by this ADR.
+
+### Non-goals
+- No user-extensible phase list and no lifecycle-hook DSL; three phases, closed.
+- No renaming of existing plan-time vocabulary; this ADR names the runtime side to match.
+- No per-request client construction as a supported pattern — clients are `init`-scoped by design; a handler needing a differently-scoped client is a design smell surfaced by the split interfaces.
+
+### Consequences
+- **(+)** Docs and SDKs get one vocabulary for "when does this run," and `ctx.bindings` gains a defined materialization moment with a determinism obligation.
+- **(+)** Client-per-activation is the enforced performance posture; the accidental client-per-request anti-pattern becomes unrepresentable in generated typed surfaces.
+- **(+)** Phase misuse is detectable on every guest language — compile-time where the language allows, conformance-time everywhere.
+- **(−)** The WIT world split is real codegen and conformance work, and draft-proof `ctx.bindings` surfaces must migrate onto the split interfaces.

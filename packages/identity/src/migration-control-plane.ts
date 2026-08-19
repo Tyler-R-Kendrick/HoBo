@@ -379,7 +379,9 @@ export function startContinuousMigrationFromMatch(
 	const plane = new IdentityMigrationControlPlane({
 		tenant: input.tenant,
 		...(input.vaultRoot !== undefined ? { vaultRoot: input.vaultRoot } : {}),
-		...(input.now !== undefined ? { now: () => must(input.now) } : {}),
+		...(input.now !== undefined
+			? { now: () => must(input.now, "input.now") }
+			: {}),
 	});
 	const decision = decideIdentityMigration(input);
 	const progress = plane.onMatchingDecision(input);

@@ -1,7 +1,7 @@
-import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { bindle } from "@hobo/bindles";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import {
 	discoverWaspEnv,
@@ -15,15 +15,6 @@ const REPO_ROOT = path.resolve(
 	"../../..",
 );
 
-/** The `web` resource, asserted present — every definition under test declares one. */
-function webResource(definition: {
-	readonly resources: Record<string, { readonly annotations: unknown }>;
-}): { readonly annotations: Record<string, unknown> } {
-	const web = definition.resources.web;
-	assert(web, "definition is missing its web resource");
-	return web as { readonly annotations: Record<string, unknown> };
-}
-
 describe("@hobo/wasp", () => {
 	it("waspApp(root) is a thin marker; bindle attaches webapp annotation", () => {
 		const definition = bindle((b) => {
@@ -31,7 +22,9 @@ describe("@hobo/wasp", () => {
 			const web = b.web(waspApp("examples/wasp-opensaas/app")).dependsOn(db);
 			return { db, web };
 		});
-		const root = waspRootFromAnnotations(webResource(definition).annotations);
+		const root = waspRootFromAnnotations(
+			must(definition.resources.web, "definition.resources.web").annotations,
+		);
 		expect(root).toBe("examples/wasp-opensaas/app");
 		expect(
 			definition.resources.web?.annotations.some(isWaspWebAppAnnotation),

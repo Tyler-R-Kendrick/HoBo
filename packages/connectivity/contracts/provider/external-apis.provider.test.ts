@@ -19,6 +19,7 @@ import {
 	verifyPact,
 } from "@hobo/contract-harness";
 import { describe, expect, it } from "vitest";
+import { requirePact } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -49,7 +50,7 @@ describe("external API provider contracts (offline)", () => {
 
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
 		for (const { provider, consumer } of EXTERNAL_PROVIDERS) {
-			const pact = pacts.find((p) => p.provider.name === provider);
+			const pact = requirePact(pacts, provider);
 			if (!pact) throw new Error(`missing pact for ${provider}`);
 			expect(pact.consumer.name).toBe(consumer);
 			expect(pact.provider.name).toMatch(/^[A-Z][A-Za-z0-9]*$/);
@@ -68,7 +69,7 @@ describe("external API provider contracts (offline)", () => {
 		// Guard: this suite must never call real endpoints — only pact mocks.
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
 		for (const { provider } of EXTERNAL_PROVIDERS) {
-			const pact = pacts.find((p) => p.provider.name === provider);
+			const pact = requirePact(pacts, provider);
 			if (!pact) throw new Error(`missing pact for ${provider}`);
 			const mock = createMockProviderFromPact(pact);
 			for (const interaction of pact.interactions) {

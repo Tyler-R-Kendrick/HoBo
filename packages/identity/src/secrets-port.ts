@@ -158,7 +158,7 @@ export function createVaultJwtSecretsPort(options: {
 			const idx = entry?.versions.indexOf(versionId) ?? -1;
 			const seed =
 				idx >= 0 && entry
-					? must(entry.seeds[idx])
+					? must(entry.seeds[idx], "entry.seeds[idx]")
 					: createHmac("sha256", root)
 							.update(`${name}:${versionId}`)
 							.digest("hex");

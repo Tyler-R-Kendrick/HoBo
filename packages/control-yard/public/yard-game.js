@@ -912,9 +912,9 @@ function drawErrorBunker(v) {
 		ctx.fillStyle = "#6b1d1d";
 		ctx.font = "11px monospace";
 		const hazards = v.doctor.hazards.slice(0, 3);
-		hazards.forEach((h, i) => {
+		for (const [i, h] of hazards.entries()) {
 			ctx.fillText(h.slice(0, 22), z.x + 8, z.y + 40 + i * 14);
-		});
+		}
 	}
 }
 

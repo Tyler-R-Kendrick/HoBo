@@ -238,3 +238,169 @@ pnpm --filter @hobo/provider-cloudflare run test
 ```
 
 Run both commands after changing temporary-account or realization boundaries.
+
+## Direct provider APIs — the default deployment path
+
+The default way to deploy to Cloudflare in this package is **direct HTTPS calls
+to the Cloudflare API v4**. There is no IaC engine in the middle: no program to
+emit, no separate state file, no second tool to keep in sync. The pieces are:
+
+| Module | What it owns |
+|---|---|
+| `src/transport.ts` | `cloudflareTransportPolicy()` / `guardedCloudflareTransport(inner)` — the CF-scoped guard around an **injected** `HttpTransport` |
+| `src/resolvers.ts` | `cloudflareResolvers(options)` / `cloudflareResolverRegistry(options)` — one `ResourceResolver` per product |
+| `src/default-yard.ts` | `cloudflareYard(options?)` / `cloudflareYardSpec(options?)` / `CLOUDFLARE_DEFAULT_BINDINGS` — the allocatable catalog |
+
+Nothing here reaches for a global `fetch`. A host supplies the transport, and
+`guardedCloudflareTransport()` is what makes any supplied transport safe to hand
+a credential: HTTPS only, exactly `api.cloudflare.com`, only the `/client/v4/`
+path prefix, no redirect chasing, bounded body, bounded time. The enforcement
+itself is `guardTransport()` in `@hobo/core`; this package owns only the numbers.
+
+```ts
+import {
+  cloudflareResolverRegistry,
+  guardedCloudflareTransport,
+} from "@hobo/provider-cloudflare";
+
+const transport = guardedCloudflareTransport(hostTransport);
+const registry = cloudflareResolverRegistry({
+  accountId,
+  // A LOCATOR is passed in; the resolver never holds credential material.
+  resolveCredential: (ref) => hostSecrets.read(ref),
+});
+
+const outcome = await registry.get("cloudflare.r2/v1")?.reconcile(
+  {
+    ref: { slot: "bucket", productId: "cloudflare.r2/v1", logicalId: "app-uploads" },
+    desired: {},
+    credentialRef: "env://CLOUDFLARE_API_TOKEN",
+  },
+  transport,
+);
+```
+
+### Convergence is the point
+
+Every `reconcile()` is **read-or-create**: it asks Cloudflare whether a resource
+with the deterministic name already exists — by a direct `GET` where the API
+offers one, by a fully paged list where it does not — *before* it creates
+anything, then applies only the mutable deltas. Running it twice yields the same
+`physicalId` and exactly one resource, which is what makes a crashed half-apply
+safe to re-run. `delete()` treats a 404 as success for the same reason.
+
+Actions are reported precisely: `create` when nothing was there, `update` when a
+delta was applied, `noop` when the request already named the resource and
+nothing changed, and `adopt` when the resolver found a resource the request did
+not know about. **`replace` is never emitted** — replacing a bucket, a database,
+or a KV namespace destroys data, so drift on an immutable field is reported as a
+diagnostic and left for a human.
+
+### Credentials are locators
+
+`credentialRef` is a locator (`env://CLOUDFLARE_API_TOKEN`,
+`secret://camp/cf-token`), and the resolver refuses anything that looks like the
+material itself (`RESOLVER_CREDENTIAL_NOT_A_REF`) — a raw token in a request
+record is a token in the event log. A blank or unresolvable ref is
+`RESOLVER_CREDENTIAL_MISSING` with remediation, never a silent skip or an
+unauthenticated retry. Cloudflare's error text is redacted of anything
+token-shaped before it reaches a message or a diagnostic.
+
+## The default exported Yard is a catalog, not a choice
+
+`cloudflareYard()` returns **what Cloudflare CAN allocate** — not what an app
+uses, not a mapping already made, not a pool. A capability slot may therefore
+list **several** options, and selection (ADR-0151: hard gates, then
+lexicographic ordering) picks among them later against the app's actual
+capability requirement:
+
+| Slot | Options |
+|---|---|
+| `bucket` | `cloudflare.r2/v1` |
+| `data` | `cloudflare.d1/v1` |
+| `kv` | `cloudflare.kv/v1` |
+| `queue` | `cloudflare.queues/v1` |
+| `service` | `cloudflare.workers/v1` |
+| `web` | `cloudflare.pages/v1`, `cloudflare.workers/v1` |
+
+`web` carrying two entries is not an unresolved ambiguity to tidy away; it is
+the accurate statement that Cloudflare can serve a web capability either way.
+
+Every row is built from the `src/slots.ts` factories, never hand-written, so the
+catalog cannot drift from the product ids the resolvers key on.
+`CLOUDFLARE_DEFAULT_BINDINGS` is the frozen, canonically sorted row set in the
+`YardBindingInput` shape `@hobo/yards` consumes, and `cloudflareYardSpec()` adds
+the provider and regions:
+
+```ts
+import { yard } from "@hobo/yards";
+import { cloudflareYard, cloudflareYardSpec } from "@hobo/provider-cloudflare";
+
+const catalog = cloudflareYard({ regions: ["weur"] });
+const edge = yard(catalog.name, cloudflareYardSpec({ regions: ["weur"] }));
+```
+
+This package is a layer-2 adapter, so it does **not** import `@hobo/yards`; it
+emits rows and lets layer 3 compose them.
+
+## Parse, don't validate
+
+`slotBinding()` (in `@hobo/core`) is the parse boundary for every catalog row —
+the factories in `src/slots.ts` and the catalog in `src/default-yard.ts` build
+nothing by hand, so credential screening, JSON-safety, canonical key ordering,
+and deep freezing all apply. On the resolver side the parse boundaries are
+`parseEnvelope()` over every Cloudflare response (a non-envelope body is
+`RESOLVER_OUTPUT_UNPARSEABLE`, a `success: false` body is
+`RESOLVER_PROVIDER_REJECTED`) and the credential parse in `resolveToken()`. Each
+returns **derived types** — `SlotBinding`, `ResolveOutcome`,
+`CloudflareYardCatalog` — never a partially-valid object, and every refusal
+carries a `code` rather than a message to match on.
+
+## Event architecture
+
+This package owns no aggregate. A deploy **command** routed at a Yard row
+produces a `ResolveOutcome` here; the calling **actor** turns that outcome into
+the `binding.Resolved` / `binding.Projected` / `binding.Unavailable` **event**
+family and appends it to the durable **event store**, where **projections**
+build the **materialized views** (**read store**) that report what a Camp
+currently has allocated, with **snapshots** backing current status. The
+resolvers are the effectful edge of that flow, not its owner.
+
+## HONEST SCOPE — direct API path
+
+- **Live deploys are unproven here.** The resolvers are exercised against an
+  *injected fake* transport in `test/resolvers.test.ts`. A live deploy
+  additionally needs real credentials, real network egress, and a real
+  Cloudflare account — none of which a unit test supplies. A green test run is
+  evidence about request composition and convergence logic, not about Cloudflare.
+- **The guard cannot prove what the host's transport does.** It constrains the
+  request this package composes and the response it accepts. Whether the
+  injected transport actually honours `timeoutMs`, refuses to follow a 302
+  itself, and terminates TLS against the real Cloudflare certificate is the
+  host's obligation.
+- **`productId`s are what the factories emit.** Catalog registration is checked
+  at resolution time (`YARD_BINDING_PRODUCT_UNKNOWN`), not here; a row in
+  `CLOUDFLARE_DEFAULT_BINDINGS` is not evidence that a matching Resource
+  Definition exists today.
+- **The Yard catalog covers six slots only.** Cloudflare can serve capabilities
+  it does not offer (`topic`, `secretRef`, `webhook`, and a dedicated `api` row
+  among them). Their absence means no slot factory emits them yet.
+
+### Cloudflare APIs covered — and not
+
+| Product | Covered | Not covered |
+|---|---|---|
+| `cloudflare.r2/v1` | `GET`/`POST`/`DELETE` `/accounts/{id}/r2/buckets[/{name}]`, `cf-r2-jurisdiction` header, `locationHint`, `storageClass` | public/managed domains (`publicBucket` is reported as a diagnostic, not applied), CORS rules, lifecycle rules, event notifications, sippy, the S3 data plane |
+| `cloudflare.d1/v1` | `GET ?name=`, `POST`, `PATCH` (read replication), `DELETE` on `/accounts/{id}/d1/database` | query execution, imports/exports, time-travel restore, per-database Worker bindings |
+| `cloudflare.kv/v1` | paged `GET`, `POST`, `DELETE` on `/accounts/{id}/storage/kv/namespaces` | key read/write/list (`ttlSeconds` is per write and is reported as a diagnostic), bulk operations, namespace rename |
+| `cloudflare.queues/v1` | paged `GET`, `POST`, `PUT` (queue `settings`), `DELETE` on `/accounts/{id}/queues` | consumers (`maxBatchSize` / `maxRetries` are consumer-scoped and reported as diagnostics), producers, dead-letter wiring, message push/pull |
+| `cloudflare.workers/v1` | `GET /accounts/{id}/workers/scripts/{name}/settings`, `PUT` module upload (`multipart/form-data`), `DELETE` | routes, custom domains, `workers.dev` subdomains, cron triggers, secrets, tail/logs, versions and gradual deployments, Durable Object migrations |
+| `cloudflare.pages/v1` | `GET`, `POST`, `PATCH` (production branch), `DELETE` on `/accounts/{id}/pages/projects[/{name}]` | deployments (upload, rollback, retry), custom domains, build config beyond the production branch, Pages Functions |
+
+Two behaviours worth stating plainly rather than discovering: the Workers
+resolver **re-uploads on every reconcile** when `desired.script` is present,
+because the settings endpoint returns no script content to diff against (the
+result is still exactly one script with the requested source, reported as
+`update`); and paged lookups refuse rather than half-read if a listing has not
+terminated within 25 pages, because a truncated list cannot rule out an existing
+resource and creating one anyway would risk a duplicate.

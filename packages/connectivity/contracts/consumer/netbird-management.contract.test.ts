@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
@@ -7,7 +6,7 @@ import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { createNetbirdOverlay } from "../../src/overlay/netbird.js";
 import { createNetbirdApiClient } from "../../src/overlay/netbird-api.js";
-import { createPactFetch } from "../helpers/pact-fetch.js";
+import { createPactFetch, requirePact } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -17,9 +16,8 @@ const contractsDir = path.resolve(
 describe("NetbirdManagementApi consumer contract", () => {
 	it("enroll, peers, DNS, and overlay join via pact mock", async () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
-		const pact = pacts.find((p) => p.provider.name === "NetbirdManagementApi");
-		expect(pact).toBeDefined();
-		const fetchImpl = createPactFetch(must(pact));
+		const pact = requirePact(pacts, "NetbirdManagementApi");
+		const fetchImpl = createPactFetch(pact);
 
 		const api = createNetbirdApiClient({
 			managementUrl: "https://nb.example.com",
@@ -50,8 +48,11 @@ describe("NetbirdManagementApi consumer contract", () => {
 		});
 		expect(join.ready).toBe(true);
 
-		assert(overlay.configureMagicDns);
-		const magic = await overlay.configureMagicDns({
+		const configureMagicDns = must(
+			overlay.configureMagicDns,
+			"overlay.configureMagicDns",
+		);
+		const magic = await configureMagicDns({
 			tenantId: parseTenantId("acme"),
 			domains: ["hobo.test"],
 			nameservers: ["100.100.100.100"],

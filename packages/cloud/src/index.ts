@@ -186,6 +186,7 @@ export {
 	type MatchRejected,
 	matchResource,
 	type PlacementContext,
+	type PlanBindingAuthority,
 	type PlanConfig,
 	type PlanRejection,
 	type PlanResult,
@@ -199,7 +200,12 @@ export {
 	type ProfileMatchInput,
 	type ProfileMatchOutcome,
 	type ProfileMatchRejected,
+	type ProfileMatchRejectionRecord,
 	profileCatalogHash,
+	type YardBindingContext,
+	type YardBindingRejection,
+	type YardBindingRejectionCode,
+	type YardBindingRow,
 } from "./planner/profile-matching.js";
 export {
 	type CompactionResult,

@@ -97,3 +97,29 @@ function headerValue(
 	}
 	return undefined;
 }
+
+/**
+ * Finds the pact for a provider, or fails the test naming what was missing.
+ *
+ * The call sites previously spelled this `pacts.find(…)` followed by
+ * `expect(pact).toBeDefined()` and then a `!` on every later use. That reads
+ * as a narrowing but is not one — the assertion silences the type error while
+ * the runtime failure stays a `Cannot read properties of undefined`, several
+ * lines from the actual problem. Throwing here narrows for real and says which
+ * provider was not found and which ones were.
+ */
+export function requirePact(
+	pacts: readonly PactDocument[],
+	providerName: string,
+): PactDocument {
+	const pact = pacts.find((p) => p.provider.name === providerName);
+	if (!pact) {
+		const available = pacts.map((p) => p.provider.name).sort();
+		throw new Error(
+			`no pact for provider "${providerName}"; loaded providers: ${
+				available.length > 0 ? available.join(", ") : "(none)"
+			}`,
+		);
+	}
+	return pact;
+}

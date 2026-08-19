@@ -245,10 +245,22 @@ const DATA: readonly CapabilityProfileDescriptor[] = [
 		],
 	}),
 	profile({
+		id: "data.nosql/v1",
+		primitive: "data",
+		displayName: "Non-relational store",
+		description:
+			"Durable structured storage that is not a SQL engine. The umbrella every non-relational engine refines into, so an app that needs *a* non-relational store — and genuinely does not care which — can say so without naming one. It asserts nothing beyond persistence and keyed retrieval: no joins, no cross-entity transactions, no schema enforcement. An app that needs any of those wants data.relational/v1 instead.",
+		features: [bool("secondaryIndexes", "Supports secondary indexes.")],
+		guarantees: [
+			bool("durableWrites", "An acknowledged write survives a restart."),
+		],
+	}),
+	profile({
 		id: "data.document/v1",
 		primitive: "data",
 		displayName: "Document store",
 		description: "Schemaless or schema-flexible document persistence.",
+		refines: ["data.nosql/v1"],
 		features: [bool("secondaryIndexes", "Supports secondary indexes.")],
 	}),
 	profile({
@@ -256,6 +268,19 @@ const DATA: readonly CapabilityProfileDescriptor[] = [
 		primitive: "data",
 		displayName: "Graph store",
 		description: "Vertex/edge persistence with traversal queries.",
+		refines: ["data.nosql/v1"],
+	}),
+	profile({
+		id: "data.wide-column/v1",
+		primitive: "data",
+		displayName: "Wide-column store",
+		description:
+			"Row-keyed sparse columns at scale: a partition key selects a row, columns within it are addressed individually, and the column set varies per row. DynamoDB, Bigtable and Cassandra-class engines.",
+		refines: ["data.nosql/v1"],
+		features: [
+			bool("secondaryIndexes", "Supports secondary indexes."),
+			bool("rangeQueries", "Supports ordered range scans within a partition."),
+		],
 	}),
 	profile({
 		id: "data.vector/v1",
@@ -263,6 +288,7 @@ const DATA: readonly CapabilityProfileDescriptor[] = [
 		displayName: "Vector store",
 		description:
 			"Dense-vector persistence with approximate nearest-neighbour search.",
+		refines: ["data.nosql/v1"],
 		features: [
 			integer("maxDimensions", "Maximum supported vector dimensionality."),
 		],

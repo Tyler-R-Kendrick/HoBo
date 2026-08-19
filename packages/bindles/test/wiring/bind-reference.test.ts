@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -77,7 +76,7 @@ describe("bind reference wiring", () => {
 			/cross-Camp placement is resolved by enclosing scopes/,
 		);
 		const container = addContainer("api", "ghcr.io/acme/api:1");
-		assert(container.withDnsRecord);
-		expect(() => container.withDnsRecord()).toThrow(/DNS is Yard-level/);
+		expect(container.withDnsRecord).toBeTypeOf("function");
+		expect(() => container.withDnsRecord?.()).toThrow(/DNS is Yard-level/);
 	});
 });

@@ -10,7 +10,7 @@
 
 import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-import { HOBO_LOGO_TUI } from "../src/_generated/hobo-logo-tui.js";
+import { HOBO_LOGO_TUI } from "../src/_generated-art/hobo-logo-tui.js";
 import { sgrRuns } from "../src/ansi.js";
 import {
 	createInitialShellState,
@@ -48,9 +48,9 @@ describe("ink cards (thick outlines + hard sticker shadow)", () => {
 		// Shadow column on the body/bottom rows and a shadow row underneath,
 		// offset one cell right — the sticker look.
 		expect(lines[1]).toContain(INK.shadow);
-		expect(must(lines[lines.length - 1]).trimEnd()).toMatch(
-			new RegExp(`^ ${INK.shadow}+$`),
-		);
+		expect(
+			must(lines[lines.length - 1], "lines[lines.length - 1]").trimEnd(),
+		).toMatch(new RegExp(`^ ${INK.shadow}+$`));
 	});
 
 	it("keeps every line exactly the requested width, colour or not", () => {
@@ -146,7 +146,7 @@ describe("helpers", () => {
 
 	it("centreBlock centres art within the width", () => {
 		const [line] = centreBlock(["xx"], 10);
-		expect(cellWidth(must(line))).toBe(10);
+		expect(cellWidth(must(line, "line"))).toBe(10);
 		expect(line).toBe("    xx    ");
 		const [shifted] = centreBlock(["   xx"], 10);
 		expect(shifted).toBe("    xx    ");

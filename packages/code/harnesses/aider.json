@@ -6,6 +6,7 @@
 	"configPaths": [".aider.conf.yml"],
 	"command": "aider",
 	"seat": 60,
+	"runtime": { "adapter": "cli", "prompt": { "placement": "trailing-arg", "prefixArgs": ["--yes", "--message"] } },
 	"config": {
 		"format": "note",
 		"path": ".aider.conf.yml",

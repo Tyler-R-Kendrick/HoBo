@@ -95,7 +95,7 @@ export function tmuxKeyArgvForInput(
 
 		const arrow = /(?:^|\+)(up|down|left|right)$/iu.exec(key);
 		if (arrow) {
-			const dir = at(arrow, 1).toLowerCase();
+			const dir = at(arrow, 1, "arrow").toLowerCase();
 			return [
 				[
 					dir === "up"
@@ -111,12 +111,12 @@ export function tmuxKeyArgvForInput(
 
 		const ctrlLetter = /^ctrl\+([a-z])$/iu.exec(key);
 		if (ctrlLetter) {
-			return [[`C-${at(ctrlLetter, 1).toLowerCase()}`]];
+			return [[`C-${at(ctrlLetter, 1, "ctrlLetter").toLowerCase()}`]];
 		}
 
 		const altLetter = /^alt\+([a-z0-9])$/iu.exec(key);
 		if (altLetter) {
-			return [[`M-${at(altLetter, 1).toLowerCase()}`]];
+			return [[`M-${at(altLetter, 1, "altLetter").toLowerCase()}`]];
 		}
 
 		if (key.length === 1) {
@@ -125,7 +125,7 @@ export function tmuxKeyArgvForInput(
 
 		const shiftLetter = /^shift\+([a-z])$/iu.exec(key);
 		if (shiftLetter) {
-			return [["-l", "--", at(shiftLetter, 1).toUpperCase()]];
+			return [["-l", "--", at(shiftLetter, 1, "shiftLetter").toUpperCase()]];
 		}
 	}
 

@@ -18,7 +18,6 @@ export type CatalogFactoryName =
   | "notify"
   | "guardrail"
   | "ui"
-  | "golden"
   | "experiment";
 
 export type ApiAllowVerb = never;
@@ -40,7 +39,6 @@ export type CryptoAllowVerb = "encrypt" | "decrypt" | "sign" | "verify";
 export type NotifyAllowVerb = "send";
 export type GuardrailAllowVerb = "check";
 export type UiAllowVerb = "render" | "drive";
-export type GoldenAllowVerb = "run" | "bless";
 export type ExperimentAllowVerb = "assign" | "expose" | "analyze";
 
 export interface CatalogEntry<Factory extends CatalogFactoryName, Verb extends string> {
@@ -178,11 +176,6 @@ export interface UiHandle extends ResourceHandle<"ui", UiAllowVerb> {
   drive(...args: readonly unknown[]): LoweredCall<"ui", "drive">;
 }
 
-export interface GoldenHandle extends ResourceHandle<"golden", GoldenAllowVerb> {
-  run(...args: readonly unknown[]): LoweredCall<"golden", "run">;
-  bless(...args: readonly unknown[]): LoweredCall<"golden", "bless">;
-}
-
 export interface ExperimentHandle extends ResourceHandle<"experiment", ExperimentAllowVerb> {
   assign(...args: readonly unknown[]): LoweredCall<"experiment", "assign">;
   expose(...args: readonly unknown[]): LoweredCall<"experiment", "expose">;
@@ -219,6 +212,5 @@ export function crypto(name: string): CryptoHandle;
 export function notify(name: string): NotifyHandle;
 export function guardrail(name: string): GuardrailHandle;
 export function ui(name: string): UiHandle;
-export function golden(name: string): GoldenHandle;
 export function experiment(name: string): ExperimentHandle;
 export function secretRef(ref: string): SecretValueRef;

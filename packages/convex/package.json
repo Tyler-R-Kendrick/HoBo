@@ -27,6 +27,7 @@
 		"@hobo/runtime": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/core": "workspace:*",
 		"@types/node": "^22.15.3"
 	}
 }

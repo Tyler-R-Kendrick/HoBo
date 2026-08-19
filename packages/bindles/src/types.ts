@@ -305,8 +305,14 @@ export interface BindleBuilder {
 	web(binding?: ComponentBinding): BindleResource<"web">;
 	kv(): BindleResource<"kv">;
 	bucket(): BindleResource<"bucket">;
-	queue<_T = unknown>(): BindleResource<"queue">;
-	topic<_T = unknown>(): BindleResource<"topic">;
+	// biome-ignore-start lint/correctness/noUnusedVariables: `T` is documentary.
+	// Callers write `b.queue<OrderEvent>()` to record the message type at the
+	// authoring site; it does not yet flow into BindleResource. Dropping the
+	// parameter would break those call sites, so it stays until the resource
+	// type carries it.
+	queue<T = unknown>(): BindleResource<"queue">;
+	topic<T = unknown>(): BindleResource<"topic">;
+	// biome-ignore-end lint/correctness/noUnusedVariables: see above
 	secret(): BindleResource<"secret">;
 	data(): BindleResource<"data">;
 	schedule(): BindleResource<"schedule">;

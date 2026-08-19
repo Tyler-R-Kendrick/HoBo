@@ -1,5 +1,5 @@
 /**
- * Generate packages/code/src/_generated/bo-idle-tui-frames.ts from the
+ * Generate packages/code/src/_generated-art/bo-idle-tui-frames.ts from the
  * bo-idle sprite strip via the shipped sprite→TUI converter.
  *
  *   node --import tsx packages/code/scripts/gen-bo-idle-tui.mts
@@ -16,7 +16,7 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(here, "..");
 const pngPath = join(pkgRoot, "assets", "bo-idle.png");
-const outPath = join(pkgRoot, "src", "_generated", "bo-idle-tui-frames.ts");
+const outPath = join(pkgRoot, "src", "_generated-art", "bo-idle-tui-frames.ts");
 
 const COLS = 24;
 const ROWS = 14;

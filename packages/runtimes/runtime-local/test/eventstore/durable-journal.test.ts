@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -106,21 +105,27 @@ describe("durable journal integration", () => {
 					tenant: "t",
 				},
 			);
-			assert(store.claimSubscription);
-			const lease = await store.claimSubscription({
+			const claimSubscription = must(
+				store.claimSubscription,
+				"store.claimSubscription",
+			);
+			const lease = await claimSubscription({
 				subscriptionId: "proj",
 				partitionId: "default",
 				holderId: "w1",
 			});
-			assert(store.commitCheckpoint);
-			await store.commitCheckpoint({
+			const commitCheckpoint = must(
+				store.commitCheckpoint,
+				"store.commitCheckpoint",
+			);
+			await commitCheckpoint({
 				subscriptionId: "proj",
 				partitionId: "default",
 				position: 1n,
 				fenceToken: lease.fenceToken,
 			});
-			assert(store.loadCheckpoint);
-			const cp = await store.loadCheckpoint({
+			const loadCheckpoint = must(store.loadCheckpoint, "store.loadCheckpoint");
+			const cp = await loadCheckpoint({
 				subscriptionId: "proj",
 				partitionId: "default",
 			});
@@ -128,7 +133,7 @@ describe("durable journal integration", () => {
 
 			const remaining: number[] = [];
 			for await (const pe of store.readAll({
-				after: must(cp).position,
+				after: must(cp, "cp").position,
 			})) {
 				remaining.push(pe.event.seq);
 			}

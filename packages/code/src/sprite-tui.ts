@@ -26,10 +26,10 @@ export interface GrayAlphaImage {
 
 function readU32(buf: Uint8Array, o: number): number {
 	return (
-		((must(buf[o]) << 24) |
-			(must(buf[o + 1]) << 16) |
-			(must(buf[o + 2]) << 8) |
-			must(buf[o + 3])) >>>
+		((must(buf[o], "buf[o]") << 24) |
+			(must(buf[o + 1], "buf[o + 1]") << 16) |
+			(must(buf[o + 2], "buf[o + 2]") << 8) |
+			must(buf[o + 3], "buf[o + 3]")) >>>
 		0
 	);
 }
@@ -58,10 +58,10 @@ export function decodeGrayAlphaPng(bytes: Uint8Array): GrayAlphaImage {
 		const len = readU32(bytes, o);
 		o += 4;
 		const type = String.fromCharCode(
-			must(bytes[o]),
-			must(bytes[o + 1]),
-			must(bytes[o + 2]),
-			must(bytes[o + 3]),
+			must(bytes[o], "bytes[o]"),
+			must(bytes[o + 1], "bytes[o + 1]"),
+			must(bytes[o + 2], "bytes[o + 2]"),
+			must(bytes[o + 3], "bytes[o + 3]"),
 		);
 		o += 4;
 		const data = bytes.subarray(o, o + len);
@@ -69,8 +69,8 @@ export function decodeGrayAlphaPng(bytes: Uint8Array): GrayAlphaImage {
 		if (type === "IHDR") {
 			width = readU32(data, 0);
 			height = readU32(data, 4);
-			bitDepth = at(data, 8);
-			colorType = at(data, 9);
+			bitDepth = at(data, 8, "data");
+			colorType = at(data, 9, "data");
 		} else if (type === "IDAT") {
 			idats.push(data);
 		} else if (type === "IEND") {
@@ -90,15 +90,15 @@ export function decodeGrayAlphaPng(bytes: Uint8Array): GrayAlphaImage {
 	let src = 0;
 	let prev = new Uint8Array(stride);
 	for (let y = 0; y < height; y += 1) {
-		const filter = must(raw[src++]);
+		const filter = must(raw[src++], "raw[src++]");
 		const row = raw.subarray(src, src + stride);
 		src += stride;
 		const cur = new Uint8Array(stride);
 		for (let i = 0; i < stride; i += 1) {
-			const x = must(row[i]);
-			const a = i >= bpp ? must(cur[i - bpp]) : 0;
-			const b = must(prev[i]);
-			const c = i >= bpp ? must(prev[i - bpp]) : 0;
+			const x = must(row[i], "row[i]");
+			const a = i >= bpp ? must(cur[i - bpp], "cur[i - bpp]") : 0;
+			const b = must(prev[i], "prev[i]");
+			const c = i >= bpp ? must(prev[i - bpp], "prev[i - bpp]") : 0;
 			let v: number;
 			switch (filter) {
 				case 0:
@@ -184,8 +184,8 @@ export function extractSpriteFrame(
 			const sx = col * fw + x;
 			const si = (sy * image.width + sx) * 2;
 			const di = (y * fw + x) * 2;
-			data[di] = must(image.data[si]);
-			data[di + 1] = must(image.data[si + 1]);
+			data[di] = must(image.data[si], "image.data[si]");
+			data[di + 1] = must(image.data[si + 1], "image.data[si + 1]");
 		}
 	}
 	return { width: fw, height: fh, data };
@@ -227,8 +227,8 @@ export function sampleInkBitmap(
 				Math.floor(((x + 0.5) * image.width) / tw),
 			);
 			const i = (sy * image.width + sx) * 2;
-			const g = must(image.data[i]);
-			const a = must(image.data[i + 1]);
+			const g = must(image.data[i], "image.data[i]");
+			const a = must(image.data[i + 1], "image.data[i + 1]");
 			if (a < alphaMin) {
 				ink[y * tw + x] = 0;
 				continue;
@@ -262,8 +262,12 @@ export function renderHalfBlocks(bitmap: SampledBitmap): string {
 	for (let y = 0; y < h; y += 2) {
 		let line = "";
 		for (let x = 0; x < w; x += 1) {
-			const top = must(bitmap.ink[y * w + x]) === 1;
-			const bot = y + 1 < h ? must(bitmap.ink[(y + 1) * w + x]) === 1 : false;
+			const top = must(bitmap.ink[y * w + x], "bitmap.ink[y * w + x]") === 1;
+			const bot =
+				y + 1 < h
+					? must(bitmap.ink[(y + 1) * w + x], "bitmap.ink[(y + 1) * w + x]") ===
+						1
+					: false;
 			if (top && bot) line += HALF.both;
 			else if (top) line += HALF.upper;
 			else if (bot) line += HALF.lower;
@@ -303,7 +307,8 @@ export function renderBraille(bitmap: SampledBitmap): string {
 					const px = cx * 2 + dx;
 					const py = cy * 4 + dy;
 					if (px < bw && py < bh && bitmap.ink[py * bw + px] === 1) {
-						bits |= must(must(BRAILLE_DOT[dx], "BRAILLE_DOT[dx]")[dy]);
+						const dotRow = must(BRAILLE_DOT[dx], "BRAILLE_DOT[dx]");
+						bits |= must(dotRow[dy], "BRAILLE_DOT[dx][dy]");
 					}
 				}
 			}

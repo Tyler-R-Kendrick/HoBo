@@ -10,7 +10,6 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { first, must } from "@hobo/core/total-access";
 import type { StationEvent } from "./events.js";
 import { railFromBrokerConfig } from "./rail.js";
 import {
@@ -228,7 +227,14 @@ export function initStation(input: {
 	}
 
 	persistStationEvents(input.hoboHome, stationId, svc.events);
-	const snap = must(svc.snapshot());
+	const snap = svc.snapshot();
+	if (snap === null || snap === undefined) {
+		// The service just created this station, so a missing snapshot means the
+		// create path silently failed — surface that rather than dereferencing.
+		throw new Error(
+			`station ${stationId}: no snapshot after create; the station was not initialized`,
+		);
+	}
 	return {
 		stationId,
 		dataDir,
@@ -284,8 +290,8 @@ export function resolveStationContext(input: {
 	}
 
 	const ids = listStationIds(input.hoboHome);
-	if (ids.length === 1) {
-		const dirName = first(ids);
+	const dirName = ids.length === 1 ? ids[0] : undefined;
+	if (dirName !== undefined) {
 		const eventsPath = join(
 			input.hoboHome,
 			"stations",
@@ -293,20 +299,21 @@ export function resolveStationContext(input: {
 			"events.jsonl",
 		);
 		if (existsSync(eventsPath)) {
-			const events = loadStationEvents(
-				input.hoboHome,
-				// Prefer id from first event when directory is escaped.
-				(
-					JSON.parse(
-						first(
-							readFileSync(eventsPath, "utf8").split("\n").filter(Boolean),
-							"readFileSync(eventsPath, 'utf8').split('\n').filter(Boolean)",
-						),
-					) as StationEvent
-				).stationId ?? dirName,
-			);
-			if (events.length > 0) {
-				const realId = first(events).stationId;
+			// Prefer the id from the first event when the directory name is
+			// escaped. An empty or unreadable first line means the file carries no
+			// usable id, so fall back to the directory rather than dereferencing
+			// nothing.
+			const firstLine = readFileSync(eventsPath, "utf8")
+				.split("\n")
+				.find((line) => line.length > 0);
+			const recordedId =
+				firstLine === undefined
+					? undefined
+					: (JSON.parse(firstLine) as StationEvent).stationId;
+			const events = loadStationEvents(input.hoboHome, recordedId ?? dirName);
+			const first = events[0];
+			if (first !== undefined) {
+				const realId = first.stationId;
 				return {
 					stationId: realId,
 					client: createStationClient({

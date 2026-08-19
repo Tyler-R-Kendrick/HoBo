@@ -1,7 +1,7 @@
-import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { must } from "@hobo/core/total-access";
 import {
 	connectionAuthorize,
 	connectionCreate,
@@ -11,7 +11,6 @@ import {
 	stationUp,
 } from "@hobo/management";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	assertSheetFitsFrames,
 	boAnimationForVisual,
@@ -112,8 +111,7 @@ describe("@hobo/control-yard", () => {
 		const snap = projectYardSnapshot(ctx, { stationId: "station:local" });
 		expect(snap.ok).toBe(true);
 		const engine = createYardEngine();
-		assert(snap.data);
-		const visual = engine.applySnapshot(snap.data);
+		const visual = engine.applySnapshot(must(snap.data, "snap.data"));
 		expect(visual.connections[0]?.visual).toBe("authorized");
 		expect(visual.traffic.rate).toBeGreaterThan(0);
 		expect(visual.bo.animationId.startsWith("bo.")).toBe(true);
@@ -121,8 +119,11 @@ describe("@hobo/control-yard", () => {
 
 		engine.tick(0.1);
 		// particles may emit
-		assert(snap.data);
-		const sheet = selectZoneWithSnapshot(engine, "connectionBay", snap.data);
+		const sheet = selectZoneWithSnapshot(
+			engine,
+			"connectionBay",
+			must(snap.data, "snap.data"),
+		);
 		expect(sheet?.kind).toMatch(/connection\./);
 
 		const createSheet = sheetForConnectionCreate(snap.data);

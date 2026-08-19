@@ -6,6 +6,7 @@
 	"configPaths": [".grok"],
 	"command": "grok",
 	"seat": 15,
+	"runtime": { "adapter": "grok-build" },
 	"config": {
 		"format": "toml-append",
 		"path": ".grok/config.toml",

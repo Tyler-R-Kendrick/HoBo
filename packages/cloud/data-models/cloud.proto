@@ -113,6 +113,17 @@ message MatchDecided {
   repeated RejectedCandidate rejected_candidates = 13;
   bool tie = 14;
   string catalog_content_hash = 15;
+  // ADR-0157 Yard binding authority. Present only when a Yard's rows
+  // constrained this decision; absent means no Yard supplied a catalog to
+  // select from, never "any product will do".
+  string product_id = 16;
+  repeated string applied_rows = 17;
+  // Provider-native realization parameters merged from the applied rows.
+  // Non-string JSON values are carried as canonical JSON text in this wire
+  // form. Credential-shaped keys are refused at the parse boundary, so this
+  // map never carries material.
+  map<string, string> realization_parameters = 18;
+  repeated string non_portable_rows = 19;
 }
 
 // A resolved node of the DeploymentPlan DAG (control-plane.md step 6).
@@ -124,6 +135,19 @@ message ResourcePlan {
   string strategy = 5;
   string region = 6;
   string deployment_id = 7;
+  // The provider offering this node resolves to (ADR-0157). A deployment
+  // driver keys its resolver lookup on this. Absent on the legacy port-only
+  // planning path; absent means "not decided here", so a driver that cannot
+  // find a product must fail closed rather than infer one from the port.
+  string product_id = 8;
+  // Yard-scoped, provider-native realization parameters. Non-string JSON
+  // values are carried as canonical JSON text in this wire form. Never carries
+  // credential material — the parse boundary refuses credential-shaped keys
+  // before a row reaches a plan.
+  map<string, string> realization_parameters = 9;
+  // Applied rows that contributed parameters, so the PortabilityReport can
+  // attribute the loss rather than merely report that something was lost.
+  repeated string non_portable_rows = 10;
 }
 
 // The content-addressed DeploymentPlan DAG.

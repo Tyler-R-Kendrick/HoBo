@@ -118,7 +118,7 @@ describe("host runtime packages setup", () => {
 		const pacts = await loadPactDirectory(join(ociContractsDir, "pacts"));
 		const pact = pacts.find((p) => p.provider.name === "KubernetesClusterApi");
 		expect(pact).toBeDefined();
-		const mock = createMockProviderFromPact(must(pact));
+		const mock = createMockProviderFromPact(must(pact, "pact"));
 		const k8s = createKubectlKubernetesClient({
 			namespace: "hobo-dev",
 			transport: mock,

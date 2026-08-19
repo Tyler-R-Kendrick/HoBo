@@ -153,7 +153,10 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		expect(serve.isolation.wasmPaths?.length).toBe(1);
 		expect(
 			existsSync(
-				first(must(serve.isolation.wasmPaths, "serve.isolation.wasmPaths")),
+				first(
+					must(serve.isolation.wasmPaths, "serve.isolation.wasmPaths"),
+					"serve.isolation.wasmPaths",
+				),
 			),
 		).toBe(true);
 		expect(serve.exposedEndpoints).toHaveLength(1);

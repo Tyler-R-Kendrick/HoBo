@@ -3,7 +3,6 @@ import { join } from "node:path";
 
 import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { loadBindleDefinition } from "@hobo/cli";
-import type { SolutionRecipe } from "@hobo/recipes";
 import { assertOfferIsSecretFree, buildDeploymentOffer } from "@hobo/recipes";
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
@@ -15,6 +14,7 @@ import {
 	isAcceptedCompilation,
 	RecipePlaneError,
 	requireRecipe,
+	type SolutionRecipe,
 } from "./recipe-plane.js";
 
 // `hobo offer` — compile the proposal a human is asked to consent to, before

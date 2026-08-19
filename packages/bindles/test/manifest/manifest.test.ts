@@ -67,6 +67,8 @@ describe("hobo.manifest/v1 loader", () => {
 		});
 
 		expect(
+			// The placeholder grammar under test is literally this string;
+			// interpolating it would assert against an input the parser never sees.
 			parseOutputPlaceholder("${resources.data.postgres#db.outputs.url}"),
 		).toEqual({
 			type: "data",

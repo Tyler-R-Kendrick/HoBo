@@ -53,7 +53,9 @@ describe("embedded broker-runtime", () => {
 	it("hello-bindle has no provider pins (defaults only)", async () => {
 		const definition = await loadBindleDefinition(helloBindleDir);
 		expect(definition).not.toBeNull();
-		expect(collectExplicitProviderPins(must(definition))).toEqual([]);
+		expect(collectExplicitProviderPins(must(definition, "definition"))).toEqual(
+			[],
+		);
 	});
 
 	it("places hello-bindle via yard-first broker and selects camp inside yard", async () => {
@@ -88,7 +90,7 @@ describe("embedded broker-runtime", () => {
 			resources: {
 				...definition.resources,
 				api: {
-					...must(definition.resources.api),
+					...must(definition.resources.api, "definition.resources.api"),
 					annotations: [
 						{
 							provider: "no-such-cloud-provider",

@@ -34,3 +34,171 @@ Definitions.
 pnpm --filter @hobo/provider-aws build
 pnpm --filter @hobo/provider-aws test
 ```
+
+## Default Yard catalog (what AWS *can* allocate)
+
+`awsYardSpec()` and `AWS_DEFAULT_BINDINGS` (`src/default-yard.ts`) declare the
+AWS Yard as an **allocatable catalog**: for each capability slot, the AWS
+products that could satisfy it. It is not a mapping, not a pool, and not a
+selection — each slot holds a *list*, and which entry an app gets is decided
+later by capability selection (ADR-0151) against the requirements the app
+states.
+
+| Slot | Declared alternatives |
+|---|---|
+| `web` | App Runner, ECS service, EKS Deployment, Amplify Hosting (`web.hosted/v1`); S3 + CloudFront (`web.static/v1`) |
+| `api` | API Gateway (`api.http/v1`) |
+| `service` | Lambda (`service.worker/v1`); ECS task (`service.batch/v1`) |
+| `data` | RDS for PostgreSQL, Aurora Serverless v2 (`data.postgres/v1`); RDS for MySQL (`data.mysql/v1`); DynamoDB (`data.document/v1`) |
+| `kv` | DynamoDB (`kv.key-value/v1`); ElastiCache (`kv.redis-compatible/v1`) |
+| `bucket` | S3 (`bucket.s3-compatible/v1`) |
+| `queue` | SQS (`queue.at-least-once/v1`); SQS FIFO (`queue.fifo/v1`) |
+| `topic` | SNS (`topic.pubsub/v1`) |
+| `secretRef` | Secrets Manager, SSM Parameter Store (`secret-ref.locator/v1`) |
+
+The catalog is built strictly from the typed factories in `src/slots.ts`. Most
+slots hold several entries, because AWS genuinely hosts a web capability four
+ways and satisfies `data` with three different engines. Which one a given
+workload gets is decided at resolution time by ADR-0151 selection, against the
+requirements the app states — never here. Adding a fifth `web` option is a
+catalog edit, not a deployment change.
+
+The catalog still does not enumerate all of AWS. Lightsail, Elastic Beanstalk,
+Kinesis, MSK, Neptune, and others are not authored yet; a missing alternative is
+a gap in the factory set, not a choice made by the Yard.
+
+`awsYardSpec({ regions })` returns raw row-shaped data — `{ provider, regions,
+bindings }` — because a provider package is a layer-2 adapter and may not
+import `@hobo/yards`; that layer-3 package parses these rows into a canonical
+set.
+
+## HONEST SCOPE — catalog only, nothing here deploys
+
+This change ships the **catalog only**. There is no HTTP deployment resolver
+for AWS in this package (Cloudflare and Vercel are the two providers with
+resolvers today), and the `aws.*` product ids the factories emit are **not
+registered** in the definition catalog. A Yard built from this spec declares
+what AWS *can* allocate; attempting to deploy against it **fails closed at
+resolution** — `YARD_BINDING_PRODUCT_UNKNOWN`, or no registered resolver —
+until Resource Definitions and resolvers land. Nothing in this section should
+be read as evidence that an AWS deployment works.
+
+## Deployment resolvers (supersedes the "catalog only" note above)
+
+The section above is now **out of date on one point**: this package ships
+`ResourceResolver`s. It is left in place because this file is appended to
+rather than rewritten; read this section as the current state.
+
+`awsResolvers(options)` / `awsResolverRegistry(options)` (`src/resolvers.ts`)
+call AWS service APIs directly over an injected, guarded transport. There is no
+IaC engine, no state file, and no plan/apply round trip. What the catalog above
+declares as allocatable, these resolvers allocate.
+
+```ts
+const registry = awsResolverRegistry({
+	region: "us-east-1",
+	nowMs: Date.now, // SigV4 signs a timestamp; the clock is injected, never read here
+	resolveCredential: async (ref) => host.awsCredentialsFor(ref),
+});
+const transport = guardedAwsTransport(hostFetchTransport, "us-east-1");
+await registry.get("aws.s3/v1")?.reconcile(request, transport);
+```
+
+### Endpoints covered
+
+Coverage is a slice of each service — enough to allocate, observe, converge,
+and remove the resource — not the whole surface.
+
+| Product | Service / host | Calls |
+|---|---|---|
+| `aws.s3/v1` | REST-XML on `s3.{region}.amazonaws.com` | `GET /{bucket}?location` (existence probe), `GET/PUT /{bucket}?versioning`, `GET/PUT /{bucket}?publicAccessBlock`, `PUT /{bucket}`, `DELETE /{bucket}` |
+| `aws.dynamodb/v1` | REST-JSON `x-amz-target` on `dynamodb.{region}.amazonaws.com` | `DescribeTable`, `CreateTable`, `UpdateTable`, `DeleteTable` |
+| `aws.sqs/v1`, `aws.sqs-fifo/v1` | query protocol on `sqs.{region}.amazonaws.com` | `GetQueueUrl`, `CreateQueue`, `GetQueueAttributes`, `SetQueueAttributes`, `DeleteQueue` |
+| `aws.sns/v1` | query protocol on `sns.{region}.amazonaws.com` | `ListTopics` (paged), `CreateTopic`, `GetTopicAttributes`, `SetTopicAttributes`, `DeleteTopic` |
+| `aws.secrets-manager/v1` | REST-JSON `x-amz-target` on `secretsmanager.{region}.amazonaws.com` | `DescribeSecret`, `CreateSecret`, `UpdateSecret`, `DeleteSecret` |
+| `aws.ssm-parameter-store/v1` | REST-JSON `x-amz-target` on `ssm.{region}.amazonaws.com` | `GetParameter`, `PutParameter`, `DeleteParameter` |
+
+Path-style S3 addressing (`/{bucket}`) is deliberate: it keeps the transport
+allowlist to one reviewable host per region instead of one host per bucket name
+a caller happens to pass.
+
+### Convergence, and why `replace` never appears
+
+Every `reconcile()` is read-or-create: it asks AWS whether the
+deterministically-named resource exists *before* it creates anything, then
+applies only the mutable deltas. Running it twice yields one resource, the same
+`physicalId`, and exactly one create call — asserted per product in
+`test/resolvers.test.ts`. `delete()` treats "already gone" as success.
+
+`"replace"` is never emitted. Replacing a bucket or a table destroys data, so
+drift on an immutable field — an S3 bucket's region, a DynamoDB key schema, an
+SSM parameter's type — is reported as a **diagnostic** and left for a human.
+Declared options this resolver cannot honestly apply are diagnostics too, not
+silent no-ops: S3 `storageClass` (no such bucket-level property), SQS
+`maxReceiveCount` (needs a dead-letter queue ARN this resolver does not
+create), Secrets Manager `rotationDays` (needs a rotation Lambda), SSM
+`kmsKeyRef` (only meaningful for `SecureString`, which is refused).
+
+### Products deliberately left unresolved
+
+`AWS_UNRESOLVED_PRODUCT_IDS` names them, and a test asserts the uncovered set is
+exactly that list — so a new catalog entry cannot quietly become an unresolved
+one. A resolver that duplicates a resource on every retry is worse than an
+absent one.
+
+| Product | Why there is no resolver |
+|---|---|
+| `aws.rds-postgres/v1`, `aws.rds-mysql/v1`, `aws.aurora-serverless-postgres/v1` | `CreateDBInstance`/`CreateDBCluster` take a `MasterUserPassword`, which would travel in `ResolveRequest.desired` — the record that reaches the event log and the plan digest. The managed-master-password path needs KMS + Secrets Manager wiring, and both paths need a DB subnet group and security group no binding names. |
+| `aws.elasticache-redis/v1` | Placement needs a cache subnet group and security group no binding names; omitting them silently lands the cluster in the default VPC. |
+| `aws.lambda/v1` | `CreateFunction` needs deployment-package bytes and an execution-role ARN; the binding carries neither. |
+| `aws.ecs-service/v1`, `aws.ecs-task/v1`, `aws.eks-deployment/v1` | Cluster, task-execution role, and network configuration live outside the binding; an EKS Deployment is a Kubernetes API object and is not reachable over this transport at all. |
+| `aws.app-runner/v1`, `aws.amplify-hosting/v1` | Creation is source-connection-scoped and returns a new ARN per call, with no documented list-by-name filter to converge against. |
+| `aws.api-gateway/v1` | `CreateRestApi`/`CreateApi` assign a fresh random id per call with no name-uniqueness, so a retry after a lost response creates a second API. |
+| `aws.cloudfront-site/v1` | `CreateDistribution` returns a new id per call; the caller reference is a deduplication window, not an identity. |
+
+### Signing, credentials, and the transport guard
+
+AWS does not accept a bearer token, so every request is signed with SigV4 by
+`@hobo/core/aws-sigv4`. That signer is pinned in `@hobo/core`'s tests against
+the official `aws-sig-v4-test-suite` vectors (`get-vanilla`,
+`get-vanilla-query-order-key-case`, `get-header-key-duplicate`,
+`get-header-value-order`, `get-header-value-trim`, `get-unreserved`,
+`get-utf8`, `post-header-key-sort`, `post-x-www-form-urlencoded`), asserting the
+canonical request, the string-to-sign, and the `Authorization` header for each
+— the only real proof of a signer available to a repo that cannot reach the
+live API.
+
+Credentials are **locators**. `credentialRef` must match core's `scheme://path`
+grammar; a value-shaped ref is refused with `RESOLVER_CREDENTIAL_NOT_A_REF`
+before a call is spent. The host's injected `resolveCredential(ref)` returns
+the access key id, secret access key, and optional session token, and material
+appears in exactly one place — the `authorization` request header. The secret
+access key is never transmitted at all (SigV4 sends a signature derived from
+it), and provider error text is redacted before it reaches any message,
+diagnostic, or output.
+
+`guardedAwsTransport(inner, region)` applies the policy in `src/transport.ts`:
+HTTPS only, exact-match allowlisted regional hosts for the six services above,
+bounded body (512 KiB) and time (15 s), no redirect chasing. A region that does
+not parse — or a China-partition region, whose endpoints terminate at a
+different suffix — is refused rather than interpolated into a hostname.
+
+### HONEST SCOPE — what the resolvers prove and what they do not
+
+- The resolvers are exercised against an **injected fake transport** modelling
+  an AWS account. That proves request formation, convergence, refusal codes,
+  and redaction. It proves **nothing** about a live AWS account: no live call
+  is made anywhere in this package's tests, no real credential is used, and no
+  network egress happens.
+- The SigV4 vectors prove the signature is computed as the published test suite
+  says it should be. They do not prove any request was accepted or authorized.
+- The transport guard constrains the request this package composes and the
+  response it accepts. It cannot prove the injected transport honours
+  `timeoutMs`, refuses to follow a 302 itself, or terminates TLS against the
+  real AWS certificate — those remain the host's obligations.
+- Resolvers do not create Resource Definitions. Whether a matching definition is
+  registered in the catalog is still checked at resolution time
+  (`YARD_BINDING_PRODUCT_UNKNOWN`).
+- Secrets Manager secrets are created **without a version**, and SSM
+  `SecureString` parameters are **refused**: in both cases the value is
+  credential material, and this resolver never carries it.

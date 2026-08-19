@@ -81,7 +81,10 @@ describe("EffectSpec lattice", () => {
 			);
 		}
 		expect(
-			isEffectWideningBreaking(must(prev.effects), must(next.effects)),
+			isEffectWideningBreaking(
+				must(prev.effects, "prev.effects"),
+				must(next.effects, "next.effects"),
+			),
 		).toBe(true);
 	});
 
@@ -97,7 +100,7 @@ describe("EffectSpec lattice", () => {
 			contractId: contract.id,
 			contractVersion: contract.version,
 			channel: contract.edge.channel,
-			effects: must(contract.effects),
+			effects: must(contract.effects, "contract.effects"),
 		});
 		expect(manifest.requiresNetwork).toBe(true);
 		expect(manifest.isPure).toBe(false);
@@ -107,13 +110,13 @@ describe("EffectSpec lattice", () => {
 		tracer.declare({
 			contractId: contract.id,
 			channel: contract.edge.channel,
-			effects: must(contract.effects),
+			effects: must(contract.effects, "contract.effects"),
 			at: "t0",
 		});
 		tracer.invoked({
 			contractId: contract.id,
 			channel: contract.edge.channel,
-			effects: must(contract.effects),
+			effects: must(contract.effects, "contract.effects"),
 			at: "t1",
 		});
 		expect(sink.facts()).toHaveLength(2);

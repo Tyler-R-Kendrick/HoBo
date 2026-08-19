@@ -402,7 +402,7 @@ describe("agents-configure", () => {
 			(row) => row.baseUrl === "http://127.0.0.1:8080/v1",
 		);
 		expect(idx).toBeGreaterThanOrEqual(0);
-		const offer = must(state.modelOffers[idx]);
+		const offer = must(state.modelOffers[idx], "state.modelOffers[idx]");
 		state = {
 			...state,
 			model: offer.runtimeId,

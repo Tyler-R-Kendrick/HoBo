@@ -1,4 +1,4 @@
-import { first, must } from "@hobo/core/total-access";
+import { must } from "@hobo/core/total-access";
 import {
 	IdentityMigrationControlPlane,
 	type IdentityMigrationEvent,
@@ -16,10 +16,9 @@ describe("MCP zero-config agent rebind on identity.Migrated", () => {
 		});
 		plane.linkPrincipalJit();
 		plane.advanceRamp(100);
-		const pref = first(
-			Object.keys(must(plane.service.snapshot()).links),
-			"Object.keys(must(plane.service.snapshot()).links)",
-		);
+		const pref = Object.keys(
+			must(plane.service.snapshot(), "plane.service.snapshot()").links,
+		)[0];
 		plane.service.markMigrated(pref);
 		const actions = rebindAgentsOnMigrationEvents(
 			plane.events as IdentityMigrationEvent[],

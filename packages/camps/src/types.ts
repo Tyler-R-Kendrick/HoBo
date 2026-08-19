@@ -71,6 +71,13 @@ export interface Camp {
 	readonly name: string;
 	readonly env: string;
 	readonly envType: string;
+	/**
+	 * Which segment of the workload this Camp is, when it is one of the named
+	 * tiers. Optional because a Camp predates the vocabulary and because a
+	 * workload may segment on an axis the standard tiers do not name; absent
+	 * means "untiered", never "app".
+	 */
+	readonly tier?: string;
 	readonly require: readonly string[];
 	readonly prefer: readonly string[];
 	readonly labels: Readonly<Record<string, string>>;
@@ -88,6 +95,8 @@ export interface Camp {
 
 export interface CampConfig {
 	readonly envType?: string;
+	/** One of `CAMP_TIERS`; stated, never inferred from the Camp's name. */
+	readonly tier?: string;
 	readonly require?: readonly string[];
 	readonly prefer?: readonly string[];
 	readonly labels?: Readonly<Record<string, string>>;

@@ -103,7 +103,7 @@ Both carry a written reason at the site: the pixel-village yard host
 keyboard-operable, and the rule does not model that role), and a `greet()` in a
 Vercel deploy fixture reachable only through an inline `onclick`.
 
-## What is left
+## What was left after pass 1
 
 | Rule | Count |
 |---|---|
@@ -115,9 +115,9 @@ Vercel deploy fixture reachable only through an inline `onclick`.
 `noNonNullAssertion` dominates, and it is a direct consequence of
 `noUncheckedIndexedAccess: true` in `tsconfig.base.json`: `xs[0]` is
 `T | undefined`, so `xs[0]!` is the path of least resistance. The answer is
-`@hobo/core/total-access` — `must` / `at` / `first` / `last` / `get`, which narrow
-the same way but throw a named `MissingValueError` at the site instead of leaking
-`undefined` downstream. It is exposed on a subpath so the snapshot-guarded `@hobo/core`
+`@hobo/core/total-access` — `must` / `at` / `first` / `last` / `mustGet`, which
+narrow the same way but throw at the site, naming what was missing, instead of
+leaking `undefined` downstream. It is exposed on a subpath so the snapshot-guarded `@hobo/core`
 public surface stays untouched.
 
 ### The unsafe autofix is still not usable
@@ -242,3 +242,57 @@ The rule exists to catch "you meant a template literal and typed quotes". Here
 it has no true positives available to it and will regrow false ones with every
 new provider adapter. Thirty-one suppressions would be worse than one policy
 line, so it is disabled in `biome.json` with this note as the rationale.
+
+## Final state: zero, against the merged trunk
+
+`biome check .` reports **0 errors and 0 warnings across 2,466 files**.
+
+The counts above describe passes taken against an earlier trunk. Merging this
+work forward changed the arithmetic, because the Yard-bindings branch (#1114)
+landed 942 files of new code in between and brought its own findings: the merged
+tree started at 33 errors and 503 warnings, not the 77 assertions pass 2 left
+behind. The burn-down was therefore re-derived on the merged tree rather than
+replayed, and these are the numbers from that tree.
+
+`turbo run build` is green at **126/126** with the rewrite in place.
+
+### What the forward-merge itself surfaced
+
+Two defects came from the merge rather than from either branch, and both are
+worth recording because neither produced a conflict marker:
+
+* `add-container.ts` was auto-merged cleanly into code that could not run. Trunk
+  had introduced a typed `const withEndpoint` arrow; this branch had added a
+  later `const withEndpoint = handle.withEndpoint` guard. The regions did not
+  overlap, so git took both — a redeclaration in one scope, and a
+  temporal-dead-zone `ReferenceError` had it executed. `noRedeclare` and
+  `noInvalidUseBeforeDeclaration` caught it.
+* `offer-command.ts` ended up importing `SolutionRecipe` twice, once from
+  `@hobo/recipes` and once via `recipe-plane.js`, for the same reason.
+
+A clean auto-merge is not evidence that the result is coherent. The linter was
+the only thing standing between these and trunk.
+
+### Four packages were rewritten without declaring what they import
+
+The codemod only rewrites packages that already depend on `@hobo/core`; passing
+files to it explicitly bypasses that check, which is what happened to
+`rift`, `wasp`, `convex` and `control-yard`. Only `rift` failed out loud — the
+other three were latent, because the test run stopped at the first failure
+having completed 256 of 671 tasks. They were found by auditing every importer of
+`@hobo/core/total-access` against its own manifest, not by waiting for successive
+runs to reveal them one at a time.
+
+All four now declare `@hobo/core` as a `workspace:*` devDependency. A local copy
+of the helper was tried first in `rift` and reverted: four copies of one function
+inside a change whose purpose is de-duplication is not a fix, and these packages
+do genuinely depend on core — declaring it is the honest description.
+
+### Known, and not caused here
+
+* `lint:boundaries` reports one violation, `pack-framework -> contract-harness`.
+  It pre-exists on trunk, that package is untouched here, and the check is not
+  part of the pre-commit gate.
+* The `wrpc-wit-baseline-poc` draft proof fails its network fetch with
+  `self-signed certificate in certificate chain` — the sandbox's TLS
+  interception, not a code defect.

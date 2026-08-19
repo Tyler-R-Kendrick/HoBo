@@ -74,6 +74,7 @@ examples/wasp-opensaas/e2e-tests/
 
 # Python bytecode (media/scripts, spriterrific runs)
 __pycache__/
+packages/core/.stryker-tmp/
 
 # vitest coverage lane output (pnpm run test:coverage)
 .coverage/

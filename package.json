@@ -73,7 +73,7 @@
 		"test:contract": "pnpm run test:contract:consumer && pnpm run test:contract:provider",
 		"test:contract:consumer": "node --import tsx scripts/run-tests.ts --category=contract-consumer && pnpm exec turbo run test:contract:consumer --filter \"./packages/*\"",
 		"test:contract:provider": "node --import tsx scripts/run-tests.ts --category=contract-provider && pnpm exec turbo run test:contract:provider --filter \"./packages/*\"",
-		"test:coverage": "vitest run --coverage.enabled --coverage.provider=v8 --coverage.reporter=text",
+		"test:coverage": "vitest run --config vitest.coverage.config.ts",
 		"test:dom": "node --import tsx scripts/run-tests.ts --category=dom",
 		"test:fast": "node --import tsx scripts/run-tests.ts --root-only --quiet --no-artifacts",
 		"test:file": "vitest run --no-isolate --passWithNoTests",

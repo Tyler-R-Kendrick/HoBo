@@ -26,6 +26,47 @@ const generator = files.some(
 		),
 );
 if (schema || generator) process.exit(0);
+
+// Catch-up case: output for a schema that landed in an *earlier* commit.
+//
+// The staged-source check above is a proxy for the property that actually
+// matters — "generated output matches its sources" — and the proxy cannot
+// express a commit that only emits missing output. Rather than widen it into an
+// allowlist, verify the real property: the codegen checker regenerates into a
+// scratch tree and reports DRIFT if anything on disk differs from what the
+// current schemas produce. CLEAN means these files are exactly what the
+// generator emits, which is the whole point of the guard.
+const protobufOutputs = generated.every((file) =>
+	/^packages\/[^/]+\/src\/_generated\//.test(file),
+);
+if (protobufOutputs) {
+	const check = spawnSync(
+		process.execPath,
+		[
+			"--import",
+			"tsx",
+			"packages/schema-tools/src/cli.ts",
+			"--check",
+			"--json",
+		],
+		{ encoding: "utf8" },
+	);
+	let status = "";
+	try {
+		status = (JSON.parse(check.stdout) as { status?: string }).status ?? "";
+	} catch {
+		status = "";
+	}
+	if (status === "CLEAN") {
+		console.error(
+			"Generated protobuf outputs staged without a source change; codegen reports CLEAN, so they match their schemas. Allowing.",
+		);
+		process.exit(0);
+	}
+	console.error(
+		`Generated protobuf outputs staged without a source change, and codegen reports ${status || "an unreadable result"}.`,
+	);
+}
 console.error(
 	"Generated outputs changed without matching protobuf/CUE source or generator change:",
 );

@@ -131,8 +131,14 @@ export function guardTransport(
 /**
  * Parse an outbound URL against the policy. Returns the parsed URL so the
  * caller cannot accidentally reuse the unchecked string.
+ *
+ * Exported because every provider transport needs exactly this check and they
+ * had each written their own. The copies drifted in the direction that matters:
+ * none of them rejected percent-encoded path traversal, so a policy allowing
+ * `/v9/projects/` also allowed `/v9/projects/%2e%2e/user/tokens`. One
+ * implementation with one set of tests is the point.
  */
-function assertAllowedEndpoint(
+export function assertAllowedEndpoint(
 	url: unknown,
 	policy: TransportGuardPolicy,
 ): URL {

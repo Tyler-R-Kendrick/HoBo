@@ -606,6 +606,21 @@ lane as flaky:
   environment variable, add it here or the escape hatch you documented will not
   exist.
 
+The request guard lives in `@hobo/core` — `guardTransport` for the wrapper and
+`assertAllowedEndpoint` for the URL check — and provider transports delegate to
+it rather than reimplementing it. The local copies had drifted in the direction
+that matters: none of them rejected percent-encoded path traversal, so a policy
+allowing `/v9/projects/` also allowed `/v9/projects/%2e%2e/user/tokens`, which
+starts with the prefix and then climbs out of it. Packages keep their own error
+type by translating `TransportGuardError` at the boundary, so the thrown type
+and code a call site matches on do not change.
+
+Two transports are deliberately not on it. `provider-browser-wasm` enforces
+*same-origin* plus an `allowInsecureLocalhost` dev affordance, which core's
+host-allowlist policy does not model; migrating it would lose semantics.
+`provider-kafka`'s `transport.ts` is a broker seam (produce/fetch/commit), not
+an HTTP transport, and never carried a request guard at all.
+
 Credentials are **not** passed through, and the provider tests do not need them
 to be: `CLOUDFLARE_API_TOKEN`, `VERCEL_TOKEN` and friends are saved, set, and
 restored by the tests themselves rather than read from the ambient environment.

@@ -105,6 +105,31 @@ describe("outbound requests are pinned to the official API", () => {
 		}
 	});
 
+	it("refuses percent-encoded traversal that escapes an allowlisted prefix", () => {
+		// Regression, and the reason this package's guard now delegates to
+		// `@hobo/core`. The old local copy checked `pathname.startsWith(prefix)`
+		// and nothing else, so every one of these passed: they *do* start with
+		// `/v9/projects/`, and then climb out of it into the token surface —
+		// with the sponsoring credential attached to the request.
+		for (const url of [
+			"https://api.vercel.com/v9/projects/%2e%2e/user/tokens",
+			"https://api.vercel.com/v9/projects/%2f%2e%2e%2fv3/user/tokens/abc",
+			"https://api.vercel.com/v9/projects/..%5cadmin",
+		]) {
+			expect(() =>
+				assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY),
+			).toThrow(/PROVIDER_CONTRACT_CHANGED|path/iu);
+		}
+
+		// The legitimate path must survive the tightening.
+		expect(
+			assertAllowedEndpoint(
+				"https://api.vercel.com/v9/projects/prj_1",
+				DEFAULT_TRANSPORT_POLICY,
+			).pathname,
+		).toBe("/v9/projects/prj_1");
+	});
+
 	it("never follows a redirect and never reads past the byte cap", async () => {
 		const redirecting = createGuardedTransport({
 			async request() {

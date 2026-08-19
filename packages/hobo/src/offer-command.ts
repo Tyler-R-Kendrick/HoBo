@@ -3,8 +3,8 @@ import { join } from "node:path";
 
 import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { loadBindleDefinition } from "@hobo/cli";
+import type { SolutionRecipe } from "@hobo/recipes";
 import { assertOfferIsSecretFree, buildDeploymentOffer } from "@hobo/recipes";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
 	buildRecipeContext,
@@ -91,7 +91,7 @@ export function createOfferCommand(deps: OfferCommandDeps): CommandModule {
 			const atFlag = (flags as Record<string, unknown>).at;
 			const nowMs = typeof atFlag === "number" ? atFlag : now();
 
-			let recipe;
+			let recipe: SolutionRecipe;
 			try {
 				recipe = requireRecipe(recipeId);
 			} catch (error) {

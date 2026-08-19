@@ -13,11 +13,7 @@ import {
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, relative } from "node:path";
-import {
-	ensureCueBinary,
-	vetCueConstraints,
-	withTempDirectory,
-} from "./cue.js";
+import { ensureCueBinary, vetCueConstraints } from "./cue.js";
 import { discoverDataModelPackages, hydrateCueSchemas } from "./discover.js";
 import { resolveFromModule } from "./parse.js";
 import {
@@ -164,7 +160,7 @@ async function generatePackageProtos(
 	}
 }
 
-async function copyGeneratedTree(
+async function _copyGeneratedTree(
 	sourceDir: string,
 	targetDir: string,
 ): Promise<void> {

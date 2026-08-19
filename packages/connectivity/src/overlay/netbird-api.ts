@@ -78,7 +78,7 @@ export function createNetbirdApiClient(
 		if (auth === "setup" && (options.setupKey || body)) {
 			// setup-key may ride in body; also send header when present
 			if (options.setupKey) {
-				headers["authorization"] = `Token ${options.setupKey}`;
+				headers.authorization = `Token ${options.setupKey}`;
 			}
 		}
 		if (body !== undefined) {

@@ -14,7 +14,6 @@ import {
 	mkdtempSync,
 	readdirSync,
 	readFileSync,
-	renameSync,
 	rmSync,
 	statSync,
 	writeFileSync,
@@ -284,32 +283,35 @@ async function withRecording(
 		},
 	});
 	const page = await context.newPage();
+	// eli5: `finally` only tears down. Returning or throwing from inside a
+	// `finally` discards whatever `fn(page)` threw, so a broken demo would look
+	// like a successful recording. Close first, then convert.
+	let vid: ReturnType<typeof page.video>;
 	try {
 		await fn(page);
 	} finally {
-		const vid = page.video();
+		vid = page.video();
 		await page.close();
 		await context.close();
-		// Playwright finalizes video after context close
-		if (vid) {
-			const webmPath = await vid.path();
-			const mp4 = join(RECORDINGS, `${name}.mp4`);
-			// wait briefly if file not yet flushed
-			for (let i = 0; i < 20 && !existsSync(webmPath); i++) await sleep(100);
-			if (!existsSync(webmPath)) {
-				// fallback: pick any webm in dir
-				const found = readdirSync(videoDir).find((f) => f.endsWith(".webm"));
-				if (!found) throw new Error(`no webm for ${name} in ${videoDir}`);
-				webmToMp4(join(videoDir, found), mp4);
-			} else {
-				webmToMp4(webmPath, mp4);
-			}
-			(report.recordings as string[]).push(mp4);
-			console.log("recorded", mp4, statSync(mp4).size, "bytes");
-			return mp4;
-		}
 	}
-	throw new Error(`no video for ${name}`);
+
+	// Playwright finalizes video after context close.
+	if (!vid) throw new Error(`no video for ${name}`);
+	const webmPath = await vid.path();
+	const mp4 = join(RECORDINGS, `${name}.mp4`);
+	// wait briefly if file not yet flushed
+	for (let i = 0; i < 20 && !existsSync(webmPath); i++) await sleep(100);
+	if (!existsSync(webmPath)) {
+		// fallback: pick any webm in dir
+		const found = readdirSync(videoDir).find((f) => f.endsWith(".webm"));
+		if (!found) throw new Error(`no webm for ${name} in ${videoDir}`);
+		webmToMp4(join(videoDir, found), mp4);
+	} else {
+		webmToMp4(webmPath, mp4);
+	}
+	(report.recordings as string[]).push(mp4);
+	console.log("recorded", mp4, statSync(mp4).size, "bytes");
+	return mp4;
 }
 
 try {

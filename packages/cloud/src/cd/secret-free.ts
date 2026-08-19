@@ -162,7 +162,9 @@ export function assertSecretFree(value: unknown, path = "$"): void {
 		return;
 	}
 	if (Array.isArray(value)) {
-		value.forEach((v, i) => assertSecretFree(v, `${path}[${i}]`));
+		for (const [i, v] of value.entries()) {
+			assertSecretFree(v, `${path}[${i}]`);
+		}
 		return;
 	}
 	if (value && typeof value === "object") {

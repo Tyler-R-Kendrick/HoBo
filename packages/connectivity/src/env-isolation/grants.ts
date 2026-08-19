@@ -250,7 +250,7 @@ export class BreakGlassService {
 		readonly ttlSeconds?: number;
 	}): BreakGlassGrant {
 		const prev = this.grants.get(input.grantId);
-		if (!prev || prev.status !== "requested") {
+		if (prev?.status !== "requested") {
 			throw Object.assign(new Error("break-glass grant not requestable"), {
 				code: "break-glass-invalid",
 			});
@@ -300,7 +300,7 @@ export class BreakGlassService {
 
 	getActive(grantId: string, now?: string): BreakGlassGrant | null {
 		const g = this.grants.get(grantId);
-		if (!g || g.status !== "granted") return null;
+		if (g?.status !== "granted") return null;
 		if (isExpired(g.expiresAt, now ?? this.now())) {
 			const expired: BreakGlassGrant = Object.freeze({
 				...g,

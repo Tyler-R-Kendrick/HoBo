@@ -448,7 +448,7 @@ function sanitizeCampId(env: string): string {
 		env
 			.replace(
 				/-(local|aws|azure|gcp|cloudflare|oci|wasm-sandbox)$/i,
-				(match, provider) => {
+				(match, _provider) => {
 					// Keep as-is if the whole name is just the provider (unlikely).
 					if (match.length === env.length) return env;
 					return "";

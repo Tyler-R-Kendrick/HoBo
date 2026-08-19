@@ -3,7 +3,6 @@
  * Measure-first: frame sizes come from assets_index.json only.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,7 +11,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = join(ROOT, "assets");
 const OUT = join(ROOT, "tmp", "frames");
 
-const index = JSON.parse(
+const _index = JSON.parse(
 	readFileSync(join(ASSETS, "assets_index.json"), "utf8"),
 ) as {
 	spritesheets: Record<

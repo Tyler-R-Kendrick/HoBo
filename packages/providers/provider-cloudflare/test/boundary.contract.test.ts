@@ -58,7 +58,7 @@ describe("ProviderCloudflareBoundary pact (consumer contract)", () => {
 
 describe("RealizeEmissionBoundary pact (consumer contract)", () => {
 	it("single-port realize matches the emission contract body", () => {
-		const provider = createCloudflareProvider();
+		const _provider = createCloudflareProvider();
 		const interaction = realizePact.interactions[0];
 		const { iac } = realizeResourcePlan({
 			name: interaction.request.body.name,

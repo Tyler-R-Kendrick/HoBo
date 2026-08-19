@@ -1,5 +1,5 @@
 import { parseResourceId } from "@hobo/core";
-
+import { isRecord, visitStrings } from "../plain-value.js";
 import {
 	BindReferenceError,
 	type ComponentHandle,
@@ -201,7 +201,7 @@ export function normalizeBindMap(
 
 	for (const [alias, target] of Object.entries(bind)) {
 		assertResourceName(alias, `bind.${alias}`);
-		if (!target || target.kind !== "resource") {
+		if (target?.kind !== "resource") {
 			throw new BindReferenceError(
 				`bind.${alias}`,
 				"must reference a declared resource handle",
@@ -264,28 +264,6 @@ function renderCtxBindings(
 		.join("\n");
 }
 
-function visitStrings(
-	value: unknown,
-	path: string,
-	visitor: (value: string, path: string) => void,
-): void {
-	if (typeof value === "string") {
-		visitor(value, path);
-		return;
-	}
-	if (Array.isArray(value)) {
-		value.forEach((item, index) =>
-			visitStrings(item, `${path}[${index}]`, visitor),
-		);
-		return;
-	}
-	if (isRecord(value)) {
-		for (const [key, child] of Object.entries(value)) {
-			visitStrings(child, `${path}.${key}`, visitor);
-		}
-	}
-}
-
 export function assertHandle(handle: unknown): asserts handle is Handle {
 	if (
 		!handle ||
@@ -306,8 +284,4 @@ export function assertResourceName(name: string, path: string): void {
 		throw new BindReferenceError(path, "invalid resource id");
 	}
 	parseResourceId(name);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

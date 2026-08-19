@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isRecord, visitStrings } from "../plain-value.js";
 
 export const MANIFEST_SCHEMA = "hobo.manifest/v1" as const;
 
@@ -362,28 +363,6 @@ function validateResourceReferences(
 	}
 }
 
-function visitStrings(
-	value: unknown,
-	path: string,
-	visitor: (value: string, path: string) => void,
-): void {
-	if (typeof value === "string") {
-		visitor(value, path);
-		return;
-	}
-	if (Array.isArray(value)) {
-		value.forEach((item, index) =>
-			visitStrings(item, `${path}[${index}]`, visitor),
-		);
-		return;
-	}
-	if (isRecord(value)) {
-		for (const [key, child] of Object.entries(value)) {
-			visitStrings(child, `${path}.${key}`, visitor);
-		}
-	}
-}
-
 function sortKeys(value: unknown): unknown {
 	if (Array.isArray(value)) {
 		return value.map(sortKeys);
@@ -422,10 +401,6 @@ function assertRequiredString(
 	if (typeof value !== "string" || value.length === 0) {
 		throw new ManifestParseError(path, "required");
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isStringArray(value: unknown): value is string[] {

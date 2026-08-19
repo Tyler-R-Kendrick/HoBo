@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { describe, expect, it } from "vitest";
+import { stripSgr as plain } from "../src/ansi.js";
 import { harnessViewFromLivePanes } from "../src/harness-session-view.js";
 import type { InSessionPanes } from "../src/in-session-panes.js";
 import { refreshInSessionPanes } from "../src/in-session-panes.js";
@@ -42,10 +43,6 @@ function realTmuxRunner(): MuxRunner {
 			});
 		},
 	};
-}
-
-function plain(line: string): string {
-	return line.replace(/\x1b\[[0-9;]*m/gu, "");
 }
 
 describe("live multi-pane TV attach parity", () => {

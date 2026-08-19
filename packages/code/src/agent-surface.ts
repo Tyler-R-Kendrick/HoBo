@@ -128,12 +128,14 @@ export function inspectAgentSurface(
 		envTruthy(env, "CI");
 	const session = readSession(hoboHome);
 	const sessRef = sessionRefPresent(env, hoboHome);
-	const localReady = session?.mode === "local" || (!session && true);
+	// eli5: local auto-resolve is ready when we are on a local session, or when
+	// there is no session yet and `auth login --agent` can still create one.
+	const localReady = session?.mode === "local" || session === null;
 
 	const authModes: AgentAuthModeCard[] = [
 		{
 			id: "local-station-auto",
-			status: "wired",
+			status: localReady ? "wired" : "env-only",
 			humanInLoop: false,
 			summary:
 				"Local Station auto-resolve / init — no browser (preferred agent steady-state).",

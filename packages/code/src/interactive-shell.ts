@@ -136,12 +136,8 @@ import {
 } from "./shell-scroll.js";
 import { StreamTerminal } from "./shell-terminal.js";
 import {
-	BO_CELL_HEIGHT,
 	BO_IDLE_TICK_MS,
-	HOBO_LOGO_CONSOLE,
 	HOBO_MARK_CONSOLE,
-	padLine,
-	renderBoIdleFrame,
 	selectBoIdleFrame,
 } from "./splash.js";
 import {
@@ -919,24 +915,6 @@ export function applyCompact(
 				: state.footerHints,
 	};
 	return persistShellChat(next, true);
-}
-
-/** Bo header rows for the current geometry: full sprite on tall terminals,
- * body crop (rows 6–13 — the part with Bo in it) on standard ones, none when
- * dense or too short. The old top-crop showed rows 0–5, which are mostly
- * empty sky — that read as noise, not a mascot. */
-function boHeaderRows(state: InteractiveShellState): string[] {
-	if (state.dense) return [];
-	if (state.height < 24) return [];
-	const frame = selectBoIdleFrame({
-		tickMs: state.tickMs,
-		reducedMotion: state.reducedMotion,
-	});
-	const rows = renderBoIdleFrame(frame).split("\n");
-	const slice = state.height >= 36 ? rows : rows.slice(6, BO_CELL_HEIGHT);
-	return slice.map((row) =>
-		padLine(row.trimEnd().slice(0, state.width), state.width),
-	);
 }
 
 /**
@@ -1967,37 +1945,6 @@ function taskRowsForAgent(
 	});
 }
 
-function agentPaneRows(state: InteractiveShellState): readonly {
-	readonly name: string;
-	readonly label: string;
-	readonly focused?: boolean;
-	readonly kind?: string;
-	readonly tasks?: readonly {
-		readonly summary: string;
-		readonly state?: string;
-		readonly branch?: string;
-		readonly isolation?: string;
-	}[];
-}[] {
-	const panes = state.livePanes?.windows ?? [];
-	if (panes.length > 0) {
-		return panes.map((row, index) => ({
-			name: row.name,
-			label: harnessDisplayLabel(row.name),
-			kind: row.kind,
-			focused: index === state.livePanes?.focused,
-			tasks: taskRowsForAgent(state, row.name),
-		}));
-	}
-	return state.agentBoard.groups.map((group, index) => ({
-		name: group.agentId,
-		label: harnessDisplayLabel(group.agentId),
-		kind: "agent",
-		focused: index === 0,
-		tasks: taskRowsForAgent(state, group.agentId),
-	}));
-}
-
 /** Rebuild herdr view from seated mux windows, preserving focus when possible. */
 export function withHarnessFromLivePanes(
 	state: InteractiveShellState,
@@ -2635,7 +2582,7 @@ export function replaceLastAssistant(
 	agentState: ShellAgentState = "working",
 ): InteractiveShellState {
 	const last = state.messages[state.messages.length - 1];
-	if (!last || last.role !== "assistant") {
+	if (last?.role !== "assistant") {
 		const appended = appendAssistant(state, text, agentState);
 		return appended;
 	}

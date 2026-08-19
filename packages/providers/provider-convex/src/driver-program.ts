@@ -77,7 +77,7 @@ export function assertDriverProgram(program: DriverProgram): DriverProgram {
 			throw new Error(`invalid output reference ${value}`);
 		}
 		const resource = names.get(match[1] as string);
-		if (!resource || !resource.outputs.includes(match[2] as string)) {
+		if (!resource?.outputs.includes(match[2] as string)) {
 			throw new Error(`unresolved output reference ${value}`);
 		}
 	}

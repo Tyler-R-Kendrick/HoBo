@@ -20,7 +20,6 @@ import { fileURLToPath } from "node:url";
 
 import { type Harness, startHarness } from "../../scripts/demo-harness.mjs";
 import type { ZoneId } from "../../src/layout.js";
-import { SCENARIOS } from "../../src/scenarios/index.js";
 import {
 	canvasPng,
 	diffPct,
@@ -35,7 +34,7 @@ import {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-const assetIndex = JSON.parse(
+const _assetIndex = JSON.parse(
 	readFileSync(join(ROOT, "assets/assets_index.json"), "utf8"),
 ) as { animationIds: Record<string, { sheet: string; animation: string }> };
 
@@ -76,7 +75,7 @@ const STATEFUL_CUE_PREFIXES = Object.freeze([
 	"fence-", // the Connection boundary
 ]);
 
-const ZONES = Object.keys(YARD_LAYOUT.zones) as ZoneId[];
+const _ZONES = Object.keys(YARD_LAYOUT.zones) as ZoneId[];
 
 let harness: Harness;
 /** Empty HOBO_HOME — the first-run waybill must really be able to open a station. */

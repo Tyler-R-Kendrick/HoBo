@@ -49,9 +49,8 @@ export function renderEnvIsolationTailscaleAcl(input?: {
 	const acls: TailscaleAclGrant[] = [];
 
 	for (const cls of classes) {
-		const tag = `tag:${isolationClassTag(cls).replace(":", "-")}`;
 		// Tailscale tags use tag:name form; map env:production → tag:env-production
-		const tsTag = `tag:env-${cls}`;
+		const tsTag = `tag:${isolationClassTag(cls).replace(":", "-")}`;
 		tagOwners[tsTag] = Object.freeze([owner]);
 		// Same-env allow (src=dst tag).
 		acls.push(

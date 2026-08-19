@@ -251,8 +251,7 @@ export function verifyDpopProof(input: {
 		throw new Error("dpop: alg must be ES256");
 	}
 	if (
-		!header.jwk ||
-		header.jwk.kty !== "EC" ||
+		header.jwk?.kty !== "EC" ||
 		header.jwk.crv !== "P-256" ||
 		!header.jwk.x ||
 		!header.jwk.y

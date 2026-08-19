@@ -241,7 +241,7 @@ export function createReservationLedger(initialLedgerView) {
 	function releaseReservation({ reservationId, reason, eventType }) {
 		const next = clone(current);
 		const reservation = findReservation(next, reservationId);
-		if (!reservation || reservation.status !== "pending") {
+		if (reservation?.status !== "pending") {
 			return {
 				ok: false as const,
 				status: "not-releasable",
@@ -377,7 +377,7 @@ export function createReservationLedger(initialLedgerView) {
 			);
 			const next = clone(current);
 			const reservation = findReservation(next, reservationId);
-			if (!reservation || reservation.status !== "pending") {
+			if (reservation?.status !== "pending") {
 				return {
 					ok: false as const,
 					status: "not-confirmable",

@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterAll, describe, expect, it } from "vitest";
+import { stripAnsi } from "../src/ansi.js";
 import {
 	appendAssistant,
 	clearWrapCache,
@@ -390,9 +391,7 @@ describe("terminal resize redraw", () => {
 		expect(terminal.columns).toBe(60);
 		expect(terminal.rows).toBe(20);
 		// Strip CSI / OSC so we can measure painted cells.
-		const plain = after
-			.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "")
-			.replace(/\u001b\][^\u0007]*\u0007/g, "");
+		const plain = stripAnsi(after);
 		const over = plain.split(/\r?\n/).filter((line) => line.length > 60);
 		expect(over).toEqual([]);
 		stdin.write("\u0003");

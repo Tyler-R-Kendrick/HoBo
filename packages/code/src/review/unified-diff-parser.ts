@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 
 import { create } from "@bufbuild/protobuf";
-
 import {
 	type ReviewDiffLine,
 	ReviewDiffLineSchema,
@@ -9,13 +8,9 @@ import {
 	ReviewHunkSchema,
 	ReviewLineKind,
 } from "../_generated/code_review_pb.js";
+import { sanitizeDisplay } from "../ansi.js";
 
-export function sanitizeDisplay(text: string): string {
-	return text.replace(
-		/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu,
-		"\uFFFD",
-	);
-}
+export { sanitizeDisplay };
 
 export function hashText(text: string): string {
 	return createHash("sha256").update(text).digest("hex");

@@ -5,7 +5,7 @@
  */
 
 import type { IsolationClass } from "../env-isolation/types.js";
-import type { PamKind, SessionHandle, SessionRequest } from "./types.js";
+import type { PamKind, SessionHandle } from "./types.js";
 
 export type RemoteSessionResult = Readonly<{
 	remoteSessionId: string;

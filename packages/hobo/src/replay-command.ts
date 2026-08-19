@@ -53,7 +53,7 @@ function resolveStationId(
 	flags: Record<string, unknown>,
 	home: string,
 ): string {
-	const flag = flags["station"] ?? flags["id"];
+	const flag = flags.station ?? flags.id;
 	if (typeof flag === "string" && flag.length > 0) return flag;
 	const env = deps.env ?? process.env;
 	if (typeof env.HOBO_STATION === "string" && env.HOBO_STATION.length > 0) {

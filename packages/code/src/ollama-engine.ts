@@ -15,8 +15,6 @@ import { AGUI_EVENT } from "./agui.js";
 import { LOCAL_TOOL_SCHEMA, runLocalTool } from "./local-tools.js";
 import type { ToolPlanner } from "./needle-tools.js";
 import {
-	type EngineTurnEvent,
-	type EngineTurnResult,
 	type EngineUsage,
 	listSandboxChanges,
 	type ShellEngine,

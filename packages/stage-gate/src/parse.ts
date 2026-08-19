@@ -21,6 +21,12 @@ function pushIssue(issues: string[], message: string): void {
 	issues.push(message);
 }
 
+/** eli5: a non-array `command` is an error and yields no command words. */
+function parseCommandFallback(issues: string[], path: string): string[] {
+	pushIssue(issues, `${path}.command: expected array`);
+	return [];
+}
+
 function parseCheckResult(
 	raw: unknown,
 	issues: string[],
@@ -43,7 +49,7 @@ function parseCheckResult(
 				}
 				return entry;
 			})
-		: (pushIssue(issues, `${path}.command: expected array`), []);
+		: parseCommandFallback(issues, path);
 	const exitCode = raw.exit_code ?? raw.exitCode;
 	if (typeof exitCode !== "number" || !Number.isInteger(exitCode)) {
 		pushIssue(issues, `${path}.exit_code: expected integer`);
@@ -252,7 +258,7 @@ export function parseStageGateRecord(raw: unknown): StageGateRecord {
 		artifactIssues,
 		"artifact",
 	) ?? {
-		digestSha256: "sha256:" + "0".repeat(64),
+		digestSha256: `sha256:${"0".repeat(64)}`,
 		byteLength: 0,
 		mediaType: "application/octet-stream",
 	};

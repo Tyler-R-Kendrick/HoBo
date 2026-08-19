@@ -1,9 +1,4 @@
-import type {
-	DnsProvider,
-	DnsRecord,
-	DnsRecordType,
-	TenantId,
-} from "@hobo/core";
+import type { DnsProvider, DnsRecord, DnsRecordType } from "@hobo/core";
 
 export interface CloudflareDnsProviderOptions {
 	/** API token with Zone.DNS edit. Never log. */

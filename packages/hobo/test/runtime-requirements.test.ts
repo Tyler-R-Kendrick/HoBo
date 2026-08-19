@@ -69,8 +69,7 @@ describe("required runtimes + broker hard-fail", () => {
 			expect(placement.componentHost).toBe("oci");
 			expect(placement.requiredRuntimes).toEqual(["oci"]);
 		}
-	}, // into the throwaway HOBO_HOME — far beyond the 10s default. // First placement equips the isolated wasm toolchain (wasmtime download)
-	90_000);
+	}, 90_000); // into the throwaway HOBO_HOME — far beyond the 10s default. // First placement equips the isolated wasm toolchain (wasmtime download)
 
 	it("hard-fails wasm-component when runtime-wasm not installed", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-rt-wasm-reject-"));

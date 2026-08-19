@@ -181,7 +181,7 @@ describe("HoBo Trails", () => {
 			continuousDefault: true,
 		});
 		for (const v of golden) {
-			expect(v.ok, v.oracle + ": " + v.summary).toBe(true);
+			expect(v.ok, `${v.oracle}: ${v.summary}`).toBe(true);
 		}
 	});
 

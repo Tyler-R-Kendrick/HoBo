@@ -247,8 +247,7 @@ function escapeXml(value: string): string {
 export function parseListResourceRecordSets(xml: string): readonly DnsRecord[] {
 	const records: DnsRecord[] = [];
 	const setRe = /<ResourceRecordSet>([\s\S]*?)<\/ResourceRecordSet>/g;
-	let match: RegExpExecArray | null;
-	while ((match = setRe.exec(xml)) !== null) {
+	for (const match of xml.matchAll(setRe)) {
 		const block = match[1] ?? "";
 		const name = textBetween(block, "Name")?.replace(/\.$/, "") ?? "";
 		const type = textBetween(block, "Type") as DnsRecordType | null;

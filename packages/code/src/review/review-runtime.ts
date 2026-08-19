@@ -29,7 +29,6 @@ import {
 	type ReviewSnapshot,
 	ReviewSnapshotSchema,
 	ReviewSubmissionSchema,
-	ReviewSubmissionState,
 	ReviewTargetKind,
 	ReviewThreadOrigin,
 	ReviewThreadResolution,
@@ -57,7 +56,6 @@ import { createReviewContentStore } from "./review-content-store.js";
 import {
 	parseReviewCommand,
 	parseReviewSnapshot,
-	REVIEW_COMMAND_SCHEMA,
 	REVIEW_SNAPSHOT_SCHEMA,
 	reviewSnapshotJson,
 } from "./review-contract.js";

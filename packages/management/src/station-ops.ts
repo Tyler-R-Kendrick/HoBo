@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
 	createStationClient,
 	initStation,
+	type StationClient,
 	StationService,
 } from "@hobo/stations";
 
@@ -79,7 +80,7 @@ export function stationStatus(
 	stationId?: string,
 ): ManagementResult {
 	const id = resolveDefaultStationId(ctx, stationId) ?? "station:local";
-	let client;
+	let client: StationClient;
 	try {
 		client = createStationClient({ hoboHome: ctx.hoboHome, stationId: id });
 		client.load();

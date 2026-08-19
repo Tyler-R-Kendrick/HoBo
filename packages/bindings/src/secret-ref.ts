@@ -76,6 +76,7 @@ const PLAINTEXT_MARKERS: readonly RegExp[] = [
 	/^ey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./u,
 ];
 
+// biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point.
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/u;
 
 function assertNoPlaintext(input: string): void {

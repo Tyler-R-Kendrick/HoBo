@@ -377,8 +377,12 @@ async function waitForVersion(input: {
 	);
 }
 
+/** SGR colour codes emitted by the convex CLI we shell out to. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: ESC is the sequence being matched.
+const SGR = /\u001b\[[0-9;]*m/gu;
+
 function stripAnsi(text: string): string {
-	return text.replace(/\u001b\[[0-9;]*m/gu, "");
+	return text.replace(SGR, "");
 }
 
 function containersApiForbidden(stdout: string, stderr: string): boolean {

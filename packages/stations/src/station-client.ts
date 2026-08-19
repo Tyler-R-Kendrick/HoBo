@@ -194,7 +194,7 @@ export function initStation(input: {
 	});
 	const dataDir = stationRoot(input.hoboHome, stationId);
 	const svc = new StationService({ stationId });
-	const { occupancy, bootstrap } = svc.create({
+	const { bootstrap } = svc.create({
 		name,
 		isolation,
 		dataDir,

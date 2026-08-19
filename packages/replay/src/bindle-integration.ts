@@ -17,16 +17,10 @@ import {
 	REPLAY_FLAG_KEY,
 } from "./policy.js";
 import { assertNoSensitivePlaintext, maskRrwebEvents } from "./privacy.js";
-import {
-	createMemoryDualFixtures,
-	type DualFixtureStore,
-	type SessionBlobStore,
-	type SessionIndex,
-} from "./storage.js";
+import { createMemoryDualFixtures, type DualFixtureStore } from "./storage.js";
 import {
 	defaultPrivacyPolicy,
 	parseSessionRecord,
-	REPLAY_SCHEMA_VERSION,
 	type RrwebEvent,
 	type SessionRecord,
 } from "./types.js";

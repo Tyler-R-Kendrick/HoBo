@@ -226,8 +226,7 @@ export function decideFailurePath(
 
 	const agent = input.selfHealAgent;
 	if (
-		!agent ||
-		!agent.policyAllowed ||
+		!agent?.policyAllowed ||
 		agent.tenant !== input.tenant ||
 		!agent.scopes.includes(input.environment)
 	) {

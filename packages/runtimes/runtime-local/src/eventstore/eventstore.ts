@@ -18,7 +18,6 @@ import type {
 	ReadAllOptions,
 	SnapshotRecord,
 	StreamFilter,
-	Subscription,
 	SubscriptionCheckpoint,
 	SubscriptionLease,
 } from "@hobo/core";

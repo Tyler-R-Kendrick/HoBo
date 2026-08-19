@@ -44,7 +44,7 @@ function resolveStationId(
 	flags: Record<string, unknown>,
 	env: NodeJS.ProcessEnv,
 ): string | undefined {
-	const stationFlag = flags["station"];
+	const stationFlag = flags.station;
 	if (typeof stationFlag === "string" && stationFlag.length > 0) {
 		return stationFlag;
 	}

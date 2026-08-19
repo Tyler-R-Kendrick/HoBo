@@ -74,7 +74,7 @@ export function fitCells(text: string, width: number): string {
 	while (i < text.length && cells < keep) {
 		if (text[i] === "\u001b" && text[i + 1] === "[") {
 			const rest = text.slice(i);
-			const match = rest.match(/^\u001b\[[0-9;]*m/u);
+			const match = rest.match(LEADING_SGR);
 			if (match) {
 				out += match[0];
 				i += match[0].length;
@@ -89,6 +89,10 @@ export function fitCells(text: string, width: number): string {
 	const reset = text.includes("\u001b[") ? "\u001b[0m" : "";
 	return `${out}…${reset}`;
 }
+
+/** SGR run at the very start of a slice; see ansi.ts for the shared strippers. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: ESC is the sequence being matched.
+const LEADING_SGR = /^\u001b\[[0-9;]*m/u;
 
 function paint(text: string, accent: AccentName, enabled: boolean): string {
 	if (!enabled || accent === "none") return text;

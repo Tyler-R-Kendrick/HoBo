@@ -76,7 +76,7 @@ function buildResource(
 	const mapping = resolveEquivalence(plan.port);
 	const bindings = (plan.deps ?? []).map((dep) =>
 		withBindRefs
-			? { resource: dep, ref: "${resources." + dep + ".outputs.binding}" }
+			? { resource: dep, ref: `\${resources.${dep}.outputs.binding}` }
 			: { providerResourceId: dep },
 	);
 
@@ -97,7 +97,7 @@ function buildResource(
 
 function primaryRef(resource: DriverResource): string {
 	const output = PRIMARY_OUTPUT[resource.type] ?? "binding";
-	return "${resources." + resource.name + ".outputs." + output + "}";
+	return `\${resources.${resource.name}.outputs.${output}}`;
 }
 
 /**
@@ -216,7 +216,7 @@ export function realizeTrafficRoutingPlan(
 		resources: [resource],
 		outputs: {
 			routeId: primaryRef(resource),
-			binding: "${resources." + resourceName + ".outputs.binding}",
+			binding: `\${resources.${resourceName}.outputs.binding}`,
 		},
 	};
 	return { driver: assertDriverProgram(driver) };

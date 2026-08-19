@@ -298,8 +298,8 @@ describe("Eve agents in the virtual filesystem", () => {
 			`cat ${VIRTUAL_AGENTS}/subagents/implementer/instructions.md`,
 		);
 		expect(read.stdout).toContain("write the app");
-		const escape = await shell.run(`cat ${secret}`);
-		expect(escape.exitCode).not.toBe(0);
-		expect(escape.stdout).not.toContain("AKIA");
+		const escaped = await shell.run(`cat ${secret}`);
+		expect(escaped.exitCode).not.toBe(0);
+		expect(escaped.stdout).not.toContain("AKIA");
 	});
 });

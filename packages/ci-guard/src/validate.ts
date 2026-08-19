@@ -423,7 +423,7 @@ function extractJobBlocks(
 	const blocks = new Map<string, string>();
 
 	for (const jobName of jobNames) {
-		const start = lines.findIndex((line) => line === `  ${jobName}:`);
+		const start = lines.indexOf(`  ${jobName}:`);
 		if (start === -1) {
 			continue;
 		}

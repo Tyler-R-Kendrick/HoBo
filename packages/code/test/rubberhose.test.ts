@@ -9,6 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { HOBO_LOGO_TUI } from "../src/_generated/hobo-logo-tui.js";
+import { sgrRuns } from "../src/ansi.js";
 import {
 	createInitialShellState,
 	renderShellFrame,
@@ -91,7 +92,7 @@ describe("strict black & white with rare accents", () => {
 			expect(go).toContain(ACCENT.go);
 			expect(go).not.toContain(ACCENT.spark);
 			// No rainbow chrome: those two plus reset are the whole palette.
-			const used = spark.match(/\u001b\[[0-9;]*m/g) ?? [];
+			const used = sgrRuns(spark);
 			expect(new Set(used)).toEqual(new Set([ACCENT.spark, ACCENT.reset]));
 		} finally {
 			if (noColor === undefined) delete process.env.NO_COLOR;

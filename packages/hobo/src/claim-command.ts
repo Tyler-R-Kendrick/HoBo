@@ -140,7 +140,6 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 						deps.createRemoteClient?.(brokerUri) ??
 						createRemoteBrokerClient({
 							brokerUri,
-							presenter,
 							...(deps.discovery ? { discovery: deps.discovery } : {}),
 							...(deps.mockRemote ? { mock: deps.mockRemote } : {}),
 						});

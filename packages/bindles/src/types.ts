@@ -305,8 +305,8 @@ export interface BindleBuilder {
 	web(binding?: ComponentBinding): BindleResource<"web">;
 	kv(): BindleResource<"kv">;
 	bucket(): BindleResource<"bucket">;
-	queue<T = unknown>(): BindleResource<"queue">;
-	topic<T = unknown>(): BindleResource<"topic">;
+	queue<_T = unknown>(): BindleResource<"queue">;
+	topic<_T = unknown>(): BindleResource<"topic">;
 	secret(): BindleResource<"secret">;
 	data(): BindleResource<"data">;
 	schedule(): BindleResource<"schedule">;

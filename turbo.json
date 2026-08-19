@@ -1,125 +1,49 @@
 {
-	"$schema": "https://turbo.build/schema.json",
-	"globalDependencies": [
-		"pnpm-lock.yaml",
-		"pnpm-workspace.yaml",
-		"turbo.json",
-		"tsconfig.base.json"
-	],
-	"envMode": "strict",
-	"globalPassThroughEnv": [
-		"CI",
-		"HOBO_*",
-		"PLAYWRIGHT_*",
-		"TMPDIR",
-		"TMP",
-		"TEMP",
-		"SOURCE_DATE_EPOCH",
-		"NODE_EXTRA_CA_CERTS",
-		"SSL_CERT_FILE",
-		"SSL_CERT_DIR",
-		"CURL_CA_BUNDLE",
-		"REQUESTS_CA_BUNDLE",
-		"NIX_SSL_CERT_FILE",
-		"HTTP_PROXY",
-		"HTTPS_PROXY",
-		"NO_PROXY",
-		"http_proxy",
-		"https_proxy",
-		"no_proxy",
-		"CELLD_BIN",
-		"CELLD_ESBUILD"
-	],
-	"tasks": {
-		"build": {
-			"dependsOn": [
-				"^build"
-			],
-			"outputs": [
-				"dist/**"
-			]
-		},
-		"typecheck": {
-			"dependsOn": [
-				"^build"
-			],
-			"outputs": []
-		},
-		"lint": {
-			"outputs": []
-		},
-		"test": {
-			"dependsOn": [
-				"^build"
-			],
-			"inputs": [
-				"$TURBO_DEFAULT$",
-				"!**/*.md"
-			],
-			"outputs": []
-		},
-		"ts-autocode#test": {
-			"dependsOn": [
-				"build"
-			],
-			"inputs": [
-				"$TURBO_DEFAULT$",
-				"!**/*.md"
-			],
-			"outputs": []
-		},
-		"test:unit": {
-			"dependsOn": [
-				"^build"
-			],
-			"inputs": [
-				"$TURBO_DEFAULT$",
-				"!**/*.md"
-			],
-			"outputs": []
-		},
-		"test:schema": {
-			"inputs": [
-				"$TURBO_DEFAULT$",
-				"!**/*.md"
-			],
-			"outputs": []
-		},
-		"test:contract:consumer": {
-			"dependsOn": [
-				"^build"
-			],
-			"inputs": [
-				"$TURBO_DEFAULT$",
-				"!**/*.md"
-			],
-			"outputs": [
-				"pacts/**"
-			]
-		},
-		"test:contract:provider": {
-			"dependsOn": [
-				"build"
-			],
-			"inputs": [
-				"$TURBO_DEFAULT$",
-				"!**/*.md"
-			],
-			"outputs": []
-		},
-		"//#typecheck:root": {
-			"inputs": [
-				"tsconfig.json",
-				"tsconfig.base.json",
-				"scripts/**",
-				"test/**",
-				"!scripts/ci/**"
-			],
-			"outputs": []
-		},
-		"dev": {
-			"cache": false,
-			"persistent": true
-		}
-	}
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "turbo.json",
+    "tsconfig.base.json"
+  ],
+  "envMode": "strict",
+  "globalPassThroughEnv": [
+    "CI",
+    "HOBO_*",
+    "PLAYWRIGHT_*",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    "SOURCE_DATE_EPOCH",
+    "NODE_EXTRA_CA_CERTS",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "CURL_CA_BUNDLE",
+    "REQUESTS_CA_BUNDLE",
+    "NIX_SSL_CERT_FILE",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+    "CELLD_BIN",
+    "CELLD_ESBUILD"
+  ],
+  "tasks": {
+    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "typecheck": { "dependsOn": ["^build"], "outputs": [] },
+    "lint": { "outputs": [] },
+    "test": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "ts-autocode#test": { "dependsOn": ["build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "test:unit": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "test:schema": { "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "test:contract:consumer": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": ["pacts/**"] },
+    "test:contract:provider": { "dependsOn": ["build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "//#typecheck:root": {
+      "inputs": ["tsconfig.json", "tsconfig.base.json", "scripts/**", "test/**", "!scripts/ci/**"],
+      "outputs": []
+    },
+    "dev": { "cache": false, "persistent": true }
+  }
 }

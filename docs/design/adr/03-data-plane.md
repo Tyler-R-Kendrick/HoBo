@@ -683,6 +683,16 @@ hobo-code pins three external foundations as **composition contracts** (not vend
 
 **Non-goals of this amendment:** vendoring Eve, LangChain Deep Agents, OpenShell, or the Workflow SDK into the monorepo; inventing a parallel subagent CLI verb; weakening mediated-only isolation or promotion gates.
 
+### Amendment (AI SDK HarnessAgent adapters)
+
+Programmatic coding-agent turns go through Vercel AI SDK `HarnessAgent` ([Harness adapters](https://ai-sdk.dev/v7/docs/ai-sdk-harnesses/harness-adapters)). Dispatch is on the plugin's `runtime.adapter` (closed vocab, same rule as config `format`), never on agent id.
+
+- **Builtin:** load `@ai-sdk/harness-*` packages as optionalDependencies (`claude-code`, `codex`, `pi`, `opencode`, `grok-build`, plus `cline` / `deepagents` / generic `acp` when a plugin declares them). Missing packages fail closed with the package name.
+- **Custom HarnessV1:** in-repo adapters for runtimes the SDK does not ship yet — `cli` (Cursor, Copilot, Gemini, Aider, Goose until `@ai-sdk/harness-goose`) with spec `runtime.prompt` one-shot argv, `eve`, `sdk` (`generateSdkText` / ToolLoopAgent seam), `skip` (host/inference).
+- **Sandbox:** host-process adapters default to `@ai-sdk/sandbox-just-bash`. Bridge adapters (Claude Code, Codex, OpenCode, …) require an injected network sandbox (`@ai-sdk/sandbox-vercel`); local Station/rift is not that sandbox. TTY seating remains mux/tmux.
+
+In-repo contract: `createHarnessV1` / `createHarnessAgent` (`packages/code/src/ai-sdk-harness-runtime.ts`).
+
 ### References
 - Package: `packages/code` (`@hobo/code`)
 - CLI: `hobo-code` section in `docs/design/cli-spec.md`

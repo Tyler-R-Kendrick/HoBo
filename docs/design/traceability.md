@@ -449,6 +449,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0153 | [data-plane](./adr/03-data-plane.md#adr-0153) | `@hobo/patterns` catalog is source of truth; ontology-vector + explicit `hobo-code template` / `/template` zero-LLM route; Model2Vec rejected. | `packages/patterns` |
 | ADR-0154 | [data-plane](./adr/03-data-plane.md#adr-0154) | Durable `@hobo/code` review aggregate, generation-bound coverage, exact-effect GitHub publish. | `packages/code` |
 | ADR-0155 | [architecture-core](./adr/01-architecture-core.md#adr-0155) | Station capabilities as a typed manifest (`hobo.station-capability/v1`); localhost capability discovery gates `hobo-code init`; hobo-code dev scenarios dogfood `station()` declarations. | `packages/stations` · `packages/code` |
+| ADR-0156 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0156) | Plugin SPI: one extension-point model, core-owned provider/actor ports, and manifest-declared external plugins (`hobo.plugin/v1`). | `packages/core` · `packages/sdk` |
 
 ## ADR Numbering and Status Audit
 

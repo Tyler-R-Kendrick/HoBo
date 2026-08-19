@@ -329,6 +329,17 @@ too.
 is the single exception and carries its own task override — so editing a test
 can no longer invalidate 124 builds and everything downstream of them.
 
+Every turbo invocation in this repo passes `--concurrency=100%` — one task per
+logical CPU. This is a **memory** limit, not a speed one, and the difference
+matters: on a fixed 224-task set, turbo's default of 10 and a cap of 4 finish
+within noise of each other (5m49s vs 5m36s on a four-core box), so capping costs
+nothing. What it buys is that a fully-cold 902-task sweep at the default OOM-kills
+`@hobo/example-self-host-yard` — exit 137, `SIGKILL`, not an assertion — because
+each turbo task is a `pnpm` plus a vitest plus its worker pool, and ten of those
+do not fit in 16 GB. Percentage rather than a fixed number so the cap scales with
+whatever machine it lands on.
+
+
 Generated output belongs to exactly one generator. `packages/code/src/_generated`
 is the protobuf codegen pipeline's; TUI art from `gen-logo-tui.mts` /
 `gen-bo-idle-tui.mts` lives in `_generated-art`. Two generators sharing a

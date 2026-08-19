@@ -126,7 +126,7 @@ jobs:
             echo "No production package or example paths changed; skipping turbo impact lanes"
             exit 0
           fi
-          pnpm exec turbo run build typecheck lint test:unit test:schema test:contract:consumer \
+          pnpm exec turbo --concurrency=100% run build typecheck lint test:unit test:schema test:contract:consumer \
             "${FILTERS[@]}" \
             --continue=never
       - name: Production packages gate
@@ -171,7 +171,7 @@ jobs:
         # pass vacuously here. --all evaluates every production package.
         run: pnpm run architecture:guard:all
       - name: Full workspace tests
-        run: pnpm exec turbo run test
+        run: pnpm exec turbo --concurrency=100% run test
 
   dev-cold-loop-gate:
     name: hobo dev cold loop (offline <=60s)

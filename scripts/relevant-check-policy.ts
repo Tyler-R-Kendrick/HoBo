@@ -303,6 +303,7 @@ export function selectRelevantChecks(
 			args: [
 				"exec",
 				"turbo",
+				"--concurrency=100%",
 				"run",
 				"test",
 				...workspaces.map((workspace) => `--filter=./${workspace}`),
@@ -319,6 +320,7 @@ export function selectRelevantChecks(
 			args: [
 				"exec",
 				"turbo",
+				"--concurrency=100%",
 				"run",
 				"typecheck",
 				"--filter=./site",
@@ -514,6 +516,7 @@ export function selectRelevantChecks(
 			args: [
 				"exec",
 				"turbo",
+				"--concurrency=100%",
 				"run",
 				"build",
 				"typecheck",

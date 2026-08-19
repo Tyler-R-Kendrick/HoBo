@@ -44,6 +44,7 @@ if (!existsSync(HOBO_BIN)) {
 		[
 			"exec",
 			"turbo",
+			"--concurrency=100%",
 			"run",
 			"build",
 			"--filter",

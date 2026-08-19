@@ -56,7 +56,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Build MCP surface + identity + Yard and dependencies
-        run: pnpm exec turbo run build --filter @hobo/mcp... --filter @hobo/identity... --filter @hobo/cloud...
+        run: pnpm exec turbo --concurrency=100% run build --filter @hobo/mcp... --filter @hobo/identity... --filter @hobo/cloud...
       - name: Agent deploys via MCP over brokered tokens (parity + scope + inert output)
         run: pnpm --filter @hobo/mcp test
       - name: Brokered-tokens-only + >=99% brokered ratio (token broker)
@@ -78,7 +78,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Build MCP surface and dependencies
-        run: pnpm exec turbo run build --filter @hobo/mcp...
+        run: pnpm exec turbo --concurrency=100% run build --filter @hobo/mcp...
       - name: Prompt-injection corpus fail-closed + rate-limit backpressure
         run: pnpm --filter @hobo/mcp exec vitest run test/injection.test.ts test/rate-limit.test.ts
 
@@ -101,7 +101,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Build MCP surface and dependencies
-        run: pnpm exec turbo run build --filter @hobo/mcp...
+        run: pnpm exec turbo --concurrency=100% run build --filter @hobo/mcp...
       - name: Scripted agent deploys hello-bindle via MCP against the real cloud (HELD)
         run: |
           echo "S3 live-cloud lane is HELD: no live cloud wiring exists yet."

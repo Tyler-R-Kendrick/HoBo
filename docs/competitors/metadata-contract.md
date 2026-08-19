@@ -27,7 +27,7 @@ This file governs only *identity, placement, and metadata*.
 | ------------------------ | ------------------------------------------------------------------------------------------------ |
 | Canonical capture path   | `docs/competitors/<slug>.md`                                                                       |
 | Category index path      | `docs/competitors/categories/<category>.md`                                                        |
-| Derived matrix           | `docs/competitors/matrix.md` (generated — do not hand-edit inside the generated markers)           |
+| Derived views            | `docs/competitors/matrix.md`, `index.md`, and `categories/index.md` carry generated blocks — do not hand-edit inside the markers |
 | Slug charset             | `^[a-z0-9]+(-[a-z0-9]+)*$`                                                                         |
 | Slug ↔ filename          | The `competitor.slug` value **must** equal the file's basename                                     |
 | One doc per product      | Exactly one canonical file per product; a product may appear in many categories                    |
@@ -36,7 +36,8 @@ This file governs only *identity, placement, and metadata*.
 **Renames, acquisitions, and aliases.** A renamed or acquired product keeps **one** canonical file under
 its *current* name and lists every prior name in `aliases`. Aliases are globally unique across the corpus:
 no alias may collide with another competitor's slug or alias. Old paths are not left as stub files —
-discoverability comes from the alias index in [`index.md`](index.md), which the checker keeps in sync.
+discoverability comes from the alias index in [`index.md`](index.md), which is generated from the same
+front matter, so an alias is listed the moment it is declared.
 Set `status` to `renamed`/`acquired`/`abandoned` and say so in the doc body; do **not** open a second file.
 
 ## Front-matter schema
@@ -137,13 +138,13 @@ add the category to the competitor's `categories` list and the checker will requ
 `pnpm run docs:competitors` fails on:
 
 - missing/malformed `competitor:` block, unknown enum values, slug/filename mismatch;
-- a category in `categories` with no `categories/<slug>.md` index, or an index row for a non-member;
+- a missing `categories/<slug>.md` page (the vocabulary is closed: every category has a page), or an index row for a non-member;
 - a category page linking a path that is not a canonical capture;
 - duplicate slugs or aliases anywhere in the corpus;
 - `research_date` missing, malformed, or in the future;
 - a required research-contract section heading missing from a capture;
 - unresolvable relative Markdown links from any file under `docs/competitors/`;
-- drift between `matrix.md`'s generated block and the front-matter facts.
+- drift in any generated block against the front-matter facts: the `matrix.md` matrix and ledger, the corpus `index.md` category/capture/alias tables, and the `categories/index.md` roster.
 
 Regenerate derived views with `pnpm run docs:competitors:fix`.
 

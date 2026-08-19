@@ -129,3 +129,33 @@ the old values.
 
 With the algorithms equal the runners could join: −72 lines across the three, and `sortKeys` is
 now exported from core because `runner-github` needs the ordered *object*, not the string.
+
+## Layer 04 — the stack was adding lines, so this subtracts them
+
+Called out and correct: layers 00–03 were net **+215** across the stack, and test files alone
+were **+234 with zero deletions**. A consolidation initiative that only adds is not one.
+
+`describeConcern` (in `@hobo/contract-harness`) reads a `.cases.jsonl` beside the test, groups
+rows by member, and emits one test per member. Setup and teardown are declared once as
+`subject`/`teardown`. A case is a line of data, so adding one is a one-line diff instead of
+another copy of arrange-act-assert.
+
+It also does what a hand-written suite cannot: the subject's callable surface is read at runtime
+and **a member with no cases fails the suite**, naming it. Falsified by adding an untested export
+— `expected [ 'untestedHelper' ] to deeply equal []`.
+
+| Suite | Before | After | Delta |
+|---|---|---|---|
+| `capability-manifest` | 166 | 56 (25 test + 31 cases) | −110 |
+| `naming` | 119 | 33 (18 test + 15 cases) | −86 |
+| harness | — | 158 | +158 |
+| **layer total** | | | **−28** |
+
+Core went from 155 to 166 tests while shrinking, and every further adopter is pure subtraction —
+the harness cost is paid once.
+
+Two harness bugs were found by using it rather than by reading it: `match` compared
+`String(actual)`, which is `[object Object]` for any returned record; and ES module namespaces
+expose every export as a getter, so constants were being demanded as "members needing cases".
+Module namespaces now cover functions only — a constant is pinned by the cases that use it.
+

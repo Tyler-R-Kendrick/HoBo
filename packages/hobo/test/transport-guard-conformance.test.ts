@@ -36,7 +36,19 @@ import type {
 import { guardedAwsTransport } from "@hobo/provider-aws";
 import { guardedAzureTransport } from "@hobo/provider-azure";
 import { guardedCloudflareTransport } from "@hobo/provider-cloudflare";
+import {
+	guardedDigitalOceanTransport,
+	guardedFunctionsTransport,
+	guardedSpacesTransport,
+} from "@hobo/provider-digitalocean";
 import { guardedGcpTransport } from "@hobo/provider-gcp";
+import {
+	guardedHetznerTransport,
+	guardedHetznerUnifiedApiTransport,
+	guardedObjectStorageTransport,
+} from "@hobo/provider-hetzner";
+import { guardedHostingerTransport } from "@hobo/provider-hostinger";
+import { guardedKubernetesTransport } from "@hobo/provider-kubernetes";
 import { describe, expect, it } from "vitest";
 
 /** A transport that records whether it was ever reached. A refused request
@@ -114,6 +126,105 @@ const CASES: readonly GuardCase[] = [
 		foreignHost: "https://api.cloudflare.example.com/client/v4/accounts/acct",
 		foreignPath: "https://api.cloudflare.com/internal/v4/accounts/acct",
 		maxTimeoutMs: 15_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "digitalocean (v2)",
+		wrap: (inner) => guardedDigitalOceanTransport(inner),
+		allowed: "https://api.digitalocean.com/v2/databases",
+		foreignHost: "https://api.digitalocean.example.com/v2/databases",
+		foreignPath: "https://api.digitalocean.com/v1/databases",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "hetzner (cloud api)",
+		wrap: (inner) => guardedHetznerTransport(inner),
+		allowed: "https://api.hetzner.cloud/v1/servers",
+		// The Object Storage surface this package deliberately excludes: a
+		// different host with a different credential entirely.
+		foreignHost: "https://fsn1.your-objectstorage.com/v1/servers",
+		foreignPath: "https://api.hetzner.cloud/v2/servers",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		// A DigitalOcean Functions namespace's own host. Unlike every other row
+		// here the host is not a constant: it comes from the namespace record on
+		// the control plane, is checked against the Functions host shape, and
+		// then becomes an exact-host policy like any other. The foreignHost probe
+		// is a *different* Functions namespace, which is the case a shape check
+		// alone would wave through.
+		label: "digitalocean (functions namespace)",
+		wrap: (inner) =>
+			guardedFunctionsTransport(inner, "faas-nyc1-2ef2e6cc.doserverless.co"),
+		allowed:
+			"https://faas-nyc1-2ef2e6cc.doserverless.co/api/v1/namespaces/fn-1/actions/greet",
+		foreignHost:
+			"https://faas-lon1-9999aaaa.doserverless.co/api/v1/namespaces/fn-1/actions/greet",
+		foreignPath:
+			"https://faas-nyc1-2ef2e6cc.doserverless.co/api/v1/activations",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		// Hetzner's newer host, carrying the surfaces it moved off Robot. Same
+		// bearer-token scheme as the Cloud API, so it gets its own policy rather
+		// than a widened host list: one policy naming both hosts would let a
+		// Cloud API path be requested from this origin and the guard would have
+		// nothing to say about it — which is what the foreignPath row asserts.
+		label: "hetzner (unified api)",
+		wrap: (inner) => guardedHetznerUnifiedApiTransport(inner),
+		allowed: "https://api.hetzner.com/v1/storage_boxes",
+		foreignHost: "https://api.hetzner.cloud/v1/storage_boxes",
+		foreignPath: "https://api.hetzner.com/v1/servers",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "hostinger (vps + dns + hosting)",
+		wrap: (inner) => guardedHostingerTransport(inner),
+		allowed: "https://developers.hostinger.com/api/vps/v1/virtual-machines",
+		foreignHost:
+			"https://developers.hostinger.example.com/api/vps/v1/virtual-machines",
+		// The order-placing namespace. This row is the whole reason the guard
+		// lists prefixes rather than the bare host: a resolver that could reach
+		// it could spend the account's money.
+		foreignPath: "https://developers.hostinger.com/api/billing/v1/orders",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		// The S3 surfaces are separate guards on purpose: a different host and a
+		// different credential from their provider's control plane, so the
+		// refusal matrix has to hold for them independently.
+		label: "digitalocean spaces (s3)",
+		wrap: (inner) => guardedSpacesTransport(inner, "nyc3"),
+		allowed: "https://nyc3.digitaloceanspaces.com/hobo-assets",
+		foreignHost: "https://ams3.digitaloceanspaces.com/hobo-assets",
+		// Whole-host policy: S3 addresses a bucket and key as the entire path.
+		foreignPath: undefined,
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "hetzner object storage (s3)",
+		wrap: (inner) => guardedObjectStorageTransport(inner, "fsn1"),
+		allowed: "https://fsn1.your-objectstorage.com/hobo-assets",
+		foreignHost: "https://hel1.your-objectstorage.com/hobo-assets",
+		foreignPath: undefined,
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "kubernetes (apiserver)",
+		wrap: (inner) =>
+			guardedKubernetesTransport(inner, "https://cluster.example:6443"),
+		allowed: "https://cluster.example:6443/api/v1/namespaces/shop/services",
+		foreignHost: "https://other.example:6443/api/v1/namespaces/shop/services",
+		foreignPath:
+			"https://cluster.example:6443/apis/rbac.authorization.k8s.io/v1/clusterroles",
+		maxTimeoutMs: 30_000,
 		maxResponseBytes: 512 * 1024,
 	},
 ];

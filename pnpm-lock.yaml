@@ -701,9 +701,21 @@ importers:
       '@hobo/provider-cloudflare':
         specifier: workspace:*
         version: link:../providers/provider-cloudflare
+      '@hobo/provider-digitalocean':
+        specifier: workspace:*
+        version: link:../providers/provider-digitalocean
       '@hobo/provider-gcp':
         specifier: workspace:*
         version: link:../providers/provider-gcp
+      '@hobo/provider-hetzner':
+        specifier: workspace:*
+        version: link:../providers/provider-hetzner
+      '@hobo/provider-hostinger':
+        specifier: workspace:*
+        version: link:../providers/provider-hostinger
+      '@hobo/provider-kubernetes':
+        specifier: workspace:*
+        version: link:../providers/provider-kubernetes
       '@hobo/provider-vercel':
         specifier: workspace:*
         version: link:../providers/provider-vercel
@@ -1230,12 +1242,24 @@ importers:
       '@hobo/provider-cloudflare':
         specifier: workspace:*
         version: link:../providers/provider-cloudflare
+      '@hobo/provider-digitalocean':
+        specifier: workspace:*
+        version: link:../providers/provider-digitalocean
       '@hobo/provider-gcp':
         specifier: workspace:*
         version: link:../providers/provider-gcp
+      '@hobo/provider-hetzner':
+        specifier: workspace:*
+        version: link:../providers/provider-hetzner
+      '@hobo/provider-hostinger':
+        specifier: workspace:*
+        version: link:../providers/provider-hostinger
       '@hobo/provider-kafka':
         specifier: workspace:*
         version: link:../providers/provider-kafka
+      '@hobo/provider-kubernetes':
+        specifier: workspace:*
+        version: link:../providers/provider-kubernetes
       '@hobo/provider-lakebed':
         specifier: workspace:*
         version: link:../providers/provider-lakebed
@@ -1748,6 +1772,12 @@ importers:
         specifier: workspace:*
         version: link:../../bindles
 
+  packages/providers/provider-digitalocean:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/providers/provider-flux:
     dependencies:
       '@hobo/core':
@@ -1759,6 +1789,18 @@ importers:
         version: 24.13.2
 
   packages/providers/provider-gcp:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/providers/provider-hetzner:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/providers/provider-hostinger:
     dependencies:
       '@hobo/core':
         specifier: workspace:*

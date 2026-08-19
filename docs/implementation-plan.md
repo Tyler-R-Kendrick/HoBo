@@ -305,10 +305,12 @@ Remaining (cap-blocked):
 - ▢ `provider-azure` · M2 · slice
 - ▢ `provider-gcp` · M2 · slice
 - ▢ `provider-cloudflare` · M2 · slice
-- ▢ `provider-hetzner` · M2 · slice
+- ▢ `provider-hetzner` · M2 · slice — **landed:** catalog + Cloud Server/LB/Volume resolvers (fake-transport proof); five slots empty, no managed data services
+- `provider-digitalocean` · M2 · slice — **landed;** not in this doc's original design list. Catalog + resolvers for 9 of 14 products (fake-transport proof)
+- `provider-hostinger` · M2 · slice — **landed;** not in this doc's original design list. Adopt-and-converge only: allocation there is a billing order
 - ▢ `provider-fly` · M2 · slice
 - ▢ `provider-vercel` · M2 · slice
-- ▢ `provider-kubernetes` (+ Crossplane substrate) · M2 · slice
+- ▢ `provider-kubernetes` (+ Crossplane substrate) · M2 · slice — **partly landed:** provider parity (manifest, Yard catalog of built-ins, yard event-fold, apiserver resolvers for 6 of 7) plus the existing placement driver; the Crossplane substrate is still open
 - ▢ `iac-opentofu` · M2 · slice
 - ▢ `iac-crossplane` · M2 · slice
 - ▢ `iac-cdktf` (import-only) · M2 · slice

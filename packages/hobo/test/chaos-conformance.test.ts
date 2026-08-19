@@ -3,10 +3,18 @@
  *
  * `chaos-resolver.test.ts` already drives Cloudflare R2 through injected faults
  * and pins the one property that matters. This widens that from one product to
- * one product per provider, because the resolvers were written against four
+ * one product per provider, because the resolvers were written against several
  * different API shapes — ARM with long-running operations, Google REST with
- * Operations polling, SigV4 over four request protocols, Cloudflare v4 — and
- * "R2 converges" is evidence about R2.
+ * Operations polling, SigV4 over four request protocols, Cloudflare v4,
+ * DigitalOcean's paged collections, Hetzner's exact name filter, and a
+ * Kubernetes apiserver — and "R2 converges" is evidence about R2.
+ *
+ * The listed-collection shapes are the interesting additions. Where ARM and
+ * Google let a create's own response address the resource afterwards, a
+ * DigitalOcean or Hetzner resolver must find its record again *by the name it
+ * chose*, in a list that also holds everybody else's — precisely the step a
+ * fault can hide, and precisely where "adopt the first record" would duplicate
+ * or, worse, adopt a stranger's resource.
  *
  * The property under test is convergence after an *ambiguous* failure: the
  * socket died, or the deadline passed, or the body came back truncated, and the
@@ -26,7 +34,19 @@ import {
 	azureResolverRegistry,
 	guardedAzureTransport,
 } from "@hobo/provider-azure";
+import {
+	digitaloceanResolverRegistry,
+	guardedDigitalOceanTransport,
+} from "@hobo/provider-digitalocean";
 import { gcpResolverRegistry, guardedGcpTransport } from "@hobo/provider-gcp";
+import {
+	guardedHetznerTransport,
+	hetznerResolverRegistry,
+} from "@hobo/provider-hetzner";
+import {
+	guardedKubernetesTransport,
+	kubernetesResolverRegistry,
+} from "@hobo/provider-kubernetes";
 import {
 	type ChaosSubject,
 	chaosViolations,
@@ -277,12 +297,242 @@ const gcpMemorystore: ChaosSubject = {
 	},
 };
 
+/**
+ * A world whose collections are *listed*, not GET-by-name — the shape
+ * DigitalOcean and Hetzner both have, and the one that makes convergence
+ * genuinely harder than the ARM/Google case above.
+ *
+ * The difference is worth its own world rather than a flag on
+ * {@link fakeWorld}: there, a create's own response is enough to address the
+ * resource afterwards. Here the resolver must find its record again by the
+ * *name it chose*, in a list that also contains everybody else's, which is
+ * precisely the step a fault can hide. A resolver that adopted "the first
+ * record in the list" would pass the direct-write world and duplicate — or
+ * worse, adopt a stranger's resource — under this one.
+ *
+ * `nameFiltered` models Hetzner's exact `?name=` filter; without it the whole
+ * collection comes back, as DigitalOcean's does.
+ */
+function listedWorld(options: {
+	readonly collectionPath: string;
+	readonly listKey: string;
+	readonly itemKey: string;
+	readonly nameFiltered: boolean;
+	readonly stored: (body: Record<string, unknown>, id: number) => unknown;
+}) {
+	const records: Record<string, unknown>[] = [];
+	const creates: TransportRequest[] = [];
+	let nextId = 1;
+
+	const transport: HttpTransport = async (request) => {
+		const url = new URL(request.url);
+		if (request.method === "GET" && url.pathname === options.collectionPath) {
+			const wanted = url.searchParams.get("name");
+			const listed =
+				options.nameFiltered && wanted !== null
+					? records.filter((entry) => entry.name === wanted)
+					: records;
+			return json(200, { [options.listKey]: listed, meta: {} });
+		}
+		if (request.method === "POST" && url.pathname === options.collectionPath) {
+			creates.push(request);
+			const body = (request.body ? JSON.parse(request.body) : {}) as Record<
+				string,
+				unknown
+			>;
+			const record = options.stored(body, nextId++) as Record<string, unknown>;
+			records.push(record);
+			return json(201, { [options.itemKey]: record });
+		}
+		if (request.method === "DELETE") {
+			records.length = 0;
+			return json(200, {});
+		}
+		return json(404, { message: "not found" });
+	};
+
+	return {
+		transport,
+		countResources: () => records.length,
+		countCreates: () => creates.length,
+	};
+}
+
+const digitaloceanDatabase: ChaosSubject = {
+	label: "digitalocean.managed-postgres/v1",
+	create(wrap) {
+		const world = listedWorld({
+			collectionPath: "/v2/databases",
+			listKey: "databases",
+			itemKey: "database",
+			nameFiltered: false,
+			stored: (body, id) => ({
+				id: `db-${id}`,
+				name: body.name,
+				engine: body.engine,
+				region: body.region,
+				size: body.size,
+				num_nodes: body.num_nodes,
+				status: "creating",
+				connection: { host: `${String(body.name)}.db.example`, port: 25060 },
+			}),
+		});
+		const registry = digitaloceanResolverRegistry({
+			resolveCredential: async () => "pat-token",
+		});
+		const resolver = registry.get("digitalocean.managed-postgres/v1");
+		if (!resolver) {
+			throw new Error("digitalocean.managed-postgres/v1 resolver missing");
+		}
+		const transport = guardedDigitalOceanTransport(wrap(world.transport));
+		const request = parseResolveRequest({
+			ref: {
+				slot: "data",
+				productId: "digitalocean.managed-postgres/v1",
+				logicalId: "ledger",
+			},
+			desired: { region: "nyc3", size: "db-s-1vcpu-1gb" },
+			credentialRef: "env://DIGITALOCEAN_TOKEN",
+		});
+		return {
+			reconcile: () => resolver.reconcile(request, transport),
+			countResources: world.countResources,
+			countCreates: world.countCreates,
+		};
+	},
+};
+
+const hetznerServer: ChaosSubject = {
+	label: "hetzner.cloud-server/v1",
+	create(wrap) {
+		const world = listedWorld({
+			collectionPath: "/v1/servers",
+			listKey: "servers",
+			itemKey: "server",
+			nameFiltered: true,
+			stored: (body, id) => ({
+				id: 100 + id,
+				name: body.name,
+				status: "initializing",
+				server_type: { name: body.server_type },
+				datacenter: { location: { name: body.location } },
+				public_net: { ipv4: { ip: "203.0.113.42" } },
+			}),
+		});
+		const registry = hetznerResolverRegistry({
+			resolveCredential: async () => "project-token",
+		});
+		const resolver = registry.get("hetzner.cloud-server/v1");
+		if (!resolver) throw new Error("hetzner.cloud-server/v1 resolver missing");
+		const transport = guardedHetznerTransport(wrap(world.transport));
+		const request = parseResolveRequest({
+			ref: {
+				slot: "web",
+				productId: "hetzner.cloud-server/v1",
+				logicalId: "api-1",
+			},
+			desired: {
+				location: "fsn1",
+				serverType: "cx22",
+				image: "ubuntu-24.04",
+			},
+			credentialRef: "env://HCLOUD_TOKEN",
+		});
+		return {
+			reconcile: () => resolver.reconcile(request, transport),
+			countResources: world.countResources,
+			countCreates: world.countCreates,
+		};
+	},
+};
+
+/**
+ * A fake apiserver. Its create addresses the new object by `metadata.name`
+ * rather than a top-level `name`, which is why it cannot ride on
+ * {@link fakeWorld}: a world that keyed on `body.name` would store every
+ * Deployment under the collection path and then answer the read-back with a
+ * 404, making the resolver look non-convergent for the world's reason rather
+ * than its own.
+ */
+function apiserverWorld(collectionPath: string) {
+	const objects = new Map<string, unknown>();
+	const creates: TransportRequest[] = [];
+
+	const transport: HttpTransport = async (request) => {
+		const url = new URL(request.url);
+		if (request.method === "POST" && url.pathname === collectionPath) {
+			creates.push(request);
+			const body = (request.body ? JSON.parse(request.body) : {}) as {
+				metadata?: { name?: string };
+			};
+			const name = body.metadata?.name ?? "unnamed";
+			const stored = {
+				...body,
+				metadata: {
+					...body.metadata,
+					uid: "11111111-2222-3333-4444-555555555555",
+				},
+			};
+			objects.set(`${collectionPath}/${name}`, stored);
+			return json(201, stored);
+		}
+		if (request.method === "DELETE") {
+			objects.delete(url.pathname);
+			return json(200, { kind: "Status", status: "Success" });
+		}
+		const found = objects.get(url.pathname);
+		return found === undefined
+			? json(404, { kind: "Status", reason: "NotFound", message: "not found" })
+			: json(200, found);
+	};
+
+	return {
+		transport,
+		countResources: () => objects.size,
+		countCreates: () => creates.length,
+	};
+}
+
+const kubernetesDeployment: ChaosSubject = {
+	label: "kubernetes.deployment/v1",
+	create(wrap) {
+		const world = apiserverWorld("/apis/apps/v1/namespaces/shop/deployments");
+		const registry = kubernetesResolverRegistry({
+			apiServerUrl: "https://cluster.example:6443",
+			resolveCredential: async () => "projected-service-account-token",
+		});
+		const resolver = registry.get("kubernetes.deployment/v1");
+		if (!resolver) throw new Error("kubernetes.deployment/v1 resolver missing");
+		const transport = guardedKubernetesTransport(
+			wrap(world.transport),
+			"https://cluster.example:6443",
+		);
+		const request = parseResolveRequest({
+			ref: {
+				slot: "web",
+				productId: "kubernetes.deployment/v1",
+				logicalId: "api",
+			},
+			desired: { namespace: "shop", spec: { replicas: 2 } },
+			credentialRef: "secret://camp/cluster-token",
+		});
+		return {
+			reconcile: () => resolver.reconcile(request, transport),
+			countResources: world.countResources,
+			countCreates: world.countCreates,
+		};
+	},
+};
+
 describe("resolvers converge after an ambiguous failure", () => {
 	for (const subject of [
 		azureKeyVault,
 		azureRedisCache,
 		gcpBucket,
 		gcpMemorystore,
+		digitaloceanDatabase,
+		hetznerServer,
+		kubernetesDeployment,
 	]) {
 		it(`${subject.label} survives every ambiguous fault on the write`, async () => {
 			// Index 1: these resolvers read before they write, so call 0 is the

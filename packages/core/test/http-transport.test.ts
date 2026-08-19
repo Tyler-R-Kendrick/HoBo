@@ -401,10 +401,14 @@ describe("allowedHostSuffixes", () => {
 			/^request url must use https, got http$/u,
 		],
 		[
+			// The suffix rule widens which *host* is reachable and nothing else;
+			// a port this policy never named is still refused. Anchored on the
+			// port so it cannot pass on the generic host refusal, and on the
+			// allowed set so it cannot pass if the policy silently widens.
 			"a non-default port on a host the suffix does match",
 			"https://fake-mallard-000000.upstash.io:8443/get/key",
 			"TRANSPORT_HOST_FORBIDDEN",
-			/^request url must use the default https port, got 8443$/u,
+			/^request url must use the default https port or one this policy allows \(443\), got 8443$/u,
 		],
 		[
 			"userinfo on a host the suffix does match",

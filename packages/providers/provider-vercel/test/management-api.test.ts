@@ -118,7 +118,10 @@ describe("outbound requests are pinned to the official API", () => {
 				[
 					"https://api.vercel.com:8443/v9/projects/prj_1",
 					"TRANSPORT_HOST_FORBIDDEN",
-					/^request url must use the default https port, got 8443$/u,
+					// Vercel names no extra port, so the allowed set is 443 alone.
+					// Anchored on both the set and the rejected port: a policy that
+					// silently widened would no longer match.
+					/^request url must use the default https port or one this policy allows \(443\), got 8443$/u,
 				],
 				[
 					"https://api.vercel.com/v1/undocumented/thing",

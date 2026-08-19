@@ -442,6 +442,23 @@ non-loopback http refused under `allowInsecureLoopback`, show a cross-origin
 asset refused under `requireSameOrigin`. Then delete each new policy field's
 enforcement and show the corresponding test fails.
 
+**Specify and test how the three options interact**, because unspecified
+interaction is where a guard grows a hole. At minimum: a suffix match *and*
+`allowInsecureLoopback` both set — does `http://evil.upstash.io` pass? (It must
+not: loopback is a hostname test, not a scheme waiver.) And `requireSameOrigin`
+together with `allowedHosts` — the same-origin check is an additional
+constraint, never a replacement. Write the matrix as a table test.
+
+**You are permitted to conclude this extension is a bad idea.** §1.3 records
+that "consolidate the eight" was an actively harmful target because three
+transports hold properties core's policy does not model. The premise here is
+that *extending* the policy removes that objection — but if the extension turns
+`TransportGuardPolicy` into three optional modes that interact in ways nobody
+can hold in their head, then three small explicit guards were the better design
+and consolidating them is the same mistake wearing a nicer hat. If you reach
+that conclusion, return `premise-false` with the policy shape you would have had
+to write. That is a real result, not a failure to deliver.
+
 **Do not** add `NODE_TLS_REJECT_UNAUTHORIZED` or any option that disables
 verification.
 
@@ -524,6 +541,28 @@ Report a table: file, line, what it asserted before, what it asserts now, and
 what the falsification showed. **Where tightening reveals a test that never
 tested anything, say so loudly** — that is the highest-value output of this
 swarm, and it has already happened three times in this repo.
+
+**Bound the sweep by risk, not by file count.** The repo has on the order of
+1,600 test files; sweeping all of them uniformly is neither achievable in one
+pass nor useful. Work outward from where a weak assertion actually costs
+something:
+
+1. Anything asserting a **refusal** — guards, policy checks, credential custody,
+   boundary and conformance rules. A weak assertion here is how the §1.1 finding
+   got published.
+2. Contract and PACT tests, where a loose matcher lets a real protocol change
+   through.
+3. Everything else, if there is room.
+
+Start with:
+
+```bash
+grep -rn 'assert\.throws([^,)]*)$\|\.toThrow()' --include='*.test.ts' packages/ | head -50
+grep -rn '\.toThrow(/[^/]*|' --include='*.test.ts' packages/ | head -50
+```
+
+Report what you did **not** get to, by tier. A truthful "tier 3 untouched" is
+worth more than a claim of full coverage nobody can check.
 
 Do not change production code. If tightening an assertion reveals a production
 defect, report it; do not fix it.

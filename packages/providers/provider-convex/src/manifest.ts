@@ -1,14 +1,23 @@
+import {
+	AUTH_SCHEMA,
+	CAPABILITIES_SCHEMA,
+	COST_SCHEMA,
+	canonicalJson,
+	digestRef,
+	MANIFEST_SCHEMA,
+	stableDigest,
+} from "@hobo/core";
 import type { InitialCapabilityPort } from "./equivalence.js";
 import { EQUIVALENCE_CLASSES } from "./equivalence.js";
 
-// public-contract: capability-manifest document schema ids (Plan 6 signs).
-export const MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
-// public-contract: capabilities document schema id.
-export const CAPABILITIES_SCHEMA = "hobo.capabilities/v1";
-// public-contract: auth document schema id.
-export const AUTH_SCHEMA = "hobo.provider-auth/v1";
-// public-contract: cost document schema id.
-export const COST_SCHEMA = "hobo.cost/v1";
+// The schema ids are platform contract, so they live in @hobo/core and are
+// re-exported here to keep this package's public surface unchanged.
+export {
+	AUTH_SCHEMA,
+	CAPABILITIES_SCHEMA,
+	COST_SCHEMA,
+	MANIFEST_SCHEMA,
+} from "@hobo/core";
 
 // public-contract: the provider id every published document carries.
 export const CONVEX_PROVIDER_ID = "@hobo/provider-convex";
@@ -227,37 +236,4 @@ export function parsePublishedManifest(
 		auth,
 		cost,
 	};
-}
-
-function canonicalJson(value: unknown): string {
-	return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
-}
-
-function sortKeys(value: unknown): unknown {
-	if (Array.isArray(value)) {
-		return value.map((item) => sortKeys(item));
-	}
-	if (value && typeof value === "object") {
-		return Object.fromEntries(
-			Object.entries(value as Record<string, unknown>)
-				.sort(([left], [right]) => left.localeCompare(right))
-				.map(([key, child]) => [key, sortKeys(child)]),
-		);
-	}
-	return value;
-}
-
-function stableDigest(value: unknown): string {
-	// Deterministic non-cryptographic digest for document integrity references
-	// inside the published bundle (the Registry hashes the index separately).
-	const text = JSON.stringify(sortKeys(value));
-	let hash = 0;
-	for (let index = 0; index < text.length; index += 1) {
-		hash = (hash * 31 + text.charCodeAt(index)) | 0;
-	}
-	return `fnv:${(hash >>> 0).toString(16).padStart(8, "0")}`;
-}
-
-function digestRef(seed: string): string {
-	return stableDigest({ seed });
 }

@@ -22,9 +22,9 @@ Two of my own estimates were wrong. Both are recorded because the measurement is
 | # | Branch | Scope | State |
 |---|---|---|---|
 | 00 | `claude/consolidate-00-green-trunk-boundaries` | Make the boundary gate actually run | **done** — PR #1115 |
-| 01 | `claude/consolidate-01-core-manifest-utils` | Manifest codec into `@hobo/core` + pinning tests | **done** (PR pending) |
-| 02 | `claude/consolidate-02-migrate-provider-manifests` | aws/azure/gcp/lakebed/convex onto it (−275) | pending |
-| 03 | `claude/consolidate-03-migrate-runner-manifests` | blacksmith/depot/github (−46) | pending |
+| 01 | `claude/consolidate-01-core-manifest-utils` | Manifest codec into `@hobo/core` + pinning tests | **done** — PR #1116 |
+| 02 | `claude/consolidate-02-migrate-provider-manifests` | aws/azure/gcp/lakebed/convex onto it | **done** (−356) |
+| 03 | ~~`claude/consolidate-03-migrate-runner-manifests`~~ | blacksmith/depot/github | **cancelled — not duplication** |
 
 ### Layer 00 — why it exists, and why it is the bottom
 
@@ -61,3 +61,46 @@ transports onto core's `guardTransport`.
   captured from the pre-move provider implementation so a "tidier" rewrite fails here rather than
   at a consumer. Baseline bytes for all five providers captured out-of-tree for layer 02 to diff
   against.
+- 02: five providers migrated, net −356 lines. Verified by capturing all 20 published documents
+  (5 providers x 4) before and after and diffing: **byte-identical**. The comparator was itself
+  falsified by perturbing one byte, which it detected. convex keeps its own parser (it genuinely
+  differs) and shares only the helpers.
+
+## Layer 03 was cancelled, and the reason is the useful part
+
+The three runners (`runner-blacksmith`, `runner-depot`, `runner-github`) share a byte-identical
+23-line helper block, which is how a hash-based duplicate scan grouped them and how they ended up
+in this plan as "46 removable lines". Reading the block before migrating it showed the grouping was
+right and the conclusion was wrong:
+
+| Helper | Providers (`920f2c1d`) | Runners (`b4ea7026`) |
+|---|---|---|
+| `canonicalJson` | same | same |
+| `sortKeys` | same (untyped) | same (generic `<T>`) |
+| `digestRef` | `fnv:` — the non-cryptographic FNV-ish walk | **`sha256:` via `node:crypto`** |
+| `stableDigest` | present | **absent** |
+
+`digestRef` is **a different algorithm wearing the same name**. Migrating the runners onto core's
+version would rewrite every digest reference they publish from `sha256:…` to `fnv:…` — exactly the
+silent-breakage class that layer 01's pinning tests exist to prevent, and it would have been
+delivered under a line-count win.
+
+What is actually shared is `canonicalJson` plus `sortKeys`, roughly 36 lines across three files.
+Taking it would mean exporting `sortKeys` from `@hobo/core` as public surface, because each runner
+still needs it for its own sha256 digest. Widening a layer-0 package's API to save ~36 lines in
+three layer-2 packages is a bad trade, so the runners are left alone.
+
+### The finding worth escalating
+
+Two different digest algorithms are in use inside the **same document family**. Providers publish
+`fnv:` references in `/.well-known/capability-manifest/cost.json`; runners publish `sha256:` ones.
+A consumer verifying a reference has to know which kind of package produced it.
+
+The runners are almost certainly the ones that are right. `stableDigest`'s own comment calls itself
+"deterministic non-cryptographic" and "not a security primitive", and a 32-bit FNV-ish walk has
+collisions well within reach for an attacker who controls document content — and these documents
+come from a provider-controlled origin.
+
+**This is not fixable by a refactor.** Changing the providers to sha256 changes every reference they
+have already published, so it needs an owner decision about versioning the manifest schema, not a
+consolidation PR. Flagged here rather than silently unified.

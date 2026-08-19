@@ -48,7 +48,7 @@ tags: [hobo, competitors, matrix]
 | **Fly.io** | [`flyio.md`](flyio.md) | fly | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | environments, runtime-portability, delivery | provider-target, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Harness Platform** | [`harness.md`](harness.md) | harness.io, harness delegate | `platform-orchestrators` | `platform-orchestrators` · `delivery-release-gitops` · `developer-portals-idps` · `finops-governance-placement` · `agentic-infrastructure` | overlapping | delivery, governance, environments, finops, extensibility, observability | benchmark, borrow, integrate | mixed | active | 2026-08-19 | v1 |
 | **Heroku** | [`heroku.md`](heroku.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | authoring, environments, delivery, ecosystem | benchmark | mixed | active | 2026-08-12 | pre-v1 |
-| **Humanitec** | [`humanitec.md`](humanitec.md) | — | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` | direct | app-graph, environments, provider-matching, governance | displace, benchmark | mixed | active | 2026-08-12 | pre-v1 |
+| **Humanitec** | [`humanitec.md`](humanitec.md) | — | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` | direct | app-graph, environments, provider-matching, governance | displace, benchmark | mixed | active | 2026-08-19 | v1 |
 | **InsForge** | [`insforge.md`](insforge.md) | — | `backend-data-platforms` | `backend-data-platforms` · `agentic-infrastructure` | adjacent | agent-surface, typed-contracts | benchmark, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Lakebed** | [`lakebed.md`](lakebed.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `agentic-infrastructure` | direct | agent-surface, authoring, delivery | displace | mixed | active | 2026-08-12 | pre-v1 |
 | **Massdriver** | [`massdriver.md`](massdriver.md) | massdriver.cloud | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `hybrid-multicloud-enterprise` | direct | typed-contracts, wiring, app-graph, environments, extensibility, governance | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
@@ -95,7 +95,6 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [FinOps tooling cohort](finops-tooling.md) | 2026-08-12 | 7 | pre-v1 — rewrite to contract |
 | [Fly.io](flyio.md) | 2026-08-12 | 7 | pre-v1 — rewrite to contract |
 | [Heroku](heroku.md) | 2026-08-12 | 7 | pre-v1 — rewrite to contract |
-| [Humanitec](humanitec.md) | 2026-08-12 | 7 | pre-v1 — rewrite to contract |
 | [InsForge](insforge.md) | 2026-08-12 | 7 | pre-v1 — rewrite to contract |
 | [Lakebed](lakebed.md) | 2026-08-12 | 7 | pre-v1 — rewrite to contract |
 | [Modal](modal.md) | 2026-08-12 | 7 | pre-v1 — rewrite to contract |
@@ -127,10 +126,11 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [DuploCloud](duplocloud.md) | 2026-08-19 | 0 | fresh |
 | [Facets.cloud](facets.md) | 2026-08-19 | 0 | fresh |
 | [Harness Platform](harness.md) | 2026-08-19 | 0 | fresh |
+| [Humanitec](humanitec.md) | 2026-08-19 | 0 | fresh |
 | [Massdriver](massdriver.md) | 2026-08-19 | 0 | fresh |
 | [Mia-Platform](mia-platform.md) | 2026-08-19 | 0 | fresh |
 | [OpenChoreo](openchoreo.md) | 2026-08-19 | 0 | fresh |
 
-_47 canonical captures across 13 categories; 7 at contract v1._
+_47 canonical captures across 13 categories; 8 at contract v1._
 
 <!-- END GENERATED: competitor-matrix -->

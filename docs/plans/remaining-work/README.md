@@ -102,7 +102,33 @@ Statements in prose age badly. This repo has carried, in committed prose:
 Before you rely on a count, a claim, or a "this is deliberate", check it against
 the code. If it is wrong, correct it *and say so in your handback*.
 
-### 0.5 Scope discipline
+### 0.5 Registering a new package — read this before creating one
+
+**A new package that is not registered silently disables the entire boundary
+gate.** `parseWorkspaceEdge` *throws* on an unclassified workspace path rather
+than reporting it, so the gate aborts before evaluating any rule and reports
+nothing wrong. This repo has already shipped that state: `@hobo/bindings` went
+in without its entry and trunk had no boundary enforcement at all, silently,
+until someone noticed the gate had stopped saying anything.
+
+Two consequences bind Swarms E–H:
+
+1. **Package location.** `pnpm-workspace.yaml` uses explicit per-directory
+   globs — `packages/*`, `packages/adapters/*`, `packages/providers/*`, and so
+   on. There is no `packages/manifests/*`. The manifest packages therefore live
+   **flat at `packages/manifest-<name>`**, which `packages/*` already matches,
+   so no workspace edit is needed and no swarm blocks on the coordinator. Do not
+   nest them.
+2. **Classification is pre-registered for you.** `KNOWN_PACKAGE_PATHS` in
+   `packages/conformance/src/boundaries.ts` is Swarm C's file, and C registers
+   all four manifest paths as part of its own deliverable. The set is not
+   asserted against the filesystem, so registering a path before the package
+   exists is safe and is what makes E–H independent of C. If you are E–H and the
+   boundary gate throws `unknown import source|target` naming your package, C's
+   registration has not landed — say so in your handback rather than editing C's
+   file.
+
+### 0.6 Scope discipline
 
 Do exactly your swarm's deliverable. If you find a defect outside your file
 ownership, **report it in your handback; do not fix it.** Two agents editing one
@@ -112,7 +138,7 @@ If your deliverable turns out to be wrong, impossible, or already done, stop and
 say so. A swarm that reports "this premise is false, here is the evidence" has
 succeeded. One that invents work to look productive has not.
 
-### 0.6 Handback format
+### 0.7 Handback format
 
 Write `.sdlc/report-<swarm-id>.json`:
 
@@ -266,12 +292,12 @@ handback, not a licence.
 | **A** | celld live lane green | `packages/runtimes/runtime-celld/**`, `scripts/fetch-celld.mts` |
 | **B** | Transport policy extension; last three transports fully on the shared guard | `packages/core/src/ports/http-transport.ts`, `packages/core/test/http-transport.test.ts`, `packages/providers/provider-{upstash,kubernetes,browser-wasm}/**` |
 | **C** | Boundary-guard hardening + the tiering ADR | `packages/conformance/src/boundaries.ts`, `packages/conformance/test/boundaries.test.ts`, `scripts/check-package-boundaries.mts`, `scripts/test/check-package-boundaries.test.ts`, `docs/design/adr/**` |
-| **D** | Assertion-strength sweep | every `**/test/**` and `**/contracts/**` test file **except** those owned by A, B, E–H |
-| **E** | `@hobo/manifest-capability` | `packages/manifests/manifest-capability/**` |
-| **F** | `@hobo/manifest-request` | `packages/manifests/manifest-request/**` |
-| **G** | `@hobo/manifest-declaration` | `packages/manifests/manifest-declaration/**` |
-| **H** | `@hobo/manifest-plan` | `packages/manifests/manifest-plan/**` |
-| **I** | Re-export wiring + round-trip proof across all four manifests | `packages/capability-profiles/src/index.ts`, `packages/cloud/src/plan-types.ts`, `packages/manifests/round-trip/**` |
+| **D** | Assertion-strength sweep | every `**/test/**` and `**/contracts/**` test file **except** those owned by A, B, **C**, E–I |
+| **E** | `@hobo/manifest-capability` | `packages/manifest-capability/**` |
+| **F** | `@hobo/manifest-request` | `packages/manifest-request/**` |
+| **G** | `@hobo/manifest-declaration` | `packages/manifest-declaration/**` |
+| **H** | `@hobo/manifest-plan` | `packages/manifest-plan/**` |
+| **I** | Re-export wiring + round-trip proof across all four manifests | `packages/capability-profiles/src/index.ts`, `packages/cloud/src/plan-types.ts`, `packages/manifest-round-trip/**` |
 
 **Swarms A–H run fully in parallel.** Swarm I consumes E–H's published schemas —
 which are **specified in §5 of this document**, so I does not wait on E–H to
@@ -420,7 +446,21 @@ second, unmarked edge that still fails. Verify this actually happens and pin it
 with a test. If it does not happen, that is a real vulnerability in the guard —
 fix it and say so.
 
-**C3 — write the ADR the 14 remaining banked edges defer to.** They fall into
+**C3 — pre-register the four manifest packages.** Add
+`packages/manifest-capability`, `packages/manifest-request`,
+`packages/manifest-declaration` and `packages/manifest-plan` to
+`KNOWN_PACKAGE_PATHS`. Do this **first**, before your other deliverables, and
+independently of whether those packages exist yet — the set is not asserted
+against the filesystem, and this registration is what lets Swarms E–H run in
+parallel with you instead of blocking on you.
+
+Then decide whether they belong in `CONTRACT_PACKAGE_PATHS`. They are schema
+packages that other packages implement against, which is what that set is for —
+but decide it, do not assume it, and record the reasoning. The classification
+determines whether a provider may import them directly, so getting it wrong in
+the permissive direction silently widens what the adapter rule allows.
+
+**C4 — write the ADR the 14 remaining banked edges defer to.** They fall into
 groups with distinct justifications, each already commented in the source:
 runner-tier composition (`runner-blacksmith`/`runner-depot` → `runner-github`),
 policy-engine adapters → `@hobo/contracts`, `adapter-openbao` → `@hobo/identity`,
@@ -515,7 +555,7 @@ Answer it **empirically**, with a round-trip test, not by argument:
 - If any field survives that the request manifest cannot carry, name it, and
   `ResourceIntent` stays a distinct shape with that field as its justification.
 
-Write the answer into `packages/manifests/round-trip/README.md` with the
+Write the answer into `packages/manifest-round-trip/README.md` with the
 evidence. This decision propagates through the rest of the decomposition, so an
 unevidenced answer is worse than none.
 

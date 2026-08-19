@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	type ActiveSvidRecord,
 	ConnectionService,
 	createInMemoryVault,
 	TokenBroker,
-	type ActiveSvidRecord,
 } from "../src/index.js";
 
 const TENANT = "tenant-a";
@@ -110,7 +110,10 @@ describe("first-class Connection aggregate", () => {
 			stationId: STATION,
 		});
 		svc.authorize({ idOrAlias: "work", actor: USER });
-		svc.markNeedsReauth({ idOrAlias: "work", reason: "provider-consent-expired" });
+		svc.markNeedsReauth({
+			idOrAlias: "work",
+			reason: "provider-consent-expired",
+		});
 		const resolved = svc.resolveForToken({
 			provider: "asana",
 			subject: USER,

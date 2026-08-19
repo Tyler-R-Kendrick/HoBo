@@ -11,7 +11,10 @@ export const DEFAULT_STATE_CODEC: PayloadCodec = "json-v1";
 
 export class UnsupportedCodecError extends Error {
 	readonly code = "UNSUPPORTED_CODEC" as const;
-	constructor(readonly codec: string, readonly field: string) {
+	constructor(
+		readonly codec: string,
+		readonly field: string,
+	) {
 		super(`unsupported codec "${codec}" for ${field}`);
 		this.name = "UnsupportedCodecError";
 	}
@@ -37,10 +40,7 @@ export function decodeLegacyJsonText(text: string): unknown {
 	return JSON.parse(text) as unknown;
 }
 
-export function encodePayload(
-	codec: PayloadCodec,
-	value: unknown,
-): Uint8Array {
+export function encodePayload(codec: PayloadCodec, value: unknown): Uint8Array {
 	switch (codec) {
 		case "json-v1":
 			return encodeJson(value);

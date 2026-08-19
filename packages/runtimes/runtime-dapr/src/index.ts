@@ -1,6 +1,6 @@
 export {
-	createDaprActorHost,
 	type CreateDaprActorHostOptions,
+	createDaprActorHost,
 	type DaprActorHost,
 	type DaprActorLease,
 	type DaprActorLifecycleEvent,
@@ -30,7 +30,7 @@ export {
 	type InMemoryDaprClientOptions,
 	resolveDaprClientFromEnv,
 } from "./dapr-client.js";
-export { diagnoseDaprReadiness, type DaprDoctorInput } from "./doctor.js";
+export { type DaprDoctorInput, diagnoseDaprReadiness } from "./doctor.js";
 export {
 	createDaprHoboRuntimeHost,
 	createDaprRuntimeHost,

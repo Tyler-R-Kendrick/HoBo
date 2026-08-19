@@ -5,8 +5,7 @@
  * is not loopback / private).
  */
 
-const LOOPBACK_HOST =
-	/^(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|::1)$/iu;
+const LOOPBACK_HOST = /^(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|::1)$/iu;
 
 export type FrontendPlacement = "remote-public" | "local";
 

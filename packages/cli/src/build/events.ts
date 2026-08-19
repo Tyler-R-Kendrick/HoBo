@@ -65,7 +65,7 @@ export function stableStringify(value: unknown): string {
 
 	function replacer(
 		this: Record<string, unknown>,
-		key: string,
+		_key: string,
 		inner: unknown,
 	): unknown {
 		if (inner && typeof inner === "object" && !Array.isArray(inner)) {

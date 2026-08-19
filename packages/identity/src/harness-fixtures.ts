@@ -1,10 +1,11 @@
 /**
  * Contract-asserted flag / EvaluationContext fixtures for hobo dev (ADR-0042 / ADR-0070).
  */
-import { FeatureFlagStore } from "./feature-flag-store.js";
+
 import { createDevEvaluationContext } from "./evaluation-context.js";
-import { createLocalFeatureClient } from "./openfeature-provider.js";
+import { FeatureFlagStore } from "./feature-flag-store.js";
 import { createHarness } from "./harness-compose.js";
+import { createLocalFeatureClient } from "./openfeature-provider.js";
 
 export type LocalHarnessFixtures = Readonly<{
 	store: FeatureFlagStore;

@@ -3,14 +3,14 @@
  * command history, aliases, and env vars. Occupancy-scoped, not Atuin.
  */
 import { randomUUID } from "node:crypto";
-import { hostname } from "node:os";
 import { mkdirSync } from "node:fs";
+import { hostname } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import {
-	classifyCommand,
 	type CommandSensitivity,
+	classifyCommand,
 	redactCommand,
 } from "./command-redaction.js";
 
@@ -162,8 +162,7 @@ export function openSessionShellStore(options: {
 	readonly path?: string;
 }): SessionShellStore {
 	const path =
-		options.path ??
-		sessionShellStorePath(options.hoboHome, options.stationId);
+		options.path ?? sessionShellStorePath(options.hoboHome, options.stationId);
 	if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
 	const db = new DatabaseSync(path);
 	db.exec(SCHEMA);
@@ -325,7 +324,8 @@ export function openSessionShellStore(options: {
 		},
 		listAliases() {
 			return (
-				db.prepare("SELECT name, body, updated_at FROM aliases ORDER BY name")
+				db
+					.prepare("SELECT name, body, updated_at FROM aliases ORDER BY name")
 					.all() as { name: string; body: string; updated_at: string }[]
 			).map((row) => ({
 				name: row.name,
@@ -385,7 +385,11 @@ export function openSessionShellStore(options: {
 			)
 				.map((row) => `export ${row.name}='${shellQuote(row.value)}'`)
 				.join("\n");
-			return [`# ${SESSION_SHELL_SCHEMA} ${stationId} ${environment}`, aliases, vars]
+			return [
+				`# ${SESSION_SHELL_SCHEMA} ${stationId} ${environment}`,
+				aliases,
+				vars,
+			]
 				.filter((block) => block.length > 0)
 				.join("\n");
 		},

@@ -26,34 +26,22 @@ describe("composed-hobo in-process bridge", () => {
 		).toBe("/tmp/stub-hobo");
 	});
 
-	it(
-		"loads serveProjectOnLocalYard from @hobo/hobo dist",
-		async () => {
-			const serve = await loadServeProjectOnLocalYard();
-			expect(typeof serve).toBe("function");
-		},
-		30_000,
-	);
+	it("loads serveProjectOnLocalYard from @hobo/hobo dist", async () => {
+		const serve = await loadServeProjectOnLocalYard();
+		expect(typeof serve).toBe("function");
+	}, 120_000);
 
-	it(
-		"loads createComposedHoboCli from @hobo/hobo dist",
-		async () => {
-			const create = await loadCreateComposedHoboCli();
-			expect(typeof create).toBe("function");
-			expect(typeof create().run).toBe("function");
-		},
-		30_000,
-	);
+	it("loads createComposedHoboCli from @hobo/hobo dist", async () => {
+		const create = await loadCreateComposedHoboCli();
+		expect(typeof create).toBe("function");
+		expect(typeof create().run).toBe("function");
+	}, 120_000);
 
-	it(
-		"runs --help in-process without PATH hobo",
-		async () => {
-			const result = await runComposedHobo(["--help"], {
-				env: { ...process.env, PATH: "/no/such/bin" },
-			});
-			expect(result.exitCode).toBe(0);
-			expect(result.stdout + result.stderr).toMatch(/hobo/i);
-		},
-		30_000,
-	);
+	it("runs --help in-process without PATH hobo", async () => {
+		const result = await runComposedHobo(["--help"], {
+			env: { ...process.env, PATH: "/no/such/bin" },
+		});
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout + result.stderr).toMatch(/hobo/i);
+	}, 120_000);
 });

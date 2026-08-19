@@ -40,7 +40,6 @@ export {
 	createCorpusBaseline,
 	createCorpusEntry,
 	decodeEventBody,
-	encodeEventBody,
 	EVENT_BODY_UPCASTER_GATE_SCHEMA,
 	type EventBody,
 	type EventBodySchema,
@@ -48,11 +47,12 @@ export {
 	type EventEvolutionContract,
 	type EventFieldSpec,
 	type EventFieldType,
+	encodeEventBody,
 	eventSchema,
 	runCanDeployUpcasterGate,
 	stringField,
-	u32Field,
 	type UpcasterGateReport,
+	u32Field,
 	validateEventBody,
 } from "./upcaster.js";
 export {

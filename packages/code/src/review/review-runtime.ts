@@ -1,42 +1,41 @@
 import { createHash, randomUUID } from "node:crypto";
 import { create } from "@bufbuild/protobuf";
 import {
-	OptimisticSequenceConflictError,
 	createRuntimeLocalEventStore,
+	OptimisticSequenceConflictError,
 } from "@hobo/runtime-local";
 
 import {
-	ReviewActorKind,
-	ReviewAnchorHealth,
-	ReviewAnchorSide,
 	type AddReviewMessageCommand,
 	type DeleteDraftReviewMessageCommand,
 	type EditDraftReviewMessageCommand,
+	PendingReviewSchema,
+	type ResolveReviewThreadCommand,
+	ReviewActorKind,
+	ReviewAnchorHealth,
+	ReviewAnchorSide,
 	type ReviewCommandEnvelope,
 	type ReviewCommandResult,
-	type ResolveReviewThreadCommand,
-	type RouteReviewThreadToAgentCommand,
-	type StageReviewSelectionCommand,
 	ReviewCommandResultSchema,
 	ReviewCoverageRecordSchema,
-	ReviewGenerationSchema,
-	ReviewMessageSchema,
-	PendingReviewSchema,
-	ReviewSubmissionSchema,
-	ReviewThreadSchema,
 	ReviewCoverageState,
 	ReviewDecision,
 	ReviewDerivedState,
+	ReviewGenerationSchema,
 	ReviewInboxDisposition,
 	ReviewLifecycle,
+	ReviewMessageSchema,
 	ReviewPublicationState,
 	type ReviewSnapshot,
 	ReviewSnapshotSchema,
-	ReviewSubmissionState,
+	ReviewSubmissionSchema,
 	ReviewTargetKind,
 	ReviewThreadOrigin,
 	ReviewThreadResolution,
+	ReviewThreadSchema,
 	ReviewVisibility,
+	type RouteReviewThreadToAgentCommand,
+	type StageReviewSelectionCommand,
 } from "../_generated/code_review_pb.js";
 import type { SessionProcessRunner } from "../session-orchestrator.js";
 import { sessionProcessRunner } from "../session-orchestrator.js";
@@ -48,29 +47,31 @@ import {
 	workingTreeManifestHash,
 } from "./git-review-source.js";
 import {
-	REVIEW_COMMAND_SCHEMA,
-	REVIEW_SNAPSHOT_SCHEMA,
+	createFakeGithubProvider,
+	type ReviewProvider,
+	reviewEffectDigest,
+} from "./github-review-provider.js";
+import { coverageIdentity, reanchor } from "./review-anchors.js";
+import { createReviewContentStore } from "./review-content-store.js";
+import {
 	parseReviewCommand,
 	parseReviewSnapshot,
+	REVIEW_SNAPSHOT_SCHEMA,
 	reviewSnapshotJson,
 } from "./review-contract.js";
-import { createReviewContentStore } from "./review-content-store.js";
 import { REVIEW_ERROR, ReviewError } from "./review-errors.js";
-import { parseUnifiedDiff } from "./unified-diff-parser.js";
-import { coverageIdentity, reanchor } from "./review-anchors.js";
 import { applyHunkPatch } from "./review-patch.js";
-import {
-	reviewEffectDigest,
-	type ReviewProvider,
-	createFakeGithubProvider,
-} from "./github-review-provider.js";
+import { parseUnifiedDiff } from "./unified-diff-parser.js";
 
 export interface ReviewRuntimeOptions {
 	readonly dataDir: string;
 	readonly runner?: SessionProcessRunner;
 	readonly provider?: ReviewProvider;
 	readonly now?: () => string;
-	readonly authorize?: (digest: string, operation: string) => boolean | Promise<boolean>;
+	readonly authorize?: (
+		digest: string,
+		operation: string,
+	) => boolean | Promise<boolean>;
 }
 
 export interface ReviewRuntime {
@@ -96,7 +97,9 @@ function emptySnapshot(reviewId: string, now: string): ReviewSnapshot {
 	});
 }
 
-export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntime {
+export function createReviewRuntime(
+	options: ReviewRuntimeOptions,
+): ReviewRuntime {
 	const now = options.now ?? (() => new Date().toISOString());
 	const runner = options.runner ?? sessionProcessRunner();
 	const provider = options.provider ?? createFakeGithubProvider();
@@ -112,17 +115,25 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 		return `code-review:${reviewId}`;
 	}
 
-	async function loadStored(reviewId: string): Promise<ReviewSnapshot | undefined> {
+	async function loadStored(
+		reviewId: string,
+	): Promise<ReviewSnapshot | undefined> {
 		const record = await store.loadSnapshot<unknown>(streamId(reviewId));
 		let snapshot = record ? parseReviewSnapshot(record.state) : undefined;
-		for await (const event of store.read(streamId(reviewId), (record?.seq ?? 0) + 1)) {
+		for await (const event of store.read(
+			streamId(reviewId),
+			(record?.seq ?? 0) + 1,
+		)) {
 			const data = event.data as { snapshot?: unknown };
 			if (data.snapshot) snapshot = parseReviewSnapshot(data.snapshot);
 		}
 		return snapshot;
 	}
 
-	async function persist(snapshot: ReviewSnapshot, type: string): Promise<void> {
+	async function persist(
+		snapshot: ReviewSnapshot,
+		type: string,
+	): Promise<void> {
 		const revision = Number(snapshot.revision);
 		await store.append(
 			streamId(snapshot.reviewId),
@@ -134,12 +145,23 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 				correlationId: snapshot.reviewId,
 			},
 		);
-		await store.snapshot(streamId(snapshot.reviewId), reviewSnapshotJson(snapshot), revision);
+		await store.snapshot(
+			streamId(snapshot.reviewId),
+			reviewSnapshotJson(snapshot),
+			revision,
+		);
 	}
 
-	async function apply(command: ReviewCommandEnvelope): Promise<ReviewSnapshot> {
-		function take<T>(name: NonNullable<ReviewCommandEnvelope["command"]["case"]>): T {
-			if (command.command.case !== name || command.command.value === undefined) {
+	async function apply(
+		command: ReviewCommandEnvelope,
+	): Promise<ReviewSnapshot> {
+		function take<T>(
+			name: NonNullable<ReviewCommandEnvelope["command"]["case"]>,
+		): T {
+			if (
+				command.command.case !== name ||
+				command.command.value === undefined
+			) {
 				throw new ReviewError(REVIEW_ERROR.MALFORMED, `expected ${name}`);
 			}
 			return command.command.value as T;
@@ -152,10 +174,14 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 			existing &&
 			existing.revision !== command.expectedRevision
 		) {
-			throw new ReviewError(REVIEW_ERROR.STALE_REVISION, "review revision moved", {
-				expected: String(command.expectedRevision),
-				found: String(existing.revision),
-			});
+			throw new ReviewError(
+				REVIEW_ERROR.STALE_REVISION,
+				"review revision moved",
+				{
+					expected: String(command.expectedRevision),
+					found: String(existing.revision),
+				},
+			);
 		}
 		let snapshot = existing ?? emptySnapshot(command.reviewId, now());
 		const stamp = now();
@@ -164,11 +190,16 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 		if (command.command.case === "startReview") {
 			const requested = command.command.value.target;
 			if (!requested) {
-				throw new ReviewError(REVIEW_ERROR.MALFORMED, "startReview.target is required");
+				throw new ReviewError(
+					REVIEW_ERROR.MALFORMED,
+					"startReview.target is required",
+				);
 			}
 			const root = requested.repositoryRoot;
-			const repoId = requested.repositoryId || (await gitRepositoryId(runner, root));
-			const head = requested.headCommitOid || (await gitOid(runner, root, "HEAD"));
+			const repoId =
+				requested.repositoryId || (await gitRepositoryId(runner, root));
+			const head =
+				requested.headCommitOid || (await gitOid(runner, root, "HEAD"));
 			const base =
 				requested.baseCommitOid ||
 				(requested.kind === ReviewTargetKind.COMMIT
@@ -198,7 +229,10 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 				requested.kind === ReviewTargetKind.INDEX ? resolvedHead : resolvedHead,
 			);
 			if (requested.kind === ReviewTargetKind.WORKING_TREE) {
-				requested.worktreeManifestHash = await workingTreeManifestHash(runner, root);
+				requested.worktreeManifestHash = await workingTreeManifestHash(
+					runner,
+					root,
+				);
 				requested.indexTreeOid = await gitWriteTree(runner, root);
 			}
 			requested.repositoryId = repoId;
@@ -235,18 +269,29 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 				inboxDisposition: ReviewInboxDisposition.ACTIVE,
 			});
 		} else if (!existing) {
-			throw new ReviewError(REVIEW_ERROR.NOT_FOUND, `review ${command.reviewId} does not exist`);
+			throw new ReviewError(
+				REVIEW_ERROR.NOT_FOUND,
+				`review ${command.reviewId} does not exist`,
+			);
 		} else if (command.command.case === "refreshReview") {
 			const root = snapshot.target?.repositoryRoot ?? "";
 			const generationId = randomUUID();
 			const base = snapshot.target?.baseCommitOid || "HEAD";
 			const head = snapshot.target?.headCommitOid || "HEAD";
-			const { manifest, patches } = await loadReviewManifest(runner, root, generationId, base, head);
+			const { manifest, patches } = await loadReviewManifest(
+				runner,
+				root,
+				generationId,
+				base,
+				head,
+			);
 			for (const patch of patches.values()) blobs.put(patch);
 			const predecessor = snapshot.currentGenerationId;
 			for (const record of snapshot.coverage) {
 				if (record.state === ReviewCoverageState.REVIEWED) {
-					const file = manifest.files.find((item) => item.fileId === record.unit?.fileId);
+					const file = manifest.files.find(
+						(item) => item.fileId === record.unit?.fileId,
+					);
 					if (!file || file.newContentHash !== record.unit?.contentIdentity) {
 						record.state = ReviewCoverageState.STALE;
 						record.invalidatedAt = stamp;
@@ -257,7 +302,9 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 			for (const thread of snapshot.threads) {
 				const anchor = thread.anchor;
 				if (!anchor) continue;
-				const file = manifest.files.find((item) => item.fileId === anchor.fileId);
+				const file = manifest.files.find(
+					(item) => item.fileId === anchor.fileId,
+				);
 				const patch = file ? (patches.get(file.fileId) ?? "") : "";
 				const outcome = reanchor(
 					anchor,
@@ -298,7 +345,13 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 					actorId: command.actorId,
 					actorKind: ReviewActorKind.HUMAN,
 					generationId: snapshot.currentGenerationId,
-					unit: unit ?? { kind: "file", fileId: "", hunkId: "", stableChangeId: "", contentIdentity: "" },
+					unit: unit ?? {
+						kind: "file",
+						fileId: "",
+						hunkId: "",
+						stableChangeId: "",
+						contentIdentity: "",
+					},
 					state: command.command.value.state || ReviewCoverageState.REVIEWED,
 					exclusionReason: command.command.value.exclusionReason,
 					reviewedAt: stamp,
@@ -314,8 +367,10 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 				create(ReviewThreadSchema, {
 					threadId,
 					reviewId: snapshot.reviewId,
-					origin: command.command.value.origin || ReviewThreadOrigin.LOCAL_HUMAN,
-					visibility: command.command.value.visibility || ReviewVisibility.PRIVATE,
+					origin:
+						command.command.value.origin || ReviewThreadOrigin.LOCAL_HUMAN,
+					visibility:
+						command.command.value.visibility || ReviewVisibility.PRIVATE,
 					anchor: command.command.value.anchor ?? {
 						anchorId: randomUUID(),
 						generationId: snapshot.currentGenerationId,
@@ -345,8 +400,11 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 			);
 		} else if (command.command.case === "addReviewMessage") {
 			const value = take<AddReviewMessageCommand>("addReviewMessage");
-			const thread = snapshot.threads.find((item) => item.threadId === value.threadId);
-			if (!thread) throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "thread not found");
+			const thread = snapshot.threads.find(
+				(item) => item.threadId === value.threadId,
+			);
+			if (!thread)
+				throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "thread not found");
 			const messageId = randomUUID();
 			const body = value.body;
 			const bodyHash = createHash("sha256").update(body).digest("hex");
@@ -369,26 +427,48 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 				}),
 			);
 		} else if (command.command.case === "editDraftReviewMessage") {
-			const value = take<EditDraftReviewMessageCommand>("editDraftReviewMessage");
-			const message = snapshot.messages.find((item) => item.messageId === value.messageId);
-			if (!message) throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "message not found");
+			const value = take<EditDraftReviewMessageCommand>(
+				"editDraftReviewMessage",
+			);
+			const message = snapshot.messages.find(
+				(item) => item.messageId === value.messageId,
+			);
+			if (!message)
+				throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "message not found");
 			if (message.publicationState === ReviewPublicationState.PUBLISHED) {
-				throw new ReviewError(REVIEW_ERROR.UNSUPPORTED, "published messages are immutable");
+				throw new ReviewError(
+					REVIEW_ERROR.UNSUPPORTED,
+					"published messages are immutable",
+				);
 			}
 			message.body = value.body;
-			message.bodyHash = createHash("sha256").update(message.body).digest("hex");
+			message.bodyHash = createHash("sha256")
+				.update(message.body)
+				.digest("hex");
 			message.editedAt = stamp;
 			message.editRevision += 1;
 		} else if (command.command.case === "deleteDraftReviewMessage") {
-			const value = take<DeleteDraftReviewMessageCommand>("deleteDraftReviewMessage");
-			const message = snapshot.messages.find((item) => item.messageId === value.messageId);
-			if (!message) throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "message not found");
+			const value = take<DeleteDraftReviewMessageCommand>(
+				"deleteDraftReviewMessage",
+			);
+			const message = snapshot.messages.find(
+				(item) => item.messageId === value.messageId,
+			);
+			if (!message)
+				throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "message not found");
 			if (message.publicationState === ReviewPublicationState.PUBLISHED) {
-				throw new ReviewError(REVIEW_ERROR.UNSUPPORTED, "published messages are immutable");
+				throw new ReviewError(
+					REVIEW_ERROR.UNSUPPORTED,
+					"published messages are immutable",
+				);
 			}
-			snapshot.messages = snapshot.messages.filter((item) => item.messageId !== message.messageId);
+			snapshot.messages = snapshot.messages.filter(
+				(item) => item.messageId !== message.messageId,
+			);
 			for (const thread of snapshot.threads) {
-				thread.messageIds = thread.messageIds.filter((id) => id !== message.messageId);
+				thread.messageIds = thread.messageIds.filter(
+					(id) => id !== message.messageId,
+				);
 			}
 		} else if (
 			command.command.case === "resolveReviewThread" ||
@@ -399,17 +479,25 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 					? "resolveReviewThread"
 					: "unresolveReviewThread",
 			).threadId;
-			const thread = snapshot.threads.find((item) => item.threadId === threadId);
-			if (!thread) throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "thread not found");
+			const thread = snapshot.threads.find(
+				(item) => item.threadId === threadId,
+			);
+			if (!thread)
+				throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "thread not found");
 			thread.resolution =
 				caseName === "resolveReviewThread"
 					? ReviewThreadResolution.RESOLVED
 					: ReviewThreadResolution.OPEN;
 			thread.updatedAt = stamp;
 		} else if (command.command.case === "routeReviewThreadToAgent") {
-			const value = take<RouteReviewThreadToAgentCommand>("routeReviewThreadToAgent");
-			const thread = snapshot.threads.find((item) => item.threadId === value.threadId);
-			if (!thread) throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "thread not found");
+			const value = take<RouteReviewThreadToAgentCommand>(
+				"routeReviewThreadToAgent",
+			);
+			const thread = snapshot.threads.find(
+				(item) => item.threadId === value.threadId,
+			);
+			if (!thread)
+				throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "thread not found");
 			const messageId = randomUUID();
 			const body = `routed to agent ${value.agentId}: ${value.prompt}`;
 			snapshot.messages.push(
@@ -432,7 +520,9 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 			const selected = command.command.value.selectedMessageIds;
 			for (const id of selected) {
 				const message = snapshot.messages.find((item) => item.messageId === id);
-				if (message) message.publicationState = ReviewPublicationState.SELECTED_FOR_PUBLICATION;
+				if (message)
+					message.publicationState =
+						ReviewPublicationState.SELECTED_FOR_PUBLICATION;
 			}
 			const summary = command.command.value.summaryBody;
 			const digest = reviewEffectDigest({
@@ -456,8 +546,12 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 				selectedThreadOperations: [],
 				orderedInlineComments: selected.map((id) => ({
 					messageId: id,
-					anchor: snapshot.threads.find((thread) => thread.messageIds.includes(id))?.anchor,
-					bodyHash: snapshot.messages.find((item) => item.messageId === id)?.bodyHash ?? "",
+					anchor: snapshot.threads.find((thread) =>
+						thread.messageIds.includes(id),
+					)?.anchor,
+					bodyHash:
+						snapshot.messages.find((item) => item.messageId === id)?.bodyHash ??
+						"",
 				})),
 				preparedBy: command.actorId,
 				preparedAt: stamp,
@@ -465,29 +559,52 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 			});
 		} else if (command.command.case === "publishReviewSubmission") {
 			const pending = snapshot.pending;
-			if (!pending || pending.pendingReviewId !== command.command.value.pendingReviewId) {
-				throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "pending review not found");
+			if (
+				!pending ||
+				pending.pendingReviewId !== command.command.value.pendingReviewId
+			) {
+				throw new ReviewError(
+					REVIEW_ERROR.NOT_FOUND,
+					"pending review not found",
+				);
 			}
 			const authorized = await options.authorize?.(
 				command.command.value.authorizationDigest || pending.effectDigest,
 				"publish-review",
 			);
 			if (!authorized) {
-				throw new ReviewError(REVIEW_ERROR.APPROVAL_REQUIRED, "publish requires exact-effect approval", {
-					effectDigest: pending.effectDigest,
-				});
+				throw new ReviewError(
+					REVIEW_ERROR.APPROVAL_REQUIRED,
+					"publish requires exact-effect approval",
+					{
+						effectDigest: pending.effectDigest,
+					},
+				);
 			}
 			if (
 				command.command.value.authorizationDigest &&
 				command.command.value.authorizationDigest !== pending.effectDigest
 			) {
-				throw new ReviewError(REVIEW_ERROR.APPROVAL_MISMATCH, "approval digest does not match pending review");
+				throw new ReviewError(
+					REVIEW_ERROR.APPROVAL_MISMATCH,
+					"approval digest does not match pending review",
+				);
 			}
 			const liveHead = snapshot.target?.repositoryRoot
-				? await gitOid(runner, snapshot.target.repositoryRoot, snapshot.target.headRef || "HEAD")
+				? await gitOid(
+						runner,
+						snapshot.target.repositoryRoot,
+						snapshot.target.headRef || "HEAD",
+					)
 				: snapshot.target?.headCommitOid;
-			if (pending.expectedProviderHeadOid && liveHead !== pending.expectedProviderHeadOid) {
-				throw new ReviewError(REVIEW_ERROR.PROVIDER_DRIFT, "target HEAD changed after approval");
+			if (
+				pending.expectedProviderHeadOid &&
+				liveHead !== pending.expectedProviderHeadOid
+			) {
+				throw new ReviewError(
+					REVIEW_ERROR.PROVIDER_DRIFT,
+					"target HEAD changed after approval",
+				);
 			}
 			const published = await provider.submitReview({
 				snapshot,
@@ -507,7 +624,8 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 			});
 			for (const id of pending.selectedMessageIds) {
 				const message = snapshot.messages.find((item) => item.messageId === id);
-				if (message) message.publicationState = ReviewPublicationState.PUBLISHED;
+				if (message)
+					message.publicationState = ReviewPublicationState.PUBLISHED;
 			}
 		} else if (
 			command.command.case === "stageReviewSelection" ||
@@ -530,9 +648,13 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 				caseName ?? "stageReviewSelection",
 			);
 			if (!authorized) {
-				throw new ReviewError(REVIEW_ERROR.APPROVAL_REQUIRED, "patch requires exact-effect approval", {
-					effectDigest: digest,
-				});
+				throw new ReviewError(
+					REVIEW_ERROR.APPROVAL_REQUIRED,
+					"patch requires exact-effect approval",
+					{
+						effectDigest: digest,
+					},
+				);
 			}
 			const root = snapshot.target?.repositoryRoot ?? "";
 			await applyHunkPatch(runner, root, {
@@ -552,16 +674,23 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 				"apply-suggestion",
 			);
 			if (!authorized) {
-				throw new ReviewError(REVIEW_ERROR.APPROVAL_REQUIRED, "suggestion requires exact-effect approval", {
-					effectDigest: digest,
-				});
+				throw new ReviewError(
+					REVIEW_ERROR.APPROVAL_REQUIRED,
+					"suggestion requires exact-effect approval",
+					{
+						effectDigest: digest,
+					},
+				);
 			}
 		} else if (command.command.case === "setReviewInboxDisposition") {
 			snapshot.inboxDisposition = command.command.value.disposition;
 		} else if (command.command.case === "closeReview") {
 			snapshot.lifecycle = ReviewLifecycle.CLOSED;
 		} else {
-			throw new ReviewError(REVIEW_ERROR.UNSUPPORTED, `unsupported review command ${caseName}`);
+			throw new ReviewError(
+				REVIEW_ERROR.UNSUPPORTED,
+				`unsupported review command ${caseName}`,
+			);
 		}
 		snapshot.revision = nextRevision;
 		snapshot.updatedAt = stamp;
@@ -569,7 +698,10 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 			await persist(snapshot, eventType(caseName));
 		} catch (error) {
 			if (error instanceof OptimisticSequenceConflictError) {
-				throw new ReviewError(REVIEW_ERROR.CONCURRENCY, "review stream conflict");
+				throw new ReviewError(
+					REVIEW_ERROR.CONCURRENCY,
+					"review stream conflict",
+				);
 			}
 			throw error;
 		}
@@ -598,7 +730,8 @@ export function createReviewRuntime(options: ReviewRuntimeOptions): ReviewRuntim
 						code: error.code,
 						message: error.message,
 					});
-					if (error.code !== REVIEW_ERROR.STALE_REVISION) seen.set(command.commandId, result);
+					if (error.code !== REVIEW_ERROR.STALE_REVISION)
+						seen.set(command.commandId, result);
 					return result;
 				}
 				throw error;
@@ -642,15 +775,30 @@ function eventType(caseName: string | undefined): string {
 	return map[caseName ?? ""] ?? "code.ReviewChanged";
 }
 
-export function inboxDerivedState(snapshot: ReviewSnapshot): ReviewDerivedState {
-	if (snapshot.lifecycle === ReviewLifecycle.CLOSED) return ReviewDerivedState.CLOSED;
-	if (snapshot.coverage.some((item) => item.state === ReviewCoverageState.STALE)) {
+export function inboxDerivedState(
+	snapshot: ReviewSnapshot,
+): ReviewDerivedState {
+	if (snapshot.lifecycle === ReviewLifecycle.CLOSED)
+		return ReviewDerivedState.CLOSED;
+	if (
+		snapshot.coverage.some((item) => item.state === ReviewCoverageState.STALE)
+	) {
 		return ReviewDerivedState.CHANGED_SINCE_REVIEW;
 	}
-	if (snapshot.threads.some((item) => item.resolution === ReviewThreadResolution.OPEN && item.origin === ReviewThreadOrigin.LOCAL_AGENT)) {
+	if (
+		snapshot.threads.some(
+			(item) =>
+				item.resolution === ReviewThreadResolution.OPEN &&
+				item.origin === ReviewThreadOrigin.LOCAL_AGENT,
+		)
+	) {
 		return ReviewDerivedState.AWAITING_AGENT;
 	}
-	if (snapshot.coverage.some((item) => item.state === ReviewCoverageState.REVIEWED)) {
+	if (
+		snapshot.coverage.some(
+			(item) => item.state === ReviewCoverageState.REVIEWED,
+		)
+	) {
 		return ReviewDerivedState.IN_PROGRESS;
 	}
 	return ReviewDerivedState.NEEDS_REVIEW;

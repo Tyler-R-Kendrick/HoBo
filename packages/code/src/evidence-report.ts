@@ -269,10 +269,7 @@ export function renderEvidenceJournalHtml(
 		{} as Record<string, number>,
 	);
 	const scoreboard = (["ask", "decision", "look", "impact"] as const)
-		.map(
-			(kind) =>
-				`<div><dt>${kind}</dt><dd>${counts[kind] ?? 0}</dd></div>`,
-		)
+		.map((kind) => `<div><dt>${kind}</dt><dd>${counts[kind] ?? 0}</dd></div>`)
 		.join("");
 	const events = journal.events.map(renderJournalEvent).join("\n");
 	const empty = journal.events.length

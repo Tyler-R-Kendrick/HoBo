@@ -33,7 +33,7 @@ function resolveTenant(
 	flags: Record<string, unknown>,
 	env: NodeJS.ProcessEnv,
 ): string {
-	const flag = flags["tenant"];
+	const flag = flags.tenant;
 	if (typeof flag === "string" && flag.length > 0) return flag;
 	if (typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT.length > 0) {
 		return env.HOBO_TENANT;
@@ -45,7 +45,7 @@ function resolveTarget(
 	flags: Record<string, unknown>,
 	env: NodeJS.ProcessEnv,
 ): string {
-	const flag = flags["target"];
+	const flag = flags.target;
 	if (typeof flag === "string" && flag.length > 0) return flag;
 	if (
 		typeof env.HOBO_TRAIL_TARGET === "string" &&
@@ -197,9 +197,7 @@ export function createTrailsCommand(
 						},
 						// Pure identity continuous never requires Bindle/Trail authoring.
 						bindleConfigRequired:
-							trail.id === identityTrail.id
-								? false
-								: plan.bindleConfigRequired,
+							trail.id === identityTrail.id ? false : plan.bindleConfigRequired,
 						fidelity: fixtures.fidelity,
 						observeOnly: true,
 					},
@@ -215,9 +213,7 @@ export function createTrailsCommand(
 			return {
 				ok: plan.canTrail.ok && handsOff.ok,
 				status: plan.canTrail.ok ? "ready" : "blocked",
-				code: plan.canTrail.ok
-					? "HOBO_TRAILS_READY"
-					: "HOBO_TRAILS_BLOCKED",
+				code: plan.canTrail.ok ? "HOBO_TRAILS_READY" : "HOBO_TRAILS_BLOCKED",
 				message,
 				data: {
 					command: "trails",

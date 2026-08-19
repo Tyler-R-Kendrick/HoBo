@@ -6,8 +6,8 @@
 import {
 	createMeteringBus,
 	getNamedEndpoint,
-	parseTenantId,
 	type PolicyRequest,
+	parseTenantId,
 } from "@hobo/core";
 
 import { createMemoryDnsProvider } from "./dns/memory-provider.js";

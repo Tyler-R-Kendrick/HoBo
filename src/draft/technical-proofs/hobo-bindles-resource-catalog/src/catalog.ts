@@ -18,7 +18,6 @@ const catalogRows = [
   ["notify", ["hobo:notify"], ["send"]],
   ["guardrail", ["hobo:guardrail"], ["check"]],
   ["ui", ["hobo:ui-render"], ["render", "drive"]],
-  ["golden", ["hobo:golden"], ["run", "bless"]],
   ["experiment", ["hobo:experiment"], ["assign", "expose", "analyze"]]
 ];
 
@@ -126,7 +125,6 @@ export const crypto = makeFactory("crypto");
 export const notify = makeFactory("notify");
 export const guardrail = makeFactory("guardrail");
 export const ui = makeFactory("ui");
-export const golden = makeFactory("golden");
 export const experiment = makeFactory("experiment");
 
 export function secretRef(ref) {

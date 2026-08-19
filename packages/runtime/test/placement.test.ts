@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-
-import type { ActorHost } from "../src/ports.js";
 import { resolveActorPlacement } from "../src/placement.js";
+import type { ActorHost } from "../src/ports.js";
 
 function stubHost(label: string): ActorHost {
 	return {

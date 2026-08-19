@@ -46,7 +46,9 @@ export function isOccupancyRunProcessLive(
 	stationId: string,
 	environment: string,
 ): boolean {
-	const record = readRunRecord(sessionRunPath(hoboHome, stationId, environment));
+	const record = readRunRecord(
+		sessionRunPath(hoboHome, stationId, environment),
+	);
 	if (record?.pid === undefined) return false;
 	try {
 		process.kill(record.pid, 0);
@@ -89,10 +91,7 @@ function listenPortOf(url: string): number | undefined {
  * Sync TCP connect probe for a loopback URL. Mesh / remote URLs are never
  * treated as listening from a snapshot alone.
  */
-export function isLoopbackUrlListening(
-	url: string,
-	timeoutMs = 120,
-): boolean {
+export function isLoopbackUrlListening(url: string, timeoutMs = 120): boolean {
 	return listeningByUrl([url], timeoutMs).get(url) === true;
 }
 

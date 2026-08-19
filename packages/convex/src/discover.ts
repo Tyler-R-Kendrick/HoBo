@@ -43,7 +43,9 @@ export function resolveConvexRoot(repoRoot: string, root: string): string {
 	return abs;
 }
 
-function suggestDeps(keys: readonly string[]): DiscoveredConvexEnv["suggestedDeps"] {
+function suggestDeps(
+	keys: readonly string[],
+): DiscoveredConvexEnv["suggestedDeps"] {
 	const buckets = new Map<string, { via: string; keys: string[] }>();
 	for (const key of keys) {
 		let kind = "env";

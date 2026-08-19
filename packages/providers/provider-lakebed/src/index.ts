@@ -46,6 +46,22 @@ export {
 	realizeTrafficRoutingPlan,
 	resolveEquivalence,
 } from "./realize.js";
+export {
+	createLakebedAnonymousCliTransport,
+	LAKEBED_TEMPORARY_PROVIDER_ID,
+	type LakebedAnonymousDeployResult,
+	type LakebedAnonymousTransport,
+	type LakebedTemporaryStationInput,
+	materializeEnvironmentStationCapsule,
+	parseLakebedDeployOutput,
+	provisionTemporaryEnvironmentStation,
+	supportsAnonymousTemporaryDeploy,
+} from "./temporary-station.js";
+
+export {
+	LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS,
+	LAKEBED_TRAFFIC_ROUTING_PROFILE,
+} from "./traffic-routing-offerings.js";
 export type {
 	Capability,
 	CapabilityManifest,
@@ -58,22 +74,6 @@ export type {
 	ProviderClient,
 	ResourcePlan,
 } from "./types.js";
-
-export {
-	LAKEBED_TRAFFIC_ROUTING_OFFERING_IDS,
-	LAKEBED_TRAFFIC_ROUTING_PROFILE,
-} from "./traffic-routing-offerings.js";
-export {
-	createLakebedAnonymousCliTransport,
-	LAKEBED_TEMPORARY_PROVIDER_ID,
-	materializeEnvironmentStationCapsule,
-	parseLakebedDeployOutput,
-	provisionTemporaryEnvironmentStation,
-	supportsAnonymousTemporaryDeploy,
-	type LakebedAnonymousDeployResult,
-	type LakebedAnonymousTransport,
-	type LakebedTemporaryStationInput,
-} from "./temporary-station.js";
 
 // public-contract: the package id consumers assert against.
 export const HOBO_PROVIDER_LAKEBED_PACKAGE = "@hobo/provider-lakebed";

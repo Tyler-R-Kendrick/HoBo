@@ -3,6 +3,8 @@
  * Re-exports full implementations from @hobo/connectivity — no stubs.
  */
 export {
+	type AuditSink,
+	type CreatePrivilegedAccessGatewayOptions,
 	createBoundaryPamGateway,
 	createJumpServerPamGateway,
 	createNativePamGateway,
@@ -11,13 +13,11 @@ export {
 	createTeleportPamGateway,
 	PAM_GATEWAY_SCHEMA,
 	PAM_RAIL_CAPABILITY,
-	railEnablesPam,
-	type AuditSink,
-	type CreatePrivilegedAccessGatewayOptions,
 	type PamAuditEvent,
 	type PamKind,
 	type PrivilegedAccessGateway,
 	type PrivilegedAccessGatewayHandle,
+	railEnablesPam,
 	type SessionHandle,
 	type SessionRequest,
 	type SessionTarget,

@@ -92,6 +92,34 @@ export interface ResourcePlan {
 	strategy?: string;
 	region?: string;
 	deploymentId?: string;
+	/**
+	 * The provider offering this node resolves to, when the plan was built with
+	 * Yard binding authority (ADR-0157). This is what a deployment driver keys
+	 * on to find the resolver that can allocate the resource: without it a
+	 * driver would have to re-derive the product from the port, which is the
+	 * naming-convention inference ADR-0144 forbids.
+	 *
+	 * Absent on the legacy port-only planning path, where no Yard supplied a
+	 * catalog to select from. Absent means "not decided here", never "any
+	 * product will do" — a driver that cannot find a product must fail closed.
+	 */
+	productId?: string;
+	/**
+	 * Yard-scoped, provider-native realization parameters merged from the
+	 * applied Yard binding rows — the *configuration* half of a Yard binding
+	 * (ADR-0157). The row selects which product realizes the profile; these
+	 * parameterize how it is realized in this Yard (replica counts, resource
+	 * limits, service class).
+	 *
+	 * Provider-native by construction, therefore a non-portable surface: the
+	 * rows responsible are named in `nonPortableRows` so the PortabilityReport
+	 * can attribute the loss rather than merely report that something was lost.
+	 * Never carries credential material — the parse boundary refuses
+	 * credential-shaped keys before a row ever reaches a plan.
+	 */
+	realizationParameters?: Readonly<Record<string, unknown>>;
+	/** Canonical keys of the applied rows that contributed realization parameters. */
+	nonPortableRows?: readonly string[];
 }
 
 // domain-view: content-addressed plan DAG; wire form is DeploymentPlan in data-models/cloud.proto.
@@ -141,6 +169,19 @@ export interface MatchDecided {
 	/** @deprecated alias of `catalogContentHash`. */
 	catalogHash: string;
 	catalogContentHash: string;
+	/**
+	 * The provider offering the winner realizes, when Yard binding authority
+	 * constrained the decision (ADR-0157). Recorded on the decision so the
+	 * audit trail names *what was chosen to be built*, not only which
+	 * definition won — a definition id is not a product.
+	 */
+	productId?: string;
+	/** Canonical keys of the Yard binding rows that constrained this decision. */
+	appliedRows?: readonly string[];
+	/** Provider-native realization parameters merged from the applied rows. */
+	realizationParameters?: Readonly<Record<string, unknown>>;
+	/** Applied rows that contributed realization parameters (portability attribution). */
+	nonPortableRows?: readonly string[];
 }
 
 // domain-view: rejection remediation; wire form is PlanRemediation in data-models/cloud.proto.

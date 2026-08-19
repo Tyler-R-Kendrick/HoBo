@@ -14,10 +14,10 @@ import {
 	dualVerifyClaims,
 	evaluateCanMigrate,
 	foldIdentityMigrationEvents,
-	IdentityMigrationService,
+	type IdentityMigrationEvent,
+	type IdentityMigrationService,
 	matchingSignalsFromResourceDecision,
 	migrationStatusView,
-	type IdentityMigrationEvent,
 } from "@hobo/identity";
 
 import { defaultHoboHome } from "./bare-metal-yard.js";
@@ -49,7 +49,7 @@ function resolveTenant(
 	flags: Record<string, unknown>,
 	env: NodeJS.ProcessEnv,
 ): string {
-	const flag = flags["tenant"];
+	const flag = flags.tenant;
 	if (typeof flag === "string" && flag.length > 0) return flag;
 	if (typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT.length > 0) {
 		return env.HOBO_TENANT;
@@ -115,7 +115,7 @@ export function createIdentityCommand(
 				dualOracleReady: dualOracle.ok,
 			});
 
-			let record =
+			const record =
 				deps.service !== undefined
 					? (deps.service?.snapshot() ?? null)
 					: foldIdentityMigrationEvents(loadMigrationEvents(hoboHome), {
@@ -130,8 +130,7 @@ export function createIdentityCommand(
 						ok: false,
 						status: "usage",
 						code: "HOBO_IDENTITY_INSPECT_USAGE",
-						message:
-							"hobo identity inspect requires <migrationId>",
+						message: "hobo identity inspect requires <migrationId>",
 						remediation: [
 							"Run `hobo identity status` to list active migration state.",
 						],

@@ -72,6 +72,91 @@ const manifest = matchStationCapabilities({
 Missing Station fails closed — run `hobo station init`. See
 [`examples/self-host-station`](../../examples/self-host-station/README.md).
 
+## Station capability coverage (ADR-0157)
+
+`matchStationCapabilities()` above answers "what facilities does the **host**
+under this Station offer". `aggregateStationCapabilities()` answers the sibling
+question one layer out: **which ADR-0151 capability profiles can this Station
+satisfy at all, through which Yards, on which providers — and which expected
+profiles can it not satisfy.**
+
+A **Yard is a catalog, not an inventory** (ADR-0157 decision 1): a binding row
+says the Yard is *able to* allocate an offering, not that anything is selected,
+pooled, or running. Several rows per profile is therefore the **normal** case —
+Azure's `web` is legitimately Static Web Apps *and* App Service *and* Container
+Apps *and* AKS. So the report states **coverage breadth** (how many distinct
+offerings, in which Yards) and **never picks a winner**: selection stays
+ADR-0151's job at resolution time (hard gates, then lexicographic ordering).
+Ordering here is a canonical sort on identifiers, carrying no preference.
+
+Catalogs are taken **structurally** (`StationYardCatalogInput` mirrors
+`YardBindingInput` without importing `@hobo/yards`) — Station is not app-topology
+containment (ADR-0131: a Station *seeds* a Yard, it does not contain one), so the
+aggregation takes the data and leaves the layer dependency un-taken. The record
+holds identifiers only, never realization parameters, so it cannot carry a
+credential.
+
+```ts
+import {
+  aggregateStationCapabilities,
+  renderStationCapabilityCoverage,
+} from "@hobo/stations";
+
+const coverage = aggregateStationCapabilities({
+  stationId: "station:acme",
+  yards: [
+    {
+      yardName: "yard:azure-east",
+      providerId: "azure",
+      bindings: [
+        { profile: "web.hosted/v1", productId: "azure:app-service" },
+        { profile: "web.hosted/v1", productId: "azure:static-web-apps" },
+        { profile: "data.postgres/v1", productId: "azure:flexible-server" },
+      ],
+    },
+    {
+      yardName: "yard:cf",
+      providerId: "cloudflare",
+      bindings: [{ profile: "web.hosted/v1", productId: "cf:workers" }],
+    },
+  ],
+  expected: ["web.hosted/v1", "data.postgres/v1", "bucket.s3-compatible/v1"],
+});
+
+console.log(renderStationCapabilityCoverage(coverage)); // hobo station status digest
+```
+
+The deep-frozen report carries `served` (offerings per profile, sorted by
+profile → yard → productId, with counts, yards and providers), `gaps` (expected
+profiles no Yard can satisfy, each naming what to add), `singlySourced`
+(profiles served by exactly one offering — a **resilience signal, not an
+error**: one catalog edit away from a gap), `providerConcentration` (factual
+dependency accounting, so "every capability here is Cloudflare" is visible
+without arithmetic — counts and sole-source facts, never a score), and `ok`
+(no gaps in the expected set). `renderStationCapabilityCoverage()` produces a
+short deterministic plain-text digest with gaps first; it takes no TUI or
+design-system dependency.
+
+Parse-don't-validate and fail-closed: a bad profile grammar, a row constraining
+neither `productId` nor `connectivityId`, a duplicate row or Yard, or a
+malformed catalog is a typed `StationCapabilityCoverageError` (`code` +
+`remediation`), never a silently skipped row — a dropped row would understate
+coverage, which is a portability lie. The report is a pure function of its input
+and carries **no timestamp**: nothing about coverage depends on when it was
+computed, and a `generatedAt` would make two equal inputs compare unequal.
+
+### Honesty: what coverage does and does not mean
+
+Coverage means a Yard **declares** it can allocate an offering for the profile.
+It is **not** evidence that a Resource Definition is registered, that the named
+product exists in the catalog, that the provider matches, or that a deploy would
+succeed. Those are resolution-time gates and surface as `YARD_BINDING_PRODUCT_UNKNOWN`,
+`YARD_BINDING_PROVIDER_MISMATCH`, and `YARD_BINDING_EXCLUDED_ALL` (ADR-0157
+decision 4) — not here. Aggregation deliberately does not infer a product's
+provider from its id (ADR-0144 forbids naming-convention inference), so
+`ok: true` reads exactly as "every expected profile has at least one declared
+offering", and nothing stronger.
+
 ## Traffic routing synthesis
 
 `applyRoutingObservations` merges provider `observe.health` / `observe.location`

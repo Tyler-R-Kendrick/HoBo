@@ -6,9 +6,10 @@
  * Loaded by the hobo-code bin via `pi --no-extensions -e <this file>`
  * (pi compiles TS extensions with jiti — no build step for this file).
  */
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { fileURLToPath } from "node:url";
+
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -131,11 +132,7 @@ async function buildHoboHeaderLines(
 			"",
 		];
 	} catch {
-		return [
-			"",
-			dim("  hobo-code — /config /agents /cost /verbs · /exit"),
-			"",
-		];
+		return ["", dim("  hobo-code — /config /agents /cost /verbs · /exit"), ""];
 	}
 }
 
@@ -151,7 +148,9 @@ async function runSurface(
 		const text = formatHoboCodeResult(result, false);
 		// Cap very long help in the TUI notify channel
 		const body =
-			text.length > 3500 ? `${text.slice(0, 3500)}\n… (truncated — use hobo-code ${argv[0]} --json)` : text;
+			text.length > 3500
+				? `${text.slice(0, 3500)}\n… (truncated — use hobo-code ${argv[0]} --json)`
+				: text;
 		ctx.ui.notify(body, result.ok === false ? "error" : "info");
 	} catch (err) {
 		ctx.ui.notify(
@@ -164,10 +163,7 @@ async function runSurface(
 export default function (pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
 		ctx.ui.setTitle("hobo-code");
-		ctx.ui.setStatus(
-			"hobo",
-			"(••)/@ hobo-code · /config · /agents · /verbs",
-		);
+		ctx.ui.setStatus("hobo", "(••)/@ hobo-code · /config · /agents · /verbs");
 		ctx.ui.setHeader((tui, theme) => {
 			let lines: string[] | undefined;
 			void buildHoboHeaderLines(

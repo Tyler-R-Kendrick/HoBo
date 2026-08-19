@@ -1,8 +1,8 @@
-import type { AgentPaneState, AgentSemanticState } from "./types.js";
 import {
-	renderDefaultLoadingScreen,
 	type LoadingScreenOptions,
+	renderDefaultLoadingScreen,
 } from "./splash.js";
+import type { AgentPaneState, AgentSemanticState } from "./types.js";
 
 /**
  * Herdr-like multiplexer status surface:
@@ -194,10 +194,7 @@ export function renderStatusTextPlain(
 	options: StatusRenderOptions = {},
 ): string {
 	const counts = countStates(status.panes);
-	const lines: string[] = [
-		options.title ?? "hobo-code · session status",
-		"",
-	];
+	const lines: string[] = [options.title ?? "hobo-code · session status", ""];
 	if (status.panes.length === 0) {
 		lines.push("Agents: (none yet — open work with a prompt or isolate)");
 	} else {
@@ -229,7 +226,7 @@ export function renderStatusTextPlain(
 		options.nextHint ??
 		(counts.working + counts.blocked > 0
 			? "hobo-code status   # refresh · hobo-code tasks"
-			: "hobo-code guide | tasks | attach | \"your prompt\"");
+			: 'hobo-code guide | tasks | attach | "your prompt"');
 	lines.push(`Next:  ${next}`);
 	lines.push("Dense: hobo-code status --dense   # glyph box chrome");
 	return lines.join("\n");
@@ -304,8 +301,7 @@ export function renderStatusText(
 	};
 	// Busy → nodes (nd). Quiet: ★ dispatch is product default — omit next twin.
 	const nextVerbs =
-		options.nextHint?.replace(/^next\s+/, "") ??
-		(busy > 0 ? "nd" : null);
+		options.nextHint?.replace(/^next\s+/, "") ?? (busy > 0 ? "nd" : null);
 	// Always fold panes into ≤4-wide groups (clipboard → ↳snippet on bit).
 	const foldPane = (pane: (typeof status.panes)[number]): string => {
 		const glyph = STATE_GLYPH[pane.semanticState];
@@ -316,11 +312,7 @@ export function renderStatusText(
 		const raw = showSummary ? pane.summary : "";
 		// Ultra-short blocked cue (full text in data/logs).
 		const summary =
-			raw.length === 0
-				? ""
-				: raw.length > 6
-					? `${raw.slice(0, 5)}…`
-					: raw;
+			raw.length === 0 ? "" : raw.length > 6 ? `${raw.slice(0, 5)}…` : raw;
 		const clip =
 			pane.highlightBuffer.length > 0
 				? `↳${
@@ -336,10 +328,7 @@ export function renderStatusText(
 	// Full title override (session) wins; else standalone folds next into title.
 	// Empty: next is dispatch — fold cue, skip "…" twin.
 	const titleBase =
-		options.title ??
-		(options.embedded
-			? subtitle
-			: `hobo-code·${subtitle}`);
+		options.title ?? (options.embedded ? subtitle : `hobo-code·${subtitle}`);
 	const emptyCue = "empty→★";
 	// dcc (detach·click·copy) is product default — omit from chrome.
 	// Next verb is last token (no "next" word) — matches panel chrome.

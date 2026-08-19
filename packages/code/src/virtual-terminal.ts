@@ -60,11 +60,7 @@ export interface VirtualTerminal {
 	dispose(): void;
 }
 
-function rowText(
-	terminal: XtermTerminal,
-	index: number,
-	trim = true,
-): string {
+function rowText(terminal: XtermTerminal, index: number, trim = true): string {
 	return terminal.buffer.active.getLine(index)?.translateToString(trim) ?? "";
 }
 
@@ -83,7 +79,8 @@ export function createVirtualTerminal(
 
 	return {
 		write(chunk) {
-			bytes += typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.length;
+			bytes +=
+				typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.length;
 			// xterm's write is asynchronous — a sequence split across chunks is
 			// only resolved once the parser has drained, so callers that snapshot
 			// immediately after writing must await this.
@@ -132,7 +129,10 @@ export function createVirtualTerminal(
  * tmux's already-rendered interpretation of it, which is what the emulator
  * above needs in order to be the thing doing the interpreting.
  */
-export function pipePaneCommand(target: string, sink: string): readonly string[] {
+export function pipePaneCommand(
+	target: string,
+	sink: string,
+): readonly string[] {
 	// Single quotes, not JSON.stringify: the sink is interpolated into a shell
 	// command tmux runs, and double quotes leave `$`, backticks and backslashes
 	// live.

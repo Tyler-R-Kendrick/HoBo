@@ -11,19 +11,16 @@
  */
 import { createReplayEvent, REPLAY_EVENTS } from "./events.js";
 import {
-	assertNoSensitivePlaintext,
-	maskRrwebEvents,
-} from "./privacy.js";
-import {
 	evaluateRecordingPolicy,
 	type RecordingDecision,
 	type RecordingPolicyInput,
 } from "./policy.js";
+import { assertNoSensitivePlaintext, maskRrwebEvents } from "./privacy.js";
 import type { SessionBlobStore, SessionIndex } from "./storage.js";
 import {
-	REPLAY_SCHEMA_VERSION,
 	defaultPrivacyPolicy,
 	type PrivacyPolicy,
+	REPLAY_SCHEMA_VERSION,
 	type RrwebEvent,
 	type SessionCorrelation,
 	type SessionRecord,
@@ -248,21 +245,15 @@ export function createTracker(options: TrackerOptions): TrackerHandle {
 			correlation = Object.freeze({
 				...correlation,
 				errorId,
-				...(controlPlaneEventId !== undefined
-					? { controlPlaneEventId }
-					: {}),
+				...(controlPlaneEventId !== undefined ? { controlPlaneEventId } : {}),
 			});
 			const cur = await options.index.get(sessionId);
 			if (cur) {
-				await options.index.upsert(
-					Object.freeze({ ...cur, correlation }),
-				);
+				await options.index.upsert(Object.freeze({ ...cur, correlation }));
 			}
 			emitMeta(REPLAY_EVENTS.ErrorLinked, {
 				errorId,
-				...(controlPlaneEventId !== undefined
-					? { controlPlaneEventId }
-					: {}),
+				...(controlPlaneEventId !== undefined ? { controlPlaneEventId } : {}),
 			});
 		},
 		async stop() {

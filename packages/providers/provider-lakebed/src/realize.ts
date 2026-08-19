@@ -76,7 +76,7 @@ function buildResource(
 	const mapping = resolveEquivalence(plan.port);
 	const bindings = (plan.deps ?? []).map((dep) =>
 		withBindRefs
-			? { resource: dep, ref: "${resources." + dep + ".outputs.binding}" }
+			? { resource: dep, ref: `\${resources.${dep}.outputs.binding}` }
 			: { providerResourceId: dep },
 	);
 
@@ -97,7 +97,7 @@ function buildResource(
 
 function primaryRef(resource: DriverResource): string {
 	const output = PRIMARY_OUTPUT[resource.type] ?? "binding";
-	return "${resources." + resource.name + ".outputs." + output + "}";
+	return `\${resources.${resource.name}.outputs.${output}}`;
 }
 
 /**
@@ -161,9 +161,7 @@ export function realizeTrafficRoutingPlan(
 	options: { deploymentId?: string; capsule?: string } = {},
 ): { driver: DriverProgram } {
 	const deploymentId =
-		options.deploymentId?.trim() ||
-		sanitizeDriverId(plan.planId) ||
-		"traffic";
+		options.deploymentId?.trim() || sanitizeDriverId(plan.planId) || "traffic";
 	const capsule =
 		options.capsule?.trim() ||
 		`capsule/${sanitizeDriverId(plan.intent.service) || "service"}`;
@@ -204,7 +202,10 @@ export function realizeTrafficRoutingPlan(
 				backends: rule.backends.map((backend) => backend.id),
 			})),
 		},
-		outputs: OUTPUTS_BY_CLASS["lakebed:traffic-route"] ?? ["routeId", "binding"],
+		outputs: OUTPUTS_BY_CLASS["lakebed:traffic-route"] ?? [
+			"routeId",
+			"binding",
+		],
 	};
 	const driver: DriverProgram = {
 		apiVersion: DRIVER_PROGRAM_API_VERSION,
@@ -215,7 +216,7 @@ export function realizeTrafficRoutingPlan(
 		resources: [resource],
 		outputs: {
 			routeId: primaryRef(resource),
-			binding: "${resources." + resourceName + ".outputs.binding}",
+			binding: `\${resources.${resourceName}.outputs.binding}`,
 		},
 	};
 	return { driver: assertDriverProgram(driver) };

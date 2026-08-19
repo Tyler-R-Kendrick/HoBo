@@ -238,21 +238,17 @@ describe("custom HarnessV1 adapters", () => {
 		});
 	});
 
-	it(
-		"loads an installed builtin adapter without switching on agent id",
-		async () => {
-			const spec = parseHarnessSpec({
-				id: "pi",
-				label: "Pi",
-				kind: "coding-agent",
-				runtime: { adapter: "pi" },
-			});
-			const harness = await createHarnessV1(spec);
-			expect(harness.specificationVersion).toBe("harness-v1");
-			expect(harness.harnessId).toBe("pi");
-		},
-		15_000,
-	);
+	it("loads an installed builtin adapter without switching on agent id", async () => {
+		const spec = parseHarnessSpec({
+			id: "pi",
+			label: "Pi",
+			kind: "coding-agent",
+			runtime: { adapter: "pi" },
+		});
+		const harness = await createHarnessV1(spec);
+		expect(harness.specificationVersion).toBe("harness-v1");
+		expect(harness.harnessId).toBe("pi");
+	}, 15_000);
 
 	it("loads a builtin adapter via the injected importer instead of a switch on id", async () => {
 		const spec = parseHarnessSpec({

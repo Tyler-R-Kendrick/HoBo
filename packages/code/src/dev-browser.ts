@@ -267,8 +267,7 @@ export async function startDevBrowserSession(
 			? options.appPort
 			: await allocateLoopbackPort();
 	const forceSpawn =
-		options.hoboBin !== undefined ||
-		explicitHoboBinOverride(env) !== undefined;
+		options.hoboBin !== undefined || explicitHoboBinOverride(env) !== undefined;
 
 	if (!forceSpawn) {
 		return startDevBrowserSessionInProcess({
@@ -422,12 +421,7 @@ async function startDevBrowserSessionInProcess(input: {
 			debugUrl: debugViewUrl(namedUrl ?? appUrl),
 			controlsUrl,
 			reportUrl: input.evidence.reportUrl,
-			evidencePath: join(
-				input.options.hoboHome,
-				"durable",
-				"code",
-				"evidence",
-			),
+			evidencePath: join(input.options.hoboHome, "durable", "code", "evidence"),
 			...(namedUrl !== undefined ? { namedUrl } : {}),
 			...(input.stationId ? { stationId: input.stationId } : {}),
 			...(input.environment ? { environment: input.environment } : {}),

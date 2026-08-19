@@ -6,12 +6,10 @@
 import type { DeliveryHealthSignal } from "@hobo/identity";
 
 // public-contract: progressive analysis adapter schema.
-export const PROGRESSIVE_ANALYSIS_SCHEMA = "hobo.progressive-analysis/v1" as const;
+export const PROGRESSIVE_ANALYSIS_SCHEMA =
+	"hobo.progressive-analysis/v1" as const;
 
-export type ProgressiveAnalysisVerdict =
-	| "promote"
-	| "hold"
-	| "rollback";
+export type ProgressiveAnalysisVerdict = "promote" | "hold" | "rollback";
 
 export type ProgressiveAnalysisResult = Readonly<{
 	schemaVersion: typeof PROGRESSIVE_ANALYSIS_SCHEMA;

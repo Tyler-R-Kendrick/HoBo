@@ -196,6 +196,27 @@ function collectSourceEdges(
 		/import\s+["'](@hobo\/[^"']+)["']/g,
 	];
 
+	/**
+	 * True when the match started inside a string literal rather than at a real
+	 * import statement.
+	 *
+	 * A remediation message that *quotes* an import — `'import { x } from
+	 * "@hobo/adapter-openbao"'` — matches the pattern above exactly as a real
+	 * import does, and counting it produces a dependency edge that does not
+	 * exist. That was enough to report a cycle between `@hobo/identity` and
+	 * `@hobo/adapter-openbao` where neither package imports the other.
+	 *
+	 * The test is the text on the match's own line, before the match: a real
+	 * import statement is preceded there by nothing, by `import { … }`, or by
+	 * the `} ` of a multi-line import — never by a quote. A quoted one always
+	 * carries the opening quote of the string it lives in.
+	 */
+	function insideStringLiteral(source: string, index: number): boolean {
+		const lineStart = source.lastIndexOf("\n", index) + 1;
+		const prefix = source.slice(lineStart, index);
+		return /["'`]/u.test(prefix);
+	}
+
 	function walk(dir: string): void {
 		for (const name of readdirSync(dir)) {
 			const fullPath = join(dir, name);
@@ -217,6 +238,10 @@ function collectSourceEdges(
 				for (const match of source.matchAll(pattern)) {
 					const depName = match[1];
 					if (!depName) {
+						continue;
+					}
+
+					if (insideStringLiteral(source, match.index)) {
 						continue;
 					}
 

@@ -11,7 +11,7 @@ import {
 } from "@hobo/code";
 import {
 	createContractAssertedHarnessFixtures,
-	FeatureFlagStore,
+	type FeatureFlagStore,
 } from "@hobo/identity";
 
 export interface CodeCommandDeps {
@@ -72,7 +72,9 @@ export function featurePortFromStore(store: FeatureFlagStore): CodeFeaturePort {
 }
 
 /** Resolve features for tests / doctor. */
-export function resolveCodeFeatures(deps: CodeCommandDeps = {}): CodeFeaturePort {
+export function resolveCodeFeatures(
+	deps: CodeCommandDeps = {},
+): CodeFeaturePort {
 	if (deps.features) return deps.features;
 	const env = deps.env ?? process.env;
 	const tenant =

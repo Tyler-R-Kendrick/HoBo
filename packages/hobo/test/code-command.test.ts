@@ -1,9 +1,9 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
 import { CODE_FEATURE_FLAGS, runHoboCodeCli } from "@hobo/code";
 import { FeatureFlagStore } from "@hobo/identity";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
 	featurePortFromStore,

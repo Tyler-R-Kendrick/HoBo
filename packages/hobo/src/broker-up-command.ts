@@ -17,9 +17,9 @@
 import { createServer } from "node:net";
 
 import {
+	type CommandModule,
 	createUpCommand,
 	loadBindleDefinition,
-	type CommandModule,
 	type YardRuntime,
 } from "@hobo/cli";
 
@@ -29,16 +29,17 @@ import {
 	loadBareMetalYardConfig,
 } from "./bare-metal-yard.js";
 import {
+	type BrokerDiscoveryClient,
+	type BrokerDiscoveryDocument,
 	BrokerDiscoveryError,
 	createBrokerDiscoveryClient,
-	type BrokerDiscoveryClient,
 } from "./broker-discovery.js";
 import {
 	createMockRemoteBrokerState,
 	createRemoteBrokerClient,
-	RemoteBrokerClientError,
 	type MockRemoteBrokerState,
 	type RemoteBrokerClient,
+	RemoteBrokerClientError,
 } from "./broker-remote-client.js";
 import {
 	ensureEmbeddedBroker,
@@ -46,8 +47,8 @@ import {
 } from "./broker-runtime.js";
 import { resolveBrokerTarget } from "./broker-target.js";
 import {
-	createCredentialPresenter,
 	type CredentialPresenter,
+	createCredentialPresenter,
 } from "./credential-presenter.js";
 import { serveProjectOnLocalYard } from "./wasm-host.js";
 
@@ -99,9 +100,7 @@ export function createBrokerAwareUpCommand(
 		run: async (input) => {
 			const { context, flags, emitProgress } = input;
 			const env =
-				deps.env ??
-				(context as { env?: NodeJS.ProcessEnv }).env ??
-				process.env;
+				deps.env ?? (context as { env?: NodeJS.ProcessEnv }).env ?? process.env;
 			const projectDir =
 				(context as { projectDir?: string }).projectDir ??
 				(typeof flags.cwd === "string" ? flags.cwd : context.cwd);
@@ -132,8 +131,7 @@ export function createBrokerAwareUpCommand(
 						// Only fall through when the Yard path is a pure stub (no manifest).
 						const isStub =
 							yardResult.code === "HOBO_CLI_STUB" ||
-							(yardResult.ok === false &&
-								yardResult.status === "stub");
+							(yardResult.ok === false && yardResult.status === "stub");
 						if (!isStub) {
 							return {
 								...yardResult,
@@ -204,7 +202,7 @@ export function createBrokerAwareUpCommand(
 									{}),
 					});
 
-				let discovery;
+				let discovery: BrokerDiscoveryDocument;
 				try {
 					discovery = await client.discover();
 				} catch (error) {

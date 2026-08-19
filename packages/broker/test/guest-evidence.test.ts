@@ -79,10 +79,7 @@ describe("guest resolution input", () => {
 
 	it("refuses a public-anonymous request that carries a sponsor budget", () => {
 		assert.throws(
-			() =>
-				parseGuestResolutionInput(
-					input({ sponsorCostCapMinorUnits: 500 }),
-				),
+			() => parseGuestResolutionInput(input({ sponsorCostCapMinorUnits: 500 })),
 			/must be zero for a public-anonymous bootstrap/u,
 		);
 	});
@@ -219,9 +216,7 @@ describe("offer and evidence agreement", () => {
 		assert.throws(
 			() =>
 				assertGuestEvidenceMatchesOffer(
-					parseGuestResolutionEvidence(
-						evidence({ topologyDigest: DIGEST_D }),
-					),
+					parseGuestResolutionEvidence(evidence({ topologyDigest: DIGEST_D })),
 					accepted,
 				),
 			/guest-offer-mismatch/u,
@@ -229,9 +224,7 @@ describe("offer and evidence agreement", () => {
 	});
 
 	it("refuses more ownership ceremonies than the human accepted", () => {
-		const oneAction = parseGuestResolutionInput(
-			input({ maxClaimActions: 1 }),
-		);
+		const oneAction = parseGuestResolutionInput(input({ maxClaimActions: 1 }));
 		assert.throws(
 			() =>
 				assertGuestEvidenceMatchesOffer(

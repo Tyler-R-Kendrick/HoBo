@@ -105,7 +105,7 @@ export function createVercelDeployProvider(
 
 	return {
 		id: `vercel-deploy:${projectName}`,
-		async preview(program: IacProgram): Promise<IacDiff> {
+		async preview(_program: IacProgram): Promise<IacDiff> {
 			const files = readVercelFileTree(templateDir);
 			return {
 				summary: `vercel deploy ${projectName} target=${target} (${files.length} files) [dry-run; live call cred-gated]`,
@@ -139,7 +139,7 @@ export function createVercelDeployProvider(
 			// than claim a destroy we do not perform.
 			byDeployment.delete(program.deploymentId);
 		},
-		async refresh(program: IacProgram): Promise<IacDriftReport> {
+		async refresh(_program: IacProgram): Promise<IacDriftReport> {
 			return { drift: false, observed: {} };
 		},
 	};

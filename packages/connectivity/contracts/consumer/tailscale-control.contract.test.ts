@@ -3,10 +3,9 @@ import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
 import { parseTenantId } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
-import { createTailscaleApiClient } from "../../src/overlay/tailscale-api.js";
 import { createTailscaleOverlay } from "../../src/overlay/tailscale.js";
-import { createPactFetch } from "../helpers/pact-fetch.js";
+import { createTailscaleApiClient } from "../../src/overlay/tailscale-api.js";
+import { createPactFetch, requirePact } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -16,9 +15,8 @@ const contractsDir = path.resolve(
 describe("TailscaleControlApi consumer contract", () => {
 	it("API client and overlay MagicDNS use pact mock", async () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
-		const pact = pacts.find((p) => p.provider.name === "TailscaleControlApi");
-		expect(pact).toBeDefined();
-		const fetchImpl = createPactFetch(pact!);
+		const pact = requirePact(pacts, "TailscaleControlApi");
+		const fetchImpl = createPactFetch(pact);
 
 		const api = createTailscaleApiClient({
 			apiKey: "tskey-api-pact",

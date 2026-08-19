@@ -66,9 +66,7 @@ export function enrichEvaluationContext(
 		...(scope.stack !== undefined ? { stack: scope.stack } : {}),
 		...(scope.branch !== undefined ? { branch: scope.branch } : {}),
 		...(scope.preview !== undefined ? { preview: scope.preview } : {}),
-		...(scope.appTenant !== undefined
-			? { appTenant: scope.appTenant }
-			: {}),
+		...(scope.appTenant !== undefined ? { appTenant: scope.appTenant } : {}),
 		...(scope.principal?.kind !== undefined
 			? { "identity.kind": scope.principal.kind }
 			: {}),

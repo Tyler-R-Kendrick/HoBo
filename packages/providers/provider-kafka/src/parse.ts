@@ -28,12 +28,11 @@ function nonEmpty(value: unknown, field: string): string {
 }
 
 export function parseKafkaClusterKind(value: unknown): KafkaClusterKind {
-	if (typeof value !== "string" || !CLUSTER_KINDS.has(value as KafkaClusterKind)) {
-		throw new MessagingParseError(
-			"kind",
-			[...CLUSTER_KINDS].join("|"),
-			value,
-		);
+	if (
+		typeof value !== "string" ||
+		!CLUSTER_KINDS.has(value as KafkaClusterKind)
+	) {
+		throw new MessagingParseError("kind", [...CLUSTER_KINDS].join("|"), value);
 	}
 	return value as KafkaClusterKind;
 }
@@ -44,13 +43,15 @@ export function parseKafkaClusterSpec(input: unknown): KafkaClusterSpec {
 	}
 	const src = input as Record<string, unknown>;
 	const servers = Array.isArray(src.bootstrapServers ?? src.bootstrap_servers)
-		? ((src.bootstrapServers ?? src.bootstrap_servers) as unknown[]).map(
-				(s) => nonEmpty(s, "bootstrapServers[]"),
+		? ((src.bootstrapServers ?? src.bootstrap_servers) as unknown[]).map((s) =>
+				nonEmpty(s, "bootstrapServers[]"),
 			)
 		: [];
 	const kind = parseKafkaClusterKind(src.kind ?? "self-hosted");
 	const credentialBindingRef = nonEmpty(
-		src.credentialBindingRef ?? src.credential_binding_ref ?? "fromBinding:kafka",
+		src.credentialBindingRef ??
+			src.credential_binding_ref ??
+			"fromBinding:kafka",
 		"credentialBindingRef",
 	);
 	// Reject plaintext credential shapes in the parse boundary.
@@ -118,9 +119,7 @@ export function parseKafkaTopicResource(input: unknown): KafkaTopicResource {
 		deliveryGuarantee: delivery,
 		...(src.deadLetterTopic || src.dead_letter_topic
 			? {
-					deadLetterTopic: String(
-						src.deadLetterTopic ?? src.dead_letter_topic,
-					),
+					deadLetterTopic: String(src.deadLetterTopic ?? src.dead_letter_topic),
 				}
 			: {}),
 		...(src.schemaRef || src.schema_ref
@@ -143,13 +142,12 @@ export function parseKafkaResourceDefinition(
 	}
 	const kind = nonEmpty(src.kind, "kind");
 	if (kind !== "KafkaCluster" && kind !== "KafkaTopic") {
-		throw new MessagingParseError(
-			"kind",
-			"KafkaCluster|KafkaTopic",
-			kind,
-		);
+		throw new MessagingParseError("kind", "KafkaCluster|KafkaTopic", kind);
 	}
-	const name = nonEmpty(src.name ?? (src.metadata as { name?: string })?.name, "name");
+	const name = nonEmpty(
+		src.name ?? (src.metadata as { name?: string })?.name,
+		"name",
+	);
 	const tenantId = nonEmpty(
 		src.tenantId ??
 			src.tenant_id ??

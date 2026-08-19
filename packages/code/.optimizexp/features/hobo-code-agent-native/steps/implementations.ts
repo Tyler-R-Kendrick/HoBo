@@ -106,15 +106,11 @@ export function exerciseSurface(world: OptimizexpWorld): void {
 			env: { ...process.env, HOBO_HOME: home, HOBO_CODE_AGENT: "1" },
 		},
 	);
-	const agent = spawnSync(
-		"node",
-		["--import", "tsx", BIN, "agent"],
-		{
-			cwd: PKG,
-			encoding: "utf8",
-			env: { ...process.env, HOBO_HOME: home, HOBO_CODE_AGENT: "1" },
-		},
-	);
+	const agent = spawnSync("node", ["--import", "tsx", BIN, "agent"], {
+		cwd: PKG,
+		encoding: "utf8",
+		env: { ...process.env, HOBO_HOME: home, HOBO_CODE_AGENT: "1" },
+	});
 	cleanup(home);
 	world.lastCommand = DISCOVERY_PRIMARY.command ?? "hobo-code agent";
 	world.lastExitCode = agent.status;
@@ -122,8 +118,7 @@ export function exerciseSurface(world: OptimizexpWorld): void {
 	world.lastStderr = agent.stderr ?? "";
 	const out = world.lastStdout;
 	world.statusClear =
-		agent.status === 0 &&
-		/◈ agent|human-free|mcp ·|acp ·|no-elicit/i.test(out);
+		agent.status === 0 && /◈ agent|human-free|mcp ·|acp ·|no-elicit/i.test(out);
 	world.nextActionObvious =
 		/isolate --json|agent --json|auth login --agent/i.test(out);
 	world.notes.push(`exerciseSurface agent exit ${agent.status}`);
@@ -137,15 +132,11 @@ export function observeAgentJson(world: OptimizexpWorld): void {
 		encoding: "utf8",
 		env: { ...process.env, HOBO_HOME: home, HOBO_CODE_AGENT: "1" },
 	});
-	const r = spawnSync(
-		"node",
-		["--import", "tsx", BIN, "agent", "--json"],
-		{
-			cwd: PKG,
-			encoding: "utf8",
-			env: { ...process.env, HOBO_HOME: home, HOBO_CODE_AGENT: "1" },
-		},
-	);
+	const r = spawnSync("node", ["--import", "tsx", BIN, "agent", "--json"], {
+		cwd: PKG,
+		encoding: "utf8",
+		env: { ...process.env, HOBO_HOME: home, HOBO_CODE_AGENT: "1" },
+	});
 	cleanup(home);
 	world.lastCommand = "hobo-code agent --json";
 	world.lastExitCode = r.status;
@@ -154,9 +145,7 @@ export function observeAgentJson(world: OptimizexpWorld): void {
 	const out = world.lastStdout;
 	world.statusClear =
 		r.status === 0 &&
-		/hobo\.code\.agent|humanFreeAuth|mcpTools|"mcp"|noElicitation/i.test(
-			out,
-		) &&
+		/hobo\.code\.agent|humanFreeAuth|mcpTools|"mcp"|noElicitation/i.test(out) &&
 		!/sk-[a-zA-Z0-9]{12,}/.test(out);
 	world.nextActionObvious = /isolate|auth login --agent|mcp/i.test(out);
 	world.notes.push(`observeAgentJson exit ${r.status}`);
@@ -223,9 +212,7 @@ export function assertClearStatus(world: OptimizexpWorld): void {
 
 export function assertNextActionObvious(world: OptimizexpWorld): void {
 	if (!world.nextActionObvious && world.lastExitCode !== 0) {
-		throw new Error(
-			`Expected next action; ${world.lastStderr.slice(0, 300)}`,
-		);
+		throw new Error(`Expected next action; ${world.lastStderr.slice(0, 300)}`);
 	}
 }
 

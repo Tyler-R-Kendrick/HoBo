@@ -67,7 +67,8 @@ export async function runVirtualPane(
 	// redirecting to the source would hand this agent the shared tree. The
 	// marker `hobo-rift exec` sets is how that is detectable rather than
 	// left to whoever reads the help text.
-	const insideNamespace = (options.env ?? process.env).HOBO_RIFT_WORKSPACE !== undefined;
+	const insideNamespace =
+		(options.env ?? process.env).HOBO_RIFT_WORKSPACE !== undefined;
 	if (insideNamespace && options.tier !== undefined) {
 		throw new Error(
 			"--tier/--source describe a workspace from outside its namespace, but this pane is already inside one; " +
@@ -82,11 +83,13 @@ export async function runVirtualPane(
 					source: options.source,
 				})
 			: options.workspace;
-	const shell = options.shell ?? createVirtualShell({
-		workspace: mount,
-		...(options.writable === true ? { writable: true } : {}),
-		env: { AGENT_ID: options.agentId },
-	});
+	const shell =
+		options.shell ??
+		createVirtualShell({
+			workspace: mount,
+			...(options.writable === true ? { writable: true } : {}),
+			env: { AGENT_ID: options.agentId },
+		});
 
 	// The banner is what tells an agent what it has, so it must describe the
 	// shell actually in use rather than the default one.

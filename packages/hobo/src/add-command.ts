@@ -8,15 +8,14 @@ import {
 	registerProviderFact,
 } from "@hobo/cloud";
 import type { PrincipalRef } from "@hobo/core";
-
+import { defaultHoboHome } from "./bare-metal-yard.js";
 import { installRuntime } from "./installed-runtimes.js";
 import { createLocalProvider } from "./local-provider.js";
 import {
-	type RuntimeInstallId,
 	RUNTIME_INSTALL_IDS,
+	type RuntimeInstallId,
 	runtimeInstallIdToHost,
 } from "./runtime-catalog.js";
-import { defaultHoboHome } from "./bare-metal-yard.js";
 
 // The durable stream the registry catalog is projected from — `hobo add` appends
 // `provider.Registered` (+ `provider.Approved`) facts here; the Registry folds

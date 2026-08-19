@@ -12,8 +12,8 @@
  * and this file stops compiling.
  */
 
-import type { Capability, CowTier } from "./capability.js";
 import { CowTier as CowTierPb } from "./_generated/rift_workspace_pb.js";
+import type { Capability, CowTier } from "./capability.js";
 import type { WorkspaceRecord } from "./workspace.js";
 
 const TIER_TO_WIRE: Readonly<Record<CowTier, CowTierPb>> = {

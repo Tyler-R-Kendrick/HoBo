@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createWebernetesProvider, webernetesNativePorts, supportsAnonymousTemporaryDeploy } from "../src/index.js";
+import {
+	createWebernetesProvider,
+	supportsAnonymousTemporaryDeploy,
+	webernetesNativePorts,
+} from "../src/index.js";
 import { provisionTemporaryEnvironmentStation } from "../src/temporary-station.js";
 
 describe("@hobo/provider-webernetes", () => {
@@ -16,7 +20,9 @@ describe("@hobo/provider-webernetes", () => {
 	});
 
 	it("temporary provision path", async () => {
-		const result = await provisionTemporaryEnvironmentStation({ stationId: "st-1" });
+		const result = await provisionTemporaryEnvironmentStation({
+			stationId: "st-1",
+		});
 		expect(result.anonymous).toBe(true);
 		expect(result.temporary).toBe(true);
 		expect(result.providerId).toBe("webernetes");

@@ -4,8 +4,8 @@
  */
 import {
 	createHarness,
-	FeatureFlagStore,
 	type DeliveryHealthSignal,
+	FeatureFlagStore,
 	type Harness,
 	type ProgressiveRun,
 } from "@hobo/identity";
@@ -61,13 +61,9 @@ export async function runProgressiveComposition(input: {
 	readonly healthSamples?: readonly DeliveryHealthSignal[];
 	readonly analysis?: ProgressiveAnalysisPort;
 }): Promise<ProgressiveCdResult> {
-	const flag =
-		input.set.progressive?.flag ?? `deploy.${input.set.setId}`;
-	const stages =
-		input.set.progressive?.stages ??
-		([5, 25, 100] as const);
-	const traffic =
-		input.set.progressive?.traffic ?? "gateway-weighted";
+	const flag = input.set.progressive?.flag ?? `deploy.${input.set.setId}`;
+	const stages = input.set.progressive?.stages ?? ([5, 25, 100] as const);
+	const traffic = input.set.progressive?.traffic ?? "gateway-weighted";
 	const autoRollback = input.set.progressive?.autoRollback !== false;
 
 	const store = input.store ?? new FeatureFlagStore({ sampleRate: 0 });
@@ -86,12 +82,9 @@ export async function runProgressiveComposition(input: {
 		});
 	}
 
-	const harness =
-		input.harness ??
-		createHarness({ store });
+	const harness = input.harness ?? createHarness({ store });
 
-	const analysisPort =
-		input.analysis ?? createBuiltinProgressiveAnalysis();
+	const analysisPort = input.analysis ?? createBuiltinProgressiveAnalysis();
 
 	const run = harness.startProgressive({
 		rollout: {

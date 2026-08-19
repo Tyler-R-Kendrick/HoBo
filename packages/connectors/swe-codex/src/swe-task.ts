@@ -3,13 +3,13 @@ import {
 	extractSweTaskReport,
 	runSweTask as runSweTaskShared,
 	SANDBOX_REPORT_SCHEMA,
-	SWE_TASK_REPORT_SCHEMA,
-	sweTaskPolicy,
 	type SandboxAccessReport,
+	type SweTaskRunInput as SharedSweTaskRunInput,
+	SWE_TASK_REPORT_SCHEMA,
 	type SweTask,
 	type SweTaskReport,
-	type SweTaskRunInput as SharedSweTaskRunInput,
 	type SweTaskRunResult,
+	sweTaskPolicy,
 } from "@hobo/swe-shared";
 
 import { SWE_CODEX_CONNECTOR } from "./connector.js";
@@ -20,12 +20,12 @@ export {
 	buildSandboxAccessReport,
 	extractSweTaskReport,
 	SANDBOX_REPORT_SCHEMA,
-	SWE_TASK_REPORT_SCHEMA,
-	sweTaskPolicy,
 	type SandboxAccessReport,
+	SWE_TASK_REPORT_SCHEMA,
 	type SweTask,
 	type SweTaskReport,
 	type SweTaskRunResult,
+	sweTaskPolicy,
 };
 
 export type SweTaskRunInput = Omit<SharedSweTaskRunInput, "connector">;

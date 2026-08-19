@@ -8,19 +8,13 @@
 
 import { existsSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-
-import {
-	HOBO_AGENT_MODEL,
-	HOBO_AGENT_NAME,
-} from "./harness-customization.js";
-import {
-	defaultHoboCodeEveAgents,
-	describeEveSubagentSurface,
-} from "./eve.js";
+import { defaultHoboCodeEveAgents, describeEveSubagentSurface } from "./eve.js";
+import { HOBO_AGENT_MODEL, HOBO_AGENT_NAME } from "./harness-customization.js";
 import { describeCodeWorlds } from "./worlds.js";
 
 // public-contract: harness inventory payload
-export const CODE_HARNESS_SURFACE_SCHEMA = "hobo.code.harness-surface/v1" as const;
+export const CODE_HARNESS_SURFACE_SCHEMA =
+	"hobo.code.harness-surface/v1" as const;
 
 export type HarnessSurfaceKind = "pi-tui" | "flue-run";
 
@@ -143,7 +137,11 @@ function resolveSkillRoots(cwd: string): {
 		tryAdd(repoRoot, ".claude/skills", "Claude-mirrored skills");
 	}
 	// Package-scoped optional
-	tryAdd(repoRoot, "packages/code/.agents/skills", "package-local skills (if any)");
+	tryAdd(
+		repoRoot,
+		"packages/code/.agents/skills",
+		"package-local skills (if any)",
+	);
 
 	return { roots, repoRoot };
 }
@@ -152,10 +150,9 @@ function resolveSkillRoots(cwd: string): {
  * Inventory dual harness surfaces + skills + self-improve + brain notes.
  * `cwd` is project root for skill-root presence checks (walks up to monorepo).
  */
-export function inspectHarnessSurface(options: {
-	readonly cwd?: string;
-	readonly hoboHome?: string;
-} = {}): HarnessSurfaceStatus {
+export function inspectHarnessSurface(
+	options: { readonly cwd?: string; readonly hoboHome?: string } = {},
+): HarnessSurfaceStatus {
 	const cwd = options.cwd ?? process.cwd();
 	const hoboHome = options.hoboHome ?? process.env.HOBO_HOME ?? "$HOBO_HOME";
 	const { roots: skillRoots, repoRoot } = resolveSkillRoots(cwd);
@@ -180,8 +177,8 @@ export function inspectHarnessSurface(options: {
 				kind: "flue-run",
 				path: "packages/code/agents/hobo-code.ts",
 				narrative:
-					"Programmatic Flue agent — durable sessions: flue run hobo-code --input '{\"message\":\"…\"}'.",
-				try: "flue run hobo-code --input '{\"message\":\"status\"}'",
+					'Programmatic Flue agent — durable sessions: flue run hobo-code --input \'{"message":"…"}\'.',
+				try: 'flue run hobo-code --input \'{"message":"status"}\'',
 			},
 			sharedCustomization:
 				"src/harness-customization.ts + harness-tools.ts (ADR-0139 single source of truth)",
@@ -242,7 +239,10 @@ export function inspectHarnessSurface(options: {
 /** Human panel for hobo-code harness. */
 export function harnessHumanSummary(status: HarnessSurfaceStatus): string {
 	const skills = status.skillRoots
-		.filter((s) => s.present || s.root.includes(".agents") || s.root.includes(".claude"))
+		.filter(
+			(s) =>
+				s.present || s.root.includes(".agents") || s.root.includes(".claude"),
+		)
 		.slice(0, 4)
 		.map((s) => {
 			const short = s.root

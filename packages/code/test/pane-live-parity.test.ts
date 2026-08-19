@@ -1,5 +1,8 @@
 import { spawn } from "node:child_process";
 import { describe, expect, it } from "vitest";
+import { harnessViewFromLivePanes } from "../src/harness-session-view.js";
+import type { InSessionPanes } from "../src/in-session-panes.js";
+import { refreshInSessionPanes } from "../src/in-session-panes.js";
 import {
 	createInitialShellState,
 	enterPaneInteract,
@@ -7,12 +10,9 @@ import {
 	renderShellFrame,
 	resolvePaneInteractTarget,
 } from "../src/interactive-shell.js";
-import { refreshInSessionPanes } from "../src/in-session-panes.js";
-import type { InSessionPanes } from "../src/in-session-panes.js";
-import { harnessViewFromLivePanes } from "../src/harness-session-view.js";
-import { cellWidth } from "../src/rubberhose.js";
 import type { MuxRunner } from "../src/mux.js";
 import { isPaneInteractDetach } from "../src/pane-interact.js";
+import { cellWidth } from "../src/rubberhose.js";
 
 async function tmuxOk(): Promise<boolean> {
 	return await new Promise((resolve) => {

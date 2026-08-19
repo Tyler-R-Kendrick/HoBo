@@ -71,8 +71,12 @@ describe("Bo workspace actions", () => {
 			environment: "local-dev",
 			emphasis: "run",
 		});
-		expect(text).toMatch(/^bindle\s+http:\/\/web\.hello-world\.local\.hobo\.localhost:48211$/m);
-		expect(text).toMatch(/^debug\s+http:\/\/web\.hello-world\.local\.hobo\.localhost:48211\/\?__hobo_debug=1$/m);
+		expect(text).toMatch(
+			/^bindle\s+http:\/\/web\.hello-world\.local\.hobo\.localhost:48211$/m,
+		);
+		expect(text).toMatch(
+			/^debug\s+http:\/\/web\.hello-world\.local\.hobo\.localhost:48211\/\?__hobo_debug=1$/m,
+		);
 		expect(text).toContain(
 			"http://evidence.code.local.hobo.localhost:48212/__hobo/evidence/controls/live",
 		);

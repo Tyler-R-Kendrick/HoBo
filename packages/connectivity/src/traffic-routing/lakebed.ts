@@ -157,9 +157,7 @@ export function createLakebedTrafficRouting(
 								...deployNotes,
 							],
 				appliedRules: realizedRuleCount(plan),
-				...(layerUnmet.length === 0
-					? {}
-					: { unmet: [...new Set(layerUnmet)] }),
+				...(layerUnmet.length === 0 ? {} : { unmet: [...new Set(layerUnmet)] }),
 				capabilities: ["weighted-backends"],
 			});
 			applied.set(plan.planId, {

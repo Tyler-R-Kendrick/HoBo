@@ -9,8 +9,8 @@ import type { ComponentHostKind } from "./bare-metal-yard.js";
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
 	hostToRuntimeInstallId,
-	type RuntimeInstallId,
 	RUNTIME_INSTALL_IDS,
+	type RuntimeInstallId,
 	runtimeInstallIdToHost,
 } from "./runtime-catalog.js";
 
@@ -39,7 +39,9 @@ export function loadInstalledRuntimes(
 		};
 	}
 	try {
-		const raw = JSON.parse(readFileSync(path, "utf8")) as InstalledRuntimesState;
+		const raw = JSON.parse(
+			readFileSync(path, "utf8"),
+		) as InstalledRuntimesState;
 		if (raw.schemaVersion !== INSTALLED_RUNTIMES_SCHEMA) {
 			return {
 				schemaVersion: INSTALLED_RUNTIMES_SCHEMA,

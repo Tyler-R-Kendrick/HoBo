@@ -3,10 +3,9 @@ import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
 import { parseTenantId } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
-import { createNetbirdApiClient } from "../../src/overlay/netbird-api.js";
 import { createNetbirdOverlay } from "../../src/overlay/netbird.js";
-import { createPactFetch } from "../helpers/pact-fetch.js";
+import { createNetbirdApiClient } from "../../src/overlay/netbird-api.js";
+import { createPactFetch, requirePact } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -16,9 +15,8 @@ const contractsDir = path.resolve(
 describe("NetbirdManagementApi consumer contract", () => {
 	it("enroll, peers, DNS, and overlay join via pact mock", async () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
-		const pact = pacts.find((p) => p.provider.name === "NetbirdManagementApi");
-		expect(pact).toBeDefined();
-		const fetchImpl = createPactFetch(pact!);
+		const pact = requirePact(pacts, "NetbirdManagementApi");
+		const fetchImpl = createPactFetch(pact);
 
 		const api = createNetbirdApiClient({
 			managementUrl: "https://nb.example.com",

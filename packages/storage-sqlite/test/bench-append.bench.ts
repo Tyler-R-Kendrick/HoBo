@@ -8,10 +8,7 @@
 
 import { bench, describe } from "vitest";
 
-import {
-	createMemoryNodeSqliteDriver,
-	SqliteJournal,
-} from "../src/index.js";
+import { createMemoryNodeSqliteDriver, SqliteJournal } from "../src/index.js";
 
 const actor = { kind: "system" as const, id: "bench" };
 

@@ -5,7 +5,12 @@ import type {
 	TenantId,
 } from "@hobo/core";
 
-function key(tenantId: TenantId, zone: string, name: string, type: string): string {
+function key(
+	tenantId: TenantId,
+	zone: string,
+	name: string,
+	type: string,
+): string {
 	return `${tenantId}::${zone}::${name}::${type}`;
 }
 

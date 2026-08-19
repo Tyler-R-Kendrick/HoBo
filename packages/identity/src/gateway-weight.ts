@@ -64,7 +64,9 @@ export function trafficWeightSplitFromPercent(
 			stable: options?.stableTarget ?? "stable",
 			canary: options?.canaryTarget ?? "canary",
 		}),
-		...(options?.rolloutId !== undefined ? { rolloutId: options.rolloutId } : {}),
+		...(options?.rolloutId !== undefined
+			? { rolloutId: options.rolloutId }
+			: {}),
 		...(options?.flag !== undefined ? { flag: options.flag } : {}),
 	});
 }

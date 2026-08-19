@@ -129,9 +129,7 @@ describe("@hobo/core messaging port", () => {
 		expect(parseActorPlacementMode("dapr")).toBe("dapr");
 		expect(parseActorPlacementMode("rivet")).toBe("rivet");
 		expect(parseActorPlacementMode("celld")).toBe("celld");
-		expect(() => parseActorPlacementMode("flux")).toThrow(
-			/actorPlacementMode/,
-		);
+		expect(() => parseActorPlacementMode("flux")).toThrow(/actorPlacementMode/);
 		expect(() => parseActorPlacementMode("Rivet")).toThrow(
 			/actorPlacementMode/,
 		);

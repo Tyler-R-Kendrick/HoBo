@@ -3,7 +3,6 @@
  * Measure-first: frame sizes come from assets_index.json only.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 

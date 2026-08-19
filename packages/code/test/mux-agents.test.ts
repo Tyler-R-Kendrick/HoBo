@@ -11,8 +11,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { allocateAgentWorkspaces } from "../src/agent-workspaces.js";
 import { detectAgents, KNOWN_AGENTS } from "../src/agent-registry.js";
+import { allocateAgentWorkspaces } from "../src/agent-workspaces.js";
 import { inspectDevenv } from "../src/devenv.js";
 import {
 	applyMux,

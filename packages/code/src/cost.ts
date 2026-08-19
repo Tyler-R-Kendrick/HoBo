@@ -7,10 +7,10 @@
  */
 
 import {
+	type BudgetPolicy,
 	createBudgetTracker,
 	DEFAULT_BUDGET_POLICY,
 	routeProvider,
-	type BudgetPolicy,
 } from "./finops.js";
 import { inspectModels, type ModelsStatus } from "./models.js";
 
@@ -163,7 +163,10 @@ function isLocalHint(activeModel: string, env: NodeJS.ProcessEnv): boolean {
 		return true;
 	}
 	const base =
-		env.OPENAI_BASE_URL ?? env.HOBO_CODE_LOCAL_BASE_URL ?? env.OLLAMA_HOST ?? "";
+		env.OPENAI_BASE_URL ??
+		env.HOBO_CODE_LOCAL_BASE_URL ??
+		env.OLLAMA_HOST ??
+		"";
 	return /localhost|127\.0\.0\.1|0\.0\.0\.0|:11434/.test(base);
 }
 
@@ -182,7 +185,8 @@ export function inspectCost(
 	const policy: BudgetPolicy = {
 		capUsd,
 		routingPolicy,
-		monetizationOptIn: !monetizationOff && DEFAULT_BUDGET_POLICY.monetizationOptIn,
+		monetizationOptIn:
+			!monetizationOff && DEFAULT_BUDGET_POLICY.monetizationOptIn,
 	};
 	const tracker = createBudgetTracker(policy);
 	const spend =

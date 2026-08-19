@@ -74,9 +74,7 @@ export function createMemoryConfigStore(options?: {
 			}
 			const valueRef =
 				input.valueRef ??
-				(sensitivity === "sensitive"
-					? `secref://${key}`
-					: `camp://${key}`);
+				(sensitivity === "sensitive" ? `secref://${key}` : `camp://${key}`);
 			values.set(key, {
 				valueRef,
 				sensitivity,

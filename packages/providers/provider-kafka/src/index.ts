@@ -26,15 +26,15 @@ export {
 } from "./provider.js";
 export {
 	localRedpandaCluster,
-	realizeKafkaResources,
 	type RealizeKafkaInput,
+	realizeKafkaResources,
 } from "./realize.js";
 export {
 	createInMemoryKafkaTransport,
 	type InMemoryKafkaTransportOptions,
 	type KafkaBrokerTransport,
-	type KafkaFetchRequest,
 	type KafkaFetchedMessage,
+	type KafkaFetchRequest,
 	type KafkaProduceRequest,
 	type KafkaProduceResult,
 	resolveKafkaTransportFromEnv,

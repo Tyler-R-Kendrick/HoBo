@@ -25,7 +25,10 @@ export interface NetbirdDnsNameserverGroup {
 	readonly id?: string;
 	readonly name: string;
 	readonly description?: string;
-	readonly nameservers: readonly { readonly ip: string; readonly nsType?: string }[];
+	readonly nameservers: readonly {
+		readonly ip: string;
+		readonly nsType?: string;
+	}[];
 	readonly domains: readonly string[];
 	readonly enabled: boolean;
 	readonly primary?: boolean;
@@ -75,7 +78,7 @@ export function createNetbirdApiClient(
 		if (auth === "setup" && (options.setupKey || body)) {
 			// setup-key may ride in body; also send header when present
 			if (options.setupKey) {
-				headers["authorization"] = `Token ${options.setupKey}`;
+				headers.authorization = `Token ${options.setupKey}`;
 			}
 		}
 		if (body !== undefined) {

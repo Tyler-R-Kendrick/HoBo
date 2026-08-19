@@ -179,26 +179,6 @@ export {
 	type ResourcePlan,
 } from "./plan-types.js";
 export {
-	capabilityRequirementFromBindleRequirements,
-	matchCapabilityRequirement,
-	profileCatalogHash,
-	type ProfileMatchAccepted,
-	type ProfileMatchInput,
-	type ProfileMatchOutcome,
-	type ProfileMatchRejected,
-} from "./planner/profile-matching.js";
-export {
-	RESOURCE_DEFINITION_VNEXT_SCHEMA,
-	ResourceDefinitionMigrationError,
-	parseResourceDefinitionVNext,
-	semanticsDigestInput,
-	toSelectionCandidate,
-	type PlacementConstraint,
-	type RemediationHint,
-	type ResourceDefinitionSemantics,
-	type ResourceDefinitionVNext,
-} from "./registry/resource-definition-vnext.js";
-export {
 	type DecidedPlacement,
 	emptyPlacementContext,
 	type MatchAccepted,
@@ -206,12 +186,27 @@ export {
 	type MatchRejected,
 	matchResource,
 	type PlacementContext,
+	type PlanBindingAuthority,
 	type PlanConfig,
 	type PlanRejection,
 	type PlanResult,
 	type PlanSuccess,
 	plan,
 } from "./planner/index.js";
+export {
+	capabilityRequirementFromBindleRequirements,
+	matchCapabilityRequirement,
+	type ProfileMatchAccepted,
+	type ProfileMatchInput,
+	type ProfileMatchOutcome,
+	type ProfileMatchRejected,
+	type ProfileMatchRejectionRecord,
+	profileCatalogHash,
+	type YardBindingContext,
+	type YardBindingRejection,
+	type YardBindingRejectionCode,
+	type YardBindingRow,
+} from "./planner/profile-matching.js";
 export {
 	type CompactionResult,
 	CREDENTIAL_AUDIT_EVENT_PREFIXES,
@@ -260,6 +255,17 @@ export {
 	registerProviderFact,
 	registryCatalogProjection,
 } from "./registry/catalog.js";
+export {
+	type PlacementConstraint,
+	parseResourceDefinitionVNext,
+	RESOURCE_DEFINITION_VNEXT_SCHEMA,
+	type RemediationHint,
+	ResourceDefinitionMigrationError,
+	type ResourceDefinitionSemantics,
+	type ResourceDefinitionVNext,
+	semanticsDigestInput,
+	toSelectionCandidate,
+} from "./registry/resource-definition-vnext.js";
 export { collectStream, currentFenceToken } from "./store/index.js";
 
 // public-contract: package id consumers assert against.

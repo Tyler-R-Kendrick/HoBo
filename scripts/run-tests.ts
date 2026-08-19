@@ -60,6 +60,14 @@ const categories: Record<string, string[]> = {
 		"src/draft/*/*/contracts/consumer/*test.ts",
 		"src/draft/exp-proofs/*/*/contracts/consumer/*test.ts",
 		"packages/runtimes/*/contracts/consumer/*test.ts",
+		// Every package-level contract test, wherever it lives in the tree. The
+		// `.contract.test.ts` suffix is the repo's deliberate marker for "this
+		// test holds code to a published contract", so it is the thing to key
+		// on. Before this pattern existed the category reached only
+		// `src/draft/**` plus one runtimes path, so 30-odd real contract tests
+		// under `packages/**` — including pact-driven ones — were unreachable
+		// from `pnpm run test:contract` and could rot silently.
+		"packages/**/*.contract.test.ts",
 		"test/*contract*.test.ts",
 	],
 	"contract-provider": [
@@ -72,6 +80,13 @@ const categories: Record<string, string[]> = {
 		"src/draft/*/*/tests/*provider*.test.mjs",
 		"src/draft/exp-proofs/*/*/tests/*provider*.test.mjs",
 		"src/draft/*/*/contracts/provider/*test.ts",
+		// Deliberately NOT extended to `packages/**`: in this repo "provider"
+		// names a *cloud* provider far more often than a pact provider, so a
+		// `*provider*` glob there would sweep in dozens of unrelated suites
+		// (`add-aws-provider.test.ts`, `local-provider.test.ts`, every
+		// `provider-*/test/provider.test.ts`) and make the category meaningless.
+		// Package-level contract tests are matched by the `.contract.test.ts`
+		// marker in `contract-consumer` above instead.
 		"test/*provider*.test.ts",
 	],
 	dom: ["tests/dom/**/*test.ts", "test/dom/**/*test.ts"],

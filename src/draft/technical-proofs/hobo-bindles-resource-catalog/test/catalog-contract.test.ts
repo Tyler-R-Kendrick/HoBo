@@ -34,7 +34,6 @@ const expectedCatalog = Object.freeze([
   { factory: "notify", portRef: ["hobo:notify"], verbs: ["send"] },
   { factory: "guardrail", portRef: ["hobo:guardrail"], verbs: ["check"] },
   { factory: "ui", portRef: ["hobo:ui-render"], verbs: ["render", "drive"] },
-  { factory: "golden", portRef: ["hobo:golden"], verbs: ["run", "bless"] },
   { factory: "experiment", portRef: ["hobo:experiment"], verbs: ["assign", "expose", "analyze"] }
 ]);
 

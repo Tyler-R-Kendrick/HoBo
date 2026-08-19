@@ -1,8 +1,6 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	connectionAuthorize,
 	connectionCreate,
@@ -11,9 +9,9 @@ import {
 	stationInit,
 	stationUp,
 } from "@hobo/management";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
-	HOBO_CONTROL_YARD_PACKAGE,
 	assertSheetFitsFrames,
 	boAnimationForVisual,
 	buildBootLoadPlan,
@@ -21,14 +19,15 @@ import {
 	createYardEngine,
 	describeYardSceneLoad,
 	expectedSheetPixelSize,
+	HOBO_CONTROL_YARD_PACKAGE,
 	isTestMode,
 	loadAssetIndex,
 	resolveAnimation,
-	selectZoneWithSnapshot,
 	seededRandom,
+	selectZoneWithSnapshot,
 	sheetForConnectionCreate,
-	streamSheet,
 	stepToward,
+	streamSheet,
 	YARD_LAYOUT,
 	zoneAt,
 } from "../src/index.js";
@@ -120,11 +119,7 @@ describe("@hobo/control-yard", () => {
 
 		engine.tick(0.1);
 		// particles may emit
-		const sheet = selectZoneWithSnapshot(
-			engine,
-			"connectionBay",
-			snap.data!,
-		);
+		const sheet = selectZoneWithSnapshot(engine, "connectionBay", snap.data!);
 		expect(sheet?.kind).toMatch(/connection\./);
 
 		const createSheet = sheetForConnectionCreate(snap.data);

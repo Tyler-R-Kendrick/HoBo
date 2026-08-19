@@ -5,8 +5,8 @@
 import {
 	CODE_EVIDENCE_SCHEMA,
 	CODE_ISOLATION_SCHEMA,
-	type EvidenceTriple,
 	type EvidenceKind,
+	type EvidenceTriple,
 	type GuestEvidenceSubmission,
 	type IsolationContext,
 	type IsolationKind,
@@ -72,12 +72,14 @@ export function parseGuestEvidenceSubmission(
 	}
 	const artifactRefs = Array.isArray(source.artifactRefs)
 		? source.artifactRefs.map((ref, index) => {
-			const value = requireString(ref, `artifactRefs[${index}]`);
-			if (!ARTIFACT_REF.test(value)) {
-				throw new TypeError(`artifactRefs[${index}] must be a sha256 reference`);
-			}
-			return value;
-		})
+				const value = requireString(ref, `artifactRefs[${index}]`);
+				if (!ARTIFACT_REF.test(value)) {
+					throw new TypeError(
+						`artifactRefs[${index}] must be a sha256 reference`,
+					);
+				}
+				return value;
+			})
 		: [];
 	return Object.freeze({
 		kind,
@@ -173,7 +175,10 @@ export function parseEvidenceTriple(input: unknown): EvidenceTriple {
 			source.playwrightScriptPath,
 			"playwrightScriptPath",
 		),
-		recordingMp4Path: requireString(source.recordingMp4Path, "recordingMp4Path"),
+		recordingMp4Path: requireString(
+			source.recordingMp4Path,
+			"recordingMp4Path",
+		),
 		screenshotPaths: Object.freeze(screenshots),
 		durableRoot: requireString(source.durableRoot, "durableRoot"),
 	});

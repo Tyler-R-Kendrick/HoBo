@@ -14,8 +14,12 @@
 
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
-import { HOBO_LOGO_TUI } from "./_generated/hobo-logo-tui.js";
-import { harnessDisplayLabel, loadHarnessCatalog } from "./agent-harness-catalog.js";
+import { HOBO_LOGO_TUI } from "./_generated-art/hobo-logo-tui.js";
+import {
+	harnessDisplayLabel,
+	loadHarnessCatalog,
+} from "./agent-harness-catalog.js";
+import type { AgentWorkBoard } from "./agent-work.js";
 import {
 	AGENTS_CATALOG_KEY_LEGEND,
 	type AgentsCatalogPick,
@@ -36,7 +40,6 @@ import {
 	openHoboBoConfigure,
 	reduceAgentsConfigureKey,
 } from "./agents-configure.js";
-import type { AgentWorkBoard } from "./agent-work.js";
 import {
 	EMPTY_TURN,
 	reduceTurn,
@@ -63,11 +66,26 @@ import {
 	renderTasksBoardText,
 	type TaskBoardRow,
 } from "./grok-build-parity.js";
-import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
 import {
-	DEFAULT_OLLAMA_HOST,
-	probeOllama,
-} from "./ollama-engine.js";
+	executeHarnessChromeAction,
+	HARNESS_CHROME_KEY_HINT,
+	type HarnessChromeAction,
+	harnessActionFromSlash,
+} from "./harness-session-actions.js";
+import {
+	cycleHarnessFocus,
+	cycleHarnessLeaf,
+	emptyHarnessSessionView,
+	focusedHarnessAgentId,
+	focusedHarnessPane,
+	formatHarnessSessionLines,
+	type HarnessSessionView,
+	harnessViewFromLivePanes,
+	harnessViewFromSnapshot,
+	mergeHarnessSessions,
+	syncLivePanesFocus,
+} from "./harness-session-view.js";
+import { hermeticEnvSummary, inspectHermeticEnv } from "./hermetic-env.js";
 import {
 	emptyInSessionPanes,
 	ensureInSessionPanes,
@@ -78,34 +96,16 @@ import {
 	refreshInSessionPanes,
 	sendKeysRawToInSessionPane,
 } from "./in-session-panes.js";
-import {
-	attachTmuxFullscreen,
-	AGENTS_ATTACH_HINT,
-	isPaneInteractDetach,
-	PANE_INTERACT_HINT,
-} from "./pane-interact.js";
-import {
-	cycleHarnessFocus,
-	cycleHarnessLeaf,
-	emptyHarnessSessionView,
-	focusedHarnessAgentId,
-	focusedHarnessPane,
-	formatHarnessSessionLines,
-	harnessViewFromLivePanes,
-	harnessViewFromSnapshot,
-	type HarnessSessionView,
-	mergeHarnessSessions,
-	syncLivePanesFocus,
-} from "./harness-session-view.js";
-import {
-	executeHarnessChromeAction,
-	HARNESS_CHROME_KEY_HINT,
-	type HarnessChromeAction,
-	harnessActionFromSlash,
-} from "./harness-session-actions.js";
 import { createLocalSessionControl } from "./local-session-control.js";
 import { tmuxRunner } from "./mux.js";
 import { preferNamedEndpoint } from "./occupancy-endpoints.js";
+import { DEFAULT_OLLAMA_HOST, probeOllama } from "./ollama-engine.js";
+import {
+	AGENTS_ATTACH_HINT,
+	attachTmuxFullscreen,
+	isPaneInteractDetach,
+	PANE_INTERACT_HINT,
+} from "./pane-interact.js";
 import { type AccentName, centreBlock } from "./rubberhose.js";
 import {
 	openSessionEvidencePort,
@@ -138,7 +138,6 @@ import { StreamTerminal } from "./shell-terminal.js";
 import {
 	BO_CELL_HEIGHT,
 	BO_IDLE_TICK_MS,
-	HOBO_LOGO_CONSOLE,
 	HOBO_MARK_CONSOLE,
 	padLine,
 	renderBoIdleFrame,
@@ -158,8 +157,8 @@ import {
 import { buildMultiplexerStatus, createPane, renderStatusText } from "./tui.js";
 import { BROADCAST_INNER_INSET } from "./tui-broadcast.js";
 import {
-	AgentPanes,
 	AGENTS_KEY_LEGEND,
+	AgentPanes,
 	AgentsCatalog,
 	ApprovalDialog,
 	BtwAside,
@@ -1146,8 +1145,7 @@ export function buildShellTree(state: InteractiveShellState) {
 		state = syncAgentsBodyLines(state);
 		const pane = focusedHarnessPane(state.harnessView);
 		const label = pane?.agentLabel ?? pane?.title ?? "agents";
-		title =
-			state.paneScroll > 0 ? `${label} ↑${state.paneScroll}` : label;
+		title = state.paneScroll > 0 ? `${label} ↑${state.paneScroll}` : label;
 		const agentId = focusedHarnessAgentId(state.harnessView);
 		const focusedTasks = agentId ? taskRowsForAgent(state, agentId) : [];
 		const taskHint =
@@ -1323,11 +1321,7 @@ export function reduceShellKey(
 			return { state: reduceAgentsConfigureShell(state, key) };
 		}
 		const viewRows = viewportRows(state);
-		const result = reduceAgentsCatalogKey(
-			state.agentsCatalog!,
-			key,
-			viewRows,
-		);
+		const result = reduceAgentsCatalogKey(state.agentsCatalog!, key, viewRows);
 		let next: InteractiveShellState = {
 			...state,
 			agentsCatalog: result.state,
@@ -1675,9 +1669,7 @@ export function reduceShellKey(
 			const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
 			const typed = state.input.trim();
 			const item =
-				(typed.startsWith("/")
-					? slashItemForInput(typed)
-					: undefined) ??
+				(typed.startsWith("/") ? slashItemForInput(typed) : undefined) ??
 				items[state.slashIndex] ??
 				items[0];
 			if (!item) {
@@ -2588,9 +2580,7 @@ export function scrollChat(
 	return scrollFocused(state, delta >= 0 ? "up" : "down", Math.abs(delta));
 }
 
-function followPreservedChatScroll(
-	state: InteractiveShellState,
-): number {
+function followPreservedChatScroll(state: InteractiveShellState): number {
 	return followingLive(state) ? 0 : state.chatScroll;
 }
 
@@ -2644,7 +2634,7 @@ export function replaceLastAssistant(
 	agentState: ShellAgentState = "working",
 ): InteractiveShellState {
 	const last = state.messages[state.messages.length - 1];
-	if (!last || last.role !== "assistant") {
+	if (last?.role !== "assistant") {
 		const appended = appendAssistant(state, text, agentState);
 		return appended;
 	}
@@ -3322,9 +3312,7 @@ export async function runInteractiveShell(
 					target,
 					result.forwardPaneKey,
 				)
-					.then(() =>
-						refreshInSessionPanes(state.livePanes!, tmuxRunner()),
-					)
+					.then(() => refreshInSessionPanes(state.livePanes!, tmuxRunner()))
 					.then((next) => {
 						if (quit || !next) return;
 						state = withHarnessFromLivePanes(state, next);
@@ -3601,9 +3589,7 @@ export async function runInteractiveShell(
 			const target = resolvePaneInteractTarget(state);
 			if (target) {
 				void sendKeysRawToInSessionPane(tmuxRunner(), target, data)
-					.then(() =>
-						refreshInSessionPanes(state.livePanes!, tmuxRunner()),
-					)
+					.then(() => refreshInSessionPanes(state.livePanes!, tmuxRunner()))
 					.then((next) => {
 						if (quit || !next) return;
 						state = withHarnessFromLivePanes(
@@ -3623,8 +3609,7 @@ export async function runInteractiveShell(
 			} else {
 				state = {
 					...state,
-					footerHints:
-						"attach · no tmux pane — leave with Ctrl+] or Ctrl+\\",
+					footerHints: "attach · no tmux pane — leave with Ctrl+] or Ctrl+\\",
 				};
 				tui.requestRender();
 			}
@@ -3759,21 +3744,13 @@ export async function runInteractiveShell(
 		}
 		if (matchesKey(data, "ctrl+u")) {
 			if (state.focus === "agents") state = syncAgentsBodyLines(state);
-			state = scrollFocused(
-				state,
-				"up",
-				halfPageStep(viewportRows(state)),
-			);
+			state = scrollFocused(state, "up", halfPageStep(viewportRows(state)));
 			tui.requestRender();
 			return { consume: true };
 		}
 		if (matchesKey(data, "ctrl+d")) {
 			if (state.focus === "agents") state = syncAgentsBodyLines(state);
-			state = scrollFocused(
-				state,
-				"down",
-				halfPageStep(viewportRows(state)),
-			);
+			state = scrollFocused(state, "down", halfPageStep(viewportRows(state)));
 			tui.requestRender();
 			return { consume: true };
 		}
@@ -3795,11 +3772,7 @@ export async function runInteractiveShell(
 			!shellModalOwnsInput(state) &&
 			(matchesKey(data, "up") || matchesKey(data, "down"))
 		) {
-			state = scrollFocused(
-				state,
-				matchesKey(data, "up") ? "up" : "down",
-				1,
-			);
+			state = scrollFocused(state, matchesKey(data, "up") ? "up" : "down", 1);
 			tui.requestRender();
 			return { consume: true };
 		}

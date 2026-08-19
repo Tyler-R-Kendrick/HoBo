@@ -11,10 +11,9 @@ export type YardGameConfigOptions = Readonly<{
 	backgroundColor?: string;
 }>;
 
-export function yardPhaserConfig(opts: YardGameConfigOptions = {}): Record<
-	string,
-	unknown
-> {
+export function yardPhaserConfig(
+	opts: YardGameConfigOptions = {},
+): Record<string, unknown> {
 	return {
 		type: 0, // Phaser.AUTO at runtime
 		width: YARD_WIDTH,

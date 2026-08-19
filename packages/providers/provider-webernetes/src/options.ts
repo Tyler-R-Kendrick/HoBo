@@ -12,7 +12,7 @@ export interface TypedOptionBlock {
 export const webernetes = {
 	with: {
 		pod(options: Record<string, unknown> = {}): TypedOptionBlock {
-			return optionBlock("compute", "pod", {"runtime":"container"}, options);
+			return optionBlock("compute", "pod", { runtime: "container" }, options);
 		},
 	},
 };

@@ -103,20 +103,27 @@ describe("streaming a pane out of tmux", () => {
 	});
 
 	it("quotes the sink so a path with a space cannot split the command", () => {
-		expect(pipePaneCommand("hobo:claude", "/run/my panes/x.log").join(" ")).toContain(
-			"'/run/my panes/x.log'",
-		);
+		expect(
+			pipePaneCommand("hobo:claude", "/run/my panes/x.log").join(" "),
+		).toContain("'/run/my panes/x.log'");
 	});
 
 	it("neutralises a sink path that would otherwise expand", () => {
 		// Double quotes (what JSON.stringify emits) leave `$`, backticks and
 		// backslashes live — the same hazard mux.ts documents for cwd.
-		const cmd = pipePaneCommand("hobo:claude", "/run/$(touch pwned)/x.log").join(" ");
+		const cmd = pipePaneCommand(
+			"hobo:claude",
+			"/run/$(touch pwned)/x.log",
+		).join(" ");
 		expect(cmd).toContain("'/run/$(touch pwned)/x.log'");
 		expect(cmd).not.toContain('"/run/$(touch pwned)');
 	});
 
 	it("stops streaming with no command argument", () => {
-		expect(unpipePaneCommand("hobo:claude")).toEqual(["pipe-pane", "-t", "hobo:claude"]);
+		expect(unpipePaneCommand("hobo:claude")).toEqual([
+			"pipe-pane",
+			"-t",
+			"hobo:claude",
+		]);
 	});
 });

@@ -4,24 +4,19 @@
  */
 
 import type { YardProjectionSnapshot } from "@hobo/management";
-
-import {
-	YARD_LAYOUT,
-	zoneAnchor,
-	type ZoneId,
-} from "./layout.js";
 import {
 	deriveYardVisualState,
 	stepToward,
 	type YardVisualState,
 } from "./entity-state.js";
+import { YARD_LAYOUT, type ZoneId, zoneAnchor } from "./layout.js";
 import {
+	type GenerativeSheet,
 	sheetForConnectionAuthorize,
 	sheetForConnectionCreate,
 	sheetForCostBooth,
 	sheetForDoctor,
 	sheetForRailLifecycle,
-	type GenerativeSheet,
 } from "./openui/sheets.js";
 
 export type Particle = {
@@ -65,9 +60,7 @@ export function createYardEngine(): YardEngine {
 		particles,
 		applySnapshot(snap) {
 			const visual = deriveYardVisualState(snap, {
-				...(engine.selectedZone
-					? { selectedZone: engine.selectedZone }
-					: {}),
+				...(engine.selectedZone ? { selectedZone: engine.selectedZone } : {}),
 			});
 			engine.visual = visual;
 			return visual;
@@ -124,7 +117,10 @@ export function sheetForZone(
 		case "connectionBay": {
 			const pending = snap?.connections.find((c) => c.status === "pending");
 			if (pending) {
-				return sheetForConnectionAuthorize(pending.alias ?? pending.id, snap ?? undefined);
+				return sheetForConnectionAuthorize(
+					pending.alias ?? pending.id,
+					snap ?? undefined,
+				);
 			}
 			return sheetForConnectionCreate(snap ?? undefined);
 		}

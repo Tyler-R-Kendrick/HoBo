@@ -7,16 +7,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+	type ProviderStub,
 	parsePactDocument,
 	verifyPact,
-	type ProviderStub,
 } from "@hobo/contract-harness";
 import { describe, expect, it } from "vitest";
 
 import {
 	createReplayHttpSurface,
-	seedReplayFixture,
 	type ReplayHttpRequest,
+	seedReplayFixture,
 } from "../../src/http-surface.js";
 
 const pactsDir = join(

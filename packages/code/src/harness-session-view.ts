@@ -112,10 +112,7 @@ export function harnessViewFromLivePanes(
 			title: label,
 			panes: leaves.map((leaf, leafIndex) => ({
 				id: leaf.id,
-				title:
-					leaves.length > 1
-						? `${label} · ${leafIndex + 1}`
-						: label,
+				title: leaves.length > 1 ? `${label} · ${leafIndex + 1}` : label,
 				agent: window.name,
 				agentLabel: label,
 				agentStatus:
@@ -123,10 +120,8 @@ export function harnessViewFromLivePanes(
 				focused: index === focused && leafIndex === activeLeaf,
 				capture:
 					index === focused
-						? leaf.capture ||
-							(leafIndex === activeLeaf ? panes.capture : "")
-						: leaf.capture ||
-							(options.captureByName?.[window.name] ?? ""),
+						? leaf.capture || (leafIndex === activeLeaf ? panes.capture : "")
+						: leaf.capture || (options.captureByName?.[window.name] ?? ""),
 			})),
 		};
 	});
@@ -310,7 +305,8 @@ export function harnessViewFromHerdrApiSnapshot(
 										agentLabel: harnessDisplayLabel(agent),
 									}
 								: {}),
-							agentStatus: (pane.agent_status as HarnessAgentStatus) ?? "unknown",
+							agentStatus:
+								(pane.agent_status as HarnessAgentStatus) ?? "unknown",
 							focused: pane.focused === true,
 							capture: options.captureByPaneId?.[pane.pane_id] ?? "",
 						};
@@ -350,9 +346,8 @@ export function harnessViewFromHerdrApiSnapshot(
 	const session = nodes[focusedSession] ?? nodes[0];
 	const focusedTab = Math.max(
 		0,
-		session?.tabs.findIndex((tab) =>
-			tab.panes.some((pane) => pane.focused),
-		) ?? 0,
+		session?.tabs.findIndex((tab) => tab.panes.some((pane) => pane.focused)) ??
+			0,
 	);
 	const tab = session?.tabs[focusedTab];
 	const focusedPane = Math.max(
@@ -443,8 +438,7 @@ export function cycleHarnessFocus(
 	}
 	const tab = session.tabs[view.focusedTab] ?? session.tabs[0];
 	if (!tab || tab.panes.length === 0) return view;
-	const next =
-		(view.focusedPane + delta + tab.panes.length) % tab.panes.length;
+	const next = (view.focusedPane + delta + tab.panes.length) % tab.panes.length;
 	return { ...view, focusedPane: next };
 }
 
@@ -519,9 +513,7 @@ export function formatHarnessSessionLines(
 	if (options.attached) {
 		const who = pane?.agentLabel ?? pane?.title ?? "pane";
 		const leaf =
-			multi && tab
-				? `${view.focusedPane + 1}/${tab.panes.length}`
-				: "1/1";
+			multi && tab ? `${view.focusedPane + 1}/${tab.panes.length}` : "1/1";
 		return [
 			`attached · ${who} · pane ${leaf} · [ ] focus · Ctrl+\\ leave`,
 			...formatPaneCaptureGrid(tab?.panes ?? [], view.focusedPane, {
@@ -554,8 +546,7 @@ export function formatHarnessSessionLines(
 			const agent = row.agentLabel ?? row.agent ?? "";
 			const who = agent ? ` · ${agent}` : "";
 			const focus = active ? " · focused" : "";
-			const idShort =
-				row.id.length > 12 ? `${row.id.slice(0, 8)}…` : row.id;
+			const idShort = row.id.length > 12 ? `${row.id.slice(0, 8)}…` : row.id;
 			lines.push(`${row.title} · ${idShort}${who} · ${status}${focus}`);
 			if (active) {
 				lines.push(
@@ -604,9 +595,7 @@ export function formatPaneCaptureGrid(
 		const body =
 			panes[0]?.capture && panes[0].capture.trim().length > 0
 				? panes[0].capture.replace(/\s+$/u, "").split("\n")
-				: [
-						`(${panes[0]?.agentLabel ?? panes[0]?.title ?? "pane"} · waiting)`,
-					];
+				: [`(${panes[0]?.agentLabel ?? panes[0]?.title ?? "pane"} · waiting)`];
 		return body.map((line) => fitCells(line, total));
 	}
 
@@ -655,9 +644,7 @@ export function formatPaneCaptureGrid(
 		out.push(fitCells(parts.join("│"), total));
 	}
 	if (panes.length > cols) {
-		out.push(
-			fitCells(`(+${panes.length - cols} more · [ ] cycle)`, total),
-		);
+		out.push(fitCells(`(+${panes.length - cols} more · [ ] cycle)`, total));
 	}
 	return out;
 }

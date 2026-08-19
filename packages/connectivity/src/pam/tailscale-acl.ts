@@ -3,7 +3,7 @@
  * Apply via Tailscale API (createTailscaleApiClient) when credentials present.
  */
 import type { IsolationClass } from "../env-isolation/types.js";
-import { isolationClassTag, ISOLATION_CLASSES } from "../env-isolation/types.js";
+import { ISOLATION_CLASSES } from "../env-isolation/types.js";
 
 // public-contract: generated ACL schema version.
 export const ENV_ISOLATION_TAILSCALE_ACL_SCHEMA =
@@ -46,7 +46,6 @@ export function renderEnvIsolationTailscaleAcl(input?: {
 	const acls: TailscaleAclGrant[] = [];
 
 	for (const cls of classes) {
-		const tag = `tag:${isolationClassTag(cls).replace(":", "-")}`;
 		// Tailscale tags use tag:name form; map env:production → tag:env-production
 		const tsTag = `tag:env-${cls}`;
 		tagOwners[tsTag] = Object.freeze([owner]);

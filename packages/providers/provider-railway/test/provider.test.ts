@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createRailwayProvider, railwayNativePorts, supportsAnonymousTemporaryDeploy } from "../src/index.js";
+import {
+	createRailwayProvider,
+	railwayNativePorts,
+	supportsAnonymousTemporaryDeploy,
+} from "../src/index.js";
 import { provisionTemporaryEnvironmentStation } from "../src/temporary-station.js";
 
 describe("@hobo/provider-railway", () => {
@@ -16,6 +20,8 @@ describe("@hobo/provider-railway", () => {
 	});
 
 	it("temporary provision path", async () => {
-		await expect(provisionTemporaryEnvironmentStation({ stationId: "st-1" })).rejects.toThrow(/fail closed|no password-free|Temporary/i);
+		await expect(
+			provisionTemporaryEnvironmentStation({ stationId: "st-1" }),
+		).rejects.toThrow(/fail closed|no password-free|Temporary/i);
 	});
 });

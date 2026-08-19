@@ -44,7 +44,7 @@ function resolveStationId(
 	flags: Record<string, unknown>,
 	env: NodeJS.ProcessEnv,
 ): string | undefined {
-	const stationFlag = flags["station"];
+	const stationFlag = flags.station;
 	if (typeof stationFlag === "string" && stationFlag.length > 0) {
 		return stationFlag;
 	}
@@ -61,9 +61,7 @@ export function createConnectionCommand(
 		run: async ({ context, flags, args }) => {
 			const f = flags as unknown as Record<string, unknown>;
 			const env =
-				deps.env ??
-				(context as { env?: NodeJS.ProcessEnv }).env ??
-				process.env;
+				deps.env ?? (context as { env?: NodeJS.ProcessEnv }).env ?? process.env;
 			const hoboHome =
 				deps.hoboHome ??
 				(typeof f.home === "string" && f.home.length > 0
@@ -122,15 +120,15 @@ export function createConnectionCommand(
 						data: { command: "connection", subcommand: "create" },
 					};
 				}
-				const alias =
-					typeof f.alias === "string" ? f.alias : undefined;
-				const scopesRaw =
-					typeof f.scopes === "string" ? f.scopes : "";
+				const alias = typeof f.alias === "string" ? f.alias : undefined;
+				const scopesRaw = typeof f.scopes === "string" ? f.scopes : "";
 				const scopes = scopesRaw
-					? scopesRaw.split(",").map((s) => s.trim()).filter(Boolean)
+					? scopesRaw
+							.split(",")
+							.map((s) => s.trim())
+							.filter(Boolean)
 					: [];
-				const flow =
-					typeof f.flow === "string" ? f.flow : undefined;
+				const flow = typeof f.flow === "string" ? f.flow : undefined;
 				return connectionCreate(ctx, {
 					provider,
 					...(alias !== undefined ? { alias } : {}),
@@ -152,15 +150,15 @@ export function createConnectionCommand(
 						data: { command: "connection", subcommand: "authorize" },
 					};
 				}
-				const scopesRaw =
-					typeof f.scopes === "string" ? f.scopes : "";
+				const scopesRaw = typeof f.scopes === "string" ? f.scopes : "";
 				const grantedScopes = scopesRaw
-					? scopesRaw.split(",").map((s) => s.trim()).filter(Boolean)
+					? scopesRaw
+							.split(",")
+							.map((s) => s.trim())
+							.filter(Boolean)
 					: undefined;
 				const installationId =
-					typeof f.installationId === "string"
-						? f.installationId
-						: undefined;
+					typeof f.installationId === "string" ? f.installationId : undefined;
 				return connectionAuthorize(ctx, {
 					idOrAlias,
 					...(tenant !== undefined ? { tenant } : {}),
@@ -172,10 +170,8 @@ export function createConnectionCommand(
 			if (sub === "list") {
 				const provider =
 					typeof f.provider === "string" ? f.provider : undefined;
-				const status =
-					typeof f.status === "string" ? f.status : undefined;
-				const subjectId =
-					typeof f.subject === "string" ? f.subject : undefined;
+				const status = typeof f.status === "string" ? f.status : undefined;
+				const subjectId = typeof f.subject === "string" ? f.subject : undefined;
 				return connectionList(ctx, {
 					...(tenant !== undefined ? { tenant } : {}),
 					...(provider !== undefined ? { provider } : {}),
@@ -212,8 +208,7 @@ export function createConnectionCommand(
 						data: { command: "connection", subcommand: "revoke" },
 					};
 				}
-				const reason =
-					typeof f.reason === "string" ? f.reason : "user-revoked";
+				const reason = typeof f.reason === "string" ? f.reason : "user-revoked";
 				return connectionRevoke(ctx, {
 					idOrAlias,
 					reason,

@@ -144,7 +144,5 @@ export function describeDevTerminalAttach(options: {
 
 /** Short host for human scan lines (drop product DNS suffix). */
 export function shortNamedHost(host: string): string {
-	return host
-		.replace(/\.hobo\.localhost$/, "")
-		.replace(/\.hobo\.test$/, "");
+	return host.replace(/\.hobo\.localhost$/, "").replace(/\.hobo\.test$/, "");
 }

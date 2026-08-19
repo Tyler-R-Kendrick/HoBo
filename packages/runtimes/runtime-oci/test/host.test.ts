@@ -1,7 +1,6 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import path from "node:path";
-import { join } from "node:path";
+import path, { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	createMockProviderFromPact,
@@ -51,7 +50,10 @@ describe("@hobo/runtime-oci (PACT-backed kubectl boundary)", () => {
 			namespace: "hobo-dev",
 			transport: mock,
 		});
-		const host = createOciRuntimeHost({ kubernetes: k8s, namespace: "hobo-dev" });
+		const host = createOciRuntimeHost({
+			kubernetes: k8s,
+			namespace: "hobo-dev",
+		});
 
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-oci-serve-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));

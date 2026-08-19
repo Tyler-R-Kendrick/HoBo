@@ -4,10 +4,7 @@ import { join } from "node:path";
 import { bindle, collectRequiredRuntimes } from "@hobo/bindles";
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-	initBareMetalYard,
-	resolveBindlePlacement,
-} from "../src/index.js";
+import { initBareMetalYard, resolveBindlePlacement } from "../src/index.js";
 import { installRuntime } from "../src/installed-runtimes.js";
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -49,36 +46,32 @@ describe("required runtimes + broker hard-fail", () => {
 		);
 	});
 
-	it(
-		"accepts placement after hobo add runtime-oci is recorded",
-		async () => {
-			const hoboHome = await mkdtemp(join(tmpdir(), "hobo-rt-accept-"));
-			cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
-			initBareMetalYard({ hoboHome, componentHost: "local" });
-			installRuntime("runtime-oci", hoboHome);
+	it("accepts placement after hobo add runtime-oci is recorded", async () => {
+		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-rt-accept-"));
+		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
+		initBareMetalYard({ hoboHome, componentHost: "local" });
+		installRuntime("runtime-oci", hoboHome);
 
-			const definition = bindle("needs-oci", (b) => {
-				const redis = b.container({ image: "redis:7" });
-				const api = b.api().withReference(redis);
-				return { redis, api };
-			});
+		const definition = bindle("needs-oci", (b) => {
+			const redis = b.container({ image: "redis:7" });
+			const api = b.api().withReference(redis);
+			return { redis, api };
+		});
 
-			const placement = await resolveBindlePlacement({
-				definition,
-				hoboHome,
-			});
-			// May still reject if oci ensure fails (no kubectl) — but not for missing install.
-			if (placement.outcome === "rejected") {
-				expect(placement.message).not.toMatch(/not installed/i);
-			} else {
-				expect(placement.componentHost).toBe("oci");
-				expect(placement.requiredRuntimes).toEqual(["oci"]);
-			}
-		},
-		// First placement equips the isolated wasm toolchain (wasmtime download)
-		// into the throwaway HOBO_HOME — far beyond the 10s default.
-		90_000,
-	);
+		const placement = await resolveBindlePlacement({
+			definition,
+			hoboHome,
+		});
+		// May still reject if oci ensure fails (no kubectl) — but not for missing install.
+		if (placement.outcome === "rejected") {
+			expect(placement.message).not.toMatch(/not installed/i);
+		} else {
+			expect(placement.componentHost).toBe("oci");
+			expect(placement.requiredRuntimes).toEqual(["oci"]);
+		}
+		// First placement equips the isolated wasm toolchain (a wasmtime
+		// download) into the throwaway HOBO_HOME — far beyond the 10s default.
+	}, 90_000);
 
 	it("hard-fails wasm-component when runtime-wasm not installed", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-rt-wasm-reject-"));

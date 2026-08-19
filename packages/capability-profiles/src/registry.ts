@@ -9,8 +9,8 @@
 import { createHash } from "node:crypto";
 
 import {
-	CapabilityProfileError,
 	type CapabilityProfileDescriptor,
+	CapabilityProfileError,
 	type ParsedCapabilityProfile,
 	parseCapabilityProfile,
 } from "./descriptor.js";
@@ -44,7 +44,9 @@ function digestOf(profiles: readonly ParsedCapabilityProfile[]): string {
 				.map((feature) => ({
 					key: feature.key,
 					valueKind: feature.valueKind,
-					enumValues: feature.enumValues ? [...feature.enumValues].sort() : undefined,
+					enumValues: feature.enumValues
+						? [...feature.enumValues].sort()
+						: undefined,
 				}))
 				.sort((a, b) => a.key.localeCompare(b.key)),
 			guarantees: [...profile.guarantees]
@@ -175,7 +177,9 @@ export function createCapabilityProfileRegistry(
 		return result;
 	};
 
-	const profiles = [...parsed.values()].sort((a, b) => a.id.localeCompare(b.id));
+	const profiles = [...parsed.values()].sort((a, b) =>
+		a.id.localeCompare(b.id),
+	);
 
 	const registry: CapabilityProfileRegistry = {
 		digest: digestOf(profiles),

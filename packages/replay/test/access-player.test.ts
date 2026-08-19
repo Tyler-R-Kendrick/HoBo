@@ -1,19 +1,27 @@
 import { describe, expect, it } from "vitest";
 
 import { evaluateReplayAccess } from "../src/access.js";
+import { isReplayAutoWired, webReplayAutowire } from "../src/autowire.js";
+import { createReplayEvent, REPLAY_EVENTS } from "../src/events.js";
+import {
+	createMemoryMeterSink,
+	meterIngest,
+	meterPlayerAccess,
+} from "../src/metering.js";
 import {
 	createFixtureReplayEngine,
 	loadPlayerPayload,
 	summarizeSession,
 } from "../src/player.js";
-import { createMemoryDualFixtures } from "../src/storage.js";
-import { REPLAY_SCHEMA_VERSION, REPLAY_CORRELATION_SCHEMA, REPLAY_PRIVACY_SCHEMA } from "../src/types.js";
 import { defaultPrivacyPolicy } from "../src/privacy.js";
 import { applyRetention } from "../src/retention.js";
-import { createMemoryMeterSink, meterIngest, meterPlayerAccess } from "../src/metering.js";
-import { createReplayEvent, REPLAY_EVENTS } from "../src/events.js";
-import { parseSessionCorrelation } from "../src/types.js";
-import { webReplayAutowire, isReplayAutoWired } from "../src/autowire.js";
+import { createMemoryDualFixtures } from "../src/storage.js";
+import {
+	parseSessionCorrelation,
+	REPLAY_CORRELATION_SCHEMA,
+	REPLAY_PRIVACY_SCHEMA,
+	REPLAY_SCHEMA_VERSION,
+} from "../src/types.js";
 
 function sampleSession(
 	overrides: Partial<{

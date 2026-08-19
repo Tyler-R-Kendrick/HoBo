@@ -201,7 +201,7 @@ export function normalizeBindMap(
 
 	for (const [alias, target] of Object.entries(bind)) {
 		assertResourceName(alias, `bind.${alias}`);
-		if (!target || target.kind !== "resource") {
+		if (target?.kind !== "resource") {
 			throw new BindReferenceError(
 				`bind.${alias}`,
 				"must reference a declared resource handle",
@@ -246,8 +246,8 @@ export function validateLazyReferences(
 			return;
 		}
 
-		const referencedResource = match[1]!;
-		if (!resources[referencedResource]) {
+		const referencedResource = match[1];
+		if (!referencedResource || !resources[referencedResource]) {
 			throw new BindReferenceError(
 				path,
 				`unknown resource ${referencedResource}`,
@@ -274,9 +274,9 @@ function visitStrings(
 		return;
 	}
 	if (Array.isArray(value)) {
-		value.forEach((item, index) =>
-			visitStrings(item, `${path}[${index}]`, visitor),
-		);
+		value.forEach((item, index) => {
+			visitStrings(item, `${path}[${index}]`, visitor);
+		});
 		return;
 	}
 	if (isRecord(value)) {

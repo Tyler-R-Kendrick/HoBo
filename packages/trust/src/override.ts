@@ -86,7 +86,9 @@ export function applyOperatorOverride(
 		);
 	}
 	if (override.operatorId.trim().length === 0) {
-		throw new OperatorOverrideError("an override must name the operator granting it");
+		throw new OperatorOverrideError(
+			"an override must name the operator granting it",
+		);
 	}
 	if (override.reason.trim().length < MINIMUM_REASON_LENGTH) {
 		throw new OperatorOverrideError(
@@ -102,7 +104,10 @@ export function applyOperatorOverride(
 			"an override must have integer instants with expiresAtMs after grantedAtMs",
 		);
 	}
-	if (override.expiresAtMs - override.grantedAtMs > MAXIMUM_OVERRIDE_WINDOW_MS) {
+	if (
+		override.expiresAtMs - override.grantedAtMs >
+		MAXIMUM_OVERRIDE_WINDOW_MS
+	) {
 		throw new OperatorOverrideError(
 			`an override may not last longer than ${MAXIMUM_OVERRIDE_WINDOW_MS}ms`,
 		);
@@ -113,10 +118,12 @@ export function applyOperatorOverride(
 		);
 	}
 
-	const waived = [...new Set(override.waivedCodes)].sort((a, b) => a.localeCompare(b));
-	const recorded = [...new Set(verdict.reasons.map((reason) => reason.code))].sort(
-		(a, b) => a.localeCompare(b),
+	const waived = [...new Set(override.waivedCodes)].sort((a, b) =>
+		a.localeCompare(b),
 	);
+	const recorded = [
+		...new Set(verdict.reasons.map((reason) => reason.code)),
+	].sort((a, b) => a.localeCompare(b));
 	const unwaivedCodes = recorded.filter((code) => !waived.includes(code));
 	const active =
 		verdict.evaluatedAtMs >= override.grantedAtMs &&
@@ -129,7 +136,9 @@ export function applyOperatorOverride(
 		grantedAtMs: override.grantedAtMs,
 		expiresAtMs: override.expiresAtMs,
 		waivedCodes: waived,
-		...(override.ticketRef !== undefined ? { ticketRef: override.ticketRef } : {}),
+		...(override.ticketRef !== undefined
+			? { ticketRef: override.ticketRef }
+			: {}),
 		active,
 		unwaivedCodes,
 	};

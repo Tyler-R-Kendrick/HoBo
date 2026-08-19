@@ -10,6 +10,7 @@ export {
 	type PlacementContext,
 } from "./placement.js";
 export {
+	type PlanBindingAuthority,
 	type PlanConfig,
 	type PlanRejection,
 	type PlanResult,

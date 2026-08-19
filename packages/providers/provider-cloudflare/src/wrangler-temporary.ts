@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { tmpdir } from "node:os";
+import path from "node:path";
 
 import {
 	ENVIRONMENT_STATION_WORKER_MODULE,
@@ -21,7 +21,10 @@ export type WranglerTemporaryDeployInput = {
 const URL_RE = /https:\/\/[a-z0-9.-]+\.workers\.dev\/?/giu;
 const CLAIM_RE = /https:\/\/[^\s]*claim[^\s]*/giu;
 
-export function parseWranglerTemporaryOutput(stdout: string, stderr: string): {
+export function parseWranglerTemporaryOutput(
+	stdout: string,
+	stderr: string,
+): {
 	stationUrl: string;
 	claimUrl: string;
 } {
@@ -32,9 +35,7 @@ export function parseWranglerTemporaryOutput(stdout: string, stderr: string): {
 	const claims = [...text.matchAll(CLAIM_RE)].map((match) => match[0]);
 	const stationUrl = workers.find((url) => !/claim/iu.test(url));
 	const claimUrl =
-		claims[0] ??
-		workers.find((url) => /claim/iu.test(url)) ??
-		"";
+		claims[0] ?? workers.find((url) => /claim/iu.test(url)) ?? "";
 	if (!stationUrl) {
 		throw new Error(
 			"wrangler deploy --temporary succeeded but no workers.dev URL was parsed",
@@ -86,10 +87,12 @@ export async function deployTemporaryWithWrangler(
 ): Promise<TemporaryEnvironmentStationResult> {
 	const scriptName =
 		input.scriptName ??
-		`${ENVIRONMENT_STATION_WORKER_NAME_PREFIX}-${input.stationId.replace(/[^a-z0-9]+/giu, "-").slice(0, 32).toLowerCase()}`;
+		`${ENVIRONMENT_STATION_WORKER_NAME_PREFIX}-${input.stationId
+			.replace(/[^a-z0-9]+/giu, "-")
+			.slice(0, 32)
+			.toLowerCase()}`;
 	const work =
-		input.cwd ??
-		path.join(tmpdir(), `hobo-cf-temp-station-${Date.now()}`);
+		input.cwd ?? path.join(tmpdir(), `hobo-cf-temp-station-${Date.now()}`);
 	await mkdir(work, { recursive: true });
 	await writeFile(
 		path.join(work, "station.js"),

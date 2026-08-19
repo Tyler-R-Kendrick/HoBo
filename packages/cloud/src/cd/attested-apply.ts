@@ -8,9 +8,9 @@ import { createHash, randomUUID } from "node:crypto";
 
 import {
 	type AttestationDocument,
+	createFixtureHostAttestor,
 	type LaunchMeasurement,
 	type PrincipalRef,
-	createFixtureHostAttestor,
 	verifyWorkloadAttestation,
 } from "@hobo/identity";
 
@@ -24,17 +24,17 @@ import {
 	createInProcessExecutor,
 } from "../executor/executor.js";
 import {
+	listResources,
+	providerForResource,
+	type ResolvedDeploymentSet,
+} from "./resolved-set.js";
+import {
 	assertSecretFree,
 	createSecretFreeDiff,
 	createSecretFreeStatus,
 	type SecretFreeDiff,
 	type SecretFreeStatus,
 } from "./secret-free.js";
-import {
-	listResources,
-	providerForResource,
-	type ResolvedDeploymentSet,
-} from "./resolved-set.js";
 
 // public-contract: attested apply worker schema.
 export const ATTESTED_APPLY_SCHEMA = "hobo.attested-apply/v1" as const;
@@ -434,7 +434,8 @@ export function createAttestedApplyWorker(
 				deploymentId,
 				setId: set.setId,
 				principal,
-				status: mode === "simulate" ? ("simulated" as const) : ("succeeded" as const),
+				status:
+					mode === "simulate" ? ("simulated" as const) : ("succeeded" as const),
 				mode,
 				steps: Object.freeze(steps),
 				events: Object.freeze(events),

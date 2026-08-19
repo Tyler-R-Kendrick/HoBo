@@ -16,6 +16,22 @@ export {
 	stationCapability,
 } from "./capabilities.js";
 export {
+	type AggregateStationCapabilitiesInput,
+	aggregateStationCapabilities,
+	renderStationCapabilityCoverage,
+	type ServedStationCapability,
+	STATION_CAPABILITY_COVERAGE_SCHEMA,
+	STATION_CAPABILITY_PROFILE_PATTERN,
+	type StationCapabilityCoverage,
+	StationCapabilityCoverageError,
+	type StationCapabilityCoverageErrorCode,
+	type StationCapabilityGap,
+	type StationCapabilityOffering,
+	type StationProviderConcentration,
+	type StationYardBindingRowInput,
+	type StationYardCatalogInput,
+} from "./capability-coverage.js";
+export {
 	createStationBindleRuntimeContext,
 	type StationConnectionResolver,
 } from "./connector-context.js";

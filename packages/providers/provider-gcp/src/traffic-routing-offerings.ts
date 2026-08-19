@@ -1,7 +1,4 @@
-import {
-	offering,
-	type TrafficRoutingProviderProfile,
-} from "@hobo/core";
+import { offering, type TrafficRoutingProviderProfile } from "@hobo/core";
 
 /**
  * GCP TrafficRouting offerings declaration (scaffold).

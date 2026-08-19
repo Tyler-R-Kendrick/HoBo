@@ -111,6 +111,14 @@ export {
 	parseActorCompoundKey,
 	parseLogicalActorIdentity,
 } from "./ports/actor-identity.js";
+// `./ports/aws-sigv4.js` is deliberately NOT re-exported here. `@hobo/core`'s
+// flagship surface is provider-neutral, and `validatePublicTypeSurface` fails
+// closed on a provider symbol or a provider credential field name reaching
+// `dist/index.d.ts` — `AwsCredentials.accessKeyId` is exactly what that guard
+// exists to catch. The SigV4 primitive is reached through the narrow
+// `@hobo/core/aws-sigv4` subpath declared in this package's `exports` instead,
+// so one copy of the algorithm serves `@hobo/connectivity` and the layer-2
+// AWS adapter without widening the neutral surface.
 export type {
 	ActorCommit,
 	ActorConcurrency,
@@ -142,6 +150,26 @@ export {
 	parseResourceId,
 	RESOURCE_ID_PATTERN,
 } from "./ports/binding-resolver.js";
+export type { CampTier } from "./ports/camp-tier.js";
+export {
+	CAMP_TIER_EGRESS,
+	CAMP_TIER_ORDER,
+	CAMP_TIERS,
+	DEFAULT_CAMP_TIERS,
+	isCampTier,
+} from "./ports/camp-tier.js";
+export type {
+	CapabilityProfileId,
+	EnvType,
+	ProfileForSlot,
+} from "./ports/capability-catalog.js";
+export {
+	CAPABILITY_PROFILE_IDS,
+	capability,
+	ENV_TYPES,
+	isEnvType,
+	slotForProfile,
+} from "./ports/capability-catalog.js";
 export type { PublishedManifestParseResult } from "./ports/capability-manifest.js";
 export {
 	AUTH_SCHEMA,
@@ -156,6 +184,18 @@ export {
 	sortKeys,
 	stableDigest,
 } from "./ports/capability-manifest.js";
+export type {
+	CapabilitySlot,
+	SlotBinding,
+	SlotBindingErrorCode,
+	SlotBindingInput,
+} from "./ports/capability-slot.js";
+export {
+	CAPABILITY_SLOTS,
+	SLOT_BINDING_CONTRACT,
+	SlotBindingError,
+	slotBinding,
+} from "./ports/capability-slot.js";
 export type {
 	ClockReplayResult,
 	ClockTraceEntry,
@@ -318,6 +358,20 @@ export {
 	UnsupportedSchemaVersionError,
 } from "./ports/eventstore.js";
 export type {
+	HttpTransport,
+	TransportGuardErrorCode,
+	TransportGuardPolicy,
+	TransportMethod,
+	TransportRequest,
+	TransportResponse,
+} from "./ports/http-transport.js";
+export {
+	guardTransport,
+	TRANSPORT_GUARD_ERROR_CODES,
+	TRANSPORT_METHODS,
+	TransportGuardError,
+} from "./ports/http-transport.js";
+export type {
 	DataClassification,
 	JurisdictionId,
 	JurisdictionRecord,
@@ -414,6 +468,27 @@ export type {
 	OverlayProviderKind,
 } from "./ports/overlay.js";
 export type {
+	DeploymentPhase,
+	PhaseScope,
+	PhaseScopedCapability,
+} from "./ports/phase.js";
+export {
+	assertCapabilityPhase,
+	DEPLOYMENT_PHASES,
+	HOBO_DEV_ENV,
+	HOBO_DEV_VALUES,
+	HOBO_PHASE_ENV,
+	INIT_SCOPED_CAPABILITIES,
+	PHASE_SCOPED_CAPABILITIES,
+	PhaseParseError,
+	PhaseViolationError,
+	parseDeploymentPhase,
+	parsePhaseScope,
+	parsePhaseScopeFromEnv,
+	phaseForCapability,
+	REQUEST_SCOPED_CAPABILITIES,
+} from "./ports/phase.js";
+export type {
 	PolicyDecision,
 	PolicyDecisionEffect,
 	PolicyEngine,
@@ -470,6 +545,23 @@ export {
 	RealizationResultParseError,
 } from "./ports/realization-result.js";
 export type {
+	ResolvedResourceRef,
+	ResolveOutcome,
+	ResolveRequest,
+	ResolverAction,
+	ResolverErrorCode,
+	ResourceResolver,
+} from "./ports/resource-resolver.js";
+export {
+	createResolverRegistry,
+	parseResolveOutcome,
+	parseResolveRequest,
+	RESOLVER_ACTIONS,
+	RESOLVER_CONTRACT,
+	RESOLVER_ERROR_CODES,
+	ResolverError,
+} from "./ports/resource-resolver.js";
+export type {
 	FetchHandler,
 	HoboRuntimeHost,
 	HoboRuntimeHostKind,
@@ -493,6 +585,30 @@ export {
 	SCHEDULER_PORT_INTERFACE,
 	SchedulerParseError,
 } from "./ports/scheduler.js";
+export type {
+	MigrationPhaseName,
+	MigrationPlan,
+	MigrationStep,
+	MigrationStepKind,
+	SchemaColumn,
+	SchemaDiffEngine,
+	SchemaIndex,
+	SchemaIr,
+	SchemaTable,
+} from "./ports/schema-diff.js";
+export {
+	CANONICAL_SCHEMA_DIFF_ENGINE,
+	CANONICAL_SCHEMA_DIFF_ENGINE_ID,
+	CANONICAL_SCHEMA_DIFF_ENGINE_VERSION,
+	classifyTypeChange,
+	diffSchemaIr,
+	MIGRATION_PHASES,
+	MIGRATION_PLAN_CONTRACT,
+	MIGRATION_STEP_KINDS,
+	parseSchemaIr,
+	SCHEMA_IR_CONTRACT,
+	SchemaIrParseError,
+} from "./ports/schema-diff.js";
 export type {
 	RunId,
 	Seq,

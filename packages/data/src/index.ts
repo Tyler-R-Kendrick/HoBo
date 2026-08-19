@@ -6,10 +6,6 @@ export {
 	LeaseConflictError,
 } from "./actor-host.js";
 export {
-	createDurableActorHost,
-	type DurableActorHostOptions,
-} from "./durable-actor-host.js";
-export {
 	type Aggregate,
 	AggregateConflictError,
 	type AggregateDefinition,
@@ -21,6 +17,10 @@ export {
 	type Decide,
 	defineAggregate,
 } from "./aggregate.js";
+export {
+	createDurableActorHost,
+	type DurableActorHostOptions,
+} from "./durable-actor-host.js";
 export {
 	AggregateStaleFenceError,
 	isOptimisticConflict,

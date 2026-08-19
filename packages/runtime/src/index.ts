@@ -51,6 +51,12 @@ export {
 	RuntimeAuthoringError,
 	WorkflowFailure,
 } from "./errors.js";
+export {
+	type PlacementResolved,
+	type ResolveActorPlacementInput,
+	resolveActorPlacement,
+	signalActor,
+} from "./placement.js";
 export type {
 	ActorHost,
 	ActorLease,
@@ -134,9 +140,3 @@ export {
 	type WorkflowRunHandle,
 	workflow,
 } from "./workflow.js";
-export {
-	type PlacementResolved,
-	type ResolveActorPlacementInput,
-	resolveActorPlacement,
-	signalActor,
-} from "./placement.js";

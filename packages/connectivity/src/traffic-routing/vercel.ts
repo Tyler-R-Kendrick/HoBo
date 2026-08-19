@@ -133,7 +133,13 @@ export function createVercelTrafficRouting(
 
 			const mode = resolveMode(plan, options.mode);
 			if (mode === "rolling-release") {
-				return applyRollingRelease(plan, fingerprint, request, options, applied);
+				return applyRollingRelease(
+					plan,
+					fingerprint,
+					request,
+					options,
+					applied,
+				);
 			}
 			if (mode === "rewrites") {
 				return applyRewrites(plan, fingerprint, request, options, applied);
@@ -261,8 +267,7 @@ export function createVercelTrafficRouting(
 					notes: [providerFailure("revoke", response.status)],
 				});
 			}
-			const versionId =
-				routeVersionId(response.body) ?? current.routeVersionId;
+			const versionId = routeVersionId(response.body) ?? current.routeVersionId;
 			if (versionId) {
 				const promote = await request(
 					`/v1/projects/${encodeURIComponent(project)}/routes/versions`,
@@ -298,11 +303,9 @@ async function applyRollingRelease(
 	const { rule, unmet, canaryBackend, stableBackend } =
 		rollingReleaseSupport(plan);
 	if (!rule || !canaryBackend || !stableBackend) {
-		const result = deny(
-			plan,
-			unmet,
-			["Vercel rolling release requires exactly two static weighted backends"],
-		);
+		const result = deny(plan, unmet, [
+			"Vercel rolling release requires exactly two static weighted backends",
+		]);
 		await meter(options.metering, plan, "deny");
 		return result;
 	}
@@ -315,14 +318,21 @@ async function applyRollingRelease(
 			...(canaryDeployment ? [] : [`deployment:${canaryBackend.id}`]),
 			...(stableDeployment ? [] : [`deployment:${stableBackend.id}`]),
 		];
-		const result = deny(plan, [...unmet, ...missing], [
-			"Vercel deployment mappings are required for every rolling-release backend",
-		]);
+		const result = deny(
+			plan,
+			[...unmet, ...missing],
+			[
+				"Vercel deployment mappings are required for every rolling-release backend",
+			],
+		);
 		await meter(options.metering, plan, "deny");
 		return result;
 	}
 
-	const canaryPercent = weightPercent(canaryBackend.weight, stableBackend.weight);
+	const canaryPercent = weightPercent(
+		canaryBackend.weight,
+		stableBackend.weight,
+	);
 	const configBody = {
 		target: "production",
 		stages: [
@@ -400,11 +410,9 @@ async function applyRewrites(
 	const project = options.projectIdOrName.trim();
 	const { routes, unmet, appliedRules, capabilities } = rewriteRoutes(plan);
 	if (routes.length === 0) {
-		const result = deny(
-			plan,
-			unmet,
-			["Vercel rewrites require path-prefix rules with backend endpoints"],
-		);
+		const result = deny(plan, unmet, [
+			"Vercel rewrites require path-prefix rules with backend endpoints",
+		]);
 		await meter(options.metering, plan, "deny");
 		return result;
 	}
@@ -627,9 +635,7 @@ function weightPercent(
 }
 
 function pathToSrc(pathPrefix: string): string {
-	const base = pathPrefix.endsWith("/")
-		? pathPrefix.slice(0, -1)
-		: pathPrefix;
+	const base = pathPrefix.endsWith("/") ? pathPrefix.slice(0, -1) : pathPrefix;
 	return `${base}/:path*`;
 }
 

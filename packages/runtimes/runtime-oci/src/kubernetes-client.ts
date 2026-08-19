@@ -35,10 +35,7 @@ export interface KubernetesClient {
 		name: string,
 		opts?: { readonly timeoutMs?: number },
 	): Promise<void>;
-	portForward(
-		service: string,
-		targetPort: number,
-	): Promise<PortForwardHandle>;
+	portForward(service: string, targetPort: number): Promise<PortForwardHandle>;
 	/** Proxy HTTP to a port-forwarded service (mesh hop). */
 	httpProxy(options: {
 		readonly service: string;
@@ -141,10 +138,7 @@ export function createKubectlKubernetesClient(
 					kubectlBin: null,
 					clientVersion: null,
 					clusterReachable: false,
-					notes: [
-						"kubectl client unavailable",
-						JSON.stringify(version.body),
-					],
+					notes: ["kubectl client unavailable", JSON.stringify(version.body)],
 				};
 			}
 			const versionBody = version.body as {

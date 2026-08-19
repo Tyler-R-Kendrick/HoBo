@@ -30,7 +30,11 @@ export type FlagEvent = Readonly<{
 	data: Readonly<Record<string, unknown>>;
 }>;
 
-export type FlagValue = boolean | string | number | Readonly<Record<string, unknown>>;
+export type FlagValue =
+	| boolean
+	| string
+	| number
+	| Readonly<Record<string, unknown>>;
 
 export type FlagState = "ENABLED" | "DISABLED";
 
@@ -180,11 +184,8 @@ export class FeatureFlagStore {
 			(input.state !== undefined
 				? input.state === "ENABLED"
 				: (existing?.enabled ?? true));
-		const state: FlagState =
-			input.state ??
-			(enabled ? "ENABLED" : "DISABLED");
-		const defaultValue =
-			input.defaultValue ?? existing?.defaultValue ?? false;
+		const state: FlagState = input.state ?? (enabled ? "ENABLED" : "DISABLED");
+		const defaultValue = input.defaultValue ?? existing?.defaultValue ?? false;
 		const variants =
 			input.variants ??
 			existing?.variants ??
@@ -214,8 +215,7 @@ export class FeatureFlagStore {
 				: existing?.targeting !== undefined
 					? { targeting: existing.targeting }
 					: {}),
-			killSwitch:
-				input.killSwitch ?? existing?.killSwitch ?? false,
+			killSwitch: input.killSwitch ?? existing?.killSwitch ?? false,
 			...(input.migrationId !== undefined
 				? { migrationId: input.migrationId }
 				: existing?.migrationId !== undefined
@@ -260,7 +260,9 @@ export class FeatureFlagStore {
 	}
 
 	/** Load Bindle feature declarations into the store. */
-	loadDefinitions(defs: readonly FlagDefinitionInput[]): readonly FlagDefinition[] {
+	loadDefinitions(
+		defs: readonly FlagDefinitionInput[],
+	): readonly FlagDefinition[] {
 		return Object.freeze(defs.map((d) => this.define(d)));
 	}
 
@@ -275,9 +277,7 @@ export class FeatureFlagStore {
 	): FlagEvaluation {
 		const detail = this.evaluate(key, context, defaultValue);
 		const boolVal =
-			typeof detail.value === "boolean"
-				? detail.value
-				: Boolean(detail.value);
+			typeof detail.value === "boolean" ? detail.value : Boolean(detail.value);
 		const evaluation: FlagEvaluation = Object.freeze({
 			flagKey: detail.flagKey,
 			value: boolVal,
@@ -319,7 +319,11 @@ export class FeatureFlagStore {
 		// Multi-tenant isolation: tenant-bound flags fail closed unless context.tenant matches.
 		// Missing context.tenant is a mismatch (fail closed), not a pass-through.
 		const flagTenant = def.metadata.tenant ?? def.metadata.appTenant;
-		if (flagTenant !== undefined && flagTenant !== "" && flagTenant !== context.tenant) {
+		if (
+			flagTenant !== undefined &&
+			flagTenant !== "" &&
+			flagTenant !== context.tenant
+		) {
 			const evaluation: DetailEvaluation = Object.freeze({
 				flagKey: key,
 				value: defaultValue,
@@ -441,7 +445,10 @@ export class FeatureFlagStore {
 	 * Kill-switch: force defaultVariant and bump invalidation seq (fast-path).
 	 * Emits flag.KillSwitch + flag.Changed.
 	 */
-	activateKillSwitch(key: string, actor = "system"): FlagDefinition | undefined {
+	activateKillSwitch(
+		key: string,
+		actor = "system",
+	): FlagDefinition | undefined {
 		const existing = this.flags.get(key);
 		if (!existing) return undefined;
 		this.invalidationSeq = this.nextSeq();
@@ -560,9 +567,7 @@ function freezeTargeting(t: FlagTargeting): FlagTargeting {
 		...(t.stickyKey !== undefined ? { stickyKey: t.stickyKey } : {}),
 		...(t.rules !== undefined
 			? {
-					rules: Object.freeze(
-						t.rules.map((r) => Object.freeze({ ...r })),
-					),
+					rules: Object.freeze(t.rules.map((r) => Object.freeze({ ...r }))),
 				}
 			: {}),
 	});

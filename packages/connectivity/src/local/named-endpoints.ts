@@ -1,23 +1,23 @@
 import {
 	type BindingResolverPort,
-	type MeteringBus,
-	type NamedEndpointParams,
-	type ResourceId,
-	type TenantContext,
-	LOCAL_DEFAULT_TENANT_ID,
 	createUsageEvent,
 	getNamedEndpoint,
 	getNamedEndpointHost,
+	LOCAL_DEFAULT_TENANT_ID,
+	type MeteringBus,
+	type NamedEndpointParams,
 	parseResourceId,
+	type ResourceId,
+	type TenantContext,
 	tenantContextFromEnv,
 } from "@hobo/core";
 
 import { assertLocalNamedEndpointBackend } from "../env-isolation/local-airgap.js";
 
 import {
+	type PortlessProbe,
 	probePortless,
 	registerPortlessRoute,
-	type PortlessProbe,
 } from "./portless.js";
 
 export interface NamedEndpointEntry {
@@ -104,8 +104,9 @@ export async function attachNamedEndpoints(options: {
 
 	for (const endpoint of options.endpoints) {
 		// Private mesh endpoints keep mesh URLs; still publish hierarchical overlay names for discovery.
-		const endpointMode: "local" | "overlay" =
-			endpoint.external ? mode : "overlay";
+		const endpointMode: "local" | "overlay" = endpoint.external
+			? mode
+			: "overlay";
 
 		// Local-dev air-gap: never bind local mode to remote/prod backends.
 		if (endpointMode === "local") {
@@ -163,7 +164,7 @@ export async function attachNamedEndpoints(options: {
 						...(backendPort !== undefined ? { port: backendPort } : {}),
 					});
 
-		let backendUrl = endpoint.backendUrl;
+		const backendUrl = endpoint.backendUrl;
 		if (endpoint.external && portless.enabled && portless.binPath) {
 			const reg = await registerPortlessRoute({
 				hostname,

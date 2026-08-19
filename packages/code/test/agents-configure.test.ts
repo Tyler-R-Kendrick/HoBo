@@ -16,12 +16,15 @@ import {
 	flattenEveAgents,
 	formatAgentsConfigureLines,
 	openEveConfigureFromParent,
-	openHoboBoConfigure,
 	openHarnessConfigure,
+	openHoboBoConfigure,
 	reduceAgentsConfigureKey,
 } from "../src/agents-configure.js";
-import { loadHarnessSettings, saveHarnessSettings } from "../src/harness-settings.js";
 import { listConfigurableHarnessIds } from "../src/harness-model-catalog.js";
+import {
+	loadHarnessSettings,
+	saveHarnessSettings,
+} from "../src/harness-settings.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -98,11 +101,7 @@ describe("agents-configure", () => {
 			eveCursor: 99,
 		});
 		expect(state.eveCursor).toBe(0);
-		const down = press(
-			{ ...state, eveCursor: 0 },
-			"\x1b[B",
-			home,
-		);
+		const down = press({ ...state, eveCursor: 0 }, "\x1b[B", home);
 		expect(down.eveCursor).toBe(0);
 	});
 
@@ -116,9 +115,7 @@ describe("agents-configure", () => {
 				children: [],
 			},
 		]);
-		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(
-			/Subagents/,
-		);
+		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(/Subagents/);
 		state = press(state, "\t", home);
 		state = press(state, "\t", home);
 		expect(state.field).toBe("eve-list");
@@ -191,7 +188,12 @@ describe("agents-configure", () => {
 
 		const home = join(project, "home");
 		let state = openHoboBoConfigure(home, []);
-		state = { ...state, field: "create-id", createDraft: "1bad", createError: "" };
+		state = {
+			...state,
+			field: "create-id",
+			createDraft: "1bad",
+			createError: "",
+		};
 		const bad = reduceAgentsConfigureKey(state, "\r", home, project);
 		expect(bad.kind).toBe("state");
 		if (bad.kind === "state") {
@@ -299,9 +301,7 @@ describe("agents-configure", () => {
 		const first = state.modelOffers[state.modelCursor]!;
 		state = press(state, "\x1b[C", home, project);
 		expect(state.modelId).not.toBe(first.id);
-		expect(state.model).toBe(
-			state.modelOffers[state.modelCursor]!.runtimeId,
-		);
+		expect(state.model).toBe(state.modelOffers[state.modelCursor]!.runtimeId);
 		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(
 			/\w+\/[\w.:-]+/,
 		);
@@ -337,9 +337,9 @@ describe("agents-configure", () => {
 		const home = tmp();
 		let state = openHarnessConfigure(home, "codex", "Codex");
 		expect(state.modelOffers.length).toBeGreaterThan(0);
-		expect(
-			state.modelOffers.every((row) => row.provider !== "ollama"),
-		).toBe(true);
+		expect(state.modelOffers.every((row) => row.provider !== "ollama")).toBe(
+			true,
+		);
 		expect(
 			state.modelOffers.some((row) => row.runtimeId === "gpt-5.6-sol"),
 		).toBe(true);
@@ -371,9 +371,7 @@ describe("agents-configure", () => {
 			ollama: { host: "http://127.0.0.1:11434", models: ["qwen2.5-coder:7b"] },
 			env: {},
 		});
-		expect(state.modelOffers.some((row) => row.source === "ollama")).toBe(
-			true,
-		);
+		expect(state.modelOffers.some((row) => row.source === "ollama")).toBe(true);
 		expect(
 			state.modelOffers.some((row) =>
 				row.runtimeId.includes("qwen2.5-coder:7b"),

@@ -19,9 +19,7 @@ describe("binding-delivery doctor (ADR-0141)", () => {
 			ConnectionStrings__db: "postgres://u:p@host/db",
 		});
 		expect(report.gateOk).toBe(false);
-		expect(report.forbiddenEnvKeysInProcess).toContain(
-			"ConnectionStrings__db",
-		);
+		expect(report.forbiddenEnvKeysInProcess).toContain("ConnectionStrings__db");
 		expect(remediation.some((r) => /ADR-0141/.test(r))).toBe(true);
 	});
 });

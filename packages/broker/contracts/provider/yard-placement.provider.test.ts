@@ -74,9 +74,9 @@ describe("BrokerYardPlacement provider verification", () => {
 		expect(result.receipt?.schemaVersion).toBe(
 			"hobo.yard-placement-receipt/v1",
 		);
-		expect(result.events.some((e) => e.type === YARD_EVENTS.PlacementResolved)).toBe(
-			true,
-		);
+		expect(
+			result.events.some((e) => e.type === YARD_EVENTS.PlacementResolved),
+		).toBe(true);
 	});
 
 	it("rejects bindle provider selection on deployment request", async () => {

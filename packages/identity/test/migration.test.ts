@@ -240,9 +240,9 @@ describe("Continuous Identity Migration Plane", () => {
 
 	it("cohort membership is deterministic under ramp percent", () => {
 		const ref = "principal:t:abc";
-		expect(principalInMigrationCohort({ principalRef: ref, percentage: 0 })).toBe(
-			false,
-		);
+		expect(
+			principalInMigrationCohort({ principalRef: ref, percentage: 0 }),
+		).toBe(false);
 		expect(
 			principalInMigrationCohort({ principalRef: ref, percentage: 100 }),
 		).toBe(true);
@@ -261,10 +261,7 @@ describe("Continuous Identity Migration Plane", () => {
 			ttlSeconds: 60,
 		});
 		expect(grant.tokenRef.startsWith("tokenref://dual/")).toBe(true);
-		expect(grant.audiences).toEqual([
-			"hobo:adapter:a",
-			"hobo:adapter:b",
-		]);
+		expect(grant.audiences).toEqual(["hobo:adapter:a", "hobo:adapter:b"]);
 	});
 
 	it("zero-loss cutover: all dual-linked principals migrate", () => {

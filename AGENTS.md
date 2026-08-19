@@ -267,6 +267,42 @@ Plus the package lints that actually cover the files you touched:
 
 `pnpm agent:check -- --staged` already selects `design:lint` when UI/`DESIGN.md` files change. That is not a reason to skip the explicit lint or to skip impeccable on a visual diff. A change that fails `design:lint` or the package design-lint tests is not complete.
 
+## Lint budget (ratchet)
+
+The repo carries a standing biome backlog — the kind that accumulates when the
+lint gate is package-scoped and nobody looks at the whole tree. It is bounded by
+a ratchet rather than cleared in one sweep, because a sweep of that size buries
+every reviewable diff and several findings need reading one at a time.
+
+```bash
+pnpm run lint:budget            # fails when findings rise above the recorded budget
+pnpm run lint:budget -- --update # lowers the budget after you fix some
+```
+
+`scripts/biome-budget.json` holds the counts. `--update` **lowers** the budget
+and refuses to raise it — a ratchet you can loosen with a flag is not a ratchet.
+So new code cannot add findings, and the backlog is paid down opportunistically
+by whoever is already in the file.
+
+Do not mass-apply `--unsafe` fixes for `lint/style/noNonNullAssertion`. Biome
+rewrites `x!.y` to `x?.y`, which turns a throw into an `undefined` — a silent
+behaviour change. Read each one: two found that way (in DPoP's `htu` check and
+the bindles regex parser) were concealing real invariant gaps, not documenting
+them.
+
+## Building before a repo-wide test run
+
+`pnpm run build` covers `./packages/**` — every nested package, not just direct
+children of `packages/`. `pnpm run test` builds first via `pretest:unit` (~14s
+warm) because the repo-wide vitest sweep imports built dists from workspace
+packages, and without it a suite fails on whichever package happened to be
+stale rather than on anything real.
+
+Generated output belongs to exactly one generator. `packages/code/src/_generated`
+is the protobuf codegen pipeline's; TUI art from `gen-logo-tui.mts` /
+`gen-bo-idle-tui.mts` lives in `_generated-art`. Two generators sharing a
+directory makes the drift check report the other's output as unexpected.
+
 ## JavaScript-family implementation file policy
 
 This repo requires new JavaScript-family implementation files to be TypeScript-family files.
@@ -453,6 +489,104 @@ Use these lanes instead:
 - `pnpm test:fuzz` for Jazzer-shaped serialized-input smoke (does not start a long campaign).
 - `pnpm test:fuzz:nightly` for the docker-gated RESTler/Toxiproxy/Testcontainers plan. Skip without Docker. Never live Azure/AWS/GCP/paid SaaS.
 
+### Chaos lanes, and which one proves what
+
+Two chaos suites exist and they are **not** interchangeable. Conflating them is
+how a suite ends up proving neither half.
+
+- **`packages/hobo/test/chaos-conformance.test.ts` — breadth across providers.**
+  Its worlds are hand-written, which is what lets it cover every provider's
+  resolvers cheaply. What it cannot do is prove the provider actually answers
+  that way; the fake answers the way its author believed.
+- **`packages/hobo/test/pact-chaos-conformance.test.ts` — depth against the
+  contract.** It runs `runPactChaosMatrix` over `pactBackedTransport(pact, {
+  lifecycle })`: every fault at every call index, plus a double-fault scenario
+  and teardown-under-fault, driving the **shipped** driver rather than a
+  pattern reproduced in the test file. It asserts two properties — convergence
+  and fidelity — and both are computed from the pact.
+
+**Both properties, or neither is worth much.** *Convergence* asks "did a retry
+land exactly one resource?". *Fidelity* asks "was every request you sent on the
+way there one the contract declares?" — recorded path, recorded body, recorded
+headers. A driver recovering from a lost response takes a branch its happy path
+never takes, and a convergence-only lane is blind to that branch talking
+nonsense. Ship it and it is a 400 on the first real retry.
+
+**A pact can prove convergence when the corpus records both states.** An earlier
+version of this section said it could not. That was wrong, and the way it was
+wrong is worth keeping: it generalised from *one interaction* — the name-filtered
+lookup, recorded only in its pre-create form (`result: []`) — to the *document*,
+which also records `list all zone records` holding `rec1`. Absent and present
+were both there; only the sequencing was missing. `PactLifecycle` supplies the
+sequence by naming which **recorded interaction** answers which request in which
+state, so no response body originates in the harness. Where a state
+substitution could quietly lie — answering a filtered read with a collection
+body — `assertFilterConsistency` refuses to build the world at all.
+
+**Say "hand-authored", not "provider-verified".** These pacts are consumer
+expectations written in this repo, reviewed and shared across every consumer of
+a provider. That is a real upgrade over a private fake per test — being wrong
+about the provider becomes visible to everybody at once — but no provider has
+verified them, and they are not captured traffic. A chaos lane over a pact
+proves the driver honours the contract the repo agreed on. It is not evidence
+about the live API.
+
+**Duplication rules only apply when the provider mints the id.** A `PactLifecycle`
+declares `identity`. `provider-minted` (the default, and the stricter reading) is
+the dangerous shape — a POST to a collection, where issuing the write twice
+leaves two resources — and it is what every duplication rule in the matrix looks
+for. `client-supplied` is a PUT to a path the caller already named: repeating it
+after a lost response is not duplication, it is *the correct recovery*, and a
+matrix that flagged it would fail a driver for behaving properly. Convergence is
+still asserted there, by the observed result and the final state. Getting this
+wrong in the permissive direction is the dangerous one, so a lifecycle that says
+nothing gets the rules that can only produce false alarms.
+
+**Both lanes ship a negative control.** Every assertion is of the form "no
+violations", which a suite that quietly stopped checking also satisfies. The
+pact lane runs a deliberately blind-writing subject and asserts it *is* reported,
+plus the same subject relabelled `client-supplied` and asserts it is not — which
+pins the identity gate in both directions.
+
+Non-negotiables for either lane:
+
+- Faults must be observed to fire (`fired` non-empty). A scenario whose fault
+  never landed is a green test about a situation that never happened.
+- `countUnmatched()` must be zero, and `fidelityViolations()` empty — otherwise
+  a green run means the calls fell through to `PACT_NO_INTERACTION` and the
+  suite tested the mock.
+- The matrix's own scenario count is asserted. A matrix that silently ran zero
+  scenarios satisfies "no violations".
+
+### Which command is the repo-wide gate
+
+`pnpm run test:all` (turbo, one vitest config per package) is the only command
+that runs every suite the way its own package intends — with that package's
+environment, setup files and process isolation. `pnpm run test:unit` is the
+category runner and the default PR lane.
+
+`test:smoke` and `test:file` share one command (`vitest run --no-isolate`) and
+one root config. **They are single-target tools, not a full-repo gate.** Run bare
+over the whole worktree, the root config puts every package's suites in one
+process with `isolate: false`, so suites that pass alone interfere with each
+other — `site/src/lib/examples`, `packages/componentize`, and the
+`hobo-componentize` draft proofs all pass under their own configs and fail in a
+shared run. A red bare-root run is not by itself evidence of a regression;
+reproduce under the owning package before believing it.
+
+The root config excludes three things it cannot execute, each of which runs
+elsewhere: `external/` (vendored third-party source — `external/ts-autocode` is a
+git submodule with its own CI), `dist/` (build output, where every compiled
+`*.test.js` is a staler duplicate of a source test that already runs), and
+Playwright specs (`@playwright/test`, driven from `packages/pixel-village`'s own
+`playwright.config.ts`). Before that exclude existed a bare root run reported
+~40 failures on a clean tree, which is enough noise to hide a real one.
+
+Tests that require a binary or hardware **fail rather than skip** when it is
+absent — `packages/runtimes/runtime-celld/test/live-*.test.ts` says so in the
+error text. That is deliberate: a live lane that silently passes without its
+subject is worse than one that stops.
+
 Live service checks and `pnpm eval:agent:live` are manual/release-only lanes. Default PR and agent checks must not require live external services. Default `agent:check` must not run long Jazzer campaigns, RESTler, or Toxiproxy.
 
 Run the smallest sufficient lane through `pnpm agent:check`; no-arg mode validates the latest commit, `--staged` validates staged files, and `--base=origin/main` validates the whole PR branch. It never selects E2E, avoids broad unit/contract sweeps unless final/all validation explicitly asks for them, and escalates only to schema, contract, UI, behavior, visual, mock-agent eval, or bounded property lanes based on changed files.
@@ -466,6 +600,6 @@ Durable, non-obvious notes for this environment. The startup update script alrea
 - **No server/GUI.** This is a design-docs + executable proof/contract repo (see README "Current state"). "Running the app" means the validation/lint/test tooling, not a web/backend service. Verify the environment with `pnpm run doctor`, `pnpm run lint`, `pnpm run standards:check`, `pnpm test`, and the doc validators listed in `README.md` "How to work in this repo".
 - **Node version.** Local Node 22 satisfies `engines` (`>=22`); CI uses Node 24. Optional Windows bins are not fetched on Linux (`pnpm.supportedArchitectures.os` is `current`).
 - **Developer inner loop for a single proof package:** `pnpm exec turbo run test --filter ./src/draft/<kind>/<slug>` (see `src/draft/AGENTS.md`). The turbo "no output files found" warning on `test` is expected (no build outputs) and not a failure.
-- **`test:smoke` runs Vitest** (`vitest run --no-isolate`), same engine as `test:file`; there is no bun dependency.
+- **`test:smoke` runs Vitest** (`vitest run --no-isolate`), same engine as `test:file`; there is no bun dependency. Both are single-target tools — see "Which command is the repo-wide gate" above before reading a bare root run as a regression.
 - **`tgrep` is not installed**, so `pnpm run search` falls back to `rg`. Always pass explicit path args (e.g. `pnpm run search "pattern" src docs`); running it with no path scope over the full worktree can be very slow.
 - **All local gates pass clean on `main`** (`lint`, `standards:check`, `architecture:guard`, `docs:okf`, `docs:cli-lint`, `docs:design-lint`, `docs:coverage`, `docs:freshness`, SDK/deployment validators); treat any failure as caused by the change under test, not the environment.

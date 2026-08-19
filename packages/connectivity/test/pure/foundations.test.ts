@@ -5,7 +5,6 @@
  * External HTTP (Cloudflare, Route53, Tailscale API, Netbird API, Stripe, OPA)
  * is covered exclusively by contracts/ consumer + provider PACT suites.
  */
-import { describe, expect, it } from "vitest";
 
 import {
 	createMeteringBus,
@@ -13,6 +12,7 @@ import {
 	getNamedEndpoint,
 	parseTenantId,
 } from "@hobo/core";
+import { describe, expect, it } from "vitest";
 
 import { parseConnectivityConfig } from "../../src/config.js";
 import { createDnsControlProvider } from "../../src/dns/dnscontrol-provider.js";

@@ -121,6 +121,29 @@ describe("DPoP ES256 + JWT-SVID (pure)", () => {
 				jtiCache: cache,
 			}),
 		).toThrow(/replay/);
+
+		// A correctly signed proof that simply carries no htu claim must be
+		// rejected, not treated as the empty string. The verifier used to
+		// compare `normalizeHtu(payload.htu ?? "")`, so an absent htu passed
+		// whenever the expected htu also normalized to "" — and then returned
+		// `payload.htu!`, i.e. undefined typed as string. `extra` is spread
+		// last by mintDpopProof, so this drops the claim and still signs the
+		// payload with the real key: the signature check cannot mask the hole.
+		const noHtu = mintDpopProof({
+			keyPair: kp,
+			htm: "POST",
+			htu,
+			accessToken: token,
+			extra: { htu: undefined },
+		});
+		expect(() =>
+			verifyDpopProof({
+				proof: noHtu,
+				htm: "POST",
+				htu: "",
+				accessToken: token,
+			}),
+		).toThrow(/htu/);
 	});
 
 	it("mints and verifies audience-bound JWT-SVID; guards production secrets", () => {

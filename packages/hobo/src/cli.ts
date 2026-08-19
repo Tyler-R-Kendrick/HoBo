@@ -5,7 +5,6 @@ import {
 	createDownCommand,
 	createHoboCli,
 	createPlanCommand,
-	createUpCommand,
 	type DevRuntime,
 	type HoboCli,
 	type YardRuntime,
@@ -24,8 +23,6 @@ import { createBrokerCommand } from "./broker-command.js";
 import { createBrokerAwareUpCommand } from "./broker-up-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
-import { createOfferCommand } from "./offer-command.js";
-import { createRecipesCommand } from "./recipes-command.js";
 import {
 	createDefaultYardRuntime,
 	resolveProjectCollectionTarget,
@@ -48,6 +45,8 @@ import { createLocalProvider } from "./local-provider.js";
 import { createBrokerAwareLoginCommand } from "./login-command.js";
 import { createLogsCommand } from "./logs-command.js";
 import { createMessagingCommand } from "./messaging-command.js";
+import { createOfferCommand } from "./offer-command.js";
+import { createRecipesCommand } from "./recipes-command.js";
 import { createRegistryCommand } from "./registry-command.js";
 import { createReplayCommand } from "./replay-command.js";
 import { createRunbookCommand } from "./runbook-command.js";

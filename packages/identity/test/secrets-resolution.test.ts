@@ -87,7 +87,9 @@ describe("secretless resolution ladder", () => {
 		expect(result.status).toBe("resolved");
 		if (result.status === "resolved") {
 			expect(result.entry.placeholder).toMatch(/REDACTED/);
-			expect(JSON.stringify(result.entry)).not.toContain("real-secret-value-xyz");
+			expect(JSON.stringify(result.entry)).not.toContain(
+				"real-secret-value-xyz",
+			);
 		}
 	});
 

@@ -35,8 +35,7 @@ export function createServeControlCommand(
 					ok: false,
 					message: `hobo serve: unknown target '${target}' (supported: control)`,
 					data: {
-						usage:
-							"hobo serve control [--port 8790] [--demo] [--demo-seed 42]",
+						usage: "hobo serve control [--port 8790] [--demo] [--demo-seed 42]",
 					},
 				};
 			}
@@ -53,8 +52,7 @@ export function createServeControlCommand(
 						? Number(f.port)
 						: Number(env.HOBO_CONTROL_PORT ?? 8790));
 			const host =
-				deps.host ??
-				(typeof f.host === "string" ? f.host : "127.0.0.1");
+				deps.host ?? (typeof f.host === "string" ? f.host : "127.0.0.1");
 			const log = deps.log ?? ((line: string) => console.error(line));
 			const demo =
 				deps.demo ?? (f.demo === true || env.HOBO_CONTROL_DEMO === "1");

@@ -1,14 +1,10 @@
-import { describe, expect, it } from "vitest";
-
+import { featureSpecsToStoreInputs, features } from "@hobo/bindles";
 import {
-	features,
-	featureSpecsToStoreInputs,
-} from "@hobo/bindles";
-import {
-	FeatureFlagStore,
 	createHarness,
 	createLocalFeatureClient,
+	FeatureFlagStore,
 } from "@hobo/identity";
+import { describe, expect, it } from "vitest";
 
 import { createFeatureCommand } from "../src/feature-command.js";
 
@@ -67,7 +63,7 @@ describe("hobo feature (OpenFeature observe)", () => {
 
 	it("Bindle features → FeatureFlagStore → OpenFeature → progressive end-to-end", () => {
 		const decl = features({
-			"checkout": {
+			checkout: {
 				state: "ENABLED",
 				percentage: 0,
 				variants: { control: false, treatment: true },

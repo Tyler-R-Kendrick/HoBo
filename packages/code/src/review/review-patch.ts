@@ -17,22 +17,34 @@ export async function applyHunkPatch(
 	},
 ): Promise<void> {
 	const file = input.files.find((item) => item.fileId === input.fileId);
-	if (!file) throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "patch file not in manifest");
+	if (!file)
+		throw new ReviewError(REVIEW_ERROR.NOT_FOUND, "patch file not in manifest");
 	const path = file.pathAfter || file.pathBefore;
 	if (path.includes("\0") || path.includes("..")) {
 		throw new ReviewError(REVIEW_ERROR.MALFORMED, "unsafe patch path");
 	}
 	const pre = await runner.run("git", ["write-tree"], cwd);
-	if (pre.code !== 0) throw new ReviewError(REVIEW_ERROR.PATCH_CONFLICT, "preimage write-tree failed");
+	if (pre.code !== 0)
+		throw new ReviewError(
+			REVIEW_ERROR.PATCH_CONFLICT,
+			"preimage write-tree failed",
+		);
 	const args = input.unstage
 		? ["restore", "--staged", "--worktree", "--source=HEAD", "--", path]
 		: ["add", "--", path];
 	const work = await runner.run("git", args, cwd);
 	if (work.code !== 0) {
-		throw new ReviewError(REVIEW_ERROR.PATCH_CONFLICT, work.stderr || "patch apply failed");
+		throw new ReviewError(
+			REVIEW_ERROR.PATCH_CONFLICT,
+			work.stderr || "patch apply failed",
+		);
 	}
 	const post = await runner.run("git", ["write-tree"], cwd);
-	if (post.code !== 0) throw new ReviewError(REVIEW_ERROR.PATCH_CONFLICT, "postimage write-tree failed");
+	if (post.code !== 0)
+		throw new ReviewError(
+			REVIEW_ERROR.PATCH_CONFLICT,
+			"postimage write-tree failed",
+		);
 	void mkdtempSync;
 	void writeFileSync;
 	void join;

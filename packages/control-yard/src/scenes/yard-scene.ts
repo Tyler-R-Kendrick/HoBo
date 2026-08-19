@@ -7,15 +7,15 @@
  */
 
 import {
+	type AssetIndex,
 	animationFrameList,
 	loadAssetIndex,
 	resolveAnimation,
-	sheetAbsolutePath,
-	type AssetIndex,
 	type SpritesheetDef,
+	sheetAbsolutePath,
 } from "../assets-index.js";
-import { YARD_LAYOUT } from "../layout.js";
 import type { YardVisualState } from "../entity-state.js";
+import { YARD_LAYOUT } from "../layout.js";
 
 export type PhaserLikeLoader = {
 	spritesheet: (
@@ -66,10 +66,7 @@ export function describeYardSceneLoad(
 	assetBaseUrl = "",
 ): YardLoadManifest {
 	const base = assetBaseUrl.replace(/\/$/, "");
-	const url = (p: string) =>
-		base
-			? `${base}/${p}`
-			: joinAsset(index, p);
+	const url = (p: string) => (base ? `${base}/${p}` : joinAsset(index, p));
 
 	const sheets = Object.values(index.spritesheets).map((sheet) => ({
 		key: sheet.id,

@@ -21,10 +21,10 @@
  * }
  */
 import {
-	type PolicyDecision,
-	type PolicyRequest,
 	allowDecision,
 	denyDecision,
+	type PolicyDecision,
+	type PolicyRequest,
 } from "@hobo/core";
 
 import { parseIsolationClass } from "../env-isolation/types.js";
@@ -130,17 +130,14 @@ function whenMatches(
 	request: PolicyRequest,
 ): boolean {
 	if (!when) return true;
-	const sameTenant =
-		request.subject.tenantId === request.resource.tenantId;
+	const sameTenant = request.subject.tenantId === request.resource.tenantId;
 	if (when.sameTenant === true && !sameTenant) return false;
 	if (when.sameTenant === false && sameTenant) return false;
 
 	const subjectEnv = parseIsolationClass(request.subject.tags);
 	const resourceEnv = parseIsolationClass(request.resource.tags ?? []);
 	const sameEnv =
-		subjectEnv !== null &&
-		resourceEnv !== null &&
-		subjectEnv === resourceEnv;
+		subjectEnv !== null && resourceEnv !== null && subjectEnv === resourceEnv;
 	if (when.sameEnv === true && !sameEnv) return false;
 	if (when.sameEnv === false && sameEnv) return false;
 

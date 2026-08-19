@@ -14,6 +14,7 @@ import {
 	type ClaimBundle,
 	type ClaimCommand,
 	type ClaimCoordinatorState,
+	type ClaimError,
 	type ClaimItem,
 	claimAtomicityOf,
 	type GuestLease,

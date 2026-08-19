@@ -56,10 +56,84 @@ store. Projections over that stream produce the materialized view the site
 renders, snapshots back the read store used for current status, and the receipt
 records which connectivity implementation was chosen for each edge.
 
+## Binding resolution
+
+`resolution.ts` owns the record that says which product and which connectivity
+implementation satisfy a capability profile inside a given Yard (ADR-0157). The
+Yard is the binding authority: its binding rows are hard filters over ADR-0151
+selection, never a ranking input. `BindingResolution` is the decision record
+that falls out — Yard, profile, product, connectivity, realization
+(`native` / `pack` / `bridge`), the canonical Yard binding row keys that
+constrained the outcome, and how many candidates were considered.
+
+`parseBindingResolution` is the parse boundary; `yardBindingRowKey` builds a
+canonical row key from the same `(profile, productId, connectivityId)` tuple
+`@hobo/yards` canonicalizes rows by, and `canonicalizeAppliedRows` sorts and
+deduplicates a collection of them so authoring order can never become signal.
+A resolution that considered zero candidates is refused: something was chosen,
+so something existed to choose from.
+
+## The `binding.*` event family
+
+Exactly three facts, and the two absences are load-bearing:
+
+| Fact | When | Carries |
+|---|---|---|
+| `binding.Resolved` | plan phase, per workload edge | the parsed `BindingResolution` |
+| `binding.Projected` | **deploy time**, per wired binding | Yard, alias, binding profile ref, connectivity, projection kind |
+| `binding.Unavailable` | fail-closed refusal | Yard, profile, code, remediation, considered count |
+
+- **There is no `binding.Declared`.** Yard binding row state rides
+  `yard.Registered`, so row state is never duplicated into a second stream.
+- **Per-activation client construction emits nothing.** `binding.Projected`
+  records deploy-time wiring only. Building the typed `ctx.bindings.<alias>`
+  client during an ADR-0158 `init` is a hot path, and a control-plane write per
+  activation would cost latency while describing wiring that was already
+  recorded at deploy time.
+
+`bindingUnavailable` cannot be constructed without remediation text —
+`BINDING_UNAVAILABLE_REMEDIATION` holds the canonical, human-actionable string
+for each of `YARD_BINDING_PRODUCT_UNKNOWN`, `YARD_BINDING_PROVIDER_MISMATCH`,
+`YARD_BINDING_EXCLUDED_ALL`, and `NO_COMPATIBLE_BINDING`. A refusal without
+remediation is a dead end for the operator, so the type system refuses to
+produce one.
+
+Every fact is frozen at both levels, copies incoming arrays, carries its own
+name, and is screened for secret-shaped values through the same
+plaintext-credential detector `parseSecretRef` uses — an event stream is the
+most widely replicated surface in the system.
+
 ## Contracts
 
 - `data-models/bindings.proto` / `.cue` — records plus the invariants that keep
   credentials out of endpoint metadata.
+- `data-models/binding_resolution.proto` / `.cue` — the resolution record and
+  the three event records, with the considered-count and remediation invariants
+  as constraints rather than prose.
 - `contracts/pacts/connectivity-binding.pact.json` — the producer/consumer
   boundary, including rejection with `BINDING_UNAVAILABLE` when no compatible
   connectivity path exists rather than silently downgrading the workload.
+
+## HONEST SCOPE
+
+- This package is **pure records and parsers**. It resolves nothing. The
+  selection that produces a `BindingResolution` lives in `packages/cloud`
+  (`planner/profile-matching.ts`); this package owns only the shape of the
+  answer and the facts that carry it, so the planner and the event log cannot
+  drift apart.
+- **Nothing here appends to an event store.** `bindingResolved`,
+  `bindingProjected`, and `bindingUnavailable` return plain frozen facts. A
+  runtime wraps them in the shared envelope and writes them; there is no
+  transport, no ordering, and no delivery guarantee in this package.
+- **`binding.Projected` is not emitted by anything yet at activation time, by
+  design** — see above. If you are looking for a per-activation audit record of
+  client construction, it does not exist and is not planned.
+- Secret screening is **shape-based**, not authoritative. It catches connection
+  strings, bearer tokens, PEM private keys, and common provider key prefixes. A
+  credential that resembles an ordinary identifier will pass; the guarantee is
+  defense in depth over the `secretRef`-only rule, not a substitute for it.
+- The Yard binding row **grammar** (`YARD_BINDING_PROFILE_PATTERN` and the parse
+  error codes) is owned by `@hobo/yards`. `parseYardBindingRowKey` checks the
+  key's structure — three segments, a named profile, at least one constraint —
+  and deliberately does not re-implement the profile-id regex, so there is one
+  home for that grammar.

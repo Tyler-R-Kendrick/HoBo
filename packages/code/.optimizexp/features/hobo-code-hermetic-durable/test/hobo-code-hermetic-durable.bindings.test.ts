@@ -3,11 +3,11 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-	DISCOVERY_PRIMARY,
-	IMPLEMENTATION_STATUS,
 	assertClearStatus,
 	assertErrorActionable,
+	DISCOVERY_PRIMARY,
 	exerciseSurface,
+	IMPLEMENTATION_STATUS,
 	observeFailure,
 	onCriticalPath,
 	setFeatureContext,

@@ -4,8 +4,8 @@ import {
 	appendAssistant,
 	createInitialShellState,
 	reduceShellKey,
-	replaceLastAssistant,
 	renderShellFrame,
+	replaceLastAssistant,
 	scrollFocused,
 } from "../src/interactive-shell.js";
 import {

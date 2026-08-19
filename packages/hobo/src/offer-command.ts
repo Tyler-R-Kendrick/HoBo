@@ -7,14 +7,15 @@ import { assertOfferIsSecretFree, buildDeploymentOffer } from "@hobo/recipes";
 
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
-	EVIDENCE_DIRECTORY,
-	RecipePlaneError,
 	buildRecipeContext,
 	compileTopology,
 	definitionsOf,
 	deploymentRequestFromBindle,
+	EVIDENCE_DIRECTORY,
 	isAcceptedCompilation,
+	RecipePlaneError,
 	requireRecipe,
+	type SolutionRecipe,
 } from "./recipe-plane.js";
 
 // `hobo offer` — compile the proposal a human is asked to consent to, before
@@ -48,7 +49,10 @@ function localOfferSigner(home: string) {
 		algorithm: "hmac-sha256",
 		keyId,
 		sign(payloadDigest: string): string {
-			return createHash("sha256").update(keyId).update(payloadDigest).digest("hex");
+			return createHash("sha256")
+				.update(keyId)
+				.update(payloadDigest)
+				.digest("hex");
 		},
 	};
 }
@@ -65,7 +69,9 @@ export function createOfferCommand(deps: OfferCommandDeps): CommandModule {
 					status: "usage",
 					code: "HOBO_OFFER_USAGE",
 					message: "hobo offer <recipe-id>",
-					remediation: ["Run `hobo recipes list` to see registered recipe ids."],
+					remediation: [
+						"Run `hobo recipes list` to see registered recipe ids.",
+					],
 				};
 			}
 
@@ -86,7 +92,7 @@ export function createOfferCommand(deps: OfferCommandDeps): CommandModule {
 			const atFlag = (flags as Record<string, unknown>).at;
 			const nowMs = typeof atFlag === "number" ? atFlag : now();
 
-			let recipe;
+			let recipe: SolutionRecipe;
 			try {
 				recipe = requireRecipe(recipeId);
 			} catch (error) {
@@ -96,7 +102,9 @@ export function createOfferCommand(deps: OfferCommandDeps): CommandModule {
 						status: "unknown-recipe",
 						code: "HOBO_OFFER_UNKNOWN_RECIPE",
 						message: error.message,
-						remediation: ["Run `hobo recipes list` to see registered recipe ids."],
+						remediation: [
+							"Run `hobo recipes list` to see registered recipe ids.",
+						],
 					};
 				}
 				throw error;

@@ -44,7 +44,5 @@ export function webAppAnnotationFromBinding(
 }
 
 export function isWebAppAnnotation(annotation: ProviderAnnotation): boolean {
-	return (
-		annotation.provider === "hobo" && annotation.option === WEBAPP_OPTION
-	);
+	return annotation.provider === "hobo" && annotation.option === WEBAPP_OPTION;
 }

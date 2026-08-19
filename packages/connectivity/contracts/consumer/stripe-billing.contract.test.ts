@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { createBillingAggregator } from "../../src/metering/billing-aggregator.js";
 import { createStripeBillingProvider } from "../../src/metering/billing-provider.js";
-import { createPactFetch } from "../helpers/pact-fetch.js";
+import { createPactFetch, requirePact } from "../helpers/pact-fetch.js";
 
 const contractsDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -16,9 +16,8 @@ const contractsDir = path.resolve(
 describe("StripeBillingApi consumer contract", () => {
 	it("charges closed invoice through pact mock", async () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
-		const pact = pacts.find((p) => p.provider.name === "StripeBillingApi");
-		expect(pact).toBeDefined();
-		const fetchImpl = createPactFetch(pact!);
+		const pact = requirePact(pacts, "StripeBillingApi");
+		const fetchImpl = createPactFetch(pact);
 
 		const stripe = createStripeBillingProvider({
 			secretKey: "sk_test_pact",

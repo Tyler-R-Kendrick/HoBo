@@ -38,15 +38,18 @@ export function getKnownAgents(): readonly KnownAgent[] {
 	return knownAgentsFrom(loadHarnessCatalog());
 }
 
-export const KNOWN_AGENTS: readonly KnownAgent[] = new Proxy([] as KnownAgent[], {
-	get(_target, prop) {
-		const list = getKnownAgents();
-		const value = Reflect.get(list, prop, list);
-		return typeof value === "function"
-			? (value as (...args: unknown[]) => unknown).bind(list)
-			: value;
+export const KNOWN_AGENTS: readonly KnownAgent[] = new Proxy(
+	[] as KnownAgent[],
+	{
+		get(_target, prop) {
+			const list = getKnownAgents();
+			const value = Reflect.get(list, prop, list);
+			return typeof value === "function"
+				? (value as (...args: unknown[]) => unknown).bind(list)
+				: value;
+		},
 	},
-});
+);
 
 export interface DetectedAgent {
 	readonly id: string;

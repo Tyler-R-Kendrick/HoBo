@@ -255,7 +255,9 @@ describe("session resource inventory", () => {
 		const dashRow = inventory.endpoints.find(
 			(row) => row.resourceName === "dashboard",
 		);
-		expect(dashRow?.preferredUrl).toMatch(/dashboard\.code\..*\.hobo\.localhost/);
+		expect(dashRow?.preferredUrl).toMatch(
+			/dashboard\.code\..*\.hobo\.localhost/,
+		);
 		expect(
 			inventory.managed
 				.filter((row) => row.ownerId === "camp:code")
@@ -829,8 +831,7 @@ describe("session resource inventory", () => {
 		// Without a live /dev pid, user bindle is declared; loopback endpoints
 		// still appear while their backends answer. Mesh api needs a live pid.
 		expect(
-			inventory.bindles.find((row) => row.id === "bindle:hello-world")
-				?.status,
+			inventory.bindles.find((row) => row.id === "bindle:hello-world")?.status,
 		).toBe("declared");
 		const names = inventory.endpoints.map((row) => row.resourceName);
 		expect(names).toEqual(

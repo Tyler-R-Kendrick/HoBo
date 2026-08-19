@@ -1,29 +1,31 @@
 export {
 	attachCampToYard,
-	camp,
-	campToShape,
 	CAMP_BINDLE_OWNERSHIP_FORBIDDEN,
 	CAMP_MIGRATION_CODE,
+	camp,
+	campToShape,
 	parseLegacyCampMappings,
 	withResolvers,
 } from "./camp.js";
 export { providerSelection } from "./provider-selection.js";
 export {
-	resolveLocalBindings,
 	type ResolvedEnv,
+	resolveLocalBindings,
 } from "./resolve-local-bindings.js";
+export type { StandardCampsOptions } from "./standard-camps.js";
+export { standardCamps } from "./standard-camps.js";
 export {
-	EMPTY_RESOLVER_CONFIG,
-	TOPOLOGY_CONTRACT_VERSION,
 	type Camp,
 	type CampConfig,
 	type CampShape,
+	EMPTY_RESOLVER_CONFIG,
 	type JsonValue,
 	type PrimitiveResolverConfig,
 	type ProviderSelection,
 	type ResolverPin,
 	type ResourceMappingRule,
 	type ResourceSelector,
+	TOPOLOGY_CONTRACT_VERSION,
 } from "./types.js";
 
 // public-contract: package identity for boundary contracts.

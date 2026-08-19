@@ -6,8 +6,8 @@ import { test } from "vitest";
 
 import {
 	assertUpgradeScopeBoundary,
-	classifyUpgradeDryRunDecision,
 	COMPATIBILITY_INPUT_MATRIX,
+	classifyUpgradeDryRunDecision,
 	evaluateUpgradeDryRun,
 	parseCompatibilityInputs,
 	parseRollbackEvidence,

@@ -116,9 +116,7 @@ export async function runConformanceSuite(
 				),
 		);
 
-		return selectedTierCases.length === 0 && skippedTierCases.length > 0
-			? false
-			: true;
+		return !(selectedTierCases.length === 0 && skippedTierCases.length > 0);
 	});
 
 	if (claimedUnexercised.length > 0) {

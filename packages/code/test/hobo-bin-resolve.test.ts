@@ -12,12 +12,12 @@ import { PassThrough, Writable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runHoboCodeCli } from "../src/cli.js";
-import { runInteractiveShell } from "../src/interactive-shell.js";
 import {
 	resolveHoboBin,
 	resolveHoboSpawn,
 	startDevBrowserSession,
 } from "../src/dev-browser.js";
+import { runInteractiveShell } from "../src/interactive-shell.js";
 import { createDefaultShellHost } from "../src/shell-host.js";
 
 const roots: string[] = [];
@@ -80,7 +80,9 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 		});
 		expect(spawned.command).toBe(process.execPath);
 		expect(spawned.command).not.toBe("hobo");
-		expect(spawned.bin).toMatch(/packages[/\\]hobo[/\\]dist[/\\]bin[/\\]hobo\.js$/u);
+		expect(spawned.bin).toMatch(
+			/packages[/\\]hobo[/\\]dist[/\\]bin[/\\]hobo\.js$/u,
+		);
 		expect(spawned.args).toContain("--import");
 		expect(spawned.args).toContain(spawned.bin);
 		expect(spawned.args.slice(spawned.args.indexOf(spawned.bin))).toEqual([
@@ -101,7 +103,9 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 				HOBO_BIN: "   ",
 			},
 		});
-		expect(shipped).toMatch(/packages[/\\]hobo[/\\]dist[/\\]bin[/\\]hobo\.js$/u);
+		expect(shipped).toMatch(
+			/packages[/\\]hobo[/\\]dist[/\\]bin[/\\]hobo\.js$/u,
+		);
 	});
 
 	it("prefers HOBO_CODE_HOBO_BIN over HOBO_BIN over the workspace walk", () => {
@@ -216,7 +220,16 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 		const hoboHome = join(root, "home");
 		const stub = writeStubHobo(join(root, "hobo"));
 		const result = await runHoboCodeCli(
-			["dev", "--cwd", projectDir, "--port", "0", "--debug-port", "0", "--once"],
+			[
+				"dev",
+				"--cwd",
+				projectDir,
+				"--port",
+				"0",
+				"--debug-port",
+				"0",
+				"--once",
+			],
 			{
 				hoboHome,
 				cwd: projectDir,

@@ -68,7 +68,9 @@ export function parseIsolationClass(
 	return null;
 }
 
-export function isolationClassTag(cls: IsolationClass): `env:${IsolationClass}` {
+export function isolationClassTag(
+	cls: IsolationClass,
+): `env:${IsolationClass}` {
 	return `${ENV_TAG_PREFIX}${cls}`;
 }
 

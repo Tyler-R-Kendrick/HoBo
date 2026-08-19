@@ -1,19 +1,19 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 
-import { tmuxRunner, type MuxRunner } from "./mux.js";
+import { type MuxRunner, tmuxRunner } from "./mux.js";
 import {
 	createResidentSessionRuntime,
-	residentSessionTmuxName,
 	type ResidentSessionRuntime,
+	residentSessionTmuxName,
 } from "./resident-session-runtime.js";
+import type { SessionSnapshot } from "./session-contract.js";
 import {
 	createSessionOrchestrator,
-	sessionDeliveryApprovalDigest,
 	type SessionDeliveryApproval,
 	type SessionProcessRunner,
+	sessionDeliveryApprovalDigest,
 } from "./session-orchestrator.js";
-import type { SessionSnapshot } from "./session-contract.js";
 
 export interface LocalSessionControlOptions {
 	readonly hoboHome: string;

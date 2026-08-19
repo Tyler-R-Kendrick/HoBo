@@ -8,7 +8,8 @@ import type { IsolationClass } from "../env-isolation/types.js";
 export const PAM_GATEWAY_SCHEMA = "hobo.privileged-access-gateway/v1" as const;
 
 // public-contract: PAM Rail capability id.
-export const PAM_RAIL_CAPABILITY = "capability:privileged-access-gateway" as const;
+export const PAM_RAIL_CAPABILITY =
+	"capability:privileged-access-gateway" as const;
 
 export type PamKind = "native" | "teleport" | "boundary" | "jumpserver";
 

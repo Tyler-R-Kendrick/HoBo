@@ -48,7 +48,10 @@ export function parseWorkspaceName(raw: string): ParseResult {
 		};
 	}
 	if (name === "." || name === "..") {
-		return { ok: false, reason: `"${name}" is a directory reference, not a name` };
+		return {
+			ok: false,
+			reason: `"${name}" is a directory reference, not a name`,
+		};
 	}
 	if (!ALLOWED.test(name)) {
 		// Covers path separators, NUL, every shell metacharacter, and a leading

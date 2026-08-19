@@ -3,8 +3,8 @@
  * Worker so DatabaseSync never races and never monopolizes the event loop.
  */
 
-import { Worker } from "node:worker_threads";
 import { fileURLToPath } from "node:url";
+import { Worker } from "node:worker_threads";
 
 import type {
 	AppendOptions,

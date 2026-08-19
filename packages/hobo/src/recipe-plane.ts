@@ -1,41 +1,47 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { STANDARD_CONNECTIVITY, createConnectivityRegistry } from "@hobo/bindings";
+import {
+	createConnectivityRegistry,
+	STANDARD_CONNECTIVITY,
+} from "@hobo/bindings";
 import type { BindleDefinition } from "@hobo/bindles";
-import type { BindlePrimitive, SelectionCandidate } from "@hobo/capability-profiles";
+import type {
+	BindlePrimitive,
+	SelectionCandidate,
+} from "@hobo/capability-profiles";
 import {
 	BINDLE_PRIMITIVES,
-	STANDARD_CAPABILITY_PROFILES,
 	createCapabilityProfileRegistry,
 	isBindleRuntime,
 	parseCapabilityRequirement,
+	STANDARD_CAPABILITY_PROFILES,
 	tryParseProfileId,
 } from "@hobo/capability-profiles";
 import type { YardRuntime } from "@hobo/cli";
 import {
-	type ResourceDefinitionVNext,
 	profileCatalogHash,
+	type ResourceDefinitionVNext,
 	toSelectionCandidate,
 } from "@hobo/cloud";
 import {
 	type BindleCapabilityRequest,
 	type CapabilityDependency,
+	compileRecipe,
 	DEFAULT_RECIPE_POLICY,
 	type DeploymentRequest,
+	findStandardRecipe,
+	parseDeploymentRequest,
 	type RecipeCompilationAccepted,
 	type RecipeSemantics,
 	type SolutionRecipe,
 	STANDARD_SOLUTION_RECIPES,
-	compileRecipe,
-	findStandardRecipe,
-	parseDeploymentRequest,
 } from "@hobo/recipes";
 import {
 	DEFAULT_TRUST_REQUIREMENT,
 	type EvidenceVerifier,
-	type TrustEvidence,
 	parseTrustEvidence,
+	type TrustEvidence,
 } from "@hobo/trust";
 
 import { FIRST_PARTY_DEFINITIONS } from "./first-party-catalog.js";
@@ -91,8 +97,13 @@ export function projectCatalog(
 			candidates.push(candidate);
 		}
 	}
-	candidates.sort((left, right) => left.definitionId.localeCompare(right.definitionId));
-	return { candidates, catalogDigest: profileCatalogHash(definitions, profiles) };
+	candidates.sort((left, right) =>
+		left.definitionId.localeCompare(right.definitionId),
+	);
+	return {
+		candidates,
+		catalogDigest: profileCatalogHash(definitions, profiles),
+	};
 }
 
 /**
@@ -182,7 +193,9 @@ export interface BuildRecipeContextInput {
 export async function buildRecipeContext(
 	input: BuildRecipeContextInput,
 ): Promise<RecipeContext> {
-	const registry = createCapabilityProfileRegistry(STANDARD_CAPABILITY_PROFILES);
+	const registry = createCapabilityProfileRegistry(
+		STANDARD_CAPABILITY_PROFILES,
+	);
 	return {
 		catalog: projectCatalog(input.definitions, registry),
 		evidence: await loadTrustEvidence(input.evidenceDirectory),
@@ -201,12 +214,18 @@ export async function buildRecipeContext(
  * (`hobo add`). The stream wins on a collision, because an operator who
  * re-registers a product id is overriding the shipped default on purpose.
  */
-export function definitionsOf(runtime: YardRuntime): readonly ResourceDefinitionVNext[] {
-	const registered = runtime.registry.definitions() as readonly ResourceDefinitionVNext[];
+export function definitionsOf(
+	runtime: YardRuntime,
+): readonly ResourceDefinitionVNext[] {
+	const registered =
+		runtime.registry.definitions() as readonly ResourceDefinitionVNext[];
 	const byId = new Map<string, ResourceDefinitionVNext>();
-	for (const definition of FIRST_PARTY_DEFINITIONS) byId.set(definition.id, definition);
+	for (const definition of FIRST_PARTY_DEFINITIONS)
+		byId.set(definition.id, definition);
 	for (const definition of registered) byId.set(definition.id, definition);
-	return [...byId.values()].sort((left, right) => left.id.localeCompare(right.id));
+	return [...byId.values()].sort((left, right) =>
+		left.id.localeCompare(right.id),
+	);
 }
 
 export interface RecipeSummary {
@@ -223,7 +242,9 @@ export interface RecipeSummary {
 
 /** The read-only view `hobo recipes list` renders. */
 export function summarizeRecipe(recipe: SolutionRecipe): RecipeSummary {
-	const providerIds = [...new Set(recipe.yards.map((yard) => yard.providerId))].sort();
+	const providerIds = [
+		...new Set(recipe.yards.map((yard) => yard.providerId)),
+	].sort();
 	const bootstrapClasses = [
 		...new Set(recipe.yards.map((yard) => yard.lease.bootstrapClass)),
 	].sort();
@@ -246,6 +267,13 @@ export function summarizeRecipe(recipe: SolutionRecipe): RecipeSummary {
 export function listRecipeSummaries(): readonly RecipeSummary[] {
 	return STANDARD_SOLUTION_RECIPES.map(summarizeRecipe);
 }
+
+/**
+ * Re-exported so callers that must name the type — a `let` awaiting a
+ * `requireRecipe` call inside a try, for instance — can do so without
+ * reaching past this plane into `@hobo/recipes` directly.
+ */
+export type { SolutionRecipe };
 
 export function requireRecipe(recipeId: string): SolutionRecipe {
 	const recipe = findStandardRecipe(recipeId);
@@ -289,7 +317,8 @@ export function deploymentRequestFromBindle(
 	}
 	for (const value of definition.requirements.prefer) {
 		const parsed = tryParseProfileId(value);
-		if (parsed !== undefined) bucket(parsed.primitive).preferred.push(parsed.id);
+		if (parsed !== undefined)
+			bucket(parsed.primitive).preferred.push(parsed.id);
 	}
 	const runtimes = definition.requirements.runtimes.filter((value) =>
 		isBindleRuntime(value),
@@ -327,7 +356,9 @@ export function deploymentRequestFromBindle(
 		}
 	}
 
-	const declared = new Set(capabilities.map((capability) => capability.capabilityRef));
+	const declared = new Set(
+		capabilities.map((capability) => capability.capabilityRef),
+	);
 	return parseDeploymentRequest({
 		deploymentRef,
 		capabilities,

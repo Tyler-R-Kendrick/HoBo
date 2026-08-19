@@ -105,7 +105,7 @@ export function claudeCodeGuide(): ClaudeCodeGuide {
 				claudeCode: "btw (aside / tip)",
 				hoboCode:
 					"temporary side-chat that borrows this moment's snapshot; Esc dismisses; main transcript stays put",
-				try: 'btw what\'s going on · /btw',
+				try: "btw what's going on · /btw",
 				status: "supported",
 			},
 			{
@@ -157,7 +157,9 @@ export function claudeCodeGuide(): ClaudeCodeGuide {
 }
 
 /** Human panel for guide (plain, scannable). */
-export function renderClaudeCodeGuideText(guide: ClaudeCodeGuide = claudeCodeGuide()): string {
+export function renderClaudeCodeGuideText(
+	guide: ClaudeCodeGuide = claudeCodeGuide(),
+): string {
 	const rows: string[] = [
 		"▣ guide",
 		"····················",

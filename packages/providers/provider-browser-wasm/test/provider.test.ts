@@ -5,6 +5,33 @@ import {
 	supportsAnonymousTemporaryDeploy,
 } from "../src/index.js";
 import { provisionTemporaryEnvironmentStation } from "../src/temporary-station.js";
+import {
+	assertSameOriginAsset,
+	defaultTransportPolicy,
+} from "../src/transport.js";
+
+describe("guest bundle asset guard", () => {
+	it("refuses an encoded separator that survives URL parsing", () => {
+		const policy = defaultTransportPolicy("https://app.example");
+		// The literal `/..` check beside this one never saw these forms. A
+		// guest bundle is code that runs with every capability this host grants
+		// its guests, so the route prefix is what keeps it to host-served
+		// assets — and an encoded separator walks straight out of it.
+		for (const url of [
+			"https://app.example/_hobo/%2f%2e%2e%2fetc/passwd",
+			"https://app.example/_hobo/..%5csecrets",
+		]) {
+			expect(() => assertSameOriginAsset(url, policy)).toThrow(
+				/percent-encodes/u,
+			);
+		}
+
+		expect(
+			assertSameOriginAsset("https://app.example/_hobo/guest.wasm", policy)
+				.pathname,
+		).toBe("/_hobo/guest.wasm");
+	});
+});
 
 describe("@hobo/provider-browser-wasm", () => {
 	it("exposes Matching-honest native ports", () => {

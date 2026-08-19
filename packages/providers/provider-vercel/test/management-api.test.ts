@@ -105,20 +105,24 @@ describe("outbound requests are pinned to the official API", () => {
 		}
 	});
 
-	it("refuses percent-encoded traversal that escapes an allowlisted prefix", () => {
-		// Regression, and the reason this package's guard now delegates to
-		// `@hobo/core`. The old local copy checked `pathname.startsWith(prefix)`
-		// and nothing else, so every one of these passed: they *do* start with
-		// `/v9/projects/`, and then climb out of it into the token surface —
-		// with the sponsoring credential attached to the request.
+	it("refuses an encoded separator that survives URL parsing", () => {
+		// Regression, and the reason this package's guard delegates to core.
+		// Precision matters here and an earlier version of this test lacked it:
+		// `/v9/projects/%2e%2e/user/tokens` is NOT one of these cases — WHATWG
+		// treats `%2e` as a dot and collapses it to `/v9/user/tokens` during
+		// parsing, which the old prefix check refused on its own. Asserting a
+		// generic throw made that case look like a hole when it never was.
+		//
+		// `%2f` and `%5c` are the real ones: not separators to the parser, so
+		// they keep the prefix intact, pass `startsWith`, and are decoded only
+		// by the origin — with the sponsoring credential attached.
 		for (const url of [
-			"https://api.vercel.com/v9/projects/%2e%2e/user/tokens",
 			"https://api.vercel.com/v9/projects/%2f%2e%2e%2fv3/user/tokens/abc",
 			"https://api.vercel.com/v9/projects/..%5cadmin",
 		]) {
 			expect(() =>
 				assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY),
-			).toThrow(/PROVIDER_CONTRACT_CHANGED|path/iu);
+			).toThrow(/percent-encodes/u);
 		}
 
 		// The legitimate path must survive the tightening.

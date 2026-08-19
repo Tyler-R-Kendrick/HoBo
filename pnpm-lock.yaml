@@ -1803,6 +1803,9 @@ importers:
       '@hobo/capability-profiles':
         specifier: workspace:*
         version: link:../../capability-profiles
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
       '@hobo/kv-redis-compatible':
         specifier: workspace:*
         version: link:../../kv-redis-compatible

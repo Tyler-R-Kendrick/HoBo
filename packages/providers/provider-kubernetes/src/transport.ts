@@ -11,6 +11,7 @@
  * for `kubectl proxy`), the two API path roots this driver uses, no redirect
  * chasing, a bounded body and a bounded wait.
  */
+import { encodesPathSeparator } from "@hobo/core";
 import { KubernetesProviderError, redactClusterText } from "./errors.js";
 
 export type TransportMethod = "GET" | "POST" | "DELETE";
@@ -106,7 +107,15 @@ export function assertAllowedEndpoint(
 		);
 	}
 	// `..` in a request path is how a namespaced call reaches a cluster-scoped
-	// object. The apiserver would normalize it; this driver refuses it.
+	// object. The apiserver would normalize it; this driver refuses it. The
+	// literal check below only ever saw the literal form — the percent-encoded
+	// one survives parsing and would reach the apiserver intact.
+	if (encodesPathSeparator(parsed.pathname)) {
+		throw new KubernetesProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`apiserver path ${parsed.pathname} percent-encodes a path separator or dot segment, which this guard refuses rather than decodes`,
+		);
+	}
 	if (parsed.pathname.includes("//") || parsed.pathname.includes("/..")) {
 		throw new KubernetesProviderError(
 			"PROVIDER_CONTRACT_CHANGED",

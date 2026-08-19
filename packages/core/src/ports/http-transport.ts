@@ -25,25 +25,37 @@
  *   not do is case-fold the *policy*: a mixed-case allowlist entry matches
  *   nothing. Repairing a policy typo is widening reach on a guess, and this
  *   guard fails closed instead.
- * - Dot segments are refused rather than resolved when they are
- *   percent-encoded. WHATWG resolves a literal `..` before the prefix check
- *   sees it, so `/v1/../admin` is checked as `/admin` and refused; `%2e%2e`
- *   and `%2f` survive parsing and would only be decoded by the provider, past
- *   every check here, so their presence is itself the refusal.
+ * - Percent-encoded path separators are refused rather than decoded. Be precise
+ *   about which forms actually survive, because the obvious example does not:
+ *   WHATWG resolves dot segments during parsing, and it treats `%2e` as a dot
+ *   while doing so, so `/v1/../admin` *and* `/v1/%2e%2e/admin` both arrive at
+ *   the prefix check already collapsed to `/admin` — and are refused by the
+ *   prefix check on their own merits.
+ *
+ *   What survives is an encoded *separator*: `%2f` and `%5c` are not separators
+ *   to the parser, so `/v1/projects/%2f%2e%2e%2fadmin` and
+ *   `/v1/projects/..%5cadmin` reach the prefix check with the prefix intact,
+ *   pass it, and are decoded only by the origin — after every check here. Their
+ *   presence is the refusal. `%2e` stays in the pattern because it still
+ *   appears in those composite forms.
  *
  * Purity: no clock, no randomness, no ambient environment reads. The guard is
  * a pure function of the request, the policy, and the inner transport's reply.
  */
 
 // public-contract: the closed HTTP method vocabulary a resolver may issue.
-//
-// `HEAD` is here because it is how S3 asks "does this bucket exist" —
-// `HeadBucket` is the documented existence check, and the S3-compatible
-// providers (DigitalOcean Spaces, Hetzner Object Storage) inherit it. A
-// resolver forced to probe with a bodied `GET` instead would transfer a listing
-// it does not want in order to learn one bit.
 export const TRANSPORT_METHODS = Object.freeze([
 	"GET",
+	// HEAD is a GET that stops before the body, and two independent surfaces
+	// need exactly that. The OCI distribution spec uses it to ask whether a
+	// manifest exists without transferring it, so a registry transport cannot
+	// be expressed without it — `provider-ttl-sh` kept its own method list for
+	// that reason. S3 uses it the same way: `HeadBucket` is the documented
+	// existence check, which the S3-compatible providers (DigitalOcean Spaces,
+	// Hetzner Object Storage) inherit, and a resolver forced to probe with a
+	// bodied GET would transfer a listing it does not want to learn one bit.
+	// It is also the safest method here: nothing is sent and nothing comes
+	// back but headers.
 	"HEAD",
 	"POST",
 	"PUT",
@@ -116,12 +128,40 @@ export type TransportGuardErrorCode =
  *  branch on the reason rather than matching on a message. */
 export class TransportGuardError extends Error {
 	readonly code: TransportGuardErrorCode;
+	/**
+	 * Structured context for the refusal, when there is any worth carrying.
+	 *
+	 * "Refused a redirect" is a much weaker diagnostic than "refused a redirect
+	 * to mirror.example.com", and the second is what a human debugging a
+	 * hijacked or misconfigured endpoint actually needs. Values here can be
+	 * attacker-influenced — a `Location` header is chosen by the peer — so
+	 * anything echoed in is length-bounded and stripped of control characters
+	 * before it lands.
+	 */
+	readonly detail: Readonly<Record<string, string>>;
 
-	constructor(code: TransportGuardErrorCode, message: string) {
+	constructor(
+		code: TransportGuardErrorCode,
+		message: string,
+		detail: Readonly<Record<string, string>> = {},
+	) {
 		super(message);
 		this.name = "TransportGuardError";
 		this.code = code;
+		this.detail = Object.freeze({ ...detail });
 	}
+}
+
+/**
+ * Bound a peer-supplied string before it is carried in an error.
+ *
+ * Control characters are dropped rather than escaped: this text reaches logs
+ * and terminals, where a stray CR or ESC rewrites what the reader sees.
+ */
+function boundedPeerText(value: string, max = 120): string {
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping them is the point.
+	const clean = value.replace(/[\u0000-\u001f\u007f]/gu, "");
+	return clean.length > max ? `${clean.slice(0, max)}…` : clean;
 }
 
 /**
@@ -157,8 +197,14 @@ function allowedPorts(policy: TransportGuardPolicy): readonly string[] {
 /**
  * Parse an outbound URL against the policy. Returns the parsed URL so the
  * caller cannot accidentally reuse the unchecked string.
+ *
+ * Exported because every provider transport needs exactly this check and they
+ * had each written their own. The copies drifted in the direction that matters:
+ * none of them rejected percent-encoded path traversal, so a policy allowing
+ * `/v9/projects/` also allowed `/v9/projects/%2e%2e/user/tokens`. One
+ * implementation with one set of tests is the point.
  */
-function assertAllowedEndpoint(
+export function assertAllowedEndpoint(
 	url: unknown,
 	policy: TransportGuardPolicy,
 ): URL {
@@ -198,6 +244,7 @@ function assertAllowedEndpoint(
 		throw new TransportGuardError(
 			"TRANSPORT_HOST_FORBIDDEN",
 			`request url must use the default https port or one this policy allows (${allowedPorts(policy).join(", ")}), got ${parsed.port}`,
+			{ port: parsed.port, allowed: allowedPorts(policy).join(",") },
 		);
 	}
 	if (!policy.allowedHosts.includes(parsed.hostname)) {
@@ -211,14 +258,26 @@ function assertAllowedEndpoint(
 }
 
 /**
+ * True when a pathname percent-encodes a separator or dot segment.
+ *
  * `parsed.pathname` has already had literal dot segments resolved by WHATWG
- * parsing, so the prefix check sees the path the origin will route on — with
- * one exception: percent-encoded separators survive parsing and are decoded
- * only by the provider, past every check here. Their presence is the refusal.
+ * parsing, so a prefix check sees the path the origin will route on — with one
+ * exception: percent-encoded separators survive parsing and are decoded only by
+ * the provider, past every check. Their presence is the refusal.
+ *
+ * Exported as a predicate rather than folded into `assertAllowedEndpoint`
+ * because three transports cannot use the whole guard — they match hosts by
+ * suffix, or permit http on loopback, or require same-origin — but every one of
+ * them needs *this*. Sharing the rule is what keeps the copies from drifting
+ * again; sharing the whole guard would have cost them a security property.
  */
+export function encodesPathSeparator(pathname: string): boolean {
+	return /%2e|%2f|%5c/iu.test(pathname);
+}
+
 function assertAllowedPath(parsed: URL, policy: TransportGuardPolicy): void {
 	const path = parsed.pathname;
-	if (/%2e|%2f|%5c/iu.test(path)) {
+	if (encodesPathSeparator(path)) {
 		throw new TransportGuardError(
 			"TRANSPORT_PATH_FORBIDDEN",
 			`path ${path} percent-encodes a path separator or dot segment, which this guard refuses rather than decodes: only the origin would resolve it, after every check here has passed`,
@@ -302,6 +361,7 @@ function assertNotRedirect(response: TransportResponse): void {
 	throw new TransportGuardError(
 		"TRANSPORT_REDIRECT_REFUSED",
 		`provider returned a ${response.status} redirect, which this transport never follows`,
+		{ location: boundedPeerText(location) },
 	);
 }
 

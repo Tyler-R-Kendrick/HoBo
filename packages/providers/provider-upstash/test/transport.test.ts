@@ -27,6 +27,39 @@ const CONTROL_REQUEST = {
 } as const;
 
 describe("assertAllowedEndpoint", () => {
+	it("refuses an encoded separator that survives URL parsing", () => {
+		// Be precise about the mechanism: WHATWG resolves dot segments during
+		// parsing and treats `%2e` as a dot, so `/%2e%2e/x` arrives collapsed
+		// and the prefix check already handles it. `%2f` and `%5c` are NOT
+		// separators to the parser — they reach the prefix check with the
+		// prefix intact, pass it, and are decoded only by the origin.
+		assert.throws(
+			() =>
+				assertAllowedEndpoint(
+					"https://fake-mallard-000000.upstash.io/get/%2f%2e%2e%2fadmin",
+					UPSTASH_DATA_PLANE_POLICY,
+				),
+			/percent-encodes/u,
+		);
+		assert.throws(
+			() =>
+				assertAllowedEndpoint(
+					"https://upstash.com/start-redis/..%5cadmin",
+					UPSTASH_CONTROL_PLANE_POLICY,
+				),
+			/percent-encodes/u,
+		);
+
+		// The legitimate path must survive the tightening.
+		assert.equal(
+			assertAllowedEndpoint(
+				"https://fake-mallard-000000.upstash.io/get/key",
+				UPSTASH_DATA_PLANE_POLICY,
+			).pathname,
+			"/get/key",
+		);
+	});
+
 	it("accepts the documented control-plane URL", () => {
 		const url = assertAllowedEndpoint(
 			"https://upstash.com/start-redis",

@@ -8,7 +8,13 @@
  * be pointed at an attacker's origin by one bad config value, and on this path
  * the request headers carry the sponsoring credential.
  */
-import { redactProviderText, VercelProviderError } from "./provider-errors.js";
+import {
+	assertAllowedEndpoint as assertAllowedEndpointCore,
+	guardTransport,
+	TransportGuardError,
+} from "@hobo/core";
+
+import { VercelProviderError } from "./provider-errors.js";
 
 export type TransportMethod = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -77,64 +83,37 @@ export function assertAllowedEndpoint(
 	url: string,
 	policy: TransportPolicy,
 ): URL {
-	let parsed: URL;
 	try {
-		parsed = new URL(url);
-	} catch {
-		throw new VercelProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			"request url is not a valid URL",
-		);
+		return assertAllowedEndpointCore(url, corePolicy(policy));
+	} catch (cause) {
+		throw asProviderError(cause);
 	}
-	if (parsed.protocol !== "https:") {
-		throw new VercelProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			`request url must use https, got ${parsed.protocol.replace(":", "")}`,
-		);
-	}
-	if (parsed.username !== "" || parsed.password !== "") {
-		throw new VercelProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			"request url must not embed userinfo",
-		);
-	}
-	if (parsed.port !== "" && parsed.port !== "443") {
-		throw new VercelProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			`request url must use the default https port, got ${parsed.port}`,
-		);
-	}
-	const host = parsed.hostname.toLowerCase();
-	if (!policy.allowedHosts.includes(host)) {
-		throw new VercelProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			`host ${host} is not an allowlisted official provider host`,
-			{ detail: { host, allowed: policy.allowedHosts.join(",") } },
-		);
-	}
-	if (
-		!policy.allowedPathPrefixes.some((prefix) =>
-			parsed.pathname.startsWith(prefix),
-		)
-	) {
-		throw new VercelProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			`path ${parsed.pathname} is outside the allowlisted prefixes`,
-			{ detail: { allowed: policy.allowedPathPrefixes.join(",") } },
-		);
-	}
-	return parsed;
 }
 
-function headerValue(
-	headers: Readonly<Record<string, string>>,
-	name: string,
-): string | undefined {
-	const lower = name.toLowerCase();
-	for (const [key, value] of Object.entries(headers)) {
-		if (key.toLowerCase() === lower) return value;
-	}
-	return undefined;
+/**
+ * Vercel's policy shape onto core's. Only the timeout field is named
+ * differently; the rest is the same vocabulary.
+ */
+function corePolicy(policy: TransportPolicy) {
+	return {
+		allowedHosts: policy.allowedHosts,
+		allowedPathPrefixes: policy.allowedPathPrefixes,
+		maxResponseBytes: policy.maxResponseBytes,
+		maxTimeoutMs: policy.timeoutMs,
+	};
+}
+
+/**
+ * Core refuses with a `TransportGuardError`; this package's callers catch
+ * `VercelProviderError`. Translating rather than re-throwing keeps the thrown
+ * type — and the `PROVIDER_CONTRACT_CHANGED` code every call site already
+ * matches on — exactly as it was before the guard moved into core.
+ */
+function asProviderError(cause: unknown): unknown {
+	if (!(cause instanceof TransportGuardError)) return cause;
+	return new VercelProviderError("PROVIDER_CONTRACT_CHANGED", cause.message, {
+		detail: { guard: cause.code },
+	});
 }
 
 /**
@@ -148,59 +127,33 @@ export function createGuardedTransport(
 	inner: VercelTransport,
 	policy: TransportPolicy = DEFAULT_TRANSPORT_POLICY,
 ): VercelTransport {
+	const guarded = guardTransport(
+		async (request) =>
+			await inner.request({
+				method: request.method as TransportMethod,
+				url: request.url,
+				headers: request.headers,
+				...(request.body === undefined ? {} : { body: request.body }),
+				timeoutMs: request.timeoutMs,
+				maxResponseBytes: request.maxResponseBytes,
+			}),
+		corePolicy(policy),
+	);
+
 	return {
 		async request(request) {
-			const url = assertAllowedEndpoint(request.url, policy);
-			const timeoutMs = Math.min(request.timeoutMs, policy.timeoutMs);
-			const maxResponseBytes = Math.min(
-				request.maxResponseBytes,
-				policy.maxResponseBytes,
-			);
-			if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-				throw new VercelProviderError(
-					"PROVIDER_CONTRACT_CHANGED",
-					"request timeout must be positive",
-				);
+			try {
+				return await guarded({
+					method: request.method,
+					url: request.url,
+					headers: request.headers,
+					...(request.body === undefined ? {} : { body: request.body }),
+					timeoutMs: request.timeoutMs,
+					maxResponseBytes: request.maxResponseBytes,
+				});
+			} catch (cause) {
+				throw asProviderError(cause);
 			}
-
-			const response = await inner.request({
-				...request,
-				url: url.toString(),
-				timeoutMs,
-				maxResponseBytes,
-			});
-
-			if (response.status >= 300 && response.status < 400) {
-				const location = headerValue(response.headers, "location") ?? "";
-				throw new VercelProviderError(
-					"PROVIDER_CONTRACT_CHANGED",
-					`provider returned a ${response.status} redirect, which this driver never follows`,
-					{
-						detail: {
-							status: response.status,
-							location: redactProviderText(location, 120),
-						},
-					},
-				);
-			}
-
-			const declared = Number(
-				headerValue(response.headers, "content-length") ?? Number.NaN,
-			);
-			if (Number.isFinite(declared) && declared > maxResponseBytes) {
-				throw new VercelProviderError(
-					"PROVIDER_CONTRACT_CHANGED",
-					`provider declared a ${declared} byte response, over the ${maxResponseBytes} byte cap`,
-				);
-			}
-			if (Buffer.byteLength(response.body, "utf8") > maxResponseBytes) {
-				throw new VercelProviderError(
-					"PROVIDER_CONTRACT_CHANGED",
-					`provider response exceeded the ${maxResponseBytes} byte cap`,
-				);
-			}
-
-			return response;
 		},
 	};
 }

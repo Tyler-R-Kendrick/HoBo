@@ -66,9 +66,29 @@ describe("createGuardedTransport", () => {
 				url: "https://neon.new/api/v1/database/x",
 				headers: {},
 				timeoutMs: 1000,
-				maxResponseBytes: 4096,
+				// Within policy on purpose: the point of this case is the
+				// *response* being oversized, not the request asking for too
+				// much. Asking for 4096 against a 512 policy is now refused
+				// before the body is ever fetched, which the case below covers.
+				maxResponseBytes: 512,
 			}),
 		).rejects.toThrowError(/exceeded the 512 byte cap/u);
+	});
+
+	it("refuses a request that asks for more than the policy cap", async () => {
+		const transport = createGuardedTransport(createStubTransport([OK]), {
+			...DEFAULT_TRANSPORT_POLICY,
+			maxResponseBytes: 512,
+		});
+		await expect(
+			transport.request({
+				method: "GET",
+				url: "https://neon.new/api/v1/database/x",
+				headers: {},
+				timeoutMs: 1000,
+				maxResponseBytes: 4096,
+			}),
+		).rejects.toThrowError(/exceeds the policy cap/u);
 	});
 
 	it("rejects an over-large declared content-length before reading further", async () => {
@@ -88,7 +108,28 @@ describe("createGuardedTransport", () => {
 		).rejects.toThrowError(/over the/u);
 	});
 
-	it("clamps the caller timeout to the policy ceiling", async () => {
+	it("refuses a caller timeout above the policy ceiling instead of clamping", async () => {
+		// This used to silently rewrite a ten-minute request to two seconds and
+		// carry on. Quietly honouring something other than what was asked for
+		// hides a misconfiguration; the shared guard refuses and says so.
+		const inner = createStubTransport([OK]);
+		const transport = createGuardedTransport(inner, {
+			...DEFAULT_TRANSPORT_POLICY,
+			timeoutMs: 2000,
+		});
+		await expect(
+			transport.request({
+				method: "GET",
+				url: "https://neon.new/api/v1/database/x",
+				headers: {},
+				timeoutMs: 10 * 60 * 1000,
+				maxResponseBytes: 1024,
+			}),
+		).rejects.toThrowError(/exceeds the policy cap/u);
+		expect(inner.requests).toHaveLength(0);
+	});
+
+	it("passes a within-policy timeout through untouched", async () => {
 		const inner = createStubTransport([OK]);
 		const transport = createGuardedTransport(inner, {
 			...DEFAULT_TRANSPORT_POLICY,
@@ -98,10 +139,10 @@ describe("createGuardedTransport", () => {
 			method: "GET",
 			url: "https://neon.new/api/v1/database/x",
 			headers: {},
-			timeoutMs: 10 * 60 * 1000,
+			timeoutMs: 1500,
 			maxResponseBytes: 1024,
 		});
-		expect(inner.requests[0]?.timeoutMs).toBe(2000);
+		expect(inner.requests[0]?.timeoutMs).toBe(1500);
 	});
 });
 

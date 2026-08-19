@@ -13,8 +13,11 @@
  * core's `HttpTransport`, not this package's.
  *
  * So this module is the resolver-side policy, and the difference between the
- * two is a documented capability difference rather than duplication: **the
- * resolvers do not support `kubectl proxy`.** A resolver handed a
+ * two is a documented capability difference rather than duplication. The rules
+ * the two lanes *share* are shared for real: `@hobo/core` exports
+ * `encodesPathSeparator`, and the driver's own guard calls it, so neither lane
+ * carries a private copy of the traversal rule. What differs is the one thing
+ * that cannot be shared: **the resolvers do not support `kubectl proxy`.** A resolver handed a
  * `http://127.0.0.1:8001` apiserver is refused rather than quietly downgraded,
  * because the core guard would refuse it at the moment of the call and a
  * refusal at construction time names the fix.

@@ -105,6 +105,35 @@ describe("outbound requests are pinned to the official API", () => {
 		}
 	});
 
+	it("refuses an encoded separator that survives URL parsing", () => {
+		// Regression, and the reason this package's guard delegates to core.
+		// Precision matters here and an earlier version of this test lacked it:
+		// `/v9/projects/%2e%2e/user/tokens` is NOT one of these cases — WHATWG
+		// treats `%2e` as a dot and collapses it to `/v9/user/tokens` during
+		// parsing, which the old prefix check refused on its own. Asserting a
+		// generic throw made that case look like a hole when it never was.
+		//
+		// `%2f` and `%5c` are the real ones: not separators to the parser, so
+		// they keep the prefix intact, pass `startsWith`, and are decoded only
+		// by the origin — with the sponsoring credential attached.
+		for (const url of [
+			"https://api.vercel.com/v9/projects/%2f%2e%2e%2fv3/user/tokens/abc",
+			"https://api.vercel.com/v9/projects/..%5cadmin",
+		]) {
+			expect(() =>
+				assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY),
+			).toThrow(/percent-encodes/u);
+		}
+
+		// The legitimate path must survive the tightening.
+		expect(
+			assertAllowedEndpoint(
+				"https://api.vercel.com/v9/projects/prj_1",
+				DEFAULT_TRANSPORT_POLICY,
+			).pathname,
+		).toBe("/v9/projects/prj_1");
+	});
+
 	it("never follows a redirect and never reads past the byte cap", async () => {
 		const redirecting = createGuardedTransport({
 			async request() {

@@ -10,6 +10,7 @@
  * Bodies are bytes, not strings. One of the two routes returns WebAssembly,
  * and decoding it as UTF-8 to satisfy a string-shaped port would corrupt it.
  */
+import { encodesPathSeparator } from "@hobo/core";
 import { BrowserWasmProviderError, redactHostText } from "./errors.js";
 
 export type TransportRequest = {
@@ -96,6 +97,15 @@ export function assertSameOriginAsset(
 		throw new BrowserWasmProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			`asset path ${parsed.pathname} is outside the ${HOST_ROUTE_PREFIX} route`,
+		);
+	}
+	// The literal check below never saw the percent-encoded form, which
+	// survives parsing and is decoded only when the asset is fetched — after
+	// the same-origin and route checks have both passed.
+	if (encodesPathSeparator(parsed.pathname)) {
+		throw new BrowserWasmProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`asset path ${parsed.pathname} percent-encodes a path separator or dot segment, which this guard refuses rather than decodes`,
 		);
 	}
 	if (parsed.pathname.includes("//") || parsed.pathname.includes("/..")) {

@@ -1,6 +1,18 @@
 export type WorkspaceEdge = {
 	readonly from: string;
 	readonly to: string;
+	/**
+	 * True when the edge exists only through `devDependencies` — a test-time
+	 * import, not something the shipped package pulls in.
+	 *
+	 * The layering rules are about what a package *depends on to run*. A pack
+	 * importing `describeConcern` in its own test suite is not reaching across
+	 * a boundary at runtime, and treating it as though it were produced a
+	 * standing allowlist of individually-blessed test edges. Absent or false
+	 * means "assume runtime", so an edge whose provenance is unknown is still
+	 * judged by the strict rule.
+	 */
+	readonly dev?: boolean;
 };
 
 export type PackageKind =
@@ -134,35 +146,29 @@ const KNOWN_PACKAGE_PATHS = new Set([
 // providers as a distinct tier. Scoped to these EXACT edges so genuine
 // adapter->adapter and other outward imports still fail closed.
 const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
-	// ── Banked pre-existing edges (unenforced until this commit) ──────────────
-	// These are NOT blessed architecture. They are the 18 layer-2 → layer-3
-	// imports that already existed on trunk while the boundary gate was aborting
-	// on an unclassified path and therefore checking nothing at all. Banking
-	// them is what lets the gate start enforcing *no new* violations today
-	// instead of waiting on a restructure of eight provider packages — the same
-	// ratchet shape `lint:budget` uses for biome.
+	// ── Banked pre-existing edges (unenforced until the gate was repaired) ────
+	// These are NOT blessed architecture. They are layer-2 → layer-3 imports
+	// that already existed on trunk while the boundary gate was aborting on an
+	// unclassified path and therefore checking nothing at all. Banking them is
+	// what lets the gate enforce *no new* violations today instead of waiting
+	// on a restructure — the same ratchet shape `lint:budget` uses for biome.
 	//
-	// Each one is a provider reaching a layer-3 package directly rather than
-	// through a core port. The fix is per-provider and belongs in its own PR;
-	// this list should only ever shrink. Do not add to it.
-	"packages/providers/provider-cloudflare->packages/bindings",
-	"packages/providers/provider-cloudflare->packages/capability-profiles",
+	// The list shrank from 31 distinct entries to 14, over 18 deleted lines:
+	// seventeen named a target that `CONTRACT_PACKAGE_PATHS` already
+	// classifies as `contract`, which the adapter rule exempts a few lines
+	// down, and the eighteenth was a duplicate line of an entry already
+	// present. A provider importing
+	// `@hobo/capability-profiles` or `@hobo/bindings` is declaring the
+	// vocabulary it implements, which is the case the rule's own comment
+	// describes as legitimate — those were never debt, they just read as debt.
+	// Removing them was verified against the gate, not assumed: the violation
+	// set is empty both before and after.
+	//
+	// What is left is the real remainder. Each is a package reaching another
+	// implementation rather than a port or a contract. The fix is per-package
+	// and belongs in its own PR; this list should only ever shrink, and every
+	// entry needs a written reason. Do not add to it.
 	"packages/providers/provider-convex->packages/sdk",
-	"packages/providers/provider-neon->packages/bindings",
-	"packages/providers/provider-neon->packages/capability-profiles",
-	"packages/providers/provider-netlify->packages/bindings",
-	"packages/providers/provider-netlify->packages/capability-profiles",
-	"packages/providers/provider-netlify->packages/claims",
-	"packages/providers/provider-prisma-postgres->packages/bindings",
-	"packages/providers/provider-prisma-postgres->packages/capability-profiles",
-	"packages/providers/provider-ttl-sh->packages/capability-profiles",
-	"packages/providers/provider-ttl-sh->packages/claims",
-	"packages/providers/provider-upstash->packages/bindings",
-	"packages/providers/provider-upstash->packages/capability-profiles",
-	"packages/providers/provider-upstash->packages/kv-redis-compatible",
-	"packages/providers/provider-vercel->packages/bindings",
-	"packages/providers/provider-vercel->packages/capability-profiles",
-	"packages/providers/provider-vercel->packages/claims",
 	"packages/providers/provider-agentv->packages/training-pipeline",
 	"packages/providers/provider-ax->packages/runtime",
 	// The runner tier (#891/#892) composes @hobo/runner-github's shared
@@ -180,7 +186,6 @@ const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	// types into @hobo/core; recorded here rather than left invisible, and
 	// scoped to these EXACT edges so no new one is admitted.
 	"packages/packs/pack-framework->packages/cloud",
-	"packages/providers/provider-convex->packages/sdk",
 	// The policy-engine gate-plane adapters (docs/plans/0017 F30) lower engine
 	// verdicts onto @hobo/contracts' shared vocabulary (GatekeeperEffect,
 	// PolicyDecisionRequest). The dependency deliberately points
@@ -207,9 +212,6 @@ const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	// the sanctioned runtime->storage composition, not a port bypass.
 	"packages/runtimes/runtime-local->packages/storage-sqlite",
 	"packages/runtimes/runtime-browser->packages/storage-sqlite",
-	// Dev-only PACT consumer/provider tests, same shape as the accepted
-	// core->contract-harness edge in validateBoundaryImports.
-	"packages/runtimes/runtime-oci->packages/contract-harness",
 ]);
 
 // The SWE agent connectors (swe-claude, swe-codex, swe-copilot, swe-cursor,
@@ -234,6 +236,23 @@ function isPackTierBaseEdge(from: string, to: string): boolean {
 	return (
 		from.startsWith("packages/packs/") && to === "packages/packs/pack-framework"
 	);
+}
+
+/**
+ * The repo's PACT/concern test harness, reached only from tests.
+ *
+ * `@hobo/contract-harness` is layer 0 and exists to be imported by test suites;
+ * `core` was already exempted inline and `runtime-oci` by name, both with the
+ * note that the edge is dev-only. Saying that once, as a property of the edge,
+ * beats blessing each package as it grows a test — the allowlist was accruing
+ * entries that all had the same reason.
+ *
+ * Still deliberately narrow: only this one package, and only when the edge is
+ * dev-only. A runtime dependency on the harness is a real layering break and
+ * keeps failing.
+ */
+function isDevOnlyTestHarnessEdge(edge: WorkspaceEdge): boolean {
+	return edge.dev === true && edge.to === "packages/contract-harness";
 }
 
 function isAcceptedAdapterPackageEdge(from: string, to: string): boolean {
@@ -276,7 +295,12 @@ export function parseWorkspaceEdge(input: unknown): WorkspaceEdge {
 		throw new Error(`unknown import target ${to}`);
 	}
 
-	return { from, to };
+	const dev = record.dev;
+	if (dev !== undefined && typeof dev !== "boolean") {
+		throw new Error("workspace edge dev must be a boolean when present");
+	}
+
+	return dev === undefined ? { from, to } : { from, to, dev };
 }
 
 export function classifyPackage(path: string): PackageClassification {
@@ -345,7 +369,7 @@ export function validateBoundaryImports(
 		}
 
 		if (from.kind === "core" && to.kind !== "external") {
-			if (edge.to === "packages/contract-harness") {
+			if (isDevOnlyTestHarnessEdge(edge)) {
 				continue;
 			}
 			errors.push(
@@ -374,6 +398,7 @@ export function validateBoundaryImports(
 			to.kind !== "contract" &&
 			edge.from !== edge.to &&
 			edge.to !== "packages/conformance" &&
+			!isDevOnlyTestHarnessEdge(edge) &&
 			!isAcceptedAdapterPackageEdge(edge.from, edge.to)
 		) {
 			errors.push(
@@ -435,7 +460,9 @@ export function detectWorkspaceCycles(edges: readonly WorkspaceEdge[]): {
 }
 
 export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
-	{ from: "packages/core", to: "packages/contract-harness" },
+	// Dev-only: core declares the harness under devDependencies for its own
+	// PACT suites. The marker is what the layering rule keys on.
+	{ from: "packages/core", to: "packages/contract-harness", dev: true },
 	{ from: "packages/bindles", to: "packages/core" },
 	{ from: "packages/bindles", to: "packages/wit" },
 	{ from: "packages/camps", to: "packages/bindles" },

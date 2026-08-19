@@ -50,7 +50,30 @@ function run(command, args, options = {}) {
 
 async function downloadReleaseArchive() {
   await mkdir(toolsRoot, { recursive: true });
-  const response = await fetch(downloadUrl);
+  let response;
+  try {
+    response = await fetch(downloadUrl);
+  } catch (cause) {
+    // A bare `fetch failed` here surfaces as an unhandled TypeError with an
+    // undici stack and no mention of the URL, which reads like a code defect
+    // rather than "this machine cannot reach the network". The TLS case is
+    // worth naming: behind an intercepting proxy the chain terminates in the
+    // proxy's own root, and the fix is to trust that root — never to disable
+    // verification, which would hand the toolchain download to anyone on path.
+    const code = (cause as { cause?: { code?: string } })?.cause?.code;
+    const tls =
+      code === "SELF_SIGNED_CERT_IN_CHAIN" ||
+      code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
+      code === "UNABLE_TO_GET_ISSUER_CERT_LOCALLY";
+    throw new Error(
+      `could not download ${downloadUrl}` +
+        (tls
+          ? `: TLS chain rejected (${code}). Behind a TLS-intercepting proxy, ` +
+            "point NODE_EXTRA_CA_CERTS at the proxy's CA bundle and re-run."
+          : ": network unreachable."),
+      { cause },
+    );
+  }
   assert.equal(response.ok, true, `failed to download ${downloadUrl}: HTTP ${response.status}`);
   await writeFile(archivePath, Buffer.from(await response.arrayBuffer()));
 }

@@ -204,13 +204,34 @@ describe("createGuardedTransport", () => {
 		);
 	});
 
-	it("clamps a caller's timeout and byte budget down to the policy", async () => {
+	it("refuses a caller's over-policy timeout and byte budget rather than clamping", async () => {
+		// This used to rewrite a ten-minute, hundred-megabyte request down to
+		// the policy and send it anyway. Quietly honouring something other than
+		// what was asked for hides the misconfiguration that produced it; the
+		// shared guard refuses and names the bound instead.
+		const stub = createStubTransport({});
+
+		await assert.rejects(
+			createGuardedTransport(stub).request({
+				...REQUEST,
+				timeoutMs: 10 * 60_000,
+				maxResponseBytes: 100 * 1024 * 1024,
+			}),
+			(error: unknown) =>
+				isTtlShProviderError(error) &&
+				error.code === "PROVIDER_CONTRACT_CHANGED" &&
+				/exceeds the policy cap/u.test(error.message),
+		);
+		assert.equal(stub.requests.length, 0);
+	});
+
+	it("sends a within-policy timeout and byte budget through untouched", async () => {
 		const stub = createStubTransport({});
 
 		await createGuardedTransport(stub).request({
 			...REQUEST,
-			timeoutMs: 10 * 60_000,
-			maxResponseBytes: 100 * 1024 * 1024,
+			timeoutMs: TTL_SH_REGISTRY_POLICY.timeoutMs,
+			maxResponseBytes: TTL_SH_REGISTRY_POLICY.maxResponseBytes,
 		});
 
 		const sent = stub.requests[0];

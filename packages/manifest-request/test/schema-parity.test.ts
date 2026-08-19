@@ -1,17 +1,25 @@
 /**
  * The decomposition is only safe if drift is detectable.
  *
- * While `@hobo/capability-profiles` still declares `SelectionCandidate` and
- * this package declares the schema for it, the two can diverge silently: a
- * field added there is simply absent here, and every digest taken through this
- * package quietly stops covering it. These tests read the other package's
- * source as text and fail when the shapes stop agreeing — including the two
- * vocabularies this package has to restate because a manifest package may not
- * depend on another package's implementation.
+ * This suite was written while `@hobo/capability-profiles` still declared
+ * `SelectionCandidate` alongside this package's schema for it, and it compared
+ * the two so a field added there could not quietly stop being covered by every
+ * digest taken through here.
  *
- * They also hold the `.proto` and `.cue` to the same field set, because "the
- * schema is the contract" is a claim about files nothing else in the build
- * reads.
+ * Swarm I removed that second declaration. `@hobo/capability-profiles` now
+ * re-exports the shape, so there is nothing left to compare and the checks
+ * that compared it would be self-comparisons — which pass unconditionally.
+ * They are replaced by the stronger statement the re-export makes available:
+ * the other package declares **none** of these names, and names this one as
+ * their owner. `test/single-owner.test.ts` in `@hobo/manifest-round-trip`
+ * checks the same seam by runtime identity.
+ *
+ * What is unchanged: the `BINDLE_RUNTIMES` / `REALIZATION_KINDS` restatement,
+ * which still compares two different packages (the vocabulary moved to
+ * `@hobo/manifest-capability`, not here); the transcribed base candidate
+ * against `@hobo/capability-profiles`' own test harness; and the `.proto` and
+ * `.cue` held to the record this package emits, because "the schema is the
+ * contract" is a claim about files nothing else in the build reads.
  */
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -30,6 +38,8 @@ import {
 } from "../src/index.js";
 import {
 	BASE_CANDIDATE,
+	CANDIDATE_SOURCE_PATH,
+	CAPABILITY_PROFILES_INDEX_PATH,
 	constStringList,
 	IDS_SOURCE_PATH,
 	readRepoFile,
@@ -42,28 +52,33 @@ import {
 const DATA_MODELS = join(import.meta.dirname, "..", "data-models");
 const PROTO = readRepoFile(join(DATA_MODELS, "selection_candidate.proto"));
 const CUE = readRepoFile(join(DATA_MODELS, "selection_candidate.cue"));
+const OWN_SOURCE = readRepoFile(CANDIDATE_SOURCE_PATH);
 const SELECTION_SOURCE = readRepoFile(SELECTION_SOURCE_PATH);
+const PROFILES_INDEX = readRepoFile(CAPABILITY_PROFILES_INDEX_PATH);
 const IDS_SOURCE = readRepoFile(IDS_SOURCE_PATH);
 
 const PARSED_BASE = parseSelectionCandidate(BASE_CANDIDATE);
 const RECORD = toSelectionCandidateRecord(PARSED_BASE);
 
-/** Members of a `export type X = "a" | "b";` declaration, in order. */
-function unionMembers(source: string, name: string): readonly string[] {
-	const start = source.indexOf(`export type ${name} =`);
-	if (start < 0) throw new Error(`type ${name} not found`);
-	const end = source.indexOf(";", start);
-	return [...source.slice(start, end).matchAll(/"([^"]+)"/gu)].map(
-		(match) => match[1] as string,
-	);
-}
+/** The six names that moved out of `@hobo/capability-profiles` into here. */
+const MOVED = [
+	"SelectionCandidate",
+	"ProfileImplementation",
+	"ProviderClass",
+	"CreatorAuthorityAfterClaim",
+	"ContinuityGrade",
+	"ClaimAtomicity",
+] as const;
 
-describe("parity with the shape @hobo/capability-profiles still declares", () => {
-	const declaredFields = topLevelKeys(
-		sliceBlock(SELECTION_SOURCE, "export type SelectionCandidate = {"),
-	);
-
-	it("models exactly the declared field set", () => {
+describe("the shape is declared once, here, and re-exported there", () => {
+	it("models exactly the field set its own declaration names", () => {
+		// Not a self-comparison: the left side is what `parseSelectionCandidate`
+		// actually emits at runtime, the right side is the declared type read as
+		// text. A parser that dropped a field or added one fails this.
+		const declaredFields = topLevelKeys(
+			sliceBlock(OWN_SOURCE, "export type SelectionCandidate = {"),
+		);
+		expect(declaredFields.length).toBeGreaterThan(10);
 		expect([...Object.keys(PARSED_BASE)].sort()).toStrictEqual(
 			[...declaredFields].sort(),
 		);
@@ -71,7 +86,7 @@ describe("parity with the shape @hobo/capability-profiles still declares", () =>
 
 	it("models exactly the declared profile-implementation field set", () => {
 		const claimFields = topLevelKeys(
-			sliceBlock(SELECTION_SOURCE, "export type ProfileImplementation = {"),
+			sliceBlock(OWN_SOURCE, "export type ProfileImplementation = {"),
 		);
 		const claim = PARSED_BASE.implementsProfiles[0];
 		expect(claim).toBeDefined();
@@ -80,34 +95,42 @@ describe("parity with the shape @hobo/capability-profiles still declares", () =>
 		);
 	});
 
-	it("carries the same closed vocabularies", () => {
-		expect(PROVIDER_CLASSES).toStrictEqual(
-			unionMembers(SELECTION_SOURCE, "ProviderClass"),
-		);
-		expect(CREATOR_AUTHORITIES_AFTER_CLAIM).toStrictEqual(
-			unionMembers(SELECTION_SOURCE, "CreatorAuthorityAfterClaim"),
-		);
-		expect(CONTINUITY_GRADES).toStrictEqual(
-			unionMembers(SELECTION_SOURCE, "ContinuityGrade"),
-		);
-		expect(CLAIM_ATOMICITIES).toStrictEqual(
-			unionMembers(SELECTION_SOURCE, "ClaimAtomicity"),
-		);
+	it("@hobo/capability-profiles declares none of the moved names", () => {
+		// `export type X =` / `export interface X` / `export class X`, not a bare
+		// mention: `selection.ts` still *imports* every one of these to type its
+		// gates, and a substring search would go green on the import.
+		for (const name of MOVED) {
+			expect(SELECTION_SOURCE).not.toMatch(
+				new RegExp(`^export (?:type|interface|class) ${name}\\b`, "mu"),
+			);
+			expect(PROFILES_INDEX).not.toMatch(
+				new RegExp(`^export (?:type|interface|class) ${name}\\b`, "mu"),
+			);
+		}
 	});
 
-	it("carries the same credential vocabulary, which is declared inline", () => {
-		const block = sliceBlock(
-			SELECTION_SOURCE,
-			"export type SelectionCandidate = {",
-		);
-		const credentials = block.slice(block.indexOf("readonly credentials:"));
-		const members = [
-			...credentials.slice(0, credentials.indexOf(";")).matchAll(/"([^"]+)"/gu),
-		].map((match) => match[1] as string);
-		expect(CREDENTIAL_CONTINUITY_GRADES).toStrictEqual(members);
+	it("and names this package as their owner", () => {
+		// The names must appear inside the block that re-exports from here, not
+		// merely somewhere in the file — an unrelated mention in a comment would
+		// otherwise satisfy this.
+		const block =
+			/export type \{([^}]*)\} from "@hobo\/manifest-request";/u.exec(
+				PROFILES_INDEX,
+			);
+		expect(block).not.toBeNull();
+		const named = (block?.[1] ?? "")
+			.split(",")
+			.map((entry) => entry.trim())
+			.filter((entry) => entry.length > 0);
+		for (const name of MOVED) {
+			expect(named).toContain(name);
+		}
 	});
 
 	it("restates BINDLE_RUNTIMES and REALIZATION_KINDS without drifting", () => {
+		// Still two different packages: the vocabulary moved to
+		// `@hobo/manifest-capability`, and a manifest package may not depend on
+		// another manifest package, so this one restates rather than imports.
 		expect(BINDLE_RUNTIMES).toStrictEqual(
 			constStringList(IDS_SOURCE, "BINDLE_RUNTIMES"),
 		);

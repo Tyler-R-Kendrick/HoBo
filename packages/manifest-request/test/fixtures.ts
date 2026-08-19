@@ -30,12 +30,37 @@ export const SELECTION_SOURCE_PATH = join(
 	"src",
 	"selection.ts",
 );
+export const CAPABILITY_PROFILES_INDEX_PATH = join(
+	CAPABILITY_PROFILES_DIR,
+	"src",
+	"index.ts",
+);
+/** This package's own declaration of the shape — the only one left. */
+export const CANDIDATE_SOURCE_PATH = join(
+	import.meta.dirname,
+	"..",
+	"src",
+	"candidate.ts",
+);
 export const SELECTION_TEST_PATH = join(
 	CAPABILITY_PROFILES_DIR,
 	"test",
 	"selection.test.ts",
 );
-export const IDS_SOURCE_PATH = join(CAPABILITY_PROFILES_DIR, "src", "ids.ts");
+/**
+ * `BINDLE_RUNTIMES` and `REALIZATION_KINDS` used to live in
+ * `packages/capability-profiles/src/ids.ts`. Swarm I moved that file into
+ * `@hobo/manifest-capability` and deleted the original — `@hobo/capability-profiles`
+ * re-exports it. The restatement check below still compares two different
+ * packages, so it still means something; only the path moved.
+ */
+export const IDS_SOURCE_PATH = join(
+	REPO_ROOT,
+	"packages",
+	"manifest-capability",
+	"src",
+	"ids.ts",
+);
 
 /** A missing fixture is a failure, not a skipped test. */
 export function readRepoFile(path: string): string {

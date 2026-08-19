@@ -24,7 +24,9 @@
 		"@hobo/core": "workspace:*",
 		"@hobo/data": "workspace:*",
 		"@hobo/events": "workspace:*",
-		"@hobo/identity": "workspace:*"
+		"@hobo/identity": "workspace:*",
+		"@hobo/manifest-declaration": "workspace:*",
+		"@hobo/manifest-plan": "workspace:*"
 	},
 	"devDependencies": {
 		"@hobo/contract-harness": "workspace:*",

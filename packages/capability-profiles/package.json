@@ -18,7 +18,9 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@hobo/core": "workspace:*"
+		"@hobo/core": "workspace:*",
+		"@hobo/manifest-capability": "workspace:*",
+		"@hobo/manifest-request": "workspace:*"
 	},
 	"devDependencies": {
 		"@hobo/contract-harness": "workspace:*",

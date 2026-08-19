@@ -39,7 +39,14 @@ function read(relativePath: string): string {
 	return readFileSync(`${REPO_ROOT}${relativePath}`, "utf8");
 }
 
-const REQUIREMENT = read("packages/capability-profiles/src/requirement.ts");
+// Swarm I moved these two shapes into the manifest packages and deleted the
+// originals; `@hobo/capability-profiles` re-exports them and declares neither.
+// So the requirement is read from its owner, the candidate from its owner, and
+// `selection.ts` — which still holds the gates and `SelectionInput` — from
+// where it always was. The three reads are what this evidence is about, so
+// they are named separately rather than collapsed.
+const REQUIREMENT = read("packages/manifest-capability/src/requirement.ts");
+const CANDIDATE = read("packages/manifest-request/src/candidate.ts");
 const SELECTION = read("packages/capability-profiles/src/selection.ts");
 const PLAN_TYPES = read("packages/cloud/src/plan-types.ts");
 const PLACEMENT = read("packages/cloud/src/planner/placement.ts");
@@ -63,7 +70,7 @@ describe("ResourceIntent against the capability requirement", () => {
 			fieldNames(declaredFields(OWN_SOURCE, "ResourceIntent")),
 		);
 		const candidate = new Set(
-			fieldNames(declaredFields(SELECTION, "SelectionCandidate")),
+			fieldNames(declaredFields(CANDIDATE, "SelectionCandidate")),
 		);
 		expect(candidate.size).toBeGreaterThan(10);
 		expect([...intent].filter((field) => candidate.has(field))).toEqual([]);
@@ -84,6 +91,7 @@ describe("the field that cannot be projected", () => {
 			"deps",
 		]) {
 			expect(REQUIREMENT).not.toContain(token);
+			expect(CANDIDATE).not.toContain(token);
 			expect(SELECTION).not.toContain(token);
 		}
 		// And they are all present here, so the check is comparing something.

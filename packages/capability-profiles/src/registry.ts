@@ -12,9 +12,10 @@ import {
 	type CapabilityProfileDescriptor,
 	CapabilityProfileError,
 	type ParsedCapabilityProfile,
+	type ProfileId,
 	parseCapabilityProfile,
-} from "./descriptor.js";
-import { type ProfileId, parseProfileId } from "./ids.js";
+	parseProfileId,
+} from "@hobo/manifest-capability";
 
 export type CapabilityProfileRegistry = {
 	/** Deterministic digest over every selection-relevant profile fact. */

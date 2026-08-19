@@ -78,11 +78,15 @@ const CONTRACT_PACKAGE_PATHS = new Set([
 	"packages/manifest-request",
 	"packages/manifest-declaration",
 	"packages/manifest-plan",
-	// The cross-manifest round-trip proof. Registered here and deliberately NOT
-	// in `CONTRACT_PACKAGE_PATHS`: it is a verification package that reads all
-	// four manifests and the packages they were decomposed out of, so it sits
-	// at layer 3 and nothing should ever depend on it. Classifying it as a
-	// contract would invite exactly the inward edge it exists to check.
+	// The cross-manifest round-trip proof. Known but deliberately NOT a
+	// contract: it is a verification package that reads all four manifests and
+	// the packages they were decomposed out of, so it sits at layer 3 and
+	// nothing should ever depend on it. Classifying it as a contract would put
+	// it at layer 1 and invite exactly the inward edge it exists to check —
+	// and it did, for one commit: registered in the contract set by mistake, it
+	// refused its own `-> packages/cloud` edge as `outward-dependency`, a
+	// refusal that looked like a real layering finding and was an artifact of
+	// the misregistration. Swarm I measured both placements and caught it.
 	"packages/manifest-round-trip",
 ]);
 

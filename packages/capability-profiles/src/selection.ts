@@ -5,9 +5,17 @@
  * compensates for failed credential isolation, stale conformance evidence, or
  * a missing semantic guarantee — those are gates, and gates precede order.
  */
-import type { BindleRuntime, RealizationKind } from "./ids.js";
+import type { CapabilityRequirement } from "@hobo/manifest-capability";
+import type {
+	ClaimAtomicity,
+	ContinuityGrade,
+	CreatorAuthorityAfterClaim,
+	ProfileImplementation,
+	ProviderClass,
+	SelectionCandidate,
+} from "@hobo/manifest-request";
+
 import type { CapabilityProfileRegistry } from "./registry.js";
-import type { CapabilityRequirement } from "./requirement.js";
 
 /** Stable machine-readable reasons a candidate was gated out. */
 export const REJECTION_CODES = [
@@ -37,81 +45,12 @@ export const REJECTION_CODES = [
 
 export type RejectionCode = (typeof REJECTION_CODES)[number];
 
-export type ProviderClass =
-	| "established"
-	| "verified-emerging"
-	| "experimental";
-
-export type CreatorAuthorityAfterClaim =
-	| "absent"
-	| "reauthorization-required"
-	| "rotatable"
-	| "retained"
-	| "unknown";
-
-export type ContinuityGrade =
-	| "preserved"
-	| "rebound"
-	| "migrated"
-	| "changed"
-	| "discarded"
-	| "not-applicable";
-
-export type ClaimAtomicity =
-	| "single-resource"
-	| "provider-bundled"
-	| "best-effort-saga";
-
-/** A profile implementation claim made by a hosted product or pack. */
-export type ProfileImplementation = {
-	readonly profileId: string;
-	readonly versionRange: string;
-	readonly realization: RealizationKind;
-	readonly conformanceRef: string;
-	/** Conformance outcome for this specific claim. `unknown` fails closed. */
-	readonly conformance: "pass" | "fail" | "unknown";
-};
-
-/**
- * The minimal structural view selection needs. `@hobo/cloud` widens its
- * Resource Definition to satisfy this rather than owning a second catalog.
- */
-export type SelectionCandidate = {
-	readonly definitionId: string;
-	readonly providerId: string;
-	readonly implementsProfiles: readonly ProfileImplementation[];
-	readonly runtimeModels: readonly BindleRuntime[];
-	readonly structuredCapabilities: Readonly<
-		Record<string, boolean | number | string | readonly string[]>
-	>;
-	readonly producesBindingProfiles: readonly string[];
-	readonly migrationProfiles: readonly string[];
-	readonly providerClass: ProviderClass;
-	/** Evidence expiry as epoch milliseconds. Absent means no live evidence. */
-	readonly evidenceExpiresAtMs?: number;
-	readonly evidenceSignatureValid: boolean;
-	readonly creatorAuthorityAfterClaim: CreatorAuthorityAfterClaim;
-	readonly claimAtomicity: ClaimAtomicity;
-	readonly claimActionCount: number;
-	readonly continuity: {
-		readonly endpoint: ContinuityGrade;
-		readonly data: ContinuityGrade;
-		readonly credentials:
-			| "revoked"
-			| "rotated"
-			| "reauthorized"
-			| "retained"
-			| "unknown"
-			| "not-applicable";
-	};
-	readonly supportsExport: boolean;
-	readonly supportsRotation: boolean;
-	readonly supportsRevocation: boolean;
-	/** Sponsor exposure in minor currency units. 0 for user-owned/anonymous. */
-	readonly sponsorExposureMinorUnits: number;
-	readonly hasRegisteredDriver: boolean;
-	readonly secretCustodyAvailable: boolean;
-};
+// `ProviderClass`, `CreatorAuthorityAfterClaim`, `ContinuityGrade`,
+// `ClaimAtomicity`, `ProfileImplementation` and `SelectionCandidate` were
+// declared here. They are now `@hobo/manifest-request`'s, imported above and
+// re-exported from `src/index.ts`: a second declaration of the candidate shape
+// would let this module's gates and a caller's literal drift apart silently,
+// which is the failure the decomposition exists to remove.
 
 export type TrustPolicy = {
 	readonly minimumProviderClass: ProviderClass;

@@ -78,6 +78,12 @@ const CONTRACT_PACKAGE_PATHS = new Set([
 	"packages/manifest-request",
 	"packages/manifest-declaration",
 	"packages/manifest-plan",
+	// The cross-manifest round-trip proof. Registered here and deliberately NOT
+	// in `CONTRACT_PACKAGE_PATHS`: it is a verification package that reads all
+	// four manifests and the packages they were decomposed out of, so it sits
+	// at layer 3 and nothing should ever depend on it. Classifying it as a
+	// contract would invite exactly the inward edge it exists to check.
+	"packages/manifest-round-trip",
 ]);
 
 const KNOWN_PACKAGE_PATHS = new Set([

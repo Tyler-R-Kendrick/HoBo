@@ -455,6 +455,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0159 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0159) | `@hobo/testing` harness (in-process whole-graph + ephemeral-Camp lanes), provider scratch harness shared with generation-pipeline validation, credentials-as-code CI preview lanes; closes GAP-026/HOBO-705. | HOBO-705 |
 | ADR-0160 | [data-plane](./adr/03-data-plane.md#adr-0160) | `drizzle-kit` as the default relational schema-diff engine behind the migration port: deploy-owned generation at plan phase, ADR-0032 gated apply unchanged, Drizzle schema modules as accepted authoring input. | — (migration engine default) |
 | ADR-0161 | [identity-security](./adr/02-identity-security.md#adr-0161) | Better Auth as the default self-hosted full-featured `hobo:auth` adapter: auth bundle over `hobo:data/relational` + brokered signing secret + membrane-portable routes; ADR-0038/0073 model unchanged. | — (auth bundle) |
+| ADR-0162 | [architecture-core](./adr/01-architecture-core.md#adr-0162) | Package tiering criterion (surface identity + depth) for the boundary gate's banked-edge allowlist; per-group verdicts retiring 11 of 14 entries; corrects the training/eval-provider and pack-framework composition claims. | — (package tiering) |
 
 ## ADR Numbering and Status Audit
 

@@ -17,7 +17,7 @@ Delivery controllers, release orchestration, GitOps reconciliation, environment 
 
 HoBo's stage gates and promotion events live here. The question is whether HoBo's event-sourced promotion model beats a dedicated delivery tool bolted on.
 
-## Competitors (5)
+## Competitors (6)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -26,6 +26,7 @@ HoBo's stage gates and promotion events live here. The question is whether HoBo'
 | [**OpenChoreo**](../openchoreo.md) | open-source Kubernetes IDP with an explicit developer-intent abstraction layer and a cell-based runtime boundary | direct | `app-graph`, `environments`, `typed-contracts`, `delivery`, `governance`, `wiring` | Open source, CNCF Sandbox, self-hosted, with Cells that make isolation, traffic policy and observability boundaries enforced at runtime rather than merely described. | OpenChoreo abstracts over Kubernetes; HoBo abstracts over providers, of which Kubernetes is one — the advantage exists only for heterogeneous estates, and HoBo should concede that. | displace, borrow, benchmark | P1 |
 | [**KubeVela**](../kubevela.md) | reference OAM implementation — the source of HoBo's trait vocabulary and a render target, bounded by its Kubernetes-controller premise | overlapping | `app-graph`, `typed-contracts`, `extensibility`, `delivery`, `environments` | The clearest application-model decomposition anywhere — Component, Trait, Policy, Workflow — as a CNCF standard with CUE-programmable definitions. | HoBo speaks OAM at the boundary rather than absorbing it, and resolves ports to provider services, wasm hosts or local runtimes instead of Kubernetes CRs. | borrow, standard, render-target, benchmark | P1 |
 | [**Kratix**](../kratix.md) | framework for building platform APIs — Promises bundle contract, fulfilment and placement, which is the packaging idea HoBo's Bindle kinds most resemble | overlapping | `typed-contracts`, `extensibility`, `provider-matching`, `delivery`, `app-graph` | The Promise bundles contract, prerequisites, fulfilment and placement into one versioned product, fulfilled by arbitrary containers so it can wrap any process. | Arbitrary fulfilment cannot be reasoned about; HoBo trades that reach for typed ports whose impedance, effects and cost are analysable before execution. | borrow, benchmark, integrate | P2 |
+| [**Lagoon**](../lagoon.md) | open-source delivery platform whose local-equals-production promise is built on reusing the developer's existing docker-compose file as the source of truth | adjacent | `authoring`, `environments`, `delivery`, `runtime-portability` | The lowest-ceremony on-ramp anywhere: annotate the docker-compose.yml you already have, and the same images run locally and in production. | HoBo types the capability rather than naming a translation, and can target managed services, wasm hosts or a local runtime instead of always emitting Kubernetes objects. | benchmark, borrow | P2 |
 
 ## Navigation
 

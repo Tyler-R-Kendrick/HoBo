@@ -17,7 +17,7 @@ Enterprise hybrid/multicloud provisioning, governance, catalog, lifecycle, and a
 
 These systems already sell the multicloud promise to enterprises. HoBo competes on honesty — scored portability and impedance limits instead of a uniform-abstraction claim.
 
-## Competitors (7)
+## Competitors (8)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -28,6 +28,7 @@ These systems already sell the multicloud promise to enterprises. HoBo competes 
 | [**Control Plane**](../control-plane.md) | multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer | direct | `runtime-portability`, `provider-matching`, `environments`, `identity-secrets`, `app-graph` | Portability that works: GVCs span AWS/Azure/GCP and BYOK clusters, with credential-free Universal Cloud Identity and a global/location/internal mTLS endpoint scheme. | Control Plane makes workloads portable by owning the runtime, so the portability ends at its edge; a Bindle deploys through the provider's own services and survives HoBo's absence. | displace, benchmark, borrow, provider-target | P1 |
 | [**DuploCloud**](../duplocloud.md) | compliance-first provisioning platform — competes for the same buyer by selling audit evidence rather than portability | overlapping | `governance`, `provider-matching`, `environments`, `identity-secrets`, `observability` | Continuous, framework-mapped compliance evidence (SOC 2/HIPAA/PCI/HITRUST/NIST) with drift detection, from a control plane installed inside the customer's own cloud account. | HoBo's append-only decision log is audit evidence by construction rather than generated, and residency is a typed fail-closed port — but HoBo's evidence pack is design-only today. | benchmark, borrow, displace | P2 |
 | [**Cycloid**](../cycloid.md) | self-service portal over templated IaC whose pre-provision cost estimation and auto-generated topology view are the surfaces HoBo most visibly lacks | overlapping | `authoring`, `environments`, `finops`, `observability`, `governance`, `app-graph` | Cost visible while the choice is being made (open-source TerraCost inside StackForms) and topology diagrams generated from Terraform source so they cannot go stale. | Cycloid has no application model and decides no placement: a form cannot express a dependency graph, and governance by dropdown cannot express a context-dependent rule. | benchmark, borrow, integrate | P2 |
+| [**Porter**](../porter.md) | BYOC PaaS that owns the customer's cluster — the clearest example of the credit-and-account argument HoBo also makes | overlapping | `environments`, `delivery`, `provider-matching`, `identity-secrets`, `finops` | Your account, your credits, your cluster — provisioned across AWS/GCP/Azure with role assumption and workload identity federation, no static credentials stored. | HoBo makes the same BYOC argument without a standing cluster or a 30-45 minute provisioning floor, and places per workload rather than per account. | benchmark, provider-target, borrow | P2 |
 
 ## Navigation
 

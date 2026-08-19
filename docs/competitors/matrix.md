@@ -54,6 +54,7 @@ tags: [hobo, competitors, matrix]
 | **Kratix** | [`kratix.md`](kratix.md) | syntasso kratix, ske | `portable-application-models` | `portable-application-models` · `platform-orchestrators` · `delivery-release-gitops` | overlapping | typed-contracts, extensibility, provider-matching, delivery, app-graph | borrow, benchmark, integrate | mixed | active | 2026-08-19 | v1 |
 | **KubeVela** | [`kubevela.md`](kubevela.md) | vela | `portable-application-models` | `portable-application-models` · `platform-orchestrators` · `delivery-release-gitops` | overlapping | app-graph, typed-contracts, extensibility, delivery, environments | borrow, standard, render-target, benchmark | mixed | active | 2026-08-19 | v1 |
 | **KusionStack** | [`kusionstack.md`](kusionstack.md) | kusion, kcl | `portable-application-models` | `portable-application-models` · `platform-orchestrators` · `infrastructure-from-code` | direct | authoring, typed-contracts, app-graph, provider-matching, environments, extensibility | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
+| **Lagoon** | [`lagoon.md`](lagoon.md) | uselagoon, amazee.io lagoon | `cloud-application-platforms` | `cloud-application-platforms` · `self-hosted-paas` · `delivery-release-gitops` | adjacent | authoring, environments, delivery, runtime-portability | benchmark, borrow | mixed | active | 2026-08-19 | v1 |
 | **Lakebed** | [`lakebed.md`](lakebed.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `agentic-infrastructure` | direct | agent-surface, authoring, delivery | displace | mixed | active | 2026-08-12 | pre-v1 |
 | **Massdriver** | [`massdriver.md`](massdriver.md) | massdriver.cloud | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `hybrid-multicloud-enterprise` · `developer-portals-idps` | direct | typed-contracts, wiring, app-graph, environments, extensibility, governance | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
 | **Mia-Platform** | [`mia-platform.md`](mia-platform.md) | mia platform, miaplatform | `platform-orchestrators` | `platform-orchestrators` · `developer-portals-idps` · `hybrid-multicloud-enterprise` | direct | app-graph, environments, governance, agent-surface, extensibility, delivery | displace, benchmark, borrow | mixed | active | 2026-08-19 | v1 |
@@ -65,6 +66,7 @@ tags: [hobo, competitors, matrix]
 | **Northflank** | [`northflank.md`](northflank.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `self-hosted-paas` | overlapping | environments, delivery, governance | benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Octopus Deploy** | [`octopus-deploy.md`](octopus-deploy.md) | octopus | `delivery-release-gitops` | `delivery-release-gitops` | overlapping | delivery, governance, environments | borrow, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **OpenChoreo** | [`openchoreo.md`](openchoreo.md) | choreo-idp, choreo idp | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `developer-portals-idps` · `delivery-release-gitops` | direct | app-graph, environments, typed-contracts, delivery, governance, wiring | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
+| **Porter** | [`porter.md`](porter.md) | porter.run | `cloud-application-platforms` | `cloud-application-platforms` · `platform-orchestrators` · `hybrid-multicloud-enterprise` | overlapping | environments, delivery, provider-matching, identity-secrets, finops | benchmark, provider-target, borrow | mixed | active | 2026-08-19 | v1 |
 | **Qovery** | [`qovery.md`](qovery.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `platform-orchestrators` | direct | environments, delivery, provider-matching | displace, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Radius** | [`radius.md`](radius.md) | radapp | `portable-application-models` | `portable-application-models` · `platform-orchestrators` | overlapping | app-graph, typed-contracts, environments | borrow | mixed | active | 2026-08-19 | v1 |
 | **Railway** | [`railway.md`](railway.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | authoring, environments, delivery | benchmark | mixed | active | 2026-08-12 | pre-v1 |
@@ -75,6 +77,7 @@ tags: [hobo, competitors, matrix]
 | **Spin / Fermyon** | [`spin-fermyon.md`](spin-fermyon.md) | spin, spinkube, fermyon | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, extensibility | adopt, render-target | mixed | active | 2026-08-12 | pre-v1 |
 | **SST** | [`sst.md`](sst.md) | sst ion | `infrastructure-from-code` | `infrastructure-from-code` · `portable-application-models` | direct | authoring, typed-contracts, wiring, environments | displace, borrow, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Supabase** | [`supabase.md`](supabase.md) | — | `backend-data-platforms` | `backend-data-platforms` | adjacent | typed-contracts, identity-secrets | provider-target, benchmark | mixed | active | 2026-08-12 | pre-v1 |
+| **Upsun** | [`upsun.md`](upsun.md) | platform.sh, platformsh, upsun fixed | `cloud-application-platforms` | `cloud-application-platforms` · `platform-orchestrators` | overlapping | environments, authoring, delivery, app-graph, wiring | benchmark, borrow, provider-target | mixed | renamed | 2026-08-19 | v1 |
 | **Vercel** | [`vercel.md`](vercel.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `agentic-infrastructure` | overlapping | delivery, environments, agent-surface | benchmark, borrow, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Wasm host landscape** | [`wasm-hosts.md`](wasm-hosts.md) | wasmtime cohort | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, extensibility | adopt, render-target | mixed | active | 2026-08-12 | pre-v1 |
 | **wasmCloud** | [`wasmcloud.md`](wasmcloud.md) | — | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, extensibility, typed-contracts | adopt, standard | mixed | active | 2026-08-12 | pre-v1 |
@@ -134,11 +137,14 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Kratix](kratix.md) | 2026-08-19 | 0 | fresh |
 | [KubeVela](kubevela.md) | 2026-08-19 | 0 | fresh |
 | [KusionStack](kusionstack.md) | 2026-08-19 | 0 | fresh |
+| [Lagoon](lagoon.md) | 2026-08-19 | 0 | fresh |
 | [Massdriver](massdriver.md) | 2026-08-19 | 0 | fresh |
 | [Mia-Platform](mia-platform.md) | 2026-08-19 | 0 | fresh |
 | [OpenChoreo](openchoreo.md) | 2026-08-19 | 0 | fresh |
+| [Porter](porter.md) | 2026-08-19 | 0 | fresh |
 | [Radius](radius.md) | 2026-08-19 | 0 | fresh |
+| [Upsun](upsun.md) | 2026-08-19 | 0 | fresh |
 
-_51 canonical captures across 13 categories; 14 at contract v1._
+_54 canonical captures across 13 categories; 17 at contract v1._
 
 <!-- END GENERATED: competitor-matrix -->

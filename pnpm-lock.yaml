@@ -1660,6 +1660,12 @@ importers:
         specifier: workspace:*
         version: link:../../bindles
 
+  packages/providers/provider-digitalocean:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/providers/provider-flux:
     dependencies:
       '@hobo/core':
@@ -1671,6 +1677,18 @@ importers:
         version: 24.13.2
 
   packages/providers/provider-gcp:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/providers/provider-hetzner:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/providers/provider-hostinger:
     dependencies:
       '@hobo/core':
         specifier: workspace:*

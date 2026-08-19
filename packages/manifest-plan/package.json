@@ -17,10 +17,8 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"dependencies": {
-		"@hobo/core": "workspace:*"
-	},
 	"devDependencies": {
+		"@hobo/core": "workspace:*",
 		"@types/node": "^22.15.29",
 		"vitest": "^4.1.9"
 	},

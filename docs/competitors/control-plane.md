@@ -8,7 +8,7 @@ competitor:
   name: "Control Plane"
   aliases: ["controlplane.com", "cpln"]
   primary_category: platform-orchestrators
-  categories: [platform-orchestrators, cloud-application-platforms, hybrid-multicloud-enterprise, runtime-substrates, identity-networking-delivery]
+  categories: [platform-orchestrators, cloud-application-platforms, hybrid-multicloud-enterprise, runtime-substrates, identity-networking-delivery, agentic-infrastructure]
   directness: direct
   role: "multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer"
   posture: [displace, benchmark, borrow, provider-target]

@@ -17,7 +17,7 @@ AI-native infrastructure modeling, autonomous remediation, agent tool surfaces, 
 
 HoBo is AI-native by design. This category tests whether HoBo's policy-gated, audited agent surface beats products already shipping autonomous operations.
 
-## Competitors (5)
+## Competitors (6)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -26,6 +26,7 @@ HoBo is AI-native by design. This category tests whether HoBo's policy-gated, au
 | [**Lakebed**](../lakebed.md) | agent-native closed PaaS (Capsules, sync RPC, llms.txt) — named head-on competitor | direct | `agent-surface`, `authoring`, `delivery` | Purpose-built agent PaaS with a tight, opinionated capsule model. | HoBo is open, provider-agnostic, and does not require its own hosted runtime to be useful. | displace | P1 |
 | [**Vercel**](../vercel.md) | frontend cloud plus durable Workflow SDK and AI stack — borrow-source promoted to full parity capture | overlapping | `delivery`, `environments`, `agent-surface` | Exceptional delivery pipeline plus a durable workflow and AI stack. | HoBo's durable execution is event-sourced and portable, not tied to one hosting vendor. | benchmark, borrow, provider-target | P1 |
 | [**Harness Platform**](../harness.md) | modular commercial DevOps platform whose CD, IDP, IaCM and cost modules each contest a different HoBo surface | overlapping | `delivery`, `governance`, `environments`, `finops`, `extensibility`, `observability` | AIDA agent features span pipeline generation and failure triage across nine shipped modules. | HoBo gates agent actions through boundary contracts and records each decision as an event, rather than surfacing assistance inside a pipeline UI. | benchmark, borrow, integrate | P2 |
+| [**Control Plane**](../control-plane.md) | multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer | direct | `runtime-portability`, `provider-matching`, `environments`, `identity-secrets`, `app-graph` | Positions as the virtual cloud for AI-native teams, with workload identity that lets agent workloads reach cloud resources without stored credentials. | HoBo gates agent actions at typed boundary contracts and records each decision, rather than relying on the runtime being uniform. | displace, benchmark, borrow, provider-target | P2 |
 
 ## Navigation
 

@@ -36,9 +36,10 @@ tags: [hobo, competitors, matrix]
 | **AWS Amplify** | [`aws-amplify.md`](aws-amplify.md) | amplify gen 2 | `infrastructure-from-code` | `infrastructure-from-code` · `backend-data-platforms` · `cloud-application-platforms` | overlapping | authoring, typed-contracts, wiring | benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Backstage** | [`backstage.md`](backstage.md) | spotify backstage | `developer-portals-idps` | `developer-portals-idps` | complementary | governance, ecosystem, extensibility | integrate, borrow | mixed | active | 2026-08-12 | pre-v1 |
 | **celld** | [`celld.md`](celld.md) | — | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, reconciliation | adopt, provider-target | mixed | active | 2026-08-15 | pre-v1 |
-| **Control Plane** | [`control-plane.md`](control-plane.md) | controlplane.com, cpln | `platform-orchestrators` | `platform-orchestrators` · `cloud-application-platforms` · `hybrid-multicloud-enterprise` · `runtime-substrates` · `identity-networking-delivery` | direct | runtime-portability, provider-matching, environments, identity-secrets, app-graph | displace, benchmark, borrow, provider-target | mixed | active | 2026-08-19 | v1 |
+| **Control Plane** | [`control-plane.md`](control-plane.md) | controlplane.com, cpln | `platform-orchestrators` | `platform-orchestrators` · `cloud-application-platforms` · `hybrid-multicloud-enterprise` · `runtime-substrates` · `identity-networking-delivery` · `agentic-infrastructure` | direct | runtime-portability, provider-matching, environments, identity-secrets, app-graph | displace, benchmark, borrow, provider-target | mixed | active | 2026-08-19 | v1 |
 | **Convex** | [`convex.md`](convex.md) | — | `backend-data-platforms` | `backend-data-platforms` | adjacent | typed-contracts, wiring, runtime-portability | borrow, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Crossplane** | [`crossplane.md`](crossplane.md) | — | `portable-application-models` | `portable-application-models` · `platform-orchestrators` · `hybrid-multicloud-enterprise` | overlapping | typed-contracts, provider-matching, reconciliation, extensibility | borrow, integrate | mixed | active | 2026-08-12 | pre-v1 |
+| **Cycloid** | [`cycloid.md`](cycloid.md) | cycloid.io | `platform-orchestrators` | `platform-orchestrators` · `developer-portals-idps` · `finops-governance-placement` · `hybrid-multicloud-enterprise` | overlapping | authoring, environments, finops, observability, governance, app-graph | benchmark, borrow, integrate | mixed | active | 2026-08-19 | v1 |
 | **Dapr** | [`dapr.md`](dapr.md) | — | `runtime-substrates` | `runtime-substrates` · `portable-application-models` | overlapping | typed-contracts, runtime-portability, wiring, identity-secrets | borrow, standard, integrate | mixed | active | 2026-08-12 | pre-v1 |
 | **DuploCloud** | [`duplocloud.md`](duplocloud.md) | duplo cloud | `platform-orchestrators` | `platform-orchestrators` · `hybrid-multicloud-enterprise` · `finops-governance-placement` | overlapping | governance, provider-matching, environments, identity-secrets, observability | benchmark, borrow, displace | mixed | active | 2026-08-19 | v1 |
 | **Encore** | [`encore.md`](encore.md) | — | `infrastructure-from-code` | `infrastructure-from-code` · `cloud-application-platforms` | direct | authoring, app-graph, wiring, environments, delivery | displace, benchmark | mixed | active | 2026-08-12 | pre-v1 |
@@ -51,7 +52,7 @@ tags: [hobo, competitors, matrix]
 | **Humanitec** | [`humanitec.md`](humanitec.md) | — | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` | direct | app-graph, environments, provider-matching, governance | displace, benchmark | mixed | active | 2026-08-19 | v1 |
 | **InsForge** | [`insforge.md`](insforge.md) | — | `backend-data-platforms` | `backend-data-platforms` · `agentic-infrastructure` | adjacent | agent-surface, typed-contracts | benchmark, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Lakebed** | [`lakebed.md`](lakebed.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `agentic-infrastructure` | direct | agent-surface, authoring, delivery | displace | mixed | active | 2026-08-12 | pre-v1 |
-| **Massdriver** | [`massdriver.md`](massdriver.md) | massdriver.cloud | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `hybrid-multicloud-enterprise` | direct | typed-contracts, wiring, app-graph, environments, extensibility, governance | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
+| **Massdriver** | [`massdriver.md`](massdriver.md) | massdriver.cloud | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `hybrid-multicloud-enterprise` · `developer-portals-idps` | direct | typed-contracts, wiring, app-graph, environments, extensibility, governance | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
 | **Mia-Platform** | [`mia-platform.md`](mia-platform.md) | mia platform, miaplatform | `platform-orchestrators` | `platform-orchestrators` · `developer-portals-idps` · `hybrid-multicloud-enterprise` | direct | app-graph, environments, governance, agent-surface, extensibility, delivery | displace, benchmark, borrow | mixed | active | 2026-08-19 | v1 |
 | **Modal** | [`modal.md`](modal.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `runtime-substrates` | adjacent | runtime-portability, provider-matching | provider-target, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Netlify** | [`netlify.md`](netlify.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | delivery, environments | benchmark, provider-target | mixed | active | 2026-08-12 | pre-v1 |
@@ -123,6 +124,7 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Rivet](rivet.md) | 2026-08-15 | 4 | pre-v1 — rewrite to contract |
 | [Alchemy](alchemy.md) | 2026-08-19 | 0 | pre-v1 — rewrite to contract |
 | [Control Plane](control-plane.md) | 2026-08-19 | 0 | fresh |
+| [Cycloid](cycloid.md) | 2026-08-19 | 0 | fresh |
 | [DuploCloud](duplocloud.md) | 2026-08-19 | 0 | fresh |
 | [Facets.cloud](facets.md) | 2026-08-19 | 0 | fresh |
 | [Harness Platform](harness.md) | 2026-08-19 | 0 | fresh |
@@ -131,6 +133,6 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Mia-Platform](mia-platform.md) | 2026-08-19 | 0 | fresh |
 | [OpenChoreo](openchoreo.md) | 2026-08-19 | 0 | fresh |
 
-_47 canonical captures across 13 categories; 8 at contract v1._
+_48 canonical captures across 13 categories; 9 at contract v1._
 
 <!-- END GENERATED: competitor-matrix -->

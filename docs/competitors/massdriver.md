@@ -8,7 +8,7 @@ competitor:
   name: "Massdriver"
   aliases: ["massdriver.cloud"]
   primary_category: platform-orchestrators
-  categories: [platform-orchestrators, portable-application-models, hybrid-multicloud-enterprise]
+  categories: [platform-orchestrators, portable-application-models, hybrid-multicloud-enterprise, developer-portals-idps]
   directness: direct
   role: "bundle-and-artifact platform whose JSON-Schema connection contracts are the closest shipped analog to HoBo's typed capability wiring"
   posture: [displace, borrow, benchmark]

@@ -17,7 +17,7 @@ AI-native infrastructure modeling, autonomous remediation, agent tool surfaces, 
 
 HoBo is AI-native by design. This category tests whether HoBo's policy-gated, audited agent surface beats products already shipping autonomous operations.
 
-## Competitors (4)
+## Competitors (5)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -25,6 +25,7 @@ HoBo is AI-native by design. This category tests whether HoBo's policy-gated, au
 | [**InsForge**](../insforge.md) | agent-native backend-as-a-service — agent-ops benchmark and possible provider target | adjacent | `agent-surface`, `typed-contracts` | Agent-native BaaS with a coherent MCP-shaped surface already shipped. | HoBo exposes agent surfaces through policy-gated contracts across any provider, not one hosted backend. | benchmark, provider-target | P2 |
 | [**Lakebed**](../lakebed.md) | agent-native closed PaaS (Capsules, sync RPC, llms.txt) — named head-on competitor | direct | `agent-surface`, `authoring`, `delivery` | Purpose-built agent PaaS with a tight, opinionated capsule model. | HoBo is open, provider-agnostic, and does not require its own hosted runtime to be useful. | displace | P1 |
 | [**Vercel**](../vercel.md) | frontend cloud plus durable Workflow SDK and AI stack — borrow-source promoted to full parity capture | overlapping | `delivery`, `environments`, `agent-surface` | Exceptional delivery pipeline plus a durable workflow and AI stack. | HoBo's durable execution is event-sourced and portable, not tied to one hosting vendor. | benchmark, borrow, provider-target | P1 |
+| [**Harness Platform**](../harness.md) | modular commercial DevOps platform whose CD, IDP, IaCM and cost modules each contest a different HoBo surface | overlapping | `delivery`, `governance`, `environments`, `finops`, `extensibility`, `observability` | AIDA agent features span pipeline generation and failure triage across nine shipped modules. | HoBo gates agent actions through boundary contracts and records each decision as an event, rather than surfacing assistance inside a pipeline UI. | benchmark, borrow, integrate | P2 |
 
 ## Navigation
 

@@ -26,10 +26,10 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 | [Runtime & Distributed Application Substrates](categories/runtime-substrates.md) | [.NET Aspire](aspire.md) · [celld](celld.md) · [Dapr](dapr.md) · [Flux Network](flux-network.md) · [Modal](modal.md) · [Nomad](nomad.md) · [Rivet](rivet.md) · [Spin / Fermyon](spin-fermyon.md) · [Wasm host landscape](wasm-hosts.md) · [wasmCloud](wasmcloud.md) |
 | [Hybrid & Multicloud Enterprise Orchestration](categories/hybrid-multicloud-enterprise.md) | [Crossplane](crossplane.md) · [Facets.cloud](facets.md) · [Mia-Platform](mia-platform.md) |
 | [Self-Hosted PaaS & Server Deployment](categories/self-hosted-paas.md) | [Anonymous container hosts](anon-container-hosts.md) · [Northflank](northflank.md) · [ServerKit](serverkit.md) |
-| [Agentic Infrastructure & Operations](categories/agentic-infrastructure.md) | [Antimetal](antimetal.md) · [InsForge](insforge.md) · [Lakebed](lakebed.md) · [Vercel](vercel.md) |
+| [Agentic Infrastructure & Operations](categories/agentic-infrastructure.md) | [Antimetal](antimetal.md) · [Harness Platform](harness.md) · [InsForge](insforge.md) · [Lakebed](lakebed.md) · [Vercel](vercel.md) |
 | [Backend & Data Application Platforms](categories/backend-data-platforms.md) | [AWS Amplify](aws-amplify.md) · [Convex](convex.md) · [InsForge](insforge.md) · [Supabase](supabase.md) · [Wasp](wasp.md) |
 | [Delivery, Release & GitOps](categories/delivery-release-gitops.md) | [Harness Platform](harness.md) · [Octopus Deploy](octopus-deploy.md) |
-| [FinOps, Governance & Placement](categories/finops-governance-placement.md) | [Antimetal](antimetal.md) · [FinOps tooling cohort](finops-tooling.md) · [Harness Platform](harness.md) |
+| [FinOps, Governance & Placement](categories/finops-governance-placement.md) | [Antimetal](antimetal.md) · [Facets.cloud](facets.md) · [FinOps tooling cohort](finops-tooling.md) · [Harness Platform](harness.md) |
 | [Identity, Networking & Application Delivery](categories/identity-networking-delivery.md) | [NetScaler](netscaler.md) · [ServerKit](serverkit.md) · [shoo.dev](shoo.md) |
 
 Categories are many-to-many: several products appear in more than one row above, with a single canonical capture behind each link.

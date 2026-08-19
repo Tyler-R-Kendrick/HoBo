@@ -8,7 +8,7 @@ competitor:
   name: "Harness Platform"
   aliases: ["harness.io", "harness delegate"]
   primary_category: platform-orchestrators
-  categories: [platform-orchestrators, delivery-release-gitops, developer-portals-idps, finops-governance-placement]
+  categories: [platform-orchestrators, delivery-release-gitops, developer-portals-idps, finops-governance-placement, agentic-infrastructure]
   directness: overlapping
   role: "modular commercial DevOps platform whose CD, IDP, IaCM and cost modules each contest a different HoBo surface"
   posture: [benchmark, borrow, integrate]

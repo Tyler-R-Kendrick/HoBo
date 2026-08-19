@@ -8,7 +8,7 @@ competitor:
   name: "Facets.cloud"
   aliases: ["facets cloud"]
   primary_category: platform-orchestrators
-  categories: [platform-orchestrators, portable-application-models, hybrid-multicloud-enterprise]
+  categories: [platform-orchestrators, portable-application-models, hybrid-multicloud-enterprise, finops-governance-placement]
   directness: direct
   role: "declarative environment orchestrator — the closest commercial product to HoBo's intent-to-provider thesis, realized through generated Terraform/Helm"
   posture: [displace, benchmark, borrow]

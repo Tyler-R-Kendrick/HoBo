@@ -21,10 +21,10 @@ tags: [hobo, competitors, category]
 | [Runtime & Distributed Application Substrates](runtime-substrates.md) | 10 |
 | [Hybrid & Multicloud Enterprise Orchestration](hybrid-multicloud-enterprise.md) | 3 |
 | [Self-Hosted PaaS & Server Deployment](self-hosted-paas.md) | 3 |
-| [Agentic Infrastructure & Operations](agentic-infrastructure.md) | 4 |
+| [Agentic Infrastructure & Operations](agentic-infrastructure.md) | 5 |
 | [Backend & Data Application Platforms](backend-data-platforms.md) | 5 |
 | [Delivery, Release & GitOps](delivery-release-gitops.md) | 2 |
-| [FinOps, Governance & Placement](finops-governance-placement.md) | 3 |
+| [FinOps, Governance & Placement](finops-governance-placement.md) | 4 |
 | [Identity, Networking & Application Delivery](identity-networking-delivery.md) | 3 |
 
 <!-- END GENERATED: category-index -->

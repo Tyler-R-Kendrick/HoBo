@@ -162,7 +162,9 @@ interface TrafficLog {
 	bodies: string[];
 }
 
-function startTrafficGenerator(): { stop: () => Promise<TrafficLog> } {
+function startTrafficGenerator(): {
+	stop: (minRequests?: number) => Promise<TrafficLog>;
+} {
 	const log: TrafficLog = { total: 0, failed: 0, bodies: [] };
 	let running = true;
 	const worker = (async () => {
@@ -183,7 +185,20 @@ function startTrafficGenerator(): { stop: () => Promise<TrafficLog> } {
 		}
 	})();
 	return {
-		stop: async () => {
+		// `minRequests` drains to a count instead of trusting the clock. The
+		// downstream `log.total > 10` reads like a vacuity guard — a generator
+		// that never ran must not make `failed === 0` trivially true — but what
+		// it actually asserted was throughput: under a 10-way `turbo run test`
+		// on a four-core box this generator got through 4 requests inside the
+		// ramp window, and the test failed for being starved rather than for
+		// routing anything wrongly. Waiting for the count keeps the guard and
+		// drops the dependency on how loaded the machine is; a generator that
+		// is genuinely dead still fails, it just fails at the deadline.
+		stop: async (minRequests = 0) => {
+			const deadline = Date.now() + 5_000;
+			while (log.total < minRequests && Date.now() < deadline) {
+				await sleep(2);
+			}
 			running = false;
 			await worker;
 			return log;
@@ -222,7 +237,7 @@ test("milestone: budget-pressured swap from A to B with zero failed requests acr
 	const outcome = await loop.handleSignal(BUDGET_SIGNAL);
 
 	await sleep(30);
-	const log = await traffic.stop();
+	const log = await traffic.stop(11);
 
 	assert.equal(outcome.action, "reapplied");
 	assert.equal(loop.incumbent(), "backend:b");

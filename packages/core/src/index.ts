@@ -366,6 +366,7 @@ export type {
 	TransportResponse,
 } from "./ports/http-transport.js";
 export {
+	assertAllowedEndpoint,
 	guardTransport,
 	TRANSPORT_GUARD_ERROR_CODES,
 	TRANSPORT_METHODS,

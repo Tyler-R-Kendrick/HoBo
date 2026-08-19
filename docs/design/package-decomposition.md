@@ -232,6 +232,19 @@ library — without a name collision.
 - Roughly 60 packages gain or change a dependency edge; the boundary gate
   (repaired in #1115) is what makes that survivable, and it should be run at
   every stage.
+- The gate distinguishes **runtime** edges from **dev-only** ones. An edge that
+  exists solely through `devDependencies` carries `dev: true`, and the layering
+  rules key on it: a package importing `@hobo/contract-harness` in its own test
+  suite is not reaching across a boundary at runtime. Only that one package is
+  exempt, and only when the edge is dev-only — a runtime dependency on the test
+  harness still fails. Before this, each such test edge had to be blessed by
+  name, and the allowlist was growing entries that all shared one reason.
+- The banked-edge list is a ratchet, not architecture, and it went from 31
+  entries to 14 once the redundant ones were removed: seventeen named a target
+  that the gate already classifies as a `contract` package, which the adapter
+  rule exempts outright. A provider importing `@hobo/capability-profiles` or
+  `@hobo/bindings` declares the vocabulary it implements — that was never debt.
+  What remains is the real remainder, and every entry carries a written reason.
 - Four new manifest packages plus generated bindings is more build surface, and
   the proto/CUE codegen lane becomes load-bearing rather than advisory.
 - `@hobo/hobo` splitting into `@hobo/host` + CLI touches every composition site.

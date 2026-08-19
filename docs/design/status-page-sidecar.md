@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Status-page sidecar"
+description: "The default availability surface every deployment gets: three availability slices, the event-driven replay-safe architecture behind them, and the ADR-0145 trait classification that makes it default-on with an opt-out."
+tags: [hobo, design, status-page, availability, sidecar]
+---
+
 # Status-page sidecar — default availability surface for every deployment
 
 > Implementation record for the ADR-0077 / [Plan 49 §C](./developer-experience.md#plan-49)

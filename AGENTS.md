@@ -606,12 +606,18 @@ lane as flaky:
   environment variable, add it here or the escape hatch you documented will not
   exist.
 
-The request guard lives in `@hobo/core` — `guardTransport` for the wrapper and
-`assertAllowedEndpoint` for the URL check — and provider transports delegate to
-it rather than reimplementing it. The local copies had drifted in the direction
-that matters: none of them rejected percent-encoded path traversal, so a policy
-allowing `/v9/projects/` also allowed `/v9/projects/%2e%2e/user/tokens`, which
-starts with the prefix and then climbs out of it. Packages keep their own error
+The request guard lives in `@hobo/core` — `guardTransport` for the wrapper,
+`assertAllowedEndpoint` for the URL check, `encodesPathSeparator` for the one
+rule the transports that cannot use the whole guard still need. Provider
+transports delegate rather than reimplement.
+
+Be precise about what the rule catches, because the obvious example is wrong:
+WHATWG resolves dot segments during parsing and treats `%2e` as a dot, so
+`/v9/projects/%2e%2e/user/tokens` arrives as `/v9/user/tokens` and an ordinary
+prefix check refuses it unaided. What survives parsing is an encoded
+*separator* — `%2f` and `%5c` — so `/v9/projects/%2f%2e%2e%2fv3/user/tokens`
+keeps the prefix, passes `startsWith`, and is decoded only by the origin. That
+is the gap the local copies had. Packages keep their own error
 type by translating `TransportGuardError` at the boundary, so the thrown type
 and code a call site matches on do not change.
 

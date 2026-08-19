@@ -21,6 +21,7 @@
 		"@bufbuild/protobuf": "2.12.1",
 		"@hobo/bindings": "workspace:*",
 		"@hobo/capability-profiles": "workspace:*",
+		"@hobo/core": "workspace:*",
 		"@hobo/kv-redis-compatible": "workspace:*"
 	},
 	"devDependencies": {

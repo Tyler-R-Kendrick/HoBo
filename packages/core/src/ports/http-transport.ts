@@ -25,11 +25,19 @@
  *   not do is case-fold the *policy*: a mixed-case allowlist entry matches
  *   nothing. Repairing a policy typo is widening reach on a guess, and this
  *   guard fails closed instead.
- * - Dot segments are refused rather than resolved when they are
- *   percent-encoded. WHATWG resolves a literal `..` before the prefix check
- *   sees it, so `/v1/../admin` is checked as `/admin` and refused; `%2e%2e`
- *   and `%2f` survive parsing and would only be decoded by the provider, past
- *   every check here, so their presence is itself the refusal.
+ * - Percent-encoded path separators are refused rather than decoded. Be precise
+ *   about which forms actually survive, because the obvious example does not:
+ *   WHATWG resolves dot segments during parsing, and it treats `%2e` as a dot
+ *   while doing so, so `/v1/../admin` *and* `/v1/%2e%2e/admin` both arrive at
+ *   the prefix check already collapsed to `/admin` — and are refused by the
+ *   prefix check on their own merits.
+ *
+ *   What survives is an encoded *separator*: `%2f` and `%5c` are not separators
+ *   to the parser, so `/v1/projects/%2f%2e%2e%2fadmin` and
+ *   `/v1/projects/..%5cadmin` reach the prefix check with the prefix intact,
+ *   pass it, and are decoded only by the origin — after every check here. Their
+ *   presence is the refusal. `%2e` stays in the pattern because it still
+ *   appears in those composite forms.
  *
  * Purity: no clock, no randomness, no ambient environment reads. The guard is
  * a pure function of the request, the policy, and the inner transport's reply.
@@ -222,14 +230,26 @@ export function assertAllowedEndpoint(
 }
 
 /**
+ * True when a pathname percent-encodes a separator or dot segment.
+ *
  * `parsed.pathname` has already had literal dot segments resolved by WHATWG
- * parsing, so the prefix check sees the path the origin will route on — with
- * one exception: percent-encoded separators survive parsing and are decoded
- * only by the provider, past every check here. Their presence is the refusal.
+ * parsing, so a prefix check sees the path the origin will route on — with one
+ * exception: percent-encoded separators survive parsing and are decoded only by
+ * the provider, past every check. Their presence is the refusal.
+ *
+ * Exported as a predicate rather than folded into `assertAllowedEndpoint`
+ * because three transports cannot use the whole guard — they match hosts by
+ * suffix, or permit http on loopback, or require same-origin — but every one of
+ * them needs *this*. Sharing the rule is what keeps the copies from drifting
+ * again; sharing the whole guard would have cost them a security property.
  */
+export function encodesPathSeparator(pathname: string): boolean {
+	return /%2e|%2f|%5c/iu.test(pathname);
+}
+
 function assertAllowedPath(parsed: URL, policy: TransportGuardPolicy): void {
 	const path = parsed.pathname;
-	if (/%2e|%2f|%5c/iu.test(path)) {
+	if (encodesPathSeparator(path)) {
 		throw new TransportGuardError(
 			"TRANSPORT_PATH_FORBIDDEN",
 			`path ${path} percent-encodes a path separator or dot segment, which this guard refuses rather than decodes: only the origin would resolve it, after every check here has passed`,

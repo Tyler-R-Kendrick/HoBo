@@ -14,6 +14,7 @@
  * bounded time — and two separate policies, because the control plane and the
  * data plane are different origins with different rules.
  */
+import { encodesPathSeparator } from "@hobo/core";
 import { redactProviderText, UpstashProviderError } from "./errors.js";
 
 export type TransportMethod = "GET" | "POST";
@@ -131,6 +132,16 @@ export function assertAllowedEndpoint(
 			"PROVIDER_CONTRACT_CHANGED",
 			`host ${host} is not an allowlisted official provider host`,
 			{ detail: { host } },
+		);
+	}
+	// Percent-encoded separators survive WHATWG parsing and are decoded only by
+	// the origin, past every check here — so the prefix test below would pass a
+	// path that then climbs out of the prefix. Shared with core so the rule has
+	// one definition; the refusal stays this package's own error type.
+	if (encodesPathSeparator(parsed.pathname)) {
+		throw new UpstashProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			`path ${parsed.pathname} percent-encodes a path separator or dot segment, which this guard refuses rather than decodes`,
 		);
 	}
 	if (!parsed.pathname.startsWith(policy.allowedPathPrefix)) {

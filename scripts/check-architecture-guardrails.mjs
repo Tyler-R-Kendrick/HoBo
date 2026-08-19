@@ -340,6 +340,33 @@ async function collectEvidence(root, packageRoot) {
 //                                     wire form; permanent by design.
 //   // parallel-type-allowed: <why> — temporary debt awaiting migration.
 const PARALLEL_TYPE_MARKERS = ["domain-view:", "parallel-type-allowed:"];
+
+/**
+ * True when the marker sits on the declaration line or anywhere in the comment
+ * block immediately above it.
+ *
+ * This read exactly one preceding line, so a marker written as the *first* line
+ * of a multi-line block — the natural place, since the reason usually needs a
+ * sentence — was silently ignored and the guard reported an unannotated type
+ * that was in fact annotated. `check-technical-standards.ts` had the identical
+ * bug for `// public-contract:`; both are fixed, and they should stay
+ * symmetric, because an author who learns the rule from one gate will apply it
+ * at the other.
+ */
+function hasMarkerAbove(lines, index, marker) {
+	if ((lines[index] ?? "").includes(marker)) return true;
+	for (let above = index - 1; above >= 0; above -= 1) {
+		const text = (lines[above] ?? "").trim();
+		const isComment =
+			text.startsWith("//") ||
+			text.startsWith("*") ||
+			text.startsWith("/*") ||
+			text.endsWith("*/");
+		if (!isComment) return false;
+		if (text.includes(marker)) return true;
+	}
+	return false;
+}
 function parallelTypeDeclarations(typeScriptSources, protoTypes) {
 	if (protoTypes.size === 0) return [];
 	const offenders = [];
@@ -354,8 +381,11 @@ function parallelTypeDeclarations(typeScriptSources, protoTypes) {
 			);
 			const name = match?.[1] ?? match?.[2];
 			if (!name || !protoTypes.has(name)) continue;
-			const context = `${lines[index - 1] ?? ""}\n${line}`;
-			if (PARALLEL_TYPE_MARKERS.some((marker) => context.includes(marker))) {
+			if (
+				PARALLEL_TYPE_MARKERS.some((marker) =>
+					hasMarkerAbove(lines, index, marker),
+				)
+			) {
 				continue;
 			}
 			offenders.push(`${file}:${index + 1} ${name}`);

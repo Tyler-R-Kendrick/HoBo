@@ -30,6 +30,16 @@ is verified against the installed `@bytecodealliance/jco` manifest — the
 workspace uses a single root `pnpm-lock.yaml`, so there is no per-package
 lockfile to inspect.
 
+The `wit-bindgen-cli` smoke step **downloads the pinned release** on first run
+and caches it under `.tools/`, so that run needs network access. Behind a
+TLS-intercepting proxy the download fails with `SELF_SIGNED_CERT_IN_CHAIN`,
+because the certificate chain terminates in the proxy's own root; point
+`NODE_EXTRA_CA_CERTS` at that root's bundle and re-run. Do not reach for
+`NODE_TLS_REJECT_UNAUTHORIZED` — this step downloads and then executes a
+toolchain, so an unverified chain hands that binary to whoever is on the path.
+Under `turbo`, `envMode: "strict"` means the variable also has to be listed in
+`globalPassThroughEnv` (it is; see AGENTS.md).
+
 
 ## Architecture Evidence
 

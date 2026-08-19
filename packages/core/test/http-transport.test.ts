@@ -68,6 +68,7 @@ describe("transport vocabularies", () => {
 	it("expose the closed method set, frozen", () => {
 		expect([...TRANSPORT_METHODS]).toEqual([
 			"GET",
+			"HEAD",
 			"POST",
 			"PUT",
 			"PATCH",

@@ -23,10 +23,12 @@
  * a 429 — is returned to the caller to interpret through `ttlShErrorForStatus`.
  */
 import {
-	redactProviderText,
-	TtlShProviderError,
-	ttlShErrorForStatus,
-} from "./errors.js";
+	assertAllowedEndpoint as assertAllowedEndpointCore,
+	guardTransport,
+	TransportGuardError,
+} from "@hobo/core";
+
+import { TtlShProviderError, ttlShErrorForStatus } from "./errors.js";
 import { TTL_SH_REGISTRY_HOST } from "./reference.js";
 
 export type TransportMethod =
@@ -89,61 +91,35 @@ export const FORBIDDEN_REQUEST_HEADERS = [
 	"x-registry-auth",
 ] as const;
 
-function notAllowed(detail: string, extra: Record<string, string> = {}): never {
-	throw new TtlShProviderError("TRANSPORT_NOT_ALLOWED", detail, {
-		detail: extra,
-	});
-}
-
 export function assertAllowedEndpoint(
 	url: string,
 	policy: TransportPolicy,
 ): URL {
-	let parsed: URL;
 	try {
-		parsed = new URL(url);
-	} catch {
-		notAllowed("request url is not a valid URL");
+		return assertAllowedEndpointCore(url, corePolicy(policy));
+	} catch (cause) {
+		throw asProviderError(cause, url);
 	}
-	if (parsed.username !== "" || parsed.password !== "") {
-		// Reported as a credential rather than as a malformed URL: userinfo in a
-		// registry URL is a secret in every log line that records the URL.
-		throw new TtlShProviderError(
-			"CREDENTIAL_REFUSED",
-			`refusing a request url with embedded userinfo; ${TTL_SH_REGISTRY_HOST} authenticates nobody, so a credential here could only leak`,
-		);
-	}
-	if (parsed.protocol !== "https:") {
-		notAllowed(
-			`request url must use https, got ${parsed.protocol.replace(":", "")}`,
-		);
-	}
-	if (parsed.port !== "" && parsed.port !== "443") {
-		notAllowed(
-			`request url must use the default https port, got ${parsed.port}`,
-			{
-				port: parsed.port,
-			},
-		);
-	}
-	const host = parsed.hostname.toLowerCase();
-	if (!policy.allowedHosts.includes(host)) {
-		notAllowed(
-			`host ${host} is not the allowlisted ephemeral registry origin`,
-			{
-				host,
-				allowed: policy.allowedHosts.join(","),
-			},
-		);
-	}
-	if (!parsed.pathname.startsWith(policy.allowedPathPrefix)) {
-		notAllowed(
-			`path ${parsed.pathname} is outside the allowlisted ${policy.allowedPathPrefix} distribution surface`,
-		);
-	}
-	return parsed;
 }
 
+/**
+ * True when the URL carries `user:pass@`, checked without trusting the string
+ * to parse — `new URL` throws on the malformed ones core also rejects.
+ */
+function hasEmbeddedUserinfo(url: string): boolean {
+	try {
+		const parsed = new URL(url);
+		return parsed.username !== "" || parsed.password !== "";
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * ttl.sh authenticates nobody, so a credential header on an outbound request
+ * can only be an accident — and one that leaks. Package policy, not a generic
+ * HTTP invariant, so it stays here rather than moving into the shared guard.
+ */
 export function assertNoCredentialHeaders(
 	headers: Readonly<Record<string, string>>,
 ): void {
@@ -162,78 +138,99 @@ export function assertNoCredentialHeaders(
 	}
 }
 
-function headerValue(
-	headers: Readonly<Record<string, string>>,
-	name: string,
-): string | undefined {
-	const lower = name.toLowerCase();
-	for (const [key, value] of Object.entries(headers)) {
-		if (key.toLowerCase() === lower) return value;
+/** ttl.sh's policy onto core's; the single prefix becomes a one-entry list. */
+function corePolicy(policy: TransportPolicy) {
+	return {
+		allowedHosts: policy.allowedHosts,
+		allowedPathPrefixes: [policy.allowedPathPrefix],
+		maxResponseBytes: policy.maxResponseBytes,
+		maxTimeoutMs: policy.timeoutMs,
+	};
+}
+
+/**
+ * Core refuses with a `TransportGuardError`; this package's callers catch
+ * `TtlShProviderError`, and this package's codes are not core's.
+ *
+ * The userinfo case is kept separate on purpose. Core folds it into
+ * `TRANSPORT_HOST_FORBIDDEN`, but ttl.sh reported it as `CREDENTIAL_REFUSED`
+ * for a reason worth preserving: a `user:pass@` registry URL is a secret in
+ * every log line that records the URL, and the registry authenticates nobody,
+ * so a credential there could only leak. Collapsing it into the generic
+ * transport refusal would lose that.
+ */
+function asProviderError(cause: unknown, url?: string): unknown {
+	if (!(cause instanceof TransportGuardError)) return cause;
+	if (url !== undefined && hasEmbeddedUserinfo(url)) {
+		return new TtlShProviderError(
+			"CREDENTIAL_REFUSED",
+			`refusing a request url with embedded userinfo; ${TTL_SH_REGISTRY_HOST} authenticates nobody, so a credential here could only leak`,
+		);
 	}
-	return undefined;
+	// This package draws a line core does not: refusing to *send* somewhere is
+	// `TRANSPORT_NOT_ALLOWED`, while a peer answering in a shape the driver
+	// never agreed to — a redirect, an oversized body, a request over the
+	// policy bounds — is `PROVIDER_CONTRACT_CHANGED`. Callers switch on that
+	// distinction, so the translation has to keep it rather than flatten
+	// everything into one code.
+	const endpointRefusal =
+		cause.code === "TRANSPORT_SCHEME_FORBIDDEN" ||
+		cause.code === "TRANSPORT_HOST_FORBIDDEN" ||
+		cause.code === "TRANSPORT_PATH_FORBIDDEN";
+	return new TtlShProviderError(
+		endpointRefusal ? "TRANSPORT_NOT_ALLOWED" : "PROVIDER_CONTRACT_CHANGED",
+		cause.message,
+		{ detail: { guard: cause.code, ...cause.detail } },
+	);
 }
 
 export function createGuardedTransport(
 	inner: TtlShTransport,
 	policy: TransportPolicy = TTL_SH_REGISTRY_POLICY,
 ): TtlShTransport {
+	const guarded = guardTransport(
+		async (request) =>
+			await inner.request({
+				method: request.method as TransportMethod,
+				url: request.url,
+				headers: request.headers,
+				...(request.body === undefined ? {} : { body: request.body }),
+				timeoutMs: request.timeoutMs,
+				maxResponseBytes: request.maxResponseBytes,
+			}),
+		corePolicy(policy),
+	);
+
 	return {
 		async request(request) {
-			const url = assertAllowedEndpoint(request.url, policy);
+			// Before anything leaves: ttl.sh takes no credential, so one on the
+			// way out is an accident worth refusing rather than redacting.
 			assertNoCredentialHeaders(request.headers);
-			const timeoutMs = Math.min(request.timeoutMs, policy.timeoutMs);
-			const maxResponseBytes = Math.min(
-				request.maxResponseBytes,
-				policy.maxResponseBytes,
-			);
-			if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-				notAllowed("request timeout must be positive");
+
+			let response: TransportResponse;
+			try {
+				response = await guarded({
+					method: request.method,
+					url: request.url,
+					headers: request.headers,
+					...(request.body === undefined ? {} : { body: request.body }),
+					timeoutMs: request.timeoutMs,
+					maxResponseBytes: request.maxResponseBytes,
+				});
+			} catch (cause) {
+				throw asProviderError(cause, request.url);
 			}
 
-			const response = await inner.request({
-				...request,
-				url: url.toString(),
-				timeoutMs,
-				maxResponseBytes,
-			});
-
-			if (response.status >= 300 && response.status < 400) {
-				const location = headerValue(response.headers, "location") ?? "";
-				throw new TtlShProviderError(
-					"PROVIDER_CONTRACT_CHANGED",
-					`ttl.sh returned a ${response.status} redirect, which this transport never follows`,
-					{
-						detail: {
-							status: response.status,
-							location: redactProviderText(location, 120),
-						},
-					},
-				);
-			}
 			if (response.status === 401 || response.status === 403) {
-				// Raised here rather than returned: there is no credential to
-				// supply and no retry that would help, so handing the challenge
-				// back would only invite a caller to invent one.
+				// ttl.sh-specific, and layered here rather than pushed into the
+				// shared guard because it is a statement about this registry
+				// rather than about HTTP: there is no credential to supply and
+				// no retry that would help, so handing the challenge back would
+				// only invite a caller to invent one.
 				throw ttlShErrorForStatus(response.status, {
 					method: request.method,
 					body: response.body,
 				});
-			}
-
-			const declared = Number(
-				headerValue(response.headers, "content-length") ?? Number.NaN,
-			);
-			if (Number.isFinite(declared) && declared > maxResponseBytes) {
-				throw new TtlShProviderError(
-					"PROVIDER_CONTRACT_CHANGED",
-					`ttl.sh declared a ${declared} byte response, over the ${maxResponseBytes} byte cap`,
-				);
-			}
-			if (Buffer.byteLength(response.body, "utf8") > maxResponseBytes) {
-				throw new TtlShProviderError(
-					"PROVIDER_CONTRACT_CHANGED",
-					`ttl.sh response exceeded the ${maxResponseBytes} byte cap`,
-				);
 			}
 
 			return response;

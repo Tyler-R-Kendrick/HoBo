@@ -615,11 +615,33 @@ starts with the prefix and then climbs out of it. Packages keep their own error
 type by translating `TransportGuardError` at the boundary, so the thrown type
 and code a call site matches on do not change.
 
-Two transports are deliberately not on it. `provider-browser-wasm` enforces
-*same-origin* plus an `allowInsecureLocalhost` dev affordance, which core's
-host-allowlist policy does not model; migrating it would lose semantics.
-`provider-kafka`'s `transport.ts` is a broker seam (produce/fetch/commit), not
-an HTTP transport, and never carried a request guard at all.
+On the shared guard: `provider-vercel`, `provider-netlify`, `provider-neon`,
+`provider-ttl-sh`, plus `aws`/`azure`/`gcp`/`cloudflare`.
+
+Four are deliberately **not**, and the count matters because "consolidate the
+eight" is the wrong target — three of them hold a property core's policy does
+not model, so migrating would drop a security property to hit a number:
+
+- `provider-upstash` matches hosts by **suffix** (`.upstash.io`) for its
+  per-database data-plane origins; core matches exact hosts only.
+- `provider-kubernetes` carries `allowInsecureLoopback`, a deliberate dev
+  affordance permitting http on the loopback address.
+- `provider-browser-wasm` enforces **same-origin** rather than a host
+  allowlist, plus `allowInsecureLocalhost`.
+- `provider-kafka`'s `transport.ts` is a broker seam (produce/fetch/commit),
+  not an HTTP transport, and never carried a request guard at all.
+
+The first three still want the encoded-traversal refusal, added locally rather
+than by migration. Extending `TransportGuardPolicy` with host suffixes and an
+insecure-loopback escape would let them share the guard, and that is a design
+decision rather than a refactor.
+
+Two things core gained from this that are worth knowing. `TRANSPORT_METHODS`
+includes `HEAD`, without which a registry transport cannot be expressed at all
+(the OCI distribution spec uses it to ask whether a manifest exists). And
+`TransportGuardError` carries a `detail` map, so a redirect refusal names its
+target — bounded and stripped of control characters, because that value is
+chosen by the peer and ends up in logs.
 
 Credentials are **not** passed through, and the provider tests do not need them
 to be: `CLOUDFLARE_API_TOKEN`, `VERCEL_TOKEN` and friends are saved, set, and

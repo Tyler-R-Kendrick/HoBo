@@ -38,6 +38,12 @@
 // public-contract: the closed HTTP method vocabulary a resolver may issue.
 export const TRANSPORT_METHODS = Object.freeze([
 	"GET",
+	// HEAD is a GET that stops before the body. The OCI distribution spec uses
+	// it to ask whether a manifest exists without transferring it, so a
+	// registry transport cannot be expressed without it — `provider-ttl-sh`
+	// kept its own method list for exactly this reason. It is also the safest
+	// method here: nothing is sent and nothing comes back but headers.
+	"HEAD",
 	"POST",
 	"PUT",
 	"PATCH",
@@ -96,12 +102,40 @@ export type TransportGuardErrorCode =
  *  branch on the reason rather than matching on a message. */
 export class TransportGuardError extends Error {
 	readonly code: TransportGuardErrorCode;
+	/**
+	 * Structured context for the refusal, when there is any worth carrying.
+	 *
+	 * "Refused a redirect" is a much weaker diagnostic than "refused a redirect
+	 * to mirror.example.com", and the second is what a human debugging a
+	 * hijacked or misconfigured endpoint actually needs. Values here can be
+	 * attacker-influenced — a `Location` header is chosen by the peer — so
+	 * anything echoed in is length-bounded and stripped of control characters
+	 * before it lands.
+	 */
+	readonly detail: Readonly<Record<string, string>>;
 
-	constructor(code: TransportGuardErrorCode, message: string) {
+	constructor(
+		code: TransportGuardErrorCode,
+		message: string,
+		detail: Readonly<Record<string, string>> = {},
+	) {
 		super(message);
 		this.name = "TransportGuardError";
 		this.code = code;
+		this.detail = Object.freeze({ ...detail });
 	}
+}
+
+/**
+ * Bound a peer-supplied string before it is carried in an error.
+ *
+ * Control characters are dropped rather than escaped: this text reaches logs
+ * and terminals, where a stray CR or ESC rewrites what the reader sees.
+ */
+function boundedPeerText(value: string, max = 120): string {
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping them is the point.
+	const clean = value.replace(/[\u0000-\u001f\u007f]/gu, "");
+	return clean.length > max ? `${clean.slice(0, max)}…` : clean;
 }
 
 /**
@@ -279,6 +313,7 @@ function assertNotRedirect(response: TransportResponse): void {
 	throw new TransportGuardError(
 		"TRANSPORT_REDIRECT_REFUSED",
 		`provider returned a ${response.status} redirect, which this transport never follows`,
+		{ location: boundedPeerText(location) },
 	);
 }
 

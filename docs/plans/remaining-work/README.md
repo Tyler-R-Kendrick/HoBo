@@ -25,9 +25,12 @@ touching anything. They are not preamble. Every rule in them was paid for.
   `tsx`.
 - `cd /home/user/HoBo` first in every Bash call. The working directory does not
   persist between calls.
-- Large commits: `TURBO_CONCURRENCY=2 VITEST_MAX_THREADS=2`. Exit code 137 is
-  the OOM killer, never a failing assertion. Re-read that sentence before you
-  diagnose a 137 as a test failure.
+- Pass `--concurrency=100%` to every `turbo` invocation — one task per logical
+  CPU. Turbo's default of 10 OOM-kills a fully cold sweep on this four-core,
+  16 GB box, and it is free: on a fixed 224-task set, concurrency 4 and
+  concurrency 10 finish within noise of each other. Exit code 137 is the OOM
+  killer, never a failing assertion. Re-read that sentence before you diagnose a
+  137 as a test failure.
 - `turbo.json` runs `envMode: "strict"`. A task sees only what
   `globalPassThroughEnv` lists. If you add a lane that reads an environment
   variable, add the variable there or your documented escape hatch will
@@ -642,7 +645,13 @@ Each package must contain:
   involved. This is the point of the exercise: if a current value cannot survive
   a round trip through your schema, the schema is wrong, and finding that is
   your deliverable — not a failure.
-- `contracts/` PACT inventory if your shape crosses a service boundary.
+- `contracts/` — **required**, not conditional. `pnpm run konsistent` enforces
+  `production-package-scaffolding`: every production package under `packages/`
+  must have `test/`, `contracts/` **and** `data-models/` as directories, and it
+  reports a named error per missing one. If your shape genuinely crosses no
+  service boundary, write a `contracts/README.md` saying so and why — an
+  invented PACT to satisfy a scaffolding rule is worse than an honest note.
+  Add `konsistent` to your gate list; §6 does not list it and should.
 
 **The most valuable outcome any of E–H can produce is a shape that does not
 round-trip.** Report it precisely: which field, which fixture, what is lost. Do
@@ -712,14 +721,26 @@ digest-bearing cases. Where a digest is involved the round trip must be
 cd /home/user/HoBo
 NODE_OPTIONS= npx biome check .                                    # 0 errors, 0 warnings
 NODE_OPTIONS= npx tsx scripts/check-package-boundaries.mts         # "violations":[]
-NODE_OPTIONS= TURBO_CONCURRENCY=2 npx turbo run build              # 126/126 (more if you added packages)
-NODE_OPTIONS= TURBO_CONCURRENCY=2 VITEST_MAX_THREADS=2 \
-  npx turbo run test --filter=<your packages>
+NODE_OPTIONS= npx turbo run build --concurrency=100%               # 130/130
+NODE_OPTIONS= npx turbo run test --concurrency=100% --filter=<your packages>
 NODE_OPTIONS= pnpm run standards:check                             # public-contract markers
+NODE_OPTIONS= pnpm run konsistent                                  # package scaffolding
 NODE_OPTIONS= pnpm run docs:okf                                    # frontmatter on new design docs
 ```
 
-Two gates that have bitten repeatedly:
+**`--concurrency=100%` is not optional and `TURBO_CONCURRENCY=2` is obsolete.**
+Turbo's default of 10 concurrent tasks OOM-kills a fully cold sweep on a
+four-core, 16 GB box — `SIGKILL`, exit 137, which reads like a failing test and
+is not one. One task per logical CPU is measurably free: on a fixed 224-task set
+concurrency 4 and concurrency 10 finish within noise of each other. Every turbo
+invocation the repo owns already carries the flag; yours must too.
+
+Three gates that have bitten repeatedly:
+
+- **`konsistent`** enforces `production-package-scaffolding` — `test/`,
+  `contracts/` and `data-models/` must all exist as directories in every
+  production package. It is not in the list above by accident; it was added
+  after four new packages tripped it at once.
 
 - **`standards:check`** requires a `// public-contract: <why>` marker on every
   exported string-literal constant under `packages/*/src/`, each with its own
@@ -729,8 +750,7 @@ Two gates that have bitten repeatedly:
   it. If the honest documentation change is a *correction* to something already
   written, make it — that has been the right answer more than once here.
 
-Commit with `TURBO_CONCURRENCY=2 VITEST_MAX_THREADS=2 git commit`. Never bypass
-hooks. **Read your own diff before committing** (§1.6).
+Never bypass hooks. **Read your own diff before committing** (§1.6).
 
 ---
 

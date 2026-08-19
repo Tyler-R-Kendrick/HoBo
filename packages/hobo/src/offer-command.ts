@@ -4,7 +4,6 @@ import { join } from "node:path";
 import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { loadBindleDefinition } from "@hobo/cli";
 import { assertOfferIsSecretFree, buildDeploymentOffer } from "@hobo/recipes";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
 	buildRecipeContext,

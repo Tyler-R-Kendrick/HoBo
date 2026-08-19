@@ -4,6 +4,7 @@ import {
 	type WireVersion,
 	WireVersionIncompatibleError,
 } from "@hobo/core";
+import { first } from "@hobo/core/total-access";
 
 function compareVersions(left: WireVersion, right: WireVersion): number {
 	for (const key of ["major", "minor", "patch"] as const) {
@@ -58,7 +59,7 @@ export function negotiateWireVersion(args: {
 	);
 
 	if (usable.length > 0) {
-		const selected = usable[0]!.version;
+		const selected = first(usable).version;
 		return Object.freeze({
 			interfaceId: args.caller.interfaceId,
 			version: selected.raw,

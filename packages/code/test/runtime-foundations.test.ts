@@ -1,6 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { describeBuzzDistributedCompute } from "../src/buzz.js";
 import { runHoboCodeCli } from "../src/cli.js";
@@ -41,9 +42,15 @@ describe("hobo-code runtime foundations (Eve · DeepAgents+OpenShell+MxC · Worl
 			expect(s.parentId).toBe(coordinator.id);
 			expect(s.layout.subagentsDir).toBe("subagents");
 		}
-		const impl = subagents.find((s) => s.id === "implementer")!;
+		const impl = must(
+			subagents.find((s) => s.id === "implementer"),
+			"subagents.find((s) => s.id === 'implementer')",
+		);
 		expect(eveAgentRootPath(impl)).toBe("agent/subagents/implementer");
-		const review = subagents.find((s) => s.id === "reviewer")!;
+		const review = must(
+			subagents.find((s) => s.id === "reviewer"),
+			"subagents.find((s) => s.id === 'reviewer')",
+		);
 		expect(review.sandboxClass).toBe("mxc");
 		expect(impl.sandboxClass).toBe("openshell");
 		const surface = describeEveSubagentSurface();

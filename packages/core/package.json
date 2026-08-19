@@ -15,6 +15,10 @@
 		"./aws-sigv4": {
 			"types": "./dist/ports/aws-sigv4.d.ts",
 			"default": "./dist/ports/aws-sigv4.js"
+		},
+		"./total-access": {
+			"types": "./dist/total-access.d.ts",
+			"default": "./dist/total-access.js"
 		}
 	},
 	"publishConfig": {

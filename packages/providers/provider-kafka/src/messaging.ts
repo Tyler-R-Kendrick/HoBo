@@ -78,7 +78,6 @@ export function createKafkaMessaging(
 	}
 
 	const transport = options.transport ?? null;
-	const fidelity: "simulated" | "live" = transport ? "live" : "simulated";
 	const capabilities: MessagingCapabilities = {
 		...KAFKA_MESSAGING_CAPABILITIES,
 		transactionalProduce: cluster.transactional,

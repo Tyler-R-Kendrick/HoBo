@@ -4,6 +4,8 @@
  * harnesses pick from per-provider catalogs (`harness-model-catalog`), with
  * OpenAI-/Anthropic-compatible endpoints merged for Codex / Claude.
  */
+
+import { must } from "@hobo/core/total-access";
 import {
 	createProjectEveAgent,
 	type ProjectEveAgent,
@@ -587,7 +589,10 @@ function nextField(
 	const i = fields.indexOf(
 		state.field === "create-id" ? "eve-list" : state.field,
 	);
-	const next = fields[(i + delta + fields.length) % fields.length]!;
+	const next = must(
+		fields[(i + delta + fields.length) % fields.length],
+		"fields[(i + delta + fields.length) % fields.length]",
+	);
 	return clampConfigureState({
 		...state,
 		field: next,

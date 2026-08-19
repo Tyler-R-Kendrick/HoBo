@@ -9,12 +9,13 @@
  *   - oci: WASM-on-OCI / Kubernetes (`@hobo/runtime-oci`)
  *   - cloud-native: multi-cloud registry (`@hobo/runtime-cloud-native`)
  */
+
+import { must } from "@hobo/core/total-access";
 import {
 	createInProcessWasmtimeEngine,
 	createWasmtimeCliEngine,
 } from "@hobo/runtime-local";
 import { PINNED_WASMTIME_VERSION } from "@hobo/runtime-wasm";
-
 import type { BareMetalServeResult } from "./bare-metal-host.js";
 import {
 	type BareMetalYard,
@@ -163,7 +164,7 @@ export async function serveProjectOnLocalYard(options: {
 						: {}),
 				})
 			: null;
-	const yard = options.yard ?? owned!;
+	const yard = options.yard ?? must(owned);
 	const componentHost = normalizeComponentHostKind(
 		options.componentHost ??
 			options.host ??

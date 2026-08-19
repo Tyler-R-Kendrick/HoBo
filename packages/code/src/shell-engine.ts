@@ -13,6 +13,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { at } from "@hobo/core/total-access";
 import { AGUI_EVENT, type AguiEvent } from "./agui.js";
 import { BYOK_ENV_NAMES } from "./models.js";
 
@@ -148,7 +149,9 @@ export function parsePorcelain(stdout: string): SandboxChange[] {
 		const rest = line.slice(3).trim();
 		if (rest.length === 0) continue;
 		// Renames are reported as "old -> new"; the new path is what promotes.
-		const path = rest.includes(" -> ") ? rest.split(" -> ")[1]! : rest;
+		const path = rest.includes(" -> ")
+			? at(rest.split(" -> "), 1, "rest.split(' -> ')")
+			: rest;
 		out.push({ status: code, path });
 	}
 	return out;

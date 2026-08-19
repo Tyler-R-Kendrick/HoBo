@@ -45,7 +45,65 @@ export class TerraformStateError extends Error {
 	}
 }
 
-export function createTrivialIacProgram(overrides: any = {}) {
+/** Stored stack/workspace state as this module reads it. */
+interface StoredState {
+	readonly resources?: Record<string, ResourceOutcome>;
+	readonly [key: string]: unknown;
+}
+
+/** A resource in a realization outputs payload. */
+interface ResourceOutcome {
+	readonly id?: string;
+	readonly status?: string;
+	readonly outputs?: Record<string, unknown>;
+}
+
+/** Overrides accepted by the trivial fixture program. */
+interface ProgramOverrides {
+	readonly resources?: unknown;
+	readonly stackOutputs?: unknown;
+	readonly [key: string]: unknown;
+}
+
+/** Options for the Terraform/OpenTofu adapter. */
+interface AdapterOptions {
+	readonly stateBackend?: ReturnType<typeof createInMemoryStateBackend>;
+	readonly engine?: EngineLike;
+	readonly binary?: string;
+	readonly toolchainVersion?: string;
+}
+
+/** What an adapter actually calls on its engine — any lane may implement it. */
+interface EngineLike {
+	readonly toolchainVersion?: string;
+	readonly binary?: string;
+	snapshot?(): unknown;
+	preview(
+		program: unknown,
+	): Promise<{ changes: readonly unknown[] }> | { changes: readonly unknown[] };
+	apply(
+		program: unknown,
+		expected: readonly unknown[],
+	):
+		| Promise<{ appliedChanges?: readonly unknown[]; outputs?: unknown }>
+		| { appliedChanges?: readonly unknown[]; outputs?: unknown };
+	refresh(program: unknown): unknown;
+	destroy(program: unknown): unknown;
+}
+
+/** Options for the offline state backend. */
+interface StateBackendOptions {
+	readonly failOnWriteFor?: string;
+}
+
+/** Options for the offline HCL engine. */
+interface EngineOptions {
+	readonly stateBackend?: ReturnType<typeof createInMemoryStateBackend>;
+	readonly lockHolder?: string;
+	readonly failAfterResource?: string;
+}
+
+export function createTrivialIacProgram(overrides: ProgramOverrides = {}) {
 	const base = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: "iac-program",
@@ -82,7 +140,7 @@ export function createWorkspaceKey(program, resourceName) {
 	return `${deploymentId}/${resourceName}`;
 }
 
-export function createTerraformAdapter(options: any = {}) {
+export function createTerraformAdapter(options: AdapterOptions = {}) {
 	const stateBackend = options.stateBackend ?? createInMemoryStateBackend();
 	// The default engine is the deterministic in-memory stand-in so the package
 	// stays offline; swap `options.engine` for createTerraformCliEngine (the
@@ -144,7 +202,7 @@ export function createTerraformAdapter(options: any = {}) {
 	});
 }
 
-export function createInMemoryStateBackend(options: any = {}) {
+export function createInMemoryStateBackend(options: StateBackendOptions = {}) {
 	const stores = new Map();
 	const locks = new Map();
 
@@ -194,7 +252,7 @@ export function createInMemoryStateBackend(options: any = {}) {
 // are the contract the CLI engine preserves (runIacBackendConformance proves
 // both). Semantics mirror the Pulumi in-memory engine so every IaC adapter in
 // HoBo folds the same way.
-export function createInMemoryHclEngine(options: any = {}) {
+export function createInMemoryHclEngine(options: EngineOptions = {}) {
 	const stateBackend = options.stateBackend ?? createInMemoryStateBackend();
 	let driftWorkspaces = new Map();
 
@@ -223,7 +281,7 @@ export function createInMemoryHclEngine(options: any = {}) {
 				}
 			}
 
-			for (const [workspaceKey, state] of Object.entries<any>(
+			for (const [workspaceKey, state] of Object.entries<StoredState>(
 				stateBackend.snapshot(),
 			)) {
 				const resourceName = workspaceKey.split("/").at(-1);
@@ -371,7 +429,7 @@ export function createInMemoryHclEngine(options: any = {}) {
 export function outputsToBindings(outputs) {
 	const bindings = {};
 
-	for (const [resourceName, resource] of Object.entries<any>(
+	for (const [resourceName, resource] of Object.entries<ResourceOutcome>(
 		outputs.resources ?? {},
 	)) {
 		for (const [outputName, value] of Object.entries(resource.outputs ?? {})) {
@@ -413,7 +471,7 @@ export async function runIacBackendConformance({ adapter, program }) {
 	const destroy = await adapter.destroy(program);
 	assertConformance(
 		destroy.kind === "outputs" &&
-			Object.values<any>(destroy.resources).every(
+			Object.values<ResourceOutcome>(destroy.resources).every(
 				(resource) => resource.status === "destroyed",
 			),
 		"destroy-clean",

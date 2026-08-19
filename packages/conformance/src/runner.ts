@@ -1,3 +1,4 @@
+import { must } from "@hobo/core/total-access";
 import { firstDiff } from "./diff.js";
 import { findLanguageSpecificGoldenIrField } from "./golden-ir.js";
 import { projectPortSuiteReport } from "./report.js";
@@ -223,7 +224,7 @@ async function evaluateCase(
 		assertions,
 		failures,
 		suiteCase,
-		actual: firstRun.result!,
+		actual: must(firstRun.result),
 	});
 
 	return { failures, assertions };

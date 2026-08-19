@@ -4,13 +4,13 @@ import path from "node:path";
 import type { CliContext } from "@hobo/cli";
 import { deploymentIdFor } from "@hobo/cli";
 import { collectStream } from "@hobo/cloud";
+import { must } from "@hobo/core/total-access";
 import {
 	createInMemoryStateBackend,
 	createPulumiAutomationAdapter,
 } from "@hobo/iac-pulumi";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	type CloudflareFetch,
 	type CloudflareFetchResponse,
@@ -252,7 +252,8 @@ describe("createDriftCommand", () => {
 				resources: Record<string, { specHash?: string }>;
 			};
 			expect(held.resources.service).toBeDefined();
-			held.resources.service!.specHash = "sha256:tampered-out-of-band";
+			must(held.resources.service, "held.resources.service").specHash =
+				"sha256:tampered-out-of-band";
 			stateBackend.write(stackKey, held);
 
 			const command = createDriftCommand({ runtime, adapter });

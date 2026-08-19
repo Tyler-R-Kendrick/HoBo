@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-
+import { must } from "@hobo/core/total-access";
 import type { LockedVisualArtifact } from "./types.js";
 
 export interface OpenUiSession {
@@ -374,7 +374,10 @@ export function lockVisualArtifact(
 	const dir = join(session.durableRoot, "visual", session.id);
 	const status =
 		session.edits.length > 0
-			? session.edits[session.edits.length - 1]!
+			? must(
+					session.edits[session.edits.length - 1],
+					"session.edits[session.edits.length - 1]",
+				)
 			: "draft";
 	const html = renderOpenUiHtml({
 		prompt: session.prompt,

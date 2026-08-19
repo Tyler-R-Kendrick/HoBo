@@ -1,5 +1,5 @@
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	type ActiveSvidRecord,
 	ConnectionService,
@@ -218,7 +218,10 @@ describe("first-class Connection aggregate", () => {
 			},
 			deployId: "deploy-1",
 			connectionId: connection.id,
-			connectionCredentialRef: connection.credentialRef!,
+			connectionCredentialRef: must(
+				connection.credentialRef,
+				"connection.credentialRef",
+			),
 			connectionProvider: "asana",
 		});
 		expect(grant.status).toBe("granted");

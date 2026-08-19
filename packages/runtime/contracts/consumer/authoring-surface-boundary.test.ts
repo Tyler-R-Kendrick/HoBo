@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { at, first } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import { agent } from "../../src/agent.js";
 import { CapabilityDeniedError } from "../../src/errors.js";
 import { createWorkflowEngine, defineWorkflow } from "../../src/workflow.js";
@@ -42,7 +42,7 @@ describe("authoring-surface journal consumer boundary", () => {
 
 		const handle = await engine.start(checkout, { id: "order-1" });
 		const journal = await engine.journal(handle.runId);
-		const interaction = pact.interactions[0]!;
+		const interaction = first(pact.interactions);
 
 		expect(handle.status).toBe(interaction.response.body.status);
 		expect(journal.map((event) => event.type)).toEqual(
@@ -51,7 +51,7 @@ describe("authoring-surface journal consumer boundary", () => {
 	});
 
 	it("does not re-run a journaled step when resuming after a restart", async () => {
-		const interaction = pact.interactions[1]!;
+		const interaction = at(pact.interactions, 1);
 		const engine = createWorkflowEngine();
 		let reserveInvocations = 0;
 		let crashed = false;
@@ -92,7 +92,7 @@ describe("authoring-surface journal consumer boundary", () => {
 	});
 
 	it("denies an undeclared agent tool with a typed capability denial", async () => {
-		const interaction = pact.interactions[2]!;
+		const interaction = at(pact.interactions, 2);
 		const engine = createWorkflowEngine();
 		const support = agent<string, unknown>({
 			name: "support",

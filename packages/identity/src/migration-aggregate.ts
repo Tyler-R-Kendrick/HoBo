@@ -3,7 +3,7 @@
  * Hands-off by construction — Matching/policy start; no Bindle config required.
  */
 import { randomUUID } from "node:crypto";
-
+import { must } from "@hobo/core/total-access";
 import {
 	type AdapterClaims,
 	type DualAudienceGrant,
@@ -177,7 +177,7 @@ export class IdentityMigrationService {
 			time: t,
 		});
 		this.append(evt);
-		return this.record!;
+		return must(this.record);
 	}
 
 	/**
@@ -238,7 +238,7 @@ export class IdentityMigrationService {
 					code: "dual-consistency-failed",
 				});
 			}
-			return { verify, record: this.record! };
+			return { verify, record: must(this.record) };
 		}
 
 		const shadow = createShadowVerifiedEvent({
@@ -287,7 +287,7 @@ export class IdentityMigrationService {
 		});
 		this.append(check);
 
-		return { verify, grant, record: this.record! };
+		return { verify, grant, record: must(this.record) };
 	}
 
 	/** Advance Harness ramp percent (0–100). Auto-called by progressive gate. */
@@ -317,7 +317,7 @@ export class IdentityMigrationService {
 			time: this.now(),
 		});
 		this.append(evt);
-		return this.record!;
+		return must(this.record);
 	}
 
 	/** Mark principal fully migrated under target (still dual until cutover). */
@@ -340,7 +340,7 @@ export class IdentityMigrationService {
 			time: this.now(),
 		});
 		this.append(evt);
-		return this.record!;
+		return must(this.record);
 	}
 
 	/**
@@ -369,7 +369,7 @@ export class IdentityMigrationService {
 		});
 		this.append(evt);
 		this.dualGrants.clear();
-		return this.record!;
+		return must(this.record);
 	}
 
 	abort(input: { reason: string; code: string }): IdentityMigrationRecord {
@@ -383,7 +383,7 @@ export class IdentityMigrationService {
 			time: this.now(),
 		});
 		this.append(evt);
-		return this.record!;
+		return must(this.record);
 	}
 
 	/** Compensate to source adapter after abort/failure. */
@@ -404,7 +404,7 @@ export class IdentityMigrationService {
 		});
 		this.append(evt);
 		this.dualGrants.clear();
-		return this.record!;
+		return must(this.record);
 	}
 
 	private requireActive(): IdentityMigrationRecord {

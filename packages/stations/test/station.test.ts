@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	assertConnectionStationAccess,
 	createBootstrapRail,
@@ -74,8 +74,10 @@ describe("@hobo/stations", () => {
 	it("rail publish/approve/activate pins active hash; production forbids bootstrap-only", () => {
 		const home = tempHome();
 		const { stationId } = initStation({ hoboHome: home, name: "prod" });
-		const events = createStationClient({ hoboHome: home, stationId }).load()!
-			.events;
+		const events = must(
+			createStationClient({ hoboHome: home, stationId }).load(),
+			"createStationClient({ hoboHome: home, stationId }).load()",
+		).events;
 		const svc = StationService.fromEvents(events, { stationId });
 		const rail = svc.publishRail({
 			id: "rail-prod",
@@ -86,7 +88,7 @@ describe("@hobo/stations", () => {
 		});
 		svc.approveRail(rail.contentHash);
 		svc.activateRail(rail.contentHash);
-		const snap = svc.snapshot()!;
+		const snap = must(svc.snapshot());
 		expect(snap.occupancy.activeRailHash).toBe(rail.contentHash);
 		expect(snap.occupancy.bootstrapActive).toBe(false);
 		svc.assertNotBootstrapOnlyInProd("production");
@@ -162,10 +164,13 @@ describe("@hobo/stations", () => {
 			importRailDocPath: brokerPath,
 		});
 		expect(result.activatedRailHash).toBeTruthy();
-		const state = createStationClient({
-			hoboHome: home,
-			stationId: result.stationId,
-		}).load()!;
+		const state = must(
+			createStationClient({
+				hoboHome: home,
+				stationId: result.stationId,
+			}).load(),
+			"createStationClient({ hoboHome: home, stationId: result.stationId, }).load()",
+		);
 		expect(Object.keys(state.rails).length).toBeGreaterThan(1);
 	});
 

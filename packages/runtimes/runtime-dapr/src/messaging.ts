@@ -56,7 +56,6 @@ export function createDaprMessaging(
 	}
 
 	const client = options.client ?? null;
-	const fidelity: "simulated" | "live" = client ? "live" : "simulated";
 	const capabilities = {
 		deliveryGuarantees: ["at-least-once", "at-most-once"] as const,
 		consumerGroups: true,

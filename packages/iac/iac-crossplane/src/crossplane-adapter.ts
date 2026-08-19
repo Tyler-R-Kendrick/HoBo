@@ -34,17 +34,63 @@ export class CrossplaneApplyError extends Error {
 // default, promoted from the HOBO-188 draft proof) and the real kubectl-driven
 // cluster (kubectl-cluster.ts) speak the same surface, so the adapter cannot
 // tell them apart — runIacBackendConformance is the proof.
+/** A composition as the adapter reads it: matched on its labels, named in a claim. */
+export interface CrossplaneComposition {
+	readonly name: string;
+	readonly labels?: Record<string, string>;
+	readonly [key: string]: unknown;
+}
+
+/** A claim as the adapter reads it — see `claimFor` for the writer. */
+export interface CrossplaneClaim {
+	readonly id: string;
+	readonly name: string;
+	readonly spec: Record<string, unknown>;
+	readonly specHash: string;
+	readonly status: {
+		readonly phase: string;
+		readonly outputs: Record<string, unknown>;
+	};
+	/** Snapshot of outputs recorded at apply time; drives status-drift detection. */
+	readonly appliedOutputs?: Record<string, unknown>;
+}
+
+/** A realized resource inside an `outputs` payload. Distinct from a claim. */
+export interface CrossplaneResourceOutcome {
+	readonly id?: string;
+	readonly status?: string;
+	readonly outputs?: Record<string, unknown>;
+}
+
+/** Fields the in-memory cluster lets a test mutate on a stored claim. */
+export interface CrossplaneClaimMutation {
+	readonly specPatch?: Record<string, unknown>;
+	readonly statusPatch?: Record<string, unknown>;
+	readonly phase?: string;
+}
+
 export interface CrossplaneClusterLike {
 	hasCrd(name: string): boolean | Promise<boolean>;
-	compositions(): any[] | Promise<any[]>;
-	applyClaim(claim: any): unknown | Promise<unknown>;
+	compositions():
+		| readonly CrossplaneComposition[]
+		| Promise<readonly CrossplaneComposition[]>;
+	applyClaim(claim: CrossplaneClaim): unknown | Promise<unknown>;
 	waitForReady(name: string, pollLimit: number): boolean | Promise<boolean>;
-	getClaim(name: string): any | Promise<any>;
+	/** Absent claims come back nullish; callers already branch on that. */
+	getClaim(
+		name: string,
+	):
+		| CrossplaneClaim
+		| undefined
+		| null
+		| Promise<CrossplaneClaim | undefined | null>;
 	claimNames(): string[] | Promise<string[]>;
 	deleteClaim(name: string): unknown | Promise<unknown>;
 }
 
-export function createFixtureIacProgram(overrides: any = {}) {
+export function createFixtureIacProgram(
+	overrides: Record<string, unknown> = {},
+) {
 	const base = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: "iac-program",
@@ -91,7 +137,14 @@ export function createFixtureIacProgram(overrides: any = {}) {
 	});
 }
 
-export function createCrossplaneIacAdapter(options: any = {}) {
+export interface CrossplaneAdapterOptions {
+	readonly cluster?: CrossplaneClusterLike;
+	readonly readyPollLimit?: number;
+}
+
+export function createCrossplaneIacAdapter(
+	options: CrossplaneAdapterOptions = {},
+) {
 	const cluster: CrossplaneClusterLike =
 		options.cluster ?? createInMemoryCrossplaneCluster();
 	const readyPollLimit = options.readyPollLimit ?? 3;
@@ -230,7 +283,15 @@ export function createCrossplaneIacAdapter(options: any = {}) {
 // The in-memory Crossplane cluster fixture (offline default; promoted from the
 // HOBO-188 draft proof). Real CRD/composition/claim semantics — including
 // stuck-claim and out-of-band-mutation seams — without a kind/k3d cluster.
-export function createInMemoryCrossplaneCluster(options: any = {}) {
+export interface InMemoryCrossplaneClusterOptions {
+	readonly installedCrds?: readonly string[];
+	readonly compositions?: readonly CrossplaneComposition[];
+	readonly stuckClaims?: readonly string[];
+}
+
+export function createInMemoryCrossplaneCluster(
+	options: InMemoryCrossplaneClusterOptions = {},
+) {
 	const installedCrds = new Set(options.installedCrds ?? REQUIRED_CRDS);
 	const compositions = structuredClone(
 		options.compositions ?? [
@@ -274,7 +335,7 @@ export function createInMemoryCrossplaneCluster(options: any = {}) {
 		deleteClaim(name) {
 			claims.delete(name);
 		},
-		mutateClaim(name, mutation: any = {}) {
+		mutateClaim(name, mutation: CrossplaneClaimMutation = {}) {
 			const claim = claims.get(name);
 			if (!claim) {
 				throw new CrossplaneProgramError(
@@ -306,9 +367,10 @@ export function createInMemoryCrossplaneCluster(options: any = {}) {
 export function outputsToBindings(outputs) {
 	const bindings = {};
 
-	for (const [resourceName, resource] of Object.entries<any>(
-		outputs.resources ?? {},
-	)) {
+	for (const [
+		resourceName,
+		resource,
+	] of Object.entries<CrossplaneResourceOutcome>(outputs.resources ?? {})) {
 		for (const [outputName, value] of Object.entries(resource.outputs ?? {})) {
 			bindings[`${resourceName}.${outputName}`] = value;
 			bindings[`\${resources.${resourceName}.outputs.${outputName}}`] = value;
@@ -348,7 +410,7 @@ export async function runIacBackendConformance({ adapter, program }) {
 	const destroy = await adapter.destroy(program);
 	assertConformance(
 		destroy.kind === "outputs" &&
-			Object.values<any>(destroy.resources).every(
+			Object.values<CrossplaneResourceOutcome>(destroy.resources).every(
 				(resource) => resource.status === "destroyed",
 			),
 		"destroy-clean",

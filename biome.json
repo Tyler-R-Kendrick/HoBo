@@ -25,7 +25,22 @@
 		{
 			"includes": ["packages/**", "!packages/**/dist/**"],
 			"linter": {
-				"enabled": true
+				"enabled": true,
+				"rules": {
+					"suspicious": {
+						"noTemplateCurlyInString": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["packages/pixel-village/public/index.html"],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"noNoninteractiveTabindex": "off"
+					}
+				}
 			}
 		},
 		{

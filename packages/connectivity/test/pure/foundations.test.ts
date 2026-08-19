@@ -6,6 +6,7 @@
  * is covered exclusively by contracts/ consumer + provider PACT suites.
  */
 
+import assert from "node:assert/strict";
 import {
 	createMeteringBus,
 	createUsageEvent,
@@ -243,7 +244,8 @@ describe("overlay CLI stubs (no HTTP)", () => {
 		});
 		expect(join.ready).toBe(true);
 
-		const magic = await overlay.configureMagicDns!({
+		assert(overlay.configureMagicDns);
+		const magic = await overlay.configureMagicDns({
 			tenantId: parseTenantId("acme"),
 			domains: ["hobo.test"],
 			nameservers: ["100.100.100.100"],
@@ -254,7 +256,8 @@ describe("overlay CLI stubs (no HTTP)", () => {
 			/split-dns|hobo\.test|controlPlaneApplied=false|TS_API_KEY/,
 		);
 
-		const funnel = await overlay.publishFunnel!({
+		assert(overlay.publishFunnel);
+		const funnel = await overlay.publishFunnel({
 			tenantId: parseTenantId("acme"),
 			backendUrl: "http://127.0.0.1:7071",
 			localPort: 7071,

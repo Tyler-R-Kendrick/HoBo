@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { CANONICAL_VERBS } from "@hobo/cli";
+import { first } from "@hobo/core/total-access";
 import { createHoboMcpServer } from "@hobo/mcp";
 import { afterEach, describe, expect, it } from "vitest";
-
 import { createComposedHoboCli } from "../src/cli.js";
 import {
 	handleMcpMessage,
@@ -92,7 +92,7 @@ describe("hobo-mcp stdio surface (3-3)", () => {
 			content: Array<{ text: string }>;
 		};
 		expect(result.isError).toBe(false);
-		const envelope = JSON.parse(result.content[0]!.text) as {
+		const envelope = JSON.parse(first(result.content).text) as {
 			verb: string;
 			code: string;
 			data: { bindleId: string };

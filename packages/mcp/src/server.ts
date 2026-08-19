@@ -103,6 +103,7 @@ export function createHoboMcpServer(
 	const auditEvents: AuthDecisionEvent[] = [];
 	const rateLimitEvents: RateLimitEvent[] = [];
 	let seq = 0;
+	const nextSeq = (): number => (seq += 1);
 
 	function record(event: AuthDecisionEvent): void {
 		auditEvents.push(event);
@@ -145,7 +146,7 @@ export function createHoboMcpServer(
 						auth,
 						decision: rl,
 						correlationId,
-						seq: (seq += 1),
+						seq: nextSeq(),
 						now: now(),
 					});
 					recordThrottle(event);
@@ -170,7 +171,7 @@ export function createHoboMcpServer(
 					name,
 					auth,
 					correlationId,
-					(seq += 1),
+					nextSeq(),
 					now(),
 				);
 				record(decision.event);
@@ -192,7 +193,7 @@ export function createHoboMcpServer(
 				auth,
 				tool,
 				correlationId,
-				seq: (seq += 1),
+				seq: nextSeq(),
 				now: now(),
 			});
 			record(decision.event);

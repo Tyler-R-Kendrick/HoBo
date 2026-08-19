@@ -65,7 +65,6 @@ export function createTestSeam(host: YardTestHost): YardTestSeam {
 		state: () => {
 			const snap = host.getSnap();
 			const bo = host.getBo();
-			const visual = host.getVisual();
 			return Object.freeze({
 				scene: seam.sceneKey,
 				ready: seam.ready,

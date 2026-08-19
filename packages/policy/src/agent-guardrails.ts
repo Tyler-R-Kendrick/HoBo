@@ -23,15 +23,7 @@ export const ACTION_CLASS_EFFECTS = Object.freeze([
 	"deny",
 ]);
 
-const ACTION_CLASS_SET = new Set(ACTION_CLASSES);
 const ACTION_CLASS_EFFECT_SET = new Set(ACTION_CLASS_EFFECTS);
-const EFFECT_RANK = new Map([
-	["deny", 0],
-	["require-approval", 1],
-	["allow-degraded", 2],
-	["warn", 3],
-	["allow", 4],
-]);
 
 export function classifyActionClass(action) {
 	const normalized = String(action ?? "").toLowerCase();

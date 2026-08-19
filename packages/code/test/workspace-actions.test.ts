@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
-
+import { stripSgr as plain } from "../src/ansi.js";
 import { runInteractiveShell } from "../src/interactive-shell.js";
 import { createDefaultShellHost } from "../src/shell-host.js";
 import {
@@ -21,13 +21,6 @@ function temp(prefix: string): string {
 	const dir = mkdtempSync(join(tmpdir(), prefix));
 	roots.push(dir);
 	return dir;
-}
-
-function plain(text: string): string {
-	return text.replace(
-		new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"),
-		"",
-	);
 }
 
 describe("Bo workspace actions", () => {

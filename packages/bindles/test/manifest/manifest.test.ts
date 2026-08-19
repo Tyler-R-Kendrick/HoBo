@@ -69,7 +69,6 @@ describe("hobo.manifest/v1 loader", () => {
 		expect(
 			// The placeholder grammar under test is literally this string;
 			// interpolating it would assert against an input the parser never sees.
-			// biome-ignore lint/suspicious/noTemplateCurlyInString: literal placeholder grammar, see above
 			parseOutputPlaceholder("${resources.data.postgres#db.outputs.url}"),
 		).toEqual({
 			type: "data",
@@ -78,7 +77,6 @@ describe("hobo.manifest/v1 loader", () => {
 			output: "url",
 		});
 
-		// biome-ignore lint/suspicious/noTemplateCurlyInString: literal placeholder grammar, not an unfinished template literal
 		expect(parseOutputPlaceholder("${context.environment}")).toEqual({
 			contextPath: "environment",
 		});

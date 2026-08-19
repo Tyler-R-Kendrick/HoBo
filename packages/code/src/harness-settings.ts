@@ -10,7 +10,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-
+import { at, must } from "@hobo/core/total-access";
 import { parseModelId } from "./bo-model-catalog.js";
 
 // public-contract: durable harness/subagent settings schema id
@@ -95,8 +95,8 @@ export function migrateLegacyModelPurl(purl: string): {
 			trimmed,
 		);
 	if (!m) return null;
-	const provider = m[1]!.toLowerCase();
-	const name = decodeURIComponent(m[2]!);
+	const provider = at(m, 1).toLowerCase();
+	const name = decodeURIComponent(at(m, 2));
 	const version = m[3] ? decodeURIComponent(m[3]) : undefined;
 	const model = version !== undefined ? `${name}:${version}` : name;
 	const qualifiers: Record<string, string> = {};
@@ -212,7 +212,7 @@ export function saveHarnessSettings(
 export function cycleEffort(current: EffortLevel, delta: 1 | -1): EffortLevel {
 	const i = EFFORT_LEVELS.indexOf(current);
 	const next = (i + delta + EFFORT_LEVELS.length) % EFFORT_LEVELS.length;
-	return EFFORT_LEVELS[next]!;
+	return must(EFFORT_LEVELS[next]);
 }
 
 function shellQuote(value: string): string {
@@ -317,7 +317,7 @@ export function applySettingsToSeatCommand(
 
 	if (agentId === "codex" && baseCommand.includes(" && ")) {
 		const segments = baseCommand.split(" && ");
-		const last = segments.pop()!;
+		const last = must(segments.pop());
 		segments.push(`${prefix}${last}${flags}`);
 		return segments.join(" && ");
 	}

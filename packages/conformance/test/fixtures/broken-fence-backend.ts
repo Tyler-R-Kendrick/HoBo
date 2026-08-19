@@ -1,3 +1,4 @@
+import { must, mustGet } from "@hobo/core/total-access";
 import { createInMemoryActorHost } from "../../../runtimes/runtime-local/src/actor-host/in-memory.js";
 import { createRuntimeLocalDurabilityBackend } from "../../../runtimes/runtime-local/test/conformance/helpers.js";
 import type { RuntimeDurabilityBackend } from "../../src/suites/runtime-port/types.js";
@@ -26,7 +27,7 @@ function createBrokenFenceActorHost() {
 			const prior = leases.get(actorKey);
 			const lease = Object.freeze({
 				key: actorKey,
-				holderId: request.holderId!,
+				holderId: must(request.holderId),
 				fenceToken: (prior?.fenceToken ?? 0n) + 1n,
 				expiresAt: "9999-12-31T23:59:59.999Z",
 				release() {},
@@ -49,6 +50,9 @@ function createBrokenFenceActorHost() {
 			if (typeof request.fold !== "function") {
 				throw new TypeError("request.fold must be a function");
 			}
+			// Bind it here: the narrowing above does not survive into the nested
+			// closures below, which is what the assertion was papering over.
+			const fold = request.fold;
 			const stream = getBrokenStream(streams, actorKey);
 			const initialState = structuredClone(request.initialState);
 
@@ -73,7 +77,7 @@ function createBrokenFenceActorHost() {
 				read() {
 					let state = structuredClone(initialState) as { value: number };
 					for (const event of stream.events) {
-						state = request.fold!(state, structuredClone(event)) as {
+						state = fold(state, structuredClone(event)) as {
 							value: number;
 						};
 					}
@@ -95,7 +99,7 @@ function getBrokenStream(
 	if (!streams.has(key)) {
 		streams.set(key, { events: [] });
 	}
-	return streams.get(key)!;
+	return mustGet(streams, key);
 }
 
 function requireNonEmptyString(value: unknown, fieldName: string): string {

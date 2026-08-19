@@ -4,6 +4,7 @@
  * No parallel flag system. Evaluation is pure over (ruleset@seq, context).
  */
 import { createHash, randomUUID } from "node:crypto";
+import { must } from "@hobo/core/total-access";
 
 // public-contract: flag event schema version.
 export const FLAG_EVENT_SCHEMA_VERSION = "hobo.flag-events/v1" as const;
@@ -590,7 +591,7 @@ function digestContext(context: FlagEvalContext): string {
 	const attrs = context.attributes
 		? Object.keys(context.attributes)
 				.sort()
-				.map((k) => `${k}=${context.attributes![k]}`)
+				.map((k) => `${k}=${must(context.attributes)[k]}`)
 				.join("&")
 		: "";
 	return `sha256:${createHash("sha256")
@@ -605,13 +606,13 @@ function stickyKeyFromContext(
 	stickyKey?: string,
 ): string {
 	const attrs = context.attributes ?? {};
-	if (stickyKey && attrs[stickyKey]) return attrs[stickyKey]!;
+	if (stickyKey && attrs[stickyKey]) return must(attrs[stickyKey]);
 	for (const k of keys) {
 		if (k === "targetingKey") return context.targetingKey;
 		const parts = k.split(".");
-		const leaf = parts[parts.length - 1]!;
-		if (attrs[k]) return attrs[k]!;
-		if (attrs[leaf]) return attrs[leaf]!;
+		const leaf = must(parts[parts.length - 1]);
+		if (attrs[k]) return must(attrs[k]);
+		if (attrs[leaf]) return must(attrs[leaf]);
 	}
 	return context.targetingKey;
 }

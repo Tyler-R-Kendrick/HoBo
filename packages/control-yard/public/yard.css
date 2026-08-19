@@ -198,7 +198,7 @@ main {
 }
 
 #sheet[hidden] {
-	display: none !important;
+	display: none;
 }
 
 #sheet header {

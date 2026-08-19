@@ -6,6 +6,7 @@
  * gate, the host's promote-hint honesty, and streaming turns flowing through
  * the real InteractiveShell driver with Esc cancellation.
  */
+import assert from "node:assert/strict";
 import {
 	chmodSync,
 	mkdtempSync,
@@ -16,6 +17,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
+import { must } from "@hobo/core/total-access";
 import { afterAll, describe, expect, it } from "vitest";
 import { AGUI_EVENT } from "../src/agui.js";
 import {
@@ -303,11 +305,9 @@ describe("engine-backed shell host", () => {
 	it("advertises the engine and streams turns without mutating anything", async () => {
 		const host = createDefaultShellHost({ engine: fakeEngine() });
 		expect(host.engineLabel).toBe("fake · test/fake-model");
-		expect(host.streamTurn).toBeDefined();
+		assert(host.streamTurn);
 		const events: EngineTurnEvent[] = [];
-		const result = await host.streamTurn!("do the thing", (e) =>
-			events.push(e),
-		);
+		const result = await host.streamTurn("do the thing", (e) => events.push(e));
 		expect(result.ok).toBe(true);
 		expect(events.some((e) => e.type === AGUI_EVENT.textMessageContent)).toBe(
 			true,
@@ -318,19 +318,21 @@ describe("engine-backed shell host", () => {
 
 	it("raises an approval gate only when the sandbox actually changed", async () => {
 		const edited = createDefaultShellHost({ engine: fakeEngine() });
-		const gate = await edited.pendingApprovalFor!({
+		assert(edited.pendingApprovalFor);
+		const gate = await edited.pendingApprovalFor({
 			ok: true,
 			text: "done",
 			toolCalls: 1,
 			aborted: false,
 		});
 		expect(gate).not.toBeNull();
-		expect(gate!.runId).toBe("run-x");
-		expect(gate!.changes).toEqual([{ status: "M", path: "src/app.ts" }]);
+		expect(must(gate).runId).toBe("run-x");
+		expect(must(gate).changes).toEqual([{ status: "M", path: "src/app.ts" }]);
 
 		// An answer-only turn must never nag for a promotion.
+		assert(edited.pendingApprovalFor);
 		expect(
-			await edited.pendingApprovalFor!({
+			await edited.pendingApprovalFor({
 				ok: true,
 				text: "just an answer",
 				toolCalls: 0,
@@ -342,8 +344,9 @@ describe("engine-backed shell host", () => {
 		const readOnly = createDefaultShellHost({
 			engine: fakeEngine({ changes: async () => [] }),
 		});
+		assert(readOnly.pendingApprovalFor);
 		expect(
-			await readOnly.pendingApprovalFor!({
+			await readOnly.pendingApprovalFor({
 				ok: true,
 				text: "read only",
 				toolCalls: 2,
@@ -362,7 +365,8 @@ describe("engine-backed shell host", () => {
 			env: { ...process.env, HOBO_HOME: home },
 		});
 		// No such sandbox run exists → promotion must fail closed, not pretend.
-		const text = await host.promote!({
+		assert(host.promote);
+		const text = await host.promote({
 			runId: "run-x",
 			sandboxRoot: "/tmp/sandbox/run-x",
 			changes: [{ status: "M", path: "src/app.ts" }],
@@ -374,7 +378,8 @@ describe("engine-backed shell host", () => {
 
 	it("surfaces provider-reported usage only once something was spent", async () => {
 		const quiet = createDefaultShellHost({ engine: fakeEngine() });
-		expect(quiet.usageLabel!()).toBe("");
+		assert(quiet.usageLabel);
+		expect(quiet.usageLabel()).toBe("");
 		const spent = createDefaultShellHost({
 			engine: fakeEngine({
 				usage: () => ({
@@ -387,7 +392,8 @@ describe("engine-backed shell host", () => {
 				}),
 			}),
 		});
-		expect(spent.usageLabel!()).toBe("1.2k in · 340 out · $0.0123");
+		assert(spent.usageLabel);
+		expect(spent.usageLabel()).toBe("1.2k in · 340 out · $0.0123");
 	});
 });
 

@@ -1,6 +1,9 @@
 import { execFileSync } from "node:child_process";
-
-import type { CrossplaneClusterLike } from "./crossplane-adapter.js";
+import type {
+	CrossplaneClaim,
+	CrossplaneClusterLike,
+	CrossplaneComposition,
+} from "./crossplane-adapter.js";
 import { CrossplaneProgramError } from "./crossplane-adapter.js";
 
 // The REAL cluster lane (HOBO-716): the same CrossplaneClusterLike surface the
@@ -108,7 +111,28 @@ export function createKubectlCrossplaneCluster(
 		Atomics.wait(new Int32Array(shared), 0, 0, ms);
 	}
 
-	function toClusterDocument(claim: any): string {
+	/** A `kubectl get` document as this module reads it. */
+	interface KubectlCondition {
+		readonly type?: string;
+		readonly status?: string;
+		readonly reason?: string;
+	}
+
+	interface KubectlClaimDocument {
+		readonly metadata?: {
+			readonly name?: string;
+			readonly uid?: string;
+			readonly annotations?: Record<string, string>;
+		};
+		readonly spec?: Record<string, unknown>;
+		readonly status?: {
+			readonly conditions?: readonly KubectlCondition[];
+			readonly outputs?: Record<string, unknown>;
+		};
+		readonly [key: string]: unknown;
+	}
+
+	function toClusterDocument(claim: CrossplaneClaim): string {
 		return JSON.stringify({
 			apiVersion: claimApiVersion,
 			kind: claimKind,
@@ -125,9 +149,12 @@ export function createKubectlCrossplaneCluster(
 		});
 	}
 
-	function fromClusterDocument(document: any): any {
+	function fromClusterDocument(
+		document: KubectlClaimDocument,
+	): CrossplaneClaim {
 		const spec = document.spec ?? {};
-		const conditions: any[] = document.status?.conditions ?? [];
+		const conditions: readonly KubectlCondition[] =
+			document.status?.conditions ?? [];
 		const ready = conditions.some(
 			(condition) => condition.type === "Ready" && condition.status === "True",
 		);
@@ -171,7 +198,7 @@ export function createKubectlCrossplaneCluster(
 			}
 			return kinds.has(name);
 		},
-		compositions(): any[] {
+		compositions(): CrossplaneComposition[] {
 			ensureAvailable();
 			const raw = run([
 				"get",
@@ -189,7 +216,7 @@ export function createKubectlCrossplaneCluster(
 				labels: item.metadata?.labels ?? {},
 			}));
 		},
-		applyClaim(claim: any): void {
+		applyClaim(claim: CrossplaneClaim): void {
 			ensureAvailable();
 			runWithInput(
 				["apply", "-n", namespace, "-f", "-"],
@@ -205,7 +232,7 @@ export function createKubectlCrossplaneCluster(
 			}
 			return false;
 		},
-		getClaim(name: string): any {
+		getClaim(name: string): CrossplaneClaim | undefined {
 			ensureAvailable();
 			try {
 				const raw = run([

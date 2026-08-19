@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { bindle } from "@hobo/bindles";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import {
 	convexApp,
@@ -27,7 +28,7 @@ describe("@hobo/convex", () => {
 			return { backend, auth, web };
 		});
 		const root = convexRootFromAnnotations(
-			definition.resources.web!.annotations,
+			must(definition.resources.web, "definition.resources.web").annotations,
 		);
 		expect(root).toBe("examples/convex-swaghaus");
 		expect(

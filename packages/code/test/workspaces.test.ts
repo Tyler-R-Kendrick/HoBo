@@ -8,6 +8,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { first, must } from "@hobo/core/total-access";
 import { afterAll, describe, expect, it } from "vitest";
 import {
 	allocateAgentWorkspaces,
@@ -122,7 +123,10 @@ describe("per-agent workspaces", () => {
 			run: async (args) => {
 				if (args[0] === "list") return { code: 0, stdout: "", stderr: "" };
 				if (args[0] === "init") return { code: 0, stdout: "", stderr: "" };
-				const name = args[args.indexOf("--name") + 1]!;
+				const name = must(
+					args[args.indexOf("--name") + 1],
+					"args[args.indexOf('--name') + 1]",
+				);
 				created.push(name);
 				return { code: 0, stdout: `/rifts/${name}\n`, stderr: "" };
 			},
@@ -161,14 +165,16 @@ describe("per-agent workspaces", () => {
 			bundled: () => null,
 			git: async (args, cwd) => {
 				cuts.push(cwd);
-				mkdirSync(args[args.length - 2]!, { recursive: true });
+				mkdirSync(must(args[args.length - 2]), {
+					recursive: true,
+				});
 				return { code: 0, stderr: "" };
 			},
 		});
 		expect(result.backend).toBe("git-worktree");
 		expect(cuts).toEqual([repo]);
 		expect(result.reason).toMatch(/no rift binary/);
-		expect(result.workspaces[0]!.path).toBe(join(fallback, "claude"));
+		expect(first(result.workspaces).path).toBe(join(fallback, "claude"));
 	});
 
 	it("shares the workspace only when asked", async () => {

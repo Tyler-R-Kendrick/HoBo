@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { stripSgr as plain } from "../src/ansi.js";
 import { cellWidth } from "../src/rubberhose.js";
 import {
 	BROADCAST,
@@ -11,13 +12,6 @@ import { BroadcastFrame } from "../src/tui-components.js";
 import { centerLine } from "../src/tui-layout.js";
 import { renderTuiTree } from "../src/tui-render.js";
 import { findDescendantById, h, query } from "../src/tui-tree.js";
-
-function plain(value: string): string {
-	return value.replace(
-		new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"),
-		"",
-	);
-}
 
 describe("broadcast frame (cartoon CRT / film bezel)", () => {
 	it("paints a rounded pixel-ink silhouette, not a decorated unicode box", () => {

@@ -11,6 +11,7 @@ import {
 	type IacProgram,
 	type IacProvider,
 } from "@hobo/cloud";
+import { at, first } from "@hobo/core/total-access";
 import { createInMemoryActorHost } from "@hobo/data";
 import { createCloudflareProvider } from "@hobo/provider-cloudflare";
 import {
@@ -19,7 +20,6 @@ import {
 	type RuntimeLocalEventStore,
 } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	createFixtureSession,
 	createYardClient,
@@ -150,7 +150,7 @@ describe("CLI <-> Yard boundary pact", () => {
 
 		const expected = interaction(
 			pact,
-			pact.interactions[0]!.description,
+			first(pact.interactions).description,
 		).response;
 		expect(rendered.ok).toBe(true);
 		if (!rendered.ok) return;
@@ -173,7 +173,7 @@ describe("CLI <-> Yard boundary pact", () => {
 
 		const expected = interaction(
 			pact,
-			pact.interactions[1]!.description,
+			at(pact.interactions, 1).description,
 		).response;
 		expect(result.status).toBe(expected.status);
 		if (result.status === "rejected") throw new Error("unexpected rejection");
@@ -196,7 +196,7 @@ describe("CLI <-> Yard boundary pact", () => {
 
 		const expected = interaction(
 			pact,
-			pact.interactions[2]!.description,
+			at(pact.interactions, 2).description,
 		).response;
 		expect(result.status).toBe(expected.status);
 		expect([...result.destroyed].sort()).toEqual(expected.destroyed);
@@ -211,7 +211,7 @@ describe("CLI <-> Yard boundary pact", () => {
 
 		const expected = interaction(
 			pact,
-			pact.interactions[3]!.description,
+			at(pact.interactions, 3).description,
 		).response;
 		expect(rendered.ok).toBe(false);
 		if (rendered.ok) return;

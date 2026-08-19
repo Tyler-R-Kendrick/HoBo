@@ -84,13 +84,13 @@ test("scope-boundary register routes all six M0 scope-out categories", () => {
 });
 
 test("dry-run fixtures produce the promoted decisions: passed / blocked / failed / passed", () => {
-	const clean = evaluateUpgradeDryRun(UPGRADE_DRY_RUN_FIXTURES.cleanUpgrade!);
+	const clean = evaluateUpgradeDryRun(UPGRADE_DRY_RUN_FIXTURES.cleanUpgrade);
 	assert.equal(clean.status, "passed");
 	assert.deepEqual(clean.blockedReasons, []);
 	assert.deepEqual(clean.mutationCommands, []);
 
 	const blocked = evaluateUpgradeDryRun(
-		UPGRADE_DRY_RUN_FIXTURES.blockedUpgrade!,
+		UPGRADE_DRY_RUN_FIXTURES.blockedUpgrade,
 	);
 	assert.equal(blocked.status, "blocked");
 	assert.ok(
@@ -99,21 +99,21 @@ test("dry-run fixtures produce the promoted decisions: passed / blocked / failed
 	assert.ok(blocked.unsupportedPath);
 
 	const failed = evaluateUpgradeDryRun(
-		UPGRADE_DRY_RUN_FIXTURES.failedMigration!,
+		UPGRADE_DRY_RUN_FIXTURES.failedMigration,
 	);
 	assert.equal(failed.status, "failed");
 	assert.equal(failed.rollbackEvidence.state, "required-before-execution");
 
 	const rollbackReady = evaluateUpgradeDryRun(
-		UPGRADE_DRY_RUN_FIXTURES.rollbackReady!,
+		UPGRADE_DRY_RUN_FIXTURES.rollbackReady,
 	);
 	assert.equal(rollbackReady.status, "passed");
 	assert.equal(rollbackReady.rollbackEvidence.state, "recoverable");
 });
 
 test("dry-run reports are deterministic (stable digest) and carry support handoff", () => {
-	const first = evaluateUpgradeDryRun(UPGRADE_DRY_RUN_FIXTURES.cleanUpgrade!);
-	const second = evaluateUpgradeDryRun(UPGRADE_DRY_RUN_FIXTURES.cleanUpgrade!);
+	const first = evaluateUpgradeDryRun(UPGRADE_DRY_RUN_FIXTURES.cleanUpgrade);
+	const second = evaluateUpgradeDryRun(UPGRADE_DRY_RUN_FIXTURES.cleanUpgrade);
 	assert.equal(first.digest, second.digest);
 	assert.equal(first.supportHandoff.owner, "Support Workflow");
 	assert.ok(first.releaseNotes.requiredInputs.length >= 4);

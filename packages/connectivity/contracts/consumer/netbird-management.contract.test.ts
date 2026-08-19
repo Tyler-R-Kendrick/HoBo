@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
 import { parseTenantId } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { createNetbirdOverlay } from "../../src/overlay/netbird.js";
 import { createNetbirdApiClient } from "../../src/overlay/netbird-api.js";
@@ -47,7 +48,11 @@ describe("NetbirdManagementApi consumer contract", () => {
 		});
 		expect(join.ready).toBe(true);
 
-		const magic = await overlay.configureMagicDns!({
+		const configureMagicDns = must(
+			overlay.configureMagicDns,
+			"overlay.configureMagicDns",
+		);
+		const magic = await configureMagicDns({
 			tenantId: parseTenantId("acme"),
 			domains: ["hobo.test"],
 			nameservers: ["100.100.100.100"],

@@ -12,6 +12,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import * as totalAccess from "@hobo/core/total-access";
 import { initStation, persistStationCapabilityManifest } from "@hobo/stations";
 import { runAgentsCli } from "./agent-harness-init.js";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
@@ -297,19 +298,23 @@ function editDistance(a: string, b: string): number {
 	const dp: number[][] = Array.from({ length: m + 1 }, () =>
 		Array.from({ length: n + 1 }, () => 0),
 	);
-	for (let i = 0; i <= m; i++) dp[i]![0] = i;
-	for (let j = 0; j <= n; j++) dp[0]![j] = j;
+	for (let i = 0; i <= m; i++) totalAccess.must(dp[i])[0] = i;
+	for (let j = 0; j <= n; j++) totalAccess.first(dp)[j] = j;
 	for (let i = 1; i <= m; i++) {
+		// Hoist both rows: the inner loop then indexes a row directly instead of
+		// walking `dp` twice per cell.
+		const prev = totalAccess.must(dp[i - 1]);
+		const cur = totalAccess.must(dp[i]);
 		for (let j = 1; j <= n; j++) {
 			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-			dp[i]![j] = Math.min(
-				dp[i - 1]![j]! + 1,
-				dp[i]![j - 1]! + 1,
-				dp[i - 1]![j - 1]! + cost,
+			cur[j] = Math.min(
+				totalAccess.must(prev[j]) + 1,
+				totalAccess.must(cur[j - 1]) + 1,
+				totalAccess.must(prev[j - 1]) + cost,
 			);
 		}
 	}
-	return dp[m]![n]!;
+	return totalAccess.must(totalAccess.must(dp[m])[n]);
 }
 
 /**
@@ -487,7 +492,7 @@ function parseArgv(argv: readonly string[]): {
 	const flags: Record<string, string | boolean> = {};
 	const positional: string[] = [];
 	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i]!;
+		const a = totalAccess.must(argv[i]);
 		if (a === "--") {
 			positional.push(...argv.slice(i + 1));
 			break;
@@ -1662,7 +1667,7 @@ export function applyDenseChrome(message: string): string {
 	};
 	return lines
 		.map((line, idx) => {
-			if (idx === 0 && titleMap[line]) return titleMap[line]!;
+			if (idx === 0 && titleMap[line]) return totalAccess.must(titleMap[line]);
 			// Short next-step idioms
 			return line
 				.replace(/^ next · hobo-code promote (.+)$/, " next · pr $1")
@@ -1698,7 +1703,7 @@ export async function runHoboCodeCli(
 		};
 	}
 	const { verb, args, flags, defaultedVerb } = parsed;
-	const json = deps.json === true || flags.json === true;
+	const _json = deps.json === true || flags.json === true;
 	const dense =
 		deps.dense === true ||
 		flags.dense === true ||
@@ -2096,7 +2101,7 @@ export async function runHoboCodeCli(
 
 	if (verb === "auth") {
 		const sub = (args[0] ?? "status").toLowerCase();
-		const completeCode =
+		const _completeCode =
 			typeof flags.complete === "string"
 				? flags.complete
 				: args[0]?.toLowerCase() === "login" && args[1] === "--complete"
@@ -3995,22 +4000,10 @@ export async function runHoboCodeCli(
 	};
 }
 
-function shortHash(hash?: string): string {
-	if (!hash) return "bootstrap";
-	const bare = hash.replace(/^sha256:/, "");
-	return bare.length > 4 ? `${bare.slice(0, 4)}…` : bare;
-}
-
 /** Presentation: station:local → local; keep other ids scannable. */
 function shortStation(id: string): string {
 	if (id === "station:local" || id.endsWith(":local")) return "local";
 	return shortId(id.replace(/^station:/, ""), 22);
-}
-
-/** Presentation: room-main → main. */
-function shortRoom(id: string): string {
-	if (id === "room-main" || id === "main") return "main";
-	return shortId(id.replace(/^room-/, ""), 22);
 }
 
 /** Presentation: code/<run> → <run> when code/ prefix. */
@@ -4044,33 +4037,6 @@ function displayPath(
 function shortId(id: string, max = 22): string {
 	if (id.length <= max) return id;
 	return `${id.slice(0, Math.max(1, max - 1))}…`;
-}
-
-/** Who-fold label: strip worker- noise, then shortId. */
-function shortWho(name: string, max = 6): string {
-	const cleaned = name.replace(/^worker-/, "").replace(/^human:/, "");
-	return shortId(cleaned.length > 0 ? cleaned : name, max);
-}
-
-/** Strip package-path noise from provider hints for scan-friendly chrome. */
-function shortProviderLabel(hint: string, max = 28): string {
-	const cleaned = hint
-		.replace(/\s*\(composition\)\s*$/i, "")
-		.replace(/^withastro\//, "")
-		.replace(/^@hobo\//, "")
-		.trim();
-	return shortId(cleaned.length > 0 ? cleaned : hint, max);
-}
-
-/**
- * Provider row: id alone when package collapses to the same token;
- * otherwise `id · package` (no composition / org path noise).
- */
-function formatProviderLine(id: string, packageHint: string, max = 28): string {
-	const pkg = shortProviderLabel(packageHint, max);
-	if (pkg === id || pkg.length === 0) return id;
-	// package is a thin alias of id (e.g. "flue" vs "flue-harness") — keep when distinct
-	return `${id} · ${pkg}`;
 }
 
 /** Distinguishing node tail (class already shown in inventory). */
@@ -4215,189 +4181,6 @@ function renderDispatchSummary(input: {
 	// Product brand lives on status/help; verb panels use glyph+tail.
 	const title = input.defaultVerb ? `${glyph} ★` : `${glyph} d`;
 	return panel(title, rows);
-}
-
-function capacityBar(running: number, capacity: number, width = 10): string {
-	const cap = Math.max(1, capacity);
-	const filled = Math.min(width, Math.round((running / cap) * width));
-	const empty = Math.max(0, width - filled);
-	return `[${"█".repeat(filled)}${"░".repeat(empty)}]`;
-}
-
-/** Short class labels for inventory scan (presentation only). */
-function nodeClassLabel(cls: string): string {
-	switch (cls) {
-		case "local-process":
-			return "lo";
-		case "named-endpoint":
-			return "ep";
-		case "worktree":
-			return "wt";
-		case "rift":
-			return "rift";
-		case "mxc":
-			return "mxc";
-		case "openshell":
-			return "os";
-		default:
-			return shortId(cls, 8);
-	}
-}
-
-function renderNodeInventory(
-	poolId: string,
-	nodes: readonly {
-		readonly nodeId: string;
-		readonly class: string;
-		readonly status: string;
-		readonly capacity: number;
-		readonly running: number;
-	}[],
-): string {
-	const rows: string[] = [];
-	if (nodes.length === 0) {
-		rows.push("empty→★");
-	} else {
-		const online = nodes.filter((n) => n.status === "online").length;
-		const freeTotal = nodes.reduce(
-			(n, x) => n + Math.max(0, x.capacity - x.running),
-			0,
-		);
-		const busyTotal = nodes.reduce((n, x) => n + x.running, 0);
-		const nodeWord = nodes.length === 1 ? "node" : "nodes";
-		const busyBit = busyTotal > 0 ? ` · ${busyTotal} busy` : "";
-		const onBit =
-			online === nodes.length && busyTotal === 0 ? "" : ` · ${online} on`;
-		const allIdle = busyTotal === 0 && online === nodes.length;
-		if (allIdle && nodes.length <= 4) {
-			const bits = nodes.map((n) => {
-				const mark = n.status === "online" ? "●" : "○";
-				return `${mark}${nodeClassLabel(n.class)}${n.capacity}`;
-			});
-			rows.push(`${nodes.length}·${bits.join("·")}`);
-		} else {
-			rows.push(
-				`summary · ${nodes.length} ${nodeWord}${onBit}${busyBit} · ${freeTotal} free`,
-			);
-			rows.push(`CLASS    LOAD     RUN/CAP  ID`);
-			for (const n of nodes) {
-				const free = Math.max(0, n.capacity - n.running);
-				const mark = n.status === "online" ? "●" : "○";
-				const bar = capacityBar(n.running, n.capacity, 8);
-				const cls = nodeClassLabel(n.class).padEnd(8);
-				const load = `${n.running}/${n.capacity}`.padEnd(5);
-				const id = shortNodeTail(n.nodeId).padEnd(12);
-				rows.push(`${mark} ${cls} ${bar}  ${load} ${id}`);
-				if (free === 0 && n.status === "online") {
-					rows.push(`        ▲ at capacity`);
-				}
-			}
-		}
-	}
-	const nodesTitle = poolId === "default" ? "▣ n" : `▣ n·pool ${poolId}`;
-	return panel(nodesTitle, rows);
-}
-
-function renderRoomInventory(
-	hiveId: string,
-	rooms: readonly {
-		readonly roomId: string;
-		readonly name: string;
-		readonly participants: readonly {
-			readonly kind: string;
-			readonly displayName: string;
-		}[];
-	}[],
-): string {
-	const rows: string[] = [];
-	if (rooms.length === 0) {
-		// empty cue: ◇ = join (human)
-		rows.push("empty→◇");
-	} else {
-		const humans = rooms.reduce(
-			(n, r) => n + r.participants.filter((p) => p.kind === "human").length,
-			0,
-		);
-		const agents = rooms.reduce(
-			(n, r) => n + r.participants.filter((p) => p.kind === "agent").length,
-			0,
-		);
-		const roomWord = rooms.length === 1 ? "room" : "rooms";
-		// Drop zero counts; empty when nobody present.
-		const occupancyBits = [
-			humans > 0 ? `◇${humans}` : null,
-			agents > 0 ? `◆${agents}` : null,
-		].filter((x): x is string => x !== null);
-		const allEmpty = occupancyBits.length === 0;
-		const occupancy = allEmpty ? "empty" : occupancyBits.join("·");
-		// Single-room empty: one summary row (no twin # empty row).
-		if (allEmpty && rooms.length === 1) {
-			const roomLabel = shortRoom(rooms[0]!.roomId);
-			// single empty room: fold id (title brands rooms)
-			rows.push(`${roomLabel}·empty`);
-		} else {
-			// Single occupied room: room + who (glyph counts live in who).
-			if (rooms.length === 1 && !allEmpty) {
-				const room = rooms[0]!;
-				const roomLabel = shortRoom(room.roomId);
-				const n = room.participants.length;
-				const whoMax = n > 3 ? 3 : n > 2 ? 4 : 6;
-				const whoCap = 4;
-				const whoBits = room.participants
-					.slice(0, whoCap)
-					.map((p) => {
-						const mark = p.kind === "agent" ? "◆" : "◇";
-						return `${mark}${shortWho(p.displayName, whoMax)}`;
-					})
-					.join("");
-				const whoMore = n > whoCap ? `·+${n - whoCap}` : "";
-				// Title brands rooms; main room label omitted (default).
-				rows.push(
-					roomLabel === "main"
-						? `${whoBits}${whoMore}`
-						: `${roomLabel}·${whoBits}${whoMore}`,
-				);
-			} else {
-				rows.push(`${rooms.length}${roomWord}·${occupancy}`);
-				for (const r of rooms) {
-					const roomLabel = shortRoom(r.roomId);
-					const title =
-						r.name === r.roomId || shortRoom(r.name) === roomLabel
-							? roomLabel
-							: r.name;
-					const n = r.participants.length;
-					if (r.participants.length === 0) {
-						rows.push(
-							title === roomLabel
-								? `# ${title} · empty`
-								: `# ${title} · empty · ${roomLabel}`,
-						);
-					} else {
-						rows.push(
-							title === roomLabel
-								? `# ${title} · ${n}p`
-								: `# ${title} · ${n}p · ${roomLabel}`,
-						);
-					}
-					for (const p of r.participants) {
-						const mark = p.kind === "agent" ? "◆" : "◇";
-						// glyph carries kind — no twin word column
-						rows.push(`  ${mark} ${shortId(p.displayName, 28)}`);
-					}
-				}
-			}
-		}
-		// Occupied rooms already list who — omit ·◇ next twin (join is default).
-		// Empty still folds ·◇ so next is scannable.
-		if (rows.length === 1 && allEmpty) {
-			rows[0] = `${rows[0]}·◇`;
-		} else if (rows.length > 1) {
-			// Last token is next verb — no "next" word.
-			rows.push("◇");
-		}
-	}
-	const roomsTitle = hiveId === "default" ? "# rm" : `# rm·pool ${hiveId}`;
-	return panel(roomsTitle, rows);
 }
 
 /** Format CLI result for stdout (human or JSON). */

@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
 import { parseTenantId } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { createTailscaleOverlay } from "../../src/overlay/tailscale.js";
 import { createTailscaleApiClient } from "../../src/overlay/tailscale-api.js";
@@ -41,7 +42,11 @@ describe("TailscaleControlApi consumer contract", () => {
 				return { ok: false, stdout: "", stderr: "no" };
 			},
 		});
-		const magic = await overlay.configureMagicDns!({
+		const configureMagicDns = must(
+			overlay.configureMagicDns,
+			"overlay.configureMagicDns",
+		);
+		const magic = await configureMagicDns({
 			tenantId: parseTenantId("acme"),
 			domains: ["hobo.test"],
 			nameservers: ["100.100.100.100"],

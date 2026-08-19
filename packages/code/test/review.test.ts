@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { first, must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { reanchor } from "../src/review/review-anchors.js";
 import { createReviewContentStore } from "../src/review/review-content-store.js";
@@ -56,9 +57,9 @@ describe("hobo-code review", () => {
 				anchorId: "a",
 				generationId: "g1",
 				fileId: "f",
-				hunkId: hunks[0]!.hunkId,
-				hunkFingerprint: hunks[0]!.fingerprint,
-				selectedContentHash: hunks[0]!.lines[1]?.rawTextHash ?? "",
+				hunkId: first(hunks).hunkId,
+				hunkFingerprint: first(hunks).fingerprint,
+				selectedContentHash: first(hunks).lines[1]?.rawTextHash ?? "",
 				side: 2,
 				contextBeforeHashes: [],
 				contextAfterHashes: [],
@@ -174,7 +175,9 @@ describe("hobo-code review", () => {
 		expect(replayed.snapshot?.submission?.providerReviewId).toBe(
 			published.snapshot?.submission?.providerReviewId,
 		);
-		expect(renderReviewPane(published.snapshot!).length).toBeGreaterThan(10);
+		expect(renderReviewPane(must(published.snapshot)).length).toBeGreaterThan(
+			10,
+		);
 		const stale = await runtime.execute({
 			schemaVersion: REVIEW_COMMAND_SCHEMA,
 			commandId: "stale-1",

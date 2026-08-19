@@ -17,7 +17,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-
+import { at } from "@hobo/core/total-access";
 import {
 	type HarnessSpec,
 	isHostSpec,
@@ -358,7 +358,7 @@ export function parseCursorListModelsOutput(stdout: string): string[] {
 	for (const line of stdout.split(/\r?\n/u)) {
 		const m = /^([a-zA-Z0-9][a-zA-Z0-9._-]*)\s+-\s+/u.exec(line.trim());
 		if (!m) continue;
-		const id = m[1]!;
+		const id = at(m, 1);
 		if (seen.has(id)) continue;
 		seen.add(id);
 		ids.push(id);
@@ -387,7 +387,9 @@ export function parseGrokModelsOutput(stdout: string): string[] {
 	for (const line of stdout.split(/\r?\n/u)) {
 		const m = /^\s*[*+-]\s+(\S+)/u.exec(line);
 		if (!m) continue;
-		const id = m[1]!.replace(/\(.*\)$/u, "").trim();
+		const id = at(m, 1)
+			.replace(/\(.*\)$/u, "")
+			.trim();
 		if (!id || seen.has(id)) continue;
 		seen.add(id);
 		ids.push(id);

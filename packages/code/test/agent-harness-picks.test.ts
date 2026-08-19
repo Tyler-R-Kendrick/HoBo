@@ -13,6 +13,7 @@ import {
 	selectedPickIds,
 	shouldWriteAgentsInit,
 } from "../src/agent-harness-picks.js";
+import { hasCursorPreviousLine } from "../src/ansi.js";
 
 const dirs: string[] = [];
 afterAll(() => {
@@ -140,7 +141,7 @@ describe("agent checklist", () => {
 			]),
 		);
 		const opened = repaintAgentChecklist(0, first);
-		expect(opened.write).not.toMatch(/\x1b\[\d+F/);
+		expect(hasCursorPreviousLine(opened.write)).toBe(false);
 		expect(opened.lines).toBeGreaterThan(1);
 		const toggled = reduceChecklistKey(
 			createChecklist([

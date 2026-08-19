@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	bundleAppModuleAsWasiHttpGuest,
 	preparePrivateWasmComponent,
@@ -103,7 +103,7 @@ export const payments = {
 			await bundleAppModuleAsWasiHttpGuest({
 				projectDir: dir,
 				resourceName: name,
-				appModulePath: resolved.appModulePath!,
+				appModulePath: must(resolved.appModulePath),
 				outPath: out,
 			});
 			// Guest is wasi:http fetch-event only (not Node-importable).

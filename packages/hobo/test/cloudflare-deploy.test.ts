@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import type { IacProgram } from "@hobo/cloud";
 
 import type { EventStore } from "@hobo/core";
+import { at, first } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	type CloudflareFetch,
 	type CloudflareFetchResponse,
@@ -104,7 +104,7 @@ describe("createCloudflareClient.uploadWorker (mocked fetch, no network)", () =>
 		expect(calls.length).toBe(3);
 
 		// 1) Correct endpoint + method (Workers Script Upload).
-		const upload = calls[0]!;
+		const upload = first(calls);
 		expect(upload.url).toBe(
 			"https://api.cloudflare.com/client/v4/accounts/acct_123/workers/scripts/hobo-hello-bindle",
 		);
@@ -131,7 +131,7 @@ describe("createCloudflareClient.uploadWorker (mocked fetch, no network)", () =>
 		expect(await (modulePart as Blob).text()).toContain("export default");
 
 		// 2) Enable workers.dev route for the script.
-		const enable = calls[1]!;
+		const enable = at(calls, 1);
 		expect(enable.url).toBe(
 			"https://api.cloudflare.com/client/v4/accounts/acct_123/workers/scripts/hobo-hello-bindle/subdomain",
 		);
@@ -140,7 +140,7 @@ describe("createCloudflareClient.uploadWorker (mocked fetch, no network)", () =>
 		expect(JSON.parse(enable.body as string)).toEqual({ enabled: true });
 
 		// 3) Derive the deployed URL from the account subdomain.
-		const sub = calls[2]!;
+		const sub = at(calls, 2);
 		expect(sub.url).toBe(
 			"https://api.cloudflare.com/client/v4/accounts/acct_123/workers/subdomain",
 		);
@@ -215,11 +215,11 @@ describe("createCloudflareClient.scriptExists (mocked fetch, no network)", () =>
 			fetch,
 		});
 		await expect(client.scriptExists("hobo-hello-bindle")).resolves.toBe(true);
-		expect(calls[0]!.method).toBe("GET");
-		expect(calls[0]!.url).toBe(
+		expect(first(calls).method).toBe("GET");
+		expect(first(calls).url).toBe(
 			"https://api.cloudflare.com/client/v4/accounts/a/workers/scripts/hobo-hello-bindle",
 		);
-		expect(calls[0]!.headers.Authorization).toBe("Bearer t");
+		expect(first(calls).headers.Authorization).toBe("Bearer t");
 	});
 
 	it("returns false on 404 (deleted out of band = drift)", async () => {
@@ -255,7 +255,7 @@ describe("createCloudflareDeployProvider (mocked fetch, no network)", () => {
 		const outputs = await provider.apply(programFor("dep-1", "service"));
 
 		// The upload carried the exact committed module bytes.
-		const upload = calls[0]!;
+		const upload = first(calls);
 		const form = upload.body as FormData;
 		const uploaded = await (form.get("worker.mjs") as Blob).text();
 		expect(uploaded).toBe(readFileSync(WORKER_MODULE, "utf-8"));

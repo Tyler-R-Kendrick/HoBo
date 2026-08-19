@@ -11,6 +11,7 @@ import {
 	parseTopicSpec,
 	tenantScopedTopicName,
 } from "../src/ports/messaging.js";
+import { first } from "../src/total-access.js";
 
 describe("@hobo/core messaging port", () => {
 	it("pins wasi:messaging interface ref", () => {
@@ -80,7 +81,7 @@ describe("@hobo/core messaging port", () => {
 		});
 		expect(consumed).toHaveLength(1);
 		expect(consumed[0]?.body).toEqual({ hello: "world" });
-		bus.ack(consumed[0]!.messageId, consumed[0]!.leaseId);
+		bus.ack(first(consumed).messageId, first(consumed).leaseId);
 
 		const again = await bus.consume("events" as never, "workers" as never);
 		expect(again).toHaveLength(0);

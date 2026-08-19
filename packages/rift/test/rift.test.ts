@@ -7,6 +7,7 @@
  * and in particular the property that matters: an agent writing in place must
  * not reach the source.
  */
+
 import { execSync, spawnSync } from "node:child_process";
 import {
 	existsSync,
@@ -19,6 +20,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { must } from "@hobo/core/total-access";
 import { afterAll, describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -152,7 +154,7 @@ describe("workspace creation", () => {
 				isolatesInPlaceWrites: true,
 			},
 		});
-		const path = made.workspace!.path;
+		const path = must(made.workspace, "made.workspace").path;
 		expect(existsSync(join(path, "src", "app.ts"))).toBe(true);
 		writeFileSync(join(path, "src", "app.ts"), "changed\n");
 		expect(readFileSync(join(root, "src", "app.ts"), "utf8")).toBe(
@@ -301,16 +303,26 @@ describe.runIf(probeOverlayfs())("overlayfs isolation", () => {
 	it("keeps an in-place write inside the workspace", () => {
 		const root = source();
 		const made = createWorkspace({ root, name: "agent" });
-		expect(made.workspace!.tier).toBe("overlayfs");
+		expect(must(made.workspace, "made.workspace").tier).toBe("overlayfs");
 		execSync(
-			`sh -c ${JSON.stringify(execCommand(made.workspace!, "echo EDIT >> src/app.ts"))}`,
+			`sh -c ${JSON.stringify(execCommand(must(made.workspace, "made.workspace"), "echo EDIT >> src/app.ts"))}`,
 		);
 		// An append is exactly what hardlinks leak; the source must be intact.
 		expect(readFileSync(join(root, "src", "app.ts"), "utf8")).toBe(
 			"original content\n",
 		);
 		expect(
-			readFileSync(join(made.workspace!.upper!, "src", "app.ts"), "utf8"),
+			readFileSync(
+				join(
+					must(
+						must(made.workspace, "made.workspace").upper,
+						"made.workspace.upper",
+					),
+					"src",
+					"app.ts",
+				),
+				"utf8",
+			),
 		).toContain("EDIT");
 	});
 });
@@ -480,7 +492,7 @@ describe("crash windows", () => {
 		// nothing knew about but that blocked the name forever.
 		const root = source();
 		const made = createWorkspace({ root, name: "half" });
-		const path = made.workspace!.path;
+		const path = must(made.workspace, "made.workspace").path;
 		expect(existsSync(path)).toBe(true);
 		// Rewind the journal to just the intent, as a crash mid-clone would.
 		const journal = join(root, RIFT_DIR, "events.jsonl");
@@ -504,7 +516,7 @@ describe("a removal that dies mid-delete", () => {
 		// permanently, until a human deleted the directory by hand.
 		const root = source();
 		const made = createWorkspace({ root, name: "w" });
-		const path = made.workspace!.path;
+		const path = must(made.workspace, "made.workspace").path;
 		const base = join(root, RIFT_DIR, "workspaces", "w");
 		// Record the removal, then leave the directory behind, as a crash would.
 		const journal = join(root, RIFT_DIR, "events.jsonl");
@@ -518,7 +530,9 @@ describe("a removal that dies mid-delete", () => {
 		const retry = createWorkspace({ root, name: "w" });
 		expect(retry.reason).toBeUndefined();
 		expect(retry.workspace).not.toBeNull();
-		expect(existsSync(retry.workspace!.path)).toBe(true);
+		expect(existsSync(must(retry.workspace, "retry.workspace").path)).toBe(
+			true,
+		);
 		expect(path).toBeDefined();
 	});
 });
@@ -568,7 +582,9 @@ describe("create never destroys what it cannot prove is dead", () => {
 		// loss of every agent's tree.
 		const root = source();
 		const made = createWorkspace({ root, name: "claude" });
-		const upper = made.workspace!.upper ?? made.workspace!.path;
+		const upper =
+			must(made.workspace, "made.workspace").upper ??
+			must(made.workspace, "made.workspace").path;
 		writeFileSync(join(upper, "WORK.txt"), "UNCOMMITTED AGENT WORK\n");
 		// Lose the journal, exactly as external truncation would.
 		writeFileSync(join(root, RIFT_DIR, "events.jsonl"), "");

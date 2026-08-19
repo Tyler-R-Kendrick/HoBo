@@ -1,5 +1,5 @@
+import { first } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	createInMemoryKafkaTransport,
 	createKafkaMessaging,
@@ -48,7 +48,7 @@ describe("kafka live transport path", () => {
 		expect(batch).toHaveLength(1);
 		expect(batch[0]?.body).toEqual({ id: 1 });
 
-		bus.ack(batch[0]!.messageId, batch[0]!.leaseId);
+		bus.ack(first(batch).messageId, first(batch).leaseId);
 		await bus.flush?.();
 
 		const again = await bus.consume(topic, "workers" as never);

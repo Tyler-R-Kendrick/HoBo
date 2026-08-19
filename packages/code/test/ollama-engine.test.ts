@@ -6,6 +6,7 @@
  */
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { first, last, must } from "@hobo/core/total-access";
 import { afterAll, describe, expect, it } from "vitest";
 import { AGUI_EVENT } from "../src/agui.js";
 import { engineMode, localModelFromSpec } from "../src/engine-resolve.js";
@@ -145,7 +146,7 @@ describe("local SLM engine", () => {
 			host,
 		});
 		expect(created.engine).not.toBeNull();
-		const engine = created.engine!;
+		const engine = must(created.engine);
 		expect(engine.id).toBe("ollama");
 		expect(engine.modelLabel).toBe(DEFAULT_LOCAL_MODEL);
 
@@ -160,9 +161,9 @@ describe("local SLM engine", () => {
 		).toHaveLength(3);
 		// The run is bracketed and the wait is announced, so the UI has
 		// something honest to show before the first token lands.
-		expect(events[0]!.type).toBe(AGUI_EVENT.runStarted);
+		expect(first(events).type).toBe(AGUI_EVENT.runStarted);
 		expect(events.some((e) => e.type === AGUI_EVENT.stateDelta)).toBe(true);
-		expect(events.at(-1)!.type).toBe(AGUI_EVENT.runFinished);
+		expect(last(events).type).toBe(AGUI_EVENT.runFinished);
 		expect(result.usage?.inputTokens).toBe(21);
 		expect(result.usage?.outputTokens).toBe(7);
 		expect(result.usage?.costUsd).toBe(0);
@@ -178,11 +179,11 @@ describe("local SLM engine", () => {
 			instructions: "be terse",
 			host,
 		});
-		await engine!.turn("first", () => {});
-		const second = await engine!.turn("second", () => {});
+		await must(engine).turn("first", () => {});
+		const second = await must(engine).turn("second", () => {});
 		expect(second.ok).toBe(true);
 		// Two turns of usage, not one.
-		expect(engine!.usage().totalTokens).toBe(56);
+		expect(must(engine).usage().totalTokens).toBe(56);
 	});
 
 	it("abort stops an in-flight turn and reports it as cancelled", async () => {
@@ -196,8 +197,8 @@ describe("local SLM engine", () => {
 			instructions: "be terse",
 			host,
 		});
-		const turn = engine!.turn("long one", () => {});
-		setTimeout(() => void engine!.abort(), 80);
+		const turn = must(engine).turn("long one", () => {});
+		setTimeout(() => void must(engine).abort(), 80);
 		const result = await turn;
 		expect(result.aborted).toBe(true);
 		expect(result.ok).toBe(false);
@@ -237,7 +238,7 @@ describe("local SLM engine", () => {
 			instructions: "x",
 			host,
 		});
-		const result = await engine!.turn("hi", () => {});
+		const result = await must(engine).turn("hi", () => {});
 		expect(result.ok).toBe(false);
 		expect(result.aborted).toBe(false);
 		expect(result.error).toMatch(/500/);

@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
+import { first } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
+import { stripSgr as plain } from "../src/ansi.js";
 import { harnessViewFromLivePanes } from "../src/harness-session-view.js";
 import type { InSessionPanes } from "../src/in-session-panes.js";
 import { refreshInSessionPanes } from "../src/in-session-panes.js";
@@ -44,10 +46,6 @@ function realTmuxRunner(): MuxRunner {
 	};
 }
 
-function plain(line: string): string {
-	return line.replace(/\x1b\[[0-9;]*m/gu, "");
-}
-
 describe("live multi-pane TV attach parity", () => {
 	it("paints side-by-side splits inside the bezel; switch keeps ▐█▒", async () => {
 		if (!(await tmuxOk())) return;
@@ -68,7 +66,9 @@ describe("live multi-pane TV attach parity", () => {
 
 		let live: InSessionPanes = {
 			session: "hobo",
-			windows: [{ name: "pi", target: ids[0]!, kind: "coding-agent" }],
+			windows: [
+				{ name: "pi", target: first(ids, "ids"), kind: "coding-agent" },
+			],
 			focused: 0,
 			focusedPane: 0,
 			capture: "",

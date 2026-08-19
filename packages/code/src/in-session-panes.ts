@@ -4,6 +4,7 @@
  * forward to the focused leaf pane. Multi-pane tabs = tmux splits in one window.
  */
 import { join } from "node:path";
+import { first } from "@hobo/core/total-access";
 import { loadHarnessCatalog, seatingOrder } from "./agent-harness-catalog.js";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
 import { isStaleSeatCapture, seatShellCommand } from "./agent-seat.js";
@@ -322,7 +323,7 @@ async function attachLeavesToWindows(
 			out.push(window);
 			continue;
 		}
-		const active = panes.find((row) => row.active) ?? panes[0]!;
+		const active = panes.find((row) => row.active) ?? first(panes);
 		out.push({
 			...window,
 			target: active.id,

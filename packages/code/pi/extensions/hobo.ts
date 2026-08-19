@@ -103,10 +103,10 @@ async function buildHoboHeaderLines(
 ): Promise<string[]> {
 	try {
 		const { HOBO_LOGO_TUI } = await import(
-			join(pkgRoot, "dist", "_generated", "hobo-logo-tui.js") as any
+			join(pkgRoot, "dist", "_generated", "hobo-logo-tui.js")
 		);
 		const { renderBoIdleFrame, BO_IDLE_REST } = await import(
-			join(pkgRoot, "dist", "splash.js") as any
+			join(pkgRoot, "dist", "splash.js")
 		);
 		const logo = (HOBO_LOGO_TUI as string)
 			.split("\n")
@@ -142,7 +142,7 @@ async function runSurface(
 ): Promise<void> {
 	try {
 		const { runHoboCodeCli, formatHoboCodeResult } = await import(
-			join(pkgRoot, "dist", "cli.js") as any
+			join(pkgRoot, "dist", "cli.js")
 		);
 		const result = await runHoboCodeCli([...argv], { json: false });
 		const text = formatHoboCodeResult(result, false);
@@ -204,7 +204,7 @@ export default function (pi: ExtensionAPI) {
 		handler: async (_args, ctx) => {
 			try {
 				const { renderBoIdleFrame, boIdleClipName } = await import(
-					join(pkgRoot, "dist", "splash.js") as any
+					join(pkgRoot, "dist", "splash.js")
 				);
 				const frame = Math.floor(Math.random() * 12);
 				ctx.ui.notify(

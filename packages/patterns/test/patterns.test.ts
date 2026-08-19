@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -130,9 +131,8 @@ describe("@hobo/patterns", () => {
 	});
 
 	it("renders typed parameters and rejects path escape", () => {
-		const pattern = catalog.patterns.find(
-			(item) => item.id === "bindle.named",
-		)!;
+		const pattern = catalog.patterns.find((item) => item.id === "bindle.named");
+		assert(pattern, "catalog is missing the bindle.named pattern");
 		const rendered = renderPattern({
 			catalog,
 			pattern,

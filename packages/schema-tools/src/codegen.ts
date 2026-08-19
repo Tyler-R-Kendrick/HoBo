@@ -160,7 +160,7 @@ async function generatePackageProtos(
 	}
 }
 
-async function copyGeneratedTree(
+async function _copyGeneratedTree(
 	sourceDir: string,
 	targetDir: string,
 ): Promise<void> {
@@ -251,9 +251,10 @@ async function generateAll(
 
 	try {
 		for (const pkg of packages) {
-			const stagingDir = write
-				? pkg.generatedDir
-				: join(stagingRoot!, pkg.name, "src", "_generated");
+			const stagingDir =
+				write || stagingRoot === undefined
+					? pkg.generatedDir
+					: join(stagingRoot, pkg.name, "src", "_generated");
 			const outputDir = stagingDir;
 			await generatePackageProtos(pkg, invocation, outputDir);
 

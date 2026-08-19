@@ -1,3 +1,4 @@
+import { first } from "@hobo/core/total-access";
 import {
 	type ReviewAnchor,
 	ReviewAnchorHealth,
@@ -46,7 +47,7 @@ export function reanchor(
 		(hunk) => hunk.fingerprint === anchor.hunkFingerprint,
 	);
 	if (sameFingerprint.length === 1) {
-		const hunk = sameFingerprint[0]!;
+		const hunk = first(sameFingerprint);
 		return {
 			kind: "exact",
 			newAnchor: {
@@ -70,7 +71,7 @@ export function reanchor(
 		hunk.lines.some((line) => line.rawTextHash === anchor.selectedContentHash),
 	);
 	if (sameContent.length === 1) {
-		const hunk = sameContent[0]!;
+		const hunk = first(sameContent);
 		return {
 			kind: "unique-context",
 			newAnchor: {

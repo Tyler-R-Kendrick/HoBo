@@ -10,12 +10,10 @@ import {
 	ReviewLineKind,
 } from "../_generated/code_review_pb.js";
 
-export function sanitizeDisplay(text: string): string {
-	return text.replace(
-		/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu,
-		"\uFFFD",
-	);
-}
+import { sanitizeDisplay } from "../ansi.js";
+
+// Re-exported: this module was the original home, and callers still import it here.
+export { sanitizeDisplay };
 
 export function hashText(text: string): string {
 	return createHash("sha256").update(text).digest("hex");

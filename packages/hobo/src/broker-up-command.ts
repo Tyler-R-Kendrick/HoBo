@@ -191,7 +191,6 @@ export function createBrokerAwareUpCommand(
 					deps.createRemoteClient?.(target.uri) ??
 					createRemoteBrokerClient({
 						brokerUri: target.uri,
-						presenter,
 						...(deps.discovery ? { discovery: deps.discovery } : {}),
 						...(deps.mockRemote
 							? { mock: deps.mockRemote }

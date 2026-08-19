@@ -424,7 +424,9 @@ export function inspectConfigSurface(
 	for (const s of STACK_ORDER) byStack[s] = [];
 	for (const k of knobs) {
 		for (const s of k.stacks) {
-			(byStack[s] ??= []).push(k);
+			const bucket = byStack[s] ?? [];
+			byStack[s] = bucket;
+			bucket.push(k);
 		}
 	}
 

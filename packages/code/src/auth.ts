@@ -15,7 +15,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-
+import { first } from "@hobo/core/total-access";
 import {
 	createStationClient,
 	initStation,
@@ -171,13 +171,13 @@ export function resolveStationTarget(input: {
 		return { mode: "local", stationId: "station:local", tenant };
 	}
 	if (ids.length === 1) {
-		return { mode: "local", stationId: ids[0]!, tenant };
+		return { mode: "local", stationId: first(ids), tenant };
 	}
 	if (ids.length > 1) {
 		// Prefer station:local name fragment, else first
 		const preferred =
 			ids.find((id) => id.endsWith(":local") || id.includes("local")) ??
-			ids[0]!;
+			first(ids);
 		return { mode: "local", stationId: preferred, tenant };
 	}
 	return { mode: "local", stationId: "station:local", tenant };

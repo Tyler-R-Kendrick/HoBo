@@ -1,8 +1,8 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	createProjectEveAgent,
 	discoverProjectEveAgents,
@@ -298,10 +298,18 @@ describe("agents-configure", () => {
 		});
 		expect(state.modelOffers.length).toBeGreaterThan(0);
 		expect(state.field).toBe("model");
-		const first = state.modelOffers[state.modelCursor]!;
+		const first = must(
+			state.modelOffers[state.modelCursor],
+			"state.modelOffers[state.modelCursor]",
+		);
 		state = press(state, "\x1b[C", home, project);
 		expect(state.modelId).not.toBe(first.id);
-		expect(state.model).toBe(state.modelOffers[state.modelCursor]!.runtimeId);
+		expect(state.model).toBe(
+			must(
+				state.modelOffers[state.modelCursor],
+				"state.modelOffers[state.modelCursor]",
+			).runtimeId,
+		);
 		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(
 			/\w+\/[\w.:-]+/,
 		);
@@ -346,7 +354,10 @@ describe("agents-configure", () => {
 		expect(formatAgentsConfigureLines(state).join("\n")).toMatch(
 			/Codex models/,
 		);
-		const first = state.modelOffers[state.modelCursor]!.id;
+		const first = must(
+			state.modelOffers[state.modelCursor],
+			"state.modelOffers[state.modelCursor]",
+		).id;
 		state = press(state, "\x1b[C", home);
 		expect(state.modelId).not.toBe(first);
 		expect(state.via).toBe("codex");
@@ -391,7 +402,7 @@ describe("agents-configure", () => {
 			(row) => row.baseUrl === "http://127.0.0.1:8080/v1",
 		);
 		expect(idx).toBeGreaterThanOrEqual(0);
-		const offer = state.modelOffers[idx]!;
+		const offer = must(state.modelOffers[idx], "state.modelOffers[idx]");
 		state = {
 			...state,
 			model: offer.runtimeId,

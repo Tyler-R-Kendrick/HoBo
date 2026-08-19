@@ -1,3 +1,4 @@
+import { must } from "@hobo/core/total-access";
 import {
 	type ContentHash,
 	contentHashOf,
@@ -110,7 +111,7 @@ export function planYardGeneration(options: {
 				(policy.allowedRuntimeIds.length === 0 ||
 					policy.allowedRuntimeIds.includes(r.runtimeId)) &&
 				(policy.allowedConnectorIds.length === 0 ||
-					policy.allowedConnectorIds.includes(r.generatorConnectorId!)),
+					policy.allowedConnectorIds.includes(must(r.generatorConnectorId))),
 		)
 		.sort((a, b) => {
 			if (a.default !== b.default) return a.default ? -1 : 1;

@@ -4,6 +4,7 @@ import {
 	createMockProviderFromPact,
 	loadPactDirectory,
 } from "@hobo/contract-harness";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 
 const contractsDir = path.resolve(
@@ -21,7 +22,7 @@ describe("runtime-oci-host consumer contract", () => {
 		const pact = pacts.find((p) => p.provider.name === "RuntimeOciHost");
 		expect(pact).toBeDefined();
 
-		const mock = createMockProviderFromPact(pact!);
+		const mock = createMockProviderFromPact(must(pact));
 
 		const ensure = await mock.handle({
 			method: "POST",

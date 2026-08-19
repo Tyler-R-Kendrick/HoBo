@@ -129,7 +129,9 @@ export function eveAgentRootPath(
 		return workspaceRoot === "agent" ? "agent" : `${workspaceRoot}/${agent.id}`;
 	}
 	const parent = agent.parentId ?? "agent";
-	return `agent/subagents/${agent.id}`;
+	const parentRoot =
+		workspaceRoot === "agent" ? "agent" : `${workspaceRoot}/${parent}`;
+	return `${parentRoot}/subagents/${agent.id}`;
 }
 
 /**

@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
 import {
 	type HarnessCatalogDiagnostic,
 	loadHarnessCatalog,
@@ -96,7 +96,7 @@ describe("harness catalog", () => {
 		});
 		const spec = loadHarnessCatalog().find((row) => row.id === "live");
 		expect(spec?.label).toBe("Live");
-		const planned = planSpecHunks(spec!, {
+		const planned = planSpecHunks(must(spec), {
 			home: "/tmp",
 			dest: {
 				source: "ollama",

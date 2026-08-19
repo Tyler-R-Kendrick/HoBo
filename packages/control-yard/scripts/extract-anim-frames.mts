@@ -11,7 +11,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = join(ROOT, "assets");
 const OUT = join(ROOT, "tmp", "frames");
 
-const index = JSON.parse(
+const _index = JSON.parse(
 	readFileSync(join(ASSETS, "assets_index.json"), "utf8"),
 ) as {
 	spritesheets: Record<

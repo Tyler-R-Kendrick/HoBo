@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
+import { stripSgr as plain } from "../src/ansi.js";
 import {
 	answerBtw,
 	captureBtwSnapshot,
@@ -25,13 +25,6 @@ const overlayFixture = join(
 	"visual",
 	"shell-btw-overlay.tui.txt",
 );
-
-function plain(frame: string): string {
-	return frame.replace(
-		new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"),
-		"",
-	);
-}
 
 describe("btw side-chat", () => {
 	it("matches btw / /btw prefixes and dismiss words", () => {

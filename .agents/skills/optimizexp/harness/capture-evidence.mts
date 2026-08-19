@@ -276,7 +276,7 @@ function writeReplayHtml(dir: string, featureId: string, scenario: string, prima
 <meta charset="utf-8"><title>OptimizeXP replay: ${featureId} / ${scenario}</title>
 <style>body{background:#111;color:#eee;font:14px monospace;margin:2rem}pre{background:#000;padding:1rem;min-height:12rem;white-space:pre-wrap}button{padding:.5rem 1rem}</style>
 <h1>${featureId} / ${scenario}</h1><p>Replayable terminal capture: <a href="${relative}">${relative}</a></p>
-<button id="play">Play</button> <button id="stop">Stop</button><pre id="screen"></pre>
+<button type="button" id="play">Play</button> <button type="button" id="stop">Stop</button><pre id="screen"></pre>
 <script>const frames=${JSON.stringify(frames)};let timer=0,stopped=false;const screen=document.querySelector('#screen');document.querySelector('#stop').onclick=()=>{stopped=true;clearTimeout(timer)};document.querySelector('#play').onclick=()=>{stopped=false;screen.textContent='';let i=0;const next=()=>{if(stopped||i>=frames.length)return;const [delay,type,text]=frames[i++];if(type==='o')screen.textContent+=text;timer=setTimeout(next,Math.max(10,delay*1000))};next()};</script>
 `, "utf8");
 }

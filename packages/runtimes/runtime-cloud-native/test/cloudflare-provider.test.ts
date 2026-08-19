@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import { mustGet } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	CLOUDFLARE_REMOTE_HANDLER_UNBOUND,
 	CLOUDFLARE_TOKEN_VERIFY_URL,
@@ -28,12 +28,6 @@ const serveCtx = (
 	privateComponents: [{ resourceName: "api", projectDir: "/tmp" }],
 	...overrides,
 });
-
-function mustGet<K, V>(map: ReadonlyMap<K, V>, key: K): V {
-	const value = map.get(key);
-	if (value === undefined) throw new Error(`missing map entry: ${String(key)}`);
-	return value;
-}
 
 function activeTokenFetch(calls: { url: string; init?: RequestInit }[]) {
 	return (async (input: URL | RequestInfo, init?: RequestInit) => {

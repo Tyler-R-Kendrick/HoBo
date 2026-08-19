@@ -1,5 +1,5 @@
+import { first } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	createDaprActorHost,
 	createDaprMessaging,
@@ -31,7 +31,7 @@ describe("dapr live client path", () => {
 		const batch = await bus.consume("events" as never, "g1" as never);
 		expect(batch).toHaveLength(1);
 		expect(batch[0]?.body).toEqual({ hello: true });
-		bus.ack(batch[0]!.messageId, batch[0]!.leaseId);
+		bus.ack(first(batch).messageId, first(batch).leaseId);
 		await bus.flush?.();
 		const again = await bus.consume("events" as never, "g1" as never);
 		expect(again).toHaveLength(0);

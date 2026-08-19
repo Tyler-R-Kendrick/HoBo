@@ -6,7 +6,7 @@
  * discovery endpoints. Real hosted brokers plug in without changing CLI control flow.
  */
 import type { PrincipalRef } from "@hobo/core";
-
+import { mustGet } from "@hobo/core/total-access";
 import {
 	type BrokerDiscoveryClient,
 	type BrokerDiscoveryDocument,
@@ -16,8 +16,6 @@ import {
 } from "./broker-discovery.js";
 import {
 	authorizationHeaders,
-	type CredentialPresenter,
-	createCredentialPresenter,
 	type PresentedCredential,
 } from "./credential-presenter.js";
 
@@ -102,7 +100,6 @@ export function createRemoteBrokerClient(options: {
 	readonly brokerUri: string;
 	readonly discovery?: BrokerDiscoveryClient;
 	readonly fetchImpl?: typeof fetch;
-	readonly presenter?: CredentialPresenter;
 	/**
 	 * In-process mock store. When set, no network is used for place/claim/session.
 	 * HONEST SCOPE for live remote lane when mock is injected in tests.
@@ -121,7 +118,6 @@ export function createRemoteBrokerClient(options: {
 				: {}),
 		});
 	const fetchImpl = options.fetchImpl ?? fetch;
-	const presenter = options.presenter ?? createCredentialPresenter();
 	let cachedDiscovery: BrokerDiscoveryDocument | null = null;
 
 	async function getDiscovery(): Promise<BrokerDiscoveryDocument> {
@@ -351,7 +347,7 @@ export function createMockRemoteBrokerState(options?: {
 						"HOBO_CLAIM_TOKEN_INVALID",
 					);
 				}
-				const dep = deployments.get(deploymentId)!;
+				const dep = mustGet(deployments, deploymentId, "deployments");
 				if (dep.expiresAt < now()) {
 					throw new RemoteBrokerClientError(
 						"anonymous claim token expired",
@@ -410,7 +406,7 @@ export function createMockRemoteBrokerState(options?: {
 					"HOBO_CLAIM_TOKEN_INVALID",
 				);
 			}
-			const dep = deployments.get(deploymentId)!;
+			const dep = mustGet(deployments, deploymentId, "deployments");
 			if (dep.expiresAt < now() && dep.owner === null) {
 				throw new RemoteBrokerClientError(
 					"claim token expired",

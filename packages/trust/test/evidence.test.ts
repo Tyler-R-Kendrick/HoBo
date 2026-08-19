@@ -11,7 +11,7 @@ import {
 
 const TESTED_AT = Date.UTC(2026, 7, 1);
 
-export const baseInput = (
+const baseInput = (
 	overrides: Partial<TrustEvidenceInput> = {},
 ): TrustEvidenceInput => {
 	const draft: TrustEvidenceInput = {

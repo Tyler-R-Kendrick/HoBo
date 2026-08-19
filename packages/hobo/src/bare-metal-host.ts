@@ -3,8 +3,8 @@ import { createServer, type Server } from "node:http";
 import type { BindleDefinition } from "@hobo/bindles";
 import { loadBindleDefinition } from "@hobo/cli";
 import { sanitizeDnsLabel } from "@hobo/core";
+import { first, must } from "@hobo/core/total-access";
 import type { Yard } from "@hobo/yards";
-
 import {
 	type BareMetalYard,
 	composeBareMetalTopology,
@@ -330,7 +330,7 @@ export async function serveProjectOnBareMetalYard(options: {
 						: {}),
 				})
 			: null;
-	const yardHandle = options.yard ?? ownedYard!;
+	const yardHandle = options.yard ?? must(ownedYard);
 	const basePort =
 		options.port ?? yardHandle.config.defaultPort ?? DEFAULT_DEV_PORT;
 
@@ -437,7 +437,7 @@ export async function serveProjectOnBareMetalYard(options: {
 	);
 
 	const exposedEndpoints = endpoints.filter((endpoint) => endpoint.external);
-	const primary = exposedEndpoints[0]!;
+	const primary = first(exposedEndpoints);
 	let probe: { status: number; body: string };
 	try {
 		const response = await fetch(`${primary.url}/`);

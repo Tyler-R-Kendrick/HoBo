@@ -10,7 +10,6 @@ function tsTypeForField(field: ConfigFieldDef): string {
 		// This is emitted TypeScript source: a template-literal *type* in the
 		// generated .d.ts. A real template literal would interpolate at codegen
 		// time and emit the wrong type.
-		// biome-ignore lint/suspicious/noTemplateCurlyInString: emitted TS source, see above
 		return "`[REDACTED:${string}]` | string";
 	}
 	switch (field.type) {

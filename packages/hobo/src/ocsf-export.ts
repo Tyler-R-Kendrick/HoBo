@@ -2,6 +2,7 @@ import { createHash, createPublicKey, createVerify } from "node:crypto";
 
 import type { CredentialAuditRow, CredentialGrantAudit } from "@hobo/cloud";
 import type { EventEnvelope } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { JWT_ALGORITHM, type JwtSvidIssuer } from "@hobo/identity";
 
 // OCSF evidence export for HoBo's audit facts (FR/attest, NFR-018, ADR-0046 §2).
@@ -479,7 +480,7 @@ export function credentialAuditToOcsf(
 
 function orderingFor(seqs: readonly number[]): OcsfBatch["ordering"] {
 	for (let i = 1; i < seqs.length; i++) {
-		if (seqs[i]! <= seqs[i - 1]!) {
+		if (must(seqs[i]) <= must(seqs[i - 1])) {
 			return { mode: "unordered", reason: "non-monotonic-seq" };
 		}
 	}

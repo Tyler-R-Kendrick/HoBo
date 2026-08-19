@@ -7,8 +7,11 @@
  * Nothing in the suite could tell the difference, so nothing objected.
  * These tests encode the identity so that failure mode is now loud.
  */
+
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { HOBO_LOGO_TUI } from "../src/_generated-art/hobo-logo-tui.js";
+import { sgrRuns } from "../src/ansi.js";
 import {
 	createInitialShellState,
 	renderShellFrame,
@@ -45,9 +48,9 @@ describe("ink cards (thick outlines + hard sticker shadow)", () => {
 		// Shadow column on the body/bottom rows and a shadow row underneath,
 		// offset one cell right — the sticker look.
 		expect(lines[1]).toContain(INK.shadow);
-		expect(lines[lines.length - 1]!.trimEnd()).toMatch(
-			new RegExp(`^ ${INK.shadow}+$`),
-		);
+		expect(
+			must(lines[lines.length - 1], "lines[lines.length - 1]").trimEnd(),
+		).toMatch(new RegExp(`^ ${INK.shadow}+$`));
 	});
 
 	it("keeps every line exactly the requested width, colour or not", () => {
@@ -91,7 +94,7 @@ describe("strict black & white with rare accents", () => {
 			expect(go).toContain(ACCENT.go);
 			expect(go).not.toContain(ACCENT.spark);
 			// No rainbow chrome: those two plus reset are the whole palette.
-			const used = spark.match(/\u001b\[[0-9;]*m/g) ?? [];
+			const used = sgrRuns(spark);
 			expect(new Set(used)).toEqual(new Set([ACCENT.spark, ACCENT.reset]));
 		} finally {
 			if (noColor === undefined) delete process.env.NO_COLOR;
@@ -143,7 +146,7 @@ describe("helpers", () => {
 
 	it("centreBlock centres art within the width", () => {
 		const [line] = centreBlock(["xx"], 10);
-		expect(cellWidth(line!)).toBe(10);
+		expect(cellWidth(must(line, "line"))).toBe(10);
 		expect(line).toBe("    xx    ");
 		const [shifted] = centreBlock(["   xx"], 10);
 		expect(shifted).toBe("    xx    ");

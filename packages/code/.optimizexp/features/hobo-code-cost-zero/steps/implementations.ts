@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { must } from "@hobo/core/total-access";
 import type { OptimizexpWorld } from "./world.ts";
 
 const PKG = path.resolve(process.cwd(), "packages/code");
@@ -87,7 +88,10 @@ export function onCriticalPath(world: OptimizexpWorld): void {
 }
 
 export function exerciseSurface(world: OptimizexpWorld): void {
-	world.lastCommand = DISCOVERY_PRIMARY.command!;
+	world.lastCommand = must(
+		DISCOVERY_PRIMARY.command,
+		"DISCOVERY_PRIMARY.command",
+	);
 	const r = runHoboCode(["cost"]);
 	world.lastExitCode = r.status;
 	world.lastStdout = r.stdout;

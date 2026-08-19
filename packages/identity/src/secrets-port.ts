@@ -3,7 +3,7 @@
  * Preferred paths: bound-resource / provider-federation. Static hatch is last.
  */
 import { createHash, createHmac, randomUUID } from "node:crypto";
-
+import { must } from "@hobo/core/total-access";
 import type { SecretSourceRank } from "./config-types.js";
 
 export type SecretsAccessResult =
@@ -158,7 +158,7 @@ export function createVaultJwtSecretsPort(options: {
 			const idx = entry?.versions.indexOf(versionId) ?? -1;
 			const seed =
 				idx >= 0 && entry
-					? entry.seeds[idx]!
+					? must(entry.seeds[idx], "entry.seeds[idx]")
 					: createHmac("sha256", root)
 							.update(`${name}:${versionId}`)
 							.digest("hex");

@@ -73,6 +73,21 @@ export function parseParams(
 	return out;
 }
 
+/**
+ * The rendering to use when nothing else selected one: the explicit default, or
+ * the first listed. A pattern with no renderings at all is a malformed pattern,
+ * so say that instead of handing back `undefined`.
+ */
+function defaultRendering<T extends { readonly isDefault?: boolean }>(
+	renderings: readonly T[],
+): T[] {
+	const chosen = renderings.find((item) => item.isDefault) ?? renderings[0];
+	if (chosen === undefined) {
+		throw new Error("pattern has no renderings");
+	}
+	return [chosen];
+}
+
 export function renderPattern(input: {
 	readonly catalog: PatternCatalog;
 	readonly pattern: PatternManifest;
@@ -93,10 +108,7 @@ export function renderPattern(input: {
 			? named
 			: multiFile.length > 1
 				? multiFile
-				: [
-						input.pattern.renderings.find((item) => item.isDefault) ??
-							input.pattern.renderings[0]!,
-					];
+				: defaultRendering(input.pattern.renderings);
 	const params = parseParams(input.pattern, input.params);
 	const files = renderings.map((rendering) => {
 		const body = fillTemplate(

@@ -176,7 +176,7 @@ describe("S3-02 identity adversarial guards", () => {
 			},
 			audience: "hobo-gateway",
 			agentName: "deployer",
-			hostPublicKeys: attestedDocument().hostPublicKeys,
+			hostPublicKeys,
 			knownImageDigests: [IMAGE_DIGEST],
 			now: NOW,
 		});

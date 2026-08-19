@@ -8,6 +8,7 @@ import {
 	subjectErasureRequested,
 } from "@hobo/cloud";
 import type { PrincipalRef } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 
 export interface EraseCommandDeps {
 	// The shared Yard runtime whose durable log records the erasure request.
@@ -67,7 +68,8 @@ export function createEraseCommand(deps: EraseCommandDeps = {}): CommandModule {
 				};
 			}
 
-			const lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
+			const lastSeq =
+				events.length > 0 ? must(events[events.length - 1]).seq : 0;
 			// Continue the fenced deployment stream with the current owner epoch
 			// rather than bypassing the fence (same rule as drift).
 			const fenceToken = currentFenceToken(runtime.store, stream);

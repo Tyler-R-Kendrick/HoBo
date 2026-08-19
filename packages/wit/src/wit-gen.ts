@@ -131,10 +131,13 @@ export async function writeGeneratedBindings(
 	try {
 		for (const target of GENERATION_TARGETS) {
 			const targetOut = join(outDir, target.outSubdir);
-			const witInput =
-				"stagedHoboOnly" in target && target.stagedHoboOnly
-					? ((stagedRoot ??= await stageHoboSdkWitRoot()), stagedRoot)
-					: join(PACKAGE_ROOT, target.witPath);
+			let witInput: string;
+			if ("stagedHoboOnly" in target && target.stagedHoboOnly) {
+				stagedRoot ??= await stageHoboSdkWitRoot();
+				witInput = stagedRoot;
+			} else {
+				witInput = join(PACKAGE_ROOT, target.witPath);
+			}
 
 			await execFileAsync(
 				process.execPath,

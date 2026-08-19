@@ -5,7 +5,7 @@ import {
 	parseQueueName,
 	parseRunId,
 } from "@hobo/core";
-
+import { must } from "@hobo/core/total-access";
 import { type RuntimeDurabilityBackend, readEventStream } from "./types.js";
 
 export async function proveCheckoutDurability(
@@ -28,7 +28,9 @@ export async function proveCheckoutDurability(
 			event: { type: string; sku?: string },
 		) =>
 			event.type === "cart.ItemReserved"
-				? { reservedItems: [...state.reservedItems, event.sku!] }
+				? {
+						reservedItems: [...state.reservedItems, must(event.sku)],
+					}
 				: state,
 	});
 	const cartLease = actorHost.acquire(`cart:${runId}`, {

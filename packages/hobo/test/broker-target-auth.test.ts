@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	BROKER_DISCOVERY_SCHEMA,
 	createBrokerAwareUpCommand,
@@ -346,10 +346,10 @@ describe("credential presenter dual principals", () => {
 			env: { HOBO_AGENT_SVID: "spiffe://hobo.local/agent/worker-1" },
 		});
 		expect(cred).not.toBeNull();
-		expect(cred!.principal.kind).toBe("agent");
-		expect(cred!.humanPrincipal?.id).toBe("user:alice");
-		expect(cred!.scheme).toBe("dpop-bound");
-		expect(cred!.dpopProof).toBeTruthy();
+		expect(must(cred).principal.kind).toBe("agent");
+		expect(must(cred).humanPrincipal?.id).toBe("user:alice");
+		expect(must(cred).scheme).toBe("dpop-bound");
+		expect(must(cred).dpopProof).toBeTruthy();
 	});
 });
 

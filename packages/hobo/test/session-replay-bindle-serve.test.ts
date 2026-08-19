@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bindle } from "@hobo/bindles";
+import { first, must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	listServableEntrypoints,
 	listServableEntrypointsWithReplay,
@@ -30,7 +30,7 @@ describe("session replay deep bindle serve integration", () => {
 				env: { HOBO_HOME: hoboHome, HOBO_REPLAY: "0" },
 			});
 			const html = await (
-				await web!.handler(new Request("http://127.0.0.1:4000/"))
+				await must(web).handler(new Request("http://127.0.0.1:4000/"))
 			).text();
 			expect(html).toContain(
 				"controls/capability?parentOrigin=http%3A%2F%2F127.0.0.1%3A4000",
@@ -57,7 +57,7 @@ describe("session replay deep bindle serve integration", () => {
 			},
 		});
 		const html = await (
-			await web!.handler(
+			await must(web).handler(
 				new Request("http://component.local/", {
 					headers: { host: "127.0.0.1:4173" },
 				}),
@@ -107,15 +107,17 @@ describe("session replay deep bindle serve integration", () => {
 		const apiEntry = entrypoints.find((e) => e.name === "api");
 		expect(webEntry).toBeDefined();
 		expect(apiEntry).toBeDefined();
-		const page = await webEntry!.handler(new Request("http://127.0.0.1:4000/"));
+		const page = await must(webEntry).handler(
+			new Request("http://127.0.0.1:4000/"),
+		);
 		const html = await page.text();
 		expect(html).toContain('data-hobo-replay="1"');
 		expect(page.headers.get("x-hobo-session-replay")).toBe("1");
 
 		// API Kit also exposes ingest on the wrap (JSON body pass-through).
-		const apiJson = await apiEntry!.handler(new Request("http://x/api"));
+		const apiJson = await must(apiEntry).handler(new Request("http://x/api"));
 		expect(await apiJson.json()).toEqual({ ok: true });
-		const apiIngest = await apiEntry!.handler(
+		const apiIngest = await must(apiEntry).handler(
 			new Request("http://127.0.0.1:4000/__hobo/replay/ingest", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
@@ -128,7 +130,7 @@ describe("session replay deep bindle serve integration", () => {
 		);
 		expect(apiIngest.status).toBe(202);
 
-		const ingest = await webEntry!.handler(
+		const ingest = await must(webEntry).handler(
 			new Request("http://127.0.0.1:4000/__hobo/replay/ingest", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
@@ -144,7 +146,7 @@ describe("session replay deep bindle serve integration", () => {
 		// listServableEntrypoints convenience still returns wrapped handlers
 		const plain = listServableEntrypoints(definition, { env: {} });
 		const plainWeb = plain.find((e) => e.name === "web");
-		const page2 = await plainWeb!.handler(new Request("http://x/"));
+		const page2 = await must(plainWeb).handler(new Request("http://x/"));
 		expect(await page2.text()).toContain("data-hobo-replay");
 	});
 
@@ -162,7 +164,7 @@ describe("session replay deep bindle serve integration", () => {
 			{ env: { HOBO_REPLAY: "0" } },
 		);
 		expect(sessionReplay.enabled).toBe(false);
-		const html = await entrypoints[0]!
+		const html = await first(entrypoints)
 			.handler(new Request("http://x/"))
 			.then((r) => r.text());
 		expect(html).not.toContain("data-hobo-replay");
@@ -182,7 +184,7 @@ describe("session replay deep bindle serve integration", () => {
 			evidenceControlsUrl: "http://127.0.0.1:4319/__hobo/evidence/controls",
 		});
 
-		const debug = await web!.handler(
+		const debug = await must(web).handler(
 			new Request("http://127.0.0.1:4000/?__hobo_debug=1"),
 		);
 		const html = await debug.text();
@@ -198,7 +200,7 @@ describe("session replay deep bindle serve integration", () => {
 		expect(html).toContain("__hobo_evidence_raw=1");
 		expect(html).not.toContain("__hobo_debug=1");
 
-		const app = await web!.handler(new Request("http://127.0.0.1:4000/"));
+		const app = await must(web).handler(new Request("http://127.0.0.1:4000/"));
 		expect(await app.text()).toBe('{"ok":true}');
 		expect(app.headers.get("x-hobo-evidence-overlay")).toBeNull();
 	});
@@ -223,9 +225,10 @@ describe("session replay deep bindle serve integration", () => {
 			evidenceControlsUrl: "http://127.0.0.1:4319/__hobo/evidence/controls",
 		});
 
-		const web = await entries
-			.find((entry) => entry.name === "web")!
-			.handler(new Request("http://127.0.0.1:4000/"));
+		const web = await must(
+			entries.find((entry) => entry.name === "web"),
+			"entries .find((entry) => entry.name === 'web')",
+		).handler(new Request("http://127.0.0.1:4000/"));
 		const html = await web.text();
 		expect(html).toContain('data-hobo-replay="1"');
 		expect(html).toContain('data-hobo-evidence-overlay-bridge="1"');
@@ -234,19 +237,19 @@ describe("session replay deep bindle serve integration", () => {
 			html.indexOf('data-hobo-evidence-overlay-bridge="1"'),
 		);
 		expect(web.headers.get("x-hobo-evidence-overlay")).toBe("bridge");
-		const bo = await entries
-			.find((entry) => entry.name === "web")!
-			.handler(
-				new Request("http://127.0.0.1:4000/__hobo/evidence/bo-idle.png"),
-			);
+		const bo = await must(
+			entries.find((entry) => entry.name === "web"),
+			"entries .find((entry) => entry.name === 'web')",
+		).handler(new Request("http://127.0.0.1:4000/__hobo/evidence/bo-idle.png"));
 		expect(bo.headers.get("content-type")).toBe("image/png");
 		expect(new Uint8Array(await bo.arrayBuffer()).slice(0, 8)).toEqual(
 			Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
 		);
 
-		const api = await entries
-			.find((entry) => entry.name === "api")!
-			.handler(new Request("http://127.0.0.1:4000/api"));
+		const api = await must(
+			entries.find((entry) => entry.name === "api"),
+			"entries .find((entry) => entry.name === 'api')",
+		).handler(new Request("http://127.0.0.1:4000/api"));
 		expect(await api.text()).toBe('{"ok":true}');
 		expect(api.headers.get("x-hobo-evidence-overlay")).toBeNull();
 	});
@@ -275,7 +278,7 @@ describe("session replay deep bindle serve integration", () => {
 			},
 		});
 
-		const wrapped = await web!.handler(
+		const wrapped = await must(web).handler(
 			new Request("http://127.0.0.1:4000/products?view=grid"),
 		);
 		const wrapperHtml = await wrapped.text();
@@ -289,7 +292,7 @@ describe("session replay deep bindle serve integration", () => {
 		expect(wrapped.headers.has("digest")).toBe(false);
 		expect(wrapped.headers.has("integrity")).toBe(false);
 
-		const raw = await web!.handler(
+		const raw = await must(web).handler(
 			new Request(
 				"http://127.0.0.1:4000/products?view=grid&__hobo_evidence_raw=1",
 			),
@@ -317,7 +320,9 @@ describe("session replay deep bindle serve integration", () => {
 			env: { HOBO_REPLAY: "0" },
 			evidenceControlsUrl: "http://127.0.0.1:4000/controls",
 		});
-		const response = await web!.handler(new Request("http://127.0.0.1:4000/"));
+		const response = await must(web).handler(
+			new Request("http://127.0.0.1:4000/"),
+		);
 		expect(await response.text()).not.toContain(
 			"data-hobo-evidence-overlay-bridge",
 		);
@@ -348,7 +353,9 @@ describe("session replay deep bindle serve integration", () => {
 			evidenceControlsUrl: "http://127.0.0.1:4319/controls",
 		});
 
-		const response = await web!.handler(new Request("http://127.0.0.1:4000/"));
+		const response = await must(web).handler(
+			new Request("http://127.0.0.1:4000/"),
+		);
 		expect(new Uint8Array(await response.arrayBuffer())).toEqual(encoded);
 		expect(response.headers.get("content-encoding")).toBe("gzip");
 		expect(response.headers.get("content-length")).toBe("8");
@@ -385,7 +392,9 @@ describe("session replay deep bindle serve integration", () => {
 			evidenceControlsUrl: "http://127.0.0.1:4319/controls",
 		});
 
-		const response = await web!.handler(new Request("http://127.0.0.1:4000/"));
+		const response = await must(web).handler(
+			new Request("http://127.0.0.1:4000/"),
+		);
 		expect(await response.text()).toContain(
 			"data-hobo-evidence-overlay-bridge",
 		);

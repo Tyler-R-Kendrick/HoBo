@@ -159,7 +159,15 @@ export function detectCapability(
 	if (hardlink) available.push("hardlink");
 	available.push("copy");
 
-	const tier = available[0]!;
+	// `copy` is pushed unconditionally above, so `available` is never empty.
+	// Naming the winner directly makes that fact visible to the checker.
+	const tier: CowTier = reflink
+		? "reflink"
+		: overlayfs
+			? "overlayfs"
+			: hardlink
+				? "hardlink"
+				: "copy";
 	const reason =
 		tier === "reflink"
 			? "filesystem supports FICLONE reflinks"

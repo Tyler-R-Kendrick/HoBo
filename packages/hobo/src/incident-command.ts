@@ -11,6 +11,7 @@ import {
 	createDefaultSafetyEnvelope,
 	type LocalCdFixtures,
 } from "@hobo/cloud";
+import { must } from "@hobo/core/total-access";
 
 export interface IncidentCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -59,7 +60,7 @@ export function createIncidentCommand(
 					status: "ok",
 					code: "HOBO_INCIDENT_STATUS",
 					message: active
-						? `incident: active ${last!.failure!.kind} ${last!.failure!.incidentId}`
+						? `incident: active ${must(must(last, "last").failure).kind} ${must(must(last, "last").failure).incidentId}`
 						: "incident: no active CD incident",
 					data: {
 						command: "incident",
@@ -67,8 +68,8 @@ export function createIncidentCommand(
 						active,
 						...(active
 							? {
-									kind: last!.failure!.kind,
-									incidentId: last!.failure!.incidentId,
+									kind: must(must(last, "last").failure).kind,
+									incidentId: must(must(last, "last").failure).incidentId,
 								}
 							: {}),
 						defaultPath: "a2h",

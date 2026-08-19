@@ -21,7 +21,7 @@ import {
 import { join } from "node:path";
 
 import { getNamedEndpoint, getNamedEndpointHost } from "@hobo/core";
-
+import { first } from "@hobo/core/total-access";
 import { cleanupIsolation, createIsolationContext } from "./isolation.js";
 import type { IsolationContext } from "./types.js";
 
@@ -274,9 +274,12 @@ function pickNode(
 		const preferred = online.find((n) => n.class === preferClass);
 		if (preferred) return preferred;
 	}
-	return [...online].sort(
-		(a, b) => b.capacity - b.running - (a.capacity - a.running),
-	)[0]!;
+	return first(
+		[...online].sort(
+			(a, b) => b.capacity - b.running - (a.capacity - a.running),
+		),
+		"[...online].sort( (a, b) => b.capacity - b.running - (a.capacity - a.running), )",
+	);
 }
 
 export interface DispatchComputeTaskInput {

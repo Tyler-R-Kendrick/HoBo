@@ -14,6 +14,8 @@
  *   , .       cycle sessions when more than one exists
  *   type+Enter prompt/steer the focused pane
  */
+
+import { must } from "@hobo/core/total-access";
 import { AgentLifecycleState } from "./_generated/code_harness_pb.js";
 import { harnessDisplayLabel } from "./agent-harness-catalog.js";
 import type { InSessionPanes } from "./in-session-panes.js";
@@ -234,7 +236,7 @@ export function mergeHarnessSessions(
 ): HarnessSessionView {
 	if (nodes.length === 0) return emptyHarnessSessionView();
 	const focusedSession = clampIndex(focus.session ?? 0, nodes.length);
-	const session = nodes[focusedSession]!;
+	const session = must(nodes[focusedSession]);
 	const focusedTab = clampIndex(focus.tab ?? 0, session.tabs.length);
 	const tab = session.tabs[focusedTab];
 	const focusedPane = clampIndex(focus.pane ?? 0, tab?.panes.length ?? 0);
@@ -500,7 +502,10 @@ export function formatHarnessSessionLines(
 			"Enter attaches · [ ] focus pane · Ctrl+\\ leaves",
 		];
 	}
-	const session = view.sessions[view.focusedSession]!;
+	const session = must(
+		view.sessions[view.focusedSession],
+		"view.sessions[view.focusedSession]",
+	);
 	const tab = session.tabs[view.focusedTab] ?? session.tabs[0];
 	const pane =
 		tab?.panes[view.focusedPane] ??

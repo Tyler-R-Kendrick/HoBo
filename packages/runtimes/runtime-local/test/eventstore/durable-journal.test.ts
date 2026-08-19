@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MissingFenceError, StaleFenceError } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	createManualClock,
 	createRuntimeLocalEventStore,
@@ -105,25 +105,36 @@ describe("durable journal integration", () => {
 					tenant: "t",
 				},
 			);
-			const lease = await store.claimSubscription!({
+			const claimSubscription = must(
+				store.claimSubscription,
+				"store.claimSubscription",
+			);
+			const lease = await claimSubscription({
 				subscriptionId: "proj",
 				partitionId: "default",
 				holderId: "w1",
 			});
-			await store.commitCheckpoint!({
+			const commitCheckpoint = must(
+				store.commitCheckpoint,
+				"store.commitCheckpoint",
+			);
+			await commitCheckpoint({
 				subscriptionId: "proj",
 				partitionId: "default",
 				position: 1n,
 				fenceToken: lease.fenceToken,
 			});
-			const cp = await store.loadCheckpoint!({
+			const loadCheckpoint = must(store.loadCheckpoint, "store.loadCheckpoint");
+			const cp = await loadCheckpoint({
 				subscriptionId: "proj",
 				partitionId: "default",
 			});
 			expect(cp?.position).toBe(1n);
 
 			const remaining: number[] = [];
-			for await (const pe of store.readAll({ after: cp!.position })) {
+			for await (const pe of store.readAll({
+				after: must(cp, "cp").position,
+			})) {
 				remaining.push(pe.event.seq);
 			}
 			expect(remaining).toEqual([2]);

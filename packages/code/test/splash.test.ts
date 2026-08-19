@@ -1,3 +1,4 @@
+import * as totalAccess from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import {
 	BO_CELL_HEIGHT,
@@ -92,7 +93,7 @@ describe("hobo-code default loading splash (logo + sprite Bo idle)", () => {
 	it("full 12-frame strip keeps constant height and width", () => {
 		const frames = [...iterateLoadingFrames(BO_IDLE_FRAME_COUNT)];
 		expect(frames).toHaveLength(12);
-		const first = measureLoadingSurface(frames[0]!.text);
+		const first = measureLoadingSurface(totalAccess.first(frames).text);
 		expect(first.matchesCanvas).toBe(true);
 		for (const f of frames) {
 			const m = measureLoadingSurface(f.text);
@@ -101,8 +102,8 @@ describe("hobo-code default loading splash (logo + sprite Bo idle)", () => {
 			expect(m.fixedWidth).toBe(true);
 			expect(m.matchesCanvas).toBe(true);
 		}
-		expect(frames[0]!.clip).toBe("rest");
-		expect(frames[11]!.clip).toBe("blink");
+		expect(totalAccess.first(frames).clip).toBe("rest");
+		expect(totalAccess.at(frames, 11).clip).toBe("blink");
 		expect(new Set(frames.map((f) => f.text)).size).toBeGreaterThanOrEqual(3);
 	});
 

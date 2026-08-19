@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -166,7 +167,8 @@ describe("@hobo/control-api world read model", () => {
 		});
 		expect(res.status).toBe(200);
 		expect(res.headers.get("content-type")).toMatch(/text\/event-stream/);
-		const reader = res.body!.getReader();
+		assert(res.body);
+		const reader = res.body.getReader();
 		const decoder = new TextDecoder();
 		let buf = "";
 		const readUntil = async (marker: string): Promise<void> => {

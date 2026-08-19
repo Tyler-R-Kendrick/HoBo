@@ -533,9 +533,10 @@ function matrixRow(mode: UpgradeDeploymentMode): CompatibilityInputs {
  * The four deterministic dry-run fixtures promoted from HOBO-499:
  * clean, blocked, failed-migration, rollback-ready.
  */
-export const UPGRADE_DRY_RUN_FIXTURES: Readonly<
-	Record<string, UpgradeDryRunRequest>
-> = Object.freeze({
+// eli5: annotated as Record<string, …> the known fixture names vanish from the
+// type, so every read needs a `!`. `satisfies` keeps the same checking and the
+// literal keys, which is what callers actually want.
+export const UPGRADE_DRY_RUN_FIXTURES = Object.freeze({
 	cleanUpgrade: Object.freeze({
 		id: "clean-upgrade",
 		compatibility: matrixRow("self-host-yard"),
@@ -681,4 +682,4 @@ export const UPGRADE_DRY_RUN_FIXTURES: Readonly<
 				"Attach local dry-run report and rollback-ready fixture evidence.",
 		}),
 	}),
-});
+} satisfies Readonly<Record<string, UpgradeDryRunRequest>>);

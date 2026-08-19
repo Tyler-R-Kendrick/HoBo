@@ -1,6 +1,6 @@
 import type { ComponentHostEvent } from "@hobo/core";
+import { first } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	ComponentHostError,
 	ComponentTrapError,
@@ -276,9 +276,15 @@ describe("runtime-local component host", () => {
 		host.loadComponent({ parsed: true, ...helloBindleComponent });
 		host.link({
 			componentId: "hello-bindle",
-			importInterface: helloBindleComponent.imports[0]!,
+			importInterface: first(
+				helloBindleComponent.imports,
+				"helloBindleComponent.imports",
+			),
 			providerId: helloBindleProvider.id,
-			exportInterface: helloBindleComponent.imports[0]!,
+			exportInterface: first(
+				helloBindleComponent.imports,
+				"helloBindleComponent.imports",
+			),
 		});
 
 		const response = await host.handleHttp("hello-bindle", {

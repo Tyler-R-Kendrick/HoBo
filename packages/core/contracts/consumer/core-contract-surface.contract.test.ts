@@ -6,6 +6,7 @@ import {
 	loadPactDirectory,
 } from "@hobo/contract-harness";
 import { describe, expect, it } from "vitest";
+import { must } from "../../src/total-access.js";
 import {
 	fetchCoreContractSurface,
 	fetchUnsupportedSchemaError,
@@ -24,7 +25,7 @@ describe("core-contract-surface consumer contract", () => {
 		);
 		expect(pact).toBeDefined();
 
-		const mockProvider = createMockProviderFromPact(pact!);
+		const mockProvider = createMockProviderFromPact(must(pact));
 		const surface = await fetchCoreContractSurface(mockProvider);
 
 		expect(surface.schemaVersion).toBe("hobo.core/v1");

@@ -13,7 +13,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { basename, join } from "node:path";
-
+import { must } from "@hobo/core/total-access";
 import type { HarnessSpec } from "./agent-harness-adapters.js";
 import { isHostSpec } from "./harness-spec.js";
 
@@ -490,7 +490,7 @@ export function reduceAgentsCatalogKey(
 		}
 		if (current && current.depth > 0) {
 			for (let i = state.cursor - 1; i >= 0; i -= 1) {
-				const row = rows[i]!;
+				const row = must(rows[i]);
 				if (row.depth < current.depth) {
 					return {
 						state: clampCatalog({ ...state, cursor: i }, viewportRows),

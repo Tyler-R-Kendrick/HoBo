@@ -14,6 +14,7 @@
 
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
+import { must } from "@hobo/core/total-access";
 import { HOBO_LOGO_TUI } from "./_generated-art/hobo-logo-tui.js";
 import {
 	harnessDisplayLabel,
@@ -136,11 +137,8 @@ import {
 } from "./shell-scroll.js";
 import { StreamTerminal } from "./shell-terminal.js";
 import {
-	BO_CELL_HEIGHT,
 	BO_IDLE_TICK_MS,
 	HOBO_MARK_CONSOLE,
-	padLine,
-	renderBoIdleFrame,
 	selectBoIdleFrame,
 } from "./splash.js";
 import {
@@ -597,7 +595,7 @@ export function splitKeySequences(data: string): string[] {
 	const out: string[] = [];
 	let i = 0;
 	while (i < data.length) {
-		const ch = data[i]!;
+		const ch = must(data[i], "data[i]");
 		if (ch === "\x1b") {
 			// Bracketed paste block: keep marker + content + end marker whole
 			if (data.startsWith("\x1b[200~", i)) {
@@ -611,7 +609,11 @@ export function splitKeySequences(data: string): string[] {
 			// CSI: ESC [ params final-byte (0x40–0x7e)
 			if (data[i + 1] === "[") {
 				let j = i + 2;
-				while (j < data.length && !(data[j]! >= "@" && data[j]! <= "~")) j += 1;
+				while (
+					j < data.length &&
+					!(must(data[j], "data[j]") >= "@" && must(data[j], "data[j]") <= "~")
+				)
+					j += 1;
 				out.push(data.slice(i, Math.min(j + 1, data.length)));
 				i = j + 1;
 				continue;
@@ -633,7 +635,12 @@ export function splitKeySequences(data: string): string[] {
 		}
 		// Printable run
 		let j = i;
-		while (j < data.length && data[j]! >= " " && data[j] !== "\u007f") j += 1;
+		while (
+			j < data.length &&
+			must(data[j], "data[j]") >= " " &&
+			data[j] !== "\u007f"
+		)
+			j += 1;
 		out.push(data.slice(i, j));
 		i = j;
 	}
@@ -920,24 +927,6 @@ export function applyCompact(
 	return persistShellChat(next, true);
 }
 
-/** Bo header rows for the current geometry: full sprite on tall terminals,
- * body crop (rows 6–13 — the part with Bo in it) on standard ones, none when
- * dense or too short. The old top-crop showed rows 0–5, which are mostly
- * empty sky — that read as noise, not a mascot. */
-function boHeaderRows(state: InteractiveShellState): string[] {
-	if (state.dense) return [];
-	if (state.height < 24) return [];
-	const frame = selectBoIdleFrame({
-		tickMs: state.tickMs,
-		reducedMotion: state.reducedMotion,
-	});
-	const rows = renderBoIdleFrame(frame).split("\n");
-	const slice = state.height >= 36 ? rows : rows.slice(6, BO_CELL_HEIGHT);
-	return slice.map((row) =>
-		padLine(row.trimEnd().slice(0, state.width), state.width),
-	);
-}
-
 /**
  * Render one full-screen frame. Fixed structure for tests:
  * header (logo+Bo) · status line · body (chat|agents|status|resources|slash) · input · footer.
@@ -957,7 +946,10 @@ export function boMarker(state: InteractiveShellState): string {
 	if (state.agentState !== "working") return "(••)";
 	if (state.reducedMotion) return "(••)";
 	const tick = Math.floor(state.tickMs / BO_IDLE_TICK_MS);
-	return BO_MARKERS[tick % BO_MARKERS.length]!;
+	return must(
+		BO_MARKERS[tick % BO_MARKERS.length],
+		"BO_MARKERS[tick % BO_MARKERS.length]",
+	);
 }
 
 /** Active harness chat label for the status strap (Hobo Bo / Codex / Pi / …). */
@@ -1321,7 +1313,11 @@ export function reduceShellKey(
 			return { state: reduceAgentsConfigureShell(state, key) };
 		}
 		const viewRows = viewportRows(state);
-		const result = reduceAgentsCatalogKey(state.agentsCatalog!, key, viewRows);
+		const result = reduceAgentsCatalogKey(
+			must(state.agentsCatalog, "state.agentsCatalog"),
+			key,
+			viewRows,
+		);
 		let next: InteractiveShellState = {
 			...state,
 			agentsCatalog: result.state,
@@ -1966,37 +1962,6 @@ function taskRowsForAgent(
 	});
 }
 
-function agentPaneRows(state: InteractiveShellState): readonly {
-	readonly name: string;
-	readonly label: string;
-	readonly focused?: boolean;
-	readonly kind?: string;
-	readonly tasks?: readonly {
-		readonly summary: string;
-		readonly state?: string;
-		readonly branch?: string;
-		readonly isolation?: string;
-	}[];
-}[] {
-	const panes = state.livePanes?.windows ?? [];
-	if (panes.length > 0) {
-		return panes.map((row, index) => ({
-			name: row.name,
-			label: harnessDisplayLabel(row.name),
-			kind: row.kind,
-			focused: index === state.livePanes?.focused,
-			tasks: taskRowsForAgent(state, row.name),
-		}));
-	}
-	return state.agentBoard.groups.map((group, index) => ({
-		name: group.agentId,
-		label: harnessDisplayLabel(group.agentId),
-		kind: "agent",
-		focused: index === 0,
-		tasks: taskRowsForAgent(state, group.agentId),
-	}));
-}
-
 /** Rebuild herdr view from seated mux windows, preserving focus when possible. */
 export function withHarnessFromLivePanes(
 	state: InteractiveShellState,
@@ -2510,7 +2475,10 @@ export function cycleFocus(
 			? "chat"
 			: state.focus;
 	const i = order.indexOf(from);
-	const next = order[(i < 0 ? 0 : i + 1) % order.length]!;
+	const next = must(
+		order[(i < 0 ? 0 : i + 1) % order.length],
+		"order[(i < 0 ? 0 : i + 1) % order.length]",
+	);
 	return {
 		...state,
 		focus: next,
@@ -3312,7 +3280,12 @@ export async function runInteractiveShell(
 					target,
 					result.forwardPaneKey,
 				)
-					.then(() => refreshInSessionPanes(state.livePanes!, tmuxRunner()))
+					.then(() =>
+						refreshInSessionPanes(
+							must(state.livePanes, "state.livePanes"),
+							tmuxRunner(),
+						),
+					)
 					.then((next) => {
 						if (quit || !next) return;
 						state = withHarnessFromLivePanes(state, next);
@@ -3331,7 +3304,10 @@ export async function runInteractiveShell(
 			return;
 		}
 		if (result.approve || result.decline) {
-			const approval = (result.approve ?? result.decline)!;
+			const approval = must(
+				result.approve ?? result.decline,
+				"(result.approve ?? result.decline)",
+			);
 			void resolveApproval(approval, Boolean(result.approve))
 				.then(() => {
 					if (!quit) tui.requestRender();
@@ -3589,7 +3565,12 @@ export async function runInteractiveShell(
 			const target = resolvePaneInteractTarget(state);
 			if (target) {
 				void sendKeysRawToInSessionPane(tmuxRunner(), target, data)
-					.then(() => refreshInSessionPanes(state.livePanes!, tmuxRunner()))
+					.then(() =>
+						refreshInSessionPanes(
+							must(state.livePanes, "state.livePanes"),
+							tmuxRunner(),
+						),
+					)
 					.then((next) => {
 						if (quit || !next) return;
 						state = withHarnessFromLivePanes(

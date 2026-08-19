@@ -18,6 +18,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { first, must } from "@hobo/core/total-access";
 import { afterAll, describe, expect, it } from "vitest";
 import { createIsolationContext } from "../src/isolation.js";
 import { runProjectGates } from "../src/promotion-gates.js";
@@ -129,7 +130,7 @@ describe("runProjectGates", () => {
 		const gates = await runProjectGates(bare, { timeoutMs: 5000 });
 		expect(gates).toHaveLength(4);
 		expect(gates.every((g) => !g.pass)).toBe(true);
-		expect(gates[0]!.detail).toMatch(/no package\.json/);
+		expect(first(gates).detail).toMatch(/no package\.json/);
 	});
 
 	it("releases stdio so a gate that leaves a daemon cannot hang the exit", async () => {
@@ -179,7 +180,10 @@ describe("runProjectGates", () => {
 		const gates = await runProjectGates(project, { timeoutMs: 2000 });
 		const elapsed = Date.now() - started;
 		expect(elapsed).toBeLessThan(30_000);
-		const guard = gates.find((g) => g.name === "architecture:guard")!;
+		const guard = must(
+			gates.find((g) => g.name === "architecture:guard"),
+			"gates.find((g) => g.name === 'architecture:guard')",
+		);
 		expect(guard.pass).toBe(false);
 		// A timeout must not masquerade as a spawn failure.
 		expect(guard.detail).toMatch(/timed out/);

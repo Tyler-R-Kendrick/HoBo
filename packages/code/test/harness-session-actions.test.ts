@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { stripSgr as plain } from "../src/ansi.js";
 import {
 	applyHarnessDetach,
 	executeHarnessChromeAction,
@@ -16,10 +17,6 @@ import {
 } from "../src/interactive-shell.js";
 import type { MuxRunner } from "../src/mux.js";
 import { AGENTS_KEY_LEGEND } from "../src/tui-components.js";
-
-function plain(frame: string): string {
-	return frame.replace(/\x1b\[[0-9;]*m/gu, "");
-}
 
 function fakeMux(options: {
 	readonly windows?: string;

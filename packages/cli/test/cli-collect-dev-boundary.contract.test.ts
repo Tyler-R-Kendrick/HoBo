@@ -15,12 +15,12 @@ import type {
 	ParsedComponentDescriptor,
 	ProviderDescriptor,
 } from "@hobo/core";
+import { at, first } from "@hobo/core/total-access";
 import {
 	createLocalStreamer,
 	createRuntimeLocalComponentHost,
 } from "@hobo/runtime-local";
 import { describe, expect, it } from "vitest";
-
 import {
 	createCollectCommand,
 	createDevCommand,
@@ -164,7 +164,7 @@ describe("CLI <-> local-dev-loop boundary pact", () => {
 	});
 
 	it("hobo collect matches the recorded manifest IR interaction", async () => {
-		const expected = pact.interactions[0]!.response;
+		const expected = first(pact.interactions).response;
 		await withProject({}, async (cwd) => {
 			const cli = createHoboCli({
 				commands: {
@@ -188,7 +188,7 @@ describe("CLI <-> local-dev-loop boundary pact", () => {
 	});
 
 	it("hobo dev matches the recorded offline serve interaction", async () => {
-		const expected = pact.interactions[1]!.response as {
+		const expected = at(pact.interactions, 1).response as {
 			status: string;
 			runtime: string;
 			offline: boolean;

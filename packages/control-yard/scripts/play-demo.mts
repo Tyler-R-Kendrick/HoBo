@@ -28,6 +28,7 @@ import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createControlApiServer } from "@hobo/control-api";
+import { must } from "@hobo/core/total-access";
 import {
 	connectionAuthorize,
 	connectionCreate,
@@ -283,30 +284,34 @@ async function withRecording(
 		},
 	});
 	const page = await context.newPage();
+	// Captured before teardown: `finally` below is teardown only, so that a throw
+	// from `fn` propagates. It used to hold the whole finalization including a
+	// `return` and a `throw`, either of which discards whatever the demo body
+	// threw — a broken demo reported success.
+	const vid = page.video();
 	try {
 		await fn(page);
 	} finally {
-		const vid = page.video();
 		await page.close();
 		await context.close();
-		// Playwright finalizes video after context close
-		if (vid) {
-			const webmPath = await vid.path();
-			const mp4 = join(RECORDINGS, `${name}.mp4`);
-			// wait briefly if file not yet flushed
-			for (let i = 0; i < 20 && !existsSync(webmPath); i++) await sleep(100);
-			if (!existsSync(webmPath)) {
-				// fallback: pick any webm in dir
-				const found = readdirSync(videoDir).find((f) => f.endsWith(".webm"));
-				if (!found) throw new Error(`no webm for ${name} in ${videoDir}`);
-				webmToMp4(join(videoDir, found), mp4);
-			} else {
-				webmToMp4(webmPath, mp4);
-			}
-			(report.recordings as string[]).push(mp4);
-			console.log("recorded", mp4, statSync(mp4).size, "bytes");
-			return mp4;
+	}
+	// Playwright finalizes video after context close. Only reached when `fn` returned.
+	if (vid) {
+		const webmPath = await vid.path();
+		const mp4 = join(RECORDINGS, `${name}.mp4`);
+		// wait briefly if file not yet flushed
+		for (let i = 0; i < 20 && !existsSync(webmPath); i++) await sleep(100);
+		if (!existsSync(webmPath)) {
+			// fallback: pick any webm in dir
+			const found = readdirSync(videoDir).find((f) => f.endsWith(".webm"));
+			if (!found) throw new Error(`no webm for ${name} in ${videoDir}`);
+			webmToMp4(join(videoDir, found), mp4);
+		} else {
+			webmToMp4(webmPath, mp4);
 		}
+		(report.recordings as string[]).push(mp4);
+		console.log("recorded", mp4, statSync(mp4).size, "bytes");
+		return mp4;
 	}
 	throw new Error(`no video for ${name}`);
 }
@@ -402,7 +407,7 @@ try {
 
 			const pixelSample = await page.evaluate(() => {
 				const c = document.getElementById("yard") as HTMLCanvasElement;
-				const ctx = c.getContext("2d")!;
+				const ctx = must(c.getContext("2d"), "c.getContext('2d')");
 				const st = (
 					window as unknown as {
 						__TEST__: { state: () => { bo: { x: number; y: number } } };
@@ -413,7 +418,13 @@ try {
 				const data = ctx.getImageData(x0, y0, 100, 130).data;
 				let dark = 0;
 				for (let i = 0; i < data.length; i += 4) {
-					if (data[i]! + data[i + 1]! + data[i + 2]! < 90) dark++;
+					if (
+						must(data[i], "data[i]") +
+							must(data[i + 1], "data[i + 1]") +
+							must(data[i + 2], "data[i + 2]") <
+						90
+					)
+						dark++;
 				}
 				return { dark, bo: st.bo };
 			});

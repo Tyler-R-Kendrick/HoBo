@@ -35,15 +35,24 @@ pnpm --filter @hobo/provider-digitalocean test
   *injected fake* transport modelling a DigitalOcean team. A real deploy
   additionally needs a real token, real network egress, and a real account,
   none of which a unit test supplies.
-- **12 of the 15 catalogued products have resolvers**
+- **14 of the 15 catalogued products have resolvers**
   (`DIGITALOCEAN_RESOLVED_PRODUCT_IDS`), including Spaces over SigV4 on its own
-  guarded host with its own key pair, Block Storage volumes, and DOKS clusters.
-  The three without resolvers are named in
-  `DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS`, and each is non-convergent by
-  DigitalOcean's own API shape rather than by omission: an App Platform worker
-  and job are *components inside* an app spec rather than standalone
-  resources, and Functions needs a per-call source upload whose bytes are not
-  part of `desired`.
+  guarded host with its own key pair, Block Storage volumes, DOKS clusters, and
+  App Platform workers and jobs. A worker and a job really are *components
+  inside* an app spec rather than standalone resources — but that shapes the
+  resolver rather than preventing it: `PUT /v2/apps/{id}` replaces the whole
+  spec, so a component converges by read-modify-write, which is idempotent. Two
+  rules keep that safe, and both are tested: the component resolver never
+  creates the app (that would race the resolver that owns it), and every part of
+  the spec it does not own is carried through the write.
+- **The one product without a resolver is Functions**, named in
+  `DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS`. This one is the API's absence rather
+  than a choice: DigitalOcean's v2 API has no function resource at all — the
+  whole surface is `/v2/functions/namespaces`, its triggers and its keys — and a
+  namespace is a place to put functions, not a function. Deploying one packages
+  source and uploads it to a per-namespace host, which is a build pipeline
+  rather than a convergent create: the same request twice produces two different
+  uploads, so there is nothing for `reconcile` to be idempotent about.
 - **No Resource Definitions are registered** for the `digitalocean.*` product
   ids, so a deploy against this Yard still fails closed at resolution
   (`YARD_BINDING_PRODUCT_UNKNOWN`).
@@ -110,5 +119,9 @@ load-bearing. See [`ADR.md`](./ADR.md) for the full command/event walk.
 | `digitalocean.kubernetes-cluster/v1` | `GET/POST/DELETE /v2/kubernetes/clusters` |
 | `digitalocean.spaces/v1` | `HEAD/PUT/DELETE /{bucket}` on `<region>.digitaloceanspaces.com` (SigV4) |
 
-Everything else in the catalog is listed in
-`DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS`.
+| `digitalocean.app-platform-worker/v1` | `GET /v2/apps` + `PUT /v2/apps/{id}` (read-modify-write on `spec.workers`) |
+| `digitalocean.app-platform-job/v1` | `GET /v2/apps` + `PUT /v2/apps/{id}` (read-modify-write on `spec.jobs`) |
+
+`digitalocean.functions/v1` is the one entry left in
+`DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS`, for the reason in the honest-scope list
+above.

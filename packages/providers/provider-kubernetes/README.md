@@ -80,10 +80,18 @@ which maps capability ports onto a provider's headline products.
    class are immutable; converging them means deleting the object, which for a
    PVC destroys data and for a Job discards a completed run. Drift is reported
    as a diagnostic.
-3. **Secrets ship no resolver.** Creating one means putting its contents in
-   `desired`, and `desired` is recorded in the event log. The catalog keeps
-   `kubernetes.secret/v1` as a `secret-ref.locator/v1` row — the profile that
-   names where material lives without carrying it.
+3. **A Secret's contents never touch `desired`.** They arrive through the
+   injected `resolveSecretData(logicalId)`, the same shape as every other
+   credential in this repo — core refuses credential-shaped keys in a property
+   bag precisely because `desired` is recorded in the event log. From there the
+   discipline is mechanical and tested: material is fetched immediately before
+   the call and held no longer; it goes into the request body and nowhere else;
+   outputs publish the *key names*, the object `type` and the `k8s://` locator,
+   never a value; and a rotation converges by comparing encoded values in
+   memory, so neither version is rendered into a diagnostic. The output keys are
+   deliberately named `objectType` and `locator` rather than `secretType` and
+   `secretRef`, because core refuses credential-shaped keys in an outcome's
+   outputs too — and is right to.
 
 ## Honest scope for the resolver lane
 

@@ -13,19 +13,25 @@
  * owns only the Hetzner-specific numbers and hosts, so the rule set cannot
  * drift per provider package.
  *
- * Hetzner splits its surfaces across three products with three different
- * credentials, and only one of them is allowlisted here:
+ * Hetzner splits its surfaces across four products with three different
+ * credentials, and one of them is deliberately left out:
  *
  *   - **Cloud API** (`api.hetzner.cloud/v1`) — project API token, allowlisted.
+ *   - **Unified API** (`api.hetzner.com/v1`) — the newer host that carries the
+ *     surfaces Hetzner has migrated off Robot, Storage Boxes among them. Same
+ *     bearer-token scheme as the Cloud API, different origin, so it gets its
+ *     own policy rather than a widened host list: a policy naming two hosts
+ *     would let a Cloud API path be requested from the unified origin and vice
+ *     versa, and the guard would have nothing to say about it.
  *   - **Object Storage** (`<location>.your-objectstorage.com`) — an S3 surface
  *     signed with SigV4 against a *separate* access key pair. It has its own
  *     policy below (`objectStorageTransportPolicy`) rather than riding on the
  *     Cloud API's, so a project token can never be sent to it and an S3 key can
  *     never be sent to the Cloud API.
- *   - **Robot** (`robot-ws.your-server.de`) — dedicated-server and Storage Box
- *     administration behind HTTP Basic with the account's web credentials.
- *     Reaching it would mean sending a *console password* from a resolver, so
- *     it is not allowlisted and `hetzner.storage-box/v1` ships no resolver.
+ *   - **Robot** (`robot-ws.your-server.de`) — dedicated-server administration
+ *     behind HTTP Basic with the account's web credentials. Reaching it would
+ *     mean sending a *console password* from a resolver, so it is not
+ *     allowlisted. Nothing this package catalogs needs it.
  *
  * Nothing here reaches for a global `fetch`. Reaching the network is always
  * something a host decided to hand over, never something a library reached for.
@@ -60,6 +66,8 @@ export const HETZNER_EXCLUDED_SURFACES = Object.freeze({
 	robot: Object.freeze({
 		hostPattern: "robot-ws.your-server.de",
 		credential: "HTTP Basic with the account's web console password",
+		reason:
+			"dedicated-server administration only. Every product this package catalogs is reachable with a scoped API token on one of the allowlisted hosts, so nothing here needs a surface authenticated by the password that also opens the web console",
 	}),
 });
 
@@ -90,6 +98,66 @@ export function hetznerTransportPolicy(): TransportGuardPolicy {
 		maxTimeoutMs: HETZNER_MAX_TIMEOUT_MS,
 		maxResponseBytes: HETZNER_MAX_RESPONSE_BYTES,
 	});
+}
+
+/**
+ * The unified API host.
+ *
+ * Hetzner has been consolidating surfaces that used to live on Robot onto
+ * `api.hetzner.com`, authenticated with the same kind of scoped API token the
+ * Cloud API takes. Storage Boxes are on it: `GET|POST /v1/storage_boxes` and
+ * `GET|PUT|DELETE /v1/storage_boxes/{id}`, with the same `?name=` exact filter
+ * and the same `{ storage_boxes: [...] }` envelope the Cloud API uses.
+ */
+// public-contract: the host carrying Hetzner surfaces migrated off Robot; Storage Boxes live here.
+export const HETZNER_UNIFIED_API_HOST = "api.hetzner.com";
+
+// public-contract: the path allowlist for the Hetzner unified-API transport guard.
+export const HETZNER_UNIFIED_ALLOWED_PATH_PREFIXES = Object.freeze([
+	"/v1/storage_boxes",
+	"/v1/storage_box_types",
+] as const);
+
+/**
+ * The guard policy for the unified API.
+ *
+ * The prefix list is narrower than the Cloud API's `/v1/`: this package uses
+ * the host for Storage Boxes and nothing else, and a guard that admits only
+ * what is used is the one that makes a later widening visible in review.
+ */
+export function hetznerUnifiedApiTransportPolicy(): TransportGuardPolicy {
+	return Object.freeze({
+		allowedHosts: Object.freeze([HETZNER_UNIFIED_API_HOST]),
+		allowedPathPrefixes: HETZNER_UNIFIED_ALLOWED_PATH_PREFIXES,
+		maxTimeoutMs: HETZNER_MAX_TIMEOUT_MS,
+		maxResponseBytes: HETZNER_MAX_RESPONSE_BYTES,
+	});
+}
+
+/** Wrap an injected transport with the unified-API policy. */
+export function guardedHetznerUnifiedApiTransport(
+	inner: HttpTransport,
+): HttpTransport {
+	return guardTransport(inner, hetznerUnifiedApiTransportPolicy());
+}
+
+/**
+ * Build an absolute unified-API URL. Callers pass an already-encoded path, so
+ * a caller that forgets to encode a name gets a URL the guard will judge
+ * rather than a silently repaired one.
+ */
+export function hetznerUnifiedApiUrl(path: string): string {
+	const suffix = path.startsWith("/") ? path : `/${path}`;
+	if (
+		!HETZNER_UNIFIED_ALLOWED_PATH_PREFIXES.some((prefix) =>
+			suffix.startsWith(prefix),
+		)
+	) {
+		throw new HetznerTransportConfigError(
+			`hetzner unified api path ${JSON.stringify(path)} is outside the allowlisted prefixes (${HETZNER_UNIFIED_ALLOWED_PATH_PREFIXES.join(", ")}); a path outside them would be refused at the transport with a less useful message`,
+		);
+	}
+	return `https://${HETZNER_UNIFIED_API_HOST}${suffix}`;
 }
 
 /** Object Storage locations, which are the Cloud locations that offer it. */

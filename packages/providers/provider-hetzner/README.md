@@ -53,12 +53,14 @@ pnpm --filter @hobo/provider-hetzner test
 
 ## Three surfaces, one allowlisted
 
-Hetzner splits its products across three hosts with three different
-credentials, and the transport guard allowlists exactly one:
+Hetzner splits its products across four hosts with three different
+credentials, and the transport guard allowlists three of them — each under its
+own policy:
 
 | Surface | Host | Credential | Allowlisted |
 |---|---|---|---|
 | Cloud API | `api.hetzner.cloud/v1` | project API token | **yes** |
+| Unified API | `api.hetzner.com/v1` | API token (bearer) | **yes**, under its own policy, `storage_box*` paths only |
 | Object Storage | `<location>.your-objectstorage.com` | separate S3 key pair, SigV4 | **yes**, under its own policy |
 | Robot | `robot-ws.your-server.de` | HTTP Basic, web console password | no |
 
@@ -69,14 +71,39 @@ care. The two credentials are mutually exclusive per resolver: the S3 path
 never resolves the project token and the Cloud API path never resolves the S3
 keys.
 
-Robot stays excluded, and it is the sharper case: a resolver reaching it would
-be sending the account's *web console password* through an injected transport,
-which is a different and much worse thing to hand out than a scoped project
-token. That is why `hetzner.storage-box/v1` ships no resolver — and the reason
-is the endpoint's, not a preference: `GET /v1/storage_boxes` on the Cloud API
-answers **404** where `/v1/volumes` answers **401**, so the Storage Box is
-genuinely absent from that surface. The exclusion is exported as
+The unified API gets its own policy for the same reason, even though it takes
+the same kind of token: a single policy naming both `api.hetzner.cloud` and
+`api.hetzner.com` would let a Cloud API path be requested from the unified
+origin, and the guard would have nothing to say about it. Its prefix list is
+narrower still — `/v1/storage_boxes` and `/v1/storage_box_types` — because that
+is all this package uses it for, and a guard that admits only what is used is
+the one that makes a later widening visible in review.
+
+An earlier revision of this package excluded the Storage Box, on the grounds
+that it was Robot-administered. That was wrong. `GET /v1/storage_boxes` on the
+*Cloud* API does answer **404** where `/v1/volumes` answers **401** — but the
+right conclusion was that the resource had moved, not that it was unreachable.
+It is on the unified host with full CRUD (`GET|POST /v1/storage_boxes`,
+`GET|PUT|DELETE /v1/storage_boxes/{id}`) behind an ordinary scoped token, and
+`hetzner.storage-box/v1` now ships a resolver like every other product here.
+
+Robot stays excluded, and it is still the sharper case: a resolver reaching it
+would be sending the account's *web console password* through an injected
+transport, which is a different and much worse thing to hand out than a scoped
+token. Nothing this package catalogs needs it. The exclusion is exported as
 `HETZNER_EXCLUDED_SURFACES`, so widening the guard is an edit a reviewer sees.
+
+### The Storage Box password
+
+Hetzner requires a password at create time, and a password is material.
+`desired` is recorded in the event log, and core refuses credential-shaped keys
+in a property bag outright — `password` and `passwordRef` alike — so it does not
+travel there at all. It arrives through an injected
+`resolveStorageBoxPassword(logicalId)`, the same shape as every other credential
+in this repo: the request names the resource, the host decides what secret
+belongs to it, and this package holds it no longer than the one call it goes
+into. It is in the create body and nowhere else — not an output, not a
+diagnostic, not a URL — and that is asserted, not asserted-about.
 
 ## Convergence, and what it costs
 

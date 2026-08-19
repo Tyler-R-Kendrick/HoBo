@@ -88,10 +88,12 @@ import {
 } from "./slots.js";
 import {
 	guardedHetznerTransport,
+	guardedHetznerUnifiedApiTransport,
 	guardedObjectStorageTransport,
 	HETZNER_MAX_RESPONSE_BYTES,
 	HETZNER_MAX_TIMEOUT_MS,
 	hetznerApiUrl,
+	hetznerUnifiedApiUrl,
 	objectStorageUrl,
 } from "./transport.js";
 
@@ -124,6 +126,10 @@ export const HETZNER_OBJECT_STORAGE_PRODUCT_ID = productIdOf(
 	objectStorage(),
 	"objectStorage",
 );
+export const HETZNER_STORAGE_BOX_PRODUCT_ID = productIdOf(
+	storageBox(),
+	"storageBox",
+);
 
 /** Every product this module resolves, id-sorted for a deterministic registry. */
 export const HETZNER_RESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
@@ -131,24 +137,26 @@ export const HETZNER_RESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
 		HETZNER_CLOUD_SERVER_PRODUCT_ID,
 		HETZNER_LOAD_BALANCER_PRODUCT_ID,
 		HETZNER_OBJECT_STORAGE_PRODUCT_ID,
+		HETZNER_STORAGE_BOX_PRODUCT_ID,
 		HETZNER_VOLUME_PRODUCT_ID,
 	].sort(compareStrings),
 );
 
 /**
- * The one product id this package catalogs and deliberately cannot resolve.
+ * Product ids this package catalogs but does not resolve.
  *
- * `hetzner.storage-box/v1`: a Storage Box is not on the Cloud API at all —
- * `GET https://api.hetzner.cloud/v1/storage_boxes` answers 404, where
- * `/v1/volumes` answers 401, so the absence is the endpoint's and not a
- * permissions artifact. Storage Boxes are administered through the Robot API
- * behind HTTP Basic with the account's *web console password*, and a resolver
- * reaching that surface would be sending a console password through an
- * injected transport — a different and much worse thing to hand out than a
- * scoped project token. See `HETZNER_EXCLUDED_SURFACES` in `./transport.ts`.
+ * Empty. Every product in the Hetzner catalog has a convergent path: Cloud
+ * Servers, Load Balancers and Volumes on the Cloud API, Object Storage on its
+ * S3 surface, and Storage Boxes on the unified API.
+ *
+ * It is exported anyway, and the tests still assert that resolved + unresolved
+ * accounts for the catalog exactly once. The list existing and being empty is a
+ * different claim from the list not existing: a product added to `./slots.ts`
+ * without a resolver has to be named here, and that is a decision a reviewer
+ * sees rather than a gap nobody counted.
  */
 export const HETZNER_UNRESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
-	[productIdOf(storageBox(), "storageBox")].sort(compareStrings),
+	[],
 );
 
 // ---------------------------------------------------------------------------
@@ -180,6 +188,16 @@ export interface HetznerResolverOptions {
 	 * Object Storage resolver.
 	 */
 	readonly nowMs?: number | (() => number);
+	/**
+	 * Resolves the create password for one Storage Box, by logical id.
+	 *
+	 * Keyed by logical id rather than by a locator in `desired` because core
+	 * refuses credential-shaped keys in a property bag: `desired` is recorded in
+	 * the event log, and the safest thing to write there about a password is
+	 * nothing at all. The host maps the logical id to its own custody. Required
+	 * only to build the Storage Box resolver.
+	 */
+	readonly resolveStorageBoxPassword?: (logicalId: string) => Promise<string>;
 }
 
 /** An Object Storage access key pair, as the host's custody hands it over. */
@@ -289,11 +307,21 @@ function identityOf(
 // The wire
 // ---------------------------------------------------------------------------
 
+/**
+ * Which token-authenticated origin a call goes to. Both take the same kind of
+ * scoped API token, so the distinction is about *reach*: each has its own guard
+ * policy, and a path is bound to its surface at the collection rather than
+ * chosen per call.
+ */
+type HetznerSurface = "cloud" | "unified";
+
 interface HetznerCall {
 	readonly method: TransportMethod;
 	/** Host-relative, with every dynamic segment already encoded. */
 	readonly path: string;
 	readonly json?: unknown;
+	/** Defaults to the Cloud API, which is what most of this package speaks. */
+	readonly surface?: HetznerSurface;
 }
 
 /**
@@ -307,10 +335,13 @@ async function send(
 	call: HetznerCall,
 ): Promise<TransportResponse> {
 	const body = call.json === undefined ? undefined : JSON.stringify(call.json);
-	const guarded = guardedHetznerTransport(context.transport);
+	const unified = call.surface === "unified";
+	const guarded = unified
+		? guardedHetznerUnifiedApiTransport(context.transport)
+		: guardedHetznerTransport(context.transport);
 	return guarded({
 		method: call.method,
-		url: hetznerApiUrl(call.path),
+		url: unified ? hetznerUnifiedApiUrl(call.path) : hetznerApiUrl(call.path),
 		headers: {
 			accept: "application/json",
 			authorization: `Bearer ${context.token}`,
@@ -413,6 +444,16 @@ interface HetznerResolverContext {
 	readonly objectStorageKeys: ObjectStorageKeyPair | undefined;
 	/** Injected SigV4 clock. Only the Object Storage path signs. */
 	readonly nowMs: () => number;
+	/**
+	 * The host's Storage Box password custody, if it wired one.
+	 *
+	 * A function rather than a resolved string so nothing is fetched for a
+	 * request that does not need it, and so material never sits on a context
+	 * that gets passed around. Undefined on every path but the Storage Box.
+	 */
+	readonly resolveStorageBoxPassword:
+		| ((logicalId: string) => Promise<string>)
+		| undefined;
 }
 
 function outcome(
@@ -619,8 +660,15 @@ function requiredString(
 // Collections: an exact name filter, not a paged scan
 // ---------------------------------------------------------------------------
 
-/** How one collection is shaped: its path, its list key, and its item key. */
+/** How one collection is shaped: its host, path, list key, and item key. */
 interface Collection {
+	/**
+	 * Which origin answers for it. Carried on the collection rather than
+	 * decided at the call site so a path can never be sent to the host that
+	 * does not serve it — the two hosts take the same bearer token, so nothing
+	 * downstream would notice a mix-up.
+	 */
+	readonly surface: HetznerSurface;
 	/** `/v1/servers`, `/v1/volumes`, … */
 	readonly path: string;
 	/** The array key in a list response: `servers`, `volumes`, … */
@@ -630,21 +678,38 @@ interface Collection {
 }
 
 const SERVERS: Collection = Object.freeze({
+	surface: "cloud",
 	path: "/v1/servers",
 	listKey: "servers",
 	itemKey: "server",
 });
 
 const LOAD_BALANCERS: Collection = Object.freeze({
+	surface: "cloud",
 	path: "/v1/load_balancers",
 	listKey: "load_balancers",
 	itemKey: "load_balancer",
 });
 
 const VOLUMES: Collection = Object.freeze({
+	surface: "cloud",
 	path: "/v1/volumes",
 	listKey: "volumes",
 	itemKey: "volume",
+});
+
+/**
+ * Storage Boxes, on the unified host.
+ *
+ * Same envelope and same exact `?name=` filter as the Cloud API collections,
+ * which is why they share `findByName` rather than getting a second search
+ * with a second set of edge cases.
+ */
+const STORAGE_BOXES: Collection = Object.freeze({
+	surface: "unified",
+	path: "/v1/storage_boxes",
+	listKey: "storage_boxes",
+	itemKey: "storage_box",
 });
 
 /**
@@ -667,6 +732,7 @@ async function findByName(
 		await send(context, {
 			method: "GET",
 			path: `${collection.path}?name=${encodeURIComponent(context.name)}`,
+			surface: collection.surface,
 		}),
 		label,
 	);
@@ -1155,6 +1221,214 @@ const VOLUME_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 };
 
 // ---------------------------------------------------------------------------
+// Storage Box — the unified API, and a password that is never in `desired`
+// ---------------------------------------------------------------------------
+
+/**
+ * A Storage Box create needs a password, and a password is material.
+ *
+ * It does not come from `desired`, and there is no locator in `desired` either.
+ * Core's `parseResolveRequest` refuses *any* credential-shaped key in a
+ * property bag — `password`, `passwordRef`, `secret`, `token` alike — because
+ * `desired` is recorded in the event log, the plan digest, and every diagnostic
+ * printed from them, and a key named `passwordRef` in a log is one bad host
+ * implementation away from being a password in a log. So the material arrives
+ * the way the Object Storage key pair does: through an injected function the
+ * host wires to its own custody, keyed by the logical id the request already
+ * carries. The request names the resource; the host decides what secret belongs
+ * to it; this package holds neither for longer than the call.
+ */
+async function storageBoxPassword(
+	context: HetznerResolverContext,
+): Promise<string> {
+	const resolve = context.resolveStorageBoxPassword;
+	if (resolve === undefined) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`${HETZNER_STORAGE_BOX_PRODUCT_ID}: no Storage Box password resolver was injected. Construct the resolvers with resolveStorageBoxPassword(logicalId) — Hetzner requires a password at create time, it cannot travel in desired (core refuses credential-shaped keys in a property bag, because desired is recorded in the event log), and this resolver will not invent one, because a password nobody chose is a credential nobody can rotate`,
+			HETZNER_STORAGE_BOX_PRODUCT_ID,
+		);
+	}
+	const material = await resolve(context.request.ref.logicalId);
+	if (typeof material !== "string" || material.length === 0) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`${HETZNER_STORAGE_BOX_PRODUCT_ID}: resolveStorageBoxPassword produced no material for ${JSON.stringify(context.request.ref.logicalId)}. A create sent with an empty password would either be refused by Hetzner or, worse, accepted`,
+			HETZNER_STORAGE_BOX_PRODUCT_ID,
+		);
+	}
+	return material;
+}
+
+/** The `name` inside a nested `{ name, … }` reference object, if there is one. */
+function nestedName(
+	record: Readonly<Record<string, unknown>>,
+	key: string,
+): string | undefined {
+	const nested = record[key];
+	if (typeof nested === "string") return nested;
+	if (!isPlainObject(nested)) return undefined;
+	return optionalString(nested, "name");
+}
+
+function storageBoxOutputs(
+	observed: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	const type = nestedName(observed, "storage_box_type");
+	const location = nestedName(observed, "location");
+	const username = optionalString(observed, "username");
+	const server = optionalString(observed, "server");
+	return {
+		name: optionalString(observed, "name") ?? "",
+		status: optionalString(observed, "status") ?? "",
+		...(type === undefined ? {} : { storageBoxType: type }),
+		...(location === undefined ? {} : { location }),
+		...(username === undefined ? {} : { username }),
+		...(server === undefined ? {} : { server }),
+		// The mount surfaces a workload actually uses. Published as outputs
+		// because a binding needs them and should not have to reconstruct a
+		// hostname from the record.
+		...(server === undefined
+			? {}
+			: {
+					sftpEndpoint: `sftp://${server}`,
+					sambaEndpoint: `//${server}/backup`,
+				}),
+	};
+}
+
+function storageBoxDiagnostics(
+	observed: Readonly<Record<string, unknown>>,
+): readonly string[] {
+	const status = optionalString(observed, "status");
+	const diagnostics: string[] = [];
+	if (status === "initializing") {
+		diagnostics.push(
+			"the Storage Box is still initializing; it is not mountable until Hetzner reports status active, and this resolver does not wait",
+		);
+	}
+	if (status === "locked") {
+		diagnostics.push(
+			"the Storage Box is locked, which Hetzner reports for an unpaid or administratively suspended box; a write against it will fail for a reason no code change here can fix",
+		);
+	}
+	return Object.freeze(diagnostics);
+}
+
+const STORAGE_BOX_SPEC: Omit<HetznerResolverSpec, "productId"> = {
+	async read(context) {
+		const observed = await findByName(context, STORAGE_BOXES);
+		return observed === undefined
+			? undefined
+			: outcome(
+					settledAction(context),
+					identityOf(observed, `hetzner read storage box ${context.name}`),
+					storageBoxOutputs(observed),
+					storageBoxDiagnostics(observed),
+				);
+	},
+	async reconcile(context) {
+		const productId = HETZNER_STORAGE_BOX_PRODUCT_ID;
+		const observed = await findByName(context, STORAGE_BOXES);
+		const wantedType = requiredString(
+			context,
+			"storageBoxType",
+			productId,
+			"bx11",
+		);
+		if (observed === undefined) {
+			const label = `hetzner create storage box ${context.name}`;
+			const created = expectOk(
+				await send(context, {
+					method: "POST",
+					path: STORAGE_BOXES.path,
+					surface: STORAGE_BOXES.surface,
+					json: {
+						name: context.name,
+						location: requiredLocation(context, productId),
+						storage_box_type: wantedType,
+						// Resolved from the host's custody immediately before the
+						// call, and never written back to an output or a diagnostic.
+						password: await storageBoxPassword(context),
+						...(isPlainObject(context.desired.labels)
+							? { labels: context.desired.labels }
+							: {}),
+						...(Array.isArray(context.desired.sshKeys)
+							? { ssh_keys: context.desired.sshKeys }
+							: {}),
+						...(isPlainObject(context.desired.accessSettings)
+							? { access_settings: context.desired.accessSettings }
+							: {}),
+					},
+				}),
+				label,
+			);
+			// A create answers with an Action and the box; the box is what the
+			// caller needs, and the action id is published so a caller that wants
+			// to wait has something to wait on.
+			const record = isPlainObject(created[STORAGE_BOXES.itemKey])
+				? nestedRecord(created, STORAGE_BOXES.itemKey)
+				: ((await findByName(context, STORAGE_BOXES)) ??
+					nestedRecord(created, STORAGE_BOXES.itemKey));
+			return outcome(
+				"create",
+				identityOf(record, label),
+				{ ...storageBoxOutputs(record), ...actionOutputs(created) },
+				[
+					...storageBoxDiagnostics(record),
+					...actionDiagnostics(created, "storage box create"),
+					"the create password came from the injected resolveStorageBoxPassword and is not in desired, in an output, or in this diagnostic; rotate it through Hetzner's reset_password action, not by re-running this resolver",
+				],
+			);
+		}
+		const id = identityOf(observed, `hetzner read storage box ${context.name}`);
+		const actualType = nestedName(observed, "storage_box_type");
+		if (actualType === undefined || actualType === wantedType) {
+			return outcome(
+				settledAction(context),
+				id,
+				storageBoxOutputs(observed),
+				storageBoxDiagnostics(observed),
+			);
+		}
+		const label = `hetzner change storage box type ${context.name}`;
+		const changed = expectOk(
+			await send(context, {
+				method: "POST",
+				path: `${STORAGE_BOXES.path}/${encodeURIComponent(id)}/actions/change_type`,
+				surface: STORAGE_BOXES.surface,
+				json: { storage_box_type: wantedType },
+			}),
+			label,
+		);
+		const refreshed = (await findByName(context, STORAGE_BOXES)) ?? observed;
+		return outcome(
+			"update",
+			id,
+			{ ...storageBoxOutputs(refreshed), ...actionOutputs(changed) },
+			[
+				...storageBoxDiagnostics(refreshed),
+				...actionDiagnostics(changed, "storage box change_type"),
+				`the type moved from ${JSON.stringify(actualType)} to ${JSON.stringify(wantedType)}; Hetzner does not shrink a Storage Box, so a smaller type is refused by the provider rather than silently ignored here`,
+			],
+		);
+	},
+	async remove(context) {
+		const observed = await findByName(context, STORAGE_BOXES);
+		if (observed === undefined) return;
+		const label = `hetzner delete storage box ${context.name}`;
+		const id = identityOf(observed, label);
+		const response = await send(context, {
+			method: "DELETE",
+			path: `${STORAGE_BOXES.path}/${encodeURIComponent(id)}`,
+			surface: STORAGE_BOXES.surface,
+		});
+		if (isNotFound(response)) return;
+		expectOk(response, label);
+	},
+};
+
+// ---------------------------------------------------------------------------
 // Object Storage — S3 on <location>.your-objectstorage.com, signed with SigV4
 // ---------------------------------------------------------------------------
 
@@ -1396,6 +1670,10 @@ function createResolver(
 			knownPhysicalId: knownPhysicalId(request),
 			objectStorageKeys,
 			nowMs,
+			resolveStorageBoxPassword:
+				spec.productId === HETZNER_STORAGE_BOX_PRODUCT_ID
+					? options.resolveStorageBoxPassword
+					: undefined,
 		};
 	}
 
@@ -1416,8 +1694,9 @@ function createResolver(
 
 /**
  * Every Hetzner resolver, id-sorted so the list is a function of the code
- * rather than of construction order. The two catalogued products that are
- * absent are named in {@link HETZNER_UNRESOLVED_PRODUCT_IDS}, with the reason.
+ * rather than of construction order. Every catalogued product has one;
+ * {@link HETZNER_UNRESOLVED_PRODUCT_IDS} is empty and stays exported so that
+ * stops being true loudly rather than quietly.
  */
 export function hetznerResolvers(
 	options: HetznerResolverOptions,
@@ -1430,6 +1709,7 @@ export function hetznerResolvers(
 			productId: HETZNER_OBJECT_STORAGE_PRODUCT_ID,
 			...OBJECT_STORAGE_SPEC,
 		},
+		{ productId: HETZNER_STORAGE_BOX_PRODUCT_ID, ...STORAGE_BOX_SPEC },
 	];
 	return Object.freeze(
 		[...specs]

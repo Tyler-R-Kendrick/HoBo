@@ -130,6 +130,14 @@ export const DIGITALOCEAN_APP_STATIC_SITE_PRODUCT_ID = productIdOf(
 	appPlatform.staticSite(),
 	"appPlatform.staticSite",
 );
+export const DIGITALOCEAN_APP_WORKER_PRODUCT_ID = productIdOf(
+	appPlatform.worker(),
+	"appPlatform.worker",
+);
+export const DIGITALOCEAN_APP_JOB_PRODUCT_ID = productIdOf(
+	appPlatform.job(),
+	"appPlatform.job",
+);
 export const DIGITALOCEAN_DROPLET_PRODUCT_ID = productIdOf(
 	droplet(),
 	"droplet",
@@ -184,36 +192,30 @@ export const DIGITALOCEAN_RESOLVED_PRODUCT_IDS: readonly string[] =
 			DIGITALOCEAN_SPACES_PRODUCT_ID,
 			DIGITALOCEAN_BLOCK_STORAGE_PRODUCT_ID,
 			DIGITALOCEAN_KUBERNETES_CLUSTER_PRODUCT_ID,
+			DIGITALOCEAN_APP_WORKER_PRODUCT_ID,
+			DIGITALOCEAN_APP_JOB_PRODUCT_ID,
 		].sort(compareStrings),
 	);
 
 /**
- * Product ids this package catalogs but deliberately cannot resolve. A
- * non-convergent resolver that duplicates a resource on every retry is worse
- * than an absent one, so these are absent and declared.
+ * The one product id this package catalogs and cannot resolve.
  *
- * `digitalocean.app-platform-worker/v1` and `digitalocean.app-platform-job/v1`:
- * a worker and a job are *components inside* an App Platform app spec, not
- * standalone resources with their own ids. The app resolver owns the whole
- * spec and a second resolver mutating one component of it would race the
- * first, so these are reached by putting the component in `desired.spec` of an
- * `digitalocean.app-platform-service/v1` request rather than by a resolver of
- * their own. The catalog rows stay, because a worker and a job really are
- * distinct capabilities App Platform offers.
+ * `digitalocean.functions/v1`. This one is the API's absence, not a choice:
+ * DigitalOcean's v2 API has no function resource. The whole Functions surface
+ * is `/v2/functions/namespaces`, its `triggers`, and its `keys` — a namespace
+ * is a place to put functions, not a function, and a catalog row that claimed
+ * `service.worker/v1` because a namespace exists would be claiming a running
+ * workload where there is an empty container for one. Deploying the function
+ * itself packages source and uploads it to a per-namespace OpenWhisk host,
+ * which is a build pipeline rather than a convergent create: the same request
+ * twice produces two different uploads, so there is nothing for `reconcile` to
+ * be idempotent about.
  *
- * `digitalocean.functions/v1`: deploying a function packages and uploads source
- * to a namespace-scoped endpoint minted per call. The upload is not
- * deterministic and the source bytes are not part of `desired`, so there is no
- * convergent create to write.
+ * The catalog row stays, because Functions really is a capability DigitalOcean
+ * sells and a Yard that hid it would be lying in the other direction.
  */
 export const DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS: readonly string[] =
-	Object.freeze(
-		[
-			productIdOf(appPlatform.job(), "appPlatform.job"),
-			productIdOf(appPlatform.worker(), "appPlatform.worker"),
-			productIdOf(functions(), "functions"),
-		].sort(compareStrings),
-	);
+	Object.freeze([productIdOf(functions(), "functions")]);
 
 // ---------------------------------------------------------------------------
 // Construction
@@ -1519,6 +1521,262 @@ function appPlatformSpec(
 }
 
 // ---------------------------------------------------------------------------
+// App Platform components — read-modify-write on the app that owns them
+// ---------------------------------------------------------------------------
+
+/**
+ * A worker and a job are components *inside* an app spec, not standalone
+ * resources with their own ids.
+ *
+ * That is a fact about the API, and the wrong conclusion to draw from it is
+ * that they cannot converge. `PUT /v2/apps/{id}` replaces the whole spec, so a
+ * component converges by read-modify-write: read the app, replace the one
+ * component this request owns, put the spec back. That is idempotent — the
+ * second run finds the component already equal and writes nothing — which is
+ * the only property `reconcile` actually has to have.
+ *
+ * Two rules keep it from being dangerous:
+ *
+ *   - **It never creates the app.** An app is `digitalocean.app-platform-*`'s
+ *     own resource with its own resolver; a component resolver that created one
+ *     would race it. A missing app is refused with the name of the resolver
+ *     that should have made it.
+ *   - **It only ever touches its own component.** Every other key of the spec —
+ *     other services, databases, domains, ingress rules — is carried through
+ *     from what was read, so a component resolver cannot drop somebody else's
+ *     work as a side effect of running.
+ *
+ * The remaining hazard is honest and documented: two component resolvers
+ * writing to one app in the same instant would have one overwrite the other's
+ * read. It is the same read-modify-write race any shared-parent resource has,
+ * and the diagnostic says so rather than pretending otherwise.
+ */
+type AppComponentKind = "workers" | "jobs";
+
+/** The app this component belongs to. Required: it is not derivable. */
+function ownerAppName(
+	context: DigitalOceanResolverContext,
+	productId: string,
+): string {
+	const appName = optionalString(context.desired, "appName");
+	if (appName === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${productId}: the request names no appName — set desired.appName to the App Platform app this component belongs to. A component lives inside one app's spec and the app is not derivable from the component's name, so it is required rather than guessed; guessing would put the workload in somebody else's app`,
+			productId,
+		);
+	}
+	return appName;
+}
+
+/** The component body the caller authored, with its name forced to ours. */
+function componentSpec(
+	context: DigitalOceanResolverContext,
+	productId: string,
+): Record<string, unknown> {
+	const component = context.desired.component;
+	if (!isPlainObject(component)) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${productId}: the request carries no desired.component. A worker or job component is defined by its image or source, run command, instance size and count; this resolver forwards the component you authored and owns only its name, because inventing one would deploy something nobody wrote`,
+			productId,
+		);
+	}
+	return { ...component, name: context.name };
+}
+
+/** Find the app by an explicit name rather than by the request's own name. */
+async function findAppNamed(
+	context: DigitalOceanResolverContext,
+	appName: string,
+): Promise<Record<string, unknown> | undefined> {
+	return findByName({ ...context, name: appName }, APP_COLLECTION);
+}
+
+function componentsOf(
+	spec: Readonly<Record<string, unknown>>,
+	kind: AppComponentKind,
+): readonly Record<string, unknown>[] {
+	const list = spec[kind];
+	return Array.isArray(list) ? list.filter(isPlainObject) : [];
+}
+
+function componentOutputs(
+	context: DigitalOceanResolverContext,
+	kind: AppComponentKind,
+	app: Readonly<Record<string, unknown>>,
+	component: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	const appId = optionalString(app, "id");
+	const instanceSize = optionalString(component, "instance_size_slug");
+	const instanceCount = optionalInteger(component, "instance_count");
+	return {
+		componentName: context.name,
+		componentKind: kind === "workers" ? "worker" : "job",
+		appName: optionalString(nestedRecord(app, "spec"), "name") ?? "",
+		...(appId === undefined ? {} : { appId }),
+		...(instanceSize === undefined ? {} : { instanceSize }),
+		...(instanceCount === undefined ? {} : { instanceCount }),
+		...(kind === "jobs"
+			? { runsOn: optionalString(component, "kind") ?? "UNSPECIFIED" }
+			: {}),
+	};
+}
+
+/**
+ * Put the app spec back with one component replaced, added, or dropped.
+ *
+ * Everything except the one component is carried through from what was read.
+ */
+function specWithComponent(
+	app: Readonly<Record<string, unknown>>,
+	kind: AppComponentKind,
+	name: string,
+	replacement: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+	const spec = nestedRecord(app, "spec");
+	const others = componentsOf(spec, kind).filter(
+		(item) => optionalString(item, "name") !== name,
+	);
+	const next =
+		replacement === undefined
+			? others
+			: [...others, replacement].sort((left, right) =>
+					compareStrings(
+						optionalString(left, "name") ?? "",
+						optionalString(right, "name") ?? "",
+					),
+				);
+	return {
+		...spec,
+		...(next.length > 0 ? { [kind]: next } : {}),
+		...(next.length === 0 && kind in spec ? { [kind]: [] } : {}),
+	};
+}
+
+const COMPONENT_RACE_DIAGNOSTIC =
+	"a component converges by read-modify-write on the whole app spec; two component resolvers writing to one app at the same instant would have one overwrite the other's read, so reconcile one app's components in sequence rather than concurrently";
+
+function appComponentSpec(
+	kind: AppComponentKind,
+	productId: string,
+): Omit<DigitalOceanResolverSpec, "productId"> {
+	const noun = kind === "workers" ? "worker" : "job";
+
+	function physicalId(
+		app: Readonly<Record<string, unknown>>,
+		context: DigitalOceanResolverContext,
+	): string {
+		const appId = identityOf(app, `digitalocean read app for ${context.name}`);
+		return `${appId}/${kind}/${context.name}`;
+	}
+
+	function findComponent(
+		app: Readonly<Record<string, unknown>>,
+		name: string,
+	): Record<string, unknown> | undefined {
+		return componentsOf(nestedRecord(app, "spec"), kind).find(
+			(item) => optionalString(item, "name") === name,
+		);
+	}
+
+	async function putSpec(
+		context: DigitalOceanResolverContext,
+		app: Readonly<Record<string, unknown>>,
+		spec: Record<string, unknown>,
+		label: string,
+	): Promise<Record<string, unknown>> {
+		const appId = identityOf(app, label);
+		const updated = expectOk(
+			await send(context, {
+				method: "PUT",
+				path: `${APP_COLLECTION.path}/${encodeURIComponent(appId)}`,
+				json: { spec },
+			}),
+			label,
+		);
+		return nestedRecord(updated, APP_COLLECTION.itemKey);
+	}
+
+	return {
+		async read(context) {
+			const app = await findAppNamed(context, ownerAppName(context, productId));
+			if (app === undefined) return undefined;
+			const component = findComponent(app, context.name);
+			return component === undefined
+				? undefined
+				: outcome(
+						settledAction(context),
+						physicalId(app, context),
+						componentOutputs(context, kind, app, component),
+						[],
+					);
+		},
+		async reconcile(context) {
+			const appName = ownerAppName(context, productId);
+			const wanted = componentSpec(context, productId);
+			const app = await findAppNamed(context, appName);
+			if (app === undefined) {
+				throw new ResolverError(
+					"RESOLVER_PRODUCT_UNSUPPORTED",
+					`${productId}: no App Platform app named ${JSON.stringify(appName)} exists. A ${noun} is a component inside an app's spec, so the app has to exist first — reconcile a ${DIGITALOCEAN_APP_SERVICE_PRODUCT_ID} (or ${DIGITALOCEAN_APP_STATIC_SITE_PRODUCT_ID}) binding for it before this one. This resolver will not create the app itself, because that would race the resolver that owns it`,
+					productId,
+				);
+			}
+			const observed = findComponent(app, context.name);
+			if (observed !== undefined && appSpecEqual(observed, wanted)) {
+				return outcome(
+					settledAction(context),
+					physicalId(app, context),
+					componentOutputs(context, kind, app, observed),
+					[],
+				);
+			}
+			const label =
+				observed === undefined
+					? `digitalocean add ${noun} ${context.name} to app ${appName}`
+					: `digitalocean update ${noun} ${context.name} in app ${appName}`;
+			const record = await putSpec(
+				context,
+				app,
+				specWithComponent(app, kind, context.name, wanted),
+				label,
+			);
+			const component = findComponent(record, context.name) ?? wanted;
+			return outcome(
+				observed === undefined ? "create" : "update",
+				physicalId(record, context),
+				componentOutputs(context, kind, record, component),
+				[
+					...appDiagnostics(record),
+					`the ${noun} was written into app ${appName}'s spec, which triggers a new App Platform deployment; this resolver does not poll it, so the rollout is requested, not confirmed`,
+					COMPONENT_RACE_DIAGNOSTIC,
+					...(kind === "jobs"
+						? [
+								"a job component runs on the schedule its kind names (PRE_DEPLOY, POST_DEPLOY, FAILED_DEPLOY); this resolver defines the job, it does not invoke it",
+							]
+						: []),
+				],
+			);
+		},
+		async remove(context) {
+			const appName = ownerAppName(context, productId);
+			const app = await findAppNamed(context, appName);
+			// An app that is gone took its components with it, and an app that
+			// never had this component is already in the wanted state.
+			if (app === undefined) return;
+			if (findComponent(app, context.name) === undefined) return;
+			await putSpec(
+				context,
+				app,
+				specWithComponent(app, kind, context.name, undefined),
+				`digitalocean remove ${noun} ${context.name} from app ${appName}`,
+			);
+		},
+	};
+}
+
+// ---------------------------------------------------------------------------
 // Spaces — S3 on <region>.digitaloceanspaces.com, signed with SigV4
 // ---------------------------------------------------------------------------
 
@@ -2082,6 +2340,14 @@ export function digitaloceanResolvers(
 		{
 			productId: DIGITALOCEAN_APP_STATIC_SITE_PRODUCT_ID,
 			...appPlatformSpec(DIGITALOCEAN_APP_STATIC_SITE_PRODUCT_ID),
+		},
+		{
+			productId: DIGITALOCEAN_APP_WORKER_PRODUCT_ID,
+			...appComponentSpec("workers", DIGITALOCEAN_APP_WORKER_PRODUCT_ID),
+		},
+		{
+			productId: DIGITALOCEAN_APP_JOB_PRODUCT_ID,
+			...appComponentSpec("jobs", DIGITALOCEAN_APP_JOB_PRODUCT_ID),
 		},
 		{ productId: DIGITALOCEAN_DROPLET_PRODUCT_ID, ...DROPLET_SPEC },
 		{

@@ -32,6 +32,7 @@ import {
 	KUBERNETES_JOB_PRODUCT_ID,
 	KUBERNETES_PVC_PRODUCT_ID,
 	KUBERNETES_RESOLVED_PRODUCT_IDS,
+	KUBERNETES_SECRET_PRODUCT_ID,
 	KUBERNETES_SERVICE_PRODUCT_ID,
 	KUBERNETES_UNRESOLVED_PRODUCT_IDS,
 	type KubernetesResolverOptions,
@@ -139,6 +140,7 @@ function options(
 	return {
 		apiServerUrl: API_SERVER,
 		resolveCredential: async () => TOKEN,
+		resolveSecretData: async () => SECRET_MATERIAL,
 		...overrides,
 	};
 }
@@ -262,6 +264,251 @@ const DEPLOYMENT_REQUEST = {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Secret
+// ---------------------------------------------------------------------------
+
+const SECRET_NAMESPACE = "shop";
+const SECRET_PATH = `/api/v1/namespaces/${SECRET_NAMESPACE}/secrets`;
+const SECRET_OBJECT_PATH = `${SECRET_PATH}/api-credentials`;
+/** Material the host's custody hands over. Never expected outside one body. */
+const SECRET_MATERIAL = Object.freeze({
+	password: "c0rrect-horse-battery-staple",
+	// Non-ASCII on purpose: latin1 base64 would corrupt it.
+	note: "naïve-café-😀",
+});
+
+function base64Utf8(value: string): string {
+	const bytes = new TextEncoder().encode(value);
+	let binary = "";
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary);
+}
+
+function secretRecord(data: Rec, overrides: Rec = {}): Rec {
+	return {
+		apiVersion: "v1",
+		kind: "Secret",
+		metadata: {
+			name: "api-credentials",
+			namespace: SECRET_NAMESPACE,
+			uid: "11111111-2222-3333-4444-555555555555",
+		},
+		type: "Opaque",
+		data,
+		...overrides,
+	};
+}
+
+function secretRequest(desired: Rec = {}): ResolveRequest {
+	return request({
+		slot: "secretRef",
+		productId: KUBERNETES_SECRET_PRODUCT_ID,
+		logicalId: "api-credentials",
+		desired: { namespace: SECRET_NAMESPACE, ...desired },
+	});
+}
+
+/** A cluster that starts without the Secret and remembers what was written. */
+function secretWorld(): Fake {
+	let existing: Rec | undefined;
+	return fakeTransport((call) => {
+		if (call.method === "GET" && call.path === SECRET_OBJECT_PATH) {
+			return existing === undefined ? notFound() : json(200, existing);
+		}
+		if (call.method === "POST" && call.path === SECRET_PATH) {
+			existing = bodyOf(call);
+			return json(201, existing);
+		}
+		if (call.method === "PATCH" && call.path === SECRET_OBJECT_PATH) {
+			existing = { ...(existing ?? {}), ...bodyOf(call) };
+			return json(200, existing);
+		}
+		if (call.method === "DELETE" && call.path === SECRET_OBJECT_PATH) {
+			existing = undefined;
+			return json(200, { kind: "Status", status: "Success" });
+		}
+		return json(500, { message: `unexpected ${call.method} ${call.path}` });
+	});
+}
+
+/** Every place a value could escape: outputs, diagnostics, and the URL. */
+function leaks(outcome: ResolveOutcome, fake: Fake): boolean {
+	const surfaces = [
+		JSON.stringify(outcome.outputs),
+		JSON.stringify(outcome.diagnostics),
+		...fake.calls.map((call) => call.path),
+	];
+	return Object.values(SECRET_MATERIAL).some((value) =>
+		surfaces.some((surface) => surface.includes(value)),
+	);
+}
+
+describe("the Secret resolver converges material that never reaches the log", () => {
+	it("creates a Secret from the host's custody", async () => {
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(secretRequest(), fake.transport),
+		);
+		expect(outcome.action).toBe("create");
+		expect(outcome.physicalId).toBe(`${SECRET_NAMESPACE}/api-credentials`);
+		const create = fake.calls.find((call) => call.method === "POST");
+		const data = bodyOf(create as RecordedCall).data as Rec;
+		expect(data.password).toBe(base64Utf8(SECRET_MATERIAL.password));
+	});
+
+	/** `btoa` alone is latin1 and would corrupt this. */
+	it("base64-encodes UTF-8, not latin1", async () => {
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID);
+		await resolver.reconcile(secretRequest(), fake.transport);
+		const create = fake.calls.find((call) => call.method === "POST");
+		const data = bodyOf(create as RecordedCall).data as Rec;
+		expect(data.note).toBe(base64Utf8(SECRET_MATERIAL.note));
+	});
+
+	/** The property the whole design exists to have. */
+	it("reconciles twice into one Secret and one create", async () => {
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID);
+		const first = await resolver.reconcile(secretRequest(), fake.transport);
+		const second = parseResolveOutcome(
+			await resolver.reconcile(secretRequest(), fake.transport),
+		);
+		expect(first.action).toBe("create");
+		expect(second.action).toBe("adopt");
+		expect(fake.countOf("POST")).toBe(1);
+		expect(fake.countOf("PATCH")).toBe(0);
+	});
+
+	/** The load-bearing test: material goes in the body and nowhere else. */
+	it("publishes key names and never a value", async () => {
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID);
+		const created = parseResolveOutcome(
+			await resolver.reconcile(secretRequest(), fake.transport),
+		);
+		expect(created.outputs.keys).toEqual(["note", "password"]);
+		expect(created.outputs.locator).toBe(
+			`k8s://${SECRET_NAMESPACE}/api-credentials`,
+		);
+		expect(leaks(created, fake)).toBe(false);
+		const rotated = parseResolveOutcome(
+			await resolver.reconcile(secretRequest(), fake.transport),
+		);
+		expect(leaks(rotated, fake)).toBe(false);
+	});
+
+	it("converges a rotation without naming what changed", async () => {
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID);
+		await resolver.reconcile(secretRequest(), fake.transport);
+		const rotated = "a-completely-different-secret";
+		const withNewMaterial = resolverFor(KUBERNETES_SECRET_PRODUCT_ID, {
+			resolveSecretData: async () => ({
+				...SECRET_MATERIAL,
+				password: rotated,
+			}),
+		});
+		const outcome = parseResolveOutcome(
+			await withNewMaterial.reconcile(secretRequest(), fake.transport),
+		);
+		expect(outcome.action).toBe("update");
+		const patch = fake.calls.find((call) => call.method === "PATCH");
+		expect((bodyOf(patch as RecordedCall).data as Rec).password).toBe(
+			base64Utf8(rotated),
+		);
+		// Neither the old nor the new value is named anywhere readable.
+		expect(JSON.stringify(outcome.diagnostics)).not.toContain(rotated);
+		expect(JSON.stringify(outcome.outputs)).not.toContain(rotated);
+	});
+
+	it("reports drift rather than attempting an immutable type change", async () => {
+		const fake = fakeTransport((call) =>
+			call.method === "GET"
+				? json(
+						200,
+						secretRecord(
+							{ password: base64Utf8(SECRET_MATERIAL.password) },
+							{ type: "kubernetes.io/dockerconfigjson" },
+						),
+					)
+				: json(500, { message: "the resolver should not have written" }),
+		);
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(secretRequest(), fake.transport),
+		);
+		expect(outcome.diagnostics.join(" ")).toContain("immutable");
+		expect(fake.countOf("PATCH")).toBe(0);
+	});
+
+	it("refuses to create when the host wired no Secret custody", async () => {
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID, {
+			resolveSecretData: undefined,
+		});
+		expect(
+			await codeOf(() => resolver.reconcile(secretRequest(), fake.transport)),
+		).toBe("RESOLVER_CREDENTIAL_MISSING");
+		expect(fake.countOf("POST")).toBe(0);
+	});
+
+	it("refuses an empty Secret rather than failing at mount time", async () => {
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID, {
+			resolveSecretData: async () => ({}),
+		});
+		expect(
+			await codeOf(() => resolver.reconcile(secretRequest(), fake.transport)),
+		).toBe("RESOLVER_CREDENTIAL_MISSING");
+		expect(fake.countOf("POST")).toBe(0);
+	});
+
+	/** A read needs no material, so the host's custody is never touched. */
+	it("never asks for material on a read", async () => {
+		let asked = 0;
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID, {
+			resolveSecretData: async () => {
+				asked += 1;
+				return SECRET_MATERIAL;
+			},
+		});
+		await resolver.reconcile(secretRequest(), fake.transport);
+		await resolver.read(secretRequest(), fake.transport);
+		expect(asked).toBe(1);
+	});
+
+	it("cannot express material in desired at all", () => {
+		expect(() => secretRequest({ data: { password: "hunter2" } })).toThrow(
+			/credential/i,
+		);
+		expect(() => secretRequest({ stringData: { token: "abc" } })).toThrow(
+			/credential/i,
+		);
+	});
+
+	it("treats an already-absent Secret as a successful delete", async () => {
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID);
+		await expect(
+			resolver.delete(secretRequest(), fake.transport),
+		).resolves.toBeUndefined();
+	});
+
+	it("deletes a Secret it created, and reads back absent afterwards", async () => {
+		const fake = secretWorld();
+		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID);
+		await resolver.reconcile(secretRequest(), fake.transport);
+		await resolver.delete(secretRequest(), fake.transport);
+		expect(
+			await resolver.read(secretRequest(), fake.transport),
+		).toBeUndefined();
+	});
+});
+
 describe("the registry covers the built-in objects and only those", () => {
 	it("registers a resolver for every resolved product id", () => {
 		const registry = kubernetesResolverRegistry(options());
@@ -271,13 +518,17 @@ describe("the registry covers the built-in objects and only those", () => {
 	});
 
 	/**
-	 * Creating a Secret means putting its contents in `desired`, and `desired`
-	 * is recorded in the event log. The catalog row stays — it is a locator.
+	 * The Secret used to be excluded on the grounds that creating one means
+	 * putting material in `desired`. It does not: the contents arrive through
+	 * an injected resolver, the same way every other credential in this repo
+	 * does, so `desired` stays clean and the object still converges.
 	 */
-	it("registers nothing for the Secret locator row", () => {
+	it("leaves no catalogued object without a resolver", () => {
 		const registry = kubernetesResolverRegistry(options());
-		expect(KUBERNETES_UNRESOLVED_PRODUCT_IDS).toEqual(["kubernetes.secret/v1"]);
-		expect(registry.get("kubernetes.secret/v1")).toBeUndefined();
+		expect(KUBERNETES_UNRESOLVED_PRODUCT_IDS).toEqual([]);
+		expect(registry.get(KUBERNETES_SECRET_PRODUCT_ID)?.productId).toBe(
+			KUBERNETES_SECRET_PRODUCT_ID,
+		);
 	});
 
 	it("accounts for every catalogued product exactly once", () => {

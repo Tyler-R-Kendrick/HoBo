@@ -68,11 +68,17 @@ apiserver URL: one port, never a range and never a guess.
    class are immutable; converging them means deleting the object, which for a
    PVC destroys data and for a Job discards a completed run. Drift is a
    diagnostic for a human.
-3. **Secrets ship no resolver.** Creating one means putting its contents in
-   `ResolveRequest.desired`, and `desired` is recorded in the event log, the
-   plan digest, and every diagnostic printed from them. The catalog keeps
-   `kubernetes.secret/v1` as a `secret-ref.locator/v1` row, which is exactly the
-   profile that names where material lives without carrying it.
+3. **A Secret converges without its contents entering the record.** An earlier
+   revision of this ADR concluded that a Secret could not be resolved at all,
+   because creating one means putting material in `ResolveRequest.desired` — and
+   `desired` is recorded in the event log, the plan digest, and every diagnostic
+   printed from them. The premise is right and the conclusion was wrong: the
+   constraint is on `desired`, not on the resolver. The contents arrive through
+   an injected `resolveSecretData(logicalId)` instead, so `desired` carries only
+   the Secret's `type` and its labels. Material goes into the request body and
+   nowhere else, outputs publish key names rather than values, and drift is
+   decided on encoded values compared in memory so a rotation converges without
+   either version being written anywhere.
 
 ## Schema and constraints
 

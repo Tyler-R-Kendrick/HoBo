@@ -43,11 +43,18 @@ export const HOSTINGER_API_HOST = "developers.hostinger.com";
 /**
  * The product namespaces the resolvers may address. `/api/billing/v1` is
  * deliberately absent — see the module note.
+ *
+ * `/api/hosting/v1/` carries websites and their databases. It is *not* the
+ * order-placing surface: `POST /api/hosting/v1/websites` takes an `order_id`
+ * for a plan the account already bought and refuses without one, so a resolver
+ * reaching it can fill a plan but cannot buy one. That distinction is the whole
+ * reason this list names namespaces rather than a host.
  */
 // public-contract: the path allowlist for the Hostinger transport guard; adding /api/billing/v1 here would let this package place an order.
 export const HOSTINGER_ALLOWED_PATH_PREFIXES = Object.freeze([
 	"/api/vps/v1/",
 	"/api/dns/v1/",
+	"/api/hosting/v1/",
 ] as const);
 
 /**

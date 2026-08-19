@@ -47,16 +47,27 @@ turns an untrusted API body into a parsed derived record or a typed refusal,
 and `slotBinding()` in `@hobo/core` is the parse boundary every catalog row
 crosses.
 
-## Three surfaces, one allowlisted
+## Four surfaces, three policies, one exclusion
 
-Hetzner splits its products across three hosts with three different
-credentials, and `src/transport.ts` allowlists exactly one: the Cloud API
-(`api.hetzner.cloud/v1`, project API token). Object Storage is an S3 surface
-signed with a separate key pair, and the Robot API is behind HTTP Basic with the
-account's *web console password*. Both are named in `HETZNER_EXCLUDED_SURFACES`
-with their credential, so widening the guard is an edit a reviewer sees rather
-than a pattern that quietly matches a new host — and both of the unresolved
-products in this package are unresolved for that reason, not for lack of effort.
+Hetzner splits its products across four hosts, and `src/transport.ts` gives
+each allowlisted one its *own* policy rather than widening a shared host list:
+the Cloud API (`api.hetzner.cloud/v1`), the unified API (`api.hetzner.com/v1`,
+`storage_box*` paths only), and Object Storage
+(`<location>.your-objectstorage.com`, SigV4 against a separate key pair). Two
+of those take the same kind of bearer token, which is exactly why they are not
+merged: a policy naming both hosts could not tell a Cloud API path requested
+from the unified origin from a legitimate one.
+
+The Robot API stays out. It is behind HTTP Basic with the account's *web
+console password*, and nothing this package catalogs needs it. It is named in
+`HETZNER_EXCLUDED_SURFACES` with its credential and the reason, so widening the
+guard is an edit a reviewer sees rather than a pattern that quietly matches a
+new host.
+
+An earlier revision of this ADR justified excluding `hetzner.storage-box/v1` by
+that same Robot argument. It was wrong: Storage Boxes had moved to the unified
+API, and the 404 this package observed on the *Cloud* API was evidence of a
+move, not of unreachability. Every catalogued product now has a resolver.
 
 ## Credentials
 

@@ -32,9 +32,12 @@ import {
 	HOSTINGER_DEFAULT_BINDINGS,
 	HOSTINGER_DNS_ZONE_PRODUCT_ID,
 	HOSTINGER_EXCLUDED_PATH_PREFIXES,
+	HOSTINGER_MYSQL_PRODUCT_ID,
 	HOSTINGER_RESOLVED_PRODUCT_IDS,
+	HOSTINGER_STATIC_SITE_PRODUCT_ID,
 	HOSTINGER_UNRESOLVED_PRODUCT_IDS,
 	HOSTINGER_VPS_PRODUCT_ID,
+	HOSTINGER_WEB_HOSTING_PRODUCT_ID,
 	type HostingerResolverOptions,
 	hostingerApiUrl,
 	hostingerResolverRegistry,
@@ -128,7 +131,11 @@ function bodyOf(call: RecordedCall): Rec {
 function options(
 	overrides: Partial<HostingerResolverOptions> = {},
 ): HostingerResolverOptions {
-	return { resolveCredential: async () => TOKEN, ...overrides };
+	return {
+		resolveCredential: async () => TOKEN,
+		resolveDatabasePassword: async () => DATABASE_PASSWORD,
+		...overrides,
+	};
 }
 
 function resolverFor(
@@ -284,6 +291,393 @@ const ZONE_REQUEST = {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Websites and databases
+// ---------------------------------------------------------------------------
+
+const WEBSITES_PATH = "/api/hosting/v1/websites";
+const ACCOUNT = "u123456";
+const DATABASES_PATH = `/api/hosting/v1/accounts/${ACCOUNT}/databases`;
+const ORDER_ID = 8675309;
+/** Material the host's custody hands over. Expected in one request body only. */
+const DATABASE_PASSWORD = "c0rrect-horse-battery-staple";
+
+function websiteRecord(overrides: Rec = {}): Rec {
+	return {
+		domain: "example.com",
+		vhost_type: "main",
+		is_enabled: true,
+		username: ACCOUNT,
+		client_id: 1,
+		order_id: ORDER_ID,
+		created_at: "2026-08-19T12:00:00Z",
+		root_directory: "public_html",
+		website_type: "other",
+		...overrides,
+	};
+}
+
+function websiteRequest(productId: string, desired: Rec = {}): ResolveRequest {
+	return request({
+		slot: "web",
+		productId,
+		logicalId: "example.com",
+		desired: { orderId: ORDER_ID, ...desired },
+	});
+}
+
+/** A fake account that starts with no site and remembers the one created. */
+function websiteWorld(): Fake {
+	let existing: Rec | undefined;
+	return fakeTransport((call) => {
+		if (call.method === "GET" && call.path === WEBSITES_PATH) {
+			const wanted = new URLSearchParams(call.search).get("domain");
+			const matches =
+				existing !== undefined && existing.domain === wanted ? [existing] : [];
+			return json(200, { data: matches, meta: {} });
+		}
+		if (call.method === "POST" && call.path === WEBSITES_PATH) {
+			const body = bodyOf(call);
+			existing = websiteRecord({
+				domain: body.domain,
+				order_id: body.order_id,
+			});
+			return json(201, { message: "Website created" });
+		}
+		if (call.method === "DELETE" && call.path.startsWith(`${WEBSITES_PATH}/`)) {
+			existing = undefined;
+			return json(200, { message: "Website deleted" });
+		}
+		return unexpected(call);
+	});
+}
+
+describe("the website resolvers fill a plan without buying one", () => {
+	it.each([
+		["hosted", HOSTINGER_WEB_HOSTING_PRODUCT_ID],
+		["static", HOSTINGER_STATIC_SITE_PRODUCT_ID],
+	] as const)("creates a %s site inside an owned order", async (_kind, productId) => {
+		const fake = websiteWorld();
+		const resolver = resolverFor(productId);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(websiteRequest(productId), fake.transport),
+		);
+		expect(outcome.action).toBe("create");
+		expect(outcome.physicalId).toBe("example.com");
+		expect(outcome.outputs.hostingAccount).toBe(ACCOUNT);
+		const create = fake.calls.find((call) => call.method === "POST");
+		expect(bodyOf(create as RecordedCall).order_id).toBe(ORDER_ID);
+	});
+
+	/** The property the whole design exists to have. */
+	it("reconciles twice into one site and one create", async () => {
+		const fake = websiteWorld();
+		const resolver = resolverFor(HOSTINGER_WEB_HOSTING_PRODUCT_ID);
+		const first = await resolver.reconcile(
+			websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
+			fake.transport,
+		);
+		const second = parseResolveOutcome(
+			await resolver.reconcile(
+				websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
+				fake.transport,
+			),
+		);
+		expect(first.action).toBe("create");
+		expect(second.action).toBe("adopt");
+		expect(fake.calls.filter((call) => call.method === "POST")).toHaveLength(1);
+	});
+
+	/**
+	 * The refusal that keeps this provider honest. Without an order id there is
+	 * no plan to put the site in, and the only way to get one is to buy it.
+	 */
+	it("refuses to create a site when no owned order is named", async () => {
+		const fake = websiteWorld();
+		const resolver = resolverFor(HOSTINGER_WEB_HOSTING_PRODUCT_ID);
+		const bare = request({
+			slot: "web",
+			productId: HOSTINGER_WEB_HOSTING_PRODUCT_ID,
+			logicalId: "example.com",
+		});
+		const message = await messageOf(() =>
+			resolver.reconcile(bare, fake.transport),
+		);
+		expect(message).toContain("orderId");
+		expect(fake.mutating()).toHaveLength(0);
+	});
+
+	it("never reaches the billing namespace to get one", async () => {
+		const fake = websiteWorld();
+		const resolver = resolverFor(HOSTINGER_WEB_HOSTING_PRODUCT_ID);
+		await resolver.reconcile(
+			websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
+			fake.transport,
+		);
+		for (const call of fake.calls) {
+			expect(call.path).not.toContain(
+				HOSTINGER_EXCLUDED_PATH_PREFIXES.billing.prefix,
+			);
+		}
+	});
+
+	it("reads back the site rather than reporting its own request", async () => {
+		// The create answers with a message and no record. A resolver that
+		// synthesised outputs from the request would report a site that may not
+		// exist; this one refuses instead.
+		const fake = fakeTransport((call) => {
+			if (call.method === "GET" && call.path === WEBSITES_PATH) {
+				return json(200, { data: [], meta: {} });
+			}
+			if (call.method === "POST" && call.path === WEBSITES_PATH) {
+				return json(201, { message: "Website created" });
+			}
+			return unexpected(call);
+		});
+		const resolver = resolverFor(HOSTINGER_WEB_HOSTING_PRODUCT_ID);
+		expect(
+			await codeOf(() =>
+				resolver.reconcile(
+					websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
+					fake.transport,
+				),
+			),
+		).toBe("RESOLVER_PROVIDER_REJECTED");
+	});
+
+	it("refuses to adopt a near-miss domain", async () => {
+		const fake = fakeTransport((call) => {
+			if (call.method === "GET" && call.path === WEBSITES_PATH) {
+				// The filter answered with a neighbour, which is what a substring
+				// match does. Adopting it would manage the wrong site.
+				return json(200, {
+					data: [websiteRecord({ domain: "staging.example.com" })],
+					meta: {},
+				});
+			}
+			if (call.method === "POST" && call.path === WEBSITES_PATH) {
+				return json(201, { message: "Website created" });
+			}
+			return unexpected(call);
+		});
+		const resolver = resolverFor(HOSTINGER_WEB_HOSTING_PRODUCT_ID);
+		await resolver
+			.reconcile(
+				websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
+				fake.transport,
+			)
+			.catch(() => undefined);
+		// It created rather than adopting the neighbour.
+		expect(fake.calls.filter((call) => call.method === "POST")).toHaveLength(1);
+	});
+
+	it("treats an already-absent site as a successful delete", async () => {
+		const fake = websiteWorld();
+		const resolver = resolverFor(HOSTINGER_WEB_HOSTING_PRODUCT_ID);
+		await expect(
+			resolver.delete(
+				websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
+				fake.transport,
+			),
+		).resolves.toBeUndefined();
+		expect(fake.mutating()).toHaveLength(0);
+	});
+
+	it("says so when the site exists but is disabled", async () => {
+		const fake = fakeTransport((call) =>
+			call.method === "GET" && call.path === WEBSITES_PATH
+				? json(200, { data: [websiteRecord({ is_enabled: false })], meta: {} })
+				: unexpected(call),
+		);
+		const resolver = resolverFor(HOSTINGER_WEB_HOSTING_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			(await resolver.read(
+				websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
+				fake.transport,
+			)) as ResolveOutcome,
+		);
+		expect(outcome.diagnostics.join(" ")).toContain("disabled");
+	});
+});
+
+function databaseRecord(overrides: Rec = {}): Rec {
+	return {
+		name: "appdb",
+		user: "appuser",
+		domain: "example.com",
+		permissions: {},
+		created_at: "2026-08-19T12:00:00Z",
+		updated_at: "2026-08-19T12:00:00Z",
+		disk_usage_mb: 0,
+		max_size_mb: 1024,
+		host: "mysql.hostinger.com",
+		port: 3306,
+		...overrides,
+	};
+}
+
+function databaseRequest(desired: Rec = {}): ResolveRequest {
+	return request({
+		slot: "data",
+		productId: HOSTINGER_MYSQL_PRODUCT_ID,
+		logicalId: "appdb",
+		desired: {
+			hostingAccount: ACCOUNT,
+			databaseUser: "appuser",
+			websiteDomain: "example.com",
+			...desired,
+		},
+	});
+}
+
+function databaseWorld(): Fake {
+	let existing: Rec | undefined;
+	return fakeTransport((call) => {
+		if (call.method === "GET" && call.path === DATABASES_PATH) {
+			const wanted = new URLSearchParams(call.search).get("search") ?? "";
+			const matches =
+				existing !== undefined &&
+				String(existing.name).includes(wanted) &&
+				wanted.length > 0
+					? [existing]
+					: [];
+			return json(200, { data: matches, meta: {} });
+		}
+		if (call.method === "POST" && call.path === DATABASES_PATH) {
+			const body = bodyOf(call);
+			existing = databaseRecord({ name: body.name, user: body.user });
+			return json(201, { message: "Database created" });
+		}
+		if (
+			call.method === "DELETE" &&
+			call.path.startsWith(`${DATABASES_PATH}/`)
+		) {
+			existing = undefined;
+			return json(200, { message: "Database deleted" });
+		}
+		return unexpected(call);
+	});
+}
+
+describe("the MySQL resolver converges a database inside a hosting account", () => {
+	it("creates a database that is not there", async () => {
+		const fake = databaseWorld();
+		const resolver = resolverFor(HOSTINGER_MYSQL_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(databaseRequest(), fake.transport),
+		);
+		expect(outcome.action).toBe("create");
+		expect(outcome.outputs.databaseUser).toBe("appuser");
+		expect(outcome.outputs.host).toBe("mysql.hostinger.com");
+	});
+
+	it("reconciles twice into one database and one create", async () => {
+		const fake = databaseWorld();
+		const resolver = resolverFor(HOSTINGER_MYSQL_PRODUCT_ID);
+		const first = await resolver.reconcile(databaseRequest(), fake.transport);
+		const second = parseResolveOutcome(
+			await resolver.reconcile(databaseRequest(), fake.transport),
+		);
+		expect(first.action).toBe("create");
+		expect(second.action).toBe("adopt");
+		expect(fake.calls.filter((call) => call.method === "POST")).toHaveLength(1);
+	});
+
+	it("sends the password from the host's custody, and only in the create body", async () => {
+		const fake = databaseWorld();
+		const resolver = resolverFor(HOSTINGER_MYSQL_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(databaseRequest(), fake.transport),
+		);
+		const create = fake.calls.find((call) => call.method === "POST");
+		expect(bodyOf(create as RecordedCall).password).toBe(DATABASE_PASSWORD);
+		expect(JSON.stringify(outcome.outputs)).not.toContain(DATABASE_PASSWORD);
+		expect(JSON.stringify(outcome.diagnostics)).not.toContain(
+			DATABASE_PASSWORD,
+		);
+		// The endpoint output is a locator, not a DSN carrying the password.
+		expect(String(outcome.outputs.endpoint)).not.toContain("@");
+	});
+
+	it("cannot even express a password in desired, ref or not", () => {
+		expect(() => databaseRequest({ password: "hunter2" })).toThrow(
+			/credential/i,
+		);
+		expect(() => databaseRequest({ passwordRef: "env://SOMETHING" })).toThrow(
+			/credential/i,
+		);
+	});
+
+	it("refuses to create when the host wired no password custody", async () => {
+		const fake = databaseWorld();
+		const resolver = resolverFor(HOSTINGER_MYSQL_PRODUCT_ID, {
+			resolveDatabasePassword: undefined,
+		});
+		expect(
+			await codeOf(() => resolver.reconcile(databaseRequest(), fake.transport)),
+		).toBe("RESOLVER_CREDENTIAL_MISSING");
+		expect(fake.mutating()).toHaveLength(0);
+	});
+
+	it("refuses a request that names no hosting account", async () => {
+		const fake = databaseWorld();
+		const resolver = resolverFor(HOSTINGER_MYSQL_PRODUCT_ID);
+		const bare = request({
+			slot: "data",
+			productId: HOSTINGER_MYSQL_PRODUCT_ID,
+			logicalId: "appdb",
+			desired: { databaseUser: "appuser", websiteDomain: "example.com" },
+		});
+		expect(await codeOf(() => resolver.reconcile(bare, fake.transport))).toBe(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+		);
+		expect(fake.calls).toHaveLength(0);
+	});
+
+	/**
+	 * `?search=` is a substring match. Trusting it would let `appdb` adopt
+	 * `appdb_staging` and then manage — or delete — the wrong database.
+	 */
+	it("refuses to adopt a database whose name merely contains the wanted one", async () => {
+		const fake = fakeTransport((call) => {
+			if (call.method === "GET" && call.path === DATABASES_PATH) {
+				return json(200, {
+					data: [databaseRecord({ name: "appdb_staging" })],
+					meta: {},
+				});
+			}
+			if (call.method === "POST" && call.path === DATABASES_PATH) {
+				return json(201, { message: "Database created" });
+			}
+			return unexpected(call);
+		});
+		const resolver = resolverFor(HOSTINGER_MYSQL_PRODUCT_ID);
+		await resolver
+			.reconcile(databaseRequest(), fake.transport)
+			.catch(() => undefined);
+		expect(fake.calls.filter((call) => call.method === "POST")).toHaveLength(1);
+	});
+
+	it("treats an already-absent database as a successful delete", async () => {
+		const fake = databaseWorld();
+		const resolver = resolverFor(HOSTINGER_MYSQL_PRODUCT_ID);
+		await expect(
+			resolver.delete(databaseRequest(), fake.transport),
+		).resolves.toBeUndefined();
+		expect(fake.mutating()).toHaveLength(0);
+	});
+
+	it("deletes a database it created, and reads back absent afterwards", async () => {
+		const fake = databaseWorld();
+		const resolver = resolverFor(HOSTINGER_MYSQL_PRODUCT_ID);
+		await resolver.reconcile(databaseRequest(), fake.transport);
+		await resolver.delete(databaseRequest(), fake.transport);
+		expect(
+			await resolver.read(databaseRequest(), fake.transport),
+		).toBeUndefined();
+	});
+});
+
 describe("the registry covers exactly the products with a convergent API", () => {
 	it("registers a resolver for every resolved product id", () => {
 		const registry = hostingerResolverRegistry(options());
@@ -292,16 +686,35 @@ describe("the registry covers exactly the products with a convergent API", () =>
 		}
 	});
 
-	it("registers nothing for a product with no addressable REST resource", () => {
+	/**
+	 * Every catalogued product converges. The list stays exported and stays
+	 * asserted: a product added to `slots.ts` without a resolver has to appear
+	 * here, which is what makes the next gap a review decision rather than an
+	 * uncounted one.
+	 */
+	it("leaves no catalogued product without a resolver", () => {
 		const registry = hostingerResolverRegistry(options());
 		for (const productId of HOSTINGER_UNRESOLVED_PRODUCT_IDS) {
 			expect(registry.get(productId)).toBeUndefined();
 		}
-		expect(HOSTINGER_UNRESOLVED_PRODUCT_IDS).toEqual([
-			"hostinger.mysql/v1",
-			"hostinger.static-site/v1",
-			"hostinger.web-hosting/v1",
-		]);
+		expect(HOSTINGER_UNRESOLVED_PRODUCT_IDS).toEqual([]);
+	});
+
+	/**
+	 * These three used to be excluded on the grounds that hPanel was the only
+	 * way to reach them. `/api/hosting/v1/` carries full CRUD for a website and
+	 * for a database, so the excuse was wrong, not the catalog.
+	 */
+	it("resolves the three products that used to be excluded", () => {
+		const registry = hostingerResolverRegistry(options());
+		for (const productId of [
+			HOSTINGER_MYSQL_PRODUCT_ID,
+			HOSTINGER_STATIC_SITE_PRODUCT_ID,
+			HOSTINGER_WEB_HOSTING_PRODUCT_ID,
+		]) {
+			expect(HOSTINGER_RESOLVED_PRODUCT_IDS).toContain(productId);
+			expect(registry.get(productId)?.productId).toBe(productId);
+		}
 	});
 
 	it("accounts for every catalogued product exactly once", () => {

@@ -39,6 +39,7 @@ import {
 import { guardedGcpTransport } from "@hobo/provider-gcp";
 import {
 	guardedHetznerTransport,
+	guardedHetznerUnifiedApiTransport,
 	guardedObjectStorageTransport,
 } from "@hobo/provider-hetzner";
 import { guardedHostingerTransport } from "@hobo/provider-hostinger";
@@ -143,7 +144,21 @@ const CASES: readonly GuardCase[] = [
 		maxResponseBytes: 512 * 1024,
 	},
 	{
-		label: "hostinger (vps + dns)",
+		// Hetzner's newer host, carrying the surfaces it moved off Robot. Same
+		// bearer-token scheme as the Cloud API, so it gets its own policy rather
+		// than a widened host list: one policy naming both hosts would let a
+		// Cloud API path be requested from this origin and the guard would have
+		// nothing to say about it — which is what the foreignPath row asserts.
+		label: "hetzner (unified api)",
+		wrap: (inner) => guardedHetznerUnifiedApiTransport(inner),
+		allowed: "https://api.hetzner.com/v1/storage_boxes",
+		foreignHost: "https://api.hetzner.cloud/v1/storage_boxes",
+		foreignPath: "https://api.hetzner.com/v1/servers",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "hostinger (vps + dns + hosting)",
 		wrap: (inner) => guardedHostingerTransport(inner),
 		allowed: "https://developers.hostinger.com/api/vps/v1/virtual-machines",
 		foreignHost:

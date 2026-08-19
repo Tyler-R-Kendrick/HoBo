@@ -129,6 +129,7 @@ export const KUBERNETES_DAEMONSET_PRODUCT_ID = productIdOf(
 export const KUBERNETES_INGRESS_PRODUCT_ID = productIdOf(ingress(), "ingress");
 export const KUBERNETES_JOB_PRODUCT_ID = productIdOf(job(), "job");
 export const KUBERNETES_CRONJOB_PRODUCT_ID = productIdOf(cronJob(), "cronJob");
+export const KUBERNETES_SECRET_PRODUCT_ID = productIdOf(secret(), "secret");
 export const KUBERNETES_PVC_PRODUCT_ID = productIdOf(
 	persistentVolumeClaim(),
 	"persistentVolumeClaim",
@@ -143,23 +144,27 @@ export const KUBERNETES_RESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
 		KUBERNETES_INGRESS_PRODUCT_ID,
 		KUBERNETES_JOB_PRODUCT_ID,
 		KUBERNETES_PVC_PRODUCT_ID,
+		KUBERNETES_SECRET_PRODUCT_ID,
 		KUBERNETES_SERVICE_PRODUCT_ID,
 		KUBERNETES_STATEFULSET_PRODUCT_ID,
 	].sort(compareStrings),
 );
 
 /**
- * Product ids this package catalogs but deliberately cannot resolve.
+ * Product ids this package catalogs but does not resolve.
  *
- * `kubernetes.secret/v1`: a Secret *is* the material. Creating one through this
- * path would mean putting its contents in `ResolveRequest.desired`, and
- * `desired` is recorded in the event log, the plan digest, and every diagnostic
- * printed from them. The catalog row stays, because the row is a
- * `secret-ref.locator/v1` — it names where material lives, which is exactly the
- * thing a resolver does not need to create in order for a binding to read it.
+ * Empty. Every catalogued object has a convergent path against the apiserver,
+ * the Secret included — its material arrives through an injected function
+ * rather than through `desired`, so nothing about it reaches the event log.
+ *
+ * It is exported anyway, and the tests still assert that resolved + unresolved
+ * accounts for the catalog exactly once. The list existing and being empty is a
+ * different claim from the list not existing: an object added to `./slots.ts`
+ * without a resolver has to be named here, and that is a decision a reviewer
+ * sees rather than a gap nobody counted.
  */
 export const KUBERNETES_UNRESOLVED_PRODUCT_IDS: readonly string[] =
-	Object.freeze([productIdOf(secret(), "secret")].sort(compareStrings));
+	Object.freeze([]);
 
 // ---------------------------------------------------------------------------
 // Construction
@@ -175,6 +180,20 @@ export interface KubernetesResolverOptions {
 	 * secret and never decides where secrets live.
 	 */
 	readonly resolveCredential: (ref: string) => Promise<string>;
+	/**
+	 * Resolves the contents of one Secret, by logical id.
+	 *
+	 * Keyed by logical id rather than by anything in `desired`, because core
+	 * refuses credential-shaped keys in a property bag: `desired` is recorded in
+	 * the event log, the plan digest, and every diagnostic printed from them,
+	 * and a Secret's whole content is material. The host maps the logical id to
+	 * its own custody and hands back plain strings; this package base64-encodes
+	 * them for the apiserver and holds them no longer than the call. Required
+	 * only to build the Secret resolver.
+	 */
+	readonly resolveSecretData?: (
+		logicalId: string,
+	) => Promise<Readonly<Record<string, string>>>;
 }
 
 /**
@@ -270,6 +289,15 @@ const OBJECT_KINDS: Readonly<Record<string, ObjectKind>> = Object.freeze({
 		kind: "Deployment",
 		apiRoot: "/apis/apps/v1",
 		plural: "deployments",
+		specImmutable: false,
+	}),
+	[KUBERNETES_SECRET_PRODUCT_ID]: Object.freeze({
+		apiVersion: "v1",
+		kind: "Secret",
+		apiRoot: "/api/v1",
+		plural: "secrets",
+		// A Secret has no `spec`; it is resolved by SECRET_SPEC rather than by
+		// the generic path, and this entry exists for the URL helpers only.
 		specImmutable: false,
 	}),
 	[KUBERNETES_SERVICE_PRODUCT_ID]: Object.freeze({
@@ -449,6 +477,15 @@ interface KubernetesResolverContext {
 	readonly namespace: string;
 	readonly desired: Readonly<Record<string, unknown>>;
 	readonly knownPhysicalId: string | undefined;
+	/**
+	 * The host's Secret custody, if it wired one. A function rather than a
+	 * resolved map so nothing is fetched for a request that does not need it,
+	 * and so material never sits on a context that gets passed around.
+	 * Undefined on every path but the Secret.
+	 */
+	readonly resolveSecretData:
+		| ((logicalId: string) => Promise<Readonly<Record<string, string>>>)
+		| undefined;
 }
 
 function outcome(
@@ -780,6 +817,258 @@ function builtInSpec(
 }
 
 // ---------------------------------------------------------------------------
+// Secret — material that never touches `desired`, an output, or a diagnostic
+// ---------------------------------------------------------------------------
+
+/**
+ * A Secret is the one catalogued object whose *content* is the material.
+ *
+ * That is a real constraint, and the wrong conclusion to draw from it is that
+ * the object cannot be resolved. `desired` is what must stay clean, not the
+ * request: core refuses credential-shaped keys in a property bag for exactly
+ * this reason, so the contents arrive through the injected
+ * `resolveSecretData(logicalId)` — the same shape as every other credential in
+ * this repo — and `desired` carries only the Secret's `type` and its labels.
+ *
+ * From there the discipline is mechanical, and each piece is tested:
+ *
+ *   - material is fetched immediately before the call and held no longer;
+ *   - it goes into the request body and nowhere else — never an output, never a
+ *     diagnostic, never a URL, never an error message;
+ *   - outputs publish the *key names* and the type, because a binding needs to
+ *     know a Secret has a `password` key, and never the values;
+ *   - drift is decided by comparing encoded values in memory, so a rotation
+ *     converges without either version being rendered anywhere.
+ */
+const SECRET_KIND = OBJECT_KINDS[KUBERNETES_SECRET_PRODUCT_ID] as ObjectKind;
+
+/**
+ * Base64 of the UTF-8 bytes, which is what the apiserver stores in `data`.
+ *
+ * `btoa` alone is latin1 and would corrupt any non-ASCII secret, so the string
+ * is encoded to bytes first. Built on globals rather than `node:buffer` because
+ * this package also runs in `@hobo/runtime-browser`.
+ */
+function base64Utf8(value: string): string {
+	const bytes = new TextEncoder().encode(value);
+	let binary = "";
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary);
+}
+
+/** The Secret's `type`, defaulted to the one Kubernetes itself defaults to. */
+function secretType(context: KubernetesResolverContext): string {
+	return optionalString(context.desired, "secretType") ?? "Opaque";
+}
+
+/**
+ * Fetch the Secret's contents from the host's custody.
+ *
+ * The return value is deliberately not stored on the context: it is fetched at
+ * the point of use so that a `read` — which never needs material — never causes
+ * the host's custody to be touched at all.
+ */
+async function secretData(
+	context: KubernetesResolverContext,
+): Promise<Readonly<Record<string, string>>> {
+	const resolve = context.resolveSecretData;
+	if (resolve === undefined) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`${KUBERNETES_SECRET_PRODUCT_ID}: no Secret data resolver was injected. Construct the resolvers with resolveSecretData(logicalId) — a Secret's contents are material, they cannot travel in desired (core refuses credential-shaped keys in a property bag, because desired is recorded in the event log), and this resolver will not create an empty Secret, because a workload mounting one would fail at runtime rather than here`,
+			KUBERNETES_SECRET_PRODUCT_ID,
+		);
+	}
+	const material = await resolve(context.request.ref.logicalId);
+	if (material === null || typeof material !== "object") {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`${KUBERNETES_SECRET_PRODUCT_ID}: resolveSecretData did not return an object of string values for ${JSON.stringify(context.request.ref.logicalId)}`,
+			KUBERNETES_SECRET_PRODUCT_ID,
+		);
+	}
+	const entries = Object.entries(material);
+	if (entries.length === 0) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`${KUBERNETES_SECRET_PRODUCT_ID}: resolveSecretData returned no keys for ${JSON.stringify(context.request.ref.logicalId)}. An empty Secret is accepted by the apiserver and fails at mount time instead, which is a worse place to find out`,
+			KUBERNETES_SECRET_PRODUCT_ID,
+		);
+	}
+	for (const [key, value] of entries) {
+		if (typeof value !== "string") {
+			throw new ResolverError(
+				"RESOLVER_CREDENTIAL_MISSING",
+				// The key name is safe to print; the value is not, and is not.
+				`${KUBERNETES_SECRET_PRODUCT_ID}: resolveSecretData returned a non-string for key ${JSON.stringify(key)}. Kubernetes stores byte strings, so the host's custody must hand over strings`,
+				KUBERNETES_SECRET_PRODUCT_ID,
+			);
+		}
+	}
+	return Object.freeze({ ...material });
+}
+
+/** `{ key: base64(value) }`, which is exactly the apiserver's `data` shape. */
+function encodedData(
+	material: Readonly<Record<string, string>>,
+): Record<string, string> {
+	const out: Record<string, string> = {};
+	for (const key of Object.keys(material).sort(compareStrings)) {
+		out[key] = base64Utf8(material[key] as string);
+	}
+	return out;
+}
+
+/**
+ * Outputs: what a binding needs to *use* the Secret, and nothing more.
+ *
+ * The key names are published because a projection has to name a key to mount
+ * it, and a binding that had to guess would be worse. The values are not, and
+ * neither is anything derived from them.
+ */
+function secretOutputs(
+	context: KubernetesResolverContext,
+	observed: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	const data = nestedRecord(observed, "data");
+	return {
+		...objectOutputs(SECRET_KIND, context, observed),
+		// Deliberately not named `secretType`/`secretRef`: core refuses
+		// credential-shaped keys in an outcome's outputs as well as in `desired`,
+		// and it is right to — a bag that can hold a key called `secret…` is a
+		// bag someone will eventually put a secret in.
+		objectType: optionalString(observed, "type") ?? secretType(context),
+		keys: Object.keys(data).sort(compareStrings),
+		/** The locator a `secret-ref` binding projects from. */
+		locator: `k8s://${context.namespace}/${context.name}`,
+	};
+}
+
+const SECRET_SPEC: Omit<KubernetesResolverSpec, "productId"> = {
+	async read(context) {
+		const label = `kubernetes read Secret ${context.namespace}/${context.name}`;
+		const response = await send(context, {
+			method: "GET",
+			path: objectPath(SECRET_KIND, context),
+		});
+		if (isNotFound(response)) return undefined;
+		const observed = expectOk(response, label);
+		return outcome(
+			settledAction(context),
+			`${context.namespace}/${context.name}`,
+			secretOutputs(context, observed),
+			[],
+		);
+	},
+	async reconcile(context) {
+		const label = `kubernetes read Secret ${context.namespace}/${context.name}`;
+		const existing = await send(context, {
+			method: "GET",
+			path: objectPath(SECRET_KIND, context),
+		});
+		const observed = isNotFound(existing)
+			? undefined
+			: expectOk(existing, label);
+		// Material is fetched only now — after the read that might have made it
+		// unnecessary is done, and only on a path that will actually send it.
+		const wanted = encodedData(await secretData(context));
+		const labels = desiredLabels(context);
+		const body = {
+			apiVersion: SECRET_KIND.apiVersion,
+			kind: SECRET_KIND.kind,
+			metadata: {
+				name: context.name,
+				namespace: context.namespace,
+				...(Object.keys(labels).length > 0 ? { labels } : {}),
+			},
+			type: secretType(context),
+			data: wanted,
+		};
+		if (observed === undefined) {
+			const created = expectOk(
+				await send(context, {
+					method: "POST",
+					path: collectionPath(SECRET_KIND, context),
+					json: body,
+				}),
+				`kubernetes create Secret ${context.namespace}/${context.name}`,
+			);
+			return outcome(
+				"create",
+				`${context.namespace}/${context.name}`,
+				secretOutputs(context, created),
+				[
+					"the contents came from the injected resolveSecretData and are not in desired, in an output, or in this diagnostic; only the key names are published, because a projection has to name a key to mount it",
+				],
+			);
+		}
+		// Drift is decided on the encoded values, compared in memory. Neither
+		// version is rendered into a message, so a rotation converges without
+		// either secret being written anywhere.
+		const live = nestedRecord(observed, "data");
+		const settled =
+			stableJson(live) === stableJson(wanted) &&
+			(optionalString(observed, "type") ?? secretType(context)) ===
+				secretType(context);
+		if (settled) {
+			return outcome(
+				settledAction(context),
+				`${context.namespace}/${context.name}`,
+				secretOutputs(context, observed),
+				[],
+			);
+		}
+		if (
+			(optionalString(observed, "type") ?? secretType(context)) !==
+			secretType(context)
+		) {
+			// `type` is immutable on a Secret; the apiserver rejects a patch that
+			// changes it. Reporting drift beats a request that cannot succeed.
+			return outcome(
+				settledAction(context),
+				`${context.namespace}/${context.name}`,
+				secretOutputs(context, observed),
+				[
+					`the live Secret's type is ${JSON.stringify(optionalString(observed, "type") ?? "")} and the request asks for ${JSON.stringify(secretType(context))}; a Secret's type is immutable, so converging it means deleting the object, which this resolver will not do to a Secret something may be mounting right now`,
+				],
+			);
+		}
+		const patched = expectOk(
+			await send(context, {
+				method: "PATCH",
+				path: objectPath(SECRET_KIND, context),
+				contentType: "application/merge-patch+json",
+				// A merge patch on `data` replaces the map wholesale, which is what
+				// a rotation means. A strategic-merge patch would keep keys the new
+				// material dropped, leaving a retired credential mounted.
+				json: { data: wanted },
+			}),
+			`kubernetes patch Secret ${context.namespace}/${context.name}`,
+		);
+		return outcome(
+			"update",
+			`${context.namespace}/${context.name}`,
+			secretOutputs(context, patched),
+			[
+				"the Secret's contents were replaced; which keys or values changed is deliberately not reported, because a diagnostic is written to the event log",
+				"a running pod that mounted this Secret as a volume sees the new value within the kubelet's sync period; one that consumed it through env vars does not, and needs a restart this resolver does not perform",
+			],
+		);
+	},
+	async remove(context) {
+		const response = await send(context, {
+			method: "DELETE",
+			path: objectPath(SECRET_KIND, context),
+		});
+		if (isNotFound(response)) return;
+		expectOk(
+			response,
+			`kubernetes delete Secret ${context.namespace}/${context.name}`,
+		);
+	},
+};
+
+// ---------------------------------------------------------------------------
 // Wrapper and registry
 // ---------------------------------------------------------------------------
 
@@ -826,6 +1115,10 @@ function createResolver(
 			namespace: requiredNamespace(request, spec.productId),
 			desired: request.desired,
 			knownPhysicalId: knownPhysicalId(request),
+			resolveSecretData:
+				spec.productId === KUBERNETES_SECRET_PRODUCT_ID
+					? options.resolveSecretData
+					: undefined,
 		};
 	}
 
@@ -846,18 +1139,25 @@ function createResolver(
 
 /**
  * Every Kubernetes resolver, id-sorted so the list is a function of the code
- * rather than of construction order. The one catalogued product that is absent
- * is named in {@link KUBERNETES_UNRESOLVED_PRODUCT_IDS}, with the reason.
+ * rather than of construction order. Every catalogued object has one;
+ * {@link KUBERNETES_UNRESOLVED_PRODUCT_IDS} is empty and stays exported so that
+ * stops being true loudly rather than quietly.
  */
 export function kubernetesResolvers(
 	options: KubernetesResolverOptions,
 ): readonly ResourceResolver[] {
 	return Object.freeze(
-		[...KUBERNETES_RESOLVED_PRODUCT_IDS]
-			.sort(compareStrings)
-			.map((productId) =>
-				createResolver({ productId, ...builtInSpec(productId) }, options),
+		[...KUBERNETES_RESOLVED_PRODUCT_IDS].sort(compareStrings).map((productId) =>
+			createResolver(
+				{
+					productId,
+					...(productId === KUBERNETES_SECRET_PRODUCT_ID
+						? SECRET_SPEC
+						: builtInSpec(productId)),
+				},
+				options,
 			),
+		),
 	);
 }
 

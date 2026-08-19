@@ -97,36 +97,41 @@ function productIdOf(binding: SlotBinding, factory: string): string {
 
 export const HOSTINGER_VPS_PRODUCT_ID = productIdOf(vps(), "vps");
 export const HOSTINGER_DNS_ZONE_PRODUCT_ID = productIdOf(dnsZone(), "dnsZone");
+export const HOSTINGER_WEB_HOSTING_PRODUCT_ID = productIdOf(
+	webHosting(),
+	"webHosting",
+);
+export const HOSTINGER_STATIC_SITE_PRODUCT_ID = productIdOf(
+	staticSite(),
+	"staticSite",
+);
+export const HOSTINGER_MYSQL_PRODUCT_ID = productIdOf(mysql(), "mysql");
 
 /** Every product this module resolves, id-sorted for a deterministic registry. */
 export const HOSTINGER_RESOLVED_PRODUCT_IDS: readonly string[] = Object.freeze(
-	[HOSTINGER_DNS_ZONE_PRODUCT_ID, HOSTINGER_VPS_PRODUCT_ID].sort(
-		compareStrings,
-	),
+	[
+		HOSTINGER_DNS_ZONE_PRODUCT_ID,
+		HOSTINGER_MYSQL_PRODUCT_ID,
+		HOSTINGER_STATIC_SITE_PRODUCT_ID,
+		HOSTINGER_VPS_PRODUCT_ID,
+		HOSTINGER_WEB_HOSTING_PRODUCT_ID,
+	].sort(compareStrings),
 );
 
 /**
- * Product ids this package catalogs but deliberately cannot resolve.
+ * Product ids this package catalogs but does not resolve.
  *
- * `hostinger.web-hosting/v1` and `hostinger.static-site/v1`: shared and cloud
- * web hosting is administered through hPanel and the file surfaces it exposes
- * (FTP/SSH into a plan you own). There is no public REST endpoint that creates,
- * observes and removes a hosting site as one addressable resource, so there is
- * nothing to converge against.
+ * Empty. Every product in the Hostinger catalog has a convergent path on
+ * `/api/hosting/v1/`, `/api/vps/v1/` or `/api/dns/v1/`.
  *
- * `hostinger.mysql/v1`: a database is created inside a hosting plan through
- * hPanel, and the credentials it mints are the only handle on it. A resolver
- * would have to hold those credentials to observe the database at all, which is
- * the opposite of the locator discipline every other resolver here follows.
+ * It is exported anyway, and the tests still assert that resolved + unresolved
+ * accounts for the catalog exactly once. The list existing and being empty is a
+ * different claim from the list not existing: a product added to `./slots.ts`
+ * without a resolver has to be named here, and that is a decision a reviewer
+ * sees rather than a gap nobody counted.
  */
 export const HOSTINGER_UNRESOLVED_PRODUCT_IDS: readonly string[] =
-	Object.freeze(
-		[
-			productIdOf(mysql(), "mysql"),
-			productIdOf(staticSite(), "staticSite"),
-			productIdOf(webHosting(), "webHosting"),
-		].sort(compareStrings),
-	);
+	Object.freeze([]);
 
 // ---------------------------------------------------------------------------
 // Construction
@@ -140,6 +145,17 @@ export interface HostingerResolverOptions {
 	 * secrets live.
 	 */
 	readonly resolveCredential: (ref: string) => Promise<string>;
+	/**
+	 * Resolves the password for one MySQL database user, by logical id.
+	 *
+	 * Keyed by logical id rather than by anything in `desired`, because core
+	 * refuses credential-shaped keys in a property bag: `desired` is recorded in
+	 * the event log, and the safest thing to write there about a password is
+	 * nothing at all. Hostinger mints a database user at create time and demands
+	 * its password in the same call, so the host maps the logical id to its own
+	 * custody. Required only to build the MySQL resolver.
+	 */
+	readonly resolveDatabasePassword?: (logicalId: string) => Promise<string>;
 }
 
 /**
@@ -397,6 +413,15 @@ interface HostingerResolverContext {
 	readonly desired: Readonly<Record<string, unknown>>;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
+	/**
+	 * The host's database-password custody, if it wired one. A function rather
+	 * than a resolved string so nothing is fetched for a request that does not
+	 * need it, and so material never sits on a context that gets passed around.
+	 * Undefined on every path but MySQL.
+	 */
+	readonly resolveDatabasePassword:
+		| ((logicalId: string) => Promise<string>)
+		| undefined;
 }
 
 function outcome(
@@ -863,6 +888,390 @@ const DNS_ZONE_SPEC: Omit<HostingerResolverSpec, "productId"> = {
 };
 
 // ---------------------------------------------------------------------------
+// Websites — a site inside a plan the account already owns
+// ---------------------------------------------------------------------------
+
+/**
+ * `/api/hosting/v1/websites` is not the billing surface.
+ *
+ * `POST` takes an `order_id` — the plan the account already bought — and
+ * refuses without one, so a resolver reaching this namespace can fill a plan it
+ * was pointed at but cannot buy a new one. That is what makes widening the
+ * guard to `/api/hosting/v1/` a different decision from widening it to
+ * `/api/billing/v1/`, which stays excluded.
+ */
+const WEBSITES_PATH = "/api/hosting/v1/websites";
+
+/** The domain this request is about: `desired.domain`, else the logical id. */
+function websiteDomain(context: HostingerResolverContext): string {
+	return optionalString(context.desired, "domain") ?? context.name;
+}
+
+/**
+ * Find the site for one domain.
+ *
+ * The list endpoint takes an exact `?domain=` filter, so this is one bounded
+ * call — no paging budget, and no chance of concluding "absent" from an
+ * exhausted page count and then creating a duplicate.
+ */
+async function findWebsite(
+	context: HostingerResolverContext,
+): Promise<Record<string, unknown> | undefined> {
+	const domain = websiteDomain(context);
+	const label = `hostinger list websites for ${domain}`;
+	const items = expectList(
+		await send(context, {
+			method: "GET",
+			path: `${WEBSITES_PATH}?domain=${encodeURIComponent(domain)}`,
+		}),
+		label,
+	);
+	const matches = items
+		.filter(isPlainObject)
+		.filter((item) => optionalString(item, "domain") === domain);
+	if (matches.length > 1) {
+		throw new ResolverError(
+			"RESOLVER_PROVIDER_REJECTED",
+			`hostinger websites: the exact domain filter for ${JSON.stringify(domain)} matched ${matches.length} records. A domain addresses one site on this API — DELETE takes the domain, not an id — so a second match means the filter did not behave as this resolver believes, and picking one by listing order would make the managed site depend on the order the API answered in`,
+		);
+	}
+	return matches[0];
+}
+
+function websiteOutputs(
+	observed: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	const username = optionalString(observed, "username");
+	const vhostType = optionalString(observed, "vhost_type");
+	const websiteType = optionalString(observed, "website_type");
+	const root = optionalString(observed, "root_directory");
+	const orderId = optionalInteger(observed, "order_id");
+	return {
+		domain: optionalString(observed, "domain") ?? "",
+		url: `https://${optionalString(observed, "domain") ?? ""}`,
+		...(username === undefined ? {} : { hostingAccount: username }),
+		...(vhostType === undefined ? {} : { vhostType }),
+		...(websiteType === undefined ? {} : { websiteType }),
+		...(root === undefined ? {} : { documentRoot: root }),
+		...(orderId === undefined ? {} : { orderId }),
+	};
+}
+
+function websiteDiagnostics(
+	observed: Readonly<Record<string, unknown>>,
+): readonly string[] {
+	const diagnostics: string[] = [];
+	if (observed.is_enabled === false) {
+		diagnostics.push(
+			"the site exists but Hostinger reports it disabled; requests to it will not be served until it is enabled, which this resolver does not do because a disabled site is usually a billing or abuse state rather than a config drift",
+		);
+	}
+	return Object.freeze(diagnostics);
+}
+
+/**
+ * Both website products resolve against the same resource.
+ *
+ * `hostinger.web-hosting/v1` and `hostinger.static-site/v1` are two capability
+ * profiles over one thing Hostinger sells — a site on a plan. They are separate
+ * catalog rows because a workload that only needs assets should be able to
+ * match the narrower profile, and they share this spec because pretending the
+ * provider has two resources would mean two resolvers racing over one domain.
+ */
+function websiteSpec(
+	kind: "hosted" | "static",
+): Omit<HostingerResolverSpec, "productId"> {
+	const productId =
+		kind === "static"
+			? HOSTINGER_STATIC_SITE_PRODUCT_ID
+			: HOSTINGER_WEB_HOSTING_PRODUCT_ID;
+	return {
+		async read(context) {
+			const observed = await findWebsite(context);
+			return observed === undefined
+				? undefined
+				: outcome(
+						settledAction(context),
+						websiteDomain(context),
+						websiteOutputs(observed),
+						websiteDiagnostics(observed),
+					);
+		},
+		async reconcile(context) {
+			refuseInlineSecrets(context, productId);
+			const domain = websiteDomain(context);
+			const observed = await findWebsite(context);
+			if (observed !== undefined) {
+				return outcome(
+					settledAction(context),
+					domain,
+					websiteOutputs(observed),
+					websiteDiagnostics(observed),
+				);
+			}
+			const orderId = optionalInteger(context.desired, "orderId");
+			if (orderId === undefined) {
+				throw purchaseRequired(
+					`${productId}: the request names no orderId. A site is created inside a hosting plan the account already bought, and Hostinger's create refuses without one. Set desired.orderId to the plan's order id (GET /api/hosting/v1/orders lists them). This resolver will not buy a plan`,
+				);
+			}
+			const label = `hostinger create website ${domain}`;
+			expectRecord(
+				await send(context, {
+					method: "POST",
+					path: WEBSITES_PATH,
+					json: {
+						domain,
+						order_id: orderId,
+						...(optionalString(context.desired, "datacenterCode") === undefined
+							? {}
+							: {
+									datacenter_code: optionalString(
+										context.desired,
+										"datacenterCode",
+									),
+								}),
+					},
+				}),
+				label,
+			);
+			// The create answers with a message, not the record, so the site is
+			// read back. A resolver that reported outputs it never observed would
+			// be reporting its own request.
+			const created = await findWebsite(context);
+			if (created === undefined) {
+				throw new ResolverError(
+					"RESOLVER_PROVIDER_REJECTED",
+					`${label}: Hostinger accepted the create but the site is not listed afterwards. Reporting success here would record a resource that may not exist; re-running reconcile is safe and will either find it or create it once`,
+					productId,
+				);
+			}
+			return outcome("create", domain, websiteOutputs(created), [
+				...websiteDiagnostics(created),
+				`the site was created inside order ${orderId}, which the account already owned; nothing here placed an order`,
+				...(kind === "static"
+					? [
+							"Hostinger serves a static site from the same plan as a hosted one; the narrower profile is a claim about what this binding needs, not about a different product",
+						]
+					: []),
+			]);
+		},
+		async remove(context) {
+			const observed = await findWebsite(context);
+			if (observed === undefined) return;
+			const domain = websiteDomain(context);
+			const label = `hostinger delete website ${domain}`;
+			const response = await send(context, {
+				method: "DELETE",
+				path: `${WEBSITES_PATH}/${encodeURIComponent(domain)}`,
+			});
+			if (isNotFound(response)) return;
+			expectRecord(response, label);
+		},
+	};
+}
+
+// ---------------------------------------------------------------------------
+// MySQL — a database inside a hosting account
+// ---------------------------------------------------------------------------
+
+/**
+ * The hosting account a database lives under.
+ *
+ * Every database endpoint is scoped to one — `/accounts/{username}/databases` —
+ * and the account is not derivable from the database name, so it is required
+ * rather than guessed. A resolver that picked an account would be choosing
+ * which plan gets billed for the storage.
+ */
+function hostingAccount(context: HostingerResolverContext): string {
+	const account =
+		optionalString(context.desired, "hostingAccount") ??
+		optionalString(context.desired, "username");
+	if (account === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`${HOSTINGER_MYSQL_PRODUCT_ID}: the request names no hostingAccount — set desired.hostingAccount to the hosting account username the database belongs under (it is the "username" on a website record, and GET /api/hosting/v1/websites reports it). It is not guessed here, because the account decides which plan is billed for the storage`,
+			HOSTINGER_MYSQL_PRODUCT_ID,
+		);
+	}
+	return account;
+}
+
+function databasesPath(context: HostingerResolverContext): string {
+	return `/api/hosting/v1/accounts/${encodeURIComponent(hostingAccount(context))}/databases`;
+}
+
+/**
+ * Find one database by name.
+ *
+ * The list endpoint offers `?search=`, which is a substring match rather than
+ * an exact filter, so the exact comparison is redone here. Trusting a substring
+ * match would let `app_db` adopt `app_db_staging`.
+ */
+async function findDatabase(
+	context: HostingerResolverContext,
+): Promise<Record<string, unknown> | undefined> {
+	const label = `hostinger list databases named ${context.name}`;
+	const items = expectList(
+		await send(context, {
+			method: "GET",
+			path: `${databasesPath(context)}?search=${encodeURIComponent(context.name)}`,
+		}),
+		label,
+	);
+	const matches = items
+		.filter(isPlainObject)
+		.filter((item) => optionalString(item, "name") === context.name);
+	if (matches.length > 1) {
+		throw new ResolverError(
+			"RESOLVER_PROVIDER_REJECTED",
+			`hostinger databases: ${matches.length} records under the exact name ${JSON.stringify(context.name)} in one account. A database name addresses one database on this API — DELETE takes the name — so choosing one by listing order would make the managed database depend on the order the API answered in`,
+		);
+	}
+	return matches[0];
+}
+
+function databaseOutputs(
+	observed: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+	const host = optionalString(observed, "host");
+	const port = optionalInteger(observed, "port");
+	const user = optionalString(observed, "user");
+	const domain = optionalString(observed, "domain");
+	return {
+		databaseName: optionalString(observed, "name") ?? "",
+		...(user === undefined ? {} : { databaseUser: user }),
+		...(host === undefined ? {} : { host }),
+		...(port === undefined ? {} : { port }),
+		...(domain === undefined ? {} : { websiteDomain: domain }),
+		// A locator, not a connection string: a DSN would carry the password,
+		// and outputs are recorded alongside `desired`.
+		...(host === undefined
+			? {}
+			: {
+					endpoint: `mysql://${host}${port === undefined ? "" : `:${port}`}/${optionalString(observed, "name") ?? ""}`,
+				}),
+	};
+}
+
+/**
+ * The database user's password, from the host's custody.
+ *
+ * Hostinger mints the user and its password in the same call that creates the
+ * database, so a create needs material. It does not come from `desired`: core
+ * refuses credential-shaped keys in a property bag because `desired` is
+ * recorded in the event log, and a key named `passwordRef` in a log is one bad
+ * host implementation away from being a password in a log.
+ */
+async function databasePassword(
+	context: HostingerResolverContext,
+): Promise<string> {
+	const resolve = context.resolveDatabasePassword;
+	if (resolve === undefined) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`${HOSTINGER_MYSQL_PRODUCT_ID}: no database password resolver was injected. Construct the resolvers with resolveDatabasePassword(logicalId) — Hostinger mints the database user at create time and demands its password in the same call, the password cannot travel in desired (core refuses credential-shaped keys in a property bag, because desired is recorded in the event log), and this resolver will not invent one, because a password nobody chose is a credential nobody can rotate`,
+			HOSTINGER_MYSQL_PRODUCT_ID,
+		);
+	}
+	const material = await resolve(context.request.ref.logicalId);
+	if (typeof material !== "string" || material.length === 0) {
+		throw new ResolverError(
+			"RESOLVER_CREDENTIAL_MISSING",
+			`${HOSTINGER_MYSQL_PRODUCT_ID}: resolveDatabasePassword produced no material for ${JSON.stringify(context.request.ref.logicalId)}. A create sent with an empty password would either be refused by Hostinger or, worse, accepted`,
+			HOSTINGER_MYSQL_PRODUCT_ID,
+		);
+	}
+	return material;
+}
+
+const MYSQL_SPEC: Omit<HostingerResolverSpec, "productId"> = {
+	async read(context) {
+		const observed = await findDatabase(context);
+		return observed === undefined
+			? undefined
+			: outcome(
+					settledAction(context),
+					context.name,
+					databaseOutputs(observed),
+					[],
+				);
+	},
+	async reconcile(context) {
+		const productId = HOSTINGER_MYSQL_PRODUCT_ID;
+		refuseInlineSecrets(context, productId);
+		const observed = await findDatabase(context);
+		if (observed !== undefined) {
+			// A MySQL database's shape lives in its schema, which this resolver
+			// does not own and will not migrate. Reporting settled is the honest
+			// answer; a resolver that "converged" a database would be dropping
+			// somebody's tables.
+			return outcome(
+				settledAction(context),
+				context.name,
+				databaseOutputs(observed),
+				[],
+			);
+		}
+		const user = optionalString(context.desired, "databaseUser");
+		if (user === undefined) {
+			throw new ResolverError(
+				"RESOLVER_PRODUCT_UNSUPPORTED",
+				`${productId}: the request names no databaseUser — set desired.databaseUser. Hostinger creates the database and its user in one call and there is no later endpoint to rename the user, so a name invented here would be permanent`,
+				productId,
+			);
+		}
+		const websiteDomainValue = optionalString(context.desired, "websiteDomain");
+		if (websiteDomainValue === undefined) {
+			throw new ResolverError(
+				"RESOLVER_PRODUCT_UNSUPPORTED",
+				`${productId}: the request names no websiteDomain — set desired.websiteDomain to the site the database is assigned to. Hostinger's create requires it, and assigning a database to a site nobody named would attach storage to the wrong plan`,
+				productId,
+			);
+		}
+		const label = `hostinger create database ${context.name}`;
+		expectRecord(
+			await send(context, {
+				method: "POST",
+				path: databasesPath(context),
+				json: {
+					name: context.name,
+					user,
+					// Resolved from the host's custody immediately before the call,
+					// and never written back to an output or a diagnostic.
+					password: await databasePassword(context),
+					website_domain: websiteDomainValue,
+				},
+			}),
+			label,
+		);
+		const created = await findDatabase(context);
+		if (created === undefined) {
+			throw new ResolverError(
+				"RESOLVER_PROVIDER_REJECTED",
+				`${label}: Hostinger accepted the create but the database is not listed afterwards. Reporting success here would record a resource that may not exist; re-running reconcile is safe and will either find it or create it once`,
+				productId,
+			);
+		}
+		return outcome("create", context.name, databaseOutputs(created), [
+			"the user password came from the injected resolveDatabasePassword and is not in desired, in an output, or in this diagnostic; rotate it through Hostinger's change-password endpoint, not by re-running this resolver",
+			"the endpoint output is a locator, not a DSN: a connection string would carry the password, and outputs are recorded alongside desired",
+		]);
+	},
+	async remove(context) {
+		const observed = await findDatabase(context);
+		if (observed === undefined) return;
+		const label = `hostinger delete database ${context.name}`;
+		const response = await send(context, {
+			method: "DELETE",
+			path: `${databasesPath(context)}/${encodeURIComponent(context.name)}`,
+		});
+		if (isNotFound(response)) return;
+		expectRecord(response, label);
+	},
+};
+
+// ---------------------------------------------------------------------------
 // Wrapper and registry
 // ---------------------------------------------------------------------------
 
@@ -904,6 +1313,10 @@ function createResolver(
 			name: resourceName(request, spec.productId),
 			desired: request.desired,
 			knownPhysicalId: knownPhysicalId(request),
+			resolveDatabasePassword:
+				spec.productId === HOSTINGER_MYSQL_PRODUCT_ID
+					? options.resolveDatabasePassword
+					: undefined,
 		};
 	}
 
@@ -924,16 +1337,19 @@ function createResolver(
 
 /**
  * Every Hostinger resolver, id-sorted so the list is a function of the code
- * rather than of construction order. The three catalogued products that are
- * absent are named in {@link HOSTINGER_UNRESOLVED_PRODUCT_IDS}, with the
- * reason.
+ * rather than of construction order. Every catalogued product has one;
+ * {@link HOSTINGER_UNRESOLVED_PRODUCT_IDS} is empty and stays exported so that
+ * stops being true loudly rather than quietly.
  */
 export function hostingerResolvers(
 	options: HostingerResolverOptions,
 ): readonly ResourceResolver[] {
 	const specs: readonly HostingerResolverSpec[] = [
 		{ productId: HOSTINGER_DNS_ZONE_PRODUCT_ID, ...DNS_ZONE_SPEC },
+		{ productId: HOSTINGER_MYSQL_PRODUCT_ID, ...MYSQL_SPEC },
+		{ productId: HOSTINGER_STATIC_SITE_PRODUCT_ID, ...websiteSpec("static") },
 		{ productId: HOSTINGER_VPS_PRODUCT_ID, ...VPS_SPEC },
+		{ productId: HOSTINGER_WEB_HOSTING_PRODUCT_ID, ...websiteSpec("hosted") },
 	];
 	return Object.freeze(
 		[...specs]

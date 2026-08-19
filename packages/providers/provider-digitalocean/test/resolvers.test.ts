@@ -26,7 +26,9 @@ import { describe, expect, it } from "vitest";
 
 import {
 	DIGITALOCEAN_API_HOST,
+	DIGITALOCEAN_APP_JOB_PRODUCT_ID,
 	DIGITALOCEAN_APP_SERVICE_PRODUCT_ID,
+	DIGITALOCEAN_APP_WORKER_PRODUCT_ID,
 	DIGITALOCEAN_DEFAULT_BINDINGS,
 	DIGITALOCEAN_DROPLET_PRODUCT_ID,
 	DIGITALOCEAN_LOAD_BALANCER_PRODUCT_ID,
@@ -405,6 +407,301 @@ const POSTGRES_REQUEST = {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// App Platform components
+// ---------------------------------------------------------------------------
+
+const APPS_PATH = "/v2/apps";
+const APP_NAME = "shop";
+const APP_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+
+const WORKER_COMPONENT = Object.freeze({
+	image: { registry_type: "DOCR", repository: "worker", tag: "v1" },
+	instance_size_slug: "apps-s-1vcpu-1gb",
+	instance_count: 2,
+});
+
+/** An app carrying whatever components the test wants, plus a sibling service. */
+function appRecord(spec: Rec = {}): Rec {
+	return {
+		id: APP_ID,
+		live_url: `https://${APP_NAME}.ondigitalocean.app`,
+		active_deployment: { phase: "ACTIVE" },
+		spec: {
+			name: APP_NAME,
+			region: "nyc",
+			// A sibling nobody in these tests owns. It must survive every write.
+			services: [{ name: "web", instance_count: 1 }],
+			...spec,
+		},
+	};
+}
+
+function componentRequest(
+	productId: string,
+	logicalId: string,
+	desired: Rec = {},
+): ResolveRequest {
+	return request({
+		slot: "service",
+		productId,
+		logicalId,
+		desired: {
+			appName: APP_NAME,
+			component: WORKER_COMPONENT,
+			...desired,
+		},
+	});
+}
+
+/** A DigitalOcean account with one app, whose spec the fake keeps. */
+function appWorld(initial: Rec = {}): Fake {
+	let app = appRecord(initial);
+	return fakeTransport((call) => {
+		if (call.method === "GET" && call.path === APPS_PATH) {
+			return json(200, { apps: [app], meta: { total: 1 } });
+		}
+		if (call.method === "PUT" && call.path === `${APPS_PATH}/${APP_ID}`) {
+			app = { ...app, spec: bodyOf(call).spec };
+			return json(200, { app });
+		}
+		return unexpected(call);
+	});
+}
+
+/** An account with no app at all. */
+function emptyWorld(): Fake {
+	return fakeTransport((call) =>
+		call.method === "GET" && call.path === APPS_PATH
+			? json(200, { apps: [], meta: { total: 0 } })
+			: unexpected(call),
+	);
+}
+
+function specOf(fake: Fake): Rec {
+	const writes = fake.calls.filter((call) => call.method === "PUT");
+	return bodyOf(writes[writes.length - 1] as RecordedCall).spec as Rec;
+}
+
+describe("App Platform components converge inside the app that owns them", () => {
+	it.each([
+		["worker", DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "workers"],
+		["job", DIGITALOCEAN_APP_JOB_PRODUCT_ID, "jobs"],
+	] as const)("adds a %s to an existing app", async (noun, productId, key) => {
+		const fake = appWorld();
+		const resolver = resolverFor(productId);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(
+				componentRequest(productId, `${noun}-one`),
+				fake.transport,
+			),
+		);
+		expect(outcome.action).toBe("create");
+		expect(outcome.physicalId).toBe(`${APP_ID}/${key}/${noun}-one`);
+		expect(outcome.outputs.componentKind).toBe(noun);
+		const written = specOf(fake)[key] as Rec[];
+		expect(written.map((item) => item.name)).toEqual([`${noun}-one`]);
+	});
+
+	/** The property the whole design exists to have. */
+	it("reconciles twice into one component and one write", async () => {
+		const fake = appWorld();
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		const first = await resolver.reconcile(
+			componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+			fake.transport,
+		);
+		const second = parseResolveOutcome(
+			await resolver.reconcile(
+				componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+				fake.transport,
+			),
+		);
+		expect(first.action).toBe("create");
+		expect(second.action).toBe("adopt");
+		expect(fake.countOf("PUT", `${APPS_PATH}/${APP_ID}`)).toBe(1);
+	});
+
+	/**
+	 * The load-bearing rule. A component resolver rewrites the whole spec, so
+	 * everything it does not own has to survive the round trip — otherwise
+	 * adding a worker would silently delete the app's services.
+	 */
+	it("carries every part of the spec it does not own through the write", async () => {
+		const fake = appWorld({
+			databases: [{ name: "db", engine: "PG" }],
+			domains: [{ domain: "shop.example" }],
+		});
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		await resolver.reconcile(
+			componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+			fake.transport,
+		);
+		const spec = specOf(fake);
+		expect(spec.name).toBe(APP_NAME);
+		expect(spec.region).toBe("nyc");
+		expect(spec.services).toEqual([{ name: "web", instance_count: 1 }]);
+		expect(spec.databases).toEqual([{ name: "db", engine: "PG" }]);
+		expect(spec.domains).toEqual([{ domain: "shop.example" }]);
+	});
+
+	it("leaves a sibling component of the same kind alone", async () => {
+		const fake = appWorld({
+			workers: [{ name: "other-worker", instance_count: 5 }],
+		});
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		await resolver.reconcile(
+			componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+			fake.transport,
+		);
+		const workers = specOf(fake).workers as Rec[];
+		expect(workers.map((item) => item.name).sort()).toEqual([
+			"other-worker",
+			"worker-one",
+		]);
+		expect(workers.find((item) => item.name === "other-worker")).toEqual({
+			name: "other-worker",
+			instance_count: 5,
+		});
+	});
+
+	it("updates a component in place when its body changed", async () => {
+		const fake = appWorld();
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		await resolver.reconcile(
+			componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+			fake.transport,
+		);
+		const scaled = parseResolveOutcome(
+			await resolver.reconcile(
+				componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one", {
+					component: { ...WORKER_COMPONENT, instance_count: 4 },
+				}),
+				fake.transport,
+			),
+		);
+		expect(scaled.action).toBe("update");
+		expect(scaled.outputs.instanceCount).toBe(4);
+		const workers = specOf(fake).workers as Rec[];
+		expect(workers).toHaveLength(1);
+	});
+
+	/**
+	 * The refusal that keeps this resolver from racing the one that owns the
+	 * app. A component cannot bring an app into being.
+	 */
+	it("refuses to create the app it would live in", async () => {
+		const fake = emptyWorld();
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		const message = await messageOf(() =>
+			resolver.reconcile(
+				componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+				fake.transport,
+			),
+		);
+		expect(message).toContain("app-platform-service");
+		expect(fake.calls.filter((call) => call.method === "PUT")).toHaveLength(0);
+	});
+
+	it("refuses a request that names no app", async () => {
+		const fake = appWorld();
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		const bare = request({
+			slot: "service",
+			productId: DIGITALOCEAN_APP_WORKER_PRODUCT_ID,
+			logicalId: "worker-one",
+			desired: { component: WORKER_COMPONENT },
+		});
+		expect(await codeOf(() => resolver.reconcile(bare, fake.transport))).toBe(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+		);
+	});
+
+	it("refuses a request that carries no component body", async () => {
+		const fake = appWorld();
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		const bare = request({
+			slot: "service",
+			productId: DIGITALOCEAN_APP_WORKER_PRODUCT_ID,
+			logicalId: "worker-one",
+			desired: { appName: APP_NAME },
+		});
+		expect(await codeOf(() => resolver.reconcile(bare, fake.transport))).toBe(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+		);
+	});
+
+	it("says out loud that concurrent component writes would race", async () => {
+		const fake = appWorld();
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(
+				componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+				fake.transport,
+			),
+		);
+		expect(outcome.diagnostics.join(" ")).toContain("read-modify-write");
+	});
+
+	it("removes only its own component, leaving the app standing", async () => {
+		const fake = appWorld({
+			workers: [{ name: "other-worker", instance_count: 5 }],
+		});
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		await resolver.reconcile(
+			componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+			fake.transport,
+		);
+		await resolver.delete(
+			componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+			fake.transport,
+		);
+		const spec = specOf(fake);
+		expect((spec.workers as Rec[]).map((item) => item.name)).toEqual([
+			"other-worker",
+		]);
+		expect(spec.services).toEqual([{ name: "web", instance_count: 1 }]);
+		// Never the app itself.
+		expect(fake.calls.filter((call) => call.method === "DELETE")).toHaveLength(
+			0,
+		);
+	});
+
+	it("treats an already-absent component as a successful delete", async () => {
+		const fake = appWorld();
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		await expect(
+			resolver.delete(
+				componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+				fake.transport,
+			),
+		).resolves.toBeUndefined();
+		expect(fake.calls.filter((call) => call.method === "PUT")).toHaveLength(0);
+	});
+
+	it("treats a missing app as an already-successful delete", async () => {
+		const fake = emptyWorld();
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		await expect(
+			resolver.delete(
+				componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+				fake.transport,
+			),
+		).resolves.toBeUndefined();
+	});
+
+	it("reads back nothing when the component is not in the app", async () => {
+		const fake = appWorld();
+		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
+		expect(
+			await resolver.read(
+				componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
+				fake.transport,
+			),
+		).toBeUndefined();
+	});
+});
+
 describe("the registry covers exactly the products that can converge", () => {
 	it("registers a resolver for every resolved product id", () => {
 		const registry = digitaloceanResolverRegistry(options());
@@ -418,11 +715,10 @@ describe("the registry covers exactly the products that can converge", () => {
 		for (const productId of DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS) {
 			expect(registry.get(productId)).toBeUndefined();
 		}
-		// The three that remain are the ones DigitalOcean's own API shape makes
-		// non-convergent, not ones this package declined to write.
+		// The one that remains is the API's absence, not a choice: DigitalOcean's
+		// v2 API has no function resource at all — only namespaces, their
+		// triggers and their keys.
 		expect(DIGITALOCEAN_UNRESOLVED_PRODUCT_IDS).toEqual([
-			"digitalocean.app-platform-job/v1",
-			"digitalocean.app-platform-worker/v1",
 			"digitalocean.functions/v1",
 		]);
 	});

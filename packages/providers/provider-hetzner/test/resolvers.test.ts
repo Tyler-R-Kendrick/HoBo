@@ -34,6 +34,8 @@ import {
 	HETZNER_LOAD_BALANCER_PRODUCT_ID,
 	HETZNER_OBJECT_STORAGE_PRODUCT_ID,
 	HETZNER_RESOLVED_PRODUCT_IDS,
+	HETZNER_STORAGE_BOX_PRODUCT_ID,
+	HETZNER_UNIFIED_API_HOST,
 	HETZNER_UNRESOLVED_PRODUCT_IDS,
 	HETZNER_VOLUME_PRODUCT_ID,
 	type HetznerResolverOptions,
@@ -148,6 +150,7 @@ function options(
 	return {
 		resolveCredential: async () => TOKEN,
 		resolveObjectStorageCredential: async () => OBJECT_STORAGE_KEYS,
+		resolveStorageBoxPassword: async () => STORAGE_BOX_PASSWORD,
 		nowMs: NOW_MS,
 		...overrides,
 	};
@@ -357,6 +360,257 @@ const SERVER_REQUEST = {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Storage Box
+// ---------------------------------------------------------------------------
+
+const STORAGE_BOX_PATH = "/v1/storage_boxes";
+/** Material the host's custody hands over. Expected in one request body only. */
+const STORAGE_BOX_PASSWORD = "c0rrect-horse-battery-staple";
+
+function storageBoxRecord(overrides: Rec = {}): Rec {
+	return {
+		id: 42,
+		name: "backups",
+		status: "active",
+		storage_box_type: { name: "bx11" },
+		location: { name: "fsn1" },
+		username: "u123456",
+		server: "u123456.your-storagebox.de",
+		access_settings: {},
+		snapshot_plan: null,
+		protection: { delete: false },
+		labels: {},
+		stats: {},
+		created: "2026-08-19T12:00:00+00:00",
+		...overrides,
+	};
+}
+
+function storageBoxRequest(desired: Rec = {}): ResolveRequest {
+	return request({
+		slot: "bucket",
+		productId: HETZNER_STORAGE_BOX_PRODUCT_ID,
+		logicalId: "backups",
+		desired: {
+			location: "fsn1",
+			storageBoxType: "bx11",
+			...desired,
+		},
+	});
+}
+
+/** A fake that starts empty and remembers the box a create made. */
+function storageBoxWorld(): Fake {
+	let existing: Rec | undefined;
+	return fakeTransport((call) => {
+		if (call.method === "GET" && call.path === STORAGE_BOX_PATH) {
+			const wanted = nameFilter(call);
+			const matches =
+				existing !== undefined && existing.name === wanted ? [existing] : [];
+			return json(200, { storage_boxes: matches, meta: {} });
+		}
+		if (call.method === "POST" && call.path === STORAGE_BOX_PATH) {
+			const body = bodyOf(call);
+			existing = storageBoxRecord({
+				name: body.name,
+				storage_box_type: { name: body.storage_box_type },
+				location: { name: body.location },
+			});
+			return json(201, { storage_box: existing, action: { id: 900 } });
+		}
+		if (call.method === "POST" && call.path.endsWith("/actions/change_type")) {
+			const body = bodyOf(call);
+			if (existing !== undefined) {
+				existing = {
+					...existing,
+					storage_box_type: { name: body.storage_box_type },
+				};
+			}
+			return json(200, { action: { id: 901 } });
+		}
+		if (
+			call.method === "DELETE" &&
+			call.path.startsWith(`${STORAGE_BOX_PATH}/`)
+		) {
+			existing = undefined;
+			return json(200, { action: { id: 902 } });
+		}
+		return unexpected(call);
+	});
+}
+
+describe("the Storage Box resolver converges on the unified API", () => {
+	it("creates a box that is not there, and reaches the unified host to do it", async () => {
+		const fake = storageBoxWorld();
+		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(storageBoxRequest(), fake.transport),
+		);
+		expect(outcome.action).toBe("create");
+		expect(outcome.physicalId).toBe("42");
+		expect(outcome.outputs.storageBoxType).toBe("bx11");
+		expect(outcome.outputs.sftpEndpoint).toBe(
+			"sftp://u123456.your-storagebox.de",
+		);
+		for (const call of fake.calls) {
+			expect(call.host).toBe(HETZNER_UNIFIED_API_HOST);
+		}
+	});
+
+	/** The property the whole design exists to have. */
+	it("reconciles twice into one box and one create", async () => {
+		const fake = storageBoxWorld();
+		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID);
+		const first = await resolver.reconcile(storageBoxRequest(), fake.transport);
+		const second = parseResolveOutcome(
+			await resolver.reconcile(storageBoxRequest(), fake.transport),
+		);
+		expect(first.action).toBe("create");
+		expect(second.action).toBe("adopt");
+		expect(second.physicalId).toBe(first.physicalId);
+		expect(fake.countOf("POST", STORAGE_BOX_PATH)).toBe(1);
+	});
+
+	it("sends the password from the host's custody, and only in the create body", async () => {
+		const fake = storageBoxWorld();
+		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			await resolver.reconcile(storageBoxRequest(), fake.transport),
+		);
+		const create = fake.calls.find(
+			(call) => call.method === "POST" && call.path === STORAGE_BOX_PATH,
+		);
+		expect(bodyOf(create as RecordedCall).password).toBe(STORAGE_BOX_PASSWORD);
+		// Nowhere else: not in an output, not in a diagnostic, not in a URL.
+		expect(JSON.stringify(outcome.outputs)).not.toContain(STORAGE_BOX_PASSWORD);
+		expect(JSON.stringify(outcome.diagnostics)).not.toContain(
+			STORAGE_BOX_PASSWORD,
+		);
+		for (const call of fake.calls) {
+			expect(`${call.path}${call.search}`).not.toContain(STORAGE_BOX_PASSWORD);
+		}
+	});
+
+	it("asks the host for the password by logical id, once per create", async () => {
+		const asked: string[] = [];
+		const fake = storageBoxWorld();
+		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID, {
+			resolveStorageBoxPassword: async (logicalId) => {
+				asked.push(logicalId);
+				return STORAGE_BOX_PASSWORD;
+			},
+		});
+		await resolver.reconcile(storageBoxRequest(), fake.transport);
+		// The second pass finds the box and must not reach for the secret at all.
+		await resolver.reconcile(storageBoxRequest(), fake.transport);
+		expect(asked).toEqual(["backups"]);
+	});
+
+	/**
+	 * `desired` reaches the event log, so core refuses credential-shaped keys in
+	 * it outright — `password` and `passwordRef` alike. Asserting the request
+	 * never parses is stronger than asserting the resolver declines to use it:
+	 * material cannot reach the resolver to be declined.
+	 */
+	it("cannot even express a password in desired, ref or not", () => {
+		expect(() => storageBoxRequest({ password: "hunter2" })).toThrow(
+			/credential/i,
+		);
+		expect(() => storageBoxRequest({ passwordRef: "env://SOMETHING" })).toThrow(
+			/credential/i,
+		);
+	});
+
+	it("refuses to create when the host wired no password custody", async () => {
+		const fake = storageBoxWorld();
+		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID, {
+			resolveStorageBoxPassword: undefined,
+		});
+		expect(
+			await codeOf(() =>
+				resolver.reconcile(storageBoxRequest(), fake.transport),
+			),
+		).toBe("RESOLVER_CREDENTIAL_MISSING");
+		expect(fake.calls.filter((call) => call.method === "POST")).toHaveLength(0);
+	});
+
+	/**
+	 * A registry is a catalog. Building one to reconcile a Cloud Server must not
+	 * fail for want of a Storage Box password that will never be sent.
+	 */
+	it("builds a registry without a password custody, and still resolves servers", () => {
+		const registry = hetznerResolverRegistry(
+			options({ resolveStorageBoxPassword: undefined }),
+		);
+		expect(registry.get(HETZNER_STORAGE_BOX_PRODUCT_ID)?.productId).toBe(
+			HETZNER_STORAGE_BOX_PRODUCT_ID,
+		);
+		expect(registry.get(HETZNER_CLOUD_SERVER_PRODUCT_ID)?.productId).toBe(
+			HETZNER_CLOUD_SERVER_PRODUCT_ID,
+		);
+	});
+
+	it("upgrades the type in place rather than replacing the box", async () => {
+		const fake = storageBoxWorld();
+		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID);
+		await resolver.reconcile(storageBoxRequest(), fake.transport);
+		const grown = parseResolveOutcome(
+			await resolver.reconcile(
+				storageBoxRequest({ storageBoxType: "bx21" }),
+				fake.transport,
+			),
+		);
+		expect(grown.action).toBe("update");
+		expect(grown.outputs.storageBoxType).toBe("bx21");
+		expect(fake.countOf("POST", STORAGE_BOX_PATH)).toBe(1);
+		expect(
+			fake.calls.some((call) => call.path.endsWith("/actions/change_type")),
+		).toBe(true);
+	});
+
+	it("treats an already-absent box as a successful delete", async () => {
+		const fake = storageBoxWorld();
+		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID);
+		await expect(
+			resolver.delete(storageBoxRequest(), fake.transport),
+		).resolves.toBeUndefined();
+		expect(fake.calls.filter((call) => call.method === "DELETE")).toHaveLength(
+			0,
+		);
+	});
+
+	it("deletes a box it created, and reads back absent afterwards", async () => {
+		const fake = storageBoxWorld();
+		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID);
+		await resolver.reconcile(storageBoxRequest(), fake.transport);
+		await resolver.delete(storageBoxRequest(), fake.transport);
+		expect(
+			await resolver.read(storageBoxRequest(), fake.transport),
+		).toBeUndefined();
+	});
+
+	it("says so when the box is not mountable yet", async () => {
+		const fake = fakeTransport((call) => {
+			if (call.method === "GET" && call.path === STORAGE_BOX_PATH) {
+				return json(200, {
+					storage_boxes: [storageBoxRecord({ status: "initializing" })],
+					meta: {},
+				});
+			}
+			return unexpected(call);
+		});
+		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID);
+		const outcome = parseResolveOutcome(
+			(await resolver.read(
+				storageBoxRequest(),
+				fake.transport,
+			)) as ResolveOutcome,
+		);
+		expect(outcome.diagnostics.join(" ")).toContain("initializing");
+	});
+});
+
 describe("the registry covers exactly the products that can converge", () => {
 	it("registers a resolver for every resolved product id", () => {
 		const registry = hetznerResolverRegistry(options());
@@ -366,17 +620,32 @@ describe("the registry covers exactly the products that can converge", () => {
 	});
 
 	/**
-	 * A Storage Box is not on the Cloud API at all: `/v1/storage_boxes` answers
-	 * 404 where `/v1/volumes` answers 401, so the absence is the endpoint's and
-	 * not a permissions artifact. It is administered through Robot, behind the
-	 * account's web console password.
+	 * Every catalogued product converges. The list stays exported and stays
+	 * asserted: a product added to `slots.ts` without a resolver has to appear
+	 * here, which is what makes the next gap a review decision rather than an
+	 * uncounted one.
 	 */
-	it("registers nothing only for the product Robot administers", () => {
+	it("leaves no catalogued product without a resolver", () => {
 		const registry = hetznerResolverRegistry(options());
 		for (const productId of HETZNER_UNRESOLVED_PRODUCT_IDS) {
 			expect(registry.get(productId)).toBeUndefined();
 		}
-		expect(HETZNER_UNRESOLVED_PRODUCT_IDS).toEqual(["hetzner.storage-box/v1"]);
+		expect(HETZNER_UNRESOLVED_PRODUCT_IDS).toEqual([]);
+	});
+
+	/**
+	 * Storage Boxes used to be here with a Robot-API excuse. They are on the
+	 * unified host with the same bearer-token scheme as the Cloud API, so the
+	 * excuse was wrong, not the catalog.
+	 */
+	it("resolves the Storage Box that used to be excluded", () => {
+		expect(HETZNER_RESOLVED_PRODUCT_IDS).toContain(
+			HETZNER_STORAGE_BOX_PRODUCT_ID,
+		);
+		expect(
+			hetznerResolverRegistry(options()).get(HETZNER_STORAGE_BOX_PRODUCT_ID)
+				?.productId,
+		).toBe(HETZNER_STORAGE_BOX_PRODUCT_ID);
 	});
 
 	it("names the credential the excluded surface would need", () => {

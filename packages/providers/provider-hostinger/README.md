@@ -55,13 +55,23 @@ This package is built around that rather than papering over it:
   *injected fake* transport modelling a Hostinger account. A real deploy
   additionally needs a real token, real network egress, and an account with
   plans already purchased.
-- **2 of the 5 catalogued products have resolvers**
-  (`HOSTINGER_RESOLVED_PRODUCT_IDS`): the VPS and the DNS zone. Shared/cloud web
-  hosting and static sites are administered through hPanel and file surfaces
-  with no addressable REST resource to converge against; the MySQL database is
-  created inside a plan and its minted credentials are the only handle on it,
-  which is the opposite of the locator discipline every resolver here follows.
-  All three are named in `HOSTINGER_UNRESOLVED_PRODUCT_IDS` with the reason.
+- **All 5 catalogued products have resolvers**
+  (`HOSTINGER_RESOLVED_PRODUCT_IDS`): the VPS and the DNS zone on
+  `/api/vps/v1/` and `/api/dns/v1/`, and web hosting, static sites and MySQL on
+  `/api/hosting/v1/`. An earlier revision excluded the last three on the grounds
+  that hPanel was the only way to reach them; that was wrong — `/api/hosting/v1/`
+  carries `GET|POST /websites`, `DELETE /websites/{domain}`, and the same shape
+  for `accounts/{username}/databases`. `HOSTINGER_UNRESOLVED_PRODUCT_IDS` is now
+  empty, and stays exported so that stops being true loudly rather than quietly.
+- **Widening the guard to `/api/hosting/v1/` did not make this provider able to
+  buy anything.** That namespace fills a plan; it does not order one. A website
+  create requires `desired.orderId` — a plan the account already owns — and
+  refuses without it, and `/api/billing/v1/` is still not allowlisted.
+- **The MySQL user password comes from the host's custody**, through the
+  injected `resolveDatabasePassword(logicalId)`. It cannot travel in `desired`:
+  core refuses credential-shaped keys in a property bag, because `desired` is
+  recorded in the event log. The published `endpoint` output is a locator, not a
+  DSN, for the same reason.
 - **No Resource Definitions are registered** for the `hostinger.*` product ids,
   so a deploy against this Yard still fails closed at resolution
   (`YARD_BINDING_PRODUCT_UNKNOWN`).

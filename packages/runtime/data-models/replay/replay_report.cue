@@ -25,8 +25,18 @@ package architecture_evidence
 	replay_order:               [...string]
 	first_divergent_event_key:  string & !=""
 
-	if live_state_digest == replay_state_digest {
-		_conflict: "divergence requires differing digests"
-	}
+	// A divergence record whose two digests agree is not a divergence. The
+	// guard used to be `if live == replay { _conflict: "..." }`, which reads
+	// like a refusal and is a no-op: assigning a string to a hidden field
+	// nothing else defines can never conflict, so `cue vet` returned 0 on a
+	// record with identical digests. Measured on a reduced case before and
+	// after — the old form exits 0, this one reports
+	// `_divergent: conflicting values false and true`.
+	//
+	// Unifying `true` with the comparison is what makes it fail: when the
+	// digests are equal the comparison is `false`, and `true & false` has no
+	// value. Evaluated against no instance the comparison is merely incomplete,
+	// so this stays silent in `scripts/check-cue-schemas.ts`.
+	_divergent: true & (live_state_digest != replay_state_digest)
 }
 

@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [delivery, environments]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://docs.netlify.com/
     - https://www.netlify.com/
@@ -46,6 +47,34 @@ Unlike the infrastructure-from-code analogs (Encore, Nitric) that provision into
 | Clouds | **Netlify's own infrastructure only** — no BYO-cloud, no multi-cloud, no self-host |
 | AI | **Agent Runners** (Claude Code / Codex / Gemini in-dashboard on live projects) + **AI Gateway** (beta) |
 | License / price | **Proprietary SaaS**; **credit-based**: Free $0 (300 credits) · Personal $9/mo (1,000) · Pro $20/mo (3,000, unlimited members) · Enterprise (custom) |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Site** | The deployed unit, built from a repository |
+| **Deploy** | An immutable build with its own URL; deploy previews per pull request |
+| **Functions / Edge Functions** | Serverless compute at origin and at the edge |
+| **Blobs** | Object storage bound to a site |
+| **Netlify DB** | Managed relational data attached to a site |
+| **Build plugins** | The extension point for the build pipeline |
+| **Redirects / headers** | Declarative routing rules committed alongside the site |
+
+The mental model is **the composable web**: the site is the primary object, and compute, storage and
+data attach to it. Netlify's original insight — decouple the front end from the backend and deploy it
+immutably — is now so thoroughly absorbed that the company competes on the layers it added
+afterwards.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `delivery` | Immutable deploys with per-PR previews and instant rollback |
+| `environments` | Deploy previews and branch deploys |
+| `authoring` | Convention plus a small declarative configuration file |
+| `wiring` | Blobs and Netlify DB attach to a site by reference |
+
+Netlify contests the front-end slice of HoBo's delivery surface and none of its modelling surface.
 
 ## Feature surface
 
@@ -199,9 +228,23 @@ Netlify moved to a **credit** model: everything (deploys, bandwidth, compute, re
 - **Enterprise — custom:** unlimited credits; 99.99% SLA, enterprise edge tier, high-performance builds, **SSO & SCIM**, log drains, org management, 24/7 support.
 - **Metering (illustrative):** production deploys ~15 credits (~$0.10) · bandwidth ~20 credits/GB (~$0.13) · compute ~10 credits/GB-hour · web requests ~2 credits/10k. Top-up credit packs at $5 (500) / $10 (1,500).
 
-## Differentiators
+## Architecture
 
-### Strengths (what Netlify does well)
+- **Control plane** — Netlify's hosted service: builds, deploys, routing configuration, add-on
+  provisioning.
+- **Data plane** — a global CDN with functions at origin and edge, plus attached storage and data.
+- **Execution model** — build from the repository into an immutable artifact, publish atomically,
+  serve from the CDN with declarative redirects and headers.
+- **State authority** — Netlify's deploy history; configuration lives in `netlify.toml` in the
+  repository.
+- **Portability boundary** — static output is genuinely portable; functions, Blobs, Netlify DB and
+  edge behaviour are the platform's.
+
+## Where Netlify is stronger
+
+> Shipped, evidenced capability only.
+
+### what Netlify does well
 
 - **Best-in-class frontend/Jamstack DX, shipping at scale** — Git→build→edge with framework auto-detection, immutable atomic deploys, instant rollback, and a build-plugin ecosystem. This is a mature, polished pipeline HoBo has only **designed**.
 - **Deploy Previews polish** — per-PR live preview URLs with preview-scoped env, DB branching, and collaboration comments; a category-defining review workflow.
@@ -210,7 +253,14 @@ Netlify moved to a **credit** model: everything (deploys, bandwidth, compute, re
 - **Composable Web Platform** — Connect (GraphQL data unification + edge cache) + Create (visual editing) target the enterprise composable-architecture buyer, marketers included.
 - **Aggressive AI-native posture, shipping** — Agent Runners put Claude Code/Codex/Gemini on live projects from the dashboard **today**; Netlify DB is pitched for AI-native development.
 
-### Gaps (Netlify's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Netlify's limits — HoBo's opening
 
 - **Single-vendor cloud — no self-host, no BYO-cloud, no multi-cloud.** Everything runs on **Netlify's** infrastructure; you cannot deploy into your own AWS/GCP/Azure, cannot self-host, and cannot pin resources to specific providers. HoBo is **multi-cloud + IaC-agnostic** (Pulumi/Crossplane/TF/OpenTofu adapters) with typed provider-native escape hatches ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)), and **self-host = hosted** (Yard-is-a-Bindle, [Plan 4](../design/control-plane.md#plan-04)).
 - **Frontend/composable-web-centric, not a backend control plane.** The compute story is FaaS (Lambda) + edge (Deno); there is **no durable/event-sourced runtime, no actors/workflows/sagas, no replay/audit**. HoBo's core is a **durable event-sourced runtime** with actors + workflows + choreography sagas ([Plan 11](../design/data-plane.md#plan-11)/[ADR-0050](../design/adr/03-data-plane.md#adr-0050)).
@@ -222,7 +272,22 @@ Netlify moved to a **credit** model: everything (deploys, bandwidth, compute, re
 - **Identity is deprecated** (GoTrue maintenance-only → Auth0); the built-in auth primitive is a legacy path, not a strategic one.
 - **Usage-metered credit billing is the business model.** Deploys, bandwidth, compute, requests, and AI all draw credits — spend scales with success. HoBo has **no billing by design** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)); metering is OSS **FinOps showback**, never invoicing ([ADR-0039](../design/adr/02-identity-security.md)).
 
-### Comparisons
+## Adversarial critique
+
+- **The category it created got commoditized.** Static hosting with previews is now offered by every
+  cloud and most PaaS products, which is why the product has expanded into functions, storage and
+  data — into a market with much stronger incumbents.
+- **Backend features are catch-up features.** Blobs and Netlify DB are credible and are not
+  positioned against a hyperscaler's durability, scale or compliance guarantees.
+- **Edge function constraints** — runtime, size and execution limits — shape what can be built, and
+  the boundary between edge and origin execution is a real design burden pushed to the user.
+- **Build minutes and bandwidth pricing** are the historical friction point, and they scale with
+  exactly the preview-per-PR behaviour the product encourages.
+- **Framework-neutral is a weaker position than framework-owning**, commercially: Netlify does not
+  own a framework the way its nearest competitor does.
+- **No self-host, no BYOC.**
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Netlify is **frontend/composable-web on its own single-vendor cloud, shipping, polished**; HoBo is a **backend/infra control plane — multi-cloud, wasm-default, event-sourced, self-hostable, AI-native**, still in design. Overlap is a thin band (frontend hosting, functions, edge, blobs, sql, agent moves); the divergence is the whole platform shape. On the overlap, **Netlify is ahead today** (build pipeline, Deploy Previews, edge at scale); on the surrounding system, HoBo's design is broader.
 - **vs Vercel:** the closest rival — both are frontend clouds with Git→edge pipelines. Netlify differentiates on first-party primitives (Blobs/DB/Forms/Identity), Connect's data unification, and Deno-based Edge Functions; Vercel leans Next.js-native + its own edge.
@@ -232,7 +297,9 @@ Netlify moved to a **credit** model: everything (deploys, bandwidth, compute, re
 
 **Net:** Netlify is the **shipping frontend/composable-web leader** and a genuine reminder that on the overlap — build pipeline, Deploy Previews, edge functions at scale, Jamstack DX — it is **ahead of design-phase HoBo today**. But Netlify is **frontend/composable-web-centric, single-vendor cloud, language-bound, usage-billed**; HoBo is **backend/infra-control-plane, multi-cloud + pluggable-IaC, wasm-polyglot, event-sourced + governed, self-hostable, and billing-free by design**. The competitive line is not "who builds frontends better" (Netlify wins) but "who controls infrastructure across clouds with a durable runtime and AI-native governance" (HoBo's bet).
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Netlify concept. ✅ designed at parity (anchored) · ➕ HoBo goes further · ◐ partial / thin (HoBo is design-phase; Netlify ships) · 🔜 planned · ✗ deliberately out of scope.
 
@@ -266,3 +333,30 @@ Netlify moved to a **credit** model: everything (deploys, bandwidth, compute, re
 ### The one-line takeaway
 
 **Netlify proves the frontend/composable-web pipeline in production — and on the overlap (build, Deploy Previews, edge functions, Jamstack DX) it is ahead of design-phase HoBo today.** But Netlify is bounded to **its own single-vendor cloud, language-bound compute, a narrow data model, and a usage-metered credit business**. HoBo's differentiation is orthogonal: **backend/infra control plane across many clouds + pluggable IaC, a language-neutral wasm runtime, a durable event-sourced runtime with actors/workflows/sagas, a broad data-paradigm catalog, agents-as-principals + a generation pipeline, self-host = hosted, and no billing by design.** The two barely compete on frontends; they compete on **who owns the infrastructure control plane**.
+
+## Better-together / integration posture
+
+- **Benchmark** — atomic deploys with instant rollback remain a clean model worth matching.
+- **Borrow** — **declarative redirects and headers committed with the site** is a good, small pattern
+  for HoBo's gateway port: routing as part of the application description rather than platform
+  configuration.
+- **Provider-target** — reasonable for static and edge-shaped Bindle outputs.
+- Not a displace or adopt target.
+
+## Threats and lessons
+
+1. **A category can be won and still not be defensible.** Netlify created the Jamstack deployment
+   experience and now competes with everyone who copied it. The lesson for HoBo is that an experience
+   is not a moat; the description that outlives the vendor might be.
+2. **Expanding into adjacent primitives is the default survival move**, and it puts a smaller vendor
+   against much larger ones on their own ground.
+3. **Atomic deploy and instant rollback are minimum expectations** for any delivery story.
+
+## Sources
+
+- [docs.netlify.com](https://docs.netlify.com/) — sites, deploys, previews, Functions, Edge Functions, Blobs, Netlify DB, redirects and headers
+- [netlify.com](https://www.netlify.com/) — positioning (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current pricing, limits and the Netlify DB offering were not re-verified
+in this pass and are not asserted.

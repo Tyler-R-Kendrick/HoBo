@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [authoring, typed-contracts, wiring]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://docs.amplify.aws/
     - https://aws.amazon.com/amplify/
@@ -48,6 +49,32 @@ Two things Amplify ships that HoBo (design-phase) does not yet: a **fullstack Gi
 | Frontend | **Amplify UI** — themeable React/Vue/Angular/Flutter/Swift/Android components incl. connected `Authenticator`, `FileUploader`, `StorageImage` |
 | AI | *(no first-class AI/agent surface in the framework)* |
 | License / price | Framework OSS (**Apache-2.0**, `aws-amplify/amplify-backend`); **Hosting metered** (build min · CDN · SSR); **backend AWS usage billed separately** at standard AWS rates |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Backend definition** | TypeScript files under `amplify/` declaring auth, data, storage and functions |
+| **`defineData` / `defineAuth` / `defineStorage` / `defineFunction`** | The typed declaration functions that constitute the Gen-2 authoring surface |
+| **Sandbox** | A per-developer cloud backend, deployed from the same definition |
+| **Generated client** | Fully typed client code derived from the backend schema |
+| **Branch environment** | A deployed backend per Git branch |
+
+The mental model is **TypeScript in, CDK out**: developers declare a backend in typed TypeScript,
+Amplify synthesizes AWS CDK constructs, and CloudFormation provisions them. The generated typed
+client closing the loop back into the application is the part that is genuinely excellent.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | **Direct.** Typed TypeScript declaration of backend resources is HoBo's authoring thesis, implemented for one cloud |
+| `typed-contracts` | Schema-derived types flow from backend declaration into client code |
+| `wiring` | Resources reference each other in TypeScript with type checking |
+| `environments` | Per-developer sandboxes and per-branch backends |
+
+Amplify is the closest shipped thing to HoBo's authoring model, deliberately restricted to AWS —
+which makes it the cleanest available test of whether the authoring idea works in practice. It does.
 
 ## Feature surface
 
@@ -231,9 +258,22 @@ Amplify Hosting is a **"Git-based workflow for hosting full-stack serverless web
 - New AWS customers (from **July 15, 2025**) get up to **$200 in Free Tier credits** applicable to Amplify.
 - **Backend resources billed separately**: **"Cognito, AppSync, DynamoDB, Lambda, and S3 operate under separate AWS pricing models with their own free tiers and usage-based charges."** Amplify does not bundle or abstract that spend — it is standard AWS usage, and cost visibility is on you (Cost Explorer / third-party FinOps).
 
-## Differentiators
+## Architecture
 
-### Strengths (what Amplify does well)
+- **Control plane** — AWS: Amplify Hosting plus CloudFormation.
+- **Execution model** — TypeScript definitions are evaluated to produce CDK constructs, synthesized
+  to CloudFormation, and deployed as stacks.
+- **Type generation** — the backend schema produces client types, so a schema change surfaces as a
+  compile error in the application. This is the strongest single feature.
+- **State authority** — CloudFormation stack state.
+- **Portability boundary** — **none, by design.** The definitions describe AWS services through AWS
+  constructs; the abstraction is a nicer way to write AWS, not a way to leave it.
+
+## Where AWS Amplify is stronger
+
+> Shipped, evidenced capability only.
+
+### what Amplify does well
 
 - **Deep, first-party AWS-native integration** — managed **AppSync (GraphQL)**, **DynamoDB**, **Cognito**, **S3**, **Lambda**, **CloudFront**, wired together with IAM, shipping at AWS scale. This is real, production-grade depth HoBo (design-phase) does not have.
 - **Genuine IfC-in-TypeScript on CDK** — `defineBackend`/`defineData`/`defineAuth`/`defineStorage`/`defineFunction` is a clean, typed authoring model; per-model typed data + generated typed client + **real-time subscriptions** (`observeQuery`) is a strong end-to-end DX.
@@ -243,7 +283,14 @@ Amplify Hosting is a **"Git-based workflow for hosting full-stack serverless web
 - **SSR hosting** for Next.js/Nuxt/Astro/SvelteKit with global CDN, atomic deploys, custom domains.
 - **OSS framework (Apache-2.0)**, pay-as-you-go, generous free tier, and the full weight of the AWS ecosystem/support/compliance behind it.
 
-### Gaps (Amplify's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Amplify's limits — HoBo's opening
 
 - **AWS-only; CDK-bound; fixed resource→service mapping.** `defineData` **always** → AppSync+DynamoDB, `defineAuth` **always** → Cognito, `defineStorage` **always** → S3, `defineFunction` **always** → Node Lambda. No Azure/GCP/Cloudflare/Fly/edge/on-prem; you **cannot** repoint a resource to a different backend, and you **cannot** swap the IaC engine — the escape hatch is *more CDK*. HoBo is **multi-cloud + IaC-agnostic** (Pulumi/Crossplane/TF/OpenTofu) with typed provider-native escape hatches ([Plan 4](../design/control-plane.md#plan-04) / [ADR-0006](../design/adr/01-architecture-core.md#adr-0006)), and adds **Resource Definitions + Matching** so the same app realizes differently per environment, auditably (`match.Decided`, [Plan 25](../design/platform-engineering.md#plan-25) / [ADR-0033](../design/adr/01-architecture-core.md#adr-0033)) with a cost-routing **Dispatcher** ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)).
 - **TS/Node-only backend logic.** Handlers are Lambda (JavaScript/TypeScript); the authoring language is TypeScript, full stop. HoBo's runtime contract is **language-neutral WIT** — any wasm-compiling language ([Plan 20](../design/wasm-runtime-wit.md#plan-20)), with TS explicitly *not* required for the reference impl ([ADR-0069](../design/adr/01-architecture-core.md#adr-0069) / [ADR-0072](../design/adr/01-architecture-core.md#adr-0072)).
@@ -254,7 +301,23 @@ Amplify Hosting is a **"Git-based workflow for hosting full-stack serverless web
 - **Lock-in gradient.** The framework is OSS, but the value is the **managed AWS services + Amplify Hosting**; leaving means rewriting off AppSync/DynamoDB/Cognito/S3 wiring, and there is no documented "adopt an existing estate in place." HoBo's **Yard is itself a Bindle** (self-host = hosted parity, [Plan 4](../design/control-plane.md#plan-04)) and **`hobo import`** adopts TF/Pulumi/Lakebed/FaaS estates incrementally ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)).
 - **Backend spend is standard AWS usage, unabstracted** — cost visibility falls to Cost Explorer / third-party tools. This is Amplify's model **by design**; HoBo deliberately ships **no billing/monetization** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)) and treats metering as **OSS FinOps showback** ([ADR-0039](../design/adr/02-identity-security.md#adr-0039)).
 
-### Comparisons
+## Adversarial critique
+
+- **AWS-only, permanently.** The value proposition is depth of integration with one cloud; there is
+  no portability claim and no mechanism that could support one.
+- **CloudFormation is the floor.** Stack limits, slow deploys, and painful rollbacks are inherited
+  wholesale, and they are the most-cited operational complaint about the platform.
+- **Amplify has been rewritten before.** Gen 1 and Gen 2 differ substantially, and teams that adopted
+  the earlier model faced a migration rather than an upgrade — a real risk signal for a product whose
+  entire value is that you build your backend inside it.
+- **The escape hatch is the tell.** Dropping to raw CDK is documented and necessary, which means the
+  abstraction covers the common path and users grow out of it.
+- **Opinionated data modelling.** The data layer's conventions are convenient inside the intended
+  patterns and constraining outside them.
+- **Generated clients tie the frontend to the backend's shape**, which is exactly the coupling that
+  makes the DX good and the migration hard.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Amplify is **IfC-in-TS → AWS (via CDK)**, with managed AppSync/DynamoDB/Cognito/S3, a **shipping** fullstack-branch DX, and a **UI component library**; HoBo is **IfC → any cloud via pluggable adapters + pluggable IaC**, any **wasm** language, **event-sourced + AI-native + governed**. Amplify is the sharpest proof that HoBo's *authoring model* is right **and** the clearest reminder that a deep-pocketed AWS-native incumbent already ships the DX. HoBo's edge is the surrounding system — **breadth (clouds/languages/IaC) + control-plane planes + data-paradigm breadth + AI-native depth** — not the `define*` ergonomics themselves.
 - **vs Encore:** both are IfC-in-TS that provision *real* cloud. Encore is cloud-agnostic-ish (**AWS + GCP**) via its own compiler; Amplify is **AWS-only** but **built on CDK** (hence a first-class CDK escape hatch) and ships **managed GraphQL/identity + a UI library + Hosting**. Both **fix** the resource→service mapping.
@@ -265,7 +328,9 @@ Amplify Hosting is a **"Git-based workflow for hosting full-stack serverless web
 
 **Net:** AWS Amplify Gen 2 is the **AWS-native proof of HoBo's IfC-in-TypeScript authoring model** — and unlike HoBo it **ships today** with deep managed services (AppSync/DynamoDB/Cognito/S3), a mature fullstack-branch DX, and a **UI component library HoBo does not yet have**. But it is **AWS-only, CDK-bound, fixed-mapping, TS/Node-only, single-paradigm (DynamoDB), with no event-sourcing/governance/multi-tenant/AI-agent planes**. HoBo's differentiation is exactly that surrounding system: **multi-cloud + pluggable-IaC breadth, a language-neutral wasm runtime, Resource Definitions/Matching + the Dispatcher, a broad data-paradigm catalog, event-sourced governance, cross-cloud data, multi-tenant-app primitives, and AI-native depth** — while conceding Amplify's shipping AWS-native depth and mature developer experience.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Amplify concept (✅ designed at parity, anchored · ➕ HoBo goes further · ◐ partial / thinner in HoBo's design · 🔜 planned/deferred). HoBo is **design-phase**; Amplify is a shipping AWS product.
 
@@ -306,3 +371,36 @@ Amplify Gen 2 **validates HoBo's core bet** — infrastructure-from-code in a ty
 ### The one-line takeaway
 
 **Amplify Gen 2 proves HoBo's IfC-in-TypeScript authoring model on AWS — and ships managed AppSync/DynamoDB/Cognito/S3, fullstack Git-branch hosting, and a UI library that HoBo (design-phase) does not yet have.** HoBo's differentiation is everything *around* that authoring core: **multi-cloud + pluggable-IaC breadth (vs Amplify's AWS-only, CDK-bound, fixed mapping), a language-neutral wasm runtime (vs TS/Node-only), Resource Definitions/Matching + the Dispatcher, a broad data-paradigm catalog (vs DynamoDB-default), event-sourced governance, cross-cloud data, multi-tenant-app primitives, and AI-native depth — with billing a deliberate non-goal ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)) where Amplify passes through standard AWS usage.**
+
+## Better-together / integration posture
+
+- **Benchmark**, and pointedly: Amplify proves that typed TypeScript backend declaration with
+  generated client types is a viable, pleasant authoring model. HoBo's version must be at least as
+  good ergonomically while targeting more than one cloud.
+- **Borrow** — **schema-to-client type generation**. A backend declaration that produces compile-time
+  errors in the application when it changes is the strongest ergonomic in this cohort, and HoBo's
+  typed contracts could produce exactly that.
+- **Provider-target** — AWS-shaped Bindles could plausibly render through CDK.
+- Not a displace or adopt target.
+
+## Threats and lessons
+
+1. **The authoring thesis is validated, and claimed for one cloud.** AWS has shipped the pleasant
+   half of HoBo's idea without the portable half. HoBo's argument is therefore about targets, not
+   about authoring — and it must not be *worse* at authoring while making that argument.
+2. **Generated types are the missing half of typed contracts** (*not-present* as a shipped HoBo
+   surface). Contracts that do not produce client types leave the best part of the idea on the table.
+3. **Rewrites destroy trust in exactly this product category.** Gen 1 to Gen 2 is a cautionary tale
+   for any platform asking developers to express their backend in its vocabulary — including HoBo.
+4. **An escape hatch is necessary and is also a measurement.** How often users drop to raw CDK is the
+   honest metric for how complete the abstraction is; HoBo's provider escapes (ADR-0144) should be
+   measured the same way.
+
+## Sources
+
+- [docs.amplify.aws](https://docs.amplify.aws/) — Gen-2 backend definitions, `defineData`/`defineAuth`/`defineStorage`/`defineFunction`, sandboxes, branch environments, generated clients
+- [aws.amazon.com/amplify](https://aws.amazon.com/amplify/) — positioning (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current Gen-2 feature coverage and the Gen-1 migration path were not
+re-verified in this pass and are not asserted.

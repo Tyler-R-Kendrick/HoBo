@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [environments, delivery, provider-matching]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://www.qovery.com/docs
     - https://github.com/Qovery/engine
@@ -46,6 +47,35 @@ Above that runtime, Qovery presents a developer-facing object model — **Organi
 | AI | **DevOps Copilot** + **MCP server** + "AI Skill" — external agents (Claude/Cursor/Codex/Gemini) provision/deploy/scale via natural language, **within RBAC + audit** |
 | RBAC / audit | Owner/Admin/Maintainer/Billing/Reader + **custom roles** (cluster & project/env-type scope) · SSO (SAML/OIDC) group→role mapping · immutable **audit logs** · **SOC2 Type II** / HIPAA / GDPR |
 | License / price | **Engine GPL-3.0 (OSS)**; platform is a **paid SaaS subscription** — Team **$899/mo** · Business **$1,999/mo** · Enterprise custom (self-host); AI agent seats **$10/mo** each |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Organization / Project** | The tenancy and grouping boundaries |
+| **Cluster** | A Kubernetes cluster Qovery provisions and operates inside the customer's AWS, GCP, Azure or Scaleway account |
+| **Environment** | A deployable unit containing applications, containers, managed databases, Helm charts, Terraform modules, cron and lifecycle jobs — "deployed together, rolled back together" |
+| **Preview environment** | A full-stack per-pull-request clone including databases and seeded data, synced per commit and destroyed on merge |
+| **Engine** | The open-source (GPL-3.0, Rust) provisioning core built on Terraform/OpenTofu, Helm and Kubernetes |
+| **Agent** | The in-cluster component connecting outbound-only to the control plane |
+
+The mental model is **operations abstracted, application unchanged**: Qovery takes over provisioning,
+deployment, previews and day-2 operations, while the application itself remains containers, Helm
+charts and Terraform modules on Kubernetes.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `environments` | **The sharpest contest.** Full-stack preview environments with cloned databases are the bar HoBo's ephemeral Camps target |
+| `provider-matching` | Cluster placement across four clouds, chosen per cluster rather than scored per workload |
+| `delivery` | Environment-scoped deploy and rollback as one transaction |
+| `governance` | RBAC, SSO group mapping, immutable audit, SOC2 Type II / HIPAA / GDPR |
+| `identity-secrets` | Outbound-only agent connectivity with short-lived STS tokens |
+| `agent-surface` | An MCP server that lets external agents drive real infrastructure inside RBAC and audit |
+
+Qovery is HoBo's sharpest PaaS/IDP-shaped competitor precisely because it has already proven two of
+HoBo's bets in production: BYOC, and preview environments per pull request.
 
 ## Feature surface
 
@@ -153,9 +183,27 @@ Qovery is sold as a **flat-rate SaaS subscription** ("a predictable rate … whi
 - **Enterprise — custom annual contract:** unlimited users/seats, **on-premise or self-hosted** option, custom clusters/environments/minutes, 24/7 support + dedicated CSM.
 - **Add-on:** additional AI agent seats **$10/mo each**; AWS Marketplace listing; free trial.
 
-## Differentiators
+## Architecture
 
-### Strengths (what Qovery does well)
+- **Control plane** — Qovery's SaaS, holding environment definitions, RBAC, audit and preview
+  orchestration.
+- **Data plane** — Kubernetes clusters in the customer's own cloud accounts.
+- **Connectivity** — the notable design: Engine and Agent connect **outbound only**, with no inbound
+  path into the customer's cloud, using short-lived STS tokens and scoped secrets.
+- **Failure posture** — clusters are **autonomous**: they keep running through a control-plane
+  outage, which is a materially better answer than most hosted control planes give.
+- **Execution model** — the Rust Engine drives Terraform/OpenTofu and Helm; provisioning primitives
+  are standard and inspectable.
+- **State authority** — Qovery's control plane plus Terraform state. Control-plane API calls are
+  audited; application state is not an event log.
+- **Portability boundary** — the customer keeps clusters and data; the environment model, previews
+  and RBAC are Qovery's.
+
+## Where Qovery is stronger
+
+> Shipped, evidenced capability only.
+
+### what Qovery does well
 
 - **Mature, production BYOC at scale** — genuinely deploys into *your* AWS/GCP/Azure/Scaleway account and runs "thousands of Kubernetes clusters" from one control plane. This is a proven, shipping product; HoBo's equivalent (Camps on pluggable providers) is **design-phase**.
 - **Excellent security/reliability posture from the split-plane, pull-based design** — Engine/Agent connect **outbound only** (no inbound path into your cloud), short-lived STS tokens, scoped secrets, and **autonomous clusters** that keep running through a control-plane outage. A strong trust model for BYOC.
@@ -166,7 +214,14 @@ Qovery is sold as a **flat-rate SaaS subscription** ("a predictable rate … whi
 - **Enterprise governance that ships today** — custom RBAC (cluster/project/env-type), SSO group mapping, immutable audit logs, and **SOC2 Type II / HIPAA / GDPR**.
 - **Credible agentic surface** — an MCP server that lets external coding agents drive real infra **inside** RBAC + audit + rollback, not just chat.
 
-### Gaps (Qovery's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Qovery's limits — HoBo's opening
 
 Anchored to HoBo design docs; HoBo is **design-phase**, so these are *architectural* openings, not shipped-vs-shipped wins.
 
@@ -181,7 +236,27 @@ Anchored to HoBo design docs; HoBo is **design-phase**, so these are *architectu
 
 **On pricing — not a gap, a deliberate divergence.** Qovery's **subscription pricing** (Team $899 / Business $1,999 / Enterprise custom, plus AI-seat add-ons) is a sound commercial model for a hosted IDP. HoBo puts **monetization/billing out of design scope by decision** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)); the only cost surface HoBo designs is **metering/showback as OSS FinOps** — so this is ✗-**by-design**, not a deficiency in Qovery.
 
-### Comparisons
+## Adversarial critique
+
+- **Self-hosting is Enterprise-only in practice.** The open-source Engine is a library; the control
+  plane, console, preview orchestration, RBAC and audit are the paid SaaS. "Open source" describes a
+  component, not the platform.
+- **Kubernetes is the app model's floor.** Qovery abstracts operations, not the application:
+  containers, Helm and Terraform remain what the developer maintains, so portability means "runs on
+  Kubernetes in another cloud".
+- **Preview environments with seeded data carry the same compliance hazard** as any production-data
+  cloning, and the responsibility for sanitization sits with the customer.
+- **Cluster-level cost floor.** Thousands of managed clusters is an impressive operational claim and
+  also a reminder that the unit of adoption is a cluster, which small workloads cannot amortize.
+- **The MCP surface inherits a human's RBAC.** Agents act as delegated users rather than as
+  principals with their own identity and scoped grants — governed, but not independently
+  attributable.
+- **Four clouds is not cloud abstraction.** Each cluster lives in one account in one cloud; nothing
+  moves between them.
+- **Terraform inheritance** brings state, drift and provider-version friction into an otherwise
+  managed experience.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Qovery is a **BYOC Kubernetes IDP** — mature ops (provision/deploy/preview/observe/optimize/secure) over containers/Helm/K8s in your cloud, sold as SaaS. HoBo is an **AI-native meta-cloud**: a cloud-agnostic control plane + a **durable, event-sourced wasm runtime**, where the app model is language-neutral WIT ports, realization is auditable Matching, agents are principals, and providers can be AI-generated. Qovery validates the **BYOC + preview-environment** thesis in production; HoBo's edge is **depth below the ops layer** (runtime, data, agents, generation) and **breadth beyond K8s**.
 - **vs [Encore](encore.md):** both deploy into *your* cloud (no vendor-runtime lock-in). Encore is **infrastructure-from-code in TS/Go** (declare resources in app code; AWS/GCP managed services) with superb local DX; Qovery is **config/console/Terraform-driven**, **language-agnostic** (any container), spans **more clouds** (+ Azure/Scaleway/on-prem), and adds **K8s day-2 ops + preview environments** Encore doesn't emphasize. Encore is closer to HoBo's *authoring* model; Qovery is closer to HoBo's *platform/ops + BYOC* model.
@@ -192,7 +267,9 @@ Anchored to HoBo design docs; HoBo is **design-phase**, so these are *architectu
 
 **Net:** Qovery is HoBo's sharpest **PaaS/IDP-shaped** competitor and the clearest production proof of two HoBo bets — **BYOC (deploy into the customer's cloud)** and **ephemeral preview environments per PR** — plus mature K8s day-2 ops, RBAC, and audit that HoBo has only *designed*. The opening is **everything below and around the ops layer**: Qovery abstracts *Kubernetes operations in your cloud*; HoBo abstracts *the application itself* (WIT/wasm), makes the runtime **durable + event-sourced**, records realization as **auditable Matching**, treats **agents as principals** (not a governed copilot), and can **generate providers** rather than hand-build them — while keeping self-host = hosted parity and monetization out of scope.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Qovery concept (✅ has · ➕ goes further · ◐ designed, Qovery ships it at scale · 🔜 planned). HoBo is **design-phase**; Qovery is a mature product.
 
@@ -220,3 +297,37 @@ Anchored to HoBo design docs; HoBo is **design-phase**, so these are *architectu
 ### The one-line takeaway
 
 **Qovery proves HoBo's BYOC + preview-environment bets in production** — mature Kubernetes IDP automation that deploys into your AWS/GCP/Azure/Scaleway account, with strong RBAC, audit, and an MCP agent surface — but it abstracts **Kubernetes operations in your cloud**, not the **application** itself. HoBo's differentiation is everything beneath and around that: a **language-neutral wasm runtime**, a **durable event-sourced data plane**, **auditable Matching + the Dispatcher**, **agents-as-principals**, and an **AI generation pipeline** — with self-host = hosted parity and monetization out of scope.
+
+## Better-together / integration posture
+
+- **Benchmark** — preview environments and the outbound-only split-plane trust model are both bars
+  HoBo must clear; Qovery is the clearest production proof that BYOC plus previews is a viable
+  product.
+- **Borrow** — **autonomous clusters that survive a control-plane outage** is an availability
+  property HoBo's Relay/node-attach design should adopt explicitly, and **full-stack previews
+  including data** is the same finding Upsun produces from a different direction.
+- **Provider-target** — a Qovery-managed cluster is a plausible Camp substrate.
+- **Displace** — for the BYOC-IDP buyer, honestly head-on.
+
+## Threats and lessons
+
+1. **Two HoBo bets are already proven by someone else.** BYOC and per-PR previews are shipping.
+   HoBo's differentiation has to be below and around the ops layer — the application model, the
+   recorded decision, the runtime — and saying so plainly is stronger than implying novelty.
+2. **Autonomous data planes are a trust requirement, not a nicety.** A control-plane outage that
+   stops customer deployments is survivable; one that stops customer *workloads* is not. HoBo's
+   design should state this property explicitly.
+3. **Third corpus occurrence of preview environments needing real data** (after Upsun and
+   Northflank's database fork). The pattern is now unambiguous.
+4. **Agent surfaces that inherit human RBAC are the current norm.** HoBo's agents-as-principals model
+   is genuinely differentiated — and only if it ships with brokered, per-call scoped tokens.
+
+## Sources
+
+- [qovery.com/docs](https://www.qovery.com/docs) — clusters, environments, preview environments, RBAC, audit, interfaces
+- [Qovery/engine](https://github.com/Qovery/engine) — the GPL-3.0 Rust engine over Terraform/OpenTofu, Helm and Kubernetes
+- [qovery.com](https://www.qovery.com/) — BYOC positioning, compliance certifications, pricing tiers (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current pricing and certification scope were not re-verified in this
+pass and are not asserted.

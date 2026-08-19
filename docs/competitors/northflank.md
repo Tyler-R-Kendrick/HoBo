@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [environments, delivery, governance]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://northflank.com/docs
     - https://northflank.com/features/platform
@@ -46,6 +47,37 @@ Authoring is **dashboard-first**, backed by a genuine **Infrastructure-as-Code**
 | GPU / AI | **18+ GPU types** (NVIDIA H100/H200/A100/B200/L40S/L4/T4, AMD MI300X, Habana Gaudi); inference endpoints **autoscale 0→N**, **MIG + time-slicing**, spot pricing; **microVM sandboxes** for agent/untrusted code |
 | Isolation / security | Projects → **K8s namespaces** (isolated networking + quotas) · **microVMs (Kata/gVisor)** · **service-mesh mTLS** · **RBAC** (custom roles) · secrets **AES-256 at rest**, injected at runtime |
 | License / price | **Proprietary, commercial**; **Sandbox** (free) / **Pay-as-you-go** (consumption-based, **no seat pricing**) / **Enterprise** (custom) — hourly compute (**$0.01667/vCPU/hr**, **$0.00833/GB/hr**) + **GPU hourly** + egress **$0.06/GB** + disk **$0.15/GB/mo**, prorated to the second |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Project** | The grouping for services, jobs, addons and pipelines |
+| **Service** | A deployed workload built from Git or an image |
+| **Job / cron job** | One-shot and scheduled workloads, first-class alongside services |
+| **Addon** | A managed database or backing service (Postgres, MySQL, Mongo, Redis, MinIO, Memcached, RabbitMQ) with backups, PITR, fork and HA |
+| **Secret group** | Shared configuration auto-wired into the services that reference it |
+| **Pipeline / release flow** | Promotion between environments, with preview environments per pull request |
+| **Template** | Northflank's own IaC: JSON templates that round-trip with the visual editor and support args, refs and functions |
+| **BYOC cluster** | Kubernetes provisioned and managed by Northflank inside the customer's own cloud account |
+
+The mental model is **one product for the whole backend**: compute, data, delivery and GPU in a
+single catalog, expressible either visually or as templates, and runnable either on Northflank's
+infrastructure or in the customer's account with the same behaviour.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `environments` | Environments, preview environments per PR, and promotion between them |
+| `delivery` | Build pipelines and release flows in the same product as the runtime |
+| `governance` | RBAC, audit and centralized observability |
+| `finops` | Usage-based billing with GPU, egress and disk metered to the second |
+| `extensibility` | Templates cover the whole platform surface, not a subset |
+
+Northflank contests HoBo on **breadth of a shipping product**, not on application modelling: there is
+no provider-abstract description and no scored placement. Its BYOC clusters are the closest analog to
+HoBo Camps, but they are always Northflank-managed Kubernetes.
 
 ## Feature surface
 
@@ -164,9 +196,25 @@ Northflank leans hard into AI/GPU as a differentiator:
 - **GPU (hourly)** — NVIDIA **L4 24 GB $0.80/hr**, **A100 40 GB $1.42/hr**, **H100 80 GB $2.74/hr**; spot from **$2.74/hr** for H100.
 - **Data / network** — egress **$0.06 / GB**, disk **$0.15 / GB / mo**; everything **prorated to the second**. (In BYOC you also pay your own cloud for the underlying infra.)
 
-## Differentiators
+## Architecture
 
-### Strengths (what Northflank does well)
+- **Control plane** — Northflank's hosted service, and **only** its hosted service: BYOC moves the
+  data plane into the customer's account while orchestration stays with the vendor.
+- **Data plane** — Kubernetes, either Northflank's or provisioned into the customer's AWS, GCP,
+  Azure, Oracle, CoreWeave, Civo, on-prem or bare-metal capacity.
+- **Execution model** — build from source or image, deploy to Kubernetes, manage addons as operated
+  workloads, drive promotion through pipelines.
+- **State authority** — Northflank's own model, with bidirectional GitOps keeping templates and
+  platform state in sync. No event log, no decision replay.
+- **Portability boundary** — BYOC gives the customer the *account*, not the *description*: templates
+  are Northflank JSON, and the platform's catalog is its own. Leaving means rebuilding, though the
+  clusters and data remain the customer's.
+
+## Where Northflank is stronger
+
+> Shipped, evidenced capability only.
+
+### what Northflank does well
 
 - **One control plane for the whole backend** — services, jobs, cron, build pipelines, managed databases, secrets, and GPU compute in a single, coherent product. Far broader than a push-to-deploy PaaS; closer to a private Heroku+CI+DBaaS+GPU cloud.
 - **Genuine BYOC** — provisions and manages **Kubernetes in your own AWS/GCP/Azure/Oracle/CoreWeave/Civo account (or on-prem/bare-metal)** with *"same platform, everywhere,"* keeping data in your VPC. This is a real differentiator most PaaS competitors (Render/Railway/Heroku) lack.
@@ -175,7 +223,14 @@ Northflank leans hard into AI/GPU as a differentiator:
 - **First-class AI/GPU** — 18+ GPU types, autoscale-to-zero inference, MIG/time-slicing, spot, and microVM sandboxes for agent/untrusted code — a strong, current AI-workload posture.
 - **Strong ops surface** — pipelines, environment promotion, preview envs per PR, RBAC, centralized logs/metrics/autoscaling, and a full CLI/API/JS-library — at real production scale.
 
-### Gaps (Northflank's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Northflank's limits — HoBo's opening
 
 - **Container/Kubernetes-centric, not wasm** — the runtime substrate is **containers on Kubernetes**; there is no language-neutral component runtime, no capability-security-by-linking, no wasm-default polyglot model. HoBo's runtime is **wasm/WASI/WIT by default with OCI containers as a fallback** ([Plan 20](../design/wasm-runtime-wit.md#plan-20)/[ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) — portability at the component boundary, not the image boundary.
 - **A single, proprietary control plane — Northflank's own.** BYOC moves the *data plane* into your cloud, but the **control plane is Northflank's hosted service** — you cannot self-host it, and there is no cloud-agnostic/pluggable-IaC layer *under* the platform (resource→backend mapping is Northflank's, over Kubernetes). HoBo is a **cloud-agnostic control plane with pluggable IaC** (Pulumi/Crossplane/Terraform/OpenTofu as adapters) where **self-host = hosted** — the Yard is itself a Bindle ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)).
@@ -187,7 +242,26 @@ Northflank leans hard into AI/GPU as a differentiator:
 - **No cross-cloud data / adopt-in-place story.** BYOC provisions *new* Northflank-managed clusters; there is no documented migration/portability/consistency model across clouds, nor an "import my existing TF/Pulumi/FaaS estate" path. HoBo specifies app-data migration + cross-Camp consistency ([ADR-0032](../design/adr/03-data-plane.md#adr-0032)/[ADR-0040](../design/adr/01-architecture-core.md#adr-0040)) and **`hobo import`** adopt-in-place ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)).
 - **No multi-tenant-app primitives.** Northflank isolates *your* workloads (namespaces, microVMs, mesh mTLS) but gives a SaaS builder no **app-tenant model / tenancy spectrum / per-tenant isolation-routing-quota-residency-lifecycle**. HoBo ships this as a capability ([Plan 50](../design/security-networking.md#plan-50)/[ADR-0079](../design/adr/02-identity-security.md#adr-0079)/[ADR-0080](../design/adr/02-identity-security.md#adr-0080)).
 
-### Comparisons
+## Adversarial critique
+
+- **The control plane cannot be self-hosted.** BYOC relocates the data plane and leaves
+  orchestration with the vendor, so the platform remains a hard runtime dependency for deploys,
+  scaling and promotion no matter whose account the workloads run in.
+- **Templates are a proprietary IaC.** They cover the platform completely and describe nothing
+  outside it; the round-trip with the visual editor is convenient and makes the format the product's
+  own.
+- **BYOC provisions new clusters** rather than adopting existing estates, so the migration path is
+  greenfield and the "same platform everywhere" claim assumes Northflank built the everywhere.
+- **Managed addons are operated engines, not a portable taxonomy.** Postgres is Postgres; there is no
+  abstraction over relational/document/kv/vector that would let a workload move between engines.
+- **Usage billing scales with success**, including GPU-hours and egress, and preview environments per
+  PR multiply exactly the resources that bill by the second.
+- **Breadth is operational surface.** Databases with PITR and HA failover, GPU scheduling with MIG
+  and time-slicing, and build pipelines are each substantial systems; the vendor operates them all,
+  and the customer's leverage when one misbehaves is a support ticket.
+- **Kubernetes is visible when it fails**, despite being hidden when it works.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Northflank is a **shipping, broad PaaS on containers/Kubernetes with real BYOC and GPU**, run from **its own control plane**, billed by usage. HoBo is a **design-phase, cloud-agnostic control plane + durable event-sourced wasm runtime**, IaC-agnostic, agent-native, self-host = hosted, and **no billing**. Northflank validates the *market* for "one platform for services+DBs+pipelines+BYOC+GPU"; HoBo's edge is the **substrate (wasm/WIT + pluggable IaC + multi-cloud), the governed/event-sourced control plane, the Matching/Dispatcher rules layer, and AI-native depth**. Northflank's BYOC (managed K8s in your VPC) is the closest analog to HoBo **Camps**, but HoBo Camps are cloud-agnostic placement targets, not Northflank-managed K8s.
 - **vs Render / Railway / Heroku:** those are single-vendor managed PaaS (their infra only); **Northflank adds BYOC + a deeper managed-DB catalog + pipelines/release flows + GPU**, making it a heavier, more platform-engineering-shaped product than a pure push-to-deploy PaaS.
@@ -197,7 +271,9 @@ Northflank leans hard into AI/GPU as a differentiator:
 
 **Net:** Northflank is a **mature, broad, container/Kubernetes PaaS** whose standout is **real self-serve BYOC (managed K8s in your own cloud) + a deep managed-database catalog + native IaC/GitOps + first-class GPU** — a serious, shipping product where HoBo is design-phase. The differentiation is **not** breadth of PaaS features (Northflank wins there today); it is the **substrate and the planes**: a **language-neutral wasm/WIT runtime** (not containers-on-K8s), a **cloud-agnostic control plane with pluggable IaC** that is **self-hostable = hosted** (not one proprietary hosted control plane), a **durable event-sourced runtime**, an **auditable Matching + GPU/cost Dispatcher** rules layer, **agents-as-principals + a generation pipeline**, a **data-paradigm taxonomy** (not just managed engines), and **no billing model** (usage pricing is ✗-by-design, [ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Northflank concept (✅ has · ➕ goes further · ◐ partial/thin · 🔜 planned). HoBo is **design-phase**; Northflank ships a mature full-stack PaaS at scale — credit that. Anchors point at the owning design docs.
 
@@ -232,3 +308,36 @@ Northflank leans hard into AI/GPU as a differentiator:
 ### The one-line takeaway
 
 **Northflank proves the market for a broad, self-service, container/Kubernetes PaaS with real BYOC (managed clusters in your own cloud), a deep managed-database catalog, native IaC/GitOps, pipelines, and first-class GPU/AI** — and it ships that at scale today, where HoBo is design-phase. HoBo's differentiation is **not** PaaS breadth but the **substrate and the planes**: a **language-neutral wasm/WIT runtime** (not containers-on-K8s), a **cloud-agnostic control plane with pluggable IaC that is self-host = hosted** (not one proprietary hosted control plane), a **durable event-sourced runtime**, an **auditable Matching + GPU/cost Dispatcher** rules layer, a **portable data-paradigm taxonomy** (not just managed engines), **agents-as-principals + a generation pipeline**, and a deliberate **no-billing** posture (subscription/usage pricing is ✗-by-design, [ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
+
+## Better-together / integration posture
+
+- **Benchmark** — Northflank is the breadth bar for a container PaaS: services, jobs, databases,
+  pipelines, previews, BYOC and GPU in one coherent product. HoBo should not try to match that list.
+- **Borrow** — **secret groups that auto-wire into referencing services** is a small, well-judged
+  ergonomic HoBo's wiring model can learn from, and **database fork** as a first-class operation is
+  the right primitive for preview environments that need real data.
+- **Provider-target** — a Northflank BYOC cluster is a reasonable Camp substrate.
+- Not an adopt or displace target: HoBo's argument is the layer above, and pretending to compete on
+  managed-database depth would be a mistake.
+
+## Threats and lessons
+
+1. **Breadth is a real moat for the mid-market.** A team that wants services, databases, pipelines
+   and GPU from one vendor has a good answer today. HoBo's counter is not more features but a
+   description that outlives the vendor.
+2. **BYOC without a self-hostable control plane is the industry norm**, and it is the specific gap
+   HoBo's "self-host equals hosted" posture addresses. That contrast is sharper than any feature
+   comparison and is under-used in HoBo's positioning.
+3. **Database fork is the missing primitive for credible preview environments** — the second corpus
+   occurrence of this finding after Upsun's data cloning, and worth its own implementation issue.
+4. **GPU scheduling is now table stakes for a general platform**, not a specialist feature.
+
+## Sources
+
+- [northflank.com/docs](https://northflank.com/docs) — services, jobs, addons, pipelines, templates, BYOC
+- [Platform features](https://northflank.com/features/platform) — breadth of the product surface
+- [northflank.com](https://northflank.com/) — positioning, BYOC and GPU claims (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current pricing, GPU inventory and BYOC provider list were not
+re-verified in this pass and are not asserted.

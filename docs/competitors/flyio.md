@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [environments, runtime-portability, delivery]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://fly.io/docs/
     - https://fly.io/docs/machines/
@@ -44,6 +45,34 @@ Fly's data + AI surface is a mix of **first-party** and **integrated third-party
 | Compute extras | **Fly Kubernetes (FKS)** (K3s + Virtual Kubelet, closed beta) · **GPUs** (A10/L40S/A100) — **deprecated 2026-07-31** |
 | Portability | **Single-platform** — "your container runs anywhere *Fly* has hardware"; no other clouds, no pluggable IaC |
 | License / price | Proprietary SaaS; **usage-based, per-second** billing, **no free tier** (legacy orgs keep old allowances); support Standard **$29/mo** → Enterprise **from $2,500/mo** |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **App** | The deployable unit, declared in `fly.toml` |
+| **Machine** | A Firecracker microVM — the actual runtime primitive, individually addressable and startable |
+| **Region** | One of many global locations an app's machines can occupy |
+| **Anycast IP** | The global address that routes a request to the nearest healthy machine |
+| **Volume** | Region-pinned persistent storage attached to a machine |
+| **Fly Postgres / managed data** | Data services colocated with the compute |
+
+The mental model is **machines placed close to users**: the platform's primitive is a microVM you can
+start, stop and place explicitly, and the network routes to whichever one is nearest. This is a
+lower-level, more honest abstraction than most PaaS products offer — Fly exposes placement rather
+than hiding it.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `runtime-portability` | Firecracker microVMs run ordinary containers globally, with fast start |
+| `provider-matching` | **Placement is explicit and user-controlled** — the same decision HoBo scores, exposed as configuration |
+| `environments` | Apps and regions as deployment scopes |
+| `delivery` | `fly deploy` with machine-level rollout control |
+
+Fly.io is the corpus's clearest example of *placement as a first-class user concern*, which is HoBo's
+territory approached from the runtime side rather than the modelling side.
 
 ## Feature surface
 
@@ -169,9 +198,24 @@ The canonical pattern: read replicas serve locally, and **writes are `fly-replay
 
 Metered per-second billing **is the product** — the opposite of HoBo's deliberately **no-billing** stance ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
 
-## Differentiators
+## Architecture
 
-### Strengths (what Fly does genuinely well)
+- **Control plane** — Fly's hosted service, with a machines API that is genuinely low-level: create,
+  start, stop, destroy individual microVMs.
+- **Data plane** — Firecracker microVMs on Fly's own hardware in many regions, joined by a private
+  WireGuard-based network and fronted by Anycast.
+- **Execution model** — build an image, place machines in chosen regions, route requests to the
+  nearest healthy one; scale by adding machines rather than by an opaque autoscaler.
+- **State authority** — Fly's platform state plus `fly.toml` in the repository.
+- **Portability boundary** — the workload is an ordinary container image, which is genuinely
+  portable; the *placement, networking and volume model* are Fly's. What does not move is the part
+  that made it good.
+
+## Where Fly.io is stronger
+
+> Shipped, evidenced capability only.
+
+### what Fly does genuinely well
 
 - **Firecracker microVMs as the app runtime** — real per-app hardware isolation, sub-second boot, per-second billing, scale-to-zero + auto-start. A category above container-only PaaS on isolation, and **shipping in production** — something HoBo (wasm-default, design-phase) has **not** demonstrated.
 - **A clean Machines REST API** — "VMs as an API" is a strong, composable primitive; FKS and many third-party products are built on it.
@@ -181,7 +225,14 @@ Metered per-second billing **is the product** — the opposite of HoBo's deliber
 - **A curated ecosystem** — Managed Postgres, Tigris (S3-compat object), Upstash (Redis/Vector), Sentry — provisioned with `fly extensions`.
 - **It is a real cloud, not a reseller** — Fly operates physical hardware in many regions; the isolation and network are its own.
 
-### Gaps (Fly's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Fly's limits — HoBo's opening
 
 - **Single-platform, not multi-cloud.** Fly *is* the cloud: your app runs on Fly's runtime, Fly's network, Fly's hardware. There is **no "same app on AWS/GCP/Azure/on-prem," no pluggable IaC, no provider-native escape hatch**. HoBo is **multi-cloud + IaC-agnostic** (Pulumi/Crossplane/TF/OpenTofu adapters, [Plan 4](../design/control-plane.md#plan-04)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)) and can target **Fly itself** as one provider ([Fly provider proof HOBO-174](../design/proofs/hobo-174-provider-fly/index.md)).
 - **Container/microVM-only; no polyglot component model.** You ship an OCI image; there is **no capability-secured wasm runtime, no WIT ports, no language-neutral contract**. HoBo's runtime is **wasm-default (wasmCloud)** with WIT ports + an OCI/container floor ([Plan 20](../design/wasm-runtime-wit.md#plan-20)/[ADR-0031](../design/adr/01-architecture-core.md#adr-0031)).
@@ -194,7 +245,23 @@ Metered per-second billing **is the product** — the opposite of HoBo's deliber
 - **Metered billing is the model — `✗`-by-design vs HoBo.** Fly monetizes per-second usage; HoBo has **no billing/monetization** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)) and treats metering as **OSS FinOps showback** ([Plan 5](../design/reliability-observability-cost.md#plan-05)/[ADR-0039](../design/adr/02-identity-security.md#adr-0039)).
 - **Some surfaces are early or receding** — FKS is **closed beta**; GPUs sunset **2026-07-31**; LiteFS is **pre-1.0**.
 
-### Comparisons
+## Adversarial critique
+
+- **Volumes are region-pinned and single-attached**, which is the sharp edge of the whole model: the
+  compute is fluid and the state is not, so any stateful application inherits a placement problem
+  the abstraction does not solve.
+- **Operational history matters here.** Fly has publicly worked through significant reliability and
+  capacity issues while scaling its own hardware; that transparency is creditable and the underlying
+  fact — a smaller operator running its own metal globally — remains the risk a buyer is taking.
+- **The abstraction leaks by design.** Machines, regions and volumes are exposed, so users make
+  placement decisions with less information than the platform has and no scoring to help them.
+- **Global by default is expensive by default.** Multi-region deployment multiplies cost, and the
+  product's best feature is the one that does so.
+- **Managed data is thinner than a hyperscaler's**, and colocating data with globally distributed
+  compute is the hardest version of the problem.
+- **No BYOC or self-host.** The network and placement model only exist inside Fly.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Fly is **a single, opinionated PaaS/cloud** — its own Firecracker runtime, its own Anycast network, its own hardware — ahead on **shipping global-edge runtime, microVM isolation, and physical footprint**. HoBo is **a meta-cloud control plane** that maps one app description onto **any** provider (Fly included) via **pluggable IaC + a wasm runtime**, then wraps it in **event-sourced governance, Matching/Dispatcher, broad data paradigms, AI-native depth, and multi-tenancy**. HoBo does not try to *be* Fly — it **consumes** Fly ([HOBO-174](../design/proofs/hobo-174-provider-fly/index.md), which by design excludes anycast/multi-region failover — exactly the parts Fly ships and HoBo doesn't).
 - **vs Encore / Nitric:** Encore and Nitric are **infrastructure-from-code** (declare resources in app code → provision *your* cloud). Fly is **not IfC** — it is a runtime you deploy containers to, and it **owns the hardware** rather than provisioning into your account.
@@ -204,7 +271,9 @@ Metered per-second billing **is the product** — the opposite of HoBo's deliber
 
 **Net:** Fly is a genuinely strong, **shipping** developer cloud — Firecracker microVMs, a clean Machines API, global Anycast + `fly-replay`, LiteFS — and on **real global-edge runtime, microVM isolation, and owned hardware it is ahead of HoBo**, which is still in design. But Fly is **single-platform by construction**: one runtime, one network, one hardware fleet, imperative config, metered billing, and a **receding** AI-infra story. HoBo's differentiation is orthogonal and does not require out-Fly-ing Fly: **multi-cloud portability + pluggable IaC (with Fly as one target), a wasm-default polyglot runtime, IfC authoring + Matching + the Dispatcher, event-sourced governance, a broad data-paradigm catalog, AI-native depth, multi-tenant-app primitives, and no-billing OSS** — mapping your app onto Fly *and everything else*.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Fly.io concept (✅ has · ➕ goes further · ◐ partial / design-phase · 🔜 planned, not shipped). Where Fly ships something HoBo has not proven, it is honestly ◐/🔜 — Fly is **ahead** on real global-edge runtime, microVM isolation, and hardware footprint.
 
@@ -238,3 +307,32 @@ Metered per-second billing **is the product** — the opposite of HoBo's deliber
 ### The one-line takeaway
 
 **Fly is a shipping developer cloud that is genuinely ahead of HoBo on the things HoBo hasn't built — real Firecracker microVM isolation, a global Anycast edge runtime with `fly-replay`, LiteFS, and owned hardware in many regions — but it is single-platform by construction (its own runtime, network, hardware, imperative config, metered billing, receding AI-infra).** HoBo doesn't compete to *be* Fly; it **maps one app description onto Fly and every other provider** via pluggable IaC + a wasm runtime, then adds IfC authoring + Matching/Dispatcher, event-sourced governance, broad data paradigms, AI-native depth, multi-tenancy, and no-billing OSS — which is why Fly appears in HoBo's design **both** as a competitor **and** as a `CloudProvider` seed ([HOBO-174](../design/proofs/hobo-174-provider-fly/index.md)).
+
+## Better-together / integration posture
+
+- **Borrow** — **explicit placement as a user-visible concept**. Fly proves that developers will
+  engage with placement when it is legible; HoBo's scored matching should *show* its reasoning rather
+  than hide it, which is the same lesson from the other direction.
+- **Provider-target** — a strong one: Fly machines are a natural realization for latency-sensitive
+  Bindle workloads.
+- **Benchmark** — microVM start times and the Anycast routing story.
+- Not an adopt or displace target.
+
+## Threats and lessons
+
+1. **Placement is a feature users want to see**, not one they want hidden. HoBo's advantage over Fly
+   is that the decision can be *scored and explained*; that only lands if it is surfaced.
+2. **State placement is the unsolved problem across this entire corpus.** Region-pinned volumes here,
+   no data cloning elsewhere. Any HoBo claim about moving workloads must confront where the data is.
+3. **Running your own global hardware is a hard business.** It buys latency and control and makes
+   reliability the operator's own problem — relevant when evaluating Railway Metal's similar bet.
+
+## Sources
+
+- [fly.io/docs](https://fly.io/docs/) — apps, `fly.toml`, regions, Anycast, volumes
+- [Machines](https://fly.io/docs/machines/) — the microVM primitive and its API
+- [fly.io](https://fly.io/) — positioning (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current region list, pricing and managed-data offerings were not
+re-verified in this pass and are not asserted.

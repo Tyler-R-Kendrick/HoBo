@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [authoring, environments, delivery]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://render.com/docs
     - https://render.com/
@@ -44,6 +45,32 @@ Render runs entirely on **its own infrastructure** across five regions — **Ore
 | Clouds | **Render's own infrastructure only** — 5 regions (Oregon/Ohio/Virginia/Frankfurt/Singapore, AWS underneath); **no BYOC · no multi-cloud · no self-host** |
 | AI | Official **MCP server** (hosted `mcp.render.com/mcp`) + installable **agent skills** (`render-deploy/debug/monitor`) + `llms.txt`/`llms-full.txt` |
 | License / price | **Proprietary, commercial**; workspace tiers (Hobby free / Professional ≈$19/user/mo / Organization ≈$29/user/mo) **+ metered compute** (Starter $7 · Standard $25 · Pro $85 · Pro Plus $175 /mo) **+ managed data** |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Service** | The unit of deployment, typed by shape: web service, static site, background worker, cron job, private service |
+| **Blueprint (`render.yaml`)** | Declarative infrastructure-as-code for the whole project, committed to the repository |
+| **Managed Postgres / Key Value** | First-party managed data services |
+| **Environment group** | Shared configuration and secrets across services |
+| **Preview environment** | Per-pull-request instances defined by the Blueprint |
+
+The mental model is **typed services declared in the repository**. Render's distinguishing choice is
+that service *type* is explicit — a web service, a worker and a cron job are different things with
+different lifecycles — rather than everything being a container with different flags.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | `render.yaml` is a compact, complete, repository-resident topology description |
+| `environments` | Blueprint-defined preview environments per pull request |
+| `delivery` | Push to deploy with zero-downtime rollouts |
+| `app-graph` | Services plus environment groups form a small application graph |
+
+Render contests the same "declare it in the repo" ground HoBo occupies, at a much lower ceiling and
+with no provider choice.
 
 ## Feature surface
 
@@ -151,9 +178,23 @@ Interactive by default; **non-interactive/scriptable** with `-o json|yaml|text` 
 - **Key Value**: Free (ephemeral) → Starter ≈$10/mo (25 MB) up to 10 GB+.
 - **Static sites** free; **outbound bandwidth** + **build-pipeline minutes** metered per workspace.
 
-## Differentiators
+## Architecture
 
-### Strengths (what Render does well)
+- **Control plane** — Render's hosted service.
+- **Data plane** — Render's own infrastructure; services run as managed containers with typed
+  lifecycles.
+- **Execution model** — build from the repository, deploy per service type, apply Blueprint changes
+  as a plan across the project.
+- **State authority** — the `render.yaml` in the customer's repository for declared topology, plus
+  Render's own state for everything provisioned. Genuine config-as-code within the platform's scope.
+- **Portability boundary** — none. The Blueprint schema is Render's, and the services it declares are
+  Render service types.
+
+## Where Render is stronger
+
+> Shipped, evidenced capability only.
+
+### what Render does well
 
 - **Managed simplicity + operational maturity, shipping today.** Render *operates* the whole stack — build, deploy, TLS, DNS, load-balancing, HA Postgres with failover + PITR + read replicas, autoscaling — as a **battle-tested GA product**. Connect a repo, push, and it runs. This is the bar for "it just works, in production, right now" — and HoBo is design-phase, so Render is genuinely ahead here.
 - **Single-pane DX.** One dashboard and one bill for compute, data, cron, workers, previews, logs, and metrics. No cloud accounts, no IAM authoring, no Terraform required to get started.
@@ -163,7 +204,14 @@ Interactive by default; **non-interactive/scriptable** with `-o json|yaml|text` 
 - **Concrete, shipping AI-agent surface** — official hosted **MCP server** + installable **agent skills** + `llms.txt`. Render ships agent DX ergonomics *today*.
 - **Predictable, transparent pricing**, prorated to the second, with a usable free tier.
 
-### Gaps (Render's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Render's limits — HoBo's opening
 
 - **Single-vendor managed hosting — no multi-cloud, no BYOC, no self-host.** Everything runs on **Render's own infrastructure** (5 regions, AWS underneath but abstracted away). You **cannot** deploy into your own AWS/GCP/Azure account, cannot run Render on-prem, cannot pin a resource to a chosen provider, and there is **no self-hostable control plane**. This is the categorical contrast: HoBo is a **cloud-agnostic control plane** that maps one app onto **any mix of real providers** with **pluggable IaC** (Pulumi/Crossplane/TF/OpenTofu) and **self-host = hosted** (Yard-is-a-Bindle) — [Plan 4](../design/control-plane.md#plan-04) / [ADR-0006](../design/adr/01-architecture-core.md#adr-0006).
 - **No first-party object storage.** A core primitive (buckets/blob) is **absent** — the documented path is self-hosting MinIO on a disk or BYO S3/R2. HoBo ships a **`bucket` port** (`wasi:blobstore` + blob-events) in its catalog ([Plan 21](../design/authoring-resources-wiring.md#plan-21)).
@@ -179,7 +227,22 @@ Interactive by default; **non-interactive/scriptable** with `-o json|yaml|text` 
 
 **Not a gap (by design):** Render's **metered, managed-hosting billing** — per-instance compute, per-user workspace fees, usage-based data/bandwidth — is its *business model*, not a feature HoBo is missing. HoBo deliberately excludes **billing/monetization/paid-marketplace** from design scope ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)) and does **cost showback via OSS FinOps** ([Plan 5](../design/reliability-observability-cost.md#plan-05) / [ADR-0039](../design/adr/02-identity-security.md#adr-0039)), not a bill. Different product category, not a deficiency.
 
-### Comparisons
+## Adversarial critique
+
+- **Typed services are an expressive ceiling.** Five service shapes cover common web applications and
+  exclude actors, durable workflows, GPU work and anything event-driven beyond a worker loop.
+- **The Blueprint is Render's schema.** It is genuinely config-as-code and genuinely non-portable;
+  the file describes Render services, not an application.
+- **Single vendor, single region per service.** No BYOC, no self-host, no multi-region topology.
+- **Managed data is first-party only.** Postgres and Key Value are what is offered; there is no path
+  to a hyperscaler's managed service under the same abstraction.
+- **Preview environments cost real money** and, as everywhere in this cohort, do not solve the data
+  problem — a preview with an empty database tests less than it appears to.
+- **The Heroku-successor position is a following position.** The product is defined by improving a
+  known experience rather than by a distinct architectural claim, which is commercially sound and
+  strategically fragile if the category shifts.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Render is **single-vendor managed hosting with excellent DX**; HoBo is a **cloud-agnostic control plane** that maps one app onto any mix of real clouds (or self-host), event-sourced + AI-native + governed. Render is the benchmark for **managed simplicity + operational maturity today**; HoBo's bet is **portability + control-plane depth + no lock-in** — but HoBo is unshipped, so Render decisively wins "runs in production now."
 - **vs Heroku:** Render *is* the de-facto Heroku successor — same push-to-deploy ergonomics, modern managed data, better pricing, more service types.
@@ -190,7 +253,9 @@ Interactive by default; **non-interactive/scriptable** with `-o json|yaml|text` 
 
 **Net:** Render is the **managed-simplicity + operational-maturity benchmark** — a shipping, single-pane PaaS that HoBo cannot match on "runs in production today." But Render is **single-vendor managed hosting on its own infra**, with a **fixed managed-service catalog**, **no object storage**, **no multi-cloud/BYOC/self-host**, **no language-neutral runtime**, and **no event-sourced/governed/AI-native control plane**. HoBo's whole thesis is the inverse — **cloud-agnostic + pluggable-IaC + self-host = hosted**, a **wasm/WIT runtime**, **Resource Definitions/Matching + the Dispatcher**, **event-sourced governance**, and **agents-as-principals** — trading Render's turnkey managed hosting for portability, control, and no lock-in.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Render concept. **✅** designed at parity (real HoBo anchor) · **➕** HoBo goes further · **◐** partial/thin in HoBo's design · **🔜** planned/in-progress · **✗ by design** deliberately out of scope. HoBo is **design-phase/unshipped** — ✅ denotes a *designed* anchor, **not a shipping feature**; Render's *managed operations* (running the fleet, HA data, autoscaler, single-pane ops) are genuinely ahead of anything HoBo has shipped.
 
@@ -224,3 +289,30 @@ Interactive by default; **non-interactive/scriptable** with `-o json|yaml|text` 
 ### The one-line takeaway
 
 **Render is the managed-simplicity + operational-maturity benchmark — a shipping, single-pane PaaS that HoBo (design-phase) cannot yet match on "runs in production today."** But Render is **single-vendor managed hosting on its own infra**, with a **fixed managed catalog (no object storage), no multi-cloud/BYOC/self-host, no language-neutral runtime, and no event-sourced/governed/AI-native control plane** — precisely the axes HoBo is designed around: **cloud-agnostic + pluggable-IaC + self-host = hosted**, a **wasm/WIT runtime**, **Resource Definitions/Matching + the Dispatcher**, **event-sourced governance**, and **agents-as-principals**.
+
+## Better-together / integration posture
+
+- **Benchmark** — `render.yaml` is the ceremony budget for declarative topology: if HoBo's manifest
+  is meaningfully heavier for a simple web application, that is a defect.
+- **Borrow** — **explicit service types**. Making "this is a cron job, not a web service" part of the
+  declaration rather than a flag is good design and maps naturally onto Bindle kinds.
+- **Provider-target** — plausible for web-shaped Bindles.
+- Not an adopt or displace target.
+
+## Threats and lessons
+
+1. **Declarative-in-the-repo is the expected default now**, not a differentiator. HoBo gets no credit
+   for it; the credit comes from what the declaration can target.
+2. **Typed services are a good idea HoBo already has** in Bindle kinds, and does not explain as
+   clearly. Render's naming is more legible to a working developer than HoBo's vocabulary is.
+3. **The simple case must stay simple.** Every product in this cohort proves that a compact file for
+   a web app plus a database is the entry requirement.
+
+## Sources
+
+- [render.com/docs](https://render.com/docs) — service types, Blueprints, managed data, preview environments
+- [render.com](https://render.com/) — positioning (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current pricing, region list and managed-service catalog were not
+re-verified in this pass and are not asserted.

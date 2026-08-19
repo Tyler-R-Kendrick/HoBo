@@ -298,6 +298,37 @@ warm) because the repo-wide vitest sweep imports built dists from workspace
 packages, and without it a suite fails on whichever package happened to be
 stale rather than on anything real.
 
+### One build graph, not two
+
+Turbo owns the build graph. `tasks.build.dependsOn` is `["^build"]`, so a
+package's workspace dependencies are already built — and cached — before its
+own build runs, and `tasks.test.dependsOn` is `["build"]`, so a package's own
+dist is there before its tests run.
+
+Never build another workspace package from a package script. 47 packages used
+to carry `"prebuild": "pnpm --filter @hobo/core build"` and 100 carried a
+`pretest` that rebuilt themselves and their dependencies; those run *outside*
+turbo, so they never hit the cache and a full sweep paid roughly 150 cold `tsc`
+invocations underneath the cached graph it had just finished. `pnpm run
+standards:check` fails the tree if one comes back.
+
+A package that genuinely needs its own dist before tests — because someone runs
+`pnpm --filter <pkg> test` directly, outside turbo — uses the shim:
+
+```json
+"pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts"
+```
+
+`scripts/ensure-built.mts` exits immediately when `TURBO_HASH` is set (turbo
+injects it into every task process, `envMode: "strict"` included) and otherwise
+delegates to `turbo run build --filter=<self>`, so the standalone path is cached
+too.
+
+`tasks.build.inputs` excludes `test/**`, `contracts/**`, `**/*.test.ts`, and
+`**/*.md`. Every package's build tsconfig compiles `src` only — `@hobo/ci-guard`
+is the single exception and carries its own task override — so editing a test
+can no longer invalidate 124 builds and everything downstream of them.
+
 Generated output belongs to exactly one generator. `packages/code/src/_generated`
 is the protobuf codegen pipeline's; TUI art from `gen-logo-tui.mts` /
 `gen-bo-idle-tui.mts` lives in `_generated-art`. Two generators sharing a

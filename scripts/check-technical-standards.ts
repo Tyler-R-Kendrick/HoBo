@@ -270,6 +270,46 @@ if (literalConstOffenders.length > 0) {
 	);
 }
 
+// One build graph (turbo), not two. A package script must never build another
+// workspace package: `turbo run build` already guarantees dependencies through
+// `dependsOn: ["^build"]`, so a `pnpm --filter <dep> build` inside a package's
+// `build`/`prebuild`/`pretest` is a second, *uncached* build graph running
+// underneath the cached one. A full sweep used to pay ~150 cold `tsc`
+// invocations that way. Packages that need their own output before tests run
+// go through `scripts/ensure-built.mts`, which no-ops inside turbo and
+// delegates to turbo outside it.
+const OUT_OF_BAND_HOOKS = ["build", "prebuild", "pretest"] as const;
+const outOfBandBuilds: string[] = [];
+for (const file of run("git", ["ls-files", "**/package.json"])
+	.split(/\r?\n/)
+	.map((line) => line.trim())
+	.filter(Boolean)
+	.filter((file) => !file.includes("node_modules") && existsSync(file))) {
+	let manifest: { scripts?: Record<string, string> };
+	try {
+		manifest = JSON.parse(readFileSync(file, "utf8")) as typeof manifest;
+	} catch {
+		continue;
+	}
+	for (const hook of OUT_OF_BAND_HOOKS) {
+		const script = manifest.scripts?.[hook];
+		if (!script) continue;
+		for (const segment of script.split("&&").map((part) => part.trim())) {
+			if (/^pnpm(\s+--filter\s+\S+)+\s+(run\s+)?build$/.test(segment)) {
+				outOfBandBuilds.push(`${file} :: ${hook} :: ${segment}`);
+			}
+		}
+	}
+}
+if (outOfBandBuilds.length > 0) {
+	fail(
+		[
+			"Package scripts must not build other workspace packages; turbo's `^build` already does, and these run uncached underneath it. Delete the segment, or use `node --experimental-strip-types <rel>/scripts/ensure-built.mts` if the package needs its own output before tests:",
+			...outOfBandBuilds.map((entry) => `- ${entry}`),
+		].join("\n"),
+	);
+}
+
 if (existsSync("contracts/data-models")) {
 	fail(
 		"central contracts/data-models is forbidden; CUE-backed data models must live in the owning project/package data-models folder",

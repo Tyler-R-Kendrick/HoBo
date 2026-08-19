@@ -27,11 +27,10 @@
     "vitest": "^4.1.9"
   },
   "scripts": {
-    "prebuild": "pnpm --filter @hobo/core build && pnpm --filter @hobo/runtime-local build",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "biome check .",
-    "pretest": "pnpm run build",
+    "pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts",
     "test": "vitest run test/",
     "test:unit": "vitest run test/"
   }

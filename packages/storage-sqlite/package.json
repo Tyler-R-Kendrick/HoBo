@@ -25,11 +25,10 @@
 		"vitest": "^4.1.9"
 	},
 	"scripts": {
-		"prebuild": "pnpm --filter @hobo/core build",
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm run build",
+		"pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts",
 		"test": "vitest run",
 		"test:contract:consumer": "vitest run contracts/consumer",
 		"test:contract:provider": "vitest run --passWithNoTests contracts/provider"

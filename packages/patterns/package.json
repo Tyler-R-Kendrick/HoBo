@@ -4,7 +4,13 @@
 	"license": "MIT",
 	"type": "module",
 	"private": true,
-	"files": ["dist", "LICENSE", "patterns", "atoms", "vocabulary"],
+	"files": [
+		"dist",
+		"LICENSE",
+		"patterns",
+		"atoms",
+		"vocabulary"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -20,11 +26,10 @@
 	},
 	"scripts": {
 		"codegen": "pnpm --dir ../.. exec node --import tsx packages/schema-tools/src/cli.ts --packages-root packages --filter patterns",
-		"prebuild": "pnpm --filter @hobo/bindles build && pnpm --filter @hobo/capability-profiles build && pnpm --filter @hobo/storage-sqlite build",
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check src test scripts",
-		"pretest": "pnpm run build",
+		"pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts",
 		"test": "vitest run",
 		"eval": "node --import tsx scripts/run-evals.ts",
 		"build:catalog": "node --import tsx scripts/build-catalog.ts",

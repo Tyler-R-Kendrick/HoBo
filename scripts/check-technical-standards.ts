@@ -229,6 +229,36 @@ if (newJavaScriptFiles.length > 0) {
 	);
 }
 
+/**
+ * True when the marker appears on the declaration line or anywhere in the
+ * comment block immediately above it.
+ *
+ * This used to read exactly one preceding line, which meant a marker written
+ * inside a multi-line comment — the natural place to put a sentence explaining
+ * *why* a constant is the contract — did not count, and the check reported a
+ * missing marker that was plainly there. Two agents lost a round trip to it in
+ * one day. The rule the comment above already states is "on or above the
+ * declaration"; this makes the code say the same thing.
+ */
+function hasMarkerAbove(
+	lines: readonly string[],
+	index: number,
+	marker: string,
+): boolean {
+	if ((lines[index] ?? "").includes(marker)) return true;
+	for (let above = index - 1; above >= 0; above -= 1) {
+		const text = (lines[above] ?? "").trim();
+		const isComment =
+			text.startsWith("//") ||
+			text.startsWith("*") ||
+			text.startsWith("/*") ||
+			text.endsWith("*/");
+		if (!isComment) return false;
+		if (text.includes(marker)) return true;
+	}
+	return false;
+}
+
 // Minimal public surface (technical-standards.md): no new exported
 // string-literal constants in package sources — schema identity and enum
 // vocabularies come from generated code. Constants that ARE the contract
@@ -256,8 +286,7 @@ for (const file of changedFiles(["A", "M"])) {
 			? true
 			: /^\s*["'`]/.test(lines[index + 1] ?? "");
 		if (!opensLiteral) continue;
-		const context = `${lines[index - 1] ?? ""}\n${line}`;
-		if (context.includes("public-contract:")) continue;
+		if (hasMarkerAbove(lines, index, "public-contract:")) continue;
 		literalConstOffenders.push(`${file}:${index + 1}`);
 	}
 }

@@ -364,9 +364,21 @@ function parallelTypeDeclarations(typeScriptSources, protoTypes) {
 	return offenders;
 }
 
+/**
+ * Comments are stripped first, because this scrapes declarations out of prose
+ * otherwise. A doc comment reading "a proto enum is a varint" registered a type
+ * named `is`, and `missing-cue-constraints` then demanded a CUE constraint for
+ * it — naming no type the author could find, because there wasn't one. Two
+ * swarms lost a round trip to that in one day.
+ */
 function protoTypeNames(content) {
+	const withoutComments = content
+		.replace(/\/\*[\s\S]*?\*\//g, " ")
+		.replace(/\/\/[^\n]*/g, " ");
 	return [
-		...content.matchAll(/\b(?:message|enum)\s+([A-Za-z_][A-Za-z0-9_]*)\b/g),
+		...withoutComments.matchAll(
+			/\b(?:message|enum)\s+([A-Za-z_][A-Za-z0-9_]*)\b/g,
+		),
 	].map((match) => match[1]);
 }
 

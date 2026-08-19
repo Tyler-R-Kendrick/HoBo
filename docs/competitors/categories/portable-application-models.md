@@ -17,7 +17,7 @@ Application-intent models, programmable resource/capability abstractions, compos
 
 HoBo's Bindle kinds, BoundaryContracts and PortabilityReport are exactly an application model plus a portability claim. Every alternative model competes for the same authoring mindshare.
 
-## Competitors (8)
+## Competitors (9)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -29,6 +29,7 @@ HoBo's Bindle kinds, BoundaryContracts and PortabilityReport are exactly an appl
 | [**Humanitec**](../humanitec.md) | Platform Orchestrator for IDPs with dynamic configuration management — head-on orchestrator competitor | direct | `app-graph`, `environments`, `provider-matching`, `governance` | Proven enterprise Platform Orchestrator with mature dynamic configuration. | HoBo is developer-first and self-hostable, with an event-sourced audit trail instead of a SaaS-only control plane. | displace, benchmark | P1 |
 | [**Nitric**](../nitric.md) | cloud-agnostic infrastructure-from-code framework — authoring analog for typed resource declaration | overlapping | `authoring`, `typed-contracts`, `provider-matching`, `runtime-portability` | Clean IfC authoring with automatic least-privilege IAM inference. | HoBo separates intent from provider selection and scores impedance instead of assuming clean portability. | borrow, benchmark | P2 |
 | [**SST**](../sst.md) | infrastructure-from-code full-stack framework on Pulumi/Terraform with typed Linking — close product analog | direct | `authoring`, `typed-contracts`, `wiring`, `environments` | Huge provider reach via Pulumi/Terraform plus excellent live local dev. | HoBo's portability is scored, and its state authority is an event log rather than a stack state file. | displace, borrow, benchmark | P1 |
+| [**Facets.cloud**](../facets.md) | declarative environment orchestrator — the closest commercial product to HoBo's intent-to-provider thesis, realized through generated Terraform/Helm | direct | `app-graph`, `environments`, `provider-matching`, `governance`, `extensibility` | Ships the same declare-intent thesis against real clouds today, generating Terraform/Helm from platform-authored modules across AWS, GCP, Azure and Kubernetes. | Facets resolves intent through a hand-written module; HoBo resolves it by scored matching recorded as an event, with a PortabilityReport that says how well the move actually holds. | displace, benchmark, borrow | P1 |
 
 ## Navigation
 

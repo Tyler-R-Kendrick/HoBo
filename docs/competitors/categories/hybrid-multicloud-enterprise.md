@@ -17,12 +17,13 @@ Enterprise hybrid/multicloud provisioning, governance, catalog, lifecycle, and a
 
 These systems already sell the multicloud promise to enterprises. HoBo competes on honesty — scored portability and impedance limits instead of a uniform-abstraction claim.
 
-## Competitors (2)
+## Competitors (3)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
 | [**Crossplane**](../crossplane.md) | CNCF Kubernetes control plane for infrastructure — borrow-source and pluggable IaC adapter | overlapping | `typed-contracts`, `provider-matching`, `reconciliation`, `extensibility` | Battle-tested Kubernetes-native composition with a huge provider catalog. | HoBo does not require Kubernetes to exist: the control plane runs local, browser, or hosted on a portable SQLite EventStore. | borrow, integrate | P1 |
 | [**Mia-Platform**](../mia-platform.md) | enterprise platform orchestrator plus developer portal — owns the same application-to-environment span HoBo does, in one commercial suite | direct | `app-graph`, `environments`, `governance`, `agent-surface`, `extensibility`, `delivery` | Shipped enterprise suite: catalog-as-digital-twin, Scorecards/Campaigns governance, an MCP server over platform state, plus data pipelines and UI composition. | HoBo describes applications against abstract ports and scores portability; a Mia Project is configured against the infrastructure it will run on, and assumes Kubernetes. | displace, benchmark, borrow | P1 |
+| [**Facets.cloud**](../facets.md) | declarative environment orchestrator — the closest commercial product to HoBo's intent-to-provider thesis, realized through generated Terraform/Helm | direct | `app-graph`, `environments`, `provider-matching`, `governance`, `extensibility` | Ships the same declare-intent thesis against real clouds today, generating Terraform/Helm from platform-authored modules across AWS, GCP, Azure and Kubernetes. | Facets resolves intent through a hand-written module; HoBo resolves it by scored matching recorded as an event, with a PortabilityReport that says how well the move actually holds. | displace, benchmark, borrow | P1 |
 
 ## Navigation
 

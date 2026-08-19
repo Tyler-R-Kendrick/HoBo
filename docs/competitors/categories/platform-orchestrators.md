@@ -17,7 +17,7 @@ Systems that own application and platform orchestration end to end: environment 
 
 This is HoBo's home category. HoBo is a control plane that turns application intent into scored, provider-matched deployments, so anything claiming to orchestrate applications across environments contests HoBo directly.
 
-## Competitors (6)
+## Competitors (8)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -27,6 +27,8 @@ This is HoBo's home category. HoBo is a control plane that turns application int
 | [**Qovery**](../qovery.md) | BYOC internal developer platform deploying into your own cloud — PaaS/IDP competitor | direct | `environments`, `delivery`, `provider-matching` | Mature BYOC deployment into a customer's own cloud accounts. | HoBo's BYOC story is Bindle-first with PortabilityReport scoring rather than a fixed engine per cloud. | displace, benchmark | P2 |
 | [**Radius**](../radius.md) | CNCF cloud-native application platform (app graph, Recipes, connections) — borrow-source for recipes and app model | overlapping | `app-graph`, `typed-contracts`, `environments` | Well-designed application graph with Recipes and typed connections. | HoBo's app graph is event-sourced and provider-scored, and does not presume Kubernetes hosting. | borrow | P1 |
 | [**Mia-Platform**](../mia-platform.md) *(primary)* | enterprise platform orchestrator plus developer portal — owns the same application-to-environment span HoBo does, in one commercial suite | direct | `app-graph`, `environments`, `governance`, `agent-surface`, `extensibility`, `delivery` | Shipped enterprise suite: catalog-as-digital-twin, Scorecards/Campaigns governance, an MCP server over platform state, plus data pipelines and UI composition. | HoBo describes applications against abstract ports and scores portability; a Mia Project is configured against the infrastructure it will run on, and assumes Kubernetes. | displace, benchmark, borrow | P1 |
+| [**Harness Platform**](../harness.md) *(primary)* | modular commercial DevOps platform whose CD, IDP, IaCM and cost modules each contest a different HoBo surface | overlapping | `delivery`, `governance`, `environments`, `finops`, `extensibility`, `observability` | Nine shipped modules on one governed platform: mature CD/GitOps with approvals and Continuous Verification, OPA policy, audit, and an outbound-only Delegate that needs no ingress. | Harness automates delivery to infrastructure you already chose; HoBo owns the layer above — a provider-abstract application description resolved by a scored, recorded decision. | benchmark, borrow, integrate | P1 |
+| [**Facets.cloud**](../facets.md) *(primary)* | declarative environment orchestrator — the closest commercial product to HoBo's intent-to-provider thesis, realized through generated Terraform/Helm | direct | `app-graph`, `environments`, `provider-matching`, `governance`, `extensibility` | Ships the same declare-intent thesis against real clouds today, generating Terraform/Helm from platform-authored modules across AWS, GCP, Azure and Kubernetes. | Facets resolves intent through a hand-written module; HoBo resolves it by scored matching recorded as an event, with a PortabilityReport that says how well the move actually holds. | displace, benchmark, borrow | P1 |
 
 ## Navigation
 

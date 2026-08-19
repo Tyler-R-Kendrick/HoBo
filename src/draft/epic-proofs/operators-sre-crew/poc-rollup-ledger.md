@@ -33,3 +33,30 @@ Epic: Operators & SRE - the Crew
 | policy-engine-port-contract | `src/draft/technical-proofs/policy-engine-port-contract` | HOBO-100 | SRE operator | Policy gate returns allow, require approval, or deny | all write slices | policy engine | sre-policy-engine | not_started | out_of_scope_for_this_epic | Policy engine implementation remains Contracts/Policy-owned; this rollup consumes it. |
 | delivery-orchestrator-skeleton-contract | `src/draft/technical-proofs/delivery-orchestrator-skeleton-contract` | HOBO-141 | SRE operator | Remediation applies through delivery/live-fix gateway | provider-degraded-api, prod-contract-skew | remediation gateway | sre-remediation-gateway | not_started | out_of_scope_for_this_epic | Harness delivery owns orchestrator internals. |
 | policy-gated-flag-flips-contract | `src/draft/technical-proofs/policy-gated-flag-flips-contract` | HOBO-141 | SRE operator | Risky mutations are policy gated | boundary evidence only | policy engine, remediation gateway | sre-policy-engine, sre-remediation-gateway | not_started | out_of_scope_for_this_epic | Progressive Delivery owns flag-flip mechanics. |
+
+## Cascade absorptions
+
+Changes to referenced experience proofs that this rollup has taken in.
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/exp-proofs/dx/sre-drift-remediation-journey-contract` | `data-models/proof.cue` | none |
+
+All of these are the same edit, applied across 58 draft proofs at once. Each
+ships a `data-models/proof.proto` declaring `message ProofIdentity { string
+slug = 1; string layer = 2; }` beside a `proof.cue` that defined a bare
+anonymous `slug`/`layer` record — a record with no name to tie it to the
+message it is supposed to constrain, which is what `architecture:guard`
+reports as `missing-cue-constraints`. The record is now the named definition
+`#ProofIdentity`, embedded at top level so the file still reads as the same
+concrete data.
+
+One constraint changed with it: `slug: string` became `slug: string & !=""`.
+The old form restated proto3's declared type and refused nothing, so a proof
+identifying itself with the empty string validated. Measured with cue v0.14.0,
+old against new: `slug: ""` goes 0 → 1 and nothing else moves — a well-formed
+record stays 0, `slug: 7` stays 1, `layer: "ux"` stays 1.
+
+No disposition, evidence path, Linear link, or acceptance claim in the table
+above moves. No proof in this epic identifies itself with an empty slug, so
+nothing that validated before stops validating.

@@ -29,3 +29,30 @@ Selected epic: Progressive Delivery - The Harness (`122f5e0a-30d6-4949-9285-9441
 | Flag debt cleanup | `src/draft/technical-proofs/flag-debt-auto-cleanup-contract` | HOBO-381 | App operator | Stale flags are proposed for non-destructive archival | Flag lifecycle | Harness to flag store and code references | none | not_started | deferred | Lifecycle cleanup is not part of safe-release vertical slice. |
 | Cross-Camp flag consistency | `src/draft/technical-proofs/cross-camp-flag-state-consistency-contract` | HOBO-384 | Multi-Camp operator | Follower reads carry bounded-staleness labels | Cross-Camp replication | Harness to replication stream | none | not_started | split_follow_up | Requires cross-Camp topology/replication reference, beyond this epic-local Harness slice. |
 | Delivery/experiment adapter conformance | `src/draft/technical-proofs/delivery-experiment-adapter-conformance-suite` | HOBO-387 | Platform operator | Delivery and experiment adapters satisfy the same suite | Adapter conformance | Harness to delivery and experiment adapters | `pact-harness-traffic-split.json`, `pact-harness-experiment-analytics.json` | verified | implemented_in_reference_impl | Kept conformance expectation through mocked provider verification. |
+
+## Cascade absorptions
+
+Changes to referenced experience proofs that this rollup has taken in.
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/exp-proofs/dx/devops-canary-rollout-journey-contract` | `data-models/proof.cue` | none |
+
+All of these are the same edit, applied across 58 draft proofs at once. Each
+ships a `data-models/proof.proto` declaring `message ProofIdentity { string
+slug = 1; string layer = 2; }` beside a `proof.cue` that defined a bare
+anonymous `slug`/`layer` record — a record with no name to tie it to the
+message it is supposed to constrain, which is what `architecture:guard`
+reports as `missing-cue-constraints`. The record is now the named definition
+`#ProofIdentity`, embedded at top level so the file still reads as the same
+concrete data.
+
+One constraint changed with it: `slug: string` became `slug: string & !=""`.
+The old form restated proto3's declared type and refused nothing, so a proof
+identifying itself with the empty string validated. Measured with cue v0.14.0,
+old against new: `slug: ""` goes 0 → 1 and nothing else moves — a well-formed
+record stays 0, `slug: 7` stays 1, `layer: "ux"` stays 1.
+
+No disposition, evidence path, Linear link, or acceptance claim in the table
+above moves. No proof in this epic identifies itself with an empty slug, so
+nothing that validated before stops validating.

@@ -27,6 +27,33 @@
 | Live-fix gated candidate | `src/draft/technical-proofs/live-fix-gated-candidate-contract` | HOBO-368 | SRE | Failing trace creates a gated candidate | Live-fix gated candidate | Sandbox, promotion policy, human approval | generation-sandbox-validation, training-promotion-policy-gate, human-approval-safety-gate | verified | implemented_in_reference_impl | Prod candidate requires approval. |
 | Cross-layer generated-stack propagation | `src/draft/technical-proofs/cross-layer-generated-stack-propagation-contract` | HOBO-371 | SRE | Domain record propagates across five layers | Live-fix gated candidate | Promotion policy, human approval | training-promotion-policy-gate, human-approval-safety-gate | verified | implemented_in_reference_impl | Generated-region drift check stays clean. |
 
+## Cascade absorptions
+
+Changes to referenced experience proofs that this rollup has taken in.
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/exp-proofs/dx/data-flywheel-privacy-spike` | `data-models/proof.cue` | none |
+
+All of these are the same edit, applied across 58 draft proofs at once. Each
+ships a `data-models/proof.proto` declaring `message ProofIdentity { string
+slug = 1; string layer = 2; }` beside a `proof.cue` that defined a bare
+anonymous `slug`/`layer` record — a record with no name to tie it to the
+message it is supposed to constrain, which is what `architecture:guard`
+reports as `missing-cue-constraints`. The record is now the named definition
+`#ProofIdentity`, embedded at top level so the file still reads as the same
+concrete data.
+
+One constraint changed with it: `slug: string` became `slug: string & !=""`.
+The old form restated proto3's declared type and refused nothing, so a proof
+identifying itself with the empty string validated. Measured with cue v0.14.0,
+old against new: `slug: ""` goes 0 → 1 and nothing else moves — a well-formed
+record stays 0, `slug: 7` stays 1, `layer: "ux"` stays 1.
+
+No disposition, evidence path, Linear link, or acceptance claim in the table
+above moves. No proof in this epic identifies itself with an empty slug, so
+nothing that validated before stops validating.
+
 ## Adversarial Scope Review
 
 | Review area | Decision |

@@ -2,13 +2,14 @@
  * Platform composition ports for dogfooding stations, OpenFeature/Harness,
  * trails, and SWE provider multiplexing without inventing parallel control planes.
  */
+
+import { first, must } from "@hobo/core/total-access";
 import {
 	createStationClient,
 	initStation,
 	listStationIds,
 	type StationClient,
 } from "@hobo/stations";
-
 import {
 	codeDevStation,
 	stationInitArgsFromDeclaration,
@@ -133,9 +134,18 @@ export function selectSweProvider(
 		if (hit) return hit;
 	}
 	if (policy === "fallback-chain") {
-		return capable[0] ?? SWE_PROVIDER_CATALOG[SWE_PROVIDER_CATALOG.length - 1]!;
+		return (
+			capable[0] ??
+			must(
+				SWE_PROVIDER_CATALOG[SWE_PROVIDER_CATALOG.length - 1],
+				"SWE_PROVIDER_CATALOG[SWE_PROVIDER_CATALOG.length - 1]",
+			)
+		);
 	}
-	return [...capable].sort((a, b) => a.costUsdPerMTok - b.costUsdPerMTok)[0]!;
+	return first(
+		[...capable].sort((a, b) => a.costUsdPerMTok - b.costUsdPerMTok),
+		"[...capable].sort((a, b) => a.costUsdPerMTok - b.costUsdPerMTok)",
+	);
 }
 
 export interface CodeStationBinding {

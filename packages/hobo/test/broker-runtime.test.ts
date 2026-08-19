@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadBindleDefinition } from "@hobo/cli";
+import { must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
 import { initBareMetalYard } from "../src/bare-metal-yard.js";
 import { createComposedHoboCli } from "../src/cli.js";
@@ -52,14 +53,17 @@ describe("embedded broker-runtime", () => {
 	it("hello-bindle has no provider pins (defaults only)", async () => {
 		const definition = await loadBindleDefinition(helloBindleDir);
 		expect(definition).not.toBeNull();
-		expect(collectExplicitProviderPins(definition!)).toEqual([]);
+		expect(collectExplicitProviderPins(must(definition))).toEqual([]);
 	});
 
 	it("places hello-bindle via yard-first broker and selects camp inside yard", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-broker-place-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		initBareMetalYard({ hoboHome, componentHost: "local" });
-		const definition = (await loadBindleDefinition(helloBindleDir))!;
+		const definition = must(
+			await loadBindleDefinition(helloBindleDir),
+			"(await loadBindleDefinition(helloBindleDir))",
+		);
 		const placement = await resolveBindlePlacement({
 			definition,
 			hoboHome,
@@ -74,14 +78,17 @@ describe("embedded broker-runtime", () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-broker-pin-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		await ensureEmbeddedBroker({ hoboHome, preferWasmSandbox: false });
-		const definition = (await loadBindleDefinition(helloBindleDir))!;
+		const definition = must(
+			await loadBindleDefinition(helloBindleDir),
+			"(await loadBindleDefinition(helloBindleDir))",
+		);
 		// Synthesize a forbidden cloud provider pin on the Bindle.
 		const pinned = {
 			...definition,
 			resources: {
 				...definition.resources,
 				api: {
-					...definition.resources.api!,
+					...must(definition.resources.api),
 					annotations: [
 						{
 							provider: "no-such-cloud-provider",

@@ -2,8 +2,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
 import { parseTenantId } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import { createBillingAggregator } from "../../src/metering/billing-aggregator.js";
 import { createStripeBillingProvider } from "../../src/metering/billing-provider.js";
 import { createPactFetch } from "../helpers/pact-fetch.js";
@@ -18,7 +18,7 @@ describe("StripeBillingApi consumer contract", () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
 		const pact = pacts.find((p) => p.provider.name === "StripeBillingApi");
 		expect(pact).toBeDefined();
-		const fetchImpl = createPactFetch(pact!);
+		const fetchImpl = createPactFetch(must(pact));
 
 		const stripe = createStripeBillingProvider({
 			secretKey: "sk_test_pact",

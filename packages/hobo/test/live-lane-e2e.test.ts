@@ -1,9 +1,9 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { first, must } from "@hobo/core/total-access";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	type CloudflareFetch,
 	type CloudflareFetchResponse,
@@ -158,7 +158,7 @@ describe("hobo up drives the REAL deploy lane end to end (injected transport)", 
 			// exactly one Create-Deployment POST (memoized per deployment), with the
 			// Bearer token that came from the injected env.
 			expect(calls.length).toBe(1);
-			const call = calls[0]!;
+			const call = first(calls);
 			expect(call.url).toBe("https://api.vercel.com/v13/deployments");
 			expect(call.method).toBe("POST");
 			expect(call.headers.Authorization).toBe("Bearer tok_e2e");
@@ -193,8 +193,8 @@ describe("hobo up drives the REAL deploy lane end to end (injected transport)", 
 			// upload (PUT) authenticated with the token from the injected env.
 			const upload = calls.find((c) => c.method === "PUT");
 			expect(upload).toBeDefined();
-			expect(upload!.url).toContain("/accounts/acct_e2e/workers/scripts/");
-			expect(upload!.headers.Authorization).toBe("Bearer cf_e2e");
+			expect(must(upload).url).toContain("/accounts/acct_e2e/workers/scripts/");
+			expect(must(upload).headers.Authorization).toBe("Bearer cf_e2e");
 		});
 	});
 

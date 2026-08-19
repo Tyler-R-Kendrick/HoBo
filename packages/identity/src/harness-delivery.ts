@@ -13,7 +13,7 @@
  * identical state from the journal by construction.
  */
 import { createHash, randomUUID } from "node:crypto";
-
+import { first, must } from "@hobo/core/total-access";
 import type { FeatureFlagStore } from "./feature-flag-store.js";
 
 // public-contract: OpenDelivery port id.
@@ -395,7 +395,7 @@ export class OpenDeliveryEngine {
 		}
 		const frozen = freezePolicy(policy);
 		const id = `rollout_${randomUUID().replace(/-/g, "").slice(0, 10)}`;
-		const stage0 = frozen.stages[0]!;
+		const stage0 = first(frozen.stages);
 		// Degenerate percent-ramp start keeps the pre-staged behavior byte-for-byte.
 		const legacyStart = !isGrouped(stage0) && stage0.approval !== true;
 		const startPercent = legacyStart ? clamp(stage0.percent) : 0;
@@ -459,7 +459,10 @@ export class OpenDeliveryEngine {
 		if (nextIndex >= prev.policy.stages.length) {
 			return this.promote(rolloutId);
 		}
-		const stage = prev.policy.stages[nextIndex]!;
+		const stage = must(
+			prev.policy.stages[nextIndex],
+			"prev.policy.stages[nextIndex]",
+		);
 		if (stage.approval === true) {
 			return this.transition(ROLLOUT_EVENTS.ApprovalRequested, {
 				rolloutId,
@@ -509,7 +512,10 @@ export class OpenDeliveryEngine {
 			);
 		}
 		const stageIndex = prev.stageIndex;
-		const stage = prev.policy.stages[stageIndex]!;
+		const stage = must(
+			prev.policy.stages[stageIndex],
+			"prev.policy.stages[stageIndex]",
+		);
 		const groups = stage.groups ?? [];
 		const groupIndex = prev.staged.groupIndex;
 		const group = groups[groupIndex];
@@ -537,7 +543,7 @@ export class OpenDeliveryEngine {
 			groupIndex,
 			outcomes: Object.freeze(relevant),
 		});
-		const failed = state.staged!.failedTargets;
+		const failed = must(state.staged).failedTargets;
 		const maxFailures = group.maxFailures ?? stage.maxFailures ?? 0;
 		if (failed.length > maxFailures) {
 			return this.transition(ROLLOUT_EVENTS.Halted, {
@@ -550,7 +556,7 @@ export class OpenDeliveryEngine {
 			});
 		}
 		const settled =
-			state.staged!.completedTargets.length + failed.length >=
+			must(state.staged).completedTargets.length + failed.length >=
 			group.targets.length;
 		if (!settled) return state;
 
@@ -561,13 +567,13 @@ export class OpenDeliveryEngine {
 			group: group.name,
 			failedTargets: failed,
 		});
-		const nextGroup = groups[state.staged!.groupIndex];
+		const nextGroup = groups[must(state.staged).groupIndex];
 		if (nextGroup) {
 			if (nextGroup.approval === true) {
 				return this.transition(ROLLOUT_EVENTS.ApprovalRequested, {
 					rolloutId,
 					stageIndex,
-					groupIndex: state.staged!.groupIndex,
+					groupIndex: must(state.staged).groupIndex,
 					scope: "group",
 				});
 			}
@@ -583,7 +589,10 @@ export class OpenDeliveryEngine {
 		if (nextIndex >= prev.policy.stages.length) {
 			return this.promote(rolloutId);
 		}
-		const nextStage = prev.policy.stages[nextIndex]!;
+		const nextStage = must(
+			prev.policy.stages[nextIndex],
+			"prev.policy.stages[nextIndex]",
+		);
 		if (nextStage.approval === true) {
 			return this.transition(ROLLOUT_EVENTS.ApprovalRequested, {
 				rolloutId,
@@ -675,7 +684,10 @@ export class OpenDeliveryEngine {
 
 	private enterStage(rolloutId: string, stageIndex: number): RolloutState {
 		const prev = this.require(rolloutId);
-		const stage = prev.policy.stages[stageIndex]!;
+		const stage = must(
+			prev.policy.stages[stageIndex],
+			"prev.policy.stages[stageIndex]",
+		);
 		const percent = clamp(stage.percent);
 		const grouped = isGrouped(stage);
 		const state = this.transition(

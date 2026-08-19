@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-
+import { first } from "@hobo/core/total-access";
 import type { BrokerCatalog, PlacementDecision } from "../types.js";
 import { defaultYardGenerationConnectors } from "./connectors.js";
 import {
@@ -110,7 +110,10 @@ export async function resolveBindleDeployment(
 		const resolver =
 			foldRegistry.get(providerId) ??
 			foldRegistry.get("local") ??
-			createDefaultEventStoreFoldResolvers()[0]!;
+			first(
+				createDefaultEventStoreFoldResolvers(),
+				"createDefaultEventStoreFoldResolvers()",
+			);
 		for (const signal of signals) {
 			const native: ProviderNativeSignal = {
 				providerId,
@@ -755,7 +758,7 @@ function placeResourcesUnderYard(
 			if (pa !== pb) return pa - pb;
 			return a.id < b.id ? -1 : 1;
 		});
-		const winner = candidates[0]!;
+		const winner = first(candidates);
 		// Enforce no silent cross-provider placement.
 		if (winner.providerId !== providerId && winner.providerId !== "*") {
 			return {

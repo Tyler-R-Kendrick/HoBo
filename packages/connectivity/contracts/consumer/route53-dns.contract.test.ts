@@ -2,8 +2,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
 import { parseTenantId } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import { createRoute53DnsProvider } from "../../src/dns/route53-provider.js";
 import { createPactFetch } from "../helpers/pact-fetch.js";
 
@@ -17,7 +17,7 @@ describe("Route53DnsApi consumer contract", () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
 		const pact = pacts.find((p) => p.provider.name === "Route53DnsApi");
 		expect(pact).toBeDefined();
-		const fetchImpl = createPactFetch(pact!);
+		const fetchImpl = createPactFetch(must(pact));
 
 		const provider = createRoute53DnsProvider({
 			accessKeyId: "AKIAEXAMPLE",

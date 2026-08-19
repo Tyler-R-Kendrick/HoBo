@@ -17,12 +17,12 @@ import type {
 	HttpResponse,
 	ParsedComponentDescriptor,
 } from "@hobo/core";
+import { first, must } from "@hobo/core/total-access";
 import {
 	createInProcessWasmtimeEngine,
 	createRuntimeLocalComponentHost,
 	HTTP_INCOMING_HANDLER,
 } from "@hobo/runtime-local";
-
 import {
 	type BareMetalServeResult,
 	type ComponentEndpoint,
@@ -186,7 +186,7 @@ export async function serveProjectOnHost(options: {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const ownedYard =
 		options.yard === undefined ? openBareMetalYard({ hoboHome }) : null;
-	const yardHandle = options.yard ?? ownedYard!;
+	const yardHandle = options.yard ?? must(ownedYard);
 	const basePort =
 		options.port ?? yardHandle.config.defaultPort ?? DEFAULT_DEV_PORT;
 
@@ -374,7 +374,7 @@ export async function serveProjectOnHost(options: {
 	);
 
 	const exposedEndpoints = endpoints.filter((e) => e.external);
-	const primary = exposedEndpoints[0]!;
+	const primary = first(exposedEndpoints);
 	let probe: { status: number; body: string };
 	try {
 		const response = await fetch(`${primary.url}/`);

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { first } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { stripSgr as plain } from "../src/ansi.js";
 import { harnessViewFromLivePanes } from "../src/harness-session-view.js";
@@ -65,7 +66,7 @@ describe("live multi-pane TV attach parity", () => {
 
 		let live: InSessionPanes = {
 			session: "hobo",
-			windows: [{ name: "pi", target: ids[0]!, kind: "coding-agent" }],
+			windows: [{ name: "pi", target: first(ids), kind: "coding-agent" }],
 			focused: 0,
 			focusedPane: 0,
 			capture: "",

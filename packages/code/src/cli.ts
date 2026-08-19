@@ -12,6 +12,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import * as totalAccess from "@hobo/core/total-access";
 import { initStation, persistStationCapabilityManifest } from "@hobo/stations";
 import { runAgentsCli } from "./agent-harness-init.js";
 import { defaultProbes, detectAgents } from "./agent-registry.js";
@@ -297,19 +298,19 @@ function editDistance(a: string, b: string): number {
 	const dp: number[][] = Array.from({ length: m + 1 }, () =>
 		Array.from({ length: n + 1 }, () => 0),
 	);
-	for (let i = 0; i <= m; i++) dp[i]![0] = i;
-	for (let j = 0; j <= n; j++) dp[0]![j] = j;
+	for (let i = 0; i <= m; i++) totalAccess.must(dp[i])[0] = i;
+	for (let j = 0; j <= n; j++) totalAccess.first(dp)[j] = j;
 	for (let i = 1; i <= m; i++) {
 		for (let j = 1; j <= n; j++) {
 			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-			dp[i]![j] = Math.min(
-				dp[i - 1]![j]! + 1,
-				dp[i]![j - 1]! + 1,
-				dp[i - 1]![j - 1]! + cost,
+			totalAccess.must(dp[i])[j] = Math.min(
+				totalAccess.must(dp[i - 1]![j]) + 1,
+				totalAccess.must(dp[i]![j - 1]) + 1,
+				totalAccess.must(dp[i - 1]![j - 1]) + cost,
 			);
 		}
 	}
-	return dp[m]![n]!;
+	return totalAccess.must(dp[m]![n]);
 }
 
 /**
@@ -487,7 +488,7 @@ function parseArgv(argv: readonly string[]): {
 	const flags: Record<string, string | boolean> = {};
 	const positional: string[] = [];
 	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i]!;
+		const a = totalAccess.must(argv[i]);
 		if (a === "--") {
 			positional.push(...argv.slice(i + 1));
 			break;
@@ -1662,7 +1663,7 @@ export function applyDenseChrome(message: string): string {
 	};
 	return lines
 		.map((line, idx) => {
-			if (idx === 0 && titleMap[line]) return titleMap[line]!;
+			if (idx === 0 && titleMap[line]) return totalAccess.must(titleMap[line]);
 			// Short next-step idioms
 			return line
 				.replace(/^ next · hobo-code promote (.+)$/, " next · pr $1")

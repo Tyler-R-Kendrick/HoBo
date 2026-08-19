@@ -1,3 +1,4 @@
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import {
 	captureContractEffects,
@@ -39,7 +40,7 @@ describe("effect-aware harness", () => {
 			"externalCall",
 			"network",
 		]);
-		const dual = dualFixturesForEffects(net.effects!);
+		const dual = dualFixturesForEffects(must(net.effects));
 		expect(dual.purePath.infrastructure).toBe("none");
 		expect(dual.effectPath.mocks.length).toBeGreaterThan(0);
 	});

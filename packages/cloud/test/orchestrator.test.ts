@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { EventEnvelope } from "@hobo/core";
+import { first } from "@hobo/core/total-access";
 import { createInMemoryActorHost } from "@hobo/data";
 import {
 	createManualClock,
@@ -10,7 +11,6 @@ import {
 	type RuntimeLocalEventStore,
 } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	createInProcessCredentialBroker,
 	createInProcessExecutor,
@@ -198,7 +198,7 @@ describe("ResourceActor: a resource provisions via the Executor", () => {
 		expect(row.revokeCount).toBe(1);
 		const grants = Object.values(row.grants);
 		expect(grants).toHaveLength(1);
-		const g = grants[0]!;
+		const g = first(grants);
 		expect(g.status).toBe("revoked");
 		expect(g.grantedAt).toBeDefined();
 		expect(g.usedAt).toBeDefined();

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { RuntimeDurabilityBackend } from "@hobo/conformance/runtime-port";
-
+import { get, must } from "@hobo/core/total-access";
 import { createInMemoryActorHost } from "../../src/actor-host/in-memory.js";
 import {
 	createManualClock,
@@ -55,7 +55,7 @@ function createBrokenFenceActorHost() {
 			const prior = leases.get(actorKey);
 			const lease = Object.freeze({
 				key: actorKey,
-				holderId: request.holderId!,
+				holderId: must(request.holderId),
 				fenceToken: (prior?.fenceToken ?? 0n) + 1n,
 				expiresAt: "9999-12-31T23:59:59.999Z",
 				release() {},
@@ -118,7 +118,7 @@ function getBrokenStream(
 	if (!streams.has(key)) {
 		streams.set(key, { events: [] });
 	}
-	return streams.get(key)!;
+	return get(streams, key);
 }
 
 function requireNonEmptyString(value: unknown, fieldName: string): string {

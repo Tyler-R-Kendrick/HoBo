@@ -1,3 +1,4 @@
+import { must } from "@hobo/core/total-access";
 import { createDeterministicContext } from "./context.js";
 import { digest, ReplayDivergenceError } from "./divergence.js";
 import { stableStringify } from "./equivalence.js";
@@ -177,7 +178,7 @@ export function testRuntime(
 			},
 			sleep(delayMs: number, options: { id?: string; label?: string } = {}) {
 				if (!record) {
-					return replaySleep(delayMs, options, replayTimers!, run.runId);
+					return replaySleep(delayMs, options, must(replayTimers), run.runId);
 				}
 				const timerId = options.id ?? `timer-${timerSeq++}`;
 				const timer: TimerRecord = {

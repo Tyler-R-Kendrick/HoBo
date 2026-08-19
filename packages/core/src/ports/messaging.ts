@@ -14,6 +14,7 @@ import {
 	nonNegativeInteger,
 	positiveInteger,
 } from "../parse-utils.js";
+import { get } from "../total-access.js";
 import type { TenantId } from "./tenant.js";
 
 export const MESSAGING_PORT_CONTRACT_VERSION = "hobo.messaging-port/v1";
@@ -521,7 +522,7 @@ export function createInMemoryMessaging(
 				logs.set(scoped.name, []);
 				emit({ type: "messaging.topic.created", topic: scoped.name });
 			}
-			return topics.get(scoped.name)!;
+			return get(topics, scoped.name);
 		},
 
 		async ensureSubscription(spec) {
@@ -597,7 +598,7 @@ export function createInMemoryMessaging(
 					? { idempotencyKey: publishOptions.idempotencyKey }
 					: {}),
 			};
-			logs.get(physical)!.push(stored);
+			get(logs, physical).push(stored);
 			const result: PublishResult = deepFreeze({
 				messageId,
 				topic: physical,

@@ -4,8 +4,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { at, first } from "@hobo/core/total-access";
 import { test } from "vitest";
-
 import {
 	type CorpusBaseline,
 	createCorpusBaseline,
@@ -79,20 +79,20 @@ function ticketContract(): EventEvolutionContract {
 			},
 		],
 		goldenCorpus: [
-			createCorpusEntry(schemas[0]!, "ticket-opened-v1", {
+			createCorpusEntry(first(schemas), "ticket-opened-v1", {
 				ticketId: "ticket_123",
 				summary: "checkout fails",
 				priority: 3,
 				requesterEmail: "user@example.test",
 			}),
-			createCorpusEntry(schemas[1]!, "ticket-opened-v2", {
+			createCorpusEntry(at(schemas, 1), "ticket-opened-v2", {
 				ticketId: "ticket_456",
 				title: "login fails",
 				priority: 2,
 				requesterEmail: "admin@example.test",
 				source: "native-v2",
 			}),
-			createCorpusEntry(schemas[2]!, "ticket-opened-v3", {
+			createCorpusEntry(at(schemas, 2), "ticket-opened-v3", {
 				ticketId: "ticket_789",
 				title: "search slow",
 				priority: 4,
@@ -117,7 +117,10 @@ test("promoted evolution fixture passes the gate: every pinned body lifts to v3"
 
 test("a missing upcaster is a non-total chain and fails can-deploy", () => {
 	const contract = ticketContract();
-	const broken = { ...contract, upcasters: [contract.upcasters[1]!] };
+	const broken = {
+		...contract,
+		upcasters: [at(contract.upcasters, 1)],
+	};
 	const report = runCanDeployUpcasterGate(broken);
 	assert.equal(report.ok, false);
 	assert.ok(

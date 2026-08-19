@@ -12,6 +12,7 @@ import {
 	type KeyObject,
 	randomBytes,
 } from "node:crypto";
+import { must } from "@hobo/core/total-access";
 
 export interface DpopKeyPair {
 	readonly privateKey: KeyObject;
@@ -316,8 +317,8 @@ export function verifyDpopProof(input: {
 
 	return {
 		htm: payload.htm,
-		htu: payload.htu!,
-		ath: payload.ath!,
+		htu: must(payload.htu),
+		ath: must(payload.ath),
 		jti: payload.jti,
 		iat: payload.iat,
 		kid,

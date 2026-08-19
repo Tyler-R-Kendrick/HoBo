@@ -10,6 +10,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { first, must } from "@hobo/core/total-access";
 import type { StationEvent } from "./events.js";
 import { railFromBrokerConfig } from "./rail.js";
 import {
@@ -227,7 +228,7 @@ export function initStation(input: {
 	}
 
 	persistStationEvents(input.hoboHome, stationId, svc.events);
-	const snap = svc.snapshot()!;
+	const snap = must(svc.snapshot());
 	return {
 		stationId,
 		dataDir,
@@ -284,7 +285,7 @@ export function resolveStationContext(input: {
 
 	const ids = listStationIds(input.hoboHome);
 	if (ids.length === 1) {
-		const dirName = ids[0]!;
+		const dirName = first(ids);
 		const eventsPath = join(
 			input.hoboHome,
 			"stations",
@@ -297,12 +298,15 @@ export function resolveStationContext(input: {
 				// Prefer id from first event when directory is escaped.
 				(
 					JSON.parse(
-						readFileSync(eventsPath, "utf8").split("\n").filter(Boolean)[0]!,
+						first(
+							readFileSync(eventsPath, "utf8").split("\n").filter(Boolean),
+							"readFileSync(eventsPath, 'utf8').split('\n').filter(Boolean)",
+						),
 					) as StationEvent
 				).stationId ?? dirName,
 			);
 			if (events.length > 0) {
-				const realId = events[0]!.stationId;
+				const realId = first(events).stationId;
 				return {
 					stationId: realId,
 					client: createStationClient({

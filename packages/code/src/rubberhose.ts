@@ -1,3 +1,4 @@
+import { must } from "@hobo/core/total-access";
 /**
  * Rubberhose chrome primitives for the terminal (site/DESIGN.md).
  *
@@ -81,7 +82,7 @@ export function fitCells(text: string, width: number): string {
 				continue;
 			}
 		}
-		out += text[i]!;
+		out += must(text[i]);
 		cells += 1;
 		i += 1;
 	}

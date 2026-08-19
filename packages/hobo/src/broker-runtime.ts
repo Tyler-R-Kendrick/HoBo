@@ -31,7 +31,7 @@ import {
 	resolveBindleDeployment,
 	type YardPlacementReceipt,
 } from "@hobo/broker";
-
+import { must } from "@hobo/core/total-access";
 import {
 	initStation,
 	listStationIds,
@@ -407,7 +407,10 @@ export async function ensureEmbeddedBroker(
 			: {}),
 		...(loadHoboProfile(hoboHome)?.defaultStation?.id !== undefined
 			? {
-					profileStationId: loadHoboProfile(hoboHome)!.defaultStation!.id,
+					profileStationId: must(
+						loadHoboProfile(hoboHome)!.defaultStation,
+						"loadHoboProfile(hoboHome)!.defaultStation",
+					).id,
 				}
 			: existingStations[0] !== undefined
 				? { profileStationId: existingStations[0] }

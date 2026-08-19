@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MissingFenceError, StaleFenceError } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	createManualClock,
 	createRuntimeLocalEventStore,
@@ -123,7 +123,9 @@ describe("durable journal integration", () => {
 			expect(cp?.position).toBe(1n);
 
 			const remaining: number[] = [];
-			for await (const pe of store.readAll({ after: cp!.position })) {
+			for await (const pe of store.readAll({
+				after: must(cp).position,
+			})) {
 				remaining.push(pe.event.seq);
 			}
 			expect(remaining).toEqual([2]);

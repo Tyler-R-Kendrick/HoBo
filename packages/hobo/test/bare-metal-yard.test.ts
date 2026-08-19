@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadBindleDefinition } from "@hobo/cli";
+import { must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import { createComposedHoboCli } from "../src/cli.js";
 import {
 	composeBareMetalTopology,
@@ -65,7 +65,9 @@ describe("bare-metal yard e2e", () => {
 		const dataDir = await mkdtemp(join(tmpdir(), "hobo-yard-data-"));
 		cleanups.push(() => rm(dataDir, { recursive: true, force: true }));
 
-		const topology = composeBareMetalTopology(definition!, { dataDir });
+		const topology = composeBareMetalTopology(must(definition), {
+			dataDir,
+		});
 		expect(topology.kind).toBe("yard");
 		expect(topology.providerId).toBe("local");
 		expect(topology.camps).toHaveLength(1);

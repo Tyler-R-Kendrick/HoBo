@@ -5,8 +5,8 @@ import {
 	type ProviderStub,
 	verifyPact,
 } from "@hobo/contract-harness";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import { createProcessKubectlTransport } from "../../src/index.js";
 
 const contractsDir = path.resolve(
@@ -28,7 +28,7 @@ describe("kubectl-cluster provider verification", () => {
 		const pact = pacts.find((p) => p.provider.name === "KubernetesClusterApi");
 		expect(pact).toBeDefined();
 		const transport = createProcessKubectlTransport();
-		expect(transport.name).toBe(pact!.provider.name);
+		expect(transport.name).toBe(must(pact).provider.name);
 	});
 
 	it("process transport serves version + cluster-info without hanging", async () => {
@@ -83,14 +83,14 @@ describe("kubectl-cluster provider verification", () => {
 			},
 		};
 
-		for (const interaction of pact!.interactions) {
+		for (const interaction of must(pact).interactions) {
 			const actual = await provider.handle(interaction.request);
 			expect(actual.status, interaction.description).not.toBe(404);
 		}
 
 		// Full body verification only when a live cluster is required.
 		if (process.env.HOBO_REQUIRE_KUBECTL === "1") {
-			const report = await verifyPact(pact!, {
+			const report = await verifyPact(must(pact), {
 				name: "KubernetesClusterApi",
 				handle: (req) => processTransport.handle(req),
 			});

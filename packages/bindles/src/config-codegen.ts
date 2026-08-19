@@ -2,6 +2,8 @@
  * Typed ctx.config codegen from a config schema (ADR-0027 / ADR-0037).
  * Agents and runtimes consume generated types; sensitive fields are placeholders.
  */
+
+import { must } from "@hobo/core/total-access";
 import type { ConfigFieldDef, ConfigSchema } from "./config-schema.js";
 
 function tsTypeForField(field: ConfigFieldDef): string {
@@ -47,7 +49,7 @@ export function generateCtxConfigSource(
 	];
 	const keys = Object.keys(schema.fields).sort();
 	for (const name of keys) {
-		const field = schema.fields[name]!;
+		const field = must(schema.fields[name]);
 		const optional = field.required ? "" : "?";
 		const docs = field.docs
 			? `  /** ${field.docs.replace(/\*\//g, "*\\/")} */\n`

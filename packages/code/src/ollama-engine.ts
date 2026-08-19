@@ -11,6 +11,7 @@
  * disposes (ADR-0139 — promotion stays the sole audited mutation path).
  */
 
+import { at } from "@hobo/core/total-access";
 import { AGUI_EVENT } from "./agui.js";
 import { LOCAL_TOOL_SCHEMA, runLocalTool } from "./local-tools.js";
 import type { ToolPlanner } from "./needle-tools.js";
@@ -82,9 +83,9 @@ export function parseParameterSize(raw: string | undefined): number | null {
 	if (!raw) return null;
 	const m = /^([\d.]+)\s*([BM])$/i.exec(raw.trim());
 	if (!m) return null;
-	const value = Number.parseFloat(m[1]!);
+	const value = Number.parseFloat(at(m, 1));
 	if (!Number.isFinite(value)) return null;
-	return m[2]!.toUpperCase() === "B" ? value * 1e9 : value * 1e6;
+	return at(m, 2).toUpperCase() === "B" ? value * 1e9 : value * 1e6;
 }
 
 /** Is a local ollama reachable, and which models does it serve? */

@@ -8,8 +8,8 @@ import {
 	type ProviderStub,
 	verifyPact,
 } from "@hobo/contract-harness";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	createKubectlKubernetesClient,
 	createOciRuntimeHost,
@@ -30,7 +30,7 @@ describe("runtime-oci-host provider verification", () => {
 		expect(hostPact).toBeDefined();
 		expect(clusterPact).toBeDefined();
 
-		const clusterMock = createMockProviderFromPact(clusterPact!);
+		const clusterMock = createMockProviderFromPact(must(clusterPact));
 		const k8s = createKubectlKubernetesClient({
 			namespace: "hobo-dev",
 			transport: clusterMock,
@@ -91,7 +91,7 @@ describe("runtime-oci-host provider verification", () => {
 			},
 		};
 
-		const report = await verifyPact(hostPact!, provider);
+		const report = await verifyPact(must(hostPact), provider);
 		expect(report.ok, JSON.stringify(report.failures)).toBe(true);
 	});
 });

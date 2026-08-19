@@ -6,8 +6,8 @@ import {
 	createCapabilityProfileRegistry,
 	STANDARD_CAPABILITY_PROFILES,
 } from "@hobo/capability-profiles";
+import { must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import { createOfferCommand } from "../src/offer-command.js";
 import {
 	deploymentRequestFromBindle,
@@ -63,7 +63,7 @@ describe("hobo recipes", () => {
 	it("shows a recipe's Yards, placements, and required consents", async () => {
 		const [first] = listRecipeSummaries();
 		const result = await createRecipesCommand().run({
-			args: ["show", first!.recipeId],
+			args: ["show", must(first).recipeId],
 			flags: NO_FLAGS,
 			context: context(process.cwd()),
 		} as never);

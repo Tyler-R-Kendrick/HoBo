@@ -1,5 +1,5 @@
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	applyResilienceProfile,
 	checkCompatibility,
@@ -80,7 +80,9 @@ describe("EffectSpec lattice", () => {
 				true,
 			);
 		}
-		expect(isEffectWideningBreaking(prev.effects!, next.effects!)).toBe(true);
+		expect(
+			isEffectWideningBreaking(must(prev.effects), must(next.effects)),
+		).toBe(true);
 	});
 
 	it("exports EffectManifest and captures facts without re-execution", () => {
@@ -95,7 +97,7 @@ describe("EffectSpec lattice", () => {
 			contractId: contract.id,
 			contractVersion: contract.version,
 			channel: contract.edge.channel,
-			effects: contract.effects!,
+			effects: must(contract.effects),
 		});
 		expect(manifest.requiresNetwork).toBe(true);
 		expect(manifest.isPure).toBe(false);
@@ -105,13 +107,13 @@ describe("EffectSpec lattice", () => {
 		tracer.declare({
 			contractId: contract.id,
 			channel: contract.edge.channel,
-			effects: contract.effects!,
+			effects: must(contract.effects),
 			at: "t0",
 		});
 		tracer.invoked({
 			contractId: contract.id,
 			channel: contract.edge.channel,
-			effects: contract.effects!,
+			effects: must(contract.effects),
 			at: "t1",
 		});
 		expect(sink.facts()).toHaveLength(2);

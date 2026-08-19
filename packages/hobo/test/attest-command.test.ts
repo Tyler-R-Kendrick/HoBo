@@ -4,10 +4,10 @@ import path from "node:path";
 import type { CliContext } from "@hobo/cli";
 import type { CredentialAuditRow } from "@hobo/cloud";
 import type { EventEnvelope } from "@hobo/core";
+import { first, get, must } from "@hobo/core/total-access";
 import { createInMemoryKms, JwtSvidIssuer } from "@hobo/identity";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	auditEventsToOcsf,
 	createAttestCommand,
@@ -209,7 +209,7 @@ function testIssuer(): JwtSvidIssuer {
 describe("auditEventsToOcsf (ADR-0046 §2 widening)", () => {
 	it("maps policy.Decided to an OCSF Authentication record with decision status", () => {
 		const batch = auditEventsToOcsf(ADR_0046_EVENTS);
-		const record = batch.records[0]!;
+		const record = first(batch.records);
 		expect(record.category_uid).toBe(3);
 		expect(record.category_name).toBe("Identity & Access Management");
 		expect(record.class_uid).toBe(3002);
@@ -222,7 +222,7 @@ describe("auditEventsToOcsf (ADR-0046 §2 widening)", () => {
 		const denied = auditEventsToOcsf([
 			auditEvent("policy.Decided", 1, { effect: "deny", action: "x" }),
 		]);
-		expect(denied.records[0]!.status).toBe("Failure");
+		expect(first(denied.records).status).toBe("Failure");
 	});
 
 	it("maps the configuration-change families onto the config-change class", () => {
@@ -241,7 +241,7 @@ describe("auditEventsToOcsf (ADR-0046 §2 widening)", () => {
 			["erasure.Requested", 4, "Erasure Requested"],
 			["erasure.Completed", 5, "Erasure Completed"],
 		] as const) {
-			const record = byType.get(type)!;
+			const record = get(byType, type);
 			expect(record.category_uid).toBe(5);
 			expect(record.class_uid).toBe(5019);
 			expect(record.class_name).toBe("Device Config State Change");
@@ -253,8 +253,8 @@ describe("auditEventsToOcsf (ADR-0046 §2 widening)", () => {
 		const progressed = auditEventsToOcsf([
 			auditEvent("erasure.KeyDestroyed", 1, { subject: "user:alice" }),
 		]);
-		expect(progressed.records[0]!.activity_id).toBe(6);
-		expect(progressed.records[0]!.activity_name).toBe("Erasure Progressed");
+		expect(first(progressed.records).activity_id).toBe(6);
+		expect(first(progressed.records).activity_name).toBe("Erasure Progressed");
 	});
 
 	it("carries per-line traceability to the source event and skips unmapped families", () => {
@@ -308,7 +308,7 @@ describe("auditEventsToOcsf (ADR-0046 §2 widening)", () => {
 			kid: "ocsf-seal-k1",
 			alg: "RS256",
 		});
-		expect(signed.sealSignature!.jws.split(".")).toHaveLength(3);
+		expect(must(signed.sealSignature).jws.split(".")).toHaveLength(3);
 		expect(verifyOcsfBatchSignature(signed, issuer.jwks())).toEqual({
 			valid: true,
 		});

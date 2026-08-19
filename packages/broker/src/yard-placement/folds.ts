@@ -2,6 +2,8 @@
  * Pure event-store folds for Yard inventory, generation saga, and placement.
  * Rebuildable from zero — no in-memory mutation outside applying facts.
  */
+
+import { must } from "@hobo/core/total-access";
 import { YARD_EVENTS, type YardEvent } from "./events.js";
 import {
 	type ContentHash,
@@ -208,7 +210,10 @@ export function foldYardEventStore(
 		// Link generation attempt → ready yard
 		const attemptId = str(data.attemptId);
 		if (attemptId && next.generationAttempts[attemptId]) {
-			const attempt = next.generationAttempts[attemptId]!;
+			const attempt = must(
+				next.generationAttempts[attemptId],
+				"next.generationAttempts[attemptId]",
+			);
 			const readyYardId = yardId || attempt.yardId;
 			const updated: YardGenerationAttemptRow = {
 				attemptId: attempt.attemptId,
@@ -410,7 +415,10 @@ function upsertAttempt(
 		state.generationByIdempotency[idempotencyKey] &&
 		state.generationByIdempotency[idempotencyKey] !== attemptId
 	) {
-		const winnerId = state.generationByIdempotency[idempotencyKey]!;
+		const winnerId = must(
+			state.generationByIdempotency[idempotencyKey],
+			"state.generationByIdempotency[idempotencyKey]",
+		);
 		const winner = state.generationAttempts[winnerId];
 		if (
 			winner &&

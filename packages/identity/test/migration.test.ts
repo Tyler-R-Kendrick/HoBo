@@ -1,5 +1,5 @@
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	advanceMigrationRamp,
 	agentActionsForMigrationEvents,
@@ -132,7 +132,7 @@ describe("Continuous Identity Migration Plane", () => {
 			expect(linked.verify.principalRef).toBe(dual.principalRef);
 			expect(linked.grant?.audiences).toHaveLength(2);
 			const verified = verifyDualAudienceGrant({
-				grant: linked.grant!,
+				grant: must(linked.grant),
 				vaultRoot: "fixture-vault-migration",
 			});
 			expect(verified.ok).toBe(true);

@@ -1,6 +1,6 @@
 import { CANONICAL_VERBS } from "@hobo/cli";
+import { first } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	assertToolSurfaceParity,
 	capabilityForTool,
@@ -52,7 +52,7 @@ describe("MCP tool surface parity with CANONICAL_VERBS", () => {
 			role: "lifecycle",
 			summary: "invented tool not in CANONICAL_VERBS",
 			capability: capabilityForTool("not-a-canonical-verb"),
-			inputSchema: MCP_TOOL_SURFACE[0]!.inputSchema,
+			inputSchema: first(MCP_TOOL_SURFACE).inputSchema,
 		};
 		const report = assertToolSurfaceParity([...MCP_TOOL_SURFACE, invented]);
 		expect(report.ok).toBe(false);

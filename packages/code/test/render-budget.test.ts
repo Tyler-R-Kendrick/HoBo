@@ -11,6 +11,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
+import { must } from "@hobo/core/total-access";
 import { afterAll, describe, expect, it } from "vitest";
 import { stripAnsi } from "../src/ansi.js";
 import {
@@ -427,7 +428,10 @@ describe("wrap cache invalidation", () => {
 		// a frame comparison passes even if invalidate() is a no-op, which is
 		// exactly how the previous version of this test proved nothing.
 		renderShellFrame(state);
-		const message = state.messages[state.messages.length - 1]!;
+		const message = must(
+			state.messages[state.messages.length - 1],
+			"state.messages[state.messages.length - 1]",
+		);
 		expect(peekWrapCache(message)).not.toBeUndefined();
 		clearWrapCache();
 		expect(peekWrapCache(message)).toBeUndefined();

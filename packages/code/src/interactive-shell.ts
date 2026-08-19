@@ -14,6 +14,7 @@
 
 import type { Readable, Writable } from "node:stream";
 import { type Component, matchesKey, TUI } from "@earendil-works/pi-tui";
+import { must } from "@hobo/core/total-access";
 import { HOBO_LOGO_TUI } from "./_generated/hobo-logo-tui.js";
 import {
 	harnessDisplayLabel,
@@ -594,7 +595,7 @@ export function splitKeySequences(data: string): string[] {
 	const out: string[] = [];
 	let i = 0;
 	while (i < data.length) {
-		const ch = data[i]!;
+		const ch = must(data[i]);
 		if (ch === "\x1b") {
 			// Bracketed paste block: keep marker + content + end marker whole
 			if (data.startsWith("\x1b[200~", i)) {
@@ -608,7 +609,11 @@ export function splitKeySequences(data: string): string[] {
 			// CSI: ESC [ params final-byte (0x40–0x7e)
 			if (data[i + 1] === "[") {
 				let j = i + 2;
-				while (j < data.length && !(data[j]! >= "@" && data[j]! <= "~")) j += 1;
+				while (
+					j < data.length &&
+					!(must(data[j]) >= "@" && must(data[j]) <= "~")
+				)
+					j += 1;
 				out.push(data.slice(i, Math.min(j + 1, data.length)));
 				i = j + 1;
 				continue;
@@ -630,7 +635,8 @@ export function splitKeySequences(data: string): string[] {
 		}
 		// Printable run
 		let j = i;
-		while (j < data.length && data[j]! >= " " && data[j] !== "\u007f") j += 1;
+		while (j < data.length && must(data[j]) >= " " && data[j] !== "\u007f")
+			j += 1;
 		out.push(data.slice(i, j));
 		i = j;
 	}
@@ -936,7 +942,10 @@ export function boMarker(state: InteractiveShellState): string {
 	if (state.agentState !== "working") return "(••)";
 	if (state.reducedMotion) return "(••)";
 	const tick = Math.floor(state.tickMs / BO_IDLE_TICK_MS);
-	return BO_MARKERS[tick % BO_MARKERS.length]!;
+	return must(
+		BO_MARKERS[tick % BO_MARKERS.length],
+		"BO_MARKERS[tick % BO_MARKERS.length]",
+	);
 }
 
 /** Active harness chat label for the status strap (Hobo Bo / Codex / Pi / …). */
@@ -1300,7 +1309,11 @@ export function reduceShellKey(
 			return { state: reduceAgentsConfigureShell(state, key) };
 		}
 		const viewRows = viewportRows(state);
-		const result = reduceAgentsCatalogKey(state.agentsCatalog!, key, viewRows);
+		const result = reduceAgentsCatalogKey(
+			must(state.agentsCatalog),
+			key,
+			viewRows,
+		);
 		let next: InteractiveShellState = {
 			...state,
 			agentsCatalog: result.state,
@@ -2458,7 +2471,10 @@ export function cycleFocus(
 			? "chat"
 			: state.focus;
 	const i = order.indexOf(from);
-	const next = order[(i < 0 ? 0 : i + 1) % order.length]!;
+	const next = must(
+		order[(i < 0 ? 0 : i + 1) % order.length],
+		"order[(i < 0 ? 0 : i + 1) % order.length]",
+	);
 	return {
 		...state,
 		focus: next,
@@ -3260,7 +3276,9 @@ export async function runInteractiveShell(
 					target,
 					result.forwardPaneKey,
 				)
-					.then(() => refreshInSessionPanes(state.livePanes!, tmuxRunner()))
+					.then(() =>
+						refreshInSessionPanes(must(state.livePanes), tmuxRunner()),
+					)
 					.then((next) => {
 						if (quit || !next) return;
 						state = withHarnessFromLivePanes(state, next);
@@ -3279,7 +3297,10 @@ export async function runInteractiveShell(
 			return;
 		}
 		if (result.approve || result.decline) {
-			const approval = (result.approve ?? result.decline)!;
+			const approval = must(
+				result.approve ?? result.decline,
+				"(result.approve ?? result.decline)",
+			);
 			void resolveApproval(approval, Boolean(result.approve))
 				.then(() => {
 					if (!quit) tui.requestRender();
@@ -3537,7 +3558,9 @@ export async function runInteractiveShell(
 			const target = resolvePaneInteractTarget(state);
 			if (target) {
 				void sendKeysRawToInSessionPane(tmuxRunner(), target, data)
-					.then(() => refreshInSessionPanes(state.livePanes!, tmuxRunner()))
+					.then(() =>
+						refreshInSessionPanes(must(state.livePanes), tmuxRunner()),
+					)
 					.then((next) => {
 						if (quit || !next) return;
 						state = withHarnessFromLivePanes(

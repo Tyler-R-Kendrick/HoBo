@@ -9,9 +9,9 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { must } from "@hobo/core/total-access";
 import { chromium } from "playwright";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	BROWSER_RECORDING_SCHEMA,
 	exportEvidenceRecordingAutomation,
@@ -322,7 +322,7 @@ describe("resident session loopback server", () => {
 			)?.[1];
 			expect(evidenceHref).toBeDefined();
 			expect(evidenceHref).not.toContain("test-token");
-			const linkedEvidence = await fetch(evidenceHref!);
+			const linkedEvidence = await fetch(must(evidenceHref));
 			expect(linkedEvidence.status).toBe(200);
 			expect(await linkedEvidence.text()).toContain("live work report");
 			const screenshot = Uint8Array.from([

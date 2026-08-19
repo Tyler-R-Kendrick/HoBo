@@ -7,6 +7,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { at, first } from "@hobo/core/total-access";
 import { findRepoRoot } from "./harness-surface.js";
 
 /**
@@ -113,7 +114,7 @@ export function runRhaiSubset(source: string): RhaiWorkflowResult {
 		if (line.length === 0 || line.startsWith("//")) continue;
 		const stepMatch = /^step\s+"([^"]+)"\s*$/.exec(line);
 		if (stepMatch) {
-			steps.push(stepMatch[1]!);
+			steps.push(at(stepMatch, 1));
 			output.push(`step:${stepMatch[1]}`);
 			continue;
 		}
@@ -214,7 +215,9 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 
 	return {
 		useModel(id: string) {
-			const provider = id.includes("/") ? id.split("/")[0]! : "default";
+			const provider = id.includes("/")
+				? first(id.split("/"), "id.split('/')")
+				: "default";
 			return { id, provider };
 		},
 		useSandbox(root: string) {

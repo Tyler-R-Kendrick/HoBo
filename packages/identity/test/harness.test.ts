@@ -1,5 +1,5 @@
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	applyPolicyGatedDefine,
 	applyRolloutToGatewayRouting,
@@ -433,9 +433,9 @@ describe("Harness · Feature flags · progressive delivery", () => {
 		}
 		const analysis = harness.analyzeExperiment("btn");
 		expect(analysis).not.toBeNull();
-		expect(analysis!.totalAssigned).toBeGreaterThan(0);
-		expect(analysis!.exportPayload.format).toBe("json");
-		expect(analysis!.exportPayload.contentHash.startsWith("sha256:")).toBe(
+		expect(must(analysis).totalAssigned).toBeGreaterThan(0);
+		expect(must(analysis).exportPayload.format).toBe("json");
+		expect(must(analysis).exportPayload.contentHash.startsWith("sha256:")).toBe(
 			true,
 		);
 		const concluded = harness.concludeExperiment("btn");

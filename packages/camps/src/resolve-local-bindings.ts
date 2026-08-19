@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { LAZY_TOKEN_PATTERN, type WiringManifest } from "@hobo/bindles/wiring";
 import type { BindingResolverPort } from "@hobo/core";
 import { parseResourceId } from "@hobo/core";
-
+import { must } from "@hobo/core/total-access";
 import type { Camp } from "./types.js";
 
 export class BindingResolutionError extends Error {
@@ -46,8 +46,8 @@ export async function resolveLocalBindings(
 			}
 			const [, tokenResourceId, property] = match;
 			const binding = await resolver.resolve(
-				parseResourceId(tokenResourceId!),
-				property!,
+				parseResourceId(must(tokenResourceId)),
+				must(property),
 			);
 			env[key] = binding.value;
 		}

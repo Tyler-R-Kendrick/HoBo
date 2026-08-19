@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPactDirectory } from "@hobo/contract-harness";
 import { parseTenantId } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { createTailscaleOverlay } from "../../src/overlay/tailscale.js";
 import { createTailscaleApiClient } from "../../src/overlay/tailscale-api.js";
@@ -17,7 +18,7 @@ describe("TailscaleControlApi consumer contract", () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
 		const pact = pacts.find((p) => p.provider.name === "TailscaleControlApi");
 		expect(pact).toBeDefined();
-		const fetchImpl = createPactFetch(pact!);
+		const fetchImpl = createPactFetch(must(pact));
 
 		const api = createTailscaleApiClient({
 			apiKey: "tskey-api-pact",

@@ -1,5 +1,5 @@
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import { createLakebedProvider, lakebedNativePorts } from "../src/index.js";
 import {
 	type LakebedAnonymousTransport,
@@ -22,14 +22,16 @@ describe("lakebed anonymous temporary station", () => {
 			["compute", "database", "kv", "objectStore"].sort(),
 		);
 		expect(
-			provider.capabilities
-				.find((c) => c.port === "kv")!
-				.satisfies({ port: "kv", features: ["durable"] }).kind,
+			must(
+				provider.capabilities.find((c) => c.port === "kv"),
+				"provider.capabilities .find((c) => c.port === 'kv')",
+			).satisfies({ port: "kv", features: ["durable"] }).kind,
 		).toBe("full");
 		expect(
-			provider.capabilities
-				.find((c) => c.port === "compute")!
-				.satisfies({ port: "compute", features: ["container"] }).kind,
+			must(
+				provider.capabilities.find((c) => c.port === "compute"),
+				"provider.capabilities .find((c) => c.port === 'compute')",
+			).satisfies({ port: "compute", features: ["container"] }).kind,
 		).toBe("partial");
 	});
 

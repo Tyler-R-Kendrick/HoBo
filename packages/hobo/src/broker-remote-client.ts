@@ -6,7 +6,7 @@
  * discovery endpoints. Real hosted brokers plug in without changing CLI control flow.
  */
 import type { PrincipalRef } from "@hobo/core";
-
+import { get } from "@hobo/core/total-access";
 import {
 	type BrokerDiscoveryClient,
 	type BrokerDiscoveryDocument,
@@ -347,7 +347,7 @@ export function createMockRemoteBrokerState(options?: {
 						"HOBO_CLAIM_TOKEN_INVALID",
 					);
 				}
-				const dep = deployments.get(deploymentId)!;
+				const dep = get(deployments, deploymentId);
 				if (dep.expiresAt < now()) {
 					throw new RemoteBrokerClientError(
 						"anonymous claim token expired",
@@ -406,7 +406,7 @@ export function createMockRemoteBrokerState(options?: {
 					"HOBO_CLAIM_TOKEN_INVALID",
 				);
 			}
-			const dep = deployments.get(deploymentId)!;
+			const dep = get(deployments, deploymentId);
 			if (dep.expiresAt < now() && dep.owner === null) {
 				throw new RemoteBrokerClientError(
 					"claim token expired",

@@ -1,3 +1,4 @@
+import { at } from "@hobo/core/total-access";
 import type { PlatformMatrixRow } from "./types.js";
 
 /**
@@ -54,18 +55,18 @@ export function matrixForPlatform(
 	if (platform === "darwin") {
 		return (
 			ISOLATION_PLATFORM_MATRIX.find((r) => r.platform === "darwin-apfs") ??
-			ISOLATION_PLATFORM_MATRIX[4]!
+			at(ISOLATION_PLATFORM_MATRIX, 4)
 		);
 	}
 	if (platform === "win32") {
 		return (
 			ISOLATION_PLATFORM_MATRIX.find((r) => r.platform === "win32") ??
-			ISOLATION_PLATFORM_MATRIX[4]!
+			at(ISOLATION_PLATFORM_MATRIX, 4)
 		);
 	}
 	// Linux: generic until a CoW probe upgrades to rift.
 	return (
 		ISOLATION_PLATFORM_MATRIX.find((r) => r.platform === "linux-generic") ??
-		ISOLATION_PLATFORM_MATRIX[2]!
+		at(ISOLATION_PLATFORM_MATRIX, 2)
 	);
 }

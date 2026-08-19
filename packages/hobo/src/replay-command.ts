@@ -10,12 +10,12 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import type { CommandModule } from "@hobo/cli";
+import { must } from "@hobo/core/total-access";
 import {
 	createContractAssertedReplayFixtures,
 	createReplayService,
 	type ReplayService,
 } from "@hobo/replay";
-
 import { loadHoboProfile } from "./hobo-profile.js";
 
 export interface ReplayCommandDeps {
@@ -192,7 +192,7 @@ export function createReplayCommand(
 			}
 
 			if (sub === "get") {
-				const session = await service.get(sessionId!);
+				const session = await service.get(must(sessionId));
 				if (!session) {
 					return {
 						ok: false,
@@ -216,7 +216,7 @@ export function createReplayCommand(
 			}
 
 			if (sub === "summarize") {
-				const summary = await service.summarize(sessionId!);
+				const summary = await service.summarize(must(sessionId));
 				if (!summary) {
 					return {
 						ok: false,
@@ -242,7 +242,7 @@ export function createReplayCommand(
 			}
 
 			if (sub === "open") {
-				const opened = await service.open(sessionId!);
+				const opened = await service.open(must(sessionId));
 				if (!opened.ok) {
 					return {
 						ok: false,

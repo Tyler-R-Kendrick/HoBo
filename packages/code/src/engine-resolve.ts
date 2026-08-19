@@ -13,6 +13,7 @@
  * an engine must degrade the shell, not crash it.
  */
 
+import { must } from "@hobo/core/total-access";
 import { createNeedlePlanner, needlePaths } from "./needle-tools.js";
 import {
 	createOllamaShellEngine,
@@ -86,7 +87,12 @@ export async function resolveShellEngine(
 			instructions: options.instructions,
 			...(options.env.OLLAMA_HOST ? { host: options.env.OLLAMA_HOST } : {}),
 			...(localModelFromSpec(options.env.HOBO_CODE_MODEL)
-				? { model: localModelFromSpec(options.env.HOBO_CODE_MODEL)! }
+				? {
+						model: must(
+							localModelFromSpec(options.env.HOBO_CODE_MODEL),
+							"localModelFromSpec(options.env.HOBO_CODE_MODEL)",
+						),
+					}
 				: {}),
 		});
 		if (local.engine) return { engine: local.engine };

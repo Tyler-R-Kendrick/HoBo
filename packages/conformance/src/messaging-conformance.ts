@@ -11,6 +11,7 @@ import {
 	parseTopicName,
 	type TenantId,
 } from "@hobo/core";
+import { first } from "@hobo/core/total-access";
 
 // public-contract: schema version of the messaging conformance suite definition.
 export const MESSAGING_CONFORMANCE_CONTRACT = "hobo.messaging-conformance/v1";
@@ -85,7 +86,7 @@ async function provesPublishConsumeAck(
 		maxMessages: 5,
 	});
 	if (batch.length < 1) return false;
-	bus.ack(batch[0]!.messageId, batch[0]!.leaseId);
+	bus.ack(first(batch).messageId, first(batch).leaseId);
 	const flushable = bus as Messaging & { flush?: () => Promise<void> };
 	if (typeof flushable.flush === "function") {
 		await flushable.flush();

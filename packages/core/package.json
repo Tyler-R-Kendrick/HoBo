@@ -11,6 +11,10 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./total-access": {
+			"types": "./dist/total-access.d.ts",
+			"default": "./dist/total-access.js"
 		}
 	},
 	"publishConfig": {

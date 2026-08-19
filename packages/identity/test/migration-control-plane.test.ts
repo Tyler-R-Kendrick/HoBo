@@ -1,5 +1,5 @@
+import { first, must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	createContractAssertedDualFixtures,
 	createMemoryFencePort,
@@ -44,7 +44,10 @@ describe("IdentityMigrationControlPlane (hands-off continuous path)", () => {
 		expect(mid.flag?.percentage).toBe(50);
 		expect(mid.migration?.state).toBe("ramping");
 
-		const principal = Object.keys(mid.migration?.links ?? {})[0]!;
+		const principal = first(
+			Object.keys(mid.migration?.links ?? {}),
+			"Object.keys(mid.migration?.links ?? {})",
+		);
 		const inCohort = plane.principalInRamp(principal);
 		expect(typeof inCohort.value).toBe("boolean");
 		// flag.Evaluated is sampled (default 1%); force path still defines/changes flags.
@@ -57,8 +60,8 @@ describe("IdentityMigrationControlPlane (hands-off continuous path)", () => {
 		expect(inCohort.flagKey).toContain("identity-migration.");
 
 		plane.advanceRamp(100);
-		const snap = plane.service.snapshot()!;
-		const pref = Object.keys(snap.links)[0]!;
+		const snap = must(plane.service.snapshot());
+		const pref = first(Object.keys(snap.links));
 		plane.service.markMigrated(pref);
 		const cut = plane.cutover();
 		expect(cut.migration?.state).toBe("cutover");

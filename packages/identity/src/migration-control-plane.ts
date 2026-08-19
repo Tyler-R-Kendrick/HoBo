@@ -3,6 +3,8 @@
  * Matching/policy decisions auto-start dual path; Harness flags ramp; dual oracle
  * health auto-aborts. Zero Bindle configuration required.
  */
+
+import { must } from "@hobo/core/total-access";
 import { type AdapterClaims, dualVerifyClaims } from "./dual-adapter.js";
 import {
 	FeatureFlagStore,
@@ -377,7 +379,7 @@ export function startContinuousMigrationFromMatch(
 	const plane = new IdentityMigrationControlPlane({
 		tenant: input.tenant,
 		...(input.vaultRoot !== undefined ? { vaultRoot: input.vaultRoot } : {}),
-		...(input.now !== undefined ? { now: () => input.now! } : {}),
+		...(input.now !== undefined ? { now: () => must(input.now) } : {}),
 	});
 	const decision = decideIdentityMigration(input);
 	const progress = plane.onMatchingDecision(input);

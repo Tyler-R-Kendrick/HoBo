@@ -11,8 +11,8 @@ import {
 	type IacProgram,
 } from "@hobo/cloud";
 import type { CloudProvider, EventInput, PrincipalRef } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { createCloudflareProvider } from "@hobo/provider-cloudflare";
-
 import type { CloudflareFetch } from "./cloudflare-client.js";
 import {
 	type EstateResourceState,
@@ -306,7 +306,12 @@ export function createDriftCommand(deps: DriftCommandDeps = {}): CommandModule {
 			const fenceToken = currentFenceToken(runtime.store, stream);
 			await runtime.store.append(stream, events, {
 				expectedSeq:
-					existing.length > 0 ? existing[existing.length - 1]!.seq : 0,
+					existing.length > 0
+						? must(
+								existing[existing.length - 1],
+								"existing[existing.length - 1]",
+							).seq
+						: 0,
 				actor: DRIFT_ACTOR,
 				tenant: DEFAULT_TENANT,
 				...(fenceToken !== undefined ? { fenceToken } : {}),

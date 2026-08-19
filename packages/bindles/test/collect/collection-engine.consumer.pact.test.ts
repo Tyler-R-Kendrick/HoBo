@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	type CollectionContext,
 	type CollectionTarget,
@@ -57,7 +57,7 @@ function targetFor(interaction: CollectInteraction): CollectionTarget {
 					);
 				} else if (resource.factory === "service") {
 					const bind = Object.fromEntries(
-						(resource.bind ?? []).map((id) => [id, handles[id]!]),
+						(resource.bind ?? []).map((id) => [id, must(handles[id])]),
 					);
 					collect.service(resource.name, {
 						image: "oci://registry.example.com/api@sha256:abc123",

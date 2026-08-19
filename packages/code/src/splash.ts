@@ -11,6 +11,7 @@
  * never changes height or per-line width.
  */
 
+import { must } from "@hobo/core/total-access";
 import {
 	BO_IDLE_TUI_COLS,
 	BO_IDLE_TUI_FRAMES,
@@ -146,7 +147,7 @@ export function renderBoIdleFrame(frame = BO_IDLE_REST): string {
 	const i =
 		((Math.trunc(frame) % BO_IDLE_FRAME_COUNT) + BO_IDLE_FRAME_COUNT) %
 		BO_IDLE_FRAME_COUNT;
-	return BO_IDLE_FRAMES[i] ?? BO_IDLE_FRAMES[BO_IDLE_REST]!;
+	return BO_IDLE_FRAMES[i] ?? must(BO_IDLE_FRAMES[BO_IDLE_REST]);
 }
 
 export function boIdleClipName(frame: number): BoIdleClip {

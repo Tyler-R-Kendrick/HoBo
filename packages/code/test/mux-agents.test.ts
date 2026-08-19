@@ -10,6 +10,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { must } from "@hobo/core/total-access";
 import { afterAll, describe, expect, it } from "vitest";
 import { detectAgents, KNOWN_AGENTS } from "../src/agent-registry.js";
 import { allocateAgentWorkspaces } from "../src/agent-workspaces.js";
@@ -50,10 +51,16 @@ describe("agent auto-detection", () => {
 		// Configured but not on PATH still deserves a pane.
 		expect(ids).toContain("codex");
 		expect(ids).not.toContain("gemini");
-		const claude = found.find((f) => f.id === "claude")!;
+		const claude = must(
+			found.find((f) => f.id === "claude"),
+			"found.find((f) => f.id === 'claude')",
+		);
 		expect(claude.binary).toBe("/usr/bin/claude");
 		expect(claude.evidence[0]).toMatch(/^bin:/);
-		const codex = found.find((f) => f.id === "codex")!;
+		const codex = must(
+			found.find((f) => f.id === "codex"),
+			"found.find((f) => f.id === 'codex')",
+		);
 		expect(codex.binary).toBeNull();
 		expect(codex.evidence[0]).toMatch(/^config:/);
 	});
@@ -69,7 +76,10 @@ describe("agent auto-detection", () => {
 	});
 
 	it("classifies local inference as an agent kind of its own", () => {
-		const ollama = KNOWN_AGENTS.find((a) => a.id === "ollama")!;
+		const ollama = must(
+			KNOWN_AGENTS.find((a) => a.id === "ollama"),
+			"KNOWN_AGENTS.find((a) => a.id === 'ollama')",
+		);
 		expect(ollama.kind).toBe("inference");
 	});
 
@@ -185,7 +195,10 @@ describe("applyMux", () => {
 					return { code: 0, stdout: windows.join("\n") };
 				}
 				if (args[0] === "new-session" || args[0] === "new-window") {
-					const name = args[args.indexOf("-n") + 1]!;
+					const name = must(
+						args[args.indexOf("-n") + 1],
+						"args[args.indexOf('-n') + 1]",
+					);
 					windows.push(name);
 					return { code: 0, stdout: "" };
 				}
@@ -232,7 +245,9 @@ describe("applyMux", () => {
 			run: async (args) => {
 				if (args[0] === "has-session") return { code: 1, stdout: "" };
 				if (args[0] === "new-window") {
-					seen.push(args[args.indexOf("-t") + 1]!);
+					seen.push(
+						must(args[args.indexOf("-t") + 1], "args[args.indexOf('-t') + 1]"),
+					);
 				}
 				return { code: 0, stdout: "" };
 			},

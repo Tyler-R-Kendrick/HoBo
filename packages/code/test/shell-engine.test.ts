@@ -16,6 +16,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
+import { must } from "@hobo/core/total-access";
 import { afterAll, describe, expect, it } from "vitest";
 import { AGUI_EVENT } from "../src/agui.js";
 import {
@@ -325,8 +326,8 @@ describe("engine-backed shell host", () => {
 			aborted: false,
 		});
 		expect(gate).not.toBeNull();
-		expect(gate!.runId).toBe("run-x");
-		expect(gate!.changes).toEqual([{ status: "M", path: "src/app.ts" }]);
+		expect(must(gate).runId).toBe("run-x");
+		expect(must(gate).changes).toEqual([{ status: "M", path: "src/app.ts" }]);
 
 		// An answer-only turn must never nag for a promotion.
 		expect(

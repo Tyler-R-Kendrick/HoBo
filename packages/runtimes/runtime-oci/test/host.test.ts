@@ -6,8 +6,8 @@ import {
 	createMockProviderFromPact,
 	loadPactDirectory,
 } from "@hobo/contract-harness";
+import { get, must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	createKubectlKubernetesClient,
 	createOciRuntimeHost,
@@ -45,7 +45,7 @@ describe("@hobo/runtime-oci (PACT-backed kubectl boundary)", () => {
 		const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
 		const pact = pacts.find((p) => p.provider.name === "KubernetesClusterApi");
 		expect(pact).toBeDefined();
-		const mock = createMockProviderFromPact(pact!);
+		const mock = createMockProviderFromPact(must(pact));
 		const k8s = createKubectlKubernetesClient({
 			namespace: "hobo-dev",
 			transport: mock,
@@ -75,9 +75,11 @@ describe("@hobo/runtime-oci (PACT-backed kubectl boundary)", () => {
 		});
 		cleanups.push(() => serve.close());
 		expect(serve.isolation.details?.client).toBe("kubectl");
-		const res = await serve.handlers.get("api")!(
-			new Request("http://mesh/hello?name=Oci"),
-		);
+		const res = await get(
+			serve.handlers,
+			"api",
+			"serve.handlers",
+		)(new Request("http://mesh/hello?name=Oci"));
 		expect(await res.json()).toEqual({
 			message: "howdy, Oci",
 			greetingPrefix: "howdy",

@@ -8,7 +8,7 @@
  */
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
-
+import { must } from "@hobo/core/total-access";
 import { loadHarnessSettings } from "./harness-settings.js";
 import { DEFAULT_OLLAMA_HOST } from "./ollama-engine.js";
 
@@ -335,5 +335,5 @@ export function cycleBoModelOffer(
 ): { readonly index: number; readonly offer: BoModelOffer | null } {
 	if (offers.length === 0) return { index: 0, offer: null };
 	const next = (index + delta + offers.length) % offers.length;
-	return { index: next, offer: offers[next]! };
+	return { index: next, offer: must(offers[next]) };
 }

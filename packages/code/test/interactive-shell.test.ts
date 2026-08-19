@@ -21,6 +21,7 @@ const widths = (frame: string): number[] =>
 		.split("\n")
 		.map((l) => l.length);
 
+import { at, must } from "@hobo/core/total-access";
 import { authLogin } from "../src/auth.js";
 import {
 	APPROVAL_PROMPT,
@@ -202,10 +203,10 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		// Selection marker follows the index
 		const frame = plain(renderShellFrame(state));
 		const items = filterSlash(DEFAULT_SLASH_ITEMS, state.slashFilter);
-		expect(frame).toContain(`▸ /${items[1]!.name.padEnd(9)}`);
+		expect(frame).toContain(`▸ /${at(items, 1).name.padEnd(9)}`);
 		// Enter runs the item under the moved selection, not always the first
 		const chosen = reduceShellKey(state, "\r");
-		expect(chosen.slash?.name).toBe(items[1]!.name);
+		expect(chosen.slash?.name).toBe(at(items, 1).name);
 	});
 
 	it("selection clamps at the ends and stays inside the filtered list", () => {
@@ -1401,7 +1402,7 @@ describe("slash palette viewport", () => {
 		// Walk the whole palette; the marker must be on screen at every step.
 		for (let i = 0; i < items.length; i += 1) {
 			const frame = plain(renderShellFrame(state));
-			expect(frame).toContain(`▸ /${items[i]!.name.padEnd(9)}`);
+			expect(frame).toContain(`▸ /${must(items[i]).name.padEnd(9)}`);
 			state = reduceShellKey(state, "\x1b[B").state;
 		}
 	});

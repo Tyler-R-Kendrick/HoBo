@@ -135,3 +135,53 @@ leaves anything it cannot rewrite safely for a human.
 589 files touched means **every open pull request will conflict**. That is the real
 price of a whole-tree reformat, and it is why this is a standalone change rather
 than something folded into a feature branch.
+
+## Pass 2 result: `noNonNullAssertion` 432 → 77
+
+`scripts/codemod-total-access.mts` rewrote **349 assertions across 147 files in 23
+packages**, every one of which already depended on `@hobo/core`. A type fix in
+`@hobo/trails` removed six more: `UPGRADE_DRY_RUN_FIXTURES` was annotated
+`Readonly<Record<string, UpgradeDryRunRequest>>`, which erased the four known
+fixture names and forced an assertion at every read. `satisfies` keeps the same
+checking, restores the literal keys, and gives callers autocomplete.
+
+`turbo run build` is green at **122/122** with the rewrite in place.
+
+### What the codemod learned the hard way
+
+Three defects in the tool, each caught by a different gate — worth recording so a
+future migration does not rediscover them:
+
+* **Record lookups are not array indices.** The first draft emitted
+  `at(attrs, stickyKey)` for `attrs[stickyKey]!` where `attrs` is a
+  `Record<string, string>`. `tsc` caught it. `at`/`first` are now restricted to
+  numeric literals; every other index falls through to `must`, which is correct
+  for both shapes.
+* **`Buffer` is indexable but is not an array.** `h[0]!` on a
+  `createHash(...).digest()` became `first(h)`, and the helper's `readonly T[]`
+  parameter rejected it. The signature is now a structural `Indexed<T>`
+  (`{ length, at(i) }`), which admits arrays, strings, TypedArrays and Buffers.
+* **A helper name can already be bound in the target file.** `splash.test.ts` has
+  a local `const first = …`; importing a helper of the same name and rewriting
+  `frames[0]!` to `first(...)` on that line produced
+  `noInvalidUseBeforeDeclaration`. The codemod now falls back to a namespace
+  import whenever the name is bound anywhere in the file. The first fix for this
+  applied the `totalAccess.` prefix with a blanket regex over the whole file,
+  which would have redirected a local `function first()`'s own call sites to the
+  helper; it now rewrites only the ranges it computed.
+
+### The label is optional on purpose
+
+`must(value, what)` originally required `what`. Measured across the converted
+tree, **274 of 291 labels (94%) only transcribed the expression they labelled** —
+`must(ownedYard, "ownedYard")`, and at worst
+`must(existing[existing.length - 1], "existing[existing.length - 1]")`. The throw
+site is already in the stack trace, so `what` is now optional and those 274 are
+gone. The 16 that carry real domain vocabulary stayed.
+
+### Still open
+
+77 assertions remain. About 18 are call targets the codemod deliberately refuses
+(`handle.withEndpoint!({…})`, `request.fold!(…)`) because wrapping them changes
+meaning. The rest sit in packages that do not depend on `@hobo/core`, where the
+fix is to restructure rather than to add a dependency for a utility.

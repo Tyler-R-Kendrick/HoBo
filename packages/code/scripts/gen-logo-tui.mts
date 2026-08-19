@@ -11,6 +11,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { first } from "@hobo/core/total-access";
 import {
 	decodeGrayAlphaPng,
 	measureTuiSprite,
@@ -34,7 +35,7 @@ const frames = spriteStripToTuiFrames(img, 1, {
 	alphaMin: 40,
 });
 
-const frame = frames[0]!;
+const frame = first(frames);
 const m = measureTuiSprite(frame);
 if (!m.fixed || m.lines !== ROWS || m.width !== COLS) {
 	throw new Error(`logo geometry ${JSON.stringify(m)}`);

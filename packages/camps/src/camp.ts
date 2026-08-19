@@ -1,3 +1,4 @@
+import { must } from "@hobo/core/total-access";
 import {
 	type Camp,
 	type CampConfig,
@@ -55,7 +56,9 @@ export function camp(name: string, config: CampConfig = {}): Camp {
 		);
 	}
 
-	const env = name.includes("/") ? name.split("/").pop()! : name;
+	const env = name.includes("/")
+		? must(name.split("/").pop(), "name.split('/').pop()")
+		: name;
 	const id = sanitizeCampId(env);
 	const envType: string =
 		typeof config.envType === "string" && config.envType.length > 0
@@ -218,7 +221,7 @@ export function parseLegacyCampMappings(
 
 export function campToShape(campObject: Camp): CampShape {
 	const localId = campObject.id.includes("/")
-		? campObject.id.split("/").pop()!
+		? must(campObject.id.split("/").pop(), "campObject.id.split('/').pop()")
 		: campObject.id;
 	const shape: CampShape = {
 		id: localId,

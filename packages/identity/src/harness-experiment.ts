@@ -3,7 +3,7 @@
  * Heavy statistical analysis remains behind pluggable adapters (not in core).
  */
 import { createHash, randomUUID } from "node:crypto";
-
+import { must } from "@hobo/core/total-access";
 import {
 	bucket,
 	type FeatureFlagStore,
@@ -242,7 +242,7 @@ function pickVariant(subjectKey: string, def: ExperimentDefinition): string {
 	const variants = def.variants;
 	if (variants.length === 0) return "control";
 	const idx = bucket(subjectKey) % variants.length;
-	return variants[idx]!;
+	return must(variants[idx]);
 }
 
 function hashSubject(subjectKey: string): string {

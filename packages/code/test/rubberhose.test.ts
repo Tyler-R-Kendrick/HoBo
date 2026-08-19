@@ -7,6 +7,8 @@
  * Nothing in the suite could tell the difference, so nothing objected.
  * These tests encode the identity so that failure mode is now loud.
  */
+
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { HOBO_LOGO_TUI } from "../src/_generated/hobo-logo-tui.js";
 import { sgrRuns } from "../src/ansi.js";
@@ -46,7 +48,7 @@ describe("ink cards (thick outlines + hard sticker shadow)", () => {
 		// Shadow column on the body/bottom rows and a shadow row underneath,
 		// offset one cell right — the sticker look.
 		expect(lines[1]).toContain(INK.shadow);
-		expect(lines[lines.length - 1]!.trimEnd()).toMatch(
+		expect(must(lines[lines.length - 1]).trimEnd()).toMatch(
 			new RegExp(`^ ${INK.shadow}+$`),
 		);
 	});
@@ -144,7 +146,7 @@ describe("helpers", () => {
 
 	it("centreBlock centres art within the width", () => {
 		const [line] = centreBlock(["xx"], 10);
-		expect(cellWidth(line!)).toBe(10);
+		expect(cellWidth(must(line))).toBe(10);
 		expect(line).toBe("    xx    ");
 		const [shifted] = centreBlock(["   xx"], 10);
 		expect(shifted).toBe("    xx    ");

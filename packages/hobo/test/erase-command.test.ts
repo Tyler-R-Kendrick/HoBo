@@ -2,9 +2,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { CliContext } from "@hobo/cli";
+import { first } from "@hobo/core/total-access";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	createComposedHoboCli,
 	createDefaultYardRuntime,
@@ -85,7 +85,7 @@ describe("createEraseCommand", () => {
 			);
 			const subjects = subjectsIn(before);
 			expect(subjects.length).toBeGreaterThan(0);
-			const subject = subjects[0]!;
+			const subject = first(subjects);
 			expect(subject.startsWith("[erased:")).toBe(false);
 
 			// Erase that subject.

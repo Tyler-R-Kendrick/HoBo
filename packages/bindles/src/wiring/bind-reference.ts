@@ -1,4 +1,5 @@
 import { parseResourceId } from "@hobo/core";
+import { at } from "@hobo/core/total-access";
 import { isRecord, visitStrings } from "../plain-value.js";
 import {
 	BindReferenceError,
@@ -246,7 +247,7 @@ export function validateLazyReferences(
 			return;
 		}
 
-		const referencedResource = match[1]!;
+		const referencedResource = at(match, 1);
 		if (!resources[referencedResource]) {
 			throw new BindReferenceError(
 				path,

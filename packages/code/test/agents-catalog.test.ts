@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { first, must } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import type { HarnessSpec } from "../src/agent-harness-adapters.js";
 import {
 	type AgentsCatalogState,
@@ -99,7 +99,7 @@ describe("agents catalog", () => {
 		expect(trees[0]?.children.map((row) => row.id)).toEqual(["scout"]);
 
 		const catalog = buildAgentsCatalog(specs, trees);
-		const hobo = catalog.roots[0]!;
+		const hobo = first(catalog.roots);
 		expect(
 			hobo.children.some((child) => child.id.includes("investigator")),
 		).toBe(true);
@@ -160,8 +160,12 @@ describe("agents catalog", () => {
 
 		state = reduceAgentsCatalogKey(state, "\x1b[C", 8).state;
 		expect(
-			state.expanded.has(flattenVisible(state)[state.cursor]!.id) ||
-				flattenVisible(state)[state.cursor]?.id.includes("scout"),
+			state.expanded.has(
+				must(
+					flattenVisible(state)[state.cursor],
+					"flattenVisible(state)[state.cursor]",
+				).id,
+			) || flattenVisible(state)[state.cursor]?.id.includes("scout"),
 		).toBe(true);
 		expect(flattenVisible(state).some((row) => row.id.includes("scout"))).toBe(
 			true,

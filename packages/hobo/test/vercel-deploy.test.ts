@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import type { IacProgram } from "@hobo/cloud";
 
 import type { EventStore } from "@hobo/core";
+import { first } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	createVercelClient,
 	createVercelDeployProvider,
@@ -102,7 +102,7 @@ describe("createVercelClient.createDeployment (mocked fetch, no network)", () =>
 		});
 
 		expect(calls.length).toBe(1);
-		const call = calls[0]!;
+		const call = first(calls);
 		// Correct endpoint + method (Vercel Create Deployment).
 		expect(call.url).toBe("https://api.vercel.com/v13/deployments");
 		expect(call.method).toBe("POST");
@@ -123,11 +123,11 @@ describe("createVercelClient.createDeployment (mocked fetch, no network)", () =>
 		expect(sent.projectSettings).toEqual({ framework: null });
 		// The files payload carries the exact artifact bytes, base64-encoded.
 		expect(sent.files).toHaveLength(1);
-		expect(sent.files[0]!.file).toBe("index.html");
-		expect(sent.files[0]!.encoding).toBe("base64");
-		expect(Buffer.from(sent.files[0]!.data, "base64").toString("utf-8")).toBe(
-			indexHtml.toString("utf-8"),
-		);
+		expect(first(sent.files).file).toBe("index.html");
+		expect(first(sent.files).encoding).toBe("base64");
+		expect(
+			Buffer.from(first(sent.files).data, "base64").toString("utf-8"),
+		).toBe(indexHtml.toString("utf-8"));
 
 		// Response parsing: URL normalized to include the scheme; id surfaced.
 		expect(result.url).toBe("https://hobo-hello-bindle-abc.vercel.app");
@@ -143,7 +143,7 @@ describe("createVercelClient.createDeployment (mocked fetch, no network)", () =>
 			teamId: "team_42",
 		});
 		await client.createDeployment({ name: "n", files: [] });
-		expect(okCall.calls[0]!.url).toBe(
+		expect(first(okCall.calls).url).toBe(
 			"https://api.vercel.com/v13/deployments?teamId=team_42",
 		);
 
@@ -173,7 +173,7 @@ describe("createVercelDeployProvider (mocked fetch, no network)", () => {
 
 		// The deploy payload is the committed artifact tree (the known-good source
 		// of truth): the three core files are present as base64 inline files.
-		const sent = JSON.parse(calls[0]!.body) as {
+		const sent = JSON.parse(first(calls).body) as {
 			files: Array<{ file: string; encoding: string }>;
 		};
 		const names = sent.files.map((f) => f.file).sort();

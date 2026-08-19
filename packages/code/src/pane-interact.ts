@@ -7,6 +7,7 @@
  */
 import { spawn } from "node:child_process";
 import { isKeyRelease, matchesKey, parseKey } from "@earendil-works/pi-tui";
+import { at } from "@hobo/core/total-access";
 import type { MuxRunner } from "./mux.js";
 
 /** Ctrl+] — leave pane interact without quitting the shell. */
@@ -94,7 +95,7 @@ export function tmuxKeyArgvForInput(
 
 		const arrow = /(?:^|\+)(up|down|left|right)$/iu.exec(key);
 		if (arrow) {
-			const dir = arrow[1]!.toLowerCase();
+			const dir = at(arrow, 1).toLowerCase();
 			return [
 				[
 					dir === "up"
@@ -110,12 +111,12 @@ export function tmuxKeyArgvForInput(
 
 		const ctrlLetter = /^ctrl\+([a-z])$/iu.exec(key);
 		if (ctrlLetter) {
-			return [[`C-${ctrlLetter[1]!.toLowerCase()}`]];
+			return [[`C-${at(ctrlLetter, 1).toLowerCase()}`]];
 		}
 
 		const altLetter = /^alt\+([a-z0-9])$/iu.exec(key);
 		if (altLetter) {
-			return [[`M-${altLetter[1]!.toLowerCase()}`]];
+			return [[`M-${at(altLetter, 1).toLowerCase()}`]];
 		}
 
 		if (key.length === 1) {
@@ -124,7 +125,7 @@ export function tmuxKeyArgvForInput(
 
 		const shiftLetter = /^shift\+([a-z])$/iu.exec(key);
 		if (shiftLetter) {
-			return [["-l", "--", shiftLetter[1]!.toUpperCase()]];
+			return [["-l", "--", at(shiftLetter, 1).toUpperCase()]];
 		}
 	}
 

@@ -3,7 +3,7 @@ import {
 	parseDataClassification,
 	parseJurisdictionId,
 } from "@hobo/core";
-
+import { first } from "@hobo/core/total-access";
 import {
 	type ContentHash,
 	contentHashOf,
@@ -74,7 +74,7 @@ export function matchYard(
 	}
 
 	if (compatible.length > 0) {
-		const winner = compatible[0]!;
+		const winner = first(compatible);
 		return decision(request, shapeHash, inventory, candidates, options, {
 			outcome: "existing-yard",
 			winnerYardId: winner.yardId,

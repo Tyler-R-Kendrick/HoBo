@@ -1,5 +1,5 @@
+import { get } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import { createLocalRuntimeHost } from "../src/host.js";
 
 describe("createLocalRuntimeHost", () => {
@@ -25,7 +25,11 @@ describe("createLocalRuntimeHost", () => {
 			],
 		});
 		const body = await (
-			await serve.handlers.get("api")!(new Request("http://x/"))
+			await get(
+				serve.handlers,
+				"api",
+				"serve.handlers",
+			)(new Request("http://x/"))
 		).json();
 		expect(body).toEqual({ message: "howdy, world" });
 		await serve.close();

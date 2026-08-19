@@ -5,8 +5,8 @@ import {
 	loadPactDirectory,
 	verifyPact,
 } from "@hobo/contract-harness";
+import { must } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
-
 import {
 	CONNECTIVITY_HOST_PROVIDER_NAME,
 	createConnectivityHostHandler,
@@ -24,7 +24,7 @@ describe("ConnectivityHost provider verification", () => {
 		expect(pact).toBeDefined();
 		const host = createConnectivityHostHandler();
 		expect(host.name).toBe(CONNECTIVITY_HOST_PROVIDER_NAME);
-		expect(host.name).toBe(pact!.provider.name);
+		expect(host.name).toBe(must(pact).provider.name);
 	});
 
 	it("real host satisfies connectivity-host pact", async () => {
@@ -33,7 +33,7 @@ describe("ConnectivityHost provider verification", () => {
 		expect(pact).toBeDefined();
 
 		const host = createConnectivityHostHandler();
-		const report = await verifyPact(pact!, {
+		const report = await verifyPact(must(pact), {
 			name: host.name,
 			handle: (req) => host.handle(req),
 		});

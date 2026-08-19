@@ -1,3 +1,4 @@
+import { get } from "@hobo/core/total-access";
 import {
 	createDecision,
 	createDecisionRequest,
@@ -146,7 +147,7 @@ export function evaluatePolicyPack(input: {
 export { POLICY_DECIDED_EVENT_TYPE };
 
 function rank(effect: string): number {
-	return EFFECT_RANK.get(effect) ?? EFFECT_RANK.get("allow")!;
+	return EFFECT_RANK.get(effect) ?? get(EFFECT_RANK, "allow");
 }
 
 function safeMatch(rule: PolicyRule, request: PolicyDecisionRequest): boolean {

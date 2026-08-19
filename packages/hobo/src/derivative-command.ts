@@ -9,6 +9,7 @@ import {
 	derivativeUpgradeSucceeded,
 } from "@hobo/cloud";
 import type { EventEnvelope, EventInput, PrincipalRef } from "@hobo/core";
+import { must } from "@hobo/core/total-access";
 import { createUpcasterRegistry } from "@hobo/data";
 
 export interface DerivativeCommandDeps {
@@ -391,7 +392,8 @@ export function createDerivativeCommand(
 			const toVersion = args[1] ?? descriptor.upgradeTo;
 			const stream = `derivative:${descriptor.name}`;
 			const existing = await collectStream(runtime.store, stream);
-			let seq = existing.length > 0 ? existing[existing.length - 1]!.seq : 0;
+			let seq =
+				existing.length > 0 ? must(existing[existing.length - 1]).seq : 0;
 			const append = async (event: EventInput) => {
 				const result = await runtime.store.append(stream, [event], {
 					expectedSeq: seq,

@@ -6,7 +6,7 @@ import {
 	registryCatalogProjection,
 } from "@hobo/cloud";
 import type { PrincipalRef } from "@hobo/core";
-
+import { must } from "@hobo/core/total-access";
 import { REGISTRY_STREAM } from "./add-command.js";
 import { createProviderFromPorts } from "./local-provider.js";
 
@@ -76,7 +76,8 @@ export function createGenerateCommand(
 			}
 
 			const fact = registerProviderFact(provider);
-			const lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
+			const lastSeq =
+				events.length > 0 ? must(events[events.length - 1]).seq : 0;
 			await runtime.store.append(REGISTRY_STREAM, [fact], {
 				expectedSeq: lastSeq,
 				actor: GENERATE_ACTOR,

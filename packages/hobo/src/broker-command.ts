@@ -19,8 +19,8 @@ import {
 } from "@hobo/broker";
 import type { CommandModule } from "@hobo/cli";
 import { loadProjectManifest } from "@hobo/cli";
+import { must } from "@hobo/core/total-access";
 import { resolveStationContext } from "@hobo/stations";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { loadHoboProfile } from "./hobo-profile.js";
 
@@ -42,7 +42,12 @@ function requireStationPins(flags: Record<string, unknown>): {
 			? { stationEnv: process.env.HOBO_STATION }
 			: {}),
 		...(loadHoboProfile(home)?.defaultStation?.id !== undefined
-			? { profileStationId: loadHoboProfile(home)!.defaultStation!.id }
+			? {
+					profileStationId: must(
+						loadHoboProfile(home)!.defaultStation,
+						"loadHoboProfile(home)!.defaultStation",
+					).id,
+				}
 			: {}),
 	});
 	const pins = ctx.client.pins();

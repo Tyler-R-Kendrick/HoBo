@@ -13,18 +13,18 @@ tags: [hobo, competitors, category]
 
 | Category | Competitors |
 | -------- | ----------- |
-| [Comprehensive Platform Orchestrators](platform-orchestrators.md) | 10 |
-| [Portable Application Models & Control Planes](portable-application-models.md) | 10 |
+| [Comprehensive Platform Orchestrators](platform-orchestrators.md) | 12 |
+| [Portable Application Models & Control Planes](portable-application-models.md) | 11 |
 | [Cloud Application Platforms](cloud-application-platforms.md) | 15 |
-| [Developer Portals & IDPs](developer-portals-idps.md) | 3 |
+| [Developer Portals & IDPs](developer-portals-idps.md) | 4 |
 | [Infrastructure-from-Code & Authoring](infrastructure-from-code.md) | 8 |
 | [Runtime & Distributed Application Substrates](runtime-substrates.md) | 11 |
-| [Hybrid & Multicloud Enterprise Orchestration](hybrid-multicloud-enterprise.md) | 5 |
+| [Hybrid & Multicloud Enterprise Orchestration](hybrid-multicloud-enterprise.md) | 6 |
 | [Self-Hosted PaaS & Server Deployment](self-hosted-paas.md) | 3 |
 | [Agentic Infrastructure & Operations](agentic-infrastructure.md) | 5 |
 | [Backend & Data Application Platforms](backend-data-platforms.md) | 5 |
-| [Delivery, Release & GitOps](delivery-release-gitops.md) | 2 |
-| [FinOps, Governance & Placement](finops-governance-placement.md) | 4 |
+| [Delivery, Release & GitOps](delivery-release-gitops.md) | 3 |
+| [FinOps, Governance & Placement](finops-governance-placement.md) | 5 |
 | [Identity, Networking & Application Delivery](identity-networking-delivery.md) | 4 |
 
 <!-- END GENERATED: category-index -->

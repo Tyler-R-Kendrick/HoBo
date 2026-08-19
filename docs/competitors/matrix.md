@@ -40,6 +40,7 @@ tags: [hobo, competitors, matrix]
 | **Convex** | [`convex.md`](convex.md) | — | `backend-data-platforms` | `backend-data-platforms` | adjacent | typed-contracts, wiring, runtime-portability | borrow, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Crossplane** | [`crossplane.md`](crossplane.md) | — | `portable-application-models` | `portable-application-models` · `platform-orchestrators` · `hybrid-multicloud-enterprise` | overlapping | typed-contracts, provider-matching, reconciliation, extensibility | borrow, integrate | mixed | active | 2026-08-12 | pre-v1 |
 | **Dapr** | [`dapr.md`](dapr.md) | — | `runtime-substrates` | `runtime-substrates` · `portable-application-models` | overlapping | typed-contracts, runtime-portability, wiring, identity-secrets | borrow, standard, integrate | mixed | active | 2026-08-12 | pre-v1 |
+| **DuploCloud** | [`duplocloud.md`](duplocloud.md) | duplo cloud | `platform-orchestrators` | `platform-orchestrators` · `hybrid-multicloud-enterprise` · `finops-governance-placement` | overlapping | governance, provider-matching, environments, identity-secrets, observability | benchmark, borrow, displace | mixed | active | 2026-08-19 | v1 |
 | **Encore** | [`encore.md`](encore.md) | — | `infrastructure-from-code` | `infrastructure-from-code` · `cloud-application-platforms` | direct | authoring, app-graph, wiring, environments, delivery | displace, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Facets.cloud** | [`facets.md`](facets.md) | facets cloud | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `hybrid-multicloud-enterprise` · `finops-governance-placement` | direct | app-graph, environments, provider-matching, governance, extensibility | displace, benchmark, borrow | mixed | active | 2026-08-19 | v1 |
 | **FinOps tooling cohort** | [`finops-tooling.md`](finops-tooling.md) | kubecost cohort | `finops-governance-placement` | `finops-governance-placement` | adjacent | finops, governance, provider-matching | benchmark, integrate | mixed | active | 2026-08-12 | pre-v1 |
@@ -59,6 +60,7 @@ tags: [hobo, competitors, matrix]
 | **Nomad** | [`nomad.md`](nomad.md) | nomad pack, hashicorp nomad | `runtime-substrates` | `runtime-substrates` · `platform-orchestrators` | overlapping | provider-matching, runtime-portability, reconciliation | borrow, provider-target, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Northflank** | [`northflank.md`](northflank.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `self-hosted-paas` | overlapping | environments, delivery, governance | benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Octopus Deploy** | [`octopus-deploy.md`](octopus-deploy.md) | octopus | `delivery-release-gitops` | `delivery-release-gitops` | overlapping | delivery, governance, environments | borrow, benchmark | mixed | active | 2026-08-12 | pre-v1 |
+| **OpenChoreo** | [`openchoreo.md`](openchoreo.md) | choreo-idp, choreo idp | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `developer-portals-idps` · `delivery-release-gitops` | direct | app-graph, environments, typed-contracts, delivery, governance, wiring | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
 | **Qovery** | [`qovery.md`](qovery.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `platform-orchestrators` | direct | environments, delivery, provider-matching | displace, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Radius** | [`radius.md`](radius.md) | radapp | `portable-application-models` | `portable-application-models` · `platform-orchestrators` | overlapping | app-graph, typed-contracts, environments | borrow | mixed | active | 2026-08-12 | pre-v1 |
 | **Railway** | [`railway.md`](railway.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | authoring, environments, delivery | benchmark | mixed | active | 2026-08-12 | pre-v1 |
@@ -122,11 +124,13 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Rivet](rivet.md) | 2026-08-15 | 4 | pre-v1 — rewrite to contract |
 | [Alchemy](alchemy.md) | 2026-08-19 | 0 | pre-v1 — rewrite to contract |
 | [Control Plane](control-plane.md) | 2026-08-19 | 0 | fresh |
+| [DuploCloud](duplocloud.md) | 2026-08-19 | 0 | fresh |
 | [Facets.cloud](facets.md) | 2026-08-19 | 0 | fresh |
 | [Harness Platform](harness.md) | 2026-08-19 | 0 | fresh |
 | [Massdriver](massdriver.md) | 2026-08-19 | 0 | fresh |
 | [Mia-Platform](mia-platform.md) | 2026-08-19 | 0 | fresh |
+| [OpenChoreo](openchoreo.md) | 2026-08-19 | 0 | fresh |
 
-_45 canonical captures across 13 categories; 5 at contract v1._
+_47 canonical captures across 13 categories; 7 at contract v1._
 
 <!-- END GENERATED: competitor-matrix -->

@@ -17,7 +17,7 @@ Application-intent models, programmable resource/capability abstractions, compos
 
 HoBo's Bindle kinds, BoundaryContracts and PortabilityReport are exactly an application model plus a portability claim. Every alternative model competes for the same authoring mindshare.
 
-## Competitors (10)
+## Competitors (11)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -31,6 +31,7 @@ HoBo's Bindle kinds, BoundaryContracts and PortabilityReport are exactly an appl
 | [**SST**](../sst.md) | infrastructure-from-code full-stack framework on Pulumi/Terraform with typed Linking — close product analog | direct | `authoring`, `typed-contracts`, `wiring`, `environments` | Huge provider reach via Pulumi/Terraform plus excellent live local dev. | HoBo's portability is scored, and its state authority is an event log rather than a stack state file. | displace, borrow, benchmark | P1 |
 | [**Facets.cloud**](../facets.md) | declarative environment orchestrator — the closest commercial product to HoBo's intent-to-provider thesis, realized through generated Terraform/Helm | direct | `app-graph`, `environments`, `provider-matching`, `governance`, `extensibility` | Ships the same declare-intent thesis against real clouds today, generating Terraform/Helm from platform-authored modules across AWS, GCP, Azure and Kubernetes. | Facets resolves intent through a hand-written module; HoBo resolves it by scored matching recorded as an event, with a PortabilityReport that says how well the move actually holds. | displace, benchmark, borrow | P1 |
 | [**Massdriver**](../massdriver.md) | bundle-and-artifact platform whose JSON-Schema connection contracts are the closest shipped analog to HoBo's typed capability wiring | direct | `typed-contracts`, `wiring`, `app-graph`, `environments`, `extensibility`, `governance` | Typed connections ship today over the whole OpenTofu/Terraform ecosystem, with a visual canvas that refuses incompatible wiring and an on-ramp from existing modules. | Massdriver types the resource boundary; HoBo types the capability boundary, chooses the realization by scored decision, and reports how well the swap actually holds. | displace, borrow, benchmark | P1 |
+| [**OpenChoreo**](../openchoreo.md) | open-source Kubernetes IDP with an explicit developer-intent abstraction layer and a cell-based runtime boundary | direct | `app-graph`, `environments`, `typed-contracts`, `delivery`, `governance`, `wiring` | Open source, CNCF Sandbox, self-hosted, with Cells that make isolation, traffic policy and observability boundaries enforced at runtime rather than merely described. | OpenChoreo abstracts over Kubernetes; HoBo abstracts over providers, of which Kubernetes is one — the advantage exists only for heterogeneous estates, and HoBo should concede that. | displace, borrow, benchmark | P1 |
 
 ## Navigation
 

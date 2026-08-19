@@ -17,7 +17,7 @@ Enterprise hybrid/multicloud provisioning, governance, catalog, lifecycle, and a
 
 These systems already sell the multicloud promise to enterprises. HoBo competes on honesty — scored portability and impedance limits instead of a uniform-abstraction claim.
 
-## Competitors (5)
+## Competitors (6)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -26,6 +26,7 @@ These systems already sell the multicloud promise to enterprises. HoBo competes 
 | [**Facets.cloud**](../facets.md) | declarative environment orchestrator — the closest commercial product to HoBo's intent-to-provider thesis, realized through generated Terraform/Helm | direct | `app-graph`, `environments`, `provider-matching`, `governance`, `extensibility` | Ships the same declare-intent thesis against real clouds today, generating Terraform/Helm from platform-authored modules across AWS, GCP, Azure and Kubernetes. | Facets resolves intent through a hand-written module; HoBo resolves it by scored matching recorded as an event, with a PortabilityReport that says how well the move actually holds. | displace, benchmark, borrow | P1 |
 | [**Massdriver**](../massdriver.md) | bundle-and-artifact platform whose JSON-Schema connection contracts are the closest shipped analog to HoBo's typed capability wiring | direct | `typed-contracts`, `wiring`, `app-graph`, `environments`, `extensibility`, `governance` | Typed connections ship today over the whole OpenTofu/Terraform ecosystem, with a visual canvas that refuses incompatible wiring and an on-ramp from existing modules. | Massdriver types the resource boundary; HoBo types the capability boundary, chooses the realization by scored decision, and reports how well the swap actually holds. | displace, borrow, benchmark | P1 |
 | [**Control Plane**](../control-plane.md) | multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer | direct | `runtime-portability`, `provider-matching`, `environments`, `identity-secrets`, `app-graph` | Portability that works: GVCs span AWS/Azure/GCP and BYOK clusters, with credential-free Universal Cloud Identity and a global/location/internal mTLS endpoint scheme. | Control Plane makes workloads portable by owning the runtime, so the portability ends at its edge; a Bindle deploys through the provider's own services and survives HoBo's absence. | displace, benchmark, borrow, provider-target | P1 |
+| [**DuploCloud**](../duplocloud.md) | compliance-first provisioning platform — competes for the same buyer by selling audit evidence rather than portability | overlapping | `governance`, `provider-matching`, `environments`, `identity-secrets`, `observability` | Continuous, framework-mapped compliance evidence (SOC 2/HIPAA/PCI/HITRUST/NIST) with drift detection, from a control plane installed inside the customer's own cloud account. | HoBo's append-only decision log is audit evidence by construction rather than generated, and residency is a typed fail-closed port — but HoBo's evidence pack is design-only today. | benchmark, borrow, displace | P2 |
 
 ## Navigation
 

@@ -305,6 +305,53 @@ The transport guard currently stands as:
   (same-origin + `allowInsecureLocalhost`).
 - **Not an HTTP transport:** `provider-kafka`.
 
+### What A and C found that this document got wrong
+
+Recorded here rather than edited into the briefs, because §0.4 asks every swarm
+to verify what it inherits and these are the payoff.
+
+- **A.** The lane was blocked on *two* things, not one. With the binary
+  installed and nothing else changed, 3 of 11 tests still failed: the
+  `CELLD_ESBUILD` default pointed at an arm64 path inside another agent's home
+  directory, and `celld deploy` exits 1 with "esbuild not found". The brief
+  claimed a single missing binary. Also: the image index entry order is amd64,
+  attestation, arm64, attestation — not the amd64/arm64/unknown/unknown the
+  brief described, which is why platform selection is by `platform.os` /
+  `platform.architecture` and an explicit `vnd.docker.reference.type` rejection
+  rather than by position.
+- **C1.** The brief's mechanism was backwards. Declassifying `packages/bindings`
+  against the real graph produces **18** violations with the 17 allowlist
+  entries deleted and **6** with them restored: the allowlist does not warn
+  about a reclassification, it *absorbs* one. What was actually lost when the
+  entries went is the written record of why those edges were acceptable, so the
+  test pins the reason (`classifyPackage(to).kind === "contract"`) rather than
+  the list. The inherited "seventeen become violations at once" is also wrong —
+  the 17 span four targets.
+- **C2.** The predicted second-edge mechanism does not happen: `main()`
+  deduplicated on `from->to`, so the unmarked edge won **by position**, and the
+  declared scan happening to be spread in before the source scan is what made
+  the refusal fire at all. Two lines apart in one array literal, with nothing
+  testing it. `mergeWorkspaceEdges` now takes the strictest provenance in either
+  order.
+- **C4.** 5 of the 14 banked edges are not runtime edges at all —
+  `provider-agentv`, `provider-ax` and `runner-depot` import nothing but
+  `@hobo/core` from `src/`, and `pack-framework/src`'s two `@hobo/cloud`
+  occurrences are prose in doc comments. Two committed source comments were
+  false; ADR-0162 corrects them.
+
+### The build graph changed underneath all of this
+
+`turbo run test` used to run a second, uncached build graph beneath the cached
+one: 47 packages carried `"prebuild": "pnpm --filter <dep> build"` and 100
+carried a `pretest` that rebuilt themselves and their dependencies, so a full
+sweep paid roughly 150 cold `tsc` invocations that turbo had already done. Those
+are gone; packages that need their own dist outside turbo call
+`scripts/ensure-built.mts`, and `pnpm run standards:check` fails the tree if one
+comes back. `tasks.build.inputs` now excludes test material, so editing a test
+no longer invalidates 124 builds and everything downstream. See AGENTS.md,
+"One build graph, not two" — **do not reintroduce a dependency build in a
+package script.**
+
 ---
 
 ## 3. Swarm partition
@@ -313,19 +360,24 @@ The transport guard currently stands as:
 work seems to require a file another swarm owns, that is a finding for your
 handback, not a licence.
 
-| Swarm | Deliverable | Owns |
-|---|---|---|
-| **A** | celld live lane green | `packages/runtimes/runtime-celld/**`, `scripts/fetch-celld.mts` |
-| **B** | Transport policy extension; last three transports fully on the shared guard | `packages/core/src/ports/http-transport.ts`, `packages/core/test/http-transport.test.ts`, `packages/providers/provider-{upstash,kubernetes,browser-wasm}/**` |
-| **C** | Boundary-guard hardening + the tiering ADR | `packages/conformance/src/boundaries.ts`, `packages/conformance/test/boundaries.test.ts`, `scripts/check-package-boundaries.mts`, `scripts/test/check-package-boundaries.test.ts`, `docs/design/adr/**` |
-| **D** | Assertion-strength sweep | every `**/test/**` and `**/contracts/**` test file **except** those owned by A, B, **C**, E–I |
-| **E** | `@hobo/manifest-capability` | `packages/manifest-capability/**` |
-| **F** | `@hobo/manifest-request` | `packages/manifest-request/**` |
-| **G** | `@hobo/manifest-declaration` | `packages/manifest-declaration/**` |
-| **H** | `@hobo/manifest-plan` | `packages/manifest-plan/**` |
-| **I** | Re-export wiring + round-trip proof across all four manifests | `packages/capability-profiles/src/index.ts`, `packages/cloud/src/plan-types.ts`, `packages/manifest-round-trip/**` |
+**A and C have landed.** Their briefs stay below as the record of what was
+asked and what the acceptance bar was; §2 records what each actually found,
+including the two places where the brief's premise was wrong. Everything else in
+the table is still open.
 
-**Swarms A–H run fully in parallel.** Swarm I consumes E–H's published schemas —
+| Swarm | Status | Deliverable | Owns |
+|---|---|---|---|
+| **A** | **done** | celld live lane green | `packages/runtimes/runtime-celld/**`, `scripts/fetch-celld.mts` |
+| **B** | open | Transport policy extension; last three transports fully on the shared guard | `packages/core/src/ports/http-transport.ts`, `packages/core/test/http-transport.test.ts`, `packages/providers/provider-{upstash,kubernetes,browser-wasm}/**` |
+| **C** | **done** | Boundary-guard hardening + the tiering ADR | `packages/conformance/src/boundaries.ts`, `packages/conformance/test/boundaries.test.ts`, `scripts/check-package-boundaries.mts`, `scripts/test/check-package-boundaries.test.ts`, `docs/design/adr/**` |
+| **D** | open | Assertion-strength sweep | every `**/test/**` and `**/contracts/**` test file **except** those owned by A, B, **C**, E–I |
+| **E** | open | `@hobo/manifest-capability` | `packages/manifest-capability/**` |
+| **F** | open | `@hobo/manifest-request` | `packages/manifest-request/**` |
+| **G** | open | `@hobo/manifest-declaration` | `packages/manifest-declaration/**` |
+| **H** | open | `@hobo/manifest-plan` | `packages/manifest-plan/**` |
+| **I** | open | Re-export wiring + round-trip proof across all four manifests | `packages/capability-profiles/src/index.ts`, `packages/cloud/src/plan-types.ts`, `packages/manifest-round-trip/**` |
+
+**Swarms B and D–H run fully in parallel.** Swarm I consumes E–H's published schemas —
 which are **specified in §5 of this document**, so I does not wait on E–H to
 *design* anything; it may build against the spec and reconcile at integration.
 

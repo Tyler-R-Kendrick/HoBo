@@ -155,13 +155,23 @@ function collectDeclaredEdges(
 
 	const from = packagePathFromJson(packageJsonPath);
 	const edges: WorkspaceEdge[] = [];
-	const depSections = [
-		pkg.dependencies,
-		pkg.devDependencies,
-		pkg.peerDependencies,
-	];
+	// Runtime sections first: a name in both `dependencies` and
+	// `devDependencies` is a runtime edge, and must not be softened by the
+	// dev-only marker just because the dev section also lists it.
+	const runtimeNames = new Set(
+		[
+			...Object.keys(pkg.dependencies ?? {}),
+			...Object.keys(pkg.peerDependencies ?? {}),
+		].filter((name) => name.startsWith("@hobo/")),
+	);
+	const depSections: readonly [Record<string, string> | undefined, boolean][] =
+		[
+			[pkg.dependencies, false],
+			[pkg.peerDependencies, false],
+			[pkg.devDependencies, true],
+		];
 
-	for (const section of depSections) {
+	for (const [section, isDevSection] of depSections) {
 		if (!section) {
 			continue;
 		}
@@ -176,7 +186,8 @@ function collectDeclaredEdges(
 				continue;
 			}
 
-			edges.push(parseWorkspaceEdge({ from, to }));
+			const dev = isDevSection && !runtimeNames.has(name);
+			edges.push(parseWorkspaceEdge(dev ? { from, to, dev } : { from, to }));
 		}
 	}
 

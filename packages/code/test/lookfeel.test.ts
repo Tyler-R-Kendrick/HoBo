@@ -820,59 +820,49 @@ describe("hobo-code look/feel surfaces", () => {
 	 * forty assertions, which is a change detector, not a design test. These
 	 * three keep the intent that outlived the layout.
 	 */
-	it.each([["cost"], ["machines"]])(
-		"%s renders closed panel chrome: title, body, bottom rule",
-		async (verb) => {
-			const home = temp(`look-chrome-${verb}-`);
+	it.each([
+		["cost"],
+		["machines"],
+	])("%s renders closed panel chrome: title, body, bottom rule", async (verb) => {
+		const home = temp(`look-chrome-${verb}-`);
+		const out = formatHoboCodeResult(
+			await runHoboCodeCli([verb], { hoboHome: home }),
+			false,
+		);
+		const lines = out.trimEnd().split("\n");
+		// Title first, bottom rule last: the panel is closed at both ends.
+		expect(lines[0]).toMatch(/^[◈✓▣◎] \S/u);
+		expect(lines[lines.length - 1]).toMatch(/^─{10,}$/u);
+		// A multi-row body carries the soft band under the title.
+		if (lines.length > 3) expect(lines[1]).toMatch(/^·{10,}$/u);
+	}, 60_000);
+
+	it("human output carries no buzz-hive vocabulary", async () => {
+		const home = temp("look-vocab-");
+		const project = temp("look-vocab-proj-");
+		// Fixture names must not contain the forbidden words: the dispatch
+		// panel echoes the temp path, so "look-no-buzz-XXXX" would match.
+		for (const argv of [["cost"], ["machines"], ["ship the first paint"]]) {
 			const out = formatHoboCodeResult(
-				await runHoboCodeCli([verb], { hoboHome: home }),
+				await runHoboCodeCli(argv, { hoboHome: home, cwd: project }),
 				false,
 			);
-			const lines = out.trimEnd().split("\n");
-			// Title first, bottom rule last: the panel is closed at both ends.
-			expect(lines[0]).toMatch(/^[◈✓▣◎] \S/u);
-			expect(lines[lines.length - 1]).toMatch(/^─{10,}$/u);
-			// A multi-row body carries the soft band under the title.
-			if (lines.length > 3) expect(lines[1]).toMatch(/^·{10,}$/u);
-		},
-		60_000,
-	);
+			expect(out).not.toMatch(/\bbuzz\b/iu);
+			expect(out).not.toMatch(/\bhive\b/iu);
+		}
+	}, 60_000);
 
-	it(
-		"human output carries no buzz-hive vocabulary",
-		async () => {
-			const home = temp("look-vocab-");
-			const project = temp("look-vocab-proj-");
-			// Fixture names must not contain the forbidden words: the dispatch
-			// panel echoes the temp path, so "look-no-buzz-XXXX" would match.
-			for (const argv of [["cost"], ["machines"], ["ship the first paint"]]) {
-				const out = formatHoboCodeResult(
-					await runHoboCodeCli(argv, { hoboHome: home, cwd: project }),
-					false,
-				);
-				expect(out).not.toMatch(/\bbuzz\b/iu);
-				expect(out).not.toMatch(/\bhive\b/iu);
-			}
-		},
-		60_000,
-	);
-
-	it(
-		"rooms and join are not verbs — they fall through to dispatch",
-		async () => {
-			// `agent` was in this list until it became a real verb; asserting its
-			// absence is what made the original test wrong rather than merely stale.
-			expect(HOBO_CODE_VERBS).toContain("agent");
-			const home = temp("look-verbset-");
-			for (const verb of ["rooms", "join"] as const) {
-				expect(HOBO_CODE_VERBS as readonly string[]).not.toContain(verb);
-				const r = await runHoboCodeCli([verb, "x"], { hoboHome: home });
-				expect(r.code).not.toMatch(
-					/HOBO_CODE_JOIN|HOBO_CODE_HIVE|HOBO_CODE_ROOMS/u,
-				);
-			}
-		},
-		60_000,
-	);
-
+	it("rooms and join are not verbs — they fall through to dispatch", async () => {
+		// `agent` was in this list until it became a real verb; asserting its
+		// absence is what made the original test wrong rather than merely stale.
+		expect(HOBO_CODE_VERBS).toContain("agent");
+		const home = temp("look-verbset-");
+		for (const verb of ["rooms", "join"] as const) {
+			expect(HOBO_CODE_VERBS as readonly string[]).not.toContain(verb);
+			const r = await runHoboCodeCli([verb, "x"], { hoboHome: home });
+			expect(r.code).not.toMatch(
+				/HOBO_CODE_JOIN|HOBO_CODE_HIVE|HOBO_CODE_ROOMS/u,
+			);
+		}
+	}, 60_000);
 });

@@ -689,9 +689,21 @@ importers:
       '@hobo/provider-cloudflare':
         specifier: workspace:*
         version: link:../providers/provider-cloudflare
+      '@hobo/provider-digitalocean':
+        specifier: workspace:*
+        version: link:../providers/provider-digitalocean
       '@hobo/provider-gcp':
         specifier: workspace:*
         version: link:../providers/provider-gcp
+      '@hobo/provider-hetzner':
+        specifier: workspace:*
+        version: link:../providers/provider-hetzner
+      '@hobo/provider-hostinger':
+        specifier: workspace:*
+        version: link:../providers/provider-hostinger
+      '@hobo/provider-kubernetes':
+        specifier: workspace:*
+        version: link:../providers/provider-kubernetes
       '@hobo/provider-vercel':
         specifier: workspace:*
         version: link:../providers/provider-vercel
@@ -1218,12 +1230,24 @@ importers:
       '@hobo/provider-cloudflare':
         specifier: workspace:*
         version: link:../providers/provider-cloudflare
+      '@hobo/provider-digitalocean':
+        specifier: workspace:*
+        version: link:../providers/provider-digitalocean
       '@hobo/provider-gcp':
         specifier: workspace:*
         version: link:../providers/provider-gcp
+      '@hobo/provider-hetzner':
+        specifier: workspace:*
+        version: link:../providers/provider-hetzner
+      '@hobo/provider-hostinger':
+        specifier: workspace:*
+        version: link:../providers/provider-hostinger
       '@hobo/provider-kafka':
         specifier: workspace:*
         version: link:../providers/provider-kafka
+      '@hobo/provider-kubernetes':
+        specifier: workspace:*
+        version: link:../providers/provider-kubernetes
       '@hobo/provider-lakebed':
         specifier: workspace:*
         version: link:../providers/provider-lakebed

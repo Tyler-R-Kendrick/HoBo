@@ -40,6 +40,23 @@ const PROVIDER_IMPORTS: Readonly<Record<string, ProviderImportSpec>> = {
 	aws: { packageName: "@hobo/provider-aws", exportName: "aws" },
 	azure: { packageName: "@hobo/provider-azure", exportName: "azure" },
 	gcp: { packageName: "@hobo/provider-gcp", exportName: "gcp" },
+	// The fallback below would derive `digitalOcean` from `digitalocean`, and
+	// the package exports `digitalocean`; the same one-word/two-word mismatch
+	// is why every provider whose id is not a plain lower-case word is listed
+	// rather than inferred.
+	digitalocean: {
+		packageName: "@hobo/provider-digitalocean",
+		exportName: "digitalocean",
+	},
+	hetzner: { packageName: "@hobo/provider-hetzner", exportName: "hetzner" },
+	hostinger: {
+		packageName: "@hobo/provider-hostinger",
+		exportName: "hostinger",
+	},
+	kubernetes: {
+		packageName: "@hobo/provider-kubernetes",
+		exportName: "kubernetes",
+	},
 };
 
 export function providerImportForTarget(targetId: string): ProviderImportSpec {

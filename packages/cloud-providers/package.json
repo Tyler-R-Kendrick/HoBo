@@ -4,7 +4,10 @@
 	"license": "MIT",
 	"type": "module",
 	"private": true,
-	"files": ["LICENSE", "dist"],
+	"files": [
+		"LICENSE",
+		"dist"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -19,7 +22,11 @@
 		"@hobo/provider-aws": "workspace:*",
 		"@hobo/provider-azure": "workspace:*",
 		"@hobo/provider-cloudflare": "workspace:*",
+		"@hobo/provider-digitalocean": "workspace:*",
 		"@hobo/provider-gcp": "workspace:*",
+		"@hobo/provider-hetzner": "workspace:*",
+		"@hobo/provider-hostinger": "workspace:*",
+		"@hobo/provider-kubernetes": "workspace:*",
 		"@hobo/provider-vercel": "workspace:*",
 		"@hobo/yards": "workspace:*"
 	},
@@ -27,7 +34,7 @@
 		"@types/node": "^22.15.29"
 	},
 	"scripts": {
-		"prebuild": "pnpm --filter @hobo/yards --filter @hobo/provider-aws --filter @hobo/provider-azure --filter @hobo/provider-cloudflare --filter @hobo/provider-gcp --filter @hobo/provider-vercel build",
+		"prebuild": "pnpm --filter @hobo/yards --filter @hobo/provider-aws --filter @hobo/provider-azure --filter @hobo/provider-cloudflare --filter @hobo/provider-digitalocean --filter @hobo/provider-gcp --filter @hobo/provider-hetzner --filter @hobo/provider-hostinger --filter @hobo/provider-kubernetes --filter @hobo/provider-vercel build",
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",

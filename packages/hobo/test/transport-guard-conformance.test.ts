@@ -32,7 +32,11 @@ import type { HttpTransport, TransportRequest } from "@hobo/core";
 import { guardedAwsTransport } from "@hobo/provider-aws";
 import { guardedAzureTransport } from "@hobo/provider-azure";
 import { guardedCloudflareTransport } from "@hobo/provider-cloudflare";
+import { guardedDigitalOceanTransport } from "@hobo/provider-digitalocean";
 import { guardedGcpTransport } from "@hobo/provider-gcp";
+import { guardedHetznerTransport } from "@hobo/provider-hetzner";
+import { guardedHostingerTransport } from "@hobo/provider-hostinger";
+import { guardedKubernetesTransport } from "@hobo/provider-kubernetes";
 import { describe, expect, it } from "vitest";
 
 /** A transport that records whether it was ever reached. A refused request
@@ -110,6 +114,50 @@ const CASES: readonly GuardCase[] = [
 		foreignHost: "https://api.cloudflare.example.com/client/v4/accounts/acct",
 		foreignPath: "https://api.cloudflare.com/internal/v4/accounts/acct",
 		maxTimeoutMs: 15_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "digitalocean (v2)",
+		wrap: (inner) => guardedDigitalOceanTransport(inner),
+		allowed: "https://api.digitalocean.com/v2/databases",
+		foreignHost: "https://api.digitalocean.example.com/v2/databases",
+		foreignPath: "https://api.digitalocean.com/v1/databases",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "hetzner (cloud api)",
+		wrap: (inner) => guardedHetznerTransport(inner),
+		allowed: "https://api.hetzner.cloud/v1/servers",
+		// The Object Storage surface this package deliberately excludes: a
+		// different host with a different credential entirely.
+		foreignHost: "https://fsn1.your-objectstorage.com/v1/servers",
+		foreignPath: "https://api.hetzner.cloud/v2/servers",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "hostinger (vps + dns)",
+		wrap: (inner) => guardedHostingerTransport(inner),
+		allowed: "https://developers.hostinger.com/api/vps/v1/virtual-machines",
+		foreignHost:
+			"https://developers.hostinger.example.com/api/vps/v1/virtual-machines",
+		// The order-placing namespace. This row is the whole reason the guard
+		// lists prefixes rather than the bare host: a resolver that could reach
+		// it could spend the account's money.
+		foreignPath: "https://developers.hostinger.com/api/billing/v1/orders",
+		maxTimeoutMs: 20_000,
+		maxResponseBytes: 512 * 1024,
+	},
+	{
+		label: "kubernetes (apiserver)",
+		wrap: (inner) =>
+			guardedKubernetesTransport(inner, "https://cluster.example:6443"),
+		allowed: "https://cluster.example:6443/api/v1/namespaces/shop/services",
+		foreignHost: "https://other.example:6443/api/v1/namespaces/shop/services",
+		foreignPath:
+			"https://cluster.example:6443/apis/rbac.authorization.k8s.io/v1/clusterroles",
+		maxTimeoutMs: 30_000,
 		maxResponseBytes: 512 * 1024,
 	},
 ];

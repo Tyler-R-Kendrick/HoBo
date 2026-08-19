@@ -363,26 +363,36 @@ package script.**
 work seems to require a file another swarm owns, that is a finding for your
 handback, not a licence.
 
-**A and C have landed.** Their briefs stay below as the record of what was
-asked and what the acceptance bar was; §2 records what each actually found,
-including the two places where the brief's premise was wrong. Everything else in
-the table is still open.
+**All nine swarms have landed, plus a tenth the work uncovered.** Their briefs
+stay below as the record of what was asked and what the acceptance bar was; §2
+records what each actually found. Every single swarm returned at least one place
+where its brief was materially wrong — read §0.4 as the load-bearing rule it
+turned out to be, not a formality.
 
 | Swarm | Status | Deliverable | Owns |
 |---|---|---|---|
 | **A** | **done** | celld live lane green | `packages/runtimes/runtime-celld/**`, `scripts/fetch-celld.mts` |
-| **B** | open | Transport policy extension; last three transports fully on the shared guard | `packages/core/src/ports/http-transport.ts`, `packages/core/test/http-transport.test.ts`, `packages/providers/provider-{upstash,kubernetes,browser-wasm}/**` |
+| **B** | **done** — `premise-false`, one third delivered | Transport policy extension; last three transports fully on the shared guard | `packages/core/src/ports/http-transport.ts`, `packages/core/test/http-transport.test.ts`, `packages/providers/provider-{upstash,kubernetes,browser-wasm}/**` |
 | **C** | **done** | Boundary-guard hardening + the tiering ADR | `packages/conformance/src/boundaries.ts`, `packages/conformance/test/boundaries.test.ts`, `scripts/check-package-boundaries.mts`, `scripts/test/check-package-boundaries.test.ts`, `docs/design/adr/**` |
-| **D** | open | Assertion-strength sweep | every `**/test/**` and `**/contracts/**` test file **except** those owned by A, B, **C**, E–I |
-| **E** | open | `@hobo/manifest-capability` | `packages/manifest-capability/**` |
-| **F** | open | `@hobo/manifest-request` | `packages/manifest-request/**` |
-| **G** | open | `@hobo/manifest-declaration` | `packages/manifest-declaration/**` |
-| **H** | open | `@hobo/manifest-plan` | `packages/manifest-plan/**` |
-| **I** | open | Re-export wiring + round-trip proof across all four manifests | `packages/capability-profiles/src/index.ts`, `packages/cloud/src/plan-types.ts`, `packages/manifest-round-trip/**` |
+| **D** | **done** — tier-bounded, remainder recorded | Assertion-strength sweep | every `**/test/**` and `**/contracts/**` test file **except** those owned by A, B, **C**, E–I |
+| **E** | **done** | `@hobo/manifest-capability` | `packages/manifest-capability/**` |
+| **F** | **done** | `@hobo/manifest-request` | `packages/manifest-request/**` |
+| **G** | **done** | `@hobo/manifest-declaration` | `packages/manifest-declaration/**` |
+| **H** | **done** | `@hobo/manifest-plan` | `packages/manifest-plan/**` |
+| **I** | **done** — plan shapes deliberately not re-exported | Re-export wiring + round-trip proof across all four manifests | `packages/capability-profiles/src/index.ts`, `packages/cloud/src/plan-types.ts`, `packages/manifest-round-trip/**` |
 
-**Swarms B and D–H run fully in parallel.** Swarm I consumes E–H's published schemas —
-which are **specified in §5 of this document**, so I does not wait on E–H to
-*design* anything; it may build against the spec and reconcile at integration.
+| **J** | **done** — not in the original plan | CUE schema integrity + the gate that missed it | `**/*.cue`, `scripts/check-cue-schemas.ts` |
+
+**Swarm J was not planned.** It exists because three separate swarms reported
+that `cue vet` never runs. That inference was wrong — the binary is cached at
+`.tools/cue/v0.14.0/cue` — but chasing it down found something worse: fixture
+vetting is gated on `data-models/buf.yaml`, which **16 of 191** directories
+have, and 46 committed `.cue` files did not parse at all. Treat a swarm's
+*wrong* diagnosis as a lead, not as noise.
+
+**Swarms B and D–H ran fully in parallel.** Swarm I consumed E–H's published
+schemas — specified in §5 of this document, so I did not wait on E–H to *design*
+anything.
 
 `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `AGENTS.md`, and
 `docs/design/traceability.md` are **coordinator-owned**. Report needed changes

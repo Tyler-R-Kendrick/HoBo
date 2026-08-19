@@ -95,6 +95,15 @@ export function isLoopbackUrlListening(url: string, timeoutMs = 120): boolean {
 	return listeningByUrl([url], timeoutMs).get(url) === true;
 }
 
+/**
+ * Wall clock allowed for the probe child *on top of* the connect timeout,
+ * covering Node interpreter startup. Measured at 30–40 ms idle and 65–90 ms
+ * under eight competing CPU-bound processes on a four-core box; two seconds is
+ * far above the worst observed, deliberately, because overshooting costs a
+ * slower probe and undershooting costs a wrong answer.
+ */
+const PROBE_STARTUP_BUDGET_MS = 2_000;
+
 /** Batched listen map for many URLs in one assemble pass. */
 export function listeningByUrl(
 	urls: readonly string[],
@@ -129,8 +138,23 @@ for(const port of ports){
 }
 function done(){if(--left===0)process.stdout.write(JSON.stringify(open));}
 `;
+	// `timeoutMs` is a judgement about the *network*: how long a loopback TCP
+	// connect may take before the port counts as closed. The child's budget is a
+	// different quantity — it must also cover starting a Node interpreter, and
+	// that cost is a function of how loaded the machine is, not of the network.
+	//
+	// Charging both to `timeoutMs + 250` conflates them, and the failure is
+	// silent and wrong in the dangerous direction: when the child is killed,
+	// `result.status !== 0`, `open` stays `{}`, and every URL is reported *not
+	// listening*. A running service is shown as stale. Measured against a server
+	// that was demonstrably listening: 0/40 false negatives idle, **5/40 under
+	// CPU load**.
+	//
+	// So the startup allowance is separate and generous. It is not a network
+	// timeout and must never be tuned as one — a slow box should make this
+	// probe slower, never wrong.
 	const result = spawnSync(process.execPath, ["-e", script], {
-		timeout: timeoutMs + 250,
+		timeout: timeoutMs + PROBE_STARTUP_BUDGET_MS,
 		encoding: "utf8",
 	});
 	let open: Record<string, boolean> = {};

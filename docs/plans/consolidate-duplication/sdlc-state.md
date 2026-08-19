@@ -376,3 +376,38 @@ credential lane rewrites what the **recipe delivers** while the request keeps
 asking for the original, and the bootstrap lane uses a different recipe and
 budget than the neighbouring ones. Both were read from the original and fixed,
 not smoothed over by relaxing the assertion.
+
+## Layer 09 — the fixture-heavy tier, and what it is worth
+
+| Suite | Before | After | Tests → cases |
+|---|---|---|---|
+| `data-postgres/profile-matching` | 315 | 224 + 20 | 11 → 15 |
+| `cloud/profile-matching` | 315 | 240 + 19 | 10 → 14 |
+
+**Net −127 lines for +8 assertions**, which is a much weaker return than layers
+07–08 (−556 for +47), and the reason is the one `otel-mapper` already recorded:
+these suites are long because of **candidate fixtures**, not because of repeated
+assertions. A `SelectionCandidate` is thirty fields, and moving it into the
+subject does not delete it.
+
+What the conversion still buys here is uniformity and named derivation. Both
+suites built variant candidates by spreading a base and overriding two fields
+inline, four separate times; a case now names the base and the override
+(`{"from": "neon", "structuredCapabilities": {"ddl": false}}`), so the *reason*
+a candidate differs is the thing you read.
+
+**Judgement recorded for whoever continues:** convert the fixture-heavy tier for
+consistency if the surrounding package is being converted anyway, but do not
+expect subtraction from it. The remaining large candidates —
+`pixel-village/yard-presenter` (800), `dispatcher` (651),
+`connectivity/pure/traffic-routing` (633) — are grab-bag suites covering many
+functions at once, so each is several concerns rather than one, and their return
+is likely closer to this layer than to layer 07.
+
+### One correction
+
+`data-postgres`'s `wire.only-postgres` candidate is deliberately built from the
+bare guarantees rather than the full base set — it speaks Postgres but has never
+proven a migration tool. Deriving it from the base set instead made it pass a
+gate it exists to fail. Caught on the first run, fixed with an explicit
+`guaranteesOnly` flag rather than by adjusting the expectation.

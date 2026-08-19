@@ -1,19 +1,48 @@
 # @hobo/provider-kubernetes
 
-Kubernetes CloudProvider for HoBo: an equivalence map from the `compute` port
-onto a Deployment, an injected-transport apiserver driver that places that
-workload on a real cluster, and the temporary/agent Environment Station
+Kubernetes CloudProvider for HoBo, at the same structural parity as the
+hyperscaler providers: an equivalence map from the `compute` port onto a
+Deployment, a full allocatable Yard catalog of built-in objects, convergent
+`ResourceResolver`s for them, an injected-transport apiserver driver that places
+a workload on a real cluster, and the temporary/agent Environment Station
 contract.
 
 ```sh
 pnpm --filter @hobo/provider-kubernetes test
 ```
 
+## Two lanes to a cluster
+
+This package has two paths, and the difference matters:
+
+| | Driver (`provisionWorkload`) | Resolvers (`kubernetesResolvers`) |
+|---|---|---|
+| Shape | one opinionated sequence: Namespace → Deployment → Service | one convergent `reconcile` per built-in object |
+| Transport | this package's `KubernetesTransport` | `@hobo/core`'s `HttpTransport` (the `ResourceResolver` contract) |
+| `kubectl proxy` | **supported**, behind an explicit opt-in | **not supported** — core's guard is HTTPS-only |
+| Used by | `hobo deploy` placement | the Yard resolution path |
+
+Neither replaces the other. What did change: `realize()` now emits the canonical
+`hobo.iac-program/v1` document `@hobo/core`'s `CloudProvider` contract requires
+and every other provider emits. The provider-shaped driver document it used to
+return had no executor in the repo; it is still reachable as
+`kubernetesDriverProgram()`, because it names the apply path the driver
+implements.
+
 ## What this package does
 
 - **Equivalence → default Resource Definitions** (`EQUIVALENCE_CLASSES` /
   `createKubernetesProvider`), with Matching's `satisfies` answering
   full/partial/none rather than fabricating parity.
+- **A default Yard catalog** (`kubernetesYardSpec()`): Deployment, Service,
+  Ingress, Job, CronJob, PersistentVolumeClaim and a Secret *locator* row, as
+  canonical rows `@hobo/yards` parses.
+- **Convergent resolvers** (`kubernetesResolvers()`) for six of those seven
+  products: read-or-create against the apiserver, merge-patch on drift, and
+  "already gone" as a successful delete.
+- **`realize()` → `hobo.iac-program/v1`** for the primary Pulumi lane, plus the
+  published Capability Manifest with declared cost facts and the projected
+  ServiceAccount token posture.
 - **Placement on a cluster.** `parseWorkloadPlacement` refines an authored
   option bag; `createKubernetesApiClient` creates the Namespace, Deployment and
   ClusterIP Service through an injected HTTP transport; `provisionWorkload`
@@ -27,6 +56,46 @@ pnpm --filter @hobo/provider-kubernetes test
 - **Temporary/agent Environment Stations:**
   `supportsAnonymousTemporaryDeploy = true`, provisioned through an
   injectable/local transport with no permanent API tokens.
+
+## One equivalence class, a wider catalog
+
+The cross-cloud equivalence table has one row — compute, on a Deployment —
+because Kubernetes natively provides compute and nothing else in HoBo's port
+vocabulary. Databases, caches, queues and object stores arrive through
+*operators*: third-party software an operator installs, which this package
+cannot see, let alone install. So `data`, `kv`, `queue` and `topic` have no Yard
+rows, and an app that needs Postgres gets a truthful `none` here.
+
+The Yard catalog is wider than the equivalence table, and that is not a
+contradiction: a Job, an Ingress and a PersistentVolumeClaim are real
+allocatable built-in objects, but they are not rows of the *cross-cloud* table,
+which maps capability ports onto a provider's headline products.
+
+## Three deliberate refusals in the resolvers
+
+1. **The namespace is never defaulted.** A fallback to `default` would put a
+   workload in the busiest namespace in most clusters — the one where an RBAC
+   mistake reaches everything. `desired.namespace` is required.
+2. **`"replace"` is never emitted.** A Job's pod template and a PVC's storage
+   class are immutable; converging them means deleting the object, which for a
+   PVC destroys data and for a Job discards a completed run. Drift is reported
+   as a diagnostic.
+3. **Secrets ship no resolver.** Creating one means putting its contents in
+   `desired`, and `desired` is recorded in the event log. The catalog keeps
+   `kubernetes.secret/v1` as a `secret-ref.locator/v1` row — the profile that
+   names where material lives without carrying it.
+
+## Honest scope for the resolver lane
+
+- **No live cluster is proven.** The resolvers are exercised against an injected
+  fake transport modelling an apiserver. A real deploy additionally needs a
+  cluster, credentials and network egress.
+- **No `kubectl proxy`.** See the two-lanes table above.
+- **No Resource Definitions are registered** for the `kubernetes.*` product ids,
+  so a deploy routed through the *Yard* still fails closed at resolution
+  (`YARD_BINDING_PRODUCT_UNKNOWN`).
+- **Built-ins only.** Anything an operator installs — a Postgres CRD, a queue
+  CRD — is out of scope by construction, not by omission.
 
 ## What it does not do
 

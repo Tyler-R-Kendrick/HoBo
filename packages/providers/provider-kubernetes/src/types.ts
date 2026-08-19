@@ -1,46 +1,22 @@
-export type PortKind = string;
-export type Outputs = Record<string, string>;
-export type PortRequest = { port: string; features?: string[] };
-export type Match =
-	| { kind: "full" }
-	| { kind: "partial"; missing: string[] }
-	| { kind: "none" };
-export type CostSignal = {
-	currency: string;
-	sku: string;
-	unit: string;
-	marginalPrice: string;
-};
-export type Capability = {
-	port: string;
-	satisfies(req: PortRequest): Match;
-	estimateCost(req: PortRequest): CostSignal;
-};
-export type ResourcePlan = {
-	name: string;
-	port: string;
-	require?: string[];
-	prefer?: string[];
-	options?: Record<string, unknown>;
-};
-export type ProviderClient = {
-	port: string;
-	resourceClass: string;
-	providerService: string;
-	bindings: Outputs;
-};
-export type CapabilityManifest = {
-	providerId: string;
-	published: Record<string, string>;
-	capabilities: unknown;
-	auth: unknown;
-	cost: unknown;
-};
-export type CloudProvider = {
-	id: string;
-	regions: string[];
-	capabilities: Capability[];
-	realize(plan: ResourcePlan): { iac?: unknown; driver?: unknown };
-	capabilityManifest(): CapabilityManifest;
-	client(port: PortKind, outputs: Outputs): ProviderClient;
-};
+// The canonical CloudProvider contract lives in @hobo/core (ADR-0156,
+// packages/core/src/ports/cloud-provider.ts); this module re-exports it so
+// existing `@hobo/provider-kubernetes` imports keep working. Package-local
+// narrowings (IacProgram, BuildSpec, PublishedManifestDocuments,
+// TypedOptionBlock) stay in their own modules.
+import type { CapabilityPortKind } from "@hobo/core";
+
+export type {
+	Capability,
+	CapabilityManifest,
+	CloudProvider,
+	CostSignal,
+	Match,
+	Outputs,
+	PortRequest,
+	ProviderClient,
+	ResourcePlan,
+} from "@hobo/core";
+
+// Back-compat alias: the canonical name is @hobo/core's `CapabilityPortKind`
+// (core's own `PortKind` is the structural port classification).
+export type PortKind = CapabilityPortKind;

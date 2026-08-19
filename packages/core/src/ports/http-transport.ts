@@ -78,6 +78,19 @@ export interface TransportGuardPolicy {
 	readonly allowedPathPrefixes: readonly string[];
 	readonly maxTimeoutMs: number;
 	readonly maxResponseBytes: number;
+	/**
+	 * Ports the policy admits, as strings, alongside the implicit default.
+	 * Omitted means 443 only, which is what every SaaS provider wants and what
+	 * this guard enforced before the field existed.
+	 *
+	 * It exists for the self-hosted case, and the Kubernetes apiserver is the
+	 * one that forced it: a cluster's control plane listens on 6443, not 443,
+	 * so without this a provider talking to an operator's own control plane
+	 * would have to re-implement the whole guard to change one number — and a
+	 * second copy of a security rule set drifts from the first. Widening is
+	 * explicit, per policy, and visible in review; the default stays closed.
+	 */
+	readonly allowedPorts?: readonly string[];
 }
 
 // public-contract: every refusal a guarded transport can report.
@@ -128,6 +141,12 @@ export function guardTransport(
 	};
 }
 
+/** Ports this policy admits. 443 is always in the set; the rest are declared. */
+function allowedPorts(policy: TransportGuardPolicy): readonly string[] {
+	const declared = policy.allowedPorts ?? [];
+	return declared.includes("443") ? declared : ["443", ...declared];
+}
+
 /**
  * Parse an outbound URL against the policy. Returns the parsed URL so the
  * caller cannot accidentally reuse the unchecked string.
@@ -165,10 +184,13 @@ function assertAllowedEndpoint(
 			"request url must not embed userinfo: credentials belong in headers a host injected, and userinfo hides the real host from a casual read",
 		);
 	}
-	if (parsed.port !== "" && parsed.port !== "443") {
+	// An empty port is the URL's way of saying 443, so it always passes; any
+	// other port must be named by the policy. Naming it is the whole check —
+	// the guard never infers a port from the host or repairs a mismatch.
+	if (parsed.port !== "" && !allowedPorts(policy).includes(parsed.port)) {
 		throw new TransportGuardError(
 			"TRANSPORT_HOST_FORBIDDEN",
-			`request url must use the default https port, got ${parsed.port}`,
+			`request url must use the default https port or one this policy allows (${allowedPorts(policy).join(", ")}), got ${parsed.port}`,
 		);
 	}
 	if (!policy.allowedHosts.includes(parsed.hostname)) {

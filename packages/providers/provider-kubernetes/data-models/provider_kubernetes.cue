@@ -186,3 +186,70 @@ package provider_kubernetes
 	message: string & !="" & =~"^[^\\x00-\\x1f]{1,1024}$"
 	code:    uint32 & >=400 & <600
 }
+
+// ---------------------------------------------------------------------------
+// Provider-parity constraints: one constraint per parity message in
+// provider_kubernetes.proto.
+// ---------------------------------------------------------------------------
+
+#EquivalenceMapping: {
+	class:           string & !=""
+	port:            string & !=""
+	resourceClass:   =~"^kubernetes:"
+	providerService: string & !=""
+	features: [...string] & !=[]
+}
+
+#CapabilityManifestIndex: {
+	schema:         "hobo.capability-manifest-index/v1"
+	providerId:     "@hobo/provider-kubernetes"
+	manifestSchema: "hobo.capability-manifest/v1"
+}
+
+// Kubernetes is the one provider whose declared price is a structural zero:
+// the API charges nothing for a Deployment, and the nodes are billed by the
+// provider underneath. The constraint still pins the decimal-string shape.
+#CostFact: {
+	port:             string & !=""
+	sku:              =~"^kubernetes\\."
+	unit:             string & !=""
+	marginalPrice:    =~"^[0-9]+\\.[0-9]+$"
+	freeTierIncluded: uint
+}
+
+#AuthPosture: {
+	schema:        "hobo.provider-auth/v1"
+	mode:          "svid-federation"
+	tokenAudience: =~"^spiffe://hobo/providers/"
+	exchange:      "kubernetes:BoundServiceAccountToken"
+	staticSecrets: false
+}
+
+#RealizedIacResource: {
+	name:     string & !=""
+	type:     =~"^kubernetes:"
+	provider: "kubernetes"
+	outputs: [...string] & !=[]
+}
+
+#RealizedIacProgram: {
+	apiVersion:   "hobo.iac-program/v1"
+	kind:         "iac-program"
+	provider:     "pulumi"
+	deploymentId: string & !=""
+	stack:        =~"^kubernetes/"
+	resources: [...#RealizedIacResource] & !=[]
+}
+
+#YardBindingRow: {
+	profile:         =~"^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*/v[1-9][0-9]*$"
+	productId?:      =~"^kubernetes\\.[a-z0-9-]+/v[1-9][0-9]*$"
+	connectivityId?: string & !=""
+}
+
+#ResolvedResource: {
+	productId:  =~"^kubernetes\\."
+	action:     "create" | "update" | "adopt" | "noop" | "replace"
+	physicalId: string & !=""
+	diagnostics: [...string]
+}

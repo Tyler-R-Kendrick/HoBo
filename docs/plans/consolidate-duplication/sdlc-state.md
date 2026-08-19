@@ -21,8 +21,8 @@ Two of my own estimates were wrong. Both are recorded because the measurement is
 
 | # | Branch | Scope | State |
 |---|---|---|---|
-| 00 | `claude/consolidate-00-green-trunk-boundaries` | Make the boundary gate actually run | **done** |
-| 01 | `claude/consolidate-01-core-manifest-utils` | Manifest codec into `@hobo/core` + pinning tests | pending |
+| 00 | `claude/consolidate-00-green-trunk-boundaries` | Make the boundary gate actually run | **done** — PR #1115 |
+| 01 | `claude/consolidate-01-core-manifest-utils` | Manifest codec into `@hobo/core` + pinning tests | **done** (PR pending) |
 | 02 | `claude/consolidate-02-migrate-provider-manifests` | aws/azure/gcp/lakebed/convex onto it (−275) | pending |
 | 03 | `claude/consolidate-03-migrate-runner-manifests` | blacksmith/depot/github (−46) | pending |
 
@@ -56,3 +56,8 @@ transports onto core's `guardTransport`.
 
 - 00: gate repaired, 14+1 packages classified, 18 edges banked, regression test added and falsified
   (removing one entry names it). `violations: []` across 261 discovered edges.
+- 01: codec added to `@hobo/core` as a pure addition; nothing migrated yet, so this layer cannot
+  change any published manifest. 18 pinning tests, with `canonicalJson`/`stableDigest` literals
+  captured from the pre-move provider implementation so a "tidier" rewrite fails here rather than
+  at a consumer. Baseline bytes for all five providers captured out-of-tree for layer 02 to diff
+  against.

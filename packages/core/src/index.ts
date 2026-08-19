@@ -142,6 +142,19 @@ export {
 	parseResourceId,
 	RESOURCE_ID_PATTERN,
 } from "./ports/binding-resolver.js";
+export type { PublishedManifestParseResult } from "./ports/capability-manifest.js";
+export {
+	AUTH_SCHEMA,
+	CAPABILITIES_SCHEMA,
+	COST_SCHEMA,
+	canonicalJson,
+	digestRef,
+	MANIFEST_INDEX_SCHEMA,
+	MANIFEST_PATHS,
+	MANIFEST_SCHEMA,
+	parsePublishedManifest,
+	stableDigest,
+} from "./ports/capability-manifest.js";
 export type {
 	ClockReplayResult,
 	ClockTraceEntry,

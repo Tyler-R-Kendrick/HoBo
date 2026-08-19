@@ -12,17 +12,19 @@ This page is **navigation**. The corpus has three layers, and each fact lives in
 
 Membership, aliases, posture and freshness are declared once, in each capture's `competitor:` front matter, and validated by `pnpm run docs:competitors`. The schema and canonical path rules are normative in [`metadata-contract.md`](metadata-contract.md).
 
+<!-- BEGIN GENERATED: competitor-index -->
+
 ## Categories (13)
 
 | Category | Competitors |
 | -------- | ----------- |
-| [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Crossplane](crossplane.md) · [Humanitec](humanitec.md) · [Nomad](nomad.md) · [Qovery](qovery.md) · [Radius](radius.md) |
+| [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Crossplane](crossplane.md) · [Humanitec](humanitec.md) · [Mia-Platform](mia-platform.md) · [Nomad](nomad.md) · [Qovery](qovery.md) · [Radius](radius.md) |
 | [Portable Application Models & Control Planes](categories/portable-application-models.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [Crossplane](crossplane.md) · [Dapr](dapr.md) · [Humanitec](humanitec.md) · [Nitric](nitric.md) · [Radius](radius.md) · [SST](sst.md) |
 | [Cloud Application Platforms](categories/cloud-application-platforms.md) | [Anonymous container hosts](anon-container-hosts.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [Flux Network](flux-network.md) · [Fly.io](flyio.md) · [Heroku](heroku.md) · [Lakebed](lakebed.md) · [Modal](modal.md) · [Netlify](netlify.md) · [Northflank](northflank.md) · [Qovery](qovery.md) · [Railway](railway.md) · [Render](render.md) · [Vercel](vercel.md) |
-| [Developer Portals & IDPs](categories/developer-portals-idps.md) | [Backstage](backstage.md) |
+| [Developer Portals & IDPs](categories/developer-portals-idps.md) | [Backstage](backstage.md) · [Mia-Platform](mia-platform.md) |
 | [Infrastructure-from-Code & Authoring](categories/infrastructure-from-code.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [Nitric](nitric.md) · [SST](sst.md) · [Wasp](wasp.md) · [Winglang](winglang.md) |
 | [Runtime & Distributed Application Substrates](categories/runtime-substrates.md) | [.NET Aspire](aspire.md) · [celld](celld.md) · [Dapr](dapr.md) · [Flux Network](flux-network.md) · [Modal](modal.md) · [Nomad](nomad.md) · [Rivet](rivet.md) · [Spin / Fermyon](spin-fermyon.md) · [Wasm host landscape](wasm-hosts.md) · [wasmCloud](wasmcloud.md) |
-| [Hybrid & Multicloud Enterprise Orchestration](categories/hybrid-multicloud-enterprise.md) | [Crossplane](crossplane.md) |
+| [Hybrid & Multicloud Enterprise Orchestration](categories/hybrid-multicloud-enterprise.md) | [Crossplane](crossplane.md) · [Mia-Platform](mia-platform.md) |
 | [Self-Hosted PaaS & Server Deployment](categories/self-hosted-paas.md) | [Anonymous container hosts](anon-container-hosts.md) · [Northflank](northflank.md) · [ServerKit](serverkit.md) |
 | [Agentic Infrastructure & Operations](categories/agentic-infrastructure.md) | [Antimetal](antimetal.md) · [InsForge](insforge.md) · [Lakebed](lakebed.md) · [Vercel](vercel.md) |
 | [Backend & Data Application Platforms](categories/backend-data-platforms.md) | [AWS Amplify](aws-amplify.md) · [Convex](convex.md) · [InsForge](insforge.md) · [Supabase](supabase.md) · [Wasp](wasp.md) |
@@ -32,10 +34,10 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 
 Categories are many-to-many: several products appear in more than one row above, with a single canonical capture behind each link.
 
-## Canonical captures (40)
+## Canonical captures (41)
 
-| Competitor | Capture | Primary category | Directness | HoBo mapping |
-| ---------- | ------- | ---------------- | ---------- | ------------ |
+| Competitor | Capture | Primary category | Directness | Role relative to HoBo |
+| ---------- | ------- | ---------------- | ---------- | --------------------- |
 | **.NET Aspire** | [`aspire.md`](aspire.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | direct | code-first app composition, local orchestration and deploy — closest authoring analog outside TypeScript |
 | **Alchemy** | [`alchemy.md`](alchemy.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | direct | TypeScript-native engine-less IaC — competes on the authoring/provisioning core and is a candidate iac-alchemy adapter |
 | **Anonymous container hosts** | [`anon-container-hosts.md`](anon-container-hosts.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | adjacent | cohort capture of zero-key temporary container hosts used as the Examples Temporary host matrix |
@@ -54,6 +56,7 @@ Categories are many-to-many: several products appear in more than one row above,
 | **Humanitec** | [`humanitec.md`](humanitec.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | Platform Orchestrator for IDPs with dynamic configuration management — head-on orchestrator competitor |
 | **InsForge** | [`insforge.md`](insforge.md) | [`backend-data-platforms`](categories/backend-data-platforms.md) | adjacent | agent-native backend-as-a-service — agent-ops benchmark and possible provider target |
 | **Lakebed** | [`lakebed.md`](lakebed.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | direct | agent-native closed PaaS (Capsules, sync RPC, llms.txt) — named head-on competitor |
+| **Mia-Platform** | [`mia-platform.md`](mia-platform.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | enterprise platform orchestrator plus developer portal — owns the same application-to-environment span HoBo does, in one commercial suite |
 | **Modal** | [`modal.md`](modal.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | adjacent | Python-first serverless compute for AI/ML with agent Sandboxes — AI-native compute competitor |
 | **Netlify** | [`netlify.md`](netlify.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | composable-web platform (Functions/Edge, Blobs, Netlify DB) — frontend PaaS benchmark |
 | **NetScaler** | [`netscaler.md`](netscaler.md) | [`identity-networking-delivery`](categories/identity-networking-delivery.md) | complementary | application delivery controller plus its IaC surface — candidate gateway provider and hobo-import analog |
@@ -93,6 +96,8 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `fly` | [Fly.io](flyio.md) |
 | `hashicorp nomad` | [Nomad](nomad.md) |
 | `kubecost cohort` | [FinOps tooling cohort](finops-tooling.md) |
+| `mia platform` | [Mia-Platform](mia-platform.md) |
+| `miaplatform` | [Mia-Platform](mia-platform.md) |
 | `netscaler adc` | [NetScaler](netscaler.md) |
 | `nitrictech` | [Nitric](nitric.md) |
 | `nomad pack` | [Nomad](nomad.md) |
@@ -104,7 +109,6 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `radapp` | [Radius](radius.md) |
 | `rivetkit` | [Rivet](rivet.md) |
 | `runonflux` | [Flux Network](flux-network.md) |
-
 | `spin` | [Spin / Fermyon](spin-fermyon.md) |
 | `spinkube` | [Spin / Fermyon](spin-fermyon.md) |
 | `spotify backstage` | [Backstage](backstage.md) |
@@ -114,7 +118,9 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `wing` | [Winglang](winglang.md) |
 | `zerodeploy` | [Anonymous container hosts](anon-container-hosts.md) |
 
-> `flux` historically pointed at Flux Network (the decentralized container host). It is now an alias, because [Flux CD](categories/delivery-release-gitops.md) is a different product in a different category. Always link the canonical slug.
+<!-- END GENERATED: competitor-index -->
+
+> `flux` historically pointed at Flux Network (the decentralized container host). It is now an alias, because Flux CD is a different product in a different category. Always link the canonical slug.
 
 ## What a capture contains
 

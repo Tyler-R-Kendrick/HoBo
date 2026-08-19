@@ -47,6 +47,7 @@ tags: [hobo, competitors, matrix]
 | **Humanitec** | [`humanitec.md`](humanitec.md) | — | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` | direct | app-graph, environments, provider-matching, governance | displace, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **InsForge** | [`insforge.md`](insforge.md) | — | `backend-data-platforms` | `backend-data-platforms` · `agentic-infrastructure` | adjacent | agent-surface, typed-contracts | benchmark, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Lakebed** | [`lakebed.md`](lakebed.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `agentic-infrastructure` | direct | agent-surface, authoring, delivery | displace | mixed | active | 2026-08-12 | pre-v1 |
+| **Mia-Platform** | [`mia-platform.md`](mia-platform.md) | mia platform, miaplatform | `platform-orchestrators` | `platform-orchestrators` · `developer-portals-idps` · `hybrid-multicloud-enterprise` | direct | app-graph, environments, governance, agent-surface, extensibility, delivery | displace, benchmark, borrow | mixed | active | 2026-08-19 | v1 |
 | **Modal** | [`modal.md`](modal.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `runtime-substrates` | adjacent | runtime-portability, provider-matching | provider-target, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **Netlify** | [`netlify.md`](netlify.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | delivery, environments | benchmark, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **NetScaler** | [`netscaler.md`](netscaler.md) | citrix adc, netscaler adc | `identity-networking-delivery` | `identity-networking-delivery` | complementary | governance, identity-secrets | provider-target, borrow | mixed | active | 2026-08-12 | pre-v1 |
@@ -116,7 +117,8 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Flux Network](flux-network.md) | 2026-08-15 | 4 | pre-v1 — rewrite to contract |
 | [Rivet](rivet.md) | 2026-08-15 | 4 | pre-v1 — rewrite to contract |
 | [Alchemy](alchemy.md) | 2026-08-19 | 0 | pre-v1 — rewrite to contract |
+| [Mia-Platform](mia-platform.md) | 2026-08-19 | 0 | fresh |
 
-_40 canonical captures across 13 categories; 0 at contract v1._
+_41 canonical captures across 13 categories; 1 at contract v1._
 
 <!-- END GENERATED: competitor-matrix -->

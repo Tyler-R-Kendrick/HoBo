@@ -107,8 +107,8 @@ const NON_CAPTURE = new Set([
 ]);
 
 const STALE_AFTER_DAYS = 180;
-const GEN_START = "<!-- BEGIN GENERATED: competitor-matrix -->";
-const GEN_END = "<!-- END GENERATED: competitor-matrix -->";
+const marker = (name: string, edge: "BEGIN" | "END") =>
+	`<!-- ${edge} GENERATED: ${name} -->`;
 
 export type Competitor = {
 	slug: string;
@@ -361,7 +361,6 @@ function checkLinks(
 function renderMatrix(competitors: Competitor[]) {
 	const rows = [...competitors].sort((a, b) => a.slug.localeCompare(b.slug));
 	const lines: string[] = [];
-	lines.push(GEN_START);
 	lines.push("");
 	lines.push(
 		"| Competitor | Canonical doc | Aliases | Primary category | All categories | Directness | Contested HoBo surfaces | Posture | HoBo evidence | Product status | Researched | Contract |",
@@ -398,7 +397,95 @@ function renderMatrix(competitors: Competitor[]) {
 		`_${rows.length} canonical captures across ${new Set(rows.flatMap((r) => r.categories)).size} categories; ${rows.filter((r) => r.contract === "v1").length} at contract v1._`,
 	);
 	lines.push("");
-	lines.push(GEN_END);
+	return lines.join("\n");
+}
+
+/** Category slug -> display title, mirroring the Linear project milestones. */
+export const CATEGORY_TITLES: Record<string, string> = {
+	"platform-orchestrators": "Comprehensive Platform Orchestrators",
+	"portable-application-models": "Portable Application Models & Control Planes",
+	"cloud-application-platforms": "Cloud Application Platforms",
+	"developer-portals-idps": "Developer Portals & IDPs",
+	"infrastructure-from-code": "Infrastructure-from-Code & Authoring",
+	"runtime-substrates": "Runtime & Distributed Application Substrates",
+	"hybrid-multicloud-enterprise":
+		"Hybrid & Multicloud Enterprise Orchestration",
+	"self-hosted-paas": "Self-Hosted PaaS & Server Deployment",
+	"agentic-infrastructure": "Agentic Infrastructure & Operations",
+	"backend-data-platforms": "Backend & Data Application Platforms",
+	"delivery-release-gitops": "Delivery, Release & GitOps",
+	"finops-governance-placement": "FinOps, Governance & Placement",
+	"identity-networking-delivery": "Identity, Networking & Application Delivery",
+};
+
+function byName(a: Competitor, b: Competitor) {
+	return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+}
+
+function renderIndex(competitors: Competitor[]) {
+	const lines: string[] = [""];
+	lines.push(`## Categories (${CATEGORIES.length})`);
+	lines.push("");
+	lines.push("| Category | Competitors |");
+	lines.push("| -------- | ----------- |");
+	for (const category of CATEGORIES) {
+		const members = competitors
+			.filter((entry) => entry.categories.includes(category))
+			.sort(byName);
+		lines.push(
+			`| [${CATEGORY_TITLES[category]}](categories/${category}.md) | ${members
+				.map((entry) => `[${entry.name}](${entry.slug}.md)`)
+				.join(" · ")} |`,
+		);
+	}
+	lines.push("");
+	lines.push(
+		"Categories are many-to-many: several products appear in more than one row above, with a single canonical capture behind each link.",
+	);
+	lines.push("");
+	lines.push(`## Canonical captures (${competitors.length})`);
+	lines.push("");
+	lines.push(
+		"| Competitor | Capture | Primary category | Directness | Role relative to HoBo |",
+	);
+	lines.push(
+		"| ---------- | ------- | ---------------- | ---------- | --------------------- |",
+	);
+	for (const entry of [...competitors].sort(byName))
+		lines.push(
+			`| **${entry.name}** | [\`${entry.slug}.md\`](${entry.slug}.md) | [\`${entry.primary_category}\`](categories/${entry.primary_category}.md) | ${entry.directness} | ${entry.role} |`,
+		);
+	lines.push("");
+	lines.push("## Alias index");
+	lines.push("");
+	lines.push(
+		"Renamed, acquired, and commonly-abbreviated products resolve to one canonical capture. There are no stub files for old names — look them up here.",
+	);
+	lines.push("");
+	lines.push("| Alias / former name | Canonical capture |");
+	lines.push("| ------------------- | ----------------- |");
+	const aliases = competitors
+		.flatMap((entry) => entry.aliases.map((alias) => ({ alias, entry })))
+		.sort((a, b) => a.alias.toLowerCase().localeCompare(b.alias.toLowerCase()));
+	for (const { alias, entry } of aliases)
+		lines.push(`| \`${alias}\` | [${entry.name}](${entry.slug}.md) |`);
+	lines.push("");
+	return lines.join("\n");
+}
+
+function renderCategoryIndex(competitors: Competitor[]) {
+	const lines: string[] = [
+		"",
+		"| Category | Competitors |",
+		"| -------- | ----------- |",
+	];
+	for (const category of CATEGORIES) {
+		const count = competitors.filter((entry) =>
+			entry.categories.includes(category),
+		).length;
+		lines.push(`| [${CATEGORY_TITLES[category]}](${category}.md) | ${count} |`);
+	}
+	lines.push("");
 	return lines.join("\n");
 }
 
@@ -525,51 +612,68 @@ export async function checkCompetitorDocs(options: {
 			);
 	}
 
-	// Derived matrix must match the front-matter facts.
-	const matrixPath = path.join(dir, "matrix.md");
-	let matrix: string | undefined;
-	try {
-		matrix = readFileSync(matrixPath, "utf8");
-	} catch {
-		matrix = undefined;
-	}
-	if (matrix === undefined) {
-		problems.push({
-			file: "docs/competitors/matrix.md",
-			line: 1,
-			message: "missing generated cross-category matrix",
-		});
-	} else {
-		const start = matrix.indexOf(GEN_START);
-		const end = matrix.indexOf(GEN_END);
-		if (start === -1 || end === -1)
-			problems.push({
-				file: "docs/competitors/matrix.md",
-				line: 1,
-				message: `missing generated markers (${GEN_START} … ${GEN_END})`,
-			});
-		else {
-			const expected = renderMatrix(competitors);
-			const actual = matrix.slice(start, end + GEN_END.length);
-			if (actual !== expected) {
-				if (fix) {
-					writeFileSync(
-						matrixPath,
-						matrix.slice(0, start) +
-							expected +
-							matrix.slice(end + GEN_END.length),
-					);
-				} else {
-					problems.push({
-						file: "docs/competitors/matrix.md",
-						line: matrix.slice(0, start).split(/\r?\n/).length,
-						message:
-							"generated matrix is out of date; run `pnpm run docs:competitors:fix`",
-					});
-				}
-			}
+	// Derived views must match the front-matter facts.
+	const syncGenerated = (
+		file: string,
+		name: string,
+		render: () => string,
+		whenMissing: string,
+	) => {
+		const absolute = path.join(root, file);
+		let text: string;
+		try {
+			text = readFileSync(absolute, "utf8");
+		} catch {
+			problems.push({ file, line: 1, message: whenMissing });
+			return;
 		}
-	}
+		const begin = marker(name, "BEGIN");
+		const end = marker(name, "END");
+		const start = text.indexOf(begin);
+		const stop = text.indexOf(end);
+		if (start === -1 || stop === -1) {
+			problems.push({
+				file,
+				line: 1,
+				message: `missing generated markers (${begin} … ${end})`,
+			});
+			return;
+		}
+		const expected = `${begin}\n${render()}\n${end}`;
+		const actual = text.slice(start, stop + end.length);
+		if (actual === expected) return;
+		if (fix) {
+			writeFileSync(
+				absolute,
+				text.slice(0, start) + expected + text.slice(stop + end.length),
+			);
+			return;
+		}
+		problems.push({
+			file,
+			line: text.slice(0, start).split(/\r?\n/).length,
+			message: `generated ${name} is out of date; run \`pnpm run docs:competitors:fix\``,
+		});
+	};
+
+	syncGenerated(
+		"docs/competitors/matrix.md",
+		"competitor-matrix",
+		() => renderMatrix(competitors),
+		"missing generated cross-category matrix",
+	);
+	syncGenerated(
+		"docs/competitors/index.md",
+		"competitor-index",
+		() => renderIndex(competitors),
+		"missing corpus index",
+	);
+	syncGenerated(
+		"docs/competitors/categories/index.md",
+		"category-index",
+		() => renderCategoryIndex(competitors),
+		"missing category index",
+	);
 
 	// Alias discoverability: every alias must be findable from the corpus index.
 	try {

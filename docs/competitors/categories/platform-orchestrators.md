@@ -17,7 +17,7 @@ Systems that own application and platform orchestration end to end: environment 
 
 This is HoBo's home category. HoBo is a control plane that turns application intent into scored, provider-matched deployments, so anything claiming to orchestrate applications across environments contests HoBo directly.
 
-## Competitors (5)
+## Competitors (6)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -26,6 +26,7 @@ This is HoBo's home category. HoBo is a control plane that turns application int
 | [**Nomad**](../nomad.md) | workload scheduler/orchestrator plus jobspec packaging — direct scheduler/control-plane competitor and provider target | overlapping | `provider-matching`, `runtime-portability`, `reconciliation` | Simple, proven scheduler that runs non-container workloads well. | HoBo schedules across providers rather than across a cluster, and carries application intent above the jobspec. | borrow, provider-target, benchmark | P1 |
 | [**Qovery**](../qovery.md) | BYOC internal developer platform deploying into your own cloud — PaaS/IDP competitor | direct | `environments`, `delivery`, `provider-matching` | Mature BYOC deployment into a customer's own cloud accounts. | HoBo's BYOC story is Bindle-first with PortabilityReport scoring rather than a fixed engine per cloud. | displace, benchmark | P2 |
 | [**Radius**](../radius.md) | CNCF cloud-native application platform (app graph, Recipes, connections) — borrow-source for recipes and app model | overlapping | `app-graph`, `typed-contracts`, `environments` | Well-designed application graph with Recipes and typed connections. | HoBo's app graph is event-sourced and provider-scored, and does not presume Kubernetes hosting. | borrow | P1 |
+| [**Mia-Platform**](../mia-platform.md) *(primary)* | enterprise platform orchestrator plus developer portal — owns the same application-to-environment span HoBo does, in one commercial suite | direct | `app-graph`, `environments`, `governance`, `agent-surface`, `extensibility`, `delivery` | Shipped enterprise suite: catalog-as-digital-twin, Scorecards/Campaigns governance, an MCP server over platform state, plus data pipelines and UI composition. | HoBo describes applications against abstract ports and scores portability; a Mia Project is configured against the infrastructure it will run on, and assumes Kubernetes. | displace, benchmark, borrow | P1 |
 
 ## Navigation
 

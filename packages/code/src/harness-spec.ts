@@ -8,9 +8,13 @@
  * HarnessSpecParseError; downstream code accepts only parsed specs.
  */
 import type {
+	HarnessCliPromptPlacement,
+	HarnessCliPromptSpec,
 	HarnessConfigFormat,
 	HarnessConfigSpec,
 	HarnessKind,
+	HarnessRuntimeAdapter,
+	HarnessRuntimeSpec,
 	HarnessSpec,
 } from "./agent-harness-adapters.js";
 import type { AgentKind } from "./agent-registry.js";
@@ -38,6 +42,71 @@ export const HARNESS_CONFIG_FORMATS = [
 	"sdk-env",
 	"skip",
 ] as const;
+
+// public-contract: AI SDK harness adapter ids (#HarnessRuntimeAdapter).
+export const HARNESS_RUNTIME_ADAPTERS = [
+	"claude-code",
+	"codex",
+	"pi",
+	"opencode",
+	"grok-build",
+	"cline",
+	"deepagents",
+	"acp",
+	"cli",
+	"eve",
+	"sdk",
+	"skip",
+] as const;
+
+export const BUILTIN_HARNESS_ADAPTERS = [
+	"claude-code",
+	"codex",
+	"pi",
+	"opencode",
+	"grok-build",
+	"cline",
+	"deepagents",
+	"acp",
+] as const;
+
+export const CUSTOM_HARNESS_ADAPTERS = ["cli", "eve", "sdk", "skip"] as const;
+
+export const HARNESS_CLI_PROMPT_PLACEMENTS = ["trailing-arg", "stdin"] as const;
+
+/** Host-process adapters: local just-bash sandbox is enough. */
+export const HOST_HARNESS_ADAPTERS = [
+	"pi",
+	"cline",
+	"cli",
+	"eve",
+	"sdk",
+] as const;
+
+/** Bridge adapters: need a network sandbox (`@ai-sdk/sandbox-vercel`). */
+export const BRIDGE_HARNESS_ADAPTERS = [
+	"claude-code",
+	"codex",
+	"opencode",
+	"grok-build",
+	"deepagents",
+	"acp",
+] as const;
+
+export const JUST_BASH_SANDBOX_PACKAGE = "@ai-sdk/sandbox-just-bash";
+export const HARNESS_AGENT_PACKAGE = "@ai-sdk/harness";
+export const VERCEL_SANDBOX_PACKAGE = "@ai-sdk/sandbox-vercel";
+
+export const BUILTIN_HARNESS_PACKAGES = {
+	"claude-code": "@ai-sdk/harness-claude-code",
+	codex: "@ai-sdk/harness-codex",
+	pi: "@ai-sdk/harness-pi",
+	opencode: "@ai-sdk/harness-opencode",
+	"grok-build": "@ai-sdk/harness-grok-build",
+	cline: "@ai-sdk/harness-cline",
+	deepagents: "@ai-sdk/harness-deepagents",
+	acp: "@ai-sdk/harness-acp",
+} as const satisfies Record<(typeof BUILTIN_HARNESS_ADAPTERS)[number], string>;
 
 const HARNESS_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
@@ -143,6 +212,13 @@ function isConfigFormat(value: unknown): value is HarnessConfigFormat {
 	);
 }
 
+function isRuntimeAdapter(value: unknown): value is HarnessRuntimeAdapter {
+	return (
+		typeof value === "string" &&
+		(HARNESS_RUNTIME_ADAPTERS as readonly string[]).includes(value)
+	);
+}
+
 function parseHarnessConfigSpec(
 	value: unknown,
 	path: string,
@@ -178,6 +254,57 @@ function parseHarnessConfigSpec(
 	});
 }
 
+function isPromptPlacement(value: unknown): value is HarnessCliPromptPlacement {
+	return (
+		typeof value === "string" &&
+		(HARNESS_CLI_PROMPT_PLACEMENTS as readonly string[]).includes(value)
+	);
+}
+
+function parseHarnessCliPromptSpec(
+	value: unknown,
+	path: string,
+): HarnessCliPromptSpec {
+	const source = requireObject(value, path);
+	if (!isPromptPlacement(source.placement)) {
+		fail(
+			`${path}.placement`,
+			`one of ${HARNESS_CLI_PROMPT_PLACEMENTS.join("|")}`,
+			source.placement,
+		);
+	}
+	const prefixArgs = optionalStringArray(
+		source.prefixArgs,
+		`${path}.prefixArgs`,
+	);
+	return Object.freeze({
+		placement: source.placement,
+		...(prefixArgs === undefined ? {} : { prefixArgs }),
+	});
+}
+
+function parseHarnessRuntimeSpec(
+	value: unknown,
+	path: string,
+): HarnessRuntimeSpec {
+	const source = requireObject(value, path);
+	if (!isRuntimeAdapter(source.adapter)) {
+		fail(
+			`${path}.adapter`,
+			`one of ${HARNESS_RUNTIME_ADAPTERS.join("|")}`,
+			source.adapter,
+		);
+	}
+	const prompt =
+		source.prompt === undefined
+			? undefined
+			: parseHarnessCliPromptSpec(source.prompt, `${path}.prompt`);
+	return Object.freeze({
+		adapter: source.adapter,
+		...(prompt === undefined ? {} : { prompt }),
+	});
+}
+
 /**
  * Parse an untrusted harness plugin spec (JSON file, wire) into a frozen
  * HarnessSpec or throw HarnessSpecParseError. Existing plugin files carry no
@@ -208,6 +335,10 @@ export function parseHarnessSpec(value: unknown): HarnessSpec {
 		source.config === undefined
 			? undefined
 			: parseHarnessConfigSpec(source.config, "config");
+	const runtime =
+		source.runtime === undefined
+			? undefined
+			: parseHarnessRuntimeSpec(source.runtime, "runtime");
 	return Object.freeze({
 		id,
 		label,
@@ -220,6 +351,7 @@ export function parseHarnessSpec(value: unknown): HarnessSpec {
 		...(cwdMarkers === undefined ? {} : { cwdMarkers }),
 		...(packageNames === undefined ? {} : { packageNames }),
 		...(config === undefined ? {} : { config }),
+		...(runtime === undefined ? {} : { runtime }),
 	});
 }
 
@@ -253,4 +385,59 @@ export function harnessKindOf(spec: HarnessSpec): HarnessKind {
 	if (spec.kind === "eve-agent") return "eve-agent";
 	if (spec.kind === "sdk") return "sdk";
 	return "coding-cli";
+}
+
+export type HarnessRuntimeOrigin = "builtin" | "custom";
+
+export type ResolvedHarnessRuntime =
+	| {
+			readonly origin: "builtin";
+			readonly adapter: (typeof BUILTIN_HARNESS_ADAPTERS)[number];
+			readonly packageName: string;
+	  }
+	| {
+			readonly origin: "custom";
+			readonly adapter: (typeof CUSTOM_HARNESS_ADAPTERS)[number];
+			readonly packageName?: undefined;
+	  };
+
+function defaultRuntimeAdapter(spec: HarnessSpec): HarnessRuntimeAdapter {
+	if (isHostSpec(spec) || spec.kind === "inference") return "skip";
+	if (spec.kind === "eve-agent") return "eve";
+	if (spec.kind === "sdk") return "sdk";
+	return "cli";
+}
+
+function isBuiltinAdapter(
+	adapter: HarnessRuntimeAdapter,
+): adapter is (typeof BUILTIN_HARNESS_ADAPTERS)[number] {
+	return (BUILTIN_HARNESS_ADAPTERS as readonly string[]).includes(adapter);
+}
+
+/**
+ * Runtime view: AI SDK builtin package vs in-repo custom HarnessV1.
+ * Dispatch is on `runtime.adapter` (or kind default), never on agent id.
+ */
+export function resolveHarnessRuntime(
+	spec: HarnessSpec,
+): ResolvedHarnessRuntime {
+	const adapter = spec.runtime?.adapter ?? defaultRuntimeAdapter(spec);
+	if (isBuiltinAdapter(adapter)) {
+		return {
+			origin: "builtin",
+			adapter,
+			packageName: BUILTIN_HARNESS_PACKAGES[adapter],
+		};
+	}
+	return { origin: "custom", adapter };
+}
+
+export function isHostHarnessAdapter(adapter: HarnessRuntimeAdapter): boolean {
+	return (HOST_HARNESS_ADAPTERS as readonly string[]).includes(adapter);
+}
+
+export function isBridgeHarnessAdapter(
+	adapter: HarnessRuntimeAdapter,
+): boolean {
+	return (BRIDGE_HARNESS_ADAPTERS as readonly string[]).includes(adapter);
 }

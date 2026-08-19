@@ -20,9 +20,42 @@ enum HarnessConfigFormat {
   HARNESS_CONFIG_FORMAT_JSON_ENV = 2;
   HARNESS_CONFIG_FORMAT_JSON_MERGE = 3;
   HARNESS_CONFIG_FORMAT_NOTE = 4;
-  HARNESS_CONFIG_FORMAT_EVE_VFS = 5;
-  HARNESS_CONFIG_FORMAT_SDK_ENV = 6;
-  HARNESS_CONFIG_FORMAT_SKIP = 7;
+	HARNESS_CONFIG_FORMAT_EVE_VFS = 5;
+	HARNESS_CONFIG_FORMAT_SDK_ENV = 6;
+	HARNESS_CONFIG_FORMAT_SKIP = 7;
+}
+
+// AI SDK HarnessV1 adapter. Dispatch is on adapter, never on agent id.
+enum HarnessRuntimeAdapter {
+	HARNESS_RUNTIME_ADAPTER_UNSPECIFIED = 0;
+	HARNESS_RUNTIME_ADAPTER_CLAUDE_CODE = 1;
+	HARNESS_RUNTIME_ADAPTER_CODEX = 2;
+	HARNESS_RUNTIME_ADAPTER_PI = 3;
+	HARNESS_RUNTIME_ADAPTER_OPENCODE = 4;
+	HARNESS_RUNTIME_ADAPTER_GROK_BUILD = 5;
+	HARNESS_RUNTIME_ADAPTER_CLINE = 6;
+	HARNESS_RUNTIME_ADAPTER_DEEPAGENTS = 7;
+	HARNESS_RUNTIME_ADAPTER_ACP = 8;
+	HARNESS_RUNTIME_ADAPTER_CLI = 9;
+	HARNESS_RUNTIME_ADAPTER_EVE = 10;
+	HARNESS_RUNTIME_ADAPTER_SDK = 11;
+	HARNESS_RUNTIME_ADAPTER_SKIP = 12;
+}
+
+message HarnessRuntimeSpecRecord {
+	HarnessRuntimeAdapter adapter = 1;
+	optional HarnessCliPromptSpecRecord prompt = 2;
+}
+
+enum HarnessCliPromptPlacement {
+	HARNESS_CLI_PROMPT_PLACEMENT_UNSPECIFIED = 0;
+	HARNESS_CLI_PROMPT_PLACEMENT_TRAILING_ARG = 1;
+	HARNESS_CLI_PROMPT_PLACEMENT_STDIN = 2;
+}
+
+message HarnessCliPromptSpecRecord {
+	HarnessCliPromptPlacement placement = 1;
+	repeated string prefix_args = 2;
 }
 
 // Wire record for a harness plugin's config block ("Record" suffix: the TS
@@ -56,4 +89,5 @@ message HarnessSpecRecord {
   repeated string cwd_markers = 10;
   repeated string package_names = 11;
   optional HarnessConfigSpecRecord config = 12;
+  optional HarnessRuntimeSpecRecord runtime = 13;
 }

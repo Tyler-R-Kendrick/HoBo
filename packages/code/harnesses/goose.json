@@ -6,6 +6,7 @@
 	"configPaths": [".config/goose"],
 	"command": "goose",
 	"seat": 70,
+	"runtime": { "adapter": "cli", "prompt": { "placement": "trailing-arg", "prefixArgs": ["run", "-t"] } },
 	"config": {
 		"format": "note",
 		"path": ".config/goose",

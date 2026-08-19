@@ -29,14 +29,28 @@ import {
 export type { HarnessSpec } from "./agent-harness-adapters.js";
 export {
 	agentKindOf,
+	BRIDGE_HARNESS_ADAPTERS,
+	BUILTIN_HARNESS_ADAPTERS,
+	BUILTIN_HARNESS_PACKAGES,
+	CUSTOM_HARNESS_ADAPTERS,
+	HARNESS_AGENT_PACKAGE,
+	HARNESS_CLI_PROMPT_PLACEMENTS,
 	HARNESS_CONFIG_FORMATS,
+	HARNESS_RUNTIME_ADAPTERS,
 	HARNESS_SPEC_KINDS,
 	HARNESS_SPEC_SCHEMA,
 	type HarnessSpecKind,
 	HarnessSpecParseError,
+	HOST_HARNESS_ADAPTERS,
 	harnessKindOf,
+	isBridgeHarnessAdapter,
+	isHostHarnessAdapter,
 	isHostSpec,
+	JUST_BASH_SANDBOX_PACKAGE,
 	parseHarnessSpec,
+	type ResolvedHarnessRuntime,
+	resolveHarnessRuntime,
+	VERCEL_SANDBOX_PACKAGE,
 } from "./harness-spec.js";
 
 /** One skipped plugin file: which file, and why parsing rejected it. */

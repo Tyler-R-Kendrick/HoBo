@@ -5,6 +5,7 @@
 	"binaries": ["ollama"],
 	"configPaths": [".ollama"],
 	"command": "ollama serve",
+	"runtime": { "adapter": "skip" },
 	"config": {
 		"format": "skip",
 		"note": "inference host — not a coding harness"

@@ -6,6 +6,7 @@
 	"configPaths": [".codex"],
 	"command": "codex",
 	"seat": 10,
+	"runtime": { "adapter": "codex" },
 	"config": {
 		"format": "toml-append",
 		"path": ".codex/config.toml",

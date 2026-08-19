@@ -6,6 +6,7 @@
 	"configPaths": [".claude"],
 	"command": "claude",
 	"seat": 20,
+	"runtime": { "adapter": "claude-code" },
 	"config": {
 		"format": "json-env",
 		"path": ".claude/settings.json",

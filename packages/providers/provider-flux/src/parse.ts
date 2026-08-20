@@ -1,3 +1,12 @@
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
+
+export type { JsonValue } from "./json.js";
+
 export type FluxSourceKind = "oci" | "git";
 export type FluxTier = "community-free" | "paid-multi-instance";
 export type FluxEnvironment = "preview" | "production";
@@ -46,10 +55,62 @@ export interface FluxDeploySpec {
 	readonly residencyRegion?: string;
 }
 
-const SOURCES = new Set<FluxSourceKind>(["oci", "git"]);
-const TIERS = new Set<FluxTier>(["community-free", "paid-multi-instance"]);
-const ENVS = new Set<FluxEnvironment>(["preview", "production"]);
-const SUPPORTED = new Set<FluxPrimitive>(["web", "api", "service"]);
+function isSource(value: string): value is FluxSourceKind {
+	switch (value) {
+		case "oci":
+		case "git":
+			return true;
+		default:
+			return false;
+	}
+}
+
+function isTier(value: string): value is FluxTier {
+	switch (value) {
+		case "community-free":
+		case "paid-multi-instance":
+			return true;
+		default:
+			return false;
+	}
+}
+
+function isEnvironment(value: string): value is FluxEnvironment {
+	switch (value) {
+		case "preview":
+		case "production":
+			return true;
+		default:
+			return false;
+	}
+}
+
+function isPrimitive(value: string): value is FluxPrimitive {
+	switch (value) {
+		case "web":
+		case "api":
+		case "service":
+		case "actor":
+		case "data":
+		case "kv":
+		case "queue":
+		case "bucket":
+			return true;
+		default:
+			return false;
+	}
+}
+
+function isSupportedPrimitive(value: FluxPrimitive): boolean {
+	switch (value) {
+		case "web":
+		case "api":
+		case "service":
+			return true;
+		default:
+			return false;
+	}
+}
 
 function isLocator(value: string, path: string): string {
 	if (/token|password|sk-|AKIA/iu.test(value) || value.includes("://")) {
@@ -61,97 +122,94 @@ function isLocator(value: string, path: string): string {
 	return value;
 }
 
-export function parseFluxDeploySpec(input: unknown): FluxDeploySpec {
-	if (typeof input !== "object" || input === null) {
+export function parseFluxDeploySpec(input: JsonValue): FluxDeploySpec {
+	if (!isJsonObject(input)) {
 		throw new FluxProviderError("PARSE", "flux deploy spec must be an object");
 	}
-	const record = input as Record<string, unknown>;
-	const source = record.source;
-	if (typeof source !== "string" || !SOURCES.has(source as FluxSourceKind)) {
+	const source = input.source;
+	if (!isJsonString(source) || !isSource(source)) {
 		throw new FluxProviderError("PARSE", "source must be oci|git");
 	}
-	const tier = record.tier;
-	if (typeof tier !== "string" || !TIERS.has(tier as FluxTier)) {
+	const tier = input.tier;
+	if (!isJsonString(tier) || !isTier(tier)) {
 		throw new FluxProviderError(
 			"PARSE",
 			"tier must be community-free|paid-multi-instance",
 		);
 	}
-	const environment = record.environment;
-	if (
-		typeof environment !== "string" ||
-		!ENVS.has(environment as FluxEnvironment)
-	) {
+	const environment = input.environment;
+	if (!isJsonString(environment) || !isEnvironment(environment)) {
 		throw new FluxProviderError(
 			"PARSE",
 			"environment must be preview|production",
 		);
 	}
-	const primitivesRaw = record.primitives;
-	if (!Array.isArray(primitivesRaw) || primitivesRaw.length === 0) {
+	const primitivesRaw = input.primitives;
+	if (!isJsonArray(primitivesRaw) || primitivesRaw.length === 0) {
 		throw new FluxProviderError(
 			"PARSE",
 			"primitives must be a non-empty array",
 		);
 	}
-	const primitives = primitivesRaw.map((item) => {
-		if (typeof item !== "string") {
+	const primitives: FluxPrimitive[] = [];
+	for (const item of primitivesRaw) {
+		if (!isJsonString(item) || !isPrimitive(item)) {
 			throw new FluxProviderError("PARSE", "primitive must be a string");
 		}
-		return item as FluxPrimitive;
-	});
+		primitives.push(item);
+	}
 	for (const primitive of primitives) {
-		if (!SUPPORTED.has(primitive)) {
+		if (!isSupportedPrimitive(primitive)) {
 			throw new FluxProviderError(
 				"PRIMITIVE_UNSUPPORTED",
 				`Flux does not realize ${primitive}; use an actor/data/kv/queue/bucket provider or an explicit recipe`,
 			);
 		}
 	}
-	if (record.hostsRivetControlPlane === true && tier === "community-free") {
+	if (input.hostsRivetControlPlane === true && tier === "community-free") {
 		throw new FluxProviderError(
 			"CONTROL_PLANE_ON_COMMUNITY",
 			"Rivet control plane must not run on community Flux nodes",
 		);
 	}
-	if (record.residencyRegion === "") {
+	if (input.residencyRegion === "") {
 		throw new FluxProviderError(
 			"RESIDENCY_UNMAPPED",
 			"unmapped residency region fails closed (ADR-0146)",
 		);
 	}
 	const spec: FluxDeploySpec = {
-		source: source as FluxSourceKind,
-		webhookSigned: record.webhookSigned === true,
-		statusLogsAuthenticated: record.statusLogsAuthenticated === true,
-		tier: tier as FluxTier,
-		environment: environment as FluxEnvironment,
+		source,
+		webhookSigned: input.webhookSigned === true,
+		statusLogsAuthenticated: input.statusLogsAuthenticated === true,
+		tier,
+		environment,
 		primitives,
-		...(typeof record.imageDigest === "string"
-			? { imageDigest: record.imageDigest }
-			: {}),
-		...(typeof record.gitRepository === "string"
-			? { gitRepository: record.gitRepository }
-			: {}),
-		...(typeof record.webhookSecretRef === "string"
+		...(isJsonString(input.imageDigest)
+			? { imageDigest: input.imageDigest }
+			: undefined),
+		...(isJsonString(input.gitRepository)
+			? { gitRepository: input.gitRepository }
+			: undefined),
+		...(isJsonString(input.webhookSecretRef)
 			? {
 					webhookSecretRef: isLocator(
-						record.webhookSecretRef,
+						input.webhookSecretRef,
 						"webhookSecretRef",
 					),
 				}
-			: {}),
-		...(typeof record.apiKeySecretRef === "string"
+			: undefined),
+		...(isJsonString(input.apiKeySecretRef)
 			? {
-					apiKeySecretRef: isLocator(record.apiKeySecretRef, "apiKeySecretRef"),
+					apiKeySecretRef: isLocator(input.apiKeySecretRef, "apiKeySecretRef"),
 				}
-			: {}),
-		...(record.hostsRivetControlPlane === true
+			: undefined),
+		...(input.hostsRivetControlPlane === true
 			? { hostsRivetControlPlane: true }
-			: {}),
-		...(typeof record.residencyRegion === "string"
-			? { residencyRegion: record.residencyRegion }
-			: {}),
+			: undefined),
+		...(isJsonString(input.residencyRegion)
+			? { residencyRegion: input.residencyRegion }
+			: undefined),
 	};
 	return Object.freeze(spec);
 }

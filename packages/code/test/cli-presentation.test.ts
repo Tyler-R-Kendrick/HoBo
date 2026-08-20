@@ -64,6 +64,22 @@ function temp(prefix: string): string {
 	return dir;
 }
 
+/**
+ * An environment with an isolated `HOME`.
+ *
+ * A bare `{}` is not isolation. `defaultHoboHome` falls back to
+ * `join(env.HOME ?? tmpdir(), ".hobo")`, so an env with no HOME resolves to
+ * `/tmp/.hobo` — a *shared* directory every process on the machine can see.
+ * That is bad on its own, and worse here: `.hobo` is one of the markers the
+ * `hobo` CLI walks up the tree looking for, so creating it turns `/tmp` into
+ * "a HoBo project" and makes `packages/cli`'s no-Bindle test fail for anyone
+ * whose /tmp has ever been touched by this code. Pointing HOME at a directory
+ * this file owns keeps every fallback inside the sandbox.
+ */
+function isolatedEnv(): NodeJS.ProcessEnv {
+	return { HOME: temp("hobo-code-fallback-home-") };
+}
+
 function result(overrides: Partial<HoboCodeCliResult> = {}): HoboCodeCliResult {
 	return {
 		ok: true,
@@ -666,7 +682,7 @@ describe("every verb, run bare", () => {
 
 	async function runBare(verb: string) {
 		return runHoboCodeCli([verb], {
-			env: {},
+			env: isolatedEnv(),
 			hoboHome: temp("hobo-code-verb-home-"),
 			cwd: temp("hobo-code-verb-cwd-"),
 		});
@@ -701,9 +717,7 @@ describe("every verb, run bare", () => {
 		const text = formatHoboCodeResult(outcome);
 		expect(text.endsWith("\n")).toBe(true);
 		expect(text.trim().length).toBeGreaterThan(0);
-	}, // tight for those on a loaded machine, and a flaky sweep is worse than // Some verbs probe the machine or start a runtime; the default 10s is
-	// a slow one.
-	60_000);
+	}, 60_000); // a slow one. // tight for those on a loaded machine, and a flaky sweep is worse than // Some verbs probe the machine or start a runtime; the default 10s is
 });
 
 describe("what dispatch says it did", () => {
@@ -721,7 +735,7 @@ describe("what dispatch says it did", () => {
 		const hoboHome = temp("hobo-code-dispatch-home-");
 		const cwd = temp("hobo-code-dispatch-cwd-");
 		const outcome = await runHoboCodeCli(args, {
-			env: {},
+			env: isolatedEnv(),
 			hoboHome,
 			cwd,
 			...(options.dense === undefined ? {} : { dense: options.dense }),
@@ -832,7 +846,9 @@ describe("per-verb help", () => {
 	it.each(
 		HOBO_CODE_VERBS.filter((verb) => verb !== "help"),
 	)("renders plain help for %s", async (verb) => {
-		const outcome = await runHoboCodeCli(["help", verb], { env: {} });
+		const outcome = await runHoboCodeCli(["help", verb], {
+			env: isolatedEnv(),
+		});
 		expect(outcome.ok).toBe(true);
 		expect(outcome.message.length).toBeGreaterThan(0);
 	});
@@ -841,7 +857,7 @@ describe("per-verb help", () => {
 		HOBO_CODE_VERBS.filter((verb) => verb !== "help"),
 	)("renders dense help for %s", async (verb) => {
 		const outcome = await runHoboCodeCli(["help", verb], {
-			env: {},
+			env: isolatedEnv(),
 			dense: true,
 		});
 		expect(outcome.ok).toBe(true);
@@ -852,7 +868,7 @@ describe("per-verb help", () => {
 		// Dense help is a reminder for someone who already knows the verb; the
 		// person who does not needs a way back to the prose.
 		const outcome = await runHoboCodeCli(["help", "dispatch"], {
-			env: {},
+			env: isolatedEnv(),
 			dense: true,
 		});
 		expect(outcome.message).toContain("hobo-code dispatch --help");
@@ -861,7 +877,7 @@ describe("per-verb help", () => {
 	it("names the verb's dense tail", async () => {
 		// The tail is what the dense panels print; help is where you learn it.
 		const outcome = await runHoboCodeCli(["help", "status"], {
-			env: {},
+			env: isolatedEnv(),
 			dense: true,
 		});
 		expect(outcome.message).toContain("tail st");
@@ -870,26 +886,29 @@ describe("per-verb help", () => {
 	it("falls back to the verb itself when it has no assigned tail", async () => {
 		// Better a long tail than a crash or a blank.
 		const outcome = await runHoboCodeCli(["help", "machines"], {
-			env: {},
+			env: isolatedEnv(),
 			dense: true,
 		});
 		expect(outcome.message).toContain("tail machines");
 	});
 
 	it("renders top-level help for the bare help verb", async () => {
-		const outcome = await runHoboCodeCli(["help"], { env: {} });
+		const outcome = await runHoboCodeCli(["help"], { env: isolatedEnv() });
 		expect(outcome.code).toBe("HOBO_CODE_HELP");
 	});
 
 	it("renders top-level dense help for the bare help verb", async () => {
-		const outcome = await runHoboCodeCli(["help"], { env: {}, dense: true });
+		const outcome = await runHoboCodeCli(["help"], {
+			env: isolatedEnv(),
+			dense: true,
+		});
 		expect(outcome.code).toBe("HOBO_CODE_HELP");
 	});
 
 	it("reports help as a success rather than a usage error", async () => {
 		// Someone asking for help has not made a mistake, and a non-zero exit
 		// here breaks `hobo-code help && …` in a script.
-		const outcome = await runHoboCodeCli(["help"], { env: {} });
+		const outcome = await runHoboCodeCli(["help"], { env: isolatedEnv() });
 		expect(outcome.ok).toBe(true);
 		expect(outcome.exitCode).toBe(0);
 	});

@@ -131,7 +131,9 @@ export type Competitor = {
 
 type Raw = Record<string, string | string[]>;
 
-function frontMatter(text: string): { body: string; raw: Raw } | undefined {
+export function frontMatter(
+	text: string,
+): { body: string; raw: Raw } | undefined {
 	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
 	if (!match) return undefined;
 	return { body: text.slice(match[0].length), raw: parseBlock(match[1] ?? "") };
@@ -142,7 +144,7 @@ function frontMatter(text: string): { body: string; raw: Raw } | undefined {
  * inline `[a, b]` sequences, and `- item` block sequences. Anything else is
  * left alone — other front-matter keys are not ours to interpret.
  */
-function parseBlock(source: string): Raw {
+export function parseBlock(source: string): Raw {
 	const lines = source.split(/\r?\n/);
 	const start = lines.findIndex((line) => /^competitor:\s*$/.test(line));
 	if (start === -1) return {};
@@ -153,7 +155,15 @@ function parseBlock(source: string): Raw {
 		if (!/^\s/.test(line)) break; // dedent: end of the competitor mapping
 		const item = /^\s+-\s+(.*)$/.exec(line);
 		if (item && key) {
-			(raw[key] as string[]).push(unquote(item[1] ?? ""));
+			// Only a key opened as an empty sequence (`sources:` with nothing on
+			// the line) accumulates items. A `- item` under a *scalar* key is
+			// malformed input, and blindly pushing crashed the whole gate with
+			// `raw[key].push is not a function` — a TypeError instead of a
+			// reported problem. The scalar stands and the stray item is dropped;
+			// the required-field checks downstream report anything genuinely
+			// missing, which is where a parse error belongs.
+			const current = raw[key];
+			if (Array.isArray(current)) current.push(unquote(item[1] ?? ""));
 			continue;
 		}
 		const pair = /^\s+([a-z_]+):\s*(.*)$/.exec(line);

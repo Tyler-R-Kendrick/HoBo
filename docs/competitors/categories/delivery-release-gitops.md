@@ -17,7 +17,7 @@ Delivery controllers, release orchestration, GitOps reconciliation, environment 
 
 HoBo's stage gates and promotion events live here. The question is whether HoBo's event-sourced promotion model beats a dedicated delivery tool bolted on.
 
-## Competitors (8)
+## Competitors (9)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -29,6 +29,7 @@ HoBo's stage gates and promotion events live here. The question is whether HoBo'
 | [**Lagoon**](../lagoon.md) | open-source delivery platform whose local-equals-production promise is built on reusing the developer's existing docker-compose file as the source of truth | adjacent | `authoring`, `environments`, `delivery`, `runtime-portability` | The lowest-ceremony on-ramp anywhere: annotate the docker-compose.yml you already have, and the same images run locally and in production. | HoBo types the capability rather than naming a translation, and can target managed services, wasm hosts or a local runtime instead of always emitting Kubernetes objects. | benchmark, borrow | P2 |
 | [**Release**](../release.md) | specialist in the one surface HoBo keeps finding it lacks — ephemeral environments that actually look like production, data included | adjacent | `environments`, `delivery`, `app-graph` | A specialist that sells nothing but ephemeral environments: template-plus-defaults determinism, branch tracking, automatic teardown, production parity as the stated design target. | HoBo describes applications rather than environments, and its residency and policy layers are what make production-like data in a preview safe rather than merely convenient. | benchmark, borrow | P2 |
 | [**Rancher Fleet**](../rancher-fleet.md) | fleet-scale GitOps whose Bundle-to-BundleDeployment split is the clearest separation of definition from per-target realization in the corpus | adjacent | `delivery`, `provider-matching`, `reconciliation`, `environments` | Built for the number of targets HoBo talks about but has not faced: per-cluster BundleDeployments with their own customizations and their own status, so partial fleet rollouts stay legible. | Fleet targets clusters by label; HoBo targets heterogeneous providers by scored decision, and its definition describes capabilities rather than Kubernetes resources. | borrow, benchmark, integrate | P2 |
+| [**Kamal**](../kamal.md) | the minimal end of the spectrum — a deployment tool with no control plane, and the strongest argument in the corpus that most teams need less than they think | adjacent | `delivery`, `runtime-portability` | Radical simplicity: one YAML file, one command, no control plane to operate or lose — and it deploys Basecamp's production estate. | Everything above deployment. For one app on a few servers Kamal is sufficient and HoBo is overhead; the comparison only favours HoBo once targets are heterogeneous. | benchmark, borrow | P3 |
 
 ## Navigation
 

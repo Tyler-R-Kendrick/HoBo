@@ -37,15 +37,19 @@ tags: [hobo, competitors, matrix]
 | **Atlassian Compass** | [`atlassian-compass.md`](atlassian-compass.md) | compass | `developer-portals-idps` | `developer-portals-idps` | complementary | app-graph, governance | integrate, benchmark | mixed | active | 2026-08-20 | v1 |
 | **AWS Amplify** | [`aws-amplify.md`](aws-amplify.md) | amplify gen 2 | `infrastructure-from-code` | `infrastructure-from-code` · `backend-data-platforms` · `cloud-application-platforms` | overlapping | authoring, typed-contracts, wiring | benchmark | mixed | active | 2026-08-19 | v1 |
 | **Backstage** | [`backstage.md`](backstage.md) | spotify backstage | `developer-portals-idps` | `developer-portals-idps` | complementary | governance, ecosystem, extensibility | integrate, borrow | mixed | active | 2026-08-19 | v1 |
+| **CapRover** | [`caprover.md`](caprover.md) | captainduckduck | `self-hosted-paas` | `self-hosted-paas` | adjacent | delivery, environments, extensibility | benchmark | mixed | active | 2026-08-20 | v1 |
 | **celld** | [`celld.md`](celld.md) | — | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, reconciliation | adopt, provider-target | mixed | active | 2026-08-20 | v1 |
 | **CloudBolt** | [`cloudbolt.md`](cloudbolt.md) | cloudbolt software | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `finops-governance-placement` · `platform-orchestrators` | overlapping | provider-matching, governance, finops, environments | benchmark | mixed | active | 2026-08-20 | v1 |
 | **Cloudify** | [`cloudify.md`](cloudify.md) | cloudify orchestrator | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `portable-application-models` | overlapping | app-graph, typed-contracts, wiring, provider-matching, extensibility | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **Control Plane** | [`control-plane.md`](control-plane.md) | controlplane.com, cpln | `platform-orchestrators` | `platform-orchestrators` · `cloud-application-platforms` · `hybrid-multicloud-enterprise` · `runtime-substrates` · `identity-networking-delivery` · `agentic-infrastructure` | direct | runtime-portability, provider-matching, environments, identity-secrets, app-graph | displace, benchmark, borrow, provider-target | mixed | active | 2026-08-19 | v1 |
 | **Convex** | [`convex.md`](convex.md) | — | `backend-data-platforms` | `backend-data-platforms` | adjacent | typed-contracts, wiring, runtime-portability | borrow, provider-target | mixed | active | 2026-08-12 | pre-v1 |
+| **Coolify** | [`coolify.md`](coolify.md) | coolify.io | `self-hosted-paas` | `self-hosted-paas` · `cloud-application-platforms` | overlapping | authoring, delivery, environments, provider-matching | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **Cortex** | [`cortex.md`](cortex.md) | cortex.io | `developer-portals-idps` | `developer-portals-idps` · `agentic-infrastructure` | complementary | app-graph, governance, observability | integrate, benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **Crossplane** | [`crossplane.md`](crossplane.md) | — | `portable-application-models` | `portable-application-models` · `platform-orchestrators` · `hybrid-multicloud-enterprise` | overlapping | typed-contracts, provider-matching, reconciliation, extensibility | borrow, integrate | mixed | active | 2026-08-19 | v1 |
 | **Cycloid** | [`cycloid.md`](cycloid.md) | cycloid.io | `platform-orchestrators` | `platform-orchestrators` · `developer-portals-idps` · `finops-governance-placement` · `hybrid-multicloud-enterprise` | overlapping | authoring, environments, finops, observability, governance, app-graph | benchmark, borrow, integrate | mixed | active | 2026-08-19 | v1 |
 | **Dapr** | [`dapr.md`](dapr.md) | — | `runtime-substrates` | `runtime-substrates` · `portable-application-models` | overlapping | typed-contracts, runtime-portability, wiring, identity-secrets | borrow, standard, integrate | mixed | active | 2026-08-19 | v1 |
+| **Dokku** | [`dokku.md`](dokku.md) | dokku.com | `self-hosted-paas` | `self-hosted-paas` | adjacent | authoring, delivery, extensibility | benchmark | mixed | active | 2026-08-20 | v1 |
+| **Dokploy** | [`dokploy.md`](dokploy.md) | dokploy.com | `self-hosted-paas` | `self-hosted-paas` | adjacent | delivery, environments | benchmark | mixed | active | 2026-08-20 | v1 |
 | **DuploCloud** | [`duplocloud.md`](duplocloud.md) | duplo cloud | `platform-orchestrators` | `platform-orchestrators` · `hybrid-multicloud-enterprise` · `finops-governance-placement` | overlapping | governance, provider-matching, environments, identity-secrets, observability | benchmark, borrow, displace | mixed | active | 2026-08-19 | v1 |
 | **Encore** | [`encore.md`](encore.md) | — | `infrastructure-from-code` | `infrastructure-from-code` · `cloud-application-platforms` | direct | authoring, app-graph, wiring, environments, delivery | displace, benchmark | mixed | active | 2026-08-19 | v1 |
 | **Facets.cloud** | [`facets.md`](facets.md) | facets cloud | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `hybrid-multicloud-enterprise` · `finops-governance-placement` | direct | app-graph, environments, provider-matching, governance, extensibility | displace, benchmark, borrow | mixed | active | 2026-08-19 | v1 |
@@ -57,6 +61,7 @@ tags: [hobo, competitors, matrix]
 | **HPE Morpheus** | [`hpe-morpheus.md`](hpe-morpheus.md) | morpheus data, morpheus cmp | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `platform-orchestrators` · `finops-governance-placement` | overlapping | provider-matching, environments, governance, finops, delivery | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **Humanitec** | [`humanitec.md`](humanitec.md) | — | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` | direct | app-graph, environments, provider-matching, governance | displace, benchmark | mixed | active | 2026-08-19 | v1 |
 | **InsForge** | [`insforge.md`](insforge.md) | — | `backend-data-platforms` | `backend-data-platforms` · `agentic-infrastructure` | adjacent | agent-surface, typed-contracts | benchmark, provider-target | mixed | active | 2026-08-12 | pre-v1 |
+| **Kamal** | [`kamal.md`](kamal.md) | mrsk, kamal deploy | `self-hosted-paas` | `self-hosted-paas` · `delivery-release-gitops` | adjacent | delivery, runtime-portability | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **Kratix** | [`kratix.md`](kratix.md) | syntasso kratix, ske | `portable-application-models` | `portable-application-models` · `platform-orchestrators` · `delivery-release-gitops` | overlapping | typed-contracts, extensibility, provider-matching, delivery, app-graph | borrow, benchmark, integrate | mixed | active | 2026-08-19 | v1 |
 | **Kubernetes** | [`kubernetes.md`](kubernetes.md) | k8s | `runtime-substrates` | `runtime-substrates` · `portable-application-models` · `hybrid-multicloud-enterprise` | adjacent | reconciliation, runtime-portability, provider-matching, extensibility, governance | adopt, provider-target, borrow, standard | mixed | active | 2026-08-20 | v1 |
 | **KubeVela** | [`kubevela.md`](kubevela.md) | vela | `portable-application-models` | `portable-application-models` · `platform-orchestrators` · `delivery-release-gitops` | overlapping | app-graph, typed-contracts, extensibility, delivery, environments | borrow, standard, render-target, benchmark | mixed | active | 2026-08-19 | v1 |
@@ -88,7 +93,7 @@ tags: [hobo, competitors, matrix]
 | **Render** | [`render.md`](render.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | authoring, environments, delivery | benchmark | mixed | active | 2026-08-19 | v1 |
 | **Rivet** | [`rivet.md`](rivet.md) | rivetkit | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, replay-migration | adopt, provider-target | mixed | active | 2026-08-20 | v1 |
 | **Roadie** | [`roadie.md`](roadie.md) | roadie.io | `developer-portals-idps` | `developer-portals-idps` | complementary | app-graph, extensibility | integrate, benchmark, borrow | mixed | active | 2026-08-20 | v1 |
-| **ServerKit** | [`serverkit.md`](serverkit.md) | — | `self-hosted-paas` | `self-hosted-paas` · `identity-networking-delivery` | adjacent | delivery, observability, identity-secrets | benchmark, borrow | mixed | active | 2026-08-12 | pre-v1 |
+| **ServerKit** | [`serverkit.md`](serverkit.md) | — | `self-hosted-paas` | `self-hosted-paas` · `identity-networking-delivery` | adjacent | delivery, observability, identity-secrets | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **shoo.dev** | [`shoo.md`](shoo.md) | — | `identity-networking-delivery` | `identity-networking-delivery` | complementary | identity-secrets | integrate, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Spin / Fermyon** | [`spin-fermyon.md`](spin-fermyon.md) | spin, spinkube, fermyon | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, extensibility | adopt, render-target | mixed | active | 2026-08-19 | v1 |
 | **SST** | [`sst.md`](sst.md) | sst ion | `infrastructure-from-code` | `infrastructure-from-code` · `portable-application-models` | direct | authoring, typed-contracts, wiring, environments | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
@@ -114,7 +119,6 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Lakebed](lakebed.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
 | [NetScaler](netscaler.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
 | [Octopus Deploy](octopus-deploy.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
-| [ServerKit](serverkit.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
 | [shoo.dev](shoo.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
 | [Supabase](supabase.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
 | [Wasm host landscape](wasm-hosts.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
@@ -158,11 +162,16 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Appvia Wayfinder](appvia-wayfinder.md) | 2026-08-20 | 0 | fresh |
 | [.NET Aspire](aspire.md) | 2026-08-20 | 0 | fresh |
 | [Atlassian Compass](atlassian-compass.md) | 2026-08-20 | 0 | fresh |
+| [CapRover](caprover.md) | 2026-08-20 | 0 | fresh |
 | [celld](celld.md) | 2026-08-20 | 0 | fresh |
 | [CloudBolt](cloudbolt.md) | 2026-08-20 | 0 | fresh |
 | [Cloudify](cloudify.md) | 2026-08-20 | 0 | fresh |
+| [Coolify](coolify.md) | 2026-08-20 | 0 | fresh |
 | [Cortex](cortex.md) | 2026-08-20 | 0 | fresh |
+| [Dokku](dokku.md) | 2026-08-20 | 0 | fresh |
+| [Dokploy](dokploy.md) | 2026-08-20 | 0 | fresh |
 | [HPE Morpheus](hpe-morpheus.md) | 2026-08-20 | 0 | fresh |
+| [Kamal](kamal.md) | 2026-08-20 | 0 | fresh |
 | [Kubernetes](kubernetes.md) | 2026-08-20 | 0 | fresh |
 | [Nitric](nitric.md) | 2026-08-20 | 0 | fresh |
 | [Nomad](nomad.md) | 2026-08-20 | 0 | fresh |
@@ -175,8 +184,9 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Red Hat Developer Hub](red-hat-developer-hub.md) | 2026-08-20 | 0 | fresh |
 | [Rivet](rivet.md) | 2026-08-20 | 0 | fresh |
 | [Roadie](roadie.md) | 2026-08-20 | 0 | fresh |
+| [ServerKit](serverkit.md) | 2026-08-20 | 0 | fresh |
 | [wasmCloud](wasmcloud.md) | 2026-08-20 | 0 | fresh |
 
-_70 canonical captures across 13 categories; 56 at contract v1._
+_75 canonical captures across 13 categories; 62 at contract v1._
 
 <!-- END GENERATED: competitor-matrix -->

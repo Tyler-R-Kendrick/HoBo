@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [delivery, observability, identity-secrets]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-20
+  contract: v1
   sources:
     - https://github.com/jhd3197/ServerKit
 ---
@@ -49,6 +50,31 @@ It sits deliberately between two poles it names on its site: **traditional panel
 | AI story | Not in the core panel; the **sibling Faro desktop client** ships an **"Agent Bridge"** for MCP/Claude-Code command execution without credential sharing |
 
 ServerKit is **not** an infrastructure-from-code planner (Nitric/Encore) or a meta-cloud (HoBo). It does not infer app resources and map them onto managed cloud services across providers; even its "cloud provisioning" (DigitalOcean/Hetzner/Vultr/Linode) creates a bare VM and then installs *itself* on it. Its portability model is "run the same panel on any Linux box," not "map one app onto any provider mix."
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Server / node** | A machine the panel manages, paired with an agent |
+| **Application** | A hosted app — PHP/WordPress, Python, Node, or Docker |
+| **Agent** | The cross-platform Go binary on each node: pairing, remote Docker, WireGuard tunnels, drift-detecting templates |
+| **Template** | A declarative configuration the agent enforces, detecting and correcting drift |
+| **Service modules** | DNS, SSL, the full mail stack, WAF and security suite, backups, monitoring |
+
+The mental model is **a control panel with a real agent fleet**. The panel is the familiar
+cPanel-lineage surface; the agent is what makes it interesting here — pairing, tunnelling and drift
+detection are node-attach mechanics rather than panel features.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `delivery` | Application deployment across managed nodes |
+| `observability` | Monitoring and drift detection per node |
+| `identity-secrets` | Pairing, tunnels and certificate management |
+
+ServerKit is captured for its **node-attach and Relay reference value**, not as a rival for HoBo's
+application model — a framing [`lineage.md`](../design/lineage.md) already records.
 
 ## Feature surface
 
@@ -124,7 +150,22 @@ Install is a one-liner (`curl -fsSL https://serverkit.ai/install.sh | bash`, wit
 
 ServerKit's core panel is not "AI-native." The AI story is **Faro**, the same author's desktop client for SFTP/FTP/SSH/S3, which ships an **"Agent Bridge"** — an MCP surface that lets Claude Code (and other MCP clients) execute commands *through* Faro **without sharing raw credentials**. It is a credential-brokering command bridge, not an agent-as-operator platform, and it is a separate product from the panel. Worth watching as a direction, but today ServerKit's own control surface is a human-first dashboard plus a REST/OpenAPI + `X-API-Key` API.
 
-## Differentiators
+## Architecture
+
+- **Panel** — the control surface, run by the operator.
+- **Agent fleet** — a Go binary per node handling pairing, remote Docker operations, WireGuard
+  tunnels between nodes, and template-driven drift correction. This is the part worth studying: it
+  is a working node-attach implementation with outbound pairing and an overlay.
+- **Execution** — application stacks, mail, DNS and security services configured on the nodes
+  themselves.
+- **State authority** — the panel's configuration, with templates as the desired state the agent
+  enforces.
+- **Portability boundary** — none claimed; this is server management, not application portability.
+
+## Where ServerKit is stronger
+
+> Shipped, evidenced capability only.
+
 
 What ServerKit does well:
 
@@ -145,7 +186,7 @@ Gaps relative to HoBo's scope:
 6. **Runtime is Docker/host processes.** No language-neutral component runtime; portability is "the panel runs on any Linux," not "the workload runs on any backend."
 7. **Opinionated host ownership.** ServerKit wants to own Nginx, the mail stack, the firewall, and OS patching on the box. That is powerful for a VPS owner but is precisely the low-level surface HoBo intentionally abstracts rather than manages.
 
-## Comparisons
+### Comparisons with adjacent tools
 
 | Compared with | ServerKit edge | Their edge |
 |---|---|---|
@@ -155,7 +196,9 @@ Gaps relative to HoBo's scope:
 | Portainer | App/DB/mail/DNS/SSL/security breadth beyond containers | Deep, focused Docker/Kubernetes management and enterprise features |
 | HoBo | Ships today; owns the host end-to-end; batteries-included on one VPS; real agent fleet | Meta-cloud abstraction (one app → any provider mix incl. managed services), WIT/wasm portable runtime, event-sourced control plane, Resource Definitions/Matching, agents-as-principals, contract gates |
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > Status vocabulary: `parity` = HoBo has an equivalent design target; `further` = HoBo intentionally goes beyond; `adjacent` = composes with or informs HoBo but is not the same product surface; `gap-pressure` = ServerKit raises the *execution* bar (it ships) even where HoBo's design has an answer; `out-of-scope` = deliberately below HoBo's app-topology line (host/OS management HoBo abstracts over rather than replaces).
 
@@ -237,3 +280,56 @@ Because ServerKit lives one level below HoBo, the most useful relationship is **
 ### The one-line takeaway
 
 **ServerKit is a shipped, batteries-included, MIT self-hosted server control panel — the strongest *live* pressure on HoBo's self-host and developer-experience stories — but it operates the hosts you already own instead of abstracting app topology across providers, mutates host state imperatively through a Flask panel rather than contract-first and event-sourced, and keeps its AI story in a sibling desktop client rather than treating agents as principals.** It is a candidate reference for HoBo's node-attach/**Relay** and connections UX and a useful "it ships today" benchmark — not a meta-cloud competitor.
+
+## Adversarial critique
+
+- **Enormous surface for one product.** Applications, databases, DNS, SSL, a full mail stack, WAF,
+  backups and monitoring is a great deal to keep correct and secure, and the mail stack in
+  particular is a domain with unforgiving failure modes.
+- **Control panels are high-value targets.** A panel with root on every managed node is exactly the
+  asset attackers seek, and this category has a long history of serious vulnerabilities.
+- **Drift-detecting templates are only as good as their coverage** — what the template does not
+  describe drifts silently.
+- **Single-operator model.** There is no multi-tenancy or delegated administration worth the name.
+- **Small project relative to its ambition**, which matters most for the security-sensitive parts.
+- **No application abstraction.** Applications are stacks configured on machines, so nothing moves
+  anywhere.
+
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract.
+
+- **Application-level intent and provider-abstract targets** (*implemented*); ServerKit manages
+  servers, not applications-as-descriptions.
+- **Scored placement and recorded decisions** (*implemented*, `match.Decided`).
+- **Policy, residency and replay** (*implemented*, ADR-0135/0146).
+- **Honest caveat.** On node-attach mechanics — pairing, tunnelling, drift correction — ServerKit has
+  a working implementation and HoBo has a design.
+
+## Better-together / integration posture
+
+- **Borrow** — the reason this capture exists: **the agent's pairing, outbound tunnel and
+  drift-detecting template mechanics** are a concrete reference for HoBo's Relay and node-attach
+  path. This is now the fourth corpus occurrence of outbound-only agent connectivity (after Harness,
+  Qovery and Rivet), and the pattern is unambiguous.
+- **Benchmark** on node onboarding time.
+- Not an adopt, provider, integrate or displace target.
+
+## Threats and lessons
+
+1. **Outbound-only agent connectivity is the settled pattern**, confirmed four times across this
+   corpus in very different products. Any HoBo node-attach design that assumes ingress is wrong.
+2. **Drift-detecting templates on the node** are a cheap, effective mechanism worth copying for
+   attached nodes.
+3. **Breadth is a security liability** in self-hosted software, and a reason for HoBo to keep its
+   surface narrow and its escapes explicit.
+4. **The panel category's users overlap HoBo's self-host audience**, which makes onboarding
+   ergonomics — not features — the thing to learn from.
+
+## Sources
+
+- [jhd3197/ServerKit](https://github.com/jhd3197/ServerKit) — source, agent implementation, feature scope
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Current project activity, security posture and agent capabilities were
+not re-verified in this pass and are not asserted.

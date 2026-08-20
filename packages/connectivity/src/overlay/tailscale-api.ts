@@ -92,9 +92,11 @@ export function createTailscaleApiClient(
 		async putSplitDns(domains, nameservers) {
 			const existing = await this.getSplitDns();
 			const next: Record<string, string[]> = { ...asMutable(existing) };
+			// The domain is used as the map key verbatim: Tailscale keys split DNS
+			// by the suffix as written, so rewriting a leading dot here would
+			// create a second entry beside the one the tailnet already has.
 			for (const domain of domains) {
-				const key = domain.startsWith(".") ? domain : domain;
-				next[key] = [...nameservers];
+				next[domain] = [...nameservers];
 			}
 			const data = (await api(
 				"PATCH",
@@ -126,7 +128,12 @@ export function createTailscaleApiClient(
 				`/tailnet/${encodeURIComponent(tailnet)}/dns/preferences`,
 				prefs,
 			)) as TailscaleDnsPreferences;
-			return data ?? prefs;
+			// A 204 (and some API versions' empty body) means "accepted, nothing to
+			// report". Returning that empty object would tell the caller no
+			// preferences are in force — the opposite of what the write just did —
+			// so an answer carrying nothing falls back to what was asked for.
+			if (!data || Object.keys(data).length === 0) return prefs;
+			return data;
 		},
 		async listDevices() {
 			const data = (await api(

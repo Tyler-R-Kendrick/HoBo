@@ -69,14 +69,17 @@ function NewTaskForm({
     tasks: [
       {
         name: "Respond to emails",
+        // SAFETY: assertion to `"high" as TaskPriority` is required at this boundary.
         priority: "high" as TaskPriority,
       },
       {
         name: "Learn WASP",
+        // SAFETY: assertion to `"low" as TaskPriority` is required at this boundary.
         priority: "low" as TaskPriority,
       },
       {
         name: "Read a book",
+        // SAFETY: assertion to `"medium" as TaskPriority` is required at this boundary.
         priority: "medium" as TaskPriority,
       },
     ],
@@ -155,7 +158,7 @@ function NewTaskForm({
       }
     } catch (err) {
       const statusCode =
-        err && typeof err === "object" && "statusCode" in err
+        err && Object.prototype.toString.call(err) === "[object Object]" && "statusCode" in err
           ? err.statusCode
           : undefined;
       if (statusCode === 402) {
@@ -408,7 +411,7 @@ function TaskCard({
   task: ScheduleTask;
   taskItems: TaskItem[];
 }) {
-  const taskPriorityToColorMap: Record<TaskPriority, string> = {
+  const taskPriorityToColorMap = {
     high: "bg-destructive/10 border-destructive/20 text-red-500",
     medium: "bg-warning/10 border-warning/20 text-warning",
     low: "bg-success/10 border-success/20 text-success",

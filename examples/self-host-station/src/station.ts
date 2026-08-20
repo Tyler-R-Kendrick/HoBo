@@ -103,19 +103,15 @@ export function openSelfHostedStation(
 	const hoboHome = options.hoboHome;
 	mkdirSync(hoboHome, { recursive: true });
 	const name = options.name ?? SELF_HOST_STATION_NAME;
-	const init = initStation({
-		hoboHome,
-		name,
-		...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
-		...(options.residency !== undefined ? { residency: options.residency } : {}),
-		...(options.airgap !== undefined ? { airgap: options.airgap } : {}),
-		...(options.trustDomain !== undefined
-			? { trustDomain: options.trustDomain }
-			: {}),
-		...(options.importRailDocPath !== undefined
-			? { importRailDocPath: options.importRailDocPath }
-			: {}),
-	});
+	const initInput: SelfHostedStationOptions = { hoboHome, name };
+	if (options.tenant !== undefined) initInput.tenant = options.tenant;
+	if (options.residency !== undefined) initInput.residency = options.residency;
+	if (options.airgap !== undefined) initInput.airgap = options.airgap;
+	if (options.trustDomain !== undefined) initInput.trustDomain = options.trustDomain;
+	if (options.importRailDocPath !== undefined) {
+		initInput.importRailDocPath = options.importRailDocPath;
+	}
+	const init = initStation(initInput);
 	const client = createStationClient({
 		hoboHome,
 		stationId: init.stationId,

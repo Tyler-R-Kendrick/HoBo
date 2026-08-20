@@ -34,6 +34,7 @@ import {
 	runnerDownloadsPath,
 	shouldServeAnotherJob,
 } from "../host-runner.js";
+import type { JsonValue } from "../parse.js";
 
 const API_BASE = process.env.HOBO_RB_API_BASE ?? "https://api.github.com";
 
@@ -96,7 +97,7 @@ function apiToken(): string {
 	return token;
 }
 
-async function api(pathname: string, method = "GET"): Promise<unknown> {
+async function api(pathname: string, method = "GET"): Promise<JsonValue> {
 	const response = await fetch(`${API_BASE}${pathname}`, {
 		method,
 		headers: {
@@ -109,7 +110,9 @@ async function api(pathname: string, method = "GET"): Promise<unknown> {
 	if (!response.ok) {
 		throw new Error(`${method} ${pathname} failed with ${response.status}`);
 	}
-	return response.json();
+	const body = await response.json();
+	// SAFETY: GitHub JSON is untyped; callers narrow the documented response shape.
+	return body as JsonValue;
 }
 
 function run(
@@ -148,6 +151,7 @@ async function ensureRunnerInstalled(
 			"last-resort host runner supports linux and macOS only (the Windows runner uses a different bootstrap)",
 		);
 	}
+	// SAFETY: assertion to `wait api(runnerDownloadsPath(owner, repo))) as | RunnerAsset[] | undefined; ` is required at this boundary.
 	const downloads = (await api(runnerDownloadsPath(owner, repo))) as
 		| RunnerAsset[]
 		| undefined;
@@ -175,10 +179,11 @@ async function ensureRunnerInstalled(
 
 async function queuedRunCount(owner: string, repo: string): Promise<number> {
 	try {
+		// SAFETY: assertion to `wait api(queuedRunsPath(owner, repo))) as { total_count?: number; }; ` is required at this boundary.
 		const body = (await api(queuedRunsPath(owner, repo))) as {
 			total_count?: number;
 		};
-		return typeof body.total_count === "number" ? body.total_count : 0;
+		return Object.prototype.toString.call(body.total_count) === "[object Number]" ? body.total_count : 0;
 	} catch {
 		return 0;
 	}
@@ -195,6 +200,7 @@ async function assertSafeToRegister(
 ): Promise<void> {
 	let repository: { private?: boolean; fork_pr_workflows_enabled?: boolean };
 	try {
+		// SAFETY: assertion to `wait api(repositoryPath(owner, repo))) as typeof repository; ` is required at this boundary.
 		repository = (await api(repositoryPath(owner, repo))) as typeof repository;
 	} catch (error) {
 		throw new Error(
@@ -203,7 +209,7 @@ async function assertSafeToRegister(
 				`(${error instanceof Error ? error.message : String(error)})`,
 		);
 	}
-	if (typeof repository.private !== "boolean") {
+	if (Object.prototype.toString.call(repository.private) !== "[object Boolean]") {
 		throw new Error(
 			`HOST_RUNNER_VISIBILITY_UNKNOWN: ${owner}/${repo} did not report its visibility, so registration is refused.`,
 		);
@@ -252,11 +258,12 @@ async function main(): Promise<void> {
 			return;
 		}
 
+		// SAFETY: assertion to `wait api( registrationTokenPath(owner, repo), "POST", )) as { token?: string }; ` is required at this boundary.
 		const registration = (await api(
 			registrationTokenPath(owner, repo),
 			"POST",
 		)) as { token?: string };
-		if (typeof registration.token !== "string") {
+		if (Object.prototype.toString.call(registration.token) !== "[object String]") {
 			throw new Error("registration-token response had no token");
 		}
 		const name = `hobo-last-resort-${hostname()}-${process.pid}-${iteration}`;

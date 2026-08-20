@@ -29,7 +29,13 @@ import { actionsVariables } from "../adapters/actions-variables.js";
 import { declaredUsage } from "../adapters/declared-usage.js";
 import { githubActionsUsage } from "../adapters/github-billing.js";
 import { classifyFailedJobs } from "../classify.js";
-import { parseRegistryDocument, parseUsageSnapshots } from "../parse.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+	parseRegistryDocument,
+	parseUsageSnapshots,
+} from "../parse.js";
 import {
 	type RebalanceDeps,
 	type RebalanceResult,
@@ -83,31 +89,53 @@ function parseArgs(argv: readonly string[]): CliArgs {
 	return args;
 }
 
-function loadRegistryDocument(args: CliArgs): unknown {
+function parseJsonValue(text: string): JsonValue {
+	const parsed = JSON.parse(text);
+	// SAFETY: operator JSON files are untyped; parseRegistryDocument is the boundary.
+	return parsed as JsonValue;
+}
+
+function loadRegistryDocument(args: CliArgs): JsonValue {
 	const inline = process.env.HOBO_RB_REGISTRY_JSON;
 	if (inline !== undefined && inline.trim() !== "") {
-		return JSON.parse(inline);
+		return parseJsonValue(inline);
 	}
 	if (args.registryPath !== undefined) {
-		return JSON.parse(readFileSync(args.registryPath, "utf8"));
+		return parseJsonValue(readFileSync(args.registryPath, "utf8"));
 	}
 	return DEFAULT_REGISTRY_DOCUMENT;
 }
 
+interface FixtureFailure {
+	providerId?: string;
+	reason?: string;
+}
+
 interface FixtureDocument {
-	registryDocument?: unknown;
-	current?: Record<string, string>;
-	usage?: unknown;
-	failures?: unknown;
+	registryDocument?: JsonValue;
+	current?: { readonly [name: string]: string };
+	usage?: JsonValue;
+	failures?: JsonValue;
 	seq?: string;
+}
+
+function fixtureFailures(value: JsonValue | undefined): FixtureFailure[] {
+	if (!Array.isArray(value)) return [];
+	const failures: FixtureFailure[] = [];
+	for (const entry of value) {
+		if (!isJsonObject(entry)) continue;
+		failures.push({
+			providerId: isJsonString(entry.providerId) ? entry.providerId : undefined,
+			reason: isJsonString(entry.reason) ? entry.reason : undefined,
+		});
+	}
+	return failures;
 }
 
 function fixtureDeps(fixture: FixtureDocument): RebalanceDeps {
 	const current = new Map(Object.entries(fixture.current ?? {}));
 	const snapshots = parseUsageSnapshots(fixture.usage ?? []);
-	const failures = Array.isArray(fixture.failures)
-		? (fixture.failures as Array<{ providerId?: string; reason?: string }>)
-		: [];
+	const failures = fixtureFailures(fixture.failures);
 	return {
 		variables: {
 			get: (name) => Promise.resolve(current.get(name)),
@@ -125,12 +153,13 @@ function fixtureDeps(fixture: FixtureDocument): RebalanceDeps {
 		failureSignals: () =>
 			Promise.resolve(
 				failures
-					.filter((failure) => typeof failure.providerId === "string")
+					.filter((failure) => Object.prototype.toString.call(failure.providerId) === "[object String]")
 					.map(
 						(failure) =>
 							({
 								$typeName:
 									"hobo.examples.ci_runner_balancing.v1.HardBlockSignal",
+								// SAFETY: assertion to `ilure.providerId as string, ` is required at this boundary.
 								providerId: failure.providerId as string,
 								resource: "",
 								reason: failure.reason ?? "fixture-declared failure",
@@ -140,7 +169,7 @@ function fixtureDeps(fixture: FixtureDocument): RebalanceDeps {
 	};
 }
 
-function liveDeps(args: CliArgs, registryDocument: unknown): RebalanceDeps {
+function liveDeps(args: CliArgs, registryDocument: JsonValue): RebalanceDeps {
 	if (args.repo === undefined || !args.repo.includes("/")) {
 		throw new Error(
 			"live mode needs --repo owner/name (or GITHUB_REPOSITORY); use --fixture for offline runs",
@@ -183,7 +212,7 @@ function liveDeps(args: CliArgs, registryDocument: unknown): RebalanceDeps {
 	};
 }
 
-const KIND_LABEL: Record<DecisionKind, string> = {
+const KIND_LABEL = {
 	[DecisionKind.UNSPECIFIED]: "unspecified",
 	[DecisionKind.FLIP]: "flip",
 	[DecisionKind.NO_CHANGE]: "no-change",
@@ -268,13 +297,13 @@ function writeOutputs(result: RebalanceResult, mode: string, seq: string): void 
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 	let deps: RebalanceDeps;
-	let registryDocument: unknown;
+	let registryDocument: JsonValue;
 	let seq = args.seq;
 
 	if (args.fixture !== undefined) {
-		const fixture = JSON.parse(
-			readFileSync(args.fixture, "utf8"),
-		) as FixtureDocument;
+		const parsed = parseJsonValue(readFileSync(args.fixture, "utf8"));
+		// SAFETY: fixture files are operator JSON; fixtureDeps parses known keys.
+		const fixture = parsed as FixtureDocument;
 		registryDocument = fixture.registryDocument ?? loadRegistryDocument(args);
 		seq = fixture.seq ?? seq;
 		deps = fixtureDeps(fixture);

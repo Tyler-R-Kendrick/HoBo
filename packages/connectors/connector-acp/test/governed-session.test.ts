@@ -62,9 +62,10 @@ function session(options: {
 				},
 				principal: PRINCIPAL,
 				policy: POLICY,
-				...(options.approvals ? { approvals: options.approvals } : {}),
+				approvals: options.approvals,
 				onFact: (fact) => facts.push(fact),
 			}),
+		// SAFETY: assertion to `fixture as FixtureAcpAgent` is required at this boundary.
 		fixture: () => fixture as FixtureAcpAgent,
 	};
 }

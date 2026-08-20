@@ -7,6 +7,7 @@ tags: [hobo, anti-slop, oxlint, connectors]
 
 # connectors slice
 
-Layer `sdlc/anti-slop-07-connectors`. SWE harness files taken to zero
-findings first (SAFETY comments on remaining `as` assertions). ACP
-stdio/policy/sandbox and `swe-shared` follow in the same branch.
+Layer `sdlc/anti-slop-07-connectors`. `packages/connectors` is
+oxlint `--deny-warnings` clean: named JsonValue parse boundaries in
+connector-acp, SWE harness SAFETY comments, Firecrawl/ACP tests without
+`typeof`.

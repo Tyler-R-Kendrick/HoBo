@@ -11,8 +11,14 @@ import {
 describe("stdio lane (real @agentclientprotocol/sdk)", () => {
 	it("the production ACP SDK is a real, loadable dependency", async () => {
 		const sdk = await import("@agentclientprotocol/sdk");
-		assert.equal(typeof sdk.ClientSideConnection, "function");
-		assert.equal(typeof sdk.ndJsonStream, "function");
+		assert.equal(
+			Object.prototype.toString.call(sdk.ClientSideConnection),
+			"[object Function]",
+		);
+		assert.equal(
+			Object.prototype.toString.call(sdk.ndJsonStream),
+			"[object Function]",
+		);
 	});
 
 	it("typed gates carry stable codes for missing SDK / failed spawn", () => {

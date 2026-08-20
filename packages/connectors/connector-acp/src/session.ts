@@ -81,13 +81,12 @@ export async function openGovernedSession(
 				// with the cancelled outcome.
 				return { outcome: { outcome: "cancelled" } };
 			}
-			const decision = evaluateToolPermission({
-				action,
-				policy: options.policy,
-				...(options.approvals?.[action]
-					? { approval: options.approvals[action] }
-					: {}),
-			});
+			const approval = options.approvals?.[action];
+			const decision = evaluateToolPermission(
+				approval === undefined
+					? { action, policy: options.policy }
+					: { action, policy: options.policy, approval },
+			);
 			record({
 				type: "policy.Decided",
 				sessionId: params.sessionId,
@@ -121,10 +120,14 @@ export async function openGovernedSession(
 		},
 	};
 
+	interface PermissionReply {
+		outcome: AcpPermissionOutcome;
+	}
+
 	function refuse(
 		params: AcpPermissionRequest,
 		reason: string,
-	): { outcome: AcpPermissionOutcome } {
+	): PermissionReply {
 		const reject = params.options.find((option) =>
 			option.kind.startsWith("reject"),
 		);

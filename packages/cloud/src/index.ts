@@ -208,6 +208,25 @@ export {
 	type YardBindingRow,
 } from "./planner/profile-matching.js";
 export {
+	evaluateReplacement,
+	type PriorPlacement,
+	type ReplacementAction,
+	type ReplacementInputs,
+	type ReplacementReason,
+	type ReplacementVerdict,
+} from "./planner/replacement.js";
+export {
+	type ActualCost,
+	type CostFinding,
+	type CostFindingKind,
+	type CostReconciliationInput,
+	type CostReconciliationReport,
+	type CostReconciliationStatus,
+	type CostTotals,
+	type EstimatedCost,
+	reconcileCost,
+} from "./projections/cost-reconciliation.js";
+export {
 	type CompactionResult,
 	CREDENTIAL_AUDIT_EVENT_PREFIXES,
 	CREDENTIAL_AUDIT_EVENTS,
@@ -229,14 +248,6 @@ export {
 	deploymentViewProjection,
 	type ResourceLifecycle,
 } from "./projections/deployment-view.js";
-export {
-	evaluateReplacement,
-	type PriorPlacement,
-	type ReplacementAction,
-	type ReplacementInputs,
-	type ReplacementReason,
-	type ReplacementVerdict,
-} from "./planner/replacement.js";
 export {
 	computeDrift,
 	type DriftFinding,

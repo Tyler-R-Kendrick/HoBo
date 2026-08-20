@@ -174,3 +174,4 @@
 | 0163 | Drift as a derived fact computed from the deployment view — typed-lifecycle classification, `converging`/`unknown` first-class, imported estates exempt from unplanned findings | [data-plane](03-data-plane.md#adr-0163) |
 | 0164 | Placement is re-evaluable: a verdict step separate from re-matching, residency outranking opportunity, movement requiring declared consent, prior decision carried forward | [architecture-core](01-architecture-core.md#adr-0164) |
 | 0165 | Pack upgrade as a decision: numeric version ordering, majors crossed only by name, dropped profile claims and unverified targets blocked rather than skipped | [portability-extensibility](07-portability-extensibility.md#adr-0165) |
+| 0166 | Estimate-versus-actual as a derived report: integer minor units, unestimated cost never dropped, unrealized estimates excluded from variance, short windows refused rather than reported as savings | [data-plane](03-data-plane.md#adr-0166) |

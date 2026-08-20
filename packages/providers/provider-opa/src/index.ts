@@ -1,5 +1,15 @@
 import type { GatekeeperEffect, PolicyDecisionRequest } from "@hobo/contracts";
 
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
+export type { JsonObject, JsonValue } from "./json.js";
+
 // The OPA/Rego policy engine behind the broker's gate-plane port, extracted
 // from `@hobo/broker` per docs/plans/0017 F30 (the broker re-exports this
 // adapter, so `createOpaGatePlane` keeps its original import surface). Rego
@@ -46,18 +56,36 @@ export interface PolicyEngineReason {
 	message: string;
 }
 
+export type PolicyDecidedEvent = JsonObject;
+
 // Structural mirror of the broker's GateDecision.
 export interface PolicyEngineDecision {
 	effect: GatekeeperEffect;
 	reasons: PolicyEngineReason[];
-	events: Array<Record<string, unknown>>;
+	events: PolicyDecidedEvent[];
+}
+
+export type CostQuota = { quota: string; used: number; limit: number };
+
+export type OpaInputDocument = {
+	readonly input: {
+		readonly request: PolicyDecisionRequest;
+		readonly costQuota: CostQuota;
+	};
+};
+
+export type PolicyEngineHeaders = { readonly [key: string]: string };
+
+export interface PolicyEngineResponse {
+	status: number;
+	json(): Promise<JsonValue>;
 }
 
 // Structural mirror of the broker's GatePlane port.
 export interface PolicyEnginePlanePort {
 	evaluate(input: {
 		request: PolicyDecisionRequest;
-		costQuota: { quota: string; used: number; limit: number };
+		costQuota: CostQuota;
 	}): PolicyEngineDecision | Promise<PolicyEngineDecision>;
 }
 
@@ -67,10 +95,10 @@ export type PolicyEngineFetch = (
 	url: string,
 	init: {
 		method: string;
-		headers: Record<string, string>;
+		headers: PolicyEngineHeaders;
 		body: string;
 	},
-) => Promise<{ status: number; json(): Promise<unknown> }>;
+) => Promise<PolicyEngineResponse>;
 
 export interface OpaGatePlaneOptions {
 	endpoint: string;
@@ -83,26 +111,45 @@ export interface OpaGatePlaneOptions {
 
 export function buildOpaInput(input: {
 	request: PolicyDecisionRequest;
-	costQuota: { quota: string; used: number; limit: number };
-}): Record<string, unknown> {
+	costQuota: CostQuota;
+}): OpaInputDocument {
 	return { input: { request: input.request, costQuota: input.costQuota } };
 }
 
-const GATE_EFFECTS = new Set([
-	"allow",
-	"allow-degraded",
-	"deny",
-	"require-approval",
-]);
+function isGateEffect(value: string): value is GatekeeperEffect {
+	switch (value) {
+		case "allow":
+		case "allow-degraded":
+		case "deny":
+		case "require-approval":
+			return true;
+		default:
+			return false;
+	}
+}
 
-const PLANES: readonly PolicyEnginePlane[] = [
-	"policy",
-	"contracts",
-	"billing",
-	"placement",
-	"connectors",
-	"residency",
-];
+function isPolicyEnginePlane(value: string): value is PolicyEnginePlane {
+	switch (value) {
+		case "policy":
+		case "contracts":
+		case "billing":
+		case "placement":
+		case "connectors":
+		case "residency":
+			return true;
+		default:
+			return false;
+	}
+}
+
+function stringIds(value: JsonValue | undefined): string[] {
+	if (!isJsonArray(value)) return [];
+	const ids: string[] = [];
+	for (const id of value) {
+		if (isJsonString(id)) ids.push(id);
+	}
+	return ids;
+}
 
 function unavailable(message: string): PolicyEngineDecision {
 	return {
@@ -118,37 +165,70 @@ function unavailable(message: string): PolicyEngineDecision {
 	};
 }
 
+function policySubject(subject: PolicyDecisionRequest["subject"]): JsonObject {
+	return {
+		kind: subject.kind,
+		id: subject.id,
+		...(subject.roles === undefined
+			? undefined
+			: { roles: [...subject.roles] }),
+		...(subject.scopes === undefined
+			? undefined
+			: { scopes: [...subject.scopes] }),
+	};
+}
+
+function policyDecidedEvent(
+	effect: GatekeeperEffect,
+	policyIds: readonly string[],
+	request: PolicyDecisionRequest,
+): PolicyDecidedEvent {
+	return {
+		type: "policy.Decided",
+		effect,
+		engine: OPA_ENGINE_ID,
+		policyIds: [...policyIds],
+		subject: policySubject(request.subject),
+		action: request.action,
+		resource: {
+			kind: request.resource.kind,
+			id: request.resource.id,
+		},
+	};
+}
+
 // Parse-don't-validate over the untrusted Rego result: only well-formed
 // reasons survive, and an unknown effect fails closed to deny.
 function parseRegoResult(
-	raw: unknown,
+	raw: JsonValue | undefined,
 	request: PolicyDecisionRequest,
 ): PolicyEngineDecision {
-	if (raw === null || typeof raw !== "object") {
+	if (!isJsonObject(raw)) {
 		return unavailable("the Rego decision returned no result document");
 	}
-	const result = raw as Record<string, unknown>;
+	const effectValue = raw.effect;
 	const effect =
-		typeof result.effect === "string" && GATE_EFFECTS.has(result.effect)
-			? (result.effect as PolicyEngineDecision["effect"])
+		isJsonString(effectValue) && isGateEffect(effectValue)
+			? effectValue
 			: "deny";
 	const reasons: PolicyEngineReason[] = [];
-	if (Array.isArray(result.reasons)) {
-		for (const entry of result.reasons) {
-			if (entry === null || typeof entry !== "object") continue;
-			const rec = entry as Record<string, unknown>;
-			if (typeof rec.code !== "string" || rec.code.length === 0) continue;
+	if (isJsonArray(raw.reasons)) {
+		for (const entry of raw.reasons) {
+			if (!isJsonObject(entry)) continue;
+			const code = entry.code;
+			if (!isJsonString(code) || code.length === 0) continue;
+			const planeValue = entry.plane;
+			const messageValue = entry.message;
 			reasons.push({
 				plane:
-					typeof rec.plane === "string" &&
-					(PLANES as readonly string[]).includes(rec.plane)
-						? (rec.plane as PolicyEnginePlane)
+					isJsonString(planeValue) && isPolicyEnginePlane(planeValue)
+						? planeValue
 						: "policy",
-				code: rec.code,
+				code,
 				message:
-					typeof rec.message === "string" && rec.message.length > 0
-						? rec.message
-						: rec.code,
+					isJsonString(messageValue) && messageValue.length > 0
+						? messageValue
+						: code,
 			});
 		}
 	}
@@ -159,21 +239,12 @@ function parseRegoResult(
 			message: "denied by the Rego decision with no reason document",
 		});
 	}
-	const policyIds = Array.isArray(result.policyIds)
-		? result.policyIds.filter((id): id is string => typeof id === "string")
-		: [];
-	// Every evaluation records a policy.Decided fact, allow included — the
-	// same governed-by-default discipline as the in-proc policy pack.
-	const policyDecided: Record<string, unknown> = {
-		type: "policy.Decided",
+	const policyIds = stringIds(raw.policyIds);
+	return {
 		effect,
-		engine: OPA_ENGINE_ID,
-		policyIds,
-		subject: request.subject,
-		action: request.action,
-		resource: request.resource,
+		reasons,
+		events: [policyDecidedEvent(effect, policyIds, request)],
 	};
-	return { effect, reasons, events: [policyDecided] };
 }
 
 export function createOpaGatePlane(
@@ -186,7 +257,7 @@ export function createOpaGatePlane(
 			const token = options.tokenProvider
 				? await options.tokenProvider()
 				: undefined;
-			let response: { status: number; json(): Promise<unknown> };
+			let response: PolicyEngineResponse;
 			try {
 				response = await options.fetchFn(url, {
 					method: "POST",
@@ -194,18 +265,22 @@ export function createOpaGatePlane(
 						"content-type": "application/json",
 						...(token !== undefined
 							? { authorization: `Bearer ${token}` }
-							: {}),
+							: undefined),
 					},
 					body: JSON.stringify(buildOpaInput(input)),
 				});
 			} catch (error) {
-				return unavailable(`OPA transport failed: ${String(error)}`);
+				const message = error instanceof Error ? error.message : String(error);
+				return unavailable(`OPA transport failed: ${message}`);
 			}
 			if (response.status !== 200) {
 				return unavailable(`OPA Data API returned HTTP ${response.status}`);
 			}
-			const body = (await response.json()) as { result?: unknown };
-			return parseRegoResult(body?.result, input.request);
+			const body = await response.json();
+			if (!isJsonObject(body)) {
+				return parseRegoResult(undefined, input.request);
+			}
+			return parseRegoResult(body.result, input.request);
 		},
 	};
 }

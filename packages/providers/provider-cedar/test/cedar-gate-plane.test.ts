@@ -4,6 +4,7 @@ import {
 	buildCedarRequest,
 	CEDAR_ENGINE_ID,
 	createCedarGatePlane,
+	type JsonValue,
 	type PolicyEngineFetch,
 } from "../src/index.js";
 
@@ -18,8 +19,8 @@ const costQuota = { quota: "resources", used: 0, limit: 100 };
 
 function fetchReturning(
 	status: number,
-	body: unknown,
-	capture?: { url?: string; body?: string },
+	body: JsonValue,
+	capture?: { url: string | undefined; body: string | undefined },
 ): PolicyEngineFetch {
 	return async (url, init) => {
 		if (capture) {
@@ -44,7 +45,7 @@ describe("createCedarGatePlane", () => {
 	});
 
 	it("only an explicit Allow allows; deny cites the policy ids", async () => {
-		const capture: { url?: string } = {};
+		const capture = { url: undefined, body: undefined };
 		const denyPlane = createCedarGatePlane({
 			endpoint: "http://cedar:8180/",
 			fetchFn: fetchReturning(

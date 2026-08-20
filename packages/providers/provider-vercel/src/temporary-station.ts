@@ -21,6 +21,12 @@ import {
 	temporaryStationTtlSeconds,
 } from "@hobo/core";
 
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 import { PROVIDER_TARGET } from "./options.js";
 
 export const VERCEL_TEMPORARY_PROVIDER_ID = PROVIDER_TARGET;
@@ -86,11 +92,19 @@ export function sanitizeVercelDropProjectName(stationId: string): string {
 /**
  * Parse `vercel deploy` / Drop-equivalent stdout for live URL + project.
  */
-export function parseVercelDropDeployOutput(stdout: string): {
+type VercelDropDeployOutput = {
 	readonly stationUrl: string;
 	readonly deploymentId: string;
 	readonly projectName?: string;
-} {
+};
+
+function jsonNonEmptyString(value: JsonValue | undefined): string {
+	return isJsonString(value) && value.length > 0 ? value : "";
+}
+
+export function parseVercelDropDeployOutput(
+	stdout: string,
+): VercelDropDeployOutput {
 	const trimmed = stdout.trim();
 	if (!trimmed) {
 		throw new Error("vercel Drop deploy produced empty output");
@@ -99,36 +113,25 @@ export function parseVercelDropDeployOutput(stdout: string): {
 	for (const line of trimmed.split(/\r?\n/u)) {
 		const candidate = line.trim();
 		if (!candidate.startsWith("{")) continue;
-		try {
-			const parsed = JSON.parse(candidate) as Record<string, unknown>;
-			const urlRaw =
-				(typeof parsed.url === "string" && parsed.url) ||
-				(typeof parsed.alias === "string" && parsed.alias) ||
-				"";
-			const stationUrl = urlRaw.startsWith("http")
-				? urlRaw
-				: urlRaw
-					? `https://${urlRaw}`
-					: "";
-			const deploymentId =
-				(typeof parsed.id === "string" && parsed.id) ||
-				(typeof parsed.deploymentId === "string" && parsed.deploymentId) ||
-				"";
-			const projectName =
-				typeof parsed.projectName === "string"
-					? parsed.projectName
-					: typeof parsed.name === "string"
-						? parsed.name
-						: undefined;
-			if (stationUrl) {
-				return {
-					stationUrl,
-					deploymentId: deploymentId || new URL(stationUrl).hostname,
-					...(projectName ? { projectName } : {}),
-				};
-			}
-		} catch {
-			// keep scanning
+		const parsed = parseJsonValue(candidate);
+		if (!isJsonObject(parsed)) continue;
+		const urlRaw =
+			jsonNonEmptyString(parsed.url) || jsonNonEmptyString(parsed.alias);
+		const stationUrl = urlRaw.startsWith("http")
+			? urlRaw
+			: urlRaw
+				? `https://${urlRaw}`
+				: "";
+		const deploymentId =
+			jsonNonEmptyString(parsed.id) || jsonNonEmptyString(parsed.deploymentId);
+		const projectName =
+			jsonNonEmptyString(parsed.projectName) || jsonNonEmptyString(parsed.name);
+		if (stationUrl) {
+			return {
+				stationUrl,
+				deploymentId: deploymentId || new URL(stationUrl).hostname,
+				...(projectName !== "" ? { projectName } : undefined),
+			};
 		}
 	}
 
@@ -267,7 +270,7 @@ export async function provisionTemporaryEnvironmentStation(
 		input.projectName ?? sanitizeVercelDropProjectName(input.stationId);
 	const { workDir, files } = await materializeVercelDropStation({
 		stationId: input.stationId,
-		...(input.files ? { files: input.files } : {}),
+		...(input.files ? { files: input.files } : undefined),
 	});
 	const transport = input.transport ?? createVercelDropCliTransport();
 	const deployed = await transport.deployDrop({

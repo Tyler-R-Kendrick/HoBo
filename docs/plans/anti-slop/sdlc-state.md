@@ -27,7 +27,8 @@ main
                 └── sdlc/anti-slop-16-providers-neon-prisma  #1211 neon + prisma-postgres
                  └── sdlc/anti-slop-17-providers-browser-wasm  #1212 browser-wasm
                   └── sdlc/anti-slop-18-providers-upstash  #1213 upstash
-                   └── sdlc/anti-slop-19-providers-netlify  netlify
+                   └── sdlc/anti-slop-19-providers-netlify  #1214 netlify
+                    └── sdlc/anti-slop-20-providers-vercel  vercel
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -63,7 +64,8 @@ Layer 15: provider-webernetes + provider-kafka + provider-ttl-sh.
 Layer 16: provider-neon + provider-prisma-postgres.
 Layer 17: provider-browser-wasm.
 Layer 18: provider-upstash.
-Layer 19: provider-netlify. Next: remaining `packages/providers/*`
+Layer 19: provider-netlify.
+Layer 20: provider-vercel. Next: remaining `packages/providers/*`
 (cloud majors), then `packages/code`, `hobo`, `core`, `broker`,
 `src/draft/`. Full-repo `lint:slop --deny-warnings` is still red until
 those land.

@@ -57,6 +57,17 @@ import {
 	type TransportResponse,
 } from "@hobo/core";
 
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+	parseJsonValue,
+} from "./json.js";
 import { type ApiCallOptions, VERCEL_API_BASE } from "./management-api.js";
 import { PROVIDER_TARGET } from "./options.js";
 import { redactProviderText } from "./provider-errors.js";
@@ -126,7 +137,7 @@ function guardedDispatch(transport: HttpTransport): Dispatch {
 type ApiRequest = {
 	readonly method: TransportMethod;
 	readonly path: string;
-	readonly body?: Readonly<Record<string, unknown>>;
+	readonly body?: JsonObject;
 };
 
 async function callApi(
@@ -145,9 +156,11 @@ async function callApi(
 			// literal that could end up in a log line or a receipt.
 			authorization: `Bearer ${credential.expose()}`,
 			accept: "application/json",
-			...(body !== undefined ? { "content-type": "application/json" } : {}),
+			...(body !== undefined
+				? { "content-type": "application/json" }
+				: undefined),
 		},
-		...(body !== undefined ? { body } : {}),
+		...(body !== undefined ? { body } : undefined),
 		timeoutMs: options.timeoutMs ?? DEFAULT_CALL.timeoutMs,
 		maxResponseBytes: options.maxResponseBytes ?? DEFAULT_CALL.maxResponseBytes,
 	});
@@ -175,22 +188,14 @@ function providerRejected(
 }
 
 function vercelErrorMessage(body: string): string {
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(body);
-	} catch {
-		return body.length === 0 ? "no error body" : redactProviderText(body, 180);
-	}
-	if (isRecord(parsed)) {
-		const error = parsed.error;
-		if (isRecord(error)) {
-			const message = error.message;
-			const code = error.code;
-			if (typeof message === "string" && message.length > 0) {
-				return typeof code === "string" && code.length > 0
-					? `${redactProviderText(code, 60)}: ${redactProviderText(message, 180)}`
-					: redactProviderText(message, 180);
-			}
+	const parsed = parseJsonValue(body);
+	if (isJsonObject(parsed) && isJsonObject(parsed.error)) {
+		const message = parsed.error.message;
+		const code = parsed.error.code;
+		if (isJsonString(message) && message.length > 0) {
+			return isJsonString(code) && code.length > 0
+				? `${redactProviderText(code, 60)}: ${redactProviderText(message, 180)}`
+				: redactProviderText(message, 180);
 		}
 	}
 	return body.length === 0 ? "no error body" : redactProviderText(body, 180);
@@ -203,34 +208,29 @@ function unparseable(operation: string, why: string): ResolverError {
 	);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function parseJsonObject(
-	body: string,
-	operation: string,
-): Record<string, unknown> {
-	let parsed: unknown;
+function readJsonObject(body: string, operation: string): JsonObject {
+	let parsed: JsonValue;
 	try {
-		parsed = JSON.parse(body);
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		parsed = JSON.parse(body) as JsonValue;
 	} catch {
 		throw unparseable(operation, "the body is not JSON");
 	}
-	if (!isRecord(parsed)) {
+	if (!isJsonObject(parsed)) {
 		throw unparseable(operation, "the body is not a JSON object");
 	}
 	return parsed;
 }
 
-function parseJsonArray(body: string, operation: string): readonly unknown[] {
-	let parsed: unknown;
+function readJsonArray(body: string, operation: string): JsonValue[] {
+	let parsed: JsonValue;
 	try {
-		parsed = JSON.parse(body);
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		parsed = JSON.parse(body) as JsonValue;
 	} catch {
 		throw unparseable(operation, "the body is not JSON");
 	}
-	if (!Array.isArray(parsed)) {
+	if (!isJsonArray(parsed)) {
 		throw unparseable(
 			operation,
 			"the documented list response is a JSON array and this body is not one",
@@ -240,23 +240,24 @@ function parseJsonArray(body: string, operation: string): readonly unknown[] {
 }
 
 function requiredString(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 	key: string,
 	operation: string,
 ): string {
 	const value = record[key];
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw unparseable(operation, `the documented ${key} field is missing`);
 	}
 	return value;
 }
 
-function optionalString(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): string | undefined {
+function optionalString(record: JsonObject, key: string): string | undefined {
 	const value = record[key];
-	return typeof value === "string" && value.length > 0 ? value : undefined;
+	return isJsonString(value) && value.length > 0 ? value : undefined;
+}
+
+function desiredOf(request: ResolveRequest): JsonObject {
+	return parseJsonObject(JSON.stringify(request.desired));
 }
 
 /**
@@ -265,13 +266,13 @@ function optionalString(
  * does not match what was asked for.
  */
 function desiredString(
-	desired: Readonly<Record<string, unknown>>,
+	desired: JsonObject,
 	key: string,
 	productId: string,
 ): string | undefined {
 	const value = desired[key];
 	if (value === undefined) return undefined;
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`${productId} accepts ${key} only as a non-empty string; received ${describe(value)}`,
@@ -280,10 +281,13 @@ function desiredString(
 	return value;
 }
 
-function describe(value: unknown): string {
+function describe(value: JsonValue): string {
 	if (value === null) return "null";
-	if (Array.isArray(value)) return "an array";
-	return `a ${typeof value}`;
+	if (isJsonArray(value)) return "an array";
+	if (isJsonObject(value)) return "an object";
+	if (isJsonBoolean(value)) return "a boolean";
+	if (isJsonNumber(value)) return "a number";
+	return "a string";
 }
 
 /**
@@ -316,7 +320,7 @@ function deterministicName(
 function outcomeOf(
 	action: ResolverAction,
 	physicalId: string,
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: JsonObject,
 	diagnostics: readonly string[],
 ): ResolveOutcome {
 	return Object.freeze({
@@ -365,7 +369,7 @@ async function resolveCredential(
 			"custody could not resolve the referenced vercel credential; deposit a scoped Vercel API token under that locator and grant this deployer read access to it",
 		);
 	}
-	if (typeof value !== "string" || value.trim().length === 0) {
+	if (value.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			"custody returned no value for the referenced vercel credential; deposit a scoped Vercel API token under that locator before deploying",
@@ -384,8 +388,7 @@ function knownPhysicalId(request: ResolveRequest): string | undefined {
 		return request.ref.physicalId;
 	const observed = request.observed;
 	if (observed === undefined) return undefined;
-	const id = observed.id;
-	return typeof id === "string" && id.length > 0 ? id : undefined;
+	return optionalString(parseJsonObject(JSON.stringify(observed)), "id");
 }
 
 // --------------------------------------------------------------------------
@@ -411,7 +414,7 @@ const PROJECT_SETTINGS = Object.freeze([
 ] as const);
 
 function parseProjectView(body: string, operation: string): ProjectView {
-	const record = parseJsonObject(body, operation);
+	const record = readJsonObject(body, operation);
 	const accountId = optionalString(record, "accountId");
 	const framework = optionalString(record, "framework");
 	const rootDirectory = optionalString(record, "rootDirectory");
@@ -420,39 +423,61 @@ function parseProjectView(body: string, operation: string): ProjectView {
 	return {
 		id: requiredString(record, "id", operation),
 		name: requiredString(record, "name", operation),
-		...(accountId !== undefined ? { accountId } : {}),
-		...(framework !== undefined ? { framework } : {}),
-		...(rootDirectory !== undefined ? { rootDirectory } : {}),
-		...(buildCommand !== undefined ? { buildCommand } : {}),
-		...(outputDirectory !== undefined ? { outputDirectory } : {}),
+		...(accountId !== undefined ? { accountId } : undefined),
+		...(framework !== undefined ? { framework } : undefined),
+		...(rootDirectory !== undefined ? { rootDirectory } : undefined),
+		...(buildCommand !== undefined ? { buildCommand } : undefined),
+		...(outputDirectory !== undefined ? { outputDirectory } : undefined),
 	};
 }
 
-function projectOutputs(view: ProjectView): Readonly<Record<string, unknown>> {
+type ProjectOutputs = {
+	readonly id: string;
+	readonly name: string;
+	readonly accountId?: string;
+	readonly framework?: string;
+	readonly rootDirectory?: string;
+	readonly buildCommand?: string;
+	readonly outputDirectory?: string;
+};
+
+function projectOutputs(view: ProjectView): ProjectOutputs {
 	return {
 		id: view.id,
 		name: view.name,
-		...(view.accountId !== undefined ? { accountId: view.accountId } : {}),
-		...(view.framework !== undefined ? { framework: view.framework } : {}),
+		...(view.accountId !== undefined
+			? { accountId: view.accountId }
+			: undefined),
+		...(view.framework !== undefined
+			? { framework: view.framework }
+			: undefined),
 		...(view.rootDirectory !== undefined
 			? { rootDirectory: view.rootDirectory }
-			: {}),
+			: undefined),
 		...(view.buildCommand !== undefined
 			? { buildCommand: view.buildCommand }
-			: {}),
+			: undefined),
 		...(view.outputDirectory !== undefined
 			? { outputDirectory: view.outputDirectory }
-			: {}),
+			: undefined),
 	};
 }
 
+type ProjectSettings = {
+	readonly name?: string;
+	readonly buildCommand?: string;
+	readonly framework?: string;
+	readonly outputDirectory?: string;
+	readonly rootDirectory?: string;
+};
+
 type ProjectDesired = {
 	readonly name: string;
-	readonly settings: Readonly<Record<string, string>>;
+	readonly settings: ProjectSettings;
 };
 
 function parseProjectDesired(request: ResolveRequest): ProjectDesired {
-	const desired = request.desired;
+	const desired = desiredOf(request);
 	const named = desiredString(desired, "name", VERCEL_PROJECT_PRODUCT_ID);
 	const name = deterministicName(
 		named ?? request.ref.logicalId,
@@ -460,10 +485,10 @@ function parseProjectDesired(request: ResolveRequest): ProjectDesired {
 		100,
 		VERCEL_PROJECT_PRODUCT_ID,
 	);
-	const settings: Record<string, string> = {};
+	let settings: ProjectSettings = {};
 	for (const key of PROJECT_SETTINGS) {
 		const value = desiredString(desired, key, VERCEL_PROJECT_PRODUCT_ID);
-		if (value !== undefined) settings[key] = value;
+		if (value !== undefined) settings = { ...settings, [key]: value };
 	}
 	return { name, settings };
 }
@@ -494,12 +519,14 @@ async function getProjectView(
 function projectDelta(
 	desired: ProjectDesired,
 	observed: ProjectView,
-): Readonly<Record<string, string>> {
-	const delta: Record<string, string> = {};
-	if (desired.name !== observed.name) delta.name = desired.name;
+): ProjectSettings {
+	let delta: ProjectSettings = {};
+	if (desired.name !== observed.name) delta = { ...delta, name: desired.name };
 	for (const key of PROJECT_SETTINGS) {
 		const want = desired.settings[key];
-		if (want !== undefined && want !== observed[key]) delta[key] = want;
+		if (want !== undefined && want !== observed[key]) {
+			delta = { ...delta, [key]: want };
+		}
 	}
 	return delta;
 }
@@ -635,7 +662,7 @@ type EdgeConfigView = {
 };
 
 function parseEdgeConfigView(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 	operation: string,
 ): EdgeConfigView {
 	const ownerId = optionalString(record, "ownerId");
@@ -643,25 +670,30 @@ function parseEdgeConfigView(
 	return {
 		id: requiredString(record, "id", operation),
 		slug: requiredString(record, "slug", operation),
-		...(ownerId !== undefined ? { ownerId } : {}),
-		...(digest !== undefined ? { digest } : {}),
+		...(ownerId !== undefined ? { ownerId } : undefined),
+		...(digest !== undefined ? { digest } : undefined),
 	};
 }
 
-function edgeConfigOutputs(
-	view: EdgeConfigView,
-): Readonly<Record<string, unknown>> {
+type EdgeConfigOutputs = {
+	readonly id: string;
+	readonly slug: string;
+	readonly ownerId?: string;
+	readonly digest?: string;
+};
+
+function edgeConfigOutputs(view: EdgeConfigView): EdgeConfigOutputs {
 	return {
 		id: view.id,
 		slug: view.slug,
-		...(view.ownerId !== undefined ? { ownerId: view.ownerId } : {}),
-		...(view.digest !== undefined ? { digest: view.digest } : {}),
+		...(view.ownerId !== undefined ? { ownerId: view.ownerId } : undefined),
+		...(view.digest !== undefined ? { digest: view.digest } : undefined),
 	};
 }
 
 function parseEdgeConfigSlug(request: ResolveRequest): string {
 	const named = desiredString(
-		request.desired,
+		desiredOf(request),
 		"slug",
 		VERCEL_EDGE_CONFIG_PRODUCT_ID,
 	);
@@ -695,7 +727,7 @@ async function getEdgeConfigById(
 		throw providerRejected(operation, response.status, response.body);
 	}
 	return parseEdgeConfigView(
-		parseJsonObject(response.body, operation),
+		readJsonObject(response.body, operation),
 		operation,
 	);
 }
@@ -720,8 +752,8 @@ async function findEdgeConfigBySlug(
 	if (response.status !== 200) {
 		throw providerRejected(operation, response.status, response.body);
 	}
-	for (const entry of parseJsonArray(response.body, operation)) {
-		if (!isRecord(entry)) {
+	for (const entry of readJsonArray(response.body, operation)) {
+		if (!isJsonObject(entry)) {
 			throw unparseable(operation, "a list entry is not a JSON object");
 		}
 		if (entry.slug === slug) return parseEdgeConfigView(entry, operation);
@@ -779,7 +811,7 @@ function createEdgeConfigResolver(
 					throw providerRejected(operation, response.status, response.body);
 				}
 				const view = parseEdgeConfigView(
-					parseJsonObject(response.body, operation),
+					readJsonObject(response.body, operation),
 					operation,
 				);
 				return outcomeOf("create", view.id, edgeConfigOutputs(view), [
@@ -812,7 +844,7 @@ function createEdgeConfigResolver(
 				throw providerRejected(operation, response.status, response.body);
 			}
 			const view = parseEdgeConfigView(
-				parseJsonObject(response.body, operation),
+				readJsonObject(response.body, operation),
 				operation,
 			);
 			return outcomeOf("update", view.id, edgeConfigOutputs(view), [

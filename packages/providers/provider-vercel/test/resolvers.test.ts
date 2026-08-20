@@ -4,8 +4,8 @@ import type {
 	TransportRequest,
 	TransportResponse,
 } from "@hobo/core";
+import { ResolverError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
 import {
 	VERCEL_EDGE_CONFIG_PRODUCT_ID,
 	VERCEL_PROJECT_PRODUCT_ID,
@@ -15,6 +15,11 @@ import {
 	vercelResolverRegistry,
 	vercelResolvers,
 } from "../src/index.js";
+import {
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 
 const CREDENTIAL_REF = "hobo-token://vercel/deploy";
 
@@ -27,7 +32,9 @@ function options(
 	return {
 		resolveCredential:
 			overrides.resolveCredential ?? (async () => "vercel-api-token-value"),
-		...(overrides.teamId !== undefined ? { teamId: overrides.teamId } : {}),
+		...(overrides.teamId !== undefined
+			? { teamId: overrides.teamId }
+			: undefined),
 	};
 }
 
@@ -52,11 +59,14 @@ function projectRequest(
 			slot: "web",
 			productId: VERCEL_PROJECT_PRODUCT_ID,
 			logicalId: "storefront",
+			...overrides.ref,
 		},
-		desired: { framework: "nextjs" },
-		credentialRef: CREDENTIAL_REF,
-		...overrides,
-	} as ResolveRequest;
+		desired: { framework: "nextjs", ...overrides.desired },
+		credentialRef: overrides.credentialRef ?? CREDENTIAL_REF,
+		...(overrides.observed !== undefined
+			? { observed: overrides.observed }
+			: undefined),
+	};
 }
 
 function edgeConfigRequest(
@@ -67,16 +77,19 @@ function edgeConfigRequest(
 			slot: "kv",
 			productId: VERCEL_EDGE_CONFIG_PRODUCT_ID,
 			logicalId: "flags",
+			...overrides.ref,
 		},
-		desired: {},
-		credentialRef: CREDENTIAL_REF,
-		...overrides,
-	} as ResolveRequest;
+		desired: { ...overrides.desired },
+		credentialRef: overrides.credentialRef ?? CREDENTIAL_REF,
+		...(overrides.observed !== undefined
+			? { observed: overrides.observed }
+			: undefined),
+	};
 }
 
 type Handler = (request: TransportRequest) => TransportResponse;
 
-function json(status: number, body: unknown): TransportResponse {
+function json(status: number, body: JsonValue): TransportResponse {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -88,10 +101,12 @@ function notFound(): TransportResponse {
 	return json(404, { error: { code: "not_found", message: "not found" } });
 }
 
-function recorded(handler: Handler): {
+type RecordedTransport = {
 	readonly transport: HttpTransport;
 	readonly calls: TransportRequest[];
-} {
+};
+
+function recorded(handler: Handler): RecordedTransport {
 	const calls: TransportRequest[] = [];
 	return {
 		calls,
@@ -108,8 +123,8 @@ function always(response: TransportResponse): Handler {
 }
 
 /** In-memory stand-in for `/v9/projects`. Never touches the network. */
-function projectApi(seed: readonly Record<string, unknown>[] = []): Handler {
-	const store = new Map<string, Record<string, unknown>>();
+function projectApi(seed: readonly JsonObject[] = []): Handler {
+	const store = new Map<string, JsonObject>();
 	for (const entry of seed) store.set(String(entry.id), { ...entry });
 	let sequence = store.size;
 	return (request) => {
@@ -117,9 +132,7 @@ function projectApi(seed: readonly Record<string, unknown>[] = []): Handler {
 		const segments = url.pathname.split("/").filter((part) => part.length > 0);
 		const key = segments[2];
 		const body =
-			request.body === undefined
-				? {}
-				: (JSON.parse(request.body) as Record<string, unknown>);
+			request.body === undefined ? {} : parseJsonObject(request.body);
 		if (request.method === "POST" && key === undefined) {
 			sequence += 1;
 			const created = {
@@ -153,8 +166,8 @@ function projectApi(seed: readonly Record<string, unknown>[] = []): Handler {
 }
 
 /** In-memory stand-in for the documented Global Config family. */
-function edgeConfigApi(seed: readonly Record<string, unknown>[] = []): Handler {
-	const store = new Map<string, Record<string, unknown>>();
+function edgeConfigApi(seed: readonly JsonObject[] = []): Handler {
+	const store = new Map<string, JsonObject>();
 	for (const entry of seed) store.set(String(entry.id), { ...entry });
 	let sequence = store.size;
 	return (request) => {
@@ -162,9 +175,7 @@ function edgeConfigApi(seed: readonly Record<string, unknown>[] = []): Handler {
 		const segments = url.pathname.split("/").filter((part) => part.length > 0);
 		const key = segments[2];
 		const body =
-			request.body === undefined
-				? {}
-				: (JSON.parse(request.body) as Record<string, unknown>);
+			request.body === undefined ? {} : parseJsonObject(request.body);
 		if (key === undefined) {
 			if (request.method === "GET") return json(200, [...store.values()]);
 			sequence += 1;
@@ -192,20 +203,22 @@ function edgeConfigApi(seed: readonly Record<string, unknown>[] = []): Handler {
 	};
 }
 
-async function codeOf(run: () => Promise<unknown>): Promise<string> {
+async function codeOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as { code?: string }).code ?? "NO_CODE";
+		if (error instanceof ResolverError) return error.code;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }
 
-async function messageOf(run: () => Promise<unknown>): Promise<string> {
+async function messageOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as Error).message;
+		if (error instanceof Error) return error.message;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }

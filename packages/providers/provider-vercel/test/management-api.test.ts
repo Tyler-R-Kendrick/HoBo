@@ -59,10 +59,14 @@ function sponsoringCredential(): SponsoringCredential {
 
 type Recorded = { readonly request: TransportRequest };
 
-function scriptedTransport(responses: readonly TransportResponse[]): {
+type ScriptedTransport = {
 	readonly transport: VercelTransport;
 	readonly calls: Recorded[];
-} {
+};
+
+function scriptedTransport(
+	responses: readonly TransportResponse[],
+): ScriptedTransport {
 	const calls: Recorded[] = [];
 	let index = 0;
 	const inner: VercelTransport = {
@@ -135,23 +139,20 @@ describe("outbound requests are pinned to the official API", () => {
 				],
 			];
 		for (const [url, guard, fragment] of refusals) {
-			let thrown: unknown;
 			try {
 				assertAllowedEndpoint(url, DEFAULT_TRANSPORT_POLICY);
+				throw new Error(`${url} was admitted`);
 			} catch (cause) {
-				thrown = cause;
+				if (!(cause instanceof Error)) throw cause;
+				expect(isVercelProviderError(cause), `${url} was admitted`).toBe(true);
+				if (!isVercelProviderError(cause)) continue;
+				expect(cause.code).toBe("PROVIDER_CONTRACT_CHANGED");
+				// `detail.guard` carries core's own refusal code and is the only
+				// thing that distinguishes one refusal from another here: every
+				// guard failure surfaces as the same provider-level code.
+				expect(cause.detail).toMatchObject({ guard });
+				expect(cause.message).toMatch(fragment);
 			}
-			expect(isVercelProviderError(thrown), `${url} was admitted`).toBe(true);
-			const error = thrown as Error & {
-				code: string;
-				detail: Record<string, unknown>;
-			};
-			expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
-			// `detail.guard` carries core's own refusal code and is the only
-			// thing that distinguishes one refusal from another here: every
-			// guard failure surfaces as the same provider-level code.
-			expect(error.detail).toMatchObject({ guard });
-			expect(error.message).toMatch(fragment);
 		}
 	});
 
@@ -306,7 +307,7 @@ describe("transfer request and project reads", () => {
 						});
 			await call.then(
 				() => expect.unreachable(`expected ${scenario.status} to fail`),
-				(error: unknown) => {
+				(error: Error) => {
 					expect(isVercelProviderError(error)).toBe(true);
 					if (isVercelProviderError(error)) {
 						expect(error.code).toBe(scenario.code);

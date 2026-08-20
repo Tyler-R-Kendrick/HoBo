@@ -1,3 +1,5 @@
+import type { JsonObject, JsonValue } from "./json.js";
+
 // The production ACP protocol-connector contract (HOBO-721). HoBo owns NO
 // agent SDK by design (sdk-contracts.md §Protocol connectors,
 // package-namespaces.md): external agent runtimes integrate through
@@ -17,7 +19,7 @@ export const ACP_PROTOCOL_VERSION = 1;
 
 export interface AcpInitializeResult {
 	readonly protocolVersion: number;
-	readonly agentCapabilities?: Record<string, unknown>;
+	readonly agentCapabilities?: JsonObject;
 }
 
 export interface AcpPromptContent {
@@ -38,7 +40,7 @@ export interface AcpAgentConnection {
 	initialize(params: { protocolVersion: number }): Promise<AcpInitializeResult>;
 	newSession(params: {
 		cwd: string;
-		mcpServers: unknown[];
+		mcpServers: JsonValue[];
 	}): Promise<{ sessionId: string }>;
 	prompt(params: {
 		sessionId: string;
@@ -61,7 +63,7 @@ export interface AcpToolCallRef {
 	readonly title?: string;
 	// The HoBo action the tool call maps to (e.g. "deployment:apply",
 	// "logs:tail") — what the policy gate classifies.
-	readonly rawInput?: Record<string, unknown>;
+	readonly rawInput?: JsonObject;
 }
 
 export interface AcpPermissionRequest {
@@ -76,7 +78,7 @@ export type AcpPermissionOutcome =
 
 export interface AcpSessionNotification {
 	readonly sessionId: string;
-	readonly update: Record<string, unknown> & { readonly sessionUpdate: string };
+	readonly update: JsonObject & { readonly sessionUpdate: string };
 }
 
 // The governed client surface the session engine implements and hands to the

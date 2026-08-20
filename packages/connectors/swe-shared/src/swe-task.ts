@@ -1,4 +1,4 @@
-import { create, type MessageInitShape } from "@bufbuild/protobuf";
+import { create } from "@bufbuild/protobuf";
 import {
 	type AcpAgentFactory,
 	type AcpSessionFact,
@@ -12,6 +12,7 @@ import {
 
 import {
 	type SandboxAccessReport,
+	type SweTask,
 	SandboxAccessReportSchema,
 	type SweTaskReport,
 	SweTaskReportSchema,
@@ -58,7 +59,7 @@ export interface SweTaskRunInput {
 	/** Vendor connector id, e.g. `swe-claude`. */
 	readonly connector: string;
 	/** Parsed at the boundary via `create(SweTaskSchema, …)`. */
-	readonly task: MessageInitShape<typeof SweTaskSchema>;
+	readonly task: SweTask;
 	readonly agent: AcpAgentFactory;
 	readonly principal: AgentPrincipal;
 	readonly policy?: AgentGuardrailPolicy;
@@ -81,14 +82,24 @@ export async function runSweTask(
 ): Promise<SweTaskRunResult> {
 	const task = create(SweTaskSchema, input.task);
 	const policy = input.policy ?? sweTaskPolicy(input.principal.id);
-	const session = await openGovernedSession({
-		connector: input.connector,
-		agent: input.agent,
-		principal: input.principal,
-		policy,
-		cwd: task.workspace,
-		...(input.onFact ? { onFact: input.onFact } : {}),
-	});
+	const session = await openGovernedSession(
+		input.onFact === undefined
+			? {
+					connector: input.connector,
+					agent: input.agent,
+					principal: input.principal,
+					policy,
+					cwd: task.workspace,
+				}
+			: {
+					connector: input.connector,
+					agent: input.agent,
+					principal: input.principal,
+					policy,
+					cwd: task.workspace,
+					onFact: input.onFact,
+				},
+	);
 	const result = await session.prompt(task.instruction);
 	return {
 		report: extractSweTaskReport(task.taskId, result.facts),

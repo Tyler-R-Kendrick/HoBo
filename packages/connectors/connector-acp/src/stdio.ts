@@ -4,7 +4,9 @@ import { Readable, Writable } from "node:stream";
 import { type AgentSandboxPosture, scrubEnvironment } from "./sandbox.js";
 import type {
 	AcpAgentConnection,
+	AcpPermissionRequest,
 	AcpPromptContent,
+	AcpSessionNotification,
 	GovernedAcpClient,
 } from "./types.js";
 
@@ -37,24 +39,15 @@ export class AcpAgentSpawnError extends Error {
 	}
 }
 
-interface AcpSdkModule {
-	ClientSideConnection: new (
-		toClient: (agent: unknown) => Record<string, unknown>,
-		stream: unknown,
-	) => {
-		initialize(params: unknown): Promise<{ protocolVersion: number }>;
-		newSession(params: unknown): Promise<{ sessionId: string }>;
-		prompt(params: unknown): Promise<{ stopReason: string }>;
-		cancel(params: unknown): Promise<void>;
-	};
-	ndJsonStream(input: unknown, output: unknown): unknown;
-}
+type AcpSdk = typeof import("@agentclientprotocol/sdk");
+type NdJsonPair = {
+	input: Parameters<AcpSdk["ndJsonStream"]>[0];
+	output: Parameters<AcpSdk["ndJsonStream"]>[1];
+};
 
-async function loadAcpSdk(): Promise<AcpSdkModule> {
+async function loadAcpSdk() {
 	try {
-		return (await import(
-			"@agentclientprotocol/sdk"
-		)) as unknown as AcpSdkModule;
+		return await import("@agentclientprotocol/sdk");
 	} catch (error) {
 		throw new AcpSdkMissingError(
 			error instanceof Error ? error.message : String(error),
@@ -98,20 +91,19 @@ export async function connectAcpAgentOverStdio(
 		// spawn error covers the synchronous cases below.
 	});
 
-	const stream = sdk.ndJsonStream(
-		Writable.toWeb(child.stdin),
-		Readable.toWeb(child.stdout),
-	);
+	const rawPair = {
+		input: Writable.toWeb(child.stdin),
+		output: Readable.toWeb(child.stdout),
+	};
+	// SAFETY: Node web streams satisfy the ACP SDK ndJsonStream pair.
+	const pair = rawPair as NdJsonPair;
+	const stream = sdk.ndJsonStream(pair.input, pair.output);
 	const connection = new sdk.ClientSideConnection(
-		() => ({
-			requestPermission: (params: unknown) =>
-				options.client.requestPermission(
-					params as Parameters<GovernedAcpClient["requestPermission"]>[0],
-				),
-			sessionUpdate: (params: unknown) =>
-				options.client.sessionUpdate(
-					params as Parameters<GovernedAcpClient["sessionUpdate"]>[0],
-				),
+		(_agent) => ({
+			requestPermission: (params: AcpPermissionRequest) =>
+				options.client.requestPermission(params),
+			sessionUpdate: (params: AcpSessionNotification) =>
+				options.client.sessionUpdate(params),
 		}),
 		stream,
 	);

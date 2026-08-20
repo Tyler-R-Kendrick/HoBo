@@ -1,3 +1,10 @@
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
+
 // The connector's policy gate, promoted from the s3-07-agent-guardrails
 // draft proof: every agent tool-permission request is classified into an
 // action class and decided against the parsed guardrail policy BEFORE any
@@ -22,12 +29,16 @@ export type ActionClass = (typeof ACTION_CLASSES)[number];
 
 export type ActionClassEffect = "auto-allow" | "require-approval" | "deny";
 
+export type ActionClassMap = {
+	[K in ActionClass]: ActionClassEffect;
+};
+
 export type PolicyEffect = "allow" | "require-approval" | "deny";
 
 export interface AgentGuardrailPolicy {
 	readonly schemaVersion: typeof AGENT_GUARDRAILS_SCHEMA;
 	readonly agentId: string;
-	readonly actionClasses: Record<ActionClass, ActionClassEffect>;
+	readonly actionClasses: ActionClassMap;
 	readonly allowedApprovers: readonly string[];
 }
 
@@ -78,21 +89,26 @@ export function classifyActionClass(action: string): ActionClass {
  * defaults to `require-approval`, never to allow.
  */
 export function parseAgentGuardrailPolicy(
-	input: unknown,
+	input: JsonValue,
 ): AgentGuardrailPolicy {
-	if (!input || typeof input !== "object" || Array.isArray(input)) {
+	if (!isJsonObject(input)) {
 		throw new Error("policy must be an object");
 	}
-	const source = input as {
-		agentId?: unknown;
-		actionClasses?: unknown;
-		allowedApprovers?: unknown;
-	};
-	if (typeof source.agentId !== "string" || source.agentId.length === 0) {
+	const source = input;
+	if (!isJsonString(source.agentId) || source.agentId.length === 0) {
 		throw new Error("policy.agentId must be a non-empty string");
 	}
-	const rawClasses = (source.actionClasses ?? {}) as Record<string, unknown>;
-	const actionClasses = {} as Record<ActionClass, ActionClassEffect>;
+	const rawClasses = isJsonObject(source.actionClasses)
+		? source.actionClasses
+		: {};
+	const actionClasses: ActionClassMap = {
+		read: "require-approval",
+		write: "require-approval",
+		deploy: "require-approval",
+		destroy: "require-approval",
+		token: "require-approval",
+		admin: "require-approval",
+	};
 	for (const actionClass of ACTION_CLASSES) {
 		const effect = rawClasses[actionClass] ?? "require-approval";
 		if (
@@ -106,10 +122,8 @@ export function parseAgentGuardrailPolicy(
 		}
 		actionClasses[actionClass] = effect;
 	}
-	const approvers = Array.isArray(source.allowedApprovers)
-		? source.allowedApprovers.filter(
-				(value): value is string => typeof value === "string",
-			)
+	const approvers = isJsonArray(source.allowedApprovers)
+		? source.allowedApprovers.filter(isJsonString)
 		: [];
 
 	return Object.freeze({

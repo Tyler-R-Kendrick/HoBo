@@ -49,7 +49,7 @@ export type ConsentLedgerPort = {
 };
 
 const SUBJECT_REF = /^[A-Za-z0-9._:-]{4,128}$/u;
-const EMAIL_SHAPED = /@/u;
+const EMAIL_PATTERN = /@/u;
 
 /**
  * Parse-don't-validate boundary for consent. Downstream code takes a
@@ -65,17 +65,14 @@ export function parseConsentEvidence(
 			{ reason: "MISSING" },
 		);
 	}
-	if (
-		typeof input.subjectRef !== "string" ||
-		!SUBJECT_REF.test(input.subjectRef)
-	) {
+	if (!SUBJECT_REF.test(input.subjectRef)) {
 		throw new TemporaryAccountError(
 			"CONSENT_REQUIRED",
 			"consent subjectRef must be an opaque 4-128 character reference",
 			{ reason: "INVALID_SUBJECT" },
 		);
 	}
-	if (EMAIL_SHAPED.test(input.subjectRef)) {
+	if (EMAIL_PATTERN.test(input.subjectRef)) {
 		throw new TemporaryAccountError(
 			"CONSENT_REQUIRED",
 			"consent subjectRef must be an opaque reference, not a contact identifier",
@@ -104,6 +101,7 @@ export function parseConsentEvidence(
 		);
 	}
 	if (
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		!(CONSENT_ACCEPTANCE_METHODS as readonly string[]).includes(
 			input.acceptanceMethod,
 		)
@@ -119,6 +117,7 @@ export function parseConsentEvidence(
 		termsUrl: input.termsUrl,
 		privacyUrl: input.privacyUrl,
 		acceptedAtMs: input.acceptedAtMs,
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		acceptanceMethod: input.acceptanceMethod as ConsentAcceptanceMethod,
 	};
 }

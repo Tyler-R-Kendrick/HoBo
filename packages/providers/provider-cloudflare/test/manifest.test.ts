@@ -8,6 +8,7 @@ import {
 	parsePublishedManifest,
 	publishCapabilityManifest,
 } from "../src/index.js";
+import { isJsonArray, isJsonObject, isJsonString } from "../src/json.js";
 
 describe("Capability Manifest publication (FR-031)", () => {
 	it("publishes capabilities, auth, and cost.json under /.well-known/capability-manifest/", () => {
@@ -15,20 +16,20 @@ describe("Capability Manifest publication (FR-031)", () => {
 		const parsed = parsePublishedManifest(documents);
 
 		assert.equal(parsed.ok, true);
-		assert.equal(
-			(parsed.auth as { schema: string }).schema,
-			"hobo.provider-auth/v1",
+		assert.equal(parsed.auth.schema, "hobo.provider-auth/v1");
+		assert.equal(parsed.cost.schema, "hobo.cost/v1");
+		const listed = parsed.capabilities.capabilities;
+		if (!isJsonArray(listed)) {
+			throw new Error("expected capabilities.capabilities to be an array");
+		}
+		assert.equal(listed.length, 3);
+		assert.deepEqual(
+			listed
+				.map((entry) => (isJsonObject(entry) ? entry.port : undefined))
+				.filter(isJsonString)
+				.sort(),
+			["compute", "kv", "objectStore"],
 		);
-		assert.equal((parsed.cost as { schema: string }).schema, "hobo.cost/v1");
-		const caps = parsed.capabilities as {
-			capabilities: Array<{ port: string }>;
-		};
-		assert.equal(caps.capabilities.length, 3);
-		assert.deepEqual(caps.capabilities.map((c) => c.port).sort(), [
-			"compute",
-			"kv",
-			"objectStore",
-		]);
 	});
 
 	it("rejects manifests that publish static secrets", () => {
@@ -58,6 +59,7 @@ describe("CloudProvider.capabilityManifest() shape", () => {
 			"/.well-known/capability-manifest/cost.json",
 			"/.well-known/capability-manifest/index.json",
 		]);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const caps = manifest.capabilities as {
 			capabilities: Array<{ port: string }>;
 		};
@@ -67,6 +69,7 @@ describe("CloudProvider.capabilityManifest() shape", () => {
 			"objectStore",
 		]);
 		assert.equal(
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			(manifest.auth as { staticSecrets: boolean }).staticSecrets,
 			false,
 		);

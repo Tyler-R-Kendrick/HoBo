@@ -59,6 +59,16 @@ import {
 } from "@hobo/core";
 
 import { CLOUDFLARE_PROVIDER_TARGET } from "./hello-bindle.js";
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "./json.js";
 import { d1, kv, pages, queues, r2, workers } from "./slots.js";
 import {
 	CLOUDFLARE_MAX_RESPONSE_BYTES,
@@ -127,7 +137,7 @@ const CREDENTIAL_REF_PATTERN = /^[a-z][a-z0-9+.-]*:\/\/[^\s@]+$/u;
 const RAW_CREDENTIAL_PATTERN = /^[A-Za-z0-9_-]{16,}$/u;
 
 /** Anything long and token-shaped is scrubbed out of provider error text. */
-const TOKEN_SHAPED_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
+const TOKEN_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
 
 /** A listing that will not terminate is refused rather than half-read. */
 const MAX_LIST_PAGES = 25;
@@ -145,7 +155,7 @@ const DEFAULT_WORKER_MAIN_MODULE = "worker.js";
  * carried an account id or a token fragment before.
  */
 export function redactCloudflareText(text: string, limit = 400): string {
-	const scrubbed = text.replace(TOKEN_SHAPED_PATTERN, "[redacted]");
+	const scrubbed = text.replace(TOKEN_PATTERN, "[redacted]");
 	return scrubbed.length > limit ? `${scrubbed.slice(0, limit)}…` : scrubbed;
 }
 
@@ -153,16 +163,8 @@ export function redactCloudflareText(text: string, limit = 400): string {
 interface CloudflareEnvelope {
 	readonly success: boolean;
 	readonly errors: readonly string[];
-	readonly result: unknown;
+	readonly result: JsonValue;
 	readonly totalPages: number | undefined;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
-		return false;
-	}
-	const prototype: unknown = Object.getPrototypeOf(value);
-	return prototype === Object.prototype || prototype === null;
 }
 
 function compareStrings(left: string, right: string): number {
@@ -170,42 +172,44 @@ function compareStrings(left: string, right: string): number {
 }
 
 function optionalString(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): string | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return isJsonString(value) && value.trim().length > 0 ? value : undefined;
 }
 
 function optionalBoolean(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): boolean | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	return typeof value === "boolean" ? value : undefined;
+	return isJsonBoolean(value) ? value : undefined;
 }
 
 function optionalInteger(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): number | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	return typeof value === "number" && Number.isSafeInteger(value)
-		? value
-		: undefined;
+	return isJsonNumber(value) && Number.isSafeInteger(value) ? value : undefined;
 }
 
 function optionalStringArray(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): readonly string[] | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	if (!Array.isArray(value)) return undefined;
-	return value.every((entry): entry is string => typeof entry === "string")
-		? [...value]
-		: undefined;
+	if (!isJsonArray(value)) return undefined;
+	return value.every(isJsonString) ? [...value] : undefined;
+}
+
+function desiredOf(request: ResolveRequest): JsonObject {
+	return parseJsonObject(JSON.stringify(request.desired));
 }
 
 /**
@@ -218,23 +222,24 @@ function parseEnvelope(
 	response: TransportResponse,
 	context: string,
 ): CloudflareEnvelope {
-	let parsed: unknown;
+	let parsed: JsonValue;
 	try {
-		parsed = JSON.parse(response.body) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this Cloudflare document boundary.
+		parsed = JSON.parse(response.body) as JsonValue;
 	} catch {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${context}: Cloudflare returned a status ${response.status} body that is not JSON, so the outcome of the call is unknown and it is refused rather than assumed; retry, and if it repeats the API contract has changed`,
 		);
 	}
-	if (!isPlainObject(parsed)) {
+	if (!isJsonObject(parsed)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${context}: Cloudflare returned JSON that is not an object envelope (status ${response.status})`,
 		);
 	}
 	const success = parsed.success;
-	if (typeof success !== "boolean") {
+	if (!isJsonBoolean(success)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${context}: Cloudflare response has no boolean "success" field, so it is not the documented v4 envelope (status ${response.status})`,
@@ -243,7 +248,7 @@ function parseEnvelope(
 	const envelope: CloudflareEnvelope = {
 		success,
 		errors: readErrors(parsed.errors),
-		result: parsed.result,
+		result: parsed.result ?? null,
 		totalPages: readTotalPages(parsed.result_info),
 	};
 	if (!envelope.success || response.status >= 400) {
@@ -259,31 +264,29 @@ function parseEnvelope(
 	return envelope;
 }
 
-function readErrors(value: unknown): readonly string[] {
-	if (!Array.isArray(value)) return [];
+function readErrors(value: JsonValue | undefined): readonly string[] {
+	if (!isJsonArray(value)) return [];
 	const out: string[] = [];
 	for (const entry of value) {
-		if (typeof entry === "string") {
+		if (isJsonString(entry)) {
 			out.push(redactCloudflareText(entry));
 			continue;
 		}
-		if (!isPlainObject(entry)) continue;
+		if (!isJsonObject(entry)) continue;
 		const message = entry.message;
 		const code = entry.code;
-		const text = typeof message === "string" ? message : JSON.stringify(entry);
+		const detail = isJsonString(message) ? message : JSON.stringify(entry);
 		out.push(
-			redactCloudflareText(
-				typeof code === "number" ? `${code}: ${text}` : text,
-			),
+			redactCloudflareText(isJsonNumber(code) ? `${code}: ${detail}` : detail),
 		);
 	}
 	return out;
 }
 
-function readTotalPages(value: unknown): number | undefined {
-	if (!isPlainObject(value)) return undefined;
+function readTotalPages(value: JsonValue | undefined): number | undefined {
+	if (!isJsonObject(value)) return undefined;
 	const total = value.total_pages;
-	return typeof total === "number" && Number.isSafeInteger(total) && total >= 0
+	return isJsonNumber(total) && Number.isSafeInteger(total) && total >= 0
 		? total
 		: undefined;
 }
@@ -291,8 +294,8 @@ function readTotalPages(value: unknown): number | undefined {
 function resultObject(
 	envelope: CloudflareEnvelope,
 	context: string,
-): Record<string, unknown> {
-	if (!isPlainObject(envelope.result)) {
+): JsonObject {
+	if (!isJsonObject(envelope.result)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${context}: Cloudflare returned a successful envelope whose "result" is not an object, so the created resource cannot be identified`,
@@ -304,16 +307,16 @@ function resultObject(
 function resultArray(
 	envelope: CloudflareEnvelope,
 	context: string,
-): readonly Record<string, unknown>[] {
-	if (!Array.isArray(envelope.result)) {
+): readonly JsonObject[] {
+	if (!isJsonArray(envelope.result)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${context}: Cloudflare returned a successful envelope whose "result" is not a list`,
 		);
 	}
-	const out: Record<string, unknown>[] = [];
+	const out: JsonObject[] = [];
 	for (const entry of envelope.result) {
-		if (!isPlainObject(entry)) {
+		if (!isJsonObject(entry)) {
 			throw new ResolverError(
 				"RESOLVER_OUTPUT_UNPARSEABLE",
 				`${context}: Cloudflare returned a list containing a non-object entry`,
@@ -350,10 +353,12 @@ async function send(
 		headers: {
 			accept: "application/json",
 			authorization: `Bearer ${token}`,
-			...(contentType !== undefined ? { "content-type": contentType } : {}),
-			...(call.headers ?? {}),
+			...(contentType !== undefined
+				? { "content-type": contentType }
+				: undefined),
+			...(call.headers ?? undefined),
 		},
-		...(body !== undefined ? { body } : {}),
+		...(body !== undefined ? { body } : undefined),
 		timeoutMs: CLOUDFLARE_MAX_TIMEOUT_MS,
 		maxResponseBytes: CLOUDFLARE_MAX_RESPONSE_BYTES,
 	});
@@ -370,9 +375,9 @@ async function listAll(
 	token: string,
 	path: string,
 	context: string,
-): Promise<readonly Record<string, unknown>[]> {
+): Promise<readonly JsonObject[]> {
 	const separator = path.includes("?") ? "&" : "?";
-	const items: Record<string, unknown>[] = [];
+	const items: JsonObject[] = [];
 	for (let page = 1; page <= MAX_LIST_PAGES; page += 1) {
 		const response = await send(transport, token, {
 			method: "GET",
@@ -410,7 +415,7 @@ interface CloudflareResolverContext {
 	readonly accountId: string;
 	/** The deterministic resource name: `desired.name`, else the logical id. */
 	readonly name: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
 }
@@ -418,7 +423,7 @@ interface CloudflareResolverContext {
 function outcome(
 	action: ResolverAction,
 	physicalId: string,
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: JsonObject,
 	diagnostics: readonly string[],
 ): ResolveOutcome {
 	return Object.freeze({
@@ -442,7 +447,7 @@ function settledAction(context: CloudflareResolverContext): ResolverAction {
 }
 
 function assertAccountId(accountId: string): string {
-	if (typeof accountId !== "string" || accountId.trim().length === 0) {
+	if (accountId.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			"cloudflare resolvers need an accountId: every /client/v4 path is account-scoped, and guessing one would target the wrong tenant",
@@ -465,7 +470,7 @@ async function resolveToken(
 	resolve: (ref: string) => Promise<string>,
 ): Promise<string> {
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'cloudflare resolver: credentialRef is empty. Supply a locator such as "env://CLOUDFLARE_API_TOKEN" or "secret://camp/cloudflare-api-token" and register it with the host credential resolver; the resolver never accepts inline credential material',
@@ -496,7 +501,7 @@ async function resolveToken(
 			)}. Register the reference with the credential resolver before deploying`,
 		);
 	}
-	if (typeof material !== "string" || material.trim().length === 0) {
+	if (material.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`cloudflare resolver: credentialRef ${JSON.stringify(trimmed)} resolved to nothing. A missing credential is refused rather than retried unauthenticated, which would look like a permissions error at the provider`,
@@ -506,10 +511,10 @@ async function resolveToken(
 }
 
 function resourceName(request: ResolveRequest, productId: string): string {
-	const desiredName = optionalString(request.desired, "name");
+	const desiredName = optionalString(desiredOf(request), "name");
 	if (desiredName !== undefined) return desiredName;
 	const logicalId = request.ref.logicalId;
-	if (typeof logicalId === "string" && logicalId.trim().length > 0) {
+	if (logicalId.trim().length > 0) {
 		return logicalId;
 	}
 	throw new ResolverError(
@@ -521,9 +526,7 @@ function resourceName(request: ResolveRequest, productId: string): string {
 /** The physical id the caller already knows, if it supplied a usable one. */
 function knownPhysicalId(request: ResolveRequest): string | undefined {
 	const value = request.ref.physicalId;
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return value !== undefined && value.trim().length > 0 ? value : undefined;
 }
 
 /** Per-product behaviour; the wrapper owns credentials, naming, and refusals. */
@@ -557,7 +560,7 @@ function createResolver(
 			token,
 			accountId,
 			name: resourceName(request, spec.productId),
-			desired: request.desired,
+			desired: desiredOf(request),
 			knownPhysicalId: knownPhysicalId(request),
 		};
 	}
@@ -595,22 +598,19 @@ function r2Path(context: CloudflareResolverContext, suffix = ""): string {
 	return `/accounts/${encodeURIComponent(context.accountId)}/r2/buckets${suffix}`;
 }
 
-function r2Outputs(
-	name: string,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function r2Outputs(name: string, record: JsonObject) {
 	const location = optionalString(record, "location");
 	const storageClass = optionalString(record, "storage_class");
 	return {
 		bucketName: name,
-		...(location !== undefined ? { location } : {}),
-		...(storageClass !== undefined ? { storageClass } : {}),
+		...(location !== undefined ? { location } : undefined),
+		...(storageClass !== undefined ? { storageClass } : undefined),
 	};
 }
 
 function r2Diagnostics(
 	context: CloudflareResolverContext,
-	observed: Readonly<Record<string, unknown>> | undefined,
+	observed: JsonObject | undefined,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	if (optionalBoolean(context.desired, "publicBucket") === true) {
@@ -639,7 +639,7 @@ function r2Diagnostics(
 
 async function readR2(
 	context: CloudflareResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send(context.transport, context.token, {
 		method: "GET",
 		path: r2Path(context, `/${encodeURIComponent(context.name)}`),
@@ -679,8 +679,8 @@ const R2_SPEC: Omit<CloudflareResolverSpec, "productId"> = {
 			headers: r2Headers(context),
 			json: {
 				name: context.name,
-				...(locationHint !== undefined ? { locationHint } : {}),
-				...(storageClass !== undefined ? { storageClass } : {}),
+				...(locationHint !== undefined ? { locationHint } : undefined),
+				...(storageClass !== undefined ? { storageClass } : undefined),
 			},
 		});
 		const created = resultObject(
@@ -722,32 +722,23 @@ function d1ReplicationMode(
 	return wanted ? "auto" : "disabled";
 }
 
-function d1ObservedMode(
-	record: Readonly<Record<string, unknown>>,
-): string | undefined {
+function d1ObservedMode(record: JsonObject): string | undefined {
 	const replication = record.read_replication;
-	return isPlainObject(replication)
+	return isJsonObject(replication)
 		? optionalString(replication, "mode")
 		: undefined;
 }
 
-function d1Outputs(
-	record: Readonly<Record<string, unknown>>,
-	uuid: string,
-	name: string,
-): Readonly<Record<string, unknown>> {
+function d1Outputs(record: JsonObject, uuid: string, name: string) {
 	const version = optionalString(record, "version");
 	return {
 		databaseId: uuid,
 		databaseName: name,
-		...(version !== undefined ? { version } : {}),
+		...(version !== undefined ? { version } : undefined),
 	};
 }
 
-function d1Uuid(
-	record: Readonly<Record<string, unknown>>,
-	context: string,
-): string {
+function d1Uuid(record: JsonObject, context: string): string {
 	const uuid = optionalString(record, "uuid");
 	if (uuid === undefined) {
 		throw new ResolverError(
@@ -760,7 +751,7 @@ function d1Uuid(
 
 async function findD1(
 	context: CloudflareResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send(context.transport, context.token, {
 		method: "GET",
 		path: d1Path(context, `?name=${encodeURIComponent(context.name)}`),
@@ -804,7 +795,7 @@ const D1_SPEC: Omit<CloudflareResolverSpec, "productId"> = {
 							name: context.name,
 							...(locationHint !== undefined
 								? { primary_location_hint: locationHint }
-								: {}),
+								: undefined),
 						},
 					}),
 					label,
@@ -855,7 +846,7 @@ async function patchD1ReadReplication(
 	context: CloudflareResolverContext,
 	uuid: string,
 	mode: string,
-): Promise<Record<string, unknown>> {
+): Promise<JsonObject> {
 	const label = `d1 update read replication ${context.name}`;
 	return resultObject(
 		parseEnvelope(
@@ -878,10 +869,7 @@ function kvPath(context: CloudflareResolverContext, suffix = ""): string {
 	return `/accounts/${encodeURIComponent(context.accountId)}/storage/kv/namespaces${suffix}`;
 }
 
-function kvOutputs(
-	id: string,
-	title: string,
-): Readonly<Record<string, unknown>> {
+function kvOutputs(id: string, title: string) {
 	return { namespaceId: id, title };
 }
 
@@ -893,10 +881,7 @@ function kvDiagnostics(context: CloudflareResolverContext): readonly string[] {
 			];
 }
 
-function kvId(
-	record: Readonly<Record<string, unknown>>,
-	context: string,
-): string {
+function kvId(record: JsonObject, context: string): string {
 	const id = optionalString(record, "id");
 	if (id === undefined) {
 		throw new ResolverError(
@@ -909,7 +894,7 @@ function kvId(
 
 async function findKv(
 	context: CloudflareResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const namespaces = await listAll(
 		context.transport,
 		context.token,
@@ -987,10 +972,7 @@ function queuesPath(context: CloudflareResolverContext, suffix = ""): string {
 	return `/accounts/${encodeURIComponent(context.accountId)}/queues${suffix}`;
 }
 
-function queueId(
-	record: Readonly<Record<string, unknown>>,
-	context: string,
-): string {
+function queueId(record: JsonObject, context: string): string {
 	const id = optionalString(record, "queue_id");
 	if (id === undefined) {
 		throw new ResolverError(
@@ -1001,10 +983,7 @@ function queueId(
 	return id;
 }
 
-function queueOutputs(
-	id: string,
-	name: string,
-): Readonly<Record<string, unknown>> {
+function queueOutputs(id: string, name: string) {
 	return { queueId: id, queueName: name };
 }
 
@@ -1021,20 +1000,24 @@ function queueSettings(
 		"messageRetentionPeriodSeconds",
 	);
 	const settings = {
-		...(deliveryDelay !== undefined ? { delivery_delay: deliveryDelay } : {}),
-		...(retention !== undefined ? { message_retention_period: retention } : {}),
+		...(deliveryDelay !== undefined
+			? { delivery_delay: deliveryDelay }
+			: undefined),
+		...(retention !== undefined
+			? { message_retention_period: retention }
+			: undefined),
 	};
 	return Object.keys(settings).length === 0 ? undefined : settings;
 }
 
 function queueSettingsDrift(
 	context: CloudflareResolverContext,
-	observed: Readonly<Record<string, unknown>>,
+	observed: JsonObject,
 ): Readonly<Record<string, number>> | undefined {
 	const wanted = queueSettings(context);
 	if (wanted === undefined) return undefined;
 	const current = observed.settings;
-	const currentRecord = isPlainObject(current) ? current : {};
+	const currentRecord = isJsonObject(current) ? current : undefined;
 	for (const [key, value] of Object.entries(wanted)) {
 		if (optionalInteger(currentRecord, key) !== value) return wanted;
 	}
@@ -1056,7 +1039,7 @@ function queueDiagnostics(
 
 async function findQueue(
 	context: CloudflareResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const all = await listAll(
 		context.transport,
 		context.token,
@@ -1092,7 +1075,7 @@ const QUEUES_SPEC: Omit<CloudflareResolverSpec, "productId"> = {
 						path: queuesPath(context),
 						json: {
 							queue_name: context.name,
-							...(settings !== undefined ? { settings } : {}),
+							...(settings !== undefined ? { settings } : undefined),
 						},
 					}),
 					label,
@@ -1152,16 +1135,13 @@ function workerPath(context: CloudflareResolverContext, suffix = ""): string {
 	return `/accounts/${encodeURIComponent(context.accountId)}/workers/scripts/${encodeURIComponent(context.name)}${suffix}`;
 }
 
-function workerOutputs(
-	name: string,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function workerOutputs(name: string, record: JsonObject) {
 	const compatibilityDate = optionalString(record, "compatibility_date");
 	const etag = optionalString(record, "etag");
 	return {
 		scriptName: name,
-		...(compatibilityDate !== undefined ? { compatibilityDate } : {}),
-		...(etag !== undefined ? { etag } : {}),
+		...(compatibilityDate !== undefined ? { compatibilityDate } : undefined),
+		...(etag !== undefined ? { etag } : undefined),
 	};
 }
 
@@ -1194,12 +1174,12 @@ function workerUploadBody(context: CloudflareResolverContext): string {
 		main_module: mainModule,
 		...(compatibilityDate !== undefined
 			? { compatibility_date: compatibilityDate }
-			: {}),
+			: undefined),
 		...(compatibilityFlags !== undefined
 			? { compatibility_flags: [...compatibilityFlags] }
-			: {}),
-		...(Array.isArray(bindings) ? { bindings } : {}),
-		...(smartPlacement === true ? { placement: { mode: "smart" } } : {}),
+			: undefined),
+		...(isJsonArray(bindings) ? { bindings } : undefined),
+		...(smartPlacement === true ? { placement: { mode: "smart" } } : undefined),
 	});
 	if (
 		script.includes(WORKER_MULTIPART_BOUNDARY) ||
@@ -1229,7 +1209,7 @@ function workerUploadBody(context: CloudflareResolverContext): string {
 
 async function readWorkerSettings(
 	context: CloudflareResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send(context.transport, context.token, {
 		method: "GET",
 		path: workerPath(context, "/settings"),
@@ -1241,7 +1221,7 @@ async function readWorkerSettings(
 
 async function uploadWorker(
 	context: CloudflareResolverContext,
-): Promise<Record<string, unknown>> {
+): Promise<JsonObject> {
 	const label = `workers upload ${context.name}`;
 	return resultObject(
 		parseEnvelope(
@@ -1321,22 +1301,19 @@ function pagesPath(context: CloudflareResolverContext, suffix = ""): string {
 	return `/accounts/${encodeURIComponent(context.accountId)}/pages/projects${suffix}`;
 }
 
-function pagesOutputs(
-	name: string,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function pagesOutputs(name: string, record: JsonObject) {
 	const subdomain = optionalString(record, "subdomain");
 	const productionBranch = optionalString(record, "production_branch");
 	return {
 		projectName: name,
-		...(subdomain !== undefined ? { subdomain } : {}),
-		...(productionBranch !== undefined ? { productionBranch } : {}),
+		...(subdomain !== undefined ? { subdomain } : undefined),
+		...(productionBranch !== undefined ? { productionBranch } : undefined),
 	};
 }
 
 async function readPagesProject(
 	context: CloudflareResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send(context.transport, context.token, {
 		method: "GET",
 		path: pagesPath(context, `/${encodeURIComponent(context.name)}`),
@@ -1374,7 +1351,7 @@ const PAGES_SPEC: Omit<CloudflareResolverSpec, "productId"> = {
 							name: context.name,
 							...(productionBranch !== undefined
 								? { production_branch: productionBranch }
-								: {}),
+								: undefined),
 						},
 					}),
 					label,

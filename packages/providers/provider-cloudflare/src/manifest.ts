@@ -1,5 +1,16 @@
 import type { InitialCapabilityPort } from "./equivalence.js";
-import { EQUIVALENCE_CLASSES } from "./equivalence.js";
+import {
+	EQUIVALENCE_CLASSES,
+	INITIAL_CAPABILITY_PORTS,
+} from "./equivalence.js";
+import {
+	isJsonArray,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+	parseJsonValue,
+} from "./json.js";
 
 // public-contract: capability-manifest bundle schema id (registry parity).
 export const MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
@@ -35,9 +46,7 @@ export function publishCapabilityManifest(
 ): PublishedManifestDocuments {
 	const providerId = input.providerId ?? CLOUDFLARE_PROVIDER_ID;
 	const colos = input.colos ?? ["WNAM", "ENAM", "WEUR"];
-	const ports =
-		input.ports ??
-		(Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[]);
+	const ports = input.ports ?? [...INITIAL_CAPABILITY_PORTS];
 	const capabilitiesDocument = {
 		schema: CAPABILITIES_SCHEMA,
 		providerId,
@@ -122,17 +131,19 @@ export function publishCapabilityManifest(
 		{
 			path: "/.well-known/capability-manifest/capabilities.json",
 			schema: CAPABILITIES_SCHEMA,
-			digest: stableDigest(capabilitiesDocument),
+			digest: stableDigest(
+				parseJsonValue(JSON.stringify(capabilitiesDocument)),
+			),
 		},
 		{
 			path: "/.well-known/capability-manifest/auth.json",
 			schema: AUTH_SCHEMA,
-			digest: stableDigest(authDocument),
+			digest: stableDigest(parseJsonValue(JSON.stringify(authDocument))),
 		},
 		{
 			path: "/.well-known/capability-manifest/cost.json",
 			schema: COST_SCHEMA,
-			digest: stableDigest(costDocument),
+			digest: stableDigest(parseJsonValue(JSON.stringify(costDocument))),
 		},
 	];
 	const indexDocument = {
@@ -143,21 +154,28 @@ export function publishCapabilityManifest(
 	};
 
 	return {
-		"/.well-known/capability-manifest/index.json": canonicalJson(indexDocument),
-		"/.well-known/capability-manifest/capabilities.json":
-			canonicalJson(capabilitiesDocument),
-		"/.well-known/capability-manifest/auth.json": canonicalJson(authDocument),
-		"/.well-known/capability-manifest/cost.json": canonicalJson(costDocument),
+		"/.well-known/capability-manifest/index.json": canonicalJson(
+			parseJsonValue(JSON.stringify(indexDocument)),
+		),
+		"/.well-known/capability-manifest/capabilities.json": canonicalJson(
+			parseJsonValue(JSON.stringify(capabilitiesDocument)),
+		),
+		"/.well-known/capability-manifest/auth.json": canonicalJson(
+			parseJsonValue(JSON.stringify(authDocument)),
+		),
+		"/.well-known/capability-manifest/cost.json": canonicalJson(
+			parseJsonValue(JSON.stringify(costDocument)),
+		),
 	};
 }
 
 export interface PublishedManifestParseResult {
 	ok: boolean;
 	errors: string[];
-	index: Record<string, unknown>;
-	capabilities: Record<string, unknown>;
-	auth: Record<string, unknown>;
-	cost: Record<string, unknown>;
+	index: JsonObject;
+	capabilities: JsonObject;
+	auth: JsonObject;
+	cost: JsonObject;
 }
 
 /**
@@ -167,16 +185,16 @@ export interface PublishedManifestParseResult {
 export function parsePublishedManifest(
 	documents: PublishedManifestDocuments,
 ): PublishedManifestParseResult {
-	const index = JSON.parse(
+	const index = parseJsonObject(
 		documents["/.well-known/capability-manifest/index.json"],
 	);
-	const capabilities = JSON.parse(
+	const capabilities = parseJsonObject(
 		documents["/.well-known/capability-manifest/capabilities.json"],
 	);
-	const auth = JSON.parse(
+	const auth = parseJsonObject(
 		documents["/.well-known/capability-manifest/auth.json"],
 	);
-	const cost = JSON.parse(
+	const cost = parseJsonObject(
 		documents["/.well-known/capability-manifest/cost.json"],
 	);
 	const errors: string[] = [];
@@ -193,10 +211,8 @@ export function parsePublishedManifest(
 	if ("staticKey" in auth || "clientSecret" in auth) {
 		errors.push("auth must not publish static secrets");
 	}
-	if (
-		!Array.isArray(capabilities.capabilities) ||
-		capabilities.capabilities.length === 0
-	) {
+	const listed = capabilities.capabilities;
+	if (!isJsonArray(listed) || listed.length === 0) {
 		errors.push("capabilities.capabilities must be non-empty");
 	}
 
@@ -210,11 +226,11 @@ export function parsePublishedManifest(
 	};
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: JsonValue): string {
 	return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
 }
 
-function stableDigest(value: unknown): string {
+function stableDigest(value: JsonValue): string {
 	return fnv1aHex(canonicalJson(value));
 }
 
@@ -227,17 +243,17 @@ function digestRef(seed: string) {
 	};
 }
 
-function sortKeys(value: unknown): unknown {
-	if (Array.isArray(value)) {
+function sortKeys(value: JsonValue): JsonValue {
+	if (isJsonArray(value)) {
 		return value.map(sortKeys);
 	}
-	if (!value || typeof value !== "object") {
+	if (!isJsonObject(value)) {
 		return value;
 	}
 	return Object.fromEntries(
 		Object.keys(value)
 			.sort()
-			.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+			.map((key) => [key, sortKeys(value[key] ?? null)]),
 	);
 }
 

@@ -3,13 +3,7 @@
  * Normalizes Cloud Server / network / control-plane signals into yard.* facts.
  */
 
-type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| Readonly<{ readonly [key: string]: JsonValue }>;
+import { isJsonArray, type JsonObject } from "./json.js";
 
 // public-contract: the event-store fold this provider is addressed by. Stored
 // events name the resolver that produced them, so a rename orphans every fact
@@ -20,13 +14,13 @@ export const HETZNER_EVENT_STORE_RESOLVER_ID =
 export interface HetznerProviderNativeSignal {
 	readonly providerId: "hetzner";
 	readonly kind: string;
-	readonly payload: Readonly<Record<string, JsonValue>>;
+	readonly payload: JsonObject;
 	readonly observedAt?: string;
 }
 
 export interface HetznerYardEvent {
 	readonly type: string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 	readonly occurredAt?: string;
 }
 
@@ -153,9 +147,7 @@ export function hetznerEventStoreFoldDescriptor() {
 	});
 }
 
-function hetznerYardFromPayload(
-	p: Readonly<Record<string, JsonValue>>,
-): Record<string, unknown> {
+function hetznerYardFromPayload(p: JsonObject) {
 	const yardId = String(p.yardId ?? p.serverId ?? "yard:hetzner");
 	const now = new Date().toISOString();
 	return {
@@ -164,9 +156,9 @@ function hetznerYardFromPayload(
 		ownerTenantId: String(p.ownerTenantId ?? "local"),
 		providerId: "hetzner",
 		runtimeId: String(p.runtimeId ?? "hetzner.yard-runtime/v1"),
-		shape: {
+		layout: {
 			providerId: "hetzner",
-			regions: Array.isArray(p.regions) ? p.regions.map(String) : ["fsn1"],
+			regions: isJsonArray(p.regions) ? p.regions.map(String) : ["fsn1"],
 			require: ["managed-container-substrate", "private-network"],
 			prefer: [],
 			residency: [],
@@ -175,8 +167,8 @@ function hetznerYardFromPayload(
 			componentHosts: [],
 			labels: {},
 			properties: {
-				...(p.projectRef ? { "hetzner.projectRef": p.projectRef } : {}),
-				...(p.networkId ? { "hetzner.networkId": p.networkId } : {}),
+				...(p.projectRef ? { "hetzner.projectRef": p.projectRef } : undefined),
+				...(p.networkId ? { "hetzner.networkId": p.networkId } : undefined),
 			},
 			camps: [],
 		},

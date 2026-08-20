@@ -21,7 +21,7 @@ export function hetznerYardRuntimeRegistration(options?: {
 	readonly runtimeId: typeof HETZNER_YARD_RUNTIME_ID;
 	readonly providerId: "hetzner";
 	readonly version: string;
-	readonly supportedShape: {
+	readonly supportedCatalog: {
 		readonly regions: readonly string[];
 		readonly capabilities: readonly string[];
 		readonly requireProperties: readonly string[];
@@ -41,7 +41,7 @@ export function hetznerYardRuntimeRegistration(options?: {
 		runtimeId: HETZNER_YARD_RUNTIME_ID,
 		providerId: "hetzner",
 		version: "1.0.0",
-		supportedShape: Object.freeze({
+		supportedCatalog: Object.freeze({
 			regions: Object.freeze(["fsn1", "nbg1", "hel1", "ash"]),
 			capabilities: Object.freeze([
 				"managed-container-substrate",

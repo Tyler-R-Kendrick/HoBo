@@ -157,10 +157,10 @@ export default defineConfig({
 			 * under the average. Attack those before anything else.
 			 */
 			thresholds: {
-				statements: 80,
-				branches: 68.5,
-				functions: 85,
-				lines: 81.5,
+				statements: 80.2,
+				branches: 68.9,
+				functions: 85.2,
+				lines: 81.7,
 
 				/**
 				 * Per-package floors, so the repo-wide aggregate cannot hide a

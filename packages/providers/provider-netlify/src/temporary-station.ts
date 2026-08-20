@@ -167,8 +167,13 @@ export function parseNetlifyAnonymousDeployOutput(
 		}
 	}
 
+	// `netlify.app` must be the end of the *host*, not merely present somewhere
+	// in the URL. The looser form matched `https://evil.example/netlify.app`,
+	// which would have been adopted as the station URL — a path segment is not a
+	// hostname, and this is the last-resort strategy, so it is the one place
+	// where a wrong match is least likely to be noticed.
 	const urlMatch = trimmed.match(
-		/https?:\/\/[^\s"'<>]+netlify\.app[^\s"'<>]*/iu,
+		/https?:\/\/[^\s"'<>/]+\.netlify\.app(?![A-Za-z0-9-])(?!\.[A-Za-z0-9])[^\s"'<>]*/iu,
 	);
 	if (!urlMatch) {
 		throw new Error(

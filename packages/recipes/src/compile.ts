@@ -125,11 +125,11 @@ export class RecipeCompileError extends Error {
 	}
 }
 
-const ATOMICITY_RANK: Readonly<Record<ClaimAtomicity, number>> = {
+const ATOMICITY_RANK = {
 	"single-resource": 0,
 	"provider-bundled": 1,
 	"best-effort-saga": 2,
-};
+} as const;
 
 const ATOMICITY_BY_RANK: readonly ClaimAtomicity[] = [
 	"single-resource",
@@ -301,7 +301,7 @@ export function compileRecipe(input: CompileRecipeInput): RecipeCompilation {
 							a.localeCompare(b),
 						),
 					}
-				: {}),
+				: undefined),
 		});
 		if (selection.winner === undefined) {
 			for (const rejection of selection.rejections) {
@@ -352,7 +352,7 @@ export function compileRecipe(input: CompileRecipeInput): RecipeCompilation {
 			realization,
 			...(placement.runtimeModel !== undefined
 				? { runtimeModel: placement.runtimeModel }
-				: {}),
+				: undefined),
 			producesBindingProfiles: [...candidate.producesBindingProfiles].sort(
 				(a, b) => a.localeCompare(b),
 			),
@@ -375,12 +375,12 @@ export function compileRecipe(input: CompileRecipeInput): RecipeCompilation {
 			const record = evidenceByProduct.get(productDefinitionId);
 			return {
 				subjectId: productDefinitionId,
-				...(record !== undefined ? { evidence: record } : {}),
+				...(record !== undefined ? { evidence: record } : undefined),
 			};
 		}),
 		requirement: input.trustRequirement,
 		nowMs: input.nowMs,
-		...(input.verifier !== undefined ? { verifier: input.verifier } : {}),
+		...(input.verifier !== undefined ? { verifier: input.verifier } : undefined),
 	});
 	for (const reason of trustBundle.reasons) {
 		// The three trust-only reasons all mean the same thing to a compiler:
@@ -581,7 +581,7 @@ export function compileRecipe(input: CompileRecipeInput): RecipeCompilation {
 			detail: `${notice.kind}: ${notice.detail} — policy does not permit this widening`,
 			...(notice.placementId !== undefined
 				? { placementId: notice.placementId }
-				: {}),
+				: undefined),
 		});
 	}
 
@@ -771,7 +771,7 @@ function deriveClaimFacts(
 			providerId: yard.providerId,
 			mode: placement.claim.mode,
 			actionCount: placement.claim.actionCount,
-			...(deadlineMs !== undefined ? { deadlineMs } : {}),
+			...(deadlineMs !== undefined ? { deadlineMs } : undefined),
 			creatorAuthorityAfterClaim: placement.claim.creatorAuthorityAfterClaim,
 			postClaimActions: [...placement.claim.postClaimActions],
 		});
@@ -791,7 +791,7 @@ function deriveClaimFacts(
 		actionCount,
 		providerCount: providers.size,
 		atomicity,
-		...(earliestDeadlineMs !== undefined ? { earliestDeadlineMs } : {}),
+		...(earliestDeadlineMs !== undefined ? { earliestDeadlineMs } : undefined),
 		items: items.sort((a, b) => a.claimId.localeCompare(b.claimId)),
 	};
 }

@@ -33,7 +33,7 @@ export type DeploymentRequestInput = {
 	readonly requestedSemantics: RecipeSemantics;
 };
 
-declare const deploymentRequestBrand: unique symbol;
+const deploymentRequestBrand: unique symbol = Symbol("DeploymentRequest");
 
 export type DeploymentRequest = {
 	readonly deploymentRef: string;
@@ -52,7 +52,7 @@ export class DeploymentRequestError extends Error {
 	}
 }
 
-const PROVIDER_SHAPED = /(provider|vendor|account|tenant)/iu;
+const PROVIDER_PIN_PATTERN = /(provider|vendor|account|tenant)/iu;
 
 /**
  * Parse-don't-validate boundary for a request.
@@ -65,7 +65,7 @@ export function parseDeploymentRequest(
 	input: DeploymentRequestInput,
 ): DeploymentRequest {
 	if (
-		typeof input.deploymentRef !== "string" ||
+		Object.prototype.toString.call(input.deploymentRef) !== "[object String]" ||
 		input.deploymentRef.trim().length === 0
 	) {
 		throw new DeploymentRequestError(
@@ -81,14 +81,14 @@ export function parseDeploymentRequest(
 	const byRef = new Map<string, BindleCapabilityRequest>();
 	for (const capability of input.capabilities) {
 		if (
-			typeof capability.capabilityRef !== "string" ||
+			Object.prototype.toString.call(capability.capabilityRef) !== "[object String]" ||
 			capability.capabilityRef.trim().length === 0
 		) {
 			throw new DeploymentRequestError(
 				"capabilityRef must be a non-empty string",
 			);
 		}
-		if (PROVIDER_SHAPED.test(capability.capabilityRef)) {
+		if (PROVIDER_PIN_PATTERN.test(capability.capabilityRef)) {
 			throw new DeploymentRequestError(
 				`capability ${capability.capabilityRef} names a provider; bindle capabilities stay provider-neutral`,
 			);
@@ -135,6 +135,6 @@ export function parseDeploymentRequest(
 				a.toCapabilityRef.localeCompare(b.toCapabilityRef),
 		),
 		requestedSemantics: { ...input.requestedSemantics },
-		// The brand is a type-level witness that this value passed the parser.
-	} as unknown as DeploymentRequest;
+		[deploymentRequestBrand]: "DeploymentRequest",
+	};
 }

@@ -61,13 +61,25 @@ function digestsOf(input: CompileRecipeInput): readonly string[] {
  * Canonicalization is supposed to make this invisible; the only way to know is
  * to hand the compiler a value whose key order is deliberately wrong.
  */
-function reverseKeyOrder(value: unknown): unknown {
+type JsonObject = { readonly [key: string]: JsonValue };
+type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonValue[]
+	| JsonObject;
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+	return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function reverseKeyOrder(value: JsonValue): JsonValue {
 	if (Array.isArray(value)) return value.map(reverseKeyOrder);
-	if (value !== null && typeof value === "object") {
-		const source = value as Record<string, unknown>;
-		const rebuilt: Record<string, unknown> = {};
-		for (const key of Object.keys(source).reverse()) {
-			rebuilt[key] = reverseKeyOrder(source[key]);
+	if (isJsonObject(value)) {
+		const rebuilt: { [key: string]: JsonValue } = {};
+		for (const key of Object.keys(value).reverse()) {
+			rebuilt[key] = reverseKeyOrder(value[key] ?? null);
 		}
 		return rebuilt;
 	}
@@ -75,8 +87,11 @@ function reverseKeyOrder(value: unknown): unknown {
 }
 
 function withReversedKeys<T>(value: T): T {
-	// Only ever applied to plain data in these tests.
-	return reverseKeyOrder(value) as T;
+	// SAFETY: metamorphic fixtures are JSON data.
+	const json = value as JsonValue;
+	const reversed = reverseKeyOrder(json);
+	// SAFETY: key-reversed JSON still matches the input domain type.
+	return reversed as T;
 }
 
 describe("determinism", () => {

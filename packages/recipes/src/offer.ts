@@ -172,7 +172,7 @@ export class DeploymentOfferError extends Error {
  * products, and resources by id, so any URL in it is either a claim link, a
  * webhook, or a callback nobody should be able to replay from a stored offer.
  */
-const FORBIDDEN_VALUE_SHAPES: readonly {
+const FORBIDDEN_VALUE_PATTERNS: readonly {
 	readonly name: string;
 	readonly pattern: RegExp;
 }[] = [
@@ -197,20 +197,23 @@ const FORBIDDEN_VALUE_SHAPES: readonly {
 ];
 
 function scanForSecrets(value: CanonicalValue, path: string): void {
-	if (typeof value === "string") {
-		for (const shape of FORBIDDEN_VALUE_SHAPES) {
-			if (shape.pattern.test(value))
-				throw new OfferSecretLeakError(path, shape.name);
+	if (Object.prototype.toString.call(value) === "[object String]") {
+		const text = String(value);
+		for (const rule of FORBIDDEN_VALUE_PATTERNS) {
+			if (rule.pattern.test(text))
+				throw new OfferSecretLeakError(path, rule.name);
 		}
 		return;
 	}
 	if (Array.isArray(value)) {
+		// SAFETY: assertion to `as readonly CanonicalValue[]).forE` is required at this boundary.
 		(value as readonly CanonicalValue[]).forEach((entry, index) => {
 			scanForSecrets(entry, `${path}[${index}]`);
 		});
 		return;
 	}
-	if (value !== null && typeof value === "object") {
+	if (value !== null && Object.prototype.toString.call(value) === "[object Object]") {
+		// SAFETY: assertion to `as { readonly [key: string]: CanonicalValue | undefined; }; fo` is required at this boundary.
 		const record = value as {
 			readonly [key: string]: CanonicalValue | undefined;
 		};
@@ -378,7 +381,7 @@ export function buildDeploymentOffer(
 			placements.push({
 				placementId: row.resource.placementId,
 				yardId: yard.yardId,
-				...(row.campId !== undefined ? { campId: row.campId } : {}),
+				...(row.campId !== undefined ? { campId: row.campId } : undefined),
 				providerId: yard.providerId,
 				primitive: row.resource.primitive,
 				capabilityRef: row.resource.capabilityRef,
@@ -428,7 +431,7 @@ export function buildDeploymentOffer(
 			atomicity: compilation.claims.atomicity,
 			...(compilation.claims.earliestDeadlineMs !== undefined
 				? { earliestDeadlineMs: compilation.claims.earliestDeadlineMs }
-				: {}),
+				: undefined),
 			items: compilation.claims.items.map((item) => ({
 				claimId: item.claimId,
 				subjectRef: item.subjectRef,
@@ -437,7 +440,7 @@ export function buildDeploymentOffer(
 				actionCount: item.actionCount,
 				...(item.deadlineMs !== undefined
 					? { deadlineMs: item.deadlineMs }
-					: {}),
+					: undefined),
 				creatorAuthorityAfterClaim: item.creatorAuthorityAfterClaim,
 			})),
 		},
@@ -463,7 +466,7 @@ export function buildDeploymentOffer(
 			detail: notice.detail,
 			...(notice.placementId !== undefined
 				? { placementId: notice.placementId }
-				: {}),
+				: undefined),
 		})),
 		issuedAtMs: input.issuedAtMs,
 		expiresAtMs: input.issuedAtMs + recipe.bootstrap.offerTtlMs,

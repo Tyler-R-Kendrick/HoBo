@@ -174,7 +174,7 @@ export type SolutionRecipeInput = {
 	readonly bootstrap: RecipeBootstrapExpectationInput;
 };
 
-declare const solutionRecipeBrand: unique symbol;
+const solutionRecipeBrand: unique symbol = Symbol("SolutionRecipe");
 
 /** Parsed recipe. Construct only through {@link parseSolutionRecipe}. */
 // parallel-type-allowed: the branded parse-don't-validate refinement of hobo.recipes.v1.SolutionRecipe — constructed only by parseSolutionRecipe, with a branded RecipeId and canonically ordered yards, placements, and edges.
@@ -296,8 +296,9 @@ function parseClaim(
 		actionCount: claim.actionCount,
 		...(claim.deadlineMsFromStart !== undefined
 			? { deadlineMsFromStart: claim.deadlineMsFromStart }
-			: {}),
+			: undefined),
 		creatorAuthorityAfterClaim: claim.creatorAuthorityAfterClaim,
+		// SAFETY: assertion to `(claim.postClaimActions ?? [])].sort((a, b) => a.localeCompare(b), ) as readonly PostClaimAction[], }` is required at this boundary.
 		postClaimActions: [...(claim.postClaimActions ?? [])].sort((a, b) =>
 			a.localeCompare(b),
 		) as readonly PostClaimAction[],
@@ -453,14 +454,14 @@ export function parseSolutionRecipe(
 		placements.set(placement.placementId, {
 			placementId: placement.placementId,
 			yardId: placement.yardId,
-			...(placement.campId !== undefined ? { campId: placement.campId } : {}),
+			...(placement.campId !== undefined ? { campId: placement.campId } : undefined),
 			primitive: placement.primitive,
 			capabilityRef: placement.capabilityRef,
 			satisfiesProfileId: profile.id,
 			productDefinitionId: placement.productDefinitionId,
 			...(placement.runtimeModel !== undefined
 				? { runtimeModel: placement.runtimeModel }
-				: {}),
+				: undefined),
 			claim: parseClaim(placement.claim, recipeId, placement.placementId),
 		});
 	}
@@ -581,6 +582,6 @@ export function parseSolutionRecipe(
 			requiredConsents: sortedUnique(input.bootstrap.requiredConsents ?? []),
 			offerTtlMs: input.bootstrap.offerTtlMs,
 		},
-		// The brand is a type-level witness that this value passed the parser.
-	} as unknown as SolutionRecipe;
+		[solutionRecipeBrand]: "SolutionRecipe",
+	};
 }

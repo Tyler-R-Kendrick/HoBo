@@ -27,6 +27,11 @@ export default defineConfig({
 		".serena/**",
 		".tools/**",
 		".worktrees/**",
+		// Installed agent skills (same class as .claude/.agents, not app source).
+		".github/skills/**",
+		// Local throwaway trees (untracked in agents' worktrees).
+		"barebones/**",
+		"demo/**",
 		// Vendored third-party source, the plugin itself, and generated output.
 		"external/**",
 		"tools/oxlint/anti-slop/**",

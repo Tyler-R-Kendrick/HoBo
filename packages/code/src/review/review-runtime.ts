@@ -110,6 +110,7 @@ export function createReviewRuntime(
 		partitionId: "hobo-code-reviews",
 	});
 	const seen = new Map<string, ReviewCommandResult>();
+	let closed = false;
 
 	function streamId(reviewId: string): string {
 		return `code-review:${reviewId}`;
@@ -743,6 +744,12 @@ export function createReviewRuntime(
 			return [];
 		},
 		close() {
+			// Idempotent: the underlying SQLite handle throws "database is not
+			// open" on a second close, and a double close is the ordinary shape of
+			// a shutdown path where an error handler and a `finally` both run.
+			// Throwing there would replace the real failure with this one.
+			if (closed) return;
+			closed = true;
 			store.close();
 		},
 	};

@@ -31,7 +31,8 @@ main
                     └── sdlc/anti-slop-20-providers-vercel  #1215 vercel
                      └── sdlc/anti-slop-21-providers-hostinger  #1216 hostinger
                       └── sdlc/anti-slop-22-providers-hetzner  #1218 hetzner
-                       └── sdlc/anti-slop-23-providers-aws  aws
+                       └── sdlc/anti-slop-23-providers-aws  #1220 aws
+                        └── sdlc/anti-slop-24-providers-gcp  gcp
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -71,7 +72,8 @@ Layer 19: provider-netlify.
 Layer 20: provider-vercel.
 Layer 21: provider-hostinger (#1216).
 Layer 22: provider-hetzner (#1218).
-Layer 23: provider-aws. Next: remaining `packages/providers/*`
-(gcp, azure, cloudflare, digitalocean), then `packages/code`, `hobo`,
+Layer 23: provider-aws (#1220).
+Layer 24: provider-gcp. Next: remaining `packages/providers/*`
+(azure, cloudflare, digitalocean), then `packages/code`, `hobo`,
 `core`, `broker`, `src/draft/`. Full-repo `lint:slop --deny-warnings` is
 still red until those land.

@@ -21,7 +21,7 @@ export function gcpYardRuntimeRegistration(options?: {
 	readonly runtimeId: typeof GCP_YARD_RUNTIME_ID;
 	readonly providerId: "gcp";
 	readonly version: string;
-	readonly supportedShape: {
+	readonly supportedCatalog: {
 		readonly regions: readonly string[];
 		readonly capabilities: readonly string[];
 		readonly requireProperties: readonly string[];
@@ -41,7 +41,7 @@ export function gcpYardRuntimeRegistration(options?: {
 		runtimeId: GCP_YARD_RUNTIME_ID,
 		providerId: "gcp",
 		version: "1.0.0",
-		supportedShape: Object.freeze({
+		supportedCatalog: Object.freeze({
 			regions: Object.freeze(["us-central1", "us-east1", "europe-west1"]),
 			capabilities: Object.freeze([
 				"managed-container-substrate",

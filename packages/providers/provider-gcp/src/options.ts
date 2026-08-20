@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: the provider target id `.with(...)` option blocks carry.
 export const GCP_PROVIDER_TARGET = "gcp";
 
@@ -9,7 +11,7 @@ export type TypedOptionBlock = {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 };
 
 // The provider-specific options pattern (sdk-api.md "the core promise"): typed,
@@ -17,7 +19,7 @@ export type TypedOptionBlock = {
 // targets many clouds unedited.
 export const gcp = {
 	with: {
-		cloudRun(options: Record<string, unknown> = {}): TypedOptionBlock {
+		cloudRun(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"cloudRun",
@@ -25,7 +27,7 @@ export const gcp = {
 				options,
 			);
 		},
-		cloudSql(options: Record<string, unknown> = {}): TypedOptionBlock {
+		cloudSql(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"database",
 				"cloudSql",
@@ -33,7 +35,7 @@ export const gcp = {
 				options,
 			);
 		},
-		gcs(options: Record<string, unknown> = {}): TypedOptionBlock {
+		gcs(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"objectStore",
 				"gcs",
@@ -41,7 +43,7 @@ export const gcp = {
 				options,
 			);
 		},
-		firestore(options: Record<string, unknown> = {}): TypedOptionBlock {
+		firestore(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"kv",
 				"firestore",
@@ -49,7 +51,7 @@ export const gcp = {
 				options,
 			);
 		},
-		pubsub(options: Record<string, unknown> = {}): TypedOptionBlock {
+		pubsub(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"queue",
 				"pubsub",
@@ -57,7 +59,7 @@ export const gcp = {
 				options,
 			);
 		},
-		memorystore(options: Record<string, unknown> = {}): TypedOptionBlock {
+		memorystore(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"cache",
 				"memorystore",
@@ -71,8 +73,8 @@ export const gcp = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: GCP_PROVIDER_TARGET,

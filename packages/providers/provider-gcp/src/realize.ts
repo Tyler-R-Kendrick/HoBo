@@ -10,7 +10,8 @@ import {
 	type IacProgram,
 	type IacResource,
 } from "./iac-program.js";
-import { GCP_PROVIDER_TARGET, type TypedOptionBlock } from "./options.js";
+import type { JsonObject } from "./json.js";
+import { GCP_PROVIDER_TARGET } from "./options.js";
 import type { ResourcePlan } from "./types.js";
 
 // A container/CI image the build machine produces for a realized resource
@@ -36,23 +37,43 @@ export type RealizablePort = keyof typeof PORT_TO_CLASS;
 // Output names each AWS resource class publishes. Every class exposes a
 // `binding` output so cross-resource bind edges resolve as
 // `${resources.<dep>.outputs.binding}` references.
-const OUTPUTS_BY_CLASS: Record<string, string[]> = {
-	"gcp:cloud-run-service": ["url", "serviceName", "binding"],
-	"gcp:firestore-database": ["databaseName", "endpoint", "binding"],
-	"gcp:gcs-bucket": ["bucketName", "endpoint", "binding"],
-	"gcp:cloud-sql-postgres": ["endpoint", "connectionString", "binding"],
-	"gcp:pubsub-topic": ["topicName", "subscriptionName", "binding"],
-	"gcp:memorystore-redis": ["endpoint", "port", "binding"],
-};
+function outputsForClass(resourceClass: string): readonly string[] {
+	switch (resourceClass) {
+		case "gcp:cloud-run-service":
+			return ["url", "serviceName", "binding"];
+		case "gcp:firestore-database":
+			return ["databaseName", "endpoint", "binding"];
+		case "gcp:gcs-bucket":
+			return ["bucketName", "endpoint", "binding"];
+		case "gcp:cloud-sql-postgres":
+			return ["endpoint", "connectionString", "binding"];
+		case "gcp:pubsub-topic":
+			return ["topicName", "subscriptionName", "binding"];
+		case "gcp:memorystore-redis":
+			return ["endpoint", "port", "binding"];
+		default:
+			return ["binding"];
+	}
+}
 
-const PRIMARY_OUTPUT: Record<string, string> = {
-	"gcp:cloud-run-service": "url",
-	"gcp:firestore-database": "databaseName",
-	"gcp:gcs-bucket": "bucketName",
-	"gcp:cloud-sql-postgres": "endpoint",
-	"gcp:pubsub-topic": "topicName",
-	"gcp:memorystore-redis": "endpoint",
-};
+function primaryOutput(resourceClass: string): string {
+	switch (resourceClass) {
+		case "gcp:cloud-run-service":
+			return "url";
+		case "gcp:firestore-database":
+			return "databaseName";
+		case "gcp:gcs-bucket":
+			return "bucketName";
+		case "gcp:cloud-sql-postgres":
+			return "endpoint";
+		case "gcp:pubsub-topic":
+			return "topicName";
+		case "gcp:memorystore-redis":
+			return "endpoint";
+		default:
+			return "binding";
+	}
+}
 
 export function isRealizablePort(port: string): port is RealizablePort {
 	return port in PORT_TO_CLASS;
@@ -71,9 +92,9 @@ export function mergeGcpOptions(
 	// `.with(...)` builder emits the shared TypedOptionBlock shape, and
 	// foreign-provider blocks drop below by providerId.
 	options: ResourcePlan["options"] = [],
-): Record<string, unknown> {
-	const merged: Record<string, unknown> = {};
-	for (const block of options as TypedOptionBlock[]) {
+): JsonObject {
+	const merged = {};
+	for (const block of options) {
 		if (block.providerId !== GCP_PROVIDER_TARGET) {
 			continue;
 		}
@@ -91,13 +112,13 @@ function buildResource(plan: ResourcePlan, withBindRefs: boolean): IacResource {
 			: { providerResourceId: dep },
 	);
 
-	const inputs: Record<string, unknown> = {
+	const inputs = {
 		port: plan.port,
 		providerService: mapping.providerService,
 		features: [...mapping.features],
 		options: mergeGcpOptions(plan.options),
 		bindings,
-		...(plan.region === undefined ? {} : { region: plan.region }),
+		...(plan.region === undefined ? undefined : { region: plan.region }),
 	};
 
 	return {
@@ -105,7 +126,7 @@ function buildResource(plan: ResourcePlan, withBindRefs: boolean): IacResource {
 		type: resourceClass,
 		provider: GCP_IAC_PROVIDER,
 		inputs,
-		outputs: OUTPUTS_BY_CLASS[resourceClass] ?? ["binding"],
+		outputs: [...outputsForClass(resourceClass)],
 	};
 }
 
@@ -126,7 +147,7 @@ function buildSpecFor(plan: ResourcePlan): BuildSpec | undefined {
 }
 
 function primaryRef(resource: IacResource): string {
-	const output = PRIMARY_OUTPUT[resource.type] ?? "binding";
+	const output = primaryOutput(resource.type);
 	return `\${resources.${resource.name}.outputs.${output}}`;
 }
 
@@ -168,7 +189,10 @@ export function realizeResourcePlans(
 	}
 	const resources = plans.map((plan) => buildResource(plan, true));
 	const deploymentId = options.deploymentId ?? "hello-bindle-gcp";
-	const first = resources[0] as IacResource;
+	const first = resources[0];
+	if (first === undefined) {
+		throw new Error("cannot realize an empty deployment plan");
+	}
 	const iac: IacProgram = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: IAC_PROGRAM_KIND,

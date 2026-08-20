@@ -30,7 +30,7 @@ tags: [hobo, competitors, matrix]
 | Competitor | Canonical doc | Aliases | Primary category | All categories | Directness | Contested HoBo surfaces | Posture | HoBo evidence | Product status | Researched | Contract |
 | ---------- | ------------- | ------- | ---------------- | -------------- | ---------- | ----------------------- | ------- | ------------- | -------------- | ---------- | -------- |
 | **Alchemy** | [`alchemy.md`](alchemy.md) | — | `infrastructure-from-code` | `infrastructure-from-code` · `portable-application-models` | direct | authoring, typed-contracts, reconciliation, extensibility | borrow, benchmark | mixed | active | 2026-08-19 | v1 |
-| **Anonymous container hosts** | [`anon-container-hosts.md`](anon-container-hosts.md) | openpouch, clawdship, ttl.sh, zerodeploy, dockup | `cloud-application-platforms` | `cloud-application-platforms` · `self-hosted-paas` | adjacent | provider-matching, delivery | benchmark, provider-target | mixed | active | 2026-08-12 | pre-v1 |
+| **Anonymous container hosts** | [`anon-container-hosts.md`](anon-container-hosts.md) | openpouch, clawdship, ttl.sh, zerodeploy, dockup | `cloud-application-platforms` | `cloud-application-platforms` · `self-hosted-paas` | adjacent | provider-matching, delivery | benchmark, provider-target | mixed | active | 2026-08-20 | v1 |
 | **Antimetal** | [`antimetal.md`](antimetal.md) | — | `agentic-infrastructure` | `agentic-infrastructure` · `finops-governance-placement` | adjacent | observability, agent-surface, finops | benchmark, integrate | mixed | active | 2026-08-20 | v1 |
 | **Appvia Wayfinder** | [`appvia-wayfinder.md`](appvia-wayfinder.md) | wayfinder, appvia | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `platform-orchestrators` · `developer-portals-idps` | overlapping | environments, governance, provider-matching, identity-secrets, app-graph | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **Argo CD** | [`argo-cd.md`](argo-cd.md) | argocd, applicationset | `delivery-release-gitops` | `delivery-release-gitops` · `platform-orchestrators` | overlapping | reconciliation, delivery, environments, governance, app-graph | borrow, benchmark, integrate, render-target | mixed | active | 2026-08-20 | pre-v1 |
@@ -57,7 +57,7 @@ tags: [hobo, competitors, matrix]
 | **Facets.cloud** | [`facets.md`](facets.md) | facets cloud | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `hybrid-multicloud-enterprise` · `finops-governance-placement` | direct | app-graph, environments, provider-matching, governance, extensibility | displace, benchmark, borrow | mixed | active | 2026-08-19 | v1 |
 | **FinOps tooling cohort** | [`finops-tooling.md`](finops-tooling.md) | kubecost cohort | `finops-governance-placement` | `finops-governance-placement` | adjacent | finops, governance, provider-matching | benchmark, integrate | mixed | archived | 2026-08-20 | pre-v1 |
 | **Flux CD** | [`flux-cd.md`](flux-cd.md) | fluxcd, flux2, gitops toolkit, flux v2 | `delivery-release-gitops` | `delivery-release-gitops` · `platform-orchestrators` | overlapping | reconciliation, delivery, governance, identity-secrets, environments | borrow, benchmark, integrate, render-target | mixed | active | 2026-08-20 | pre-v1 |
-| **Flux Network** | [`flux-network.md`](flux-network.md) | flux, orbit, runonflux | `cloud-application-platforms` | `cloud-application-platforms` · `runtime-substrates` | adjacent | provider-matching, runtime-portability | provider-target | mixed | active | 2026-08-15 | pre-v1 |
+| **Flux Network** | [`flux-network.md`](flux-network.md) | flux, orbit, runonflux | `cloud-application-platforms` | `cloud-application-platforms` · `runtime-substrates` | adjacent | provider-matching, runtime-portability | provider-target | mixed | active | 2026-08-20 | v1 |
 | **Fly.io** | [`flyio.md`](flyio.md) | fly | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | environments, runtime-portability, delivery | provider-target, benchmark | mixed | active | 2026-08-19 | v1 |
 | **Harness Platform** | [`harness.md`](harness.md) | harness.io, harness delegate | `platform-orchestrators` | `platform-orchestrators` · `delivery-release-gitops` · `developer-portals-idps` · `finops-governance-placement` · `agentic-infrastructure` | overlapping | delivery, governance, environments, finops, extensibility, observability | benchmark, borrow, integrate | mixed | active | 2026-08-19 | v1 |
 | **Heroku** | [`heroku.md`](heroku.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | authoring, environments, delivery, ecosystem | benchmark | mixed | active | 2026-08-19 | v1 |
@@ -113,7 +113,7 @@ tags: [hobo, competitors, matrix]
 | **Vercel** | [`vercel.md`](vercel.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `agentic-infrastructure` | overlapping | delivery, environments, agent-surface | benchmark, borrow, provider-target | mixed | active | 2026-08-19 | v1 |
 | **Wasm host landscape** | [`wasm-hosts.md`](wasm-hosts.md) | wasmtime cohort | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, extensibility | adopt, render-target | mixed | active | 2026-08-12 | pre-v1 |
 | **wasmCloud** | [`wasmcloud.md`](wasmcloud.md) | — | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, extensibility, typed-contracts | adopt, standard | mixed | active | 2026-08-20 | v1 |
-| **Wasp** | [`wasp.md`](wasp.md) | open saas, opensaas | `infrastructure-from-code` | `infrastructure-from-code` · `backend-data-platforms` | adjacent | authoring, app-graph | borrow, benchmark | mixed | active | 2026-08-12 | pre-v1 |
+| **Wasp** | [`wasp.md`](wasp.md) | open saas, opensaas | `infrastructure-from-code` | `infrastructure-from-code` · `backend-data-platforms` | adjacent | authoring, app-graph | borrow, benchmark | mixed | active | 2026-08-20 | v1 |
 | **Winglang** | [`winglang.md`](winglang.md) | wing | `infrastructure-from-code` | `infrastructure-from-code` | adjacent | authoring, typed-contracts | borrow, benchmark | mixed | active | 2026-08-19 | v1 |
 
 ### Freshness ledger
@@ -122,10 +122,7 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 
 | Competitor | Researched | Age (days) | State |
 | ---------- | ---------- | ---------- | ----- |
-| [Anonymous container hosts](anon-container-hosts.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
 | [Wasm host landscape](wasm-hosts.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
-| [Wasp](wasp.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
-| [Flux Network](flux-network.md) | 2026-08-15 | 5 | pre-v1 — rewrite to contract |
 | [Alchemy](alchemy.md) | 2026-08-19 | 1 | fresh |
 | [AWS Amplify](aws-amplify.md) | 2026-08-19 | 1 | fresh |
 | [Backstage](backstage.md) | 2026-08-19 | 1 | fresh |
@@ -162,6 +159,7 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Upsun](upsun.md) | 2026-08-19 | 1 | fresh |
 | [Vercel](vercel.md) | 2026-08-19 | 1 | fresh |
 | [Winglang](winglang.md) | 2026-08-19 | 1 | fresh |
+| [Anonymous container hosts](anon-container-hosts.md) | 2026-08-20 | 0 | fresh |
 | [Antimetal](antimetal.md) | 2026-08-20 | 0 | fresh |
 | [Appvia Wayfinder](appvia-wayfinder.md) | 2026-08-20 | 0 | fresh |
 | [Argo CD](argo-cd.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
@@ -179,6 +177,7 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Dokploy](dokploy.md) | 2026-08-20 | 0 | fresh |
 | [FinOps tooling cohort](finops-tooling.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
 | [Flux CD](flux-cd.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
+| [Flux Network](flux-network.md) | 2026-08-20 | 0 | fresh |
 | [HPE Morpheus](hpe-morpheus.md) | 2026-08-20 | 0 | fresh |
 | [Infracost](infracost.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
 | [InsForge](insforge.md) | 2026-08-20 | 0 | fresh |
@@ -208,7 +207,8 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Tailscale](tailscale.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
 | [Vantage](vantage.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
 | [wasmCloud](wasmcloud.md) | 2026-08-20 | 0 | fresh |
+| [Wasp](wasp.md) | 2026-08-20 | 0 | fresh |
 
-_86 canonical captures across 13 categories; 72 at contract v1._
+_86 canonical captures across 13 categories; 75 at contract v1._
 
 <!-- END GENERATED: competitor-matrix -->

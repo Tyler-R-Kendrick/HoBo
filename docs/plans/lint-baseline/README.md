@@ -296,3 +296,12 @@ do genuinely depend on core — declaring it is the honest description.
 * The `wrpc-wit-baseline-poc` draft proof fails its network fetch with
   `self-signed certificate in certificate chain` — the sandbox's TLS
   interception, not a code defect.
+
+## Next: anti-slop (Oxlint)
+
+Biome errors are at zero. The next lint wave is the vendored
+[`dmmulroy/anti-slop`](https://github.com/dmmulroy/anti-slop) plugin at
+`tools/oxlint/anti-slop/`, configured in `oxlint.config.ts`. Full-repo
+`pnpm run lint:slop` still reports a large pre-existing backlog; do not wire
+it into `check:all`. `pnpm run lint:slop:changed` is the incremental path:
+touched TS/JS only, warnings denied.

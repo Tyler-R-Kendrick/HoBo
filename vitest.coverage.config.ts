@@ -130,33 +130,37 @@ export default defineConfig({
 			/**
 			 * A ratchet, not a target.
 			 *
-			 * Measured 2026-08-20 over 765 files / 8,528 tests, with the workspace
-			 * src alias map above in place:
-			 * statements 79.57%, branches 67.29%, functions 84.50%, lines 80.96%.
+			 * Measured 2026-08-20 with the workspace src alias map above in place:
+			 * statements 80.00%, branches 67.83%, functions 84.80%, lines 81.40%.
 			 *
-			 * Before the alias map the same suite reported 77.74 / 65.84 / 82.27 /
-			 * 79.12. Nothing was tested that was not tested before — those points
-			 * came from correcting attribution, not from new assertions.
+			 * Where those points came from, in order:
+			 *   77.74 / 65.84 / 82.27 / 79.12  starting point
+			 *   79.57 / 67.29 / 84.50 / 80.96  after the alias map — same tests,
+			 *                                  corrected attribution, no new assertions
+			 *   80.00 / 67.83 / 84.80 / 81.40  after new suites for genuinely
+			 *                                  untested modules (layout-model,
+			 *                                  netbird-api, ci-guard parse/
+			 *                                  fixture-runner/workflows)
 			 *
-			 * These thresholds sit a hair under the measured numbers so the lane
-			 * fails on *regression* while the climb continues. Lines and functions
-			 * are over the 80% goal; statements is 0.4 short; branches is the real
-			 * work at 67.29%.
+			 * Statements, functions and lines now clear the 80% goal. Branches do
+			 * not, and that is the honest remaining work — see below.
 			 *
 			 * Set at the measured line rather than at the goal deliberately, for the
 			 * reason the Stryker configs already give: a gate nobody can pass gets
 			 * deleted, not met. Raise each number as the real one improves; never
 			 * lower one to make a red build green.
 			 *
-			 * Branches are the long pole, and the leverage is concentrated rather
-			 * than spread: `packages/code` is 15,445 statements, and pixel-village,
-			 * ci-guard, camps and control-yard all sit well under the average.
+			 * Branches at 67.83% are the long pole and a genuine programme of work,
+			 * not an afternoon: ~7,000 uncovered branches remain. The leverage is
+			 * concentrated rather than spread — `packages/code` is 15,445 statements
+			 * on its own, and pixel-village, camps and control-yard all sit well
+			 * under the average. Attack those before anything else.
 			 */
 			thresholds: {
-				statements: 79.5,
-				branches: 67,
-				functions: 84,
-				lines: 80.5,
+				statements: 79.9,
+				branches: 67.5,
+				functions: 84.5,
+				lines: 81,
 			},
 		},
 	},

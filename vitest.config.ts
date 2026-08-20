@@ -19,6 +19,11 @@ export default defineConfig({
         ),
       ),
     ],
+    // Every test file gets a throwaway HOBO_HOME, so a test that omits an
+    // explicit one cannot write into the developer's real ~/.hobo.
+    setupFiles: [
+    	fileURLToPath(new URL("./test/setup/isolate-hobo-home.ts", import.meta.url)),
+    ],
     // What a bare root run must not collect.
     //
     // Vitest's include glob is repo-wide, and without this the root config

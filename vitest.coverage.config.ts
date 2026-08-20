@@ -92,6 +92,11 @@ export default defineConfig({
 				),
 			),
 		],
+		// Every test file gets a throwaway HOBO_HOME, so a test that omits an
+		// explicit one cannot write into the developer's real ~/.hobo.
+		setupFiles: [
+			fileURLToPath(new URL("./test/setup/isolate-hobo-home.ts", import.meta.url)),
+		],
 		testTimeout: 30_000,
 		hookTimeout: 30_000,
 		reporters: ["dot"],

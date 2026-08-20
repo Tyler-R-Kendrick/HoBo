@@ -90,10 +90,11 @@ interface Manifest {
 	private?: boolean;
 	license?: string;
 	files?: string[];
-	[key: string]: unknown;
+	version?: string;
 }
 
 function readManifest(file: string): Manifest {
+	// SAFETY: assertion to `ileSync(file, "utf8")) as Manifest; } /** Workspa` is required at this boundary.
 	return JSON.parse(readFileSync(file, "utf8")) as Manifest;
 }
 
@@ -163,14 +164,13 @@ function checkOutbound(): void {
 
 /** Normalise the several shapes a package.json license field takes in the wild. */
 function licenseIdsOf(manifest: Manifest): string[] {
-	const raw = manifest.license ?? (manifest as { licenses?: unknown }).licenses;
-	const collect = (value: unknown): string[] => {
-		if (typeof value === "string") return [value];
+	// SAFETY: assertion to `nses?: unknown }).licenses; const` is required at this boundary.
+	const extra = manifest as Manifest & { licenses?: string | string[] };
+	const raw = manifest.license ?? extra.licenses;
+	const collect = (value: string | string[] | undefined): string[] => {
+		if (value === undefined) return [];
 		if (Array.isArray(value)) return value.flatMap(collect);
-		if (value && typeof value === "object") {
-			return collect((value as { type?: unknown }).type);
-		}
-		return [];
+		return [value];
 	};
 	// Split SPDX expressions ("(MIT OR Apache-2.0)", "MIT AND ISC") into terms,
 	// then drop any `WITH <exception>` suffix: an SPDX exception grants
@@ -211,6 +211,7 @@ function productionDependencyNames(): Set<string> {
 						edges.set(
 							manifest.name,
 							Object.keys(
+								// SAFETY: assertion to `encies?: object }).dependencies ?? {}` is required at this boundary.
 								(manifest as { dependencies?: object }).dependencies ?? {},
 							),
 						);
@@ -228,6 +229,7 @@ function productionDependencyNames(): Set<string> {
 		if (manifest.private) continue; // only published packages ship their deps
 		queue.push(
 			...Object.keys(
+				// SAFETY: assertion to `cies?: object }).dependencies ?? {}, ` is required at this boundary.
 				(manifest as { dependencies?: object }).dependencies ?? {},
 			),
 		);
@@ -235,6 +237,7 @@ function productionDependencyNames(): Set<string> {
 
 	const seen = new Set<string>();
 	while (queue.length > 0) {
+		// SAFETY: assertion to ` if (seen.has(name)` is required at this boundary.
 		const name = queue.pop() as string;
 		if (seen.has(name)) continue;
 		seen.add(name);

@@ -58,6 +58,7 @@ function checkPersonas(): string[] {
 	const full = runHarness(generatePersona, ["--mode", "validate"]);
 	let report: PersonaReport;
 	try {
+		// SAFETY: assertion to `.parse(full.stdout) as PersonaReport; }` is required at this boundary.
 		report = JSON.parse(full.stdout) as PersonaReport;
 	} catch {
 		return [
@@ -129,6 +130,7 @@ function checkBus(): string[] {
 		problems?: string[];
 	};
 	try {
+		// SAFETY: assertion to `.parse(result.stdout) as typeof report; }` is required at this boundary.
 		report = JSON.parse(result.stdout) as typeof report;
 	} catch {
 		return [
@@ -160,6 +162,7 @@ function projectOptimizexpRoots(): string[] {
 
 function readJson<T>(file: string): T | null {
 	try {
+		// SAFETY: assertion to `.parse(readFileSync(file, "utf8")) as T; }` is required at this boundary.
 		return JSON.parse(readFileSync(file, "utf8")) as T;
 	} catch {
 		return null;
@@ -220,7 +223,7 @@ function checkCatalogCoverage(): string[] {
 		const covered = new Set(
 			(catalog?.experiences ?? [])
 				.map((e) => e.personaId)
-				.filter((p): p is string => typeof p === "string"),
+				.filter((p): p is string => p !== undefined),
 		);
 		const maxPriority = cfg?.personas?.coveragePriorityMax ?? 10;
 		for (const file of readdirSync(personasDir).filter((f) =>

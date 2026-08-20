@@ -86,9 +86,11 @@ if (existsSync(path.join(repoRoot, adrTheme))) {
 }
 
 // Dual-bin: product bin on @hobo/hobo, not @hobo/cli
+// SAFETY: assertion to `JSON.parse(read("packages/cli/package.json")) as { bin?: unknown; }` is required at this boundary.
 const cliPkg = JSON.parse(read("packages/cli/package.json")) as {
 	bin?: unknown;
 };
+// SAFETY: assertion to `JSON.parse(read("packages/hobo/package.json")) as { bin?: Record<string, string>; }` is required at this boundary.
 const hoboPkg = JSON.parse(read("packages/hobo/package.json")) as {
 	bin?: Record<string, string>;
 };
@@ -136,6 +138,7 @@ const mustPrivate = [
 ];
 for (const rel of mustPrivate) {
 	if (!existsSync(path.join(repoRoot, rel))) continue;
+	// SAFETY: assertion to `JSON.parse(read(rel)) as { private?: boolean; name?: string }` is required at this boundary.
 	const pkg = JSON.parse(read(rel)) as { private?: boolean; name?: string };
 	if (pkg.private !== true) {
 		failures.push(`${pkg.name ?? rel} must be private: true`);

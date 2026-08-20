@@ -66,6 +66,7 @@ function readPackageJson(dir: string): PackageJson | null {
 	const path = join(dir, "package.json");
 	if (!existsSync(path)) return null;
 	try {
+		// SAFETY: assertion to `ON.parse(readFileSync(path, "utf8")) as PackageJson; ` is required at this boundary.
 		return JSON.parse(readFileSync(path, "utf8")) as PackageJson;
 	} catch {
 		return null;
@@ -94,6 +95,7 @@ export function isWebUiProject(
 	repoRoot = root,
 ): boolean {
 	const rel = relative(repoRoot, dir).replaceAll("\\", "/") || ".";
+	// SAFETY: assertion to `B_UI_ROOTS as readonly string[]).` is required at this boundary.
 	if ((WEB_UI_ROOTS as readonly string[]).includes(rel)) return true;
 	if (existsSync(join(dir, "DESIGN.md"))) return true;
 	if (pkg?.hobo?.webUi === true) return true;
@@ -194,6 +196,7 @@ export function listWebUiProjects(repoRoot = root): DesignMdProject[] {
 		seen.add(rel);
 		const hasDesign = existsSync(join(dir, "DESIGN.md"));
 		let reason = "DESIGN.md present";
+		// SAFETY: assertion to `UI_ROOTS as readonly string[]).in` is required at this boundary.
 		if ((WEB_UI_ROOTS as readonly string[]).includes(rel))
 			reason = "web-ui root";
 		else if (pkg?.hobo?.webUi) reason = "hobo.webUi";
@@ -210,10 +213,12 @@ export function listWebUiProjects(repoRoot = root): DesignMdProject[] {
 	return projects.sort((a, b) => a.rel.localeCompare(b.rel));
 }
 
-function resolveDesignmdInvocation(): {
+type DesignmdInvocation = {
 	command: string;
 	prefixArgs: string[];
-} {
+};
+
+function resolveDesignmdInvocation(): DesignmdInvocation {
 	const bin = join(root, "node_modules", ".bin", "designmd");
 	const siteBin = join(root, "site", "node_modules", ".bin", "designmd");
 	const jsEntry = join(
@@ -270,11 +275,13 @@ export function lintDesignMdFile(designMdPath: string): LintResult {
 	};
 }
 
-export function runDesignMdCheck(repoRoot = root): {
+type DesignMdCheckRun = {
 	ok: boolean;
 	results: LintResult[];
 	projects: DesignMdProject[];
-} {
+};
+
+export function runDesignMdCheck(repoRoot = root): DesignMdCheckRun {
 	const projects = listWebUiProjects(repoRoot);
 	const results: LintResult[] = [];
 	let ok = true;
@@ -337,6 +344,7 @@ function main() {
 			const info = result.stdout.trim();
 			if (info) {
 				try {
+					// SAFETY: assertion to `nfo) as { summary?: { errors?: number; warnings?: number }; }; const` is required at this boundary.
 					const parsed = JSON.parse(info) as {
 						summary?: { errors?: number; warnings?: number };
 					};

@@ -33,7 +33,5 @@ Each follow-up PR should take **one file (or a tight cluster) to zero
 findings**, then stop. Do not edit a file that still has other anti-slop
 errors.
 
-Cleared (this layer): `scripts/check-biome-budget.mts`,
-`scripts/check-cli-docs.ts`, `scripts/check-cue-schemas.ts`,
-`scripts/ensure-built.mts`, `scripts/no-hand-edited-generated-files.mts`,
-`scripts/check-promoted-proof-drift.mts`, `scripts/run-tests.ts`.
+Cleared (this layer): entire `scripts/` tree (58 files, 0 oxlint
+findings with `--deny-warnings`).

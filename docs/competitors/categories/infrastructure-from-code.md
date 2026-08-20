@@ -17,7 +17,7 @@ Developer authoring frameworks that infer or provision infrastructure from appli
 
 HoBo's authoring surface is an IfC surface. This category is the most direct contest over how a developer declares what their application needs.
 
-## Competitors (9)
+## Competitors (10)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -30,6 +30,7 @@ HoBo's authoring surface is an IfC surface. This category is the most direct con
 | [**Wasp**](../wasp.md) *(primary)* | Rails-like full-stack framework driven by a declarative .wasp spec — App-Kit inspiration and packaging path | adjacent | `authoring`, `app-graph` | Very fast full-stack scaffolding from one declarative spec. | HoBo's spec drives provider-portable deployment, not a fixed React/Node/Prisma stack. | borrow, benchmark | P3 |
 | [**Winglang**](../winglang.md) *(primary)* | cloud-oriented language compiling to Terraform — authoring analog and cautionary tale (Wing Cloud shut down 2025) | adjacent | `authoring`, `typed-contracts` | Novel preflight/inflight language design for cloud code. | HoBo stays in ordinary TypeScript; Winglang is also a cautionary tale about language-sized bets. | borrow, benchmark | P3 |
 | [**KusionStack**](../kusionstack.md) | open-source intent-driven orchestrator whose AppConfiguration-matched-to-Workspace pipeline is the closest published architecture to HoBo's own | direct | `authoring`, `typed-contracts`, `app-graph`, `provider-matching`, `environments`, `extensibility` | Open source with essentially HoBo's pipeline shipped: KCL-typed AppConfiguration matched against a Workspace to generate an inspectable Spec, then applied. | Kusion composes intent with the one chosen workspace; HoBo scores candidate providers and records the choice, which is what makes cost- and residency-aware placement expressible at all. | displace, borrow, benchmark | P1 |
+| [**Pulumi**](../pulumi.md) *(primary)* | the IaC engine HoBo stands on — an adopted adapter and borrow-source whose authoring model HoBo agrees with and whose altitude it deliberately sits above | adjacent | `authoring`, `typed-contracts`, `reconciliation`, `extensibility`, `wiring` | The Terraform bridge gives it the largest provider ecosystem in existence, Output<T> derives ordering from data flow, and the Automation API makes the engine embeddable. | Pulumi describes resources; HoBo describes capabilities and decides which resources satisfy them — and HoBo delegates downward to Pulumi rather than competing with it. | adopt, borrow, benchmark, integrate | P1 |
 
 ## Navigation
 

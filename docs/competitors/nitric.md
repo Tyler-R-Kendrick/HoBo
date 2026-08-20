@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [authoring, typed-contracts, provider-matching, runtime-portability]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-20
+  contract: v1
   sources:
     - https://nitric.io/docs
     - https://github.com/nitrictech/nitric
@@ -25,7 +26,10 @@ competitor:
 
 > Captured for HoBo competitive analysis. Source: nitric.io/docs, github.com/nitrictech (as researched). This file documents **Nitric's** offering faithfully; the HoBo↔Nitric mapping/parity tracker lives in the [HoBo mapping](#hobo-mapping) section below.
 
-## Positioning
+## What it is
+
+> Section title kept as the original capture wrote it; this is the contract's "what it is".
+
 
 - **Tagline:** *"Build cloud backends that run anywhere, fast."*
 - **Paradigm:** **Infrastructure from Code (IfC)** — you declare the cloud resources your app needs *inline in application code*; Nitric infers and provisions the infrastructure (and least-privilege IAM) automatically.
@@ -50,6 +54,36 @@ App code (with inline resource declarations + .allow())
 **The Membrane.** A gRPC runtime sits between app code and the provider runtime, exposing service contracts (document/kv, storage, queue, topic, secret, sql). SDKs are thin gRPC clients generated from proto contracts (`github.com/nitrictech/contracts`); this proto boundary is what makes the SDKs language-agnostic and the providers swappable.
 
 **Permissions.** Declared inline via `.allow(...)`; Nitric generates **least-privilege IAM** per cloud automatically.
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Resource** | A cloud capability declared inline in application code — a bucket, queue, topic, key-value store, API, schedule |
+| **`.allow(verbs)`** | The access declaration that both wires the resource and derives least-privilege IAM |
+| **Collection run** | The build-time execution of the application in a special mode, so the resource graph is *inferred by running the code* rather than parsed from files |
+| **Provider** | The realization target (AWS, GCP, Azure, Kubernetes, a single server), implemented behind a membrane |
+| **Membrane** | The gRPC sidecar that serves the portable resource APIs at runtime |
+
+The mental model is **declare where you use it**. There is no separate infrastructure file: the
+resource appears in the module that needs it, `.allow()` states the access, and running the program
+in collection mode produces the graph. This is infrastructure-from-code in its purest form, and it is
+the model HoBo's authoring surface descends from.
+
+## How it competes with HoBo
+
+Nitric is recorded in [`lineage.md`](../design/lineage.md) as a **pillar** — HoBo's IfC-default
+authoring and the `.allow()` least-privilege instinct come from here.
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | **Direct, and the source of HoBo's own model** |
+| `typed-contracts` | A portable resource catalog realized per provider |
+| `provider-matching` | Provider selection at deploy time, chosen by configuration rather than scored |
+| `runtime-portability` | The membrane serves the same APIs everywhere |
+
+The divergence is the substrate and the decision: Nitric's portability runs through a gRPC sidecar
+and a configured provider; HoBo's runs through WIT ports and a scored, recorded match.
 
 ## Feature surface
 
@@ -268,7 +302,10 @@ Direct cloud SDK access for anything outside the abstracted services; provider e
 
 **Nitric Deploy** (formerly "Suga") — managed deployments (sub-10s), visual infra, observability; for teams who don't want to self-manage providers.
 
-## Differentiators
+## Where Nitric is stronger
+
+> Shipped, evidenced capability only.
+
 
 ### Headline differentiators
 
@@ -301,7 +338,9 @@ Direct cloud SDK access for anything outside the abstracted services; provider e
 - No **WASM/WASI** runtime / polyglot-via-components story.
 - No **AI-generated providers/implementations**; provider breadth is human-driven.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > For every Nitric feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · 🔜 = planned, see iteration hooks. HoBo design lives in [`../../design/`](../design/index.md).
 
@@ -374,3 +413,72 @@ All resources detailed with `.allow()` verbs + cross-cloud equivalence in [21](.
 - Per-language IfC collection fidelity (run-to-collect vs static analysis).
 - ~~WebSocket port WIT shape (no standard `wasi:websocket` yet).~~ ✅ **RESOLVED** — preview `wasi:websocket` + `hobo:websocket` extension ([ADR-0075](../design/adr/07-portability-extensibility.md#adr-0075), [Plan 20](../design/wasm-runtime-wit.md#plan-20)).
 - ~~`sql` migrations workflow parity (Nitric's `migrations/<db>/*.up.sql`).~~ ✅ **RESOLVED** — declarative desired-schema + auto-diff ([Plan 32](../design/data-plane.md#plan-32), [ADR-0032](../design/adr/03-data-plane.md#adr-0032)).
+
+## Adversarial critique
+
+- **The membrane is a runtime dependency on every request path.** A gRPC sidecar serving the resource
+  APIs is a latency, deployment and failure-mode cost that a direct SDK call does not have.
+- **Collection-by-execution is clever and fragile.** Inferring the graph by running the program means
+  the graph depends on code paths executing; conditional or dynamically-constructed resources are
+  where this model gets surprising.
+- **Portability is bounded by the lowest common denominator.** A resource catalog that must map onto
+  AWS, GCP, Azure and Kubernetes can only expose what all of them share, and the escape hatches
+  (direct cloud SDK, custom providers) are where real applications end up.
+- **Documented maturity gaps** — SQL databases in preview with hourly rather than serverless pricing,
+  custom domains AWS-only, security rules not enforced locally — are the kind of edges that decide
+  production adoption.
+- **Local rules divergence is a real hazard**: least-privilege that is enforced in the cloud and not
+  locally means the failure appears after deploy.
+- **Small ecosystem** relative to Terraform or Pulumi, with correspondingly fewer people who have hit
+  and solved the same problem.
+- **Provider choice is configuration, not a decision.** Nothing scores or records why a given
+  provider was appropriate.
+
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`; **proof** =
+draft/proof material; **design-only** = design intent. See the
+[live provider matrix](../design/live-provider-matrix.md) for HoBo's coverage caveats.
+
+- **Portability is scored and reported** (*implemented*, ADR-0144). Nitric asserts portability; HoBo
+  measures it and declares where thin adapters leak.
+- **Provider selection is a recorded decision** (*implemented*, `match.Decided`).
+- **WIT ports rather than a gRPC membrane** (*implemented*, ADR-0031). Capability links are resolved
+  at the component boundary rather than served by a sidecar on the request path.
+- **Event-sourced control plane with replay** (*implemented*, ADR-0135).
+- **Fail-closed residency** (*implemented*, ADR-0146).
+- **Contract effects and resilience profiles** (*implemented*, ADR-0136).
+- **Honest caveat.** Nitric ships multi-cloud deployment today across a real resource catalog; HoBo's
+  default Pulumi path is an in-memory stand-in. The borrowed idea is proven by Nitric, not by HoBo.
+
+## Better-together / integration posture
+
+- **Borrow** — already done and recorded in [`lineage.md`](../design/lineage.md): the IfC-default
+  authoring model and `.allow()` least-privilege. This capture reaffirms both and adds a third worth
+  considering: **inferring the graph by running the program** is a genuinely different collection
+  strategy from parsing a manifest, with real trade-offs on both sides.
+- **Benchmark** on multi-cloud resource coverage and on how little ceremony a first deploy needs.
+- Not an adopt, provider, render or displace target.
+
+## Threats and lessons
+
+1. **HoBo's authoring model has a working reference implementation that is not HoBo.** Nitric proves
+   the ergonomic; HoBo's argument must be what happens after the declaration — scored placement,
+   recorded decisions, measured portability.
+2. **A sidecar is the pragmatic portability mechanism and the reason to prefer WIT.** Nitric pays a
+   per-request cost for portability; HoBo pays a compile-time one. That trade should be stated
+   explicitly rather than assumed.
+3. **`.allow()` is the best single ergonomic in this cohort** — one declaration producing wiring and
+   least-privilege together — and HoBo's version must not be more ceremonious.
+4. **Preview-quality edges decide adoption.** Databases in preview and AWS-only domains are exactly
+   the details that stop a production migration, and they are worth watching in HoBo's own matrix.
+
+## Sources
+
+- [nitric.io/docs](https://nitric.io/docs) — resources, `.allow()`, collection, providers, membrane
+- [nitrictech/nitric](https://github.com/nitrictech/nitric) — source and provider implementations
+- HoBo-side: [`design/lineage.md`](../design/lineage.md) records Nitric as a pillar influence
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Current resource-catalog maturity and provider coverage were not
+re-verified in this pass and are not asserted.

@@ -19,12 +19,12 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 | Category | Competitors |
 | -------- | ----------- |
 | [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [Harness Platform](harness.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [Nomad](nomad.md) · [OpenChoreo](openchoreo.md) · [Port](port.md) · [Porter](porter.md) · [Qovery](qovery.md) · [Radius](radius.md) · [Upsun](upsun.md) |
-| [Portable Application Models & Control Planes](categories/portable-application-models.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [Crossplane](crossplane.md) · [Dapr](dapr.md) · [Facets.cloud](facets.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Nitric](nitric.md) · [OpenChoreo](openchoreo.md) · [Radius](radius.md) · [SST](sst.md) |
+| [Portable Application Models & Control Planes](categories/portable-application-models.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [Crossplane](crossplane.md) · [Dapr](dapr.md) · [Facets.cloud](facets.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Nitric](nitric.md) · [OpenChoreo](openchoreo.md) · [Pulumi](pulumi.md) · [Radius](radius.md) · [SST](sst.md) |
 | [Cloud Application Platforms](categories/cloud-application-platforms.md) | [Anonymous container hosts](anon-container-hosts.md) · [AWS Amplify](aws-amplify.md) · [Control Plane](control-plane.md) · [Encore](encore.md) · [Flux Network](flux-network.md) · [Fly.io](flyio.md) · [Heroku](heroku.md) · [Lagoon](lagoon.md) · [Lakebed](lakebed.md) · [Modal](modal.md) · [Netlify](netlify.md) · [Northflank](northflank.md) · [Porter](porter.md) · [Qovery](qovery.md) · [Railway](railway.md) · [Release](release.md) · [Render](render.md) · [Upsun](upsun.md) · [Vercel](vercel.md) |
 | [Developer Portals & IDPs](categories/developer-portals-idps.md) | [Atlassian Compass](atlassian-compass.md) · [Backstage](backstage.md) · [Cortex](cortex.md) · [Cycloid](cycloid.md) · [Harness Platform](harness.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [OpenChoreo](openchoreo.md) · [OpsLevel](opslevel.md) · [Port](port.md) · [Red Hat Developer Hub](red-hat-developer-hub.md) · [Roadie](roadie.md) |
-| [Infrastructure-from-Code & Authoring](categories/infrastructure-from-code.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [KusionStack](kusionstack.md) · [Nitric](nitric.md) · [SST](sst.md) · [Wasp](wasp.md) · [Winglang](winglang.md) |
+| [Infrastructure-from-Code & Authoring](categories/infrastructure-from-code.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [KusionStack](kusionstack.md) · [Nitric](nitric.md) · [Pulumi](pulumi.md) · [SST](sst.md) · [Wasp](wasp.md) · [Winglang](winglang.md) |
 | [Runtime & Distributed Application Substrates](categories/runtime-substrates.md) | [.NET Aspire](aspire.md) · [celld](celld.md) · [Control Plane](control-plane.md) · [Dapr](dapr.md) · [Flux Network](flux-network.md) · [Modal](modal.md) · [Nomad](nomad.md) · [Rivet](rivet.md) · [Spin / Fermyon](spin-fermyon.md) · [Wasm host landscape](wasm-hosts.md) · [wasmCloud](wasmcloud.md) |
-| [Hybrid & Multicloud Enterprise Orchestration](categories/hybrid-multicloud-enterprise.md) | [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [Porter](porter.md) · [Red Hat Developer Hub](red-hat-developer-hub.md) |
+| [Hybrid & Multicloud Enterprise Orchestration](categories/hybrid-multicloud-enterprise.md) | [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [Porter](porter.md) · [Pulumi](pulumi.md) · [Red Hat Developer Hub](red-hat-developer-hub.md) |
 | [Self-Hosted PaaS & Server Deployment](categories/self-hosted-paas.md) | [Anonymous container hosts](anon-container-hosts.md) · [Lagoon](lagoon.md) · [Northflank](northflank.md) · [ServerKit](serverkit.md) |
 | [Agentic Infrastructure & Operations](categories/agentic-infrastructure.md) | [Antimetal](antimetal.md) · [Control Plane](control-plane.md) · [Cortex](cortex.md) · [Harness Platform](harness.md) · [InsForge](insforge.md) · [Lakebed](lakebed.md) · [Port](port.md) · [Vercel](vercel.md) |
 | [Backend & Data Application Platforms](categories/backend-data-platforms.md) | [AWS Amplify](aws-amplify.md) · [Convex](convex.md) · [InsForge](insforge.md) · [Supabase](supabase.md) · [Wasp](wasp.md) |
@@ -34,7 +34,7 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 
 Categories are many-to-many: several products appear in more than one row above, with a single canonical capture behind each link.
 
-## Canonical captures (61)
+## Canonical captures (62)
 
 | Competitor | Capture | Primary category | Directness | Role relative to HoBo |
 | ---------- | ------- | ---------------- | ---------- | --------------------- |
@@ -80,6 +80,7 @@ Categories are many-to-many: several products appear in more than one row above,
 | **OpsLevel** | [`opslevel.md`](opslevel.md) | [`developer-portals-idps`](categories/developer-portals-idps.md) | complementary | portal whose scoped-scorecard model is the sharpest idea in the category: standards proportional to what a service actually is |
 | **Port** | [`port.md`](port.md) | [`developer-portals-idps`](categories/developer-portals-idps.md) | complementary | schema-first developer portal whose Blueprint model is the strongest catalog abstraction in the corpus — a front end HoBo should serve, not fight |
 | **Porter** | [`porter.md`](porter.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | BYOC PaaS that owns the customer's cluster — the clearest example of the credit-and-account argument HoBo also makes |
+| **Pulumi** | [`pulumi.md`](pulumi.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | adjacent | the IaC engine HoBo stands on — an adopted adapter and borrow-source whose authoring model HoBo agrees with and whose altitude it deliberately sits above |
 | **Qovery** | [`qovery.md`](qovery.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | direct | BYOC internal developer platform deploying into your own cloud — PaaS/IDP competitor |
 | **Radius** | [`radius.md`](radius.md) | [`portable-application-models`](categories/portable-application-models.md) | overlapping | CNCF cloud-native application platform (app graph, Recipes, connections) — borrow-source for recipes and app model |
 | **Railway** | [`railway.md`](railway.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | instant-deploy PaaS with a visual canvas and Railway Metal — mainstream PaaS benchmark |
@@ -148,6 +149,8 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `platformsh` | [Upsun](upsun.md) |
 | `port.io` | [Port](port.md) |
 | `porter.run` | [Porter](porter.md) |
+| `pulumi cloud` | [Pulumi](pulumi.md) |
+| `pulumi esc` | [Pulumi](pulumi.md) |
 | `radapp` | [Radius](radius.md) |
 | `release.com` | [Release](release.md) |
 | `releasehub` | [Release](release.md) |

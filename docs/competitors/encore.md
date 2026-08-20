@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [authoring, app-graph, wiring, environments, delivery]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://encore.dev/docs
     - https://github.com/encoredev/encore
@@ -43,6 +44,35 @@ The mental model is **infrastructure-from-code (IfC)**: instead of a separate Ia
 | Deploy | OSS self-host (`encore build docker` + your IaC) **or** Encore Cloud (provisions in your account; per-PR preview envs; least-priv IAM; tracing; cost analytics) |
 | AI | **MCP server** (agents introspect the app graph); generates AI-tool rules files (Cursor/Claude Code/…) |
 | License / price | **MPL-2.0** OSS core; Encore Cloud Free / **Pro from $49/member/mo + $99/env/mo + $2.5/resource/mo** / Enterprise |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Service** | A package annotated as a service; the unit of deployment |
+| **API endpoint** | A plain function marked as an API — the framework derives routing, validation and typed clients |
+| **Resource** | `sqldb`, `pubsub`, `cache`, `objects`, `cron` declared as package-level values in application code |
+| **Static analysis** | The compiler-level parse of the application that produces the infrastructure graph |
+| **Environment** | A deployment target, including per-PR preview environments |
+| **Encore Cloud** | The optional hosted control plane that provisions into the customer's AWS or GCP account |
+
+The mental model is **the compiler knows your infrastructure**. Encore parses the application to
+build the graph rather than running it (Nitric) or asking for a manifest (Aspire) — which gives
+compile-time errors for infrastructure mistakes and constrains the language to what the parser
+understands.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | **Direct** — resources declared in application code, graph derived by the toolchain |
+| `app-graph` | A statically derived service and resource graph, with a shipped architecture view |
+| `wiring` | Typed cross-service calls with generated clients |
+| `environments` | Preview environments per pull request |
+| `delivery` | Provisioning into the customer's own AWS or GCP account |
+
+Encore is the closest *product* analog to HoBo: same authoring thesis, plus the platform HoBo
+intends to be, restricted to two clouds and two languages.
 
 ## Feature surface
 
@@ -105,9 +135,23 @@ The mental model is **infrastructure-from-code (IfC)**: instead of a separate Ia
 - **Enterprise** (custom): least-privilege IAM, self-hosted preview environments, custom network-security rules + RBAC, SOC 2 assistance, a TAM, custom SLAs.
 - **OSS:** the CLI generates a Docker image for migrating away (MPL-2.0).
 
-## Differentiators
+## Architecture
 
-### Strengths (what Encore does well)
+- **Toolchain** — static analysis of Go or TypeScript source produces the infrastructure graph at
+  build time.
+- **Local** — `encore run` starts the whole application with local implementations of its
+  infrastructure, plus a local development dashboard with traces and an architecture diagram.
+- **Cloud** — Encore Cloud provisions into the customer's AWS or GCP account using managed services,
+  so the customer holds the bill and the resources.
+- **State authority** — the source code is the description; Encore Cloud holds environment state.
+- **Portability boundary** — the application is portable across the two supported clouds and bound to
+  Encore's framework. Removing Encore means rewriting the application, not just redeploying it.
+
+## Where Encore is stronger
+
+> Shipped, evidenced capability only.
+
+### what Encore does well
 
 - **Real infrastructure-from-code, shipping in production** — the IfC thesis HoBo bets on, validated at scale, with a clean static "application graph."
 - **Best-in-class local DX** — `encore run` with **real Postgres + real Pub/Sub + tracing + a `:9400` dashboard + arch diagrams**, per-branch namespaces, and **DB branching** for previews. This is the bar for "works locally predicts works in prod."
@@ -116,7 +160,14 @@ The mental model is **infrastructure-from-code (IfC)**: instead of a separate Ia
 - **AI-native posture** — MCP server for agent introspection, AI-tool rules generation, fast validation loop.
 - **OSS core (MPL-2.0)** with a clean OSS/commercial split.
 
-### Gaps (Encore's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Encore's limits — HoBo's opening
 
 - **AWS/GCP only; Encore owns provisioning; no pluggable IaC.** No Azure, Cloudflare/Workers, Fly, edge, or on-prem; you **cannot** bring Pulumi/Crossplane/Terraform/OpenTofu or pin specific resources to specific providers. The resource→service mapping is **fixed by Encore's compiler** — you tune knobs in the dashboard/console, but you can't redefine *what a resource maps to*. HoBo is genuinely **multi-cloud + IaC-agnostic** with typed provider-native escape hatches ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)).
 - **Narrow data paradigm: Postgres-only SQL, raw SQL, no ORM.** **No first-class document/NoSQL, graph, vector, wide-column, or OLAP** resource — you bolt those on yourself (a raw client to DynamoDB/Mongo/a vector DB), outside the IfC graph and outside the typed surface. This is the **exact surface HoBo formalizes** as a paradigm taxonomy ([ADR-0052](../design/adr/03-data-plane.md#adr-0052)) with **opt-in paradigm packages** (`@hobo/sql`/`vector`/`graph`/`document`, [ADR-0081](../design/adr/03-data-plane.md#adr-0081)) that map to cloud natives by default and stay overridable.
@@ -129,7 +180,23 @@ The mental model is **infrastructure-from-code (IfC)**: instead of a separate Ia
 - **No greenfield-vs-brownfield onboarding.** No documented "import existing infra"; adoption means writing to the SDK, and leaving means the migrate-away Docker image (a rewrite off the SDK). HoBo's `hobo import` adopts TF/Pulumi/Lakebed/FaaS estates **in place** ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)).
 - **Value concentrates in Encore Cloud + SDK lock-in.** OSS self-host yields a Docker image but leaves provisioning to you; preview envs / IAM / cost / per-PR DB branching live in the paid platform, and per-resource/per-env pricing scales with surface area. HoBo's **Yard is itself a Bindle** (self-host = hosted parity, [Plan 4](../design/control-plane.md#plan-04)); commercialization is out of design scope ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)) and metering/showback is OSS FinOps ([ADR-0039](../design/adr/02-identity-security.md#adr-0039)).
 
-### Comparisons
+## Adversarial critique
+
+- **Static analysis constrains the language.** Infrastructure declarations must be statically
+  discoverable, so dynamic construction, higher-order composition and some ordinary refactorings are
+  off the table. The compiler's understanding is the ceiling.
+- **The framework is the lock-in.** APIs, services and resources are Encore constructs; leaving means
+  a rewrite. This is the sharpest version of the infrastructure-from-code trade.
+- **Two languages, two clouds.** Go and TypeScript, AWS and GCP. That is a deliberate focus and a
+  hard boundary.
+- **Opinionated service decomposition** fits greenfield microservices and fits existing systems
+  poorly.
+- **Encore Cloud is where the value concentrates.** The open-source framework is real; the
+  environment management, previews and observability that make it pleasant are the hosted product.
+- **The architecture diagram is derived from declarations**, so it shows intent rather than what is
+  actually running.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Encore is **IfC → AWS/GCP, TS/Go, opinionated, great DX**; HoBo is **IfC → any cloud via pluggable adapters, any wasm language, event-sourced + AI-native + governed**. Encore is the sharpest validation that HoBo's *authoring model* is right and the clearest reminder that HoBo's edge is **breadth (clouds/languages/IaC) + the control-plane planes + data-paradigm breadth + AI-native depth**. On local fidelity, Encore's "real Postgres + real Pub/Sub locally" is the bar `hobo dev` targets — HoBo formalizes it as a **fidelity matrix** (simulate/mock/Camp-only) with **`hobo verify`** splitting local vs Camp checks ([ADR-0042](../design/adr/07-portability-extensibility.md#adr-0042)).
 - **vs Nitric:** both are cloud-agnostic-ish IfC; Nitric is more multi-cloud + language-broad via its own runtime, Encore is more opinionated/managed with superior local DX.
@@ -140,7 +207,9 @@ The mental model is **infrastructure-from-code (IfC)**: instead of a separate Ia
 
 **Net:** Encore is HoBo's closest product-shaped competitor on **authoring + DX**, and the gap is **everything HoBo adds around the IfC core**: true multi-cloud + pluggable IaC, a language-neutral wasm runtime, Resource Definitions/Matching + the Dispatcher, **a broad data-paradigm catalog (SQL/vector/graph/document) as opt-in packages that map to cloud natives**, event-sourced governance (cost/policy/contracts), cross-cloud data, multi-tenant-app primitives, and AI-native depth (generation pipeline, agents-as-principals, trainable functions).
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Encore concept (✅ has · ➕ goes further · 🔜 planned).
 
@@ -174,3 +243,35 @@ Encore's **resource-abstraction ergonomics** — `new SQLDatabase(...)`, a typed
 ### The one-line takeaway
 
 **Encore proves HoBo's IfC authoring model + local DX in production** — and maps cleanly onto Plans 21/22/15/26 — but is bounded to **AWS/GCP + TS/Go + Postgres-only data + a fixed mapping + a deploy pipeline**. HoBo's differentiation is the surrounding system: **any-cloud + pluggable-IaC breadth, a language-neutral wasm runtime, Resource Definitions/Matching + the Dispatcher, a broad data-paradigm catalog as opt-in packages, event-sourced governance (cost/policy/contracts), cross-cloud data, multi-tenant-app primitives, and AI-native depth (generation pipeline, agents-as-principals, trainable functions).**
+
+## Better-together / integration posture
+
+- **Benchmark** — Encore is the product HoBo is measured against by anyone who has used it: the local
+  dashboard, the derived architecture diagram, and preview environments are all shipped.
+- **Borrow** — **static derivation of the graph with compile-time errors for infrastructure
+  mistakes**. Catching a missing binding at build time rather than deploy time is the strongest
+  argument for typed authoring, and HoBo's contracts could produce the same class of error.
+- **Displace** — honestly head-on for the greenfield backend team.
+- Not an adopt or provider target.
+
+## Threats and lessons
+
+1. **Encore is the sharpest product-shaped competitor in the corpus** — same thesis, shipped, with
+   BYOC economics. HoBo's differentiation is language neutrality, scored placement, and not becoming
+   the application's programming model.
+2. **Compile-time infrastructure errors are the ergonomic to match.** Second occurrence of this
+   finding after Amplify's generated client types.
+3. **Framework lock-in is the price of the best ergonomics**, and it is a price many teams will pay.
+   HoBo's answer — describe, do not absorb — is a genuine differentiator and a slightly worse first
+   experience, which is a trade worth stating openly.
+4. **BYOC plus preview environments plus local dev is the complete loop.** Every element exists
+   elsewhere; Encore's achievement is having all of them.
+
+## Sources
+
+- [encore.dev/docs](https://encore.dev/docs) — services, APIs, resources, environments, Encore Cloud
+- [encoredev/encore](https://github.com/encoredev/encore) — source and licence
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Current language and cloud support were not re-verified in this pass
+and are not asserted.

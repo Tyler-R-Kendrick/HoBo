@@ -15,6 +15,7 @@ competitor:
   evidence: mixed
   status: active
   research_date: 2026-08-19
+  contract: v1
   sources:
     - https://alchemy.run/docs/
     - https://github.com/sam-goodwin/alchemy
@@ -46,6 +47,32 @@ Alchemy began (v1) as *"an embeddable, TypeScript-native Infrastructure-as-Code 
 | APIs | three modalities on one host: **schemaless RPC** (internal, fully typed, zero validation cost) · **Effect RPC** (schema'd trust boundaries) · **Effect HTTP** (real REST for non-TS consumers) |
 | AI | `llms.txt` + `llms-full.txt` (~857 KB) agent docs (*"an agent can pick the right page in one hop"*); homepage: *"Paste this into your coding agent"*; LLM-authored providers as the ecosystem growth loop. **No MCP server, no agent identity/principals** |
 | License / status | **Apache-2.0**, OSS, no hosted product; **alpha**, `alchemy@next`; ~1k stars; ~$1.06M raised (Crucible Capital + angels) |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Resource** | An async TypeScript function that creates, updates or deletes something, with its own state handling |
+| **Scope** | The nesting context that owns resources and their state |
+| **State store** | Pluggable persistence for resource state — files, cloud storage, a database |
+| **Adopt / replace semantics** | Explicit handling for existing resources |
+| **Effect-based v2** | The second-generation model, "Infrastructure-as-Effects", built on the Effect library |
+
+The mental model is **there is no engine**. A resource is a function; running the program reconciles
+reality by calling provider APIs directly. No daemon, no separate state service, no CLI orchestrator
+between the code and the cloud.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | TypeScript-native resource definition with no DSL and no engine |
+| `typed-contracts` | Resources are typed functions with typed inputs and outputs |
+| `reconciliation` | Direct-API reconcile in-process |
+| `extensibility` | **The standout** — writing a provider is writing an async function, which is why the ecosystem grows quickly, including LLM-authored providers |
+
+Alchemy competes with HoBo on the provisioning core and is simultaneously a candidate `iac-alchemy`
+adapter — a posture HoBo's own ADRs already anticipate.
 
 ## Feature surface
 
@@ -122,9 +149,24 @@ Providers are *"just Layers, so adding a new cloud or third-party API is 'declar
 - **Better Auth integration**: `@alchemy.run/better-auth` wraps the Better Auth framework as one binding — `BetterAuth({basePath, emailAndPassword, …})` yields a fully-typed auth instance whose deployment *"handles database provisioning, schema migrations, secret generation, and route serving"* (signing secret auto-provisioned as an `Alchemy.Random` resource, persisted across deploys). Database Layers span CloudflareD1/Neon/Aurora DataApi/Hyperdrive/Postgres/MySQL/SQLite/Drizzle/Memory; the handler mounts as `{ fetch: auth.fetch }` and is **host-portable** — *"same handler runs on Cloudflare Workers and AWS Lambda unchanged"* — with `auth.getSession()` reading the ambient request and plugins surfacing as typed `auth.api.*` endpoints.
 - **APIs**: three interoperating modalities — **schemaless RPC** (internal default: *"no schema to write, no runtime checking, and no per-request validation cost"*, bind Workers/DOs/Containers/Lambdas directly), **Effect RPC** (schema'd, for *"data … cross[ing] a trust boundary"*), **Effect HTTP** (*"real HTTP — real URLs, path params, … `curl`"*) — *"a single Worker or Function can serve schemaless methods internally **and** a schema'd surface externally."*
 
-## Differentiators
+## Architecture
 
-### Strengths (what Alchemy does better than HoBo today)
+- **No control plane.** The program *is* the orchestrator; there is no server, no daemon, no hosted
+  state service.
+- **Execution** — resources are async functions invoked in dependency order, calling provider APIs
+  directly rather than through a generic engine.
+- **State** — pluggable stores; the state format is Alchemy's own but the location is the user's
+  choice.
+- **v2 "Infrastructure-as-Effects"** rebuilds the model on Effect, bringing structured concurrency,
+  typed errors and dependency injection to the reconcile loop.
+- **Portability boundary** — none claimed. Alchemy is a way to write providers and run them; the
+  provider you write is for the API you wrote it against.
+
+## Where Alchemy is stronger
+
+> Shipped, evidenced capability only.
+
+### what Alchemy does better than HoBo today
 
 - **Engine-less, embeddable IaC actually shipping.** No Pulumi binary, no TF, no gRPC plugin protocol — a pure-TS library whose providers speak HTTPS, runnable in a browser, a Worker, a workflow. HoBo *designs* pluggable IaC ([ADR-0069](../design/adr/01-architecture-core.md#adr-0069)) but its default live path is still the **in-memory Pulumi stand-in** ([live-provider-matrix](../design/live-provider-matrix.md)); Alchemy ships the real thing with the smallest possible footprint.
 - **The reconcile lifecycle is more robust than snapshot-diff.** Convergent idempotent reconcile + deterministic physical names + `read`-based state recovery means a crashed half-deploy self-heals, and **adoption of unmanaged resources** (`--adopt`, `Unowned`) is first-class — a per-resource slice of what HoBo scopes as `hobo import` ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)), live today.
@@ -135,7 +177,14 @@ Providers are *"just Layers, so adding a new cloud or third-party API is 'declar
 - **AI-first provider growth loop, live.** LLM-authored providers + `llms.txt`/`llms-full.txt` agent docs make "the ecosystem writes itself" operational today, where HoBo's generation pipeline ([Plan 23](../design/generated-stack.md#plan-23)) is design-stage.
 - **Typed failure semantics.** Cloud API failures as tagged Effect errors — *"Errors in the type system"* — is a stronger authoring-time story for partial failure than HoBo's SDK exposes today (HoBo's answer lives at the contract layer, [ADR-0136](../design/adr/03-data-plane-effects-resiliency.md)).
 
-### Gaps (Alchemy's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Alchemy's limits — HoBo's opening
 
 - **Multi-provider, not multi-cloud — the SST critique, amplified.** `Cloudflare.R2.Bucket` and `AWS.S3.Bucket` are unrelated types; there are **no cross-provider equivalence classes, no portable ports, no impedance scoring**. The same app does not retarget clouds without a rewrite. HoBo's entire Bindle-first thesis ([ADR-0144](../design/adr/07-portability-extensibility.md#adr-0144)) — abstract ports by default, Camp/Yard-scoped provider escapes, PortabilityReport-scored fidelity — has no Alchemy counterpart, and Alchemy's philosophy (*"unopinionated"*, un-bundled, direct APIs) is actively hostile to adding one.
 - **TypeScript-only, Effect-first.** Authoring is TS; the stack program is Effect; the recommended runtime style is Effect. HoBo authors against language-neutral WIT in any Component-Model language ([Plan 20](../design/wasm-runtime-wit.md#plan-20)) — and deliberately **keeps Effect-TS out of its public API** ([ADR-0136](../design/adr/03-data-plane-effects-resiliency.md): effects/resiliency are declarative *contract data*, not a library dependency). Alchemy bets the opposite way: the Effect ecosystem *is* the product surface. That buys them typed errors and Layers; it costs them every non-TS team and welds their API to a fast-moving third-party library (currently `effect@next`).
@@ -147,14 +196,34 @@ Providers are *"just Layers, so adding a new cloud or third-party API is 'declar
 - **No reactive data plane, no durable runtime of its own, no tenancy.** Durability is delegated to Cloudflare DOs/Workflows; there is no live-query model ([ADR-0050](../design/adr/03-data-plane.md#adr-0050)), no actor/event-sourced app runtime, no multi-tenant-app primitives ([Plan 50](../design/security-networking.md#plan-50)), no cross-cloud data story ([ADR-0032](../design/adr/03-data-plane.md#adr-0032)).
 - **No estate import.** `--adopt` takes over resources one at a time when names match; there is no TF/Pulumi-state or whole-estate ingestion (`hobo import`, [ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)).
 
-### Comparisons
+## Adversarial critique
+
+- **Engine-less means you own the failure modes.** No engine also means no shared implementation of
+  locking, retry semantics, partial-failure recovery or concurrent-run safety — each provider author
+  re-solves them, or does not.
+- **State is a solved problem being re-solved.** Pluggable stores are flexible and put correctness
+  under concurrent runs on the user.
+- **LLM-authored providers are a real ecosystem strategy and a real quality question.** Rapid
+  breadth with uneven verification is a supply-chain characteristic worth naming, not celebrating by
+  default.
+- **The Effect rewrite is a large conceptual bet.** Effect is powerful and unfamiliar; v1-to-v2 is a
+  migration for adopters, and this corpus has already recorded what generational rewrites cost
+  (Amplify).
+- **Young project, small ecosystem** against Terraform's and Pulumi's provider catalogs.
+- **TypeScript only.**
+- **No placement decision, no policy, no portability report** — it is a provisioning library, not a
+  control plane, and does not claim otherwise.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** the deepest overlap of any capture on the **authoring + provisioning core** — TS-native IfC, typed capability bindings, per-PR ephemeral envs, real-cloud fidelity, AI-authored providers, even "telemetry receivers as code." But Alchemy stops exactly where HoBo begins: **no portability model, no governance planes, no event-sourced control plane, no agent identity, no verification of generated code, no polyglot runtime**. Alchemy is a better *engine* than HoBo has shipped; HoBo is a *platform* Alchemy has no ambition to be.
 - **vs SST:** both TS-first IfC. SST is a **component framework welded to Pulumi/TF** (150+ providers, AWS-centric high-level components, Live proxy dev, SaaS Console); Alchemy **deleted the engine** — direct-API providers, embeddable library, workerd-local dev, no hosted product. SST has breadth and maturity; Alchemy has architectural purity and the stronger testing/observability story.
 - **vs Pulumi/Terraform:** Alchemy's un-bundling thesis targets exactly their layered stack (*"talks directly to cloud services APIs"* with no state protocol, plugin binaries, or DSL). The trade: Pulumi/TF's provider ecosystems are thousands strong and battle-hardened; Alchemy's answer — LLM-author what you need — is genuinely novel and genuinely unproven at scale.
 - **vs Encore/Nitric:** all IfC, different bets. Encore = compiler + opinionated backend framework (TS/Go, AWS/GCP); Nitric = portable ports across clouds (the closest to HoBo's equivalence classes); Alchemy = un-bundled engine + Effect composition, portable across *nothing* but expressive over *everything it supports*.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Alchemy concept (✅ has · ➕ goes further · ◐ designed-but-shallow · 🔜 planned · 🔌 composes as adapter). HoBo design lives in [`../design/`](../design/index.md).
 
@@ -206,3 +275,33 @@ Risks, stated honestly: **alpha instability** (the v1→v2 rewrite replaced the 
 ### The one-line takeaway
 
 **Alchemy is the closest shipped artifact to HoBo's authoring/provisioning core — TS-native IfC, capability bindings, reconcile lifecycle, real-cloud fidelity, LLM-authored providers — and it validates HoBo's un-bundle-the-engine and AI-authored-ecosystem bets better than any other capture; but it is single-language, Effect-welded, two-cloud, alpha, and has *no* portability model, governance plane, event-sourced audit, agent identity, or generation verification.** HoBo's move is not to out-engine it but to **absorb the concepts and optionally leverage the engine**: Yard bindings + the seeded localhost Yard (ADR-0157), deployment phases (ADR-0158), the OOB test harness + credentials-as-code CI (ADR-0159), and the drizzle-kit/Better Auth defaults (ADR-0160/0161) land Alchemy's best ideas on HoBo machinery — with an `iac-alchemy` adapter and a generation-pipeline codegen target as the optional plumbing plays, and a "control plane above the un-bundled engine" position that converts Alchemy's users at exactly the wall where Alchemy stops.
+
+## Better-together / integration posture
+
+- **Borrow** — **provider authoring as an ordinary async function**. The single best lesson here: the
+  cost of adding a provider determines how big the ecosystem gets, and Alchemy has driven that cost
+  close to zero.
+- **Integrate** — a candidate `iac-alchemy` adapter alongside Pulumi, Terraform, OpenTofu and
+  Crossplane, none primary.
+- **Benchmark** on time-to-write-a-new-provider.
+- **Displace** only on the narrow provisioning-core surface.
+
+## Threats and lessons
+
+1. **Provider-authoring cost is the ecosystem lever.** HoBo's generation pipeline is a bet on the
+   same insight; Alchemy achieves it with plain functions and no generation at all.
+2. **Engine-less is a legitimate architecture** and a reminder that a heavyweight reconciler is a
+   choice, not a requirement — worth revisiting when HoBo justifies its own machinery.
+3. **LLM-authored ecosystems are arriving.** Verification and conformance testing become the
+   differentiator once authoring is cheap, which is exactly what HoBo's conformance gating claims.
+4. **Generational rewrites cost adopters.** Third corpus occurrence after Amplify and Upsun.
+
+## Sources
+
+- [alchemy.run/docs](https://alchemy.run/docs/) — resources, scopes, state stores, v2 Effect model
+- [sam-goodwin/alchemy](https://github.com/sam-goodwin/alchemy) — source and provider ecosystem
+- [devtools.fm episode 138](https://www.devtools.fm/episode/138) and [effect.website](https://effect.website) — background on the Effect-based v2 direction
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. The v1-to-v2 migration path and current provider inventory were not
+re-verified in this pass and are not asserted.

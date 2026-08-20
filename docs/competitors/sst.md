@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [authoring, typed-contracts, wiring, environments]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://sst.dev/docs/
     - https://github.com/sst/sst
@@ -48,6 +49,33 @@ The mental model is closest to **typed IaC-as-a-real-program** (Pulumi-style) wi
 | Console | Optional **SaaS** (`console.sst.dev`): logs, zero-instrument **Issues**, resources view, update permalinks, **Autodeploy** (CodeBuild in *your* account) + PR preview envs |
 | AI | **None** for infra (no MCP control surface, no agent identity, no generation) — SST's AI work is a separate coding agent (`opencode`), not infra automation |
 | License / price | **MIT** OSS core; **Console** free ≤ 350 active resources, then **$0.086/resource** (≤2000) / **$0.032/resource** (>2000); personal/local stages free |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **`sst.config.ts`** | The single configuration file describing the whole application |
+| **Component** | A high-level construct (`sst.aws.Function`, `sst.aws.Nextjs`) wrapping lower-level provider resources |
+| **Linking** | The typed connection mechanism — link a bucket to a function and the function gets typed, permissioned access |
+| **Stage** | The deployment scope, typically per developer and per environment |
+| **Live** | Local development that proxies real cloud invocations to code running on the developer's machine |
+| **Ion engine** | The v3 runtime, built on Pulumi and Terraform providers rather than CloudFormation |
+
+The mental model is **typed links over 150+ providers**. Linking is the idea worth studying: one
+declaration produces the connection, the permissions and the types, which is the same
+one-declaration-three-effects instinct as Nitric's `.allow()`.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | One typed TypeScript config for the whole application |
+| `typed-contracts` | **Linking** — typed, permissioned connections between resources |
+| `wiring` | Links propagate outputs and access together |
+| `environments` | Stages, including per-developer stages |
+
+SST is a close product analog with a much larger provider reach than any pure-abstraction competitor,
+because it inherits Pulumi's and Terraform's ecosystems rather than abstracting over them.
 
 ## Feature surface
 
@@ -161,9 +189,22 @@ sst cert | diagnostic | version | upgrade | telemetry
 
 Stages come from `--stage`, `SST_STAGE`, or the personal stage in `.sst/stage`.
 
-## Differentiators
+## Architecture
 
-### Strengths (what SST does well)
+- **Engine** — Ion, built on Pulumi's engine and the Terraform provider ecosystem, giving 150+
+  providers without SST writing them.
+- **Execution** — evaluate `sst.config.ts`, produce a resource graph, reconcile through the engine.
+- **Live development** — cloud events are proxied to locally-running code, so a real Lambda invocation
+  executes on the developer's laptop. This is a genuinely distinctive local-development mechanism.
+- **State authority** — the engine's state, with SST managing stage separation.
+- **Portability boundary** — provider reach is enormous; the *abstraction* is AWS-centric, because
+  the high-level components are mostly AWS shapes.
+
+## Where SST is stronger
+
+> Shipped, evidenced capability only.
+
+### what SST does well
 
 - **Typed IaC-as-a-real-program on Pulumi/TF, MIT-licensed, no vendor state** — 150+ providers, deploys **from your machine into your account**, state local + S3 (**no Pulumi Cloud**, no CloudFormation limits). A clean OSS core.
 - **Best-in-class high-level components for full-stack** — a Next.js/Remix/Astro app, a Fargate `Service`, a `Postgres`, an S3 `Bucket`, or a Stripe product in a few lines; a frontend component hides ~70 low-level resources. Genuine **full-stack** (frontend + container + serverless + data) in one config.
@@ -172,7 +213,14 @@ Stages come from `--stage`, `SST_STAGE`, or the personal stage in `.sst/stage`.
 - **Console value in your own account** — zero-instrument **Issues** (auto errors + source maps), searchable logs, and **Autodeploy via CodeBuild in your account** with PR preview envs — CI/CD without shipping code to a vendor runtime.
 - **Escape hatch is total** — any raw Pulumi/TF resource is one line away, so you're never boxed in by the high-level components.
 
-### Gaps (SST's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### SST's limits — HoBo's opening
 
 - **AWS-centric, not cloud-agnostic — despite "150+ providers."** The high-level portable components are overwhelmingly **`sst.aws.*`** (Cloudflare partial); the other 150 providers are **raw, provider-specific Pulumi/TF resources with no cross-cloud abstraction**. So SST is **multi-*provider*** (you can talk to anything) but **not multi-*cloud*** (the *same app* doesn't retarget clouds without rewriting to different resources). HoBo's ports have **cross-cloud equivalence classes** — one `bucket`/`sql`/`queue` maps to S3/GCS/Blob, RDS/Cloud SQL/Azure PG, etc. ([Plan 21](../design/authoring-resources-wiring.md#plan-21)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)).
 - **Pulumi-welded engine — no pluggable IaC.** SST *is* Pulumi (+ TF-via-Pulumi); you can't swap to Crossplane/OpenTofu/provider-native. HoBo keeps **IaC behind a port** — Pulumi is the *primary adapter*, with Crossplane/OpenTofu alongside ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0069](../design/adr/01-architecture-core.md#adr-0069)).
@@ -186,7 +234,23 @@ Stages come from `--stage`, `SST_STAGE`, or the personal stage in `.sst/stage`.
 - **Greenfield-leaning; no adopt-in-place.** Onboarding means writing `sst.config.ts` (you *can* wrap raw providers, but there's no **estate import**). HoBo's **`hobo import`** adopts existing TF/Pulumi/Lakebed/FaaS estates in place ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)).
 - **No multi-tenant-app primitives, no cross-cloud data migration/consistency.** Same shape as Encore — a SaaS builder rolls their own tenancy; single-account means no portability/consistency model. HoBo ships tenancy ([Plan 50](../design/security-networking.md#plan-50)) + app-data migration ([ADR-0032](../design/adr/03-data-plane.md#adr-0032)) + cross-Camp consistency ([ADR-0040](../design/adr/01-architecture-core.md#adr-0040)).
 
-### Comparisons
+## Adversarial critique
+
+- **AWS-centric despite multi-provider reach.** 150+ providers is the engine's reach; SST's
+  opinionated components are predominantly AWS, so "multi-cloud" describes what it *can* touch, not
+  what it makes easy.
+- **The abstraction layers are stacked.** SST over Pulumi over Terraform providers means three
+  systems' failure modes and version skews arrive together, and debugging crosses all of them.
+- **v2-to-v3 was a substantial change.** The move from CDK/CloudFormation to Ion changed the
+  underlying engine, which is the fourth generational-rewrite instance in this corpus.
+- **Linking is excellent and AWS-shaped.** The permissions half of a link is IAM; the pattern does not
+  transfer cleanly to providers with different authorization models.
+- **Live development is clever and leaky** — real cloud triggers hitting local code is superb for
+  iteration and not the same as running in the cloud.
+- **A configuration file is still a manifest.** Compared with declaring resources where they are used
+  (Nitric, Encore), SST keeps a separate description of the world.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** SST is **typed-IaC-as-a-Pulumi-program + rich full-stack components + Live dev**, **AWS-centric**, with **no AI/agents, no event-sourcing, no reactive data, no platform-rules layer, no pluggable IaC**. HoBo is **agnostic ports + pluggable IaC under an IfC layer + a language-neutral wasm runtime + event-sourced governance + AI-native depth**. SST is the sharpest validation that **Pulumi/TF as the provisioning substrate + Linking-style typed resource binding + local-first deploy** are right — HoBo adopts all three and keeps the IaC engine behind a port.
 - **vs Nitric:** both are "cloud-ish IfC," but differently — **Nitric** is *run-to-collect* with **truly portable ports** (one app → AWS/GCP/Azure/K8s, no rewrite); **SST** is an *explicit Pulumi program*, **AWS-centric**, with **richer full-stack components + Live dev**. Nitric's own docs frame it: *"SST is AWS + Pulumi, opinionated full-stack AWS."* HoBo takes Nitric's portable ports **and** SST's component/full-stack ergonomics.
@@ -196,7 +260,9 @@ Stages come from `--stage`, `SST_STAGE`, or the personal stage in `.sst/stage`.
 
 **Net:** SST is one of HoBo's closest **product-shaped** competitors on **authoring ergonomics + local DX**, and — like Encore — the gap is **everything HoBo adds around the IfC/IaC core**: genuine cloud-agnostic portable ports, pluggable IaC, a language-neutral wasm runtime, Resource Definitions/Matching + the Dispatcher, event-sourced governance (cost/policy/contracts), a reactive data plane, cross-cloud data, multi-tenant-app primitives, adopt-in-place import, and AI-native depth (generation pipeline, agents-as-principals, trainable functions).
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each SST concept (✅ has · ➕ goes further · 🔜 planned). HoBo design lives in [`../design/`](../design/index.md).
 
@@ -235,3 +301,34 @@ SST validates three HoBo bets at production scale: **(1) Pulumi/TF as the provis
 ### The one-line takeaway
 
 **SST proves HoBo's Pulumi/TF substrate + typed-linking DX + local-first-with-real-cloud-fidelity in production** — but is **AWS-centric, Pulumi-welded, snapshot-stated, and not AI-native**, with no portable cross-cloud ports, no platform-rules layer, no reactive data, and a SaaS-only Console. HoBo's differentiation is the surrounding system: **genuinely cloud-agnostic ports + pluggable IaC, a language-neutral wasm runtime, Resource Definitions/Matching + the Dispatcher, a reactive data plane + broad data paradigms, event-sourced governance (cost/policy/contracts), cross-cloud data, multi-tenant-app primitives, adopt-in-place import, and AI-native depth.**
+
+## Better-together / integration posture
+
+- **Borrow** — **Linking**, which is the clearest expression in this cohort of one declaration
+  producing connection, permission and types together, and **Live-style local development**, where
+  real cloud events drive local code.
+- **Benchmark** on provider reach and on the local iteration loop.
+- **Displace** for the TypeScript full-stack team, honestly.
+- Not an adopt or provider target — though the *strategy* of standing on Pulumi's engine rather than
+  reimplementing it is one HoBo's adapter model already shares.
+
+## Threats and lessons
+
+1. **Standing on an existing engine buys an ecosystem instantly.** SST did not write 150 providers;
+   it inherited them. HoBo's pluggable-adapter position (ADR-0006) is the same bet and should be
+   argued in those terms.
+2. **Typed linking is the ergonomic to match** — third occurrence of the one-declaration-multiple-
+   effects pattern after Nitric's `.allow()` and Amplify's generated types.
+3. **Fourth generational rewrite in this corpus.** Products in this category rewrite their engines,
+   and adopters pay. A stable IR is a competitive asset.
+4. **Local development that touches real cloud events** is a differentiated experience HoBo has no
+   equivalent for.
+
+## Sources
+
+- [sst.dev/docs](https://sst.dev/docs/) — `sst.config.ts`, components, linking, stages, Live
+- [sst/sst](https://github.com/sst/sst) — source, Ion engine, provider integration
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Current component coverage and provider counts were not re-verified in
+this pass and are not asserted.

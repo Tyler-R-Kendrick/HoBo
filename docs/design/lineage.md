@@ -66,10 +66,10 @@ the control plane is an event journal.**
 | **Cloud Foundry / PCF** | lesson + lineage | the original `cf push` app-centric contract, buildpack-style DX floor, org/space governance instinct | no opinionated monolithic platform; ports + matching instead | [technologies/cloud-foundry-pcf](../technologies/cloud-foundry-pcf.md) |
 | **Heroku** | lesson + lineage | app-centric PaaS ergonomics, add-on marketplace shape | provider-negotiated, self-hostable | [competitors/heroku](../competitors/heroku.md#primitive-mapping) |
 | **OAM / KubeVela** | standard (vocabulary) | Application/Component/**Trait**/Scope role separation (ADR-0144/0145); wadm render target (ADR-0108) | executable TS IR, scored matching, never OAM-as-model | [standards/oam](../standards/oam.md) |
-| **Nitric** | pillar (P3) | resource catalog, `.allow()` least privilege, IfC default authoring | wasm membrane, event-sourced plane | [competitors/nitric](../competitors/nitric.md#hobo-mapping) |
-| **.NET Aspire** | pillar (P2) | `WithReference` wiring, annotations, manifest IR, local orchestration DX | polyglot via WIT, provider-negotiated deploy | [competitors/aspire](../competitors/aspire.md#hobo-mapping) |
+| **Nitric** | pillar (P3) | resource catalog, `.allow()` least privilege, IfC default authoring | wasm membrane, event-sourced plane | [competitors/nitric](../competitors/nitric.md#primitive-mapping) |
+| **.NET Aspire** | pillar (P2) | `WithReference` wiring, annotations, manifest IR, local orchestration DX | polyglot via WIT, provider-negotiated deploy | [competitors/aspire](../competitors/aspire.md#primitive-mapping) |
 | **Wasp / Open-SaaS** | lesson + packaging path | declarative app-spec instinct, opinionated App Kits; `@hobo/wasp` `waspApp` → `b.web(...)` + OCI/external deps | no dual authoring; kits as Resource/App Packs planned via Distribution (ADR-0145 §2); never HoBo-owned OpenSaaS images | [competitors/wasp](../competitors/wasp.md#hobo-mapping) |
-| **SST / Encore / Winglang** | analogs | IfC validation; typed linking; preflight/inflight cautionary tale | — | [sst](../competitors/sst.md#hobo-mapping) · [encore](../competitors/encore.md#hobo-mapping) · [winglang](../competitors/winglang.md#hobo-mapping) |
+| **SST / Encore / Winglang** | analogs | IfC validation; typed linking; preflight/inflight cautionary tale | — | [sst](../competitors/sst.md#primitive-mapping) · [encore](../competitors/encore.md#primitive-mapping) · [winglang](../competitors/winglang.md#primitive-mapping) |
 
 ### Runtime & distributed substrate
 

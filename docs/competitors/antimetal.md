@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Antimetal - Competitor Reference"
 description: "Antimetal is an AI-native production-operations layer: it connects to observability, cloud, incident, source-control, chat, and data tools; builds a live system model; investigates issues; proposes evidence-backed fixes; and hands remediation to humans or coding agents."
 tags: [hobo, competitors]
+competitor:
+  slug: antimetal
+  name: "Antimetal"
+  primary_category: agentic-infrastructure
+  categories: [agentic-infrastructure, finops-governance-placement]
+  directness: adjacent
+  role: "AI-native production-operations layer (world model, RCA, agent handoff) — SRE/operator benchmark"
+  posture: [benchmark, integrate]
+  hobo_surface: [observability, agent-surface, finops]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://antimetal.com/
+    - https://docs.antimetal.com/
 ---
 
 # Antimetal - Competitor Reference

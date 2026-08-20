@@ -1,0 +1,41 @@
+---
+type: Competitive Reference
+title: "Cloud Application Platforms — category index"
+description: "Category index: Managed platforms that own application and environment lifecycle, services, previews, deployment, runtime operations, or BYOC realization."
+tags: [hobo, competitors, category]
+---
+
+# Cloud Application Platforms
+
+> Category index. Full research lives in each canonical capture — see [`../metadata-contract.md`](../metadata-contract.md) for why this page carries rows, not research.
+
+## Category boundary
+
+Managed platforms that own application and environment lifecycle, services, previews, deployment, runtime operations, or BYOC realization.
+
+## Why HoBo competes here
+
+These are what a developer actually compares 'just deploy my app' against. They set the DX bar HoBo must clear, and most are also candidate provider targets.
+
+## Competitors (14)
+
+| Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
+| ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
+| [**Anonymous container hosts**](../anon-container-hosts.md) *(primary)* | cohort capture of zero-key temporary container hosts used as the Examples Temporary host matrix | adjacent | `provider-matching`, `delivery` | Zero-credential, instant, throwaway hosting with no account friction. | HoBo treats these as scored Bindle provider targets under residency and policy gates, not as an unmanaged escape hatch. | benchmark, provider-target | P3 |
+| [**Flux Network**](../flux-network.md) *(primary)* | decentralized container host with a Git-to-Flux deploy UX (Orbit) — compute provider target, not an actor runtime | adjacent | `provider-matching`, `runtime-portability` | Decentralized capacity with genuinely independent operators. | HoBo treats it as a scored provider target subject to the same residency and impedance rules as any hyperscaler. | provider-target | P3 |
+| [**Fly.io**](../flyio.md) *(primary)* | global app platform on Firecracker microVMs — edge PaaS competitor and provider target | overlapping | `environments`, `runtime-portability`, `delivery` | Anycast microVM fleet with mature global placement primitives. | HoBo abstracts placement behind provider matching so the same app can also land elsewhere. | provider-target, benchmark | P2 |
+| [**Heroku**](../heroku.md) *(primary)* | the original app-centric PaaS (dynos, buildpacks, add-ons) — the mainstream 'just deploy my app' benchmark | overlapping | `authoring`, `environments`, `delivery`, `ecosystem` | The DX bar everyone still measures against, plus a deep add-on marketplace. | HoBo gives the same one-command feel without owning the substrate or the bill. | benchmark | P2 |
+| [**Lakebed**](../lakebed.md) *(primary)* | agent-native closed PaaS (Capsules, sync RPC, llms.txt) — named head-on competitor | direct | `agent-surface`, `authoring`, `delivery` | Purpose-built agent PaaS with a tight, opinionated capsule model. | HoBo is open, provider-agnostic, and does not require its own hosted runtime to be useful. | displace | P1 |
+| [**Modal**](../modal.md) *(primary)* | Python-first serverless compute for AI/ML with agent Sandboxes — AI-native compute competitor | adjacent | `runtime-portability`, `provider-matching` | Best-in-class serverless GPU cold-start and Python ergonomics. | HoBo treats GPU compute as a Bindle kind with provider matching rather than a single vendor runtime. | provider-target, benchmark | P3 |
+| [**Netlify**](../netlify.md) *(primary)* | composable-web platform (Functions/Edge, Blobs, Netlify DB) — frontend PaaS benchmark | overlapping | `delivery`, `environments` | Excellent frontend delivery pipeline and edge primitives. | HoBo covers backend, data and policy surfaces a frontend cloud never claims. | benchmark, provider-target | P3 |
+| [**Northflank**](../northflank.md) *(primary)* | full-stack PaaS with BYOC and GPU support — mature container PaaS benchmark | overlapping | `environments`, `delivery`, `governance` | Broad shipped surface — services, jobs, DBs, pipelines, BYOC, GPU. | HoBo is not a hosting business: the same manifest can target Northflank or anything else. | benchmark | P2 |
+| [**Qovery**](../qovery.md) *(primary)* | BYOC internal developer platform deploying into your own cloud — PaaS/IDP competitor | direct | `environments`, `delivery`, `provider-matching` | Mature BYOC deployment into a customer's own cloud accounts. | HoBo's BYOC story is Bindle-first with PortabilityReport scoring rather than a fixed engine per cloud. | displace, benchmark | P2 |
+| [**Railway**](../railway.md) *(primary)* | instant-deploy PaaS with a visual canvas and Railway Metal — mainstream PaaS benchmark | overlapping | `authoring`, `environments`, `delivery` | Outstanding onboarding DX and template ecosystem. | HoBo aims at the same first-run feel while remaining self-hostable and provider-neutral. | benchmark | P2 |
+| [**Render**](../render.md) *(primary)* | unified managed cloud with render.yaml Blueprints — Heroku-successor PaaS benchmark | overlapping | `authoring`, `environments`, `delivery` | Predictable managed platform with declarative Blueprints. | HoBo's manifest is provider-abstract; Render is one render target among many. | benchmark | P2 |
+| [**Vercel**](../vercel.md) *(primary)* | frontend cloud plus durable Workflow SDK and AI stack — borrow-source promoted to full parity capture | overlapping | `delivery`, `environments`, `agent-surface` | Exceptional delivery pipeline plus a durable workflow and AI stack. | HoBo's durable execution is event-sourced and portable, not tied to one hosting vendor. | benchmark, borrow, provider-target | P1 |
+| [**AWS Amplify**](../aws-amplify.md) | Gen-2 code-first TypeScript fullstack backend on AWS CDK — IfC-in-TS analog, AWS-only | overlapping | `authoring`, `typed-contracts`, `wiring` | Deeply integrated AWS backend generation with strong typed client codegen. | HoBo refuses single-cloud lock-in: the same manifest scores and deploys across providers. | benchmark | P3 |
+| [**Encore**](../encore.md) | infrastructure-from-code for TS/Go that provisions into your cloud — closest product analog | direct | `authoring`, `app-graph`, `wiring`, `environments`, `delivery` | Full IfC product with hosted cloud, previews and observability already shipped. | HoBo separates intent from provider and scores portability instead of owning the cloud account. | displace, benchmark | P1 |
+
+## Navigation
+
+- [All categories](index.md) · [corpus index](../index.md) · [cross-category matrix](../matrix.md) · [gap analysis](../gap-analysis.md)

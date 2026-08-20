@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Spin / Fermyon — competitor reference"
 description: "Spin is Fermyon's **open-source framework for building and running event-driven WebAssembly (Wasm) serverless apps** — WASI/Component-Model components declared in a `s"
 tags: [hobo, competitors]
+competitor:
+  slug: spin-fermyon
+  name: "Spin / Fermyon"
+  aliases: ["spin", "spinkube", "fermyon"]
+  primary_category: runtime-substrates
+  categories: [runtime-substrates]
+  directness: adjacent
+  role: "wasm serverless framework and hosts — SpinKube is a HoBo component-host adapter"
+  posture: [adopt, render-target]
+  hobo_surface: [runtime-portability, extensibility]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://spinframework.dev/
+    - https://www.spinkube.dev/
 ---
 
 # Spin / Fermyon — competitor reference

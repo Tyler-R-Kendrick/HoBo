@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Qovery — competitor reference"
 description: "Qovery is an **internal developer platform / self-service infrastructure-automation product** that deploys into **your own cloud account** (BYOC) — positioned as *\"the Kubernetes cont"
 tags: [hobo, competitors]
+competitor:
+  slug: qovery
+  name: "Qovery"
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms, platform-orchestrators]
+  directness: direct
+  role: "BYOC internal developer platform deploying into your own cloud — PaaS/IDP competitor"
+  posture: [displace, benchmark]
+  hobo_surface: [environments, delivery, provider-matching]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://www.qovery.com/docs
+    - https://github.com/Qovery/engine
 ---
 
 # Qovery — competitor reference

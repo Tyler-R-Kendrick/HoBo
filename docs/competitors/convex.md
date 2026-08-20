@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Convex — Competitor Reference"
 description: "**Convex** is a **reactive, TypeScript-first backend platform** — *\"the backend building blocks for your apps and agents.\"* You express the whole backend in pure TypeScript — **dat"
 tags: [hobo, competitors]
+competitor:
+  slug: convex
+  name: "Convex"
+  primary_category: backend-data-platforms
+  categories: [backend-data-platforms]
+  directness: adjacent
+  role: "reactive TypeScript backend-as-a-service — source of the live-query gap and a possible provider target"
+  posture: [borrow, provider-target]
+  hobo_surface: [typed-contracts, wiring, runtime-portability]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://docs.convex.dev/
+    - https://github.com/get-convex/convex-backend
 ---
 
 # Convex — Competitor Reference

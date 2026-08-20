@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "FinOps tooling landscape — Competitor Reference"
 description: "Landscape capture of Kubecost/OpenCost, Infracost, Vantage, and Cast.ai — adjacent FinOps/showback benchmarks that overlap ADR-0039, ADR-0071, and Plan 5 cost surfaces."
 tags: [hobo, competitors]
+competitor:
+  slug: finops-tooling
+  name: "FinOps tooling cohort"
+  aliases: ["kubecost cohort"]
+  primary_category: finops-governance-placement
+  categories: [finops-governance-placement]
+  directness: adjacent
+  role: "cohort capture of cost allocation/estimation/optimization tooling; superseded per product as individual captures land"
+  posture: [benchmark, integrate]
+  hobo_surface: [finops, governance, provider-matching]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://www.kubecost.com/
+    - https://opencost.io/
 ---
 
 # FinOps tooling landscape — Competitor Reference

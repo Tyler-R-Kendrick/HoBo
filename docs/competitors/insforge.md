@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "InsForge - Competitor Reference"
 description: "InsForge is an agent-native backend-as-a-service: Postgres, auth, storage, realtime, Deno functions, sites, compute, payments, analytics, and an OpenAI-compatible model gateway exposed to coding agents through MCP, CLI, skills, and a dashboard."
 tags: [hobo, competitors]
+competitor:
+  slug: insforge
+  name: "InsForge"
+  primary_category: backend-data-platforms
+  categories: [backend-data-platforms, agentic-infrastructure]
+  directness: adjacent
+  role: "agent-native backend-as-a-service — agent-ops benchmark and possible provider target"
+  posture: [benchmark, provider-target]
+  hobo_surface: [agent-surface, typed-contracts]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://docs.insforge.dev/introduction
+    - https://github.com/InsForge/InsForge
 ---
 
 # InsForge - Competitor Reference

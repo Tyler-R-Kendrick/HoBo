@@ -3,6 +3,20 @@ type: Competitive Reference
 title: "Lakebed — Competitor Reference"
 description: "Lakebed is an agent-native closed PaaS: one full-stack TypeScript app per 'Capsule' on Lakebed's own hosted runtime, sync RPC (queries/mutations), machine-readable contracts (llms.txt), and instant zero-config onboarding."
 tags: [hobo, competitors]
+competitor:
+  slug: lakebed
+  name: "Lakebed"
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms, agentic-infrastructure]
+  directness: direct
+  role: "agent-native closed PaaS (Capsules, sync RPC, llms.txt) — named head-on competitor"
+  posture: [displace]
+  hobo_surface: [agent-surface, authoring, delivery]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://docs.lakebed.dev/
 ---
 
 # Lakebed — Competitor Reference

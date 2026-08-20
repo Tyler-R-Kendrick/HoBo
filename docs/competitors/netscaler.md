@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "NetScaler — competitor reference"
 description: "NetScaler (formerly Citrix ADC) is an application delivery controller — L4-L7 load balancing, GSLB, SSL/TLS offload, WAF, and gateway/VPN. Its Infrastructure-as-Code surface (\"NetScaler as Code\") and the nsconf2iac config→IaC migration utility are the competitive interest: a declarative, app-centric authoring + brownfield-adoption story for a single network appliance."
 tags: [hobo, competitors]
+competitor:
+  slug: netscaler
+  name: "NetScaler"
+  aliases: ["citrix adc", "netscaler adc"]
+  primary_category: identity-networking-delivery
+  categories: [identity-networking-delivery]
+  directness: complementary
+  role: "application delivery controller plus its IaC surface — candidate gateway provider and hobo-import analog"
+  posture: [provider-target, borrow]
+  hobo_surface: [governance, identity-secrets]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://www.netscaler.com/platform/infrastructure-as-code
+    - https://github.com/netscaler/automation-toolkit
 ---
 
 # NetScaler — competitor reference

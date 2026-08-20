@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Encore — competitor reference"
 description: "Encore is an **open-source backend framework + infrastructure SDK** (MPL-2.0) for **TypeScript (`Encore.ts`) and Go (`Encore.go`)** — positioned as *\"the infrastructure platform fo"
 tags: [hobo, competitors]
+competitor:
+  slug: encore
+  name: "Encore"
+  primary_category: infrastructure-from-code
+  categories: [infrastructure-from-code, cloud-application-platforms]
+  directness: direct
+  role: "infrastructure-from-code for TS/Go that provisions into your cloud — closest product analog"
+  posture: [displace, benchmark]
+  hobo_surface: [authoring, app-graph, wiring, environments, delivery]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://encore.dev/docs
+    - https://github.com/encoredev/encore
 ---
 
 # Encore — competitor reference

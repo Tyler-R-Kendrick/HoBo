@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Vercel — competitor reference"
 description: "Vercel is the category-defining **Frontend Cloud** (creators of Next.js) — Git-push deploys, a global Edge Network, Fluid compute + Active CPU pricing, the open-source **Workflow SDK** (durable `use workflow`/`use step`), Vercel Storage + Marketplace, and shipping AI-app tooling (AI SDK, AI Gateway, v0, Vercel Agent). HoBo borrows its durable-workflow ergonomics + runtime ports."
 tags: [hobo, competitors]
+competitor:
+  slug: vercel
+  name: "Vercel"
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms, agentic-infrastructure]
+  directness: overlapping
+  role: "frontend cloud plus durable Workflow SDK and AI stack — borrow-source promoted to full parity capture"
+  posture: [benchmark, borrow, provider-target]
+  hobo_surface: [delivery, environments, agent-surface]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://vercel.com/docs
+    - https://vercel.com/
 ---
 
 # Vercel — competitor reference

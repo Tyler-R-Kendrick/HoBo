@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "HashiCorp Nomad + Nomad Pack — Competitor Reference"
 description: "HashiCorp Nomad is a workload scheduler/orchestrator; Nomad Pack adds reusable packaging for Nomad job specs."
 tags: [hobo, competitors]
+competitor:
+  slug: nomad
+  name: "Nomad"
+  aliases: ["nomad pack", "hashicorp nomad"]
+  primary_category: runtime-substrates
+  categories: [runtime-substrates, platform-orchestrators]
+  directness: overlapping
+  role: "workload scheduler/orchestrator plus jobspec packaging — direct scheduler/control-plane competitor and provider target"
+  posture: [borrow, provider-target, benchmark]
+  hobo_surface: [provider-matching, runtime-portability, reconciliation]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://developer.hashicorp.com/nomad/docs
+    - https://github.com/hashicorp/nomad
 ---
 
 # HashiCorp Nomad + Nomad Pack — Competitor Reference

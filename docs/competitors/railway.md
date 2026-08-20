@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Railway — competitor reference"
 description: "Railway is a **single-vendor PaaS that runs on its own bare-metal hardware** (Railway Metal) — *\"the all-in-one intelligent cloud provider\"* — where you deploy apps, databases, volumes, and cron from a visual **canvas** with config-as-code and instant git-push deploys."
 tags: [hobo, competitors]
+competitor:
+  slug: railway
+  name: "Railway"
+  primary_category: cloud-application-platforms
+  categories: [cloud-application-platforms]
+  directness: overlapping
+  role: "instant-deploy PaaS with a visual canvas and Railway Metal — mainstream PaaS benchmark"
+  posture: [benchmark]
+  hobo_surface: [authoring, environments, delivery]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://docs.railway.com/
+    - https://railway.com/
 ---
 
 # Railway — competitor reference

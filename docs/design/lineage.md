@@ -19,6 +19,14 @@ the per-capture borrow sections across
 [`../patterns/`](../patterns/index.md), and
 [`../standards/`](../standards/index.md), and the posture ADRs.
 
+Lineage records *what HoBo takes and why*. The competitive corpus records *who else
+is in each category and how HoBo is positioned against them*: browse it by category
+via [`../competitors/categories/`](../competitors/categories/index.md), or as one
+generated table in the [cross-category matrix](../competitors/matrix.md). A competitor
+may appear in several categories but always has exactly one canonical capture — the
+rules are normative in
+[`../competitors/metadata-contract.md`](../competitors/metadata-contract.md).
+
 **Posture legend** — *pillar*: founding intent (vision.md five pillars) ·
 *adopted*: shipped as a dependency/substrate · *borrow-source*: idea taken,
 implementation ours · *analog*: measured against, honestly diverged ·

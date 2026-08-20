@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "SST — competitor reference"
 description: "SST is an **open-source (MIT) framework** to *\"build full-stack apps on your own infrastructure\"* — Infrastructure-from-Code in a single `sst.config.ts`, whose v3 \"Ion\" engine is built on **Pulumi + Terraform providers** (150+), with resource **Linking**, **Live** local dev, and an optional **Console**."
 tags: [hobo, competitors]
+competitor:
+  slug: sst
+  name: "SST"
+  aliases: ["sst ion"]
+  primary_category: infrastructure-from-code
+  categories: [infrastructure-from-code, portable-application-models]
+  directness: direct
+  role: "infrastructure-from-code full-stack framework on Pulumi/Terraform with typed Linking — close product analog"
+  posture: [displace, borrow, benchmark]
+  hobo_surface: [authoring, typed-contracts, wiring, environments]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://sst.dev/docs/
+    - https://github.com/sst/sst
 ---
 
 # SST — competitor reference

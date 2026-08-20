@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Wasm hosting landscape — competitor/grounding reference"
 description: "HoBo's runtime substrate ([Plan 20](../design/wasm-runtime-wit.md#plan-20)) is **WASI components behind WIT ports, late-bound by links** — a model HoBo *explicitly borrowed* f"
 tags: [hobo, competitors]
+competitor:
+  slug: wasm-hosts
+  name: "Wasm host landscape"
+  aliases: ["wasmtime cohort"]
+  primary_category: runtime-substrates
+  categories: [runtime-substrates]
+  directness: adjacent
+  role: "cohort capture of the wasm component-hosting landscape grounding ADR-0031 component-host adapters"
+  posture: [adopt, render-target]
+  hobo_surface: [runtime-portability, extensibility]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://wasmcloud.com/docs/concepts/
+    - https://www.spinkube.dev/
 ---
 
 # Wasm hosting landscape — competitor/grounding reference

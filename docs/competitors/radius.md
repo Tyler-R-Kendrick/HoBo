@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Radius — competitor reference"
 description: "Radius is an **open-source, cloud-native application platform** (Apache-2.0, CNCF Sandbox, incubated by Microsoft Azure Incubations) — an **Application/Environment app model** with **Recipes** (env"
 tags: [hobo, competitors]
+competitor:
+  slug: radius
+  name: "Radius"
+  aliases: ["radapp"]
+  primary_category: portable-application-models
+  categories: [portable-application-models, platform-orchestrators]
+  directness: overlapping
+  role: "CNCF cloud-native application platform (app graph, Recipes, connections) — borrow-source for recipes and app model"
+  posture: [borrow]
+  hobo_surface: [app-graph, typed-contracts, environments]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://docs.radapp.io/concepts/
+    - https://github.com/radius-project/radius
 ---
 
 # Radius — competitor reference

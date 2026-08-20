@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "wasmCloud — competitor reference"
 description: "wasmCloud is a CNCF WebAssembly application platform — polyglot **components** + **capability providers** linked over a NATS **lattice** via **wRPC**, orchestrated by **wadm** — that HoBo adopts as its default runtime substrate rather than competes with."
 tags: [hobo, competitors]
+competitor:
+  slug: wasmcloud
+  name: "wasmCloud"
+  primary_category: runtime-substrates
+  categories: [runtime-substrates]
+  directness: adjacent
+  role: "CNCF wasm component runtime (lattice, wRPC, capability providers) — adopted substrate, HoBo's default host"
+  posture: [adopt, standard]
+  hobo_surface: [runtime-portability, extensibility, typed-contracts]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://wasmcloud.com/docs
+    - https://github.com/wasmCloud/wasmCloud
 ---
 
 # wasmCloud — competitor reference

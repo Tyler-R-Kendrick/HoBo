@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Alchemy — competitor reference"
 description: "Alchemy (alchemy.run) is an **open-source (Apache-2.0) TypeScript-native IaC engine** — v1 \"resources are just async functions\", v2 \"Infrastructure-as-Effects\" on the Effect library — embeddable, engine-less (direct HTTPS to cloud APIs, no Pulumi/Terraform), AWS + Cloudflare first, with LLM-authored providers as an explicit growth loop."
 tags: [hobo, competitors]
+competitor:
+  slug: alchemy
+  name: "Alchemy"
+  primary_category: infrastructure-from-code
+  categories: [infrastructure-from-code, portable-application-models]
+  directness: direct
+  role: "TypeScript-native engine-less IaC — competes on the authoring/provisioning core and is a candidate iac-alchemy adapter"
+  posture: [borrow, benchmark]
+  hobo_surface: [authoring, typed-contracts, reconciliation, extensibility]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-19
+  sources:
+    - https://alchemy.run/docs/
+    - https://github.com/sam-goodwin/alchemy
 ---
 
 # Alchemy — competitor reference

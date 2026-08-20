@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Rivet — competitor reference"
 description: "Rivet actors as the preferred compatible ActorHost resolver — not a topology primitive and not an app authoring model."
 tags: [hobo, competitors]
+competitor:
+  slug: rivet
+  name: "Rivet"
+  aliases: ["rivetkit"]
+  primary_category: runtime-substrates
+  categories: [runtime-substrates]
+  directness: adjacent
+  role: "open-source Durable Objects / actor runtime — preferred compatible ActorHost resolver"
+  posture: [adopt, provider-target]
+  hobo_surface: [runtime-portability, replay-migration]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-15
+  sources:
+    - https://rivet.dev/docs/actors/
+    - https://github.com/rivet-dev/rivet
 ---
 
 # Rivet

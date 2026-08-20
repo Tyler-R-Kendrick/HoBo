@@ -3,6 +3,22 @@ type: Competitive Reference
 title: "Octopus Deploy — Competitor Reference"
 description: "Release-orchestration and deployment-automation platform (environments, lifecycles, tenants, runbooks, manual interventions); captured for HoBo's promotion/stage-gate/runbook surfaces."
 tags: [hobo, competitors]
+competitor:
+  slug: octopus-deploy
+  name: "Octopus Deploy"
+  aliases: ["octopus"]
+  primary_category: delivery-release-gitops
+  categories: [delivery-release-gitops]
+  directness: overlapping
+  role: "release orchestration and deployment automation — lesson source for promotion, stage gates and runbooks"
+  posture: [borrow, benchmark]
+  hobo_surface: [delivery, governance, environments]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://octopus.com/docs
+    - https://octopus.com/docs/projects/config-as-code
 ---
 
 # Octopus Deploy — Competitor Reference

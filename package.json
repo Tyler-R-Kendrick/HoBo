@@ -22,6 +22,8 @@
 		"codegen:check": "node --import tsx packages/schema-tools/src/cli.ts --check",
 		"design:lint": "node --import tsx scripts/check-design-md.mts",
 		"docs:cli-lint": "node --import tsx scripts/check-cli-docs.ts",
+		"docs:competitors": "node --import tsx scripts/check-competitor-docs.ts",
+		"docs:competitors:fix": "node --import tsx scripts/check-competitor-docs.ts --fix",
 		"docs:coverage": "node --import tsx scripts/check-docs-coverage.ts",
 		"docs:design-lint": "node --import tsx scripts/check-design-docs.ts",
 		"docs:freshness": "node --import tsx scripts/check-docs-freshness.ts",

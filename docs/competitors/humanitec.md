@@ -3,6 +3,21 @@ type: Competitive Reference
 title: "Humanitec — Competitor Reference"
 description: "The **Platform Orchestrator** is a cloud-agnostic, multi-compute orchestration engine that powers **Internal Developer Platforms (IDPs)**. Developers describe a workload in **Score"
 tags: [hobo, competitors]
+competitor:
+  slug: humanitec
+  name: "Humanitec"
+  primary_category: platform-orchestrators
+  categories: [platform-orchestrators, portable-application-models]
+  directness: direct
+  role: "Platform Orchestrator for IDPs with dynamic configuration management — head-on orchestrator competitor"
+  posture: [displace, benchmark]
+  hobo_surface: [app-graph, environments, provider-matching, governance]
+  evidence: mixed
+  status: active
+  research_date: 2026-08-12
+  sources:
+    - https://developer.humanitec.com/
+    - https://humanitec.com/
 ---
 
 # Humanitec — Competitor Reference

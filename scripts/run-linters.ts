@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkCliDocs } from "./check-cli-docs.ts";
+import { checkCompetitorDocs } from "./check-competitor-docs.ts";
 import { checkDesignDocs } from "./check-design-docs.ts";
 
 type Problem = {
@@ -91,6 +92,10 @@ function designFiles(markdownFiles: string[]) {
 	});
 }
 
+function competitorTouched(markdownFiles: string[]) {
+	return markdownFiles.some((file) => file.startsWith("docs/competitors/"));
+}
+
 function printProblems(label: string, problems: Problem[]) {
 	for (const problem of problems) {
 		const target = problem.command ?? problem.code ?? label;
@@ -118,18 +123,29 @@ const designProblems =
 	designTargets?.length === 0
 		? []
 		: (await checkDesignDocs({ root, files: designTargets })).problems;
+// The corpus is cross-referential — one changed capture can invalidate a category
+// page or the generated matrix — so any touch re-checks the whole of it.
+const competitorProblems = competitorTouched(markdownFiles)
+	? (await checkCompetitorDocs({ root })).problems
+	: [];
 
 console.log(
 	[
 		`lint: markdown changed=${markdownFiles.length}`,
 		`cli=${cliTargets ? cliTargets.length : "full"}`,
 		`design=${designTargets ? designTargets.length : "full"}`,
+		`competitors=${competitorTouched(markdownFiles) ? "full" : "skipped"}`,
 	].join(" "),
 );
 
 printProblems("cli-docs", cliProblems);
 printProblems("design-docs", designProblems);
+printProblems("competitor-docs", competitorProblems);
 
-if (cliProblems.length > 0 || designProblems.length > 0) {
+if (
+	cliProblems.length > 0 ||
+	designProblems.length > 0 ||
+	competitorProblems.length > 0
+) {
 	process.exit(1);
 }

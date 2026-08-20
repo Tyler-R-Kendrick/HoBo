@@ -96,6 +96,8 @@ function sanitizeScriptName(stationId: string, override?: string): string {
 }
 
 async function readCfJson<T>(response: Response, label: string): Promise<T> {
+	// SAFETY: this fetch boundary is the Cloudflare envelope; callers then
+	// read named fields off the typed result rather than widening the body.
 	const body = (await response.json()) as CfEnvelope<T>;
 	if (!response.ok || !body.success || body.result === undefined) {
 		const detail =
@@ -173,7 +175,7 @@ export function createCloudflareTemporaryAccountTransport(
 				accountId,
 				apiToken,
 				claimUrl,
-				...(workersDevSubdomain ? { workersDevSubdomain } : {}),
+				...(workersDevSubdomain ? { workersDevSubdomain } : undefined),
 			};
 		},
 
@@ -197,8 +199,8 @@ export function createCloudflareTemporaryAccountTransport(
 				compatibility_date: "2024-11-01",
 				...(compatibilityFlags && compatibilityFlags.length > 0
 					? { compatibility_flags: [...compatibilityFlags] }
-					: {}),
-				...(bindingList.length > 0 ? { bindings: bindingList } : {}),
+					: undefined),
+				...(bindingList.length > 0 ? { bindings: bindingList } : undefined),
 			});
 			const form = new FormData();
 			form.set("metadata", new Blob([metadata], { type: "application/json" }));
@@ -233,8 +235,10 @@ export function createCloudflareTemporaryAccountTransport(
 			const subResult = await readCfJson<{
 				enabled?: boolean;
 				previews_enabled?: boolean;
+				subdomain?: string;
 			}>(subdomain, "workers.dev subdomain enable").catch(() => ({
 				enabled: true,
+				subdomain: undefined,
 			}));
 
 			const account = await fetchImpl(
@@ -249,8 +253,7 @@ export function createCloudflareTemporaryAccountTransport(
 				"workers subdomain",
 			).catch(() => ({ subdomain: undefined }));
 
-			const host =
-				accountSub.subdomain ?? (subResult as { subdomain?: string }).subdomain;
+			const host = accountSub.subdomain ?? subResult.subdomain;
 			if (!host) {
 				// Fallback shape used by workers.dev when subdomain lookup lags.
 				return {
@@ -298,8 +301,8 @@ export async function provisionTemporaryEnvironmentStation(
 		moduleSource,
 		...(input.compatibilityFlags
 			? { compatibilityFlags: input.compatibilityFlags }
-			: {}),
-		...(input.bindings ? { bindings: input.bindings } : {}),
+			: undefined),
+		...(input.bindings ? { bindings: input.bindings } : undefined),
 	});
 
 	const expiresAt = temporaryStationExpiresAt(TEMPORARY_STATION_TTL_MS);

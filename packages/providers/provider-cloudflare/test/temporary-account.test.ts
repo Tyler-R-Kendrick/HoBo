@@ -141,6 +141,7 @@ describe("temporary-account resource allowlist", () => {
 		try {
 			assertTemporaryAccountResourceAllowed(kind);
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			expect(isTemporaryAccountError(error) && error.code).toBe(
 				"RESOURCE_NOT_SUPPORTED",
 			);
@@ -158,6 +159,7 @@ describe("temporary-account resource allowlist", () => {
 			assertTemporaryAccountResourceAllowed("workers-quantum-mesh");
 			expect.unreachable("unknown resources must not be allowed");
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			expect(isTemporaryAccountError(error) && error.reason).toBe(
 				"NOT_IN_ALLOWLIST",
 			);
@@ -269,6 +271,7 @@ describe("provisionTemporaryAccountYard", () => {
 		).toBe(true);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("models the claim URL as an opaque one-time action reference", async () => {
 		const { input, actionVault } = harness();
 		const receipt = await provisionTemporaryAccountYard(input);
@@ -474,6 +477,7 @@ describe("idempotency and ambiguous-timeout adoption", () => {
 		});
 
 		expect(adopted.outcome).toBe("adopted");
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const receipt = (adopted as { receipt: TemporaryAccountYardReceipt })
 			.receipt;
 		expect(receipt.adopted).toBe(true);

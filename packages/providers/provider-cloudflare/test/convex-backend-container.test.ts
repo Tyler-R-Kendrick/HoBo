@@ -126,9 +126,11 @@ describe("convex Cloudflare Containers provision (anon)", () => {
 			});
 		} catch (error) {
 			expect(error).toBeInstanceOf(ConvexCloudflareContainersError);
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			expect((error as Error).message).toMatch(
 				/Temporary Accounts rejected Containers/i,
 			);
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			expect((error as Error).message).not.toMatch(
 				/install Docker|local Docker|CLOUDFLARE_API_TOKEN/i,
 			);

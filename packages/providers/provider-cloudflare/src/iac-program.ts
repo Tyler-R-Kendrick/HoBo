@@ -4,6 +4,15 @@
 // object rather than importing @hobo/iac-pulumi. The real
 // @hobo/iac-pulumi.validateIacProgram() is exercised test-only to prove the two
 // packages compose.
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
+
 export const IAC_PROGRAM_API_VERSION = "hobo.iac-program/v1";
 export const IAC_PROGRAM_KIND = "iac-program";
 export const IAC_PROVIDER = "pulumi";
@@ -15,7 +24,7 @@ export interface IacResource {
 	name: string;
 	type: string;
 	provider: string;
-	inputs: Record<string, unknown>;
+	inputs: JsonObject;
 	outputs: string[];
 }
 
@@ -67,7 +76,9 @@ export function assertLocalIacProgram(program: IacProgram): IacProgram {
 		names.set(resource.name, resource);
 	}
 
-	for (const value of collectValues(program.resources)) {
+	for (const value of collectValues(
+		parseJsonValue(JSON.stringify(program.resources)),
+	)) {
 		assertOutputReference(value, names);
 	}
 	for (const value of Object.values(program.stackOutputs)) {
@@ -78,31 +89,37 @@ export function assertLocalIacProgram(program: IacProgram): IacProgram {
 }
 
 function assertOutputReference(
-	value: unknown,
+	value: JsonValue,
 	resources: Map<string, IacResource>,
 ): void {
-	if (typeof value !== "string" || !value.startsWith("${resources.")) {
+	if (!isJsonString(value) || !value.startsWith("${resources.")) {
 		return;
 	}
 	const match = OUTPUT_REF.exec(value);
 	if (!match) {
 		throw new Error(`invalid output reference ${value}`);
 	}
-	const resourceName = match[1] as string;
-	const outputName = match[2] as string;
+	const resourceName = match[1];
+	const outputName = match[2];
+	if (resourceName === undefined || outputName === undefined) {
+		throw new Error(`invalid output reference ${value}`);
+	}
 	const resource = resources.get(resourceName);
-	if (!resource?.outputs.includes(outputName)) {
+	if (resource === undefined || !resource.outputs.includes(outputName)) {
 		throw new Error(
 			`unresolved output reference resources.${resourceName}.outputs.${outputName}`,
 		);
 	}
 }
 
-function collectValues(value: unknown): unknown[] {
-	if (!value || typeof value !== "object") {
-		return [value];
+function collectValues(value: JsonValue): JsonValue[] {
+	if (isJsonArray(value)) {
+		return value.flatMap((entry) => collectValues(entry));
 	}
-	return Object.values(value as Record<string, unknown>).flatMap((child) =>
-		collectValues(child),
-	);
+	if (isJsonObject(value)) {
+		return Object.values(value).flatMap((child) =>
+			collectValues(child ?? null),
+		);
+	}
+	return [value];
 }

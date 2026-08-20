@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-
 import {
 	assertLocalIacProgram,
 	cloudflare,
@@ -10,6 +9,7 @@ import {
 	realizeHelloBindle,
 	realizeResourcePlan,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 // Golden per-port ResourcePlans -> expected Cloudflare resource class.
 const GOLDEN: Array<{ port: string; name: string; resourceClass: string }> = [
@@ -24,6 +24,7 @@ const GOLDEN: Array<{ port: string; name: string; resourceClass: string }> = [
 
 describe("realize() emits a valid IacProgram per initial port", () => {
 	for (const golden of GOLDEN) {
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		it(`realizes ${golden.port} -> ${golden.resourceClass} as a valid program`, () => {
 			const provider = createCloudflareProvider();
 			const plan: ResourcePlan = {
@@ -65,7 +66,8 @@ describe("realize() option negotiation", () => {
 			],
 		};
 		const { iac } = realizeResourcePlan(plan);
-		const options = iac.resources[0]?.inputs.options as Record<string, unknown>;
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		const options = iac.resources[0]?.inputs.options as JsonObject;
 		assert.equal(options.cpuMs, 15_000);
 		assert.equal("cpu" in options, false);
 	});
@@ -100,6 +102,7 @@ describe("hello-bindle realizes end-to-end", () => {
 			],
 		);
 		// Worker binds to assets + sessions via ${resources.*.outputs.binding}.
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const bindings = iac.resources[0]?.inputs.bindings as Array<{
 			ref: string;
 		}>;

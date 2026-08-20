@@ -35,16 +35,18 @@ import { capability, type SlotBinding, slotBinding } from "@hobo/core";
  * is screened there. Cherry-picking the known keys instead would silently
  * swallow it, which is exactly the kind of quiet drop this repo refuses.
  */
-function present<T extends object>(options: T): Record<string, unknown> {
-	const out: Record<string, unknown> = {};
+type AnySlotOptions =
+	| R2Options
+	| D1Options
+	| KvOptions
+	| QueuesOptions
+	| WorkersOptions
+	| PagesOptions;
+
+function present(options: AnySlotOptions) {
+	const out = {};
 	for (const [key, value] of Object.entries(options)) {
-		if (value === undefined) {
-			continue;
-		}
-		out[key] =
-			typeof value === "object" && value !== null && !Array.isArray(value)
-				? present(value)
-				: value;
+		if (value !== undefined) Object.assign(out, { [key]: value });
 	}
 	return out;
 }

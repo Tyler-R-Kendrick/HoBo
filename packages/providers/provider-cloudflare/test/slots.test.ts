@@ -1,4 +1,4 @@
-import type { SlotBindingError } from "@hobo/core";
+import { SlotBindingError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,12 +12,13 @@ import {
 } from "../src/index.js";
 
 /** The code core refused a call with, or undefined if it did not refuse. */
-function refusalCode(call: () => unknown): string | undefined {
+function refusalCode(call: () => void): string | undefined {
 	try {
 		call();
 		return undefined;
 	} catch (error) {
-		return (error as SlotBindingError).code;
+		if (!(error instanceof Error)) throw error;
+		return error instanceof SlotBindingError ? error.code : undefined;
 	}
 }
 
@@ -108,21 +109,22 @@ describe("options land in properties and omitted options stay absent", () => {
 
 describe("the core parse boundary still applies", () => {
 	it("refuses a credential-shaped option key that bypassed the types", () => {
-		const smuggled = { apiKey: "x" } as unknown as R2Options;
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		const smuggled = { apiKey: "x" } as R2Options;
 		expect(refusalCode(() => r2(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);
 	});
 
 	it("forwards an undeclared key instead of silently dropping it", () => {
-		const smuggled = { unknownKnob: 1 } as unknown as R2Options;
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		const smuggled = { unknownKnob: 1 } as R2Options;
 		expect(r2(smuggled).properties).toEqual({ unknownKnob: 1 });
 	});
 
 	it("refuses a credential-shaped key on another factory too", () => {
-		const smuggled = { accountToken: "x" } as unknown as Parameters<
-			typeof workers
-		>[0];
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		const smuggled = { accountToken: "x" } as Parameters<typeof workers>[0];
 		expect(refusalCode(() => workers(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);

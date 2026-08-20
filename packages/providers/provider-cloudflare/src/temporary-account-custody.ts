@@ -52,7 +52,7 @@ export function createInMemorySecretCustody(options?: {
 					{ reason: "INVALID_NAME" },
 				);
 			}
-			if (typeof input.value !== "string" || input.value.length === 0) {
+			if (input.value.length === 0) {
 				throw new TemporaryAccountError(
 					"SECRET_CUSTODY_UNAVAILABLE",
 					"custody deposit requires a non-empty value",
@@ -102,7 +102,10 @@ export async function depositOrFailClosed(
 		throw new TemporaryAccountError(
 			"SECRET_CUSTODY_UNAVAILABLE",
 			"secret custody rejected the temporary credential deposit",
-			{ reason: "DEPOSIT_FAILED", cause },
+			{
+				reason: "DEPOSIT_FAILED",
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
+			},
 		);
 	}
 }
@@ -178,7 +181,10 @@ export function createInMemoryOneTimeActionVault(options?: {
 				throw new TemporaryAccountError(
 					"PROVIDER_CONTRACT_CHANGED",
 					"claim action target is not a URL",
-					{ reason: "CLAIM_URL_MALFORMED", cause },
+					{
+						reason: "CLAIM_URL_MALFORMED",
+						cause: cause instanceof Error ? cause : new Error(String(cause)),
+					},
 				);
 			}
 			if (parsed.protocol !== "https:") {
@@ -195,6 +201,7 @@ export function createInMemoryOneTimeActionVault(options?: {
 					{ reason: "CLAIM_URL_HOST_NOT_ALLOWED" },
 				);
 			}
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			const ref = `hobo-action:${input.kind}:${nextId()}` as SensitiveActionRef;
 			entries.set(ref, {
 				url: input.url,

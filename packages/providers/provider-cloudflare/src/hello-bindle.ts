@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 export const CLOUDFLARE_PROVIDER_TARGET = "cloudflare";
 
 // A `type` alias (not an interface) so it keeps an implicit index signature
@@ -8,12 +10,12 @@ export type TypedOptionBlock = {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 };
 
 export const cloudflare = {
 	with: {
-		worker(options: Record<string, unknown> = {}): TypedOptionBlock {
+		worker(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"worker",
@@ -26,7 +28,7 @@ export const cloudflare = {
 				options,
 			);
 		},
-		r2(options: Record<string, unknown> = {}): TypedOptionBlock {
+		r2(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"objectStore",
 				"r2",
@@ -38,7 +40,7 @@ export const cloudflare = {
 				options,
 			);
 		},
-		kv(options: Record<string, unknown> = {}): TypedOptionBlock {
+		kv(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"kv",
 				"kv",
@@ -156,8 +158,8 @@ export function createHelloBindlePlan(
 function optionBlock(
 	port: string,
 	builder: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: CLOUDFLARE_PROVIDER_TARGET,

@@ -1,3 +1,23 @@
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../json-inspect.js";
+
+type BridgeGlobal = typeof globalThis & {
+	HOBO_EXAMPLES_BRIDGE_URL?: string;
+};
+
+function bridgeGlobal(): BridgeGlobal {
+	// SAFETY: we only read/write HOBO_EXAMPLES_BRIDGE_URL on globalThis.
+	return globalThis as BridgeGlobal;
+}
+
+export type BridgeStationHost = {
+	readonly url: string;
+	revoke(): void;
+};
+
 /** Local examples bridge — Docker Compose host for Wasp OpenSaaS (non-browser stations). */
 
 export const LOCAL_BRIDGE_DEFAULT_URL = "http://127.0.0.1:8787";
@@ -7,6 +27,13 @@ export type LocalBridgeHealth = {
 	readonly docker: boolean;
 	readonly composeProject?: string;
 	readonly remediation?: string;
+};
+
+type MutableLocalBridgeHealth = {
+	ok: boolean;
+	docker: boolean;
+	composeProject?: string;
+	remediation?: string;
 };
 
 export type LocalBridgeDeployRequest = {
@@ -40,10 +67,10 @@ export type LocalBridgeStatus = {
 };
 
 export function resolveLocalBridgeBase(
-	override = (globalThis as { HOBO_EXAMPLES_BRIDGE_URL?: string }).HOBO_EXAMPLES_BRIDGE_URL,
+	override = bridgeGlobal().HOBO_EXAMPLES_BRIDGE_URL,
 ): string {
 	const picked =
-		typeof override === "string" && override.trim().length > 0
+		isJsonString(override) && override.trim().length > 0
 			? override.trim()
 			: LOCAL_BRIDGE_DEFAULT_URL;
 	return picked.replace(/\/$/u, "");
@@ -54,8 +81,7 @@ export function applyLocalBridgeUrlOverride(raw: string | null | undefined): str
 	const trimmed = raw?.trim();
 	if (!trimmed) return resolveLocalBridgeBase();
 	const normalized = trimmed.replace(/\/$/u, "");
-	(globalThis as { HOBO_EXAMPLES_BRIDGE_URL?: string }).HOBO_EXAMPLES_BRIDGE_URL =
-		normalized;
+	bridgeGlobal().HOBO_EXAMPLES_BRIDGE_URL = normalized;
 	return normalized;
 }
 
@@ -74,7 +100,21 @@ export async function probeLocalBridge(
 				remediation: `Optional local app-ship bridge HTTP ${response.status} at ${baseUrl}. Environment Stations do not need it.`,
 			};
 		}
-		return (await response.json()) as LocalBridgeHealth;
+		const body: JsonValue = await response.json();
+		if (!isJsonObject(body)) {
+			return {
+				ok: false,
+				docker: false,
+				remediation: `Optional local app-ship bridge returned non-object JSON at ${baseUrl}.`,
+			};
+		}
+		const health: MutableLocalBridgeHealth = {
+			ok: body.ok === true,
+			docker: body.docker === true,
+		};
+		if (isJsonString(body.composeProject)) health.composeProject = body.composeProject;
+		if (isJsonString(body.remediation)) health.remediation = body.remediation;
+		return health;
 	} catch {
 		return {
 			ok: false,
@@ -109,17 +149,22 @@ export async function provisionStationViaLocalBridge(
 		body: JSON.stringify(input),
 		signal: AbortSignal.timeout(300_000),
 	});
-	const body = (await response.json().catch(() => ({}))) as {
-		readonly error?: string;
-		readonly remediation?: string;
-	} & Partial<LocalBridgeStationResult>;
+	const parsed: JsonValue = await response.json().catch(() => ({}));
+	const body = isJsonObject(parsed) ? parsed : {};
 	if (!response.ok) {
-		const detail = body.remediation
-			? `${body.error ?? "station provision failed"} — ${body.remediation}`
-			: (body.error ?? `Local bridge station provision failed (${response.status})`);
+		const error = isJsonString(body.error) ? body.error : undefined;
+		const remediation = isJsonString(body.remediation) ? body.remediation : undefined;
+		const detail = remediation
+			? `${error ?? "station provision failed"} — ${remediation}`
+			: (error ?? `Local bridge station provision failed (${response.status})`);
 		throw new Error(detail);
 	}
-	if (!body.stationId || !body.targetId || !body.yardId || !body.endpointUrl) {
+	if (
+		!isJsonString(body.stationId) ||
+		!isJsonString(body.targetId) ||
+		!isJsonString(body.yardId) ||
+		!isJsonString(body.endpointUrl)
+	) {
 		throw new Error("Local bridge station response missing endpointUrl");
 	}
 	return {
@@ -141,17 +186,22 @@ export async function deployViaLocalBridge(
 		body: JSON.stringify(input),
 		signal: AbortSignal.timeout(300_000),
 	});
-	const body = (await response.json().catch(() => ({}))) as {
-		readonly error?: string;
-		readonly remediation?: string;
-	} & Partial<LocalBridgeDeployResult>;
+	const parsed: JsonValue = await response.json().catch(() => ({}));
+	const body = isJsonObject(parsed) ? parsed : {};
 	if (!response.ok) {
-		const detail = body.remediation
-			? `${body.error ?? "deploy failed"} — ${body.remediation}`
-			: (body.error ?? `Local bridge deploy failed (${response.status})`);
+		const error = isJsonString(body.error) ? body.error : undefined;
+		const remediation = isJsonString(body.remediation) ? body.remediation : undefined;
+		const detail = remediation
+			? `${error ?? "deploy failed"} — ${remediation}`
+			: (error ?? `Local bridge deploy failed (${response.status})`);
 		throw new Error(detail);
 	}
-	if (!body.clientUrl || !body.serverUrl || !body.exampleId || !body.stationId) {
+	if (
+		!isJsonString(body.clientUrl) ||
+		!isJsonString(body.serverUrl) ||
+		!isJsonString(body.exampleId) ||
+		!isJsonString(body.stationId)
+	) {
 		throw new Error("Local bridge deploy response missing clientUrl/serverUrl");
 	}
 	return {
@@ -173,10 +223,7 @@ export async function stopLocalBridgeDeploy(
 	});
 }
 
-export function createBridgeStationHost(clientUrl: string): {
-	readonly url: string;
-	revoke(): void;
-} {
+export function createBridgeStationHost(clientUrl: string): BridgeStationHost {
 	return {
 		url: clientUrl,
 		revoke() {

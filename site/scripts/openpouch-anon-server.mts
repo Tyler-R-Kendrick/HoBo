@@ -3,6 +3,13 @@
  * Default: HTTP Instant Lane (`POST /api/deployments`) — no CLI.
  * Opt-in CLI: `HOBO_OPENPOUCH_TRANSPORT=cli` → `npx openpouch deploy`.
  */
+import {
+	isJsonObject,
+	isJsonString,
+	parseJsonTree,
+	type JsonObject,
+	type JsonValue,
+} from "../src/lib/json-inspect.js";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
@@ -17,6 +24,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { provisionOpenpouchHttp } from "./anon-container-hosts/openpouch-http.mts";
+
+function parseExpiresAt(value: JsonValue | undefined): string | undefined {
+	if (!isJsonObject(value) || !isJsonString(value.expiresAt)) return undefined;
+	return value.expiresAt;
+}
 
 export type OpenpouchAnonServerResult = {
 	readonly ok: true;
@@ -298,24 +310,28 @@ export async function provisionOpenpouchAnonServer(
 		});
 		const combined = `${result.stdout}\n${result.stderr}`;
 		const jsonMatch = combined.match(/\{[\s\S]*\}\s*$/m);
-		let parsed: Record<string, unknown> = {};
+		let parsed: JsonObject = {};
 		try {
-			parsed = jsonMatch
-				? (JSON.parse(jsonMatch[0]) as Record<string, unknown>)
-				: {};
+			if (jsonMatch) {
+				const tree = parseJsonTree(jsonMatch[0]);
+				if (isJsonObject(tree)) parsed = tree;
+			}
 		} catch {
 			parsed = {};
 		}
-		if (result.code !== 0 || parsed.ok !== true || typeof parsed.url !== "string") {
-			const errObj = parsed.error as { message?: string; category?: string } | undefined;
+		if (result.code !== 0 || parsed.ok !== true || Object.prototype.toString.call(parsed.url) !== "[object String]") {
+			const errValue = parsed.error;
+			const errObj = isJsonObject(errValue) ? errValue : undefined;
 			const err =
-				errObj?.message ||
-				(typeof parsed.summary === "string" ? parsed.summary : "") ||
+				(errObj && isJsonString(errObj.message) ? errObj.message : "") ||
+				(Object.prototype.toString.call(parsed.summary) === "[object String]" ? parsed.summary : "") ||
 				result.stderr.trim() ||
 				result.stdout.trim() ||
 				"openpouch deploy failed";
 			throw new OpenpouchAnonServerError(
-				errObj?.category ? `${errObj.category}: ${err}` : err,
+				errObj && isJsonString(errObj.category)
+					? `${errObj.category}: ${err}`
+					: err,
 			);
 		}
 
@@ -323,12 +339,8 @@ export async function provisionOpenpouchAnonServer(
 			ok: true,
 			serverUrl: parsed.url,
 			claimUrl:
-				typeof parsed.claimUrl === "string" ? parsed.claimUrl : undefined,
-			expiresAt:
-				typeof (parsed.deployment as { expiresAt?: string } | undefined)
-					?.expiresAt === "string"
-					? (parsed.deployment as { expiresAt: string }).expiresAt
-					: undefined,
+				Object.prototype.toString.call(parsed.claimUrl) === "[object String]" ? parsed.claimUrl : undefined,
+			expiresAt: parseExpiresAt(parsed.deployment),
 			authenticated: false,
 			ownership: "anonymous",
 			mode: "openpouch-anon",

@@ -87,10 +87,9 @@ describe("Examples catalog", () => {
 	});
 
 	it("fails closed when the browser catalog has a malformed nested contract", async () => {
-		const catalog = structuredClone(await loadExamplesCatalog()) as unknown[];
+		const catalog = JSON.parse(JSON.stringify(await loadExamplesCatalog()));
 		expect(parseExamplesCatalog(catalog)).toHaveLength(4);
-		const first = catalog[0] as { runtime: { routes: { action: string }[] } };
-		first.runtime.routes[0]!.action = "execute-arbitrary-code";
+		catalog[0].runtime.routes[0].action = "execute-arbitrary-code";
 
 		expect(() => parseExamplesCatalog(catalog)).toThrow(/action is invalid/);
 	});

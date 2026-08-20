@@ -3,6 +3,7 @@
  * POST https://openpouch.sh/api/deployments — gzip tarball, no API key = anonymous.
  * Docs: openpouch INSTANT-LANE.md — anon cgroup memory.max=256MiB.
  */
+import { type JsonObject } from "../../src/lib/json-inspect.js";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -74,7 +75,12 @@ export async function provisionOpenpouchHttp(
 	}
 
 	const body = await gzipTarballOfDir(input.workDir);
-	const headers: Record<string, string> = {
+	type OpenpouchHeaders = {
+		"Content-Type": string;
+		"X-Openpouch-Project": string;
+		"x-openpouch-env"?: string;
+	};
+	const headers: OpenpouchHeaders = {
 		"Content-Type": "application/gzip",
 		"X-Openpouch-Project": (input.projectHint ?? "hobo-anon").slice(0, 64),
 	};
@@ -89,9 +95,10 @@ export async function provisionOpenpouchHttp(
 		signal: input.signal,
 	});
 	const text = await response.text();
-	let parsed: Record<string, unknown> = {};
+	let parsed: JsonObject = {};
 	try {
-		parsed = JSON.parse(text) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O boundary.
+		parsed = JSON.parse(text) as JsonObject;
 	} catch {
 		/* keep raw */
 	}
@@ -102,7 +109,7 @@ export async function provisionOpenpouchHttp(
 			response.status,
 		);
 	}
-	const url = typeof parsed.url === "string" ? parsed.url : "";
+	const url = Object.prototype.toString.call(parsed.url) === "[object String]" ? parsed.url : "";
 	if (!url) {
 		throw new AnonContainerHostError(
 			"openpouch-http",
@@ -114,9 +121,9 @@ export async function provisionOpenpouchHttp(
 		host: "openpouch-http",
 		url,
 		claimUrl:
-			typeof parsed.claimUrl === "string" ? parsed.claimUrl : undefined,
+			Object.prototype.toString.call(parsed.claimUrl) === "[object String]" ? parsed.claimUrl : undefined,
 		expiresAt:
-			typeof parsed.expiresAt === "string" ? parsed.expiresAt : undefined,
+			Object.prototype.toString.call(parsed.expiresAt) === "[object String]" ? parsed.expiresAt : undefined,
 		kind: "node-source",
 		anonymous: true,
 		temporary: true,

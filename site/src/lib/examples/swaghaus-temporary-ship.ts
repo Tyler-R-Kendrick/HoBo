@@ -1,3 +1,11 @@
+import {
+	asPageUrl,
+	currentLocationHref,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../json-inspect.js";
+
 /** Same-origin Convex swaghaus Temporary Accounts ship for Examples console. */
 
 export type SwaghausTemporaryShipResult = {
@@ -13,13 +21,12 @@ export type SwaghausTemporaryShipResult = {
 };
 
 function sameOriginCfTempBase(pageUrl?: string | URL, basePath = "/HoBo/"): string {
-	const page =
-		typeof pageUrl === "string"
-			? new URL(pageUrl)
-			: (pageUrl ??
-				(typeof globalThis.location?.href === "string"
-					? new URL(globalThis.location.href)
-					: null));
+	const href = currentLocationHref();
+	const page = pageUrl
+		? asPageUrl(pageUrl)
+		: href
+			? new URL(href)
+			: null;
 	if (!page) {
 		throw new Error(
 			"Swaghaus Cloudflare Temporary Accounts ship needs a page URL (astro dev).",
@@ -62,36 +69,31 @@ export async function shipSwaghausViaTemporaryAccounts(input: {
 			`Swaghaus Temporary Accounts ship unreachable at ${base}/swaghaus (${error instanceof Error ? error.message : String(error)}). Run pnpm --filter hobo-site run dev.`,
 		);
 	}
-	const body = (await response.json()) as {
-		ok?: boolean;
-		error?: string;
-		remediation?: string;
-		exampleId?: string;
-		clientUrl?: string;
-		claimUrl?: string;
-		expiresAt?: string;
-		deploymentUrl?: string;
-		mocked?: boolean;
-	};
-	if (!response.ok || !body.ok) {
+	const body: JsonValue = await response.json();
+	if (!response.ok || !isJsonObject(body) || body.ok !== true) {
+		const fail = isJsonObject(body) ? body : {};
 		throw new Error(
-			body.remediation ??
-				body.error ??
+			(isJsonString(fail.remediation) ? fail.remediation : undefined) ??
+				(isJsonString(fail.error) ? fail.error : undefined) ??
 				`Swaghaus Temporary Accounts HTTP ${response.status}`,
 		);
 	}
-	if (!body.clientUrl || !body.claimUrl || !body.expiresAt) {
+	if (
+		!isJsonString(body.clientUrl) ||
+		!isJsonString(body.claimUrl) ||
+		!isJsonString(body.expiresAt)
+	) {
 		throw new Error("Swaghaus Temporary Accounts response missing URLs");
 	}
 	return {
-		exampleId: body.exampleId ?? "swaghaus",
+		exampleId: isJsonString(body.exampleId) ? body.exampleId : "swaghaus",
 		stationId: input.stationId,
 		clientUrl: body.clientUrl,
 		claimUrl: body.claimUrl,
 		expiresAt: body.expiresAt,
-		deploymentUrl: body.deploymentUrl ?? "",
+		deploymentUrl: isJsonString(body.deploymentUrl) ? body.deploymentUrl : "",
 		anonymous: true,
 		temporary: true,
-		mocked: Boolean(body.mocked),
+		mocked: body.mocked === true,
 	};
 }

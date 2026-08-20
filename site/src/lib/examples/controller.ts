@@ -25,7 +25,10 @@ import {
 	summarizeTerms,
 	termsRows,
 } from "./app-recipe-terms.js";
-import { TARGET_CAPABILITY_PACKS } from "./target-capability-packs.js";
+import {
+	TARGET_CAPABILITY_PACKS,
+	type TargetCapabilityPack,
+} from "./target-capability-packs.js";
 import { provisionVercelStationViaBroker } from "./vercel-broker-client.js";
 import {
 	applyLocalBridgeUrlOverride,
@@ -121,18 +124,27 @@ export function canHostStationInPage(
 	targetId: string,
 	witRuntimeAvailable: boolean,
 ): boolean {
-	return (
-		(IN_PAGE_STATION_TARGETS as readonly string[]).includes(targetId) &&
-		witRuntimeAvailable
-	);
+	return isInPageStationTarget(targetId) && witRuntimeAvailable;
+}
+
+function isInPageStationTarget(targetId: string): boolean {
+	for (const id of IN_PAGE_STATION_TARGETS) {
+		if (id === targetId) return true;
+	}
+	return false;
 }
 
 /** Pool outcome after per-target isolation: partial provision is success —
  * remote yards failing on a static host must not block in-page stations. */
+export type PoolDeployOutcome = {
+	readonly state: "stations-ready" | "failed";
+	readonly line: string;
+};
+
 export function poolDeployOutcome(
 	provisionedCount: number,
 	failedTargetIds: readonly string[],
-): { readonly state: "stations-ready" | "failed"; readonly line: string } {
+): PoolDeployOutcome {
 	if (provisionedCount === 0) {
 		return {
 			state: "failed",
@@ -164,20 +176,25 @@ export function preferShipExampleId(
 	return catalog[0]?.id;
 }
 
+function toTargetPack(pack: TargetCapabilityPack): TargetPack {
+	const mapped: TargetPack = {
+		label: pack.label,
+		resourceClass: pack.resourceClass,
+		canHostNow: pack.canHostNow,
+		native: pack.native,
+		lowers: pack.preferDegrades,
+		environment: pack.environment,
+	};
+	if (pack.unavailableReason) {
+		return { ...mapped, unavailableReason: pack.unavailableReason };
+	}
+	return mapped;
+}
+
 const TARGET_PACKS: Readonly<Record<string, TargetPack>> = Object.fromEntries(
 	Object.entries(TARGET_CAPABILITY_PACKS).map(([id, pack]) => [
 		id,
-		{
-			label: pack.label,
-			resourceClass: pack.resourceClass,
-			canHostNow: pack.canHostNow,
-			...(pack.unavailableReason
-				? { unavailableReason: pack.unavailableReason }
-				: {}),
-			native: pack.native,
-			lowers: pack.preferDegrades,
-			environment: pack.environment,
-		} satisfies TargetPack,
+		toTargetPack(pack),
 	]),
 );
 
@@ -189,7 +206,7 @@ export async function bootExamplesConsole(): Promise<void> {
 	if (!root) return;
 	const ui = requiredElements(root);
 	const base = normalizeBase(root.dataset.base);
-	const storage = typeof localStorage === "undefined" ? null : localStorage;
+	const storage = globalThis.localStorage === undefined ? null : localStorage;
 	const homeStationId = `station:browser:${crypto.randomUUID()}`;
 	const bridgeOverride =
 		new URL(window.location.href).searchParams.get("bridge") ??
@@ -218,8 +235,6 @@ export async function bootExamplesConsole(): Promise<void> {
 	let poolSelected = defaultPoolTargetIds(poolYards);
 	let demoPreset: DemoPolicyPresetId = "local-only";
 	let appSelectedId: string | null = null;
-	let focusedYardTargetId: string | null =
-		poolSelected.values().next().value ?? poolYards[0]?.targetId ?? null;
 	let stageHostId: string | null = null;
 	let stationPlan = resolveStationDeployPlan(poolYards, poolSelected, demoPreset);
 	let live: LiveHost[] = [];
@@ -396,7 +411,6 @@ export async function bootExamplesConsole(): Promise<void> {
 				if (busy) return;
 				poolSelected = next;
 				if (focusedTargetId) {
-					focusedYardTargetId = focusedTargetId;
 					setPoolView("code");
 				}
 				render();
@@ -781,7 +795,7 @@ export async function bootExamplesConsole(): Promise<void> {
 					claimUrl = fallback.claimUrl;
 					expiresAt = fallback.expiresAt;
 				}
-				nextStations.push({
+				const nextStation: DeployedStation = {
 					id: stationId,
 					targetId: target.id,
 					yardId: target.yardId,
@@ -789,10 +803,14 @@ export async function bootExamplesConsole(): Promise<void> {
 					policy: stationPlan.policy,
 					label: pack.label,
 					createdAt,
-					...(endpointUrl ? { endpointUrl } : {}),
-					...(claimUrl ? { claimUrl } : {}),
-					...(expiresAt ? { expiresAt } : {}),
-				});
+				};
+				nextStations.push(
+					withOptionalStationFields(nextStation, {
+						endpointUrl,
+						claimUrl,
+						expiresAt,
+					}),
+				);
 			}
 			registry = { homeStationId: registry.homeStationId, stations: nextStations };
 			persist();
@@ -1051,7 +1069,7 @@ export async function bootExamplesConsole(): Promise<void> {
 						);
 					}
 
-					return {
+					const host: LiveHost = {
 						station,
 						role,
 						stationId: hostStationId,
@@ -1059,8 +1077,8 @@ export async function bootExamplesConsole(): Promise<void> {
 						exampleTitle: example.title,
 						runtime,
 						frame,
-						...(hostClaimUrl ? { claimUrl: hostClaimUrl } : {}),
-					} satisfies LiveHost;
+					};
+					return hostClaimUrl ? { ...host, claimUrl: hostClaimUrl } : host;
 				},
 			);
 			opened.push(...provisioned);
@@ -1342,10 +1360,15 @@ function renderDemoPresets(
 	container.value = current;
 }
 
+type YardOptionHint = {
+	readonly hint: string;
+	readonly title: string;
+};
+
 function yardOptionHint(
 	option: YardUiOption,
 	plan: DeployPlan,
-): { hint: string; title: string } {
+): YardOptionHint {
 	const roles: string[] = [];
 	const skips: string[] = [];
 	for (const targetId of option.targetIds) {
@@ -1379,9 +1402,11 @@ function renderYardSelect(
 	onChange: (next: Set<string>, focusedTargetId: string | null) => void,
 ) {
 	type YardSelectState = { previous: Set<string> };
-	const selectState = select as HTMLSelectElement & {
+	type YardSelectElement = HTMLSelectElement & {
 		_yardState?: YardSelectState;
 	};
+	// SAFETY: the yard picker stores prior selection on the select element instance.
+	const selectState = select as YardSelectElement;
 	const picker =
 		select.closest<HTMLElement>("[data-yard-picker]") ??
 		select.parentElement?.closest<HTMLElement>("[data-yard-picker]") ??
@@ -1840,7 +1865,7 @@ export async function mapConcurrent<T, R>(
 	concurrency: number,
 	map: (value: T) => Promise<R>,
 ): Promise<R[]> {
-	const output = new Array<R>(values.length);
+	const output: R[] = [];
 	let next = 0;
 	let failed = false;
 	let failure: unknown;
@@ -1859,6 +1884,21 @@ export async function mapConcurrent<T, R>(
 	);
 	if (failed) throw failure;
 	return output;
+}
+
+function withOptionalStationFields(
+	station: DeployedStation,
+	fields: {
+		readonly endpointUrl?: string;
+		readonly claimUrl?: string;
+		readonly expiresAt?: string;
+	},
+): DeployedStation {
+	let next = station;
+	if (fields.endpointUrl) next = { ...next, endpointUrl: fields.endpointUrl };
+	if (fields.claimUrl) next = { ...next, claimUrl: fields.claimUrl };
+	if (fields.expiresAt) next = { ...next, expiresAt: fields.expiresAt };
+	return next;
 }
 
 export function normalizeBase(value: string | undefined): string {

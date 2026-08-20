@@ -10,6 +10,7 @@
  *   EXAMPLES_BASE_URL=http://127.0.0.1:4321/HoBo/ \
  *   pnpm --filter hobo-site run examples:regression:anon
  */
+import { type JsonObject } from "../src/lib/json-inspect.js";
 import { chromium, type Page } from "playwright";
 
 const BASE = (
@@ -30,7 +31,7 @@ function log(msg: string) {
 async function readJson(
 	res: Awaited<ReturnType<Page["request"]["get"]>>,
 	label: string,
-): Promise<Record<string, unknown>> {
+): Promise<JsonObject> {
 	const ct = res.headers()["content-type"] ?? "";
 	const text = await res.text();
 	if (text.trimStart().startsWith("<") || !ct.includes("application/json")) {
@@ -38,7 +39,8 @@ async function readJson(
 			`${label}: expected JSON, got ${ct || "unknown"} HTTP ${res.status()} (HTML usually means stale astro on this port — kill it and restart with mocks)`,
 		);
 	}
-	return JSON.parse(text) as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O boundary.
+	return JSON.parse(text) as JsonObject;
 }
 
 async function assertLakebed(page: Page) {

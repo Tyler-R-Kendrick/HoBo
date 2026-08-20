@@ -158,6 +158,6 @@ export function invoke(request) {
 `.trimStart();
 }
 
-function safeJson(value: unknown): string {
+function safeJson(value: BrowserRuntimeDescriptor | Record<string, BrowserRuntimeDescriptor>): string {
 	return JSON.stringify(value).replaceAll("<", "\\u003c");
 }

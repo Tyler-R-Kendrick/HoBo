@@ -31,7 +31,7 @@ export async function browserWitRuntimeAvailable(
 ): Promise<boolean> {
 	const manifestUrl = new URL(
 		`${assetBaseUrl.replace(/\/$/u, "")}/manifest.json`,
-		typeof document === "undefined" ? "https://example.invalid/" : document.baseURI,
+		globalThis.document === undefined ? "https://example.invalid/" : document.baseURI,
 	);
 	try {
 		const response = await fetchImpl(manifestUrl, { credentials: "same-origin" });
@@ -301,7 +301,19 @@ export function buildBrowserWitStationHtml(
 </html>`;
 }
 
-function safeJson(value: unknown): string {
+type BrowserWitStationHtmlConfig = {
+	readonly exampleId: string;
+	readonly title: string;
+	readonly ui: BrowserWitStationInput["ui"];
+	readonly stationId: string;
+	readonly targetLabel: string;
+	readonly runtime: BrowserRuntimeDescriptor;
+	readonly componentDigest: string;
+	readonly entryModuleSource: string;
+	readonly wasmAssets: readonly { readonly name: string; readonly base64: string }[];
+};
+
+function safeJson(value: BrowserWitStationHtmlConfig): string {
 	return JSON.stringify(value).replaceAll("<", "\\u003c");
 }
 

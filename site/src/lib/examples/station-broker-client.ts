@@ -1,3 +1,20 @@
+import {
+	asPageUrl,
+	currentLocationHref,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../json-inspect.js";
+
+type StationBrokerGlobal = typeof globalThis & {
+	HOBO_STATION_BROKER_URL?: string;
+};
+
+function stationBrokerGlobal(): StationBrokerGlobal {
+	// SAFETY: we only read/write HOBO_STATION_BROKER_URL on globalThis.
+	return globalThis as StationBrokerGlobal;
+}
+
 /** Cloudflare Temporary Accounts entry for Examples — same-origin or CORS relay. */
 
 /**
@@ -36,7 +53,7 @@ export function sameOriginTemporaryStationApiBase(
 	pageUrl: string | URL,
 	basePath = "/HoBo/",
 ): string {
-	const page = typeof pageUrl === "string" ? new URL(pageUrl) : pageUrl;
+	const page = asPageUrl(pageUrl);
 	const base = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
 	const prefix = base.length === 0 || base === "/" ? "" : base;
 	return `${page.origin}${prefix}/api/cf-temp`;
@@ -59,38 +76,31 @@ export function isLocalWebsiteHost(hostname: string): boolean {
 export function resolveStationBrokerBase(
 	input: ResolveStationBrokerInput | string | undefined = undefined,
 ): string {
-	const opts: ResolveStationBrokerInput =
-		typeof input === "string"
-			? { override: input }
-			: (input ?? {});
+	const opts: ResolveStationBrokerInput = isJsonString(input)
+		? { override: input }
+		: (input ?? {});
 
-	const globalOverride = (
-		globalThis as { HOBO_STATION_BROKER_URL?: string }
-	).HOBO_STATION_BROKER_URL;
+	const globalOverride = stationBrokerGlobal().HOBO_STATION_BROKER_URL;
 
 	const candidates = [opts.override, opts.envBrokerUrl, globalOverride];
 	for (const raw of candidates) {
-		const trimmed = typeof raw === "string" ? raw.trim() : "";
+		const trimmed = isJsonString(raw) ? raw.trim() : "";
 		if (!trimmed) continue;
 		if (trimmed === LEGACY_DEAD_CORS_RELAY_URL) continue;
 		return trimmed.replace(/\/$/u, "");
 	}
 
-	const pageUrl =
-		opts.pageUrl ??
-		(typeof globalThis.location?.href === "string"
-			? globalThis.location.href
-			: undefined);
+	const pageUrl = opts.pageUrl ?? currentLocationHref();
 	if (pageUrl) {
-		const page = typeof pageUrl === "string" ? new URL(pageUrl) : pageUrl;
+		const page = asPageUrl(pageUrl);
 		if (isLocalWebsiteHost(page.hostname)) {
 			return sameOriginTemporaryStationApiBase(
 				page,
 				opts.basePath ??
-					(typeof document !== "undefined"
-						? document.querySelector<HTMLElement>("[data-examples-console]")
-								?.dataset.base
-						: undefined) ??
+					(globalThis.document === undefined
+						? undefined
+						: document.querySelector<HTMLElement>("[data-examples-console]")
+								?.dataset.base) ??
 					"/HoBo/",
 			);
 		}
@@ -107,13 +117,11 @@ export function applyStationBrokerUrlOverride(
 ): string | undefined {
 	const trimmed = raw?.trim();
 	if (!trimmed || trimmed === LEGACY_DEAD_CORS_RELAY_URL) {
-		delete (globalThis as { HOBO_STATION_BROKER_URL?: string })
-			.HOBO_STATION_BROKER_URL;
+		delete stationBrokerGlobal().HOBO_STATION_BROKER_URL;
 		return undefined;
 	}
 	const normalized = trimmed.replace(/\/$/u, "");
-	(globalThis as { HOBO_STATION_BROKER_URL?: string }).HOBO_STATION_BROKER_URL =
-		normalized;
+	stationBrokerGlobal().HOBO_STATION_BROKER_URL = normalized;
 	return normalized;
 }
 
@@ -158,14 +166,12 @@ export async function provisionCloudflareStationViaBroker(input: {
 		);
 	}
 
-	const body = (await response.json()) as
-		| TemporaryStationProvision
-		| StationBrokerError;
-	if (!response.ok || !body.ok) {
-		const fail = body as StationBrokerError;
+	const body: JsonValue = await response.json();
+	if (!response.ok || !isJsonObject(body) || body.ok !== true) {
+		const fail = isJsonObject(body) ? body : {};
 		throw new Error(
-			fail.remediation ??
-				fail.error ??
+			(isJsonString(fail.remediation) ? fail.remediation : undefined) ??
+				(isJsonString(fail.error) ? fail.error : undefined) ??
 				`Cloudflare Temporary Accounts HTTP ${response.status} at ${base}. ${RELAY_REMEDIATION}`,
 		);
 	}
@@ -175,13 +181,29 @@ export async function provisionCloudflareStationViaBroker(input: {
 			"Temporary Accounts broker leaked apiToken to the browser — refusing response",
 		);
 	}
-	if (!isWorkersDevStationUrl(body.stationUrl)) {
+	if (!isJsonString(body.stationUrl) || !isWorkersDevStationUrl(body.stationUrl)) {
 		throw new Error(
-			`Broker returned non-workers.dev stationUrl (${body.stationUrl}). Refusing blob/offline stubs as Cloudflare.`,
+			`Broker returned non-workers.dev stationUrl (${String(body.stationUrl)}). Refusing blob/offline stubs as Cloudflare.`,
 		);
 	}
-	if (!body.claimUrl || body.claimUrl.length === 0) {
+	if (!isJsonString(body.claimUrl) || body.claimUrl.length === 0) {
 		throw new Error("Broker response missing claimUrl");
 	}
-	return body;
+	if (
+		!isJsonString(body.stationId) ||
+		!isJsonString(body.scriptName) ||
+		!isJsonString(body.expiresAt)
+	) {
+		throw new Error("Broker response missing station fields");
+	}
+	return {
+		ok: true,
+		stationId: body.stationId,
+		scriptName: body.scriptName,
+		stationUrl: body.stationUrl,
+		claimUrl: body.claimUrl,
+		expiresAt: body.expiresAt,
+		anonymous: true,
+		temporary: true,
+	};
 }

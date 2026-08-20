@@ -742,3 +742,29 @@ That leaves nine genuine runtime edges, and the question they pose is narrower t
 - **(−)** Five lifts are real refactors touching packages owned by different work streams, and each one moves a public symbol between packages — a breaking change for anyone importing the old path, mitigated only by re-export shims that themselves need retiring.
 - **(−)** Widening the dev-only exemption beyond `contract-harness` weakens the guard against *test-time* coupling, which is a real signal even when it is not a layering fact. The mitigation is that the marker is now merged strictly rather than positionally; without that hardening this decision would not be safe to take.
 - **(−)** `runner-github` ends up as both a concrete provider and the origin of a protocol other providers speak. That is honest but confusing, and the rename in verdict 1 is load-bearing documentation, not cosmetics.
+
+## ADR-0164
+**Placement is re-evaluable: a separate verdict step decides *whether* to re-decide, residency outranks opportunity, and movement requires declared consent.**
+
+**Status:** Accepted — extends [ADR-0033](#adr-0033) matching and [ADR-0071](#adr-0071) cost-aware placement; gated by [ADR-0146](02-identity-security.md#adr-0146) residency and [ADR-0136](03-data-plane-effects-resiliency.md) declared effects. Prompted by the [CAST AI capture](../../competitors/cast-ai.md#where-cast-ai-is-stronger) and [gap analysis §7.1 N2](../../competitors/gap-analysis.md#71-new-architecture-level-gaps).
+
+### Context
+`match.Decided` records where a workload was placed and why, once. Catalogs gain and lose offerings, jurisdictions change, objectives change — and nothing revisited the decision, so a placement that was right on Tuesday stayed recorded as right forever. CAST AI re-solves node shape continuously and produces *realized* rather than projected savings; HoBo recorded a decision and walked away.
+
+The counter-risk is well known: a system that continuously re-optimizes and cannot explain why it moved a workload at 3am is an operational liability.
+
+### Decision
+1. **Separate the verdict from the re-match.** `evaluateReplacement` answers only "has an input changed such that the decision might differ, and may we act?" The re-matching stays with the existing planner. This split is what makes a move explainable — the verdict *names* the changed input.
+2. **Carry the prior decision forward.** A re-placement is recorded as a diff against the decision it supersedes, never as a fresh decision with no history.
+3. **No change, no churn.** Identical inputs hold. A re-evaluator that re-decides every tick is a workload shuffler.
+4. **Residency outranks opportunity.** A move landing where residency forbids is `blocked`, never silently skipped — a silent skip is how a compliance problem becomes invisible. `undefined` permitted-regions means unconstrained; an empty array means evaluated-and-none. Collapsing those would turn "we did not check" into "nowhere is legal".
+5. **Movement requires declared consent.** A workload that has not declared it tolerates interruption is not moved for a mere improvement. The opportunity is still *named* and surfaced as `deferred`, so an operator can see it and choose.
+6. **Forced ≠ improvable.** A placement that has become unlawful must move regardless of interruption tolerance; staying is not on offer. These must not collapse into one flag.
+7. **Residency is reported, not assumed.** The verdict takes the *evaluated* result from `evaluateResidency`; it never re-derives it. Defaulting to satisfied is safe because a caller that found a violation is required to say so.
+
+### Consequences
+- **(+)** Placement stops being a one-shot record without introducing a continuous optimizer nobody asked for.
+- **(+)** Every move is attributable to a named input change, which is the property CAST AI's approach lacks and HoBo's event log makes cheap.
+- **(+)** Price joins later as one more changed-input reason without reshaping the mechanism.
+- **(−)** Price is **not** an input yet: cost-aware re-placement needs multi-provider price data HoBo does not have (tracked as the N5 gap). Today the trigger set is catalog, objective and residency only.
+- **(−)** Nothing schedules this. It is a pure verdict function; deciding *when* to call it — on catalog publish, on policy change, periodically — is a separate decision.

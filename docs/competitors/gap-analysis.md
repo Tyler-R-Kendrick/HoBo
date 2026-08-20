@@ -362,7 +362,7 @@ a capture that does it.
 | # | Gap | Surfaced by | Why it is architectural |
 |---|---|---|---|
 | **N1** ✅ | **Drift is not a first-class computed fact.** *(Closed 2026-08-20 — `computeDrift` in `@hobo/cloud`, [ADR-0163](../design/adr/03-data-plane.md#adr-0163). Derived, not stored; classified by typed lifecycle rather than field diff.)* HoBo can *derive* divergence between recorded intent and materialized reality from its event log. Nothing derives it, names it, or shows it to anyone unprompted. | [Argo CD](argo-cd.md) (`OutOfSync` + per-resource diff), [Flux CD](flux-cd.md), [Crossplane](crossplane.md) | Reconciliation is table stakes in this category; *showing a human the difference* is what the category's users actually buy. HoBo has the harder half (an authoritative log) and not the visible half. |
-| **N2** | **`match.Decided` is a one-shot decision that nothing revisits.** Prices, capacity, policy and residency rules all move; the recorded decision does not. | [CAST AI](cast-ai.md) (continuous re-optimization), [Rancher Fleet](rancher-fleet.md) | A placement engine whose decisions are never re-evaluated is a configuration tool with an audit trail. The fix — re-evaluation emitting a new `match.Decided` — is additive but is a genuine design extension, not polish. |
+| **N2** ✅ | **`match.Decided` is a one-shot decision that nothing revisits.** *(Closed 2026-08-20 — `evaluateReplacement` in `@hobo/cloud`, [ADR-0164](../design/adr/01-architecture-core.md#adr-0164). Verdict separate from re-match; price still pending N5.)* Prices, capacity, policy and residency rules all move; the recorded decision does not. | [CAST AI](cast-ai.md) (continuous re-optimization), [Rancher Fleet](rancher-fleet.md) | A placement engine whose decisions are never re-evaluated is a configuration tool with an audit trail. The fix — re-evaluation emitting a new `match.Decided` — is additive but is a genuine design extension, not polish. |
 | **N3** | **Extension lifecycle is unsolved.** Resource Packs have no install/upgrade/dependency-resolution story worth the name. | [OpenShift](openshift.md) (OLM), [Kratix](kratix.md) (Promise updates), [Backstage](backstage.md) (the plugin treadmill) | Every extensible platform in this corpus either solved this deliberately or is visibly suffering. It is the difference between an extension model and a distribution problem the user inherits. |
 
 Two further items sit just below the line — real, but closer to unclaimed opportunity than to
@@ -563,8 +563,11 @@ Priority order, revised:
    readback, which is a larger decision. The topology surface now has something to colour.
 2. **Ship restricted policy-pack defaults** (finding 6) — cheap, and it converts a design claim into
    a protection.
-3. **N2 — re-evaluable placement**, emitting a new `match.Decided` when prices, capacity or policy
-   move.
+3. ~~**N2 — re-evaluable placement.**~~ **Done** (2026-08-20): `evaluateReplacement`
+   ([ADR-0164](../design/adr/01-architecture-core.md#adr-0164)) decides *whether* to re-decide and
+   names the changed input, so a move is explainable. Two residuals are deliberate: **price is not
+   yet an input** (it waits on N5), and **nothing schedules the call** — when to run it is a
+   separate decision.
 4. **Commit to outbound-only agent connectivity** (finding 3) as an architectural rule with a
    written rationale, and fix the standing contradiction between
    [ADR-0122](../design/adr/07-portability-extensibility.md#adr-0122)'s WireGuard floor and the

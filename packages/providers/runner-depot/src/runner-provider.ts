@@ -49,7 +49,7 @@ export function createDepotRunnerProvider(
 			return executionHostManifest(RUNNER_CATEGORY, { providerId: id });
 		},
 		async run(job: RunnerJob): Promise<RunnerResult> {
-			if (typeof job?.jobId !== "string" || job.jobId.length === 0) {
+			if (job.jobId.length === 0) {
 				throw new Error("runner-depot: job.jobId must be a non-empty string");
 			}
 			await options.client.dispatchWorkflow({
@@ -59,7 +59,7 @@ export function createDepotRunnerProvider(
 					...job.inputs,
 					job_id: job.jobId,
 					runs_on: runsOn,
-					...(job.command === undefined ? {} : { command: job.command }),
+					...(job.command === undefined ? undefined : { command: job.command }),
 				},
 			});
 			const run = await trackDispatchedRun(

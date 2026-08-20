@@ -17,8 +17,27 @@ import {
 } from "../src/index.js";
 
 const temps: string[] = [];
+
+/**
+ * Teardown options for the sandbox trees these tests copy around.
+ *
+ * `force` alone is not enough here. These cases build deep sandbox directories
+ * and the CLI under test writes into them, so an unlink can still land while a
+ * descendant is being created — which surfaces as `ENOTEMPTY` from `rmdir`,
+ * failing teardown for a test whose assertions all passed. `maxRetries` is
+ * exactly what Node provides for that race; without it this suite fails
+ * intermittently under load and cleanly on an idle machine, which is the worst
+ * possible signal.
+ */
+const RM = {
+	recursive: true,
+	force: true,
+	maxRetries: 10,
+	retryDelay: 50,
+} as const;
+
 afterEach(() => {
-	for (const d of temps) rmSync(d, { recursive: true, force: true });
+	for (const d of temps) rmSync(d, RM);
 	temps.length = 0;
 });
 
@@ -741,6 +760,21 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(dispatch.code).toBe("HOBO_CODE_DISPATCH");
 	});
 
+	/**
+	 * Timeout raised well above the 10s file default, on this case only.
+	 *
+	 * `auth login --agent` binds a local station, which materializes an entire
+	 * sandbox tree on disk, and the case then drives five further CLI
+	 * invocations against it. That is real work, and on a container with a slow
+	 * overlay filesystem it does not fit in ten seconds. When it overran, the
+	 * abandoned run kept writing while `afterEach` removed the directory, so the
+	 * timeout also produced a cascade of `ENOTEMPTY` teardown failures in
+	 * unrelated cases — which is how one slow test made the whole file look
+	 * broken.
+	 *
+	 * The number is sized for the work, not chosen to make a red run green: the
+	 * assertions are unchanged and the case still fails if the CLI misbehaves.
+	 */
 	it("auth login binds local station; control-plane verbs are not product surface", async () => {
 		const home = temp("hc-auth-bind-");
 		const login = await runHoboCodeCli(["auth", "login", "--agent"], {
@@ -761,7 +795,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 				/HOBO_CODE_PLATFORM|HOBO_CODE_BUDGET|HOBO_CODE_REMOTE|HOBO_CODE_NODES|HOBO_CODE_JOIN/,
 			);
 		}
-	});
+	}, 120_000);
 
 	it("help names binary hobo-code and default dispatch", async () => {
 		const help = await runHoboCodeCli(["help"]);
@@ -1082,8 +1116,8 @@ describe("dispatch says what it did", () => {
 		const cited = /at · (\S+)/.exec(result.message)?.[1];
 		expect(cited).toBeDefined();
 		expect(existsSync(cited as string)).toBe(true);
-		rmSync(home, { recursive: true, force: true });
-		rmSync(project, { recursive: true, force: true });
+		rmSync(home, RM);
+		rmSync(project, RM);
 	});
 
 	it("keeps the dense glyph form behind --dense", async () => {
@@ -1095,7 +1129,7 @@ describe("dispatch says what it did", () => {
 		});
 		expect(result.message).toContain("★");
 		expect(result.message).not.toMatch(/No agent has run it yet/);
-		rmSync(home, { recursive: true, force: true });
-		rmSync(project, { recursive: true, force: true });
+		rmSync(home, RM);
+		rmSync(project, RM);
 	});
 });

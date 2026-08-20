@@ -207,16 +207,28 @@ export async function workingTreeManifestHash(
 	runner: SessionProcessRunner,
 	cwd: string,
 ): Promise<string> {
+	// `--no-optional-locks` is a *top-level* git option, not a `status` one, so
+	// it has to precede the subcommand. Passed after it, git exits 129 with an
+	// unknown-option error and writes nothing to stdout — and hashing that empty
+	// output produced the same digest for every working tree there has ever
+	// been. This hash exists so a refresh can notice the files moved underneath
+	// a reviewer; constant, it made that check unable to fire at all.
 	const status = await runner.run(
 		"git",
 		[
+			"--no-optional-locks",
 			"status",
 			"--porcelain=v2",
 			"-z",
 			"--untracked-files=all",
-			"--no-optional-locks",
 		],
 		cwd,
 	);
+	if (status.code !== 0) {
+		throw new ReviewError(
+			REVIEW_ERROR.MALFORMED,
+			`git status failed while fingerprinting the working tree: ${status.stderr.trim() || `exit ${status.code}`}`,
+		);
+	}
 	return hashText(status.stdout);
 }

@@ -28,7 +28,12 @@
 import { describe, expect, it } from "vitest";
 
 import { LeaseConflictError } from "../src/actor-host.js";
-import { createDurableActorHost } from "../src/durable-actor-host.js";
+import {
+	type ActorLeaseGrant,
+	type ActorLeaseJournal,
+	createDurableActorHost,
+	type DurableActorHostOptions,
+} from "../src/durable-actor-host.js";
 
 type AcquireCall = {
 	key: string;
@@ -36,14 +41,22 @@ type AcquireCall = {
 	leaseTtlMs: number;
 };
 
+interface FakeJournal {
+	acquires: AcquireCall[];
+	releases: [string, string, bigint][];
+	impl: ActorLeaseJournal;
+}
+
+interface JournalBehaviour {
+	onAcquire?: (call: AcquireCall) => ActorLeaseGrant;
+}
+
 /** A journal recording what it was asked, answering from a script. */
-function journal(
-	behaviour: { onAcquire?: (call: AcquireCall) => unknown } = {},
-) {
+function journal(behaviour: JournalBehaviour = {}): FakeJournal {
 	const acquires: AcquireCall[] = [];
 	const releases: [string, string, bigint][] = [];
 	let fence = 0n;
-	const impl = {
+	const impl: ActorLeaseJournal = {
 		acquireActorLease(call: AcquireCall) {
 			acquires.push(call);
 			const scripted = behaviour.onAcquire?.(call);
@@ -60,14 +73,14 @@ function journal(
 			releases.push([key, holderId, fenceToken]);
 		},
 	};
-	return { acquires, releases, impl: impl as never };
+	return { acquires, releases, impl };
 }
 
-const host = (j = journal(), leaseTtlMs?: number) =>
-	createDurableActorHost({
-		journal: j.impl,
-		...(leaseTtlMs !== undefined ? { leaseTtlMs } : {}),
-	});
+function host(j = journal(), leaseTtlMs?: number) {
+	const options: DurableActorHostOptions = { journal: j.impl };
+	if (leaseTtlMs !== undefined) options.leaseTtlMs = leaseTtlMs;
+	return createDurableActorHost(options);
+}
 
 describe("acquiring a lease", () => {
 	it("returns the lease the journal granted", () => {
@@ -144,9 +157,12 @@ describe("refusals before the journal is touched", () => {
 	});
 
 	it("refuses a non-string key", () => {
-		expect(() =>
-			host().acquire(7 as unknown as string, { holderId: "a" }),
-		).toThrow(/key must be a non-empty string/u);
+		const acquire = host().acquire;
+		// SAFETY: the test subject is the runtime parse of a non-string key at the host I/O boundary.
+		const key = 7 as string;
+		expect(() => acquire(key, { holderId: "a" })).toThrow(
+			/key must be a non-empty string/u,
+		);
 	});
 
 	it("refuses an empty holder id", () => {
@@ -158,15 +174,19 @@ describe("refusals before the journal is touched", () => {
 	});
 
 	it("refuses a missing request object rather than dereferencing it", () => {
-		expect(() =>
-			host().acquire("order:1", undefined as unknown as { holderId: string }),
-		).toThrow(/holderId must be a non-empty string/u);
+		const acquire = host().acquire;
+		// SAFETY: missing request object is the I/O-boundary case acquire must refuse.
+		const request = undefined as { holderId: string };
+		expect(() => acquire("order:1", request)).toThrow(
+			/holderId must be a non-empty string/u,
+		);
 	});
 
 	it("refuses a non-string holder id", () => {
-		expect(() =>
-			host().acquire("order:1", { holderId: 1 as unknown as string }),
-		).toThrow(TypeError);
+		const acquire = host().acquire;
+		// SAFETY: non-string holderId is the I/O-boundary case acquire must refuse.
+		const holderId = 1 as string;
+		expect(() => acquire("order:1", { holderId })).toThrow(TypeError);
 	});
 });
 
@@ -226,7 +246,8 @@ describe("losing the race", () => {
 			try {
 				host(stale(error)).acquire("order:1", { holderId: "b" });
 			} catch (err) {
-				return err as LeaseConflictError;
+				if (err instanceof LeaseConflictError) return err;
+				throw err;
 			}
 			return null;
 		})();

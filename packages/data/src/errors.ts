@@ -3,6 +3,22 @@
 // is illegal against current aggregate state — do NOT retry) and an optimistic
 // concurrency conflict (someone else appended first — retry after re-folding).
 
+import { type ErrorSignal, isJsonString } from "./json.js";
+
+export type { ErrorSignal } from "./json.js";
+
+function errorName(error: Error | ErrorSignal): string | undefined {
+	if (error instanceof Error) return error.name;
+	return isJsonString(error.name) ? error.name : undefined;
+}
+
+function errorCode(error: Error | ErrorSignal): string | undefined {
+	if (!("code" in error)) return undefined;
+	// SAFETY: `in` established `code`; tag check parses the string conflict signal.
+	const code = (error as ErrorSignal).code;
+	return isJsonString(code) ? code : undefined;
+}
+
 export class AggregateInvariantError extends Error {
 	readonly code = "AGGREGATE_INVARIANT" as const;
 	readonly retryable = false as const;
@@ -43,10 +59,10 @@ export class ProjectionWriteError extends Error {
 
 // Recognizes the runtime EventStore's optimistic-conflict signal without taking a
 // hard dependency on the runtime package (inward-only: @hobo/data → @hobo/core).
-export function isOptimisticConflict(error: unknown): boolean {
+export function isOptimisticConflict(error: Error | ErrorSignal): boolean {
 	if (error instanceof AggregateConflictError) return true;
-	const name = (error as { name?: unknown })?.name;
-	const code = (error as { code?: unknown })?.code;
+	const name = errorName(error);
+	const code = errorCode(error);
 	return (
 		name === "OptimisticSequenceConflictError" ||
 		name === "StaleSequenceError" ||
@@ -54,10 +70,10 @@ export function isOptimisticConflict(error: unknown): boolean {
 	);
 }
 
-export function isStaleFenceError(error: unknown): boolean {
-	const name = (error as { name?: unknown })?.name;
-	const code = (error as { code?: unknown })?.code;
-	return name === "StaleFenceError" || code === "STALE_FENCE";
+export function isStaleFenceError(error: Error | ErrorSignal): boolean {
+	return (
+		errorName(error) === "StaleFenceError" || errorCode(error) === "STALE_FENCE"
+	);
 }
 
 export class AggregateStaleFenceError extends Error {

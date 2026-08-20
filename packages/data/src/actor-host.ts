@@ -11,6 +11,8 @@ import type {
 	ActorLease as AggregateLease,
 } from "@hobo/core";
 
+import { parseNonEmptyString } from "./json.js";
+
 export type {
 	ActorLease as AggregateLease,
 	ActorLeaseHost as ActorHost,
@@ -58,13 +60,11 @@ export function createInMemoryActorHost(
 
 	return Object.freeze({
 		acquire(key: string, request: { holderId: string }): AggregateLease {
-			if (typeof key !== "string" || key.length === 0) {
-				throw new TypeError("key must be a non-empty string");
-			}
-			const holderId = request?.holderId;
-			if (typeof holderId !== "string" || holderId.length === 0) {
-				throw new TypeError("request.holderId must be a non-empty string");
-			}
+			parseNonEmptyString(key, "key");
+			const holderId = parseNonEmptyString(
+				request?.holderId,
+				"request.holderId",
+			);
 			const nowMs = clock.nowMs();
 			const current = leases.get(key);
 			if (current && !current.released && current.expiresAtMs > nowMs) {

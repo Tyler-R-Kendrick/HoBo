@@ -3,18 +3,17 @@
 // `projection.*`). These are plain fact bodies; a runtime wraps them in the shared
 // EventEnvelope. Fence tokens are serialized as strings (bigint is not JSON-safe).
 
+import type { JsonObject } from "./json.js";
+
 export const DATA_EVENT_SCHEMA_VERSION = "hobo.data-events/v1";
 
-export interface DataFact<T = Record<string, unknown>> {
+export interface DataFact<T = JsonObject> {
 	readonly type: string;
 	readonly schemaVersion: typeof DATA_EVENT_SCHEMA_VERSION;
 	readonly data: Readonly<T>;
 }
 
-function fact<T extends Record<string, unknown>>(
-	type: string,
-	data: T,
-): DataFact<T> {
+function fact<T extends JsonObject>(type: string, data: T): DataFact<T> {
 	return Object.freeze({
 		type,
 		schemaVersion: DATA_EVENT_SCHEMA_VERSION,

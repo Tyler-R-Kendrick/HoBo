@@ -804,3 +804,28 @@ ADR-0032 commits to declarative desired-schema + auto-diff with a reviewable mig
 - **(+)** ADR-0032's diff engine ships with a battle-tested default instead of a bespoke differ; the OOB story matches the best shipping DX while keeping gated, forward-only apply.
 - **(+)** Drizzle-native teams onboard with their existing schema modules.
 - **(−)** An external tool sits behind a core port: version pinning and output canonicalization (deterministic artifacts from a third-party generator) become HoBo's responsibility.
+
+## ADR-0163
+**Drift is a derived fact computed from the deployment view, not stored state — classified by typed lifecycle, with `converging` and `unknown` as first-class answers.**
+
+**Status:** Accepted — derives from the event-sourced authority of [ADR-0135](03-data-plane-sqlite-default.md) and the typed-contract argument of [ADR-0136](03-data-plane-effects-resiliency.md); prompted by the [Argo CD capture](../../competitors/argo-cd.md#where-argo-cd-is-stronger) and the corpus-wide finding in [gap analysis §7.1](../../competitors/gap-analysis.md#71-new-architecture-level-gaps).
+
+### Context
+HoBo already holds both halves of the comparison. `DeploymentViewRow` carries the plan — recorded intent — and the per-resource lifecycle folded from `resource.*` facts — materialized reality. Nothing derived the difference, so a divergence was discovered only when somebody went to look.
+
+Argo CD's `OutOfSync` plus a per-resource diff is the most valuable idea in that category and the reason its UI is load-bearing during an incident. Reconciliation is table stakes; *showing a human the difference* is what people actually use. HoBo owned the harder half and not the visible one.
+
+### Decision
+1. **Derive, never store.** `computeDrift(row)` is a pure function over a view that already exists — no new event, no new state, no reconciler. A stored drift flag is a fourth thing that can go stale; a derived one is correct whenever the view is and rebuilds from zero with the log.
+2. **Classify by typed lifecycle, not by field diff.** The known failure mode of this category is *false* drift: field-level comparison reports every defaulted value, server-side mutation and controller write-back, so teams add ignore rules until the surface is blind to the real thing. Classification keys on lifecycle states, which mean something definite — the same argument ADR-0136 makes for typed contracts.
+3. **Four statuses, not two.** `converging` covers work in flight: a resource mid-provision is the plan being carried out, and a two-state model must call that either drift (false alarm every deploy) or in-sync (a lie until it settles). `unknown` covers a deployment with no plan, or one rejected or rolled back, where there is nothing to compare — reporting "no drift" there would be a clean bill of health for something nobody described.
+4. **A real divergence outranks in-flight work.** A failure is actionable now; reporting `converging` while a resource has already failed buries the actionable half.
+5. **Imported estates do not report extra resources as drift.** `hobo import` ([ADR-0041](07-portability-extensibility.md#adr-0041)) adopts things HoBo did not create; flagging all of them on the first run would make the report useless exactly where adoption needs it. Adoption excuses extra resources, never missing ones.
+6. **Destroyed-and-unplanned is not a finding.** Gone is gone; flagging it forever is the noise that trains people to stop reading the report.
+
+### Consequences
+- **(+)** The most-repeated gap in the competitive corpus closes with a pure function over existing state — no new plane, no new persistence.
+- **(+)** `converging` and `unknown` remove the two ways a two-state model lies, which is what drives ignore-rule accumulation elsewhere.
+- **(+)** Gives the browsable topology surface its content: the resource tree needs something to colour, and this is it.
+- **(−)** Resolution is per-resource, not per-field. A resource that exists but is *misconfigured* reads as in-sync. Closing that needs provider-side state readback, which is a larger decision and deliberately not taken here.
+- **(−)** Accuracy is bounded by the fidelity of `resource.*` facts. A provider that does not report destruction leaves a resource looking realized.

@@ -230,6 +230,13 @@ export {
 	type ResourceLifecycle,
 } from "./projections/deployment-view.js";
 export {
+	computeDrift,
+	type DriftFinding,
+	type DriftKind,
+	type DriftReport,
+	type DriftStatus,
+} from "./projections/drift-view.js";
+export {
 	type TopologyEdge,
 	type TopologyEdgeKind,
 	type TopologyNode,

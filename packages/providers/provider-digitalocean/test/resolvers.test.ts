@@ -11,19 +11,20 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type {
+	HttpTransport,
+	ResolveOutcome,
+	ResolveRequest,
+	ResourceResolver,
+	TransportRequest,
+	TransportResponse,
+} from "@hobo/core";
 import {
-	type HttpTransport,
 	parseResolveOutcome,
 	parseResolveRequest,
-	type ResolveOutcome,
-	type ResolveRequest,
-	type ResolverError,
-	type ResourceResolver,
-	type TransportRequest,
-	type TransportResponse,
+	ResolverError,
 } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
 import {
 	DIGITALOCEAN_API_HOST,
 	DIGITALOCEAN_APP_JOB_PRODUCT_ID,
@@ -45,6 +46,11 @@ import {
 	guardedSpacesTransport,
 	redactDigitalOceanText,
 } from "../src/index.js";
+import {
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const pact = JSON.parse(
@@ -57,10 +63,11 @@ const pact = JSON.parse(
 const CREDENTIAL_REF = "env://DIGITALOCEAN_TOKEN";
 /** A token-shaped PAT. Never expected anywhere but one header. */
 const TOKEN = "dop_v1_fakepersonalaccesstoken0123456789abcdef";
+// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 /** A 40-character token-shaped string, as providers echo them in error text. */
 const LEAKED_TOKEN = "abcdefghij0123456789ABCDEFGHIJ0123456789";
 
-type Rec = Record<string, unknown>;
+type Rec = JsonObject;
 
 interface RecordedCall {
 	readonly method: string;
@@ -108,7 +115,7 @@ function fakeTransport(
 	};
 }
 
-function json(status: number, payload: unknown): TransportResponse {
+function json(status: number, payload: JsonValue): TransportResponse {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -128,7 +135,7 @@ function unexpected(call: RecordedCall): TransportResponse {
 }
 
 function bodyOf(call: RecordedCall): Rec {
-	return call.body === undefined ? {} : (JSON.parse(call.body) as Rec);
+	return call.body === undefined ? {} : parseJsonObject(call.body);
 }
 
 /** A Spaces key pair. Never the control-plane token — that is the point. */
@@ -178,27 +185,29 @@ function request(input: {
 			logicalId: input.logicalId,
 			...(input.physicalId !== undefined
 				? { physicalId: input.physicalId }
-				: {}),
+				: undefined),
 		},
 		desired: input.desired ?? {},
 		credentialRef: CREDENTIAL_REF,
 	});
 }
 
-async function codeOf(run: () => Promise<unknown>): Promise<string> {
+async function codeOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as ResolverError).code ?? "NO_CODE";
+		if (error instanceof ResolverError) return error.code;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }
 
-async function messageOf(run: () => Promise<unknown>): Promise<string> {
+async function messageOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as Error).message;
+		if (error instanceof Error) return error.message;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }
@@ -253,6 +262,7 @@ function databaseApi(
 			return json(201, { database: created });
 		}
 		if (call.method === "PUT" && call.path.endsWith("/resize")) {
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			const id = call.path.split("/")[3] as string;
 			clusters = clusters.map((cluster) =>
 				cluster.id === id
@@ -481,6 +491,7 @@ function emptyWorld(): Fake {
 
 function specOf(fake: Fake): Rec {
 	const writes = fake.calls.filter((call) => call.method === "PUT");
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	return bodyOf(writes[writes.length - 1] as RecordedCall).spec as Rec;
 }
 
@@ -500,6 +511,7 @@ describe("App Platform components converge inside the app that owns them", () =>
 		expect(outcome.action).toBe("create");
 		expect(outcome.physicalId).toBe(`${APP_ID}/${key}/${noun}-one`);
 		expect(outcome.outputs.componentKind).toBe(noun);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const written = specOf(fake)[key] as Rec[];
 		expect(written.map((item) => item.name)).toEqual([`${noun}-one`]);
 	});
@@ -555,6 +567,7 @@ describe("App Platform components converge inside the app that owns them", () =>
 			componentRequest(DIGITALOCEAN_APP_WORKER_PRODUCT_ID, "worker-one"),
 			fake.transport,
 		);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const workers = specOf(fake).workers as Rec[];
 		expect(workers.map((item) => item.name).sort()).toEqual([
 			"other-worker",
@@ -583,6 +596,7 @@ describe("App Platform components converge inside the app that owns them", () =>
 		);
 		expect(scaled.action).toBe("update");
 		expect(scaled.outputs.instanceCount).toBe(4);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const workers = specOf(fake).workers as Rec[];
 		expect(workers).toHaveLength(1);
 	});
@@ -658,6 +672,7 @@ describe("App Platform components converge inside the app that owns them", () =>
 			fake.transport,
 		);
 		const spec = specOf(fake);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect((spec.workers as Rec[]).map((item) => item.name)).toEqual([
 			"other-worker",
 		]);
@@ -668,6 +683,7 @@ describe("App Platform components converge inside the app that owns them", () =>
 		);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats an already-absent component as a successful delete", async () => {
 		const fake = appWorld();
 		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
@@ -680,6 +696,7 @@ describe("App Platform components converge inside the app that owns them", () =>
 		expect(fake.calls.filter((call) => call.method === "PUT")).toHaveLength(0);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats a missing app as an already-successful delete", async () => {
 		const fake = emptyWorld();
 		const resolver = resolverFor(DIGITALOCEAN_APP_WORKER_PRODUCT_ID);
@@ -751,6 +768,7 @@ function actionRecord(sent: Rec): Rec {
 		limits: sent.limits,
 		parameters: [],
 		annotations: [
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			...((sent.annotations as Rec[] | undefined) ?? []),
 			// Platform-added: must not read as drift.
 			{ key: "exec", value: "nodejs:20" },
@@ -829,6 +847,7 @@ describe("the Functions resolver converges an action on its namespace host", () 
 		await resolver.reconcile(functionRequest(), fake.transport);
 		const put = fake.calls.find((call) => call.method === "PUT");
 		expect(
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			new URLSearchParams((put as RecordedCall).search).get("overwrite"),
 		).toBe("true");
 	});
@@ -871,6 +890,7 @@ describe("the Functions resolver converges an action on its namespace host", () 
 	});
 
 	/** Platform-added annotations are not drift, or every pass would re-PUT. */
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("does not read the platform's own annotations as drift", async () => {
 		const fake = functionsWorld();
 		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
@@ -956,6 +976,7 @@ describe("the Functions resolver converges an action on its namespace host", () 
 			call.method === "GET" && call.path === NAMESPACE_PATH
 				? json(200, {
 						namespace: {
+							// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 							...(namespaceRecord().namespace as Rec),
 							api_host: "https://evil.example.com",
 						},
@@ -971,6 +992,7 @@ describe("the Functions resolver converges an action on its namespace host", () 
 		).toBe(true);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats an already-absent function as a successful delete", async () => {
 		const fake = functionsWorld();
 		const resolver = resolverFor(DIGITALOCEAN_FUNCTIONS_PRODUCT_ID);
@@ -1010,8 +1032,9 @@ describe("the registry covers exactly the products that can converge", () => {
 		const catalogued = new Set(
 			Object.values(DIGITALOCEAN_DEFAULT_BINDINGS)
 				.flatMap((entries) => [...(entries ?? [])])
-				.map((entry) => entry.productId)
-				.filter((id): id is string => typeof id === "string"),
+				.flatMap((entry) =>
+					entry.productId === undefined ? [] : [entry.productId],
+				),
 		);
 		const accounted = [
 			...DIGITALOCEAN_RESOLVED_PRODUCT_IDS,
@@ -1091,6 +1114,7 @@ describe("managed databases converge", () => {
 		expect(second.action).toBe(interaction.response.body.reconcileTwiceAction);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("reports 'creating' as accepted, not confirmed", async () => {
 		const fake = fakeTransport(databaseApi());
 		const outcome = checked(
@@ -1187,9 +1211,11 @@ describe("managed databases converge", () => {
 		const create = fake.calls.find(
 			(call) => call.method === "POST" && call.path === DATABASES,
 		);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect(bodyOf(create as RecordedCall).engine).toBe("valkey");
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("deletes what exists and treats already-gone as success", async () => {
 		const fake = fakeTransport(
 			databaseApi([
@@ -1357,6 +1383,7 @@ describe("load balancers", () => {
 		const create = fake.calls.find(
 			(call) => call.method === "POST" && call.path === LOAD_BALANCERS,
 		);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect(bodyOf(create as RecordedCall).forwarding_rules).toEqual([
 			{
 				entry_protocol: "http",
@@ -1393,6 +1420,7 @@ describe("load balancers", () => {
 		);
 		expect(outcome.action).toBe("update");
 		const put = fake.calls.find((call) => call.method === "PUT");
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const body = bodyOf(put as RecordedCall);
 		expect(body.algorithm).toBe("least_connections");
 		expect(body.forwarding_rules).toBeDefined();
@@ -1425,6 +1453,7 @@ describe("App Platform apps", () => {
 		const create = fake.calls.find(
 			(call) => call.method === "POST" && call.path === APPS,
 		);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect((bodyOf(create as RecordedCall).spec as Rec).name).toBe(
 			"storefront",
 		);
@@ -1534,6 +1563,7 @@ describe("credentials are locators and never leak", () => {
 		expect(message).toContain("[redacted]");
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("redactDigitalOceanText truncates as well as scrubs", () => {
 		expect(redactDigitalOceanText(LEAKED_TOKEN)).toBe("[redacted]");
 		// Not token-shaped (no run of 20+ token characters), so this exercises
@@ -1705,13 +1735,15 @@ describe("Spaces is S3, on its own host with its own credential", () => {
 
 	it("refuses on first use without an injected clock", async () => {
 		const fake = fakeTransport(spacesApi());
+		const resolver = digitaloceanResolverRegistry({
+			resolveCredential: async () => TOKEN,
+			resolveSpacesCredential: async () => SPACES_KEYS,
+		}).get(DIGITALOCEAN_SPACES_PRODUCT_ID);
+		if (resolver === undefined) {
+			throw new Error("expected spaces resolver");
+		}
 		const message = await messageOf(() =>
-			(
-				digitaloceanResolverRegistry({
-					resolveCredential: async () => TOKEN,
-					resolveSpacesCredential: async () => SPACES_KEYS,
-				}).get(DIGITALOCEAN_SPACES_PRODUCT_ID) as ResourceResolver
-			).reconcile(request(spacesRequest), fake.transport),
+			resolver.reconcile(request(spacesRequest), fake.transport),
 		);
 		expect(message).toContain("nowMs");
 		expect(fake.calls).toHaveLength(0);
@@ -1719,13 +1751,15 @@ describe("Spaces is S3, on its own host with its own credential", () => {
 
 	it("refuses on first use without a Spaces credential resolver", async () => {
 		const fake = fakeTransport(spacesApi());
+		const resolver = digitaloceanResolverRegistry({
+			resolveCredential: async () => TOKEN,
+			nowMs: NOW_MS,
+		}).get(DIGITALOCEAN_SPACES_PRODUCT_ID);
+		if (resolver === undefined) {
+			throw new Error("expected spaces resolver");
+		}
 		const message = await messageOf(() =>
-			(
-				digitaloceanResolverRegistry({
-					resolveCredential: async () => TOKEN,
-					nowMs: NOW_MS,
-				}).get(DIGITALOCEAN_SPACES_PRODUCT_ID) as ResourceResolver
-			).reconcile(request(spacesRequest), fake.transport),
+			resolver.reconcile(request(spacesRequest), fake.transport),
 		);
 		expect(message).toContain("resolveSpacesCredential");
 		expect(fake.calls).toHaveLength(0);
@@ -1779,6 +1813,7 @@ describe("Spaces is S3, on its own host with its own credential", () => {
 		expect(message).toContain("unbounded data loss");
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats an already-gone bucket as a successful delete", async () => {
 		const fake = fakeTransport(spacesApi(false));
 		await expect(

@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "vitest";
-
 import {
 	assertLocalIacProgram,
 	digitalocean,
@@ -11,6 +10,7 @@ import {
 	realizeResourcePlan,
 	realizeResourcePlans,
 } from "../src/index.js";
+import { isJsonObject } from "../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const pact = JSON.parse(
@@ -57,8 +57,13 @@ describe("realize: ResourcePlan -> pulumi IacProgram", () => {
 		assertLocalIacProgram(iac);
 		assert.equal(iac.resources.length, 4);
 		const api = iac.resources.find((r) => r.name === "api");
+		if (api === undefined) throw new Error("expected api resource");
+		const bindings = api.inputs.bindings;
+		assert.ok(Array.isArray(bindings));
 		assert.deepEqual(
-			(api?.inputs.bindings as Array<{ ref: string }>).map((b) => b.ref),
+			bindings.map((binding) =>
+				isJsonObject(binding) ? binding.ref : undefined,
+			),
 			[
 				"${resources.assets.outputs.binding}",
 				"${resources.ledger.outputs.binding}",

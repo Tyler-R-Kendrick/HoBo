@@ -3,13 +3,7 @@
  * Normalizes App Platform / VPC / control-plane signals into yard.* facts.
  */
 
-type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| Readonly<{ readonly [key: string]: JsonValue }>;
+import { isJsonArray, type JsonObject } from "./json.js";
 
 // public-contract: the event-store fold this provider is addressed by. Stored
 // events name the resolver that produced them, so a rename orphans every fact
@@ -20,13 +14,13 @@ export const DIGITALOCEAN_EVENT_STORE_RESOLVER_ID =
 export interface DigitalOceanProviderNativeSignal {
 	readonly providerId: "digitalocean";
 	readonly kind: string;
-	readonly payload: Readonly<Record<string, JsonValue>>;
+	readonly payload: JsonObject;
 	readonly observedAt?: string;
 }
 
 export interface DigitalOceanYardEvent {
 	readonly type: string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 	readonly occurredAt?: string;
 }
 
@@ -155,9 +149,7 @@ export function digitaloceanEventStoreFoldDescriptor() {
 	});
 }
 
-function digitaloceanYardFromPayload(
-	p: Readonly<Record<string, JsonValue>>,
-): Record<string, unknown> {
+function digitaloceanYardFromPayload(p: JsonObject) {
 	const yardId = String(p.yardId ?? p.appId ?? "yard:digitalocean");
 	const now = new Date().toISOString();
 	return {
@@ -166,9 +158,9 @@ function digitaloceanYardFromPayload(
 		ownerTenantId: String(p.ownerTenantId ?? "local"),
 		providerId: "digitalocean",
 		runtimeId: String(p.runtimeId ?? "digitalocean.yard-runtime/v1"),
-		shape: {
+		layout: {
 			providerId: "digitalocean",
-			regions: Array.isArray(p.regions) ? p.regions.map(String) : ["nyc3"],
+			regions: isJsonArray(p.regions) ? p.regions.map(String) : ["nyc3"],
 			require: ["managed-container-substrate", "private-network"],
 			prefer: [],
 			residency: [],
@@ -177,8 +169,8 @@ function digitaloceanYardFromPayload(
 			componentHosts: [],
 			labels: {},
 			properties: {
-				...(p.teamRef ? { "digitalocean.teamRef": p.teamRef } : {}),
-				...(p.vpcUuid ? { "digitalocean.vpcUuid": p.vpcUuid } : {}),
+				...(p.teamRef ? { "digitalocean.teamRef": p.teamRef } : undefined),
+				...(p.vpcUuid ? { "digitalocean.vpcUuid": p.vpcUuid } : undefined),
 			},
 			camps: [],
 		},

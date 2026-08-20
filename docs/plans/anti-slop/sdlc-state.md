@@ -34,7 +34,8 @@ main
                        └── sdlc/anti-slop-23-providers-aws  #1220 aws
                         └── sdlc/anti-slop-24-providers-gcp  #1222 gcp
                          └── sdlc/anti-slop-25-providers-azure  #1224 azure
-                          └── sdlc/anti-slop-26-providers-cloudflare  cloudflare
+                          └── sdlc/anti-slop-26-providers-cloudflare  #1231 cloudflare
+                           └── sdlc/anti-slop-27-providers-digitalocean  digitalocean
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -77,7 +78,7 @@ Layer 22: provider-hetzner (#1218).
 Layer 23: provider-aws (#1220).
 Layer 24: provider-gcp (#1222).
 Layer 25: provider-azure (#1224).
-Layer 26: provider-cloudflare. Next: remaining `packages/providers/*`
-(digitalocean), then `packages/code`, `hobo`,
+Layer 26: provider-cloudflare (#1231).
+Layer 27: provider-digitalocean. Next: `packages/code`, `hobo`,
 `core`, `broker`, `src/draft/`. Full-repo `lint:slop --deny-warnings` is
 still red until those land.

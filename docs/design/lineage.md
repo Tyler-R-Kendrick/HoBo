@@ -93,7 +93,7 @@ the control plane is an event journal.**
 | **PACT** | adopted discipline | consumer-driven contracts at every boundary (repo-gated) | contracts feed can-deploy/Gatekeeper, event-sourced | [technologies/pact](../technologies/pact.md) |
 | **OPA / Rego** | provider-target | policy-as-code engine posture | typed TS policy default; OPA optional behind `policy-engine` (ADR-0015) | [technologies/opa-rego](../technologies/opa-rego.md) |
 | **Cedar** | provider-target | deny-overrides composition; narrow-typed-policy auditability | event-sourced `policy.Decided`, Gatekeeper composition | [technologies/cedar](../technologies/cedar.md) |
-| **FinOps (FOCUS / OpenCost)** | pillar (P4) + standard | cost as first-class input; FOCUS billing shapes; cost-aware placement (ADR-0071) | Pareto/stability control plane, credits routing | [standards/focus-opencost](../standards/focus-opencost.md) · [competitors/finops-tooling](../competitors/finops-tooling.md#hobo-mapping) |
+| **FinOps (FOCUS / OpenCost)** | pillar (P4) + standard | cost as first-class input; FOCUS billing shapes; cost-aware placement (ADR-0071) | Pareto/stability control plane, credits routing | [standards/focus-opencost](../standards/focus-opencost.md) · [competitors/finops-tooling](../competitors/finops-tooling.md#the-cross-product-reading) |
 | **Pulumi** | adopted adapter | real-language IaC via Automation API | one of several IaC adapters, none primary | [design/control-plane](./control-plane.md#plan-04) |
 
 ### Delivery & operations

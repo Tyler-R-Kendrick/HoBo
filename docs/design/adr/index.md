@@ -176,3 +176,4 @@
 | 0165 | Pack upgrade as a decision: numeric version ordering, majors crossed only by name, dropped profile claims and unverified targets blocked rather than skipped | [portability-extensibility](07-portability-extensibility.md#adr-0165) |
 | 0166 | Estimate-versus-actual as a derived report: integer minor units, unestimated cost never dropped, unrealized estimates excluded from variance, short windows refused rather than reported as savings | [data-plane](03-data-plane.md#adr-0166) |
 | 0167 | Cost-aware placement scoped to what can actually be priced: unpriced is not free, unparseable is not missing, and a cost-optimality claim is withheld when the candidate set cannot support it | [architecture-core](01-architecture-core.md#adr-0167) |
+| 0168 | Price data resourced from published unauthenticated feeds: no purchase, a core that cannot fetch, staleness refused, currency matched not converted | [architecture-core](01-architecture-core.md#adr-0168) |

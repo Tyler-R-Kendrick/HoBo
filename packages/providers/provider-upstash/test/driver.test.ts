@@ -163,7 +163,7 @@ describe("provision", () => {
 				resourceRef: RESOURCE_REF,
 				idempotencyKey: FAKE_DATABASE_ID,
 			}),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "SECRET_CUSTODY_UNAVAILABLE",
 		);
 	});
@@ -190,7 +190,7 @@ describe("provision", () => {
 				resourceRef: RESOURCE_REF,
 				idempotencyKey: FAKE_DATABASE_ID,
 			}),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "SECRET_REFERENCE_INVALID",
 		);
 	});
@@ -229,7 +229,7 @@ describe("observe", () => {
 				idempotencyKey: FAKE_DATABASE_ID,
 				previous,
 			}),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_CONTRACT_CHANGED",
 		);
 	});
@@ -242,7 +242,7 @@ describe("claim and rotation", () => {
 
 		assert.throws(
 			() => driver.attestRotation(record, ROTATION),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "CLAIM_NOT_VERIFIED",
 		);
 	});
@@ -283,7 +283,7 @@ describe("claim and rotation", () => {
 
 		assert.throws(
 			() => driver.attestClaim(record, { ...CLAIM, attestedBy: "" }),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "CLAIM_NOT_VERIFIED",
 		);
 	});
@@ -300,7 +300,7 @@ describe("claim and rotation", () => {
 		assert.equal(expired.claim.state, "expired");
 		assert.throws(
 			() => driver.attestClaim(expired, CLAIM),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "CLAIM_EXPIRED",
 		);
 	});
@@ -319,7 +319,7 @@ describe("lease and teardown", () => {
 
 		assert.throws(
 			() => driver.assertLeaseLive(record),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "LEASE_EXPIRED",
 		);
 	});
@@ -331,7 +331,7 @@ describe("lease and teardown", () => {
 
 		assert.throws(
 			() => driver.assertClaimable(record),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) &&
 				error.code === "CLAIM_EXPIRED" &&
 				/no re-claim path/u.test(error.message),
@@ -344,7 +344,7 @@ describe("lease and teardown", () => {
 
 		await assert.rejects(
 			driver.destroy(record),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "CLEANUP_FAILED",
 		);
 	});
@@ -365,7 +365,7 @@ describe("lease and teardown", () => {
 
 		await assert.rejects(
 			driver.destroy(driver.attestClaim(await provision(), CLAIM)),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "CLEANUP_FAILED",
 		);
 	});

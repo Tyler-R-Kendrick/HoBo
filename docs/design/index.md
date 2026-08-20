@@ -182,7 +182,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 
 ### Competitive frame vs Lakebed (what we deliberately do differently)
 
-Full capture + parity tracker: [`docs/competitors/lakebed`](../competitors/lakebed.md#hobo-mapping).
+Full capture + parity tracker: [`docs/competitors/lakebed`](../competitors/lakebed.md#primitive-mapping).
 
 | Dimension | Lakebed | HoBo |
 |---|---|---|

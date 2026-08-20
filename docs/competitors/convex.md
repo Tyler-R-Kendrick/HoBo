@@ -1,7 +1,7 @@
 ---
 type: Competitive Reference
 title: "Convex — Competitor Reference"
-description: "**Convex** is a **reactive, TypeScript-first backend platform** — *\"the backend building blocks for your apps and agents.\"* You express the whole backend in pure TypeScript — **dat"
+description: "Reactive TypeScript backend platform: a deterministic query reactor tracks each query's read set and pushes new results to every subscribed client."
 tags: [hobo, competitors]
 competitor:
   slug: convex
@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [typed-contracts, wiring, runtime-portability]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-20
+  contract: v1
   sources:
     - https://docs.convex.dev/
     - https://github.com/get-convex/convex-backend
@@ -22,7 +23,9 @@ competitor:
 
 # Convex — Competitor Reference
 
-> Captured for HoBo competitive analysis (research as of 2026, from docs.convex.dev / convex.dev / get-convex GitHub). A deep capture of Convex's developer surface — database, functions, sync, deployment, codegen, and the management plane — reproduced as factual API/CLI/config excerpts under the [fair-use note](index.md#sources--fair-use). HoBo↔Convex parity in [HoBo mapping](#hobo-mapping).
+> Captured for HoBo competitive analysis (research as of 2026, from docs.convex.dev / convex.dev / get-convex GitHub). A deep capture of Convex's developer surface — database, functions, sync, deployment, codegen, and the management plane — reproduced as factual API/CLI/config excerpts under the [fair-use note](index.md#sources--fair-use). HoBo↔Convex parity in [primitive mapping](#primitive-mapping).
+
+## What it is
 
 **Convex** is a **reactive, TypeScript-first backend platform** — *"the backend building blocks for your apps and agents."* You express the whole backend in pure TypeScript — **database**, schema, server **functions**, auth, scheduling, search — and Convex keeps frontend ↔ backend ↔ database **in sync in real time**. Three pillars carry the whole model:
 
@@ -46,7 +49,35 @@ The core idea is the **deterministic query reactor**. Queries must be determinis
 | Hosting | Convex Cloud (Free/Pro/Enterprise) **or self-host** (Rust, FSL license) |
 | Clients | React, Next.js, Vue, Svelte, Python, Rust, iOS, Android, Node |
 
-Convex is **adjacent** to HoBo, not a head-on competitor: it's the kind of backend HoBo could *target as a capability provider*, and a sharp reference point for HoBo's generated clients and control-plane/provisioning APIs. Its known boundaries (vs HoBo's scope) frame the rest of this capture — a TS/JS-centric runtime and document model only (no relational SQL, no multi-model); a single-vendor backend (Convex Cloud or self-host), not a multi-cloud / IaC / control-plane story; hard per-call ceilings (1 s queries/mutations, 10-min actions, 1 MiB docs); and a **Beta** Management/Platform API with some endpoints documented only in the OpenAPI spec. See [HoBo mapping](#hobo-mapping).
+Convex is **adjacent** to HoBo, not a head-on competitor: it's the kind of backend HoBo could *target as a capability provider*, and a sharp reference point for HoBo's generated clients and control-plane/provisioning APIs. Its known boundaries (vs HoBo's scope) frame the rest of this capture — a TS/JS-centric runtime and document model only (no relational SQL, no multi-model); a single-vendor backend (Convex Cloud or self-host), not a multi-cloud / IaC / control-plane story; hard per-call ceilings (1 s queries/mutations, 10-min actions, 1 MiB docs); and a **Beta** Management/Platform API with some endpoints documented only in the OpenAPI spec. See [primitive mapping](#primitive-mapping).
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Document / table** | The data model, with a typed schema in TypeScript |
+| **Query** | A read function that is **reactive**: the client re-runs it automatically when anything it read changes |
+| **Mutation** | A transactional write function |
+| **Action** | A function permitted to call the outside world, outside the transaction |
+| **Scheduler / cron** | Durable scheduled execution |
+| **File storage / vector search** | Built-in adjacent capabilities |
+
+The mental model is **the database tells you when your answer changed**. Convex tracks what each
+query read and invalidates precisely; the developer writes a query and gets live data without
+subscriptions, cache keys or invalidation logic. This is the capability HoBo's gap analysis has
+recorded as the standout finding of the whole corpus.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `typed-contracts` | End-to-end TypeScript types from schema to client |
+| `wiring` | Queries and mutations are the interface; no API layer to write |
+| `runtime-portability` | Convex is one hosted runtime, with an open-source backend |
+
+Convex is **adjacent, not head-on**: it is a backend platform, not a control plane. Its importance to
+HoBo is that it demonstrates a data model HoBo's CQRS and materialized views do not currently match
+in ergonomics.
 
 ## Feature surface
 
@@ -438,7 +469,22 @@ Selected hard limits:
 
 These per-call ceilings (1 s queries, 10-min actions, 1 MiB docs) shape the architecture: keep functions small, and push heavy/long work into actions + scheduled functions + components.
 
-## Differentiators
+## Architecture
+
+- **Reactive query engine** — the core: each query's read set is tracked, so a write invalidates
+  exactly the queries it affects and clients receive updates without polling.
+- **Transactional mutations** run against a consistent snapshot; actions are the escape hatch for
+  non-transactional side effects, which keeps the transactional core clean.
+- **Deployment** — hosted Convex, with an open-source backend for self-hosting.
+- **State authority** — Convex's own store, which is the system of record for applications built on
+  it.
+- **Portability boundary** — the programming model *is* the platform. Queries, mutations and the
+  reactivity contract are Convex's; an application built this way is built on Convex.
+
+## Where Convex is stronger
+
+> Shipped, evidenced capability only.
+
 
 What's genuinely strong:
 
@@ -469,7 +515,9 @@ Head-to-head:
 | **PlanetScale / Neon** | full backend (functions/sync/auth), not just a DB | serverless SQL at scale, branching |
 | **Aspire** ([../aspire](aspire.md)) | a *running managed backend* + reactivity | Aspire orchestrates *your* polyglot services to *your* infra (composition, not a hosted DB) |
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > For each Convex surface, the HoBo equivalent. ✅ = HoBo has a comparable concept · ➕ = HoBo goes further · ↔ = adjacent/composes · n/a = out of scope. HoBo design lives in [`../../design/`](../design/index.md). Convex is **adjacent** to HoBo — a managed reactive backend, not a multi-cloud control plane — so this tracks *conceptual* correspondences (and where Convex could be a HoBo provider), not feature-for-feature competition.
 
@@ -532,3 +580,60 @@ Realizing ports on Convex is deliberately **partial-fidelity**; these boundaries
 - **Event-sourced replay/time-travel + audit** as the substrate ([Plan 11](../design/data-plane.md#plan-11)).
 - **WASM-first polyglot runtime** ([Plan 20](../design/wasm-runtime-wit.md#plan-20)) vs Convex's TS/JS runtime.
 - **Agent-native generation pipeline** generation of providers/implementations/definitions ([Plan 23](../design/generated-stack.md#plan-23)).
+
+## Adversarial critique
+
+- **The reactive model is the lock-in.** Everything good about Convex depends on its engine tracking
+  read sets; there is no other implementation of that contract, so the application cannot move.
+- **Scale characteristics of read-set tracking** are the interesting engineering question, and the
+  one least documented publicly: invalidation fan-out is workload-dependent.
+- **TypeScript-centric.** Other languages are second-class, which bounds the addressable audience.
+- **Actions break the transactional story** by necessity — the moment an application talks to a
+  payment provider, the clean model has an edge.
+- **Self-hosting exists and is not the product.** The hosted service is where the operational quality
+  lives.
+- **A young platform holding the system of record** is a substantial bet for a business-critical
+  application, and the migration path out is a rewrite.
+
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract.
+
+- **Provider-abstract data ports** (*implemented*, ADR-0052/0081): HoBo's data kinds map to cloud
+  natives rather than to one vendor's engine.
+- **Event-sourced authority with replay** (*implemented*, ADR-0135) — architecturally a *stronger*
+  substrate for reactivity than a document store, since the log is already an ordered change stream.
+- **Scored placement and residency** (*implemented*, ADR-0146) have no analog in a single hosted
+  backend.
+- **Honest caveat, and it is the important one.** On live-query ergonomics Convex is ahead of HoBo,
+  and the corpus's gap analysis already records this as the standout gap. HoBo has the better
+  substrate and not the better developer experience.
+
+## Better-together / integration posture
+
+- **Borrow** — **precise read-set invalidation as a developer-facing contract**. HoBo's event log
+  makes this mechanically easier than it is for a document database; what is missing is the
+  ergonomic surface that turns projections into live queries.
+- **Provider-target** — Convex behind HoBo's data ports is coherent for teams that want it.
+- **Benchmark** on the live-data developer experience, which is the specific thing HoBo is measured
+  against here.
+- Not an adopt or displace target.
+
+## Threats and lessons
+
+1. **Live queries remain the standout gap in the corpus**, and this capture reaffirms it after a
+   full pass across seventy-plus products. Nothing else has closed it.
+2. **HoBo's event log is the right substrate for reactivity and is not exposed as one.** Projections
+   already derive from an ordered change stream; making that a live-query surface is a smaller step
+   than it appears, and belongs in its own implementation issue.
+3. **Ergonomics beat architecture in data**, as everywhere else. Being able to explain reactivity is
+   worth less than not having to think about it.
+
+## Sources
+
+- [docs.convex.dev](https://docs.convex.dev/) — queries, mutations, actions, schema, reactivity
+- [get-convex/convex-backend](https://github.com/get-convex/convex-backend) — the open-source backend
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Scale characteristics of read-set invalidation and current self-hosting
+parity were not verified in this pass and are not asserted.

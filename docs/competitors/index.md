@@ -18,15 +18,15 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 
 | Category | Competitors |
 | -------- | ----------- |
-| [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Appvia Wayfinder](appvia-wayfinder.md) · [CloudBolt](cloudbolt.md) · [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [Harness Platform](harness.md) · [HPE Morpheus](hpe-morpheus.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [Nomad](nomad.md) · [OpenChoreo](openchoreo.md) · [Port](port.md) · [Porter](porter.md) · [Qovery](qovery.md) · [Radius](radius.md) · [Upsun](upsun.md) |
-| [Portable Application Models & Control Planes](categories/portable-application-models.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [Cloudify](cloudify.md) · [Crossplane](crossplane.md) · [Dapr](dapr.md) · [Facets.cloud](facets.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [Kubernetes](kubernetes.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Nitric](nitric.md) · [OpenChoreo](openchoreo.md) · [Pulumi](pulumi.md) · [Radius](radius.md) · [SST](sst.md) |
+| [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Appvia Wayfinder](appvia-wayfinder.md) · [CloudBolt](cloudbolt.md) · [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [Harness Platform](harness.md) · [HPE Morpheus](hpe-morpheus.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [Nomad](nomad.md) · [OpenChoreo](openchoreo.md) · [Port](port.md) · [Porter](porter.md) · [Qovery](qovery.md) · [Radius](radius.md) · [System Initiative](system-initiative.md) · [Upsun](upsun.md) |
+| [Portable Application Models & Control Planes](categories/portable-application-models.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [Cloudify](cloudify.md) · [Crossplane](crossplane.md) · [Dapr](dapr.md) · [Facets.cloud](facets.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [Kubernetes](kubernetes.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Nitric](nitric.md) · [OpenChoreo](openchoreo.md) · [Pulumi](pulumi.md) · [Radius](radius.md) · [SST](sst.md) · [System Initiative](system-initiative.md) |
 | [Cloud Application Platforms](categories/cloud-application-platforms.md) | [Anonymous container hosts](anon-container-hosts.md) · [AWS Amplify](aws-amplify.md) · [Control Plane](control-plane.md) · [Coolify](coolify.md) · [Encore](encore.md) · [Flux Network](flux-network.md) · [Fly.io](flyio.md) · [Heroku](heroku.md) · [Lagoon](lagoon.md) · [Lakebed](lakebed.md) · [Modal](modal.md) · [Netlify](netlify.md) · [Northflank](northflank.md) · [OpenShift](openshift.md) · [Porter](porter.md) · [Qovery](qovery.md) · [Railway](railway.md) · [Release](release.md) · [Render](render.md) · [Upsun](upsun.md) · [Vercel](vercel.md) |
 | [Developer Portals & IDPs](categories/developer-portals-idps.md) | [Appvia Wayfinder](appvia-wayfinder.md) · [Atlassian Compass](atlassian-compass.md) · [Backstage](backstage.md) · [Cortex](cortex.md) · [Cycloid](cycloid.md) · [Harness Platform](harness.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [OpenChoreo](openchoreo.md) · [OpsLevel](opslevel.md) · [Port](port.md) · [Red Hat Developer Hub](red-hat-developer-hub.md) · [Roadie](roadie.md) |
-| [Infrastructure-from-Code & Authoring](categories/infrastructure-from-code.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [KusionStack](kusionstack.md) · [Nitric](nitric.md) · [Pulumi](pulumi.md) · [SST](sst.md) · [Wasp](wasp.md) · [Winglang](winglang.md) |
+| [Infrastructure-from-Code & Authoring](categories/infrastructure-from-code.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [AWS Amplify](aws-amplify.md) · [Encore](encore.md) · [KusionStack](kusionstack.md) · [Nitric](nitric.md) · [Pulumi](pulumi.md) · [SST](sst.md) · [StackGen](stackgen.md) · [Wasp](wasp.md) · [Winglang](winglang.md) |
 | [Runtime & Distributed Application Substrates](categories/runtime-substrates.md) | [.NET Aspire](aspire.md) · [celld](celld.md) · [Control Plane](control-plane.md) · [Dapr](dapr.md) · [Flux Network](flux-network.md) · [Kubernetes](kubernetes.md) · [Modal](modal.md) · [Nomad](nomad.md) · [OpenShift](openshift.md) · [OpenStack](openstack.md) · [Rancher Fleet](rancher-fleet.md) · [Rivet](rivet.md) · [Spin / Fermyon](spin-fermyon.md) · [Wasm host landscape](wasm-hosts.md) · [wasmCloud](wasmcloud.md) |
 | [Hybrid & Multicloud Enterprise Orchestration](categories/hybrid-multicloud-enterprise.md) | [Appvia Wayfinder](appvia-wayfinder.md) · [CloudBolt](cloudbolt.md) · [Cloudify](cloudify.md) · [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [HPE Morpheus](hpe-morpheus.md) · [Kubernetes](kubernetes.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [OpenShift](openshift.md) · [OpenStack](openstack.md) · [Porter](porter.md) · [Pulumi](pulumi.md) · [Rancher Fleet](rancher-fleet.md) · [Red Hat Developer Hub](red-hat-developer-hub.md) |
 | [Self-Hosted PaaS & Server Deployment](categories/self-hosted-paas.md) | [Anonymous container hosts](anon-container-hosts.md) · [CapRover](caprover.md) · [Coolify](coolify.md) · [Dokku](dokku.md) · [Dokploy](dokploy.md) · [Kamal](kamal.md) · [Lagoon](lagoon.md) · [Northflank](northflank.md) · [ServerKit](serverkit.md) |
-| [Agentic Infrastructure & Operations](categories/agentic-infrastructure.md) | [Antimetal](antimetal.md) · [Control Plane](control-plane.md) · [Cortex](cortex.md) · [Harness Platform](harness.md) · [InsForge](insforge.md) · [Lakebed](lakebed.md) · [Port](port.md) · [Vercel](vercel.md) |
+| [Agentic Infrastructure & Operations](categories/agentic-infrastructure.md) | [Antimetal](antimetal.md) · [Control Plane](control-plane.md) · [Cortex](cortex.md) · [Harness Platform](harness.md) · [InsForge](insforge.md) · [Lakebed](lakebed.md) · [Port](port.md) · [StackGen](stackgen.md) · [System Initiative](system-initiative.md) · [Vercel](vercel.md) |
 | [Backend & Data Application Platforms](categories/backend-data-platforms.md) | [AWS Amplify](aws-amplify.md) · [Convex](convex.md) · [InsForge](insforge.md) · [Supabase](supabase.md) · [Wasp](wasp.md) |
 | [Delivery, Release & GitOps](categories/delivery-release-gitops.md) | [Harness Platform](harness.md) · [Kamal](kamal.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [Lagoon](lagoon.md) · [Octopus Deploy](octopus-deploy.md) · [OpenChoreo](openchoreo.md) · [Rancher Fleet](rancher-fleet.md) · [Release](release.md) |
 | [FinOps, Governance & Placement](categories/finops-governance-placement.md) | [Antimetal](antimetal.md) · [CloudBolt](cloudbolt.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [FinOps tooling cohort](finops-tooling.md) · [Harness Platform](harness.md) · [HPE Morpheus](hpe-morpheus.md) |
@@ -34,7 +34,7 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 
 Categories are many-to-many: several products appear in more than one row above, with a single canonical capture behind each link.
 
-## Canonical captures (75)
+## Canonical captures (77)
 
 | Competitor | Capture | Primary category | Directness | Role relative to HoBo |
 | ---------- | ------- | ---------------- | ---------- | --------------------- |
@@ -106,7 +106,9 @@ Categories are many-to-many: several products appear in more than one row above,
 | **shoo.dev** | [`shoo.md`](shoo.md) | [`identity-networking-delivery`](categories/identity-networking-delivery.md) | complementary | zero-config Google sign-in auth broker (PKCE + ES256/JWKS) — identity integration target |
 | **Spin / Fermyon** | [`spin-fermyon.md`](spin-fermyon.md) | [`runtime-substrates`](categories/runtime-substrates.md) | adjacent | wasm serverless framework and hosts — SpinKube is a HoBo component-host adapter |
 | **SST** | [`sst.md`](sst.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | direct | infrastructure-from-code full-stack framework on Pulumi/Terraform with typed Linking — close product analog |
+| **StackGen** | [`stackgen.md`](stackgen.md) | [`agentic-infrastructure`](categories/agentic-infrastructure.md) | overlapping | infrastructure inferred from unannotated source — the one product that removes the declaration step entirely, and the sharpest test of whether HoBo's authoring step is necessary |
 | **Supabase** | [`supabase.md`](supabase.md) | [`backend-data-platforms`](categories/backend-data-platforms.md) | adjacent | open-source Postgres BaaS — adjacent platform and possible provider target |
+| **System Initiative** | [`system-initiative.md`](system-initiative.md) | [`agentic-infrastructure`](categories/agentic-infrastructure.md) | direct | the most architecturally ambitious rethink of infrastructure automation in the corpus — a live model with real-time qualification instead of a plan-and-apply cycle |
 | **Upsun** | [`upsun.md`](upsun.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | environment-per-branch PaaS whose cloned-production-data preview environments are the strongest ephemeral-environment implementation in the corpus |
 | **Vercel** | [`vercel.md`](vercel.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | frontend cloud plus durable Workflow SDK and AI stack — borrow-source promoted to full parity capture |
 | **Wasm host landscape** | [`wasm-hosts.md`](wasm-hosts.md) | [`runtime-substrates`](categories/runtime-substrates.md) | adjacent | cohort capture of the wasm component-hosting landscape grounding ADR-0031 component-host adapters |
@@ -122,6 +124,7 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | ------------------- | ----------------- |
 | `amazee.io lagoon` | [Lagoon](lagoon.md) |
 | `amplify gen 2` | [AWS Amplify](aws-amplify.md) |
+| `appcd` | [StackGen](stackgen.md) |
 | `appvia` | [Appvia Wayfinder](appvia-wayfinder.md) |
 | `captainduckduck` | [CapRover](caprover.md) |
 | `choreo idp` | [OpenChoreo](openchoreo.md) |
@@ -187,6 +190,7 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `rivetkit` | [Rivet](rivet.md) |
 | `roadie.io` | [Roadie](roadie.md) |
 | `runonflux` | [Flux Network](flux-network.md) |
+| `si` | [System Initiative](system-initiative.md) |
 | `ske` | [Kratix](kratix.md) |
 | `spin` | [Spin / Fermyon](spin-fermyon.md) |
 | `spinkube` | [Spin / Fermyon](spin-fermyon.md) |
@@ -194,6 +198,7 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `sst ion` | [SST](sst.md) |
 | `suse fleet` | [Rancher Fleet](rancher-fleet.md) |
 | `syntasso kratix` | [Kratix](kratix.md) |
+| `systeminit` | [System Initiative](system-initiative.md) |
 | `ttl.sh` | [Anonymous container hosts](anon-container-hosts.md) |
 | `upsun fixed` | [Upsun](upsun.md) |
 | `uselagoon` | [Lagoon](lagoon.md) |

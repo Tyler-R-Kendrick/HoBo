@@ -83,7 +83,7 @@ the control plane is an event journal.**
 | **Temporal** | analog | durable execution benchmark; history-replay mechanism generalized platform-wide | in-process over the journal; replay-gate not SDK sandbox | [technologies/temporal](../technologies/temporal.md) |
 | **Vercel Workflows** | borrow-source | the durable `workflow`/`step` authoring feel | — | [competitors/vercel](../competitors/vercel.md#primitive-mapping) |
 | **Tailscale / WireGuard** | adopted adapter | identity-keyed overlay, Funnel exposure, zero-config expectation (ADR-0122/0143) | overlay behind the `mesh` port; Headscale/Netbird for sovereign Yards | [technologies/tailscale](../technologies/tailscale.md) |
-| **Convex / Lakebed / Supabase** | head-on + provider-targets | reactive DX corroboration; agent-native contracts (`llms.txt`) | also realizable as providers (thin-adapter rule, ADR-0144 §5) | [convex](../competitors/convex.md#hobo-mapping) · [lakebed](../competitors/lakebed.md#hobo-mapping) · [supabase](../competitors/supabase.md#hobo-mapping) |
+| **Convex / Lakebed / Supabase** | head-on + provider-targets | reactive DX corroboration; agent-native contracts (`llms.txt`) | also realizable as providers (thin-adapter rule, ADR-0144 §5) | [convex](../competitors/convex.md#primitive-mapping) · [lakebed](../competitors/lakebed.md#primitive-mapping) · [supabase](../competitors/supabase.md#primitive-mapping) |
 
 ### Packaging, contracts & policy
 

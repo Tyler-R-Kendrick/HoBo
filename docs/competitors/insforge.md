@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [agent-surface, typed-contracts]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-20
+  contract: v1
   sources:
     - https://docs.insforge.dev/introduction
     - https://github.com/InsForge/InsForge
@@ -22,7 +23,7 @@ competitor:
 
 # InsForge - Competitor Reference
 
-> Captured for HoBo competitive analysis (researched 2026-07-01). Sources: [GitHub repo](https://github.com/InsForge/InsForge), [official docs](https://docs.insforge.dev/introduction), [product overview](https://docs.insforge.dev/products), [agent-native docs](https://docs.insforge.dev/agent-native/overview), [pricing](https://insforge.dev/pricing), [changelog](https://insforge.dev/changelogs), and [release v2.2.4](https://github.com/InsForge/InsForge/releases/tag/v2.2.4). InsForge is adjacent to HoBo: it is a batteries-included backend platform built for agents to operate, not a meta-cloud that provisions arbitrary infrastructure. HoBo mapping lives in [HoBo mapping](#hobo-mapping).
+> Captured for HoBo competitive analysis (researched 2026-07-01). Sources: [GitHub repo](https://github.com/InsForge/InsForge), [official docs](https://docs.insforge.dev/introduction), [product overview](https://docs.insforge.dev/products), [agent-native docs](https://docs.insforge.dev/agent-native/overview), [pricing](https://insforge.dev/pricing), [changelog](https://insforge.dev/changelogs), and [release v2.2.4](https://github.com/InsForge/InsForge/releases/tag/v2.2.4). InsForge is adjacent to HoBo: it is a batteries-included backend platform built for agents to operate, not a meta-cloud that provisions arbitrary infrastructure. HoBo mapping lives in [HoBo mapping](#primitive-mapping).
 
 ## What it is
 
@@ -48,6 +49,31 @@ The strongest distinction is the **operator model**. Supabase and Convex are pri
 | Repo state observed | ~12k stars, ~1k forks, latest release `v2.2.4` on 2026-06-29 |
 
 InsForge is not an infrastructure-from-code system like Nitric or Encore. It does not infer arbitrary cloud resources from app code and map them across clouds. It gives the app a **complete backend envelope** and lets the agent operate that envelope safely.
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Postgres core** | The database underneath, as in Supabase |
+| **Auth / storage / realtime** | The standard BaaS services |
+| **Functions** | Server-side compute |
+| **AI gateway** | Model access as a first-class platform service |
+| **Agent-facing API** | The distinguishing surface: the platform is designed to be driven by an agent, not only by a console |
+
+The mental model is **a backend an agent can operate**. InsForge's bet is that the consumer of a
+backend platform is increasingly a coding agent, and that the API surface should be shaped for that
+rather than for a human clicking through a dashboard.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `agent-surface` | **The reason this capture exists** — a BaaS designed for agent operation |
+| `typed-contracts` | Schema-derived interfaces |
+| `identity-secrets` | Auth as a platform service |
+
+InsForge is **adjacent**: a backend platform and a possible provider target, captured as an
+agent-ops benchmark rather than a control-plane rival.
 
 ## Feature surface
 
@@ -230,7 +256,19 @@ As of the researched pricing page:
 
 This pricing model reveals the product architecture: one project is not just rows in a shared database; it has an owned compute envelope for the backend/Postgres.
 
-## Differentiators
+## Architecture
+
+- **Postgres-centred**, with services around it in the now-standard BaaS shape.
+- **Agent-first API design** — the differentiator, and the thing to evaluate: whether the surface is
+  genuinely designed for programmatic operation or is a conventional API described as agent-ready.
+- **State authority** — its own Postgres.
+- **Portability boundary** — Postgres underneath helps, as with Supabase; the surrounding services
+  and the agent surface are the platform's.
+
+## Where InsForge is stronger
+
+> Shipped, evidenced capability only.
+
 
 What InsForge does well:
 
@@ -253,7 +291,7 @@ Gaps relative to HoBo's scope:
 7. **Config as code is curated, not complete.** `insforge.toml` covers auth policy, redirect URLs, password rules, SMTP, storage upload size, realtime/schedule retention, and deployment subdomain. Buckets, functions, OAuth credentials, email templates, deployment env vars, and secrets still live elsewhere.
 8. **RLS correctness is a sharp edge.** The unified auth model is good, but permissive or wrong Postgres policies are a failure mode; the Advisor helps, but the burden remains close to SQL.
 
-## Comparisons
+### Comparisons with adjacent tools
 
 | Compared with | InsForge edge | Their edge |
 |---|---|---|
@@ -264,7 +302,9 @@ Gaps relative to HoBo's scope:
 | Dapr | Higher-level hosted/backend product, auth/storage/data/functions included | Portable runtime building blocks, sidecar/component model, broader platform interoperability |
 | HoBo | Shipped-ish agent-operable backend with practical CLI/MCP and app integrations | Meta-cloud, WIT/wasm, event-sourced control plane, Resource Definitions/Matching, agents-as-principals, contract gates |
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > Status vocabulary: `parity` = HoBo has an equivalent design target; `further` = HoBo intentionally goes beyond; `adjacent` = composes with or informs HoBo but is not the same product surface; `gap-pressure` = InsForge raises the execution bar even if the design has an answer.
 
@@ -311,3 +351,54 @@ Gaps relative to HoBo's scope:
 InsForge is the most direct pressure on HoBo's **agent-operable backend** story. It does not threaten HoBo's architectural moat around multi-cloud matching, WIT/wasm, event sourcing, and agents-as-principals. It does set a practical bar for first-run agent ergonomics: an agent should be able to fetch current state, branch safely, edit declarative config or migrations, apply, diagnose, read logs/advisor findings, and repair without a human clicking through a dashboard.
 
 For HoBo, the takeaway is not "build Supabase." It is: every HoBo control-plane surface must be as agent-legible as InsForge's CLI/MCP loop, while keeping HoBo's stronger contract, identity, replay, and provider-portability model.
+
+## Adversarial critique
+
+- **"Agent-native" is the easiest claim in this market to make and the hardest to evidence.** An API
+  plus documentation is not the same as a surface designed for autonomous operation, and this capture
+  does not assert which InsForge has.
+- **Small project against very large incumbents** in the same shape (Supabase, Firebase), where
+  ecosystem and operational maturity decide adoption.
+- **Agent access to a production backend** raises the same authorization question as everywhere in
+  this corpus: what bounds what the agent may do, and what records it.
+- **Feature breadth against specialists** — auth, storage, realtime and an AI gateway each compete
+  with focused products.
+- **Category timing risk.** BaaS-for-agents is a bet on how agent development consolidates, which is
+  not settled.
+
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract.
+
+- **Agent actions are bounded by typed contracts and recorded** (*implemented*): HoBo's differentiator
+  in this space is not that agents can act, but that what they may do is contractually limited and
+  every decision is in the log.
+- **Provider-abstract data and auth ports** (*implemented*, ADR-0052/0081) — InsForge is one possible
+  realization.
+- **Honest caveat.** InsForge ships an agent-facing backend today; HoBo's agent surface is real but
+  narrower in the backend-services direction.
+
+## Better-together / integration posture
+
+- **Provider-target** — behind HoBo's data and auth ports.
+- **Benchmark** on agent-operability: how much of the platform can be driven correctly without a
+  human in the loop.
+- Not an adopt, borrow or displace target.
+
+## Threats and lessons
+
+1. **Agent-operability is becoming a product category**, and HoBo's claim must be sharper than
+   "agents can call our API" — it is that agent actions are contract-bounded, policy-gated and
+   recorded.
+2. **The backend layer is consolidating around Postgres**, which strengthens the case for HoBo
+   treating Postgres-shaped platforms as interchangeable realizations behind one port.
+3. **Claims in this category are cheap.** Evaluating agent-native assertions requires using the
+   product, and this capture says so rather than repeating the claim.
+
+## Sources
+
+- [docs.insforge.dev](https://docs.insforge.dev/introduction) and [InsForge/InsForge](https://github.com/InsForge/InsForge) — product surface and source
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Agent-native design claims were not independently evaluated and are
+recorded as claims.

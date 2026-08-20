@@ -17,7 +17,7 @@ Developer authoring frameworks that infer or provision infrastructure from appli
 
 HoBo's authoring surface is an IfC surface. This category is the most direct contest over how a developer declares what their application needs.
 
-## Competitors (10)
+## Competitors (11)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -31,6 +31,7 @@ HoBo's authoring surface is an IfC surface. This category is the most direct con
 | [**Winglang**](../winglang.md) *(primary)* | cloud-oriented language compiling to Terraform — authoring analog and cautionary tale (Wing Cloud shut down 2025) | adjacent | `authoring`, `typed-contracts` | Novel preflight/inflight language design for cloud code. | HoBo stays in ordinary TypeScript; Winglang is also a cautionary tale about language-sized bets. | borrow, benchmark | P3 |
 | [**KusionStack**](../kusionstack.md) | open-source intent-driven orchestrator whose AppConfiguration-matched-to-Workspace pipeline is the closest published architecture to HoBo's own | direct | `authoring`, `typed-contracts`, `app-graph`, `provider-matching`, `environments`, `extensibility` | Open source with essentially HoBo's pipeline shipped: KCL-typed AppConfiguration matched against a Workspace to generate an inspectable Spec, then applied. | Kusion composes intent with the one chosen workspace; HoBo scores candidate providers and records the choice, which is what makes cost- and residency-aware placement expressible at all. | displace, borrow, benchmark | P1 |
 | [**Pulumi**](../pulumi.md) *(primary)* | the IaC engine HoBo stands on — an adopted adapter and borrow-source whose authoring model HoBo agrees with and whose altitude it deliberately sits above | adjacent | `authoring`, `typed-contracts`, `reconciliation`, `extensibility`, `wiring` | The Terraform bridge gives it the largest provider ecosystem in existence, Output<T> derives ordering from data flow, and the Automation API makes the engine embeddable. | Pulumi describes resources; HoBo describes capabilities and decides which resources satisfy them — and HoBo delegates downward to Pulumi rather than competing with it. | adopt, borrow, benchmark, integrate | P1 |
+| [**StackGen**](../stackgen.md) | infrastructure inferred from unannotated source — the one product that removes the declaration step entirely, and the sharpest test of whether HoBo's authoring step is necessary | overlapping | `authoring`, `app-graph`, `governance`, `typed-contracts` | Infers infrastructure from unannotated Python and Java — no declaration step at all — and emits ordinary Terraform that survives the product. | Inference recovers behaviour, not intent: residency, budget and least privilege cannot be read out of source. HoBo should infer the draft and let the developer declare and maintain the rest. | benchmark, borrow | P1 |
 
 ## Navigation
 

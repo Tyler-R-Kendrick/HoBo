@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { parseNeonDatabaseResponse } from "../src/api.js";
 import { NeonProviderError } from "../src/errors.js";
+import { parseJsonObject } from "../src/json.js";
 import { fixture } from "./harness.js";
 
 describe("parseNeonDatabaseResponse", () => {
@@ -43,9 +44,8 @@ describe("parseNeonDatabaseResponse", () => {
 		try {
 			parseNeonDatabaseResponse(fixture("create-database.unknown-status.json"));
 		} catch (error) {
-			expect((error as NeonProviderError).code).toBe(
-				"PROVIDER_CONTRACT_CHANGED",
-			);
+			if (!(error instanceof NeonProviderError)) throw error;
+			expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
 		}
 	});
 
@@ -54,17 +54,16 @@ describe("parseNeonDatabaseResponse", () => {
 			parseNeonDatabaseResponse(fixture("error-missing-ref.json"));
 			expect.unreachable("error envelope must not parse as a database");
 		} catch (error) {
-			expect((error as NeonProviderError).code).toBe(
-				"PROVIDER_CONTRACT_CHANGED",
-			);
+			if (!(error instanceof NeonProviderError)) throw error;
+			expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
 		}
 	});
 
 	it("rejects a claim_url pointing somewhere other than an official host", () => {
-		const body = JSON.parse(
-			fixture("create-database.unclaimed.json"),
-		) as Record<string, unknown>;
-		body.claim_url = "https://neon.new.attacker.example/claim/x";
+		const body = {
+			...parseJsonObject(fixture("create-database.unclaimed.json")),
+			claim_url: "https://neon.new.attacker.example/claim/x",
+		};
 		expect(() => parseNeonDatabaseResponse(JSON.stringify(body))).toThrowError(
 			/official Neon host/u,
 		);
@@ -77,8 +76,8 @@ describe("parseNeonDatabaseResponse", () => {
 			parseNeonDatabaseResponse(body);
 			expect.unreachable("malformed JSON must throw");
 		} catch (error) {
-			const detail = (error as NeonProviderError).detail;
-			expect(JSON.stringify(detail)).not.toContain("postgresql://");
+			if (!(error instanceof NeonProviderError)) throw error;
+			expect(JSON.stringify(error.detail)).not.toContain("postgresql://");
 		}
 	});
 });

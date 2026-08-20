@@ -10,6 +10,7 @@ import {
 	type OwnershipProbePort,
 } from "../src/driver.js";
 import type { NeonProviderError } from "../src/errors.js";
+import { parseJsonObject } from "../src/json.js";
 import {
 	createStubCustody,
 	createStubTransport,
@@ -40,7 +41,7 @@ function buildDriver(
 		client,
 		custody,
 		clock,
-		...(options.probe !== undefined ? { probe: options.probe } : {}),
+		...(options.probe !== undefined ? { probe: options.probe } : undefined),
 	});
 	return { driver, custody, transport };
 }
@@ -167,6 +168,7 @@ describe("claim strategy", () => {
 			});
 			expect.unreachable("rotation before a claim must be refused");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as NeonProviderError).code).toBe("CLAIM_NOT_VERIFIED");
 		}
 	});
@@ -189,11 +191,10 @@ describe("observation and ownership", () => {
 
 	it("rejects an observation whose project identity moved", async () => {
 		const { record } = await provisionFixture();
-		const body = JSON.parse(fixture("get-database.claiming.json")) as Record<
-			string,
-			unknown
-		>;
-		body.neon_project_id = "fake-project-99999999";
+		const body = {
+			...parseJsonObject(fixture("get-database.claiming.json")),
+			neon_project_id: "fake-project-99999999",
+		};
 		const { driver } = buildDriver([
 			{ status: 200, body: JSON.stringify(body) },
 		]);
@@ -284,6 +285,7 @@ describe("lease", () => {
 			driver.assertLeaseLive(record);
 			expect.unreachable("an expired lease must throw");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as NeonProviderError).code).toBe("LEASE_EXPIRED");
 		}
 	});

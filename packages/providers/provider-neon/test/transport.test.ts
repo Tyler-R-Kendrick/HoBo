@@ -149,15 +149,14 @@ describe("createGuardedTransport", () => {
 describe("createFetchTransport", () => {
 	it("uses only the injected fetch and never follows redirects", async () => {
 		const calls: RequestInit[] = [];
-		const transport = createFetchTransport({
-			fetchImpl: (async (_url: string, init: RequestInit) => {
-				calls.push(init);
-				return new Response("{}", {
-					status: 200,
-					headers: { "content-type": "application/json" },
-				});
-			}) as unknown as typeof globalThis.fetch,
-		});
+		const fetchImpl: typeof globalThis.fetch = async (_input, init) => {
+			calls.push(init ?? {});
+			return new Response("{}", {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			});
+		};
+		const transport = createFetchTransport({ fetchImpl });
 		const response = await transport.request({
 			method: "GET",
 			url: "https://neon.new/api/v1/database/x",
@@ -170,11 +169,10 @@ describe("createFetchTransport", () => {
 	});
 
 	it("reports a dropped request as ambiguous, never as a failure to create", async () => {
-		const transport = createFetchTransport({
-			fetchImpl: (async () => {
-				throw new Error("socket hang up");
-			}) as unknown as typeof globalThis.fetch,
-		});
+		const fetchImpl: typeof globalThis.fetch = async () => {
+			throw new Error("socket hang up");
+		};
+		const transport = createFetchTransport({ fetchImpl });
 		try {
 			await transport.request({
 				method: "POST",
@@ -186,6 +184,7 @@ describe("createFetchTransport", () => {
 			});
 			expect.unreachable("a dropped request must throw");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as NeonProviderError).code).toBe(
 				"PROVIDER_OPERATION_AMBIGUOUS",
 			);

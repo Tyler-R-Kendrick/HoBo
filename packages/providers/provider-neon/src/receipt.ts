@@ -16,6 +16,7 @@ import type {
 } from "./_generated/provider_neon_pb.js";
 import type { NeonClaimableDatabase, NeonClaimState } from "./driver.js";
 import { NeonProviderError } from "./errors.js";
+import { type JsonValue, parseJsonValue } from "./json.js";
 import type { DomainView, WireFields } from "./wire.js";
 
 /** One non-secret address on a receipt, exactly as the wire form declares it. */
@@ -113,9 +114,15 @@ export type CredentialScanHit = {
 	readonly excerpt: string;
 };
 
+function jsonView(
+	value: JsonValue | NeonProvisionReceipt | readonly NeonProviderFact[],
+): JsonValue {
+	return parseJsonValue(JSON.stringify(value));
+}
+
 /** Scan any JSON-serializable value for credential material. */
 export function scanForCredentialMaterial(
-	value: unknown,
+	value: JsonValue,
 ): readonly CredentialScanHit[] {
 	const serialized = JSON.stringify(value) ?? "";
 	const hits: CredentialScanHit[] = [];
@@ -131,7 +138,10 @@ export function scanForCredentialMaterial(
 	return hits;
 }
 
-export function assertNoCredentialMaterial(value: unknown, what: string): void {
+export function assertNoCredentialMaterial(
+	value: JsonValue,
+	what: string,
+): void {
 	const hits = scanForCredentialMaterial(value);
 	if (hits.length === 0) return;
 	throw new NeonProviderError(
@@ -157,23 +167,23 @@ export function toProvisionReceipt(
 				host: record.endpoints.pooled.host,
 				...(record.endpoints.pooled.port !== undefined
 					? { port: record.endpoints.pooled.port }
-					: {}),
+					: undefined),
 				tls: record.endpoints.pooled.tls,
 			},
 			direct: {
 				host: record.endpoints.direct.host,
 				...(record.endpoints.direct.port !== undefined
 					? { port: record.endpoints.direct.port }
-					: {}),
+					: undefined),
 				tls: record.endpoints.direct.tls,
 			},
 		},
 		...(record.credentialRef !== undefined
 			? { credentialRef: record.credentialRef }
-			: {}),
+			: undefined),
 		...(record.directCredentialRef !== undefined
 			? { directCredentialRef: record.directCredentialRef }
-			: {}),
+			: undefined),
 		expiresAtIso: record.expiresAtIso,
 		expiresAtMs: record.expiresAtMs,
 		expirySource: record.expirySource,
@@ -192,7 +202,7 @@ export function toProvisionReceipt(
 		bindingProfiles: NEON_BINDING_PROFILE_REFS,
 		migrationProfiles: NEON_MIGRATION_PROFILE_REFS,
 	};
-	assertNoCredentialMaterial(receipt, "the Neon provision receipt");
+	assertNoCredentialMaterial(jsonView(receipt), "the Neon provision receipt");
 	return receipt;
 }
 
@@ -240,6 +250,6 @@ export function toProviderFacts(
 			detail: { expiresAtIso: record.expiresAtIso },
 		});
 	}
-	assertNoCredentialMaterial(facts, "the Neon provider facts");
+	assertNoCredentialMaterial(jsonView(facts), "the Neon provider facts");
 	return facts;
 }

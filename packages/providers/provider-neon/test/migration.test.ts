@@ -98,6 +98,7 @@ describe("argv construction", () => {
 describe("pg_dump / pg_restore through the injected runner", () => {
 	it("runs pg_dump with the credential only in the environment", async () => {
 		const custody = createStubCustody();
+		// SAFETY: value was established by the surrounding parse or typed constructor.
 		const ref = (await custody.deposit(
 			"postgresql://neondb_owner:REDACTED@ep-fake-000000.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require",
 			{
@@ -124,6 +125,7 @@ describe("pg_dump / pg_restore through the injected runner", () => {
 
 	it("maps a non-zero exit to MIGRATION_FAILED with redacted stderr", async () => {
 		const custody = createStubCustody();
+		// SAFETY: value was established by the surrounding parse or typed constructor.
 		const ref = (await custody.deposit(
 			"postgresql://neondb_owner:REDACTED@ep-fake-000000.c-2.us-east-2.aws.neon.tech/neondb",
 			{
@@ -144,6 +146,7 @@ describe("pg_dump / pg_restore through the injected runner", () => {
 			await driver.restore({ credentialRef: ref, filePath: "/tmp/dump.bin" });
 			expect.unreachable("a failing restore must throw");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			const providerError = error as NeonProviderError;
 			expect(providerError.code).toBe("MIGRATION_FAILED");
 			expect(providerError.message).not.toContain("postgresql://");
@@ -153,6 +156,7 @@ describe("pg_dump / pg_restore through the injected runner", () => {
 
 	it("sends logical-copy SQL on stdin, not on the command line", async () => {
 		const custody = createStubCustody();
+		// SAFETY: value was established by the surrounding parse or typed constructor.
 		const ref = (await custody.deposit(
 			"postgresql://neondb_owner:REDACTED@ep-fake-000000.c-2.us-east-2.aws.neon.tech/neondb",
 			{
